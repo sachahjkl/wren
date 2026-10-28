@@ -1,115 +1,113 @@
 # Moteur JavaScript — front-end E1 (`src/engine/frontend`)
 
-Le paquet `frontend` est la moitié « amont » du moteur JavaScript écrit en Odin : il transforme du source
-ECMAScript en **bytecode QuickJS-ng 0.17**, compatible octet pour octet avec ce que produit `JS_WriteObject`
-(`BC_VERSION 28`). L'autre moitié (E2 : valeurs, objets, GC, interpréteur, fonctions natives) relit ce bytecode.
-Les deux moitiés ne se rencontrent qu'au **format de bytecode** : `opcodes.odin`, `atoms.odin`, `serialize.odin`.
+Le paquet `frontend` est la moitié « amont » du moteur JavaScript écrit en Odin. Il transforme du source
+ECMAScript en **bytecode QuickJS-ng 0.17**, identique octet pour octet à ce que produit `JS_WriteObject`
+(`BC_VERSION 28`, drapeaux `JS_WRITE_OBJ_BYTECODE | JS_WRITE_OBJ_STRIP_SOURCE`). L'autre moitié (E2 : valeurs,
+objets, GC, interpréteur, fonctions natives) relit ce bytecode. Les deux moitiés ne se rencontrent qu'au
+**format de bytecode** : `opcodes.odin`, `atoms.odin`, `serialize.odin`.
 
-Le paquet compile pour `windows_amd64`, `linux_amd64` et `freestanding_wasm32` (sandbox Wasm conservé). Toute
-allocation passe par un allocateur injecté (une arène libère un parse entier d'un coup) ; aucun appel OS, aucun
-libc. Il réutilise les briques feuilles déjà livrées : `numconv` (littéraux numériques via `atod`), `unicode`
-(`ucd` : `is_id_start/continue`, espaces, pliage de casse), `regexp` (validation des littéraux regexp), `bigint`.
+Le paquet compile pour `windows_amd64`, `linux_amd64` et `freestanding_wasm32`. Toute allocation passe par
+l'allocateur injecté (une arène libère une compilation entière d'un coup). Aucun appel OS, aucune libc. Il
+réutilise les paquets feuilles `numconv` (littéraux numériques) et `unicode` (`ucd`, données Unicode 17.0.0).
 
-## Architecture
+## Pourquoi un portage direct du compilateur QuickJS
 
-Le pipeline (câblé dans `compile.odin`) :
+La première version passait par un AST (lexer, parseur, résolveur, émetteur séparés ; voir l'historique git,
+commit `dc13ba87`). Elle ne pouvait pas atteindre la parité octet : QuickJS émet en **une seule passe** pendant le
+parse, et son bytecode dépend de cet ordre exact. Exemples : les réécritures du dernier opcode émis
+(`get_lvalue`, `optional chaining`, `delete`), l'ordre de création des variables et des portées, les
+`OP_scope_get_var` posés avant que la portée ne soit connue, les labels numérotés dans l'ordre d'émission, les
+`line_num` pris au moment du jeton. Un AST impose un autre ordre. Le paquet suit donc la structure de
+`quickjs.c` (parse + émission, puis `resolve_variables`, `resolve_labels`, `compute_stack_size`), réécrite en
+Odin idiomatique :
 
-```
-source
-  → Lexer            (lexer.odin)        jetons, positions ligne/colonne, valeurs cuites
-  → Parser           (parser*.odin)      AST + erreurs précoces
-  → Resolver         (resolve.odin)      portées, genres de variables, this/arguments
-  → Emitter          (emit.odin, compile.odin)  bytecode + labels
-  → resolve_labels   (emit.odin)         backpatch des sauts
-  → compute_stack_size (emit.odin)       taille de pile (exploration BFS, fidèle à QuickJS)
-  → Func_Scope                           le JSFunctionBytecode
-  → serialize        (serialize.odin)    le flux JS_WriteObject
-```
+- `JS_Value` est une `union` exhaustive (entier, flottant, chaîne, BigInt, fonction, gabarit) au lieu d'un
+  `JSValue` à étiquette ; chaque `switch` est vérifié par le compilateur.
+- Les chaînes sont des `String_Value` (Latin-1 ou UTF-16, comme `JSString`) sans comptage de références.
+- Les erreurs suivent le modèle « la première gagne » de QuickJS mais sans `longjmp` ni exception : chaque
+  procédure renvoie `bool` (erreur) comme dans le C, ce qui garde le portage lisible ligne à ligne.
+- Pas de GC ni de libération : tout vit dans l'arène de la compilation.
 
-### Ce qu'on « fait en Odin »
+## Fichiers
 
-- **AST en tagged unions** (`Expr`, `Stmt`, `Pattern` sont des `union` d'Odin) sur arène : un `switch` est
-  exhaustif, le compilateur vérifie qu'on traite chaque forme. Pas de champ `tag` manuel, pas de vtables, pas de
-  libération par nœud.
-- **Table d'opcodes** en `enum` + `[Opcode]Op_Info` (taille, pop/push, format d'opérande) transcrite de
-  `quickjs-opcode.h`. Les opcodes courts suivent `nop` pour reproduire la numérotation exacte de QuickJS ; les
-  opcodes temporaires (jamais sérialisés) sont un `enum` séparé (`Temp_Op`).
-- **Atomes** : `atoms.odin` porte la table des atomes prédéfinis de `quickjs-atom.h` dans l'ordre exact (donc les
-  mêmes valeurs d'indice), détecte les atomes entiers (indices de tableau → encodage tagged-int), et attribue aux
-  chaînes nouvelles un indice runtime dans l'ordre de première rencontre — l'ordre qu'utilise `JS_WriteObjectAtoms`.
-- **Lexer** : décision `/` vs regexp pilotée par le jeton précédent (`regexp_allowed_after`), au lieu de faire
-  porter le contexte au parseur ; plus robuste et moins de bugs.
+| Fichier | Rôle |
+|---|---|
+| `compile.odin` | Entrées publiques (`compile_program`, `compile_script`, `compile_module`, `write_object_of`), littéraux regexp |
+| `js_defs.odin` | Jetons, `Func_Def`, `Function_Bytecode`, `Module_Def`, `Parse_State`, garde de pile |
+| `js_value.odin` | `String_Value`, `JS_Value`, `String_Buffer`, décodage UTF-8 |
+| `js_lex.odin` | Lexer (`next_token`, chaînes, gabarits, nombres, regexp, `lre_parse_escape`) |
+| `js_emit.odin` | Émission, labels, portées, variables (`emit_op`, `push_scope`, `add_var`…) |
+| `js_expr.odin`, `js_expr2.odin` | Expressions, déstructuration, affectations, appels, classes |
+| `js_stmt.odin` | Instructions |
+| `js_func.odin` | Fonctions (`js_parse_function_decl2`, paramètres, corps) |
+| `js_module.odin` | `import` / `export`, attributs d'import |
+| `js_resolve.odin`, `js_passes.odin` | `resolve_variables`, `resolve_labels` (peephole compris), `compute_stack_size`, `js_create_function` |
+| `js_regexp.odin` | Compilateur de regexp de libregexp (`lre_compile`) |
+| `atoms.odin` | Atomes prédéfinis (ordre de `quickjs-atom.h`) et atomes runtime |
+| `opcodes.odin` | Table des opcodes (`quickjs-opcode.h`) |
+| `serialize.odin` | Flux `JS_WriteObject` |
 
-## Lexer (`lexer.odin`)
+## Littéraux regexp
 
-ECMAScript 2025 complet : identifiants Unicode avec échappements `\u`/`\u{}`, séparateurs numériques et BigInt,
-littéraux de gabarit (y compris fragments head/middle/tail), littéraux regexp (corps + drapeaux, balayage des
-classes `[]`), commentaires `//`, `/* */` et Annex B `<!--` / `-->`, hashbang, noms privés `#x`. Les chaînes sont
-cuites en Latin-1 ou UTF-16 (la forme que QuickJS sérialise). Les erreurs portent une position ligne/colonne.
+QuickJS stocke dans le pool de constantes, pour chaque littéral regexp, la chaîne du motif **et** le bytecode
+libregexp compilé, puis émet `OP_regexp`. Le verdict de syntaxe d'une regexp fait donc partie du verdict du
+script. `js_regexp.odin` porte `lre_compile` (parseur et émetteur) avec ses particularités qui se voient dans les
+octets :
 
-## Parseur (`parser.odin`, `parser_expr.odin`)
+- les intervalles de caractères suivent `CharRange` de libunicode (un ensemble inversé finit à `0xFFFFFFFF`) ;
+- `\p{gc=…}` reconstruit la segmentation de la table `unicode_gc_table` (une plage par suite de même catégorie,
+  plus les suites alternées Lu/Ll), car libunicode ajoute ces plages sans les fusionner ;
+- les ensembles de chaînes (`v`) gardent l'ordre de la table de hachage et du tri `rqsort` de `cutils.h` ;
+- le pliage de casse reprend les exceptions de libunicode (U+FB05, U+FB06).
 
-Descente récursive. Scripts, modules, variantes eval. Grammaire d'instructions complète, ASI, mode strict et
-Annex B, prologue de directives (`"use strict"`). Expressions par escalade de précédence (`binary_prec`), avec
-`**` associatif à droite. Fonctions (fléchées, async, générateurs, méthodes), classes (champs, statiques, blocs
-`static {}`, privés, accesseurs), destructuration, spread, optional chaining, `??`/`??=`, `import`/`export`,
-`import()`/`import.meta`, attributs d'import, labels, `with`. Erreurs précoces : `return`/`break`/`continue` hors
-contexte, cible d'affectation invalide, `delete` d'identifiant en strict, redéclarations (en partie).
+## Garde de pile
 
-Lookahead borné par instantané du curseur (`save_point`/`restore_point`) : une seule avance de jeton pour
-distinguer `let`-déclaration, fonction fléchée, `async function`, label.
+`Compile_Options.stack_budget` (octets, défaut 512 Kio) borne la pile que la compilation utilise sous son point
+d'entrée, comme `js_check_stack_overflow`. Toutes les récursions (expressions, instructions, fonctions,
+`js_create_function`, regexp) vérifient l'adresse d'une variable locale ; au-delà, la compilation échoue avec
+« stack overflow » au lieu de planter. Sur wasm32, cette variable vit dans la pile fantôme (celle qui
+déborderait). `max_nesting` (défaut 6000) reste une seconde borne en nombre d'appels.
 
-## Génération de bytecode (`compile.odin`, `emit.odin`)
+## Outils de parité (`judge/`, `tools/e1_*.ps1`)
 
-`emit.odin` fournit le `Bc_Builder` : émission brute, labels + backpatch, choix des **opcodes courts**
-(`push_0..7`, `get_loc0..3`, `get_loc8`, `push_const8`…) et `compute_stack_size` (exploration en largeur fidèle à
-QuickJS, suit chute, sauts conditionnels, `catch`, `gosub`). `compile.odin` fait le parcours AST → bytecode.
+- `build\e1j.exe emit|emit-module <f.js> <out.bin>` : le flux `JS_WriteObject`.
+- `build\e1j.exe batch <manifest> <dir>` puis `diff-batch <manifest> <refdir> <ourdir>` : tableau par dossier
+  (fichiers compilés des deux côtés, identiques, erreurs d'un seul côté, différences de taille ou de compteurs).
+- `build\e1j.exe decode <bin>` : désassemblage lisible ; `tools\e1_diff.ps1 <f.js>` compare un fichier.
+- `build\e1j.exe speed <f.js> [iters]` : MB/s de compilation ; `prof <f.js> [iters]` : profileur par
+  échantillonnage (Windows).
+- `build\e1j.exe fuzz <fichiers | @manifest>` : mutations (octets, collages, troncatures, duplications) et
+  entrées pathologiques (imbrications profondes) ; rapporte la compilation la plus lente et le ratio mémoire max.
+- `tools\e1_run.ps1` : reconstruit le juge, compare le corpus positif `test262/test/language` et les verdicts du
+  corpus négatif (syntaxe) contre l'oracle C `bc_dump.exe` (QuickJS-ng 0.17 compilé avec zig, avec un chargeur
+  de modules vide pour que les `import` se résolvent sans exécuter).
 
-## Sérialisation (`serialize.odin`)
+## Résultats (test262, 2026-10-28)
 
-Reproduit le conteneur `JS_WriteObject2` + `JS_WriteObjectAtoms` :
+- `test/language`, positifs : 19 272 fichiers, 19 006 compilés des deux côtés, **19 006 identiques (100 %)** ;
+  les 266 autres sont rejetés par les deux moteurs (fonctionnalités que QuickJS-ng 0.17 n'a pas).
+- `test/language`, négatifs de syntaxe : **4 452 verdicts sur 4 452 identiques**.
+- `test/` complet (48 949 positifs + harness) : 48 620 identiques sur 48 623 compilés (99,99 %) ; 46 fichiers
+  rejetés par nous seulement (propriétés de chaînes Unicode `\p{RGI_Emoji}`…, voir « Reste à faire ») ; 4 658
+  négatifs, tous les verdicts identiques.
+- Vitesse : du même ordre que QuickJS (0,9× à 1,15× selon le fichier, compilation seule, sans sérialisation).
 
-```
-[BC_VERSION u8=28] [checksum u32] [atom_count leb128] [atomes…] [objet…]
-```
+## Reste à faire
 
-- LEB128 non signé et zigzag (`put_leb128`, `put_sleb128`), u16/u32/u64 little-endian.
-- `JS_WriteFunctionTag` : drapeaux empaquetés (`has_prototype`, `func_kind`, …), compteurs, table des `vardefs`
-  (nom, scope_level, scope_next+1, drapeaux, var_ref_idx), table `closure_var`, pool de constantes récursif,
-  bytecode (les opérandes d'atome sont réécrites en indices sérialisés comme dans `JS_WriteFunctionBytecode`),
-  section debug (pc2line, source stripée).
-- `bc_csum` recalculé sur tout après les 5 premiers octets, patché à l'offset 1.
-- `first_atom = JS_ATOM_END` : les atomes prédéfinis s'écrivent inline par valeur, seuls les atomes runtime
-  passent par la table d'indices.
-
-## Juges (`judge/`)
-
-Outil `judge` (hôte) :
-
-- `parse` / `parse-module` : parse chaque fichier, PASS/FAIL + message au format QuickJS.
-- `compile` : parse + compile + sérialise, affiche la taille et un préfixe hexa.
-- `dump` : flux `JS_WriteObject` complet en hexa, pour un **diff octet pour octet** avec le moteur C.
-- `speed` : MB/s de parse (opt-in, jamais en CI).
-- `fuzz` : sweep de mutations, ne doit ni planter ni boucler.
-
-Le différentiel de bytecode se fait contre un `JS_WriteObject` du QuickJS C : comparer `judge dump f.js` avec le
-flux produit par le moteur C sur le même fichier (compilé en mode `COMPILE_ONLY`, écrit avec `JS_WRITE_OBJ_BYTECODE`).
-
-## Divergences voulues / en cours
-
-- **Numérotation et format** : identiques à QuickJS (contrat avec E2).
-- **Valeur de complétion d'un script** : on termine sur `return_undef` ; QuickJS peut porter la valeur de la
-  dernière expression. À affiner pour la parité octet sur les scripts eval.
-- **Passe peephole de `resolve_labels`** : on fait le backpatch et le choix d'opcodes courts aux points
-  d'émission ; les règles peephole complètes de QuickJS (fusion `get_loc`/`put_loc`, `dup`+`drop`, etc.) restent à
-  ajouter pour la parité octet fine.
-- **Lowering en cours** (le parseur les accepte, l'émission émet un diagnostic ou un repli) : classes, for-in/of,
-  try/catch, switch, with, générateurs/async (flux de contrôle), destructuration, templates balisés, super,
-  import.meta, spread d'appel/tableau. Le flux reste bien formé.
+- Propriétés de chaînes du drapeau `v` (`Basic_Emoji`, `RGI_Emoji*`, `Emoji_Keycap_Sequence`) : il faut les
+  données `emoji-sequences.txt` / `emoji-zwj-sequences.txt` dans `ucd`, puis reproduire l'ordre d'insertion de
+  libunicode. 46 fichiers de `built-ins/RegExp`.
+- `Changes_When_Casemapped/Lowercased/Uppercased` : libunicode énumère les entrées de `case_conv_table1` sans les
+  fusionner ; il faut reconstruire cette segmentation (`unicode_gen.c`, `find_run_type`). 3 fichiers.
 
 ## Ce que E2 doit savoir
 
-- Les octets produits suivent `BC_VERSION 28`. Le point d'entrée pour obtenir le flux : `compile_script(src,
-  alloc)` puis `write_object_of(res, alloc)` ; `parse_program` pour un AST seul.
-- La table des atomes prédéfinis (`PREDEFINED_ATOMS`) doit rester synchronisée avec celle de E2 : même ordre,
-  mêmes chaînes (sinon les indices d'atomes divergent).
+- Entrée : `compile_program(src, .script | .module, alloc, opts)` puis `write_object_of(res, alloc)`.
+- Une regexp littérale donne deux constantes : la chaîne du motif puis le bytecode libregexp (chaîne Latin-1),
+  puis `OP_regexp`. L'exécuteur de regexp de E2 doit lire le format libregexp (pas celui de `wb:engine/regexp`).
+- Un module est un enregistrement `BC_TAG_MODULE` qui enveloppe la fonction.
+- Objets gabarit : `TEMPLATE_OBJECT(cuits…, TEMPLATE_OBJECT(bruts…, UNDEFINED))`.
+- BigInt du pool : limbes de 32 bits, complément à deux, sans limbe redondant.
+- `PREDEFINED_ATOMS` doit rester dans l'ordre de `quickjs-atom.h`. `Private_brand` et les `Symbol.*` sont des
+  symboles : une chaîne ne leur correspond jamais.
+- Régler `stack_budget` selon la pile restante de l'appelant (la cible wasm a une pile de 1 Mio).
