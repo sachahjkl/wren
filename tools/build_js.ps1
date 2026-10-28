@@ -148,6 +148,13 @@ $sources += @(Get-ChildItem (Join-Path $native 'engine'), (Join-Path $native 'ru
 # The C glue ported to Odin (native\js\odin\*.odin) has its C file dropped here; wj_shim.c (a tiny C accessor the glue
 # still needs) is compiled with the rest. Each ported domain adds its C file name to $odinified.
 $odinified = @(
+    'custom_elements.c',
+    'dom_forms.c',
+    'dom_layout.c',
+    'dom_popover.c',
+    'dom_style.c',
+    'dom_touch.c',
+    'intersection.c',
     'qjs_convert.c',
     'shared_workers.c',
     'web_broadcast.c',
@@ -156,6 +163,7 @@ $odinified = @(
     'web_fullscreen.c',
     'web_location.c',
     'web_navtiming.c',
+    'web_resize.c',
     'web_storage.c',
     'web_strategy.c',
     'web_url.c',
