@@ -10,23 +10,23 @@ param([switch]$Force)
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
-$ver  = '16.0.0'
+$ver  = '17.0.0'
 $cache = Join-Path $root "build\ucd\$ver"
 $out   = Join-Path $root 'src\engine\unicode\tables_generated.odin'
 $base  = "https://www.unicode.org/Public/$ver/ucd"
 
 # path (relative to the UCD root) => pinned SHA-256 (empty string = learn-on-first-run, printed for pinning).
 $files = [ordered]@{
-  'UnicodeData.txt'                       = 'FF58E5823BD095166564A006E47D111130813DCF8BF234EF79FA51A870EDB48F'
-  'DerivedCoreProperties.txt'             = '39D35161F2954497F69E08BDB9E701493F476A3D30222DE20028FEDA36C1DABD'
-  'PropList.txt'                          = '53D614508E2A0B2305A8AA21CD60D993DE9326CDF65993660DFCCE4503548583'
-  'Scripts.txt'                           = '9E88F0A677DF47311106340BE8EDE2ECDACD9C1C931831218D2BE6D5508E0039'
-  'ScriptExtensions.txt'                  = '049117CE26B9769FE2749B06EEF51A50A89FAEF4A97764DD2D81DAA715980700'
-  'CaseFolding.txt'                       = '6F1F9C588EB4A5C718D9E8F93B782685E5C7FEC872CF05E8E6878053599E09BB'
-  'SpecialCasing.txt'                     = '8D5DE354EEF79F2395A54C9C7DCEBBAF3D30FC962D0F85611EA97AA973A0C451'
-  'DerivedNormalizationProps.txt'         = '4D4C03892DEA9146D674B686E495DF2D55A28D071AC474041D73518F887ABDDC'
-  'extracted/DerivedGeneralCategory.txt'  = '7676AB755A41EF82108460238569E60AD65C191DDAFE61B36C6765EC1353F293'
-  'emoji/emoji-data.txt'                  = 'F1365A5173EEE18E1F98B240CDC492E84A25F1CE7E0C9D1094EB29C41A22696A'
+  'UnicodeData.txt'                       = '2E1EFC1DCB59C575EEDF5CCAE60F95229F706EE6D031835247D843C11D96470C'
+  'DerivedCoreProperties.txt'             = '24C7FED1195C482FAAEFD5C1E7EB821C5EE1FB6DE07ECDBAA64B56A99DA22C08'
+  'PropList.txt'                          = '130DCDDCAADAF071008BDFCE1E7743E04FDFBC910886F017D9F9AC931D8C64DD'
+  'Scripts.txt'                           = '9F5E50D3ABAEE7D6CE09480F325C706F485AE3240912527E651954D2D6B035BF'
+  'ScriptExtensions.txt'                  = 'EC2107E58825A1586ACEE8E0911CE18260394AC8B87E535CA325F1CCBEB06BC6'
+  'CaseFolding.txt'                       = 'FF8D8FEFBF123574205085D6714C36149EB946D717A0C585C27F0F4EF58C4183'
+  'SpecialCasing.txt'                     = 'EFC25FAF19DE21B92C1194C111C932E03D2A5EAF18194E33F1156E96DE4C9588'
+  'DerivedNormalizationProps.txt'         = '71FD6A206A2C0CDD41FEB6B7F656AA31091DB45E9CEDC926985D718397F9E488'
+  'extracted/DerivedGeneralCategory.txt'  = 'D62E5BAB70CA74F099343F71224FA051CB1FDD61A1AB45C0488C44CFC0B6102E'
+  'emoji/emoji-data.txt'                  = '2CB2BB9455CDA83E8481541ECF5B6DFDA66A3BB89EFA3FA7C5297ECCF607B72B'
 }
 
 function Sha256Of([string]$path) {
