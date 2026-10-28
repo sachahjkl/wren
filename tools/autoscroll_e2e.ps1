@@ -26,7 +26,7 @@ $srv = Start-WrenTestServer
 try {
     $env:WREN_TEST_BASE_PORT = $srv.BasePort
     $url = "$($srv.Origin)/site/autoscroll.html"
-    Start-Wren -Size '900x700' -Pref @('browser.scroll.autoscroll.enabled=true', 'blocker.welcome_toast=false') | Out-Null
+    Start-Wren -Size '900x700' -Dpi 96 -Pref @('browser.scroll.autoscroll.enabled=true', 'blocker.welcome_toast=false') | Out-Null
     try {
         Wren-Nav -Url $url -Wait 'stable' | Out-Null
         $maxY = [double](Wren-Eval 'document.documentElement.scrollHeight - window.innerHeight')
