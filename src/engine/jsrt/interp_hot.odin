@@ -110,8 +110,8 @@ hot_regs :: #force_inline proc "contextless" (f: ^Frame) -> Hot_Regs {
 // Runs frame `f_in` from (pc0, sp0). Plain calls and returns between frames pushed by this very loop
 // (Frame.stackless) are handled here too, so `f` of the result may be another frame than `f_in`; the
 // returned pc / sp belong to it. `moved` says a frame was pushed or popped: `f` may then have the address of
-// f_in (frame memory is reused) and still be another frame, so the pointer alone cannot tell.
-interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int) -> (f: ^Frame, pc: int, sp: int, moved: bool) {
+// f_in (frame memory is reused) and still be another frame, so the pointer alone cannot tell. `thrown`: a native\n// callee raised an exception; pc is past the call and sp still above its arguments, as the unwinder expects.
+interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int) -> (f: ^Frame, pc: int, sp: int, moved: bool, thrown: bool) {
 	f = f_in
 	regs := hot_regs(f)
 	ip := regs.code[pc0:]
@@ -133,6 +133,27 @@ interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int
 			fv := first[-1]
 			if fv.tag != .object {break loop}
 			fo := as_obj(fv)
+			if fo.class == .c_function {
+				// a native function: no frame, the result replaces the callee and its arguments
+				nd := &fo.data.(Native_Data)
+				if nd.kind == .constructor_only || rt.stack_depth >= rt.config.max_stack_depth || stack_exhausted(rt) {break loop}
+				this := UNDEFINED
+				slot := intrinsics.ptr_offset(first, -1)
+				if op == .call_method {
+					if nd.kind == .function {this = first[-2]}
+					slot = intrinsics.ptr_offset(first, -2)
+				}
+				ip = ip[isz:]
+				f.pc = int(uintptr(ip) - uintptr(regs.code))
+				r := call_native(ctx, fo, nd, this, first[:argc])
+				if r.tag == .exception {
+					thrown = true
+					break loop
+				}
+				slot[0] = r
+				s = slot[1:]
+				continue loop
+			}
 			if fo.class != .bytecode_function {break loop}
 			nb := fo.data.(Func_Data).bc
 			if nb.func_kind != .normal || rt.stack_depth >= rt.config.max_stack_depth || (nb.realm != nil && nb.realm != ctx) {break loop}
@@ -730,5 +751,5 @@ interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int
 			break loop
 		}
 	}
-	return f, int(uintptr(ip) - uintptr(regs.code)), int(uintptr(s) - uintptr(regs.stack)) / size_of(Value), moved
+	return f, int(uintptr(ip) - uintptr(regs.code)), int(uintptr(s) - uintptr(regs.stack)) / size_of(Value), moved, thrown
 }
