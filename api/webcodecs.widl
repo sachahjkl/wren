@@ -1,0 +1,84 @@
+/// WebCodecs (src/page/bindings_webcodecs.odin, webcodecs_frame.odin): the pixel model, memory accounting and format
+/// conversions of a VideoFrame are native. The engine (native/js/runtime/web_webcodecs.c) holds the VideoFrame
+/// wrapper, builds the VideoFrameInit / VideoFrameBufferInit / VideoFrameCopyToOptions dictionaries, resolves copyTo's
+/// promise and transfers the handle in a postMessage. A VideoFrame is a host object (OBJECT_TAG); drawImage and
+/// createImageBitmap resolve it through the canvas image-source path. Decoders and encoders come in later modules.
+[Exposed=(Window,Worker,DedicatedWorker)]
+module webcodecs {
+  handle VideoFrame : Object = Video_Frame_Obj via lookup_VideoFrame;
+
+  /// WebCodecs VideoPixelFormat, in the order webcodecs_frame.odin's Frame_Format uses (format() returns -1 for a
+  /// closed frame, which the engine maps to null).
+  enum VideoPixelFormat : i32 { None, I420, I420A, I422, I444, NV12, RGBA, RGBX, BGRA, BGRX }
+
+  ////////////////////////////////
+  // Construction
+
+  /// new VideoFrame(image, init): build from a drawable source (an element handle img / canvas / video, or an object
+  /// handle ImageBitmap / OffscreenCanvas / VideoFrame). The source's pixels are captured now. `timestamp` (microseconds)
+  /// is required for a source without an intrinsic one; `has_ts` says it was given. Invalid_State when the source has no
+  /// pixels (not loaded, empty, a GPU-only video), Quota when it is too large, Not_Supported when WebCodecs is off.
+  [Owned] VideoFrame VideoFrame_fromImage(u64 source, i64 timestamp, bool has_ts, i64 duration, bool has_duration) raises;
+
+  /// new VideoFrame(bufferSource, init): build from raw pixel bytes with a VideoFrameBufferInit. `format`, `coded_w`,
+  /// `coded_h` and `timestamp` are required (the engine checks). `has_visible` / `has_display` carry the optional
+  /// visibleRect and displaySize; a custom plane layout gives `layout_offsets` / `layout_strides` (one per plane) when
+  /// `has_layout`. Colour space members are -1 when absent; `cp_has` says a colorSpace was given at all.
+  [Owned] VideoFrame VideoFrame_fromBuffer(bytes data, VideoPixelFormat format, i32 coded_w, i32 coded_h, i64 timestamp,
+    i64 duration, bool has_duration, i32 vis_x, i32 vis_y, i32 vis_w, i32 vis_h, bool has_visible,
+    i32 display_w, i32 display_h, bool has_display, i32[] layout_offsets, i32[] layout_strides, bool has_layout,
+    i32 cp_prim, i32 cp_trans, i32 cp_matrix, i32 cp_full, i32 cp_has) raises;
+
+  ////////////////////////////////
+  // Metadata
+
+  /// frame.format: -1 (null) for a closed frame.
+  VideoPixelFormat VideoFrame_format(VideoFrame frame);
+  u32 VideoFrame_codedWidth(VideoFrame frame);
+  u32 VideoFrame_codedHeight(VideoFrame frame);
+  u32 VideoFrame_displayWidth(VideoFrame frame);
+  u32 VideoFrame_displayHeight(VideoFrame frame);
+  /// frame.timestamp / duration, in microseconds (duration is -1 when the frame has none, which the engine maps to null).
+  i64 VideoFrame_timestamp(VideoFrame frame);
+  i64 VideoFrame_duration(VideoFrame frame);
+  /// frame.visibleRect as x, y, width, height into `rect` (four f64). Returns false (null) for a closed frame.
+  bool VideoFrame_visibleRect(VideoFrame frame, out f64[] rect);
+  /// frame.colorSpace: which selects primaries (0), transfer (1), matrix (2) or full-range (3); -1 means null (absent),
+  /// else the enum index (VideoColorPrimaries / VideoTransferCharacteristics / VideoMatrixCoefficients) or the bool.
+  i32 VideoFrame_colorSpace(VideoFrame frame, i32 which);
+  /// Whether the frame has been closed (its pixels freed).
+  bool VideoFrame_isClosed(VideoFrame frame);
+
+  ////////////////////////////////
+  // allocationSize / copyTo
+
+  /// frame.allocationSize(options): the bytes copyTo needs. `format` -1 keeps the frame's own; `has_rect` gives a crop
+  /// rectangle; a custom layout's strides are honoured when `has_layout`.
+  i32 VideoFrame_allocationSize(VideoFrame frame, i32 format, i32 rx, i32 ry, i32 rw, i32 rh, bool has_rect,
+    i32[] layout_offsets, i32[] layout_strides, bool has_layout) raises;
+
+  /// frame.copyTo(destination, options): copies the frame (or its crop rectangle) into `dst` as `format` (-1 = own).
+  /// The plane layout used is written back to `out_offsets` / `out_strides` (one per plane); the return is the plane
+  /// count. The engine wraps this in a promise resolving to a PlaneLayout[]. Range for a rectangle outside the picture,
+  /// Not_Supported for an unsupported conversion, Invalid_State for a closed frame.
+  i32 VideoFrame_copyTo(VideoFrame frame, out bytes dst, i32 format, i32 rx, i32 ry, i32 rw, i32 rh, bool has_rect,
+    i32[] in_offsets, i32[] in_strides, bool has_layout, out i32[] out_offsets, out i32[] out_strides) raises;
+
+  ////////////////////////////////
+  // clone / close / transfer
+
+  /// frame.clone(): a new VideoFrame sharing the timing, with its own copy of the pixels.
+  [Owned] VideoFrame VideoFrame_clone(VideoFrame frame) raises;
+  /// frame.close(): free the pixels; the handle stays valid but closed.
+  void VideoFrame_close(VideoFrame frame);
+  /// postMessage transfer within one realm: move the pixels into a new object (owner = the receiving realm's instance),
+  /// closing the original. Data_Clone when it is already detached.
+  VideoFrame VideoFrame_transfer(VideoFrame frame, u32 owner) raises;
+
+  /// Cross-realm transfer (postMessage to a worker): the source realm detaches the frame into a process-wide token;
+  /// the destination realm adopts it. The pixels stay host-owned throughout. Both are used by structured clone
+  /// (native/js/runtime/clone.c). takeForTransfer returns 0 when the frame is already closed; adoptTransfer returns 0
+  /// when the token is unknown or the destination is over its memory budget.
+  u64 VideoFrame_takeForTransfer(VideoFrame frame);
+  VideoFrame VideoFrame_adoptTransfer(u64 token);
+}

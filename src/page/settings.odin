@@ -39,6 +39,7 @@ Settings :: struct {
 	timeline:        Timeline_Settings,   // Performance Timeline entries (timeline.odin)
 	idb:             idb.Settings,        // IndexedDB (idb_host.odin)
 	sw:              Sw_Settings,         // service workers, Cache API, OPFS (sw_settings.odin)
+	webcodecs:       Webcodecs_Settings,  // WebCodecs (webcodecs_settings.odin)
 	// Whether a document address is one of the browser's own pages (about:wren...): those documents may use the properties made for
 	// them (-wren-shader). Set by the shell; nil: no page is.
 	internal_address: proc(href: string) -> bool,
@@ -76,6 +77,7 @@ register_prefs :: proc(p: ^config.Prefs) {
 	config.register(p, TIMELINE_PREFS[:])
 	idb.register_prefs(p)
 	config.register(p, SW_PREFS[:])
+	config.register(p, WEBCODECS_PREFS[:])
 }
 
 settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
@@ -104,6 +106,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		timeline = timeline_settings_from_prefs(p),
 		idb = idb.settings_from_prefs(p),
 		sw = sw_settings_from_prefs(p),
+		webcodecs = webcodecs_settings_from_prefs(p),
 	}
 }
 
