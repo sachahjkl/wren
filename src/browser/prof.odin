@@ -69,6 +69,21 @@ qpc :: proc "contextless" () -> i64 {
 	return i64(v)
 }
 
+// Milliseconds elapsed since a qpc() tick, always available (its own frequency: the profiler clock may be off). Used by
+// the Long Animation Frames timing (page_frame.odin) to measure style and layout wall time regardless of profiling.
+@(private)
+qpc_freq_cached: f64
+
+qpc_ms_since :: proc "contextless" (t0: i64) -> f64 {
+	if qpc_freq_cached == 0 {
+		f: win.LARGE_INTEGER
+		win.QueryPerformanceFrequency(&f)
+		qpc_freq_cached = f64(f)
+	}
+	if qpc_freq_cached == 0 { return 0 }
+	return f64(qpc() - t0) * 1000 / qpc_freq_cached
+}
+
 prof_begin :: proc "contextless" (p: Phase) {
 	if !phase_clock.on { return }
 	phase_clock.started[p] = qpc()

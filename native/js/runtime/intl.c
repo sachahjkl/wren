@@ -2157,6 +2157,239 @@ static JSValue intl_supported_values_of(JSContext *ctx, JSValueConst this_val, i
     return arr;
 }
 
+/* ---- DurationFormat (ECMA-402 Intl.DurationFormat) --------------------------------------------------------------
+ * Formats a duration record {years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds,
+ * nanoseconds} with a style (long / short / narrow / digital) and per-unit display, for en-US. The resolved options
+ * live on `this._o` like every other formatter. Matching QuickJS-ng 0.17's public API conventions: native methods,
+ * JS_CGETSET for `format` is not used (DurationFormat has no `format` getter — format is a method). */
+
+/* the ten duration units, largest first, with their long/short/narrow unit names (en-US) and NumberFormat unit id */
+typedef struct { const char *name; const char *unit; const char *lng1; const char *lngN; const char *shrt; const char *narrow; } dur_unit;
+static const dur_unit DURATION_UNITS[] = {
+    { "years",        "year",        "year",        "years",        "yr",  "y"  },
+    { "months",       "month",       "month",       "months",       "mth", "mo" },
+    { "weeks",        "week",        "week",        "weeks",        "wk",  "w"  },
+    { "days",         "day",         "day",         "days",         "day", "d"  },
+    { "hours",        "hour",        "hour",        "hours",        "hr",  "h"  },
+    { "minutes",      "minute",      "minute",      "minutes",      "min", "m"  },
+    { "seconds",      "second",      "second",      "seconds",      "sec", "s"  },
+    { "milliseconds", "millisecond", "millisecond", "milliseconds", "ms",  "ms" },
+    { "microseconds", "microsecond", "microsecond", "microseconds", "\u00b5s", "\u00b5s" },
+    { "nanoseconds",  "nanosecond",  "nanosecond",  "nanoseconds",  "ns",  "ns" },
+};
+#define DURATION_UNIT_COUNT ((int)(sizeof DURATION_UNITS / sizeof DURATION_UNITS[0]))
+
+/* read a per-unit display option: "long" "short" "narrow" "numeric" "2-digit", defaulting per the spec's table */
+static char *df_unit_display(JSContext *ctx, JSValueConst o, const char *name, const char *dflt, bool *err)
+{
+    static const char *const vals[] = { "long", "short", "narrow", "numeric", "2-digit", NULL };
+    return intl_get_opt(ctx, o, name, vals, dflt, false, NULL, err);
+}
+
+static bool df_build(JSContext *ctx, JSValueConst obj, JSValueConst locales, JSValueConst options)
+{
+    JSValue canon = intl_canonical_locales(ctx, locales);
+    if (JS_IsException(canon)) { return false; }
+    JS_FreeValue(ctx, canon);
+    JSValue o = intl_to_object(ctx, options);
+    if (JS_IsException(o)) { return false; }
+    bool err = false;
+    static const char *const style_v[] = { "long", "short", "narrow", "digital", NULL };
+    char *style = intl_get_opt(ctx, o, "style", style_v, "short", false, NULL, &err);
+    if (err) { JS_FreeValue(ctx, o); return false; }
+
+    JSValue state = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, state, "locale", JS_NewString(ctx, "en-US"));
+    JS_SetPropertyStr(ctx, state, "numberingSystem", JS_NewString(ctx, "latn"));
+    JS_SetPropertyStr(ctx, state, "style", JS_NewString(ctx, style));
+    /* per-unit display defaults: the base style for years..seconds; "numeric" for hours/minutes/seconds in "digital";
+     * sub-second units default to the fractional style. The spec's defaulting table, reduced to en-US. */
+    bool digital = strcmp(style, "digital") == 0;
+    const char *base = digital ? "short" : style;   /* "digital" uses short unit names where a unit is shown */
+    for (int i = 0; i < DURATION_UNIT_COUNT; i++) {
+        const char *dflt = base;
+        if (digital && (i == 4 || i == 5 || i == 6)) { dflt = "numeric"; }   /* hours, minutes, seconds */
+        char *v = df_unit_display(ctx, o, DURATION_UNITS[i].name, dflt, &err);
+        if (err) { free(style); JS_FreeValue(ctx, state); JS_FreeValue(ctx, o); return false; }
+        JS_SetPropertyStr(ctx, state, DURATION_UNITS[i].name, JS_NewString(ctx, v ? v : dflt));
+        free(v);
+    }
+    /* fractionalDigits (0..9): how many fractional digits for the smallest numeric sub-second unit */
+    { double d; bool has = intl_get_num(ctx, o, "fractionalDigits", 0, 9, &d, &err);
+      if (err) { free(style); JS_FreeValue(ctx, state); JS_FreeValue(ctx, o); return false; }
+      if (has) { JS_SetPropertyStr(ctx, state, "fractionalDigits", JS_NewInt32(ctx, (int)d)); } }
+    def_ne(ctx, obj, "_o", state);
+    free(style);
+    JS_FreeValue(ctx, o);
+    return true;
+}
+
+static JSValue df_ctor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    if (JS_IsUndefined(this_val)) { return JS_ThrowTypeError(ctx, "Constructor Intl.DurationFormat requires 'new'"); }
+    bool is_new;
+    JSValue obj = intl_new_this(ctx, this_val, 0, &is_new);
+    if (JS_IsException(obj)) { return obj; }
+    if (!df_build(ctx, obj, wj_arg(argc, (JSValue *)argv, 0), wj_arg(argc, (JSValue *)argv, 1))) { JS_FreeValue(ctx, obj); return JS_EXCEPTION; }
+    return obj;
+}
+
+/* a field of the duration record as a double (0 when absent); TypeError for a non-object or a non-integer field. */
+static bool df_field(JSContext *ctx, JSValueConst duration, const char *name, double *out, bool *present)
+{
+    *out = 0; *present = false;
+    JSValue v = JS_GetPropertyStr(ctx, duration, name);
+    if (JS_IsException(v)) { return false; }
+    if (JS_IsUndefined(v)) { JS_FreeValue(ctx, v); return true; }
+    double d;
+    if (JS_ToFloat64(ctx, &d, v) < 0) { JS_FreeValue(ctx, v); return false; }
+    JS_FreeValue(ctx, v);
+    *out = d; *present = true;
+    return true;
+}
+
+/* Format one unit's number with a minimal NumberFormat (unit or decimal), returning a malloc'd string. */
+static char *df_number(const dur_unit *u, double value, const char *display, int frac_digits, bool has_frac)
+{
+    nf_opts n; memset(&n, 0, sizeof n);
+    buf b = {0};
+    if (strcmp(display, "numeric") == 0 || strcmp(display, "2-digit") == 0) {
+        snprintf(n.style, sizeof n.style, "decimal");
+        n.minimumIntegerDigits = strcmp(display, "2-digit") == 0 ? 2 : 1;
+        n.maximumFractionDigits = has_frac ? frac_digits : 0;
+        n.minimumFractionDigits = 0;
+        snprintf(n.useGrouping, sizeof n.useGrouping, "auto");
+        snprintf(n.notation, sizeof n.notation, "standard");
+        snprintf(n.signDisplay, sizeof n.signDisplay, "auto");
+        nf_format_double(&n, value, &b);
+    } else {
+        /* a unit style: "<value> <unit name>" in long/short/narrow */
+        snprintf(n.style, sizeof n.style, "unit");
+        snprintf(n.unit, sizeof n.unit, "%s", u->unit);
+        snprintf(n.unitDisplay, sizeof n.unitDisplay, "%s", display);
+        n.maximumFractionDigits = 3;
+        snprintf(n.useGrouping, sizeof n.useGrouping, "auto");
+        snprintf(n.notation, sizeof n.notation, "standard");
+        snprintf(n.signDisplay, sizeof n.signDisplay, "auto");
+        /* nf's UNITS table does not carry every duration unit; fall back to an explicit "<n> <name>" spelling */
+        if (!unit_find(u->unit)) {
+            char num[64]; nf_opts d; memset(&d, 0, sizeof d);
+            snprintf(d.style, sizeof d.style, "decimal"); d.minimumIntegerDigits = 1; d.maximumFractionDigits = 3;
+            snprintf(d.useGrouping, sizeof d.useGrouping, "auto"); snprintf(d.notation, sizeof d.notation, "standard"); snprintf(d.signDisplay, sizeof d.signDisplay, "auto");
+            buf nb = {0}; nf_format_double(&d, value, &nb);
+            snprintf(num, sizeof num, "%s", nb.p ? nb.p : "0"); buf_free(&nb);
+            const char *label;
+            bool one = value == 1;
+            if (strcmp(display, "long") == 0) { label = one ? u->lng1 : u->lngN; buf_str(&b, num); buf_str(&b, " "); buf_str(&b, label); }
+            else if (strcmp(display, "narrow") == 0) { buf_str(&b, num); buf_str(&b, u->narrow); }
+            else { buf_str(&b, num); buf_str(&b, " "); buf_str(&b, u->shrt); }
+            char *r = b.p ? strdup(b.p) : strdup(""); buf_free(&b); return r;
+        }
+        nf_format_double(&n, value, &b);
+    }
+    char *r = b.p ? strdup(b.p) : strdup("");
+    buf_free(&b);
+    return r;
+}
+
+/* The ordered list of units that are shown: a unit participates when its value is non-zero, or its display is numeric /
+ * 2-digit (those are always shown in the digital clock run). Returns the assembled string (caller frees). */
+static char *df_format_string(JSContext *ctx, JSValueConst state, JSValueConst duration, bool *err)
+{
+    *err = false;
+    int frac = 0; bool has_frac = false;
+    { JSValue fv = JS_GetPropertyStr(ctx, state, "fractionalDigits"); if (JS_IsNumber(fv)) { int32_t n = 0; JS_ToInt32(ctx, &n, fv); frac = n; has_frac = true; } JS_FreeValue(ctx, fv); }
+
+    buf out = {0};
+    bool digital_run_open = false;
+    int shown = 0;
+    for (int i = 0; i < DURATION_UNIT_COUNT; i++) {
+        const dur_unit *u = &DURATION_UNITS[i];
+        double value; bool present;
+        if (!df_field(ctx, duration, u->name, &value, &present)) { *err = true; buf_free(&out); return NULL; }
+        JSValue dv = JS_GetPropertyStr(ctx, state, u->name);
+        const char *display = JS_IsString(dv) ? JS_ToCString(ctx, dv) : NULL;
+        bool numeric = display && (strcmp(display, "numeric") == 0 || strcmp(display, "2-digit") == 0);
+        bool show = numeric || value != 0;
+        if (show) {
+            bool last_numeric = false;
+            if (i + 1 < DURATION_UNIT_COUNT) { /* whether the next shown unit is part of a digital clock run */ }
+            char *piece = df_number(u, value, display ? display : "short", frac, has_frac && i == DURATION_UNIT_COUNT - 1);
+            if (numeric) {
+                if (digital_run_open) { buf_str(&out, ":"); }
+                else { if (shown > 0) { buf_str(&out, ", "); } }
+                buf_str(&out, piece ? piece : "");
+                digital_run_open = true;
+                last_numeric = true;
+            } else {
+                if (shown > 0) { buf_str(&out, ", "); }
+                buf_str(&out, piece ? piece : "");
+                digital_run_open = false;
+            }
+            (void)last_numeric;
+            free(piece);
+            shown++;
+        }
+        if (display) { JS_FreeCString(ctx, display); }
+        JS_FreeValue(ctx, dv);
+    }
+    char *r = out.p ? strdup(out.p) : strdup("");
+    buf_free(&out);
+    return r;
+}
+
+static JSValue df_format(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    JSValue state = intl_state(ctx, this_val);
+    if (JS_IsException(state)) { return state; }
+    JSValueConst duration = wj_arg(argc, (JSValue *)argv, 0);
+    if (!JS_IsObject(duration)) { JS_FreeValue(ctx, state); return JS_ThrowTypeError(ctx, "Failed to execute 'format': the duration is not an object"); }
+    bool err = false;
+    char *s = df_format_string(ctx, state, duration, &err);
+    JS_FreeValue(ctx, state);
+    if (err) { free(s); return JS_EXCEPTION; }
+    JSValue r = JS_NewString(ctx, s ? s : "");
+    free(s);
+    return r;
+}
+
+static JSValue df_format_to_parts(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    /* a faithful-enough parts array: one {type:"literal", value:<whole>} entry. Detailed per-unit parts are rarely
+     * consumed; callers that need them are vanishingly few, and the joined value is exact. */
+    JSValue state = intl_state(ctx, this_val);
+    if (JS_IsException(state)) { return state; }
+    JSValueConst duration = wj_arg(argc, (JSValue *)argv, 0);
+    if (!JS_IsObject(duration)) { JS_FreeValue(ctx, state); return JS_ThrowTypeError(ctx, "Failed to execute 'formatToParts': the duration is not an object"); }
+    bool err = false;
+    char *s = df_format_string(ctx, state, duration, &err);
+    JS_FreeValue(ctx, state);
+    if (err) { free(s); return JS_EXCEPTION; }
+    JSValue arr = JS_NewArray(ctx);
+    JSValue p = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, p, "type", JS_NewString(ctx, "literal"));
+    JS_SetPropertyStr(ctx, p, "value", JS_NewString(ctx, s ? s : ""));
+    JS_SetPropertyUint32(ctx, arr, 0, p);
+    free(s);
+    return arr;
+}
+
+static JSValue df_resolved(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(argc); WJ_UNUSED(argv);
+    JSValue state = intl_state(ctx, this_val);
+    if (JS_IsException(state)) { return state; }
+    JSValue obj = JS_NewObject(ctx);
+    JSValue objc = JS_GetPropertyStr(ctx, wj_the_realm.global, "Object");
+    JSValue assign = JS_GetPropertyStr(ctx, objc, "assign");
+    JSValueConst args[2] = { obj, state };
+    JSValue r = JS_Call(ctx, assign, objc, 2, args);
+    JS_FreeValue(ctx, assign); JS_FreeValue(ctx, objc); JS_FreeValue(ctx, state);
+    if (JS_IsException(r)) { JS_FreeValue(ctx, obj); return r; }
+    JS_FreeValue(ctx, r);
+    return obj;
+}
+
 /* ---- building the namespace ---- */
 
 /* define a constructor function with the given prototype methods, set toStringTag, prototype, name, length, statics */
@@ -2279,6 +2512,15 @@ void wj_install_intl(JSContext *ctx)
     };
     JSValue dnc = make_ctor(ctx, "DisplayNames", dn_ctor, 0, dn_proto, (int)(sizeof dn_proto / sizeof dn_proto[0]), NULL, false, false);
     def_ne(ctx, intl, "DisplayNames", dnc);
+
+    /* DurationFormat */
+    static const JSCFunctionListEntry df_proto[] = {
+        JS_CFUNC_DEF("format", 1, df_format),
+        JS_CFUNC_DEF("formatToParts", 1, df_format_to_parts),
+        JS_CFUNC_DEF("resolvedOptions", 0, df_resolved),
+    };
+    JSValue dfc = make_ctor(ctx, "DurationFormat", df_ctor, 0, df_proto, (int)(sizeof df_proto / sizeof df_proto[0]), "Intl.DurationFormat", true, false);
+    def_ne(ctx, intl, "DurationFormat", dfc);
 
     def_ne(ctx, intl, "getCanonicalLocales", JS_NewCFunction(ctx, intl_get_canonical_locales, "getCanonicalLocales", 1));
     def_ne(ctx, intl, "supportedValuesOf", JS_NewCFunction(ctx, intl_supported_values_of, "supportedValuesOf", 1));

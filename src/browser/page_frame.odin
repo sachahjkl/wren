@@ -49,9 +49,15 @@ page_prepare :: proc(app: ^App, t: ^Tab, size: draw.Vec2) {
 	page.set_frame_time(t.page, pacer_of(app).frame_ms)
 	pinned := t.page
 	defer page.set_frame_time(pinned, 0, unpin = true)
+	// Long Animation Frames (page/timeline_loaf.odin) separate the frame's script time from its rendering time: measure
+	// the style and layout of this frame (wall time, independent of whether the profiler clock is on) and hand it to the
+	// open frame beside timeline_present below.
+	loaf_style_ms, loaf_layout_ms: f64
+	loaf_t0 := qpc()
 	prof_begin(.Styles)
 	styled := page.styles(t.page, size.x / scale, size.y / scale, f64(scale))
 	prof_end(.Styles)
+	loaf_style_ms = qpc_ms_since(loaf_t0)
 	hud_styles(t.page, styled)
 	page_prep.canvas = styled.canvas
 	first := !t.page.render.painted
@@ -69,7 +75,9 @@ page_prepare :: proc(app: ^App, t: ^Tab, size: draw.Vec2) {
 	if layout_stale(&t.layout, t.page.doc, styled, size, scale, t.image_sizes, fonts_gen) {
 		prof_begin(.Layout)
 		failures := t.layout.inc.verify_failures
+		loaf_lt0 := qpc()
 		page_layout(app, t, styled, size, scale, fonts_gen)   // page_thread.odin: a long one on the page thread
+		loaf_layout_ms = qpc_ms_since(loaf_lt0)
 		prof_end(.Layout)
 		prof_layout(&t.layout)
 		if t.layout.inc.verify_failures != failures {
@@ -97,6 +105,7 @@ page_prepare :: proc(app: ^App, t: ^Tab, size: draw.Vec2) {
 	// element-timing entries from the layout just settled, and the layout shifts against the previous frame
 	vp := page.Viewport{width = f64(size.x) / f64(scale), height = f64(size.y) / f64(scale), scale = f64(scale), scroll_y = f64(t.scroll) / f64(scale)}
 	page.timeline_present(t.page, &t.layout, vp)
+	page.timeline_loaf_render(t.page, loaf_style_ms, loaf_layout_ms)
 	page.timeline_layout_shift_check(t.page, &t.layout, vp)
 	frames_prepare(app, t, size, scale)   // its frames at their boxes' sizes (frames_shell.odin)
 	page_prep.state = .Ready

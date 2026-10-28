@@ -178,6 +178,17 @@ loaf_render :: proc(p: ^Page, style_layout_now_ns: i64, style_ms: f64, layout_ms
 	t.loaf.layout_ms += layout_ms
 }
 
+// The shell's wrapper for loaf_render: it measured the style and layout of the frame it is about to present (ms) but
+// does not hold the page's loop clock. The render began now; style and layout began `style_ms + layout_ms` before that.
+// Called from src/browser/page_frame.odin next to timeline_present. Does nothing when no frame is open or no page realm.
+timeline_loaf_render :: proc(p: ^Page, style_ms: f64, layout_ms: f64) {
+	t := p.timeline
+	if t == nil || !t.loaf.open { return }
+	now := host.now_ns(p.loop)
+	style_layout_ns := now - i64((style_ms + layout_ms) * 1e6)
+	loaf_render(p, style_layout_ns, style_ms, layout_ms)
+}
+
 // A UI event (a pointer or key event) was dispatched in the current frame: the first one's time is firstUIEventTimestamp.
 loaf_note_ui_event :: proc(p: ^Page) {
 	t := p.timeline

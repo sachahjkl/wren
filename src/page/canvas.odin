@@ -27,7 +27,7 @@ import "wb:style"
 // Textures of canvases are keyed in the shell by their backing's id with this bit, apart from the image cache's ids.
 CANVAS_TEXTURE_BIT :: u64(1) << 62
 
-Canvas_Kind :: enum u8 { Context, Gradient, Pattern, Path, Metrics, Offscreen, Bitmap }
+Canvas_Kind :: enum u8 { Context, Gradient, Pattern, Path, Metrics, Offscreen, Bitmap, Bitmap_Renderer }
 
 Canvas_Obj :: struct {
 	kind:      Canvas_Kind,
@@ -116,6 +116,10 @@ canvas_vt := Object_VTable{
 				canvas_backing_free(o.backing)
 			}
 		case .Bitmap: canvas_bitmap_free(p, &o.bmp)
+		case .Bitmap_Renderer:
+			// an ImageBitmapRenderingContext: it owns its backing (a bare <canvas>/OffscreenCanvas presentation) the
+			// same way a 2D context does, so release it when the canvas is gone.
+			if o.backing != nil && o.backing.ctx_obj == o { o.backing.ctx_obj, o.backing.ctx_handle = nil, 0 }
 		}
 		free(o)
 	},
@@ -141,6 +145,7 @@ lookup_Path2D :: proc(c: ^Call, h: u64) -> ^Canvas_Obj { return canvas_of_kind(c
 lookup_TextMetrics :: proc(c: ^Call, h: u64) -> ^Canvas_Obj { return canvas_of_kind(c, h, .Metrics) }
 lookup_OffscreenCanvas :: proc(c: ^Call, h: u64) -> ^Canvas_Obj { return canvas_of_kind(c, h, .Offscreen) }
 lookup_ImageBitmap :: proc(c: ^Call, h: u64) -> ^Canvas_Obj { return canvas_of_kind(c, h, .Bitmap) }
+lookup_ImageBitmapRenderingContext :: proc(c: ^Call, h: u64) -> ^Canvas_Obj { return canvas_of_kind(c, h, .Bitmap_Renderer) }
 
 lookup_CanvasPathTarget :: proc(c: ^Call, h: u64) -> ^Canvas_Obj {
 	o := canvas_obj(c, h)
