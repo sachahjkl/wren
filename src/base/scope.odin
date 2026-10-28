@@ -13,7 +13,7 @@
 // what belongs to whom. Scopes are main-thread objects: worker threads never touch them.
 package base
 
-import "toolkit:arena"
+import "../../ext/gui_toolkit/arena"
 
 Cleanup_Proc :: arena.Cleanup_Proc
 Cleanup_Id :: arena.Cleanup_Id

@@ -7,7 +7,7 @@ package base
 //   private   the process's own memory (Windows: the private commit charge; Linux: RssAnon + VmSwap)
 // Zero when the system cannot say.
 
-import tk "toolkit:testkit"
+import tk "../../ext/gui_toolkit/testkit"
 
 Process_Memory :: struct {
 	resident: i64,

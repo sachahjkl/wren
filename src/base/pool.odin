@@ -4,7 +4,7 @@ package base
 // aliases so callers do not change. See toolkit:arena for the whole picture (a Handle can never dangle: removing an
 // object bumps the slot's generation, so an old copy fails to resolve instead of reaching whatever reused the slot).
 
-import "toolkit:arena"
+import "../../ext/gui_toolkit/arena"
 
 Handle :: arena.Handle
 NIL_HANDLE :: arena.NIL_HANDLE

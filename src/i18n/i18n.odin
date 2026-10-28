@@ -7,7 +7,7 @@
 // members are also re-exported under their own names for the rare caller that referred to one directly.
 package i18n
 
-import ti18n "toolkit:i18n"
+import ti18n "../../ext/gui_toolkit/i18n"
 
 tr :: proc{tr_text, tr_context, tr_count}
 
