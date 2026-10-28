@@ -150,6 +150,7 @@ $sources += @(Get-ChildItem (Join-Path $native 'engine'), (Join-Path $native 'ru
 # name to $odinified (one entry per line, sorted; docs\js\odin-glue.md).
 $odinified = @(
     'buffer.c',
+    'clone.c',
     'console.c',
     'custom_elements.c',
     'dom_forms.c',
@@ -164,12 +165,14 @@ $odinified = @(
     'shared_workers.c',
     'timers.c',
     'web_broadcast.c',
+    'web_clone.c',
     'web_crypto.c',
     'web_encoding.c',
     'web_fullscreen.c',
     'web_location.c',
     'web_media.c',
     'web_mediaobjects.c',
+    'web_message.c',
     'web_navtiming.c',
     'web_resize.c',
     'web_storage.c',
@@ -178,7 +181,8 @@ $odinified = @(
     'web_url.c',
     'web_urlpattern.c',
     'window.c',
-    'worker_scope.c'
+    'worker_scope.c',
+    'workers.c'
 )
 $sources += (Join-Path $native 'odin\wj_shim.c')
 $sources = $sources | Where-Object { $odinified -notcontains (Split-Path $_ -Leaf) }
