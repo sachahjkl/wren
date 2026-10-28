@@ -26,6 +26,16 @@ WJ_LAYOUT(wj_interface, legacy_alias, 52);
 WJ_LAYOUT(wj_interface, factory_length, 64);
 WJ_SIZE(wj_interface, 68);
 
+/* wj_member (m4_engine.odin Member): the stride of an interface's members[] */
+WJ_LAYOUT(wj_member, kind, 4);
+WJ_LAYOUT(wj_member, flags, 6);
+WJ_LAYOUT(wj_member, length, 8);
+WJ_LAYOUT(wj_member, fn, 12);
+WJ_LAYOUT(wj_member, get, 16);
+WJ_LAYOUT(wj_member, set, 20);
+WJ_LAYOUT(wj_member, value, 24);
+WJ_SIZE(wj_member, 32);
+
 /* wj_listener (engine.odin Listener) */
 WJ_LAYOUT(wj_listener, callback, 8);
 WJ_LAYOUT(wj_listener, type, 16);
@@ -81,6 +91,56 @@ WJ_LAYOUT(dom_impl, rect, 56);
 WJ_LAYOUT(dom_impl, values, 88);
 WJ_LAYOUT(dom_impl, n_values, 92);
 WJ_SIZE(dom_impl, 96);
+
+/* wj_member (qjs_platform.odin Member): the generated member tables */
+WJ_LAYOUT(wj_member, kind, 4);
+WJ_LAYOUT(wj_member, flags, 6);
+WJ_LAYOUT(wj_member, length, 8);
+WJ_LAYOUT(wj_member, fn, 12);
+WJ_LAYOUT(wj_member, set, 20);
+WJ_LAYOUT(wj_member, value, 24);
+WJ_SIZE(wj_member, 32);
+
+/* web_buf (web_core.odin Web_Buf) */
+WJ_LAYOUT(web_buf, len, 4);
+WJ_LAYOUT(web_buf, failed, 12);
+WJ_SIZE(web_buf, 16);
+
+/* the QuickJS-ng structs the engine layer passes by pointer (m6_quickjs.odin, quickjs.odin) */
+WJ_LAYOUT(JSClassDef, finalizer, 4);
+WJ_LAYOUT(JSClassDef, exotic, 16);
+WJ_SIZE(JSClassDef, 20);
+WJ_LAYOUT(JSClassExoticMethods, delete_property, 8);
+WJ_LAYOUT(JSClassExoticMethods, define_own_property, 12);
+WJ_SIZE(JSClassExoticMethods, 28);
+WJ_LAYOUT(JSMemoryUsage, malloc_size, 0);
+WJ_SIZE(JSMemoryUsage, 208);
+WJ_LAYOUT(JSEvalOptions, filename, 8);
+WJ_SIZE(JSEvalOptions, 16);
+WJ_LAYOUT(JSPropertyDescriptor, value, 8);
+WJ_SIZE(JSPropertyDescriptor, 32);
+WJ_LAYOUT(JSPropertyEnum, atom, 4);
+WJ_SIZE(JSPropertyEnum, 8);
+WJ_SIZE(JSMallocFunctions, 20);
+/* the flags m6_quickjs.odin spells out (asserted with the same numbers there) */
+#define WJ_VALUE(name, v) _Static_assert((name) == (v), #name " changed: update its Odin copy")
+WJ_VALUE(JS_PROP_THROW, 1 << 14);
+WJ_VALUE(JS_PROP_THROW_STRICT, 1 << 15);
+WJ_VALUE(JS_PROP_NO_EXOTIC, 1 << 17);
+WJ_VALUE(JS_CFUNC_generic_magic, 1);
+WJ_VALUE(JS_CFUNC_constructor, 2);
+WJ_VALUE(JS_CFUNC_constructor_or_func, 4);
+WJ_VALUE(JS_CFUNC_getter, 8);
+WJ_VALUE(JS_CFUNC_setter, 9);
+WJ_VALUE(JS_EVAL_TYPE_MODULE, 1);
+WJ_VALUE(JS_EVAL_FLAG_STRICT, 1 << 3);
+WJ_VALUE(JS_EVAL_FLAG_COMPILE_ONLY, 1 << 5);
+WJ_VALUE(JS_EVAL_FLAG_WREN_NO_RESOLVE, 1 << 9);
+WJ_VALUE(JS_WRITE_OBJ_BYTECODE, 1);
+WJ_VALUE(JS_WRITE_OBJ_STRIP_SOURCE, 1 << 4);
+WJ_VALUE(JS_READ_OBJ_BYTECODE, 1);
+WJ_VALUE(JS_PROMISE_PENDING, 0);
+WJ_VALUE(JS_PROMISE_REJECTED, 2);
 
 /* web_extracted (values.odin Extracted) */
 WJ_LAYOUT(web_extracted, len, 4);

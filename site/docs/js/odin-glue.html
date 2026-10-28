@@ -167,6 +167,7 @@
 <li><a href="/docs/README.html">Writing documentation</a></li>
 <li><a href="/docs/engine/bigint.html">bigint: arbitrary-precision integers for the JavaScript engine</a></li>
 <li><a href="/docs/engine/datetime.html">datetime (package jsdate): the JavaScript engine's Date</a></li>
+<li><a href="/docs/engine/frontend.html">Moteur JavaScript — front-end E1 (src/engine/frontend)</a></li>
 <li><a href="/docs/engine/numconv.html">numconv: float64 ↔ string for the JavaScript engine</a></li>
 <li><a href="/docs/engine/regexp.html">engine/regexp</a></li>
 <li><a href="/docs/engine/unicode.html">engine/unicode (ucd)</a></li>
@@ -213,6 +214,16 @@ replace the hand-written transmission layer is in <a href="/docs/js/odin-abi.htm
     convert.odin           Web IDL conversions (was engine/qjs_convert.c): wj_to_str, wj_to_int32, wj_to_handle...
     buffer.odin            BufferSource helpers (was runtime/buffer.c): wj_to_buffer_source, wj_*_from_host...
     promise.odin           browser promises (was runtime/promise.c): wj_promise_from_host, wj_host_promise_text</code></pre></div>
+<p>Since 28/10 (the lot "everything that was left") every <code>native/js/runtime/*.c</code> and <code>engine/qjs_*.c</code> is in <code>$odinified</code>:
+the C that is still compiled is <code>gen/bindings.c</code> (the binding table, generated from the WebIDL by bindgen) and <code>wj_shim.c</code>
+(no code). The <code>.c</code> files stay in the tree until the lead has tested the Odin ones. Two rules came out of the merge:</p>
+<ul>
+<li>the layer (<code>wj/</code>) cannot call the glue (<code>odin_glue</code> imports <code>wj</code>) and a symbol cannot be declared <code>foreign</code> where the same
+build defines it in Odin (one LLVM module: "Non-unique linking name"). A procedure of the glue that the layer calls is
+stored in <code>wj.hooks</code> (<code>wj/hooks.odin</code>) by <code>wj_web_preinit</code>; a variable the layer reads (<code>wj_dispatch_trusted</code>) is defined
+in <code>wj/</code>. A domain of the glue calls another domain unqualified, never <code>wj.&lt;name&gt;</code>;</li>
+<li><code>jsb.host</code> takes up to 14 arguments (<code>jsb/hostn.odin</code>); <code>jsb.host_n</code> is the same overload set.</li>
+</ul>
 <p>Every symbol is declared <strong>once</strong>. <code>odin check native/js/odin -target:freestanding_wasm32 -no-entry-point</code> fails with
 "Redeclaration of ..." the moment a second declaration appears; that is the point.</p>
 <h2 id="where-a-helper-goes"><a class="anchor" href="#where-a-helper-goes" aria-hidden="true">#</a>Where a helper goes</h2>

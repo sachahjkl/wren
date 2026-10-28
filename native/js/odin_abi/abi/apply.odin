@@ -11,8 +11,8 @@ package abi
 import "base:intrinsics"
 
 // The most parameters a bound procedure may have (the host's context included; for a JS binding, the wire parameters
-// of the generated import it calls: a string is two).
-MAX_PARAMS :: 16
+// of the generated import it calls: a string is two; the fetch starts take 19).
+MAX_PARAMS :: 20
 
 // One decoded parameter, in the caller's address space. A scalar is in `a` (a float as its bits, a bool as 0 / 1);
 // a span (string, bytes, a slice) is `a` = address, `b` = length (elements for a slice); an optional span has
@@ -128,6 +128,10 @@ apply :: #force_inline proc(c: ^Cells, $P: typeid, p: P, r0: ^$R0, r1: ^$R1) whe
 	when N >= 14 { x13 := cell_get(&c[13], intrinsics.type_proc_parameter_type(P, 13)) }
 	when N >= 15 { x14 := cell_get(&c[14], intrinsics.type_proc_parameter_type(P, 14)) }
 	when N >= 16 { x15 := cell_get(&c[15], intrinsics.type_proc_parameter_type(P, 15)) }
+	when N >= 17 { x16 := cell_get(&c[16], intrinsics.type_proc_parameter_type(P, 16)) }
+	when N >= 18 { x17 := cell_get(&c[17], intrinsics.type_proc_parameter_type(P, 17)) }
+	when N >= 19 { x18 := cell_get(&c[18], intrinsics.type_proc_parameter_type(P, 18)) }
+	when N >= 20 { x19 := cell_get(&c[19], intrinsics.type_proc_parameter_type(P, 19)) }
 	when N == 0 {
 		when NR == 0 { p() } else when NR == 1 { r0^ = p() } else { r0^, r1^ = p() }
 	} else when N == 1 {
@@ -160,8 +164,16 @@ apply :: #force_inline proc(c: ^Cells, $P: typeid, p: P, r0: ^$R0, r1: ^$R1) whe
 		when NR == 0 { p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13) } else when NR == 1 { r0^ = p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13) } else { r0^, r1^ = p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13) }
 	} else when N == 15 {
 		when NR == 0 { p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14) } else when NR == 1 { r0^ = p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14) } else { r0^, r1^ = p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14) }
-	} else {
+	} else when N == 16 {
 		when NR == 0 { p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15) } else when NR == 1 { r0^ = p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15) } else { r0^, r1^ = p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15) }
+	} else when N == 17 {
+		when NR == 0 { p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16) } else when NR == 1 { r0^ = p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16) } else { r0^, r1^ = p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16) }
+	} else when N == 18 {
+		when NR == 0 { p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17) } else when NR == 1 { r0^ = p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17) } else { r0^, r1^ = p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17) }
+	} else when N == 19 {
+		when NR == 0 { p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18) } else when NR == 1 { r0^ = p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18) } else { r0^, r1^ = p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18) }
+	} else {
+		when NR == 0 { p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19) } else when NR == 1 { r0^ = p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19) } else { r0^, r1^ = p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19) }
 	}
 }
 
