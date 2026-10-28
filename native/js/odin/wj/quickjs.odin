@@ -129,9 +129,9 @@ foreign {
 	JS_DupValue        :: proc(ctx: ^Context, v: JSValue) -> JSValue ---
 	JS_ThrowOutOfMemory :: proc(ctx: ^Context) -> JSValue ---
 
-	// values
+	// values. NOTE: JS_NewString is NOT here — it is a `static inline` over JS_NewStringLen in quickjs.h (no symbol),
+	// so it is reimplemented below; declaring it foreign would leave an undefined env.JS_NewString import.
 	JS_NewNumber       :: proc(ctx: ^Context, d: f64) -> JSValue ---
-	JS_NewString       :: proc(ctx: ^Context, str: cstring) -> JSValue ---
 	JS_NewStringLen    :: proc(ctx: ^Context, buf: [^]u8, len: uint) -> JSValue ---
 	JS_NewArray        :: proc(ctx: ^Context) -> JSValue ---
 	JS_NewObject       :: proc(ctx: ^Context) -> JSValue ---
@@ -191,6 +191,12 @@ foreign {
 	// the engine's heap (js_malloc / js_free: the realm's, same as wj_malloc for the bytes JS_WriteObject returns)
 	js_malloc          :: proc(ctx: ^Context, size: uint) -> rawptr ---
 	js_free            :: proc(ctx: ^Context, ptr: rawptr) ---
+}
+
+// JS_NewString (inline in quickjs.h): a JS string from a NUL-terminated cstring, over JS_NewStringLen. Reimplemented
+// as the inline it is; strings.odin's new_string / new_cstring are the same thing under the glue's own names.
+JS_NewString :: #force_inline proc "contextless" (ctx: ^Context, str: cstring) -> JSValue {
+	return JS_NewStringLen(ctx, ([^]u8)(rawptr(str)), c_strlen(str))
 }
 
 // JS_NewCFunction (inline in quickjs.h): a plain generic native function.
