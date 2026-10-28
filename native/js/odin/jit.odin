@@ -14,13 +14,9 @@ when wj.WJ_JSRT {
 	@(export, link_name = "wj_jit_configure")
 	wj_jit_configure :: proc "c" (flags: i32, call_threshold: i32, max_functions: i32, max_bytecode_bytes: i32, loop_threshold: i32) {
 		context = wj.heap_context()
+		// (bit 2 of the flags, the C engine's step-only test mode, has no meaning here: the translator has no step path, and
+		// its trace must not reach the console, where a test compares what the scripts print)
 		log: proc(msg: string)
-		// bit 2 of the flags (the C engine's step-only test mode) turns the translator's trace on
-		if flags & 2 != 0 {
-			log = proc(msg: string) {
-				if len(msg) > 0 {wj.wr_Engine_console(1, raw_data(msg), u32(len(msg)))}
-			}
-		}
 		if max_bytecode_bytes > 0 {jsrt.jit_cfg.max_code_bytes = int(max_bytecode_bytes)}
 		jsrt.jit_configure(flags & 1 != 0 && max_functions != 0, wj.wr_Engine_jitCompile, wj.wr_Engine_jitPoll, log)
 	}
