@@ -89,115 +89,180 @@ hot_get_prop :: proc "contextless" (rt: ^Runtime, o: ^Object, a: Atom) -> (v: Va
 	}
 }
 
-interp_hot :: proc "contextless" (ctx: ^Context, rt: ^Runtime, code: [^]u8, pc0: int, stack: [^]Value, sp0: int, locals: [^]Value, args: [^]Value, var_refs: [^]^Var_Ref, cpool: [^]Value, root_base: int) -> (pc: int, sp: int) {
-	ip := code[pc0:]
-	s := stack[sp0:] // the next free slot
+// The registers of one frame.
+@(private = "file")
+Hot_Regs :: struct {
+	code:      [^]u8,
+	stack:     [^]Value,
+	locals:    [^]Value,
+	args:      [^]Value,
+	var_refs:  [^]^Var_Ref,
+	cpool:     [^]Value,
+	root_base: int,
+}
+
+@(private = "file")
+hot_regs :: #force_inline proc "contextless" (f: ^Frame) -> Hot_Regs {
+	b := f.bc
+	return Hot_Regs{code = raw_data(b.code), stack = f.stack, locals = f.locals, args = f.args, var_refs = f.closure_refs, cpool = raw_data(b.cpool), root_base = f.root_base}
+}
+
+// Runs frame `f_in` from (pc0, sp0). Plain calls and returns between frames pushed by this very loop
+// (Frame.stackless) are handled here too, so `f` of the result may be another frame than `f_in`; the
+// returned pc / sp belong to it. `moved` says a frame was pushed or popped: `f` may then have the address of
+// f_in (frame memory is reused) and still be another frame, so the pointer alone cannot tell.
+interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int) -> (f: ^Frame, pc: int, sp: int, moved: bool) {
+	f = f_in
+	regs := hot_regs(f)
+	ip := regs.code[pc0:]
+	s := regs.stack[sp0:] // the next free slot
 	temp := cast(^runtime.Raw_Dynamic_Array)&rt.temp_roots
 	loop: for {
 		op := Opcode(ip[0])
 		#partial switch op {
+		case .call0, .call1, .call2, .call3, .call, .call_method:
+			argc: int
+			isz := 1
+			if op == .call || op == .call_method {
+				argc = rd16(ip[1:])
+				isz = 3
+			} else {
+				argc = int(op) - int(Opcode.call0)
+			}
+			first := intrinsics.ptr_offset(s, -argc) // the first argument
+			fv := first[-1]
+			if fv.tag != .object {break loop}
+			fo := as_obj(fv)
+			if fo.class != .bytecode_function {break loop}
+			nb := fo.data.(Func_Data).bc
+			if nb.func_kind != .normal || rt.stack_depth >= rt.config.max_stack_depth || (nb.realm != nil && nb.realm != ctx) {break loop}
+			this := UNDEFINED
+			slot := intrinsics.ptr_offset(first, -1) // where the result goes
+			if op == .call_method {
+				this = first[-2]
+				slot = intrinsics.ptr_offset(first, -2)
+			}
+			f.pc = int(uintptr(ip) - uintptr(regs.code)) + isz
+			f.sp = int(uintptr(slot) - uintptr(regs.stack)) / size_of(Value)
+			f = frame_push(ctx, fo, this, first[:argc])
+			moved = true
+			regs = hot_regs(f)
+			ip = regs.code
+			s = regs.stack
+			// the entry safepoint (a collection due) is for interp_run: it sees pc == 0
+			if gc_should_run(rt) {break loop}
+		case .op_return, .return_undef:
+			if !f.stackless {break loop}
+			ret := op == .op_return ? s[-1] : UNDEFINED
+			f = frame_pop(rt, f)
+			moved = true
+			f.stack[f.sp] = ret
+			f.sp += 1
+			regs = hot_regs(f)
+			ip = regs.code[f.pc:]
+			s = regs.stack[f.sp:]
 		case .get_loc0, .get_loc1, .get_loc2, .get_loc3:
-			s[0] = locals[int(op) - int(Opcode.get_loc0)]
+			s[0] = regs.locals[int(op) - int(Opcode.get_loc0)]
 			s = s[1:]
 			ip = ip[1:]
 		case .put_loc0, .put_loc1, .put_loc2, .put_loc3:
-			locals[int(op) - int(Opcode.put_loc0)] = s[-1]
+			regs.locals[int(op) - int(Opcode.put_loc0)] = s[-1]
 			s = intrinsics.ptr_offset(s, -1)
 			ip = ip[1:]
 		case .set_loc0, .set_loc1, .set_loc2, .set_loc3:
-			locals[int(op) - int(Opcode.set_loc0)] = s[-1]
+			regs.locals[int(op) - int(Opcode.set_loc0)] = s[-1]
 			ip = ip[1:]
 		case .get_loc8:
-			s[0] = locals[ip[1]]
+			s[0] = regs.locals[ip[1]]
 			s = s[1:]
 			ip = ip[2:]
 		case .put_loc8:
-			locals[ip[1]] = s[-1]
+			regs.locals[ip[1]] = s[-1]
 			s = intrinsics.ptr_offset(s, -1)
 			ip = ip[2:]
 		case .set_loc8:
-			locals[ip[1]] = s[-1]
+			regs.locals[ip[1]] = s[-1]
 			ip = ip[2:]
 		case .get_loc:
-			s[0] = locals[rd16(ip[1:])]
+			s[0] = regs.locals[rd16(ip[1:])]
 			s = s[1:]
 			ip = ip[3:]
 		case .put_loc:
-			locals[rd16(ip[1:])] = s[-1]
+			regs.locals[rd16(ip[1:])] = s[-1]
 			s = intrinsics.ptr_offset(s, -1)
 			ip = ip[3:]
 		case .set_loc:
-			locals[rd16(ip[1:])] = s[-1]
+			regs.locals[rd16(ip[1:])] = s[-1]
 			ip = ip[3:]
 		case .get_loc0_loc1:
-			s[0] = locals[0]
-			s[1] = locals[1]
+			s[0] = regs.locals[0]
+			s[1] = regs.locals[1]
 			s = s[2:]
 			ip = ip[1:]
 		case .get_arg0, .get_arg1, .get_arg2, .get_arg3:
-			s[0] = args[int(op) - int(Opcode.get_arg0)]
+			s[0] = regs.args[int(op) - int(Opcode.get_arg0)]
 			s = s[1:]
 			ip = ip[1:]
 		case .put_arg0, .put_arg1, .put_arg2, .put_arg3:
-			args[int(op) - int(Opcode.put_arg0)] = s[-1]
+			regs.args[int(op) - int(Opcode.put_arg0)] = s[-1]
 			s = intrinsics.ptr_offset(s, -1)
 			ip = ip[1:]
 		case .set_arg0, .set_arg1, .set_arg2, .set_arg3:
-			args[int(op) - int(Opcode.set_arg0)] = s[-1]
+			regs.args[int(op) - int(Opcode.set_arg0)] = s[-1]
 			ip = ip[1:]
 		case .get_arg:
-			s[0] = args[rd16(ip[1:])]
+			s[0] = regs.args[rd16(ip[1:])]
 			s = s[1:]
 			ip = ip[3:]
 		case .put_arg:
-			args[rd16(ip[1:])] = s[-1]
+			regs.args[rd16(ip[1:])] = s[-1]
 			s = intrinsics.ptr_offset(s, -1)
 			ip = ip[3:]
 		case .set_arg:
-			args[rd16(ip[1:])] = s[-1]
+			regs.args[rd16(ip[1:])] = s[-1]
 			ip = ip[3:]
 		case .get_var_ref0, .get_var_ref1, .get_var_ref2, .get_var_ref3:
-			s[0] = var_refs[int(op) - int(Opcode.get_var_ref0)].pvalue^
+			s[0] = regs.var_refs[int(op) - int(Opcode.get_var_ref0)].pvalue^
 			s = s[1:]
 			ip = ip[1:]
 		case .put_var_ref0, .put_var_ref1, .put_var_ref2, .put_var_ref3:
-			var_refs[int(op) - int(Opcode.put_var_ref0)].pvalue^ = s[-1]
+			regs.var_refs[int(op) - int(Opcode.put_var_ref0)].pvalue^ = s[-1]
 			s = intrinsics.ptr_offset(s, -1)
 			ip = ip[1:]
 		case .set_var_ref0, .set_var_ref1, .set_var_ref2, .set_var_ref3:
-			var_refs[int(op) - int(Opcode.set_var_ref0)].pvalue^ = s[-1]
+			regs.var_refs[int(op) - int(Opcode.set_var_ref0)].pvalue^ = s[-1]
 			ip = ip[1:]
 		case .get_var_ref:
-			s[0] = var_refs[rd16(ip[1:])].pvalue^
+			s[0] = regs.var_refs[rd16(ip[1:])].pvalue^
 			s = s[1:]
 			ip = ip[3:]
 		case .put_var_ref:
-			var_refs[rd16(ip[1:])].pvalue^ = s[-1]
+			regs.var_refs[rd16(ip[1:])].pvalue^ = s[-1]
 			s = intrinsics.ptr_offset(s, -1)
 			ip = ip[3:]
 		case .set_var_ref:
-			var_refs[rd16(ip[1:])].pvalue^ = s[-1]
+			regs.var_refs[rd16(ip[1:])].pvalue^ = s[-1]
 			ip = ip[3:]
 		case .get_loc_check:
-			v := locals[rd16(ip[1:])]
+			v := regs.locals[rd16(ip[1:])]
 			if v.tag == .uninitialized {break loop}
 			s[0] = v
 			s = s[1:]
 			ip = ip[3:]
 		case .put_loc_check:
-			l := &locals[rd16(ip[1:])]
+			l := &regs.locals[rd16(ip[1:])]
 			if l.tag == .uninitialized {break loop}
 			l^ = s[-1]
 			s = intrinsics.ptr_offset(s, -1)
 			ip = ip[3:]
 		case .get_var_ref_check:
-			v := var_refs[rd16(ip[1:])].pvalue^
+			v := regs.var_refs[rd16(ip[1:])].pvalue^
 			if v.tag == .uninitialized {break loop}
 			s[0] = v
 			s = s[1:]
 			ip = ip[3:]
 		case .put_var_ref_check:
-			l := var_refs[rd16(ip[1:])].pvalue
+			l := regs.var_refs[rd16(ip[1:])].pvalue
 			if l.tag == .uninitialized {break loop}
 			l^ = s[-1]
 			s = intrinsics.ptr_offset(s, -1)
@@ -220,11 +285,11 @@ interp_hot :: proc "contextless" (ctx: ^Context, rt: ^Runtime, code: [^]u8, pc0:
 			s = s[1:]
 			ip = ip[5:]
 		case .push_const8:
-			s[0] = cpool[ip[1]]
+			s[0] = regs.cpool[ip[1]]
 			s = s[1:]
 			ip = ip[2:]
 		case .push_const:
-			s[0] = cpool[rd32(ip[1:])]
+			s[0] = regs.cpool[rd32(ip[1:])]
 			s = s[1:]
 			ip = ip[5:]
 		case .undefined:
@@ -307,7 +372,7 @@ interp_hot :: proc "contextless" (ctx: ^Context, rt: ^Runtime, code: [^]u8, pc0:
 			ip = ip[1:]
 
 		case .inc_loc, .dec_loc:
-			l := &locals[ip[1]]
+			l := &regs.locals[ip[1]]
 			if l.tag != .int || l.u.i == max(i32) || l.u.i == min(i32) {break loop}
 			put_int(l, op == .inc_loc ? l.u.i + 1 : l.u.i - 1)
 			ip = ip[2:]
@@ -344,7 +409,7 @@ interp_hot :: proc "contextless" (ctx: ^Context, rt: ^Runtime, code: [^]u8, pc0:
 			}
 			ip = ip[1:]
 		case .add_loc:
-			l := &locals[ip[1]]
+			l := &regs.locals[ip[1]]
 			y := s[-1]
 			if l.tag == .int && y.tag == .int {
 				put_i64(l, i64(l.u.i) + i64(y.u.i))
@@ -528,7 +593,7 @@ interp_hot :: proc "contextless" (ctx: ^Context, rt: ^Runtime, code: [^]u8, pc0:
 			d := int(i8(ip[1]))
 			if t == (op == .if_true8) {
 				if d < 0 {
-					if temp.len > root_base {temp.len = root_base}
+					if temp.len > regs.root_base {temp.len = regs.root_base}
 					rt.interrupt_counter += 1
 					if rt.interrupt_counter >= 10_000 || gc_should_run(rt) {break loop}
 				}
@@ -543,7 +608,7 @@ interp_hot :: proc "contextless" (ctx: ^Context, rt: ^Runtime, code: [^]u8, pc0:
 			d := int(i32(rd32(ip[1:])))
 			if t == (op == .if_true) {
 				if d < 0 {
-					if temp.len > root_base {temp.len = root_base}
+					if temp.len > regs.root_base {temp.len = regs.root_base}
 					rt.interrupt_counter += 1
 					if rt.interrupt_counter >= 10_000 || gc_should_run(rt) {break loop}
 				}
@@ -555,7 +620,7 @@ interp_hot :: proc "contextless" (ctx: ^Context, rt: ^Runtime, code: [^]u8, pc0:
 		case .goto8:
 			d := int(i8(ip[1]))
 			if d < 0 {
-				if temp.len > root_base {temp.len = root_base}
+				if temp.len > regs.root_base {temp.len = regs.root_base}
 				rt.interrupt_counter += 1
 				if rt.interrupt_counter >= 10_000 || gc_should_run(rt) {break loop}
 			}
@@ -563,7 +628,7 @@ interp_hot :: proc "contextless" (ctx: ^Context, rt: ^Runtime, code: [^]u8, pc0:
 		case .goto16:
 			d := int(i16(u16(rd16(ip[1:]))))
 			if d < 0 {
-				if temp.len > root_base {temp.len = root_base}
+				if temp.len > regs.root_base {temp.len = regs.root_base}
 				rt.interrupt_counter += 1
 				if rt.interrupt_counter >= 10_000 || gc_should_run(rt) {break loop}
 			}
@@ -571,7 +636,7 @@ interp_hot :: proc "contextless" (ctx: ^Context, rt: ^Runtime, code: [^]u8, pc0:
 		case .goto:
 			d := int(i32(rd32(ip[1:])))
 			if d < 0 {
-				if temp.len > root_base {temp.len = root_base}
+				if temp.len > regs.root_base {temp.len = regs.root_base}
 				rt.interrupt_counter += 1
 				if rt.interrupt_counter >= 10_000 || gc_should_run(rt) {break loop}
 			}
@@ -665,5 +730,5 @@ interp_hot :: proc "contextless" (ctx: ^Context, rt: ^Runtime, code: [^]u8, pc0:
 			break loop
 		}
 	}
-	return int(uintptr(ip) - uintptr(code)), int(uintptr(s) - uintptr(stack)) / size_of(Value)
+	return f, int(uintptr(ip) - uintptr(regs.code)), int(uintptr(s) - uintptr(regs.stack)) / size_of(Value), moved
 }
