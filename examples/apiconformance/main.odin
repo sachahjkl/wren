@@ -1071,6 +1071,8 @@ foreign _m_navigator {
 	@(link_name = "Navigator_onLine") c_Navigator_onLine :: proc() -> i32 ---
 	@(link_name = "Navigator_maxTouchPoints") c_Navigator_maxTouchPoints :: proc() -> i32 ---
 	@(link_name = "Navigator_cookieEnabled") c_Navigator_cookieEnabled :: proc() -> i32 ---
+	@(link_name = "UserActivation_isActive") c_UserActivation_isActive :: proc() -> i32 ---
+	@(link_name = "UserActivation_hasBeenActive") c_UserActivation_hasBeenActive :: proc() -> i32 ---
 	@(link_name = "Beacon_send") c_Beacon_send :: proc(a0: i32, a1: i32, a2: i32, a3: i32, a4: i32, a5: i32) -> i32 ---
 	@(link_name = "Clipboard_writeText") c_Clipboard_writeText :: proc(a0: i32, a1: i32) -> i64 ---
 	@(link_name = "Clipboard_readText") c_Clipboard_readText :: proc() -> i64 ---

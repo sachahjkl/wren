@@ -45,7 +45,10 @@ $Stack = '/STACK:268435456'
 # does not use costs nothing)
 # (a child of -Jobs gets the parent's answer: the question is a 4 s compile of the whole browser)
 $flags = $env:WREN_ASAN_FLAGS
+# (the compiler's warnings go to stderr: they are not errors here)
+$prevEap = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
 if (-not $flags) { $flags = & odin build src/browser @Coll -sanitize:address -debug -define:WREN_CHANNEL=dev -resource:src/browser/wren_dev.rc "-out:$Out\browser_flags.exe" -print-linker-flags 2>&1 | Out-String }
+$ErrorActionPreference = $prevEap
 $libs = @([regex]::Matches($flags, '"([^"]+\.(lib|res))"') | ForEach-Object { $_.Groups[1].Value } | Where-Object { $_ -notmatch 'clang_rt' } | Select-Object -Unique)
 $libpaths = @([regex]::Matches($flags, '/LIBPATH:"([^"]+)"') | ForEach-Object { "/LIBPATH:$($_.Groups[1].Value)" })
 if ($libs.Count -eq 0) { "FAIL cannot read the browser's libraries: $flags"; exit 1 }
