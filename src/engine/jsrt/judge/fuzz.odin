@@ -16,6 +16,7 @@ import "core:path/filepath"
 import "core:strconv"
 import "core:strings"
 import "core:time"
+import fe "wb:engine/frontend"
 import js "wb:engine/jsrt"
 
 @(private = "file")
@@ -58,7 +59,7 @@ fuzz_main :: proc(dir: string, iterations: int, seed: u64) -> int {
 	corpus := make([dynamic][]u8)
 	{
 		cfgr := js.DEFAULT_CONFIG
-		cfgr.compile = judge_compile
+		cfgr.compile = compile_hook()
 		rt := js.engine_new(context.allocator, cfgr)
 		ctx := js.context_new(rt)
 		for p in files {
@@ -125,9 +126,17 @@ fuzz_main :: proc(dir: string, iterations: int, seed: u64) -> int {
 	return 0
 }
 
-// Compile source to a QuickJS-ng bytecode image with the reference compiler DLL.
+// Compile source to a QuickJS-ng bytecode image (the Odin front-end, or the reference compiler DLL).
 @(private = "file")
 compile_to_bytes :: proc(source: string, filename: string) -> ([]u8, bool) {
+	if !use_reference_compiler {
+		res := fe.compile_program(source, .script, context.temp_allocator, {filename = filename})
+		if fe.is_err(res.err) {return nil, false}
+		bc := fe.write_object_of(res, context.temp_allocator)
+		b := make([]u8, len(bc))
+		copy(b, bc)
+		return b, true
+	}
 	out: [^]u8
 	out_len: uint
 	err: [512]u8

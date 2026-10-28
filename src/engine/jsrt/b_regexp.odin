@@ -1,51 +1,22 @@
 package jsrt
 
-// RegExp (ECMA-262 §22.2) on the Odin regexp engine of src/engine/regexp: the constructor, exec and
-// the Symbol.match / matchAll / replace / search / split protocol, the flags accessors, and the
-// RegExp String Iterator.
+// RegExp (ECMA-262 §22.2): the constructor, exec and the Symbol.match / matchAll / replace / search /
+// split protocol, the flags accessors, and the RegExp String Iterator. A RegExp holds libregexp
+// bytecode (QuickJS-ng 0.17's format): literals arrive compiled by the front-end, the constructor
+// compiles with the same front-end function (fe.lre_compile), and lre_exec.odin runs it.
 
 import "core:mem"
-import rx "wb:engine/regexp"
-import ucd "wb:engine/unicode"
+import fe "wb:engine/frontend"
 
 RegExp_Data :: struct {
-	re:          rx.Regexp,
-	source:      ^JS_String,
-	flags_text:  ^JS_String,
-	cache_str:   ^JS_String, // last subject string and its UTF-16 units
-	cache_units: []u16,
+	bytecode:   []u8, // libregexp bytecode, owned
+	source:     ^JS_String,
+	flags_text: ^JS_String,
 }
 
 regexp_data_free :: proc(rt: ^Runtime, d: ^RegExp_Data) {
-	rx.destroy(&d.re)
-	if d.cache_units != nil {delete(d.cache_units, rt_allocator(rt))}
+	if d.bytecode != nil {delete(d.bytecode, rt_allocator(rt))}
 	free(d, rt_allocator(rt))
-}
-
-// Deep copy of a compiled regexp into `a` (the compiler worked in a throwaway arena).
-@(private = "file")
-regexp_clone :: proc(re: ^rx.Regexp, a: mem.Allocator) -> rx.Regexp {
-	out: rx.Regexp
-	out.flags = re.flags
-	out.capture_count = re.capture_count
-	out.allocator = a
-	out.bytecode = make([dynamic]u8, len(re.bytecode), a)
-	copy(out.bytecode[:], re.bytecode[:])
-	out.ranges = make([dynamic]ucd.Char_Range, len(re.ranges), a)
-	for &r, i in re.ranges {
-		out.ranges[i].allocator = a
-		out.ranges[i].points = make([dynamic]u32, len(r.points), a)
-		copy(out.ranges[i].points[:], r.points[:])
-	}
-	out.group_names = make([dynamic]string, len(re.group_names), a)
-	for n, i in re.group_names {
-		b := make([]u8, len(n), a)
-		copy(b, transmute([]u8)n)
-		out.group_names[i] = string(b)
-	}
-	out.group_indices = make([dynamic]int, len(re.group_indices), a)
-	copy(out.group_indices[:], re.group_indices[:])
-	return out
 }
 
 @(private = "file")
@@ -69,7 +40,68 @@ regexp_alloc :: proc(ctx: ^Context, nt: Value) -> ^Object {
 	return o
 }
 
-// RegExpInitialize(obj, pattern, flags).
+// Pattern text for lre_compile (JS_ToCStringLen2): UTF-8 with surrogate pairs joined in unicode mode,
+// CESU-8 (each UTF-16 unit on its own) otherwise; a lone surrogate is a 3-byte sequence either way.
+@(private = "file")
+regexp_pattern_bytes :: proc(rt: ^Runtime, s: ^JS_String, cesu8: bool) -> []u8 {
+	f := str_flat(rt, s)
+	n := int(f.len)
+	out := make([dynamic]u8, 0, n + 8, tmp(rt))
+	for i := 0; i < n; {
+		cp: u32
+		if cesu8 {
+			cp = u32(str_at(f, i))
+			i += 1
+		} else {
+			c, w := str_code_point_at(f, i)
+			cp = u32(c)
+			i += w
+		}
+		switch {
+		case cp < 0x80:
+			append(&out, u8(cp))
+		case cp < 0x800:
+			append(&out, u8(0xc0 | cp >> 6), u8(0x80 | cp & 0x3f))
+		case cp < 0x10000:
+			append(&out, u8(0xe0 | cp >> 12), u8(0x80 | (cp >> 6) & 0x3f), u8(0x80 | cp & 0x3f))
+		case:
+			append(&out, u8(0xf0 | cp >> 18), u8(0x80 | (cp >> 12) & 0x3f), u8(0x80 | (cp >> 6) & 0x3f), u8(0x80 | cp & 0x3f))
+		}
+	}
+	return out[:]
+}
+
+// The flags string of a set of LRE_FLAG_* bits, in the canonical "dgimsuvy" order.
+@(private = "file")
+regexp_flags_text :: proc(rt: ^Runtime, bits: int) -> ^JS_String {
+	LRE := [8]struct {
+		bit: int,
+		ch:  u16,
+	}{{fe.LRE_FLAG_INDICES, 'd'}, {fe.LRE_FLAG_GLOBAL, 'g'}, {fe.LRE_FLAG_IGNORECASE, 'i'}, {fe.LRE_FLAG_MULTILINE, 'm'}, {fe.LRE_FLAG_DOTALL, 's'}, {fe.LRE_FLAG_UNICODE, 'u'}, {fe.LRE_FLAG_UNICODE_SETS, 'v'}, {fe.LRE_FLAG_STICKY, 'y'}}
+	sb := sb_init(rt, 8)
+	for e in LRE {if bits & e.bit != 0 {sb_unit(&sb, e.ch)}}
+	return sb_finish(&sb)
+}
+
+@(private = "file")
+regexp_set_data :: proc(ctx: ^Context, o: ^Object, bc: []u8, source, flags_text: ^JS_String) -> Value {
+	rt := ctx.rt
+	d, has := o.data.(^RegExp_Data)
+	if has && d != nil {
+		if d.bytecode != nil {delete(d.bytecode, rt_allocator(rt))}
+	} else {
+		d = new(RegExp_Data, rt_allocator(rt))
+		o.data = d
+	}
+	d.bytecode = make([]u8, len(bc), rt_allocator(rt))
+	copy(d.bytecode, bc)
+	d.source = source
+	d.flags_text = flags_text
+	if set(ctx, mk_obj(o), pa(.A_lastIndex), mk_int(0), true) < 0 {return EXCEPTION}
+	return mk_obj(o)
+}
+
+// RegExpInitialize(obj, pattern, flags), compiled as js_compile_regexp does.
 @(private = "file")
 regexp_initialize :: proc(ctx: ^Context, o: ^Object, pattern: Value, flags: Value) -> Value {
 	rt := ctx.rt
@@ -83,74 +115,55 @@ regexp_initialize :: proc(ctx: ^Context, o: ^Object, pattern: Value, flags: Valu
 		f = to_str(ctx, flags)
 		if f == nil {return EXCEPTION}
 	}
-	fl, ok := rx.parse_flags(str_to_utf8(rt, f, tmp(rt)))
-	if !ok {return throw_syntax_error(ctx, cat(ctx, "invalid regular expression flags '", str_to_utf8(rt, f, tmp(rt)), "'"))}
+	re_flags := 0
+	ff := str_flat(rt, f)
+	for i in 0 ..< int(ff.len) {
+		mask := 0
+		switch str_at(ff, i) {
+		case 'd': mask = fe.LRE_FLAG_INDICES
+		case 'g': mask = fe.LRE_FLAG_GLOBAL
+		case 'i': mask = fe.LRE_FLAG_IGNORECASE
+		case 'm': mask = fe.LRE_FLAG_MULTILINE
+		case 's': mask = fe.LRE_FLAG_DOTALL
+		case 'u': mask = fe.LRE_FLAG_UNICODE
+		case 'v': mask = fe.LRE_FLAG_UNICODE_SETS
+		case 'y': mask = fe.LRE_FLAG_STICKY
+		}
+		if mask == 0 || re_flags & mask != 0 {return throw_syntax_error(ctx, "invalid regular expression flags")}
+		re_flags |= mask
+	}
+	if re_flags & fe.LRE_FLAG_UNICODE != 0 && re_flags & fe.LRE_FLAG_UNICODE_SETS != 0 {
+		return throw_syntax_error(ctx, "invalid regular expression flags")
+	}
+	unicode := re_flags & (fe.LRE_FLAG_UNICODE | fe.LRE_FLAG_UNICODE_SETS) != 0
+	src := regexp_pattern_bytes(rt, p, !unicode)
 	arena: mem.Dynamic_Arena
 	mem.dynamic_arena_init(&arena, rt.allocator, rt.allocator)
 	defer mem.dynamic_arena_destroy(&arena)
-	src := str_to_utf8_keep_surrogates(rt, p)
-	re, err := rx.compile(src, fl, mem.dynamic_arena_allocator(&arena))
-	if err.message != "" {
-		return throw_syntax_error(ctx, cat(ctx, "Invalid regular expression: /", str_to_utf8(rt, p, tmp(rt)), "/: ", err.message))
+	bc, err := fe.lre_compile(src, re_flags, mem.dynamic_arena_allocator(&arena), fe.stack_guard_here(256 * 1024))
+	if bc == nil {
+		if err == "stack overflow" {return throw_range_error(ctx, "Maximum call stack size exceeded")}
+		return throw_syntax_error(ctx, err)
 	}
-	d, has := o.data.(^RegExp_Data)
-	if has && d != nil {
-		rx.destroy(&d.re)
-	} else {
-		d = new(RegExp_Data, rt_allocator(rt))
-		o.data = d
-	}
-	d.re = regexp_clone(&re, rt_allocator(rt))
-	d.source = p
-	d.flags_text = f
-	d.cache_str = nil
-	if set(ctx, mk_obj(o), pa(.A_lastIndex), mk_int(0), true) < 0 {return EXCEPTION}
-	return mk_obj(o)
+	return regexp_set_data(ctx, o, bc, p, regexp_flags_text(rt, re_flags))
 }
 
-// UTF-8 for the pattern compiler; lone surrogates are encoded as 3-byte sequences (WTF-8) so the
-// pattern keeps them.
-str_to_utf8_keep_surrogates :: proc(rt: ^Runtime, s: ^JS_String) -> string {
-	f := str_flat(rt, s)
-	n := int(f.len)
-	out := make([dynamic]u8, 0, n, tmp(rt))
-	for i := 0; i < n; {
-		cp, w := str_code_point_at(f, i)
-		i += w
-		switch {
-		case cp < 0x80:
-			append(&out, u8(cp))
-		case cp < 0x800:
-			append(&out, u8(0xc0 | cp >> 6), u8(0x80 | cp & 0x3f))
-		case cp < 0x10000:
-			append(&out, u8(0xe0 | cp >> 12), u8(0x80 | (cp >> 6) & 0x3f), u8(0x80 | cp & 0x3f))
-		case:
-			append(&out, u8(0xf0 | cp >> 18), u8(0x80 | (cp >> 12) & 0x3f), u8(0x80 | (cp >> 6) & 0x3f), u8(0x80 | cp & 0x3f))
-		}
-	}
-	return string(out[:])
-}
-
-// A regexp literal (OP_regexp): the compiler hands over the pattern and libregexp's compiled form,
-// whose 8-byte header starts with the LRE_FLAG_* bits; the pattern is recompiled by our engine.
+// A regexp literal (OP_regexp): the pattern and its libregexp bytecode, compiled by the front-end
+// (or read from serialized bytecode, hence the verification).
 regexp_create_literal :: proc(ctx: ^Context, pattern, bytecode: Value) -> Value {
 	rt := ctx.rt
+	if bytecode.tag != .string || pattern.tag != .string {return throw_type_error(ctx, "invalid regexp literal")}
+	bs := str_flat(rt, as_str(bytecode))
+	if bs.is_wide {return throw_internal_error(ctx, "corrupted bytecode in regexp literal")}
+	bc := str_u8(bs)[:bs.len]
+	scratch := mem.dynamic_arena_allocator(&rt.regexp_arena)
+	ok := lre_verify(bc, scratch)
+	mem.dynamic_arena_reset(&rt.regexp_arena)
+	if !ok {return throw_internal_error(ctx, "corrupted bytecode in regexp literal")}
 	o := object_new_proto(ctx, ctx.class_proto[.regexp], .regexp)
 	s := add_property(rt, o, pa(.A_lastIndex), {.writable})
 	s.value = mk_int(0)
-	flags := bytecode
-	if bytecode.tag == .string && as_str(bytecode).len >= 8 {
-		bc := str_flat(rt, as_str(bytecode))
-		bits := u16(str_at(bc, 0)) | u16(str_at(bc, 1)) << 8
-		sb := sb_init(rt, 8)
-		LRE := [8]struct {
-			bit: u16,
-			ch:  u16,
-		}{{1 << 6, 'd'}, {1 << 0, 'g'}, {1 << 1, 'i'}, {1 << 2, 'm'}, {1 << 3, 's'}, {1 << 4, 'u'}, {1 << 8, 'v'}, {1 << 5, 'y'}}
-		for e in LRE {if bits & e.bit != 0 {sb_unit(&sb, e.ch)}}
-		flags = mk_str(sb_finish(&sb))
-	}
-	return regexp_initialize(ctx, o, pattern, flags)
+	return regexp_set_data(ctx, o, bc, as_str(pattern), regexp_flags_text(rt, lre_flags(bc)))
 }
 
 // RegExpCreate(P, F).
@@ -197,119 +210,87 @@ regexp_ctor :: proc(ctx: ^Context, nt: Value, args: []Value, magic: i32) -> Valu
 regexp_builtin_exec :: proc(ctx: ^Context, rv: Value, s: ^JS_String) -> Value {
 	rt := ctx.rt
 	d := regexp_obj_data(rv)
-	o := as_obj(rv)
 	liv := get(ctx, rv, pa(.A_lastIndex))
 	if is_exception(liv) {return EXCEPTION}
 	last_index, ok := to_length(ctx, liv)
 	if !ok {return EXCEPTION}
-	flags := d.re.flags
-	global := .Global in flags
-	sticky := .Sticky in flags
-	has_indices := .Indices in flags
-	full_unicode := rx.unicode_mode(flags)
-	if !global && !sticky {last_index = 0}
-	n := i64(s.len)
-	if last_index > n {
-		if global || sticky {
-			if set(ctx, rv, pa(.A_lastIndex), mk_int(0), true) < 0 {return EXCEPTION}
-		}
+	bc := d.bytecode
+	re_flags := lre_flags(bc)
+	global_or_sticky := re_flags & (fe.LRE_FLAG_GLOBAL | fe.LRE_FLAG_STICKY) != 0
+	if !global_or_sticky {last_index = 0}
+	if last_index > i64(s.len) {
+		if set(ctx, rv, pa(.A_lastIndex), mk_int(0), true) < 0 {return EXCEPTION}
 		return NULL
 	}
-	units := regexp_units(rt, d, s)
-	caps: rx.Captures
 	arena := &rt.regexp_arena
 	defer mem.dynamic_arena_reset(arena)
-	a := mem.dynamic_arena_allocator(arena)
-	st: rx.Exec_Status
-	if sticky {
-		st = rx.exec(&d.re, rx.input_utf16(units), int(last_index), &caps, {}, a)
-	} else {
-		st = rx.exec_search(&d.re, rx.input_utf16(units), int(last_index), &caps, {}, a)
-	}
-	if st == .Out_Of_Steps || st == .Stack_Overflow {
-		return throw_range_error(ctx, "regular expression is too complex")
-	}
-	if st != .Match {
-		if global || sticky {
+	scratch := mem.dynamic_arena_allocator(arena)
+	capture := make([]int, max(lre_alloc_count(bc), 2), scratch)
+	st := lre_exec(ctx, capture, bc, s, int(last_index), scratch)
+	switch st {
+	case .match:
+	case .no_match:
+		if global_or_sticky {
 			if set(ctx, rv, pa(.A_lastIndex), mk_int(0), true) < 0 {return EXCEPTION}
 		}
 		return NULL
+	case .timeout:
+		return EXCEPTION // poll_interrupt threw
+	case .memory:
+		return throw_internal_error(ctx, "out of memory in regexp execution")
+	case .bytecode_error:
+		return throw_internal_error(ctx, "corrupted bytecode in regexp execution")
 	}
-	ms := caps.groups[0].start
-	me := caps.groups[0].end
-	_ = full_unicode
-	if global || sticky {
-		if set(ctx, rv, pa(.A_lastIndex), mk_int(i32(me)), true) < 0 {return EXCEPTION}
+	if global_or_sticky {
+		if set(ctx, rv, pa(.A_lastIndex), mk_int(i32(capture[1])), true) < 0 {return EXCEPTION}
 	}
-	ncap := d.re.capture_count
+	ncap := lre_capture_count(bc)
+	names := lre_group_names(bc)
+	has_names := names != nil
+	has_indices := re_flags & fe.LRE_FLAG_INDICES != 0
 	arr := array_new(ctx, ncap)
-	define_value(ctx, arr, pa(.A_index), mk_int(i32(ms)), CWE)
+	define_value(ctx, arr, pa(.A_index), mk_int(i32(capture[0])), CWE)
 	define_value(ctx, arr, pa(.A_input), mk_str(s), CWE)
-	for i in 0 ..< ncap {
-		g := caps.groups[i]
-		v := g.start < 0 ? UNDEFINED : mk_str(str_sub(rt, s, g.start, g.end))
-		create_data_index(ctx, arr, i64(i), v)
-	}
-	groups := UNDEFINED
-	if len(d.re.group_names) > 0 {
-		go := object_new_proto(ctx, nil)
-		for name, k in d.re.group_names {
-			idx := d.re.group_indices[k]
-			a2 := atom_from_utf8(rt, name)
-			g := caps.groups[idx]
-			v := g.start < 0 ? UNDEFINED : mk_str(str_sub(rt, s, g.start, g.end))
-			// duplicate named groups: keep the participating one
-			if shape_find(go.shape, a2) >= 0 {
-				if !is_undefined(v) {create_data_property(ctx, go, a2, v, false)}
-				continue
-			}
-			create_data_property(ctx, go, a2, v, false)
-		}
-		groups = mk_obj(go)
-	}
-	define_value(ctx, arr, pa(.A_groups), groups, CWE)
+	groups: ^Object
+	if has_names {groups = object_new_proto(ctx, nil)}
+	ind: ^Object
+	igroups: ^Object
 	if has_indices {
-		ind := array_new(ctx, ncap)
-		for i in 0 ..< ncap {
-			g := caps.groups[i]
+		ind = array_new(ctx, ncap)
+		if has_names {igroups = object_new_proto(ctx, nil)}
+	}
+	np := 0
+	for i in 0 ..< ncap {
+		name := ATOM_NULL
+		if has_names && i > 0 {
+			e := np
+			for e < len(names) && names[e] != 0 {e += 1}
+			if e > np {name = atom_from_utf8(rt, string(names[np:e]))}
+			np = e + fe.LRE_GROUP_NAME_TRAILER_LEN
+		}
+		start, end := capture[2 * i], capture[2 * i + 1]
+		matched := start >= 0 && end >= 0
+		if has_indices {
 			v := UNDEFINED
-			if g.start >= 0 {v = mk_obj(array_from_values(ctx, {mk_int(i32(g.start)), mk_int(i32(g.end))}))}
+			if matched {v = mk_obj(array_from_values(ctx, {mk_int(i32(start)), mk_int(i32(end))}))}
+			if name != ATOM_NULL && (matched || shape_find(igroups.shape, name) < 0) {
+				create_data_property(ctx, igroups, name, v, false)
+			}
 			create_data_index(ctx, ind, i64(i), v)
 		}
-		ig := UNDEFINED
-		if len(d.re.group_names) > 0 {
-			igo := object_new_proto(ctx, nil)
-			for name, k in d.re.group_names {
-				idx := d.re.group_indices[k]
-				a2 := atom_from_utf8(rt, name)
-				g := caps.groups[idx]
-				v := UNDEFINED
-				if g.start >= 0 {v = mk_obj(array_from_values(ctx, {mk_int(i32(g.start)), mk_int(i32(g.end))}))}
-				if shape_find(igo.shape, a2) >= 0 {
-					if !is_undefined(v) {create_data_property(ctx, igo, a2, v, false)}
-					continue
-				}
-				create_data_property(ctx, igo, a2, v, false)
-			}
-			ig = mk_obj(igo)
+		v := UNDEFINED
+		if matched {v = mk_str(str_sub(rt, s, start, end))}
+		if name != ATOM_NULL && (matched || shape_find(groups.shape, name) < 0) {
+			create_data_property(ctx, groups, name, v, false)
 		}
-		define_value(ctx, ind, pa(.A_groups), ig, CWE)
+		create_data_index(ctx, arr, i64(i), v)
+	}
+	define_value(ctx, arr, pa(.A_groups), groups != nil ? mk_obj(groups) : UNDEFINED, CWE)
+	if has_indices {
+		define_value(ctx, ind, pa(.A_groups), igroups != nil ? mk_obj(igroups) : UNDEFINED, CWE)
 		define_value(ctx, arr, pa(.A_indices), mk_obj(ind), CWE)
 	}
-	_ = o
 	return mk_obj(arr)
-}
-
-@(private = "file")
-regexp_units :: proc(rt: ^Runtime, d: ^RegExp_Data, s: ^JS_String) -> []u16 {
-	if d.cache_str == s && d.cache_units != nil {return d.cache_units}
-	f := str_flat(rt, s)
-	n := int(f.len)
-	if d.cache_units != nil {delete(d.cache_units, rt_allocator(rt))}
-	d.cache_units = make([]u16, n, rt_allocator(rt))
-	for i in 0 ..< n {d.cache_units[i] = str_at(f, i)}
-	d.cache_str = s
-	return d.cache_units
 }
 
 // RegExpExec(R, S): user `exec` if overridden.
@@ -379,7 +360,7 @@ rp_compile :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Val
 	return regexp_initialize(ctx, o, p, f)
 }
 
-// flag getters; magic = bit index of rx.Flag, or -1 for "flags"
+// flag getters; magic = the LRE_FLAG_* bit
 @(private = "file")
 rp_flag :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value {
 	if this.tag != .object {return throw_type_error(ctx, "not an object")}
@@ -388,7 +369,7 @@ rp_flag :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value 
 		if as_obj(this) == ctx.class_proto[.regexp] {return UNDEFINED}
 		return throw_type_error(ctx, "not a RegExp")
 	}
-	return mk_bool(rx.Flag(magic) in d.re.flags)
+	return mk_bool(lre_flags(d.bytecode) & int(magic) != 0)
 }
 
 @(private = "file")
@@ -837,8 +818,8 @@ init_regexp_builtins :: proc(ctx: ^Context) {
 	def_getter(ctx, rp, pa(.A_source), rp_source)
 	flags := [8]struct {
 		name: string,
-		f:    rx.Flag,
-	}{{"global", .Global}, {"ignoreCase", .Ignore_Case}, {"multiline", .Multiline}, {"dotAll", .Dot_All}, {"unicode", .Unicode}, {"unicodeSets", .Unicode_Sets}, {"sticky", .Sticky}, {"hasIndices", .Indices}}
+		f:    int,
+	}{{"global", fe.LRE_FLAG_GLOBAL}, {"ignoreCase", fe.LRE_FLAG_IGNORECASE}, {"multiline", fe.LRE_FLAG_MULTILINE}, {"dotAll", fe.LRE_FLAG_DOTALL}, {"unicode", fe.LRE_FLAG_UNICODE}, {"unicodeSets", fe.LRE_FLAG_UNICODE_SETS}, {"sticky", fe.LRE_FLAG_STICKY}, {"hasIndices", fe.LRE_FLAG_INDICES}}
 	for f in flags {def_getter(ctx, rp, atom_from_utf8(rt, f.name), rp_flag, nil, i32(f.f))}
 	def_method_sym(ctx, rp, .match, rp_match, 1)
 	def_method_sym(ctx, rp, .match_all, rp_match_all, 1)
