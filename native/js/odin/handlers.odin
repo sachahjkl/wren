@@ -324,7 +324,7 @@ wj_handler_invoke :: proc "c" (ctx: ^wj.Context, target: wj.JSValue, handler_val
 	argc := 1
 	if to := wj.wj_unwrap(target, -1); Handler_Kind(kind) == .On_Error && to != nil && to.kind == wj.KIND_GLOBAL {
 		t := wj.JS_GetPropertyStr(ctx, ev, "type")
-		if js_str_is(ctx, t, "error") && wj.wj_error_event_args(ctx, ev, &args[0]) { special_error = true; argc = 5 }
+		if js_str_is(ctx, t, "error") && wj_error_event_args(ctx, ev, &args[0]) { special_error = true; argc = 5 }
 		wj.JS_FreeValue(ctx, t)
 		if wj.JS_HasException(ctx) { wj.JS_FreeValue(ctx, wj.JS_GetException(ctx)) }
 	}

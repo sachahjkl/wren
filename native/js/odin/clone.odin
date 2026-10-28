@@ -310,7 +310,7 @@ serialize_blob :: proc(s: ^Ser, v: wj.JSValue, bytes: []u8) -> bool {
 	ctx := s.ctx
 	if !remember(s, v) { return false }
 	is_file := is_a(v, &if_file, "File")
-	type := wj.web_blob_type(ctx, v)
+	type := web_blob_type(ctx, v)
 	put_tag(s, .Blob)
 	put_u8(s, is_file ? 1 : 0)
 	ok := !wj.is_exception(type) && put_string(s, type)
@@ -419,14 +419,14 @@ serialize_object :: proc(s: ^Ser, v: wj.JSValue) -> bool {
 	}
 	bp: [^]u8
 	bn: uint
-	if wj.web_blob_bytes(v, &bp, &bn) { return serialize_blob(s, v, bp != nil ? bp[:bn] : nil) }
+	if web_blob_bytes(v, &bp, &bn) { return serialize_blob(s, v, bp != nil ? bp[:bn] : nil) }
 	if g := serialize_geom(s, v); g != 0 { return g > 0 }
 	if is_a(v, &if_fs_handle, "FileSystemHandle") {
-		desc := wj.web_fs_handle_describe(ctx, v)
+		desc := web_fs_handle_describe(ctx, v)
 		if desc == nil { return clone_error(ctx, "FileSystemHandle object could not be cloned.") }
 		defer wj.libc_free(rawptr(desc))
 		if !remember(s, v) { return false }
-		str := wj.new_string(ctx, desc)
+		str := wj.new_string(ctx, cstring(desc))
 		put_tag(s, .Fs_Handle)
 		ok := put_string(s, str)
 		wj.JS_FreeValue(ctx, str)
@@ -952,7 +952,7 @@ deserialize_blob :: proc(d: ^Deser) -> wj.JSValue {
 	tc, t := to_text(ctx, type)
 	if tc == nil { return wj.EXCEPTION }
 	defer wj.free_cstring(ctx, tc)
-	if is_file == 0 { return wj.web_blob_new(ctx, raw_data(bytes), uint(len(bytes)), tc, uint(len(t))) }
+	if is_file == 0 { return web_blob_new(ctx, raw_data(bytes), uint(len(bytes)), tc, uint(len(t))) }
 	name := get_string(d)
 	if wj.is_exception(name) { return name }
 	defer wj.JS_FreeValue(ctx, name)
@@ -961,7 +961,7 @@ deserialize_blob :: proc(d: ^Deser) -> wj.JSValue {
 	nc, nm := to_text(ctx, name)
 	if nc == nil { return wj.EXCEPTION }
 	defer wj.free_cstring(ctx, nc)
-	return wj.web_file_new(ctx, raw_data(bytes), uint(len(bytes)), tc, uint(len(t)), nc, uint(len(nm)), lm)
+	return web_file_new(ctx, raw_data(bytes), uint(len(bytes)), tc, uint(len(t)), nc, uint(len(nm)), lm)
 }
 
 @(private = "file")
@@ -1085,7 +1085,7 @@ deserialize :: proc(d: ^Deser) -> wj.JSValue {
 		str := get_string(d)
 		if wj.is_exception(str) { return str }
 		c, s := to_text(ctx, str)
-		r := c != nil ? wj.web_fs_handle_restore(ctx, raw_data(s), uint(len(s))) : malformed(ctx)
+		r := c != nil ? web_fs_handle_restore(ctx, raw_data(s), uint(len(s))) : malformed(ctx)
 		if c != nil { wj.free_cstring(ctx, c) }
 		wj.JS_FreeValue(ctx, str)
 		return keep(d, r)

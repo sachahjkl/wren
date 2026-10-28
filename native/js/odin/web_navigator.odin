@@ -173,7 +173,7 @@ wjr_Navigator_sendBeacon :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, ar
 	if argc < 1 { return wj.wj_throw_arity(ctx, "Navigator.sendBeacon", 1, argc) }
 	u, abs: wj.Str
 	if !wj.web_to_usv(ctx, argv[0], &u) { return wj.EXCEPTION }
-	resolved := wj.web_resolve_url(ctx, u.ptr, u.len, &abs)
+	resolved := web_resolve_url(ctx, u.ptr, u.len, &abs)
 	wj.wj_str_free(ctx, &u)
 	if !resolved { return wj.EXCEPTION }
 	defer wj.libc_free(abs.ptr)
@@ -185,11 +185,11 @@ wjr_Navigator_sendBeacon :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, ar
 	e := wj.Extracted{nil, 0, nil, wj.UNDEFINED}
 	body: Maybe(abi.Bytes)
 	if !wj.is_nullish(data) {
-		if wj.web_stream_is(data) { return wj.JS_ThrowTypeError(ctx, "Failed to execute 'sendBeacon' on 'Navigator': a ReadableStream body is not allowed") }
-		if !wj.web_extract_body(ctx, data, &e, "Navigator.sendBeacon") { return wj.EXCEPTION }
+		if web_stream_is(data) { return wj.JS_ThrowTypeError(ctx, "Failed to execute 'sendBeacon' on 'Navigator': a ReadableStream body is not allowed") }
+		if !web_extract_body(ctx, data, &e, "Navigator.sendBeacon") { return wj.EXCEPTION }
 		body = abi.Bytes(e.data != nil ? e.data[:e.len] : wj.empty_ptr()[:0])
 	}
-	defer wj.web_extracted_free(ctx, &e)
+	defer web_extracted_free(ctx, &e)
 	sent: bool
 	jsb.host(&sent, api_decl.Beacon_send, wj.wr_Beacon_send, url, body, cstr_string(e.type))
 	return wj.new_bool(sent)

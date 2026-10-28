@@ -8,7 +8,6 @@ package wj
 @(default_calling_convention = "c")
 foreign {
 	// runtime/events.c: an Event object of `iface` made as `new Event(type, init)` would (new_target: its constructor)
-	wj_event_construct :: proc(ctx: ^Context, new_target: JSValue, argc: i32, argv: [^]JSValue, iface: i32, name: cstring) -> JSValue ---
 }
 
 // Resolve an interface index by name (cache it in the caller if hot). -1 when unknown.

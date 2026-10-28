@@ -70,7 +70,7 @@ viewport_forward :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32,
 @(private = "file")
 make_viewport :: proc "c" (ctx: ^wj.Context) -> wj.JSValue {
 	context = m4_context()
-	target: abi.Handle
+	target: api_decl.EventTarget
 	jsb.host(&target, api_decl.EventTarget_create, wj.wr_EventTarget_create)
 	vv := wj.wj_wrap_owned(ctx, u64(target), iface_lazy(&if_visual_viewport, "VisualViewport"), wj.UNDEFINED)
 	if !wj.is_object(vv) { return vv }
@@ -164,7 +164,7 @@ wjr_WorkerNavigator_get_permissions :: proc "c" (ctx: ^wj.Context, this_val: wj.
 @(private = "file")
 make_status :: proc "contextless" (ctx: ^wj.Context, name: cstring) -> wj.JSValue {
 	context = m4_context()
-	target: abi.Handle
+	target: api_decl.EventTarget
 	jsb.host(&target, api_decl.EventTarget_create, wj.wr_EventTarget_create)
 	st := wj.wj_wrap_owned(ctx, u64(target), iface_lazy(&if_permission_status, "PermissionStatus"), wj.UNDEFINED)
 	if !wj.is_object(st) { return wj.is_exception(st) ? st : wj.JS_ThrowTypeError(ctx, "there is no document to ask about") }
@@ -236,7 +236,7 @@ fonts_store :: proc "contextless" (ctx: ^wj.Context, self: wj.JSValue) -> wj.JSV
 @(private = "file")
 make_fonts :: proc "c" (ctx: ^wj.Context) -> wj.JSValue {
 	context = m4_context()
-	target: abi.Handle
+	target: api_decl.EventTarget
 	jsb.host(&target, api_decl.EventTarget_create, wj.wr_EventTarget_create)
 	return wj.wj_wrap_owned(ctx, u64(target), iface_lazy(&if_font_face_set, "FontFaceSet"), wj.UNDEFINED)
 }
@@ -425,8 +425,8 @@ webkit_alias :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, arg
 webkit_handler :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, magic: i32, data: [^]wj.JSValue) -> wj.JSValue {
 	iface := magic & 2 != 0 ? iface_lazy(&if_element, "Element") : iface_lazy(&if_document, "Document")
 	type: cstring = magic & 1 != 0 ? "webkitfullscreenerror" : "webkitfullscreenchange"
-	if argc > 0 { return wj.wj_event_handler_set(ctx, this_val, iface, type, argv[0], 0) }
-	return wj.wj_event_handler_get(ctx, this_val, iface, type)
+	if argc > 0 { return wj_event_handler_set(ctx, this_val, iface, type, argv[0], 0) }
+	return wj_event_handler_get(ctx, this_val, iface, type)
 }
 
 @(private = "file")

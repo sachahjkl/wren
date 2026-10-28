@@ -148,7 +148,7 @@ abort_reaction :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, a
 	if !ok { return wj.UNDEFINED }
 	jsb.host(&nothing, api_decl.Scheduler_cancel, wj.wr_Scheduler_cancel, tasks[slot].id)
 	signal := tasks[slot].signal
-	reason := wj.is_object(signal) ? wj.web_signal_reason(ctx, signal) : wj.web_dom_exception(ctx, "AbortError", "task aborted")
+	reason := wj.is_object(signal) ? web_signal_reason(ctx, signal) : wj.web_dom_exception(ctx, "AbortError", "task aborted")
 	task_settle(ctx, slot, true, reason)
 	return wj.UNDEFINED
 }
@@ -218,7 +218,7 @@ wjr_Scheduler_postTask :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc
 	if !ok { return wj.web_promise_reject_pending(ctx) }
 	// the explicit option wins, then the priority of a TaskSignal, then user-visible
 	if !o.has_priority && wj.is_object(o.signal) { o.priority = signal_priority(ctx, o.signal) }
-	if wj.is_object(o.signal) && wj.web_signal_aborted(o.signal) { return wj.web_promise_rejected(ctx, wj.web_signal_reason(ctx, o.signal)) }
+	if wj.is_object(o.signal) && web_signal_aborted(o.signal) { return wj.web_promise_rejected(ctx, web_signal_reason(ctx, o.signal)) }
 	return post(ctx, argv[0], o.signal, o.priority, o.delay)
 }
 
@@ -230,7 +230,7 @@ wjr_Scheduler_yield :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i
 	if wj.wj_this(ctx, this_val, iface_lazy(&if_scheduler, "Scheduler")) == nil { return wj.EXCEPTION }
 	signal := current.has ? current.signal : wj.UNDEFINED
 	priority := current.has ? current.priority : TaskPriority.User_Visible
-	if wj.is_object(signal) && wj.web_signal_aborted(signal) { return wj.web_promise_rejected(ctx, wj.web_signal_reason(ctx, signal)) }
+	if wj.is_object(signal) && web_signal_aborted(signal) { return wj.web_promise_rejected(ctx, web_signal_reason(ctx, signal)) }
 	return post(ctx, wj.UNDEFINED, signal, priority, 0)
 }
 
@@ -277,7 +277,7 @@ wjr_TaskController_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSV
 		if wj.is_string(pr) { priority = priority_of(ctx, pr) }
 		wj.JS_FreeValue(ctx, pr)
 	}
-	ctrl := wj.web_controller_construct(ctx, new_target, iface_lazy(&if_task_controller, "TaskController"), iface_lazy(&if_task_signal, "TaskSignal"))
+	ctrl := web_controller_construct(ctx, new_target, iface_lazy(&if_task_controller, "TaskController"), iface_lazy(&if_task_signal, "TaskSignal"))
 	if wj.is_exception(ctrl) { return ctrl }
 	signal := wj.JS_GetPropertyStr(ctx, ctrl, "signal")
 	if wj.is_object(signal) { set_signal_priority(ctx, signal, priority) }
@@ -334,7 +334,7 @@ wjr_TaskSignal_static_any :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, a
 		if wj.is_string(pr) { priority = priority_of(ctx, pr) } else if wj.is_object(pr) { priority = signal_priority(ctx, pr) }
 		wj.JS_FreeValue(ctx, pr)
 	}
-	obj := wj.web_signal_any(ctx, argv[0], iface_lazy(&if_task_signal, "TaskSignal"), "TaskSignal.any")
+	obj := web_signal_any(ctx, argv[0], iface_lazy(&if_task_signal, "TaskSignal"), "TaskSignal.any")
 	if wj.is_object(obj) { set_signal_priority(ctx, obj, priority) }
 	return obj
 }
@@ -349,7 +349,7 @@ wjr_TaskPriorityChangeEvent_get_previousPriority :: proc "c" (ctx: ^wj.Context, 
 
 @(export, link_name = "wjr_TaskPriorityChangeEvent_constructor")
 wjr_TaskPriorityChangeEvent_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
-	ev := wj.wj_event_construct(ctx, new_target, argc, argv, iface_lazy(&if_priority_event, "TaskPriorityChangeEvent"), "TaskPriorityChangeEvent")
+	ev := wj_event_construct(ctx, new_target, argc, argv, iface_lazy(&if_priority_event, "TaskPriorityChangeEvent"), "TaskPriorityChangeEvent")
 	if wj.is_exception(ev) { return ev }
 	// the init dictionary's required previousPriority
 	if init := wj.arg(argc, argv, 1); wj.is_object(init) {

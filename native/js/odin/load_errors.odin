@@ -75,7 +75,7 @@ new_error_event :: proc "contextless" (ctx: ^wj.Context, type: wj.JSValue, messa
 	wj.JS_SetPropertyStr(ctx, init, "cancelable", wj.new_bool(cancelable))
 	args := [2]wj.JSValue{wj.JS_DupValue(ctx, type), init}
 	iface := if_error_event()
-	ev := wj.wj_event_construct(ctx, wj.wj_the_realm.ctors[iface], 2, &args[0], iface, "ErrorEvent")
+	ev := wj_event_construct(ctx, wj.wj_the_realm.ctors[iface], 2, &args[0], iface, "ErrorEvent")
 	wj.JS_FreeValue(ctx, args[0])
 	wj.JS_FreeValue(ctx, args[1])
 	if wj.is_exception(ev) { return ev }
@@ -91,7 +91,7 @@ new_error_event :: proc "contextless" (ctx: ^wj.Context, type: wj.JSValue, messa
 
 @(export, link_name = "wjr_ErrorEvent_constructor")
 wjr_ErrorEvent_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
-	ev := wj.wj_event_construct(ctx, new_target, argc, argv, if_error_event(), "ErrorEvent")
+	ev := wj_event_construct(ctx, new_target, argc, argv, if_error_event(), "ErrorEvent")
 	if wj.is_exception(ev) { return ev }
 	init := wj.arg(argc, argv, 1)
 	f := wj.JS_NewArray(ctx)
@@ -297,7 +297,7 @@ wjr_PromiseRejectionEvent_constructor :: proc "c" (ctx: ^wj.Context, new_target:
 	}
 	reason := wj.JS_GetPropertyStr(ctx, init, "reason")
 	if wj.is_exception(reason) { wj.JS_FreeValue(ctx, promise); return reason }
-	ev := wj.wj_event_construct(ctx, new_target, argc, argv, if_rejection_event(), "PromiseRejectionEvent")
+	ev := wj_event_construct(ctx, new_target, argc, argv, if_rejection_event(), "PromiseRejectionEvent")
 	if wj.is_exception(ev) { wj.JS_FreeValue(ctx, promise); wj.JS_FreeValue(ctx, reason); return ev }
 	f := wj.JS_NewArray(ctx)
 	wj.array_set(ctx, f, 0, promise)

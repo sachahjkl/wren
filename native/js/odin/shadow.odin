@@ -181,7 +181,7 @@ assigned :: proc(ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValue
 	st := jsb.host(&packed, api_decl.HTMLSlotElement_assignedPacked, wj.wr_HTMLSlotElement_assignedPacked, api_decl.Element(o.handle), flatten, elements)
 	what: cstring = elements ? "HTMLSlotElement.assignedElements" : "HTMLSlotElement.assignedNodes"
 	if st != .None { return wj.wj_throw_status(ctx, i32(st), what) }
-	return handles_array(ctx, []u8(packed), wj.wj_wrap_node)
+	return handles_array(ctx, ([]u8)(packed), wj.wj_wrap_node)
 }
 
 @(export, link_name = "wjr_HTMLSlotElement_assignedNodes")
@@ -224,7 +224,7 @@ event_composed_path :: proc(ctx: ^wj.Context, host: u64) -> wj.JSValue {
 	ev := api_decl.Event(host)
 	packed: abi.Bytes
 	jsb.host(&packed, api_decl.Event_composedPathPacked, wj.wr_Event_composedPathPacked, ev)
-	if len(packed) > 0 { return handles_array(ctx, []u8(packed), wj_wrap_target) }
+	if len(packed) > 0 { return handles_array(ctx, ([]u8)(packed), wj_wrap_target) }
 	// an event dispatched at the Window or at an EventTarget that is not a node: its path is that target
 	arr := wj.JS_NewArray(ctx)
 	current, target: api_decl.EventTarget
@@ -248,7 +248,7 @@ from_point :: proc(ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSVal
 	packed: abi.Bytes
 	jsb.host(&packed, api_decl.DocumentOrShadowRoot_elementsFromPointPacked, wj.wr_DocumentOrShadowRoot_elementsFromPointPacked, api_decl.Node(o.handle), x, y)
 	if !all { return len(packed) >= 8 ? wj.wj_wrap_node(ctx, wj.read_u64(raw_data(packed))) : wj.NULL }
-	return handles_array(ctx, []u8(packed), wj.wj_wrap_node)
+	return handles_array(ctx, ([]u8)(packed), wj.wj_wrap_node)
 }
 
 @(export, link_name = "wjr_Document_elementsFromPoint")
@@ -448,7 +448,7 @@ states_array :: proc(ctx: ^wj.Context, s: ^States) -> (wj.JSValue, u32) {
 	start := 0
 	for c, i in list {
 		if c != 0 { continue }
-		wj.array_set(ctx, arr, k, wj.new_string_len(ctx, []u8(list[start:i])))
+		wj.array_set(ctx, arr, k, wj.new_string_len(ctx, ([]u8)(list[start:i])))
 		k += 1
 		start = i + 1
 	}
@@ -1231,7 +1231,7 @@ wjr_ShadowRoot_set_adoptedStyleSheets :: proc "c" (ctx: ^wj.Context, t, v: wj.JS
 // fall back to a document lookup when Window.prototype / the global do not already define the name.
 
 @(private = "file") named_class: wj.Class_ID
-@(private = "file") named_exotic: wj.Class_Exotic
+@(private = "file") named_exotic: wj.Class_Exotic_Methods
 @(private = "file") named_def: wj.Class_Def
 
 @(private = "file")

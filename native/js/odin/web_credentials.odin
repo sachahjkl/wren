@@ -651,7 +651,7 @@ cred_settle :: proc "c" (ctx: ^wj.Context, state: i32, host: u64, value: i64, da
 	context = jsb.glue_context()
 	if state != 1 {
 		reject^ = true
-		if wj.web_signal_aborted(data) { return wj.web_signal_reason(ctx, data) }
+		if web_signal_aborted(data) { return web_signal_reason(ctx, data) }
 		text := wj.wj_host_promise_text(ctx, host)
 		n: uint
 		s := wj.to_cstring_len(ctx, &n, text)
@@ -692,7 +692,7 @@ wjr_Navigator_get_credentials :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 start :: proc(ctx: ^wj.Context, create: bool, json: ^wj.Web_Buf, mediation: api_decl.CredentialMediation, signal: wj.JSValue) -> wj.JSValue {
 	wj.web_usv_fix(json.p, json.len)
 	h: abi.Handle
-	sh := abi.Handle(wj.web_signal_handle(signal))
+	sh := abi.Handle(web_signal_handle(signal))
 	if create {
 		jsb.host(&h, api_decl.CredentialsContainer_create, wj.wr_CredentialsContainer_create, string(wj.web_buf_bytes(json)), mediation, sh)
 	} else {
@@ -719,7 +719,7 @@ wjr_CredentialsContainer_create :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVa
 		}
 		return wj.web_promise_rejected(ctx, wj.web_dom_exception(ctx, "NotSupportedError", msg))
 	}
-	if o.has_signal && wj.web_signal_aborted(o.signal) { return wj.web_promise_rejected(ctx, wj.web_signal_reason(ctx, o.signal)) }
+	if o.has_signal && web_signal_aborted(o.signal) { return wj.web_promise_rejected(ctx, web_signal_reason(ctx, o.signal)) }
 	w: Json
 	defer wj.web_buf_free(&w.b)
 	pk_raw: wj.JSValue
@@ -738,7 +738,7 @@ wjr_CredentialsContainer_get :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue
 	o: wjd_CredentialRequestOptions
 	if !wjd_CredentialRequestOptions_from(ctx, arg, &o) { return wj.web_promise_reject_pending(ctx) }
 	defer wjd_CredentialRequestOptions_free(ctx, &o)
-	if o.has_signal && wj.web_signal_aborted(o.signal) { return wj.web_promise_rejected(ctx, wj.web_signal_reason(ctx, o.signal)) }
+	if o.has_signal && web_signal_aborted(o.signal) { return wj.web_promise_rejected(ctx, web_signal_reason(ctx, o.signal)) }
 	kinds := int(o.has_publicKey) + int(o.password) + int(o.has_federated)
 	if kinds == 0 || !o.has_publicKey || kinds > 1 {
 		// Credential Management §2.5.1: no interface, or public-key mixed with another type (its "types allowed in the

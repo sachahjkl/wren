@@ -19,7 +19,6 @@ inherits :: #force_inline proc "contextless" (iface: i32, base: i32) -> bool {
 }
 
 // A converted string as an Odin string (empty when absent).
-str_view :: #force_inline proc "contextless" (s: wj.Str) -> string { return s.ptr != nil ? string(s.ptr[:s.len]) : "" }
 
 // A converted nullable string as an optional (nil when null / undefined was given).
 maybe_view :: #force_inline proc "contextless" (s: wj.Str) -> Maybe(string) {

@@ -22,9 +22,9 @@ Class_Exotic_Methods :: struct {
 	get_own_property_names: proc "c" (ctx: ^Context, ptab: ^[^]Property_Enum, plen: ^u32, obj: JSValue) -> i32,
 	delete_property:        proc "c" (ctx: ^Context, obj: JSValue, prop: Atom) -> i32,
 	define_own_property:    proc "c" (ctx: ^Context, this_obj: JSValue, prop: Atom, val, getter, setter: JSValue, flags: i32) -> i32,
-	has_property:           rawptr,
-	get_property:           rawptr,
-	set_property:           rawptr,
+	has_property:           proc "c" (ctx: ^Context, obj: JSValue, prop: Atom) -> i32,
+	get_property:           proc "c" (ctx: ^Context, obj: JSValue, prop: Atom, receiver: JSValue) -> JSValue,
+	set_property:           proc "c" (ctx: ^Context, obj: JSValue, prop: Atom, value, receiver: JSValue, flags: i32) -> i32,
 }
 
 // JSClassDef.

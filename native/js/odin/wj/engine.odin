@@ -121,7 +121,10 @@ foreign {
 	wj_interfaces:       Interface
 	wj_interface_count:  i32
 }
-// (wj_dispatch_trusted, web.h: defined by the event layer, native/js/odin/events.odin)
+
+// set while the realm dispatches an event of its own (wj_dispatch_own_event, native/js/odin/events.odin): it is trusted
+@(export, link_name = "wj_dispatch_trusted")
+wj_dispatch_trusted: bool
 
 interfaces :: #force_inline proc "contextless" () -> [^]Interface { return ([^]Interface)(&wj_interfaces) }
 

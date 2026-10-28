@@ -22,8 +22,8 @@ import "../odin/wj"
 init_data_bytes :: proc "contextless" (ctx: ^wj.Context, data: wj.JSValue, ptr: ^[^]u8, n: ^uint, is_stream: ^bool) -> bool {
 	is_stream^ = false
 	if wj.wj_is_buffer_source(data) { return wj.wj_to_buffer_source(ctx, data, ptr, n, wj.BS_ALLOW_SHARED, "ImageDecoder") }
-	if wj.web_blob_bytes(data, ptr, n) { return true }
-	if wj.web_stream_is(data) { is_stream^ = true; return false }
+	if web_blob_bytes(data, ptr, n) { return true }
+	if web_stream_is(data) { is_stream^ = true; return false }
 	wj.JS_ThrowTypeError(ctx, "Failed to construct 'ImageDecoder': 'data' is not a BufferSource, Blob or ReadableStream.")
 	return false
 }

@@ -5,9 +5,7 @@ package api_decl
 import "../abi"
 
 // A new browser EventTarget (the listeners of an object made in the engine: ports, viewports, statuses).
-EventTarget_create :: #type proc() -> abi.Handle
 // Releases a host object (Invalid_Handle when it is gone).
-Object_release :: #type proc(object: abi.Handle) -> abi.Api_Error
 
 MediaSourceHandle :: distinct abi.Handle
 // A MediaSourceHandle of a transfer list: the token the receiving realm adopts (the handle is detached).
@@ -25,7 +23,6 @@ Element_clientWidth :: #type proc(element: u64) -> i32
 Element_clientHeight :: #type proc(element: u64) -> i32
 Element_scrollIntoViewAt :: #type proc(element: u64, block: i32, inline_pos: i32)
 
-VideoFrame :: distinct abi.Handle
 // A VideoFrame of a transfer list: its pixels moved into a token (0 when the frame is closed).
 VideoFrame_takeForTransfer :: #type proc(frame: VideoFrame) -> u64
 // The receiving realm's VideoFrame of a token (0 when the token is unknown).

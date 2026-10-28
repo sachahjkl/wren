@@ -154,7 +154,7 @@ follower_remove :: proc "contextless" (ctx: ^wj.Context, target: wj.JSValue, hos
 	o := wj.wj_unwrap(target, -1)
 	if o == nil { return }
 	for x := o.listeners; x != nil; x = x.next {
-		if x.host_id == host_id && x.handler == 0 { wj.wj_listener_remove(ctx, o, x); return }
+		if x.host_id == host_id && x.handler == 0 { wj_listener_remove(ctx, o, x); return }
 	}
 }
 

@@ -176,7 +176,7 @@ error_of :: proc "contextless" (ctx: ^wj.Context, host: u64, code: i64) -> wj.JS
 @(private = "file")
 settle_file :: proc "c" (ctx: ^wj.Context, state: i32, host: u64, value: i64, data: wj.JSValue, reject: ^bool) -> wj.JSValue {
 	reject^ = false
-	if state == 1 { call_back(ctx, data, .Success, wj.web_file_from_host(ctx, u64(value))) }
+	if state == 1 { call_back(ctx, data, .Success, web_file_from_host(ctx, u64(value))) }
 	else { call_back(ctx, data, .Error, error_of(ctx, host, value)) }
 	return wj.UNDEFINED
 }

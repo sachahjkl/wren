@@ -221,7 +221,7 @@ lock_abort_reaction :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i
 	if !ok || reqs[slot].granted { return wj.UNDEFINED }
 	release_lock(reqs[slot].id)
 	signal := func_data[1]
-	reason := wj.is_object(signal) ? wj.web_signal_reason(ctx, signal) : wj.web_dom_exception(ctx, "AbortError", "lock request aborted")
+	reason := wj.is_object(signal) ? web_signal_reason(ctx, signal) : wj.web_dom_exception(ctx, "AbortError", "lock request aborted")
 	req_settle(ctx, slot, true, reason)
 	return wj.UNDEFINED
 }
@@ -273,7 +273,7 @@ wjr_LockManager_request :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, arg
 	if (o.steal && o.if_available) || (o.steal && has_signal) || (o.if_available && has_signal) {
 		return wj.web_promise_rejected(ctx, wj.web_type_error(ctx, "Failed to execute 'request': invalid option combination"))
 	}
-	if has_signal && wj.web_signal_aborted(o.signal) { return wj.web_promise_rejected(ctx, wj.web_signal_reason(ctx, o.signal)) }
+	if has_signal && web_signal_aborted(o.signal) { return wj.web_promise_rejected(ctx, web_signal_reason(ctx, o.signal)) }
 
 	name: wj.Str
 	if !wj.web_to_usv(ctx, argv[0], &name) { return wj.web_promise_reject_pending(ctx) }

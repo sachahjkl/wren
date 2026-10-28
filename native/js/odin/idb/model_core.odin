@@ -18,6 +18,9 @@ package idb
 
 import "../wj"
 
+// structured clone's deserializer (native/js/odin/clone.odin, which imports this package): set by web_idb.odin.
+clone_deserialize: proc "c" (ctx: ^wj.Context, p: [^]u8, len: uint) -> wj.JSValue
+
 // ---- operation codes, shared with src/page/idb_host.odin (as in the old idb.js) ----
 
 OP_OPEN     :: 1

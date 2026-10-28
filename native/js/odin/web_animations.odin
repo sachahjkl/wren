@@ -1575,7 +1575,7 @@ init_member :: proc "contextless" (ctx: ^wj.Context, ev: wj.JSValue, init: wj.JS
 
 @(export, link_name = "wjr_AnimationPlaybackEvent_constructor")
 wjr_AnimationPlaybackEvent_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
-	ev := wj.wj_event_construct(ctx, new_target, argc, argv, jsb.iface_of(AnimationPlaybackEvent), "AnimationPlaybackEvent")
+	ev := wj_event_construct(ctx, new_target, argc, argv, jsb.iface_of(AnimationPlaybackEvent), "AnimationPlaybackEvent")
 	if wj.is_exception(ev) { return ev }
 	init := wj.arg(argc, argv, 1)
 	if !init_member(ctx, ev, init, "currentTime", .Nullable_Double) || !init_member(ctx, ev, init, "timelineTime", .Nullable_Double) {
@@ -1595,7 +1595,7 @@ host_event_string :: proc(ctx: ^wj.Context, this_val: wj.JSValue, iface: i32, na
 	h := wj.web_event_host(this_val)
 	s: string
 	if h != 0 {
-		if text { jsb.host(&s, api_decl.Event_text, wj.wr_Event_text, h) } else { jsb.host(&s, api_decl.Event_data, wj.wr_Event_data, h) }
+		if text { jsb.host(&s, api_decl.Event_text, wj.wr_Event_text, api_decl.Event(h)) } else { jsb.host(&s, api_decl.Event_data, wj.wr_Event_data, api_decl.Event(h)) }
 	}
 	return wj.new_string_len(ctx, s)
 }
@@ -1626,7 +1626,7 @@ wjr_TransitionEvent_get_elapsedTime :: proc "c" (ctx: ^wj.Context, t: wj.JSValue
 
 @(private = "file")
 host_event_construct :: proc "contextless" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, argv: [^]wj.JSValue, iface: i32, name: cstring, name_member: cstring) -> wj.JSValue {
-	ev := wj.wj_event_construct(ctx, new_target, argc, argv, iface, name)
+	ev := wj_event_construct(ctx, new_target, argc, argv, iface, name)
 	if wj.is_exception(ev) { return ev }
 	init := wj.arg(argc, argv, 1)
 	if !init_member(ctx, ev, init, name_member, .String) || !init_member(ctx, ev, init, "elapsedTime", .Double) || !init_member(ctx, ev, init, "pseudoElement", .String) {

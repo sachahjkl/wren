@@ -263,7 +263,7 @@ put_key :: proc "contextless" (b: ^Idb_Buf, ctx: ^wj.Context, v: wj.JSValue, see
 	}
 	if wj.JS_IsDate(v) {
 		t: f64
-		if !wj.web_date_time(ctx, v, &t) || t != t { return .Not_A_Key }
+		if !web_date_time(ctx, v, &t) || t != t { return .Not_A_Key }
 		put_number(b, .Date, t)
 		return written(b)
 	}
@@ -519,7 +519,7 @@ eval_path :: proc "contextless" (ctx: ^wj.Context, v: wj.JSValue, path: string, 
 			} else {
 				bp: [^]u8
 				bl: uint
-				is_blob := wj.web_blob_bytes(cur, &bp, &bl)
+				is_blob := web_blob_bytes(cur, &bp, &bl)
 				special := is_blob && (id == "size" || id == "type" || (wj.wj_unwrap(cur, file_iface()) != nil && (id == "name" || id == "lastModified")))
 				a := wj.JS_NewAtomLen(ctx, raw_data(id), uint(len(id)))
 				if !special {
@@ -881,7 +881,7 @@ malformed :: proc "contextless" (ctx: ^wj.Context) -> wj.JSValue { return wj.JS_
 value_of :: proc "contextless" (ctx: ^wj.Context, r: ^Idb_Reader) -> wj.JSValue {
 	bytes := idb_rd_bytes(r)
 	if r.bad { return malformed(ctx) }
-	return wj.web_clone_deserialize(ctx, raw_data(bytes), uint(len(bytes)))
+	return web_clone_deserialize(ctx, raw_data(bytes), uint(len(bytes)))
 }
 
 @(private = "file")
