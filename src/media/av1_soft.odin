@@ -22,7 +22,7 @@ when ODIN_OS == .Windows {
 		"system:libvcruntime.lib",
 	}
 } else {
-	foreign import wren_native_media { "../../build/native-" + ODIN_OS_STRING + "/libwren_native.a", "system:dl", "system:pthread", "system:m" }
+	foreign import wren_native_media { "../../build/native-" + ODIN_OS_STRING + "/libwren_native.a", "system:opus", "system:asound", "system:dl", "system:pthread", "system:m" }
 }
 
 @(private)

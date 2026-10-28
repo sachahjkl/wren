@@ -27,7 +27,7 @@ when ODIN_OS == .Windows {
 	}
 } else {
 	// tools/build_native.sh (cargo for this system)
-	foreign import wren_native { "../../build/native-" + ODIN_OS_STRING + "/libwren_native.a", "system:dl", "system:pthread", "system:m" }
+	foreign import wren_native { "../../build/native-" + ODIN_OS_STRING + "/libwren_native.a", "system:opus", "system:asound", "system:dl", "system:pthread", "system:m" }
 }
 
 @(private)

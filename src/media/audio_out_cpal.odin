@@ -8,7 +8,7 @@ package media
 
 import "wb:base"
 
-foreign import wren_native_media { "../../build/native-" + ODIN_OS_STRING + "/libwren_native.a", "system:dl", "system:pthread", "system:m" }
+foreign import wren_native_media { "../../build/native-" + ODIN_OS_STRING + "/libwren_native.a", "system:opus", "system:asound", "system:dl", "system:pthread", "system:m" }
 
 @(private, default_calling_convention = "c")
 foreign wren_native_media {
