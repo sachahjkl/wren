@@ -34,6 +34,16 @@ native/js/odin/            package odin_glue: the ported domains, one file per f
     promise.odin           browser promises (was runtime/promise.c): wj_promise_from_host, wj_host_promise_text
 ```
 
+Since 28/10 (the lot "everything that was left") every `native/js/runtime/*.c` and `engine/qjs_*.c` is in `$odinified`:
+the C that is still compiled is `gen/bindings.c` (the binding table, generated from the WebIDL by bindgen) and `wj_shim.c`
+(no code). The `.c` files stay in the tree until the lead has tested the Odin ones. Two rules came out of the merge:
+
+* the layer (`wj/`) cannot call the glue (`odin_glue` imports `wj`) and a symbol cannot be declared `foreign` where the same
+  build defines it in Odin (one LLVM module: "Non-unique linking name"). A procedure of the glue that the layer calls is
+  stored in `wj.hooks` (`wj/hooks.odin`) by `wj_web_preinit`; a variable the layer reads (`wj_dispatch_trusted`) is defined
+  in `wj/`. A domain of the glue calls another domain unqualified, never `wj.<name>`;
+* `jsb.host` takes up to 14 arguments (`jsb/hostn.odin`); `jsb.host_n` is the same overload set.
+
 Every symbol is declared **once**. `odin check native/js/odin -target:freestanding_wasm32 -no-entry-point` fails with
 "Redeclaration of ..." the moment a second declaration appears; that is the point.
 
