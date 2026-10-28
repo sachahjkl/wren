@@ -18,7 +18,9 @@ test("the element", () => {
   eq(c.width, 0, "zero is allowed");
   ok(c instanceof HTMLCanvasElement, "an HTMLCanvasElement");
   eq(c.getContext("webgl"), null, "no webgl");
-  eq(c.getContext("bitmaprenderer"), null, "no bitmaprenderer");
+  const br = document.createElement("canvas").getContext("bitmaprenderer");
+  ok(br instanceof ImageBitmapRenderingContext, "a bitmaprenderer context");
+  eq(br.getContext === undefined, true, "it is not a canvas");
   const g = c.getContext("2d");
   ok(g instanceof CanvasRenderingContext2D, "a CanvasRenderingContext2D");
   eq(c.getContext("2d"), g, "the same context every time");
