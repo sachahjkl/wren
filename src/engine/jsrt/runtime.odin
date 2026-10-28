@@ -212,9 +212,25 @@ realm_create :: proc(rt: ^Runtime) -> ^Realm {
 
 realm_destroy :: proc(realm: ^Realm) {
 	rt := realm.rt
-	// Intrinsic objects are released through the final GC; here we only drop the realm's strong
-	// roots so they become collectable.
-	if realm.global != nil {object_unref(rt, realm.global)}
+	// Drop every strong reference the realm holds to its intrinsics and the global object. After this
+	// the whole intrinsic graph is unrooted; the runtime's final gc_run reclaims the cycles among them
+	// (constructor <-> prototype, globalThis -> global).
+	roots := []^Object {
+		realm.global, realm.object_proto, realm.function_proto, realm.array_proto,
+		realm.string_proto, realm.number_proto, realm.boolean_proto, realm.symbol_proto,
+		realm.bigint_proto, realm.error_proto, realm.iterator_proto, realm.array_iterator_proto,
+		realm.regexp_proto, realm.date_proto, realm.map_proto, realm.set_proto, realm.promise_proto,
+		realm.generator_proto, realm.typed_array_proto, realm.array_buffer_proto,
+		realm.object_ctor, realm.array_ctor, realm.function_ctor,
+	}
+	for o in roots {
+		if o != nil {object_unref(rt, o)}
+	}
+	for k in Error_Kind {
+		if k != .plain && realm.native_error_proto[k] != nil {
+			object_unref(rt, realm.native_error_proto[k])
+		}
+	}
 	free(realm, rt.allocator)
 }
 

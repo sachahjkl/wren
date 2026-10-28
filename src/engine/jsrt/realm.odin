@@ -92,5 +92,9 @@ define_constructor :: proc(ctx: ^Context, name_atom: Atom, fn: Native_Proc, leng
 	object_define_own(ctx, ctor, pa(.A_prototype), mk_heap(.object, object_ref(proto)), {})
 	object_define_own(ctx, proto, pa(.A_constructor), mk_heap(.object, object_ref(ctor)), {.writable, .configurable})
 	object_define_own(ctx, ctx.realm.global, name_atom, mk_heap(.object, object_ref(ctor)), {.writable, .configurable})
+	// The global and prototype.constructor slots each took their own reference; drop our creation
+	// reference so the only holders are reachable from the object graph. Callers that keep the
+	// pointer in a realm field must object_ref it themselves.
+	object_unref(rt, ctor)
 	return ctor
 }

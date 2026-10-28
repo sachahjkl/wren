@@ -129,7 +129,10 @@ gc_new_cell :: proc(rt: ^Runtime, $T: typeid, kind: Cell_Kind) -> ^T {
 	h.ref_count = 1
 	h.kind = kind
 	h.gc_mark = .white
-	if kind == .object || kind == .function_bc || kind == .var_ref {
+	// Objects, functions, var-refs and shapes can take part in cycles (a shape references its
+	// prototype object, which references shapes back through its own cells), so they are threaded on
+	// the cycle-collector list. Strings, symbols and bigints are acyclic and freed by refcount alone.
+	if kind == .object || kind == .function_bc || kind == .var_ref || kind == .shape {
 		gc_list_add(rt, h)
 	}
 	return cell
@@ -214,17 +217,92 @@ gc_run :: proc(rt: ^Runtime) {
 		}
 	}
 
-	// Sweep: everything still white is unreachable. Detach from the list and free.
-	h := rt.gc_list
-	for h != nil {
-		next := h.gc_next
+	// Sweep in two passes to make freeing a cyclic set safe. If we freed each garbage cell with its
+	// destructor in one walk, the destructor's value_free calls would decrement OTHER garbage cells
+	// in the same set, dropping their refcount below what the next step expects (a double free). So:
+	//   pass A: for every white cell, drop its outgoing edges (frees non-cyclic leaves, and unrefs
+	//           cyclic children; a cyclic child that is also white will not be freed here because its
+	//           own count is still held by the pass-B free, and we clear edges rather than destruct).
+	//   pass B: free the now edge-less cell structs.
+	// We first gather the white cells so detaching from the list does not disturb iteration.
+	white := make([dynamic]^GC_Header, rt.allocator)
+	defer delete(white)
+	for h := rt.gc_list; h != nil; h = h.gc_next {
 		if h.gc_mark == .white {
-			gc_list_remove(rt, h)
-			// Break its outgoing references so destructors of still-live cells are not re-entered,
-			// then free the storage.
-			gc_free_cycle_cell(rt, h)
+			append(&white, h)
 		}
-		h = next
+	}
+	// Pin every garbage cell with a temporary reference so that unref's triggered while clearing edges
+	// (e.g. a shape freeing its prototype, or one garbage object unref'ing another) can never drive a
+	// white cell's count to zero and free it out from under pass B.
+	for h in white {
+		h.ref_count += 1
+		gc_list_remove(rt, h)
+	}
+	for h in white {
+		gc_clear_edges(rt, h)
+	}
+	// Drop the pins and free the structs directly (not via the refcount path, since the pin is the
+	// only remaining reference).
+	for h in white {
+		h.ref_count -= 1
+		gc_free_struct(rt, h)
+	}
+}
+
+// Drop a garbage cell's outgoing references. Non-cyclic children (strings/shapes/bigints) reach
+// refcount zero and are freed here; cyclic children are only unref'd (their struct is freed in pass
+// B). After this the cell holds no references and its struct can be freed without re-entering.
+gc_clear_edges :: proc(rt: ^Runtime, h: ^GC_Header) {
+	switch h.kind {
+	case .object:
+		obj := cast(^Object)h
+		for v in obj.props {value_free(rt, v)}
+		delete(obj.props)
+		obj.props = nil
+		exotic_destroy_edges(rt, obj)
+		if obj.shape != nil {shape_unref(rt, obj.shape); obj.shape = nil}
+	case .function_bc:
+		fb := cast(^Function_Bytecode)h
+		for v in fb.cpool {value_free(rt, v)}
+		if fb.cpool != nil {delete(fb.cpool, rt.allocator); fb.cpool = nil}
+	case .var_ref:
+		vr := cast(^Var_Ref)h
+		if vr.is_closed {value_free(rt, vr.value); vr.value = UNDEFINED}
+	case .shape:
+		sh := cast(^Shape)h
+		if sh.proto != nil {object_unref(rt, sh.proto); sh.proto = nil}
+		for &t in sh.transitions {
+			if t.to != nil {shape_unref(rt, t.to); t.to = nil}
+		}
+	case .string, .symbol, .bigint:
+	}
+}
+
+// Free the (now edge-less) struct and any non-reference-holding storage.
+gc_free_struct :: proc(rt: ^Runtime, h: ^GC_Header) {
+	switch h.kind {
+	case .object:
+		obj := cast(^Object)h
+		exotic_free_storage(rt, obj)
+		gc_raw_free(rt, obj, size_of(Object))
+	case .function_bc:
+		fb := cast(^Function_Bytecode)h
+		if fb.vardefs != nil {delete(fb.vardefs, rt.allocator)}
+		if fb.closure_vars != nil {delete(fb.closure_vars, rt.allocator)}
+		if fb.byte_code != nil {delete(fb.byte_code, rt.allocator)}
+		if fb.pc2line != nil {delete(fb.pc2line, rt.allocator)}
+		if fb.source != nil {delete(fb.source, rt.allocator)}
+		gc_raw_free(rt, fb, size_of(Function_Bytecode))
+	case .var_ref:
+		gc_raw_free(rt, cast(^Var_Ref)h, size_of(Var_Ref))
+	case .shape:
+		sh := cast(^Shape)h
+		delete(sh.props)
+		delete(sh.transitions)
+		delete(sh.hash, rt.allocator)
+		gc_raw_free(rt, sh, size_of(Shape))
+	case .string, .symbol, .bigint:
 	}
 }
 
@@ -260,17 +338,4 @@ gc_mark_reachable_tramp :: proc(root: ^GC_Header) {
 	})
 }
 
-// Free a cell identified as part of a dead cycle. Its destructor must tolerate children that may
-// already be freed in the same sweep; the object destructor clears edges before recursing.
-gc_free_cycle_cell :: proc(rt: ^Runtime, h: ^GC_Header) {
-	switch h.kind {
-	case .object:
-		object_destroy(rt, cast(^Object)h)
-	case .function_bc:
-		function_bc_destroy(rt, cast(^Function_Bytecode)h)
-	case .var_ref:
-		var_ref_destroy(rt, cast(^Var_Ref)h)
-	case .string, .symbol, .bigint, .shape:
-		// Not cyclic; never on the sweep path.
-	}
-}
+
