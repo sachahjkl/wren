@@ -1,19 +1,19 @@
-# Builds Wren's JavaScript engine: QuickJS-ng compiled to WebAssembly with the browser's bindings (native\js), then
+# Builds Wren's JavaScript engine: the Odin engine (src\engine\jsrt, through the QuickJS C API of src\engine\jscapi) and the
+# browser's bindings (native\js\odin, with the generated native\js\odin\bindings_gen.odin), compiled to WebAssembly, then
 # pre-initialized (the engine, its intrinsics and the bindings set up once, at build time, and stored in the module's
 # memory image: a realm starts from that image instead of running the engine's start-up code).
-#   powershell -NoProfile -File tools\build_js.ps1 [-Force] [-Opt O2|O3|Os] [-NoLto] [-Out <dir>]
+#   powershell -NoProfile -File tools\build_js.ps1 [-Force] [-Opt O2|O3|Os] [-OdinOpt size|speed...] [-Out <dir>]
 # Outputs, in build\js:
 #   wren_js_raw.wasm   the engine as compiled (a WASI reactor)
 #   wren_js.wasm       the pre-initialized module the browser embeds (src\js\engine.odin)
-# Pinned inputs: Zig (its clang and wasi-libc) and the QuickJS-ng release source by version and SHA-256 below, fetched
-# once into build\tools and build\js\src; native\js\patches\*.patch applied to the source; the generated headers and
-# bindings in native\js\gen (bindgen). The script does nothing when build\js\STAMP matches the hash of every input.
-param([switch]$Force, [switch]$Names, [string]$Opt = 'O3', [switch]$NoLto, [string]$Out = '', [switch]$NoSnapshot, [string[]]$ExtraFlags = @(),
+# Pinned inputs: Zig (its linker and wasi-libc), fetched once into build\tools. The script does nothing when build\js\STAMP
+# matches the hash of every input (the glue, the engine and the host package that pre-initializes it).
+# The QuickJS-ng pins below are not used to build anything: test262.ps1 and js_bench.ps1 read them (QuickJS-ng's test262
+# configuration, and its native release as the reference to measure against).
+param([switch]$Force, [switch]$Names, [string]$Opt = 'O3', [string]$Out = '', [switch]$NoSnapshot, [string[]]$ExtraFlags = @(),
       [ValidateSet('dlmalloc', 'mimalloc')][string]$Allocator = 'dlmalloc',
-      # the JavaScript engine: QuickJS-ng in C (default), or the Odin one (src\engine\jsrt through src\engine\jscapi: no QuickJS C is compiled)
       # the Odin glue/engine object: -o: level, and extra flags (-disable-assert -no-bounds-check -no-type-assert -use-single-module -target-features:... -microarch:...)
-      [ValidateSet('none', 'minimal', 'size', 'speed', 'aggressive')][string]$OdinOpt = 'size', [string[]]$OdinFlags = @($env:WREN_ODIN_FLAGS -split ';' | Where-Object { $_ }),
-      [ValidateSet('quickjs', 'jsrt')][string]$Engine = $(if ($env:WREN_JS_ENGINE) { $env:WREN_JS_ENGINE } else { 'jsrt' }))
+      [ValidateSet('none', 'minimal', 'size', 'speed', 'aggressive')][string]$OdinOpt = 'size', [string[]]$OdinFlags = @($env:WREN_ODIN_FLAGS -split ';' | Where-Object { $_ }))
 $ErrorActionPreference = 'Stop'
 $ZigVersion = '0.15.2'
 $ZigSha256 = '3a0ed1e8799a2f8ce2a6e6290a9ff22e6906f8227865911fb7ddedc3cc14cb0c'
@@ -46,8 +46,10 @@ function Get-Pinned([string]$url, [string]$file, [string]$sha) {
     if ($got -ne $sha.ToUpper()) { Remove-Item $file -Force; throw "SHA-256 mismatch for $url`: expected $sha, got $got" }
 }
 
-# what the engine is made of: change any of it and it is built again
-$inputs = @(Get-ChildItem $native -Recurse -File | Where-Object { $_.Extension -in '.c', '.h', '.patch', '.js', '.odin' }) +
+# what the engine is made of: change any of it and it is built again (the Odin engine and its packages count: the glue
+# imports them from src\)
+$inputs = @(Get-ChildItem $native -Recurse -File | Where-Object { $_.Extension -in '.c', '.h', '.js', '.odin' }) +
+          @(Get-ChildItem (Join-Path $root 'src\engine') -Recurse -Filter *.odin) +
           @(Get-ChildItem (Join-Path $root 'src\wasm') -Filter *.odin) +
           @(Get-ChildItem (Join-Path $root 'src\tools\jsengine') -Filter *.odin -ErrorAction SilentlyContinue) +
           @(Get-Item $PSCommandPath)
@@ -58,7 +60,7 @@ foreach ($f in ($inputs | Sort-Object FullName)) {
     $all.Write($name, 0, $name.Length)
     $b = [IO.File]::ReadAllBytes($f.FullName); $all.Write($b, 0, $b.Length)
 }
-$flagText = [Text.Encoding]::UTF8.GetBytes("$ZigVersion|$QjsVersion|$Opt|$NoLto|$($ExtraFlags -join ' ')|$Allocator|$Engine|$OdinOpt|$($OdinFlags -join ' ')")
+$flagText = [Text.Encoding]::UTF8.GetBytes("$ZigVersion|$Opt|$($ExtraFlags -join ' ')|$Allocator|$OdinOpt|$($OdinFlags -join ' ')")
 $all.Write($flagText, 0, $flagText.Length)
 $stamp = ([BitConverter]::ToString($sha.ComputeHash($all.ToArray())) -replace '-', '').ToLower()
 if (-not $Force -and (Test-Path $final) -and (Test-Path $stampFile) -and ((Get-Content $stampFile -Raw).Trim() -eq $stamp)) {
@@ -66,7 +68,7 @@ if (-not $Force -and (Test-Path $final) -and (Test-Path $stampFile) -and ((Get-C
     exit 0
 }
 
-# Zig, pinned (its clang targets wasm32-wasi and ships wasi-libc)
+# Zig, pinned (its linker and wasi-libc: the module is a wasm32-wasi reactor)
 $tools = Join-Path $root 'build\tools'
 $zigDir = Join-Path $tools "zig-x86_64-windows-$ZigVersion"
 $zig = Join-Path $zigDir 'zig.exe'
@@ -76,73 +78,11 @@ if (-not (Test-Path $zig)) {
     Expand-Archive -Path $zip -DestinationPath $tools -Force
     if (-not (Test-Path $zig)) { throw "zig.exe not found in $zigDir" }
 }
-
-# QuickJS-ng release source, pinned, patched
 $srcRoot = Join-Path $out 'src'
-$qjs = Join-Path $srcRoot "quickjs-$QjsVersion"
-$tarball = Join-Path $tools "quickjs-ng-v$QjsVersion.tar.gz"
-Get-Pinned "https://github.com/quickjs-ng/quickjs/archive/refs/tags/v$QjsVersion.tar.gz" $tarball $QjsSha256
-if (Test-Path $qjs) { [IO.Directory]::Delete($qjs, $true) }
-New-Item -ItemType Directory -Force $srcRoot | Out-Null
-& tar -xzf $tarball -C $srcRoot
-if ($LASTEXITCODE -ne 0) { throw "tar failed ($LASTEXITCODE)" }
-# git apply as a plain patch tool: the source tree must not be taken for a part of this repository
-$ceiling = $env:GIT_CEILING_DIRECTORIES
-$env:GIT_CEILING_DIRECTORIES = $srcRoot
-try {
-    foreach ($p in (Get-ChildItem (Join-Path $native 'patches') -Filter *.patch | Sort-Object Name)) {
-        Push-Location $qjs
-        try {
-            & git apply --whitespace=nowarn $p.FullName
-            if ($LASTEXITCODE -ne 0) { throw "patch $($p.Name) does not apply to QuickJS-ng $QjsVersion" }
-        } finally { Pop-Location }
-    }
-} finally { $env:GIT_CEILING_DIRECTORIES = $ceiling }
-if (-not (Select-String -Path (Join-Path $qjs 'quickjs.h') -Pattern 'JS_SetGCPrologue' -Quiet)) { throw 'the QuickJS-ng patches were not applied' }
-
-# the JIT's one-op path (native\js\jit\wjit.h: wjit_step) runs the interpreter's own code for each op: the body of
-# JS_CallInternal's switch, taken from the patched source as is (from "SWITCH(pc) {" to the end of that switch, just
-# before the exception handler)
-$genDir = Join-Path $out 'gen'
-New-Item -ItemType Directory -Force $genDir | Out-Null
-$qjsLines = [IO.File]::ReadAllText((Join-Path $qjs 'quickjs.c')).Replace("`r`n", "`n").Split("`n")
-$fn = [Array]::IndexOf($qjsLines, 'static JSValue JS_CallInternal(JSContext *caller_ctx, JSValueConst func_obj,')
-if ($fn -lt 0) { throw 'JS_CallInternal not found in quickjs.c' }
-$sw = -1; $ex = -1
-for ($i = $fn; $i -lt $qjsLines.Length; $i++) {
-    if ($sw -lt 0 -and $qjsLines[$i] -eq '        SWITCH(pc) {') { $sw = $i }
-    if ($sw -ge 0 -and $qjsLines[$i] -eq ' exception:') { $ex = $i; break }
-}
-if ($sw -lt 0 -or $ex -lt 0 -or $qjsLines[$ex - 1] -ne '    }' -or $qjsLines[$ex - 2] -ne '        }') { throw 'the interpreter loop of JS_CallInternal is not where tools\build_js.ps1 expects it' }
-$stepBody = "/* generated by tools/build_js.ps1: the cases of JS_CallInternal's switch (quickjs.c lines $($sw + 2)-$($ex - 2)) */`n" + (($qjsLines[($sw + 1)..($ex - 3)]) -join "`n") + "`n"
-[IO.File]::WriteAllText((Join-Path $genDir 'wjit_step_body.h'), $stepBody)
 
 # (the JavaScript parts of the realm, native\js\prelude\*.js if there are any, are embedded by the Odin glue itself:
 # native\js\odin\prelude.odin, #load_directory)
 
-# compile: one translation unit per file, link-time optimization across all of them
-$cflags = @(
-    '-target', 'wasm32-wasi', "-$Opt", '-mexec-model=reactor',
-    '-mbulk-memory', '-msimd128', '-mnontrapping-fptoint', '-msign-ext', '-mmutable-globals', '-mmultivalue',
-    '-DWREN_JS=1', '-DWREN_JIT=1', '-DQUICKJS_NG_BUILD', '-D_WASI_EMULATED_SIGNAL', '-DNDEBUG',
-    '-fno-exceptions', '-fvisibility=hidden', $(if ($Names) { '-g' } else { '-g0' }),
-    '-I', $qjs, '-I', (Join-Path $native 'engine'),
-    '-I', (Join-Path $native 'jit'), '-I', $genDir
-)
-if (-not $NoLto) { $cflags += '-flto' }
-$cflags += $ExtraFlags
-$sources = if ($Engine -eq 'jsrt') { @() } else { @('quickjs.c', 'libregexp.c', 'libunicode.c', 'dtoa.c') | ForEach-Object { Join-Path $qjs $_ } }   # (jsrt: the engine is Odin, in the glue object)
-# The glue and its generated bindings are Odin (native\js\odin, linked below); the C left is QuickJS and a shim of layout asserts.
-$sources += (Join-Path $native 'odin\wj_shim.c')
-if ($Allocator -eq 'mimalloc') {
-    # the engine's heap through mimalloc (pinned), the C library's own through wasi-libc's dlmalloc
-    $mi = Join-Path $srcRoot "mimalloc-$MimallocVersion"
-    $mtar = Join-Path $tools "mimalloc-v$MimallocVersion.tar.gz"
-    Get-Pinned "https://github.com/microsoft/mimalloc/archive/refs/tags/v$MimallocVersion.tar.gz" $mtar $MimallocSha256
-    if (-not (Test-Path $mi)) { & tar -xzf $mtar -C $srcRoot; if ($LASTEXITCODE -ne 0) { throw "tar failed ($LASTEXITCODE)" } }
-    $sources += (Join-Path $mi 'src\static.c')
-    $cflags += @('-DWJ_MIMALLOC=1', '-I', (Join-Path $mi 'include'), '-DMI_STAT=0', '-DMI_SECURE=0', '-DMI_DEBUG=0')
-}
 $ldflags = @(
     '-lwasi-emulated-signal',
     # the C stack (in linear memory): JavaScript recursion depth is bounded by JS_SetMaxStackSize (768 KiB); the rest is
@@ -153,32 +93,27 @@ $ldflags = @(
 )
 New-Item -ItemType Directory -Force $out | Out-Null
 $t0 = Get-Date
-# The Odin glue (native\js\odin) to one wasm32 object, linked with the C objects by the same wasm-ld zig cc drives. It
-# is freestanding (no Odin runtime), -o:size to match the engine's size budget. The wjr_* functions it exports resolve
-# the forward references the generated binding table (gen\bindings.c) holds for the ported domains.
+# The Odin glue and engine (native\js\odin, src\engine) to one wasm32 object, linked with wasi-libc by the wasm-ld zig drives.
+# It is freestanding (no Odin runtime start-up: wj_preinit runs it), -o:size to match the engine's size budget.
 $odinObj = Join-Path $out 'odin_glue.o'
-# the C defines the Odin glue also reads: the test262 image (test262_host.odin) and the mimalloc heap (qjs_realm.odin)
-$odinDefines = @()
+# the defines the Odin glue reads: the test262 image (test262_host.odin) and the mimalloc heap (qjs_realm.odin)
+$odinDefines = @('-define:WJ_JSRT=true', '-define:JSCAPI_EXPORT=true')
 if ($ExtraFlags -contains '-DWREN_TEST262=1') { $odinDefines += '-define:WREN_TEST262=true' }
 if ($Allocator -eq 'mimalloc') { $odinDefines += '-define:WJ_MIMALLOC=true' }
-if ($Engine -eq 'jsrt') { $odinDefines += '-define:WJ_JSRT=true'; $odinDefines += '-define:JSCAPI_EXPORT=true' }
 & odin build (Join-Path $native 'odin') -build-mode:obj -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -vet "-o:$OdinOpt" @OdinFlags -collection:wb=src -collection:toolkit=ext/gui_toolkit @odinDefines -out:$odinObj
 if ($LASTEXITCODE -ne 0) { throw "odin build of native\js\odin failed" }
-# Compile each C translation unit to a native wasm object (LTO stays on *within* each TU via -O3; the cross-TU LTO of
-# the one-shot link is dropped only when an Odin object is linked in, see below), then link objects + Odin object.
-#
-# Why not the one-shot `zig cc @sources $odinObj`: Odin's freestanding wasm runtime defines memset/memcpy/memmove/bzero
-# as strong symbols (it assumes no libc), and so does wasi-libc. A one-shot *LTO* link rejects the duplicate as a hard
-# error; a plain-object link only warns (the definitions are byte-for-byte equivalent). So the C is compiled to plain
-# objects (no -flto) and linked without LTO when the Odin glue is present. The size cost is small (see the report) and
-# this keeps the toolchain simple and robust; a later pass can reclaim cross-TU LTO once wj_the_realm itself is in Odin
-# and the C memory-function duplication goes away.
-$cObjsFlags = $cflags | Where-Object { $_ -ne '-flto' }   # plain objects, not LTO bitcode (see above)
+
+# The only C left is the optional mimalloc (the engine's heap through mimalloc, the C library's own through dlmalloc).
 $cObjs = @()
-foreach ($c in $sources) {
-    $o = Join-Path $out ('c_' + [IO.Path]::GetFileNameWithoutExtension($c) + '.o')
-    & $zig cc @cObjsFlags '-c' $c '-o' $o
-    if ($LASTEXITCODE -ne 0) { throw "zig cc -c failed on $c" }
+if ($Allocator -eq 'mimalloc') {
+    $mi = Join-Path $srcRoot "mimalloc-$MimallocVersion"
+    $mtar = Join-Path $tools "mimalloc-v$MimallocVersion.tar.gz"
+    Get-Pinned "https://github.com/microsoft/mimalloc/archive/refs/tags/v$MimallocVersion.tar.gz" $mtar $MimallocSha256
+    New-Item -ItemType Directory -Force $srcRoot | Out-Null
+    if (-not (Test-Path $mi)) { & tar -xzf $mtar -C $srcRoot; if ($LASTEXITCODE -ne 0) { throw "tar failed ($LASTEXITCODE)" } }
+    $o = Join-Path $out 'c_static.o'
+    & $zig cc '-target' 'wasm32-wasi' "-$Opt" '-mexec-model=reactor' '-mbulk-memory' '-msimd128' '-mnontrapping-fptoint' '-msign-ext' '-mmutable-globals' '-mmultivalue' '-DWJ_MIMALLOC=1' '-I' (Join-Path $mi 'include') '-DMI_STAT=0' '-DMI_SECURE=0' '-DMI_DEBUG=0' '-fno-exceptions' '-fvisibility=hidden' '-g0' '-c' (Join-Path $mi 'src\static.c') '-o' $o
+    if ($LASTEXITCODE -ne 0) { throw "zig cc -c failed on mimalloc" }
     $cObjs += $o
 }
 & $zig cc '-target' 'wasm32-wasi' "-$Opt" '-mexec-model=reactor' @cObjs $odinObj @ldflags -o $raw
