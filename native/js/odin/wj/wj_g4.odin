@@ -80,6 +80,7 @@ foreign {
 	JS_GetOwnPropertyNames :: proc(ctx: ^Context, ptab: ^[^]Property_Enum, plen: ^u32, obj: JSValue, flags: i32) -> i32 ---
 	JS_FreePropertyEnum  :: proc(ctx: ^Context, tab: [^]Property_Enum, len: u32) ---
 	JS_DefinePropertyValueStr :: proc(ctx: ^Context, this_obj: JSValue, prop: cstring, val: JSValue, flags: i32) -> i32 ---
+	JS_SetPropertyStr    :: proc(ctx: ^Context, this_obj: JSValue, prop: cstring, val: JSValue) -> i32 ---
 	JS_DefineProperty    :: proc(ctx: ^Context, this_obj: JSValue, prop: Atom, val, getter, setter: JSValue, flags: i32) -> i32 ---
 
 	// atoms
@@ -188,6 +189,8 @@ foreign {
 	wj_to_handle :: proc(ctx: ^Context, v: JSValue, iface: i32, nullable: bool, out: ^u64, message: cstring) -> bool ---
 	// a JS string from UTF-8 bytes decoded the WHATWG way (BOM removed when strip_bom).
 	web_utf8_string :: proc(ctx: ^Context, p: [^]u8, n: uint, strip_bom: bool) -> JSValue ---
+	// a malloc'd NUL-terminated copy of n bytes (web.h); free with libc free.
+	web_strndup :: proc(p: [^]u8, n: uint) -> [^]u8 ---
 	wj_new_object_for :: proc(ctx: ^Context, iface: i32, new_target: JSValue, impl: rawptr, impl_free: proc "c" (p: rawptr)) -> JSValue ---
 
 	// an Event subtype constructor (web.h): used by event-shaped interfaces (MediaQueryListEvent...).
@@ -241,6 +244,10 @@ foreign {
 	wj_g4_scratch_cap  :: proc() -> u32 ---
 	// wj_obj.handle (offset 0): the browser handle behind a platform object.
 	wj_g4_obj_handle   :: proc(o: rawptr) -> u64 ---
+	// wj_obj.impl: the engine-owned data of a platform object (for a wj_obj_of result, not a wj_this/web_this_impl one).
+	wj_g4_obj_impl     :: proc(o: rawptr) -> rawptr ---
+	// wj_obj_of(v): the wj_obj of any platform object, or nil (the qjs_internal.h inline, via the wj_class_* ids).
+	wj_g4_obj_of       :: proc(v: JSValue) -> rawptr ---
 	// wj_the_realm.protos[iface]: the prototype object of an interface (not counted).
 	wj_g4_realm_proto  :: proc(iface: i32) -> JSValue ---
 	// wj_the_realm.ctx: the realm's JSContext.
@@ -266,6 +273,7 @@ foreign {
 	strtod  :: proc(nptr: [^]u8, endptr: ^[^]u8) -> f64 ---
 	memset  :: proc(dst: rawptr, c: i32, n: uint) -> rawptr ---
 	memcpy  :: proc(dst: rawptr, src: rawptr, n: uint) -> rawptr ---
+	memcmp  :: proc(a: rawptr, b: rawptr, n: uint) -> i32 ---
 	fmod    :: proc(x: f64, y: f64) -> f64 ---
 	trunc   :: proc(x: f64) -> f64 ---
 	strlen  :: proc(s: [^]u8) -> uint ---
@@ -299,6 +307,8 @@ realm_ctx :: #force_inline proc "contextless" () -> ^Context { return wj_g4_real
 scratch_data :: #force_inline proc "contextless" () -> [^]u8 { return wj_g4_scratch_data() }
 scratch_cap  :: #force_inline proc "contextless" () -> u32 { return wj_g4_scratch_cap() }
 obj_handle   :: #force_inline proc "contextless" (o: rawptr) -> u64 { return wj_g4_obj_handle(o) }
+obj_impl     :: #force_inline proc "contextless" (o: rawptr) -> rawptr { return wj_g4_obj_impl(o) }
+obj_of       :: #force_inline proc "contextless" (v: JSValue) -> rawptr { return wj_g4_obj_of(v) }
 realm_proto  :: #force_inline proc "contextless" (iface: i32) -> JSValue { return wj_g4_realm_proto(iface) }
 
 // WJ_FETCH_STRING: call `fill(buf, cap)` (a browser function returning the full length or a negative Error) until it
@@ -346,6 +356,7 @@ foreign m_dom {
 @(default_calling_convention = "c")
 foreign m_events {
 	@(link_name = "Event_data") wr_Event_data :: proc(event: u64, buf: [^]u8, cap: u32) -> i32 ---
+	@(link_name = "Event_text") wr_Event_text :: proc(event: u64, buf: [^]u8, cap: u32) -> i32 ---
 	@(link_name = "Event_code") wr_Event_code :: proc(event: u64) -> i64 ---
 }
 
