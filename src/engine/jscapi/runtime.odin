@@ -398,8 +398,12 @@ JS_SetOpaque :: proc "c" (v: JSValue, p: rawptr) -> i32 {
 
 JS_GetClassID :: proc "c" (v: JSValue) -> Class_ID {
 	if tag_of(v) != TAG_OBJECT {return 0}
-	d := js.host_object_of(js.as_obj(dec(v)))
-	return d != nil ? d.class_id : 0
+	o := js.as_obj(dec(v))
+	d := js.host_object_of(o)
+	if d != nil {return d.class_id}
+	// a built-in class (ArrayBuffer, SharedArrayBuffer, DataView...): its own number, below FIRST_HOST_CLASS, so the
+	// glue can tell them apart (it compares the ids of the built-ins it samples at start-up)
+	return u32(o.class)
 }
 
 // ---- exotic methods (jsrt Host_Exotic over the glue's JSClassExoticMethods) ----
@@ -545,6 +549,10 @@ bridge_native :: proc(ctx: ^js.Context, this: js.Value, args: []js.Value, magic:
 		r = (cast(Getter)fn)(c, enc(this))
 	case CFUNC_setter:
 		r = (cast(Setter)fn)(c, enc(this), len(args) > 0 ? argv[0] : UNDEFINED)
+	case CFUNC_getter_magic:
+		r = (cast(proc "c" (ctx: ^Context, this_val: JSValue, magic: i32) -> JSValue)fn)(c, enc(this), magic)
+	case CFUNC_setter_magic:
+		r = (cast(proc "c" (ctx: ^Context, this_val: JSValue, value: JSValue, magic: i32) -> JSValue)fn)(c, enc(this), len(args) > 0 ? argv[0] : UNDEFINED, magic)
 	case PROTO_DATA:
 		fdata: [8]JSValue
 		fd := fdata[:]

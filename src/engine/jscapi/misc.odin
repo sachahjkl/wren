@@ -34,7 +34,9 @@ JS_PromiseThen :: proc "c" (c: ^Context, promise: JSValue, on_fulfilled: JSValue
 	ctx := jctx(c)
 	m := js.host_enter(ctx.rt)
 	defer js.host_exit(ctx.rt, m, js.UNDEFINED)
-	return own(ctx.rt, js.invoke(ctx, dec(promise), js.atom_from_utf8(ctx.rt, "then"), {dec(on_fulfilled), dec(on_rejected)}))
+	// the built-in Promise.prototype.then itself, not a lookup of "then": a script that replaced it is not run by the host
+	args := [2]js.Value{dec(on_fulfilled), dec(on_rejected)}
+	return own(ctx.rt, js.promise_then(ctx, dec(promise), args[:], 0))
 }
 
 JS_PromiseMarkAsHandled :: proc "c" (c: ^Context, promise: JSValue) {
@@ -345,6 +347,12 @@ load_module_bridge :: proc(ctx: ^js.Context, referrer: string, specifier: string
 		js_free(c, rawptr(res))
 	}
 	if found := js.find_module_by_name(rt, js.atom_from_utf8(rt, name)); found != nil {
+		// a module the host made ahead (JS_NewCModule) runs its init the first time it is imported
+		if found.native_init != nil {
+			init := cast(Module_Init)found.native_init
+			found.native_init = nil
+			if init(c, cast(^Module_Def)found) < 0 {return js.EXCEPTION}
+		}
 		return js.mk_ptr(.module, found)
 	}
 	attrs := js.UNDEFINED
