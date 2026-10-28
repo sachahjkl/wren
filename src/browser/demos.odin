@@ -1,10 +1,11 @@
 package browser
 
 import "core:fmt"
+import "core:path/filepath"
 import "core:strings"
-import win "core:sys/windows"
 import "wb:base"
 import "wb:config"
+import "wb:desktop"
 import "wb:fetch"
 import "wb:page"
 
@@ -238,11 +239,11 @@ demos_base :: proc(app: ^App, allocator := context.temp_allocator) -> (base_url:
 	}
 	exe := exe_directory()
 	if exe != "" {
-		if d := strings.concatenate({exe, "\\demos"}, context.temp_allocator); is_file(strings.concatenate({d, "\\index.html"}, context.temp_allocator)) {
+		if d := jpath(exe, "demos"); is_file(jpath(d, "index.html")) {
 			return file_url_of_dir(d, allocator), .Package
 		}
 		if repo := repository_of(exe); repo != "" {
-			return file_url_of_dir(strings.concatenate({repo, "\\examples\\site"}, context.temp_allocator), allocator), .Repository
+			return file_url_of_dir(jpath(repo, "examples", "site"), allocator), .Repository
 		}
 	}
 	return strings.concatenate({server, "site/"}, allocator), .Server
@@ -260,33 +261,38 @@ with_slash :: proc(s: string, allocator := context.temp_allocator) -> string {
 	return strings.has_suffix(s, "/") ? strings.clone(s, allocator) : strings.concatenate({s, "/"}, allocator)
 }
 
-// The folder of the running executable (no trailing separator).
+// The folder of the running executable (no trailing separator), from desktop.executable_path (neutral:
+// os.get_executable_path on every system).
 exe_directory :: proc() -> string {
-	buf: [win.MAX_PATH_WIDE]u16
-	n := win.GetModuleFileNameW(nil, raw_data(buf[:]), u32(len(buf)))
-	if n == 0 || int(n) >= len(buf) { return "" }
-	path, err := win.wstring_to_utf8(win.wstring(raw_data(buf[:])), int(n), context.temp_allocator)
-	if err != nil { return "" }
-	i := strings.last_index_byte(path, '\\')
-	return i > 0 ? path[:i] : ""
+	exe := desktop.executable_path(context.temp_allocator)
+	if exe == "" { return "" }
+	return desktop.parent_dir(exe)
 }
 
-// The repository a development build runs from: the nearest parent (up to three levels) with examples\site\index.html.
+// Joins path parts with the system separator (filepath.join returns an allocator error too; here the temp allocator
+// does not fail, so only the path is kept).
+@(private = "file")
+jpath :: proc(parts: ..string) -> string {
+	p, _ := filepath.join(parts, context.temp_allocator)
+	return p
+}
+
+// The repository a development build runs from: the nearest parent (up to three levels) with examples/site/index.html.
 @(private = "file")
 repository_of :: proc(dir: string) -> string {
 	d := dir
 	for _ in 0 ..< 4 {
-		if is_file(strings.concatenate({d, "\\examples\\site\\index.html"}, context.temp_allocator)) { return d }
-		i := strings.last_index_byte(d, '\\')
-		if i <= 0 { break }
-		d = d[:i]
+		if is_file(jpath(d, "examples", "site", "index.html")) { return d }
+		parent := desktop.parent_dir(d)
+		if parent == "" || parent == d { break }
+		d = parent
 	}
 	return ""
 }
 
 is_file :: proc(path: string) -> bool {
-	attr := win.GetFileAttributesW(win.utf8_to_wstring(path, context.temp_allocator))
-	return attr != win.INVALID_FILE_ATTRIBUTES && attr & win.FILE_ATTRIBUTE_DIRECTORY == 0
+	_, _, ok := base.file_stat(path)   // fsx.stat: true only for a regular file
+	return ok
 }
 
 // "C:\dir\my demos" -> "file:///C:/dir/my%20demos/" ("\\host\share\d" -> "file://host/share/d/"): bytes other than
@@ -318,9 +324,10 @@ demo_href :: proc(app: ^App, d: Demo, base_url: string, allocator := context.tem
 		if exe == "" { return "" }
 		repo := repository_of(exe)
 		if repo == "" { return "" }
-		file := strings.concatenate({repo, "\\build\\perf\\", d.path}, context.temp_allocator)
+		perf_dir := jpath(repo, "build", "perf")
+		file := jpath(perf_dir, d.path)
 		if !is_file(file) { return "" }
-		return strings.concatenate({file_url_of_dir(strings.concatenate({repo, "\\build\\perf"}, context.temp_allocator), context.temp_allocator), d.path}, allocator)
+		return strings.concatenate({file_url_of_dir(perf_dir, context.temp_allocator), d.path}, allocator)
 	case strings.has_prefix(d.path, "/"): return strings.concatenate({strings.trim_right(server, "/"), d.path}, allocator)
 	case d.server: return strings.concatenate({server, "site/", d.path}, allocator)
 	}

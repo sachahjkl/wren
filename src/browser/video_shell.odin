@@ -71,7 +71,9 @@ video_shell_destroy :: proc(app: ^App) {
 	}
 	delete(vshell.targets)
 	if vshell.wake != base.NIL_HANDLE { host.clear_timer(&app.loop, vshell.wake) }
-	if vshell.gpu_set { media.set_gpu_device(nil) }
+	when !render.USE_WGPU {
+		if vshell.gpu_set { media.set_gpu_device(nil) }   // the shared D3D device (Direct3D backend only; no equivalent on wgpu)
+	}
 	delete(vshell.stamps)
 	vshell = {}
 }

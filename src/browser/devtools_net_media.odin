@@ -8,19 +8,17 @@ package browser
 
 import "core:fmt"
 import "core:os"
+import "core:path/filepath"
 import "core:strings"
-import win "core:sys/windows"
 import "toolkit:draw"
 import "toolkit:render"
 import "toolkit:ui"
+import "wb:base"
 import "wb:media"
 
-foreign import winmm "system:winmm.lib"
-
-@(default_calling_convention = "system")
-foreign winmm {
-	mciSendStringW :: proc(command: win.LPCWSTR, ret: win.LPWSTR, ret_len: win.UINT, hwnd: win.HWND) -> win.DWORD ---
-}
+// The system's media control interface (devtools_net_media_windows.odin: MCI; devtools_net_media_other.odin: a stub that
+// answers "unsupported", so a format the browser's own player cannot demux simply shows a notice off Windows, rather than
+// playing through MCI). Every `.System` operation goes through `mci`; its false result keeps the mode from activating.
 
 Media_Mode :: enum u8 { None, Player, System }
 
@@ -74,14 +72,6 @@ net_media_release :: proc() {
 	vol, muted := m.volume, m.muted
 	m^ = {}
 	m.volume, m.muted = vol, muted
-}
-
-@(private = "file")
-mci :: proc(cmd: string) -> (result: string, ok: bool) {
-	buf: [128]u16
-	rc := mciSendStringW(win.utf8_to_wstring(cmd, context.temp_allocator), raw_data(buf[:]), len(buf), nil)
-	s, _ := win.utf16_to_utf8(buf[:], context.temp_allocator)
-	return strings.trim_right_null(s), rc == 0
 }
 
 @(private = "file")
@@ -164,8 +154,8 @@ net_media_open :: proc(app: ^App, e: ^Net_Entry) {
 	case: if i := strings.last_index_byte(net_name_of(e.url), '.'); i >= 0 { ext = net_name_of(e.url)[i:] }
 	}
 	if q := strings.index_byte(ext, '?'); q >= 0 { ext = ext[:q] }
-	dir := os.get_env("TEMP", context.temp_allocator)
-	path := fmt.aprintf("%s\\wren_devtools_media_%d%s", dir, e.id, ext)
+	dir := base.temp_dir(context.temp_allocator)
+	path, _ := filepath.join({dir, fmt.tprintf("wren_devtools_media_%d%s", e.id, ext)}, context.allocator)
 	if err := os.write_entire_file(path, body); err != nil {
 		m.err = strings.clone("The media could not be written to a temporary file for the system's player.")
 		delete(path)
