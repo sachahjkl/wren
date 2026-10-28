@@ -107,14 +107,20 @@ atom_from_string :: proc(t: ^Atom_Table, sv: String_Value) -> Atom {
 		t.index[string(owned)] = a
 		return a
 	}
-	key := string(transmute([]u8)sv.units)
+	key := units_as_bytes(sv.units)
 	if a, ok := t.windex[key]; ok {return a}
 	owned := make([]u16, len(sv.units), t.allocator)
 	copy(owned, sv.units)
 	a := Atom(u32(JS_ATOM_END) + u32(len(t.runtime)))
 	append(&t.runtime, String_Value{units = owned, is_wide = true})
-	t.windex[string(transmute([]u8)owned)] = a
+	t.windex[units_as_bytes(owned)] = a
 	return a
+}
+
+// units_as_bytes views UTF-16 units as their raw bytes (a slice transmute would keep the element count).
+@(private = "file")
+units_as_bytes :: proc(u: []u16) -> string {
+	return string(([^]u8)(raw_data(u))[:len(u) * 2])
 }
 
 // intern returns the atom of a UTF-8 name (JS_NewAtomLen).

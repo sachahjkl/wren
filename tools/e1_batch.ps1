@@ -1,4 +1,4 @@
-# E1 parity: compile every manifest entry with the Odin front-end (build\e1_judge.exe batch), in chunks, with a
+# E1 parity: compile every manifest entry with the Odin front-end (build\e1j.exe batch), in chunks, with a
 # watchdog: a chunk that crashes or stalls is re-run one file at a time so each culprit is recorded as
 # "crash" / "hang" instead of stopping the run. Writes <OutDir>\<idx>.bin and <Status> ("idx<TAB>status<TAB>len").
 param(
@@ -10,7 +10,7 @@ param(
     [int]$FileTimeoutSec = 15
 )
 $ErrorActionPreference = 'Stop'
-$judge = Join-Path (Split-Path $PSScriptRoot -Parent) 'build\e1_judge.exe'
+$judge = Join-Path (Split-Path $PSScriptRoot -Parent) 'build\e1j.exe'
 if (Test-Path $OutDir) { Get-ChildItem $OutDir -Filter *.bin | Remove-Item -Force } else { New-Item -ItemType Directory $OutDir | Out-Null }
 $total = ([IO.File]::ReadAllLines($Manifest)).Count
 $tmp = Join-Path $env:TEMP "e1_chunk_$PID.txt"
@@ -19,6 +19,7 @@ $all = [System.Collections.Generic.List[string]]::new()
 function Run-Range([int]$start, [int]$count, [int]$timeoutSec) {
     Remove-Item $tmp -ErrorAction SilentlyContinue
     $p = Start-Process -FilePath $judge -ArgumentList 'batch', "`"$Manifest`"", "`"$OutDir`"", $start, $count -NoNewWindow -PassThru -RedirectStandardOutput $tmp
+    $null = $p.Handle # makes ExitCode available after WaitForExit(timeout)
     $ok = $p.WaitForExit($timeoutSec * 1000)
     if (-not $ok) { $p.Kill(); $p.WaitForExit(); return @{ ok = $false; why = 'hang'; lines = @() } }
     $lines = if (Test-Path $tmp) { [IO.File]::ReadAllLines($tmp) } else { @() }

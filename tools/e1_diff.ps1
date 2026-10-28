@@ -3,7 +3,7 @@
 param([Parameter(Mandatory)][string]$File, [switch]$Module)
 $ErrorActionPreference = 'Stop'
 $o = 'C:\Users\sacha\AppData\Local\Temp\opencode\e1_oracle'
-$judge = Join-Path (Split-Path $PSScriptRoot -Parent) 'build\e1_judge.exe'
+$judge = Join-Path (Split-Path $PSScriptRoot -Parent) 'build\e1j.exe'
 $ref = Join-Path $o 'one.ref.bin'
 $ours = Join-Path $o 'one.ours.bin'
 Remove-Item $ref, $ours -ErrorAction SilentlyContinue
