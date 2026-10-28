@@ -138,6 +138,7 @@ main :: proc() {
 	host.blocking_destroy(&blocking)
 	net.client_destroy(&client)
 	fetch.profile_destroy(&profile)
+	page.discard_page_tasks(&loop)
 	host.loop_destroy(&loop)
 	page.settings_destroy(&settings)
 	failures += testenv.mem_check("styletest")

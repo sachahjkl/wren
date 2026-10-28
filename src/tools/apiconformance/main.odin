@@ -84,6 +84,7 @@ main :: proc() {
 	host.blocking_destroy(&blocking)
 	net.client_destroy(&client)
 	fetch.profile_destroy(&profile)
+	page.discard_page_tasks(&loop)
 	host.loop_destroy(&loop)
 	failures += testenv.mem_check("apiconformance")
 	fmt.printf("%d failure(s)\n", failures)

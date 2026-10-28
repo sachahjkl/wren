@@ -640,6 +640,7 @@ bench("document.body", n => { let s; for (let i = 0; i < n; i++) s = document.bo
 	host.blocking_destroy(&blocking)
 	net.client_destroy(&client)
 	fetch.profile_destroy(&profile)
+	page.discard_page_tasks(&loop)   // (a task queued and never run frees its data, as the browser's exit does)
 	host.loop_destroy(&loop)
 	page.settings_destroy(&settings)
 	logs_clear()
