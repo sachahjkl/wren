@@ -10,7 +10,6 @@ import "core:fmt"
 import "core:math"
 import "core:os"
 import "core:strings"
-import win "core:sys/windows"
 import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:render"
@@ -64,7 +63,7 @@ remote_dispatch :: proc(app: ^App, c: ^Call) -> Reply {
 @(private = "file")
 remote_dispatch_in_window :: proc(app: ^App, c: ^Call) -> Reply {
 	switch c.method {
-	case "Remote.ping":          return done(fmt.tprintf(`{{"protocol":%d,"version":%s,"pid":%d}}`, remote.PROTOCOL_VERSION, remote.quote(APP_VERSION), win.GetCurrentProcessId()))
+	case "Remote.ping":          return done(fmt.tprintf(`{{"protocol":%d,"version":%s,"pid":%d}}`, remote.PROTOCOL_VERSION, remote.quote(APP_VERSION), current_pid()))
 	case "Remote.subscribe":     return m_subscribe(app, c, true)
 	case "Remote.unsubscribe":   return m_subscribe(app, c, false)
 	case "Browser.getVersion":   return done(fmt.tprintf(`{{"product":"Wren/%s","revision":%s,"toolkit":%s,"protocol":%d,"build":%s}}`, APP_VERSION, remote.quote(app_commit()), remote.quote(ui.VERSION), remote.PROTOCOL_VERSION, remote.quote(build_description())))
@@ -243,7 +242,7 @@ m_window_get :: proc(app: ^App) -> Reply {
 	// a headless window has no HWND: its outer rectangle and visibility are emulated (platform.outer_rect / is_offscreen)
 	outer := platform.outer_rect(wnd.win)
 	visible := false
-	if !platform.is_offscreen(wnd.win) { visible = bool(win.IsWindowVisible(wnd.win.hwnd)) }
+	if !platform.is_offscreen(wnd.win) { visible = platform.is_window_visible(wnd.win) }
 	b := builder()
 	j_begin(&b)
 	j_int(&b, "windowId", i64(app.active.id))
@@ -295,13 +294,9 @@ window_simulate_dpi :: proc(app: ^App, w: ^Browser_Window, dpi: int) {
 		window_request(app, w, 4)
 		return
 	}
-	hwnd := w.win.hwnd
-	rc: win.RECT
-	win.GetWindowRect(hwnd, &rc)
-	old := max(w.win.dpi_scale, 0.25) * 96
-	k := f32(dpi) / old
-	r := win.RECT{rc.left, rc.top, rc.left + i32(f32(rc.right - rc.left) * k + 0.5), rc.top + i32(f32(rc.bottom - rc.top) * k + 0.5)}
-	win.SendMessageW(hwnd, win.WM_DPICHANGED, win.WPARAM(uint(dpi) | uint(dpi) << 16), win.LPARAM(uintptr(&r)))
+	// a real window: ask the window manager to change its DPI (remote_window_<os>.odin: WM_DPICHANGED on Windows; a
+	// no-op on Linux, where a test drives DPI through an offscreen window instead).
+	window_native_simulate_dpi(w.win, dpi)
 	window_request(app, w, 4)
 }
 
@@ -327,30 +322,21 @@ window_apply :: proc(app: ^App, state: string, has_state: bool, w, h, left, top:
 		request_frames(app, 4)
 		return
 	}
-	hwnd := wnd.win.hwnd
 	if has_state {
 		switch state {
 		case "normal":
 			if platform.is_fullscreen(wnd.win) { toggle_fullscreen(app) }
-			win.ShowWindow(hwnd, win.SW_SHOWNOACTIVATE)
-			if platform.is_maximized(wnd.win) || platform.is_minimized(wnd.win) { win.ShowWindow(hwnd, win.SW_RESTORE) }
-		case "minimized":  win.ShowWindow(hwnd, win.SW_SHOWMINNOACTIVE)
-		case "maximized":  win.ShowWindow(hwnd, win.SW_SHOWMAXIMIZED)
+			window_native_restore(wnd.win)   // remote_window_<os>.odin: SW_SHOWNOACTIVATE + SW_RESTORE on Windows; un-maximize on Linux
+		case "minimized":  platform.minimize(wnd.win)
+		case "maximized":  if !platform.is_maximized(wnd.win) { platform.toggle_maximize(wnd.win) }
 		case "fullscreen": if !platform.is_fullscreen(wnd.win) { toggle_fullscreen(app) }
 		}
 	}
 	if has_w || has_h || has_l || has_t {
-		rc: win.RECT
-		win.GetWindowRect(hwnd, &rc)
-		dpi := win.GetDpiForWindow(hwnd)
+		// a real window: set its bounds through the window manager (remote_window_<os>.odin). The client size asked for is
+		// turned into an outer rectangle for the frame on Windows; on Wayland the position cannot be set (move is a no-op).
 		cw, ch := has_w ? w : wnd.win.size.x, has_h ? h : wnd.win.size.y
-		frame := win.RECT{0, 0, i32(max(cw, 1)), i32(max(ch, 1))}
-		win.AdjustWindowRectExForDpi(&frame, win.WS_OVERLAPPEDWINDOW, false, 0, dpi)
-		if platform.is_integrated_title(wnd.win) { frame.top = 0 }
-		flags: win.UINT = win.SWP_NOZORDER | win.SWP_NOACTIVATE
-		if !(has_w || has_h) { flags |= win.SWP_NOSIZE }
-		if !(has_l || has_t) { flags |= win.SWP_NOMOVE }
-		win.SetWindowPos(hwnd, nil, i32(has_l ? left : int(rc.left)), i32(has_t ? top : int(rc.top)), frame.right - frame.left, frame.bottom - frame.top, flags)
+		window_native_set_bounds(wnd.win, left, top, cw, ch, has_w || has_h, has_l || has_t)
 	}
 	request_frames(app, 4)
 }
@@ -422,7 +408,7 @@ m_windows :: proc(app: ^App) -> Reply {
 		outer := platform.outer_rect(w.win)   // emulated for a headless window (no HWND)
 		j_key(&b, ""); j_begin(&b)
 		j_int(&b, "windowId", i64(w.id)); j_bool(&b, "front", w == window_front(app)); j_int(&b, "tabs", i64(len(window_tabs(app, w))))
-		j_int(&b, "hwnd", i64(uintptr(w.win.hwnd)))   // (a UI Automation client reads one window: tools\a11y_e2e.ps1)
+		j_int(&b, "hwnd", i64(window_native_handle(w.win)))   // (a UI Automation client reads one window: tools\a11y_e2e.ps1; 0 where there is no HWND)
 		j_bool(&b, "headless", platform.is_offscreen(w.win))
 		cur := window_current_tab(app, w)
 		j_int(&b, "currentTabId", cur != nil ? i64(cur.id) : 0)
@@ -445,7 +431,7 @@ m_windows :: proc(app: ^App) -> Reply {
 		j_bool(&b, "visible", d.visible); j_str(&b, "dock", DEV_DOCK_NAMES[d.dock]); j_str(&b, "panel", DEV_PANEL_NAMES[d.panel])
 		j_bool(&b, "detached", d.win != nil || d.want_win)
 		if d.win != nil {
-			j_int(&b, "hwnd", i64(uintptr(d.win.win.hwnd))); j_str(&b, "title", d.win.title)
+			j_int(&b, "hwnd", i64(window_native_handle(d.win.win))); j_str(&b, "title", d.win.title)
 			j_num(&b, "dpiScale", f64(d.win.win.dpi_scale))
 		}
 		j_end(&b)
@@ -462,7 +448,7 @@ m_window_activate :: proc(app: ^App) -> Reply {
 	// above the others (without taking the system's focus, shown or not): a drag across windows finds it on top. A
 	// headless window has no z-order.
 	if !platform.is_offscreen(app.active.win) {
-		win.SetWindowPos(app.active.win.hwnd, win.HWND_TOP, 0, 0, 0, 0, win.SWP_NOMOVE | win.SWP_NOSIZE | win.SWP_NOACTIVATE)
+		window_native_raise_top(app.active.win)   // remote_window_<os>.odin: above the others without taking focus
 	}
 	return done()
 }
@@ -766,7 +752,7 @@ m_capture :: proc(app: ^App, c: ^Call) -> Reply {
 	// a real window on the taskbar draws nothing: it comes back without taking the focus, and goes back after. A headless
 	// window renders whatever its emulated state, so nothing to do there.
 	if !platform.is_offscreen(active_window(app).win) && platform.is_minimized(active_window(app).win) {
-		win.ShowWindow(active_window(app).win.hwnd, win.SW_SHOWNOACTIVATE)
+		window_native_show_no_activate(active_window(app).win)
 		op.stage = -1
 	}
 	request_frames(app, 3)
@@ -776,7 +762,7 @@ m_capture :: proc(app: ^App, c: ^Call) -> Reply {
 capture_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 	r := &the_remote
 	finish :: proc(app: ^App, op: ^Remote_Op, rep: Reply) {
-		if op.stage == -2 && !platform.is_offscreen(active_window(app).win) { win.ShowWindow(active_window(app).win.hwnd, win.SW_SHOWMINNOACTIVE) }
+		if op.stage == -2 && !platform.is_offscreen(active_window(app).win) { window_native_minimize_no_activate(active_window(app).win) }
 		if op.asked && rep.code != 0 { render.capture_cancel(&app.r) }   // (asked, not taken: the next capture may start)
 		if op.asked { the_remote.capture_window = 0 }
 		op_finish(op, rep)
@@ -1430,7 +1416,7 @@ m_stats :: proc(app: ^App, c: ^Call) -> Reply {
 	// the process and the state a reset empties (so that a test can see both the cost of what it did and that a reset worked)
 	cpu, cpu_user, cpu_kernel := process_cpu_ms()
 	pc := process_counters()
-	j_int(&b, "pid", i64(win.GetCurrentProcessId())); j_num(&b, "uptimeMs", process_uptime_ms())
+	j_int(&b, "pid", i64(current_pid())); j_num(&b, "uptimeMs", process_uptime_ms())
 	// accessibility (a11y_chrome.odin): updates sent to the screen readers' adapter, refused by it, nodes of the last one
 	if wnd.ui != nil {
 		au, ar, an := ui.a11y_stats(wnd.ui)
