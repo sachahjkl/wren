@@ -256,6 +256,7 @@ fn interleave(buf: AudioBufferRef, out: &mut Vec<f32>) {
         F32(b) => copy_planes!(b, |x: f32| x),
         F64(b) => copy_planes!(b, |x: f64| x as f32),
         S32(b) => copy_planes!(b, |x: i32| x as f32 / i32::MAX as f32),
+        U32(b) => copy_planes!(b, |x: u32| (x as f64 - 2_147_483_648.0) as f32 / 2_147_483_648.0),
         S24(b) => copy_planes!(b, |x: symphonia::core::sample::i24| x.inner() as f32 / 8_388_608.0),
         U24(b) => copy_planes!(b, |x: symphonia::core::sample::u24| (x.inner() as f32 - 8_388_608.0) / 8_388_608.0),
         S16(b) => copy_planes!(b, |x: i16| x as f32 / 32_768.0),
