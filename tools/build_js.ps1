@@ -180,9 +180,6 @@ $odinified = @(
     'worker_scope.c'
 )
 $sources += (Join-Path $native 'odin\wj_shim.c')
-$odinified = @(
-
-)
 $sources += (Join-Path $native 'odin\wj_g2_shim.c')
 $sources += (Join-Path $native 'odin\wj_shim_g4.c')
 $sources = $sources | Where-Object { $odinified -notcontains (Split-Path $_ -Leaf) }
