@@ -4,7 +4,7 @@
 #include "wj.h"
 #include "qjs_internal.h"
 
-bool wj_start_expose_unimplemented, wj_start_unimplemented_throw;
+bool wj_start_expose_unimplemented, wj_start_unimplemented_throw, wj_start_frames;
 
 void wj_install_console(JSContext *ctx, JSValueConst global);
 

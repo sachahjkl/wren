@@ -33,7 +33,9 @@ static uint64_t wp_self_id;
 
 static JSValue global_prop(JSContext *ctx, const char *name) { return JS_GetPropertyStr(ctx, wj_the_realm.global, name); }
 
-static uint64_t self_id(void) { if (wp_self_id == 0) { wp_self_id = wr_Frame_self(); } return wp_self_id; }
+extern bool wj_start_frames;
+/* 0 when the realm has no frames.* imports (the engine run alone, not by a page): nothing is a frame there */
+static uint64_t self_id(void) { if (!wj_start_frames) { return 0; } if (wp_self_id == 0) { wp_self_id = wr_Frame_self(); } return wp_self_id; }
 
 static JSValue window_of(JSContext *ctx, uint64_t id);
 
@@ -240,6 +242,7 @@ static bool is_index(const char *s) { if (!s || !s[0]) { return false; } if (s[0
 static JSValue wp_child(JSContext *ctx, uint64_t id, const char *s, size_t len)
 {
     uint64_t c;
+    if (!wj_start_frames) { return JS_UNINITIALIZED; }
     if (is_index(s)) { c = wr_Frame_child(id, (uint32_t)strtoul(s, NULL, 10)); }
     else { c = wr_Frame_named(id, (const uint8_t *)s, (uint32_t)len); }
     return c ? window_of(ctx, c) : JS_UNINITIALIZED;
@@ -644,14 +647,14 @@ void wj_install_frames(JSContext *ctx)
 JSValue wjr_Window_get_top(JSContext *ctx, JSValueConst this_val)
 {
     WJ_UNUSED(this_val);
-    uint64_t self = wr_Frame_self();
+    uint64_t self = self_id();
     return window_of(ctx, self ? wr_Frame_top(self) : 0);
 }
 
 JSValue wjr_Window_get_parent(JSContext *ctx, JSValueConst this_val)
 {
     WJ_UNUSED(this_val);
-    uint64_t self = wr_Frame_self();
+    uint64_t self = self_id();
     uint64_t p = self ? wr_Frame_parent(self) : 0;
     return p ? window_of(ctx, p) : JS_DupValue(ctx, wj_the_realm.global);
 }
@@ -659,7 +662,7 @@ JSValue wjr_Window_get_parent(JSContext *ctx, JSValueConst this_val)
 JSValue wjr_Window_get_length(JSContext *ctx, JSValueConst this_val)
 {
     WJ_UNUSED(this_val);
-    uint64_t self = wr_Frame_self();
+    uint64_t self = self_id();
     return JS_NewUint32(ctx, self ? wr_Frame_length(self) : 0);
 }
 
