@@ -21,7 +21,7 @@ foreign {
 	web_port_remote          :: proc(ctx: ^wj.Context, end: u64) -> wj.JSValue ---
 	web_message_event_named  :: proc(ctx: ^wj.Context, type: cstring, data: wj.JSValue, origin: cstring, source: wj.JSValue, ports: wj.JSValue) -> wj.JSValue ---
 	web_keep_worker          :: proc(ctx: ^wj.Context, w: wj.JSValue) ---
-	web_blob_url_bytes       :: proc(ctx: ^wj.Context, url: [^]u8, length: uint, p: ^[^]u8, n: ^uint) -> bool ---
+	// (web_blob_url_bytes is Odin: web_blob.odin)
 }
 
 @(private = "file")
