@@ -212,18 +212,53 @@ JS_DefinePropertyGetSet :: proc "c" (c: ^Context, this_obj: JSValue, prop: Atom,
 	return r
 }
 
-// A data property made by fn the first time it is used. The value is made now (the property reads as a data
-// property either way).
+// A data property made by fn the first time it is used. Until then it is a configurable accessor pair that
+// replaces itself with the data property (reading runs fn, writing stores the value): the realm's globals fn reads
+// (Event, EventTarget...) do not exist yet when the property is defined, at pre-initialization.
 JS_DefineHostAutoInitProperty :: proc "c" (c: ^Context, obj: JSValue, prop: Atom, fn: Host_Auto_Init, flags: i32) -> i32 {
 	context = api_ctx()
 	ctx := jctx(c)
 	m := js.host_enter(ctx.rt)
 	defer js.host_exit(ctx.rt, m, js.UNDEFINED)
-	v := fn(c, prop)
-	if tag_of(v) == TAG_EXCEPTION {return -1}
-	r := define_impl(ctx, obj, prop, v, UNDEFINED, UNDEFINED, flags | PROP_HAS_VALUE | PROP_HAS_CONFIGURABLE | PROP_HAS_WRITABLE | PROP_HAS_ENUMERABLE)
-	disown(v)
+	data := [4]JSValue{obj, enc(js.mk_int(i32(prop))), enc(js.mk_int(i32(uintptr(rawptr(fn))))), enc(js.mk_int(flags))}
+	getter := JS_NewCFunctionData2(c, auto_init_native, "", 0, 0, 4, &data[0])
+	setter := JS_NewCFunctionData2(c, auto_init_native, "", 1, 1, 4, &data[0])
+	r := define_impl(ctx, obj, prop, UNDEFINED, getter, setter, (flags & (PROP_CONFIGURABLE | PROP_ENUMERABLE)) | PROP_HAS_GET | PROP_HAS_SET | PROP_HAS_CONFIGURABLE | PROP_HAS_ENUMERABLE)
+	disown(getter)
+	disown(setter)
 	return r
+}
+
+// The accessor pair of JS_DefineHostAutoInitProperty (magic 0: the getter, 1: the setter).
+@(private)
+auto_init_native :: proc "c" (c: ^Context, this_val: JSValue, argc: i32, argv: [^]JSValue, magic: i32, fd: [^]JSValue) -> JSValue {
+	context = api_ctx()
+	atom_i, fn_i, flags_i: i32
+	JS_ToInt32(c, &atom_i, fd[1])
+	JS_ToInt32(c, &fn_i, fd[2])
+	JS_ToInt32(c, &flags_i, fd[3])
+	prop := Atom(u32(atom_i))
+	ctx := jctx(c)
+	v: JSValue
+	if magic == 0 {
+		init := cast(Host_Auto_Init)rawptr(uintptr(u32(fn_i)))
+		v = init(c, prop)
+		if tag_of(v) == TAG_EXCEPTION {return v}
+	} else {
+		v = argc > 0 ? JS_DupValue(c, argv[0]) : UNDEFINED
+	}
+	r := define_impl(ctx, fd[0], prop, v, UNDEFINED, UNDEFINED, flags_i | PROP_HAS_VALUE | PROP_HAS_CONFIGURABLE | PROP_HAS_WRITABLE | PROP_HAS_ENUMERABLE)
+	if r < 0 {
+		disown(v)
+		return EXCEPTION
+	}
+	if magic != 0 {
+		disown(v)
+		return UNDEFINED
+	}
+	res := JS_DupValue(c, v)
+	disown(v)
+	return res
 }
 
 JS_DeleteProperty :: proc "c" (c: ^Context, obj: JSValue, prop: Atom, flags: i32) -> i32 {
