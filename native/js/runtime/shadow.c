@@ -1180,6 +1180,43 @@ static JSClassExoticMethods named_exotic = {
 };
 static JSClassDef named_def = { "WindowProperties", .exotic = &named_exotic };
 
+/* The named-properties object is an "immutable prototype exotic object" (Web IDL §3.7.4.3): its [[Prototype]] can be
+ * set only to its current value, otherwise [[SetPrototypeOf]] returns false (a TypeError under strict/Object.* use).
+ * QuickJS-ng 0.17's JSClassExoticMethods has no set_prototype_of/get_prototype_of hook, and only a Proxy can override
+ * those internal methods; so the object the realm inserts is a Proxy over the exotic class object (which keeps serving
+ * the named-property get/has/getOwnPropertyDescriptor/define/delete/ownKeys through the default forwarding traps), with
+ * just these two prototype traps added. No prelude JavaScript: the traps are C functions. */
+static JSValue named_get_proto_trap(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic, JSValue *data)
+{
+    WJ_UNUSED(this_val); WJ_UNUSED(magic); WJ_UNUSED(data);
+    JSValueConst target = wj_arg(argc, (JSValue *)argv, 0);
+    return JS_GetPrototype(ctx, target);
+}
+static JSValue named_set_proto_trap(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic, JSValue *data)
+{
+    WJ_UNUSED(this_val); WJ_UNUSED(magic); WJ_UNUSED(data);
+    JSValueConst target = wj_arg(argc, (JSValue *)argv, 0);
+    JSValueConst proto = wj_arg(argc, (JSValue *)argv, 1);
+    JSValue current = JS_GetPrototype(ctx, target);
+    bool same = JS_VALUE_GET_PTR(current) == JS_VALUE_GET_PTR(proto)
+        || (JS_IsNull(current) && JS_IsNull(proto));
+    JS_FreeValue(ctx, current);
+    return JS_NewBool(ctx, same);   /* only the current [[Prototype]] value is accepted */
+}
+/* new Proxy(target, { getPrototypeOf, setPrototypeOf }) */
+static JSValue named_make_proxy(JSContext *ctx, JSValueConst target)
+{
+    JSValue handler = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, handler, "getPrototypeOf", JS_NewCFunctionData(ctx, named_get_proto_trap, 1, 0, 0, NULL));
+    JS_SetPropertyStr(ctx, handler, "setPrototypeOf", JS_NewCFunctionData(ctx, named_set_proto_trap, 2, 0, 0, NULL));
+    JSValue proxyc = sg_global_prop(ctx, "Proxy");
+    JSValueConst args[2] = { target, handler };
+    JSValue proxy = JS_CallConstructor(ctx, proxyc, 2, args);
+    JS_FreeValue(ctx, proxyc);
+    JS_FreeValue(ctx, handler);
+    return proxy;
+}
+
 /* ---- element.part (CSS Shadow Parts §5): the DOMTokenList of the part attribute, the same object every time ---- */
 
 static JSValue part_lists;   /* WeakMap element -> DOMTokenList (per realm, counted) */
@@ -1235,7 +1272,11 @@ int wj_named_properties_install(JSContext *ctx)
         JSValue named = JS_NewObjectClass(ctx, (int)named_class);
         if (JS_IsObject(named)) {
             JS_SetPrototype(ctx, named, parent);
-            JS_SetPrototype(ctx, windowProto, named);
+            /* wrap in the immutable-prototype Proxy and put it between Window.prototype and EventTarget.prototype */
+            JSValue proxy = named_make_proxy(ctx, named);
+            if (JS_IsObject(proxy)) { JS_SetPrototype(ctx, windowProto, proxy); JS_FreeValue(ctx, proxy); }
+            else { JS_FreeValue(ctx, JS_GetException(ctx)); JS_SetPrototype(ctx, windowProto, named); }
+            JS_FreeValue(ctx, named);
         } else { JS_FreeValue(ctx, named); }
         JS_FreeValue(ctx, parent);
     }
