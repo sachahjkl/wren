@@ -33,6 +33,9 @@ Host_Config :: struct {
 	compile_user:    rawptr,
 	// Stack bytes the front-end may use per compile (0: its default, 512 KiB).
 	compile_stack_budget: int,
+	// Drop function source text at compile time (Function.prototype.toString then prints
+	// `[native code]`); saves memory in the page's scripts when nothing reads it.
+	strip_source:    bool,
 	// Module loading: resolve `specifier` relative to `referrer` and return the module record
 	// (a .module Value from read_object) or EXCEPTION.
 	// attr_type: the import's `type` attribute ("" when absent, else e.g. "json", "text", "bytes")
@@ -46,7 +49,16 @@ Host_Config :: struct {
 	meta_user:       rawptr,
 	// Atomics.wait permission ([[CanBlock]] of the agent).
 	can_block:       bool,
+	// Agents on other threads. wait atomically compares the `size`-byte value at `addr` with `expected`
+	// (already masked) and blocks until notified or `timeout_ms` (+Inf: forever) passes; notify wakes
+	// up to `count` waiters on `addr` (FIFO) and returns how many. nil: a lone agent, so a wait on an
+	// equal value can only time out and a notify wakes nobody.
+	atomics_wait:    proc(user: rawptr, addr: rawptr, size: int, expected: u64, timeout_ms: f64) -> Wait_Result,
+	atomics_notify:  proc(user: rawptr, addr: rawptr, count: f64) -> int,
+	atomics_user:    rawptr,
 }
+
+Wait_Result :: enum u8 {ok, not_equal, timed_out}
 
 DEFAULT_CONFIG :: Host_Config {
 	malloc_limit    = -1,

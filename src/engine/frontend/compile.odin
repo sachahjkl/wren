@@ -26,6 +26,9 @@ Compile_Options :: struct {
 	// JS_WriteModule drops import attributes; with this set a request imported `with { type: T }` is renamed
 	// "specifier\0T" so a runtime reading the bytecode still sees the type.
 	encode_import_type: bool,
+	// Keep each function's source text in the bytecode (what Function.prototype.toString returns); the
+	// differential judge compares against JS_WRITE_OBJ_STRIP_SOURCE output and leaves it off.
+	keep_source: bool,
 }
 
 // The calling function of a direct eval, as the runtime knows it from the caller's bytecode: the parts of a
@@ -154,6 +157,7 @@ compile_program :: proc(src: string, kind: Program_Kind, allocator: runtime.Allo
 	buf := make([]u8, len(src) + 16, allocator)
 	copy(buf, src)
 	s.buf = buf
+	s.keep_source = opts.keep_source
 	s.line_num = 1
 	s.col_num = 1
 	s.buf_start = 0

@@ -1586,6 +1586,7 @@ js_create_function :: proc(ps: ^Pass_State, fd: ^Func_Def) -> ^Function_Bytecode
 	b.line_num = fd.line_num
 	b.col_num = fd.col_num
 	b.pc2line = fd.pc2line[:]
+	b.source = fd.source
 	b.closure_var = fd.closure_var[:]
 	b.has_prototype = fd.has_prototype
 	b.has_simple_parameter_list = fd.has_simple_parameter_list

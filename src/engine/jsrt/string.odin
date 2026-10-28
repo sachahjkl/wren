@@ -352,8 +352,9 @@ str_eq_ascii :: proc(rt: ^Runtime, s: ^JS_String, lit: string) -> bool {
 	return true
 }
 
-// UTF-8 copy (lone surrogates become U+FFFD) in `allocator`.
-str_to_utf8 :: proc(rt: ^Runtime, s: ^JS_String, allocator: runtime.Allocator) -> string {
+// UTF-8 copy in `allocator`. Lone surrogates become U+FFFD, or with `wtf8` stay as 3-byte sequences
+// (source text handed to the compiler, whose decoder reads them back as lone surrogates).
+str_to_utf8 :: proc(rt: ^Runtime, s: ^JS_String, allocator: runtime.Allocator, wtf8 := false) -> string {
 	f := str_flat(rt, s)
 	n := int(f.len)
 	out := make([dynamic]u8, 0, n, allocator)
@@ -368,7 +369,13 @@ str_to_utf8 :: proc(rt: ^Runtime, s: ^JS_String, allocator: runtime.Allocator) -
 				i += 1
 			}
 		}
-		if c >= 0xd800 && c < 0xe000 {c = 0xfffd}
+		if c >= 0xd800 && c < 0xe000 {
+			if wtf8 {
+				append(&out, u8(0xe0 | (c >> 12)), u8(0x80 | ((c >> 6) & 0x3f)), u8(0x80 | (c & 0x3f)))
+				continue
+			}
+			c = 0xfffd
+		}
 		if c < 0x80 {
 			append(&out, u8(c))
 		} else {

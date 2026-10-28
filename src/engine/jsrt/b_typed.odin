@@ -3,6 +3,7 @@ package jsrt
 // ArrayBuffer, SharedArrayBuffer (resizable/growable), the TypedArray family, DataView and Atomics
 // (ECMA-262 §25.1–25.4, §23.2). Elements are stored little-endian, as on every target we build for.
 
+import "base:intrinsics"
 import "core:math"
 import "wb:engine/bigint"
 
@@ -48,6 +49,28 @@ array_buffer_new :: proc(ctx: ^Context, proto: ^Object, class: Class_ID, n: i64,
 	ab.views = make([dynamic]^Object, rt_allocator(rt))
 	o.data = ab
 	return o
+}
+
+// The memory behind a SharedArrayBuffer, to hand to another agent (a thread with its own Runtime).
+// The buffer must outlive that agent.
+shared_buffer_info :: proc(v: Value) -> (data: [^]u8, length, max_length: int, ok: bool) {
+	if v.tag != .object || as_obj(v).class != .shared_array_buffer {return}
+	ab := array_buffer_of(as_obj(v))
+	return ab.data, ab.byte_length, ab.max_byte_length, true
+}
+
+// A SharedArrayBuffer over memory owned by another agent's buffer.
+shared_buffer_attach :: proc(ctx: ^Context, data: [^]u8, length, max_length: int) -> Value {
+	o := array_buffer_new(ctx, ctx.class_proto[.shared_array_buffer], .shared_array_buffer, 0, -1)
+	if o == nil {return EXCEPTION}
+	ab := array_buffer_of(o)
+	mem_free(ctx.rt, ab.data, ab.alloc_len)
+	ab.data = data
+	ab.alloc_len = max(length, max_length, 1)
+	ab.byte_length = length
+	ab.max_byte_length = max_length
+	ab.external = true
+	return mk_obj(o)
 }
 
 @(private = "file")
@@ -1383,6 +1406,9 @@ init_typed_array_builtins :: proc(ctx: ^Context) {
 Atomic_Op :: enum i32 {add, and, compare_exchange, exchange, load, or, store, sub, xor}
 
 @(private = "file")
+atomics_lock: u32
+
+@(private = "file")
 atomics_validate :: proc(ctx: ^Context, v: Value, waitable: bool) -> (^Object, bool) {
 	o, _, ok := validate_ta(ctx, v)
 	if !ok {return nil, false}
@@ -1401,9 +1427,11 @@ atomics_validate :: proc(ctx: ^Context, v: Value, waitable: bool) -> (^Object, b
 
 @(private = "file")
 atomics_index :: proc(ctx: ^Context, o: ^Object, v: Value) -> (int, bool) {
+	// ValidateAtomicAccess reads the length before the index coercion, which may resize or detach
+	length := typed_array_length(ctx, o)
 	idx, ok := to_index(ctx, v)
 	if !ok {return 0, false}
-	if idx >= i64(typed_array_length(ctx, o)) {
+	if idx >= i64(length) {
 		throw_range_error(ctx, "Atomics access index out of range")
 		return 0, false
 	}
@@ -1432,6 +1460,11 @@ atomics_op :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Val
 	if typed_array_is_out_of_bounds(o) {return throw_type_error(ctx, "TypedArray is detached")}
 	if idx >= typed_array_length(ctx, o) {return throw_range_error(ctx, "Atomics access index out of range")}
 	p := elem_ptr(o, idx)
+	// read-modify-write on memory other agents (threads) can reach is serialized by one process-wide lock
+	if array_buffer_of(typed_array_of(o).buffer).shared {
+		for intrinsics.atomic_exchange_explicit(&atomics_lock, 1, .Acquire) != 0 {intrinsics.cpu_relax()}
+	}
+	defer if array_buffer_of(typed_array_of(o).buffer).shared {intrinsics.atomic_store_explicit(&atomics_lock, 0, .Release)}
 	old := read_elem(ctx, e, p)
 	if op == .store {
 		write_elem(e, p, v1)
@@ -1511,6 +1544,7 @@ atomics_wait :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> V
 	if !ok {return EXCEPTION}
 	ta := typed_array_of(o)
 	ab := array_buffer_of(ta.buffer)
+	if !ab.shared {return throw_type_error(ctx, "Atomics.wait requires a shared buffer")}
 	idx, ok2 := atomics_index(ctx, o, arg(args, 1))
 	if !ok2 {return EXCEPTION}
 	e := class_elem(o.class)
@@ -1518,27 +1552,41 @@ atomics_wait :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> V
 	if !ok3 {return EXCEPTION}
 	t, ok4 := to_number(ctx, arg(args, 3))
 	if !ok4 {return EXCEPTION}
-	if !ab.shared {return throw_type_error(ctx, "Atomics.wait requires a shared buffer")}
+	if t != t {t = math.inf_f64(1)} else if t < 0 {t = 0}
 	if !ctx.rt.config.can_block {return throw_type_error(ctx, "Atomics.wait cannot block in this agent")}
-	cur := elem_raw(e, elem_ptr(o, idx))
-	if cur & elem_mask(e) != elem_val_raw(e, v) & elem_mask(e) {return new_string(ctx, "not-equal")}
-	_ = t
-	// single-threaded agent: nobody can notify us, so a finite wait times out
-	return new_string(ctx, "timed-out")
+	addr := elem_ptr(o, idx)
+	expected := elem_val_raw(e, v) & elem_mask(e)
+	hook := ctx.rt.config.atomics_wait
+	if hook == nil {
+		// a lone agent: nobody can notify us, so an equal value means the wait times out
+		if elem_raw(e, addr) & elem_mask(e) != expected {return new_string(ctx, "not-equal")}
+		return new_string(ctx, "timed-out")
+	}
+	switch hook(ctx.rt.config.atomics_user, addr, elem_size[e], expected, t) {
+	case .ok: return new_string(ctx, "ok")
+	case .not_equal: return new_string(ctx, "not-equal")
+	case .timed_out: return new_string(ctx, "timed-out")
+	}
+	return UNDEFINED
 }
 
 @(private = "file")
 atomics_notify :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value {
 	o, ok := atomics_validate(ctx, arg(args, 0), true)
 	if !ok {return EXCEPTION}
-	_, ok2 := atomics_index(ctx, o, arg(args, 1))
+	idx, ok2 := atomics_index(ctx, o, arg(args, 1))
 	if !ok2 {return EXCEPTION}
+	count := math.inf_f64(1)
 	if !is_undefined(arg(args, 2)) {
 		c, ok3 := to_integer(ctx, args[2])
 		if !ok3 {return EXCEPTION}
-		_ = c
+		count = max(c, 0)
 	}
-	return mk_int(0)
+	ta := typed_array_of(o)
+	if !array_buffer_of(ta.buffer).shared {return mk_int(0)}
+	hook := ctx.rt.config.atomics_notify
+	if hook == nil || idx >= typed_array_length(ctx, o) {return mk_int(0)}
+	return mk_int(i32(hook(ctx.rt.config.atomics_user, elem_ptr(o, idx), count)))
 }
 
 @(private = "file")

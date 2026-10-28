@@ -200,7 +200,8 @@ write_function :: proc(w: ^Writer, b: ^Function_Bytecode) {
 		put_leb128(w, u32(b.col_num))
 		put_leb128(w, u32(len(b.pc2line)))
 		append(&w.buf, ..b.pc2line)
-		put_leb128(w, 0) // source stripped
+		put_leb128(w, u32(len(b.source))) // empty unless the compile kept the source
+		append(&w.buf, ..b.source)
 	}
 }
 

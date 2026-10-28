@@ -421,6 +421,7 @@ Func_Def :: struct {
 	line_num:                     int,
 	col_num:                      int,
 	pc2line:                      [dynamic]u8,
+	source:                       []u8, // the function's text for toString (a slice of the parse buffer), kept only with Compile_Options.keep_source
 
 	module:                       ^Module_Def,
 }
@@ -497,6 +498,7 @@ Function_Bytecode :: struct {
 	line_num:                     int,
 	col_num:                      int,
 	pc2line:                      []u8,
+	source:                       []u8,
 }
 
 // --- parse state (JSParseState) ---------------------------------------------------------------------------
@@ -520,6 +522,7 @@ Parse_State :: struct {
 	mark:                int,
 	buf:                 []u8, // source bytes followed by NUL padding (the C lexer reads a few bytes ahead)
 	cur_func:            ^Func_Def,
+	keep_source:         bool,
 	is_module:           bool,
 	allow_html_comments: bool,
 	// error state: the first error wins, like a thrown SyntaxError

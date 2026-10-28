@@ -426,6 +426,7 @@ js_parse_class :: proc(s: ^Parse_State, is_class_expr: bool, export_flag: Parse_
 	is_strict_mode := fd.is_strict_mode
 	fd.is_strict_mode = true
 	defer fd.is_strict_mode = is_strict_mode
+	class_start_ptr := s.token.ptr
 
 	if next_token(s) {return true}
 	if s.token.val == TOK_IDENT {
@@ -713,6 +714,8 @@ js_parse_class :: proc(s: ^Parse_State, is_class_expr: bool, export_flag: Parse_
 		if js_parse_class_default_ctor(s, (class_flags & JS_DEFINE_CLASS_HAS_HERITAGE) != 0, &ctor_fd) {return true}
 	}
 	put_u32(fd.byte_code[:], ctor_cpool_offset, u32(ctor_fd.parent_cpool_idx))
+	// the class source is stored in the constructor
+	if s.keep_source {ctor_fd.source = s.buf[class_start_ptr:s.buf_ptr]}
 
 	if next_token(s) {return true}
 
