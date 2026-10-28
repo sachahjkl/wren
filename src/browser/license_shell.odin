@@ -2,7 +2,7 @@ package browser
 
 import "core:os"
 import "core:strings"
-import win "core:sys/windows"
+import "toolkit:platform"
 import "wb:base"
 import "wb:config"
 import "wb:fetch"
@@ -199,30 +199,22 @@ license_install_file :: proc(app: ^App, path: string) -> Wren_Notice {
 Choose_Job :: struct {
 	app:   ^App,
 	tab:   u64,
-	owner: win.HWND,
+	owner: ^platform.Window,
 	path:  string,
 	ok:    bool,
 }
 
 license_choose_file :: proc(app: ^App, t: ^Tab) {
 	job := new(Choose_Job)
-	job.app, job.tab, job.owner = app, t.id, active_window(app).win.hwnd
+	job.app, job.tab, job.owner = app, t.id, active_window(app).win
 	host.run_blocking(&app.blocking, proc(data: rawptr) {
 		job := (^Choose_Job)(data)
-		_ = win.CoInitializeEx(nil, .APARTMENTTHREADED)
-		defer win.CoUninitialize()
-		buf: [1024]u16
-		filter := win.utf8_to_wstring("Wren licence (*.wrenlicense)\x00*.wrenlicense\x00All files (*.*)\x00*.*\x00\x00", context.temp_allocator)
-		title := win.utf8_to_wstring("Choose a Wren licence file", context.temp_allocator)
-		ofn := win.OPENFILENAMEW{
-			lStructSize = size_of(win.OPENFILENAMEW), hwndOwner = job.owner, lpstrFilter = filter, lpstrTitle = title,
-			lpstrFile = &buf[0], nMaxFile = u32(len(buf)),
-			Flags = u32(win.OFN_PATHMUSTEXIST | win.OFN_FILEMUSTEXIST | win.OFN_EXPLORER | win.OFN_NOCHANGEDIR | win.OFN_HIDEREADONLY),
-		}
-		if !win.GetOpenFileNameW(&ofn) { return }
-		n := 0
-		for n < len(buf) && buf[n] != 0 { n += 1 }
-		if s, err := win.utf16_to_utf8(buf[:n], context.allocator); err == nil { job.path, job.ok = s, true }
+		patterns := [1]string{"*.wrenlicense"}
+		filters := [1]platform.File_Filter{{name = "Wren licence", patterns = patterns[:]}}
+		d := platform.File_Dialog{owner = job.owner, title = "Choose a Wren licence file", filters = filters[:], all_files = true, remember_id = "licence"}
+		res := platform.open_file_dialog(d, context.allocator)
+		defer platform.dialog_result_destroy(&res, context.allocator)
+		if res.status == .Chosen && len(res.paths) > 0 { job.path, job.ok = strings.clone(res.paths[0]), true }
 		free_all(context.temp_allocator)
 	}, proc(data: rawptr) {
 		job := (^Choose_Job)(data)
