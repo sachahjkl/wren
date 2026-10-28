@@ -200,15 +200,14 @@ JSValue wjr_URLPattern_exec(JSContext *ctx, JSValueConst this_val, int argc, JSV
     if (r == 0) { return JS_NULL; }
 
     JSValue result = JS_NewObject(ctx);
-    /* inputs */
+    /* inputs: the input(s) the caller passed, echoed back (URLPatternResult.inputs). A string or a URLPatternInit
+     * dictionary as the first input, plus the baseURL string when one was given as the second argument. */
     JSValue inputs = JS_NewArray(ctx);
-    int32_t ic = wr_URLPattern_resultInputCount(o->handle);
-    for (int32_t i = 0; i < ic; i++) {
-        int32_t n;
-        WJ_FETCH_STRING(n, wr_URLPattern_resultInput(o->handle, i, wj_scratch.data, wj_scratch.cap));
-        if (n < 0) { break; }
-        wj_array_set(ctx, inputs, (uint32_t)i, JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n));
-    }
+    JSValueConst input = wj_arg(argc, (JSValue *)argv, 0);
+    JSValueConst a1 = wj_arg(argc, (JSValue *)argv, 1);
+    uint32_t ii = 0;
+    wj_array_set(ctx, inputs, ii++, JS_IsUndefined(input) ? JS_NewObject(ctx) : JS_DupValue(ctx, input));
+    if (JS_IsString(a1)) { wj_array_set(ctx, inputs, ii++, JS_DupValue(ctx, a1)); }
     JS_DefinePropertyValueStr(ctx, result, "inputs", inputs, JS_PROP_C_W_E);
     for (int c = 0; c < 8; c++) {
         JS_DefinePropertyValueStr(ctx, result, PATTERN_KEYS[c], pattern_component_result(ctx, o->handle, c), JS_PROP_C_W_E);

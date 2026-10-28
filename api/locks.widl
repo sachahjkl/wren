@@ -12,7 +12,7 @@ module locks {
   /// callback with the Lock immediately), and the rest (>> 2) is the lock id used to release it. When available but
   /// not granted-now, the request waits and the engine is told on grant (the callback index / user name the engine
   /// record for that notification).
-  i64 LockManager_request(string name, LockMode mode, bool if_available, bool steal, u32 callback, i32 user);
+  i64 LockManager_request(string name, LockMode mode, bool if_available, bool steal, u32 callback, i32 user, u32 broken_callback);
   /// The callback's returned promise settled, the callback was null, or a pending request was aborted: release the
   /// lock (or drop the queued request) and grant whatever waits.
   void LockManager_release(u64 id);
