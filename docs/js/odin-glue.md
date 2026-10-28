@@ -47,6 +47,17 @@ the C that is still compiled is `gen/bindings.c` (the binding table, generated f
 Every symbol is declared **once**. `odin check native/js/odin -target:freestanding_wasm32 -no-entry-point` fails with
 "Redeclaration of ..." the moment a second declaration appears; that is the point.
 
+## Which engine (`WJ_JSRT`)
+
+The layer sits on QuickJS‑ng in C by default. `-define:WJ_JSRT=true` puts it on the Odin runtime instead: the
+`foreign` QuickJS declarations of `wj/` are not compiled (`when !WJ_JSRT`), and `wj/backend_jsrt.odin` aliases
+each of those names to the same procedure of `src/engine/jscapi` (the QuickJS C API implemented on
+`src/engine/jsrt`). The API types (`Context`, `Native`, `Class_Def`, …) are defined once in `jscapi/types.odin`
+and aliased in `wj`, so a domain file compiles unchanged against either engine. `-define:JSCAPI_EXPORT=true`
+also exports the API under its C names for the C that remains (`gen/bindings.c`). Details, contracts and the plan
+of what is left: [../engine/jscapi.md](../engine/jscapi.md). Both modes are checked with the `odin check`
+command of "Building" plus `-define:WJ_JSRT=true`.
+
 ## Where a helper goes
 
 | What it is | Where |
