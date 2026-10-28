@@ -41,7 +41,8 @@ js_realloc :: proc "c" (c: ^Context, ptr: rawptr, size: uint) -> rawptr {
 		mem.free(ptr, host_allocator)
 		return nil
 	}
-	p, _ := mem.resize(ptr, 0, int(size), JS_ALLOC_ALIGN, host_allocator)
+	// (the old size is unknown here: a zeroing resize would wipe the block's contents from offset 0)
+	p, _ := mem.resize_non_zeroed(ptr, 0, int(size), JS_ALLOC_ALIGN, host_allocator)
 	return p
 }
 
@@ -55,7 +56,7 @@ js_realloc_rt :: proc "c" (r: ^Runtime, ptr: rawptr, size: uint) -> rawptr {
 		mem.free(ptr, host_allocator)
 		return nil
 	}
-	p, _ := mem.resize(ptr, 0, int(size), JS_ALLOC_ALIGN, host_allocator)
+	p, _ := mem.resize_non_zeroed(ptr, 0, int(size), JS_ALLOC_ALIGN, host_allocator)
 	return p
 }
 

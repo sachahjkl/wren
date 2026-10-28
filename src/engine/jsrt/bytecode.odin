@@ -108,10 +108,17 @@ function_bc_finalize :: proc(rt: ^Runtime, b: ^Function_Bytecode) {
 // The source line of instruction `pc`, decoded from the pc2line table (QuickJS's format: a leb128
 // pc delta followed by a sleb128 line delta and a sleb128 column delta per entry, with short forms).
 pc_to_line :: proc(b: ^Function_Bytecode, pc: int) -> int {
-	if b.pc2line == nil {return b.line_num}
+	line, _ := pc_to_pos(b, pc)
+	return line
+}
+
+// The source line and column of instruction pc.
+pc_to_pos :: proc(b: ^Function_Bytecode, pc: int) -> (line: int, col: int) {
+	if b.pc2line == nil {return b.line_num, b.col_num}
 	p := b.pc2line
 	pos := 0
-	line := b.line_num
+	line = b.line_num
+	col = b.col_num
 	cur_pc := 0
 	PC2LINE_BASE :: -1
 	PC2LINE_RANGE :: 5
@@ -133,12 +140,13 @@ pc_to_line :: proc(b: ^Function_Bytecode, pc: int) -> int {
 			new_line = line + op % PC2LINE_RANGE + PC2LINE_BASE
 		}
 		// column delta
-		_, n3 := leb128_s(p[pos:])
+		dc, n3 := leb128_s(p[pos:])
 		pos += n3
 		if cur_pc > pc {break}
 		line = new_line
+		col += int(dc)
 	}
-	return line
+	return line, col
 }
 
 leb128_u :: proc(b: []u8) -> (u32, int) {

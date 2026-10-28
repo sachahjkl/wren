@@ -67,10 +67,14 @@ error_add_stack :: proc(ctx: ^Context, o: ^Object) {
 		if f.bc.filename != ATOM_NULL {
 			sb_ascii(&sb, " (")
 			sb_str(&sb, atom_to_string(rt, f.bc.filename))
-			line := pc_to_line(f.bc, f.pc)
+			line, col := pc_to_pos(f.bc, f.pc)
 			if line > 0 {
 				sb_ascii(&sb, ":")
 				sb_str(&sb, str_from_u64(rt, u64(line)))
+				if col > 0 {
+					sb_ascii(&sb, ":")
+					sb_str(&sb, str_from_u64(rt, u64(col)))
+				}
 			}
 			sb_ascii(&sb, ")")
 		}
