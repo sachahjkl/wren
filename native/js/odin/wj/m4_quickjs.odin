@@ -3,6 +3,7 @@
 // one declaration each; to fold into quickjs.odin / host.odin when the migration settles.
 package wj
 
+when !WJ_JSRT {
 @(default_calling_convention = "c")
 foreign {
 	// atoms, properties
@@ -25,6 +26,7 @@ foreign {
 
 	// runtime/web_fs.c: a FileSystemHandle as text (malloc'ed; free with libc_free) and back, for structured cloning
 }
+}   // when !WJ_JSRT
 
 // wj_array_set64 (qjs_backend.h, static inline): a data property at an index that may not fit 32 bits.
 array_set64 :: proc "contextless" (ctx: ^Context, arr: JSValue, i: i64, v: JSValue) -> i32 {

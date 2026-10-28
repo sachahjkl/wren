@@ -6,74 +6,45 @@
 // exact C names and signatures.
 package wj
 
+import jscapi "wb:engine/jscapi"
+
 // ---- structs the API takes by pointer (quickjs.h) ----
 
-Module_Def :: struct {}   // JSModuleDef, opaque
+Module_Def :: jscapi.Module_Def   // JSModuleDef, opaque
 
 // JS_MarkFunc *: only passed through (JS_MarkValue).
-Mark_Func :: rawptr
+Mark_Func :: jscapi.Mark_Func
 
-Class_Finalizer :: #type proc "c" (rt: ^Runtime, val: JSValue)
-Class_GC_Mark   :: #type proc "c" (rt: ^Runtime, val: JSValue, mark_func: Mark_Func)
+Class_Finalizer :: jscapi.Class_Finalizer
+Class_GC_Mark   :: jscapi.Class_GC_Mark
 
 // JSClassExoticMethods.
-Class_Exotic_Methods :: struct {
-	get_own_property:       proc "c" (ctx: ^Context, desc: ^Property_Descriptor, obj: JSValue, prop: Atom) -> i32,
-	get_own_property_names: proc "c" (ctx: ^Context, ptab: ^[^]Property_Enum, plen: ^u32, obj: JSValue) -> i32,
-	delete_property:        proc "c" (ctx: ^Context, obj: JSValue, prop: Atom) -> i32,
-	define_own_property:    proc "c" (ctx: ^Context, this_obj: JSValue, prop: Atom, val, getter, setter: JSValue, flags: i32) -> i32,
-	has_property:           proc "c" (ctx: ^Context, obj: JSValue, prop: Atom) -> i32,
-	get_property:           proc "c" (ctx: ^Context, obj: JSValue, prop: Atom, receiver: JSValue) -> JSValue,
-	set_property:           proc "c" (ctx: ^Context, obj: JSValue, prop: Atom, value, receiver: JSValue, flags: i32) -> i32,
-}
+Class_Exotic_Methods :: jscapi.Class_Exotic_Methods
 
 // JSClassDef.
-Class_Def :: struct {
-	class_name: cstring,
-	finalizer:  Class_Finalizer,
-	gc_mark:    Class_GC_Mark,
-	call:       rawptr,
-	exotic:     ^Class_Exotic_Methods,
-}
+Class_Def :: jscapi.Class_Def
 
 // JSMemoryUsage: 26 int64 counters; the realm reads malloc_size.
-Memory_Usage :: struct {
-	malloc_size, malloc_limit, memory_used_size:     i64,
-	malloc_count, memory_used_count:                 i64,
-	atom_count, atom_size, str_count, str_size:      i64,
-	obj_count, obj_size, prop_count, prop_size:      i64,
-	shape_count, shape_size:                         i64,
-	js_func_count, js_func_size, js_func_code_size:  i64,
-	js_func_pc2line_count, js_func_pc2line_size:     i64,
-	c_func_count, array_count:                       i64,
-	fast_array_count, fast_array_elements:           i64,
-	binary_object_count, binary_object_size:         i64,
-}
+Memory_Usage :: jscapi.Memory_Usage
 
 // JSMallocFunctions (the mimalloc build).
-Malloc_Functions :: struct {
-	js_calloc:             proc "c" (opaque: rawptr, count: uint, size: uint) -> rawptr,
-	js_malloc:             proc "c" (opaque: rawptr, size: uint) -> rawptr,
-	js_free:               proc "c" (opaque: rawptr, ptr: rawptr),
-	js_realloc:            proc "c" (opaque: rawptr, ptr: rawptr, size: uint) -> rawptr,
-	js_malloc_usable_size: proc "c" (ptr: rawptr) -> uint,
-}
+Malloc_Functions :: jscapi.Malloc_Functions
 
 #assert(size_of(Class_Exotic_Methods) == 28 && size_of(Class_Def) == 20 && offset_of(Class_Def, exotic) == 16)
 #assert(size_of(Memory_Usage) == 208 && size_of(Property_Descriptor) == 32 && size_of(Property_Enum) == 8)
 #assert(size_of(Eval_Options) == 16 && size_of(Malloc_Functions) == 20)
 
 // The hooks the engine calls (quickjs.h typedefs).
-Interrupt_Handler   :: #type proc "c" (rt: ^Runtime, opaque: rawptr) -> i32
-GC_Prologue         :: #type proc "c" (rt: ^Runtime, opaque: rawptr)
-Rejection_Tracker   :: #type proc "c" (ctx: ^Context, promise: JSValue, reason: JSValue, is_handled: bool, opaque: rawptr)
-Compile_Strings_Hook :: #type proc "c" (ctx: ^Context, source: JSValue, direct: bool, opaque: rawptr) -> i32
-Module_Normalize    :: #type proc "c" (ctx: ^Context, base: cstring, name: cstring, opaque: rawptr) -> cstring
-Module_Loader2      :: #type proc "c" (ctx: ^Context, name: cstring, opaque: rawptr, attributes: JSValue) -> ^Module_Def
-Module_Check_Attrs  :: #type proc "c" (ctx: ^Context, opaque: rawptr, attributes: JSValue) -> i32
-Module_Init         :: #type proc "c" (ctx: ^Context, m: ^Module_Def) -> i32
-Dynamic_Import_Hook :: #type proc "c" (ctx: ^Context, basename, specifier, attributes: JSValue, resolving_funcs: [^]JSValue, opaque: rawptr) -> i32
-Native_Magic        :: #type proc "c" (ctx: ^Context, this_val: JSValue, argc: i32, argv: [^]JSValue, magic: i32) -> JSValue
+Interrupt_Handler   :: jscapi.Interrupt_Handler
+GC_Prologue         :: jscapi.GC_Prologue
+Rejection_Tracker   :: jscapi.Rejection_Tracker
+Compile_Strings_Hook :: jscapi.Compile_Strings_Hook
+Module_Normalize    :: jscapi.Module_Normalize
+Module_Loader2      :: jscapi.Module_Loader2
+Module_Check_Attrs  :: jscapi.Module_Check_Attrs
+Module_Init         :: jscapi.Module_Init
+Dynamic_Import_Hook :: jscapi.Dynamic_Import_Hook
+Native_Magic        :: jscapi.Native_Magic
 
 // ---- flags (quickjs.h) ----
 
@@ -102,6 +73,7 @@ READ_OBJ_BYTECODE      :: 1 << 0
 
 // ---- functions (JS_EXTERN) ----
 
+when !WJ_JSRT {
 @(default_calling_convention = "c")
 foreign {
 	JS_NewRuntime          :: proc() -> ^Runtime ---
@@ -173,6 +145,7 @@ foreign {
 	js_realloc             :: proc(ctx: ^Context, ptr: rawptr, size: uint) -> rawptr ---
 	js_string_codePointRange :: proc(ctx: ^Context, this_val: JSValue, argc: i32, argv: [^]JSValue) -> JSValue ---
 }
+}   // when !WJ_JSRT
 
 // JS_NewCFunctionMagic (static inline): a generic_magic native function.
 new_cfunction_magic :: #force_inline proc "contextless" (ctx: ^Context, fn: Native_Magic, name: cstring, length: i32, cproto: i32, magic: i32) -> JSValue {

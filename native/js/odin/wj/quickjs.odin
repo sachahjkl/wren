@@ -4,6 +4,8 @@
 // foreign ones to the QuickJS-ng objects in the same module.
 package wj
 
+import jscapi "wb:engine/jscapi"
+
 // ---- NAN-boxed value encoding (the inline helpers of quickjs.h, reimplemented) ----
 //
 // JS_MKVAL(tag, val) == ((u64)tag << 32) | (u32)val. The tags that matter to the glue (the full set is in quickjs.h):
@@ -132,38 +134,25 @@ WRITE_OBJ_REFERENCE :: 1 << 3
 READ_OBJ_REFERENCE  :: 1 << 3
 
 // JSPromiseStateEnum (QuickJS-ng 0.17: JS_PROMISE_NOT_A_PROMISE = -1, then pending 0, fulfilled, rejected).
-Promise_State :: enum i32 { Not_A_Promise = -1, Pending = 0, Fulfilled, Rejected }
+Promise_State :: jscapi.Promise_State
 
-Class_ID :: u32   // JSClassID
+Class_ID :: jscapi.Class_ID   // JSClassID
 
 // JSPropertyEnum { bool is_enumerable; JSAtom atom; }.
-Property_Enum :: struct {
-	is_enumerable: bool,
-	atom:          Atom,
-}
+Property_Enum :: jscapi.Property_Enum
 
 // JSPropertyDescriptor { int flags; JSValue value, getter, setter; }.
-Property_Descriptor :: struct {
-	flags:  i32,
-	value:  JSValue,
-	getter: JSValue,
-	setter: JSValue,
-}
+Property_Descriptor :: jscapi.Property_Descriptor
 
 // JSEvalOptions { int version; int eval_flags; const char *filename; int line_num; }.
-Eval_Options :: struct {
-	version:    i32,
-	eval_flags: i32,
-	filename:   cstring,
-	line_num:   i32,
-}
+Eval_Options :: jscapi.Eval_Options
 
 // JSCFunctionData: a native function carrying bound data (func_data[0 ..< n]).
-Native_Data     :: #type proc "c" (ctx: ^Context, this_val: JSValue, argc: i32, argv: [^]JSValue, magic: i32, func_data: [^]JSValue) -> JSValue
+Native_Data     :: jscapi.Native_Data
 // JSJobFunc.
-Job_Func        :: #type proc "c" (ctx: ^Context, argc: i32, argv: [^]JSValue) -> JSValue
+Job_Func        :: jscapi.Job_Func
 // JSReallocArrayBufferDataFunc.
-Realloc_AB_Func :: #type proc "c" (rt: ^Runtime, opaque: rawptr, ptr: rawptr, size: uint) -> rawptr
+Realloc_AB_Func :: jscapi.Realloc_AB_Func
 
 // JSTypedArrayEnum (quickjs.h). getRandomValues accepts the integer ones; encodeInto wants UINT8.
 Typed_Array :: enum i32 {
@@ -182,11 +171,12 @@ Typed_Array :: enum i32 {
 }
 TYPED_ARRAY_UINT8 :: i32(Typed_Array.Uint8)
 
-Atom :: u32   // JSAtom
+Atom :: jscapi.Atom   // JSAtom
 ATOM_NULL :: Atom(0)
 
 // ---- engine functions with real symbols (quickjs.h JS_EXTERN; names/signatures must match C) ----
 
+when !WJ_JSRT {
 @(default_calling_convention = "c")
 foreign {
 	// runtime / lifetime
@@ -302,6 +292,7 @@ foreign {
 	js_free_rt         :: proc(rt: ^Runtime, ptr: rawptr) ---
 	js_realloc_rt      :: proc(rt: ^Runtime, ptr: rawptr, size: uint) -> rawptr ---
 }
+}   // when !WJ_JSRT
 
 // The `static inline` wrappers of quickjs.h, under their C names (no symbol: thin forwarders / NAN-box bit ops).
 

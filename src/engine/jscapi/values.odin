@@ -10,30 +10,36 @@ import js "wb:engine/jsrt"
 
 JS_ALLOC_ALIGN :: 8
 
+@(export = JSCAPI_EXPORT)
 js_malloc :: proc "c" (c: ^Context, size: uint) -> rawptr {
 	context = api_ctx()
 	p, _ := mem.alloc(max(int(size), 1), JS_ALLOC_ALIGN, host_allocator)
 	return p
 }
 
+@(export = JSCAPI_EXPORT)
 js_mallocz :: proc "c" (c: ^Context, size: uint) -> rawptr {
 	return js_malloc(c, size)
 }
 
+@(export = JSCAPI_EXPORT)
 js_calloc :: proc "c" (c: ^Context, count: uint, size: uint) -> rawptr {
 	return js_malloc(c, count * size)
 }
 
+@(export = JSCAPI_EXPORT)
 js_free :: proc "c" (c: ^Context, ptr: rawptr) {
 	context = api_ctx()
 	if ptr != nil {mem.free(ptr, host_allocator)}
 }
 
+@(export = JSCAPI_EXPORT)
 js_free_rt :: proc "c" (r: ^Runtime, ptr: rawptr) {
 	context = api_ctx()
 	if ptr != nil {mem.free(ptr, host_allocator)}
 }
 
+@(export = JSCAPI_EXPORT)
 js_realloc :: proc "c" (c: ^Context, ptr: rawptr, size: uint) -> rawptr {
 	context = api_ctx()
 	if ptr == nil {return js_malloc(c, size)}
@@ -45,6 +51,7 @@ js_realloc :: proc "c" (c: ^Context, ptr: rawptr, size: uint) -> rawptr {
 	return p
 }
 
+@(export = JSCAPI_EXPORT)
 js_realloc_rt :: proc "c" (r: ^Runtime, ptr: rawptr, size: uint) -> rawptr {
 	context = api_ctx()
 	if ptr == nil {
@@ -59,10 +66,12 @@ js_realloc_rt :: proc "c" (r: ^Runtime, ptr: rawptr, size: uint) -> rawptr {
 	return p
 }
 
+@(export = JSCAPI_EXPORT)
 js_malloc_usable_size :: proc "c" (ptr: rawptr) -> uint {return 0}
 
 // ---- reference counting ----
 
+@(export = JSCAPI_EXPORT)
 JS_DupValue :: proc "c" (c: ^Context, v: JSValue) -> JSValue {
 	context = api_ctx()
 	dv := dec(v)
@@ -70,17 +79,21 @@ JS_DupValue :: proc "c" (c: ^Context, v: JSValue) -> JSValue {
 	return v
 }
 
+@(export = JSCAPI_EXPORT)
 JS_FreeValue :: proc "c" (c: ^Context, v: JSValue) {
 	disown(v)
 }
 
+@(export = JSCAPI_EXPORT)
 JS_FreeValueRT :: proc "c" (r: ^Runtime, v: JSValue) {
 	disown(v)
 }
 
+@(export = JSCAPI_EXPORT)
 JS_DupAtom :: proc "c" (c: ^Context, a: Atom) -> Atom {return a}
 
 // Atoms are never collected by jsrt: freeing one is a no-op.
+@(export = JSCAPI_EXPORT)
 JS_FreeAtom :: proc "c" (c: ^Context, a: Atom) {}
 
 // ---- strings ----
@@ -149,6 +162,7 @@ to_cstring :: proc(rt: ^js.Runtime, s: ^js.JS_String, cesu8: bool) -> (p: [^]u8,
 	return p, o
 }
 
+@(export = JSCAPI_EXPORT)
 JS_ToCStringLen2 :: proc "c" (c: ^Context, plen: ^uint, val: JSValue, cesu8: bool) -> cstring {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -164,17 +178,20 @@ JS_ToCStringLen2 :: proc "c" (c: ^Context, plen: ^uint, val: JSValue, cesu8: boo
 	return cstring(p)
 }
 
+@(export = JSCAPI_EXPORT)
 JS_ToCString :: proc "c" (c: ^Context, v: JSValue) -> cstring {
 	return JS_ToCStringLen2(c, nil, v, false)
 }
 
+@(export = JSCAPI_EXPORT)
 JS_FreeCString :: proc "c" (c: ^Context, ptr: cstring) {
 	context = api_ctx()
 	if ptr != nil {mem.free(rawptr(ptr), host_allocator)}
 }
 
 // The UTF-16 view (QuickJS-ng JS_ToCStringLenUTF16): a NUL-terminated block of code units.
-JS_ToCStringLenUTF16 :: proc "c" (c: ^Context, plen: ^u32, val: JSValue) -> [^]u16 {
+@(export = JSCAPI_EXPORT)
+JS_ToCStringLenUTF16 :: proc "c" (c: ^Context, plen: ^uint, val: JSValue) -> [^]u16 {
 	context = api_ctx()
 	ctx := jctx(c)
 	m := js.host_enter(ctx.rt)
@@ -190,15 +207,17 @@ JS_ToCStringLenUTF16 :: proc "c" (c: ^Context, plen: ^u32, val: JSValue) -> [^]u
 	out := cast([^]u16)raw
 	for i in 0 ..< n {out[i] = js.str_at(f, i)}
 	out[n] = 0
-	if plen != nil {plen^ = u32(n)}
+	if plen != nil {plen^ = uint(n)}
 	return out
 }
 
+@(export = JSCAPI_EXPORT)
 JS_FreeCStringUTF16 :: proc "c" (c: ^Context, ptr: [^]u16) {
 	context = api_ctx()
 	if ptr != nil {mem.free(rawptr(ptr), host_allocator)}
 }
 
+@(export = JSCAPI_EXPORT)
 JS_NewStringLen :: proc "c" (c: ^Context, buf: [^]u8, len: uint) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -208,11 +227,13 @@ JS_NewStringLen :: proc "c" (c: ^Context, buf: [^]u8, len: uint) -> JSValue {
 	return own(ctx.rt, js.mk_str(js.str_from_utf8(ctx.rt, text)))
 }
 
+@(export = JSCAPI_EXPORT)
 JS_NewString :: proc "c" (c: ^Context, str: cstring) -> JSValue {
 	return JS_NewStringLen(c, ([^]u8)(rawptr(str)), uint(len(str)))
 }
 
-JS_NewStringUTF16 :: proc "c" (c: ^Context, buf: [^]u16, len: u32) -> JSValue {
+@(export = JSCAPI_EXPORT)
+JS_NewStringUTF16 :: proc "c" (c: ^Context, buf: [^]u16, len: uint) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
 	m := js.host_enter(ctx.rt)
@@ -224,14 +245,17 @@ JS_NewStringUTF16 :: proc "c" (c: ^Context, buf: [^]u16, len: u32) -> JSValue {
 
 // ---- value constructors ----
 
+@(export = JSCAPI_EXPORT)
 JS_NewNumber :: proc "c" (c: ^Context, d: f64) -> JSValue {
 	return enc(js.mk_number(d))
 }
 
+@(export = JSCAPI_EXPORT)
 JS_NewFloat64 :: proc "c" (c: ^Context, d: f64) -> JSValue {
 	return enc(js.mk_number(d))
 }
 
+@(export = JSCAPI_EXPORT)
 JS_NewObject :: proc "c" (c: ^Context) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -240,6 +264,7 @@ JS_NewObject :: proc "c" (c: ^Context) -> JSValue {
 	return own(ctx.rt, js.mk_obj(js.new_plain_object(ctx)))
 }
 
+@(export = JSCAPI_EXPORT)
 JS_NewObjectProto :: proc "c" (c: ^Context, proto: JSValue) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -250,6 +275,7 @@ JS_NewObjectProto :: proc "c" (c: ^Context, proto: JSValue) -> JSValue {
 	return own(ctx.rt, js.mk_obj(js.object_new_proto(ctx, p)))
 }
 
+@(export = JSCAPI_EXPORT)
 JS_NewArray :: proc "c" (c: ^Context) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -258,6 +284,7 @@ JS_NewArray :: proc "c" (c: ^Context) -> JSValue {
 	return own(ctx.rt, js.mk_obj(js.array_new(ctx)))
 }
 
+@(export = JSCAPI_EXPORT)
 JS_NewError :: proc "c" (c: ^Context) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -266,6 +293,7 @@ JS_NewError :: proc "c" (c: ^Context) -> JSValue {
 	return own(ctx.rt, js.make_error(ctx, .plain, ""))
 }
 
+@(export = JSCAPI_EXPORT)
 JS_NewDate :: proc "c" (c: ^Context, epoch_ms: f64) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -281,6 +309,7 @@ JS_NewDate :: proc "c" (c: ^Context, epoch_ms: f64) -> JSValue {
 	return own(ctx.rt, js.mk_obj(o))
 }
 
+@(export = JSCAPI_EXPORT)
 JS_NewSymbol :: proc "c" (c: ^Context, description: cstring, is_global: bool) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -301,11 +330,13 @@ JS_NewSymbol :: proc "c" (c: ^Context, description: cstring, is_global: bool) ->
 
 // ---- conversions ----
 
+@(export = JSCAPI_EXPORT)
 JS_ToBool :: proc "c" (c: ^Context, v: JSValue) -> i32 {
 	context = api_ctx()
 	return js.to_boolean(dec(v)) ? 1 : 0
 }
 
+@(export = JSCAPI_EXPORT)
 JS_ToString :: proc "c" (c: ^Context, v: JSValue) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -315,6 +346,7 @@ JS_ToString :: proc "c" (c: ^Context, v: JSValue) -> JSValue {
 	return own(ctx.rt, r)
 }
 
+@(export = JSCAPI_EXPORT)
 JS_ToObject :: proc "c" (c: ^Context, v: JSValue) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -323,6 +355,7 @@ JS_ToObject :: proc "c" (c: ^Context, v: JSValue) -> JSValue {
 	return own(ctx.rt, js.to_object(ctx, dec(v)))
 }
 
+@(export = JSCAPI_EXPORT)
 JS_ToNumber :: proc "c" (c: ^Context, v: JSValue) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -333,6 +366,7 @@ JS_ToNumber :: proc "c" (c: ^Context, v: JSValue) -> JSValue {
 	return enc(js.mk_number(d))
 }
 
+@(export = JSCAPI_EXPORT)
 JS_ToFloat64 :: proc "c" (c: ^Context, pres: ^f64, val: JSValue) -> i32 {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -347,6 +381,7 @@ JS_ToFloat64 :: proc "c" (c: ^Context, pres: ^f64, val: JSValue) -> i32 {
 	return 0
 }
 
+@(export = JSCAPI_EXPORT)
 JS_ToInt32 :: proc "c" (c: ^Context, pres: ^i32, val: JSValue) -> i32 {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -362,6 +397,7 @@ JS_ToInt32 :: proc "c" (c: ^Context, pres: ^i32, val: JSValue) -> i32 {
 }
 
 // JS_ToInt64: ToNumber, NaN is 0 and the result saturates.
+@(export = JSCAPI_EXPORT)
 JS_ToInt64 :: proc "c" (c: ^Context, pres: ^i64, val: JSValue) -> i32 {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -389,64 +425,77 @@ class_of :: #force_inline proc "contextless" (v: JSValue) -> (js.Class_ID, bool)
 	return js.as_obj(dec(v)).class, true
 }
 
+@(export = JSCAPI_EXPORT)
 JS_IsError :: proc "c" (v: JSValue) -> bool {
 	cl, ok := class_of(v)
 	return ok && cl == .error
 }
 
+@(export = JSCAPI_EXPORT)
 JS_IsDate :: proc "c" (v: JSValue) -> bool {
 	cl, ok := class_of(v)
 	return ok && cl == .date
 }
 
+@(export = JSCAPI_EXPORT)
 JS_IsRegExp :: proc "c" (v: JSValue) -> bool {
 	cl, ok := class_of(v)
 	return ok && cl == .regexp
 }
 
+@(export = JSCAPI_EXPORT)
 JS_IsPromise :: proc "c" (v: JSValue) -> bool {
 	cl, ok := class_of(v)
 	return ok && cl == .promise
 }
 
+@(export = JSCAPI_EXPORT)
 JS_IsProxy :: proc "c" (v: JSValue) -> bool {
 	cl, ok := class_of(v)
 	return ok && cl == .proxy
 }
 
+@(export = JSCAPI_EXPORT)
 JS_IsMap :: proc "c" (v: JSValue) -> bool {
 	cl, ok := class_of(v)
 	return ok && cl == .jsmap
 }
 
+@(export = JSCAPI_EXPORT)
 JS_IsSet :: proc "c" (v: JSValue) -> bool {
 	cl, ok := class_of(v)
 	return ok && cl == .set
 }
 
+@(export = JSCAPI_EXPORT)
 JS_IsArray :: proc "c" (v: JSValue) -> bool {
 	cl, ok := class_of(v)
 	return ok && cl == .array
 }
 
+@(export = JSCAPI_EXPORT)
 JS_IsArrayBuffer :: proc "c" (v: JSValue) -> bool {
 	cl, ok := class_of(v)
 	return ok && (cl == .array_buffer || cl == .shared_array_buffer)
 }
 
+@(export = JSCAPI_EXPORT)
 JS_IsFunction :: proc "c" (c: ^Context, v: JSValue) -> bool {
 	return js.is_callable(dec(v))
 }
 
+@(export = JSCAPI_EXPORT)
 JS_IsConstructor :: proc "c" (c: ^Context, v: JSValue) -> bool {
 	return js.is_constructor(dec(v))
 }
 
+@(export = JSCAPI_EXPORT)
 JS_IsStrictEqual :: proc "c" (c: ^Context, a: JSValue, b: JSValue) -> bool {
 	context = api_ctx()
 	return js.strict_equals(jctx(c), dec(a), dec(b))
 }
 
+@(export = JSCAPI_EXPORT)
 JS_IsInstanceOf :: proc "c" (c: ^Context, val: JSValue, obj: JSValue) -> i32 {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -457,6 +506,7 @@ JS_IsInstanceOf :: proc "c" (c: ^Context, val: JSValue, obj: JSValue) -> i32 {
 
 // An error object that cannot be caught (an interrupt, running out of memory) is the pending exception
 // with the runtime's uncatchable flag.
+@(export = JSCAPI_EXPORT)
 JS_IsUncatchableError :: proc "c" (val: JSValue) -> bool {
 	rt := last_rt
 	if rt == nil || !rt.uncatchable {return false}
@@ -465,22 +515,26 @@ JS_IsUncatchableError :: proc "c" (val: JSValue) -> bool {
 
 // ---- atoms ----
 
+@(export = JSCAPI_EXPORT)
 JS_NewAtom :: proc "c" (c: ^Context, str: cstring) -> Atom {
 	context = api_ctx()
 	return js.atom_from_utf8(jctx(c).rt, string(str))
 }
 
+@(export = JSCAPI_EXPORT)
 JS_NewAtomLen :: proc "c" (c: ^Context, str: [^]u8, len: uint) -> Atom {
 	context = api_ctx()
 	return js.atom_from_utf8(jctx(c).rt, len == 0 ? "" : string(str[:len]))
 }
 
+@(export = JSCAPI_EXPORT)
 JS_NewAtomUInt32 :: proc "c" (c: ^Context, n: u32) -> Atom {
 	context = api_ctx()
 	if n < 0x80000000 {return js.atom_from_u32(n)}
 	return js.atom_from_string(jctx(c).rt, js.str_from_u64(jctx(c).rt, u64(n)))
 }
 
+@(export = JSCAPI_EXPORT)
 JS_ValueToAtom :: proc "c" (c: ^Context, v: JSValue) -> Atom {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -490,6 +544,7 @@ JS_ValueToAtom :: proc "c" (c: ^Context, v: JSValue) -> Atom {
 	return ok ? a : 0
 }
 
+@(export = JSCAPI_EXPORT)
 JS_AtomToValue :: proc "c" (c: ^Context, a: Atom) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -498,6 +553,7 @@ JS_AtomToValue :: proc "c" (c: ^Context, a: Atom) -> JSValue {
 	return own(ctx.rt, js.atom_to_value(ctx.rt, a))
 }
 
+@(export = JSCAPI_EXPORT)
 JS_AtomToString :: proc "c" (c: ^Context, a: Atom) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -506,6 +562,7 @@ JS_AtomToString :: proc "c" (c: ^Context, a: Atom) -> JSValue {
 	return own(ctx.rt, js.mk_str(js.atom_to_string(ctx.rt, a)))
 }
 
+@(export = JSCAPI_EXPORT)
 JS_AtomToCStringLen :: proc "c" (c: ^Context, plen: ^uint, a: Atom) -> cstring {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -517,6 +574,7 @@ JS_AtomToCStringLen :: proc "c" (c: ^Context, plen: ^uint, a: Atom) -> cstring {
 	return cstring(p)
 }
 
+@(export = JSCAPI_EXPORT)
 JS_AtomGetArrayIndex :: proc "c" (c: ^Context, pidx: ^u32, a: Atom) -> bool {
 	context = api_ctx()
 	idx, ok := js.atom_index(jctx(c).rt, a)
@@ -526,18 +584,21 @@ JS_AtomGetArrayIndex :: proc "c" (c: ^Context, pidx: ^u32, a: Atom) -> bool {
 
 // ---- exceptions ----
 
+@(export = JSCAPI_EXPORT)
 JS_Throw :: proc "c" (c: ^Context, obj: JSValue) -> JSValue {
 	context = api_ctx()
 	disown(obj)
 	return enc(js.throw(jctx(c), dec(obj)))
 }
 
+@(export = JSCAPI_EXPORT)
 JS_GetException :: proc "c" (c: ^Context) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
 	return own(ctx.rt, js.take_exception(ctx))
 }
 
+@(export = JSCAPI_EXPORT)
 JS_HasException :: proc "c" (c: ^Context) -> bool {
 	context = api_ctx()
 	return js.has_exception(jctx(c))
@@ -695,6 +756,7 @@ JS_ThrowInternalError :: proc "c" (c: ^Context, fmt: cstring, args: ..any) -> JS
 	return throw_formatted(c, .internal, fmt, args)
 }
 
+@(export = JSCAPI_EXPORT)
 JS_ThrowOutOfMemory :: proc "c" (c: ^Context) -> JSValue {
 	context = api_ctx()
 	return throw_formatted(c, .internal, "out of memory", nil)

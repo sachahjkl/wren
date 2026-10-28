@@ -5,15 +5,18 @@
 // JS_NewCFunctionMagic is reimplemented over JS_NewCFunction2.
 package wj
 
+import jscapi "wb:engine/jscapi"
+
 // JSCFunctionEnum (quickjs.h): the kinds a native function is made as.
 CFUNC_getter_magic  :: 10
 CFUNC_setter_magic  :: 11
 
 
 // JSHostAutoInitFunc (a Wren patch of quickjs.h): the value of a global property, made on its first use.
-Host_Auto_Init :: #type proc "c" (ctx: ^Context, atom: Atom) -> JSValue
+Host_Auto_Init :: jscapi.Host_Auto_Init
 // JSCFunctionMagic: a native function with a magic number (getter_magic / setter_magic are cast to it, as the C does).
 
+when !WJ_JSRT {
 @(default_calling_convention = "c")
 foreign {
 	JS_IsProxy             :: proc(v: JSValue) -> bool ---
@@ -29,6 +32,7 @@ foreign {
 	lre_is_id_start    :: proc(c: u32) -> bool ---
 	lre_is_id_continue :: proc(c: u32) -> bool ---
 }
+}   // when !WJ_JSRT
 
 @(default_calling_convention = "c")
 foreign {
