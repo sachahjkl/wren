@@ -245,6 +245,23 @@ js_parse_template_part :: proc(s: ^Parse_State, p0: int) -> bool {
 // returns the index after the body.
 js_parse_string :: proc(s: ^Parse_State, sep: int, do_throw: bool, p0: int, token: ^JS_Token) -> (pp: int, failed: bool) {
 	p := p0
+	if sep != '`' {
+		// fast path: printable ASCII up to the closing quote, no escape
+		q := p0
+		for q < s.buf_end {
+			ch := s.buf[q]
+			if ch < 0x20 || ch >= 0x80 || int(ch) == sep || ch == '\\' {break}
+			q += 1
+		}
+		if q < s.buf_end && int(s.buf[q]) == sep {
+			bytes := make([]u8, q - p0, s.allocator)
+			copy(bytes, s.buf[p0:q])
+			token.val = TOK_STRING
+			token.sep = sep
+			token.str = String_Value{latin1 = bytes}
+			return q + 1, false
+		}
+	}
 	b: String_Buffer
 	sb_init(&b, s.allocator)
 	c: u32
@@ -444,9 +461,23 @@ reparse_ident_token :: proc(s: ^Parse_State) {
 	}
 }
 
+@(private = "file")
+is_ascii_ident_next :: #force_inline proc(c: u8) -> bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '$'
+}
+
 // parse_ident: c is the first code point (already consumed); returns the atom and the index after the name.
 parse_ident :: proc(s: ^Parse_State, p0: int, has_escape: ^bool, c0: u32, is_private: bool) -> (Atom, int) {
 	p := p0
+	if c0 < 0x80 && s.buf[p0 - 1] == u8(c0) && !has_escape^ {
+		// fast path: a plain ASCII name (first character not escaped) is interned straight from the source
+		start := is_private ? p0 - 2 : p0 - 1
+		q := p0
+		for is_ascii_ident_next(s.buf[q]) {q += 1}
+		if s.buf[q] != '\\' && s.buf[q] < 0x80 {
+			return atom_from_latin1(s.atoms, s.buf[start:q]), q
+		}
+	}
 	b: String_Buffer
 	sb_init(&b, s.allocator)
 	if is_private {sb_putc(&b, '#')}
@@ -540,6 +571,17 @@ js_atof_lex :: proc(s: ^Parse_State, p0: int) -> (JS_Value, int) {
 		}
 	}
 	if p == p_start {return nil, p}
+	if !is_float && buf[p] != 'n' && p - p_start <= 15 && (radix == 10 || radix == 16 && p - p_start <= 13) {
+		// fast path: a short integer is exact in a double, no conversion routine needed
+		v: u64 = 0
+		plain := true
+		for i in p_start ..< p {
+			d := to_digit(buf[i])
+			if d >= radix {plain = false; break}
+			v = v * u64(radix) + u64(d)
+		}
+		if plain {return js_number(f64(v)), p}
+	}
 	clean := make([dynamic]u8, 0, p - p_start, s.allocator)
 	for i in p_start ..< p {
 		if buf[i] != '_' {append(&clean, buf[i])}

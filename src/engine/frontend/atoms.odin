@@ -117,6 +117,11 @@ atom_from_string :: proc(t: ^Atom_Table, sv: String_Value) -> Atom {
 	return a
 }
 
+// atom_from_latin1 is atom_from_string for Latin-1 bytes the caller does not own (copied only when new).
+atom_from_latin1 :: proc(t: ^Atom_Table, b: []u8) -> Atom {
+	return atom_from_string(t, String_Value{latin1 = b})
+}
+
 // units_as_bytes views UTF-16 units as their raw bytes (a slice transmute would keep the element count).
 @(private = "file")
 units_as_bytes :: proc(u: []u16) -> string {
