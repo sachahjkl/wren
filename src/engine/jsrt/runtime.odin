@@ -27,9 +27,12 @@ Host_Config :: struct {
 	interrupt:       proc(rt: ^Runtime, user: rawptr) -> bool,
 	interrupt_user:  rawptr,
 	// The compiler front-end: turns source text into serialized QuickJS-ng bytecode (or a raw
-	// function value). Needed by eval, Function(), dynamic import and $262.evalScript.
+	// function value). Needed by eval, Function(), dynamic import and $262.evalScript. nil: the
+	// engine's own front-end (frontend_compile).
 	compile:         proc(ctx: ^Context, req: ^Compile_Request) -> Value,
 	compile_user:    rawptr,
+	// Stack bytes the front-end may use per compile (0: its default, 512 KiB).
+	compile_stack_budget: int,
 	// Module loading: resolve `specifier` relative to `referrer` and return the module record
 	// (a .module Value from read_object) or EXCEPTION.
 	// attr_type: the import's `type` attribute ("" when absent, else e.g. "json", "text", "bytes")

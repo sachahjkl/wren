@@ -6,10 +6,10 @@ package jsrt
 
 compile :: proc(ctx: ^Context, req: ^Compile_Request) -> Value {
 	rt := ctx.rt
-	if rt.config.compile == nil {return throw_syntax_error(ctx, "no compiler available in this context")}
 	req.user = rt.config.compile_user
+	compile_proc := rt.config.compile != nil ? rt.config.compile : frontend_compile
 	rt.gc_disabled += 1
-	v := rt.config.compile(ctx, req)
+	v := compile_proc(ctx, req)
 	rt.gc_disabled -= 1
 	if is_exception(v) {return EXCEPTION}
 	if v.tag != .function_bc && v.tag != .module {return throw_internal_error(ctx, "compiler returned an invalid value")}

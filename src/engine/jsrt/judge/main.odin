@@ -13,9 +13,10 @@ package jsrt_judge
 //       -out <dir>       results: errors.txt, table.md (default build/test262)
 //   judge worker <list> internal: run the listed tests, one result line per test
 //
-// Front-end: until the Odin compiler (src/engine/frontend) handles the whole language, source text
-// is compiled by QuickJS-ng's own compiler loaded from build/jsrt_refcompiler.dll
-// (tools/jsrt_refcompiler.c) and handed to the runtime as serialized bytecode.
+// Front-end: source text is compiled by the engine's own Odin front-end (src/engine/frontend, through
+// jsrt.frontend_compile). With JSRT_REFCOMPILER=1, QuickJS-ng's compiler loaded from
+// build/jsrt_refcompiler.dll (tools/jsrt_refcompiler.c) is used instead, to tell a compiler bug from a
+// runtime bug.
 
 import "base:runtime"
 import "core:dynlib"
@@ -70,7 +71,17 @@ pjoin :: proc(parts: ..string) -> string {
 	return s
 }
 
+// The judge compiles with the engine's Odin front-end; JSRT_REFCOMPILER=1 in the environment (inherited
+// by the workers) switches to the reference DLL to tell compiler bugs from runtime bugs.
+use_reference_compiler: bool
+
+compile_hook :: proc() -> proc(ctx: ^js.Context, req: ^js.Compile_Request) -> js.Value {
+	return use_reference_compiler ? judge_compile : nil
+}
+
 load_compiler :: proc() -> bool {
+	use_reference_compiler = os.get_env("JSRT_REFCOMPILER", context.temp_allocator) == "1"
+	if !use_reference_compiler {return true}
 	exe_dir := filepath.dir(os.args[0])
 	candidates := []string{pjoin(exe_dir, "jsrt_refcompiler.dll"), "build/jsrt_refcompiler.dll"}
 	for c in candidates {
@@ -536,7 +547,7 @@ run_test262_file :: proc(cfg: ^Config, hc: ^Harness_Cache, rel: string, verbose:
 	h.can_block = can_block
 	strings.builder_init(&h.output)
 	cfgr := js.DEFAULT_CONFIG
-	cfgr.compile = judge_compile
+	cfgr.compile = compile_hook()
 	cfgr.max_stack_bytes = JUDGE_STACK_BYTES
 	cfgr.load_module = judge_load_module
 	cfgr.load_user = h
@@ -961,7 +972,7 @@ eval_main :: proc(path: string) -> int {
 	h.deadline = time.tick_add(time.tick_now(), 3600 * time.Second)
 	strings.builder_init(&h.output)
 	cfgr := js.DEFAULT_CONFIG
-	cfgr.compile = judge_compile
+	cfgr.compile = compile_hook()
 	cfgr.max_stack_bytes = JUDGE_STACK_BYTES
 	cfgr.load_module = judge_load_module
 	cfgr.load_user = h
