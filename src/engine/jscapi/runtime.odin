@@ -53,7 +53,7 @@ state_of :: #force_inline proc "contextless" (rt: ^js.Runtime) -> ^State {return
 last_rt: ^js.Runtime
 
 JS_NewRuntime :: proc "c" () -> ^Runtime {
-	context = runtime.default_context()
+	context = runtime.default_context() // memcheck: the JavaScript engine's own heap (a guest allocator), not the browser's process memory
 	if host_allocator.procedure == nil {host_allocator = context.allocator}
 	context.allocator = host_allocator
 	api_context = context

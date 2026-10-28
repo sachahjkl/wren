@@ -31,7 +31,7 @@ Engine :: struct {
 
 @(private = "file")
 engine_context :: proc "contextless" () -> runtime.Context {
-	context = runtime.default_context()
+	context = runtime.default_context() // memcheck: the JavaScript engine's own heap (a guest allocator), not the browser's process memory
 	c := context
 	c.allocator = runtime.wasm_allocator(&wasm_heap)
 	return c
@@ -39,7 +39,7 @@ engine_context :: proc "contextless" () -> runtime.Context {
 
 @(export)
 jsrt_init :: proc "c" () {
-	context = runtime.default_context()
+	context = runtime.default_context() // memcheck: the JavaScript engine's own heap (a guest allocator), not the browser's process memory
 	runtime.wasm_allocator_init(&wasm_heap)
 	context = engine_context()
 	js.date_now_hook = proc() -> f64 {return jsrt_now_ms()}

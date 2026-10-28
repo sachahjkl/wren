@@ -168,8 +168,10 @@
 <li><a href="/docs/engine/bigint.html">bigint: arbitrary-precision integers for the JavaScript engine</a></li>
 <li><a href="/docs/engine/datetime.html">datetime (package jsdate): the JavaScript engine's Date</a></li>
 <li><a href="/docs/engine/frontend.html">Moteur JavaScript — front-end E1 (src/engine/frontend)</a></li>
+<li><a href="/docs/engine/jscapi.html">The QuickJS C API on the Odin runtime (src/engine/jscapi)</a></li>
 <li><a href="/docs/engine/numconv.html">numconv: float64 ↔ string for the JavaScript engine</a></li>
 <li><a href="/docs/engine/regexp.html">engine/regexp</a></li>
+<li><a href="/docs/engine/runtime.html">The ECMAScript runtime (src/engine/jsrt)</a></li>
 <li><a href="/docs/engine/unicode.html">engine/unicode (ucd)</a></li>
 <li><a href="/docs/js/bindgen.html">bindgen: Odin output and Odin input</a></li>
 <li><a href="/docs/js/odin-abi.html">The generic Odin ABI for the engine boundary</a></li>
@@ -226,6 +228,15 @@ in <code>wj/</code>. A domain of the glue calls another domain unqualified, neve
 </ul>
 <p>Every symbol is declared <strong>once</strong>. <code>odin check native/js/odin -target:freestanding_wasm32 -no-entry-point</code> fails with
 "Redeclaration of ..." the moment a second declaration appears; that is the point.</p>
+<h2 id="which-engine-wj-jsrt"><a class="anchor" href="#which-engine-wj-jsrt" aria-hidden="true">#</a>Which engine (<code>WJ_JSRT</code>)</h2>
+<p>The layer sits on QuickJS‑ng in C by default. <code>-define:WJ_JSRT=true</code> puts it on the Odin runtime instead: the
+<code>foreign</code> QuickJS declarations of <code>wj/</code> are not compiled (<code>when !WJ_JSRT</code>), and <code>wj/backend_jsrt.odin</code> aliases
+each of those names to the same procedure of <code>src/engine/jscapi</code> (the QuickJS C API implemented on
+<code>src/engine/jsrt</code>). The API types (<code>Context</code>, <code>Native</code>, <code>Class_Def</code>, …) are defined once in <code>jscapi/types.odin</code>
+and aliased in <code>wj</code>, so a domain file compiles unchanged against either engine. <code>-define:JSCAPI_EXPORT=true</code>
+also exports the API under its C names for the C that remains (<code>gen/bindings.c</code>). Details, contracts and the plan
+of what is left: <a href="/docs/engine/jscapi.html">../engine/jscapi.md</a>. Both modes are checked with the <code>odin check</code>
+command of "Building" plus <code>-define:WJ_JSRT=true</code>.</p>
 <h2 id="where-a-helper-goes"><a class="anchor" href="#where-a-helper-goes" aria-hidden="true">#</a>Where a helper goes</h2>
 <div class="table-box"><table>
 <thead><tr><th>What it is</th><th>Where</th></tr></thead>
@@ -333,6 +344,7 @@ different before any port).</p>
 <p class="doc-toc-title">On this page</p>
 <ul>
 <li><a href="#the-layout">The layout</a></li>
+<li><a href="#which-engine-wj-jsrt">Which engine (WJ_JSRT)</a></li>
 <li><a href="#where-a-helper-goes">Where a helper goes</a></li>
 <li><a href="#how-to-declare-a-browser-import">How to declare a browser import</a></li>
 <li><a href="#how-to-add-a-domain">How to add a domain</a></li>

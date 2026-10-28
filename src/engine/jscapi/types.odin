@@ -82,7 +82,7 @@ ptr_word :: #force_inline proc "contextless" (p: rawptr) -> u32 {
 @(private)
 assert_contextless :: #force_inline proc "contextless" (cond: bool, msg: string) {
 	if !cond {
-		context = runtime.default_context()
+		context = runtime.default_context() // memcheck: the JavaScript engine's own heap (a guest allocator), not the browser's process memory
 		panic(msg)
 	}
 }
