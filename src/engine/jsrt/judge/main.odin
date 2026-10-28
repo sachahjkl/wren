@@ -1036,7 +1036,7 @@ main :: proc() {
 	case "eval":
 		if len(args) < 3 {os.exit(2)}
 		os.exit(eval_main(args[2]))
-	case "fuzz", "fuzzrun", "compile":
+	case "fuzz", "fuzzrun", "fuzzsrc", "compile":
 		os.exit(fuzz_args(args))
 	case "worker":
 		if len(args) < 5 {os.exit(2)}

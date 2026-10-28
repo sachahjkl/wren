@@ -72,7 +72,8 @@ fuzz_main :: proc(dir: string, iterations: int, seed: u64) -> int {
 		_ = ctx
 		js.engine_free(rt)
 	}
-	fmt.eprintf("fuzz: %d files, %d bytecode images, %d iterations, seed %d\n", len(files), len(corpus), iterations, seed)
+	run_mutants := os.get_env("JSRT_FUZZ_RUN", context.temp_allocator) == "1"
+	fmt.eprintf("fuzz: %d files, %d bytecode images, %d iterations, seed %d%s\n", len(files), len(corpus), iterations, seed, run_mutants ? ", running the accepted mutants" : "")
 	os.make_directory("build/fuzz")
 	accepted, threw, completed := 0, 0, 0
 	t0 := time.tick_now()
@@ -111,8 +112,13 @@ fuzz_main :: proc(dir: string, iterations: int, seed: u64) -> int {
 		v := js.read_object(ctx, img)
 		if !js.is_exception(v) {
 			accepted += 1
-			r := js.eval_bytecode(ctx, img)
-			if js.is_exception(r) {threw += 1; js.pending_exception(ctx)} else {completed += 1}
+			// The interpreter trusts operand types (as QuickJS does: bytecode comes from the compiler), so a
+			// mutant that survives the reader and the stack verifier can still be type-confused; running
+			// them is opt-in (JSRT_FUZZ_RUN=1).
+			if run_mutants {
+				r := js.eval_bytecode(ctx, img)
+				if js.is_exception(r) {threw += 1; js.pending_exception(ctx)} else {completed += 1}
+			}
 		} else {
 			js.pending_exception(ctx)
 		}
@@ -123,6 +129,95 @@ fuzz_main :: proc(dir: string, iterations: int, seed: u64) -> int {
 		}
 	}
 	fmt.printf("fuzz: %d iterations without a crash; reader accepted %d mutants (%d threw, %d completed)\n", iterations, accepted, threw, completed)
+	return 0
+}
+
+// judge fuzzsrc <dir> [iterations] [seed]: the same for source text. Each iteration mutates one .js file
+// (byte flips, deleted/duplicated spans, spliced tokens, truncation), compiles it with the Odin front-end and
+// runs it in a fresh runtime under a 20 ms interrupt budget. The compiler only emits well-formed bytecode, so
+// any crash is a bug in the front-end or the runtime; the text under test is written to build/fuzz/last.js.
+fuzz_src_main :: proc(dir: string, iterations: int, seed: u64) -> int {
+	if !load_compiler() {return 2}
+	rand.reset(seed)
+	files := make([dynamic]string)
+	collect_js(dir, &files)
+	if len(files) == 0 {
+		fmt.eprintln("fuzzsrc: no .js files under", dir)
+		return 2
+	}
+	corpus := make([dynamic]string)
+	for p in files {
+		data, err := os.read_entire_file(p, context.allocator)
+		if err == nil && len(data) < 64 << 10 {append(&corpus, string(data))}
+	}
+	tokens := []string{"{", "}", "(", ")", "[", "]", ";", ",", "=>", "...", "**", "?.", "??", "yield", "await", "class", "#x", "async", "function*", "\\u", "`${", "/", "/*", "super", "new.target", "import(", "let", "static", "get ", "0n", "\"", "'", "\n"}
+	// the test262 harness, when <dir> sits inside a test262 checkout
+	harness_names := []string{"assert.js", "sta.js", "compareArray.js", "propertyHelper.js"}
+	harness := make([dynamic]string)
+	for up := dir; len(up) > 3; up = filepath.dir(up) {
+		hd := pjoin(up, "harness")
+		if os.exists(pjoin(hd, "assert.js")) {
+			for n in harness_names {
+				data, err := os.read_entire_file(pjoin(hd, n), context.allocator)
+				if err == nil {append(&harness, string(data))}
+			}
+			break
+		}
+	}
+	if len(harness) != len(harness_names) {clear(&harness)}
+	os.make_directory("build/fuzz")
+	t0 := time.tick_now()
+	compiled, threw := 0, 0
+	for it in 0 ..< iterations {
+		src := corpus[rand.int_max(len(corpus))]
+		buf := make([dynamic]u8, 0, len(src) + 64, context.temp_allocator)
+		append(&buf, src)
+		for _ in 0 ..< 1 + rand.int_max(3) {
+			n := len(buf)
+			if n == 0 {break}
+			switch rand.int_max(6) {
+			case 0: buf[rand.int_max(n)] ~= u8(1 << uint(rand.int_max(8)))
+			case 1: buf[rand.int_max(n)] = u8(32 + rand.int_max(95))
+			case 2: resize(&buf, rand.int_max(n) + 1)
+			case 3:
+				a := rand.int_max(n)
+				l := min(1 + rand.int_max(24), n - a)
+				remove_range(&buf, a, a + l)
+			case 4:
+				a := rand.int_max(n)
+				l := min(1 + rand.int_max(40), n - a)
+				chunk := make([]u8, l, context.temp_allocator)
+				copy(chunk, buf[a:a + l])
+				inject_at(&buf, rand.int_max(n), ..chunk)
+			case 5:
+				t := tokens[rand.int_max(len(tokens))]
+				inject_at(&buf, rand.int_max(n), ..transmute([]u8)t)
+			}
+		}
+		_ = os.write_entire_file("build/fuzz/last.js", buf[:])
+		h := Fuzz_Host{deadline = time.tick_add(time.tick_now(), 20 * time.Millisecond)}
+		cfgr := js.DEFAULT_CONFIG
+		cfgr.compile = compile_hook()
+		cfgr.interrupt = fuzz_interrupt
+		cfgr.interrupt_user = &h
+		cfgr.malloc_limit = 64 << 20
+		cfgr.max_stack_bytes = 512 << 10
+		rt := js.engine_new(context.allocator, cfgr)
+		ctx := js.context_new(rt)
+		for hs, i in harness {
+			js.eval_source(ctx, hs, harness_names[i])
+			js.pending_exception(ctx)
+		}
+		r := js.eval_source(ctx, string(buf[:]), "fuzz.js")
+		if js.is_exception(r) {threw += 1; js.pending_exception(ctx)} else {compiled += 1}
+		js.run_jobs(rt)
+		js.engine_free(rt)
+		free_all(context.temp_allocator)
+		if (it + 1) % 2000 == 0 {
+			fmt.eprintf("fuzzsrc: %d/%d (ran %d, threw or failed to compile %d) %.0f s\n", it + 1, iterations, compiled, threw, time.duration_seconds(time.tick_since(t0)))
+		}
+	}
+	fmt.printf("fuzzsrc: %d iterations without a crash (%d ran to completion, %d threw or failed to compile)\n", iterations, compiled, threw)
 	return 0
 }
 
@@ -215,5 +310,6 @@ fuzz_args :: proc(args: []string) -> int {
 		seed = s
 	}
 	d, _ := filepath.abs(args[2])
+	if args[1] == "fuzzsrc" {return fuzz_src_main(d, iters, seed)}
 	return fuzz_main(d, iters, seed)
 }
