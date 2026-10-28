@@ -29,25 +29,16 @@ foreign {
 
 	// (web_formdata_* are Odin, package odin_glue, web_formdata.odin)
 
-	web_headers_new             :: proc(ctx: ^Context, guard: i32) -> JSValue ---
-	web_headers_fill_lines      :: proc(ctx: ^Context, headers: JSValue, text: cstring, n: uint) ---
-	web_headers_get             :: proc(headers: JSValue, name: cstring, len: ^uint) -> [^]u8 ---
-	web_headers_has             :: proc(headers: JSValue, name: cstring) -> bool ---
-	web_headers_append_raw      :: proc(headers: JSValue, name: cstring, nlen: uint, value: cstring, vlen: uint) -> bool ---
-	web_headers_append_checked  :: proc(ctx: ^Context, headers: JSValue, name: cstring, nlen: uint, value: cstring, vlen: uint) -> bool ---
-	web_headers_sorted          :: proc(ctx: ^Context, headers: JSValue) -> JSValue ---
-	web_forbidden_request_header :: proc(name: cstring, n: uint, value: cstring, vn: uint) -> bool ---
+	// (Headers, extract a body: web_headers_*, web_extract_body, web_extracted_free are Odin, package odin_glue,
+	// web_fetch.odin)
 
 	// (streams: web_stream_* and web_writable_state are Odin, package odin_glue, web_stream.odin / web_writable.odin)
 
 	// (abort signals: web_signal_* and web_controller_construct are Odin, package odin_glue, web_abort.odin)
-
-	// extract a body (web.h)
-	web_extract_body     :: proc(ctx: ^Context, v: JSValue, out: ^Extracted, what: cstring) -> bool ---
-	web_extracted_free   :: proc(ctx: ^Context, e: ^Extracted) ---
 }
 
-// web_extracted (web.h): the bytes, Content-Type and a kept ReadableStream of "extract a body".
+// web_extracted (web.h): the bytes, Content-Type and a kept ReadableStream of "extract a body" (what the C callers of
+// web_extract_body receive).
 Extracted :: struct {
 	data:   [^]u8,
 	len:    uint,

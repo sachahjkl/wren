@@ -207,7 +207,7 @@ wjr_ToggleEvent_get_source :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) 
 
 @(export, link_name = "wjr_ToggleEvent_constructor")
 wjr_ToggleEvent_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
-	ev := wj.wj_event_construct(ctx, new_target, argc, argv, iface_toggle_event(), "ToggleEvent")
+	ev := wj_event_construct(ctx, new_target, argc, argv, iface_toggle_event(), "ToggleEvent")
 	if wj.is_exception(ev) { return ev }
 	init := wj.arg(argc, argv, 1)
 	names := [2]cstring{ "oldState", "newState" }

@@ -185,7 +185,7 @@ wj_content_handler :: proc "c" (element: u64, window_owner: i32, svg: i32, name:
 	if wj.is_exception(target) { wj.JS_FreeValue(ctx, wj.JS_GetException(ctx)); return 0 }
 	defer wj.JS_FreeValue(ctx, target)
 	if !wj.is_object(target) { return 0 }
-	if on_window { wj.wj_global_handle() }
+	if on_window { wj_global_handle() }
 	// only event handlers the target has (an IDL attribute of that name): the property lookup says
 	prop := wj.JS_NewAtomLen(ctx, raw_data(attr), uint(len(attr)))
 	has := wj.JS_HasProperty(ctx, target, prop)
@@ -215,7 +215,7 @@ wj_content_handler :: proc "c" (element: u64, window_owner: i32, svg: i32, name:
 		wj.JS_SetOpaque(v, u)
 	}
 	defer wj.JS_FreeValue(ctx, v)
-	r := wj.wj_event_handler_set(ctx, target, ifc("EventTarget"), cstring(&tname[0]), v, special)
+	r := wj_event_handler_set(ctx, target, ifc("EventTarget"), cstring(&tname[0]), v, special)
 	if wj.is_exception(r) { wj.wj_report_pending(ctx) } else { wj.JS_FreeValue(ctx, r) }
 	return 1
 }
@@ -227,7 +227,7 @@ wj_content_handler :: proc "c" (element: u64, window_owner: i32, svg: i32, name:
 @(private = "file")
 reflected_target :: proc "contextless" (this_val: wj.JSValue) -> wj.JSValue {
 	if wj.wj_unwrap(this_val, -1) != nil && (wj.wj_unwrap(this_val, ifc("HTMLBodyElement")) != nil || wj.wj_unwrap(this_val, ifc("HTMLFrameSetElement")) != nil) {
-		wj.wj_global_handle()
+		wj_global_handle()
 		return wj.realm_global()
 	}
 	return this_val
@@ -235,12 +235,12 @@ reflected_target :: proc "contextless" (this_val: wj.JSValue) -> wj.JSValue {
 
 @(private = "file")
 get :: #force_inline proc "contextless" (ctx: ^wj.Context, t: wj.JSValue, type: cstring) -> wj.JSValue {
-	return wj.wj_event_handler_get(ctx, reflected_target(t), ifc("EventTarget"), type)
+	return wj_event_handler_get(ctx, reflected_target(t), ifc("EventTarget"), type)
 }
 
 @(private = "file")
 set :: #force_inline proc "contextless" (ctx: ^wj.Context, t: wj.JSValue, type: cstring, v: wj.JSValue, special: i32 = 0) -> wj.JSValue {
-	return wj.wj_event_handler_set(ctx, reflected_target(t), ifc("EventTarget"), type, v, special)
+	return wj_event_handler_set(ctx, reflected_target(t), ifc("EventTarget"), type, v, special)
 }
 
 @(export, link_name = "wjr_GlobalEventHandlers_get_onblur")   wjr_GlobalEventHandlers_get_onblur   :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return get(ctx, t, "blur") }

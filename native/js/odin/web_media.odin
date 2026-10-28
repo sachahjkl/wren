@@ -89,7 +89,7 @@ wjr_MediaQueryListEvent_get_matches :: proc "c" (ctx: ^wj.Context, this_val: wj.
 
 @(export, link_name = "wjr_MediaQueryListEvent_constructor")
 wjr_MediaQueryListEvent_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
-	ev := wj.wj_event_construct(ctx, new_target, argc, argv, iface_mql_event(), "MediaQueryListEvent")
+	ev := wj_event_construct(ctx, new_target, argc, argv, iface_mql_event(), "MediaQueryListEvent")
 	if wj.is_exception(ev) { return ev }
 	init := wj.arg(argc, argv, 1)
 	media, matches: wj.JSValue
