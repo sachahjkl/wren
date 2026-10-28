@@ -5,9 +5,13 @@
 module url {
   handle URL : Object = Url_Object via lookup_URL;
   handle URLSearchParams : Object = Params_Object via lookup_URLSearchParams;
+  handle URLPattern : Object = Pattern_Object via lookup_URLPattern;
 
   /// A component of a URL (also used by Location).
   enum URLComponent : i32 { Href, Protocol, Username, Password, Host, Hostname, Port, Pathname, Search, Hash, Origin }
+
+  /// A component of a URLPattern (the eight pattern components, in the spec's order).
+  enum URLPatternComponent : i32 { Protocol, Username, Password, Hostname, Port, Pathname, Search, Hash }
 
   /// new URL(input, base): Type when the input (or the base) is not a valid URL or too long (web.url_max_length).
   URL URL_parse(string input, optional string base) raises;
@@ -47,4 +51,43 @@ module url {
   string URLSearchParams_nameAt(URLSearchParams params, i32 index) raises;
   /// The value of the pair at `index`: Not_Found past the end.
   string URLSearchParams_valueAt(URLSearchParams params, i32 index) raises;
+
+  ////////////////////////////////
+  // URLPattern (URL Pattern Standard). The pattern parsing and matching are pure (src/url/pattern*.odin); the host
+  // object holds the compiled pattern and the last exec() result so the C glue can assemble the structured result.
+
+  /// new URLPattern(patternString, baseURL?, {ignoreCase}): Type on a malformed pattern or missing protocol with no
+  /// base. `has_base` and `has_options` distinguish an absent argument from an empty string / default.
+  URLPattern URLPattern_createString(string input, string base, bool has_base, bool ignore_case) raises;
+  /// new URLPattern(init, {ignoreCase}): the eight optional component strings plus an optional baseURL. A component's
+  /// `has_*` flag is false when the property was absent (defaults to the wildcard pattern).
+  URLPattern URLPattern_createInit(
+    string protocol, bool has_protocol, string username, bool has_username, string password, bool has_password,
+    string hostname, bool has_hostname, string port, bool has_port, string pathname, bool has_pathname,
+    string search, bool has_search, string hash, bool has_hash, string base, bool has_base, bool ignore_case) raises;
+
+  /// A component's normalized pattern string (the getters protocol, username, ...).
+  string URLPattern_component(URLPattern pattern, URLPatternComponent component);
+  /// pattern.hasRegExpGroups
+  bool URLPattern_hasRegExpGroups(URLPattern pattern);
+
+  /// Run exec()/test() against a URL string (resolved against base when has_base). Stores the result in the object.
+  /// Returns 1 when it matched, 0 when it did not (exec returns null, test returns false).
+  i32 URLPattern_execString(URLPattern pattern, string input, string base, bool has_base);
+  /// Run exec()/test() against a per-component init. Returns 1/0 as execString.
+  i32 URLPattern_execInit(
+    URLPattern pattern, string protocol, bool has_protocol, string username, bool has_username,
+    string password, bool has_password, string hostname, bool has_hostname, string port, bool has_port,
+    string pathname, bool has_pathname, string search, bool has_search, string hash, bool has_hash);
+
+  /// After a successful exec: the number of `inputs` entries, and the i-th input string.
+  i32 URLPattern_resultInputCount(URLPattern pattern);
+  string URLPattern_resultInput(URLPattern pattern, i32 index) raises;
+  /// The matched input value of a component (URLPatternComponentResult.input).
+  string URLPattern_componentInput(URLPattern pattern, URLPatternComponent component);
+  /// The number of named groups of a component, and the i-th group's name.
+  i32 URLPattern_groupCount(URLPattern pattern, URLPatternComponent component);
+  string URLPattern_groupName(URLPattern pattern, URLPatternComponent component, i32 index) raises;
+  /// The i-th group's captured value: Not_Found when the group did not participate (its value is undefined).
+  string URLPattern_groupValue(URLPattern pattern, URLPatternComponent component, i32 index) raises;
 }
