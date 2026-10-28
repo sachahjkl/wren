@@ -98,11 +98,11 @@ static void req_release(JSContext *ctx, uint32_t slot)
     JS_FreeValue(ctx, a); JS_FreeValue(ctx, b); JS_FreeValue(ctx, nm); JS_FreeValue(ctx, md);
 }
 
-static inline int64_t req_user(uint32_t slot) { return (int64_t)(((uint64_t)reqs[slot].gen << 32) | slot); }
+static inline int64_t req_user(uint32_t slot) { return (int64_t)(uint32_t)(((reqs[slot].gen & 0xFFFFu) << 16) | (slot & 0xFFFFu)); }
 static lock_req *req_from_user(int64_t user, uint32_t *slot_out)
 {
-    uint32_t slot = (uint32_t)((uint64_t)user & 0xFFFFFFFFu), gen = (uint32_t)((uint64_t)user >> 32);
-    if (slot >= req_count || !reqs[slot].used || reqs[slot].gen != gen) { return NULL; }
+    uint32_t slot = (uint32_t)((uint64_t)user & 0xFFFFu), gen = (uint32_t)(((uint64_t)user >> 16) & 0xFFFFu);
+    if (slot >= req_count || !reqs[slot].used || (reqs[slot].gen & 0xFFFFu) != gen) { return NULL; }
     *slot_out = slot;
     return &reqs[slot];
 }
