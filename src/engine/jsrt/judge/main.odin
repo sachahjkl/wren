@@ -994,7 +994,10 @@ eval_main :: proc(path: string) -> int {
 	js.def_value(ctx, ctx.global_obj, "console", js.mk_obj(console))
 	t0 := time.tick_now()
 	kind: js.Compile_Kind = strings.has_suffix(path, ".mjs") ? .module : .script
+	profiling := prof_enabled()
+	if profiling {prof_start()}
 	r := js.eval_source(ctx, string(data), path, kind)
+	if profiling {prof_report()}
 	code := 0
 	if js.is_exception(r) {
 		e := js.pending_exception(ctx)
