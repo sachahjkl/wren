@@ -309,6 +309,12 @@ JSValue web_state_decode(JSContext *ctx, const char *s, size_t n);
 uint64_t web_signal_handle(JSValueConst v);
 JSValue web_signal_reason(JSContext *ctx, JSValueConst v);
 bool web_signal_aborted(JSValueConst v);
+/* Wrap an owned browser signal handle as `iface` (AbortSignal or a subtype such as TaskSignal). */
+JSValue web_signal_wrap_as(JSContext *ctx, uint64_t h, int iface);
+/* Build an AbortController (or a subtype) whose signal is wrapped as `signal_iface`. */
+JSValue web_controller_construct(JSContext *ctx, JSValueConst new_target, int controller_iface, int signal_iface);
+/* AbortSignal.any / TaskSignal.any: a dependent signal over `iterable`, wrapped as `result_iface`. */
+JSValue web_signal_any(JSContext *ctx, JSValueConst iterable, int result_iface, const char *who);
 
 /* ---- life cycle: each web*.c registers what it does at pre-initialization and at realm start ---- */
 

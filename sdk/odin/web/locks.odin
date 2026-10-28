@@ -17,7 +17,7 @@ foreign import _m_locks "locks"
 
 @(private = "file", default_calling_convention = "contextless")
 foreign _m_locks {
-	@(link_name = "LockManager_request") _LockManager_request :: proc(name: [^]u8, name_len: u32, mode: LockMode, if_available: i32, steal: i32, callback: u32, user: i32) -> i64 ---
+	@(link_name = "LockManager_request") _LockManager_request :: proc(name: [^]u8, name_len: u32, mode: LockMode, if_available: i32, steal: i32, callback: u32, user: i32, broken_callback: u32) -> i64 ---
 	@(link_name = "LockManager_release") _LockManager_release :: proc(id: u64) ---
 	@(link_name = "LockManager_queryCount") _LockManager_queryCount :: proc(held: i32) -> i32 ---
 	@(link_name = "LockManager_queryName") _LockManager_queryName :: proc(held: i32, index: i32, _buf: [^]u8, _cap: u32) -> i32 ---
@@ -30,8 +30,8 @@ foreign _m_locks {
 // callback with the Lock immediately), and the rest (>> 2) is the lock id used to release it. When available but
 // not granted-now, the request waits and the engine is told on grant (the callback index / user name the engine
 // record for that notification).
-LockManager_request :: proc "contextless" (name: string, mode: LockMode, if_available: bool, steal: bool, callback: u32, user: i32) -> i64 {
-	return _LockManager_request(raw_data(name), u32(len(name)), mode, i32(1 if if_available else 0), i32(1 if steal else 0), callback, user)
+LockManager_request :: proc "contextless" (name: string, mode: LockMode, if_available: bool, steal: bool, callback: u32, user: i32, broken_callback: u32) -> i64 {
+	return _LockManager_request(raw_data(name), u32(len(name)), mode, i32(1 if if_available else 0), i32(1 if steal else 0), callback, user, broken_callback)
 }
 
 // The callback's returned promise settled, the callback was null, or a pending request was aborted: release the

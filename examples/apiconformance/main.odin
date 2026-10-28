@@ -1094,7 +1094,7 @@ foreign _m_media {
 foreign import _m_locks "locks"
 @(default_calling_convention = "contextless")
 foreign _m_locks {
-	@(link_name = "LockManager_request") c_LockManager_request :: proc(a0: i32, a1: i32, a2: i32, a3: i32, a4: i32, a5: i32, a6: i32) -> i64 ---
+	@(link_name = "LockManager_request") c_LockManager_request :: proc(a0: i32, a1: i32, a2: i32, a3: i32, a4: i32, a5: i32, a6: i32, a7: i32) -> i64 ---
 	@(link_name = "LockManager_release") c_LockManager_release :: proc(a0: i64) ---
 	@(link_name = "LockManager_queryCount") c_LockManager_queryCount :: proc(a0: i32) -> i32 ---
 	@(link_name = "LockManager_queryName") c_LockManager_queryName :: proc(a0: i32, a1: i32, a2: i32, a3: i32) -> i32 ---
@@ -6766,13 +6766,13 @@ foreign _m_workers {
 	return i64(c_XMLSerializer_serialize(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
 @(export) case_1523 :: proc "contextless" () -> i64 {
-	return i64(c_LockManager_request(i32(-16), 64, 0, 0, 0, 0, 0))
+	return i64(c_LockManager_request(i32(-16), 64, 0, 0, 0, 0, 0, 0))
 }
 @(export) case_1524 :: proc "contextless" () -> i64 {
-	return i64(c_LockManager_request(p(&BAD), 4, 0, 0, 0, 0, 0))
+	return i64(c_LockManager_request(p(&BAD), 4, 0, 0, 0, 0, 0, 0))
 }
 @(export) case_1525 :: proc "contextless" () -> i64 {
-	return i64(c_LockManager_request(p(&GOOD), 1, 2147483632, 0, 0, 0, 0))
+	return i64(c_LockManager_request(p(&GOOD), 1, 2147483632, 0, 0, 0, 0, 0))
 }
 @(export) case_1526 :: proc "contextless" () -> i64 {
 	return i64(c_LockManager_queryName(0, 0, i32(-16), 64))
