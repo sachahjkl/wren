@@ -9,24 +9,12 @@ package odin_glue
 
 import "../odin/wj"
 
-foreign import m_storage "storage"
 
-@(default_calling_convention = "c")
-foreign m_storage {
-	@(link_name = "Storage_length")     wr_Storage_length     :: proc(area: i32, ret: ^i32) -> i32 ---
-	@(link_name = "Storage_key")        wr_Storage_key        :: proc(area: i32, index: i32, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "Storage_getItem")    wr_Storage_getItem    :: proc(area: i32, key: [^]u8, key_len: u32, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "Storage_setItem")    wr_Storage_setItem    :: proc(area: i32, key: [^]u8, key_len: u32, value: [^]u8, value_len: u32) -> i32 ---
-	@(link_name = "Storage_removeItem") wr_Storage_removeItem :: proc(area: i32, key: [^]u8, key_len: u32) -> i32 ---
-	@(link_name = "Storage_clear")      wr_Storage_clear      :: proc(area: i32) -> i32 ---
-	@(link_name = "StorageEvent_get")         wr_StorageEvent_get         :: proc(event: u64, field: i32, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "StorageEvent_storageArea") wr_StorageEvent_storageArea :: proc(event: u64, ret: ^i32) -> i32 ---
-}
 
-STORAGE_AREA_LOCAL   :: i32(0)   // wr_StorageArea_Local
-STORAGE_AREA_SESSION :: i32(1)   // wr_StorageArea_Session
-@(private = "file") ERR_NOT_FOUND :: i32(-3)         // wr_Error_Not_Found
-@(private = "file") ERR_QUOTA     :: i32(-13)        // wr_Error_Quota
+STORAGE_AREA_LOCAL   :: i32(0)   // wj.wr_StorageArea_Local
+STORAGE_AREA_SESSION :: i32(1)   // wj.wr_StorageArea_Session
+@(private = "file") ERR_NOT_FOUND :: i32(-3)         // wj.wr_Error_Not_Found
+@(private = "file") ERR_QUOTA     :: i32(-13)        // wj.wr_Error_Quota
 
 Storage_Impl :: struct {
 	area: i32,
@@ -69,7 +57,7 @@ storage_make :: proc "c" (ctx: ^wj.Context, area: i32) -> wj.JSValue {
 storage_getter :: proc "c" (ctx: ^wj.Context, area: i32) -> wj.JSValue {
 	if !storage_allowed[area] {
 		n := i32(0)
-		st := wr_Storage_length(area, &n)
+		st := wj.wr_Storage_length(area, &n)
 		if st < 0 { return wj.wj_throw_status(ctx, st, area == STORAGE_AREA_LOCAL ? "localStorage" : "sessionStorage") }
 		storage_allowed[area] = true
 	}
@@ -102,7 +90,7 @@ wjr_Storage_get_length :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> w
 	s := storage_this(ctx, this_val)
 	if s == nil { return wj.EXCEPTION }
 	n := i32(0)
-	st := wr_Storage_length(s.area, &n)
+	st := wj.wr_Storage_length(s.area, &n)
 	if st < 0 { return wj.wj_throw_status(ctx, st, "Storage.length") }
 	return wj.new_int32(n)
 }
@@ -115,12 +103,12 @@ wjr_Storage_get_length :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> w
 @(private = "file")
 fill_get_item :: proc "contextless" (user: rawptr, buf: [^]u8, cap: u32) -> i32 {
 	op := (^Get_Item_Op)(user)
-	return wr_Storage_getItem(op.area, raw_data(op.key), u32(len(op.key)), buf, cap)
+	return wj.wr_Storage_getItem(op.area, raw_data(op.key), u32(len(op.key)), buf, cap)
 }
 @(private = "file")
 fill_key :: proc "contextless" (user: rawptr, buf: [^]u8, cap: u32) -> i32 {
 	op := (^Key_Op)(user)
-	return wr_Storage_key(op.area, op.index, buf, cap)
+	return wj.wr_Storage_key(op.area, op.index, buf, cap)
 }
 
 // getItem: the value, NULL when absent; EXCEPTION on an error.
@@ -137,9 +125,9 @@ get_item :: proc "c" (ctx: ^wj.Context, area: i32, key: []u8) -> wj.JSValue {
 wjr_Storage_key :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	s := storage_this(ctx, this_val)
 	if s == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj_throw_arity(ctx, "Storage.key", 1, argc) }
+	if argc < 1 { return wj.wj_throw_arity(ctx, "Storage.key", 1, argc) }
 	i: u32
-	if !wj_to_uint32(ctx, argv[0], &i, 32, 0) { return wj.EXCEPTION }
+	if !wj.wj_to_uint32(ctx, argv[0], &i, 32, 0) { return wj.EXCEPTION }
 	if i > 0x7FFF_FFFF { return wj.NULL }
 	op := Key_Op{ s.area, i32(i) }
 	n := wj.fetch_string(fill_key, &op)
@@ -152,10 +140,10 @@ wjr_Storage_key :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, 
 wjr_Storage_getItem :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	s := storage_this(ctx, this_val)
 	if s == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj_throw_arity(ctx, "Storage.getItem", 1, argc) }
+	if argc < 1 { return wj.wj_throw_arity(ctx, "Storage.getItem", 1, argc) }
 	k: wj.Str
-	if !wj_to_str(ctx, argv[0], &k, 0, nil) { return wj.EXCEPTION }
-	defer wj_str_free(ctx, &k)
+	if !wj.wj_to_str(ctx, argv[0], &k, 0, nil) { return wj.EXCEPTION }
+	defer wj.wj_str_free(ctx, &k)
 	return get_item(ctx, s.area, wj.str_slice(k))
 }
 
@@ -164,10 +152,10 @@ wjr_Storage_getItem :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i
 set_item :: proc "c" (ctx: ^wj.Context, area: i32, key: wj.JSValue, value: wj.JSValue) -> i32 {
 	k, v: wj.Str
 	if !wj.web_to_usv(ctx, key, &k) { return -1 }
-	defer wj_str_free(ctx, &k)
+	defer wj.wj_str_free(ctx, &k)
 	if !wj.web_to_usv(ctx, value, &v) { return -1 }
-	defer wj_str_free(ctx, &v)
-	st := wr_Storage_setItem(area, k.ptr, u32(k.len), v.ptr, u32(v.len))
+	defer wj.wj_str_free(ctx, &v)
+	st := wj.wr_Storage_setItem(area, k.ptr, u32(k.len), v.ptr, u32(v.len))
 	if st < 0 {
 		if st == ERR_QUOTA {
 			wj.wj_throw_dom(ctx, "QuotaExceededError", "Failed to execute 'setItem' on 'Storage': Setting the value exceeded the quota.")
@@ -183,7 +171,7 @@ set_item :: proc "c" (ctx: ^wj.Context, area: i32, key: wj.JSValue, value: wj.JS
 wjr_Storage_setItem :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	s := storage_this(ctx, this_val)
 	if s == nil { return wj.EXCEPTION }
-	if argc < 2 { return wj_throw_arity(ctx, "Storage.setItem", 2, argc) }
+	if argc < 2 { return wj.wj_throw_arity(ctx, "Storage.setItem", 2, argc) }
 	return set_item(ctx, s.area, argv[0], argv[1]) < 0 ? wj.EXCEPTION : wj.UNDEFINED
 }
 
@@ -191,11 +179,11 @@ wjr_Storage_setItem :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i
 wjr_Storage_removeItem :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	s := storage_this(ctx, this_val)
 	if s == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj_throw_arity(ctx, "Storage.removeItem", 1, argc) }
+	if argc < 1 { return wj.wj_throw_arity(ctx, "Storage.removeItem", 1, argc) }
 	k: wj.Str
-	if !wj_to_str(ctx, argv[0], &k, 0, nil) { return wj.EXCEPTION }
-	defer wj_str_free(ctx, &k)
-	st := wr_Storage_removeItem(s.area, k.ptr, u32(k.len))
+	if !wj.wj_to_str(ctx, argv[0], &k, 0, nil) { return wj.EXCEPTION }
+	defer wj.wj_str_free(ctx, &k)
+	st := wj.wr_Storage_removeItem(s.area, k.ptr, u32(k.len))
 	if st < 0 { return wj.wj_throw_status(ctx, st, "Storage.removeItem") }
 	return wj.UNDEFINED
 }
@@ -204,7 +192,7 @@ wjr_Storage_removeItem :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc
 wjr_Storage_clear :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	s := storage_this(ctx, this_val)
 	if s == nil { return wj.EXCEPTION }
-	st := wr_Storage_clear(s.area)
+	st := wj.wr_Storage_clear(s.area)
 	if st < 0 { return wj.wj_throw_status(ctx, st, "Storage.clear") }
 	return wj.UNDEFINED
 }
@@ -237,7 +225,7 @@ wjr_Storage_named_set :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, name: [^]u
 wjr_Storage_named_delete :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, name: [^]u8, len: uint) -> i32 {
 	s := storage_obj(obj)
 	if s == nil { return 0 }
-	st := wr_Storage_removeItem(s.area, name, u32(len))
+	st := wj.wr_Storage_removeItem(s.area, name, u32(len))
 	if st < 0 { wj.wj_throw_status(ctx, st, "Storage.removeItem"); return -1 }
 	return 1
 }
@@ -247,7 +235,7 @@ wjr_Storage_named_keys :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, array: wj
 	s := storage_obj(obj)
 	if s == nil { return 0 }
 	n := i32(0)
-	if wr_Storage_length(s.area, &n) < 0 { return 0 }
+	if wj.wr_Storage_length(s.area, &n) < 0 { return 0 }
 	for i in 0 ..< n {
 		op := Key_Op{ s.area, i }
 		l := wj.fetch_string(fill_key, &op)
@@ -266,7 +254,7 @@ wjr_Storage_named_keys :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, array: wj
 @(private = "file")
 fill_event :: proc "contextless" (user: rawptr, buf: [^]u8, cap: u32) -> i32 {
 	op := (^Event_Op)(user)
-	return wr_StorageEvent_get(op.event, op.field, buf, cap)
+	return wj.wr_StorageEvent_get(op.event, op.field, buf, cap)
 }
 
 // The fields of a browser storage event, read once while it is dispatched.
@@ -284,7 +272,7 @@ storage_snapshot :: proc "c" (ctx: ^wj.Context, ev: wj.JSValue) {
 		wj.web_extra_set(ctx, ev, storage_fields[f], v)
 	}
 	area := i32(0)
-	if wr_StorageEvent_storageArea(h, &area) >= 0 {
+	if wj.wr_StorageEvent_storageArea(h, &area) >= 0 {
 		which := area == STORAGE_AREA_LOCAL ? wj.SINGLE_LOCAL_STORAGE : wj.SINGLE_SESSION_STORAGE
 		s := wj.web_singleton(ctx, which, area == STORAGE_AREA_LOCAL ? make_local : make_session)
 		wj.web_extra_set(ctx, ev, "storageArea", s)
@@ -308,7 +296,7 @@ wjr_StorageEvent_get_oldValue :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> w
 @(export, link_name = "wjr_StorageEvent_get_newValue")
 wjr_StorageEvent_get_newValue :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return storage_event_field(ctx, t, "newValue", wj.NULL) }
 @(export, link_name = "wjr_StorageEvent_get_url")
-wjr_StorageEvent_get_url :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return storage_event_field(ctx, t, "url", wj.new_cstring(ctx, "")) }
+wjr_StorageEvent_get_url :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return storage_event_field(ctx, t, "url", wj.new_string(ctx, "")) }
 @(export, link_name = "wjr_StorageEvent_get_storageArea")
 wjr_StorageEvent_get_storageArea :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return storage_event_field(ctx, t, "storageArea", wj.NULL) }
 
@@ -318,7 +306,7 @@ storage_init_fields :: proc "c" (ctx: ^wj.Context, ev: wj.JSValue, init: wj.JSVa
 		v: wj.JSValue
 		if !wj.web_dict_get(ctx, init, storage_fields[f], &v) { return false }
 		if wj.is_undefined(v) {
-			v = f == 3 ? wj.new_cstring(ctx, "") : wj.NULL
+			v = f == 3 ? wj.new_string(ctx, "") : wj.NULL
 		} else if !wj.is_null(v) || f == 3 {
 			s := wj.JS_ToString(ctx, v)
 			wj.JS_FreeValue(ctx, v)

@@ -7,19 +7,7 @@ package odin_glue
 
 import "../odin/wj"
 
-foreign import _m_ports "ports"
-foreign import _m_events2 "events"
 
-@(default_calling_convention = "c")
-foreign _m_ports {
-	@(link_name = "Broadcast_open") wr_Broadcast_open :: proc(name: [^]u8, name_len: u32) -> u64 ---
-	@(link_name = "Broadcast_post") wr_Broadcast_post :: proc(end: u64, data: [^]u8, data_len: u32) -> i32 ---
-	@(link_name = "Port_close")     wr_bc_Port_close  :: proc(end: u64) ---
-}
-@(default_calling_convention = "c")
-foreign _m_events2 {
-	@(link_name = "EventTarget_create") wr_bc_EventTarget_create :: proc() -> u64 ---
-}
 
 // defined in web_message.c (kept as C): the table of browser port ends bound to objects of this realm, and a
 // MessageEvent factory. Declared here as real symbols.
@@ -40,7 +28,7 @@ Bc_Impl :: struct {
 @(private = "file") bc_free :: proc "c" (p: rawptr) {
 	b := (^Bc_Impl)(p)
 	wj.JS_FreeValueRT(wj.web_rt(), b.name)
-	wj.c_free(p)
+	wj.libc_free(p)
 }
 @(private = "file") bc_mark :: proc "c" (rt: rawptr, p: rawptr, mark_func: rawptr) { wj.wj_mark(rt, (^Bc_Impl)(p).name, mark_func) }
 
@@ -58,16 +46,16 @@ Bc_Impl :: struct {
 @(export, link_name = "wjr_BroadcastChannel_constructor")
 wjr_BroadcastChannel_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	if wj.is_undefined(new_target) { return wj.JS_ThrowTypeError(ctx, "Constructor BroadcastChannel requires 'new'") }
-	if argc < 1 { return wj_throw_arity(ctx, "BroadcastChannel", 1, argc) }
+	if argc < 1 { return wj.wj_throw_arity(ctx, "BroadcastChannel", 1, argc) }
 	name: wj.Str
-	if !wj_to_str(ctx, argv[0], &name, 0, nil) { return wj.EXCEPTION }
-	b := (^Bc_Impl)(wj.calloc(1, size_of(Bc_Impl)))
-	if b == nil { wj_str_free(ctx, &name); return wj.JS_ThrowOutOfMemory(ctx) }
+	if !wj.wj_to_str(ctx, argv[0], &name, 0, nil) { return wj.EXCEPTION }
+	b := (^Bc_Impl)(wj.libc_calloc(1, size_of(Bc_Impl)))
+	if b == nil { wj.wj_str_free(ctx, &name); return wj.JS_ThrowOutOfMemory(ctx) }
 	b.name = wj.JS_NewStringLen(ctx, name.ptr, name.len)
-	b.end = wr_Broadcast_open(name.ptr, u32(name.len))
-	wj_str_free(ctx, &name)
-	obj := wj.wj_wrap_owned(ctx, wr_bc_EventTarget_create(), broadcast_iface(), new_target)
-	if wj.is_exception(obj) { if b.end != 0 { wr_bc_Port_close(b.end) }; bc_free(b); return obj }
+	b.end = wj.wr_Broadcast_open(name.ptr, u32(name.len))
+	wj.wj_str_free(ctx, &name)
+	obj := wj.wj_wrap_owned(ctx, wj.wr_EventTarget_create(), broadcast_iface(), new_target)
+	if wj.is_exception(obj) { if b.end != 0 { wj.wr_Port_close(b.end) }; bc_free(b); return obj }
 	wj.web_set_impl(obj, b, bc_free, bc_mark)
 	if b.end != 0 { web_bound_add(ctx, b.end, obj) }
 	return obj
@@ -88,12 +76,12 @@ wjr_BroadcastChannel_get_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 wjr_BroadcastChannel_postMessage :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	b := bc_this(ctx, this_val)
 	if b == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj_throw_arity(ctx, "BroadcastChannel.postMessage", 1, argc) }
+	if argc < 1 { return wj.wj_throw_arity(ctx, "BroadcastChannel.postMessage", 1, argc) }
 	if b.closed { return wj.wj_throw_dom(ctx, "InvalidStateError", "Failed to execute 'postMessage' on 'BroadcastChannel': Channel is closed") }
 	length: uint
 	data := wj.web_clone_serialize(ctx, argv[0], &length)
 	if data == nil { return wj.EXCEPTION }
-	st := b.end != 0 ? wr_Broadcast_post(b.end, data, u32(length)) : i32(0)
+	st := b.end != 0 ? wj.wr_Broadcast_post(b.end, data, u32(length)) : i32(0)
 	wj.web_clone_free(ctx, data)
 	return st < 0 ? wj.wj_throw_status(ctx, st, "BroadcastChannel.postMessage") : wj.UNDEFINED
 }
@@ -107,7 +95,7 @@ wjr_BroadcastChannel_close :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, 
 	if b.end != 0 {
 		end := b.end
 		b.end = 0
-		wr_bc_Port_close(end)
+		wj.wr_Port_close(end)
 		web_bound_remove(end)   // (may drop the last reference to `this`: nothing of it is used after)
 	}
 	return wj.UNDEFINED
@@ -117,7 +105,7 @@ wjr_BroadcastChannel_close :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, 
 @(export, link_name = "web_broadcast_deliver")
 web_broadcast_deliver :: proc "c" (ctx: ^wj.Context, channel: wj.JSValue, data: [^]u8, length: uint) {
 	o := wj.wj_unwrap(channel, broadcast_iface())
-	b := (^Bc_Impl)(wj.wj_obj_impl(o))
+	b := (^Bc_Impl)(wj.impl_of(o))
 	if b == nil || b.closed { return }
 	value := wj.web_clone_deserialize(ctx, data, length)
 	ev: wj.JSValue

@@ -4,27 +4,24 @@
 // one declaration per symbol.
 package wj
 
-// ---- host promises: how a browser promise's value becomes the JS value (wj.h WJ_HOST_*) ----
-HOST_UNDEFINED   :: i32(0)
-HOST_NUMBER      :: i32(1)
-HOST_BOOL        :: i32(2)
-HOST_TEXT        :: i32(3)
-HOST_ARRAYBUFFER :: i32(4)
-HOST_UINT8ARRAY  :: i32(5)
+// ---- host promises: how a browser promise's value becomes the JS value (wj.h WJ_HOST_*; promise.odin) ----
+HOST_UNDEFINED   :: i32(Host_Kind.Undefined)
+HOST_NUMBER      :: i32(Host_Kind.Number)
+HOST_BOOL        :: i32(Host_Kind.Bool)
+HOST_TEXT        :: i32(Host_Kind.Text)
+HOST_ARRAYBUFFER :: i32(Host_Kind.Array_Buffer)
+HOST_UINT8ARRAY  :: i32(Host_Kind.Uint8_Array)
 
-// wj_host_settle: makes the fulfilled value / rejection reason instead of the kind's conversion.
-Host_Settle :: #type proc "c" (ctx: ^Context, state: i32, host: u64, value: i64, data: JSValue, reject: ^bool) -> JSValue
-
-// web.h BufferSource flags.
+// web.h BufferSource flags (buffer.odin).
 BS_VIEW_ONLY    :: i32(1 << 0)
 BS_ALLOW_SHARED :: i32(1 << 1)
 
+// (The host promises — wj_promise_from_host, wj_host_promise_text — and the buffer helpers — wj_to_buffer_source,
+// wj_is_*, wj_*_from_host, wj_*_take, wj_host_buffer — are implemented in Odin: promise.odin, buffer.odin.)
+
 @(default_calling_convention = "c")
 foreign {
-	// host promises (wj.h / web.h)
-	wj_promise_from_host      :: proc(ctx: ^Context, host: u64, kind: i32, settle: Host_Settle, data: JSValue) -> JSValue ---
 	wj_promise_reject_pending :: proc(ctx: ^Context) -> JSValue ---
-	wj_host_promise_text      :: proc(ctx: ^Context, host: u64) -> JSValue ---
 
 	// promises as values (web.h)
 	web_promise_new            :: proc(ctx: ^Context, funcs: [^]JSValue) -> JSValue ---
@@ -34,18 +31,6 @@ foreign {
 	web_promise_reject_pending :: proc(ctx: ^Context) -> JSValue ---
 	web_settle                 :: proc(ctx: ^Context, func: JSValue, v: JSValue) ---
 	web_then                   :: proc(ctx: ^Context, promise: JSValue, on_ok: rawptr, on_err: rawptr, n: i32, data: [^]JSValue) -> JSValue ---
-
-	// buffers (buffer.c)
-	wj_is_buffer_source     :: proc(v: JSValue) -> bool ---
-	wj_is_array_buffer      :: proc(v: JSValue) -> bool ---
-	wj_is_array_buffer_view :: proc(v: JSValue) -> bool ---
-	wj_to_buffer_source     :: proc(ctx: ^Context, v: JSValue, ptr: ^[^]u8, len: ^uint, flags: i32, what: cstring) -> bool ---
-	wj_typed_array_type     :: proc(v: JSValue) -> i32 ---
-	wj_arraybuffer_from_host :: proc(ctx: ^Context, buffer: u64) -> JSValue ---
-	wj_uint8array_from_host  :: proc(ctx: ^Context, buffer: u64) -> JSValue ---
-	wj_host_buffer          :: proc(ctx: ^Context, p: [^]u8, n: uint) -> u64 ---
-	wj_arraybuffer_take     :: proc(ctx: ^Context, p: [^]u8, n: uint) -> JSValue ---
-	wj_uint8array_take      :: proc(ctx: ^Context, p: [^]u8, n: uint) -> JSValue ---
 
 	// errors as values (web.h)
 	web_error_value   :: proc(ctx: ^Context, code: i32, msg: [^]u8, len: uint) -> JSValue ---

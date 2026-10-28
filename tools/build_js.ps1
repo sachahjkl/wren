@@ -145,20 +145,36 @@ if (-not $NoLto) { $cflags += '-flto' }
 $cflags += $ExtraFlags
 $sources = @('quickjs.c', 'libregexp.c', 'libunicode.c', 'dtoa.c') | ForEach-Object { Join-Path $qjs $_ }
 $sources += @(Get-ChildItem (Join-Path $native 'engine'), (Join-Path $native 'runtime'), (Join-Path $native 'gen') -Recurse -Filter *.c -ErrorAction SilentlyContinue | ForEach-Object FullName)
-# The C glue ported to Odin (native\js\odin\*.odin) has its C file dropped here; wj_shim.c (the one tiny C accessor the
-# glue still needs: fields of global C structs) is compiled with the rest. Each ported domain adds its C file name to
-# $odinified.
+# The C glue ported to Odin (native\js\odin\*.odin) has its C file dropped here; wj_shim.c (no code: the compile-time
+# layout checks of the C structs the Odin glue mirrors) is compiled with the rest. Each ported domain adds its C file
+# name to $odinified (one entry per line, sorted; docs\js\odin-glue.md).
 $odinified = @(
+    'buffer.c',
+    'console.c',
+    'custom_elements.c',
+    'dom_forms.c',
+    'dom_layout.c',
+    'dom_popover.c',
+    'dom_style.c',
+    'dom_touch.c',
+    'intersection.c',
+    'promise.c',
     'qjs_convert.c',
+    'reflect.c',
     'shared_workers.c',
+    'timers.c',
     'web_broadcast.c',
     'web_crypto.c',
     'web_encoding.c',
     'web_fullscreen.c',
     'web_location.c',
+    'web_media.c',
+    'web_mediaobjects.c',
     'web_navtiming.c',
+    'web_resize.c',
     'web_storage.c',
     'web_strategy.c',
+    'web_tracks.c',
     'web_url.c',
     'web_urlpattern.c',
     'window.c',

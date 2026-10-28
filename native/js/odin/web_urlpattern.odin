@@ -8,41 +8,9 @@ package odin_glue
 
 import "../odin/wj"
 
-foreign import m_urlpattern "url"
 
-@(default_calling_convention = "c")
-foreign m_urlpattern {
-	@(link_name = "URLPattern_createString") wr_URLPattern_createString :: proc(input: [^]u8, input_len: u32, base: [^]u8, base_len: u32, has_base: i32, ignore_case: i32, ret: ^u64) -> i32 ---
-	@(link_name = "URLPattern_createInit")   wr_URLPattern_createInit   :: proc(
-		protocol: [^]u8, protocol_len: u32, has_protocol: i32,
-		username: [^]u8, username_len: u32, has_username: i32,
-		password: [^]u8, password_len: u32, has_password: i32,
-		hostname: [^]u8, hostname_len: u32, has_hostname: i32,
-		port: [^]u8, port_len: u32, has_port: i32,
-		pathname: [^]u8, pathname_len: u32, has_pathname: i32,
-		search: [^]u8, search_len: u32, has_search: i32,
-		hash: [^]u8, hash_len: u32, has_hash: i32,
-		base: [^]u8, base_len: u32, has_base: i32,
-		ignore_case: i32, ret: ^u64) -> i32 ---
-	@(link_name = "URLPattern_component")      wr_URLPattern_component      :: proc(pattern: u64, component: i32, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "URLPattern_execString")     wr_URLPattern_execString     :: proc(pattern: u64, input: [^]u8, input_len: u32, base: [^]u8, base_len: u32, has_base: i32) -> i32 ---
-	@(link_name = "URLPattern_execInit")       wr_URLPattern_execInit       :: proc(
-		pattern: u64,
-		protocol: [^]u8, protocol_len: u32, has_protocol: i32,
-		username: [^]u8, username_len: u32, has_username: i32,
-		password: [^]u8, password_len: u32, has_password: i32,
-		hostname: [^]u8, hostname_len: u32, has_hostname: i32,
-		port: [^]u8, port_len: u32, has_port: i32,
-		pathname: [^]u8, pathname_len: u32, has_pathname: i32,
-		search: [^]u8, search_len: u32, has_search: i32,
-		hash: [^]u8, hash_len: u32, has_hash: i32) -> i32 ---
-	@(link_name = "URLPattern_componentInput") wr_URLPattern_componentInput :: proc(pattern: u64, component: i32, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "URLPattern_groupCount")     wr_URLPattern_groupCount     :: proc(pattern: u64, component: i32) -> i32 ---
-	@(link_name = "URLPattern_groupName")      wr_URLPattern_groupName      :: proc(pattern: u64, component: i32, index: i32, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "URLPattern_groupValue")     wr_URLPattern_groupValue     :: proc(pattern: u64, component: i32, index: i32, buf: [^]u8, cap: u32) -> i32 ---
-}
 
-// the eight components in the host enum's order (wr_URLPatternComponent_*) and their result-key names
+// the eight components in the host enum's order (wj.wr_URLPatternComponent_*) and their result-key names
 @(private = "file") PATTERN_KEYS := [8]cstring{ "protocol", "username", "password", "hostname", "port", "pathname", "search", "hash" }
 @(private = "file") INIT_NAMES   := [9]cstring{ "protocol", "username", "password", "hostname", "port", "pathname", "search", "hash", "baseURL" }
 
@@ -77,7 +45,7 @@ pattern_init_field :: proc "c" (ctx: ^wj.Context, init: wj.JSValue, name: cstrin
 pattern_read_init :: proc "c" (ctx: ^wj.Context, init: wj.JSValue, out: ^Pattern_Init) -> bool {
 	for i in 0 ..< 9 {
 		if !pattern_init_field(ctx, init, INIT_NAMES[i], &out.v[i], &out.has[i]) {
-			for j in 0 ..< i { wj_str_free(ctx, &out.v[j]) }
+			for j in 0 ..< i { wj.wj_str_free(ctx, &out.v[j]) }
 			return false
 		}
 	}
@@ -86,7 +54,7 @@ pattern_read_init :: proc "c" (ctx: ^wj.Context, init: wj.JSValue, out: ^Pattern
 
 @(private = "file")
 pattern_init_free :: proc "c" (ctx: ^wj.Context, p: ^Pattern_Init) {
-	for i in 0 ..< 9 { wj_str_free(ctx, &p.v[i]) }
+	for i in 0 ..< 9 { wj.wj_str_free(ctx, &p.v[i]) }
 }
 
 // The INIT_ARG macro of the C: a field's (ptr, len, has) triple (empty, not nil, when unset).
@@ -122,18 +90,18 @@ wjr_URLPattern_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue
 		if !wj.web_to_usv(ctx, input, &in_s) { return wj.EXCEPTION }
 		has_base := wj.is_string(a1)
 		base = {}
-		if has_base && !wj.web_to_usv(ctx, a1, &base) { wj_str_free(ctx, &in_s); return wj.EXCEPTION }
+		if has_base && !wj.web_to_usv(ctx, a1, &base) { wj.wj_str_free(ctx, &in_s); return wj.EXCEPTION }
 		base_ptr := base.ptr != nil ? base.ptr : wj.empty_ptr()
-		st = wr_URLPattern_createString(in_s.ptr, u32(in_s.len), base_ptr, has_base ? u32(base.len) : 0, has_base ? 1 : 0, ignore_case ? 1 : 0, &h)
-		wj_str_free(ctx, &in_s)
-		wj_str_free(ctx, &base)
+		st = wj.wr_URLPattern_createString(in_s.ptr, u32(in_s.len), base_ptr, has_base ? u32(base.len) : 0, has_base ? 1 : 0, ignore_case ? 1 : 0, &h)
+		wj.wj_str_free(ctx, &in_s)
+		wj.wj_str_free(ctx, &base)
 	} else {
 		p: Pattern_Init
 		is_obj := wj.is_object(input)
 		if is_obj {
 			if !pattern_read_init(ctx, input, &p) { return wj.EXCEPTION }
 		}
-		st = wr_URLPattern_createInit(
+		st = wj.wr_URLPattern_createInit(
 			arg_ptr(&p, 0), arg_len(&p, 0), arg_has(&p, 0),
 			arg_ptr(&p, 1), arg_len(&p, 1), arg_has(&p, 1),
 			arg_ptr(&p, 2), arg_len(&p, 2), arg_has(&p, 2),
@@ -163,7 +131,7 @@ pattern_handle :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> (u64, boo
 @(private = "file") Comp_P_Op :: struct { handle: u64, component: i32 }
 @(private = "file")
 fill_component :: proc "contextless" (user: rawptr, buf: [^]u8, cap: u32) -> i32 {
-	op := (^Comp_P_Op)(user); return wr_URLPattern_component(op.handle, op.component, buf, cap)
+	op := (^Comp_P_Op)(user); return wj.wr_URLPattern_component(op.handle, op.component, buf, cap)
 }
 
 @(private = "file")
@@ -197,17 +165,17 @@ pattern_run :: proc "c" (ctx: ^wj.Context, h: u64, argc: i32, argv: [^]wj.JSValu
 		if !wj.is_undefined(input) && !wj.web_to_usv(ctx, input, &in_s) { return -1 }
 		has_base := wj.is_string(a1)
 		base = {}
-		if has_base && !wj.web_to_usv(ctx, a1, &base) { wj_str_free(ctx, &in_s); return -1 }
+		if has_base && !wj.web_to_usv(ctx, a1, &base) { wj.wj_str_free(ctx, &in_s); return -1 }
 		in_ptr := in_s.ptr != nil ? in_s.ptr : wj.empty_ptr()
 		base_ptr := base.ptr != nil ? base.ptr : wj.empty_ptr()
-		r := wr_URLPattern_execString(h, in_ptr, u32(in_s.len), base_ptr, has_base ? u32(base.len) : 0, has_base ? 1 : 0)
-		wj_str_free(ctx, &in_s)
-		wj_str_free(ctx, &base)
+		r := wj.wr_URLPattern_execString(h, in_ptr, u32(in_s.len), base_ptr, has_base ? u32(base.len) : 0, has_base ? 1 : 0)
+		wj.wj_str_free(ctx, &in_s)
+		wj.wj_str_free(ctx, &base)
 		return r > 0 ? 1 : 0
 	}
 	p: Pattern_Init
 	if !pattern_read_init(ctx, input, &p) { return -1 }
-	r := wr_URLPattern_execInit(h,
+	r := wj.wr_URLPattern_execInit(h,
 		arg_ptr(&p, 0), arg_len(&p, 0), arg_has(&p, 0),
 		arg_ptr(&p, 1), arg_len(&p, 1), arg_has(&p, 1),
 		arg_ptr(&p, 2), arg_len(&p, 2), arg_has(&p, 2),
@@ -232,15 +200,15 @@ wjr_URLPattern_test :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i
 @(private = "file") Grp_Op :: struct { handle: u64, component: i32, index: i32, which: i32 }
 @(private = "file")
 fill_component_input :: proc "contextless" (user: rawptr, buf: [^]u8, cap: u32) -> i32 {
-	op := (^Grp_Op)(user); return wr_URLPattern_componentInput(op.handle, op.component, buf, cap)
+	op := (^Grp_Op)(user); return wj.wr_URLPattern_componentInput(op.handle, op.component, buf, cap)
 }
 @(private = "file")
 fill_group_name :: proc "contextless" (user: rawptr, buf: [^]u8, cap: u32) -> i32 {
-	op := (^Grp_Op)(user); return wr_URLPattern_groupName(op.handle, op.component, op.index, buf, cap)
+	op := (^Grp_Op)(user); return wj.wr_URLPattern_groupName(op.handle, op.component, op.index, buf, cap)
 }
 @(private = "file")
 fill_group_value :: proc "contextless" (user: rawptr, buf: [^]u8, cap: u32) -> i32 {
-	op := (^Grp_Op)(user); return wr_URLPattern_groupValue(op.handle, op.component, op.index, buf, cap)
+	op := (^Grp_Op)(user); return wj.wr_URLPattern_groupValue(op.handle, op.component, op.index, buf, cap)
 }
 
 // Builds a URLPatternComponentResult { input, groups } for component `c` from the stored match.
@@ -251,7 +219,7 @@ pattern_component_result :: proc "c" (ctx: ^wj.Context, h: u64, c: i32) -> wj.JS
 	n := wj.fetch_string(fill_component_input, &op)
 	wj.JS_DefinePropertyValueStr(ctx, result, "input", wj.new_string_len(ctx, wj.scratch_bytes(n)), wj.PROP_C_W_E)
 	groups := wj.JS_NewObject(ctx)
-	count := wr_URLPattern_groupCount(h, c)
+	count := wj.wr_URLPattern_groupCount(h, c)
 	for i in 0 ..< count {
 		op.index = i
 		nn := wj.fetch_string(fill_group_name, &op)
@@ -270,7 +238,7 @@ pattern_component_result :: proc "c" (ctx: ^wj.Context, h: u64, c: i32) -> wj.JS
 	return result
 }
 
-ERR_NOT_FOUND_P :: i32(-3)   // wr_Error_Not_Found
+ERR_NOT_FOUND_P :: i32(-3)   // wj.wr_Error_Not_Found
 
 @(export, link_name = "wjr_URLPattern_exec")
 wjr_URLPattern_exec :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
