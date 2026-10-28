@@ -167,6 +167,7 @@ $odinified = @(
     'web_crypto.c',
     'web_encoding.c',
     'web_fullscreen.c',
+    'web_geometry.c',
     'web_location.c',
     'web_media.c',
     'web_mediaobjects.c',
@@ -177,6 +178,12 @@ $odinified = @(
     'web_tracks.c',
     'web_url.c',
     'web_urlpattern.c',
+    'web_webcodecs.c',
+    'web_webcodecs_audio_decoder.c',
+    'web_webcodecs_codec.c',
+    'web_webcodecs_encoders.c',
+    'web_webcodecs_image.c',
+    'web_webcodecs_video_decoder.c',
     'window.c',
     'worker_scope.c'
 )
