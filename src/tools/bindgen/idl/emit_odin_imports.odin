@@ -54,7 +54,6 @@ odin_imp_base :: proc(t: Type) -> string {
 }
 
 // The storage type of a struct field (a bool is one byte in the C struct).
-@(private)
 odin_imp_field :: proc(t: Type) -> string {
 	if t.kind == .Bool { return "u8" }
 	return odin_imp_scalar(t)
@@ -164,7 +163,6 @@ emit_odin_imports :: proc(api: ^Api, pkg: string) -> string {
 
 // An Odin identifier for a name: Odin keywords and reserved parameter names are suffixed. The guardrail rejects these
 // at the reader (so the description never produces them), but the C-side names must still be mapped here.
-@(private)
 odin_ident :: proc(s: string) -> string {
 	if odin_reserved(s) { return strings.concatenate({s, "_"}, context.temp_allocator) }
 	return s

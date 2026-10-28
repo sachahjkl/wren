@@ -38,6 +38,7 @@ Output :: struct {
 	h:           string,
 	odin:        string,
 	odin_tables: string,   // the interface metadata table in Odin (native/js/odin), for -emit:odin
+	odin_glue:   string,   // native/js/odin/bindings_gen.odin (-emit:glue): the trampolines, dictionaries and tables in Odin
 	coverage:    string,
 	problems:    []string,
 }
@@ -61,6 +62,8 @@ Gen :: struct {
 	c:        strings.Builder,           // glue functions
 	tables:   strings.Builder,           // member tables
 	externs:  strings.Builder,
+	o:        strings.Builder,           // glue functions, Odin (-emit:glue)
+	lang:     Mode,
 	problems: [dynamic]string,
 	included: [dynamic]^webidl.Interface,
 	index_of: map[string]int,            // interface name -> table index
@@ -80,10 +83,10 @@ exposed_any :: proc(e: webidl.Exposures) -> bool { return e != {} }
 
 // `mode` selects the low-level glue: .C fills out.c / out.h (bindings.c / bindings.h), .Odin fills out.odin_tables
 // (the Odin interface table). out.odin (the node-interface indices) and out.coverage are produced either way.
-Mode :: enum { C, Odin }
+Mode :: enum { C, Odin, Glue }
 
 generate :: proc(api: ^idl.Api, m: ^webidl.Model, raw_impls: []string, odin_package: string, mode := Mode.C) -> Output {
-	g := Gen{api = api, m = m}
+	g := Gen{api = api, m = m, lang = mode}
 	for r in raw_impls { g.raw[r] = true }
 	for d in api.functions { for imp in d.imports { g.imports[imp] = d } }
 
@@ -127,6 +130,8 @@ generate :: proc(api: ^idl.Api, m: ^webidl.Model, raw_impls: []string, odin_pack
 		out.h = emit_h(&g, strings.to_string(dh))
 	case .Odin:
 		out.odin_tables = emit_odin_tables(&g, impls, "wj")
+	case .Glue:
+		out.odin_glue = emit_glue_odin(&g, impls)
 	}
 	out.odin = emit_odin(&g, odin_package)
 	out.coverage = emit_coverage(&g, impls)
@@ -288,6 +293,7 @@ has_named_getter :: proc(it: ^webidl.Interface) -> bool {
 
 @(private)
 emit_event_handler :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, getter: bool) -> string {
+	if g.lang == .Glue { return emit_event_handler_odin(g, it, mb, getter) }
 	event := strings.has_prefix(mb.name, "on") ? mb.name[2:] : mb.name
 	special := 0
 	if mb.type.name == "OnErrorEventHandler" { special = 1 }
@@ -345,6 +351,16 @@ emit_reflect :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member) -> (get
 	if rr, okr := webidl.attr_get(mb.attrs, "ReflectRange"); okr && len(rr.list) == 2 { lo, hi = rr.list[0], rr.list[1]; mode = 4 }
 	idx := g.index_of[it.name]
 	id := c_ident(mb.name)
+	if g.lang == .Glue {
+		gg, ss := emit_reflect_odin(g, it, mb, kind, content, def, mode, lo, hi, setter_only)
+		if setter_only {
+			getter = find_raw(g, it, mb, "get")
+			if getter == "" {
+				if f, _, okm := map_import(g, it, mb, false); okm { getter = f } else { return }
+			}
+		} else { getter = gg }
+		return getter, ss, true
+	}
 	if !setter_only {
 		getter = fmt.aprintf("wjg_%s_get_%s", it.name, id)
 		wl(&g.c, "static JSValue %s(JSContext *ctx, JSValueConst this_val) {{ return wj_reflect_get(ctx, this_val, %d, %q, WJ_REFLECT_%s, %s, %d, %s, %s); }}", getter, idx, content, strings.to_upper(kind, context.temp_allocator), def, mode, lo, hi)
@@ -386,6 +402,7 @@ css_name :: proc(attr: string) -> string {
 
 @(private)
 emit_css_property :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member) -> (getter, setter: string) {
+	if g.lang == .Glue { return emit_css_property_odin(g, it, mb) }
 	id := c_ident(mb.name)
 	getter = fmt.aprintf("wjg_%s_get_%s", it.name, id)
 	setter = fmt.aprintf("wjg_%s_set_%s", it.name, id)
@@ -411,6 +428,7 @@ c_ident :: proc(s: string) -> string {
 
 @(private)
 emit_put_forwards :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, target: string) -> string {
+	if g.lang == .Glue { return emit_put_forwards_odin(g, it, mb, target) }
 	name := fmt.aprintf("wjg_%s_set_%s", it.name, mb.name)
 	wl(&g.c, "static JSValue %s(JSContext *ctx, JSValueConst this_val, JSValueConst v) {{ return wj_put_forwards(ctx, this_val, %q, %q, v); }}", name, mb.name, target)
 	return name
@@ -529,15 +547,14 @@ map_import :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, setter: b
 @(private)
 emit_import_glue :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, d: ^idl.Decl, import_name: string, setter: bool) -> (string, string) {
 	// the IDL side: arguments (a setter's value), result
-	Arg :: struct { conv: Conv, iface: string, t: ^webidl.Type, a: ^webidl.Argument }
-	args := make([dynamic]Arg, context.temp_allocator)
+	args := make([dynamic]Glue_Arg, context.temp_allocator)
 	result := Conv.Void
 	result_iface := ""
 	result_nullable := false
 	switch {
 	case setter:
 		c, i := conv_of(g, mb.type)
-		append(&args, Arg{c, i, mb.type, nil})
+		append(&args, Glue_Arg{c, i, mb.type, nil})
 	case mb.kind == .Attribute:
 		result, result_iface = conv_of(g, mb.type)
 		result_nullable = webidl.resolve(g.m, mb.type).nullable
@@ -545,7 +562,7 @@ emit_import_glue :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, d: 
 		for a in mb.args {
 			if a.variadic { return "", "it is variadic" }
 			c, i := conv_of(g, a.type)
-			append(&args, Arg{c, i, a.type, a})
+			append(&args, Glue_Arg{c, i, a.type, a})
 		}
 		result, result_iface = conv_of(g, mb.type)
 		if mb.type != nil { result_nullable = webidl.resolve(g.m, mb.type).nullable }
@@ -582,6 +599,7 @@ emit_import_glue :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, d: 
 		return "", "its result type does not match"
 	}
 
+	if g.lang == .Glue { return emit_import_glue_odin(g, it, mb, d, import_name, setter, args[:], result, result_iface, result_nullable, has_self, return_arg) }
 	idx := g.index_of[it.name]
 	qual := fmt.tprintf("%s.%s", it.name, mb.name)
 	fname: string

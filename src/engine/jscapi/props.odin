@@ -155,6 +155,8 @@ define_impl :: proc(ctx: ^js.Context, this_obj: JSValue, prop: Atom, val, getter
 		d.has += {.set}
 		d.setter = dec(setter)
 	}
+	// JS_PROP_NO_EXOTIC: the exotic object's own define hook (the glue's named properties) defines through this call: it must reach the ordinary definition, not itself
+	if flags & PROP_NO_EXOTIC != 0 { return i32(js.ordinary_define(ctx, o, prop, &d, flags & PROP_THROW != 0)) }
 	r := js.define_own_property(ctx, o, prop, d, flags & PROP_THROW != 0)
 	return i32(r)
 }
