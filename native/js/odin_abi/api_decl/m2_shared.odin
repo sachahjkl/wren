@@ -33,6 +33,8 @@ Buffer_read :: #type proc(buffer: Buffer, offset: i64, destination: []u8) -> i32
 // ---- module document / workers: the base URL ----
 Document_resolveURL :: #type proc(url: string) -> (string, abi.Api_Error)
 WorkerGlobalScope_location :: #type proc() -> (string, abi.Api_Error)
+// self.origin: the serialized origin of the calling realm ("null" when it has none).
+Window_origin :: #type proc() -> (string, abi.Api_Error)
 
 // ---- module compression ----
 Compressor :: distinct abi.Handle
