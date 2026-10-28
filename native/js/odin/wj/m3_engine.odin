@@ -34,6 +34,7 @@ foreign {
 	JS_ParseJSON           :: proc(ctx: ^Context, buf: [^]u8, buf_len: uint, filename: cstring) -> JSValue ---
 	JS_SetLength           :: proc(ctx: ^Context, obj: JSValue, len: i64) -> i32 ---
 	JS_SetConstructor      :: proc(ctx: ^Context, func_obj: JSValue, proto: JSValue) -> i32 ---
+	JS_IsInstanceOf        :: proc(ctx: ^Context, val: JSValue, obj: JSValue) -> i32 ---
 	JS_DefineHostAutoInitProperty :: proc(ctx: ^Context, obj: JSValue, prop: Atom, fn: Host_Auto_Init, flags: i32) -> i32 ---
 	js_mallocz             :: proc(ctx: ^Context, size: uint) -> rawptr ---
 	js_realloc             :: proc(ctx: ^Context, ptr: rawptr, size: uint) -> rawptr ---
