@@ -97,6 +97,10 @@ foreign {
 	// malloc on the engine's heap (js_malloc / js_free of quickjs.h)
 	js_malloc         :: proc(ctx: ^Context, n: uint) -> rawptr ---
 	js_free           :: proc(ctx: ^Context, p: rawptr) ---
+
+	// GC threshold (custom elements pauses the collector while it wraps a batch of removed nodes)
+	JS_GetGCThreshold :: proc(rt: ^Runtime) -> uint ---
+	JS_SetGCThreshold :: proc(rt: ^Runtime, gc_threshold: uint) ---
 }
 
 // the static-inline value wrappers of quickjs.h, reimplemented (no symbol; NAN-box bit ops / thin forwarders).
