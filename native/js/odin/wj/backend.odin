@@ -8,4 +8,4 @@
 // Domain files never see the difference: they call wj.JS_Call, wj.JS_NewObject ... either way.
 package wj
 
-WJ_JSRT :: #config(WJ_JSRT, false)
+WJ_JSRT :: true   // the only engine now: the Odin runtime (the QuickJS-ng C engine this layer once sat on is gone)
