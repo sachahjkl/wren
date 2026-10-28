@@ -1,0 +1,1654 @@
+# web-platform-tests expectations of Wren for urlpattern, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/urlpattern/urlpattern-compare.tentative.any.html: OK
+	Component: hash Left: {"hash":"a"} Right: {"hash":"b"}: FAIL
+	Component: hostname Left: {"hostname":"a"} Right: {"hostname":"b"}: FAIL
+	Component: password Left: {"password":"a"} Right: {"password":"b"}: FAIL
+	Component: pathname Left: "https://a.example.com/b?a" Right: "https://b.example.com/a?b": FAIL
+	Component: pathname Left: {"pathname":"*/foo"} Right: {"pathname":"*"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/"} Right: {"pathname":"/foo/:bar"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/(123)"} Right: {"pathname":"/foo/(12)"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/:b"} Right: {"pathname":"/foo/:a"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/:bar"} Right: {"pathname":"/foo/*"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/a"} Right: {"pathname":"/foo/b"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/b"} Right: {"pathname":"/foo/bar"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/bar"} Right: {"pathname":"/foo/:bar"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/{bar}"} Right: {"pathname":"/foo/(bar)"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/{bar}"} Right: {"pathname":"/foo/{bar}+"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/{bar}+"} Right: {"pathname":"/foo/{bar}?"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/{bar}/baz"} Right: {"pathname":"/foo/bar/baz"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/{bar}?"} Right: {"pathname":"/foo/{bar}*"}: FAIL
+	Component: pathname Left: {"pathname":"foo/:bar?/baz"} Right: {"pathname":"foo/{:bar}?/baz"}: FAIL
+	Component: pathname Left: {"pathname":"foo/:bar?/baz"} Right: {"pathname":"foo{/:bar/}?baz"}: FAIL
+	Component: pathname Left: {"pathname":"foo/:bar?/baz"} Right: {"pathname":"foo{/:bar}?/baz"}: FAIL
+	Component: pathname Left: {"pathname":"foo/:bar?/baz"} Right: {"pathname":"fo{o/:bar}?/baz"}: FAIL
+	Component: port Left: {"port":"9"} Right: {"port":"100"}: FAIL
+	Component: protocol Left: {"protocol":"a"} Right: {"protocol":"b"}: FAIL
+	Component: search Left: {"search":"a"} Right: {"search":"b"}: FAIL
+	Component: username Left: {"username":"a"} Right: {"username":"b"}: FAIL
+	Loading data...: PASS
+/urlpattern/urlpattern-compare.tentative.any.worker.html: OK
+	Component: hash Left: {"hash":"a"} Right: {"hash":"b"}: FAIL
+	Component: hostname Left: {"hostname":"a"} Right: {"hostname":"b"}: FAIL
+	Component: password Left: {"password":"a"} Right: {"password":"b"}: FAIL
+	Component: pathname Left: "https://a.example.com/b?a" Right: "https://b.example.com/a?b": FAIL
+	Component: pathname Left: {"pathname":"*/foo"} Right: {"pathname":"*"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/"} Right: {"pathname":"/foo/:bar"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/(123)"} Right: {"pathname":"/foo/(12)"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/:b"} Right: {"pathname":"/foo/:a"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/:bar"} Right: {"pathname":"/foo/*"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/a"} Right: {"pathname":"/foo/b"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/b"} Right: {"pathname":"/foo/bar"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/bar"} Right: {"pathname":"/foo/:bar"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/{bar}"} Right: {"pathname":"/foo/(bar)"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/{bar}"} Right: {"pathname":"/foo/{bar}+"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/{bar}+"} Right: {"pathname":"/foo/{bar}?"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/{bar}/baz"} Right: {"pathname":"/foo/bar/baz"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/{bar}?"} Right: {"pathname":"/foo/{bar}*"}: FAIL
+	Component: pathname Left: {"pathname":"foo/:bar?/baz"} Right: {"pathname":"foo/{:bar}?/baz"}: FAIL
+	Component: pathname Left: {"pathname":"foo/:bar?/baz"} Right: {"pathname":"foo{/:bar/}?baz"}: FAIL
+	Component: pathname Left: {"pathname":"foo/:bar?/baz"} Right: {"pathname":"foo{/:bar}?/baz"}: FAIL
+	Component: pathname Left: {"pathname":"foo/:bar?/baz"} Right: {"pathname":"fo{o/:bar}?/baz"}: FAIL
+	Component: port Left: {"port":"9"} Right: {"port":"100"}: FAIL
+	Component: protocol Left: {"protocol":"a"} Right: {"protocol":"b"}: FAIL
+	Component: search Left: {"search":"a"} Right: {"search":"b"}: FAIL
+	Component: username Left: {"username":"a"} Right: {"username":"b"}: FAIL
+	Loading data...: PASS
+/urlpattern/urlpattern-compare.tentative.https.any.html: OK
+	Component: hash Left: {"hash":"a"} Right: {"hash":"b"}: FAIL
+	Component: hostname Left: {"hostname":"a"} Right: {"hostname":"b"}: FAIL
+	Component: password Left: {"password":"a"} Right: {"password":"b"}: FAIL
+	Component: pathname Left: "https://a.example.com/b?a" Right: "https://b.example.com/a?b": FAIL
+	Component: pathname Left: {"pathname":"*/foo"} Right: {"pathname":"*"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/"} Right: {"pathname":"/foo/:bar"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/(123)"} Right: {"pathname":"/foo/(12)"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/:b"} Right: {"pathname":"/foo/:a"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/:bar"} Right: {"pathname":"/foo/*"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/a"} Right: {"pathname":"/foo/b"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/b"} Right: {"pathname":"/foo/bar"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/bar"} Right: {"pathname":"/foo/:bar"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/{bar}"} Right: {"pathname":"/foo/(bar)"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/{bar}"} Right: {"pathname":"/foo/{bar}+"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/{bar}+"} Right: {"pathname":"/foo/{bar}?"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/{bar}/baz"} Right: {"pathname":"/foo/bar/baz"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/{bar}?"} Right: {"pathname":"/foo/{bar}*"}: FAIL
+	Component: pathname Left: {"pathname":"foo/:bar?/baz"} Right: {"pathname":"foo/{:bar}?/baz"}: FAIL
+	Component: pathname Left: {"pathname":"foo/:bar?/baz"} Right: {"pathname":"foo{/:bar/}?baz"}: FAIL
+	Component: pathname Left: {"pathname":"foo/:bar?/baz"} Right: {"pathname":"foo{/:bar}?/baz"}: FAIL
+	Component: pathname Left: {"pathname":"foo/:bar?/baz"} Right: {"pathname":"fo{o/:bar}?/baz"}: FAIL
+	Component: port Left: {"port":"9"} Right: {"port":"100"}: FAIL
+	Component: protocol Left: {"protocol":"a"} Right: {"protocol":"b"}: FAIL
+	Component: search Left: {"search":"a"} Right: {"search":"b"}: FAIL
+	Component: username Left: {"username":"a"} Right: {"username":"b"}: FAIL
+	Loading data...: PASS
+/urlpattern/urlpattern-compare.tentative.https.any.worker.html: OK
+	Component: hash Left: {"hash":"a"} Right: {"hash":"b"}: FAIL
+	Component: hostname Left: {"hostname":"a"} Right: {"hostname":"b"}: FAIL
+	Component: password Left: {"password":"a"} Right: {"password":"b"}: FAIL
+	Component: pathname Left: "https://a.example.com/b?a" Right: "https://b.example.com/a?b": FAIL
+	Component: pathname Left: {"pathname":"*/foo"} Right: {"pathname":"*"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/"} Right: {"pathname":"/foo/:bar"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/(123)"} Right: {"pathname":"/foo/(12)"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/:b"} Right: {"pathname":"/foo/:a"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/:bar"} Right: {"pathname":"/foo/*"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/a"} Right: {"pathname":"/foo/b"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/b"} Right: {"pathname":"/foo/bar"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/bar"} Right: {"pathname":"/foo/:bar"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/{bar}"} Right: {"pathname":"/foo/(bar)"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/{bar}"} Right: {"pathname":"/foo/{bar}+"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/{bar}+"} Right: {"pathname":"/foo/{bar}?"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/{bar}/baz"} Right: {"pathname":"/foo/bar/baz"}: FAIL
+	Component: pathname Left: {"pathname":"/foo/{bar}?"} Right: {"pathname":"/foo/{bar}*"}: FAIL
+	Component: pathname Left: {"pathname":"foo/:bar?/baz"} Right: {"pathname":"foo/{:bar}?/baz"}: FAIL
+	Component: pathname Left: {"pathname":"foo/:bar?/baz"} Right: {"pathname":"foo{/:bar/}?baz"}: FAIL
+	Component: pathname Left: {"pathname":"foo/:bar?/baz"} Right: {"pathname":"foo{/:bar}?/baz"}: FAIL
+	Component: pathname Left: {"pathname":"foo/:bar?/baz"} Right: {"pathname":"fo{o/:bar}?/baz"}: FAIL
+	Component: port Left: {"port":"9"} Right: {"port":"100"}: FAIL
+	Component: protocol Left: {"protocol":"a"} Right: {"protocol":"b"}: FAIL
+	Component: search Left: {"search":"a"} Right: {"search":"b"}: FAIL
+	Component: username Left: {"username":"a"} Right: {"username":"b"}: FAIL
+	Loading data...: PASS
+/urlpattern/urlpattern-constructor.any.html: OK
+	Test constructor with undefined: PASS
+	Test unclosed token: PASS
+/urlpattern/urlpattern-constructor.any.worker.html: OK
+	Test constructor with undefined: PASS
+	Test unclosed token: PASS
+/urlpattern/urlpattern-detached-frame-regexp.html: OK
+	Anonymous regexp group via test() after the owning frame is detached: PASS
+	Named regexp group matches after the owning frame is detached: PASS
+	Non-matching regexp input returns null after the owning frame is detached: PASS
+	Regexp groups across multiple components after the owning frame is detached: FAIL
+/urlpattern/urlpattern-empty-regexp-group.html: OK
+	URLPattern accepts a non-empty regexp group '(a)': PASS
+	URLPattern rejects an empty regexp group '()' with a TypeError: PASS
+/urlpattern/urlpattern-generate.tentative.any.html: OK
+	Loading data...: PASS
+	Pattern: "https://example.com/:foo" Component: pathname Groups: {"foo":" "}: FAIL
+	Pattern: "original-scheme://example.com/:foo" Component: pathname Groups: {"foo":" "}: FAIL
+	Pattern: {"hostname":"{:foo}.example.com"} Component: hostname Groups: {"foo":"🍅"}: FAIL
+	Pattern: {"pathname":"*"} Component: pathname Groups: {}: PASS
+	Pattern: {"pathname":"/([^\\\\/]+?)"} Component: pathname Groups: {}: PASS
+	Pattern: {"pathname":"/(regexp)"} Component: pathname Groups: {}: PASS
+	Pattern: {"pathname":"/:foo"} Component: pathname Groups: {"foo":"bar"}: FAIL
+	Pattern: {"pathname":"/:foo"} Component: pathname Groups: {"foo":"bar/baz"}: PASS
+	Pattern: {"pathname":"/:foo"} Component: pathname Groups: {"foo":"🍅"}: FAIL
+	Pattern: {"pathname":"/:foo"} Component: pathname Groups: {}: PASS
+	Pattern: {"pathname":"/:foo/:bar"} Component: pathname Groups: {"foo":"baz","bar":"qux"}: FAIL
+	Pattern: {"pathname":"/foo"} Component: invalid Groups: {}: PASS
+	Pattern: {"pathname":"/foo"} Component: pathname Groups: {}: FAIL
+	Pattern: {"pathname":"/foo/:bar"} Component: pathname Groups: {"bar":"baz"}: FAIL
+	Pattern: {"pathname":"/foo:bar"} Component: pathname Groups: {"bar":"baz"}: FAIL
+	Pattern: {"pathname":"/{foo}*"} Component: pathname Groups: {}: PASS
+	Pattern: {"pathname":"/{foo}+"} Component: pathname Groups: {}: PASS
+	Pattern: {"pathname":"/{foo}?"} Component: pathname Groups: {}: PASS
+	Pattern: {"port":"([^\\\\:]+?)"} Component: port Groups: {}: PASS
+/urlpattern/urlpattern-generate.tentative.any.worker.html: OK
+	Loading data...: PASS
+	Pattern: "https://example.com/:foo" Component: pathname Groups: {"foo":" "}: FAIL
+	Pattern: "original-scheme://example.com/:foo" Component: pathname Groups: {"foo":" "}: FAIL
+	Pattern: {"hostname":"{:foo}.example.com"} Component: hostname Groups: {"foo":"🍅"}: FAIL
+	Pattern: {"pathname":"*"} Component: pathname Groups: {}: PASS
+	Pattern: {"pathname":"/([^\\\\/]+?)"} Component: pathname Groups: {}: PASS
+	Pattern: {"pathname":"/(regexp)"} Component: pathname Groups: {}: PASS
+	Pattern: {"pathname":"/:foo"} Component: pathname Groups: {"foo":"bar"}: FAIL
+	Pattern: {"pathname":"/:foo"} Component: pathname Groups: {"foo":"bar/baz"}: PASS
+	Pattern: {"pathname":"/:foo"} Component: pathname Groups: {"foo":"🍅"}: FAIL
+	Pattern: {"pathname":"/:foo"} Component: pathname Groups: {}: PASS
+	Pattern: {"pathname":"/:foo/:bar"} Component: pathname Groups: {"foo":"baz","bar":"qux"}: FAIL
+	Pattern: {"pathname":"/foo"} Component: invalid Groups: {}: PASS
+	Pattern: {"pathname":"/foo"} Component: pathname Groups: {}: FAIL
+	Pattern: {"pathname":"/foo/:bar"} Component: pathname Groups: {"bar":"baz"}: FAIL
+	Pattern: {"pathname":"/foo:bar"} Component: pathname Groups: {"bar":"baz"}: FAIL
+	Pattern: {"pathname":"/{foo}*"} Component: pathname Groups: {}: PASS
+	Pattern: {"pathname":"/{foo}+"} Component: pathname Groups: {}: PASS
+	Pattern: {"pathname":"/{foo}?"} Component: pathname Groups: {}: PASS
+	Pattern: {"port":"([^\\\\:]+?)"} Component: port Groups: {}: PASS
+/urlpattern/urlpattern-hasregexpgroups.any.html: OK
+	urlpattern-hasregexpgroups: PASS
+/urlpattern/urlpattern-hasregexpgroups.any.worker.html: OK
+	urlpattern-hasregexpgroups: PASS
+/urlpattern/urlpattern.any.html: OK
+	Loading data...: PASS
+	Pattern: ["#baz","https://example.com/foo"] Inputs: ["#baz","https://example.com/foo"]: PASS
+	Pattern: ["#baz","https://example.com/foo?bar"] Inputs: ["#baz","https://example.com/foo?bar"]: PASS
+	Pattern: ["#foo","https://example.com/?q=*&v=?&hmm={}&umm=()"] Inputs: ["https://example.com/?q=*&v=?&hmm={}&umm=()#foo"]: PASS
+	Pattern: ["((?R)):"] Inputs: undefined: PASS
+	Pattern: ["(\\\\H):"] Inputs: undefined: FAIL
+	Pattern: ["(café)://foo"] Inputs: undefined: PASS
+	Pattern: ["(https://)example.com/foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: ["/foo",""] Inputs: undefined: PASS
+	Pattern: ["/foo"] Inputs: undefined: PASS
+	Pattern: ["/foo?bar#baz","https://example.com:8080",{"ignoreCase":true}] Inputs: [{"pathname":"/FOO","search":"BAR","hash":"BAZ","baseURL":"https://example.com:8080"}]: FAIL
+	Pattern: ["/foo?bar#baz","https://example.com:8080"] Inputs: [{"pathname":"/foo","search":"bar","hash":"baz","baseURL":"https://example.com:8080"}]: FAIL
+	Pattern: ["/foo?bar#baz",{"ignoreCase":true},"https://example.com:8080"] Inputs: [{"pathname":"/FOO","search":"BAR","hash":"BAZ","baseURL":"https://example.com:8080"}]: PASS
+	Pattern: ["?bar","https://example.com/foo#baz"] Inputs: ["?bar","https://example.com/foo#snafu"]: PASS
+	Pattern: ["?bar#baz","https://example.com/foo"] Inputs: ["?bar#baz","https://example.com/foo"]: PASS
+	Pattern: ["data:"] Inputs: ["data:"]: PASS
+	Pattern: ["data:foobar"] Inputs: ["data:foobar"]: PASS
+	Pattern: ["data\\\\:foo\\\\:bar@example.com"] Inputs: ["data:foo:bar@example.com"]: PASS
+	Pattern: ["data\\\\:foobar"] Inputs: ["data:foobar"]: PASS
+	Pattern: ["data\\\\:text/javascript,let x = 100/:tens?5;"] Inputs: ["data:text/javascript,let x = 100/5;"]: PASS
+	Pattern: ["data{\\\\:}channel.html","https://example.com"] Inputs: ["https://example.com/data:channel.html"]: FAIL
+	Pattern: ["example.com/foo"] Inputs: undefined: PASS
+	Pattern: ["file:///foo/bar"] Inputs: ["file:///foo/bar"]: PASS
+	Pattern: ["foo://bar"] Inputs: ["foo://bad_url_browser_interop"]: PASS
+	Pattern: ["http://[:address]/"] Inputs: ["http://[::1]/"]: PASS
+	Pattern: ["http://[\\\\:\\\\:1]/"] Inputs: ["http://[::1]/"]: PASS
+	Pattern: ["http://[\\\\:\\\\:1]:8080/"] Inputs: ["http://[::1]:8080/"]: PASS
+	Pattern: ["http://[\\\\:\\\\:AB\\\\::num]/"] Inputs: ["http://[::ab:1]/"]: PASS
+	Pattern: ["http://[\\\\:\\\\:a]/"] Inputs: ["http://[::a]/"]: PASS
+	Pattern: ["http://\\ud83d \\udeb2"] Inputs: undefined: FAIL
+	Pattern: ["http://🚲.com/"] Inputs: ["http://🚲.com/"]: PASS
+	Pattern: ["https://(sub(?:.))?example.com/foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: ["https://(sub.)?example(.com/)foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: ["https://(sub.)?example.com/foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: ["https://:user::pass@example.com"] Inputs: ["https://foo:bar@example.com"]: PASS
+	Pattern: ["https://\\\\:bar@example.com"] Inputs: ["https://:bar@example.com"]: PASS
+	Pattern: ["https://example.com#foo"] Inputs: ["https://example.com/#foo"]: PASS
+	Pattern: ["https://example.com/"] Inputs: ["https://example.com:8080/"]: PASS
+	Pattern: ["https://example.com/#foo"] Inputs: ["https://example.com/#foo"]: PASS
+	Pattern: ["https://example.com/(bar)?foo"] Inputs: ["https://example.com/bar?foo"]: PASS
+	Pattern: ["https://example.com/(bar)\\\\?foo"] Inputs: ["https://example.com/bar?foo"]: PASS
+	Pattern: ["https://example.com/*?foo"] Inputs: ["https://example.com/?foo"]: PASS
+	Pattern: ["https://example.com/*\\\\?foo"] Inputs: ["https://example.com/?foo"]: PASS
+	Pattern: ["https://example.com/:name?foo"] Inputs: ["https://example.com/bar?foo"]: PASS
+	Pattern: ["https://example.com/:name\\\\?foo"] Inputs: ["https://example.com/bar?foo"]: PASS
+	Pattern: ["https://example.com/?foo"] Inputs: ["https://example.com/?foo"]: PASS
+	Pattern: ["https://example.com/foo?bar#baz"] Inputs: [{"protocol":"https:","search":"?bar","hash":"#baz","baseURL":"http://example.com/foo"}]: PASS
+	Pattern: ["https://example.com/{bar}?foo"] Inputs: ["https://example.com/bar?foo"]: PASS
+	Pattern: ["https://example.com/{bar}\\\\?foo"] Inputs: ["https://example.com/bar?foo"]: PASS
+	Pattern: ["https://example.com:8080#foo"] Inputs: ["https://example.com:8080/#foo"]: PASS
+	Pattern: ["https://example.com:8080/foo?bar#baz",{"ignoreCase":true}] Inputs: [{"pathname":"/FOO","search":"BAR","hash":"BAZ","baseURL":"https://example.com:8080"}]: FAIL
+	Pattern: ["https://example.com:8080/foo?bar#baz"] Inputs: [{"pathname":"/foo","search":"bar","hash":"baz","baseURL":"https://example.com:8080"}]: FAIL
+	Pattern: ["https://example.com:8080?foo"] Inputs: ["https://example.com:8080/?foo"]: PASS
+	Pattern: ["https://example.com?foo"] Inputs: ["https://example.com/?foo"]: PASS
+	Pattern: ["https://foo@example.com"] Inputs: ["https://foo@example.com"]: PASS
+	Pattern: ["https://foo\\\\:bar@example.com"] Inputs: ["https://foo:bar@example.com"]: PASS
+	Pattern: ["https://foo{@example.com"] Inputs: ["https://foo@example.com"]: PASS
+	Pattern: ["https://foo{\\\\:}bar@example.com"] Inputs: ["https://foo:bar@example.com"]: PASS
+	Pattern: ["https://foo{{@}}example.com"] Inputs: ["https://foo@example.com"]: PASS
+	Pattern: ["https://www.example.com/*"] Inputs: ["https://www.example.com/example"]: PASS
+	Pattern: ["https://www.example.com/*"] Inputs: ["https://www.example.com/path/with/x"]: PASS
+	Pattern: ["https://www.example.com/*"] Inputs: ["https://www.example.com/text"]: PASS
+	Pattern: ["https://www.example.com/*"] Inputs: ["https://www.example.com/x"]: PASS
+	Pattern: ["https://www.example.com/*"] Inputs: ["https://www.example.com/xyz"]: PASS
+	Pattern: ["https://{sub.}?example.com/foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: ["https://{sub.}?example{.com/}foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: ["https://{sub{.}}example.com/foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: ["https\\\\:foo\\\\:bar@example.com"] Inputs: ["https:foo:bar@example.com"]: PASS
+	Pattern: ["http{s}?://{*.}?example.com/:product/:endpoint"] Inputs: ["https://sub.example.com/foo/bar"]: PASS
+	Pattern: ["{https://}example.com/foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: [] Inputs: ["https://example.com/"]: PASS
+	Pattern: [] Inputs: []: FAIL
+	Pattern: [] Inputs: [{}]: FAIL
+	Pattern: [{"hash":"(café)"}] Inputs: undefined: PASS
+	Pattern: [{"hash":":café"}] Inputs: [{"hash":"foo"}]: FAIL
+	Pattern: [{"hash":":℘"}] Inputs: [{"hash":"foo"}]: FAIL
+	Pattern: [{"hash":":㐀"}] Inputs: [{"hash":"foo"}]: FAIL
+	Pattern: [{"hash":"caf%C3%A9"}] Inputs: [{"hash":"café"}]: FAIL
+	Pattern: [{"hash":"caf%c3%a9"}] Inputs: [{"hash":"café"}]: PASS
+	Pattern: [{"hash":"café"}] Inputs: [{"hash":"café"}]: FAIL
+	Pattern: [{"hash":"foo","baseURL":"https://example.com/?q=*&v=?&hmm={}&umm=()"}] Inputs: [{"hash":"foo","baseURL":"https://example.com/?q=*&v=?&hmm={}&umm=()"}]: FAIL
+	Pattern: [{"hostname":"(café)"}] Inputs: undefined: PASS
+	Pattern: [{"hostname":"*\\\\:1]"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":":café"}] Inputs: [{"hostname":"foo"}]: FAIL
+	Pattern: [{"hostname":":domain(.*)"}] Inputs: [{"hostname":"localhost"}]: FAIL
+	Pattern: [{"hostname":":℘"}] Inputs: [{"hostname":"foo"}]: FAIL
+	Pattern: [{"hostname":":㐀"}] Inputs: [{"hostname":"foo"}]: FAIL
+	Pattern: [{"hostname":"[*\\\\:1]"}] Inputs: [{"hostname":"[::ab:1]"}]: FAIL
+	Pattern: [{"hostname":"[\\\\:\\\\:AB\\\\::num]"}] Inputs: [{"hostname":"[::ab:1]"}]: FAIL
+	Pattern: [{"hostname":"[\\\\:\\\\:xY\\\\::num]"}] Inputs: undefined: PASS
+	Pattern: [{"hostname":"\\ud83d \\udeb2"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad#hostname"}] Inputs: [{"hostname":"bad"}]: FAIL
+	Pattern: [{"hostname":"bad%hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad/hostname"}] Inputs: [{"hostname":"bad"}]: FAIL
+	Pattern: [{"hostname":"bad<hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad>hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad?hostname"}] Inputs: undefined: PASS
+	Pattern: [{"hostname":"bad@hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad[hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad\\\\:hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad\\\\\\\\hostname"}] Inputs: [{"hostname":"badhostname"}]: PASS
+	Pattern: [{"hostname":"bad\\nhostname"}] Inputs: [{"hostname":"badhostname"}]: FAIL
+	Pattern: [{"hostname":"bad\\rhostname"}] Inputs: [{"hostname":"badhostname"}]: FAIL
+	Pattern: [{"hostname":"bad\\thostname"}] Inputs: [{"hostname":"badhostname"}]: FAIL
+	Pattern: [{"hostname":"bad]hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad^hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad|hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"café.com"}] Inputs: [{"hostname":"café.com"}]: FAIL
+	Pattern: [{"hostname":"xn--caf-dma.com"}] Inputs: [{"hostname":"café.com"}]: FAIL
+	Pattern: [{"hostname":"{[\\\\:\\\\::num\\\\:1]}"}] Inputs: [{"hostname":"[::ab:1]"}]: FAIL
+	Pattern: [{"hostname":"{[\\\\:\\\\::num\\\\:fé]}"}] Inputs: undefined: PASS
+	Pattern: [{"hostname":"{[\\\\:\\\\:ab\\\\::num]}"}] Inputs: [{"hostname":"[::ab:1]"}]: FAIL
+	Pattern: [{"hostname":"{[\\\\:\\\\:fé\\\\::num]}"}] Inputs: undefined: PASS
+	Pattern: [{"ignoreCase":true}] Inputs: [{"pathname":"/FOO/BAR"}]: FAIL
+	Pattern: [{"password":"(café)"}] Inputs: undefined: PASS
+	Pattern: [{"password":":café"}] Inputs: [{"password":"foo"}]: FAIL
+	Pattern: [{"password":":℘"}] Inputs: [{"password":"foo"}]: FAIL
+	Pattern: [{"password":":㐀"}] Inputs: [{"password":"foo"}]: FAIL
+	Pattern: [{"password":"caf%C3%A9"}] Inputs: [{"password":"café"}]: FAIL
+	Pattern: [{"password":"caf%c3%a9"}] Inputs: [{"password":"café"}]: PASS
+	Pattern: [{"password":"café"}] Inputs: [{"password":"café"}]: FAIL
+	Pattern: [{"pathname":"","baseURL":"https://example.com"}] Inputs: [{"pathname":"/","baseURL":"https://example.com"}]: FAIL
+	Pattern: [{"pathname":"(café)"}] Inputs: undefined: PASS
+	Pattern: [{"pathname":"(foo)(.*)"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"(foo)?(.*)"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"*"}] Inputs: ["foo","data:data-urls-cannot-be-base-urls"]: PASS
+	Pattern: [{"pathname":"*"}] Inputs: ["foo","not|a|valid|url"]: PASS
+	Pattern: [{"pathname":"*/*"}] Inputs: [{"pathname":"foo/bar"}]: FAIL
+	Pattern: [{"pathname":"*//*"}] Inputs: [{"pathname":"foo/bar"}]: PASS
+	Pattern: [{"pathname":"*/{*}"}] Inputs: [{"pathname":"foo/bar"}]: FAIL
+	Pattern: [{"pathname":"*\\\\/*"}] Inputs: [{"pathname":"foo/bar"}]: FAIL
+	Pattern: [{"pathname":"*{}**?"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":"../foo"}] Inputs: [{"pathname":"../foo"}]: FAIL
+	Pattern: [{"pathname":"./foo"}] Inputs: [{"pathname":"./foo"}]: FAIL
+	Pattern: [{"pathname":"./foo/bar","baseURL":"https://example.com"}] Inputs: [{"pathname":"foo/bar","baseURL":"https://example.com"}]: FAIL
+	Pattern: [{"pathname":"/([[a-z]--a])"}] Inputs: [{"pathname":"/a"}]: PASS
+	Pattern: [{"pathname":"/([[a-z]--a])"}] Inputs: [{"pathname":"/z"}]: FAIL
+	Pattern: [{"pathname":"/([\\\\d&&[0-1]])"}] Inputs: [{"pathname":"/0"}]: FAIL
+	Pattern: [{"pathname":"/([\\\\d&&[0-1]])"}] Inputs: [{"pathname":"/3"}]: PASS
+	Pattern: [{"pathname":"/(\\\\m)"}] Inputs: undefined: FAIL
+	Pattern: [{"pathname":"/:café"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/:foo((?<x>a))"}] Inputs: [{"pathname":"/a"}]: FAIL
+	Pattern: [{"pathname":"/:foo."}] Inputs: [{"pathname":"/bar."}]: FAIL
+	Pattern: [{"pathname":"/:foo.."}] Inputs: [{"pathname":"/bar.."}]: FAIL
+	Pattern: [{"pathname":"/:foo\\\\bar"}] Inputs: [{"pathname":"/bazbar"}]: FAIL
+	Pattern: [{"pathname":"/:id/:id"}] Inputs: undefined: PASS
+	Pattern: [{"pathname":"/:℘"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/:㐀"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/:𠀀"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/caf%C3%A9"}] Inputs: [{"pathname":"/café"}]: FAIL
+	Pattern: [{"pathname":"/caf%c3%a9"}] Inputs: [{"pathname":"/café"}]: PASS
+	Pattern: [{"pathname":"/café"}] Inputs: [{"pathname":"/café"}]: FAIL
+	Pattern: [{"pathname":"/foo!"}] Inputs: [{"pathname":"/foo!"}]: FAIL
+	Pattern: [{"pathname":"/foo","baseURL":""}] Inputs: undefined: PASS
+	Pattern: [{"pathname":"/foo"},"https://example.com"] Inputs: undefined: FAIL
+	Pattern: [{"pathname":"/foo/(.*)"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo/(.*)"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)*"}] Inputs: [{"pathname":"/fo"}]: PASS
+	Pattern: [{"pathname":"/foo/(.*)*"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)*"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)*"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)*"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)*"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/(.*)+"}] Inputs: [{"pathname":"/fo"}]: PASS
+	Pattern: [{"pathname":"/foo/(.*)+"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo/(.*)+"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)+"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)+"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)+"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/(.*)?"}] Inputs: [{"pathname":"/fo"}]: PASS
+	Pattern: [{"pathname":"/foo/(.*)?"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)?"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)?"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)?"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)?"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/([^\\\\/]+?)"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/(bar(?<x>baz))"}] Inputs: [{"pathname":"/foo/barbaz"}]: FAIL
+	Pattern: [{"pathname":"/foo/*"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo/*"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/*"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/*"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/**"}] Inputs: [{"pathname":"/fo"}]: PASS
+	Pattern: [{"pathname":"/foo/**"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo/**"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/**"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/**"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/**"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/*+"}] Inputs: [{"pathname":"/fo"}]: PASS
+	Pattern: [{"pathname":"/foo/*+"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo/*+"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/*+"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/*+"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/*+"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/*?"}] Inputs: [{"pathname":"/fo"}]: PASS
+	Pattern: [{"pathname":"/foo/*?"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo/*?"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/*?"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/*?"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/*?"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/../bar"}] Inputs: [{"pathname":"/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar"}] Inputs: [{"pathname":"/foo/bar/"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar"}] Inputs: [{"pathname":"/foo/index.html"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar(.*)"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar(.*)"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar(.*)"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar(.*)"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar*"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar*"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar*"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar*"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar*"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar+"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar+"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar+"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar+"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar+"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar?"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar?"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar?"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar?"}] Inputs: [{"pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar?"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com"}] Inputs: [{"protocol":"https","hostname":"example.com","pathname":"/foo/bar","search":"otherquery","hash":"otherhash"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com"}] Inputs: [{"protocol":"https","hostname":"example.com","pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com"}] Inputs: [{"protocol":"https","hostname":"example.com","pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?otherquery#otherhash"}] Inputs: [{"protocol":"https","hostname":"example.com","pathname":"/foo/bar","search":"otherquery","hash":"otherhash"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: ["http://other.com/foo/bar"]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: ["https://example.com/foo/bar"]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: ["https://example.com/foo/bar/baz"]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: ["https://example.com/foo/bar?otherquery#otherhash"]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: ["https://example.com/foo/bar?query#hash"]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: ["https://other.com/foo/bar"]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"hostname":"example.com","pathname":"/foo/bar"}]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"pathname":"/foo/bar","baseURL":"http://example.com"}]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"pathname":"/foo/bar","baseURL":"https://example.com"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"pathname":"/foo/bar","baseURL":"https://other.com"}]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"pathname":"/foo/bar"}]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"pathname":"/foo/bar/baz","baseURL":"https://example.com"}]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"protocol":"https","hostname":"example.com","pathname":"/foo/bar","search":"otherquery","hash":"otherhash"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"protocol":"https","hostname":"example.com","pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar"},{"ignoreCase":true}] Inputs: [{"pathname":"/FOO/BAR"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: ["./foo/bar","https://example.com"]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: ["https://example.com/foo/bar"]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: ["https://example.com/foo/bar/baz"]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"hostname":"example.com","pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"hostname":"example.com","pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/./bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/ba"}]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/bar","baseURL":"https://example.com"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/bar"},"https://example.com"]: FAIL
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/bar/"}]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/bar/baz","baseURL":"https://example.com"}]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"foo/bar","baseURL":"https://example.com"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"foo/bar"}]: PASS
+	Pattern: [{"pathname":"/foo/baz"}] Inputs: [{"pathname":"/foo/bar/../baz"}]: FAIL
+	Pattern: [{"pathname":"/foo\\\\("}] Inputs: [{"pathname":"/foo("}]: FAIL
+	Pattern: [{"pathname":"/foo\\\\:"}] Inputs: [{"pathname":"/foo:"}]: FAIL
+	Pattern: [{"pathname":"/foo\\\\{"}] Inputs: [{"pathname":"/foo{"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}"}] Inputs: [{"pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}*"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}*"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}*"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}*"}] Inputs: [{"pathname":"/foo/bar/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}*"}] Inputs: [{"pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}+"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}+"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}+"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}+"}] Inputs: [{"pathname":"/foo/bar/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}+"}] Inputs: [{"pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}?"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}?"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}?"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}?"}] Inputs: [{"pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":":\\ud83d \\udeb2"}] Inputs: undefined: PASS
+	Pattern: [{"pathname":":a󠄀b"}] Inputs: []: FAIL
+	Pattern: [{"pathname":":foo(baz)(.*)"}] Inputs: [{"pathname":"bazbar"}]: FAIL
+	Pattern: [{"pathname":":foo(baz)bar"}] Inputs: [{"pathname":"bazbar"}]: FAIL
+	Pattern: [{"pathname":":foo../"}] Inputs: [{"pathname":"bar../"}]: FAIL
+	Pattern: [{"pathname":":foo./"}] Inputs: [{"pathname":"bar./"}]: FAIL
+	Pattern: [{"pathname":":foo\\\\bar"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":":foo{}(.*)"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":":foo{}?bar"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":":foo{}bar"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":":name"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":":name*"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":":name+"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":":name.html","baseURL":"https://example.com"}] Inputs: ["https://example.com/foo.html"]: FAIL
+	Pattern: [{"pathname":":🚲"}] Inputs: undefined: PASS
+	Pattern: [{"pathname":"\\\\/bar","baseURL":"https://example.com/foo/"}] Inputs: [{"pathname":"./bar","baseURL":"https://example.com/foo/"}]: PASS
+	Pattern: [{"pathname":"\\ud83d \\udeb2"}] Inputs: []: PASS
+	Pattern: [{"pathname":"b","baseURL":"https://example.com/foo/"}] Inputs: [{"pathname":"./b","baseURL":"https://example.com/foo/"}]: FAIL
+	Pattern: [{"pathname":"foo/bar","baseURL":"https://example.com"}] Inputs: ["https://example.com/foo/bar"]: FAIL
+	Pattern: [{"pathname":"foo/bar"}] Inputs: ["https://example.com/foo/bar"]: PASS
+	Pattern: [{"pathname":"test/:a𐑐b"}] Inputs: [{"pathname":"test/foo"}]: FAIL
+	Pattern: [{"pathname":"var x = 1;"}] Inputs: [{"pathname":"var x = 1;"}]: FAIL
+	Pattern: [{"pathname":"var x = 1;"}] Inputs: [{"protocol":"javascript","pathname":"var x = 1;"}]: PASS
+	Pattern: [{"pathname":"{(foo)bar}(.*)"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"{/bar}","baseURL":"https://example.com/foo/"}] Inputs: [{"pathname":"./bar","baseURL":"https://example.com/foo/"}]: PASS
+	Pattern: [{"pathname":"{:foo(foo)bar}"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":"{:foo\\\\.bar}"}] Inputs: [{"pathname":"foo.bar"}]: FAIL
+	Pattern: [{"pathname":"{:foo\\\\bar}"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":"{:foo}(.*)"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"{:foo}(barbaz)"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"{:foo}:bar(.*)"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"{:foo}?(.*)"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"{:foo}bar"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":"{:foo}{(.*)bar}"}] Inputs: [{"pathname":"foobarbaz"}]: PASS
+	Pattern: [{"pathname":"{:foo}{(.*)}"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"{:foo}{bar(.*)}"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"port":""}] Inputs: [{"protocol":"http","port":"80"}]: FAIL
+	Pattern: [{"port":"(.*)"}] Inputs: [{"port":"invalid80"}]: PASS
+	Pattern: [{"port":"80"}] Inputs: [{"port":"80"}]: FAIL
+	Pattern: [{"port":"80"}] Inputs: [{"port":"80?x"}]: FAIL
+	Pattern: [{"port":"80"}] Inputs: [{"port":"80\\\\x"}]: FAIL
+	Pattern: [{"port":"80"}] Inputs: [{"port":"80x"}]: FAIL
+	Pattern: [{"port":"80"}] Inputs: [{"port":"8\\t0"}]: FAIL
+	Pattern: [{"port":"80"}] Inputs: [{"protocol":"http","port":"80"}]: FAIL
+	Pattern: [{"protocol":"(.*)"}] Inputs: [{"protocol":"cafe"}]: FAIL
+	Pattern: [{"protocol":"(.*)"}] Inputs: [{"protocol":"café"}]: PASS
+	Pattern: [{"protocol":"(café)"}] Inputs: undefined: PASS
+	Pattern: [{"protocol":"(data|javascript)","pathname":"var x = 1;"}] Inputs: [{"protocol":"javascript","pathname":"var x = 1;"}]: FAIL
+	Pattern: [{"protocol":"(https|javascript)","pathname":"var x = 1;"}] Inputs: [{"protocol":"javascript","pathname":"var x = 1;"}]: PASS
+	Pattern: [{"protocol":":café"}] Inputs: [{"protocol":"foo"}]: FAIL
+	Pattern: [{"protocol":":name"}] Inputs: [{"protocol":"foobar"}]: FAIL
+	Pattern: [{"protocol":":name*"}] Inputs: [{"protocol":"foobar"}]: FAIL
+	Pattern: [{"protocol":":name+"}] Inputs: [{"protocol":"foobar"}]: FAIL
+	Pattern: [{"protocol":":℘"}] Inputs: [{"protocol":"foo"}]: FAIL
+	Pattern: [{"protocol":":㐀"}] Inputs: [{"protocol":"foo"}]: FAIL
+	Pattern: [{"protocol":"about","pathname":"(blank|sourcedoc)"}] Inputs: ["about:blank"]: PASS
+	Pattern: [{"protocol":"data","pathname":":number([0-9]+)"}] Inputs: ["data:8675309"]: PASS
+	Pattern: [{"protocol":"foo-bar"}] Inputs: [{"protocol":"foo-bar"}]: FAIL
+	Pattern: [{"protocol":"http","hostname":"example.com#ignoredhash"}] Inputs: ["http://example.com/"]: PASS
+	Pattern: [{"protocol":"http","hostname":"example.com/ignoredpath"}] Inputs: ["http://example.com/"]: PASS
+	Pattern: [{"protocol":"http","hostname":"example.com\\\\?ignoredsearch"}] Inputs: ["http://example.com/"]: PASS
+	Pattern: [{"protocol":"http","port":"100000"}] Inputs: [{"protocol":"http","port":"100000"}]: PASS
+	Pattern: [{"protocol":"http","port":"80 "}] Inputs: [{"protocol":"http","port":"80"}]: FAIL
+	Pattern: [{"protocol":"http","port":"80"}] Inputs: [{"protocol":"http","port":"80"}]: FAIL
+	Pattern: [{"protocol":"http","port":"80{20}?"}] Inputs: [{"protocol":"http","port":"80"}]: FAIL
+	Pattern: [{"protocol":"https","port":"*443"}] Inputs: [{"protocol":"https","port":"1443"}]: FAIL
+	Pattern: [{"protocol":"https","port":"443*"}] Inputs: [{"protocol":"https","port":"4430"}]: FAIL
+	Pattern: [{"protocol":"http{s}?","port":"80"}] Inputs: [{"protocol":"http","port":"80"}]: FAIL
+	Pattern: [{"protocol":"http{s}?:","search":"?bar","hash":"#baz"}] Inputs: ["http://example.com/foo?bar#baz"]: FAIL
+	Pattern: [{"protocol":"javascript","pathname":"var x = 1;"}] Inputs: [{"baseURL":"javascript:var x = 1;"}]: FAIL
+	Pattern: [{"protocol":"javascript","pathname":"var x = 1;"}] Inputs: [{"protocol":"javascript","pathname":"var x = 1;"}]: FAIL
+	Pattern: [{"search":"(café)"}] Inputs: undefined: PASS
+	Pattern: [{"search":":café"}] Inputs: [{"search":"foo"}]: FAIL
+	Pattern: [{"search":":℘"}] Inputs: [{"search":"foo"}]: FAIL
+	Pattern: [{"search":":㐀"}] Inputs: [{"search":"foo"}]: FAIL
+	Pattern: [{"search":"foo","baseURL":"https://example.com/a/+/b"}] Inputs: [{"search":"foo","baseURL":"https://example.com/a/+/b"}]: FAIL
+	Pattern: [{"search":"q=caf%C3%A9"}] Inputs: [{"search":"q=café"}]: FAIL
+	Pattern: [{"search":"q=caf%c3%a9"}] Inputs: [{"search":"q=café"}]: PASS
+	Pattern: [{"search":"q=café"}] Inputs: [{"search":"q=café"}]: FAIL
+	Pattern: [{"username":"(café)"}] Inputs: undefined: PASS
+	Pattern: [{"username":":café"}] Inputs: [{"username":"foo"}]: FAIL
+	Pattern: [{"username":":℘"}] Inputs: [{"username":"foo"}]: FAIL
+	Pattern: [{"username":":㐀"}] Inputs: [{"username":"foo"}]: FAIL
+	Pattern: [{"username":"caf%C3%A9"}] Inputs: [{"username":"café"}]: FAIL
+	Pattern: [{"username":"caf%c3%a9"}] Inputs: [{"username":"café"}]: PASS
+	Pattern: [{"username":"café"}] Inputs: [{"username":"café"}]: FAIL
+	Pattern: [{}] Inputs: ["https://example.com/"]: PASS
+/urlpattern/urlpattern.any.worker.html: OK
+	Loading data...: PASS
+	Pattern: ["#baz","https://example.com/foo"] Inputs: ["#baz","https://example.com/foo"]: PASS
+	Pattern: ["#baz","https://example.com/foo?bar"] Inputs: ["#baz","https://example.com/foo?bar"]: PASS
+	Pattern: ["#foo","https://example.com/?q=*&v=?&hmm={}&umm=()"] Inputs: ["https://example.com/?q=*&v=?&hmm={}&umm=()#foo"]: PASS
+	Pattern: ["((?R)):"] Inputs: undefined: PASS
+	Pattern: ["(\\\\H):"] Inputs: undefined: FAIL
+	Pattern: ["(café)://foo"] Inputs: undefined: PASS
+	Pattern: ["(https://)example.com/foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: ["/foo",""] Inputs: undefined: PASS
+	Pattern: ["/foo"] Inputs: undefined: PASS
+	Pattern: ["/foo?bar#baz","https://example.com:8080",{"ignoreCase":true}] Inputs: [{"pathname":"/FOO","search":"BAR","hash":"BAZ","baseURL":"https://example.com:8080"}]: FAIL
+	Pattern: ["/foo?bar#baz","https://example.com:8080"] Inputs: [{"pathname":"/foo","search":"bar","hash":"baz","baseURL":"https://example.com:8080"}]: FAIL
+	Pattern: ["/foo?bar#baz",{"ignoreCase":true},"https://example.com:8080"] Inputs: [{"pathname":"/FOO","search":"BAR","hash":"BAZ","baseURL":"https://example.com:8080"}]: PASS
+	Pattern: ["?bar","https://example.com/foo#baz"] Inputs: ["?bar","https://example.com/foo#snafu"]: PASS
+	Pattern: ["?bar#baz","https://example.com/foo"] Inputs: ["?bar#baz","https://example.com/foo"]: PASS
+	Pattern: ["data:"] Inputs: ["data:"]: PASS
+	Pattern: ["data:foobar"] Inputs: ["data:foobar"]: PASS
+	Pattern: ["data\\\\:foo\\\\:bar@example.com"] Inputs: ["data:foo:bar@example.com"]: PASS
+	Pattern: ["data\\\\:foobar"] Inputs: ["data:foobar"]: PASS
+	Pattern: ["data\\\\:text/javascript,let x = 100/:tens?5;"] Inputs: ["data:text/javascript,let x = 100/5;"]: PASS
+	Pattern: ["data{\\\\:}channel.html","https://example.com"] Inputs: ["https://example.com/data:channel.html"]: FAIL
+	Pattern: ["example.com/foo"] Inputs: undefined: PASS
+	Pattern: ["file:///foo/bar"] Inputs: ["file:///foo/bar"]: PASS
+	Pattern: ["foo://bar"] Inputs: ["foo://bad_url_browser_interop"]: PASS
+	Pattern: ["http://[:address]/"] Inputs: ["http://[::1]/"]: PASS
+	Pattern: ["http://[\\\\:\\\\:1]/"] Inputs: ["http://[::1]/"]: PASS
+	Pattern: ["http://[\\\\:\\\\:1]:8080/"] Inputs: ["http://[::1]:8080/"]: PASS
+	Pattern: ["http://[\\\\:\\\\:AB\\\\::num]/"] Inputs: ["http://[::ab:1]/"]: PASS
+	Pattern: ["http://[\\\\:\\\\:a]/"] Inputs: ["http://[::a]/"]: PASS
+	Pattern: ["http://\\ud83d \\udeb2"] Inputs: undefined: FAIL
+	Pattern: ["http://🚲.com/"] Inputs: ["http://🚲.com/"]: PASS
+	Pattern: ["https://(sub(?:.))?example.com/foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: ["https://(sub.)?example(.com/)foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: ["https://(sub.)?example.com/foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: ["https://:user::pass@example.com"] Inputs: ["https://foo:bar@example.com"]: PASS
+	Pattern: ["https://\\\\:bar@example.com"] Inputs: ["https://:bar@example.com"]: PASS
+	Pattern: ["https://example.com#foo"] Inputs: ["https://example.com/#foo"]: PASS
+	Pattern: ["https://example.com/"] Inputs: ["https://example.com:8080/"]: PASS
+	Pattern: ["https://example.com/#foo"] Inputs: ["https://example.com/#foo"]: PASS
+	Pattern: ["https://example.com/(bar)?foo"] Inputs: ["https://example.com/bar?foo"]: PASS
+	Pattern: ["https://example.com/(bar)\\\\?foo"] Inputs: ["https://example.com/bar?foo"]: PASS
+	Pattern: ["https://example.com/*?foo"] Inputs: ["https://example.com/?foo"]: PASS
+	Pattern: ["https://example.com/*\\\\?foo"] Inputs: ["https://example.com/?foo"]: PASS
+	Pattern: ["https://example.com/:name?foo"] Inputs: ["https://example.com/bar?foo"]: PASS
+	Pattern: ["https://example.com/:name\\\\?foo"] Inputs: ["https://example.com/bar?foo"]: PASS
+	Pattern: ["https://example.com/?foo"] Inputs: ["https://example.com/?foo"]: PASS
+	Pattern: ["https://example.com/foo?bar#baz"] Inputs: [{"protocol":"https:","search":"?bar","hash":"#baz","baseURL":"http://example.com/foo"}]: PASS
+	Pattern: ["https://example.com/{bar}?foo"] Inputs: ["https://example.com/bar?foo"]: PASS
+	Pattern: ["https://example.com/{bar}\\\\?foo"] Inputs: ["https://example.com/bar?foo"]: PASS
+	Pattern: ["https://example.com:8080#foo"] Inputs: ["https://example.com:8080/#foo"]: PASS
+	Pattern: ["https://example.com:8080/foo?bar#baz",{"ignoreCase":true}] Inputs: [{"pathname":"/FOO","search":"BAR","hash":"BAZ","baseURL":"https://example.com:8080"}]: FAIL
+	Pattern: ["https://example.com:8080/foo?bar#baz"] Inputs: [{"pathname":"/foo","search":"bar","hash":"baz","baseURL":"https://example.com:8080"}]: FAIL
+	Pattern: ["https://example.com:8080?foo"] Inputs: ["https://example.com:8080/?foo"]: PASS
+	Pattern: ["https://example.com?foo"] Inputs: ["https://example.com/?foo"]: PASS
+	Pattern: ["https://foo@example.com"] Inputs: ["https://foo@example.com"]: PASS
+	Pattern: ["https://foo\\\\:bar@example.com"] Inputs: ["https://foo:bar@example.com"]: PASS
+	Pattern: ["https://foo{@example.com"] Inputs: ["https://foo@example.com"]: PASS
+	Pattern: ["https://foo{\\\\:}bar@example.com"] Inputs: ["https://foo:bar@example.com"]: PASS
+	Pattern: ["https://foo{{@}}example.com"] Inputs: ["https://foo@example.com"]: PASS
+	Pattern: ["https://www.example.com/*"] Inputs: ["https://www.example.com/example"]: PASS
+	Pattern: ["https://www.example.com/*"] Inputs: ["https://www.example.com/path/with/x"]: PASS
+	Pattern: ["https://www.example.com/*"] Inputs: ["https://www.example.com/text"]: PASS
+	Pattern: ["https://www.example.com/*"] Inputs: ["https://www.example.com/x"]: PASS
+	Pattern: ["https://www.example.com/*"] Inputs: ["https://www.example.com/xyz"]: PASS
+	Pattern: ["https://{sub.}?example.com/foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: ["https://{sub.}?example{.com/}foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: ["https://{sub{.}}example.com/foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: ["https\\\\:foo\\\\:bar@example.com"] Inputs: ["https:foo:bar@example.com"]: PASS
+	Pattern: ["http{s}?://{*.}?example.com/:product/:endpoint"] Inputs: ["https://sub.example.com/foo/bar"]: PASS
+	Pattern: ["{https://}example.com/foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: [] Inputs: ["https://example.com/"]: PASS
+	Pattern: [] Inputs: []: FAIL
+	Pattern: [] Inputs: [{}]: FAIL
+	Pattern: [{"hash":"(café)"}] Inputs: undefined: PASS
+	Pattern: [{"hash":":café"}] Inputs: [{"hash":"foo"}]: FAIL
+	Pattern: [{"hash":":℘"}] Inputs: [{"hash":"foo"}]: FAIL
+	Pattern: [{"hash":":㐀"}] Inputs: [{"hash":"foo"}]: FAIL
+	Pattern: [{"hash":"caf%C3%A9"}] Inputs: [{"hash":"café"}]: FAIL
+	Pattern: [{"hash":"caf%c3%a9"}] Inputs: [{"hash":"café"}]: PASS
+	Pattern: [{"hash":"café"}] Inputs: [{"hash":"café"}]: FAIL
+	Pattern: [{"hash":"foo","baseURL":"https://example.com/?q=*&v=?&hmm={}&umm=()"}] Inputs: [{"hash":"foo","baseURL":"https://example.com/?q=*&v=?&hmm={}&umm=()"}]: FAIL
+	Pattern: [{"hostname":"(café)"}] Inputs: undefined: PASS
+	Pattern: [{"hostname":"*\\\\:1]"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":":café"}] Inputs: [{"hostname":"foo"}]: FAIL
+	Pattern: [{"hostname":":domain(.*)"}] Inputs: [{"hostname":"localhost"}]: FAIL
+	Pattern: [{"hostname":":℘"}] Inputs: [{"hostname":"foo"}]: FAIL
+	Pattern: [{"hostname":":㐀"}] Inputs: [{"hostname":"foo"}]: FAIL
+	Pattern: [{"hostname":"[*\\\\:1]"}] Inputs: [{"hostname":"[::ab:1]"}]: FAIL
+	Pattern: [{"hostname":"[\\\\:\\\\:AB\\\\::num]"}] Inputs: [{"hostname":"[::ab:1]"}]: FAIL
+	Pattern: [{"hostname":"[\\\\:\\\\:xY\\\\::num]"}] Inputs: undefined: PASS
+	Pattern: [{"hostname":"\\ud83d \\udeb2"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad#hostname"}] Inputs: [{"hostname":"bad"}]: FAIL
+	Pattern: [{"hostname":"bad%hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad/hostname"}] Inputs: [{"hostname":"bad"}]: FAIL
+	Pattern: [{"hostname":"bad<hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad>hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad?hostname"}] Inputs: undefined: PASS
+	Pattern: [{"hostname":"bad@hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad[hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad\\\\:hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad\\\\\\\\hostname"}] Inputs: [{"hostname":"badhostname"}]: PASS
+	Pattern: [{"hostname":"bad\\nhostname"}] Inputs: [{"hostname":"badhostname"}]: FAIL
+	Pattern: [{"hostname":"bad\\rhostname"}] Inputs: [{"hostname":"badhostname"}]: FAIL
+	Pattern: [{"hostname":"bad\\thostname"}] Inputs: [{"hostname":"badhostname"}]: FAIL
+	Pattern: [{"hostname":"bad]hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad^hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad|hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"café.com"}] Inputs: [{"hostname":"café.com"}]: FAIL
+	Pattern: [{"hostname":"xn--caf-dma.com"}] Inputs: [{"hostname":"café.com"}]: FAIL
+	Pattern: [{"hostname":"{[\\\\:\\\\::num\\\\:1]}"}] Inputs: [{"hostname":"[::ab:1]"}]: FAIL
+	Pattern: [{"hostname":"{[\\\\:\\\\::num\\\\:fé]}"}] Inputs: undefined: PASS
+	Pattern: [{"hostname":"{[\\\\:\\\\:ab\\\\::num]}"}] Inputs: [{"hostname":"[::ab:1]"}]: FAIL
+	Pattern: [{"hostname":"{[\\\\:\\\\:fé\\\\::num]}"}] Inputs: undefined: PASS
+	Pattern: [{"ignoreCase":true}] Inputs: [{"pathname":"/FOO/BAR"}]: FAIL
+	Pattern: [{"password":"(café)"}] Inputs: undefined: PASS
+	Pattern: [{"password":":café"}] Inputs: [{"password":"foo"}]: FAIL
+	Pattern: [{"password":":℘"}] Inputs: [{"password":"foo"}]: FAIL
+	Pattern: [{"password":":㐀"}] Inputs: [{"password":"foo"}]: FAIL
+	Pattern: [{"password":"caf%C3%A9"}] Inputs: [{"password":"café"}]: FAIL
+	Pattern: [{"password":"caf%c3%a9"}] Inputs: [{"password":"café"}]: PASS
+	Pattern: [{"password":"café"}] Inputs: [{"password":"café"}]: FAIL
+	Pattern: [{"pathname":"","baseURL":"https://example.com"}] Inputs: [{"pathname":"/","baseURL":"https://example.com"}]: FAIL
+	Pattern: [{"pathname":"(café)"}] Inputs: undefined: PASS
+	Pattern: [{"pathname":"(foo)(.*)"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"(foo)?(.*)"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"*"}] Inputs: ["foo","data:data-urls-cannot-be-base-urls"]: PASS
+	Pattern: [{"pathname":"*"}] Inputs: ["foo","not|a|valid|url"]: PASS
+	Pattern: [{"pathname":"*/*"}] Inputs: [{"pathname":"foo/bar"}]: FAIL
+	Pattern: [{"pathname":"*//*"}] Inputs: [{"pathname":"foo/bar"}]: PASS
+	Pattern: [{"pathname":"*/{*}"}] Inputs: [{"pathname":"foo/bar"}]: FAIL
+	Pattern: [{"pathname":"*\\\\/*"}] Inputs: [{"pathname":"foo/bar"}]: FAIL
+	Pattern: [{"pathname":"*{}**?"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":"../foo"}] Inputs: [{"pathname":"../foo"}]: FAIL
+	Pattern: [{"pathname":"./foo"}] Inputs: [{"pathname":"./foo"}]: FAIL
+	Pattern: [{"pathname":"./foo/bar","baseURL":"https://example.com"}] Inputs: [{"pathname":"foo/bar","baseURL":"https://example.com"}]: FAIL
+	Pattern: [{"pathname":"/([[a-z]--a])"}] Inputs: [{"pathname":"/a"}]: PASS
+	Pattern: [{"pathname":"/([[a-z]--a])"}] Inputs: [{"pathname":"/z"}]: FAIL
+	Pattern: [{"pathname":"/([\\\\d&&[0-1]])"}] Inputs: [{"pathname":"/0"}]: FAIL
+	Pattern: [{"pathname":"/([\\\\d&&[0-1]])"}] Inputs: [{"pathname":"/3"}]: PASS
+	Pattern: [{"pathname":"/(\\\\m)"}] Inputs: undefined: FAIL
+	Pattern: [{"pathname":"/:café"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/:foo((?<x>a))"}] Inputs: [{"pathname":"/a"}]: FAIL
+	Pattern: [{"pathname":"/:foo."}] Inputs: [{"pathname":"/bar."}]: FAIL
+	Pattern: [{"pathname":"/:foo.."}] Inputs: [{"pathname":"/bar.."}]: FAIL
+	Pattern: [{"pathname":"/:foo\\\\bar"}] Inputs: [{"pathname":"/bazbar"}]: FAIL
+	Pattern: [{"pathname":"/:id/:id"}] Inputs: undefined: PASS
+	Pattern: [{"pathname":"/:℘"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/:㐀"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/:𠀀"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/caf%C3%A9"}] Inputs: [{"pathname":"/café"}]: FAIL
+	Pattern: [{"pathname":"/caf%c3%a9"}] Inputs: [{"pathname":"/café"}]: PASS
+	Pattern: [{"pathname":"/café"}] Inputs: [{"pathname":"/café"}]: FAIL
+	Pattern: [{"pathname":"/foo!"}] Inputs: [{"pathname":"/foo!"}]: FAIL
+	Pattern: [{"pathname":"/foo","baseURL":""}] Inputs: undefined: PASS
+	Pattern: [{"pathname":"/foo"},"https://example.com"] Inputs: undefined: FAIL
+	Pattern: [{"pathname":"/foo/(.*)"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo/(.*)"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)*"}] Inputs: [{"pathname":"/fo"}]: PASS
+	Pattern: [{"pathname":"/foo/(.*)*"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)*"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)*"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)*"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)*"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/(.*)+"}] Inputs: [{"pathname":"/fo"}]: PASS
+	Pattern: [{"pathname":"/foo/(.*)+"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo/(.*)+"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)+"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)+"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)+"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/(.*)?"}] Inputs: [{"pathname":"/fo"}]: PASS
+	Pattern: [{"pathname":"/foo/(.*)?"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)?"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)?"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)?"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)?"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/([^\\\\/]+?)"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/(bar(?<x>baz))"}] Inputs: [{"pathname":"/foo/barbaz"}]: FAIL
+	Pattern: [{"pathname":"/foo/*"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo/*"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/*"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/*"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/**"}] Inputs: [{"pathname":"/fo"}]: PASS
+	Pattern: [{"pathname":"/foo/**"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo/**"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/**"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/**"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/**"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/*+"}] Inputs: [{"pathname":"/fo"}]: PASS
+	Pattern: [{"pathname":"/foo/*+"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo/*+"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/*+"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/*+"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/*+"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/*?"}] Inputs: [{"pathname":"/fo"}]: PASS
+	Pattern: [{"pathname":"/foo/*?"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo/*?"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/*?"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/*?"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/*?"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/../bar"}] Inputs: [{"pathname":"/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar"}] Inputs: [{"pathname":"/foo/bar/"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar"}] Inputs: [{"pathname":"/foo/index.html"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar(.*)"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar(.*)"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar(.*)"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar(.*)"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar*"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar*"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar*"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar*"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar*"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar+"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar+"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar+"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar+"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar+"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar?"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar?"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar?"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar?"}] Inputs: [{"pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar?"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com"}] Inputs: [{"protocol":"https","hostname":"example.com","pathname":"/foo/bar","search":"otherquery","hash":"otherhash"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com"}] Inputs: [{"protocol":"https","hostname":"example.com","pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com"}] Inputs: [{"protocol":"https","hostname":"example.com","pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?otherquery#otherhash"}] Inputs: [{"protocol":"https","hostname":"example.com","pathname":"/foo/bar","search":"otherquery","hash":"otherhash"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: ["http://other.com/foo/bar"]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: ["https://example.com/foo/bar"]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: ["https://example.com/foo/bar/baz"]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: ["https://example.com/foo/bar?otherquery#otherhash"]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: ["https://example.com/foo/bar?query#hash"]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: ["https://other.com/foo/bar"]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"hostname":"example.com","pathname":"/foo/bar"}]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"pathname":"/foo/bar","baseURL":"http://example.com"}]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"pathname":"/foo/bar","baseURL":"https://example.com"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"pathname":"/foo/bar","baseURL":"https://other.com"}]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"pathname":"/foo/bar"}]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"pathname":"/foo/bar/baz","baseURL":"https://example.com"}]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"protocol":"https","hostname":"example.com","pathname":"/foo/bar","search":"otherquery","hash":"otherhash"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"protocol":"https","hostname":"example.com","pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar"},{"ignoreCase":true}] Inputs: [{"pathname":"/FOO/BAR"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: ["./foo/bar","https://example.com"]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: ["https://example.com/foo/bar"]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: ["https://example.com/foo/bar/baz"]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"hostname":"example.com","pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"hostname":"example.com","pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/./bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/ba"}]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/bar","baseURL":"https://example.com"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/bar"},"https://example.com"]: FAIL
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/bar/"}]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/bar/baz","baseURL":"https://example.com"}]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"foo/bar","baseURL":"https://example.com"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"foo/bar"}]: PASS
+	Pattern: [{"pathname":"/foo/baz"}] Inputs: [{"pathname":"/foo/bar/../baz"}]: FAIL
+	Pattern: [{"pathname":"/foo\\\\("}] Inputs: [{"pathname":"/foo("}]: FAIL
+	Pattern: [{"pathname":"/foo\\\\:"}] Inputs: [{"pathname":"/foo:"}]: FAIL
+	Pattern: [{"pathname":"/foo\\\\{"}] Inputs: [{"pathname":"/foo{"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}"}] Inputs: [{"pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}*"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}*"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}*"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}*"}] Inputs: [{"pathname":"/foo/bar/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}*"}] Inputs: [{"pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}+"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}+"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}+"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}+"}] Inputs: [{"pathname":"/foo/bar/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}+"}] Inputs: [{"pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}?"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}?"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}?"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}?"}] Inputs: [{"pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":":\\ud83d \\udeb2"}] Inputs: undefined: PASS
+	Pattern: [{"pathname":":a󠄀b"}] Inputs: []: FAIL
+	Pattern: [{"pathname":":foo(baz)(.*)"}] Inputs: [{"pathname":"bazbar"}]: FAIL
+	Pattern: [{"pathname":":foo(baz)bar"}] Inputs: [{"pathname":"bazbar"}]: FAIL
+	Pattern: [{"pathname":":foo../"}] Inputs: [{"pathname":"bar../"}]: FAIL
+	Pattern: [{"pathname":":foo./"}] Inputs: [{"pathname":"bar./"}]: FAIL
+	Pattern: [{"pathname":":foo\\\\bar"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":":foo{}(.*)"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":":foo{}?bar"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":":foo{}bar"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":":name"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":":name*"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":":name+"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":":name.html","baseURL":"https://example.com"}] Inputs: ["https://example.com/foo.html"]: FAIL
+	Pattern: [{"pathname":":🚲"}] Inputs: undefined: PASS
+	Pattern: [{"pathname":"\\\\/bar","baseURL":"https://example.com/foo/"}] Inputs: [{"pathname":"./bar","baseURL":"https://example.com/foo/"}]: PASS
+	Pattern: [{"pathname":"\\ud83d \\udeb2"}] Inputs: []: PASS
+	Pattern: [{"pathname":"b","baseURL":"https://example.com/foo/"}] Inputs: [{"pathname":"./b","baseURL":"https://example.com/foo/"}]: FAIL
+	Pattern: [{"pathname":"foo/bar","baseURL":"https://example.com"}] Inputs: ["https://example.com/foo/bar"]: FAIL
+	Pattern: [{"pathname":"foo/bar"}] Inputs: ["https://example.com/foo/bar"]: PASS
+	Pattern: [{"pathname":"test/:a𐑐b"}] Inputs: [{"pathname":"test/foo"}]: FAIL
+	Pattern: [{"pathname":"var x = 1;"}] Inputs: [{"pathname":"var x = 1;"}]: FAIL
+	Pattern: [{"pathname":"var x = 1;"}] Inputs: [{"protocol":"javascript","pathname":"var x = 1;"}]: PASS
+	Pattern: [{"pathname":"{(foo)bar}(.*)"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"{/bar}","baseURL":"https://example.com/foo/"}] Inputs: [{"pathname":"./bar","baseURL":"https://example.com/foo/"}]: PASS
+	Pattern: [{"pathname":"{:foo(foo)bar}"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":"{:foo\\\\.bar}"}] Inputs: [{"pathname":"foo.bar"}]: FAIL
+	Pattern: [{"pathname":"{:foo\\\\bar}"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":"{:foo}(.*)"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"{:foo}(barbaz)"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"{:foo}:bar(.*)"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"{:foo}?(.*)"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"{:foo}bar"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":"{:foo}{(.*)bar}"}] Inputs: [{"pathname":"foobarbaz"}]: PASS
+	Pattern: [{"pathname":"{:foo}{(.*)}"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"{:foo}{bar(.*)}"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"port":""}] Inputs: [{"protocol":"http","port":"80"}]: FAIL
+	Pattern: [{"port":"(.*)"}] Inputs: [{"port":"invalid80"}]: PASS
+	Pattern: [{"port":"80"}] Inputs: [{"port":"80"}]: FAIL
+	Pattern: [{"port":"80"}] Inputs: [{"port":"80?x"}]: FAIL
+	Pattern: [{"port":"80"}] Inputs: [{"port":"80\\\\x"}]: FAIL
+	Pattern: [{"port":"80"}] Inputs: [{"port":"80x"}]: FAIL
+	Pattern: [{"port":"80"}] Inputs: [{"port":"8\\t0"}]: FAIL
+	Pattern: [{"port":"80"}] Inputs: [{"protocol":"http","port":"80"}]: FAIL
+	Pattern: [{"protocol":"(.*)"}] Inputs: [{"protocol":"cafe"}]: FAIL
+	Pattern: [{"protocol":"(.*)"}] Inputs: [{"protocol":"café"}]: PASS
+	Pattern: [{"protocol":"(café)"}] Inputs: undefined: PASS
+	Pattern: [{"protocol":"(data|javascript)","pathname":"var x = 1;"}] Inputs: [{"protocol":"javascript","pathname":"var x = 1;"}]: FAIL
+	Pattern: [{"protocol":"(https|javascript)","pathname":"var x = 1;"}] Inputs: [{"protocol":"javascript","pathname":"var x = 1;"}]: PASS
+	Pattern: [{"protocol":":café"}] Inputs: [{"protocol":"foo"}]: FAIL
+	Pattern: [{"protocol":":name"}] Inputs: [{"protocol":"foobar"}]: FAIL
+	Pattern: [{"protocol":":name*"}] Inputs: [{"protocol":"foobar"}]: FAIL
+	Pattern: [{"protocol":":name+"}] Inputs: [{"protocol":"foobar"}]: FAIL
+	Pattern: [{"protocol":":℘"}] Inputs: [{"protocol":"foo"}]: FAIL
+	Pattern: [{"protocol":":㐀"}] Inputs: [{"protocol":"foo"}]: FAIL
+	Pattern: [{"protocol":"about","pathname":"(blank|sourcedoc)"}] Inputs: ["about:blank"]: PASS
+	Pattern: [{"protocol":"data","pathname":":number([0-9]+)"}] Inputs: ["data:8675309"]: PASS
+	Pattern: [{"protocol":"foo-bar"}] Inputs: [{"protocol":"foo-bar"}]: FAIL
+	Pattern: [{"protocol":"http","hostname":"example.com#ignoredhash"}] Inputs: ["http://example.com/"]: PASS
+	Pattern: [{"protocol":"http","hostname":"example.com/ignoredpath"}] Inputs: ["http://example.com/"]: PASS
+	Pattern: [{"protocol":"http","hostname":"example.com\\\\?ignoredsearch"}] Inputs: ["http://example.com/"]: PASS
+	Pattern: [{"protocol":"http","port":"100000"}] Inputs: [{"protocol":"http","port":"100000"}]: PASS
+	Pattern: [{"protocol":"http","port":"80 "}] Inputs: [{"protocol":"http","port":"80"}]: FAIL
+	Pattern: [{"protocol":"http","port":"80"}] Inputs: [{"protocol":"http","port":"80"}]: FAIL
+	Pattern: [{"protocol":"http","port":"80{20}?"}] Inputs: [{"protocol":"http","port":"80"}]: FAIL
+	Pattern: [{"protocol":"https","port":"*443"}] Inputs: [{"protocol":"https","port":"1443"}]: FAIL
+	Pattern: [{"protocol":"https","port":"443*"}] Inputs: [{"protocol":"https","port":"4430"}]: FAIL
+	Pattern: [{"protocol":"http{s}?","port":"80"}] Inputs: [{"protocol":"http","port":"80"}]: FAIL
+	Pattern: [{"protocol":"http{s}?:","search":"?bar","hash":"#baz"}] Inputs: ["http://example.com/foo?bar#baz"]: FAIL
+	Pattern: [{"protocol":"javascript","pathname":"var x = 1;"}] Inputs: [{"baseURL":"javascript:var x = 1;"}]: FAIL
+	Pattern: [{"protocol":"javascript","pathname":"var x = 1;"}] Inputs: [{"protocol":"javascript","pathname":"var x = 1;"}]: FAIL
+	Pattern: [{"search":"(café)"}] Inputs: undefined: PASS
+	Pattern: [{"search":":café"}] Inputs: [{"search":"foo"}]: FAIL
+	Pattern: [{"search":":℘"}] Inputs: [{"search":"foo"}]: FAIL
+	Pattern: [{"search":":㐀"}] Inputs: [{"search":"foo"}]: FAIL
+	Pattern: [{"search":"foo","baseURL":"https://example.com/a/+/b"}] Inputs: [{"search":"foo","baseURL":"https://example.com/a/+/b"}]: FAIL
+	Pattern: [{"search":"q=caf%C3%A9"}] Inputs: [{"search":"q=café"}]: FAIL
+	Pattern: [{"search":"q=caf%c3%a9"}] Inputs: [{"search":"q=café"}]: PASS
+	Pattern: [{"search":"q=café"}] Inputs: [{"search":"q=café"}]: FAIL
+	Pattern: [{"username":"(café)"}] Inputs: undefined: PASS
+	Pattern: [{"username":":café"}] Inputs: [{"username":"foo"}]: FAIL
+	Pattern: [{"username":":℘"}] Inputs: [{"username":"foo"}]: FAIL
+	Pattern: [{"username":":㐀"}] Inputs: [{"username":"foo"}]: FAIL
+	Pattern: [{"username":"caf%C3%A9"}] Inputs: [{"username":"café"}]: FAIL
+	Pattern: [{"username":"caf%c3%a9"}] Inputs: [{"username":"café"}]: PASS
+	Pattern: [{"username":"café"}] Inputs: [{"username":"café"}]: FAIL
+	Pattern: [{}] Inputs: ["https://example.com/"]: PASS
+/urlpattern/urlpattern.https.any.html: OK
+	Loading data...: PASS
+	Pattern: ["#baz","https://example.com/foo"] Inputs: ["#baz","https://example.com/foo"]: PASS
+	Pattern: ["#baz","https://example.com/foo?bar"] Inputs: ["#baz","https://example.com/foo?bar"]: PASS
+	Pattern: ["#foo","https://example.com/?q=*&v=?&hmm={}&umm=()"] Inputs: ["https://example.com/?q=*&v=?&hmm={}&umm=()#foo"]: PASS
+	Pattern: ["((?R)):"] Inputs: undefined: PASS
+	Pattern: ["(\\\\H):"] Inputs: undefined: FAIL
+	Pattern: ["(café)://foo"] Inputs: undefined: PASS
+	Pattern: ["(https://)example.com/foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: ["/foo",""] Inputs: undefined: PASS
+	Pattern: ["/foo"] Inputs: undefined: PASS
+	Pattern: ["/foo?bar#baz","https://example.com:8080",{"ignoreCase":true}] Inputs: [{"pathname":"/FOO","search":"BAR","hash":"BAZ","baseURL":"https://example.com:8080"}]: FAIL
+	Pattern: ["/foo?bar#baz","https://example.com:8080"] Inputs: [{"pathname":"/foo","search":"bar","hash":"baz","baseURL":"https://example.com:8080"}]: FAIL
+	Pattern: ["/foo?bar#baz",{"ignoreCase":true},"https://example.com:8080"] Inputs: [{"pathname":"/FOO","search":"BAR","hash":"BAZ","baseURL":"https://example.com:8080"}]: PASS
+	Pattern: ["?bar","https://example.com/foo#baz"] Inputs: ["?bar","https://example.com/foo#snafu"]: PASS
+	Pattern: ["?bar#baz","https://example.com/foo"] Inputs: ["?bar#baz","https://example.com/foo"]: PASS
+	Pattern: ["data:"] Inputs: ["data:"]: PASS
+	Pattern: ["data:foobar"] Inputs: ["data:foobar"]: PASS
+	Pattern: ["data\\\\:foo\\\\:bar@example.com"] Inputs: ["data:foo:bar@example.com"]: PASS
+	Pattern: ["data\\\\:foobar"] Inputs: ["data:foobar"]: PASS
+	Pattern: ["data\\\\:text/javascript,let x = 100/:tens?5;"] Inputs: ["data:text/javascript,let x = 100/5;"]: PASS
+	Pattern: ["data{\\\\:}channel.html","https://example.com"] Inputs: ["https://example.com/data:channel.html"]: FAIL
+	Pattern: ["example.com/foo"] Inputs: undefined: PASS
+	Pattern: ["file:///foo/bar"] Inputs: ["file:///foo/bar"]: PASS
+	Pattern: ["foo://bar"] Inputs: ["foo://bad_url_browser_interop"]: PASS
+	Pattern: ["http://[:address]/"] Inputs: ["http://[::1]/"]: PASS
+	Pattern: ["http://[\\\\:\\\\:1]/"] Inputs: ["http://[::1]/"]: PASS
+	Pattern: ["http://[\\\\:\\\\:1]:8080/"] Inputs: ["http://[::1]:8080/"]: PASS
+	Pattern: ["http://[\\\\:\\\\:AB\\\\::num]/"] Inputs: ["http://[::ab:1]/"]: PASS
+	Pattern: ["http://[\\\\:\\\\:a]/"] Inputs: ["http://[::a]/"]: PASS
+	Pattern: ["http://\\ud83d \\udeb2"] Inputs: undefined: FAIL
+	Pattern: ["http://🚲.com/"] Inputs: ["http://🚲.com/"]: PASS
+	Pattern: ["https://(sub(?:.))?example.com/foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: ["https://(sub.)?example(.com/)foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: ["https://(sub.)?example.com/foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: ["https://:user::pass@example.com"] Inputs: ["https://foo:bar@example.com"]: PASS
+	Pattern: ["https://\\\\:bar@example.com"] Inputs: ["https://:bar@example.com"]: PASS
+	Pattern: ["https://example.com#foo"] Inputs: ["https://example.com/#foo"]: PASS
+	Pattern: ["https://example.com/"] Inputs: ["https://example.com:8080/"]: PASS
+	Pattern: ["https://example.com/#foo"] Inputs: ["https://example.com/#foo"]: PASS
+	Pattern: ["https://example.com/(bar)?foo"] Inputs: ["https://example.com/bar?foo"]: PASS
+	Pattern: ["https://example.com/(bar)\\\\?foo"] Inputs: ["https://example.com/bar?foo"]: PASS
+	Pattern: ["https://example.com/*?foo"] Inputs: ["https://example.com/?foo"]: PASS
+	Pattern: ["https://example.com/*\\\\?foo"] Inputs: ["https://example.com/?foo"]: PASS
+	Pattern: ["https://example.com/:name?foo"] Inputs: ["https://example.com/bar?foo"]: PASS
+	Pattern: ["https://example.com/:name\\\\?foo"] Inputs: ["https://example.com/bar?foo"]: PASS
+	Pattern: ["https://example.com/?foo"] Inputs: ["https://example.com/?foo"]: PASS
+	Pattern: ["https://example.com/foo?bar#baz"] Inputs: [{"protocol":"https:","search":"?bar","hash":"#baz","baseURL":"http://example.com/foo"}]: PASS
+	Pattern: ["https://example.com/{bar}?foo"] Inputs: ["https://example.com/bar?foo"]: PASS
+	Pattern: ["https://example.com/{bar}\\\\?foo"] Inputs: ["https://example.com/bar?foo"]: PASS
+	Pattern: ["https://example.com:8080#foo"] Inputs: ["https://example.com:8080/#foo"]: PASS
+	Pattern: ["https://example.com:8080/foo?bar#baz",{"ignoreCase":true}] Inputs: [{"pathname":"/FOO","search":"BAR","hash":"BAZ","baseURL":"https://example.com:8080"}]: FAIL
+	Pattern: ["https://example.com:8080/foo?bar#baz"] Inputs: [{"pathname":"/foo","search":"bar","hash":"baz","baseURL":"https://example.com:8080"}]: FAIL
+	Pattern: ["https://example.com:8080?foo"] Inputs: ["https://example.com:8080/?foo"]: PASS
+	Pattern: ["https://example.com?foo"] Inputs: ["https://example.com/?foo"]: PASS
+	Pattern: ["https://foo@example.com"] Inputs: ["https://foo@example.com"]: PASS
+	Pattern: ["https://foo\\\\:bar@example.com"] Inputs: ["https://foo:bar@example.com"]: PASS
+	Pattern: ["https://foo{@example.com"] Inputs: ["https://foo@example.com"]: PASS
+	Pattern: ["https://foo{\\\\:}bar@example.com"] Inputs: ["https://foo:bar@example.com"]: PASS
+	Pattern: ["https://foo{{@}}example.com"] Inputs: ["https://foo@example.com"]: PASS
+	Pattern: ["https://www.example.com/*"] Inputs: ["https://www.example.com/example"]: PASS
+	Pattern: ["https://www.example.com/*"] Inputs: ["https://www.example.com/path/with/x"]: PASS
+	Pattern: ["https://www.example.com/*"] Inputs: ["https://www.example.com/text"]: PASS
+	Pattern: ["https://www.example.com/*"] Inputs: ["https://www.example.com/x"]: PASS
+	Pattern: ["https://www.example.com/*"] Inputs: ["https://www.example.com/xyz"]: PASS
+	Pattern: ["https://{sub.}?example.com/foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: ["https://{sub.}?example{.com/}foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: ["https://{sub{.}}example.com/foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: ["https\\\\:foo\\\\:bar@example.com"] Inputs: ["https:foo:bar@example.com"]: PASS
+	Pattern: ["http{s}?://{*.}?example.com/:product/:endpoint"] Inputs: ["https://sub.example.com/foo/bar"]: PASS
+	Pattern: ["{https://}example.com/foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: [] Inputs: ["https://example.com/"]: PASS
+	Pattern: [] Inputs: []: FAIL
+	Pattern: [] Inputs: [{}]: FAIL
+	Pattern: [{"hash":"(café)"}] Inputs: undefined: PASS
+	Pattern: [{"hash":":café"}] Inputs: [{"hash":"foo"}]: FAIL
+	Pattern: [{"hash":":℘"}] Inputs: [{"hash":"foo"}]: FAIL
+	Pattern: [{"hash":":㐀"}] Inputs: [{"hash":"foo"}]: FAIL
+	Pattern: [{"hash":"caf%C3%A9"}] Inputs: [{"hash":"café"}]: FAIL
+	Pattern: [{"hash":"caf%c3%a9"}] Inputs: [{"hash":"café"}]: PASS
+	Pattern: [{"hash":"café"}] Inputs: [{"hash":"café"}]: FAIL
+	Pattern: [{"hash":"foo","baseURL":"https://example.com/?q=*&v=?&hmm={}&umm=()"}] Inputs: [{"hash":"foo","baseURL":"https://example.com/?q=*&v=?&hmm={}&umm=()"}]: FAIL
+	Pattern: [{"hostname":"(café)"}] Inputs: undefined: PASS
+	Pattern: [{"hostname":"*\\\\:1]"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":":café"}] Inputs: [{"hostname":"foo"}]: FAIL
+	Pattern: [{"hostname":":domain(.*)"}] Inputs: [{"hostname":"localhost"}]: FAIL
+	Pattern: [{"hostname":":℘"}] Inputs: [{"hostname":"foo"}]: FAIL
+	Pattern: [{"hostname":":㐀"}] Inputs: [{"hostname":"foo"}]: FAIL
+	Pattern: [{"hostname":"[*\\\\:1]"}] Inputs: [{"hostname":"[::ab:1]"}]: FAIL
+	Pattern: [{"hostname":"[\\\\:\\\\:AB\\\\::num]"}] Inputs: [{"hostname":"[::ab:1]"}]: FAIL
+	Pattern: [{"hostname":"[\\\\:\\\\:xY\\\\::num]"}] Inputs: undefined: PASS
+	Pattern: [{"hostname":"\\ud83d \\udeb2"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad#hostname"}] Inputs: [{"hostname":"bad"}]: FAIL
+	Pattern: [{"hostname":"bad%hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad/hostname"}] Inputs: [{"hostname":"bad"}]: FAIL
+	Pattern: [{"hostname":"bad<hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad>hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad?hostname"}] Inputs: undefined: PASS
+	Pattern: [{"hostname":"bad@hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad[hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad\\\\:hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad\\\\\\\\hostname"}] Inputs: [{"hostname":"badhostname"}]: PASS
+	Pattern: [{"hostname":"bad\\nhostname"}] Inputs: [{"hostname":"badhostname"}]: FAIL
+	Pattern: [{"hostname":"bad\\rhostname"}] Inputs: [{"hostname":"badhostname"}]: FAIL
+	Pattern: [{"hostname":"bad\\thostname"}] Inputs: [{"hostname":"badhostname"}]: FAIL
+	Pattern: [{"hostname":"bad]hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad^hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad|hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"café.com"}] Inputs: [{"hostname":"café.com"}]: FAIL
+	Pattern: [{"hostname":"xn--caf-dma.com"}] Inputs: [{"hostname":"café.com"}]: FAIL
+	Pattern: [{"hostname":"{[\\\\:\\\\::num\\\\:1]}"}] Inputs: [{"hostname":"[::ab:1]"}]: FAIL
+	Pattern: [{"hostname":"{[\\\\:\\\\::num\\\\:fé]}"}] Inputs: undefined: PASS
+	Pattern: [{"hostname":"{[\\\\:\\\\:ab\\\\::num]}"}] Inputs: [{"hostname":"[::ab:1]"}]: FAIL
+	Pattern: [{"hostname":"{[\\\\:\\\\:fé\\\\::num]}"}] Inputs: undefined: PASS
+	Pattern: [{"ignoreCase":true}] Inputs: [{"pathname":"/FOO/BAR"}]: FAIL
+	Pattern: [{"password":"(café)"}] Inputs: undefined: PASS
+	Pattern: [{"password":":café"}] Inputs: [{"password":"foo"}]: FAIL
+	Pattern: [{"password":":℘"}] Inputs: [{"password":"foo"}]: FAIL
+	Pattern: [{"password":":㐀"}] Inputs: [{"password":"foo"}]: FAIL
+	Pattern: [{"password":"caf%C3%A9"}] Inputs: [{"password":"café"}]: FAIL
+	Pattern: [{"password":"caf%c3%a9"}] Inputs: [{"password":"café"}]: PASS
+	Pattern: [{"password":"café"}] Inputs: [{"password":"café"}]: FAIL
+	Pattern: [{"pathname":"","baseURL":"https://example.com"}] Inputs: [{"pathname":"/","baseURL":"https://example.com"}]: FAIL
+	Pattern: [{"pathname":"(café)"}] Inputs: undefined: PASS
+	Pattern: [{"pathname":"(foo)(.*)"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"(foo)?(.*)"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"*"}] Inputs: ["foo","data:data-urls-cannot-be-base-urls"]: PASS
+	Pattern: [{"pathname":"*"}] Inputs: ["foo","not|a|valid|url"]: PASS
+	Pattern: [{"pathname":"*/*"}] Inputs: [{"pathname":"foo/bar"}]: FAIL
+	Pattern: [{"pathname":"*//*"}] Inputs: [{"pathname":"foo/bar"}]: PASS
+	Pattern: [{"pathname":"*/{*}"}] Inputs: [{"pathname":"foo/bar"}]: FAIL
+	Pattern: [{"pathname":"*\\\\/*"}] Inputs: [{"pathname":"foo/bar"}]: FAIL
+	Pattern: [{"pathname":"*{}**?"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":"../foo"}] Inputs: [{"pathname":"../foo"}]: FAIL
+	Pattern: [{"pathname":"./foo"}] Inputs: [{"pathname":"./foo"}]: FAIL
+	Pattern: [{"pathname":"./foo/bar","baseURL":"https://example.com"}] Inputs: [{"pathname":"foo/bar","baseURL":"https://example.com"}]: FAIL
+	Pattern: [{"pathname":"/([[a-z]--a])"}] Inputs: [{"pathname":"/a"}]: PASS
+	Pattern: [{"pathname":"/([[a-z]--a])"}] Inputs: [{"pathname":"/z"}]: FAIL
+	Pattern: [{"pathname":"/([\\\\d&&[0-1]])"}] Inputs: [{"pathname":"/0"}]: FAIL
+	Pattern: [{"pathname":"/([\\\\d&&[0-1]])"}] Inputs: [{"pathname":"/3"}]: PASS
+	Pattern: [{"pathname":"/(\\\\m)"}] Inputs: undefined: FAIL
+	Pattern: [{"pathname":"/:café"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/:foo((?<x>a))"}] Inputs: [{"pathname":"/a"}]: FAIL
+	Pattern: [{"pathname":"/:foo."}] Inputs: [{"pathname":"/bar."}]: FAIL
+	Pattern: [{"pathname":"/:foo.."}] Inputs: [{"pathname":"/bar.."}]: FAIL
+	Pattern: [{"pathname":"/:foo\\\\bar"}] Inputs: [{"pathname":"/bazbar"}]: FAIL
+	Pattern: [{"pathname":"/:id/:id"}] Inputs: undefined: PASS
+	Pattern: [{"pathname":"/:℘"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/:㐀"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/:𠀀"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/caf%C3%A9"}] Inputs: [{"pathname":"/café"}]: FAIL
+	Pattern: [{"pathname":"/caf%c3%a9"}] Inputs: [{"pathname":"/café"}]: PASS
+	Pattern: [{"pathname":"/café"}] Inputs: [{"pathname":"/café"}]: FAIL
+	Pattern: [{"pathname":"/foo!"}] Inputs: [{"pathname":"/foo!"}]: FAIL
+	Pattern: [{"pathname":"/foo","baseURL":""}] Inputs: undefined: PASS
+	Pattern: [{"pathname":"/foo"},"https://example.com"] Inputs: undefined: FAIL
+	Pattern: [{"pathname":"/foo/(.*)"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo/(.*)"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)*"}] Inputs: [{"pathname":"/fo"}]: PASS
+	Pattern: [{"pathname":"/foo/(.*)*"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)*"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)*"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)*"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)*"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/(.*)+"}] Inputs: [{"pathname":"/fo"}]: PASS
+	Pattern: [{"pathname":"/foo/(.*)+"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo/(.*)+"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)+"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)+"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)+"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/(.*)?"}] Inputs: [{"pathname":"/fo"}]: PASS
+	Pattern: [{"pathname":"/foo/(.*)?"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)?"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)?"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)?"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)?"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/([^\\\\/]+?)"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/(bar(?<x>baz))"}] Inputs: [{"pathname":"/foo/barbaz"}]: FAIL
+	Pattern: [{"pathname":"/foo/*"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo/*"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/*"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/*"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/**"}] Inputs: [{"pathname":"/fo"}]: PASS
+	Pattern: [{"pathname":"/foo/**"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo/**"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/**"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/**"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/**"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/*+"}] Inputs: [{"pathname":"/fo"}]: PASS
+	Pattern: [{"pathname":"/foo/*+"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo/*+"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/*+"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/*+"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/*+"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/*?"}] Inputs: [{"pathname":"/fo"}]: PASS
+	Pattern: [{"pathname":"/foo/*?"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo/*?"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/*?"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/*?"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/*?"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/../bar"}] Inputs: [{"pathname":"/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar"}] Inputs: [{"pathname":"/foo/bar/"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar"}] Inputs: [{"pathname":"/foo/index.html"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar(.*)"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar(.*)"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar(.*)"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar(.*)"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar*"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar*"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar*"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar*"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar*"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar+"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar+"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar+"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar+"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar+"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar?"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar?"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar?"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar?"}] Inputs: [{"pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar?"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com"}] Inputs: [{"protocol":"https","hostname":"example.com","pathname":"/foo/bar","search":"otherquery","hash":"otherhash"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com"}] Inputs: [{"protocol":"https","hostname":"example.com","pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com"}] Inputs: [{"protocol":"https","hostname":"example.com","pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?otherquery#otherhash"}] Inputs: [{"protocol":"https","hostname":"example.com","pathname":"/foo/bar","search":"otherquery","hash":"otherhash"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: ["http://other.com/foo/bar"]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: ["https://example.com/foo/bar"]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: ["https://example.com/foo/bar/baz"]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: ["https://example.com/foo/bar?otherquery#otherhash"]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: ["https://example.com/foo/bar?query#hash"]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: ["https://other.com/foo/bar"]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"hostname":"example.com","pathname":"/foo/bar"}]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"pathname":"/foo/bar","baseURL":"http://example.com"}]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"pathname":"/foo/bar","baseURL":"https://example.com"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"pathname":"/foo/bar","baseURL":"https://other.com"}]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"pathname":"/foo/bar"}]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"pathname":"/foo/bar/baz","baseURL":"https://example.com"}]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"protocol":"https","hostname":"example.com","pathname":"/foo/bar","search":"otherquery","hash":"otherhash"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"protocol":"https","hostname":"example.com","pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar"},{"ignoreCase":true}] Inputs: [{"pathname":"/FOO/BAR"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: ["./foo/bar","https://example.com"]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: ["https://example.com/foo/bar"]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: ["https://example.com/foo/bar/baz"]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"hostname":"example.com","pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"hostname":"example.com","pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/./bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/ba"}]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/bar","baseURL":"https://example.com"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/bar"},"https://example.com"]: FAIL
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/bar/"}]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/bar/baz","baseURL":"https://example.com"}]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"foo/bar","baseURL":"https://example.com"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"foo/bar"}]: PASS
+	Pattern: [{"pathname":"/foo/baz"}] Inputs: [{"pathname":"/foo/bar/../baz"}]: FAIL
+	Pattern: [{"pathname":"/foo\\\\("}] Inputs: [{"pathname":"/foo("}]: FAIL
+	Pattern: [{"pathname":"/foo\\\\:"}] Inputs: [{"pathname":"/foo:"}]: FAIL
+	Pattern: [{"pathname":"/foo\\\\{"}] Inputs: [{"pathname":"/foo{"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}"}] Inputs: [{"pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}*"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}*"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}*"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}*"}] Inputs: [{"pathname":"/foo/bar/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}*"}] Inputs: [{"pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}+"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}+"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}+"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}+"}] Inputs: [{"pathname":"/foo/bar/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}+"}] Inputs: [{"pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}?"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}?"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}?"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}?"}] Inputs: [{"pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":":\\ud83d \\udeb2"}] Inputs: undefined: PASS
+	Pattern: [{"pathname":":a󠄀b"}] Inputs: []: FAIL
+	Pattern: [{"pathname":":foo(baz)(.*)"}] Inputs: [{"pathname":"bazbar"}]: FAIL
+	Pattern: [{"pathname":":foo(baz)bar"}] Inputs: [{"pathname":"bazbar"}]: FAIL
+	Pattern: [{"pathname":":foo../"}] Inputs: [{"pathname":"bar../"}]: FAIL
+	Pattern: [{"pathname":":foo./"}] Inputs: [{"pathname":"bar./"}]: FAIL
+	Pattern: [{"pathname":":foo\\\\bar"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":":foo{}(.*)"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":":foo{}?bar"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":":foo{}bar"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":":name"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":":name*"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":":name+"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":":name.html","baseURL":"https://example.com"}] Inputs: ["https://example.com/foo.html"]: FAIL
+	Pattern: [{"pathname":":🚲"}] Inputs: undefined: PASS
+	Pattern: [{"pathname":"\\\\/bar","baseURL":"https://example.com/foo/"}] Inputs: [{"pathname":"./bar","baseURL":"https://example.com/foo/"}]: PASS
+	Pattern: [{"pathname":"\\ud83d \\udeb2"}] Inputs: []: PASS
+	Pattern: [{"pathname":"b","baseURL":"https://example.com/foo/"}] Inputs: [{"pathname":"./b","baseURL":"https://example.com/foo/"}]: FAIL
+	Pattern: [{"pathname":"foo/bar","baseURL":"https://example.com"}] Inputs: ["https://example.com/foo/bar"]: FAIL
+	Pattern: [{"pathname":"foo/bar"}] Inputs: ["https://example.com/foo/bar"]: PASS
+	Pattern: [{"pathname":"test/:a𐑐b"}] Inputs: [{"pathname":"test/foo"}]: FAIL
+	Pattern: [{"pathname":"var x = 1;"}] Inputs: [{"pathname":"var x = 1;"}]: FAIL
+	Pattern: [{"pathname":"var x = 1;"}] Inputs: [{"protocol":"javascript","pathname":"var x = 1;"}]: PASS
+	Pattern: [{"pathname":"{(foo)bar}(.*)"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"{/bar}","baseURL":"https://example.com/foo/"}] Inputs: [{"pathname":"./bar","baseURL":"https://example.com/foo/"}]: PASS
+	Pattern: [{"pathname":"{:foo(foo)bar}"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":"{:foo\\\\.bar}"}] Inputs: [{"pathname":"foo.bar"}]: FAIL
+	Pattern: [{"pathname":"{:foo\\\\bar}"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":"{:foo}(.*)"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"{:foo}(barbaz)"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"{:foo}:bar(.*)"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"{:foo}?(.*)"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"{:foo}bar"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":"{:foo}{(.*)bar}"}] Inputs: [{"pathname":"foobarbaz"}]: PASS
+	Pattern: [{"pathname":"{:foo}{(.*)}"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"{:foo}{bar(.*)}"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"port":""}] Inputs: [{"protocol":"http","port":"80"}]: FAIL
+	Pattern: [{"port":"(.*)"}] Inputs: [{"port":"invalid80"}]: PASS
+	Pattern: [{"port":"80"}] Inputs: [{"port":"80"}]: FAIL
+	Pattern: [{"port":"80"}] Inputs: [{"port":"80?x"}]: FAIL
+	Pattern: [{"port":"80"}] Inputs: [{"port":"80\\\\x"}]: FAIL
+	Pattern: [{"port":"80"}] Inputs: [{"port":"80x"}]: FAIL
+	Pattern: [{"port":"80"}] Inputs: [{"port":"8\\t0"}]: FAIL
+	Pattern: [{"port":"80"}] Inputs: [{"protocol":"http","port":"80"}]: FAIL
+	Pattern: [{"protocol":"(.*)"}] Inputs: [{"protocol":"cafe"}]: FAIL
+	Pattern: [{"protocol":"(.*)"}] Inputs: [{"protocol":"café"}]: PASS
+	Pattern: [{"protocol":"(café)"}] Inputs: undefined: PASS
+	Pattern: [{"protocol":"(data|javascript)","pathname":"var x = 1;"}] Inputs: [{"protocol":"javascript","pathname":"var x = 1;"}]: FAIL
+	Pattern: [{"protocol":"(https|javascript)","pathname":"var x = 1;"}] Inputs: [{"protocol":"javascript","pathname":"var x = 1;"}]: PASS
+	Pattern: [{"protocol":":café"}] Inputs: [{"protocol":"foo"}]: FAIL
+	Pattern: [{"protocol":":name"}] Inputs: [{"protocol":"foobar"}]: FAIL
+	Pattern: [{"protocol":":name*"}] Inputs: [{"protocol":"foobar"}]: FAIL
+	Pattern: [{"protocol":":name+"}] Inputs: [{"protocol":"foobar"}]: FAIL
+	Pattern: [{"protocol":":℘"}] Inputs: [{"protocol":"foo"}]: FAIL
+	Pattern: [{"protocol":":㐀"}] Inputs: [{"protocol":"foo"}]: FAIL
+	Pattern: [{"protocol":"about","pathname":"(blank|sourcedoc)"}] Inputs: ["about:blank"]: PASS
+	Pattern: [{"protocol":"data","pathname":":number([0-9]+)"}] Inputs: ["data:8675309"]: PASS
+	Pattern: [{"protocol":"foo-bar"}] Inputs: [{"protocol":"foo-bar"}]: FAIL
+	Pattern: [{"protocol":"http","hostname":"example.com#ignoredhash"}] Inputs: ["http://example.com/"]: PASS
+	Pattern: [{"protocol":"http","hostname":"example.com/ignoredpath"}] Inputs: ["http://example.com/"]: PASS
+	Pattern: [{"protocol":"http","hostname":"example.com\\\\?ignoredsearch"}] Inputs: ["http://example.com/"]: PASS
+	Pattern: [{"protocol":"http","port":"100000"}] Inputs: [{"protocol":"http","port":"100000"}]: PASS
+	Pattern: [{"protocol":"http","port":"80 "}] Inputs: [{"protocol":"http","port":"80"}]: FAIL
+	Pattern: [{"protocol":"http","port":"80"}] Inputs: [{"protocol":"http","port":"80"}]: FAIL
+	Pattern: [{"protocol":"http","port":"80{20}?"}] Inputs: [{"protocol":"http","port":"80"}]: FAIL
+	Pattern: [{"protocol":"https","port":"*443"}] Inputs: [{"protocol":"https","port":"1443"}]: FAIL
+	Pattern: [{"protocol":"https","port":"443*"}] Inputs: [{"protocol":"https","port":"4430"}]: FAIL
+	Pattern: [{"protocol":"http{s}?","port":"80"}] Inputs: [{"protocol":"http","port":"80"}]: FAIL
+	Pattern: [{"protocol":"http{s}?:","search":"?bar","hash":"#baz"}] Inputs: ["http://example.com/foo?bar#baz"]: FAIL
+	Pattern: [{"protocol":"javascript","pathname":"var x = 1;"}] Inputs: [{"baseURL":"javascript:var x = 1;"}]: FAIL
+	Pattern: [{"protocol":"javascript","pathname":"var x = 1;"}] Inputs: [{"protocol":"javascript","pathname":"var x = 1;"}]: FAIL
+	Pattern: [{"search":"(café)"}] Inputs: undefined: PASS
+	Pattern: [{"search":":café"}] Inputs: [{"search":"foo"}]: FAIL
+	Pattern: [{"search":":℘"}] Inputs: [{"search":"foo"}]: FAIL
+	Pattern: [{"search":":㐀"}] Inputs: [{"search":"foo"}]: FAIL
+	Pattern: [{"search":"foo","baseURL":"https://example.com/a/+/b"}] Inputs: [{"search":"foo","baseURL":"https://example.com/a/+/b"}]: FAIL
+	Pattern: [{"search":"q=caf%C3%A9"}] Inputs: [{"search":"q=café"}]: FAIL
+	Pattern: [{"search":"q=caf%c3%a9"}] Inputs: [{"search":"q=café"}]: PASS
+	Pattern: [{"search":"q=café"}] Inputs: [{"search":"q=café"}]: FAIL
+	Pattern: [{"username":"(café)"}] Inputs: undefined: PASS
+	Pattern: [{"username":":café"}] Inputs: [{"username":"foo"}]: FAIL
+	Pattern: [{"username":":℘"}] Inputs: [{"username":"foo"}]: FAIL
+	Pattern: [{"username":":㐀"}] Inputs: [{"username":"foo"}]: FAIL
+	Pattern: [{"username":"caf%C3%A9"}] Inputs: [{"username":"café"}]: FAIL
+	Pattern: [{"username":"caf%c3%a9"}] Inputs: [{"username":"café"}]: PASS
+	Pattern: [{"username":"café"}] Inputs: [{"username":"café"}]: FAIL
+	Pattern: [{}] Inputs: ["https://example.com/"]: PASS
+/urlpattern/urlpattern.https.any.worker.html: OK
+	Loading data...: PASS
+	Pattern: ["#baz","https://example.com/foo"] Inputs: ["#baz","https://example.com/foo"]: PASS
+	Pattern: ["#baz","https://example.com/foo?bar"] Inputs: ["#baz","https://example.com/foo?bar"]: PASS
+	Pattern: ["#foo","https://example.com/?q=*&v=?&hmm={}&umm=()"] Inputs: ["https://example.com/?q=*&v=?&hmm={}&umm=()#foo"]: PASS
+	Pattern: ["((?R)):"] Inputs: undefined: PASS
+	Pattern: ["(\\\\H):"] Inputs: undefined: FAIL
+	Pattern: ["(café)://foo"] Inputs: undefined: PASS
+	Pattern: ["(https://)example.com/foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: ["/foo",""] Inputs: undefined: PASS
+	Pattern: ["/foo"] Inputs: undefined: PASS
+	Pattern: ["/foo?bar#baz","https://example.com:8080",{"ignoreCase":true}] Inputs: [{"pathname":"/FOO","search":"BAR","hash":"BAZ","baseURL":"https://example.com:8080"}]: FAIL
+	Pattern: ["/foo?bar#baz","https://example.com:8080"] Inputs: [{"pathname":"/foo","search":"bar","hash":"baz","baseURL":"https://example.com:8080"}]: FAIL
+	Pattern: ["/foo?bar#baz",{"ignoreCase":true},"https://example.com:8080"] Inputs: [{"pathname":"/FOO","search":"BAR","hash":"BAZ","baseURL":"https://example.com:8080"}]: PASS
+	Pattern: ["?bar","https://example.com/foo#baz"] Inputs: ["?bar","https://example.com/foo#snafu"]: PASS
+	Pattern: ["?bar#baz","https://example.com/foo"] Inputs: ["?bar#baz","https://example.com/foo"]: PASS
+	Pattern: ["data:"] Inputs: ["data:"]: PASS
+	Pattern: ["data:foobar"] Inputs: ["data:foobar"]: PASS
+	Pattern: ["data\\\\:foo\\\\:bar@example.com"] Inputs: ["data:foo:bar@example.com"]: PASS
+	Pattern: ["data\\\\:foobar"] Inputs: ["data:foobar"]: PASS
+	Pattern: ["data\\\\:text/javascript,let x = 100/:tens?5;"] Inputs: ["data:text/javascript,let x = 100/5;"]: PASS
+	Pattern: ["data{\\\\:}channel.html","https://example.com"] Inputs: ["https://example.com/data:channel.html"]: FAIL
+	Pattern: ["example.com/foo"] Inputs: undefined: PASS
+	Pattern: ["file:///foo/bar"] Inputs: ["file:///foo/bar"]: PASS
+	Pattern: ["foo://bar"] Inputs: ["foo://bad_url_browser_interop"]: PASS
+	Pattern: ["http://[:address]/"] Inputs: ["http://[::1]/"]: PASS
+	Pattern: ["http://[\\\\:\\\\:1]/"] Inputs: ["http://[::1]/"]: PASS
+	Pattern: ["http://[\\\\:\\\\:1]:8080/"] Inputs: ["http://[::1]:8080/"]: PASS
+	Pattern: ["http://[\\\\:\\\\:AB\\\\::num]/"] Inputs: ["http://[::ab:1]/"]: PASS
+	Pattern: ["http://[\\\\:\\\\:a]/"] Inputs: ["http://[::a]/"]: PASS
+	Pattern: ["http://\\ud83d \\udeb2"] Inputs: undefined: FAIL
+	Pattern: ["http://🚲.com/"] Inputs: ["http://🚲.com/"]: PASS
+	Pattern: ["https://(sub(?:.))?example.com/foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: ["https://(sub.)?example(.com/)foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: ["https://(sub.)?example.com/foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: ["https://:user::pass@example.com"] Inputs: ["https://foo:bar@example.com"]: PASS
+	Pattern: ["https://\\\\:bar@example.com"] Inputs: ["https://:bar@example.com"]: PASS
+	Pattern: ["https://example.com#foo"] Inputs: ["https://example.com/#foo"]: PASS
+	Pattern: ["https://example.com/"] Inputs: ["https://example.com:8080/"]: PASS
+	Pattern: ["https://example.com/#foo"] Inputs: ["https://example.com/#foo"]: PASS
+	Pattern: ["https://example.com/(bar)?foo"] Inputs: ["https://example.com/bar?foo"]: PASS
+	Pattern: ["https://example.com/(bar)\\\\?foo"] Inputs: ["https://example.com/bar?foo"]: PASS
+	Pattern: ["https://example.com/*?foo"] Inputs: ["https://example.com/?foo"]: PASS
+	Pattern: ["https://example.com/*\\\\?foo"] Inputs: ["https://example.com/?foo"]: PASS
+	Pattern: ["https://example.com/:name?foo"] Inputs: ["https://example.com/bar?foo"]: PASS
+	Pattern: ["https://example.com/:name\\\\?foo"] Inputs: ["https://example.com/bar?foo"]: PASS
+	Pattern: ["https://example.com/?foo"] Inputs: ["https://example.com/?foo"]: PASS
+	Pattern: ["https://example.com/foo?bar#baz"] Inputs: [{"protocol":"https:","search":"?bar","hash":"#baz","baseURL":"http://example.com/foo"}]: PASS
+	Pattern: ["https://example.com/{bar}?foo"] Inputs: ["https://example.com/bar?foo"]: PASS
+	Pattern: ["https://example.com/{bar}\\\\?foo"] Inputs: ["https://example.com/bar?foo"]: PASS
+	Pattern: ["https://example.com:8080#foo"] Inputs: ["https://example.com:8080/#foo"]: PASS
+	Pattern: ["https://example.com:8080/foo?bar#baz",{"ignoreCase":true}] Inputs: [{"pathname":"/FOO","search":"BAR","hash":"BAZ","baseURL":"https://example.com:8080"}]: FAIL
+	Pattern: ["https://example.com:8080/foo?bar#baz"] Inputs: [{"pathname":"/foo","search":"bar","hash":"baz","baseURL":"https://example.com:8080"}]: FAIL
+	Pattern: ["https://example.com:8080?foo"] Inputs: ["https://example.com:8080/?foo"]: PASS
+	Pattern: ["https://example.com?foo"] Inputs: ["https://example.com/?foo"]: PASS
+	Pattern: ["https://foo@example.com"] Inputs: ["https://foo@example.com"]: PASS
+	Pattern: ["https://foo\\\\:bar@example.com"] Inputs: ["https://foo:bar@example.com"]: PASS
+	Pattern: ["https://foo{@example.com"] Inputs: ["https://foo@example.com"]: PASS
+	Pattern: ["https://foo{\\\\:}bar@example.com"] Inputs: ["https://foo:bar@example.com"]: PASS
+	Pattern: ["https://foo{{@}}example.com"] Inputs: ["https://foo@example.com"]: PASS
+	Pattern: ["https://www.example.com/*"] Inputs: ["https://www.example.com/example"]: PASS
+	Pattern: ["https://www.example.com/*"] Inputs: ["https://www.example.com/path/with/x"]: PASS
+	Pattern: ["https://www.example.com/*"] Inputs: ["https://www.example.com/text"]: PASS
+	Pattern: ["https://www.example.com/*"] Inputs: ["https://www.example.com/x"]: PASS
+	Pattern: ["https://www.example.com/*"] Inputs: ["https://www.example.com/xyz"]: PASS
+	Pattern: ["https://{sub.}?example.com/foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: ["https://{sub.}?example{.com/}foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: ["https://{sub{.}}example.com/foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: ["https\\\\:foo\\\\:bar@example.com"] Inputs: ["https:foo:bar@example.com"]: PASS
+	Pattern: ["http{s}?://{*.}?example.com/:product/:endpoint"] Inputs: ["https://sub.example.com/foo/bar"]: PASS
+	Pattern: ["{https://}example.com/foo"] Inputs: ["https://example.com/foo"]: PASS
+	Pattern: [] Inputs: ["https://example.com/"]: PASS
+	Pattern: [] Inputs: []: FAIL
+	Pattern: [] Inputs: [{}]: FAIL
+	Pattern: [{"hash":"(café)"}] Inputs: undefined: PASS
+	Pattern: [{"hash":":café"}] Inputs: [{"hash":"foo"}]: FAIL
+	Pattern: [{"hash":":℘"}] Inputs: [{"hash":"foo"}]: FAIL
+	Pattern: [{"hash":":㐀"}] Inputs: [{"hash":"foo"}]: FAIL
+	Pattern: [{"hash":"caf%C3%A9"}] Inputs: [{"hash":"café"}]: FAIL
+	Pattern: [{"hash":"caf%c3%a9"}] Inputs: [{"hash":"café"}]: PASS
+	Pattern: [{"hash":"café"}] Inputs: [{"hash":"café"}]: FAIL
+	Pattern: [{"hash":"foo","baseURL":"https://example.com/?q=*&v=?&hmm={}&umm=()"}] Inputs: [{"hash":"foo","baseURL":"https://example.com/?q=*&v=?&hmm={}&umm=()"}]: FAIL
+	Pattern: [{"hostname":"(café)"}] Inputs: undefined: PASS
+	Pattern: [{"hostname":"*\\\\:1]"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":":café"}] Inputs: [{"hostname":"foo"}]: FAIL
+	Pattern: [{"hostname":":domain(.*)"}] Inputs: [{"hostname":"localhost"}]: FAIL
+	Pattern: [{"hostname":":℘"}] Inputs: [{"hostname":"foo"}]: FAIL
+	Pattern: [{"hostname":":㐀"}] Inputs: [{"hostname":"foo"}]: FAIL
+	Pattern: [{"hostname":"[*\\\\:1]"}] Inputs: [{"hostname":"[::ab:1]"}]: FAIL
+	Pattern: [{"hostname":"[\\\\:\\\\:AB\\\\::num]"}] Inputs: [{"hostname":"[::ab:1]"}]: FAIL
+	Pattern: [{"hostname":"[\\\\:\\\\:xY\\\\::num]"}] Inputs: undefined: PASS
+	Pattern: [{"hostname":"\\ud83d \\udeb2"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad#hostname"}] Inputs: [{"hostname":"bad"}]: FAIL
+	Pattern: [{"hostname":"bad%hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad/hostname"}] Inputs: [{"hostname":"bad"}]: FAIL
+	Pattern: [{"hostname":"bad<hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad>hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad?hostname"}] Inputs: undefined: PASS
+	Pattern: [{"hostname":"bad@hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad[hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad\\\\:hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad\\\\\\\\hostname"}] Inputs: [{"hostname":"badhostname"}]: PASS
+	Pattern: [{"hostname":"bad\\nhostname"}] Inputs: [{"hostname":"badhostname"}]: FAIL
+	Pattern: [{"hostname":"bad\\rhostname"}] Inputs: [{"hostname":"badhostname"}]: FAIL
+	Pattern: [{"hostname":"bad\\thostname"}] Inputs: [{"hostname":"badhostname"}]: FAIL
+	Pattern: [{"hostname":"bad]hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad^hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"bad|hostname"}] Inputs: undefined: FAIL
+	Pattern: [{"hostname":"café.com"}] Inputs: [{"hostname":"café.com"}]: FAIL
+	Pattern: [{"hostname":"xn--caf-dma.com"}] Inputs: [{"hostname":"café.com"}]: FAIL
+	Pattern: [{"hostname":"{[\\\\:\\\\::num\\\\:1]}"}] Inputs: [{"hostname":"[::ab:1]"}]: FAIL
+	Pattern: [{"hostname":"{[\\\\:\\\\::num\\\\:fé]}"}] Inputs: undefined: PASS
+	Pattern: [{"hostname":"{[\\\\:\\\\:ab\\\\::num]}"}] Inputs: [{"hostname":"[::ab:1]"}]: FAIL
+	Pattern: [{"hostname":"{[\\\\:\\\\:fé\\\\::num]}"}] Inputs: undefined: PASS
+	Pattern: [{"ignoreCase":true}] Inputs: [{"pathname":"/FOO/BAR"}]: FAIL
+	Pattern: [{"password":"(café)"}] Inputs: undefined: PASS
+	Pattern: [{"password":":café"}] Inputs: [{"password":"foo"}]: FAIL
+	Pattern: [{"password":":℘"}] Inputs: [{"password":"foo"}]: FAIL
+	Pattern: [{"password":":㐀"}] Inputs: [{"password":"foo"}]: FAIL
+	Pattern: [{"password":"caf%C3%A9"}] Inputs: [{"password":"café"}]: FAIL
+	Pattern: [{"password":"caf%c3%a9"}] Inputs: [{"password":"café"}]: PASS
+	Pattern: [{"password":"café"}] Inputs: [{"password":"café"}]: FAIL
+	Pattern: [{"pathname":"","baseURL":"https://example.com"}] Inputs: [{"pathname":"/","baseURL":"https://example.com"}]: FAIL
+	Pattern: [{"pathname":"(café)"}] Inputs: undefined: PASS
+	Pattern: [{"pathname":"(foo)(.*)"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"(foo)?(.*)"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"*"}] Inputs: ["foo","data:data-urls-cannot-be-base-urls"]: PASS
+	Pattern: [{"pathname":"*"}] Inputs: ["foo","not|a|valid|url"]: PASS
+	Pattern: [{"pathname":"*/*"}] Inputs: [{"pathname":"foo/bar"}]: FAIL
+	Pattern: [{"pathname":"*//*"}] Inputs: [{"pathname":"foo/bar"}]: PASS
+	Pattern: [{"pathname":"*/{*}"}] Inputs: [{"pathname":"foo/bar"}]: FAIL
+	Pattern: [{"pathname":"*\\\\/*"}] Inputs: [{"pathname":"foo/bar"}]: FAIL
+	Pattern: [{"pathname":"*{}**?"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":"../foo"}] Inputs: [{"pathname":"../foo"}]: FAIL
+	Pattern: [{"pathname":"./foo"}] Inputs: [{"pathname":"./foo"}]: FAIL
+	Pattern: [{"pathname":"./foo/bar","baseURL":"https://example.com"}] Inputs: [{"pathname":"foo/bar","baseURL":"https://example.com"}]: FAIL
+	Pattern: [{"pathname":"/([[a-z]--a])"}] Inputs: [{"pathname":"/a"}]: PASS
+	Pattern: [{"pathname":"/([[a-z]--a])"}] Inputs: [{"pathname":"/z"}]: FAIL
+	Pattern: [{"pathname":"/([\\\\d&&[0-1]])"}] Inputs: [{"pathname":"/0"}]: FAIL
+	Pattern: [{"pathname":"/([\\\\d&&[0-1]])"}] Inputs: [{"pathname":"/3"}]: PASS
+	Pattern: [{"pathname":"/(\\\\m)"}] Inputs: undefined: FAIL
+	Pattern: [{"pathname":"/:café"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/:foo((?<x>a))"}] Inputs: [{"pathname":"/a"}]: FAIL
+	Pattern: [{"pathname":"/:foo."}] Inputs: [{"pathname":"/bar."}]: FAIL
+	Pattern: [{"pathname":"/:foo.."}] Inputs: [{"pathname":"/bar.."}]: FAIL
+	Pattern: [{"pathname":"/:foo\\\\bar"}] Inputs: [{"pathname":"/bazbar"}]: FAIL
+	Pattern: [{"pathname":"/:id/:id"}] Inputs: undefined: PASS
+	Pattern: [{"pathname":"/:℘"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/:㐀"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/:𠀀"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/caf%C3%A9"}] Inputs: [{"pathname":"/café"}]: FAIL
+	Pattern: [{"pathname":"/caf%c3%a9"}] Inputs: [{"pathname":"/café"}]: PASS
+	Pattern: [{"pathname":"/café"}] Inputs: [{"pathname":"/café"}]: FAIL
+	Pattern: [{"pathname":"/foo!"}] Inputs: [{"pathname":"/foo!"}]: FAIL
+	Pattern: [{"pathname":"/foo","baseURL":""}] Inputs: undefined: PASS
+	Pattern: [{"pathname":"/foo"},"https://example.com"] Inputs: undefined: FAIL
+	Pattern: [{"pathname":"/foo/(.*)"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo/(.*)"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)*"}] Inputs: [{"pathname":"/fo"}]: PASS
+	Pattern: [{"pathname":"/foo/(.*)*"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)*"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)*"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)*"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)*"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/(.*)+"}] Inputs: [{"pathname":"/fo"}]: PASS
+	Pattern: [{"pathname":"/foo/(.*)+"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo/(.*)+"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)+"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)+"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)+"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/(.*)?"}] Inputs: [{"pathname":"/fo"}]: PASS
+	Pattern: [{"pathname":"/foo/(.*)?"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)?"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)?"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)?"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/(.*)?"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/([^\\\\/]+?)"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/(bar(?<x>baz))"}] Inputs: [{"pathname":"/foo/barbaz"}]: FAIL
+	Pattern: [{"pathname":"/foo/*"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo/*"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/*"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/*"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/**"}] Inputs: [{"pathname":"/fo"}]: PASS
+	Pattern: [{"pathname":"/foo/**"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo/**"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/**"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/**"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/**"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/*+"}] Inputs: [{"pathname":"/fo"}]: PASS
+	Pattern: [{"pathname":"/foo/*+"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo/*+"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/*+"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/*+"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/*+"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/*?"}] Inputs: [{"pathname":"/fo"}]: PASS
+	Pattern: [{"pathname":"/foo/*?"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo/*?"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/*?"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/*?"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/*?"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/../bar"}] Inputs: [{"pathname":"/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar"}] Inputs: [{"pathname":"/foo/bar/"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar"}] Inputs: [{"pathname":"/foo/index.html"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar(.*)"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar(.*)"}] Inputs: [{"pathname":"/foo/"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar(.*)"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar(.*)"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar*"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar*"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar*"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar*"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar*"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar+"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar+"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar+"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar+"}] Inputs: [{"pathname":"/foo/bar/baz"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar+"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar?"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar?"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar?"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/:bar?"}] Inputs: [{"pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":"/foo/:bar?"}] Inputs: [{"pathname":"/foobar"}]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com"}] Inputs: [{"protocol":"https","hostname":"example.com","pathname":"/foo/bar","search":"otherquery","hash":"otherhash"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com"}] Inputs: [{"protocol":"https","hostname":"example.com","pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com"}] Inputs: [{"protocol":"https","hostname":"example.com","pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?otherquery#otherhash"}] Inputs: [{"protocol":"https","hostname":"example.com","pathname":"/foo/bar","search":"otherquery","hash":"otherhash"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: ["http://other.com/foo/bar"]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: ["https://example.com/foo/bar"]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: ["https://example.com/foo/bar/baz"]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: ["https://example.com/foo/bar?otherquery#otherhash"]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: ["https://example.com/foo/bar?query#hash"]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: ["https://other.com/foo/bar"]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"hostname":"example.com","pathname":"/foo/bar"}]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"pathname":"/foo/bar","baseURL":"http://example.com"}]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"pathname":"/foo/bar","baseURL":"https://example.com"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"pathname":"/foo/bar","baseURL":"https://other.com"}]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"pathname":"/foo/bar"}]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"pathname":"/foo/bar/baz","baseURL":"https://example.com"}]: PASS
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"protocol":"https","hostname":"example.com","pathname":"/foo/bar","search":"otherquery","hash":"otherhash"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar","baseURL":"https://example.com?query#hash"}] Inputs: [{"protocol":"https","hostname":"example.com","pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar"},{"ignoreCase":true}] Inputs: [{"pathname":"/FOO/BAR"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: ["./foo/bar","https://example.com"]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: ["https://example.com/foo/bar"]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: ["https://example.com/foo/bar/baz"]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"hostname":"example.com","pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"hostname":"example.com","pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/./bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/ba"}]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/bar","baseURL":"https://example.com"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/bar"},"https://example.com"]: FAIL
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/bar/"}]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/bar/baz","baseURL":"https://example.com"}]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"foo/bar","baseURL":"https://example.com"}]: FAIL
+	Pattern: [{"pathname":"/foo/bar"}] Inputs: [{"pathname":"foo/bar"}]: PASS
+	Pattern: [{"pathname":"/foo/baz"}] Inputs: [{"pathname":"/foo/bar/../baz"}]: FAIL
+	Pattern: [{"pathname":"/foo\\\\("}] Inputs: [{"pathname":"/foo("}]: FAIL
+	Pattern: [{"pathname":"/foo\\\\:"}] Inputs: [{"pathname":"/foo:"}]: FAIL
+	Pattern: [{"pathname":"/foo\\\\{"}] Inputs: [{"pathname":"/foo{"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}"}] Inputs: [{"pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}*"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}*"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}*"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}*"}] Inputs: [{"pathname":"/foo/bar/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}*"}] Inputs: [{"pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}+"}] Inputs: [{"pathname":"/foo"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}+"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}+"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}+"}] Inputs: [{"pathname":"/foo/bar/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}+"}] Inputs: [{"pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}?"}] Inputs: [{"pathname":"/foo"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}?"}] Inputs: [{"pathname":"/foo/"}]: PASS
+	Pattern: [{"pathname":"/foo{/bar}?"}] Inputs: [{"pathname":"/foo/bar"}]: FAIL
+	Pattern: [{"pathname":"/foo{/bar}?"}] Inputs: [{"pathname":"/foo/bar/baz"}]: PASS
+	Pattern: [{"pathname":":\\ud83d \\udeb2"}] Inputs: undefined: PASS
+	Pattern: [{"pathname":":a󠄀b"}] Inputs: []: FAIL
+	Pattern: [{"pathname":":foo(baz)(.*)"}] Inputs: [{"pathname":"bazbar"}]: FAIL
+	Pattern: [{"pathname":":foo(baz)bar"}] Inputs: [{"pathname":"bazbar"}]: FAIL
+	Pattern: [{"pathname":":foo../"}] Inputs: [{"pathname":"bar../"}]: FAIL
+	Pattern: [{"pathname":":foo./"}] Inputs: [{"pathname":"bar./"}]: FAIL
+	Pattern: [{"pathname":":foo\\\\bar"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":":foo{}(.*)"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":":foo{}?bar"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":":foo{}bar"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":":name"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":":name*"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":":name+"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":":name.html","baseURL":"https://example.com"}] Inputs: ["https://example.com/foo.html"]: FAIL
+	Pattern: [{"pathname":":🚲"}] Inputs: undefined: PASS
+	Pattern: [{"pathname":"\\\\/bar","baseURL":"https://example.com/foo/"}] Inputs: [{"pathname":"./bar","baseURL":"https://example.com/foo/"}]: PASS
+	Pattern: [{"pathname":"\\ud83d \\udeb2"}] Inputs: []: PASS
+	Pattern: [{"pathname":"b","baseURL":"https://example.com/foo/"}] Inputs: [{"pathname":"./b","baseURL":"https://example.com/foo/"}]: FAIL
+	Pattern: [{"pathname":"foo/bar","baseURL":"https://example.com"}] Inputs: ["https://example.com/foo/bar"]: FAIL
+	Pattern: [{"pathname":"foo/bar"}] Inputs: ["https://example.com/foo/bar"]: PASS
+	Pattern: [{"pathname":"test/:a𐑐b"}] Inputs: [{"pathname":"test/foo"}]: FAIL
+	Pattern: [{"pathname":"var x = 1;"}] Inputs: [{"pathname":"var x = 1;"}]: FAIL
+	Pattern: [{"pathname":"var x = 1;"}] Inputs: [{"protocol":"javascript","pathname":"var x = 1;"}]: PASS
+	Pattern: [{"pathname":"{(foo)bar}(.*)"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"{/bar}","baseURL":"https://example.com/foo/"}] Inputs: [{"pathname":"./bar","baseURL":"https://example.com/foo/"}]: PASS
+	Pattern: [{"pathname":"{:foo(foo)bar}"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":"{:foo\\\\.bar}"}] Inputs: [{"pathname":"foo.bar"}]: FAIL
+	Pattern: [{"pathname":"{:foo\\\\bar}"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":"{:foo}(.*)"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"{:foo}(barbaz)"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"{:foo}:bar(.*)"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"{:foo}?(.*)"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"{:foo}bar"}] Inputs: [{"pathname":"foobar"}]: FAIL
+	Pattern: [{"pathname":"{:foo}{(.*)bar}"}] Inputs: [{"pathname":"foobarbaz"}]: PASS
+	Pattern: [{"pathname":"{:foo}{(.*)}"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"pathname":"{:foo}{bar(.*)}"}] Inputs: [{"pathname":"foobarbaz"}]: FAIL
+	Pattern: [{"port":""}] Inputs: [{"protocol":"http","port":"80"}]: FAIL
+	Pattern: [{"port":"(.*)"}] Inputs: [{"port":"invalid80"}]: PASS
+	Pattern: [{"port":"80"}] Inputs: [{"port":"80"}]: FAIL
+	Pattern: [{"port":"80"}] Inputs: [{"port":"80?x"}]: FAIL
+	Pattern: [{"port":"80"}] Inputs: [{"port":"80\\\\x"}]: FAIL
+	Pattern: [{"port":"80"}] Inputs: [{"port":"80x"}]: FAIL
+	Pattern: [{"port":"80"}] Inputs: [{"port":"8\\t0"}]: FAIL
+	Pattern: [{"port":"80"}] Inputs: [{"protocol":"http","port":"80"}]: FAIL
+	Pattern: [{"protocol":"(.*)"}] Inputs: [{"protocol":"cafe"}]: FAIL
+	Pattern: [{"protocol":"(.*)"}] Inputs: [{"protocol":"café"}]: PASS
+	Pattern: [{"protocol":"(café)"}] Inputs: undefined: PASS
+	Pattern: [{"protocol":"(data|javascript)","pathname":"var x = 1;"}] Inputs: [{"protocol":"javascript","pathname":"var x = 1;"}]: FAIL
+	Pattern: [{"protocol":"(https|javascript)","pathname":"var x = 1;"}] Inputs: [{"protocol":"javascript","pathname":"var x = 1;"}]: PASS
+	Pattern: [{"protocol":":café"}] Inputs: [{"protocol":"foo"}]: FAIL
+	Pattern: [{"protocol":":name"}] Inputs: [{"protocol":"foobar"}]: FAIL
+	Pattern: [{"protocol":":name*"}] Inputs: [{"protocol":"foobar"}]: FAIL
+	Pattern: [{"protocol":":name+"}] Inputs: [{"protocol":"foobar"}]: FAIL
+	Pattern: [{"protocol":":℘"}] Inputs: [{"protocol":"foo"}]: FAIL
+	Pattern: [{"protocol":":㐀"}] Inputs: [{"protocol":"foo"}]: FAIL
+	Pattern: [{"protocol":"about","pathname":"(blank|sourcedoc)"}] Inputs: ["about:blank"]: PASS
+	Pattern: [{"protocol":"data","pathname":":number([0-9]+)"}] Inputs: ["data:8675309"]: PASS
+	Pattern: [{"protocol":"foo-bar"}] Inputs: [{"protocol":"foo-bar"}]: FAIL
+	Pattern: [{"protocol":"http","hostname":"example.com#ignoredhash"}] Inputs: ["http://example.com/"]: PASS
+	Pattern: [{"protocol":"http","hostname":"example.com/ignoredpath"}] Inputs: ["http://example.com/"]: PASS
+	Pattern: [{"protocol":"http","hostname":"example.com\\\\?ignoredsearch"}] Inputs: ["http://example.com/"]: PASS
+	Pattern: [{"protocol":"http","port":"100000"}] Inputs: [{"protocol":"http","port":"100000"}]: PASS
+	Pattern: [{"protocol":"http","port":"80 "}] Inputs: [{"protocol":"http","port":"80"}]: FAIL
+	Pattern: [{"protocol":"http","port":"80"}] Inputs: [{"protocol":"http","port":"80"}]: FAIL
+	Pattern: [{"protocol":"http","port":"80{20}?"}] Inputs: [{"protocol":"http","port":"80"}]: FAIL
+	Pattern: [{"protocol":"https","port":"*443"}] Inputs: [{"protocol":"https","port":"1443"}]: FAIL
+	Pattern: [{"protocol":"https","port":"443*"}] Inputs: [{"protocol":"https","port":"4430"}]: FAIL
+	Pattern: [{"protocol":"http{s}?","port":"80"}] Inputs: [{"protocol":"http","port":"80"}]: FAIL
+	Pattern: [{"protocol":"http{s}?:","search":"?bar","hash":"#baz"}] Inputs: ["http://example.com/foo?bar#baz"]: FAIL
+	Pattern: [{"protocol":"javascript","pathname":"var x = 1;"}] Inputs: [{"baseURL":"javascript:var x = 1;"}]: FAIL
+	Pattern: [{"protocol":"javascript","pathname":"var x = 1;"}] Inputs: [{"protocol":"javascript","pathname":"var x = 1;"}]: FAIL
+	Pattern: [{"search":"(café)"}] Inputs: undefined: PASS
+	Pattern: [{"search":":café"}] Inputs: [{"search":"foo"}]: FAIL
+	Pattern: [{"search":":℘"}] Inputs: [{"search":"foo"}]: FAIL
+	Pattern: [{"search":":㐀"}] Inputs: [{"search":"foo"}]: FAIL
+	Pattern: [{"search":"foo","baseURL":"https://example.com/a/+/b"}] Inputs: [{"search":"foo","baseURL":"https://example.com/a/+/b"}]: FAIL
+	Pattern: [{"search":"q=caf%C3%A9"}] Inputs: [{"search":"q=café"}]: FAIL
+	Pattern: [{"search":"q=caf%c3%a9"}] Inputs: [{"search":"q=café"}]: PASS
+	Pattern: [{"search":"q=café"}] Inputs: [{"search":"q=café"}]: FAIL
+	Pattern: [{"username":"(café)"}] Inputs: undefined: PASS
+	Pattern: [{"username":":café"}] Inputs: [{"username":"foo"}]: FAIL
+	Pattern: [{"username":":℘"}] Inputs: [{"username":"foo"}]: FAIL
+	Pattern: [{"username":":㐀"}] Inputs: [{"username":"foo"}]: FAIL
+	Pattern: [{"username":"caf%C3%A9"}] Inputs: [{"username":"café"}]: FAIL
+	Pattern: [{"username":"caf%c3%a9"}] Inputs: [{"username":"café"}]: PASS
+	Pattern: [{"username":"café"}] Inputs: [{"username":"café"}]: FAIL
+	Pattern: [{}] Inputs: ["https://example.com/"]: PASS
