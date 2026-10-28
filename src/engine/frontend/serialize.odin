@@ -337,7 +337,16 @@ write_module :: proc(w: ^Writer, m: ^Module_Def) {
 // finish_object prepends the version, checksum and atom table to the object section (JS_WriteObjectAtoms).
 @(private = "file")
 finish_object :: proc(w: ^Writer) -> []u8 {
-	head := make([dynamic]u8, 0, 64 + len(w.buf), w.allocator)
+	table := 64
+	for atom in w.idx_to_atom {
+		if !atom_is_const(atom) {
+			s := w.atoms.runtime[int(atom) - int(JS_ATOM_END)]
+			table += 6 + (s.is_wide ? 2 * len(s.units) : len(s.latin1))
+		} else {
+			table += 6
+		}
+	}
+	head := make([dynamic]u8, 0, table + len(w.buf), w.allocator)
 	append(&head, BC_VERSION, 0, 0, 0, 0)
 	leb :: proc(b: ^[dynamic]u8, v0: u32) {
 		v := v0

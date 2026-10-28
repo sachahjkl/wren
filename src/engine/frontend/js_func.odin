@@ -29,19 +29,20 @@ js_new_function_def :: proc(s: ^Parse_State, parent: ^Func_Def, is_eval, is_func
 	fd.new_target_var_idx = -1
 	fd.this_active_func_var_idx = -1
 	fd.home_object_var_idx = -1
-	fd.vars = make([dynamic]Var_Def, a)
-	fd.args = make([dynamic]Var_Def, a)
+	// (small first capacities: append would start at 8 entries, most functions have a few of each)
+	fd.vars = make([dynamic]Var_Def, 0, 2, a)
+	fd.args = make([dynamic]Var_Def, 0, 2, a)
 	fd.scopes = make([dynamic]Var_Scope, 0, 4, a)
 	append(&fd.scopes, Var_Scope{parent = -1, first = -1, using_label_catch = -1, using_label_end = -1})
 	fd.scope_level = 0
 	fd.scope_first = -1
 	fd.body_scope = -1
 	fd.global_vars = make([dynamic]Global_Var, a)
-	fd.label_slots = make([dynamic]Label_Slot, a)
-	fd.cpool = make([dynamic]JS_Value, a)
-	fd.closure_var = make([dynamic]Closure_Var, a)
-	fd.jump_slots = make([dynamic]Jump_Slot, a)
-	fd.source_loc_slots = make([dynamic]Source_Loc_Slot, a)
+	fd.label_slots = make([dynamic]Label_Slot, 0, 2, a)
+	fd.cpool = make([dynamic]JS_Value, 0, 2, a)
+	fd.closure_var = make([dynamic]Closure_Var, 0, 2, a)
+	fd.jump_slots = make([dynamic]Jump_Slot, 0, 2, a)
+	fd.source_loc_slots = make([dynamic]Source_Loc_Slot, 0, 2, a)
 	fd.filename = s.filename
 	fd.line_num = line_num
 	fd.col_num = col_num

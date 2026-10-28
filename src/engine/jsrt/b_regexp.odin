@@ -138,7 +138,7 @@ regexp_initialize :: proc(ctx: ^Context, o: ^Object, pattern: Value, flags: Valu
 	unicode := re_flags & (fe.LRE_FLAG_UNICODE | fe.LRE_FLAG_UNICODE_SETS) != 0
 	src := regexp_pattern_bytes(rt, p, !unicode)
 	arena: mem.Dynamic_Arena
-	mem.dynamic_arena_init(&arena, rt.allocator, rt.allocator)
+	mem.dynamic_arena_init(&arena, rt.allocator, rt.allocator, 16 * 1024, 4 * 1024) // (a block is cleared when taken: most patterns are small)
 	defer mem.dynamic_arena_destroy(&arena)
 	bc, err := fe.lre_compile(src, re_flags, mem.dynamic_arena_allocator(&arena), fe.stack_guard_here(256 * 1024))
 	if bc == nil {

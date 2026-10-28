@@ -58,8 +58,9 @@ Cell :: struct {
 // than the rest of `new Point(x, y)`). The caller always passes the size it allocated with (the heap
 // accounting needs it too), which is what selects the class; blocks are zeroed when handed out.
 POOL_MAX_BYTES :: 512
-POOL_CLASSES :: POOL_MAX_BYTES / 16 + 1
-POOL_CHUNK_BYTES :: 256 * 1024
+POOL_GRAIN :: 8
+POOL_CLASSES :: POOL_MAX_BYTES / POOL_GRAIN + 1
+POOL_CHUNK_BYTES :: 256 * 1024 // the largest chunk: the first ones are smaller (pool_chunk_size)
 
 Pool_Block :: struct {
 	next: ^Pool_Block,
@@ -67,16 +68,28 @@ Pool_Block :: struct {
 
 @(private = "file")
 pool_refill :: proc(rt: ^Runtime) {
-	p, err := mem.alloc(POOL_CHUNK_BYTES, 16, rt.allocator)
+	size := pool_chunk_size(rt.pool_chunk_count)
+	p, err := mem.alloc(size, 16, rt.allocator)
 	if err != nil || p == nil {
 		panic("jsrt: out of memory")
 	}
-	// the first 16 bytes link the chunks (freed with the runtime)
+	// the first 16 bytes link the chunks (freed with the runtime) and record the size
 	(cast(^rawptr)p)^ = rt.pool_chunks
+	(cast(^int)(uintptr(p) + size_of(rawptr)))^ = size
 	rt.pool_chunks = p
+	rt.pool_chunk_count += 1
 	rt.pool_bump = cast([^]byte)p
 	rt.pool_bump = rt.pool_bump[16:]
-	rt.pool_left = POOL_CHUNK_BYTES - 16
+	rt.pool_left = size - 16
+}
+
+// A realm that stays small does not pay for a whole 256 KiB chunk it never fills.
+pool_chunk_size :: #force_inline proc "contextless" (index: int) -> int {
+	switch index {
+	case 0: return 64 * 1024
+	case 1: return 128 * 1024
+	}
+	return POOL_CHUNK_BYTES
 }
 
 pool_free_chunks :: proc(rt: ^Runtime) {
@@ -86,6 +99,7 @@ pool_free_chunks :: proc(rt: ^Runtime) {
 		c = next
 	}
 	rt.pool_chunks = nil
+	rt.pool_chunk_count = 0
 	rt.pool_free = {}
 	rt.pool_left = 0
 }
@@ -93,8 +107,8 @@ pool_free_chunks :: proc(rt: ^Runtime) {
 @(private = "file")
 raw_alloc :: #force_inline proc(rt: ^Runtime, size: int) -> rawptr {
 	if size <= POOL_MAX_BYTES {
-		n := (size + 15) &~ 15
-		c := n >> 4
+		n := (size + (POOL_GRAIN - 1)) &~ (POOL_GRAIN - 1)
+		c := n / POOL_GRAIN
 		if b := rt.pool_free[c]; b != nil {
 			rt.pool_free[c] = b.next
 			intrinsics.mem_zero(b, n)
@@ -119,7 +133,7 @@ raw_alloc :: #force_inline proc(rt: ^Runtime, size: int) -> rawptr {
 @(private = "file")
 raw_free :: #force_inline proc(rt: ^Runtime, p: rawptr, size: int) {
 	if size <= POOL_MAX_BYTES {
-		c := (size + 15) >> 4
+		c := (size + (POOL_GRAIN - 1)) / POOL_GRAIN
 		b := cast(^Pool_Block)p
 		b.next = rt.pool_free[c]
 		rt.pool_free[c] = b
@@ -147,7 +161,7 @@ mem_resize :: proc(rt: ^Runtime, p: rawptr, old_size, new_size: int) -> rawptr {
 	if new_size <= 0 {mem_free(rt, p, old_size); return nil}
 	np: rawptr
 	if old_size <= POOL_MAX_BYTES || new_size <= POOL_MAX_BYTES {
-		if old_size <= POOL_MAX_BYTES && new_size <= POOL_MAX_BYTES && (old_size + 15) >> 4 == (new_size + 15) >> 4 {
+		if old_size <= POOL_MAX_BYTES && new_size <= POOL_MAX_BYTES && (old_size + (POOL_GRAIN - 1)) / POOL_GRAIN == (new_size + (POOL_GRAIN - 1)) / POOL_GRAIN {
 			// same class: the block already has the room; clear what a shrink leaves behind
 			if new_size < old_size {intrinsics.mem_zero(rawptr(uintptr(p) + uintptr(new_size)), old_size - new_size)}
 			np = p
@@ -458,11 +472,14 @@ gc_trace :: proc(rt: ^Runtime, c: ^Cell) {
 	switch c.kind {
 	case .string:
 		s := cast(^JS_String)c
-		if s.is_rope {
-			mark_cell(rt, s.left)
-			mark_cell(rt, s.right)
+		if s.flags & STR_TAIL != 0 {
+			if s.is_rope {
+				mark_cell(rt, str_tail(s).rope.left)
+				mark_cell(rt, str_tail(s).rope.right)
+			} else {
+				mark_cell(rt, str_tail(s).buf.base)
+			}
 		}
-		mark_cell(rt, s.base)
 	case .symbol:
 		sym := cast(^Symbol)c
 		mark_value(rt, sym.description)

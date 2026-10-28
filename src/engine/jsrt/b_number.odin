@@ -1,6 +1,6 @@
 package jsrt
 
-// Number, Math and BigInt (ECMA-262 §21). Number<->string conversions come from
+// Number, Math and BigInt (ECMA-262 Â§21). Number<->string conversions come from
 // src/engine/numconv (exact, QuickJS-compatible dtoa), arbitrary precision from src/engine/bigint.
 
 import "core:math"
@@ -23,7 +23,7 @@ number_ctor :: proc(ctx: ^Context, nt: Value, args: []Value, magic: i32) -> Valu
 	proto, ok := proto_from_ctor(ctx, nt, .number)
 	if !ok {return EXCEPTION}
 	o := object_new_proto(ctx, proto, .number)
-	o.data = Prim_Data{n}
+	set_prim(ctx.rt, o, n)
 	return mk_obj(o)
 }
 
