@@ -78,7 +78,6 @@ parse_class_atom_into :: proc(p: ^Parser, spec: ^Class_Spec) {
 	// Possible range: lo '-' hi, but not if '-' is the last char before ']'.
 	if p_peek_byte(p) == '-' && p.pos + 1 < len(p.src) && p.src[p.pos + 1] != ']' {
 		// Peek: a '-' followed by a class escape is not a range in unicode mode (error) / literal in Annex B.
-		save := p.pos
 		p.pos += 1 // consume '-'
 		hi, hi_is_set := parse_class_single(p, spec)
 		if p.err != "" { return }
@@ -96,7 +95,6 @@ parse_class_atom_into :: proc(p: ^Parser, spec: ^Class_Spec) {
 			append_char(spec, lo)
 			append_char(spec, '-')
 			append_char(spec, hi)
-			p.pos = p.pos // keep
 			return
 		}
 		append_range(spec, lo, hi)

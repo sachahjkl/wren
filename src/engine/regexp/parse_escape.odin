@@ -232,7 +232,7 @@ is_syntax_char :: proc(r: rune) -> bool {
 @(private)
 parse_hex_escape :: proc(p: ^Parser, count: int) -> (rune, bool) {
 	v := 0
-	for i in 0 ..< count {
+	for _ in 0 ..< count {
 		if p.pos >= len(p.src) { p_fail(p, "invalid hex escape"); return 0, false }
 		d, ok := hex_digit(p.src[p.pos])
 		if !ok {

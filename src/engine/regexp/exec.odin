@@ -6,8 +6,6 @@ package regexp
 // points on the fly (`Input_UTF8`), or UTF-16 units (`Input_UTF16`). Capture positions are reported in code-unit
 // offsets of the chosen encoding, matching JS semantics (UTF-16 indices for JS strings).
 
-import uni "wb:engine/unicode"
-
 Input_Kind :: enum u8 { UTF8, UTF16 }
 
 Input :: struct {
