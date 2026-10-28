@@ -5,9 +5,9 @@ about_card_relief.odin GLYPHS process  # a table
 about_card_seal.odin SEAL_TICK process  # a table
 about_pages.odin ABOUT_PAGES process  # a table
 app_commands.odin APP_COMMAND_PREFS process  # a table
-app_commands.odin cmd_hwnd process
-appearance.odin LOOK_KEYS process  # a table
-appearance.odin look_watch process  # preferences read once and on change
+app_commands_windows.odin cmd_hwnd process
+appearance_windows.odin LOOK_KEYS process  # a table
+appearance_windows.odin look_watch process  # preferences read once and on change
 bfcache.odin bf process
 blocker_dashboard.odin DASH_NAMES process  # a table
 blocker_dashboard.odin dash page  # the blocker's dashboard page
@@ -145,7 +145,7 @@ license_shell.odin memory_text process
 license_shell.odin memory_len process
 license_shell.odin memory_seeded process
 local_paths.odin LOCAL_PATH_PREFS process  # a table
-local_paths.odin drop_hwnd process
+local_paths_windows.odin drop_hwnd process
 main.odin the_app process
 main.odin tab_ids process
 measure_test.odin MEASURE_TEXTS test
@@ -204,7 +204,7 @@ settings.odin PREFS process  # a table
 setup.odin SETUP_PAYLOAD process  # a table
 setup.odin stp process
 setup.odin SETUP_PREFS process  # a table
-setup_test.odin TEST_FILE_TYPES test
+setup_test_windows.odin TEST_FILE_TYPES test
 shaders.odin CARD_FOIL_PASSES process  # a table
 shaders.odin CARD_FOIL_ARGS process  # a table
 shaders.odin SHADERS process  # a table
@@ -250,3 +250,5 @@ video_fast_path.odin vfast process  # the video fast path: what each video drew 
 cdp.odin the_cdp process  # the DevTools-protocol server of the process (the debugging port)
 partial_redraw.odin GPU_PREFS process  # a table of the partial redraw preferences
 partial_redraw.odin gpu_settings process  # the partial redraw settings read from the preferences
+appearance_other.odin watch_app process  # the colour-scheme watcher (the platform's bus connection)
+date_display_other.odin MONTHS_ABBR process  # a table
