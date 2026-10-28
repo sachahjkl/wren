@@ -217,7 +217,7 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 					if v.tag != .bool {break hot}
 					d := int(i8(code[pc + 1]))
 					if v.u.b == (hop == .if_true8) {
-						if d < 0 && !back_edge_cheap(rt, root_base) {break hot}
+						if d < 0 && (b.jit_active != 0 || !back_edge_cheap(rt, root_base)) {break hot}
 						pc += 1 + d
 					} else {
 						pc += 2
@@ -228,7 +228,7 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 					if v.tag != .bool {break hot}
 					d := rd_i32(code, pc + 1)
 					if v.u.b == (hop == .if_true) {
-						if d < 0 && !back_edge_cheap(rt, root_base) {break hot}
+						if d < 0 && (b.jit_active != 0 || !back_edge_cheap(rt, root_base)) {break hot}
 						pc += 1 + d
 					} else {
 						pc += 5
@@ -236,11 +236,11 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 					sp -= 1
 				case .goto8:
 					d := int(i8(code[pc + 1]))
-					if d < 0 && !back_edge_cheap(rt, root_base) {break hot}
+					if d < 0 && (b.jit_active != 0 || !back_edge_cheap(rt, root_base)) {break hot}
 					pc += 1 + d
 				case .goto16:
 					d := int(i16(u16(rd_u16(code, pc + 1))))
-					if d < 0 && !back_edge_cheap(rt, root_base) {break hot}
+					if d < 0 && (b.jit_active != 0 || !back_edge_cheap(rt, root_base)) {break hot}
 					pc += 1 + d
 				case .get_array_el:
 					o, k := stack[sp - 2], stack[sp - 1]
@@ -1121,21 +1121,33 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 			// --- control flow ---
 			case .goto:
 				d := rd_i32(code, pc)
+				jend := pc + 4
 				pc += d
 				if d < 0 {
-					if !back_edge(ctx, root_base) {exc = true}
+					if !back_edge(ctx, root_base) {exc = true} else if jit_cfg.enabled {
+						jr, jpc, jsp := jit_back_edge(ctx, f, b, pc, jend, sp)
+						if jr == .resume {pc = jpc; sp = jsp} else if jr == .ret {return finish(f, rt, stack[0], root_base)}
+					}
 				}
 			case .goto16:
 				d := int(i16(u16(rd_u16(code, pc))))
+				jend := pc + 2
 				pc += d
 				if d < 0 {
-					if !back_edge(ctx, root_base) {exc = true}
+					if !back_edge(ctx, root_base) {exc = true} else if jit_cfg.enabled {
+						jr, jpc, jsp := jit_back_edge(ctx, f, b, pc, jend, sp)
+						if jr == .resume {pc = jpc; sp = jsp} else if jr == .ret {return finish(f, rt, stack[0], root_base)}
+					}
 				}
 			case .goto8:
 				d := int(i8(code[pc]))
+				jend := pc + 1
 				pc += d
 				if d < 0 {
-					if !back_edge(ctx, root_base) {exc = true}
+					if !back_edge(ctx, root_base) {exc = true} else if jit_cfg.enabled {
+						jr, jpc, jsp := jit_back_edge(ctx, f, b, pc, jend, sp)
+						if jr == .resume {pc = jpc; sp = jsp} else if jr == .ret {return finish(f, rt, stack[0], root_base)}
+					}
 				}
 			case .if_true, .if_false:
 				d := rd_i32(code, pc)
@@ -1144,9 +1156,13 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 				v := stack[sp]
 				t := v.tag == .bool ? v.u.b : to_boolean(v)
 				if t == (op == .if_true) {
+					jend := pc
 					pc += d - 4
 					if d < 0 {
-						if !back_edge(ctx, root_base) {exc = true}
+						if !back_edge(ctx, root_base) {exc = true} else if jit_cfg.enabled {
+							jr, jpc, jsp := jit_back_edge(ctx, f, b, pc, jend, sp)
+							if jr == .resume {pc = jpc; sp = jsp} else if jr == .ret {return finish(f, rt, stack[0], root_base)}
+						}
 					}
 				}
 			case .if_true8, .if_false8:
@@ -1156,9 +1172,13 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 				v := stack[sp]
 				t := v.tag == .bool ? v.u.b : to_boolean(v)
 				if t == (op == .if_true8) {
+					jend := pc
 					pc += d - 1
 					if d < 0 {
-						if !back_edge(ctx, root_base) {exc = true}
+						if !back_edge(ctx, root_base) {exc = true} else if jit_cfg.enabled {
+							jr, jpc, jsp := jit_back_edge(ctx, f, b, pc, jend, sp)
+							if jr == .resume {pc = jpc; sp = jsp} else if jr == .ret {return finish(f, rt, stack[0], root_base)}
+						}
 					}
 				}
 			case .op_catch:
