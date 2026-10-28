@@ -131,8 +131,8 @@ EVAL_OPTIONS_VERSION :: 1   // JSEvalOptions.version
 WRITE_OBJ_REFERENCE :: 1 << 3
 READ_OBJ_REFERENCE  :: 1 << 3
 
-// JSPromiseStateEnum.
-Promise_State :: enum i32 { Undefined = 0, Pending, Fulfilled, Rejected }
+// JSPromiseStateEnum (QuickJS-ng 0.17: JS_PROMISE_NOT_A_PROMISE = -1, then pending 0, fulfilled, rejected).
+Promise_State :: enum i32 { Not_A_Promise = -1, Pending = 0, Fulfilled, Rejected }
 
 Class_ID :: u32   // JSClassID
 
