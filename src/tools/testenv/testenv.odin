@@ -3,74 +3,25 @@
 // web-platform-tests origin). tools\test_all.ps1 gives each run its own block through WREN_TEST_BASE_PORT so that
 // several worktrees test side by side; the tools keep writing the default ports and pass every address through url(),
 // which moves them to the current block (and changes nothing on the default one).
+//
+// The port-block logic is the toolkit's testkit (toolkit:testkit), reused with Wren's own environment variable and base
+// port; this file is a thin wrapper so the tools keep writing testenv.url / testenv.port unchanged.
 package testenv
 
-import "core:os"
-import "core:strconv"
-import "core:strings"
-import "core:sync"
-import "wb:base"
+import tk "toolkit:testkit"
 
 DEFAULT_BASE_PORT :: 8765
 BLOCK_PORTS :: 5
 
-@(private) cached: int
-@(private) lock: sync.Mutex
-// url() results, kept for the life of the process (base.permanent_allocator: outside the unit tests' trackers, never a
-// leak of the check builds): an address can be handed to anything that keeps it.
-@(private) interned: map[string]string
+@(private)
+PORTS := tk.Ports{base_env = "WREN_TEST_BASE_PORT", default_base = DEFAULT_BASE_PORT, span = BLOCK_PORTS}
 
 // The base port of this run: WREN_TEST_BASE_PORT, else 8765.
-base_port :: proc() -> int {
-	if cached != 0 { return cached }
-	b := DEFAULT_BASE_PORT
-	if v := os.get_env("WREN_TEST_BASE_PORT", context.temp_allocator); v != "" {
-		if n, ok := strconv.parse_int(v, 10); ok && n > 0 && n + BLOCK_PORTS <= 65536 { b = n }
-	}
-	cached = b
-	return b
-}
+base_port :: proc() -> int { return tk.base_port(&PORTS) }
 
 // The port `offset` places after the base (0 http, 1 https, 2 the second http origin, 3 / 4 WPT).
-port :: proc(offset := 0) -> int { return base_port() + offset }
+port :: proc(offset := 0) -> int { return tk.port(&PORTS, offset) }
 
 // `s` with every default port written after a host (":8765" .. ":8769", not a longer number, not "U+8766") moved to
 // the current block. On the default block, `s` itself.
-url :: proc(s: string) -> string {
-	b := base_port()
-	if b == DEFAULT_BASE_PORT || !strings.contains(s, ":876") { return s }
-	sync.guard(&lock)
-	if r, ok := interned[s]; ok { return r }
-	context.allocator = base.permanent_allocator()
-	if interned == nil { interned = make(map[string]string) }
-	r := rewrite(s, b)
-	interned[strings.clone(s)] = r
-	return r
-}
-
-@(private)
-rewrite :: proc(s: string, b: int) -> string {
-	out := strings.builder_make(0, len(s) + 16)
-	for i := 0; i < len(s); {
-		if is_default_port_at(s, i) {
-			strings.write_byte(&out, ':')
-			strings.write_int(&out, b + int(s[i + 4] - '5'))
-			i += 5
-			continue
-		}
-		strings.write_byte(&out, s[i])
-		i += 1
-	}
-	return strings.to_string(out)
-}
-
-// ":876d" at i, d in 5..9, after a host character and not followed by another digit.
-@(private)
-is_default_port_at :: proc(s: string, i: int) -> bool {
-	if i == 0 || i + 5 > len(s) || s[i:i + 4] != ":876" { return false }
-	d := s[i + 4]
-	if d < '5' || d > '9' { return false }
-	if i + 5 < len(s) && s[i + 5] >= '0' && s[i + 5] <= '9' { return false }
-	c := s[i - 1]
-	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == ']'
-}
+url :: proc(s: string) -> string { return tk.url(&PORTS, s) }
