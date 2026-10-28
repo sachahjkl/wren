@@ -508,10 +508,11 @@ promise_combinator :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32
 			if magic == 2 {
 				e := make_aggregate_error(ctx, values, "All promises were rejected")
 				r := call(ctx, cap.reject, UNDEFINED, {e})
-				if is_exception(r) {return EXCEPTION}
+				if is_exception(r) {return reject_cap(ctx, cap)}
 			} else {
+				// the iterator is done: an abrupt resolve rejects without closing it
 				r := call(ctx, cap.resolve, UNDEFINED, {values})
-				if is_exception(r) {return EXCEPTION}
+				if is_exception(r) {return reject_cap(ctx, cap)}
 			}
 		}
 	}

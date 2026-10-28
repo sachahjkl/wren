@@ -117,13 +117,13 @@ find_module_by_name :: proc(rt: ^Runtime, name: Atom) -> ^Module {
 
 // HostLoadImportedModule through the embedding hook.
 @(private = "file")
-host_load :: proc(ctx: ^Context, referrer: Atom, spec: Atom) -> ^Module {
+host_load :: proc(ctx: ^Context, referrer: Atom, spec: Atom, attr_type := "") -> ^Module {
 	rt := ctx.rt
 	if rt.config.load_module == nil {
 		throw_reference_error(ctx, cat(ctx, "could not load module '", atom_utf8(rt, spec), "'"))
 		return nil
 	}
-	v := rt.config.load_module(ctx, atom_utf8(rt, referrer), atom_utf8(rt, spec), rt.config.load_user)
+	v := rt.config.load_module(ctx, atom_utf8(rt, referrer), atom_utf8(rt, spec), attr_type, rt.config.load_user)
 	if is_exception(v) {return nil}
 	if v.tag != .module {
 		throw_type_error(ctx, "module loader did not return a module")
@@ -134,12 +134,24 @@ host_load :: proc(ctx: ^Context, referrer: Atom, spec: Atom) -> ^Module {
 	return m
 }
 
+// The `type` import attribute of a module request (attributes object from the bytecode).
+@(private = "file")
+attr_type_of :: proc(ctx: ^Context, attrs: Value) -> string {
+	if attrs.tag != .object {return ""}
+	o := as_obj(attrs)
+	i := shape_find(o.shape, atom_from_utf8(ctx.rt, "type"))
+	if i < 0 || o.shape.props[i].kind != .data {return ""}
+	v := o.slots[i].value
+	if v.tag != .string {return ""}
+	return str_to_utf8(ctx.rt, as_str(v), tmp(ctx.rt))
+}
+
 // Load every requested module, transitively.
 module_resolve :: proc(ctx: ^Context, m: ^Module) -> bool {
 	if m.resolved {return true}
 	m.resolved = true
 	for &r in m.req {
-		m1 := host_load(ctx, m.name, r.name)
+		m1 := host_load(ctx, m.name, r.name, attr_type_of(ctx, r.attributes))
 		if m1 == nil {
 			m.resolved = false
 			return false
@@ -722,7 +734,7 @@ dynamic_import_job :: proc(ctx: ^Context, args: []Value) -> Value {
 	referrer := args[2]
 	spec := as_str(args[3])
 	ref_atom := referrer.tag == .string ? atom_from_string(rt, as_str(referrer)) : ATOM_NULL
-	m := host_load(ctx, ref_atom, atom_from_string(rt, spec))
+	m := host_load(ctx, ref_atom, atom_from_string(rt, spec), attr_type_of(ctx, args[4]))
 	ok := m != nil && module_link(ctx, m)
 	if !ok {
 		if rt.uncatchable {return EXCEPTION}
@@ -762,6 +774,7 @@ dynamic_import :: proc(ctx: ^Context, f: ^Frame, specifier: Value, options: Valu
 	}
 	s := to_string(ctx, specifier)
 	if is_exception(s) {return fail(ctx, cap)}
+	attrs := UNDEFINED
 	if !is_undefined(options) {
 		if options.tag != .object {
 			throw_type_error(ctx, "options must be an object")
@@ -776,6 +789,8 @@ dynamic_import :: proc(ctx: ^Context, f: ^Frame, specifier: Value, options: Valu
 			}
 			keys := make([dynamic]Atom, 0, 4, tmp(rt))
 			if !own_property_keys(ctx, as_obj(w), &keys, {.strings}) {return fail(ctx, cap)}
+			ao := new_plain_object(ctx)
+			attrs = mk_obj(ao)
 			for k in keys {
 				e := own_enumerable(ctx, as_obj(w), k)
 				if e < 0 {return fail(ctx, cap)}
@@ -786,9 +801,10 @@ dynamic_import :: proc(ctx: ^Context, f: ^Frame, specifier: Value, options: Valu
 					throw_type_error(ctx, "module attribute values must be strings")
 					return fail(ctx, cap)
 				}
+				define_value(ctx, ao, k, v, CWE)
 			}
 		}
 	}
-	enqueue_job(ctx, dynamic_import_job, {cap.resolve, cap.reject, referrer, s})
+	enqueue_job(ctx, dynamic_import_job, {cap.resolve, cap.reject, referrer, s, attrs})
 	return cap.promise
 }

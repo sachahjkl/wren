@@ -561,13 +561,32 @@ verify_function :: proc(r: ^Reader, b: ^Function_Bytecode) -> bool {
 
 // --- modules ---
 
+// A module request. QuickJS bytecode has no import attributes; our compilers fold the `type`
+// attribute into the request name as "specifier\0type".
+@(private = "file")
+request_entry :: proc(ctx: ^Context, name: Atom) -> Req_Entry {
+	rt := ctx.rt
+	e := Req_Entry{name = name, attributes = UNDEFINED}
+	if atom_is_int(name) || atom_is_symbol(rt, name) {return e}
+	s := str_flat(rt, atom_to_string(rt, name))
+	for i in 0 ..< int(s.len) {
+		if str_at(s, i) != 0 {continue}
+		e.name = atom_from_string(rt, str_sub(rt, s, 0, i))
+		ao := new_plain_object(ctx)
+		define_value(ctx, ao, atom_from_utf8(rt, "type"), mk_str(str_sub(rt, s, i + 1, int(s.len))), CWE)
+		e.attributes = mk_obj(ao)
+		break
+	}
+	return e
+}
+
 @(private = "file")
 read_module :: proc(r: ^Reader) -> Value {
 	rt := r.ctx.rt
 	m := module_new(r.ctx, atom_(r))
 	n := count(r, 1)
 	for _ in 0 ..< n {
-		append(&m.req, Req_Entry{name = atom_(r), attributes = UNDEFINED})
+		append(&m.req, request_entry(r.ctx, atom_(r)))
 	}
 	n = count(r, 2)
 	for _ in 0 ..< n {

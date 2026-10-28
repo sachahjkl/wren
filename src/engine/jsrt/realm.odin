@@ -101,6 +101,8 @@ realm_init :: proc(ctx: ^Context) {
 		ctx.array_shape = probe.shape
 	}
 	ctx.std_array_proto = true
+	ap.watch_index = true
+	op.watch_index = true
 	proto_of(ctx, .error, op)
 	np := object_new_proto(ctx, op, .number)
 	np.data = Prim_Data{mk_int(0)}

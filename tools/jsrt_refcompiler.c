@@ -155,6 +155,36 @@ done:
     return fun_obj;
 }
 
+// JS_WriteModule drops import attributes. The runtime reads a request name "spec\0type" as the
+// specifier `spec` imported `with { type: "type" }`, so the `type` attribute is folded in here.
+static void encode_request_types(JSContext *ctx, JSModuleDef *m)
+{
+    for (int i = 0; i < m->req_module_entries_count; i++) {
+        JSReqModuleEntry *rme = &m->req_module_entries[i];
+        if (!JS_IsObject(rme->attributes))
+            continue;
+        JSValue t = JS_GetPropertyStr(ctx, rme->attributes, "type");
+        if (JS_IsString(t)) {
+            size_t nl, tl;
+            const char *name = JS_AtomToCStringLen(ctx, &nl, rme->module_name);
+            const char *type = JS_ToCStringLen(ctx, &tl, t);
+            if (name && type) {
+                char *buf = malloc(nl + 1 + tl);
+                memcpy(buf, name, nl);
+                buf[nl] = '\0';
+                memcpy(buf + nl + 1, type, tl);
+                JSAtom a = JS_NewAtomLen(ctx, buf, nl + 1 + tl);
+                free(buf);
+                JS_FreeAtom(ctx, rme->module_name);
+                rme->module_name = a;
+            }
+            JS_FreeCString(ctx, name);
+            JS_FreeCString(ctx, type);
+        }
+        JS_FreeValue(ctx, t);
+    }
+}
+
 // kind: 0 script, 1 module, 2 indirect eval, 3 Function constructor source, 4 direct eval
 __declspec(dllexport) int qjsc_compile(const char *src, size_t src_len, const char *filename,
                                        int kind, int strict, const QParent *parent, int scope_idx,
@@ -196,6 +226,8 @@ __declspec(dllexport) int qjsc_compile(const char *src, size_t src_len, const ch
         copy_error(ctx, err, err_cap, err_kind);
         return -1;
     }
+    if (JS_VALUE_GET_TAG(obj) == JS_TAG_MODULE)
+        encode_request_types(ctx, JS_VALUE_GET_PTR(obj));
     *out = JS_WriteObject(ctx, out_len, obj, JS_WRITE_OBJ_BYTECODE);
     JS_FreeValue(ctx, obj);
     if (!*out) {

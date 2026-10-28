@@ -122,8 +122,20 @@ buffer_getter :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> 
 	case 1: return mk_i64(i64(ab.max_byte_length >= 0 ? ab.max_byte_length : ab.byte_length))
 	case 2: return mk_bool(ab.max_byte_length >= 0)
 	case 3: return mk_bool(ab.detached)
+	case 4: return mk_bool(ab.immutable)
 	}
 	return UNDEFINED
+}
+
+@(private = "file")
+throw_immutable :: proc(ctx: ^Context) -> Value {return throw_type_error(ctx, "ArrayBuffer is immutable")}
+
+// Is the buffer under this view immutable?
+view_is_immutable :: proc(o: ^Object) -> bool {
+	ta := typed_array_of(o)
+	if ta == nil {return false}
+	ab := array_buffer_of(ta.buffer)
+	return ab != nil && ab.immutable
 }
 
 // resize (ArrayBuffer) / grow (SharedArrayBuffer)
@@ -133,6 +145,7 @@ buffer_resize :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> 
 	shared := magic == 1
 	ab := this_buffer(ctx, this, shared)
 	if ab == nil {return EXCEPTION}
+	if ab.immutable {return throw_immutable(ctx)}
 	if ab.max_byte_length < 0 {return throw_type_error(ctx, shared ? "SharedArrayBuffer is not growable" : "ArrayBuffer is not resizable")}
 	n, ok := to_index(ctx, arg(args, 0))
 	if !ok {return EXCEPTION}
@@ -151,35 +164,46 @@ buffer_resize :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> 
 }
 
 @(private = "file")
+// slice (magic bit 0: shared) / sliceToImmutable (bit 1)
 buffer_slice :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value {
-	shared := magic == 1
+	shared := magic & 1 != 0
+	immutable := magic & 2 != 0
 	cls: Class_ID = shared ? .shared_array_buffer : .array_buffer
 	ab := this_buffer(ctx, this, shared)
 	if ab == nil {return EXCEPTION}
 	if ab.detached {return throw_type_error(ctx, "ArrayBuffer is detached")}
+	if ab.immutable {return throw_immutable(ctx)}
 	n := i64(ab.byte_length)
 	first, ok := relative_index(ctx, arg(args, 0), n, 0)
 	if !ok {return EXCEPTION}
 	final, ok2 := relative_index(ctx, arg(args, 1), n, n)
 	if !ok2 {return EXCEPTION}
 	count := max(final - first, 0)
-	def := ctx.class_proto[cls].shape.proto // not used; species below
-	_ = def
-	c := species_constructor(ctx, this, get(ctx, mk_obj(ctx.global_obj), atom_from_utf8(ctx.rt, shared ? "SharedArrayBuffer" : "ArrayBuffer")))
-	if is_exception(c) {return EXCEPTION}
-	nv := construct(ctx, c, {mk_i64(count)}, c)
-	if is_exception(nv) {return EXCEPTION}
+	nv: Value
+	if immutable {
+		o := array_buffer_new(ctx, ctx.class_proto[.array_buffer], .array_buffer, count)
+		if o == nil {return EXCEPTION}
+		nv = mk_obj(o)
+	} else {
+		c := species_constructor(ctx, this, get(ctx, mk_obj(ctx.global_obj), atom_from_utf8(ctx.rt, shared ? "SharedArrayBuffer" : "ArrayBuffer")))
+		if is_exception(c) {return EXCEPTION}
+		nv = construct(ctx, c, {mk_i64(count)}, c)
+		if is_exception(nv) {return EXCEPTION}
+	}
 	if nv.tag != .object || as_obj(nv).class != cls {return throw_type_error(ctx, "species constructor did not return a buffer")}
 	nb := array_buffer_of(as_obj(nv))
-	if nb.detached {return throw_type_error(ctx, "species result is detached")}
+	if nb.immutable {return throw_immutable(ctx)}
 	if as_obj(nv) == as_obj(this) {return throw_type_error(ctx, "species constructor returned the same buffer")}
+	if nb.detached {return throw_type_error(ctx, "species result is detached")}
 	if i64(nb.byte_length) < count {return throw_type_error(ctx, "species result is too small")}
 	if ab.detached {return throw_type_error(ctx, "ArrayBuffer is detached")}
 	cur := i64(ab.byte_length)
+	if immutable && cur < first + count {return throw_range_error(ctx, "invalid array buffer length")}
 	if first < cur {
 		end := min(first + count, cur)
 		for i in first ..< end {nb.data[i - first] = ab.data[i]}
 	}
+	nb.immutable = immutable
 	return nv
 }
 
@@ -195,6 +219,7 @@ buffer_transfer :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -
 		n, ok = to_index(ctx, args[0])
 		if !ok {return EXCEPTION}
 	}
+	if ab.immutable {return throw_immutable(ctx)}
 	if ab.detached {return throw_type_error(ctx, "ArrayBuffer is detached")}
 	max_len: i64 = -1
 	if magic == 0 && ab.max_byte_length >= 0 {max_len = i64(ab.max_byte_length)}
@@ -205,6 +230,7 @@ buffer_transfer :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -
 	k := min(int(n), ab.byte_length)
 	for i in 0 ..< k {nb.data[i] = ab.data[i]}
 	detach_array_buffer(ctx, as_obj(this))
+	nb.immutable = magic == 2
 	_ = rt
 	return mk_obj(o)
 }
@@ -328,10 +354,20 @@ typed_array_get_index :: proc(ctx: ^Context, o: ^Object, n: f64) -> (Value, bool
 	return read_elem(ctx, class_elem(o.class), elem_ptr(o, int(n))), true
 }
 
+// [[Set]] of an element: -1 exception, 0 rejected (immutable buffer), 1 done (or out of bounds).
+typed_array_put :: proc(ctx: ^Context, o: ^Object, n: f64, v: Value) -> int {
+	if view_is_immutable(o) {
+		_, ok := to_elem_val(ctx, class_elem(o.class), v)
+		return ok ? 0 : -1
+	}
+	return typed_array_set_index(ctx, o, n, v) ? 1 : -1
+}
+
 typed_array_set_index :: proc(ctx: ^Context, o: ^Object, n: f64, v: Value) -> bool {
 	e := class_elem(o.class)
 	ev, ok := to_elem_val(ctx, e, v)
 	if !ok {return false}
+	if view_is_immutable(o) {return true}
 	if !f64_is_integer(n) || (n == 0 && math.sign_bit(n)) || n < 0 {return true}
 	if n >= f64(typed_array_length(ctx, o)) {return true}
 	write_elem(e, elem_ptr(o, int(n)), ev)
@@ -352,6 +388,14 @@ typed_array_define :: proc(ctx: ^Context, o: ^Object, a: Atom, n: f64, d: ^Prop_
 		return 0
 	}
 	if .value in d.has {
+		if view_is_immutable(o) {
+			cur, _ := typed_array_get_index(ctx, o, n)
+			if !same_value(ctx, cur, d.value) {
+				if throw_flag {return throw_cannot_define(ctx, a)}
+				return 0
+			}
+			return 1
+		}
 		if !typed_array_set_index(ctx, o, n, d.value) {return -1}
 	}
 	return 1
@@ -372,6 +416,16 @@ validate_ta :: proc(ctx: ^Context, v: Value) -> (^Object, int, bool) {
 		return nil, 0, false
 	}
 	return o, typed_array_length(ctx, o), true
+}
+
+// ValidateTypedArray for a method that writes: an immutable buffer is a TypeError (checked first).
+@(private = "file")
+validate_ta_mut :: proc(ctx: ^Context, v: Value) -> (^Object, int, bool) {
+	if v.tag == .object && is_typed_array_class(as_obj(v).class) && view_is_immutable(as_obj(v)) {
+		throw_immutable(ctx)
+		return nil, 0, false
+	}
+	return validate_ta(ctx, v)
 }
 
 @(private = "file")
@@ -397,11 +451,15 @@ typed_array_new_len :: proc(ctx: ^Context, proto: ^Object, e: Elem, n: i64) -> ^
 
 // TypedArrayCreateFromConstructor + validation (length check).
 @(private = "file")
-typed_array_create :: proc(ctx: ^Context, c: Value, args: []Value, min_len: i64 = -1) -> ^Object {
+typed_array_create :: proc(ctx: ^Context, c: Value, args: []Value, min_len: i64 = -1, mutable := true) -> ^Object {
 	nv := construct(ctx, c, args, c)
 	if is_exception(nv) {return nil}
 	o, l, ok := validate_ta(ctx, nv)
 	if !ok {return nil}
+	if mutable && view_is_immutable(o) {
+		throw_immutable(ctx)
+		return nil
+	}
 	if min_len >= 0 && i64(l) < min_len {
 		throw_type_error(ctx, "TypedArray is too small")
 		return nil
@@ -431,16 +489,19 @@ typed_array_ctor :: proc(ctx: ^Context, nt: Value, args: []Value, magic: i32) ->
 	rt := ctx.rt
 	e := Elem(magic)
 	if is_undefined(nt) {return throw_type_error(ctx, "TypedArray constructor requires 'new'")}
-	proto, ok := proto_from_ctor(ctx, nt, elem_class(e))
-	if !ok {return EXCEPTION}
 	a0 := arg(args, 0)
 	if a0.tag != .object {
+		// ToIndex comes before the prototype lookup on newTarget
 		n, ok2 := to_index(ctx, a0)
 		if !ok2 {return EXCEPTION}
+		proto, ok := proto_from_ctor(ctx, nt, elem_class(e))
+		if !ok {return EXCEPTION}
 		o := typed_array_new_len(ctx, proto, e, n)
 		if o == nil {return EXCEPTION}
 		return mk_obj(o)
 	}
+	proto, ok := proto_from_ctor(ctx, nt, elem_class(e))
+	if !ok {return EXCEPTION}
 	src := as_obj(a0)
 	if src.class == .array_buffer || src.class == .shared_array_buffer {
 		es := i64(elem_size[e])
@@ -686,7 +747,7 @@ ta_iterate :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Val
 
 @(private = "file")
 ta_copy_within :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value {
-	o, n, ok := validate_ta(ctx, this)
+	o, n, ok := validate_ta_mut(ctx, this)
 	if !ok {return EXCEPTION}
 	to, ok1 := relative_index(ctx, arg(args, 0), i64(n), 0)
 	if !ok1 {return EXCEPTION}
@@ -719,7 +780,7 @@ ta_copy_within :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) ->
 
 @(private = "file")
 ta_fill :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value {
-	o, n, ok := validate_ta(ctx, this)
+	o, n, ok := validate_ta_mut(ctx, this)
 	if !ok {return EXCEPTION}
 	e := class_elem(o.class)
 	ev, ok1 := to_elem_val(ctx, e, arg(args, 0))
@@ -830,7 +891,7 @@ ta_reduce :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Valu
 
 @(private = "file")
 ta_reverse :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value {
-	o, n, ok := validate_ta(ctx, this)
+	o, n, ok := validate_ta_mut(ctx, this)
 	if !ok {return EXCEPTION}
 	es := elem_size[class_elem(o.class)]
 	for i in 0 ..< n / 2 {
@@ -846,6 +907,7 @@ ta_set :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value {
 	rt := ctx.rt
 	if this.tag != .object || !is_typed_array_class(as_obj(this).class) {return throw_type_error(ctx, "not a TypedArray")}
 	o := as_obj(this)
+	if view_is_immutable(o) {return throw_immutable(ctx)}
 	off, ok := to_integer(ctx, arg(args, 1))
 	if !ok {return EXCEPTION}
 	if off < 0 {return throw_range_error(ctx, "offset is out of bounds")}
@@ -961,7 +1023,7 @@ ta_sort_impl :: proc(ctx: ^Context, o: ^Object, n: int, cmp: Value) -> ([]Value,
 ta_sort :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value {
 	cmp := arg(args, 0)
 	if !is_undefined(cmp) && !is_callable(cmp) {return throw_type_error(ctx, "comparator must be a function")}
-	o, n, ok := validate_ta(ctx, this)
+	o, n, ok := validate_ta_mut(ctx, this)
 	if !ok {return EXCEPTION}
 	vals, ok2 := ta_sort_impl(ctx, o, n, cmp)
 	if !ok2 {return EXCEPTION}
@@ -1055,7 +1117,7 @@ ta_subarray :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Va
 		if !ok2 {return EXCEPTION}
 		cargs = {mk_obj(ta.buffer), mk_i64(begin_byte), mk_i64(max(end - start, 0))}
 	}
-	r := typed_array_create(ctx, c, cargs)
+	r := typed_array_create(ctx, c, cargs, -1, false)
 	if r == nil {return EXCEPTION}
 	if elem_is_bigint(class_elem(r.class)) != elem_is_bigint(e) {return throw_type_error(ctx, "TypedArray species has an incompatible content type")}
 	return mk_obj(r)
@@ -1135,6 +1197,7 @@ dv_access :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Valu
 	if o == nil {return EXCEPTION}
 	e := Elem(magic & 0xff)
 	is_set := magic & 0x100 != 0
+	if is_set && view_is_immutable(o) {return throw_immutable(ctx)}
 	idx, ok := to_index(ctx, arg(args, 0))
 	if !ok {return EXCEPTION}
 	ev: Elem_Val
@@ -1177,10 +1240,13 @@ init_typed_array_builtins :: proc(ctx: ^Context) {
 	def_getter(ctx, abp, pa(.A_maxByteLength), buffer_getter, nil, 1)
 	def_getter(ctx, abp, atom_from_utf8(rt, "resizable"), buffer_getter, nil, 2)
 	def_getter(ctx, abp, atom_from_utf8(rt, "detached"), buffer_getter, nil, 3)
+	def_getter(ctx, abp, atom_from_utf8(rt, "immutable"), buffer_getter, nil, 4)
 	def_method(ctx, abp, "resize", buffer_resize, 1, 0)
 	def_method(ctx, abp, "slice", buffer_slice, 2, 0)
+	def_method(ctx, abp, "sliceToImmutable", buffer_slice, 2, 2)
 	def_method(ctx, abp, "transfer", buffer_transfer, 0, 0)
 	def_method(ctx, abp, "transferToFixedLength", buffer_transfer, 0, 1)
+	def_method(ctx, abp, "transferToImmutable", buffer_transfer, 0, 2)
 	def_tag(ctx, abp, "ArrayBuffer")
 
 	sbp := ctx.class_proto[.shared_array_buffer]
@@ -1300,6 +1366,7 @@ atomics_op :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Val
 	op := Atomic_Op(magic)
 	o, ok := atomics_validate(ctx, arg(args, 0), false)
 	if !ok {return EXCEPTION}
+	if op != .load && view_is_immutable(o) {return throw_immutable(ctx)}
 	idx, ok2 := atomics_index(ctx, o, arg(args, 1))
 	if !ok2 {return EXCEPTION}
 	e := class_elem(o.class)
@@ -1620,6 +1687,7 @@ u8_from_base64 :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) ->
 		ok: bool
 		target, ok = this_u8(ctx, this)
 		if !ok {return EXCEPTION}
+		if view_is_immutable(target) {return throw_immutable(ctx)}
 	}
 	if sarg.tag != .string {return throw_type_error(ctx, "argument must be a string")}
 	if !is_undefined(oarg) && oarg.tag != .object {return throw_type_error(ctx, "options must be an object")}
@@ -1663,6 +1731,7 @@ u8_from_hex :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Va
 		ok: bool
 		target, ok = this_u8(ctx, this)
 		if !ok {return EXCEPTION}
+		if view_is_immutable(target) {return throw_immutable(ctx)}
 	}
 	sarg := arg(args, 0)
 	if sarg.tag != .string {return throw_type_error(ctx, "argument must be a string")}

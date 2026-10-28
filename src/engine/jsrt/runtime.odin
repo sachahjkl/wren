@@ -29,7 +29,8 @@ Host_Config :: struct {
 	compile_user:    rawptr,
 	// Module loading: resolve `specifier` relative to `referrer` and return the module record
 	// (a .module Value from read_object) or EXCEPTION.
-	load_module:     proc(ctx: ^Context, referrer: string, specifier: string, user: rawptr) -> Value,
+	// attr_type: the import's `type` attribute ("" when absent, else e.g. "json", "text", "bytes")
+	load_module:     proc(ctx: ^Context, referrer: string, specifier: string, attr_type: string, user: rawptr) -> Value,
 	load_user:       rawptr,
 	// Unhandled-rejection tracking (HostPromiseRejectionTracker).
 	rejection:       proc(ctx: ^Context, promise: Value, reason: Value, handled: bool, user: rawptr),
@@ -97,7 +98,7 @@ Runtime :: struct {
 	char_strings:   [256]^JS_String, // one-unit Latin-1 strings
 	empty_string:   ^JS_String,
 	well_known:     [Well_Known]^Symbol,
-	symbol_registry: map[^JS_String]^Symbol, // Symbol.for (keys are atom strings, compared by pointer)
+	symbol_registry: map[Atom]^Symbol, // Symbol.for, keyed by the atom of the key string
 
 	// contexts
 	contexts:       [dynamic]^Context,
@@ -110,6 +111,7 @@ Runtime :: struct {
 	stack_depth:    int,
 	exception:      Value, // the pending exception; UNINITIALIZED when none
 	uncatchable:    bool,  // the pending exception cannot be caught (interrupt / OOM)
+	std_protos_touched: bool, // an index key or a new prototype on some realm's Array/Object.prototype
 	interrupt_counter: int,
 	jobs:           [dynamic]Job,
 	modules:        [dynamic]^Module,
@@ -249,7 +251,7 @@ Context :: struct {
 	arguments_shape: ^Shape,
 	mapped_arguments_shape: ^Shape,
 	regexp_shape:    ^Shape,
-	std_array_proto: bool, // Array.prototype is untouched by scripts (enables append fast paths)
+	std_array_proto: bool, // Array.prototype is untouched by scripts (enables append fast paths); see array_append_ok
 	host_defined:    rawptr,
 	is_free:         bool,
 }
@@ -274,7 +276,7 @@ runtime_new :: proc(allocator := context.allocator, config := DEFAULT_CONFIG) ->
 	rt.modules = make([dynamic]^Module, allocator)
 	rt.finrec_cleanup = make([dynamic]Value, allocator)
 	rt.shape_root = make(map[^Object]^Shape, allocator)
-	rt.symbol_registry = make(map[^JS_String]^Symbol, allocator)
+	rt.symbol_registry = make(map[Atom]^Symbol, allocator)
 	rt.vstack = make([dynamic]Value_Segment, allocator)
 	rt.join_stack = make([dynamic]^Object, allocator)
 	mem.dynamic_arena_init(&rt.scratch, allocator, allocator, 64 * 1024, 16 * 1024)

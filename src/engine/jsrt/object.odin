@@ -67,6 +67,7 @@ Object :: struct {
 	fast_array:     bool, // Array/Arguments: integer keys live in data.(Array_Data)
 	is_htmldda:     bool,
 	is_class_ctor:  bool,
+	watch_index:    bool, // Array.prototype / Object.prototype: an index key or a new [[Prototype]] disables array fast paths
 	shape:          ^Shape,
 	slots:          [^]Prop_Slot,
 	slot_cap:       u32,
@@ -188,6 +189,7 @@ Array_Buffer :: struct {
 	alloc_len:    int,
 	detached:     bool,
 	shared:       bool,
+	immutable:    bool, // created by transferToImmutable / sliceToImmutable
 	views:        [dynamic]^Object, // typed arrays/data views over this buffer (weak-ish: views keep buffer alive)
 }
 
@@ -324,6 +326,9 @@ slots_reserve :: proc(rt: ^Runtime, o: ^Object, n: int) {
 
 // Append a property to `o` (the caller has checked it does not exist). Returns its slot.
 add_property :: proc(rt: ^Runtime, o: ^Object, a: Atom, flags: Prop_Flags, kind: Prop_Kind = .data) -> ^Prop_Slot {
+	if o.watch_index {
+		if _, isi := atom_index(rt, a); isi {rt.std_protos_touched = true}
+	}
 	sh := o.shape
 	if sh.is_dict {
 		append(&sh.props, Shape_Prop{a, flags, kind})
@@ -386,6 +391,7 @@ set_property_flags :: proc(rt: ^Runtime, o: ^Object, idx: int, flags: Prop_Flags
 
 set_object_proto :: proc(rt: ^Runtime, o: ^Object, proto: ^Object) {
 	if o.shape.proto == proto {return}
+	if o.watch_index {rt.std_protos_touched = true}
 	if len(o.shape.props) == 0 && !o.shape.is_dict {
 		o.shape = shape_root_for(rt, proto)
 		return

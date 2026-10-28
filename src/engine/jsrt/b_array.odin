@@ -23,6 +23,11 @@ delete_index :: proc(ctx: ^Context, o: ^Object, i: i64) -> bool {
 	return true
 }
 
+// Can a new element be appended to fast array `o` without consulting its prototype chain?
+array_append_ok :: #force_inline proc(ctx: ^Context, o: ^Object) -> bool {
+	return o.shape.proto == ctx.class_proto[.array] && ctx.std_array_proto && !ctx.rt.std_protos_touched
+}
+
 set_length :: proc(ctx: ^Context, o: Value, n: i64) -> bool {
 	return set(ctx, o, pa(.A_length), mk_i64(n), true) >= 0
 }
@@ -542,7 +547,7 @@ ap_push :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value 
 	rt := ctx.rt
 	if this.tag == .object {
 		o := as_obj(this)
-		if o.class == .array && o.fast_array && o.extensible && .writable in o.shape.props[0].flags {
+		if o.class == .array && o.fast_array && o.extensible && .writable in o.shape.props[0].flags && array_append_ok(ctx, o) {
 			ad := array_data(o)
 			if ad.count == array_length_u32(o) && u64(ad.count) + u64(len(args)) <= 0xffffffff {
 				array_reserve(rt, ad, ad.count + u32(len(args)))
@@ -961,6 +966,29 @@ ap_to_reversed :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) ->
 }
 
 @(private = "file")
+ap_with :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value {
+	o, n, ok := this_obj(ctx, this)
+	if !ok {return EXCEPTION}
+	rel, ok1 := to_integer(ctx, arg(args, 0))
+	if !ok1 {return EXCEPTION}
+	idx := rel >= 0 ? rel : f64(n) + rel
+	if idx < 0 || idx >= f64(n) {return throw_range_error(ctx, "index out of range")}
+	if n > 0xffffffff {return throw_range_error(ctx, "invalid array length")}
+	a := array_new(ctx, int(n))
+	for k in 0 ..< n {
+		v: Value
+		if k == i64(idx) {
+			v = arg(args, 1)
+		} else {
+			v = get_index(ctx, o, k)
+			if is_exception(v) {return EXCEPTION}
+		}
+		array_push_fast(ctx.rt, a, v)
+	}
+	return mk_obj(a)
+}
+
+@(private = "file")
 ap_to_spliced :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value {
 	o, n, ok := this_obj(ctx, this)
 	if !ok {return EXCEPTION}
@@ -990,29 +1018,6 @@ ap_to_spliced :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> 
 	for k := start + skip; k < n; k += 1 {
 		v := get_index(ctx, o, k)
 		if is_exception(v) {return EXCEPTION}
-		array_push_fast(ctx.rt, a, v)
-	}
-	return mk_obj(a)
-}
-
-@(private = "file")
-ap_with :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value {
-	o, n, ok := this_obj(ctx, this)
-	if !ok {return EXCEPTION}
-	rel, ok1 := to_integer(ctx, arg(args, 0))
-	if !ok1 {return EXCEPTION}
-	idx := rel >= 0 ? rel : f64(n) + rel
-	if idx < 0 || idx >= f64(n) {return throw_range_error(ctx, "index out of range")}
-	if n > 0xffffffff {return throw_range_error(ctx, "invalid array length")}
-	a := array_new(ctx, int(n))
-	for k in 0 ..< n {
-		v: Value
-		if k == i64(idx) {
-			v = arg(args, 1)
-		} else {
-			v = get_index(ctx, o, k)
-			if is_exception(v) {return EXCEPTION}
-		}
 		array_push_fast(ctx.rt, a, v)
 	}
 	return mk_obj(a)
@@ -1070,6 +1075,7 @@ init_array_builtins :: proc(ctx: ^Context) {
 	def_method(ctx, ap, "toSpliced", ap_to_spliced, 2)
 	def_method(ctx, ap, "toString", ap_to_string, 0)
 	def_method(ctx, ap, "unshift", ap_unshift, 1)
+	def_method(ctx, ap, "with", ap_with, 2)
 	values := def_method(ctx, ap, "values", ap_iter, 0, 1)
 	ctx.array_proto_values = values
 	define_value(ctx, ap, well_known_atom(.iterator), mk_obj(values), CW)
