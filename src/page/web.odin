@@ -98,6 +98,8 @@ Web_State :: struct {
 	frozen_timers:   [dynamic]base.Handle,   // timers that came due while frozen, run when thawed
 	frozen_tasks:    [dynamic]rawptr,        // ^Page_Task posted while frozen, run when thawed
 	idb:             ^Idb_Page,              // IndexedDB: the page's client of the profile's manager (idb_host.odin), nil until used
+	scheduler:       ^Scheduler,             // Prioritized Task Scheduling (bindings_scheduler.odin), nil until used
+	locks:           ^Lock_Client,           // Web Locks held/pending by this realm (bindings_locks.odin), nil until used
 }
 
 // Extra fields of an event being dispatched (dom.Event has two strings; a StorageEvent needs four).
@@ -146,6 +148,8 @@ web_destroy :: proc(p: ^Page) {
 		if len(live_pages) == 0 { delete(live_pages); live_pages = nil }   // made again by the next page
 	}
 	if w.idle_timer != base.NIL_HANDLE { host.clear_timer(p.loop, w.idle_timer) }
+	if w.scheduler != nil { scheduler_destroy(p, w.scheduler); free(w.scheduler); w.scheduler = nil }
+	if w.locks != nil { locks_page_closed(p); w.locks = nil }
 	storage_page_closed(p)
 	idb_page_closed(p)
 	if w.live { sw_page_gone(p) }   // service_worker.odin: a waiting version may activate

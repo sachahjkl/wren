@@ -24,6 +24,7 @@ module canvas {
   handle TextMetrics : Object = Canvas_Obj via lookup_TextMetrics;
   handle OffscreenCanvas : Object = Canvas_Obj via lookup_OffscreenCanvas;
   handle ImageBitmap : Object = Canvas_Obj via lookup_ImageBitmap;
+  handle ImageBitmapRenderingContext : Object = Canvas_Obj via lookup_ImageBitmapRenderingContext;
 
   /// What a fill or stroke style currently is.
   enum StyleKind : i32 { Color, Gradient, Pattern }
@@ -281,4 +282,17 @@ module canvas {
   /// An ImageBitmap of straight RGBA8 pixels (an ImageData, a decoded Blob, a VideoFrame read back). `orient`, `premul`,
   /// `colorspace`, `resize_*` and `resize_q` as Canvas_createBitmap.
   ImageBitmap Canvas_bitmapFromPixels(bytes data, i32 width, i32 height, i32 orient, i32 premul, i32 colorspace, i32 resize_w, i32 resize_h, i32 resize_q) raises;
+
+  ////////////////////////////////
+  // ImageBitmapRenderingContext (getContext("bitmaprenderer")): a canvas that displays an ImageBitmap directly.
+
+  /// getContext("bitmaprenderer", {alpha}) on a <canvas> element / an OffscreenCanvas: 0 when a 2D context already
+  /// holds the canvas (the kinds cannot be mixed).
+  ImageBitmapRenderingContext HTMLCanvasElement_bitmapRenderer(HTMLCanvasElement canvas, bool alpha) raises;
+  ImageBitmapRenderingContext OffscreenCanvas_bitmapRenderer(OffscreenCanvas canvas, bool alpha) raises;
+  /// context.canvas: the owning <canvas> node or OffscreenCanvas object (0 when the canvas is gone).
+  u64 ImageBitmapRenderingContext_canvas(ImageBitmapRenderingContext context);
+  /// transferFromImageBitmap(bitmap): display the bitmap (its pixels move into the canvas and it is detached);
+  /// `has_bitmap` false is the null argument (clear the canvas). Type when the argument is not an ImageBitmap.
+  void ImageBitmapRenderingContext_transferFromImageBitmap(ImageBitmapRenderingContext context, u64 bitmap, bool has_bitmap) raises;
 }
