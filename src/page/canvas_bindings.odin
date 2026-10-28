@@ -776,13 +776,19 @@ CanvasTextDrawingStyles_set_textRendering :: proc(c: ^Call, ctx: Api_CanvasRende
 	if k := cx(ctx.data); k != nil { if i, ok := enum_index(TEXT_RENDERING[:], value); ok { k.state.text_rendering = u8(i) } }
 }
 
-// Text in a worker's OffscreenCanvas: the shell's text system (fonts, shaping) belongs to the interface thread, so a
-// worker draws no text (said once in its console).
+// Text in a worker's OffscreenCanvas: the shell's text system (DirectWrite fonts, shaping, glyph rasterisation) runs on
+// the interface thread, and the canvas Text_Engine's callbacks reach it through a Page pointer that is only valid
+// there, so a worker cannot call them directly. The safe path (to wire next, see the report) is a synchronous
+// shaping/metrics round trip to the UI loop over the worker link: the worker posts {font spec, size, text} with
+// host.post, the UI thread shapes it on the real engine and posts back the advance / metrics (measureText) or the
+// placed glyphs' outlines and colour bitmaps (fill/strokeText), copied as bytes across the thread boundary; the worker
+// blocks on a per-call condition until the reply lands. That primitive (a blocking worker→UI call) does not exist yet,
+// so until it does a worker draws no text — said once in its console.
 @(private)
 worker_text_refused :: proc(c: ^Call) -> bool {
 	if c.page.worker == nil { return false }
 	@(thread_local) told: bool
-	if !told { told = true; log(c.page, .Warn, "OffscreenCanvas in a worker: text (fillText, strokeText, measureText) is not drawn by this browser yet") }
+	if !told { told = true; log(c.page, .Warn, "OffscreenCanvas in a worker: text (fillText, strokeText, measureText) is not drawn by this browser yet (the font engine runs on the interface thread)") }
 	return true
 }
 
