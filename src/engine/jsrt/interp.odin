@@ -784,6 +784,7 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 							break
 						}
 						if p.fast_array || p.class == .proxy || p.class == .module_ns || p.class == .string || is_typed_array_class(p.class) {break}
+						if p.class == .host && host_exotic_of(rt, p) != nil {break}
 						p = p.shape.proto
 						if p == nil {v = UNDEFINED; fast = true; break}
 					}
