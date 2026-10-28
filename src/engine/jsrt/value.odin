@@ -2,146 +2,118 @@ package jsrt
 
 // The JavaScript value model.
 //
-// A Value is a 16-byte tagged union: an 8-bit discriminant (`Tag`) plus an 8-byte payload. We chose
-// a tagged union over NaN-boxing deliberately:
-//   - It is identical on 64-bit native and on wasm32 (pointers are 32-bit under wasm32, so a NaN-boxed
-//     64-bit word would need a side table or a shifted-pointer scheme; the tagged union just works).
-//   - The discriminant is an exhaustive Odin enum, so every `switch v.tag` is checked by the compiler
-//     (a correctness win QuickJS's #define tags do not get).
-//   - 16 bytes still fits two values in a cache line and keeps the hot path branch-predictable.
-// If measurement later shows the stack traffic dominates, the representation is isolated behind the
-// constructors/accessors below and can be swapped for NaN-boxing without touching the interpreter.
+// A Value is a 16-byte tagged union: an 8-bit `Tag` plus an 8-byte payload. A tagged union rather than
+// NaN-boxing because it is identical on 64-bit native and on wasm32 (32-bit pointers would need a
+// shifted-pointer scheme under NaN-boxing) and because every `switch v.tag` is checked for
+// exhaustiveness by the compiler. Small integers stay unboxed in the int lane, exactly like QuickJS.
 //
-// Heap values (strings, objects, symbols, bigints) are reference-counted GC cells; see gc.odin. A
-// Value holds a borrowed pointer: duplicating a Value that owns a heap cell must call `value_dup`,
-// and dropping it must call `value_free`. The interpreter and the builtins follow QuickJS's
-// ownership discipline (a function consumes the references passed to it unless noted).
+// Memory is traced, not reference counted (see gc.odin): copying a Value is a plain copy, there is no
+// dup/free discipline to get wrong. What keeps a heap cell alive is reachability from the roots.
 
 import "core:math"
 
 Tag :: enum u8 {
-	// Primitives that live entirely in the payload.
-	uninitialized = 0, // TDZ hole / internal "no value"; never observable by scripts
-	undefined,
+	undefined = 0,
 	null,
 	bool,
-	int32, // an f64 that happens to be a small integer, kept unboxed for speed
-	float64,
-
-	// Heap cells (payload.ptr is a ^GC_Header). Reference counted.
+	int,
+	float,
+	// heap cells (payload.ptr is a ^Cell)
 	string,
 	symbol,
 	object,
 	bigint,
-	function_bc, // a raw Function_Bytecode in a constant pool (never escapes to script as a value)
-
-	// Internal marker used on the value stack for exception propagation.
-	exception,
+	function_bc, // a raw Function_Bytecode in a constant pool; never escapes to scripts
+	module,      // a raw Module record in a constant pool / reader result
+	// internal markers, never observable by scripts
+	uninitialized, // TDZ hole
+	exception,     // "an exception is pending" sentinel returned by every fallible operation
+	catch_offset,  // try/catch marker on the operand stack (payload.i32 = handler pc, 0 = iterator)
 }
 
-// The 8-byte payload. Exactly one field is live per Tag.
 Value_Payload :: struct #raw_union {
-	b:    bool,
-	i32:  i32,
-	f64:  f64,
-	ptr:  rawptr, // ^GC_Header for heap tags
+	b:   bool,
+	i:   i32,
+	f:   f64,
+	ptr: rawptr,
 }
 
 Value :: struct {
-	tag:     Tag,
-	payload: Value_Payload,
+	tag: Tag,
+	u:   Value_Payload,
 }
-
-// --- primitive constructors ---
 
 UNDEFINED :: Value{tag = .undefined}
 NULL :: Value{tag = .null}
 UNINITIALIZED :: Value{tag = .uninitialized}
 EXCEPTION :: Value{tag = .exception}
-// The payload union keeps TRUE/FALSE from being compile-time constants, so they are package globals
-// initialised once. They are never mutated.
-TRUE := Value{tag = .bool, payload = {b = true}}
-FALSE := Value{tag = .bool, payload = {b = false}}
 
-mk_bool :: #force_inline proc "contextless" (v: bool) -> Value {
-	return Value{tag = .bool, payload = {b = v}}
-}
+TRUE := Value{tag = .bool, u = {b = true}}
+FALSE := Value{tag = .bool, u = {b = false}}
 
-mk_int :: #force_inline proc "contextless" (v: i32) -> Value {
-	return Value{tag = .int32, payload = {i32 = v}}
-}
+mk_bool :: #force_inline proc "contextless" (v: bool) -> Value {return Value{tag = .bool, u = {b = v}}}
+mk_int :: #force_inline proc "contextless" (v: i32) -> Value {return Value{tag = .int, u = {i = v}}}
+mk_float :: #force_inline proc "contextless" (v: f64) -> Value {return Value{tag = .float, u = {f = v}}}
+mk_catch :: #force_inline proc "contextless" (pc: i32) -> Value {return Value{tag = .catch_offset, u = {i = pc}}}
 
-// Number constructor that keeps small integers in the int32 lane (as QuickJS does) and otherwise
-// stores an f64. -0 must stay a float (its bit pattern matters), so it never collapses to int32.
-mk_number :: proc "contextless" (v: f64) -> Value {
-	iv := i32(v)
-	if f64(iv) == v && !(iv == 0 && math.sign_bit(v)) {
-		return mk_int(iv)
+// A Number, kept in the int lane when it is an integer in range and not -0.
+mk_number :: #force_inline proc "contextless" (v: f64) -> Value {
+	if v >= -2147483648 && v <= 2147483647 {
+		iv := i32(v)
+		if f64(iv) == v && !(iv == 0 && math.sign_bit(v)) {
+			return mk_int(iv)
+		}
 	}
-	return Value{tag = .float64, payload = {f64 = v}}
+	return mk_float(v)
 }
 
-mk_f64 :: #force_inline proc "contextless" (v: f64) -> Value {
-	return Value{tag = .float64, payload = {f64 = v}}
+mk_i64 :: proc "contextless" (v: i64) -> Value {
+	if v >= -2147483648 && v <= 2147483647 {return mk_int(i32(v))}
+	return mk_float(f64(v))
 }
 
-// --- predicates ---
+mk_u32 :: #force_inline proc "contextless" (v: u32) -> Value {
+	if v <= 0x7fffffff {return mk_int(i32(v))}
+	return mk_float(f64(v))
+}
+
+mk_ptr :: #force_inline proc "contextless" (tag: Tag, p: rawptr) -> Value {return Value{tag = tag, u = {ptr = p}}}
+mk_obj :: #force_inline proc "contextless" (o: ^Object) -> Value {return Value{tag = .object, u = {ptr = o}}}
+mk_str :: #force_inline proc "contextless" (s: ^JS_String) -> Value {return Value{tag = .string, u = {ptr = s}}}
+mk_sym :: #force_inline proc "contextless" (s: ^Symbol) -> Value {return Value{tag = .symbol, u = {ptr = s}}}
+mk_big :: #force_inline proc "contextless" (b: ^JS_BigInt) -> Value {return Value{tag = .bigint, u = {ptr = b}}}
+
+obj_or_null :: #force_inline proc "contextless" (o: ^Object) -> Value {
+	if o == nil {return NULL}
+	return mk_obj(o)
+}
 
 is_undefined :: #force_inline proc "contextless" (v: Value) -> bool {return v.tag == .undefined}
 is_null :: #force_inline proc "contextless" (v: Value) -> bool {return v.tag == .null}
+is_nullish :: #force_inline proc "contextless" (v: Value) -> bool {return v.tag == .undefined || v.tag == .null}
 is_bool :: #force_inline proc "contextless" (v: Value) -> bool {return v.tag == .bool}
-is_object :: #force_inline proc "contextless" (v: Value) -> bool {return v.tag == .object}
+is_int :: #force_inline proc "contextless" (v: Value) -> bool {return v.tag == .int}
+is_number :: #force_inline proc "contextless" (v: Value) -> bool {return v.tag == .int || v.tag == .float}
 is_string :: #force_inline proc "contextless" (v: Value) -> bool {return v.tag == .string}
 is_symbol :: #force_inline proc "contextless" (v: Value) -> bool {return v.tag == .symbol}
+is_object :: #force_inline proc "contextless" (v: Value) -> bool {return v.tag == .object}
 is_bigint :: #force_inline proc "contextless" (v: Value) -> bool {return v.tag == .bigint}
 is_exception :: #force_inline proc "contextless" (v: Value) -> bool {return v.tag == .exception}
+is_uninitialized :: #force_inline proc "contextless" (v: Value) -> bool {return v.tag == .uninitialized}
 
-is_number :: #force_inline proc "contextless" (v: Value) -> bool {
-	return v.tag == .int32 || v.tag == .float64
-}
-
-is_undefined_or_null :: #force_inline proc "contextless" (v: Value) -> bool {
-	return v.tag == .undefined || v.tag == .null
-}
-
-// A value that participates in reference counting.
+// A value whose payload is a GC cell the collector must trace.
 is_heap :: #force_inline proc "contextless" (v: Value) -> bool {
-	return v.tag == .string || v.tag == .symbol || v.tag == .object || v.tag == .bigint || v.tag == .function_bc
+	return v.tag >= .string && v.tag <= .module
 }
 
-// --- numeric accessors (caller guarantees the tag) ---
-
-as_bool :: #force_inline proc "contextless" (v: Value) -> bool {return v.payload.b}
-as_int :: #force_inline proc "contextless" (v: Value) -> i32 {return v.payload.i32}
-
-// The numeric value of an int32 or float64 value as an f64.
+as_obj :: #force_inline proc "contextless" (v: Value) -> ^Object {return cast(^Object)v.u.ptr}
+as_str :: #force_inline proc "contextless" (v: Value) -> ^JS_String {return cast(^JS_String)v.u.ptr}
+as_sym :: #force_inline proc "contextless" (v: Value) -> ^Symbol {return cast(^Symbol)v.u.ptr}
+as_big :: #force_inline proc "contextless" (v: Value) -> ^JS_BigInt {return cast(^JS_BigInt)v.u.ptr}
+as_cell :: #force_inline proc "contextless" (v: Value) -> ^Cell {return cast(^Cell)v.u.ptr}
 as_f64 :: #force_inline proc "contextless" (v: Value) -> f64 {
-	return v.tag == .int32 ? f64(v.payload.i32) : v.payload.f64
+	return v.tag == .int ? f64(v.u.i) : v.u.f
 }
 
-// --- heap cell accessors ---
-
-as_header :: #force_inline proc "contextless" (v: Value) -> ^GC_Header {
-	return cast(^GC_Header)v.payload.ptr
-}
-
-as_object :: #force_inline proc "contextless" (v: Value) -> ^Object {
-	return cast(^Object)v.payload.ptr
-}
-
-as_string :: #force_inline proc "contextless" (v: Value) -> ^JS_String {
-	return cast(^JS_String)v.payload.ptr
-}
-
-as_symbol :: #force_inline proc "contextless" (v: Value) -> ^Symbol {
-	return cast(^Symbol)v.payload.ptr
-}
-
-as_bigint :: #force_inline proc "contextless" (v: Value) -> ^JS_BigInt {
-	return cast(^JS_BigInt)v.payload.ptr
-}
-
-// Wrap an already-owned heap cell in a Value of the right tag. Does not change the refcount.
-mk_heap :: #force_inline proc "contextless" (tag: Tag, cell: ^GC_Header) -> Value {
-	return Value{tag = tag, payload = {ptr = cell}}
-}
+NAN :: f64(0h7ff8_0000_0000_0000)
+INF :: f64(0h7ff0_0000_0000_0000)

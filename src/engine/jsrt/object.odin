@@ -1,442 +1,662 @@
 package jsrt
 
-// JavaScript objects.
+// Objects and shapes (hidden classes).
 //
-// An Object is a GC cell with a Shape (its hidden class, giving the ordered property layout) and a
-// flat array of property values addressed by the shape's slots. The `exotic` tagged union carries the
-// internal state of exotic object kinds (Array, Function, the primitive wrappers, TypedArray, Proxy,
-// ...) without a separate allocation. This is the one struct the interpreter and every builtin touch,
-// so it is laid out to keep the ordinary "plain object property get/set" path tight.
-//
-// Property values live in `props[slot]`. An accessor slot stores a ^Accessor instead of a plain value
-// (distinguished by the shape's Prop_Flag.accessor). Array elements for the dense fast path live in
-// the exotic Array state, not in the shape, so pushing numbers never grows the shape.
+// An Object is a cell with a Shape (its prototype plus the ordered list of own property keys and
+// attributes) and a flat array of property slots addressed by the shape's indices. Objects that grow
+// the same way share shapes through a transition cache; an object that deletes properties or changes
+// attributes gets a private "dictionary" shape it mutates in place. The class-specific internal
+// slots ([[ArrayData]], [[BoundTargetFunction]], [[MapData]], ...) live in `data`, an Odin tagged
+// union, so each exotic kind is checked by the compiler instead of being a cast from an opaque pointer.
 
 import "wb:engine/bigint"
 
+Prop_Flag :: enum u8 {configurable, writable, enumerable}
+Prop_Flags :: bit_set[Prop_Flag;u8]
+
+CWE :: Prop_Flags{.configurable, .writable, .enumerable}
+CW :: Prop_Flags{.configurable, .writable}
+
+Prop_Kind :: enum u8 {
+	data,
+	accessor, // slot.getset
+	var_ref,  // slot.var_ref (mapped arguments, module namespaces): the value lives in a closure cell
+}
+
+Shape_Prop :: struct {
+	atom:  Atom,
+	flags: Prop_Flags,
+	kind:  Prop_Kind,
+}
+
+Transition :: struct {
+	atom:  Atom,
+	flags: Prop_Flags,
+	kind:  Prop_Kind,
+	to:    ^Shape, // weak: swept when unreachable
+}
+
+Shape :: struct {
+	using cell:  Cell,
+	proto:       ^Object,
+	props:       [dynamic]Shape_Prop,
+	hash:        []u32, // index+1 into props, built when len(props) > SHAPE_LINEAR_MAX
+	transitions: [dynamic]Transition,
+	is_dict:     bool,
+}
+
+SHAPE_LINEAR_MAX :: 8
+SHAPE_SHARED_MAX :: 48 // beyond this many properties an object switches to a dictionary shape
+
+Getset :: struct {
+	getter: ^Object,
+	setter: ^Object,
+}
+
+Prop_Slot :: struct #raw_union {
+	value:   Value,
+	getset:  Getset,
+	var_ref: ^Var_Ref,
+}
+
 Object :: struct {
-	using header: GC_Header,
-	shape:        ^Shape,
-	props:        [dynamic]Value, // indexed by Shape_Prop.slot
-	extensible:   bool,
-	exotic:       Exotic,
+	using cell:     Cell,
+	class:          Class_ID,
+	extensible:     bool,
+	is_constructor: bool,
+	fast_array:     bool, // Array/Arguments: integer keys live in data.(Array_Data)
+	is_htmldda:     bool,
+	is_class_ctor:  bool,
+	shape:          ^Shape,
+	slots:          [^]Prop_Slot,
+	slot_cap:       u32,
+	data:           Object_Data,
 }
 
-// The internal slots that distinguish exotic objects. `none` is an ordinary object.
-Exotic :: union {
+Object_Data :: union {
 	Array_Data,
-	Function_Data,
+	Mapped_Args_Data,
+	Func_Data,
 	Native_Data,
-	Bound_Function_Data,
-	Primitive_Wrapper,
-	Array_Buffer_Data,
-	Typed_Array_Data,
-	Data_View_Data,
-	Map_Data,
-	Set_Data,
-	Proxy_Data,
+	^Bound_Data,
+	Prim_Data,
 	Date_Data,
-	RegExp_Data,
-	Error_Data,
-	Iterator_Data,
-	Promise_Data,
-	Generator_Data,
-	Namespace_Data,
+	^RegExp_Data,
+	^Map_State,
+	^Weak_Ref_Data,
+	^Fin_Rec_Data,
+	^Array_Buffer,
+	^Typed_Array,
+	^Proxy_Data,
+	^Promise_Data,
+	^Coro,
+	^Iter_State,
+	^Module,
+	^Disposable_Data,
+	Internal_Data,
 }
 
-// An accessor property's getter/setter (either may be nil / undefined).
-Accessor :: struct {
-	using header: GC_Header,
-	get:          Value,
-	set:          Value,
-}
-
-// --- exotic payloads ---
-
-// Dense/sparse Array. Small-integer-indexed storage lives in `dense`; when the array becomes sparse
-// (a large gap, or a non-index numeric key) the elements migrate to ordinary shape properties and
-// `sparse` is set so writes stop touching `dense`.
 Array_Data :: struct {
-	dense:  [dynamic]Value,
-	length: u32,
-	sparse: bool,
+	values: [^]Value,
+	count:  u32,
+	cap:    u32,
 }
 
-// An interpreted function: its bytecode plus the captured upvalues and the realm it closes over.
-Function_Data :: struct {
-	bc:        ^Function_Bytecode,
-	var_refs:  []^Var_Ref, // closure upvalues, one per bc.closure_var
-	home:      Value,       // [[HomeObject]] for super, or undefined
-	realm:     ^Realm,
+Mapped_Args_Data :: struct {
+	refs:  [^]^Var_Ref,
+	count: u32,
 }
 
-Bound_Function_Data :: struct {
-	target:     Value,
-	this_val:   Value,
-	bound_args: []Value,
+Func_Data :: struct {
+	bc:       ^Function_Bytecode,
+	var_refs: [^]^Var_Ref,
+	home:     ^Object,
 }
 
-// A native function implemented in Odin (host builtins and the embedding API). Stored as the exotic
-// payload of an ordinary callable object so it shares the prototype/property machinery.
+Native_Proc :: #type proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value
+// A native closure: `data` values are passed through ctx-free access via native_data().
+Native_Kind :: enum u8 {
+	function,        // callable only (TypeError on `new`)
+	constructor,     // `new` passes new_target as `this`; a plain call passes undefined
+	constructor_only,// TypeError when called without `new`
+}
+
 Native_Data :: struct {
-	fn:     Native_Proc,
-	magic:  i32,
-	ctor:   bool,
-	realm:  ^Realm,
-	data:   []Value, // bound captured values for native closures
+	fn:       Native_Proc,
+	realm:    ^Context,
+	magic:    i32,
+	kind:     Native_Kind,
+	data:     [^]Value,
+	data_len: u32,
 }
 
-Native_Proc :: #type proc(ctx: ^Context, this: Value, args: []Value, magic: i32, data: []Value) -> Value
-
-Primitive_Wrapper :: struct {
-	prim: Value, // the wrapped Boolean/Number/String/Symbol/BigInt primitive
+Bound_Data :: struct {
+	target: Value,
+	this:   Value,
+	args:   []Value,
 }
 
-Array_Buffer_Data :: struct {
-	bytes:        []u8,
-	detached:     bool,
-	shared:       bool,
-	max_byte_len: int, // -1 if not resizable
+Prim_Data :: struct {
+	v: Value,
 }
 
-Typed_Array_Element :: enum u8 {
-	u8_clamped, i8, u8, i16, u16, i32, u32, bi64, bu64, f16, f32, f64,
+Date_Data :: struct {
+	t: f64,
 }
 
-Typed_Array_Data :: struct {
-	buffer:       Value, // the backing ArrayBuffer object
-	kind:         Typed_Array_Element,
-	byte_offset:  int,
-	length:       int, // element count
-	track_rab:    bool, // length-tracking view on a resizable buffer
+Internal_Data :: struct {
+	values: [^]Value,
+	count:  u32,
 }
 
-Data_View_Data :: struct {
-	buffer:      Value,
-	byte_offset: int,
-	byte_length: int,
-	track_rab:   bool,
-}
-
-// Map/Set use insertion-ordered hash tables. Entries keep deletion tombstones to preserve iterator
-// semantics; a periodic compaction (not every delete) reclaims them.
-Map_Data :: struct {
-	entries: [dynamic]Map_Entry,
-	index:   map[Map_Key]int, // key -> live entry index
-	is_weak: bool,
+// Map/Set/WeakMap/WeakSet: insertion-ordered hash table with tombstones so live iterators keep their
+// place across deletions; compacted when no iterator is active.
+Map_State :: struct {
+	entries:   [dynamic]Map_Entry,
+	index:     []i32, // hash -> entry index+1 (0 empty, -1 deleted)
+	live:      int,
+	iterators: int, // active iterators (blocks compaction)
+	is_weak:   bool,
 }
 
 Map_Entry :: struct {
 	key:     Value,
-	val:     Value,
+	value:   Value,
 	deleted: bool,
 }
 
-Set_Data :: struct {
-	entries: [dynamic]Value,
-	index:   map[Map_Key]int,
-	is_weak: bool,
+Weak_Ref_Data :: struct {
+	target: Value,
 }
 
-// A hashable projection of a Value used as a Map/Set key under SameValueZero.
-Map_Key :: struct {
-	tag: Tag,
-	bits: u64, // f64 bits, i32, bool, or a cell pointer as uintptr
+Fin_Rec_Cell :: struct {
+	target: Value, // weak
+	held:   Value,
+	token:  Value, // weak
+}
+
+Fin_Rec_Data :: struct {
+	callback: Value,
+	cells:    [dynamic]Fin_Rec_Cell,
+	realm:    ^Context,
+}
+
+Array_Buffer :: struct {
+	data:         [^]u8,
+	byte_length:  int,
+	max_byte_length: int, // -1: not resizable
+	alloc_len:    int,
+	detached:     bool,
+	shared:       bool,
+	views:        [dynamic]^Object, // typed arrays/data views over this buffer (weak-ish: views keep buffer alive)
+}
+
+Typed_Array :: struct {
+	buffer:      ^Object,
+	offset:      int,
+	length:      int, // element count (or byte length for DataView) at creation
+	track_rab:   bool, // length follows a resizable buffer
 }
 
 Proxy_Data :: struct {
-	target:  Value,
-	handler: Value,
-	revoked: bool,
-}
-
-Date_Data :: struct {
-	time: f64, // milliseconds since the epoch, NaN for an invalid Date
-}
-
-RegExp_Data :: struct {
-	bytecode: []u8, // compiled by src/engine/regexp
-	source:   ^JS_String,
-	flags:    u32,
-}
-
-Error_Data :: struct {
-	// Errors are ordinary objects; this slot only tags them so stack capture and host bridging can
-	// recognise an Error without a prototype walk.
-	kind: Error_Kind,
-}
-
-Error_Kind :: enum u8 {
-	plain, eval, range, reference, syntax, type, uri, internal, aggregate, suppressed,
-}
-
-Iterator_Data :: struct {
-	kind:   Iterator_Kind,
-	target: Value,
-	pos:    u32,
-	done:   bool,
-}
-
-Iterator_Kind :: enum u8 {
-	array_keys, array_values, array_entries, string_chars, map_entries, set_values, regexp,
-}
-
-Promise_Data :: struct {
-	state:        Promise_State,
-	result:       Value,
-	fulfill_jobs: [dynamic]Promise_Reaction,
-	reject_jobs:  [dynamic]Promise_Reaction,
-	handled:      bool,
+	target:     Value,
+	handler:    Value,
+	is_func:    bool,
+	revoked:    bool,
 }
 
 Promise_State :: enum u8 {pending, fulfilled, rejected}
 
 Promise_Reaction :: struct {
-	handler: Value, // the onFulfilled/onRejected, or undefined
-	capability_resolve: Value,
-	capability_reject:  Value,
+	is_reject: bool,
+	handler:   Value,
+	resolve:   Value, // capability
+	reject:    Value,
+	promise:   Value,
 }
 
-Generator_Data :: struct {
-	frame: rawptr, // ^Call_Frame captured across yields; owned by the generator
-	state: Generator_State,
-	is_async: bool,
+Promise_Data :: struct {
+	state:      Promise_State,
+	result:     Value,
+	reactions:  [dynamic]Promise_Reaction,
+	is_handled: bool,
 }
 
-Generator_State :: enum u8 {suspended_start, suspended_yield, executing, completed}
-
-Namespace_Data :: struct {
-	module: rawptr, // ^Module
+Disposable_Data :: struct {
+	stack:    [dynamic]Value, // (value, method, kind) triples flattened
+	disposed: bool,
 }
 
-// --- construction ---
+// --- shapes ---
 
-// A plain object with the given prototype (nil for a null prototype). Starts at the empty shape.
-object_new :: proc(rt: ^Runtime, proto: ^Object) -> ^Object {
-	obj := gc_new_cell(rt, Object, .object)
-	if obj == nil {return nil}
-	obj.shape = shape_empty(rt, proto)
-	obj.props = make([dynamic]Value, rt.allocator)
-	obj.extensible = true
-	return obj
+shape_new :: proc(rt: ^Runtime, proto: ^Object) -> ^Shape {
+	sh := cell_new(rt, Shape, .shape)
+	sh.proto = proto
+	sh.props = make([dynamic]Shape_Prop, rt_allocator(rt))
+	sh.transitions = make([dynamic]Transition, rt_allocator(rt))
+	return sh
 }
 
-// A plain object using an already-built shape (shares the hidden class). Adds a shape reference.
-object_with_shape :: proc(rt: ^Runtime, shape: ^Shape) -> ^Object {
-	obj := gc_new_cell(rt, Object, .object)
-	if obj == nil {return nil}
-	obj.shape = shape_ref(shape)
-	obj.props = make([dynamic]Value, len(shape.props), rt.allocator)
-	for i in 0 ..< len(shape.props) {obj.props[i] = UNDEFINED}
-	obj.extensible = true
-	return obj
+shape_finalize :: proc(rt: ^Runtime, sh: ^Shape) {
+	delete(sh.props)
+	delete(sh.transitions)
+	if sh.hash != nil {delete(sh.hash, rt_allocator(rt))}
 }
 
-object_ref :: proc(obj: ^Object) -> ^Object {
-	obj.ref_count += 1
-	return obj
+// The shared empty shape for objects created with `proto`.
+shape_root_for :: proc(rt: ^Runtime, proto: ^Object) -> ^Shape {
+	if sh, ok := rt.shape_root[proto]; ok {return sh}
+	sh := shape_new(rt, proto)
+	rt.shape_root[proto] = sh
+	return sh
 }
 
-object_unref :: proc(rt: ^Runtime, obj: ^Object) {
-	obj.ref_count -= 1
-	if obj.ref_count == 0 {gc_free_cell(rt, obj)}
-}
-
-object_destroy :: proc(rt: ^Runtime, obj: ^Object) {
-	// Clear outgoing edges first so a cycle sweep freeing several cells does not re-enter a
-	// half-freed child. We drop property values, the shape, and any exotic-held references.
-	for v in obj.props {
-		value_free(rt, v)
+@(private = "file")
+shape_build_hash :: proc(rt: ^Runtime, sh: ^Shape) {
+	n := len(sh.props)
+	if n <= SHAPE_LINEAR_MAX {
+		if sh.hash != nil {delete(sh.hash, rt_allocator(rt)); sh.hash = nil}
+		return
 	}
-	delete(obj.props)
-	obj.props = nil
-	exotic_destroy(rt, obj)
-	if obj.shape != nil {
-		shape_unref(rt, obj.shape)
-		obj.shape = nil
+	size := 16
+	for size < n * 2 {size *= 2}
+	if sh.hash == nil || len(sh.hash) != size {
+		if sh.hash != nil {delete(sh.hash, rt_allocator(rt))}
+		sh.hash = make([]u32, size, rt_allocator(rt))
+	} else {
+		for i in 0 ..< size {sh.hash[i] = 0}
 	}
-	gc_raw_free(rt, obj, size_of(Object))
-}
-
-// Free the references an exotic payload owns (the Value edges), leaving raw storage for
-// exotic_free_storage. Splitting the two lets the cycle collector drop edges across a whole garbage
-// set before freeing any struct, avoiding double frees.
-exotic_destroy_edges :: proc(rt: ^Runtime, obj: ^Object) {
-	switch &e in obj.exotic {
-	case Array_Data:
-		for v in e.dense {value_free(rt, v)}
-	case Function_Data:
-		for vr in e.var_refs {
-			if vr != nil {var_ref_unref(rt, vr)}
-		}
-		if e.bc != nil {function_bc_unref(rt, e.bc)}
-		value_free(rt, e.home)
-		e.bc = nil
-	case Native_Data:
-		for v in e.data {value_free(rt, v)}
-	case Bound_Function_Data:
-		value_free(rt, e.target)
-		value_free(rt, e.this_val)
-		for v in e.bound_args {value_free(rt, v)}
-	case Primitive_Wrapper:
-		value_free(rt, e.prim)
-	case Typed_Array_Data:
-		value_free(rt, e.buffer)
-	case Data_View_Data:
-		value_free(rt, e.buffer)
-	case Map_Data:
-		for en in e.entries {value_free(rt, en.key); value_free(rt, en.val)}
-	case Set_Data:
-		for v in e.entries {value_free(rt, v)}
-	case Proxy_Data:
-		value_free(rt, e.target)
-		value_free(rt, e.handler)
-	case RegExp_Data:
-		if e.source != nil {string_unref(rt, e.source); e.source = nil}
-	case Iterator_Data:
-		value_free(rt, e.target)
-	case Promise_Data:
-		value_free(rt, e.result)
-		for r in e.fulfill_jobs {promise_reaction_free(rt, r)}
-		for r in e.reject_jobs {promise_reaction_free(rt, r)}
-	case Array_Buffer_Data, Date_Data, Error_Data, Generator_Data, Namespace_Data:
+	mask := u32(size - 1)
+	for p, idx in sh.props {
+		h := atom_mix(p.atom) & mask
+		for sh.hash[h] != 0 {h = (h + 1) & mask}
+		sh.hash[h] = u32(idx + 1)
 	}
 }
 
-// Free the raw (non-Value) storage an exotic payload owns: dynamic arrays, maps, byte buffers, and
-// captured frames. Call after exotic_destroy_edges.
-exotic_free_storage :: proc(rt: ^Runtime, obj: ^Object) {
-	switch &e in obj.exotic {
-	case Array_Data:
-		delete(e.dense)
-	case Function_Data:
-		if e.var_refs != nil {delete(e.var_refs, rt.allocator)}
-	case Native_Data:
-		if e.data != nil {delete(e.data, rt.allocator)}
-	case Bound_Function_Data:
-		if e.bound_args != nil {delete(e.bound_args, rt.allocator)}
-	case Array_Buffer_Data:
-		if e.bytes != nil {gc_raw_free(rt, raw_data(e.bytes), len(e.bytes))}
-	case Map_Data:
-		delete(e.entries)
-		delete(e.index)
-	case Set_Data:
-		delete(e.entries)
-		delete(e.index)
-	case RegExp_Data:
-		if e.bytecode != nil {gc_raw_free(rt, raw_data(e.bytecode), len(e.bytecode))}
-	case Promise_Data:
-		delete(e.fulfill_jobs)
-		delete(e.reject_jobs)
-	case Generator_Data:
-		if e.frame != nil {frame_free(rt, cast(^Call_Frame)e.frame)}
-	case Primitive_Wrapper, Typed_Array_Data, Data_View_Data, Proxy_Data, Date_Data, Error_Data,
-	     Iterator_Data, Namespace_Data:
+atom_mix :: #force_inline proc "contextless" (a: Atom) -> u32 {
+	return (a * 0x9E3779B1) ~ (a >> 15)
+}
+
+shape_find :: #force_inline proc "contextless" (sh: ^Shape, a: Atom) -> int {
+	if sh.hash == nil {
+		for p, i in sh.props {
+			if p.atom == a {return i}
+		}
+		return -1
 	}
-}
-
-// Combined destroy for the refcount-zero path (one cell, not a cyclic set): drop edges then storage.
-exotic_destroy :: proc(rt: ^Runtime, obj: ^Object) {
-	exotic_destroy_edges(rt, obj)
-	exotic_free_storage(rt, obj)
-}
-
-promise_reaction_free :: proc(rt: ^Runtime, r: Promise_Reaction) {
-	value_free(rt, r.handler)
-	value_free(rt, r.capability_resolve)
-	value_free(rt, r.capability_reject)
-}
-
-// --- the cycle collector's view of a cell's outgoing references ---
-//
-// Called by gc.odin for every cyclic cell. It must visit exactly the heap cells this cell holds a
-// strong reference to. WeakRef / WeakMap keys are intentionally NOT visited.
-gc_visit_children :: proc(h: ^GC_Header, visit: proc(child: ^GC_Header)) {
-	switch h.kind {
-	case .object:
-		obj := cast(^Object)h
-		if obj.shape != nil {visit(cast(^GC_Header)obj.shape)}
-		for v in obj.props {
-			if is_heap(v) {visit(as_header(v))}
-		}
-		gc_visit_exotic(obj, visit)
-	case .function_bc:
-		fb := cast(^Function_Bytecode)h
-		for v in fb.cpool {
-			if is_heap(v) {visit(as_header(v))}
-		}
-	case .var_ref:
-		vr := cast(^Var_Ref)h
-		if is_heap(vr.value) {visit(as_header(vr.value))}
-	case .shape:
-		sh := cast(^Shape)h
-		// A shape references its prototype object and, through its transition cache, its child shapes.
-		if sh.proto != nil {visit(cast(^GC_Header)sh.proto)}
-		for &t in sh.transitions {
-			if t.to != nil {visit(cast(^GC_Header)t.to)}
-		}
-	case .string, .symbol, .bigint:
+	mask := u32(len(sh.hash) - 1)
+	h := atom_mix(a) & mask
+	for {
+		v := sh.hash[h]
+		if v == 0 {return -1}
+		if sh.props[v - 1].atom == a {return int(v - 1)}
+		h = (h + 1) & mask
 	}
 }
 
 @(private = "file")
-gc_visit_exotic :: proc(obj: ^Object, visit: proc(child: ^GC_Header)) {
-	switch &e in obj.exotic {
+shape_clone :: proc(rt: ^Runtime, src: ^Shape, dict: bool) -> ^Shape {
+	sh := shape_new(rt, src.proto)
+	reserve(&sh.props, len(src.props) + 1)
+	append(&sh.props, ..src.props[:])
+	sh.is_dict = dict
+	shape_build_hash(rt, sh)
+	return sh
+}
+
+// Give `o` a private, mutable shape.
+object_make_dict :: proc(rt: ^Runtime, o: ^Object) {
+	if o.shape.is_dict {return}
+	o.shape = shape_clone(rt, o.shape, true)
+}
+
+// --- slots ---
+
+@(private = "file")
+slots_reserve :: proc(rt: ^Runtime, o: ^Object, n: int) {
+	if u32(n) <= o.slot_cap {return}
+	new_cap := max(n, int(o.slot_cap) * 3 / 2, 4)
+	o.slots = cast([^]Prop_Slot)mem_resize(rt, o.slots, int(o.slot_cap) * size_of(Prop_Slot), new_cap * size_of(Prop_Slot))
+	for i in int(o.slot_cap) ..< new_cap {o.slots[i] = {}}
+	o.slot_cap = u32(new_cap)
+}
+
+// Append a property to `o` (the caller has checked it does not exist). Returns its slot.
+add_property :: proc(rt: ^Runtime, o: ^Object, a: Atom, flags: Prop_Flags, kind: Prop_Kind = .data) -> ^Prop_Slot {
+	sh := o.shape
+	if sh.is_dict {
+		append(&sh.props, Shape_Prop{a, flags, kind})
+		n := len(sh.props)
+		if n > SHAPE_LINEAR_MAX {
+			if sh.hash == nil || n * 2 > len(sh.hash) {
+				shape_build_hash(rt, sh)
+			} else {
+				mask := u32(len(sh.hash) - 1)
+				h := atom_mix(a) & mask
+				for sh.hash[h] != 0 {h = (h + 1) & mask}
+				sh.hash[h] = u32(n)
+			}
+		}
+	} else {
+		next: ^Shape
+		for t in sh.transitions {
+			if t.atom == a && t.flags == flags && t.kind == kind {next = t.to; break}
+		}
+		if next == nil {
+			if len(sh.props) >= SHAPE_SHARED_MAX {
+				next = shape_clone(rt, sh, true)
+			} else {
+				next = shape_clone(rt, sh, false)
+			}
+			append(&next.props, Shape_Prop{a, flags, kind})
+			shape_build_hash(rt, next)
+			if !next.is_dict {
+				append(&sh.transitions, Transition{a, flags, kind, next})
+			}
+		}
+		o.shape = next
+	}
+	n := len(o.shape.props)
+	slots_reserve(rt, o, n)
+	s := &o.slots[n - 1]
+	s^ = {}
+	return s
+}
+
+// Remove own property at index `idx` (keeps the order of the others).
+remove_property_at :: proc(rt: ^Runtime, o: ^Object, idx: int) {
+	object_make_dict(rt, o)
+	sh := o.shape
+	n := len(sh.props)
+	ordered_remove(&sh.props, idx)
+	for i in idx ..< n - 1 {o.slots[i] = o.slots[i + 1]}
+	o.slots[n - 1] = {}
+	shape_build_hash(rt, sh)
+}
+
+// Change the attributes/kind of an existing own property.
+set_property_flags :: proc(rt: ^Runtime, o: ^Object, idx: int, flags: Prop_Flags, kind: Prop_Kind) {
+	p := o.shape.props[idx]
+	if p.flags == flags && p.kind == kind {return}
+	object_make_dict(rt, o)
+	o.shape.props[idx].flags = flags
+	o.shape.props[idx].kind = kind
+}
+
+set_object_proto :: proc(rt: ^Runtime, o: ^Object, proto: ^Object) {
+	if o.shape.proto == proto {return}
+	if len(o.shape.props) == 0 && !o.shape.is_dict {
+		o.shape = shape_root_for(rt, proto)
+		return
+	}
+	object_make_dict(rt, o)
+	o.shape.proto = proto
+}
+
+object_proto :: #force_inline proc "contextless" (o: ^Object) -> ^Object {return o.shape.proto}
+
+// --- creation ---
+
+object_new_shape :: proc(rt: ^Runtime, sh: ^Shape, class: Class_ID) -> ^Object {
+	o := cell_new(rt, Object, .object)
+	o.class = class
+	o.extensible = true
+	o.shape = sh
+	n := len(sh.props)
+	if n > 0 {
+		o.slots = cast([^]Prop_Slot)mem_alloc(rt, n * size_of(Prop_Slot))
+		o.slot_cap = u32(n)
+	}
+	return o
+}
+
+object_new_proto :: proc(ctx: ^Context, proto: ^Object, class: Class_ID = .object) -> ^Object {
+	return object_new_shape(ctx.rt, shape_root_for(ctx.rt, proto), class)
+}
+
+new_plain_object :: proc(ctx: ^Context) -> ^Object {
+	return object_new_proto(ctx, ctx.class_proto[.object])
+}
+
+// A fresh Array with `n` slots of capacity and length 0.
+array_new :: proc(ctx: ^Context, cap := 0) -> ^Object {
+	rt := ctx.rt
+	o := object_new_shape(rt, ctx.array_shape, .array)
+	o.fast_array = true
+	o.slots[0].value = mk_int(0)
+	ad := Array_Data{}
+	if cap > 0 {
+		ad.values = mem_array(rt, Value, cap)
+		ad.cap = u32(cap)
+	}
+	o.data = ad
+	return o
+}
+
+// An Array holding a copy of `vals`.
+array_from_values :: proc(ctx: ^Context, vals: []Value) -> ^Object {
+	o := array_new(ctx, len(vals))
+	ad := &o.data.(Array_Data)
+	for v, i in vals {ad.values[i] = v}
+	ad.count = u32(len(vals))
+	o.slots[0].value = mk_u32(u32(len(vals)))
+	return o
+}
+
+array_data :: #force_inline proc(o: ^Object) -> ^Array_Data {
+	return &o.data.(Array_Data)
+}
+
+array_reserve :: proc(rt: ^Runtime, ad: ^Array_Data, n: u32) {
+	if n <= ad.cap {return}
+	new_cap := max(n, ad.cap * 3 / 2 + 4)
+	ad.values = cast([^]Value)mem_resize(rt, ad.values, int(ad.cap) * size_of(Value), int(new_cap) * size_of(Value))
+	ad.cap = new_cap
+}
+
+// Push onto a fast array (caller guarantees fast_array and that length == count).
+array_push_fast :: proc(rt: ^Runtime, o: ^Object, v: Value) {
+	ad := &o.data.(Array_Data)
+	array_reserve(rt, ad, ad.count + 1)
+	ad.values[ad.count] = v
+	ad.count += 1
+	o.slots[0].value = mk_u32(ad.count)
+}
+
+// --- finalization ---
+
+object_finalize :: proc(rt: ^Runtime, o: ^Object) {
+	if o.slots != nil {mem_free(rt, o.slots, int(o.slot_cap) * size_of(Prop_Slot))}
+	o.slots = nil
+	switch d in o.data {
 	case Array_Data:
-		for v in e.dense {
-			if is_heap(v) {visit(as_header(v))}
-		}
-	case Function_Data:
-		if e.bc != nil {visit(cast(^GC_Header)e.bc)}
-		for vr in e.var_refs {
-			if vr != nil {visit(cast(^GC_Header)vr)}
-		}
-		if is_heap(e.home) {visit(as_header(e.home))}
+		if d.values != nil {mem_free(rt, d.values, int(d.cap) * size_of(Value))}
+	case Mapped_Args_Data:
+		if d.refs != nil {mem_free(rt, d.refs, int(d.count) * size_of(^Var_Ref))}
+	case Func_Data:
+		if d.var_refs != nil && d.bc != nil {mem_free(rt, d.var_refs, int(d.bc.closure_var_count) * size_of(^Var_Ref))}
 	case Native_Data:
-		for v in e.data {
-			if is_heap(v) {visit(as_header(v))}
+		if d.data != nil {mem_free(rt, d.data, int(d.data_len) * size_of(Value))}
+	case ^Bound_Data:
+		delete(d.args, rt_allocator(rt))
+		free(d, rt_allocator(rt))
+	case Prim_Data, Date_Data:
+	case ^RegExp_Data:
+		regexp_data_free(rt, d)
+	case ^Map_State:
+		delete(d.entries)
+		if d.index != nil {delete(d.index, rt_allocator(rt))}
+		free(d, rt_allocator(rt))
+	case ^Weak_Ref_Data:
+		free(d, rt_allocator(rt))
+	case ^Fin_Rec_Data:
+		delete(d.cells)
+		free(d, rt_allocator(rt))
+	case ^Array_Buffer:
+		if d.data != nil && !d.shared {mem_free(rt, d.data, d.alloc_len)}
+		delete(d.views)
+		free(d, rt_allocator(rt))
+	case ^Typed_Array:
+		free(d, rt_allocator(rt))
+	case ^Proxy_Data:
+		free(d, rt_allocator(rt))
+	case ^Promise_Data:
+		delete(d.reactions)
+		free(d, rt_allocator(rt))
+	case ^Coro:
+		coro_free(rt, d)
+	case ^Iter_State:
+		iter_state_free(rt, d)
+	case ^Module:
+	case ^Disposable_Data:
+		delete(d.stack)
+		free(d, rt_allocator(rt))
+	case Internal_Data:
+		if d.values != nil {mem_free(rt, d.values, int(d.count) * size_of(Value))}
+	}
+	o.data = nil
+}
+
+// --- tracing ---
+
+object_trace :: proc(rt: ^Runtime, o: ^Object) {
+	sh := o.shape
+	mark_cell(rt, sh)
+	for p, i in sh.props {
+		s := &o.slots[i]
+		switch p.kind {
+		case .data:
+			mark_value(rt, s.value)
+		case .accessor:
+			mark_cell(rt, s.getset.getter)
+			mark_cell(rt, s.getset.setter)
+		case .var_ref:
+			mark_cell(rt, s.var_ref)
 		}
-	case Bound_Function_Data:
-		if is_heap(e.target) {visit(as_header(e.target))}
-		if is_heap(e.this_val) {visit(as_header(e.this_val))}
-		for v in e.bound_args {
-			if is_heap(v) {visit(as_header(v))}
+	}
+	switch d in o.data {
+	case Array_Data:
+		if d.values != nil {mark_values(rt, d.values[:d.count])}
+	case Mapped_Args_Data:
+		for i in 0 ..< int(d.count) {mark_cell(rt, d.refs[i])}
+	case Func_Data:
+		mark_cell(rt, d.bc)
+		mark_cell(rt, d.home)
+		if d.var_refs != nil && d.bc != nil {
+			for i in 0 ..< int(d.bc.closure_var_count) {mark_cell(rt, d.var_refs[i])}
 		}
-	case Primitive_Wrapper:
-		if is_heap(e.prim) {visit(as_header(e.prim))}
-	case Typed_Array_Data:
-		if is_heap(e.buffer) {visit(as_header(e.buffer))}
-	case Data_View_Data:
-		if is_heap(e.buffer) {visit(as_header(e.buffer))}
-	case Map_Data:
-		if !e.is_weak {
-			for en in e.entries {
-				if is_heap(en.key) {visit(as_header(en.key))}
-				if is_heap(en.val) {visit(as_header(en.val))}
+	case Native_Data:
+		if d.data != nil {mark_values(rt, d.data[:d.data_len])}
+	case ^Bound_Data:
+		mark_value(rt, d.target)
+		mark_value(rt, d.this)
+		mark_values(rt, d.args)
+	case Prim_Data:
+		mark_value(rt, d.v)
+	case Date_Data:
+	case ^RegExp_Data:
+		mark_cell(rt, d.source)
+	case ^Map_State:
+		if !d.is_weak {
+			for &e in d.entries {
+				if !e.deleted {mark_value(rt, e.key); mark_value(rt, e.value)}
 			}
 		}
-	case Set_Data:
-		if !e.is_weak {
-			for v in e.entries {
-				if is_heap(v) {visit(as_header(v))}
-			}
+	case ^Weak_Ref_Data:
+	case ^Fin_Rec_Data:
+		mark_value(rt, d.callback)
+		for c in d.cells {mark_value(rt, c.held)}
+	case ^Array_Buffer:
+	case ^Typed_Array:
+		mark_cell(rt, d.buffer)
+	case ^Proxy_Data:
+		mark_value(rt, d.target)
+		mark_value(rt, d.handler)
+	case ^Promise_Data:
+		mark_value(rt, d.result)
+		for &r in d.reactions {
+			mark_value(rt, r.handler)
+			mark_value(rt, r.resolve)
+			mark_value(rt, r.reject)
+			mark_value(rt, r.promise)
 		}
-	case Proxy_Data:
-		if is_heap(e.target) {visit(as_header(e.target))}
-		if is_heap(e.handler) {visit(as_header(e.handler))}
-	case Promise_Data:
-		if is_heap(e.result) {visit(as_header(e.result))}
-	case Iterator_Data:
-		if is_heap(e.target) {visit(as_header(e.target))}
-	case Array_Buffer_Data, Date_Data, RegExp_Data, Error_Data, Generator_Data, Namespace_Data:
-	// No strong Value references to visit for these: ArrayBuffer owns raw bytes, RegExp/Date are
-	// scalar, generator frames are reached through their own cells, namespaces through the module.
+	case ^Coro:
+		coro_trace(rt, d)
+	case ^Iter_State:
+		iter_state_trace(rt, d)
+	case ^Module:
+		mark_cell(rt, d)
+	case ^Disposable_Data:
+		mark_values(rt, d.stack[:])
+	case Internal_Data:
+		if d.values != nil {mark_values(rt, d.values[:d.count])}
 	}
 }
 
-// --- BigInt helper used across the object layer ---
+// --- BigInt cells ---
 
-// Compare two bigint cells; thin wrapper so callers do not import the bigint package directly.
-bigint_cmp_cells :: proc(a, b: ^JS_BigInt) -> int {
-	return bigint.cmp(a.val, b.val)
+JS_BigInt :: struct {
+	using cell: Cell,
+	val:        bigint.Int,
+}
+
+bigint_new :: proc(rt: ^Runtime, v: bigint.Int) -> ^JS_BigInt {
+	b := cell_new(rt, JS_BigInt, .bigint)
+	b.val = v
+	return b
+}
+
+bigint_finalize :: proc(rt: ^Runtime, b: ^JS_BigInt) {
+	context.allocator = rt_allocator(rt)
+	bigint.destroy(&b.val)
+}
+
+// --- closure cells ---
+
+Var_Ref :: struct {
+	using cell:  Cell,
+	pvalue:      ^Value, // the live location: into a frame while open, &value once detached
+	value:       Value,
+	is_detached: bool,
+	owner:       ^Object, // the coroutine object whose frame holds the open variable (or nil)
+}
+
+var_ref_new_detached :: proc(rt: ^Runtime, v: Value) -> ^Var_Ref {
+	vr := cell_new(rt, Var_Ref, .var_ref)
+	vr.is_detached = true
+	vr.value = v
+	vr.pvalue = &vr.value
+	return vr
+}
+
+// --- misc object helpers ---
+
+is_callable :: proc "contextless" (v: Value) -> bool {
+	if v.tag != .object {return false}
+	o := as_obj(v)
+	#partial switch o.class {
+	case .bytecode_function, .c_function, .bound_function:
+		return true
+	case .proxy:
+		return o.data.(^Proxy_Data).is_func
+	}
+	return false
+}
+
+is_constructor :: proc "contextless" (v: Value) -> bool {
+	if v.tag != .object {return false}
+	return as_obj(v).is_constructor
+}
+
+is_array_value :: proc(ctx: ^Context, v: Value) -> int {
+	if v.tag != .object {return 0}
+	o := as_obj(v)
+	if o.class == .array {return 1}
+	if o.class == .proxy {
+		pd := o.data.(^Proxy_Data)
+		if pd.revoked {throw_type_error(ctx, "revoked proxy"); return -1}
+		return is_array_value(ctx, pd.target)
+	}
+	return 0
 }

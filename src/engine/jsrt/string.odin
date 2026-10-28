@@ -1,343 +1,446 @@
 package jsrt
 
-// JavaScript strings.
+// JavaScript strings: sequences of UTF-16 code units.
 //
-// ECMAScript strings are sequences of UTF-16 code units. Storing every string as UTF-16 wastes half
-// the memory for the ASCII-heavy strings a browser actually sees, so (like QuickJS and the major
-// engines) we keep a compact form: a string is either 8-bit (Latin-1, one byte per code unit, usable
-// whenever every code unit is < 256) or 16-bit (UTF-16). The `wide` flag selects between them.
-//
-// Concatenation builds a rope (Concat node) rather than copying, so `a + b + c + ...` in a loop is
-// linear, not quadratic. A rope is flattened lazily the first time the string is indexed or handed to
-// code that needs contiguous storage. Flattening replaces the node's payload with a flat buffer.
+// A flat string stores either 8-bit units (Latin-1, whenever every unit is < 256) or 16-bit units, in
+// line after the cell header. Concatenation of long strings builds a rope (`left ++ right`) so that a
+// loop of `s += x` is linear; a rope is flattened in place, iteratively, the first time its units are
+// needed. Short concatenations are copied flat right away (a rope node is not worth it below ~64
+// units). Interned strings (atoms) remember their atom so `obj[str]` does not rehash.
 
-import "core:unicode/utf16"
+import "base:runtime"
 import "core:unicode/utf8"
 
-// A string cell. The union discriminated by `kind`:
-//   - flat:   contiguous code units in `data` (`len` units; bytes if !wide, u16 if wide).
-//   - rope:   `left` ++ `right`, total length `len`, flattened on demand.
+STRING_LEN_MAX :: (1 << 30) - 1
+ROPE_MIN_LEN :: 64
+ROPE_MAX_DEPTH :: 48
+
 JS_String :: struct {
-	using header: GC_Header,
-	skind:        JS_String_Kind,
-	wide:         bool,
-	len:          u32, // number of UTF-16 code units
-	hash:         u32, // cached string hash, 0 until computed
-	// flat payload
-	data:         rawptr, // ^u8 when !wide, ^u16 when wide; nil for rope until flattened
-	// rope payload
-	left:         ^JS_String,
-	right:        ^JS_String,
+	using cell: Cell,
+	len:        u32,
+	hash:       u32, // 0 = not computed
+	atom:       Atom, // the atom this string is interned as, or 0
+	is_wide:    bool,
+	is_rope:    bool,
+	owns_buf:   bool, // data was allocated separately (after flattening a rope)
+	depth:      u8,   // rope depth
+	data:       rawptr,
+	left:       ^JS_String,
+	right:      ^JS_String,
 }
 
-JS_String_Kind :: enum u8 {
-	flat,
-	rope,
-}
+str_u8 :: #force_inline proc "contextless" (s: ^JS_String) -> [^]u8 {return cast([^]u8)s.data}
+str_u16 :: #force_inline proc "contextless" (s: ^JS_String) -> [^]u16 {return cast([^]u16)s.data}
 
-// --- creation ---
+// --- allocation ---
 
-// A new flat 8-bit (Latin-1) string with `n` uninitialised code units. Caller fills `data`.
-string_alloc_latin1 :: proc(rt: ^Runtime, n: u32) -> ^JS_String {
-	s := gc_new_cell(rt, JS_String, .string)
-	if s == nil {return nil}
-	s.skind = .flat
-	s.wide = false
-	s.len = n
-	if n > 0 {
-		s.data = gc_alloc(rt, int(n))
-		if s.data == nil {
-			gc_raw_free(rt, s, size_of(JS_String))
-			return nil
-		}
-	}
+str_alloc :: proc(rt: ^Runtime, n: int, wide: bool) -> ^JS_String {
+	bytes := wide ? n * 2 : n
+	s := cell_new(rt, JS_String, .string, bytes)
+	s.len = u32(n)
+	s.is_wide = wide
+	s.data = rawptr(uintptr(s) + size_of(JS_String))
 	return s
 }
 
-// A new flat 16-bit string with `n` uninitialised code units.
-string_alloc_wide :: proc(rt: ^Runtime, n: u32) -> ^JS_String {
-	s := gc_new_cell(rt, JS_String, .string)
-	if s == nil {return nil}
-	s.skind = .flat
-	s.wide = true
-	s.len = n
-	if n > 0 {
-		s.data = gc_alloc(rt, int(n) * 2)
-		if s.data == nil {
-			gc_raw_free(rt, s, size_of(JS_String))
-			return nil
-		}
+str_finalize :: proc(rt: ^Runtime, s: ^JS_String) {
+	if s.owns_buf && s.data != nil {
+		mem_free(rt, s.data, int(s.len) * (s.is_wide ? 2 : 1))
+		s.data = nil
 	}
+}
+
+string_finalize :: str_finalize
+
+str_from_latin1 :: proc(rt: ^Runtime, b: []u8) -> ^JS_String {
+	if len(b) == 0 {return rt.empty_string}
+	if len(b) == 1 && rt.char_strings[b[0]] != nil {return rt.char_strings[b[0]]}
+	s := str_alloc(rt, len(b), false)
+	copy(str_u8(s)[:len(b)], b)
 	return s
 }
 
-// Build a string from UTF-8 source (the common case: atom text, source literals via the reader).
-// Picks the narrowest representation.
-string_from_utf8 :: proc(rt: ^Runtime, src: string) -> ^JS_String {
-	// First pass: does any rune exceed Latin-1, and how many UTF-16 units do we need?
+// Build from UTF-16 units, narrowing to Latin-1 when possible.
+str_from_u16 :: proc(rt: ^Runtime, u: []u16) -> ^JS_String {
+	if len(u) == 0 {return rt.empty_string}
+	wide := false
+	for c in u {if c > 0xff {wide = true; break}}
+	if !wide {
+		if len(u) == 1 && rt.char_strings[u[0]] != nil {return rt.char_strings[u[0]]}
+		s := str_alloc(rt, len(u), false)
+		d := str_u8(s)
+		for c, i in u {d[i] = u8(c)}
+		return s
+	}
+	s := str_alloc(rt, len(u), true)
+	copy(str_u16(s)[:len(u)], u)
+	return s
+}
+
+str_from_utf8 :: proc(rt: ^Runtime, src: string) -> ^JS_String {
+	if len(src) == 0 {return rt.empty_string}
 	wide := false
 	units := 0
+	ascii := true
+	for i := 0; i < len(src); {
+		c := src[i]
+		if c < 0x80 {units += 1; i += 1; continue}
+		ascii = false
+		r, w := utf8.decode_rune_in_string(src[i:])
+		if r > 0xff {wide = true}
+		units += r > 0xffff ? 2 : 1
+		i += w
+	}
+	if ascii {return str_from_latin1(rt, transmute([]u8)src)}
+	s := str_alloc(rt, units, wide)
+	k := 0
 	for r in src {
-		if r > 0xFF {wide = true}
-		units += r > 0xFFFF ? 2 : 1
-	}
-	if !wide {
-		s := string_alloc_latin1(rt, u32(units))
-		if s == nil {return nil}
-		dst := ([^]u8)(s.data)
-		i := 0
-		for r in src {
-			dst[i] = u8(r)
-			i += 1
-		}
-		return s
-	}
-	s := string_alloc_wide(rt, u32(units))
-	if s == nil {return nil}
-	dst := ([^]u16)(s.data)
-	i := 0
-	buf: [2]u16
-	for r in src {
-		n := utf16.encode(buf[:], {r})
-		for k in 0 ..< n {
-			dst[i] = buf[k]
-			i += 1
+		if wide {
+			d := str_u16(s)
+			if r > 0xffff {
+				v := u32(r) - 0x10000
+				d[k] = u16(0xd800 + (v >> 10))
+				d[k + 1] = u16(0xdc00 + (v & 0x3ff))
+				k += 2
+			} else {
+				d[k] = u16(r)
+				k += 1
+			}
+		} else {
+			str_u8(s)[k] = u8(r)
+			k += 1
 		}
 	}
 	return s
 }
 
-// A flat Latin-1 string holding the decimal form of a u32 (used by integer atoms as keys).
-string_from_u32 :: proc(rt: ^Runtime, v: u32) -> ^JS_String {
-	buf: [10]u8
-	n := 0
-	x := v
-	if x == 0 {
-		s := string_alloc_latin1(rt, 1)
-		if s != nil {([^]u8)(s.data)[0] = '0'}
-		return s
-	}
-	for x > 0 {
-		buf[n] = u8('0' + x % 10)
-		x /= 10
-		n += 1
-	}
-	s := string_alloc_latin1(rt, u32(n))
-	if s == nil {return nil}
-	dst := ([^]u8)(s.data)
-	for i in 0 ..< n {
-		dst[i] = buf[n - 1 - i]
-	}
+str_from_code_unit :: proc(rt: ^Runtime, c: u16) -> ^JS_String {
+	if c < 256 {return rt.char_strings[c]}
+	s := str_alloc(rt, 1, true)
+	str_u16(s)[0] = c
 	return s
 }
 
-// The canonical empty string.
-string_empty :: proc(rt: ^Runtime) -> ^JS_String {
-	s := rt.str_empty
-	s.ref_count += 1
+str_from_code_point :: proc(rt: ^Runtime, cp: u32) -> ^JS_String {
+	if cp < 0x10000 {return str_from_code_unit(rt, u16(cp))}
+	v := cp - 0x10000
+	u := [2]u16{u16(0xd800 + (v >> 10)), u16(0xdc00 + (v & 0x3ff))}
+	return str_from_u16(rt, u[:])
+}
+
+// --- flattening ---
+
+str_flat :: #force_inline proc(rt: ^Runtime, s: ^JS_String) -> ^JS_String {
+	if s.is_rope {str_flatten(rt, s)}
 	return s
 }
 
-// --- element access (flattens ropes as needed) ---
-
-// The UTF-16 code unit at index i (caller guarantees i < len).
-string_char_at :: proc(rt: ^Runtime, s: ^JS_String, i: u32) -> u16 {
-	f := string_flatten(rt, s)
-	if f.wide {
-		return ([^]u16)(f.data)[i]
+str_flatten :: proc(rt: ^Runtime, s: ^JS_String) {
+	if !s.is_rope {return}
+	n := int(s.len)
+	wide := s.is_wide
+	buf := mem_alloc(rt, wide ? n * 2 : n)
+	// iterative in-order walk (ropes can be deep; never recurse on the host stack)
+	stack := make([dynamic]^JS_String, 0, 32, rt.allocator)
+	defer delete(stack)
+	pos := 0
+	append(&stack, s)
+	for len(stack) > 0 {
+		cur := pop(&stack)
+		if cur.is_rope {
+			append(&stack, cur.right)
+			append(&stack, cur.left)
+			continue
+		}
+		m := int(cur.len)
+		if wide {
+			d := cast([^]u16)buf
+			if cur.is_wide {
+				copy(d[pos:pos + m], str_u16(cur)[:m])
+			} else {
+				src := str_u8(cur)
+				for i in 0 ..< m {d[pos + i] = u16(src[i])}
+			}
+		} else {
+			copy((cast([^]u8)buf)[pos:pos + m], str_u8(cur)[:m])
+		}
+		pos += m
 	}
-	return u16(([^]u8)(f.data)[i])
-}
-
-// Ensure `s` is a flat string (collapses a rope in place) and return it.
-string_flatten :: proc(rt: ^Runtime, s: ^JS_String) -> ^JS_String {
-	if s.skind == .flat {
-		return s
-	}
-	// Determine if the whole rope is representable in Latin-1.
-	wide := rope_is_wide(s)
-	n := s.len
-	buf: rawptr
-	if n > 0 {
-		buf = gc_alloc(rt, int(n) * (wide ? 2 : 1))
-		if buf == nil {return s}
-	}
-	pos: u32 = 0
-	rope_copy_into(rt, s, buf, wide, &pos)
-	// Replace the node with its flat form and drop the children.
-	left, right := s.left, s.right
-	s.skind = .flat
-	s.wide = wide
-	s.data = buf
+	s.is_rope = false
 	s.left = nil
 	s.right = nil
-	if left != nil {string_unref(rt, left)}
-	if right != nil {string_unref(rt, right)}
-	return s
+	s.data = buf
+	s.owns_buf = true
+	s.depth = 0
 }
 
-@(private = "file")
-rope_is_wide :: proc(s: ^JS_String) -> bool {
-	if s.skind == .flat {
-		return s.wide
-	}
-	return rope_is_wide(s.left) || rope_is_wide(s.right)
+// The code unit at index i (s must be flat).
+str_at :: #force_inline proc "contextless" (s: ^JS_String, i: int) -> u16 {
+	if s.is_wide {return str_u16(s)[i]}
+	return u16(str_u8(s)[i])
 }
 
-@(private = "file")
-rope_copy_into :: proc(rt: ^Runtime, s: ^JS_String, dst: rawptr, wide: bool, pos: ^u32) {
-	if s.skind == .rope {
-		rope_copy_into(rt, s.left, dst, wide, pos)
-		rope_copy_into(rt, s.right, dst, wide, pos)
-		return
-	}
-	// flat leaf
-	if wide {
-		d := ([^]u16)(dst)
-		if s.wide {
-			src := ([^]u16)(s.data)
-			for i in 0 ..< s.len {d[pos^ + i] = src[i]}
-		} else {
-			src := ([^]u8)(s.data)
-			for i in 0 ..< s.len {d[pos^ + i] = u16(src[i])}
-		}
-	} else {
-		d := ([^]u8)(dst)
-		src := ([^]u8)(s.data)
-		for i in 0 ..< s.len {d[pos^ + i] = src[i]}
-	}
-	pos^ += s.len
+str_char_at :: proc(rt: ^Runtime, s: ^JS_String, i: int) -> u16 {
+	f := str_flat(rt, s)
+	return str_at(f, i)
+}
+
+// Copy the code units of a flat string into a fresh slice (temporary, in `allocator`).
+str_units :: proc(rt: ^Runtime, s: ^JS_String, allocator: runtime.Allocator) -> []u16 {
+	f := str_flat(rt, s)
+	out := make([]u16, int(f.len), allocator)
+	for i in 0 ..< int(f.len) {out[i] = str_at(f, i)}
+	return out
 }
 
 // --- concatenation ---
 
-// a ++ b as a rope (both references are consumed). Empty operands short-circuit.
-string_concat :: proc(rt: ^Runtime, a, b: ^JS_String) -> ^JS_String {
-	if a.len == 0 {
-		string_unref(rt, a)
-		return b
+// a ++ b. Returns nil when the result would exceed the maximum string length (caller throws).
+str_concat :: proc(rt: ^Runtime, a, b: ^JS_String) -> ^JS_String {
+	if a.len == 0 {return b}
+	if b.len == 0 {return a}
+	total := int(a.len) + int(b.len)
+	if total > STRING_LEN_MAX {return nil}
+	wide := a.is_wide || b.is_wide
+	if total < ROPE_MIN_LEN {
+		fa := str_flat(rt, a)
+		fb := str_flat(rt, b)
+		s := str_alloc(rt, total, wide)
+		if wide {
+			d := str_u16(s)
+			for i in 0 ..< int(fa.len) {d[i] = str_at(fa, i)}
+			for i in 0 ..< int(fb.len) {d[int(fa.len) + i] = str_at(fb, i)}
+		} else {
+			d := str_u8(s)
+			copy(d[:fa.len], str_u8(fa)[:fa.len])
+			copy(d[fa.len:total], str_u8(fb)[:fb.len])
+		}
+		return s
 	}
-	if b.len == 0 {
-		string_unref(rt, b)
-		return a
-	}
-	s := gc_new_cell(rt, JS_String, .string)
-	if s == nil {return nil}
-	s.skind = .rope
-	s.len = a.len + b.len
-	s.wide = a.wide || b.wide
+	s := cell_new(rt, JS_String, .string)
+	s.len = u32(total)
+	s.is_wide = wide
+	s.is_rope = true
 	s.left = a
 	s.right = b
+	s.depth = max(a.depth, b.depth) + 1
+	if s.depth > ROPE_MAX_DEPTH {str_flatten(rt, s)}
 	return s
 }
 
-// --- reference helpers (strings never form cycles) ---
-
-string_ref :: proc(s: ^JS_String) -> ^JS_String {
-	s.ref_count += 1
-	return s
+// Substring [start, end) of s.
+str_sub :: proc(rt: ^Runtime, s: ^JS_String, start, end: int) -> ^JS_String {
+	if start >= end {return rt.empty_string}
+	if start == 0 && end == int(s.len) {return s}
+	f := str_flat(rt, s)
+	n := end - start
+	if f.is_wide {
+		return str_from_u16(rt, str_u16(f)[start:end])
+	}
+	if n == 1 {return rt.char_strings[str_u8(f)[start]]}
+	r := str_alloc(rt, n, false)
+	copy(str_u8(r)[:n], str_u8(f)[start:end])
+	return r
 }
 
-string_unref :: proc(rt: ^Runtime, s: ^JS_String) {
-	s.ref_count -= 1
-	if s.ref_count == 0 {
-		gc_free_cell(rt, s)
-	}
-}
+// --- comparison and hashing ---
 
-string_destroy :: proc(rt: ^Runtime, s: ^JS_String) {
-	if s.skind == .rope {
-		if s.left != nil {string_unref(rt, s.left)}
-		if s.right != nil {string_unref(rt, s.right)}
-	} else if s.data != nil {
-		gc_raw_free(rt, s.data, int(s.len) * (s.wide ? 2 : 1))
-	}
-	gc_raw_free(rt, s, size_of(JS_String))
-}
-
-// --- hashing and comparison ---
-
-// FNV-1a over the code units; cached in s.hash (0 means "not computed", recomputed if it lands on 0).
-string_hash :: proc(rt: ^Runtime, s: ^JS_String) -> u32 {
-	if s.hash != 0 {
-		return s.hash
-	}
-	f := string_flatten(rt, s)
+str_hash :: proc(rt: ^Runtime, s: ^JS_String) -> u32 {
+	if s.hash != 0 {return s.hash}
+	f := str_flat(rt, s)
 	h: u32 = 2166136261
-	if f.wide {
-		d := ([^]u16)(f.data)
-		for i in 0 ..< f.len {
-			h = (h ~ u32(d[i])) * 16777619
-		}
+	n := int(f.len)
+	if f.is_wide {
+		d := str_u16(f)
+		for i in 0 ..< n {h = (h ~ u32(d[i])) * 16777619}
 	} else {
-		d := ([^]u8)(f.data)
-		for i in 0 ..< f.len {
-			h = (h ~ u32(d[i])) * 16777619
-		}
+		d := str_u8(f)
+		for i in 0 ..< n {h = (h ~ u32(d[i])) * 16777619}
 	}
 	if h == 0 {h = 1}
 	f.hash = h
 	return h
 }
 
-string_equal :: proc(rt: ^Runtime, a, b: ^JS_String) -> bool {
+str_eq :: proc(rt: ^Runtime, a, b: ^JS_String) -> bool {
 	if a == b {return true}
 	if a.len != b.len {return false}
-	fa := string_flatten(rt, a)
-	fb := string_flatten(rt, b)
-	for i in 0 ..< fa.len {
-		ca := fa.wide ? ([^]u16)(fa.data)[i] : u16(([^]u8)(fa.data)[i])
-		cb := fb.wide ? ([^]u16)(fb.data)[i] : u16(([^]u8)(fb.data)[i])
-		if ca != cb {return false}
+	if a.atom != 0 && b.atom != 0 {return a.atom == b.atom}
+	fa := str_flat(rt, a)
+	fb := str_flat(rt, b)
+	n := int(a.len)
+	if !fa.is_wide && !fb.is_wide {
+		da, db := str_u8(fa), str_u8(fb)
+		for i in 0 ..< n {if da[i] != db[i] {return false}}
+		return true
 	}
+	for i in 0 ..< n {if str_at(fa, i) != str_at(fb, i) {return false}}
 	return true
 }
 
-// Convert to an Odin UTF-8 string in the given allocator (for host glue and diagnostics).
-string_to_utf8 :: proc(rt: ^Runtime, s: ^JS_String, allocator := context.allocator) -> string {
-	f := string_flatten(rt, s)
-	if !f.wide {
-		b := make([]u8, f.len, allocator)
-		src := ([^]u8)(f.data)
-		ascii := true
-		for i in 0 ..< f.len {
-			b[i] = src[i]
-			if src[i] >= 0x80 {ascii = false}
-		}
-		if ascii {
-			return string(b)
-		}
-		// Latin-1 with high bytes: re-encode as UTF-8.
-		delete(b, allocator)
-		sb := make([dynamic]u8, allocator)
-		for i in 0 ..< f.len {
-			bytes, n := utf8.encode_rune(rune(src[i]))
-			for k in 0 ..< n {append(&sb, bytes[k])}
-		}
-		return string(sb[:])
+// Lexicographic comparison of code units: <0, 0, >0.
+str_cmp :: proc(rt: ^Runtime, a, b: ^JS_String) -> int {
+	fa := str_flat(rt, a)
+	fb := str_flat(rt, b)
+	n := min(int(fa.len), int(fb.len))
+	for i in 0 ..< n {
+		ca, cb := str_at(fa, i), str_at(fb, i)
+		if ca != cb {return int(ca) - int(cb)}
 	}
-	// Wide: decode UTF-16 to runes to UTF-8.
-	units := ([^]u16)(f.data)
-	sb := make([dynamic]u8, allocator)
-	i: u32 = 0
-	for i < f.len {
-		c := units[i]
-		r: rune
-		if c >= 0xD800 && c < 0xDC00 && i + 1 < f.len {
-			lo := units[i + 1]
-			if lo >= 0xDC00 && lo < 0xE000 {
-				r = rune(0x10000 + (u32(c - 0xD800) << 10) + u32(lo - 0xDC00))
-				i += 2
-			} else {
-				r = rune(c)
+	return int(fa.len) - int(fb.len)
+}
+
+// Does the flat string equal the ASCII literal?
+str_eq_ascii :: proc(rt: ^Runtime, s: ^JS_String, lit: string) -> bool {
+	if int(s.len) != len(lit) {return false}
+	f := str_flat(rt, s)
+	for i in 0 ..< len(lit) {if str_at(f, i) != u16(lit[i]) {return false}}
+	return true
+}
+
+// UTF-8 copy (lone surrogates become U+FFFD) in `allocator`.
+str_to_utf8 :: proc(rt: ^Runtime, s: ^JS_String, allocator: runtime.Allocator) -> string {
+	f := str_flat(rt, s)
+	n := int(f.len)
+	out := make([dynamic]u8, 0, n, allocator)
+	i := 0
+	for i < n {
+		c := u32(str_at(f, i))
+		i += 1
+		if c >= 0xd800 && c < 0xdc00 && i < n {
+			c2 := u32(str_at(f, i))
+			if c2 >= 0xdc00 && c2 < 0xe000 {
+				c = 0x10000 + ((c - 0xd800) << 10) + (c2 - 0xdc00)
 				i += 1
 			}
-		} else {
-			r = rune(c)
-			i += 1
 		}
-		bytes, n := utf8.encode_rune(r)
-		for k in 0 ..< n {append(&sb, bytes[k])}
+		if c >= 0xd800 && c < 0xe000 {c = 0xfffd}
+		if c < 0x80 {
+			append(&out, u8(c))
+		} else {
+			b, w := utf8.encode_rune(rune(c))
+			append(&out, ..b[:w])
+		}
 	}
-	return string(sb[:])
+	return string(out[:])
+}
+
+// The code point at i (combining a surrogate pair), and its length in units.
+str_code_point_at :: proc(f: ^JS_String, i: int) -> (u32, int) {
+	c := u32(str_at(f, i))
+	if c >= 0xd800 && c < 0xdc00 && i + 1 < int(f.len) {
+		c2 := u32(str_at(f, i + 1))
+		if c2 >= 0xdc00 && c2 < 0xe000 {
+			return 0x10000 + ((c - 0xd800) << 10) + (c2 - 0xdc00), 2
+		}
+	}
+	return c, 1
+}
+
+// --- builder ---
+
+// Accumulates code units and produces a JS_String. Starts narrow, widens on the first unit > 255.
+String_Builder :: struct {
+	rt:    ^Runtime,
+	b8:    [dynamic]u8,
+	b16:   [dynamic]u16,
+	wide:  bool,
+	len:   int,
+	overflow: bool,
+}
+
+sb_init :: proc(rt: ^Runtime, cap := 16) -> String_Builder {
+	return String_Builder{rt = rt, b8 = make([dynamic]u8, 0, cap, rt.allocator), b16 = make([dynamic]u16, rt.allocator)}
+}
+
+sb_destroy :: proc(sb: ^String_Builder) {
+	delete(sb.b8)
+	delete(sb.b16)
+}
+
+@(private = "file")
+sb_widen :: proc(sb: ^String_Builder) {
+	reserve(&sb.b16, len(sb.b8) + 16)
+	for c in sb.b8 {append(&sb.b16, u16(c))}
+	clear(&sb.b8)
+	sb.wide = true
+}
+
+sb_unit :: proc(sb: ^String_Builder, c: u16) {
+	if sb.len >= STRING_LEN_MAX {sb.overflow = true; return}
+	sb.len += 1
+	if sb.wide {append(&sb.b16, c); return}
+	if c > 0xff {sb_widen(sb); append(&sb.b16, c); return}
+	append(&sb.b8, u8(c))
+}
+
+sb_code_point :: proc(sb: ^String_Builder, cp: u32) {
+	if cp < 0x10000 {sb_unit(sb, u16(cp)); return}
+	v := cp - 0x10000
+	sb_unit(sb, u16(0xd800 + (v >> 10)))
+	sb_unit(sb, u16(0xdc00 + (v & 0x3ff)))
+}
+
+sb_ascii :: proc(sb: ^String_Builder, s: string) {
+	if sb.len + len(s) > STRING_LEN_MAX {sb.overflow = true; return}
+	sb.len += len(s)
+	if sb.wide {
+		for i in 0 ..< len(s) {append(&sb.b16, u16(s[i]))}
+	} else {
+		append(&sb.b8, s)
+	}
+}
+
+sb_utf8 :: proc(sb: ^String_Builder, s: string) {
+	for r in s {sb_code_point(sb, u32(r))}
+}
+
+sb_str :: proc(sb: ^String_Builder, s: ^JS_String) {
+	f := str_flat(sb.rt, s)
+	n := int(f.len)
+	if sb.len + n > STRING_LEN_MAX {sb.overflow = true; return}
+	if f.is_wide && !sb.wide {sb_widen(sb)}
+	sb.len += n
+	if sb.wide {
+		reserve(&sb.b16, len(sb.b16) + n)
+		if f.is_wide {
+			append(&sb.b16, ..str_u16(f)[:n])
+		} else {
+			d := str_u8(f)
+			for i in 0 ..< n {append(&sb.b16, u16(d[i]))}
+		}
+	} else {
+		append(&sb.b8, ..str_u8(f)[:n])
+	}
+}
+
+sb_str_range :: proc(sb: ^String_Builder, s: ^JS_String, start, end: int) {
+	f := str_flat(sb.rt, s)
+	for i in start ..< end {sb_unit(sb, str_at(f, i))}
+}
+
+sb_finish :: proc(sb: ^String_Builder) -> ^JS_String {
+	defer sb_destroy(sb)
+	if sb.wide {return str_from_u16(sb.rt, sb.b16[:])}
+	return str_from_latin1(sb.rt, sb.b8[:])
+}
+
+// Finish into a Value, throwing RangeError on overflow.
+sb_finish_value :: proc(ctx: ^Context, sb: ^String_Builder) -> Value {
+	if sb.overflow {
+		sb_destroy(sb)
+		return throw_range_error(ctx, "invalid string length")
+	}
+	return mk_str(sb_finish(sb))
+}
+
+// --- small constructors used everywhere ---
+
+new_string :: proc(ctx: ^Context, s: string) -> Value {
+	return mk_str(str_from_utf8(ctx.rt, s))
+}
+
+// The interned text of a predefined atom as a string value.
+atom_string_value :: proc(rt: ^Runtime, a: Atom) -> Value {
+	return mk_str(atom_to_string(rt, a))
 }

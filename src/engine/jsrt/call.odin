@@ -1,173 +1,492 @@
 package jsrt
 
-// Calling functions: the [[Call]] and [[Construct]] entry points.
+// Calls: frames, closures, [[Call]] and [[Construct]] for every callable kind.
 //
-// call_function dispatches on the callee's exotic kind: a native function runs its Odin proc directly;
-// an interpreted function builds a Call_Frame and runs the interpreter; a bound function forwards to
-// its target with the bound this/args; a Proxy consults its apply/construct traps. This is the single
-// choke point the whole engine (operators, builtins, the interpreter's call opcodes) routes through.
-//
-// Argument ownership: call_function borrows `this` and `args` (it dups what it keeps) and returns a
-// freshly owned Value (or EXCEPTION). The caller still owns and frees its arguments.
+// An interpreter activation owns one block of Values: arguments (max(argc, arg_count)), locals,
+// the operand stack (stack_size) and the closure-cell pointers of captured locals. Ordinary calls
+// take that block from segmented value stacks that never move (closure cells may point into them);
+// generator and async activations allocate it on the heap so it survives suspension.
 
-// Call `func` with `this` and `args`. Returns an owned result or EXCEPTION.
-call_function :: proc(ctx: ^Context, func: Value, this: Value, args: []Value) -> Value {
-	if func.tag != .object {
-		return throw_type_error(ctx, "value is not a function")
-	}
-	obj := as_object(func)
-	switch &e in obj.exotic {
-	case Native_Data:
-		return call_native(ctx, obj, &e, this, args)
-	case Function_Data:
-		return call_interpreted(ctx, obj, &e, this, args, UNDEFINED)
-	case Bound_Function_Data:
-		return call_bound(ctx, &e, this, args)
-	case Proxy_Data:
-		return proxy_apply(ctx, obj, &e, this, args)
-	case Array_Data, Primitive_Wrapper, Array_Buffer_Data, Typed_Array_Data, Data_View_Data,
-	     Map_Data, Set_Data, Date_Data, RegExp_Data, Error_Data, Iterator_Data, Promise_Data,
-	     Generator_Data, Namespace_Data:
-		return throw_type_error(ctx, "value is not a function")
-	}
-	return throw_type_error(ctx, "value is not a function")
+Value_Segment :: struct {
+	data: []Value,
+	top:  int,
 }
 
-// [[Construct]]: new func(args). `new_target` is the originally invoked constructor.
-construct :: proc(ctx: ^Context, func: Value, args: []Value, new_target: Value) -> Value {
-	if func.tag != .object {
-		return throw_type_error(ctx, "value is not a constructor")
-	}
-	obj := as_object(func)
-	switch &e in obj.exotic {
-	case Native_Data:
-		if !e.ctor {
-			return throw_type_error(ctx, "value is not a constructor")
-		}
-		return call_native(ctx, obj, &e, UNDEFINED, args)
-	case Function_Data:
-		// Ordinary construct: create `this` from the constructor's prototype, run the body, and use
-		// the returned object if the body returns one.
-		proto := get_prototype_property(ctx, func)
-		this_obj := object_new(ctx.rt, proto != nil ? proto : ctx.realm.object_proto)
-		if this_obj == nil {return EXCEPTION}
-		if proto != nil {object_unref(ctx.rt, proto)}
-		this_val := mk_heap(.object, this_obj)
-		nt := is_undefined(new_target) ? func : new_target
-		res := call_interpreted(ctx, obj, &e, this_val, args, nt)
-		if is_exception(res) {
-			value_free(ctx.rt, this_val)
-			return res
-		}
-		if res.tag == .object {
-			value_free(ctx.rt, this_val)
-			return res
-		}
-		value_free(ctx.rt, res)
-		return this_val
-	case Bound_Function_Data:
-		nt := is_undefined(new_target) ? func : new_target
-		return construct(ctx, e.target, args, nt) // bound args merge is handled in call_bound path
-	case Proxy_Data:
-		return proxy_construct(ctx, obj, &e, args, new_target)
-	case Array_Data, Primitive_Wrapper, Array_Buffer_Data, Typed_Array_Data, Data_View_Data,
-	     Map_Data, Set_Data, Date_Data, RegExp_Data, Error_Data, Iterator_Data, Promise_Data,
-	     Generator_Data, Namespace_Data:
-		return throw_type_error(ctx, "value is not a constructor")
-	}
-	return throw_type_error(ctx, "value is not a constructor")
-}
+VSEGMENT_SIZE :: 32 * 1024
 
-// --- native ---
+Frame :: struct {
+	prev:        ^Frame,
+	ctx:         ^Context,
+	func:        Value,
+	bc:          ^Function_Bytecode,
+	this_val:    Value,
+	new_target:  Value,
+	args:        [^]Value,
+	arg_buf_len: int,
+	argc:        int,
+	locals:      [^]Value,
+	stack:       [^]Value,
+	sp:          int,
+	var_refs:    [^]^Var_Ref,
+	pc:          int,
+	extra_args:  []Value,
+	coro:        ^Object, // the generator/async object owning this frame (heap storage), or nil
+	seg_index:   int,
+	seg_top:     int,
+	storage:     [^]Value, // heap storage of a coroutine frame
+	storage_len: int,
+	pending_throw: bool, // resume by throwing the pending exception
+}
 
 @(private = "file")
-call_native :: proc(ctx: ^Context, obj: ^Object, e: ^Native_Data, this: Value, args: []Value) -> Value {
-	if !stack_enter(ctx.rt) {
-		return throw_range_error(ctx, "maximum call stack size exceeded")
-	}
-	defer stack_leave(ctx.rt)
-	saved_realm := ctx.realm
-	if e.realm != nil {ctx.realm = e.realm}
-	res := e.fn(ctx, this, args, e.magic, e.data)
-	ctx.realm = saved_realm
-	return res
+frame_slots :: #force_inline proc(b: ^Function_Bytecode, arg_buf_len: int) -> (n_values: int, n_ref_values: int) {
+	ref_values := (int(b.var_ref_count) * size_of(rawptr) + size_of(Value) - 1) / size_of(Value)
+	return arg_buf_len + int(b.var_count) + int(b.stack_size) + ref_values, ref_values
 }
 
-// --- interpreted ---
+// Lay out a frame's arguments, locals, stack and closure-cell array over `mem`.
+@(private = "file")
+frame_layout :: proc(f: ^Frame, b: ^Function_Bytecode, mem: [^]Value, args: []Value, arg_buf_len: int) {
+	n := len(args)
+	for i in 0 ..< n {mem[i] = args[i]}
+	total, ref_values := frame_slots(b, arg_buf_len)
+	for i in n ..< total - ref_values {mem[i] = UNDEFINED}
+	f.args = mem
+	f.arg_buf_len = arg_buf_len
+	f.argc = n
+	f.locals = mem[arg_buf_len:]
+	f.stack = mem[arg_buf_len + int(b.var_count):]
+	f.sp = 0
+	f.var_refs = cast([^]^Var_Ref)&mem[total - ref_values]
+	for i in 0 ..< int(b.var_ref_count) {f.var_refs[i] = nil}
+	f.bc = b
+}
 
 @(private = "file")
-call_interpreted :: proc(ctx: ^Context, obj: ^Object, e: ^Function_Data, this: Value, args: []Value, new_target: Value) -> Value {
+vstack_alloc :: proc(rt: ^Runtime, n: int) -> (mem: [^]Value, seg: int, top: int) {
+	for {
+		if rt.vstack_cur >= len(rt.vstack) {
+			size := max(VSEGMENT_SIZE, n)
+			append(&rt.vstack, Value_Segment{data = make([]Value, size, rt.allocator)})
+		}
+		s := &rt.vstack[rt.vstack_cur]
+		if s.top + n <= len(s.data) {
+			mem = raw_data(s.data[s.top:])
+			seg = rt.vstack_cur
+			top = s.top
+			s.top += n
+			return
+		}
+		if s.top == 0 {
+			// a segment too small for this frame: replace it
+			delete(s.data, rt.allocator)
+			s.data = make([]Value, max(VSEGMENT_SIZE, n), rt.allocator)
+			continue
+		}
+		rt.vstack_cur += 1
+		if rt.vstack_cur < len(rt.vstack) {rt.vstack[rt.vstack_cur].top = 0}
+	}
+}
+
+@(private = "file")
+vstack_release :: proc(rt: ^Runtime, seg, top: int) {
+	rt.vstack_cur = seg
+	rt.vstack[seg].top = top
+}
+
+// --- closure cells ---
+
+// The closure cell for local (or argument) `idx` of frame `f`, created on first capture.
+get_var_ref :: proc(rt: ^Runtime, f: ^Frame, idx: int, is_arg: bool) -> ^Var_Ref {
+	b := f.bc
+	vd := &b.vardefs[is_arg ? idx : int(b.arg_count) + idx]
+	pv := is_arg ? &f.args[idx] : &f.locals[idx]
+	if vd.is_captured {
+		k := int(vd.var_ref_idx)
+		vr := f.var_refs[k]
+		if vr != nil {return vr}
+		vr = cell_new(rt, Var_Ref, .var_ref)
+		vr.pvalue = pv
+		vr.owner = f.coro
+		f.var_refs[k] = vr
+		return vr
+	}
+	return var_ref_new_detached(rt, pv^)
+}
+
+close_var_ref :: #force_inline proc(vr: ^Var_Ref) {
+	if vr.is_detached {return}
+	vr.value = vr.pvalue^
+	vr.pvalue = &vr.value
+	vr.is_detached = true
+	vr.owner = nil
+}
+
+close_var_refs :: proc(f: ^Frame) {
+	if f.bc == nil || f.var_refs == nil {return}
+	for i in 0 ..< int(f.bc.var_ref_count) {
+		vr := f.var_refs[i]
+		if vr != nil {
+			close_var_ref(vr)
+			f.var_refs[i] = nil
+		}
+	}
+}
+
+close_lexical_var :: proc(f: ^Frame, idx: int) {
+	b := f.bc
+	k := int(b.vardefs[int(b.arg_count) + idx].var_ref_idx)
+	vr := f.var_refs[k]
+	if vr != nil {
+		close_var_ref(vr)
+		f.var_refs[k] = nil
+	}
+}
+
+// --- function objects ---
+
+function_proto_for_kind :: proc(ctx: ^Context, k: Func_Kind) -> ^Object {
+	switch k {
+	case .normal: return ctx.function_proto
+	case .generator: return ctx.class_proto[.generator_function]
+	case .async: return ctx.class_proto[.async_function]
+	case .async_generator: return ctx.class_proto[.async_generator_function]
+	}
+	return ctx.function_proto
+}
+
+// Bind `b` to the closure cells it captures from the frame `f` (whose function's cells are `cur`).
+closure_bind :: proc(ctx: ^Context, o: ^Object, b: ^Function_Bytecode, cur: [^]^Var_Ref, f: ^Frame) {
 	rt := ctx.rt
-	if !stack_enter(rt) {
-		return throw_range_error(ctx, "maximum call stack size exceeded")
-	}
-	defer stack_leave(rt)
-
-	// Generators and async functions do not run to completion here; they build a suspended frame.
-	if e.bc.func_kind != .normal {
-		return make_generator(ctx, obj, e, this, args)
-	}
-
-	f := frame_alloc(rt, e.bc)
-	if f == nil {return EXCEPTION}
-	defer frame_free(rt, f)
-
-	f.realm = e.realm != nil ? e.realm : ctx.realm
-	f.func_obj = value_dup(mk_heap(.object, obj))
-	f.this_val = value_dup(this)
-	f.new_target = value_dup(new_target)
-
-	// Bind arguments into the local slots (extra args dropped, missing args are undefined).
-	n := min(len(args), int(e.bc.arg_count))
-	for i in 0 ..< n {
-		f.locals[i] = value_dup(args[i])
-	}
-	for i in n ..< int(e.bc.arg_count) {
-		f.locals[i] = UNDEFINED
-	}
-
-	// Share the closure's upvalues with the frame.
-	if e.var_refs != nil {
-		f.var_refs = make([]^Var_Ref, len(e.var_refs), rt.allocator)
-		for vr, i in e.var_refs {
-			f.var_refs[i] = vr != nil ? var_ref_ref(vr) : nil
+	fd := Func_Data{bc = b}
+	if b.closure_var_count > 0 {
+		fd.var_refs = cast([^]^Var_Ref)mem_alloc(rt, int(b.closure_var_count) * size_of(^Var_Ref))
+		for i in 0 ..< int(b.closure_var_count) {
+			cv := &b.closure_vars[i]
+			vr: ^Var_Ref
+			#partial switch cv.closure_type {
+			case .local:
+				vr = get_var_ref(rt, f, int(cv.var_idx), false)
+			case .arg:
+				vr = get_var_ref(rt, f, int(cv.var_idx), true)
+			case:
+				if cur != nil {vr = cur[cv.var_idx]}
+			}
+			if vr == nil {vr = var_ref_new_detached(rt, UNDEFINED)}
+			fd.var_refs[i] = vr
 		}
 	}
-
-	saved_realm := ctx.realm
-	ctx.realm = f.realm
-	res := interp_run(ctx, f)
-	ctx.realm = saved_realm
-	return res
+	o.data = fd
 }
 
-// --- bound ---
-
-@(private = "file")
-call_bound :: proc(ctx: ^Context, e: ^Bound_Function_Data, this: Value, args: []Value) -> Value {
+// js_closure: a function object for bytecode `b` created in frame `f`.
+make_closure :: proc(ctx: ^Context, b: ^Function_Bytecode, cur: [^]^Var_Ref, f: ^Frame) -> Value {
 	rt := ctx.rt
-	total := len(e.bound_args) + len(args)
-	merged := make([]Value, total, rt.allocator)
-	defer delete(merged, rt.allocator)
-	for v, i in e.bound_args {merged[i] = v}
-	for v, i in args {merged[len(e.bound_args) + i] = v}
-	return call_function(ctx, e.target, e.this_val, merged)
-}
-
-// --- helpers ---
-
-// Read the "prototype" own property of a constructor as an Object (owned), or nil.
-get_prototype_property :: proc(ctx: ^Context, func: Value) -> ^Object {
-	p := object_get(ctx, as_object(func), pa(.A_prototype), func)
-	if p.tag == .object {
-		return as_object(p) // transfers the reference
+	o := object_new_proto(ctx, function_proto_for_kind(ctx, b.func_kind), .bytecode_function)
+	closure_bind(ctx, o, b, cur, f)
+	name := b.func_name == ATOM_NULL ? pa(.A_empty_string) : b.func_name
+	define_value(ctx, o, pa(.A_length), mk_int(i32(b.defined_arg_count)), {.configurable})
+	define_value(ctx, o, pa(.A_name), atom_to_value(rt, name), {.configurable})
+	if b.func_kind == .generator || b.func_kind == .async_generator {
+		cls: Class_ID = b.func_kind == .async_generator ? .async_generator : .generator
+		proto := object_new_proto(ctx, ctx.class_proto[cls])
+		define_value(ctx, o, pa(.A_prototype), mk_obj(proto), {.writable})
+	} else if b.has_prototype {
+		o.is_constructor = true
+		proto := new_plain_object(ctx)
+		define_value(ctx, proto, pa(.A_constructor), mk_obj(o), CW)
+		define_value(ctx, o, pa(.A_prototype), mk_obj(proto), {.writable})
 	}
-	value_free(ctx.rt, p)
-	return nil
+	return mk_obj(o)
 }
 
-// Is the object a native function cell? (Used by the embedding layer and is_callable fallback.)
-object_is_native_function :: proc(obj: ^Object) -> bool {
-	_, ok := obj.exotic.(Native_Data)
-	return ok
+// A top-level script/eval function: no captured cells.
+make_toplevel_function :: proc(ctx: ^Context, b: ^Function_Bytecode) -> Value {
+	o := object_new_proto(ctx, function_proto_for_kind(ctx, b.func_kind), .bytecode_function)
+	o.data = Func_Data{bc = b}
+	if b.closure_var_count > 0 {
+		// global references of top-level code resolve through the global object at run time
+		fd := &o.data.(Func_Data)
+		fd.var_refs = cast([^]^Var_Ref)mem_alloc(ctx.rt, int(b.closure_var_count) * size_of(^Var_Ref))
+		for i in 0 ..< int(b.closure_var_count) {fd.var_refs[i] = var_ref_new_detached(ctx.rt, UNDEFINED)}
+	}
+	return mk_obj(o)
+}
+
+set_home_object :: proc(func: Value, home: Value) {
+	if func.tag != .object {return}
+	o := as_obj(func)
+	if fd, ok := &o.data.(Func_Data); ok && fd.bc != nil && fd.bc.need_home_object {
+		fd.home = home.tag == .object ? as_obj(home) : nil
+	}
+}
+
+// A native function object.
+new_native_function :: proc(ctx: ^Context, fn: Native_Proc, name: string, length: int, magic: i32 = 0, kind: Native_Kind = .function, proto: ^Object = nil) -> ^Object {
+	rt := ctx.rt
+	o := object_new_proto(ctx, proto != nil ? proto : ctx.function_proto, .c_function)
+	o.data = Native_Data{fn = fn, realm = ctx, magic = magic, kind = kind}
+	o.is_constructor = kind != .function
+	define_value(ctx, o, pa(.A_length), mk_int(i32(length)), {.configurable})
+	define_value(ctx, o, pa(.A_name), mk_str(str_from_utf8(rt, name)), {.configurable})
+	return o
+}
+
+// A native closure carrying `data` values (read back with native_data()).
+new_native_closure :: proc(ctx: ^Context, fn: Native_Proc, name: string, length: int, data: []Value, magic: i32 = 0) -> ^Object {
+	o := new_native_function(ctx, fn, name, length, magic)
+	nd := &o.data.(Native_Data)
+	if len(data) > 0 {
+		nd.data = mem_array(ctx.rt, Value, len(data))
+		for v, i in data {nd.data[i] = v}
+		nd.data_len = u32(len(data))
+	}
+	return o
+}
+
+// Unnamed native closure (name ""): resolving functions, etc.
+new_native_anon :: proc(ctx: ^Context, fn: Native_Proc, length: int, data: []Value, magic: i32 = 0) -> ^Object {
+	return new_native_closure(ctx, fn, "", length, data, magic)
+}
+
+// The data of the native function currently executing.
+native_data :: proc(ctx: ^Context) -> []Value {
+	f := ctx.rt.native_self
+	if f == nil {return nil}
+	nd := &f.data.(Native_Data)
+	return nd.data[:nd.data_len]
+}
+
+arg :: #force_inline proc "contextless" (args: []Value, i: int) -> Value {
+	if i < len(args) {return args[i]}
+	return UNDEFINED
+}
+
+// --- [[Call]] / [[Construct]] ---
+
+call :: proc(ctx: ^Context, f: Value, this: Value, args: []Value) -> Value {
+	r := call_internal(ctx, f, this, UNDEFINED, args, false)
+	root(ctx.rt, r)
+	return r
+}
+
+// Construct(F, args, newTarget).
+construct :: proc(ctx: ^Context, f: Value, args: []Value, new_target: Value) -> Value {
+	if !is_constructor(f) {return throw_type_error(ctx, "not a constructor")}
+	r := call_internal(ctx, f, UNDEFINED, new_target, args, true)
+	root(ctx.rt, r)
+	return r
+}
+
+stack_overflow :: proc(ctx: ^Context) -> Value {
+	return throw_range_error(ctx, "Maximum call stack size exceeded")
+}
+
+call_internal :: proc(ctx: ^Context, f: Value, this: Value, new_target: Value, args: []Value, is_construct: bool) -> Value {
+	rt := ctx.rt
+	if f.tag != .object {return throw_not_a_function(ctx)}
+	o := as_obj(f)
+	if rt.stack_depth >= rt.config.max_stack_depth {return stack_overflow(ctx)}
+	#partial switch o.class {
+	case .bytecode_function:
+		fd := &o.data.(Func_Data)
+		b := fd.bc
+		switch b.func_kind {
+		case .normal:
+			if !is_construct {return interp_call(ctx, o, this, UNDEFINED, args)}
+			if b.is_derived_class_ctor {
+				return interp_call(ctx, o, UNDEFINED, new_target, args)
+			}
+			obj := create_from_ctor(ctx, new_target, .object)
+			if is_exception(obj) {return EXCEPTION}
+			root(rt, obj)
+			r := interp_call(ctx, o, obj, new_target, args)
+			if is_exception(r) {return EXCEPTION}
+			if r.tag == .object {return r}
+			return obj
+		case .generator:
+			if is_construct {return throw_type_error(ctx, "not a constructor")}
+			return generator_function_call(ctx, o, this, args)
+		case .async:
+			if is_construct {return throw_type_error(ctx, "not a constructor")}
+			return async_function_call(ctx, o, this, args)
+		case .async_generator:
+			if is_construct {return throw_type_error(ctx, "not a constructor")}
+			return async_generator_function_call(ctx, o, this, args)
+		}
+	case .c_function:
+		nd := &o.data.(Native_Data)
+		t := this
+		switch nd.kind {
+		case .function:
+			if is_construct {return throw_type_error(ctx, "not a constructor")}
+		case .constructor:
+			t = is_construct ? new_target : UNDEFINED
+		case .constructor_only:
+			if !is_construct {return throw_type_error(ctx, "constructor requires 'new'")}
+			t = new_target
+		}
+		return call_native(ctx, o, nd, t, args)
+	case .bound_function:
+		bd := o.data.(^Bound_Data)
+		full := make([]Value, len(bd.args) + len(args), tmp(rt))
+		copy(full, bd.args)
+		copy(full[len(bd.args):], args)
+		if is_construct {
+			nt := new_target
+			if nt.tag == .object && as_obj(nt) == o {nt = bd.target}
+			return call_internal(ctx, bd.target, UNDEFINED, nt, full, true)
+		}
+		rt.stack_depth += 1
+		defer rt.stack_depth -= 1
+		return call_internal(ctx, bd.target, bd.this, UNDEFINED, full, false)
+	case .proxy:
+		pd := o.data.(^Proxy_Data)
+		if !pd.is_func {return throw_not_a_function(ctx)}
+		if is_construct {return proxy_construct(ctx, o, args, new_target)}
+		return proxy_call(ctx, o, this, args)
+	}
+	return throw_not_a_function(ctx)
+}
+
+call_native :: proc(ctx: ^Context, o: ^Object, nd: ^Native_Data, this: Value, args: []Value) -> Value {
+	rt := ctx.rt
+	realm := nd.realm != nil ? nd.realm : ctx
+	m := temp_mark(rt)
+	if !gc_safepoint(ctx) {return EXCEPTION}
+	saved := rt.native_self
+	rt.native_self = o
+	rt.stack_depth += 1
+	r := nd.fn(realm, this, args, nd.magic)
+	rt.stack_depth -= 1
+	rt.native_self = saved
+	temp_reset(rt, m)
+	return r
+}
+
+// OrdinaryCreateFromConstructor / js_create_from_ctor: an object whose prototype is
+// newTarget.prototype (falling back to the realm's intrinsic for `class`).
+create_from_ctor :: proc(ctx: ^Context, new_target: Value, class: Class_ID) -> Value {
+	proto, ok := proto_from_ctor(ctx, new_target, class)
+	if !ok {return EXCEPTION}
+	return mk_obj(object_new_proto(ctx, proto, class))
+}
+
+proto_from_ctor :: proc(ctx: ^Context, new_target: Value, class: Class_ID) -> (^Object, bool) {
+	if is_undefined(new_target) {return ctx.class_proto[class], true}
+	p := get(ctx, new_target, pa(.A_prototype))
+	if is_exception(p) {return nil, false}
+	if p.tag == .object {return as_obj(p), true}
+	realm := function_realm(ctx, new_target)
+	if realm == nil {return nil, false}
+	return realm.class_proto[class], true
+}
+
+// Like proto_from_ctor but for a native-error / constructor whose intrinsic is not a class_proto.
+proto_from_ctor_intrinsic :: proc(ctx: ^Context, new_target: Value, pick: proc(c: ^Context) -> ^Object) -> (^Object, bool) {
+	if is_undefined(new_target) {return pick(ctx), true}
+	p := get(ctx, new_target, pa(.A_prototype))
+	if is_exception(p) {return nil, false}
+	if p.tag == .object {return as_obj(p), true}
+	realm := function_realm(ctx, new_target)
+	if realm == nil {return nil, false}
+	return pick(realm), true
+}
+
+// GetFunctionRealm.
+function_realm :: proc(ctx: ^Context, f: Value) -> ^Context {
+	if f.tag != .object {return ctx}
+	o := as_obj(f)
+	#partial switch o.class {
+	case .c_function:
+		return o.data.(Native_Data).realm
+	case .bytecode_function:
+		b := o.data.(Func_Data).bc
+		if b != nil && b.realm != nil {return b.realm}
+	case .proxy:
+		pd := o.data.(^Proxy_Data)
+		if pd.revoked {
+			throw_type_error(ctx, "revoked proxy")
+			return nil
+		}
+		return function_realm(ctx, pd.target)
+	case .bound_function:
+		return function_realm(ctx, o.data.(^Bound_Data).target)
+	}
+	return ctx
+}
+
+// --- interpreter activation ---
+
+interp_call :: proc(ctx: ^Context, fo: ^Object, this: Value, new_target: Value, args: []Value) -> Value {
+	rt := ctx.rt
+	fd := &fo.data.(Func_Data)
+	b := fd.bc
+	realm := b.realm != nil ? b.realm : ctx
+	arg_buf_len := max(len(args), int(b.arg_count))
+	total, _ := frame_slots(b, arg_buf_len)
+	mem, seg, top := vstack_alloc(rt, total)
+	f: Frame
+	f.ctx = realm
+	f.func = mk_obj(fo)
+	f.this_val = this
+	f.new_target = new_target
+	f.seg_index = seg
+	f.seg_top = top
+	frame_layout(&f, b, mem, args, arg_buf_len)
+	f.prev = rt.cur_frame
+	rt.cur_frame = &f
+	rt.stack_depth += 1
+	r, _ := interp_run(realm, &f, fd.var_refs)
+	rt.stack_depth -= 1
+	rt.cur_frame = f.prev
+	close_var_refs(&f)
+	vstack_release(rt, seg, top)
+	return r
+}
+
+// A heap frame for a coroutine (generator / async function), initialised but not started.
+coro_frame_new :: proc(ctx: ^Context, fo: ^Object, this: Value, args: []Value) -> ^Frame {
+	rt := ctx.rt
+	fd := &fo.data.(Func_Data)
+	b := fd.bc
+	realm := b.realm != nil ? b.realm : ctx
+	arg_buf_len := max(len(args), int(b.arg_count))
+	total, _ := frame_slots(b, arg_buf_len)
+	f := new(Frame, rt_allocator(rt))
+	mem := mem_array(rt, Value, max(total, 1))
+	f.storage = mem
+	f.storage_len = max(total, 1)
+	f.ctx = realm
+	f.func = mk_obj(fo)
+	f.this_val = this
+	f.new_target = UNDEFINED
+	f.seg_index = -1
+	frame_layout(f, b, mem, args, arg_buf_len)
+	return f
+}
+
+coro_frame_free :: proc(rt: ^Runtime, f: ^Frame) {
+	if f == nil {return}
+	close_var_refs(f)
+	if f.storage != nil {mem_free(rt, f.storage, f.storage_len * size_of(Value))}
+	free(f, rt_allocator(rt))
+}
+
+// Resume a suspended coroutine frame until it yields, awaits, returns or throws.
+coro_resume :: proc(ctx: ^Context, f: ^Frame) -> (Value, Exit_Kind) {
+	rt := ctx.rt
+	if rt.stack_depth >= rt.config.max_stack_depth {
+		stack_overflow(ctx)
+		return EXCEPTION, .exception
+	}
+	fd := &as_obj(f.func).data.(Func_Data)
+	f.prev = rt.cur_frame
+	rt.cur_frame = f
+	rt.stack_depth += 1
+	r, k := interp_run(f.ctx, f, fd.var_refs)
+	rt.stack_depth -= 1
+	rt.cur_frame = f.prev
+	f.prev = nil
+	return r, k
 }

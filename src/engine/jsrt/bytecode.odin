@@ -1,15 +1,8 @@
 package jsrt
 
-// The compiled form of a JavaScript function: Function_Bytecode mirrors QuickJS's JSFunctionBytecode.
-//
-// This is the contract between the two halves of the engine. The compiler front-end (E1) and the
-// reference QuickJS C compiler both emit exactly this structure (through the serialized bytecode the
-// reader in serialize.odin parses), and the interpreter in interp.odin executes it. The field set and
-// the flags match quickjs-opcode.h / quickjs.c so bytecode round-trips byte-for-byte.
-//
-// A Function_Bytecode is a refcounted GC cell because its constant pool can hold other functions
-// (closures) and objects (template literals), which can form cycles with the functions they close
-// over.
+// Function_Bytecode: the compiled form of a function, the contract between the compiler front-end
+// and this runtime. Field-for-field what QuickJS-ng 0.17 serializes (JS_WriteFunctionTag), so the
+// Odin compiler (E1) and the reference C compiler produce interchangeable input.
 
 Func_Kind :: enum u8 {
 	normal          = 0,
@@ -18,31 +11,39 @@ Func_Kind :: enum u8 {
 	async_generator = 3,
 }
 
-// A local variable slot definition (JSVarDef).
 Var_Def :: struct {
 	name:        Atom,
-	scope_level: u32,
-	scope_next:  i32, // stored as scope_next+1 in the stream; -1 means none after decode
+	scope_level: i32,
+	scope_next:  i32,
 	var_kind:    u8,
 	is_const:    bool,
 	is_lexical:  bool,
 	is_captured: bool,
-	var_ref_idx: u32, // valid when is_captured
+	var_ref_idx: u16,
 }
 
-// A closure variable descriptor (JSClosureVar): where an upvalue comes from in the parent frame.
+Closure_Type :: enum u8 {
+	local      = 0, // a local variable of the parent frame
+	arg        = 1, // an argument of the parent frame
+	ref        = 2, // one of the parent's own closure variables
+	global_ref = 3, // a global reference captured by an eval/closure
+	global_decl = 4,
+	global     = 5,
+	module_decl = 6,
+	module_import = 7,
+}
+
 Closure_Var :: struct {
 	name:         Atom,
-	var_idx:      u32,
-	closure_type: u8, // 0 = local of parent, 1 = parent's closure var, ...
+	var_idx:      u16,
+	closure_type: Closure_Type,
 	is_const:     bool,
 	is_lexical:   bool,
 	var_kind:     u8,
 }
 
 Function_Bytecode :: struct {
-	using header:              GC_Header,
-	// Flags (JS_WriteFunctionTag layout).
+	using cell:                Cell,
 	has_prototype:             bool,
 	has_simple_parameter_list: bool,
 	is_derived_class_ctor:     bool,
@@ -53,51 +54,91 @@ Function_Bytecode :: struct {
 	super_allowed:             bool,
 	arguments_allowed:         bool,
 	backtrace_barrier:         bool,
-	is_strict_mode:            bool,
 	has_debug:                 bool,
-
+	is_strict_mode:            bool,
 	func_name:                 Atom,
-	arg_count:                 u32,
-	var_count:                 u32,
-	defined_arg_count:         u32,
-	stack_size:                u32,
-	var_ref_count:             u32,
-	closure_var_count:         u32,
-
-	vardefs:                   []Var_Def,     // arg_count + var_count entries, or empty
-	closure_vars:              []Closure_Var, // closure_var_count entries
-	cpool:                     []Value,       // constant pool (owned)
-	byte_code:                 []u8,          // the instruction stream (atoms already resolved)
-
-	// Debug info (present iff has_debug).
+	arg_count:                 u16,
+	var_count:                 u16,
+	defined_arg_count:         u16,
+	stack_size:                u16,
+	var_ref_count:             u16,
+	closure_var_count:         u16,
+	vardefs:                   []Var_Def,
+	closure_vars:              []Closure_Var,
+	cpool:                     []Value,
+	code:                      []u8,
+	realm:                     ^Context,
 	filename:                  Atom,
-	line_num:                  u32,
-	col_num:                   u32,
+	line_num:                  int,
+	col_num:                   int,
 	pc2line:                   []u8,
-	source:                    []u8, // original source text, may be empty
+	source:                    []u8,
+	source_string:             ^JS_String, // cached Function.prototype.toString text
 }
 
 function_bc_new :: proc(rt: ^Runtime) -> ^Function_Bytecode {
-	return gc_new_cell(rt, Function_Bytecode, .function_bc)
+	return cell_new(rt, Function_Bytecode, .function_bc)
 }
 
-function_bc_ref :: proc(fb: ^Function_Bytecode) -> ^Function_Bytecode {
-	fb.ref_count += 1
-	return fb
+function_bc_finalize :: proc(rt: ^Runtime, b: ^Function_Bytecode) {
+	a := rt_allocator(rt)
+	if b.vardefs != nil {delete(b.vardefs, a)}
+	if b.closure_vars != nil {delete(b.closure_vars, a)}
+	if b.cpool != nil {delete(b.cpool, a)}
+	if b.code != nil {delete(b.code, a)}
+	if b.pc2line != nil {delete(b.pc2line, a)}
+	if b.source != nil {delete(b.source, a)}
 }
 
-function_bc_unref :: proc(rt: ^Runtime, fb: ^Function_Bytecode) {
-	fb.ref_count -= 1
-	if fb.ref_count == 0 {gc_free_cell(rt, fb)}
+// The source line of instruction `pc`, decoded from the pc2line table (QuickJS's format: a leb128
+// pc delta followed by a sleb128 line delta and a sleb128 column delta per entry, with short forms).
+pc_to_line :: proc(b: ^Function_Bytecode, pc: int) -> int {
+	if b.pc2line == nil {return b.line_num}
+	p := b.pc2line
+	pos := 0
+	line := b.line_num
+	cur_pc := 0
+	PC2LINE_BASE :: -1
+	PC2LINE_RANGE :: 5
+	PC2LINE_OP_FIRST :: 1
+	for pos < len(p) {
+		op := int(p[pos])
+		pos += 1
+		new_line: int
+		if op == 0 {
+			v, n := leb128_u(p[pos:])
+			pos += n
+			cur_pc += int(v)
+			dl, n2 := leb128_s(p[pos:])
+			pos += n2
+			new_line = line + int(dl)
+		} else {
+			op -= PC2LINE_OP_FIRST
+			cur_pc += op / PC2LINE_RANGE
+			new_line = line + op % PC2LINE_RANGE + PC2LINE_BASE
+		}
+		// column delta
+		_, n3 := leb128_s(p[pos:])
+		pos += n3
+		if cur_pc > pc {break}
+		line = new_line
+	}
+	return line
 }
 
-function_bc_destroy :: proc(rt: ^Runtime, fb: ^Function_Bytecode) {
-	for v in fb.cpool {value_free(rt, v)}
-	if fb.cpool != nil {delete(fb.cpool, rt.allocator)}
-	if fb.vardefs != nil {delete(fb.vardefs, rt.allocator)}
-	if fb.closure_vars != nil {delete(fb.closure_vars, rt.allocator)}
-	if fb.byte_code != nil {delete(fb.byte_code, rt.allocator)}
-	if fb.pc2line != nil {delete(fb.pc2line, rt.allocator)}
-	if fb.source != nil {delete(fb.source, rt.allocator)}
-	gc_raw_free(rt, fb, size_of(Function_Bytecode))
+leb128_u :: proc(b: []u8) -> (u32, int) {
+	v: u32 = 0
+	shift: u32 = 0
+	for i in 0 ..< min(len(b), 5) {
+		c := b[i]
+		v |= u32(c & 0x7f) << shift
+		if c & 0x80 == 0 {return v, i + 1}
+		shift += 7
+	}
+	return v, min(len(b), 5)
+}
+
+leb128_s :: proc(b: []u8) -> (i32, int) {
+	v, n := leb128_u(b)
+	return i32(v >> 1) ~ -i32(v & 1), n
 }
