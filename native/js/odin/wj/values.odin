@@ -40,8 +40,31 @@ foreign {
 	web_clone_free        :: proc(ctx: ^Context, p: rawptr) ---
 	web_clone_deserialize :: proc(ctx: ^Context, p: [^]u8, len: uint) -> JSValue ---
 
+<<<<<<< HEAD
 	// FormData / Headers (web.h). (Blob / File: web_blob_* / web_file_* are Odin, package odin_glue, web_blob.odin.)
 	web_entry_wrap   :: proc(ctx: ^Context, entry: u64) -> JSValue ---
+||||||| c6667de2
+	// Blob / File / FormData / Headers (web.h)
+	web_blob_bytes   :: proc(v: JSValue, ptr: ^[^]u8, len: ^uint) -> bool ---
+	web_blob_type    :: proc(ctx: ^Context, v: JSValue) -> JSValue ---
+	web_blob_new     :: proc(ctx: ^Context, p: [^]u8, n: uint, type: cstring, type_len: uint) -> JSValue ---
+	web_file_new     :: proc(ctx: ^Context, p: [^]u8, n: uint, type: cstring, type_len: uint, name: cstring, name_len: uint, last_modified: f64) -> JSValue ---
+	web_file_from_host :: proc(ctx: ^Context, local_file: u64) -> JSValue ---
+	web_entry_wrap   :: proc(ctx: ^Context, entry: u64) -> JSValue ---
+	web_file_host    :: proc(v: JSValue) -> u64 ---
+	web_file_meta    :: proc(ctx: ^Context, v: JSValue, name: ^Str, type: ^Str, last_modified: ^f64) -> bool ---
+	web_blob_url_lookup :: proc(ctx: ^Context, url: [^]u8, n: uint) -> JSValue ---
+=======
+	// Blob / File / FormData / Headers (web.h)
+	web_blob_bytes   :: proc(v: JSValue, ptr: ^[^]u8, len: ^uint) -> bool ---
+	web_blob_type    :: proc(ctx: ^Context, v: JSValue) -> JSValue ---
+	web_blob_new     :: proc(ctx: ^Context, p: [^]u8, n: uint, type: cstring, type_len: uint) -> JSValue ---
+	web_file_new     :: proc(ctx: ^Context, p: [^]u8, n: uint, type: cstring, type_len: uint, name: cstring, name_len: uint, last_modified: f64) -> JSValue ---
+	web_file_from_host :: proc(ctx: ^Context, local_file: u64) -> JSValue ---
+	web_file_host    :: proc(v: JSValue) -> u64 ---
+	web_file_meta    :: proc(ctx: ^Context, v: JSValue, name: ^Str, type: ^Str, last_modified: ^f64) -> bool ---
+	web_blob_url_lookup :: proc(ctx: ^Context, url: [^]u8, n: uint) -> JSValue ---
+>>>>>>> feat/m3
 
 	// (web_formdata_* are Odin, package odin_glue, web_formdata.odin)
 

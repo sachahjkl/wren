@@ -170,10 +170,21 @@ $odinified = @(
     'web_abort.c',
     'web_blob.c',
     'web_broadcast.c',
+    'web_cache.c',
+    'web_clipboard.c',
+    'web_credentials.c',
     'web_crypto.c',
+    'web_dnd.c',
     'web_encoding.c',
+$odinified = @(
+    'web_entries.c',
     'web_formdata.c',
+    'web_fs.c'
+)
     'web_fullscreen.c',
+    'web_idb.c',
+    'web_idb_native.c',
+    'web_idb_prelude.c',
     'web_location.c',
     'web_media.c',
     'web_mediaobjects.c',
