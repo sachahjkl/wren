@@ -23,7 +23,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "wren_api.h"
 
 #if defined(WJ_ENGINE_SPIDERMONKEY)
 #  error "SpiderMonkey backend not written yet"

@@ -124,7 +124,7 @@ $cflags = @(
     '-mbulk-memory', '-msimd128', '-mnontrapping-fptoint', '-msign-ext', '-mmutable-globals', '-mmultivalue',
     '-DWREN_JS=1', '-DWREN_JIT=1', '-DQUICKJS_NG_BUILD', '-D_WASI_EMULATED_SIGNAL', '-DNDEBUG',
     '-fno-exceptions', '-fvisibility=hidden', $(if ($Names) { '-g' } else { '-g0' }),
-    '-I', $qjs, '-I', (Join-Path $native 'engine'), '-I', (Join-Path $native 'gen'),
+    '-I', $qjs, '-I', (Join-Path $native 'engine'),
     '-I', (Join-Path $native 'jit'), '-I', $genDir
 )
 if (-not $NoLto) { $cflags += '-flto' }
