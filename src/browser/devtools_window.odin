@@ -60,20 +60,26 @@ devtools_window_make :: proc(app: ^App) {
 	placed := devtools_window_restore_placement(app, w)
 	if windows_shown(app) {   // (a headless browser shows no window: the panel's is drawn all the same, for wren ctl)
 		platform.show_window(w)
-		// above the browser window it came from; a saved placement keeps its own position (SWP_NOMOVE), an unsaved one is left where
-		// the system opened it near the browser window
-		flags := win.SWP_NOSIZE | (placed ? win.UINT(0) : win.SWP_NOMOVE)
-		win.SetWindowPos(w.hwnd, win.HWND_TOP, 0, 0, 0, 0, flags)
+		when ODIN_OS == .Windows {
+			// above the browser window it came from; a saved placement keeps its own position (SWP_NOMOVE), an unsaved one is left where
+			// the system opened it near the browser window. (The raise-to-top is a Win32 detail; the toolkit places the window elsewhere.)
+			flags := win.SWP_NOSIZE | (placed ? win.UINT(0) : win.SWP_NOMOVE)
+			win.SetWindowPos(w.hwnd, win.HWND_TOP, 0, 0, 0, 0, flags)
+		} else {
+			_ = placed
+		}
 	}
 	if w.size.x <= 0 || w.size.y <= 0 {
-		// (the size comes with the first WM_SIZE, still to be handled)
-		cr: win.RECT
-		win.GetClientRect(w.hwnd, &cr)
-		w.size = {max(int(cr.right - cr.left), 1), max(int(cr.bottom - cr.top), 1)}
+		// (the size comes with the first size event, still to be handled)
+		when ODIN_OS == .Windows {
+			cr: win.RECT
+			win.GetClientRect(w.hwnd, &cr)
+			w.size = {max(int(cr.right - cr.left), 1), max(int(cr.bottom - cr.top), 1)}
+		}
 	}
 	// made where it lives, not returned by value (see render.surface_create: a Surface in a local is a compile-time trap)
 	dw := new(Dev_Window)
-	ok := render.surface_init(&app.r, &dw.surf, w.hwnd, w.size, transparent = fixed, fixed_size = fixed_surface_size(app, w.hwnd))   // (window_chrome.odin)
+	ok := render.surface_init(&app.r, &dw.surf, platform.native_surface_handles(w), w.size, transparent = fixed, fixed_size = fixed_surface_size(app, w))   // (window_chrome.odin)
 	if !ok {
 		free(dw)
 		platform.destroy_window(w)

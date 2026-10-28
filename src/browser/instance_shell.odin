@@ -200,7 +200,7 @@ instance_open :: proc(data: rawptr) {
 		if t := current_tab(app); t != nil { ui.field_set(&wnd.address, t.url) }
 	}
 	if d.setup { setup_open(app, .Command) }
-	instance.raise_window(rawptr(active_window(app).win.hwnd))
+	when ODIN_OS == .Windows { instance.raise_window(rawptr(active_window(app).win.hwnd)) }
 	request_frames(app, 4)
 }
 
