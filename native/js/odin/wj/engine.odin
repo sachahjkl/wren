@@ -109,21 +109,22 @@ Buf :: struct {
 	cap:  u32,
 }
 
-// ---- the engine's globals (real symbols) ----
+// ---- the engine's globals ----
+// wj_the_realm and wj_scratch are defined in qjs_realm.odin, the platform classes (wj_class_*) in qjs_platform.odin.
+// A global defined by C stays `foreign` here; one defined in Odin must not also be declared `foreign` in any package
+// (the build is one LLVM module: the second declaration is renamed and never resolves).
 
 @(default_calling_convention = "c")
 foreign {
-	wj_the_realm:        Realm
-	wj_scratch:          Buf
 	// `extern const wj_interface wj_interfaces[]`: an array symbol, so its first element is what the name designates;
 	// interfaces() gives the indexable view.
 	wj_interfaces:       Interface
 	wj_interface_count:  i32
-	wj_class_plain:      u32       // JSClassID of each platform class (qjs_internal.h)
-	wj_class_indexed:    u32
-	wj_class_named:      u32
-	wj_dispatch_trusted: bool      // web.h: the event being dispatched is trusted
 }
+
+// set while the realm dispatches an event of its own (wj_dispatch_own_event, native/js/odin/events.odin): it is trusted
+@(export, link_name = "wj_dispatch_trusted")
+wj_dispatch_trusted: bool
 
 interfaces :: #force_inline proc "contextless" () -> [^]Interface { return ([^]Interface)(&wj_interfaces) }
 

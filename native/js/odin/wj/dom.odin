@@ -30,18 +30,8 @@ DOM_STYLE_COMPUTED :: 8
 DOM_RECT           :: 9
 DOM_VALUES         :: 10
 
-@(default_calling_convention = "c")
-foreign {
-	// a new engine object of `iface` with a fresh dom_impl of `kind` (owner dup'ed)
-	dom_new       :: proc(ctx: ^Context, iface: i32, kind: i32, owner: JSValue, node: u64, out: ^^Dom_Impl) -> JSValue ---
-	// the dom_impl of an object of `iface` (TypeError "Illegal invocation" otherwise)
-	dom_impl_of   :: proc(ctx: ^Context, this_val: JSValue, iface: i32) -> ^Dom_Impl ---
-	dom_strndup   :: proc(s: [^]u8, n: uint) -> [^]u8 ---
-	dom_node_arg  :: proc(ctx: ^Context, v: JSValue, out: ^u64, nullable: bool, what: cstring) -> bool ---
-	dom_dict_get  :: proc(ctx: ^Context, dict: JSValue, name: cstring) -> JSValue ---
-	dom_live_list :: proc(ctx: ^Context, owner: JSValue, root: u64, kind: i32, arg: [^]u8, arg_len: uint, iface: i32) -> JSValue ---
-	dom_static_list :: proc(ctx: ^Context, packed: [^]u8, count: u32) -> JSValue ---
-}
+// dom_new, dom_impl_of, dom_strndup, dom_node_arg, dom_dict_get, dom_live_list, dom_static_list(_of): implemented in
+// m1_dom.odin (ported from dom_core.c), exported under their C names.
 // dom_rect_new / dom_rect_list are implemented by the ported dom_layout.odin (package odin_glue, @(export)): a ported
 // domain calls them unqualified.
 

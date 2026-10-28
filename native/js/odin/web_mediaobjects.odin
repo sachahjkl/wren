@@ -458,7 +458,7 @@ event_text_local :: proc "contextless" (h: u64) -> i32 {
 
 @(export, link_name = "wjr_BufferedChangeEvent_constructor")
 wjr_BufferedChangeEvent_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
-	ev := wj.wj_event_construct(ctx, new_target, argc, argv, IFm_buffered_change(), "BufferedChangeEvent")
+	ev := wj_event_construct(ctx, new_target, argc, argv, IFm_buffered_change(), "BufferedChangeEvent")
 	if wj.is_exception(ev) { return ev }
 	init := wj.arg(argc, argv, 1)
 	added, removed: wj.JSValue
