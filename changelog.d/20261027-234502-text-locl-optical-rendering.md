@@ -1,3 +1,0 @@
-type: Added
-
-**`font-optical-sizing`, `text-rendering`, and `lang` locale forms**: font-optical-sizing (`auto` / `none`) sets a variable face's `opsz` axis to the used font size unless the author set `opsz` by hand; text-rendering (`auto` / `optimizeSpeed` / `optimizeLegibility` / `geometricPrecision`) turns kerning and optional ligatures off for `optimizeSpeed`, as a browser does; and an element's `lang` / `xml:lang` now reaches the shaper as the content language, so a face applies its language-specific forms (`locl`: Serbian and Macedonian Cyrillic, the Han unification of CJK ideographs, Romanian ș/ț). All three flow through the layout font request into the toolkit cascade and the DirectWrite / native shaper.

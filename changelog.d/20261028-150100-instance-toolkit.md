@@ -1,3 +1,0 @@
-type: Changed
-
-**Single-instance moved to the toolkit** (`toolkit:instance`): the mechanism behind one Wren per profile (the named mutex and message-only window on Windows, the lock file and Unix socket on POSIX, waiting for an owner that is starting or closing) now lives in the toolkit's neutral `instance` package, so another application reuses it. Wren became a user: `src/browser/instance_shell.odin` builds the name with `instance.key`, passes the executable path as the identity (only the same executable hands over), and encodes its own message (setup / addresses) as the opaque bytes the toolkit forwards; `src/instance` is gone. Same behaviour; the single-instance name of a profile is unchanged.

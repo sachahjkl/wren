@@ -1,3 +1,0 @@
-type: Fixed
-
-**Custom elements** (`CustomElementRegistry.define`) : the native port matches the HTML spec's operation order and error semantics again — a `prototype`/`observedAttributes`/`disabledFeatures`/`formAssociated` getter that throws is rethrown as-is (no longer masked by a TypeError), `observedAttributes` and `disabledFeatures` are read as a `sequence<DOMString>` through the iterator protocol (a non-Array iterable, a throwing generator or a non-callable `Symbol.iterator` behaves as expected), and the name is validated as a JS string so an embedded NUL no longer passes a truncated C string through the name check.

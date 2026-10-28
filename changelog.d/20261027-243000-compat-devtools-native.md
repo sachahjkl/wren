@@ -1,3 +1,0 @@
-type: Changed
-
-**document.execCommand and the DevTools console description are native** : `document.execCommand("copy" / "cut")`, `queryCommandSupported` / `queryCommandEnabled` (`runtime/web_compat.c`) and the description of console arguments the developer tools read (`runtime/web_devtools.c`: the value-to-JSON walk, the wrapped console methods, `eval` / `complete` / `store` / `storeNode` / `copy`) come from the engine instead of prelude JavaScript (`prelude/compat.js`), trimming the realm image. The state object under `Symbol.for("wren.devtools")` keeps the same shape and methods the shell relies on, so DevTools behaviour is unchanged.

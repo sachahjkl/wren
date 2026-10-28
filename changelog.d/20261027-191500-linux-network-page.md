@@ -1,3 +1,0 @@
-type: Changed
-
-**Linux: the network, Fetch, page and content blocker packages build and pass their tests** (`net`, `fetch`, `page`, `blocker`, `media`) : WinHTTP's calls moved to `*_windows.odin` files, elsewhere the built-in network stack is the only one (`network.backend = winhttp` falls back to it); `file:` URLs, folder listings and the document-tree check follow POSIX paths (stat, realpath, readdir, symbolic links; case-sensitive); `screen` falls back to the viewport where no display is known; the media package has a Linux backend that plays nothing yet (null audio output); the Wasmtime archive for Linux is sealed so that it links beside the Rust library.
