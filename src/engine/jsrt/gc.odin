@@ -162,7 +162,7 @@ back_edge :: #force_inline proc(ctx: ^Context, root_base: int) -> bool {
 	return !poll_interrupt(ctx) && gc_safepoint(ctx)
 }
 
-gc_should_run :: #force_inline proc(rt: ^Runtime) -> bool {
+gc_should_run :: #force_inline proc "contextless" (rt: ^Runtime) -> bool {
 	return rt.heap_bytes > rt.gc_threshold && rt.gc_disabled == 0 && !rt.in_gc
 }
 
