@@ -1125,6 +1125,8 @@ static JSClassID named_class;
 
 static JSValue named_lookup(JSContext *ctx, JSAtom prop)
 {
+    extern bool wj_start_frames;
+    if (!wj_start_frames) { return JS_UNDEFINED; }   /* no browser behind the realm (the engine run alone): there is no document to look in */
     JSValue pv = JS_AtomToValue(ctx, prop);
     if (!JS_IsString(pv)) { JS_FreeValue(ctx, pv); return JS_UNDEFINED; }
     size_t len; const char *name = JS_ToCStringLen(ctx, &len, pv);

@@ -515,7 +515,7 @@ WJ_EXPORT("wj_preinit") int32_t wj_preinit(void)
 }
 
 /* Run time, once per realm: kind 1 = Window, 2 = Worker. `seed` reseeds Math.random. flags: WJ_START_*. 0 ok. */
-enum { WJ_START_EXPOSE_UNIMPLEMENTED = 1, WJ_START_UNIMPLEMENTED_THROW = 2, WJ_START_NO_TOUCH_HANDLERS = 4,
+enum { WJ_START_EXPOSE_UNIMPLEMENTED = 1, WJ_START_UNIMPLEMENTED_THROW = 2, WJ_START_NO_TOUCH_HANDLERS = 4, WJ_START_FRAMES = 32,
        WJ_START_SHARED_WORKER = 8, WJ_START_SERVICE_WORKER = 16 };   /* (a worker realm of that kind) */
 
 /* browser.touch.expose off (or auto without a touch screen): the ontouch* event handler attributes and the Touch,
@@ -538,7 +538,8 @@ static void remove_touch_handlers(JSContext *ctx)
 }
 WJ_EXPORT("wj_realm_start") int32_t wj_realm_start(int32_t kind, int64_t seed, double memory_limit, double gc_threshold, int32_t flags)
 {
-    extern bool wj_start_expose_unimplemented, wj_start_unimplemented_throw;
+    extern bool wj_start_expose_unimplemented, wj_start_unimplemented_throw, wj_start_frames;
+    wj_start_frames = (flags & WJ_START_FRAMES) != 0;   /* a page's realm: the frames.* imports exist (the engine run alone has none) */
     wj_start_expose_unimplemented = (flags & WJ_START_EXPOSE_UNIMPLEMENTED) != 0;
     wj_start_unimplemented_throw = (flags & WJ_START_UNIMPLEMENTED_THROW) != 0;
     if (!wj_the_realm.ctx && wj_preinit() != 0) { return -1; }
