@@ -2330,10 +2330,16 @@ static JSValue exec_closure(JSContext *ctx, JSValueConst this_val, int argc, JSV
             JSValue clone = deserialize(ctx, valueBytes);
             JSValue decoded = key_value(ctx, kb);
             JSValueConst ia[3] = { clone, kp, decoded };
+            /* inject the generated key as an own data property (CreateDataProperty, in web_idb_native.c): never a
+             * [[Set]], so a setter on the prototype (Object.prototype.id) is not run. A thrown inject must abort the
+             * request, not leave a pending exception to surface later. */
             JSValue ir = JS_Call(ctx, M.h_inject, M.host, 3, ia);
-            JS_FreeValue(ctx, ir); JS_FreeValue(ctx, decoded);
+            JS_FreeValue(ctx, decoded);
+            if (JS_IsException(ir)) { JS_FreeValue(ctx, clone); JS_FreeValue(ctx, kb); JS_FreeValue(ctx, vb); return JS_EXCEPTION; }
+            JS_FreeValue(ctx, ir);
             JS_FreeValue(ctx, vb);
             vb = serialize(ctx, clone);
+            if (JS_IsException(vb)) { JS_FreeValue(ctx, clone); JS_FreeValue(ctx, kb); return JS_EXCEPTION; }
             JSValue snap = snap_index_keys(ctx, meta, clone);
             ik = index_key_list(ctx, meta, snap, vb);
             JS_FreeValue(ctx, snap); JS_FreeValue(ctx, clone);
