@@ -280,12 +280,48 @@ obj_get_own_property_descriptors :: proc(ctx: ^Context, this: Value, args: []Val
 	return mk_obj(res)
 }
 
+// Object.keys / values / entries of an object whose own keys are its shape's properties in creation order:
+// read straight from the shape and slots. ok = false (nothing done) for index-like keys, or for values/entries
+// when a property is an accessor (its getter must run in order with the rest).
+@(private = "file")
+obj_keys_plain :: proc(ctx: ^Context, o: ^Object, magic: i32) -> (Value, bool) {
+	rt := ctx.rt
+	props := o.shape.props[:]
+	n := 0
+	for pr in props {
+		if atom_is_int(pr.atom) {return UNDEFINED, false}
+		e := &rt.atoms[pr.atom]
+		if e.kind != .string {continue}
+		if e.str.len == 10 {
+			if _, isi := atom_index(rt, pr.atom); isi {return UNDEFINED, false}
+		}
+		if .enumerable in pr.flags {
+			if magic != 0 && pr.kind != .data {return UNDEFINED, false}
+			n += 1
+		}
+	}
+	arr := array_new(ctx, n)
+	for pr, i in props {
+		if rt.atoms[pr.atom].kind != .string || .enumerable not_in pr.flags {continue}
+		k := atom_to_value(rt, pr.atom)
+		switch magic {
+		case 0: array_push_fast(rt, arr, k)
+		case 1: array_push_fast(rt, arr, o.slots[i].value)
+		case: array_push_fast(rt, arr, mk_obj(array_from_values(ctx, {k, o.slots[i].value})))
+		}
+	}
+	return mk_obj(arr), true
+}
+
 // Object.keys (0) / values (1) / entries (2) and getOwnPropertyNames (3) / getOwnPropertySymbols (4)
 @(private = "file")
 obj_keys :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value {
 	rt := ctx.rt
 	o := to_obj_this(ctx, arg(args, 0))
 	if o == nil {return EXCEPTION}
+	if magic <= 2 && plain_keys_object(o) {
+		if r, ok := obj_keys_plain(ctx, o, magic); ok {return r}
+	}
 	keys := make([dynamic]Atom, 0, 16, tmp(rt))
 	filter: Keys_Filters = magic == 4 ? {.symbols} : {.strings}
 	if !own_property_keys(ctx, o, &keys, filter) {return EXCEPTION}

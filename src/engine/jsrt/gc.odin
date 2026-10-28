@@ -411,6 +411,7 @@ mark_context :: proc(rt: ^Runtime, ctx: ^Context) {
 	mark_cell(rt, ctx.mapped_arguments_shape)
 	mark_cell(rt, ctx.regexp_shape)
 	mark_cell(rt, ctx.match_shape)
+	mark_cell(rt, ctx.iter_result_shape)
 	mark_cell(rt, ctx.rx_snap_shape)
 	if ctx.rx_snap_shape != nil {
 		// the snapshot of RegExp.prototype's functions stays alive: regexp_pristine compares addresses
