@@ -174,12 +174,16 @@ $odinified = @(
     'web_media.c',
     'web_mediaobjects.c',
     'web_navtiming.c',
+    'web_pipe.c',
     'web_resize.c',
     'web_storage.c',
     'web_strategy.c',
+    'web_stream.c',
     'web_tracks.c',
+    'web_transform.c',
     'web_url.c',
     'web_urlpattern.c',
+    'web_writable.c',
     'window.c',
     'worker_scope.c'
 )
