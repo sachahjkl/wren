@@ -13,6 +13,8 @@ static JSValue make_navigator(JSContext *ctx)
     return wj_new_object(ctx, web_is_window() ? WJ_IFACE_Navigator : WJ_IFACE_WorkerNavigator, NULL, NULL);
 }
 
+static bool nav_this(JSContext *ctx, JSValueConst this_val);
+
 /* navigator.userActivation (UserActivation): the transient/sticky activation state the browser already tracks
  * (UserActivation_isActive / _hasBeenActive). [SameObject]: the one object is kept on the Navigator. */
 JSValue wjr_Navigator_get_userActivation(JSContext *ctx, JSValueConst this_val)

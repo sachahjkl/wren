@@ -542,6 +542,8 @@ enum wr_PerformanceEntryType {
     wr_PerformanceEntryType_Layout_Shift = 10,
     wr_PerformanceEntryType_Element = 11,
     wr_PerformanceEntryType_Visibility_State = 12,
+    wr_PerformanceEntryType_Long_Animation_Frame = 13,
+    wr_PerformanceEntryType_Script = 14,
 };
 // A function of the realm the browser calls when a kind of timeline entry it was asked for (Performance_timelineInterest)
 // has new entries: `kinds` has one bit for each (1 << PerformanceEntryType).
@@ -2670,6 +2672,12 @@ WR_IMPORT("navigator", "Navigator_onLine") int32_t wr_Navigator_onLine(void);
 WR_IMPORT("navigator", "Navigator_maxTouchPoints") int32_t wr_Navigator_maxTouchPoints(void);
 // navigator.cookieEnabled: whether the document may use cookies.
 WR_IMPORT("navigator", "Navigator_cookieEnabled") int32_t wr_Navigator_cookieEnabled(void);
+// navigator.userActivation.isActive: whether the document has transient activation now (a recent click or key press
+// within the transient activation window, security.webauthn.user_activation_ms).
+WR_IMPORT("navigator", "UserActivation_isActive") int32_t wr_UserActivation_isActive(void);
+// navigator.userActivation.hasBeenActive: whether the document has ever had an activation-triggering input (sticky:
+// it does not expire).
+WR_IMPORT("navigator", "UserActivation_hasBeenActive") int32_t wr_UserActivation_hasBeenActive(void);
 // navigator.sendBeacon(url, data): a POST queued with the page's policy (CORS no-cors mode, credentials included),
 // whose response nobody reads; it is not cancelled when the page closes. False when the beacon is refused (too large:
 // navigator.beacon_max_bytes, or an invalid URL). `content_type` "" sends none.

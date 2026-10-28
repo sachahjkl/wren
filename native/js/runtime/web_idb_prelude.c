@@ -176,7 +176,7 @@ static void wm_set(JSContext *ctx, JSValueConst wm, JSValueConst key, JSValueCon
 static JSValue obj_create(JSContext *ctx, JSValueConst proto) { return JS_NewObjectProto(ctx, proto); }
 
 /* a getter/setter attached to a prototype with the Web IDL "get name"/"set name" names, enumerable + configurable */
-static void def_getset(JSContext *ctx, JSValueConst proto, const char *name, JSCFunction *get, JSCFunction *set, int magic)
+static void def_getset_(JSContext *ctx, JSValueConst proto, const char *name, JSCFunction *get, JSCFunction *set, int magic)
 {
     char buf[96];
     JSValue g = JS_UNDEFINED, s = JS_UNDEFINED;
@@ -194,6 +194,9 @@ static void def_getset(JSContext *ctx, JSValueConst proto, const char *name, JSC
     JS_DefinePropertyGetSet(ctx, proto, a, g, s, JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
     JS_FreeAtom(ctx, a);
 }
+/* the accessors have the (this) / (this, value) shapes of JS_CFUNC_getter / setter, not JSCFunction's: the cast is what quickjs expects */
+#define def_getset(ctx, proto, name, g, s, m) def_getset_((ctx), (proto), (name), (JSCFunction *)(void *)(g), (JSCFunction *)(void *)(s), (m))
+
 static void def_method(JSContext *ctx, JSValueConst proto, const char *name, JSCFunction *fn, int length)
 {
     JS_DefinePropertyValueStr(ctx, proto, name, JS_NewCFunction(ctx, fn, name, length), JS_PROP_CONFIGURABLE | JS_PROP_WRITABLE);
@@ -1304,7 +1307,7 @@ static JSValue idb_signal_remover(JSContext *ctx, JSValueConst this_val, int arg
 JSValue idb_signal_remover_make(JSContext *ctx, JSValueConst s, JSValueConst l)
 {
     JSValueConst data[2] = { s, l };
-    return JS_NewCFunctionData(ctx, idb_signal_remover, "", 0, 0, 2, data);
+    return JS_NewCFunctionData(ctx, idb_signal_remover, 0, 0, 2, data);
 }
 
 static JSValue et_remove(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
