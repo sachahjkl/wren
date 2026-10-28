@@ -405,6 +405,7 @@ Re_Parser :: struct {
 	group_names:         [dynamic]u8,
 	error_msg:           string,
 	depth:               int,
+	stack:               Stack_Guard,
 }
 
 @(private = "file")
@@ -1281,7 +1282,7 @@ re_parse_class_set_operand :: proc(s: ^Re_Parser, sl: ^Re_String_List, pp: ^int)
 re_parse_nested_class :: proc(s: ^Re_Parser, sl: ^Re_String_List, pp: ^int) -> bool {
 	s.depth += 1
 	defer s.depth -= 1
-	if s.depth > 2000 {
+	if s.depth > 2000 || stack_exhausted(s.stack) {
 		return re_error(s, "stack overflow")
 	}
 	rsl_init(s, sl)
@@ -2059,7 +2060,7 @@ re_parse_alternative :: proc(s: ^Re_Parser, is_backward_dir: bool) -> bool {
 re_parse_disjunction :: proc(s: ^Re_Parser, is_backward_dir: bool) -> bool {
 	s.depth += 1
 	defer s.depth -= 1
-	if s.depth > 2000 {
+	if s.depth > 2000 || stack_exhausted(s.stack) {
 		return re_error(s, "stack overflow")
 	}
 	start := len(s.byte_code)
@@ -2118,8 +2119,8 @@ compute_register_count :: proc(bc_all: []u8) -> int {
 }
 
 // lre_compile compiles a UTF-8 (unicode mode) or CESU-8 pattern; returns the bytecode or an error message.
-lre_compile :: proc(pattern: []u8, re_flags: int, allocator: runtime.Allocator) -> (bc: []u8, err: string) {
-	s := Re_Parser{allocator = allocator}
+lre_compile :: proc(pattern: []u8, re_flags: int, allocator: runtime.Allocator, stack := Stack_Guard{}) -> (bc: []u8, err: string) {
+	s := Re_Parser{allocator = allocator, stack = stack}
 	buf := make([]u8, len(pattern) + 8, allocator)
 	copy(buf, pattern)
 	s.buf = buf

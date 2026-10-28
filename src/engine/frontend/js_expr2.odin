@@ -359,7 +359,7 @@ js_parse_left_hand_side_expr :: proc(s: ^Parse_State) -> bool {
 js_parse_postfix_expr :: proc(s: ^Parse_State, parse_flags: int) -> bool {
 	s.depth += 1
 	defer s.depth -= 1
-	if s.depth > s.max_depth {
+	if s.depth > s.max_depth || stack_exhausted(s.stack) {
 		return js_parse_error(s, "stack overflow")
 	}
 	call_type := Func_Call_Type.normal
@@ -877,7 +877,7 @@ js_parse_unary :: proc(s: ^Parse_State, parse_flags0: int) -> bool {
 	parse_flags := parse_flags0
 	s.depth += 1
 	defer s.depth -= 1
-	if s.depth > s.max_depth {
+	if s.depth > s.max_depth || stack_exhausted(s.stack) {
 		return js_parse_error(s, "stack overflow")
 	}
 	switch s.token.val {
@@ -1099,7 +1099,7 @@ js_parse_cond_expr :: proc(s: ^Parse_State, parse_flags: int) -> bool {
 js_parse_assign_expr2 :: proc(s: ^Parse_State, parse_flags: int) -> bool {
 	s.depth += 1
 	defer s.depth -= 1
-	if s.depth > s.max_depth {
+	if s.depth > s.max_depth || stack_exhausted(s.stack) {
 		return js_parse_error(s, "stack overflow")
 	}
 	name0 := JS_ATOM_NULL

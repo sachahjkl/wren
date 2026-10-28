@@ -527,4 +527,27 @@ Parse_State :: struct {
 	error:               Error,
 	depth:               int, // recursion guard (js_check_stack_overflow)
 	max_depth:           int,
+	stack:               Stack_Guard,
+}
+
+// Stack_Guard is js_check_stack_overflow: the recursive parts of the compiler stop with a "stack overflow" error
+// once the stack has grown `budget` bytes below `base` (the address of a local taken at the compile entry). On
+// wasm32 the address-taken local lives on the shadow stack, which is the one that would overflow.
+Stack_Guard :: struct {
+	base:   uintptr,
+	budget: uintptr, // 0: no limit
+}
+
+@(require_results)
+stack_guard_here :: #force_no_inline proc(budget: uintptr) -> Stack_Guard {
+	marker: u8
+	return Stack_Guard{base = uintptr(&marker), budget = budget}
+}
+
+stack_exhausted :: #force_no_inline proc(g: Stack_Guard) -> bool {
+	if g.budget == 0 {return false}
+	marker: u8
+	sp := uintptr(&marker)
+	used := g.base > sp ? g.base - sp : sp - g.base
+	return used > g.budget
 }

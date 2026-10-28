@@ -15,9 +15,14 @@ Program_Kind :: enum u8 {
 Compile_Options :: struct {
 	filename:    string, // the script name recorded in the debug info (QuickJS's `filename` argument)
 	max_nesting: int,    // recursion guard; 0 means DEFAULT_COMPILE_MAX_DEPTH
+	// stack bytes the compiler may use below its entry before it reports "stack overflow"; 0 means
+	// DEFAULT_COMPILE_STACK_BUDGET, a negative value disables the check. Pick it from the stack the caller has
+	// left (the wasm build links a 1 MiB stack).
+	stack_budget: int,
 }
 
 DEFAULT_COMPILE_MAX_DEPTH :: 6000
+DEFAULT_COMPILE_STACK_BUDGET :: 512 * 1024
 
 Compile_Result :: struct {
 	top:    ^Function_Bytecode,
@@ -43,6 +48,8 @@ compile_program :: proc(src: string, kind: Program_Kind, allocator: runtime.Allo
 	s.allocator = allocator
 	s.atoms = at
 	s.max_depth = opts.max_nesting > 0 ? opts.max_nesting : DEFAULT_COMPILE_MAX_DEPTH
+	budget := opts.stack_budget == 0 ? DEFAULT_COMPILE_STACK_BUDGET : max(opts.stack_budget, 0)
+	s.stack = stack_guard_here(uintptr(budget))
 	filename := opts.filename != "" ? opts.filename : "<input>"
 	s.filename = intern(at, filename)
 
@@ -108,7 +115,7 @@ compile_program :: proc(src: string, kind: Program_Kind, allocator: runtime.Allo
 		m.has_tla = fd.has_await
 	}
 
-	ps := Pass_State{atoms = at, allocator = allocator}
+	ps := Pass_State{atoms = at, allocator = allocator, stack = s.stack}
 	ps.source_loc_size = make(map[^Func_Def]int, 64, allocator)
 	b := js_create_function(&ps, fd)
 	if b == nil {
@@ -200,7 +207,7 @@ compile_regexp_literal :: proc(s: ^Parse_State, body, flags: String_Value) -> (J
 	}
 	unicode := (re_flags & (LRE_FLAG_UNICODE | LRE_FLAG_UNICODE_SETS)) != 0
 	pattern := string_to_utf8(body, s.allocator, cesu8 = !unicode)
-	bc, err := lre_compile(transmute([]u8)pattern, re_flags, s.allocator)
+	bc, err := lre_compile(transmute([]u8)pattern, re_flags, s.allocator, s.stack)
 	if bc == nil {
 		js_parse_error(s, err)
 		return nil, false

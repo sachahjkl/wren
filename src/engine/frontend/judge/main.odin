@@ -200,39 +200,164 @@ cmd_speed :: proc(file: string, iters: int) -> int {
 	return 0
 }
 
-cmd_fuzz :: proc(files: []string) -> int {
-	// Parse each file and a few byte-mutations of it. The only assertion is "does not crash / loop / leak"; a
-	// clean exit is success. A proper fuzzer would feed a coverage-guided engine, but a deterministic mutation
-	// sweep catches the obvious lexer/parser infinite loops.
+// cmd_fuzz compiles each file (or every file of an `@manifest`) plus mutations of it, as script and as module,
+// then a set of pathological inputs (deep nesting, long runs). The assertions are: no crash, every compile ends
+// (the slowest input is reported), and the memory a compile uses stays proportional to its input (the largest
+// bytes-allocated / bytes-of-input ratio is reported). Mutations: random bytes, token splices taken from the
+// same file, truncation, and slice duplication.
+cmd_fuzz :: proc(args: []string) -> int {
+	files := make([dynamic]string)
+	for a in args {
+		if len(a) > 1 && a[0] == '@' {
+			data, ok := read_file(a[1:])
+			if !ok {continue}
+			for line in split_lines(data) {
+				l := line
+				if len(l) > 2 && l[1] == '\t' {l = l[2:]}
+				if len(l) > 0 {append(&files, l)}
+			}
+		} else {
+			append(&files, a)
+		}
+	}
 	seed: u64 = 0x1234567
+	st: Fuzz_Stats
 	for f in files {
 		src, ok := read_file(f)
 		if !ok {continue}
-		for _ in 0 ..< 8 {
-			mutated := mutate(src, &seed)
-			arena: mem.Dynamic_Arena
-			mem.dynamic_arena_init(&arena)
-			alloc := mem.dynamic_arena_allocator(&arena)
-			_ = fe.compile_program(mutated, .script, alloc)
-			mem.dynamic_arena_destroy(&arena)
+		fuzz_one(&st, src, f)
+		for _ in 0 ..< 6 {
+			m := mutate(src, &seed)
+			fuzz_one(&st, m, f)
+			delete(m)
 		}
 	}
-	fmt.println("fuzz: no crash")
+	for gen in pathological_inputs() {
+		fuzz_one(&st, gen, "<generated>")
+	}
+	fmt.printfln("fuzz: %d compiles, no crash; %d accepted, %d rejected", st.runs, st.ok, st.runs - st.ok)
+	fmt.printfln("fuzz: slowest %.1f ms (%d bytes, %s)", st.max_ms, st.max_ms_len, st.max_ms_file)
+	fmt.printfln("fuzz: max memory ratio %.0f bytes allocated per input byte (%d bytes, %s)", st.max_ratio, st.max_ratio_len, st.max_ratio_file)
 	return 0
 }
 
+Fuzz_Stats :: struct {
+	runs, ok:       int,
+	max_ms:         f64,
+	max_ms_len:     int,
+	max_ms_file:    string,
+	max_ratio:      f64,
+	max_ratio_len:  int,
+	max_ratio_file: string,
+}
+
+@(private = "file")
+Counting :: struct {
+	backing: mem.Allocator,
+	total:   int,
+}
+
+@(private = "file")
+counting_proc :: proc(data: rawptr, mode: mem.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, loc := #caller_location) -> ([]byte, mem.Allocator_Error) {
+	c := (^Counting)(data)
+	if mode == .Alloc || mode == .Alloc_Non_Zeroed || mode == .Resize || mode == .Resize_Non_Zeroed {
+		c.total += size
+	}
+	return c.backing.procedure(c.backing.data, mode, size, alignment, old_memory, old_size, loc)
+}
+
+fuzz_one :: proc(st: ^Fuzz_Stats, src: string, file: string) {
+	for kind in ([2]fe.Program_Kind{.script, .module}) {
+		arena: mem.Dynamic_Arena
+		mem.dynamic_arena_init(&arena)
+		cnt := Counting{backing = mem.dynamic_arena_allocator(&arena)}
+		alloc := mem.Allocator{counting_proc, &cnt}
+		t0 := time.now()
+		res := fe.compile_program(src, kind, alloc)
+		ms := time.duration_milliseconds(time.since(t0))
+		st.runs += 1
+		if res.top != nil {st.ok += 1}
+		if ms > st.max_ms {
+			st.max_ms, st.max_ms_len, st.max_ms_file = ms, len(src), file
+		}
+		ratio := f64(cnt.total) / f64(max(len(src), 64))
+		if ratio > st.max_ratio {
+			st.max_ratio, st.max_ratio_len, st.max_ratio_file = ratio, len(src), file
+		}
+		mem.dynamic_arena_destroy(&arena)
+	}
+}
+
+// pathological_inputs: deep nesting of every recursive construct, and long flat runs.
+pathological_inputs :: proc() -> []string {
+	out := make([dynamic]string)
+	rep :: proc(s: string, n: int) -> string {
+		b := make([dynamic]u8, 0, len(s) * n)
+		for _ in 0 ..< n {append(&b, ..transmute([]u8)s)}
+		return string(b[:])
+	}
+	cat :: proc(parts: ..string) -> string {
+		b := make([dynamic]u8)
+		for p in parts {append(&b, ..transmute([]u8)p)}
+		return string(b[:])
+	}
+	for n in ([3]int{1000, 20000, 200000}) {
+		append(&out, rep("(", n))
+		append(&out, rep("[", n))
+		append(&out, rep("{", n))
+		append(&out, cat("x=", rep("{a:", n)))
+		append(&out, rep("-", n))
+		append(&out, rep("!", n))
+		append(&out, cat("x=", rep("a?", n), "b", rep(":c", n)))
+		append(&out, cat("x=", rep("()=>", n), "0"))
+		append(&out, rep("function f(){", n))
+		append(&out, rep("if(1)", n))
+		append(&out, rep("a:", n))
+		append(&out, cat("x=", rep("`${", n)))
+		append(&out, cat("[", rep("[a,", n)))
+		append(&out, cat("x=/", rep("(", n), "/"))
+		append(&out, cat("x=/", rep("[", n), "/v"))
+		append(&out, rep("a+", n))
+		append(&out, rep("a.b", n))
+		append(&out, rep("var a;", n))
+		append(&out, rep("x=1,", n))
+	}
+	return out[:]
+}
+
 mutate :: proc(src: string, seed: ^u64) -> string {
-	b := make([]u8, len(src))
-	copy(b, transmute([]u8)src)
+	b := make([dynamic]u8, 0, len(src) + 64)
+	append(&b, ..transmute([]u8)src)
 	if len(b) == 0 {
-		return string(b)
+		return string(b[:])
 	}
-	n := 1 + int(next_rand(seed) % 8)
-	for _ in 0 ..< n {
-		i := int(next_rand(seed) % u64(len(b)))
-		b[i] = u8(next_rand(seed) & 0x7f)
+	switch next_rand(seed) % 4 {
+	case 0:
+		n := 1 + int(next_rand(seed) % 8)
+		for _ in 0 ..< n {
+			i := int(next_rand(seed) % u64(len(b)))
+			b[i] = u8(next_rand(seed) & 0xff)
+		}
+	case 1:
+		// splice: copy a short slice of the file over another position
+		for _ in 0 ..< 1 + int(next_rand(seed) % 4) {
+			from := int(next_rand(seed) % u64(len(b)))
+			to := int(next_rand(seed) % u64(len(b)))
+			n := min(1 + int(next_rand(seed) % 16), len(b) - from, len(b) - to)
+			copy(b[to:to + n], b[from:from + n])
+		}
+	case 2:
+		resize(&b, int(next_rand(seed) % u64(len(b))))
+	case 3:
+		// duplicate a slice in place (tends to unbalance brackets)
+		from := int(next_rand(seed) % u64(len(b)))
+		n := min(1 + int(next_rand(seed) % 64), len(b) - from)
+		piece := make([]u8, n)
+		copy(piece, b[from:from + n])
+		inject_at(&b, from, ..piece)
+		delete(piece)
 	}
-	return string(b)
+	return string(b[:])
 }
 
 next_rand :: proc(seed: ^u64) -> u64 {
