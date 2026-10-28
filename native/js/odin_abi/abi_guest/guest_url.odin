@@ -1,7 +1,7 @@
 // The guest bindings of the URL / URLSearchParams / URLPattern domain, over the generic serialised boundary. Each is
-// thin typed glue: open a writer, serialise the arguments (the compiler picks the marshaller per type), transport by
-// operation number, decode the result. No generator produced this; it is the guest half of the api_decl contract,
-// the mirror of abi_url's host half. A later integration folds these into sdk/odin/web as the shipped SDK.
+// the same three steps: write the arguments (`arg`, one marshaller per type, chosen by the compiler), `finish` by
+// operation number (the results decoded by the declaration's types), and abi.must_match, which fails the build if the
+// stub's signature drifts from api_decl. A later integration folds these into sdk/odin/web as the shipped SDK.
 package abi_guest
 
 import "../abi"
@@ -34,173 +34,140 @@ URLComponent :: api_decl.URLComponent
 URLPatternComponent :: api_decl.URLPatternComponent
 URLPatternInit :: api_decl.URLPatternInit
 
+@(private) none: abi.Nothing
+
 ////////////////////////////////
 // URL
 
-URL_parse :: proc(input: string, base: Maybe(string) = nil) -> (URL, abi.Api_Error) {
-	w := begin()
-	arg(&w, input)
-	arg_maybe(&w, base)
-	r, st := transport(OP_URL_parse, w.pos)
-	if st != .None { return 0, st }
-	return ret_scalar(&r, URL), .None
+URL_parse :: proc(input: string, base: Maybe(string)) -> (u: URL, err: abi.Api_Error) {
+	w := begin(); arg(&w, input); arg(&w, base)
+	err = finish(OP_URL_parse, &w, api_decl.URL_parse, &u)
+	return
 }
 
-URL_canParse :: proc(input: string, base: Maybe(string) = nil) -> bool {
-	w := begin()
-	arg(&w, input)
-	arg_maybe(&w, base)
-	r, st := transport(OP_URL_canParse, w.pos)
-	if st != .None { return false }
-	return ret_scalar(&r, bool)
+URL_canParse :: proc(input: string, base: Maybe(string)) -> (ok: bool) {
+	w := begin(); arg(&w, input); arg(&w, base)
+	finish(OP_URL_canParse, &w, api_decl.URL_canParse, &ok)
+	return
 }
 
-URL_get :: proc(u: URL, component: URLComponent) -> string {
-	w := begin()
-	arg(&w, u)
-	arg(&w, component)
-	r, st := transport(OP_URL_get, w.pos)
-	if st != .None { return "" }
-	return ret_string(&r)
+URL_get :: proc(u: URL, component: URLComponent) -> (s: string) {
+	w := begin(); arg(&w, u); arg(&w, component)
+	finish(OP_URL_get, &w, api_decl.URL_get, &s)
+	return
 }
 
 URL_set :: proc(u: URL, component: URLComponent, value: string) -> abi.Api_Error {
-	w := begin()
-	arg(&w, u)
-	arg(&w, component)
-	arg(&w, value)
-	_, st := transport(OP_URL_set, w.pos)
-	return st
+	w := begin(); arg(&w, u); arg(&w, component); arg(&w, value)
+	return finish(OP_URL_set, &w, api_decl.URL_set, &none)
 }
 
-URL_searchParams :: proc(u: URL) -> URLSearchParams {
-	w := begin()
-	arg(&w, u)
-	r, st := transport(OP_URL_searchParams, w.pos)
-	if st != .None { return 0 }
-	return ret_scalar(&r, URLSearchParams)
+URL_searchParams :: proc(u: URL) -> (p: URLSearchParams) {
+	w := begin(); arg(&w, u)
+	finish(OP_URL_searchParams, &w, api_decl.URL_searchParams, &p)
+	return
 }
 
 ////////////////////////////////
 // URLSearchParams
 
-URLSearchParams_create :: proc(init: string = "") -> (URLSearchParams, abi.Api_Error) {
-	w := begin()
-	arg(&w, init)
-	r, st := transport(OP_URLSearchParams_create, w.pos)
-	if st != .None { return 0, st }
-	return ret_scalar(&r, URLSearchParams), .None
+URLSearchParams_create :: proc(init: string) -> (p: URLSearchParams, err: abi.Api_Error) {
+	w := begin(); arg(&w, init)
+	err = finish(OP_URLSearchParams_create, &w, api_decl.URLSearchParams_create, &p)
+	return
 }
 
-URLSearchParams_size :: proc(params: URLSearchParams) -> i32 {
-	w := begin()
-	arg(&w, params)
-	r, st := transport(OP_URLSearchParams_size, w.pos)
-	if st != .None { return 0 }
-	return ret_scalar(&r, i32)
+URLSearchParams_size :: proc(params: URLSearchParams) -> (n: i32) {
+	w := begin(); arg(&w, params)
+	finish(OP_URLSearchParams_size, &w, api_decl.URLSearchParams_size, &n)
+	return
 }
 
-URLSearchParams_append :: proc(params: URLSearchParams, name, value: string) {
-	w := begin()
-	arg(&w, params)
-	arg(&w, name)
-	arg(&w, value)
-	transport(OP_URLSearchParams_append, w.pos)
+URLSearchParams_append :: proc(params: URLSearchParams, name: string, value: string) {
+	w := begin(); arg(&w, params); arg(&w, name); arg(&w, value)
+	finish(OP_URLSearchParams_append, &w, api_decl.URLSearchParams_append, &none)
 }
 
-URLSearchParams_delete :: proc(params: URLSearchParams, name: string, value: Maybe(string) = nil) {
-	w := begin()
-	arg(&w, params)
-	arg(&w, name)
-	arg_maybe(&w, value)
-	transport(OP_URLSearchParams_delete, w.pos)
+URLSearchParams_delete :: proc(params: URLSearchParams, name: string, value: Maybe(string)) {
+	w := begin(); arg(&w, params); arg(&w, name); arg(&w, value)
+	finish(OP_URLSearchParams_delete, &w, api_decl.URLSearchParams_delete, &none)
 }
 
-URLSearchParams_get :: proc(params: URLSearchParams, name: string) -> (string, abi.Api_Error) {
-	w := begin()
-	arg(&w, params)
-	arg(&w, name)
-	r, st := transport(OP_URLSearchParams_get, w.pos)
-	if st != .None { return "", st }
-	return ret_string(&r), .None
+URLSearchParams_get :: proc(params: URLSearchParams, name: string) -> (s: string, err: abi.Api_Error) {
+	w := begin(); arg(&w, params); arg(&w, name)
+	err = finish(OP_URLSearchParams_get, &w, api_decl.URLSearchParams_get, &s)
+	return
 }
 
-URLSearchParams_has :: proc(params: URLSearchParams, name: string, value: Maybe(string) = nil) -> bool {
-	w := begin()
-	arg(&w, params)
-	arg(&w, name)
-	arg_maybe(&w, value)
-	r, st := transport(OP_URLSearchParams_has, w.pos)
-	if st != .None { return false }
-	return ret_scalar(&r, bool)
+URLSearchParams_has :: proc(params: URLSearchParams, name: string, value: Maybe(string)) -> (ok: bool) {
+	w := begin(); arg(&w, params); arg(&w, name); arg(&w, value)
+	finish(OP_URLSearchParams_has, &w, api_decl.URLSearchParams_has, &ok)
+	return
 }
 
-URLSearchParams_set :: proc(params: URLSearchParams, name, value: string) {
-	w := begin()
-	arg(&w, params)
-	arg(&w, name)
-	arg(&w, value)
-	transport(OP_URLSearchParams_set, w.pos)
+URLSearchParams_set :: proc(params: URLSearchParams, name: string, value: string) {
+	w := begin(); arg(&w, params); arg(&w, name); arg(&w, value)
+	finish(OP_URLSearchParams_set, &w, api_decl.URLSearchParams_set, &none)
 }
 
 URLSearchParams_sort :: proc(params: URLSearchParams) {
-	w := begin()
-	arg(&w, params)
-	transport(OP_URLSearchParams_sort, w.pos)
+	w := begin(); arg(&w, params)
+	finish(OP_URLSearchParams_sort, &w, api_decl.URLSearchParams_sort, &none)
 }
 
-URLSearchParams_toString :: proc(params: URLSearchParams) -> string {
-	w := begin()
-	arg(&w, params)
-	r, st := transport(OP_URLSearchParams_toString, w.pos)
-	if st != .None { return "" }
-	return ret_string(&r)
+URLSearchParams_toString :: proc(params: URLSearchParams) -> (s: string) {
+	w := begin(); arg(&w, params)
+	finish(OP_URLSearchParams_toString, &w, api_decl.URLSearchParams_toString, &s)
+	return
 }
 
 ////////////////////////////////
 // URLPattern
 
-// The dictionary is written field by field in declaration order, matching abi.decode_arg's walk on the host side.
-URLPattern_create :: proc(init: URLPatternInit) -> (URLPattern, abi.Api_Error) {
-	w := begin()
-	arg(&w, init.protocol); arg(&w, init.has_protocol)
-	arg(&w, init.username); arg(&w, init.has_username)
-	arg(&w, init.password); arg(&w, init.has_password)
-	arg(&w, init.hostname); arg(&w, init.has_hostname)
-	arg(&w, init.port);     arg(&w, init.has_port)
-	arg(&w, init.pathname); arg(&w, init.has_pathname)
-	arg(&w, init.search);   arg(&w, init.has_search)
-	arg(&w, init.hash);     arg(&w, init.has_hash)
-	arg(&w, init.base);     arg(&w, init.has_base)
-	arg(&w, init.ignore_case)
-	r, st := transport(OP_URLPattern_create, w.pos)
-	if st != .None { return 0, st }
-	return ret_scalar(&r, URLPattern), .None
+// The dictionary is one argument: abi.encode_ret walks its fields (the host decodes them the same way).
+URLPattern_create :: proc(init: URLPatternInit) -> (p: URLPattern, err: abi.Api_Error) {
+	w := begin(); arg(&w, init)
+	err = finish(OP_URLPattern_create, &w, api_decl.URLPattern_create, &p)
+	return
 }
 
-URLPattern_component :: proc(pattern: URLPattern, component: URLPatternComponent) -> string {
-	w := begin()
-	arg(&w, pattern)
-	arg(&w, component)
-	r, st := transport(OP_URLPattern_component, w.pos)
-	if st != .None { return "" }
-	return ret_string(&r)
+URLPattern_component :: proc(pattern: URLPattern, component: URLPatternComponent) -> (s: string) {
+	w := begin(); arg(&w, pattern); arg(&w, component)
+	finish(OP_URLPattern_component, &w, api_decl.URLPattern_component, &s)
+	return
 }
 
-URLPattern_hasRegExpGroups :: proc(pattern: URLPattern) -> bool {
-	w := begin()
-	arg(&w, pattern)
-	r, st := transport(OP_URLPattern_hasRegExpGroups, w.pos)
-	if st != .None { return false }
-	return ret_scalar(&r, bool)
+URLPattern_hasRegExpGroups :: proc(pattern: URLPattern) -> (ok: bool) {
+	w := begin(); arg(&w, pattern)
+	finish(OP_URLPattern_hasRegExpGroups, &w, api_decl.URLPattern_hasRegExpGroups, &ok)
+	return
 }
 
-URLPattern_test :: proc(pattern: URLPattern, input: string, base: Maybe(string) = nil) -> bool {
-	w := begin()
-	arg(&w, pattern)
-	arg(&w, input)
-	arg_maybe(&w, base)
-	r, st := transport(OP_URLPattern_test, w.pos)
-	if st != .None { return false }
-	return ret_scalar(&r, bool)
+URLPattern_test :: proc(pattern: URLPattern, input: string, base: Maybe(string)) -> (ok: bool) {
+	w := begin(); arg(&w, pattern); arg(&w, input); arg(&w, base)
+	finish(OP_URLPattern_test, &w, api_decl.URLPattern_test, &ok)
+	return
+}
+
+// Each stub's signature against its declaration, at compile time (a stub cannot name its own type in its body).
+@(private)
+stubs_match_url :: proc() {
+	abi.must_match(api_decl.URL_parse, type_of(URL_parse))
+	abi.must_match(api_decl.URL_canParse, type_of(URL_canParse))
+	abi.must_match(api_decl.URL_get, type_of(URL_get))
+	abi.must_match(api_decl.URL_set, type_of(URL_set))
+	abi.must_match(api_decl.URL_searchParams, type_of(URL_searchParams))
+	abi.must_match(api_decl.URLSearchParams_create, type_of(URLSearchParams_create))
+	abi.must_match(api_decl.URLSearchParams_size, type_of(URLSearchParams_size))
+	abi.must_match(api_decl.URLSearchParams_append, type_of(URLSearchParams_append))
+	abi.must_match(api_decl.URLSearchParams_delete, type_of(URLSearchParams_delete))
+	abi.must_match(api_decl.URLSearchParams_get, type_of(URLSearchParams_get))
+	abi.must_match(api_decl.URLSearchParams_has, type_of(URLSearchParams_has))
+	abi.must_match(api_decl.URLSearchParams_set, type_of(URLSearchParams_set))
+	abi.must_match(api_decl.URLSearchParams_sort, type_of(URLSearchParams_sort))
+	abi.must_match(api_decl.URLSearchParams_toString, type_of(URLSearchParams_toString))
+	abi.must_match(api_decl.URLPattern_create, type_of(URLPattern_create))
+	abi.must_match(api_decl.URLPattern_component, type_of(URLPattern_component))
+	abi.must_match(api_decl.URLPattern_hasRegExpGroups, type_of(URLPattern_hasRegExpGroups))
+	abi.must_match(api_decl.URLPattern_test, type_of(URLPattern_test))
 }
