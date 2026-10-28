@@ -15,7 +15,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | interfaces, namespaces in the table | 603 |
 | exposed by default | 368 |
 | members | 5308 |
-| members implemented | 3794 (71.5 %) |
+| members implemented | 3798 (71.6 %) |
 
 ## By specification
 
@@ -93,7 +93,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `web-locks.idl` | 2 (2) | 5 / 5 |
 | `webaudio.idl` | 37 (0) | 7 / 204 |
 | `webauthn.idl` | 4 (4) | 22 / 22 |
-| `webcodecs-codec.idl` | 3 (3) | 19 / 23 |
+| `webcodecs-codec.idl` | 3 (3) | 23 / 23 |
 | `webcodecs-coders.idl` | 4 (4) | 40 / 40 |
 | `webcodecs-image.idl` | 3 (3) | 17 / 17 |
 | `webcodecs.idl` | 2 (2) | 22 / 22 |
@@ -1008,25 +1008,25 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### EncodedAudioChunk
 
-4 / 6 members.
+6 / 6 members.
 
 - `constructor()`: C `wjr_EncodedAudioChunk_constructor`
-- `readonly type`: not supported
-- `readonly timestamp`: import `webcodecs_codec.EncodedAudioChunk_timestamp`
-- `readonly duration`: import `webcodecs_codec.EncodedAudioChunk_duration`
-- `readonly byteLength`: import `webcodecs_codec.EncodedAudioChunk_byteLength`
-- `copyTo()`: not supported
+- `readonly type`: C `wjr_EncodedAudioChunk_get_type`
+- `readonly timestamp`: C `wjr_EncodedAudioChunk_get_timestamp`
+- `readonly duration`: C `wjr_EncodedAudioChunk_get_duration`
+- `readonly byteLength`: C `wjr_EncodedAudioChunk_get_byteLength`
+- `copyTo()`: C `wjr_EncodedAudioChunk_copyTo`
 
 ### EncodedVideoChunk
 
-4 / 6 members.
+6 / 6 members.
 
 - `constructor()`: C `wjr_EncodedVideoChunk_constructor`
-- `readonly type`: not supported
-- `readonly timestamp`: import `webcodecs_codec.EncodedVideoChunk_timestamp`
-- `readonly duration`: import `webcodecs_codec.EncodedVideoChunk_duration`
-- `readonly byteLength`: import `webcodecs_codec.EncodedVideoChunk_byteLength`
-- `copyTo()`: not supported
+- `readonly type`: C `wjr_EncodedVideoChunk_get_type`
+- `readonly timestamp`: C `wjr_EncodedVideoChunk_get_timestamp`
+- `readonly duration`: C `wjr_EncodedVideoChunk_get_duration`
+- `readonly byteLength`: C `wjr_EncodedVideoChunk_get_byteLength`
+- `copyTo()`: C `wjr_EncodedVideoChunk_copyTo`
 
 ### Event
 
@@ -6145,11 +6145,4 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 ## Not exposed (nothing implemented)
 
 AnimationNodeList, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, BarProp, CSSNumericArray, CSSRule, CSSGroupingRule, CSSConditionRule, CSSMediaRule, CSSSupportsRule, CSSPageRule, CSSStartingStyleRule, CSSStyleRule, CSSImportRule, CSSKeyframeRule, CSSKeyframesRule, CSSMarginRule, CSSNamespaceRule, CSSPropertyRule, CSSViewTransitionRule, CSSPageDescriptors, CSSStyleValue, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSNumericValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSUnitValue, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, CaretPosition, ChapterInformation, ClipboardItem, CookieStoreManager, FederatedCredential, PasswordCredential, CryptoKey, OverconstrainedError, QuotaExceededError, DOMStringMap, AudioProcessingEvent, BeforeUnloadEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, ExtendableCookieChangeEvent, NotificationEvent, FontFaceSetLoadEvent, FormDataEvent, GamepadEvent, IDBVersionChangeEvent, MediaStreamTrackEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, SubmitEvent, TrackEvent, TextEvent, EventCounts, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, BaseAudioContext, AudioContext, OfflineAudioContext, CloseWatcher, CookieStore, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, MediaStream, MediaStreamTrack, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, Notification, ScreenOrientation, ManagedSourceBuffer, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, XMLHttpRequestUpload, External, FetchLaterResult, FileReaderSync, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, GroupEffect, SequenceEffect, HTMLAllCollection, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, MediaDeviceInfo, InputDeviceInfo, MediaList, MediaMetadata, MediaSession, MimeType, MimeTypeArray, NavigationPrecommitController, NavigatorUAData, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, Origin, PerformanceTimingConfidence, PeriodicWave, Plugin, PluginArray, ReadableByteStreamController, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, ViewTransition, ViewTransitionTypeSet, WorkerLocation, Worklet, AudioWorklet, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor
-
-## Browser functions that could not be bound
-
-- EncodedAudioChunk.type: webcodecs_codec.EncodedAudioChunk_type exists but its result is not a string
-- EncodedAudioChunk.copyTo: webcodecs_codec.EncodedAudioChunk_copyTo exists but an argument of type AllowSharedBufferSource has no conversion
-- EncodedVideoChunk.type: webcodecs_codec.EncodedVideoChunk_type exists but its result is not a string
-- EncodedVideoChunk.copyTo: webcodecs_codec.EncodedVideoChunk_copyTo exists but an argument of type AllowSharedBufferSource has no conversion
 

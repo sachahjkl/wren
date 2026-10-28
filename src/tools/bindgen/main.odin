@@ -298,7 +298,7 @@ verify_roundtrip :: proc() {
 
 // The JavaScript bindings: the official Web IDL (native/js/webref) bound to the browser's API (src/tools/bindgen/jsgen).
 WEBREF_DIR :: "native/js/webref"
-JS_IMPL_DIR :: "native/js/runtime"
+JS_IMPL_DIR :: "native/js/odin"
 
 run_js :: proc(api: ^idl.Api) {
 	model := load_webidl_model()
@@ -342,36 +342,35 @@ load_webidl_model :: proc() -> ^webidl.Model {
 	return webidl.load(sources[:])
 }
 
-// Names of the hand-written members: `wjr_<...>` functions defined (or declared) at the start of a line of the C files.
+// Names of the hand-written members: the `wjr_<...>` symbols the Odin glue exports (`@(export, link_name = "wjr_...")`).
+// The glue used to be C files (native/js/runtime/*.c); it is Odin now, so this reads native/js/odin.
 scan_raw_impls :: proc(dir: string) -> []string {
 	out := make([dynamic]string)
-	walk :: proc(dir: string, out: ^[dynamic]string) {
+	seen := make(map[string]bool)
+	walk :: proc(dir: string, out: ^[dynamic]string, seen: ^map[string]bool) {
 		infos, err := os.read_all_directory_by_path(dir, context.allocator)
 		if err != nil { return }
 		for fi in infos {
-			if fi.type == .Directory { walk(fi.fullpath, out); continue }
-			if !strings.has_suffix(fi.name, ".c") { continue }
+			if fi.type == .Directory { walk(fi.fullpath, out, seen); continue }
+			if !strings.has_suffix(fi.name, ".odin") { continue }
 			data, rerr := os.read_entire_file(fi.fullpath, context.allocator)
 			if rerr != nil { continue }
-			for line in strings.split_lines(string(data)) {
-				if len(line) == 0 || line[0] == ' ' || line[0] == '\t' || line[0] == '/' || line[0] == '*' || line[0] == '#' { continue }
-				i := strings.index(line, "wjr_")
-				if i <= 0 { continue }
-				j := i
-				for j < len(line) && (line[j] == '_' || (line[j] >= 'a' && line[j] <= 'z') || (line[j] >= 'A' && line[j] <= 'Z') || (line[j] >= '0' && line[j] <= '9')) { j += 1 }
-				if j < len(line) && line[j] == '(' {
-					name := line[i:j]
-					found := false
-					for x in out { if x == name { found = true; break } }
-					if !found { append(out, strings.clone(name)) }
-				}
+			text := string(data)
+			for {
+				i := strings.index(text, "link_name = \"wjr_")
+				if i < 0 { break }
+				text = text[i + len("link_name = \""):]
+				j := 0
+				for j < len(text) && text[j] != '"' { j += 1 }
+				name := text[:j]
+				if name not_in seen^ { seen[strings.clone(name)] = true; append(out, strings.clone(name)) }
+				text = text[j:]
 			}
 		}
 	}
-	walk(dir, &out)
+	walk(dir, &out, &seen)
 	return out[:]
 }
-
 // Writes `text` to `path` when it differs (or reports it with -check).
 emit :: proc(path, text: string) {
 	old, err := os.read_entire_file(path, context.allocator)

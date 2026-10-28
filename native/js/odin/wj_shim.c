@@ -1,7 +1,7 @@
 /* wj_shim.c: the layout contract between the engine's C structs and their Odin mirrors (native/js/odin/wj).
  *
  * The Odin glue reads and writes the engine's structs in place (wj_the_realm, wj_obj, wj_listener, wj_interface,
- * wj_buf, wj_str, dom_impl, web_extracted): each is mirrored field for field in package wj (engine.odin, dom.odin,
+ * wj_buf, wj_str): each is mirrored field for field in package wj (engine.odin, dom.odin,
  * strings.odin, values.odin), and the static inlines over them (wj_obj_of, web_set_impl, web_rt, web_is_window) are
  * reimplemented there. This file holds NO code: only compile-time checks that every mirrored offset and size is the one
  * the Odin side assumes (the same numbers are asserted on the Odin side, engine.odin "layout"). A field added, removed
@@ -11,8 +11,7 @@
  * one call per field read, C written by us, and three copies of the same accessors. When a struct moves to Odin its
  * asserts go; when the last one has, this file goes. Compiled by zig cc with the engine's C (tools/build_js.ps1). */
 #include <stddef.h>
-#include "web.h"
-#include "dom_internal.h"
+#include "wj.h"
 
 #define WJ_LAYOUT(type, field, off) _Static_assert(offsetof(type, field) == (off), #type "." #field " moved: update its Odin mirror")
 #define WJ_SIZE(type, size) _Static_assert(sizeof(type) == (size), #type " changed size: update its Odin mirror")
@@ -78,20 +77,6 @@ WJ_LAYOUT(wj_str, len, 4);
 WJ_LAYOUT(wj_str, owned, 8);
 WJ_SIZE(wj_str, 12);
 
-/* dom_impl (dom.odin Dom_Impl) */
-WJ_LAYOUT(dom_impl, owner, 8);
-WJ_LAYOUT(dom_impl, node, 16);
-WJ_LAYOUT(dom_impl, coll, 24);
-WJ_LAYOUT(dom_impl, nodes, 32);
-WJ_LAYOUT(dom_impl, n, 36);
-WJ_LAYOUT(dom_impl, name, 40);
-WJ_LAYOUT(dom_impl, name_len, 44);
-WJ_LAYOUT(dom_impl, extra, 48);
-WJ_LAYOUT(dom_impl, rect, 56);
-WJ_LAYOUT(dom_impl, values, 88);
-WJ_LAYOUT(dom_impl, n_values, 92);
-WJ_SIZE(dom_impl, 96);
-
 /* wj_member (qjs_platform.odin Member): the generated member tables */
 WJ_LAYOUT(wj_member, kind, 4);
 WJ_LAYOUT(wj_member, flags, 6);
@@ -100,11 +85,6 @@ WJ_LAYOUT(wj_member, fn, 12);
 WJ_LAYOUT(wj_member, set, 20);
 WJ_LAYOUT(wj_member, value, 24);
 WJ_SIZE(wj_member, 32);
-
-/* web_buf (web_core.odin Web_Buf) */
-WJ_LAYOUT(web_buf, len, 4);
-WJ_LAYOUT(web_buf, failed, 12);
-WJ_SIZE(web_buf, 16);
 
 /* the QuickJS-ng structs the engine layer passes by pointer (m6_quickjs.odin, quickjs.odin) */
 WJ_LAYOUT(JSClassDef, finalizer, 4);
@@ -142,8 +122,3 @@ WJ_VALUE(JS_READ_OBJ_BYTECODE, 1);
 WJ_VALUE(JS_PROMISE_PENDING, 0);
 WJ_VALUE(JS_PROMISE_REJECTED, 2);
 
-/* web_extracted (values.odin Extracted) */
-WJ_LAYOUT(web_extracted, len, 4);
-WJ_LAYOUT(web_extracted, type, 8);
-WJ_LAYOUT(web_extracted, stream, 16);
-WJ_SIZE(web_extracted, 24);

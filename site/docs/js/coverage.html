@@ -199,7 +199,7 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <tr><td>interfaces, namespaces in the table</td><td style="text-align:right">603</td></tr>
 <tr><td>exposed by default</td><td style="text-align:right">368</td></tr>
 <tr><td>members</td><td style="text-align:right">5308</td></tr>
-<tr><td>members implemented</td><td style="text-align:right">3794 (71.5 %)</td></tr>
+<tr><td>members implemented</td><td style="text-align:right">3798 (71.6 %)</td></tr>
 </tbody>
 </table></div>
 <h2 id="by-specification"><a class="anchor" href="#by-specification" aria-hidden="true">#</a>By specification</h2>
@@ -278,7 +278,7 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <tr><td><code>web-locks.idl</code></td><td style="text-align:right">2 (2)</td><td style="text-align:right">5 / 5</td></tr>
 <tr><td><code>webaudio.idl</code></td><td style="text-align:right">37 (0)</td><td style="text-align:right">7 / 204</td></tr>
 <tr><td><code>webauthn.idl</code></td><td style="text-align:right">4 (4)</td><td style="text-align:right">22 / 22</td></tr>
-<tr><td><code>webcodecs-codec.idl</code></td><td style="text-align:right">3 (3)</td><td style="text-align:right">19 / 23</td></tr>
+<tr><td><code>webcodecs-codec.idl</code></td><td style="text-align:right">3 (3)</td><td style="text-align:right">23 / 23</td></tr>
 <tr><td><code>webcodecs-coders.idl</code></td><td style="text-align:right">4 (4)</td><td style="text-align:right">40 / 40</td></tr>
 <tr><td><code>webcodecs-image.idl</code></td><td style="text-align:right">3 (3)</td><td style="text-align:right">17 / 17</td></tr>
 <tr><td><code>webcodecs.idl</code></td><td style="text-align:right">2 (2)</td><td style="text-align:right">22 / 22</td></tr>
@@ -1135,24 +1135,24 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <li><code>ariaValueText</code> (ARIAMixin): generic (reflects a content attribute)</li>
 </ul>
 <h3 id="encodedaudiochunk"><a class="anchor" href="#encodedaudiochunk" aria-hidden="true">#</a>EncodedAudioChunk</h3>
-<p>4 / 6 members.</p>
+<p>6 / 6 members.</p>
 <ul>
 <li><code>constructor()</code>: C <code>wjr_EncodedAudioChunk_constructor</code></li>
-<li><code>readonly type</code>: not supported</li>
-<li><code>readonly timestamp</code>: import <code>webcodecs_codec.EncodedAudioChunk_timestamp</code></li>
-<li><code>readonly duration</code>: import <code>webcodecs_codec.EncodedAudioChunk_duration</code></li>
-<li><code>readonly byteLength</code>: import <code>webcodecs_codec.EncodedAudioChunk_byteLength</code></li>
-<li><code>copyTo()</code>: not supported</li>
+<li><code>readonly type</code>: C <code>wjr_EncodedAudioChunk_get_type</code></li>
+<li><code>readonly timestamp</code>: C <code>wjr_EncodedAudioChunk_get_timestamp</code></li>
+<li><code>readonly duration</code>: C <code>wjr_EncodedAudioChunk_get_duration</code></li>
+<li><code>readonly byteLength</code>: C <code>wjr_EncodedAudioChunk_get_byteLength</code></li>
+<li><code>copyTo()</code>: C <code>wjr_EncodedAudioChunk_copyTo</code></li>
 </ul>
 <h3 id="encodedvideochunk"><a class="anchor" href="#encodedvideochunk" aria-hidden="true">#</a>EncodedVideoChunk</h3>
-<p>4 / 6 members.</p>
+<p>6 / 6 members.</p>
 <ul>
 <li><code>constructor()</code>: C <code>wjr_EncodedVideoChunk_constructor</code></li>
-<li><code>readonly type</code>: not supported</li>
-<li><code>readonly timestamp</code>: import <code>webcodecs_codec.EncodedVideoChunk_timestamp</code></li>
-<li><code>readonly duration</code>: import <code>webcodecs_codec.EncodedVideoChunk_duration</code></li>
-<li><code>readonly byteLength</code>: import <code>webcodecs_codec.EncodedVideoChunk_byteLength</code></li>
-<li><code>copyTo()</code>: not supported</li>
+<li><code>readonly type</code>: C <code>wjr_EncodedVideoChunk_get_type</code></li>
+<li><code>readonly timestamp</code>: C <code>wjr_EncodedVideoChunk_get_timestamp</code></li>
+<li><code>readonly duration</code>: C <code>wjr_EncodedVideoChunk_get_duration</code></li>
+<li><code>readonly byteLength</code>: C <code>wjr_EncodedVideoChunk_get_byteLength</code></li>
+<li><code>copyTo()</code>: C <code>wjr_EncodedVideoChunk_copyTo</code></li>
 </ul>
 <h3 id="event"><a class="anchor" href="#event" aria-hidden="true">#</a>Event</h3>
 <p>23 / 23 members.</p>
@@ -5937,13 +5937,6 @@ it is the interface of a node); the others exist in the engine but are absent fr
 </ul>
 <h2 id="not-exposed-nothing-implemented"><a class="anchor" href="#not-exposed-nothing-implemented" aria-hidden="true">#</a>Not exposed (nothing implemented)</h2>
 <p>AnimationNodeList, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, BarProp, CSSNumericArray, CSSRule, CSSGroupingRule, CSSConditionRule, CSSMediaRule, CSSSupportsRule, CSSPageRule, CSSStartingStyleRule, CSSStyleRule, CSSImportRule, CSSKeyframeRule, CSSKeyframesRule, CSSMarginRule, CSSNamespaceRule, CSSPropertyRule, CSSViewTransitionRule, CSSPageDescriptors, CSSStyleValue, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSNumericValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSUnitValue, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, CaretPosition, ChapterInformation, ClipboardItem, CookieStoreManager, FederatedCredential, PasswordCredential, CryptoKey, OverconstrainedError, QuotaExceededError, DOMStringMap, AudioProcessingEvent, BeforeUnloadEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, ExtendableCookieChangeEvent, NotificationEvent, FontFaceSetLoadEvent, FormDataEvent, GamepadEvent, IDBVersionChangeEvent, MediaStreamTrackEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, SubmitEvent, TrackEvent, TextEvent, EventCounts, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, BaseAudioContext, AudioContext, OfflineAudioContext, CloseWatcher, CookieStore, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, MediaStream, MediaStreamTrack, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, Notification, ScreenOrientation, ManagedSourceBuffer, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, XMLHttpRequestUpload, External, FetchLaterResult, FileReaderSync, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, GroupEffect, SequenceEffect, HTMLAllCollection, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, MediaDeviceInfo, InputDeviceInfo, MediaList, MediaMetadata, MediaSession, MimeType, MimeTypeArray, NavigationPrecommitController, NavigatorUAData, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, Origin, PerformanceTimingConfidence, PeriodicWave, Plugin, PluginArray, ReadableByteStreamController, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, ViewTransition, ViewTransitionTypeSet, WorkerLocation, Worklet, AudioWorklet, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor</p>
-<h2 id="browser-functions-that-could-not-be-bound"><a class="anchor" href="#browser-functions-that-could-not-be-bound" aria-hidden="true">#</a>Browser functions that could not be bound</h2>
-<ul>
-<li>EncodedAudioChunk.type: webcodecs_codec.EncodedAudioChunk_type exists but its result is not a string</li>
-<li>EncodedAudioChunk.copyTo: webcodecs_codec.EncodedAudioChunk_copyTo exists but an argument of type AllowSharedBufferSource has no conversion</li>
-<li>EncodedVideoChunk.type: webcodecs_codec.EncodedVideoChunk_type exists but its result is not a string</li>
-<li>EncodedVideoChunk.copyTo: webcodecs_codec.EncodedVideoChunk_copyTo exists but an argument of type AllowSharedBufferSource has no conversion</li>
-</ul>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="/docs/api/README.html"><span>Previous</span><strong>Web API of Wren (Wasm imports)</strong></a>
 <a class="doc-next" href="/docs/api/README.html"><span>Next</span><strong>Web API of Wren (Wasm imports)</strong></a>
@@ -6324,7 +6317,6 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <li class="lvl3"><a href="#xmlserializer">XMLSerializer</a></li>
 <li class="lvl3"><a href="#console">console</a></li>
 <li><a href="#not-exposed-nothing-implemented">Not exposed (nothing implemented)</a></li>
-<li><a href="#browser-functions-that-could-not-be-bound">Browser functions that could not be bound</a></li>
 </ul>
 </nav>
 </main>
