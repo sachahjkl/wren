@@ -472,11 +472,14 @@ gc_trace :: proc(rt: ^Runtime, c: ^Cell) {
 	switch c.kind {
 	case .string:
 		s := cast(^JS_String)c
-		if s.is_rope {
-			mark_cell(rt, s.left)
-			mark_cell(rt, s.right)
+		if s.flags & STR_TAIL != 0 {
+			if s.is_rope {
+				mark_cell(rt, str_tail(s).rope.left)
+				mark_cell(rt, str_tail(s).rope.right)
+			} else {
+				mark_cell(rt, str_tail(s).buf.base)
+			}
 		}
-		mark_cell(rt, s.base)
 	case .symbol:
 		sym := cast(^Symbol)c
 		mark_value(rt, sym.description)
