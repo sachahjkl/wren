@@ -254,27 +254,21 @@ windows_spill :: proc(app: ^App, n: int) {
 	}
 }
 
-// The window's own wake-up for the loop: a message posted to a real window that still exists, or the auto-reset event an
-// offscreen (headless) window waits on (it has no message queue). `wake_offscreen` is non-zero for a headless front
-// window: wake_window signals it instead of posting a message.
-@(private = "file") wake_target: uintptr
-@(private = "file") wake_offscreen: uintptr
+// The window's own wake-up for the loop: platform.wake posts to a real window that still exists, or signals the
+// auto-reset event / eventfd an offscreen (headless) window waits on (it has no message queue). Both forms are
+// thread-safe, so the loop is woken from any thread (host.post from a worker). `wake_target` is the front window the
+// loop waits on now, read atomically as a pointer (retarget runs on the UI thread; the window outlives the target).
+@(private = "file") wake_target: rawptr
 
 wake_window :: proc(user: rawptr) {
-	if ev := sync.atomic_load(&wake_offscreen); ev != 0 { win.SetEvent(win.HANDLE(ev)); return }
-	h := sync.atomic_load(&wake_target)
-	if h != 0 { win.PostMessageW(win.HWND(h), win.WM_NULL, 0, 0) }
+	if w := (^platform.Window)(sync.atomic_load(&wake_target)); w != nil { platform.wake(w) }
 }
 
 @(private = "file")
 wake_retarget :: proc(app: ^App) {
-	h, ev: uintptr
-	if front := window_front(app); front != nil && front.win != nil {
-		if front.win.hwnd != nil { h = uintptr(front.win.hwnd) }
-		ev = uintptr(platform.wake_handle(front.win))   // non-zero only for an offscreen window
-	}
-	sync.atomic_store(&wake_target, h)
-	sync.atomic_store(&wake_offscreen, ev)
+	w: rawptr
+	if front := window_front(app); front != nil && front.win != nil { w = front.win }
+	sync.atomic_store(&wake_target, w)
 }
 
 ////////////////////////////////
@@ -655,7 +649,7 @@ windows_shutdown_begin :: proc(app: ^App) {
 		window_own_destroy(app, &w.own)
 	}
 	window_activate(app, front)
-	sync.atomic_store(&wake_target, 0)
+	sync.atomic_store(&wake_target, nil)
 }
 
 // Every tab was freed: the lists forget them.
