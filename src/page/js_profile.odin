@@ -4,7 +4,7 @@ package page
 // realm of every page, written as <prefix>.<n>.json (Firefox Profiler format; tools\wasm_profile.ps1 sums it up) when the page
 // closes. Function names need an engine built with tools\build_js.ps1 -Names.
 // WREN_JS_PROFILE=<prefix>: the page's own functions: the engine counts the frames of the stack every few interrupt checks
-// (native/js/engine/qjs_realm.c), written as <prefix>.<n>.js.txt when the page closes: the functions with the most samples of their
+// (native/js/odin/qjs_realm.odin), written as <prefix>.<n>.js.txt when the page closes: the functions with the most samples of their
 // own, and with the most on the stack.
 // WREN_JS_PROFILE_FROM=<ms>: with WREN_JS_PROFILE, count only from that many ms after the realm was made.
 // WREN_JS_PRELUDE=<file>: a script run in every window realm before the page's own scripts (the measuring tools wrap the engine's

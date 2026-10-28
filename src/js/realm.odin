@@ -110,7 +110,7 @@ eval_script :: proc(inst: ^wasm.Instance, source: []byte, url: string, line: i32
 	return Eval_Status(i32(argv[0]))
 }
 
-// Installs the content blocker's native hooks (native/js/engine/qjs_blocker.c): spec is records (0x1e apart) of fields (0x1f apart), the
+// Installs the content blocker's native hooks (native/js/odin/qjs_blocker.odin): spec is records (0x1e apart) of fields (0x1f apart), the
 // canonical scriptlet name first. Returns the number of rules read, -1 when the call failed.
 hook_install :: proc(inst: ^wasm.Instance, spec: []byte, call: Caller = direct_call, user: rawptr = nil) -> i32 {
 	p := guest_copy(inst, spec)
