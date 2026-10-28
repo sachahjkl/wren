@@ -29,6 +29,14 @@ $files = [ordered]@{
   'emoji/emoji-data.txt'                  = '2CB2BB9455CDA83E8481541ECF5B6DFDA66A3BB89EFA3FA7C5297ECCF607B72B'
 }
 
+# The emoji sequence files (properties of strings, \p{RGI_Emoji} & co. under the v flag) are published outside the
+# UCD proper, under Public/<version>/emoji/; they are cached under emoji-seq/.
+$emojiBase  = "https://www.unicode.org/Public/$ver/emoji"
+$emojiFiles = [ordered]@{
+  'emoji-sequences.txt'     = '12CC8267DC33CBD11ED32BCF6FC5DC2AD9C7A77BAE1BDFBA2F41B1B9B3EAD8DD'
+  'emoji-zwj-sequences.txt' = '5B25441DAED2322B068C5E70CDA522946A4F0274DF864445A1965A92E5FC5CAD'
+}
+
 function Sha256Of([string]$path) {
   $h = [Security.Cryptography.SHA256]::Create()
   $s = [IO.File]::OpenRead($path)
@@ -36,12 +44,15 @@ function Sha256Of([string]$path) {
 }
 
 New-Item -ItemType Directory -Force $cache | Out-Null
-foreach ($rel in $files.Keys) {
-  $want = $files[$rel]
+$all = [ordered]@{}
+foreach ($rel in $files.Keys) { $all[$rel] = @("$base/$rel", $files[$rel]) }
+foreach ($rel in $emojiFiles.Keys) { $all["emoji-seq/$rel"] = @("$emojiBase/$rel", $emojiFiles[$rel]) }
+foreach ($rel in $all.Keys) {
+  $url  = $all[$rel][0]
+  $want = $all[$rel][1]
   $dst  = Join-Path $cache $rel
   if ((Test-Path $dst) -and (-not $Force) -and $want -and (Sha256Of $dst) -eq $want) { continue }
   New-Item -ItemType Directory -Force (Split-Path $dst) | Out-Null
-  $url = "$base/$rel"
   Write-Host "downloading $url"
   $ProgressPreference = 'SilentlyContinue'
   Invoke-WebRequest -Uri $url -OutFile $dst -UseBasicParsing
