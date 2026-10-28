@@ -51,6 +51,16 @@ freeze :: proc "contextless" (ctx: ^wj.Context, v: wj.JSValue) {
 	wj.JS_FreeValue(ctx, object)
 }
 
+// target.addEventListener(type, listener) through the object's own method (a target without one is left as is).
+add_listener :: proc "contextless" (ctx: ^wj.Context, target: wj.JSValue, type: cstring, listener: wj.JSValue) {
+	add := wj.JS_GetPropertyStr(ctx, target, "addEventListener")
+	defer wj.JS_FreeValue(ctx, add)
+	if !wj.JS_IsFunction(ctx, add) { return }
+	args := [2]wj.JSValue{wj.new_string(ctx, type), listener}
+	r := wj.JS_Call(ctx, add, target, 2, &args[0])
+	free_values(ctx, r, args[0])
+}
+
 // The realm's origin (globalThis.origin) as a JS value (counted), or "" when it is not a string.
 realm_origin :: proc "contextless" (ctx: ^wj.Context) -> wj.JSValue {
 	o := wj.global_get(ctx, "origin")
