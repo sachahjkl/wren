@@ -3,12 +3,19 @@
  * accessor is one field read, so the Odin glue does not have to mirror the (changing) C struct layouts. They shrink as
  * more of the engine moves to Odin. See docs/js/odin-glue.md ("Three kinds of symbol"). */
 #include "../engine/wj.h"
+#include "../engine/qjs_internal.h"
 
 uint8_t *wj_g4_scratch_data(void) { return wj_scratch.data; }
 uint32_t wj_g4_scratch_cap(void) { return wj_scratch.cap; }
 
 /* wj_obj.handle is the first field (offset 0); the accessor keeps the glue independent of the rest of the layout. */
 uint64_t wj_g4_obj_handle(void *o) { return o ? ((wj_obj *)o)->handle : 0; }
+
+/* wj_obj.impl (engine-owned data of an interface implemented in the engine). */
+void *wj_g4_obj_impl(void *o) { return o ? ((wj_obj *)o)->impl : 0; }
+
+/* The wj_obj of any platform object, or NULL (the inline wj_obj_of, which needs the wj_class_* class ids). */
+void *wj_g4_obj_of(JSValue v) { return wj_obj_of(v); }
 
 /* wj_the_realm.protos[iface]: the prototype object of an interface (not counted). */
 JSValue wj_g4_realm_proto(int iface) { return wj_the_realm.protos[iface]; }
