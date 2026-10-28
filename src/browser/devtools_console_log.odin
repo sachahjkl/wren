@@ -10,9 +10,10 @@ package browser
 
 import "core:fmt"
 import "core:strings"
-import win "core:sys/windows"
+import "core:time"
 import "toolkit:ui"
 import "wb:config"
+import "wb:js"
 import "wb:page"
 
 Con_Kind :: enum u8 { Log, Info, Warn, Error, Debug, Input, Result, Marker }
@@ -265,14 +266,14 @@ con_time_text :: proc(at_ms: i64) -> string {
 	return fmt.tprintf("%02d:%02d:%02d.%03d", s / 3600 %% 24, s / 60 %% 60, s %% 60, at_ms %% 1000)
 }
 
-// The local time of day in ms.
+// The local time of day in ms (0 at local midnight). js.timezone_offset gives the user's zone (Win32 / the C library);
+// the time of day is then the local ms within the day.
 local_time_ms :: proc() -> i64 {
-	ft: win.FILETIME
-	utc, st: win.SYSTEMTIME
-	win.GetSystemTimeAsFileTime(&ft)
-	win.FileTimeToSystemTime(&ft, &utc)
-	win.SystemTimeToTzSpecificLocalTime(nil, &utc, &st)
-	return ((i64(st.hour) * 60 + i64(st.minute)) * 60 + i64(st.second)) * 1000 + i64(st.milliseconds)
+	unix_ms := time.time_to_unix_nano(time.now()) / 1e6
+	local_ms := unix_ms - i64(js.timezone_offset(f64(unix_ms))) * 60_000
+	tod := local_ms % 86_400_000
+	if tod < 0 { tod += 86_400_000 }
+	return tod
 }
 
 // Whether a message is about a request that failed (what "hide network" hides).
