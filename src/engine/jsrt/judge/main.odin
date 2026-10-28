@@ -1038,6 +1038,8 @@ main :: proc() {
 		os.exit(eval_main(args[2]))
 	case "fuzz", "fuzzrun", "fuzzsrc", "compile":
 		os.exit(fuzz_args(args))
+	case "capi":
+		os.exit(capi_main())
 	case "worker":
 		if len(args) < 5 {os.exit(2)}
 		os.exit(worker_main(args[2], args[3], args[4]))

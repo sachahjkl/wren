@@ -164,6 +164,10 @@ JS_ToCStringLen2 :: proc "c" (c: ^Context, plen: ^uint, val: JSValue, cesu8: boo
 	return cstring(p)
 }
 
+JS_ToCString :: proc "c" (c: ^Context, v: JSValue) -> cstring {
+	return JS_ToCStringLen2(c, nil, v, false)
+}
+
 JS_FreeCString :: proc "c" (c: ^Context, ptr: cstring) {
 	context = api_ctx()
 	if ptr != nil {mem.free(rawptr(ptr), host_allocator)}

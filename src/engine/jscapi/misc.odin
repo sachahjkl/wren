@@ -230,6 +230,7 @@ JS_NewCModule :: proc "c" (c: ^Context, name: cstring, init: Module_Init) -> ^Mo
 	mod.status = .evaluated
 	mod.resolved = true
 	mod.func_created = true
+	mod.cycle_root = mod // an evaluated module is its own cycle root
 	js.module_register(rt, mod)
 	return cast(^Module_Def)mod
 }
