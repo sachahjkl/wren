@@ -614,6 +614,7 @@ interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int
 			d := int(i8(ip[1]))
 			if t == (op == .if_true8) {
 				if d < 0 {
+					if f.bc.jit_active != 0 {break loop}   // a compiled loop of this function: the back edge goes through the full dispatch, which offers it to the JIT
 					if temp.len > regs.root_base {temp.len = regs.root_base}
 					rt.interrupt_counter += 1
 					if rt.interrupt_counter >= 10_000 || gc_should_run(rt) {break loop}
@@ -629,6 +630,7 @@ interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int
 			d := int(i32(rd32(ip[1:])))
 			if t == (op == .if_true) {
 				if d < 0 {
+					if f.bc.jit_active != 0 {break loop}   // a compiled loop of this function: the back edge goes through the full dispatch, which offers it to the JIT
 					if temp.len > regs.root_base {temp.len = regs.root_base}
 					rt.interrupt_counter += 1
 					if rt.interrupt_counter >= 10_000 || gc_should_run(rt) {break loop}
@@ -641,6 +643,7 @@ interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int
 		case .goto8:
 			d := int(i8(ip[1]))
 			if d < 0 {
+				if f.bc.jit_active != 0 {break loop}   // a compiled loop of this function: the back edge goes through the full dispatch, which offers it to the JIT
 				if temp.len > regs.root_base {temp.len = regs.root_base}
 				rt.interrupt_counter += 1
 				if rt.interrupt_counter >= 10_000 || gc_should_run(rt) {break loop}
@@ -649,6 +652,7 @@ interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int
 		case .goto16:
 			d := int(i16(u16(rd16(ip[1:]))))
 			if d < 0 {
+				if f.bc.jit_active != 0 {break loop}   // a compiled loop of this function: the back edge goes through the full dispatch, which offers it to the JIT
 				if temp.len > regs.root_base {temp.len = regs.root_base}
 				rt.interrupt_counter += 1
 				if rt.interrupt_counter >= 10_000 || gc_should_run(rt) {break loop}
@@ -657,6 +661,7 @@ interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int
 		case .goto:
 			d := int(i32(rd32(ip[1:])))
 			if d < 0 {
+				if f.bc.jit_active != 0 {break loop}   // a compiled loop of this function: the back edge goes through the full dispatch, which offers it to the JIT
 				if temp.len > regs.root_base {temp.len = regs.root_base}
 				rt.interrupt_counter += 1
 				if rt.interrupt_counter >= 10_000 || gc_should_run(rt) {break loop}

@@ -1003,21 +1003,33 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 			// --- control flow ---
 			case .goto:
 				d := rd_i32(code, pc)
+				jend := pc + 4
 				pc += d
 				if d < 0 {
-					if !back_edge(ctx, root_base) {exc = true}
+					if !back_edge(ctx, root_base) {exc = true} else if jit_cfg.enabled {
+						jr, jpc, jsp := jit_back_edge(ctx, f, b, pc, jend, sp)
+						if jr == .resume {pc = jpc; sp = jsp} else if jr == .ret {return finish(f, rt, stack[0], root_base)}
+					}
 				}
 			case .goto16:
 				d := int(i16(u16(rd_u16(code, pc))))
+				jend := pc + 2
 				pc += d
 				if d < 0 {
-					if !back_edge(ctx, root_base) {exc = true}
+					if !back_edge(ctx, root_base) {exc = true} else if jit_cfg.enabled {
+						jr, jpc, jsp := jit_back_edge(ctx, f, b, pc, jend, sp)
+						if jr == .resume {pc = jpc; sp = jsp} else if jr == .ret {return finish(f, rt, stack[0], root_base)}
+					}
 				}
 			case .goto8:
 				d := int(i8(code[pc]))
+				jend := pc + 1
 				pc += d
 				if d < 0 {
-					if !back_edge(ctx, root_base) {exc = true}
+					if !back_edge(ctx, root_base) {exc = true} else if jit_cfg.enabled {
+						jr, jpc, jsp := jit_back_edge(ctx, f, b, pc, jend, sp)
+						if jr == .resume {pc = jpc; sp = jsp} else if jr == .ret {return finish(f, rt, stack[0], root_base)}
+					}
 				}
 			case .if_true, .if_false:
 				d := rd_i32(code, pc)
@@ -1026,9 +1038,13 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 				v := stack[sp]
 				t := v.tag == .bool ? v.u.b : to_boolean(v)
 				if t == (op == .if_true) {
+					jend := pc
 					pc += d - 4
 					if d < 0 {
-						if !back_edge(ctx, root_base) {exc = true}
+						if !back_edge(ctx, root_base) {exc = true} else if jit_cfg.enabled {
+							jr, jpc, jsp := jit_back_edge(ctx, f, b, pc, jend, sp)
+							if jr == .resume {pc = jpc; sp = jsp} else if jr == .ret {return finish(f, rt, stack[0], root_base)}
+						}
 					}
 				}
 			case .if_true8, .if_false8:
@@ -1038,9 +1054,13 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 				v := stack[sp]
 				t := v.tag == .bool ? v.u.b : to_boolean(v)
 				if t == (op == .if_true8) {
+					jend := pc
 					pc += d - 1
 					if d < 0 {
-						if !back_edge(ctx, root_base) {exc = true}
+						if !back_edge(ctx, root_base) {exc = true} else if jit_cfg.enabled {
+							jr, jpc, jsp := jit_back_edge(ctx, f, b, pc, jend, sp)
+							if jr == .resume {pc = jpc; sp = jsp} else if jr == .ret {return finish(f, rt, stack[0], root_base)}
+						}
 					}
 				}
 			case .op_catch:
