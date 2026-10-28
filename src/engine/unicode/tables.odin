@@ -21,6 +21,13 @@ Named_Table :: struct {
 	runs: []Range_Run,
 }
 
+// A property of strings (Basic_Emoji, RGI_Emoji, ...): `seqs` is a flat list where each sequence is its length
+// followed by its code points.
+Sequence_Table :: struct {
+	name: string,
+	seqs: []u32,
+}
+
 // One case-mapping entry. For a run of code points starting at `code` of length `len`, each maps by the given
 // deltas. QuickJS packs this tightly; we keep one entry per contiguous rule and compute the mapping arithmetically
 // where possible, falling back to explicit multi-char expansions in `Case_Full` for folding/upper that yield more

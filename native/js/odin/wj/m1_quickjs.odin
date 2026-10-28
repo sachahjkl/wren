@@ -4,9 +4,11 @@
 // Location), and the accessor-function constructors. One declaration per symbol.
 package wj
 
+when !WJ_JSRT {
 @(default_calling_convention = "c")
 foreign {
 	JS_ToNumber            :: proc(ctx: ^Context, val: JSValue) -> JSValue ---
+}
 }
 
 // A getter / setter function for JS_DefinePropertyGetSet (JS_CFUNC_getter / JS_CFUNC_setter: the engine calls the
