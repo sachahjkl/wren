@@ -16,23 +16,6 @@ CFUNC_setter_magic  :: 11
 Host_Auto_Init :: jscapi.Host_Auto_Init
 // JSCFunctionMagic: a native function with a magic number (getter_magic / setter_magic are cast to it, as the C does).
 
-when !WJ_JSRT {
-@(default_calling_convention = "c")
-foreign {
-	JS_IsProxy             :: proc(v: JSValue) -> bool ---
-	JS_ToCStringLenUTF16   :: proc(ctx: ^Context, plen: ^uint, v: JSValue) -> [^]u16 ---
-	JS_FreeCStringUTF16    :: proc(ctx: ^Context, p: [^]u16) ---
-	JS_NewStringUTF16      :: proc(ctx: ^Context, buf: [^]u16, len: uint) -> JSValue ---
-	JS_CallConstructor2    :: proc(ctx: ^Context, func_obj: JSValue, new_target: JSValue, argc: i32, argv: [^]JSValue) -> JSValue ---
-	JS_SetLength           :: proc(ctx: ^Context, obj: JSValue, len: i64) -> i32 ---
-	JS_DefineHostAutoInitProperty :: proc(ctx: ^Context, obj: JSValue, prop: Atom, fn: Host_Auto_Init, flags: i32) -> i32 ---
-	js_mallocz             :: proc(ctx: ^Context, size: uint) -> rawptr ---
-
-	// libunicode.h: ID_Start / ID_Continue (without '$', '_', ZWNJ, ZWJ)
-	lre_is_id_start    :: proc(c: u32) -> bool ---
-	lre_is_id_continue :: proc(c: u32) -> bool ---
-}
-}   // when !WJ_JSRT
 
 @(default_calling_convention = "c")
 foreign {

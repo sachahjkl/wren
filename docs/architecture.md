@@ -68,11 +68,15 @@ function, `html.wasm_scripts`, if it ever changes.)
 
 ## JavaScript
 
-JavaScript is one more Wasm guest, not a second engine beside Wasm. `native/js` is QuickJS-ng 0.17.0 (patched)
-compiled by Zig to a WASI reactor, with an engine-independent layer (`wj.h`), hand-written members and bindings
-generated from the Web IDL of webref (`src/tools/bindgen`, package `jsgen`). `tools\build_js.ps1` pre-initializes it at
-build time (`src/wasm/preinit.odin`: interfaces, prototypes and preludes already built in the memory image); the image
-is embedded in the exe (`src/js/image`). Each page and each JavaScript worker gets its own instance (a realm), whose
+JavaScript is one more Wasm guest, not a second engine beside Wasm. The engine is written in Odin (`src/engine`): a
+front-end that compiles source to QuickJS-ng 0.17 bytecode, the interpreter (`jsrt`, with a hot loop of its own and a loop
+JIT that compiles numeric loops to Wasm at run time), and the numeric, Unicode, regexp and date libraries. `jscapi` gives it
+the QuickJS C API, which the glue (`native/js/odin`, all Odin) is written against; the web platform's objects are
+hand-written members plus bindings generated from the Web IDL of webref (`src/tools/bindgen`, package `jsgen`, into
+`native/js/odin/bindings_gen.odin`). `tools\build_js.ps1` compiles it all to one wasm32 module (Odin, linked with wasi-libc
+by Zig's `wasm-ld`: no C of ours is compiled) and pre-initializes it at build time (`src/wasm/preinit.odin`: interfaces,
+prototypes and preludes already built in the memory image); the image is embedded in the exe (`src/js/image`). Each page
+and each JavaScript worker gets its own instance (a realm), whose
 imports are the same `api/*.widl` functions Wasm pages use, plus `js*.widl` for what only the engine needs. So the
 limits of every guest apply: Wasmtime's sandbox, the memory cap, epoch interruption (`wasm.max_call_ms`), on top of
 the engine's own (`javascript.max_heap_bytes`, `javascript.slow_script_ms`). A trap loses the realm (the status bar says

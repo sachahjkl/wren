@@ -3,30 +3,6 @@
 // one declaration each; to fold into quickjs.odin / host.odin when the migration settles.
 package wj
 
-when !WJ_JSRT {
-@(default_calling_convention = "c")
-foreign {
-	// atoms, properties
-	JS_SetProperty         :: proc(ctx: ^Context, this_obj: JSValue, prop: Atom, val: JSValue) -> i32 ---
-	JS_IsInstanceOf        :: proc(ctx: ^Context, val: JSValue, obj: JSValue) -> i32 ---
-	JS_ToObject            :: proc(ctx: ^Context, val: JSValue) -> JSValue ---
-
-	// brands and built-in objects
-	JS_IsArrayBuffer :: proc(obj: JSValue) -> bool ---
-	JS_IsMap         :: proc(val: JSValue) -> bool ---
-	JS_IsSet         :: proc(val: JSValue) -> bool ---
-	JS_NewDate       :: proc(ctx: ^Context, epoch_ms: f64) -> JSValue ---
-
-	// JSON
-	JS_JSONStringify :: proc(ctx: ^Context, obj: JSValue, replacer: JSValue, space0: JSValue) -> JSValue ---
-
-	// exceptions (C varargs: keep formats %-safe)
-
-	// the engine (wj.h)
-
-	// runtime/web_fs.c: a FileSystemHandle as text (malloc'ed; free with libc_free) and back, for structured cloning
-}
-}   // when !WJ_JSRT
 
 // wj_array_set64 (qjs_backend.h, static inline): a data property at an index that may not fit 32 bits.
 array_set64 :: proc "contextless" (ctx: ^Context, arr: JSValue, i: i64, v: JSValue) -> i32 {

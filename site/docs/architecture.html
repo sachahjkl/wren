@@ -249,11 +249,15 @@ Imports take 64-bit addresses in a module whose memory 0 is memory64 (<code>wasm
 are fetched concurrently and run in document order, each in its own instance sharing the DOM. (The syntax is one
 function, <code>html.wasm_scripts</code>, if it ever changes.)</p>
 <h2 id="javascript"><a class="anchor" href="#javascript" aria-hidden="true">#</a>JavaScript</h2>
-<p>JavaScript is one more Wasm guest, not a second engine beside Wasm. <code>native/js</code> is QuickJS-ng 0.17.0 (patched)
-compiled by Zig to a WASI reactor, with an engine-independent layer (<code>wj.h</code>), hand-written members and bindings
-generated from the Web IDL of webref (<code>src/tools/bindgen</code>, package <code>jsgen</code>). <code>tools\build_js.ps1</code> pre-initializes it at
-build time (<code>src/wasm/preinit.odin</code>: interfaces, prototypes and preludes already built in the memory image); the image
-is embedded in the exe (<code>src/js/image</code>). Each page and each JavaScript worker gets its own instance (a realm), whose
+<p>JavaScript is one more Wasm guest, not a second engine beside Wasm. The engine is written in Odin (<code>src/engine</code>): a
+front-end that compiles source to QuickJS-ng 0.17 bytecode, the interpreter (<code>jsrt</code>, with a hot loop of its own and a loop
+JIT that compiles numeric loops to Wasm at run time), and the numeric, Unicode, regexp and date libraries. <code>jscapi</code> gives it
+the QuickJS C API, which the glue (<code>native/js/odin</code>, all Odin) is written against; the web platform's objects are
+hand-written members plus bindings generated from the Web IDL of webref (<code>src/tools/bindgen</code>, package <code>jsgen</code>, into
+<code>native/js/odin/bindings_gen.odin</code>). <code>tools\build_js.ps1</code> compiles it all to one wasm32 module (Odin, linked with wasi-libc
+by Zig's <code>wasm-ld</code>: no C of ours is compiled) and pre-initializes it at build time (<code>src/wasm/preinit.odin</code>: interfaces,
+prototypes and preludes already built in the memory image); the image is embedded in the exe (<code>src/js/image</code>). Each page
+and each JavaScript worker gets its own instance (a realm), whose
 imports are the same <code>api/*.widl</code> functions Wasm pages use, plus <code>js*.widl</code> for what only the engine needs. So the
 limits of every guest apply: Wasmtime's sandbox, the memory cap, epoch interruption (<code>wasm.max_call_ms</code>), on top of
 the engine's own (<code>javascript.max_heap_bytes</code>, <code>javascript.slow_script_ms</code>). A trap loses the realm (the status bar says
