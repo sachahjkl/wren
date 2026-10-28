@@ -16,7 +16,7 @@ COLL=(-collection:wb=src -collection:toolkit=ext/gui_toolkit)
 # are out: two of them, a failed request and a failed write, fail on the GitHub runner and pass in WSL; not understood yet)
 CHECK=(base host config css http i18n xml adblock canvas2d license dom url html cookies csp forms style layout
        webfont wasm js idb httpcache images webauthn desktop remote tools/testenv
-       net fetch media page blocker remote/client tools/crashtrace)
+       net fetch media page blocker remote/client tools/crashtrace browser)
 # (name, extra flags): wasm, remote and remote/client run on one thread, as on Windows (one channel per process)
 TESTS=(base host css http xml adblock canvas2d dom url html cookies csp forms style layout webfont js
        httpcache webauthn desktop "wasm:-define:ODIN_TEST_THREADS=1" "remote:-define:ODIN_TEST_THREADS=1"
@@ -32,6 +32,11 @@ mkdir -p build/linux
 # that run the JS engine (page, blocker) are skipped while it is a stub)
 JS_STUB=0
 if [ ! -s build/js/wren_js.wasm ]; then mkdir -p build/js; : > build/js/wren_js.wasm; JS_STUB=1; fi
+# (package browser #loads the third-party licence texts bundled into the executable (third_party.odin): the build fetches them
+# with ./build.sh deps, but odin check needs them present. Empty stubs let the check go through when the real files are absent.)
+for f in build/wasmtime/LICENSE ext/lexbor/LICENSE ext/lexbor/NOTICE; do
+  if [ ! -e "$f" ]; then mkdir -p "$(dirname "$f")"; : > "$f"; fi
+done
 fail=0
 for p in "${CHECK[@]}"; do
   wanted "$p" || continue
