@@ -4,7 +4,15 @@ package jscapi
 
 import "base:runtime"
 import "core:mem"
+import jsdate "wb:engine/datetime"
 import js "wb:engine/jsrt"
+
+// The clock and the local time zone come from the host (the wasm module has neither): the wall clock in
+// milliseconds since the epoch, and the offset of the local time from UTC in minutes at an instant.
+set_host_time :: proc(now_ms: proc() -> f64, tz_offset: proc "contextless" (t_ms: i64) -> int) {
+	js.date_now_hook = now_ms
+	jsdate.timezone_offset_proc = tz_offset
+}
 
 // What the API keeps per runtime (jsrt's Runtime.host_data points at it).
 @(private)
@@ -44,7 +52,6 @@ state_of :: #force_inline proc "contextless" (rt: ^js.Runtime) -> ^State {return
 @(private)
 last_rt: ^js.Runtime
 
-@(export = JSCAPI_EXPORT)
 JS_NewRuntime :: proc "c" () -> ^Runtime {
 	context = runtime.default_context()
 	if host_allocator.procedure == nil {host_allocator = context.allocator}
@@ -67,12 +74,10 @@ JS_NewRuntime :: proc "c" () -> ^Runtime {
 	return wrt(rt)
 }
 
-@(export = JSCAPI_EXPORT)
 JS_NewRuntime2 :: proc "c" (mf: ^Malloc_Functions, opaque: rawptr) -> ^Runtime {
 	return JS_NewRuntime()
 }
 
-@(export = JSCAPI_EXPORT)
 JS_FreeRuntime :: proc "c" (r: ^Runtime) {
 	context = api_ctx()
 	rt := jrt(r)
@@ -84,34 +89,28 @@ JS_FreeRuntime :: proc "c" (r: ^Runtime) {
 	if last_rt == rt {last_rt = nil}
 }
 
-@(export = JSCAPI_EXPORT)
 JS_NewContext :: proc "c" (r: ^Runtime) -> ^Context {
 	context = api_ctx()
 	return wctx(js.context_new(jrt(r)))
 }
 
-@(export = JSCAPI_EXPORT)
 JS_FreeContext :: proc "c" (c: ^Context) {
 	context = api_ctx()
 	js.context_free(jctx(c))
 }
 
-@(export = JSCAPI_EXPORT)
 JS_GetRuntime :: proc "c" (c: ^Context) -> ^Runtime {
 	return wrt(jctx(c).rt)
 }
 
-@(export = JSCAPI_EXPORT)
 JS_GetContextOpaque :: proc "c" (c: ^Context) -> rawptr {
 	return jctx(c).host_defined
 }
 
-@(export = JSCAPI_EXPORT)
 JS_SetContextOpaque :: proc "c" (c: ^Context, opaque: rawptr) {
 	jctx(c).host_defined = opaque
 }
 
-@(export = JSCAPI_EXPORT)
 JS_SetMaxStackSize :: proc "c" (r: ^Runtime, stack_size: uint) {
 	rt := jrt(r)
 	rt.config.max_stack_bytes = stack_size == 0 ? 640 * 1024 : int(stack_size)
@@ -119,71 +118,59 @@ JS_SetMaxStackSize :: proc "c" (r: ^Runtime, stack_size: uint) {
 
 // The engine measures the host stack from the outermost entry (host_enter), so there is no stack top to
 // refresh; kept for the glue's call.
-@(export = JSCAPI_EXPORT)
 JS_UpdateStackTop :: proc "c" (r: ^Runtime) {}
 
-@(export = JSCAPI_EXPORT)
 JS_SetMemoryLimit :: proc "c" (r: ^Runtime, limit: uint) {
 	jrt(r).config.malloc_limit = limit == 0 ? -1 : i64(limit)
 }
 
-@(export = JSCAPI_EXPORT)
 JS_SetGCThreshold :: proc "c" (r: ^Runtime, gc_threshold: uint) {
 	jrt(r).gc_threshold = i64(gc_threshold)
 }
 
-@(export = JSCAPI_EXPORT)
 JS_GetGCThreshold :: proc "c" (r: ^Runtime) -> uint {
 	return uint(jrt(r).gc_threshold)
 }
 
 // The threshold after a collection is never below this: jsrt keeps min 4 MiB of headroom already; a larger
 // floor is honored through the prologue (it raises the threshold before the next allocation burst).
-@(export = JSCAPI_EXPORT)
 JS_SetGCThresholdFloor :: proc "c" (r: ^Runtime, floor: uint) {
 	rt := jrt(r)
 	state_of(rt).gc_floor = i64(floor)
 	if rt.gc_threshold < i64(floor) {rt.gc_threshold = i64(floor)}
 }
 
-@(export = JSCAPI_EXPORT)
 JS_SetGCPrologue :: proc "c" (r: ^Runtime, cb: GC_Prologue, opaque: rawptr) {
 	st := state_of(jrt(r))
 	st.gc_prologue = cb
 	st.gc_prologue_opaque = opaque
 }
 
-@(export = JSCAPI_EXPORT)
 JS_SetInterruptHandler :: proc "c" (r: ^Runtime, cb: Interrupt_Handler, opaque: rawptr) {
 	st := state_of(jrt(r))
 	st.interrupt = cb
 	st.interrupt_opaque = opaque
 }
 
-@(export = JSCAPI_EXPORT)
 JS_SetCanBlock :: proc "c" (r: ^Runtime, can_block: bool) {
 	jrt(r).config.can_block = can_block
 }
 
-@(export = JSCAPI_EXPORT)
 JS_SetRandomState :: proc "c" (c: ^Context, state: u64) {
 	rt := jctx(c).rt
 	s := state == 0 ? 1 : state
 	rt.random_state = {s, s ~ 0x9e3779b97f4a7c15}
 }
 
-@(export = JSCAPI_EXPORT)
 JS_RunGC :: proc "c" (r: ^Runtime) {
 	context = api_ctx()
 	js.gc_collect(jrt(r))
 }
 
-@(export = JSCAPI_EXPORT)
 JS_SetIsHTMLDDA :: proc "c" (c: ^Context, obj: JSValue) {
 	if tag_of(obj) == TAG_OBJECT {js.as_obj(dec(obj)).is_htmldda = true}
 }
 
-@(export = JSCAPI_EXPORT)
 JS_ComputeMemoryUsage :: proc "c" (r: ^Runtime, s: ^Memory_Usage) {
 	rt := jrt(r)
 	s^ = {}
@@ -196,7 +183,6 @@ JS_ComputeMemoryUsage :: proc "c" (r: ^Runtime, s: ^Memory_Usage) {
 }
 
 // The collector reports each reference through here (Class_Def.gc_mark).
-@(export = JSCAPI_EXPORT)
 JS_MarkValue :: proc "c" (r: ^Runtime, val: JSValue, mark_func: Mark_Func) {
 	context = api_ctx()
 	js.host_mark_value(cast(^js.Host_Mark_State)mark_func, dec(val))
@@ -222,7 +208,6 @@ rejection_bridge :: proc(ctx: ^js.Context, promise: js.Value, reason: js.Value, 
 	if st.rejection != nil {st.rejection(wctx(ctx), enc(promise), enc(reason), handled, st.rejection_opaque)}
 }
 
-@(export = JSCAPI_EXPORT)
 JS_SetHostPromiseRejectionTracker :: proc "c" (r: ^Runtime, cb: Rejection_Tracker, opaque: rawptr) {
 	st := state_of(jrt(r))
 	st.rejection = cb
@@ -236,7 +221,6 @@ compile_strings_bridge :: proc(ctx: ^js.Context, source: js.Value, direct: bool,
 	return st.compile_hook(wctx(ctx), enc(source), direct, st.compile_opaque) >= 0
 }
 
-@(export = JSCAPI_EXPORT)
 JS_SetCompileStringsHook :: proc "c" (r: ^Runtime, hook: Compile_Strings_Hook, opaque: rawptr) {
 	st := state_of(jrt(r))
 	st.compile_hook = hook
@@ -251,7 +235,6 @@ dynamic_import_bridge :: proc(ctx: ^js.Context, base, specifier, attributes, res
 	return st.import_hook(wctx(ctx), enc(base), enc(specifier), enc(attributes), raw_data(funcs[:]), st.import_opaque) >= 0
 }
 
-@(export = JSCAPI_EXPORT)
 JS_SetDynamicImportHook :: proc "c" (r: ^Runtime, hook: Dynamic_Import_Hook, opaque: rawptr) {
 	rt := jrt(r)
 	st := state_of(rt)
@@ -276,7 +259,6 @@ job_bridge :: proc(ctx: ^js.Context, args: []js.Value) -> js.Value {
 	return r
 }
 
-@(export = JSCAPI_EXPORT)
 JS_EnqueueJob :: proc "c" (c: ^Context, job_func: Job_Func, argc: i32, argv: [^]JSValue) -> i32 {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -287,12 +269,10 @@ JS_EnqueueJob :: proc "c" (c: ^Context, job_func: Job_Func, argc: i32, argv: [^]
 	return 0
 }
 
-@(export = JSCAPI_EXPORT)
 JS_IsJobPending :: proc "c" (r: ^Runtime) -> bool {
 	return len(jrt(r).jobs) > 0
 }
 
-@(export = JSCAPI_EXPORT)
 JS_ExecutePendingJob :: proc "c" (r: ^Runtime, pctx: ^^Context) -> i32 {
 	context = api_ctx()
 	rt := jrt(r)
@@ -307,7 +287,6 @@ JS_ExecutePendingJob :: proc "c" (r: ^Runtime, pctx: ^^Context) -> i32 {
 	return res < 0 ? -1 : 1
 }
 
-@(export = JSCAPI_EXPORT)
 JS_DropPendingJobs :: proc "c" (r: ^Runtime) -> i32 {
 	context = api_ctx()
 	rt := jrt(r)
@@ -319,7 +298,6 @@ JS_DropPendingJobs :: proc "c" (r: ^Runtime) -> i32 {
 
 // ---- classes ----
 
-@(export = JSCAPI_EXPORT)
 JS_NewClassID :: proc "c" (r: ^Runtime, pclass_id: ^Class_ID) -> Class_ID {
 	context = api_ctx()
 	rt := jrt(r)
@@ -329,7 +307,6 @@ JS_NewClassID :: proc "c" (r: ^Runtime, pclass_id: ^Class_ID) -> Class_ID {
 	return id
 }
 
-@(export = JSCAPI_EXPORT)
 JS_NewClass :: proc "c" (r: ^Runtime, class_id: Class_ID, class_def: ^Class_Def) -> i32 {
 	context = api_ctx()
 	rt := jrt(r)
@@ -378,7 +355,6 @@ class_gc_mark_bridge :: proc(rt: ^js.Runtime, o: ^js.Object, st: ^js.Host_Mark_S
 	e.def.gc_mark(wrt(rt), enc(js.mk_obj(o)), Mark_Func(st))
 }
 
-@(export = JSCAPI_EXPORT)
 JS_NewObjectProtoClass :: proc "c" (c: ^Context, proto: JSValue, class_id: Class_ID) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -392,12 +368,10 @@ JS_NewObjectProtoClass :: proc "c" (c: ^Context, proto: JSValue, class_id: Class
 	return own(ctx.rt, js.mk_obj(js.host_object_new(ctx, p, class_id)))
 }
 
-@(export = JSCAPI_EXPORT)
 JS_NewObjectClass :: proc "c" (c: ^Context, class_id: Class_ID) -> JSValue {
 	return JS_NewObjectProtoClass(c, NULL, class_id)
 }
 
-@(export = JSCAPI_EXPORT)
 JS_GetOpaque :: proc "c" (v: JSValue, class_id: Class_ID) -> rawptr {
 	if tag_of(v) != TAG_OBJECT {return nil}
 	d := js.host_object_of(js.as_obj(dec(v)))
@@ -405,7 +379,6 @@ JS_GetOpaque :: proc "c" (v: JSValue, class_id: Class_ID) -> rawptr {
 	return d.opaque
 }
 
-@(export = JSCAPI_EXPORT)
 JS_GetOpaque2 :: proc "c" (c: ^Context, v: JSValue, class_id: Class_ID) -> rawptr {
 	p := JS_GetOpaque(v, class_id)
 	if p == nil {
@@ -415,7 +388,6 @@ JS_GetOpaque2 :: proc "c" (c: ^Context, v: JSValue, class_id: Class_ID) -> rawpt
 	return p
 }
 
-@(export = JSCAPI_EXPORT)
 JS_SetOpaque :: proc "c" (v: JSValue, p: rawptr) -> i32 {
 	if tag_of(v) != TAG_OBJECT {return -1}
 	d := js.host_object_of(js.as_obj(dec(v)))
@@ -424,7 +396,6 @@ JS_SetOpaque :: proc "c" (v: JSValue, p: rawptr) -> i32 {
 	return 0
 }
 
-@(export = JSCAPI_EXPORT)
 JS_GetClassID :: proc "c" (v: JSValue) -> Class_ID {
 	if tag_of(v) != TAG_OBJECT {return 0}
 	d := js.host_object_of(js.as_obj(dec(v)))
@@ -609,7 +580,6 @@ make_native :: proc(ctx: ^js.Context, fn: rawptr, name: string, length: int, pro
 	return js.mk_obj(o)
 }
 
-@(export = JSCAPI_EXPORT)
 JS_NewCFunction2 :: proc "c" (c: ^Context, fn: Native, name: cstring, length: i32, cproto: i32, magic: i32) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -618,7 +588,6 @@ JS_NewCFunction2 :: proc "c" (c: ^Context, fn: Native, name: cstring, length: i3
 	return own(ctx.rt, make_native(ctx, rawptr(fn), string(name), int(length), int(cproto), magic, nil))
 }
 
-@(export = JSCAPI_EXPORT)
 JS_NewCFunction3 :: proc "c" (c: ^Context, fn: Native, name: cstring, length: i32, cproto: i32, magic: i32, proto_val: JSValue, n_fields: i32) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -629,7 +598,6 @@ JS_NewCFunction3 :: proc "c" (c: ^Context, fn: Native, name: cstring, length: i3
 	return own(ctx.rt, make_native(ctx, rawptr(fn), string(name), int(length), int(cproto), magic, nil, po))
 }
 
-@(export = JSCAPI_EXPORT)
 JS_NewCFunctionData2 :: proc "c" (c: ^Context, fn: Native_Data, name: cstring, length: i32, magic: i32, data_len: i32, data: [^]JSValue) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -640,13 +608,11 @@ JS_NewCFunctionData2 :: proc "c" (c: ^Context, fn: Native_Data, name: cstring, l
 	return own(ctx.rt, make_native(ctx, rawptr(fn), string(name), int(length), PROTO_DATA, magic, user))
 }
 
-@(export = JSCAPI_EXPORT)
 JS_NewCFunctionData :: proc "c" (c: ^Context, fn: Native_Data, length: i32, magic: i32, data_len: i32, data: [^]JSValue) -> JSValue {
 	return JS_NewCFunctionData2(c, fn, "", length, magic, data_len, data)
 }
 
 // JS_SetConstructor: func.prototype = proto (no attributes), proto.constructor = func.
-@(export = JSCAPI_EXPORT)
 JS_SetConstructor :: proc "c" (c: ^Context, func_obj: JSValue, proto: JSValue) -> i32 {
 	context = api_ctx()
 	ctx := jctx(c)
