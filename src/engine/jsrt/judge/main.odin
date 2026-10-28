@@ -1025,8 +1025,27 @@ eval_main :: proc(path: string) -> int {
 	dt := time.tick_since(t0)
 	st := js.heap_stats(rt)
 	fmt.eprintf("[%.1f ms, heap %d KiB (peak %d KiB), %d GCs, max pause %.2f ms]\n", time.duration_milliseconds(dt), st.heap_bytes / 1024, st.peak_heap_bytes / 1024, st.gc_count, f64(st.gc_max_pause_ns) / 1e6)
+	if os.get_env("JSRT_MEMPROF", context.temp_allocator) == "1" {
+		js.collect(rt)
+		print_heap_profile(rt)
+	}
 	js.engine_free(rt)
 	return code
+}
+
+print_heap_profile :: proc(rt: ^js.Runtime) {
+	p := js.heap_profile(rt)
+	cs := js.cell_sizes()
+	fmt.eprintfln("sizeof: Object %d, String %d, Var_Ref %d, Shape %d, Function_Bytecode %d, Value %d, Symbol %d, Object_Data %d, Prop_Slot %d", cs.object, cs.string, cs.var_ref, cs.shape, cs.function_bc, cs.value, cs.symbol, cs.object_data, cs.prop_slot)
+	fmt.eprintfln("%-14s %9s %11s %11s %11s", "row", "count", "cell B", "extra B", "slack B")
+	tc, te, ts: i64
+	for r in js.Prof_Row {
+		c := p.rows[r]
+		if c.count == 0 && c.cell_bytes == 0 && c.extra_bytes == 0 {continue}
+		fmt.eprintfln("%-14v %9d %11d %11d %11d", r, c.count, c.cell_bytes, c.extra_bytes, c.slack_bytes)
+		if r != .pool_free && r != .pool_chunks {tc += c.cell_bytes; te += c.extra_bytes; ts += c.slack_bytes}
+	}
+	fmt.eprintfln("sum cells+extra %d (heap_bytes %d), slack %d", tc + te, p.heap_bytes, ts)
 }
 
 main :: proc() {

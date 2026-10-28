@@ -1,6 +1,6 @@
 package jsrt
 
-// Date (ECMA-262 §21.4) on the calendar arithmetic of src/engine/datetime (package jsdate). The clock
+// Date (ECMA-262 Ã‚Â§21.4) on the calendar arithmetic of src/engine/datetime (package jsdate). The clock
 // and the local time zone come from the host (date_now_hook, jsdate.timezone_offset_proc).
 
 import "core:math"
@@ -23,7 +23,7 @@ this_date :: proc(ctx: ^Context, this: Value) -> (^Object, bool) {
 }
 
 @(private = "file")
-date_value :: #force_inline proc(o: ^Object) -> f64 {return o.data.(Date_Data).t}
+date_value :: #force_inline proc(o: ^Object) -> f64 {return o.data.(^Date_Data).t}
 
 @(private = "file")
 date_ctor :: proc(ctx: ^Context, nt: Value, args: []Value, magic: i32) -> Value {
@@ -59,7 +59,7 @@ date_ctor :: proc(ctx: ^Context, nt: Value, args: []Value, magic: i32) -> Value 
 	proto, ok := proto_from_ctor(ctx, nt, .date)
 	if !ok {return EXCEPTION}
 	o := object_new_proto(ctx, proto, .date)
-	o.data = Date_Data{jsdate.time_clip(t)}
+	set_date(ctx.rt, o, jsdate.time_clip(t))
 	return mk_obj(o)
 }
 
@@ -151,7 +151,7 @@ date_set_field :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) ->
 	if !valid_before {return mk_float(NAN)}
 	d := NAN
 	if res && len(args) > 0 {d = jsdate.time_clip(jsdate.set_date_fields(f, is_local))}
-	o.data = Date_Data{d}
+	set_date(ctx.rt, o, d)
 	return mk_number(d)
 }
 
@@ -162,7 +162,7 @@ date_set_time :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> 
 	d, ok2 := to_number(ctx, arg(args, 0))
 	if !ok2 {return EXCEPTION}
 	v := jsdate.time_clip(d)
-	o.data = Date_Data{v}
+	set_date(ctx.rt, o, v)
 	return mk_number(v)
 }
 
@@ -175,14 +175,14 @@ date_set_year :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> 
 	t := date_value(o)
 	f, _ := jsdate.get_date_fields(t, true, true)
 	if !is_finite_f64(y) {
-		o.data = Date_Data{NAN}
+		set_date(ctx.rt, o, NAN)
 		return mk_float(NAN)
 	}
 	yi := math.trunc(y)
 	if yi >= 0 && yi <= 99 {yi += 1900}
 	f[0] = yi
 	d := jsdate.time_clip(jsdate.set_date_fields(f, true))
-	o.data = Date_Data{d}
+	set_date(ctx.rt, o, d)
 	return mk_number(d)
 }
 

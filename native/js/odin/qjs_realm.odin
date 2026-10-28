@@ -184,6 +184,15 @@ wj_heap_bytes :: proc "c" () -> f64 {
 	return f64(u.malloc_size)
 }
 
+// Counter `index` of the Odin engine's heap census (jsrt memprof.odin; jsengine mem prints it), -1 past the end.
+when wj.WJ_JSRT {
+	@(export, link_name = "wj_heap_profile")
+	wj_heap_profile :: proc "c" (index: i32) -> f64 {
+		if wj.wj_the_realm.ctx == nil { return -1 }
+		return f64(wj.heap_profile_field(wj.JS_GetRuntime(wj.wj_the_realm.ctx), index))
+	}
+}
+
 // ---- life cycle ----
 
 when WJ_MIMALLOC {

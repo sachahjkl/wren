@@ -127,6 +127,7 @@ Runtime :: struct {
 	pool_bump:      [^]byte,
 	pool_left:      int,
 	pool_chunks:    rawptr,
+	pool_chunk_count: int,
 
 	// atoms (atom.odin)
 	atoms:          [dynamic]Atom_Entry,
@@ -168,6 +169,9 @@ Runtime :: struct {
 	// regains control (embed.odin), never while native code may still use it.
 	scratch:        mem.Dynamic_Arena,
 	host_depth:     int,
+	compile_count:  int, // front-end compiles so far, and the most block memory one of their arenas held (memprof.odin)
+	compile_peak_bytes: int,
+	compile_peak_blocks: int,
 	regexp_arena:   mem.Dynamic_Arena, // per-exec scratch of the regexp matcher (reset after each match)
 
 	// host hooks for agents ($262.agent) and misc.
@@ -329,7 +333,7 @@ runtime_new :: proc(allocator := context.allocator, config := DEFAULT_CONFIG) ->
 	rt.symbol_registry = make(map[Atom]^Symbol, allocator)
 	rt.vstack = make([dynamic]Value_Segment, allocator)
 	rt.join_stack = make([dynamic]^Object, allocator)
-	mem.dynamic_arena_init(&rt.scratch, allocator, allocator, 64 * 1024, 16 * 1024)
+	mem.dynamic_arena_init(&rt.scratch, allocator, allocator, 32 * 1024, 8 * 1024)
 	mem.dynamic_arena_init(&rt.regexp_arena, allocator, allocator, 64 * 1024, 16 * 1024)
 	rt.gc_disabled += 1
 	atoms_init(rt)

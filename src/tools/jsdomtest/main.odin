@@ -185,6 +185,7 @@ main :: proc() {
 		case "popover.html": popover_checks(p)   // popover.odin
 		}
 		fmt.printf("  (%.0f ms)\n", ms)
+		if js.memprof_wanted() { js.print_profile(p.js.inst, name) }
 		page.page_close(p)
 		if name == "fullscreen.html" { fullscreen_closed_checks() }
 		lay.destroy(&lh.l)

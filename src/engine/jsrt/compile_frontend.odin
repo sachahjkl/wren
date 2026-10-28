@@ -10,9 +10,16 @@ import fe "wb:engine/frontend"
 frontend_compile :: proc(ctx: ^Context, req: ^Compile_Request) -> Value {
 	rt := ctx.rt
 	arena: mem.Dynamic_Arena
-	mem.dynamic_arena_init(&arena, rt.allocator, rt.allocator, 256 * 1024, 64 * 1024)
+	mem.dynamic_arena_init(&arena, rt.allocator, rt.allocator, 256 * 1024, 64 * 1024, 16)
 	defer mem.dynamic_arena_destroy(&arena)
-	a := mem.dynamic_arena_allocator(&arena)
+	counter: Compile_Alloc
+	compile_alloc_init(&counter, &arena)
+	defer {
+		rt.compile_count += 1
+		rt.compile_peak_bytes = max(rt.compile_peak_bytes, counter.bytes)
+		rt.compile_peak_blocks = max(rt.compile_peak_blocks, arena_blocks(&arena))
+	}
+	a := compile_alloc(&counter)
 
 	opts := fe.Compile_Options {
 		filename           = req.filename,
@@ -78,12 +85,18 @@ frontend_compile :: proc(ctx: ^Context, req: ^Compile_Request) -> Value {
 		}
 		return throw_error(ctx, .syntax, res.err.message)
 	}
-	bytes := fe.write_object_of(res, a)
+	// The serialized form is built on the host heap (it grows by realloc, and its buffers are freed as soon as
+	// they are done with) and the arena goes before the bytecode is read, so the compiler's transient memory is
+	// returned for the runtime's heap to reuse instead of adding to it.
+	wa := req.keep_image ? rt_allocator(rt) : rt.allocator
+	bytes := fe.write_object_of(res, wa)
+	mem.dynamic_arena_destroy(&arena)
 	v := read_object(ctx, bytes)
 	if req.keep_image && v.tag == .function_bc {
 		b := cast(^Function_Bytecode)v.u.ptr
-		b.image = make([]u8, len(bytes), rt_allocator(rt))
-		copy(b.image, bytes)
+		b.image = bytes
+	} else {
+		delete(bytes, wa)
 	}
 	return v
 }

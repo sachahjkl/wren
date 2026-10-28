@@ -182,6 +182,12 @@ JS_ComputeMemoryUsage :: proc "c" (r: ^Runtime, s: ^Memory_Usage) {
 	s.atom_count = i64(len(rt.atoms))
 }
 
+// Heap census counter `index` (jsrt memprof.odin), -1 past the end. Not part of the quickjs.h API.
+heap_profile_field :: proc "c" (r: ^Runtime, index: i32) -> i64 {
+	context = api_ctx()
+	return js.heap_profile_field(jrt(r), int(index))
+}
+
 // The collector reports each reference through here (Class_Def.gc_mark).
 JS_MarkValue :: proc "c" (r: ^Runtime, val: JSValue, mark_func: Mark_Func) {
 	context = api_ctx()
@@ -534,7 +540,7 @@ raw_slot :: #force_inline proc "contextless" (p: rawptr) -> js.Value {
 bridge_native :: proc(ctx: ^js.Context, this: js.Value, args: []js.Value, magic: i32) -> js.Value {
 	rt := ctx.rt
 	nd := &rt.native_self.data.(js.Native_Data)
-	data := nd.data[:nd.data_len]
+	data := nd.data[:js.native_data_len(nd)]
 	fn := data[0].u.ptr
 	proto := int(data[1].u.i)
 	buf: [12]JSValue
@@ -579,14 +585,11 @@ make_native :: proc(ctx: ^js.Context, fn: rawptr, name: string, length: int, pro
 	data[1] = js.mk_int(i32(proto))
 	copy(data[2:], user)
 	o := js.new_native_closure(ctx, bridge_native, name, length, data, magic)
-	nd := &o.data.(js.Native_Data)
 	switch proto {
 	case CFUNC_constructor, CFUNC_constructor_magic:
-		nd.kind = .constructor_only
-		o.is_constructor = true
+		js.set_native_kind(o, .constructor_only)
 	case CFUNC_constructor_or_func, CFUNC_constructor_or_func_magic:
-		nd.kind = .constructor
-		o.is_constructor = true
+		js.set_native_kind(o, .constructor)
 	}
 	if proto_obj != nil {js.set_prototype_of(ctx, o, proto_obj, false)}
 	return js.mk_obj(o)

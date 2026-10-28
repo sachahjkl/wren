@@ -249,7 +249,12 @@ compile_program :: proc(src: string, kind: Program_Kind, allocator: runtime.Allo
 write_object_of :: proc(res: Compile_Result, allocator: runtime.Allocator) -> []u8 {
 	w: Writer
 	writer_init(&w, res.atoms, allocator)
-	return write_object(&w, res.top, res.module)
+	out := write_object(&w, res.top, res.module)
+	// (no-ops on an arena; they give a heap allocator its memory back before the caller goes on)
+	delete(w.buf)
+	delete(w.idx_to_atom)
+	delete(w.atom_to_idx)
+	return out
 }
 
 // --- literal helpers ----------------------------------------------------------------------------------------
