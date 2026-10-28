@@ -269,6 +269,7 @@ Pass_State :: struct {
 	allocator:        runtime.Allocator,
 	source_loc_size:  map[^Func_Def]int,
 	error:            string,
+	stack:            Stack_Guard,
 }
 
 @(private = "file")
@@ -1515,6 +1516,10 @@ add_module_variables :: proc(ps: ^Pass_State, fd: ^Func_Def) -> bool {
 }
 
 js_create_function :: proc(ps: ^Pass_State, fd: ^Func_Def) -> ^Function_Bytecode {
+	if stack_exhausted(ps.stack) {
+		ps.error = "stack overflow"
+		return nil
+	}
 	for i in 0 ..< len(fd.scopes) {
 		fd.scopes[i].first = -1
 	}

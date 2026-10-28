@@ -445,7 +445,7 @@ set_eval_ret_undefined :: proc(s: ^Parse_State) {
 js_parse_statement_or_decl :: proc(s: ^Parse_State, decl_mask: int) -> bool {
 	s.depth += 1
 	defer s.depth -= 1
-	if s.depth > s.max_depth {
+	if s.depth > s.max_depth || stack_exhausted(s.stack) {
 		return js_parse_error(s, "stack overflow")
 	}
 	label_name := JS_ATOM_NULL

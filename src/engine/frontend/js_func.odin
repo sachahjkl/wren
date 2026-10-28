@@ -148,6 +148,9 @@ js_parse_function_decl :: proc(s: ^Parse_State, func_type: Parse_Func, func_kind
 }
 
 js_parse_function_decl2 :: proc(s: ^Parse_State, func_type: Parse_Func, func_kind0: Func_Kind, func_name0: Atom, ptr: int, function_line_num, function_col_num: int, export_flag: Parse_Export, pfd: ^^Func_Def) -> bool {
+	if stack_exhausted(s.stack) {
+		return js_parse_error(s, "stack overflow")
+	}
 	fd := s.cur_func
 	func_kind := func_kind0
 	func_name := func_name0
