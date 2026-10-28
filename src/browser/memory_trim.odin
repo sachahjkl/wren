@@ -12,9 +12,7 @@ package browser
 // (memory_trim_tick), and again only after it has drawn something. The next frame after a trim makes its layer targets
 // again, so the price is one slower first frame.
 
-import "core:sys/windows"
 import "core:time"
-import "vendor:directx/dxgi"
 import "toolkit:render"
 import "wb:config"
 
@@ -65,29 +63,15 @@ memory_trim_tick :: proc(app: ^App) {
 	}
 }
 
-// UI thread only (the device's immediate context is not thread-safe).
+// UI thread only (the device's immediate context is not thread-safe). Releases the renderer's layer targets (neutral),
+// then asks the system to give back what it holds lazily: on Windows the Direct3D device's pools (IDXGIDevice3::Trim
+// after a context flush) and the process heaps' free blocks (memory_trim_native, memory_trim_<os>.odin); nothing more
+// is reclaimable that way on wgpu / Linux (the driver manages its own pools).
 memory_trim :: proc(app: ^App) {
 	trim_state.count += 1
 	render.release_targets(&app.r)
-	if app.r.ctx != nil { app.r.ctx->Flush() }
-	if app.r.device != nil {
-		dev3: ^dxgi.IDevice3
-		if windows.SUCCEEDED(app.r.device->QueryInterface(dxgi.IDevice3_UUID, (^rawptr)(&dev3))) {
-			dev3->Trim()
-			dev3->Release()
-		}
-	}
-	heaps: [64]windows.HANDLE
-	n := min(int(mem_GetProcessHeaps(len(heaps), &heaps[0])), len(heaps))
-	for i in 0 ..< n { trim_HeapCompact(heaps[i], 0) }
+	memory_trim_native(app)
 }
 
 // How many times the browser trimmed (the check build's statistics).
 memory_trim_count :: proc() -> int { return trim_state.count }
-
-foreign import kernel32_trim "system:Kernel32.lib"
-
-@(default_calling_convention = "system")
-foreign kernel32_trim {
-	@(link_name = "HeapCompact") trim_HeapCompact :: proc(heap: windows.HANDLE, flags: u32) -> uint ---
-}

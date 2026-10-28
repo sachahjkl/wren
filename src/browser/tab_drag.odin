@@ -12,7 +12,6 @@ package browser
 // Nothing here loads a page again: tab_move only moves the pointer to the tab.
 
 import "core:math"
-import win "core:sys/windows"
 import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:ui"
@@ -127,26 +126,12 @@ client_origin :: proc(w: ^Browser_Window) -> draw.Vec2 {
 	return {f32(o[0]), f32(o[1])}
 }
 
-// Where the pointer is on the screen, read from the system. (A position of an event plus the origin of the window read NOW is
-// wrong while the window that took the press is the one that moves, a tab alone in its window: the origin has moved since the
-// event was made, and each move added its error to the next: the window ran away off the screen, and stayed in the task bar.)
-@(private = "file")
-pointer_screen :: proc(fallback: draw.Vec2) -> draw.Vec2 {
-	pt: win.POINT
-	if win.GetCursorPos(&pt) { return {f32(pt.x), f32(pt.y)} }
-	return fallback
-}
-
-// A window position that keeps part of the window on some monitor: a title bar's width and height of it, at least.
-@(private = "file")
-keep_on_screen :: proc(x, y: int, w: ^Browser_Window) -> (int, int) {
-	vx, vy := int(win.GetSystemMetrics(win.SM_XVIRTUALSCREEN)), int(win.GetSystemMetrics(win.SM_YVIRTUALSCREEN))
-	vw, vh := int(win.GetSystemMetrics(win.SM_CXVIRTUALSCREEN)), int(win.GetSystemMetrics(win.SM_CYVIRTUALSCREEN))
-	if vw <= 0 || vh <= 0 { return x, y }
-	r := platform.outer_rect(w.win)
-	margin := int(80 * max(w.win.dpi_scale, 0.5))
-	return clamp(x, vx + margin - r[2], vx + vw - margin), clamp(y, vy, vy + vh - margin)
-}
+// pointer_screen (where the pointer is on the screen, from the system), keep_on_screen (a window position that keeps part
+// of the window on some monitor) and windows_by_z (the browser windows topmost first, the system's z-order) are the
+// window-manager queries of tab tear-off; they are in tab_drag_windows.odin / tab_drag_other.odin. On Wayland a client
+// cannot know the pointer's absolute position, the virtual-screen bounds or the window stacking order, so the other
+// backend answers with sane values (the event position, no clamp, the app's own window order) — enough for a single
+// window and for injected input, which is how tests and the remote control drive a drag.
 
 // The tab `t` of the active window is dragged out of its bar with the pointer at `pos` (client pixels of the active window). Called
 // from the build of the bar: the tab list changes under it, so the caller stops its build. false: nothing was done.
@@ -220,23 +205,6 @@ tab_drop_target :: proc(app: ^App, carried: ^Browser_Window, t: ^Tab, screen: dr
 	if !ok { return nil, {} }
 	w := order[i]
 	return w, window_drop_slot(w, screen - origins[i], t)
-}
-
-// The browser windows from the topmost down (the system's z-order; a window it does not list, last).
-@(private = "file")
-windows_by_z :: proc(app: ^App) -> []^Browser_Window {
-	out := make([dynamic]^Browser_Window, 0, len(app.windows), context.temp_allocator)
-	for h := win.GetTopWindow(nil); h != nil && len(out) < len(app.windows); h = win.GetWindow(h, win.GW_HWNDNEXT) {
-		for w in app.windows { if w.win != nil && w.win.hwnd == h { append(&out, w) } }
-	}
-	for w in app.windows { if !slice_has(out[:], w) { append(&out, w) } }
-	return out[:]
-}
-
-@(private = "file")
-slice_has :: proc(s: []^Browser_Window, w: ^Browser_Window) -> bool {
-	for x in s { if x == w { return true } }
-	return false
 }
 
 // The mark of the place a carried tab would take (`at`: along the tab bar, in the bar's own pixels), in the colour of the group
