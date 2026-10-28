@@ -56,12 +56,35 @@ eval_function :: proc(ctx: ^Context, func: Value) -> Value {
 }
 
 // Load serialized QuickJS bytecode and run it. The one-call path for "run this compiled script".
+// read_object returns a raw top-level Function_Bytecode; we wrap it in a closure (it captures no
+// upvalues) and run that.
 eval_bytecode :: proc(ctx: ^Context, bytecode: []u8) -> Value {
-	func := read_object(ctx, bytecode, allow_bytecode = true)
+	raw := read_object(ctx, bytecode, allow_bytecode = true)
+	if is_exception(raw) {return raw}
+	if raw.tag != .function_bc {
+		value_free(ctx.rt, raw)
+		return throw_type_error(ctx, "bytecode did not contain a top-level function")
+	}
+	func := make_toplevel_closure(ctx, cast(^Function_Bytecode)raw.payload.ptr)
+	value_free(ctx.rt, raw)
 	if is_exception(func) {return func}
 	res := eval_function(ctx, func)
 	value_free(ctx.rt, func)
 	return res
+}
+
+// Wrap a top-level Function_Bytecode in a closure object with no captured upvalues.
+make_toplevel_closure :: proc(ctx: ^Context, bc: ^Function_Bytecode) -> Value {
+	rt := ctx.rt
+	obj := object_new(rt, ctx.realm.function_proto)
+	if obj == nil {return EXCEPTION}
+	obj.exotic = Function_Data{
+		bc       = function_bc_ref(bc),
+		var_refs = nil,
+		home     = UNDEFINED,
+		realm    = ctx.realm,
+	}
+	return mk_heap(.object, obj)
 }
 
 // --- value construction helpers for the host ---
@@ -140,6 +163,11 @@ call :: proc(ctx: ^Context, func: Value, this: Value, args: []Value) -> Value {
 // The pending exception, taken (ownership moves to the host). UNDEFINED if none.
 pending_exception :: proc(ctx: ^Context) -> Value {
 	return take_exception(ctx)
+}
+
+// True if a returned Value is the exception sentinel (the host checks this after eval/call).
+is_exception_value :: proc(v: Value) -> bool {
+	return is_exception(v)
 }
 
 // --- job queue ---
