@@ -15,3 +15,6 @@ JSValue wj_g4_realm_proto(int iface) { return wj_the_realm.protos[iface]; }
 
 /* wj_the_realm.ctx: the realm's JSContext (a browser callback that enters from nothing needs it). */
 JSContext *wj_g4_realm_ctx(void) { return wj_the_realm.ctx; }
+
+/* wj_the_realm.kind (a window or any worker). The global already has an accessor in wj_shim.c (wj_realm_global). */
+int wj_g4_realm_kind(void) { return wj_the_realm.kind; }
