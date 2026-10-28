@@ -3,6 +3,28 @@ package jsrt
 // Global variable access (GetGlobalVar & co. in QuickJS): global lexical declarations live in the
 // realm's `global_var_obj`, var/function declarations on the global object itself.
 
+// Direct-mapped cache of "atom -> slot index in the global object": a hit is checked against the live shape
+// (the property at that index must still be this atom), so no invalidation is needed when properties move.
+Global_Cache_Entry :: struct {
+	atom: Atom,
+	idx:  u32,
+}
+
+GLOBAL_CACHE_SIZE :: 256
+
+// The slot of data property `a` of the global object, or -1 (the caller falls back to the full lookup).
+global_slot :: #force_inline proc "contextless" (ctx: ^Context, g: ^Object, a: Atom) -> int {
+	ce := &ctx.global_cache[(a * 0x9E3779B1) >> 24]
+	props := raw_data(g.shape.props)
+	if ce.atom == a && int(ce.idx) < len(g.shape.props) && props[ce.idx].atom == a {
+		return props[ce.idx].kind == .data ? int(ce.idx) : -1
+	}
+	j := shape_find(g.shape, a)
+	if j < 0 {return -1}
+	ce^ = {a, u32(j)}
+	return props[j].kind == .data ? j : -1
+}
+
 global_get :: proc(ctx: ^Context, a: Atom, throw_ref: bool) -> Value {
 	gv := ctx.global_var_obj
 	i := shape_find(gv.shape, a)
@@ -12,8 +34,8 @@ global_get :: proc(ctx: ^Context, a: Atom, throw_ref: bool) -> Value {
 		return v
 	}
 	g := ctx.global_obj
-	j := shape_find(g.shape, a)
-	if j >= 0 && g.shape.props[j].kind == .data {return g.slots[j].value}
+	j := global_slot(ctx, g, a)
+	if j >= 0 {return g.slots[j].value}
 	h := has_property(ctx, g, a)
 	if h < 0 {return EXCEPTION}
 	if h == 0 {
@@ -39,13 +61,10 @@ global_set :: proc(ctx: ^Context, a: Atom, v: Value, init: bool, strict: bool) -
 		return 0
 	}
 	g := ctx.global_obj
-	j := shape_find(g.shape, a)
-	if j >= 0 {
-		p := g.shape.props[j]
-		if p.kind == .data && .writable in p.flags {
-			g.slots[j].value = v
-			return 0
-		}
+	j := global_slot(ctx, g, a)
+	if j >= 0 && .writable in g.shape.props[j].flags {
+		g.slots[j].value = v
+		return 0
 	}
 	h := has_property(ctx, g, a)
 	if h < 0 {return -1}

@@ -90,7 +90,7 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 	// a coroutine resumed with throw() enters straight into the unwinder with the exception pending
 	exc := f.pending_throw
 	f.pending_throw = false
-	if !exc && pc == 0 && !gc_safepoint(ctx) {return EXCEPTION, .exception}
+	if !exc && pc == 0 && gc_should_run(rt) && !gc_safepoint(ctx) {return EXCEPTION, .exception}
 
 	for {
 		if !exc {
@@ -98,7 +98,7 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 			// few live values stay in registers. It returns with pc on the first instruction it does not
 			// handle (or whose fast path does not apply), for the full dispatch below.
 			when JSRT_TRACE_LAST_OP {trace_last_bc = b}
-			pc, sp = interp_hot(rt, raw_data(code), pc, raw_data(stack), sp, locals, args, var_refs, raw_data(b.cpool), root_base)
+			pc, sp = interp_hot(ctx, rt, raw_data(code), pc, raw_data(stack), sp, locals, args, var_refs, raw_data(b.cpool), root_base)
 			if pc >= len(code) {
 				// only reachable with inconsistent bytecode: fail the call rather than the process
 				throw_internal_error(ctx, cat(ctx, "bytecode ran past its end in ", atom_utf8(rt, b.func_name), " after ", fmt_opcode(prev_op)))
