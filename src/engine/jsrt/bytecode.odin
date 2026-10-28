@@ -74,6 +74,18 @@ Function_Bytecode :: struct {
 	pc2line:                   []u8,
 	source:                    []u8,
 	source_string:             ^JS_String, // cached Function.prototype.toString text
+	catch_levels:              []Catch_Level, // verified operand stack height at each catch handler
+}
+
+Catch_Level :: struct {
+	pos:   i32,
+	level: i32,
+}
+
+// The verified stack height at handler `pos` (-1: not a handler of this function).
+catch_level_at :: proc(b: ^Function_Bytecode, pos: int) -> int {
+	for c in b.catch_levels {if int(c.pos) == pos {return int(c.level)}}
+	return -1
 }
 
 function_bc_new :: proc(rt: ^Runtime) -> ^Function_Bytecode {
@@ -88,6 +100,7 @@ function_bc_finalize :: proc(rt: ^Runtime, b: ^Function_Bytecode) {
 	if b.code != nil {delete(b.code, a)}
 	if b.pc2line != nil {delete(b.pc2line, a)}
 	if b.source != nil {delete(b.source, a)}
+	if b.catch_levels != nil {delete(b.catch_levels, a)}
 }
 
 // The source line of instruction `pc`, decoded from the pc2line table (QuickJS's format: a leb128

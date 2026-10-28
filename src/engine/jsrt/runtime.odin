@@ -20,6 +20,9 @@ Host_Config :: struct {
 	// Maximum interpreter call depth (0: 10_000). Native recursion is bounded by this, so a deep JS
 	// recursion raises a RangeError instead of overflowing the host stack.
 	max_stack_depth: int,
+	// Host stack the engine may use below the address of its outermost entry (0: 640 KiB, which fits
+	// a 1 MiB thread stack). A JS recursion that would go deeper raises a RangeError.
+	max_stack_bytes: int,
 	// Polled every few thousand back-edges/calls; returning true raises an uncatchable interrupt.
 	interrupt:       proc(rt: ^Runtime, user: rawptr) -> bool,
 	interrupt_user:  rawptr,
@@ -112,6 +115,7 @@ Runtime :: struct {
 	exception:      Value, // the pending exception; UNINITIALIZED when none
 	uncatchable:    bool,  // the pending exception cannot be caught (interrupt / OOM)
 	std_protos_touched: bool, // an index key or a new prototype on some realm's Array/Object.prototype
+	stack_limit:    uintptr, // lowest host stack address the engine may reach (set at the outermost entry)
 	interrupt_counter: int,
 	jobs:           [dynamic]Job,
 	modules:        [dynamic]^Module,
@@ -265,6 +269,7 @@ runtime_new :: proc(allocator := context.allocator, config := DEFAULT_CONFIG) ->
 	rt.allocator = allocator
 	rt.config = config
 	if rt.config.max_stack_depth <= 0 {rt.config.max_stack_depth = 10_000}
+	if rt.config.max_stack_bytes <= 0 {rt.config.max_stack_bytes = 640 * 1024}
 	rt.gc_threshold = 4 << 20
 	rt.exception = UNINITIALIZED
 	rt.gray = make([dynamic]^Cell, 0, 256, allocator)

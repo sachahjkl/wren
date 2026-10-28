@@ -270,7 +270,7 @@ create_module_function :: proc(ctx: ^Context, m: ^Module) {
 inner_link :: proc(ctx: ^Context, m: ^Module, stack_top: ^^Module, index: int) -> int {
 	rt := ctx.rt
 	idx := index
-	if rt.stack_depth > rt.config.max_stack_depth {
+	if rt.stack_depth > rt.config.max_stack_depth || stack_exhausted(rt) {
 		stack_overflow(ctx)
 		return -1
 	}

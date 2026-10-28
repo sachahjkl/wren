@@ -553,6 +553,29 @@ verify_function :: proc(r: ^Reader, b: ^Function_Bytecode) -> bool {
 		}
 		pos += int(info.size)
 	}
+	// closure cells: a captured variable's cell index, and each child function's captures
+	for vd in b.vardefs {
+		if vd.is_captured && int(vd.var_ref_idx) >= int(b.var_ref_count) {
+			fail(r, "invalid closure cell index")
+			return false
+		}
+	}
+	for c in b.cpool {
+		if c.tag != .function_bc {continue}
+		child := cast(^Function_Bytecode)c.u.ptr
+		for cv in child.closure_vars {
+			ok := true
+			#partial switch cv.closure_type {
+			case .local: ok = int(cv.var_idx) < int(b.var_count)
+			case .arg: ok = int(cv.var_idx) < int(b.arg_count)
+			case: ok = int(cv.var_idx) < int(b.closure_var_count) // read from the parent's cells
+			}
+			if !ok {
+				fail(r, "invalid closure variable")
+				return false
+			}
+		}
+	}
 	return verify_stack(r, b)
 }
 
@@ -560,15 +583,26 @@ verify_function :: proc(r: ^Reader, b: ^Function_Bytecode) -> bool {
 // same height on every path into an instruction, never above stack_size. With this, and the operand
 // checks above, the interpreter may index the frame without bounds checks.
 @(private = "file")
+bad_code :: proc(r: ^Reader, msg: string) -> bool {
+	fail(r, msg)
+	return false
+}
+
+@(private = "file")
 verify_stack :: proc(r: ^Reader, b: ^Function_Bytecode) -> bool {
 	code := b.code
 	n := len(code)
-	if n == 0 {return true}
+	if n == 0 {return bad_code(r, "empty bytecode")}
 	rt := r.ctx.rt
 	level := make([]i32, n, tmp(rt))
 	catch_tab := make([]i32, n, tmp(rt))
 	for i in 0 ..< n {level[i] = -1}
 	work := make([dynamic]int, 0, 64, tmp(rt))
+	catches := make([dynamic]Catch_Level, 0, 4, tmp(rt))
+	defer if len(catches) > 0 {
+		b.catch_levels = make([]Catch_Level, len(catches), rt_allocator(rt))
+		copy(b.catch_levels, catches[:])
+	}
 	max_len := 0
 	limit := int(b.stack_size)
 	bad :: proc(r: ^Reader, msg: string) -> bool {fail(r, msg); return false}
@@ -606,6 +640,9 @@ verify_stack :: proc(r: ^Reader, b: ^Function_Bytecode) -> bool {
 			if k < 0 || stack_len < 3 + k {return bad(r, "bytecode stack underflow")}
 		case .iterator_get_value_done:
 			if stack_len < 4 {return bad(r, "bytecode stack underflow")}
+		case .copy_data_properties:
+			m := int(code[pos + 1])
+			if stack_len < 1 + max(m & 3, (m >> 2) & 7, (m >> 5) & 7) {return bad(r, "bytecode stack underflow")}
 		}
 		stack_len += int(info.n_push) - n_pop
 		max_len = max(max_len, stack_len)
@@ -665,6 +702,11 @@ verify_stack :: proc(r: ^Reader, b: ^Function_Bytecode) -> bool {
 		}
 		if has_branch {
 			if branch_len < 0 || branch_len > limit {return bad(r, "bytecode stack overflow")}
+			if op == .op_catch {
+				found := false
+				for c in catches {if int(c.pos) == branch {found = true}}
+				if !found {append(&catches, Catch_Level{i32(branch), i32(branch_len)})}
+			}
 			bc := op == .op_catch ? int(catch_tab[pos]) : catch_pos
 			if check(level, catch_tab, &work, branch, branch_len, bc) != 0 {return bad(r, "invalid bytecode branch")}
 		}

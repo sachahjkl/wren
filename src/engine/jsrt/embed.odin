@@ -15,8 +15,20 @@ engine_new :: proc(allocator := context.allocator, config := DEFAULT_CONFIG) -> 
 engine_free :: proc(rt: ^Runtime) {runtime_free(rt)}
 
 host_enter :: proc(rt: ^Runtime) -> int {
+	if rt.host_depth == 0 {
+		marker: u8
+		base := uintptr(&marker)
+		lim := uintptr(rt.config.max_stack_bytes)
+		rt.stack_limit = base > lim ? base - lim : 0
+	}
 	rt.host_depth += 1
 	return temp_mark(rt)
+}
+
+// Is the host stack about to run past the engine's budget? (the stack grows down)
+stack_exhausted :: #force_inline proc "contextless" (rt: ^Runtime) -> bool {
+	marker: u8
+	return uintptr(&marker) < rt.stack_limit
 }
 
 host_exit :: proc(rt: ^Runtime, mark: int, result: Value) {

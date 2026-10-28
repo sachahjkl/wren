@@ -220,6 +220,7 @@ atom_to_value :: proc(rt: ^Runtime, a: Atom) -> Value {
 	if atom_is_int(a) {return mk_str(str_from_u64(rt, u64(atom_int(a))))}
 	e := &rt.atoms[a]
 	if e.sym != nil {return mk_sym(e.sym)}
+	if e.str == nil {return mk_str(rt.empty_string)} // ATOM_NULL (only malformed bytecode asks)
 	return mk_str(e.str)
 }
 
