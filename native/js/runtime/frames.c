@@ -119,13 +119,15 @@ static JSValue xo_loc_replace(JSContext *ctx, uint64_t id)
     JS_DefinePropertyValueStr(ctx, fn, "name", JS_NewString(ctx, "replace"), JS_PROP_CONFIGURABLE);
     return fn;
 }
-static void xo_loc_set_href(JSContext *ctx, uint64_t id, JSValueConst v)
+/* false with the exception pending: location = "not a url" throws, as the host's answer says (SyntaxError...) */
+static bool xo_loc_set_href(JSContext *ctx, uint64_t id, JSValueConst v)
 {
     wj_str u;
-    if (!wj_to_str(ctx, v, &u, WJ_STR_USV, "")) { JS_FreeValue(ctx, JS_GetException(ctx)); return; }
+    if (!wj_to_str(ctx, v, &u, WJ_STR_USV, "")) { return false; }
     int32_t st = wr_Frame_navigate(id, (const uint8_t *)u.ptr, (uint32_t)u.len, false);
     wj_str_free(ctx, &u);
-    if (st < 0) { JS_FreeValue(ctx, JS_GetException(ctx)); }
+    if (st < 0) { wj_throw_status(ctx, st, "location"); return false; }
+    return true;
 }
 static bool atom_is(JSContext *ctx, JSAtom prop, const char *name)
 {
@@ -147,7 +149,7 @@ static int xo_loc_set(JSContext *ctx, JSValueConst obj, JSAtom prop, JSValueCons
 {
     WJ_UNUSED(receiver); WJ_UNUSED(flags);
     xo_loc *l = JS_GetOpaque(obj, xo_loc_class);
-    if (atom_is(ctx, prop, "href")) { xo_loc_set_href(ctx, l ? l->id : 0, value); return true; }
+    if (atom_is(ctx, prop, "href")) { return xo_loc_set_href(ctx, l ? l->id : 0, value) ? true : -1; }
     throw_security(ctx, prop);
     return -1;
 }
@@ -379,7 +381,7 @@ static int wp_set(JSContext *ctx, JSValueConst obj, JSAtom prop, JSValueConst va
 {
     WJ_UNUSED(receiver); WJ_UNUSED(flags);
     wp_state *w = JS_GetOpaque(obj, wp_class);
-    if (w && atom_is(ctx, prop, "location")) { xo_loc_set_href(ctx, w->id, value); return true; }
+    if (w && atom_is(ctx, prop, "location")) { return xo_loc_set_href(ctx, w->id, value) ? true : -1; }
     throw_security(ctx, prop);
     return -1;
 }
