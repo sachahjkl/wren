@@ -11,7 +11,7 @@
 param([switch]$Force, [switch]$Names, [string]$Opt = 'O3', [switch]$NoLto, [string]$Out = '', [switch]$NoSnapshot, [string[]]$ExtraFlags = @(),
       [ValidateSet('dlmalloc', 'mimalloc')][string]$Allocator = 'dlmalloc',
       # the JavaScript engine: QuickJS-ng in C (default), or the Odin one (src\engine\jsrt through src\engine\jscapi: no QuickJS C is compiled)
-      [ValidateSet('quickjs', 'jsrt')][string]$Engine = $(if ($env:WREN_JS_ENGINE) { $env:WREN_JS_ENGINE } else { 'quickjs' }))
+      [ValidateSet('quickjs', 'jsrt')][string]$Engine = $(if ($env:WREN_JS_ENGINE) { $env:WREN_JS_ENGINE } else { 'jsrt' }))
 $ErrorActionPreference = 'Stop'
 $ZigVersion = '0.15.2'
 $ZigSha256 = '3a0ed1e8799a2f8ce2a6e6290a9ff22e6906f8227865911fb7ddedc3cc14cb0c'
