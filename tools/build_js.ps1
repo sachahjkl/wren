@@ -151,14 +151,20 @@ $odinified = @(
     'qjs_convert.c',
     'shared_workers.c',
     'web_broadcast.c',
+    'web_crypto.c',
+    'web_encoding.c',
     'web_fullscreen.c',
     'web_location.c',
     'web_navtiming.c',
+    'web_storage.c',
     'web_strategy.c',
+    'web_url.c',
+    'web_urlpattern.c',
     'window.c',
     'worker_scope.c'
 )
 $sources += (Join-Path $native 'odin\wj_shim.c')
+$sources += (Join-Path $native 'odin\wj_g2_shim.c')
 $sources = $sources | Where-Object { $odinified -notcontains (Split-Path $_ -Leaf) }
 if ($Allocator -eq 'mimalloc') {
     # the engine's heap through mimalloc (pinned), the C library's own through wasi-libc's dlmalloc
