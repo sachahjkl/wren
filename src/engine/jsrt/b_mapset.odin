@@ -307,6 +307,7 @@ collection_method :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32)
 	case MAP_SIZE:
 		return mk_int(i32(ms.live))
 	case MAP_GET_OR_INSERT, MAP_GET_OR_INSERT_COMPUTED:
+		if op == MAP_GET_OR_INSERT_COMPUTED && !is_callable(arg(args, 1)) {return throw_type_error(ctx, "callback is not a function")}
 		if weak && !can_be_held_weakly(rt, key) {return throw_type_error(ctx, "invalid value used as weak map key")}
 		k := key
 		if k.tag == .float && k.u.f == 0 {k = mk_int(0)}

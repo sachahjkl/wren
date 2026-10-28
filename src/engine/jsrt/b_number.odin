@@ -164,7 +164,10 @@ math_unary :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Val
 	case .fround: r = f64(f32(d))
 	case .log: r = math.ln(d)
 	case .log1p: r = d == 0 ? d : math.log1p(d)
-	case .log10: r = math.log10(d)
+	case .log10:
+		r = math.log10(d)
+		// exact powers of ten give exact results (core:math's log10 is ln(x)/ln(10))
+		if rr := math.round(r); rr != r && abs(rr) <= 308 && math.pow(10, rr) == d {r = rr}
 	case .log2: r = math.log2(d)
 	case .round:
 		if math.is_nan(d) || math.is_inf(d) || d == 0 {
@@ -351,6 +354,7 @@ math_sum_precise :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) 
 	pos_inf, neg_inf, nan := false, false, false
 	all_neg_zero := true
 	count := 0
+	overflow := 0
 	for {
 		v, done, ok := iterator_step_value(ctx, it, next)
 		if !ok {return EXCEPTION}
@@ -368,13 +372,20 @@ math_sum_precise :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) 
 			continue
 		}
 		if !(x == 0 && math.sign_bit(x)) {all_neg_zero = false}
-		// Neumaier / Shewchuk grow-expansion
+		// Shewchuk grow-expansion; an overflowing partial moves 2^1024 into `overflow`
+		// (the algorithm of the proposal's reference polyfill)
 		i := 0
 		for y in partials {
 			yy := y
 			if abs(x) < abs(yy) {x, yy = yy, x}
-			hi := x + yy
-			lo := yy - (hi - x)
+			hi, lo := two_sum(x, yy)
+			if math.is_inf(hi) {
+				sign := hi > 0 ? 1.0 : -1.0
+				overflow += int(sign)
+				x = (x - sign * P2_1023) - sign * P2_1023
+				if abs(x) < abs(yy) {x, yy = yy, x}
+				hi, lo = two_sum(x, yy)
+			}
 			if lo != 0 {
 				partials[i] = lo
 				i += 1
@@ -382,38 +393,65 @@ math_sum_precise :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) 
 			x = hi
 		}
 		resize(&partials, i)
-		append(&partials, x)
+		if x != 0 {append(&partials, x)}
 	}
 	if nan || (pos_inf && neg_inf) {return mk_float(NAN)}
 	if pos_inf {return mk_float(INF)}
 	if neg_inf {return mk_float(-INF)}
 	if count == 0 || all_neg_zero {return mk_float(-0.0)}
-	// sum the partials from the top, with correct rounding of the final result
-	n := len(partials)
-	if n == 0 {return mk_int(0)}
-	hi := partials[n - 1]
-	lo := 0.0
-	k := n - 1
-	for k > 0 {
+	n := len(partials) - 1
+	hi, lo := 0.0, 0.0
+	if overflow != 0 {
+		nxt := n >= 0 ? partials[n] : 0
+		n -= 1
+		if abs(overflow) > 1 || (overflow > 0 && nxt > 0) || (overflow < 0 && nxt < 0) {
+			return mk_float(overflow > 0 ? INF : -INF)
+		}
+		hi, lo = two_sum(f64(overflow) * P2_1023, nxt / 2)
+		lo *= 2
+		if math.is_inf(2 * hi) {
+			if hi > 0 {
+				if hi == P2_1023 && lo == -(MAX_ULP / 2) && n >= 0 && partials[n] < 0 {return mk_float(MAX_DOUBLE)}
+				return mk_float(INF)
+			}
+			if hi == -P2_1023 && lo == MAX_ULP / 2 && n >= 0 && partials[n] > 0 {return mk_float(-MAX_DOUBLE)}
+			return mk_float(-INF)
+		}
+		if lo != 0 {
+			partials[n + 1] = lo
+			n += 1
+			lo = 0
+		}
+		hi *= 2
+	}
+	for n >= 0 {
 		x := hi
-		y := partials[k - 1]
-		hi = x + y
-		yr := hi - x
-		lo = y - yr
-		k -= 1
+		y := partials[n]
+		n -= 1
+		hi, lo = two_sum(x, y)
 		if lo != 0 {break}
 	}
-	if k > 0 && ((lo < 0 && partials[k - 1] < 0) || (lo > 0 && partials[k - 1] > 0)) {
+	// a roundoff of exactly half an ulp: the next partial decides the direction
+	if n >= 0 && ((lo < 0 && partials[n] < 0) || (lo > 0 && partials[n] > 0)) {
 		y := lo * 2
 		x := hi + y
 		yr := x - hi
 		if y == yr {hi = x}
 	}
-	if math.is_inf(hi) {
-		// overflow of the intermediate: recompute scaled
-		return mk_float(hi)
-	}
 	return mk_number(hi)
+}
+
+@(private = "file")
+P2_1023 :: 8.98846567431158e307 // 2^1023
+@(private = "file")
+MAX_DOUBLE :: 1.7976931348623157e308
+@(private = "file")
+MAX_ULP :: 1.99584030953472e292 // 2^(1023-52)
+
+@(private = "file")
+two_sum :: #force_inline proc(x, y: f64) -> (f64, f64) {
+	hi := x + y
+	return hi, y - (hi - x)
 }
 
 init_math_builtins :: proc(ctx: ^Context) {

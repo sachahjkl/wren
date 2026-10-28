@@ -125,11 +125,12 @@ define_own_property :: proc(ctx: ^Context, o: ^Object, a: Atom, d: Prop_Desc, th
 		return proxy_define_own_property(ctx, o, a, &desc, throw_flag)
 	case .array:
 		if a == pa(.A_length) {return array_define_length(ctx, o, &desc, throw_flag)}
-		if idx, isi := atom_array_index(a); isi {
+		if idx, isi := atom_index(ctx.rt, a); isi {
+			if o.watch_index {ctx.rt.std_protos_touched = true}
 			len := array_length_u32(o)
 			lw := .writable in o.shape.props[0].flags
 			if idx >= len && !lw {return fail_define(ctx, a, throw_flag)}
-			if o.fast_array {
+			if o.fast_array && atom_is_int(a) {
 				r, handled := fast_array_define(ctx, o, idx, &desc)
 				if handled {
 					if r == 1 && idx >= len {o.slots[0].value = mk_u32(idx + 1)}
@@ -360,16 +361,18 @@ array_truncate :: proc(ctx: ^Context, o: ^Object, old_len, new_len: u32) -> (u32
 	if o.fast_array {
 		ad := &o.data.(Array_Data)
 		if ad.count > new_len {ad.count = new_len}
-		return new_len, true
+		if old_len <= ATOM_MAX_INT {return new_len, true}
+		// indices above ATOM_MAX_INT live in the shape even on a fast array
 	}
 	// slow array: collect index keys >= new_len, delete from the highest
 	keys := make([dynamic]u32, 0, 16, tmp(ctx.rt))
 	for p in o.shape.props {
-		if idx, isi := atom_array_index(p.atom); isi && idx >= new_len {append(&keys, idx)}
+		if idx, isi := atom_index(ctx.rt, p.atom); isi && idx >= new_len {append(&keys, idx)}
 	}
 	sort_u32_desc(keys[:])
 	for k in keys {
-		i := shape_find(o.shape, atom_from_u32(k))
+		ka := k <= ATOM_MAX_INT ? atom_from_u32(k) : number_to_atom(ctx, f64(k))
+		i := shape_find(o.shape, ka)
 		if i < 0 {continue}
 		if .configurable not_in o.shape.props[i].flags {
 			return k + 1, false
@@ -469,6 +472,8 @@ has_property :: proc(ctx: ^Context, o_in: ^Object, a: Atom) -> int {
 	o := o_in
 	for o != nil {
 		if o.class == .proxy {return proxy_has(ctx, o, a)}
+		// a namespace's [[HasProperty]] reads no binding, so an uninitialized one is still "in"
+		if o.class == .module_ns {return shape_find(o.shape, a) >= 0 ? 1 : 0}
 		if is_typed_array_class(o.class) {
 			if n, isnum := atom_canonical_numeric(ctx, a); isnum {
 				_, valid := typed_array_get_index(ctx, o, n)
@@ -600,11 +605,12 @@ get_by_value :: proc(ctx: ^Context, obj: Value, key: Value) -> Value {
 		return get_property(ctx, obj, atom_from_u32(u32(key.u.i)), obj)
 	}
 	if is_nullish(obj) {
-		ks := "symbol"
-		if key.tag != .symbol {
-			ksv := to_str(ctx, key)
-			if ksv == nil {return EXCEPTION}
-			ks = str_to_utf8(ctx.rt, ksv, tmp(ctx.rt))
+		// the key is not converted: no user code may run before the TypeError
+		ks := "<key>"
+		if key.tag == .string {
+			ks = str_to_utf8(ctx.rt, as_str(key), tmp(ctx.rt))
+		} else if key.tag == .int || key.tag == .float {
+			ks = str_to_utf8(ctx.rt, to_str(ctx, key), tmp(ctx.rt))
 		}
 		return throw_type_error(ctx, cat(ctx, "cannot read property '", ks, "' of ", is_null(obj) ? "null" : "undefined"))
 	}
@@ -670,7 +676,8 @@ set_property :: proc(ctx: ^Context, obj: Value, a: Atom, val: Value, receiver: V
 		return 0
 	}
 	recv_obj: ^Object = receiver.tag == .object ? as_obj(receiver) : nil
-	for p != nil {
+	chain: for p != nil {
+		if p.class == .module_ns {return fail_set(ctx, a, throw_flag)} // [[Set]] of a namespace is always false
 		i := shape_find(p.shape, a)
 		if i >= 0 {
 			prop := p.shape.props[i]
@@ -721,11 +728,12 @@ set_property :: proc(ctx: ^Context, obj: Value, a: Atom, val: Value, receiver: V
 				if is_typed_array_class(p.class) {
 					if n, isnum := atom_canonical_numeric(ctx, a); isnum {
 						if p == recv_obj {
-							if !typed_array_set_index(ctx, p, n, val) {return -1}
-							return 1
+							r := typed_array_put(ctx, p, n, val)
+							if r == 0 {return fail_set(ctx, a, throw_flag)}
+							return r
 						}
 						if _, valid := typed_array_get_index(ctx, p, n); !valid {return 1}
-						break
+						break chain // OrdinarySet: the element is a writable data property
 					}
 				}
 			}
@@ -778,8 +786,9 @@ set_by_value :: proc(ctx: ^Context, obj: Value, key: Value, val: Value, throw_fl
 			if idx < ad.count {ad.values[idx] = val; return 1}
 		}
 		if is_typed_array_class(o.class) {
-			if !typed_array_set_index(ctx, o, f64(key.u.i), val) {return -1}
-			return 1
+			r := typed_array_put(ctx, o, f64(key.u.i), val)
+			if r == 0 {return fail_set(ctx, atom_from_u32(u32(key.u.i)), throw_flag)}
+			return r
 		}
 		return set_property(ctx, obj, atom_from_u32(u32(key.u.i)), val, obj, throw_flag)
 	}
@@ -904,8 +913,28 @@ own_property_keys :: proc(ctx: ^Context, o: ^Object, out: ^[dynamic]Atom, filter
 		if len(out) - start > 1 {
 			sort_u32_asc(out[start:])
 		}
+		// string atoms spelling indices above ATOM_MAX_INT sort after the int atoms, by value
+		big_start := len(out)
 		for p in o.shape.props {
-			if !atom_is_int(p.atom) && !atom_is_symbol(rt, p.atom) {append(out, p.atom)}
+			if !atom_is_int(p.atom) {
+				if _, isi := atom_index(rt, p.atom); isi {append(out, p.atom)}
+			}
+		}
+		if len(out) - big_start > 1 {
+			big := out[big_start:]
+			for i in 1 ..< len(big) {
+				for j := i; j > 0; j -= 1 {
+					x, _ := atom_index(rt, big[j - 1])
+					y, _ := atom_index(rt, big[j])
+					if x <= y {break}
+					big[j - 1], big[j] = big[j], big[j - 1]
+				}
+			}
+		}
+		for p in o.shape.props {
+			if !atom_is_int(p.atom) && !atom_is_symbol(rt, p.atom) {
+				if _, isi := atom_index(rt, p.atom); !isi {append(out, p.atom)}
+			}
 		}
 	}
 	if .symbols in filter || .private_ in filter {

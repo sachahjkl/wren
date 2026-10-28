@@ -78,5 +78,35 @@ error_add_stack :: proc(ctx: ^Context, o: ^Object) {
 		n += 1
 	}
 	s := sb_finish(&sb)
-	define_value(ctx, o, pa(.A_stack), mk_str(s), CW)
+	if o.class == .error {
+		// [[ErrorData]]: read through the Error.prototype.stack accessor
+		o.data = Prim_Data{mk_str(s)}
+	} else {
+		define_value(ctx, o, pa(.A_stack), mk_str(s), CW)
+	}
+}
+
+error_stack_get :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value {
+	if this.tag != .object {return throw_not_object(ctx)}
+	o := as_obj(this)
+	if o.class != .error {return UNDEFINED}
+	if pd, ok := o.data.(Prim_Data); ok {return pd.v}
+	return UNDEFINED
+}
+
+error_stack_set :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value {
+	if this.tag != .object {return throw_not_object(ctx)}
+	v := arg(args, 0)
+	if v.tag != .string {return throw_type_error(ctx, "Error.prototype.stack setter expects a string")}
+	o := as_obj(this)
+	if o == ctx.class_proto[.error] {return throw_type_error(ctx, "Error.prototype.stack setter called on the home object")}
+	d: Prop_Desc
+	r := get_own_property(ctx, o, pa(.A_stack), &d)
+	if r < 0 {return EXCEPTION}
+	if r == 0 {
+		if define_own_property(ctx, o, pa(.A_stack), data_desc(v, CWE), true) < 0 {return EXCEPTION}
+	} else if set_property(ctx, this, pa(.A_stack), v, this, true) < 0 {
+		return EXCEPTION
+	}
+	return UNDEFINED
 }

@@ -351,12 +351,6 @@ async_from_sync_unwrap :: proc(ctx: ^Context, this: Value, args: []Value, magic:
 	return iter_result(ctx, arg(args, 0), to_boolean(d[0]))
 }
 
-@(private = "file")
-async_from_sync_close :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value {
-	d := native_data(ctx)
-	iterator_close(ctx, d[0], true)
-	return throw(ctx, arg(args, 0))
-}
 
 // magic: 0 next, 1 return, 2 throw
 async_from_sync_method :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value {
@@ -402,23 +396,12 @@ async_from_sync_method :: proc(ctx: ^Context, this: Value, args: []Value, magic:
 	done := to_boolean(dv)
 	v := get(ctx, r, pa(.A_value))
 	if is_exception(v) {return reject_with(ctx, cap)}
+	// As QuickJS-ng: no closeOnRejection here. The bytecode's for-await closes the iterator when the
+	// awaited result rejects (its catch_offset unwinding), so closing here too would close it twice.
 	p := promise_resolve(ctx, mk_obj(ctx.promise_ctor), v)
-	if is_exception(p) {
-		if !done && magic != 1 {
-			e := take_exception(ctx)
-			iterator_close(ctx, sync_it, false)
-			if has_exception(ctx) {take_exception(ctx)}
-			call(ctx, cap.reject, UNDEFINED, {e})
-			return cap.promise
-		}
-		return reject_with(ctx, cap)
-	}
+	if is_exception(p) {return reject_with(ctx, cap)}
 	unwrap := new_native_anon(ctx, async_from_sync_unwrap, 1, {mk_bool(done)})
-	on_rej := UNDEFINED
-	if !done && magic != 1 {
-		on_rej = mk_obj(new_native_anon(ctx, async_from_sync_close, 1, {sync_it}))
-	}
-	perform_promise_then(ctx, as_obj(p), mk_obj(unwrap), on_rej, cap.resolve, cap.reject, cap.promise)
+	perform_promise_then(ctx, as_obj(p), mk_obj(unwrap), UNDEFINED, cap.resolve, cap.reject, cap.promise)
 	return cap.promise
 }
 

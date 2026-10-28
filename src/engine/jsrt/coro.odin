@@ -97,9 +97,8 @@ frame_top :: proc(f: ^Frame) -> Value {
 
 generator_function_call :: proc(ctx: ^Context, fo: ^Object, this: Value, args: []Value) -> Value {
 	rt := ctx.rt
-	proto, ok := proto_from_ctor(ctx, mk_obj(fo), .generator)
-	if !ok {return EXCEPTION}
-	g := object_new_proto(ctx, proto, .generator)
+	// the prototype is read after FunctionDeclarationInstantiation (parameter defaults may change it)
+	g := object_new_proto(ctx, ctx.class_proto[.generator], .generator)
 	co := coro_new(ctx, .generator, g, fo, this, args)
 	co.state = .suspended_start
 	_, k := coro_resume(ctx, co.frame)
@@ -107,6 +106,9 @@ generator_function_call :: proc(ctx: ^Context, fo: ^Object, this: Value, args: [
 		coro_complete(rt, co)
 		return EXCEPTION
 	}
+	proto, ok := proto_from_ctor(ctx, mk_obj(fo), .generator)
+	if !ok {return EXCEPTION}
+	set_object_proto(rt, g, proto)
 	return mk_obj(g)
 }
 
@@ -256,9 +258,7 @@ await_settled :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> 
 
 async_generator_function_call :: proc(ctx: ^Context, fo: ^Object, this: Value, args: []Value) -> Value {
 	rt := ctx.rt
-	proto, ok := proto_from_ctor(ctx, mk_obj(fo), .async_generator)
-	if !ok {return EXCEPTION}
-	g := object_new_proto(ctx, proto, .async_generator)
+	g := object_new_proto(ctx, ctx.class_proto[.async_generator], .async_generator)
 	co := coro_new(ctx, .async_generator, g, fo, this, args)
 	co.state = .suspended_start
 	_, k := coro_resume(ctx, co.frame)
@@ -266,6 +266,9 @@ async_generator_function_call :: proc(ctx: ^Context, fo: ^Object, this: Value, a
 		coro_complete(rt, co)
 		return EXCEPTION
 	}
+	proto, ok := proto_from_ctor(ctx, mk_obj(fo), .async_generator)
+	if !ok {return EXCEPTION}
+	set_object_proto(rt, g, proto)
 	return mk_obj(g)
 }
 

@@ -176,7 +176,49 @@ judge_compile :: proc(ctx: ^js.Context, req: ^js.Compile_Request) -> js.Value {
 	return v
 }
 
-judge_load_module :: proc(ctx: ^js.Context, referrer: string, specifier: string, user: rawptr) -> js.Value {
+// A JavaScript string literal holding `text` (for the synthesized json/text modules).
+js_string_literal :: proc(sb: ^strings.Builder, text: string) {
+	strings.write_byte(sb, '"')
+	for c in transmute([]u8)text {
+		switch c {
+		case '"': strings.write_string(sb, "\\\"")
+		case '\\': strings.write_string(sb, "\\\\")
+		case '\n': strings.write_string(sb, "\\n")
+		case '\r': strings.write_string(sb, "\\r")
+		case 0 ..< 0x20: fmt.sbprintf(sb, "\\x%02x", c)
+		case: strings.write_byte(sb, c)
+		}
+	}
+	strings.write_byte(sb, '"')
+}
+
+// Modules imported `with { type }`: json (JSON.parse of the file), text (the file as a string) and
+// bytes (a Uint8Array over an immutable ArrayBuffer), compiled as tiny synthesized modules.
+synth_module_source :: proc(attr_type: string, data: []u8) -> (string, bool) {
+	sb := strings.builder_make(context.temp_allocator)
+	switch attr_type {
+	case "json":
+		strings.write_string(&sb, "export default JSON.parse(")
+		js_string_literal(&sb, string(data))
+		strings.write_string(&sb, ");\n")
+	case "text":
+		strings.write_string(&sb, "export default ")
+		js_string_literal(&sb, string(data))
+		strings.write_string(&sb, ";\n")
+	case "bytes":
+		strings.write_string(&sb, "const b = new Uint8Array([")
+		for x, i in data {
+			if i > 0 {strings.write_byte(&sb, ',')}
+			fmt.sbprintf(&sb, "%d", x)
+		}
+		strings.write_string(&sb, "]);\nexport default new Uint8Array(b.buffer.transferToImmutable());\n")
+	case:
+		return "", false
+	}
+	return strings.to_string(sb), true
+}
+
+judge_load_module :: proc(ctx: ^js.Context, referrer: string, specifier: string, attr_type: string, user: rawptr) -> js.Value {
 	h := cast(^Host)user
 	base := referrer
 	if base == "" || !strings.has_suffix(base, ".js") && !strings.has_suffix(base, ".mjs") {base = h.test_path}
@@ -184,15 +226,22 @@ judge_load_module :: proc(ctx: ^js.Context, referrer: string, specifier: string,
 	path := pjoin(dir, specifier)
 	path, _ = filepath.clean(path)
 	path, _ = strings.replace_all(path, "\\", "/")
-	if v, ok := h.modules[path]; ok {return v}
+	key := attr_type == "" ? path : fmt.tprintf("%s#%s", path, attr_type)
+	if v, ok := h.modules[key]; ok {return v}
 	data, rerr := os.read_entire_file(path, context.temp_allocator)
 	if rerr != nil {
 		return js.throw_error(ctx, .reference, fmt.tprintf("could not load module '%s'", specifier))
 	}
-	req := js.Compile_Request{kind = .module, source = string(data), filename = path}
+	source := string(data)
+	if attr_type != "" {
+		s, ok := synth_module_source(attr_type, data)
+		if !ok {return js.throw_error(ctx, .type, fmt.tprintf("unsupported module type '%s'", attr_type))}
+		source = s
+	}
+	req := js.Compile_Request{kind = .module, source = source, filename = path}
 	v := js.compile(ctx, &req)
 	if js.is_exception(v) {return v}
-	pk := strings.clone(path)
+	pk := strings.clone(key)
 	h.modules[pk] = v
 	js.persist(ctx.rt, v)
 	return v

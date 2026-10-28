@@ -37,23 +37,47 @@ jp_fail :: proc(p: ^JSON_Parser, msg: string) -> Value {
 	return EXCEPTION
 }
 
-// Parsed values carry their source span for the reviver's context.source (primitives only).
+// The parse record of a value (json-parse-with-source): the parsed value, the source span of a
+// primitive, and the records of an object's members or an array's elements. Lives in scratch memory;
+// its values are rooted for the duration of JSON.parse.
 @(private = "file")
-JSON_Node :: struct {
+Parse_Record :: struct {
+	value:      Value,
 	start, end: int,
+	keys:       map[Atom]^Parse_Record,
+	elements:   [dynamic]^Parse_Record,
 }
 
 @(private = "file")
-jp_value :: proc(p: ^JSON_Parser, depth: int) -> Value {
+jp_record :: proc(p: ^JSON_Parser) -> ^Parse_Record {
+	if !p.with_source {return nil}
+	return new(Parse_Record, tmp(p.ctx.rt))
+}
+
+@(private = "file")
+jp_value :: proc(p: ^JSON_Parser, depth: int, rec: ^Parse_Record = nil) -> Value {
+	v := jp_value_inner(p, depth, rec)
+	if rec != nil && !is_exception(v) {
+		rec.value = v
+		root(p.ctx.rt, v)
+	}
+	return v
+}
+
+@(private = "file")
+jp_value_inner :: proc(p: ^JSON_Parser, depth: int, rec: ^Parse_Record) -> Value {
 	ctx := p.ctx
 	rt := ctx.rt
 	if depth > 5000 {return jp_fail(p, "too deeply nested")}
 	jp_ws(p)
 	c := jp_peek(p)
+	if rec != nil {rec.start = p.pos}
+	defer if rec != nil {rec.end = p.pos}
 	switch c {
 	case '{':
 		p.pos += 1
 		o := new_plain_object(ctx)
+		if rec != nil {rec.keys = make(map[Atom]^Parse_Record, 8, tmp(rt))}
 		jp_ws(p)
 		if jp_peek(p) == '}' {p.pos += 1; return mk_obj(o)}
 		for {
@@ -64,9 +88,11 @@ jp_value :: proc(p: ^JSON_Parser, depth: int) -> Value {
 			jp_ws(p)
 			if jp_peek(p) != ':' {return jp_fail(p, "expected ':'")}
 			p.pos += 1
-			v := jp_value(p, depth + 1)
+			sub := jp_record(p)
+			v := jp_value(p, depth + 1, sub)
 			if is_exception(v) {return EXCEPTION}
 			a := atom_from_string(rt, as_str(k))
+			if rec != nil {rec.keys[a] = sub}
 			if a == pa(.A___proto__) {
 				define_own_property(ctx, o, a, data_desc(v, CWE), false)
 			} else {
@@ -82,11 +108,14 @@ jp_value :: proc(p: ^JSON_Parser, depth: int) -> Value {
 	case '[':
 		p.pos += 1
 		a := array_new(ctx)
+		if rec != nil {rec.elements = make([dynamic]^Parse_Record, tmp(rt))}
 		jp_ws(p)
 		if jp_peek(p) == ']' {p.pos += 1; return mk_obj(a)}
 		for {
-			v := jp_value(p, depth + 1)
+			sub := jp_record(p)
+			v := jp_value(p, depth + 1, sub)
 			if is_exception(v) {return EXCEPTION}
+			if rec != nil {append(&rec.elements, sub)}
 			array_push_fast(rt, a, v)
 			jp_ws(p)
 			c2 := jp_peek(p)
@@ -212,11 +241,21 @@ jp_string :: proc(p: ^JSON_Parser) -> Value {
 
 // InternalizeJSONProperty. `src` is the parsed value tree mirrored for source-text access.
 @(private = "file")
-internalize :: proc(ctx: ^Context, holder: Value, a: Atom, reviver: Value, depth: int) -> Value {
+internalize :: proc(ctx: ^Context, holder: Value, a: Atom, reviver: Value, depth: int, src: ^JS_String, parent: ^Parse_Record) -> Value {
 	rt := ctx.rt
 	if depth > 5000 {return throw_range_error(ctx, "JSON.parse: too deeply nested")}
 	val := get(ctx, holder, a)
 	if is_exception(val) {return EXCEPTION}
+	// the record of this value, if it is still the parsed one
+	rec: ^Parse_Record
+	if parent != nil {
+		if parent.value.tag == .object && as_obj(parent.value).class == .array {
+			if idx, isi := atom_array_index(a); isi && int(idx) < len(parent.elements) {rec = parent.elements[idx]}
+		} else if parent.keys != nil {
+			rec = parent.keys[a]
+		}
+		if rec != nil && !same_value(ctx, rec.value, val) {rec = nil}
+	}
 	if val.tag == .object {
 		ia := is_array_value(ctx, val)
 		if ia < 0 {return EXCEPTION}
@@ -225,7 +264,7 @@ internalize :: proc(ctx: ^Context, holder: Value, a: Atom, reviver: Value, depth
 			if !ok {return EXCEPTION}
 			for i in 0 ..< n {
 				k := i <= i64(ATOM_MAX_INT) ? atom_from_u32(u32(i)) : number_to_atom(ctx, f64(i))
-				ne := internalize(ctx, val, k, reviver, depth + 1)
+				ne := internalize(ctx, val, k, reviver, depth + 1, src, rec)
 				if is_exception(ne) {return EXCEPTION}
 				if is_undefined(ne) {
 					if delete_property(ctx, as_obj(val), k) < 0 {return EXCEPTION}
@@ -236,11 +275,15 @@ internalize :: proc(ctx: ^Context, holder: Value, a: Atom, reviver: Value, depth
 		} else {
 			keys := make([dynamic]Atom, 0, 8, tmp(rt))
 			if !own_property_keys(ctx, as_obj(val), &keys, {.strings}) {return EXCEPTION}
+			// EnumerableOwnProperties: the key list is fixed before any reviver call
+			n := 0
 			for k in keys {
 				e := own_enumerable(ctx, as_obj(val), k)
 				if e < 0 {return EXCEPTION}
-				if e == 0 {continue}
-				ne := internalize(ctx, val, k, reviver, depth + 1)
+				if e == 1 {keys[n] = k; n += 1}
+			}
+			for k in keys[:n] {
+				ne := internalize(ctx, val, k, reviver, depth + 1, src, rec)
 				if is_exception(ne) {return EXCEPTION}
 				if is_undefined(ne) {
 					if delete_property(ctx, as_obj(val), k) < 0 {return EXCEPTION}
@@ -251,29 +294,10 @@ internalize :: proc(ctx: ^Context, holder: Value, a: Atom, reviver: Value, depth
 		}
 	}
 	context_obj := new_plain_object(ctx)
-	if val.tag != .object {
-		src := json_source_for(ctx, val)
-		if !is_undefined(src) {define_value(ctx, context_obj, pa(.A_source), src, CWE)}
+	if val.tag != .object && rec != nil {
+		define_value(ctx, context_obj, pa(.A_source), mk_str(str_sub(rt, src, rec.start, rec.end)), CWE)
 	}
 	return call(ctx, reviver, holder, {atom_to_value(rt, a), val, mk_obj(context_obj)})
-}
-
-// The source text of a primitive JSON value: its canonical serialization.
-@(private = "file")
-json_source_for :: proc(ctx: ^Context, v: Value) -> Value {
-	#partial switch v.tag {
-	case .string:
-		sb := sb_init(ctx.rt)
-		json_quote(&sb, as_str(v))
-		return mk_str(sb_finish(&sb))
-	case .int, .float:
-		return mk_str(number_to_string(ctx.rt, as_f64(v)))
-	case .bool:
-		return atom_to_value(ctx.rt, v.u.b ? pa(.A_true) : pa(.A_false))
-	case .null:
-		return atom_to_value(ctx.rt, pa(.A_null))
-	}
-	return UNDEFINED
 }
 
 @(private = "file")
@@ -282,16 +306,20 @@ json_parse :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Val
 	s := to_str(ctx, arg(args, 0))
 	if s == nil {return EXCEPTION}
 	f := str_flat(rt, s)
-	p := JSON_Parser{ctx = ctx, s = f, n = int(f.len)}
-	v := jp_value(&p, 0)
+	root(rt, mk_str(f))
+	reviver := arg(args, 1)
+	p := JSON_Parser{ctx = ctx, s = f, n = int(f.len), with_source = is_callable(reviver)}
+	top := jp_record(&p)
+	v := jp_value(&p, 0, top)
 	if is_exception(v) {return EXCEPTION}
 	jp_ws(&p)
 	if p.pos < p.n {return jp_fail(&p, "unexpected data after the value")}
-	reviver := arg(args, 1)
 	if !is_callable(reviver) {return v}
 	root_obj := new_plain_object(ctx)
 	create_data_property(ctx, root_obj, pa(.A_empty_string), v, false)
-	return internalize(ctx, mk_obj(root_obj), pa(.A_empty_string), reviver, 0)
+	holder_rec := Parse_Record{value = mk_obj(root_obj), keys = make(map[Atom]^Parse_Record, 1, tmp(rt))}
+	holder_rec.keys[pa(.A_empty_string)] = top
+	return internalize(ctx, mk_obj(root_obj), pa(.A_empty_string), reviver, 0, f, &holder_rec)
 }
 
 // --- stringify ---
@@ -457,17 +485,19 @@ json_object :: proc(w: ^JSON_Writer, v: Value) -> int {
 	if w.has_list {
 		keys = w.prop_list
 	} else {
-		keys = make([dynamic]Atom, 0, 8, tmp(rt))
-		if !own_property_keys(ctx, o, &keys, {.strings}) {return -1}
+		all := make([dynamic]Atom, 0, 8, tmp(rt))
+		if !own_property_keys(ctx, o, &all, {.strings}) {return -1}
+		// EnumerableOwnProperties: fixed before any getter or replacer runs
+		keys = make([dynamic]Atom, 0, len(all), tmp(rt))
+		for k in all {
+			e := own_enumerable(ctx, o, k)
+			if e < 0 {return -1}
+			if e == 1 {append(&keys, k)}
+		}
 	}
 	sb_unit(&w.sb, '{')
 	first := true
 	for k in keys {
-		if !w.has_list {
-			e := own_enumerable(ctx, o, k)
-			if e < 0 {return -1}
-			if e == 0 {continue}
-		}
 		pv := get(ctx, v, k)
 		if is_exception(pv) {return -1}
 		mark := w.sb.len

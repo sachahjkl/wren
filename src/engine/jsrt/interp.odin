@@ -548,10 +548,11 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 						break
 					}
 					o = mk_obj(ctx.global_obj)
-				} else if strict && o.tag == .object && as_obj(o) == ctx.global_obj {
+				} else if strict && o.tag == .object {
+					// SetMutableBinding of an object environment: the binding may have vanished meanwhile
 					a, ok := to_property_key(ctx, stack[sp - 2])
 					if !ok {exc = true; break}
-					h := has_property(ctx, ctx.global_obj, a)
+					h := has_property(ctx, as_obj(o), a)
 					if h < 0 {exc = true; break}
 					if h == 0 {throw_not_defined(ctx, a); exc = true; break}
 				}
@@ -661,7 +662,7 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 						if idx < ad.count {
 							ad.values[idx] = stack[sp - 1]
 							done = true
-						} else if idx == ad.count && p.extensible && p.shape.proto == ctx.class_proto[.array] && ctx.std_array_proto && .writable in p.shape.props[0].flags && idx >= array_length_u32(p) {
+						} else if idx == ad.count && p.extensible && array_append_ok(ctx, p) && .writable in p.shape.props[0].flags && idx >= array_length_u32(p) {
 							array_push_fast(rt, p, stack[sp - 1])
 							done = true
 						}
@@ -1031,10 +1032,28 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 					break
 				}
 				#partial switch op {
-				case .with_get_var:
-					v := get(ctx, obj, a)
-					if is_exception(v) {exc = true; break}
-					stack[sp - 1] = v
+				case .with_get_var, .with_get_ref, .with_get_ref_undef:
+					// GetBindingValue: HasProperty again (an @@unscopables getter may have deleted it)
+					h2 := has_property(ctx, o, a)
+					if h2 < 0 {exc = true; break}
+					v := UNDEFINED
+					if h2 == 0 {
+						if strict {throw_not_defined(ctx, a); exc = true; break}
+					} else {
+						v = get(ctx, obj, a)
+						if is_exception(v) {exc = true; break}
+					}
+					#partial switch op {
+					case .with_get_var:
+						stack[sp - 1] = v
+					case .with_get_ref:
+						stack[sp] = v
+						sp += 1
+					case:
+						stack[sp - 1] = UNDEFINED
+						stack[sp] = v
+						sp += 1
+					}
 				case .with_put_var:
 					if set_property(ctx, obj, a, stack[sp - 2], obj, strict) < 0 {exc = true; break}
 					sp -= 2
@@ -1044,17 +1063,6 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 					stack[sp - 1] = mk_bool(r == 1)
 				case .with_make_ref:
 					stack[sp] = atom_to_value(rt, a)
-					sp += 1
-				case .with_get_ref:
-					v := get(ctx, obj, a)
-					if is_exception(v) {exc = true; break}
-					stack[sp] = v
-					sp += 1
-				case .with_get_ref_undef:
-					v := get(ctx, obj, a)
-					if is_exception(v) {exc = true; break}
-					stack[sp - 1] = UNDEFINED
-					stack[sp] = v
 					sp += 1
 				}
 				if !exc {pc += diff - 5}
@@ -1755,7 +1763,9 @@ function_name_value :: proc(ctx: ^Context, a: Atom, prefix: string) -> Value {
 	s: ^JS_String
 	if atom_is_symbol(rt, a) {
 		sym := atom_symbol(rt, a)
-		if sym != nil && is_string(sym.description) {
+		if sym != nil && is_string(sym.description) && atom_is_private(rt, a) {
+			s = as_str(sym.description) // a private name is its description ("#x"), without brackets
+		} else if sym != nil && is_string(sym.description) {
 			sb := sb_init(rt)
 			sb_ascii(&sb, "[")
 			sb_str(&sb, as_str(sym.description))

@@ -92,7 +92,9 @@ to_number :: proc(ctx: ^Context, v: Value) -> (f64, bool) {
 		p := to_primitive(ctx, v, .number)
 		if is_exception(p) {return 0, false}
 		return to_number(ctx, p)
-	case .uninitialized, .exception, .catch_offset, .function_bc, .module:
+	case .exception:
+		return 0, false // a failed get passed straight in: the exception is already pending
+	case .uninitialized, .catch_offset, .function_bc, .module:
 		return NAN, true
 	}
 	return NAN, true
@@ -245,6 +247,21 @@ parse_number_text :: proc(text: string) -> f64 {
 		c := t[2] | 0x20
 		if c == 'x' || c == 'o' || c == 'b' {return NAN}
 	}
+	// a radix literal is digits only (no fraction, no exponent)
+	if len(t) > 2 && t[0] == '0' {
+		c := t[1] | 0x20
+		if c == 'x' || c == 'o' || c == 'b' {
+			for ch in transmute([]u8)t[2:] {
+				ok := false
+				switch c {
+				case 'x': ok = (ch >= '0' && ch <= '9') || ((ch | 0x20) >= 'a' && (ch | 0x20) <= 'f')
+				case 'o': ok = ch >= '0' && ch <= '7'
+				case 'b': ok = ch == '0' || ch == '1'
+				}
+				if !ok {return NAN}
+			}
+		}
+	}
 	return numconv.parse_number(t)
 }
 
@@ -311,7 +328,9 @@ to_str :: proc(ctx: ^Context, v: Value) -> ^JS_String {
 		p := to_primitive(ctx, v, .string)
 		if is_exception(p) {return nil}
 		return to_str(ctx, p)
-	case .uninitialized, .exception, .catch_offset, .function_bc, .module:
+	case .exception:
+		return nil
+	case .uninitialized, .catch_offset, .function_bc, .module:
 		return atom_to_string(rt, pa(.A_undefined))
 	}
 	return rt.empty_string
@@ -367,7 +386,9 @@ to_object :: proc(ctx: ^Context, v: Value) -> Value {
 		cls = .symbol
 	case .bigint:
 		cls = .bigint
-	case .uninitialized, .exception, .catch_offset, .function_bc, .module:
+	case .exception:
+		return EXCEPTION
+	case .uninitialized, .catch_offset, .function_bc, .module:
 		return throw_type_error(ctx, "cannot convert to object")
 	}
 	return mk_obj(new_primitive_wrapper(ctx, cls, v))

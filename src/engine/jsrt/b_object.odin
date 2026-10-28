@@ -107,6 +107,12 @@ fp_has_instance :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -
 
 @(private = "file")
 throw_type_error_fn :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value {
+	// as QuickJS: `caller`/`arguments` of a sloppy ordinary function read as undefined
+	if this.tag == .object {
+		if fd, ok := as_obj(this).data.(Func_Data); ok && fd.bc != nil && !fd.bc.is_strict_mode && fd.bc.has_prototype {
+			return UNDEFINED
+		}
+	}
 	return throw_type_error(ctx, "invalid property access")
 }
 
@@ -687,13 +693,13 @@ symbol_for :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Val
 	s := to_str(ctx, arg(args, 0))
 	if s == nil {return EXCEPTION}
 	a := atom_from_string(rt, s)
-	key := rt.atoms[a].str
-	if key == nil {key = s}
-	if sym, ok := rt.symbol_registry[key]; ok {return mk_sym(sym)}
+	if sym, ok := rt.symbol_registry[a]; ok {return mk_sym(sym)}
+	key := s
+	if !atom_is_int(a) && rt.atoms[a].str != nil {key = rt.atoms[a].str}
 	sym := symbol_new_raw(rt, mk_str(key), false)
 	sym.is_registered = true
 	sym.pinned = true
-	rt.symbol_registry[key] = sym
+	rt.symbol_registry[a] = sym
 	return mk_sym(sym)
 }
 
@@ -856,6 +862,7 @@ init_error_builtins :: proc(ctx: ^Context) {
 	def_value(ctx, ep, "name", new_string(ctx, "Error"))
 	def_value(ctx, ep, "message", mk_str(ctx.rt.empty_string))
 	def_method(ctx, ep, "toString", error_to_string, 0)
+	def_getter(ctx, ep, pa(.A_stack), error_stack_get, error_stack_set)
 	def_method(ctx, ec, "isError", error_is_error, 1)
 	names := [Error_Kind]string {
 		.eval = "EvalError", .range = "RangeError", .reference = "ReferenceError", .syntax = "SyntaxError",
@@ -972,9 +979,8 @@ proxy_revoke_fn :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -
 	p := id.values[0]
 	if p.tag == .object {
 		pd := as_obj(p).data.(^Proxy_Data)
+		// target and handler stay referenced: a trap running right now keeps using them
 		pd.revoked = true
-		pd.target = NULL
-		pd.handler = NULL
 		id.values[0] = NULL
 	}
 	return UNDEFINED

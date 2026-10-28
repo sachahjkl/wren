@@ -65,13 +65,17 @@ string_from_code_point :: proc(ctx: ^Context, this: Value, args: []Value, magic:
 string_raw :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value {
 	cooked := to_object(ctx, arg(args, 0))
 	if is_exception(cooked) {return EXCEPTION}
-	raw := to_object(ctx, get(ctx, cooked, pa(.A_raw)))
+	rv := get(ctx, cooked, pa(.A_raw))
+	if is_exception(rv) {return EXCEPTION}
+	raw := to_object(ctx, rv)
 	if is_exception(raw) {return EXCEPTION}
 	n, ok := length_of_array_like(ctx, raw)
 	if !ok {return EXCEPTION}
 	sb := sb_init(ctx.rt)
 	for i in 0 ..< n {
-		s := to_str(ctx, get_index(ctx, raw, i))
+		seg := get_index(ctx, raw, i)
+		if is_exception(seg) {sb_destroy(&sb); return EXCEPTION}
+		s := to_str(ctx, seg)
 		if s == nil {sb_destroy(&sb); return EXCEPTION}
 		sb_str(&sb, s)
 		if i + 1 < n && int(i + 1) < len(args) {
@@ -541,7 +545,8 @@ sp_regexp_dispatch :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32
 	if is_nullish(this) {return throw_type_error(ctx, "String.prototype method called on null or undefined")}
 	syms := [6]Well_Known{.match, .match_all, .search, .replace, .replace, .split}
 	re := arg(args, 0)
-	if !is_nullish(re) {
+	// only an object can supply its own matcher (primitives are not looked up)
+	if re.tag == .object {
 		if magic == 1 || magic == 4 {
 			ir := is_regexp(ctx, re)
 			if ir < 0 {return EXCEPTION}

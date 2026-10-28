@@ -62,6 +62,15 @@ atom_array_index :: #force_inline proc "contextless" (a: Atom) -> (u32, bool) {
 	return 0, false
 }
 
+// Any array index (0 .. 2^32-2): an int atom, or a string atom spelling an index above ATOM_MAX_INT.
+atom_index :: proc(rt: ^Runtime, a: Atom) -> (u32, bool) {
+	if a & ATOM_TAG_INT != 0 {return a & ~ATOM_TAG_INT, true}
+	if a == ATOM_NULL || int(a) >= len(rt.atoms) {return 0, false}
+	e := &rt.atoms[a]
+	if e.kind != .string || e.str == nil || e.str.len != 10 {return 0, false}
+	return str_index_u32(rt, e.str, 0xfffffffe)
+}
+
 // --- table ---
 
 atoms_init :: proc(rt: ^Runtime) {
@@ -137,6 +146,10 @@ atom_rehash :: proc(rt: ^Runtime, size: int) {
 
 // Parse a canonical array index ("0", "17", not "017", < 2^32-1).
 str_array_index :: proc(rt: ^Runtime, s: ^JS_String) -> (u32, bool) {
+	return str_index_u32(rt, s, u64(ATOM_MAX_INT))
+}
+
+str_index_u32 :: proc(rt: ^Runtime, s: ^JS_String, max_v: u64) -> (u32, bool) {
 	n := int(s.len)
 	if n == 0 || n > 10 {return 0, false}
 	f := str_flat(rt, s)
@@ -149,7 +162,7 @@ str_array_index :: proc(rt: ^Runtime, s: ^JS_String) -> (u32, bool) {
 		if c < '0' || c > '9' {return 0, false}
 		v = v * 10 + u64(c - '0')
 	}
-	if v > u64(ATOM_MAX_INT) {return 0, false}
+	if v > max_v {return 0, false}
 	return u32(v), true
 }
 

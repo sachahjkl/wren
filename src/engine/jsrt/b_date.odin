@@ -139,6 +139,7 @@ date_set_field :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) ->
 	is_local := magic & 1 != 0
 	t := date_value(o)
 	f, res := jsdate.get_date_fields(t, is_local, first == 0)
+	valid_before := res
 	n := min(len(args), end - first)
 	for i in 0 ..< n {
 		a, ok2 := to_number(ctx, args[i])
@@ -146,6 +147,8 @@ date_set_field :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) ->
 		if !is_finite_f64(a) {res = false}
 		f[first + i] = math.trunc(a)
 	}
+	// an invalid date stays untouched (the arguments are still converted, in order)
+	if !valid_before {return mk_float(NAN)}
 	d := NAN
 	if res && len(args) > 0 {d = jsdate.time_clip(jsdate.set_date_fields(f, is_local))}
 	o.data = Date_Data{d}
