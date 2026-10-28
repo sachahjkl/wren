@@ -163,12 +163,12 @@ heap_profile :: proc(rt: ^Runtime) -> (p: Heap_Profile) {
 	for cls in 1 ..< POOL_CLASSES {
 		for b := rt.pool_free[cls]; b != nil; b = b.next {
 			p.rows[.pool_free].count += 1
-			p.rows[.pool_free].cell_bytes += i64(cls * 16)
+			p.rows[.pool_free].cell_bytes += i64(cls * POOL_GRAIN)
 		}
 	}
 	for ch := rt.pool_chunks; ch != nil; ch = (cast(^rawptr)ch)^ {
 		p.rows[.pool_chunks].count += 1
-		p.rows[.pool_chunks].cell_bytes += POOL_CHUNK_BYTES
+		p.rows[.pool_chunks].cell_bytes += i64((cast(^int)(uintptr(ch) + size_of(rawptr)))^)
 	}
 	p.rows[.pool_chunks].slack_bytes = i64(rt.pool_left)
 	for seg in rt.vstack {p.rows[.runtime_misc].extra_bytes += i64(len(seg.data) * size_of(Value))}
