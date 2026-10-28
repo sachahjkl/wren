@@ -131,6 +131,7 @@ Module :: struct {
 	decls:   [dynamic]^Decl,
 	partial: bool,
 	file:    string,   // file of the (non-partial) declaration
+	order:   int,      // position among all module declarations (Odin form: restores the .widl order; see odin_in)
 }
 
 // The wasm-level shape of a function. `P` values are addresses: i32 for a module whose memory 0 is 32-bit, i64 for a
