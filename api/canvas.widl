@@ -291,8 +291,8 @@ module canvas {
   ImageBitmapRenderingContext HTMLCanvasElement_bitmapRenderer(HTMLCanvasElement canvas, bool alpha) raises;
   ImageBitmapRenderingContext OffscreenCanvas_bitmapRenderer(OffscreenCanvas canvas, bool alpha) raises;
   /// context.canvas: the owning <canvas> node or OffscreenCanvas object (0 when the canvas is gone).
-  u64 ImageBitmapRenderingContext_canvas(ImageBitmapRenderingContext context);
+  u64 ImageBitmapRenderingContext_canvas(ImageBitmapRenderingContext ctx);
   /// transferFromImageBitmap(bitmap): display the bitmap (its pixels move into the canvas and it is detached);
   /// `has_bitmap` false is the null argument (clear the canvas). Type when the argument is not an ImageBitmap.
-  void ImageBitmapRenderingContext_transferFromImageBitmap(ImageBitmapRenderingContext context, u64 bitmap, bool has_bitmap) raises;
+  void ImageBitmapRenderingContext_transferFromImageBitmap(ImageBitmapRenderingContext ctx, u64 bitmap, bool has_bitmap) raises;
 }

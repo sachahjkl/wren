@@ -1356,17 +1356,17 @@ Host: `OffscreenCanvas_bitmapRenderer :: proc(c: ^Call, canvas: Api_OffscreenCan
 ### `ImageBitmapRenderingContext_canvas`
 
 ```
-u64 ImageBitmapRenderingContext_canvas(ImageBitmapRenderingContext context)
+u64 ImageBitmapRenderingContext_canvas(ImageBitmapRenderingContext ctx)
 ```
 
 context.canvas: the owning <canvas> node or OffscreenCanvas object (0 when the canvas is gone).
 
-Host: `ImageBitmapRenderingContext_canvas :: proc(c: ^Call, context: Api_ImageBitmapRenderingContext) -> u64`
+Host: `ImageBitmapRenderingContext_canvas :: proc(c: ^Call, ctx: Api_ImageBitmapRenderingContext) -> u64`
 
 ### `ImageBitmapRenderingContext_transferFromImageBitmap`
 
 ```
-void ImageBitmapRenderingContext_transferFromImageBitmap(ImageBitmapRenderingContext context, u64 bitmap, bool has_bitmap) raises
+void ImageBitmapRenderingContext_transferFromImageBitmap(ImageBitmapRenderingContext ctx, u64 bitmap, bool has_bitmap) raises
 ```
 
 transferFromImageBitmap(bitmap): display the bitmap (its pixels move into the canvas and it is detached);
@@ -1374,5 +1374,5 @@ transferFromImageBitmap(bitmap): display the bitmap (its pixels move into the ca
 
 Raises: returns an `Error` (see [web](web.md)).
 
-Host: `ImageBitmapRenderingContext_transferFromImageBitmap :: proc(c: ^Call, context: Api_ImageBitmapRenderingContext, bitmap: u64, has_bitmap: bool) -> Api_Error`
+Host: `ImageBitmapRenderingContext_transferFromImageBitmap :: proc(c: ^Call, ctx: Api_ImageBitmapRenderingContext, bitmap: u64, has_bitmap: bool) -> Api_Error`
 

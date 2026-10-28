@@ -183,6 +183,7 @@ prefs_apply.odin prefs_apply_counts process
 print.odin PRINT_PREFS process  # a table
 print.odin print_last process
 prof.odin phase_clock process
+prof.odin qpc_freq_cached process  # the performance counter's frequency, read once
 remote_methods.odin inject_held process
 remote_shell.odin the_remote process
 remote_shell.odin remote_exit_code process
@@ -249,4 +250,3 @@ video_fast_path.odin vfast process  # the video fast path: what each video drew 
 cdp.odin the_cdp process  # the DevTools-protocol server of the process (the debugging port)
 partial_redraw.odin GPU_PREFS process  # a table of the partial redraw preferences
 partial_redraw.odin gpu_settings process  # the partial redraw settings read from the preferences
-windows.odin wake_offscreen process  # the event that wakes the loop of a headless window (it has no message queue)
