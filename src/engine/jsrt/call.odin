@@ -375,7 +375,7 @@ call_native :: proc(ctx: ^Context, o: ^Object, nd: ^Native_Data, this: Value, ar
 	rt := ctx.rt
 	realm := nd.realm != nil ? nd.realm : ctx
 	m := temp_mark(rt)
-	if !gc_safepoint(ctx) {return EXCEPTION}
+	if gc_should_run(rt) && !gc_safepoint(ctx) {return EXCEPTION}
 	saved := rt.native_self
 	rt.native_self = o
 	when JSRT_TRACE_LAST_OP {trace_native = nd.fn; trace_native_obj = o; trace_native_args = args}

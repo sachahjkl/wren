@@ -123,8 +123,9 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 			// handle (or whose fast path does not apply), for the full dispatch below.
 			when JSRT_TRACE_LAST_OP {trace_last_bc = b}
 			nf: ^Frame
-			moved: bool
-			nf, pc, sp, moved = interp_hot(ctx, rt, f, pc, sp)
+			moved, thrown: bool
+			nf, pc, sp, moved, thrown = interp_hot(ctx, rt, f, pc, sp)
+			if thrown {exc = true}
 			if moved {
 				// the hot loop moved to another frame (a call or a return); reload the registers
 				f = nf
@@ -132,6 +133,7 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 				f.sp = sp
 				continue frames
 			}
+			if thrown {continue}
 			if pc >= len(code) {
 				// only reachable with inconsistent bytecode: fail the call rather than the process
 				throw_internal_error(ctx, cat(ctx, "bytecode ran past its end in ", atom_utf8(rt, b.func_name), " after ", fmt_opcode(prev_op)))
