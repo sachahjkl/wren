@@ -26,3 +26,7 @@ wj_val wj_realm_proto(int iface) { return wj_the_realm.protos[iface]; }
  * up to `cap`; the Odin glue grows it with wj_scratch_grow (a real symbol) and reads the bytes back. */
 uint8_t *wj_scratch_data(void) { return wj_scratch.data; }
 uint32_t wj_scratch_cap(void) { return wj_scratch.cap; }
+
+/* The engine-owned data of a platform object (wj_obj.impl), for the glue that has a wj_obj* from wj_unwrap (where no
+ * web_this_impl shortcut applies). A field accessor, like the ones above: it mirrors no layout in Odin. */
+void *wj_obj_impl(wj_obj *o) { return o ? o->impl : 0; }

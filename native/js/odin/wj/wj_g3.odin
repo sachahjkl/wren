@@ -184,12 +184,14 @@ foreign {
 	// platform objects / wrappers
 	wj_unwrap        :: proc(v: JSValue, iface: i32) -> rawptr ---          // wj_obj* or nil (no exception)
 	wj_this          :: proc(ctx: ^Context, this_val: JSValue, iface: i32) -> rawptr ---  // wj_obj* or nil + TypeError
+	wj_obj_impl      :: proc(o: rawptr) -> rawptr ---   // the impl of a wj_obj* (wj_shim.c; nil for nil)
 	wj_wrap_host     :: proc(ctx: ^Context, handle: u64, iface: i32) -> JSValue ---
 	// host promises
 	wj_promise_from_host   :: proc(ctx: ^Context, host: u64, kind: i32, settle: Host_Settle, data: JSValue) -> JSValue ---
 	wj_promise_reject_pending :: proc(ctx: ^Context) -> JSValue ---
 	// misc
 	wj_report_exception :: proc(ctx: ^Context, exc: JSValue) ---
+	wj_report_pending   :: proc(ctx: ^Context) ---   // report the pending exception as uncaught (qjs_internal.h)
 	wj_stack_enter      :: proc(ctx: ^Context) ---
 	wj_mark             :: proc(rt: rawptr, v: JSValue, mark_func: rawptr) ---
 }
