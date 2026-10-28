@@ -145,8 +145,9 @@ if (-not $NoLto) { $cflags += '-flto' }
 $cflags += $ExtraFlags
 $sources = @('quickjs.c', 'libregexp.c', 'libunicode.c', 'dtoa.c') | ForEach-Object { Join-Path $qjs $_ }
 $sources += @(Get-ChildItem (Join-Path $native 'engine'), (Join-Path $native 'runtime'), (Join-Path $native 'gen') -Recurse -Filter *.c -ErrorAction SilentlyContinue | ForEach-Object FullName)
-# The C glue ported to Odin (native\js\odin\*.odin) has its C file dropped here; wj_shim.c (a tiny C accessor the glue
-# still needs) is compiled with the rest. Each ported domain adds its C file name to $odinified.
+# The C glue ported to Odin (native\js\odin\*.odin) has its C file dropped here; wj_shim.c (the one tiny C accessor the
+# glue still needs: fields of global C structs) is compiled with the rest. Each ported domain adds its C file name to
+# $odinified.
 $odinified = @(
     'qjs_convert.c',
     'shared_workers.c',
@@ -164,7 +165,6 @@ $odinified = @(
     'worker_scope.c'
 )
 $sources += (Join-Path $native 'odin\wj_shim.c')
-$sources += (Join-Path $native 'odin\wj_g2_shim.c')
 $sources = $sources | Where-Object { $odinified -notcontains (Split-Path $_ -Leaf) }
 if ($Allocator -eq 'mimalloc') {
     # the engine's heap through mimalloc (pinned), the C library's own through wasi-libc's dlmalloc

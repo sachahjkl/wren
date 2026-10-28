@@ -11,22 +11,19 @@ package odin_glue
 
 import "../odin/wj"
 
-// ---- Web IDL flags and modes (wj.h enums; kept as the same integer values the callers pass) ----
+// ---- Web IDL flags and modes (the shared wj package owns the Str type and the STR_* flags) ----
 
-STR_NULLABLE   :: i32(1 << 0)
-STR_NULL_EMPTY :: i32(1 << 1)
-STR_OPTIONAL   :: i32(1 << 2)
-STR_USV        :: i32(1 << 3)
+// The canonical string view is wj.Str (one declaration for the whole glue, in native/js/odin/wj/strings.odin). This
+// engine layer reads/writes its `ptr` as a cstring at the few places JS_ToCStringLen / JS_FreeCString want one, and as
+// the [^]u8 it is elsewhere; both are the same pointer at offset 0 of the wj_str layout.
+Str :: wj.Str
+STR_NULLABLE   :: wj.STR_NULLABLE
+STR_NULL_EMPTY :: wj.STR_NULL_EMPTY
+STR_OPTIONAL   :: wj.STR_OPTIONAL
+STR_USV        :: wj.STR_USV
 
-ENFORCE_RANGE :: i32(1)
-CLAMP         :: i32(2)
-
-// A UTF-8 view of a converted string, matching the C `wj_str` layout exactly: ptr @0, len @4, owned @8 (wasm32).
-Str :: struct {
-	ptr:   cstring,
-	len:   uint,
-	owned: bool,
-}
+ENFORCE_RANGE :: wj.ENFORCE_RANGE
+CLAMP         :: wj.CLAMP
 
 @(export, link_name = "wj_throw_arity")
 wj_throw_arity :: proc "c" (ctx: ^wj.Context, what: cstring, required: i32, given: i32) -> wj.JSValue {
@@ -126,14 +123,14 @@ wj_to_str :: proc "c" (ctx: ^wj.Context, v: wj.JSValue, out: ^Str, flags: i32, d
 	if wj.is_undefined(v) && (flags & (STR_OPTIONAL | STR_NULLABLE)) != 0 { return true }
 	if wj.is_null(v) {
 		if flags & STR_NULLABLE != 0 { return true }
-		if flags & STR_NULL_EMPTY != 0 { out.ptr = ""; out.len = 0; return true }
+		if flags & STR_NULL_EMPTY != 0 { out.ptr = wj.empty_ptr(); out.len = 0; return true }
 	}
-	if wj.is_undefined(v) && def != nil && (transmute([^]u8)def)[0] != 0 { out.ptr = def; out.len = wj.c_strlen(def); return true }
+	if wj.is_undefined(v) && def != nil && (transmute([^]u8)def)[0] != 0 { out.ptr = ([^]u8)(rawptr(def)); out.len = wj.c_strlen(def); return true }
 	if wj.is_symbol(v) { wj.JS_ThrowTypeError(ctx, "Cannot convert a Symbol value to a string"); return false }
 	n: uint
 	s := wj.to_cstring_len(ctx, &n, v)
 	if s == nil { return false }
-	out.ptr = s
+	out.ptr = ([^]u8)(rawptr(s))
 	out.len = n
 	out.owned = true
 	return true
@@ -142,7 +139,7 @@ wj_to_str :: proc "c" (ctx: ^wj.Context, v: wj.JSValue, out: ^Str, flags: i32, d
 @(export, link_name = "wj_str_free")
 wj_str_free :: proc "c" (ctx: ^wj.Context, s: ^Str) {
 	// defaults and "" are not the engine's: only strings that came from JS_ToCStringLen are freed
-	if s.owned { wj.JS_FreeCString(ctx, s.ptr) }
+	if s.owned { wj.JS_FreeCString(ctx, cstring(rawptr(s.ptr))) }
 	s.ptr = nil
 	s.len = 0
 	s.owned = false
@@ -161,7 +158,7 @@ wj_check_enum :: proc "c" (ctx: ^wj.Context, s: ^Str, values: [^]cstring, type: 
 	if wj_enum_index(s, values) >= 0 { return true }
 	shown := s.len > 64 ? 64 : i32(s.len)
 	wj.JS_ThrowTypeError(ctx, "The provided value '%.*s' is not a valid enum value of type %s.",
-		shown, s.ptr != nil ? s.ptr : cstring(""), type)
+		shown, s.ptr != nil ? cstring(rawptr(s.ptr)) : cstring(""), type)
 	wj_str_free(ctx, s)
 	return false
 }
