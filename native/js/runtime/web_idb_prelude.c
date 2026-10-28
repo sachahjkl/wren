@@ -25,6 +25,10 @@
 #include <string.h>
 #include "web.h"
 
+/* An own data property, as an object literal makes it: a [[Set]] would run a setter an author put on Object.prototype (WPT bindings-inject-values-bypass defines one for `id`). Used for the `id` of the state objects. */
+#define SET_OWN(ctx, obj, name, val) JS_DefinePropertyValueStr((ctx), (obj), (name), (val), JS_PROP_C_W_E)
+
+
 /* ---- operation codes, shared with src/page/idb_host.odin (as in the old idb.js) ---- */
 enum {
     OP_OPEN = 1, OP_DELETE = 2, OP_LIST = 3, OP_CLOSE = 4, OP_VC_DONE = 5, OP_BEGIN = 6, OP_COMMIT = 7, OP_ABORT = 8,
@@ -1875,7 +1879,7 @@ static JSValue read_meta(JSContext *ctx, rd *r)
     uint64_t n = rd_uv(r);
     for (uint64_t i = 0; i < n && !r->bad; i++) {
         JSValue s = JS_NewObject(ctx);
-        JS_SetPropertyStr(ctx, s, "id", JS_NewInt64(ctx, (int64_t)rd_uv(r)));
+        SET_OWN(ctx, s, "id", JS_NewInt64(ctx, (int64_t)rd_uv(r)));
         { size_t ln; const uint8_t *nm = rd_bytes(r, &ln); JS_SetPropertyStr(ctx, s, "name", JS_NewStringLen(ctx, (const char *)nm, ln)); }
         { size_t pn; const uint8_t *pp = rd_bytes(r, &pn); rd pr = { pp, pn, 0, false }; JS_SetPropertyStr(ctx, s, "keyPath", unpack_path(ctx, &pr)); }
         JS_SetPropertyStr(ctx, s, "autoIncrement", JS_NewBool(ctx, (rd_u8(r) & 1) != 0));
@@ -1883,7 +1887,7 @@ static JSValue read_meta(JSContext *ctx, rd *r)
         uint64_t m = rd_uv(r);
         for (uint64_t j = 0; j < m && !r->bad; j++) {
             JSValue ix = JS_NewObject(ctx);
-            JS_SetPropertyStr(ctx, ix, "id", JS_NewInt64(ctx, (int64_t)rd_uv(r)));
+            SET_OWN(ctx, ix, "id", JS_NewInt64(ctx, (int64_t)rd_uv(r)));
             { size_t ln; const uint8_t *nm = rd_bytes(r, &ln); JS_SetPropertyStr(ctx, ix, "name", JS_NewStringLen(ctx, (const char *)nm, ln)); }
             { size_t pn; const uint8_t *pp = rd_bytes(r, &pn); rd pr = { pp, pn, 0, false }; JS_SetPropertyStr(ctx, ix, "keyPath", unpack_path(ctx, &pr)); }
             uint8_t f = rd_u8(r);
@@ -1921,7 +1925,7 @@ static JSValue new_connection(JSContext *ctx, uint64_t id, const char *name, JSV
     JSValue db = obj_create(ctx, M.proto_IDBDatabase);
     et_init(ctx, db);
     JSValue c = JS_NewObject(ctx);
-    JS_SetPropertyStr(ctx, c, "id", JS_NewInt64(ctx, (int64_t)id));
+    SET_OWN(ctx, c, "id", JS_NewInt64(ctx, (int64_t)id));
     JS_SetPropertyStr(ctx, c, "name", name ? JS_NewString(ctx, name) : JS_NewString(ctx, ""));
     JS_SetPropertyStr(ctx, c, "version", JS_GetPropertyStr(ctx, meta, "version"));
     JS_SetPropertyStr(ctx, c, "wrapper", JS_DupValue(ctx, db));
@@ -2542,7 +2546,7 @@ static JSValue new_transaction(JSContext *ctx, JSValueConst conn, uint64_t id, c
     JSValue w = obj_create(ctx, M.proto_IDBTransaction);
     et_init(ctx, w);
     JSValue T = JS_NewObject(ctx);
-    JS_SetPropertyStr(ctx, T, "id", JS_NewInt64(ctx, (int64_t)id));
+    SET_OWN(ctx, T, "id", JS_NewInt64(ctx, (int64_t)id));
     JS_SetPropertyStr(ctx, T, "conn", JS_DupValue(ctx, conn));
     JS_SetPropertyStr(ctx, T, "mode", JS_NewString(ctx, mode));
     JS_SetPropertyStr(ctx, T, "scope", JS_DupValue(ctx, scope));
@@ -3352,7 +3356,7 @@ static JSValue store_createIndex(JSContext *ctx, JSValueConst this_val, int argc
         if (!ok) { JS_FreeValue(ctx, indexes); throw_dom(ctx, "SyntaxError", "The keyPath argument contains an invalid key path."); goto out; }
         if (JS_IsArray(kp) && multiEntry) { JS_FreeValue(ctx, indexes); throw_dom(ctx, "InvalidAccessError", "The keyPath argument is an array and the multiEntry option is true."); goto out; }
         JSValue imeta = JS_NewObject(ctx);
-        JS_SetPropertyStr(ctx, imeta, "id", JS_NewInt32(ctx, 0));
+        SET_OWN(ctx, imeta, "id", JS_NewInt32(ctx, 0));
         JS_SetPropertyStr(ctx, imeta, "name", JS_DupValue(ctx, nv));
         JS_SetPropertyStr(ctx, imeta, "keyPath", frozen_path(ctx, kp));
         JS_SetPropertyStr(ctx, imeta, "unique", JS_NewBool(ctx, unique));
@@ -3933,7 +3937,7 @@ static JSValue db_createObjectStore(JSContext *ctx, JSValueConst this_val, int a
         bool kpEmptyOrArray = kpEmpty || JS_IsArray(keyPath);
         if (autoIncrement && kpEmptyOrArray) { JS_FreeValue(ctx, stores); JS_FreeValue(ctx, T); throw_dom(ctx, "InvalidAccessError", "The autoIncrement option was set but the keyPath option was empty or an array."); goto out; }
         JSValue meta = JS_NewObject(ctx);
-        JS_SetPropertyStr(ctx, meta, "id", JS_NewInt32(ctx, 0));
+        SET_OWN(ctx, meta, "id", JS_NewInt32(ctx, 0));
         JS_SetPropertyStr(ctx, meta, "name", JS_DupValue(ctx, nv));
         JS_SetPropertyStr(ctx, meta, "keyPath", frozen_path(ctx, keyPath));
         JS_SetPropertyStr(ctx, meta, "autoIncrement", JS_NewBool(ctx, autoIncrement));
