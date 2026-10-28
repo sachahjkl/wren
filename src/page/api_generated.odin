@@ -820,6 +820,101 @@ Api_Error :: enum i32 {
 	No_Modification_Allowed = -46,
 }
 
+// A live VideoFrame: its handle and what lookup_VideoFrame found.
+Api_VideoFrame :: struct {
+	handle: u64,
+	data:   ^Video_Frame_Obj,
+}
+
+// WebCodecs VideoPixelFormat, in the order webcodecs_frame.odin's Frame_Format uses (format() returns -1 for a
+// closed frame, which the engine maps to null).
+Api_VideoPixelFormat :: enum i32 {
+	None = 0,
+	I420 = 1,
+	I420A = 2,
+	I422 = 3,
+	I444 = 4,
+	NV12 = 5,
+	RGBA = 6,
+	RGBX = 7,
+	BGRA = 8,
+	BGRX = 9,
+}
+
+// A live AudioDecoder: its handle and what lookup_AudioDecoder found.
+Api_AudioDecoder :: struct {
+	handle: u64,
+	data:   ^Audio_Decoder_Obj,
+}
+
+// A live EncodedVideoChunk: its handle and what lookup_EncodedVideoChunk found.
+Api_EncodedVideoChunk :: struct {
+	handle: u64,
+	data:   ^Encoded_Chunk_Obj,
+}
+
+// A live EncodedAudioChunk: its handle and what lookup_EncodedAudioChunk found.
+Api_EncodedAudioChunk :: struct {
+	handle: u64,
+	data:   ^Encoded_Chunk_Obj,
+}
+
+// A live AudioData: its handle and what lookup_AudioData found.
+Api_AudioData :: struct {
+	handle: u64,
+	data:   ^Audio_Data_Obj,
+}
+
+// The WebCodecs AudioSampleFormat enum, in the order webcodecs_chunks.odin's Audio_Sample_Format uses (format()
+// returns -1 for a closed AudioData, which the engine maps to null).
+Api_AudioSampleFormat :: enum i32 {
+	None = 0,
+	U8 = 1,
+	S16 = 2,
+	S32 = 3,
+	F32 = 4,
+	U8_Planar = 5,
+	S16_Planar = 6,
+	S32_Planar = 7,
+	F32_Planar = 8,
+}
+
+// A live VideoEncoder: its handle and what lookup_VideoEncoder found.
+Api_VideoEncoder :: struct {
+	handle: u64,
+	data:   ^Encoder_Obj,
+}
+
+// A live AudioEncoder: its handle and what lookup_AudioEncoder found.
+Api_AudioEncoder :: struct {
+	handle: u64,
+	data:   ^Encoder_Obj,
+}
+
+// A live ImageDecoder: its handle and what lookup_ImageDecoder found.
+Api_ImageDecoder :: struct {
+	handle: u64,
+	data:   ^Image_Decoder_Obj,
+}
+
+// A live ImageTrackList: its handle and what lookup_ImageTrackList found.
+Api_ImageTrackList :: struct {
+	handle: u64,
+	data:   ^Image_Track_Obj,
+}
+
+// A live ImageTrack: its handle and what lookup_ImageTrack found.
+Api_ImageTrack :: struct {
+	handle: u64,
+	data:   ^Image_Track_Obj,
+}
+
+// A live VideoDecoder: its handle and what lookup_VideoDecoder found.
+Api_VideoDecoder :: struct {
+	handle: u64,
+	data:   ^Video_Decoder_Obj,
+}
+
 // A live WebSocket: its handle and what lookup_WebSocket found.
 Api_WebSocket :: struct {
 	handle: u64,
@@ -958,6 +1053,12 @@ _valid_URLPatternComponent :: #force_inline proc "contextless" (v: i32) -> bool 
 _valid_Error :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, -1, -2, -3, -4, -5, -10, -11, -12, -13, -14, -15, -16, -17, -18, -19, -20, -21, -22, -23, -24, -40, -41, -42, -43, -44, -45, -46: return true }; return false }
 
 @(private = "file")
+_valid_VideoPixelFormat :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3, 4, 5, 6, 7, 8, 9: return true }; return false }
+
+@(private = "file")
+_valid_AudioSampleFormat :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3, 4, 5, 6, 7, 8: return true }; return false }
+
+@(private = "file")
 _valid_WebSocketState :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3: return true }; return false }
 
 @(private = "file")
@@ -1052,6 +1153,55 @@ invoke_FrameRequestCallback :: proc(ctx: ^Page, inst: ^wasm.Instance, fn: u32, u
 invoke_IdleRequestCallback :: proc(ctx: ^Page, inst: ^wasm.Instance, fn: u32, user: i32, deadline: f64, did_timeout: bool) -> bool {
 	argv := [4]u32{u32(user), u32(transmute(u64)deadline), u32(transmute(u64)deadline >> 32), u32(1 if did_timeout else 0)}
 	return call_guest(ctx, inst, fn, argv[:4])
+}
+
+// Calls a guest's AudioDecoderOutput (a function of its table) as a task of the realm; false when it trapped.
+invoke_AudioDecoderOutput :: proc(ctx: ^Page, inst: ^wasm.Instance, fn: u32, user: i32, data: u64) -> bool {
+	argv := [3]u32{u32(user), u32(u64(data)), u32(u64(data) >> 32)}
+	return call_guest(ctx, inst, fn, argv[:3])
+}
+
+// Calls a guest's AudioDecoderError (a function of its table) as a task of the realm; false when it trapped.
+invoke_AudioDecoderError :: proc(ctx: ^Page, inst: ^wasm.Instance, fn: u32, user: i32, code: i32) -> bool {
+	argv := [2]u32{u32(user), u32(code)}
+	return call_guest(ctx, inst, fn, argv[:2])
+}
+
+// Calls a guest's VideoEncoderOutput (a function of its table) as a task of the realm; false when it trapped.
+invoke_VideoEncoderOutput :: proc(ctx: ^Page, inst: ^wasm.Instance, fn: u32, user: i32, chunk: u64) -> bool {
+	argv := [3]u32{u32(user), u32(u64(chunk)), u32(u64(chunk) >> 32)}
+	return call_guest(ctx, inst, fn, argv[:3])
+}
+
+// Calls a guest's VideoEncoderError (a function of its table) as a task of the realm; false when it trapped.
+invoke_VideoEncoderError :: proc(ctx: ^Page, inst: ^wasm.Instance, fn: u32, user: i32, code: i32) -> bool {
+	argv := [2]u32{u32(user), u32(code)}
+	return call_guest(ctx, inst, fn, argv[:2])
+}
+
+// Calls a guest's AudioEncoderOutput (a function of its table) as a task of the realm; false when it trapped.
+invoke_AudioEncoderOutput :: proc(ctx: ^Page, inst: ^wasm.Instance, fn: u32, user: i32, chunk: u64) -> bool {
+	argv := [3]u32{u32(user), u32(u64(chunk)), u32(u64(chunk) >> 32)}
+	return call_guest(ctx, inst, fn, argv[:3])
+}
+
+// Calls a guest's AudioEncoderError (a function of its table) as a task of the realm; false when it trapped.
+invoke_AudioEncoderError :: proc(ctx: ^Page, inst: ^wasm.Instance, fn: u32, user: i32, code: i32) -> bool {
+	argv := [2]u32{u32(user), u32(code)}
+	return call_guest(ctx, inst, fn, argv[:2])
+}
+
+// output(frame) and error(code) callbacks. The frame handle is a VideoFrame the guest must close.
+// Calls a guest's VideoDecoderOutput (a function of its table) as a task of the realm; false when it trapped.
+invoke_VideoDecoderOutput :: proc(ctx: ^Page, inst: ^wasm.Instance, fn: u32, user: i32, frame: u64) -> bool {
+	argv := [3]u32{u32(user), u32(u64(frame)), u32(u64(frame) >> 32)}
+	return call_guest(ctx, inst, fn, argv[:3])
+}
+
+// Calls a guest's VideoDecoderError (a function of its table) as a task of the realm; false when it trapped.
+invoke_VideoDecoderError :: proc(ctx: ^Page, inst: ^wasm.Instance, fn: u32, user: i32, code: i32) -> bool {
+	argv := [2]u32{u32(user), u32(code)}
+	return call_guest(ctx, inst, fn, argv[:2])
 }
 
 // Called once the module is instantiated in a page (after the document is parsed), if the module exports it.
@@ -28917,6 +29067,2186 @@ _t_web_Exception_message :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	return nil
 }
 
+// VideoFrame_fromImage :: proc(c: ^Call, source: u64, timestamp: i64, has_ts: bool, duration: i64, has_duration: bool) -> (u64, Api_Error)
+@(private = "file")
+_t_webcodecs_VideoFrame_fromImage :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[5]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "webcodecs.VideoFrame_fromImage", "result pointer") }
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i64
+	_p2 := a[2].i32 != 0
+	_p3 := a[3].i64
+	_p4 := a[4].i32 != 0
+	_r, _err := VideoFrame_fromImage(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// VideoFrame_fromBuffer :: proc(c: ^Call, data: []u8, format: Api_VideoPixelFormat, coded_w: i32, coded_h: i32, timestamp: i64, duration: i64, has_duration: bool, vis_x: i32, vis_y: i32, vis_w: i32, vis_h: i32, has_visible: bool, display_w: i32, display_h: i32, has_display: bool, layout_offsets: []i32, layout_strides: []i32, has_layout: bool, cp_prim: i32, cp_trans: i32, cp_matrix: i32, cp_full: i32, cp_has: i32) -> (u64, Api_Error)
+@(private = "file")
+_t_webcodecs_VideoFrame_fromBuffer :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "webcodecs.VideoFrame_fromBuffer", "data") }
+	_n15 := wasm.addr(&f, a[17])
+	_s15, _k15 := wasm.span(&f, wasm.addr(&f, a[16]), _n15, 4)
+	if !_k15 { return wasm.trap_bounds(&f, "webcodecs.VideoFrame_fromBuffer", "layout_offsets") }
+	_n16 := wasm.addr(&f, a[19])
+	_s16, _k16 := wasm.span(&f, wasm.addr(&f, a[18]), _n16, 4)
+	if !_k16 { return wasm.trap_bounds(&f, "webcodecs.VideoFrame_fromBuffer", "layout_strides") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[26]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "webcodecs.VideoFrame_fromBuffer", "result pointer") }
+	_p0 := _s0[:_n0]
+	_p15 := ([^]i32)(_s15)[:_n15]
+	_p16 := ([^]i32)(_s16)[:_n16]
+	_e1 := i32(a[2].i32)
+	if !_valid_VideoPixelFormat(_e1) {
+		return _fail_status(&c, a, .Invalid_Argument, "webcodecs.VideoFrame_fromBuffer: argument format is not a VideoPixelFormat")
+	}
+	_p1 := Api_VideoPixelFormat(_e1)
+	_p2 := a[3].i32
+	_p3 := a[4].i32
+	_p4 := a[5].i64
+	_p5 := a[6].i64
+	_p6 := a[7].i32 != 0
+	_p7 := a[8].i32
+	_p8 := a[9].i32
+	_p9 := a[10].i32
+	_p10 := a[11].i32
+	_p11 := a[12].i32 != 0
+	_p12 := a[13].i32
+	_p13 := a[14].i32
+	_p14 := a[15].i32 != 0
+	_p17 := a[20].i32 != 0
+	_p18 := a[21].i32
+	_p19 := a[22].i32
+	_p20 := a[23].i32
+	_p21 := a[24].i32
+	_p22 := a[25].i32
+	_r, _err := VideoFrame_fromBuffer(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6, _p7, _p8, _p9, _p10, _p11, _p12, _p13, _p14, _p15, _p16, _p17, _p18, _p19, _p20, _p21, _p22)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// VideoFrame_format :: proc(c: ^Call, frame: Api_VideoFrame) -> i32
+@(private = "file")
+_t_webcodecs_VideoFrame_format :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoFrame(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs.VideoFrame_format: argument frame is not a live VideoFrame") }
+		return wasm.trap_new("webcodecs.VideoFrame_format: argument frame is not a live VideoFrame")
+	}
+	_r := VideoFrame_format(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// VideoFrame_codedWidth :: proc(c: ^Call, frame: Api_VideoFrame) -> u32
+@(private = "file")
+_t_webcodecs_VideoFrame_codedWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoFrame(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs.VideoFrame_codedWidth: argument frame is not a live VideoFrame") }
+		return wasm.trap_new("webcodecs.VideoFrame_codedWidth: argument frame is not a live VideoFrame")
+	}
+	_r := VideoFrame_codedWidth(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// VideoFrame_codedHeight :: proc(c: ^Call, frame: Api_VideoFrame) -> u32
+@(private = "file")
+_t_webcodecs_VideoFrame_codedHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoFrame(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs.VideoFrame_codedHeight: argument frame is not a live VideoFrame") }
+		return wasm.trap_new("webcodecs.VideoFrame_codedHeight: argument frame is not a live VideoFrame")
+	}
+	_r := VideoFrame_codedHeight(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// VideoFrame_displayWidth :: proc(c: ^Call, frame: Api_VideoFrame) -> u32
+@(private = "file")
+_t_webcodecs_VideoFrame_displayWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoFrame(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs.VideoFrame_displayWidth: argument frame is not a live VideoFrame") }
+		return wasm.trap_new("webcodecs.VideoFrame_displayWidth: argument frame is not a live VideoFrame")
+	}
+	_r := VideoFrame_displayWidth(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// VideoFrame_displayHeight :: proc(c: ^Call, frame: Api_VideoFrame) -> u32
+@(private = "file")
+_t_webcodecs_VideoFrame_displayHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoFrame(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs.VideoFrame_displayHeight: argument frame is not a live VideoFrame") }
+		return wasm.trap_new("webcodecs.VideoFrame_displayHeight: argument frame is not a live VideoFrame")
+	}
+	_r := VideoFrame_displayHeight(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// VideoFrame_timestamp :: proc(c: ^Call, frame: Api_VideoFrame) -> i64
+@(private = "file")
+_t_webcodecs_VideoFrame_timestamp :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoFrame(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs.VideoFrame_timestamp: argument frame is not a live VideoFrame") }
+		return wasm.trap_new("webcodecs.VideoFrame_timestamp: argument frame is not a live VideoFrame")
+	}
+	_r := VideoFrame_timestamp(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = _r
+	return nil
+}
+
+// VideoFrame_duration :: proc(c: ^Call, frame: Api_VideoFrame) -> i64
+@(private = "file")
+_t_webcodecs_VideoFrame_duration :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoFrame(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs.VideoFrame_duration: argument frame is not a live VideoFrame") }
+		return wasm.trap_new("webcodecs.VideoFrame_duration: argument frame is not a live VideoFrame")
+	}
+	_r := VideoFrame_duration(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = _r
+	return nil
+}
+
+// VideoFrame_visibleRect :: proc(c: ^Call, frame: Api_VideoFrame, which: i32) -> f64
+@(private = "file")
+_t_webcodecs_VideoFrame_visibleRect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoFrame(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs.VideoFrame_visibleRect: argument frame is not a live VideoFrame") }
+		return wasm.trap_new("webcodecs.VideoFrame_visibleRect: argument frame is not a live VideoFrame")
+	}
+	_p1 := a[1].i32
+	_r := VideoFrame_visibleRect(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// VideoFrame_colorSpace :: proc(c: ^Call, frame: Api_VideoFrame, which: i32) -> i32
+@(private = "file")
+_t_webcodecs_VideoFrame_colorSpace :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoFrame(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs.VideoFrame_colorSpace: argument frame is not a live VideoFrame") }
+		return wasm.trap_new("webcodecs.VideoFrame_colorSpace: argument frame is not a live VideoFrame")
+	}
+	_p1 := a[1].i32
+	_r := VideoFrame_colorSpace(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// VideoFrame_isClosed :: proc(c: ^Call, frame: Api_VideoFrame) -> bool
+@(private = "file")
+_t_webcodecs_VideoFrame_isClosed :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoFrame(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs.VideoFrame_isClosed: argument frame is not a live VideoFrame") }
+		return wasm.trap_new("webcodecs.VideoFrame_isClosed: argument frame is not a live VideoFrame")
+	}
+	_r := VideoFrame_isClosed(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// VideoFrame_allocationSize :: proc(c: ^Call, frame: Api_VideoFrame, format: i32, rx: i32, ry: i32, rw: i32, rh: i32, has_rect: bool, layout_offsets: []i32, layout_strides: []i32, has_layout: bool) -> (i32, Api_Error)
+@(private = "file")
+_t_webcodecs_VideoFrame_allocationSize :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n7 := wasm.addr(&f, a[8])
+	_s7, _k7 := wasm.span(&f, wasm.addr(&f, a[7]), _n7, 4)
+	if !_k7 { return wasm.trap_bounds(&f, "webcodecs.VideoFrame_allocationSize", "layout_offsets") }
+	_n8 := wasm.addr(&f, a[10])
+	_s8, _k8 := wasm.span(&f, wasm.addr(&f, a[9]), _n8, 4)
+	if !_k8 { return wasm.trap_bounds(&f, "webcodecs.VideoFrame_allocationSize", "layout_strides") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[12]), 4)
+	if !_rk { return wasm.trap_bounds(&f, "webcodecs.VideoFrame_allocationSize", "result pointer") }
+	_p7 := ([^]i32)(_s7)[:_n7]
+	_p8 := ([^]i32)(_s8)[:_n8]
+	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoFrame(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "webcodecs.VideoFrame_allocationSize: argument frame is not a live VideoFrame")
+	}
+	_p1 := a[1].i32
+	_p2 := a[2].i32
+	_p3 := a[3].i32
+	_p4 := a[4].i32
+	_p5 := a[5].i32
+	_p6 := a[6].i32 != 0
+	_p9 := a[11].i32 != 0
+	_r, _err := VideoFrame_allocationSize(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6, _p7, _p8, _p9)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^i32)(_rs), _r)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// VideoFrame_copyTo :: proc(c: ^Call, frame: Api_VideoFrame, dst: []u8, format: i32, rx: i32, ry: i32, rw: i32, rh: i32, has_rect: bool, in_offsets: []i32, in_strides: []i32, has_layout: bool) -> (i32, Api_Error)
+@(private = "file")
+_t_webcodecs_VideoFrame_copyTo :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "webcodecs.VideoFrame_copyTo", "dst") }
+	_n8 := wasm.addr(&f, a[10])
+	_s8, _k8 := wasm.span(&f, wasm.addr(&f, a[9]), _n8, 4)
+	if !_k8 { return wasm.trap_bounds(&f, "webcodecs.VideoFrame_copyTo", "in_offsets") }
+	_n9 := wasm.addr(&f, a[12])
+	_s9, _k9 := wasm.span(&f, wasm.addr(&f, a[11]), _n9, 4)
+	if !_k9 { return wasm.trap_bounds(&f, "webcodecs.VideoFrame_copyTo", "in_strides") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[14]), 4)
+	if !_rk { return wasm.trap_bounds(&f, "webcodecs.VideoFrame_copyTo", "result pointer") }
+	_p1 := _s1[:_n1]
+	_p8 := ([^]i32)(_s8)[:_n8]
+	_p9 := ([^]i32)(_s9)[:_n9]
+	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoFrame(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "webcodecs.VideoFrame_copyTo: argument frame is not a live VideoFrame")
+	}
+	_p2 := a[3].i32
+	_p3 := a[4].i32
+	_p4 := a[5].i32
+	_p5 := a[6].i32
+	_p6 := a[7].i32
+	_p7 := a[8].i32 != 0
+	_p10 := a[13].i32 != 0
+	_r, _err := VideoFrame_copyTo(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6, _p7, _p8, _p9, _p10)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^i32)(_rs), _r)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// VideoFrame_copyLayout :: proc(c: ^Call, frame: Api_VideoFrame, plane: i32, which: i32) -> i32
+@(private = "file")
+_t_webcodecs_VideoFrame_copyLayout :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoFrame(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs.VideoFrame_copyLayout: argument frame is not a live VideoFrame") }
+		return wasm.trap_new("webcodecs.VideoFrame_copyLayout: argument frame is not a live VideoFrame")
+	}
+	_p1 := a[1].i32
+	_p2 := a[2].i32
+	_r := VideoFrame_copyLayout(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// VideoFrame_clone :: proc(c: ^Call, frame: Api_VideoFrame) -> (u64, Api_Error)
+@(private = "file")
+_t_webcodecs_VideoFrame_clone :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "webcodecs.VideoFrame_clone", "result pointer") }
+	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoFrame(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "webcodecs.VideoFrame_clone: argument frame is not a live VideoFrame")
+	}
+	_r, _err := VideoFrame_clone(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// VideoFrame_close :: proc(c: ^Call, frame: Api_VideoFrame)
+@(private = "file")
+_t_webcodecs_VideoFrame_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoFrame(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs.VideoFrame_close: argument frame is not a live VideoFrame") }
+		return wasm.trap_new("webcodecs.VideoFrame_close: argument frame is not a live VideoFrame")
+	}
+	VideoFrame_close(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// VideoFrame_transfer :: proc(c: ^Call, frame: Api_VideoFrame, owner: u32) -> (u64, Api_Error)
+@(private = "file")
+_t_webcodecs_VideoFrame_transfer :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "webcodecs.VideoFrame_transfer", "result pointer") }
+	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoFrame(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "webcodecs.VideoFrame_transfer: argument frame is not a live VideoFrame")
+	}
+	_p1 := u32(a[1].i32)
+	_r, _err := VideoFrame_transfer(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// VideoFrame_takeForTransfer :: proc(c: ^Call, frame: Api_VideoFrame) -> u64
+@(private = "file")
+_t_webcodecs_VideoFrame_takeForTransfer :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoFrame(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs.VideoFrame_takeForTransfer: argument frame is not a live VideoFrame") }
+		return wasm.trap_new("webcodecs.VideoFrame_takeForTransfer: argument frame is not a live VideoFrame")
+	}
+	_r := VideoFrame_takeForTransfer(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// VideoFrame_adoptTransfer :: proc(c: ^Call, token: u64) -> u64
+@(private = "file")
+_t_webcodecs_VideoFrame_adoptTransfer :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_r := VideoFrame_adoptTransfer(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// AudioDecoder_create :: proc(c: ^Call, output: u32, output_user: i32, error: u32, error_user: i32) -> (u64, Api_Error)
+@(private = "file")
+_t_webcodecs_audio_decoder_AudioDecoder_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "webcodecs_audio_decoder.AudioDecoder_create", "result pointer") }
+	_p0 := u32(a[0].i32)
+	_p1 := a[1].i32
+	_p2 := u32(a[2].i32)
+	_p3 := a[3].i32
+	_r, _err := AudioDecoder_create(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// AudioDecoder_isConfigSupported :: proc(c: ^Call, codec: string) -> bool
+@(private = "file")
+_t_webcodecs_audio_decoder_AudioDecoder_isConfigSupported :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "webcodecs_audio_decoder.AudioDecoder_isConfigSupported", "codec") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "webcodecs_audio_decoder.AudioDecoder_isConfigSupported: argument codec is not valid UTF-8") }
+		return wasm.trap_new("webcodecs_audio_decoder.AudioDecoder_isConfigSupported: argument codec is not valid UTF-8")
+	}
+	_r := AudioDecoder_isConfigSupported(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// AudioDecoder_configure :: proc(c: ^Call, decoder: Api_AudioDecoder, codec: string, description: []u8, sample_rate: u32, channels: u32) -> Api_Error
+@(private = "file")
+_t_webcodecs_audio_decoder_AudioDecoder_configure :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "webcodecs_audio_decoder.AudioDecoder_configure", "codec") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "webcodecs_audio_decoder.AudioDecoder_configure", "description") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "webcodecs_audio_decoder.AudioDecoder_configure: argument codec is not valid UTF-8")
+	}
+	_p2 := _s2[:_n2]
+	_p0 := Api_AudioDecoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioDecoder(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "webcodecs_audio_decoder.AudioDecoder_configure: argument decoder is not a live AudioDecoder")
+	}
+	_p3 := u32(a[5].i32)
+	_p4 := u32(a[6].i32)
+	_err := AudioDecoder_configure(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// AudioDecoder_decode :: proc(c: ^Call, decoder: Api_AudioDecoder, key: bool, timestamp: i64, duration: i64, has_duration: bool, data: []u8) -> Api_Error
+@(private = "file")
+_t_webcodecs_audio_decoder_AudioDecoder_decode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n5 := wasm.addr(&f, a[6])
+	_s5, _k5 := wasm.span(&f, wasm.addr(&f, a[5]), _n5)
+	if !_k5 { return wasm.trap_bounds(&f, "webcodecs_audio_decoder.AudioDecoder_decode", "data") }
+	_p5 := _s5[:_n5]
+	_p0 := Api_AudioDecoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioDecoder(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "webcodecs_audio_decoder.AudioDecoder_decode: argument decoder is not a live AudioDecoder")
+	}
+	_p1 := a[1].i32 != 0
+	_p2 := a[2].i64
+	_p3 := a[3].i64
+	_p4 := a[4].i32 != 0
+	_err := AudioDecoder_decode(&c, _p0, _p1, _p2, _p3, _p4, _p5)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// AudioDecoder_flush :: proc(c: ^Call, decoder: Api_AudioDecoder) -> Api_Error
+@(private = "file")
+_t_webcodecs_audio_decoder_AudioDecoder_flush :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_AudioDecoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioDecoder(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "webcodecs_audio_decoder.AudioDecoder_flush: argument decoder is not a live AudioDecoder")
+	}
+	_err := AudioDecoder_flush(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// AudioDecoder_reset :: proc(c: ^Call, decoder: Api_AudioDecoder)
+@(private = "file")
+_t_webcodecs_audio_decoder_AudioDecoder_reset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_AudioDecoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioDecoder(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_audio_decoder.AudioDecoder_reset: argument decoder is not a live AudioDecoder") }
+		return wasm.trap_new("webcodecs_audio_decoder.AudioDecoder_reset: argument decoder is not a live AudioDecoder")
+	}
+	AudioDecoder_reset(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// AudioDecoder_close :: proc(c: ^Call, decoder: Api_AudioDecoder)
+@(private = "file")
+_t_webcodecs_audio_decoder_AudioDecoder_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_AudioDecoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioDecoder(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_audio_decoder.AudioDecoder_close: argument decoder is not a live AudioDecoder") }
+		return wasm.trap_new("webcodecs_audio_decoder.AudioDecoder_close: argument decoder is not a live AudioDecoder")
+	}
+	AudioDecoder_close(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// AudioDecoder_decodeQueueSize :: proc(c: ^Call, decoder: Api_AudioDecoder) -> u32
+@(private = "file")
+_t_webcodecs_audio_decoder_AudioDecoder_decodeQueueSize :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_AudioDecoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioDecoder(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_audio_decoder.AudioDecoder_decodeQueueSize: argument decoder is not a live AudioDecoder") }
+		return wasm.trap_new("webcodecs_audio_decoder.AudioDecoder_decodeQueueSize: argument decoder is not a live AudioDecoder")
+	}
+	_r := AudioDecoder_decodeQueueSize(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// AudioDecoder_state :: proc(c: ^Call, decoder: Api_AudioDecoder) -> i32
+@(private = "file")
+_t_webcodecs_audio_decoder_AudioDecoder_state :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_AudioDecoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioDecoder(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_audio_decoder.AudioDecoder_state: argument decoder is not a live AudioDecoder") }
+		return wasm.trap_new("webcodecs_audio_decoder.AudioDecoder_state: argument decoder is not a live AudioDecoder")
+	}
+	_r := AudioDecoder_state(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// EncodedVideoChunk_create :: proc(c: ^Call, key: bool, timestamp: i64, duration: i64, has_duration: bool, data: []u8) -> (u64, Api_Error)
+@(private = "file")
+_t_webcodecs_codec_EncodedVideoChunk_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n4 := wasm.addr(&f, a[5])
+	_s4, _k4 := wasm.span(&f, wasm.addr(&f, a[4]), _n4)
+	if !_k4 { return wasm.trap_bounds(&f, "webcodecs_codec.EncodedVideoChunk_create", "data") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[6]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "webcodecs_codec.EncodedVideoChunk_create", "result pointer") }
+	_p4 := _s4[:_n4]
+	_p0 := a[0].i32 != 0
+	_p1 := a[1].i64
+	_p2 := a[2].i64
+	_p3 := a[3].i32 != 0
+	_r, _err := EncodedVideoChunk_create(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// EncodedAudioChunk_create :: proc(c: ^Call, key: bool, timestamp: i64, duration: i64, has_duration: bool, data: []u8) -> (u64, Api_Error)
+@(private = "file")
+_t_webcodecs_codec_EncodedAudioChunk_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n4 := wasm.addr(&f, a[5])
+	_s4, _k4 := wasm.span(&f, wasm.addr(&f, a[4]), _n4)
+	if !_k4 { return wasm.trap_bounds(&f, "webcodecs_codec.EncodedAudioChunk_create", "data") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[6]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "webcodecs_codec.EncodedAudioChunk_create", "result pointer") }
+	_p4 := _s4[:_n4]
+	_p0 := a[0].i32 != 0
+	_p1 := a[1].i64
+	_p2 := a[2].i64
+	_p3 := a[3].i32 != 0
+	_r, _err := EncodedAudioChunk_create(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// EncodedVideoChunk_type :: proc(c: ^Call, chunk: Api_EncodedVideoChunk) -> bool
+@(private = "file")
+_t_webcodecs_codec_EncodedVideoChunk_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_EncodedVideoChunk{handle = u64(a[0].i64)}
+	_p0.data = lookup_EncodedVideoChunk(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_codec.EncodedVideoChunk_type: argument chunk is not a live EncodedVideoChunk") }
+		return wasm.trap_new("webcodecs_codec.EncodedVideoChunk_type: argument chunk is not a live EncodedVideoChunk")
+	}
+	_r := EncodedVideoChunk_type(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// EncodedVideoChunk_timestamp :: proc(c: ^Call, chunk: Api_EncodedVideoChunk) -> i64
+@(private = "file")
+_t_webcodecs_codec_EncodedVideoChunk_timestamp :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_EncodedVideoChunk{handle = u64(a[0].i64)}
+	_p0.data = lookup_EncodedVideoChunk(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_codec.EncodedVideoChunk_timestamp: argument chunk is not a live EncodedVideoChunk") }
+		return wasm.trap_new("webcodecs_codec.EncodedVideoChunk_timestamp: argument chunk is not a live EncodedVideoChunk")
+	}
+	_r := EncodedVideoChunk_timestamp(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = _r
+	return nil
+}
+
+// EncodedVideoChunk_duration :: proc(c: ^Call, chunk: Api_EncodedVideoChunk) -> i64
+@(private = "file")
+_t_webcodecs_codec_EncodedVideoChunk_duration :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_EncodedVideoChunk{handle = u64(a[0].i64)}
+	_p0.data = lookup_EncodedVideoChunk(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_codec.EncodedVideoChunk_duration: argument chunk is not a live EncodedVideoChunk") }
+		return wasm.trap_new("webcodecs_codec.EncodedVideoChunk_duration: argument chunk is not a live EncodedVideoChunk")
+	}
+	_r := EncodedVideoChunk_duration(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = _r
+	return nil
+}
+
+// EncodedVideoChunk_byteLength :: proc(c: ^Call, chunk: Api_EncodedVideoChunk) -> u32
+@(private = "file")
+_t_webcodecs_codec_EncodedVideoChunk_byteLength :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_EncodedVideoChunk{handle = u64(a[0].i64)}
+	_p0.data = lookup_EncodedVideoChunk(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_codec.EncodedVideoChunk_byteLength: argument chunk is not a live EncodedVideoChunk") }
+		return wasm.trap_new("webcodecs_codec.EncodedVideoChunk_byteLength: argument chunk is not a live EncodedVideoChunk")
+	}
+	_r := EncodedVideoChunk_byteLength(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// EncodedVideoChunk_copyTo :: proc(c: ^Call, chunk: Api_EncodedVideoChunk, dst: []u8) -> (i32, Api_Error)
+@(private = "file")
+_t_webcodecs_codec_EncodedVideoChunk_copyTo :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "webcodecs_codec.EncodedVideoChunk_copyTo", "dst") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[3]), 4)
+	if !_rk { return wasm.trap_bounds(&f, "webcodecs_codec.EncodedVideoChunk_copyTo", "result pointer") }
+	_p1 := _s1[:_n1]
+	_p0 := Api_EncodedVideoChunk{handle = u64(a[0].i64)}
+	_p0.data = lookup_EncodedVideoChunk(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "webcodecs_codec.EncodedVideoChunk_copyTo: argument chunk is not a live EncodedVideoChunk")
+	}
+	_r, _err := EncodedVideoChunk_copyTo(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^i32)(_rs), _r)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// EncodedAudioChunk_type :: proc(c: ^Call, chunk: Api_EncodedAudioChunk) -> bool
+@(private = "file")
+_t_webcodecs_codec_EncodedAudioChunk_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_EncodedAudioChunk{handle = u64(a[0].i64)}
+	_p0.data = lookup_EncodedAudioChunk(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_codec.EncodedAudioChunk_type: argument chunk is not a live EncodedAudioChunk") }
+		return wasm.trap_new("webcodecs_codec.EncodedAudioChunk_type: argument chunk is not a live EncodedAudioChunk")
+	}
+	_r := EncodedAudioChunk_type(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// EncodedAudioChunk_timestamp :: proc(c: ^Call, chunk: Api_EncodedAudioChunk) -> i64
+@(private = "file")
+_t_webcodecs_codec_EncodedAudioChunk_timestamp :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_EncodedAudioChunk{handle = u64(a[0].i64)}
+	_p0.data = lookup_EncodedAudioChunk(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_codec.EncodedAudioChunk_timestamp: argument chunk is not a live EncodedAudioChunk") }
+		return wasm.trap_new("webcodecs_codec.EncodedAudioChunk_timestamp: argument chunk is not a live EncodedAudioChunk")
+	}
+	_r := EncodedAudioChunk_timestamp(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = _r
+	return nil
+}
+
+// EncodedAudioChunk_duration :: proc(c: ^Call, chunk: Api_EncodedAudioChunk) -> i64
+@(private = "file")
+_t_webcodecs_codec_EncodedAudioChunk_duration :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_EncodedAudioChunk{handle = u64(a[0].i64)}
+	_p0.data = lookup_EncodedAudioChunk(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_codec.EncodedAudioChunk_duration: argument chunk is not a live EncodedAudioChunk") }
+		return wasm.trap_new("webcodecs_codec.EncodedAudioChunk_duration: argument chunk is not a live EncodedAudioChunk")
+	}
+	_r := EncodedAudioChunk_duration(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = _r
+	return nil
+}
+
+// EncodedAudioChunk_byteLength :: proc(c: ^Call, chunk: Api_EncodedAudioChunk) -> u32
+@(private = "file")
+_t_webcodecs_codec_EncodedAudioChunk_byteLength :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_EncodedAudioChunk{handle = u64(a[0].i64)}
+	_p0.data = lookup_EncodedAudioChunk(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_codec.EncodedAudioChunk_byteLength: argument chunk is not a live EncodedAudioChunk") }
+		return wasm.trap_new("webcodecs_codec.EncodedAudioChunk_byteLength: argument chunk is not a live EncodedAudioChunk")
+	}
+	_r := EncodedAudioChunk_byteLength(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// EncodedAudioChunk_copyTo :: proc(c: ^Call, chunk: Api_EncodedAudioChunk, dst: []u8) -> (i32, Api_Error)
+@(private = "file")
+_t_webcodecs_codec_EncodedAudioChunk_copyTo :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "webcodecs_codec.EncodedAudioChunk_copyTo", "dst") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[3]), 4)
+	if !_rk { return wasm.trap_bounds(&f, "webcodecs_codec.EncodedAudioChunk_copyTo", "result pointer") }
+	_p1 := _s1[:_n1]
+	_p0 := Api_EncodedAudioChunk{handle = u64(a[0].i64)}
+	_p0.data = lookup_EncodedAudioChunk(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "webcodecs_codec.EncodedAudioChunk_copyTo: argument chunk is not a live EncodedAudioChunk")
+	}
+	_r, _err := EncodedAudioChunk_copyTo(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^i32)(_rs), _r)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// AudioData_create :: proc(c: ^Call, format: Api_AudioSampleFormat, sample_rate: f64, frames: u32, channels: u32, timestamp: i64, data: []u8) -> (u64, Api_Error)
+@(private = "file")
+_t_webcodecs_codec_AudioData_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n5 := wasm.addr(&f, a[6])
+	_s5, _k5 := wasm.span(&f, wasm.addr(&f, a[5]), _n5)
+	if !_k5 { return wasm.trap_bounds(&f, "webcodecs_codec.AudioData_create", "data") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[7]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "webcodecs_codec.AudioData_create", "result pointer") }
+	_p5 := _s5[:_n5]
+	_e0 := i32(a[0].i32)
+	if !_valid_AudioSampleFormat(_e0) {
+		return _fail_status(&c, a, .Invalid_Argument, "webcodecs_codec.AudioData_create: argument format is not a AudioSampleFormat")
+	}
+	_p0 := Api_AudioSampleFormat(_e0)
+	_p1 := a[1].f64
+	_p2 := u32(a[2].i32)
+	_p3 := u32(a[3].i32)
+	_p4 := a[4].i64
+	_r, _err := AudioData_create(&c, _p0, _p1, _p2, _p3, _p4, _p5)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// AudioData_format :: proc(c: ^Call, data: Api_AudioData) -> i32
+@(private = "file")
+_t_webcodecs_codec_AudioData_format :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_AudioData{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioData(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_codec.AudioData_format: argument data is not a live AudioData") }
+		return wasm.trap_new("webcodecs_codec.AudioData_format: argument data is not a live AudioData")
+	}
+	_r := AudioData_format(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// AudioData_sampleRate :: proc(c: ^Call, data: Api_AudioData) -> f64
+@(private = "file")
+_t_webcodecs_codec_AudioData_sampleRate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_AudioData{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioData(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_codec.AudioData_sampleRate: argument data is not a live AudioData") }
+		return wasm.trap_new("webcodecs_codec.AudioData_sampleRate: argument data is not a live AudioData")
+	}
+	_r := AudioData_sampleRate(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// AudioData_numberOfFrames :: proc(c: ^Call, data: Api_AudioData) -> u32
+@(private = "file")
+_t_webcodecs_codec_AudioData_numberOfFrames :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_AudioData{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioData(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_codec.AudioData_numberOfFrames: argument data is not a live AudioData") }
+		return wasm.trap_new("webcodecs_codec.AudioData_numberOfFrames: argument data is not a live AudioData")
+	}
+	_r := AudioData_numberOfFrames(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// AudioData_numberOfChannels :: proc(c: ^Call, data: Api_AudioData) -> u32
+@(private = "file")
+_t_webcodecs_codec_AudioData_numberOfChannels :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_AudioData{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioData(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_codec.AudioData_numberOfChannels: argument data is not a live AudioData") }
+		return wasm.trap_new("webcodecs_codec.AudioData_numberOfChannels: argument data is not a live AudioData")
+	}
+	_r := AudioData_numberOfChannels(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// AudioData_timestamp :: proc(c: ^Call, data: Api_AudioData) -> i64
+@(private = "file")
+_t_webcodecs_codec_AudioData_timestamp :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_AudioData{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioData(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_codec.AudioData_timestamp: argument data is not a live AudioData") }
+		return wasm.trap_new("webcodecs_codec.AudioData_timestamp: argument data is not a live AudioData")
+	}
+	_r := AudioData_timestamp(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = _r
+	return nil
+}
+
+// AudioData_duration :: proc(c: ^Call, data: Api_AudioData) -> i64
+@(private = "file")
+_t_webcodecs_codec_AudioData_duration :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_AudioData{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioData(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_codec.AudioData_duration: argument data is not a live AudioData") }
+		return wasm.trap_new("webcodecs_codec.AudioData_duration: argument data is not a live AudioData")
+	}
+	_r := AudioData_duration(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = _r
+	return nil
+}
+
+// AudioData_allocationSize :: proc(c: ^Call, data: Api_AudioData, plane_index: u32, format: i32, frame_offset: u32, frame_count: u32, has_count: bool) -> (i32, Api_Error)
+@(private = "file")
+_t_webcodecs_codec_AudioData_allocationSize :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[6]), 4)
+	if !_rk { return wasm.trap_bounds(&f, "webcodecs_codec.AudioData_allocationSize", "result pointer") }
+	_p0 := Api_AudioData{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioData(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "webcodecs_codec.AudioData_allocationSize: argument data is not a live AudioData")
+	}
+	_p1 := u32(a[1].i32)
+	_p2 := a[2].i32
+	_p3 := u32(a[3].i32)
+	_p4 := u32(a[4].i32)
+	_p5 := a[5].i32 != 0
+	_r, _err := AudioData_allocationSize(&c, _p0, _p1, _p2, _p3, _p4, _p5)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^i32)(_rs), _r)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// AudioData_copyTo :: proc(c: ^Call, data: Api_AudioData, dst: []u8, plane_index: u32, format: i32, frame_offset: u32, frame_count: u32, has_count: bool) -> (i32, Api_Error)
+@(private = "file")
+_t_webcodecs_codec_AudioData_copyTo :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "webcodecs_codec.AudioData_copyTo", "dst") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[8]), 4)
+	if !_rk { return wasm.trap_bounds(&f, "webcodecs_codec.AudioData_copyTo", "result pointer") }
+	_p1 := _s1[:_n1]
+	_p0 := Api_AudioData{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioData(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "webcodecs_codec.AudioData_copyTo: argument data is not a live AudioData")
+	}
+	_p2 := u32(a[3].i32)
+	_p3 := a[4].i32
+	_p4 := u32(a[5].i32)
+	_p5 := u32(a[6].i32)
+	_p6 := a[7].i32 != 0
+	_r, _err := AudioData_copyTo(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^i32)(_rs), _r)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// AudioData_clone :: proc(c: ^Call, data: Api_AudioData) -> (u64, Api_Error)
+@(private = "file")
+_t_webcodecs_codec_AudioData_clone :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "webcodecs_codec.AudioData_clone", "result pointer") }
+	_p0 := Api_AudioData{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioData(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "webcodecs_codec.AudioData_clone: argument data is not a live AudioData")
+	}
+	_r, _err := AudioData_clone(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// AudioData_close :: proc(c: ^Call, data: Api_AudioData)
+@(private = "file")
+_t_webcodecs_codec_AudioData_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_AudioData{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioData(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_codec.AudioData_close: argument data is not a live AudioData") }
+		return wasm.trap_new("webcodecs_codec.AudioData_close: argument data is not a live AudioData")
+	}
+	AudioData_close(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// VideoEncoder_create :: proc(c: ^Call, output: u32, output_user: i32, error: u32, error_user: i32) -> (u64, Api_Error)
+@(private = "file")
+_t_webcodecs_encoders_VideoEncoder_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "webcodecs_encoders.VideoEncoder_create", "result pointer") }
+	_p0 := u32(a[0].i32)
+	_p1 := a[1].i32
+	_p2 := u32(a[2].i32)
+	_p3 := a[3].i32
+	_r, _err := VideoEncoder_create(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// AudioEncoder_create :: proc(c: ^Call, output: u32, output_user: i32, error: u32, error_user: i32) -> (u64, Api_Error)
+@(private = "file")
+_t_webcodecs_encoders_AudioEncoder_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "webcodecs_encoders.AudioEncoder_create", "result pointer") }
+	_p0 := u32(a[0].i32)
+	_p1 := a[1].i32
+	_p2 := u32(a[2].i32)
+	_p3 := a[3].i32
+	_r, _err := AudioEncoder_create(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// VideoEncoder_isConfigSupported :: proc(c: ^Call, codec: string) -> bool
+@(private = "file")
+_t_webcodecs_encoders_VideoEncoder_isConfigSupported :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "webcodecs_encoders.VideoEncoder_isConfigSupported", "codec") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "webcodecs_encoders.VideoEncoder_isConfigSupported: argument codec is not valid UTF-8") }
+		return wasm.trap_new("webcodecs_encoders.VideoEncoder_isConfigSupported: argument codec is not valid UTF-8")
+	}
+	_r := VideoEncoder_isConfigSupported(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// AudioEncoder_isConfigSupported :: proc(c: ^Call, codec: string) -> bool
+@(private = "file")
+_t_webcodecs_encoders_AudioEncoder_isConfigSupported :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "webcodecs_encoders.AudioEncoder_isConfigSupported", "codec") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "webcodecs_encoders.AudioEncoder_isConfigSupported: argument codec is not valid UTF-8") }
+		return wasm.trap_new("webcodecs_encoders.AudioEncoder_isConfigSupported: argument codec is not valid UTF-8")
+	}
+	_r := AudioEncoder_isConfigSupported(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// VideoEncoder_configure :: proc(c: ^Call, encoder: Api_VideoEncoder, codec: string) -> Api_Error
+@(private = "file")
+_t_webcodecs_encoders_VideoEncoder_configure :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "webcodecs_encoders.VideoEncoder_configure", "codec") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "webcodecs_encoders.VideoEncoder_configure: argument codec is not valid UTF-8")
+	}
+	_p0 := Api_VideoEncoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoEncoder(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "webcodecs_encoders.VideoEncoder_configure: argument encoder is not a live VideoEncoder")
+	}
+	_err := VideoEncoder_configure(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// AudioEncoder_configure :: proc(c: ^Call, encoder: Api_AudioEncoder, codec: string) -> Api_Error
+@(private = "file")
+_t_webcodecs_encoders_AudioEncoder_configure :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "webcodecs_encoders.AudioEncoder_configure", "codec") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "webcodecs_encoders.AudioEncoder_configure: argument codec is not valid UTF-8")
+	}
+	_p0 := Api_AudioEncoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioEncoder(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "webcodecs_encoders.AudioEncoder_configure: argument encoder is not a live AudioEncoder")
+	}
+	_err := AudioEncoder_configure(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// VideoEncoder_encode :: proc(c: ^Call, encoder: Api_VideoEncoder) -> Api_Error
+@(private = "file")
+_t_webcodecs_encoders_VideoEncoder_encode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_VideoEncoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoEncoder(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "webcodecs_encoders.VideoEncoder_encode: argument encoder is not a live VideoEncoder")
+	}
+	_err := VideoEncoder_encode(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// AudioEncoder_encode :: proc(c: ^Call, encoder: Api_AudioEncoder) -> Api_Error
+@(private = "file")
+_t_webcodecs_encoders_AudioEncoder_encode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_AudioEncoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioEncoder(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "webcodecs_encoders.AudioEncoder_encode: argument encoder is not a live AudioEncoder")
+	}
+	_err := AudioEncoder_encode(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// VideoEncoder_flush :: proc(c: ^Call, encoder: Api_VideoEncoder) -> Api_Error
+@(private = "file")
+_t_webcodecs_encoders_VideoEncoder_flush :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_VideoEncoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoEncoder(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "webcodecs_encoders.VideoEncoder_flush: argument encoder is not a live VideoEncoder")
+	}
+	_err := VideoEncoder_flush(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// AudioEncoder_flush :: proc(c: ^Call, encoder: Api_AudioEncoder) -> Api_Error
+@(private = "file")
+_t_webcodecs_encoders_AudioEncoder_flush :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_AudioEncoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioEncoder(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "webcodecs_encoders.AudioEncoder_flush: argument encoder is not a live AudioEncoder")
+	}
+	_err := AudioEncoder_flush(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// VideoEncoder_reset :: proc(c: ^Call, encoder: Api_VideoEncoder)
+@(private = "file")
+_t_webcodecs_encoders_VideoEncoder_reset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_VideoEncoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoEncoder(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_encoders.VideoEncoder_reset: argument encoder is not a live VideoEncoder") }
+		return wasm.trap_new("webcodecs_encoders.VideoEncoder_reset: argument encoder is not a live VideoEncoder")
+	}
+	VideoEncoder_reset(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// AudioEncoder_reset :: proc(c: ^Call, encoder: Api_AudioEncoder)
+@(private = "file")
+_t_webcodecs_encoders_AudioEncoder_reset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_AudioEncoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioEncoder(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_encoders.AudioEncoder_reset: argument encoder is not a live AudioEncoder") }
+		return wasm.trap_new("webcodecs_encoders.AudioEncoder_reset: argument encoder is not a live AudioEncoder")
+	}
+	AudioEncoder_reset(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// VideoEncoder_close :: proc(c: ^Call, encoder: Api_VideoEncoder)
+@(private = "file")
+_t_webcodecs_encoders_VideoEncoder_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_VideoEncoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoEncoder(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_encoders.VideoEncoder_close: argument encoder is not a live VideoEncoder") }
+		return wasm.trap_new("webcodecs_encoders.VideoEncoder_close: argument encoder is not a live VideoEncoder")
+	}
+	VideoEncoder_close(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// AudioEncoder_close :: proc(c: ^Call, encoder: Api_AudioEncoder)
+@(private = "file")
+_t_webcodecs_encoders_AudioEncoder_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_AudioEncoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioEncoder(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_encoders.AudioEncoder_close: argument encoder is not a live AudioEncoder") }
+		return wasm.trap_new("webcodecs_encoders.AudioEncoder_close: argument encoder is not a live AudioEncoder")
+	}
+	AudioEncoder_close(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// VideoEncoder_encodeQueueSize :: proc(c: ^Call, encoder: Api_VideoEncoder) -> u32
+@(private = "file")
+_t_webcodecs_encoders_VideoEncoder_encodeQueueSize :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_VideoEncoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoEncoder(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_encoders.VideoEncoder_encodeQueueSize: argument encoder is not a live VideoEncoder") }
+		return wasm.trap_new("webcodecs_encoders.VideoEncoder_encodeQueueSize: argument encoder is not a live VideoEncoder")
+	}
+	_r := VideoEncoder_encodeQueueSize(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// AudioEncoder_encodeQueueSize :: proc(c: ^Call, encoder: Api_AudioEncoder) -> u32
+@(private = "file")
+_t_webcodecs_encoders_AudioEncoder_encodeQueueSize :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_AudioEncoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioEncoder(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_encoders.AudioEncoder_encodeQueueSize: argument encoder is not a live AudioEncoder") }
+		return wasm.trap_new("webcodecs_encoders.AudioEncoder_encodeQueueSize: argument encoder is not a live AudioEncoder")
+	}
+	_r := AudioEncoder_encodeQueueSize(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// VideoEncoder_state :: proc(c: ^Call, encoder: Api_VideoEncoder) -> i32
+@(private = "file")
+_t_webcodecs_encoders_VideoEncoder_state :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_VideoEncoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoEncoder(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_encoders.VideoEncoder_state: argument encoder is not a live VideoEncoder") }
+		return wasm.trap_new("webcodecs_encoders.VideoEncoder_state: argument encoder is not a live VideoEncoder")
+	}
+	_r := VideoEncoder_state(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// AudioEncoder_state :: proc(c: ^Call, encoder: Api_AudioEncoder) -> i32
+@(private = "file")
+_t_webcodecs_encoders_AudioEncoder_state :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_AudioEncoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioEncoder(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_encoders.AudioEncoder_state: argument encoder is not a live AudioEncoder") }
+		return wasm.trap_new("webcodecs_encoders.AudioEncoder_state: argument encoder is not a live AudioEncoder")
+	}
+	_r := AudioEncoder_state(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// ImageDecoder_create :: proc(c: ^Call, data: []u8, mime: string, prefer_animation: bool) -> (u64, Api_Error)
+@(private = "file")
+_t_webcodecs_image_ImageDecoder_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "webcodecs_image.ImageDecoder_create", "data") }
+	_n1 := wasm.addr(&f, a[3])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[2]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "webcodecs_image.ImageDecoder_create", "mime") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[5]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "webcodecs_image.ImageDecoder_create", "result pointer") }
+	_p0 := _s0[:_n0]
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "webcodecs_image.ImageDecoder_create: argument mime is not valid UTF-8")
+	}
+	_p2 := a[4].i32 != 0
+	_r, _err := ImageDecoder_create(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// ImageDecoder_isTypeSupported :: proc(c: ^Call, mime: string) -> bool
+@(private = "file")
+_t_webcodecs_image_ImageDecoder_isTypeSupported :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "webcodecs_image.ImageDecoder_isTypeSupported", "mime") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "webcodecs_image.ImageDecoder_isTypeSupported: argument mime is not valid UTF-8") }
+		return wasm.trap_new("webcodecs_image.ImageDecoder_isTypeSupported: argument mime is not valid UTF-8")
+	}
+	_r := ImageDecoder_isTypeSupported(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// ImageDecoder_type :: proc(c: ^Call, decoder: Api_ImageDecoder) -> string
+@(private = "file")
+_t_webcodecs_image_ImageDecoder_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "webcodecs_image.ImageDecoder_type", "result buffer") }
+	_p0 := Api_ImageDecoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_ImageDecoder(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_image.ImageDecoder_type: argument decoder is not a live ImageDecoder") }
+		return wasm.trap_new("webcodecs_image.ImageDecoder_type: argument decoder is not a live ImageDecoder")
+	}
+	_r := ImageDecoder_type(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// ImageDecoder_complete :: proc(c: ^Call, decoder: Api_ImageDecoder) -> bool
+@(private = "file")
+_t_webcodecs_image_ImageDecoder_complete :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_ImageDecoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_ImageDecoder(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_image.ImageDecoder_complete: argument decoder is not a live ImageDecoder") }
+		return wasm.trap_new("webcodecs_image.ImageDecoder_complete: argument decoder is not a live ImageDecoder")
+	}
+	_r := ImageDecoder_complete(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// ImageDecoder_frameCount :: proc(c: ^Call, decoder: Api_ImageDecoder) -> u32
+@(private = "file")
+_t_webcodecs_image_ImageDecoder_frameCount :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_ImageDecoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_ImageDecoder(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_image.ImageDecoder_frameCount: argument decoder is not a live ImageDecoder") }
+		return wasm.trap_new("webcodecs_image.ImageDecoder_frameCount: argument decoder is not a live ImageDecoder")
+	}
+	_r := ImageDecoder_frameCount(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// ImageDecoder_decode :: proc(c: ^Call, decoder: Api_ImageDecoder, frame_index: u32) -> (u64, Api_Error)
+@(private = "file")
+_t_webcodecs_image_ImageDecoder_decode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "webcodecs_image.ImageDecoder_decode", "result pointer") }
+	_p0 := Api_ImageDecoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_ImageDecoder(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "webcodecs_image.ImageDecoder_decode: argument decoder is not a live ImageDecoder")
+	}
+	_p1 := u32(a[1].i32)
+	_r, _err := ImageDecoder_decode(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// ImageDecoder_reset :: proc(c: ^Call, decoder: Api_ImageDecoder)
+@(private = "file")
+_t_webcodecs_image_ImageDecoder_reset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_ImageDecoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_ImageDecoder(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_image.ImageDecoder_reset: argument decoder is not a live ImageDecoder") }
+		return wasm.trap_new("webcodecs_image.ImageDecoder_reset: argument decoder is not a live ImageDecoder")
+	}
+	ImageDecoder_reset(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// ImageDecoder_close :: proc(c: ^Call, decoder: Api_ImageDecoder)
+@(private = "file")
+_t_webcodecs_image_ImageDecoder_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_ImageDecoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_ImageDecoder(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_image.ImageDecoder_close: argument decoder is not a live ImageDecoder") }
+		return wasm.trap_new("webcodecs_image.ImageDecoder_close: argument decoder is not a live ImageDecoder")
+	}
+	ImageDecoder_close(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// ImageDecoder_tracks :: proc(c: ^Call, decoder: Api_ImageDecoder) -> u64
+@(private = "file")
+_t_webcodecs_image_ImageDecoder_tracks :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_ImageDecoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_ImageDecoder(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_image.ImageDecoder_tracks: argument decoder is not a live ImageDecoder") }
+		return wasm.trap_new("webcodecs_image.ImageDecoder_tracks: argument decoder is not a live ImageDecoder")
+	}
+	_r := ImageDecoder_tracks(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// ImageTrackList_length :: proc(c: ^Call, list: Api_ImageTrackList) -> u32
+@(private = "file")
+_t_webcodecs_image_ImageTrackList_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_ImageTrackList{handle = u64(a[0].i64)}
+	_p0.data = lookup_ImageTrackList(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_image.ImageTrackList_length: argument list is not a live ImageTrackList") }
+		return wasm.trap_new("webcodecs_image.ImageTrackList_length: argument list is not a live ImageTrackList")
+	}
+	_r := ImageTrackList_length(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// ImageTrackList_item :: proc(c: ^Call, list: Api_ImageTrackList, index: u32) -> (u64, Api_Error)
+@(private = "file")
+_t_webcodecs_image_ImageTrackList_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "webcodecs_image.ImageTrackList_item", "result pointer") }
+	_p0 := Api_ImageTrackList{handle = u64(a[0].i64)}
+	_p0.data = lookup_ImageTrackList(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "webcodecs_image.ImageTrackList_item: argument list is not a live ImageTrackList")
+	}
+	_p1 := u32(a[1].i32)
+	_r, _err := ImageTrackList_item(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// ImageTrackList_selectedIndex :: proc(c: ^Call, list: Api_ImageTrackList) -> i32
+@(private = "file")
+_t_webcodecs_image_ImageTrackList_selectedIndex :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_ImageTrackList{handle = u64(a[0].i64)}
+	_p0.data = lookup_ImageTrackList(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_image.ImageTrackList_selectedIndex: argument list is not a live ImageTrackList") }
+		return wasm.trap_new("webcodecs_image.ImageTrackList_selectedIndex: argument list is not a live ImageTrackList")
+	}
+	_r := ImageTrackList_selectedIndex(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// ImageTrack_animated :: proc(c: ^Call, track: Api_ImageTrack) -> bool
+@(private = "file")
+_t_webcodecs_image_ImageTrack_animated :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_ImageTrack{handle = u64(a[0].i64)}
+	_p0.data = lookup_ImageTrack(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_image.ImageTrack_animated: argument track is not a live ImageTrack") }
+		return wasm.trap_new("webcodecs_image.ImageTrack_animated: argument track is not a live ImageTrack")
+	}
+	_r := ImageTrack_animated(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// ImageTrack_frameCount :: proc(c: ^Call, track: Api_ImageTrack) -> u32
+@(private = "file")
+_t_webcodecs_image_ImageTrack_frameCount :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_ImageTrack{handle = u64(a[0].i64)}
+	_p0.data = lookup_ImageTrack(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_image.ImageTrack_frameCount: argument track is not a live ImageTrack") }
+		return wasm.trap_new("webcodecs_image.ImageTrack_frameCount: argument track is not a live ImageTrack")
+	}
+	_r := ImageTrack_frameCount(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// ImageTrack_repetitionCount :: proc(c: ^Call, track: Api_ImageTrack) -> i32
+@(private = "file")
+_t_webcodecs_image_ImageTrack_repetitionCount :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_ImageTrack{handle = u64(a[0].i64)}
+	_p0.data = lookup_ImageTrack(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_image.ImageTrack_repetitionCount: argument track is not a live ImageTrack") }
+		return wasm.trap_new("webcodecs_image.ImageTrack_repetitionCount: argument track is not a live ImageTrack")
+	}
+	_r := ImageTrack_repetitionCount(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// ImageTrack_selected :: proc(c: ^Call, track: Api_ImageTrack) -> bool
+@(private = "file")
+_t_webcodecs_image_ImageTrack_selected :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_ImageTrack{handle = u64(a[0].i64)}
+	_p0.data = lookup_ImageTrack(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_image.ImageTrack_selected: argument track is not a live ImageTrack") }
+		return wasm.trap_new("webcodecs_image.ImageTrack_selected: argument track is not a live ImageTrack")
+	}
+	_r := ImageTrack_selected(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// VideoDecoder_create :: proc(c: ^Call, output: u32, output_user: i32, error: u32, error_user: i32) -> (u64, Api_Error)
+@(private = "file")
+_t_webcodecs_video_decoder_VideoDecoder_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "webcodecs_video_decoder.VideoDecoder_create", "result pointer") }
+	_p0 := u32(a[0].i32)
+	_p1 := a[1].i32
+	_p2 := u32(a[2].i32)
+	_p3 := a[3].i32
+	_r, _err := VideoDecoder_create(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// VideoDecoder_isConfigSupported :: proc(c: ^Call, codec: string) -> bool
+@(private = "file")
+_t_webcodecs_video_decoder_VideoDecoder_isConfigSupported :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "webcodecs_video_decoder.VideoDecoder_isConfigSupported", "codec") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "webcodecs_video_decoder.VideoDecoder_isConfigSupported: argument codec is not valid UTF-8") }
+		return wasm.trap_new("webcodecs_video_decoder.VideoDecoder_isConfigSupported: argument codec is not valid UTF-8")
+	}
+	_r := VideoDecoder_isConfigSupported(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// VideoDecoder_configure :: proc(c: ^Call, decoder: Api_VideoDecoder, codec: string, description: []u8, coded_w: u32, coded_h: u32) -> Api_Error
+@(private = "file")
+_t_webcodecs_video_decoder_VideoDecoder_configure :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "webcodecs_video_decoder.VideoDecoder_configure", "codec") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "webcodecs_video_decoder.VideoDecoder_configure", "description") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "webcodecs_video_decoder.VideoDecoder_configure: argument codec is not valid UTF-8")
+	}
+	_p2 := _s2[:_n2]
+	_p0 := Api_VideoDecoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoDecoder(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "webcodecs_video_decoder.VideoDecoder_configure: argument decoder is not a live VideoDecoder")
+	}
+	_p3 := u32(a[5].i32)
+	_p4 := u32(a[6].i32)
+	_err := VideoDecoder_configure(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// VideoDecoder_decode :: proc(c: ^Call, decoder: Api_VideoDecoder, key: bool, timestamp: i64, duration: i64, has_duration: bool, data: []u8) -> Api_Error
+@(private = "file")
+_t_webcodecs_video_decoder_VideoDecoder_decode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n5 := wasm.addr(&f, a[6])
+	_s5, _k5 := wasm.span(&f, wasm.addr(&f, a[5]), _n5)
+	if !_k5 { return wasm.trap_bounds(&f, "webcodecs_video_decoder.VideoDecoder_decode", "data") }
+	_p5 := _s5[:_n5]
+	_p0 := Api_VideoDecoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoDecoder(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "webcodecs_video_decoder.VideoDecoder_decode: argument decoder is not a live VideoDecoder")
+	}
+	_p1 := a[1].i32 != 0
+	_p2 := a[2].i64
+	_p3 := a[3].i64
+	_p4 := a[4].i32 != 0
+	_err := VideoDecoder_decode(&c, _p0, _p1, _p2, _p3, _p4, _p5)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// VideoDecoder_flush :: proc(c: ^Call, decoder: Api_VideoDecoder) -> Api_Error
+@(private = "file")
+_t_webcodecs_video_decoder_VideoDecoder_flush :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_VideoDecoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoDecoder(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "webcodecs_video_decoder.VideoDecoder_flush: argument decoder is not a live VideoDecoder")
+	}
+	_err := VideoDecoder_flush(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// VideoDecoder_reset :: proc(c: ^Call, decoder: Api_VideoDecoder)
+@(private = "file")
+_t_webcodecs_video_decoder_VideoDecoder_reset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_VideoDecoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoDecoder(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_video_decoder.VideoDecoder_reset: argument decoder is not a live VideoDecoder") }
+		return wasm.trap_new("webcodecs_video_decoder.VideoDecoder_reset: argument decoder is not a live VideoDecoder")
+	}
+	VideoDecoder_reset(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// VideoDecoder_close :: proc(c: ^Call, decoder: Api_VideoDecoder)
+@(private = "file")
+_t_webcodecs_video_decoder_VideoDecoder_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_VideoDecoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoDecoder(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_video_decoder.VideoDecoder_close: argument decoder is not a live VideoDecoder") }
+		return wasm.trap_new("webcodecs_video_decoder.VideoDecoder_close: argument decoder is not a live VideoDecoder")
+	}
+	VideoDecoder_close(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// VideoDecoder_decodeQueueSize :: proc(c: ^Call, decoder: Api_VideoDecoder) -> u32
+@(private = "file")
+_t_webcodecs_video_decoder_VideoDecoder_decodeQueueSize :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_VideoDecoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoDecoder(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_video_decoder.VideoDecoder_decodeQueueSize: argument decoder is not a live VideoDecoder") }
+		return wasm.trap_new("webcodecs_video_decoder.VideoDecoder_decodeQueueSize: argument decoder is not a live VideoDecoder")
+	}
+	_r := VideoDecoder_decodeQueueSize(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// VideoDecoder_state :: proc(c: ^Call, decoder: Api_VideoDecoder) -> i32
+@(private = "file")
+_t_webcodecs_video_decoder_VideoDecoder_state :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_VideoDecoder{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoDecoder(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webcodecs_video_decoder.VideoDecoder_state: argument decoder is not a live VideoDecoder") }
+		return wasm.trap_new("webcodecs_video_decoder.VideoDecoder_state: argument decoder is not a live VideoDecoder")
+	}
+	_r := VideoDecoder_state(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
 // WebSocket_create :: proc(c: ^Call, url: string, protocols: string) -> (u64, Api_Error)
 @(private = "file")
 _t_websocket_WebSocket_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -30751,6 +33081,101 @@ api_imports := [?]wasm.Import{
 	{module = "url", name = "URLPattern_groupValue", fn = _t_url_URLPattern_groupValue, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "web", name = "Exception_code", fn = _t_web_Exception_code, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "web", name = "Exception_message", fn = _t_web_Exception_message, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "webcodecs", name = "VideoFrame_fromImage", fn = _t_webcodecs_VideoFrame_fromImage, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I32, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs", name = "VideoFrame_fromBuffer", fn = _t_webcodecs_VideoFrame_fromBuffer, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I32, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I64, .I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs", name = "VideoFrame_format", fn = _t_webcodecs_VideoFrame_format, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs", name = "VideoFrame_codedWidth", fn = _t_webcodecs_VideoFrame_codedWidth, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs", name = "VideoFrame_codedHeight", fn = _t_webcodecs_VideoFrame_codedHeight, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs", name = "VideoFrame_displayWidth", fn = _t_webcodecs_VideoFrame_displayWidth, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs", name = "VideoFrame_displayHeight", fn = _t_webcodecs_VideoFrame_displayHeight, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs", name = "VideoFrame_timestamp", fn = _t_webcodecs_VideoFrame_timestamp, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "webcodecs", name = "VideoFrame_duration", fn = _t_webcodecs_VideoFrame_duration, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "webcodecs", name = "VideoFrame_visibleRect", fn = _t_webcodecs_VideoFrame_visibleRect, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.F64}},
+	{module = "webcodecs", name = "VideoFrame_colorSpace", fn = _t_webcodecs_VideoFrame_colorSpace, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs", name = "VideoFrame_isClosed", fn = _t_webcodecs_VideoFrame_isClosed, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs", name = "VideoFrame_allocationSize", fn = _t_webcodecs_VideoFrame_allocationSize, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32, .I64, .I64, .I64, .I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs", name = "VideoFrame_copyTo", fn = _t_webcodecs_VideoFrame_copyTo, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I64, .I64, .I64, .I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs", name = "VideoFrame_copyLayout", fn = _t_webcodecs_VideoFrame_copyLayout, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs", name = "VideoFrame_clone", fn = _t_webcodecs_VideoFrame_clone, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs", name = "VideoFrame_close", fn = _t_webcodecs_VideoFrame_close, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "webcodecs", name = "VideoFrame_transfer", fn = _t_webcodecs_VideoFrame_transfer, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs", name = "VideoFrame_takeForTransfer", fn = _t_webcodecs_VideoFrame_takeForTransfer, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "webcodecs", name = "VideoFrame_adoptTransfer", fn = _t_webcodecs_VideoFrame_adoptTransfer, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "webcodecs_audio_decoder", name = "AudioDecoder_create", fn = _t_webcodecs_audio_decoder_AudioDecoder_create, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_audio_decoder", name = "AudioDecoder_isConfigSupported", fn = _t_webcodecs_audio_decoder_AudioDecoder_isConfigSupported, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_audio_decoder", name = "AudioDecoder_configure", fn = _t_webcodecs_audio_decoder_AudioDecoder_configure, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I32, .I32}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_audio_decoder", name = "AudioDecoder_decode", fn = _t_webcodecs_audio_decoder_AudioDecoder_decode, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I64, .I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_audio_decoder", name = "AudioDecoder_flush", fn = _t_webcodecs_audio_decoder_AudioDecoder_flush, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_audio_decoder", name = "AudioDecoder_reset", fn = _t_webcodecs_audio_decoder_AudioDecoder_reset, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "webcodecs_audio_decoder", name = "AudioDecoder_close", fn = _t_webcodecs_audio_decoder_AudioDecoder_close, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "webcodecs_audio_decoder", name = "AudioDecoder_decodeQueueSize", fn = _t_webcodecs_audio_decoder_AudioDecoder_decodeQueueSize, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_audio_decoder", name = "AudioDecoder_state", fn = _t_webcodecs_audio_decoder_AudioDecoder_state, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_codec", name = "EncodedVideoChunk_create", fn = _t_webcodecs_codec_EncodedVideoChunk_create, realms = 3, params = []wasm.Val_Kind{.I32, .I64, .I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64, .I32, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_codec", name = "EncodedAudioChunk_create", fn = _t_webcodecs_codec_EncodedAudioChunk_create, realms = 3, params = []wasm.Val_Kind{.I32, .I64, .I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64, .I32, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_codec", name = "EncodedVideoChunk_type", fn = _t_webcodecs_codec_EncodedVideoChunk_type, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_codec", name = "EncodedVideoChunk_timestamp", fn = _t_webcodecs_codec_EncodedVideoChunk_timestamp, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "webcodecs_codec", name = "EncodedVideoChunk_duration", fn = _t_webcodecs_codec_EncodedVideoChunk_duration, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "webcodecs_codec", name = "EncodedVideoChunk_byteLength", fn = _t_webcodecs_codec_EncodedVideoChunk_byteLength, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_codec", name = "EncodedVideoChunk_copyTo", fn = _t_webcodecs_codec_EncodedVideoChunk_copyTo, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_codec", name = "EncodedAudioChunk_type", fn = _t_webcodecs_codec_EncodedAudioChunk_type, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_codec", name = "EncodedAudioChunk_timestamp", fn = _t_webcodecs_codec_EncodedAudioChunk_timestamp, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "webcodecs_codec", name = "EncodedAudioChunk_duration", fn = _t_webcodecs_codec_EncodedAudioChunk_duration, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "webcodecs_codec", name = "EncodedAudioChunk_byteLength", fn = _t_webcodecs_codec_EncodedAudioChunk_byteLength, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_codec", name = "EncodedAudioChunk_copyTo", fn = _t_webcodecs_codec_EncodedAudioChunk_copyTo, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_codec", name = "AudioData_create", fn = _t_webcodecs_codec_AudioData_create, realms = 3, params = []wasm.Val_Kind{.I32, .F64, .I32, .I32, .I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .F64, .I32, .I32, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_codec", name = "AudioData_format", fn = _t_webcodecs_codec_AudioData_format, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_codec", name = "AudioData_sampleRate", fn = _t_webcodecs_codec_AudioData_sampleRate, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "webcodecs_codec", name = "AudioData_numberOfFrames", fn = _t_webcodecs_codec_AudioData_numberOfFrames, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_codec", name = "AudioData_numberOfChannels", fn = _t_webcodecs_codec_AudioData_numberOfChannels, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_codec", name = "AudioData_timestamp", fn = _t_webcodecs_codec_AudioData_timestamp, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "webcodecs_codec", name = "AudioData_duration", fn = _t_webcodecs_codec_AudioData_duration, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "webcodecs_codec", name = "AudioData_allocationSize", fn = _t_webcodecs_codec_AudioData_allocationSize, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_codec", name = "AudioData_copyTo", fn = _t_webcodecs_codec_AudioData_copyTo, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_codec", name = "AudioData_clone", fn = _t_webcodecs_codec_AudioData_clone, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_codec", name = "AudioData_close", fn = _t_webcodecs_codec_AudioData_close, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "webcodecs_encoders", name = "VideoEncoder_create", fn = _t_webcodecs_encoders_VideoEncoder_create, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_encoders", name = "AudioEncoder_create", fn = _t_webcodecs_encoders_AudioEncoder_create, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_encoders", name = "VideoEncoder_isConfigSupported", fn = _t_webcodecs_encoders_VideoEncoder_isConfigSupported, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_encoders", name = "AudioEncoder_isConfigSupported", fn = _t_webcodecs_encoders_AudioEncoder_isConfigSupported, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_encoders", name = "VideoEncoder_configure", fn = _t_webcodecs_encoders_VideoEncoder_configure, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_encoders", name = "AudioEncoder_configure", fn = _t_webcodecs_encoders_AudioEncoder_configure, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_encoders", name = "VideoEncoder_encode", fn = _t_webcodecs_encoders_VideoEncoder_encode, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_encoders", name = "AudioEncoder_encode", fn = _t_webcodecs_encoders_AudioEncoder_encode, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_encoders", name = "VideoEncoder_flush", fn = _t_webcodecs_encoders_VideoEncoder_flush, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_encoders", name = "AudioEncoder_flush", fn = _t_webcodecs_encoders_AudioEncoder_flush, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_encoders", name = "VideoEncoder_reset", fn = _t_webcodecs_encoders_VideoEncoder_reset, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "webcodecs_encoders", name = "AudioEncoder_reset", fn = _t_webcodecs_encoders_AudioEncoder_reset, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "webcodecs_encoders", name = "VideoEncoder_close", fn = _t_webcodecs_encoders_VideoEncoder_close, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "webcodecs_encoders", name = "AudioEncoder_close", fn = _t_webcodecs_encoders_AudioEncoder_close, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "webcodecs_encoders", name = "VideoEncoder_encodeQueueSize", fn = _t_webcodecs_encoders_VideoEncoder_encodeQueueSize, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_encoders", name = "AudioEncoder_encodeQueueSize", fn = _t_webcodecs_encoders_AudioEncoder_encodeQueueSize, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_encoders", name = "VideoEncoder_state", fn = _t_webcodecs_encoders_VideoEncoder_state, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_encoders", name = "AudioEncoder_state", fn = _t_webcodecs_encoders_AudioEncoder_state, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_image", name = "ImageDecoder_create", fn = _t_webcodecs_image_ImageDecoder_create, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_image", name = "ImageDecoder_isTypeSupported", fn = _t_webcodecs_image_ImageDecoder_isTypeSupported, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_image", name = "ImageDecoder_type", fn = _t_webcodecs_image_ImageDecoder_type, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "webcodecs_image", name = "ImageDecoder_complete", fn = _t_webcodecs_image_ImageDecoder_complete, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_image", name = "ImageDecoder_frameCount", fn = _t_webcodecs_image_ImageDecoder_frameCount, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_image", name = "ImageDecoder_decode", fn = _t_webcodecs_image_ImageDecoder_decode, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_image", name = "ImageDecoder_reset", fn = _t_webcodecs_image_ImageDecoder_reset, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "webcodecs_image", name = "ImageDecoder_close", fn = _t_webcodecs_image_ImageDecoder_close, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "webcodecs_image", name = "ImageDecoder_tracks", fn = _t_webcodecs_image_ImageDecoder_tracks, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "webcodecs_image", name = "ImageTrackList_length", fn = _t_webcodecs_image_ImageTrackList_length, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_image", name = "ImageTrackList_item", fn = _t_webcodecs_image_ImageTrackList_item, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_image", name = "ImageTrackList_selectedIndex", fn = _t_webcodecs_image_ImageTrackList_selectedIndex, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_image", name = "ImageTrack_animated", fn = _t_webcodecs_image_ImageTrack_animated, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_image", name = "ImageTrack_frameCount", fn = _t_webcodecs_image_ImageTrack_frameCount, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_image", name = "ImageTrack_repetitionCount", fn = _t_webcodecs_image_ImageTrack_repetitionCount, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_image", name = "ImageTrack_selected", fn = _t_webcodecs_image_ImageTrack_selected, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_video_decoder", name = "VideoDecoder_create", fn = _t_webcodecs_video_decoder_VideoDecoder_create, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_video_decoder", name = "VideoDecoder_isConfigSupported", fn = _t_webcodecs_video_decoder_VideoDecoder_isConfigSupported, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_video_decoder", name = "VideoDecoder_configure", fn = _t_webcodecs_video_decoder_VideoDecoder_configure, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I32, .I32}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_video_decoder", name = "VideoDecoder_decode", fn = _t_webcodecs_video_decoder_VideoDecoder_decode, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I64, .I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_video_decoder", name = "VideoDecoder_flush", fn = _t_webcodecs_video_decoder_VideoDecoder_flush, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_video_decoder", name = "VideoDecoder_reset", fn = _t_webcodecs_video_decoder_VideoDecoder_reset, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "webcodecs_video_decoder", name = "VideoDecoder_close", fn = _t_webcodecs_video_decoder_VideoDecoder_close, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "webcodecs_video_decoder", name = "VideoDecoder_decodeQueueSize", fn = _t_webcodecs_video_decoder_VideoDecoder_decodeQueueSize, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webcodecs_video_decoder", name = "VideoDecoder_state", fn = _t_webcodecs_video_decoder_VideoDecoder_state, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "websocket", name = "WebSocket_create", fn = _t_websocket_WebSocket_create, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "websocket", name = "WebSocket_readyState", fn = _t_websocket_WebSocket_readyState, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "websocket", name = "WebSocket_url", fn = _t_websocket_WebSocket_url, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},

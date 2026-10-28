@@ -68,7 +68,7 @@ JSValue wjr_EncodedAudioChunk_constructor(JSContext *ctx, JSValueConst new_targe
         if (argc < 1) return wj_throw_arity(ctx, #PFX ".copyTo", 1, argc); \
         uint8_t *dst = NULL; size_t dlen = 0; \
         if (!wj_to_buffer_source(ctx, argv[0], &dst, &dlen, WJ_BS_ALLOW_SHARED, #PFX " copyTo")) return JS_EXCEPTION; \
-        int32_t st = wr_##PFX##_copyTo(h, dst, (uint32_t)dlen); \
+        int32_t cr_ = 0; int32_t st = wr_##PFX##_copyTo(h, dst, (uint32_t)dlen, &cr_); \
         if (st < 0) return wj_throw_status(ctx, st, #PFX ".copyTo"); \
         return JS_UNDEFINED; \
     }
@@ -158,7 +158,7 @@ JSValue wjr_AudioData_copyTo(JSContext *ctx, JSValueConst this_val, int argc, JS
     JSValueConst o = argc > 1 ? argv[1] : JS_UNDEFINED;
     uint32_t plane, foff, fcount; int fmt; bool has_count;
     ad_opts(ctx, o, &plane, &fmt, &foff, &fcount, &has_count);
-    int32_t st = wr_AudioData_copyTo(h, dst, (uint32_t)dlen, plane, fmt, foff, fcount, has_count ? 1 : 0);
+    int32_t cr_ = 0; int32_t st = wr_AudioData_copyTo(h, dst, (uint32_t)dlen, plane, fmt, foff, fcount, has_count ? 1 : 0, &cr_);
     if (st < 0) return wj_throw_status(ctx, st, "AudioData.copyTo");
     return JS_UNDEFINED;
 }
