@@ -1,0 +1,19 @@
+/// Prioritized Task Scheduling (src/page/bindings_scheduler.odin): scheduler.postTask / scheduler.yield, TaskController
+/// and TaskSignal. The priority queue and the ordering are native (on the page's event loop); the C glue holds each
+/// task's JavaScript promise, callback and signal and runs the callback when the host says the task is due. Three
+/// priorities, highest first: user-blocking, user-visible, background.
+[Exposed=(Window,Worker)]
+module scheduler {
+  /// A task priority (TaskPriority), highest first.
+  enum TaskPriority : i32 { User_Blocking, User_Visible, Background }
+
+  /// Post a task; `callback` (a function-table index) runs with (user: i32) when the task is due. `delay_ms` 0 queues
+  /// it at once. Returns the task id (for cancel / setPriority), 0 when there is no page realm.
+  u64 Scheduler_post(u32 callback, i32 user, TaskPriority priority, f64 delay_ms);
+  /// Drop a queued (or delayed) task: its signal aborted, or the realm released it.
+  void Scheduler_cancel(u64 id) raises;
+  /// Change a queued task's priority (TaskController.setPriority).
+  void Scheduler_setPriority(u64 id, TaskPriority priority) raises;
+  /// navigator.scheduling.isInputPending.
+  bool Scheduler_isInputPending(bool include_continuous);
+}
