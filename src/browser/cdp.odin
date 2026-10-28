@@ -108,6 +108,12 @@ cdp_start :: proc(app: ^App, cli_port: int, have_cli: bool, cli_address: string)
 		return
 	}
 	c.active, c.started, c.port = true, true, remote.tcp_port()
+	// the engine that runs the scripts and the operations (wren ctl's) answers the CDP calls too: it works without the pipe
+	if !the_remote.active {
+		the_remote.cfg = remote.settings_from_prefs(app_prefs(app))
+		the_remote.active = true
+		remote_take_baseline(app)
+	}
 	// a line a tool reads to find the browser endpoint, as Chrome writes DevToolsActivePort in its profile
 	cdp_write_active_port(app)
 }
