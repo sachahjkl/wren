@@ -10,7 +10,8 @@
 # Exit code 0 when all is well, 1 otherwise.
 param(
     [switch]$Check,
-    [switch]$NoBuild
+    [switch]$NoBuild,
+    [switch]$ChartUpdate   # rebuild docs\_wpt_history.tsv from the full git history (at a release)
 )
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path $PSScriptRoot -Parent
@@ -34,8 +35,10 @@ try {
     if (-not (Test-Path $exe)) { Write-Error 'docs_site: build\docsite.exe is missing (run without -NoBuild)'; exit 1 }
 
     # Generate (or verify the output is current).
-    $arg = if ($Check) { '-check' } else { '' }
-    & $exe $arg
+    $argList = @()
+    if ($Check) { $argList += '-check' }
+    if ($ChartUpdate) { $argList += '-chart-update' }
+    & $exe @argList
     if ($LASTEXITCODE) {
         if ($Check) { Write-Error 'docs_site: site\docs is out of date (run tools\docs_site.ps1)' }
         else { Write-Error 'docs_site: generation failed' }

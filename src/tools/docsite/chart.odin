@@ -43,8 +43,39 @@ git :: proc(repo: string, args: ..string) -> (out: string, ok: bool) {
 }
 
 // --- history ----------------------------------------------------------------
+// The history is a committed snapshot (docs/_wpt_history.tsv), not read from git on every run: a CI checkout is shallow, so
+// the same docs would give another chart there and `-check` could never agree. `docsite -chart-update` (tools\docs_site.ps1
+// -ChartUpdate, at a release) rebuilds the snapshot from the full git history; a missing snapshot is built the same way.
+CHART_CACHE :: "docs/_wpt_history.tsv"
+chart_update := false
 
 wpt_history :: proc(repo: string) -> []Commit {
+	if !chart_update {
+		if data, err := os.read_entire_file(CHART_CACHE, context.allocator); err == nil {
+			commits := make([dynamic]Commit, context.allocator)
+			for line in strings.split_lines(string(data), context.temp_allocator) {
+				t := strings.trim_right_space(line)
+				if len(t) == 0 || t[0] == '#' { continue }
+				f := strings.split_n(t, "\t", 7, context.temp_allocator)
+				if len(f) < 6 { continue }
+				c := Commit{hash = strings.clone(f[0]), date = strings.clone(f[1]), pass = atoi(f[2]), total = atoi(f[3]), stable_pass = atoi(f[4]), stable_total = atoi(f[5])}
+				if len(f) == 7 { c.subject = strings.clone(f[6]) }
+				append(&commits, c)
+			}
+			if len(commits) > 0 { return commits[:] }
+		}
+	}
+	commits := wpt_history_from_git(repo)
+	if len(commits) > 0 {
+		b := strings.builder_make(context.temp_allocator)
+		strings.write_string(&b, "# one line per commit that touched wpt/expectations: hash, date, passing, total, passing (first folders), total (first folders), subject\n# rebuilt by `docsite -chart-update`\n")
+		for c in commits { fmt.sbprintf(&b, "%s\t%s\t%d\t%d\t%d\t%d\t%s\n", c.hash, c.date, c.pass, c.total, c.stable_pass, c.stable_total, c.subject) }
+		_ = os.write_entire_file(CHART_CACHE, transmute([]u8)strings.to_string(b))
+	}
+	return commits
+}
+
+wpt_history_from_git :: proc(repo: string) -> []Commit {
 	log, ok := git(repo, "log", "--reverse", "--format=%H|%aI|%s", "--", "wpt/expectations")
 	if !ok { return nil }
 	commits := make([dynamic]Commit, context.allocator)
