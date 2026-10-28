@@ -11,7 +11,7 @@ Case :: struct {
 	code:     i64,
 }
 
-FUNCTIONS :: 1193
+FUNCTIONS :: 1195
 
 CASES := [?]Case{
 	{"case_0", "abort.AbortController_signal", "controller: not a live AbortController", .Trap_Message, 0},

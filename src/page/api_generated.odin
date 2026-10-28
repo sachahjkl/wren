@@ -894,7 +894,7 @@ _valid_ReferrerPolicy :: #force_inline proc "contextless" (v: u32) -> bool { swi
 _valid_RequestCache :: #force_inline proc "contextless" (v: u32) -> bool { switch v { case 0, 1, 2, 3, 4, 5: return true }; return false }
 
 @(private = "file")
-_valid_PerformanceEntryType :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12: return true }; return false }
+_valid_PerformanceEntryType :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14: return true }; return false }
 
 @(private = "file")
 _valid_StorageArea :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1: return true }; return false }
@@ -22385,6 +22385,34 @@ _t_navigator_Navigator_cookieEnabled :: proc "c" (env: rawptr, caller: wasm.Call
 	return nil
 }
 
+// UserActivation_isActive :: proc(c: ^Call) -> bool
+@(private = "file")
+_t_navigator_UserActivation_isActive :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := UserActivation_isActive(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// UserActivation_hasBeenActive :: proc(c: ^Call) -> bool
+@(private = "file")
+_t_navigator_UserActivation_hasBeenActive :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := UserActivation_hasBeenActive(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
 // Beacon_send :: proc(c: ^Call, url: string, data: Maybe([]u8), content_type: string) -> bool
 @(private = "file")
 _t_navigator_Beacon_send :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -29626,6 +29654,8 @@ api_imports := [?]wasm.Import{
 	{module = "navigator", name = "Navigator_onLine", fn = _t_navigator_Navigator_onLine, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "navigator", name = "Navigator_maxTouchPoints", fn = _t_navigator_Navigator_maxTouchPoints, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "navigator", name = "Navigator_cookieEnabled", fn = _t_navigator_Navigator_cookieEnabled, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
+	{module = "navigator", name = "UserActivation_isActive", fn = _t_navigator_UserActivation_isActive, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
+	{module = "navigator", name = "UserActivation_hasBeenActive", fn = _t_navigator_UserActivation_hasBeenActive, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "navigator", name = "Beacon_send", fn = _t_navigator_Beacon_send, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "navigator", name = "Clipboard_writeText", fn = _t_navigator_Clipboard_writeText, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "navigator", name = "Clipboard_readText", fn = _t_navigator_Clipboard_readText, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},

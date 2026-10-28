@@ -27,7 +27,7 @@ test("the navigation entry", () => {
 });
 
 test("supportedEntryTypes", () => {
-  eq(PerformanceObserver.supportedEntryTypes.join(), "event,first-input,longtask,mark,measure,navigation,paint,resource", "the supported types");
+  eq(PerformanceObserver.supportedEntryTypes.join(), "element,event,first-input,largest-contentful-paint,layout-shift,long-animation-frame,longtask,mark,measure,navigation,paint,resource,visibility-state", "the supported types");
 });
 
 test("resource entries", async () => {
