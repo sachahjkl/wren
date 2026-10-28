@@ -9,7 +9,9 @@
 # once into build\tools and build\js\src; native\js\patches\*.patch applied to the source; the generated headers and
 # bindings in native\js\gen (bindgen). The script does nothing when build\js\STAMP matches the hash of every input.
 param([switch]$Force, [switch]$Names, [string]$Opt = 'O3', [switch]$NoLto, [string]$Out = '', [switch]$NoSnapshot, [string[]]$ExtraFlags = @(),
-      [ValidateSet('dlmalloc', 'mimalloc')][string]$Allocator = 'dlmalloc')
+      [ValidateSet('dlmalloc', 'mimalloc')][string]$Allocator = 'dlmalloc',
+      # the JavaScript engine: QuickJS-ng in C (default), or the Odin one (src\engine\jsrt through src\engine\jscapi: no QuickJS C is compiled)
+      [ValidateSet('quickjs', 'jsrt')][string]$Engine = $(if ($env:WREN_JS_ENGINE) { $env:WREN_JS_ENGINE } else { 'quickjs' }))
 $ErrorActionPreference = 'Stop'
 $ZigVersion = '0.15.2'
 $ZigSha256 = '3a0ed1e8799a2f8ce2a6e6290a9ff22e6906f8227865911fb7ddedc3cc14cb0c'
@@ -54,7 +56,7 @@ foreach ($f in ($inputs | Sort-Object FullName)) {
     $all.Write($name, 0, $name.Length)
     $b = [IO.File]::ReadAllBytes($f.FullName); $all.Write($b, 0, $b.Length)
 }
-$flagText = [Text.Encoding]::UTF8.GetBytes("$ZigVersion|$QjsVersion|$Opt|$NoLto|$($ExtraFlags -join ' ')|$Allocator")
+$flagText = [Text.Encoding]::UTF8.GetBytes("$ZigVersion|$QjsVersion|$Opt|$NoLto|$($ExtraFlags -join ' ')|$Allocator|$Engine")
 $all.Write($flagText, 0, $flagText.Length)
 $stamp = ([BitConverter]::ToString($sha.ComputeHash($all.ToArray())) -replace '-', '').ToLower()
 if (-not $Force -and (Test-Path $final) -and (Test-Path $stampFile) -and ((Get-Content $stampFile -Raw).Trim() -eq $stamp)) {
@@ -127,7 +129,7 @@ $cflags = @(
 )
 if (-not $NoLto) { $cflags += '-flto' }
 $cflags += $ExtraFlags
-$sources = @('quickjs.c', 'libregexp.c', 'libunicode.c', 'dtoa.c') | ForEach-Object { Join-Path $qjs $_ }
+$sources = if ($Engine -eq 'jsrt') { @() } else { @('quickjs.c', 'libregexp.c', 'libunicode.c', 'dtoa.c') | ForEach-Object { Join-Path $qjs $_ } }   # (jsrt: the engine is Odin, in the glue object)
 $sources += @(Get-ChildItem (Join-Path $native 'gen') -Recurse -Filter *.c -ErrorAction SilentlyContinue | ForEach-Object FullName)
 # The glue is Odin (native\js\odin, linked below); the C left is QuickJS, the generated gen\bindings.c and a shim of layout asserts.
 $sources += (Join-Path $native 'odin\wj_shim.c')
@@ -158,7 +160,8 @@ $odinObj = Join-Path $out 'odin_glue.o'
 $odinDefines = @()
 if ($ExtraFlags -contains '-DWREN_TEST262=1') { $odinDefines += '-define:WREN_TEST262=true' }
 if ($Allocator -eq 'mimalloc') { $odinDefines += '-define:WJ_MIMALLOC=true' }
-& odin build (Join-Path $native 'odin') -build-mode:obj -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -vet -o:size @odinDefines -out:$odinObj
+if ($Engine -eq 'jsrt') { $odinDefines += '-define:WJ_JSRT=true'; $odinDefines += '-define:JSCAPI_EXPORT=true' }
+& odin build (Join-Path $native 'odin') -build-mode:obj -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -vet -o:size -collection:wb=src -collection:toolkit=ext/gui_toolkit @odinDefines -out:$odinObj
 if ($LASTEXITCODE -ne 0) { throw "odin build of native\js\odin failed" }
 # Compile each C translation unit to a native wasm object (LTO stays on *within* each TU via -O3; the cross-TU LTO of
 # the one-shot link is dropped only when an Odin object is linked in, see below), then link objects + Odin object.
