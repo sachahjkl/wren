@@ -81,7 +81,6 @@ foreign {
 
 	// the realm's singletons, impls, marks
 	web_singleton :: proc(ctx: ^Context, which: i32, make: Singleton_Make) -> JSValue ---
-	web_set_impl  :: proc(obj: JSValue, impl: rawptr, impl_free: Impl_Free, impl_mark: Impl_Mark) ---
 	web_pin       :: proc(ctx: ^Context, v: JSValue) -> u32 ---
 	web_unpin     :: proc(ctx: ^Context, token: u32) ---
 	web_unpin_later :: proc(ctx: ^Context, token: u32) ---
@@ -159,6 +158,15 @@ foreign {
 	wj_shim_obj_impl   :: proc(v: JSValue) -> rawptr ---
 	wj_shim_handle     :: proc(obj: rawptr) -> u64 ---
 	wj_shim_impl       :: proc(obj: rawptr) -> rawptr ---
+
+	// web_set_impl is a `static inline` in web.h (writes wj_obj.impl/impl_free/impl_mark): no symbol, so a shim wraps
+	// it. web_set_impl below forwards to this; a ported domain still calls wj.web_set_impl.
+	wj_shim_set_impl :: proc(obj: JSValue, impl: rawptr, impl_free: Impl_Free, impl_mark: Impl_Mark) ---
+}
+
+// Set a platform object's engine-owned data (the `static inline` web_set_impl, through the shim).
+web_set_impl :: #force_inline proc "contextless" (obj: JSValue, impl: rawptr, impl_free: Impl_Free, impl_mark: Impl_Mark) {
+	wj_shim_set_impl(obj, impl, impl_free, impl_mark)
 }
 
 // The realm's global object (not counted). Matches web_strategy.c's use of wj_the_realm.global.
