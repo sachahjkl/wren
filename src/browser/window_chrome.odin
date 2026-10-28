@@ -10,7 +10,6 @@ package browser
 // Full screen (F11): no frame, no title bar, no tabs nor address bar; they slide down over the page while the pointer
 // is at the top edge of the screen (browser.window.fullscreen_reveal), and go when it leaves them.
 
-import win "core:sys/windows"
 import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:render"
