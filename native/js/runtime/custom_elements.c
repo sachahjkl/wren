@@ -453,16 +453,14 @@ static JSValue ce_define(JSContext *ctx, JSValueConst namev, JSValueConst ctor, 
             JSValue acc = JS_GetPropertyStr(ctx, def, "attributeChangedCallback");
             if (!JS_IsUndefined(acc)) {
                 JSValue list = JS_GetPropertyStr(ctx, ctor, "observedAttributes");
-                if (JS_IsException(list)) { JS_FreeValue(ctx, acc); JS_FreeValue(ctx, observed); ok = false; }
+                if (JS_IsException(list)) { JS_FreeValue(ctx, observed); ok = false; }
                 else {
                     if (!JS_IsUndefined(list) && !to_string_sequence(ctx, list, observed)) { ok = false; }
                     JS_FreeValue(ctx, list);
                     if (!ok) { JS_FreeValue(ctx, observed); }
                 }
-                if (ok) { JS_FreeValue(ctx, acc); }
-            } else {
-                JS_FreeValue(ctx, acc);
             }
+            JS_FreeValue(ctx, acc);
             if (ok) {
                 JS_SetPropertyStr(ctx, def, "observed", observed);
                 /* disabledFeatures (sequence<DOMString>): attachShadow()/attachInternals() refuse for this name. Get()
