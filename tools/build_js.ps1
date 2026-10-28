@@ -207,6 +207,7 @@ $odinified = @(
     'web_storage.c',
     'web_strategy.c',
     'web_stream.c',
+    'web_sw.c',
     'web_tracks.c',
     'web_transform.c',
     'web_url.c',
