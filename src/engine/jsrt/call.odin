@@ -14,6 +14,15 @@ Value_Segment :: struct {
 
 VSEGMENT_SIZE :: 32 * 1024
 
+// Segments grow with the stack: most realms never leave the first, small one.
+vsegment_size :: #force_inline proc "contextless" (index: int) -> int {
+	switch index {
+	case 0: return 4 * 1024
+	case 1: return 16 * 1024
+	}
+	return VSEGMENT_SIZE
+}
+
 Frame :: struct {
 	prev:        ^Frame,
 	ctx:         ^Context,
@@ -88,7 +97,7 @@ vstack_alloc :: #force_inline proc(rt: ^Runtime, n: int) -> (mem: [^]Value, seg:
 vstack_alloc_slow :: proc(rt: ^Runtime, n: int) -> (mem: [^]Value, seg: int, top: int) {
 	for {
 		if rt.vstack_cur >= len(rt.vstack) {
-			size := max(VSEGMENT_SIZE, n)
+			size := max(vsegment_size(len(rt.vstack)), n)
 			append(&rt.vstack, Value_Segment{data = make([]Value, size, rt.allocator)})
 		}
 		s := &rt.vstack[rt.vstack_cur]
@@ -102,7 +111,7 @@ vstack_alloc_slow :: proc(rt: ^Runtime, n: int) -> (mem: [^]Value, seg: int, top
 		if s.top == 0 {
 			// a segment too small for this frame: replace it
 			delete(s.data, rt.allocator)
-			s.data = make([]Value, max(VSEGMENT_SIZE, n), rt.allocator)
+			s.data = make([]Value, max(vsegment_size(rt.vstack_cur), n), rt.allocator)
 			continue
 		}
 		rt.vstack_cur += 1

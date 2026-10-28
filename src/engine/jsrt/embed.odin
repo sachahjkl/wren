@@ -7,6 +7,7 @@ package jsrt
 // with host_enter/host_exit, which reset the engine's scratch memory once the outermost call returns.
 
 import "base:runtime"
+import "core:mem"
 
 engine_new :: proc(allocator := context.allocator, config := DEFAULT_CONFIG) -> ^Runtime {
 	return runtime_new(allocator, config)
@@ -43,7 +44,13 @@ host_exit :: proc(rt: ^Runtime, mark: int, result: Value) {
 
 @(private = "file")
 mem_free_all_scratch :: proc(rt: ^Runtime) {
-	free_all(tmp(rt))
+	// (free_all would give the arena's block back to the host heap and the next host call would allocate and
+	// clear a new one: the outermost call of a page's event costs a 64 KiB memset)
+	a := &rt.scratch
+	mem.dynamic_arena_reset(a)
+	for len(a.unused_blocks) > 1 {
+		mem.free(pop(&a.unused_blocks), a.block_allocator)
+	}
 }
 
 // Load serialized bytecode and run it: a script returns its completion value, a module its
