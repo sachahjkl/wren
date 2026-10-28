@@ -439,6 +439,8 @@ eval_impl :: proc(ctx: ^js.Context, input: [^]u8, input_len: uint, filename: cst
 	if js.is_exception(fb) {return EXCEPTION}
 	if flags & EVAL_FLAG_COMPILE_ONLY != 0 {
 		if fb.tag == .module && flags & EVAL_FLAG_WREN_NO_RESOLVE == 0 {
+			// registered before its requests are loaded: a module that imports itself, or a cycle, finds it by name
+			js.module_register(rt, cast(^js.Module)fb.u.ptr)
 			if !js.module_resolve(ctx, cast(^js.Module)fb.u.ptr) {return EXCEPTION}
 		}
 		return own(rt, fb)

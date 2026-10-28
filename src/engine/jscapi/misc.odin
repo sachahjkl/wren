@@ -3,6 +3,7 @@ package jscapi
 // Promises, array buffers and typed arrays, modules and the module loader hooks.
 
 import "core:mem"
+import "core:strings"
 import js "wb:engine/jsrt"
 
 // ---- promises ----
@@ -328,6 +329,29 @@ cstr_tmp :: proc(rt: ^js.Runtime, s: string) -> cstring {
 	return cstring(raw_data(b))
 }
 
+// QuickJS's own normalizer (used when the host sets none): a name starting with "." is relative to the directory of the
+// importing module; a bare name is kept.
+@(private)
+default_normalize :: proc(ctx: ^js.Context, referrer: string, specifier: string) -> string {
+	if len(specifier) == 0 || specifier[0] != '.' {return specifier}
+	dir := ""
+	if i := strings.last_index_byte(referrer, '/'); i >= 0 {dir = referrer[:i]}
+	rest := specifier
+	for len(rest) > 0 && rest[0] == '.' {
+		if strings.has_prefix(rest, "./") {
+			rest = rest[2:]
+		} else if strings.has_prefix(rest, "../") {
+			if dir == "" {break}
+			if j := strings.last_index_byte(dir, '/'); j >= 0 {dir = dir[:j]} else {dir = ""}
+			rest = rest[3:]
+		} else {
+			break
+		}
+	}
+	if dir == "" {return js.cat(ctx, rest)}
+	return js.cat(ctx, dir, "/", rest)
+}
+
 // HostLoadImportedModule on top of the glue's normalize / loader / attribute-check functions. A module
 // already loaded under the normalized name is reused; a module the host made natively gets its init
 // function run before anyone imports it.
@@ -345,6 +369,8 @@ load_module_bridge :: proc(ctx: ^js.Context, referrer: string, specifier: string
 		if res == nil {return js.EXCEPTION}
 		name = js.cat(ctx, string(res))
 		js_free(c, rawptr(res))
+	} else {
+		name = default_normalize(ctx, referrer, specifier)
 	}
 	if found := js.find_module_by_name(rt, js.atom_from_utf8(rt, name)); found != nil {
 		// a module the host made ahead (JS_NewCModule) runs its init the first time it is imported
