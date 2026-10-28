@@ -1445,6 +1445,66 @@ static bool pstr_eq(JSContext *ctx, JSValueConst o, const char *name, const char
     JS_FreeValue(ctx, v);
     return eq;
 }
+/* two JS string values equal byte for byte (NUL-safe, full UTF-16 as WTF-8): a store/index name may hold U+0000 or a
+ * lone surrogate, so comparing them as C strings (strcmp, which stops at the first NUL) would conflate "" and "\u0000". */
+static bool jsstr_eq(JSContext *ctx, JSValueConst a, JSValueConst b)
+{
+    size_t na, nb;
+    const char *sa = JS_ToCStringLen(ctx, &na, a);
+    const char *sb = JS_ToCStringLen(ctx, &nb, b);
+    bool eq = sa && sb && na == nb && memcmp(sa, sb, na) == 0;
+    if (sa) { JS_FreeCString(ctx, sa); }
+    if (sb) { JS_FreeCString(ctx, sb); }
+    return eq;
+}
+/* o[name] equals the JS string value s (NUL-safe, see jsstr_eq) */
+static bool pstr_eq_val(JSContext *ctx, JSValueConst o, const char *name, JSValueConst s)
+{
+    JSValue v = pget(ctx, o, name);
+    bool eq = jsstr_eq(ctx, v, s);
+    JS_FreeValue(ctx, v);
+    return eq;
+}
+
+/* the next UTF-16 code unit of a WTF-8 byte run starting at *i, advancing *i. WTF-8 is UTF-8 that also admits the
+ * three-byte encodings of lone surrogates (U+D800..U+DFFF); a supplementary code point (>= U+10000) yields two units
+ * across two calls. Malformed bytes are passed through as their own value so the order stays total. */
+static uint32_t wtf8_next_unit(const uint8_t *p, size_t n, size_t *i, uint32_t *pending)
+{
+    if (*pending) { uint32_t u = *pending; *pending = 0; return u; }
+    uint8_t c = p[(*i)++];
+    uint32_t cp;
+    if (c < 0x80) { return c; }
+    else if ((c & 0xE0) == 0xC0 && *i < n) { cp = (uint32_t)(c & 0x1F) << 6 | (p[(*i)++] & 0x3F); }
+    else if ((c & 0xF0) == 0xE0 && *i + 1 < n) { cp = (uint32_t)(c & 0x0F) << 12 | (uint32_t)(p[*i] & 0x3F) << 6 | (p[*i + 1] & 0x3F); *i += 2; }
+    else if ((c & 0xF8) == 0xF0 && *i + 2 < n) { cp = (uint32_t)(c & 0x07) << 18 | (uint32_t)(p[*i] & 0x3F) << 12 | (uint32_t)(p[*i + 1] & 0x3F) << 6 | (p[*i + 2] & 0x3F); *i += 3; }
+    else { return c; }
+    if (cp >= 0x10000) { cp -= 0x10000; *pending = 0xDC00 + (cp & 0x3FF); return 0xD800 + (cp >> 10); }
+    return cp;
+}
+/* compare two JS strings by UTF-16 code unit, as ECMAScript's `<` on strings and Array.prototype.sort do. A store/index
+ * name may be a supplementary character or a lone surrogate, so a byte-wise strcmp on the WTF-8 would order U+1D11E
+ * (lead 0xD834) after U+FFFD, which is wrong. <0, 0 or >0. */
+static int jsstr_cmp(JSContext *ctx, JSValueConst a, JSValueConst b)
+{
+    size_t na, nb;
+    const char *sa = JS_ToCStringLen(ctx, &na, a);
+    const char *sb = JS_ToCStringLen(ctx, &nb, b);
+    int r = 0;
+    if (sa && sb) {
+        size_t ia = 0, ib = 0; uint32_t pa = 0, pb = 0;
+        while (r == 0) {
+            bool da = ia >= na && !pa, db = ib >= nb && !pb;
+            if (da || db) { r = da == db ? 0 : (da ? -1 : 1); break; }
+            uint32_t ua = wtf8_next_unit((const uint8_t *)sa, na, &ia, &pa);
+            uint32_t ub = wtf8_next_unit((const uint8_t *)sb, nb, &ib, &pb);
+            if (ua != ub) { r = ua < ub ? -1 : 1; }
+        }
+    } else { r = (sa ? 1 : 0) - (sb ? 1 : 0); }
+    if (sa) { JS_FreeCString(ctx, sa); }
+    if (sb) { JS_FreeCString(ctx, sb); }
+    return r;
+}
 
 /* ---- tasks, the active state of transactions ---- */
 
@@ -3023,31 +3083,31 @@ static JSValue store_get_name(JSContext *ctx, JSValueConst this_val)
 static JSValue store_set_name(JSContext *ctx, JSValueConst this_val, JSValueConst value)
 {
     STORE_STATE(S);
+    /* ToString(name) runs before any state check (spec order, as the old idb.js). The name stays a JS string so an
+     * embedded U+0000 or a lone surrogate is preserved all the way to the host (see jsstr_eq / pstr_eq_val). */
     JSValue nv = to_str(ctx, value);
-    const char *n = JS_ToCString(ctx, nv);
     JSValue T = pget(ctx, S, "tx");
     JSValue meta = pget(ctx, S, "meta");
     JSValue ret = JS_UNDEFINED;
+    if (JS_IsException(nv)) { ret = JS_EXCEPTION; goto out; }
     if (!pstr_eq(ctx, T, "mode", "versionchange")) { ret = throw_dom(ctx, "InvalidStateError", "The object store's name can only be changed in a version change transaction."); goto out; }
     if (pbool(ctx, meta, "deleted")) { ret = throw_dom(ctx, "InvalidStateError", "The object store has been deleted."); goto out; }
     if (!pstr_eq(ctx, T, "state", "active")) { ret = throw_dom(ctx, "TransactionInactiveError", "The transaction is not active."); goto out; }
-    if (pstr_eq(ctx, meta, "name", n)) { goto out; }
+    if (pstr_eq_val(ctx, meta, "name", nv)) { goto out; }
     {
         JSValue conn = pget(ctx, T, "conn");
         JSValue stores = pget(ctx, conn, "stores");
         int64_t sn = 0; JS_GetLength(ctx, stores, &sn);
         bool clash = false;
-        for (int64_t i = 0; i < sn && !clash; i++) { JSValue s = JS_GetPropertyInt64(ctx, stores, i); clash = JS_VALUE_GET_PTR(s) != JS_VALUE_GET_PTR(meta) && pstr_eq(ctx, s, "name", n); JS_FreeValue(ctx, s); }
+        for (int64_t i = 0; i < sn && !clash; i++) { JSValue s = JS_GetPropertyInt64(ctx, stores, i); clash = JS_VALUE_GET_PTR(s) != JS_VALUE_GET_PTR(meta) && pstr_eq_val(ctx, s, "name", nv); JS_FreeValue(ctx, s); }
         JS_FreeValue(ctx, stores); JS_FreeValue(ctx, conn);
         if (clash) { ret = throw_dom(ctx, "ConstraintError", "An object store with the specified name already exists."); goto out; }
-        pset(ctx, meta, "name", JS_NewString(ctx, n));
+        pset(ctx, meta, "name", JS_DupValue(ctx, nv));
         JSValue conn2 = pget(ctx, T, "conn"); update_names(ctx, conn2); JS_FreeValue(ctx, conn2);
-        JSValueConst d[3] = { T, meta, JS_NewString(ctx, n) };
+        JSValueConst d[3] = { T, meta, nv };
         enqueue_internal(ctx, T, make_exec(ctx, EX_RENAME_STORE, 3, d));
-        JS_FreeValue(ctx, (JSValue)d[2]);
     }
 out:
-    if (n) { JS_FreeCString(ctx, n); }
     JS_FreeValue(ctx, nv); JS_FreeValue(ctx, meta); JS_FreeValue(ctx, T); JS_FreeValue(ctx, S);
     return ret;
 }
@@ -3223,8 +3283,8 @@ static JSValue store_index(JSContext *ctx, JSValueConst this_val, int argc, JSVa
 {
     STORE_STATE(S);
     if (!arity(ctx, 1, argc, "index", "IDBObjectStore")) { JS_FreeValue(ctx, S); return JS_EXCEPTION; }
-    JSValue nv = to_str(ctx, argv[0]);
-    const char *n = JS_ToCString(ctx, nv);
+    JSValue nv = to_str(ctx, argv[0]);   /* NUL-safe JS string for the name lookup */
+    if (JS_IsException(nv)) { JS_FreeValue(ctx, S); return JS_EXCEPTION; }
     JSValue meta = pget(ctx, S, "meta");
     JSValue T = pget(ctx, S, "tx");
     JSValue ret = JS_EXCEPTION;
@@ -3234,14 +3294,13 @@ static JSValue store_index(JSContext *ctx, JSValueConst this_val, int argc, JSVa
         JSValue indexes = pget(ctx, meta, "indexes");
         int64_t in = 0; JS_GetLength(ctx, indexes, &in);
         JSValue found = JS_UNDEFINED;
-        for (int64_t i = 0; i < in; i++) { JSValue ix = JS_GetPropertyInt64(ctx, indexes, i); if (pstr_eq(ctx, ix, "name", n)) { found = ix; break; } JS_FreeValue(ctx, ix); }
+        for (int64_t i = 0; i < in; i++) { JSValue ix = JS_GetPropertyInt64(ctx, indexes, i); if (pstr_eq_val(ctx, ix, "name", nv)) { found = ix; break; } JS_FreeValue(ctx, ix); }
         JS_FreeValue(ctx, indexes);
         if (JS_IsUndefined(found)) { throw_dom(ctx, "NotFoundError", "The specified index was not found."); goto out; }
         ret = index_for(ctx, S, found);
         JS_FreeValue(ctx, found);
     }
 out:
-    if (n) { JS_FreeCString(ctx, n); }
     JS_FreeValue(ctx, nv); JS_FreeValue(ctx, meta); JS_FreeValue(ctx, T); JS_FreeValue(ctx, S);
     return ret;
 }
@@ -3249,8 +3308,8 @@ static JSValue store_createIndex(JSContext *ctx, JSValueConst this_val, int argc
 {
     STORE_STATE(S);
     if (!arity(ctx, 2, argc, "createIndex", "IDBObjectStore")) { JS_FreeValue(ctx, S); return JS_EXCEPTION; }
-    JSValue nv = to_str(ctx, argv[0]);
-    const char *n = JS_ToCString(ctx, nv);
+    JSValue nv = to_str(ctx, argv[0]);   /* NUL-safe JS string for the index name */
+    if (JS_IsException(nv)) { JS_FreeValue(ctx, S); return JS_EXCEPTION; }
     JSValue kp;
     if (JS_IsArray(argv[1])) {
         int64_t l = 0; JS_GetLength(ctx, argv[1], &l);
@@ -3273,7 +3332,7 @@ static JSValue store_createIndex(JSContext *ctx, JSValueConst this_val, int argc
         JSValue indexes = pget(ctx, meta, "indexes");
         int64_t in = 0; JS_GetLength(ctx, indexes, &in);
         bool clash = false;
-        for (int64_t i = 0; i < in && !clash; i++) { JSValue ix = JS_GetPropertyInt64(ctx, indexes, i); clash = pstr_eq(ctx, ix, "name", n); JS_FreeValue(ctx, ix); }
+        for (int64_t i = 0; i < in && !clash; i++) { JSValue ix = JS_GetPropertyInt64(ctx, indexes, i); clash = pstr_eq_val(ctx, ix, "name", nv); JS_FreeValue(ctx, ix); }
         if (clash) { JS_FreeValue(ctx, indexes); throw_dom(ctx, "ConstraintError", "An index with the specified name already exists."); goto out; }
         JSValueConst va[1] = { kp };
         JSValue valid = JS_Call(ctx, M.h_validPath, M.host, 1, va);
@@ -3282,7 +3341,7 @@ static JSValue store_createIndex(JSContext *ctx, JSValueConst this_val, int argc
         if (JS_IsArray(kp) && multiEntry) { JS_FreeValue(ctx, indexes); throw_dom(ctx, "InvalidAccessError", "The keyPath argument is an array and the multiEntry option is true."); goto out; }
         JSValue imeta = JS_NewObject(ctx);
         JS_SetPropertyStr(ctx, imeta, "id", JS_NewInt32(ctx, 0));
-        JS_SetPropertyStr(ctx, imeta, "name", JS_NewString(ctx, n));
+        JS_SetPropertyStr(ctx, imeta, "name", JS_DupValue(ctx, nv));
         JS_SetPropertyStr(ctx, imeta, "keyPath", frozen_path(ctx, kp));
         JS_SetPropertyStr(ctx, imeta, "unique", JS_NewBool(ctx, unique));
         JS_SetPropertyStr(ctx, imeta, "multiEntry", JS_NewBool(ctx, multiEntry));
@@ -3292,14 +3351,13 @@ static JSValue store_createIndex(JSContext *ctx, JSValueConst this_val, int argc
         JS_SetPropertyInt64(ctx, indexes, cur, JS_DupValue(ctx, imeta));
         JS_FreeValue(ctx, indexes);
         int flags = (unique ? 1 : 0) | (multiEntry ? 2 : 0);
-        JSValueConst d[6] = { T, meta, imeta, JS_NewString(ctx, n), kp, JS_NewInt32(ctx, flags) };
+        JSValueConst d[6] = { T, meta, imeta, nv, kp, JS_NewInt32(ctx, flags) };
         enqueue_internal(ctx, T, make_exec(ctx, EX_CREATE_INDEX, 6, d));
-        JS_FreeValue(ctx, (JSValue)d[3]); JS_FreeValue(ctx, (JSValue)d[5]);
+        JS_FreeValue(ctx, (JSValue)d[5]);
         ret = index_for(ctx, S, imeta);
         JS_FreeValue(ctx, imeta);
     }
 out:
-    if (n) { JS_FreeCString(ctx, n); }
     JS_FreeValue(ctx, nv); JS_FreeValue(ctx, kp); JS_FreeValue(ctx, T); JS_FreeValue(ctx, meta); JS_FreeValue(ctx, S);
     return ret;
 }
@@ -3307,8 +3365,8 @@ static JSValue store_deleteIndex(JSContext *ctx, JSValueConst this_val, int argc
 {
     STORE_STATE(S);
     if (!arity(ctx, 1, argc, "deleteIndex", "IDBObjectStore")) { JS_FreeValue(ctx, S); return JS_EXCEPTION; }
-    JSValue nv = to_str(ctx, argv[0]);
-    const char *n = JS_ToCString(ctx, nv);
+    JSValue nv = to_str(ctx, argv[0]);   /* NUL-safe JS string for the name lookup */
+    if (JS_IsException(nv)) { JS_FreeValue(ctx, S); return JS_EXCEPTION; }
     JSValue T = pget(ctx, S, "tx");
     JSValue meta = pget(ctx, S, "meta");
     JSValue ret = JS_UNDEFINED;
@@ -3319,7 +3377,7 @@ static JSValue store_deleteIndex(JSContext *ctx, JSValueConst this_val, int argc
         JSValue indexes = pget(ctx, meta, "indexes");
         int64_t in = 0; JS_GetLength(ctx, indexes, &in);
         int64_t at = -1;
-        for (int64_t i = 0; i < in; i++) { JSValue ix = JS_GetPropertyInt64(ctx, indexes, i); if (pstr_eq(ctx, ix, "name", n)) { at = i; JS_FreeValue(ctx, ix); break; } JS_FreeValue(ctx, ix); }
+        for (int64_t i = 0; i < in; i++) { JSValue ix = JS_GetPropertyInt64(ctx, indexes, i); if (pstr_eq_val(ctx, ix, "name", nv)) { at = i; JS_FreeValue(ctx, ix); break; } JS_FreeValue(ctx, ix); }
         if (at < 0) { JS_FreeValue(ctx, indexes); ret = throw_dom(ctx, "NotFoundError", "The specified index was not found."); goto out; }
         JSValue imeta = JS_GetPropertyInt64(ctx, indexes, at);
         JSValue splice = JS_GetPropertyStr(ctx, indexes, "splice");
@@ -3332,7 +3390,6 @@ static JSValue store_deleteIndex(JSContext *ctx, JSValueConst this_val, int argc
         JS_FreeValue(ctx, imeta);
     }
 out:
-    if (n) { JS_FreeCString(ctx, n); }
     JS_FreeValue(ctx, nv); JS_FreeValue(ctx, T); JS_FreeValue(ctx, meta); JS_FreeValue(ctx, S);
     return ret;
 }
@@ -3349,31 +3406,32 @@ static JSValue index_get_name(JSContext *ctx, JSValueConst this_val)
 static JSValue index_set_name(JSContext *ctx, JSValueConst this_val, JSValueConst value)
 {
     INDEX_STATE(X);
+    /* ToString(name) runs before any state check, as the spec and the old idb.js did (a throwing toString is observed
+     * even on an inactive transaction). The name is kept as a JS string, never a C string, so an embedded U+0000 or a
+     * lone surrogate survives (see jsstr_eq / pstr_eq_val). */
     JSValue nv = to_str(ctx, value);
-    const char *n = JS_ToCString(ctx, nv);
     JSValue S = pget(ctx, X, "store");
     JSValue T = pget(ctx, S, "tx");
     JSValue meta = pget(ctx, X, "meta");
     JSValue smeta = pget(ctx, S, "meta");
     JSValue ret = JS_UNDEFINED;
+    if (JS_IsException(nv)) { ret = JS_EXCEPTION; goto out; }
     if (!pstr_eq(ctx, T, "mode", "versionchange")) { ret = throw_dom(ctx, "InvalidStateError", "The index's name can only be changed in a version change transaction."); goto out; }
     if (pbool(ctx, meta, "deleted") || pbool(ctx, smeta, "deleted")) { ret = throw_dom(ctx, "InvalidStateError", "The index or its object store has been deleted."); goto out; }
     if (!pstr_eq(ctx, T, "state", "active")) { ret = throw_dom(ctx, "TransactionInactiveError", "The transaction is not active."); goto out; }
-    if (pstr_eq(ctx, meta, "name", n)) { goto out; }
+    if (pstr_eq_val(ctx, meta, "name", nv)) { goto out; }
     {
         JSValue indexes = pget(ctx, smeta, "indexes");
         int64_t in = 0; JS_GetLength(ctx, indexes, &in);
         bool clash = false;
-        for (int64_t i = 0; i < in && !clash; i++) { JSValue ix = JS_GetPropertyInt64(ctx, indexes, i); clash = JS_VALUE_GET_PTR(ix) != JS_VALUE_GET_PTR(meta) && pstr_eq(ctx, ix, "name", n); JS_FreeValue(ctx, ix); }
+        for (int64_t i = 0; i < in && !clash; i++) { JSValue ix = JS_GetPropertyInt64(ctx, indexes, i); clash = JS_VALUE_GET_PTR(ix) != JS_VALUE_GET_PTR(meta) && pstr_eq_val(ctx, ix, "name", nv); JS_FreeValue(ctx, ix); }
         JS_FreeValue(ctx, indexes);
         if (clash) { ret = throw_dom(ctx, "ConstraintError", "An index with the specified name already exists."); goto out; }
-        pset(ctx, meta, "name", JS_NewString(ctx, n));
-        JSValueConst d[4] = { T, smeta, meta, JS_NewString(ctx, n) };
+        pset(ctx, meta, "name", JS_DupValue(ctx, nv));
+        JSValueConst d[4] = { T, smeta, meta, nv };
         enqueue_internal(ctx, T, make_exec(ctx, EX_RENAME_INDEX, 4, d));
-        JS_FreeValue(ctx, (JSValue)d[3]);
     }
 out:
-    if (n) { JS_FreeCString(ctx, n); }
     JS_FreeValue(ctx, nv); JS_FreeValue(ctx, S); JS_FreeValue(ctx, T); JS_FreeValue(ctx, meta); JS_FreeValue(ctx, smeta); JS_FreeValue(ctx, X);
     return ret;
 }
@@ -3833,8 +3891,8 @@ static JSValue db_createObjectStore(JSContext *ctx, JSValueConst this_val, int a
 {
     DB_STATE(c);
     if (!arity(ctx, 1, argc, "createObjectStore", "IDBDatabase")) { JS_FreeValue(ctx, c); return JS_EXCEPTION; }
-    JSValue nv = to_str(ctx, argv[0]);
-    const char *n = JS_ToCString(ctx, nv);
+    JSValue nv = to_str(ctx, argv[0]);   /* the name stays a JS string: U+0000 and lone surrogates must survive */
+    if (JS_IsException(nv)) { JS_FreeValue(ctx, c); return JS_EXCEPTION; }
     JSValue keyPath = JS_NULL; bool autoIncrement = false;
     JSValue options = wj_arg(argc, (JSValue *)argv, 1);
     JSValue ret = JS_EXCEPTION;
@@ -3856,7 +3914,7 @@ static JSValue db_createObjectStore(JSContext *ctx, JSValueConst this_val, int a
         JSValue stores = pget(ctx, c, "stores");
         int64_t sn = 0; JS_GetLength(ctx, stores, &sn);
         bool clash = false;
-        for (int64_t i = 0; i < sn && !clash; i++) { JSValue s = JS_GetPropertyInt64(ctx, stores, i); clash = pstr_eq(ctx, s, "name", n); JS_FreeValue(ctx, s); }
+        for (int64_t i = 0; i < sn && !clash; i++) { JSValue s = JS_GetPropertyInt64(ctx, stores, i); clash = pstr_eq_val(ctx, s, "name", nv); JS_FreeValue(ctx, s); }
         if (clash) { JS_FreeValue(ctx, stores); JS_FreeValue(ctx, T); throw_dom(ctx, "ConstraintError", "An object store with the specified name already exists."); goto out; }
         bool kpEmpty = false;
         if (JS_IsString(keyPath)) { const char *ks = JS_ToCString(ctx, keyPath); kpEmpty = ks && ks[0] == 0; if (ks) { JS_FreeCString(ctx, ks); } }
@@ -3864,7 +3922,7 @@ static JSValue db_createObjectStore(JSContext *ctx, JSValueConst this_val, int a
         if (autoIncrement && kpEmptyOrArray) { JS_FreeValue(ctx, stores); JS_FreeValue(ctx, T); throw_dom(ctx, "InvalidAccessError", "The autoIncrement option was set but the keyPath option was empty or an array."); goto out; }
         JSValue meta = JS_NewObject(ctx);
         JS_SetPropertyStr(ctx, meta, "id", JS_NewInt32(ctx, 0));
-        JS_SetPropertyStr(ctx, meta, "name", JS_NewString(ctx, n));
+        JS_SetPropertyStr(ctx, meta, "name", JS_DupValue(ctx, nv));
         JS_SetPropertyStr(ctx, meta, "keyPath", frozen_path(ctx, keyPath));
         JS_SetPropertyStr(ctx, meta, "autoIncrement", JS_NewBool(ctx, autoIncrement));
         JS_SetPropertyStr(ctx, meta, "indexes", JS_NewArray(ctx));
@@ -3875,15 +3933,14 @@ static JSValue db_createObjectStore(JSContext *ctx, JSValueConst this_val, int a
         JS_SetPropertyInt64(ctx, stores, cur, JS_DupValue(ctx, meta));
         JS_FreeValue(ctx, stores);
         update_names(ctx, c);
-        JSValueConst d[5] = { T, meta, JS_NewString(ctx, n), JS_DupValue(ctx, keyPath), JS_NewBool(ctx, autoIncrement) };
+        JSValueConst d[5] = { T, meta, nv, JS_DupValue(ctx, keyPath), JS_NewBool(ctx, autoIncrement) };
         enqueue_internal(ctx, T, make_exec(ctx, EX_CREATE_STORE, 5, d));
-        JS_FreeValue(ctx, (JSValue)d[2]); JS_FreeValue(ctx, (JSValue)d[3]); JS_FreeValue(ctx, (JSValue)d[4]);
+        JS_FreeValue(ctx, (JSValue)d[3]); JS_FreeValue(ctx, (JSValue)d[4]);
         ret = store_for(ctx, T, meta);
         JS_FreeValue(ctx, meta);
     }
     JS_FreeValue(ctx, T);
 out:
-    if (n) { JS_FreeCString(ctx, n); }
     JS_FreeValue(ctx, nv); JS_FreeValue(ctx, keyPath); JS_FreeValue(ctx, c);
     return ret;
 }
@@ -3891,8 +3948,8 @@ static JSValue db_deleteObjectStore(JSContext *ctx, JSValueConst this_val, int a
 {
     DB_STATE(c);
     if (!arity(ctx, 1, argc, "deleteObjectStore", "IDBDatabase")) { JS_FreeValue(ctx, c); return JS_EXCEPTION; }
-    JSValue nv = to_str(ctx, argv[0]);
-    const char *n = JS_ToCString(ctx, nv);
+    JSValue nv = to_str(ctx, argv[0]);   /* NUL-safe JS string for the name lookup */
+    if (JS_IsException(nv)) { JS_FreeValue(ctx, c); return JS_EXCEPTION; }
     JSValue T = pget(ctx, c, "upgradeTx");
     JSValue ret = JS_UNDEFINED;
     if (JS_IsNull(T)) { ret = throw_dom(ctx, "InvalidStateError", "The database is not running a version change transaction."); goto out; }
@@ -3901,7 +3958,7 @@ static JSValue db_deleteObjectStore(JSContext *ctx, JSValueConst this_val, int a
         JSValue stores = pget(ctx, c, "stores");
         int64_t sn = 0; JS_GetLength(ctx, stores, &sn);
         int64_t at = -1;
-        for (int64_t i = 0; i < sn; i++) { JSValue s = JS_GetPropertyInt64(ctx, stores, i); if (pstr_eq(ctx, s, "name", n)) { at = i; JS_FreeValue(ctx, s); break; } JS_FreeValue(ctx, s); }
+        for (int64_t i = 0; i < sn; i++) { JSValue s = JS_GetPropertyInt64(ctx, stores, i); if (pstr_eq_val(ctx, s, "name", nv)) { at = i; JS_FreeValue(ctx, s); break; } JS_FreeValue(ctx, s); }
         if (at < 0) { JS_FreeValue(ctx, stores); ret = throw_dom(ctx, "NotFoundError", "The object store was not found."); goto out; }
         JSValue meta = JS_GetPropertyInt64(ctx, stores, at);
         JSValue splice = JS_GetPropertyStr(ctx, stores, "splice");
@@ -3919,7 +3976,6 @@ static JSValue db_deleteObjectStore(JSContext *ctx, JSValueConst this_val, int a
         JS_FreeValue(ctx, meta);
     }
 out:
-    if (n) { JS_FreeCString(ctx, n); }
     JS_FreeValue(ctx, nv); JS_FreeValue(ctx, T); JS_FreeValue(ctx, c);
     return ret;
 }
@@ -3974,12 +4030,10 @@ static JSValue db_transaction(JSContext *ctx, JSValueConst this_val, int argc, J
         JSValue stores = pget(ctx, c, "stores");
         int64_t nn = 0; JS_GetLength(ctx, names, &nn);
         for (int64_t i = 0; i < nn; i++) {
-            JSValue nm = JS_GetPropertyInt64(ctx, names, i);
-            const char *ns = JS_ToCString(ctx, nm);
+            JSValue nm = JS_GetPropertyInt64(ctx, names, i);   /* a JS string; compare NUL-safely and in full UTF-16 */
             JSValue meta = JS_UNDEFINED;
             int64_t sn = 0; JS_GetLength(ctx, stores, &sn);
-            for (int64_t j = 0; j < sn; j++) { JSValue s = JS_GetPropertyInt64(ctx, stores, j); if (ns && pstr_eq(ctx, s, "name", ns)) { meta = s; break; } JS_FreeValue(ctx, s); }
-            if (ns) { JS_FreeCString(ctx, ns); }
+            for (int64_t j = 0; j < sn; j++) { JSValue s = JS_GetPropertyInt64(ctx, stores, j); if (pstr_eq_val(ctx, s, "name", nm)) { meta = s; break; } JS_FreeValue(ctx, s); }
             JS_FreeValue(ctx, nm);
             if (JS_IsUndefined(meta)) { JS_FreeValue(ctx, scope); JS_FreeValue(ctx, stores); throw_dom(ctx, "NotFoundError", "One of the specified object stores was not found."); goto out; }
             bool dup = false;
@@ -3988,16 +4042,12 @@ static JSValue db_transaction(JSContext *ctx, JSValueConst this_val, int argc, J
         }
         JS_FreeValue(ctx, stores);
         if (strcmp(mode, "versionchange") == 0) { JS_FreeValue(ctx, scope); type_error(ctx, "Failed to execute 'transaction' on 'IDBDatabase': The mode provided ('versionchange') is not one of 'readonly' or 'readwrite'."); goto out; }
-        /* scope.sort by name */
-        { JSValue sorted = sorted_names(ctx, scope, "name"); JS_FreeValue(ctx, sorted); }
-        /* sort scope by name in place */
+        /* sort scope by name in place, by UTF-16 code unit (as the spec and the old idb.js's .sort() do) */
         int64_t scn = 0; JS_GetLength(ctx, scope, &scn);
         for (int64_t i = 0; i < scn; i++) { for (int64_t j = i + 1; j < scn; j++) {
             JSValue a = JS_GetPropertyInt64(ctx, scope, i), b = JS_GetPropertyInt64(ctx, scope, j);
             JSValue an = pget(ctx, a, "name"), bn = pget(ctx, b, "name");
-            const char *as = JS_ToCString(ctx, an), *bs = JS_ToCString(ctx, bn);
-            bool swap = as && bs && strcmp(as, bs) > 0;
-            if (as) JS_FreeCString(ctx, as); if (bs) JS_FreeCString(ctx, bs);
+            bool swap = jsstr_cmp(ctx, an, bn) > 0;
             JS_FreeValue(ctx, an); JS_FreeValue(ctx, bn);
             if (swap) { JS_SetPropertyInt64(ctx, scope, i, b); JS_SetPropertyInt64(ctx, scope, j, a); } else { JS_FreeValue(ctx, a); JS_FreeValue(ctx, b); }
         } }
@@ -4067,8 +4117,8 @@ static JSValue tx_objectStore(JSContext *ctx, JSValueConst this_val, int argc, J
 {
     TX_STATE(T);
     if (!arity(ctx, 1, argc, "objectStore", "IDBTransaction")) { JS_FreeValue(ctx, T); return JS_EXCEPTION; }
-    JSValue nv = to_str(ctx, argv[0]);
-    const char *n = JS_ToCString(ctx, nv);
+    JSValue nv = to_str(ctx, argv[0]);   /* NUL-safe JS string for the name lookup */
+    if (JS_IsException(nv)) { JS_FreeValue(ctx, T); return JS_EXCEPTION; }
     JSValue ret = JS_EXCEPTION;
     if (pstr_eq(ctx, T, "state", "finished")) { throw_dom(ctx, "InvalidStateError", "The transaction has finished."); goto out; }
     {
@@ -4077,14 +4127,13 @@ static JSValue tx_objectStore(JSContext *ctx, JSValueConst this_val, int argc, J
         else { src = pget(ctx, T, "scope"); }
         int64_t sn = 0; JS_GetLength(ctx, src, &sn);
         JSValue meta = JS_UNDEFINED;
-        for (int64_t i = 0; i < sn; i++) { JSValue s = JS_GetPropertyInt64(ctx, src, i); if (pstr_eq(ctx, s, "name", n)) { meta = s; break; } JS_FreeValue(ctx, s); }
+        for (int64_t i = 0; i < sn; i++) { JSValue s = JS_GetPropertyInt64(ctx, src, i); if (pstr_eq_val(ctx, s, "name", nv)) { meta = s; break; } JS_FreeValue(ctx, s); }
         JS_FreeValue(ctx, src);
         if (JS_IsUndefined(meta)) { throw_dom(ctx, "NotFoundError", "The specified object store was not found."); goto out; }
         ret = store_for(ctx, T, meta);
         JS_FreeValue(ctx, meta);
     }
 out:
-    if (n) { JS_FreeCString(ctx, n); }
     JS_FreeValue(ctx, nv); JS_FreeValue(ctx, T);
     return ret;
 }
