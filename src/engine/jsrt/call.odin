@@ -17,6 +17,7 @@ VSEGMENT_SIZE :: 32 * 1024
 Frame :: struct {
 	prev:        ^Frame,
 	ctx:         ^Context,
+	caller_ctx:  ^Context, // the realm that made the call (QuickJS throws a few errors there)
 	func:        Value,
 	bc:          ^Function_Bytecode,
 	this_val:    Value,
@@ -428,6 +429,7 @@ interp_call :: proc(ctx: ^Context, fo: ^Object, this: Value, new_target: Value, 
 	mem, seg, top := vstack_alloc(rt, total)
 	f: Frame
 	f.ctx = realm
+	f.caller_ctx = ctx
 	f.func = mk_obj(fo)
 	f.this_val = this
 	f.new_target = new_target
@@ -458,6 +460,7 @@ coro_frame_new :: proc(ctx: ^Context, fo: ^Object, this: Value, args: []Value) -
 	f.storage = mem
 	f.storage_len = max(total, 1)
 	f.ctx = realm
+	f.caller_ctx = ctx
 	f.func = mk_obj(fo)
 	f.this_val = this
 	f.new_target = UNDEFINED

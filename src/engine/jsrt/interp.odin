@@ -65,6 +65,7 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 	strict := b.is_strict_mode
 	is_coro := b.func_kind != .normal
 	ret_val: Value
+	caller_ctx := f.caller_ctx != nil ? f.caller_ctx : ctx
 
 	// a coroutine resumed with throw() enters straight into the unwinder with the exception pending
 	exc := f.pending_throw
@@ -379,7 +380,7 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 				v := stack[sp - 1]
 				if v.tag != .object {
 					if v.tag != .undefined {
-						throw_type_error(ctx, "derived class constructor must return an object or undefined")
+						throw_type_error(caller_ctx, "derived class constructor must return an object or undefined")
 						exc = true
 						break
 					}
@@ -867,19 +868,19 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 				idx := rd_u16(code, pc)
 				pc += 2
 				v := locals[idx]
-				if v.tag == .uninitialized {throw_reference_error_uninit(ctx, b.vardefs[int(b.arg_count) + idx].name); exc = true; break}
+				if v.tag == .uninitialized {throw_reference_error_uninit(caller_ctx, b.vardefs[int(b.arg_count) + idx].name); exc = true; break}
 				stack[sp] = v
 				sp += 1
 			case .put_loc_check:
 				idx := rd_u16(code, pc)
 				pc += 2
-				if locals[idx].tag == .uninitialized {throw_reference_error_uninit(ctx, b.vardefs[int(b.arg_count) + idx].name); exc = true; break}
+				if locals[idx].tag == .uninitialized {throw_reference_error_uninit(caller_ctx, b.vardefs[int(b.arg_count) + idx].name); exc = true; break}
 				sp -= 1
 				locals[idx] = stack[sp]
 			case .put_loc_check_init:
 				idx := rd_u16(code, pc)
 				pc += 2
-				if locals[idx].tag != .uninitialized {throw_reference_error(ctx, "'this' can be initialized only once"); exc = true; break}
+				if locals[idx].tag != .uninitialized {throw_reference_error(caller_ctx, "'this' can be initialized only once"); exc = true; break}
 				sp -= 1
 				locals[idx] = stack[sp]
 			case .close_loc:
