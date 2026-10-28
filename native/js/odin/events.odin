@@ -263,11 +263,11 @@ wjr_EventTarget_addEventListener :: proc "c" (ctx: ^wj.Context, this_val: wj.JSV
 	if wj.is_nullish(cb) { wj.JS_FreeValue(ctx, type); return wj.UNDEFINED }
 	if !wj.is_object(cb) { wj.JS_FreeValue(ctx, type); return wj.JS_ThrowTypeError(ctx, "The callback provided as parameter 2 is not an object.") }
 	// the signal's own state, not its (patchable) `aborted` getter
-	if !wj.is_undefined(opt.signal) && wj.web_signal_aborted(opt.signal) { wj.JS_FreeValue(ctx, type); return wj.UNDEFINED }
+	if !wj.is_undefined(opt.signal) && web_signal_aborted(opt.signal) { wj.JS_FreeValue(ctx, type); return wj.UNDEFINED }
 	if find_listener(ctx, o, type, opt.capture, cb) != nil { wj.JS_FreeValue(ctx, type); return wj.UNDEFINED }
 	l := listener_add(ctx, o, wj.JS_DupValue(ctx, cb), type, opt.capture, opt.once, opt.passive, 0)
 	if l == nil { return wj.EXCEPTION }
-	if !wj.is_undefined(opt.signal) { wj.wj_signal_follow_listener(ctx, opt.signal, this_val, l) }
+	if !wj.is_undefined(opt.signal) { wj_signal_follow_listener(ctx, opt.signal, this_val, l) }
 	return wj.UNDEFINED
 }
 
@@ -634,10 +634,6 @@ wj_cb_listener :: proc "c" (user: i32, event: u64) {
 	live_prune(ctx)
 }
 
-// set while the realm dispatches an event of its own (wj_dispatch_own_event): it is trusted
-@(export, link_name = "wj_dispatch_trusted")
-wj_dispatch_trusted: bool
-
 @(export, link_name = "wjr_EventTarget_dispatchEvent")
 wjr_EventTarget_dispatchEvent :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	context = jsb.glue_context()
@@ -656,7 +652,7 @@ wjr_EventTarget_dispatchEvent :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 	if e.bubbles { init += {.Bubbles} }
 	if e.cancelable { init += {.Cancelable} }
 	if e.composed { init += {.Composed} }
-	e.trusted = wj_dispatch_trusted
+	e.trusted = wj.wj_dispatch_trusted
 	e.stop, e.stop_immediate, e.canceled = false, false, false
 	e.dispatching = true
 	wj.JS_FreeValue(ctx, e.target)
@@ -973,10 +969,10 @@ wj_event_extra :: proc "c" (obj: wj.JSValue) -> ^wj.JSValue {
 @(export, link_name = "wj_dispatch_own_event")
 wj_dispatch_own_event :: proc "c" (ctx: ^wj.Context, target: wj.JSValue, event: wj.JSValue) -> i32 {
 	event := event
-	saved := wj_dispatch_trusted
-	wj_dispatch_trusted = true
+	saved := wj.wj_dispatch_trusted
+	wj.wj_dispatch_trusted = true
 	r := wjr_EventTarget_dispatchEvent(ctx, target, 1, &event)
-	wj_dispatch_trusted = saved
+	wj.wj_dispatch_trusted = saved
 	if wj.is_exception(r) { return -1 }
 	return wj.JS_ToBool(ctx, r) != 0 ? 1 : 0
 }

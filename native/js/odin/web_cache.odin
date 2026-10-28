@@ -63,7 +63,7 @@ request_headers :: proc "contextless" (v: wj.JSValue, q: ^Query) {
 	if wj.wj_unwrap(v, cache_iface(.Request)) == nil { return }
 	ctx := wj.realm_ctx()
 	hv := wj.JS_GetPropertyStr(ctx, v, "headers")
-	wj.web_headers_serialize(hv, &q.request_headers)
+	web_headers_serialize(hv, &q.request_headers)
 	wj.JS_FreeValue(ctx, hv)
 }
 
@@ -84,7 +84,7 @@ request_parts :: proc "contextless" (ctx: ^wj.Context, v: wj.JSValue, url, metho
 	}
 	s: wj.Str
 	if !wj.web_to_usv(ctx, v, &s) { return false }
-	ok := wj.web_resolve_url(ctx, s.ptr, s.len, url)
+	ok := web_resolve_url(ctx, s.ptr, s.len, url)
 	wj.wj_str_free(ctx, &s)
 	return ok
 }
@@ -146,8 +146,8 @@ id_free :: proc "contextless" (l: ^Id_List) { wj.libc_free(l.mem); l^ = {} }
 // "Name: value" lines into a new Headers (guard none)
 @(private = "file")
 headers_of :: proc "contextless" (ctx: ^wj.Context, lines: string) -> wj.JSValue {
-	h := wj.web_headers_new(ctx, 0)   // WEB_GUARD_NONE
-	wj.web_headers_fill_lines(ctx, h, cstring(wj.raw_bytes(lines)), uint(len(lines)))
+	h := web_headers_new(ctx, .None)
+	web_headers_fill_lines(ctx, h, raw_data(lines), uint(len(lines)))
 	return h
 }
 
@@ -213,7 +213,7 @@ entry_response :: proc(ctx: ^wj.Context, name: string, id: u64) -> wj.JSValue {
 	wj.JS_FreeValue(ctx, init)
 	// the response keeps the URL it had ("" for a Response a script constructed, as stored)
 	if !wj.is_exception(r) && len(f[.Response_Url]) > 0 {
-		wj.web_response_set_url(ctx, r, raw_data(f[.Response_Url]), uint(len(f[.Response_Url])))
+		web_response_set_url(ctx, r, raw_data(f[.Response_Url]), uint(len(f[.Response_Url])))
 	}
 	return r
 }
@@ -371,7 +371,7 @@ put_body_read :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, ar
 	defer wj.wj_str_free(ctx, &rurl)
 	hv := wj.JS_GetPropertyStr(ctx, resp, "headers")
 	lines: wj.Web_Buf
-	wj.web_headers_serialize(hv, &lines)
+	web_headers_serialize(hv, &lines)
 	wj.JS_FreeValue(ctx, hv)
 	defer wj.web_buf_free(&lines)
 	rhl: uint

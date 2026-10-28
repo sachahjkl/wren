@@ -59,7 +59,7 @@ port_of :: proc "contextless" (v: wj.JSValue) -> ^Port {
 @(private = "file")
 port_new :: proc "contextless" (ctx: ^wj.Context) -> wj.JSValue {
 	context = m4_context()
-	target: abi.Handle
+	target: api_decl.EventTarget
 	jsb.host(&target, api_decl.EventTarget_create, wj.wr_EventTarget_create)
 	obj := wj.wj_wrap_owned(ctx, u64(target), iface_lazy(&if_message_port, "MessagePort"), wj.UNDEFINED)
 	if wj.is_exception(obj) { return obj }
@@ -468,7 +468,7 @@ wjr_MessagePort_close :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc:
 // onmessage = f starts the port (HTML "message port message queue" is enabled by the onmessage setter)
 @(export, link_name = "wjr_MessagePort_set_onmessage")
 wjr_MessagePort_set_onmessage :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue {
-	r := wj.wj_event_handler_set(ctx, this_val, iface_lazy(&if_message_port, "MessagePort"), "message", v, 0)
+	r := wj_event_handler_set(ctx, this_val, iface_lazy(&if_message_port, "MessagePort"), "message", v, 0)
 	if wj.is_exception(r) { return r }
 	return wjr_MessagePort_start(ctx, this_val, 0, nil)
 }

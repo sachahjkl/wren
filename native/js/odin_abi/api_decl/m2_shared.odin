@@ -29,13 +29,6 @@ Buffer_length :: #type proc(buffer: Buffer) -> i64
 Buffer_read :: #type proc(buffer: Buffer, offset: i64, destination: []u8) -> i32
 
 // ---- module events ----
-Event :: distinct abi.Handle
-Event_type :: #type proc(event: Event) -> string
-Event_data :: #type proc(event: Event) -> string
-Event_text :: #type proc(event: Event) -> string
-Event_code :: #type proc(event: Event) -> i64
-Event_object :: #type proc(event: Event) -> Buffer
-Event_isLive :: #type proc(event: Event) -> bool
 
 // ---- module document / workers: the base URL ----
 Document_resolveURL :: #type proc(url: string) -> (string, abi.Api_Error)

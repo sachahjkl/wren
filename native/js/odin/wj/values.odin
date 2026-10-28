@@ -25,7 +25,6 @@ BS_ALLOW_SHARED :: i32(1 << 1)
 foreign {
 
 	// FormData / Headers (web.h). (Blob / File: web_blob_* / web_file_* are Odin, package odin_glue, web_blob.odin.)
-	web_entry_wrap   :: proc(ctx: ^Context, entry: u64) -> JSValue ---
 
 	// (web_formdata_* are Odin, package odin_glue, web_formdata.odin)
 

@@ -4,12 +4,6 @@
 // of the web parts (wj_web_preinit / wj_web_start) is native/js/odin/web_core.odin.
 package wj
 
-@(default_calling_convention = "c")
-foreign {
-	// runtime/events.c
-	wjr_EventTarget_dispatchEvent :: proc(ctx: ^Context, this_val: JSValue, argc: i32, argv: [^]JSValue) -> JSValue ---
-}
-
 // The interface index of `name`, looked up once (`cache` holds index + 1; 0: not looked up yet).
 @(private = "file")
 cached_iface :: #force_inline proc "contextless" (cache: ^i32, name: cstring) -> i32 {
@@ -522,7 +516,7 @@ web_event_new :: proc "c" (ctx: ^Context, iface: i32, type: cstring, bubbles: bo
 		JS_SetPropertyStr(ctx, args[1], "bubbles", new_bool(bubbles))
 		JS_SetPropertyStr(ctx, args[1], "cancelable", new_bool(cancelable))
 	}
-	ev := wj_event_construct(ctx, wj_the_realm.ctors[iface], 2, &args[0], iface, interfaces()[iface].name)
+	ev := hooks.event_construct(ctx, wj_the_realm.ctors[iface], 2, &args[0], iface, interfaces()[iface].name)
 	JS_FreeValue(ctx, args[0])
 	JS_FreeValue(ctx, args[1])
 	return ev
@@ -534,7 +528,7 @@ web_event_fire :: proc "c" (ctx: ^Context, target: JSValue, ev: JSValue) -> bool
 	saved := wj_dispatch_trusted
 	wj_dispatch_trusted = true
 	a := ev
-	r := wjr_EventTarget_dispatchEvent(ctx, target, 1, &a)
+	r := hooks.dispatch_event(ctx, target, 1, &a)
 	wj_dispatch_trusted = saved
 	if is_exception(r) { wj_report_pending(ctx); return true }
 	ok := JS_ToBool(ctx, r) != 0

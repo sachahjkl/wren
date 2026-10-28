@@ -293,7 +293,7 @@ blob_callback_task :: proc "c" (ctx: ^wj.Context, data: wj.JSValue) {
 
 @(private = "file")
 blob_of :: proc "contextless" (ctx: ^wj.Context, p: []u8, type: string) -> wj.JSValue {
-	return wj.web_blob_new(ctx, raw_data(p), uint(len(p)), cstring(raw_data(type)), uint(len(type)))
+	return web_blob_new(ctx, raw_data(p), uint(len(p)), cstring(raw_data(type)), uint(len(type)))
 }
 
 @(export, link_name = "wjr_HTMLCanvasElement_toBlob")
@@ -1170,7 +1170,7 @@ wjr_WindowOrWorkerGlobalScope_createImageBitmap :: proc "c" (ctx: ^wj.Context, t
 	// a Blob: decoded on the decoding threads
 	bytes: [^]u8
 	blen: uint
-	if wj.web_blob_bytes(image, &bytes, &blen) {
+	if web_blob_bytes(image, &bytes, &blen) {
 		if blen == 0 { return wj.web_promise_rejected(ctx, wj.web_dom_exception(ctx, "InvalidStateError", "The source image could not be decoded.")) }
 		buf := wj.wj_host_buffer(ctx, bytes, blen)
 		if buf == 0 { return wj.web_promise_reject_pending(ctx) }

@@ -7,7 +7,6 @@ package wj
 @(default_calling_convention = "c")
 foreign {
 	// the five arguments of onerror for an ErrorEvent (load_errors.c)
-	wj_error_event_args        :: proc(ctx: ^Context, ev: JSValue, out: [^]JSValue) -> bool ---
 
 	// MessageEvent's getters (web_message.c), read while the browser's event exists
 	wjr_MessageEvent_get_data        :: proc(ctx: ^Context, this_val: JSValue) -> JSValue ---
@@ -15,5 +14,4 @@ foreign {
 	wjr_MessageEvent_get_lastEventId :: proc(ctx: ^Context, this_val: JSValue) -> JSValue ---
 
 	// addEventListener({signal}): the listener `l` of `target` goes when the signal aborts (web_abort.c)
-	wj_signal_follow_listener :: proc(ctx: ^Context, signal: JSValue, target: JSValue, l: ^Listener) ---
 }

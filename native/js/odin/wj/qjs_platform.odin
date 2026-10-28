@@ -95,12 +95,6 @@ CLASS_NAMED   :: 2
 @(private = "file")
 members_of :: #force_inline proc "contextless" (it: ^Interface) -> [^]Member { return ([^]Member)(it.members) }
 
-@(default_calling_convention = "c")
-foreign {
-	// runtime/events.c: a finalized wrapper's listeners
-	wj_listeners_free :: proc(rt: ^Runtime, o: ^Obj) ---
-}
-
 // ---- handle -> wrapper maps (open addressing, linear probing, backward-shift deletion) ----
 
 @(private = "file") Slot :: struct { key: u64, obj: JSValue }
@@ -339,7 +333,7 @@ obj_finalizer :: proc "c" (rt: ^Runtime, val: JSValue) {
 	id := JS_GetClassID(val)
 	o := (^Obj)(JS_GetOpaque(val, id))
 	if o == nil { return }
-	wj_listeners_free(rt, o)
+	if hooks.listeners_free != nil { hooks.listeners_free(rt, o) }
 	// finalized with its group (a collected cycle): only the reference is dropped, the group may be finalized already
 	JS_FreeValueRT(rt, o.group_val)
 	o.group = nil

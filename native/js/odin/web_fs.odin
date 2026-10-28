@@ -460,7 +460,7 @@ wjr_FileSystemFileHandle_getFile :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, a
 	if h == nil { return wj.web_promise_reject_pending(ctx) }
 	lf: abi.Handle
 	if st := jsb.host(&lf, api_decl.Fs_getFile, wj.wr_Fs_getFile, h.root, h.path); st != .None { return fs_reject(ctx, st, "getFile") }
-	return settled(ctx, wj.web_file_from_host(ctx, u64(lf)))
+	return settled(ctx, web_file_from_host(ctx, u64(lf)))
 }
 
 // The writable's sink: each method carries [id (a number)].
@@ -515,7 +515,7 @@ write_data :: proc(ctx: ^wj.Context, id: u64, data: wj.JSValue, at: i64) -> wj.J
 	}
 	bp: [^]u8
 	bn: uint
-	if wj.web_blob_bytes(data, &bp, &bn) { return write_bytes(ctx, id, at, bytes_of(bp, bn)) }
+	if web_blob_bytes(data, &bp, &bn) { return write_bytes(ctx, id, at, bytes_of(bp, bn)) }
 	if wj.wj_unwrap(data, fs_iface(.Blob)) != nil {
 		// a Blob of a file: its bytes first
 		fn := wj.JS_GetPropertyStr(ctx, data, "arrayBuffer")
@@ -604,7 +604,7 @@ wjr_FileSystemFileHandle_createWritable :: proc "c" (ctx: ^wj.Context, t: wj.JSV
 	wj.JS_SetPropertyStr(ctx, sink, "write", wj.JS_NewCFunctionData(ctx, sink_write, 2, 0, 1, &idv))
 	wj.JS_SetPropertyStr(ctx, sink, "close", wj.JS_NewCFunctionData(ctx, sink_close, 0, 0, 1, &idv))
 	wj.JS_SetPropertyStr(ctx, sink, "abort", wj.JS_NewCFunctionData(ctx, sink_close, 1, 1, 1, &idv))
-	s := wj.web_writable_new(ctx, fs_iface(.Writable), sink, 1, wj.UNDEFINED)
+	s := web_writable_new(ctx, fs_iface(.Writable), sink, 1, wj.UNDEFINED)
 	wj.JS_FreeValue(ctx, sink)
 	wj.JS_FreeValue(ctx, idv)
 	return settled(ctx, s)
@@ -614,7 +614,7 @@ wjr_FileSystemFileHandle_createWritable :: proc "c" (ctx: ^wj.Context, t: wj.JSV
 wjr_FileSystemWritableFileStream_write :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	if wj.wj_this(ctx, t, fs_iface(.Writable)) == nil { return wj.web_promise_reject_pending(ctx) }
 	if argc < 1 { wj.wj_throw_arity(ctx, "FileSystemWritableFileStream.write", 1, argc); return wj.web_promise_reject_pending(ctx) }
-	return wj.web_writable_write(ctx, t, argv[0])
+	return web_writable_write(ctx, t, argv[0])
 }
 
 // seek(position) / truncate(size): a WriteParams written through the stream
@@ -627,7 +627,7 @@ command :: proc "contextless" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv:
 	params := wj.JS_NewObject(ctx)
 	wj.JS_SetPropertyStr(ctx, params, "type", wj.new_string(ctx, type))
 	wj.JS_SetPropertyStr(ctx, params, member, wj.new_float64(ctx, v))
-	r := wj.web_writable_write(ctx, t, params)
+	r := web_writable_write(ctx, t, params)
 	wj.JS_FreeValue(ctx, params)
 	return r
 }

@@ -40,6 +40,4 @@ AnimationPlaybackEvent_time :: #type proc(event: u64, which: i32) -> f64
 
 // The payload of a browser event (module dom: Event_data, Event_text, Event_code). Shared with the events glue:
 // move them to its declarations when that domain lands, the wire is the same.
-Event_data :: #type proc(event: u64) -> string
-Event_text :: #type proc(event: u64) -> string
 Event_code :: #type proc(event: u64) -> i64

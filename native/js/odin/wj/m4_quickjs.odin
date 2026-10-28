@@ -6,12 +6,7 @@ package wj
 @(default_calling_convention = "c")
 foreign {
 	// atoms, properties
-	JS_AtomGetArrayIndex   :: proc(ctx: ^Context, pidx: ^u32, atom: Atom) -> bool ---
-	JS_NewAtomUInt32       :: proc(ctx: ^Context, n: u32) -> Atom ---
-	JS_AtomToString        :: proc(ctx: ^Context, atom: Atom) -> JSValue ---
 	JS_SetProperty         :: proc(ctx: ^Context, this_obj: JSValue, prop: Atom, val: JSValue) -> i32 ---
-	JS_DefinePropertyValue :: proc(ctx: ^Context, this_obj: JSValue, prop: Atom, val: JSValue, flags: i32) -> i32 ---
-	JS_Invoke              :: proc(ctx: ^Context, this_val: JSValue, atom: Atom, argc: i32, argv: [^]JSValue) -> JSValue ---
 	JS_IsInstanceOf        :: proc(ctx: ^Context, val: JSValue, obj: JSValue) -> i32 ---
 	JS_ToObject            :: proc(ctx: ^Context, val: JSValue) -> JSValue ---
 
@@ -22,20 +17,13 @@ foreign {
 	JS_NewDate       :: proc(ctx: ^Context, epoch_ms: f64) -> JSValue ---
 
 	// JSON
-	JS_ParseJSON     :: proc(ctx: ^Context, buf: [^]u8, buf_len: uint, filename: cstring) -> JSValue ---
 	JS_JSONStringify :: proc(ctx: ^Context, obj: JSValue, replacer: JSValue, space0: JSValue) -> JSValue ---
 
 	// exceptions (C varargs: keep formats %-safe)
-	JS_ThrowSyntaxError :: proc(ctx: ^Context, fmt: cstring, #c_vararg args: ..any) -> JSValue ---
 
 	// the engine (wj.h)
-	wj_stack_exhausted   :: proc() -> bool ---
-	wj_event_handler_get :: proc(ctx: ^Context, this_val: JSValue, iface: i32, type: cstring) -> JSValue ---
-	wj_event_handler_set :: proc(ctx: ^Context, this_val: JSValue, iface: i32, type: cstring, v: JSValue, special: i32) -> JSValue ---
 
 	// runtime/web_fs.c: a FileSystemHandle as text (malloc'ed; free with libc_free) and back, for structured cloning
-	web_fs_handle_describe :: proc(ctx: ^Context, v: JSValue) -> cstring ---
-	web_fs_handle_restore  :: proc(ctx: ^Context, desc: [^]u8, len: uint) -> JSValue ---
 }
 
 // wj_array_set64 (qjs_backend.h, static inline): a data property at an index that may not fit 32 bits.

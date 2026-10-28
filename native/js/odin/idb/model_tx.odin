@@ -1382,7 +1382,7 @@ populate_index :: proc "contextless" (ctx: ^wj.Context, T: wj.JSValue, s_meta: w
 			if len(pk) > 0 { wj.memcpy(pcopy, raw_data(pk), uint(len(pk))) }
 			wj.JS_FreeValue(ctx, after)
 			after = wj.wj_uint8array_take(ctx, pcopy, uint(len(pk)))
-			value := wj.web_clone_deserialize(ctx, raw_data(vb), uint(len(vb)))
+			value := clone_deserialize(ctx, raw_data(vb), uint(len(vb)))
 			keys := index_keys(ctx, value, kp, multi)
 			wj.JS_FreeValue(ctx, value)
 			kc: i64

@@ -220,15 +220,15 @@ wjr_DataTransferItemList_add :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue
 	store := l.source.(DataTransfer)
 	st: abi.Api_Error
 	if wj.wj_unwrap(argv[0], iface_index(.File)) != nil {
-		if host := wj.web_file_host(argv[0]); host != 0 {
+		if host := web_file_host(argv[0]); host != 0 {
 			st = jsb.host(&none, api_decl.DataTransfer_addFile, wj.wr_DataTransfer_addFile, store, abi.Handle(host))
 		} else {
 			name, type: wj.Str
 			lm: f64
-			if !wj.web_file_meta(ctx, argv[0], &name, &type, &lm) { return wj.EXCEPTION }
+			if !web_file_meta(ctx, argv[0], &name, &type, &lm) { return wj.EXCEPTION }
 			p: [^]u8
 			n: uint
-			wj.web_blob_bytes(argv[0], &p, &n)
+			web_blob_bytes(argv[0], &p, &n)
 			bytes := p != nil ? p[:n] : nil
 			st = jsb.host(&none, api_decl.DataTransfer_addBytes, wj.wr_DataTransfer_addBytes, store,
 				string(wj.str_slice(name)), string(wj.str_slice(type)), bytes, lm)
@@ -342,7 +342,7 @@ wjr_DataTransferItem_getAsFile :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVal
 	if jsb.host(&f, api_decl.DataTransfer_itemFile, wj.wr_DataTransfer_itemFile, l.source.(DataTransfer), l.index) != .None || f == 0 {
 		return wj.NULL
 	}
-	return wj.web_file_from_host(ctx, u64(f))
+	return web_file_from_host(ctx, u64(f))
 }
 
 // getAsFileSystemHandle(): a FileSystemFileHandle / FileSystemDirectoryHandle of the dropped file or folder, read
@@ -408,7 +408,7 @@ files_item :: proc(ctx: ^wj.Context, l: ^List_Impl, index: u32) -> wj.JSValue {
 	if !wj.is_undefined(f) { return f }
 	h := files_file(l, i32(index))
 	if h == 0 { return wj.NULL }
-	f = wj.web_file_from_host(ctx, u64(h))
+	f = web_file_from_host(ctx, u64(h))
 	if wj.is_exception(f) { return f }
 	wj.JS_SetPropertyUint32(ctx, l.files, index, wj.JS_DupValue(ctx, f))
 	return f

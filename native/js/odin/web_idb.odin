@@ -92,10 +92,10 @@ host_call :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: 
 @(private = "file")
 host_serialize :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	n: uint
-	p := wj.web_clone_serialize(ctx, wj.arg(argc, argv, 0), &n)
+	p := web_clone_serialize(ctx, wj.arg(argc, argv, 0), &n)
 	if p == nil { return wj.EXCEPTION }
 	r := idb_u8(ctx, p[:n])
-	wj.web_clone_free(ctx, p)
+	web_clone_free(ctx, p)
 	return r
 }
 
@@ -103,7 +103,7 @@ host_serialize :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, a
 host_deserialize :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	bytes, ok := bytes_arg(ctx, wj.arg(argc, argv, 0))
 	if !ok { return wj.EXCEPTION }
-	return wj.web_clone_deserialize(ctx, raw_data(bytes), uint(len(bytes)))
+	return web_clone_deserialize(ctx, raw_data(bytes), uint(len(bytes)))
 }
 
 @(private = "file")
@@ -115,7 +115,7 @@ host_report :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv
 // The microtask checkpoint, now: for a step of the model that runs with nothing else running (between two listeners).
 @(private = "file")
 host_drain :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
-	wj.wj_run_jobs()
+	wj_run_jobs()
 	return wj.UNDEFINED
 }
 
@@ -214,6 +214,7 @@ lazy_names := [?]cstring{
 // At pre-initialization (prelude.c): the names of IndexedDB's interfaces on the global, and the accessor.
 @(export, link_name = "wj_idb_define_lazy")
 wj_idb_define_lazy :: proc "c" (ctx: ^wj.Context) {
+	idb.clone_deserialize = web_clone_deserialize
 	global := wj.JS_GetGlobalObject(ctx)
 	for name in lazy_names {
 		a := wj.JS_NewAtom(ctx, name)

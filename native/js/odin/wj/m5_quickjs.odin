@@ -6,10 +6,6 @@ package wj
 
 @(default_calling_convention = "c")
 foreign {
-	JS_SetProperty         :: proc(ctx: ^Context, this_obj: JSValue, prop: Atom, val: JSValue) -> i32 ---
-	JS_DefinePropertyValue :: proc(ctx: ^Context, this_obj: JSValue, prop: Atom, val: JSValue, flags: i32) -> i32 ---
-	JS_ToObject            :: proc(ctx: ^Context, val: JSValue) -> JSValue ---
-	JS_SetConstructor      :: proc(ctx: ^Context, func_obj: JSValue, proto: JSValue) -> i32 ---
 }
 
 // JSCFunctionEnum (quickjs.h, QuickJS-ng 0.17).

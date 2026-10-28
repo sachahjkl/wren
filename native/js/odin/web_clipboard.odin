@@ -147,7 +147,7 @@ ci_get_type_then :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32,
 	sn, tn: uint
 	sv := wj.to_cstring_len(ctx, &sn, v)
 	type := wj.to_cstring_len(ctx, &tn, data[0])
-	blob := wj.web_blob_new(ctx, wj.cstr_bytes(sv), sv != nil ? sn : 0, type != nil ? type : "", type != nil ? tn : 0)
+	blob := web_blob_new(ctx, wj.cstr_bytes(sv), sv != nil ? sn : 0, type != nil ? type : "", type != nil ? tn : 0)
 	if sv != nil { wj.free_cstring(ctx, sv) }
 	if type != nil { wj.free_cstring(ctx, type) }
 	return blob
@@ -218,7 +218,7 @@ read_then :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: 
 	tlen := text != nil ? len(string(text)) : 0
 	arr := wj.JS_NewArray(ctx)
 	if tlen > 0 {
-		blob := wj.web_blob_new(ctx, wj.cstr_bytes(text), uint(tlen), "text/plain", 10)
+		blob := web_blob_new(ctx, wj.cstr_bytes(text), uint(tlen), "text/plain", 10)
 		items := wj.JS_NewObject(ctx)
 		wj.JS_SetPropertyStr(ctx, items, "text/plain", blob)
 		item := ci_ctor(ctx, clipboarditem_ctor, 1, &items)
