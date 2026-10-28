@@ -196,6 +196,7 @@ $odinified = @(
     'web_media.c',
     'web_mediaobjects.c',
     'web_message.c',
+    'web_navigation.c',
     'web_navigator.c',
     'web_navtiming.c',
     'web_perf.c',
