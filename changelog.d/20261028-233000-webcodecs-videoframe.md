@@ -1,3 +1,0 @@
-type: Added
-
-**WebCodecs `VideoFrame`** (`webcodecs.enabled`): a frame built from a canvas, image, video, `ImageBitmap`, `OffscreenCanvas`, another `VideoFrame` or a `BufferSource` (`VideoFrameBufferInit`), with `format`, `codedWidth`/`codedHeight`, `displayWidth`/`displayHeight`, `timestamp`, `duration`, `colorSpace` (`VideoColorSpace`), `visibleRect`, `allocationSize`, `copyTo` (planar / packed, with `PlaneLayout`), `clone` and `close`; drawable with `drawImage` and `createImageBitmap`, transferable by `postMessage`; the pixel storage (I420/NV12/RGBA/BGRA) and every conversion are native, bounded by `webcodecs.max_frame_bytes` and `webcodecs.max_dimension`.

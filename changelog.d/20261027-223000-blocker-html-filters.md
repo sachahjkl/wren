@@ -1,3 +1,0 @@
-type: Added
-
-**HTML filters (`example.com##^selector`)** (`blocker.html_filters.enabled`, `src/blocker/html_filter.odin`): the content blocker now applies uBlock Origin's `##^` filters, removing elements from a document's markup before it is parsed (an inline ad script or a tracker iframe never exists, instead of being hidden after the fact). The selector is one element with a tag name / `*` / `^script`, attribute tests (`[src*=…]`), `:has-text()` / `:contains()` (plain, glob or `/regex/`) and `:not(…)`; the `#@#^` exceptions and a size cap (`blocker.html_filters.max_body`) apply, and each removal is counted and logged.

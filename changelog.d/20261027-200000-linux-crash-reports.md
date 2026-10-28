@@ -1,3 +1,0 @@
-type: Added
-
-**Crash reports on Linux** (`crashtrace`) : a segmentation fault, a bus error, an illegal instruction (an Odin bounds check or assertion), a division by zero or an abort prints the faulting thread's stack (libc's backtrace on an alternate signal stack, each frame with its module and offset) and leaves `crash <date> UTC.txt` in the profile's crashes folder, with the build's GNU build id; `tools/crash_symbolize.sh` names the frames from the executable (addr2line); a session killed without a report (SIGKILL, the out-of-memory killer) is reported at the next start as an unclean exit. `tools/crash_e2e.sh` checks every way of dying.

@@ -1,3 +1,0 @@
-type: Changed
-
-**PNG, JPEG, GIF, BMP, ICO and TIFF are decoded by the built-in decoders** (`images.decode_now`, `images.encode_rgba`, pref `images.decode.system_codecs`) : the Rust `image` crate (png, zune-jpeg, gif, tiff) instead of Windows Imaging Component, the same on every system: EXIF orientation, ICC profiles, GIF animation with its loop count, the ICO entry that fits the size shown, and APNG animation (WIC showed the first frame only); the canvas's PNG and JPEG encoding too. `images.decode.system_codecs` gives them back to WIC during the transition; HEIF still needs the Windows codec. Measured on every fixture against WIC: the same sizes, frames, orientation, loop counts and pixels (`src/images/parity_test_windows.odin`).
