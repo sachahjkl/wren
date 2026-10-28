@@ -934,9 +934,10 @@ skip_line_comment :: proc(s: ^Parse_State, p0: int) -> int {
 		if s.buf[p] == 0 && p >= s.buf_end {break}
 		if s.buf[p] == '\r' || s.buf[p] == '\n' {break}
 		if s.buf[p] >= 0x80 {
+			// the C decodes (and consumes) the separator before testing it
 			cc, np := utf8_decode(s.buf, p)
-			if cc == CP_LS || cc == CP_PS {break}
 			p = np
+			if cc == CP_LS || cc == CP_PS {break}
 		} else {
 			p += 1
 		}
@@ -1174,8 +1175,8 @@ skip_shebang :: proc(buf: []u8, p0: int, buf_end: int) -> int {
 				break
 			} else if buf[p] >= 0x80 {
 				c, np := utf8_decode(buf, p)
-				if c == CP_LS || c == CP_PS {break}
 				p = np
+				if c == CP_LS || c == CP_PS {break}
 			} else {
 				p += 1
 			}
