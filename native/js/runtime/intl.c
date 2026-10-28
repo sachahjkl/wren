@@ -2314,7 +2314,9 @@ static char *df_format_string(JSContext *ctx, JSValueConst state, JSValueConst d
         if (show) {
             bool last_numeric = false;
             if (i + 1 < DURATION_UNIT_COUNT) { /* whether the next shown unit is part of a digital clock run */ }
-            char *piece = df_number(u, value, display ? display : "short", frac, has_frac && i == DURATION_UNIT_COUNT - 1);
+            const char *shape = display ? display : "short";
+            if (numeric && digital_run_open && (i == 5 || i == 6)) { shape = "2-digit"; }   /* minutes and seconds after a shown hour (or minute) are padded: 1:02:03 */
+            char *piece = df_number(u, value, shape, frac, has_frac && i == DURATION_UNIT_COUNT - 1);
             if (numeric) {
                 if (digital_run_open) { buf_str(&out, ":"); }
                 else { if (shown > 0) { buf_str(&out, ", "); } }

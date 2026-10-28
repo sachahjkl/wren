@@ -10,6 +10,8 @@ URL :: distinct Object
 
 URLSearchParams :: distinct Object
 
+URLPattern :: distinct Object
+
 // A component of a URL (also used by Location).
 URLComponent :: enum i32 {
 	Href = 0,
@@ -23,6 +25,18 @@ URLComponent :: enum i32 {
 	Search = 8,
 	Hash = 9,
 	Origin = 10,
+}
+
+// A component of a URLPattern (the eight pattern components, in the spec's order).
+URLPatternComponent :: enum i32 {
+	Protocol = 0,
+	Username = 1,
+	Password = 2,
+	Hostname = 3,
+	Port = 4,
+	Pathname = 5,
+	Search = 6,
+	Hash = 7,
 }
 
 foreign import _m_url "url"
@@ -47,6 +61,18 @@ foreign _m_url {
 	@(link_name = "URLSearchParams_toString") _URLSearchParams_toString :: proc(params: URLSearchParams, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "URLSearchParams_nameAt") _URLSearchParams_nameAt :: proc(params: URLSearchParams, index: i32, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "URLSearchParams_valueAt") _URLSearchParams_valueAt :: proc(params: URLSearchParams, index: i32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "URLPattern_createString") _URLPattern_createString :: proc(input: [^]u8, input_len: u32, base: [^]u8, base_len: u32, has_base: i32, ignore_case: i32, _ret: ^URLPattern) -> Error ---
+	@(link_name = "URLPattern_createInit") _URLPattern_createInit :: proc(protocol: [^]u8, protocol_len: u32, has_protocol: i32, username: [^]u8, username_len: u32, has_username: i32, password: [^]u8, password_len: u32, has_password: i32, hostname: [^]u8, hostname_len: u32, has_hostname: i32, port: [^]u8, port_len: u32, has_port: i32, pathname: [^]u8, pathname_len: u32, has_pathname: i32, search: [^]u8, search_len: u32, has_search: i32, hash: [^]u8, hash_len: u32, has_hash: i32, base: [^]u8, base_len: u32, has_base: i32, ignore_case: i32, _ret: ^URLPattern) -> Error ---
+	@(link_name = "URLPattern_component") _URLPattern_component :: proc(pattern: URLPattern, component: URLPatternComponent, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "URLPattern_hasRegExpGroups") _URLPattern_hasRegExpGroups :: proc(pattern: URLPattern) -> i32 ---
+	@(link_name = "URLPattern_execString") _URLPattern_execString :: proc(pattern: URLPattern, input: [^]u8, input_len: u32, base: [^]u8, base_len: u32, has_base: i32) -> i32 ---
+	@(link_name = "URLPattern_execInit") _URLPattern_execInit :: proc(pattern: URLPattern, protocol: [^]u8, protocol_len: u32, has_protocol: i32, username: [^]u8, username_len: u32, has_username: i32, password: [^]u8, password_len: u32, has_password: i32, hostname: [^]u8, hostname_len: u32, has_hostname: i32, port: [^]u8, port_len: u32, has_port: i32, pathname: [^]u8, pathname_len: u32, has_pathname: i32, search: [^]u8, search_len: u32, has_search: i32, hash: [^]u8, hash_len: u32, has_hash: i32) -> i32 ---
+	@(link_name = "URLPattern_resultInputCount") _URLPattern_resultInputCount :: proc(pattern: URLPattern) -> i32 ---
+	@(link_name = "URLPattern_resultInput") _URLPattern_resultInput :: proc(pattern: URLPattern, index: i32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "URLPattern_componentInput") _URLPattern_componentInput :: proc(pattern: URLPattern, component: URLPatternComponent, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "URLPattern_groupCount") _URLPattern_groupCount :: proc(pattern: URLPattern, component: URLPatternComponent) -> i32 ---
+	@(link_name = "URLPattern_groupName") _URLPattern_groupName :: proc(pattern: URLPattern, component: URLPatternComponent, index: i32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "URLPattern_groupValue") _URLPattern_groupValue :: proc(pattern: URLPattern, component: URLPatternComponent, index: i32, _buf: [^]u8, _cap: u32) -> i32 ---
 }
 
 // new URL(input, base): Type when the input (or the base) is not a valid URL or too long (web.url_max_length).
@@ -290,6 +316,190 @@ URLSearchParams_valueAt_alloc :: proc(params: URLSearchParams, index: i32, alloc
 	for _ in 0 ..< 4 {
 		buf := make([]u8, cap, allocator)
 		n := _URLSearchParams_valueAt(params, index, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// /////////////////////////////
+// new URLPattern(patternString, baseURL?, {ignoreCase}): Type on a malformed pattern or missing protocol with no
+// base. `has_base` and `has_options` distinguish an absent argument from an empty string / default.
+URLPattern_createString :: proc "contextless" (input: string, base: string, has_base: bool, ignore_case: bool) -> (result: URLPattern, err: Error) {
+	err = _URLPattern_createString(raw_data(input), u32(len(input)), raw_data(base), u32(len(base)), i32(1 if has_base else 0), i32(1 if ignore_case else 0), &result)
+	return
+}
+
+// new URLPattern(init, {ignoreCase}): the eight optional component strings plus an optional baseURL. A component's
+// `has_*` flag is false when the property was absent (defaults to the wildcard pattern).
+URLPattern_createInit :: proc "contextless" (protocol: string, has_protocol: bool, username: string, has_username: bool, password: string, has_password: bool, hostname: string, has_hostname: bool, port: string, has_port: bool, pathname: string, has_pathname: bool, search: string, has_search: bool, hash: string, has_hash: bool, base: string, has_base: bool, ignore_case: bool) -> (result: URLPattern, err: Error) {
+	err = _URLPattern_createInit(raw_data(protocol), u32(len(protocol)), i32(1 if has_protocol else 0), raw_data(username), u32(len(username)), i32(1 if has_username else 0), raw_data(password), u32(len(password)), i32(1 if has_password else 0), raw_data(hostname), u32(len(hostname)), i32(1 if has_hostname else 0), raw_data(port), u32(len(port)), i32(1 if has_port else 0), raw_data(pathname), u32(len(pathname)), i32(1 if has_pathname else 0), raw_data(search), u32(len(search)), i32(1 if has_search else 0), raw_data(hash), u32(len(hash)), i32(1 if has_hash else 0), raw_data(base), u32(len(base)), i32(1 if has_base else 0), i32(1 if ignore_case else 0), &result)
+	return
+}
+
+// A component's normalized pattern string (the getters protocol, username, ...).
+URLPattern_component :: proc "contextless" (pattern: URLPattern, component: URLPatternComponent, buf: []u8) -> (string, Error) {
+	n := _URLPattern_component(pattern, component, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of URLPattern_component's result.
+URLPattern_component_len :: proc "contextless" (pattern: URLPattern, component: URLPatternComponent) -> (int, Error) {
+	n := _URLPattern_component(pattern, component, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// URLPattern_component's result in a buffer allocated to fit.
+URLPattern_component_alloc :: proc(pattern: URLPattern, component: URLPatternComponent, allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _URLPattern_component(pattern, component, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// pattern.hasRegExpGroups
+URLPattern_hasRegExpGroups :: proc "contextless" (pattern: URLPattern) -> bool {
+	return _URLPattern_hasRegExpGroups(pattern) != 0
+}
+
+// Run exec()/test() against a URL string (resolved against base when has_base). Stores the result in the object.
+// Returns 1 when it matched, 0 when it did not (exec returns null, test returns false).
+URLPattern_execString :: proc "contextless" (pattern: URLPattern, input: string, base: string, has_base: bool) -> i32 {
+	return _URLPattern_execString(pattern, raw_data(input), u32(len(input)), raw_data(base), u32(len(base)), i32(1 if has_base else 0))
+}
+
+// Run exec()/test() against a per-component init. Returns 1/0 as execString.
+URLPattern_execInit :: proc "contextless" (pattern: URLPattern, protocol: string, has_protocol: bool, username: string, has_username: bool, password: string, has_password: bool, hostname: string, has_hostname: bool, port: string, has_port: bool, pathname: string, has_pathname: bool, search: string, has_search: bool, hash: string, has_hash: bool) -> i32 {
+	return _URLPattern_execInit(pattern, raw_data(protocol), u32(len(protocol)), i32(1 if has_protocol else 0), raw_data(username), u32(len(username)), i32(1 if has_username else 0), raw_data(password), u32(len(password)), i32(1 if has_password else 0), raw_data(hostname), u32(len(hostname)), i32(1 if has_hostname else 0), raw_data(port), u32(len(port)), i32(1 if has_port else 0), raw_data(pathname), u32(len(pathname)), i32(1 if has_pathname else 0), raw_data(search), u32(len(search)), i32(1 if has_search else 0), raw_data(hash), u32(len(hash)), i32(1 if has_hash else 0))
+}
+
+// After a successful exec: the number of `inputs` entries, and the i-th input string.
+URLPattern_resultInputCount :: proc "contextless" (pattern: URLPattern) -> i32 {
+	return _URLPattern_resultInputCount(pattern)
+}
+
+URLPattern_resultInput :: proc "contextless" (pattern: URLPattern, index: i32, buf: []u8) -> (string, Error) {
+	n := _URLPattern_resultInput(pattern, index, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of URLPattern_resultInput's result.
+URLPattern_resultInput_len :: proc "contextless" (pattern: URLPattern, index: i32) -> (int, Error) {
+	n := _URLPattern_resultInput(pattern, index, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// URLPattern_resultInput's result in a buffer allocated to fit.
+URLPattern_resultInput_alloc :: proc(pattern: URLPattern, index: i32, allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _URLPattern_resultInput(pattern, index, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// The matched input value of a component (URLPatternComponentResult.input).
+URLPattern_componentInput :: proc "contextless" (pattern: URLPattern, component: URLPatternComponent, buf: []u8) -> (string, Error) {
+	n := _URLPattern_componentInput(pattern, component, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of URLPattern_componentInput's result.
+URLPattern_componentInput_len :: proc "contextless" (pattern: URLPattern, component: URLPatternComponent) -> (int, Error) {
+	n := _URLPattern_componentInput(pattern, component, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// URLPattern_componentInput's result in a buffer allocated to fit.
+URLPattern_componentInput_alloc :: proc(pattern: URLPattern, component: URLPatternComponent, allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _URLPattern_componentInput(pattern, component, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// The number of named groups of a component, and the i-th group's name.
+URLPattern_groupCount :: proc "contextless" (pattern: URLPattern, component: URLPatternComponent) -> i32 {
+	return _URLPattern_groupCount(pattern, component)
+}
+
+URLPattern_groupName :: proc "contextless" (pattern: URLPattern, component: URLPatternComponent, index: i32, buf: []u8) -> (string, Error) {
+	n := _URLPattern_groupName(pattern, component, index, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of URLPattern_groupName's result.
+URLPattern_groupName_len :: proc "contextless" (pattern: URLPattern, component: URLPatternComponent, index: i32) -> (int, Error) {
+	n := _URLPattern_groupName(pattern, component, index, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// URLPattern_groupName's result in a buffer allocated to fit.
+URLPattern_groupName_alloc :: proc(pattern: URLPattern, component: URLPatternComponent, index: i32, allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _URLPattern_groupName(pattern, component, index, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// The i-th group's captured value: Not_Found when the group did not participate (its value is undefined).
+URLPattern_groupValue :: proc "contextless" (pattern: URLPattern, component: URLPatternComponent, index: i32, buf: []u8) -> (string, Error) {
+	n := _URLPattern_groupValue(pattern, component, index, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of URLPattern_groupValue's result.
+URLPattern_groupValue_len :: proc "contextless" (pattern: URLPattern, component: URLPatternComponent, index: i32) -> (int, Error) {
+	n := _URLPattern_groupValue(pattern, component, index, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// URLPattern_groupValue's result in a buffer allocated to fit.
+URLPattern_groupValue_alloc :: proc(pattern: URLPattern, component: URLPatternComponent, index: i32, allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _URLPattern_groupValue(pattern, component, index, raw_data(buf), u32(len(buf)))
 		if n < 0 { delete(buf, allocator); return {}, Error(n) }
 		if int(n) <= cap { return string(buf[:n]), .None }
 		delete(buf, allocator)

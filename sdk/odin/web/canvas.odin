@@ -36,6 +36,8 @@ OffscreenCanvas :: distinct Object
 
 ImageBitmap :: distinct Object
 
+ImageBitmapRenderingContext :: distinct Object
+
 // What a fill or stroke style currently is.
 StyleKind :: enum i32 {
 	Color = 0,
@@ -184,6 +186,10 @@ foreign _m_canvas {
 	@(link_name = "ImageBitmap_close") _ImageBitmap_close :: proc(bitmap: ImageBitmap) ---
 	@(link_name = "Canvas_createBitmap") _Canvas_createBitmap :: proc(source: u64, form: i32, sx: f64, sy: f64, sw: f64, sh: f64, orient: i32, premul: i32, colorspace: i32, resize_w: i32, resize_h: i32, resize_q: i32, _ret: ^ImageBitmap) -> Error ---
 	@(link_name = "Canvas_bitmapFromPixels") _Canvas_bitmapFromPixels :: proc(data: [^]u8, data_len: u32, width: i32, height: i32, orient: i32, premul: i32, colorspace: i32, resize_w: i32, resize_h: i32, resize_q: i32, _ret: ^ImageBitmap) -> Error ---
+	@(link_name = "HTMLCanvasElement_bitmapRenderer") _HTMLCanvasElement_bitmapRenderer :: proc(canvas: HTMLCanvasElement, alpha: i32, _ret: ^ImageBitmapRenderingContext) -> Error ---
+	@(link_name = "OffscreenCanvas_bitmapRenderer") _OffscreenCanvas_bitmapRenderer :: proc(canvas: OffscreenCanvas, alpha: i32, _ret: ^ImageBitmapRenderingContext) -> Error ---
+	@(link_name = "ImageBitmapRenderingContext_canvas") _ImageBitmapRenderingContext_canvas :: proc(context: ImageBitmapRenderingContext) -> u64 ---
+	@(link_name = "ImageBitmapRenderingContext_transferFromImageBitmap") _ImageBitmapRenderingContext_transferFromImageBitmap :: proc(context: ImageBitmapRenderingContext, bitmap: u64, has_bitmap: i32) -> Error ---
 }
 
 // /////////////////////////////
@@ -1248,5 +1254,29 @@ Canvas_createBitmap :: proc "contextless" (source: u64, form: i32, sx: f64, sy: 
 Canvas_bitmapFromPixels :: proc "contextless" (data: []u8, width: i32, height: i32, orient: i32, premul: i32, colorspace: i32, resize_w: i32, resize_h: i32, resize_q: i32) -> (result: ImageBitmap, err: Error) {
 	err = _Canvas_bitmapFromPixels(raw_data(data), u32(len(data)), width, height, orient, premul, colorspace, resize_w, resize_h, resize_q, &result)
 	return
+}
+
+// /////////////////////////////
+// getContext("bitmaprenderer", {alpha}) on a <canvas> element / an OffscreenCanvas: 0 when a 2D context already
+// holds the canvas (the kinds cannot be mixed).
+HTMLCanvasElement_bitmapRenderer :: proc "contextless" (canvas: HTMLCanvasElement, alpha: bool) -> (result: ImageBitmapRenderingContext, err: Error) {
+	err = _HTMLCanvasElement_bitmapRenderer(canvas, i32(1 if alpha else 0), &result)
+	return
+}
+
+OffscreenCanvas_bitmapRenderer :: proc "contextless" (canvas: OffscreenCanvas, alpha: bool) -> (result: ImageBitmapRenderingContext, err: Error) {
+	err = _OffscreenCanvas_bitmapRenderer(canvas, i32(1 if alpha else 0), &result)
+	return
+}
+
+// context.canvas: the owning <canvas> node or OffscreenCanvas object (0 when the canvas is gone).
+ImageBitmapRenderingContext_canvas :: proc "contextless" (context: ImageBitmapRenderingContext) -> u64 {
+	return _ImageBitmapRenderingContext_canvas(context)
+}
+
+// transferFromImageBitmap(bitmap): display the bitmap (its pixels move into the canvas and it is detached);
+// `has_bitmap` false is the null argument (clear the canvas). Type when the argument is not an ImageBitmap.
+ImageBitmapRenderingContext_transferFromImageBitmap :: proc "contextless" (context: ImageBitmapRenderingContext, bitmap: u64, has_bitmap: bool) -> Error {
+	return _ImageBitmapRenderingContext_transferFromImageBitmap(context, bitmap, i32(1 if has_bitmap else 0))
 }
 

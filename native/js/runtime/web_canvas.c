@@ -63,7 +63,7 @@ static bool is_bitmaprenderer(JSContext *ctx, JSValueConst id)
 {
     wj_str s;
     if (!wj_to_str(ctx, id, &s, 0, NULL)) { return false; }
-    bool r = s.len == 15 && memcmp(s.ptr, "bitmaprenderer", 14) == 0 && s.ptr[14] == 'r';
+    bool r = s.len == 14 && memcmp(s.ptr, "bitmaprenderer", 14) == 0;
     wj_str_free(ctx, &s);
     return r;
 }

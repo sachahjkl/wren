@@ -18,6 +18,10 @@ Checked by the browser on every call (`lookup_URL`).
 
 Checked by the browser on every call (`lookup_URLSearchParams`).
 
+### handle `URLPattern` : `Object`
+
+Checked by the browser on every call (`lookup_URLPattern`).
+
 ### enum `URLComponent` : i32
 
 A component of a URL (also used by Location).
@@ -35,6 +39,21 @@ A component of a URL (also used by Location).
 | `Search` | 8 |  |%!(EXTRA false)
 | `Hash` | 9 |  |%!(EXTRA false)
 | `Origin` | 10 |  |%!(EXTRA false)
+
+### enum `URLPatternComponent` : i32
+
+A component of a URLPattern (the eight pattern components, in the spec's order).
+
+| member | value | |
+|---|---:|---|
+| `Protocol` | 0 |  |%!(EXTRA false)
+| `Username` | 1 |  |%!(EXTRA false)
+| `Password` | 2 |  |%!(EXTRA false)
+| `Hostname` | 3 |  |%!(EXTRA false)
+| `Port` | 4 |  |%!(EXTRA false)
+| `Pathname` | 5 |  |%!(EXTRA false)
+| `Search` | 6 |  |%!(EXTRA false)
+| `Hash` | 7 |  |%!(EXTRA false)
 
 ## Functions
 
@@ -232,4 +251,134 @@ The value of the pair at `index`: Not_Found past the end.
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `URLSearchParams_valueAt :: proc(c: ^Call, params: Api_URLSearchParams, index: i32) -> (string, Api_Error)`
+
+### `URLPattern_createString`
+
+```
+URLPattern URLPattern_createString(string input, string base, bool has_base, bool ignore_case) raises
+```
+
+/////////////////////////////
+new URLPattern(patternString, baseURL?, {ignoreCase}): Type on a malformed pattern or missing protocol with no
+base. `has_base` and `has_options` distinguish an absent argument from an empty string / default.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `URLPattern_createString :: proc(c: ^Call, input: string, base: string, has_base: bool, ignore_case: bool) -> (u64, Api_Error)`
+
+### `URLPattern_createInit`
+
+```
+URLPattern URLPattern_createInit(string protocol, bool has_protocol, string username, bool has_username, string password, bool has_password, string hostname, bool has_hostname, string port, bool has_port, string pathname, bool has_pathname, string search, bool has_search, string hash, bool has_hash, string base, bool has_base, bool ignore_case) raises
+```
+
+new URLPattern(init, {ignoreCase}): the eight optional component strings plus an optional baseURL. A component's
+`has_*` flag is false when the property was absent (defaults to the wildcard pattern).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `URLPattern_createInit :: proc(c: ^Call, protocol: string, has_protocol: bool, username: string, has_username: bool, password: string, has_password: bool, hostname: string, has_hostname: bool, port: string, has_port: bool, pathname: string, has_pathname: bool, search: string, has_search: bool, hash: string, has_hash: bool, base: string, has_base: bool, ignore_case: bool) -> (u64, Api_Error)`
+
+### `URLPattern_component`
+
+```
+string URLPattern_component(URLPattern pattern, URLPatternComponent component)
+```
+
+A component's normalized pattern string (the getters protocol, username, ...).
+
+Host: `URLPattern_component :: proc(c: ^Call, pattern: Api_URLPattern, component: Api_URLPatternComponent) -> string`
+
+### `URLPattern_hasRegExpGroups`
+
+```
+bool URLPattern_hasRegExpGroups(URLPattern pattern)
+```
+
+pattern.hasRegExpGroups
+
+Host: `URLPattern_hasRegExpGroups :: proc(c: ^Call, pattern: Api_URLPattern) -> bool`
+
+### `URLPattern_execString`
+
+```
+i32 URLPattern_execString(URLPattern pattern, string input, string base, bool has_base)
+```
+
+Run exec()/test() against a URL string (resolved against base when has_base). Stores the result in the object.
+Returns 1 when it matched, 0 when it did not (exec returns null, test returns false).
+
+Host: `URLPattern_execString :: proc(c: ^Call, pattern: Api_URLPattern, input: string, base: string, has_base: bool) -> i32`
+
+### `URLPattern_execInit`
+
+```
+i32 URLPattern_execInit(URLPattern pattern, string protocol, bool has_protocol, string username, bool has_username, string password, bool has_password, string hostname, bool has_hostname, string port, bool has_port, string pathname, bool has_pathname, string search, bool has_search, string hash, bool has_hash)
+```
+
+Run exec()/test() against a per-component init. Returns 1/0 as execString.
+
+Host: `URLPattern_execInit :: proc(c: ^Call, pattern: Api_URLPattern, protocol: string, has_protocol: bool, username: string, has_username: bool, password: string, has_password: bool, hostname: string, has_hostname: bool, port: string, has_port: bool, pathname: string, has_pathname: bool, search: string, has_search: bool, hash: string, has_hash: bool) -> i32`
+
+### `URLPattern_resultInputCount`
+
+```
+i32 URLPattern_resultInputCount(URLPattern pattern)
+```
+
+After a successful exec: the number of `inputs` entries, and the i-th input string.
+
+Host: `URLPattern_resultInputCount :: proc(c: ^Call, pattern: Api_URLPattern) -> i32`
+
+### `URLPattern_resultInput`
+
+```
+string URLPattern_resultInput(URLPattern pattern, i32 index) raises
+```
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `URLPattern_resultInput :: proc(c: ^Call, pattern: Api_URLPattern, index: i32) -> (string, Api_Error)`
+
+### `URLPattern_componentInput`
+
+```
+string URLPattern_componentInput(URLPattern pattern, URLPatternComponent component)
+```
+
+The matched input value of a component (URLPatternComponentResult.input).
+
+Host: `URLPattern_componentInput :: proc(c: ^Call, pattern: Api_URLPattern, component: Api_URLPatternComponent) -> string`
+
+### `URLPattern_groupCount`
+
+```
+i32 URLPattern_groupCount(URLPattern pattern, URLPatternComponent component)
+```
+
+The number of named groups of a component, and the i-th group's name.
+
+Host: `URLPattern_groupCount :: proc(c: ^Call, pattern: Api_URLPattern, component: Api_URLPatternComponent) -> i32`
+
+### `URLPattern_groupName`
+
+```
+string URLPattern_groupName(URLPattern pattern, URLPatternComponent component, i32 index) raises
+```
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `URLPattern_groupName :: proc(c: ^Call, pattern: Api_URLPattern, component: Api_URLPatternComponent, index: i32) -> (string, Api_Error)`
+
+### `URLPattern_groupValue`
+
+```
+string URLPattern_groupValue(URLPattern pattern, URLPatternComponent component, i32 index) raises
+```
+
+The i-th group's captured value: Not_Found when the group did not participate (its value is undefined).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `URLPattern_groupValue :: proc(c: ^Call, pattern: Api_URLPattern, component: Api_URLPatternComponent, index: i32) -> (string, Api_Error)`
 
