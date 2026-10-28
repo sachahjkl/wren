@@ -172,6 +172,8 @@ $odinified = @(
     'web_entries.c',
     'web_fs.c',
     'web_fullscreen.c',
+    'web_idb.c',
+    'web_idb_native.c',
     'web_location.c',
     'web_media.c',
     'web_mediaobjects.c',
