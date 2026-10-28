@@ -173,7 +173,11 @@ exported under their QuickJS names with `-define:JSCAPI_EXPORT=true`) over `jsrt
 `tools/jsrt_bench.ps1` produces the speed table; `tools/jsrt_ab.ps1` compares several builds (and QuickJS)
 interleaved, best of N, on `micro.js` or `macro.js`; `tools/jsrt_prof.ps1` is a sampling profiler (hot
 functions and source lines; `JSRT_PROF=1` on `judge eval`); `tools/jsrt_mem.ps1` measures the peak working
-set. Timings on this machine swing by ±30 % from run to run when other builds are running, and a change that
+set. `JSRT_MEMPROF=1` on `judge eval` prints a census of the heap by kind of cell (count, cell bytes, bytes owned
+out of line, slack; `memprof.odin`), `jsengine mem [-image m.wasm] file.js` does the same inside the wasm32 image
+(sizes of the cells on wasm32, linear memory of the module, which only grows), and `WREN_JS_MEMPROF=1` makes
+`jsdomtest` print it for each page. `examples/jsbench/page_gen.js` generates a 650 KB framework-like bundle for
+page-load memory (the compile arena dominates it). Timings on this machine swing by ±30 % from run to run when other builds are running, and a change that
 adds no work to the hot loop can still move an unrelated case by ±10 % (code layout), so compare interleaved
 and keep the best. Fuzzing: `judge fuzz <dir>` mutates serialized bytecode
 and loads it (reader + verifier; 40 000 mutants, no crash; running accepted mutants is opt‑in with

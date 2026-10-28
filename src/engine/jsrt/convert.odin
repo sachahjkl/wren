@@ -1,6 +1,6 @@
 package jsrt
 
-// Type conversions and comparisons (ECMA-262 §7.1, §7.2).
+// Type conversions and comparisons (ECMA-262 Â§7.1, Â§7.2).
 
 import "core:math"
 import "wb:engine/numconv"
@@ -396,7 +396,7 @@ to_object :: proc(ctx: ^Context, v: Value) -> Value {
 
 new_primitive_wrapper :: proc(ctx: ^Context, cls: Class_ID, v: Value) -> ^Object {
 	o := object_new_proto(ctx, ctx.class_proto[cls], cls)
-	o.data = Prim_Data{v}
+	set_prim(ctx.rt, o, v)
 	if cls == .string {
 		// own non-enumerable "length"
 		s := add_property(ctx.rt, o, pa(.A_length), {})

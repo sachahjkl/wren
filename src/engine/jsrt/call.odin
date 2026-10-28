@@ -14,6 +14,15 @@ Value_Segment :: struct {
 
 VSEGMENT_SIZE :: 32 * 1024
 
+// Segments grow with the stack: most realms never leave the first, small one.
+vsegment_size :: #force_inline proc "contextless" (index: int) -> int {
+	switch index {
+	case 0: return 4 * 1024
+	case 1: return 16 * 1024
+	}
+	return VSEGMENT_SIZE
+}
+
 Frame :: struct {
 	prev:        ^Frame,
 	ctx:         ^Context,
@@ -88,7 +97,7 @@ vstack_alloc :: #force_inline proc(rt: ^Runtime, n: int) -> (mem: [^]Value, seg:
 vstack_alloc_slow :: proc(rt: ^Runtime, n: int) -> (mem: [^]Value, seg: int, top: int) {
 	for {
 		if rt.vstack_cur >= len(rt.vstack) {
-			size := max(VSEGMENT_SIZE, n)
+			size := max(vsegment_size(len(rt.vstack)), n)
 			append(&rt.vstack, Value_Segment{data = make([]Value, size, rt.allocator)})
 		}
 		s := &rt.vstack[rt.vstack_cur]
@@ -102,7 +111,7 @@ vstack_alloc_slow :: proc(rt: ^Runtime, n: int) -> (mem: [^]Value, seg: int, top
 		if s.top == 0 {
 			// a segment too small for this frame: replace it
 			delete(s.data, rt.allocator)
-			s.data = make([]Value, max(VSEGMENT_SIZE, n), rt.allocator)
+			s.data = make([]Value, max(vsegment_size(rt.vstack_cur), n), rt.allocator)
 			continue
 		}
 		rt.vstack_cur += 1
@@ -247,8 +256,8 @@ set_home_object :: proc(func: Value, home: Value) {
 new_native_function :: proc(ctx: ^Context, fn: Native_Proc, name: string, length: int, magic: i32 = 0, kind: Native_Kind = .function, proto: ^Object = nil) -> ^Object {
 	rt := ctx.rt
 	o := object_new_proto(ctx, proto != nil ? proto : ctx.function_proto, .c_function)
-	o.data = Native_Data{fn = fn, realm = ctx, magic = magic, kind = kind}
-	o.is_constructor = kind != .function
+	o.data = Native_Data{fn = fn, realm = ctx, magic = magic}
+	set_native_kind(o, kind)
 	define_value(ctx, o, pa(.A_length), mk_int(i32(length)), {.configurable})
 	define_value(ctx, o, pa(.A_name), mk_str(str_from_utf8(rt, name)), {.configurable})
 	return o
@@ -259,9 +268,8 @@ new_native_closure :: proc(ctx: ^Context, fn: Native_Proc, name: string, length:
 	o := new_native_function(ctx, fn, name, length, magic)
 	nd := &o.data.(Native_Data)
 	if len(data) > 0 {
-		nd.data = mem_array(ctx.rt, Value, len(data))
+		native_data_alloc(ctx.rt, nd, len(data))
 		for v, i in data {nd.data[i] = v}
-		nd.data_len = u32(len(data))
 	}
 	return o
 }
@@ -276,7 +284,7 @@ native_data :: proc(ctx: ^Context) -> []Value {
 	f := ctx.rt.native_self
 	if f == nil {return nil}
 	nd := &f.data.(Native_Data)
-	return nd.data[:nd.data_len]
+	return nd.data[:native_data_len(nd)]
 }
 
 arg :: #force_inline proc "contextless" (args: []Value, i: int) -> Value {
@@ -339,7 +347,7 @@ call_internal :: proc(ctx: ^Context, f: Value, this: Value, new_target: Value, a
 	case .c_function:
 		nd := &o.data.(Native_Data)
 		t := this
-		switch nd.kind {
+		switch native_kind(o) {
 		case .function:
 			if is_construct {return throw_type_error(ctx, "not a constructor")}
 		case .constructor:

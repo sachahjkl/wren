@@ -677,7 +677,7 @@ boolean_ctor :: proc(ctx: ^Context, nt: Value, args: []Value, magic: i32) -> Val
 	proto, ok := proto_from_ctor(ctx, nt, .boolean)
 	if !ok {return EXCEPTION}
 	o := object_new_proto(ctx, proto, .boolean)
-	o.data = Prim_Data{b}
+	set_prim(ctx.rt, o, b)
 	return mk_obj(o)
 }
 
@@ -686,7 +686,7 @@ this_primitive :: proc(ctx: ^Context, this: Value, tag: Tag, class: Class_ID, wh
 	if this.tag == .object {
 		o := as_obj(this)
 		if o.class == class {
-			if pd, ok := o.data.(Prim_Data); ok {return pd.v, true}
+			if pd, ok := o.data.(^Prim_Data); ok {return pd.v, true}
 		}
 	}
 	throw_type_error(ctx, cat(ctx, "not a ", what))

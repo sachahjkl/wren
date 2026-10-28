@@ -1,6 +1,6 @@
 package jsrt
 
-// The object internal methods (ECMA-262 §10.1 ordinary objects, and the exotic objects' overrides):
+// The object internal methods (ECMA-262 Â§10.1 ordinary objects, and the exotic objects' overrides):
 // [[GetOwnProperty]], [[DefineOwnProperty]], [[HasProperty]], [[Get]], [[Set]], [[Delete]],
 // [[OwnPropertyKeys]], [[GetPrototypeOf]], [[SetPrototypeOf]], [[IsExtensible]],
 // [[PreventExtensions]].
@@ -51,7 +51,7 @@ get_own_property :: proc(ctx: ^Context, o: ^Object, a: Atom, d: ^Prop_Desc) -> i
 	case .proxy:
 		return proxy_get_own_property(ctx, o, a, d)
 	case .string:
-		if pd, ok := o.data.(Prim_Data); ok && is_string(pd.v) {
+		if pd, ok := o.data.(^Prim_Data); ok && is_string(pd.v) {
 			s := as_str(pd.v)
 			if idx, isi := atom_array_index(a); isi && idx < s.len {
 				if d != nil {d^ = data_desc(mk_str(str_from_code_unit(ctx.rt, str_char_at(ctx.rt, s, int(idx)))), {.enumerable})}
@@ -154,7 +154,7 @@ define_own_property :: proc(ctx: ^Context, o: ^Object, a: Atom, d: Prop_Desc, th
 	case .mapped_arguments:
 		return mapped_args_define(ctx, o, a, &desc, throw_flag)
 	case .string:
-		if pd, ok := o.data.(Prim_Data); ok && is_string(pd.v) {
+		if pd, ok := o.data.(^Prim_Data); ok && is_string(pd.v) {
 			s := as_str(pd.v)
 			if idx, isi := atom_array_index(a); isi && idx < s.len {
 				cur := data_desc(mk_str(str_from_code_unit(ctx.rt, str_char_at(ctx.rt, s, int(idx)))), {.enumerable})
@@ -326,7 +326,7 @@ array_length_u32 :: #force_inline proc(o: ^Object) -> u32 {
 	return u32(v.u.f)
 }
 
-// ArraySetLength (ECMA-262 §10.4.2.4).
+// ArraySetLength (ECMA-262 Â§10.4.2.4).
 @(private = "file")
 array_define_length :: proc(ctx: ^Context, o: ^Object, d: ^Prop_Desc, throw_flag: bool) -> int {
 	if .value not_in d.has {
@@ -436,7 +436,7 @@ array_set_length :: proc(ctx: ^Context, o: ^Object, v: Value, throw_flag: bool) 
 	return array_define_length(ctx, o, &d, throw_flag)
 }
 
-// --- mapped arguments (§10.4.4) ---
+// --- mapped arguments (Â§10.4.4) ---
 
 @(private = "file")
 mapped_args_define :: proc(ctx: ^Context, o: ^Object, a: Atom, d: ^Prop_Desc, throw_flag: bool) -> int {
@@ -567,7 +567,7 @@ get_property :: proc(ctx: ^Context, obj: Value, a: Atom, receiver: Value) -> Val
 			case .proxy:
 				return proxy_get(ctx, o, a, receiver)
 			case .string:
-				if pd, ok := o.data.(Prim_Data); ok && is_string(pd.v) {
+				if pd, ok := o.data.(^Prim_Data); ok && is_string(pd.v) {
 					s := as_str(pd.v)
 					if idx, isi := atom_array_index(a); isi && idx < s.len {
 						return mk_str(str_from_code_unit(rt, str_char_at(rt, s, int(idx))))
@@ -749,7 +749,7 @@ set_property :: proc(ctx: ^Context, obj: Value, a: Atom, val: Value, receiver: V
 			case .proxy:
 				return proxy_set(ctx, p, a, val, receiver, throw_flag)
 			case .string:
-				if pd, ok := p.data.(Prim_Data); ok && is_string(pd.v) {
+				if pd, ok := p.data.(^Prim_Data); ok && is_string(pd.v) {
 					if idx, isi := atom_array_index(a); isi && idx < as_str(pd.v).len {return fail_set(ctx, a, throw_flag)}
 				}
 			case .module_ns:
@@ -872,7 +872,7 @@ delete_property :: proc(ctx: ^Context, o: ^Object, a: Atom) -> int {
 	case .proxy:
 		return proxy_delete(ctx, o, a)
 	case .string:
-		if pd, ok := o.data.(Prim_Data); ok && is_string(pd.v) {
+		if pd, ok := o.data.(^Prim_Data); ok && is_string(pd.v) {
 			if idx, isi := atom_array_index(a); isi && idx < as_str(pd.v).len {return 0}
 		}
 	case .module_ns:
@@ -941,7 +941,7 @@ own_property_keys :: proc(ctx: ^Context, o: ^Object, out: ^[dynamic]Atom, filter
 		if o.fast_array {
 			n = o.data.(Array_Data).count
 		} else if o.class == .string {
-			if pd, ok := o.data.(Prim_Data); ok && is_string(pd.v) {n = as_str(pd.v).len}
+			if pd, ok := o.data.(^Prim_Data); ok && is_string(pd.v) {n = as_str(pd.v).len}
 		} else if is_typed_array_class(o.class) {
 			n = u32(typed_array_length(ctx, o))
 		} else if o.class == .module_ns {

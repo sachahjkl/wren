@@ -54,6 +54,7 @@ js_string_codePointRange :: proc "c" (ctx: ^Context, this_val: JSValue, argc: i3
 	}
 	return JS_NewStringUTF16(ctx, raw_data(buf), uint(len(buf)))
 }
+	heap_profile_field :: jscapi.heap_profile_field
 	JS_AddModuleExport :: jscapi.JS_AddModuleExport
 	JS_AtomGetArrayIndex :: jscapi.JS_AtomGetArrayIndex
 	JS_AtomToCStringLen :: jscapi.JS_AtomToCStringLen

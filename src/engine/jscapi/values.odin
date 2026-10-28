@@ -275,9 +275,9 @@ JS_NewDate :: proc "c" (c: ^Context, epoch_ms: f64) -> JSValue {
 	o := js.object_new_proto(ctx, ctx.class_proto[.date], .date)
 	// TimeClip: out of range or not a number is an invalid date
 	if epoch_ms != epoch_ms || abs(epoch_ms) > 8.64e15 {
-		o.data = js.Date_Data{t = transmute(f64)u64(0x7ff8000000000000)}
+		js.set_date(ctx.rt, o, transmute(f64)u64(0x7ff8000000000000))
 	} else {
-		o.data = js.Date_Data{t = f64(i64(epoch_ms))}
+		js.set_date(ctx.rt, o, f64(i64(epoch_ms)))
 	}
 	return own(ctx.rt, js.mk_obj(o))
 }
