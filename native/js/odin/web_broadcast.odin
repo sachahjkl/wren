@@ -3,18 +3,12 @@
 // channel, in any realm; it comes back here through wj_port_message (web_message.c), which finds the object by its end.
 // An open channel stays alive (it may receive); close() lets it go. Ported from native/js/runtime/web_broadcast.c;
 // same wjr_* symbols and behaviour. web_bound_add/remove are web_message.odin's; web_message_event lives in
-// web_socket.c (kept as C).
+// web_socket.odin.
 package odin_glue
 
 import "../odin/wj"
 
 
-
-// defined in web_socket.c (kept as C): a MessageEvent factory. Declared here as a real symbol.
-@(default_calling_convention = "c")
-foreign {
-	web_message_event :: proc(ctx: ^wj.Context, data: wj.JSValue, origin: cstring, source: wj.JSValue) -> wj.JSValue ---
-}
 
 @(private = "file")
 Bc_Impl :: struct {
