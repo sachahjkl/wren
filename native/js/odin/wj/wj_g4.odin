@@ -182,6 +182,12 @@ foreign {
 	wj_unwrap :: proc(v: JSValue, iface: i32) -> rawptr ---
 	// the wrapper of an owned host handle as `iface` (media query lists, screen...).
 	wj_wrap_owned :: proc(ctx: ^Context, handle: u64, iface: i32, new_target: JSValue) -> JSValue ---
+	// the wrapper of a host object of `iface` (created on first use), or null for handle 0.
+	wj_wrap_host :: proc(ctx: ^Context, handle: u64, iface: i32) -> JSValue ---
+	// an interface-type argument: the handle behind a platform object of `iface` (or null when nullable); false + TypeError.
+	wj_to_handle :: proc(ctx: ^Context, v: JSValue, iface: i32, nullable: bool, out: ^u64, message: cstring) -> bool ---
+	// a JS string from UTF-8 bytes decoded the WHATWG way (BOM removed when strip_bom).
+	web_utf8_string :: proc(ctx: ^Context, p: [^]u8, n: uint, strip_bom: bool) -> JSValue ---
 	wj_new_object_for :: proc(ctx: ^Context, iface: i32, new_target: JSValue, impl: rawptr, impl_free: proc "c" (p: rawptr)) -> JSValue ---
 
 	// an Event subtype constructor (web.h): used by event-shaped interfaces (MediaQueryListEvent...).
