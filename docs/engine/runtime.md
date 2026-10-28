@@ -2,167 +2,180 @@
 
 The runtime is the "second half" of Wren's Odin JavaScript engine: it executes QuickJS‑ng 0.17
 bytecode. It is written natively in Odin, builds for `windows_amd64`, `linux_amd64` and
-`freestanding_wasm32` with an injected allocator and no OS dependency, and is designed to run inside
-Wren's Wasm sandbox exactly as the current QuickJS‑in‑Wasm does.
+`freestanding_wasm32` with an injected allocator and no OS dependency, and runs inside Wren's Wasm
+sandbox exactly as QuickJS‑in‑Wasm does (the sandbox is kept on purpose: it protects the host from
+memory bugs of the engine).
 
-The two halves of the engine meet at the **QuickJS‑ng 0.17 bytecode**: the compiler front‑end (agent
-E1) and the reference QuickJS C compiler both emit the same serialized form, and this runtime reads
-and runs it. That is why the serialized‑bytecode reader was built first — it lets the runtime be
-exercised against real reference output before the Odin compiler exists (compile a script with
-`qjsc`/`JS_WriteObject`, load the bytes, run them).
+The two halves of the engine meet at the **QuickJS‑ng 0.17 bytecode**: the Odin front‑end
+([frontend.md](frontend.md)) and the reference QuickJS C compiler emit the same serialized form, and
+this runtime reads and runs it. `compile_frontend.odin` calls the front‑end in process (a scratch
+arena per compile), so `eval`, `Function(...)`, modules and `$262.evalScript` need no other compiler.
 
-This is **not** a mechanical port of QuickJS. Where the C uses `#define` tags, manual refcount
-bookkeeping and hand‑rolled dispatch, the Odin version uses tagged unions with exhaustive `switch`,
-`defer`, arenas where they help, comptime‑generated opcode/atom tables, and `#soa`‑friendly layouts.
+This is **not** a mechanical port of QuickJS. Where the C uses `#define` tags, manual refcounting
+and hand‑rolled dispatch, the Odin version uses tagged unions with exhaustive `switch`, `defer`,
+arenas where they help, comptime‑generated opcode/atom tables, and layouts friendly to `#soa`.
 Divergences are deliberate and listed at the end.
+
+## Conformance (test262)
+
+`tools/jsrt_test262.ps1` builds the judge (`src/engine/jsrt/judge`) and runs the suite pinned by
+`tools/test262.ps1` in worker processes (a crash or hang costs one test), with the rules of QuickJS‑ng's
+`test262.conf`. The harness files and the `includes` / `flags` of each test's front matter are honoured
+(`onlyStrict`, `raw`, `async`, `module`, `CanBlockIsFalse`); `$262` provides `createRealm`, `evalScript`,
+`detachArrayBuffer`, `gc`, `IsHTMLDDA` and real `agent`s (threads with their own runtime, sharing
+`SharedArrayBuffer` memory; `Atomics.wait`/`notify` go through a process‑wide waiter list).
+
+| directory | passed | total | % | % of QuickJS‑ng |
+|---|---:|---:|---:|---:|
+| **all** | **43 233** | **43 267** | **99.92** | **100.00** |
+| annexB | 1 053 | 1 060 | 99.3 | 100.0 |
+| built-ins | 18 928 | 18 934 | 100.0 | 100.0 |
+| harness | 116 | 116 | 100.0 | 100.0 |
+| language | 23 136 | 23 157 | 99.9 | 100.0 |
+
+Skipped by configuration: 5 453 (features QuickJS‑ng does not enable). The 34 failures are the tests
+QuickJS‑ng itself fails: evaluation order of destructuring targets (7), `callexpression` as an assignment
+target (7, Annex B), `AsyncFromSyncIterator` close on poisoned wrappers (6), ambiguous `export *` namespaces
+(4), top‑level‑await ordering (2), `using` in imported modules (3), field named `get`/`set` followed by a
+generator (2), `with` over a proxy environment (2), and a few single cases. The full list is in
+`build/test262/jsrt_errors.txt`; every directory is at 100 % of what QuickJS‑ng passes.
 
 ## Value model (`value.odin`)
 
-A `Value` is a 16‑byte tagged union: an 8‑bit `Tag` plus an 8‑byte payload. We chose a tagged union
-over NaN‑boxing on purpose:
+A `Value` is a 16‑byte tagged union: an 8‑bit `Tag` plus an 8‑byte payload (`int32`, `float64`, bool or
+a pointer to a GC cell). A tagged union rather than NaN‑boxing, on purpose:
 
-- It is identical on 64‑bit native and on wasm32. Under wasm32 pointers are 32‑bit, so a NaN‑boxed
-  64‑bit word would need a side table or a shifted‑pointer scheme; the tagged union just works.
-- The discriminant is an exhaustive Odin enum, so every `switch v.tag` is compiler‑checked — a
-  correctness win QuickJS's integer tags do not get.
-- 16 bytes still fits two values per cache line and keeps the hot path branch‑predictable.
+- It is identical on 64‑bit native and on wasm32; every `switch v.tag` is checked for exhaustiveness
+  by the compiler.
+- Small integers stay unboxed (`int32`, as QuickJS); `-0`, non‑integral and out‑of‑range numbers use
+  the `float64` lane.
 
-Small integers stay unboxed in an `int32` lane (as QuickJS does); `-0`, non‑integral and
-out‑of‑range numbers use the `float64` lane. Heap values (string, symbol, object, bigint, and the
-raw function‑bytecode cell) hold a `^GC_Header`. The representation is isolated behind the
-constructors/accessors, so switching to NaN‑boxing later (if measurement justifies it) is local.
+Heap values (string, symbol, object, bigint, raw function bytecode, module) hold a `^Cell`. The
+representation is isolated behind constructors/accessors. The C API layer (below) encodes a `Value`
+in the 64‑bit NaN‑boxed word QuickJS uses on wasm32, because Wren's glue is written against that.
 
-## Strings (`string.odin`)
+## Strings, atoms, shapes, objects
 
-Strings are sequences of UTF‑16 code units stored compactly: a flat string is either **Latin‑1**
-(one byte per unit, used whenever every unit is < 256) or **UTF‑16**. Concatenation builds a **rope**
-(a `left ++ right` node) so `a + b + c …` in a loop is linear, not quadratic; a rope is flattened
-lazily the first time it is indexed, hashed, compared or handed to code needing contiguous storage.
-Strings are reference‑counted and never cyclic.
-
-## Atoms (`atom.odin`, `atoms_table.odin`)
-
-An atom is a 32‑bit interned property key, so lookups compare keys with a single integer compare.
-Two encodings share the space exactly as QuickJS does: array‑index keys set bit 31 and never
-allocate a string; everything else indexes `rt.atom_array`. The predefined atoms (seeded at startup)
-and their order are generated from `quickjs-atom.h` so serialized bytecode references them by the
-same indices.
-
-## Shapes / hidden classes (`shape.odin`)
-
-Objects that share the same properties in the same order share one `Shape`. A property access
-resolves `atom -> slot` through the shape's open‑addressed hash, and the object stores only a flat
-`[]Value` at those slots. Adding a property follows or creates a **transition** to a child shape, so
-objects that grow the same way share shapes; deleting a property or heavy mutation drops the object
-into a private "dictionary" shape. Shapes are the foundation for inline caches (planned): "if the
-object's shape is S, the property is at slot N".
-
-## Objects (`object.odin`)
-
-An `Object` is a GC cell with a shape, a flat property store and an `exotic` tagged union carrying
-the internal slots of exotic kinds — Array, Function, Native function, Bound function, the primitive
-wrappers, ArrayBuffer/TypedArray/DataView, Map/Set, Proxy, Date, RegExp, Error, Iterator, Promise,
-Generator and module Namespace — without a second allocation. Arrays keep a dense `[]Value` fast path
-with a separate length; `length` and index access are synthesised in `exotic_get_own`/`exotic_set_own`
-(`exotic.odin`), so pushing numbers never grows the shape.
+- **Strings** (`string.odin`): UTF‑16 code units stored compactly — Latin‑1 (one byte per unit) or
+  UTF‑16 — with **ropes** for concatenation (`a + b + c…` in a loop is linear; flattened on first
+  index/hash/compare). Source text handed to the compiler keeps lone surrogates (WTF‑8), and
+  `Function.prototype.toString` returns the real source text (the front‑end keeps each function's text
+  with `Compile_Options.keep_source`; `Host_Config.strip_source` drops it).
+- **Atoms** (`atom.odin`, `atoms_table.odin`): 32‑bit interned property keys; array indices set bit 31
+  and never allocate. The predefined atoms are generated from `quickjs-atom.h`, so serialized bytecode
+  refers to the same indices. Atoms are never collected.
+- **Shapes** (`shape.odin`/`object.odin`): hidden classes with transitions and an open‑addressed hash;
+  an object stores a flat `[]Prop_Slot`; deleting a property or growing past 48 properties switches the
+  object to a private dictionary shape.
+- **Objects**: a GC cell with a shape, inline slots, and an `Object_Data` tagged union for the internal
+  slots of exotic kinds (Array, Function, Native, Bound, wrappers, ArrayBuffer/TypedArray/DataView,
+  Map/Set, Proxy, Date, RegExp, Promise, Generator, Module namespace, Host…). Arrays keep a dense
+  `[]Value` fast path.
 
 ## Memory management (`gc.odin`)
 
-Reference counting plus a QuickJS‑style **cycle collector**. Acyclic cells (strings, symbols,
-bigints) are freed the instant their count hits zero. Cells that can form cycles (objects, function
-bytecode, closure upvalues, and shapes — a shape references its prototype object) are additionally
-threaded on an intrusive list. `gc_run` is a two‑phase mark‑and‑sweep restricted to that list:
+A **precise, non‑moving, stop‑the‑world mark‑and‑sweep** collector (`rt.cells` is every live cell).
+Copying a `Value` is a plain copy: there are no `dup`/`free` pairs in the interpreter and cycles need no
+special pass.
 
-1. **Decrement:** copy each cell's refcount into `gc_ref`, then subtract the references held by other
-   cells on the list. A cell whose `gc_ref` stays > 0 is rooted from outside the cyclic set.
-2. **Mark & sweep:** mark everything reachable from a root black; the rest is garbage.
+- **Roots**: realms, the interpreter frame chain (arguments, locals, whole operand stacks, open closure
+  cells), the job queue, the pending exception, atoms, the module registry, `temp_roots`, and the
+  **host roots** (below).
+- **Safe points** (function entry, loop back edge, entry of a native call) are the only places a
+  collection starts; allocation never collects. Native code (builtins) keeps `Value`s in Odin locals the
+  collector cannot see; `cell_new` and `get`/`call` push what they return on `temp_roots`, which a native
+  call truncates when it returns. Builtins that read straight out of internal storage and then call back
+  into JS root explicitly (`root`).
+- **Weak references** (WeakMap/WeakSet keys, WeakRef, FinalizationRegistry) are ephemerons processed to a
+  fixpoint after the strong marking; shape transition caches are weak too.
+- **Host roots**: each `Cell` has a 32‑bit `ext` count. `persist`/`ext_ref` bump it (O(1), no table),
+  `unpersist`/`ext_unref` drop it; cells with a non‑zero count are listed in `rt.ext_cells` and are roots.
+- **Host classes** (`host_class.odin`): objects of a class the host registers carry an opaque pointer, a
+  finalizer, and optionally the references the opaque data holds (`gc_mark`) and exotic hooks for
+  properties the object does not store. Finalizers of dead host objects run before any cell of the
+  collection is freed. `gc_mark` is used twice: to **subtract** those references from the host counts (a
+  cycle through opaque data does not keep itself alive — QuickJS's trial deletion, restricted to the cells
+  with host references) and to trace them when the owner is live.
+- The heap is capped by `Host_Config.malloc_limit`; all allocation goes through the injected allocator.
+  A collection runs when the heap passes `max(2 × live, live + 4 MiB)`.
 
-The sweep frees in **two passes** — first drop every garbage cell's outgoing edges (pinning each
-garbage cell with a temporary reference so an unref triggered while clearing edges can never free a
-sibling out from under the second pass), then free the now edge‑less structs. This is what makes
-tearing down a whole cyclic set (e.g. the `constructor ↔ prototype` and `globalThis → global` cycles)
-safe and leak‑free; the runtime verifies zero leaked allocations at teardown with the project's
-tracking allocator.
+## Serialized‑bytecode reader and verifier (`serialize.odin`)
 
-The heap is capped by a byte budget the host sets (`Host_Config.malloc_limit`); all allocation goes
-through the injected allocator so the sandbox and native tests share one path, and the accounting
-(`malloc_size`/`malloc_count`) feeds both the limit and leak checks.
+Parses `JS_WriteObject(..., JS_WRITE_OBJ_BYTECODE)` for `BC_VERSION 28`: header, atom table (both atom
+encodings of the format), function bytecode (flags, vardefs, closure vars, cpool, bytecode, debug info,
+source), BigInt, arrays, objects, modules. After the instruction stream is read, its atom operands are
+rewritten in place and a **stack‑height verifier** checks the code. The interpreter trusts the *types* of
+operands (as QuickJS does: bytecode comes from the compiler); the reader and verifier guarantee shape and
+stack discipline, not type correctness.
 
-## Serialized‑bytecode reader (`serialize.odin`)
+## Interpreter (`interp.odin`, `ops.odin`, `coro.odin`)
 
-Parses the output of `JS_WriteObject(..., JS_WRITE_OBJ_BYTECODE)` for `BC_VERSION 28`:
+A `switch`‑dispatch loop over the QuickJS instruction set with a hot inner loop for the common
+instructions (integer arithmetic, `get_loc`, `get_field`, array reads, branches). Frames are heap
+allocated from segmented value stacks so generators and async functions can suspend them
+(`coro.odin`: generators, async functions, async generators, `for await`, `yield*`), and the engine's own
+stack budget — not the host stack — bounds recursion (`Host_Config.max_stack_bytes`,
+`max_stack_depth`; a `RangeError` instead of a crash). The interrupt hook runs on a budget from the loop
+back edge. Operators follow the spec (`+` through ToPrimitive, ModRing bitwise, BigInt paths, loose and
+strict equality). Try/catch uses a per‑frame handler stack (`catch`/`gosub`/`ret`/`nip_catch`).
 
-- Header: `u8` version (== 28), `u32` checksum (not verified; the writer may store `UINT32_MAX`),
-  `leb128` atom count, then the atom table (predefined/const atoms inline, others as a type byte + a
-  `JS_WriteString`).
-- Body: one tagged value. Implemented tags: the primitives, string, BigInt (two's‑complement LE byte
-  string), array, plain object, template object and **function bytecode**.
+## Standard library
 
-The two atom encodings are both honoured: `bc_get_atom` (func name, var/closure names, filename)
-reads a `leb128` whose low bit flags a tagged int and whose high bits are an index; the **bytecode
-stream** stores a raw `u32` atom index. Both resolve through `bc_idx_to_atom` semantics (index <
-`first_atom` ⇒ predefined atom; else the per‑read decoded table). After the instruction stream is
-read, its `atom`‑format operands are rewritten in place from stream indices to runtime atoms, using
-the generated opcode table (`opcodes.odin`) to step instructions.
+Everything QuickJS‑ng 0.17 ships, in `b_*.odin`: Object, Function, Array, String (with Unicode case
+mapping and normalization from `src/engine/unicode`), Number/Math/BigInt (`numconv`, `bigint`), Symbol,
+JSON (with source text access), RegExp, Date (`datetime`), Map/Set/WeakMap/WeakSet/WeakRef/
+FinalizationRegistry, Promise, generators, Reflect/Proxy, ArrayBuffer (resizable, immutable)/
+SharedArrayBuffer (growable)/TypedArray/Float16Array/DataView/Atomics, Iterator helpers and
+`Iterator.concat`, `Array.fromAsync`, `DisposableStack`/`AsyncDisposableStack`/`SuppressedError`,
+Uint8Array base64/hex, `Error.prototype.stack`. `Intl` stays on the host (Wren's glue).
 
-## Interpreter (`interp.odin`, `ops.odin`, `runtime_ops.odin`)
+**Regular expressions.** Literals reach the runtime already compiled by the front‑end to the **bytecode of
+QuickJS's libregexp**; `lre_exec.odin` executes that format (and a verifier checks it before use), so
+literals and `new RegExp` share one matcher. Unicode properties, case folding and the properties of strings
+(`\p{RGI_Emoji}` …) come from tables generated from the pinned UCD.
 
-A `switch`‑dispatch loop over the QuickJS instruction set. Odin compiles a dense‑enum switch to a jump
-table, so this is already close to computed‑goto dispatch; whether a hand‑rolled table with
-`#no_bounds_check` or a block‑based loop beats it is a measurement left for later, and the decode is
-isolated so that change stays local. Frames (`frame.odin`) are heap‑allocated so generators/async can
-suspend them and so the engine's own stack‑depth budget — not the host C stack — bounds recursion.
-The interrupt hook and an adaptive cycle‑collection trigger run on a budget from the loop back‑edge.
+## Embedding interface (`embed.odin`, `runtime.odin`)
 
-Operators (`ops.odin`) follow the spec: `+` is string‑or‑number via ToPrimitive, the other arithmetic
-is ToNumber‑based (with BigInt paths), bitwise operators use the ModRing coercions, and the relational
-and (loose/strict) equality algorithms match the spec. Try/catch is implemented with a per‑frame
-handler stack driven by the `catch`/`gosub`/`ret`/`nip_catch` opcodes.
+`engine_new` / `context_new` / `eval_source` / `eval_bytecode` / `call_function` / `run_jobs` /
+`retain` / `release` / `heap_stats`, with the hooks in `Host_Config`: `compile`, `load_module`,
+`import_meta`, `interrupt`, `rejection`, `gc_prologue`, `compile_strings`, `dynamic_import`,
+`atomics_wait`/`atomics_notify`, `can_block`, `malloc_limit`. Values handed to the host live until the
+next call into the engine unless retained.
 
-## Embedding interface (`embed.odin`)
+`src/engine/jsrt/wasm` is the freestanding module (`jsrt_init/new/alloc/eval/run_jobs/free`).
 
-The surface Wren's Odin glue (`native/js/odin/wj`) binds to, mirroring `JS_NewRuntime`/
-`JS_NewContext`/`JS_Eval`/`JS_NewCFunction2`/`JS_NewClass` but with Odin types and no macros:
+## The QuickJS C API on this runtime (`src/engine/jscapi`)
 
-- `engine_new` / `engine_free`, `context_new` / `context_free`.
-- `eval_bytecode(ctx, bytes)` — load serialized bytecode and run it; `eval_function` to run an
-  already‑loaded top‑level function.
-- Value construction (`new_int/number/bool/string/object/array/function`), property access
-  (`get_property`/`set_property`/`set_global`), read‑back (`to_host_bool/f64/string`), reference
-  management (`retain`/`release`), calling scripts (`call`), the microtask queue (`run_jobs`), the
-  pending exception (`pending_exception`), and heap stats / `collect` for the host's memory
-  accounting.
+Wren's glue is written against `quickjs.h`. `jscapi` implements that API (167 procedures, `proc "c"`,
+exported under their QuickJS names with `-define:JSCAPI_EXPORT=true`) over `jsrt`; see
+[jscapi.md](jscapi.md) for the ownership model, the classes and the plan of what is left.
 
-Native functions are plain `Native_Proc` values stored as an object's `Native_Data` exotic, so host
-builtins and the standard library share one call path (`call.odin`).
+## Measurements (Windows x64, Odin `-o:speed`, Zig 0.15 `-O2` for QuickJS)
 
-## Standard library (`builtins.odin`, `realm.odin`)
+| | jsrt | QuickJS‑ng C |
+|---|---:|---:|
+| `examples/jsbench/micro.js`, geometric mean of 20 cases | 69 % of QuickJS speed | 100 % |
+| best / worst case | for‑of 204 %, polymorphic get 105 % | switch 48 %, property set 53 % |
+| peak working set, 300 k objects + 100 k Map entries | 235 MiB | 147 MiB |
+| freestanding wasm32 module, runtime + compiler (`-o:size`) | 1.63 MB (`-o:speed`: 1.99 MB) | `wren_js.wasm` (QuickJS + glue + bindings) 4.26 MB |
 
-Installed in waves, each to be verified by test262. Wave 1 (landed): the realm's intrinsic prototype
-chain and global object; `Object` basics (`hasOwnProperty`, `toString`, `valueOf`, `keys`,
-`getPrototypeOf`, `defineProperty`), `Function.prototype` (`call`, `apply`, `toString`), `Array`
-essentials (`push`, `join`, `isArray`, the constructor), the global value properties (`undefined`,
-`NaN`, `Infinity`, `globalThis`), and the native `Error` hierarchy. Later waves add String, Number/
-Math/BigInt, RegExp (on `src/engine/regexp`), Date (on `src/engine/jsdate`), JSON, Map/Set,
-Promise + jobs, generators/async, Reflect/Proxy, and ArrayBuffer/TypedArray/DataView/Atomics. `Intl`
-stays on the host (Wren glue).
+`tools/jsrt_bench.ps1` produces the speed table. Fuzzing: `judge fuzz <dir>` mutates serialized bytecode
+and loads it (reader + verifier; 40 000 mutants, no crash; running accepted mutants is opt‑in with
+`JSRT_FUZZ_RUN=1`, since a type‑confused image can crash any interpreter that trusts the compiler);
+`judge fuzzsrc <dir>` mutates source text, compiles with the Odin front‑end and runs under an interrupt
+budget (30 000 mutants on `language/` and `built-ins/`, no crash).
 
 ## Intended divergences from QuickJS
 
-- **Tagged union over NaN‑boxing** for values (portability to wasm32, compiler‑checked switches).
-- **Exhaustive Odin enums + `switch`** for tags, exotic kinds and opcodes, instead of `#define`s.
-- **Comptime‑generated opcode and atom tables** from the QuickJS headers, so the two stay in lockstep
-  with no hand transcription.
-- **Two‑pass cycle sweep with pinning** for provably safe teardown of cyclic sets.
+- **Tagged union over NaN‑boxing** for values; **precise tracing GC** instead of reference counting plus
+  a cycle collector (the C API layer re‑creates the counted‑reference contract for the glue).
+- **Exhaustive Odin enums + `switch`** for tags, exotic kinds and opcodes; **comptime‑generated opcode and
+  atom tables** from the QuickJS headers.
 - **Rope strings with Latin‑1/UTF‑16 compaction** as the default string representation.
+- Atoms are permanent; `JS_WriteObject` of data (structured clone format) is not implemented.
 
-## Status and known gaps
+## Known gaps
 
-Working end‑to‑end today: load real QuickJS bytecode, run top‑level scripts with variables,
-arithmetic/bitwise/comparison/equality, global and local access, closures, property and array access,
-function calls, and the wave‑1 builtins; refcounting + cycle collection are leak‑free at teardown
-(verified with the tracking allocator). Not yet implemented: generators/async/modules (stubs raise a
-clear error), the full Proxy trap set, many opcodes (iterators/`for‑of`, `with`, private fields,
-class definition, spread/apply, super), and most of the standard library beyond wave 1. The try/catch
-handler stack catches thrown values but its interaction with the `new`/constructor opcodes has a
-known stack‑discipline bug to finish.
+The 34 test262 failures above (all shared with QuickJS‑ng); speed is 69 % of QuickJS on the micro
+benchmarks (the switch loop and the `Value` size are the first suspects); memory is 1.6× QuickJS on
+allocation‑heavy scripts (a tracing heap holds garbage until the next collection).

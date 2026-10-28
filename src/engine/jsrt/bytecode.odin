@@ -75,6 +75,7 @@ Function_Bytecode :: struct {
 	source:                    []u8,
 	source_string:             ^JS_String, // cached Function.prototype.toString text
 	catch_levels:              []Catch_Level, // verified operand stack height at each catch handler
+	image:                     []u8, // the serialized form this function was read from, kept on request (Compile_Request.keep_image)
 }
 
 Catch_Level :: struct {
@@ -101,6 +102,7 @@ function_bc_finalize :: proc(rt: ^Runtime, b: ^Function_Bytecode) {
 	if b.pc2line != nil {delete(b.pc2line, a)}
 	if b.source != nil {delete(b.source, a)}
 	if b.catch_levels != nil {delete(b.catch_levels, a)}
+	if b.image != nil {delete(b.image, a)}
 }
 
 // The source line of instruction `pc`, decoded from the pc2line table (QuickJS's format: a leb128

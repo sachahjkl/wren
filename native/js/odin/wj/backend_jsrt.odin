@@ -18,6 +18,11 @@ when WJ_JSRT {
 
 JS_NewRuntime :: proc "c" () -> ^Runtime {
 	jscapi.host_allocator = libc_allocator()
+	context = heap_context()
+	jscapi.set_host_time(
+		proc() -> f64 {return now_ms()},
+		proc "contextless" (t: i64) -> int {return int(wr_Engine_timezoneOffset(f64(t)))},
+	)
 	return jscapi.JS_NewRuntime()
 }
 

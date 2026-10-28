@@ -347,6 +347,18 @@ capi_main :: proc() -> int {
 	check(is_int(eval(ctx, "fromModule"), 43), "native module export")
 	capi.JS_FreeValue(ctx, pm)
 
+	// --- a compiled function written out and read back (the realm snapshot of the glue) ---
+	code := "globalThis.viaImage = 7 * 6;"
+	fnv := capi.JS_Eval(ctx, raw_data(code), uint(len(code)), "img.js", capi.EVAL_FLAG_COMPILE_ONLY)
+	size: uint
+	img := capi.JS_WriteObject(ctx, &size, fnv, capi.WRITE_OBJ_BYTECODE)
+	check(img != nil && size > 0, "JS_WriteObject of a compiled function")
+	fn2 := capi.JS_ReadObject(ctx, img, size, capi.READ_OBJ_BYTECODE)
+	capi.JS_FreeValue(ctx, capi.JS_EvalFunction(ctx, fn2))
+	check(is_int(eval(ctx, "viaImage"), 42), "the image runs")
+	capi.js_free(ctx, img)
+	capi.JS_FreeValue(ctx, fnv)
+
 	// --- soak: many temporaries through the API, GC in between ---
 	for i in 0 ..< 20000 {
 		a := capi.JS_NewObject(ctx)

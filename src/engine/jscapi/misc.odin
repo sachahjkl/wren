@@ -7,7 +7,6 @@ import js "wb:engine/jsrt"
 
 // ---- promises ----
 
-@(export = JSCAPI_EXPORT)
 JS_NewPromiseCapability :: proc "c" (c: ^Context, resolving_funcs: [^]JSValue) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -21,7 +20,6 @@ JS_NewPromiseCapability :: proc "c" (c: ^Context, resolving_funcs: [^]JSValue) -
 }
 
 // A promise already settled with value (not consumed).
-@(export = JSCAPI_EXPORT)
 JS_NewSettledPromise :: proc "c" (c: ^Context, is_reject: bool, value: JSValue) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -31,7 +29,6 @@ JS_NewSettledPromise :: proc "c" (c: ^Context, is_reject: bool, value: JSValue) 
 	return own(ctx.rt, js.promise_resolve_value(ctx, dec(value)))
 }
 
-@(export = JSCAPI_EXPORT)
 JS_PromiseThen :: proc "c" (c: ^Context, promise: JSValue, on_fulfilled: JSValue, on_rejected: JSValue) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -40,13 +37,11 @@ JS_PromiseThen :: proc "c" (c: ^Context, promise: JSValue, on_fulfilled: JSValue
 	return own(ctx.rt, js.invoke(ctx, dec(promise), js.atom_from_utf8(ctx.rt, "then"), {dec(on_fulfilled), dec(on_rejected)}))
 }
 
-@(export = JSCAPI_EXPORT)
 JS_PromiseMarkAsHandled :: proc "c" (c: ^Context, promise: JSValue) {
 	context = api_ctx()
 	if pd := js.promise_data(dec(promise)); pd != nil {pd.is_handled = true}
 }
 
-@(export = JSCAPI_EXPORT)
 JS_PromiseState :: proc "c" (c: ^Context, promise: JSValue) -> Promise_State {
 	context = api_ctx()
 	pd := js.promise_data(dec(promise))
@@ -59,7 +54,6 @@ JS_PromiseState :: proc "c" (c: ^Context, promise: JSValue) -> Promise_State {
 	return .Not_A_Promise
 }
 
-@(export = JSCAPI_EXPORT)
 JS_PromiseResult :: proc "c" (c: ^Context, promise: JSValue) -> JSValue {
 	context = api_ctx()
 	pd := js.promise_data(dec(promise))
@@ -110,7 +104,6 @@ new_buffer :: proc(ctx: ^js.Context, buf: [^]u8, len: uint, max_len: uint, reall
 	return o
 }
 
-@(export = JSCAPI_EXPORT)
 JS_NewArrayBufferCopy :: proc "c" (c: ^Context, buf: [^]u8, len: uint) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -122,7 +115,6 @@ JS_NewArrayBufferCopy :: proc "c" (c: ^Context, buf: [^]u8, len: uint) -> JSValu
 }
 
 // JS_NewArrayBuffer: the buffer adopts buf; realloc_func(rt, opaque, buf, 0) releases it.
-@(export = JSCAPI_EXPORT)
 JS_NewArrayBuffer :: proc "c" (c: ^Context, buf: [^]u8, len: uint, max_len: uint, realloc_func: Realloc_AB_Func, opaque: rawptr, is_shared: bool) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -138,7 +130,6 @@ uint8_array_over :: proc(ctx: ^js.Context, ab: ^js.Object) -> js.Value {
 	return js.construct(ctx, js.mk_obj(ctx.typed_array_ctors[int(Typed_Array.Uint8)]), {js.mk_obj(ab)}, js.mk_obj(ctx.typed_array_ctors[int(Typed_Array.Uint8)]))
 }
 
-@(export = JSCAPI_EXPORT)
 JS_NewUint8ArrayCopy :: proc "c" (c: ^Context, buf: [^]u8, len: uint) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -149,7 +140,6 @@ JS_NewUint8ArrayCopy :: proc "c" (c: ^Context, buf: [^]u8, len: uint) -> JSValue
 	return own(ctx.rt, uint8_array_over(ctx, o))
 }
 
-@(export = JSCAPI_EXPORT)
 JS_NewUint8Array :: proc "c" (c: ^Context, buf: [^]u8, len: uint, realloc_func: Realloc_AB_Func, opaque: rawptr, is_shared: bool) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -160,7 +150,6 @@ JS_NewUint8Array :: proc "c" (c: ^Context, buf: [^]u8, len: uint, realloc_func: 
 	return own(ctx.rt, uint8_array_over(ctx, o))
 }
 
-@(export = JSCAPI_EXPORT)
 JS_NewTypedArray :: proc "c" (c: ^Context, argc: i32, argv: [^]JSValue, array_type: i32) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -175,14 +164,12 @@ JS_NewTypedArray :: proc "c" (c: ^Context, argc: i32, argv: [^]JSValue, array_ty
 	return own(ctx.rt, js.construct(ctx, ctor, args, ctor))
 }
 
-@(export = JSCAPI_EXPORT)
 JS_GetTypedArrayType :: proc "c" (v: JSValue) -> i32 {
 	cl, ok := class_of(v)
 	if !ok || !js.is_typed_array_class(cl) {return -1}
 	return i32(u8(cl) - u8(js.FIRST_TYPED_ARRAY))
 }
 
-@(export = JSCAPI_EXPORT)
 JS_GetArrayBuffer :: proc "c" (c: ^Context, psize: ^uint, obj: JSValue) -> [^]u8 {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -199,7 +186,6 @@ JS_GetArrayBuffer :: proc "c" (c: ^Context, psize: ^uint, obj: JSValue) -> [^]u8
 	return nil
 }
 
-@(export = JSCAPI_EXPORT)
 JS_GetTypedArrayBuffer :: proc "c" (c: ^Context, obj: JSValue, pbyte_offset: ^uint, pbyte_length: ^uint, pbytes_per_element: ^uint) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -217,13 +203,11 @@ JS_GetTypedArrayBuffer :: proc "c" (c: ^Context, obj: JSValue, pbyte_offset: ^ui
 	return own(ctx.rt, js.mk_obj(ta.buffer))
 }
 
-@(export = JSCAPI_EXPORT)
 JS_DetachArrayBuffer :: proc "c" (c: ^Context, obj: JSValue) {
 	context = api_ctx()
 	if o, ok := obj_arg(obj); ok {js.detach_array_buffer(jctx(c), o)}
 }
 
-@(export = JSCAPI_EXPORT)
 JS_SetImmutableArrayBuffer :: proc "c" (obj: JSValue, immutable: bool) -> i32 {
 	context = api_ctx()
 	o, ok := obj_arg(obj)
@@ -237,7 +221,6 @@ JS_SetImmutableArrayBuffer :: proc "c" (obj: JSValue, immutable: bool) -> i32 {
 @(private)
 mod_of :: #force_inline proc "contextless" (m: ^Module_Def) -> ^js.Module {return cast(^js.Module)m}
 
-@(export = JSCAPI_EXPORT)
 JS_NewCModule :: proc "c" (c: ^Context, name: cstring, init: Module_Init) -> ^Module_Def {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -252,7 +235,6 @@ JS_NewCModule :: proc "c" (c: ^Context, name: cstring, init: Module_Init) -> ^Mo
 	return cast(^Module_Def)mod
 }
 
-@(export = JSCAPI_EXPORT)
 JS_AddModuleExport :: proc "c" (c: ^Context, mdef: ^Module_Def, name: cstring) -> i32 {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -262,7 +244,6 @@ JS_AddModuleExport :: proc "c" (c: ^Context, mdef: ^Module_Def, name: cstring) -
 	return 0
 }
 
-@(export = JSCAPI_EXPORT)
 JS_SetModuleExport :: proc "c" (c: ^Context, mdef: ^Module_Def, name: cstring, val: JSValue) -> i32 {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -280,25 +261,21 @@ JS_SetModuleExport :: proc "c" (c: ^Context, mdef: ^Module_Def, name: cstring, v
 	return -1
 }
 
-@(export = JSCAPI_EXPORT)
 JS_SetModulePrivateValue :: proc "c" (c: ^Context, mdef: ^Module_Def, val: JSValue) -> i32 {
 	mod_of(mdef).private = dec(val)
 	disown(val)
 	return 0
 }
 
-@(export = JSCAPI_EXPORT)
 JS_GetModulePrivateValue :: proc "c" (c: ^Context, mdef: ^Module_Def) -> JSValue {
 	context = api_ctx()
 	return own(jctx(c).rt, mod_of(mdef).private)
 }
 
-@(export = JSCAPI_EXPORT)
 JS_GetModuleRequestCount :: proc "c" (mdef: ^Module_Def) -> i32 {
 	return mdef == nil ? 0 : i32(len(mod_of(mdef).req))
 }
 
-@(export = JSCAPI_EXPORT)
 JS_GetModuleRequest :: proc "c" (c: ^Context, mdef: ^Module_Def, i: i32, attributes: ^JSValue) -> Atom {
 	context = api_ctx()
 	mod := mod_of(mdef)
@@ -311,7 +288,6 @@ JS_GetModuleRequest :: proc "c" (c: ^Context, mdef: ^Module_Def, i: i32, attribu
 }
 
 // import.meta of a module (created on first use, populated by the host's import_meta hook).
-@(export = JSCAPI_EXPORT)
 JS_GetImportMeta :: proc "c" (c: ^Context, mdef: ^Module_Def) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -326,7 +302,6 @@ JS_GetImportMeta :: proc "c" (c: ^Context, mdef: ^Module_Def) -> JSValue {
 	return own(ctx.rt, mod.meta)
 }
 
-@(export = JSCAPI_EXPORT)
 JS_ResolveModule :: proc "c" (c: ^Context, obj: JSValue) -> i32 {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -336,7 +311,6 @@ JS_ResolveModule :: proc "c" (c: ^Context, obj: JSValue) -> i32 {
 	return js.module_resolve(ctx, cast(^js.Module)ptr_of(obj)) ? 0 : -1
 }
 
-@(export = JSCAPI_EXPORT)
 JS_SetModuleLoaderFunc2 :: proc "c" (r: ^Runtime, normalize: Module_Normalize, loader: Module_Loader2, check_attrs: Module_Check_Attrs, opaque: rawptr) {
 	st := state_of(jrt(r))
 	st.mod_normalize = normalize
@@ -397,7 +371,6 @@ load_module_bridge :: proc(ctx: ^js.Context, referrer: string, specifier: string
 }
 
 // JS_LoadModule: import() from native code. Returns the promise of the namespace.
-@(export = JSCAPI_EXPORT)
 JS_LoadModule :: proc "c" (c: ^Context, basename: cstring, filename: cstring) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -414,7 +387,6 @@ JS_LoadModule :: proc "c" (c: ^Context, basename: cstring, filename: cstring) ->
 }
 
 // JS_LoadModuleWithFuncs: the same, settling the caller's resolving functions.
-@(export = JSCAPI_EXPORT)
 JS_LoadModuleWithFuncs :: proc "c" (c: ^Context, basename: cstring, filename: cstring, resolving_funcs: [^]JSValue, attributes: JSValue) {
 	context = api_ctx()
 	ctx := jctx(c)

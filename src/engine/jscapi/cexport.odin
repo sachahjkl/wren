@@ -10,6 +10,12 @@ import js "wb:engine/jsrt"
 
 JSCAPI_EXPORT :: #config(JSCAPI_EXPORT, false)
 
+// the imports are used in both modes (an import cannot sit in a when)
+_cexport_alloc :: runtime.Allocator
+_cexport_value :: js.Value
+
+when JSCAPI_EXPORT {
+
 // A wasm32 C varargs area: the arguments in order, each at its natural alignment (i32 and pointers 4, i64 and
 // double 8).
 @(private)
@@ -143,3 +149,5 @@ c_throw_internal_error :: proc "c" (c: ^Context, fmt: cstring, va: rawptr) -> JS
 	context = api_ctx()
 	return throw_va(c, .internal, fmt, va)
 }
+
+}   // when JSCAPI_EXPORT

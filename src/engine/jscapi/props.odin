@@ -13,14 +13,12 @@ obj_arg :: #force_inline proc "contextless" (v: JSValue) -> (^js.Object, bool) {
 
 // ---- reading ----
 
-@(export = JSCAPI_EXPORT)
 JS_GetGlobalObject :: proc "c" (c: ^Context) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
 	return own(ctx.rt, js.mk_obj(ctx.global_obj))
 }
 
-@(export = JSCAPI_EXPORT)
 JS_GetProperty :: proc "c" (c: ^Context, this_obj: JSValue, prop: Atom) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -29,7 +27,6 @@ JS_GetProperty :: proc "c" (c: ^Context, this_obj: JSValue, prop: Atom) -> JSVal
 	return own(ctx.rt, js.get(ctx, dec(this_obj), prop))
 }
 
-@(export = JSCAPI_EXPORT)
 JS_GetPropertyStr :: proc "c" (c: ^Context, this_obj: JSValue, prop: cstring) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -38,7 +35,6 @@ JS_GetPropertyStr :: proc "c" (c: ^Context, this_obj: JSValue, prop: cstring) ->
 	return own(ctx.rt, js.get_str(ctx, dec(this_obj), string(prop)))
 }
 
-@(export = JSCAPI_EXPORT)
 JS_GetPropertyUint32 :: proc "c" (c: ^Context, this_obj: JSValue, idx: u32) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -47,7 +43,6 @@ JS_GetPropertyUint32 :: proc "c" (c: ^Context, this_obj: JSValue, idx: u32) -> J
 	return own(ctx.rt, js.get_index(ctx, dec(this_obj), i64(idx)))
 }
 
-@(export = JSCAPI_EXPORT)
 JS_GetPropertyInt64 :: proc "c" (c: ^Context, this_obj: JSValue, idx: i64) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -56,7 +51,6 @@ JS_GetPropertyInt64 :: proc "c" (c: ^Context, this_obj: JSValue, idx: i64) -> JS
 	return own(ctx.rt, js.get_index(ctx, dec(this_obj), idx))
 }
 
-@(export = JSCAPI_EXPORT)
 JS_HasProperty :: proc "c" (c: ^Context, this_obj: JSValue, prop: Atom) -> i32 {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -67,7 +61,6 @@ JS_HasProperty :: proc "c" (c: ^Context, this_obj: JSValue, prop: Atom) -> i32 {
 	return i32(js.has_property(ctx, o, prop))
 }
 
-@(export = JSCAPI_EXPORT)
 JS_GetLength :: proc "c" (c: ^Context, obj: JSValue, pres: ^i64) -> i32 {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -82,7 +75,6 @@ JS_GetLength :: proc "c" (c: ^Context, obj: JSValue, pres: ^i64) -> i32 {
 	return 0
 }
 
-@(export = JSCAPI_EXPORT)
 JS_SetLength :: proc "c" (c: ^Context, obj: JSValue, len: i64) -> i32 {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -94,7 +86,6 @@ JS_SetLength :: proc "c" (c: ^Context, obj: JSValue, len: i64) -> i32 {
 
 // ---- writing: the value is consumed ----
 
-@(export = JSCAPI_EXPORT)
 JS_SetProperty :: proc "c" (c: ^Context, this_obj: JSValue, prop: Atom, val: JSValue) -> i32 {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -105,7 +96,6 @@ JS_SetProperty :: proc "c" (c: ^Context, this_obj: JSValue, prop: Atom, val: JSV
 	return i32(r)
 }
 
-@(export = JSCAPI_EXPORT)
 JS_SetPropertyStr :: proc "c" (c: ^Context, this_obj: JSValue, prop: cstring, val: JSValue) -> i32 {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -116,7 +106,6 @@ JS_SetPropertyStr :: proc "c" (c: ^Context, this_obj: JSValue, prop: cstring, va
 	return i32(r)
 }
 
-@(export = JSCAPI_EXPORT)
 JS_SetPropertyUint32 :: proc "c" (c: ^Context, this_obj: JSValue, idx: u32, val: JSValue) -> i32 {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -127,7 +116,6 @@ JS_SetPropertyUint32 :: proc "c" (c: ^Context, this_obj: JSValue, idx: u32, val:
 	return i32(r)
 }
 
-@(export = JSCAPI_EXPORT)
 JS_SetPropertyInt64 :: proc "c" (c: ^Context, this_obj: JSValue, idx: i64, val: JSValue) -> i32 {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -171,7 +159,6 @@ define_impl :: proc(ctx: ^js.Context, this_obj: JSValue, prop: Atom, val, getter
 	return i32(r)
 }
 
-@(export = JSCAPI_EXPORT)
 JS_DefineProperty :: proc "c" (c: ^Context, this_obj: JSValue, prop: Atom, val, getter, setter: JSValue, flags: i32) -> i32 {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -180,7 +167,6 @@ JS_DefineProperty :: proc "c" (c: ^Context, this_obj: JSValue, prop: Atom, val, 
 	return define_impl(ctx, this_obj, prop, val, getter, setter, flags)
 }
 
-@(export = JSCAPI_EXPORT)
 JS_DefinePropertyValue :: proc "c" (c: ^Context, this_obj: JSValue, prop: Atom, val: JSValue, flags: i32) -> i32 {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -191,7 +177,6 @@ JS_DefinePropertyValue :: proc "c" (c: ^Context, this_obj: JSValue, prop: Atom, 
 	return r
 }
 
-@(export = JSCAPI_EXPORT)
 JS_DefinePropertyValueStr :: proc "c" (c: ^Context, this_obj: JSValue, prop: cstring, val: JSValue, flags: i32) -> i32 {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -203,7 +188,6 @@ JS_DefinePropertyValueStr :: proc "c" (c: ^Context, this_obj: JSValue, prop: cst
 	return r
 }
 
-@(export = JSCAPI_EXPORT)
 JS_DefinePropertyValueUint32 :: proc "c" (c: ^Context, this_obj: JSValue, idx: u32, val: JSValue, flags: i32) -> i32 {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -215,7 +199,6 @@ JS_DefinePropertyValueUint32 :: proc "c" (c: ^Context, this_obj: JSValue, idx: u
 }
 
 // getter and setter are consumed
-@(export = JSCAPI_EXPORT)
 JS_DefinePropertyGetSet :: proc "c" (c: ^Context, this_obj: JSValue, prop: Atom, getter: JSValue, setter: JSValue, flags: i32) -> i32 {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -229,7 +212,6 @@ JS_DefinePropertyGetSet :: proc "c" (c: ^Context, this_obj: JSValue, prop: Atom,
 
 // A data property made by fn the first time it is used. The value is made now (the property reads as a data
 // property either way).
-@(export = JSCAPI_EXPORT)
 JS_DefineHostAutoInitProperty :: proc "c" (c: ^Context, obj: JSValue, prop: Atom, fn: Host_Auto_Init, flags: i32) -> i32 {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -242,7 +224,6 @@ JS_DefineHostAutoInitProperty :: proc "c" (c: ^Context, obj: JSValue, prop: Atom
 	return r
 }
 
-@(export = JSCAPI_EXPORT)
 JS_DeleteProperty :: proc "c" (c: ^Context, obj: JSValue, prop: Atom, flags: i32) -> i32 {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -258,7 +239,6 @@ JS_DeleteProperty :: proc "c" (c: ^Context, obj: JSValue, prop: Atom, flags: i32
 	return i32(r)
 }
 
-@(export = JSCAPI_EXPORT)
 JS_GetOwnProperty :: proc "c" (c: ^Context, desc: ^Property_Descriptor, obj: JSValue, prop: Atom) -> i32 {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -287,7 +267,6 @@ JS_GetOwnProperty :: proc "c" (c: ^Context, desc: ^Property_Descriptor, obj: JSV
 	return 1
 }
 
-@(export = JSCAPI_EXPORT)
 JS_GetOwnPropertyNames :: proc "c" (c: ^Context, ptab: ^[^]Property_Enum, plen: ^u32, obj: JSValue, flags: i32) -> i32 {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -323,7 +302,6 @@ JS_GetOwnPropertyNames :: proc "c" (c: ^Context, ptab: ^[^]Property_Enum, plen: 
 	return 0
 }
 
-@(export = JSCAPI_EXPORT)
 JS_FreePropertyEnum :: proc "c" (c: ^Context, tab: [^]Property_Enum, len: u32) {
 	context = api_ctx()
 	if tab != nil {mem.free(rawptr(tab), host_allocator)}
@@ -331,7 +309,6 @@ JS_FreePropertyEnum :: proc "c" (c: ^Context, tab: [^]Property_Enum, len: u32) {
 
 // ---- prototypes ----
 
-@(export = JSCAPI_EXPORT)
 JS_GetPrototype :: proc "c" (c: ^Context, v: JSValue) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -342,7 +319,6 @@ JS_GetPrototype :: proc "c" (c: ^Context, v: JSValue) -> JSValue {
 	return own(ctx.rt, js.get_prototype_of(ctx, o))
 }
 
-@(export = JSCAPI_EXPORT)
 JS_SetPrototype :: proc "c" (c: ^Context, obj: JSValue, proto_val: JSValue) -> i32 {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -370,7 +346,6 @@ args_of :: proc(rt: ^js.Runtime, argc: i32, argv: [^]JSValue, buf: []js.Value) -
 	return vals
 }
 
-@(export = JSCAPI_EXPORT)
 JS_Call :: proc "c" (c: ^Context, func_obj: JSValue, this_obj: JSValue, argc: i32, argv: [^]JSValue) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -379,7 +354,6 @@ JS_Call :: proc "c" (c: ^Context, func_obj: JSValue, this_obj: JSValue, argc: i3
 	return own(ctx.rt, js.call_function(ctx, dec(func_obj), dec(this_obj), args))
 }
 
-@(export = JSCAPI_EXPORT)
 JS_Invoke :: proc "c" (c: ^Context, this_val: JSValue, atom: Atom, argc: i32, argv: [^]JSValue) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -391,7 +365,6 @@ JS_Invoke :: proc "c" (c: ^Context, this_val: JSValue, atom: Atom, argc: i32, ar
 	return own(ctx.rt, js.invoke(ctx, dec(this_val), atom, args))
 }
 
-@(export = JSCAPI_EXPORT)
 JS_CallConstructor2 :: proc "c" (c: ^Context, func_obj: JSValue, new_target: JSValue, argc: i32, argv: [^]JSValue) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -403,7 +376,6 @@ JS_CallConstructor2 :: proc "c" (c: ^Context, func_obj: JSValue, new_target: JSV
 	return own(ctx.rt, js.construct(ctx, dec(func_obj), args, dec(new_target)))
 }
 
-@(export = JSCAPI_EXPORT)
 JS_CallConstructor :: proc "c" (c: ^Context, func_obj: JSValue, argc: i32, argv: [^]JSValue) -> JSValue {
 	return JS_CallConstructor2(c, func_obj, func_obj, argc, argv)
 }
@@ -419,6 +391,7 @@ eval_impl :: proc(ctx: ^js.Context, input: [^]u8, input_len: uint, filename: cst
 		source   = input_len == 0 ? "" : string(input[:input_len]),
 		filename = string(filename),
 		strict   = flags & EVAL_FLAG_STRICT != 0,
+		keep_image = flags & EVAL_FLAG_COMPILE_ONLY != 0, // a compiled function may be written out (JS_WriteObject)
 	}
 	switch flags & EVAL_TYPE_MASK {
 	case EVAL_TYPE_MODULE: req.kind = .module
@@ -443,20 +416,17 @@ eval_value :: proc(ctx: ^js.Context, fb: js.Value) -> js.Value {
 	return js.run_function_bc(ctx, fb)
 }
 
-@(export = JSCAPI_EXPORT)
 JS_Eval :: proc "c" (c: ^Context, input: [^]u8, input_len: uint, filename: cstring, eval_flags: i32) -> JSValue {
 	context = api_ctx()
 	return eval_impl(jctx(c), input, input_len, filename, eval_flags)
 }
 
-@(export = JSCAPI_EXPORT)
 JS_Eval2 :: proc "c" (c: ^Context, input: [^]u8, input_len: uint, options: ^Eval_Options) -> JSValue {
 	context = api_ctx()
 	return eval_impl(jctx(c), input, input_len, options.filename, options.eval_flags)
 }
 
 // JS_EvalFunction: fun_obj (a compiled script or module) is consumed.
-@(export = JSCAPI_EXPORT)
 JS_EvalFunction :: proc "c" (c: ^Context, fun_obj: JSValue) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -469,7 +439,6 @@ JS_EvalFunction :: proc "c" (c: ^Context, fun_obj: JSValue) -> JSValue {
 	return own(ctx.rt, r)
 }
 
-@(export = JSCAPI_EXPORT)
 JS_ParseJSON :: proc "c" (c: ^Context, buf: [^]u8, buf_len: uint, filename: cstring) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -480,7 +449,6 @@ JS_ParseJSON :: proc "c" (c: ^Context, buf: [^]u8, buf_len: uint, filename: cstr
 	return own(ctx.rt, js.json_parse_value(ctx, text))
 }
 
-@(export = JSCAPI_EXPORT)
 JS_JSONStringify :: proc "c" (c: ^Context, obj: JSValue, replacer: JSValue, space0: JSValue) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
@@ -489,17 +457,27 @@ JS_JSONStringify :: proc "c" (c: ^Context, obj: JSValue, replacer: JSValue, spac
 	return own(ctx.rt, js.json_stringify_value(ctx, dec(obj), dec(replacer), dec(space0)))
 }
 
-// Structured cloning through the engine's own serializer (JS_WRITE_OBJ_REFERENCE) is not implemented:
-// the clone code falls back to its own walk. Bytecode images are read by jsrt's reader.
-@(export = JSCAPI_EXPORT)
+// Writing a compiled function out (JS_WRITE_OBJ_BYTECODE): the engine keeps the image a function compiled with
+// JS_EVAL_FLAG_COMPILE_ONLY was read from, and returns a copy (in the host heap; js_free releases it). Data
+// (the structured clone format, JS_WRITE_OBJ_REFERENCE) is not implemented: the clone code falls back to its
+// own walk.
 JS_WriteObject :: proc "c" (c: ^Context, psize: ^uint, obj: JSValue, flags: i32) -> [^]u8 {
 	context = api_ctx()
+	ctx := jctx(c)
 	if psize != nil {psize^ = 0}
-	js.throw_internal_error(jctx(c), "JS_WriteObject is not available on this engine")
+	if flags & WRITE_OBJ_BYTECODE != 0 && tag_of(obj) == TAG_FUNCTION_BYTECODE {
+		b := cast(^js.Function_Bytecode)ptr_of(obj)
+		if len(b.image) > 0 {
+			raw, _ := mem.alloc(len(b.image), JS_ALLOC_ALIGN, host_allocator)
+			mem.copy(raw, raw_data(b.image), len(b.image))
+			if psize != nil {psize^ = uint(len(b.image))}
+			return cast([^]u8)raw
+		}
+	}
+	js.throw_internal_error(ctx, "JS_WriteObject: only a function compiled by this engine can be written")
 	return nil
 }
 
-@(export = JSCAPI_EXPORT)
 JS_ReadObject :: proc "c" (c: ^Context, buf: [^]u8, buf_len: uint, flags: i32) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)

@@ -79,7 +79,13 @@ frontend_compile :: proc(ctx: ^Context, req: ^Compile_Request) -> Value {
 		return throw_error(ctx, .syntax, res.err.message)
 	}
 	bytes := fe.write_object_of(res, a)
-	return read_object(ctx, bytes)
+	v := read_object(ctx, bytes)
+	if req.keep_image && v.tag == .function_bc {
+		b := cast(^Function_Bytecode)v.u.ptr
+		b.image = make([]u8, len(bytes), rt_allocator(rt))
+		copy(b.image, bytes)
+	}
+	return v
 }
 
 // An atom's UTF-8 text copied into `a` (the front-end's scratch arena).
