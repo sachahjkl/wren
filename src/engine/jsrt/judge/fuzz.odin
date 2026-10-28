@@ -247,7 +247,7 @@ compile_to_bytes :: proc(source: string, filename: string) -> ([]u8, bool) {
 
 @(private = "file")
 crash_handler :: proc "system" (info: ^windows.EXCEPTION_POINTERS) -> windows.LONG {
-	context = runtime.default_context()
+	context = runtime.default_context() // memcheck: the JavaScript engine's own heap (a guest allocator), not the browser's process memory
 	when js.JSRT_TRACE_LAST_OP {
 		name := "?"
 		if js.trace_last_bc != nil {name = fmt.tprint(js.trace_last_bc.func_name)}
