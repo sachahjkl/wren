@@ -190,6 +190,7 @@ Array_Buffer :: struct {
 	detached:     bool,
 	shared:       bool,
 	immutable:    bool, // created by transferToImmutable / sliceToImmutable
+	external:     bool, // `data` belongs to another agent's buffer (shared_buffer_attach): never freed here
 	views:        [dynamic]^Object, // typed arrays/data views over this buffer (weak-ish: views keep buffer alive)
 }
 
@@ -527,7 +528,7 @@ object_finalize :: proc(rt: ^Runtime, o: ^Object) {
 		delete(d.cells)
 		free(d, rt_allocator(rt))
 	case ^Array_Buffer:
-		if d.data != nil && !d.shared {mem_free(rt, d.data, d.alloc_len)}
+		if d.data != nil && !d.external {mem_free(rt, d.data, d.alloc_len)}
 		delete(d.views)
 		free(d, rt_allocator(rt))
 	case ^Typed_Array:

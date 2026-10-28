@@ -110,6 +110,8 @@ Host :: struct {
 	timed_out:     bool,
 	modules:       map[string]js.Value,
 	can_block:     bool,
+	agent:         ^Agent, // set in the runtime of an agent thread
+	agent_cb:      js.Value, // its receiveBroadcast callback
 }
 
 kind_code :: proc(k: js.Compile_Kind) -> i32 {
@@ -315,10 +317,6 @@ js_html_dda :: proc(ctx: ^js.Context, this: js.Value, args: []js.Value, magic: i
 	return js.NULL
 }
 
-js_agent_unsupported :: proc(ctx: ^js.Context, this: js.Value, args: []js.Value, magic: i32) -> js.Value {
-	return js.throw_type_error(ctx, "$262.agent is not supported")
-}
-
 js_monotonic_now :: proc(ctx: ^js.Context, this: js.Value, args: []js.Value, magic: i32) -> js.Value {
 	return js.mk_number(f64(time.tick_now()._nsec) / 1e6)
 }
@@ -342,8 +340,14 @@ install_helpers :: proc(ctx: ^js.Context) -> js.Value {
 	js.def_value(ctx, obj, "IsHTMLDDA", js.mk_obj(dda))
 	js.def_value(ctx, obj, "global", js.mk_obj(g))
 	agent := js.new_plain_object(ctx)
-	for name in ([]string{"start", "broadcast", "getReport", "receiveBroadcast", "report", "leaving"}) {
-		js.def_method(ctx, agent, name, js_agent_unsupported, 1)
+	if host_of(ctx).agent == nil {
+		js.def_method(ctx, agent, "start", js_agent_start, 1)
+		js.def_method(ctx, agent, "broadcast", js_agent_broadcast, 2)
+		js.def_method(ctx, agent, "getReport", js_agent_get_report, 0)
+	} else {
+		js.def_method(ctx, agent, "receiveBroadcast", js_agent_receive, 1)
+		js.def_method(ctx, agent, "report", js_agent_report, 1)
+		js.def_method(ctx, agent, "leaving", js_agent_leaving, 0)
 	}
 	js.def_method(ctx, agent, "sleep", js_sleep, 1)
 	js.def_method(ctx, agent, "monotonicNow", js_monotonic_now, 0)
@@ -555,6 +559,7 @@ run_test262_file :: proc(cfg: ^Config, hc: ^Harness_Cache, rel: string, verbose:
 	cfgr.interrupt_user = h
 	cfgr.can_block = can_block
 	cfgr.malloc_limit = 1 << 30
+	agent_hooks(&cfgr)
 	rt := js.engine_new(context.allocator, cfgr)
 	rt.host_data = h
 	set_host_hooks()
@@ -563,6 +568,7 @@ run_test262_file :: proc(cfg: ^Config, hc: ^Harness_Cache, rel: string, verbose:
 	t0 := time.tick_now()
 	defer {
 		res.ms = time.duration_milliseconds(time.tick_since(t0))
+		agent_stop_all()
 		js.engine_free(rt)
 		strings.builder_destroy(&h.output)
 		delete(h.modules)

@@ -19,6 +19,7 @@ frontend_compile :: proc(ctx: ^Context, req: ^Compile_Request) -> Value {
 		strict             = req.strict,
 		encode_import_type = true,
 		stack_budget       = rt.config.compile_stack_budget,
+		keep_source        = !rt.config.strip_source,
 	}
 	kind: fe.Program_Kind
 	switch req.kind {
