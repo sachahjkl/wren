@@ -249,16 +249,23 @@ static JSValue dom_attributes_of(JSContext *ctx, JSValueConst el)
 
 /* ---- name validity (HTML "valid custom element name") ---- */
 
-static bool valid_name(JSContext *ctx, const char *name)
+/* The name is tested as a JS string value, not a C string: a custom element name may hold an embedded NUL (WPT
+ * "a-\0"), which a C string would truncate, letting an invalid name pass the PotentialCustomElementName regexp. */
+static bool valid_name_v(JSContext *ctx, JSValueConst nv)
 {
-    JSValue nv = JS_NewString(ctx, name);
     JSValue test = JS_GetPropertyStr(ctx, ce_name_re, "test");
-    JSValue r = JS_Call(ctx, test, ce_name_re, 1, (JSValueConst *)&nv);
+    JSValue r = JS_Call(ctx, test, ce_name_re, 1, &nv);
     bool ok = JS_ToBool(ctx, r);
     JS_FreeValue(ctx, r); JS_FreeValue(ctx, test);
     bool reserved = set_has(ctx, ce_reserved, nv);
-    JS_FreeValue(ctx, nv);
     return ok && !reserved;
+}
+static bool valid_name(JSContext *ctx, const char *name)
+{
+    JSValue nv = JS_NewString(ctx, name);
+    bool ok = valid_name_v(ctx, nv);
+    JS_FreeValue(ctx, nv);
+    return ok;
 }
 
 /* ---- definitions, upgrades, reactions ---- */
@@ -286,6 +293,24 @@ static void react(JSContext *ctx, JSValueConst def, JSValueConst el, const char 
     if (JS_IsException(r)) { wj_report_exception(ctx, JS_GetException(ctx)); }
     else { JS_FreeValue(ctx, r); }
     JS_FreeValue(ctx, f);
+}
+
+/* sequence<DOMString> conversion (Web IDL): iterate `value` through its @@iterator, ToString each item into the
+ * provided Set. Returns false with a pending exception for a non-iterable value, a non-callable Symbol.iterator, an
+ * error thrown by the iteration, or a ToString that throws. This is what customElements.define must do for
+ * observedAttributes and disabledFeatures: the generator/iterator and every conversion exception is rethrown. */
+static bool seq_item_to_set(JSContext *ctx, JSValueConst item, void *opaque)
+{
+    JSValue set = *(JSValue *)opaque;
+    JSValue s = JS_ToString(ctx, item);   /* ToString may throw (e.g. a Symbol or a throwing toString) */
+    if (JS_IsException(s)) { return false; }
+    set_add(ctx, set, s);
+    JS_FreeValue(ctx, s);
+    return true;
+}
+static bool to_string_sequence(JSContext *ctx, JSValueConst value, JSValue set)
+{
+    return web_for_of(ctx, value, seq_item_to_set, &set);
 }
 
 /* HTML "upgrade an element" */
@@ -363,18 +388,19 @@ static void try_upgrade(JSContext *ctx, JSValueConst el)
 static JSValue ce_define(JSContext *ctx, JSValueConst namev, JSValueConst ctor, JSValueConst options)
 {
     JSValue name_str = JS_ToString(ctx, namev);
-    const char *name = JS_ToCString(ctx, name_str);
-    char *namebuf = web_strndup(name ? name : "", name ? strlen(name) : 0);
+    if (JS_IsException(name_str)) { return JS_EXCEPTION; }
+    size_t name_len = 0;
+    const char *name = JS_ToCStringLen(ctx, &name_len, name_str);
+    char *namebuf = web_strndup(name ? name : "", name ? name_len : 0);
     if (name) { JS_FreeCString(ctx, name); }
-    JS_FreeValue(ctx, name_str);
 
-    if (!JS_IsConstructor(ctx, ctor)) { free(namebuf); return JS_ThrowTypeError(ctx, "Failed to execute 'define' on 'CustomElementRegistry': The provided value is not of type 'CustomElementConstructor'."); }
-    if (!valid_name(ctx, namebuf)) {
+    if (!JS_IsConstructor(ctx, ctor)) { JS_FreeValue(ctx, name_str); free(namebuf); return JS_ThrowTypeError(ctx, "Failed to execute 'define' on 'CustomElementRegistry': The provided value is not of type 'CustomElementConstructor'."); }
+    if (!valid_name_v(ctx, name_str)) {
         char msg[128]; snprintf(msg, sizeof msg, "Failed to execute 'define' on 'CustomElementRegistry': \"%s\" is not a valid custom element name", namebuf);
-        free(namebuf);
+        JS_FreeValue(ctx, name_str); free(namebuf);
         return JS_Throw(ctx, web_dom_exception(ctx, "SyntaxError", msg));
     }
-    JSValue name_key = JS_NewString(ctx, namebuf);
+    JSValue name_key = name_str;   /* the exact string value, keys byName/byCtor/pending without NUL truncation */
     if (map_has(ctx, ce_by_name, name_key)) {
         char msg[128]; snprintf(msg, sizeof msg, "Failed to execute 'define' on 'CustomElementRegistry': the name \"%s\" has already been used with this registry", namebuf);
         JS_FreeValue(ctx, name_key); free(namebuf);
@@ -400,7 +426,11 @@ static JSValue ce_define(JSContext *ctx, JSValueConst namev, JSValueConst ctor, 
     JSValue def = JS_UNDEFINED;
     bool ok = true;
     JSValue proto = JS_GetPropertyStr(ctx, ctor, "prototype");
-    if (!JS_IsObject(proto) && !JS_IsFunction(ctx, proto)) {
+    if (JS_IsException(proto)) {
+        /* Get(constructor, "prototype") threw (e.g. a Proxy trap): rethrow it as the spec requires, not our own
+         * TypeError. The pending exception is already set. */
+        ok = false;
+    } else if (!JS_IsObject(proto) && !JS_IsFunction(ctx, proto)) {
         JS_ThrowTypeError(ctx, "Failed to execute 'define' on 'CustomElementRegistry': The 'prototype' property of the constructor is not an object.");
         ok = false;
     }
@@ -418,34 +448,47 @@ static JSValue ce_define(JSContext *ctx, JSValueConst namev, JSValueConst ctor, 
             JSValue setc = global_prop(ctx, "Set");
             JSValue observed = JS_CallConstructor(ctx, setc, 0, NULL);
             JS_FreeValue(ctx, setc);
+            /* observedAttributes, read on the constructor only when attributeChangedCallback is present. Get() and the
+             * sequence<DOMString> conversion (iterator protocol, ToString) both rethrow, exactly as the spec requires. */
             JSValue acc = JS_GetPropertyStr(ctx, def, "attributeChangedCallback");
             if (!JS_IsUndefined(acc)) {
                 JSValue list = JS_GetPropertyStr(ctx, ctor, "observedAttributes");
-                if (!JS_IsUndefined(list)) {
-                    int64_t ln = 0;
-                    if (JS_GetLength(ctx, list, &ln) == 0) {
-                        for (int64_t i = 0; i < ln; i++) { JSValue a = JS_GetPropertyInt64(ctx, list, i); JSValue as = JS_ToString(ctx, a); set_add(ctx, observed, as); JS_FreeValue(ctx, as); JS_FreeValue(ctx, a); }
-                    }
+                if (JS_IsException(list)) { JS_FreeValue(ctx, acc); JS_FreeValue(ctx, observed); ok = false; }
+                else {
+                    if (!JS_IsUndefined(list) && !to_string_sequence(ctx, list, observed)) { ok = false; }
+                    JS_FreeValue(ctx, list);
+                    if (!ok) { JS_FreeValue(ctx, observed); }
                 }
-                JS_FreeValue(ctx, list);
+                if (ok) { JS_FreeValue(ctx, acc); }
+            } else {
+                JS_FreeValue(ctx, acc);
             }
-            JS_FreeValue(ctx, acc);
-            JS_SetPropertyStr(ctx, def, "observed", observed);
-            /* disabledFeatures: attachShadow()/attachInternals() refuse for this name */
-            bool noShadow = false, noInternals = false;
-            JSValue disabled = JS_GetPropertyStr(ctx, ctor, "disabledFeatures");
-            if (!JS_IsUndefined(disabled) && !JS_IsNull(disabled)) {
-                int64_t dn = 0;
-                if (JS_GetLength(ctx, disabled, &dn) == 0) {
-                    for (int64_t i = 0; i < dn; i++) { JSValue f = JS_GetPropertyInt64(ctx, disabled, i); const char *s = JS_ToCString(ctx, f); if (s && strcmp(s, "shadow") == 0) { noShadow = true; } else if (s && strcmp(s, "internals") == 0) { noInternals = true; } if (s) { JS_FreeCString(ctx, s); } JS_FreeValue(ctx, f); }
+            if (ok) {
+                JS_SetPropertyStr(ctx, def, "observed", observed);
+                /* disabledFeatures (sequence<DOMString>): attachShadow()/attachInternals() refuse for this name. Get()
+                 * and the conversion rethrow; undefined means an empty sequence. */
+                bool noShadow = false, noInternals = false;
+                JSValue disabled = JS_GetPropertyStr(ctx, ctor, "disabledFeatures");
+                if (JS_IsException(disabled)) { ok = false; }
+                else if (!JS_IsUndefined(disabled)) {
+                    JSValue setc2 = global_prop(ctx, "Set");
+                    JSValue features = JS_CallConstructor(ctx, setc2, 0, NULL);
+                    JS_FreeValue(ctx, setc2);
+                    if (!to_string_sequence(ctx, disabled, features)) { ok = false; }
+                    else { noShadow = set_has_str(ctx, features, "shadow"); noInternals = set_has_str(ctx, features, "internals"); }
+                    JS_FreeValue(ctx, features);
+                }
+                if (!JS_IsException(disabled)) { JS_FreeValue(ctx, disabled); }
+                if (ok) {
+                    JS_SetPropertyStr(ctx, def, "noShadow", JS_NewBool(ctx, noShadow));
+                    JS_SetPropertyStr(ctx, def, "noInternals", JS_NewBool(ctx, noInternals));
+                    /* formAssociated is read as the standard does (Get() rethrows), though form-associated elements are
+                     * not implemented: its value is otherwise unused. */
+                    JSValue fa = JS_GetPropertyStr(ctx, ctor, "formAssociated");
+                    if (JS_IsException(fa)) { ok = false; }
+                    else { JS_FreeValue(ctx, fa); }
                 }
             }
-            JS_FreeValue(ctx, disabled);
-            JS_SetPropertyStr(ctx, def, "noShadow", JS_NewBool(ctx, noShadow));
-            JS_SetPropertyStr(ctx, def, "noInternals", JS_NewBool(ctx, noInternals));
-            /* read formAssociated as the standard does, though not implemented */
-            JSValue fa = JS_GetPropertyStr(ctx, ctor, "formAssociated");
-            JS_FreeValue(ctx, fa);
         }
     }
     JS_FreeValue(ctx, proto);
