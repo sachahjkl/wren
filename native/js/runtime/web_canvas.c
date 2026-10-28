@@ -389,6 +389,7 @@ static uint64_t image_source(JSContext *ctx, JSValueConst v, const char *what)
 {
     static const int ifaces[] = {
         WJ_IFACE_HTMLImageElement, WJ_IFACE_HTMLCanvasElement, WJ_IFACE_HTMLVideoElement, WJ_IFACE_ImageBitmap, WJ_IFACE_OffscreenCanvas,
+        WJ_IFACE_VideoFrame,   /* a VideoFrame is a CanvasImageSource (WebCodecs); the host draws its captured pixels */
     };
     if (JS_IsObject(v)) {
         for (size_t i = 0; i < WEB_COUNT(ifaces); i++) {

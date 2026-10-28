@@ -30,6 +30,7 @@ enum {
     T_GEOM,   /* DOMPoint, DOMRect, DOMMatrix (and their ReadOnly forms), ImageData: a kind, then their attributes */
     T_FS_HANDLE,   /* a FileSystemHandle: its description (runtime/web_fs.c), restored in the receiving realm */
     T_MSE_HANDLE,  /* a MediaSourceHandle of the transfer list: the browser's token (src/page/mse_worker.odin) */
+    T_VIDEO_FRAME, /* a VideoFrame of the transfer list: the host's transfer token (src/page/bindings_webcodecs.odin) */
 };
 
 /* runtime/web_fs.c (weak: a build without it clones no handle) */
@@ -392,6 +393,18 @@ static bool serialize_object(ser *s, JSValueConst v)
         put_u64(&s->out, token);
         return true;
     }
+    if (wj_unwrap(v, WJ_IFACE_VideoFrame)) {
+        /* a VideoFrame is transferable only: it must be in the transfer list; the host moves its pixels into a token */
+        bool listed = false;
+        for (uint32_t i = 0; i < s->n_transfer; i++) { if (JS_VALUE_GET_PTR(s->transfer[i]) == JS_VALUE_GET_PTR(v)) { listed = true; break; } }
+        if (!listed) { return clone_error(ctx, "A VideoFrame could not be cloned because it was not transferred."); }
+        uint64_t token = wr_VideoFrame_takeForTransfer(wj_obj_of(v)->handle);
+        if (!token) { return clone_error(ctx, "A VideoFrame could not be transferred (it is closed)."); }
+        if (!remember(s, v)) { return false; }
+        put_u8(&s->out, T_VIDEO_FRAME);
+        put_u64(&s->out, token);
+        return true;
+    }
     const uint8_t *blob_bytes;
     size_t blob_len;
     if (web_blob_bytes(v, &blob_bytes, &blob_len)) {
@@ -641,9 +654,10 @@ static bool transfer_list(JSContext *ctx, JSValueConst list, JSValue **out, uint
         if (JS_IsException(items[i])) { items[i] = JS_UNDEFINED; ok = false; break; }
         bool port = wj_unwrap(items[i], WJ_IFACE_MessagePort) != NULL;
         bool msh = wj_unwrap(items[i], WJ_IFACE_MediaSourceHandle) != NULL;
-        if (!port && !msh && !JS_IsArrayBuffer(items[i])) { ok = clone_error(ctx, "Value at index in the transfer list is not transferable (only ArrayBuffer, MessagePort and MediaSourceHandle are)."); break; }
+        bool vf = wj_unwrap(items[i], WJ_IFACE_VideoFrame) != NULL;
+        if (!port && !msh && !vf && !JS_IsArrayBuffer(items[i])) { ok = clone_error(ctx, "Value at index in the transfer list is not transferable (only ArrayBuffer, MessagePort, MediaSourceHandle and VideoFrame are)."); break; }
         size_t len = 0;
-        if (!port && !msh && !JS_GetArrayBuffer(ctx, &len, items[i]) && JS_HasException(ctx)) {
+        if (!port && !msh && !vf && !JS_GetArrayBuffer(ctx, &len, items[i]) && JS_HasException(ctx)) {
             JS_FreeValue(ctx, JS_GetException(ctx));
             ok = clone_error(ctx, "An ArrayBuffer is detached and could not be transferred.");
             break;
@@ -704,6 +718,7 @@ uint8_t *wj_clone_serialize_ports(JSContext *ctx, JSValueConst value, JSValueCon
         for (uint32_t i = 0; i < n; i++) {
             if (wj_unwrap(items[i], WJ_IFACE_MessagePort)) { JS_SetPropertyUint32(ctx, list, k++, JS_DupValue(ctx, items[i])); }
             else if (wj_unwrap(items[i], WJ_IFACE_MediaSourceHandle)) { /* (detached by the browser when it was taken) */ }
+            else if (wj_unwrap(items[i], WJ_IFACE_VideoFrame)) { /* (detached by the host when takeForTransfer moved its pixels) */ }
             else { JS_DetachArrayBuffer(ctx, items[i]); }
         }
         *ports = list;
@@ -1061,6 +1076,15 @@ static JSValue deserialize(deser *d)
         if (!get_u64(d, &token)) { r = malformed(ctx); break; }
         if (wr_MediaSourceHandle_adopt(token, &h) < 0 || !h) { r = malformed(ctx); break; }
         r = wj_wrap_owned(ctx, h, WJ_IFACE_MediaSourceHandle, JS_UNDEFINED);
+        if (!JS_IsException(r) && !add_ref(d, r)) { JS_FreeValue(ctx, r); r = JS_EXCEPTION; }
+        break;
+    }
+    case T_VIDEO_FRAME: {
+        uint64_t token;
+        if (!get_u64(d, &token)) { r = malformed(ctx); break; }
+        uint64_t h = wr_VideoFrame_adoptTransfer(token);
+        if (!h) { r = malformed(ctx); break; }
+        r = wj_wrap_owned(ctx, h, WJ_IFACE_VideoFrame, JS_UNDEFINED);
         if (!JS_IsException(r) && !add_ref(d, r)) { JS_FreeValue(ctx, r); r = JS_EXCEPTION; }
         break;
     }
