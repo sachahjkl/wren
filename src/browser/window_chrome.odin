@@ -38,13 +38,10 @@ register_window_prefs :: proc(p: ^config.Prefs) { config.register(p, WINDOW_PREF
 
 // The size of the one surface a window shows (the size of its monitor) when browser.window.fixed_surface is on, else zero: the main window's
 // composition swap chain (render.set_fixed_surface) and the developer tools' window's (render.surface_create) are made with it, so that both are
-// resized the same way: cut, never stretched.
-fixed_surface_size :: proc(app: ^App, hwnd: win.HWND) -> [2]int {
+// resized the same way: cut, never stretched. The monitor size comes from the toolkit (platform.monitor_size), so this is neutral across systems.
+fixed_surface_size :: proc(app: ^App, w: ^platform.Window) -> [2]int {
 	if !config.bool_of(&app.prefs, "browser.window.fixed_surface") { return {} }
-	mon := win.MonitorFromWindow(hwnd, .MONITOR_DEFAULTTONEAREST)
-	mi := win.MONITORINFO{cbSize = size_of(win.MONITORINFO)}
-	if !win.GetMonitorInfoW(mon, &mi) { return {} }
-	return {int(mi.rcMonitor.right - mi.rcMonitor.left), int(mi.rcMonitor.bottom - mi.rcMonitor.top)}
+	return platform.monitor_size(w)
 }
 
 Window_Settings :: struct {

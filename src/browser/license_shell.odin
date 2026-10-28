@@ -3,6 +3,7 @@ package browser
 import "core:os"
 import "core:strings"
 import win "core:sys/windows"
+import "wb:base"
 import "wb:config"
 import "wb:fetch"
 import "wb:host"
@@ -152,9 +153,7 @@ license_remove :: proc(app: ^App) {
 
 @(private = "file")
 write_file_atomic :: proc(path, text: string) -> bool {
-	tmp := strings.concatenate({path, ".tmp"}, context.temp_allocator)
-	if os.write_entire_file(tmp, transmute([]byte)text) != nil { return false }
-	return bool(win.MoveFileExW(win.utf8_to_wstring(tmp, context.temp_allocator), win.utf8_to_wstring(path, context.temp_allocator), win.MOVEFILE_REPLACE_EXISTING | win.MOVEFILE_WRITE_THROUGH))
+	return base.file_write_atomic(path, transmute([]byte)text, flush = true)   // neutral: write a temp file + durable rename (fsx)
 }
 
 ////////////////////////////////

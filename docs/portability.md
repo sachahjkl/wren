@@ -114,6 +114,41 @@ and `src/browser` still calls Win32 directly in places (`windows.odin`'s foregro
 `wake_window` was made neutral). The toolkit's `a11y` on Linux (AccessKit's `accesskit_unix`) and drag-and-drop / tray
 on Wayland and X11 are not wired yet (the shared `!windows` stubs answer "not supported").
 
+## Slice 5 (2026-10-28, night): the renderer on Linux, the shell's render path
+
+The toolkit's **`render`** package now builds its **wgpu backend for Linux** (`render` own 105 → ok): the Direct3D 11
+backend (`render_d3d.odin`, `frame.odin`, `canvas.odin`, `slug_d3d.odin`, `video.odin`, `app_shader_d3d.odin`,
+`shaders_d3d.odin`, `damage_d3d.odin`, `damage_verify.odin`) is built only for the Direct3D backend
+(`when !USE_WGPU`, i.e. Windows), while the shared types (`Renderer`, `Texture_Data`, the frame description) and the
+backend-agnostic procedures build on every system. `TOOLKIT_RENDER` is ignored off Windows and `USE_WGPU` is forced on.
+The public API is neutral: `render.init(&r, surface: platform.Surface_Handles, …)` (and `render.init_window(&r, window, …)`),
+`render.surface_init` the same; no Direct3D, DXGI or Win32 type is in a public signature. The wgpu surface comes from
+`platform.Surface_Handles` (Wayland or XCB, `render/wgpu_surface_linux.odin`); present pacing on Linux is the FIFO
+vblank (no DWM timing, no waitable-timer latency object). The 2D canvas is Direct3D only for now (`canvas_supported`
+reports false on wgpu). `platform` gains `monitor_size(window)` (Win32 / wl_output / X11 root). wgpu-native must be built
+for Linux (`libwgpu_native.a` beside Odin's vendor package) — the only thing the lead must drop in.
+
+Wren's **`src/browser`** render path is now neutral (the main window, the developer-tools window,
+`fixed_surface_size`): `render.init_window` / `render.surface_init` with `platform.native_surface_handles` and
+`platform.monitor_size`, with the Win32 window details (raise, client-rect, hide-on-close, the command subclass) behind
+`when ODIN_OS == .Windows`. Errors in `src/browser`'s own files for Linux (excluding the `#load` artifact errors of a
+worktree without a build): **≈457 (slice 2) → 28**. The bulk fell with `render` / `platform` compiling; the render
+callers and a few small Win32 uses (the profiler clock, the shutdown hide) were made neutral here.
+
+What still calls Win32 directly in `src/browser` (next slice, each a small neutral-or-`*_windows.odin` task):
+
+| File | Win32 it uses | How to port |
+|---|---|---|
+| `app_commands.odin` | `SetWindowSubclass`, `HIWORD` (menu / command messages) | a toolkit menu-command hook, or `*_windows.odin` + an `*_other.odin` no-op |
+| `local_paths.odin` | `WM_DROPFILES`, `HDROP`, `GetFileAttributesW`, path helpers | the toolkit drag-and-drop (Linux DND not wired yet) + `base.files` |
+| `remote_state.odin` | `GetProcessTimes`, `CreateToolhelp32Snapshot` (process list, CPU time) | `base.process_memory` / a neutral process-times helper; process enumeration gated |
+| `memcheck.odin` | `GetCurrentProcess`, `PROCESS_MEMORY_COUNTERS_EX` | `base.process_memory` (resident / private) |
+| `hud.odin` | `SetTimer` / `KillTimer`, `GetCurrentProcess` | a `host` timer (the event loop has timers) |
+| `download.odin`, `global_history.odin` | `MoveFileExW`, `WriteFile`, `GetFileAttributesW` | `base.files` (`file_write_atomic`, `file_replace`, `file_stat`) — `license_shell.odin` already moved |
+| `date_display.odin`, `history_ui.odin` | `GetDateFormatEx`, `FileTimeToSystemTime`, `SystemTimeToTzSpecificLocalTime` | `core:time` + the i18n date formatting (neutral) |
+| `forms_shell.odin` | `CHOOSECOLORW` (the system colour picker) | the toolkit's own colour picker, or gate behind `*_windows.odin` |
+| `video_shell.odin` | `media.set_gpu_device` (the renderer's D3D device for hardware video) | a neutral "renderer device" handle, or no hardware video on wgpu yet |
+
 ## Media on Linux: decisions
 
 - **AV1**: rav1d (already linked for AVIF), in software, on every system (`av1_soft.odin`); Windows keeps Media
