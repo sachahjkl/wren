@@ -17,7 +17,7 @@ wj_web_preinit :: proc "c" (ctx: ^wj.Context) -> i32 {
 	wj.hooks = {listeners_free = wj_listeners_free, dispatch_event = wjr_EventTarget_dispatchEvent, event_construct = wj_event_construct}
 	if wj.web_core_preinit(ctx) < 0 { return -1 }
 	parts := [?]Part_Preinit{
-		wj.web_buffer_preinit, web_blob_preinit, web_stream_preinit, web_navigator_preinit, web_perf_preinit,
+		wj.web_buffer_preinit, web_stream_preinit, web_navigator_preinit, web_perf_preinit,
 		web_clipboard_preinit, web_compat_preinit, web_fs_preinit,
 	}
 	for p in parts { if p(ctx) < 0 { return -1 } }
