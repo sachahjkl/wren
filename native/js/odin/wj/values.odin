@@ -54,22 +54,7 @@ foreign {
 	web_headers_sorted          :: proc(ctx: ^Context, headers: JSValue) -> JSValue ---
 	web_forbidden_request_header :: proc(name: cstring, n: uint, value: cstring, vn: uint) -> bool ---
 
-	// streams (web_stream.c)
-	web_stream_is        :: proc(v: JSValue) -> bool ---
-	web_stream_locked    :: proc(v: JSValue) -> bool ---
-	web_stream_disturbed :: proc(v: JSValue) -> bool ---
-	web_stream_from_host :: proc(ctx: ^Context, host_stream: u64, signal: JSValue, keep: JSValue) -> JSValue ---
-	web_stream_from_bytes :: proc(ctx: ^Context, p: [^]u8, n: uint) -> JSValue ---
-	web_stream_of        :: proc(ctx: ^Context, chunk: JSValue) -> JSValue ---
-	web_stream_pending   :: proc(ctx: ^Context) -> JSValue ---
-	web_stream_push      :: proc(ctx: ^Context, stream: JSValue, chunk: JSValue) ---
-	web_stream_end       :: proc(ctx: ^Context, stream: JSValue) ---
-	web_stream_fail      :: proc(ctx: ^Context, stream: JSValue, e: JSValue) ---
-	web_stream_read_all  :: proc(ctx: ^Context, stream: JSValue) -> JSValue ---
-	web_stream_tee       :: proc(ctx: ^Context, stream: JSValue, clone_second: bool) -> JSValue ---
-	web_stream_cancel    :: proc(ctx: ^Context, stream: JSValue, reason: JSValue) -> JSValue ---
-	web_stream_state     :: proc(ctx: ^Context, v: JSValue, error: ^JSValue) -> i32 ---
-	web_writable_state   :: proc(ctx: ^Context, v: JSValue, error: ^JSValue) -> i32 ---
+	// (streams: web_stream_* and web_writable_state are Odin, package odin_glue, web_stream.odin / web_writable.odin)
 
 	// (abort signals: web_signal_* and web_controller_construct are Odin, package odin_glue, web_abort.odin)
 

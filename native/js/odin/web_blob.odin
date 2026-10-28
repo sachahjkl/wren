@@ -504,7 +504,7 @@ wjr_Blob_stream :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, 
 	if b == nil { return wj.EXCEPTION }
 	bytes, ok := blob_bytes(b)
 	if !ok { return wj.wj_throw_dom(ctx, "NotReadableError", "The requested file could not be read.") }
-	return wj.web_stream_from_bytes(ctx, raw_data(bytes), uint(len(bytes)))
+	return web_stream_from_bytes(ctx, raw_data(bytes), uint(len(bytes)))
 }
 
 // textStream(): the text in one chunk (the bytes decoded as UTF-8)
@@ -517,7 +517,7 @@ wjr_Blob_textStream :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i
 	if !ok { return wj.wj_throw_dom(ctx, "NotReadableError", "The requested file could not be read.") }
 	text := wj.web_utf8_string(ctx, raw_data(bytes), uint(len(bytes)), true)
 	if wj.is_exception(text) { return text }
-	s := wj.web_stream_of(ctx, text)
+	s := web_stream_of(ctx, text)
 	wj.JS_FreeValue(ctx, text)
 	return s
 }
