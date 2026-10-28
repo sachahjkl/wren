@@ -76,6 +76,8 @@ Function_Bytecode :: struct {
 	source_string:             ^JS_String, // cached Function.prototype.toString text
 	catch_levels:              []Catch_Level, // verified operand stack height at each catch handler
 	image:                     []u8, // the serialized form this function was read from, kept on request (Compile_Request.keep_image)
+	jit:                       ^Jit_Info, // loops of this function the loop JIT looked at (jit.odin), allocated on first use
+	jit_active:                int,       // how many of them are compiled or being compiled (the interpreter then offers each back edge)
 }
 
 Catch_Level :: struct {
@@ -103,6 +105,7 @@ function_bc_finalize :: proc(rt: ^Runtime, b: ^Function_Bytecode) {
 	if b.source != nil {delete(b.source, a)}
 	if b.catch_levels != nil {delete(b.catch_levels, a)}
 	if b.image != nil {delete(b.image, a)}
+	if b.jit != nil {free(b.jit, a)}
 }
 
 // The source line of instruction `pc`, decoded from the pc2line table (QuickJS's format: a leb128
