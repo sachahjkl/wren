@@ -99,6 +99,17 @@ foreign _m_dom {
 	@(link_name = "ComputedStyle_name")         wr_ComputedStyle_name         :: proc(index: u32, buf: [^]u8, cap: u32) -> i32 ---
 	@(link_name = "CSS_supportsDeclaration")    wr_CSS_supportsDeclaration    :: proc(property: [^]u8, property_len: u32, value: [^]u8, value_len: u32) -> i32 ---
 	@(link_name = "CSS_supportsCondition")      wr_CSS_supportsCondition      :: proc(condition: [^]u8, condition_len: u32) -> i32 ---
+
+	// custom_elements.odin
+	@(link_name = "CustomElements_define")         wr_CustomElements_define         :: proc(name: [^]u8, name_len: u32) ---
+	@(link_name = "CustomElements_pending")        wr_CustomElements_pending        :: proc() -> u32 ---
+	@(link_name = "CustomElements_take")           wr_CustomElements_take           :: proc(buf: [^]u8, cap: u32) -> i32 ---
+	@(link_name = "CustomElements_release")        wr_CustomElements_release        :: proc(elements: [^]u64, elements_len: u32) ---
+	@(link_name = "CustomElements_create")         wr_CustomElements_create         :: proc(name: [^]u8, name_len: u32, ret: ^u64) -> i32 ---
+	@(link_name = "Element_setCustomState")        wr_Element_setCustomState        :: proc(element: u64, state: u32) ---
+	@(link_name = "CustomElements_disable")        wr_CustomElements_disable        :: proc(name: [^]u8, name_len: u32, shadow: i32, internals: i32) ---
+	@(link_name = "Document_shadowIncludingByName") wr_Document_shadowIncludingByName :: proc(name: [^]u8, name_len: u32, buf: [^]u8, cap: u32) -> i32 ---
+	@(link_name = "Node_shadowIncludingElements")  wr_Node_shadowIncludingElements  :: proc(root: u64, buf: [^]u8, cap: u32) -> i32 ---
 }
 
 // module "forms"
