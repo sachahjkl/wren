@@ -182,6 +182,12 @@ JS_ComputeMemoryUsage :: proc "c" (r: ^Runtime, s: ^Memory_Usage) {
 	s.atom_count = i64(len(rt.atoms))
 }
 
+// Heap census counter `index` (jsrt memprof.odin), -1 past the end. Not part of the quickjs.h API.
+heap_profile_field :: proc "c" (r: ^Runtime, index: i32) -> i64 {
+	context = api_ctx()
+	return js.heap_profile_field(jrt(r), int(index))
+}
+
 // The collector reports each reference through here (Class_Def.gc_mark).
 JS_MarkValue :: proc "c" (r: ^Runtime, val: JSValue, mark_func: Mark_Func) {
 	context = api_ctx()

@@ -168,6 +168,9 @@ Runtime :: struct {
 	// regains control (embed.odin), never while native code may still use it.
 	scratch:        mem.Dynamic_Arena,
 	host_depth:     int,
+	compile_count:  int, // front-end compiles so far, and the most block memory one of their arenas held (memprof.odin)
+	compile_peak_bytes: int,
+	compile_peak_blocks: int,
 	regexp_arena:   mem.Dynamic_Arena, // per-exec scratch of the regexp matcher (reset after each match)
 
 	// host hooks for agents ($262.agent) and misc.
