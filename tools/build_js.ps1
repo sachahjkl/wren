@@ -201,6 +201,7 @@ $odinified = @(
     'web_pipe.c',
     'web_resize.c',
     'web_scheduler.c',
+    'web_socket.c',
     'web_storage.c',
     'web_strategy.c',
     'web_stream.c',

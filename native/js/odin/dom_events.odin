@@ -30,7 +30,7 @@ wj_event_wrapped :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, host: u64, ifac
 	if iface == ifc("MessageEvent") {
 		// HTML deserializes a message before its event is dispatched: data (and its ports), origin and lastEventId
 		// are read now, while the browser's event exists, so a listener that reads them after an await sees them
-		getters := [3]wj.Getter{wj.wjr_MessageEvent_get_data, wj.wjr_MessageEvent_get_origin, wj.wjr_MessageEvent_get_lastEventId}
+		getters := [3]wj.Getter{wjr_MessageEvent_get_data, wjr_MessageEvent_get_origin, wjr_MessageEvent_get_lastEventId}
 		for g in getters {
 			v := g(ctx, obj)
 			if wj.is_exception(v) { wj.JS_FreeValue(ctx, wj.JS_GetException(ctx)) } else { wj.JS_FreeValue(ctx, v) }
