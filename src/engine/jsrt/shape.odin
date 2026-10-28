@@ -64,6 +64,7 @@ shape_empty :: proc(rt: ^Runtime, proto: ^Object) -> ^Shape {
 }
 
 shape_destroy :: proc(rt: ^Runtime, sh: ^Shape) {
+	gc_list_remove(rt, sh)
 	if sh.proto != nil {object_unref(rt, sh.proto)}
 	for &t in sh.transitions {
 		if t.to != nil {shape_unref(rt, t.to)}

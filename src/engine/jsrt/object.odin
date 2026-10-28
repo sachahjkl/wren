@@ -258,63 +258,87 @@ object_destroy :: proc(rt: ^Runtime, obj: ^Object) {
 	gc_raw_free(rt, obj, size_of(Object))
 }
 
-// Free the references an exotic payload owns.
-exotic_destroy :: proc(rt: ^Runtime, obj: ^Object) {
+// Free the references an exotic payload owns (the Value edges), leaving raw storage for
+// exotic_free_storage. Splitting the two lets the cycle collector drop edges across a whole garbage
+// set before freeing any struct, avoiding double frees.
+exotic_destroy_edges :: proc(rt: ^Runtime, obj: ^Object) {
 	switch &e in obj.exotic {
 	case Array_Data:
 		for v in e.dense {value_free(rt, v)}
-		delete(e.dense)
 	case Function_Data:
 		for vr in e.var_refs {
 			if vr != nil {var_ref_unref(rt, vr)}
 		}
-		if e.var_refs != nil {delete(e.var_refs, rt.allocator)}
 		if e.bc != nil {function_bc_unref(rt, e.bc)}
 		value_free(rt, e.home)
+		e.bc = nil
 	case Native_Data:
 		for v in e.data {value_free(rt, v)}
-		if e.data != nil {delete(e.data, rt.allocator)}
 	case Bound_Function_Data:
 		value_free(rt, e.target)
 		value_free(rt, e.this_val)
 		for v in e.bound_args {value_free(rt, v)}
-		if e.bound_args != nil {delete(e.bound_args, rt.allocator)}
 	case Primitive_Wrapper:
 		value_free(rt, e.prim)
-	case Array_Buffer_Data:
-		if e.bytes != nil {gc_raw_free(rt, raw_data(e.bytes), len(e.bytes))}
 	case Typed_Array_Data:
 		value_free(rt, e.buffer)
 	case Data_View_Data:
 		value_free(rt, e.buffer)
 	case Map_Data:
 		for en in e.entries {value_free(rt, en.key); value_free(rt, en.val)}
-		delete(e.entries)
-		delete(e.index)
 	case Set_Data:
 		for v in e.entries {value_free(rt, v)}
-		delete(e.entries)
-		delete(e.index)
 	case Proxy_Data:
 		value_free(rt, e.target)
 		value_free(rt, e.handler)
-	case Date_Data:
 	case RegExp_Data:
-		if e.bytecode != nil {gc_raw_free(rt, raw_data(e.bytecode), len(e.bytecode))}
-		if e.source != nil {string_unref(rt, e.source)}
-	case Error_Data:
+		if e.source != nil {string_unref(rt, e.source); e.source = nil}
 	case Iterator_Data:
 		value_free(rt, e.target)
 	case Promise_Data:
 		value_free(rt, e.result)
 		for r in e.fulfill_jobs {promise_reaction_free(rt, r)}
 		for r in e.reject_jobs {promise_reaction_free(rt, r)}
+	case Array_Buffer_Data, Date_Data, Error_Data, Generator_Data, Namespace_Data:
+	}
+}
+
+// Free the raw (non-Value) storage an exotic payload owns: dynamic arrays, maps, byte buffers, and
+// captured frames. Call after exotic_destroy_edges.
+exotic_free_storage :: proc(rt: ^Runtime, obj: ^Object) {
+	switch &e in obj.exotic {
+	case Array_Data:
+		delete(e.dense)
+	case Function_Data:
+		if e.var_refs != nil {delete(e.var_refs, rt.allocator)}
+	case Native_Data:
+		if e.data != nil {delete(e.data, rt.allocator)}
+	case Bound_Function_Data:
+		if e.bound_args != nil {delete(e.bound_args, rt.allocator)}
+	case Array_Buffer_Data:
+		if e.bytes != nil {gc_raw_free(rt, raw_data(e.bytes), len(e.bytes))}
+	case Map_Data:
+		delete(e.entries)
+		delete(e.index)
+	case Set_Data:
+		delete(e.entries)
+		delete(e.index)
+	case RegExp_Data:
+		if e.bytecode != nil {gc_raw_free(rt, raw_data(e.bytecode), len(e.bytecode))}
+	case Promise_Data:
 		delete(e.fulfill_jobs)
 		delete(e.reject_jobs)
 	case Generator_Data:
 		if e.frame != nil {frame_free(rt, cast(^Call_Frame)e.frame)}
-	case Namespace_Data:
+	case Primitive_Wrapper, Typed_Array_Data, Data_View_Data, Proxy_Data, Date_Data, Error_Data,
+	     Iterator_Data, Namespace_Data:
 	}
+}
+
+// Combined destroy for the refcount-zero path (one cell, not a cyclic set): drop edges then storage.
+exotic_destroy :: proc(rt: ^Runtime, obj: ^Object) {
+	exotic_destroy_edges(rt, obj)
+	exotic_free_storage(rt, obj)
 }
 
 promise_reaction_free :: proc(rt: ^Runtime, r: Promise_Reaction) {
@@ -344,12 +368,14 @@ gc_visit_children :: proc(h: ^GC_Header, visit: proc(child: ^GC_Header)) {
 	case .var_ref:
 		vr := cast(^Var_Ref)h
 		if is_heap(vr.value) {visit(as_header(vr.value))}
-	case .string, .symbol, .bigint, .shape:
-		// Shapes reference their prototype object; include it so a proto cycle is collectable.
-		if h.kind == .shape {
-			sh := cast(^Shape)h
-			if sh.proto != nil {visit(cast(^GC_Header)sh.proto)}
+	case .shape:
+		sh := cast(^Shape)h
+		// A shape references its prototype object and, through its transition cache, its child shapes.
+		if sh.proto != nil {visit(cast(^GC_Header)sh.proto)}
+		for &t in sh.transitions {
+			if t.to != nil {visit(cast(^GC_Header)t.to)}
 		}
+	case .string, .symbol, .bigint:
 	}
 }
 

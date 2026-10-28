@@ -41,7 +41,7 @@ install_object :: proc(ctx: ^Context, realm: ^Realm) {
 	define_method(ctx, op, pa(.A_valueOf), object_proto_value_of, "valueOf", 0)
 
 	ctor := define_constructor(ctx, pa(.A_Object), object_constructor, 1, op)
-	realm.object_ctor = ctor
+	realm.object_ctor = object_ref(ctor)
 	define_method(ctx, ctor, pa(.A_keys), object_keys, "keys", 1)
 	define_method(ctx, ctor, pa(.A_getPrototypeOf), object_get_proto, "getPrototypeOf", 1)
 	define_method(ctx, ctor, pa(.A_defineProperty), object_define_property, "defineProperty", 3)
@@ -171,7 +171,7 @@ install_array :: proc(ctx: ^Context, realm: ^Realm) {
 	define_method(ctx, ap, pa(.A_join), array_proto_join, "join", 1)
 
 	ctor := define_constructor(ctx, pa(.A_Array), array_constructor, 1, ap)
-	realm.array_ctor = ctor
+	realm.array_ctor = object_ref(ctor)
 	define_method_str(ctx, ctor, "isArray", array_is_array, 1)
 }
 
