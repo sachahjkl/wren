@@ -21,12 +21,15 @@ package jsrt
 // ("e" "memory") and exports "f" (args, locals, stack) -> i64.
 
 import "core:reflect"
+import "core:strings"
 
 JIT_STACK_MAX :: 32
 JIT_BUDGET :: 16384
-JIT_MAX_RESTARTS :: 4
+JIT_MAX_RESTARTS :: 8
 JIT_MAX_LOOPS :: 4
 JIT_MAX_REJITS :: 4
+JIT_PROBE :: 64        // entries after which a loop that runs too few iterations per entry is dropped
+JIT_MIN_ITERS :: 6
 
 #assert(size_of(Value) == 16)
 #assert(offset_of(Value, u) == 8)
@@ -61,8 +64,17 @@ Jit_Loop :: struct {
 	ticket:     i32,
 	compiles:   int,
 	deopts:     int,
+	entries:    int,
+	iters:      int,
 	widen:      u64,   // slots (arguments, then locals) whose int speculation must be a double
 	boxed:      u64,   // slots left to the interpreter's memory
+	join_f:     [8]int, // pcs of joins (the end of a ?: or a && ||) whose operand stack entries are all doubles
+	n_join_f:   int,
+	elem_f:     [8]int, // pcs of array element reads that give doubles (the first elements seen were ints)
+	n_elem_f:   int,
+	arr_slots:  [JIT_MAX_ARRS]int,   // the locals the compiled code reaches arrays through, and the kind it expects of each
+	arr_kinds:  [JIT_MAX_ARRS]Jit_Arr_Kind,
+	n_arr:      int,
 }
 
 Jit_Info :: struct {
@@ -75,14 +87,34 @@ Jit_Resume :: enum u8 {none, resume, ret}
 // I: an int32 (an Int in the interpreter); F: a double; B: a bool; L: an integer of at most 2^53 in magnitude, the exact
 // result of an int +, - or * that may have left the int32 range (what the interpreter holds as a double, which a following
 // `| 0` brings back; kept in an i64 so that code like (h + c) | 0 does not leave the loop at each overflow)
-Jit_Ty :: enum u8 {I, F, B, L}
+// O: an array or typed array held by a local (never in a Wasm local: its elements are reached through the Jit_Arr the
+// interpreter fills at entry); Jit_State.a tells which local
+Jit_Ty :: enum u8 {I, F, B, L, O}
 
 Jit_State :: struct {
 	n: int,
 	t: [JIT_STACK_MAX]Jit_Ty,
+	a: [JIT_STACK_MAX]u16,
 }
 
-Jit_Slot_Kind :: enum u8 {unused, box, i32, f64}
+Jit_Slot_Kind :: enum u8 {unused, box, i32, f64, arr}
+
+JIT_MAX_ARRS :: 8
+
+// An array the loop reads or writes, as the interpreter resolves it at each entry (jit_array_of): where its elements are,
+// how many may be touched, its length, what they are. The compiled code expects the kind it was made for.
+Jit_Arr :: struct {
+	base:   u32,
+	count:  u32,
+	length: u32,
+	kind:   Jit_Arr_Kind,
+}
+
+Jit_Arr_Kind :: enum u32 {
+	none,
+	values,   // an Array: Values (int and double ones are read, any element stored)
+	i8, u8, i16, u16, i32, u32, f32, f64,   // typed arrays over a fixed-length live buffer
+}
 
 @(private = "file")
 jr_u16 :: #force_inline proc "contextless" (c: []u8, p: int) -> int {
@@ -176,21 +208,32 @@ jit_back_edge :: proc(ctx: ^Context, f: ^Frame, b: ^Function_Bytecode, target, r
 		}
 		if sp != jl.entry_sp {return .none, 0, 0}
 
-		Jit_Fn :: #type proc "c" (args: [^]Value, locals: [^]Value, stack: [^]Value) -> u64
+		Jit_Fn :: #type proc "c" (args: [^]Value, locals: [^]Value, stack: [^]Value, arrays: [^]Jit_Arr) -> u64
 		fn := transmute(Jit_Fn)uintptr(jl.index)
 		jit_stats.entries += 1
-		r := fn(f.args, f.locals, f.stack)
+		arrays: [JIT_MAX_ARRS]Jit_Arr
+		for i in 0 ..< jl.n_arr {arrays[i] = jit_array_of(jit_slot_value(f, jl.arr_slots[i]))}
+		r := fn(f.args, f.locals, f.stack, raw_data(arrays[:]))
 		kind := Jit_Exit((r >> 24) & 0xff)
 		xpc := int(r & 0xffffff)
 		xsp := int((r >> 32) & 0xffff)
 		aux := int(r >> 48)
 		switch kind {
-		case .leave:
+		case .leave, .ret:
+			// aux: the iterations this entry ran. A loop that runs a few iterations per entry costs more to enter than
+			// the compiled code saves: after JIT_PROBE entries it is left to the interpreter
+			jl.entries += 1
+			jl.iters += aux
+			if jl.entries == JIT_PROBE && jl.iters < JIT_PROBE * JIT_MIN_ITERS {
+				jl.state = .never
+				b.jit_active -= 1
+			}
+			if kind == .ret {
+				jit_stats.exits_return += 1
+				return .ret, 0, 0
+			}
 			jit_stats.exits_leave += 1
 			return .resume, xpc, xsp
-		case .ret:
-			jit_stats.exits_return += 1
-			return .ret, 0, 0
 		case .budget:
 			rt.interrupt_counter = 10_000
 			return .resume, xpc, xsp
@@ -201,11 +244,53 @@ jit_back_edge :: proc(ctx: ^Context, f: ^Frame, b: ^Function_Bytecode, target, r
 		case .deopt:
 			jit_stats.exits_deopt += 1
 			jl.deopts += 1
-			jit_invalidate(f, b, jl, aux, false)
+			if aux == 0xfffe && jl.n_elem_f < len(jl.elem_f) {
+				// an array element read that expected an int found a double: read doubles there
+				jl.elem_f[jl.n_elem_f] = xpc
+				jl.n_elem_f += 1
+				jl.state = .fresh
+				b.jit_active -= 1
+				if jl.deopts > 16 || jl.compiles >= JIT_MAX_REJITS {jl.state = .never}
+			} else {
+				jit_invalidate(f, b, jl, aux, false)
+			}
 			return .resume, xpc, xsp
 		}
 		return .none, 0, 0
 	}
+}
+
+// What the compiled code needs of the array in a local: a live fixed-length Array, or a fixed-length typed array over a
+// live, writable buffer with Number elements (the interpreter's own fast-path conditions, ta_fast_ptr).
+jit_array_of :: proc(v: Value) -> Jit_Arr {
+	if v.tag != .object {return {}}
+	o := as_obj(v)
+	if o.fast_array {
+		if o.class != .array {return {}}
+		ad, ok := &o.data.(Array_Data)
+		if !ok {return {}}
+		return Jit_Arr{base = u32(uintptr(ad.values)), count = ad.count, length = array_length_u32(o), kind = .values}
+	}
+	if !is_typed_array_class(o.class) {return {}}
+	ta, ok := o.data.(^Typed_Array)
+	if !ok || ta.track_rab {return {}}
+	ab, ok2 := ta.buffer.data.(^Array_Buffer)
+	if !ok2 || ab.detached || ab.immutable || ab.data == nil {return {}}
+	e := class_elem(o.class)
+	if ta.offset + ta.length * elem_size[e] > ab.byte_length {return {}}
+	kind: Jit_Arr_Kind
+	#partial switch e {
+	case .i8: kind = .i8
+	case .u8: kind = .u8
+	case .i16: kind = .i16
+	case .u16: kind = .u16
+	case .i32: kind = .i32
+	case .u32: kind = .u32
+	case .f32: kind = .f32
+	case .f64: kind = .f64
+	case: return {}
+	}
+	return Jit_Arr{base = u32(uintptr(&ab.data[ta.offset])), count = u32(ta.length), length = u32(ta.length), kind = kind}
 }
 
 // A speculation failed: at the entry (the frame's value in `slot` has another type) or inside the loop (`slot` = the
@@ -258,11 +343,14 @@ Jc :: struct {
 	si0:       u32,
 	sf0:       u32,
 	sl0:       u32,
+	a0:        u32,
+	arr_ord:   []int,    // per slot: its index in jl.arr_slots, or -1
 	ft0:       u32,
 	r64:       u32,
 	ni, nf:    u32,
 	out:       Wbuf,
 	lidx:      []i32,
+	lpcs:      []int,
 	nleaders:  int,
 	lstate:    []Jit_State,
 	lvalid:    []bool,
@@ -279,14 +367,15 @@ Jc :: struct {
 P_ARGS :: 0
 P_LOCALS :: 1
 P_STACK :: 2
-I_PC :: 3
-I_SP :: 4
-I_KIND :: 5
-I_AUX :: 6
-I_BUDGET :: 7
-I_T0 :: 8
-I_T1 :: 9
-I_FIRST :: 10
+P_ARRAYS :: 3
+I_PC :: 4
+I_SP :: 5
+I_KIND :: 6
+I_AUX :: 7
+I_BUDGET :: 8
+I_T0 :: 9
+I_T1 :: 10
+I_FIRST :: 11
 
 Jit_Outcome :: enum u8 {ok, refuse, restart}
 
@@ -341,7 +430,7 @@ j_sloc :: #force_inline proc(c: ^Jc, d: int, t: Jit_Ty) -> u32 {
 	switch t {
 	case .F: return c.sf0 + u32(d)
 	case .L: return c.sl0 + u32(d)
-	case .I, .B: return c.si0 + u32(d)
+	case .I, .B, .O: return c.si0 + u32(d)
 	}
 	return 0
 }
@@ -352,7 +441,7 @@ j_scratch :: #force_inline proc(c: ^Jc, t: Jit_Ty, a: u32) -> u32 {
 	switch t {
 	case .F: return c.ft0 + a
 	case .L: return c.r64 + a
-	case .I, .B: return I_T0 + a
+	case .I, .B, .O: return I_T0 + a
 	}
 	return 0
 }
@@ -369,7 +458,210 @@ j_push :: proc(c: ^Jc, t: Jit_Ty) -> int {
 }
 
 @(private = "file")
-j_is_num :: #force_inline proc(t: Jit_Ty) -> bool {return t != .B}
+j_is_num :: #force_inline proc(t: Jit_Ty) -> bool {return t != .B && t != .O}
+
+// Element access ---------------------------------------------------------------------------------------------------
+
+// leaves nothing on the Wasm stack: the index of the stack entry `idx` is within the array's count, or the instruction
+// at pc is left to the interpreter
+@(private = "file")
+j_bounds :: proc(c: ^Jc, ord: int, idx: int, pc: int) -> bool {
+	count := c.a0 + 3 * u32(ord) + 1
+	switch c.st.t[idx] {
+	case .I, .B:
+		j_lget(c, j_si(c, idx))
+		j_lget(c, count)
+		j_op(c, W_I32_GE_U)
+	case .L:
+		j_lget(c, c.sl0 + u32(idx))
+		j_lget(c, count)
+		j_op(c, W_I64_EXTEND_I32_U)
+		j_op(c, W_I64_GE_U)
+	case .F, .O:
+		j_fail(c, "array index that is a double")
+		return false
+	}
+	j_deopt_if(c, pc)
+	return true
+}
+
+// the address of element idx (already in bounds) on the Wasm stack
+@(private = "file")
+j_elem_addr :: proc(c: ^Jc, ord: int, idx: int, kind: Jit_Arr_Kind) {
+	j_lget(c, c.a0 + 3 * u32(ord))
+	if c.st.t[idx] == .L {
+		j_lget(c, c.sl0 + u32(idx))
+		j_op(c, W_I32_WRAP_I64)
+	} else {
+		j_lget(c, j_si(c, idx))
+	}
+	shift: i32
+	switch kind {
+	case .none: shift = 0
+	case .values: shift = 4
+	case .i8, .u8: shift = 0
+	case .i16, .u16: shift = 1
+	case .i32, .u32, .f32: shift = 2
+	case .f64: shift = 3
+	}
+	if shift != 0 {
+		j_i32(c, shift)
+		j_op(c, W_I32_SHL)
+	}
+	j_op(c, W_I32_ADD)
+}
+
+// does the array in local `ord` hold doubles among its first elements (or did a read here already find one)?
+@(private = "file")
+j_elems_are_f :: proc(c: ^Jc, f: ^Frame, ord: int, pc: int) -> bool {
+	for i in 0 ..< c.jl.n_elem_f {if c.jl.elem_f[i] == pc {return true}}
+	v := jit_slot_value(f, c.jl.arr_slots[ord])
+	if v.tag != .object {return false}
+	ad, ok := &as_obj(v).data.(Array_Data)
+	if !ok {return false}
+	for i in 0 ..< min(int(ad.count), 16) {if ad.values[i].tag == .float {return true}}
+	return false
+}
+
+@(private = "file")
+jit_get_array_el :: proc(c: ^Jc, f: ^Frame, op: Opcode, pc: int) -> bool {
+	n := c.st.n
+	if c.st.t[n - 2] != .O {
+		j_fail(c, "element of something that is not a held array")
+		return false
+	}
+	ord := int(c.st.a[n - 2])
+	kind := c.jl.arr_kinds[ord]
+	idx := n - 1
+	if !j_bounds(c, ord, idx, pc) {return false}
+	j_elem_addr(c, ord, idx, kind)
+	rt: Jit_Ty
+	switch kind {
+	case .none:
+		j_fail(c, "no array")
+		return false
+	case .values:
+		j_lset(c, I_T0)
+		if j_elems_are_f(c, f, ord, pc) {
+			rt = .F
+			j_lget(c, I_T0)
+			j_mem(c, W_I32_LOAD8_U, 0, 0)
+			j_i32(c, i32(Tag.float))
+			j_op(c, W_I32_EQ)
+			j_op(c, W_IF)
+			j_op(c, W_F64)
+			c.nest += 1
+			j_lget(c, I_T0)
+			j_mem(c, W_F64_LOAD, 3, 8)
+			j_op(c, W_ELSE)
+			j_lget(c, I_T0)
+			j_mem(c, W_I32_LOAD8_U, 0, 0)
+			j_i32(c, i32(Tag.int))
+			j_op(c, W_I32_NE)
+			j_deopt_if(c, pc)
+			j_lget(c, I_T0)
+			j_mem(c, W_I32_LOAD, 2, 8)
+			j_op(c, W_F64_CONVERT_I32_S)
+			j_op(c, W_END)
+			c.nest -= 1
+		} else {
+			rt = .I
+			j_lget(c, I_T0)
+			j_mem(c, W_I32_LOAD8_U, 0, 0)
+			j_i32(c, i32(Tag.int))
+			j_op(c, W_I32_NE)
+			j_deopt_if(c, pc, 0xfffe)
+			j_lget(c, I_T0)
+			j_mem(c, W_I32_LOAD, 2, 8)
+		}
+	case .i8: rt = .I; j_mem(c, W_I32_LOAD8_S, 0, 0)
+	case .u8: rt = .I; j_mem(c, W_I32_LOAD8_U, 0, 0)
+	case .i16: rt = .I; j_mem(c, W_I32_LOAD16_S, 1, 0)
+	case .u16: rt = .I; j_mem(c, W_I32_LOAD16_U, 1, 0)
+	case .i32: rt = .I; j_mem(c, W_I32_LOAD, 2, 0)
+	case .u32:
+		rt = .L
+		j_mem(c, W_I32_LOAD, 2, 0)
+		j_op(c, W_I64_EXTEND_I32_U)
+	case .f32:
+		rt = .F
+		j_mem(c, W_F32_LOAD, 2, 0)
+		j_op(c, W_F64_PROMOTE_F32)
+	case .f64:
+		rt = .F
+		j_mem(c, W_F64_LOAD, 3, 0)
+	}
+	// the result replaces the index (get_array_el2 keeps the array under it, get_array_el drops it too)
+	if op == .get_array_el {c.st.n -= 2} else {c.st.n -= 1}
+	d := j_push(c, rt)
+	j_lset(c, j_sloc(c, d, rt))
+	return true
+}
+
+@(private = "file")
+jit_put_array_el :: proc(c: ^Jc, pc: int) -> bool {
+	n := c.st.n
+	if c.st.t[n - 3] != .O {
+		j_fail(c, "store into something that is not a held array")
+		return false
+	}
+	ord := int(c.st.a[n - 3])
+	kind := c.jl.arr_kinds[ord]
+	idx, v := n - 2, n - 1
+	tv := c.st.t[v]
+	if tv == .O {
+		j_fail(c, "array stored in an array")
+		return false
+	}
+	if !j_bounds(c, ord, idx, pc) {return false}
+	j_elem_addr(c, ord, idx, kind)
+	switch kind {
+	case .none:
+		j_fail(c, "no array")
+		return false
+	case .values:
+		j_lset(c, I_T0)
+		if tv == .L {
+			j_l_not_i32(c, v)
+			j_deopt_if(c, pc)
+		}
+		tag: Tag = tv == .F ? .float : tv == .B ? .bool : .int
+		j_lget(c, I_T0)
+		j_i32(c, i32(tag))
+		j_mem(c, W_I32_STORE8, 0, 0)
+		j_lget(c, I_T0)
+		switch tv {
+		case .F:
+			j_lget(c, j_sf(c, v))
+			j_mem(c, W_F64_STORE, 3, 8)
+		case .L:
+			j_lget(c, c.sl0 + u32(v))
+			j_op(c, W_I32_WRAP_I64)
+			j_mem(c, W_I32_STORE, 2, 8)
+		case .I, .B, .O:
+			j_lget(c, j_si(c, v))
+			j_mem(c, W_I32_STORE, 2, 8)
+		}
+	case .i8, .u8:
+		j_get_i32(c, v, pc)
+		j_mem(c, W_I32_STORE8, 0, 0)
+	case .i16, .u16:
+		j_get_i32(c, v, pc)
+		j_mem(c, W_I32_STORE16, 1, 0)
+	case .i32, .u32:
+		j_get_i32(c, v, pc)
+		j_mem(c, W_I32_STORE, 2, 0)
+	case .f32:
+		j_get_f(c, v)
+		j_op(c, W_F32_DEMOTE_F64)
+		j_mem(c, W_F32_STORE, 2, 0)
+	case .f64:
+		j_get_f(c, v)
+		j_mem(c, W_F64_STORE, 3, 0)
+	}
+	c.st.n -= 3
+	return true
+}
 
 // the stack entry d as a double on the Wasm stack
 @(private = "file")
@@ -380,7 +672,7 @@ j_get_f :: proc(c: ^Jc, d: int) {
 	case .L:
 		j_lget(c, c.sl0 + u32(d))
 		j_op(c, W_F64_CONVERT_I64_S)
-	case .I, .B:
+	case .I, .B, .O:
 		j_lget(c, j_si(c, d))
 		j_op(c, W_F64_CONVERT_I32_S)
 	}
@@ -476,14 +768,60 @@ j_deopt_if :: proc(c: ^Jc, pc: int, aux: u32 = 0xffff) {
 @(private = "file")
 j_state_eq :: proc(a, b: ^Jit_State) -> bool {
 	if a.n != b.n {return false}
-	for i in 0 ..< a.n {if a.t[i] != b.t[i] {return false}}
+	for i in 0 ..< a.n {
+		if a.t[i] != b.t[i] || (a.t[i] == .O && a.a[i] != b.a[i]) {return false}
+	}
 	return true
+}
+
+// The operand stack reaches the leader j (a forward jump or the fall-through): where the join is forced its numbers
+// become doubles, then the state is recorded (first edge) or compared. Two edges that carry different kinds of numbers
+// (the arms of `c ? 1 : 0.5`) make the join a forced one and the loop is translated again.
+@(private = "file")
+j_join :: proc(c: ^Jc, j: int) -> bool {
+	lpc := c.lpcs[j]
+	for i in 0 ..< c.jl.n_join_f {
+		if c.jl.join_f[i] != lpc {continue}
+		for d in 0 ..< c.st.n {
+			t := c.st.t[d]
+			if t == .I || t == .L {
+				j_get_f(c, d)
+				j_lset(c, j_sf(c, d))
+				c.st.t[d] = .F
+			}
+		}
+		break
+	}
+	if !c.lvalid[j] {
+		c.lstate[j] = c.st
+		c.lvalid[j] = true
+		return true
+	}
+	if j_state_eq(&c.lstate[j], &c.st) {return true}
+	if c.lstate[j].n == c.st.n && c.jl.n_join_f < len(c.jl.join_f) {
+		numeric := true
+		for d in 0 ..< c.st.n {
+			if c.st.t[d] == .B || c.lstate[j].t[d] == .B {
+				if c.st.t[d] != c.lstate[j].t[d] {numeric = false}
+			}
+		}
+		forced := false
+		for i in 0 ..< c.jl.n_join_f {if c.jl.join_f[i] == lpc {forced = true}}
+		if numeric && !forced {
+			c.jl.join_f[c.jl.n_join_f] = lpc
+			c.jl.n_join_f += 1
+			c.restart = true
+			return false
+		}
+	}
+	j_fail(c, "operand stack types differ at a join")
+	return false
 }
 
 // ToInt32 of the stack entry d, on the Wasm stack (a double outside the int32 range leaves through a deopt)
 @(private = "file")
 j_get_i32 :: proc(c: ^Jc, d: int, pc: int) {
-	if c.st.t[d] == .I {
+	if c.st.t[d] == .I || c.st.t[d] == .B {
 		j_lget(c, j_si(c, d))
 		return
 	}
@@ -663,7 +1001,7 @@ jit_translate :: proc(c: ^Jc, f: ^Frame) -> Jit_Outcome {
 		j_fail(c, "deep operand stack at the loop")
 		return .refuse
 	}
-	c.ss = min(max(int(b.stack_size), 1), JIT_STACK_MAX)
+	c.ss = min(max(int(b.stack_size), 1) + 6, JIT_STACK_MAX)   // (+ room for the temporaries of stack shuffles)
 	c.skind = make([]Jit_Slot_Kind, c.nslots)
 	c.ref = make([]bool, c.nslots)
 	c.written = make([]bool, c.nslots)
@@ -716,8 +1054,14 @@ jit_translate :: proc(c: ^Jc, f: ^Frame) -> Jit_Outcome {
 	}
 	n := 0
 	for i in 0 ..< c.rend - c.header {
+		if leader[i] {n += 1}
+	}
+	c.lpcs = make([]int, n)
+	n = 0
+	for i in 0 ..< c.rend - c.header {
 		if leader[i] {
 			c.lidx[i] = i32(n)
+			c.lpcs[n] = c.header + i
 			n += 1
 		}
 	}
@@ -728,7 +1072,10 @@ jit_translate :: proc(c: ^Jc, f: ^Frame) -> Jit_Outcome {
 
 	// the speculated type of each slot the region uses
 	n_i, n_f: u32
+	c.arr_ord = make([]int, c.nslots)
+	c.jl.n_arr = 0
 	for s in 0 ..< c.nslots {
+		c.arr_ord[s] = -1
 		if !c.ref[s] {continue}
 		v := jit_slot_value(f, s)
 		kind := Jit_Slot_Kind.box
@@ -738,6 +1085,12 @@ jit_translate :: proc(c: ^Jc, f: ^Frame) -> Jit_Outcome {
 			kind = (s < 64 && c.jl.widen & (u64(1) << uint(s)) != 0) ? .f64 : .i32
 		} else if v.tag == .float {
 			kind = .f64
+		} else if ak := jit_array_of(v); ak.kind != .none && c.jl.n_arr < JIT_MAX_ARRS {
+			kind = .arr
+			c.arr_ord[s] = c.jl.n_arr
+			c.jl.arr_slots[c.jl.n_arr] = s
+			c.jl.arr_kinds[c.jl.n_arr] = ak.kind
+			c.jl.n_arr += 1
 		}
 		c.skind[s] = kind
 	}
@@ -767,8 +1120,9 @@ jit_translate :: proc(c: ^Jc, f: ^Frame) -> Jit_Outcome {
 	c.lvalid[0] = true
 
 	// the Wasm locals: i32 [fixed][slots][stack], i64 [2], f64 [slots][stack][2]
-	c.si0 = u32(I_FIRST) + n_i
-	c.ni = c.si0 + u32(c.ss) - 3   // (the parameters take 3 indices: count the declared i32 locals)
+	c.a0 = u32(I_FIRST) + n_i           // three i32 per array: base, count, length
+	c.si0 = c.a0 + 3 * u32(c.jl.n_arr)
+	c.ni = c.si0 + u32(c.ss) - 4   // (the parameters take 4 indices: count the declared i32 locals)
 	c.sl0 = c.si0 + u32(c.ss)      // the i64 locals: one per stack entry (type L), then 2 scratch
 	c.r64 = c.sl0 + u32(c.ss)
 	c.nf = n_f + u32(c.ss) + 2
@@ -796,7 +1150,8 @@ jit_emit :: proc(c: ^Jc, f: ^Frame) {
 	// types: 0 = (i32 i32 i32) -> i64
 	w_uleb(&sec, 1)
 	w_u8(&sec, 0x60)
-	w_uleb(&sec, 3)
+	w_uleb(&sec, 4)
+	w_u8(&sec, W_I32)
 	w_u8(&sec, W_I32)
 	w_u8(&sec, W_I32)
 	w_u8(&sec, W_I32)
@@ -855,6 +1210,19 @@ jit_emit :: proc(c: ^Jc, f: ^Frame) {
 			j_lset(c, c.wl[s])
 		}
 	}
+	for k in 0 ..< c.jl.n_arr {
+		o := u32(k * 16)
+		j_lget(c, P_ARRAYS)
+		j_mem(c, W_I32_LOAD, 2, o + 12)
+		j_i32(c, i32(c.jl.arr_kinds[k]))
+		j_op(c, W_I32_NE)
+		j_ret_if(c, c.header, .guard, u32(c.jl.arr_slots[k]))
+		for w in 0 ..< u32(3) {
+			j_lget(c, P_ARRAYS)
+			j_mem(c, W_I32_LOAD, 2, o + 4 * w)
+			j_lset(c, c.a0 + 3 * u32(k) + w)
+		}
+	}
 	for d in 0 ..< c.entry_sp {
 		t := c.st.t[d]
 		off := u32(d * 16)
@@ -874,8 +1242,8 @@ jit_emit :: proc(c: ^Jc, f: ^Frame) {
 		case .B:
 			j_mem(c, W_I32_LOAD8_U, 0, off + 8)
 			j_lset(c, j_si(c, d))
-		case .L:
-			j_op(c, W_UNREACHABLE)   // (no entry stack entry has this type)
+		case .L, .O:
+			j_op(c, W_UNREACHABLE)   // (no entry stack entry has these types)
 		}
 	}
 	j_i32(c, JIT_BUDGET)
@@ -899,17 +1267,7 @@ jit_emit :: proc(c: ^Jc, f: ^Frame) {
 		size := int(opcode_info[op].size)
 		k := int(c.lidx[pc - c.header])
 		if k > 0 {
-			if valid {
-				if c.lvalid[k] {
-					if !j_state_eq(&c.lstate[k], &c.st) {
-						j_fail(c, "operand stack types differ at a join")
-						break
-					}
-				} else {
-					c.lstate[k] = c.st
-					c.lvalid[k] = true
-				}
-			}
+			if valid && !j_join(c, k) {break}
 			j_op(c, W_END)
 			c.cur = k
 			valid = c.lvalid[k]
@@ -940,6 +1298,17 @@ jit_emit :: proc(c: ^Jc, f: ^Frame) {
 		j_lget(c, c.wl[s])
 		if kind == .f64 {j_mem(c, W_F64_STORE, 3, off + 8)} else {j_mem(c, W_I32_STORE, 2, off + 8)}
 	}
+	// leaving or returning: the aux word is the number of iterations this entry ran
+	j_lget(c, I_KIND)
+	j_i32(c, 2)
+	j_op(c, 0x49)   // i32.lt_u
+	j_op(c, W_IF)
+	j_op(c, W_VOID)
+	j_i32(c, JIT_BUDGET)
+	j_lget(c, I_BUDGET)
+	j_op(c, W_I32_SUB)
+	j_lset(c, I_AUX)
+	j_op(c, W_END)
 	j_lget(c, I_AUX)
 	j_op(c, W_I64_EXTEND_I32_U)
 	j_op(c, W_I64_CONST)
@@ -1011,6 +1380,19 @@ j_store_entry :: proc(c: ^Jc, d: int, base: u32, off: u32, exiting := false) {
 		j_lget(c, base)
 		j_lget(c, j_sf(c, d))
 		j_mem(c, W_F64_STORE, 3, off + 8)
+	case .O:
+		if !exiting {
+			j_fail(c, "array stored in a local")
+			return
+		}
+		// the array's own Value, copied from the local it came from (the loop never writes such a local)
+		sb, so := j_slot_addr(c, c.jl.arr_slots[c.st.a[d]])
+		for half in 0 ..< u32(2) {
+			j_lget(c, base)
+			j_lget(c, sb)
+			j_mem(c, W_I64_LOAD, 3, so + 8 * half)
+			j_mem(c, W_I64_STORE, 3, off + 8 * half)
+		}
 	case .L:
 		// leaving: a double (what the interpreter would hold); into a local the loop leaves to the interpreter: it
 		// must fit an int32, or the instruction is left to the interpreter
@@ -1089,15 +1471,7 @@ j_jump :: proc(c: ^Jc, pc: int, target: int, conditional: bool) -> bool {
 		j_fail(c, "nested loop")
 		return false
 	}
-	if c.lvalid[j] {
-		if !j_state_eq(&c.lstate[j], &c.st) {
-			j_fail(c, "operand stack types differ at a join")
-			return false
-		}
-	} else {
-		c.lstate[j] = c.st
-		c.lvalid[j] = true
-	}
+	if !j_join(c, j) {return false}
 	j_op(c, conditional ? W_BR_IF : W_BR)
 	w_uleb(&c.out, u64(c.nest + (j - c.cur - 1)))
 	return !(!conditional)
@@ -1119,9 +1493,53 @@ jit_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, pc: int) -> bool {
 	if s, w, ok := jit_op_slot(op, code, pc, c.nargs); ok {
 		return jit_slot_insn(c, op, pc, s, w)
 	}
+	// array references take part in few instructions
+	#partial switch op {
+	case .drop, .dup, .dup2, .get_array_el, .get_array_el2, .put_array_el, .get_length, .nip, .swap, .dup1, .insert2,
+	     .insert3, .insert4, .rot3l, .rot3r, .perm3, .to_propkey, .to_propkey2, .check_object, .is_undefined, .is_null, .is_undefined_or_null,
+	     .typeof_is_undefined, .typeof_is_function:
+	case:
+		for i in max(0, n - int(opcode_info[op].n_pop)) ..< n {
+			if c.st.t[i] == .O {
+				j_fail(c, strings.concatenate([]string{"array used as a number by ", reflect.enum_string(op)}))
+				return false
+			}
+		}
+	}
 	#partial switch op {
 	case .op_nop:
 		return true
+	case .get_array_el, .get_array_el2:
+		return jit_get_array_el(c, f, op, pc)
+	case .put_array_el:
+		return jit_put_array_el(c, pc)
+	case .get_length:
+		if c.st.t[n - 1] != .O {
+			j_fail(c, "length of something that is not a held array")
+			return false
+		}
+		ord := int(c.st.a[n - 1])
+		// a length above 2^31 - 1 is not an int
+		j_lget(c, c.a0 + 3 * u32(ord) + 2)
+		j_i32(c, 0)
+		j_op(c, W_I32_LT_S)
+		j_deopt_if(c, pc)
+		c.st.n -= 1
+		d := j_push(c, .I)
+		j_lget(c, c.a0 + 3 * u32(ord) + 2)
+		j_lset(c, j_si(c, d))
+	case .dup2:
+		for k in 0 ..< 2 {
+			src := n - 2 + k
+			t := c.st.t[src]
+			d := j_push(c, t)
+			if t == .O {
+				c.st.a[d] = c.st.a[src]
+			} else {
+				j_lget(c, j_sloc(c, src, t))
+				j_lset(c, j_sloc(c, d, t))
+			}
+		}
 	case .get_loc0_loc1:
 		for k in 0 ..< 2 {
 			s := c.nargs + k
@@ -1184,27 +1602,33 @@ jit_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, pc: int) -> bool {
 	case .dup:
 		t := c.st.t[n - 1]
 		d := j_push(c, t)
-		j_lget(c, j_sloc(c, n - 1, t))
-		j_lset(c, j_sloc(c, d, t))
-	case .nip:
-		tb := c.st.t[n - 1]
-		j_lget(c, j_sloc(c, n - 1, tb))
-		j_lset(c, j_sloc(c, n - 2, tb))
-		c.st.t[n - 2] = tb
-		c.st.n -= 1
-	case .swap:
-		ta, tb := c.st.t[n - 2], c.st.t[n - 1]
-		sa := j_scratch(c, ta, 0)
-		sb := j_scratch(c, tb, 1)
-		j_lget(c, j_sloc(c, n - 2, ta))
-		j_lset(c, sa)
-		j_lget(c, j_sloc(c, n - 1, tb))
-		j_lset(c, sb)
-		j_lget(c, sb)
-		j_lset(c, j_sloc(c, n - 2, tb))
-		j_lget(c, sa)
-		j_lset(c, j_sloc(c, n - 1, ta))
-		c.st.t[n - 2], c.st.t[n - 1] = tb, ta
+		if t == .O {
+			c.st.a[d] = c.st.a[n - 1]
+		} else {
+			j_lget(c, j_sloc(c, n - 1, t))
+			j_lset(c, j_sloc(c, d, t))
+		}
+	// stack shuffles: the top entries become copies of some of the old ones (QuickJS's names: bottom to top)
+	case .nip: j_permute(c, n - 2, {1})
+	case .swap: j_permute(c, n - 2, {1, 0})
+	case .dup1: j_permute(c, n - 2, {0, 0, 1})
+	case .insert2: j_permute(c, n - 2, {1, 0, 1})
+	case .insert3: j_permute(c, n - 3, {2, 0, 1, 2})
+	case .insert4: j_permute(c, n - 4, {3, 0, 1, 2, 3})
+	case .rot3l: j_permute(c, n - 3, {1, 2, 0})
+	case .rot3r: j_permute(c, n - 3, {2, 0, 1})
+	case .perm3: j_permute(c, n - 3, {1, 0, 2})
+	case .check_object:
+		if c.st.t[n - 1] != .O {
+			j_fail(c, "check_object of something that is not a held array")
+			return false
+		}
+	case .to_propkey, .to_propkey2:
+		// an int key stays as it is (other keys become strings)
+		if c.st.t[n - 1] != .I && c.st.t[n - 1] != .L {
+			j_fail(c, "property key that is not an int")
+			return false
+		}
 	case .add, .sub, .mul, .div, .mod:
 		return jit_arith(c, op, pc)
 	case .shl, .sar, .shr, .op_and, .op_or, .xor:
@@ -1348,6 +1772,39 @@ jit_insn :: proc(c: ^Jc, f: ^Frame, op: Opcode, pc: int) -> bool {
 	return true
 }
 
+// The entries from `base` up become copies of old entries (src: indices from base); the old ones are read before any is
+// written (through free stack depths above the current top).
+@(private = "file")
+j_permute :: proc(c: ^Jc, base: int, src: []int) {
+	n := c.st.n
+	m := len(src)
+	if base < 0 || n + m > c.ss || base + m > c.ss {
+		j_fail(c, "stack shuffle too deep")
+		return
+	}
+	old := c.st
+	for j in 0 ..< m {
+		from := base + src[j]
+		t := old.t[from]
+		if t != .O {
+			j_lget(c, j_sloc(c, from, t))
+			j_lset(c, j_sloc(c, n + j, t))
+		}
+	}
+	for j in 0 ..< m {
+		from := base + src[j]
+		t := old.t[from]
+		if t != .O {
+			j_lget(c, j_sloc(c, n + j, t))
+			j_lset(c, j_sloc(c, base + j, t))
+		} else {
+			c.st.a[base + j] = old.a[from]
+		}
+		c.st.t[base + j] = t
+	}
+	c.st.n = base + m
+}
+
 // locals and arguments
 @(private = "file")
 jit_slot_insn :: proc(c: ^Jc, op: Opcode, pc: int, s: int, write: bool) -> bool {
@@ -1427,6 +1884,9 @@ jit_slot_insn :: proc(c: ^Jc, op: Opcode, pc: int, s: int, write: bool) -> bool 
 			d := j_push(c, .F)
 			j_lget(c, c.wl[s])
 			j_lset(c, j_sf(c, d))
+		case .arr:
+			d := j_push(c, .O)
+			c.st.a[d] = u16(c.arr_ord[s])
 		case:
 			j_fail(c, "read of a local the loop does not hold")
 			return false
@@ -1456,7 +1916,7 @@ jit_slot_insn :: proc(c: ^Jc, op: Opcode, pc: int, s: int, write: bool) -> bool 
 			return false
 		}
 	case .f64:
-		if tv == .B {
+		if tv == .B || tv == .O {
 			j_fail(c, "bool stored in a double local")
 			return false
 		}
@@ -1498,10 +1958,9 @@ jit_arith :: proc(c: ^Jc, op: Opcode, pc: int) -> bool {
 	n := c.st.n
 	a, b := n - 2, n - 1
 	ta, tb := c.st.t[a], c.st.t[b]
-	if !j_is_num(ta) || !j_is_num(tb) {
-		j_fail(c, "arithmetic on a bool")
-		return false
-	}
+	// a bool is the number 0 or 1 here
+	if ta == .B {ta = .I}
+	if tb == .B {tb = .I}
 	if ta != .F && tb != .F && op != .div && (op != .mul || (ta == .I && tb == .I)) {
 		if op == .mod {
 			if ta != .I || tb != .I {
@@ -1571,10 +2030,6 @@ jit_arith :: proc(c: ^Jc, op: Opcode, pc: int) -> bool {
 jit_bitwise :: proc(c: ^Jc, op: Opcode, pc: int) -> bool {
 	n := c.st.n
 	a, b := n - 2, n - 1
-	if !j_is_num(c.st.t[a]) || !j_is_num(c.st.t[b]) {
-		j_fail(c, "bitwise operation on a bool")
-		return false
-	}
 	j_get_i32(c, a, pc)
 	j_get_i32(c, b, pc)
 	#partial switch op {
@@ -1606,7 +2061,7 @@ jit_compare :: proc(c: ^Jc, op: Opcode) -> bool {
 	a, b := n - 2, n - 1
 	ta, tb := c.st.t[a], c.st.t[b]
 	equality := op == .eq || op == .neq || op == .strict_eq || op == .strict_neq
-	if ta == .B || tb == .B {
+	if (ta == .B || tb == .B) && equality {
 		if ta == .B && tb == .B && equality {
 			j_lget(c, j_si(c, a))
 			j_lget(c, j_si(c, b))
