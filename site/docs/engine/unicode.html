@@ -167,6 +167,7 @@
 <li><a href="/docs/README.html">Writing documentation</a></li>
 <li><a href="/docs/engine/bigint.html">bigint: arbitrary-precision integers for the JavaScript engine</a></li>
 <li><a href="/docs/engine/datetime.html">datetime (package jsdate): the JavaScript engine's Date</a></li>
+<li><a href="/docs/engine/frontend.html">Moteur JavaScript — front-end E1 (src/engine/frontend)</a></li>
 <li><a href="/docs/engine/numconv.html">numconv: float64 ↔ string for the JavaScript engine</a></li>
 <li><a href="/docs/engine/regexp.html">engine/regexp</a></li>
 <li><a href="/docs/engine/unicode.html" aria-current="page" class="active">engine/unicode (ucd)</a></li>
@@ -198,7 +199,7 @@ freestanding build with a <code>#+build</code> tag.</p>
 <p>The tables are <strong>generated</strong> from the authoritative Unicode Character Database, not copied from QuickJS's
 <code>libunicode-table.h</code>:</p>
 <ul>
-<li><code>tools/gen_unicode.ps1</code> downloads the pinned UCD files for a fixed Unicode release (16.0.0), verifies each
+<li><code>tools/gen_unicode.ps1</code> downloads the pinned UCD files for a fixed Unicode release (17.0.0, the version QuickJS-ng 0.17 ships), verifies each
 file's SHA-256 (the same idiom as <code>tools/build_js.ps1</code>), then runs the generator.</li>
 <li><code>src/engine/unicode/gen/</code> (an Odin program) parses the UCD text and writes <code>tables_generated.odin</code>: sorted
 half-open interval runs for every property / category / script, simple and full case/fold tables, and the
@@ -232,8 +233,8 @@ canonical composition for the C forms, with the algorithmic Hangul rules built i
 <h2 id="checking-it"><a class="anchor" href="#checking-it" aria-hidden="true">#</a>Checking it</h2>
 <p><code>tools/rx_diff.ps1</code> builds a native reference library from QuickJS-ng 0.17's <code>libunicode.c</code> and compares this
 package against it over every code point and thousands of random normalization inputs. See <code>docs/engine/regexp.md</code>
-for the results and the one known caveat (a Unicode data-version skew between UCD 16.0.0 and the table QuickJS
-ships).</p>
+for the results. The UCD pin follows QuickJS-ng (17.0.0) so the identifier, case-folding and property data agree
+with the reference engine.</p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="/docs/engine/regexp.html"><span>Previous</span><strong>engine/regexp</strong></a>
 <a class="doc-next" href="/docs/js/bindgen.html"><span>Next</span><strong>bindgen: Odin output and Odin input</strong></a>

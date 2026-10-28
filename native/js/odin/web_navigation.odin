@@ -25,7 +25,7 @@ import "../odin/wj"
 @(private = "file") Nav_Type :: enum { Push, Replace, Reload, Traverse }
 @(private = "file") NAV_TYPES := [Nav_Type]cstring{.Push = "push", .Replace = "replace", .Reload = "reload", .Traverse = "traverse"}
 // The same, NULL-terminated, for the enum checks of Web IDL.
-@(private = "file") NAV_TYPES_Z := [5]cstring{"push", "replace", "reload", "traverse", nil}
+// (no global NAV_TYPES_Z: a global with a nil in it is built by the Odin runtime start-up, which this module does not run)
 
 // What the browser says about a navigation (Navigation_pending's flags).
 @(private = "file") Nav_Flag :: enum { Same_Doc, User, Hash, Can_Intercept, Cancelable, Has_State }
@@ -1153,7 +1153,8 @@ navigate_event_init :: proc(ctx: ^wj.Context, ev, init: wj.JSValue) -> bool {
 		wj.JS_FreeValue(ctx, v)
 		if !ok { return false }
 		defer wj.wj_str_free(ctx, &s)
-		if !wj.wj_check_enum(ctx, &s, &NAV_TYPES_Z[0], "NavigationType") { return false }
+		nav_z: [5]cstring
+		if !wj.wj_check_enum(ctx, &s, nav_types_z(&nav_z), "NavigationType") { return false }
 		v = wj.new_string_len(ctx, str_view(s))
 	}
 	wj.web_extra_set(ctx, ev, "navigationType", v)
@@ -1279,7 +1280,8 @@ wjr_NavigationCurrentEntryChangeEvent_constructor :: proc "c" (ctx: ^wj.Context,
 		wj.JS_FreeValue(ctx, type)
 		if !ok { wj.JS_FreeValue(ctx, from); return wj.EXCEPTION }
 		defer wj.wj_str_free(ctx, &s)
-		if !wj.wj_check_enum(ctx, &s, &NAV_TYPES_Z[0], "NavigationType") { wj.JS_FreeValue(ctx, from); return wj.EXCEPTION }
+		nav_z: [5]cstring
+		if !wj.wj_check_enum(ctx, &s, nav_types_z(&nav_z), "NavigationType") { wj.JS_FreeValue(ctx, from); return wj.EXCEPTION }
 		type = wj.new_string_len(ctx, str_view(s))
 	} else {
 		type = wj.NULL
@@ -1289,4 +1291,11 @@ wjr_NavigationCurrentEntryChangeEvent_constructor :: proc "c" (ctx: ^wj.Context,
 	wj.web_extra_set(ctx, ev, "navigationType", type)
 	wj.web_extra_set(ctx, ev, "from", from)
 	return ev
+}
+
+// The NULL-terminated list of the navigation types, in the caller's own array (see the comment at the top of this table).
+@(private = "file")
+nav_types_z :: proc "contextless" (z: ^[5]cstring) -> [^]cstring {
+	z^ = [5]cstring{"push", "replace", "reload", "traverse", nil}
+	return &z[0]
 }
