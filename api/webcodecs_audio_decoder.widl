@@ -1,0 +1,23 @@
+/// WebCodecs AudioDecoder (src/page/bindings_audio_decoder.odin, native/js/runtime/web_webcodecs_audio_decoder.c).
+/// Wires to the audio decoders of src/media behind an honest isConfigSupported; a decoded block becomes an AudioData
+/// delivered through the output callback.
+[Exposed=(Window,Worker,DedicatedWorker)]
+module webcodecs_audio_decoder {
+  handle AudioDecoder : Object = Audio_Decoder_Obj via lookup_AudioDecoder;
+
+  callback AudioDecoderOutput(i32 user, u64 data);
+  callback AudioDecoderError(i32 user, i32 code);
+
+  [Owned] AudioDecoder AudioDecoder_create(AudioDecoderOutput output, i32 output_user, AudioDecoderError error, i32 error_user) raises;
+
+  /// AudioDecoder.isConfigSupported(config.codec): honest (AAC, MP3, Opus, FLAC).
+  bool AudioDecoder_isConfigSupported(string codec);
+
+  void AudioDecoder_configure(AudioDecoder decoder, string codec, bytes description, u32 sample_rate, u32 channels) raises;
+  void AudioDecoder_decode(AudioDecoder decoder, bool key, i64 timestamp, i64 duration, bool has_duration, bytes data) raises;
+  void AudioDecoder_flush(AudioDecoder decoder) raises;
+  void AudioDecoder_reset(AudioDecoder decoder);
+  void AudioDecoder_close(AudioDecoder decoder);
+  u32 AudioDecoder_decodeQueueSize(AudioDecoder decoder);
+  i32 AudioDecoder_state(AudioDecoder decoder);
+}

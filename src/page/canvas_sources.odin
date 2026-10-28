@@ -54,7 +54,20 @@ canvas_source :: proc(p: ^Page, h: u64) -> Canvas_Source {
 	s: Canvas_Source
 	if is_object(h) {
 		o := canvas_obj_of(p, h)
-		if o == nil { s.status = .Bad; return s }
+		if o == nil {
+			// a VideoFrame (bindings_webcodecs.odin) is drawable too, though it is not a Canvas_Obj
+			if vf := video_frame_of(p, h); vf != nil {
+				if vf.closed || vf.px.vis_w == 0 || vf.px.vis_h == 0 { s.status = .Empty; return s }
+				bmp := video_frame_draw_bitmap(p, vf)
+				if bmp == nil { s.status = .Pending; return s }
+				s.bmp = bmp
+				s.size = {bmp.w, bmp.h}
+				s.nat = {f64(vf.px.display_w), f64(vf.px.display_h)}
+				if s.nat.x <= 0 || s.nat.y <= 0 { s.nat = {f64(bmp.w), f64(bmp.h)} }
+				return s
+			}
+			s.status = .Bad; return s
+		}
 		#partial switch o.kind {
 		case .Bitmap:
 			if o.bmp.w == 0 || o.bmp.h == 0 { s.status = .Empty; return s }

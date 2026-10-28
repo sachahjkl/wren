@@ -1,0 +1,104 @@
+// Trimmed from WebCodecs (https://w3c.github.io/webcodecs/): VideoDecoder, AudioDecoder, VideoEncoder, AudioEncoder.
+// The decoders wire to src/media; the encoders are honestly unsupported in this build (no encoder crate linked). Glue:
+// native/js/runtime/web_webcodecs_video_decoder.c, web_webcodecs_audio_decoder.c, web_webcodecs_encoders.c.
+
+enum CodecState { "unconfigured", "configured", "closed" };
+
+callback WebCodecsErrorCallback = undefined (DOMException error);
+callback VideoFrameOutputCallback = undefined (VideoFrame output);
+callback AudioDataOutputCallback = undefined (AudioData output);
+callback EncodedVideoChunkOutputCallback = undefined (EncodedVideoChunk chunk, optional EncodedVideoChunkMetadata metadata = {});
+callback EncodedAudioChunkOutputCallback = undefined (EncodedAudioChunk chunk, optional EncodedAudioChunkMetadata metadata = {});
+
+dictionary VideoDecoderInit { required VideoFrameOutputCallback output; required WebCodecsErrorCallback error; };
+dictionary AudioDecoderInit { required AudioDataOutputCallback output; required WebCodecsErrorCallback error; };
+dictionary VideoEncoderInit { required EncodedVideoChunkOutputCallback output; required WebCodecsErrorCallback error; };
+dictionary AudioEncoderInit { required EncodedAudioChunkOutputCallback output; required WebCodecsErrorCallback error; };
+
+dictionary VideoDecoderConfig {
+  required DOMString codec;
+  AllowSharedBufferSource description;
+  [EnforceRange] unsigned long codedWidth;
+  [EnforceRange] unsigned long codedHeight;
+  [EnforceRange] unsigned long displayAspectWidth;
+  [EnforceRange] unsigned long displayAspectHeight;
+  HardwareAcceleration hardwareAcceleration = "no-preference";
+  boolean optimizeForLatency;
+};
+
+dictionary AudioDecoderConfig {
+  required DOMString codec;
+  required [EnforceRange] unsigned long sampleRate;
+  required [EnforceRange] unsigned long numberOfChannels;
+  AllowSharedBufferSource description;
+};
+
+dictionary VideoDecoderSupport { boolean supported; VideoDecoderConfig config; };
+dictionary AudioDecoderSupport { boolean supported; AudioDecoderConfig config; };
+
+enum HardwareAcceleration { "no-preference", "prefer-hardware", "prefer-software" };
+
+[Exposed=(Window,DedicatedWorker)]
+interface VideoDecoder {
+  constructor(VideoDecoderInit init);
+  readonly attribute CodecState state;
+  readonly attribute unsigned long decodeQueueSize;
+  attribute EventHandler ondequeue;
+  undefined configure(VideoDecoderConfig config);
+  undefined decode(EncodedVideoChunk chunk);
+  Promise<undefined> flush();
+  undefined reset();
+  undefined close();
+  static Promise<VideoDecoderSupport> isConfigSupported(VideoDecoderConfig config);
+};
+
+[Exposed=(Window,DedicatedWorker)]
+interface AudioDecoder {
+  constructor(AudioDecoderInit init);
+  readonly attribute CodecState state;
+  readonly attribute unsigned long decodeQueueSize;
+  attribute EventHandler ondequeue;
+  undefined configure(AudioDecoderConfig config);
+  undefined decode(EncodedAudioChunk chunk);
+  Promise<undefined> flush();
+  undefined reset();
+  undefined close();
+  static Promise<AudioDecoderSupport> isConfigSupported(AudioDecoderConfig config);
+};
+
+dictionary VideoEncoderConfig { required DOMString codec; required [EnforceRange] unsigned long width; required [EnforceRange] unsigned long height; };
+dictionary AudioEncoderConfig { required DOMString codec; };
+dictionary VideoEncoderSupport { boolean supported; VideoEncoderConfig config; };
+dictionary AudioEncoderSupport { boolean supported; AudioEncoderConfig config; };
+dictionary EncodedVideoChunkMetadata { VideoDecoderConfig decoderConfig; };
+dictionary EncodedAudioChunkMetadata { AudioDecoderConfig decoderConfig; };
+
+[Exposed=(Window,DedicatedWorker)]
+interface VideoEncoder {
+  constructor(VideoEncoderInit init);
+  readonly attribute CodecState state;
+  readonly attribute unsigned long encodeQueueSize;
+  attribute EventHandler ondequeue;
+  undefined configure(VideoEncoderConfig config);
+  undefined encode(VideoFrame frame, optional VideoEncoderEncodeOptions options = {});
+  Promise<undefined> flush();
+  undefined reset();
+  undefined close();
+  static Promise<VideoEncoderSupport> isConfigSupported(VideoEncoderConfig config);
+};
+
+dictionary VideoEncoderEncodeOptions { boolean keyFrame = false; };
+
+[Exposed=(Window,DedicatedWorker)]
+interface AudioEncoder {
+  constructor(AudioEncoderInit init);
+  readonly attribute CodecState state;
+  readonly attribute unsigned long encodeQueueSize;
+  attribute EventHandler ondequeue;
+  undefined configure(AudioEncoderConfig config);
+  undefined encode(AudioData data);
+  Promise<undefined> flush();
+  undefined reset();
+  undefined close();
+  static Promise<AudioEncoderSupport> isConfigSupported(AudioEncoderConfig config);
+};
