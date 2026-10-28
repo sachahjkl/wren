@@ -17,6 +17,25 @@ package jsrt
 // header. We map both onto the runtime's atom table.
 
 import "wb:engine/bigint"
+import "core:fmt"
+
+// Flip to true when diagnosing a reader failure against reference bytecode.
+SERIALIZE_DEBUG :: #config(SERIALIZE_DEBUG, false)
+
+@(private = "file")
+serialize_dbg :: proc(msg: string, pos: int) {
+	fmt.eprintfln("[serialize] fail: %s at pos %d", msg, pos)
+}
+
+@(private = "file")
+serialize_dbg_fn :: proc(ac, vc, cvc, cpool, bclen: u32, pos: int) {
+	fmt.eprintfln("[serialize] fn: args=%d vars=%d closures=%d cpool=%d bc_len=%d pos=%d", ac, vc, cvc, cpool, bclen, pos)
+}
+
+@(private = "file")
+serialize_dbg_dbg :: proc(fn: Atom, line, col, p2l: u32, pos: int) {
+	fmt.eprintfln("[serialize] dbg: filename=%d line=%d col=%d pc2line=%d pos=%d", fn, line, col, p2l, pos)
+}
 
 // Serialized-value tags, mirroring BC_TAG_* in quickjs.c (order matters).
 BC_Tag :: enum u8 {
@@ -54,9 +73,10 @@ Reader :: struct {
 	pos:          int,
 	err:          bool,
 	err_msg:      string,
-	// Per-read atom table: stream index -> runtime Atom. Index 0 is unused; the decoded atoms start
-	// at first_atom.
+	// Per-read atom table: the atoms decoded from the header, 0-based (index i is the (first_atom+i)th
+	// atom in the stream's numbering). Predefined atoms (index < first_atom) are not stored here.
 	idx_to_atom:  []Atom,
+	decoded_count: int,
 	first_atom:   u32,
 	allow_bytecode: bool,
 }
@@ -74,6 +94,9 @@ read_object :: proc(ctx: ^Context, buf: []u8, allow_bytecode := true) -> Value {
 	v := read_value(&r)
 	if r.err {
 		value_free(ctx.rt, v)
+		when SERIALIZE_DEBUG {
+			serialize_dbg(r.err_msg, r.pos)
+		}
 		return throw_syntax_error(ctx, r.err_msg != "" ? r.err_msg : "invalid bytecode")
 	}
 	return v
@@ -164,15 +187,12 @@ read_atoms :: proc(r: ^Reader) -> bool {
 		r.err_msg = "unreasonable atom count"
 		return false
 	}
-	// idx_to_atom is indexed by (stream_index); stream indices start at first_atom.
-	r.idx_to_atom = make([]Atom, int(r.first_atom) + int(count), r.ctx.rt.allocator)
-	for i in 0 ..< r.first_atom {
-		r.idx_to_atom[i] = Atom(i) // predefined atoms map to themselves
-	}
+	// idx_to_atom holds just the decoded atoms, 0-based.
+	r.idx_to_atom = make([]Atom, int(count), r.ctx.rt.allocator)
+	r.decoded_count = int(count)
 	for i in 0 ..< count {
 		type := rd_u8(r)
 		if r.err {return false}
-		stream_idx := int(r.first_atom) + int(i)
 		if type & 0x80 != 0 {
 			// Inline predefined/const atom.
 			atom: u32 = 0
@@ -180,7 +200,7 @@ read_atoms :: proc(r: ^Reader) -> bool {
 				atom = rd_leb128(r)
 			}
 			atom = (atom << 6) | u32(type & 0x3F)
-			r.idx_to_atom[stream_idx] = Atom(atom)
+			r.idx_to_atom[i] = Atom(atom)
 		} else {
 			if type < u8(Atom_Type.string) || type >= u8(Atom_Type.private) {
 				r.err_msg = "invalid atom type"
@@ -190,26 +210,42 @@ read_atoms :: proc(r: ^Reader) -> bool {
 			if s == nil {return false}
 			a := atom_intern_string(r.ctx.rt, s, Atom_Type(type))
 			string_unref(r.ctx.rt, s)
-			r.idx_to_atom[stream_idx] = a
+			r.idx_to_atom[i] = a
 		}
 	}
 	return true
 }
 
-// Map a stream atom index to the runtime atom.
+// Read an atom in the bc_get_atom encoding (used for func_name, vardef/closure names, filename): a
+// leb128 where bit 0 flags a tagged-int atom (value in the high bits) and otherwise the high bits are
+// an index resolved by bc_idx_to_atom.
 @(private = "file")
 rd_atom :: proc(r: ^Reader) -> Atom {
-	idx := rd_leb128(r)
-	// A tagged-int atom is stored as (value | ATOM_TAG_INT) directly, below first_atom only when
-	// it is a predefined atom; QuickJS stores the raw atom for < first_atom and tagged ints inline.
+	v := rd_leb128(r)
+	if r.err {return Atom(Predef_Atom.null_atom)}
+	if v & 1 != 0 {
+		return atom_from_int(v >> 1)
+	}
+	return idx_to_atom(r, v >> 1)
+}
+
+// Resolve a 0-based atom index as bc_idx_to_atom does: a tagged int passes through; an index below
+// first_atom is a predefined atom used directly; otherwise it indexes the per-read decoded table.
+@(private = "file")
+idx_to_atom :: proc(r: ^Reader, idx: u32) -> Atom {
 	if idx & ATOM_TAG_INT != 0 {
 		return Atom(idx)
 	}
-	if int(idx) >= len(r.idx_to_atom) {
+	if idx < r.first_atom {
+		return Atom(idx)
+	}
+	off := idx - r.first_atom
+	if int(off) >= r.decoded_count {
 		r.err = true
+		r.err_msg = "invalid atom index"
 		return Atom(Predef_Atom.null_atom)
 	}
-	return r.idx_to_atom[idx]
+	return r.idx_to_atom[off]
 }
 
 // --- JS_ReadString: leb128 (len<<1 | is_wide), then the code units ---
@@ -349,6 +385,9 @@ read_function :: proc(r: ^Reader) -> Value {
 	cpool_count := rd_leb128(r)
 	byte_code_len := rd_leb128(r)
 	if r.err {function_bc_unref(rt, fb); return EXCEPTION}
+	when SERIALIZE_DEBUG {
+		serialize_dbg_fn(fb.arg_count, fb.var_count, fb.closure_var_count, cpool_count, byte_code_len, r.pos)
+	}
 
 	// Local variable definitions.
 	vardef_count := rd_leb128(r)
@@ -414,6 +453,9 @@ read_function :: proc(r: ^Reader) -> Value {
 		fb.line_num = rd_leb128(r)
 		fb.col_num = rd_leb128(r)
 		p2l := rd_leb128(r)
+		when SERIALIZE_DEBUG {
+			serialize_dbg_dbg(fb.filename, fb.line_num, fb.col_num, p2l, r.pos)
+		}
 		if p2l > 0 {
 			fb.pc2line = make([]u8, int(p2l), rt.allocator)
 			for i in 0 ..< p2l {fb.pc2line[i] = rd_u8(r)}
@@ -444,13 +486,14 @@ rewrite_atoms :: proc(r: ^Reader, code: []u8) -> bool {
 		size := int(info.size)
 		#partial switch info.fmt {
 		case .atom, .atom_u8, .atom_u16, .atom_label_u8, .atom_label_u16:
-			if pos + 5 > len(code) {r.err = true; return false}
+			if pos + 5 > len(code) {r.err = true; r.err_msg = "atom operand overruns code"; return false}
 			stream_idx := get_u32_le(code[pos + 1:])
 			a := map_stream_atom(r, stream_idx)
 			put_u32_le(code[pos + 1:], u32(a))
 		}
 		if size == 0 {
 			r.err = true
+			r.err_msg = "opcode with zero size in stream"
 			return false
 		}
 		pos += size
@@ -458,16 +501,10 @@ rewrite_atoms :: proc(r: ^Reader, code: []u8) -> bool {
 	return true
 }
 
+// Map a raw bytecode-stream atom operand (no shift) through bc_idx_to_atom.
 @(private = "file")
 map_stream_atom :: proc(r: ^Reader, idx: u32) -> Atom {
-	if idx & ATOM_TAG_INT != 0 {
-		return Atom(idx)
-	}
-	if int(idx) >= len(r.idx_to_atom) {
-		r.err = true
-		return Atom(Predef_Atom.null_atom)
-	}
-	return r.idx_to_atom[idx]
+	return idx_to_atom(r, idx)
 }
 
 @(private = "file")

@@ -13,6 +13,14 @@ package jsrt
 // the nearest catch handler (the exception-table walk is handled by the catch/throw opcodes).
 
 import "core:math"
+import "core:fmt"
+
+INTERP_DEBUG :: #config(INTERP_DEBUG, false)
+
+@(private = "file")
+interp_dbg_op :: proc(op: Opcode, pc: int) {
+	fmt.eprintfln("[interp] unimplemented opcode %v (=%d) at pc %d", op, int(op), pc)
+}
 
 // Run `f` to completion. Returns the function's result (owned) or EXCEPTION.
 interp_run :: proc(ctx: ^Context, f: ^Call_Frame) -> Value {
@@ -164,6 +172,16 @@ interp_run :: proc(ctx: ^Context, f: ^Call_Frame) -> Value {
 			value_free(rt, f.locals[2]); f.locals[2] = pop(f); f.pc += 1
 		case .put_loc3:
 			value_free(rt, f.locals[3]); f.locals[3] = pop(f); f.pc += 1
+		case .set_loc0:
+			value_free(rt, f.locals[0]); f.locals[0] = value_dup(peek(f)); f.pc += 1
+		case .set_loc1:
+			value_free(rt, f.locals[1]); f.locals[1] = value_dup(peek(f)); f.pc += 1
+		case .set_loc2:
+			value_free(rt, f.locals[2]); f.locals[2] = value_dup(peek(f)); f.pc += 1
+		case .set_loc3:
+			value_free(rt, f.locals[3]); f.locals[3] = value_dup(peek(f)); f.pc += 1
+		case .get_loc0_loc1:
+			push(f, value_dup(f.locals[0])); push(f, value_dup(f.locals[1])); f.pc += 1
 		case .get_arg:
 			f.pc += 1
 			idx := read_u16(code, f.pc); f.pc += 2
@@ -194,6 +212,29 @@ interp_run :: proc(ctx: ^Context, f: ^Call_Frame) -> Value {
 			vr := f.var_refs[idx]
 			value_free(rt, vr.pvalue^)
 			vr.pvalue^ = value_dup(peek(f))
+
+		// --- global variable declaration (top-level) ---
+		case .check_define_var:
+			f.pc += 1
+			_ = read_u32(code, f.pc) // atom
+			f.pc += 4
+			_ = code[f.pc] // flags
+			f.pc += 1
+			// Redeclaration conflict checking is a strict-mode nicety; permissive for now.
+		case .define_var:
+			f.pc += 1
+			a := Atom(read_u32(code, f.pc)); f.pc += 4
+			_ = code[f.pc]; f.pc += 1
+			// Create the global binding if absent, initialised to undefined.
+			if !object_get_own(ctx.realm.global, a).found {
+				object_define_own(ctx, ctx.realm.global, a, UNDEFINED, {.writable, .enumerable, .configurable})
+			}
+		case .define_func:
+			f.pc += 1
+			a := Atom(read_u32(code, f.pc)); f.pc += 4
+			_ = code[f.pc]; f.pc += 1
+			fn := pop(f)
+			object_define_own(ctx, ctx.realm.global, a, fn, {.writable, .enumerable, .configurable})
 
 		// --- global variables ---
 		case .get_var, .get_var_undef:
@@ -277,6 +318,11 @@ interp_run :: proc(ctx: ^Context, f: ^Call_Frame) -> Value {
 			n, ok := to_f64_val(ctx, a); value_free(rt, a)
 			if !ok {return unwind(ctx, f, EXCEPTION)}
 			push(f, mk_number(n - 1)); f.pc += 1
+		case .plus:
+			a := pop(f)
+			n, ok := to_f64_val(ctx, a); value_free(rt, a)
+			if !ok {return unwind(ctx, f, EXCEPTION)}
+			push(f, mk_number(n)); f.pc += 1
 
 		// --- bitwise ---
 		case .op_and:
@@ -410,6 +456,9 @@ interp_run :: proc(ctx: ^Context, f: ^Call_Frame) -> Value {
 
 		case:
 			// Opcode recognised by the table but not yet implemented in the loop.
+			when INTERP_DEBUG {
+				interp_dbg_op(op, start)
+			}
 			return unwind(ctx, f, throw_error(ctx, .internal, interp_unimplemented(op)))
 		}
 	}
