@@ -7,7 +7,7 @@ import "toolkit:ui"
 import "wb:config"
 import "wb:fetch"
 import "wb:host"
-import "wb:instance"
+import "toolkit:instance"
 import "wb:base"
 
 ////////////////////////////////
