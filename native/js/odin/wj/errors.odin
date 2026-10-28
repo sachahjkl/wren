@@ -11,8 +11,7 @@ foreign {
 	wj_throw_dom         :: proc(ctx: ^Context, name: cstring, message: cstring) -> JSValue ---
 	wj_throw_status      :: proc(ctx: ^Context, status: i32, what: cstring) -> JSValue ---
 	wj_throw_unsupported :: proc(ctx: ^Context, iface: cstring, member: cstring) -> JSValue ---
-	// wj_throw_arity is NOT declared here: it is implemented by the Odin glue (qjs_convert.odin); a ported domain
-	// (package odin_glue) calls it unqualified. See docs/js/odin-glue.md.
+	// (wj_throw_arity is implemented in Odin: convert.odin)
 
 	// error-as-value constructors (web.h)
 	web_dom_exception :: proc(ctx: ^Context, name: cstring, message: cstring) -> JSValue ---

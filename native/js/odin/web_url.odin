@@ -9,23 +9,7 @@ package odin_glue
 
 import "../odin/wj"
 
-foreign import m_url "url"
 
-@(default_calling_convention = "c")
-foreign m_url {
-	@(link_name = "URL_parse")        wr_URL_parse        :: proc(input: [^]u8, input_len: u32, base: [^]u8, base_len: u32, ret: ^u64) -> i32 ---
-	@(link_name = "URL_canParse")     wr_URL_canParse     :: proc(input: [^]u8, input_len: u32, base: [^]u8, base_len: u32) -> i32 ---
-	@(link_name = "URL_get")          wr_URL_get          :: proc(url: u64, component: i32, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "URL_set")          wr_URL_set          :: proc(url: u64, component: i32, value: [^]u8, value_len: u32) -> i32 ---
-	@(link_name = "URL_searchParams") wr_URL_searchParams :: proc(url: u64) -> u64 ---
-	@(link_name = "URLSearchParams_create")   wr_URLSearchParams_create   :: proc(init: [^]u8, init_len: u32, ret: ^u64) -> i32 ---
-	@(link_name = "URLSearchParams_append")   wr_URLSearchParams_append   :: proc(params: u64, name: [^]u8, name_len: u32, value: [^]u8, value_len: u32) ---
-	@(link_name = "URLSearchParams_count")    wr_URLSearchParams_count    :: proc(params: u64, name: [^]u8, name_len: u32) -> i32 ---
-	@(link_name = "URLSearchParams_getNth")   wr_URLSearchParams_getNth   :: proc(params: u64, name: [^]u8, name_len: u32, index: i32, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "URLSearchParams_toString") wr_URLSearchParams_toString :: proc(params: u64, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "URLSearchParams_nameAt")   wr_URLSearchParams_nameAt   :: proc(params: u64, index: i32, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "URLSearchParams_valueAt")  wr_URLSearchParams_valueAt  :: proc(params: u64, index: i32, buf: [^]u8, cap: u32) -> i32 ---
-}
 
 WR_ABSENT :: u32(0xFFFF_FFFF)
 
@@ -62,7 +46,7 @@ url_args :: proc "c" (ctx: ^wj.Context, argc: i32, argv: [^]wj.JSValue, input: ^
 	base^ = {}
 	if !wj.web_to_usv(ctx, argv[0], input) { return false }
 	b := wj.arg(argc, argv, 1)
-	if !wj.is_undefined(b) && !wj.web_to_usv(ctx, b, base) { wj_str_free(ctx, input); return false }
+	if !wj.is_undefined(b) && !wj.web_to_usv(ctx, b, base) { wj.wj_str_free(ctx, input); return false }
 	return true
 }
 
@@ -71,51 +55,51 @@ url_args :: proc "c" (ctx: ^wj.Context, argc: i32, argv: [^]wj.JSValue, input: ^
 url_parse :: proc "c" (input: ^wj.Str, base: ^wj.Str, status: ^i32) -> u64 {
 	h := u64(0)
 	base_len := base.ptr != nil ? u32(base.len) : WR_ABSENT
-	status^ = wr_URL_parse(input.ptr, u32(input.len), base.ptr, base_len, &h)
+	status^ = wj.wr_URL_parse(input.ptr, u32(input.len), base.ptr, base_len, &h)
 	return status^ < 0 ? 0 : h
 }
 
 @(export, link_name = "wjr_URL_constructor")
 wjr_URL_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	if wj.is_undefined(new_target) { return wj.wj_throw_type(ctx, "Constructor URL requires 'new'") }
-	if argc < 1 { return wj_throw_arity(ctx, "URL", 1, argc) }
+	if argc < 1 { return wj.wj_throw_arity(ctx, "URL", 1, argc) }
 	input, base: wj.Str
 	if !url_args(ctx, argc, argv, &input, &base) { return wj.EXCEPTION }
 	st: i32
 	h := url_parse(&input, &base, &st)
 	if h == 0 {
 		e := wj.wj_throw_type(ctx, "Failed to construct 'URL': Invalid URL '%.*s'", i32(min(input.len, 200)), input.ptr)
-		wj_str_free(ctx, &input)
-		wj_str_free(ctx, &base)
+		wj.wj_str_free(ctx, &input)
+		wj.wj_str_free(ctx, &base)
 		return e
 	}
-	wj_str_free(ctx, &input)
-	wj_str_free(ctx, &base)
+	wj.wj_str_free(ctx, &input)
+	wj.wj_str_free(ctx, &base)
 	return wj.wj_wrap_owned(ctx, h, url_iface(), new_target)
 }
 
 @(export, link_name = "wjr_URL_static_parse")
 wjr_URL_static_parse :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
-	if argc < 1 { return wj_throw_arity(ctx, "URL.parse", 1, argc) }
+	if argc < 1 { return wj.wj_throw_arity(ctx, "URL.parse", 1, argc) }
 	input, base: wj.Str
 	if !url_args(ctx, argc, argv, &input, &base) { return wj.EXCEPTION }
 	st: i32
 	h := url_parse(&input, &base, &st)
-	wj_str_free(ctx, &input)
-	wj_str_free(ctx, &base)
+	wj.wj_str_free(ctx, &input)
+	wj.wj_str_free(ctx, &base)
 	if h == 0 { return wj.NULL }
 	return wj.wj_wrap_owned(ctx, h, url_iface(), wj.UNDEFINED)
 }
 
 @(export, link_name = "wjr_URL_static_canParse")
 wjr_URL_static_canParse :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
-	if argc < 1 { return wj_throw_arity(ctx, "URL.canParse", 1, argc) }
+	if argc < 1 { return wj.wj_throw_arity(ctx, "URL.canParse", 1, argc) }
 	input, base: wj.Str
 	if !url_args(ctx, argc, argv, &input, &base) { return wj.EXCEPTION }
 	base_len := base.ptr != nil ? u32(base.len) : WR_ABSENT
-	ok := wr_URL_canParse(input.ptr, u32(input.len), base.ptr, base_len)
-	wj_str_free(ctx, &input)
-	wj_str_free(ctx, &base)
+	ok := wj.wr_URL_canParse(input.ptr, u32(input.len), base.ptr, base_len)
+	wj.wj_str_free(ctx, &input)
+	wj.wj_str_free(ctx, &base)
 	return wj.new_bool(ok != 0)
 }
 
@@ -133,7 +117,7 @@ url_handle :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> (u64, bool) {
 @(private = "file")
 fill_url_get :: proc "contextless" (user: rawptr, buf: [^]u8, cap: u32) -> i32 {
 	op := (^Comp_Op)(user)
-	return wr_URL_get(op.handle, op.component, buf, cap)
+	return wj.wr_URL_get(op.handle, op.component, buf, cap)
 }
 
 @(private = "file")
@@ -152,7 +136,7 @@ url_set :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, component: i32, v: 
 	if !ok { return wj.EXCEPTION }
 	s: wj.Str
 	if !wj.web_to_usv(ctx, v, &s) { return wj.EXCEPTION }
-	st := wr_URL_set(h, component, s.ptr, u32(s.len))
+	st := wj.wr_URL_set(h, component, s.ptr, u32(s.len))
 	if st < 0 {
 		e: wj.JSValue
 		if component == URLC_HREF {
@@ -160,10 +144,10 @@ url_set :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, component: i32, v: 
 		} else {
 			e = wj.wj_throw_status(ctx, st, "URL")
 		}
-		wj_str_free(ctx, &s)
+		wj.wj_str_free(ctx, &s)
 		return e
 	}
-	wj_str_free(ctx, &s)
+	wj.wj_str_free(ctx, &s)
 	return wj.UNDEFINED
 }
 
@@ -201,7 +185,7 @@ wjr_URL_toJSON :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, a
 wjr_URL_get_searchParams :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	h, ok := url_handle(ctx, this_val)
 	if !ok { return wj.EXCEPTION }
-	ph := wr_URL_searchParams(h)
+	ph := wj.wr_URL_searchParams(h)
 	if ph == 0 { return wj.wj_throw_type(ctx, "the URL is gone") }
 	// the same object for the URL's life: the [SameObject] slot keeps this wrapper
 	cached := wj.wj_cached(ctx, ph)
@@ -215,10 +199,10 @@ wjr_URL_get_searchParams :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) ->
 params_append :: proc "c" (ctx: ^wj.Context, h: u64, name: wj.JSValue, value: wj.JSValue) -> bool {
 	n, v: wj.Str
 	if !wj.web_to_usv(ctx, name, &n) { return false }
-	if !wj.web_to_usv(ctx, value, &v) { wj_str_free(ctx, &n); return false }
-	wr_URLSearchParams_append(h, n.ptr, u32(n.len), v.ptr, u32(v.len))
-	wj_str_free(ctx, &n)
-	wj_str_free(ctx, &v)
+	if !wj.web_to_usv(ctx, value, &v) { wj.wj_str_free(ctx, &n); return false }
+	wj.wr_URLSearchParams_append(h, n.ptr, u32(n.len), v.ptr, u32(v.len))
+	wj.wj_str_free(ctx, &n)
+	wj.wj_str_free(ctx, &v)
 	return true
 }
 
@@ -263,7 +247,7 @@ wjr_URLSearchParams_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JS
 	h := u64(0)
 	st: i32
 	if wj.is_object(init) {
-		st = wr_URLSearchParams_create(nil, 0, &h)
+		st = wj.wr_URLSearchParams_create(nil, 0, &h)
 		if st < 0 { return wj.wj_throw_status(ctx, st, "URLSearchParams") }
 		obj := wj.wj_wrap_owned(ctx, h, params_iface(), new_target)
 		if wj.is_exception(obj) { return obj }
@@ -279,8 +263,8 @@ wjr_URLSearchParams_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JS
 		return wj.EXCEPTION
 	}
 	s_ptr := s.ptr != nil ? s.ptr : wj.empty_ptr()
-	st = wr_URLSearchParams_create(s_ptr, u32(s.len), &h)
-	wj_str_free(ctx, &s)
+	st = wj.wr_URLSearchParams_create(s_ptr, u32(s.len), &h)
+	wj.wj_str_free(ctx, &s)
 	if st < 0 { return wj.wj_throw_status(ctx, st, "URLSearchParams") }
 	return wj.wj_wrap_owned(ctx, h, params_iface(), new_target)
 }
@@ -299,17 +283,17 @@ params_handle :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> (u64, bool
 @(private = "file")
 fill_get_nth :: proc "contextless" (user: rawptr, buf: [^]u8, cap: u32) -> i32 {
 	op := (^GetNth_Op)(user)
-	return wr_URLSearchParams_getNth(op.handle, op.name.ptr, u32(op.name.len), op.index, buf, cap)
+	return wj.wr_URLSearchParams_getNth(op.handle, op.name.ptr, u32(op.name.len), op.index, buf, cap)
 }
 
 @(export, link_name = "wjr_URLSearchParams_getAll")
 wjr_URLSearchParams_getAll :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	h, ok := params_handle(ctx, this_val)
 	if !ok { return wj.EXCEPTION }
-	if argc < 1 { return wj_throw_arity(ctx, "URLSearchParams.getAll", 1, argc) }
+	if argc < 1 { return wj.wj_throw_arity(ctx, "URLSearchParams.getAll", 1, argc) }
 	name: wj.Str
 	if !wj.web_to_usv(ctx, argv[0], &name) { return wj.EXCEPTION }
-	count := wr_URLSearchParams_count(h, name.ptr, u32(name.len))
+	count := wj.wr_URLSearchParams_count(h, name.ptr, u32(name.len))
 	arr := wj.JS_NewArray(ctx)
 	for i in 0 ..< count {
 		op := GetNth_Op{ h, name, i }
@@ -317,14 +301,14 @@ wjr_URLSearchParams_getAll :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, 
 		if n < 0 { break }
 		wj.array_set(ctx, arr, u32(i), wj.new_string_len(ctx, wj.scratch_bytes(n)))
 	}
-	wj_str_free(ctx, &name)
+	wj.wj_str_free(ctx, &name)
 	return arr
 }
 
 @(private = "file") Params_Op :: struct { handle: u64 }
 @(private = "file")
 fill_params_tostring :: proc "contextless" (user: rawptr, buf: [^]u8, cap: u32) -> i32 {
-	return wr_URLSearchParams_toString((^Params_Op)(user).handle, buf, cap)
+	return wj.wr_URLSearchParams_toString((^Params_Op)(user).handle, buf, cap)
 }
 
 @(export, link_name = "wjr_URLSearchParams_toString")
@@ -340,11 +324,11 @@ wjr_URLSearchParams_toString :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue
 @(private = "file") At_Op :: struct { handle: u64, index: i32 }
 @(private = "file")
 fill_name_at :: proc "contextless" (user: rawptr, buf: [^]u8, cap: u32) -> i32 {
-	op := (^At_Op)(user); return wr_URLSearchParams_nameAt(op.handle, op.index, buf, cap)
+	op := (^At_Op)(user); return wj.wr_URLSearchParams_nameAt(op.handle, op.index, buf, cap)
 }
 @(private = "file")
 fill_value_at :: proc "contextless" (user: rawptr, buf: [^]u8, cap: u32) -> i32 {
-	op := (^At_Op)(user); return wr_URLSearchParams_valueAt(op.handle, op.index, buf, cap)
+	op := (^At_Op)(user); return wj.wr_URLSearchParams_valueAt(op.handle, op.index, buf, cap)
 }
 
 // The pair iterator's "at" callback (web_iterator_new / web_for_each). 0 past the end.

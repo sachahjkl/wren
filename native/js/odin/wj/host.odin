@@ -1,95 +1,91 @@
-// host.odin: the wj.h / web.h functions a ported domain calls (platform objects, wrappers, the realm's singletons,
-// dictionaries, iterators, host promises, events, queued tasks), the engine's malloc, the interface table, and the
-// tiny C field accessors of wj_shim.c (fields of global C structs have no symbol, so one-line accessors expose them).
-// One declaration per symbol.
+// host.odin: the functions of the engine (native/js/engine, wj.h / qjs_internal.h) and of the runtime C that stays
+// (native/js/runtime, web.h) a ported domain calls: the engine's malloc, the interface table, platform objects and
+// wrappers, the realm's singletons, dictionaries, iterators, events, queued tasks. Real symbols, one declaration each.
+// The browser's own imports (wr_*) are not here: they are generated (wr_imports.odin).
 package wj
 
-// ---- the engine's malloc and the interface table (wj.h real symbols) ----
+// ---- the engine's malloc and the interface table ----
 
 @(default_calling_convention = "c")
 foreign {
 	// index of an interface by name in the generated table, -1 when unknown (avoids hardcoding WJ_IFACE_* numbers)
 	wj_interface_find :: proc(name: cstring) -> i32 ---
-	// a new platform object of `iface` with engine-owned data (impl, freed by impl_free); EXCEPTION on failure
-	wj_new_object :: proc(ctx: ^Context, iface: i32, impl: rawptr, impl_free: proc "c" (p: rawptr)) -> JSValue ---
 	// the realm's shared scratch allocator (the engine's malloc)
 	wj_malloc :: proc(n: uint) -> rawptr ---
 	wj_free   :: proc(p: rawptr) ---
 }
 
-// Resolve an interface index by name (cached by the caller if hot). Returns -1 when unknown.
+// Resolve an interface index by name (cache it in the caller if hot). -1 when unknown.
 iface :: #force_inline proc "contextless" (name: cstring) -> i32 { return wj_interface_find(name) }
 
 malloc :: #force_inline proc "contextless" (n: uint) -> rawptr { return wj_malloc(n) }
 free   :: #force_inline proc "contextless" (p: rawptr) { wj_free(p) }
 
-// ---- platform objects, wrappers, conversions to a handle (wj.h real symbols) ----
+// ---- platform objects and wrappers ----
 
 @(default_calling_convention = "c")
 foreign {
+	// `this` of an operation / attribute of `iface`: nil with a TypeError ("Illegal invocation") pending otherwise
+	wj_this           :: proc(ctx: ^Context, this_val: JSValue, iface: i32) -> ^Obj ---
+	// the platform object behind `v` when it implements `iface` (or a descendant), else nil (no exception)
+	wj_unwrap         :: proc(v: JSValue, iface: i32) -> ^Obj ---
 	// the impl of `this` when it is a platform object of `iface` made by the engine (nil + TypeError otherwise)
-	web_this_impl :: proc(ctx: ^Context, this_val: JSValue, iface: i32) -> rawptr ---
+	web_this_impl     :: proc(ctx: ^Context, this_val: JSValue, iface: i32) -> rawptr ---
+	wj_wrap_node      :: proc(ctx: ^Context, node: u64) -> JSValue ---
+	wj_wrap_host      :: proc(ctx: ^Context, handle: u64, iface: i32) -> JSValue ---
+	wj_cached         :: proc(ctx: ^Context, handle: u64) -> JSValue ---
+	wj_wrap_owned     :: proc(ctx: ^Context, handle: u64, iface: i32, new_target: JSValue) -> JSValue ---
+	wj_new_object     :: proc(ctx: ^Context, iface: i32, impl: rawptr, impl_free: Impl_Free) -> JSValue ---
+	wj_new_object_for :: proc(ctx: ^Context, iface: i32, new_target: JSValue, impl: rawptr, impl_free: Impl_Free) -> JSValue ---
+	wj_mark           :: proc(rt: rawptr, v: JSValue, mark_func: rawptr) ---
 
-	wj_this         :: proc(ctx: ^Context, this_val: JSValue, iface: i32) -> rawptr --- // ^wj_obj or nil (+ TypeError)
-	// ^Wj_Obj or nil (no throw). Returned as ^Wj_Obj so a caller can read `.handle` directly (qjs_convert); it also
-	// decays to rawptr where the caller wants the impl (impl_of).
-	wj_unwrap       :: proc(v: JSValue, iface: i32) -> ^Wj_Obj ---
-	wj_obj_impl     :: proc(o: rawptr) -> rawptr ---                                     // impl of a wj_obj* (wj_shim.c)
-	wj_wrap_node    :: proc(ctx: ^Context, node: u64) -> JSValue ---
-	wj_wrap_host    :: proc(ctx: ^Context, handle: u64, iface: i32) -> JSValue ---
-	wj_cached       :: proc(ctx: ^Context, handle: u64) -> JSValue ---
-	wj_wrap_owned   :: proc(ctx: ^Context, handle: u64, iface: i32, new_target: JSValue) -> JSValue ---
-	wj_new_object_for :: proc(ctx: ^Context, iface: i32, new_target: JSValue, impl: rawptr, impl_free: proc "c" (p: rawptr)) -> JSValue ---
-
-	// wj_to_handle (the browser object behind a platform object) is NOT declared here: it is implemented by the Odin
-	// glue (qjs_convert.odin); a ported domain (package odin_glue) calls it unqualified. See docs/js/odin-glue.md.
-
-	// misc engine entry points the glue reaches
-	wj_report_exception :: proc(ctx: ^Context, exc: JSValue) ---
-	wj_report_pending   :: proc(ctx: ^Context) ---   // report the pending exception as uncaught (qjs_internal.h)
-	wj_stack_enter      :: proc(ctx: ^Context) ---
-	wj_mark             :: proc(rt: rawptr, v: JSValue, mark_func: rawptr) ---
+	// reporting, stack budget, the console sink, CSP for string handlers, the script name for stack traces
+	wj_report_exception   :: proc(ctx: ^Context, exc: JSValue) ---
+	wj_report_pending     :: proc(ctx: ^Context) ---
+	wj_stack_enter        :: proc(ctx: ^Context) ---
+	wj_console_text       :: proc(level: i32, text: [^]u8, len: uint) ---
+	wj_can_compile_string :: proc(ctx: ^Context, source: JSValue) -> bool ---
+	wj_script_base_name   :: proc(out: [^]u8, cap: uint) -> uint ---
 }
 
-// A view of the leading field of C's `wj_obj` (wj.h): only `handle` is mirrored (the first field, offset 0), and only
-// ever read through a pointer wj_this/wj_unwrap returned. The full struct is larger; prefer web_this_impl for `impl`.
-Wj_Obj :: struct {
-	handle: u64,
+// The function-table index of an exported callback (wasm32: a function pointer is its table index), for the
+// `callback` argument of a wr_* import (Timers_setTimeout64, ResizeObserver_create...).
+table_index :: #force_inline proc "contextless" (fn: rawptr) -> i32 { return i32(uintptr(fn)) }
+
+// web_this_impl under the name the runtime reads it.
+this_impl :: #force_inline proc "contextless" (ctx: ^Context, this_val: JSValue, iface: i32) -> rawptr {
+	return web_this_impl(ctx, this_val, iface)
 }
 
-// ---- the realm's singletons, dictionaries, events, iterators, promises, tasks (web.h real symbols) ----
+// ---- the realm's singletons, dictionaries, events, iterators, tasks (web.h) ----
 
 Singleton_Make :: #type proc "c" (ctx: ^Context) -> JSValue
-Impl_Free      :: #type proc "c" (p: rawptr)
-Impl_Mark      :: #type proc "c" (rt: rawptr, p: rawptr, mark_func: rawptr)
 Task_Fn        :: #type proc "c" (ctx: ^Context, data: JSValue)
-
-// Callback types (match web.h function-pointer typedefs).
-Pair_At       :: #type proc "c" (ctx: ^Context, owner: JSValue, index: u32, key: ^JSValue, value: ^JSValue) -> i32
-For_Of_Fn     :: #type proc "c" (ctx: ^Context, item: JSValue, opaque: rawptr) -> bool
-For_Record_Fn :: #type proc "c" (ctx: ^Context, key: JSValue, value: JSValue, opaque: rawptr) -> bool
+Pair_At        :: #type proc "c" (ctx: ^Context, owner: JSValue, index: u32, key: ^JSValue, value: ^JSValue) -> i32
+For_Of_Fn      :: #type proc "c" (ctx: ^Context, item: JSValue, opaque: rawptr) -> bool
+For_Record_Fn  :: #type proc "c" (ctx: ^Context, key: JSValue, value: JSValue, opaque: rawptr) -> bool
 
 @(default_calling_convention = "c")
 foreign {
 	// dictionaries, freeze, hidden state
-	web_freeze    :: proc(ctx: ^Context, v: JSValue) -> bool ---
+	web_freeze     :: proc(ctx: ^Context, v: JSValue) -> bool ---
 	web_dict_check :: proc(ctx: ^Context, dict: JSValue, what: cstring) -> bool ---
-	web_dict_get  :: proc(ctx: ^Context, dict: JSValue, name: cstring, out: ^JSValue) -> bool ---
-	web_extra     :: proc(ctx: ^Context, obj: JSValue, create: bool) -> JSValue ---
-	web_extra_get :: proc(ctx: ^Context, obj: JSValue, name: cstring) -> JSValue ---
-	web_extra_set :: proc(ctx: ^Context, obj: JSValue, name: cstring, v: JSValue) -> bool ---
+	web_dict_get   :: proc(ctx: ^Context, dict: JSValue, name: cstring, out: ^JSValue) -> bool ---
+	web_extra      :: proc(ctx: ^Context, obj: JSValue, create: bool) -> JSValue ---
+	web_extra_get  :: proc(ctx: ^Context, obj: JSValue, name: cstring) -> JSValue ---
+	web_extra_set  :: proc(ctx: ^Context, obj: JSValue, name: cstring, v: JSValue) -> bool ---
 
-	// the realm's singletons, impls, marks
-	web_singleton :: proc(ctx: ^Context, which: i32, make: Singleton_Make) -> JSValue ---
-	web_pin       :: proc(ctx: ^Context, v: JSValue) -> u32 ---
-	web_unpin     :: proc(ctx: ^Context, token: u32) ---
+	// the realm's singletons, pins
+	web_singleton   :: proc(ctx: ^Context, which: i32, make: Singleton_Make) -> JSValue ---
+	web_pin         :: proc(ctx: ^Context, v: JSValue) -> u32 ---
+	web_unpin       :: proc(ctx: ^Context, token: u32) ---
 	web_unpin_later :: proc(ctx: ^Context, token: u32) ---
 
 	// events
 	wj_event_construct :: proc(ctx: ^Context, new_target: JSValue, argc: i32, argv: [^]JSValue, iface: i32, name: cstring) -> JSValue ---
-	web_event_host :: proc(ev: JSValue) -> u64 ---
-	web_event_new  :: proc(ctx: ^Context, iface: i32, type: cstring, bubbles: bool, cancelable: bool) -> JSValue ---
-	web_event_fire :: proc(ctx: ^Context, target: JSValue, ev: JSValue) -> bool ---
+	web_event_host  :: proc(ev: JSValue) -> u64 ---
+	web_event_new   :: proc(ctx: ^Context, iface: i32, type: cstring, bubbles: bool, cancelable: bool) -> JSValue ---
+	web_event_fire  :: proc(ctx: ^Context, target: JSValue, ev: JSValue) -> bool ---
 	web_fire_simple :: proc(ctx: ^Context, target: JSValue, type: cstring) -> bool ---
 
 	// iterators of pair iterables, sequences, records
@@ -101,11 +97,8 @@ foreign {
 	web_iter_result  :: proc(ctx: ^Context, value: JSValue, done: bool) -> JSValue ---
 
 	// queued tasks
-	web_queue_task   :: proc(ctx: ^Context, fn: Task_Fn, data: JSValue) -> bool ---
+	web_queue_task :: proc(ctx: ^Context, fn: Task_Fn, data: JSValue) -> bool ---
 }
-
-// web_rt() is `static inline` in web.h (JS_GetRuntime(wj_the_realm.ctx)): no symbol, so it is reimplemented here.
-web_rt :: #force_inline proc "contextless" () -> ^Runtime { return JS_GetRuntime(realm_ctx()) }
 
 // web.h iterator kinds and iterable ids.
 ITER_KEYS    :: i32(0)
@@ -142,52 +135,4 @@ Event_Init :: struct {
 	bubbles:    bool,
 	cancelable: bool,
 	composed:   bool,
-}
-
-// ---- the C field accessors of wj_shim.c (fields of global C structs: wj_the_realm, wj_obj) ----
-
-@(default_calling_convention = "c")
-foreign {
-	wj_realm_global :: proc() -> JSValue ---          // wj_the_realm.global (not counted)
-	wj_realm_ctx    :: proc() -> ^Context ---         // wj_the_realm.ctx
-	wj_realm_kind   :: proc() -> i32 ---              // wj_the_realm.kind
-	wj_realm_proto  :: proc(iface: i32) -> JSValue --- // wj_the_realm.protos[iface]
-
-	// the two leading fields of a wj_obj (off a JSValue, or off a wj_obj* wj_this/wj_unwrap returned)
-	wj_shim_obj_handle :: proc(v: JSValue) -> u64 ---
-	wj_shim_obj_impl   :: proc(v: JSValue) -> rawptr ---
-	wj_shim_handle     :: proc(obj: rawptr) -> u64 ---
-	wj_shim_impl       :: proc(obj: rawptr) -> rawptr ---
-
-	// web_set_impl is a `static inline` in web.h (writes wj_obj.impl/impl_free/impl_mark): no symbol, so a shim wraps
-	// it. web_set_impl below forwards to this; a ported domain still calls wj.web_set_impl.
-	wj_shim_set_impl :: proc(obj: JSValue, impl: rawptr, impl_free: Impl_Free, impl_mark: Impl_Mark) ---
-}
-
-// Set a platform object's engine-owned data (the `static inline` web_set_impl, through the shim).
-web_set_impl :: #force_inline proc "contextless" (obj: JSValue, impl: rawptr, impl_free: Impl_Free, impl_mark: Impl_Mark) {
-	wj_shim_set_impl(obj, impl, impl_free, impl_mark)
-}
-
-// The realm's global object (not counted). Matches web_strategy.c's use of wj_the_realm.global.
-realm_global :: #force_inline proc "contextless" () -> JSValue { return wj_realm_global() }
-realm_ctx    :: #force_inline proc "contextless" () -> ^Context { return wj_realm_ctx() }
-realm_kind   :: #force_inline proc "contextless" () -> i32 { return wj_realm_kind() }
-realm_proto  :: #force_inline proc "contextless" (iface: i32) -> JSValue { return wj_realm_proto(iface) }
-proto_of     :: realm_proto
-
-// web_is_window(): the realm's kind is not a worker (WJ_EXPOSE_WORKER == 1<<1 == 2, per wj.h).
-EXPOSE_WORKER :: i32(1 << 1)
-is_window :: #force_inline proc "contextless" () -> bool { return realm_kind() != EXPOSE_WORKER }
-
-// The browser handle / impl behind a platform object `v` (0/nil when none). Same as reading wj_obj_of(v)->handle.
-obj_handle :: #force_inline proc "contextless" (v: JSValue) -> u64 { return wj_shim_obj_handle(v) }
-obj_impl   :: #force_inline proc "contextless" (v: JSValue) -> rawptr { return wj_shim_obj_impl(v) }
-// The handle / impl off a wj_obj* (what wj_this / wj_unwrap return).
-handle_of  :: #force_inline proc "contextless" (obj: rawptr) -> u64 { return wj_shim_handle(obj) }
-impl_of    :: #force_inline proc "contextless" (obj: rawptr) -> rawptr { return wj_shim_impl(obj) }
-
-// web_this_impl is declared above; this_impl mirrors the C name used across runtime/web.
-this_impl :: #force_inline proc "contextless" (ctx: ^Context, this_val: JSValue, iface: i32) -> rawptr {
-	return web_this_impl(ctx, this_val, iface)
 }

@@ -7,14 +7,9 @@ package odin_glue
 
 import "../odin/wj"
 
-foreign import _m_fullscreen "fullscreen"
 
-@(default_calling_convention = "c")
-foreign _m_fullscreen {
-	@(link_name = "Element_requestFullscreen") wr_Element_requestFullscreen :: proc(element: u64, navigationUI: i32) -> u64 ---
-}
 
-// enum wr_FullscreenNavigation
+// enum wj.wr_FullscreenNavigation
 @(private = "file") FS_NAV_AUTO :: i32(0)
 @(private = "file") FS_NAV_SHOW :: i32(1)
 @(private = "file") FS_NAV_HIDE :: i32(2)
@@ -41,7 +36,7 @@ element_iface :: proc "c" () -> i32 {
 
 @(export, link_name = "wjr_Element_requestFullscreen")
 wjr_Element_requestFullscreen :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
-	o := (^wj.Wj_Obj)(wj.wj_this(ctx, this_val, element_iface()))
+	o := (^wj.Obj)(wj.wj_this(ctx, this_val, element_iface()))
 	if o == nil { return wj.web_promise_reject_pending(ctx) }
 	opt: Fullscreen_Options
 	if !wjd_FullscreenOptions_from(ctx, wj.arg(argc, argv, 0), &opt) { return wj.web_promise_reject_pending(ctx) }
@@ -53,5 +48,5 @@ wjr_Element_requestFullscreen :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 		}
 	}
 	wjd_FullscreenOptions_free(ctx, &opt)
-	return wj.wj_promise_from_host(ctx, wr_Element_requestFullscreen(o.handle, nav), wj.HOST_UNDEFINED, nil, wj.UNDEFINED)
+	return wj.wj_promise_from_host(ctx, wj.wr_Element_requestFullscreen(o.handle, nav), wj.HOST_UNDEFINED, nil, wj.UNDEFINED)
 }

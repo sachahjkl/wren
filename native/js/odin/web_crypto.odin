@@ -6,23 +6,10 @@ package odin_glue
 
 import "../odin/wj"
 
-foreign import m_crypto "crypto"
-foreign import m_crypto_document "document"
 
-@(default_calling_convention = "c")
-foreign m_crypto {
-	@(link_name = "Crypto_getRandomValues") wr_Crypto_getRandomValues :: proc(destination: [^]u8, destination_cap: u32) -> i32 ---
-	@(link_name = "SubtleCrypto_digest")    wr_SubtleCrypto_digest    :: proc(algorithm: [^]u8, algorithm_len: u32, data: [^]u8, data_len: u32) -> u64 ---
-}
 
-@(default_calling_convention = "c")
-foreign m_crypto_document {
-	// a file-local name for the shared Window_isSecureContext import (worker_scope.odin declares it too, in the one
-	// odin_glue package): distinct Odin identifiers, the same @(link_name) so wasm-ld resolves both to the C symbol.
-	@(link_name = "Window_isSecureContext") wr_crypto_isSecureContext :: proc() -> i32 ---
-}
 
-ERR_QUOTA_C :: i32(-13)   // wr_Error_Quota (file-local alias)
+ERR_QUOTA_C :: i32(-13)   // wj.wr_Error_Quota (file-local alias)
 
 @(private = "file") iface_crypto := i32(-2)
 @(private = "file") iface_subtle := i32(-2)
@@ -57,7 +44,7 @@ WEB_RANDOM_MAX :: 65536   // the Web Cryptography API's limit, before the browse
 @(export, link_name = "wjr_Crypto_getRandomValues")
 wjr_Crypto_getRandomValues :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	if wj.wj_this(ctx, this_val, crypto_iface()) == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj_throw_arity(ctx, "Crypto.getRandomValues", 1, argc) }
+	if argc < 1 { return wj.wj_throw_arity(ctx, "Crypto.getRandomValues", 1, argc) }
 	t := wj.Typed_Array(wj.wj_typed_array_type(argv[0]))
 	integer: bool
 	#partial switch t {
@@ -76,7 +63,7 @@ wjr_Crypto_getRandomValues :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, 
 	if !wj.wj_to_buffer_source(ctx, argv[0], &p, &n, wj.BS_VIEW_ONLY | wj.BS_ALLOW_SHARED, "Crypto.getRandomValues") { return wj.EXCEPTION }
 	if n > WEB_RANDOM_MAX { return wj.wj_throw_dom(ctx, "QuotaExceededError", "Failed to execute 'getRandomValues' on 'Crypto': The ArrayBufferView's byte length exceeds the number of bytes of entropy available via this API (65536).") }
 	if n > 0 {
-		st := wr_Crypto_getRandomValues(p, u32(n))
+		st := wj.wr_Crypto_getRandomValues(p, u32(n))
 		if st < 0 {
 			if st == ERR_QUOTA_C { return wj.wj_throw_dom(ctx, "QuotaExceededError", "Failed to execute 'getRandomValues' on 'Crypto': over crypto.max_random_bytes.") }
 			return wj.wj_throw_status(ctx, st, "Crypto.getRandomValues")
@@ -92,11 +79,11 @@ algorithm_name :: proc "c" (ctx: ^wj.Context, v: wj.JSValue, out: ^wj.Str) -> bo
 		n := wj.JS_GetPropertyStr(ctx, v, "name")
 		if wj.is_exception(n) { return false }
 		if wj.is_undefined(n) { wj.wj_throw_type(ctx, "Algorithm: name is missing"); return false }
-		ok := wj_to_str(ctx, n, out, 0, nil)
+		ok := wj.wj_to_str(ctx, n, out, 0, nil)
 		wj.JS_FreeValue(ctx, n)
 		return ok
 	}
-	return wj_to_str(ctx, v, out, 0, nil)
+	return wj.wj_to_str(ctx, v, out, 0, nil)
 }
 
 @(private = "file") digest_names := [4]cstring{ "SHA-1", "SHA-256", "SHA-384", "SHA-512" }
@@ -104,21 +91,21 @@ algorithm_name :: proc "c" (ctx: ^wj.Context, v: wj.JSValue, out: ^wj.Str) -> bo
 @(export, link_name = "wjr_SubtleCrypto_digest")
 wjr_SubtleCrypto_digest :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	if wj.wj_this(ctx, this_val, subtle_iface()) == nil { return wj.web_promise_reject_pending(ctx) }
-	if argc < 2 { wj_throw_arity(ctx, "SubtleCrypto.digest", 2, argc); return wj.web_promise_reject_pending(ctx) }
+	if argc < 2 { wj.wj_throw_arity(ctx, "SubtleCrypto.digest", 2, argc); return wj.web_promise_reject_pending(ctx) }
 	alg: wj.Str
 	if !algorithm_name(ctx, argv[0], &alg) { return wj.web_promise_reject_pending(ctx) }
 	canon: cstring = nil
 	for name in digest_names {
 		if wj.web_ascii_ieq(alg.ptr, alg.len, name) { canon = name }
 	}
-	wj_str_free(ctx, &alg)
+	wj.wj_str_free(ctx, &alg)
 	if canon == nil { return wj.web_promise_rejected(ctx, wj.web_dom_exception(ctx, "NotSupportedError", "Failed to execute 'digest' on 'SubtleCrypto': Algorithm: Unrecognized name")) }
 	p: [^]u8
 	n: uint
 	if !wj.wj_to_buffer_source(ctx, argv[1], &p, &n, 0, "SubtleCrypto.digest") { return wj.web_promise_reject_pending(ctx) }
 	if n > 0xFFFF_FFFF { return wj.web_promise_rejected(ctx, wj.web_dom_exception(ctx, "QuotaExceededError", "the data is too large")) }
 	// the browser copies the bytes before this returns: later changes of the buffer do not matter
-	h := wr_SubtleCrypto_digest(([^]u8)(rawptr(canon)), u32(len(canon)), p, u32(n))
+	h := wj.wr_SubtleCrypto_digest(([^]u8)(rawptr(canon)), u32(len(canon)), p, u32(n))
 	return wj.wj_promise_from_host(ctx, h, wj.HOST_ARRAYBUFFER, nil, wj.UNDEFINED)
 }
 
@@ -158,8 +145,8 @@ wjr_SubtleCrypto_unwrapKey :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i
 // [SecureContext] members are absent from documents that are not secure contexts.
 @(export, link_name = "web_crypto_start")
 web_crypto_start :: proc "c" (ctx: ^wj.Context, kind: i32) -> i32 {
-	if wr_crypto_isSecureContext() != 0 { return 0 }
-	proto := wj.proto_of(crypto_iface())
+	if wj.wr_Window_isSecureContext() != 0 { return 0 }
+	proto := wj.realm_proto(crypto_iface())
 	if !wj.is_object(proto) { return 0 }
 	names := [2]cstring{ "subtle", "randomUUID" }
 	for name in names {
