@@ -547,7 +547,17 @@ JSValue wjr_Element_set_innerHTML(JSContext *ctx, JSValueConst this_val, JSValue
 JSValue wjr_Element_set_outerHTML(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_Element_toggleAttribute(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_EncodedAudioChunk_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_EncodedAudioChunk_copyTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_EncodedAudioChunk_get_byteLength(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_EncodedAudioChunk_get_duration(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_EncodedAudioChunk_get_timestamp(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_EncodedAudioChunk_get_type(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_EncodedVideoChunk_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_EncodedVideoChunk_copyTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_EncodedVideoChunk_get_byteLength(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_EncodedVideoChunk_get_duration(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_EncodedVideoChunk_get_timestamp(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_EncodedVideoChunk_get_type(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_ErrorEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_ErrorEvent_get_colno(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_ErrorEvent_get_error(JSContext *ctx, JSValueConst this_val);
@@ -3311,60 +3321,6 @@ static JSValue wjg_ElementInternals_get_ariaValueNow(JSContext *ctx, JSValueCons
 static JSValue wjg_ElementInternals_set_ariaValueNow(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 125, "aria-valuenow", WJ_REFLECT_NULLABLE_STRING, v, 0, 0, 0); }
 static JSValue wjg_ElementInternals_get_ariaValueText(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 125, "aria-valuetext", WJ_REFLECT_NULLABLE_STRING, 0, 0, 0, 0); }
 static JSValue wjg_ElementInternals_set_ariaValueText(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 125, "aria-valuetext", WJ_REFLECT_NULLABLE_STRING, v, 0, 0, 0); }
-/* EncodedAudioChunk.timestamp -> webcodecs_codec.EncodedAudioChunk_timestamp */
-static JSValue wjg_EncodedAudioChunk_get_timestamp(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 126);
-    if (!self) { return JS_EXCEPTION; }
-    int64_t r = wr_EncodedAudioChunk_timestamp(self->handle);
-    return JS_NewInt64(ctx, r);
-}
-
-/* EncodedAudioChunk.duration -> webcodecs_codec.EncodedAudioChunk_duration */
-static JSValue wjg_EncodedAudioChunk_get_duration(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 126);
-    if (!self) { return JS_EXCEPTION; }
-    uint64_t r = wr_EncodedAudioChunk_duration(self->handle);
-    return JS_NewFloat64(ctx, (double)r);
-}
-
-/* EncodedAudioChunk.byteLength -> webcodecs_codec.EncodedAudioChunk_byteLength */
-static JSValue wjg_EncodedAudioChunk_get_byteLength(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 126);
-    if (!self) { return JS_EXCEPTION; }
-    uint32_t r = wr_EncodedAudioChunk_byteLength(self->handle);
-    return JS_NewUint32(ctx, r);
-}
-
-/* EncodedVideoChunk.timestamp -> webcodecs_codec.EncodedVideoChunk_timestamp */
-static JSValue wjg_EncodedVideoChunk_get_timestamp(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 127);
-    if (!self) { return JS_EXCEPTION; }
-    int64_t r = wr_EncodedVideoChunk_timestamp(self->handle);
-    return JS_NewInt64(ctx, r);
-}
-
-/* EncodedVideoChunk.duration -> webcodecs_codec.EncodedVideoChunk_duration */
-static JSValue wjg_EncodedVideoChunk_get_duration(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 127);
-    if (!self) { return JS_EXCEPTION; }
-    uint64_t r = wr_EncodedVideoChunk_duration(self->handle);
-    return JS_NewFloat64(ctx, (double)r);
-}
-
-/* EncodedVideoChunk.byteLength -> webcodecs_codec.EncodedVideoChunk_byteLength */
-static JSValue wjg_EncodedVideoChunk_get_byteLength(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 127);
-    if (!self) { return JS_EXCEPTION; }
-    uint32_t r = wr_EncodedVideoChunk_byteLength(self->handle);
-    return JS_NewUint32(ctx, r);
-}
-
 static JSValue wjg_AbortSignal_get_onabort(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 188, "abort"); }
 static JSValue wjg_AbortSignal_set_onabort(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 188, "abort", v, 0); }
 static JSValue wjg_TaskSignal_get_onprioritychange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 189, "prioritychange"); }
@@ -13481,18 +13437,18 @@ static const wj_member wj_m_ElementInternals[] = {
     { "ariaValueText", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_ElementInternals_get_ariaValueText, wjg_ElementInternals_set_ariaValueText, 0 },
 };
 static const wj_member wj_m_EncodedAudioChunk[] = {
-    { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "timestamp", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_EncodedAudioChunk_get_timestamp, NULL, 0 },
-    { "duration", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_EncodedAudioChunk_get_duration, NULL, 0 },
-    { "byteLength", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_EncodedAudioChunk_get_byteLength, NULL, 0 },
-    { "copyTo", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_EncodedAudioChunk_get_type, NULL, 0 },
+    { "timestamp", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_EncodedAudioChunk_get_timestamp, NULL, 0 },
+    { "duration", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_EncodedAudioChunk_get_duration, NULL, 0 },
+    { "byteLength", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_EncodedAudioChunk_get_byteLength, NULL, 0 },
+    { "copyTo", WJ_M_METHOD, 0, 1, wjr_EncodedAudioChunk_copyTo, NULL, NULL, 0 },
 };
 static const wj_member wj_m_EncodedVideoChunk[] = {
-    { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "timestamp", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_EncodedVideoChunk_get_timestamp, NULL, 0 },
-    { "duration", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_EncodedVideoChunk_get_duration, NULL, 0 },
-    { "byteLength", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_EncodedVideoChunk_get_byteLength, NULL, 0 },
-    { "copyTo", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_EncodedVideoChunk_get_type, NULL, 0 },
+    { "timestamp", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_EncodedVideoChunk_get_timestamp, NULL, 0 },
+    { "duration", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_EncodedVideoChunk_get_duration, NULL, 0 },
+    { "byteLength", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_EncodedVideoChunk_get_byteLength, NULL, 0 },
+    { "copyTo", WJ_M_METHOD, 0, 1, wjr_EncodedVideoChunk_copyTo, NULL, NULL, 0 },
 };
 static const wj_member wj_m_Event[] = {
     { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Event_get_type, NULL, 0 },
