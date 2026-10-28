@@ -257,7 +257,7 @@ call :: #force_inline proc(ctx: ^wj.Context, c: ^abi.Cells, $D: typeid, imp: $R,
 // Call declaration D through import imp with the given arguments; D's value result (if any) in out (a ^abi.Nothing
 // when D has none). Returns D's Api_Error, .None when D raises nothing. A string result lives in the realm's scratch
 // buffer until the next host call.
-host :: proc{host0, host1, host2, host3, host4}
+host :: proc{host0, host1, host2, host3, host4, host5, host6, host7, host8, host10}
 
 host0 :: proc(out: ^$O, $D: typeid, imp: $R) -> abi.Api_Error {
 	c: abi.Cells = ---
