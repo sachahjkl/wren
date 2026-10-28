@@ -122,21 +122,36 @@ run_contains :: proc(runs: []Range_Run, c: u32) -> bool {
 
 // ---- Predicates the JS lexer / regexp use directly ------------------------------------------------------
 
+// Raw Unicode ID_Start property (what QuickJS's lre_is_id_start exposes). The JS lexer adds `$` and `_` on top of
+// this; see js_is_ident_first for that lexer-level rule.
 is_id_start :: proc(c: u32) -> bool {
 	if c < 128 {
-		return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_' || c == '$'
+		return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
 	}
 	return run_contains_named(binary_prop_tables, "ID_Start", c)
 }
 
+// Raw Unicode ID_Continue property. QuickJS defines lre_is_id_continue as ID_Start OR ID_Continue; the generated
+// ID_Continue table from DerivedCoreProperties already includes the ID_Start code points, so a single lookup
+// suffices. ASCII: letters and digits (not `_`/`$`, which the lexer adds separately).
 is_id_continue :: proc(c: u32) -> bool {
 	if c < 128 {
-		return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
-		       (c >= '0' && c <= '9') || c == '_' || c == '$'
+		// `_` (Low Line, Pc) is in the Unicode ID_Continue property; letters and digits too.
+		return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_'
 	}
-	// ZWNJ and ZWJ are accepted in identifiers per the lexer rules.
-	if c == 0x200C || c == 0x200D { return true }
 	return run_contains_named(binary_prop_tables, "ID_Continue", c)
+}
+
+// The JS lexer's identifier-start test: ID_Start plus `$` and `_`.
+js_is_ident_first :: proc(c: u32) -> bool {
+	if c == '$' || c == '_' { return true }
+	return is_id_start(c)
+}
+
+// The JS lexer's identifier-continue test: ID_Continue plus `$`, `_`, ZWNJ and ZWJ.
+js_is_ident_next :: proc(c: u32) -> bool {
+	if c == '$' || c == '_' || c == 0x200C || c == 0x200D { return true }
+	return is_id_continue(c)
 }
 
 is_white_space :: proc(c: u32) -> bool {
