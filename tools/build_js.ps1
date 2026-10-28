@@ -216,6 +216,7 @@ $odinified = @(
     'web_webcodecs_image.c',
     'web_webcodecs_video_decoder.c',
     'web_writable.c',
+    'web_xhr.c',
     'window.c',
     'worker_scope.c',
     'workers.c'
