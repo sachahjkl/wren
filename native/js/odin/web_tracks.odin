@@ -31,7 +31,7 @@ iface :: proc "contextless" (slot: ^i32, name: cstring) -> i32 {
 @(private = "file")
 track_this :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, iface: i32) -> u64 {
 	o := wj.wj_this(ctx, this_val, iface)
-	return o != nil ? wj.obj_handle(o) : 0
+	return o != nil ? wj.handle_of(o) : 0
 }
 
 // A string attribute read off a host handle into wj_scratch, as a WHATWG UTF-8 JS string (or the status exception).
@@ -43,7 +43,7 @@ track_string :: proc "c" (ctx: ^wj.Context, n: i32, what: cstring) -> wj.JSValue
 
 // WJ_FETCH_STRING specialised for wr_<Iface>_<attr>(handle, buf, cap).
 @(private = "file")
-fetch_track :: proc "contextless" (call: proc "c" (h: u64, buf: [^]u8, cap: u32) -> i32, h: u64) -> i32 {
+fetch_track :: proc "contextless" (call: proc "contextless" (h: u64, buf: [^]u8, cap: u32) -> i32, h: u64) -> i32 {
 	n := call(h, wj.scratch_data(), wj.scratch_cap())
 	if n > 0 && u32(n) > wj.scratch_cap() {
 		if !wj.wj_scratch_grow(u32(n)) { return -13 }
@@ -53,7 +53,7 @@ fetch_track :: proc "contextless" (call: proc "c" (h: u64, buf: [^]u8, cap: u32)
 }
 
 @(private = "file")
-str_attr :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, iface: i32, call: proc "c" (h: u64, buf: [^]u8, cap: u32) -> i32, what: cstring) -> wj.JSValue {
+str_attr :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, iface: i32, call: proc "contextless" (h: u64, buf: [^]u8, cap: u32) -> i32, what: cstring) -> wj.JSValue {
 	h := track_this(ctx, t, iface)
 	if h == 0 { return wj.EXCEPTION }
 	return track_string(ctx, fetch_track(call, h), what)
@@ -62,29 +62,29 @@ str_attr :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, iface: i32, call: proc "c
 // ---- track lists (length / indexed getter / getTrackById), one shape per list ----
 
 @(private = "file")
-list_length :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, iface: i32, get: proc "c" (h: u64) -> u32) -> wj.JSValue {
+list_length :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, iface: i32, get: proc "contextless" (h: u64) -> u32) -> wj.JSValue {
 	h := track_this(ctx, t, iface)
 	if h == 0 { return wj.EXCEPTION }
 	return wj.new_uint32(ctx, get(h))
 }
 
 @(private = "file")
-list_length_hook :: proc "c" (obj: wj.JSValue, iface: i32, get: proc "c" (h: u64) -> u32) -> u32 {
+list_length_hook :: proc "c" (obj: wj.JSValue, iface: i32, get: proc "contextless" (h: u64) -> u32) -> u32 {
 	o := wj.wj_unwrap(obj, iface)
-	return o != nil ? get(wj.obj_handle(o)) : 0
+	return o != nil ? get(wj.handle_of(o)) : 0
 }
 
 @(private = "file")
-list_index_get :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, index: u32, found: ^bool, iface: i32, item: proc "c" (h: u64, i: u32, ret: ^u64) -> i32, item_iface: i32) -> wj.JSValue {
+list_index_get :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, index: u32, found: ^bool, iface: i32, item: proc "contextless" (h: u64, i: u32, ret: ^u64) -> i32, item_iface: i32) -> wj.JSValue {
 	o := wj.wj_unwrap(obj, iface)
 	h: u64 = 0
-	if o == nil || item(wj.obj_handle(o), index, &h) < 0 || h == 0 { found^ = false; return wj.UNDEFINED }
+	if o == nil || item(wj.handle_of(o), index, &h) < 0 || h == 0 { found^ = false; return wj.UNDEFINED }
 	found^ = true
 	return wj.wj_wrap_host(ctx, h, item_iface)
 }
 
 @(private = "file")
-list_get_by_id :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValue, iface: i32, by_id: proc "c" (h: u64, id: [^]u8, id_len: u32) -> u64, item_iface: i32) -> wj.JSValue {
+list_get_by_id :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValue, iface: i32, by_id: proc "contextless" (h: u64, id: [^]u8, id_len: u32) -> u64, item_iface: i32) -> wj.JSValue {
 	h := track_this(ctx, t, iface)
 	if h == 0 { return wj.EXCEPTION }
 	if argc < 1 { return wj.wj_throw_arity(ctx, "getTrackById", 1, argc) }
@@ -98,79 +98,79 @@ list_get_by_id :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^
 
 // AudioTrackList
 @(export, link_name = "wjr_AudioTrackList_get_length")
-wjr_AudioTrackList_get_length :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return list_length(ctx, t, IF_audio_list(), wr_AudioTrackList_length) }
+wjr_AudioTrackList_get_length :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return list_length(ctx, t, IF_audio_list(), wj.wr_AudioTrackList_length) }
 @(export, link_name = "wjr_AudioTrackList_length_hook")
-wjr_AudioTrackList_length_hook :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue) -> u32 { return list_length_hook(obj, IF_audio_list(), wr_AudioTrackList_length) }
+wjr_AudioTrackList_length_hook :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue) -> u32 { return list_length_hook(obj, IF_audio_list(), wj.wr_AudioTrackList_length) }
 @(export, link_name = "wjr_AudioTrackList_index_get")
-wjr_AudioTrackList_index_get :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, index: u32, found: ^bool) -> wj.JSValue { return list_index_get(ctx, obj, index, found, IF_audio_list(), wr_AudioTrackList_item, IF_audio()) }
+wjr_AudioTrackList_index_get :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, index: u32, found: ^bool) -> wj.JSValue { return list_index_get(ctx, obj, index, found, IF_audio_list(), wj.wr_AudioTrackList_item, IF_audio()) }
 @(export, link_name = "wjr_AudioTrackList_getTrackById")
-wjr_AudioTrackList_getTrackById :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue { return list_get_by_id(ctx, t, argc, argv, IF_audio_list(), wr_AudioTrackList_getTrackById, IF_audio()) }
+wjr_AudioTrackList_getTrackById :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue { return list_get_by_id(ctx, t, argc, argv, IF_audio_list(), wj.wr_AudioTrackList_getTrackById, IF_audio()) }
 
 // VideoTrackList
 @(export, link_name = "wjr_VideoTrackList_get_length")
-wjr_VideoTrackList_get_length :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return list_length(ctx, t, IF_video_list(), wr_VideoTrackList_length) }
+wjr_VideoTrackList_get_length :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return list_length(ctx, t, IF_video_list(), wj.wr_VideoTrackList_length) }
 @(export, link_name = "wjr_VideoTrackList_length_hook")
-wjr_VideoTrackList_length_hook :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue) -> u32 { return list_length_hook(obj, IF_video_list(), wr_VideoTrackList_length) }
+wjr_VideoTrackList_length_hook :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue) -> u32 { return list_length_hook(obj, IF_video_list(), wj.wr_VideoTrackList_length) }
 @(export, link_name = "wjr_VideoTrackList_index_get")
-wjr_VideoTrackList_index_get :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, index: u32, found: ^bool) -> wj.JSValue { return list_index_get(ctx, obj, index, found, IF_video_list(), wr_VideoTrackList_item, IF_video()) }
+wjr_VideoTrackList_index_get :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, index: u32, found: ^bool) -> wj.JSValue { return list_index_get(ctx, obj, index, found, IF_video_list(), wj.wr_VideoTrackList_item, IF_video()) }
 @(export, link_name = "wjr_VideoTrackList_getTrackById")
-wjr_VideoTrackList_getTrackById :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue { return list_get_by_id(ctx, t, argc, argv, IF_video_list(), wr_VideoTrackList_getTrackById, IF_video()) }
+wjr_VideoTrackList_getTrackById :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue { return list_get_by_id(ctx, t, argc, argv, IF_video_list(), wj.wr_VideoTrackList_getTrackById, IF_video()) }
 @(export, link_name = "wjr_VideoTrackList_get_selectedIndex")
 wjr_VideoTrackList_get_selectedIndex :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue {
 	h := track_this(ctx, t, IF_video_list()); if h == 0 { return wj.EXCEPTION }
-	return wj.new_int32(wr_VideoTrackList_selectedIndex(h))
+	return wj.new_int32(wj.wr_VideoTrackList_selectedIndex(h))
 }
 
 // TextTrackList
 @(export, link_name = "wjr_TextTrackList_get_length")
-wjr_TextTrackList_get_length :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return list_length(ctx, t, IF_text_list(), wr_TextTrackList_length) }
+wjr_TextTrackList_get_length :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return list_length(ctx, t, IF_text_list(), wj.wr_TextTrackList_length) }
 @(export, link_name = "wjr_TextTrackList_length_hook")
-wjr_TextTrackList_length_hook :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue) -> u32 { return list_length_hook(obj, IF_text_list(), wr_TextTrackList_length) }
+wjr_TextTrackList_length_hook :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue) -> u32 { return list_length_hook(obj, IF_text_list(), wj.wr_TextTrackList_length) }
 @(export, link_name = "wjr_TextTrackList_index_get")
-wjr_TextTrackList_index_get :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, index: u32, found: ^bool) -> wj.JSValue { return list_index_get(ctx, obj, index, found, IF_text_list(), wr_TextTrackList_item, IF_text()) }
+wjr_TextTrackList_index_get :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, index: u32, found: ^bool) -> wj.JSValue { return list_index_get(ctx, obj, index, found, IF_text_list(), wj.wr_TextTrackList_item, IF_text()) }
 @(export, link_name = "wjr_TextTrackList_getTrackById")
-wjr_TextTrackList_getTrackById :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue { return list_get_by_id(ctx, t, argc, argv, IF_text_list(), wr_TextTrackList_getTrackById, IF_text()) }
+wjr_TextTrackList_getTrackById :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue { return list_get_by_id(ctx, t, argc, argv, IF_text_list(), wj.wr_TextTrackList_getTrackById, IF_text()) }
 
 // AudioTrack
-@(export, link_name = "wjr_AudioTrack_get_id")       wjr_AudioTrack_get_id       :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return str_attr(ctx, t, IF_audio(), wr_AudioTrack_id, "AudioTrack.id") }
-@(export, link_name = "wjr_AudioTrack_get_kind")     wjr_AudioTrack_get_kind     :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return str_attr(ctx, t, IF_audio(), wr_AudioTrack_kind, "AudioTrack.kind") }
-@(export, link_name = "wjr_AudioTrack_get_label")    wjr_AudioTrack_get_label    :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return str_attr(ctx, t, IF_audio(), wr_AudioTrack_label, "AudioTrack.label") }
-@(export, link_name = "wjr_AudioTrack_get_language") wjr_AudioTrack_get_language :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return str_attr(ctx, t, IF_audio(), wr_AudioTrack_language, "AudioTrack.language") }
+@(export, link_name = "wjr_AudioTrack_get_id")       wjr_AudioTrack_get_id       :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return str_attr(ctx, t, IF_audio(), wj.wr_AudioTrack_id, "AudioTrack.id") }
+@(export, link_name = "wjr_AudioTrack_get_kind")     wjr_AudioTrack_get_kind     :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return str_attr(ctx, t, IF_audio(), wj.wr_AudioTrack_kind, "AudioTrack.kind") }
+@(export, link_name = "wjr_AudioTrack_get_label")    wjr_AudioTrack_get_label    :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return str_attr(ctx, t, IF_audio(), wj.wr_AudioTrack_label, "AudioTrack.label") }
+@(export, link_name = "wjr_AudioTrack_get_language") wjr_AudioTrack_get_language :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return str_attr(ctx, t, IF_audio(), wj.wr_AudioTrack_language, "AudioTrack.language") }
 @(export, link_name = "wjr_AudioTrack_get_enabled")
 wjr_AudioTrack_get_enabled :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue {
 	h := track_this(ctx, t, IF_audio()); if h == 0 { return wj.EXCEPTION }
-	return wj.new_bool(wr_AudioTrack_enabled(h) != 0)
+	return wj.new_bool(wj.wr_AudioTrack_enabled(h) != 0)
 }
 @(export, link_name = "wjr_AudioTrack_set_enabled")
 wjr_AudioTrack_set_enabled :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue {
 	h := track_this(ctx, this_val, IF_audio()); if h == 0 { return wj.EXCEPTION }
-	wr_AudioTrack_set_enabled(h, wj.JS_ToBool(ctx, v) != 0 ? 1 : 0)
+	wj.wr_AudioTrack_set_enabled(h, wj.JS_ToBool(ctx, v) != 0 ? 1 : 0)
 	return wj.UNDEFINED
 }
 
 // VideoTrack
-@(export, link_name = "wjr_VideoTrack_get_id")       wjr_VideoTrack_get_id       :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return str_attr(ctx, t, IF_video(), wr_VideoTrack_id, "VideoTrack.id") }
-@(export, link_name = "wjr_VideoTrack_get_kind")     wjr_VideoTrack_get_kind     :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return str_attr(ctx, t, IF_video(), wr_VideoTrack_kind, "VideoTrack.kind") }
-@(export, link_name = "wjr_VideoTrack_get_label")    wjr_VideoTrack_get_label    :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return str_attr(ctx, t, IF_video(), wr_VideoTrack_label, "VideoTrack.label") }
-@(export, link_name = "wjr_VideoTrack_get_language") wjr_VideoTrack_get_language :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return str_attr(ctx, t, IF_video(), wr_VideoTrack_language, "VideoTrack.language") }
+@(export, link_name = "wjr_VideoTrack_get_id")       wjr_VideoTrack_get_id       :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return str_attr(ctx, t, IF_video(), wj.wr_VideoTrack_id, "VideoTrack.id") }
+@(export, link_name = "wjr_VideoTrack_get_kind")     wjr_VideoTrack_get_kind     :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return str_attr(ctx, t, IF_video(), wj.wr_VideoTrack_kind, "VideoTrack.kind") }
+@(export, link_name = "wjr_VideoTrack_get_label")    wjr_VideoTrack_get_label    :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return str_attr(ctx, t, IF_video(), wj.wr_VideoTrack_label, "VideoTrack.label") }
+@(export, link_name = "wjr_VideoTrack_get_language") wjr_VideoTrack_get_language :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return str_attr(ctx, t, IF_video(), wj.wr_VideoTrack_language, "VideoTrack.language") }
 @(export, link_name = "wjr_VideoTrack_get_selected")
 wjr_VideoTrack_get_selected :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue {
 	h := track_this(ctx, t, IF_video()); if h == 0 { return wj.EXCEPTION }
-	return wj.new_bool(wr_VideoTrack_selected(h) != 0)
+	return wj.new_bool(wj.wr_VideoTrack_selected(h) != 0)
 }
 @(export, link_name = "wjr_VideoTrack_set_selected")
 wjr_VideoTrack_set_selected :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue {
 	h := track_this(ctx, this_val, IF_video()); if h == 0 { return wj.EXCEPTION }
-	wr_VideoTrack_set_selected(h, wj.JS_ToBool(ctx, v) != 0 ? 1 : 0)
+	wj.wr_VideoTrack_set_selected(h, wj.JS_ToBool(ctx, v) != 0 ? 1 : 0)
 	return wj.UNDEFINED
 }
 
 // TextTrack
-@(export, link_name = "wjr_TextTrack_get_kind")     wjr_TextTrack_get_kind     :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return str_attr(ctx, t, IF_text(), wr_TextTrack_kind, "TextTrack.kind") }
-@(export, link_name = "wjr_TextTrack_get_label")    wjr_TextTrack_get_label    :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return str_attr(ctx, t, IF_text(), wr_TextTrack_label, "TextTrack.label") }
-@(export, link_name = "wjr_TextTrack_get_language") wjr_TextTrack_get_language :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return str_attr(ctx, t, IF_text(), wr_TextTrack_language, "TextTrack.language") }
-@(export, link_name = "wjr_TextTrack_get_id")       wjr_TextTrack_get_id       :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return str_attr(ctx, t, IF_text(), wr_TextTrack_id, "TextTrack.id") }
-@(export, link_name = "wjr_TextTrack_get_mode")     wjr_TextTrack_get_mode     :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return str_attr(ctx, t, IF_text(), wr_TextTrack_mode, "TextTrack.mode") }
+@(export, link_name = "wjr_TextTrack_get_kind")     wjr_TextTrack_get_kind     :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return str_attr(ctx, t, IF_text(), wj.wr_TextTrack_kind, "TextTrack.kind") }
+@(export, link_name = "wjr_TextTrack_get_label")    wjr_TextTrack_get_label    :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return str_attr(ctx, t, IF_text(), wj.wr_TextTrack_label, "TextTrack.label") }
+@(export, link_name = "wjr_TextTrack_get_language") wjr_TextTrack_get_language :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return str_attr(ctx, t, IF_text(), wj.wr_TextTrack_language, "TextTrack.language") }
+@(export, link_name = "wjr_TextTrack_get_id")       wjr_TextTrack_get_id       :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return str_attr(ctx, t, IF_text(), wj.wr_TextTrack_id, "TextTrack.id") }
+@(export, link_name = "wjr_TextTrack_get_mode")     wjr_TextTrack_get_mode     :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return str_attr(ctx, t, IF_text(), wj.wr_TextTrack_mode, "TextTrack.mode") }
 @(export, link_name = "wjr_TextTrack_get_inBandMetadataTrackDispatchType")
 wjr_TextTrack_get_inBandMetadataTrackDispatchType :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue {
 	if wj.wj_this(ctx, t, IF_text()) == nil { return wj.EXCEPTION }
@@ -181,7 +181,7 @@ wjr_TextTrack_set_mode :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: w
 	h := track_this(ctx, this_val, IF_text()); if h == 0 { return wj.EXCEPTION }
 	s: wj.Str
 	if !wj.wj_to_str(ctx, v, &s, 0, nil) { return wj.EXCEPTION }
-	wr_TextTrack_set_mode(h, s.ptr, u32(s.len))
+	wj.wr_TextTrack_set_mode(h, s.ptr, u32(s.len))
 	wj.wj_str_free(ctx, &s)
 	return wj.UNDEFINED
 }
@@ -189,7 +189,7 @@ wjr_TextTrack_set_mode :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: w
 @(private = "file")
 text_track_cue_list :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, active: bool) -> wj.JSValue {
 	h := track_this(ctx, this_val, IF_text()); if h == 0 { return wj.EXCEPTION }
-	l := active ? wr_TextTrack_activeCues(h) : wr_TextTrack_cues(h)
+	l := active ? wj.wr_TextTrack_activeCues(h) : wj.wr_TextTrack_cues(h)
 	if l == 0 { return wj.NULL }
 	return wj.wj_wrap_host(ctx, l, IF_cuelist())
 }
@@ -197,7 +197,7 @@ text_track_cue_list :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, active:
 @(export, link_name = "wjr_TextTrack_get_activeCues") wjr_TextTrack_get_activeCues :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return text_track_cue_list(ctx, t, true) }
 
 @(private = "file")
-cue_op :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, op: proc "c" (h: u64, cue: u64) -> i32, name_arity: cstring, name_handle: cstring, what: cstring) -> wj.JSValue {
+cue_op :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, op: proc "contextless" (h: u64, cue: u64) -> i32, name_arity: cstring, name_handle: cstring, what: cstring) -> wj.JSValue {
 	h := track_this(ctx, this_val, IF_text()); if h == 0 { return wj.EXCEPTION }
 	if argc < 1 { return wj.wj_throw_arity(ctx, name_arity, 1, argc) }
 	cue: u64 = 0
@@ -207,59 +207,59 @@ cue_op :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]
 	return wj.UNDEFINED
 }
 @(export, link_name = "wjr_TextTrack_addCue")
-wjr_TextTrack_addCue :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue { return cue_op(ctx, this_val, argc, argv, wr_TextTrack_addCue, "addCue", "Failed to execute 'addCue' on 'TextTrack': parameter 1 is not of type 'TextTrackCue'.", "TextTrack.addCue") }
+wjr_TextTrack_addCue :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue { return cue_op(ctx, this_val, argc, argv, wj.wr_TextTrack_addCue, "addCue", "Failed to execute 'addCue' on 'TextTrack': parameter 1 is not of type 'TextTrackCue'.", "TextTrack.addCue") }
 @(export, link_name = "wjr_TextTrack_removeCue")
-wjr_TextTrack_removeCue :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue { return cue_op(ctx, this_val, argc, argv, wr_TextTrack_removeCue, "removeCue", "Failed to execute 'removeCue' on 'TextTrack': parameter 1 is not of type 'TextTrackCue'.", "TextTrack.removeCue") }
+wjr_TextTrack_removeCue :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue { return cue_op(ctx, this_val, argc, argv, wj.wr_TextTrack_removeCue, "removeCue", "Failed to execute 'removeCue' on 'TextTrack': parameter 1 is not of type 'TextTrackCue'.", "TextTrack.removeCue") }
 
 // TextTrackCue / VTTCue
-@(export, link_name = "wjr_TextTrackCue_get_id") wjr_TextTrackCue_get_id :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return str_attr(ctx, t, IF_cue(), wr_TextTrackCue_id, "TextTrackCue.id") }
+@(export, link_name = "wjr_TextTrackCue_get_id") wjr_TextTrackCue_get_id :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return str_attr(ctx, t, IF_cue(), wj.wr_TextTrackCue_id, "TextTrackCue.id") }
 @(export, link_name = "wjr_TextTrackCue_set_id")
 wjr_TextTrackCue_set_id :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue {
 	h := track_this(ctx, this_val, IF_cue()); if h == 0 { return wj.EXCEPTION }
 	s: wj.Str
 	if !wj.wj_to_str(ctx, v, &s, 0, nil) { return wj.EXCEPTION }
-	wr_TextTrackCue_set_id(h, s.ptr, u32(s.len))
+	wj.wr_TextTrackCue_set_id(h, s.ptr, u32(s.len))
 	wj.wj_str_free(ctx, &s)
 	return wj.UNDEFINED
 }
-@(export, link_name = "wjr_TextTrackCue_get_startTime") wjr_TextTrackCue_get_startTime :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { h := track_this(ctx, t, IF_cue()); if h == 0 { return wj.EXCEPTION }; return wj.new_float64(ctx, wr_TextTrackCue_startTime(h)) }
-@(export, link_name = "wjr_TextTrackCue_get_endTime")   wjr_TextTrackCue_get_endTime   :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { h := track_this(ctx, t, IF_cue()); if h == 0 { return wj.EXCEPTION }; return wj.new_float64(ctx, wr_TextTrackCue_endTime(h)) }
-@(export, link_name = "wjr_TextTrackCue_get_pauseOnExit") wjr_TextTrackCue_get_pauseOnExit :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { h := track_this(ctx, t, IF_cue()); if h == 0 { return wj.EXCEPTION }; return wj.new_bool(wr_TextTrackCue_pauseOnExit(h) != 0) }
+@(export, link_name = "wjr_TextTrackCue_get_startTime") wjr_TextTrackCue_get_startTime :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { h := track_this(ctx, t, IF_cue()); if h == 0 { return wj.EXCEPTION }; return wj.new_float64(ctx, wj.wr_TextTrackCue_startTime(h)) }
+@(export, link_name = "wjr_TextTrackCue_get_endTime")   wjr_TextTrackCue_get_endTime   :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { h := track_this(ctx, t, IF_cue()); if h == 0 { return wj.EXCEPTION }; return wj.new_float64(ctx, wj.wr_TextTrackCue_endTime(h)) }
+@(export, link_name = "wjr_TextTrackCue_get_pauseOnExit") wjr_TextTrackCue_get_pauseOnExit :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { h := track_this(ctx, t, IF_cue()); if h == 0 { return wj.EXCEPTION }; return wj.new_bool(wj.wr_TextTrackCue_pauseOnExit(h) != 0) }
 @(export, link_name = "wjr_TextTrackCue_set_startTime")
 wjr_TextTrackCue_set_startTime :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue {
 	h := track_this(ctx, this_val, IF_cue()); if h == 0 { return wj.EXCEPTION }
 	d: f64; if wj.JS_ToFloat64(ctx, &d, v) != 0 { return wj.EXCEPTION }
-	wr_TextTrackCue_set_startTime(h, d)
+	wj.wr_TextTrackCue_set_startTime(h, d)
 	return wj.UNDEFINED
 }
 @(export, link_name = "wjr_TextTrackCue_set_endTime")
 wjr_TextTrackCue_set_endTime :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue {
 	h := track_this(ctx, this_val, IF_cue()); if h == 0 { return wj.EXCEPTION }
 	d: f64; if wj.JS_ToFloat64(ctx, &d, v) != 0 { return wj.EXCEPTION }
-	wr_TextTrackCue_set_endTime(h, d)
+	wj.wr_TextTrackCue_set_endTime(h, d)
 	return wj.UNDEFINED
 }
 @(export, link_name = "wjr_TextTrackCue_set_pauseOnExit")
 wjr_TextTrackCue_set_pauseOnExit :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue {
 	h := track_this(ctx, this_val, IF_cue()); if h == 0 { return wj.EXCEPTION }
-	wr_TextTrackCue_set_pauseOnExit(h, wj.JS_ToBool(ctx, v) != 0 ? 1 : 0)
+	wj.wr_TextTrackCue_set_pauseOnExit(h, wj.JS_ToBool(ctx, v) != 0 ? 1 : 0)
 	return wj.UNDEFINED
 }
 @(export, link_name = "wjr_TextTrackCue_get_track")
 wjr_TextTrackCue_get_track :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	h := track_this(ctx, this_val, IF_cue()); if h == 0 { return wj.EXCEPTION }
-	t := wr_TextTrackCue_track(h)
+	t := wj.wr_TextTrackCue_track(h)
 	if t == 0 { return wj.NULL }
 	return wj.wj_wrap_host(ctx, t, IF_text())
 }
 
-@(export, link_name = "wjr_VTTCue_get_text") wjr_VTTCue_get_text :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return str_attr(ctx, t, IF_cue(), wr_VTTCue_text, "VTTCue.text") }
+@(export, link_name = "wjr_VTTCue_get_text") wjr_VTTCue_get_text :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return str_attr(ctx, t, IF_cue(), wj.wr_VTTCue_text, "VTTCue.text") }
 @(export, link_name = "wjr_VTTCue_set_text")
 wjr_VTTCue_set_text :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue {
 	h := track_this(ctx, this_val, IF_cue()); if h == 0 { return wj.EXCEPTION }
 	s: wj.Str
 	if !wj.wj_to_str(ctx, v, &s, 0, nil) { return wj.EXCEPTION }
-	wr_VTTCue_set_text(h, s.ptr, u32(s.len))
+	wj.wr_VTTCue_set_text(h, s.ptr, u32(s.len))
 	wj.wj_str_free(ctx, &s)
 	return wj.UNDEFINED
 }
@@ -273,7 +273,7 @@ wjr_VTTCue_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, ar
 	text: wj.Str
 	if !wj.wj_to_str(ctx, argv[2], &text, 0, nil) { return wj.EXCEPTION }
 	h: u64 = 0
-	st := wr_VTTCue_create(start, end, text.ptr, u32(text.len), &h)
+	st := wj.wr_VTTCue_create(start, end, text.ptr, u32(text.len), &h)
 	wj.wj_str_free(ctx, &text)
 	if st < 0 { return wj.wj_throw_status(ctx, st, "VTTCue") }
 	return wj.wj_wrap_owned(ctx, h, IF_vttcue(), new_target)
@@ -281,18 +281,18 @@ wjr_VTTCue_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, ar
 
 // TextTrackCueList
 @(export, link_name = "wjr_TextTrackCueList_get_length")
-wjr_TextTrackCueList_get_length :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return list_length(ctx, t, IF_cuelist(), wr_TextTrackCueList_length) }
+wjr_TextTrackCueList_get_length :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return list_length(ctx, t, IF_cuelist(), wj.wr_TextTrackCueList_length) }
 @(export, link_name = "wjr_TextTrackCueList_length_hook")
-wjr_TextTrackCueList_length_hook :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue) -> u32 { return list_length_hook(obj, IF_cuelist(), wr_TextTrackCueList_length) }
+wjr_TextTrackCueList_length_hook :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue) -> u32 { return list_length_hook(obj, IF_cuelist(), wj.wr_TextTrackCueList_length) }
 @(export, link_name = "wjr_TextTrackCueList_index_get")
-wjr_TextTrackCueList_index_get :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, index: u32, found: ^bool) -> wj.JSValue { return list_index_get(ctx, obj, index, found, IF_cuelist(), wr_TextTrackCueList_item, IF_cue()) }
+wjr_TextTrackCueList_index_get :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, index: u32, found: ^bool) -> wj.JSValue { return list_index_get(ctx, obj, index, found, IF_cuelist(), wj.wr_TextTrackCueList_item, IF_cue()) }
 @(export, link_name = "wjr_TextTrackCueList_getCueById")
 wjr_TextTrackCueList_getCueById :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	h := track_this(ctx, t, IF_cuelist()); if h == 0 { return wj.EXCEPTION }
 	if argc < 1 { return wj.wj_throw_arity(ctx, "getCueById", 1, argc) }
 	id: wj.Str
 	if !wj.wj_to_str(ctx, argv[0], &id, 0, nil) { return wj.EXCEPTION }
-	c := wr_TextTrackCueList_getCueById(h, id.ptr, u32(id.len))
+	c := wj.wr_TextTrackCueList_getCueById(h, id.ptr, u32(id.len))
 	wj.wj_str_free(ctx, &id)
 	if c == 0 { return wj.NULL }
 	return wj.wj_wrap_host(ctx, c, IF_cue())
@@ -300,20 +300,20 @@ wjr_TextTrackCueList_getCueById :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, ar
 
 // ---- the media element's lists ----
 @(private = "file")
-media_track_list :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, key: cstring, get: proc "c" (h: u64) -> u64, iface: i32) -> wj.JSValue {
+media_track_list :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, key: cstring, get: proc "contextless" (h: u64) -> u64, iface: i32) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, IF_media()); if self == nil { return wj.EXCEPTION }
 	v := wj.web_extra_get(ctx, this_val, key)
 	if wj.is_object(v) { return v }
 	wj.JS_FreeValue(ctx, v)
-	h := get(wj.obj_handle(self))
+	h := get(wj.handle_of(self))
 	if h == 0 { return wj.NULL }
 	list := wj.wj_wrap_host(ctx, h, iface)
 	if wj.is_object(list) { wj.web_extra_set(ctx, this_val, key, wj.JS_DupValue(ctx, list)) }
 	return list
 }
-@(export, link_name = "wjr_HTMLMediaElement_get_audioTracks") wjr_HTMLMediaElement_get_audioTracks :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return media_track_list(ctx, t, "audioTracks", wr_HTMLMediaElement_audioTracks, IF_audio_list()) }
-@(export, link_name = "wjr_HTMLMediaElement_get_videoTracks") wjr_HTMLMediaElement_get_videoTracks :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return media_track_list(ctx, t, "videoTracks", wr_HTMLMediaElement_videoTracks, IF_video_list()) }
-@(export, link_name = "wjr_HTMLMediaElement_get_textTracks")  wjr_HTMLMediaElement_get_textTracks  :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return media_track_list(ctx, t, "textTracks", wr_HTMLMediaElement_textTracks, IF_text_list()) }
+@(export, link_name = "wjr_HTMLMediaElement_get_audioTracks") wjr_HTMLMediaElement_get_audioTracks :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return media_track_list(ctx, t, "audioTracks", wj.wr_HTMLMediaElement_audioTracks, IF_audio_list()) }
+@(export, link_name = "wjr_HTMLMediaElement_get_videoTracks") wjr_HTMLMediaElement_get_videoTracks :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return media_track_list(ctx, t, "videoTracks", wj.wr_HTMLMediaElement_videoTracks, IF_video_list()) }
+@(export, link_name = "wjr_HTMLMediaElement_get_textTracks")  wjr_HTMLMediaElement_get_textTracks  :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return media_track_list(ctx, t, "textTracks", wj.wr_HTMLMediaElement_textTracks, IF_text_list()) }
 
 @(export, link_name = "wjr_HTMLMediaElement_addTextTrack")
 wjr_HTMLMediaElement_addTextTrack :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
@@ -326,7 +326,7 @@ wjr_HTMLMediaElement_addTextTrack :: proc "c" (ctx: ^wj.Context, this_val: wj.JS
 	h: u64 = 0
 	lp := label.ptr != nil ? label.ptr : ([^]u8)(&empty_byte[0])
 	gp := lang.ptr != nil ? lang.ptr : ([^]u8)(&empty_byte[0])
-	st := wr_HTMLMediaElement_addTextTrack(wj.obj_handle(self), kind.ptr, u32(kind.len), lp, u32(label.len), gp, u32(lang.len), &h)
+	st := wj.wr_HTMLMediaElement_addTextTrack(wj.handle_of(self), kind.ptr, u32(kind.len), lp, u32(label.len), gp, u32(lang.len), &h)
 	wj.wj_str_free(ctx, &kind); wj.wj_str_free(ctx, &label); wj.wj_str_free(ctx, &lang)
 	if st < 0 { return wj.wj_throw_status(ctx, st, "HTMLMediaElement.addTextTrack") }
 	return wj.wj_wrap_host(ctx, h, IF_text())
@@ -341,7 +341,7 @@ wjr_HTMLTrackElement_get_track :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVal
 	v := wj.web_extra_get(ctx, this_val, "track")
 	if wj.is_object(v) { return v }
 	wj.JS_FreeValue(ctx, v)
-	h := wr_HTMLTrackElement_track(wj.obj_handle(self))
+	h := wj.wr_HTMLTrackElement_track(wj.handle_of(self))
 	if h == 0 { return wj.NULL }
 	t := wj.wj_wrap_host(ctx, h, IF_text())
 	if wj.is_object(t) { wj.web_extra_set(ctx, this_val, "track", wj.JS_DupValue(ctx, t)) }
@@ -350,7 +350,7 @@ wjr_HTMLTrackElement_get_track :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVal
 @(export, link_name = "wjr_HTMLTrackElement_get_readyState")
 wjr_HTMLTrackElement_get_readyState :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, IF_track_el()); if self == nil { return wj.EXCEPTION }
-	return wj.new_uint32(ctx, u32(wr_HTMLTrackElement_readyState(wj.obj_handle(self))))
+	return wj.new_uint32(ctx, u32(wj.wr_HTMLTrackElement_readyState(wj.handle_of(self))))
 }
 
 // Called once when a realm is made (runtime.c): every cue the browser hands out is a WebVTT one, so a TextTrackCue
@@ -368,66 +368,5 @@ foreign {
 }
 
 // ---- host imports (modules mediatracks, htmlmedia) ----
-foreign import m_mediatracks "mediatracks"
-foreign import m_htmlmedia "htmlmedia"
 
-@(default_calling_convention = "c")
-foreign m_mediatracks {
-	@(link_name = "AudioTrackList_length") wr_AudioTrackList_length :: proc(list: u64) -> u32 ---
-	@(link_name = "AudioTrackList_item") wr_AudioTrackList_item :: proc(list: u64, index: u32, ret: ^u64) -> i32 ---
-	@(link_name = "AudioTrackList_getTrackById") wr_AudioTrackList_getTrackById :: proc(list: u64, id: [^]u8, id_len: u32) -> u64 ---
-	@(link_name = "VideoTrackList_length") wr_VideoTrackList_length :: proc(list: u64) -> u32 ---
-	@(link_name = "VideoTrackList_item") wr_VideoTrackList_item :: proc(list: u64, index: u32, ret: ^u64) -> i32 ---
-	@(link_name = "VideoTrackList_getTrackById") wr_VideoTrackList_getTrackById :: proc(list: u64, id: [^]u8, id_len: u32) -> u64 ---
-	@(link_name = "VideoTrackList_selectedIndex") wr_VideoTrackList_selectedIndex :: proc(list: u64) -> i32 ---
-	@(link_name = "TextTrackList_length") wr_TextTrackList_length :: proc(list: u64) -> u32 ---
-	@(link_name = "TextTrackList_item") wr_TextTrackList_item :: proc(list: u64, index: u32, ret: ^u64) -> i32 ---
-	@(link_name = "TextTrackList_getTrackById") wr_TextTrackList_getTrackById :: proc(list: u64, id: [^]u8, id_len: u32) -> u64 ---
-	@(link_name = "AudioTrack_id") wr_AudioTrack_id :: proc(track: u64, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "AudioTrack_kind") wr_AudioTrack_kind :: proc(track: u64, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "AudioTrack_label") wr_AudioTrack_label :: proc(track: u64, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "AudioTrack_language") wr_AudioTrack_language :: proc(track: u64, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "AudioTrack_enabled") wr_AudioTrack_enabled :: proc(track: u64) -> i32 ---
-	@(link_name = "AudioTrack_set_enabled") wr_AudioTrack_set_enabled :: proc(track: u64, value: i32) ---
-	@(link_name = "VideoTrack_id") wr_VideoTrack_id :: proc(track: u64, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "VideoTrack_kind") wr_VideoTrack_kind :: proc(track: u64, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "VideoTrack_label") wr_VideoTrack_label :: proc(track: u64, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "VideoTrack_language") wr_VideoTrack_language :: proc(track: u64, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "VideoTrack_selected") wr_VideoTrack_selected :: proc(track: u64) -> i32 ---
-	@(link_name = "VideoTrack_set_selected") wr_VideoTrack_set_selected :: proc(track: u64, value: i32) ---
-	@(link_name = "TextTrack_kind") wr_TextTrack_kind :: proc(track: u64, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "TextTrack_label") wr_TextTrack_label :: proc(track: u64, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "TextTrack_language") wr_TextTrack_language :: proc(track: u64, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "TextTrack_id") wr_TextTrack_id :: proc(track: u64, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "TextTrack_mode") wr_TextTrack_mode :: proc(track: u64, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "TextTrack_set_mode") wr_TextTrack_set_mode :: proc(track: u64, value: [^]u8, value_len: u32) ---
-	@(link_name = "TextTrack_cues") wr_TextTrack_cues :: proc(track: u64) -> u64 ---
-	@(link_name = "TextTrack_activeCues") wr_TextTrack_activeCues :: proc(track: u64) -> u64 ---
-	@(link_name = "TextTrack_addCue") wr_TextTrack_addCue :: proc(track: u64, cue: u64) -> i32 ---
-	@(link_name = "TextTrack_removeCue") wr_TextTrack_removeCue :: proc(track: u64, cue: u64) -> i32 ---
-	@(link_name = "TextTrackCue_id") wr_TextTrackCue_id :: proc(cue: u64, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "TextTrackCue_set_id") wr_TextTrackCue_set_id :: proc(cue: u64, value: [^]u8, value_len: u32) ---
-	@(link_name = "TextTrackCue_startTime") wr_TextTrackCue_startTime :: proc(cue: u64) -> f64 ---
-	@(link_name = "TextTrackCue_set_startTime") wr_TextTrackCue_set_startTime :: proc(cue: u64, value: f64) ---
-	@(link_name = "TextTrackCue_endTime") wr_TextTrackCue_endTime :: proc(cue: u64) -> f64 ---
-	@(link_name = "TextTrackCue_set_endTime") wr_TextTrackCue_set_endTime :: proc(cue: u64, value: f64) ---
-	@(link_name = "TextTrackCue_pauseOnExit") wr_TextTrackCue_pauseOnExit :: proc(cue: u64) -> i32 ---
-	@(link_name = "TextTrackCue_set_pauseOnExit") wr_TextTrackCue_set_pauseOnExit :: proc(cue: u64, value: i32) ---
-	@(link_name = "TextTrackCue_track") wr_TextTrackCue_track :: proc(cue: u64) -> u64 ---
-	@(link_name = "VTTCue_create") wr_VTTCue_create :: proc(start: f64, end: f64, text: [^]u8, text_len: u32, ret: ^u64) -> i32 ---
-	@(link_name = "VTTCue_text") wr_VTTCue_text :: proc(cue: u64, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "VTTCue_set_text") wr_VTTCue_set_text :: proc(cue: u64, value: [^]u8, value_len: u32) ---
-	@(link_name = "TextTrackCueList_length") wr_TextTrackCueList_length :: proc(list: u64) -> u32 ---
-	@(link_name = "TextTrackCueList_item") wr_TextTrackCueList_item :: proc(list: u64, index: u32, ret: ^u64) -> i32 ---
-	@(link_name = "TextTrackCueList_getCueById") wr_TextTrackCueList_getCueById :: proc(list: u64, id: [^]u8, id_len: u32) -> u64 ---
-	@(link_name = "HTMLTrackElement_track") wr_HTMLTrackElement_track :: proc(track: u64) -> u64 ---
-	@(link_name = "HTMLTrackElement_readyState") wr_HTMLTrackElement_readyState :: proc(track: u64) -> i32 ---
-}
 
-@(default_calling_convention = "c")
-foreign m_htmlmedia {
-	@(link_name = "HTMLMediaElement_audioTracks") wr_HTMLMediaElement_audioTracks :: proc(element: u64) -> u64 ---
-	@(link_name = "HTMLMediaElement_videoTracks") wr_HTMLMediaElement_videoTracks :: proc(element: u64) -> u64 ---
-	@(link_name = "HTMLMediaElement_textTracks") wr_HTMLMediaElement_textTracks :: proc(element: u64) -> u64 ---
-	@(link_name = "HTMLMediaElement_addTextTrack") wr_HTMLMediaElement_addTextTrack :: proc(element: u64, kind: [^]u8, kind_len: u32, label: [^]u8, label_len: u32, language: [^]u8, language_len: u32, ret: ^u64) -> i32 ---
-}

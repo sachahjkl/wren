@@ -6,11 +6,10 @@
 // (wj_cb_promise, a microtask) converts the browser's result by kind or by the caller's settle function and settles the
 // JavaScript promise. Pending bridges live in a growable pool indexed by the reaction's `user` value; each holds the
 // resolving functions as strong references until the browser answers. Slot 0 is never used (0 means "no user").
-package odin_glue
+package wj
 
-import "../odin/wj"
 
-// How a host promise's value becomes the JS value (wj.h WJ_HOST_*). Named to match the C enum values.
+// How a host promise's value becomes the JS value (h WJ_HOST_*). Named to match the C enum values.
 Host_Kind :: enum i32 {
 	Undefined   = 0,
 	Number      = 1,
@@ -21,18 +20,18 @@ Host_Kind :: enum i32 {
 }
 
 // wj_host_settle (web.h): makes the value / reason itself (returns EXCEPTION to reject with the pending exception).
-Host_Settle :: #type proc "c" (ctx: ^wj.Context, state: i32, host: u64, value: i64, data: wj.JSValue, reject: ^bool) -> wj.JSValue
+Host_Settle :: #type proc "c" (ctx: ^Context, state: i32, host: u64, value: i64, data: JSValue, reject: ^bool) -> JSValue
 
 @(private = "file")
 Bridge :: struct {
-	resolve, reject, data: wj.JSValue,   // counted while used
+	resolve, reject, data: JSValue,   // counted while used
 	host:   u64,
 	settle: Host_Settle,
 	kind:   u8,
 	used:   bool,
 }
 
-// The pool and its free list. Raw engine memory (wj.malloc/realloc) so it never touches the Odin allocator; growth
+// The pool and its free list. Raw engine memory (malloc/realloc) so it never touches the Odin allocator; growth
 // doubles, matching the C realloc strategy.
 @(private = "file") bridges: [^]Bridge
 @(private = "file") bridges_n, bridges_cap: u32
@@ -41,7 +40,7 @@ Bridge :: struct {
 
 @(private = "file")
 grow_bridges :: proc "contextless" (cap: u32) -> bool {
-	n := ([^]Bridge)(wj.libc_realloc(bridges, uint(cap) * size_of(Bridge)))
+	n := ([^]Bridge)(libc_realloc(bridges, uint(cap) * size_of(Bridge)))
 	if n == nil { return false }
 	bridges = n
 	bridges_cap = cap
@@ -51,10 +50,10 @@ grow_bridges :: proc "contextless" (cap: u32) -> bool {
 // WJ_FETCH_STRING specialised for wr_Promise_text(promise, ...): the result or a negative Error, bytes in wj_scratch.
 @(private = "file")
 promise_text_into_scratch :: proc "contextless" (promise: u64) -> i32 {
-	n := wj.wr_Promise_text(promise, wj.scratch_data(), wj.scratch_cap())
-	if n > 0 && u32(n) > wj.scratch_cap() {
-		if !wj.wj_scratch_grow(u32(n)) { return -13 }
-		n = wj.wr_Promise_text(promise, wj.scratch_data(), wj.scratch_cap())
+	n := wr_Promise_text(promise, scratch_data(), scratch_cap())
+	if n > 0 && u32(n) > scratch_cap() {
+		if !wj_scratch_grow(u32(n)) { return -13 }
+		n = wr_Promise_text(promise, scratch_data(), scratch_cap())
 	}
 	return n
 }
@@ -78,15 +77,15 @@ bridge_alloc :: proc "contextless" () -> u32 {
 }
 
 @(private = "file")
-bridge_release :: proc "contextless" (ctx: ^wj.Context, i: u32) {
+bridge_release :: proc "contextless" (ctx: ^Context, i: u32) {
 	b := &bridges[i]
-	wj.JS_FreeValue(ctx, b.resolve)
-	wj.JS_FreeValue(ctx, b.reject)
-	wj.JS_FreeValue(ctx, b.data)
+	JS_FreeValue(ctx, b.resolve)
+	JS_FreeValue(ctx, b.reject)
+	JS_FreeValue(ctx, b.data)
 	b.used = false
 	if bridges_free_n == bridges_free_cap {
 		cap := bridges_free_cap != 0 ? bridges_free_cap * 2 : 64
-		n := ([^]u32)(wj.libc_realloc(bridges_free, uint(cap) * size_of(u32)))
+		n := ([^]u32)(libc_realloc(bridges_free, uint(cap) * size_of(u32)))
 		if n == nil { return }
 		bridges_free = n
 		bridges_free_cap = cap
@@ -97,76 +96,76 @@ bridge_release :: proc "contextless" (ctx: ^wj.Context, i: u32) {
 
 // A string result of a browser function (in wj_scratch) as a JS string.
 @(export, link_name = "wj_host_promise_text")
-wj_host_promise_text :: proc "c" (ctx: ^wj.Context, host: u64) -> wj.JSValue {
+wj_host_promise_text :: proc "c" (ctx: ^Context, host: u64) -> JSValue {
 	n := promise_text_into_scratch(host)
-	return wj.new_string_len(ctx, wj.scratch_data(), n > 0 ? uint(n) : 0)
+	return new_string_len(ctx, scratch_data(), n > 0 ? uint(n) : 0)
 }
 
 @(export, link_name = "wj_promise_from_host")
-wj_promise_from_host :: proc "c" (ctx: ^wj.Context, host: u64, kind: i32, settle: Host_Settle, data: wj.JSValue) -> wj.JSValue {
+wj_promise_from_host :: proc "c" (ctx: ^Context, host: u64, kind: i32, settle: Host_Settle, data: JSValue) -> JSValue {
 	if host == 0 {
-		return wj.web_promise_rejected(ctx, wj.web_type_error(ctx, "the browser could not start the operation"))
+		return web_promise_rejected(ctx, web_type_error(ctx, "the browser could not start the operation"))
 	}
-	funcs: [2]wj.JSValue
-	p := wj.web_promise_new(ctx, &funcs[0])
-	if wj.is_exception(p) { wj.wr_Object_release(host); return p }
+	funcs: [2]JSValue
+	p := web_promise_new(ctx, &funcs[0])
+	if is_exception(p) { wr_Object_release(host); return p }
 	slot := bridge_alloc()
 	if slot == max(u32) {
-		wj.JS_FreeValue(ctx, funcs[0])
-		wj.JS_FreeValue(ctx, funcs[1])
-		wj.JS_FreeValue(ctx, p)
-		wj.wr_Object_release(host)
-		return wj.JS_ThrowOutOfMemory(ctx)
+		JS_FreeValue(ctx, funcs[0])
+		JS_FreeValue(ctx, funcs[1])
+		JS_FreeValue(ctx, p)
+		wr_Object_release(host)
+		return JS_ThrowOutOfMemory(ctx)
 	}
 	b := &bridges[slot]
 	b.resolve = funcs[0]
 	b.reject = funcs[1]
-	b.data = wj.JS_DupValue(ctx, data)
+	b.data = JS_DupValue(ctx, data)
 	b.host = host
 	b.settle = settle
 	b.kind = u8(kind)
 	b.used = true
-	table_index := u32(uintptr(rawptr(wj_cb_promise)))
-	wj.wr_Promise_then(host, table_index, i32(slot))
+	table_index := table_index(rawptr(wj_cb_promise))
+	wr_Promise_then(host, table_index, i32(slot))
 	return p
 }
 
 // The browser's reaction: `state` 1 fulfilled, 2 rejected. Exported so the browser can call it (WJ_EXPORT in C).
 @(export, link_name = "wj_cb_promise")
 wj_cb_promise :: proc "c" (user: i32, promise: u64, state: i32) {
-	ctx := wj.realm_ctx()
-	wj.wj_stack_enter(ctx)
+	ctx := realm_ctx()
+	wj_stack_enter(ctx)
 	if user <= 0 || u32(user) >= bridges_n || !bridges[user].used || bridges[user].host != promise { return }
 	b := bridges[user]
-	value := wj.wr_Promise_value(promise)
+	value := wr_Promise_value(promise)
 	reject := state != 1
-	v: wj.JSValue
+	v: JSValue
 	if b.settle != nil {
 		v = b.settle(ctx, state, promise, value, b.data, &reject)
 	} else if reject {
 		n := promise_text_into_scratch(promise)
-		v = wj.web_error_value(ctx, i32(value), wj.scratch_data(), n > 0 ? uint(n) : 0)
+		v = web_error_value(ctx, i32(value), scratch_data(), n > 0 ? uint(n) : 0)
 	} else {
 		switch Host_Kind(b.kind) {
-		case .Number:       v = wj.new_float64(ctx, f64(value))
-		case .Bool:         v = wj.new_bool(value != 0)
+		case .Number:       v = new_float64(ctx, f64(value))
+		case .Bool:         v = new_bool(value != 0)
 		case .Text:         v = wj_host_promise_text(ctx, promise)
 		case .Array_Buffer:
 			v = wj_arraybuffer_from_host(ctx, u64(value))
-			if value != 0 { wj.wr_Object_release(u64(value)) }
+			if value != 0 { wr_Object_release(u64(value)) }
 		case .Uint8_Array:
 			v = wj_uint8array_from_host(ctx, u64(value))
-			if value != 0 { wj.wr_Object_release(u64(value)) }
-		case .Undefined:    v = wj.UNDEFINED
+			if value != 0 { wr_Object_release(u64(value)) }
+		case .Undefined:    v = UNDEFINED
 		}
 	}
-	if wj.is_exception(v) { v = wj.JS_GetException(ctx); reject = true }
-	wj.wr_Object_release(promise)
+	if is_exception(v) { v = JS_GetException(ctx); reject = true }
+	wr_Object_release(promise)
 	// the slot is free before JavaScript runs again (a reaction may start another operation)
-	resolve := wj.JS_DupValue(ctx, b.resolve)
-	rejectf := wj.JS_DupValue(ctx, b.reject)
+	resolve := JS_DupValue(ctx, b.resolve)
+	rejectf := JS_DupValue(ctx, b.reject)
 	bridge_release(ctx, u32(user))
-	wj.web_settle(ctx, reject ? rejectf : resolve, v)
-	wj.JS_FreeValue(ctx, resolve)
-	wj.JS_FreeValue(ctx, rejectf)
+	web_settle(ctx, reject ? rejectf : resolve, v)
+	JS_FreeValue(ctx, resolve)
+	JS_FreeValue(ctx, rejectf)
 }

@@ -1,6 +1,5 @@
-// glue_common.odin: small shared pieces of the G1 Odin glue — interface indices resolved by name once and cached (so
-// the glue never hardcodes the generated WJ_IFACE_* numbers, exactly as web_strategy.odin does), used by more than one
-// ported domain.
+// ifaces.odin: interface indices used by more than one ported domain, resolved by name once and cached (the glue
+// never hardcodes the generated WJ_IFACE_* numbers). An index only one domain uses stays file-private in that domain.
 package odin_glue
 
 import "../odin/wj"

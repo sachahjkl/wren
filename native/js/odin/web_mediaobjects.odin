@@ -46,22 +46,22 @@ ranges_make :: proc "c" (ctx: ^wj.Context, bytes: [^]u8, length: uint) -> wj.JSV
 @(private = "file") free_impl :: proc "c" (p: rawptr) { wj.free(p) }
 
 @(private = "file")
-fetch_into_scratch1 :: proc "contextless" (call: proc "c" (h: u64, buf: [^]u8, cap: u32) -> i32, h: u64) -> i32 {
+fetch_into_scratch1 :: proc "contextless" (call: proc "contextless" (h: u64, buf: [^]u8, cap: u32) -> i32, h: u64) -> i32 {
 	n := call(h, wj.scratch_data(), wj.scratch_cap())
 	if n > 0 && u32(n) > wj.scratch_cap() { if !wj.wj_scratch_grow(u32(n)) { return -13 }; n = call(h, wj.scratch_data(), wj.scratch_cap()) }
 	return n
 }
 @(private = "file")
 fetch_ranges :: proc "contextless" (h: u64, which: i32) -> i32 {
-	n := wr_HTMLMediaElement_ranges(h, which, wj.scratch_data(), wj.scratch_cap())
-	if n > 0 && u32(n) > wj.scratch_cap() { if !wj.wj_scratch_grow(u32(n)) { return -13 }; n = wr_HTMLMediaElement_ranges(h, which, wj.scratch_data(), wj.scratch_cap()) }
+	n := wj.wr_HTMLMediaElement_ranges(h, which, wj.scratch_data(), wj.scratch_cap())
+	if n > 0 && u32(n) > wj.scratch_cap() { if !wj.wj_scratch_grow(u32(n)) { return -13 }; n = wj.wr_HTMLMediaElement_ranges(h, which, wj.scratch_data(), wj.scratch_cap()) }
 	return n
 }
 
 @(private = "file")
 element_ranges :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, which: i32, what: cstring) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, IFm_media_el()); if self == nil { return wj.EXCEPTION }
-	n := fetch_ranges(wj.obj_handle(self), which)
+	n := fetch_ranges(wj.handle_of(self), which)
 	if n < 0 { return wj.wj_throw_status(ctx, n, what) }
 	return ranges_make(ctx, wj.scratch_data(), uint(n))
 }
@@ -73,7 +73,7 @@ element_ranges :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, which: i32, 
 @(export, link_name = "wjr_SourceBuffer_get_buffered")
 wjr_SourceBuffer_get_buffered :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, IFm_source_buffer()); if self == nil { return wj.EXCEPTION }
-	n := fetch_into_scratch1(wr_SourceBuffer_ranges, wj.obj_handle(self))
+	n := fetch_into_scratch1(wj.wr_SourceBuffer_ranges, wj.handle_of(self))
 	if n < 0 { return wj.wj_throw_status(ctx, n, "SourceBuffer.buffered") }
 	return ranges_make(ctx, wj.scratch_data(), uint(n))
 }
@@ -108,18 +108,18 @@ ranges_at :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: 
 @(export, link_name = "wjr_HTMLMediaElement_get_error")
 wjr_HTMLMediaElement_get_error :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, IFm_media_el()); if self == nil { return wj.EXCEPTION }
-	code := wr_HTMLMediaElement_errorCode(wj.obj_handle(self))
+	code := wj.wr_HTMLMediaElement_errorCode(wj.handle_of(self))
 	cached := wj.web_extra_get(ctx, this_val, "error")
 	if code <= 0 {
 		if !wj.is_undefined(cached) && !wj.is_null(cached) { wj.web_extra_set(ctx, this_val, "error", wj.NULL) }
 		wj.JS_FreeValue(ctx, cached)
 		return wj.NULL
 	}
-	n := fetch_into_scratch1(wr_HTMLMediaElement_errorMessage, wj.obj_handle(self))
+	n := fetch_into_scratch1(wj.wr_HTMLMediaElement_errorMessage, wj.handle_of(self))
 	if n < 0 { wj.JS_FreeValue(ctx, cached); return wj.wj_throw_status(ctx, n, "HTMLMediaElement.error") }
 	if wj.is_object(cached) {
 		co := wj.obj_of(cached)
-		ce := co != nil ? (^Web_Media_Error)(wj.obj_impl(co)) : nil
+		ce := co != nil ? (^Web_Media_Error)(wj.impl_of(co)) : nil
 		if ce != nil && ce.code == u32(code) && ce.len == uint(n) && (n == 0 || wj.memcmp(ce.message, wj.scratch_data(), uint(n)) == 0) { return cached }
 	}
 	wj.JS_FreeValue(ctx, cached)
@@ -152,7 +152,7 @@ wjr_MediaError_get_message :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) 
 @(export, link_name = "wjr_HTMLVideoElement_getVideoPlaybackQuality")
 wjr_HTMLVideoElement_getVideoPlaybackQuality :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, IFm_video_el()); if self == nil { return wj.EXCEPTION }
-	n := fetch_into_scratch1(wr_HTMLVideoElement_playbackQuality, wj.obj_handle(self))
+	n := fetch_into_scratch1(wj.wr_HTMLVideoElement_playbackQuality, wj.handle_of(self))
 	if n < 0 { return wj.wj_throw_status(ctx, n, "HTMLVideoElement.getVideoPlaybackQuality") }
 	q := (^Web_Quality)(wj.libc_calloc(1, size_of(Web_Quality)))
 	if q == nil { return wj.JS_ThrowOutOfMemory(ctx) }
@@ -193,8 +193,8 @@ vfc_alloc :: proc "contextless" () -> u32 {
 
 @(private = "file")
 vfc_metadata :: proc "c" (ctx: ^wj.Context, handle: u64, id: u64) -> wj.JSValue {
-	n := wr_HTMLVideoElement_videoFrameMetadata(handle, id, wj.scratch_data(), wj.scratch_cap())
-	if n > 0 && u32(n) > wj.scratch_cap() { if !wj.wj_scratch_grow(u32(n)) { n = -13 } else { n = wr_HTMLVideoElement_videoFrameMetadata(handle, id, wj.scratch_data(), wj.scratch_cap()) } }
+	n := wj.wr_HTMLVideoElement_videoFrameMetadata(handle, id, wj.scratch_data(), wj.scratch_cap())
+	if n > 0 && u32(n) > wj.scratch_cap() { if !wj.wj_scratch_grow(u32(n)) { n = -13 } else { n = wj.wr_HTMLVideoElement_videoFrameMetadata(handle, id, wj.scratch_data(), wj.scratch_cap()) } }
 	o := wj.JS_NewObject(ctx)
 	if n < i32(8 * size_of(f64)) { return o }   // unknown id: an empty-ish object (should not happen)
 	v: [8]f64
@@ -210,7 +210,7 @@ vfc_metadata :: proc "c" (ctx: ^wj.Context, handle: u64, id: u64) -> wj.JSValue 
 }
 
 @(private = "file")
-video_frame_callback_index :: proc "contextless" () -> u32 { return u32(uintptr(rawptr(wj_cb_video_frame))) }
+video_frame_callback_index :: proc "contextless" () -> i32 { return wj.table_index(rawptr(wj_cb_video_frame)) }
 
 @(export, link_name = "wj_cb_video_frame")
 wj_cb_video_frame :: proc "c" (user: i32, now: f64) {
@@ -237,11 +237,11 @@ wjr_HTMLVideoElement_requestVideoFrameCallback :: proc "c" (ctx: ^wj.Context, th
 	if !wj.JS_IsFunction(ctx, argv[0]) { return wj.JS_ThrowTypeError(ctx, "Failed to execute 'requestVideoFrameCallback' on 'HTMLVideoElement': The callback provided as parameter 1 is not a function.") }
 	slot := vfc_alloc()
 	if slot == max(u32) { return wj.JS_ThrowOutOfMemory(ctx) }
-	id := wr_HTMLVideoElement_requestVideoFrameCallback(wj.obj_handle(self), video_frame_callback_index(), i32(slot))
+	id := wj.wr_HTMLVideoElement_requestVideoFrameCallback(wj.handle_of(self), video_frame_callback_index(), i32(slot))
 	if id == 0 { return wj.wj_throw_dom(ctx, "QuotaExceededError", "too many video frame callbacks (media.video_frame_callbacks.max)") }
 	vfc_recs[slot].used = 1
 	vfc_recs[slot].id = id
-	vfc_recs[slot].handle = wj.obj_handle(self)
+	vfc_recs[slot].handle = wj.handle_of(self)
 	vfc_recs[slot].fn = wj.JS_DupValue(ctx, argv[0])
 	return wj.new_uint32(ctx, u32(id))
 }
@@ -252,7 +252,7 @@ wjr_HTMLVideoElement_cancelVideoFrameCallback :: proc "c" (ctx: ^wj.Context, thi
 	if argc < 1 { return wj.wj_throw_arity(ctx, "cancelVideoFrameCallback", 1, argc) }
 	id: u32 = 0
 	if !wj.wj_to_uint32(ctx, argv[0], &id, 32, 0) { return wj.EXCEPTION }
-	wr_HTMLVideoElement_cancelVideoFrameCallback(wj.obj_handle(self), u64(id))
+	wj.wr_HTMLVideoElement_cancelVideoFrameCallback(wj.handle_of(self), u64(id))
 	for i: u32 = 0; i < vfc_count; i += 1 {
 		if vfc_recs[i].used != 0 && vfc_recs[i].id == u64(id) {
 			wj.JS_FreeValue(ctx, vfc_recs[i].fn)
@@ -270,7 +270,7 @@ wjr_HTMLVideoElement_cancelVideoFrameCallback :: proc "c" (ctx: ^wj.Context, thi
 wjr_MediaSource_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	if wj.is_undefined(new_target) { return wj.JS_ThrowTypeError(ctx, "Failed to construct 'MediaSource': Please use the 'new' operator, this DOM object constructor cannot be called as a function.") }
 	h: u64 = 0
-	st := wr_MediaSource_create(&h)
+	st := wj.wr_MediaSource_create(&h)
 	if st < 0 { return wj.wj_throw_status(ctx, st, "MediaSource") }
 	return wj.wj_wrap_owned(ctx, h, IFm_media_source(), new_target)
 }
@@ -293,9 +293,9 @@ wjr_HTMLMediaElement_set_srcObject :: proc "c" (ctx: ^wj.Context, this_val: wj.J
 	if !wj.is_null(v) && !wj.is_undefined(v) {
 		o := wj.wj_unwrap(v, IFm_ms_handle())
 		if o == nil { return wj.JS_ThrowTypeError(ctx, "Failed to set the 'srcObject' property on 'HTMLMediaElement': only a MediaSourceHandle (or null) is supported.") }
-		h = wj.obj_handle(o)
+		h = wj.handle_of(o)
 	}
-	st := wr_HTMLMediaElement_setSourceHandle(wj.obj_handle(self), h)
+	st := wj.wr_HTMLMediaElement_setSourceHandle(wj.handle_of(self), h)
 	if st < 0 { return wj.wj_throw_status(ctx, st, "HTMLMediaElement.srcObject") }
 	wj.web_extra_set(ctx, this_val, "srcObject", h != 0 ? wj.JS_DupValue(ctx, v) : wj.NULL)
 	return wj.UNDEFINED
@@ -308,7 +308,7 @@ ms_list :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, active: bool) -> wj
 	v := wj.web_extra_get(ctx, this_val, key)
 	if wj.is_object(v) { return v }
 	wj.JS_FreeValue(ctx, v)
-	h := active ? wr_MediaSource_activeSourceBuffers(wj.obj_handle(self)) : wr_MediaSource_sourceBuffers(wj.obj_handle(self))
+	h := active ? wj.wr_MediaSource_activeSourceBuffers(wj.handle_of(self)) : wj.wr_MediaSource_sourceBuffers(wj.handle_of(self))
 	list := wj.wj_wrap_host(ctx, h, IFm_sb_list())
 	if wj.is_object(list) { wj.web_extra_set(ctx, this_val, key, wj.JS_DupValue(ctx, list)) }
 	return list
@@ -323,7 +323,7 @@ wjr_MediaSource_addSourceBuffer :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVa
 	t: wj.Str
 	if !wj.wj_to_str(ctx, argv[0], &t, 0, nil) { return wj.EXCEPTION }
 	h: u64 = 0
-	st := wr_MediaSource_addSourceBuffer(wj.obj_handle(self), t.ptr, u32(t.len), &h)
+	st := wj.wr_MediaSource_addSourceBuffer(wj.handle_of(self), t.ptr, u32(t.len), &h)
 	wj.wj_str_free(ctx, &t)
 	if st < 0 { return wj.wj_throw_status(ctx, st, "MediaSource.addSourceBuffer") }
 	sb_iface := wj.wj_unwrap(this_val, IFm_managed_ms()) != nil ? IFm_managed_sb() : IFm_source_buffer()
@@ -350,7 +350,7 @@ wjr_MediaSource_removeSourceBuffer :: proc "c" (ctx: ^wj.Context, this_val: wj.J
 	if argc < 1 { return wj.wj_throw_arity(ctx, "MediaSource.removeSourceBuffer", 1, argc) }
 	h: u64
 	if !wj.wj_to_handle(ctx, argv[0], IFm_source_buffer(), false, &h, "Failed to execute 'removeSourceBuffer' on 'MediaSource': parameter 1 is not of type 'SourceBuffer'.") { return wj.EXCEPTION }
-	st := wr_MediaSource_removeSourceBuffer(wj.obj_handle(self), h)
+	st := wj.wr_MediaSource_removeSourceBuffer(wj.handle_of(self), h)
 	if st < 0 { return wj.wj_throw_status(ctx, st, "MediaSource.removeSourceBuffer") }
 	arr := wj.web_extra_get(ctx, this_val, "buffers")
 	if wj.is_object(arr) {
@@ -361,7 +361,7 @@ wjr_MediaSource_removeSourceBuffer :: proc "c" (ctx: ^wj.Context, this_val: wj.J
 		for i: u32 = 0; i < n; i += 1 {
 			e := wj.JS_GetPropertyUint32(ctx, arr, i)
 			eo := wj.wj_unwrap(e, IFm_source_buffer())
-			if eo != nil && wj.obj_handle(eo) != h { wj.JS_SetPropertyUint32(ctx, arr, w, e); w += 1 } else { wj.JS_FreeValue(ctx, e) }
+			if eo != nil && wj.handle_of(eo) != h { wj.JS_SetPropertyUint32(ctx, arr, w, e); w += 1 } else { wj.JS_FreeValue(ctx, e) }
 		}
 		wj.JS_SetPropertyStr(ctx, arr, "length", wj.new_uint32(ctx, w))
 	}
@@ -375,8 +375,8 @@ wjr_SourceBuffer_appendBuffer :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 	if argc < 1 { return wj.wj_throw_arity(ctx, "SourceBuffer.appendBuffer", 1, argc) }
 	p: [^]u8 = nil
 	n: uint = 0
-	if !wj_to_buffer_source(ctx, argv[0], &p, &n, 0, "Failed to execute 'appendBuffer' on 'SourceBuffer': The provided value is not of type '(ArrayBuffer or ArrayBufferView)'.") { return wj.EXCEPTION }
-	st := wr_SourceBuffer_appendBuffer(wj.obj_handle(self), p != nil ? p : ([^]u8)(&m_empty[0]), u32(n))
+	if !wj.wj_to_buffer_source(ctx, argv[0], &p, &n, 0, "Failed to execute 'appendBuffer' on 'SourceBuffer': The provided value is not of type '(ArrayBuffer or ArrayBufferView)'.") { return wj.EXCEPTION }
+	st := wj.wr_SourceBuffer_appendBuffer(wj.handle_of(self), p != nil ? p : ([^]u8)(&m_empty[0]), u32(n))
 	if st < 0 { return wj.wj_throw_status(ctx, st, "SourceBuffer.appendBuffer") }
 	return wj.UNDEFINED
 }
@@ -384,14 +384,14 @@ wjr_SourceBuffer_appendBuffer :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 @(export, link_name = "wjr_SourceBufferList_length_hook")
 wjr_SourceBufferList_length_hook :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue) -> u32 {
 	o := wj.wj_unwrap(obj, IFm_sb_list())
-	return o != nil ? wr_SourceBufferList_length(wj.obj_handle(o)) : 0
+	return o != nil ? wj.wr_SourceBufferList_length(wj.handle_of(o)) : 0
 }
 
 @(export, link_name = "wjr_SourceBufferList_index_get")
 wjr_SourceBufferList_index_get :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, index: u32, found: ^bool) -> wj.JSValue {
 	o := wj.wj_unwrap(obj, IFm_sb_list())
 	h: u64 = 0
-	if o == nil || wr_SourceBufferList_item(wj.obj_handle(o), index, &h) < 0 || h == 0 { found^ = false; return wj.UNDEFINED }
+	if o == nil || wj.wr_SourceBufferList_item(wj.handle_of(o), index, &h) < 0 || h == 0 { found^ = false; return wj.UNDEFINED }
 	found^ = true
 	return wj.wj_wrap_host(ctx, h, IFm_source_buffer())
 }
@@ -400,7 +400,7 @@ wjr_SourceBufferList_index_get :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, i
 wjr_ManagedMediaSource_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	if wj.is_undefined(new_target) { return wj.JS_ThrowTypeError(ctx, "Failed to construct 'ManagedMediaSource': Please use the 'new' operator.") }
 	h: u64 = 0
-	st := wr_ManagedMediaSource_create(&h)
+	st := wj.wr_ManagedMediaSource_create(&h)
 	if st < 0 { return wj.wj_throw_status(ctx, st, "ManagedMediaSource") }
 	return wj.wj_wrap_owned(ctx, h, IFm_managed_ms(), new_target)
 }
@@ -408,7 +408,7 @@ wjr_ManagedMediaSource_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj
 @(export, link_name = "wjr_ManagedMediaSource_get_streaming")
 wjr_ManagedMediaSource_get_streaming :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	self := wj.wj_this(ctx, this_val, IFm_managed_ms()); if self == nil { return wj.EXCEPTION }
-	return wj.new_bool(wr_ManagedMediaSource_streaming(wj.obj_handle(self)) != 0)
+	return wj.new_bool(wj.wr_ManagedMediaSource_streaming(wj.handle_of(self)) != 0)
 }
 
 // BufferedChangeEvent.addedRanges / removedRanges: a browser-dispatched event carries them as byte blobs (Event_data =
@@ -428,9 +428,9 @@ buffered_ranges :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, added: bool
 	if h != 0 {
 		n: i32
 		if added {
-			n = wr_Event_data_local(h)
+			n = event_data_local(h)
 		} else {
-			n = wr_Event_text_local(h)
+			n = event_text_local(h)
 		}
 		r = ranges_make(ctx, wj.scratch_data(), n > 0 ? uint(n) : 0)
 	} else {
@@ -441,13 +441,13 @@ buffered_ranges :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, added: bool
 }
 
 @(private = "file")
-wr_Event_data_local :: proc "contextless" (h: u64) -> i32 {
+event_data_local :: proc "contextless" (h: u64) -> i32 {
 	n := wj.wr_Event_data(h, wj.scratch_data(), wj.scratch_cap())
 	if n > 0 && u32(n) > wj.scratch_cap() { if !wj.wj_scratch_grow(u32(n)) { return -13 }; n = wj.wr_Event_data(h, wj.scratch_data(), wj.scratch_cap()) }
 	return n
 }
 @(private = "file")
-wr_Event_text_local :: proc "contextless" (h: u64) -> i32 {
+event_text_local :: proc "contextless" (h: u64) -> i32 {
 	n := wj.wr_Event_text(h, wj.scratch_data(), wj.scratch_cap())
 	if n > 0 && u32(n) > wj.scratch_cap() { if !wj.wj_scratch_grow(u32(n)) { return -13 }; n = wj.wr_Event_text(h, wj.scratch_data(), wj.scratch_cap()) }
 	return n
@@ -468,31 +468,4 @@ wjr_BufferedChangeEvent_constructor :: proc "c" (ctx: ^wj.Context, new_target: w
 }
 
 // ---- host imports (modules htmlmedia, mse) ----
-@(default_calling_convention = "c")
-foreign m_htmlmedia2 {
-	@(link_name = "HTMLMediaElement_ranges") wr_HTMLMediaElement_ranges :: proc(element: u64, which: i32, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "HTMLMediaElement_setSourceHandle") wr_HTMLMediaElement_setSourceHandle :: proc(element: u64, handle: u64) -> i32 ---
-	@(link_name = "HTMLMediaElement_errorCode") wr_HTMLMediaElement_errorCode :: proc(element: u64) -> i32 ---
-	@(link_name = "HTMLMediaElement_errorMessage") wr_HTMLMediaElement_errorMessage :: proc(element: u64, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "HTMLVideoElement_playbackQuality") wr_HTMLVideoElement_playbackQuality :: proc(element: u64, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "HTMLVideoElement_requestVideoFrameCallback") wr_HTMLVideoElement_requestVideoFrameCallback :: proc(element: u64, callback: u32, user: i32) -> u64 ---
-	@(link_name = "HTMLVideoElement_cancelVideoFrameCallback") wr_HTMLVideoElement_cancelVideoFrameCallback :: proc(element: u64, id: u64) ---
-	@(link_name = "HTMLVideoElement_videoFrameMetadata") wr_HTMLVideoElement_videoFrameMetadata :: proc(element: u64, id: u64, buf: [^]u8, cap: u32) -> i32 ---
-}
-foreign import m_htmlmedia2 "htmlmedia"
 
-@(default_calling_convention = "c")
-foreign m_mse {
-	@(link_name = "MediaSource_create") wr_MediaSource_create :: proc(ret: ^u64) -> i32 ---
-	@(link_name = "ManagedMediaSource_create") wr_ManagedMediaSource_create :: proc(ret: ^u64) -> i32 ---
-	@(link_name = "ManagedMediaSource_streaming") wr_ManagedMediaSource_streaming :: proc(source: u64) -> i32 ---
-	@(link_name = "MediaSource_sourceBuffers") wr_MediaSource_sourceBuffers :: proc(source: u64) -> u64 ---
-	@(link_name = "MediaSource_activeSourceBuffers") wr_MediaSource_activeSourceBuffers :: proc(source: u64) -> u64 ---
-	@(link_name = "MediaSource_addSourceBuffer") wr_MediaSource_addSourceBuffer :: proc(source: u64, type: [^]u8, type_len: u32, ret: ^u64) -> i32 ---
-	@(link_name = "MediaSource_removeSourceBuffer") wr_MediaSource_removeSourceBuffer :: proc(source: u64, buffer: u64) -> i32 ---
-	@(link_name = "SourceBufferList_length") wr_SourceBufferList_length :: proc(list: u64) -> u32 ---
-	@(link_name = "SourceBufferList_item") wr_SourceBufferList_item :: proc(list: u64, index: u32, ret: ^u64) -> i32 ---
-	@(link_name = "SourceBuffer_ranges") wr_SourceBuffer_ranges :: proc(buffer: u64, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "SourceBuffer_appendBuffer") wr_SourceBuffer_appendBuffer :: proc(buffer: u64, data: [^]u8, data_len: u32) -> i32 ---
-}
-foreign import m_mse "mse"

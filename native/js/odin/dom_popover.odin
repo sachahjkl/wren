@@ -6,7 +6,9 @@ package odin_glue
 
 import "../odin/wj"
 
-@(private = "file") popover_states := [4]cstring{ nil, "auto", "manual", "hint" }
+// No nil element: a global whose initializer is not a link-time constant (a nil cstring among literals is not) would
+// need Odin's startup code, which the glue object never runs, and would read as all zero.
+@(private = "file") popover_states := [4]cstring{ "", "auto", "manual", "hint" }
 
 @(private = "file") iface_toggle := i32(-2)
 @(private = "file") iface_toggle_event :: proc "c" () -> i32 { if iface_toggle == -2 { iface_toggle = wj.iface("ToggleEvent") }; return iface_toggle }
@@ -36,7 +38,7 @@ source_of :: proc "c" (ctx: ^wj.Context, opt: wj.JSValue, out: ^u64) -> bool {
 wjr_HTMLElement_get_popover :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	h := element_of(ctx, this_val)
 	if h == 0 { return wj.EXCEPTION }
-	s := wr_Popover_state(h)
+	s := wj.wr_Popover_state(h)
 	return s > 0 && s < 4 ? wj.JS_NewString(ctx, popover_states[s]) : wj.NULL
 }
 
@@ -45,12 +47,12 @@ wjr_HTMLElement_set_popover :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue,
 	h := element_of(ctx, this_val)
 	if h == 0 { return wj.EXCEPTION }
 	if wj.is_null(v) {
-		st := wr_Element_removeAttribute(h, wj.raw_bytes("popover"), 7)
+		st := wj.wr_Element_removeAttribute(h, wj.raw_bytes("popover"), 7)
 		return st < 0 ? wj.wj_throw_status(ctx, st, "popover") : wj.UNDEFINED
 	}
 	s: wj.Str
 	if !wj.wj_to_str(ctx, v, &s, 0, "") { return wj.EXCEPTION }
-	st := wr_Element_setAttribute(h, wj.raw_bytes("popover"), 7, wj.cstr_bytes(s.ptr), u32(s.len))
+	st := wj.wr_Element_setAttribute(h, wj.raw_bytes("popover"), 7, wj.cstr_bytes(s.ptr), u32(s.len))
 	wj.wj_str_free(ctx, &s)
 	return st < 0 ? wj.wj_throw_status(ctx, st, "popover") : wj.UNDEFINED
 }
@@ -62,7 +64,7 @@ wjr_HTMLElement_showPopover :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue,
 	opt := wj.arg(argc, argv, 0)
 	source: u64
 	if !wj.web_dict_check(ctx, opt, "showPopover") || !source_of(ctx, opt, &source) { return wj.EXCEPTION }
-	st := wr_Popover_show(h, source)
+	st := wj.wr_Popover_show(h, source)
 	return st < 0 ? wj.wj_throw_status(ctx, st, "showPopover") : wj.UNDEFINED
 }
 
@@ -70,7 +72,7 @@ wjr_HTMLElement_showPopover :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue,
 wjr_HTMLElement_hidePopover :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	h := element_of(ctx, this_val)
 	if h == 0 { return wj.EXCEPTION }
-	st := wr_Popover_hide(h)
+	st := wj.wr_Popover_hide(h)
 	return st < 0 ? wj.wj_throw_status(ctx, st, "hidePopover") : wj.UNDEFINED
 }
 
@@ -92,7 +94,7 @@ wjr_HTMLElement_togglePopover :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 		force = wj.JS_ToBool(ctx, opt) != 0 ? 1 : 0
 	}
 	r := u8(0)
-	st := wr_Popover_toggle(h, force, source, &r)
+	st := wj.wr_Popover_toggle(h, force, source, &r)
 	return st < 0 ? wj.wj_throw_status(ctx, st, "togglePopover") : wj.new_bool(r != 0)
 }
 
@@ -112,12 +114,12 @@ wjr_PopoverTargetAttributes_get_popoverTargetElement :: proc "c" (ctx: ^wj.Conte
 	if wj.is_object(set) {
 		// an element set explicitly stays the target while it is in the same document
 		t := wj.wj_unwrap(set, iface_element())
-		if t != nil && wr_Node_isConnected(t.handle) != 0 { return set }
+		if t != nil && wj.wr_Node_isConnected(t.handle) != 0 { return set }
 		wj.JS_FreeValue(ctx, set)
 		return wj.NULL
 	}
 	wj.JS_FreeValue(ctx, set)
-	return wj.wj_wrap_node(ctx, wr_Popover_targetOf(h))
+	return wj.wj_wrap_node(ctx, wj.wr_Popover_targetOf(h))
 }
 
 @(export, link_name = "wjr_PopoverTargetAttributes_set_popoverTargetElement")
@@ -129,18 +131,18 @@ wjr_PopoverTargetAttributes_set_popoverTargetElement :: proc "c" (ctx: ^wj.Conte
 	}
 	if wj.is_null(v) || wj.is_undefined(v) {
 		wj.web_extra_set(ctx, this_val, "popoverTargetElement", wj.UNDEFINED)
-		wr_Element_removeAttribute(h, wj.raw_bytes("popovertarget"), 13)
+		wj.wr_Element_removeAttribute(h, wj.raw_bytes("popovertarget"), 13)
 		return wj.UNDEFINED
 	}
 	// reflected through the target's id when it has one (the browser activates the button through the attribute)
 	t := wj.wj_unwrap(v, iface_element())
-	n := wr_Element_getAttribute(t.handle, wj.raw_bytes("id"), 2, wj.wj_scratch.data, wj.wj_scratch.cap)
-	if n > 0 && u32(n) > wj.wj_scratch.cap { if wj.wj_scratch_grow(u32(n)) { n = wr_Element_getAttribute(t.handle, wj.raw_bytes("id"), 2, wj.wj_scratch.data, wj.wj_scratch.cap) } }
+	n := wj.wr_Element_getAttribute(t.handle, wj.raw_bytes("id"), 2, wj.wj_scratch.data, wj.wj_scratch.cap)
+	if n > 0 && u32(n) > wj.wj_scratch.cap { if wj.wj_scratch_grow(u32(n)) { n = wj.wr_Element_getAttribute(t.handle, wj.raw_bytes("id"), 2, wj.wj_scratch.data, wj.wj_scratch.cap) } }
 	if n > 0 {
-		id := wj.web_strndup(wj.cstr(wj.wj_scratch.data), uint(n))
-		if id != nil { wr_Element_setAttribute(h, wj.raw_bytes("popovertarget"), 13, wj.cstr_bytes(id), u32(n)); wj.libc_free(rawptr(id)) }
+		id := wj.web_strndup(wj.wj_scratch.data, uint(n))
+		if id != nil { wj.wr_Element_setAttribute(h, wj.raw_bytes("popovertarget"), 13, wj.cstr_bytes(id), u32(n)); wj.libc_free(rawptr(id)) }
 	} else {
-		wr_Element_setAttribute(h, wj.raw_bytes("popovertarget"), 13, wj.raw_bytes(""), 0)
+		wj.wr_Element_setAttribute(h, wj.raw_bytes("popovertarget"), 13, wj.raw_bytes(""), 0)
 	}
 	wj.web_extra_set(ctx, this_val, "popoverTargetElement", wj.JS_DupValue(ctx, v))
 	return wj.UNDEFINED
@@ -150,9 +152,9 @@ wjr_PopoverTargetAttributes_set_popoverTargetElement :: proc "c" (ctx: ^wj.Conte
 wjr_PopoverTargetAttributes_get_popoverTargetAction :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	h := invoker_of(ctx, this_val)
 	if h == 0 { return wj.EXCEPTION }
-	n := wr_Element_getAttribute(h, wj.raw_bytes("popovertargetaction"), 19, wj.wj_scratch.data, wj.wj_scratch.cap)
-	if n > 0 && u32(n) > wj.wj_scratch.cap { if wj.wj_scratch_grow(u32(n)) { n = wr_Element_getAttribute(h, wj.raw_bytes("popovertargetaction"), 19, wj.wj_scratch.data, wj.wj_scratch.cap) } }
-	s := wj.cstr(wj.wj_scratch.data)
+	n := wj.wr_Element_getAttribute(h, wj.raw_bytes("popovertargetaction"), 19, wj.wj_scratch.data, wj.wj_scratch.cap)
+	if n > 0 && u32(n) > wj.wj_scratch.cap { if wj.wj_scratch_grow(u32(n)) { n = wj.wr_Element_getAttribute(h, wj.raw_bytes("popovertargetaction"), 19, wj.wj_scratch.data, wj.wj_scratch.cap) } }
+	s := wj.wj_scratch.data
 	if n == 4 && wj.web_ascii_ieq(s, 4, "show") { return wj.JS_NewString(ctx, "show") }
 	if n == 4 && wj.web_ascii_ieq(s, 4, "hide") { return wj.JS_NewString(ctx, "hide") }
 	return wj.JS_NewString(ctx, "toggle")   // missing and invalid value default
@@ -164,7 +166,7 @@ wjr_PopoverTargetAttributes_set_popoverTargetAction :: proc "c" (ctx: ^wj.Contex
 	if h == 0 { return wj.EXCEPTION }
 	s: wj.Str
 	if !wj.wj_to_str(ctx, v, &s, 0, "") { return wj.EXCEPTION }
-	st := wr_Element_setAttribute(h, wj.raw_bytes("popovertargetaction"), 19, wj.cstr_bytes(s.ptr), u32(s.len))
+	st := wj.wr_Element_setAttribute(h, wj.raw_bytes("popovertargetaction"), 19, wj.cstr_bytes(s.ptr), u32(s.len))
 	wj.wj_str_free(ctx, &s)
 	return st < 0 ? wj.wj_throw_status(ctx, st, "popoverTargetAction") : wj.UNDEFINED
 }
@@ -180,11 +182,11 @@ toggle_state :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, name: cstring,
 	if h == 0 { return wj.JS_NewString(ctx, "") }
 	n: i32
 	if old {
-		n = wr_Event_text(h, wj.wj_scratch.data, wj.wj_scratch.cap)
-		if n > 0 && u32(n) > wj.wj_scratch.cap { if wj.wj_scratch_grow(u32(n)) { n = wr_Event_text(h, wj.wj_scratch.data, wj.wj_scratch.cap) } }
+		n = wj.wr_Event_text(h, wj.wj_scratch.data, wj.wj_scratch.cap)
+		if n > 0 && u32(n) > wj.wj_scratch.cap { if wj.wj_scratch_grow(u32(n)) { n = wj.wr_Event_text(h, wj.wj_scratch.data, wj.wj_scratch.cap) } }
 	} else {
-		n = wr_Event_data(h, wj.wj_scratch.data, wj.wj_scratch.cap)
-		if n > 0 && u32(n) > wj.wj_scratch.cap { if wj.wj_scratch_grow(u32(n)) { n = wr_Event_data(h, wj.wj_scratch.data, wj.wj_scratch.cap) } }
+		n = wj.wr_Event_data(h, wj.wj_scratch.data, wj.wj_scratch.cap)
+		if n > 0 && u32(n) > wj.wj_scratch.cap { if wj.wj_scratch_grow(u32(n)) { n = wj.wr_Event_data(h, wj.wj_scratch.data, wj.wj_scratch.cap) } }
 	}
 	return n > 0 ? wj.JS_NewStringLen(ctx, wj.wj_scratch.data, uint(n)) : wj.JS_NewString(ctx, "")
 }
@@ -200,7 +202,7 @@ wjr_ToggleEvent_get_source :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) 
 	v := wj.web_extra_get(ctx, this_val, "source")
 	if !wj.is_undefined(v) { return v }
 	h := wj.web_event_host(this_val)
-	return h != 0 ? wj.wj_wrap_node(ctx, wr_Event_object(h)) : wj.NULL
+	return h != 0 ? wj.wj_wrap_node(ctx, wj.wr_Event_object(h)) : wj.NULL
 }
 
 @(export, link_name = "wjr_ToggleEvent_constructor")

@@ -10,44 +10,26 @@ import "../odin/wj"
 
 // web_location.c used libc malloc/free (not the engine's) for its state text and history impl; web_strndup returns
 // libc memory freed with libc free. Keep the same allocator here so frees pair the way the C's did.
-@(private = "file") _malloc :: #force_inline proc "contextless" (n: uint) -> rawptr { return wj.lib_malloc(n) }
-@(private = "file") _free   :: #force_inline proc "contextless" (p: rawptr) { wj.c_free(p) }
+@(private = "file") _malloc :: #force_inline proc "contextless" (n: uint) -> rawptr { return wj.libc_malloc(n) }
+@(private = "file") _free   :: #force_inline proc "contextless" (p: rawptr) { wj.libc_free(p) }
 @(private = "file") empty_byte: u8
 @(private = "file") raw_empty :: #force_inline proc "contextless" () -> [^]u8 { return &empty_byte }
 
-foreign import _m_history "history"
 
-@(default_calling_convention = "c")
-foreign _m_history {
-	@(link_name = "Location_get")      wr_Location_get      :: proc(component: i32, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "Location_set")      wr_Location_set      :: proc(component: i32, value: [^]u8, value_len: u32) -> i32 ---
-	@(link_name = "Location_assign")   wr_Location_assign   :: proc(url: [^]u8, url_len: u32) -> i32 ---
-	@(link_name = "Location_replace")  wr_Location_replace  :: proc(url: [^]u8, url_len: u32) -> i32 ---
-	@(link_name = "Location_reload")   wr_Location_reload   :: proc() ---
-	@(link_name = "History_state")     wr_History_state     :: proc(buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "History_pushState") wr_History_pushState :: proc(state: [^]u8, state_len: u32, url: [^]u8, url_len: u32) -> i32 ---
-	@(link_name = "History_replaceState") wr_History_replaceState :: proc(state: [^]u8, state_len: u32, url: [^]u8, url_len: u32) -> i32 ---
-	@(link_name = "History_go")        wr_History_go        :: proc(delta: i32) ---
-	@(link_name = "History_scrollRestoration") wr_History_scrollRestoration :: proc() -> i32 ---
-	@(link_name = "History_set_scrollRestoration") wr_History_set_scrollRestoration :: proc(mode: i32) ---
-}
 
-foreign import _m_events "events"
 
-@(default_calling_convention = "c")
-foreign _m_events {
-	@(link_name = "Event_code") wr_Event_code :: proc(event: u64) -> i64 ---
-	@(link_name = "Event_data") wr_Event_data :: proc(event: u64, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "Event_text") wr_Event_text :: proc(event: u64, buf: [^]u8, cap: u32) -> i32 ---
-}
 
-// enum wr_URLComponent
+// enum wj.wr_URLComponent
 URL_Href :: i32(0); URL_Protocol :: i32(1); URL_Host :: i32(4); URL_Hostname :: i32(5)
 URL_Port :: i32(6); URL_Pathname :: i32(7); URL_Search :: i32(8); URL_Hash :: i32(9); URL_Origin :: i32(10)
-// enum wr_ScrollRestoration
+// enum wj.wr_ScrollRestoration
 SCROLL_AUTO :: i32(0); SCROLL_MANUAL :: i32(1)
-// enum wr_Error (the subset used here)
-ERR_NOT_FOUND :: i32(-3); ERR_SECURITY :: i32(-12); ERR_SYNTAX :: i32(-15); ERR_DATA_CLONE :: i32(-19)
+// enum wj.wr_Error (the subset used here). File-private: the odin_glue package is shared, and other domains name their
+// own error subsets (web_storage.odin's ERR_NOT_FOUND, ...).
+@(private = "file") ERR_NOT_FOUND :: i32(-3)
+@(private = "file") ERR_SECURITY :: i32(-12)
+@(private = "file") ERR_SYNTAX :: i32(-15)
+@(private = "file") ERR_DATA_CLONE :: i32(-19)
 
 @(private = "file") iface_location := i32(-2)
 @(private = "file") iface_document := i32(-2)
@@ -97,10 +79,10 @@ wjr_Document_set_location :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v
 // (fetch_string's closure form cannot carry the `component` argument: a "c" proc has no captures).
 @(private = "file") location_component :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, component: i32) -> wj.JSValue {
 	if wj.wj_this(ctx, this_val, location_iface()) == nil { return wj.EXCEPTION }
-	n := wr_Location_get(component, wj.wj_scratch_data(), wj.wj_scratch_cap())
-	if n > 0 && u32(n) > wj.wj_scratch_cap() {
+	n := wj.wr_Location_get(component, wj.scratch_data(), wj.scratch_cap())
+	if n > 0 && u32(n) > wj.scratch_cap() {
 		if !wj.wj_scratch_grow(u32(n)) { return wj.JS_ThrowOutOfMemory(ctx) }
-		n = wr_Location_get(component, wj.wj_scratch_data(), wj.wj_scratch_cap())
+		n = wj.wr_Location_get(component, wj.scratch_data(), wj.scratch_cap())
 	}
 	return wj.scratch_string(ctx, n)
 }
@@ -109,7 +91,7 @@ wjr_Document_set_location :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v
 	if wj.wj_this(ctx, this_val, location_iface()) == nil { return wj.EXCEPTION }
 	s: wj.Str
 	if !wj.web_to_usv(ctx, v, &s) { return wj.EXCEPTION }
-	st := wr_Location_set(component, s.ptr, u32(s.len))
+	st := wj.wr_Location_set(component, s.ptr, u32(s.len))
 	wj.wj_str_free(ctx, &s)
 	if st < 0 {
 		if st == ERR_SYNTAX { return wj.wj_throw_dom(ctx, "SyntaxError", "Failed to set a property on 'Location': the URL is invalid.") }
@@ -171,7 +153,7 @@ wjr_DOMStringList_length_hook :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue) ->
 	if argc < 1 { return wj.wj_throw_arity(ctx, replace ? "Location.replace" : "Location.assign", 1, argc) }
 	s: wj.Str
 	if !wj.web_to_usv(ctx, argv[0], &s) { return wj.EXCEPTION }
-	st := replace ? wr_Location_replace(s.ptr, u32(s.len)) : wr_Location_assign(s.ptr, u32(s.len))
+	st := replace ? wj.wr_Location_replace(s.ptr, u32(s.len)) : wj.wr_Location_assign(s.ptr, u32(s.len))
 	wj.wj_str_free(ctx, &s)
 	if st < 0 {
 		if st == ERR_SYNTAX { return wj.wj_throw_dom(ctx, "SyntaxError", "Failed to execute on 'Location': the URL is invalid.") }
@@ -188,7 +170,7 @@ wjr_Location_replace :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: 
 @(export, link_name = "wjr_Location_reload")
 wjr_Location_reload :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	if wj.wj_this(ctx, this_val, location_iface()) == nil { return wj.EXCEPTION }
-	wr_Location_reload()
+	wj.wr_Location_reload()
 	return wj.UNDEFINED
 }
 
@@ -279,7 +261,7 @@ History_Impl :: struct {
 @(private = "file") history_mark :: proc "c" (rt: rawptr, p: rawptr, mark_func: rawptr) { wj.wj_mark(rt, (^History_Impl)(p).state, mark_func) }
 
 @(private = "file") make_history :: proc "c" (ctx: ^wj.Context) -> wj.JSValue {
-	h := (^History_Impl)(wj.calloc(1, size_of(History_Impl)))
+	h := (^History_Impl)(wj.libc_calloc(1, size_of(History_Impl)))
 	if h == nil { return wj.JS_ThrowOutOfMemory(ctx) }
 	h.state = wj.NULL
 	obj := wj.wj_new_object(ctx, history_iface(), nil, nil)
@@ -301,22 +283,22 @@ wjr_Window_get_history :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> w
 wjr_History_get_state :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	h := history_this(ctx, this_val)
 	if h == nil { return wj.EXCEPTION }
-	n := wr_History_state(wj.wj_scratch_data(), wj.wj_scratch_cap())
-	if n > 0 && u32(n) > wj.wj_scratch_cap() {
+	n := wj.wr_History_state(wj.scratch_data(), wj.scratch_cap())
+	if n > 0 && u32(n) > wj.scratch_cap() {
 		if !wj.wj_scratch_grow(u32(n)) { return wj.JS_ThrowOutOfMemory(ctx) }
-		n = wr_History_state(wj.wj_scratch_data(), wj.wj_scratch_cap())
+		n = wj.wr_History_state(wj.scratch_data(), wj.scratch_cap())
 	}
 	null_state := n == ERR_NOT_FOUND
 	if n < 0 && !null_state { return wj.wj_throw_status(ctx, n, "History.state") }
 	// the same value while the entry's state stays the same
-	if h.known && ((null_state && h.text == nil) || (!null_state && h.text != nil && h.text_len == uint(n) && wj.memcmp(h.text, wj.wj_scratch_data(), uint(n)) == 0)) {
+	if h.known && ((null_state && h.text == nil) || (!null_state && h.text != nil && h.text_len == uint(n) && wj.memcmp(h.text, wj.scratch_data(), uint(n)) == 0)) {
 		return wj.JS_DupValue(ctx, h.state)
 	}
 	_free(h.text); h.text = nil; h.text_len = 0
 	wj.JS_FreeValue(ctx, h.state)
 	h.state = wj.NULL
 	if !null_state {
-		h.text = wj.web_strndup(wj.wj_scratch_data(), uint(n))
+		h.text = wj.web_strndup(wj.scratch_data(), uint(n))
 		h.text_len = uint(n)
 		h.state = state_decode(ctx, h.text != nil ? h.text : raw_empty(), h.text != nil ? uint(n) : 0)
 		if wj.is_exception(h.state) { h.state = wj.NULL; h.known = false; return wj.EXCEPTION }
@@ -336,7 +318,7 @@ wjr_History_get_state :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj
 	u := wj.Str{}
 	if !wj.is_undefined(urlv) && !wj.is_null(urlv) && !wj.web_to_usv(ctx, urlv, &u) { _free(s); return wj.EXCEPTION }
 	ulen := u.ptr != nil ? u32(u.len) : wj.WR_ABSENT
-	st := replace ? wr_History_replaceState(s, u32(sl), u.ptr, ulen) : wr_History_pushState(s, u32(sl), u.ptr, ulen)
+	st := replace ? wj.wr_History_replaceState(s, u32(sl), u.ptr, ulen) : wj.wr_History_pushState(s, u32(sl), u.ptr, ulen)
 	wj.wj_str_free(ctx, &u)
 	if st < 0 {
 		_free(s)
@@ -366,20 +348,20 @@ wjr_History_replaceState :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, ar
 @(export, link_name = "wjr_History_back")
 wjr_History_back :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	if history_this(ctx, this_val) == nil { return wj.EXCEPTION }
-	wr_History_go(-1)
+	wj.wr_History_go(-1)
 	return wj.UNDEFINED
 }
 @(export, link_name = "wjr_History_forward")
 wjr_History_forward :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	if history_this(ctx, this_val) == nil { return wj.EXCEPTION }
-	wr_History_go(1)
+	wj.wr_History_go(1)
 	return wj.UNDEFINED
 }
 
 @(export, link_name = "wjr_History_get_scrollRestoration")
 wjr_History_get_scrollRestoration :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	if history_this(ctx, this_val) == nil { return wj.EXCEPTION }
-	return wj.JS_NewString(ctx, wr_History_scrollRestoration() == SCROLL_MANUAL ? "manual" : "auto")
+	return wj.JS_NewString(ctx, wj.wr_History_scrollRestoration() == SCROLL_MANUAL ? "manual" : "auto")
 }
 
 @(export, link_name = "wjr_History_set_scrollRestoration")
@@ -390,8 +372,8 @@ wjr_History_set_scrollRestoration :: proc "c" (ctx: ^wj.Context, this_val: wj.JS
 	defer wj.free_cstring(ctx, s)
 	// an enum attribute: other values are ignored
 	switch string(s) {
-	case "manual": wr_History_set_scrollRestoration(SCROLL_MANUAL)
-	case "auto":   wr_History_set_scrollRestoration(SCROLL_AUTO)
+	case "manual": wj.wr_History_set_scrollRestoration(SCROLL_MANUAL)
+	case "auto":   wj.wr_History_set_scrollRestoration(SCROLL_AUTO)
 	}
 	return wj.UNDEFINED
 }
@@ -416,7 +398,7 @@ wjr_PageTransitionEvent_get_persisted :: proc "c" (ctx: ^wj.Context, this_val: w
 	if !wj.is_undefined(v) { return v }
 	h := wj.web_event_host(this_val)
 	// the browser's pageshow / pagehide: Event_code 1 when the document comes from (or goes into) the bf-cache
-	return wj.new_bool(h != 0 && wr_Event_code(h) != 0)
+	return wj.new_bool(h != 0 && wj.wr_Event_code(h) != 0)
 }
 
 @(export, link_name = "wjr_PageTransitionEvent_constructor")
@@ -441,13 +423,13 @@ wjr_PopStateEvent_get_state :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue)
 	if h == 0 { return wj.NULL }
 	// the browser's popstate: the entry's state as text (Event_code 0 for a null state)
 	st := wj.NULL
-	if wr_Event_code(h) != 0 {
-		n := wr_Event_data(h, wj.wj_scratch_data(), wj.wj_scratch_cap())
-		if n > 0 && u32(n) > wj.wj_scratch_cap() {
+	if wj.wr_Event_code(h) != 0 {
+		n := wj.wr_Event_data(h, wj.scratch_data(), wj.scratch_cap())
+		if n > 0 && u32(n) > wj.scratch_cap() {
 			if !wj.wj_scratch_grow(u32(n)) { return wj.JS_ThrowOutOfMemory(ctx) }
-			n = wr_Event_data(h, wj.wj_scratch_data(), wj.wj_scratch_cap())
+			n = wj.wr_Event_data(h, wj.scratch_data(), wj.scratch_cap())
 		}
-		text := wj.web_strndup(wj.wj_scratch_data(), uint(n > 0 ? n : 0))
+		text := wj.web_strndup(wj.scratch_data(), uint(n > 0 ? n : 0))
 		if text == nil { return wj.JS_ThrowOutOfMemory(ctx) }
 		st = state_decode(ctx, text, uint(n > 0 ? n : 0))
 		_free(text)
@@ -481,11 +463,11 @@ wjr_PopStateEvent_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSVa
 	// the browser's hashchange: the new URL in Event_data, the old one in Event_text
 	n: i32
 	if old {
-		n = wr_Event_text(h, wj.wj_scratch_data(), wj.wj_scratch_cap())
-		if n > 0 && u32(n) > wj.wj_scratch_cap() { if wj.wj_scratch_grow(u32(n)) { n = wr_Event_text(h, wj.wj_scratch_data(), wj.wj_scratch_cap()) } }
+		n = wj.wr_Event_text(h, wj.scratch_data(), wj.scratch_cap())
+		if n > 0 && u32(n) > wj.scratch_cap() { if wj.wj_scratch_grow(u32(n)) { n = wj.wr_Event_text(h, wj.scratch_data(), wj.scratch_cap()) } }
 	} else {
-		n = wr_Event_data(h, wj.wj_scratch_data(), wj.wj_scratch_cap())
-		if n > 0 && u32(n) > wj.wj_scratch_cap() { if wj.wj_scratch_grow(u32(n)) { n = wr_Event_data(h, wj.wj_scratch_data(), wj.wj_scratch_cap()) } }
+		n = wj.wr_Event_data(h, wj.scratch_data(), wj.scratch_cap())
+		if n > 0 && u32(n) > wj.scratch_cap() { if wj.wj_scratch_grow(u32(n)) { n = wj.wr_Event_data(h, wj.scratch_data(), wj.scratch_cap()) } }
 	}
 	v = wj.scratch_string(ctx, n)
 	wj.web_extra_set(ctx, this_val, name, wj.JS_DupValue(ctx, v))

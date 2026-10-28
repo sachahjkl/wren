@@ -24,7 +24,7 @@ RO_Impl :: struct {
 ro_free :: proc "c" (p: rawptr) {
 	m := (^RO_Impl)(p)
 	if m.slot > 0 && m.slot < ro_slot_cap { ro_slots[m.slot] = wj.UNDEFINED }
-	if m.host != 0 { wr_Object_release(m.host) }
+	if m.host != 0 { wj.wr_Object_release(m.host) }
 	wj.JS_FreeValueRT(wj.the_runtime(wj.wj_the_realm.ctx), m.callback)
 	wj.libc_free(m)
 }
@@ -43,7 +43,7 @@ ro_of :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> ^RO_Impl {
 // An observer that observes a target is kept alive by the page's layout, as one referenced from the script is.
 @(private = "file")
 ro_sync_pin :: proc "c" (ctx: ^wj.Context, m: ^RO_Impl, self: wj.JSValue) {
-	n := wr_ResizeObserver_observed(m.host)
+	n := wj.wr_ResizeObserver_observed(m.host)
 	if n > 0 && m.pin == 0 { m.pin = wj.web_pin(ctx, self) }
 	else if n == 0 && m.pin != 0 { wj.web_unpin(ctx, m.pin); m.pin = 0 }
 }
@@ -65,15 +65,15 @@ wjr_ResizeObserver_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSV
 	for slot < ro_slot_cap && !wj.is_undefined(ro_slots[slot]) { slot += 1 }
 	if slot >= ro_slot_cap {
 		cap := ro_slot_cap != 0 ? ro_slot_cap * 2 : 16
-		s := ([^]wj.JSValue)(wj.realloc(ro_slots, uint(cap) * size_of(wj.JSValue)))
+		s := ([^]wj.JSValue)(wj.libc_realloc(ro_slots, uint(cap) * size_of(wj.JSValue)))
 		if s == nil { return wj.JS_ThrowOutOfMemory(ctx) }
 		for i := ro_slot_cap; i < cap; i += 1 { s[i] = wj.UNDEFINED }
 		ro_slots = s
 		ro_slot_cap = cap
 	}
-	m := (^RO_Impl)(wj.calloc(1, size_of(RO_Impl)))
+	m := (^RO_Impl)(wj.libc_calloc(1, size_of(RO_Impl)))
 	if m == nil { return wj.JS_ThrowOutOfMemory(ctx) }
-	m.host = wr_ResizeObserver_create(u32(uintptr(rawptr(wj_cb_resize))), slot)
+	m.host = wj.wr_ResizeObserver_create(wj.table_index(rawptr(wj_cb_resize)), slot)
 	if m.host == 0 { wj.libc_free(m); return wj.wj_throw_type(ctx, "Failed to construct 'ResizeObserver': there is no document to observe") }
 	m.callback = wj.JS_DupValue(ctx, argv[0])
 	m.slot = slot
@@ -97,7 +97,7 @@ wjr_ResizeObserver_observe :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, 
 	if options.box.len == 10 && wj.str_eq(options.box.ptr, "border-box") { box = .Border }
 	else if options.box.len == 24 { box = .Device }   // the enum was checked: device-pixel-content-box
 	wjd_ResizeObserverOptions_free(ctx, &options)
-	st := wr_ResizeObserver_observe(m.host, target, i32(box))
+	st := wj.wr_ResizeObserver_observe(m.host, target, i32(box))
 	if st < 0 { return wj.wj_throw_status(ctx, st, "ResizeObserver.observe") }
 	ro_sync_pin(ctx, m, this_val)
 	return wj.UNDEFINED
@@ -110,7 +110,7 @@ wjr_ResizeObserver_unobserve :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue
 	if argc < 1 { return wj.wj_throw_arity(ctx, "ResizeObserver.unobserve", 1, argc) }
 	target: u64
 	if !wj.wj_to_handle(ctx, argv[0], iface_element(), false, &target, "Failed to execute 'unobserve' on 'ResizeObserver': parameter 1 is not of type 'Element'.") { return wj.EXCEPTION }
-	wr_ResizeObserver_unobserve(m.host, target)
+	wj.wr_ResizeObserver_unobserve(m.host, target)
 	ro_sync_pin(ctx, m, this_val)
 	return wj.UNDEFINED
 }
@@ -119,7 +119,7 @@ wjr_ResizeObserver_unobserve :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue
 wjr_ResizeObserver_disconnect :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	m := ro_of(ctx, this_val)
 	if m == nil { return wj.EXCEPTION }
-	wr_ResizeObserver_disconnect(m.host)
+	wj.wr_ResizeObserver_disconnect(m.host)
 	ro_sync_pin(ctx, m, this_val)
 	return wj.UNDEFINED
 }
@@ -155,7 +155,7 @@ make_entry :: proc "c" (ctx: ^wj.Context, p: [^]u8) -> wj.JSValue {
 	d: ^wj.Dom_Impl
 	e := wj.dom_new(ctx, iface_entry(), wj.DOM_VALUES, wj.UNDEFINED, 0, &d)
 	if wj.is_exception(e) { return e }
-	d.values = ([^]wj.JSValue)(wj.calloc(RE_COUNT, size_of(wj.JSValue)))
+	d.values = ([^]wj.JSValue)(wj.libc_calloc(RE_COUNT, size_of(wj.JSValue)))
 	if d.values == nil { wj.JS_FreeValue(ctx, e); return wj.JS_ThrowOutOfMemory(ctx) }
 	d.n_values = RE_COUNT
 	for i in 0..<RE_COUNT { d.values[i] = wj.UNDEFINED }
@@ -212,9 +212,9 @@ wj_cb_resize :: proc "c" (user: i32) {
 	m := (^RO_Impl)(wj.obj_of(self).impl)
 	cb_host := m.host
 	// WJ_FETCH_STRING: grow the scratch until takeEntries fits.
-	n := wr_ResizeObserver_takeEntries(cb_host, wj.wj_scratch.data, wj.wj_scratch.cap)
+	n := wj.wr_ResizeObserver_takeEntries(cb_host, wj.wj_scratch.data, wj.wj_scratch.cap)
 	if n > 0 && u32(n) > wj.wj_scratch.cap {
-		if wj.wj_scratch_grow(u32(n)) { n = wr_ResizeObserver_takeEntries(cb_host, wj.wj_scratch.data, wj.wj_scratch.cap) }
+		if wj.wj_scratch_grow(u32(n)) { n = wj.wr_ResizeObserver_takeEntries(cb_host, wj.wj_scratch.data, wj.wj_scratch.cap) }
 	}
 	if n >= RE_BYTES {
 		buf := ([^]u8)(wj.libc_malloc(uint(n)))

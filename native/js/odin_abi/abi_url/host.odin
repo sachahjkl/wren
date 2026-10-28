@@ -100,10 +100,23 @@ build_registry :: proc() -> (reg: Registry) {
 	abi_host.bind(&reg, "URLSearchParams_set", api_decl.URLSearchParams_set, URLSearchParams_set)
 	abi_host.bind(&reg, "URLSearchParams_sort", api_decl.URLSearchParams_sort, URLSearchParams_sort)
 	abi_host.bind(&reg, "URLSearchParams_toString", api_decl.URLSearchParams_toString, URLSearchParams_toString)
-	abi_host.bind_manual(&reg, "URLPattern_create", URLPattern_create_manual)   // a dictionary argument: the escape hatch
+	abi_host.bind(&reg, "URLPattern_create", api_decl.URLPattern_create, URLPattern_create)
 	abi_host.bind(&reg, "URLPattern_component", api_decl.URLPattern_component, URLPattern_component)
 	abi_host.bind(&reg, "URLPattern_hasRegExpGroups", api_decl.URLPattern_hasRegExpGroups, URLPattern_hasRegExpGroups)
 	abi_host.bind(&reg, "URLPattern_test", api_decl.URLPattern_test, URLPattern_test)
+	// the boundary's own conformance functions (api_decl/abitest.odin), after the domain's
+	abi_host.bind(&reg, "Abi_Mix8", api_decl.Abi_Mix8, Abi_Mix8)
+	abi_host.bind(&reg, "Abi_Sum", api_decl.Abi_Sum, Abi_Sum)
+	abi_host.bind(&reg, "Abi_Split", api_decl.Abi_Split, Abi_Split)
+	abi_host.bind(&reg, "Abi_Opt", api_decl.Abi_Opt, Abi_Opt)
+	abi_host.bind(&reg, "Abi_Find", api_decl.Abi_Find, Abi_Find)
+	abi_host.bind(&reg, "Abi_Make", api_decl.Abi_Make, Abi_Make)
+	abi_host.bind(&reg, "Abi_Echo", api_decl.Abi_Echo, Abi_Echo)
+	// the URLSearchParams reads the JS binding uses (getAll, the iterators)
+	abi_host.bind(&reg, "URLSearchParams_count", api_decl.URLSearchParams_count, URLSearchParams_count)
+	abi_host.bind(&reg, "URLSearchParams_getNth", api_decl.URLSearchParams_getNth, URLSearchParams_getNth)
+	abi_host.bind(&reg, "URLSearchParams_nameAt", api_decl.URLSearchParams_nameAt, URLSearchParams_nameAt)
+	abi_host.bind(&reg, "URLSearchParams_valueAt", api_decl.URLSearchParams_valueAt, URLSearchParams_valueAt)
 	return
 }
 

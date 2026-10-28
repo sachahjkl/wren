@@ -145,8 +145,9 @@ if (-not $NoLto) { $cflags += '-flto' }
 $cflags += $ExtraFlags
 $sources = @('quickjs.c', 'libregexp.c', 'libunicode.c', 'dtoa.c') | ForEach-Object { Join-Path $qjs $_ }
 $sources += @(Get-ChildItem (Join-Path $native 'engine'), (Join-Path $native 'runtime'), (Join-Path $native 'gen') -Recurse -Filter *.c -ErrorAction SilentlyContinue | ForEach-Object FullName)
-# The C glue ported to Odin (native\js\odin\*.odin) has its C file dropped here; wj_shim.c (a tiny C accessor the glue
-# still needs) is compiled with the rest. Each ported domain adds its C file name to $odinified.
+# The C glue ported to Odin (native\js\odin\*.odin) has its C file dropped here; wj_shim.c (no code: the compile-time
+# layout checks of the C structs the Odin glue mirrors) is compiled with the rest. Each ported domain adds its C file
+# name to $odinified (one entry per line, sorted; docs\js\odin-glue.md).
 $odinified = @(
     'buffer.c',
     'console.c',
@@ -180,8 +181,6 @@ $odinified = @(
     'worker_scope.c'
 )
 $sources += (Join-Path $native 'odin\wj_shim.c')
-$sources += (Join-Path $native 'odin\wj_g2_shim.c')
-$sources += (Join-Path $native 'odin\wj_shim_g4.c')
 $sources = $sources | Where-Object { $odinified -notcontains (Split-Path $_ -Leaf) }
 if ($Allocator -eq 'mimalloc') {
     # the engine's heap through mimalloc (pinned), the C library's own through wasi-libc's dlmalloc
@@ -206,7 +205,7 @@ $t0 = Get-Date
 # is freestanding (no Odin runtime), -o:size to match the engine's size budget. The wjr_* functions it exports resolve
 # the forward references the generated binding table (gen\bindings.c) holds for the ported domains.
 $odinObj = Join-Path $out 'odin_glue.o'
-& odin build (Join-Path $native 'odin') -build-mode:obj -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -o:size -out:$odinObj
+& odin build (Join-Path $native 'odin') -build-mode:obj -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -vet -o:size -out:$odinObj
 if ($LASTEXITCODE -ne 0) { throw "odin build of native\js\odin failed" }
 # Compile each C translation unit to a native wasm object (LTO stays on *within* each TU via -O3; the cross-TU LTO of
 # the one-shot link is dropped only when an Odin object is linked in, see below), then link objects + Odin object.

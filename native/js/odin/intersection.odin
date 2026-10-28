@@ -35,7 +35,7 @@ io_free :: proc "c" (p: rawptr) {
 	m := (^IO_Impl)(p)
 	rt := wj.the_runtime(wj.wj_the_realm.ctx)
 	if m.slot > 0 && m.slot < io_slot_cap { io_slots[m.slot] = wj.UNDEFINED }
-	if m.host != 0 { wr_Object_release(m.host) }
+	if m.host != 0 { wj.wr_Object_release(m.host) }
 	wj.JS_FreeValueRT(rt, m.callback)
 	wj.JS_FreeValueRT(rt, m.root)
 	wj.JS_FreeValueRT(rt, m.thresholds)
@@ -64,7 +64,7 @@ io_of :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> ^IO_Impl {
 
 @(private = "file")
 io_sync_pin :: proc "c" (ctx: ^wj.Context, m: ^IO_Impl, self: wj.JSValue) {
-	n := wr_IntersectionObserver_observed(m.host)
+	n := wj.wr_IntersectionObserver_observed(m.host)
 	if n > 0 && m.pin == 0 { m.pin = wj.web_pin(ctx, self) }
 	else if n == 0 && m.pin != 0 { wj.web_unpin(ctx, m.pin); m.pin = 0 }
 }
@@ -126,9 +126,9 @@ entry_from_record :: proc "c" (ctx: ^wj.Context, p: [^]u8) -> wj.JSValue {
 // The records the browser queued, as an array of entries (it releases them). Exception pending: EXCEPTION.
 @(private = "file")
 take_entries :: proc "c" (ctx: ^wj.Context, m: ^IO_Impl) -> wj.JSValue {
-	n := wr_IntersectionObserver_takeRecords(m.host, wj.wj_scratch.data, wj.wj_scratch.cap)
+	n := wj.wr_IntersectionObserver_takeRecords(m.host, wj.wj_scratch.data, wj.wj_scratch.cap)
 	if n > 0 && u32(n) > wj.wj_scratch.cap {
-		if wj.wj_scratch_grow(u32(n)) { n = wr_IntersectionObserver_takeRecords(m.host, wj.wj_scratch.data, wj.wj_scratch.cap) }
+		if wj.wj_scratch_grow(u32(n)) { n = wj.wr_IntersectionObserver_takeRecords(m.host, wj.wj_scratch.data, wj.wj_scratch.cap) }
 	}
 	arr := wj.JS_NewArray(ctx)
 	if n < IO_RECORD_BYTES || wj.is_exception(arr) { return arr }
@@ -145,7 +145,7 @@ take_entries :: proc "c" (ctx: ^wj.Context, m: ^IO_Impl) -> wj.JSValue {
 		off += IO_RECORD_BYTES
 	}
 	wj.libc_free(buf)
-	wr_IntersectionObserver_release(m.host)
+	wj.wr_IntersectionObserver_release(m.host)
 	return result
 }
 
@@ -160,7 +160,7 @@ dlist_add :: proc "c" (ctx: ^wj.Context, item: wj.JSValue, opaque: rawptr) -> bo
 	if !wj.wj_to_double(ctx, item, &d, true) { return false }
 	if l.n == l.cap {
 		cap := l.cap != 0 ? l.cap * 2 : 8
-		q := ([^]f64)(wj.realloc(l.p, cap * size_of(f64)))
+		q := ([^]f64)(wj.libc_realloc(l.p, cap * size_of(f64)))
 		if q == nil { wj.JS_ThrowOutOfMemory(ctx); return false }
 		l.p = q
 		l.cap = cap
@@ -224,21 +224,21 @@ wjr_IntersectionObserver_constructor :: proc "c" (ctx: ^wj.Context, new_target: 
 		grew := true
 		if slot >= io_slot_cap {
 			cap := io_slot_cap != 0 ? io_slot_cap * 2 : 16
-			s := ([^]wj.JSValue)(wj.realloc(io_slots, uint(cap) * size_of(wj.JSValue)))
+			s := ([^]wj.JSValue)(wj.libc_realloc(io_slots, uint(cap) * size_of(wj.JSValue)))
 			if s == nil { wj.JS_ThrowOutOfMemory(ctx); grew = false }
 			else { for i := io_slot_cap; i < cap; i += 1 { s[i] = wj.UNDEFINED }; io_slots = s; io_slot_cap = cap }
 		}
 		if grew {
 			host := u64(0)
 			th_bytes := th.n > 0 ? ([^]u8)(th.p) : nil
-			st := wr_IntersectionObserver_create(u32(uintptr(rawptr(wj_cb_intersection))), slot, root,
+			st := wj.wr_IntersectionObserver_create(wj.table_index(rawptr(wj_cb_intersection)), slot, root,
 				([^]u8)(rawptr(init.rootMargin.ptr)), u32(init.rootMargin.len),
 				([^]u8)(rawptr(init.scrollMargin.ptr)), u32(init.scrollMargin.len),
 				th_bytes, u32(th.n * size_of(f64)), &host)
 			if st < 0 { wj.wj_throw_status(ctx, st, "IntersectionObserver") }
 			else {
-				m := (^IO_Impl)(wj.calloc(1, size_of(IO_Impl)))
-				if m == nil { wr_Object_release(host); wj.JS_ThrowOutOfMemory(ctx) }
+				m := (^IO_Impl)(wj.libc_calloc(1, size_of(IO_Impl)))
+				if m == nil { wj.wr_Object_release(host); wj.JS_ThrowOutOfMemory(ctx) }
 				else {
 					m.host = host
 					m.slot = slot
@@ -249,11 +249,11 @@ wjr_IntersectionObserver_constructor :: proc "c" (ctx: ^wj.Context, new_target: 
 					m.thresholds = wj.UNDEFINED
 					m.root_margin = wj.UNDEFINED
 					m.scroll_margin = wj.UNDEFINED
-					n := wr_IntersectionObserver_rootMargin(host, wj.wj_scratch.data, wj.wj_scratch.cap)
-					if n > 0 && u32(n) > wj.wj_scratch.cap { if wj.wj_scratch_grow(u32(n)) { n = wr_IntersectionObserver_rootMargin(host, wj.wj_scratch.data, wj.wj_scratch.cap) } }
+					n := wj.wr_IntersectionObserver_rootMargin(host, wj.wj_scratch.data, wj.wj_scratch.cap)
+					if n > 0 && u32(n) > wj.wj_scratch.cap { if wj.wj_scratch_grow(u32(n)) { n = wj.wr_IntersectionObserver_rootMargin(host, wj.wj_scratch.data, wj.wj_scratch.cap) } }
 					m.root_margin = string_result(ctx, n)
-					n = wr_IntersectionObserver_scrollMargin(host, wj.wj_scratch.data, wj.wj_scratch.cap)
-					if n > 0 && u32(n) > wj.wj_scratch.cap { if wj.wj_scratch_grow(u32(n)) { n = wr_IntersectionObserver_scrollMargin(host, wj.wj_scratch.data, wj.wj_scratch.cap) } }
+					n = wj.wr_IntersectionObserver_scrollMargin(host, wj.wj_scratch.data, wj.wj_scratch.cap)
+					if n > 0 && u32(n) > wj.wj_scratch.cap { if wj.wj_scratch_grow(u32(n)) { n = wj.wr_IntersectionObserver_scrollMargin(host, wj.wj_scratch.data, wj.wj_scratch.cap) } }
 					m.scroll_margin = string_result(ctx, n)
 					m.thresholds = wj.JS_NewArray(ctx)
 					for i in 0..<th.n { wj.array_set(ctx, m.thresholds, u32(i), wj.new_float64(ctx, th.p[i])) }
@@ -281,7 +281,7 @@ wjr_IntersectionObserver_observe :: proc "c" (ctx: ^wj.Context, this_val: wj.JSV
 	if argc < 1 { return wj.wj_throw_arity(ctx, "IntersectionObserver.observe", 1, argc) }
 	target: u64
 	if !wj.wj_to_handle(ctx, argv[0], iface_element(), false, &target, "Failed to execute 'observe' on 'IntersectionObserver': parameter 1 is not of type 'Element'.") { return wj.EXCEPTION }
-	st := wr_IntersectionObserver_observe(m.host, target)
+	st := wj.wr_IntersectionObserver_observe(m.host, target)
 	if st < 0 { return wj.wj_throw_status(ctx, st, "IntersectionObserver.observe") }
 	io_sync_pin(ctx, m, this_val)
 	return wj.UNDEFINED
@@ -294,7 +294,7 @@ wjr_IntersectionObserver_unobserve :: proc "c" (ctx: ^wj.Context, this_val: wj.J
 	if argc < 1 { return wj.wj_throw_arity(ctx, "IntersectionObserver.unobserve", 1, argc) }
 	target: u64
 	if !wj.wj_to_handle(ctx, argv[0], iface_element(), false, &target, "Failed to execute 'unobserve' on 'IntersectionObserver': parameter 1 is not of type 'Element'.") { return wj.EXCEPTION }
-	wr_IntersectionObserver_unobserve(m.host, target)
+	wj.wr_IntersectionObserver_unobserve(m.host, target)
 	io_sync_pin(ctx, m, this_val)
 	return wj.UNDEFINED
 }
@@ -303,7 +303,7 @@ wjr_IntersectionObserver_unobserve :: proc "c" (ctx: ^wj.Context, this_val: wj.J
 wjr_IntersectionObserver_disconnect :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	m := io_of(ctx, this_val)
 	if m == nil { return wj.EXCEPTION }
-	wr_IntersectionObserver_disconnect(m.host)
+	wj.wr_IntersectionObserver_disconnect(m.host)
 	io_sync_pin(ctx, m, this_val)
 	return wj.UNDEFINED
 }

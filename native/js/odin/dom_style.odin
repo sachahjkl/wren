@@ -80,11 +80,11 @@ style_get :: proc "c" (ctx: ^wj.Context, d: ^wj.Dom_Impl, name: [^]u8, length: u
 	n: i32
 	if d.kind == wj.DOM_STYLE_COMPUTED {
 		dn := d.name != nil ? d.name : wj.raw_bytes("")
-		n = wr_ComputedStyle_get(d.node, dn, u32(d.name_len), name, u32(length), wj.wj_scratch.data, wj.wj_scratch.cap)
-		if n > 0 && u32(n) > wj.wj_scratch.cap { if wj.wj_scratch_grow(u32(n)) { n = wr_ComputedStyle_get(d.node, dn, u32(d.name_len), name, u32(length), wj.wj_scratch.data, wj.wj_scratch.cap) } }
+		n = wj.wr_ComputedStyle_get(d.node, dn, u32(d.name_len), name, u32(length), wj.wj_scratch.data, wj.wj_scratch.cap)
+		if n > 0 && u32(n) > wj.wj_scratch.cap { if wj.wj_scratch_grow(u32(n)) { n = wj.wr_ComputedStyle_get(d.node, dn, u32(d.name_len), name, u32(length), wj.wj_scratch.data, wj.wj_scratch.cap) } }
 	} else {
-		n = wr_InlineStyle_getProperty(d.node, name, u32(length), wj.wj_scratch.data, wj.wj_scratch.cap)
-		if n > 0 && u32(n) > wj.wj_scratch.cap { if wj.wj_scratch_grow(u32(n)) { n = wr_InlineStyle_getProperty(d.node, name, u32(length), wj.wj_scratch.data, wj.wj_scratch.cap) } }
+		n = wj.wr_InlineStyle_getProperty(d.node, name, u32(length), wj.wj_scratch.data, wj.wj_scratch.cap)
+		if n > 0 && u32(n) > wj.wj_scratch.cap { if wj.wj_scratch_grow(u32(n)) { n = wj.wr_InlineStyle_getProperty(d.node, name, u32(length), wj.wj_scratch.data, wj.wj_scratch.cap) } }
 	}
 	return n < 0 ? wj.JS_NewString(ctx, "") : wj.JS_NewStringLen(ctx, wj.wj_scratch.data, uint(n))
 }
@@ -100,7 +100,7 @@ style_set :: proc "c" (ctx: ^wj.Context, d: ^wj.Dom_Impl, name: [^]u8, length: u
 	v, p: wj.Str
 	if !wj.wj_to_str(ctx, value, &v, wj.STR_NULL_EMPTY, "") { return wj.EXCEPTION }
 	if !wj.wj_to_str(ctx, priority, &p, wj.STR_NULL_EMPTY | wj.STR_OPTIONAL, "") { wj.wj_str_free(ctx, &v); return wj.EXCEPTION }
-	st := wr_InlineStyle_setProperty(d.node, name, u32(length), wj.cstr_bytes(v.ptr), u32(v.len), wj.cstr_bytes(p.ptr), u32(p.len))
+	st := wj.wr_InlineStyle_setProperty(d.node, name, u32(length), wj.cstr_bytes(v.ptr), u32(v.len), wj.cstr_bytes(p.ptr), u32(p.len))
 	wj.wj_str_free(ctx, &v)
 	wj.wj_str_free(ctx, &p)
 	return st < 0 ? wj.wj_throw_status(ctx, st, "CSSStyleDeclaration.setProperty") : wj.UNDEFINED
@@ -240,8 +240,8 @@ wjr_CSSStyleDeclaration_length_hook :: proc "c" (ctx: ^wj.Context, obj: wj.JSVal
 	o := wj.obj_of(obj)
 	d := o != nil ? (^wj.Dom_Impl)(o.impl) : nil
 	if d == nil { return 0 }
-	if d.kind == wj.DOM_STYLE_COMPUTED { return wr_ComputedStyle_count() }
-	if d.kind == wj.DOM_STYLE_INLINE { return wr_InlineStyle_length(d.node) }
+	if d.kind == wj.DOM_STYLE_COMPUTED { return wj.wr_ComputedStyle_count() }
+	if d.kind == wj.DOM_STYLE_INLINE { return wj.wr_InlineStyle_length(d.node) }
 	return 0
 }
 
@@ -249,11 +249,11 @@ wjr_CSSStyleDeclaration_length_hook :: proc "c" (ctx: ^wj.Context, obj: wj.JSVal
 item_of :: proc "c" (ctx: ^wj.Context, d: ^wj.Dom_Impl, i: u32) -> wj.JSValue {
 	n: i32
 	if d.kind == wj.DOM_STYLE_COMPUTED {
-		n = wr_ComputedStyle_name(i, wj.wj_scratch.data, wj.wj_scratch.cap)
-		if n > 0 && u32(n) > wj.wj_scratch.cap { if wj.wj_scratch_grow(u32(n)) { n = wr_ComputedStyle_name(i, wj.wj_scratch.data, wj.wj_scratch.cap) } }
+		n = wj.wr_ComputedStyle_name(i, wj.wj_scratch.data, wj.wj_scratch.cap)
+		if n > 0 && u32(n) > wj.wj_scratch.cap { if wj.wj_scratch_grow(u32(n)) { n = wj.wr_ComputedStyle_name(i, wj.wj_scratch.data, wj.wj_scratch.cap) } }
 	} else {
-		n = wr_InlineStyle_item(d.node, i, wj.wj_scratch.data, wj.wj_scratch.cap)
-		if n > 0 && u32(n) > wj.wj_scratch.cap { if wj.wj_scratch_grow(u32(n)) { n = wr_InlineStyle_item(d.node, i, wj.wj_scratch.data, wj.wj_scratch.cap) } }
+		n = wj.wr_InlineStyle_item(d.node, i, wj.wj_scratch.data, wj.wj_scratch.cap)
+		if n > 0 && u32(n) > wj.wj_scratch.cap { if wj.wj_scratch_grow(u32(n)) { n = wj.wr_InlineStyle_item(d.node, i, wj.wj_scratch.data, wj.wj_scratch.cap) } }
 	}
 	return n <= 0 ? wj.JS_NewString(ctx, "") : wj.JS_NewStringLen(ctx, wj.wj_scratch.data, uint(n))
 }
@@ -304,8 +304,8 @@ wjr_CSSStyleDeclaration_getPropertyPriority :: proc "c" (ctx: ^wj.Context, this_
 	if d.kind == wj.DOM_STYLE_COMPUTED { return wj.JS_NewString(ctx, "") }
 	s: wj.Str
 	if !wj.wj_to_str(ctx, argv[0], &s, 0, "") { return wj.EXCEPTION }
-	n := wr_InlineStyle_priority(d.node, wj.cstr_bytes(s.ptr), u32(s.len), wj.wj_scratch.data, wj.wj_scratch.cap)
-	if n > 0 && u32(n) > wj.wj_scratch.cap { if wj.wj_scratch_grow(u32(n)) { n = wr_InlineStyle_priority(d.node, wj.cstr_bytes(s.ptr), u32(s.len), wj.wj_scratch.data, wj.wj_scratch.cap) } }
+	n := wj.wr_InlineStyle_priority(d.node, wj.cstr_bytes(s.ptr), u32(s.len), wj.wj_scratch.data, wj.wj_scratch.cap)
+	if n > 0 && u32(n) > wj.wj_scratch.cap { if wj.wj_scratch_grow(u32(n)) { n = wj.wr_InlineStyle_priority(d.node, wj.cstr_bytes(s.ptr), u32(s.len), wj.wj_scratch.data, wj.wj_scratch.cap) } }
 	wj.wj_str_free(ctx, &s)
 	return n <= 0 ? wj.JS_NewString(ctx, "") : wj.JS_NewStringLen(ctx, wj.wj_scratch.data, uint(n))
 }
@@ -331,7 +331,7 @@ wjr_CSSStyleDeclaration_removeProperty :: proc "c" (ctx: ^wj.Context, this_val: 
 	s: wj.Str
 	if !wj.wj_to_str(ctx, argv[0], &s, 0, "") { return wj.EXCEPTION }
 	// not retried: the removal happens once
-	n := wr_InlineStyle_removeProperty(d.node, wj.cstr_bytes(s.ptr), u32(s.len), wj.wj_scratch.data, wj.wj_scratch.cap)
+	n := wj.wr_InlineStyle_removeProperty(d.node, wj.cstr_bytes(s.ptr), u32(s.len), wj.wj_scratch.data, wj.wj_scratch.cap)
 	wj.wj_str_free(ctx, &s)
 	if n < 0 { return wj.wj_throw_status(ctx, n, "CSSStyleDeclaration.removeProperty") }
 	if u32(n) > wj.wj_scratch.cap { n = i32(wj.wj_scratch.cap) }
@@ -343,8 +343,8 @@ wjr_CSSStyleDeclaration_get_cssText :: proc "c" (ctx: ^wj.Context, this_val: wj.
 	d := style_of_this(ctx, this_val)
 	if d == nil { return wj.EXCEPTION }
 	if d.kind == wj.DOM_STYLE_COMPUTED { return wj.JS_NewString(ctx, "") }
-	n := wr_InlineStyle_cssText(d.node, wj.wj_scratch.data, wj.wj_scratch.cap)
-	if n > 0 && u32(n) > wj.wj_scratch.cap { if wj.wj_scratch_grow(u32(n)) { n = wr_InlineStyle_cssText(d.node, wj.wj_scratch.data, wj.wj_scratch.cap) } }
+	n := wj.wr_InlineStyle_cssText(d.node, wj.wj_scratch.data, wj.wj_scratch.cap)
+	if n > 0 && u32(n) > wj.wj_scratch.cap { if wj.wj_scratch_grow(u32(n)) { n = wj.wr_InlineStyle_cssText(d.node, wj.wj_scratch.data, wj.wj_scratch.cap) } }
 	return n <= 0 ? wj.JS_NewString(ctx, "") : wj.JS_NewStringLen(ctx, wj.wj_scratch.data, uint(n))
 }
 
@@ -355,7 +355,7 @@ wjr_CSSStyleDeclaration_set_cssText :: proc "c" (ctx: ^wj.Context, this_val: wj.
 	if d.kind == wj.DOM_STYLE_COMPUTED { return read_only_err(ctx) }
 	s: wj.Str
 	if !wj.wj_to_str(ctx, v, &s, wj.STR_NULL_EMPTY, "") { return wj.EXCEPTION }
-	st := wr_InlineStyle_setCssText(d.node, wj.cstr_bytes(s.ptr), u32(s.len))
+	st := wj.wr_InlineStyle_setCssText(d.node, wj.cstr_bytes(s.ptr), u32(s.len))
 	wj.wj_str_free(ctx, &s)
 	return st < 0 ? wj.wj_throw_status(ctx, st, "CSSStyleDeclaration.cssText") : wj.UNDEFINED
 }
@@ -386,10 +386,10 @@ wjr_CSS_supports :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32,
 	r: bool
 	if argc >= 2 {
 		if !wj.wj_to_str(ctx, argv[1], &b, 0, "") { wj.wj_str_free(ctx, &a); return wj.EXCEPTION }
-		r = wr_CSS_supportsDeclaration(wj.cstr_bytes(a.ptr), u32(a.len), wj.cstr_bytes(b.ptr), u32(b.len)) != 0
+		r = wj.wr_CSS_supportsDeclaration(wj.cstr_bytes(a.ptr), u32(a.len), wj.cstr_bytes(b.ptr), u32(b.len)) != 0
 		wj.wj_str_free(ctx, &b)
 	} else {
-		r = wr_CSS_supportsCondition(wj.cstr_bytes(a.ptr), u32(a.len)) != 0
+		r = wj.wr_CSS_supportsCondition(wj.cstr_bytes(a.ptr), u32(a.len)) != 0
 	}
 	wj.wj_str_free(ctx, &a)
 	return wj.new_bool(r)
