@@ -58,7 +58,7 @@ devtools_window_make :: proc(app: ^App) {
 	// where it was when it last closed (physical screen pixels), fitted to a monitor that is there now (set_placement), before it
 	// is shown: a size of 0 means it was never saved, and the system places it at its default size next to the browser window
 	placed := devtools_window_restore_placement(app, w)
-	if !app.headless {   // (a headless browser shows no window: the panel's is drawn all the same, for wren ctl)
+	if windows_shown(app) {   // (a headless browser shows no window: the panel's is drawn all the same, for wren ctl)
 		platform.show_window(w)
 		// above the browser window it came from; a saved placement keeps its own position (SWP_NOMOVE), an unsaved one is left where
 		// the system opened it near the browser window
@@ -104,7 +104,7 @@ devtools_attach :: proc(app: ^App) {
 	// remember where the window is, so it comes back there next session; not for a headless window (never shown, no placement to keep).
 	// The window may already have had WM_CLOSE (closed by its X: is_closed is true), but its HWND is alive until destroy_window below,
 	// so GetWindowPlacement still reads the rectangle it had.
-	if !app.headless { devtools_window_save_placement(app, dw.win) }
+	if windows_shown(app) { devtools_window_save_placement(app, dw.win) }
 	d.win = nil
 	ui.destroy(&dw.ui)
 	ui.use(active_window(app).ui)

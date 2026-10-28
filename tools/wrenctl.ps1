@@ -77,12 +77,13 @@ function Note-WrenStart([string]$What) {
 
 # Starts a Wren in the background and selects it ($env:WREN_REMOTE); returns its name.
 function Start-Wren {
-    param([string]$Size = '1280x800', [double]$Dpi = 0, [string]$ProfileDir = '', [switch]$Visible, [string]$Url = '', [string]$Name = '', [string[]]$Pref = @())
+    param([string]$Size = '1280x800', [double]$Dpi = 0, [string]$ProfileDir = '', [switch]$Visible, [switch]$Headless, [string]$Url = '', [string]$Name = '', [string[]]$Pref = @())
     $a = @('start')
     if ($Size) { $a += @('--size', $Size) }
     if ($Dpi -gt 0) { $a += @('--dpi', "$Dpi") }
     if ($ProfileDir) { $a += @('--profile', $ProfileDir) }
     if ($Visible) { $a += '--visible' }
+    if ($Headless) { $a += '--headless' }
     if ($Name) { $a += @('--name', $Name) }
     foreach ($p in $Pref) { $a += @('--pref', $p) }
     if ($Url) { $a += $Url }
@@ -131,6 +132,7 @@ function Wren-Run {
     if ($Eval) { $a += @('--eval', $Eval) }
     if ($ProfileDir) { $a += @('--profile', $ProfileDir) }
     if ($Visible) { $a += '--visible' }
+    if ($Headless) { $a += '--headless' }
     if ($Timing) { $a += '--timing' }
     if ($Url) { $a += $Url }
     Note-WrenStart 'run'

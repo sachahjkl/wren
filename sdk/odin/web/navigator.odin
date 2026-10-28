@@ -31,6 +31,8 @@ foreign _m_navigator {
 	@(link_name = "Navigator_onLine") _Navigator_onLine :: proc() -> i32 ---
 	@(link_name = "Navigator_maxTouchPoints") _Navigator_maxTouchPoints :: proc() -> i32 ---
 	@(link_name = "Navigator_cookieEnabled") _Navigator_cookieEnabled :: proc() -> i32 ---
+	@(link_name = "UserActivation_isActive") _UserActivation_isActive :: proc() -> i32 ---
+	@(link_name = "UserActivation_hasBeenActive") _UserActivation_hasBeenActive :: proc() -> i32 ---
 	@(link_name = "Beacon_send") _Beacon_send :: proc(url: [^]u8, url_len: u32, data: [^]u8, data_len: u32, content_type: [^]u8, content_type_len: u32) -> i32 ---
 	@(link_name = "Clipboard_writeText") _Clipboard_writeText :: proc(data: [^]u8, data_len: u32) -> Promise ---
 	@(link_name = "Clipboard_readText") _Clipboard_readText :: proc() -> Promise ---
@@ -83,6 +85,18 @@ Navigator_maxTouchPoints :: proc "contextless" () -> i32 {
 // navigator.cookieEnabled: whether the document may use cookies.
 Navigator_cookieEnabled :: proc "contextless" () -> bool {
 	return _Navigator_cookieEnabled() != 0
+}
+
+// navigator.userActivation.isActive: whether the document has transient activation now (a recent click or key press
+// within the transient activation window, security.webauthn.user_activation_ms).
+UserActivation_isActive :: proc "contextless" () -> bool {
+	return _UserActivation_isActive() != 0
+}
+
+// navigator.userActivation.hasBeenActive: whether the document has ever had an activation-triggering input (sticky:
+// it does not expire).
+UserActivation_hasBeenActive :: proc "contextless" () -> bool {
+	return _UserActivation_hasBeenActive() != 0
 }
 
 // navigator.sendBeacon(url, data): a POST queued with the page's policy (CORS no-cors mode, credentials included),

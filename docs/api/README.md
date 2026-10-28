@@ -75,7 +75,7 @@ function not exposed to workers is not instantiated.
 | [`entries`](entries.md) | 12 | Window | The File and Directory Entries API for what the user dropped (src/page/dnd_entries.odin; |
 | [`scripts`](scripts.md) | 25 | Window, Worker | Script loading, the event loop and JavaScript workers as the engine needs them (HTML "scripting"): document.write / |
 | [`storageaccess`](storageaccess.md) | 2 | Window | The Storage Access API (src/page/storage_access.odin): a frame of another site than its tab's, whose storage and |
-| [`navigator`](navigator.md) | 8 | Window, Worker | What the web APIs of JavaScript need beyond the modules Wasm pages use (native/js/runtime/web*.c): the browser's |
+| [`navigator`](navigator.md) | 10 | Window, Worker | What the web APIs of JavaScript need beyond the modules Wasm pages use (native/js/runtime/web*.c): the browser's |
 | [`media`](media.md) | 4 | Window |  |
 | [`htmlmedia`](htmlmedia.md) | 37 | Window | HTMLMediaElement (<video>, <audio>): the media element state machine of HTML §4.8.11 (src/page/media_element.odin) on the |
 | [`mse`](mse.md) | 35 | Window, Worker | Media Source Extensions: MediaSource, SourceBuffer and SourceBufferList (src/page/media_source.odin). A SourceBuffer holds |
@@ -93,4 +93,4 @@ function not exposed to workers is not instantiated.
 | [`websocket`](websocket.md) | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | 11 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-1292 imports in 1193 functions.
+1294 imports in 1195 functions.

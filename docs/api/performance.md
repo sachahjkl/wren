@@ -32,6 +32,8 @@ shifts, the element timing entries and the visibility-state changes.
 | `Layout_Shift` | 10 |  |%!(EXTRA false)
 | `Element` | 11 |  |%!(EXTRA false)
 | `Visibility_State` | 12 |  |%!(EXTRA false)
+| `Long_Animation_Frame` | 13 |  |%!(EXTRA false)
+| `Script` | 14 |  |%!(EXTRA false)
 
 ### callback `TimelineCallback`
 

@@ -24,6 +24,8 @@ PerformanceEntryType :: enum i32 {
 	Layout_Shift = 10,
 	Element = 11,
 	Visibility_State = 12,
+	Long_Animation_Frame = 13,
+	Script = 14,
 }
 
 // A function of the realm the browser calls when a kind of timeline entry it was asked for (Performance_timelineInterest)

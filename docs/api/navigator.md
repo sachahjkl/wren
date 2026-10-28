@@ -74,6 +74,28 @@ navigator.cookieEnabled: whether the document may use cookies.
 
 Host: `Navigator_cookieEnabled :: proc(c: ^Call) -> bool`
 
+### `UserActivation_isActive`
+
+```
+bool UserActivation_isActive()
+```
+
+navigator.userActivation.isActive: whether the document has transient activation now (a recent click or key press
+within the transient activation window, security.webauthn.user_activation_ms).
+
+Host: `UserActivation_isActive :: proc(c: ^Call) -> bool`
+
+### `UserActivation_hasBeenActive`
+
+```
+bool UserActivation_hasBeenActive()
+```
+
+navigator.userActivation.hasBeenActive: whether the document has ever had an activation-triggering input (sticky:
+it does not expire).
+
+Host: `UserActivation_hasBeenActive :: proc(c: ^Call) -> bool`
+
 ### `Beacon_send`
 
 ```
