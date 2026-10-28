@@ -36,6 +36,14 @@ Value_Payload :: struct #raw_union {
 	i:   i32,
 	f:   f64,
 	ptr: rawptr,
+	cv:  Catch_Mark,
+}
+
+// A catch-offset marker: the handler pc, and a tag of the function that pushed it (a marker smuggled
+// into another frame by malformed bytecode is ignored there).
+Catch_Mark :: struct {
+	pos:   i32,
+	owner: u32,
 }
 
 Value :: struct {
@@ -54,7 +62,9 @@ FALSE := Value{tag = .bool, u = {b = false}}
 mk_bool :: #force_inline proc "contextless" (v: bool) -> Value {return Value{tag = .bool, u = {b = v}}}
 mk_int :: #force_inline proc "contextless" (v: i32) -> Value {return Value{tag = .int, u = {i = v}}}
 mk_float :: #force_inline proc "contextless" (v: f64) -> Value {return Value{tag = .float, u = {f = v}}}
-mk_catch :: #force_inline proc "contextless" (pc: i32) -> Value {return Value{tag = .catch_offset, u = {i = pc}}}
+mk_catch :: #force_inline proc "contextless" (pc: i32, owner: rawptr) -> Value {
+	return Value{tag = .catch_offset, u = {cv = {pos = pc, owner = u32(uintptr(owner))}}}
+}
 
 // A Number, kept in the int lane when it is an integer in range and not -0.
 mk_number :: #force_inline proc "contextless" (v: f64) -> Value {

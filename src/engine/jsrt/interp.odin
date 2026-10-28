@@ -9,6 +9,16 @@ package jsrt
 // (offset 0 marks a for-of iterator to close). Coroutine frames (generators, async functions) return
 // to their driver with the kind of suspension.
 
+import "core:reflect"
+
+// Debug aid: remember the last instruction of the hot loop too (for the "ran past its end" error).
+JSRT_TRACE_LAST_OP :: #config(JSRT_TRACE_LAST_OP, false)
+trace_last_op: Opcode
+trace_last_bc: ^Function_Bytecode
+trace_native: Native_Proc
+trace_native_obj: ^Object
+trace_native_args: []Value
+
 Exit_Kind :: enum u8 {
 	ret,           // normal function return: the Value is the result
 	exception,     // the Value is EXCEPTION
@@ -52,6 +62,12 @@ Special_Object :: enum u8 {
 	null_proto,
 }
 
+@(private = "file")
+fmt_opcode :: proc(op: Opcode) -> string {
+	s := reflect.enum_string(op)
+	return s != "" ? s : "?"
+}
+
 // The reader verified every operand index, jump target and the operand stack height of each
 // instruction (serialize.odin, verify_function / verify_stack); the bounds checks stay on (turning
 // them off measured slower with the current code generation).
@@ -69,6 +85,7 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 	is_coro := b.func_kind != .normal
 	ret_val: Value
 	caller_ctx := f.caller_ctx != nil ? f.caller_ctx : ctx
+	prev_op := Opcode.invalid
 
 	// a coroutine resumed with throw() enters straight into the unwinder with the exception pending
 	exc := f.pending_throw
@@ -81,7 +98,9 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 			// its own (fewer live values than the full dispatch below, so they stay in registers).
 			// Anything else leaves with pc on the instruction, for the full dispatch.
 			hot: for {
+				if pc >= len(code) {break hot}
 				hop := Opcode(code[pc])
+				when JSRT_TRACE_LAST_OP {prev_op = hop; trace_last_op = hop; trace_last_bc = b}
 				#partial switch hop {
 				case .get_loc0, .get_loc1, .get_loc2, .get_loc3:
 					stack[sp] = locals[int(hop) - int(Opcode.get_loc0)]
@@ -250,7 +269,15 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 					break hot
 				}
 			}
+			if pc >= len(code) {
+				// only reachable with inconsistent bytecode: fail the call rather than the process
+				throw_internal_error(ctx, cat(ctx, "bytecode ran past its end in ", atom_utf8(rt, b.func_name), " after ", fmt_opcode(prev_op)))
+				exc = true
+				continue
+			}
 			op := Opcode(code[pc])
+			prev_op = op
+			when JSRT_TRACE_LAST_OP {trace_last_op = op; trace_last_bc = b}
 			pc += 1
 			#partial switch op {
 			case .push_i32:
@@ -1135,7 +1162,7 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 				}
 			case .op_catch:
 				d := rd_i32(code, pc)
-				stack[sp] = mk_catch(i32(pc + d))
+				stack[sp] = mk_catch(i32(pc + d), b)
 				sp += 1
 				pc += 4
 			case .gosub:
@@ -1261,7 +1288,7 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 				m := get(ctx, it, pa(.A_next))
 				if is_exception(m) {exc = true; break}
 				stack[sp] = m
-				stack[sp + 1] = mk_catch(0)
+				stack[sp + 1] = mk_catch(0, b)
 				sp += 2
 			case .for_of_next:
 				offset := -3 - int(i8(code[pc]))
@@ -1694,7 +1721,11 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 				sp -= 1
 				v := stack[sp]
 				if v.tag == .catch_offset {
-					pos := int(v.u.i)
+					pos := int(v.u.cv.pos)
+					if v.u.cv.owner != u32(uintptr(b)) || pos < 0 || pos >= len(code) || (pos == 0 && sp < 2) {
+						continue // a marker that cannot be this frame's (malformed bytecode moved it)
+					}
+					if pos != 0 && catch_level_at(b, pos) != sp + 1 {continue} // not at its verified height
 					if pos == 0 {
 						// a for-of iterator: close it, keeping the pending exception
 						sp -= 1

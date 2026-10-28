@@ -20,8 +20,9 @@ if ($BuildQjs -or -not (Test-Path build\qjs_ref.exe)) {
     & $zig cc -target x86_64-windows-gnu -O2 -funsigned-char -DQUICKJS_NG_BUILD -D_GNU_SOURCE -DWIN32_LEAN_AND_MEAN -D_CRT_SECURE_NO_WARNINGS -I $q "$q\qjs.c" "$q\quickjs-libc.c" "$q\quickjs.c" "$q\libregexp.c" "$q\libunicode.c" "$q\dtoa.c" $stub -o build\qjs_ref.exe
 }
 . tools\test_env.ps1 -ErrorAction SilentlyContinue 2>$null
-function Run-Case([string]$exe, [string[]]$args) {
-    $out = & $exe @args 2>&1 | Out-String
+function Run-Case([string]$exe, [string[]]$argv) {
+    $ErrorActionPreference = "Continue"
+    $out = & $exe @argv 2>$null | Out-String
     $r = @{}
     foreach ($line in ($out -split "`n")) {
         $p = $line.Trim() -split "`t"

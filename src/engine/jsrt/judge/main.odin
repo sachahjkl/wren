@@ -30,6 +30,9 @@ import "core:time"
 import js "wb:engine/jsrt"
 import jsdate "wb:engine/datetime"
 
+// The judge is linked with a 64 MiB main-thread stack (/STACK, see tools/jsrt_test262.ps1); the engine may use 48 MiB of it.
+JUDGE_STACK_BYTES :: 48 << 20
+
 // Monotonic clock for GC statistics, wall clock for Date; local time is UTC in the judge.
 set_host_hooks :: proc() {
 	js.clock_hook = proc() -> i64 {return time.tick_now()._nsec}
@@ -534,6 +537,7 @@ run_test262_file :: proc(cfg: ^Config, hc: ^Harness_Cache, rel: string, verbose:
 	strings.builder_init(&h.output)
 	cfgr := js.DEFAULT_CONFIG
 	cfgr.compile = judge_compile
+	cfgr.max_stack_bytes = JUDGE_STACK_BYTES
 	cfgr.load_module = judge_load_module
 	cfgr.load_user = h
 	cfgr.interrupt = judge_interrupt
@@ -958,6 +962,7 @@ eval_main :: proc(path: string) -> int {
 	strings.builder_init(&h.output)
 	cfgr := js.DEFAULT_CONFIG
 	cfgr.compile = judge_compile
+	cfgr.max_stack_bytes = JUDGE_STACK_BYTES
 	cfgr.load_module = judge_load_module
 	cfgr.load_user = h
 	cfgr.interrupt = judge_interrupt
@@ -1014,6 +1019,8 @@ main :: proc() {
 	case "eval":
 		if len(args) < 3 {os.exit(2)}
 		os.exit(eval_main(args[2]))
+	case "fuzz", "fuzzrun", "compile":
+		os.exit(fuzz_args(args))
 	case "worker":
 		if len(args) < 5 {os.exit(2)}
 		os.exit(worker_main(args[2], args[3], args[4]))

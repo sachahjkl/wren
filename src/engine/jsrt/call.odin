@@ -287,7 +287,7 @@ call_internal :: proc(ctx: ^Context, f: Value, this: Value, new_target: Value, a
 	rt := ctx.rt
 	if f.tag != .object {return throw_not_a_function(ctx)}
 	o := as_obj(f)
-	if rt.stack_depth >= rt.config.max_stack_depth {return stack_overflow(ctx)}
+	if rt.stack_depth >= rt.config.max_stack_depth || stack_exhausted(rt) {return stack_overflow(ctx)}
 	#partial switch o.class {
 	case .bytecode_function:
 		fd := &o.data.(Func_Data)
@@ -357,6 +357,7 @@ call_native :: proc(ctx: ^Context, o: ^Object, nd: ^Native_Data, this: Value, ar
 	if !gc_safepoint(ctx) {return EXCEPTION}
 	saved := rt.native_self
 	rt.native_self = o
+	when JSRT_TRACE_LAST_OP {trace_native = nd.fn; trace_native_obj = o; trace_native_args = args}
 	rt.stack_depth += 1
 	r := nd.fn(realm, this, args, nd.magic)
 	rt.stack_depth -= 1
@@ -479,7 +480,7 @@ coro_frame_free :: proc(rt: ^Runtime, f: ^Frame) {
 // Resume a suspended coroutine frame until it yields, awaits, returns or throws.
 coro_resume :: proc(ctx: ^Context, f: ^Frame) -> (Value, Exit_Kind) {
 	rt := ctx.rt
-	if rt.stack_depth >= rt.config.max_stack_depth {
+	if rt.stack_depth >= rt.config.max_stack_depth || stack_exhausted(rt) {
 		stack_overflow(ctx)
 		return EXCEPTION, .exception
 	}

@@ -102,8 +102,10 @@ generator_function_call :: proc(ctx: ^Context, fo: ^Object, this: Value, args: [
 	co := coro_new(ctx, .generator, g, fo, this, args)
 	co.state = .suspended_start
 	_, k := coro_resume(ctx, co.frame)
-	if k == .exception {
+	if k != .initial_yield {
+		// malformed bytecode: a generator body must stop at OP_initial_yield first
 		coro_complete(rt, co)
+		if k != .exception {throw_internal_error(ctx, "generator without initial_yield")}
 		return EXCEPTION
 	}
 	proto, ok := proto_from_ctor(ctx, mk_obj(fo), .generator)
@@ -262,8 +264,10 @@ async_generator_function_call :: proc(ctx: ^Context, fo: ^Object, this: Value, a
 	co := coro_new(ctx, .async_generator, g, fo, this, args)
 	co.state = .suspended_start
 	_, k := coro_resume(ctx, co.frame)
-	if k == .exception {
+	if k != .initial_yield {
+		// malformed bytecode: a generator body must stop at OP_initial_yield first
 		coro_complete(rt, co)
+		if k != .exception {throw_internal_error(ctx, "generator without initial_yield")}
 		return EXCEPTION
 	}
 	proto, ok := proto_from_ctor(ctx, mk_obj(fo), .async_generator)
