@@ -148,6 +148,8 @@ $sources += @(Get-ChildItem (Join-Path $native 'engine'), (Join-Path $native 'ru
 # The C glue ported to Odin (native\js\odin\*.odin) has its C file dropped here; wj_shim.c (a tiny C accessor the glue
 # still needs) is compiled with the rest. Each ported domain adds its C file name to $odinified.
 $odinified = @(
+    'buffer.c',
+    'console.c',
     'custom_elements.c',
     'dom_forms.c',
     'dom_layout.c',
@@ -155,24 +157,34 @@ $odinified = @(
     'dom_style.c',
     'dom_touch.c',
     'intersection.c',
+    'promise.c',
     'qjs_convert.c',
+    'reflect.c',
     'shared_workers.c',
+    'timers.c',
     'web_broadcast.c',
     'web_crypto.c',
     'web_encoding.c',
     'web_fullscreen.c',
     'web_location.c',
+    'web_media.c',
+    'web_mediaobjects.c',
     'web_navtiming.c',
     'web_resize.c',
     'web_storage.c',
     'web_strategy.c',
+    'web_tracks.c',
     'web_url.c',
     'web_urlpattern.c',
     'window.c',
     'worker_scope.c'
 )
 $sources += (Join-Path $native 'odin\wj_shim.c')
+$odinified = @(
+
+)
 $sources += (Join-Path $native 'odin\wj_g2_shim.c')
+$sources += (Join-Path $native 'odin\wj_shim_g4.c')
 $sources = $sources | Where-Object { $odinified -notcontains (Split-Path $_ -Leaf) }
 if ($Allocator -eq 'mimalloc') {
     # the engine's heap through mimalloc (pinned), the C library's own through wasi-libc's dlmalloc
