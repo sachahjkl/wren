@@ -20,7 +20,7 @@ freestanding build with a `#+build` tag.
 The tables are **generated** from the authoritative Unicode Character Database, not copied from QuickJS's
 `libunicode-table.h`:
 
-- `tools/gen_unicode.ps1` downloads the pinned UCD files for a fixed Unicode release (16.0.0), verifies each
+- `tools/gen_unicode.ps1` downloads the pinned UCD files for a fixed Unicode release (17.0.0, the version QuickJS-ng 0.17 ships), verifies each
   file's SHA-256 (the same idiom as `tools/build_js.ps1`), then runs the generator.
 - `src/engine/unicode/gen/` (an Odin program) parses the UCD text and writes `tables_generated.odin`: sorted
   half-open interval runs for every property / category / script, simple and full case/fold tables, and the
@@ -70,5 +70,5 @@ canonical composition for the C forms, with the algorithmic Hangul rules built i
 
 `tools/rx_diff.ps1` builds a native reference library from QuickJS-ng 0.17's `libunicode.c` and compares this
 package against it over every code point and thousands of random normalization inputs. See `docs/engine/regexp.md`
-for the results and the one known caveat (a Unicode data-version skew between UCD 16.0.0 and the table QuickJS
-ships).
+for the results. The UCD pin follows QuickJS-ng (17.0.0) so the identifier, case-folding and property data agree
+with the reference engine.
