@@ -615,8 +615,8 @@ interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int
 			if t == (op == .if_true8) {
 				if d < 0 {
 					if temp.len > regs.root_base {temp.len = regs.root_base}
-					rt.interrupt_counter += 1
-					if rt.interrupt_counter >= 10_000 || gc_should_run(rt) {break loop}
+					rt.edge_budget -= 1
+					if rt.edge_budget <= 0 {break loop}
 				}
 				ip = intrinsics.ptr_offset(ip, 1 + d)
 			} else {
@@ -630,8 +630,8 @@ interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int
 			if t == (op == .if_true) {
 				if d < 0 {
 					if temp.len > regs.root_base {temp.len = regs.root_base}
-					rt.interrupt_counter += 1
-					if rt.interrupt_counter >= 10_000 || gc_should_run(rt) {break loop}
+					rt.edge_budget -= 1
+					if rt.edge_budget <= 0 {break loop}
 				}
 				ip = intrinsics.ptr_offset(ip, 1 + d)
 			} else {
@@ -642,24 +642,24 @@ interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int
 			d := int(i8(ip[1]))
 			if d < 0 {
 				if temp.len > regs.root_base {temp.len = regs.root_base}
-				rt.interrupt_counter += 1
-				if rt.interrupt_counter >= 10_000 || gc_should_run(rt) {break loop}
+				rt.edge_budget -= 1
+				if rt.edge_budget <= 0 {break loop}
 			}
 			ip = intrinsics.ptr_offset(ip, 1 + d)
 		case .goto16:
 			d := int(i16(u16(rd16(ip[1:]))))
 			if d < 0 {
 				if temp.len > regs.root_base {temp.len = regs.root_base}
-				rt.interrupt_counter += 1
-				if rt.interrupt_counter >= 10_000 || gc_should_run(rt) {break loop}
+				rt.edge_budget -= 1
+				if rt.edge_budget <= 0 {break loop}
 			}
 			ip = intrinsics.ptr_offset(ip, 1 + d)
 		case .goto:
 			d := int(i32(rd32(ip[1:])))
 			if d < 0 {
 				if temp.len > regs.root_base {temp.len = regs.root_base}
-				rt.interrupt_counter += 1
-				if rt.interrupt_counter >= 10_000 || gc_should_run(rt) {break loop}
+				rt.edge_budget -= 1
+				if rt.edge_budget <= 0 {break loop}
 			}
 			ip = intrinsics.ptr_offset(ip, 1 + d)
 
