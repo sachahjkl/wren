@@ -57,6 +57,8 @@ Module :: struct {
 	resolve:         Value,
 	reject:          Value,
 	host_data:       rawptr,
+	native_init:     rawptr, // a module made by the host (C API JS_NewCModule): its init function, until it ran
+	private:         Value,  // host-owned value (JS_SetModulePrivateValue)
 }
 
 module_new :: proc(ctx: ^Context, name: Atom) -> ^Module {
@@ -75,6 +77,7 @@ module_new :: proc(ctx: ^Context, name: Atom) -> ^Module {
 	m.promise = UNDEFINED
 	m.resolve = UNDEFINED
 	m.reject = UNDEFINED
+	m.private = UNDEFINED
 	return m
 }
 
@@ -100,6 +103,7 @@ module_trace :: proc(rt: ^Runtime, m: ^Module) {
 	mark_cell(rt, m.cycle_root)
 	for p in m.async_parents {mark_cell(rt, p)}
 	mark_value(rt, m.eval_exception)
+	mark_value(rt, m.private)
 	mark_value(rt, m.promise)
 	mark_value(rt, m.resolve)
 	mark_value(rt, m.reject)
@@ -116,7 +120,6 @@ find_module_by_name :: proc(rt: ^Runtime, name: Atom) -> ^Module {
 }
 
 // HostLoadImportedModule through the embedding hook.
-@(private = "file")
 host_load :: proc(ctx: ^Context, referrer: Atom, spec: Atom, attr_type := "") -> ^Module {
 	rt := ctx.rt
 	if rt.config.load_module == nil {
@@ -248,6 +251,7 @@ local_export_ref :: proc(ctx: ^Context, m: ^Module, me: ^Export_Entry, depth := 
 create_module_function :: proc(ctx: ^Context, m: ^Module) {
 	if m.func_created {return}
 	m.func_created = true
+	if m.func_bc == nil {return} // a module made by the host has no body
 	rt := ctx.rt
 	b := m.func_bc
 	fo := object_new_proto(ctx, ctx.function_proto, .bytecode_function)
@@ -726,8 +730,7 @@ import_rejected :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -
 	return UNDEFINED
 }
 
-// The job that performs a dynamic import. args: [resolve, reject, referrer, specifier]
-@(private = "file")
+// The job that performs a dynamic import. args: [resolve, reject, referrer, specifier, attributes]
 dynamic_import_job :: proc(ctx: ^Context, args: []Value) -> Value {
 	rt := ctx.rt
 	resolve, reject := args[0], args[1]
@@ -804,6 +807,11 @@ dynamic_import :: proc(ctx: ^Context, f: ^Frame, specifier: Value, options: Valu
 				define_value(ctx, ao, k, v, CWE)
 			}
 		}
+	}
+	if rt.config.dynamic_import != nil {
+		// the host fetches the graph itself and settles the promise
+		if !rt.config.dynamic_import(ctx, referrer, s, attrs, cap.resolve, cap.reject, rt.config.dynamic_import_user) {return fail(ctx, cap)}
+		return cap.promise
 	}
 	enqueue_job(ctx, dynamic_import_job, {cap.resolve, cap.reject, referrer, s, attrs})
 	return cap.promise

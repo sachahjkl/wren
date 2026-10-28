@@ -56,6 +56,17 @@ Host_Config :: struct {
 	atomics_wait:    proc(user: rawptr, addr: rawptr, size: int, expected: u64, timeout_ms: f64) -> Wait_Result,
 	atomics_notify:  proc(user: rawptr, addr: rawptr, count: f64) -> int,
 	atomics_user:    rawptr,
+	// Called at the start of every collection, before anything is marked.
+	gc_prologue:      proc(rt: ^Runtime, user: rawptr),
+	gc_prologue_user: rawptr,
+	// Host hooks that run script-adjacent policy (the C API's JS_SetCompileStringsHook / dynamic import).
+	// compile_strings: called before eval() / Function() compile a string; false with an exception pending refuses.
+	compile_strings:      proc(ctx: ^Context, source: Value, direct: bool, user: rawptr) -> bool,
+	compile_strings_user: rawptr,
+	// import(): the host takes the request instead of load_module; resolve and reject are the promise's
+	// resolving functions. false with an exception pending rejects the promise at once.
+	dynamic_import:      proc(ctx: ^Context, base: Value, specifier: Value, attributes: Value, resolve: Value, reject: Value, user: rawptr) -> bool,
+	dynamic_import_user: rawptr,
 }
 
 Wait_Result :: enum u8 {ok, not_equal, timed_out}
@@ -102,7 +113,10 @@ Runtime :: struct {
 	peak_heap_bytes:  i64,
 	gray:           [dynamic]^Cell,
 	temp_roots:     [dynamic]^Cell, // cells created or held by native code; see gc.odin
-	persistent:     map[^Cell]int,  // host-held handles (retain/release counts)
+	ext_cells:      [dynamic]^Cell, // cells with host references (Cell.ext > 0), the host roots (gc.odin)
+	host_classes:   [dynamic]Class_Hooks, // classes the host registered (host_class.odin), by id - FIRST_HOST_CLASS
+	gc_hooked:      [dynamic]^Object,     // host objects whose class exposes its references to the collector
+	host_final_live: int,                 // live host objects whose class has a finalizer
 	weak_list:      [dynamic]^Object, // WeakMap/WeakSet/WeakRef/FinalizationRegistry objects
 	in_gc:          bool,
 	gc_disabled:    int,
@@ -228,6 +242,7 @@ Class_ID :: enum u8 {
 	disposable_stack,
 	async_disposable_stack,
 	internal, // engine-private objects (coroutine holders, module environments)
+	host,     // objects of a class registered by the host (host_class.odin): opaque data, finalizer, exotic hooks
 	// prototypes that only exist as class_proto slots
 	generator_function,
 	async_function,
@@ -289,7 +304,9 @@ runtime_new :: proc(allocator := context.allocator, config := DEFAULT_CONFIG) ->
 	rt.exception = UNINITIALIZED
 	rt.gray = make([dynamic]^Cell, 0, 256, allocator)
 	rt.temp_roots = make([dynamic]^Cell, 0, 256, allocator)
-	rt.persistent = make(map[^Cell]int, allocator)
+	rt.ext_cells = make([dynamic]^Cell, allocator)
+	rt.host_classes = make([dynamic]Class_Hooks, allocator)
+	rt.gc_hooked = make([dynamic]^Object, allocator)
 	rt.weak_list = make([dynamic]^Object, allocator)
 	rt.contexts = make([dynamic]^Context, allocator)
 	rt.jobs = make([dynamic]Job, allocator)
@@ -315,7 +332,7 @@ runtime_free :: proc(rt: ^Runtime) {
 	for &j in rt.jobs {delete(j.args)}
 	clear(&rt.jobs)
 	clear(&rt.temp_roots)
-	clear(&rt.persistent)
+	clear(&rt.ext_cells)
 	clear(&rt.modules)
 	clear(&rt.finrec_cleanup)
 	rt.exception = UNINITIALIZED
@@ -326,7 +343,9 @@ runtime_free :: proc(rt: ^Runtime) {
 	delete(rt.vstack)
 	delete(rt.gray)
 	delete(rt.temp_roots)
-	delete(rt.persistent)
+	delete(rt.ext_cells)
+	delete(rt.host_classes)
+	delete(rt.gc_hooked)
 	delete(rt.weak_list)
 	delete(rt.contexts)
 	delete(rt.jobs)

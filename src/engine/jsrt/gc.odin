@@ -42,10 +42,12 @@ Cell_Kind :: enum u8 {
 Cell :: struct {
 	gc_next: ^Cell,
 	size:    u32, // bytes charged for the cell itself
+	ext:     u32, // references held by the host (persist / the C API's owned references): each one is a root
 	kind:    Cell_Kind,
 	mark:    bool,
 	flags:   u8, // per-kind bits
 	pinned:  bool, // never collected (atoms, interned singletons)
+	in_ext:  bool, // listed in Runtime.ext_cells
 }
 
 // --- raw memory (charged to the heap) ---
@@ -119,19 +121,26 @@ temp_reset :: #force_inline proc(rt: ^Runtime, m: int) {
 	if len(rt.temp_roots) > m {resize(&rt.temp_roots, m)}
 }
 
-// Host handles: keep a value alive across host turns.
+// Host handles: keep a value alive across host turns. A count in the cell header (O(1), no table); the
+// cells with a non-zero count are listed so the collector finds its host roots without scanning the heap.
+ext_ref :: #force_inline proc(rt: ^Runtime, c: ^Cell) {
+	c.ext += 1
+	if !c.in_ext {
+		c.in_ext = true
+		append(&rt.ext_cells, c)
+	}
+}
+
+ext_unref :: #force_inline proc "contextless" (c: ^Cell) {
+	if c.ext > 0 {c.ext -= 1}
+}
+
 persist :: proc(rt: ^Runtime, v: Value) {
-	if !is_heap(v) {return}
-	c := as_cell(v)
-	rt.persistent[c] = rt.persistent[c] + 1
+	if is_heap(v) {ext_ref(rt, as_cell(v))}
 }
 
 unpersist :: proc(rt: ^Runtime, v: Value) {
-	if !is_heap(v) {return}
-	c := as_cell(v)
-	if n, ok := rt.persistent[c]; ok {
-		if n <= 1 {delete_key(&rt.persistent, c)} else {rt.persistent[c] = n - 1}
-	}
+	if is_heap(v) {ext_unref(as_cell(v))}
 }
 
 // --- safe points ---
@@ -194,10 +203,13 @@ gc_collect :: proc(rt: ^Runtime) {
 	rt.in_gc = true
 	defer rt.in_gc = false
 	t0 := now_ns(rt)
+	if rt.config.gc_prologue != nil {rt.config.gc_prologue(rt, rt.config.gc_prologue_user)}
 
 	gc_mark_roots(rt)
 	gc_drain(rt)
 	gc_process_weak(rt)
+	gc_prune_ext(rt)
+	host_run_finalizers(rt)
 	gc_sweep(rt)
 
 	rt.gc_count += 1
@@ -231,12 +243,57 @@ gc_mark_roots :: proc(rt: ^Runtime) {
 	for ctx in rt.contexts {mark_context(rt, ctx)}
 	for f := rt.cur_frame; f != nil; f = f.prev {mark_frame(rt, f)}
 	for c in rt.temp_roots {mark_cell(rt, c)}
-	for c, _ in rt.persistent {mark_cell(rt, c)}
+	gc_mark_ext(rt)
 	for &j in rt.jobs {mark_values(rt, j.args[:])}
 	mark_value(rt, rt.exception)
 	mark_cell(rt, rt.native_self)
 	for m in rt.modules {mark_cell(rt, m)}
 	mark_values(rt, rt.finrec_cleanup[:])
+}
+
+// The roots the host holds. A host object's class may expose the references its opaque data holds
+// (Class_Hooks.gc_mark); those references are counted in `ext` but must not keep their owner alive, so
+// they are first subtracted (QuickJS's trial deletion, restricted to the cells with host references):
+// a cell whose count stays above zero is held from outside the heap and is a root.
+@(private = "file")
+gc_mark_ext :: proc(rt: ^Runtime) {
+	j := 0
+	for c in rt.ext_cells {
+		if c.ext > 0 {
+			rt.ext_cells[j] = c
+			j += 1
+		} else {
+			c.in_ext = false
+		}
+	}
+	resize(&rt.ext_cells, j)
+	if len(rt.gc_hooked) == 0 {
+		for c in rt.ext_cells {mark_cell(rt, c)}
+		return
+	}
+	counts := make(map[^Cell]u32, len(rt.ext_cells), rt.allocator)
+	defer delete(counts)
+	for c in rt.ext_cells {counts[c] = c.ext}
+	st := Host_Mark_State{rt = rt, counts = &counts}
+	for o in rt.gc_hooked {host_class_mark(rt, o, &st)}
+	for c in rt.ext_cells {
+		if counts[c] > 0 {mark_cell(rt, c)}
+	}
+}
+
+// Drop the cells about to be swept from the host-root list (their memory is freed next).
+@(private = "file")
+gc_prune_ext :: proc(rt: ^Runtime) {
+	j := 0
+	for c in rt.ext_cells {
+		if c.mark || c.pinned {
+			rt.ext_cells[j] = c
+			j += 1
+		} else {
+			c.in_ext = false
+		}
+	}
+	resize(&rt.ext_cells, j)
 }
 
 @(private = "file")
@@ -459,6 +516,7 @@ cell_finalize :: proc(rt: ^Runtime, c: ^Cell) {
 
 // Free every cell (runtime teardown).
 gc_free_all :: proc(rt: ^Runtime) {
+	host_finalize_all(rt)
 	c := rt.cells
 	for c != nil {
 		next := c.gc_next

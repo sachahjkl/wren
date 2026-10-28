@@ -80,7 +80,12 @@ get_own_property :: proc(ctx: ^Context, o: ^Object, a: Atom, d: ^Prop_Desc) -> i
 		}
 	}
 	i := shape_find(o.shape, a)
-	if i < 0 {return 0}
+	if i < 0 {
+		if o.class == .host {
+			if ex := host_exotic_of(ctx.rt, o); ex != nil && ex.get_own_property != nil {return ex.get_own_property(ctx, o, a, d)}
+		}
+		return 0
+	}
 	if d == nil {return 1}
 	p := o.shape.props[i]
 	s := &o.slots[i]
@@ -159,6 +164,11 @@ define_own_property :: proc(ctx: ^Context, o: ^Object, a: Atom, d: Prop_Desc, th
 		}
 	case .module_ns:
 		return module_ns_define(ctx, o, a, &desc, throw_flag)
+	case .host:
+		// an exotic class decides about the properties it does not store in the shape
+		if shape_find(o.shape, a) < 0 {
+			if ex := host_exotic_of(ctx.rt, o); ex != nil && ex.define_own != nil {return ex.define_own(ctx, o, a, &desc, throw_flag)}
+		}
 	case:
 		if is_typed_array_class(o.class) {
 			if n, isnum := atom_canonical_numeric(ctx, a); isnum {
@@ -472,6 +482,9 @@ has_property :: proc(ctx: ^Context, o_in: ^Object, a: Atom) -> int {
 	o := o_in
 	for o != nil {
 		if o.class == .proxy {return proxy_has(ctx, o, a)}
+		if o.class == .host {
+			if ex := host_exotic_of(ctx.rt, o); ex != nil && ex.has_property != nil {return ex.has_property(ctx, o, a)}
+		}
 		// a namespace's [[HasProperty]] reads no binding, so an uninitialized one is still "in"
 		if o.class == .module_ns {return shape_find(o.shape, a) >= 0 ? 1 : 0}
 		if is_typed_array_class(o.class) {
@@ -566,6 +579,23 @@ get_property :: proc(ctx: ^Context, obj: Value, a: Atom, receiver: Value) -> Val
 				if r < 0 {return EXCEPTION}
 				if r == 1 {return d.value}
 				return UNDEFINED
+			case .host:
+				// the own properties in the shape were tried above; an exotic [[Get]] replaces the rest of the walk
+				if ex := host_exotic_of(rt, o); ex != nil {
+					if ex.get_property != nil {return ex.get_property(ctx, o, a, receiver)}
+					if ex.get_own_property != nil {
+						d: Prop_Desc
+						r := ex.get_own_property(ctx, o, a, &d)
+						if r < 0 {return EXCEPTION}
+						if r > 0 {
+							if desc_is_accessor(&d) {
+								if d.getter.tag != .object {return UNDEFINED}
+								return call(ctx, d.getter, receiver, {})
+							}
+							return d.value
+						}
+					}
+				}
 			case:
 				if is_typed_array_class(o.class) {
 					if n, isnum := atom_canonical_numeric(ctx, a); isnum {
@@ -724,6 +754,10 @@ set_property :: proc(ctx: ^Context, obj: Value, a: Atom, val: Value, receiver: V
 				}
 			case .module_ns:
 				return fail_set(ctx, a, throw_flag)
+			case .host:
+				if ex := host_exotic_of(rt, p); ex != nil && ex.set_property != nil {
+					return ex.set_property(ctx, p, a, val, receiver, throw_flag)
+				}
 			case:
 				if is_typed_array_class(p.class) {
 					if n, isnum := atom_canonical_numeric(ctx, a); isnum {
@@ -743,7 +777,7 @@ set_property :: proc(ctx: ^Context, obj: Value, a: Atom, val: Value, receiver: V
 	// define on the receiver
 	if recv_obj == nil {return fail_set(ctx, a, throw_flag)}
 	r := recv_obj
-	if r.class == .proxy || is_typed_array_class(r.class) || r.class == .module_ns || r.class == .string || r.class == .mapped_arguments || r.class == .array || r.class == .arguments {
+	if r.class == .proxy || is_typed_array_class(r.class) || r.class == .module_ns || (r.class == .host && host_exotic_of(rt, r) != nil) || r.class == .string || r.class == .mapped_arguments || r.class == .array || r.class == .arguments {
 		ed: Prop_Desc
 		res := get_own_property(ctx, r, a, &ed)
 		if res < 0 {return -1}
@@ -843,6 +877,10 @@ delete_property :: proc(ctx: ^Context, o: ^Object, a: Atom) -> int {
 		}
 	case .module_ns:
 		return module_ns_delete(ctx, o, a)
+	case .host:
+		if shape_find(o.shape, a) < 0 {
+			if ex := host_exotic_of(ctx.rt, o); ex != nil && ex.delete_property != nil {return ex.delete_property(ctx, o, a)}
+		}
 	case:
 		if is_typed_array_class(o.class) {
 			if n, isnum := atom_canonical_numeric(ctx, a); isnum {
@@ -893,6 +931,11 @@ Keys_Filters :: bit_set[Keys_Filter;u8]
 own_property_keys :: proc(ctx: ^Context, o: ^Object, out: ^[dynamic]Atom, filter: Keys_Filters = {.strings, .symbols}) -> bool {
 	if o.class == .proxy {return proxy_own_keys(ctx, o, out, filter)}
 	rt := ctx.rt
+	if o.class == .host {
+		if ex := host_exotic_of(rt, o); ex != nil && ex.own_keys != nil {
+			if !ex.own_keys(ctx, o, out, filter) {return false}
+		}
+	}
 	if .strings in filter {
 		n: u32 = 0
 		if o.fast_array {

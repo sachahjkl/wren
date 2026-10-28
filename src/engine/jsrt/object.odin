@@ -94,6 +94,7 @@ Object_Data :: union {
 	^Iter_State,
 	^Module,
 	^Disposable_Data,
+	^Host_Object,
 	Internal_Data,
 }
 
@@ -191,6 +192,8 @@ Array_Buffer :: struct {
 	shared:       bool,
 	immutable:    bool, // created by transferToImmutable / sliceToImmutable
 	external:     bool, // `data` belongs to another agent's buffer (shared_buffer_attach): never freed here
+	free_proc:    proc(data: [^]u8, user: rawptr), // adopted host memory: how to release it
+	free_user:    rawptr,
 	views:        [dynamic]^Object, // typed arrays/data views over this buffer (weak-ish: views keep buffer alive)
 }
 
@@ -528,7 +531,7 @@ object_finalize :: proc(rt: ^Runtime, o: ^Object) {
 		delete(d.cells)
 		free(d, rt_allocator(rt))
 	case ^Array_Buffer:
-		if d.data != nil && !d.external {mem_free(rt, d.data, d.alloc_len)}
+		buffer_release_data(rt, d)
 		delete(d.views)
 		free(d, rt_allocator(rt))
 	case ^Typed_Array:
@@ -546,6 +549,8 @@ object_finalize :: proc(rt: ^Runtime, o: ^Object) {
 	case ^Disposable_Data:
 		delete(d.stack)
 		free(d, rt_allocator(rt))
+	case ^Host_Object:
+		host_object_free(rt, o, d)
 	case Internal_Data:
 		if d.values != nil {mem_free(rt, d.values, int(d.count) * size_of(Value))}
 	}
@@ -623,6 +628,8 @@ object_trace :: proc(rt: ^Runtime, o: ^Object) {
 		mark_cell(rt, d)
 	case ^Disposable_Data:
 		mark_values(rt, d.stack[:])
+	case ^Host_Object:
+		host_object_trace(rt, o, d)
 	case Internal_Data:
 		if d.values != nil {mark_values(rt, d.values[:d.count])}
 	}

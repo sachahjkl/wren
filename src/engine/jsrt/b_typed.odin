@@ -51,6 +51,18 @@ array_buffer_new :: proc(ctx: ^Context, proto: ^Object, class: Class_ID, n: i64,
 	return o
 }
 
+// Free what a buffer's data pointer owns: host memory through its release proc, shared memory of
+// another agent not at all, the engine's own memory through the heap.
+buffer_release_data :: proc(rt: ^Runtime, ab: ^Array_Buffer) {
+	if ab.data == nil {return}
+	if ab.free_proc != nil {
+		ab.free_proc(ab.data, ab.free_user)
+		ab.free_proc = nil
+	} else if !ab.external {
+		mem_free(rt, ab.data, ab.alloc_len)
+	}
+}
+
 // The memory behind a SharedArrayBuffer, to hand to another agent (a thread with its own Runtime).
 // The buffer must outlive that agent.
 shared_buffer_info :: proc(v: Value) -> (data: [^]u8, length, max_length: int, ok: bool) {
@@ -88,7 +100,7 @@ detach_array_buffer :: proc(ctx: ^Context, o: ^Object) -> bool {
 		return false
 	}
 	if ab.detached {return true}
-	if ab.data != nil {mem_free(ctx.rt, ab.data, ab.alloc_len)}
+	buffer_release_data(ctx.rt, ab)
 	ab.data = nil
 	ab.alloc_len = 0
 	ab.byte_length = 0
