@@ -247,7 +247,11 @@ timeline_data :: proc(ctx: ^wj.Context, kind: Kind, from: u64, next: ^u64) -> wj
 	text: string
 	jsb.host(&text, api_decl.Performance_timeline, wj.wr_Performance_timeline, kind, from)
 	if len(text) == 0 { return wj.JS_NewArray(ctx) }
-	arr := wj.JS_ParseJSON(ctx, raw_data(text), uint(len(text)), "<timeline>")
+	// JS_ParseJSON reads a NUL-terminated buffer: the host's string is not one (the C copied it for this reason)
+	buf := make([]u8, len(text) + 1, wj.libc_allocator())
+	defer delete(buf, wj.libc_allocator())
+	copy(buf, text)
+	arr := wj.JS_ParseJSON(ctx, raw_data(buf), uint(len(text)), "<timeline>")
 	if wj.is_exception(arr) { return arr }
 	if next != nil {
 		n: i64
