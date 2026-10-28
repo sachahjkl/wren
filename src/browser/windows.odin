@@ -158,7 +158,7 @@ window_front :: proc(app: ^App) -> ^Browser_Window {
 // Makes `w` the window the user is in (it comes to the front of the others on screen too when `raise`).
 window_focus :: proc(app: ^App, w: ^Browser_Window, raise := false) {
 	window_set_front(app, w)
-	if raise && windows_shown(app) && w != nil && w.win != nil && !platform.is_minimized(w.win) { win.SetForegroundWindow(w.win.hwnd) }
+	if raise && windows_shown(app) && w != nil && w.win != nil && !platform.is_minimized(w.win) { platform.raise_window(w.win) }
 }
 
 // The window the user is in becomes `w`: the one that was and `w` draw again (the caret of a focused field shows only in the front
