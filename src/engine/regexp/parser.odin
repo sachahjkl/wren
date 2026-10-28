@@ -12,7 +12,6 @@ package regexp
 
 import "core:strings"
 import "core:unicode/utf8"
-import uni "wb:engine/unicode"
 
 Node_Kind :: enum u8 {
 	Empty,
