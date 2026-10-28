@@ -28,6 +28,14 @@ import "core:strings"
 import "core:sync"
 import "core:time"
 import js "wb:engine/jsrt"
+import jsdate "wb:engine/datetime"
+
+// Monotonic clock for GC statistics, wall clock for Date; local time is UTC in the judge.
+set_host_hooks :: proc() {
+	js.clock_hook = proc() -> i64 {return time.tick_now()._nsec}
+	js.date_now_hook = proc() -> f64 {return f64(time.now()._nsec / 1_000_000)}
+	jsdate.timezone_offset_proc = proc "contextless" (t: i64) -> int {return 0}
+}
 
 // --- the reference compiler DLL ---
 
@@ -447,8 +455,8 @@ exception_text :: proc(ctx: ^js.Context, e: js.Value) -> string {
 	return s
 }
 
-run_test262_file :: proc(cfg: ^Config, hc: ^Harness_Cache, rel: string, verbose: bool) -> Result {
-	res := Result{path = rel}
+run_test262_file :: proc(cfg: ^Config, hc: ^Harness_Cache, rel: string, verbose: bool) -> (res: Result) {
+	res.path = rel
 	full := pjoin(cfg.run_dir, rel)
 	data, err := os.read_entire_file(full, context.allocator)
 	if err != nil {
@@ -485,6 +493,7 @@ run_test262_file :: proc(cfg: ^Config, hc: ^Harness_Cache, rel: string, verbose:
 	cfgr.malloc_limit = 1 << 30
 	rt := js.engine_new(context.allocator, cfgr)
 	rt.host_data = h
+	set_host_hooks()
 	ctx := js.context_new(rt)
 	install_helpers(ctx)
 	t0 := time.tick_now()
@@ -652,23 +661,26 @@ collect_tests :: proc(cfg: ^Config, filter: string, stride: int) -> [dynamic]str
 
 // --- worker / supervisor ---
 
-worker_main :: proc(list_path: string, run_dir: string) -> int {
+worker_main :: proc(list_path: string, run_dir: string, out_path: string) -> int {
 	if !load_compiler() {return 2}
 	cfg, ok := load_config(run_dir)
 	if !ok {return 2}
 	data, err := os.read_entire_file(list_path, context.allocator)
 	if err != nil {return 2}
+	out, oerr := os.open(out_path, {.Write, .Create, .Trunc})
+	if oerr != nil {return 2}
+	defer os.close(out)
 	hc: Harness_Cache
 	for line in strings.split_lines(string(data)) {
 		t := strings.trim_space(line)
 		if t == "" {continue}
-		fmt.printf("T %s\n", t)
-		os.flush(os.stdout)
+		_, _ = os.write_string(out, fmt.tprintf("T %s\n", t))
+		os.flush(out)
 		r := run_test262_file(&cfg, &hc, t, false)
 		msg, _ := strings.replace_all(r.msg, "\n", " ")
 		msg, _ = strings.replace_all(msg, "\r", " ")
-		fmt.printf("R %s %v %.1f %s\n", r.path, r.outcome, r.ms, msg)
-		os.flush(os.stdout)
+		_, _ = os.write_string(out, fmt.tprintf("R %s %v %.1f %s\n", r.path, r.outcome, r.ms, msg))
+		os.flush(out)
 		free_all(context.temp_allocator)
 	}
 	return 0
@@ -703,9 +715,7 @@ supervise :: proc(cfg: ^Config, tests: []string, jobs: int, out_dir: string) -> 
 		sb := strings.builder_make()
 		for t in w.tests[w.next:] {strings.write_string(&sb, t); strings.write_byte(&sb, '\n')}
 		_ = os.write_entire_file(w.list_path, sb.buf[:])
-		f, _ := os.create(w.out_path)
-		p, err := os.process_start(os.Process_Desc{command = {exe, "worker", w.list_path, run_dir}, stdout = f, stderr = nil})
-		os.close(f)
+		p, err := os.process_start(os.Process_Desc{command = {exe, "worker", w.list_path, run_dir, w.out_path}})
 		if err != nil {
 			fmt.eprintln("judge: cannot start worker:", err)
 			w.running = false
@@ -773,6 +783,9 @@ supervise :: proc(cfg: ^Config, tests: []string, jobs: int, out_dir: string) -> 
 			if err == nil && st.exited {
 				w.running = false
 				before := w.next
+				if os.get_env("JUDGE_DEBUG", context.temp_allocator) != "" {
+					fmt.eprintf("judge: worker exited with %d (%d tests left)\n", st.exit_code, len(w.tests) - w.next)
+				}
 				harvest(&w, &results, st.exit_code != 0)
 				if w.next < len(w.tests) {
 					if w.next == before {w.next += 1} // no progress: skip the culprit
@@ -902,7 +915,7 @@ eval_main :: proc(path: string) -> int {
 	cfgr.interrupt_user = h
 	rt := js.engine_new(context.allocator, cfgr)
 	rt.host_data = h
-	js.clock_hook = proc() -> i64 {return time.tick_now()._nsec}
+	set_host_hooks()
 	ctx := js.context_new(rt)
 	install_helpers(ctx)
 	t0 := time.tick_now()
@@ -950,8 +963,8 @@ main :: proc() {
 		if len(args) < 3 {os.exit(2)}
 		os.exit(eval_main(args[2]))
 	case "worker":
-		if len(args) < 4 {os.exit(2)}
-		os.exit(worker_main(args[2], args[3]))
+		if len(args) < 5 {os.exit(2)}
+		os.exit(worker_main(args[2], args[3], args[4]))
 	case "test":
 		if len(args) < 3 {os.exit(2)}
 		if !load_compiler() {os.exit(2)}
