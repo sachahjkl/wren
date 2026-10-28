@@ -30,18 +30,10 @@ install :: proc(reg: ^Registry($C)) -> wasm.Import {
 	dispatch_run = proc "contextless" (p: rawptr, inst: ^wasm.Instance, op: i32, args: []u8, ret: []u8) -> (status: abi.Api_Error, need: int) {
 		reg := (^Registry(C))(p)
 		if reg == nil || op < 0 || int(op) >= len(reg.ops) { return .Invalid_Argument, 0 }
+		// (the temporary allocator is the embedder's to reset, in its `end`: the guest may be running inside a host
+		// call whose own temporaries must survive this one)
 		context = wasm.default_context()
-		o := &reg.ops[op]
-		if o.manual != nil {
-			r := abi.reader_make(args)
-			w := abi.writer_make(ret)
-			ctx := reg.cfg.begin(inst)
-			st := o.manual(&reg.cfg, inst, &r, &w)
-			reg.cfg.end(ctx)
-			if !abi.writer_fit(&w) { return .Truncated, w.need }
-			return st, w.need
-		}
-		return o.run(&reg.cfg, inst, args, ret)
+		return reg.ops[op].run(&reg.cfg, inst, args, ret)
 	}
 	return wasm.Import{
 		module = reg.cfg.module, name = "host_call", fn = host_call_tramp, realms = 3,

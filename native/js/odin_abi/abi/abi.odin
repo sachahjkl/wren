@@ -68,41 +68,65 @@ Handle :: distinct u64
 // `bytes`: an opaque byte span. A `string` is the same wire shape with a UTF-8 check added on the host.
 Bytes :: distinct []u8
 
+// A handle the callee hands over: the receiver owns it and must release it (WebIDL [Owned] / "the caller releases").
+// On the wire it is the handle itself; the wrapper only makes the ownership part of the declaration's type, so a
+// binding that drops an Owned result without releasing it reads wrong at the call site.
+Owned :: struct($H: typeid) {
+	handle: H,
+}
+
 // The absent marker of an optional string / bytes on the scalar path: a length of all ones (as today's ABI).
 ABSENT :: max(u32)
 
 // Whether T is a procedure type (used in `where` clauses of the bridges).
 is_proc :: intrinsics.type_is_proc
 
-// The wire kind a parameter / result type maps to. The boundary only ever sees these.
-Wire :: enum u8 {
-	I32,       // bool, i32, enum, a 32-bit scalar
-	I64,       // i64, u64, a handle
-	F64,       // f64
-	String,    // a UTF-8 string: (ptr,len) on the scalar path, len-prefixed bytes on the serialised path
-	Bytes,     // an opaque byte span: same shapes as String without the UTF-8 check
+// What a parameter or result type is to the boundary. Every bridge (host scalar, host serialised, guest) branches on
+// this at compile time; a type outside the list is a compile error at the binding, never a silent ABI drift.
+Shape :: enum u8 {
+	Bool,        // bool: i32 0 / 1
+	Int32,       // an integer of 4 bytes or less, an enum: i32
+	Int64,       // an integer of 8 bytes, a handle (distinct Handle), Owned(handle): i64
+	F32,
+	F64,
+	String,      // UTF-8: (ptr, len); serialised: u32 length + bytes
+	Bytes,       // []u8 / Bytes: the same without the UTF-8 check
+	Opt_Span,    // Maybe(string) / Maybe(Bytes): the length ABSENT when absent
+	Opt_Scalar,  // Maybe(T) of a scalar: a present flag, then the value
+	Slice,       // []T (T not u8): (ptr, count); serialised: u32 count + the elements
+	Dict,        // a struct (a WebIDL dictionary): serialised only, its fields in declaration order
+	Pointer,     // a pointer: the per-call context of a host implementation (never on the wire)
 }
 
-// The wire kind of a static type. A compile error for anything the boundary does not carry (a pointer, a map...).
-wire_of :: proc($T: typeid) -> Wire {
+// The shape of T. A proc (Odin has no constant-returning procs), but its body is one `when` chain resolved per
+// instantiation, so a call folds to a constant; the hot paths branch with the same `when` tests inline.
+shape_of :: #force_inline proc "contextless" ($T: typeid) -> Shape {
 	when T == string {
 		return .String
 	} else when T == Bytes || T == []u8 {
 		return .Bytes
+	} else when intrinsics.type_is_specialization_of(T, Owned) {
+		return .Int64
+	} else when intrinsics.type_is_union(T) {
+		#assert(intrinsics.type_union_variant_count(T) == 1, "abi: only Maybe(T) unions cross the boundary")
+		INNER :: intrinsics.type_variant_type_of(T, 0)
+		when INNER == string || INNER == Bytes || INNER == []u8 { return .Opt_Span } else { return .Opt_Scalar }
+	} else when intrinsics.type_is_slice(T) {
+		return .Slice
+	} else when intrinsics.type_is_struct(T) {
+		return .Dict
+	} else when intrinsics.type_is_pointer(T) {
+		return .Pointer
 	} else when intrinsics.type_is_boolean(T) {
-		return .I32
+		return .Bool
 	} else when intrinsics.type_is_enum(T) {
-		return .I32
+		return .Int32
 	} else when intrinsics.type_is_float(T) {
-		return .F64
-	} else when intrinsics.type_base_type(T) == Handle {
-		// a handle kind (`distinct Handle`): a u64 on the wire, resolved by the host-side binding
-		return .I64
-	} else when intrinsics.type_is_integer(T) && size_of(T) == 8 {
-		return .I64
+		return size_of(T) == 8 ? .F64 : .F32
 	} else when intrinsics.type_is_integer(T) {
-		return .I32
+		return size_of(T) == 8 ? .Int64 : .Int32
 	} else {
 		#panic("abi: a parameter or result type this boundary cannot carry")
 	}
 }
+

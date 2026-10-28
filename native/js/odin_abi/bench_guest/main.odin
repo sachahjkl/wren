@@ -58,7 +58,7 @@ the_params: abi_guest.URLSearchParams
 @(export)
 prepare :: proc "contextless" () -> i32 {
 	context = ctx
-	u, err := abi_guest.URL_parse("https://example.com/the/path?a=1&b=2&c=3")
+	u, err := abi_guest.URL_parse("https://example.com/the/path?a=1&b=2&c=3", nil)
 	if err != .None { return -1 }
 	the_url = u
 	the_params = abi_guest.URL_searchParams(u)
@@ -80,7 +80,7 @@ calls_get :: proc "contextless" (n: i32) -> i32 {
 	context = ctx
 	s: i32
 	for _ in 0 ..< n {
-		str := abi_guest.URL_get(the_url, .Pathname)
+		str, _ := abi_guest.URL_get(the_url, .Pathname)
 		s += i32(len(str))
 	}
 	return s

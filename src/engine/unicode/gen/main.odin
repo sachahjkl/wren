@@ -48,6 +48,7 @@ main :: proc() {
 	// A couple of normalization-derived binary props the regexp \p needs.
 	merge_props(&props, filter_props(parse_prop_list(path(ucd, "DerivedNormalizationProps.txt")),
 		{"Changes_When_NFKC_Casefolded"}))
+	merge_props(&props, parse_bidi_mirrored(path(ucd, "UnicodeData.txt")))
 	emit_named_tables_map(&b, "binary_prop", &props)
 
 	// Scripts and Script_Extensions.
@@ -139,6 +140,24 @@ parse_prop_list :: proc(file: string) -> map[string][dynamic]Run {
 		}
 		append(runs, Run{lo, hi})
 	}
+	return out
+}
+
+// Bidi_Mirrored is UnicodeData.txt field 9 ('Y'); no First/Last range carries it.
+parse_bidi_mirrored :: proc(file: string) -> map[string][dynamic]Run {
+	out := map[string][dynamic]Run{}
+	data, ok := read_file(file)
+	if !ok { return out }
+	runs := make([dynamic]Run)
+	it := string(data)
+	for line in strings.split_lines_iterator(&it) {
+		fields := strings.split(line, ";")
+		defer delete(fields)
+		if len(fields) < 10 || strings.trim_space(fields[9]) != "Y" { continue }
+		c := parse_hex(fields[0])
+		append(&runs, Run{c, c})
+	}
+	out["Bidi_Mirrored"] = runs
 	return out
 }
 
