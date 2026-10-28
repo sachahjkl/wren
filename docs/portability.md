@@ -93,6 +93,27 @@ To try under WSL (NixOS): `cargo build` once (new crates: Symphonia, opus, cpal,
 of `media`, `desktop` and `webauthn` for Linux, a page with `<audio>` / `<video>` (H.264 after
 `tools/fetch_openh264.sh`), and a security key for `navigator.credentials`.
 
+## Slice 4 (2026-10-28): the toolkit's Linux window
+
+The toolkit's `platform` package gains a **Linux window backend** — Wayland (xdg-shell, wl_seat with an xkbcommon
+keymap, wl_output scale for DPI, zxdg-decoration or a client-side title bar, the CLIPBOARD through wl_data_device) and
+X11 (XCB, xkbcommon, Xft.dpi, `_NET_WM_STATE`, Motif hints, the CLIPBOARD selection), chosen at `open_window` from
+`WAYLAND_DISPLAY` / `DISPLAY`. Every window library is loaded with **dlopen** (libwayland-client, libxcb, libxkbcommon,
+libxkbcommon-x11), so a binary starts on a machine missing one and names it; no window library is hard-linked. The
+public `platform` API was made neutral where it leaked Win32 (`wake_handle` now returns an opaque `rawptr`, paired with
+`wake_signal`; `native_surface_handles` hands the renderer the Wayland / X11 handles through a neutral
+`Surface_Handles`). Services on Linux: the file dialogs through zenity / kdialog (the FileChooser portal is the noted
+next step), `open_url` / `open_path` / `reveal_in_folder` through xdg-open, light / dark and reduce-motion from the GTK
+settings, the rich clipboard (text through the selection; HTML / image / files kept by the owner). `platform` passes
+`odin check` for Linux **and** still for Windows. `ext/gui_toolkit/docs/platform.md` lists what a backend must provide
+and the platform differences (Wayland does not expose the window position; GNOME draws no server decorations).
+
+What still blocks the browser executable: the toolkit's **render** package (D3D11 today) needs its **wgpu path built
+for Linux** (`libwgpu_native.a`; the surface descriptor is `render/wgpu_surface_linux.odin`, from `Surface_Handles`),
+and `src/browser` still calls Win32 directly in places (`windows.odin`'s foreground / client-rect, among others —
+`wake_window` was made neutral). The toolkit's `a11y` on Linux (AccessKit's `accesskit_unix`) and drag-and-drop / tray
+on Wayland and X11 are not wired yet (the shared `!windows` stubs answer "not supported").
+
 ## Media on Linux: decisions
 
 - **AV1**: rav1d (already linked for AVIF), in software, on every system (`av1_soft.odin`); Windows keeps Media

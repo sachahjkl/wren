@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Wren's build on Linux, beside build.bat. What is portable today builds and is checked here; the browser executable
-# links with the flags below, but does not build fully yet: the toolkit has no Linux window and src/browser (the shell)
-# is not ported (docs/portability.md). `./build.sh wren` attempts the link so the remaining errors are visible.
+# links with the flags below, but does not build fully yet: the toolkit now has a Linux window (Wayland + X11, in
+# ext/gui_toolkit/platform, loaded with dlopen so no window library is hard-linked), and what remains is the toolkit's
+# render package on wgpu for Linux (libwgpu_native.a) and src/browser's own Windows calls (docs/portability.md).
+# `./build.sh wren` attempts the link so the remaining errors are visible.
 #   ./build.sh deps       the native libraries for this system: Wasmtime (pinned release, SHA-256), Lexbor, the Rust library
 #   ./build.sh check      odin check for Linux and the unit tests of every portable package (tools/linux_ci.sh)
 #   ./build.sh crash      the crash reports end to end (tools/crash_e2e.sh)
@@ -44,7 +46,7 @@ wren() {
   local flags=(-collection:toolkit=ext/gui_toolkit -collection:wb=src -vet -target:linux_amd64)
   flags+=(-extra-linker-flags:"$(link_flags)")
   flags+=(-define:FONT_BACKEND=native -define:FONT_NATIVE_LINK=false -define:A11Y_ACCESSKIT=true -define:A11Y_NATIVE_LINK=false)
-  echo "linking $out (this is expected to fail: the toolkit has no Linux window and src/browser is not ported yet)"
+  echo "linking $out (expected to fail until the toolkit's render package is on wgpu for Linux and src/browser is ported)"
   "$ODIN" build src/browser -out:"$out" "${flags[@]}" -o:speed
 }
 
