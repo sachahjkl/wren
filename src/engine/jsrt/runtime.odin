@@ -122,6 +122,12 @@ Runtime :: struct {
 	in_gc:          bool,
 	gc_disabled:    int,
 
+	// small-block pool (gc.odin: mem_alloc / mem_free)
+	pool_free:      [POOL_CLASSES]^Pool_Block,
+	pool_bump:      [^]byte,
+	pool_left:      int,
+	pool_chunks:    rawptr,
+
 	// atoms (atom.odin)
 	atoms:          [dynamic]Atom_Entry,
 	atom_hash:      []u32,
@@ -282,6 +288,12 @@ Context :: struct {
 	regexp_exec:     ^Object, // the original RegExp.prototype.exec (fast paths)
 	typed_array_ctor: ^Object, // %TypedArray%
 	typed_array_ctors: [12]^Object,
+	global_cache:    [GLOBAL_CACHE_SIZE]Global_Cache_Entry, // see globals.odin
+	match_shape:     ^Shape, // a RegExp match result: length, index, input, groups (b_regexp.odin)
+	iter_result_shape: ^Shape, // {value, done} (iterator.odin: iter_result)
+	rx_snap:         [32]Prop_Slot, // RegExp.prototype as the realm built it (regexp_pristine)
+	rx_snap_shape:   ^Shape,
+	rx_snap_n:       int,
 	array_shape:     ^Shape, // shape of a fresh Array (proto + length)
 	arguments_shape: ^Shape,
 	mapped_arguments_shape: ^Shape,
@@ -357,6 +369,7 @@ runtime_free :: proc(rt: ^Runtime) {
 	delete(rt.join_stack)
 	mem.dynamic_arena_destroy(&rt.scratch)
 	mem.dynamic_arena_destroy(&rt.regexp_arena)
+	pool_free_chunks(rt)
 	free(rt, allocator)
 }
 

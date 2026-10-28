@@ -37,7 +37,13 @@ Frame :: struct {
 	storage:     [^]Value, // heap storage of a coroutine frame
 	storage_len: int,
 	pending_throw: bool, // resume by throwing the pending exception
+	// set by interp_run when it takes the frame over
+	closure_refs: [^]^Var_Ref, // the function object's captured cells (Func_Data.var_refs)
+	root_base:   int,          // height of temp_roots at entry: truncated back to it when the frame ends
+	stackless:   bool,         // pushed by a JS-to-JS call inside interp_run (lives in the value stack, no native recursion)
 }
+
+FRAME_VALUES :: (size_of(Frame) + size_of(Value) - 1) / size_of(Value)
 
 @(private = "file")
 frame_slots :: #force_inline proc(b: ^Function_Bytecode, arg_buf_len: int) -> (n_values: int, n_ref_values: int) {
@@ -64,7 +70,22 @@ frame_layout :: proc(f: ^Frame, b: ^Function_Bytecode, mem: [^]Value, args: []Va
 }
 
 @(private = "file")
-vstack_alloc :: proc(rt: ^Runtime, n: int) -> (mem: [^]Value, seg: int, top: int) {
+vstack_alloc :: #force_inline proc(rt: ^Runtime, n: int) -> (mem: [^]Value, seg: int, top: int) {
+	if rt.vstack_cur < len(rt.vstack) {
+		s := &rt.vstack[rt.vstack_cur]
+		if s.top + n <= len(s.data) {
+			mem = raw_data(s.data[s.top:])
+			seg = rt.vstack_cur
+			top = s.top
+			s.top += n
+			return
+		}
+	}
+	return vstack_alloc_slow(rt, n)
+}
+
+@(private = "file")
+vstack_alloc_slow :: proc(rt: ^Runtime, n: int) -> (mem: [^]Value, seg: int, top: int) {
 	for {
 		if rt.vstack_cur >= len(rt.vstack) {
 			size := max(VSEGMENT_SIZE, n)
@@ -354,7 +375,7 @@ call_native :: proc(ctx: ^Context, o: ^Object, nd: ^Native_Data, this: Value, ar
 	rt := ctx.rt
 	realm := nd.realm != nil ? nd.realm : ctx
 	m := temp_mark(rt)
-	if !gc_safepoint(ctx) {return EXCEPTION}
+	if gc_should_run(rt) && !gc_safepoint(ctx) {return EXCEPTION}
 	saved := rt.native_self
 	rt.native_self = o
 	when JSRT_TRACE_LAST_OP {trace_native = nd.fn; trace_native_obj = o; trace_native_args = args}
@@ -428,14 +449,21 @@ interp_call :: proc(ctx: ^Context, fo: ^Object, this: Value, new_target: Value, 
 	arg_buf_len := max(len(args), int(b.arg_count))
 	total, _ := frame_slots(b, arg_buf_len)
 	mem, seg, top := vstack_alloc(rt, total)
-	f: Frame
+	// every field is set below: no zeroing of the 200-byte frame
+	f: Frame = ---
 	f.ctx = realm
 	f.caller_ctx = ctx
 	f.func = mk_obj(fo)
 	f.this_val = this
 	f.new_target = new_target
+	f.pc = 0
+	f.extra_args = nil
+	f.coro = nil
 	f.seg_index = seg
 	f.seg_top = top
+	f.storage = nil
+	f.storage_len = 0
+	f.pending_throw = false
 	frame_layout(&f, b, mem, args, arg_buf_len)
 	f.prev = rt.cur_frame
 	rt.cur_frame = &f
@@ -443,9 +471,53 @@ interp_call :: proc(ctx: ^Context, fo: ^Object, this: Value, new_target: Value, 
 	r, _ := interp_run(realm, &f, fd.var_refs)
 	rt.stack_depth -= 1
 	rt.cur_frame = f.prev
-	close_var_refs(&f)
+	if b.var_ref_count > 0 {close_var_refs(&f)}
 	vstack_release(rt, seg, top)
 	return r
+}
+
+// A frame for a plain call made from inside interp_run: it lives at the end of its own value-stack block and
+// is run by the same interp_run activation (no native recursion); frame_pop undoes it.
+frame_push :: proc(ctx: ^Context, fo: ^Object, this: Value, args: []Value) -> ^Frame {
+	rt := ctx.rt
+	fd := &fo.data.(Func_Data)
+	b := fd.bc
+	arg_buf_len := max(len(args), int(b.arg_count))
+	total, _ := frame_slots(b, arg_buf_len)
+	mem, seg, top := vstack_alloc(rt, total + FRAME_VALUES)
+	f := cast(^Frame)&mem[total]
+	f.ctx = b.realm != nil ? b.realm : ctx
+	f.caller_ctx = ctx
+	f.func = mk_obj(fo)
+	f.this_val = this
+	f.new_target = UNDEFINED
+	f.pc = 0
+	f.extra_args = nil
+	f.coro = nil
+	f.seg_index = seg
+	f.seg_top = top
+	f.storage = nil
+	f.storage_len = 0
+	f.pending_throw = false
+	f.closure_refs = fd.var_refs
+	f.stackless = true
+	frame_layout(f, b, mem, args, arg_buf_len)
+	f.root_base = temp_mark(rt)
+	f.prev = rt.cur_frame
+	rt.cur_frame = f
+	rt.stack_depth += 1
+	return f
+}
+
+// Leave a frame made by frame_push; the caller's frame is returned.
+frame_pop :: #force_inline proc(rt: ^Runtime, f: ^Frame) -> ^Frame {
+	caller := f.prev
+	rt.stack_depth -= 1
+	rt.cur_frame = caller
+	if f.bc.var_ref_count > 0 {close_var_refs(f)}
+	temp_reset(rt, f.root_base)
+	vstack_release(rt, f.seg_index, f.seg_top)
+	return caller
 }
 
 // A heap frame for a coroutine (generator / async function), initialised but not started.

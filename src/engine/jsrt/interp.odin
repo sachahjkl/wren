@@ -71,204 +71,69 @@ fmt_opcode :: proc(op: Opcode) -> string {
 // The reader verified every operand index, jump target and the operand stack height of each
 // instruction (serialize.odin, verify_function / verify_stack); the bounds checks stay on (turning
 // them off measured slower with the current code generation).
-interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, Exit_Kind) {
+//
+// A plain JS-to-JS call (call*, call_method on a non-generator, non-async bytecode function) does not
+// recurse natively: the callee's Frame is pushed on the value stack (frame_push) and this same activation
+// continues with it (`frames` loop reloads the per-frame registers from `f`); returning or an uncaught
+// exception pops it (frame_pop) and resumes the caller. Only the base frame (the one interp_call or the
+// coroutine driver gave us) leaves through `return`.
+interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> (Value, Exit_Kind) {
+	ctx := ctx_in
+	f := f_in
 	rt := ctx.rt
-	b := f.bc
-	code := b.code
-	stack := f.stack[:max(int(b.stack_size), 1)]
-	locals := f.locals
-	args := f.args
-	sp := f.sp
-	pc := f.pc
-	root_base := temp_mark(rt)
-	strict := b.is_strict_mode
-	is_coro := b.func_kind != .normal
+	f.closure_refs = var_refs_in
+	f.stackless = false
+	f.root_base = temp_mark(rt)
+
+	// the registers of the frame being run, loaded from `f` at the top of `frames`
+	b: ^Function_Bytecode
+	code: []u8
+	stack: []Value
+	locals, args: [^]Value
+	var_refs: [^]^Var_Ref
+	sp, pc, root_base: int
+	strict, is_coro, returning: bool
+	caller_ctx: ^Context
 	ret_val: Value
-	caller_ctx := f.caller_ctx != nil ? f.caller_ctx : ctx
 	prev_op := Opcode.invalid
 
 	// a coroutine resumed with throw() enters straight into the unwinder with the exception pending
 	exc := f.pending_throw
 	f.pending_throw = false
-	if !exc && pc == 0 && !gc_safepoint(ctx) {return EXCEPTION, .exception}
 
-	for {
+	frames: for {
+		b = f.bc
+		code = b.code
+		stack = f.stack[:max(int(b.stack_size), 1)]
+		locals = f.locals
+		args = f.args
+		sp = f.sp
+		pc = f.pc
+		root_base = f.root_base
+		strict = b.is_strict_mode
+		is_coro = b.func_kind != .normal
+		caller_ctx = f.caller_ctx != nil ? f.caller_ctx : ctx
+		var_refs = f.closure_refs
+		ctx = f.ctx
+		if !exc && pc == 0 && gc_should_run(rt) && !gc_safepoint(ctx) {exc = true}
+		for {
 		if !exc {
-			// The hot loop: the commonest instructions on their fast paths only, in a small loop of
-			// its own (fewer live values than the full dispatch below, so they stay in registers).
-			// Anything else leaves with pc on the instruction, for the full dispatch.
-			hot: for {
-				if pc >= len(code) {break hot}
-				hop := Opcode(code[pc])
-				when JSRT_TRACE_LAST_OP {prev_op = hop; trace_last_op = hop; trace_last_bc = b}
-				#partial switch hop {
-				case .get_loc0, .get_loc1, .get_loc2, .get_loc3:
-					stack[sp] = locals[int(hop) - int(Opcode.get_loc0)]
-					sp += 1
-					pc += 1
-				case .put_loc0, .put_loc1, .put_loc2, .put_loc3:
-					sp -= 1
-					locals[int(hop) - int(Opcode.put_loc0)] = stack[sp]
-					pc += 1
-				case .set_loc0, .set_loc1, .set_loc2, .set_loc3:
-					locals[int(hop) - int(Opcode.set_loc0)] = stack[sp - 1]
-					pc += 1
-				case .get_loc8:
-					stack[sp] = locals[code[pc + 1]]
-					sp += 1
-					pc += 2
-				case .put_loc8:
-					sp -= 1
-					locals[code[pc + 1]] = stack[sp]
-					pc += 2
-				case .get_loc:
-					stack[sp] = locals[rd_u16(code, pc + 1)]
-					sp += 1
-					pc += 3
-				case .put_loc:
-					sp -= 1
-					locals[rd_u16(code, pc + 1)] = stack[sp]
-					pc += 3
-				case .get_arg0, .get_arg1, .get_arg2, .get_arg3:
-					stack[sp] = args[int(hop) - int(Opcode.get_arg0)]
-					sp += 1
-					pc += 1
-				case .get_var_ref0, .get_var_ref1, .get_var_ref2, .get_var_ref3:
-					stack[sp] = var_refs[int(hop) - int(Opcode.get_var_ref0)].pvalue^
-					sp += 1
-					pc += 1
-				case .push_minus1, .push_0, .push_1, .push_2, .push_3, .push_4, .push_5, .push_6, .push_7:
-					stack[sp] = mk_int(i32(hop) - i32(Opcode.push_0))
-					sp += 1
-					pc += 1
-				case .push_i8:
-					stack[sp] = mk_int(i32(i8(code[pc + 1])))
-					sp += 1
-					pc += 2
-				case .push_const8:
-					stack[sp] = b.cpool[code[pc + 1]]
-					sp += 1
-					pc += 2
-				case .undefined:
-					stack[sp] = UNDEFINED
-					sp += 1
-					pc += 1
-				case .drop:
-					sp -= 1
-					pc += 1
-				case .dup:
-					stack[sp] = stack[sp - 1]
-					sp += 1
-					pc += 1
-				case .inc_loc, .dec_loc:
-					idx := code[pc + 1]
-					v := locals[idx]
-					if v.tag != .int || v.u.i == max(i32) || v.u.i == min(i32) {break hot}
-					locals[idx] = mk_int(hop == .inc_loc ? v.u.i + 1 : v.u.i - 1)
-					pc += 2
-				case .inc, .dec:
-					v := stack[sp - 1]
-					if v.tag != .int || v.u.i == max(i32) || v.u.i == min(i32) {break hot}
-					stack[sp - 1] = mk_int(hop == .inc ? v.u.i + 1 : v.u.i - 1)
-					pc += 1
-				case .add, .sub:
-					x, y := stack[sp - 2], stack[sp - 1]
-					if x.tag == .int && y.tag == .int {
-						r := hop == .add ? i64(x.u.i) + i64(y.u.i) : i64(x.u.i) - i64(y.u.i)
-						stack[sp - 2] = mk_i64(r)
-					} else if x.tag == .float && y.tag == .float {
-						stack[sp - 2] = mk_float(hop == .add ? x.u.f + y.u.f : x.u.f - y.u.f)
-					} else {
-						break hot
-					}
-					sp -= 1
-					pc += 1
-				case .op_and, .op_or, .xor, .shl, .sar:
-					x, y := stack[sp - 2], stack[sp - 1]
-					if x.tag != .int || y.tag != .int {break hot}
-					r: i32
-					#partial switch hop {
-					case .op_and: r = x.u.i & y.u.i
-					case .op_or: r = x.u.i | y.u.i
-					case .xor: r = x.u.i ~ y.u.i
-					case .shl: r = i32(u32(x.u.i) << (u32(y.u.i) & 31))
-					case: r = x.u.i >> (u32(y.u.i) & 31)
-					}
-					stack[sp - 2] = mk_int(r)
-					sp -= 1
-					pc += 1
-				case .lt, .lte, .gt, .gte, .strict_eq, .strict_neq:
-					x, y := stack[sp - 2], stack[sp - 1]
-					if x.tag != .int || y.tag != .int {break hot}
-					res: bool
-					#partial switch hop {
-					case .lt: res = x.u.i < y.u.i
-					case .lte: res = x.u.i <= y.u.i
-					case .gt: res = x.u.i > y.u.i
-					case .gte: res = x.u.i >= y.u.i
-					case .strict_eq: res = x.u.i == y.u.i
-					case: res = x.u.i != y.u.i
-					}
-					stack[sp - 2] = mk_bool(res)
-					sp -= 1
-					pc += 1
-				case .if_true8, .if_false8:
-					v := stack[sp - 1]
-					if v.tag != .bool {break hot}
-					d := int(i8(code[pc + 1]))
-					if v.u.b == (hop == .if_true8) {
-						if d < 0 && !back_edge_cheap(rt, root_base) {break hot}
-						pc += 1 + d
-					} else {
-						pc += 2
-					}
-					sp -= 1
-				case .if_true, .if_false:
-					v := stack[sp - 1]
-					if v.tag != .bool {break hot}
-					d := rd_i32(code, pc + 1)
-					if v.u.b == (hop == .if_true) {
-						if d < 0 && !back_edge_cheap(rt, root_base) {break hot}
-						pc += 1 + d
-					} else {
-						pc += 5
-					}
-					sp -= 1
-				case .goto8:
-					d := int(i8(code[pc + 1]))
-					if d < 0 && !back_edge_cheap(rt, root_base) {break hot}
-					pc += 1 + d
-				case .goto16:
-					d := int(i16(u16(rd_u16(code, pc + 1))))
-					if d < 0 && !back_edge_cheap(rt, root_base) {break hot}
-					pc += 1 + d
-				case .get_array_el:
-					o, k := stack[sp - 2], stack[sp - 1]
-					if o.tag != .object || k.tag != .int || k.u.i < 0 {break hot}
-					p := as_obj(o)
-					if !p.fast_array {break hot}
-					ad := &p.data.(Array_Data)
-					if u32(k.u.i) >= ad.count {break hot}
-					stack[sp - 2] = ad.values[k.u.i]
-					sp -= 1
-					pc += 1
-				case .get_field, .get_field2:
-					o := stack[sp - 1]
-					if o.tag != .object {break hot}
-					p := as_obj(o)
-					i := shape_find(p.shape, Atom(rd_u32(code, pc + 1)))
-					if i < 0 || p.shape.props[i].kind != .data {break hot}
-					if hop == .get_field2 {
-						stack[sp] = p.slots[i].value
-						sp += 1
-					} else {
-						stack[sp - 1] = p.slots[i].value
-					}
-					pc += 5
-				case:
-					break hot
-				}
+			// The commonest instructions run in interp_hot (interp_hot.odin), a procedure of its own whose
+			// few live values stay in registers. It returns with pc on the first instruction it does not
+			// handle (or whose fast path does not apply), for the full dispatch below.
+			when JSRT_TRACE_LAST_OP {trace_last_bc = b}
+			nf: ^Frame
+			moved, thrown: bool
+			nf, pc, sp, moved, thrown = interp_hot(ctx, rt, f, pc, sp)
+			if thrown {exc = true}
+			if moved {
+				// the hot loop moved to another frame (a call or a return); reload the registers
+				f = nf
+				f.pc = pc
+				f.sp = sp
+				continue frames
 			}
+			if thrown {continue}
 			if pc >= len(code) {
 				// only reachable with inconsistent bytecode: fail the call rather than the process
 				throw_internal_error(ctx, cat(ctx, "bytecode ran past its end in ", atom_utf8(rt, b.func_name), " after ", fmt_opcode(prev_op)))
@@ -488,9 +353,17 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 				}
 				f.pc = pc
 				base := sp - argc
+				if op != .tail_call && stack[base - 1].tag == .object {
+					fo := as_obj(stack[base - 1])
+					if fo.class == .bytecode_function && fo.data.(Func_Data).bc.func_kind == .normal && rt.stack_depth < rt.config.max_stack_depth {
+						f.sp = base - 1 // the result goes here when the callee returns
+						f = frame_push(ctx, fo, UNDEFINED, stack[base:sp])
+						continue frames
+					}
+				}
 				r := call_internal(ctx, stack[base - 1], UNDEFINED, UNDEFINED, stack[base:sp], false)
 				if is_exception(r) {exc = true; break}
-				if op == .tail_call {ret_val = r; return finish(f, rt, ret_val, root_base)}
+				if op == .tail_call {ret_val = r; returning = true; break}
 				sp = base - 1
 				stack[sp] = r
 				sp += 1
@@ -499,9 +372,17 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 				pc += 2
 				f.pc = pc
 				base := sp - argc
+				if op != .tail_call_method && stack[base - 1].tag == .object {
+					fo := as_obj(stack[base - 1])
+					if fo.class == .bytecode_function && fo.data.(Func_Data).bc.func_kind == .normal && rt.stack_depth < rt.config.max_stack_depth {
+						f.sp = base - 2
+						f = frame_push(ctx, fo, stack[base - 2], stack[base:sp])
+						continue frames
+					}
+				}
 				r := call_internal(ctx, stack[base - 1], stack[base - 2], UNDEFINED, stack[base:sp], false)
 				if is_exception(r) {exc = true; break}
-				if op == .tail_call_method {ret_val = r; return finish(f, rt, ret_val, root_base)}
+				if op == .tail_call_method {ret_val = r; returning = true; break}
 				sp = base - 2
 				stack[sp] = r
 				sp += 1
@@ -545,7 +426,7 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 					temp_reset(rt, root_base)
 					return UNDEFINED, .coro_return
 				}
-				return finish(f, rt, ret_val, root_base)
+				returning = true
 			case .return_undef:
 				if is_coro {
 					stack[sp] = UNDEFINED
@@ -555,7 +436,8 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 					temp_reset(rt, root_base)
 					return UNDEFINED, .coro_return
 				}
-				return finish(f, rt, UNDEFINED, root_base)
+				ret_val = UNDEFINED
+				returning = true
 			case .return_async:
 				f.sp = sp
 				f.pc = pc
@@ -1304,6 +1186,20 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 					if is_builtin_array_iter(stack[itp], stack[itp + 1]) {
 						// no result object for the built-in array iterator (unobservable)
 						v, d, ok = array_iterator_step(ctx, as_obj(stack[itp]).data.(^Iter_State))
+					} else if is_builtin_generator_next(stack[itp], stack[itp + 1]) {
+						// no result object for the built-in generator `next` (unobservable); yield* hands one through
+						co, is_co := as_obj(stack[itp]).data.(^Coro)
+						if !is_co {
+							throw_type_error(ctx, "not a generator")
+							ok = false
+						} else {
+							gv, gd, gs := generator_step_raw(ctx, co, UNDEFINED, GEN_NEXT)
+							switch gs {
+							case .ok: v, d, ok = gv, gd, true
+							case .exception: ok = false
+							case .raw: v, d, ok = iter_result_unpack(ctx, gv)
+							}
+						}
 					} else {
 						v, d, ok = iterator_step_value(ctx, stack[itp], stack[itp + 1])
 					}
@@ -1710,6 +1606,17 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 				throw_internal_error(ctx, "invalid opcode")
 				exc = true
 			}
+			if returning {
+				returning = false
+				if f.stackless {
+					// resume the caller: the result takes the place of the callee and its arguments
+					f = frame_pop(rt, f)
+					f.stack[f.sp] = ret_val
+					f.sp += 1
+					continue frames
+				}
+				return finish(f, rt, ret_val, root_base)
+			}
 			if !exc {continue}
 		}
 
@@ -1742,9 +1649,16 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 			}
 		}
 		if caught {continue}
+		if f.stackless {
+			// uncaught in a frame this activation pushed: pop it and unwind the caller from its call site
+			f = frame_pop(rt, f)
+			exc = true
+			continue frames
+		}
 		f.sp = sp
 		temp_reset(rt, root_base)
 		return EXCEPTION, .exception
+		}
 	}
 }
 

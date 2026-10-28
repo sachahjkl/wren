@@ -207,19 +207,27 @@ regexp_ctor :: proc(ctx: ^Context, nt: Value, args: []Value, magic: i32) -> Valu
 }
 
 // RegExpBuiltinExec(R, S): a match result array or null.
-regexp_builtin_exec :: proc(ctx: ^Context, rv: Value, s: ^JS_String) -> Value {
+regexp_builtin_exec :: proc(ctx: ^Context, rv: Value, s: ^JS_String, want_result := true) -> Value {
 	rt := ctx.rt
 	d := regexp_obj_data(rv)
-	liv := get(ctx, rv, pa(.A_lastIndex))
-	if is_exception(liv) {return EXCEPTION}
-	last_index, ok := to_length(ctx, liv)
-	if !ok {return EXCEPTION}
+	// a regexp whose only own property is the writable data property lastIndex (slot 0): read and write it in place
+	plain := regexp_plain_last_index(as_obj(rv))
+	last_index: i64
+	if plain && as_obj(rv).slots[0].value.tag == .int && as_obj(rv).slots[0].value.u.i >= 0 {
+		last_index = i64(as_obj(rv).slots[0].value.u.i)
+	} else {
+		liv := get(ctx, rv, pa(.A_lastIndex))
+		if is_exception(liv) {return EXCEPTION}
+		ok: bool
+		last_index, ok = to_length(ctx, liv)
+		if !ok {return EXCEPTION}
+	}
 	bc := d.bytecode
 	re_flags := lre_flags(bc)
 	global_or_sticky := re_flags & (fe.LRE_FLAG_GLOBAL | fe.LRE_FLAG_STICKY) != 0
 	if !global_or_sticky {last_index = 0}
 	if last_index > i64(s.len) {
-		if set(ctx, rv, pa(.A_lastIndex), mk_int(0), true) < 0 {return EXCEPTION}
+		if !regexp_set_last_index(ctx, rv, plain, 0) {return EXCEPTION}
 		return NULL
 	}
 	arena := &rt.regexp_arena
@@ -231,7 +239,7 @@ regexp_builtin_exec :: proc(ctx: ^Context, rv: Value, s: ^JS_String) -> Value {
 	case .match:
 	case .no_match:
 		if global_or_sticky {
-			if set(ctx, rv, pa(.A_lastIndex), mk_int(0), true) < 0 {return EXCEPTION}
+			if !regexp_set_last_index(ctx, rv, plain, 0) {return EXCEPTION}
 		}
 		return NULL
 	case .timeout:
@@ -242,12 +250,27 @@ regexp_builtin_exec :: proc(ctx: ^Context, rv: Value, s: ^JS_String) -> Value {
 		return throw_internal_error(ctx, "corrupted bytecode in regexp execution")
 	}
 	if global_or_sticky {
-		if set(ctx, rv, pa(.A_lastIndex), mk_int(i32(capture[1])), true) < 0 {return EXCEPTION}
+		if !regexp_set_last_index(ctx, rv, plain, i32(capture[1])) {return EXCEPTION}
 	}
+	if !want_result {return TRUE}
 	ncap := lre_capture_count(bc)
 	names := lre_group_names(bc)
 	has_names := names != nil
 	has_indices := re_flags & fe.LRE_FLAG_INDICES != 0
+	if !has_names && !has_indices {
+		// the common case: the result array is built with its final shape in one go
+		arr := match_array_new(ctx, ncap, capture[0], s)
+		ad := &arr.data.(Array_Data)
+		for i in 0 ..< ncap {
+			start, end := capture[2 * i], capture[2 * i + 1]
+			v := UNDEFINED
+			if start >= 0 && end >= 0 {v = mk_str(str_sub(rt, s, start, end))}
+			ad.values[i] = v
+		}
+		ad.count = u32(ncap)
+		arr.slots[0].value = mk_int(i32(ncap))
+		return mk_obj(arr)
+	}
 	arr := array_new(ctx, ncap)
 	define_value(ctx, arr, pa(.A_index), mk_int(i32(capture[0])), CWE)
 	define_value(ctx, arr, pa(.A_input), mk_str(s), CWE)
@@ -294,7 +317,7 @@ regexp_builtin_exec :: proc(ctx: ^Context, rv: Value, s: ^JS_String) -> Value {
 }
 
 // RegExpExec(R, S): user `exec` if overridden.
-regexp_exec :: proc(ctx: ^Context, r: Value, s: ^JS_String) -> Value {
+regexp_exec :: proc(ctx: ^Context, r: Value, s: ^JS_String, want_result := true) -> Value {
 	ex := get(ctx, r, pa(.A_exec))
 	if is_exception(ex) {return EXCEPTION}
 	if is_callable(ex) && !(ex.tag == .object && as_obj(ex) == ctx.regexp_exec) {
@@ -304,7 +327,88 @@ regexp_exec :: proc(ctx: ^Context, r: Value, s: ^JS_String) -> Value {
 		return res
 	}
 	if regexp_obj_data(r) == nil {return throw_type_error(ctx, "not a RegExp")}
-	return regexp_builtin_exec(ctx, r, s)
+	return regexp_builtin_exec(ctx, r, s, want_result)
+}
+
+// Is `o` a RegExp that nothing observable distinguishes from a freshly made one: lastIndex is its only own
+// property and RegExp.prototype is exactly as the realm set it up (same properties, same functions and
+// accessors)? Then `flags`, `exec` ... need not be looked up through script-visible properties.
+regexp_pristine :: proc(ctx: ^Context, o: ^Object) -> bool {
+	if o.class != .regexp || !regexp_plain_last_index(o) {return false}
+	rp := ctx.class_proto[.regexp]
+	n := ctx.rx_snap_n
+	if o.shape.proto != rp || n == 0 || rp.shape != ctx.rx_snap_shape || len(rp.shape.props) != n {return false}
+	props := raw_data(rp.shape.props)
+	for i in 0 ..< n {
+		a, b := rp.slots[i], ctx.rx_snap[i]
+		if props[i].kind == .accessor {
+			if a.getset != b.getset {return false}
+		} else if a.value.tag != b.value.tag || a.value.u.ptr != b.value.u.ptr {
+			return false
+		}
+	}
+	return true
+}
+
+// Remember RegExp.prototype as the realm built it (called once the realm is initialised).
+regexp_take_snapshot :: proc(ctx: ^Context) {
+	rp := ctx.class_proto[.regexp]
+	n := len(rp.shape.props)
+	if n > len(ctx.rx_snap) {return}
+	for i in 0 ..< n {ctx.rx_snap[i] = rp.slots[i]}
+	ctx.rx_snap_shape = rp.shape
+	ctx.rx_snap_n = n
+}
+
+// Is lastIndex the only own property, a writable data property in slot 0?
+regexp_plain_last_index :: #force_inline proc(o: ^Object) -> bool {
+	props := o.shape.props
+	return len(props) == 1 && props[0] == Shape_Prop{pa(.A_lastIndex), {.writable}, .data}
+}
+
+regexp_set_last_index :: proc(ctx: ^Context, rv: Value, plain: bool, v: i32) -> bool {
+	if plain {
+		as_obj(rv).slots[0].value = mk_int(v)
+		return true
+	}
+	return set(ctx, rv, pa(.A_lastIndex), mk_int(v), true) >= 0
+}
+
+// A match result made by match_array_new whose parts can be read directly: ok = false for any other object.
+// caps are strings or undefined by construction, and the length slot equals the element count.
+match_view :: #force_inline proc(ctx: ^Context, r: Value) -> (ad: ^Array_Data, o: ^Object, ok: bool) {
+	if r.tag != .object {return}
+	o = as_obj(r)
+	if o.shape != ctx.match_shape || ctx.match_shape == nil || !o.fast_array {return}
+	ad = &o.data.(Array_Data)
+	if ad.count == 0 || o.slots[0].value.tag != .int || u32(o.slots[0].value.u.i) != ad.count || o.slots[1].value.tag != .int {return}
+	if ad.values[0].tag != .string {return}
+	return ad, o, true
+}
+
+// A fresh match result: an Array with own index / input / groups (undefined), `ncap` element slots reserved.
+match_array_new :: proc(ctx: ^Context, ncap: int, index: int, input: ^JS_String) -> ^Object {
+	rt := ctx.rt
+	if ctx.match_shape == nil {
+		t := array_new(ctx, 0)
+		define_value(ctx, t, pa(.A_index), mk_int(0), CWE)
+		define_value(ctx, t, pa(.A_input), UNDEFINED, CWE)
+		define_value(ctx, t, pa(.A_groups), UNDEFINED, CWE)
+		ctx.match_shape = t.shape
+	}
+	o := object_new_shape(rt, ctx.match_shape, .array)
+	o.fast_array = true
+	o.slots[0].value = mk_int(0)
+	o.slots[1].value = mk_int(i32(index))
+	o.slots[2].value = mk_str(input)
+	o.slots[3].value = UNDEFINED
+	ad := Array_Data{}
+	if ncap > 0 {
+		ad.values = mem_array(rt, Value, ncap)
+		ad.cap = u32(ncap)
+	}
+	o.data = ad
+	return o
 }
 
 @(private = "file")
@@ -320,7 +424,7 @@ rp_test :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value 
 	if this.tag != .object {return throw_type_error(ctx, "not an object")}
 	s := to_str(ctx, arg(args, 0))
 	if s == nil {return EXCEPTION}
-	r := regexp_exec(ctx, this, s)
+	r := regexp_exec(ctx, this, s, false)
 	if is_exception(r) {return EXCEPTION}
 	return mk_bool(!is_null(r))
 }
@@ -441,6 +545,23 @@ advance_string_index :: proc(rt: ^Runtime, s: ^JS_String, idx: i64, unicode: boo
 
 @(private = "file")
 flags_has :: proc(ctx: ^Context, rv: Value, c: u16) -> (bool, bool) {
+	if rv.tag == .object && regexp_pristine(ctx, as_obj(rv)) {
+		bit: int
+		switch c {
+		case 'g': bit = fe.LRE_FLAG_GLOBAL
+		case 'i': bit = fe.LRE_FLAG_IGNORECASE
+		case 'm': bit = fe.LRE_FLAG_MULTILINE
+		case 's': bit = fe.LRE_FLAG_DOTALL
+		case 'u': bit = fe.LRE_FLAG_UNICODE
+		case 'v': bit = fe.LRE_FLAG_UNICODE_SETS
+		case 'y': bit = fe.LRE_FLAG_STICKY
+		case 'd': bit = fe.LRE_FLAG_INDICES
+		}
+		if bit != 0 {
+			d := regexp_obj_data(rv)
+			if d != nil {return lre_flags(d.bytecode) & bit != 0, true}
+		}
+	}
 	fl := get(ctx, rv, pa(.A_flags))
 	if is_exception(fl) {return false, false}
 	fs := to_str(ctx, fl)
@@ -545,10 +666,15 @@ rp_replace :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Val
 		if is_null(r) {break}
 		append(&results, r)
 		if !global {break}
-		mv := get_index(ctx, r, 0)
-		if is_exception(mv) {return EXCEPTION}
-		ms := to_str(ctx, mv)
-		if ms == nil {return EXCEPTION}
+		ms: ^JS_String
+		if mad, _, fast := match_view(ctx, r); fast {
+			ms = as_str(mad.values[0])
+		} else {
+			mv := get_index(ctx, r, 0)
+			if is_exception(mv) {return EXCEPTION}
+			ms = to_str(ctx, mv)
+			if ms == nil {return EXCEPTION}
+		}
 		if ms.len == 0 {
 			li := get(ctx, this, pa(.A_lastIndex))
 			if is_exception(li) {return EXCEPTION}
@@ -560,6 +686,36 @@ rp_replace :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Val
 	sb := sb_init(rt, int(s.len))
 	next_pos := 0
 	for r in results {
+		if mad, mo, fast := match_view(ctx, r); fast {
+			// one of our own results (see match_array_new): its parts are read in place
+			matched := as_str(mad.values[0])
+			position := int(clamp(f64(mo.slots[1].value.u.i), 0, f64(s.len)))
+			caps := mad.values[1:mad.count]
+			named := mo.slots[3].value
+			repl: ^JS_String
+			if functional {
+				fargs := make([dynamic]Value, 0, len(caps) + 4, tmp(rt))
+				append(&fargs, mk_str(matched))
+				append(&fargs, ..caps)
+				append(&fargs, mk_int(i32(position)))
+				append(&fargs, mk_str(s))
+				if !is_undefined(named) {append(&fargs, named)}
+				rv := call(ctx, replace, UNDEFINED, fargs[:])
+				if is_exception(rv) {sb_destroy(&sb); return EXCEPTION}
+				repl = to_str(ctx, rv)
+				if repl == nil {sb_destroy(&sb); return EXCEPTION}
+			} else {
+				tb := sb_init(rt)
+				if !get_substitution(ctx, &tb, matched, s, position, caps, named, rs) {sb_destroy(&tb); sb_destroy(&sb); return EXCEPTION}
+				repl = sb_finish(&tb)
+			}
+			if position >= next_pos {
+				sb_str_range(&sb, s, next_pos, position)
+				sb_str(&sb, repl)
+				next_pos = position + int(matched.len)
+			}
+			continue
+		}
 		nc, ok5 := length_of_array_like(ctx, r)
 		if !ok5 {sb_destroy(&sb); return EXCEPTION}
 		ncap := max(nc - 1, 0)
@@ -826,6 +982,7 @@ init_regexp_builtins :: proc(ctx: ^Context) {
 	def_method_sym(ctx, rp, .replace, rp_replace, 2)
 	def_method_sym(ctx, rp, .search, rp_search, 1)
 	def_method_sym(ctx, rp, .split, rp_split, 2)
+	regexp_take_snapshot(ctx)
 	rsip := ctx.class_proto[.regexp_string_iterator]
 	def_method(ctx, rsip, "next", regexp_string_iterator_next, 0)
 	def_tag(ctx, rsip, "RegExp String Iterator")
