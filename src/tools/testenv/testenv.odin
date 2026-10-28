@@ -8,7 +8,7 @@
 // port; this file is a thin wrapper so the tools keep writing testenv.url / testenv.port unchanged.
 package testenv
 
-import tk "toolkit:testkit"
+import tk "../../../ext/gui_toolkit/testkit"
 
 DEFAULT_BASE_PORT :: 8765
 BLOCK_PORTS :: 5
