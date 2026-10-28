@@ -179,6 +179,7 @@ usage :: proc() -> ! {
 	fmt.eprintln("       jsengine run [-image m.wasm] [-raw] [-e code] [file.js ...]")
 	fmt.eprintln("       jsengine bench [-image m.wasm] [-raw] [-iterations n] <dir> [names...]")
 	fmt.eprintln("       jsengine startup [-image m.wasm] [-raw] [-n count]")
+	fmt.eprintln("       jsengine mem [-image m.wasm] [-raw] [-e code] [file.js ...]")
 	os.exit(2)
 }
 
@@ -262,6 +263,7 @@ main :: proc() {
 	case "run": cmd_run(os.args[2:])
 	case "bench": cmd_bench(os.args[2:])
 	case "startup": cmd_startup(os.args[2:])
+	case "mem": cmd_mem(os.args[2:])
 	case "verify": cmd_verify(os.args[2:])
 	case: usage()
 	}
@@ -511,6 +513,41 @@ private_bytes :: proc() -> int {
 	c.cb = size_of(c)
 	GetProcessMemoryInfo(win.GetCurrentProcess(), &c, c.cb)
 	return int(c.PrivateUsage)
+}
+
+// jsengine mem [-image m.wasm] [-e code] [file.js ...]: runs the scripts in a fresh realm and reports what the module's
+// linear memory costs (it only grows: the peak), the JS heap and, for the Odin engine, its census by kind of cell.
+cmd_mem :: proc(args: []string) {
+	c := parse_common(args)
+	setup()
+	image := read_file(c.image)
+	r, ok := realm_new(image, c.raw)
+	if !ok { os.exit(1) }
+	m0 := wasm.memory_bytes(r.inst)
+	h0 := js.heap_bytes(r.inst)
+	t0 := time.tick_now()
+	for code in c.evals {
+		js.eval_script(r.inst, transmute([]byte)code, "<command line>")
+		js.run_jobs(r.inst)
+	}
+	for path in c.rest {
+		src := read_file(path)
+		st := js.eval_script(r.inst, src, path)
+		if st == .Trapped { fmt.eprintln("jsengine:", r.inst.last_error); uncaught += 1 }
+		js.run_jobs(r.inst)
+	}
+	ms := time.duration_milliseconds(time.tick_since(t0))
+	m1 := wasm.memory_bytes(r.inst)
+	h1 := js.heap_bytes(r.inst)
+	js.collect(r.inst)
+	m2 := wasm.memory_bytes(r.inst)
+	h2 := js.heap_bytes(r.inst)
+	fmt.eprintfln("MEM fresh realm: linear memory %d KiB, JS heap %d KiB", m0 / 1024, int(h0) / 1024)
+	fmt.eprintfln("MEM after scripts (%.1f ms): linear memory %d KiB (+%d KiB), JS heap %d KiB", ms, m1 / 1024, (m1 - m0) / 1024, int(h1) / 1024)
+	fmt.eprintfln("MEM after a collection: linear memory %d KiB, JS heap %d KiB", m2 / 1024, int(h2) / 1024)
+	js.print_profile(r.inst, "jsengine mem")
+	wasm.destroy(r.inst)
+	os.exit(uncaught > 0 ? 1 : 0)
 }
 
 cmd_startup :: proc(args: []string) {

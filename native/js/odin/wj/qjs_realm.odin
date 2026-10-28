@@ -70,12 +70,13 @@ wj_interrupts :: proc "c" () -> u32 { return interrupt_count }
 @(private = "file")
 Prof_Slot :: struct { key: [^]u8, key_len: u32, self, incl: u32 }
 
-@(private = "file") prof_tab: [PROF_SLOTS]Prof_Slot
+@(private = "file") prof_tab: [^]Prof_Slot   // allocated when profiling starts (128 KiB a realm that never profiles does not carry)
 @(private = "file") prof_on: i32
 @(private = "file") prof_calls, prof_samples, prof_used, prof_lost: u32
 
 @(private = "file")
 prof_slot_of :: proc "contextless" (s: [^]u8, n: int) -> ^Prof_Slot {
+	if prof_tab == nil { return nil }
 	h: u32 = 2166136261
 	for i in 0 ..< n { h = (h ~ u32(s[i])) * 16777619 }
 	for k: u32 = 0; k < PROF_SLOTS; k += 1 {
@@ -158,7 +159,10 @@ prof_sample :: proc "contextless" (ctx: ^Context) {
 }
 
 @(export, link_name = "wj_profile_set")
-wj_profile_set :: proc "c" (on: i32) { prof_on = on }
+wj_profile_set :: proc "c" (on: i32) {
+	if on != 0 && prof_tab == nil { prof_tab = ([^]Prof_Slot)(libc_calloc(PROF_SLOTS, size_of(Prof_Slot))) }
+	prof_on = prof_tab != nil ? on : 0
+}
 
 @(export, link_name = "wj_profile_dump")
 wj_profile_dump :: proc "c" (buf: u32, size: u32) -> u32 {
@@ -166,7 +170,7 @@ wj_profile_dump :: proc "c" (buf: u32, size: u32) -> u32 {
 	w := snprintf(out, uint(size), "samples\t%u\t%u\tfunctions\t%u\tlost\t%u\n", prof_samples, prof_calls, prof_used, prof_lost)
 	if w < 0 || u32(w) >= size { return 0 }
 	n := u32(w)
-	for i in 0 ..< PROF_SLOTS {
+	for i in 0 ..< (prof_tab != nil ? PROF_SLOTS : 0) {
 		e := &prof_tab[i]
 		if e.key == nil { continue }
 		w = snprintf(out[n:], uint(size - n), "%u\t%u\t%s\n", e.self, e.incl, e.key)
