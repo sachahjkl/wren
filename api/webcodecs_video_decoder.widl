@@ -1,0 +1,29 @@
+/// WebCodecs VideoDecoder (src/page/bindings_video_decoder.odin, native/js/runtime/web_webcodecs_video_decoder.c).
+/// Wires to the media decoders of src/media behind an honest isConfigSupported. The engine holds the output / error
+/// callbacks; a decoded VideoFrame is delivered through the output callback (user, frame handle).
+[Exposed=(Window,Worker,DedicatedWorker)]
+module webcodecs_video_decoder {
+  handle VideoDecoder : Object = Video_Decoder_Obj via lookup_VideoDecoder;
+
+  /// output(frame) and error(code) callbacks. The frame handle is a VideoFrame the guest must close.
+  callback VideoDecoderOutput(i32 user, u64 frame);
+  callback VideoDecoderError(i32 user, i32 code);
+
+  /// new VideoDecoder({output, error}).
+  [Owned] VideoDecoder VideoDecoder_create(VideoDecoderOutput output, i32 output_user, VideoDecoderError error, i32 error_user) raises;
+
+  /// VideoDecoder.isConfigSupported(config.codec): honest — true only when src/media can decode the codec.
+  bool VideoDecoder_isConfigSupported(string codec);
+
+  /// decoder.configure({codec, description, codedWidth, codedHeight}).
+  void VideoDecoder_configure(VideoDecoder decoder, string codec, bytes description, u32 coded_w, u32 coded_h) raises;
+  /// decoder.decode(EncodedVideoChunk): the engine passes the chunk's fields and bytes.
+  void VideoDecoder_decode(VideoDecoder decoder, bool key, i64 timestamp, i64 duration, bool has_duration, bytes data) raises;
+  /// decoder.flush(): drain the pipeline (the engine resolves the promise).
+  void VideoDecoder_flush(VideoDecoder decoder) raises;
+  void VideoDecoder_reset(VideoDecoder decoder);
+  void VideoDecoder_close(VideoDecoder decoder);
+  u32 VideoDecoder_decodeQueueSize(VideoDecoder decoder);
+  /// 0 unconfigured, 1 configured, 2 closed.
+  i32 VideoDecoder_state(VideoDecoder decoder);
+}
