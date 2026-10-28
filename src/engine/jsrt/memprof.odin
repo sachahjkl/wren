@@ -107,12 +107,15 @@ heap_profile :: proc(rt: ^Runtime) -> (p: Heap_Profile) {
 				if d.bc != nil {extra += int(d.bc.closure_var_count) * size_of(rawptr)}
 				row = .obj_function
 			case Native_Data:
-				extra += int(d.data_len) * size_of(Value)
+				extra += native_data_len(&o.data.(Native_Data)) * size_of(Value) + (d.data != nil ? NATIVE_DATA_HEADER : 0)
 				row = .obj_native
 			case ^Bound_Data:
 				extra += size_of(Bound_Data) + len(d.args) * size_of(Value)
 				row = .obj_bound
-			case Prim_Data, Date_Data:
+			case ^Prim_Data:
+				extra += size_of(Prim_Data)
+			case ^Date_Data:
+				extra += size_of(Date_Data)
 			case ^RegExp_Data:
 			case ^Map_State:
 				extra += size_of(Map_State) + cap(d.entries) * size_of(Map_Entry) + len(d.index) * size_of(i32)

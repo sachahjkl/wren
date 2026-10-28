@@ -1,6 +1,6 @@
 package jsrt
 
-// JSON (ECMA-262 §25.5) including JSON.parse source text access (reviver context, rawJSON).
+// JSON (ECMA-262 Â§25.5) including JSON.parse source text access (reviver context, rawJSON).
 
 import "wb:engine/numconv"
 
@@ -408,7 +408,7 @@ json_property :: proc(w: ^JSON_Writer, holder: Value, key: Atom, val_in: Value) 
 			if s == nil {return -1}
 			v = mk_str(s)
 		case .boolean, .bigint:
-			v = o.data.(Prim_Data).v
+			v = o.data.(^Prim_Data).v
 		case:
 			if o.class == .object && is_raw_json(o) {
 				i := shape_find(o.shape, pa(.A_rawJSON))

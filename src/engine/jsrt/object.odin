@@ -62,12 +62,15 @@ Prop_Slot :: struct #raw_union {
 Object :: struct {
 	using cell:     Cell,
 	class:          Class_ID,
-	extensible:     bool,
-	is_constructor: bool,
-	fast_array:     bool, // Array/Arguments: integer keys live in data.(Array_Data)
-	is_htmldda:     bool,
-	is_class_ctor:  bool,
-	watch_index:    bool, // Array.prototype / Object.prototype: an index key or a new [[Prototype]] disables array fast paths
+	using bits:     bit_field u8 {
+		extensible:     bool | 1,
+		is_constructor: bool | 1,
+		fast_array:     bool | 1, // Array/Arguments: integer keys live in data.(Array_Data)
+		is_htmldda:     bool | 1,
+		is_class_ctor:  bool | 1,
+		watch_index:    bool | 1, // Array.prototype / Object.prototype: an index key or a new [[Prototype]] disables array fast paths
+		ctor_only:      bool | 1, // a native function that throws when called without `new` (Native_Kind.constructor_only)
+	},
 	shape:          ^Shape,
 	slots:          [^]Prop_Slot,
 	slot_cap:       u32,
@@ -80,8 +83,8 @@ Object_Data :: union {
 	Func_Data,
 	Native_Data,
 	^Bound_Data,
-	Prim_Data,
-	Date_Data,
+	^Prim_Data,
+	^Date_Data,
 	^RegExp_Data,
 	^Map_State,
 	^Weak_Ref_Data,
@@ -123,13 +126,42 @@ Native_Kind :: enum u8 {
 	constructor_only,// TypeError when called without `new`
 }
 
+// 16 bytes on wasm32, so that the union in Object is no larger than the array variant: the kind lives in the
+// object (ctor_only, is_constructor: native_kind) and the number of data values in the block of `data`.
 Native_Data :: struct {
-	fn:       Native_Proc,
-	realm:    ^Context,
-	magic:    i32,
-	kind:     Native_Kind,
-	data:     [^]Value,
-	data_len: u32,
+	fn:    Native_Proc,
+	realm: ^Context,
+	data:  [^]Value, // after an 8-byte count (native_data_len), allocated with native_data_alloc
+	magic: i32,
+}
+
+NATIVE_DATA_HEADER :: 8
+
+native_data_len :: #force_inline proc "contextless" (nd: ^Native_Data) -> int {
+	if nd.data == nil {return 0}
+	return int((cast(^u32)(uintptr(nd.data) - NATIVE_DATA_HEADER))^)
+}
+
+native_data_alloc :: proc(rt: ^Runtime, nd: ^Native_Data, n: int) {
+	p := cast([^]byte)mem_alloc(rt, NATIVE_DATA_HEADER + n * size_of(Value))
+	(cast(^u32)p)^ = u32(n)
+	nd.data = cast([^]Value)(p[NATIVE_DATA_HEADER:])
+}
+
+native_data_free :: proc(rt: ^Runtime, nd: ^Native_Data) {
+	if nd.data == nil {return}
+	mem_free(rt, rawptr(uintptr(nd.data) - NATIVE_DATA_HEADER), NATIVE_DATA_HEADER + native_data_len(nd) * size_of(Value))
+	nd.data = nil
+}
+
+native_kind :: #force_inline proc "contextless" (o: ^Object) -> Native_Kind {
+	if o.ctor_only {return .constructor_only}
+	return o.is_constructor ? .constructor : .function
+}
+
+set_native_kind :: #force_inline proc "contextless" (o: ^Object, kind: Native_Kind) {
+	o.is_constructor = kind != .function
+	o.ctor_only = kind == .constructor_only
 }
 
 Bound_Data :: struct {
@@ -231,6 +263,22 @@ Promise_Data :: struct {
 Disposable_Data :: struct {
 	stack:    [dynamic]Value, // (value, method, kind) triples flattened
 	disposed: bool,
+}
+
+// The primitive a wrapper object (or an Error's [[ErrorData]]) holds, and the time value of a Date: out of line, so
+// that the union in Object stays small. Set again in place by the setters.
+set_prim :: proc(rt: ^Runtime, o: ^Object, v: Value) {
+	if p, ok := o.data.(^Prim_Data); ok {p.v = v; return}
+	p := cast(^Prim_Data)mem_alloc(rt, size_of(Prim_Data))
+	p.v = v
+	o.data = p
+}
+
+set_date :: proc(rt: ^Runtime, o: ^Object, t: f64) {
+	if p, ok := o.data.(^Date_Data); ok {p.t = t; return}
+	p := cast(^Date_Data)mem_alloc(rt, size_of(Date_Data))
+	p.t = t
+	o.data = p
 }
 
 // --- shapes ---
@@ -514,11 +562,14 @@ object_finalize :: proc(rt: ^Runtime, o: ^Object) {
 	case Func_Data:
 		if d.var_refs != nil && d.bc != nil {mem_free(rt, d.var_refs, int(d.bc.closure_var_count) * size_of(^Var_Ref))}
 	case Native_Data:
-		if d.data != nil {mem_free(rt, d.data, int(d.data_len) * size_of(Value))}
+		native_data_free(rt, &o.data.(Native_Data))
 	case ^Bound_Data:
 		delete(d.args, rt_allocator(rt))
 		free(d, rt_allocator(rt))
-	case Prim_Data, Date_Data:
+	case ^Prim_Data:
+		mem_free(rt, d, size_of(Prim_Data))
+	case ^Date_Data:
+		mem_free(rt, d, size_of(Date_Data))
 	case ^RegExp_Data:
 		regexp_data_free(rt, d)
 	case ^Map_State:
@@ -586,14 +637,14 @@ object_trace :: proc(rt: ^Runtime, o: ^Object) {
 			for i in 0 ..< int(d.bc.closure_var_count) {mark_cell(rt, d.var_refs[i])}
 		}
 	case Native_Data:
-		if d.data != nil {mark_values(rt, d.data[:d.data_len])}
+		if d.data != nil {mark_values(rt, d.data[:native_data_len(&o.data.(Native_Data))])}
 	case ^Bound_Data:
 		mark_value(rt, d.target)
 		mark_value(rt, d.this)
 		mark_values(rt, d.args)
-	case Prim_Data:
+	case ^Prim_Data:
 		mark_value(rt, d.v)
-	case Date_Data:
+	case ^Date_Data:
 	case ^RegExp_Data:
 		mark_cell(rt, d.source)
 	case ^Map_State:

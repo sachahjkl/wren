@@ -84,7 +84,7 @@ error_add_stack :: proc(ctx: ^Context, o: ^Object) {
 	s := sb_finish(&sb)
 	if o.class == .error {
 		// [[ErrorData]]: read through the Error.prototype.stack accessor
-		o.data = Prim_Data{mk_str(s)}
+		set_prim(ctx.rt, o, mk_str(s))
 	} else {
 		define_value(ctx, o, pa(.A_stack), mk_str(s), CW)
 	}
@@ -94,7 +94,7 @@ error_stack_get :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -
 	if this.tag != .object {return throw_not_object(ctx)}
 	o := as_obj(this)
 	if o.class != .error {return UNDEFINED}
-	if pd, ok := o.data.(Prim_Data); ok {return pd.v}
+	if pd, ok := o.data.(^Prim_Data); ok {return pd.v}
 	return UNDEFINED
 }
 

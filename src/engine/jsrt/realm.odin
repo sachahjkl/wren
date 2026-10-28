@@ -105,13 +105,13 @@ realm_init :: proc(ctx: ^Context) {
 	op.watch_index = true
 	proto_of(ctx, .error, op)
 	np := object_new_proto(ctx, op, .number)
-	np.data = Prim_Data{mk_int(0)}
+	set_prim(ctx.rt, np, mk_int(0))
 	ctx.class_proto[.number] = np
 	sp := new_primitive_wrapper(ctx, .string, mk_str(rt.empty_string))
 	set_object_proto(rt, sp, op)
 	ctx.class_proto[.string] = sp
 	bp := object_new_proto(ctx, op, .boolean)
-	bp.data = Prim_Data{FALSE}
+	set_prim(ctx.rt, bp, FALSE)
 	ctx.class_proto[.boolean] = bp
 	proto_of(ctx, .symbol, op)
 	proto_of(ctx, .bigint, op)
