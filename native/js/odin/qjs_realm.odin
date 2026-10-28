@@ -15,6 +15,7 @@
 // leaving the engine consistent. Wasmtime's own deadline (wasm.max_call_ms, longer) remains the hard stop.
 package odin_glue
 
+import "base:runtime"
 import "../odin/wj"
 
 // tools/build_js.ps1 -Allocator mimalloc: the engine's heap through mimalloc, the C library's own through dlmalloc
@@ -215,6 +216,11 @@ when WJ_MIMALLOC {
 @(export, link_name = "wj_preinit")
 wj_preinit :: proc "c" () -> i32 {
 	if wj.wj_the_realm.ctx != nil { return 0 }
+	// This module is built without the Odin runtime's start-up (-no-entry-point): the initialisation of every package-level
+	// variable that is not a constant (tables with strings and nil, maps, @(init) procedures: the front-end's keyword tables,
+	// the engine's atoms) has not run. Run it once, here; the image made after pre-initialization keeps the result.
+	context = wj.heap_context()
+	runtime._startup_runtime()
 	wj.error_event_hook = wj_fire_error_event
 	rt := new_runtime()
 	if rt == nil { return -1 }

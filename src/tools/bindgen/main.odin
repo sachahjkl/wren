@@ -41,7 +41,7 @@ Target :: struct {
 //        it is Odin (agent spk's wj_iface.odin).
 // The foreign wr_* imports for Odin (native/js/odin/wj/wr_imports.odin) are emitted in both modes: the ported glue
 // declares no import by hand.
-Emit :: enum { C, Odin }
+Emit :: enum { C, Odin, Glue }
 emit_mode: Emit = .C
 
 PAGE_HOST :: idl.Host_Config{
@@ -80,10 +80,11 @@ main :: proc() {
 		case a == "-check": check_only = true
 		case a == "-emit:c": emit_mode = .C
 		case a == "-emit:odin": emit_mode = .Odin
+		case a == "-emit:glue": emit_mode = .Glue
 		case a == "-convert-widl": convert_widl = true
 		case a == "-verify-roundtrip": verify_roundtrip(); return
 		case:
-			fmt.eprintfln("bindgen: unknown argument %s (usage: bindgen [-check] [-emit:c|-emit:odin] [-convert-widl])", a)
+			fmt.eprintfln("bindgen: unknown argument %s (usage: bindgen [-check] [-emit:c|-emit:odin|-emit:glue] [-convert-widl])", a)
 			os.exit(2)
 		}
 	}
@@ -99,6 +100,7 @@ main :: proc() {
 			switch emit_mode {
 			case .C:    run_js(api)
 			case .Odin: run_js_odin(api)
+			case .Glue: run_js_glue(api)
 			}
 		}
 	}
@@ -317,6 +319,21 @@ run_js :: proc(api: ^idl.Api) {
 // -emit:odin counterpart of run_js: the interface metadata table in Odin (native/js/odin_gen), against wj_iface.odin.
 // The node-interface indices and the coverage are emitted either way; the member glue bodies are not generated here
 // yet (they need spk's wj conversions), so the table's fn/get/set slots stay nil and spk fills them.
+// -emit:glue: the trampolines, dictionaries and tables in Odin, one file (native/js/odin/bindings_gen.odin).
+run_js_glue :: proc(api: ^idl.Api) {
+	model := load_webidl_model()
+	for d in model.diags {
+		if strings.contains(d.msg, "partial definitions only") || strings.contains(d.msg, "unknown") { continue }
+		fmt.eprintfln("%s:%d: %s", d.pos.file, d.pos.line, d.msg)
+		problems += 1
+	}
+	out := jsgen.generate(api, model, scan_raw_impls(JS_IMPL_DIR), "page", jsgen.Mode.Glue)
+	for pr in out.problems { fmt.eprintfln("bindgen: %s", pr) }
+	emit("native/js/odin/bindings_gen.odin", out.odin_glue)
+	emit("src/page/js_interfaces_generated.odin", out.odin)
+	emit("docs/js/coverage.md", out.coverage)
+}
+
 run_js_odin :: proc(api: ^idl.Api) {
 	model := load_webidl_model()
 	out := jsgen.generate(api, model, scan_raw_impls(JS_IMPL_DIR), "page", jsgen.Mode.Odin)
@@ -345,6 +362,7 @@ load_webidl_model :: proc() -> ^webidl.Model {
 // Names of the hand-written members: the `wjr_<...>` symbols the Odin glue exports (`@(export, link_name = "wjr_...")`).
 // The glue used to be C files (native/js/runtime/*.c); it is Odin now, so this reads native/js/odin.
 scan_raw_impls :: proc(dir: string) -> []string {
+	if jsgen.raw_idents == nil { jsgen.raw_idents = make(map[string]string) }
 	out := make([dynamic]string)
 	seen := make(map[string]bool)
 	walk :: proc(dir: string, out: ^[dynamic]string, seen: ^map[string]bool) {
@@ -364,6 +382,15 @@ scan_raw_impls :: proc(dir: string) -> []string {
 				for j < len(text) && text[j] != '"' { j += 1 }
 				name := text[:j]
 				if name not_in seen^ { seen[strings.clone(name)] = true; append(out, strings.clone(name)) }
+				// the identifier the symbol is declared with: the name before the next ::, on this line or the next
+				rest := text[j:]
+				if k := strings.index(rest, "::"); k > 0 {
+					e := k
+					for e > 0 && (rest[e - 1] == ' ' || rest[e - 1] == '\t') { e -= 1 }
+					s := e
+					for s > 0 && (rest[s - 1] == '_' || (rest[s - 1] >= 'a' && rest[s - 1] <= 'z') || (rest[s - 1] >= 'A' && rest[s - 1] <= 'Z') || (rest[s - 1] >= '0' && rest[s - 1] <= '9')) { s -= 1 }
+					if e > s { jsgen.raw_idents[strings.clone(name)] = strings.clone(rest[s:e]) }
+				}
 				text = text[j:]
 			}
 		}
