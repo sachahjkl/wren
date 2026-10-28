@@ -1,6 +1,6 @@
 package js
 
-// The engine's JIT (native/js/jit): hot functions compiled from their bytecode to WebAssembly, which the browser
+// The engine's JIT (src/engine/jsrt/jit.odin): hot functions compiled from their bytecode to WebAssembly, which the browser
 // compiles (Cranelift) and attaches to the engine's instance (wasm.attach_function). WebAssembly stays the only
 // execution engine: the code made at run time is a Wasm module in the same sandbox as the engine.
 
@@ -14,7 +14,7 @@ Jit_Settings :: struct {
 	max_functions:      int,
 	max_bytecode_bytes: int,
 	step_only:          bool,   // every op through the interpreter's code (testing)
-	off_paths:          int,    // testing: inline paths turned off (native/js/jit/wjit.h WJIT_OFF_*), not a preference
+	off_paths:          int,    // testing: inline paths turned off (the former C JIT's WJIT_OFF_* switches; the Odin JIT ignores it), not a preference
 	background_threads: int,    // 0: compiled on the page's thread
 }
 
@@ -89,7 +89,7 @@ jit_poll :: proc(inst: ^wasm.Instance, ticket: i32) -> i32 {
 	return i32(index)
 }
 
-// The engine's own counters (native/js/jit/wjit.h, WJitStats), for measurements.
+// The engine's own counters (src/engine/jsrt/jit.odin, jit_stat), for measurements.
 Jit_Stats :: struct {
 	compiled, failed, refused, module_bytes, bytecode_bytes, compile_ms_engine: f64,
 	entries, exits_return, exits_exception, exits_deopt, steps, pending, osr_entries: f64,
