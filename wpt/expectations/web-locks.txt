@@ -274,19 +274,19 @@
 	API presence in secure contexts: PASS
 /web-locks/secure-context.https.any.worker.html: OK
 	API presence in secure contexts: PASS
-/web-locks/signal.https.any.html: TIMEOUT
+/web-locks/signal.https.any.html: OK
 	Abort after a timeout: PASS
-	Abort should process the next pending lock request: TIMEOUT
+	Abort should process the next pending lock request: PASS
 	Abort signaled after lock granted: PASS
 	Abort signaled after lock released: PASS
-	Aborted promise should reject with the custom abort reason: NOTRUN
-	Aborted promise should reject with the default abort reason: NOTRUN
+	Aborted promise should reject with the custom abort reason: PASS
+	Aborted promise should reject with the default abort reason: PASS
 	An aborted request results in AbortError: PASS
 	Passing an already aborted signal aborts: PASS
 	Passing an already aborted signal rejects with the custom abort reason.: PASS
 	Passing an already aborted signal rejects with the default abort reason.: PASS
 	Signal that is not aborted: PASS
-	Synchronously signaled abort: FAIL
+	Synchronously signaled abort: PASS
 	The signal option must be an AbortSignal: FAIL
 /web-locks/signal.https.any.worker.html: TIMEOUT
 	Abort after a timeout: PASS
@@ -300,14 +300,14 @@
 	Passing an already aborted signal rejects with the custom abort reason.: PASS
 	Passing an already aborted signal rejects with the default abort reason.: PASS
 	Signal that is not aborted: PASS
-	Synchronously signaled abort: FAIL
+	Synchronously signaled abort: PASS
 	The signal option must be an AbortSignal: FAIL
-/web-locks/steal.https.any.html: TIMEOUT
-	Broken lock's release promise rejects: TIMEOUT
-	Last caller wins: NOTRUN
+/web-locks/steal.https.any.html: OK
+	Broken lock's release promise rejects: PASS
+	Last caller wins: PASS
 	Lock available: PASS
 	Lock not available: PASS
-	Requested lock's release promise is deferred: NOTRUN
+	Requested lock's release promise is deferred: PASS
 /web-locks/steal.https.any.worker.html: TIMEOUT
 	Broken lock's release promise rejects: TIMEOUT
 	Last caller wins: NOTRUN

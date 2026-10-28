@@ -87,10 +87,11 @@ static web_signal *signal_of(JSValueConst v)
 
 void wj_cb_signal_abort(int32_t user, uint64_t event);
 
-/* The wrapper of a browser signal (owned), listening to its own abort. */
-static JSValue signal_wrap(JSContext *ctx, uint64_t h)
+/* The wrapper of a browser signal (owned), listening to its own abort. `iface` is AbortSignal or a subtype
+ * (TaskSignal), so scheduler.c can mint a TaskSignal that carries a priority and an onprioritychange handler. */
+static JSValue signal_wrap_as(JSContext *ctx, uint64_t h, int iface)
 {
-    JSValue obj = wj_wrap_owned(ctx, h, WJ_IFACE_AbortSignal, JS_UNDEFINED);
+    JSValue obj = wj_wrap_owned(ctx, h, iface, JS_UNDEFINED);
     if (JS_IsException(obj)) { return obj; }
     web_signal *s = calloc(1, sizeof *s);
     if (!s) { JS_FreeValue(ctx, obj); return JS_ThrowOutOfMemory(ctx); }
@@ -106,6 +107,12 @@ static JSValue signal_wrap(JSContext *ctx, uint64_t h)
     }
     return obj;
 }
+
+static JSValue signal_wrap(JSContext *ctx, uint64_t h) { return signal_wrap_as(ctx, h, WJ_IFACE_AbortSignal); }
+
+/* Public: wrap an owned browser signal handle as `iface` (a subtype of AbortSignal). Used by the scheduler to make a
+ * TaskSignal out of a host AbortController's signal, or out of AbortSignal.any's result. */
+JSValue web_signal_wrap_as(JSContext *ctx, uint64_t h, int iface) { return signal_wrap_as(ctx, h, iface); }
 
 /* The JavaScript value of a reason the browser recorded (an abort that did not come from abort(reason)). */
 static JSValue host_reason(JSContext *ctx, uint64_t h)
@@ -237,19 +244,26 @@ bool web_signal_aborted(JSValueConst v)
 
 /* ---- AbortController ---- */
 
+/* Build an AbortController wrapper (or a subtype: TaskController). `controller_iface` is the host-object interface of
+ * the controller, `signal_iface` the interface its signal is wrapped as (AbortSignal or TaskSignal). */
+JSValue web_controller_construct(JSContext *ctx, JSValueConst new_target, int controller_iface, int signal_iface)
+{
+    uint64_t h = wr_AbortController_create();
+    JSValue obj = wj_wrap_owned(ctx, h, controller_iface, new_target);
+    if (JS_IsException(obj)) { return obj; }
+    web_controller *c = calloc(1, sizeof *c);
+    if (!c) { JS_FreeValue(ctx, obj); return JS_ThrowOutOfMemory(ctx); }
+    c->signal = signal_wrap_as(ctx, wr_AbortController_signal(h), signal_iface);
+    if (JS_IsException(c->signal)) { free(c); JS_FreeValue(ctx, obj); return JS_EXCEPTION; }
+    web_set_impl(obj, c, controller_free, controller_mark);
+    return obj;
+}
+
 JSValue wjr_AbortController_constructor(JSContext *ctx, JSValueConst new_target, int argc, JSValueConst *argv)
 {
     WJ_UNUSED(argc); WJ_UNUSED(argv);
     if (JS_IsUndefined(new_target)) { return JS_ThrowTypeError(ctx, "Constructor AbortController requires 'new'"); }
-    uint64_t h = wr_AbortController_create();
-    JSValue obj = wj_wrap_owned(ctx, h, WJ_IFACE_AbortController, new_target);
-    if (JS_IsException(obj)) { return obj; }
-    web_controller *c = calloc(1, sizeof *c);
-    if (!c) { JS_FreeValue(ctx, obj); return JS_ThrowOutOfMemory(ctx); }
-    c->signal = signal_wrap(ctx, wr_AbortController_signal(h));
-    if (JS_IsException(c->signal)) { free(c); JS_FreeValue(ctx, obj); return JS_EXCEPTION; }
-    web_set_impl(obj, c, controller_free, controller_mark);
-    return obj;
+    return web_controller_construct(ctx, new_target, WJ_IFACE_AbortController, WJ_IFACE_AbortSignal);
 }
 
 JSValue wjr_AbortController_get_signal(JSContext *ctx, JSValueConst this_val)
@@ -347,13 +361,14 @@ static bool any_item(JSContext *ctx, JSValueConst item, void *opaque)
     return true;
 }
 
-JSValue wjr_AbortSignal_static_any(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+/* AbortSignal.any / TaskSignal.any: the dependent composite signal, wrapped as `result_iface` (AbortSignal or
+ * TaskSignal). `who` names the interface for error messages. */
+JSValue web_signal_any(JSContext *ctx, JSValueConst iterable, int result_iface, const char *who)
 {
-    WJ_UNUSED(this_val);
-    if (argc < 1) { return wj_throw_arity(ctx, "AbortSignal.any", 1, argc); }
     any_collect c = { JS_NewArray(ctx), 0 };
-    if (!JS_IsObject(argv[0]) || !web_for_of(ctx, argv[0], any_item, &c)) {
-        if (!JS_HasException(ctx)) { JS_ThrowTypeError(ctx, "Failed to execute 'any' on 'AbortSignal': the argument is not a sequence"); }
+    if (!JS_IsObject(iterable) || !web_for_of(ctx, iterable, any_item, &c)) {
+        if (!JS_HasException(ctx)) { JS_ThrowTypeError(ctx, "Failed to execute 'any': the argument is not a sequence"); }
+        WJ_UNUSED(who);
         JS_FreeValue(ctx, c.list);
         return JS_EXCEPTION;
     }
@@ -367,8 +382,8 @@ JSValue wjr_AbortSignal_static_any(JSContext *ctx, JSValueConst this_val, int ar
     uint64_t h = 0;
     int32_t st = wr_AbortSignal_any(handles, c.n, &h);
     free(handles);
-    if (st < 0) { JS_FreeValue(ctx, c.list); return wj_throw_status(ctx, st, "AbortSignal.any"); }
-    JSValue obj = signal_wrap(ctx, h);
+    if (st < 0) { JS_FreeValue(ctx, c.list); return wj_throw_status(ctx, st, who); }
+    JSValue obj = signal_wrap_as(ctx, h, result_iface);
     if (JS_IsException(obj)) { JS_FreeValue(ctx, c.list); return obj; }
     web_signal *ds = signal_of(obj);
     if (wr_AbortSignal_aborted(h)) {
@@ -389,4 +404,11 @@ JSValue wjr_AbortSignal_static_any(JSContext *ctx, JSValueConst this_val, int ar
     }
     ds->sources = c.list;
     return obj;
+}
+
+JSValue wjr_AbortSignal_static_any(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(this_val);
+    if (argc < 1) { return wj_throw_arity(ctx, "AbortSignal.any", 1, argc); }
+    return web_signal_any(ctx, argv[0], WJ_IFACE_AbortSignal, "AbortSignal.any");
 }

@@ -24,6 +24,11 @@ Held_Lock :: struct {
 	mode:      Lock_Mode,
 	client:    u64,         // the owning realm: page id (or a worker's link id, tagged)
 	client_tag: string,     // owned: the clientId reported by query()
+	// the engine record that holds this lock's request promise, so a steal can reject it (wj_cb_lock_broken)
+	broken_cb: u32,
+	user:      u32,
+	instance:  u32,
+	page:      u64,
 }
 
 @(private)
@@ -34,11 +39,16 @@ Pending_Lock :: struct {
 	client:     u64,
 	client_tag: string,     // owned
 	callback:   u32,        // engine function-table index of wj_cb_lock_granted
+	broken_cb:  u32,        // engine function-table index of wj_cb_lock_broken (for a later steal)
 	user:       u32,        // the engine record slot
 	instance:   u32,        // the owning instance, for call_guest
 	page:       u64,        // page id (for delivering the grant on the right realm)
 	steal:      bool,
 }
+
+// A held lock taken by a steal: its owner's request promise must reject with AbortError.
+@(private)
+Broken_Lock :: struct { broken_cb, user, instance: u32, page: u64 }
 
 @(private)
 Lock_Registry :: struct {
@@ -112,7 +122,7 @@ lock_pump :: proc(key: string, granted: ^[dynamic]Pending_Lock) {
 		pl := lock_registry.pending[idx]
 		if !lock_grantable(key, pl.mode) { return }
 		ordered_remove(&lock_registry.pending, idx)
-		append(&lock_registry.held, Held_Lock{id = pl.id, name = strings.clone(pl.name, base.process_allocator()), mode = pl.mode, client = pl.client, client_tag = strings.clone(pl.client_tag, base.process_allocator())})
+		append(&lock_registry.held, Held_Lock{id = pl.id, name = strings.clone(pl.name, base.process_allocator()), mode = pl.mode, client = pl.client, client_tag = strings.clone(pl.client_tag, base.process_allocator()), broken_cb = pl.broken_cb, user = pl.user, instance = pl.instance, page = pl.page})
 		append(granted, pl)
 		if pl.mode == .Exclusive { return }   // an exclusive grant blocks the rest until it is released
 	}
@@ -128,7 +138,7 @@ lock_pump :: proc(key: string, granted: ^[dynamic]Pending_Lock) {
 //   the id is the rest (result >> 2). When granted-now is clear but available is set, the request waits in the queue
 //   and the engine will be told later (wj_cb_lock_granted). When available is clear the engine runs the callback with
 //   null (ifAvailable) and no lock is held.
-LockManager_request :: proc(c: ^Call, name: string, mode: Api_LockMode, if_available: bool, steal: bool, callback: u32, user: i32) -> i64 {
+LockManager_request :: proc(c: ^Call, name: string, mode: Api_LockMode, if_available: bool, steal: bool, callback: u32, user: i32, broken_cb: u32, has_signal: bool) -> i64 {
 	p := c.page
 	key := lock_key(p, name)
 	if key == "" { return 0 }   // opaque origin: not available
@@ -142,30 +152,49 @@ LockManager_request :: proc(c: ^Call, name: string, mode: Api_LockMode, if_avail
 	id := lock_registry.next_id
 	pack :: proc(id: u64, granted, available: bool) -> i64 { return i64(id << 2) | (granted ? 2 : 0) | (available ? 1 : 0) }
 
+	this_held := Held_Lock{id = id, name = strings.clone(key, base.process_allocator()), mode = m, client = page_id(p),
+		client_tag = strings.clone(tag, base.process_allocator()), broken_cb = broken_cb, user = u32(user), instance = c.owner, page = page_id(p)}
+
+	// When a signal is present the grant is delivered on a later event-loop turn (never synchronously in request()):
+	// a synchronous abort of the signal must be able to beat the grant, and the engine ignores an abort once granted.
+	// Without a signal the engine runs the callback inline (granted-now), as the common case and as before.
 	if steal {
+		// take every held lock on this key away from its owner; its request promise must reject with AbortError
+		broken := make([dynamic]Broken_Lock, context.temp_allocator)
 		w := 0
 		for h in lock_registry.held {
-			if h.name == key { delete(h.name, base.process_allocator()); delete(h.client_tag, base.process_allocator()); continue }
+			if h.name == key {
+				append(&broken, Broken_Lock{broken_cb = h.broken_cb, user = h.user, instance = h.instance, page = h.page})
+				lock_client_forget_by_id(h.client, h.id)
+				delete(h.name, base.process_allocator()); delete(h.client_tag, base.process_allocator()); continue
+			}
 			lock_registry.held[w] = h; w += 1
 		}
 		resize(&lock_registry.held, w)
-		append(&lock_registry.held, Held_Lock{id = id, name = strings.clone(key, base.process_allocator()), mode = m, client = page_id(p), client_tag = strings.clone(tag, base.process_allocator())})
+		append(&lock_registry.held, this_held)
 		lock_note_held(p, id)
 		delete(key, base.process_allocator())
+		for b in broken { lock_deliver_broken(b) }
+		// steal cannot be combined with a signal, so this grant is always synchronous
 		return pack(id, true, true)
 	}
 	if lock_grantable(key, m) {
-		append(&lock_registry.held, Held_Lock{id = id, name = strings.clone(key, base.process_allocator()), mode = m, client = page_id(p), client_tag = strings.clone(tag, base.process_allocator())})
+		append(&lock_registry.held, this_held)
 		lock_note_held(p, id)
 		delete(key, base.process_allocator())
+		if has_signal {
+			lock_deliver_grant_held(p, this_held, callback)
+			return pack(id, false, true)
+		}
 		return pack(id, true, true)
 	}
+	delete(this_held.name, base.process_allocator()); delete(this_held.client_tag, base.process_allocator())
 	if if_available {
 		delete(key, base.process_allocator())
 		return pack(0, false, false)   // busy: the engine runs the callback with null
 	}
 	append(&lock_registry.pending, Pending_Lock{id = id, name = strings.clone(key, base.process_allocator()), mode = m,
-		client = page_id(p), client_tag = strings.clone(tag, base.process_allocator()), callback = callback, user = u32(user), instance = c.owner, page = page_id(p), steal = steal})
+		client = page_id(p), client_tag = strings.clone(tag, base.process_allocator()), callback = callback, broken_cb = broken_cb, user = u32(user), instance = c.owner, page = page_id(p), steal = steal})
 	lock_note_pending(p, id)
 	delete(key, base.process_allocator())
 	return pack(id, false, true)
@@ -249,6 +278,53 @@ lock_deliver_grant :: proc(pl: Pending_Lock) {
 
 @(private)
 Grant_Delivery :: struct { callback, user, instance: u32, id: u64 }
+
+// Deliver the grant of a lock that became held directly in request() (grantable now, or a steal). The callback runs on
+// a later event-loop turn so a synchronous abort of the signal can still cancel it (the grant is not synchronous).
+@(private)
+lock_deliver_grant_held :: proc(pg: ^Page, h: Held_Lock, callback: u32) {
+	if pg == nil || pg.closed { return }
+	gr := new_clone(Grant_Delivery{callback = callback, user = h.user, instance = h.instance, id = h.id})
+	post_page_task(pg, proc(p: ^Page, data: rawptr) {
+		g := (^Grant_Delivery)(data)
+		defer free(g)
+		if p == nil || p.closed { return }
+		inst := instance_by_index(p, g.instance)
+		if inst == nil { return }
+		loaf_set_invoker(p, .User_Callback, "navigator.locks.request")
+		argv := [2]u32{g.user, u32(g.id)}
+		call_guest(p, inst, g.callback, argv[:])
+	}, gr)
+}
+
+// Tell the engine that a held lock was stolen from it: reject its request promise with AbortError. Posted as a page
+// task so it settles on the owning realm. The lock is already out of the registry; the engine must not release it.
+@(private)
+lock_deliver_broken :: proc(b: Broken_Lock) {
+	pg := page_by_id(b.page)
+	if pg == nil || pg.closed { return }
+	br := new_clone(Broken_Delivery{broken_cb = b.broken_cb, user = b.user, instance = b.instance})
+	post_page_task(pg, proc(p: ^Page, data: rawptr) {
+		d := (^Broken_Delivery)(data)
+		defer free(d)
+		if p == nil || p.closed { return }
+		inst := instance_by_index(p, d.instance)
+		if inst == nil { return }
+		argv := [1]u32{d.user}
+		call_guest(p, inst, d.broken_cb, argv[:])
+	}, br)
+}
+
+@(private)
+Broken_Delivery :: struct { broken_cb, user, instance: u32 }
+
+// Forget a lock id from the bookkeeping of the page that owns `client` (used when a steal removes someone else's lock).
+@(private)
+lock_client_forget_by_id :: proc(client: u64, id: u64) {
+	pg := page_by_id(client)
+	if pg == nil { return }
+	lock_client_forget(pg, id)
+}
 
 // navigator.locks.query(): the engine reads the snapshot out of these. We expose counts and per-entry fields keyed by
 // the page's origin (query only sees locks of the caller's storage key).

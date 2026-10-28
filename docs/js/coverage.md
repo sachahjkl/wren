@@ -15,7 +15,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | interfaces, namespaces in the table | 591 |
 | exposed by default | 356 |
 | members | 5206 |
-| members implemented | 3695 (71.0 %) |
+| members implemented | 3696 (71.0 %) |
 
 ## By specification
 
@@ -73,7 +73,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `requestidlecallback.idl` | 1 (1) | 2 / 2 |
 | `resize-observer.idl` | 3 (3) | 11 / 11 |
 | `resource-timing.idl` | 1 (1) | 25 / 29 |
-| `scheduling-apis.idl` | 4 (4) | 8 / 9 |
+| `scheduling-apis.idl` | 4 (4) | 9 / 9 |
 | `screen-orientation.idl` | 1 (0) | 1 / 5 |
 | `scroll-to-text-fragment.idl` | 1 (0) | 0 / 0 |
 | `selection-api.idl` | 1 (1) | 24 / 25 |
@@ -1366,9 +1366,9 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### TaskSignal : AbortSignal
 
-2 / 3 members.
+3 / 3 members.
 
-- `static any()`: not supported
+- `static any()`: C `wjr_TaskSignal_static_any`
 - `readonly priority`: C `wjr_TaskSignal_get_priority`
 - `onprioritychange`: generic (event handler)
 

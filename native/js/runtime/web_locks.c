@@ -62,6 +62,7 @@ JSValue wjr_WorkerNavigator_get_locks(JSContext *ctx, JSValueConst this_val) { r
 
 typedef struct lock_req {
     bool     used;
+    bool     granted;     /* the grant callback has run: a later abort of the signal is then ignored */
     uint32_t gen;
     uint64_t id;          /* the host lock id (0 for an ifAvailable miss: the callback got null, no lock is held) */
     JSValue  resolve;     /* the request's overall promise */
@@ -109,6 +110,8 @@ static lock_req *req_from_user(int64_t user, uint32_t *slot_out)
 
 void wj_cb_lock_granted(int32_t user, uint32_t id);
 static uint32_t lock_callback_index(void) { return (uint32_t)(uintptr_t)&wj_cb_lock_granted; }
+void wj_cb_lock_broken(int32_t user);
+static uint32_t lock_broken_index(void) { return (uint32_t)(uintptr_t)&wj_cb_lock_broken; }
 
 /* on_settle reactions of the callback's promise: release the lock, then settle the request promise. func_data[0] is
  * the request's user, func_data[1] the reject flag (1 for the rejection reaction). */
@@ -170,6 +173,7 @@ WJ_EXPORT("wj_cb_lock_granted") void wj_cb_lock_granted(int32_t user, uint32_t i
     uint32_t slot; lock_req *r = req_from_user(user, &slot);
     if (!r) { if (id) { wr_LockManager_release(id); } return; }
     r->id = id;
+    r->granted = true;   /* from here a signal abort is ignored (the lock is held; it releases when the callback settles) */
     const char *name = JS_IsString(r->name) ? JS_ToCString(ctx, r->name) : NULL;
     const char *mode = JS_IsString(r->mode) ? JS_ToCString(ctx, r->mode) : NULL;
     JSValue lock = lock_object_new(ctx, name ? name : "", mode ? mode : "exclusive");
@@ -179,6 +183,22 @@ WJ_EXPORT("wj_cb_lock_granted") void wj_cb_lock_granted(int32_t user, uint32_t i
     pending_callback_clear(ctx, slot);
     lock_run_callback(ctx, slot, cb, lock);
     JS_FreeValue(ctx, cb);
+}
+
+/* The host says a held lock was stolen from this realm: reject the request's promise with AbortError. The lock is
+ * already out of the registry, so we must not release it. The settle reactions of the callback's returned promise (if
+ * it ever settles) find the record gone (req_from_user returns NULL once released) and do nothing. */
+WJ_EXPORT("wj_cb_lock_broken") void wj_cb_lock_broken(int32_t user)
+{
+    JSContext *ctx = wj_the_realm.ctx;
+    wj_stack_enter(ctx);
+    uint32_t slot; lock_req *r = req_from_user(user, &slot);
+    if (!r) { return; }
+    JSValue reject = JS_DupValue(ctx, r->reject);
+    pending_callback_clear(ctx, slot);
+    req_release(ctx, slot);
+    web_settle(ctx, reject, web_dom_exception(ctx, "AbortError", "lock stolen"));
+    JS_FreeValue(ctx, reject);
 }
 
 /* The queued requests' callbacks: a parallel table (the record struct keeps JSValues for the promise; the callback is
@@ -257,6 +277,7 @@ static JSValue lock_request(JSContext *ctx, JSValueConst this_val, int argc, JSV
     if (slot == UINT32_MAX) { JS_FreeValue(ctx, funcs[0]); JS_FreeValue(ctx, funcs[1]); JS_FreeValue(ctx, p); wj_str_free(ctx, &name); JS_FreeValue(ctx, signal); return JS_ThrowOutOfMemory(ctx); }
     lock_req *r = &reqs[slot];
     r->used = true;
+    r->granted = false;
     r->resolve = funcs[0];
     r->reject = funcs[1];
     r->name = JS_NewStringLen(ctx, name.ptr ? name.ptr : "", name.len);
@@ -265,7 +286,8 @@ static JSValue lock_request(JSContext *ctx, JSValueConst this_val, int argc, JSV
     pending_callback_set(ctx, slot, callback);
 
     int64_t packed = wr_LockManager_request((const uint8_t *)(name.ptr ? name.ptr : ""), (uint32_t)name.len,
-                                             mode, if_available ? 1 : 0, steal ? 1 : 0, lock_callback_index(), (int32_t)req_user(slot));
+                                             mode, if_available ? 1 : 0, steal ? 1 : 0, lock_callback_index(), (int32_t)req_user(slot), lock_broken_index(),
+                                             JS_IsObject(signal) ? 1 : 0);
     wj_str_free(ctx, &name);
     bool available = (packed & 1) != 0;
     bool granted_now = (packed & 2) != 0;
@@ -283,6 +305,7 @@ static JSValue lock_request(JSContext *ctx, JSValueConst this_val, int argc, JSV
     }
     if (granted_now) {
         r->id = id;
+        r->granted = true;
         JSValue cb = JS_DupValue(ctx, callback);
         pending_callback_clear(ctx, slot);
         const char *nm = JS_ToCString(ctx, r->name);
@@ -297,10 +320,11 @@ static JSValue lock_request(JSContext *ctx, JSValueConst this_val, int argc, JSV
     /* queued: the host grants later; the id is kept so an abort can release the pending request */
     r->id = id;
     if (JS_IsObject(signal)) {
-        JSValue data = JS_NewInt64(ctx, req_user(slot));
-        /* abort reaction: release the pending request and reject */
-        JSValue ab = JS_NewCFunctionData(ctx, lock_abort_reaction, 0, 0, 1, &data);
-        JS_FreeValue(ctx, data);
+        /* abort reaction: if still pending, drop the request on the host and reject with the signal's reason; if the
+         * lock has already been granted, the reaction is a no-op (func_data: [user, signal]) */
+        JSValue data[2] = { JS_NewInt64(ctx, req_user(slot)), JS_DupValue(ctx, signal) };
+        JSValue ab = JS_NewCFunctionData(ctx, lock_abort_reaction, 0, 0, 2, data);
+        JS_FreeValue(ctx, data[0]); JS_FreeValue(ctx, data[1]);
         JSValue add = JS_GetPropertyStr(ctx, signal, "addEventListener");
         if (JS_IsFunction(ctx, add)) { JSValue a[2] = { JS_NewString(ctx, "abort"), ab }; JSValue z = JS_Call(ctx, add, signal, 2, (JSValueConst *)a); JS_FreeValue(ctx, z); JS_FreeValue(ctx, a[0]); }
         JS_FreeValue(ctx, add); JS_FreeValue(ctx, ab);
@@ -316,11 +340,16 @@ static JSValue lock_abort_reaction(JSContext *ctx, JSValueConst this_val, int ar
     int64_t user = 0; JS_ToInt64(ctx, &user, func_data[0]);
     uint32_t slot; lock_req *r = req_from_user(user, &slot);
     if (!r) { return JS_UNDEFINED; }
+    /* once the lock has been granted, the signal is ignored (the callback owns the lock's life now) */
+    if (r->granted) { return JS_UNDEFINED; }
+    /* still pending: drop the queued request on the host and reject the promise with the signal's reason */
     if (r->id) { wr_LockManager_release(r->id); }
     pending_callback_clear(ctx, slot);
     JSValue reject = JS_DupValue(ctx, r->reject);
+    JSValue signal = func_data[1];
+    JSValue reason = JS_IsObject(signal) ? web_signal_reason(ctx, signal) : web_dom_exception(ctx, "AbortError", "lock request aborted");
     req_release(ctx, slot);
-    web_settle(ctx, reject, web_dom_exception(ctx, "AbortError", "lock request aborted"));
+    web_settle(ctx, reject, reason);
     JS_FreeValue(ctx, reject);
     return JS_UNDEFINED;
 }

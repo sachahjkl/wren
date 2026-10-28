@@ -1593,6 +1593,7 @@ JSValue wjr_TaskController_setPriority(JSContext *ctx, JSValueConst this_val, in
 JSValue wjr_TaskPriorityChangeEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_TaskPriorityChangeEvent_get_previousPriority(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_TaskSignal_get_priority(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TaskSignal_static_any(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_TextDecoderStream_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_TextDecoderStream_get_encoding(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_TextDecoderStream_get_fatal(JSContext *ctx, JSValueConst this_val);
@@ -13651,7 +13652,7 @@ static const wj_member wj_m_AbortSignal[] = {
     { "onabort", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_AbortSignal_get_onabort, wjg_AbortSignal_set_onabort, 0 },
 };
 static const wj_member wj_m_TaskSignal[] = {
-    { "any", WJ_M_STATIC_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "any", WJ_M_STATIC_METHOD, 0, 1, wjr_TaskSignal_static_any, NULL, NULL, 0 },
     { "priority", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TaskSignal_get_priority, NULL, 0 },
     { "onprioritychange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_TaskSignal_get_onprioritychange, wjg_TaskSignal_set_onprioritychange, 0 },
 };
