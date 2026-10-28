@@ -139,6 +139,9 @@ TextTrackList_getTrackById :: proc(c: ^Call, list: Api_TextTrackList, id: string
 HTMLMediaElement_addTextTrack :: proc(c: ^Call, e: Api_HTMLMediaElement, kind, label, language: string) -> (u64, Api_Error) {
 	el := e.data
 	if el == nil || !c.page.settings.media.tracks { return 0, fail(c, .Not_Supported, "text tracks are disabled (media.tracks.enabled)") }
+	// kind is a TextTrackKind Web IDL enum: an unknown value (including a wrong case, or the "undefined"/"null"
+	// strings a missing/null argument converts to) is a TypeError, not a silent default.
+	if !is_text_track_kind(kind) { return 0, fail(c, .Type, "Failed to execute 'addTextTrack' on 'HTMLMediaElement': The provided value is not a valid enum value of type TextTrackKind.") }
 	tt := text_track_new(el, kind, label, language, base.NIL_HANDLE)
 	tt.mode = .Hidden   // addTextTrack starts hidden (HTML)
 	tt.ready = .Loaded
@@ -169,6 +172,15 @@ text_track_kind :: proc(k: string) -> string {
 	case "subtitles", "captions", "descriptions", "chapters", "metadata": return k
 	}
 	return "subtitles"   // HTML: an unknown kind on a <track> becomes "metadata", on addTextTrack it is validated by Web IDL; default to subtitles
+}
+
+// Exactly the TextTrackKind Web IDL enum values (case-sensitive), for addTextTrack's argument validation.
+@(private)
+is_text_track_kind :: proc(k: string) -> bool {
+	switch k {
+	case "subtitles", "captions", "descriptions", "chapters", "metadata": return true
+	}
+	return false
 }
 
 // Adds a finished track to the element's list and fires addtrack.
