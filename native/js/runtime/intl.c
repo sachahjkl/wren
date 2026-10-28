@@ -2310,7 +2310,7 @@ static char *df_format_string(JSContext *ctx, JSValueConst state, JSValueConst d
         JSValue dv = JS_GetPropertyStr(ctx, state, u->name);
         const char *display = JS_IsString(dv) ? JS_ToCString(ctx, dv) : NULL;
         bool numeric = display && (strcmp(display, "numeric") == 0 || strcmp(display, "2-digit") == 0);
-        bool show = numeric || value != 0;
+        bool show = (numeric && (i != 4 || value != 0)) || value != 0;   /* (hours are shown in a digital run only when not zero: "2:03", not "0:02:03") */
         if (show) {
             bool last_numeric = false;
             if (i + 1 < DURATION_UNIT_COUNT) { /* whether the next shown unit is part of a digital clock run */ }

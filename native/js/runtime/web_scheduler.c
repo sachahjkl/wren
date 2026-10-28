@@ -62,13 +62,14 @@ static void sched_release(JSContext *ctx, uint32_t slot)
     JS_FreeValue(ctx, cb); JS_FreeValue(ctx, res); JS_FreeValue(ctx, rej); JS_FreeValue(ctx, sig);
 }
 
-static inline int64_t sched_user(uint32_t slot) { return (int64_t)(((uint64_t)recs[slot].gen << 32) | slot); }
+/* 32 bits all told (the host stores it as an i32): 16 of slot, 16 of generation */
+static inline int64_t sched_user(uint32_t slot) { return (int64_t)(uint32_t)(((recs[slot].gen & 0xFFFFu) << 16) | (slot & 0xFFFFu)); }
 
 static sched_rec *sched_from_user(int64_t user, uint32_t *slot_out)
 {
-    uint32_t slot = (uint32_t)((uint64_t)user & 0xFFFFFFFFu);
-    uint32_t gen = (uint32_t)((uint64_t)user >> 32);
-    if (slot >= rec_count || !recs[slot].used || recs[slot].gen != gen) { return NULL; }
+    uint32_t slot = (uint32_t)((uint64_t)user & 0xFFFFu);
+    uint32_t gen = (uint32_t)(((uint64_t)user >> 16) & 0xFFFFu);
+    if (slot >= rec_count || !recs[slot].used || (recs[slot].gen & 0xFFFFu) != gen) { return NULL; }
     *slot_out = slot;
     return &recs[slot];
 }
