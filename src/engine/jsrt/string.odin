@@ -25,13 +25,30 @@ JS_String :: struct {
 	owns_buf:   bool, // data was allocated separately (after flattening a rope)
 	depth:      u8,   // rope depth
 	data:       rawptr,
-	left:       ^JS_String,
-	right:      ^JS_String,
-	// append buffers: an owner (owns_buf) has room for buf_cap units, of which buf_used are written;
+	// A plain string has nothing more: its units follow the header. A rope or a string with an append buffer
+	// has a String_Tail after the header (flag STR_TAIL in `flags`), which most strings do not pay for.
+}
+
+STR_TAIL :: u8(1)
+
+String_Tail :: struct #raw_union {
+	rope: struct {left, right: ^JS_String},
+	// append buffers: an owner (owns_buf) has room for cap units, of which used are written;
 	// a string made by appending to it shares the buffer and keeps the owner alive through `base`.
-	base:       ^JS_String,
-	buf_cap:    u32,
-	buf_used:   u32,
+	buf:  struct {base: ^JS_String, cap, used: u32},
+}
+
+str_tail :: #force_inline proc "contextless" (s: ^JS_String) -> ^String_Tail {
+	return cast(^String_Tail)(uintptr(s) + size_of(JS_String))
+}
+
+// A cell for a rope or a buffered string (units elsewhere).
+str_alloc_tail :: proc(rt: ^Runtime, len: int, wide: bool) -> ^JS_String {
+	s := cell_new(rt, JS_String, .string, size_of(String_Tail))
+	s.flags |= STR_TAIL
+	s.len = u32(len)
+	s.is_wide = wide
+	return s
 }
 
 str_u8 :: #force_inline proc "contextless" (s: ^JS_String) -> [^]u8 {return cast([^]u8)s.data}
@@ -50,7 +67,7 @@ str_alloc :: proc(rt: ^Runtime, n: int, wide: bool) -> ^JS_String {
 
 str_finalize :: proc(rt: ^Runtime, s: ^JS_String) {
 	if s.owns_buf && s.data != nil {
-		units := s.buf_cap > 0 ? int(s.buf_cap) : int(s.len)
+		units := str_tail(s).buf.cap > 0 ? int(str_tail(s).buf.cap) : int(s.len)
 		mem_free(rt, s.data, units * (s.is_wide ? 2 : 1))
 		s.data = nil
 	}
@@ -154,8 +171,8 @@ str_flatten :: proc(rt: ^Runtime, s: ^JS_String) {
 	for len(stack) > 0 {
 		cur := pop(&stack)
 		if cur.is_rope {
-			append(&stack, cur.right)
-			append(&stack, cur.left)
+			append(&stack, str_tail(cur).rope.right)
+			append(&stack, str_tail(cur).rope.left)
 			continue
 		}
 		m := int(cur.len)
@@ -173,8 +190,7 @@ str_flatten :: proc(rt: ^Runtime, s: ^JS_String) {
 		pos += m
 	}
 	s.is_rope = false
-	s.left = nil
-	s.right = nil
+	str_tail(s)^ = {}
 	s.data = buf
 	s.owns_buf = true
 	s.depth = 0
@@ -245,38 +261,31 @@ str_concat :: proc(rt: ^Runtime, a, b: ^JS_String) -> ^JS_String {
 	// else start a new buffer with room to grow. `s += x` in a loop is then amortized linear and
 	// stays flat (no rope to flatten on every s[i] / charCodeAt).
 	if a.len >= b.len && !a.is_rope && a.is_wide == wide {
-		owner := a.base != nil ? a.base : a
-		if owner.owns_buf && owner.buf_cap > 0 && owner.data == a.data && owner.buf_used == a.len && int(owner.buf_cap) >= total {
+		owner := a.flags & STR_TAIL != 0 && str_tail(a).buf.base != nil ? str_tail(a).buf.base : a
+		if owner.owns_buf && str_tail(owner).buf.cap > 0 && owner.data == a.data && str_tail(owner).buf.used == a.len && int(str_tail(owner).buf.cap) >= total {
 			str_copy_units(rt, a.data, wide, int(a.len), b)
-			owner.buf_used = u32(total)
-			s := cell_new(rt, JS_String, .string)
-			s.len = u32(total)
-			s.is_wide = wide
+			str_tail(owner).buf.used = u32(total)
+			s := str_alloc_tail(rt, total, wide)
 			s.data = a.data
-			s.base = owner
+			str_tail(s).buf.base = owner
 			return s
 		}
 	}
 	if a.len >= b.len && (!a.is_rope || a.depth >= 8) {
 		fa := str_flat(rt, a)
 		cap := min(total + total / 2, STRING_LEN_MAX)
-		s := cell_new(rt, JS_String, .string)
-		s.len = u32(total)
-		s.is_wide = wide
+		s := str_alloc_tail(rt, total, wide)
 		s.data = mem_alloc(rt, cap * (wide ? 2 : 1))
 		s.owns_buf = true
-		s.buf_cap = u32(cap)
-		s.buf_used = u32(total)
+		str_tail(s).buf.cap = u32(cap)
+		str_tail(s).buf.used = u32(total)
 		str_copy_units(rt, s.data, wide, 0, fa)
 		str_copy_units(rt, s.data, wide, int(fa.len), b)
 		return s
 	}
-	s := cell_new(rt, JS_String, .string)
-	s.len = u32(total)
-	s.is_wide = wide
+	s := str_alloc_tail(rt, total, wide)
 	s.is_rope = true
-	s.left = a
-	s.right = b
+	str_tail(s).rope = {a, b}
 	s.depth = max(a.depth, b.depth) + 1
 	if s.depth > ROPE_MAX_DEPTH {str_flatten(rt, s)}
 	return s

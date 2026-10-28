@@ -72,7 +72,7 @@ heap_profile :: proc(rt: ^Runtime) -> (p: Heap_Profile) {
 			slack := 0
 			unit := s.is_wide ? 2 : 1
 			if s.owns_buf && s.data != nil {
-				units := s.buf_cap > 0 ? int(s.buf_cap) : int(s.len)
+				units := str_tail(s).buf.cap > 0 ? int(str_tail(s).buf.cap) : int(s.len)
 				extra = units * unit
 				slack = (units - int(s.len)) * unit
 			}
