@@ -277,6 +277,10 @@ properties the object does not store. Finalizers of dead host objects run before
 collection is freed. <code>gc_mark</code> is used twice: to <strong>subtract</strong> those references from the host counts (a
 cycle through opaque data does not keep itself alive — QuickJS's trial deletion, restricted to the cells
 with host references) and to trace them when the owner is live.</li>
+<li>Small blocks (≤ 512 bytes: cells, inline slots, small arrays and string data) come from size‑class free
+lists carved out of 256 KiB chunks of the injected allocator (<code>mem_alloc</code> / <code>mem_free</code> / <code>mem_resize</code> in
+<code>gc.odin</code>; callers always pass the size they allocated with). A cell costs a pop and a push, not a host
+allocation.</li>
 <li>The heap is capped by <code>Host_Config.malloc_limit</code>; all allocation goes through the injected allocator.
 A collection runs when the heap passes <code>max(2 × live, live + 4 MiB)</code>.</li>
 </ul>
@@ -288,13 +292,19 @@ rewritten in place and a <strong>stack‑height verifier</strong> checks the cod
 operands (as QuickJS does: bytecode comes from the compiler); the reader and verifier guarantee shape and
 stack discipline, not type correctness.</p>
 <h2 id="interpreter-interpodin-opsodin-coroodin"><a class="anchor" href="#interpreter-interpodin-opsodin-coroodin" aria-hidden="true">#</a>Interpreter (<code>interp.odin</code>, <code>ops.odin</code>, <code>coro.odin</code>)</h2>
-<p>A <code>switch</code>‑dispatch loop over the QuickJS instruction set with a hot inner loop for the common
-instructions (integer arithmetic, <code>get_loc</code>, <code>get_field</code>, array reads, branches). Frames are heap
-allocated from segmented value stacks so generators and async functions can suspend them
-(<code>coro.odin</code>: generators, async functions, async generators, <code>for await</code>, <code>yield*</code>), and the engine's own
-stack budget — not the host stack — bounds recursion (<code>Host_Config.max_stack_bytes</code>,
-<code>max_stack_depth</code>; a <code>RangeError</code> instead of a crash). The interrupt hook runs on a budget from the loop
-back edge. Operators follow the spec (<code>+</code> through ToPrimitive, ModRing bitwise, BigInt paths, loose and
+<p>A <code>switch</code>‑dispatch loop over the QuickJS instruction set. The common instructions (locals, arguments,
+integer / float arithmetic, comparisons, branches, <code>get_field</code> / <code>put_field</code> with the prototype walk, array
+reads and writes, global variables through a per‑realm slot cache, <strong>calls and returns</strong>) run in
+<code>interp_hot.odin</code>, a loop with raw pointers whose few live values stay in registers; everything else, and
+every fast path that does not apply, leaves it with the pc on the instruction for the full dispatch in
+<code>interp.odin</code>. The hot loop is inlined into <code>interp_run</code> (measured: a separate procedure is 20‑25 % slower).
+Frames come from segmented value stacks so generators and async functions can suspend them (<code>coro.odin</code>:
+generators, async functions, async generators, <code>for await</code>, <code>yield*</code>). A plain JS‑to‑JS call does not
+recurse natively: <code>frame_push</code> puts the callee's <code>Frame</code> at the end of its value‑stack block and the same
+<code>interp_run</code> activation runs it (<code>Frame.stackless</code>); native callees (<code>c_function</code>) are called from the hot
+loop without a frame. The engine's own stack budget and call depth bound recursion
+(<code>Host_Config.max_stack_bytes</code>, <code>max_stack_depth</code>; a <code>RangeError</code> instead of a crash). The interrupt hook
+runs on a budget from the loop back edge. Operators follow the spec (<code>+</code> through ToPrimitive, ModRing bitwise, BigInt paths, loose and
 strict equality). Try/catch uses a per‑frame handler stack (<code>catch</code>/<code>gosub</code>/<code>ret</code>/<code>nip_catch</code>).</p>
 <h2 id="standard-library"><a class="anchor" href="#standard-library" aria-hidden="true">#</a>Standard library</h2>
 <p>Everything QuickJS‑ng 0.17 ships, in <code>b_*.odin</code>: Object, Function, Array, String (with Unicode case
@@ -323,13 +333,19 @@ exported under their QuickJS names with <code>-define:JSCAPI_EXPORT=true</code>)
 <div class="table-box"><table>
 <thead><tr><th></th><th style="text-align:right">jsrt</th><th style="text-align:right">QuickJS‑ng C</th></tr></thead>
 <tbody>
-<tr><td><code>examples/jsbench/micro.js</code>, geometric mean of 20 cases</td><td style="text-align:right">69 % of QuickJS speed</td><td style="text-align:right">100 %</td></tr>
-<tr><td>best / worst case</td><td style="text-align:right">for‑of 204 %, polymorphic get 105 %</td><td style="text-align:right">switch 48 %, property set 53 %</td></tr>
-<tr><td>peak working set, 300 k objects + 100 k Map entries</td><td style="text-align:right">235 MiB</td><td style="text-align:right">147 MiB</td></tr>
+<tr><td><code>examples/jsbench/micro.js</code>, geometric mean of 20 cases</td><td style="text-align:right">100 % of QuickJS speed (was 68 %)</td><td style="text-align:right">100 %</td></tr>
+<tr><td><code>examples/jsbench/macro.js</code> (JSON, regexp, strings, array methods, Map/Set, classes, generators…), 28 cases</td><td style="text-align:right">119 % of QuickJS speed</td><td style="text-align:right">100 %</td></tr>
+<tr><td>best / worst case (micro)</td><td style="text-align:right">for‑of 233 %, global variables 126 %</td><td style="text-align:right">switch 62 %, nested int loops 69 %</td></tr>
+<tr><td>peak working set, 300 k objects + 100 k Map entries (<code>examples/jsbench/cases/memory.js</code>)</td><td style="text-align:right">188 MiB (was 244)</td><td style="text-align:right">135 MiB</td></tr>
 <tr><td>freestanding wasm32 module, runtime + compiler (<code>-o:size</code>)</td><td style="text-align:right">1.63 MB (<code>-o:speed</code>: 1.99 MB)</td><td style="text-align:right"><code>wren_js.wasm</code> (QuickJS + glue + bindings) 4.26 MB</td></tr>
 </tbody>
 </table></div>
-<p><code>tools/jsrt_bench.ps1</code> produces the speed table. Fuzzing: <code>judge fuzz &lt;dir&gt;</code> mutates serialized bytecode
+<p><code>tools/jsrt_bench.ps1</code> produces the speed table; <code>tools/jsrt_ab.ps1</code> compares several builds (and QuickJS)
+interleaved, best of N, on <code>micro.js</code> or <code>macro.js</code>; <code>tools/jsrt_prof.ps1</code> is a sampling profiler (hot
+functions and source lines; <code>JSRT_PROF=1</code> on <code>judge eval</code>); <code>tools/jsrt_mem.ps1</code> measures the peak working
+set. Timings on this machine swing by ±30 % from run to run when other builds are running, and a change that
+adds no work to the hot loop can still move an unrelated case by ±10 % (code layout), so compare interleaved
+and keep the best. Fuzzing: <code>judge fuzz &lt;dir&gt;</code> mutates serialized bytecode
 and loads it (reader + verifier; 40 000 mutants, no crash; running accepted mutants is opt‑in with
 <code>JSRT_FUZZ_RUN=1</code>, since a type‑confused image can crash any interpreter that trusts the compiler);
 <code>judge fuzzsrc &lt;dir&gt;</code> mutates source text, compiles with the Odin front‑end and runs under an interrupt
@@ -344,9 +360,12 @@ atom tables</strong> from the QuickJS headers.</li>
 <li>Atoms are permanent; <code>JS_WriteObject</code> of data (structured clone format) is not implemented.</li>
 </ul>
 <h2 id="known-gaps"><a class="anchor" href="#known-gaps" aria-hidden="true">#</a>Known gaps</h2>
-<p>The 34 test262 failures above (all shared with QuickJS‑ng); speed is 69 % of QuickJS on the micro
-benchmarks (the switch loop and the <code>Value</code> size are the first suspects); memory is 1.6× QuickJS on
-allocation‑heavy scripts (a tracing heap holds garbage until the next collection).</p>
+<p>The 34 test262 failures above (all shared with QuickJS‑ng). Speed is at parity with QuickJS on the micro
+benchmarks; the slow cases are the ones that pay one dispatch per bytecode (<code>switch</code> on integers 62 %,
+nested integer loops 69 %: next step is superinstructions or a pre‑decoded code array), native‑to‑JS
+callbacks (<code>sort</code> comparators, <code>forEach</code>: a new <code>interp_run</code> activation each, ~1.9× slower than QuickJS) and
+destructuring. Memory is 1.4× QuickJS on allocation‑heavy scripts (a plain object costs 168 bytes: <code>Object</code>
+104 + 4 inline slots; a string header is 80 bytes; both can shrink).</p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="/docs/engine/regexp.html"><span>Previous</span><strong>engine/regexp</strong></a>
 <a class="doc-next" href="/docs/engine/unicode.html"><span>Next</span><strong>engine/unicode (ucd)</strong></a>
