@@ -163,16 +163,21 @@ $odinified = @(
     'dom_touch.c',
     'handlers.c',
     'intersection.c',
+    'intl.c',
     'promise.c',
     'qjs_convert.c',
     'reflect.c',
     'shared_workers.c',
     'timers.c',
+$odinified = @(
     'web_abort.c',
-    'web_blob.c',
+    'web_animations.c',
+    'web_blob.c'
+)
     'web_broadcast.c',
 $odinified = @(
     'web_cache.c',
+    'web_canvas.c',
     'web_clipboard.c',
     'web_clone.c',
     'web_compat.c',
@@ -190,9 +195,12 @@ $odinified = @(
     'web_fs.c'
 )
     'web_fullscreen.c',
+$odinified = @(
+    'web_geometry.c',
     'web_idb.c',
     'web_idb_native.c',
-    'web_idb_prelude.c',
+    'web_idb_prelude.c'
+)
     'web_location.c',
     'web_locks.c',
     'web_media.c',
@@ -210,7 +218,15 @@ $odinified = @(
     'web_transform.c',
     'web_url.c',
     'web_urlpattern.c',
-    'web_writable.c',
+$odinified = @(
+    'web_webcodecs.c',
+    'web_webcodecs_audio_decoder.c',
+    'web_webcodecs_codec.c',
+    'web_webcodecs_encoders.c',
+    'web_webcodecs_image.c',
+    'web_webcodecs_video_decoder.c',
+    'web_writable.c'
+)
     'window.c',
     'worker_scope.c',
     'workers.c'
