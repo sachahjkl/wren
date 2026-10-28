@@ -114,19 +114,15 @@ Buf :: struct {
 // A global defined by C stays `foreign` here; one defined in Odin must not also be declared `foreign` in any package
 // (the build is one LLVM module: the second declaration is renamed and never resolves).
 
-@(default_calling_convention = "c")
-foreign {
-	// `extern const wj_interface wj_interfaces[]`: an array symbol, so its first element is what the name designates;
-	// interfaces() gives the indexable view.
-	wj_interfaces:       Interface
-	wj_interface_count:  i32
-}
+// set by wj_install_bindings (the generated bindings)
+interface_table:   [^]Interface
+wj_interface_count: i32
 
 // set while the realm dispatches an event of its own (wj_dispatch_own_event, native/js/odin/events.odin): it is trusted
 @(export, link_name = "wj_dispatch_trusted")
 wj_dispatch_trusted: bool
 
-interfaces :: #force_inline proc "contextless" () -> [^]Interface { return ([^]Interface)(&wj_interfaces) }
+interfaces :: #force_inline proc "contextless" () -> [^]Interface { return interface_table }
 
 // ---- the realm (wj_the_realm), read in place ----
 

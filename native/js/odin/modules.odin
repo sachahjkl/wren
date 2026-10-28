@@ -110,7 +110,13 @@ json_module_init :: proc "c" (ctx: ^wj.Context, m: ^wj.Module_Def) -> i32 {
 @(private = "file")
 compile_module :: proc "contextless" (ctx: ^wj.Context, src: [^]u8, n: uint, name: cstring, type: i32) -> ^wj.Module_Def {
 	if type == MODULE_JSON {
-		v := wj.JS_ParseJSON(ctx, src, n, name)
+		// JS_ParseJSON reads a NUL-terminated buffer: the host's source is not one
+		buf := ([^]u8)(wj.malloc(n + 1))
+		if buf == nil { return nil }
+		defer wj.free(buf)
+		wj.memcpy(buf, src, n)
+		buf[n] = 0
+		v := wj.JS_ParseJSON(ctx, buf, n, name)
 		if wj.is_exception(v) { return nil }
 		m := wj.JS_NewCModule(ctx, name, json_module_init)
 		if m == nil { wj.JS_FreeValue(ctx, v); return nil }

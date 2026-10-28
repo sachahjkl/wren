@@ -16,38 +16,10 @@ import "../odin/wj"
 
 // ---- the generated dictionaries read here (gen/bindings.h; the layout must match the C) ----
 
-@(private = "file")
-wjd_ShadowRootInit :: struct {
-	clonable:                  bool,
-	customElementRegistry:     wj.JSValue,
-	has_customElementRegistry: bool,
-	delegatesFocus:            bool,
-	mode:                      wj.Str,
-	has_mode:                  bool,
-	serializable:              bool,
-	slotAssignment:            wj.Str,
-}
-@(private = "file") wjd_GetRootNodeOptions :: struct { composed: bool }
-@(private = "file") wjd_GetHTMLOptions :: struct { serializableShadowRoots: bool, shadowRoots: wj.JSValue }
-@(private = "file") wjd_AssignedNodesOptions :: struct { flatten: bool }
-@(private = "file") wjd_CSSStyleSheetInit :: struct { baseURL: wj.Str, disabled: bool, media: wj.JSValue }
 
 #assert(size_of(wjd_ShadowRootInit) == 48 && offset_of(wjd_ShadowRootInit, mode) == 20 && offset_of(wjd_ShadowRootInit, slotAssignment) == 36)
 #assert(size_of(wjd_GetHTMLOptions) == 16 && size_of(wjd_CSSStyleSheetInit) == 24 && offset_of(wjd_CSSStyleSheetInit, media) == 16)
 
-@(default_calling_convention = "c", private = "file")
-foreign {
-	wjd_ShadowRootInit_from       :: proc(ctx: ^wj.Context, v: wj.JSValue, out: ^wjd_ShadowRootInit) -> bool ---
-	wjd_ShadowRootInit_free       :: proc(ctx: ^wj.Context, d: ^wjd_ShadowRootInit) ---
-	wjd_GetRootNodeOptions_from   :: proc(ctx: ^wj.Context, v: wj.JSValue, out: ^wjd_GetRootNodeOptions) -> bool ---
-	wjd_GetRootNodeOptions_free   :: proc(ctx: ^wj.Context, d: ^wjd_GetRootNodeOptions) ---
-	wjd_GetHTMLOptions_from       :: proc(ctx: ^wj.Context, v: wj.JSValue, out: ^wjd_GetHTMLOptions) -> bool ---
-	wjd_GetHTMLOptions_free       :: proc(ctx: ^wj.Context, d: ^wjd_GetHTMLOptions) ---
-	wjd_AssignedNodesOptions_from :: proc(ctx: ^wj.Context, v: wj.JSValue, out: ^wjd_AssignedNodesOptions) -> bool ---
-	wjd_AssignedNodesOptions_free :: proc(ctx: ^wj.Context, d: ^wjd_AssignedNodesOptions) ---
-	wjd_CSSStyleSheetInit_from    :: proc(ctx: ^wj.Context, v: wj.JSValue, out: ^wjd_CSSStyleSheetInit) -> bool ---
-	wjd_CSSStyleSheetInit_free    :: proc(ctx: ^wj.Context, d: ^wjd_CSSStyleSheetInit) ---
-}
 
 // ---- attachShadow, getRootNode ----
 

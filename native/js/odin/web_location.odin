@@ -380,16 +380,6 @@ wjr_History_set_scrollRestoration :: proc "c" (ctx: ^wj.Context, this_val: wj.JS
 
 // ---- PageTransitionEvent ----
 
-@(private = "file")
-PageTransition_Init :: struct {
-	base:      wj.Event_Init,
-	persisted: bool,
-}
-@(default_calling_convention = "c")
-foreign {
-	wjd_PageTransitionEventInit_from :: proc(ctx: ^wj.Context, v: wj.JSValue, out: ^PageTransition_Init) -> bool ---
-	wjd_PageTransitionEventInit_free :: proc(ctx: ^wj.Context, d: ^PageTransition_Init) ---
-}
 
 @(export, link_name = "wjr_PageTransitionEvent_get_persisted")
 wjr_PageTransitionEvent_get_persisted :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
@@ -405,7 +395,7 @@ wjr_PageTransitionEvent_get_persisted :: proc "c" (ctx: ^wj.Context, this_val: w
 wjr_PageTransitionEvent_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	ev := wj_event_construct(ctx, new_target, argc, argv, pagetransition_iface(), "PageTransitionEvent")
 	if wj.is_exception(ev) { return ev }
-	init := PageTransition_Init{}
+	init := wjd_PageTransitionEventInit{}
 	if !wjd_PageTransitionEventInit_from(ctx, wj.arg(argc, argv, 1), &init) { wj.JS_FreeValue(ctx, ev); return wj.EXCEPTION }
 	wj.web_extra_set(ctx, ev, "persisted", wj.new_bool(init.persisted))
 	wjd_PageTransitionEventInit_free(ctx, &init)

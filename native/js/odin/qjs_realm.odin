@@ -212,6 +212,8 @@ when WJ_MIMALLOC {
 	new_runtime :: #force_inline proc "contextless" () -> ^wj.Runtime { return wj.JS_NewRuntime() }
 }
 
+@(private = "file") _runtime_used :: runtime.Context
+
 // Build time: everything that does not depend on the realm. 0 ok.
 @(export, link_name = "wj_preinit")
 wj_preinit :: proc "c" () -> i32 {
@@ -220,7 +222,8 @@ wj_preinit :: proc "c" () -> i32 {
 	// variable that is not a constant (tables with strings and nil, maps, @(init) procedures: the front-end's keyword tables,
 	// the engine's atoms) has not run. Run it once, here; the image made after pre-initialization keeps the result.
 	context = wj.heap_context()
-	runtime._startup_runtime()
+	when wj.WJ_JSRT { runtime._startup_runtime() }
+	wj_install_bindings()
 	wj.error_event_hook = wj_fire_error_event
 	rt := new_runtime()
 	if rt == nil { return -1 }
