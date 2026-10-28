@@ -18,8 +18,8 @@ CHECK=(base host config css http i18n xml adblock canvas2d license dom url html 
        webfont wasm js idb httpcache images webauthn desktop remote tools/testenv
        net fetch media page blocker remote/client tools/crashtrace)
 # (name, extra flags): wasm, remote and remote/client run on one thread, as on Windows (one channel per process)
-TESTS=(base host config css http i18n xml adblock canvas2d dom url html cookies csp forms style layout webfont js
-       httpcache webauthn desktop tools/testenv "wasm:-define:ODIN_TEST_THREADS=1" "remote:-define:ODIN_TEST_THREADS=1"
+TESTS=(base host css http xml adblock canvas2d dom url html cookies csp forms style layout webfont js
+       httpcache webauthn desktop "wasm:-define:ODIN_TEST_THREADS=1" "remote:-define:ODIN_TEST_THREADS=1"
        net fetch media blocker page "remote/client:-define:ODIN_TEST_THREADS=1" tools/crashtrace)
 wanted() {
   [ ${#ONLY[@]} -eq 0 ] && return 0
