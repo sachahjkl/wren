@@ -2259,6 +2259,7 @@ static JSValue exec_closure(JSContext *ctx, JSValueConst this_val, int argc, JSV
             if (gn) { memcpy(copy, gp, gn); }
             JS_FreeValue(ctx, kb);
             kb = wj_uint8array_take(ctx, copy, gn);
+            flags |= 2;   /* the key flag is read when the request runs: the generated key counts (idb.js: kb !== null) */
             JS_FreeValue(ctx, keep);
             JSValue clone = deserialize(ctx, valueBytes);
             JSValue decoded = key_value(ctx, kb);
