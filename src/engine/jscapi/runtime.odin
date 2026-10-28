@@ -94,10 +94,10 @@ JS_NewContext :: proc "c" (r: ^Runtime) -> ^Context {
 	return wctx(js.context_new(jrt(r)))
 }
 
-JS_FreeContext :: proc "c" (c: ^Context) {
-	context = api_ctx()
-	js.context_free(jctx(c))
-}
+// A context is owned by its runtime and lives until JS_FreeRuntime: objects and functions of that realm point at it
+// (QuickJS counts references to a context; here the caller's reference is simply not what keeps it alive, so freeing it
+// at once, as `$262.createRealm` does right after making the realm, would leave the realm's functions dangling).
+JS_FreeContext :: proc "c" (c: ^Context) {}
 
 JS_GetRuntime :: proc "c" (c: ^Context) -> ^Runtime {
 	return wrt(jctx(c).rt)
@@ -230,7 +230,11 @@ JS_SetCompileStringsHook :: proc "c" (r: ^Runtime, hook: Compile_Strings_Hook, o
 @(private)
 dynamic_import_bridge :: proc(ctx: ^js.Context, base, specifier, attributes, resolve, reject: js.Value, user: rawptr) -> bool {
 	st := state_of(ctx.rt)
-	if st.import_hook == nil {return true}
+	if st.import_hook == nil {
+		// no hook: the module loader function (JS_SetModuleLoaderFunc2) does it, as in QuickJS
+		js.enqueue_job(ctx, js.dynamic_import_job, {resolve, reject, base, specifier, attributes})
+		return true
+	}
 	funcs := [2]JSValue{enc(resolve), enc(reject)}
 	return st.import_hook(wctx(ctx), enc(base), enc(specifier), enc(attributes), raw_data(funcs[:]), st.import_opaque) >= 0
 }
