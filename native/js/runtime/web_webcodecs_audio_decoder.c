@@ -131,7 +131,7 @@ JSValue wjr_AudioDecoder_decode(JSContext *ctx, JSValueConst this_val, int argc,
     uint32_t n = wr_EncodedAudioChunk_byteLength(chunk->handle);
     uint8_t *buf = n ? js_malloc(ctx, n) : NULL;
     if (n && !buf) return JS_ThrowOutOfMemory(ctx);
-    if (n) { if (wr_EncodedAudioChunk_copyTo(chunk->handle, buf, n) < 0) { js_free(ctx, buf); return JS_ThrowTypeError(ctx, "decode: could not read the chunk."); } }
+    if (n) { if (wr_EncodedAudioChunk_copyTo(chunk->handle, buf, n, &(int32_t){0}) < 0) { js_free(ctx, buf); return JS_ThrowTypeError(ctx, "decode: could not read the chunk."); } }
     int32_t st = wr_AudioDecoder_decode(h, key ? 1 : 0, ts, dur < 0 ? 0 : dur, dur < 0 ? 0 : 1, buf, n);
     if (buf) js_free(ctx, buf);
     if (st < 0) return wj_throw_status(ctx, st, "AudioDecoder.decode");

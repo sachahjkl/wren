@@ -1,7 +1,7 @@
 /// WebCodecs VideoDecoder (src/page/bindings_video_decoder.odin, native/js/runtime/web_webcodecs_video_decoder.c).
 /// Wires to the media decoders of src/media behind an honest isConfigSupported. The engine holds the output / error
 /// callbacks; a decoded VideoFrame is delivered through the output callback (user, frame handle).
-[Exposed=(Window,Worker,DedicatedWorker)]
+[Exposed=(Window,Worker)]
 module webcodecs_video_decoder {
   handle VideoDecoder : Object = Video_Decoder_Obj via lookup_VideoDecoder;
 

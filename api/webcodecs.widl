@@ -3,7 +3,7 @@
 /// wrapper, builds the VideoFrameInit / VideoFrameBufferInit / VideoFrameCopyToOptions dictionaries, resolves copyTo's
 /// promise and transfers the handle in a postMessage. A VideoFrame is a host object (OBJECT_TAG); drawImage and
 /// createImageBitmap resolve it through the canvas image-source path. Decoders and encoders come in later modules.
-[Exposed=(Window,Worker,DedicatedWorker)]
+[Exposed=(Window,Worker)]
 module webcodecs {
   handle VideoFrame : Object = Video_Frame_Obj via lookup_VideoFrame;
 
@@ -33,7 +33,7 @@ module webcodecs {
   // Metadata
 
   /// frame.format: -1 (null) for a closed frame.
-  VideoPixelFormat VideoFrame_format(VideoFrame frame);
+  i32 VideoFrame_format(VideoFrame frame);
   u32 VideoFrame_codedWidth(VideoFrame frame);
   u32 VideoFrame_codedHeight(VideoFrame frame);
   u32 VideoFrame_displayWidth(VideoFrame frame);
@@ -41,8 +41,8 @@ module webcodecs {
   /// frame.timestamp / duration, in microseconds (duration is -1 when the frame has none, which the engine maps to null).
   i64 VideoFrame_timestamp(VideoFrame frame);
   i64 VideoFrame_duration(VideoFrame frame);
-  /// frame.visibleRect as x, y, width, height into `rect` (four f64). Returns false (null) for a closed frame.
-  bool VideoFrame_visibleRect(VideoFrame frame, out f64[] rect);
+  /// frame.visibleRect: `which` 0..3 selects x, y, width, height. -1 for a closed frame (null).
+  f64 VideoFrame_visibleRect(VideoFrame frame, i32 which);
   /// frame.colorSpace: which selects primaries (0), transfer (1), matrix (2) or full-range (3); -1 means null (absent),
   /// else the enum index (VideoColorPrimaries / VideoTransferCharacteristics / VideoMatrixCoefficients) or the bool.
   i32 VideoFrame_colorSpace(VideoFrame frame, i32 which);
@@ -58,11 +58,13 @@ module webcodecs {
     i32[] layout_offsets, i32[] layout_strides, bool has_layout) raises;
 
   /// frame.copyTo(destination, options): copies the frame (or its crop rectangle) into `dst` as `format` (-1 = own).
-  /// The plane layout used is written back to `out_offsets` / `out_strides` (one per plane); the return is the plane
+  /// The plane layout used is kept on the frame (read it with VideoFrame_copyLayout); the return is the plane
   /// count. The engine wraps this in a promise resolving to a PlaneLayout[]. Range for a rectangle outside the picture,
   /// Not_Supported for an unsupported conversion, Invalid_State for a closed frame.
   i32 VideoFrame_copyTo(VideoFrame frame, out bytes dst, i32 format, i32 rx, i32 ry, i32 rw, i32 rh, bool has_rect,
-    i32[] in_offsets, i32[] in_strides, bool has_layout, out i32[] out_offsets, out i32[] out_strides) raises;
+    i32[] in_offsets, i32[] in_strides, bool has_layout) raises;
+  /// The plane layout the last copyTo of `frame` used: `which` 0 is the offset, 1 the stride, of plane `plane`.
+  i32 VideoFrame_copyLayout(VideoFrame frame, i32 plane, i32 which);
 
   ////////////////////////////////
   // clone / close / transfer

@@ -1,7 +1,7 @@
 /// WebCodecs encoded chunks and AudioData (src/page/webcodecs_chunks.odin, native/js/runtime/web_webcodecs_codec.c).
 /// EncodedVideoChunk / EncodedAudioChunk are immutable coded samples; AudioData is decoded PCM with planar / interleaved
 /// copyTo. All the layouts and conversions are native.
-[Exposed=(Window,Worker,DedicatedWorker)]
+[Exposed=(Window,Worker)]
 module webcodecs_codec {
   handle EncodedVideoChunk : Object = Encoded_Chunk_Obj via lookup_EncodedVideoChunk;
   handle EncodedAudioChunk : Object = Encoded_Chunk_Obj via lookup_EncodedAudioChunk;
@@ -34,7 +34,7 @@ module webcodecs_codec {
   [Owned] AudioData AudioData_create(AudioSampleFormat format, f64 sample_rate, u32 frames, u32 channels, i64 timestamp, bytes data) raises;
 
   /// data.format: -1 (null) for a closed AudioData.
-  AudioSampleFormat AudioData_format(AudioData data);
+  i32 AudioData_format(AudioData data);
   f64 AudioData_sampleRate(AudioData data);
   u32 AudioData_numberOfFrames(AudioData data);
   u32 AudioData_numberOfChannels(AudioData data);

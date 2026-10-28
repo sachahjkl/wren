@@ -1,7 +1,7 @@
 /// WebCodecs AudioDecoder (src/page/bindings_audio_decoder.odin, native/js/runtime/web_webcodecs_audio_decoder.c).
 /// Wires to the audio decoders of src/media behind an honest isConfigSupported; a decoded block becomes an AudioData
 /// delivered through the output callback.
-[Exposed=(Window,Worker,DedicatedWorker)]
+[Exposed=(Window,Worker)]
 module webcodecs_audio_decoder {
   handle AudioDecoder : Object = Audio_Decoder_Obj via lookup_AudioDecoder;
 

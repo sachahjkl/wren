@@ -92,7 +92,13 @@ function not exposed to workers is not instantiated.
 | [`timers`](timers.md) | 11 | Window, Worker | Timers and the rendering-related scheduling of HTML: setTimeout / setInterval (with the HTML nesting clamp and |
 | [`url`](url.md) | 30 | Window, Worker | URL and URLSearchParams (WHATWG URL Standard) as host objects. A URL's searchParams is linked to it both ways: |
 | [`web`](web.md) | 2 | Window, Worker | What every other module shares: the error codes (Web IDL exceptions and DOMException names), the exception record |
+| [`webcodecs`](webcodecs.md) | 20 | Window, Worker | WebCodecs (src/page/bindings_webcodecs.odin, webcodecs_frame.odin): the pixel model, memory accounting and format |
+| [`webcodecs_audio_decoder`](webcodecs_audio_decoder.md) | 9 | Window, Worker | WebCodecs AudioDecoder (src/page/bindings_audio_decoder.odin, native/js/runtime/web_webcodecs_audio_decoder.c). |
+| [`webcodecs_codec`](webcodecs_codec.md) | 23 | Window, Worker | WebCodecs encoded chunks and AudioData (src/page/webcodecs_chunks.odin, native/js/runtime/web_webcodecs_codec.c). |
+| [`webcodecs_encoders`](webcodecs_encoders.md) | 18 | Window, Worker | WebCodecs VideoEncoder / AudioEncoder (src/page/bindings_encoders.odin, native/js/runtime/web_webcodecs_encoders.c). |
+| [`webcodecs_image`](webcodecs_image.md) | 16 | Window, Worker | WebCodecs ImageDecoder (src/page/bindings_image_decoder.odin, native/js/runtime/web_webcodecs_image.c). The decode |
+| [`webcodecs_video_decoder`](webcodecs_video_decoder.md) | 9 | Window, Worker | WebCodecs VideoDecoder (src/page/bindings_video_decoder.odin, native/js/runtime/web_webcodecs_video_decoder.c). |
 | [`websocket`](websocket.md) | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | 11 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-1320 imports in 1221 functions.
+1415 imports in 1316 functions.

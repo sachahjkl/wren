@@ -206,7 +206,8 @@ JSValue wjr_VideoFrame_get_visibleRect(JSContext *ctx, JSValueConst t)
 {
     uint64_t h = frame_this(ctx, t); if (!h) { return JS_EXCEPTION; }
     double r[4];
-    if (!wr_VideoFrame_visibleRect(h, r, 4)) { return JS_NULL; }
+    for (int i = 0; i < 4; i++) { r[i] = wr_VideoFrame_visibleRect(h, i); }
+    if (r[0] < 0 && r[2] < 0) { return JS_NULL; }
     return dom_rect_new(ctx, r[0], r[1], r[2], r[3], true);
 }
 
@@ -253,10 +254,11 @@ JSValue wjr_VideoFrame_copyTo(JSContext *ctx, JSValueConst this_val, int argc, J
     int32_t st = wr_VideoFrame_copyTo(h, dst, (uint32_t)dlen, fmt,
         (int32_t)r[0], (int32_t)r[1], (int32_t)r[2], (int32_t)r[3], has_rect ? 1 : 0,
         ioff, ln > 0 ? (uint32_t)ln : 0, istr, ln > 0 ? (uint32_t)ln : 0, ln > 0 ? 1 : 0,
-        ooff, 4, ostr, 4, &planes);
+        &planes);
     if (st < 0) { return web_promise_rejected(ctx, web_error_value(ctx, st, NULL, 0)); }
 
-    /* resolve with the PlaneLayout[] the host filled */
+    for (int32_t i = 0; i < planes && i < 4; i++) { ooff[i] = wr_VideoFrame_copyLayout(h, i, 0); ostr[i] = wr_VideoFrame_copyLayout(h, i, 1); }
+    /* resolve with the PlaneLayout[] the host kept */
     JSValue arr = JS_NewArray(ctx);
     for (int32_t i = 0; i < planes && i < 4; i++) {
         JSValue pl = JS_NewObject(ctx);

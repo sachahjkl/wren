@@ -168,10 +168,10 @@ audio_format_from_abi :: proc(v: i32) -> Audio_Sample_Format {
 }
 
 // new AudioData({format, sampleRate, numberOfFrames, numberOfChannels, timestamp, data}).
-AudioData_create :: proc(c: ^Call, format_abi: i32, sample_rate: f64, frames: u32, channels: u32, timestamp: i64, data: []u8) -> (u64, Api_Error) {
+AudioData_create :: proc(c: ^Call, format_enum: Api_AudioSampleFormat, sample_rate: f64, frames: u32, channels: u32, timestamp: i64, data: []u8) -> (u64, Api_Error) {
 	p := c.page
 	if !p.settings.webcodecs.enabled { return 0, fail(c, .Not_Supported, "WebCodecs is disabled.") }
-	format := audio_format_from_abi(format_abi)
+	format := audio_format_from_abi(i32(format_enum))
 	if format == .None { return 0, fail(c, .Not_Supported, "NotSupportedError: unknown AudioSampleFormat.") }
 	if sample_rate <= 0 || channels == 0 || frames == 0 { return 0, fail(c, .Range, "RangeError: invalid AudioData geometry.") }
 	need := int(frames) * int(channels) * audio_format_bytes(format)

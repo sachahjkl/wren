@@ -12,10 +12,10 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 | | count |
 |---|---:|
-| interfaces, namespaces in the table | 591 |
-| exposed by default | 356 |
-| members | 5206 |
-| members implemented | 3696 (71.0 %) |
+| interfaces, namespaces in the table | 603 |
+| exposed by default | 368 |
+| members | 5308 |
+| members implemented | 3794 (71.5 %) |
 
 ## By specification
 
@@ -93,6 +93,10 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `web-locks.idl` | 2 (2) | 5 / 5 |
 | `webaudio.idl` | 37 (0) | 7 / 204 |
 | `webauthn.idl` | 4 (4) | 22 / 22 |
+| `webcodecs-codec.idl` | 3 (3) | 19 / 23 |
+| `webcodecs-coders.idl` | 4 (4) | 40 / 40 |
+| `webcodecs-image.idl` | 3 (3) | 17 / 17 |
+| `webcodecs.idl` | 2 (2) | 22 / 22 |
 | `webcrypto.idl` | 3 (2) | 15 / 19 |
 | `webidl.idl` | 2 (1) | 29 / 32 |
 | `websockets.idl` | 2 (2) | 21 / 21 |
@@ -208,6 +212,52 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 1 / 1 members.
 
 - `constructor()`: C `wjr_DocumentTimeline_constructor`
+
+### AudioData
+
+11 / 11 members.
+
+- `constructor()`: C `wjr_AudioData_constructor`
+- `readonly format`: C `wjr_AudioData_get_format`
+- `readonly sampleRate`: C `wjr_AudioData_get_sampleRate`
+- `readonly numberOfFrames`: C `wjr_AudioData_get_numberOfFrames`
+- `readonly numberOfChannels`: C `wjr_AudioData_get_numberOfChannels`
+- `readonly duration`: C `wjr_AudioData_get_duration`
+- `readonly timestamp`: C `wjr_AudioData_get_timestamp`
+- `allocationSize()`: C `wjr_AudioData_allocationSize`
+- `copyTo()`: C `wjr_AudioData_copyTo`
+- `clone()`: C `wjr_AudioData_clone`
+- `close()`: C `wjr_AudioData_close`
+
+### AudioDecoder
+
+10 / 10 members.
+
+- `constructor()`: C `wjr_AudioDecoder_constructor`
+- `readonly state`: C `wjr_AudioDecoder_get_state`
+- `readonly decodeQueueSize`: C `wjr_AudioDecoder_get_decodeQueueSize`
+- `ondequeue`: generic (event handler)
+- `configure()`: C `wjr_AudioDecoder_configure`
+- `decode()`: C `wjr_AudioDecoder_decode`
+- `flush()`: C `wjr_AudioDecoder_flush`
+- `reset()`: C `wjr_AudioDecoder_reset`
+- `close()`: C `wjr_AudioDecoder_close`
+- `static isConfigSupported()`: C `wjr_AudioDecoder_static_isConfigSupported`
+
+### AudioEncoder
+
+10 / 10 members.
+
+- `constructor()`: C `wjr_AudioEncoder_constructor`
+- `readonly state`: C `wjr_AudioEncoder_get_state`
+- `readonly encodeQueueSize`: C `wjr_AudioEncoder_get_encodeQueueSize`
+- `ondequeue`: generic (event handler)
+- `configure()`: C `wjr_AudioEncoder_configure`
+- `encode()`: C `wjr_AudioEncoder_encode`
+- `flush()`: C `wjr_AudioEncoder_flush`
+- `reset()`: C `wjr_AudioEncoder_reset`
+- `close()`: C `wjr_AudioEncoder_close`
+- `static isConfigSupported()`: C `wjr_AudioEncoder_static_isConfigSupported`
 
 ### AudioTrack
 
@@ -955,6 +1005,28 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `ariaValueMin` (ARIAMixin): generic (reflects a content attribute)
 - `ariaValueNow` (ARIAMixin): generic (reflects a content attribute)
 - `ariaValueText` (ARIAMixin): generic (reflects a content attribute)
+
+### EncodedAudioChunk
+
+4 / 6 members.
+
+- `constructor()`: C `wjr_EncodedAudioChunk_constructor`
+- `readonly type`: not supported
+- `readonly timestamp`: import `webcodecs_codec.EncodedAudioChunk_timestamp`
+- `readonly duration`: import `webcodecs_codec.EncodedAudioChunk_duration`
+- `readonly byteLength`: import `webcodecs_codec.EncodedAudioChunk_byteLength`
+- `copyTo()`: not supported
+
+### EncodedVideoChunk
+
+4 / 6 members.
+
+- `constructor()`: C `wjr_EncodedVideoChunk_constructor`
+- `readonly type`: not supported
+- `readonly timestamp`: import `webcodecs_codec.EncodedVideoChunk_timestamp`
+- `readonly duration`: import `webcodecs_codec.EncodedVideoChunk_duration`
+- `readonly byteLength`: import `webcodecs_codec.EncodedVideoChunk_byteLength`
+- `copyTo()`: not supported
 
 ### Event
 
@@ -4768,6 +4840,38 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly pixelFormat`: C `wjr_ImageData_get_pixelFormat`
 - `readonly colorSpace`: C `wjr_ImageData_get_colorSpace`
 
+### ImageDecoder
+
+9 / 9 members.
+
+- `constructor()`: C `wjr_ImageDecoder_constructor`
+- `readonly type`: C `wjr_ImageDecoder_get_type`
+- `readonly complete`: C `wjr_ImageDecoder_get_complete`
+- `readonly completed`: C `wjr_ImageDecoder_get_completed`
+- `readonly tracks`: C `wjr_ImageDecoder_get_tracks`
+- `decode()`: C `wjr_ImageDecoder_decode`
+- `reset()`: C `wjr_ImageDecoder_reset`
+- `close()`: C `wjr_ImageDecoder_close`
+- `static isTypeSupported()`: C `wjr_ImageDecoder_static_isTypeSupported`
+
+### ImageTrack
+
+4 / 4 members.
+
+- `readonly animated`: C `wjr_ImageTrack_get_animated`
+- `readonly frameCount`: C `wjr_ImageTrack_get_frameCount`
+- `readonly repetitionCount`: C `wjr_ImageTrack_get_repetitionCount`
+- `selected`: C `wjr_ImageTrack_get_selected`
+
+### ImageTrackList
+
+4 / 4 members.
+
+- `readonly ready`: C `wjr_ImageTrackList_get_ready`
+- `readonly length`: C `wjr_ImageTrackList_get_length`
+- `readonly selectedIndex`: C `wjr_ImageTrackList_get_selectedIndex`
+- `readonly selectedTrack`: C `wjr_ImageTrackList_get_selectedTrack`
+
 ### IntersectionObserver
 
 11 / 11 members.
@@ -5857,6 +5961,68 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly customError`: C `wjr_ValidityState_get_customError`
 - `readonly valid`: C `wjr_ValidityState_get_valid`
 
+### VideoColorSpace
+
+6 / 6 members.
+
+- `constructor()`: C `wjr_VideoColorSpace_constructor`
+- `readonly primaries`: C `wjr_VideoColorSpace_get_primaries`
+- `readonly transfer`: C `wjr_VideoColorSpace_get_transfer`
+- `readonly matrix`: C `wjr_VideoColorSpace_get_matrix`
+- `readonly fullRange`: C `wjr_VideoColorSpace_get_fullRange`
+- `toJSON()`: C `wjr_VideoColorSpace_toJSON`
+
+### VideoDecoder
+
+10 / 10 members.
+
+- `constructor()`: C `wjr_VideoDecoder_constructor`
+- `readonly state`: C `wjr_VideoDecoder_get_state`
+- `readonly decodeQueueSize`: C `wjr_VideoDecoder_get_decodeQueueSize`
+- `ondequeue`: generic (event handler)
+- `configure()`: C `wjr_VideoDecoder_configure`
+- `decode()`: C `wjr_VideoDecoder_decode`
+- `flush()`: C `wjr_VideoDecoder_flush`
+- `reset()`: C `wjr_VideoDecoder_reset`
+- `close()`: C `wjr_VideoDecoder_close`
+- `static isConfigSupported()`: C `wjr_VideoDecoder_static_isConfigSupported`
+
+### VideoEncoder
+
+10 / 10 members.
+
+- `constructor()`: C `wjr_VideoEncoder_constructor`
+- `readonly state`: C `wjr_VideoEncoder_get_state`
+- `readonly encodeQueueSize`: C `wjr_VideoEncoder_get_encodeQueueSize`
+- `ondequeue`: generic (event handler)
+- `configure()`: C `wjr_VideoEncoder_configure`
+- `encode()`: C `wjr_VideoEncoder_encode`
+- `flush()`: C `wjr_VideoEncoder_flush`
+- `reset()`: C `wjr_VideoEncoder_reset`
+- `close()`: C `wjr_VideoEncoder_close`
+- `static isConfigSupported()`: C `wjr_VideoEncoder_static_isConfigSupported`
+
+### VideoFrame
+
+16 / 16 members.
+
+- `constructor()`: C `wjr_VideoFrame_constructor`
+- `constructor()`: C `wjr_VideoFrame_constructor`
+- `readonly format`: C `wjr_VideoFrame_get_format`
+- `readonly codedWidth`: C `wjr_VideoFrame_get_codedWidth`
+- `readonly codedHeight`: C `wjr_VideoFrame_get_codedHeight`
+- `readonly codedRect`: C `wjr_VideoFrame_get_codedRect`
+- `readonly visibleRect`: C `wjr_VideoFrame_get_visibleRect`
+- `readonly displayWidth`: C `wjr_VideoFrame_get_displayWidth`
+- `readonly displayHeight`: C `wjr_VideoFrame_get_displayHeight`
+- `readonly duration`: C `wjr_VideoFrame_get_duration`
+- `readonly timestamp`: C `wjr_VideoFrame_get_timestamp`
+- `readonly colorSpace`: C `wjr_VideoFrame_get_colorSpace`
+- `allocationSize()`: C `wjr_VideoFrame_allocationSize`
+- `copyTo()`: C `wjr_VideoFrame_copyTo`
+- `clone()`: C `wjr_VideoFrame_clone`
+- `close()`: C `wjr_VideoFrame_close`
+
 ### VideoPlaybackQuality
 
 5 / 5 members.
@@ -5979,4 +6145,11 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 ## Not exposed (nothing implemented)
 
 AnimationNodeList, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, BarProp, CSSNumericArray, CSSRule, CSSGroupingRule, CSSConditionRule, CSSMediaRule, CSSSupportsRule, CSSPageRule, CSSStartingStyleRule, CSSStyleRule, CSSImportRule, CSSKeyframeRule, CSSKeyframesRule, CSSMarginRule, CSSNamespaceRule, CSSPropertyRule, CSSViewTransitionRule, CSSPageDescriptors, CSSStyleValue, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSNumericValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSUnitValue, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, CaretPosition, ChapterInformation, ClipboardItem, CookieStoreManager, FederatedCredential, PasswordCredential, CryptoKey, OverconstrainedError, QuotaExceededError, DOMStringMap, AudioProcessingEvent, BeforeUnloadEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, ExtendableCookieChangeEvent, NotificationEvent, FontFaceSetLoadEvent, FormDataEvent, GamepadEvent, IDBVersionChangeEvent, MediaStreamTrackEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, SubmitEvent, TrackEvent, TextEvent, EventCounts, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, BaseAudioContext, AudioContext, OfflineAudioContext, CloseWatcher, CookieStore, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, MediaStream, MediaStreamTrack, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, Notification, ScreenOrientation, ManagedSourceBuffer, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, XMLHttpRequestUpload, External, FetchLaterResult, FileReaderSync, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, GroupEffect, SequenceEffect, HTMLAllCollection, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, MediaDeviceInfo, InputDeviceInfo, MediaList, MediaMetadata, MediaSession, MimeType, MimeTypeArray, NavigationPrecommitController, NavigatorUAData, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, Origin, PerformanceTimingConfidence, PeriodicWave, Plugin, PluginArray, ReadableByteStreamController, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, ViewTransition, ViewTransitionTypeSet, WorkerLocation, Worklet, AudioWorklet, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor
+
+## Browser functions that could not be bound
+
+- EncodedAudioChunk.type: webcodecs_codec.EncodedAudioChunk_type exists but its result is not a string
+- EncodedAudioChunk.copyTo: webcodecs_codec.EncodedAudioChunk_copyTo exists but an argument of type AllowSharedBufferSource has no conversion
+- EncodedVideoChunk.type: webcodecs_codec.EncodedVideoChunk_type exists but its result is not a string
+- EncodedVideoChunk.copyTo: webcodecs_codec.EncodedVideoChunk_copyTo exists but an argument of type AllowSharedBufferSource has no conversion
 

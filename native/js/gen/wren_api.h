@@ -699,6 +699,65 @@ enum wr_Error {
     wr_Error_No_Modification_Allowed = -46,
 };
 
+/* module webcodecs: types */
+typedef uint64_t wr_VideoFrame;
+// WebCodecs VideoPixelFormat, in the order webcodecs_frame.odin's Frame_Format uses (format() returns -1 for a
+// closed frame, which the engine maps to null).
+enum wr_VideoPixelFormat {
+    wr_VideoPixelFormat_None = 0,
+    wr_VideoPixelFormat_I420 = 1,
+    wr_VideoPixelFormat_I420A = 2,
+    wr_VideoPixelFormat_I422 = 3,
+    wr_VideoPixelFormat_I444 = 4,
+    wr_VideoPixelFormat_NV12 = 5,
+    wr_VideoPixelFormat_RGBA = 6,
+    wr_VideoPixelFormat_RGBX = 7,
+    wr_VideoPixelFormat_BGRA = 8,
+    wr_VideoPixelFormat_BGRX = 9,
+};
+
+/* module webcodecs_audio_decoder: types */
+typedef uint64_t wr_AudioDecoder;
+typedef void (*wr_AudioDecoderOutput)(int32_t user, uint64_t data);
+typedef void (*wr_AudioDecoderError)(int32_t user, int32_t code);
+
+/* module webcodecs_codec: types */
+typedef uint64_t wr_EncodedVideoChunk;
+typedef uint64_t wr_EncodedAudioChunk;
+typedef uint64_t wr_AudioData;
+// The WebCodecs AudioSampleFormat enum, in the order webcodecs_chunks.odin's Audio_Sample_Format uses (format()
+// returns -1 for a closed AudioData, which the engine maps to null).
+enum wr_AudioSampleFormat {
+    wr_AudioSampleFormat_None = 0,
+    wr_AudioSampleFormat_U8 = 1,
+    wr_AudioSampleFormat_S16 = 2,
+    wr_AudioSampleFormat_S32 = 3,
+    wr_AudioSampleFormat_F32 = 4,
+    wr_AudioSampleFormat_U8_Planar = 5,
+    wr_AudioSampleFormat_S16_Planar = 6,
+    wr_AudioSampleFormat_S32_Planar = 7,
+    wr_AudioSampleFormat_F32_Planar = 8,
+};
+
+/* module webcodecs_encoders: types */
+typedef uint64_t wr_VideoEncoder;
+typedef uint64_t wr_AudioEncoder;
+typedef void (*wr_VideoEncoderOutput)(int32_t user, uint64_t chunk);
+typedef void (*wr_VideoEncoderError)(int32_t user, int32_t code);
+typedef void (*wr_AudioEncoderOutput)(int32_t user, uint64_t chunk);
+typedef void (*wr_AudioEncoderError)(int32_t user, int32_t code);
+
+/* module webcodecs_image: types */
+typedef uint64_t wr_ImageDecoder;
+typedef uint64_t wr_ImageTrackList;
+typedef uint64_t wr_ImageTrack;
+
+/* module webcodecs_video_decoder: types */
+typedef uint64_t wr_VideoDecoder;
+// output(frame) and error(code) callbacks. The frame handle is a VideoFrame the guest must close.
+typedef void (*wr_VideoDecoderOutput)(int32_t user, uint64_t frame);
+typedef void (*wr_VideoDecoderError)(int32_t user, int32_t code);
+
 /* module websocket: types */
 typedef uint64_t wr_WebSocket;
 // WebSocket.readyState
@@ -3265,6 +3324,179 @@ WR_IMPORT("url", "URLPattern_groupValue") int32_t wr_URLPattern_groupValue(uint6
 WR_IMPORT("web", "Exception_code") int32_t wr_Exception_code(void);
 // The message of that error ("" when it has none): what a DOMException's message would say.
 WR_IMPORT("web", "Exception_message") int32_t wr_Exception_message(uint8_t *_buf, uint32_t _cap);
+
+/* module webcodecs */
+// /////////////////////////////
+// new VideoFrame(image, init): build from a drawable source (an element handle img / canvas / video, or an object
+// handle ImageBitmap / OffscreenCanvas / VideoFrame). The source's pixels are captured now. `timestamp` (microseconds)
+// is required for a source without an intrinsic one; `has_ts` says it was given. Invalid_State when the source has no
+// pixels (not loaded, empty, a GPU-only video), Quota when it is too large, Not_Supported when WebCodecs is off.
+WR_IMPORT("webcodecs", "VideoFrame_fromImage") int32_t wr_VideoFrame_fromImage(uint64_t source, int64_t timestamp, int32_t has_ts, int64_t duration, int32_t has_duration, uint64_t *_ret);
+// new VideoFrame(bufferSource, init): build from raw pixel bytes with a VideoFrameBufferInit. `format`, `coded_w`,
+// `coded_h` and `timestamp` are required (the engine checks). `has_visible` / `has_display` carry the optional
+// visibleRect and displaySize; a custom plane layout gives `layout_offsets` / `layout_strides` (one per plane) when
+// `has_layout`. Colour space members are -1 when absent; `cp_has` says a colorSpace was given at all.
+WR_IMPORT("webcodecs", "VideoFrame_fromBuffer") int32_t wr_VideoFrame_fromBuffer(const uint8_t *data, uint32_t data_len, int32_t format, int32_t coded_w, int32_t coded_h, int64_t timestamp, int64_t duration, int32_t has_duration, int32_t vis_x, int32_t vis_y, int32_t vis_w, int32_t vis_h, int32_t has_visible, int32_t display_w, int32_t display_h, int32_t has_display, const int32_t *layout_offsets, uint32_t layout_offsets_len, const int32_t *layout_strides, uint32_t layout_strides_len, int32_t has_layout, int32_t cp_prim, int32_t cp_trans, int32_t cp_matrix, int32_t cp_full, int32_t cp_has, uint64_t *_ret);
+// /////////////////////////////
+// frame.format: -1 (null) for a closed frame.
+WR_IMPORT("webcodecs", "VideoFrame_format") int32_t wr_VideoFrame_format(uint64_t frame);
+WR_IMPORT("webcodecs", "VideoFrame_codedWidth") uint32_t wr_VideoFrame_codedWidth(uint64_t frame);
+WR_IMPORT("webcodecs", "VideoFrame_codedHeight") uint32_t wr_VideoFrame_codedHeight(uint64_t frame);
+WR_IMPORT("webcodecs", "VideoFrame_displayWidth") uint32_t wr_VideoFrame_displayWidth(uint64_t frame);
+WR_IMPORT("webcodecs", "VideoFrame_displayHeight") uint32_t wr_VideoFrame_displayHeight(uint64_t frame);
+// frame.timestamp / duration, in microseconds (duration is -1 when the frame has none, which the engine maps to null).
+WR_IMPORT("webcodecs", "VideoFrame_timestamp") int64_t wr_VideoFrame_timestamp(uint64_t frame);
+WR_IMPORT("webcodecs", "VideoFrame_duration") int64_t wr_VideoFrame_duration(uint64_t frame);
+// frame.visibleRect: `which` 0..3 selects x, y, width, height. -1 for a closed frame (null).
+WR_IMPORT("webcodecs", "VideoFrame_visibleRect") double wr_VideoFrame_visibleRect(uint64_t frame, int32_t which);
+// frame.colorSpace: which selects primaries (0), transfer (1), matrix (2) or full-range (3); -1 means null (absent),
+// else the enum index (VideoColorPrimaries / VideoTransferCharacteristics / VideoMatrixCoefficients) or the bool.
+WR_IMPORT("webcodecs", "VideoFrame_colorSpace") int32_t wr_VideoFrame_colorSpace(uint64_t frame, int32_t which);
+// Whether the frame has been closed (its pixels freed).
+WR_IMPORT("webcodecs", "VideoFrame_isClosed") int32_t wr_VideoFrame_isClosed(uint64_t frame);
+// /////////////////////////////
+// frame.allocationSize(options): the bytes copyTo needs. `format` -1 keeps the frame's own; `has_rect` gives a crop
+// rectangle; a custom layout's strides are honoured when `has_layout`.
+WR_IMPORT("webcodecs", "VideoFrame_allocationSize") int32_t wr_VideoFrame_allocationSize(uint64_t frame, int32_t format, int32_t rx, int32_t ry, int32_t rw, int32_t rh, int32_t has_rect, const int32_t *layout_offsets, uint32_t layout_offsets_len, const int32_t *layout_strides, uint32_t layout_strides_len, int32_t has_layout, int32_t *_ret);
+// frame.copyTo(destination, options): copies the frame (or its crop rectangle) into `dst` as `format` (-1 = own).
+// The plane layout used is kept on the frame (read it with VideoFrame_copyLayout); the return is the plane
+// count. The engine wraps this in a promise resolving to a PlaneLayout[]. Range for a rectangle outside the picture,
+// Not_Supported for an unsupported conversion, Invalid_State for a closed frame.
+WR_IMPORT("webcodecs", "VideoFrame_copyTo") int32_t wr_VideoFrame_copyTo(uint64_t frame, uint8_t *dst, uint32_t dst_cap, int32_t format, int32_t rx, int32_t ry, int32_t rw, int32_t rh, int32_t has_rect, const int32_t *in_offsets, uint32_t in_offsets_len, const int32_t *in_strides, uint32_t in_strides_len, int32_t has_layout, int32_t *_ret);
+// The plane layout the last copyTo of `frame` used: `which` 0 is the offset, 1 the stride, of plane `plane`.
+WR_IMPORT("webcodecs", "VideoFrame_copyLayout") int32_t wr_VideoFrame_copyLayout(uint64_t frame, int32_t plane, int32_t which);
+// /////////////////////////////
+// frame.clone(): a new VideoFrame sharing the timing, with its own copy of the pixels.
+WR_IMPORT("webcodecs", "VideoFrame_clone") int32_t wr_VideoFrame_clone(uint64_t frame, uint64_t *_ret);
+// frame.close(): free the pixels; the handle stays valid but closed.
+WR_IMPORT("webcodecs", "VideoFrame_close") void wr_VideoFrame_close(uint64_t frame);
+// postMessage transfer within one realm: move the pixels into a new object (owner = the receiving realm's instance),
+// closing the original. Data_Clone when it is already detached.
+WR_IMPORT("webcodecs", "VideoFrame_transfer") int32_t wr_VideoFrame_transfer(uint64_t frame, uint32_t owner, uint64_t *_ret);
+// Cross-realm transfer (postMessage to a worker): the source realm detaches the frame into a process-wide token;
+// the destination realm adopts it. The pixels stay host-owned throughout. Both are used by structured clone
+// (native/js/runtime/clone.c). takeForTransfer returns 0 when the frame is already closed; adoptTransfer returns 0
+// when the token is unknown or the destination is over its memory budget.
+WR_IMPORT("webcodecs", "VideoFrame_takeForTransfer") uint64_t wr_VideoFrame_takeForTransfer(uint64_t frame);
+WR_IMPORT("webcodecs", "VideoFrame_adoptTransfer") uint64_t wr_VideoFrame_adoptTransfer(uint64_t token);
+
+/* module webcodecs_audio_decoder */
+WR_IMPORT("webcodecs_audio_decoder", "AudioDecoder_create") int32_t wr_AudioDecoder_create(uint32_t output, int32_t output_user, uint32_t error, int32_t error_user, uint64_t *_ret);
+// AudioDecoder.isConfigSupported(config.codec): honest (AAC, MP3, Opus, FLAC).
+WR_IMPORT("webcodecs_audio_decoder", "AudioDecoder_isConfigSupported") int32_t wr_AudioDecoder_isConfigSupported(const uint8_t *codec, uint32_t codec_len);
+WR_IMPORT("webcodecs_audio_decoder", "AudioDecoder_configure") int32_t wr_AudioDecoder_configure(uint64_t decoder, const uint8_t *codec, uint32_t codec_len, const uint8_t *description, uint32_t description_len, uint32_t sample_rate, uint32_t channels);
+WR_IMPORT("webcodecs_audio_decoder", "AudioDecoder_decode") int32_t wr_AudioDecoder_decode(uint64_t decoder, int32_t key, int64_t timestamp, int64_t duration, int32_t has_duration, const uint8_t *data, uint32_t data_len);
+WR_IMPORT("webcodecs_audio_decoder", "AudioDecoder_flush") int32_t wr_AudioDecoder_flush(uint64_t decoder);
+WR_IMPORT("webcodecs_audio_decoder", "AudioDecoder_reset") void wr_AudioDecoder_reset(uint64_t decoder);
+WR_IMPORT("webcodecs_audio_decoder", "AudioDecoder_close") void wr_AudioDecoder_close(uint64_t decoder);
+WR_IMPORT("webcodecs_audio_decoder", "AudioDecoder_decodeQueueSize") uint32_t wr_AudioDecoder_decodeQueueSize(uint64_t decoder);
+WR_IMPORT("webcodecs_audio_decoder", "AudioDecoder_state") int32_t wr_AudioDecoder_state(uint64_t decoder);
+
+/* module webcodecs_codec */
+// new EncodedVideoChunk / EncodedAudioChunk({type, timestamp, duration, data}). `key` is type == "key".
+WR_IMPORT("webcodecs_codec", "EncodedVideoChunk_create") int32_t wr_EncodedVideoChunk_create(int32_t key, int64_t timestamp, int64_t duration, int32_t has_duration, const uint8_t *data, uint32_t data_len, uint64_t *_ret);
+WR_IMPORT("webcodecs_codec", "EncodedAudioChunk_create") int32_t wr_EncodedAudioChunk_create(int32_t key, int64_t timestamp, int64_t duration, int32_t has_duration, const uint8_t *data, uint32_t data_len, uint64_t *_ret);
+// chunk.type: true "key", false "delta".
+WR_IMPORT("webcodecs_codec", "EncodedVideoChunk_type") int32_t wr_EncodedVideoChunk_type(uint64_t chunk);
+WR_IMPORT("webcodecs_codec", "EncodedVideoChunk_timestamp") int64_t wr_EncodedVideoChunk_timestamp(uint64_t chunk);
+// chunk.duration: -1 (null) when absent.
+WR_IMPORT("webcodecs_codec", "EncodedVideoChunk_duration") int64_t wr_EncodedVideoChunk_duration(uint64_t chunk);
+WR_IMPORT("webcodecs_codec", "EncodedVideoChunk_byteLength") uint32_t wr_EncodedVideoChunk_byteLength(uint64_t chunk);
+// chunk.copyTo(dst): the bytes written. Type when the destination is too small.
+WR_IMPORT("webcodecs_codec", "EncodedVideoChunk_copyTo") int32_t wr_EncodedVideoChunk_copyTo(uint64_t chunk, uint8_t *dst, uint32_t dst_cap, int32_t *_ret);
+WR_IMPORT("webcodecs_codec", "EncodedAudioChunk_type") int32_t wr_EncodedAudioChunk_type(uint64_t chunk);
+WR_IMPORT("webcodecs_codec", "EncodedAudioChunk_timestamp") int64_t wr_EncodedAudioChunk_timestamp(uint64_t chunk);
+WR_IMPORT("webcodecs_codec", "EncodedAudioChunk_duration") int64_t wr_EncodedAudioChunk_duration(uint64_t chunk);
+WR_IMPORT("webcodecs_codec", "EncodedAudioChunk_byteLength") uint32_t wr_EncodedAudioChunk_byteLength(uint64_t chunk);
+WR_IMPORT("webcodecs_codec", "EncodedAudioChunk_copyTo") int32_t wr_EncodedAudioChunk_copyTo(uint64_t chunk, uint8_t *dst, uint32_t dst_cap, int32_t *_ret);
+// new AudioData({format, sampleRate, numberOfFrames, numberOfChannels, timestamp, data}).
+WR_IMPORT("webcodecs_codec", "AudioData_create") int32_t wr_AudioData_create(int32_t format, double sample_rate, uint32_t frames, uint32_t channels, int64_t timestamp, const uint8_t *data, uint32_t data_len, uint64_t *_ret);
+// data.format: -1 (null) for a closed AudioData.
+WR_IMPORT("webcodecs_codec", "AudioData_format") int32_t wr_AudioData_format(uint64_t data);
+WR_IMPORT("webcodecs_codec", "AudioData_sampleRate") double wr_AudioData_sampleRate(uint64_t data);
+WR_IMPORT("webcodecs_codec", "AudioData_numberOfFrames") uint32_t wr_AudioData_numberOfFrames(uint64_t data);
+WR_IMPORT("webcodecs_codec", "AudioData_numberOfChannels") uint32_t wr_AudioData_numberOfChannels(uint64_t data);
+WR_IMPORT("webcodecs_codec", "AudioData_timestamp") int64_t wr_AudioData_timestamp(uint64_t data);
+// data.duration, microseconds.
+WR_IMPORT("webcodecs_codec", "AudioData_duration") int64_t wr_AudioData_duration(uint64_t data);
+// data.allocationSize(options): bytes for one plane (planar) or the interleaved block, in `format` (-1 = own).
+WR_IMPORT("webcodecs_codec", "AudioData_allocationSize") int32_t wr_AudioData_allocationSize(uint64_t data, uint32_t plane_index, int32_t format, uint32_t frame_offset, uint32_t frame_count, int32_t has_count, int32_t *_ret);
+// data.copyTo(destination, options): converts and copies; returns the bytes written.
+WR_IMPORT("webcodecs_codec", "AudioData_copyTo") int32_t wr_AudioData_copyTo(uint64_t data, uint8_t *dst, uint32_t dst_cap, uint32_t plane_index, int32_t format, uint32_t frame_offset, uint32_t frame_count, int32_t has_count, int32_t *_ret);
+WR_IMPORT("webcodecs_codec", "AudioData_clone") int32_t wr_AudioData_clone(uint64_t data, uint64_t *_ret);
+WR_IMPORT("webcodecs_codec", "AudioData_close") void wr_AudioData_close(uint64_t data);
+
+/* module webcodecs_encoders */
+WR_IMPORT("webcodecs_encoders", "VideoEncoder_create") int32_t wr_VideoEncoder_create(uint32_t output, int32_t output_user, uint32_t error, int32_t error_user, uint64_t *_ret);
+WR_IMPORT("webcodecs_encoders", "AudioEncoder_create") int32_t wr_AudioEncoder_create(uint32_t output, int32_t output_user, uint32_t error, int32_t error_user, uint64_t *_ret);
+// Honest: false for every codec (no encoder is linked).
+WR_IMPORT("webcodecs_encoders", "VideoEncoder_isConfigSupported") int32_t wr_VideoEncoder_isConfigSupported(const uint8_t *codec, uint32_t codec_len);
+WR_IMPORT("webcodecs_encoders", "AudioEncoder_isConfigSupported") int32_t wr_AudioEncoder_isConfigSupported(const uint8_t *codec, uint32_t codec_len);
+// Raises NotSupportedError (no encoder).
+WR_IMPORT("webcodecs_encoders", "VideoEncoder_configure") int32_t wr_VideoEncoder_configure(uint64_t encoder, const uint8_t *codec, uint32_t codec_len);
+WR_IMPORT("webcodecs_encoders", "AudioEncoder_configure") int32_t wr_AudioEncoder_configure(uint64_t encoder, const uint8_t *codec, uint32_t codec_len);
+WR_IMPORT("webcodecs_encoders", "VideoEncoder_encode") int32_t wr_VideoEncoder_encode(uint64_t encoder);
+WR_IMPORT("webcodecs_encoders", "AudioEncoder_encode") int32_t wr_AudioEncoder_encode(uint64_t encoder);
+WR_IMPORT("webcodecs_encoders", "VideoEncoder_flush") int32_t wr_VideoEncoder_flush(uint64_t encoder);
+WR_IMPORT("webcodecs_encoders", "AudioEncoder_flush") int32_t wr_AudioEncoder_flush(uint64_t encoder);
+WR_IMPORT("webcodecs_encoders", "VideoEncoder_reset") void wr_VideoEncoder_reset(uint64_t encoder);
+WR_IMPORT("webcodecs_encoders", "AudioEncoder_reset") void wr_AudioEncoder_reset(uint64_t encoder);
+WR_IMPORT("webcodecs_encoders", "VideoEncoder_close") void wr_VideoEncoder_close(uint64_t encoder);
+WR_IMPORT("webcodecs_encoders", "AudioEncoder_close") void wr_AudioEncoder_close(uint64_t encoder);
+WR_IMPORT("webcodecs_encoders", "VideoEncoder_encodeQueueSize") uint32_t wr_VideoEncoder_encodeQueueSize(uint64_t encoder);
+WR_IMPORT("webcodecs_encoders", "AudioEncoder_encodeQueueSize") uint32_t wr_AudioEncoder_encodeQueueSize(uint64_t encoder);
+WR_IMPORT("webcodecs_encoders", "VideoEncoder_state") int32_t wr_VideoEncoder_state(uint64_t encoder);
+WR_IMPORT("webcodecs_encoders", "AudioEncoder_state") int32_t wr_AudioEncoder_state(uint64_t encoder);
+
+/* module webcodecs_image */
+// new ImageDecoder({data, type, ...}): `data` is the encoded bytes (a BufferSource; the engine also reads a Blob or
+// a ReadableStream to bytes first), `mime` the `type` option. Quota past the image limits / page memory, Type for
+// empty data, Not_Supported when WebCodecs is off.
+WR_IMPORT("webcodecs_image", "ImageDecoder_create") int32_t wr_ImageDecoder_create(const uint8_t *data, uint32_t data_len, const uint8_t *mime, uint32_t mime_len, int32_t prefer_animation, uint64_t *_ret);
+// ImageDecoder.isTypeSupported(type): honest — true only for a format we decode (not SVG).
+WR_IMPORT("webcodecs_image", "ImageDecoder_isTypeSupported") int32_t wr_ImageDecoder_isTypeSupported(const uint8_t *mime, uint32_t mime_len);
+// decoder.type.
+WR_IMPORT("webcodecs_image", "ImageDecoder_type") int32_t wr_ImageDecoder_type(uint64_t decoder, uint8_t *_buf, uint32_t _cap);
+// decoder.complete: the bytes are all available (always true for a BufferSource / Blob).
+WR_IMPORT("webcodecs_image", "ImageDecoder_complete") int32_t wr_ImageDecoder_complete(uint64_t decoder);
+// The decoded frame count (0 before a successful decode).
+WR_IMPORT("webcodecs_image", "ImageDecoder_frameCount") uint32_t wr_ImageDecoder_frameCount(uint64_t decoder);
+// decoder.decode({frameIndex}): the frame wrapped as a VideoFrame (the engine wraps it in the ImageDecodeResult and
+// the promise). Range when frameIndex is past the frame count, Encoding when the image cannot be decoded,
+// Invalid_State when the decoder is closed.
+WR_IMPORT("webcodecs_image", "ImageDecoder_decode") int32_t wr_ImageDecoder_decode(uint64_t decoder, uint32_t frame_index, uint64_t *_ret);
+// decoder.reset() / close().
+WR_IMPORT("webcodecs_image", "ImageDecoder_reset") void wr_ImageDecoder_reset(uint64_t decoder);
+WR_IMPORT("webcodecs_image", "ImageDecoder_close") void wr_ImageDecoder_close(uint64_t decoder);
+// decoder.tracks: the ImageTrackList (made on first access).
+WR_IMPORT("webcodecs_image", "ImageDecoder_tracks") uint64_t wr_ImageDecoder_tracks(uint64_t decoder);
+WR_IMPORT("webcodecs_image", "ImageTrackList_length") uint32_t wr_ImageTrackList_length(uint64_t list);
+// list[index]: Not_Found past the end (one track).
+WR_IMPORT("webcodecs_image", "ImageTrackList_item") int32_t wr_ImageTrackList_item(uint64_t list, uint32_t index, uint64_t *_ret);
+// list.selectedIndex: -1 when none / not decoded yet.
+WR_IMPORT("webcodecs_image", "ImageTrackList_selectedIndex") int32_t wr_ImageTrackList_selectedIndex(uint64_t list);
+WR_IMPORT("webcodecs_image", "ImageTrack_animated") int32_t wr_ImageTrack_animated(uint64_t track);
+WR_IMPORT("webcodecs_image", "ImageTrack_frameCount") uint32_t wr_ImageTrack_frameCount(uint64_t track);
+// track.repetitionCount: 0 play once, -1 the engine maps to Infinity (loops forever), else the repeat count.
+WR_IMPORT("webcodecs_image", "ImageTrack_repetitionCount") int32_t wr_ImageTrack_repetitionCount(uint64_t track);
+WR_IMPORT("webcodecs_image", "ImageTrack_selected") int32_t wr_ImageTrack_selected(uint64_t track);
+
+/* module webcodecs_video_decoder */
+// new VideoDecoder({output, error}).
+WR_IMPORT("webcodecs_video_decoder", "VideoDecoder_create") int32_t wr_VideoDecoder_create(uint32_t output, int32_t output_user, uint32_t error, int32_t error_user, uint64_t *_ret);
+// VideoDecoder.isConfigSupported(config.codec): honest — true only when src/media can decode the codec.
+WR_IMPORT("webcodecs_video_decoder", "VideoDecoder_isConfigSupported") int32_t wr_VideoDecoder_isConfigSupported(const uint8_t *codec, uint32_t codec_len);
+// decoder.configure({codec, description, codedWidth, codedHeight}).
+WR_IMPORT("webcodecs_video_decoder", "VideoDecoder_configure") int32_t wr_VideoDecoder_configure(uint64_t decoder, const uint8_t *codec, uint32_t codec_len, const uint8_t *description, uint32_t description_len, uint32_t coded_w, uint32_t coded_h);
+// decoder.decode(EncodedVideoChunk): the engine passes the chunk's fields and bytes.
+WR_IMPORT("webcodecs_video_decoder", "VideoDecoder_decode") int32_t wr_VideoDecoder_decode(uint64_t decoder, int32_t key, int64_t timestamp, int64_t duration, int32_t has_duration, const uint8_t *data, uint32_t data_len);
+// decoder.flush(): drain the pipeline (the engine resolves the promise).
+WR_IMPORT("webcodecs_video_decoder", "VideoDecoder_flush") int32_t wr_VideoDecoder_flush(uint64_t decoder);
+WR_IMPORT("webcodecs_video_decoder", "VideoDecoder_reset") void wr_VideoDecoder_reset(uint64_t decoder);
+WR_IMPORT("webcodecs_video_decoder", "VideoDecoder_close") void wr_VideoDecoder_close(uint64_t decoder);
+WR_IMPORT("webcodecs_video_decoder", "VideoDecoder_decodeQueueSize") uint32_t wr_VideoDecoder_decodeQueueSize(uint64_t decoder);
+// 0 unconfigured, 1 configured, 2 closed.
+WR_IMPORT("webcodecs_video_decoder", "VideoDecoder_state") int32_t wr_VideoDecoder_state(uint64_t decoder);
 
 /* module websocket */
 // new WebSocket(url, protocols): `protocols` is a comma-separated list ("" = none). Syntax for an invalid URL or

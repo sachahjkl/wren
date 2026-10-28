@@ -25,6 +25,7 @@ Video_Frame_Obj :: struct {
 	duration:  i64,          // microseconds, -1 = none
 	has_duration: bool,
 	closed:    bool,
+	copy_layout: [4][2]i32,   // the plane layout (offset, stride) of the last copyTo
 	// a premultiplied copy of the visible rectangle, made on first draw (drawImage / createImageBitmap); freed with the
 	// frame. Rebuilt is never needed: a VideoFrame's pixels do not change after construction.
 	draw_bmp:  canvas2d.Bitmap,
@@ -127,13 +128,13 @@ VideoFrame_fromImage :: proc(c: ^Call, source: u64, timestamp: i64, has_ts: bool
 // new VideoFrame(bufferSource, init): build from raw pixel bytes with a VideoFrameBufferInit. `format`, `coded_w`,
 // `coded_h`, `timestamp` are required by the spec (the engine checks and passes them). The visible rectangle and the
 // display size default to the coded picture; a custom layout gives per-plane offsets / strides.
-VideoFrame_fromBuffer :: proc(c: ^Call, data: []u8, format_abi: i32, coded_w: i32, coded_h: i32, timestamp: i64, duration: i64, has_duration: bool,
+VideoFrame_fromBuffer :: proc(c: ^Call, data: []u8, format_enum: Api_VideoPixelFormat, coded_w: i32, coded_h: i32, timestamp: i64, duration: i64, has_duration: bool,
 	vis_x, vis_y, vis_w, vis_h: i32, has_visible: bool, display_w, display_h: i32, has_display: bool,
 	layout_offsets, layout_strides: []i32, has_layout: bool,
 	cp_prim, cp_trans, cp_matrix: i32, cp_full: i32, cp_has: i32) -> (u64, Api_Error) {
 	p := c.page
 	if !p.settings.webcodecs.enabled { return 0, fail(c, .Not_Supported, "WebCodecs is disabled.") }
-	format := frame_format_from_abi(format_abi)
+	format := frame_format_from_abi(i32(format_enum))
 	if format == .None { return 0, fail(c, .Not_Supported, "NotSupportedError: unknown VideoFrame format.") }
 	cw, ch := int(coded_w), int(coded_h)
 	if cw <= 0 || ch <= 0 || cw > p.settings.webcodecs.max_dimension || ch > p.settings.webcodecs.max_dimension {
@@ -242,11 +243,22 @@ VideoFrame_timestamp :: proc(c: ^Call, f: Api_VideoFrame) -> i64 { return f.data
 VideoFrame_duration :: proc(c: ^Call, f: Api_VideoFrame) -> i64 { return f.data == nil || !f.data.has_duration ? -1 : f.data.duration }
 
 // visibleRect: x, y, width, height into `rect` (four f64). Returns false (null) for a closed frame.
-VideoFrame_visibleRect :: proc(c: ^Call, f: Api_VideoFrame, rect: []f64) -> bool {
-	if f.data == nil || f.data.closed || len(rect) < 4 { return false }
+VideoFrame_visibleRect :: proc(c: ^Call, f: Api_VideoFrame, which: i32) -> f64 {
+	if f.data == nil || f.data.closed { return -1 }
 	fp := &f.data.px
-	rect[0], rect[1], rect[2], rect[3] = f64(fp.vis_x), f64(fp.vis_y), f64(fp.vis_w), f64(fp.vis_h)
-	return true
+	switch which {
+	case 0: return f64(fp.vis_x)
+	case 1: return f64(fp.vis_y)
+	case 2: return f64(fp.vis_w)
+	case 3: return f64(fp.vis_h)
+	}
+	return -1
+}
+
+// The plane layout the last copyTo used (offset when which is 0, stride when 1).
+VideoFrame_copyLayout :: proc(c: ^Call, f: Api_VideoFrame, plane, which: i32) -> i32 {
+	if f.data == nil || plane < 0 || plane > 3 || which < 0 || which > 1 { return 0 }
+	return f.data.copy_layout[plane][which]
 }
 
 // colorSpace members: -1 (null) when absent. kind selects primaries (0), transfer (1), matrix (2); full-range is a bool.
@@ -291,7 +303,7 @@ layout_to_slice :: proc(offsets, strides: []i32, has: bool) -> []Frame_Plane_Lay
 // copyTo(destination, options): copies the frame into `dst` and reports the plane layout actually used (offsets /
 // strides into `out_offsets` / `out_strides`, one per plane; the count returned). The engine wraps this in a promise.
 VideoFrame_copyTo :: proc(c: ^Call, f: Api_VideoFrame, dst: []u8, format_abi: i32, rx, ry, rw, rh: i32, has_rect: bool,
-	in_offsets, in_strides: []i32, has_layout: bool, out_offsets, out_strides: []i32) -> (i32, Api_Error) {
+	in_offsets, in_strides: []i32, has_layout: bool) -> (i32, Api_Error) {
 	if f.data == nil || f.data.closed { return 0, fail(c, .Invalid_State, "InvalidStateError: the VideoFrame is closed.") }
 	fp := &f.data.px
 	format := format_abi < 0 ? fp.format : frame_format_from_abi(format_abi)
@@ -319,8 +331,7 @@ VideoFrame_copyTo :: proc(c: ^Call, f: Api_VideoFrame, dst: []u8, format_abi: i3
 		return 0, fail(c, .Not_Supported, "NotSupportedError: this copyTo conversion is not supported.")
 	}
 	for i in 0 ..< n {
-		if i < len(out_offsets) { out_offsets[i] = i32(layout[i].offset) }
-		if i < len(out_strides) { out_strides[i] = i32(layout[i].stride) }
+		f.data.copy_layout[i] = {i32(layout[i].offset), i32(layout[i].stride)}
 	}
 	return i32(n), .None
 }

@@ -2,7 +2,7 @@
 /// is native: the host decodes the encoded bytes once with src/images (every frame composed) and wraps each frame as a
 /// VideoFrame. The engine holds the ImageDecoder wrapper, builds the ImageDecoderInit dictionary, resolves decode()'s
 /// and completed's promises, and exposes the ImageTrackList / ImageTrack. One track (the primary image) is exposed.
-[Exposed=(Window,Worker,DedicatedWorker)]
+[Exposed=(Window,Worker)]
 module webcodecs_image {
   handle ImageDecoder : Object = Image_Decoder_Obj via lookup_ImageDecoder;
   handle ImageTrackList : Object = Image_Track_Obj via lookup_ImageTrackList;
