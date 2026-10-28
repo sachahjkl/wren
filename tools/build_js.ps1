@@ -150,6 +150,7 @@ $sources += @(Get-ChildItem (Join-Path $native 'engine'), (Join-Path $native 'ru
 # name to $odinified (one entry per line, sorted; docs\js\odin-glue.md).
 $odinified = @(
     'buffer.c',
+    'clone.c',
     'console.c',
     'custom_elements.c',
     'dom_core.c',
@@ -170,11 +171,18 @@ $odinified = @(
     'web_abort.c',
     'web_blob.c',
     'web_broadcast.c',
+$odinified = @(
     'web_cache.c',
     'web_clipboard.c',
-    'web_credentials.c',
+    'web_clone.c',
+    'web_compat.c',
+    'web_credentials.c'
+)
     'web_crypto.c',
-    'web_dnd.c',
+$odinified = @(
+    'web_devtools.c',
+    'web_dnd.c'
+)
     'web_encoding.c',
 $odinified = @(
     'web_entries.c',
@@ -186,11 +194,15 @@ $odinified = @(
     'web_idb_native.c',
     'web_idb_prelude.c',
     'web_location.c',
+    'web_locks.c',
     'web_media.c',
     'web_mediaobjects.c',
+    'web_message.c',
+    'web_navigator.c',
     'web_navtiming.c',
     'web_pipe.c',
     'web_resize.c',
+    'web_scheduler.c',
     'web_storage.c',
     'web_strategy.c',
     'web_stream.c',
@@ -200,7 +212,8 @@ $odinified = @(
     'web_urlpattern.c',
     'web_writable.c',
     'window.c',
-    'worker_scope.c'
+    'worker_scope.c',
+    'workers.c'
 )
 $sources += (Join-Path $native 'odin\wj_shim.c')
 $sources = $sources | Where-Object { $odinified -notcontains (Split-Path $_ -Leaf) }

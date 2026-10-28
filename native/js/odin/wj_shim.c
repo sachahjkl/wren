@@ -26,6 +26,16 @@ WJ_LAYOUT(wj_interface, legacy_alias, 52);
 WJ_LAYOUT(wj_interface, factory_length, 64);
 WJ_SIZE(wj_interface, 68);
 
+/* wj_member (m4_engine.odin Member): the stride of an interface's members[] */
+WJ_LAYOUT(wj_member, kind, 4);
+WJ_LAYOUT(wj_member, flags, 6);
+WJ_LAYOUT(wj_member, length, 8);
+WJ_LAYOUT(wj_member, fn, 12);
+WJ_LAYOUT(wj_member, get, 16);
+WJ_LAYOUT(wj_member, set, 20);
+WJ_LAYOUT(wj_member, value, 24);
+WJ_SIZE(wj_member, 32);
+
 /* wj_listener (engine.odin Listener) */
 WJ_LAYOUT(wj_listener, callback, 8);
 WJ_LAYOUT(wj_listener, type, 16);
