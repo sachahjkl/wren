@@ -15,6 +15,9 @@ import "base:intrinsics"
 import "../abi"
 import "wb:wasm"
 
+_ :: abi   // used only inside the generic bodies below (type_base_type(T) == abi.Handle), which a standalone check
+           // of this package does not instantiate; keep the import honest either way.
+
 // Build a scalar import for a getter `impl` of shape proc(ctx, handle_or_scalar...) -> i32 (or a scalar). `C` is the
 // context type; `mk` makes the context from the instance (begin). One specialised proc "c" per impl, no dispatcher.
 register_scalar_i32 :: proc(module, name: string, cfg: Host_Config($C), $impl: $P, results: []wasm.Val_Kind = nil) -> wasm.Import

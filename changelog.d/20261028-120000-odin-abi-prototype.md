@@ -1,0 +1,3 @@
+type: Added
+
+**Generic Odin ABI prototype** (`native/js/odin_abi`) : the guest ↔ host boundary built by Odin's compile-time generics from shared Odin declarations (`package api_decl`), replacing the code generator — a fast scalar path (per-function imports, matches the current `wr_*` trampolines within ~12 ns/call) and a serialised `host_call` path for cold shapes (~+100 ns/call), the URL/URLSearchParams/URLPattern domain migrated end to end over real Wasmtime, and `apidoc` extracting `docs/api/*.md` from the declarations with `core:odin/parser`. Design note: `docs/js/odin-abi.md`. A separate trunk that does not touch the main build.
