@@ -289,6 +289,10 @@ Context :: struct {
 	typed_array_ctor: ^Object, // %TypedArray%
 	typed_array_ctors: [12]^Object,
 	global_cache:    [GLOBAL_CACHE_SIZE]Global_Cache_Entry, // see globals.odin
+	match_shape:     ^Shape, // a RegExp match result: length, index, input, groups (b_regexp.odin)
+	rx_snap:         [32]Prop_Slot, // RegExp.prototype as the realm built it (regexp_pristine)
+	rx_snap_shape:   ^Shape,
+	rx_snap_n:       int,
 	array_shape:     ^Shape, // shape of a fresh Array (proto + length)
 	arguments_shape: ^Shape,
 	mapped_arguments_shape: ^Shape,
