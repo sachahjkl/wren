@@ -1,0 +1,51 @@
+/// WebCodecs encoded chunks and AudioData (src/page/webcodecs_chunks.odin, native/js/runtime/web_webcodecs_codec.c).
+/// EncodedVideoChunk / EncodedAudioChunk are immutable coded samples; AudioData is decoded PCM with planar / interleaved
+/// copyTo. All the layouts and conversions are native.
+[Exposed=(Window,Worker,DedicatedWorker)]
+module webcodecs_codec {
+  handle EncodedVideoChunk : Object = Encoded_Chunk_Obj via lookup_EncodedVideoChunk;
+  handle EncodedAudioChunk : Object = Encoded_Chunk_Obj via lookup_EncodedAudioChunk;
+  handle AudioData : Object = Audio_Data_Obj via lookup_AudioData;
+
+  /// The WebCodecs AudioSampleFormat enum, in the order webcodecs_chunks.odin's Audio_Sample_Format uses (format()
+  /// returns -1 for a closed AudioData, which the engine maps to null).
+  enum AudioSampleFormat : i32 { None, U8, S16, S32, F32, U8_Planar, S16_Planar, S32_Planar, F32_Planar }
+
+  /// new EncodedVideoChunk / EncodedAudioChunk({type, timestamp, duration, data}). `key` is type == "key".
+  [Owned] EncodedVideoChunk EncodedVideoChunk_create(bool key, i64 timestamp, i64 duration, bool has_duration, bytes data) raises;
+  [Owned] EncodedAudioChunk EncodedAudioChunk_create(bool key, i64 timestamp, i64 duration, bool has_duration, bytes data) raises;
+
+  /// chunk.type: true "key", false "delta".
+  bool EncodedVideoChunk_type(EncodedVideoChunk chunk);
+  i64 EncodedVideoChunk_timestamp(EncodedVideoChunk chunk);
+  /// chunk.duration: -1 (null) when absent.
+  i64 EncodedVideoChunk_duration(EncodedVideoChunk chunk);
+  u32 EncodedVideoChunk_byteLength(EncodedVideoChunk chunk);
+  /// chunk.copyTo(dst): the bytes written. Type when the destination is too small.
+  i32 EncodedVideoChunk_copyTo(EncodedVideoChunk chunk, out bytes dst) raises;
+
+  bool EncodedAudioChunk_type(EncodedAudioChunk chunk);
+  i64 EncodedAudioChunk_timestamp(EncodedAudioChunk chunk);
+  i64 EncodedAudioChunk_duration(EncodedAudioChunk chunk);
+  u32 EncodedAudioChunk_byteLength(EncodedAudioChunk chunk);
+  i32 EncodedAudioChunk_copyTo(EncodedAudioChunk chunk, out bytes dst) raises;
+
+  /// new AudioData({format, sampleRate, numberOfFrames, numberOfChannels, timestamp, data}).
+  [Owned] AudioData AudioData_create(AudioSampleFormat format, f64 sample_rate, u32 frames, u32 channels, i64 timestamp, bytes data) raises;
+
+  /// data.format: -1 (null) for a closed AudioData.
+  AudioSampleFormat AudioData_format(AudioData data);
+  f64 AudioData_sampleRate(AudioData data);
+  u32 AudioData_numberOfFrames(AudioData data);
+  u32 AudioData_numberOfChannels(AudioData data);
+  i64 AudioData_timestamp(AudioData data);
+  /// data.duration, microseconds.
+  i64 AudioData_duration(AudioData data);
+
+  /// data.allocationSize(options): bytes for one plane (planar) or the interleaved block, in `format` (-1 = own).
+  i32 AudioData_allocationSize(AudioData data, u32 plane_index, i32 format, u32 frame_offset, u32 frame_count, bool has_count) raises;
+  /// data.copyTo(destination, options): converts and copies; returns the bytes written.
+  i32 AudioData_copyTo(AudioData data, out bytes dst, u32 plane_index, i32 format, u32 frame_offset, u32 frame_count, bool has_count) raises;
+  [Owned] AudioData AudioData_clone(AudioData data) raises;
+  void AudioData_close(AudioData data);
+}
