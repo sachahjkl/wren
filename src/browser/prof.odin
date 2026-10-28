@@ -24,6 +24,7 @@ import "core:strconv"
 import "core:strings"
 import "core:sync"
 import "core:thread"
+import "core:time"
 import win "core:sys/windows"
 import "toolkit:render"
 import "toolkit:ui"
@@ -63,10 +64,17 @@ Phase_Clock :: struct {
 
 phase_clock: Phase_Clock
 
+// A monotonic counter for the profiler's phase timing. On Windows it is QueryPerformanceCounter (its own frequency,
+// read where the samples are turned into milliseconds); elsewhere it is core:time's nanosecond tick, so the "ticks" are
+// nanoseconds there (the millisecond conversion divides by the frequency the sampler records, 1e9 off Windows).
 qpc :: proc "contextless" () -> i64 {
-	v: win.LARGE_INTEGER
-	win.QueryPerformanceCounter(&v)
-	return i64(v)
+	when ODIN_OS == .Windows {
+		v: win.LARGE_INTEGER
+		win.QueryPerformanceCounter(&v)
+		return i64(v)
+	} else {
+		return time.tick_now()._nsec
+	}
 }
 
 prof_begin :: proc "contextless" (p: Phase) {
@@ -92,9 +100,13 @@ prof_frame_begin :: proc() {
 	phase_clock.on = hud_wants_clock() || prof_on()
 	if !phase_clock.on { return }
 	if phase_clock.freq == 0 {
-		f: win.LARGE_INTEGER
-		win.QueryPerformanceFrequency(&f)
-		phase_clock.freq = f64(f)
+		when ODIN_OS == .Windows {
+			f: win.LARGE_INTEGER
+			win.QueryPerformanceFrequency(&f)
+			phase_clock.freq = f64(f)
+		} else {
+			phase_clock.freq = 1e9   // qpc() returns nanoseconds off Windows
+		}
 	}
 	phase_clock.acc = {}
 	prof_begin(.Frame)
