@@ -264,7 +264,7 @@ capi_main :: proc() -> int {
 	cdef := capi.Class_Def{class_name = "Point", finalizer = point_finalizer, gc_mark = point_gc_mark}
 	check(capi.JS_NewClass(rt, cls_point, &cdef) == 0, "JS_NewClass")
 	point_proto = capi.JS_NewObject(ctx)
-	capi.JS_DefinePropertyGetSet(ctx, point_proto, capi.JS_NewAtom(ctx, "x"), capi.JS_NewCFunction2(ctx, transmute(capi.Native)point_x, "x", 0, capi.CFUNC_getter, 0), capi.UNDEFINED, capi.PROP_CONFIGURABLE)
+	capi.JS_DefinePropertyGetSet(ctx, point_proto, capi.JS_NewAtom(ctx, "x"), capi.JS_NewCFunction2(ctx, cast(capi.Native)point_x, "x", 0, capi.CFUNC_getter, 0), capi.UNDEFINED, capi.PROP_CONFIGURABLE)
 	capi.JS_SetPropertyStr(ctx, global, "mk", capi.JS_NewCFunction2(ctx, mk_point, "mk", 1, capi.CFUNC_generic, 0))
 	capi.JS_SetPropertyStr(ctx, global, "hold", capi.JS_NewCFunction2(ctx, hold_value, "hold", 2, capi.CFUNC_generic, 0))
 	check(is_int(eval(ctx, "mk(9).x"), 9), "getter reads the opaque data")
