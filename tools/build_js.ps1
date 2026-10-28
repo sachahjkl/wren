@@ -164,6 +164,7 @@ $odinified = @(
     'shared_workers.c',
     'timers.c',
     'web_broadcast.c',
+    'web_canvas.c',
     'web_crypto.c',
     'web_encoding.c',
     'web_fullscreen.c',
