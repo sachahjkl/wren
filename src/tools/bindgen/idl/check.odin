@@ -14,6 +14,7 @@ load :: proc(files: []File_Source) -> ^Api {
 	context.allocator = vmem.arena_allocator(&api.arena)
 	api.types = make(map[string]^Decl)
 	for f in files { parse_file(api, f.name, f.text) }
+	for m, i in api.modules { m.order = i }
 	if len(api.diags) == 0 { check(api) }
 	return api
 }
