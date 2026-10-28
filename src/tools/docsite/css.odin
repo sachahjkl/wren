@@ -216,9 +216,9 @@ body.docs { overflow-x: hidden; }
     border-radius: 2px;
     background: var(--text);
   }
-  .doc-nav-open span:nth-child(1) { top: 13px; }
-  .doc-nav-open span:nth-child(2) { top: 19px; }
-  .doc-nav-open span:nth-child(3) { top: 25px; }
+  .doc-nav-open span:nth-child(1) { top: calc(50% - 6px); }
+  .doc-nav-open span:nth-child(2) { top: calc(50% - 1px); }
+  .doc-nav-open span:nth-child(3) { top: calc(50% + 4px); }
   .doc-side { display: none; position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
   .doc-nav-toggle:checked ~ .doc-side { display: block; }
   .doc-nav-toggle:focus-visible ~ .doc-nav-open { outline: 2px solid var(--accent); outline-offset: 3px; }
