@@ -14,6 +14,8 @@ ONLY=("$@")
 COLL=(-collection:wb=src -collection:toolkit=ext/gui_toolkit)
 # (js/image is out until the JS engine's wasm can be built on Linux: it #loads build/js/wren_js.wasm. idb is checked but its tests
 # are out: two of them, a failed request and a failed write, fail on the GitHub runner and pass in WSL; not understood yet)
+# (browser is the first package that imports toolkit:render, so its check needs libwgpu_native.a beside Odin's wgpu
+# vendor package; it is skipped below when the library is absent so the rest of the check still runs)
 CHECK=(base host config css http i18n xml adblock canvas2d license dom url html cookies csp forms style layout
        webfont wasm js idb httpcache images webauthn desktop remote tools/testenv
        net fetch media page blocker remote/client tools/crashtrace browser)
@@ -37,9 +39,14 @@ if [ ! -s build/js/wren_js.wasm ]; then mkdir -p build/js; : > build/js/wren_js.
 for f in build/wasmtime/LICENSE ext/lexbor/LICENSE ext/lexbor/NOTICE; do
   if [ ! -e "$f" ]; then mkdir -p "$(dirname "$f")"; : > "$f"; fi
 done
+# libwgpu_native.a beside Odin's wgpu vendor package: present on the CI runner, maybe not in a bare WSL checkout. Without
+# it the wgpu vendor panics at check time, so a package that imports toolkit:render (browser) is skipped with a note.
+WGPU_LIB=0
+if ls "$("$ODIN" root 2>/dev/null)"/vendor/wgpu/lib/wgpu-linux-*/lib/libwgpu_native.a >/dev/null 2>&1; then WGPU_LIB=1; fi
 fail=0
 for p in "${CHECK[@]}"; do
   wanted "$p" || continue
+  if [ "$p" = browser ] && [ $WGPU_LIB -eq 0 ]; then echo "check skip src/browser (needs libwgpu_native.a for toolkit:render)"; continue; fi
   if out=$("$ODIN" check "src/$p" -target:linux_amd64 -no-entry-point -vet "${COLL[@]}" 2>&1); then
     echo "check ok   src/$p"
   else
