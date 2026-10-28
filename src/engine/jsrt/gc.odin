@@ -136,6 +136,23 @@ unpersist :: proc(rt: ^Runtime, v: Value) {
 
 // --- safe points ---
 
+// A loop back-edge of the interpreter: drop the temporaries of the iteration, then the cheap tests
+// of the interrupt poll and the collection trigger (the slow path only when one is due).
+// back_edge when nothing is due (true), without any slow path (false: take back_edge).
+back_edge_cheap :: #force_inline proc(rt: ^Runtime, root_base: int) -> bool {
+	if len(rt.temp_roots) > root_base {resize(&rt.temp_roots, root_base)}
+	rt.interrupt_counter += 1
+	return rt.interrupt_counter < 10_000 && !gc_should_run(rt)
+}
+
+back_edge :: #force_inline proc(ctx: ^Context, root_base: int) -> bool {
+	rt := ctx.rt
+	if len(rt.temp_roots) > root_base {resize(&rt.temp_roots, root_base)}
+	rt.interrupt_counter += 1
+	if rt.interrupt_counter < 10_000 && !gc_should_run(rt) {return true}
+	return !poll_interrupt(ctx) && gc_safepoint(ctx)
+}
+
 gc_should_run :: #force_inline proc(rt: ^Runtime) -> bool {
 	return rt.heap_bytes > rt.gc_threshold && rt.gc_disabled == 0 && !rt.in_gc
 }
@@ -287,6 +304,7 @@ gc_trace :: proc(rt: ^Runtime, c: ^Cell) {
 			mark_cell(rt, s.left)
 			mark_cell(rt, s.right)
 		}
+		mark_cell(rt, s.base)
 	case .symbol:
 		sym := cast(^Symbol)c
 		mark_value(rt, sym.description)

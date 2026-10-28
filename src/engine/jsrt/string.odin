@@ -27,6 +27,11 @@ JS_String :: struct {
 	data:       rawptr,
 	left:       ^JS_String,
 	right:      ^JS_String,
+	// append buffers: an owner (owns_buf) has room for buf_cap units, of which buf_used are written;
+	// a string made by appending to it shares the buffer and keeps the owner alive through `base`.
+	base:       ^JS_String,
+	buf_cap:    u32,
+	buf_used:   u32,
 }
 
 str_u8 :: #force_inline proc "contextless" (s: ^JS_String) -> [^]u8 {return cast([^]u8)s.data}
@@ -45,7 +50,8 @@ str_alloc :: proc(rt: ^Runtime, n: int, wide: bool) -> ^JS_String {
 
 str_finalize :: proc(rt: ^Runtime, s: ^JS_String) {
 	if s.owns_buf && s.data != nil {
-		mem_free(rt, s.data, int(s.len) * (s.is_wide ? 2 : 1))
+		units := s.buf_cap > 0 ? int(s.buf_cap) : int(s.len)
+		mem_free(rt, s.data, units * (s.is_wide ? 2 : 1))
 		s.data = nil
 	}
 }
@@ -195,6 +201,24 @@ str_units :: proc(rt: ^Runtime, s: ^JS_String, allocator: runtime.Allocator) -> 
 
 // --- concatenation ---
 
+// Write the units of `src` at unit offset `at` of the buffer `dst` (8- or 16-bit units).
+@(private = "file")
+str_copy_units :: proc(rt: ^Runtime, dst: rawptr, wide: bool, at: int, src: ^JS_String) {
+	f := str_flat(rt, src)
+	m := int(f.len)
+	if wide {
+		d := cast([^]u16)dst
+		if f.is_wide {
+			copy(d[at:at + m], str_u16(f)[:m])
+		} else {
+			s8 := str_u8(f)
+			for i in 0 ..< m {d[at + i] = u16(s8[i])}
+		}
+	} else {
+		copy((cast([^]u8)dst)[at:at + m], str_u8(f)[:m])
+	}
+}
+
 // a ++ b. Returns nil when the result would exceed the maximum string length (caller throws).
 str_concat :: proc(rt: ^Runtime, a, b: ^JS_String) -> ^JS_String {
 	if a.len == 0 {return b}
@@ -215,6 +239,36 @@ str_concat :: proc(rt: ^Runtime, a, b: ^JS_String) -> ^JS_String {
 			copy(d[:fa.len], str_u8(fa)[:fa.len])
 			copy(d[fa.len:total], str_u8(fb)[:fb.len])
 		}
+		return s
+	}
+	// appending (the left side is the longer one): write into a's buffer when nobody wrote past a,
+	// else start a new buffer with room to grow. `s += x` in a loop is then amortized linear and
+	// stays flat (no rope to flatten on every s[i] / charCodeAt).
+	if a.len >= b.len && !a.is_rope && a.is_wide == wide {
+		owner := a.base != nil ? a.base : a
+		if owner.owns_buf && owner.buf_cap > 0 && owner.data == a.data && owner.buf_used == a.len && int(owner.buf_cap) >= total {
+			str_copy_units(rt, a.data, wide, int(a.len), b)
+			owner.buf_used = u32(total)
+			s := cell_new(rt, JS_String, .string)
+			s.len = u32(total)
+			s.is_wide = wide
+			s.data = a.data
+			s.base = owner
+			return s
+		}
+	}
+	if a.len >= b.len && (!a.is_rope || a.depth >= 8) {
+		fa := str_flat(rt, a)
+		cap := min(total + total / 2, STRING_LEN_MAX)
+		s := cell_new(rt, JS_String, .string)
+		s.len = u32(total)
+		s.is_wide = wide
+		s.data = mem_alloc(rt, cap * (wide ? 2 : 1))
+		s.owns_buf = true
+		s.buf_cap = u32(cap)
+		s.buf_used = u32(total)
+		str_copy_units(rt, s.data, wide, 0, fa)
+		str_copy_units(rt, s.data, wide, int(fa.len), b)
 		return s
 	}
 	s := cell_new(rt, JS_String, .string)

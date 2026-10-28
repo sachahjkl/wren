@@ -237,38 +237,61 @@ array_iterator_next_native :: proc(ctx: ^Context, this: Value, args: []Value, ma
 	if this.tag != .object || as_obj(this).class != .array_iterator {
 		return throw_type_error(ctx, "not an Array Iterator")
 	}
-	st := as_obj(this).data.(^Iter_State)
-	if st.done || st.target.tag != .object {return iter_result(ctx, UNDEFINED, true)}
+	v, done, ok := array_iterator_step(ctx, as_obj(this).data.(^Iter_State))
+	if !ok {return EXCEPTION}
+	return iter_result(ctx, v, done)
+}
+
+// One step of an Array Iterator, without the result object: (value, done, ok).
+array_iterator_step :: proc(ctx: ^Context, st: ^Iter_State) -> (Value, bool, bool) {
+	if st.done || st.target.tag != .object {return UNDEFINED, true, true}
 	o := as_obj(st.target)
 	n: i64
-	if is_typed_array_class(o.class) {
-		if typed_array_is_out_of_bounds(o) {return throw_type_error(ctx, "typed array is detached or out of bounds")}
+	if o.class == .array && o.fast_array {
+		n = i64(array_length_u32(o))
+	} else if is_typed_array_class(o.class) {
+		if typed_array_is_out_of_bounds(o) {
+			throw_type_error(ctx, "typed array is detached or out of bounds")
+			return UNDEFINED, false, false
+		}
 		n = i64(typed_array_length(ctx, o))
 	} else {
 		ok: bool
 		n, ok = length_of_array_like(ctx, st.target)
-		if !ok {return EXCEPTION}
+		if !ok {return UNDEFINED, false, false}
 	}
 	if st.index >= n {
 		st.done = true
 		st.target = UNDEFINED
-		return iter_result(ctx, UNDEFINED, true)
+		return UNDEFINED, true, true
 	}
 	i := st.index
 	st.index += 1
 	switch st.kind {
 	case .array_keys:
-		return iter_result(ctx, mk_i64(i), false)
+		return mk_i64(i), false, true
 	case .array_entries:
 		v := get_index(ctx, mk_obj(o), i)
-		if is_exception(v) {return EXCEPTION}
+		if is_exception(v) {return UNDEFINED, false, false}
 		pair := array_from_values(ctx, {mk_i64(i), v})
-		return iter_result(ctx, mk_obj(pair), false)
+		return mk_obj(pair), false, true
 	case .array_values, .map_keys, .map_values, .map_entries, .set_values, .set_entries, .string, .regexp_string, .for_in, .helper, .wrap, .concat, .async_from_sync:
 	}
+	if o.fast_array {
+		ad := array_data(o)
+		if i < i64(ad.count) {return ad.values[i], false, true}
+	}
 	v := get_index(ctx, mk_obj(o), i)
-	if is_exception(v) {return EXCEPTION}
-	return iter_result(ctx, v, false)
+	if is_exception(v) {return UNDEFINED, false, false}
+	return v, false, true
+}
+
+// Is `next` the realm's own %ArrayIteratorPrototype%.next, applied to an Array Iterator?
+is_builtin_array_iter :: #force_inline proc(it, next: Value) -> bool {
+	if it.tag != .object || next.tag != .object {return false}
+	if as_obj(it).class != .array_iterator || as_obj(next).class != .c_function {return false}
+	nd, ok := as_obj(next).data.(Native_Data)
+	return ok && nd.fn == array_iterator_next_native
 }
 
 create_array_iterator :: proc(ctx: ^Context, this: Value, kind: Iter_Kind) -> Value {

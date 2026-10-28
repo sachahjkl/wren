@@ -967,6 +967,9 @@ eval_main :: proc(path: string) -> int {
 	set_host_hooks()
 	ctx := js.context_new(rt)
 	install_helpers(ctx)
+	console := js.new_plain_object(ctx)
+	js.def_method(ctx, console, "log", js_print, 1)
+	js.def_value(ctx, ctx.global_obj, "console", js.mk_obj(console))
 	t0 := time.tick_now()
 	kind: js.Compile_Kind = strings.has_suffix(path, ".mjs") ? .module : .script
 	r := js.eval_source(ctx, string(data), path, kind)
