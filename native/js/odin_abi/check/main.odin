@@ -23,6 +23,9 @@ url_native_parse :: proc(s: string) -> (string, bool) {
 
 reg: abi_url.Registry
 
+url_get :: proc(u: abi_guest.URL, c: abi_guest.URLComponent) -> string { s, _ := abi_guest.URL_get(u, c); return s }
+params_tostring :: proc(p: abi_guest.URLSearchParams) -> string { s, _ := abi_guest.URLSearchParams_toString(p); return s }
+
 fails: int
 
 expect :: proc(cond: bool, what: string) {
@@ -54,16 +57,16 @@ round_trip :: proc() {
 	// URL parsing and getters.
 	u, err := abi_guest.URL_parse("https://user:pass@example.com:8080/a/b?x=1&y=2#frag", nil)
 	expect(err == .None, "URL_parse ok")
-	expect(abi_guest.URL_get(u, .Protocol) == "https:", "URL protocol")
-	expect(abi_guest.URL_get(u, .Hostname) == "example.com", "URL hostname")
-	expect(abi_guest.URL_get(u, .Port) == "8080", "URL port")
-	expect(abi_guest.URL_get(u, .Pathname) == "/a/b", "URL pathname")
-	expect(abi_guest.URL_get(u, .Hash) == "#frag", "URL hash")
+	expect(url_get(u, .Protocol) == "https:", "URL protocol")
+	expect(url_get(u, .Hostname) == "example.com", "URL hostname")
+	expect(url_get(u, .Port) == "8080", "URL port")
+	expect(url_get(u, .Pathname) == "/a/b", "URL pathname")
+	expect(url_get(u, .Hash) == "#frag", "URL hash")
 
 	// Relative resolution against a base (optional argument present).
 	u2, err2 := abi_guest.URL_parse("../c", "https://example.com/a/b")
 	expect(err2 == .None, "URL_parse relative ok")
-	expect(abi_guest.URL_get(u2, .Pathname) == "/c", "URL relative pathname")
+	expect(url_get(u2, .Pathname) == "/c", "URL relative pathname")
 
 	// An invalid URL raises Type.
 	_, err3 := abi_guest.URL_parse("http://", nil)
@@ -89,7 +92,7 @@ round_trip :: proc() {
 	abi_guest.URLSearchParams_delete(sp, "b", nil)
 	expect(!abi_guest.URLSearchParams_has(sp, "b", nil), "params delete b")
 	abi_guest.URLSearchParams_sort(sp)
-	s := abi_guest.URLSearchParams_toString(sp)
+	s := params_tostring(sp)
 	expect(s == "a=9&c=3", fmt.tprintf("params toString after sort (got %q)", s))
 
 	// url.searchParams is linked both ways (a borrowed handle).
@@ -108,6 +111,18 @@ round_trip :: proc() {
 	ci := abi_guest.URLPatternInit{pathname = "/A/*", has_pathname = true, ignore_case = true}
 	cpat, _ := abi_guest.URLPattern_create(ci)
 	expect(abi_guest.URLPattern_test(cpat, "https://x.org/a/b", nil), "URLPattern ignoreCase (a dictionary bool after the strings)")
+
+	// the reads the JS binding's getAll and iterators use
+	gp, _ := abi_guest.URLSearchParams_create("k=1&x=2&k=3")
+	expect(abi_guest.URLSearchParams_count(gp, "k") == 2, "params count")
+	k1, k1e := abi_guest.URLSearchParams_getNth(gp, "k", 1)
+	expect(k1e == .None && k1 == "3", "params getNth")
+	_, k2e := abi_guest.URLSearchParams_getNth(gp, "k", 2)
+	expect(k2e == .Not_Found, "params getNth past the end raises Not_Found")
+	n1, _ := abi_guest.URLSearchParams_nameAt(gp, 1)
+	expect(n1 == "x", "params nameAt")   // (a string result lives in the result buffer until the next call)
+	v1, _ := abi_guest.URLSearchParams_valueAt(gp, 1)
+	expect(v1 == "2", "params valueAt")
 
 	abi_shapes()
 }
@@ -134,7 +149,7 @@ abi_shapes :: proc() {
 	expect(!nok, "Find: an absent optional string result")
 
 	owned, merr := abi_guest.Abi_Make("https://owned.example/p")
-	expect(merr == .None && abi_guest.URL_get(owned.handle, .Hostname) == "owned.example", "Make: an Owned handle result")
+	expect(merr == .None && url_get(owned.handle, .Hostname) == "owned.example", "Make: an Owned handle result")
 	_, berr := abi_guest.Abi_Make("not a url")
 	expect(berr == .Type, "Make: the error of a (value, error) result")
 
@@ -161,7 +176,7 @@ benchmark :: proc() {
 	t0 := time.tick_now()
 	acc := 0
 	for _ in 0 ..< N {
-		s := abi_guest.URL_get(u, .Pathname)
+		s := url_get(u, .Pathname)
 		acc += len(s)
 	}
 	d := time.duration_nanoseconds(time.tick_since(t0))
