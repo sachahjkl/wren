@@ -25,8 +25,8 @@ foreign m_storage {
 
 STORAGE_AREA_LOCAL   :: i32(0)   // wr_StorageArea_Local
 STORAGE_AREA_SESSION :: i32(1)   // wr_StorageArea_Session
-ERR_NOT_FOUND :: i32(-3)         // wr_Error_Not_Found
-ERR_QUOTA     :: i32(-13)        // wr_Error_Quota
+@(private = "file") ERR_NOT_FOUND :: i32(-3)         // wr_Error_Not_Found
+@(private = "file") ERR_QUOTA     :: i32(-13)        // wr_Error_Quota
 
 Storage_Impl :: struct {
 	area: i32,
@@ -137,9 +137,9 @@ get_item :: proc "c" (ctx: ^wj.Context, area: i32, key: []u8) -> wj.JSValue {
 wjr_Storage_key :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	s := storage_this(ctx, this_val)
 	if s == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "Storage.key", 1, argc) }
+	if argc < 1 { return wj_throw_arity(ctx, "Storage.key", 1, argc) }
 	i: u32
-	if !wj.wj_to_uint32(ctx, argv[0], &i, 32, 0) { return wj.EXCEPTION }
+	if !wj_to_uint32(ctx, argv[0], &i, 32, 0) { return wj.EXCEPTION }
 	if i > 0x7FFF_FFFF { return wj.NULL }
 	op := Key_Op{ s.area, i32(i) }
 	n := wj.fetch_string(fill_key, &op)
@@ -152,10 +152,10 @@ wjr_Storage_key :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, 
 wjr_Storage_getItem :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	s := storage_this(ctx, this_val)
 	if s == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "Storage.getItem", 1, argc) }
+	if argc < 1 { return wj_throw_arity(ctx, "Storage.getItem", 1, argc) }
 	k: wj.Str
-	if !wj.wj_to_str(ctx, argv[0], &k, 0, nil) { return wj.EXCEPTION }
-	defer wj.wj_str_free(ctx, &k)
+	if !wj_to_str(ctx, argv[0], &k, 0, nil) { return wj.EXCEPTION }
+	defer wj_str_free(ctx, &k)
 	return get_item(ctx, s.area, wj.str_slice(k))
 }
 
@@ -164,9 +164,9 @@ wjr_Storage_getItem :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i
 set_item :: proc "c" (ctx: ^wj.Context, area: i32, key: wj.JSValue, value: wj.JSValue) -> i32 {
 	k, v: wj.Str
 	if !wj.web_to_usv(ctx, key, &k) { return -1 }
-	defer wj.wj_str_free(ctx, &k)
+	defer wj_str_free(ctx, &k)
 	if !wj.web_to_usv(ctx, value, &v) { return -1 }
-	defer wj.wj_str_free(ctx, &v)
+	defer wj_str_free(ctx, &v)
 	st := wr_Storage_setItem(area, k.ptr, u32(k.len), v.ptr, u32(v.len))
 	if st < 0 {
 		if st == ERR_QUOTA {
@@ -183,7 +183,7 @@ set_item :: proc "c" (ctx: ^wj.Context, area: i32, key: wj.JSValue, value: wj.JS
 wjr_Storage_setItem :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	s := storage_this(ctx, this_val)
 	if s == nil { return wj.EXCEPTION }
-	if argc < 2 { return wj.wj_throw_arity(ctx, "Storage.setItem", 2, argc) }
+	if argc < 2 { return wj_throw_arity(ctx, "Storage.setItem", 2, argc) }
 	return set_item(ctx, s.area, argv[0], argv[1]) < 0 ? wj.EXCEPTION : wj.UNDEFINED
 }
 
@@ -191,10 +191,10 @@ wjr_Storage_setItem :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i
 wjr_Storage_removeItem :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	s := storage_this(ctx, this_val)
 	if s == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "Storage.removeItem", 1, argc) }
+	if argc < 1 { return wj_throw_arity(ctx, "Storage.removeItem", 1, argc) }
 	k: wj.Str
-	if !wj.wj_to_str(ctx, argv[0], &k, 0, nil) { return wj.EXCEPTION }
-	defer wj.wj_str_free(ctx, &k)
+	if !wj_to_str(ctx, argv[0], &k, 0, nil) { return wj.EXCEPTION }
+	defer wj_str_free(ctx, &k)
 	st := wr_Storage_removeItem(s.area, k.ptr, u32(k.len))
 	if st < 0 { return wj.wj_throw_status(ctx, st, "Storage.removeItem") }
 	return wj.UNDEFINED

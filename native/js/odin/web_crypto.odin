@@ -17,7 +17,9 @@ foreign m_crypto {
 
 @(default_calling_convention = "c")
 foreign m_crypto_document {
-	@(link_name = "Window_isSecureContext") wr_Window_isSecureContext :: proc() -> i32 ---
+	// a file-local name for the shared Window_isSecureContext import (worker_scope.odin declares it too, in the one
+	// odin_glue package): distinct Odin identifiers, the same @(link_name) so wasm-ld resolves both to the C symbol.
+	@(link_name = "Window_isSecureContext") wr_crypto_isSecureContext :: proc() -> i32 ---
 }
 
 ERR_QUOTA_C :: i32(-13)   // wr_Error_Quota (file-local alias)
@@ -55,7 +57,7 @@ WEB_RANDOM_MAX :: 65536   // the Web Cryptography API's limit, before the browse
 @(export, link_name = "wjr_Crypto_getRandomValues")
 wjr_Crypto_getRandomValues :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	if wj.wj_this(ctx, this_val, crypto_iface()) == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "Crypto.getRandomValues", 1, argc) }
+	if argc < 1 { return wj_throw_arity(ctx, "Crypto.getRandomValues", 1, argc) }
 	t := wj.Typed_Array(wj.wj_typed_array_type(argv[0]))
 	integer: bool
 	#partial switch t {
@@ -90,11 +92,11 @@ algorithm_name :: proc "c" (ctx: ^wj.Context, v: wj.JSValue, out: ^wj.Str) -> bo
 		n := wj.JS_GetPropertyStr(ctx, v, "name")
 		if wj.is_exception(n) { return false }
 		if wj.is_undefined(n) { wj.wj_throw_type(ctx, "Algorithm: name is missing"); return false }
-		ok := wj.wj_to_str(ctx, n, out, 0, nil)
+		ok := wj_to_str(ctx, n, out, 0, nil)
 		wj.JS_FreeValue(ctx, n)
 		return ok
 	}
-	return wj.wj_to_str(ctx, v, out, 0, nil)
+	return wj_to_str(ctx, v, out, 0, nil)
 }
 
 @(private = "file") digest_names := [4]cstring{ "SHA-1", "SHA-256", "SHA-384", "SHA-512" }
@@ -102,14 +104,14 @@ algorithm_name :: proc "c" (ctx: ^wj.Context, v: wj.JSValue, out: ^wj.Str) -> bo
 @(export, link_name = "wjr_SubtleCrypto_digest")
 wjr_SubtleCrypto_digest :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	if wj.wj_this(ctx, this_val, subtle_iface()) == nil { return wj.web_promise_reject_pending(ctx) }
-	if argc < 2 { wj.wj_throw_arity(ctx, "SubtleCrypto.digest", 2, argc); return wj.web_promise_reject_pending(ctx) }
+	if argc < 2 { wj_throw_arity(ctx, "SubtleCrypto.digest", 2, argc); return wj.web_promise_reject_pending(ctx) }
 	alg: wj.Str
 	if !algorithm_name(ctx, argv[0], &alg) { return wj.web_promise_reject_pending(ctx) }
 	canon: cstring = nil
 	for name in digest_names {
 		if wj.web_ascii_ieq(alg.ptr, alg.len, name) { canon = name }
 	}
-	wj.wj_str_free(ctx, &alg)
+	wj_str_free(ctx, &alg)
 	if canon == nil { return wj.web_promise_rejected(ctx, wj.web_dom_exception(ctx, "NotSupportedError", "Failed to execute 'digest' on 'SubtleCrypto': Algorithm: Unrecognized name")) }
 	p: [^]u8
 	n: uint
@@ -156,7 +158,7 @@ wjr_SubtleCrypto_unwrapKey :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i
 // [SecureContext] members are absent from documents that are not secure contexts.
 @(export, link_name = "web_crypto_start")
 web_crypto_start :: proc "c" (ctx: ^wj.Context, kind: i32) -> i32 {
-	if wr_Window_isSecureContext() != 0 { return 0 }
+	if wr_crypto_isSecureContext() != 0 { return 0 }
 	proto := wj.proto_of(crypto_iface())
 	if !wj.is_object(proto) { return 0 }
 	names := [2]cstring{ "subtle", "randomUUID" }

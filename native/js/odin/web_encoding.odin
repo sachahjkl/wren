@@ -58,7 +58,7 @@ wjr_TextEncoder_encode :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc
 	if wj.is_undefined(in_val) { return wj.new_uint8_array(ctx, nil) }
 	s: wj.Str
 	if !wj.web_to_usv(ctx, in_val, &s) { return wj.EXCEPTION }
-	defer wj.wj_str_free(ctx, &s)
+	defer wj_str_free(ctx, &s)
 	return wj.new_uint8_array(ctx, wj.str_slice(s))
 }
 
@@ -70,13 +70,13 @@ utf8_len :: #force_inline proc "contextless" (lead: u8) -> int {
 @(export, link_name = "wjr_TextEncoder_encodeInto")
 wjr_TextEncoder_encodeInto :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	if wj.wj_this(ctx, this_val, text_encoder_iface()) == nil { return wj.EXCEPTION }
-	if argc < 2 { return wj.wj_throw_arity(ctx, "TextEncoder.encodeInto", 2, argc) }
+	if argc < 2 { return wj_throw_arity(ctx, "TextEncoder.encodeInto", 2, argc) }
 	if wj.Typed_Array(wj.wj_typed_array_type(argv[1])) != .Uint8 { return wj.wj_throw_type(ctx, "TextEncoder.encodeInto: the destination is not a Uint8Array") }
 	s: wj.Str
 	if !wj.web_to_usv(ctx, argv[0], &s) { return wj.EXCEPTION }
 	dst: [^]u8
 	cap: uint
-	if !wj.wj_to_buffer_source(ctx, argv[1], &dst, &cap, wj.BS_VIEW_ONLY | wj.BS_ALLOW_SHARED, "TextEncoder.encodeInto") { wj.wj_str_free(ctx, &s); return wj.EXCEPTION }
+	if !wj.wj_to_buffer_source(ctx, argv[1], &dst, &cap, wj.BS_VIEW_ONLY | wj.BS_ALLOW_SHARED, "TextEncoder.encodeInto") { wj_str_free(ctx, &s); return wj.EXCEPTION }
 	// whole characters only; `read` counts UTF-16 code units (a 4-byte sequence is a surrogate pair)
 	src := wj.str_slice(s)
 	i, read := 0, 0
@@ -87,7 +87,7 @@ wjr_TextEncoder_encodeInto :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, 
 		read += n == 4 ? 2 : 1
 	}
 	if i > 0 { copy(dst[:i], src[:i]) }
-	wj.wj_str_free(ctx, &s)
+	wj_str_free(ctx, &s)
 	r := wj.JS_NewObject(ctx)
 	wj.JS_SetPropertyStr(ctx, r, "read", wj.new_float64(ctx, f64(read)))
 	wj.JS_SetPropertyStr(ctx, r, "written", wj.new_float64(ctx, f64(i)))
@@ -100,19 +100,19 @@ wjr_TextEncoder_encodeInto :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, 
 wjr_TextDecoder_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	if wj.is_undefined(new_target) { return wj.wj_throw_type(ctx, "Constructor TextDecoder requires 'new'") }
 	label: wj.Str
-	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &label, 0, "utf-8") { return wj.EXCEPTION }
+	if !wj_to_str(ctx, wj.arg(argc, argv, 0), &label, 0, "utf-8") { return wj.EXCEPTION }
 	opt := wj.arg(argc, argv, 1)
 	flags := u32(0)
-	if !wj.web_dict_check(ctx, opt, "TextDecoder") { wj.wj_str_free(ctx, &label); return wj.EXCEPTION }
+	if !wj.web_dict_check(ctx, opt, "TextDecoder") { wj_str_free(ctx, &label); return wj.EXCEPTION }
 	fatal, bom: wj.JSValue
-	if !wj.web_dict_get(ctx, opt, "fatal", &fatal) { wj.wj_str_free(ctx, &label); return wj.EXCEPTION }
+	if !wj.web_dict_get(ctx, opt, "fatal", &fatal) { wj_str_free(ctx, &label); return wj.EXCEPTION }
 	if wj.to_bool(ctx, fatal) { flags |= TDO_FATAL }
 	wj.JS_FreeValue(ctx, fatal)
-	if !wj.web_dict_get(ctx, opt, "ignoreBOM", &bom) { wj.wj_str_free(ctx, &label); return wj.EXCEPTION }
+	if !wj.web_dict_get(ctx, opt, "ignoreBOM", &bom) { wj_str_free(ctx, &label); return wj.EXCEPTION }
 	if wj.to_bool(ctx, bom) { flags |= TDO_IGNORE_BOM }
 	wj.JS_FreeValue(ctx, bom)
 	// the browser takes "" for utf-8; an empty label is not one (RangeError)
-	if label.len == 0 { wj.wj_str_free(ctx, &label); return wj.JS_ThrowRangeError(ctx, "The encoding label provided ('') is invalid.") }
+	if label.len == 0 { wj_str_free(ctx, &label); return wj.JS_ThrowRangeError(ctx, "The encoding label provided ('') is invalid.") }
 	h := u64(0)
 	st := wr_TextDecoder_create(label.ptr, u32(label.len), flags, &h)
 	if st < 0 {
@@ -122,10 +122,10 @@ wjr_TextDecoder_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValu
 		} else {
 			e = wj.wj_throw_status(ctx, st, "TextDecoder")
 		}
-		wj.wj_str_free(ctx, &label)
+		wj_str_free(ctx, &label)
 		return e
 	}
-	wj.wj_str_free(ctx, &label)
+	wj_str_free(ctx, &label)
 	return wj.wj_wrap_owned(ctx, h, text_decoder_iface(), new_target)
 }
 
@@ -205,18 +205,18 @@ binary_bytes :: proc "contextless" (s: []u8, out: [^]u8) -> (n: int, ok: bool) {
 
 @(export, link_name = "wjr_WindowOrWorkerGlobalScope_btoa")
 wjr_WindowOrWorkerGlobalScope_btoa :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
-	if argc < 1 { return wj.wj_throw_arity(ctx, "btoa", 1, argc) }
+	if argc < 1 { return wj_throw_arity(ctx, "btoa", 1, argc) }
 	s: wj.Str
-	if !wj.wj_to_str(ctx, argv[0], &s, 0, nil) { return wj.EXCEPTION }
+	if !wj_to_str(ctx, argv[0], &s, 0, nil) { return wj.EXCEPTION }
 	src := wj.str_slice(s)
 	bytes := ([^]u8)(wj.malloc(s.len + 1))
-	if bytes == nil { wj.wj_str_free(ctx, &s); return wj.JS_ThrowOutOfMemory(ctx) }
+	if bytes == nil { wj_str_free(ctx, &s); return wj.JS_ThrowOutOfMemory(ctx) }
 	n, ok := binary_bytes(src, bytes)
 	if !ok {
-		wj.free(bytes); wj.wj_str_free(ctx, &s)
+		wj.free(bytes); wj_str_free(ctx, &s)
 		return wj.wj_throw_dom(ctx, "InvalidCharacterError", "Failed to execute 'btoa': The string to be encoded contains characters outside of the Latin1 range.")
 	}
-	wj.wj_str_free(ctx, &s)
+	wj_str_free(ctx, &s)
 	out_n := (n + 2) / 3 * 4
 	out := ([^]u8)(wj.malloc(uint(out_n) + 1))
 	if out == nil { wj.free(bytes); return wj.JS_ThrowOutOfMemory(ctx) }
@@ -261,19 +261,19 @@ b64_value :: proc "contextless" (c: u8) -> int {
 
 @(export, link_name = "wjr_WindowOrWorkerGlobalScope_atob")
 wjr_WindowOrWorkerGlobalScope_atob :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
-	if argc < 1 { return wj.wj_throw_arity(ctx, "atob", 1, argc) }
+	if argc < 1 { return wj_throw_arity(ctx, "atob", 1, argc) }
 	s: wj.Str
-	if !wj.wj_to_str(ctx, argv[0], &s, 0, nil) { return wj.EXCEPTION }
+	if !wj_to_str(ctx, argv[0], &s, 0, nil) { return wj.EXCEPTION }
 	src := wj.str_slice(s)
 	// forgiving-base64 decode: ASCII whitespace removed, padding checked, then 6 bits per character
 	clean := ([^]u8)(wj.malloc(s.len + 1))
-	if clean == nil { wj.wj_str_free(ctx, &s); return wj.JS_ThrowOutOfMemory(ctx) }
+	if clean == nil { wj_str_free(ctx, &s); return wj.JS_ThrowOutOfMemory(ctx) }
 	n := 0
 	for c in src {
 		if c == ' ' || c == '\t' || c == '\n' || c == '\f' || c == '\r' { continue }
 		clean[n] = c; n += 1
 	}
-	wj.wj_str_free(ctx, &s)
+	wj_str_free(ctx, &s)
 	bad := false
 	if n % 4 == 0 && n >= 1 && clean[n - 1] == '=' { n -= 1; if n >= 1 && clean[n - 1] == '=' { n -= 1 } }
 	if n % 4 == 1 { bad = true }

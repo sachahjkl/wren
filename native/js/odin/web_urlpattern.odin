@@ -77,7 +77,7 @@ pattern_init_field :: proc "c" (ctx: ^wj.Context, init: wj.JSValue, name: cstrin
 pattern_read_init :: proc "c" (ctx: ^wj.Context, init: wj.JSValue, out: ^Pattern_Init) -> bool {
 	for i in 0 ..< 9 {
 		if !pattern_init_field(ctx, init, INIT_NAMES[i], &out.v[i], &out.has[i]) {
-			for j in 0 ..< i { wj.wj_str_free(ctx, &out.v[j]) }
+			for j in 0 ..< i { wj_str_free(ctx, &out.v[j]) }
 			return false
 		}
 	}
@@ -86,7 +86,7 @@ pattern_read_init :: proc "c" (ctx: ^wj.Context, init: wj.JSValue, out: ^Pattern
 
 @(private = "file")
 pattern_init_free :: proc "c" (ctx: ^wj.Context, p: ^Pattern_Init) {
-	for i in 0 ..< 9 { wj.wj_str_free(ctx, &p.v[i]) }
+	for i in 0 ..< 9 { wj_str_free(ctx, &p.v[i]) }
 }
 
 // The INIT_ARG macro of the C: a field's (ptr, len, has) triple (empty, not nil, when unset).
@@ -122,11 +122,11 @@ wjr_URLPattern_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue
 		if !wj.web_to_usv(ctx, input, &in_s) { return wj.EXCEPTION }
 		has_base := wj.is_string(a1)
 		base = {}
-		if has_base && !wj.web_to_usv(ctx, a1, &base) { wj.wj_str_free(ctx, &in_s); return wj.EXCEPTION }
+		if has_base && !wj.web_to_usv(ctx, a1, &base) { wj_str_free(ctx, &in_s); return wj.EXCEPTION }
 		base_ptr := base.ptr != nil ? base.ptr : wj.empty_ptr()
 		st = wr_URLPattern_createString(in_s.ptr, u32(in_s.len), base_ptr, has_base ? u32(base.len) : 0, has_base ? 1 : 0, ignore_case ? 1 : 0, &h)
-		wj.wj_str_free(ctx, &in_s)
-		wj.wj_str_free(ctx, &base)
+		wj_str_free(ctx, &in_s)
+		wj_str_free(ctx, &base)
 	} else {
 		p: Pattern_Init
 		is_obj := wj.is_object(input)
@@ -197,12 +197,12 @@ pattern_run :: proc "c" (ctx: ^wj.Context, h: u64, argc: i32, argv: [^]wj.JSValu
 		if !wj.is_undefined(input) && !wj.web_to_usv(ctx, input, &in_s) { return -1 }
 		has_base := wj.is_string(a1)
 		base = {}
-		if has_base && !wj.web_to_usv(ctx, a1, &base) { wj.wj_str_free(ctx, &in_s); return -1 }
+		if has_base && !wj.web_to_usv(ctx, a1, &base) { wj_str_free(ctx, &in_s); return -1 }
 		in_ptr := in_s.ptr != nil ? in_s.ptr : wj.empty_ptr()
 		base_ptr := base.ptr != nil ? base.ptr : wj.empty_ptr()
 		r := wr_URLPattern_execString(h, in_ptr, u32(in_s.len), base_ptr, has_base ? u32(base.len) : 0, has_base ? 1 : 0)
-		wj.wj_str_free(ctx, &in_s)
-		wj.wj_str_free(ctx, &base)
+		wj_str_free(ctx, &in_s)
+		wj_str_free(ctx, &base)
 		return r > 0 ? 1 : 0
 	}
 	p: Pattern_Init

@@ -58,14 +58,14 @@ Bc_Impl :: struct {
 @(export, link_name = "wjr_BroadcastChannel_constructor")
 wjr_BroadcastChannel_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	if wj.is_undefined(new_target) { return wj.JS_ThrowTypeError(ctx, "Constructor BroadcastChannel requires 'new'") }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "BroadcastChannel", 1, argc) }
+	if argc < 1 { return wj_throw_arity(ctx, "BroadcastChannel", 1, argc) }
 	name: wj.Str
-	if !wj.wj_to_str(ctx, argv[0], &name, 0, nil) { return wj.EXCEPTION }
+	if !wj_to_str(ctx, argv[0], &name, 0, nil) { return wj.EXCEPTION }
 	b := (^Bc_Impl)(wj.calloc(1, size_of(Bc_Impl)))
-	if b == nil { wj.wj_str_free(ctx, &name); return wj.JS_ThrowOutOfMemory(ctx) }
+	if b == nil { wj_str_free(ctx, &name); return wj.JS_ThrowOutOfMemory(ctx) }
 	b.name = wj.JS_NewStringLen(ctx, name.ptr, name.len)
 	b.end = wr_Broadcast_open(name.ptr, u32(name.len))
-	wj.wj_str_free(ctx, &name)
+	wj_str_free(ctx, &name)
 	obj := wj.wj_wrap_owned(ctx, wr_bc_EventTarget_create(), broadcast_iface(), new_target)
 	if wj.is_exception(obj) { if b.end != 0 { wr_bc_Port_close(b.end) }; bc_free(b); return obj }
 	wj.web_set_impl(obj, b, bc_free, bc_mark)
@@ -88,7 +88,7 @@ wjr_BroadcastChannel_get_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 wjr_BroadcastChannel_postMessage :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	b := bc_this(ctx, this_val)
 	if b == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "BroadcastChannel.postMessage", 1, argc) }
+	if argc < 1 { return wj_throw_arity(ctx, "BroadcastChannel.postMessage", 1, argc) }
 	if b.closed { return wj.wj_throw_dom(ctx, "InvalidStateError", "Failed to execute 'postMessage' on 'BroadcastChannel': Channel is closed") }
 	length: uint
 	data := wj.web_clone_serialize(ctx, argv[0], &length)

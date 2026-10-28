@@ -72,7 +72,7 @@ Shared_Impl :: struct {
 @(export, link_name = "wjr_SharedWorker_constructor")
 wjr_SharedWorker_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	if wj.is_undefined(new_target) { return wj.JS_ThrowTypeError(ctx, "Constructor SharedWorker requires 'new'") }
-	if argc < 1 { return wj.wj_throw_arity(ctx, "SharedWorker", 1, argc) }
+	if argc < 1 { return wj_throw_arity(ctx, "SharedWorker", 1, argc) }
 	url: wj.Str
 	if !wj.web_to_usv(ctx, argv[0], &url) { return wj.EXCEPTION }
 	name := wj.Str{ ptr = raw_empty_sw(), len = 0, owned = false }
@@ -81,8 +81,8 @@ wjr_SharedWorker_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSVal
 	opt := wj.arg(argc, argv, 1)
 
 	fail :: proc "c" (ctx: ^wj.Context, url: ^wj.Str, name: ^wj.Str) -> wj.JSValue {
-		wj.wj_str_free(ctx, url)
-		wj.wj_str_free(ctx, name)
+		wj_str_free(ctx, url)
+		wj_str_free(ctx, name)
 		return wj.EXCEPTION
 	}
 
@@ -101,14 +101,14 @@ wjr_SharedWorker_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSVal
 		wj.JS_FreeValue(ctx, v)
 		if !wj.web_dict_get(ctx, opt, "name", &v) { return fail(ctx, &url, &name) }
 		if !wj.is_undefined(v) {
-			ok := wj.wj_to_str(ctx, v, &name, 0, "")
+			ok := wj_to_str(ctx, v, &name, 0, "")
 			wj.JS_FreeValue(ctx, v)
 			if !ok { return fail(ctx, &url, &name) }
 		}
 		types := []cstring{ "classic", "module" }
 		type = enum_member(ctx, opt, "type", types, 0)
 		if type < 0 { return fail(ctx, &url, &name) }
-	} else if !wj.wj_to_str(ctx, opt, &name, 0, "") {
+	} else if !wj_to_str(ctx, opt, &name, 0, "") {
 		return fail(ctx, &url, &name)
 	}
 
@@ -123,8 +123,8 @@ wjr_SharedWorker_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSVal
 		st = wr_SharedWorker_connect(url.ptr, u32(url.len), name.ptr, u32(name.len),
 			type == 1 ? WORKER_TYPE_MODULE : WORKER_TYPE_CLASSIC, extended ? 1 : 0, &h)
 	}
-	wj.wj_str_free(ctx, &url)
-	wj.wj_str_free(ctx, &name)
+	wj_str_free(ctx, &url)
+	wj_str_free(ctx, &name)
 	if st < 0 { return wj.wj_throw_status(ctx, st, "SharedWorker") }
 	impl := (^Shared_Impl)(wj.calloc(1, size_of(Shared_Impl)))
 	if impl == nil { wr_sw_Object_release(h); return wj.JS_ThrowOutOfMemory(ctx) }

@@ -46,8 +46,12 @@ URL_Href :: i32(0); URL_Protocol :: i32(1); URL_Host :: i32(4); URL_Hostname :: 
 URL_Port :: i32(6); URL_Pathname :: i32(7); URL_Search :: i32(8); URL_Hash :: i32(9); URL_Origin :: i32(10)
 // enum wr_ScrollRestoration
 SCROLL_AUTO :: i32(0); SCROLL_MANUAL :: i32(1)
-// enum wr_Error (the subset used here)
-ERR_NOT_FOUND :: i32(-3); ERR_SECURITY :: i32(-12); ERR_SYNTAX :: i32(-15); ERR_DATA_CLONE :: i32(-19)
+// enum wr_Error (the subset used here). File-private: the odin_glue package is shared, and other domains name their
+// own error subsets (web_storage.odin's ERR_NOT_FOUND, ...).
+@(private = "file") ERR_NOT_FOUND :: i32(-3)
+@(private = "file") ERR_SECURITY :: i32(-12)
+@(private = "file") ERR_SYNTAX :: i32(-15)
+@(private = "file") ERR_DATA_CLONE :: i32(-19)
 
 @(private = "file") iface_location := i32(-2)
 @(private = "file") iface_document := i32(-2)
@@ -110,7 +114,7 @@ wjr_Document_set_location :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v
 	s: wj.Str
 	if !wj.web_to_usv(ctx, v, &s) { return wj.EXCEPTION }
 	st := wr_Location_set(component, s.ptr, u32(s.len))
-	wj.wj_str_free(ctx, &s)
+	wj_str_free(ctx, &s)
 	if st < 0 {
 		if st == ERR_SYNTAX { return wj.wj_throw_dom(ctx, "SyntaxError", "Failed to set a property on 'Location': the URL is invalid.") }
 		return wj.wj_throw_status(ctx, st, "Location")
@@ -168,11 +172,11 @@ wjr_DOMStringList_length_hook :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue) ->
 
 @(private = "file") location_go :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, replace: bool) -> wj.JSValue {
 	if wj.wj_this(ctx, this_val, location_iface()) == nil { return wj.EXCEPTION }
-	if argc < 1 { return wj.wj_throw_arity(ctx, replace ? "Location.replace" : "Location.assign", 1, argc) }
+	if argc < 1 { return wj_throw_arity(ctx, replace ? "Location.replace" : "Location.assign", 1, argc) }
 	s: wj.Str
 	if !wj.web_to_usv(ctx, argv[0], &s) { return wj.EXCEPTION }
 	st := replace ? wr_Location_replace(s.ptr, u32(s.len)) : wr_Location_assign(s.ptr, u32(s.len))
-	wj.wj_str_free(ctx, &s)
+	wj_str_free(ctx, &s)
 	if st < 0 {
 		if st == ERR_SYNTAX { return wj.wj_throw_dom(ctx, "SyntaxError", "Failed to execute on 'Location': the URL is invalid.") }
 		return wj.wj_throw_status(ctx, st, "Location")
@@ -328,7 +332,7 @@ wjr_History_get_state :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj
 @(private = "file") history_change :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, replace: bool) -> wj.JSValue {
 	h := history_this(ctx, this_val)
 	if h == nil { return wj.EXCEPTION }
-	if argc < 2 { return wj.wj_throw_arity(ctx, replace ? "History.replaceState" : "History.pushState", 2, argc) }
+	if argc < 2 { return wj_throw_arity(ctx, replace ? "History.replaceState" : "History.pushState", 2, argc) }
 	sl: uint
 	s := state_encode(ctx, argv[0], &sl)
 	if s == nil { return wj.EXCEPTION }
@@ -337,7 +341,7 @@ wjr_History_get_state :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj
 	if !wj.is_undefined(urlv) && !wj.is_null(urlv) && !wj.web_to_usv(ctx, urlv, &u) { _free(s); return wj.EXCEPTION }
 	ulen := u.ptr != nil ? u32(u.len) : wj.WR_ABSENT
 	st := replace ? wr_History_replaceState(s, u32(sl), u.ptr, ulen) : wr_History_pushState(s, u32(sl), u.ptr, ulen)
-	wj.wj_str_free(ctx, &u)
+	wj_str_free(ctx, &u)
 	if st < 0 {
 		_free(s)
 		switch st {
