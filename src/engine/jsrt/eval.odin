@@ -36,6 +36,7 @@ run_function_bc :: proc(ctx: ^Context, fb: Value) -> Value {
 eval_direct :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref, x: Value, scope_idx: int) -> Value {
 	if x.tag != .string {return x}
 	rt := ctx.rt
+	if rt.config.compile_strings != nil && !rt.config.compile_strings(ctx, x, true, rt.config.compile_strings_user) {return EXCEPTION}
 	src := str_to_utf8(rt, as_str(x), tmp(rt), true)
 	req := Compile_Request{kind = .eval_direct, source = src, filename = "<input>", strict = f.bc.is_strict_mode, parent = f.bc, scope_idx = scope_idx}
 	fb := compile(ctx, &req)
@@ -52,6 +53,7 @@ eval_fn :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value 
 	x := arg(args, 0)
 	if x.tag != .string {return x}
 	rt := ctx.rt
+	if rt.config.compile_strings != nil && !rt.config.compile_strings(ctx, x, false, rt.config.compile_strings_user) {return EXCEPTION}
 	src := str_to_utf8(rt, as_str(x), tmp(rt), true)
 	req := Compile_Request{kind = .eval_indirect, source = src, filename = "<input>"}
 	fb := compile(ctx, &req)
@@ -86,6 +88,7 @@ function_ctor_fn :: proc(ctx: ^Context, nt: Value, args: []Value, magic: i32) ->
 	sb_ascii(&sb, "\n})")
 	if sb.overflow {sb_destroy(&sb); return throw_range_error(ctx, "invalid string length")}
 	text := sb_finish(&sb)
+	if rt.config.compile_strings != nil && !rt.config.compile_strings(ctx, mk_str(text), false, rt.config.compile_strings_user) {return EXCEPTION}
 	req := Compile_Request{kind = .function_ctor, source = str_to_utf8(rt, text, tmp(rt), true), filename = "<input>"}
 	fb := compile(ctx, &req)
 	if is_exception(fb) {return EXCEPTION}

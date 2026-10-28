@@ -668,3 +668,8 @@ init_json_builtins :: proc(ctx: ^Context) {
 	def_method(ctx, j, "isRawJSON", json_is_raw, 1)
 	def_tag(ctx, j, "JSON")
 }
+
+// JSON.parse of a string value, for the embedding API.
+json_parse_value :: proc(ctx: ^Context, text: Value) -> Value {
+	return json_parse(ctx, UNDEFINED, {text}, 0)
+}
