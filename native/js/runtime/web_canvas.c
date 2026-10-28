@@ -58,6 +58,26 @@ static bool is_2d(JSContext *ctx, JSValueConst id, bool *bad)
     return r;
 }
 
+/* whether a getContext id is "bitmaprenderer" */
+static bool is_bitmaprenderer(JSContext *ctx, JSValueConst id)
+{
+    wj_str s;
+    if (!wj_to_str(ctx, id, &s, 0, NULL)) { return false; }
+    bool r = s.len == 15 && memcmp(s.ptr, "bitmaprenderer", 14) == 0 && s.ptr[14] == 'r';
+    wj_str_free(ctx, &s);
+    return r;
+}
+
+/* ImageBitmapRenderingContextSettings {alpha} */
+static bool bitmaprenderer_alpha(JSContext *ctx, JSValueConst options)
+{
+    if (!JS_IsObject(options)) { return true; }
+    JSValue a = JS_GetPropertyStr(ctx, options, "alpha");
+    bool alpha = JS_IsUndefined(a) ? true : JS_ToBool(ctx, a) != 0;
+    JS_FreeValue(ctx, a);
+    return alpha;
+}
+
 JSValue wjr_HTMLCanvasElement_getContext(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
     wj_obj *o = wj_this(ctx, this_val, WJ_IFACE_HTMLCanvasElement);
@@ -66,7 +86,19 @@ JSValue wjr_HTMLCanvasElement_getContext(JSContext *ctx, JSValueConst this_val, 
     bool bad;
     bool two_d = is_2d(ctx, argv[0], &bad);
     if (bad) { return JS_EXCEPTION; }
-    if (!two_d) { return JS_NULL; }   /* webgl, webgl2, webgpu, bitmaprenderer: none here */
+    if (!two_d) {
+        if (is_bitmaprenderer(ctx, argv[0])) {
+            bool alpha = bitmaprenderer_alpha(ctx, wj_arg(argc, (JSValue *)argv, 1));
+            uint64_t h = 0;
+            int32_t st = wr_HTMLCanvasElement_bitmapRenderer(o->handle, alpha, (void *)&h);
+            if (st < 0) { return wj_throw_status(ctx, st, "HTMLCanvasElement.getContext"); }
+            if (!h) { return JS_NULL; }
+            JSValue v = wj_wrap_host(ctx, h, WJ_IFACE_ImageBitmapRenderingContext);
+            if (!JS_IsException(v) && JS_IsObject(v)) { web_extra_set(ctx, v, "canvas", JS_DupValue(ctx, this_val)); }
+            return v;
+        }
+        return JS_NULL;   /* webgl, webgl2, webgpu: none here */
+    }
     bool alpha, wrf;
     if (!context_options(ctx, wj_arg(argc, (JSValue *)argv, 1), &alpha, &wrf)) { return JS_EXCEPTION; }
     uint64_t h = 0;
@@ -87,7 +119,19 @@ JSValue wjr_OffscreenCanvas_getContext(JSContext *ctx, JSValueConst this_val, in
     bool bad;
     bool two_d = is_2d(ctx, argv[0], &bad);
     if (bad) { return JS_EXCEPTION; }
-    if (!two_d) { return JS_NULL; }
+    if (!two_d) {
+        if (is_bitmaprenderer(ctx, argv[0])) {
+            bool alpha = bitmaprenderer_alpha(ctx, wj_arg(argc, (JSValue *)argv, 1));
+            uint64_t h = 0;
+            int32_t st = wr_OffscreenCanvas_bitmapRenderer(o->handle, alpha, (void *)&h);
+            if (st < 0) { return wj_throw_status(ctx, st, "OffscreenCanvas.getContext"); }
+            if (!h) { return JS_NULL; }
+            JSValue v = wj_wrap_host(ctx, h, WJ_IFACE_ImageBitmapRenderingContext);
+            if (!JS_IsException(v) && JS_IsObject(v)) { web_extra_set(ctx, v, "canvas", JS_DupValue(ctx, this_val)); }
+            return v;
+        }
+        return JS_NULL;
+    }
     bool alpha, wrf;
     if (!context_options(ctx, wj_arg(argc, (JSValue *)argv, 1), &alpha, &wrf)) { return JS_EXCEPTION; }
     uint64_t h = 0;
@@ -111,6 +155,35 @@ JSValue wjr_CanvasSettings_getContextAttributes(JSContext *ctx, JSValueConst thi
     JS_SetPropertyStr(ctx, r, "colorType", JS_NewString(ctx, "unorm8"));
     JS_SetPropertyStr(ctx, r, "willReadFrequently", JS_NewBool(ctx, wr_CanvasSettings_willReadFrequently(o->handle) != 0));
     return r;
+}
+
+/* ---- ImageBitmapRenderingContext ---- */
+
+JSValue wjr_ImageBitmapRenderingContext_get_canvas(JSContext *ctx, JSValueConst this_val)
+{
+    if (!wj_this(ctx, this_val, WJ_IFACE_ImageBitmapRenderingContext)) { return JS_EXCEPTION; }
+    /* kept under web_extra at getContext time (the element node wrapper or the OffscreenCanvas object) */
+    JSValue c = web_extra_get(ctx, this_val, "canvas");
+    return JS_IsObject(c) ? c : (JS_FreeValue(ctx, c), JS_NULL);
+}
+
+JSValue wjr_ImageBitmapRenderingContext_transferFromImageBitmap(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *o = wj_this(ctx, this_val, WJ_IFACE_ImageBitmapRenderingContext);
+    if (!o) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "transferFromImageBitmap", 1, argc); }
+    JSValueConst arg = argv[0];
+    uint64_t bitmap = 0;
+    bool has = false;
+    if (!JS_IsNull(arg) && !JS_IsUndefined(arg)) {
+        wj_obj *b = wj_unwrap(arg, WJ_IFACE_ImageBitmap);
+        if (!b) { return JS_ThrowTypeError(ctx, "Failed to execute 'transferFromImageBitmap': the argument is not an ImageBitmap"); }
+        bitmap = b->handle;
+        has = true;
+    }
+    int32_t st = wr_ImageBitmapRenderingContext_transferFromImageBitmap(o->handle, bitmap, has ? 1 : 0);
+    if (st < 0) { return wj_throw_status(ctx, st, "transferFromImageBitmap"); }
+    return JS_UNDEFINED;
 }
 
 /* ---- OffscreenCanvas ---- */
