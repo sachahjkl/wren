@@ -45,7 +45,7 @@ LICENSE_TEXTS := [?]License_Text{
 	{"wasmtime", "Wasmtime", #load("../../build/wasmtime/LICENSE", string), "Wasmtime", ""},
 	{"lexbor", "Lexbor", #load("../../ext/lexbor/LICENSE", string), "Lexbor", ""},
 	{"lexbor-notice", "Lexbor notice", #load("../../ext/lexbor/NOTICE", string), "Lexbor", ""},
-	{"quickjs-ng", "QuickJS-ng", #load("../../native/js/licenses/quickjs-ng-LICENSE.txt", string), "QuickJS-ng", "The JavaScript engine."},
+	{"quickjs-ng", "QuickJS-ng", #load("../../native/js/licenses/quickjs-ng-LICENSE.txt", string), "QuickJS-ng", "The reference of the JavaScript engine: its number conversion and Unicode library are ported to Odin, and its bytecode format is followed."},
 	{"wasi-libc", "wasi-libc", #load("../../native/js/licenses/wasi-libc-LICENSE.txt", string), "wasi-libc", "The C library of the JavaScript engine module; it is made of the parts below."},
 	{"wasi-libc-mit", "wasi-libc (MIT)", #load("../../native/js/licenses/wasi-libc-LICENSE-MIT.txt", string), "wasi-libc", ""},
 	{"wasi-libc-apache", "wasi-libc (Apache-2.0)", #load("../../native/js/licenses/wasi-libc-LICENSE-APACHE.txt", string), "wasi-libc", ""},
