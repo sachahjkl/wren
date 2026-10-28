@@ -43,7 +43,7 @@ function Get-Pinned([string]$url, [string]$file, [string]$sha) {
 }
 
 # what the engine is made of: change any of it and it is built again
-$inputs = @(Get-ChildItem $native -Recurse -File | Where-Object { $_.Extension -in '.c', '.h', '.patch', '.js' }) +
+$inputs = @(Get-ChildItem $native -Recurse -File | Where-Object { $_.Extension -in '.c', '.h', '.patch', '.js', '.odin' }) +
           @(Get-ChildItem (Join-Path $root 'src\wasm') -Filter *.odin) +
           @(Get-ChildItem (Join-Path $root 'src\tools\jsengine') -Filter *.odin -ErrorAction SilentlyContinue) +
           @(Get-Item $PSCommandPath)
@@ -145,6 +145,11 @@ if (-not $NoLto) { $cflags += '-flto' }
 $cflags += $ExtraFlags
 $sources = @('quickjs.c', 'libregexp.c', 'libunicode.c', 'dtoa.c') | ForEach-Object { Join-Path $qjs $_ }
 $sources += @(Get-ChildItem (Join-Path $native 'engine'), (Join-Path $native 'runtime'), (Join-Path $native 'gen') -Recurse -Filter *.c -ErrorAction SilentlyContinue | ForEach-Object FullName)
+# The C glue ported to Odin (native\js\odin\*.odin) has its C file dropped here; wj_shim.c (a tiny C accessor the glue
+# still needs) is compiled with the rest. Each ported domain adds its C file name to $odinified.
+$odinified = @('web_strategy.c')
+$sources += (Join-Path $native 'odin\wj_shim.c')
+$sources = $sources | Where-Object { $odinified -notcontains (Split-Path $_ -Leaf) }
 if ($Allocator -eq 'mimalloc') {
     # the engine's heap through mimalloc (pinned), the C library's own through wasi-libc's dlmalloc
     $mi = Join-Path $srcRoot "mimalloc-$MimallocVersion"
@@ -164,8 +169,31 @@ $ldflags = @(
 )
 New-Item -ItemType Directory -Force $out | Out-Null
 $t0 = Get-Date
-& $zig cc @cflags @sources @ldflags -o $raw
-if ($LASTEXITCODE -ne 0) { throw "zig cc failed ($LASTEXITCODE)" }
+# The Odin glue (native\js\odin) to one wasm32 object, linked with the C objects by the same wasm-ld zig cc drives. It
+# is freestanding (no Odin runtime), -o:size to match the engine's size budget. The wjr_* functions it exports resolve
+# the forward references the generated binding table (gen\bindings.c) holds for the ported domains.
+$odinObj = Join-Path $out 'odin_glue.o'
+& odin build (Join-Path $native 'odin') -build-mode:obj -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -o:size -out:$odinObj
+if ($LASTEXITCODE -ne 0) { throw "odin build of native\js\odin failed" }
+# Compile each C translation unit to a native wasm object (LTO stays on *within* each TU via -O3; the cross-TU LTO of
+# the one-shot link is dropped only when an Odin object is linked in, see below), then link objects + Odin object.
+#
+# Why not the one-shot `zig cc @sources $odinObj`: Odin's freestanding wasm runtime defines memset/memcpy/memmove/bzero
+# as strong symbols (it assumes no libc), and so does wasi-libc. A one-shot *LTO* link rejects the duplicate as a hard
+# error; a plain-object link only warns (the definitions are byte-for-byte equivalent). So the C is compiled to plain
+# objects (no -flto) and linked without LTO when the Odin glue is present. The size cost is small (see the report) and
+# this keeps the toolchain simple and robust; a later pass can reclaim cross-TU LTO once wj_the_realm itself is in Odin
+# and the C memory-function duplication goes away.
+$cObjsFlags = $cflags | Where-Object { $_ -ne '-flto' }   # plain objects, not LTO bitcode (see above)
+$cObjs = @()
+foreach ($c in $sources) {
+    $o = Join-Path $out ('c_' + [IO.Path]::GetFileNameWithoutExtension($c) + '.o')
+    & $zig cc @cObjsFlags '-c' $c '-o' $o
+    if ($LASTEXITCODE -ne 0) { throw "zig cc -c failed on $c" }
+    $cObjs += $o
+}
+& $zig cc '-target' 'wasm32-wasi' "-$Opt" '-mexec-model=reactor' @cObjs $odinObj @ldflags -o $raw
+if ($LASTEXITCODE -ne 0) { throw "zig cc (final link) failed ($LASTEXITCODE)" }
 "compiled $raw ($([math]::Round((Get-Item $raw).Length / 1KB)) KiB) in $([math]::Round(((Get-Date) - $t0).TotalSeconds)) s"
 if ($NoSnapshot) { exit 0 }
 
