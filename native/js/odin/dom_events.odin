@@ -96,7 +96,7 @@ wj_event_wrapped :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, host: u64, ifac
 		jsb.host(&rel, api_decl.Event_object, wj.wr_Event_object, ev)
 		if rel != 0 { wj.JS_SetPropertyStr(ctx, x, "relatedTarget", wj.wj_wrap_node(ctx, u64(rel))) }
 	}
-	wj.wj_event_set_ext(ctx, obj, x)
+	wj_event_set_ext(ctx, obj, x)
 }
 
 // ---- constructors: the dictionary's members into the extension object ----
@@ -173,7 +173,7 @@ read_fields :: proc "contextless" (ctx: ^wj.Context, init: wj.JSValue, x: wj.JSV
 
 @(private = "file")
 ui_construct :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, argv: [^]wj.JSValue, iface: i32, name: cstring) -> wj.JSValue {
-	obj := wj.wj_event_construct(ctx, new_target, argc, argv, iface, name)
+	obj := wj_event_construct(ctx, new_target, argc, argv, iface, name)
 	if wj.is_exception(obj) { return obj }
 	init := wj.arg(argc, argv, 1)
 	x := wj.JS_NewObjectProto(ctx, wj.NULL)
@@ -220,7 +220,7 @@ ui_construct :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, a
 		wj.JS_SetPropertyStr(ctx, x, "offsetX", wj.JS_GetPropertyStr(ctx, x, "clientX"))
 		wj.JS_SetPropertyStr(ctx, x, "offsetY", wj.JS_GetPropertyStr(ctx, x, "clientY"))
 	}
-	wj.wj_event_set_ext(ctx, obj, x)
+	wj_event_set_ext(ctx, obj, x)
 	return obj
 }
 
@@ -268,7 +268,7 @@ default_value :: proc "contextless" (ctx: ^wj.Context, d: Default) -> wj.JSValue
 @(private = "file")
 xf :: proc "contextless" (ctx: ^wj.Context, this_val: wj.JSValue, iface: i32, name: cstring, def: Default) -> wj.JSValue {
 	if wj.wj_this(ctx, this_val, iface) == nil { return wj.EXCEPTION }
-	x := wj.wj_event_ext(this_val)
+	x := wj_event_ext(this_val)
 	if !wj.is_object(x) { return default_value(ctx, def) }
 	v := wj.JS_GetPropertyStr(ctx, x, name)
 	return wj.is_undefined(v) ? default_value(ctx, def) : v
@@ -307,7 +307,7 @@ wjr_UIEvent_initUIEvent :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, arg
 	detail: f64
 	if argc > 4 { wj.wj_to_double(ctx, argv[4], &detail, false) }
 	set_num(ctx, x, "detail", detail)
-	wj.wj_event_set_ext(ctx, this_val, x)
+	wj_event_set_ext(ctx, this_val, x)
 	return wj.UNDEFINED
 }
 
@@ -338,10 +338,10 @@ wjr_UIEvent_initUIEvent :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, arg
 @(private = "file")
 related_now :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, iface: i32) -> wj.JSValue {
 	context = jsb.glue_context()
-	if host := wj.wj_event_host(t); host != 0 && wj.wj_this(ctx, t, iface) != nil {
+	if host := wj_event_host(t); host != 0 && wj.wj_this(ctx, t, iface) != nil {
 		rel: abi.Handle
 		jsb.host(&rel, api_decl.Event_relatedNow, wj.wr_Event_relatedNow, api_decl.Event(host))
-		return wj.wj_wrap_target(ctx, u64(rel))
+		return wj_wrap_target(ctx, u64(rel))
 	}
 	return xf(ctx, t, iface, "relatedTarget", .Null)
 }
@@ -407,7 +407,7 @@ touch_list_field :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, name: cstring) ->
 	v := xf(ctx, t, ifc("TouchEvent"), name, .Undefined)
 	if !wj.is_undefined(v) { return v }
 	tl := dom_touch_list(ctx, wj.JS_NewArray(ctx))
-	if x := wj.wj_event_ext(t); wj.is_object(x) && !wj.is_exception(tl) { wj.JS_SetPropertyStr(ctx, x, name, wj.JS_DupValue(ctx, tl)) }
+	if x := wj_event_ext(t); wj.is_object(x) && !wj.is_exception(tl) { wj.JS_SetPropertyStr(ctx, x, name, wj.JS_DupValue(ctx, tl)) }
 	return tl
 }
 
@@ -501,8 +501,8 @@ wjr_Document_createEvent :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, ar
 	case "storageevent":                               iface = ifc("StorageEvent")
 	}
 	if iface < 0 { return wj.wj_throw_dom(ctx, "NotSupportedError", "The provided event type is not supported.") }
-	e := wj.wj_event_new_uninitialized(ctx, iface)
-	if !wj.is_exception(e) && inherits(iface, ifc("UIEvent")) { wj.wj_event_set_ext(ctx, e, wj.JS_NewObjectProto(ctx, wj.NULL)) }
+	e := wj_event_new_uninitialized(ctx, iface)
+	if !wj.is_exception(e) && inherits(iface, ifc("UIEvent")) { wj_event_set_ext(ctx, e, wj.JS_NewObjectProto(ctx, wj.NULL)) }
 	return e
 }
 
@@ -513,7 +513,7 @@ wjr_Document_createEvent :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, ar
 wjr_MouseEvent_initMouseEvent :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	r := wjr_UIEvent_initUIEvent(ctx, this_val, argc, argv)
 	if wj.is_exception(r) { return r }
-	x := wj.wj_event_ext(this_val)
+	x := wj_event_ext(this_val)
 	if !wj.is_object(x) { return wj.UNDEFINED }
 	for name, i in init_mouse_names {
 		v := wj.arg(argc, argv, 5 + i32(i))
@@ -539,7 +539,7 @@ wjr_MouseEvent_initMouseEvent :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 wjr_KeyboardEvent_initKeyboardEvent :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	r := wjr_UIEvent_initUIEvent(ctx, this_val, argc, argv)
 	if wj.is_exception(r) { return r }
-	x := wj.wj_event_ext(this_val)
+	x := wj_event_ext(this_val)
 	if !wj.is_object(x) { return wj.UNDEFINED }
 	wj.JS_SetPropertyStr(ctx, x, "key", argc > 4 ? wj.JS_ToString(ctx, argv[4]) : wj.new_string(ctx, ""))
 	loc: f64

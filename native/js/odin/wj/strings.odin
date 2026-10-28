@@ -29,8 +29,7 @@ CLAMP         :: 2
 @(default_calling_convention = "c")
 foreign {
 	// runtime/web.h string helpers
-	web_resolve_url   :: proc(ctx: ^Context, s: [^]u8, n: uint, out: ^Str) -> bool ---
-	web_status_text   :: proc(status: i32) -> cstring ---
+	// (web_resolve_url, web_status_text are Odin, package odin_glue, web_fetch.odin)
 }
 
 // A string view of an owned/borrowed Str as an Odin slice (valid until the next conversion or wj_str_free).

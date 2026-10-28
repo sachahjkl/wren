@@ -126,3 +126,61 @@ js_str_is :: proc "contextless" (ctx: ^wj.Context, v: wj.JSValue, lit: string) -
 set_prop :: #force_inline proc "contextless" (ctx: ^wj.Context, obj: wj.JSValue, name: cstring, v: wj.JSValue) {
 	wj.JS_SetPropertyStr(ctx, obj, name, v)
 }
+
+// A property of the realm's global (counted).
+global_prop :: #force_inline proc "contextless" (ctx: ^wj.Context, name: cstring) -> wj.JSValue {
+	return wj.JS_GetPropertyStr(ctx, wj.realm_global(), name)
+}
+
+// obj[name](args...): the result (counted), or EXCEPTION.
+call_method :: proc "contextless" (ctx: ^wj.Context, obj: wj.JSValue, name: cstring, args: ..wj.JSValue) -> wj.JSValue {
+	fn := wj.JS_GetPropertyStr(ctx, obj, name)
+	if wj.is_exception(fn) { return fn }
+	defer wj.JS_FreeValue(ctx, fn)
+	return wj.JS_Call(ctx, fn, obj, i32(len(args)), raw_data(args))
+}
+
+// new (global name)(args...)
+construct_global :: proc "contextless" (ctx: ^wj.Context, name: cstring, args: ..wj.JSValue) -> wj.JSValue {
+	c := global_prop(ctx, name)
+	defer wj.JS_FreeValue(ctx, c)
+	return wj.JS_CallConstructor(ctx, c, i32(len(args)), raw_data(args))
+}
+
+// A JS array of the wrappers of handles packed 8 bytes each, little endian (a host call's result in the scratch
+// buffer): copied first, since wrapping calls the browser, which may reuse the scratch buffer.
+handles_array :: proc "contextless" (ctx: ^wj.Context, packed: []u8, wrap: proc "c" (ctx: ^wj.Context, h: u64) -> wj.JSValue) -> wj.JSValue {
+	arr := wj.JS_NewArray(ctx)
+	count := len(packed) / 8
+	if count == 0 || wj.is_exception(arr) { return arr }
+	hs := ([^]u64)(wj.libc_malloc(uint(count) * 8))
+	if hs == nil { return arr }
+	defer wj.libc_free(hs)
+	for i in 0 ..< count { hs[i] = wj.read_u64(raw_data(packed[8 * i:])) }
+	for i in 0 ..< count { wj.array_set(ctx, arr, u32(i), wrap(ctx, hs[i])) }
+	return arr
+}
+
+// The UTF-8 of a JS string value compared to a literal; false for any other value.
+str_value_is :: proc "contextless" (ctx: ^wj.Context, v: wj.JSValue, lit: string) -> bool {
+	return wj.is_string(v) && js_str_is(ctx, v, lit)
+}
+
+// The atom `prop` is the string `lit`.
+atom_is :: proc "contextless" (ctx: ^wj.Context, prop: wj.Atom, lit: string) -> bool {
+	v := wj.JS_AtomToValue(ctx, prop)
+	defer wj.JS_FreeValue(ctx, v)
+	return str_value_is(ctx, v, lit)
+}
+
+// A canonical array index string ("0", or a digit 1-9 then digits).
+is_index_string :: proc "contextless" (s: string) -> bool {
+	if len(s) == 0 { return false }
+	if s[0] == '0' { return len(s) == 1 }
+	for c in transmute([]u8)s { if c < '0' || c > '9' { return false } }
+	return true
+}
+
+// A 64-bit handle carried by a native function's data (two int32 values) and back.
+handle_data :: proc "contextless" (h: u64) -> [2]wj.JSValue { return {wj.new_int32(i32(u32(h))), wj.new_int32(i32(u32(h >> 32)))} }
+data_handle :: proc "contextless" (data: [^]wj.JSValue) -> u64 { return u64(u32(wj.int_of(data[0]))) | u64(u32(wj.int_of(data[1]))) << 32 }

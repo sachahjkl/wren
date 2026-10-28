@@ -328,7 +328,7 @@ storage_init_fields :: proc "c" (ctx: ^wj.Context, ev: wj.JSValue, init: wj.JSVa
 
 @(export, link_name = "wjr_StorageEvent_constructor")
 wjr_StorageEvent_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
-	ev := wj.wj_event_construct(ctx, new_target, argc, argv, storage_event_iface(), "StorageEvent")
+	ev := wj_event_construct(ctx, new_target, argc, argv, storage_event_iface(), "StorageEvent")
 	if wj.is_exception(ev) { return ev }
 	if !storage_init_fields(ctx, ev, wj.arg(argc, argv, 1)) { wj.JS_FreeValue(ctx, ev); return wj.EXCEPTION }
 	return ev

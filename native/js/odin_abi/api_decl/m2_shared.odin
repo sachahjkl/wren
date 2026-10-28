@@ -18,8 +18,12 @@ MediaSource :: distinct abi.Handle
 MediaSource_registerObjectURL :: #type proc(source: MediaSource, url: string) -> abi.Api_Error
 MediaSource_revokeObjectURL :: #type proc(url: string)
 
-// ---- module async: buffers ----
+// ---- module async: buffers, promises, streams ----
 Buffer :: distinct abi.Handle
+// A promise of the browser (settled to JS through wj_promise_from_host).
+Promise :: distinct abi.Handle
+// A stream of the browser (a response body read chunk by chunk).
+Stream :: distinct abi.Handle
 Buffer_length :: #type proc(buffer: Buffer) -> i64
 // Copies bytes from `offset` into `destination`: the count copied.
 Buffer_read :: #type proc(buffer: Buffer, offset: i64, destination: []u8) -> i32

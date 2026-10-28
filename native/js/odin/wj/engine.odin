@@ -120,8 +120,8 @@ foreign {
 	// interfaces() gives the indexable view.
 	wj_interfaces:       Interface
 	wj_interface_count:  i32
-	wj_dispatch_trusted: bool      // web.h: the event being dispatched is trusted
 }
+// (wj_dispatch_trusted, web.h: defined by the event layer, native/js/odin/events.odin)
 
 interfaces :: #force_inline proc "contextless" () -> [^]Interface { return ([^]Interface)(&wj_interfaces) }
 
