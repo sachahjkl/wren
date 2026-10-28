@@ -41,7 +41,7 @@ Bridge :: struct {
 
 @(private = "file")
 grow_bridges :: proc "contextless" (cap: u32) -> bool {
-	n := ([^]Bridge)(wj.realloc(bridges, uint(cap) * size_of(Bridge)))
+	n := ([^]Bridge)(wj.libc_realloc(bridges, uint(cap) * size_of(Bridge)))
 	if n == nil { return false }
 	bridges = n
 	bridges_cap = cap
@@ -86,7 +86,7 @@ bridge_release :: proc "contextless" (ctx: ^wj.Context, i: u32) {
 	b.used = false
 	if bridges_free_n == bridges_free_cap {
 		cap := bridges_free_cap != 0 ? bridges_free_cap * 2 : 64
-		n := ([^]u32)(wj.realloc(bridges_free, uint(cap) * size_of(u32)))
+		n := ([^]u32)(wj.libc_realloc(bridges_free, uint(cap) * size_of(u32)))
 		if n == nil { return }
 		bridges_free = n
 		bridges_free_cap = cap
@@ -152,10 +152,10 @@ wj_cb_promise :: proc "c" (user: i32, promise: u64, state: i32) {
 		case .Bool:         v = wj.new_bool(value != 0)
 		case .Text:         v = wj_host_promise_text(ctx, promise)
 		case .Array_Buffer:
-			v = wj.wj_arraybuffer_from_host(ctx, u64(value))
+			v = wj_arraybuffer_from_host(ctx, u64(value))
 			if value != 0 { wj.wr_Object_release(u64(value)) }
 		case .Uint8_Array:
-			v = wj.wj_uint8array_from_host(ctx, u64(value))
+			v = wj_uint8array_from_host(ctx, u64(value))
 			if value != 0 { wj.wr_Object_release(u64(value)) }
 		case .Undefined:    v = wj.UNDEFINED
 		}
