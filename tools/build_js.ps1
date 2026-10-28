@@ -158,6 +158,7 @@ $odinified = @(
     'dom_style.c',
     'dom_touch.c',
     'intersection.c',
+    'intl.c',
     'promise.c',
     'qjs_convert.c',
     'reflect.c',
