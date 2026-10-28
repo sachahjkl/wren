@@ -20,7 +20,6 @@ import "core:os"
 import "core:strconv"
 import "core:strings"
 import "core:time"
-import win "core:sys/windows"
 import "wb:base"
 import "wb:host"
 import "wb:url"
@@ -256,9 +255,9 @@ Save_Job :: struct { path, text: string, ok: bool }
 
 @(private = "file")
 write_atomic :: proc(path, text: string) -> bool {
-	tmp := strings.concatenate({path, ".tmp"}, context.temp_allocator)
-	if os.write_entire_file(tmp, transmute([]byte)text) != nil { return false }
-	return bool(win.MoveFileExW(win.utf8_to_wstring(tmp, context.temp_allocator), win.utf8_to_wstring(path, context.temp_allocator), win.MOVEFILE_REPLACE_EXISTING | win.MOVEFILE_WRITE_THROUGH))
+	// base.file_write_atomic (fsx): a temporary file written beside the target then renamed over it durably, the same
+	// guarantee the MoveFileExW(..., WRITE_THROUGH) path gave on Windows.
+	return base.file_write_atomic(path, transmute([]byte)text, flush = true)
 }
 
 // Writes the history on the blocking pool (one write at a time).

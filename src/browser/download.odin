@@ -15,14 +15,14 @@ package browser
 // Images and text are shown, not downloaded (an image document; text as text), like Chrome.
 
 import "core:fmt"
+import "core:os"
 import "core:path/filepath"
 import "core:strconv"
 import "core:strings"
-import win "core:sys/windows"
+import "toolkit:platform"
 import "toolkit:ui"
 import "wb:base"
 import "wb:config"
-import "wb:desktop"
 import "wb:fetch"
 import "wb:host"
 import "wb:http"
@@ -294,7 +294,7 @@ Download :: struct {
 	dir:       string,          // owned: the folder of the temporary file
 	temp:      string,          // owned: the temporary file
 	path:      string,          // owned: the destination ("" until known)
-	handle:    win.HANDLE,
+	handle:    ^os.File,        // the open temporary file (nil: none)
 	task:      base.Handle,
 	scope:     ^base.Scope,     // the request's (child of the process scope)
 	total:     i64,             // Content-Length, -1 unknown
@@ -333,29 +333,22 @@ download_cfg :: proc(app: ^App) {
 	dls.cfg.suffix = strings.clone(suffix != "" ? suffix : ".wrenpart")
 }
 
-// The folder downloads go to: the preference, else the Downloads folder of Windows, else the profile.
+// The folder downloads go to: the preference, else the system's Downloads folder, else the profile.
 download_dir :: proc(app: ^App) -> string {
 	if dls.cfg.dir != "" { return dls.cfg.dir }
-	wpath: win.LPWSTR
-	folder := win.FOLDERID_Downloads
-	if win.SHGetKnownFolderPath(&folder, 0, nil, &wpath) >= 0 && wpath != nil {
-		defer win.CoTaskMemFree(wpath)
-		n := 0
-		for (cast([^]u16)wpath)[n] != 0 { n += 1 }
-		if s, err := win.utf16_to_utf8((cast([^]u16)wpath)[:n], context.temp_allocator); err == nil { return s }
-	}
+	if d := platform.known_folder_path(.Downloads, context.temp_allocator); d != "" { return d }
 	return app.profile_dir
 }
 
 @(private = "file")
 path_join :: proc(dir, name: string, allocator := context.temp_allocator) -> string {
 	if dir == "" || strings.has_suffix(dir, "\\") || strings.has_suffix(dir, "/") { return strings.concatenate({dir, name}, allocator) }
-	return strings.concatenate({dir, "\\", name}, allocator)
+	return strings.concatenate({dir, filepath.SEPARATOR_STRING, name}, allocator)
 }
 
 @(private = "file")
 file_exists :: proc(path: string) -> bool {
-	return win.GetFileAttributesW(win.utf8_to_wstring(path, context.temp_allocator)) != win.INVALID_FILE_ATTRIBUTES
+	return os.exists(path)
 }
 
 // The navigation `load` got an answer to save rather than show (`task` is its request, `r` the answer).
@@ -404,13 +397,16 @@ download_open_temp :: proc(d: ^Download) -> bool {
 	for i in 0 ..< 1000 {
 		base_name := i == 0 ? d.name : fmt.tprintf("%s (%d)", d.name, i)
 		path := path_join(d.dir, strings.concatenate({base_name, dls.cfg.suffix}, context.temp_allocator))
-		h := win.CreateFileW(win.utf8_to_wstring(path, context.temp_allocator), win.GENERIC_WRITE, win.FILE_SHARE_READ, nil, win.CREATE_NEW, win.FILE_ATTRIBUTE_NORMAL, nil)
-		if h != win.INVALID_HANDLE_VALUE {
+		// O_EXCL: the open fails when the name is taken (CREATE_NEW), so a name free when it opens stays this download's.
+		// A taken name is tried again under the next number; any other failure (an unwritable folder) stops at once, which
+		// os.exists distinguishes without inspecting a platform-specific error code.
+		h, err := os.open(path, os.O_WRONLY | os.O_CREATE | os.O_EXCL)
+		if err == nil {
 			d.handle = h
 			d.temp = strings.clone(path)
 			return true
 		}
-		if win.GetLastError() != win.ERROR_FILE_EXISTS { return false }
+		if !os.exists(path) { return false }
 	}
 	return false
 }
@@ -485,26 +481,25 @@ download_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 
 Write_Job :: struct {
 	d:      ^Download,
-	handle: win.HANDLE,
+	handle: ^os.File,
 	buf:    []byte,   // owned
 	offset: i64,
 	ok:     bool,
-	err:    u32,
+	err:    os.Error,
 }
 
-// Writes `buf` at `offset` (positional: several writes of one file may be out at once, at different offsets).
+// Writes `buf` at `offset` (positional: several writes of one file may be out at once, at different offsets). os.write_at
+// is pwrite on POSIX and WriteFile with an OVERLAPPED on Windows, so writes at different offsets do not move a shared
+// cursor.
 @(private = "file")
-write_at :: proc(h: win.HANDLE, buf: []byte, offset: i64) -> (ok: bool, err: u32) {
+write_at :: proc(h: ^os.File, buf: []byte, offset: i64) -> (ok: bool, err: os.Error) {
 	done := 0
 	for done < len(buf) {
-		ov: win.OVERLAPPED
-		ov.OffsetFull = u64(offset + i64(done))
-		n: win.DWORD
-		chunk := min(len(buf) - done, 1 << 30)
-		if !win.WriteFile(h, raw_data(buf[done:]), win.DWORD(chunk), &n, &ov) || n == 0 { return false, u32(win.GetLastError()) }
-		done += int(n)
+		n, werr := os.write_at(h, buf[done:], offset + i64(done))
+		if werr != nil || n <= 0 { return false, werr }
+		done += n
 	}
-	return true, 0
+	return true, nil
 }
 
 // What comes next: a chunk to the disk, the bound on memory, the end.
@@ -527,7 +522,7 @@ download_advance :: proc(d: ^Download) {
 	} else if d.writing && len(d.pending) > dls.cfg.max_buffered {
 		// the disk is slower than the network: this thread writes too (the network waits meanwhile)
 		ok, err := write_at(d.handle, d.pending[:], d.queued)
-		if !ok { download_fail(d, fmt.tprintf("cannot write %s (error %d)", d.temp, err)); return }
+		if !ok { download_fail(d, fmt.tprintf("cannot write %s (%v)", d.temp, err)); return }
 		d.queued += i64(len(d.pending))
 		clear(&d.pending)
 	}
@@ -545,31 +540,31 @@ write_done :: proc(data: rawptr) {
 	d := j.d
 	defer { delete(j.buf); free(j) }
 	d.writing = false
-	if !j.ok && d.state == .Receiving { download_fail(d, fmt.tprintf("cannot write %s (error %d)", d.temp, j.err)) }
+	if !j.ok && d.state == .Receiving { download_fail(d, fmt.tprintf("cannot write %s (%v)", d.temp, j.err)) }
 	if d.state == .Failed || d.state == .Cancelled { download_discard(d); return }
 	download_advance(d)
 	request_frames(d.app, 2)
 }
 
-// Complete, and its place known: the temporary file becomes the file.
+// Complete, and its place known: the temporary file becomes the file. The move can cross volumes (the Save dialog may
+// put the file on another drive than the download folder the temporary file sits in), so it goes through download_move
+// (download_move_<os>.odin), which copies across volumes when a rename cannot.
 @(private = "file")
 download_finish :: proc(d: ^Download) {
-	win.CloseHandle(d.handle)
+	os.close(d.handle)
 	d.handle = nil
 	d.state, d.moving = .Saving, true
 	host.run_blocking(&d.app.blocking, proc(data: rawptr) {
 		dl := (^Download)(data)
-		from := win.utf8_to_wstring(dl.temp, context.temp_allocator)
-		to := win.utf8_to_wstring(dl.path, context.temp_allocator)
-		if !win.MoveFileExW(from, to, win.MOVEFILE_REPLACE_EXISTING | win.MOVEFILE_COPY_ALLOWED | win.MOVEFILE_WRITE_THROUGH) {
-			dl.error = fmt.aprintf("cannot move it to %s (error %d)", dl.path, win.GetLastError())
+		if ok, why := download_move(dl.temp, dl.path); !ok {
+			dl.error = fmt.aprintf("cannot move it to %s (%s)", dl.path, why)
 		}
 	}, proc(data: rawptr) {
 		dl := (^Download)(data)
 		dl.moving = false
 		if dl.error != "" {
 			dl.state = .Failed
-			win.DeleteFileW(win.utf8_to_wstring(dl.temp, context.temp_allocator))
+			os.remove(dl.temp)
 			ui.toast(.Bad, "Download failed: %s", dl.name)
 		} else {
 			dl.state = .Done
@@ -604,8 +599,8 @@ download_cancel :: proc(d: ^Download) {
 download_discard :: proc(d: ^Download) {
 	clear(&d.pending)
 	shrink(&d.pending)
-	if d.handle != nil { win.CloseHandle(d.handle); d.handle = nil }
-	if d.temp != "" { win.DeleteFileW(win.utf8_to_wstring(d.temp, context.temp_allocator)) }
+	if d.handle != nil { os.close(d.handle); d.handle = nil }
+	if d.temp != "" { os.remove(d.temp) }
 }
 
 ////////////////////////////////
@@ -614,36 +609,27 @@ download_discard :: proc(d: ^Download) {
 @(private = "file")
 download_dialog_work :: proc(data: rawptr) {
 	d := (^Download)(data)
-	if win.CoInitializeEx(nil, .APARTMENTTHREADED) < 0 { return }
-	defer win.CoUninitialize()
-	dlg: ^win.IFileSaveDialog
-	if win.CoCreateInstance(win.CLSID_FileSaveDialog, nil, win.CLSCTX_INPROC_SERVER, win.IID_IFileSaveDialog, cast(^rawptr)&dlg) < 0 || dlg == nil { return }
-	defer dlg->Release()
-	dlg->SetFileName(win.utf8_to_wstring(d.name, context.temp_allocator))
-	folder: ^win.IShellItem
-	if win.SHCreateItemFromParsingName(win.utf8_to_wstring(d.dir, context.temp_allocator), nil, win.IID_IShellItem, cast(^rawptr)&folder) >= 0 && folder != nil {
-		dlg->SetFolder(folder)
-		folder->Release()
+	dlg := platform.File_Dialog{
+		owner            = active_window(d.app).win,
+		suggested_name   = d.name,
+		start_dir        = d.dir,
+		start_known      = .Downloads,
+		all_files        = true,
+		overwrite_prompt = true,
+		remember_id      = "download",
 	}
 	ext := filepath.ext(d.name)
+	filters: [1]platform.File_Filter
 	if len(ext) > 1 {
-		pattern := win.utf8_to_wstring(strings.concatenate({"*", ext}, context.temp_allocator), context.temp_allocator)
-		label := win.utf8_to_wstring(strings.concatenate({strings.to_upper(ext[1:], context.temp_allocator), " file"}, context.temp_allocator), context.temp_allocator)
-		types := [2]win.COMDLG_FILTERSPEC{{label, pattern}, {win.L("All files"), win.L("*.*")}}
-		dlg->SetFileTypes(2, &types[0])
-		dlg->SetDefaultExtension(win.utf8_to_wstring(ext[1:], context.temp_allocator))
+		dlg.default_ext = ext[1:]
+		label := strings.concatenate({strings.to_upper(ext[1:], context.temp_allocator), " file"}, context.temp_allocator)
+		patterns := [1]string{strings.concatenate({"*", ext}, context.temp_allocator)}
+		filters[0] = {name = label, patterns = patterns[:]}
+		dlg.filters = filters[:]
 	}
-	if dlg->Show(active_window(d.app).win.hwnd) < 0 { return }
-	item: ^win.IShellItem
-	if dlg->GetResult(&item) < 0 || item == nil { return }
-	defer item->Release()
-	wpath: win.LPWSTR
-	if item->GetDisplayName(.FILESYSPATH, &wpath) >= 0 && wpath != nil {
-		n := 0
-		for (cast([^]u16)wpath)[n] != 0 { n += 1 }
-		if s, err := win.utf16_to_utf8((cast([^]u16)wpath)[:n], context.allocator); err == nil { d.path = s }
-		win.CoTaskMemFree(wpath)
-	}
+	res := platform.save_file_dialog(dlg, context.allocator)
+	defer platform.dialog_result_destroy(&res, context.allocator)
+	if res.status == .Chosen && len(res.paths) > 0 { d.path = strings.clone(res.paths[0]) }
 }
 
 @(private = "file")
@@ -686,8 +672,8 @@ downloads_prune :: proc() {
 
 @(private = "file")
 download_free :: proc(d: ^Download) {
-	if d.handle != nil { win.CloseHandle(d.handle) }
-	if d.state != .Done && d.temp != "" { win.DeleteFileW(win.utf8_to_wstring(d.temp, context.temp_allocator)) }
+	if d.handle != nil { os.close(d.handle) }
+	if d.state != .Done && d.temp != "" { os.remove(d.temp) }
 	if d.scope != nil { base.scope_close(d.scope) }   // (nil once the process scope closed it)
 	delete(d.url); delete(d.name); delete(d.dir); delete(d.temp); delete(d.path); delete(d.error)
 	delete(d.pending)
@@ -735,13 +721,11 @@ human_bytes :: proc(n: i64) -> string {
 	return fmt.tprintf("%d B", n)
 }
 
-// Opens Explorer on the file's folder with the file selected.
+// Shows the file in the system's file manager with it selected (platform.reveal_in_folder: Explorer /select on Windows,
+// the file manager through the portal / xdg on Linux).
 @(private = "file")
 show_in_folder :: proc(path: string) {
-	args := win.utf8_to_wstring(fmt.tprintf("/select,\"%s\"", path), context.temp_allocator)
-	explorer := desktop.system_file("explorer.exe", .Windows)   // (a full path: a bare name is looked for in the working directory first)
-	if explorer == "" { return }
-	win.ShellExecuteW(nil, win.L("open"), win.utf8_to_wstring(explorer, context.temp_allocator), args, nil, win.SW_SHOWNORMAL)
+	platform.reveal_in_folder(path)
 }
 
 downloads_init :: proc(app: ^App) { download_cfg(app) }

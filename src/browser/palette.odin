@@ -27,13 +27,13 @@ import "core:os"
 import "core:slice"
 import "core:strconv"
 import "core:strings"
-import win "core:sys/windows"
 import "core:time"
 import "core:unicode"
 import "core:unicode/utf8"
 import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:ui"
+import "wb:base"
 import "wb:config"
 
 PALETTE_PREFS := [?]config.Def{
@@ -464,9 +464,7 @@ usage_load :: proc(app: ^App) {
 usage_save :: proc(app: ^App) {
 	if !app.cfg.persist_profile { return }
 	path := usage_path(app)
-	tmp := strings.concatenate({path, ".tmp"}, context.temp_allocator)
-	if os.write_entire_file(tmp, transmute([]byte)usage_serialize(&cpal.usage)) != nil { return }
-	win.MoveFileExW(win.utf8_to_wstring(tmp, context.temp_allocator), win.utf8_to_wstring(path, context.temp_allocator), win.MOVEFILE_REPLACE_EXISTING)
+	_ = base.file_write_atomic(path, transmute([]byte)usage_serialize(&cpal.usage))
 }
 
 @(private = "file")
