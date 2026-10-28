@@ -158,7 +158,7 @@ window_front :: proc(app: ^App) -> ^Browser_Window {
 // Makes `w` the window the user is in (it comes to the front of the others on screen too when `raise`).
 window_focus :: proc(app: ^App, w: ^Browser_Window, raise := false) {
 	window_set_front(app, w)
-	if raise && !app.headless && w != nil && w.win != nil && !platform.is_minimized(w.win) { win.SetForegroundWindow(w.win.hwnd) }
+	if raise && windows_shown(app) && w != nil && w.win != nil && !platform.is_minimized(w.win) { win.SetForegroundWindow(w.win.hwnd) }
 }
 
 // The window the user is in becomes `w`: the one that was and `w` draw again (the caret of a focused field shows only in the front
@@ -339,6 +339,9 @@ window_on_frame :: proc(user: rawptr) {
 }
 
 // Shows the window (maximized when a restored session left it so: platform.set_placement).
+// Whether the windows are shown to the user: neither --headless (no window at all) nor --hidden (made, never shown).
+windows_shown :: proc(app: ^App) -> bool { return !app.headless && !app.hidden }
+
 window_show :: proc(w: ^Browser_Window) { platform.show_window(w.win) }
 
 // The outer rectangle of a window and whether it is maximized: what a session saves.
@@ -396,7 +399,7 @@ window_open :: proc(app: ^App, size: [2]int, at: Maybe([2]int) = nil, show := tr
 	bw.frames_requested = 4
 	devtools_view_init(app, &bw.own.devtools, false)   // devtools.odin: closed until asked for in this window (or a tab brings its own)
 	append(&app.windows, bw)
-	if show && !app.headless { window_show(bw) }
+	if show && windows_shown(app) { window_show(bw) }
 	return bw
 }
 

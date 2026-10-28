@@ -114,14 +114,15 @@ The channel is **off by default**; a Wren that was not asked for it has no pipe,
 
 - `wren --remote` or `wren --remote=<name>`, or `WREN_REMOTE=<name>` in the environment, or the preference
   `browser.remote.enabled` (about:config, applied at the next start).
-- `wren ctl run` and `wren ctl start` start a Wren of this same executable with `--remote=<name> --headless --no-single-instance`
+- `wren ctl run` and `wren ctl start` start a Wren of this same executable with `--remote=<name> --hidden --no-single-instance` (`--headless` with `wren ctl start --headless`)
   and a throwaway profile (removed afterwards; a profile given by `--profile` is never removed). A throwaway profile starts with
   `blocker.update.enabled=false` (a Wren that lives 15 s would download the content blocker's lists, 24 MB, from the internet),
   unless `--pref blocker.update.enabled=...` says otherwise.
+- `--hidden`: a window that exists and is never shown: what `wren ctl run` / `start` use by default, for what needs a handle (UI Automation, the system's drag and hit test). It needs a desktop session.
 - `--headless`: a window with **no HWND at all**, not a hidden one, so it runs where there is no desktop session (a
   service in session 0, an SSH login, a CI runner). It renders to an offscreen target the capture reads; its size,
   place, state and DPI are emulated and resize the target (`window --size WxH --dpi n`); input comes through the same
-  synthetic-event path as a real device's (`platform.inject_event`). `wren --headless <url>` and `wren ctl run` /
+  synthetic-event path as a real device's (`platform.inject_event`). `wren --headless <url>` and `wren ctl run --headless` /
   `start` use it. (`wren ctl stats` reports `headless: true` for such a window, and `window` / `windows` carry it.)
 - A driven Wren never hands its addresses to the user's running Wren (`--remote` implies `--no-single-instance`).
 - A status bar item "remote" shows that the channel listens (`browser.remote.indicator`).

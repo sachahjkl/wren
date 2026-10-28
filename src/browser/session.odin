@@ -422,7 +422,7 @@ session_open_other_windows :: proc(app: ^App) {
 		window_activate(app, nw)
 		if len(w.tabs) > 0 { session_open_tabs(app, w.tabs, w.current, w.groups) } else { tab_open(app) }
 		window_activate(app, prev)
-		if !app.headless { window_show(nw) }
+		if windows_shown(app) { window_show(nw) }
 	}
 }
 

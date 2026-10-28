@@ -43,7 +43,7 @@ launch :: proc(ctx: ^Context, name, profile: string, hidden: bool, extra: []stri
 	_ = os.make_directory_all(l.profile)
 	args := make([dynamic]string, context.temp_allocator)
 	append(&args, ctx.exe, "--profile", l.profile, fmt.tprintf("--remote=%s", name), "--no-single-instance")
-	if hidden { append(&args, "--headless") }
+	if hidden { append(&args, flag(&ctx.o, "headless") ? "--headless" : "--hidden") }   // --headless: no window at all (no desktop session needed); by default a window that exists and is never shown (UI Automation, the system's drag and hit test need a handle)
 	if dpi := opt(&ctx.o, "dpi"); dpi != "" {
 		v := 0.0
 		if n, good := parse_float(dpi); good { v = n }

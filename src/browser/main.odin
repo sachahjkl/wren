@@ -160,7 +160,8 @@ App :: struct {
 	front:    ^Browser_Window,            // the one commands, remote calls and the tasks of the loop act on (the last used)
 	bare:     Browser_Window,             // active_window of an App with no window (the tests'), or between two
 	pass_first: bool,                     // the next frame of this pass of the loop is the first: it runs the tasks of the loop
-	headless:   bool,                     // the windows are never shown (`--headless`)
+	headless:   bool,                     // no window at all (`--headless`)
+	hidden:     bool,                     // windows that are made and never shown (--hidden)
 	quitting:   bool,                     // the browser ends (a remote Browser.close): every window goes, none is closed on its own first
 }
 
@@ -1322,7 +1323,8 @@ main :: proc() {
 	new_window, a5 := extract_switch(a4[:], "--new-window")   // a window of its own, not a tab of the Wren that runs (instance_shell.odin)
 	no_single, a6 := extract_switch(a5[:], "--no-single-instance")
 	remote_asked, remote_name, a7 := extract_remote(a6[:])   // --remote[=name]: the remote control channel (remote_shell.odin)
-	headless_mode, a8 := extract_switch(a7[:], "--headless")   // the window is never shown (it renders all the same: remote captures read the frame)
+	hidden_mode, a7h := extract_switch(a7[:], "--hidden")   // a window that is made but never shown (UI Automation, the system's hit test and the remote channel still see it): `wren ctl start`
+	headless_mode, a8 := extract_switch(a7h[:], "--headless")   // the window is never shown (it renders all the same: remote captures read the frame)
 	cdp_port, cdp_have_port, cdp_address, a9 := cdp_extract_args(a8[:])   // --remote-debugging-port[=N] / --remote-debugging-address (cdp.odin)
 	app.prefs = config.prefs_make()
 	rest, arg_errors := config.apply_args(&app.prefs, a9[:], context.temp_allocator)   // (read before the first frame)
@@ -1349,7 +1351,7 @@ main :: proc() {
 		os.exit(2)
 	}
 	if cli_mode != .None { os.exit(desktop_cli(app, cli_mode, purge_requested)) }   // no window: a script's call
-	instance_early(app, rest[:], setup_requested, new_window || no_single || remote_asked || headless_mode || cdp_have_port)   // (a driven window is its own: it never hands its addresses to the user's Wren)   // instance_shell.odin: a second start hands over to the first and ends here
+	instance_early(app, rest[:], setup_requested, new_window || no_single || remote_asked || headless_mode || hidden_mode || cdp_have_port)   // (a driven window is its own: it never hands its addresses to the user's Wren)   // instance_shell.odin: a second start hands over to the first and ends here
 	desktop_early_init()   // the windows' AppUserModelID, before the first one exists
 	recovery_start(app)   // crash_recovery.odin: how the last run ended, and this run's marker
 
@@ -1359,6 +1361,7 @@ main :: proc() {
 	font.init(&app.fonts, font_settings_from_prefs(&app.prefs))
 	preload := fonts_preload_start(app)   // the font state is the preload thread's until fonts_preload_finish
 	app.headless = headless_mode
+	app.hidden = hidden_mode
 	first_window: ^platform.Window
 	if headless_mode {
 		// a real headless window: no HWND at all, so it works with no desktop session (a service, SSH, CI). It renders to an
@@ -1492,7 +1495,7 @@ main :: proc() {
 	app.last_tick = time.tick_now()
 	active_window(app).frames_requested = 4
 	active_window(app).win.on_frame = window_on_frame   // (shell_frames.odin: a chrome frame when the page holds the thread)
-	if !headless_mode { window_show(app.active) }
+	if windows_shown(app) { window_show(app.active) }
 	session_open_other_windows(app)   // session.odin: the other windows of a restored session
 	prof_mark(.Loop)
 
