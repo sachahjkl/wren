@@ -96,6 +96,10 @@ special pass.
   collection is freed. `gc_mark` is used twice: to **subtract** those references from the host counts (a
   cycle through opaque data does not keep itself alive — QuickJS's trial deletion, restricted to the cells
   with host references) and to trace them when the owner is live.
+- Small blocks (≤ 512 bytes: cells, inline slots, small arrays and string data) come from size‑class free
+  lists carved out of 256 KiB chunks of the injected allocator (`mem_alloc` / `mem_free` / `mem_resize` in
+  `gc.odin`; callers always pass the size they allocated with). A cell costs a pop and a push, not a host
+  allocation.
 - The heap is capped by `Host_Config.malloc_limit`; all allocation goes through the injected allocator.
   A collection runs when the heap passes `max(2 × live, live + 4 MiB)`.
 
@@ -110,13 +114,19 @@ stack discipline, not type correctness.
 
 ## Interpreter (`interp.odin`, `ops.odin`, `coro.odin`)
 
-A `switch`‑dispatch loop over the QuickJS instruction set with a hot inner loop for the common
-instructions (integer arithmetic, `get_loc`, `get_field`, array reads, branches). Frames are heap
-allocated from segmented value stacks so generators and async functions can suspend them
-(`coro.odin`: generators, async functions, async generators, `for await`, `yield*`), and the engine's own
-stack budget — not the host stack — bounds recursion (`Host_Config.max_stack_bytes`,
-`max_stack_depth`; a `RangeError` instead of a crash). The interrupt hook runs on a budget from the loop
-back edge. Operators follow the spec (`+` through ToPrimitive, ModRing bitwise, BigInt paths, loose and
+A `switch`‑dispatch loop over the QuickJS instruction set. The common instructions (locals, arguments,
+integer / float arithmetic, comparisons, branches, `get_field` / `put_field` with the prototype walk, array
+reads and writes, global variables through a per‑realm slot cache, **calls and returns**) run in
+`interp_hot.odin`, a loop with raw pointers whose few live values stay in registers; everything else, and
+every fast path that does not apply, leaves it with the pc on the instruction for the full dispatch in
+`interp.odin`. The hot loop is inlined into `interp_run` (measured: a separate procedure is 20‑25 % slower).
+Frames come from segmented value stacks so generators and async functions can suspend them (`coro.odin`:
+generators, async functions, async generators, `for await`, `yield*`). A plain JS‑to‑JS call does not
+recurse natively: `frame_push` puts the callee's `Frame` at the end of its value‑stack block and the same
+`interp_run` activation runs it (`Frame.stackless`); native callees (`c_function`) are called from the hot
+loop without a frame. The engine's own stack budget and call depth bound recursion
+(`Host_Config.max_stack_bytes`, `max_stack_depth`; a `RangeError` instead of a crash). The interrupt hook
+runs on a budget from the loop back edge. Operators follow the spec (`+` through ToPrimitive, ModRing bitwise, BigInt paths, loose and
 strict equality). Try/catch uses a per‑frame handler stack (`catch`/`gosub`/`ret`/`nip_catch`).
 
 ## Standard library
@@ -154,12 +164,18 @@ exported under their QuickJS names with `-define:JSCAPI_EXPORT=true`) over `jsrt
 
 | | jsrt | QuickJS‑ng C |
 |---|---:|---:|
-| `examples/jsbench/micro.js`, geometric mean of 20 cases | 69 % of QuickJS speed | 100 % |
-| best / worst case | for‑of 204 %, polymorphic get 105 % | switch 48 %, property set 53 % |
-| peak working set, 300 k objects + 100 k Map entries | 235 MiB | 147 MiB |
+| `examples/jsbench/micro.js`, geometric mean of 20 cases | 100 % of QuickJS speed (was 68 %) | 100 % |
+| `examples/jsbench/macro.js` (JSON, regexp, strings, array methods, Map/Set, classes, generators…), 28 cases | 119 % of QuickJS speed | 100 % |
+| best / worst case (micro) | for‑of 233 %, global variables 126 % | switch 62 %, nested int loops 69 % |
+| peak working set, 300 k objects + 100 k Map entries (`examples/jsbench/cases/memory.js`) | 188 MiB (was 244) | 135 MiB |
 | freestanding wasm32 module, runtime + compiler (`-o:size`) | 1.63 MB (`-o:speed`: 1.99 MB) | `wren_js.wasm` (QuickJS + glue + bindings) 4.26 MB |
 
-`tools/jsrt_bench.ps1` produces the speed table. Fuzzing: `judge fuzz <dir>` mutates serialized bytecode
+`tools/jsrt_bench.ps1` produces the speed table; `tools/jsrt_ab.ps1` compares several builds (and QuickJS)
+interleaved, best of N, on `micro.js` or `macro.js`; `tools/jsrt_prof.ps1` is a sampling profiler (hot
+functions and source lines; `JSRT_PROF=1` on `judge eval`); `tools/jsrt_mem.ps1` measures the peak working
+set. Timings on this machine swing by ±30 % from run to run when other builds are running, and a change that
+adds no work to the hot loop can still move an unrelated case by ±10 % (code layout), so compare interleaved
+and keep the best. Fuzzing: `judge fuzz <dir>` mutates serialized bytecode
 and loads it (reader + verifier; 40 000 mutants, no crash; running accepted mutants is opt‑in with
 `JSRT_FUZZ_RUN=1`, since a type‑confused image can crash any interpreter that trusts the compiler);
 `judge fuzzsrc <dir>` mutates source text, compiles with the Odin front‑end and runs under an interrupt
@@ -176,6 +192,9 @@ budget (30 000 mutants on `language/` and `built-ins/`, no crash).
 
 ## Known gaps
 
-The 34 test262 failures above (all shared with QuickJS‑ng); speed is 69 % of QuickJS on the micro
-benchmarks (the switch loop and the `Value` size are the first suspects); memory is 1.6× QuickJS on
-allocation‑heavy scripts (a tracing heap holds garbage until the next collection).
+The 34 test262 failures above (all shared with QuickJS‑ng). Speed is at parity with QuickJS on the micro
+benchmarks; the slow cases are the ones that pay one dispatch per bytecode (`switch` on integers 62 %,
+nested integer loops 69 %: next step is superinstructions or a pre‑decoded code array), native‑to‑JS
+callbacks (`sort` comparators, `forEach`: a new `interp_run` activation each, ~1.9× slower than QuickJS) and
+destructuring. Memory is 1.4× QuickJS on allocation‑heavy scripts (a plain object costs 168 bytes: `Object`
+104 + 4 inline slots; a string header is 80 bytes; both can shrink).

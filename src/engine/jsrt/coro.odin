@@ -122,6 +122,24 @@ generator_resume :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) 
 }
 
 generator_step :: proc(ctx: ^Context, co: ^Coro, v: Value, magic: i32) -> Value {
+	r, done, st := generator_step_raw(ctx, co, v, magic)
+	switch st {
+	case .exception: return EXCEPTION
+	case .raw: return r
+	case .ok: return iter_result(ctx, r, done)
+	}
+	return EXCEPTION
+}
+
+Gen_Status :: enum u8 {
+	ok,        // (value, done) of the step
+	exception, // the step threw
+	raw,       // yield*: the value is the inner iterator's own result object, handed through untouched
+}
+
+// One step of a generator without the result object: the building block of `next`/`return`/`throw` and of
+// for-of over a generator (interp.odin), which has no use for the object.
+generator_step_raw :: proc(ctx: ^Context, co: ^Coro, v: Value, magic: i32) -> (Value, bool, Gen_Status) {
 	rt := ctx.rt
 	switch co.state {
 	case .suspended_start:
@@ -141,7 +159,8 @@ generator_step :: proc(ctx: ^Context, co: ^Coro, v: Value, magic: i32) -> Value 
 			f.sp += 1
 		}
 	case .executing:
-		return throw_type_error(ctx, "cannot invoke a running generator")
+		throw_type_error(ctx, "cannot invoke a running generator")
+		return UNDEFINED, false, .exception
 	case .completed, .awaiting_return:
 		return generator_done(ctx, v, magic)
 	}
@@ -151,27 +170,28 @@ generator_step :: proc(ctx: ^Context, co: ^Coro, v: Value, magic: i32) -> Value 
 	#partial switch k {
 	case .exception:
 		coro_complete(rt, co)
-		return EXCEPTION
+		return UNDEFINED, false, .exception
 	case .yield:
-		return iter_result(ctx, frame_top(co.frame), false)
+		return frame_top(co.frame), false, .ok
 	case .yield_star:
 		co.state = .suspended_yield_star
-		return frame_top(co.frame)
+		return frame_top(co.frame), false, .raw
 	}
 	r := frame_top(co.frame)
 	coro_complete(rt, co)
-	return iter_result(ctx, r, true)
+	return r, true, .ok
 }
 
 @(private = "file")
-generator_done :: proc(ctx: ^Context, v: Value, magic: i32) -> Value {
+generator_done :: proc(ctx: ^Context, v: Value, magic: i32) -> (Value, bool, Gen_Status) {
 	switch magic {
 	case GEN_RETURN:
-		return iter_result(ctx, v, true)
+		return v, true, .ok
 	case GEN_THROW:
-		return throw(ctx, v)
+		throw(ctx, v)
+		return UNDEFINED, false, .exception
 	}
-	return iter_result(ctx, UNDEFINED, true)
+	return UNDEFINED, true, .ok
 }
 
 // --- async functions ---

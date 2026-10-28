@@ -9,6 +9,7 @@ package jsrt
 // read in place (Latin-1 bytes or UTF-16 units; with u/v the units are decoded as code points), a
 // capture or register is an int (-1 = unset), and the backtrack stack is a growable []int.
 
+import "base:runtime"
 import "core:mem"
 import fe "wb:engine/frontend"
 
@@ -225,7 +226,44 @@ lre_exec :: proc(ctx: ^Context, capture: []int, bc: []u8, str: ^JS_String, cinde
 
 @(private = "file")
 poll :: #force_inline proc(e: ^Exec) -> bool {
+	rt := e.ctx.rt
+	if rt.interrupt_counter + 1 < 10_000 {
+		rt.interrupt_counter += 1
+		return false
+	}
 	return poll_interrupt(e.ctx) // throws the uncatchable interrupt itself
+}
+
+// The backtrack stack as a raw int buffer: pushes and truncations without the generic append / resize calls.
+@(private = "file")
+st_reserve :: #force_no_inline proc(stack: ^[dynamic]int, extra: int) {
+	reserve(stack, max(2 * cap(stack), len(stack) + extra))
+}
+
+@(private = "file")
+st_push2 :: #force_inline proc(stack: ^[dynamic]int, a, b: int) {
+	n := len(stack)
+	if n + 2 > cap(stack) {st_reserve(stack, 2)}
+	d := raw_data(stack^)
+	d[n] = a
+	d[n + 1] = b
+	(cast(^runtime.Raw_Dynamic_Array)stack).len = n + 2
+}
+
+@(private = "file")
+st_push3 :: #force_inline proc(stack: ^[dynamic]int, a, b, c: int) {
+	n := len(stack)
+	if n + 3 > cap(stack) {st_reserve(stack, 3)}
+	d := raw_data(stack^)
+	d[n] = a
+	d[n + 1] = b
+	d[n + 2] = c
+	(cast(^runtime.Raw_Dynamic_Array)stack).len = n + 3
+}
+
+@(private = "file")
+st_truncate :: #force_inline proc(stack: ^[dynamic]int, n: int) {
+	(cast(^runtime.Raw_Dynamic_Array)stack).len = n
 }
 
 @(private = "file")
@@ -239,7 +277,7 @@ exec_backtrack :: proc(e: ^Exec, s: ^Subject, bc: []u8, pc0: int, cptr0: int) ->
 	n := s.n
 
 	save :: #force_inline proc(stack: ^[dynamic]int, capture: []int, idx: int, value: int) {
-		append(stack, idx, capture[idx])
+		st_push2(stack, idx, capture[idx])
 		capture[idx] = value
 	}
 	save_check :: #force_inline proc(stack: ^[dynamic]int, capture: []int, bp: int, idx: int, value: int) {
@@ -249,14 +287,14 @@ exec_backtrack :: proc(e: ^Exec, s: ^Subject, bc: []u8, pc0: int, cptr0: int) ->
 				if stack[sp1 - 2] == idx {break}
 				sp1 -= 2
 			} else {
-				append(stack, idx, capture[idx])
+				st_push2(stack, idx, capture[idx])
 				break
 			}
 		}
 		capture[idx] = value
 	}
 	push_state :: #force_inline proc(stack: ^[dynamic]int, bp: ^int, pc, cptr: int, type: State_Type) {
-		append(stack, pc, cptr, bp^ << 2 | int(type))
+		st_push3(stack, pc, cptr, bp^ << 2 | int(type))
 		bp^ = len(stack)
 	}
 
@@ -298,7 +336,7 @@ exec_backtrack :: proc(e: ^Exec, s: ^Subject, bc: []u8, pc0: int, cptr0: int) ->
 					}
 				}
 			}
-			resize(stack, sp)
+			st_truncate(stack, sp)
 		case .negative_lookahead_match:
 			for {
 				sp := len(stack)
@@ -310,7 +348,7 @@ exec_backtrack :: proc(e: ^Exec, s: ^Subject, bc: []u8, pc0: int, cptr0: int) ->
 				cptr = stack[sp - 2]
 				w := stack[sp - 1]
 				bp = w >> 2
-				resize(stack, sp - 3)
+				st_truncate(stack, sp - 3)
 				if State_Type(w & 3) == .negative_lookahead {break}
 			}
 			matched = false
@@ -565,7 +603,7 @@ exec_backtrack :: proc(e: ^Exec, s: ^Subject, bc: []u8, pc0: int, cptr0: int) ->
 			cptr = stack[sp - 2]
 			w := stack[sp - 1]
 			bp = w >> 2
-			resize(stack, sp - 3)
+			st_truncate(stack, sp - 3)
 			if State_Type(w & 3) != .lookahead {break}
 		}
 		if poll(e) {return .timeout}
