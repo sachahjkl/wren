@@ -2,7 +2,6 @@ package frontend
 
 import "base:runtime"
 import "wb:engine/numconv"
-import rx "wb:engine/regexp"
 
 // Public entry points: compile a script or a module to QuickJS-ng 0.17 bytecode, and serialize the result to the
 // JS_WriteObject byte stream. This mirrors __JS_EvalInternal with JS_EVAL_FLAG_COMPILE_ONLY: a top-level
@@ -175,38 +174,48 @@ bigint_to_decimal :: proc(v: Big_Int, allocator: runtime.Allocator) -> string {
 // compile_regexp_literal validates a regexp literal and returns the constant QuickJS stores next to its source:
 // the compiled libregexp bytecode as an 8-bit string. A pattern or flags error is a SyntaxError.
 compile_regexp_literal :: proc(s: ^Parse_State, body, flags: String_Value) -> (JS_Value, bool) {
-	flag_text := make([]u8, string_len(flags), s.allocator)
+	// js_compile_regexp: each flag at most once, u and v exclusive
+	re_flags := 0
 	for i in 0 ..< string_len(flags) {
-		c := string_at(flags, i)
-		if c >= 128 {
+		mask := 0
+		switch string_at(flags, i) {
+		case 'd': mask = LRE_FLAG_INDICES
+		case 'g': mask = LRE_FLAG_GLOBAL
+		case 'i': mask = LRE_FLAG_IGNORECASE
+		case 'm': mask = LRE_FLAG_MULTILINE
+		case 's': mask = LRE_FLAG_DOTALL
+		case 'u': mask = LRE_FLAG_UNICODE
+		case 'v': mask = LRE_FLAG_UNICODE_SETS
+		case 'y': mask = LRE_FLAG_STICKY
+		}
+		if mask == 0 || (re_flags & mask) != 0 {
 			js_parse_error(s, "invalid regular expression flags")
 			return nil, false
 		}
-		flag_text[i] = u8(c)
+		re_flags |= mask
 	}
-	rflags, fok := rx.parse_flags(string(flag_text))
-	if !fok {
+	if (re_flags & LRE_FLAG_UNICODE) != 0 && (re_flags & LRE_FLAG_UNICODE_SETS) != 0 {
 		js_parse_error(s, "invalid regular expression flags")
 		return nil, false
 	}
-	pattern := string_to_utf8(body, s.allocator)
-	re, err := rx.compile(pattern, rflags, s.allocator)
-	if err.message != "" {
-		js_parse_error(s, err.message)
+	unicode := (re_flags & (LRE_FLAG_UNICODE | LRE_FLAG_UNICODE_SETS)) != 0
+	pattern := string_to_utf8(body, s.allocator, cesu8 = !unicode)
+	bc, err := lre_compile(transmute([]u8)pattern, re_flags, s.allocator)
+	if bc == nil {
+		js_parse_error(s, err)
 		return nil, false
 	}
-	bytes := make([]u8, len(re.bytecode), s.allocator)
-	copy(bytes, re.bytecode[:])
-	return String_Value{latin1 = bytes}, true
+	return String_Value{latin1 = bc}, true
 }
 
-// string_to_utf8 encodes a JS string as UTF-8 (lone surrogates as their 3-byte form, like CESU-8).
-string_to_utf8 :: proc(sv: String_Value, allocator: runtime.Allocator) -> string {
+// string_to_utf8 encodes a JS string as UTF-8; with cesu8 a surrogate pair stays two 3-byte sequences
+// (JS_ToCStringLen2's CESU-8 mode), otherwise it becomes one 4-byte sequence. Lone surrogates are 3 bytes.
+string_to_utf8 :: proc(sv: String_Value, allocator: runtime.Allocator, cesu8 := false) -> string {
 	out := make([dynamic]u8, 0, string_len(sv) + 8, allocator)
 	n := string_len(sv)
 	for i := 0; i < n; i += 1 {
 		c := u32(string_at(sv, i))
-		if c >= 0xD800 && c < 0xDC00 && i + 1 < n {
+		if !cesu8 && c >= 0xD800 && c < 0xDC00 && i + 1 < n {
 			c2 := u32(string_at(sv, i + 1))
 			if c2 >= 0xDC00 && c2 < 0xE000 {
 				c = 0x10000 + ((c - 0xD800) << 10) + (c2 - 0xDC00)
