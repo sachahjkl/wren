@@ -22836,7 +22836,7 @@ _t_dom_XMLSerializer_serialize :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	return nil
 }
 
-// LockManager_request :: proc(c: ^Call, name: string, mode: Api_LockMode, if_available: bool, steal: bool, callback: u32, user: i32, broken_callback: u32) -> i64
+// LockManager_request :: proc(c: ^Call, name: string, mode: Api_LockMode, if_available: bool, steal: bool, callback: u32, user: i32, broken_callback: u32, has_signal: bool) -> i64
 @(private = "file")
 _t_locks_LockManager_request :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
@@ -22861,7 +22861,8 @@ _t_locks_LockManager_request :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	_p4 := u32(a[5].i32)
 	_p5 := a[6].i32
 	_p6 := u32(a[7].i32)
-	_r := LockManager_request(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6)
+	_p7 := a[8].i32 != 0
+	_r := LockManager_request(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6, _p7)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
@@ -30489,7 +30490,7 @@ api_imports := [?]wasm.Import{
 	{module = "forms", name = "FormData_setBlob", fn = _t_forms_FormData_setBlob, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "forms", name = "FormData_encode", fn = _t_forms_FormData_encode, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "XMLSerializer_serialize", fn = _t_dom_XMLSerializer_serialize, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "locks", name = "LockManager_request", fn = _t_locks_LockManager_request, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "locks", name = "LockManager_request", fn = _t_locks_LockManager_request, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "locks", name = "LockManager_release", fn = _t_locks_LockManager_release, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
 	{module = "locks", name = "LockManager_queryCount", fn = _t_locks_LockManager_queryCount, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{.I32}},
 	{module = "locks", name = "LockManager_queryName", fn = _t_locks_LockManager_queryName, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
