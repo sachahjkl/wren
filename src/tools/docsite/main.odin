@@ -46,8 +46,9 @@ main :: proc() {
 	for a in args {
 		switch a {
 		case "-check": check_only = true
+		case "-chart-update": chart_update = true
 		case:
-			fmt.eprintfln("docsite: unknown argument %s (usage: docsite [-check] | docsite -chart out.svg)", a)
+			fmt.eprintfln("docsite: unknown argument %s (usage: docsite [-check] [-chart-update] | docsite -chart out.svg)", a)
 			os.exit(2)
 		}
 	}
