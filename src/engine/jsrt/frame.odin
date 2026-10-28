@@ -27,7 +27,16 @@ Call_Frame :: struct {
 	// Open var-refs created for this frame's locals (closed when the frame unwinds).
 	open_refs:   [dynamic]^Var_Ref,
 
+	// Active exception handlers (from OP_catch). On a throw we pop to the newest handler, restore the
+	// operand stack to its recorded depth, push the exception, and jump to the handler PC.
+	handlers:    [dynamic]Catch_Handler,
+
 	parent:      ^Call_Frame, // caller, for backtraces
+}
+
+Catch_Handler :: struct {
+	target_pc: int,
+	sp:        int, // operand stack depth to restore to
 }
 
 frame_alloc :: proc(rt: ^Runtime, bc: ^Function_Bytecode) -> ^Call_Frame {
@@ -38,6 +47,7 @@ frame_alloc :: proc(rt: ^Runtime, bc: ^Function_Bytecode) -> ^Call_Frame {
 	for i in 0 ..< n_locals {f.locals[i] = UNINITIALIZED}
 	f.stack = make([]Value, int(bc.stack_size) + 4, rt.allocator)
 	f.open_refs = make([dynamic]^Var_Ref, rt.allocator)
+	f.handlers = make([dynamic]Catch_Handler, rt.allocator)
 	f.this_val = UNDEFINED
 	f.new_target = UNDEFINED
 	return f
@@ -51,6 +61,7 @@ frame_free :: proc(rt: ^Runtime, f: ^Call_Frame) {
 		var_ref_unref(rt, vr)
 	}
 	delete(f.open_refs)
+	delete(f.handlers)
 	for v in f.locals {value_free(rt, v)}
 	delete(f.locals, rt.allocator)
 	// Any values left on the operand stack (exception unwinding) are freed here.

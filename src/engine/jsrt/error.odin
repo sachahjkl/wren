@@ -7,8 +7,6 @@ package jsrt
 // Value and the caller checks is_exception(); this mirrors QuickJS's JS_EXCEPTION convention and keeps
 // the interpreter's error path a single branch. Throwing frees nothing the caller owns.
 
-import "core:fmt"
-
 // Store `val` as the pending exception (consumes val) and return the EXCEPTION sentinel.
 throw :: proc(ctx: ^Context, val: Value) -> Value {
 	if !is_exception(ctx.exception) && !is_uninitialized(ctx.exception) {
@@ -44,12 +42,15 @@ throw_syntax_error :: proc(ctx: ^Context, msg: string) -> Value {
 	return throw_error(ctx, .syntax, msg)
 }
 
-// Formatted throw (uses the runtime allocator for the temporary; the message string is copied into a
-// JS string). Avoid passing user-controlled text with `%` to the format.
-throw_type_errorf :: proc(ctx: ^Context, format: string, args: ..any) -> Value {
-	msg := fmt.aprintf(format, ..args, allocator = ctx.rt.allocator)
-	defer delete(msg, ctx.rt.allocator)
-	return throw_type_error(ctx, msg)
+// Throw a ReferenceError "<name> is not defined" style message built by concatenation (no fmt, so the
+// package stays OS-free for the wasm target). `name` and `suffix` are joined with a space.
+throw_named_error :: proc(ctx: ^Context, kind: Error_Kind, name: string, suffix: string) -> Value {
+	buf := make([]u8, len(name) + 1 + len(suffix), ctx.rt.allocator)
+	defer delete(buf, ctx.rt.allocator)
+	copy(buf[:], name)
+	buf[len(name)] = ' '
+	copy(buf[len(name) + 1:], suffix)
+	return throw_error(ctx, kind, string(buf))
 }
 
 // Create (but do not throw) a native error object with a message property.

@@ -24,7 +24,7 @@ global_get :: proc(ctx: ^Context, a: Atom, throw_if_missing: bool) -> Value {
 			defer string_unref(ctx.rt, name)
 			u := string_to_utf8(ctx.rt, name, ctx.rt.allocator)
 			defer delete(u, ctx.rt.allocator)
-			return throw_type_errorf(ctx, "%s is not defined", u)
+			return throw_named_error(ctx, .reference, u, "is not defined")
 		}
 		return UNDEFINED
 	}

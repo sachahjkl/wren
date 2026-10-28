@@ -13,14 +13,6 @@ package jsrt
 // the nearest catch handler (the exception-table walk is handled by the catch/throw opcodes).
 
 import "core:math"
-import "core:fmt"
-
-INTERP_DEBUG :: #config(INTERP_DEBUG, false)
-
-@(private = "file")
-interp_dbg_op :: proc(op: Opcode, pc: int) {
-	fmt.eprintfln("[interp] unimplemented opcode %v (=%d) at pc %d", op, int(op), pc)
-}
 
 // Run `f` to completion. Returns the function's result (owned) or EXCEPTION.
 interp_run :: proc(ctx: ^Context, f: ^Call_Frame) -> Value {
@@ -41,6 +33,7 @@ interp_run :: proc(ctx: ^Context, f: ^Call_Frame) -> Value {
 
 		op := Opcode(code[f.pc])
 		start := f.pc
+		raised := false // set by opcodes that raise; checked at the bottom to run try/catch
 
 		#partial switch op {
 		case .invalid, .op_nop:
@@ -56,14 +49,14 @@ interp_run :: proc(ctx: ^Context, f: ^Call_Frame) -> Value {
 			idx := read_u32(code, f.pc)
 			f.pc += 4
 			v := cpool_value(ctx, f, int(idx), op == .fclosure)
-			if is_exception(v) {return unwind(ctx, f, v)}
+			if is_exception(v) {{raised = true; break}}
 			push(f, v)
 		case .push_const8, .fclosure8:
 			f.pc += 1
 			idx := code[f.pc]
 			f.pc += 1
 			v := cpool_value(ctx, f, int(idx), op == .fclosure8)
-			if is_exception(v) {return unwind(ctx, f, v)}
+			if is_exception(v) {{raised = true; break}}
 			push(f, v)
 		case .push_atom_value:
 			f.pc += 1
@@ -241,12 +234,12 @@ interp_run :: proc(ctx: ^Context, f: ^Call_Frame) -> Value {
 			f.pc += 1
 			a := Atom(read_u32(code, f.pc)); f.pc += 4
 			v := global_get(ctx, a, op == .get_var)
-			if is_exception(v) {return unwind(ctx, f, v)}
+			if is_exception(v) {{raised = true; break}}
 			push(f, v)
 		case .put_var, .put_var_init:
 			f.pc += 1
 			a := Atom(read_u32(code, f.pc)); f.pc += 4
-			if !global_set(ctx, a, pop(f)) {return unwind(ctx, f, EXCEPTION)}
+			if !global_set(ctx, a, pop(f)) {{raised = true; break}}
 
 		// --- property access ---
 		case .get_field, .get_field2:
@@ -254,7 +247,7 @@ interp_run :: proc(ctx: ^Context, f: ^Call_Frame) -> Value {
 			a := Atom(read_u32(code, f.pc)); f.pc += 4
 			obj := peek(f)
 			v := object_get_value_by_atom(ctx, obj, a)
-			if is_exception(v) {return unwind(ctx, f, v)}
+			if is_exception(v) {{raised = true; break}}
 			if op == .get_field {
 				value_free(rt, pop(f))
 			}
@@ -266,14 +259,14 @@ interp_run :: proc(ctx: ^Context, f: ^Call_Frame) -> Value {
 			obj := pop(f)
 			ok := object_put_value_by_atom(ctx, obj, a, val)
 			value_free(rt, obj)
-			if !ok && has_exception(ctx) {return unwind(ctx, f, EXCEPTION)}
+			if !ok && has_exception(ctx) {{raised = true; break}}
 		case .get_array_el:
 			f.pc += 1
 			key := pop(f)
 			obj := pop(f)
 			v := object_get_value(ctx, obj, key)
 			value_free(rt, key); value_free(rt, obj)
-			if is_exception(v) {return unwind(ctx, f, v)}
+			if is_exception(v) {{raised = true; break}}
 			push(f, v)
 		case .put_array_el:
 			f.pc += 1
@@ -282,71 +275,71 @@ interp_run :: proc(ctx: ^Context, f: ^Call_Frame) -> Value {
 			obj := pop(f)
 			ok := object_set_value(ctx, obj, key, val)
 			value_free(rt, key); value_free(rt, obj)
-			if !ok && has_exception(ctx) {return unwind(ctx, f, EXCEPTION)}
+			if !ok && has_exception(ctx) {{raised = true; break}}
 
 		// --- arithmetic ---
 		case .add:
-			if !op_add(ctx, f) {return unwind(ctx, f, EXCEPTION)}
+			if !op_add(ctx, f) {{raised = true; break}}
 			f.pc += 1
 		case .sub:
-			if !op_arith(ctx, f, .sub) {return unwind(ctx, f, EXCEPTION)}
+			if !op_arith(ctx, f, .sub) {{raised = true; break}}
 			f.pc += 1
 		case .mul:
-			if !op_arith(ctx, f, .mul) {return unwind(ctx, f, EXCEPTION)}
+			if !op_arith(ctx, f, .mul) {{raised = true; break}}
 			f.pc += 1
 		case .div:
-			if !op_arith(ctx, f, .div) {return unwind(ctx, f, EXCEPTION)}
+			if !op_arith(ctx, f, .div) {{raised = true; break}}
 			f.pc += 1
 		case .mod:
-			if !op_arith(ctx, f, .mod) {return unwind(ctx, f, EXCEPTION)}
+			if !op_arith(ctx, f, .mod) {{raised = true; break}}
 			f.pc += 1
 		case .pow:
-			if !op_arith(ctx, f, .pow) {return unwind(ctx, f, EXCEPTION)}
+			if !op_arith(ctx, f, .pow) {{raised = true; break}}
 			f.pc += 1
 		case .neg:
 			a := pop(f)
 			n, ok := to_f64_val(ctx, a); value_free(rt, a)
-			if !ok {return unwind(ctx, f, EXCEPTION)}
+			if !ok {{raised = true; break}}
 			push(f, mk_number(-n)); f.pc += 1
 		case .inc:
 			a := pop(f)
 			n, ok := to_f64_val(ctx, a); value_free(rt, a)
-			if !ok {return unwind(ctx, f, EXCEPTION)}
+			if !ok {{raised = true; break}}
 			push(f, mk_number(n + 1)); f.pc += 1
 		case .dec:
 			a := pop(f)
 			n, ok := to_f64_val(ctx, a); value_free(rt, a)
-			if !ok {return unwind(ctx, f, EXCEPTION)}
+			if !ok {{raised = true; break}}
 			push(f, mk_number(n - 1)); f.pc += 1
 		case .plus:
 			a := pop(f)
 			n, ok := to_f64_val(ctx, a); value_free(rt, a)
-			if !ok {return unwind(ctx, f, EXCEPTION)}
+			if !ok {{raised = true; break}}
 			push(f, mk_number(n)); f.pc += 1
 
 		// --- bitwise ---
 		case .op_and:
-			if !op_bitwise(ctx, f, .and) {return unwind(ctx, f, EXCEPTION)}
+			if !op_bitwise(ctx, f, .and) {{raised = true; break}}
 			f.pc += 1
 		case .op_or:
-			if !op_bitwise(ctx, f, .or) {return unwind(ctx, f, EXCEPTION)}
+			if !op_bitwise(ctx, f, .or) {{raised = true; break}}
 			f.pc += 1
 		case .xor:
-			if !op_bitwise(ctx, f, .xor) {return unwind(ctx, f, EXCEPTION)}
+			if !op_bitwise(ctx, f, .xor) {{raised = true; break}}
 			f.pc += 1
 		case .shl:
-			if !op_bitwise(ctx, f, .shl) {return unwind(ctx, f, EXCEPTION)}
+			if !op_bitwise(ctx, f, .shl) {{raised = true; break}}
 			f.pc += 1
 		case .shr:
-			if !op_bitwise(ctx, f, .shr) {return unwind(ctx, f, EXCEPTION)}
+			if !op_bitwise(ctx, f, .shr) {{raised = true; break}}
 			f.pc += 1
 		case .sar:
-			if !op_bitwise(ctx, f, .sar) {return unwind(ctx, f, EXCEPTION)}
+			if !op_bitwise(ctx, f, .sar) {{raised = true; break}}
 			f.pc += 1
 		case .op_not:
 			a := pop(f)
 			iv, ok := to_int32(ctx, a); value_free(rt, a)
-			if !ok {return unwind(ctx, f, EXCEPTION)}
+			if !ok {{raised = true; break}}
 			push(f, mk_int(~iv)); f.pc += 1
 		case .lnot:
 			a := pop(f)
@@ -354,22 +347,22 @@ interp_run :: proc(ctx: ^Context, f: ^Call_Frame) -> Value {
 
 		// --- comparison ---
 		case .lt:
-			if !op_compare(ctx, f, .lt) {return unwind(ctx, f, EXCEPTION)}
+			if !op_compare(ctx, f, .lt) {{raised = true; break}}
 			f.pc += 1
 		case .lte:
-			if !op_compare(ctx, f, .lte) {return unwind(ctx, f, EXCEPTION)}
+			if !op_compare(ctx, f, .lte) {{raised = true; break}}
 			f.pc += 1
 		case .gt:
-			if !op_compare(ctx, f, .gt) {return unwind(ctx, f, EXCEPTION)}
+			if !op_compare(ctx, f, .gt) {{raised = true; break}}
 			f.pc += 1
 		case .gte:
-			if !op_compare(ctx, f, .gte) {return unwind(ctx, f, EXCEPTION)}
+			if !op_compare(ctx, f, .gte) {{raised = true; break}}
 			f.pc += 1
 		case .eq:
-			if !op_equality(ctx, f, false, false) {return unwind(ctx, f, EXCEPTION)}
+			if !op_equality(ctx, f, false, false) {{raised = true; break}}
 			f.pc += 1
 		case .neq:
-			if !op_equality(ctx, f, false, true) {return unwind(ctx, f, EXCEPTION)}
+			if !op_equality(ctx, f, false, true) {{raised = true; break}}
 			f.pc += 1
 		case .strict_eq:
 			op_equality(ctx, f, true, false); f.pc += 1
@@ -386,6 +379,12 @@ interp_run :: proc(ctx: ^Context, f: ^Call_Frame) -> Value {
 			a := pop(f); push(f, mk_bool(is_null(a))); value_free(rt, a); f.pc += 1
 		case .is_undefined_or_null:
 			a := pop(f); push(f, mk_bool(is_undefined_or_null(a))); value_free(rt, a); f.pc += 1
+		case .typeof_is_undefined:
+			a := pop(f)
+			push(f, mk_bool(typeof_string(a) == "undefined")); value_free(rt, a); f.pc += 1
+		case .typeof_is_function:
+			a := pop(f)
+			push(f, mk_bool(is_callable(a))); value_free(rt, a); f.pc += 1
 
 		// --- control flow ---
 		case .goto:
@@ -429,21 +428,21 @@ interp_run :: proc(ctx: ^Context, f: ^Call_Frame) -> Value {
 		case .call, .tail_call:
 			f.pc += 1
 			argc := int(read_u16(code, f.pc)); f.pc += 2
-			if !do_call(ctx, f, argc, UNDEFINED, op == .tail_call) {return unwind(ctx, f, EXCEPTION)}
+			if !do_call(ctx, f, argc, UNDEFINED, op == .tail_call) {{raised = true; break}}
 			if op == .tail_call {return pop(f)}
 		case .call_method, .tail_call_method:
 			f.pc += 1
 			argc := int(read_u16(code, f.pc)); f.pc += 2
-			if !do_call_method(ctx, f, argc, op == .tail_call_method) {return unwind(ctx, f, EXCEPTION)}
+			if !do_call_method(ctx, f, argc, op == .tail_call_method) {{raised = true; break}}
 			if op == .tail_call_method {return pop(f)}
 		case .call0, .call1, .call2, .call3:
 			argc := int(op) - int(Opcode.call0)
 			f.pc += 1
-			if !do_call(ctx, f, argc, UNDEFINED, false) {return unwind(ctx, f, EXCEPTION)}
+			if !do_call(ctx, f, argc, UNDEFINED, false) {{raised = true; break}}
 		case .call_constructor:
 			f.pc += 1
 			argc := int(read_u16(code, f.pc)); f.pc += 2
-			if !do_construct(ctx, f, argc) {return unwind(ctx, f, EXCEPTION)}
+			if !do_construct(ctx, f, argc) {{raised = true; break}}
 
 		// --- return / throw ---
 		case .op_return:
@@ -452,14 +451,47 @@ interp_run :: proc(ctx: ^Context, f: ^Call_Frame) -> Value {
 			return UNDEFINED
 		case .op_throw:
 			v := pop(f)
-			return unwind(ctx, f, throw(ctx, v))
+			throw(ctx, v)
+			raised = true
+
+		// --- try/catch/finally ---
+		case .op_catch:
+			f.pc += 1
+			target := i32(read_u32(code, f.pc)); f.pc += 4
+			handler_pc := start + 5 + int(target)
+			append(&f.handlers, Catch_Handler{target_pc = handler_pc, sp = f.sp})
+			// OP_catch has n_push=1: push the handler marker so the matching drop stays balanced.
+			push(f, mk_int(i32(handler_pc)))
+		case .gosub:
+			f.pc += 1
+			target := i32(read_u32(code, f.pc)); f.pc += 4
+			ret_pc := f.pc
+			push(f, mk_int(i32(ret_pc)))
+			f.pc = start + 5 + int(target)
+		case .ret:
+			ret := pop(f)
+			f.pc = int(as_int(ret))
+		case .nip_catch:
+			// catch ... a -> a : drop the handler marker left under the result.
+			top := pop(f)
+			value_free(rt, pop(f))
+			if len(f.handlers) > 0 {pop_handler(f)}
+			push(f, top)
+			f.pc += 1
 
 		case:
 			// Opcode recognised by the table but not yet implemented in the loop.
-			when INTERP_DEBUG {
-				interp_dbg_op(op, start)
+			throw_error(ctx, .internal, interp_unimplemented(op))
+			raised = true
+		}
+
+		// If an opcode raised, either a frame handler catches it (loop continues at the handler) or
+		// the exception propagates out of this activation.
+		if raised {
+			if try_catch(ctx, f) {
+				continue
 			}
-			return unwind(ctx, f, throw_error(ctx, .internal, interp_unimplemented(op)))
+			return EXCEPTION
 		}
 	}
 	return UNDEFINED
@@ -472,8 +504,29 @@ interp_run :: proc(ctx: ^Context, f: ^Call_Frame) -> Value {
 // try/catch unwinder is part of the control-flow wave. For now an exception propagates straight out
 // of the frame (the caller sees EXCEPTION), which is correct for code without try/catch and fails
 // loudly otherwise.
-unwind :: proc(ctx: ^Context, f: ^Call_Frame, v: Value) -> Value {
-	return EXCEPTION
+// Try to catch the pending exception in this frame. If a handler is active, restore the operand stack
+// to the handler's depth, push the exception value, jump to the handler PC, and return true so the
+// loop continues. Otherwise return false (the exception propagates out of the frame).
+try_catch :: proc(ctx: ^Context, f: ^Call_Frame) -> bool {
+	if len(f.handlers) == 0 {
+		return false
+	}
+	h := f.handlers[len(f.handlers) - 1]
+	pop_handler(f)
+	// Discard operands pushed since the try began.
+	for f.sp > h.sp {
+		value_free(ctx.rt, pop(f))
+	}
+	exc := take_exception(ctx)
+	push(f, exc)
+	f.pc = h.target_pc
+	return true
+}
+
+pop_handler :: proc(f: ^Call_Frame) {
+	if len(f.handlers) > 0 {
+		ordered_remove(&f.handlers, len(f.handlers) - 1)
+	}
 }
 
 // --- small decode helpers ---

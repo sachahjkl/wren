@@ -17,25 +17,6 @@ package jsrt
 // header. We map both onto the runtime's atom table.
 
 import "wb:engine/bigint"
-import "core:fmt"
-
-// Flip to true when diagnosing a reader failure against reference bytecode.
-SERIALIZE_DEBUG :: #config(SERIALIZE_DEBUG, false)
-
-@(private = "file")
-serialize_dbg :: proc(msg: string, pos: int) {
-	fmt.eprintfln("[serialize] fail: %s at pos %d", msg, pos)
-}
-
-@(private = "file")
-serialize_dbg_fn :: proc(ac, vc, cvc, cpool, bclen: u32, pos: int) {
-	fmt.eprintfln("[serialize] fn: args=%d vars=%d closures=%d cpool=%d bc_len=%d pos=%d", ac, vc, cvc, cpool, bclen, pos)
-}
-
-@(private = "file")
-serialize_dbg_dbg :: proc(fn: Atom, line, col, p2l: u32, pos: int) {
-	fmt.eprintfln("[serialize] dbg: filename=%d line=%d col=%d pc2line=%d pos=%d", fn, line, col, p2l, pos)
-}
 
 // Serialized-value tags, mirroring BC_TAG_* in quickjs.c (order matters).
 BC_Tag :: enum u8 {
@@ -94,9 +75,6 @@ read_object :: proc(ctx: ^Context, buf: []u8, allow_bytecode := true) -> Value {
 	v := read_value(&r)
 	if r.err {
 		value_free(ctx.rt, v)
-		when SERIALIZE_DEBUG {
-			serialize_dbg(r.err_msg, r.pos)
-		}
 		return throw_syntax_error(ctx, r.err_msg != "" ? r.err_msg : "invalid bytecode")
 	}
 	return v
@@ -385,9 +363,6 @@ read_function :: proc(r: ^Reader) -> Value {
 	cpool_count := rd_leb128(r)
 	byte_code_len := rd_leb128(r)
 	if r.err {function_bc_unref(rt, fb); return EXCEPTION}
-	when SERIALIZE_DEBUG {
-		serialize_dbg_fn(fb.arg_count, fb.var_count, fb.closure_var_count, cpool_count, byte_code_len, r.pos)
-	}
 
 	// Local variable definitions.
 	vardef_count := rd_leb128(r)
@@ -453,9 +428,6 @@ read_function :: proc(r: ^Reader) -> Value {
 		fb.line_num = rd_leb128(r)
 		fb.col_num = rd_leb128(r)
 		p2l := rd_leb128(r)
-		when SERIALIZE_DEBUG {
-			serialize_dbg_dbg(fb.filename, fb.line_num, fb.col_num, p2l, r.pos)
-		}
 		if p2l > 0 {
 			fb.pc2line = make([]u8, int(p2l), rt.allocator)
 			for i in 0 ..< p2l {fb.pc2line[i] = rd_u8(r)}
