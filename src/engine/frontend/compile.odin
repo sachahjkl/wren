@@ -10,6 +10,8 @@ import "wb:engine/numconv"
 Program_Kind :: enum u8 {
 	script,
 	module,
+	indirect_eval, // JS_EVAL_TYPE_INDIRECT
+	direct_eval,   // JS_EVAL_TYPE_DIRECT: needs Compile_Options.parent
 }
 
 Compile_Options :: struct {
@@ -19,6 +21,104 @@ Compile_Options :: struct {
 	// DEFAULT_COMPILE_STACK_BUDGET, a negative value disables the check. Pick it from the stack the caller has
 	// left (the wasm build links a 1 MiB stack).
 	stack_budget: int,
+	strict:       bool,         // JS_EVAL_FLAG_STRICT (scripts and indirect eval)
+	parent:       ^Eval_Parent, // the calling function of a direct eval
+	// JS_WriteModule drops import attributes; with this set a request imported `with { type: T }` is renamed
+	// "specifier\0T" so a runtime reading the bytecode still sees the type.
+	encode_import_type: bool,
+	// Keep each function's source text in the bytecode (what Function.prototype.toString returns); the
+	// differential judge compares against JS_WRITE_OBJ_STRIP_SOURCE output and leaves it off.
+	keep_source: bool,
+}
+
+// The calling function of a direct eval, as the runtime knows it from the caller's bytecode: the parts of a
+// JSFunctionBytecode that add_closure_variables reads, with names as UTF-8.
+Eval_Parent_Var :: struct {
+	name:                  string,
+	scope_level, scope_next: int,
+	var_kind:              Var_Kind,
+	is_const, is_lexical:  bool,
+}
+
+Eval_Parent_Closure :: struct {
+	name:                 string,
+	var_idx:              int,
+	closure_type:         Closure_Type,
+	var_kind:             Var_Kind,
+	is_const, is_lexical: bool,
+}
+
+Eval_Parent :: struct {
+	arg_count:                                     int,
+	vardefs:                                       []Eval_Parent_Var, // arg_count arguments, then the locals
+	closure_vars:                                  []Eval_Parent_Closure,
+	scope_idx:                                     int, // the caller's innermost scope at the eval call
+	is_strict, new_target_allowed, super_call_allowed, super_allowed, arguments_allowed: bool,
+}
+
+// add_closure_variables: the eval body sees the caller's lexical variables in scope at the call, then its
+// arguments and top-level vars (or only the pseudo variables when called from a parameter scope), then the
+// caller's own closure variables.
+@(private = "file")
+add_closure_variables :: proc(at: ^Atom_Table, fd: ^Func_Def, p: ^Eval_Parent) {
+	var_count := len(p.vardefs) - p.arg_count
+	local_cv :: proc(at: ^Atom_Table, fd: ^Func_Def, vd: ^Eval_Parent_Var, i: int) {
+		append(&fd.closure_var, Closure_Var{closure_type = .local, is_const = vd.is_const, is_lexical = vd.is_lexical, var_kind = vd.var_kind, var_idx = i, var_name = intern(at, vd.name)})
+	}
+	i := p.scope_idx
+	for i >= 0 {
+		vd := &p.vardefs[p.arg_count + i]
+		if vd.scope_level > 0 {local_cv(at, fd, vd, i)}
+		i = vd.scope_next
+	}
+	if i != ARG_SCOPE_END {
+		for k in 0 ..< p.arg_count {
+			append(&fd.closure_var, Closure_Var{closure_type = .arg, var_kind = .normal, var_idx = k, var_name = intern(at, p.vardefs[k].name)})
+		}
+		for k in 0 ..< var_count {
+			vd := &p.vardefs[p.arg_count + k]
+			if vd.scope_level == 0 && vd.name != "<ret>" {local_cv(at, fd, vd, k)}
+		}
+	} else {
+		for k in 0 ..< var_count {
+			vd := &p.vardefs[p.arg_count + k]
+			if vd.scope_level != 0 {continue}
+			tmp := Var_Def{var_name = intern(at, vd.name), var_kind = vd.var_kind}
+			if is_var_in_arg_scope(&tmp) {local_cv(at, fd, vd, k)}
+		}
+	}
+	for cv0, k in p.closure_vars {
+		append(&fd.closure_var, Closure_Var{closure_type = .ref, is_const = cv0.is_const, is_lexical = cv0.is_lexical, var_kind = cv0.var_kind, var_idx = k, var_name = intern(at, cv0.name)})
+	}
+}
+
+// encode_import_types folds the `type` import attribute into the request name ("specifier\0type").
+@(private = "file")
+encode_import_types :: proc(at: ^Atom_Table, m: ^Module_Def, allocator: runtime.Allocator) {
+	for &rme in m.req_module_entries {
+		if rme.attributes == nil {continue}
+		for k, i in rme.attributes.keys {
+			if string_to_utf8(atom_to_string(at, k), allocator) != "type" {continue}
+			name := string_to_utf8(atom_to_string(at, rme.module_name), allocator)
+			ty := string_to_utf8(rme.attributes.values[i], allocator)
+			buf := make([]u8, len(name) + 1 + len(ty), allocator)
+			copy(buf, name)
+			copy(buf[len(name) + 1:], ty)
+			rme.module_name = intern(at, string(buf))
+			break
+		}
+	}
+}
+
+// error_kind classifies a compile error the way QuickJS throws it: a stack overflow is a RangeError
+// ("Maximum call stack size exceeded" at run time), everything else a SyntaxError.
+Error_Kind :: enum u8 {
+	syntax,
+	range,
+}
+
+error_kind :: proc(e: Error) -> Error_Kind {
+	return e.message == "stack overflow" ? .range : .syntax
 }
 
 DEFAULT_COMPILE_MAX_DEPTH :: 6000
@@ -57,6 +157,7 @@ compile_program :: proc(src: string, kind: Program_Kind, allocator: runtime.Allo
 	buf := make([]u8, len(src) + 16, allocator)
 	copy(buf, src)
 	s.buf = buf
+	s.keep_source = opts.keep_source
 	s.line_num = 1
 	s.col_num = 1
 	s.buf_start = 0
@@ -72,8 +173,16 @@ compile_program :: proc(src: string, kind: Program_Kind, allocator: runtime.Allo
 
 	m: ^Module_Def
 	eval_type := Eval_Type.global
-	is_strict := false
-	if kind == .module {
+	is_strict := opts.strict
+	parent := kind == .direct_eval ? opts.parent : nil
+	switch kind {
+	case .script:
+	case .indirect_eval:
+		eval_type = .indirect
+	case .direct_eval:
+		eval_type = .direct
+		if parent != nil {is_strict = parent.is_strict}
+	case .module:
 		eval_type = .module
 		m = new(Module_Def, allocator)
 		m.module_name = s.filename
@@ -86,13 +195,20 @@ compile_program :: proc(src: string, kind: Program_Kind, allocator: runtime.Allo
 	fd := js_new_function_def(s, nil, true, false, 1, 1)
 	s.cur_func = fd
 	fd.eval_type = eval_type
-	fd.has_this_binding = true
+	fd.has_this_binding = eval_type != .direct
 	fd.new_target_allowed = false
 	fd.super_call_allowed = false
 	fd.super_allowed = false
 	fd.arguments_allowed = true
+	if parent != nil {
+		fd.new_target_allowed = parent.new_target_allowed
+		fd.super_call_allowed = parent.super_call_allowed
+		fd.super_allowed = parent.super_allowed
+		fd.arguments_allowed = parent.arguments_allowed
+	}
 	fd.is_strict_mode = is_strict
 	fd.func_name = A__eval_
+	if parent != nil {add_closure_variables(at, fd, parent)}
 	fd.module = m
 	if m != nil {
 		fd.in_function_body = true
@@ -124,6 +240,7 @@ compile_program :: proc(src: string, kind: Program_Kind, allocator: runtime.Allo
 	}
 	if m != nil {
 		m.func_obj = b
+		if opts.encode_import_type {encode_import_types(at, m, allocator)}
 	}
 	return Compile_Result{top = b, module = m, atoms = at, err = no_error}
 }

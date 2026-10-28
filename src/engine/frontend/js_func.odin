@@ -410,6 +410,8 @@ js_parse_function_decl2 :: proc(s: ^Parse_State, func_type: Parse_Func, func_kin
 			} else {
 				emit_op(s, O(.ret_))
 			}
+			// the source ends after the last token of the expression
+			if s.keep_source {fd.source = s.buf[ptr:s.last_ptr]}
 			done = true
 		}
 	}
@@ -431,6 +433,7 @@ js_parse_function_decl2 :: proc(s: ^Parse_State, func_type: Parse_Func, func_kin
 				using_be.using_scope_level = fd.body_scope
 			}
 		}
+		if s.keep_source {fd.source = s.buf[ptr:s.buf_ptr]}
 		if next_token(s) {return true}
 		if has_using_be {
 			label_catch := fd.scopes[fd.body_scope].using_label_catch

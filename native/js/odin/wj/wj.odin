@@ -39,20 +39,26 @@
 // same module) is reached through wj.malloc / wj.free when a domain needs raw memory.
 package wj
 
+import jscapi "wb:engine/jscapi"
+
 // ---- core types (qjs_backend.h) ----
+
+// The types of the engine API are defined once, in src/engine/jscapi (the QuickJS C API on the Odin runtime), and
+// aliased here for both backends: the layer's `foreign` declarations (QuickJS C) and its jscapi aliases
+// (backend_jsrt.odin) then take and return the very same types. See WJ_JSRT in backend.odin.
 
 // On wasm32 QuickJS-ng selects NAN boxing: `typedef uint64_t JSValue` (quickjs.h). Odin passes and returns it in one
 // wasm i64, matching the C ABI with no struct-by-value question. A glue proc takes and returns JSValue by value.
-JSValue :: u64
-Context :: struct {}   // opaque JSContext; only ever used behind a pointer
-Runtime :: struct {}   // opaque JSRuntime
+JSValue :: jscapi.JSValue
+Context :: jscapi.Context   // opaque JSContext; only ever used behind a pointer
+Runtime :: jscapi.Runtime   // opaque JSRuntime
 
 // A method / constructor / function: (ctx, this, argc, argv) -> result or EXCEPTION. The exact JSCFunction signature.
-Native :: #type proc "c" (ctx: ^Context, this_val: JSValue, argc: i32, argv: [^]JSValue) -> JSValue
+Native :: jscapi.Native
 // An attribute getter: (ctx, this) -> result.
-Getter :: #type proc "c" (ctx: ^Context, this_val: JSValue) -> JSValue
+Getter :: jscapi.Getter
 // An attribute setter: (ctx, this, value) -> result (undefined or EXCEPTION).
-Setter :: #type proc "c" (ctx: ^Context, this_val: JSValue, value: JSValue) -> JSValue
+Setter :: jscapi.Setter
 
 // The browser's own handle types the glue passes around (wren_api.h). WR_ABSENT (an absent optional length) and the
 // wr_* types come with the generated imports (wr_imports.odin).

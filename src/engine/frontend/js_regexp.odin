@@ -822,6 +822,17 @@ re_unicode_prop :: proc(s: ^Re_Parser, cr: ^Cr, name: string) -> bool {
 
 @(private = "file")
 re_unicode_sequence_prop :: proc(s: ^Re_Parser, sl: ^Re_String_List, name: string) -> bool {
+	if re_find_name(re_sequence_prop_names[:], name) < 0 {return false}
+	for t in ucd.sequence_prop_tables {
+		if t.name != name {continue}
+		seqs := t.seqs
+		for len(seqs) > 0 {
+			n := int(seqs[0])
+			re_string_add(s, sl, seqs[1:1 + n])
+			seqs = seqs[1 + n:]
+		}
+		return true
+	}
 	return false
 }
 

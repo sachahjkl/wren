@@ -63,6 +63,9 @@ main :: proc() {
 	// Normalization data.
 	emit_normalization(&b, ucd)
 
+	// Properties of strings (the emoji sequence files).
+	emit_sequences(&b, ucd)
+
 	werr := os.write_entire_file(out, b.buf[:])
 	if werr != nil {
 		fmt.eprintfln("could not write %s", out)
@@ -220,6 +223,60 @@ normalize_runs :: proc(runs: ^[dynamic]Run) {
 		}
 	}
 	resize(runs, w)
+}
+
+// ---- Properties of strings ---------------------------------------------------------------------------------
+
+// emoji-sequences.txt / emoji-zwj-sequences.txt: "code points or range ; Type_Field ; description # comment".
+// A range lists single code points; otherwise the space-separated code points form one sequence. Each
+// property becomes a flat []u32 of length-prefixed sequences, in file order; RGI_Emoji is their union.
+emit_sequences :: proc(b: ^strings.Builder, ucd: string) {
+	order := []string{"Basic_Emoji", "Emoji_Keycap_Sequence", "RGI_Emoji_Flag_Sequence", "RGI_Emoji_Modifier_Sequence", "RGI_Emoji_Tag_Sequence", "RGI_Emoji_ZWJ_Sequence"}
+	seqs := map[string][dynamic]u32{}
+	for file in ([]string{"emoji-seq/emoji-sequences.txt", "emoji-seq/emoji-zwj-sequences.txt"}) {
+		data, ok := read_file(path(ucd, file))
+		if !ok {
+			fmt.eprintfln("warning: missing %s", file)
+			continue
+		}
+		it := string(data)
+		for line in strings.split_lines_iterator(&it) {
+			s := strip(line)
+			if len(s) == 0 { continue }
+			fields := strings.split(s, ";")
+			defer delete(fields)
+			if len(fields) < 2 { continue }
+			name := strings.clone(strings.trim_space(fields[1]))
+			list, found := &seqs[name]
+			if !found { seqs[name] = make([dynamic]u32); list = &seqs[name] }
+			cps := strings.trim_space(fields[0])
+			if strings.contains(cps, "..") {
+				lo, hi := parse_range_field(cps)
+				for c in lo ..= hi { append(list, 1, c) }
+			} else {
+				parts := strings.fields(cps)
+				append(list, u32(len(parts)))
+				for p in parts { append(list, parse_hex(p)) }
+				delete(parts)
+			}
+		}
+	}
+	all := make([dynamic]u32)
+	for name in order { if l, ok := seqs[name]; ok { append(&all, ..l[:]) } }
+	fmt.sbprintln(b, "// Properties of strings: each entry is a flat list of length-prefixed code point sequences.")
+	fmt.sbprintln(b, "sequence_prop_tables := []Sequence_Table{")
+	emit_one :: proc(b: ^strings.Builder, name: string, l: []u32) {
+		fmt.sbprintf(b, "\t{{%q, []u32{{", name)
+		for v, i in l {
+			if i > 0 { fmt.sbprint(b, i % 16 == 0 ? ",\n\t\t" : ", ") }
+			fmt.sbprintf(b, "0x%x", v)
+		}
+		fmt.sbprintln(b, "}},")
+	}
+	for name in order { if l, ok := seqs[name]; ok { emit_one(b, name, l[:]) } }
+	emit_one(b, "RGI_Emoji", all[:])
+	fmt.sbprintln(b, "}")
+	fmt.sbprintln(b, "")
 }
 
 // ---- Emission ----------------------------------------------------------------------------------------------

@@ -3,12 +3,15 @@
 // channel, in any realm; it comes back here through wj_port_message (web_message.c), which finds the object by its end.
 // An open channel stays alive (it may receive); close() lets it go. Ported from native/js/runtime/web_broadcast.c;
 // same wjr_* symbols and behaviour. web_bound_add/remove are web_message.odin's; web_message_event lives in
-// web_socket.odin.
+// web_socket.odin. The browser calls are declared in native/js/odin_abi/api_decl and made through jsb.
 package odin_glue
 
+import "../odin_abi/abi"
+import "../odin_abi/api_decl"
+import "../odin/jsb"
 import "../odin/wj"
 
-
+@(private = "file") bc_nothing: abi.Nothing
 
 @(private = "file")
 Bc_Impl :: struct {
@@ -37,6 +40,7 @@ Bc_Impl :: struct {
 
 @(export, link_name = "wjr_BroadcastChannel_constructor")
 wjr_BroadcastChannel_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	context = jsb.glue_context()
 	if wj.is_undefined(new_target) { return wj.JS_ThrowTypeError(ctx, "Constructor BroadcastChannel requires 'new'") }
 	if argc < 1 { return wj.wj_throw_arity(ctx, "BroadcastChannel", 1, argc) }
 	name: wj.Str
@@ -44,10 +48,16 @@ wjr_BroadcastChannel_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.J
 	b := (^Bc_Impl)(wj.libc_calloc(1, size_of(Bc_Impl)))
 	if b == nil { wj.wj_str_free(ctx, &name); return wj.JS_ThrowOutOfMemory(ctx) }
 	b.name = wj.JS_NewStringLen(ctx, name.ptr, name.len)
-	b.end = wj.wr_Broadcast_open(name.ptr, u32(name.len))
+	jsb.host(&b.end, api_decl.Broadcast_open, wj.wr_Broadcast_open, string(name.ptr[:name.len]))
 	wj.wj_str_free(ctx, &name)
-	obj := wj.wj_wrap_owned(ctx, wj.wr_EventTarget_create(), broadcast_iface(), new_target)
-	if wj.is_exception(obj) { if b.end != 0 { wj.wr_Port_close(b.end) }; bc_free(b); return obj }
+	target: api_decl.EventTarget
+	jsb.host(&target, api_decl.EventTarget_create, wj.wr_EventTarget_create)
+	obj := wj.wj_wrap_owned(ctx, u64(target), broadcast_iface(), new_target)
+	if wj.is_exception(obj) {
+		if b.end != 0 { jsb.host(&bc_nothing, api_decl.Port_close, wj.wr_Port_close, b.end) }
+		bc_free(b)
+		return obj
+	}
 	wj.web_set_impl(obj, b, bc_free, bc_mark)
 	if b.end != 0 { web_bound_add(ctx, b.end, obj) }
 	return obj
@@ -66,6 +76,7 @@ wjr_BroadcastChannel_get_name :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 
 @(export, link_name = "wjr_BroadcastChannel_postMessage")
 wjr_BroadcastChannel_postMessage :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	context = jsb.glue_context()
 	b := bc_this(ctx, this_val)
 	if b == nil { return wj.EXCEPTION }
 	if argc < 1 { return wj.wj_throw_arity(ctx, "BroadcastChannel.postMessage", 1, argc) }
@@ -73,13 +84,17 @@ wjr_BroadcastChannel_postMessage :: proc "c" (ctx: ^wj.Context, this_val: wj.JSV
 	length: uint
 	data := web_clone_serialize(ctx, argv[0], &length)
 	if data == nil { return wj.EXCEPTION }
-	st := b.end != 0 ? wj.wr_Broadcast_post(b.end, data, u32(length)) : i32(0)
+	st := abi.Api_Error.None
+	if b.end != 0 {
+		st = jsb.host(&bc_nothing, api_decl.Broadcast_post, wj.wr_Broadcast_post, b.end, abi.Bytes(data[:length]))
+	}
 	web_clone_free(ctx, data)
-	return st < 0 ? wj.wj_throw_status(ctx, st, "BroadcastChannel.postMessage") : wj.UNDEFINED
+	return st != .None ? wj.wj_throw_status(ctx, i32(st), "BroadcastChannel.postMessage") : wj.UNDEFINED
 }
 
 @(export, link_name = "wjr_BroadcastChannel_close")
 wjr_BroadcastChannel_close :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	context = jsb.glue_context()
 	b := bc_this(ctx, this_val)
 	if b == nil { return wj.EXCEPTION }
 	if b.closed { return wj.UNDEFINED }
@@ -87,7 +102,7 @@ wjr_BroadcastChannel_close :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, 
 	if b.end != 0 {
 		end := b.end
 		b.end = 0
-		wj.wr_Port_close(end)
+		jsb.host(&bc_nothing, api_decl.Port_close, wj.wr_Port_close, end)
 		web_bound_remove(end)   // (may drop the last reference to `this`: nothing of it is used after)
 	}
 	return wj.UNDEFINED

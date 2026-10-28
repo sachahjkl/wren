@@ -40,3 +40,9 @@ Port_ship :: #type proc(end: u64)
 Port_post :: #type proc(end: u64, data: abi.Bytes, ports: []u64) -> abi.Api_Error
 // port.close(): the pair is disentangled.
 Port_close :: #type proc(end: u64)
+
+// new BroadcastChannel(name): an end of the router keyed by the realm's origin and name; 0 for an opaque origin
+// (the object sends and receives nothing). Port_close closes it.
+Broadcast_open :: #type proc(name: string) -> u64
+// channel.postMessage: the serialized message goes to every other end of the channel, in any realm.
+Broadcast_post :: #type proc(end: u64, data: abi.Bytes) -> abi.Api_Error
