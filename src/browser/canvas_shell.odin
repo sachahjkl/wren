@@ -76,7 +76,7 @@ canvas_shell_init :: proc(app: ^App) {
 			o: font.Outline
 			defer font.outline_destroy(&o)
 			var_path: ^canvas2d.Path
-			if font.dwrite_outline_provider(page_render.fonts.state, font.Font_Id(face), gid, 0.0005, &o) && len(o.quads) > 0 {
+			if font.glyph_outline(page_render.fonts.state, font.Font_Id(face), gid, 0.0005, &o) && len(o.quads) > 0 {
 				var_path = new(canvas2d.Path)
 				start := 0
 				for end in o.ends {

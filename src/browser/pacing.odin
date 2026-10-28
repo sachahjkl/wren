@@ -27,7 +27,6 @@ import "core:os"
 import "core:strconv"
 import "core:strings"
 import "core:time"
-import win "core:sys/windows"
 import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:render"
@@ -142,7 +141,7 @@ Pacer :: struct {
 Pacing :: struct {
 	cfg:   Pacer_Settings,
 	watch: int,
-	timer: win.HANDLE,   // the timing of timed frames (high resolution waitable timer)
+	timer: rawptr,   // the timing of timed frames (a high-resolution waitable timer on Windows; none elsewhere)
 }
 
 // The pacing of the window being framed (the active one; an App with no window: its bare window's).
@@ -155,9 +154,7 @@ frame_now_ms :: proc() -> f64 { return the_app != nil ? pacer_of(the_app).frame_
 pacer_init :: proc(app: ^App) {
 	app.pacing.cfg = pacer_settings_from_prefs(&app.prefs)
 	render.set_latency_probe(&app.r, app.pacing.cfg.latency_probe)
-	CREATE_WAITABLE_TIMER_HIGH_RESOLUTION :: 0x2
-	app.pacing.timer = win.CreateWaitableTimerExW(nil, nil, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, win.TIMER_ALL_ACCESS)
-	if app.pacing.timer == nil { app.pacing.timer = win.CreateWaitableTimerExW(nil, nil, 0, win.TIMER_ALL_ACCESS) }   // before Windows 10 1803
+	app.pacing.timer = pacer_timer_create()   // pacing_timer_<os>.odin: a high-resolution waitable timer on Windows, else none
 	app.pacing.watch = config.watch(&app.prefs, "browser.frame.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		app := (^App)(user)
 		app.pacing.cfg = pacer_settings_from_prefs(p)
@@ -171,7 +168,7 @@ pacer_init :: proc(app: ^App) {
 
 pacer_destroy :: proc(app: ^App) {
 	config.unwatch(&app.prefs, app.pacing.watch)
-	if app.pacing.timer != nil { win.CloseHandle(app.pacing.timer) }
+	pacer_timer_destroy(app.pacing.timer)
 	app.pacing = {}
 }
 
@@ -293,10 +290,9 @@ pacer_wait :: proc(app: ^App, idled: bool) {
 	pacer.decision = d
 	pacer_latency(app, &pacer.latency, d.latency == 2)
 	if d.wait_ns > 0 && timer != nil {
-		due := win.LARGE_INTEGER(-(d.wait_ns / 100))   // relative, in 100 ns units
-		if win.SetWaitableTimerEx(timer, &due, 0, nil, nil, nil, 0) {
-			platform.wait_handle(wnd.win, rawptr(timer), int(d.wait_ns / 1_000_000) + 50)
-		}
+		// arm the timer for d.wait_ns from now and wait on it while the window keeps taking input; on Linux there is no
+		// such timer, so pacer_timer_wait sleeps the thread instead (the FIFO vblank does the fine pacing there).
+		pacer_timer_wait(wnd.win, timer, d.wait_ns)
 	}
 	// The latency object is a semaphore released once per frame the screen takes: a wake that ends without a frame
 	// (frame's early return) keeps the slot it took, or the next frame would wait for a present that never came, until

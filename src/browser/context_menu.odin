@@ -12,8 +12,8 @@ import "core:fmt"
 import "core:os"
 import "core:path/filepath"
 import "core:strings"
-import win "core:sys/windows"
 import "toolkit:draw"
+import "toolkit:platform"
 import "toolkit:ui"
 import "wb:base"
 import "wb:dom"
@@ -544,31 +544,25 @@ save_job_free :: proc(job: ^Save_Job) {
 @(private = "file")
 save_dialog_work :: proc(data: rawptr) {
 	job := (^Save_Job)(data)
-	if win.CoInitializeEx(nil, .APARTMENTTHREADED) < 0 { return }
-	defer win.CoUninitialize()
-	dlg: ^win.IFileSaveDialog
-	if win.CoCreateInstance(win.CLSID_FileSaveDialog, nil, win.CLSCTX_INPROC_SERVER, win.IID_IFileSaveDialog, cast(^rawptr)&dlg) < 0 || dlg == nil { return }
-	defer dlg->Release()
-	dlg->SetFileName(win.utf8_to_wstring(job.suggested, context.temp_allocator))
+	dlg := platform.File_Dialog{
+		owner            = active_window(job.app).win,
+		suggested_name   = job.suggested,
+		all_files        = true,
+		overwrite_prompt = true,
+		remember_id      = "save-as",
+	}
 	ext := filepath.ext(job.suggested)
+	filters: [1]platform.File_Filter
 	if len(ext) > 1 {
-		pattern := win.utf8_to_wstring(strings.concatenate({"*", ext}, context.temp_allocator), context.temp_allocator)
-		label := win.utf8_to_wstring(strings.concatenate({strings.to_upper(ext[1:], context.temp_allocator), " file"}, context.temp_allocator), context.temp_allocator)
-		types := [2]win.COMDLG_FILTERSPEC{{label, pattern}, {win.L("All files"), win.L("*.*")}}
-		dlg->SetFileTypes(2, &types[0])
-		dlg->SetDefaultExtension(win.utf8_to_wstring(ext[1:], context.temp_allocator))
+		dlg.default_ext = ext[1:]
+		label := strings.concatenate({strings.to_upper(ext[1:], context.temp_allocator), " file"}, context.temp_allocator)
+		patterns := [1]string{strings.concatenate({"*", ext}, context.temp_allocator)}
+		filters[0] = {name = label, patterns = patterns[:]}
+		dlg.filters = filters[:]
 	}
-	if dlg->Show(active_window(job.app).win.hwnd) < 0 { free_all(context.temp_allocator); return }
-	item: ^win.IShellItem
-	if dlg->GetResult(&item) < 0 || item == nil { free_all(context.temp_allocator); return }
-	defer item->Release()
-	wpath: win.LPWSTR
-	if item->GetDisplayName(.FILESYSPATH, &wpath) >= 0 && wpath != nil {
-		n := 0
-		for (cast([^]u16)wpath)[n] != 0 { n += 1 }
-		if s, err := win.utf16_to_utf8((cast([^]u16)wpath)[:n], context.allocator); err == nil { job.path = s }
-		win.CoTaskMemFree(wpath)
-	}
+	res := platform.save_file_dialog(dlg, context.allocator)
+	defer platform.dialog_result_destroy(&res, context.allocator)
+	if res.status == .Chosen && len(res.paths) > 0 { job.path = strings.clone(res.paths[0]) }
 	free_all(context.temp_allocator)
 }
 

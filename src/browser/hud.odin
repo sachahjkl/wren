@@ -15,13 +15,13 @@ package browser
 import "core:fmt"
 import "core:math"
 import "core:strings"
-import win "core:sys/windows"
 import "toolkit:draw"
 import "toolkit:font"
 import "toolkit:platform"
 import "toolkit:render"
 import "toolkit:ui"
 import "wb:config"
+import "wb:host"
 import lay "wb:layout"
 import "wb:style"
 import "wb:wasm"
@@ -247,7 +247,7 @@ Hud :: struct {
 	style_pass, style_serial: u64,
 	last_frame_ms: f64,
 	nums:         Hud_Numbers,
-	settle:       win.UINT_PTR,        // wake to bring the numbers to rest after the last frame (Windows thread timer)
+	settle:       base.Handle,         // wake to bring the numbers to rest after the last frame (a host loop timer)
 	settle_skip:  bool,                // the frames of that wake are not samples
 	title_ms:     f64,
 	title_text:   string,              // owned: what the window shows
@@ -310,7 +310,7 @@ hud_resize :: proc(app: ^App) {
 }
 
 hud_destroy :: proc(app: ^App) {
-	if hud.settle != 0 { win.KillTimer(nil, hud.settle) }
+	if hud.settle != base.NIL_HANDLE { host.clear_timer(&app.loop, hud.settle); hud.settle = base.NIL_HANDLE }
 	config.unwatch(&app.prefs, hud.watch)
 	hud_settings_destroy(&hud.cfg)
 	ui.history_destroy(&hud.history)
@@ -421,25 +421,22 @@ hud_sample :: proc(app: ^App, now: f64) {
 	}
 }
 
-// After the last frame of a burst: one wake when the rate window has passed, so the numbers fall to rest. A thread
-// timer of Windows, not one of the event loop: its message wakes the loop for exactly one frame (a task of the loop
-// asks for more), which the numbers are refreshed for before it is built and which is no sample.
+// After the last frame of a burst: one wake when the rate window has passed, so the numbers fall to rest. A one-shot
+// timer of the event loop, not of the window: its fire wakes the loop for exactly one frame (a task of the loop asks
+// for more), which the numbers are refreshed for before it is built and which is no sample.
 @(private = "file")
 hud_arm_settle :: proc() {
-	if hud.settle != 0 { return }
-	hud.settle = win.SetTimer(nil, 0, u32(hud.cfg.window_ms) + 20, hud_settle_timer)
+	if hud.settle != base.NIL_HANDLE || the_app == nil { return }
+	hud.settle = host.set_timer(&the_app.loop, hud.cfg.window_ms + 20, 0, hud_settle_timer, the_app)
 }
 
 @(private = "file")
-hud_settle_timer :: proc "system" (hwnd: win.HWND, msg: win.UINT, id: win.UINT_PTR, ms: win.DWORD) {
-	context = base.process_context()
-	win.KillTimer(nil, id)
-	if id != hud.settle { return }
-	hud.settle = 0
-	app := the_app
+hud_settle_timer :: proc(data: rawptr) {
+	hud.settle = base.NIL_HANDLE
+	app := (^App)(data)
 	now := ui.now_ms()
 	if idle := now - hud.last_frame_ms; idle < hud.cfg.window_ms {
-		hud.settle = win.SetTimer(nil, 0, u32(hud.cfg.window_ms - idle) + 20, hud_settle_timer)
+		hud.settle = host.set_timer(&app.loop, hud.cfg.window_ms - idle + 20, 0, hud_settle_timer, app)
 		return
 	}
 	hud.settle_skip = true   // the frame this wakes is no sample
@@ -534,23 +531,11 @@ sort_f32 :: proc(v: []f32) {
 ////////////////////////////////
 // Memory of the process
 
-@(private = "file")
-Process_Memory_Counters_Ex :: struct {
-	cb, page_fault_count: u32,
-	peak_working_set, working_set, quota_peak_paged, quota_paged, quota_peak_nonpaged, quota_nonpaged, pagefile, peak_pagefile, private_usage: uint,
-}
-
-foreign import kernel32_hud "system:Kernel32.lib"
-@(default_calling_convention = "system", private = "file")
-foreign kernel32_hud {
-	K32GetProcessMemoryInfo :: proc(process: win.HANDLE, counters: ^Process_Memory_Counters_Ex, cb: u32) -> win.BOOL ---
-}
-
-// Working set and private bytes of the process.
+// Working set and private bytes of the process (base.process_memory, neutral: the working set / VmRSS and the private
+// commit / RssAnon+VmSwap). `ok` is true when the system could report any of it.
 process_memory :: proc() -> (working_set, private_bytes: int, ok: bool) {
-	c := Process_Memory_Counters_Ex{cb = size_of(Process_Memory_Counters_Ex)}
-	if !K32GetProcessMemoryInfo(win.GetCurrentProcess(), &c, c.cb) { return }
-	return int(c.working_set), int(c.private_usage), true
+	m := base.process_memory()
+	return int(m.resident), int(m.private), m.resident != 0 || m.private != 0
 }
 
 ////////////////////////////////

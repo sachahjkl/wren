@@ -149,6 +149,45 @@ What still calls Win32 directly in `src/browser` (next slice, each a small neutr
 | `forms_shell.odin` | `CHOOSECOLORW` (the system colour picker) | the toolkit's own colour picker, or gate behind `*_windows.odin` |
 | `video_shell.odin` | `media.set_gpu_device` (the renderer's D3D device for hardware video) | a neutral "renderer device" handle, or no hardware video on wgpu yet |
 
+## Slice 6 (2026-10-28, night): `src/browser` type-checks for Linux
+
+`odin check src/browser -target:linux_amd64` now passes but for the build-artifact `#load`s (`build/js/wren_js.wasm`,
+`build/wasmtime/LICENSE`, `ext/lexbor/LICENSE`, `ext/lexbor/NOTICE`; `tools/linux_ci.sh` and `build.sh deps` provide or
+stub them). **Errors in `src/browser`'s own files for Linux (excluding those `#load`s): ≈28 (slice 5) → 0.** The engine
+(`src\` without `src\tools`) is now **36 / 37** for Linux (left: a full Linux *link*, which needs `libwgpu_native.a`).
+`a11y` also passes now that the toolkit's platform a11y stub is in.
+
+Every direct Win32 call left in the shell moved to a neutral service or to a documented `*_windows.odin` / `*_other.odin`
+split; Windows is byte-for-byte the same (the Windows code was moved, not rewritten).
+
+| Area (files) | Win32 before | How it is neutral now |
+|---|---|---|
+| process memory (`memcheck`, `hud`, `blocker_measure`) | `GetProcessMemoryInfo`, heaps, GDI/USER | `base.process_memory` / `base.process_counters` / `base.memory_split` (toolkit `testkit`); the heap / VM walk of the `vmmap` step split (`memcheck_report_<os>.odin`) |
+| process time / threads (`remote_state`, `blocker_measure`, `prof`) | `GetProcessTimes`, Toolhelp | `base.process_times` / `base.process_threads` (`process_times_<os>.odin`: `/proc` on Linux) |
+| timers (`hud` settle, `pacing`) | `SetTimer`, `CreateWaitableTimerExW` | a `host` loop timer; `pacing_timer_<os>.odin` (a high-res sleep on Linux, the FIFO vblank paces) |
+| file stores (`download`, `global_history`, `session`, `palette`) | `CreateFileW`, `WriteFile`, `MoveFileExW` | `core:os` positional writes + `base.file_write_atomic` / `file_replace`; cross-volume move split (`download_move_<os>.odin`) |
+| dialogs / shell (`download`, `blocker_files`, `context_menu`, `commands`, `forms_shell`, `license_shell`) | `IFileDialog`, `CHOOSECOLORW`, `ShellExecuteW`, `SHGetKnownFolderPath`, `RegGetValueW` | `platform.open_file_dialog` / `save_file_dialog` / `known_folder_path` / `open_url` / `open_path` / `reveal_in_folder`; the MIME, colour picker, caret-blink and double-click split (`forms_shell_<os>.odin`) |
+| time zone (`history_ui`, `date_display`, `devtools_console_log`, `crash_recovery`) | `GetDateFormatEx`, `FileTimeToSystemTime`, `SystemTimeToTzSpecificLocalTime` | `js.timezone_offset` + a civil-date computation (neutral); the field short form split (`date_display_<os>.odin`) |
+| window ops (`windows`, `remote_methods`, `dnd_shell`, `webauthn_shell`, `tab_drag`) | `SetForegroundWindow`, `IsWindowVisible`, `SetWindowPos`, `WM_DPICHANGED`, z-order, `GetCursorPos` | `platform.raise_window` / `is_window_visible` (new, toolkit); the rest split (`remote_window_<os>.odin`, `tab_drag_<os>.odin`) |
+| appearance (`appearance`) | theme / accent registry + `RegNotifyChangeKeyValue` | `platform.dark_mode_preferred` / `watch_color_scheme` off Windows (`appearance_<os>.odin`); accent / selection to defaults |
+| crash markers (`crash_recovery`) | `OpenProcess`, `GetProcessTimes`, `GetCurrentProcessId` | `crash_recovery_<os>.odin` (`/proc/<pid>/stat` on Linux, FILETIME-scale start time kept) |
+| input / chrome frames (`app_commands`, `local_paths`, `smooth_scroll`, `shell_frames`) | mouse subclass, `WM_DROPFILES`, `SystemParametersInfoW`, `GetQueueStatus` | split (`app_commands/local_paths/scroll_steps/shell_frames_<os>.odin`); file drops ride the toolkit DnD |
+| paths (`demos`, `local_paths`) | `GetModuleFileNameW`, drive letters, `\` | `desktop.executable_path` + `filepath`; POSIX paths on Linux (`local_paths_other.odin`) |
+| glyph outlines / colour (`canvas_shell`, `fonts`) | `font.dwrite_outline_provider` | neutral `font.glyph_outline` / `font.color_renderable` (toolkit) |
+| memory trim (`memory_trim`) | `IDXGIDevice3::Trim`, `HeapCompact` | split (`memory_trim_<os>.odin`); the wgpu driver manages its own pools |
+| CDP over TCP (`cdp` via `remote`) | raw Winsock | `remote/tcp_server_other.odin` reports the channel unavailable (not ported) |
+| dev-tools media preview (`devtools_net_media`) | MCI (`mciSendStringW`) | `mci` split (`devtools_net_media_<os>.odin`); MP4 / WebM still play through the built-in player |
+| `<video>` GPU device (`video_shell`) | `media.set_gpu_device` (D3D) | gated `when !render.USE_WGPU` (no shared device on wgpu) |
+
+What is an honest stub on Linux (the lead should try these under WSLg, and they are the next chantiers): the system
+**colour picker** for `<input type=color>` (keeps the field's value; wire the toolkit's own or the XDG colour portal),
+the mouse's **back / forward buttons** and media keys (the toolkit surfaces only left/right/middle and no media keys),
+the **CDP debugging channel over TCP** (`--remote-debugging-port`; a Linux socket server is unwritten — the `wren ctl`
+Unix socket works), **tab tear-off** across windows under a real window manager (Wayland cannot position windows or read
+z-order; X11 can but the toolkit does not surface it yet), the desktop's **accent / selection colours** and
+**wheel-scroll** lines-per-notch (defaults used until the platform layer reports them), and the dev-tools preview of
+audio formats the built-in player cannot demux (MP3, WAV, …; MCI is Windows-only).
+
 ## Media on Linux: decisions
 
 - **AV1**: rav1d (already linked for AVIF), in software, on every system (`av1_soft.odin`); Windows keeps Media

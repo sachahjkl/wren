@@ -16,7 +16,9 @@ webauthn_shell_init :: proc(app: ^App) {
 			if app == nil || active_window(app).win == nil { return nil, true }
 			t := current_tab(app)
 			shown := t != nil && t.page == p && t.kind == .Web
-			return rawptr(active_window(app).win.hwnd), shown && (active_window(app).win.focused || active_window(app).win.active)
+			// the native window handle the system WebAuthn dialog belongs to (Windows' webauthn.dll; 0 on Linux, where
+			// libfido2 needs none — window_native_handle, remote_window_<os>.odin)
+			return rawptr(uintptr(window_native_handle(active_window(app).win))), shown && (active_window(app).win.focused || active_window(app).win.active)
 		},
 		// the chip appears or goes: the next frame draws it (an idle window draws nothing otherwise)
 		changed = proc(p: ^page.Page) {

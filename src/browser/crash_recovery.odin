@@ -26,7 +26,6 @@ import "core:slice"
 import "core:strconv"
 import "core:strings"
 import "core:time"
-import win "core:sys/windows"
 import "toolkit:ui"
 import "wb:base"
 import "wb:blocker"
@@ -206,17 +205,11 @@ read_bounded :: proc(path: string, max_bytes: int) -> (text: string, ok: bool) {
 	return string(data), true
 }
 
-foreign import kernel32_recovery "system:Kernel32.lib"
-
-@(default_calling_convention = "system", private = "file")
-foreign kernel32_recovery {
-	GetLocalTime :: proc(st: ^win.SYSTEMTIME) ---
-}
-
+// A local-time stamp for a backup's name, "2026-10-28 14-30-07". local_time (history_ui.odin) is neutral (the system's
+// time zone, from Win32 or the C library through js.timezone_offset).
 local_stamp :: proc() -> string {
-	st: win.SYSTEMTIME
-	GetLocalTime(&st)
-	return fmt.tprintf("%04d-%02d-%02d %02d-%02d-%02d", st.year, st.month, st.day, st.hour, st.minute, st.second)
+	lt := local_time(time.time_to_unix_nano(time.now()) / 1e6)
+	return fmt.tprintf("%04d-%02d-%02d %02d-%02d-%02d", lt.year, lt.month, lt.day, lt.hour, lt.minute, lt.second)
 }
 
 // The newest report that the abnormal end left in <profile>\crashes (crashtrace): a crash with its stack, else the note of
@@ -249,17 +242,8 @@ FILETIME_UNIX_EPOCH :: 116_444_736_000_000_000
 ////////////////////////////////
 // Processes
 
-// Whether process `pid` runs, and when it began (FILETIME; 0 when the system would not say: another user's process).
-process_created :: proc(pid: u32) -> (created: u64, alive: bool) {
-	h := win.OpenProcess(win.PROCESS_QUERY_LIMITED_INFORMATION, false, pid)
-	if h == nil { return 0, win.GetLastError() == win.ERROR_ACCESS_DENIED }
-	defer win.CloseHandle(h)
-	code: win.DWORD
-	if !win.GetExitCodeProcess(h, &code) || code != 259 { return 0, false }   // STILL_ACTIVE
-	c, e, k, u: win.FILETIME
-	if !win.GetProcessTimes(h, &c, &e, &k, &u) { return 0, true }
-	return u64(c.dwHighDateTime) << 32 | u64(c.dwLowDateTime), true
-}
+// process_created (crash_recovery_<os>.odin): whether `pid` runs and when it began, as a FILETIME-scale value (100 ns
+// since 1601, what crash_report_find compares against a report's write time). 0 means the system would not say.
 
 // The process of a marker: running, and the same one (a process id the system gave to another program since is not it).
 marker_process_alive :: proc(pid: u32, created: u64) -> bool {
@@ -312,7 +296,7 @@ recovery_start :: proc(app: ^App) {
 	if plan.kind == .Live { return }
 	recovery.active = true
 	recovery.dir = strings.clone(app.profile_dir)
-	pid := u32(win.GetCurrentProcessId())
+	pid := current_pid()
 	created, _ := process_created(pid)
 	recovery.self = {pid = pid, created = created, restoring = plan.restoring}
 	recovery.text, recovery.backup = plan.text, plan.backup

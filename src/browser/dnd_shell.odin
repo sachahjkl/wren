@@ -16,7 +16,6 @@ package browser
 // elevated OLE target.
 
 import "core:strings"
-import win "core:sys/windows"
 import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:ui"
@@ -286,7 +285,7 @@ hand_off :: proc(app: ^App, t: ^Tab) {
 	steps, scripted := remote_drag_steps(app)   // remote_methods.odin
 	if scripted {
 		platform.drag_script(wnd.win, steps)
-	} else if !win.IsWindowVisible(wnd.win.hwnd) {
+	} else if !platform.is_window_visible(wnd.win) {
 		end_page_drag(.None)
 		return
 	}

@@ -17,7 +17,6 @@ import "core:strconv"
 import "core:strings"
 import "core:time"
 import "core:unicode/utf8"
-import win "core:sys/windows"
 import "toolkit:draw"
 import "toolkit:font"
 import "toolkit:platform"
@@ -30,14 +29,6 @@ import "wb:host"
 import "wb:page"
 import lay "wb:layout"
 import "wb:style"
-
-foreign import user32 "system:User32.lib"
-
-@(default_calling_convention = "system")
-foreign user32 {
-	GetCaretBlinkTime :: proc() -> u32 ---
-	GetDoubleClickTime :: proc() -> u32 ---
-}
 
 Painted :: struct {
 	content: draw.Rect,     // physical pixels, in the space it was drawn in (screen space unless a CSS transform applies)
@@ -144,15 +135,13 @@ caret_reset :: proc(fv: ^Forms_View) { fv.caret_epoch = time.tick_now() }
 @(private = "file")
 blink_ms :: proc(app: ^App) -> int {
 	if ms := app.page_settings.forms.caret_blink_ms; ms > 0 { return ms }
-	sys := GetCaretBlinkTime()
-	if sys == 0xFFFFFFFF { return -1 }   // INFINITE: the user turned blinking off
-	return int(max(sys, 100))
+	return system_caret_blink_ms()   // forms_shell_<os>.odin: the system's blink rate (Windows), or a sane default
 }
 
 @(private = "file")
 double_click_ms :: proc(app: ^App) -> f64 {
 	if ms := app.page_settings.forms.double_click_ms; ms > 0 { return f64(ms) }
-	return f64(GetDoubleClickTime())
+	return system_double_click_ms()
 }
 
 ////////////////////////////////
@@ -1662,16 +1651,15 @@ frames_take_submission :: proc(app: ^App, p: ^page.Page, s: ^forms.Submission) -
 	return true
 }
 
-// mailto: and other schemes the browser does not handle: the system's handler (on a worker: the shell may block).
+// mailto: and other schemes the browser does not handle: the system's handler (platform.open_url, on a worker: the
+// shell may block).
 @(private = "file")
 open_external :: proc(app: ^App, target: string) {
 	w := new(string)
 	w^ = strings.clone(target)
 	host.run_blocking(&app.blocking, proc(data: rawptr) {
 		s := (^string)(data)
-		_ = win.CoInitializeEx(nil, .APARTMENTTHREADED)
-		win.ShellExecuteW(nil, win.L("open"), win.utf8_to_wstring(s^, context.temp_allocator), nil, nil, win.SW_SHOWNORMAL)
-		win.CoUninitialize()
+		platform.open_url(s^)
 		free_all(context.temp_allocator)
 	}, proc(data: rawptr) {
 		s := (^string)(data)
@@ -1693,7 +1681,7 @@ Picker_Job :: struct {
 	color:     bool,
 	multiple:  bool,
 	filter:    string,          // owned, UTF-8 with NULs
-	owner:     win.HWND,
+	owner:     ^platform.Window,
 	files:     [dynamic]forms.File,
 	initial:   u32,             // COLORREF
 	result:    u32,
@@ -1707,7 +1695,7 @@ start_picker :: proc(app: ^App, p: ^page.Page, input: base.Handle, color: bool) 
 	n := dom.get(p.doc, input)
 	if n == nil { return }
 	job := new(Picker_Job)
-	job.app, job.page, job.input, job.color, job.owner = app, p, input, color, active_window(app).win.hwnd
+	job.app, job.page, job.input, job.color, job.owner = app, p, input, color, active_window(app).win
 	job.multiple = forms.has_attr(n, "multiple")
 	job.max_files = app.page_settings.forms.upload_max_files
 	if color {
@@ -1766,33 +1754,21 @@ accept_filter :: proc(accept: string) -> string {
 	return strings.join(patterns[:], ";")
 }
 
-// MIME type of a file from the system's registry (HKCR\.ext "Content Type"), else the browser's table.
+// MIME type of a file from the system (Windows: the registry's HKCR\.ext "Content Type"; elsewhere nothing to ask), else
+// the browser's own table. system_mime_of_path is in forms_shell_windows.odin / forms_shell_other.odin.
 @(private = "file")
 mime_of_path :: proc(path: string) -> string {
-	dot := strings.last_index_byte(path, '.')
-	slash := strings.last_index_any(path, "\\/")
-	if dot > slash && dot >= 0 {
-		ext := win.utf8_to_wstring(path[dot:], context.temp_allocator)
-		buf: [128]u16
-		size := u32(size_of(buf))
-		if win.RegGetValueW(win.HKEY_CLASSES_ROOT, ext, win.L("Content Type"), win.RRF_RT_REG_SZ, nil, &buf, &size) == 0 {
-			n := 0
-			for n < len(buf) && buf[n] != 0 { n += 1 }
-			if s, err := win.utf16_to_utf8(buf[:n], context.temp_allocator); err == nil && s != "" { return strings.clone(s) }
-		}
-	}
+	if m := system_mime_of_path(path); m != "" { return m }
 	return strings.clone(fetch.mime_for_extension(path))
 }
 
 @(private = "file")
 picker_work :: proc(data: rawptr) {
 	job := (^Picker_Job)(data)
-	_ = win.CoInitializeEx(nil, .APARTMENTTHREADED)
-	defer win.CoUninitialize()
 	if job.color {
-		custom: [16]win.COLORREF
-		cc := win.CHOOSECOLORW{lStructSize = size_of(win.CHOOSECOLORW), hwndOwner = job.owner, rgbResult = win.COLORREF(job.initial), lpCustColors = &custom[0], Flags = win.CC_RGBINIT | win.CC_FULLOPEN}
-		if win.ChooseColorW(&cc) { job.ok = true; job.result = u32(cc.rgbResult) }
+		// the system colour picker (Windows: the common colour dialog; other systems answer "unsupported" until the
+		// toolkit has its own, so the field keeps its value). system_pick_color is in forms_shell_<os>.odin.
+		if c, ok := system_pick_color(job.owner, job.initial); ok { job.ok, job.result = true, c }
 		return
 	}
 	// the toolkit's Open dialog (the one File System Access pickers use too)

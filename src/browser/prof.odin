@@ -32,6 +32,7 @@ import "wb:images"
 import lay "wb:layout"
 import "wb:page"
 
+when ODIN_OS == .Windows {
 foreign import dbghelp "system:dbghelp.lib"
 foreign import kernel32_prof "system:Kernel32.lib"
 
@@ -40,6 +41,7 @@ foreign kernel32_prof {
 	GetModuleHandleExW :: proc(flags: u32, address: rawptr, out: ^win.HMODULE) -> win.BOOL ---
 	RtlLookupFunctionEntry :: proc(pc: u64, image_base: ^u64, history: rawptr) -> rawptr ---
 	RtlVirtualUnwind :: proc(kind: u32, image_base: u64, pc: u64, entry: rawptr, ctx: ^win.CONTEXT, handler_data: ^rawptr, establisher: ^u64, pointers: rawptr) -> rawptr ---
+}
 }
 
 CONTEXT_CONTROL_AMD64 :: 0x100001
@@ -84,9 +86,13 @@ qpc_freq_cached: f64
 
 qpc_ms_since :: proc "contextless" (t0: i64) -> f64 {
 	if qpc_freq_cached == 0 {
-		f: win.LARGE_INTEGER
-		win.QueryPerformanceFrequency(&f)
-		qpc_freq_cached = f64(f)
+		when ODIN_OS == .Windows {
+			f: win.LARGE_INTEGER
+			win.QueryPerformanceFrequency(&f)
+			qpc_freq_cached = f64(f)
+		} else {
+			qpc_freq_cached = 1e9   // qpc() returns nanoseconds off Windows
+		}
 	}
 	if qpc_freq_cached == 0 { return 0 }
 	return f64(qpc() - t0) * 1000 / qpc_freq_cached
