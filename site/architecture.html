@@ -53,7 +53,7 @@
       <div class="layer"><div class="name">Page</div><div class="boxes">
         <div class="box"><b>page</b><span>DOM, realm, instances, requests, timers, origin and CSP</span></div>
         <div class="box wasm"><b>Web IDL → bindgen</b><span>generated, checked imports and JS bindings</span></div>
-        <div class="box wasm ext"><b>QuickJS-ng</b><span>the page's JavaScript, as a Wasm module</span></div>
+        <div class="box wasm"><b>JavaScript engine</b><span>Odin: compiler, interpreter and loop JIT; the page's JavaScript, as a Wasm module</span></div>
         <div class="box wasm ext"><b>Wasmtime</b><span>every module, compiled by Cranelift</span></div>
       </div></div>
       <div class="arrow">▼</div>
@@ -105,7 +105,7 @@
           <tr><td class="n">css · style</td><td>Tokenizer, parser, selectors, media and container queries; the cascade with layers, <code>var()</code>, a rule index, a Bloom filter and partial restyles.</td></tr>
           <tr><td class="n">layout</td><td>Block, inline, flex, grid and tables, bidi and line breaking, incremental relayout, display lists cut into paint chunks.</td></tr>
           <tr><td class="n">wasm</td><td>Wasmtime: instances, imports defined on the linker with address checks, deadlines, limits, compiled-code caches, the WASI subset the JavaScript engine needs, pre-initialization of its image.</td></tr>
-          <tr><td class="n">js · native/js</td><td>The JavaScript engine: QuickJS-ng compiled to WebAssembly, bindings generated from the specifications' Web IDL, hand-written members; on the browser side, its preferences and the bytecode cache.</td></tr>
+          <tr><td class="n">js · native/js</td><td>The JavaScript engine, written in Odin and compiled to WebAssembly (src/engine), with its glue: bindings generated from the specifications' Web IDL, hand-written members; on the browser side, its preferences and the bytecode cache.</td></tr>
           <tr><td class="n">page</td><td>One document: its DOM, Wasm instances, JavaScript realm and script loading, requests, timers, origin and CSP; the implementations behind the generated imports.</td></tr>
           <tr><td class="n">images · webfont</td><td>Image decoding on threads (Rust crates for every format; WIC for HEIF and on request), WOFF and WOFF2.</td></tr>
           <tr><td class="n">browser</td><td>The shell: window, tabs, navigation, address bar, painter and compositor, about:config, status bar, profiling.</td></tr>
@@ -171,8 +171,7 @@
     <p class="intro">Wren has no native JavaScript engine. The scripts of a page run in a WebAssembly module, so they
       are held to the same rules as every other guest: its own instance, its own memory, a deadline on every call.</p>
     <div class="cards">
-      <div class="card"><h3>QuickJS-ng in WebAssembly</h3><p>QuickJS-ng 0.17.0, patched, compiled by a pinned Zig
-        to a WASI module. Each page and each JavaScript worker gets its own instance, a realm. A trap loses that realm
+      <div class="card"><h3>Our own engine, in WebAssembly</h3><p>An engine written in Odin (a compiler to QuickJS-ng bytecode, an interpreter, a loop JIT), compiled to a WASI module and linked with a pinned Zig. Each page and each JavaScript worker gets its own instance, a realm. A trap loses that realm
         (the status bar says <code>JS stopped</code>), never the browser.</p></div>
       <div class="card"><h3>Pre-initialized at build time</h3><p>The interfaces, prototypes and preludes of the web
         platform are built once, when the browser is built, and saved in the module's memory image, which is
@@ -226,7 +225,7 @@
           <tr><td>Loading the same module from the disk cache after a restart</td><td class="n">0.52 ms</td></tr>
           <tr><td>Numeric loop, 50 M iterations: Cranelift, against the interpreter Wren used before</td><td class="n">124 ms vs 3146 ms</td></tr>
           <tr><td>A new JavaScript realm, from the pre-initialized image (median of 50)</td><td class="n">0.5 ms</td></tr>
-          <tr><td>Octane, JavaScript engine in Wasm / the same engine native / Edge</td><td class="n">1664 / 2169 / 91318</td></tr>
+          <tr><td>Octane, QuickJS-ng in Wasm / the same engine native / Edge (measured before the Odin engine)</td><td class="n">1664 / 2169 / 91318</td></tr>
           <tr><td>From JavaScript: <code>node.nodeType</code>, <code>getElementById</code>, <code>createElement</code> + <code>appendChild</code></td><td class="n">64 / 193 / 1311 ns</td></tr>
           <tr><td>test262, engine in Wasm: runs passed</td><td class="n">99.92 % of 82,220</td></tr>
           <tr><td>First frame of the start page after launch (shaders precompiled)</td><td class="n">1.79 → 0.29 s</td></tr>
@@ -250,7 +249,7 @@
       <li><a href="https://odin-lang.org">Odin</a>, the language everything is written in.</li>
       <li><a href="https://github.com/sachahjkl/gui_toolkit">gui_toolkit</a>, the GPU drawing, text and UI layer.</li>
       <li><a href="https://wasmtime.dev">Wasmtime</a> (Bytecode Alliance), the WebAssembly engine.</li>
-      <li><a href="https://github.com/quickjs-ng/quickjs">QuickJS-ng</a>, after Fabrice Bellard's QuickJS, the JavaScript interpreter.</li>
+      <li><a href="https://github.com/quickjs-ng/quickjs">QuickJS-ng</a>, after Fabrice Bellard's QuickJS: the reference of Wren's engine, whose bytecode format it follows and whose number and Unicode libraries it ports.</li>
       <li><a href="https://github.com/WebAssembly/wasi-libc">wasi-libc</a> and <a href="https://ziglang.org">Zig</a>, its C library and compiler.</li>
       <li><a href="https://github.com/w3c/webref">webref</a>, the Web IDL of the specifications.</li>
       <li><a href="https://github.com/lexbor/lexbor">Lexbor</a>, HTML parsing, URLs and encodings.</li>
