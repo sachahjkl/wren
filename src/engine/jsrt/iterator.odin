@@ -34,7 +34,9 @@ Iter_State :: struct {
 	sub:     u8,    // helper kind / regexp flags
 	done:    bool,
 	running: bool,
+	partial: bool,          // helper windows: yield a partial final window
 	keys:    [dynamic]Atom, // for-in snapshot
+	buf:     [dynamic]Value, // helper chunks/windows: buffered values
 }
 
 iter_state_new :: proc(ctx: ^Context, proto: ^Object, class: Class_ID, kind: Iter_Kind, target: Value) -> ^Object {
@@ -55,10 +57,12 @@ iter_state_free :: proc(rt: ^Runtime, st: ^Iter_State) {
 		map_iterator_release(st)
 	}
 	delete(st.keys)
+	delete(st.buf)
 	free(st, rt_allocator(rt))
 }
 
 iter_state_trace :: proc(rt: ^Runtime, st: ^Iter_State) {
+	for v in st.buf {mark_value(rt, v)}
 	mark_value(rt, st.target)
 	mark_value(rt, st.a)
 	mark_value(rt, st.b)

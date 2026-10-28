@@ -180,5 +180,6 @@ realm_init :: proc(ctx: ^Context) {
 	init_typed_array_builtins(ctx)
 	init_atomics_builtins(ctx)
 	init_disposable_builtins(ctx)
+	init_array_from_async(ctx, ctx.array_ctor)
 	clear(&rt.temp_roots)
 }

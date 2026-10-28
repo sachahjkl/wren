@@ -106,6 +106,7 @@ Runtime :: struct {
 	cur_frame:      ^Frame,
 	native_self:    ^Object, // the native function currently running (for native_data)
 	join_stack:     [dynamic]^Object, // arrays being joined (cycle detection)
+	random_state:   [2]u64,           // Math.random (xorshift128+)
 	stack_depth:    int,
 	exception:      Value, // the pending exception; UNINITIALIZED when none
 	uncatchable:    bool,  // the pending exception cannot be caught (interrupt / OOM)
@@ -125,6 +126,7 @@ Runtime :: struct {
 	// regains control (embed.odin), never while native code may still use it.
 	scratch:        mem.Dynamic_Arena,
 	host_depth:     int,
+	regexp_arena:   mem.Dynamic_Arena, // per-exec scratch of the regexp matcher (reset after each match)
 
 	// host hooks for agents ($262.agent) and misc.
 	host_data:      rawptr,
@@ -276,6 +278,7 @@ runtime_new :: proc(allocator := context.allocator, config := DEFAULT_CONFIG) ->
 	rt.vstack = make([dynamic]Value_Segment, allocator)
 	rt.join_stack = make([dynamic]^Object, allocator)
 	mem.dynamic_arena_init(&rt.scratch, allocator, allocator, 64 * 1024, 16 * 1024)
+	mem.dynamic_arena_init(&rt.regexp_arena, allocator, allocator, 64 * 1024, 16 * 1024)
 	rt.gc_disabled += 1
 	atoms_init(rt)
 	rt.gc_disabled -= 1
@@ -311,6 +314,7 @@ runtime_free :: proc(rt: ^Runtime) {
 	delete(rt.symbol_registry)
 	delete(rt.join_stack)
 	mem.dynamic_arena_destroy(&rt.scratch)
+	mem.dynamic_arena_destroy(&rt.regexp_arena)
 	free(rt, allocator)
 }
 
