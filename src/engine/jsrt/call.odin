@@ -64,7 +64,22 @@ frame_layout :: proc(f: ^Frame, b: ^Function_Bytecode, mem: [^]Value, args: []Va
 }
 
 @(private = "file")
-vstack_alloc :: proc(rt: ^Runtime, n: int) -> (mem: [^]Value, seg: int, top: int) {
+vstack_alloc :: #force_inline proc(rt: ^Runtime, n: int) -> (mem: [^]Value, seg: int, top: int) {
+	if rt.vstack_cur < len(rt.vstack) {
+		s := &rt.vstack[rt.vstack_cur]
+		if s.top + n <= len(s.data) {
+			mem = raw_data(s.data[s.top:])
+			seg = rt.vstack_cur
+			top = s.top
+			s.top += n
+			return
+		}
+	}
+	return vstack_alloc_slow(rt, n)
+}
+
+@(private = "file")
+vstack_alloc_slow :: proc(rt: ^Runtime, n: int) -> (mem: [^]Value, seg: int, top: int) {
 	for {
 		if rt.vstack_cur >= len(rt.vstack) {
 			size := max(VSEGMENT_SIZE, n)
@@ -428,14 +443,21 @@ interp_call :: proc(ctx: ^Context, fo: ^Object, this: Value, new_target: Value, 
 	arg_buf_len := max(len(args), int(b.arg_count))
 	total, _ := frame_slots(b, arg_buf_len)
 	mem, seg, top := vstack_alloc(rt, total)
-	f: Frame
+	// every field is set below: no zeroing of the 200-byte frame
+	f: Frame = ---
 	f.ctx = realm
 	f.caller_ctx = ctx
 	f.func = mk_obj(fo)
 	f.this_val = this
 	f.new_target = new_target
+	f.pc = 0
+	f.extra_args = nil
+	f.coro = nil
 	f.seg_index = seg
 	f.seg_top = top
+	f.storage = nil
+	f.storage_len = 0
+	f.pending_throw = false
 	frame_layout(&f, b, mem, args, arg_buf_len)
 	f.prev = rt.cur_frame
 	rt.cur_frame = &f
@@ -443,7 +465,7 @@ interp_call :: proc(ctx: ^Context, fo: ^Object, this: Value, new_target: Value, 
 	r, _ := interp_run(realm, &f, fd.var_refs)
 	rt.stack_depth -= 1
 	rt.cur_frame = f.prev
-	close_var_refs(&f)
+	if b.var_ref_count > 0 {close_var_refs(&f)}
 	vstack_release(rt, seg, top)
 	return r
 }

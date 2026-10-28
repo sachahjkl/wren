@@ -89,7 +89,7 @@ hot_get_prop :: proc "contextless" (rt: ^Runtime, o: ^Object, a: Atom) -> (v: Va
 	}
 }
 
-interp_hot :: proc "contextless" (rt: ^Runtime, code: [^]u8, pc0: int, stack: [^]Value, sp0: int, locals: [^]Value, args: [^]Value, var_refs: [^]^Var_Ref, cpool: [^]Value, root_base: int) -> (pc: int, sp: int) {
+interp_hot :: proc "contextless" (ctx: ^Context, rt: ^Runtime, code: [^]u8, pc0: int, stack: [^]Value, sp0: int, locals: [^]Value, args: [^]Value, var_refs: [^]^Var_Ref, cpool: [^]Value, root_base: int) -> (pc: int, sp: int) {
 	ip := code[pc0:]
 	s := stack[sp0:] // the next free slot
 	temp := cast(^runtime.Raw_Dynamic_Array)&rt.temp_roots
@@ -597,6 +597,37 @@ interp_hot :: proc "contextless" (rt: ^Runtime, code: [^]u8, pc0: int, stack: [^
 			ad.values[k.u.i] = s[-1]
 			s = intrinsics.ptr_offset(s, -3)
 			ip = ip[1:]
+		case .get_var, .get_var_undef:
+			a := Atom(rd32(ip[1:]))
+			gv := ctx.global_var_obj
+			i := len(gv.shape.props) != 0 ? shape_find(gv.shape, a) : -1
+			if i >= 0 {
+				v := gv.slots[i].value
+				if v.tag == .uninitialized {break loop}
+				s[0] = v
+			} else {
+				g := ctx.global_obj
+				j := global_slot(ctx, g, a)
+				if j < 0 {break loop}
+				s[0] = g.slots[j].value
+			}
+			s = s[1:]
+			ip = ip[5:]
+		case .put_var:
+			a := Atom(rd32(ip[1:]))
+			gv := ctx.global_var_obj
+			i := len(gv.shape.props) != 0 ? shape_find(gv.shape, a) : -1
+			if i >= 0 {
+				if gv.slots[i].value.tag == .uninitialized || .writable not_in raw_data(gv.shape.props)[i].flags {break loop}
+				gv.slots[i].value = s[-1]
+			} else {
+				g := ctx.global_obj
+				j := global_slot(ctx, g, a)
+				if j < 0 || .writable not_in raw_data(g.shape.props)[j].flags {break loop}
+				g.slots[j].value = s[-1]
+			}
+			s = intrinsics.ptr_offset(s, -1)
+			ip = ip[5:]
 		case .get_field, .get_field2:
 			o := s[-1]
 			if o.tag != .object {break loop}

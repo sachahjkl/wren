@@ -288,6 +288,7 @@ Context :: struct {
 	regexp_exec:     ^Object, // the original RegExp.prototype.exec (fast paths)
 	typed_array_ctor: ^Object, // %TypedArray%
 	typed_array_ctors: [12]^Object,
+	global_cache:    [GLOBAL_CACHE_SIZE]Global_Cache_Entry, // see globals.odin
 	array_shape:     ^Shape, // shape of a fresh Array (proto + length)
 	arguments_shape: ^Shape,
 	mapped_arguments_shape: ^Shape,
