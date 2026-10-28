@@ -6,21 +6,10 @@ package odin_glue
 
 import "../odin/wj"
 
-foreign import m_crypto "crypto"
-foreign import m_crypto_document "document"
 
-@(default_calling_convention = "c")
-foreign m_crypto {
-	@(link_name = "Crypto_getRandomValues") wr_Crypto_getRandomValues :: proc(destination: [^]u8, destination_cap: u32) -> i32 ---
-	@(link_name = "SubtleCrypto_digest")    wr_SubtleCrypto_digest    :: proc(algorithm: [^]u8, algorithm_len: u32, data: [^]u8, data_len: u32) -> u64 ---
-}
 
-@(default_calling_convention = "c")
-foreign m_crypto_document {
-	@(link_name = "Window_isSecureContext") wr_Window_isSecureContext :: proc() -> i32 ---
-}
 
-ERR_QUOTA_C :: i32(-13)   // wr_Error_Quota (file-local alias)
+ERR_QUOTA_C :: i32(-13)   // wj.wr_Error_Quota (file-local alias)
 
 @(private = "file") iface_crypto := i32(-2)
 @(private = "file") iface_subtle := i32(-2)
@@ -74,7 +63,7 @@ wjr_Crypto_getRandomValues :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, 
 	if !wj.wj_to_buffer_source(ctx, argv[0], &p, &n, wj.BS_VIEW_ONLY | wj.BS_ALLOW_SHARED, "Crypto.getRandomValues") { return wj.EXCEPTION }
 	if n > WEB_RANDOM_MAX { return wj.wj_throw_dom(ctx, "QuotaExceededError", "Failed to execute 'getRandomValues' on 'Crypto': The ArrayBufferView's byte length exceeds the number of bytes of entropy available via this API (65536).") }
 	if n > 0 {
-		st := wr_Crypto_getRandomValues(p, u32(n))
+		st := wj.wr_Crypto_getRandomValues(p, u32(n))
 		if st < 0 {
 			if st == ERR_QUOTA_C { return wj.wj_throw_dom(ctx, "QuotaExceededError", "Failed to execute 'getRandomValues' on 'Crypto': over crypto.max_random_bytes.") }
 			return wj.wj_throw_status(ctx, st, "Crypto.getRandomValues")
@@ -116,7 +105,7 @@ wjr_SubtleCrypto_digest :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, arg
 	if !wj.wj_to_buffer_source(ctx, argv[1], &p, &n, 0, "SubtleCrypto.digest") { return wj.web_promise_reject_pending(ctx) }
 	if n > 0xFFFF_FFFF { return wj.web_promise_rejected(ctx, wj.web_dom_exception(ctx, "QuotaExceededError", "the data is too large")) }
 	// the browser copies the bytes before this returns: later changes of the buffer do not matter
-	h := wr_SubtleCrypto_digest(([^]u8)(rawptr(canon)), u32(len(canon)), p, u32(n))
+	h := wj.wr_SubtleCrypto_digest(([^]u8)(rawptr(canon)), u32(len(canon)), p, u32(n))
 	return wj.wj_promise_from_host(ctx, h, wj.HOST_ARRAYBUFFER, nil, wj.UNDEFINED)
 }
 
@@ -156,8 +145,8 @@ wjr_SubtleCrypto_unwrapKey :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i
 // [SecureContext] members are absent from documents that are not secure contexts.
 @(export, link_name = "web_crypto_start")
 web_crypto_start :: proc "c" (ctx: ^wj.Context, kind: i32) -> i32 {
-	if wr_Window_isSecureContext() != 0 { return 0 }
-	proto := wj.proto_of(crypto_iface())
+	if wj.wr_Window_isSecureContext() != 0 { return 0 }
+	proto := wj.realm_proto(crypto_iface())
 	if !wj.is_object(proto) { return 0 }
 	names := [2]cstring{ "subtle", "randomUUID" }
 	for name in names {

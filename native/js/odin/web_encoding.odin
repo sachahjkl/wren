@@ -8,20 +8,12 @@ package odin_glue
 
 import "../odin/wj"
 
-foreign import m_encoding "encoding"
 
-@(default_calling_convention = "c")
-foreign m_encoding {
-	@(link_name = "TextDecoder_create") wr_TextDecoder_create :: proc(label: [^]u8, label_len: u32, options: u32, ret: ^u64) -> i32 ---
-	@(link_name = "TextDecoder_flags")  wr_TextDecoder_flags  :: proc(decoder: u64) -> u32 ---
-	@(link_name = "TextDecoder_decode") wr_TextDecoder_decode :: proc(decoder: u64, input: [^]u8, input_len: u32, stream: i32, buf: [^]u8, cap: u32) -> i32 ---
-	@(link_name = "TextDecoder_output") wr_TextDecoder_output :: proc(decoder: u64, buf: [^]u8, cap: u32) -> i32 ---
-}
 
-TDO_FATAL      :: u32(1 << 0)   // wr_TextDecoderOptions_Fatal
-TDO_IGNORE_BOM :: u32(1 << 1)   // wr_TextDecoderOptions_Ignore_BOM
-ERR_RANGE_E    :: i32(-11)      // wr_Error_Range
-ERR_TYPE_E     :: i32(-10)      // wr_Error_Type
+TDO_FATAL      :: u32(1 << 0)   // wj.wr_TextDecoderOptions_Fatal
+TDO_IGNORE_BOM :: u32(1 << 1)   // wj.wr_TextDecoderOptions_Ignore_BOM
+ERR_RANGE_E    :: i32(-11)      // wj.wr_Error_Range
+ERR_TYPE_E     :: i32(-10)      // wj.wr_Error_Type
 
 @(private = "file") iface_text_encoder := i32(-2)
 @(private = "file") iface_text_decoder := i32(-2)
@@ -48,7 +40,7 @@ wjr_TextEncoder_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValu
 @(export, link_name = "wjr_TextEncoder_get_encoding")
 wjr_TextEncoder_get_encoding :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	if wj.wj_this(ctx, this_val, text_encoder_iface()) == nil { return wj.EXCEPTION }
-	return wj.new_cstring(ctx, "utf-8")
+	return wj.new_string(ctx, "utf-8")
 }
 
 @(export, link_name = "wjr_TextEncoder_encode")
@@ -114,7 +106,7 @@ wjr_TextDecoder_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValu
 	// the browser takes "" for utf-8; an empty label is not one (RangeError)
 	if label.len == 0 { wj.wj_str_free(ctx, &label); return wj.JS_ThrowRangeError(ctx, "The encoding label provided ('') is invalid.") }
 	h := u64(0)
-	st := wr_TextDecoder_create(label.ptr, u32(label.len), flags, &h)
+	st := wj.wr_TextDecoder_create(label.ptr, u32(label.len), flags, &h)
 	if st < 0 {
 		e: wj.JSValue
 		if st == ERR_RANGE_E {
@@ -143,14 +135,14 @@ decoder_handle :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> (u64, boo
 wjr_TextDecoder_get_fatal :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	h, ok := decoder_handle(ctx, this_val)
 	if !ok { return wj.EXCEPTION }
-	return wj.new_bool((wr_TextDecoder_flags(h) & TDO_FATAL) != 0)
+	return wj.new_bool((wj.wr_TextDecoder_flags(h) & TDO_FATAL) != 0)
 }
 
 @(export, link_name = "wjr_TextDecoder_get_ignoreBOM")
 wjr_TextDecoder_get_ignoreBOM :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	h, ok := decoder_handle(ctx, this_val)
 	if !ok { return wj.EXCEPTION }
-	return wj.new_bool((wr_TextDecoder_flags(h) & TDO_IGNORE_BOM) != 0)
+	return wj.new_bool((wj.wr_TextDecoder_flags(h) & TDO_IGNORE_BOM) != 0)
 }
 
 @(export, link_name = "wjr_TextDecoder_decode")
@@ -170,14 +162,14 @@ wjr_TextDecoder_decode :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc
 	if n > 0xFFFF_FFFF { return wj.JS_ThrowRangeError(ctx, "TextDecoder.decode: the input is too large") }
 	// decoding changes the decoder's state: when the result does not fit, it is read again (TextDecoder_output)
 	if wj.wj_scratch.data == nil && !wj.wj_scratch_grow(256) { return wj.JS_ThrowOutOfMemory(ctx) }
-	r := wr_TextDecoder_decode(h, p, u32(n), stream ? 1 : 0, wj.wj_scratch.data, wj.wj_scratch.cap)
+	r := wj.wr_TextDecoder_decode(h, p, u32(n), stream ? 1 : 0, wj.wj_scratch.data, wj.wj_scratch.cap)
 	if r < 0 {
 		if r == ERR_TYPE_E { return wj.wj_throw_type(ctx, "The encoded data was not valid.") }
 		return wj.wj_throw_status(ctx, r, "TextDecoder.decode")
 	}
 	if u32(r) > wj.wj_scratch.cap {
 		if !wj.wj_scratch_grow(u32(r)) { return wj.JS_ThrowOutOfMemory(ctx) }
-		r = wr_TextDecoder_output(h, wj.wj_scratch.data, wj.wj_scratch.cap)
+		r = wj.wr_TextDecoder_output(h, wj.wj_scratch.data, wj.wj_scratch.cap)
 		if r < 0 { r = 0 }
 	}
 	return wj.new_string_len(ctx, wj.scratch_bytes(r))

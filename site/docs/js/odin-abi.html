@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The generic Odin ABI for the engine boundary · Wren docs</title>
-<meta name="description" content="The generic Odin ABI for the engine boundary Status: prototype (native/js/odin_abi/), a separate trunk that does not touch the main build.">
+<meta name="description" content="The generic Odin ABI for the engine boundary Status: in use for one domain (URL / URLSearchParams in the engine, native/js/odin/web_url.odin); the standalone trunk native">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/logo-32.png">
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/docs/docs.css">
@@ -185,177 +185,188 @@
 <li aria-current="page">The generic Odin ABI for the engine boundary</li>
 </ol></nav>
 <h1 id="the-generic-odin-abi-for-the-engine-boundary"><a class="anchor" href="#the-generic-odin-abi-for-the-engine-boundary" aria-hidden="true">#</a>The generic Odin ABI for the engine boundary</h1>
-<p>Status: prototype (<code>native/js/odin_abi/</code>), a separate trunk that does not touch the main build. It shows the
-guest ↔ host boundary built by Odin's compile-time generics from shared Odin declarations, with no code
-generator — the plan Sacha set on 28/10 ("GARDER LE WASM"): the engine stays a Wasm module, the boundary becomes a
-small generic ABI, and the only tool that remains extracts the documentation and the conformance report.</p>
-<h2 id="why"><a class="anchor" href="#why" aria-hidden="true">#</a>Why</h2>
-<p>Today <code>src/tools/bindgen</code> reads <code>api/*.widl</code> (~5 000 lines of Odin) and writes ~40 000 lines: the host trampolines
-(<code>src/page/api_generated.odin</code>), the Odin guest SDK (<code>sdk/odin/web/*</code>), the C guest header (<code>native/js/gen/wren_api.h</code>),
-the docs and the conformance cases. Every function has one hand-shaped Wasm import and one hand-shaped host trampoline.
-It is fast, but it is a generator: a second language to parse (<code>.widl</code>), emit and keep in step with the engine.</p>
-<p>When the engine is written in Odin (<code>wasm32</code>), both ends of the boundary can read the <strong>same Odin declarations</strong> and let
-the compiler instantiate the bridges. No <code>.widl</code>, no emitted C, no emitted Odin. One source of truth; a shape mismatch
-becomes a compile error instead of a silent ABI drift.</p>
-<h2 id="shape-of-the-boundary"><a class="anchor" href="#shape-of-the-boundary" aria-hidden="true">#</a>Shape of the boundary</h2>
-<p>Two wire shapes, one serialisation and one set of compile-time marshallers (<code>package abi</code>). Both ends read
-<code>package api_decl</code>, so the host and the <code>wasm32</code> guest agree by construction.</p>
-<h3 id="1-the-scalar-fast-path-hot"><a class="anchor" href="#1-the-scalar-fast-path-hot" aria-hidden="true">#</a>1. The scalar fast path (hot)</h3>
-<p>Each argument stays a separate Wasm scalar in the call's raw cell array, decoded by a <strong>constant index</strong>; a string
-result goes into a <code>(ptr, cap)</code> buffer and the call returns the length needed. This is byte-for-byte the current <code>wr_*</code>
-ABI (handles <code>i64</code>, strings <code>(ptr, len)</code>, errors a negative <code>i32</code>), but the trampoline is <strong>built by the compiler</strong>
-from the signature (<code>abi_host.register_scalar_*</code>) instead of generated. It carries the hot 0..N simple-parameter
-functions (getters, setters, numeric calls).</p>
-<h3 id="2-the-serialised-path-general-cold"><a class="anchor" href="#2-the-serialised-path-general-cold" aria-hidden="true">#</a>2. The serialised path (general, cold)</h3>
-<p>One import per domain, <code>host_call(op, args_ptr, args_len, ret_ptr, ret_cap) -&gt; status</code>. The guest packs the arguments
-into its own memory and names the function by an operation number; the host validates the two spans against the
-module's memory, decodes the arguments against the declaration, calls the implementation, and serialises the result
-into the result buffer. A result that does not fit returns <code>Truncated</code>; the guest grows its buffer and retries. This
-carries the shapes the fixed cell array cannot (long argument lists, growable results) and keeps the import table
-small. It costs one copy per argument plus one indirect dispatch — about <strong>+100 ns/call</strong> over the scalar path
-(measured below), so it is not used for the hot getters.</p>
-<p>Both shapes exist because the measurement shows the serialised path is too expensive for the hottest functions, and the
-scalar path cannot express everything (a 28-argument <code>URLPattern</code> constructor, a growable <code>getAll</code>).</p>
-<h2 id="serialisation"><a class="anchor" href="#serialisation" aria-hidden="true">#</a>Serialisation</h2>
-<p>Little-endian, no padding (the only byte order <code>wasm32</code> and the host use), self-describing by static type:</p>
+<p>Status: in use for one domain (URL / URLSearchParams in the engine, <code>native/js/odin/web_url.odin</code>); the standalone
+trunk <code>native/js/odin_abi/</code> proves every shape on both paths. The plan is Sacha's of 28/10 ("GARDER LE WASM"): the
+engine stays a Wasm module, the boundary becomes a small generic ABI whose bridges the compiler instantiates from shared
+Odin declarations, with no code generator; the only tool left extracts documentation and conformance.</p>
+<h2 id="the-pieces"><a class="anchor" href="#the-pieces" aria-hidden="true">#</a>The pieces</h2>
+<div class="code"><pre><code>native/js/odin_abi/
+  abi/          abi.odin apply.odin marshal.odin wire.odin invoke.odin   -- shapes, cells, apply, the codecs
+  api_decl/     url.odin abitest.odin                                    -- the shared declarations
+  abi_host/     host.odin dispatch.odin scalar.odin                      -- host bridges: bind (serialised), register_scalar
+  abi_guest/    guest.odin host_call.odin guest_url.odin guest_abitest.odin -- the guest's serialised stubs
+  abi_url/      host.odin impl.odin abitest.odin                         -- a standalone URL host (real wb:url)
+  check/        in-process round trip of every shape, serialised
+  bench/ bench_guest/  Wasmtime runner + wasm32 guest: scalar vs serialised vs hand-written, and scalar == serialised
+  apidoc/       docs/conformance from api_decl (core:odin/parser)
+native/js/odin/jsb/   the JavaScript side inside the engine: JS values &lt;-&gt; declaration types, lowering onto wr_* imports</code></pre></div>
+<h2 id="declarations-package-api-decl"><a class="anchor" href="#declarations-package-api-decl" aria-hidden="true">#</a>Declarations (<code>package api_decl</code>)</h2>
+<p>One package both ends import. A declaration is a procedure type: the arguments and the results, nothing else.</p>
+<div class="code"><div class="file">Odin</div><pre><code>URL :: <span class="k">distinct</span> abi.<span class="t">Handle</span>                       <span class="c">// a handle kind: named after its interface</span>
+<span class="t">URLComponent</span> :: <span class="k">enum</span> <span class="t">i32</span> { <span class="t">Href</span>, <span class="t">Protocol</span>, ... }
+<span class="t">URL_get</span> :: <span class="f">#type</span> <span class="k">proc</span>(url: URL, component: <span class="t">URLComponent</span>) -&gt; (<span class="t">string</span>, abi.<span class="t">Api_Error</span>)
+<span class="t">URLPattern_create</span> :: <span class="f">#type</span> <span class="k">proc</span>(init: <span class="t">URLPatternInit</span>) -&gt; (<span class="t">URLPattern</span>, abi.<span class="t">Api_Error</span>)   <span class="c">// a dictionary argument</span>
+<span class="t">Abi_Make</span> :: <span class="f">#type</span> <span class="k">proc</span>(href: <span class="t">string</span>) -&gt; (abi.<span class="f">Owned</span>(URL), abi.<span class="t">Api_Error</span>)               <span class="c">// the caller releases</span></code></pre></div>
+<p>The shapes the boundary carries (abi.Shape):</p>
 <div class="table-box"><table>
-<thead><tr><th>Odin type</th><th>wire</th></tr></thead>
+<thead><tr><th>shape</th><th>Odin type</th><th>scalar wire (today's wr_*)</th><th>serialised wire</th></tr></thead>
 <tbody>
-<tr><td><code>bool</code>, <code>i32</code>, enum (<code>i32</code>)</td><td>4 bytes</td></tr>
-<tr><td><code>i64</code>, <code>u64</code>, a handle (<code>distinct abi.Handle</code>)</td><td>8 bytes</td></tr>
-<tr><td><code>f64</code></td><td>8 bytes</td></tr>
-<tr><td><code>string</code></td><td><code>u32</code> length, then the bytes; the host checks UTF-8</td></tr>
-<tr><td><code>[]u8</code> / <code>abi.Bytes</code></td><td><code>u32</code> length, then the bytes; no check</td></tr>
-<tr><td><code>Maybe(string)</code></td><td>length <code>== 0xFFFF_FFFF</code> (<code>ABSENT</code>) when absent, else as a string</td></tr>
-<tr><td><code>Maybe(T)</code> otherwise</td><td>a <code>u8</code> present-flag, then the value</td></tr>
-<tr><td>a dictionary (<code>struct</code>)</td><td>its fields in declaration order (see "Out of scope")</td></tr>
+<tr><td>bool / i32 / enum</td><td><code>bool</code>, an integer of 4 bytes or less, <code>enum i32</code></td><td>one i32</td><td>4 bytes (bool: 1)</td></tr>
+<tr><td>i64 / handle / Owned</td><td><code>i64</code>, <code>u64</code>, <code>distinct abi.Handle</code>, <code>abi.Owned(H)</code></td><td>one i64</td><td>8 bytes</td></tr>
+<tr><td>float</td><td><code>f32</code>, <code>f64</code></td><td>one f32 / f64</td><td>4 / 8 bytes</td></tr>
+<tr><td>string / bytes</td><td><code>string</code> (UTF-8 checked), <code>abi.Bytes</code> / <code>[]u8</code></td><td>(ptr, len)</td><td>u32 length + bytes</td></tr>
+<tr><td>optional span</td><td><code>Maybe(string)</code>, <code>Maybe(Bytes)</code></td><td>(ptr, len), len = ABSENT when absent</td><td>length ABSENT when absent</td></tr>
+<tr><td>optional scalar</td><td><code>Maybe(T)</code></td><td>(present i32, value)</td><td>u8 flag + value</td></tr>
+<tr><td>slice</td><td><code>[]T</code></td><td>(ptr, count)</td><td>u32 count + the elements</td></tr>
+<tr><td>dictionary</td><td>a struct</td><td>serialised only</td><td>its fields in declaration order (any shape above, nested)</td></tr>
 </tbody>
 </table></div>
-<p>The result is the status cell followed by the return values in the same format. Reading and writing is a cursor
-(<code>abi.Reader</code> / <code>abi.Writer</code>); a read past the end sets a flag the dispatcher turns into a trap, a write past <code>ret_cap</code>
-sets <code>Truncated</code> and the length needed.</p>
-<h2 id="the-declarations-package-api-decl"><a class="anchor" href="#the-declarations-package-api-decl" aria-hidden="true">#</a>The declarations (<code>package api_decl</code>)</h2>
-<p>One package both the host and the guest import (<code>when ODIN_ARCH == .wasm32</code> on the guest). It expresses:</p>
+<p>Results: nothing; a value; <code>abi.Api_Error</code>; <code>(value, abi.Api_Error)</code>. On the scalar wire a string result is a
+(buffer, capacity) pair after the arguments and the return is the full length (negative: the error); a
+<code>(value, error)</code> result is one more parameter, the address the value is stored at, and the return is the status; an
+absent <code>Maybe(string)</code> result is Not_Found.</p>
+<h2 id="the-bridges-comptime"><a class="anchor" href="#the-bridges-comptime" aria-hidden="true">#</a>The bridges, comptime</h2>
+<p>Everything reduces to two steps.</p>
+<ol>
+<li><p><strong>Decode</strong> the arguments, from wherever they arrive, into one <code>abi.Cell</code> per declared parameter (a scalar in <code>a</code>; a
+span <code>a</code> = address, <code>b</code> = length; an optional with its marker). Each source is a compile-time recursion over the
+declaration's parameter types (<code>proc(..., $P: typeid, $i, $n: int)</code>, <code>intrinsics.type_proc_parameter_type(P, i)</code>
+with <code>i</code> constant), one specialised step per parameter:</p>
 <ul>
-<li><strong>handles</strong> as distinct types (<code>URL :: distinct abi.Handle</code>), so the compiler keeps a <code>URL</code> from being passed where a
-<code>URLSearchParams</code> is wanted; on the wire a handle is a <code>u64</code>, resolved to the live object by the host binding;</li>
-<li><strong>enumerations</strong> (<code>i32</code>);</li>
-<li><strong>dictionaries</strong> as structs with default values, an absent member told apart by its <code>has_*</code> flag;</li>
-<li><strong>procedure signatures</strong> (the arguments and the result), with <code>raises</code> expressed as an <code>abi.Api_Error</code> last return
-value, and ownership noted in the doc comment (<code>[Owned]</code> → the caller releases; a borrowed handle is called out).</li>
-</ul>
-<p>The signatures carry no context: the host binds an implementation of shape <code>proc(ctx: ^Call, &lt;args&gt;) -&gt; &lt;result&gt;</code> and
-the guest a stub of shape <code>proc(&lt;args&gt;) -&gt; &lt;result&gt;</code>; the bridge adds or drops the context. <code>abi_host.bind</code> checks at
-compile time that the implementation is the declaration plus a leading context, same returns.</p>
-<h2 id="the-bridges-compile-time-baseintrinsics"><a class="anchor" href="#the-bridges-compile-time-baseintrinsics" aria-hidden="true">#</a>The bridges (compile-time, <code>base:intrinsics</code>)</h2>
-<p>The crux is that Odin can walk a procedure type at compile time:
-<code>type_proc_parameter_count</code>, <code>type_proc_parameter_type(P, &lt;const&gt;)</code>, <code>type_proc_return_count</code>, <code>type_proc_return_type</code>,
-<code>type_is_enum</code>, <code>type_base_type</code>, <code>type_is_union</code> + <code>type_variant_type_of</code> (for <code>Maybe</code>). Two constraints shaped the
-design:</p>
+<li><code>abi_host.register_scalar</code>: the raw cells of a Wasm call (bounds-checked spans, UTF-8 check);</li>
+<li><code>abi.decode_params</code>: a serialised buffer (dictionaries through a run-time type-information walk, the cold path);</li>
+<li><code>jsb.args</code>: the JSValues of a JS call (<code>wj_to_str</code> / <code>web_to_usv</code>, <code>wj_to_int32</code>, <code>wj_to_handle</code>...).</li>
+</ul></li>
+<li><strong>Apply</strong> the procedure: <code>abi.apply(cells, P, p, &amp;r0, &amp;r1)</code>. Odin can walk a procedure type at compile time but
+cannot build a call of variable arity, so <code>apply</code> is the one place where arities 0..16 are spelled out; it serves
+every source and every return shape.</li>
+</ol>
+<p>The wire shape of a scalar import (its Wasm parameter list) is filled by the same recursion as its decoding, so they
+cannot disagree. A binding is proved against its declaration at compile time:</p>
 <ul>
-<li><code>type_proc_parameter_type(P, i)</code> needs a <strong>constant</strong> index and is a type only <strong>inside a procedure body</strong>, not in a
-signature. So the per-argument decode is written inline in an <strong>arity ladder</strong> (0..8 arguments after the context),
-one branch per parameter count; each branch decodes exactly its arguments and calls the implementation. The ladder is
-the whole "generic" cost, written once.</li>
-<li>a <code>proc "c"</code> Wasm callback <strong>cannot capture</strong> locals. The host trampoline is produced by a generic
-(<code>register_scalar_*</code> / <code>bind</code> → <code>install</code>) that captures the implementation value <strong>at compile time</strong>, so the stored
-trampoline closes over nothing at run time; the registry is reached through one process-global pointer and a
-specialised thunk.</li>
+<li><code>abi.must_bind(Decl, Impl)</code> (host): Impl is Decl plus a leading context, same results;</li>
+<li><code>abi.must_match(Decl, Stub)</code> (guest stubs);</li>
+<li><code>jsb</code>'s lowering asserts that the generated import has the declaration's wire shape (a span is a pointer then a
+4-byte length, a string result two more parameters, a <code>(value, error)</code> result one address). Two imports of the same
+shape (<code>URL_get</code> and <code>URL_set</code> are both <code>(u64, i32, ptr, u32) -&gt; i32</code>) cannot be told apart by types; the name in the
+binding is the remaining guarantee.</li>
 </ul>
-<p>Result encoding is by <strong>procedure overloading</strong> (<code>encode_returns</code>): void, a value, an <code>Api_Error</code>, or <code>(value,
-Api_Error)</code> — the compiler picks the form from the call's return tuple, no run-time test. There is no reflection on the
-hot path: every <code>decode_arg</code> / <code>encode_ret</code> resolves at compile time to the right load, check and store for that exact
-type.</p>
+<p>Each failure is a compile error naming the parameter (a <code>where</code> clause on a constant index).</p>
 <h2 id="measurements"><a class="anchor" href="#measurements" aria-hidden="true">#</a>Measurements</h2>
-<p>Machine: the author's Windows box, Cranelift (speed), <code>wasm32</code> guest over Wasmtime, 1 M calls each, median of 3
-(<code>native/js/odin_abi/bench</code>). The scalar "hand-written" column is a <code>proc "c"</code> written exactly as <code>bindgen</code> emits it,
-registered next to the comptime bridges under a sibling module, so all three are the same machine, engine and guest.</p>
+<p>1 M calls, wasm32 guest over Wasmtime (Cranelift), best of five batches (the machine is shared: a median of three moved
+by 2x between runs), <code>native/js/odin_abi/bench</code>, 28/10:</p>
 <div class="table-box"><table>
-<thead><tr><th>shape</th><th style="text-align:right"><code>wr_*</code> scalar (hand-written / generated)</th><th style="text-align:right">scalar bridge (comptime)</th><th style="text-align:right">serialised <code>host_call</code> (comptime)</th></tr></thead>
+<thead><tr><th>shape</th><th style="text-align:right">wr_* scalar (hand-written)</th><th style="text-align:right">scalar bridge (comptime)</th><th style="text-align:right">serialised host_call (comptime)</th></tr></thead>
 <tbody>
-<tr><td><code>URLSearchParams_size</code> (handle → i32)</td><td style="text-align:right">~50 ns/call</td><td style="text-align:right">~62 ns/call</td><td style="text-align:right">~150 ns/call</td></tr>
-<tr><td><code>URL_get .Pathname</code> (handle, enum → string)</td><td style="text-align:right">~135 ns/call</td><td style="text-align:right">~150 ns/call</td><td style="text-align:right">~245 ns/call</td></tr>
+<tr><td>URLSearchParams_size (handle -&gt; i32)</td><td style="text-align:right">5.4 ns</td><td style="text-align:right">7.7 ns</td><td style="text-align:right">34.1 ns</td></tr>
+<tr><td>URL_get .Pathname (handle, enum -&gt; string)</td><td style="text-align:right">32.3 ns</td><td style="text-align:right">33.1 ns</td><td style="text-align:right">71.1 ns</td></tr>
+<tr><td>URLSearchParams_has (handle, string, Maybe(string) -&gt; bool)</td><td style="text-align:right">20.0 ns</td><td style="text-align:right">30.1 ns</td><td style="text-align:right">81.2 ns</td></tr>
+<tr><td>Abi_Mix8 (i32 i64 f64 bool enum string Maybe(string) handle -&gt; i64)</td><td style="text-align:right">-</td><td style="text-align:right">33.5 ns</td><td style="text-align:right">119.3 ns</td></tr>
 </tbody>
 </table></div>
 <p>Readings:</p>
 <ul>
-<li><strong>The comptime scalar bridge matches the generated trampoline</strong> (within ~12 ns, from the one extra indirection to the
-config holder, which a real <code>package page</code> integration inlines through <code>api_begin</code>). The import structure confirms
-it: the guest's scalar calls are per-function imports, exactly as <code>wr_*</code> today; the serialised path is a single
-<code>host_call</code> import.</li>
-<li><strong>The serialised path costs ~+100 ns/call</strong>: the per-argument copy and one indirect dispatch into the op table. Fine
-for constructors and cold functions, too much for the hottest getters — hence keeping the scalar path.</li>
+<li><strong>The comptime scalar bridge is the generated trampoline, plus 2–10 ns</strong>: the embedder's <code>begin</code>/<code>end</code> and the UTF-8
+check go through function pointers (the hand-written baseline calls nothing for size and validates inline for has).
+With eight mixed arguments it stays at ~34 ns.</li>
+<li><strong>The serialised path costs ~+30–90 ns</strong> (one copy per argument, a dispatch through the op table): constructors,
+dictionaries, cold functions; not the hot getters.</li>
+<li>Inside the engine, a URL getter bound through <code>jsb</code> (<code>url.pathname</code> 200 000 times in a page) costs ~205 ns against
+~190 ns for the hand-written port: +15 ns for the cells and the generic <code>this</code>.</li>
 </ul>
-<p>An in-process check (<code>native/js/odin_abi/check</code>, no Wasm instance, the exact guest bindings against the dispatcher)
-exercises the whole domain (parse, getters, relative resolution, <code>searchParams</code> both-way link, the <code>URLPattern</code>
-dictionary constructor, <code>test()</code>), each result checked against the native <code>wb:url</code>.</p>
-<h2 id="proof-two-domains-end-to-end"><a class="anchor" href="#proof-two-domains-end-to-end" aria-hidden="true">#</a>Proof: two domains end to end</h2>
-<p><code>native/js/odin_abi/</code> migrates the <strong>URL / URLSearchParams / URLPattern</strong> domain of <code>api/url.widl</code> end to end:</p>
-<ul>
-<li><code>api_decl/url.odin</code> — the shared declarations (handles, enums, the <code>URLPatternInit</code> dictionary, 18 procedure
-signatures with <code>raises</code>).</li>
-<li><code>abi_url/</code> — the host implementation, backed by the real <code>wb:url</code>, with its own handle pools (standalone so the
-prototype does not entangle <code>package page</code>). <code>build_registry</code> binds each declaration to its implementation;
-<code>URLPattern_create</code> uses the dictionary escape hatch (<code>bind_manual</code>).</li>
-<li><code>abi_guest/guest_url.odin</code> — the guest bindings (the mirror of the shipped SDK), the same code that compiles to
-<code>wasm32</code>.</li>
-<li><code>bench_guest/</code> + <code>bench/</code> — the <code>wasm32</code> guest and the host runner for the measurement.</li>
-<li><code>check/</code> — the in-process round-trip, all assertions passing.</li>
-</ul>
-<p>The engine today is QuickJS in C, so a real integration also needs a thin C guest that calls <code>host_call</code> (the shape is
-one import plus a serialise/deserialise helper); that is the <code>native/js/runtime</code> glue, coordinated with the C↔Odin work.
-The Odin guest path above is what the boundary becomes once the engine is Odin.</p>
-<h2 id="the-tool-that-remains"><a class="anchor" href="#the-tool-that-remains" aria-hidden="true">#</a>The tool that remains</h2>
-<p><code>apidoc</code> (<code>native/js/odin_abi/apidoc</code>) reads <code>package api_decl</code> with <code>core:odin/parser</code> + <code>core:odin/ast</code> and writes one
-Markdown page per module (<code>docs/api/&lt;module&gt;.md</code>): the handles, enumerations, dictionaries and function signatures with
-their doc comments — what <code>bindgen</code> produced from <code>.widl</code>. The conformance report is the same walk (the inventory of
-declared functions, their arguments and whether they raise). This is the only generator-like step left, and it reads
-the Odin declarations, not a second language.</p>
-<h2 id="migration-plan-domain-by-domain"><a class="anchor" href="#migration-plan-domain-by-domain" aria-hidden="true">#</a>Migration plan, domain by domain</h2>
+<p><code>bench</code> also checks that every shape gives the same answer through the scalar bridge and the serialised path
+(<code>check_shapes</code>), and <code>check</code> verifies the serialised answers against the expected values in process.</p>
+<h2 id="inside-the-engine-jsb"><a class="anchor" href="#inside-the-engine-jsb" aria-hidden="true">#</a>Inside the engine: <code>jsb</code></h2>
+<p>The engine (QuickJS in C today) reaches the host through the generated <code>wr_*</code> imports (<code>native/js/odin/wj/wr_imports.odin</code>).
+<code>jsb</code> binds a WebIDL member to a declaration and the import that carries it, with no per-function code:</p>
+<div class="code"><div class="file">Odin</div><pre><code>jsb.<span class="f">getter</span>(ctx, this_val, api_decl.<span class="t">URL_get</span>, wj.wr_URL_get, <span class="t">URLComponent</span>.<span class="t">Pathname</span>, <span class="s">"URL"</span>)      <span class="c">// an attribute</span>
+jsb.<span class="f">method</span>(ctx, this_val, argc, argv, api_decl.<span class="t">URLSearchParams_toString</span>, wj.wr_URLSearchParams_toString, <span class="s">"URLSearchParams.toString"</span>)
+jsb.<span class="f">function</span>(ctx, argc, argv, api_decl.<span class="t">URL_canParse</span>, wj.wr_URL_canParse, <span class="s">"URL.canParse"</span>, .USV)  <span class="c">// static</span>
+jsb.<span class="f">host</span>(&amp;count, api_decl.<span class="t">URLSearchParams_count</span>, wj.wr_URLSearchParams_count, p, name)          <span class="c">// from behaviour code</span></code></pre></div>
+<p><code>this</code> is the declaration's first parameter (its interface comes from the handle kind's name); the JS arguments are
+converted by the declaration's types (a trailing <code>Maybe</code> is optional, the arity error is computed); the declaration is
+lowered onto the import (strings to (ptr, len), <code>Maybe(string)</code> to WR_ABSENT, the string-result buffer grown and
+retried once, the <code>(value, error)</code> address); the result goes back to JS by type, an <code>Api_Error</code> throws
+(<code>wj_throw_status</code>).</p>
+<h2 id="how-to-migrate-a-domain-10-steps"><a class="anchor" href="#how-to-migrate-a-domain-10-steps" aria-hidden="true">#</a>How to migrate a domain (10 steps)</h2>
+<p>The example is <code>web_url</code> (commit <code>bdd9a031</code>): 327 lines with every host call typed by hand, 256 lines with none.</p>
 <ol>
-<li><strong>Shared declarations.</strong> For each <code>api/&lt;domain&gt;.widl</code>, write <code>api_decl/&lt;domain&gt;.odin</code>: handles, enums, dictionaries,
-procedure signatures. (This replaces the <code>.widl</code> as the source of truth; <code>bindgen</code> can emit it once as a starting
-point, then <code>.widl</code> is dropped.)</li>
-<li><strong>Host.</strong> Move the hand-written implementation (today in <code>src/page/bindings_&lt;domain&gt;.odin</code>) to take the declaration's
-arguments; bind each with <code>abi_host.bind</code> (scalar or serialised) in the domain's registry. The implementations keep
-using <code>package page</code> (its object pool, settings, lookups) — the standalone <code>abi_url</code> here is only to keep the
-prototype off the main build.</li>
-<li><strong>Guest.</strong> The guest bindings become the <code>abi_guest</code> stubs (or, for the C engine during the transition, the C glue
-over <code>host_call</code>).</li>
-<li><strong>Choose the path per function.</strong> Scalar for the hot 0..N simple-parameter functions (the budget check in
-<code>perf.ps1</code> tells which); serialised for the rest.</li>
-<li><strong>Docs/conformance</strong> come from <code>apidoc</code> on the new declarations; delete the <code>.widl</code> and the matching <code>bindgen</code>
-emitters once a domain is across.</li>
-<li>Repeat; <code>bindgen</code> shrinks to nothing but the one-shot <code>.widl → api_decl</code> helper, then goes away with the last
-domain.</li>
+<li><strong>Read the domain and sort it.</strong> In the ported <code>native/js/odin/&lt;domain&gt;.odin</code> (or the <code>.c</code>), mark what only carries a
+call across (category A: getters, setters, numeric calls, <code>toString</code>), what adapts (B: defaults, optional
+arguments, dictionaries), and what is behaviour (C: caches, sequences and records, iterators, bespoke messages).</li>
+<li><strong>Declare.</strong> For each host function the domain calls, write its declaration in <code>native/js/odin_abi/api_decl/&lt;module&gt;.odin</code>
+from <code>api/&lt;module&gt;.widl</code>: handle kinds as <code>distinct abi.Handle</code> named after their interface, enums <code>i32</code>, <code>raises</code>
+as an <code>abi.Api_Error</code> last result (a string getter that fails on a released handle raises), ownership as
+<code>abi.Owned(H)</code>, a dictionary as a struct.</li>
+<li><strong>Check the wire.</strong> The generated import <code>wj.wr_&lt;Name&gt;</code> must be the declaration's lowering (the table in "Shapes").
+<code>jsb</code> asserts it when you bind; a mismatch is the declaration being wrong, not the import.</li>
+<li><strong>Replace the pass-through members</strong> by one line each: <code>jsb.getter</code> (an attribute selected by a constant),
+<code>jsb.method</code> (<code>this</code> + JS arguments), <code>jsb.function</code> (static / global). Choose <code>.USV</code> where the IDL says USVString.
+The error text is <code>what</code>: keep the C's (<code>"URL"</code>, <code>"URLSearchParams.toString"</code>).</li>
+<li><strong>Rewrite behaviour on <code>jsb.host</code>.</strong> Every remaining host call becomes <code>jsb.host(&amp;out, api_decl.X, wj.wr_X, args...)</code>:
+the operand structs, fill callbacks, <code>WJ_FETCH_STRING</code> loops, <code>(ptr, len)</code> / WR_ABSENT lowering and status checks
+disappear. A string result lives in the scratch buffer until the next host call: convert it first.</li>
+<li><strong>Replace <code>this</code> checks and interface caches</strong> by <code>jsb.this(ctx, this_val, Kind)</code> and <code>jsb.iface_of(Kind)</code>.</li>
+<li><strong>Keep the exported names.</strong> Every <code>wjr_*</code> the generated binding table references stays <code>@(export, link_name = ...)</code>
+with the same signature; nothing changes in <code>native/js/gen</code>.</li>
+<li><strong>Build and check:</strong> <code>odin check native/js/odin -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -vet</code>,
+then <code>cmd /c build.bat</code>.</li>
+<li><strong>Test what the domain touches:</strong> jstest, the e2e tool of the domain (jswebtest for url), <code>tools\wpt.ps1 -Only
+/&lt;folder&gt;/ -TimeoutMs 30000</code>. The judge is "the same subtests pass as before", against a build of the commit
+before the migration when <code>wpt/expectations</code> is older than the code.</li>
+<li><strong>Measure the hot members</strong> (a page timing 200 000 calls, <code>wren ctl run --eval</code>), report the before/after, commit.</li>
 </ol>
-<h2 id="out-of-scope-for-the-compile-time-bridge-and-how-to-express-it"><a class="anchor" href="#out-of-scope-for-the-compile-time-bridge-and-how-to-express-it" aria-hidden="true">#</a>Out of scope for the compile-time bridge (and how to express it)</h2>
+<p>Before (hand-typed transmission, one of each kind):</p>
+<div class="code"><div class="file">Odin</div><pre><code>@(private = <span class="s">"file"</span>) <span class="t">Comp_Op</span> :: <span class="k">struct</span> { handle: <span class="t">u64</span>, component: <span class="t">i32</span> }
+@(private = <span class="s">"file"</span>)
+fill_url_get :: <span class="k">proc</span> <span class="s">"contextless"</span> (user: <span class="t">rawptr</span>, buf: [^]<span class="t">u8</span>, cap: <span class="t">u32</span>) -&gt; <span class="t">i32</span> {
+	op := (^<span class="t">Comp_Op</span>)(user)
+	<span class="k">return</span> wj.<span class="f">wr_URL_get</span>(op.handle, op.component, buf, cap)
+}
+@(private = <span class="s">"file"</span>)
+url_get :: <span class="k">proc</span> <span class="s">"c"</span> (ctx: ^wj.<span class="t">Context</span>, this_val: wj.<span class="t">JSValue</span>, component: <span class="t">i32</span>) -&gt; wj.<span class="t">JSValue</span> {
+	h, ok := <span class="f">url_handle</span>(ctx, this_val)
+	<span class="k">if</span> !ok { <span class="k">return</span> wj.EXCEPTION }
+	op := <span class="t">Comp_Op</span>{ h, component }
+	n := wj.<span class="f">fetch_string</span>(fill_url_get, &amp;op)
+	<span class="k">if</span> n &lt; <span class="t">0</span> { <span class="k">return</span> wj.<span class="f">wj_throw_status</span>(ctx, n, <span class="s">"URL"</span>) }
+	<span class="k">return</span> wj.<span class="f">new_string_len</span>(ctx, wj.<span class="f">scratch_bytes</span>(n))
+}
+@(export, link_name = <span class="s">"wjr_URL_get_href"</span>) wjr_URL_get_href :: <span class="k">proc</span> <span class="s">"c"</span> (ctx: ^wj.<span class="t">Context</span>, t: wj.<span class="t">JSValue</span>) -&gt; wj.<span class="t">JSValue</span> { <span class="k">return</span> <span class="f">url_get</span>(ctx, t, URLC_HREF) }
+
+url_parse :: <span class="k">proc</span> <span class="s">"c"</span> (input: ^wj.<span class="t">Str</span>, base: ^wj.<span class="t">Str</span>, status: ^<span class="t">i32</span>) -&gt; <span class="t">u64</span> {
+	h := <span class="t">u64</span>(<span class="t">0</span>)
+	base_len := base.ptr != <span class="k">nil</span> ? <span class="t">u32</span>(base.len) : WR_ABSENT
+	status^ = wj.<span class="f">wr_URL_parse</span>(input.ptr, <span class="t">u32</span>(input.len), base.ptr, base_len, &amp;h)
+	<span class="k">return</span> status^ &lt; <span class="t">0</span> ? <span class="t">0</span> : h
+}</code></pre></div>
+<p>After:</p>
+<div class="code"><div class="file">Odin</div><pre><code>@(export, link_name = <span class="s">"wjr_URL_get_href"</span>) wjr_URL_get_href :: <span class="k">proc</span> <span class="s">"c"</span> (ctx: ^wj.<span class="t">Context</span>, t: wj.<span class="t">JSValue</span>) -&gt; wj.<span class="t">JSValue</span> { <span class="k">return</span> <span class="f">get</span>(ctx, t, .<span class="t">Href</span>) }
+<span class="c">// with, once for the ten components:</span>
+get :: <span class="f">#force_inline</span> <span class="k">proc</span> <span class="s">"contextless"</span> (ctx: ^wj.<span class="t">Context</span>, t: wj.<span class="t">JSValue</span>, component: <span class="t">URLComponent</span>) -&gt; wj.<span class="t">JSValue</span> {
+	<span class="k">return</span> jsb.<span class="f">getter</span>(ctx, t, api_decl.<span class="t">URL_get</span>, wj.wr_URL_get, component, <span class="s">"URL"</span>)
+}
+
+url_parse :: <span class="k">proc</span>(input: wj.<span class="t">Str</span>, base: wj.<span class="t">Str</span>) -&gt; URL {
+	u: URL
+	b: <span class="f">Maybe</span>(<span class="t">string</span>) = base.ptr != <span class="k">nil</span> ? <span class="f">str_of</span>(base) : <span class="k">nil</span>
+	<span class="k">if</span> jsb.<span class="f">host</span>(&amp;u, api_decl.<span class="t">URL_parse</span>, wj.wr_URL_parse, <span class="f">str_of</span>(input), b) != .<span class="t">None</span> { <span class="k">return</span> <span class="t">0</span> }
+	<span class="k">return</span> u
+}</code></pre></div>
+<h2 id="the-host-side-next"><a class="anchor" href="#the-host-side-next" aria-hidden="true">#</a>The host side, next</h2>
+<p>The host still serves <code>module url</code> through the bindgen trampolines (<code>src/page/api_generated.odin</code>). The same
+declarations bind its implementations with <code>abi_host.register_scalar</code> (the wire is identical, so the engine does not
+change): move <code>src/page</code>'s URL implementations to the declaration's shape (<code>proc(c: ^Call, &lt;arguments&gt;) -&gt; &lt;results&gt;</code>),
+register them, and drop the module from bindgen's host emitter. <code>abi_url</code> is that binding, standalone.</p>
+<h2 id="what-stays-out-of-the-comptime-bridge"><a class="anchor" href="#what-stays-out-of-the-comptime-bridge" aria-hidden="true">#</a>What stays out of the comptime bridge</h2>
 <ul>
-<li><strong>Dictionaries with strings</strong> (<code>URLPatternInit</code>): the generic marshaller stays pure (scalars, strings, handles,
-<code>Maybe</code>); a dictionary is carried by the <strong>manual escape hatch</strong> (<code>abi_host.bind_manual</code>), a small hand-written codec
-that reads the fields with the same wire helpers. Dictionaries are constructor/option-bag arguments, off the hot
-path, so this costs nothing in practice. A future improvement is a comptime struct-field walk, but it is not needed.</li>
-<li><strong>WebIDL overloads</strong> (<code>foo(DOMString)</code> and <code>foo(long)</code> as one name): Web IDL only; resolved in the engine's JS glue by
-dispatching to two differently-named ABI functions, as today.</li>
-<li><strong>Unions</strong> (<code>(DOMString or Blob)</code>): expressed as a tag <code>enum</code> plus the per-variant arguments, or a manual op.</li>
-<li><strong><code>[Exposed]</code> / realms</strong> (<code>Window</code> vs <code>Worker</code>): a bit on the binding, as today (<code>realms</code> on <code>wasm.Import</code>); set when
-binding, filtered by the worker import filter.</li>
-<li><strong>Mixins / inheritance</strong>: a Web IDL authoring convenience; the declarations are already flat (one function per line),
-so there is nothing to express.</li>
-<li><strong>Callbacks</strong> (an event listener handed to the host): a table index + a <code>user</code> word, unchanged; <code>call_guest</code> runs
-them. Not part of the argument marshalling.</li>
+<li><strong>WebIDL overloads and unions</strong> (<code>foo(DOMString)</code> / <code>foo(long)</code>, <code>(DOMString or Blob)</code>): resolved in the JS binding,
+by hand, dispatching to differently named declarations.</li>
+<li><strong>Callbacks</strong> (a listener handed to the host): a function-table index (<code>wj.table_index</code>) and a <code>user</code> word, unchanged.</li>
+<li><strong>Same-shape imports</strong> (two declarations whose lowering is identical): only the name tells them apart.</li>
+<li><strong>Enums from JS</strong>: a WebIDL enum is a string in JS; <code>jsb</code> does not convert it (a member takes it by hand, or the
+declaration takes a string).</li>
 </ul>
-<h2 id="files"><a class="anchor" href="#files" aria-hidden="true">#</a>Files</h2>
-<div class="code"><pre><code>native/js/odin_abi/
-  abi/            abi.odin wire.odin marshal.odin invoke.odin   -- the wire format + the comptime marshallers
-  abi_host/       host.odin dispatch.odin scalar.odin           -- the host bridge (bind/install, host_call, scalar)
-  abi_guest/      guest.odin host_call.odin guest_url.odin      -- the guest transport + the URL bindings
-  api_decl/       url.odin                                      -- the shared declarations
-  abi_url/        host.odin impl.odin                           -- the URL domain implementation (real wb:url)
-  bench_guest/    main.odin scalar.odin cm_scalar.odin          -- the wasm32 benchmark guest
-  bench/          main.odin scalar_baseline.odin                -- the Wasmtime benchmark runner
-  check/          main.odin                                     -- the in-process round-trip check
-  apidoc/         main.odin                                     -- docs/conformance from api_decl (core:odin/parser)</code></pre></div>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="/docs/js/bindgen.html"><span>Previous</span><strong>bindgen: Odin output and Odin input</strong></a>
 <a class="doc-next" href="/docs/js/odin-glue.html"><span>Next</span><strong>Writing Wren's JavaScript glue in Odin</strong></a>
@@ -365,19 +376,14 @@ them. Not part of the argument marshalling.</li>
 <nav class="doc-toc" aria-label="On this page">
 <p class="doc-toc-title">On this page</p>
 <ul>
-<li><a href="#why">Why</a></li>
-<li><a href="#shape-of-the-boundary">Shape of the boundary</a></li>
-<li class="lvl3"><a href="#1-the-scalar-fast-path-hot">1. The scalar fast path (hot)</a></li>
-<li class="lvl3"><a href="#2-the-serialised-path-general-cold">2. The serialised path (general, cold)</a></li>
-<li><a href="#serialisation">Serialisation</a></li>
-<li><a href="#the-declarations-package-api-decl">The declarations (package api_decl)</a></li>
-<li><a href="#the-bridges-compile-time-baseintrinsics">The bridges (compile-time, base:intrinsics)</a></li>
+<li><a href="#the-pieces">The pieces</a></li>
+<li><a href="#declarations-package-api-decl">Declarations (package api_decl)</a></li>
+<li><a href="#the-bridges-comptime">The bridges, comptime</a></li>
 <li><a href="#measurements">Measurements</a></li>
-<li><a href="#proof-two-domains-end-to-end">Proof: two domains end to end</a></li>
-<li><a href="#the-tool-that-remains">The tool that remains</a></li>
-<li><a href="#migration-plan-domain-by-domain">Migration plan, domain by domain</a></li>
-<li><a href="#out-of-scope-for-the-compile-time-bridge-and-how-to-express-it">Out of scope for the compile-time bridge (and how to express it)</a></li>
-<li><a href="#files">Files</a></li>
+<li><a href="#inside-the-engine-jsb">Inside the engine: jsb</a></li>
+<li><a href="#how-to-migrate-a-domain-10-steps">How to migrate a domain (10 steps)</a></li>
+<li><a href="#the-host-side-next">The host side, next</a></li>
+<li><a href="#what-stays-out-of-the-comptime-bridge">What stays out of the comptime bridge</a></li>
 </ul>
 </nav>
 </main>

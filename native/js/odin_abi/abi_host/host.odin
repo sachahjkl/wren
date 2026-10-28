@@ -30,13 +30,12 @@ Host_Config :: struct($C: typeid) {
 	raise:  proc(ctx: C, inst: ^wasm.Instance, code: abi.Api_Error),   // record the exception of a raising call
 }
 
-// One registered serialised operation. `run` is the comptime-specialised decode-call-encode built by `bind` from a
-// declaration and an impl; `manual` is a hand-written codec from `bind_manual` (dictionaries, unions). Exactly one is
-// set. Both assume the caller set the context (the dispatcher does, once per `host_call`).
+// One registered serialised operation: the comptime-specialised decode-call-encode `bind` built from a declaration
+// and an implementation. Every shape (scalars, strings, bytes, optionals, slices, dictionaries, owned handles) goes
+// through it; there is no hand-written codec.
 Op :: struct($C: typeid) {
-	name:   string,
-	run:    proc (cfg: ^Host_Config(C), inst: ^wasm.Instance, args: []u8, ret: []u8) -> (status: abi.Api_Error, need: int),
-	manual: proc (cfg: ^Host_Config(C), inst: ^wasm.Instance, r: ^abi.Reader, w: ^abi.Writer) -> abi.Api_Error,
+	name: string,
+	run:  proc (cfg: ^Host_Config(C), inst: ^wasm.Instance, args: []u8, ret: []u8) -> (status: abi.Api_Error, need: int),
 }
 
 // A domain's registry of serialised operations, in declaration order. `op` is the index into it (the operation
@@ -55,33 +54,22 @@ registry_make :: proc(cfg: Host_Config($C)) -> Registry(C) {
 // Returns the operation number the guest must pass for this function.
 bind :: proc(reg: ^Registry($C), name: string, $D: typeid, $impl: $P) -> int
 	where intrinsics.type_is_proc(D), intrinsics.type_is_proc(P),
-	      // the implementation is the declaration plus a leading context parameter, same returns. The full per-type
-	      // match is enforced below: `invoke` calls `impl` with arguments typed from P and decoded against the wire,
-	      // so a drift in any argument or return type is a compile error at the instantiation of this `bind`.
 	      intrinsics.type_proc_parameter_count(P) == intrinsics.type_proc_parameter_count(D) + 1,
 	      intrinsics.type_proc_return_count(P) == intrinsics.type_proc_return_count(D) {
+	abi.must_bind(D, P)
 	run :: proc (cfg: ^Host_Config(C), inst: ^wasm.Instance, args: []u8, ret: []u8) -> (status: abi.Api_Error, need: int) {
 		r := abi.reader_make(args)
 		w := abi.writer_make(ret)
 		ctx := cfg.begin(inst)
-		e := abi.Invoke_Env(C){ctx = ctx, val = abi.Validate{utf8 = cfg.utf8}}
-		st: abi.Api_Error
-		bad := abi.invoke(&r, &w, &st, e, P, impl)
+		e := abi.Decode_Env{val = abi.Validate{utf8 = cfg.utf8}, alloc = context.temp_allocator}
+		st, bad := abi.invoke(&r, &w, &e, ctx, P, impl)
+		if st != .None && st != .Truncated && cfg.raise != nil { cfg.raise(ctx, inst, st) }
 		cfg.end(ctx)
 		if bad { return .Type, 0 }
 		if !abi.writer_fit(&w) { return .Truncated, w.need }
 		return st, w.need
 	}
 	append(&reg.ops, Op(C){name = name, run = run})
-	return len(reg.ops) - 1
-}
-
-// Bind a hand-written operation: the documented escape hatch for a shape the comptime bridge does not carry on its
-// own (a dictionary struct with strings, a union, a WebIDL overload). The function reads its arguments from a Reader
-// and writes its result to a Writer itself, using the same wire helpers (abi.read_*/write_*). Dictionaries are rare
-// (constructors, option bags), off the hot path; keeping them manual keeps `decode_arg`/`encode_ret` pure and small.
-bind_manual :: proc(reg: ^Registry($C), name: string, fn: proc(cfg: ^Host_Config(C), inst: ^wasm.Instance, r: ^abi.Reader, w: ^abi.Writer) -> abi.Api_Error) -> int {
-	append(&reg.ops, Op(C){name = name, manual = fn})
 	return len(reg.ops) - 1
 }
 

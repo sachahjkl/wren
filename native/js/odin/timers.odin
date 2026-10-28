@@ -170,7 +170,7 @@ rec_from_user :: proc "contextless" (user: i64) -> (rec: ^Cb_Rec, slot: u32, ok:
 // ---- setTimeout / setInterval ----
 
 @(private = "file")
-timer_callback_index :: proc "contextless" () -> u32 { return u32(uintptr(rawptr(wj_cb_timer))) }
+timer_callback_index :: proc "contextless" () -> i32 { return wj.table_index(rawptr(wj_cb_timer)) }
 
 @(private = "file")
 timer_start :: proc "c" (ctx: ^wj.Context, argc: i32, argv: [^]wj.JSValue, repeat: bool) -> wj.JSValue {
@@ -311,7 +311,7 @@ wjr_WindowOrWorkerGlobalScope_queueMicrotask :: proc "c" (ctx: ^wj.Context, this
 // ---- requestAnimationFrame ----
 
 @(private = "file")
-frame_callback_index :: proc "contextless" () -> u32 { return u32(uintptr(rawptr(wj_cb_frame))) }
+frame_callback_index :: proc "contextless" () -> i32 { return wj.table_index(rawptr(wj_cb_frame)) }
 
 // animation frames of a dedicated worker (AnimationFrameProvider): a 60 Hz clock of its own, callbacks on the global's
 // hidden state ("rafList" = [id, callback] pairs, "rafTimer" set while a frame is due).
@@ -448,7 +448,7 @@ wj_cb_frame :: proc "c" (user: i32, time: f64) {
 // ---- requestIdleCallback ----
 
 @(private = "file")
-idle_callback_index :: proc "contextless" () -> u32 { return u32(uintptr(rawptr(wj_cb_idle))) }
+idle_callback_index :: proc "contextless" () -> i32 { return wj.table_index(rawptr(wj_cb_idle)) }
 
 @(export, link_name = "wjr_Window_requestIdleCallback")
 wjr_Window_requestIdleCallback :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {

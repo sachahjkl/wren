@@ -12,7 +12,7 @@ package odin_glue
 
 import "../odin/wj"
 
-// browser console levels (wren_api.h wr_ConsoleLevel).
+// browser console levels (wren_api.h wj.wr_ConsoleLevel).
 @(private = "file") LEVEL_LOG   :: 0
 @(private = "file") LEVEL_INFO  :: 1
 @(private = "file") LEVEL_WARN  :: 2
@@ -170,7 +170,7 @@ inspect_object :: proc "c" (ctx: ^wj.Context, b: ^SB, v: wj.JSValue, depth: i32)
 		name := wj.JS_GetPropertyStr(ctx, ctor, "name")
 		n: uint = 0
 		s := wj.is_string(name) ? wj.to_cstring_len(ctx, &n, name) : nil
-		if s != nil && n != 0 && wj.strcmp(([^]u8)(rawptr(s)), &LIT_OBJECT[0]) != 0 { sb_put(b, ([^]u8)(rawptr(s)), n); sb_str(b, " ") }
+		if s != nil && n != 0 && wj.strcmp(([^]u8)(rawptr(s)), raw_data(LIT_OBJECT[:])) != 0 { sb_put(b, ([^]u8)(rawptr(s)), n); sb_str(b, " ") }
 		if s != nil { wj.JS_FreeCString(ctx, s) }
 		wj.JS_FreeValue(ctx, name)
 	}
@@ -241,7 +241,7 @@ format_args :: proc "c" (ctx: ^wj.Context, b: ^SB, argc: i32, argv: [^]wj.JSValu
 				if fp[i] != '%' || i + 1 >= n { sb_put(b, &fp[i], 1); continue }
 				c := fp[i + 1]
 				if c == '%' { sb_byte(b, '%'); i += 1; continue }
-				if wj.strchr(&LIT_SUBST[0], i32(c)) == nil { sb_put(b, &fp[i], 1); continue }
+				if wj.strchr(raw_data(LIT_SUBST[:]), i32(c)) == nil { sb_put(b, &fp[i], 1); continue }
 				i += 1
 				if next >= argc { sb_put(b, &fp[i - 1], 2); continue }
 				a := argv[next]; next += 1

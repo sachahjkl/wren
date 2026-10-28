@@ -40,7 +40,7 @@ is_input :: proc "c" (o: ^wj.Obj) -> bool { return i32(o.iface) == i_input() }
 
 @(private = "file")
 set_range :: proc "c" (ctx: ^wj.Context, o: ^wj.Obj, start: i32, end: i32, dir: i32) -> wj.JSValue {
-	st := is_input(o) ? wr_HTMLInputElement_setSelectionRange(o.handle, start, end, dir) : wr_HTMLTextAreaElement_setSelectionRange(o.handle, start, end, dir)
+	st := is_input(o) ? wj.wr_HTMLInputElement_setSelectionRange(o.handle, start, end, dir) : wj.wr_HTMLTextAreaElement_setSelectionRange(o.handle, start, end, dir)
 	return st < 0 ? wj.wj_throw_status(ctx, st, "setSelectionRange") : wj.UNDEFINED
 }
 
@@ -68,8 +68,8 @@ wjr_HTMLTextAreaElement_setSelectionRange :: proc "c" (ctx: ^wj.Context, t: wj.J
 selection_set :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue, iface: i32, which: i32) -> wj.JSValue {
 	o := wj.wj_this(ctx, this_val, iface)
 	if o == nil { return wj.EXCEPTION }
-	start := is_input(o) ? wr_HTMLInputElement_selectionStart(o.handle) : wr_HTMLTextAreaElement_selectionStart(o.handle)
-	end := is_input(o) ? wr_HTMLInputElement_selectionEnd(o.handle) : wr_HTMLTextAreaElement_selectionEnd(o.handle)
+	start := is_input(o) ? wj.wr_HTMLInputElement_selectionStart(o.handle) : wj.wr_HTMLTextAreaElement_selectionStart(o.handle)
+	end := is_input(o) ? wj.wr_HTMLInputElement_selectionEnd(o.handle) : wj.wr_HTMLTextAreaElement_selectionEnd(o.handle)
 	if start < 0 || end < 0 { return wj.wj_throw_dom(ctx, "InvalidStateError", "The control has no selection.") }
 	if which == 2 {
 		dir := direction_of(ctx, v)
@@ -102,7 +102,7 @@ wjr_HTMLTextAreaElement_set_selectionDirection :: proc "c" (ctx: ^wj.Context, t:
 wjr_HTMLFormElement_length_hook :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue) -> u32 {
 	o := wj.obj_of(obj)
 	if o == nil || o.handle == 0 { return 0 }
-	n := wr_HTMLFormElement_length(o.handle)
+	n := wj.wr_HTMLFormElement_length(o.handle)
 	return n > 0 ? u32(n) : 0
 }
 
@@ -111,7 +111,7 @@ wjr_HTMLFormElement_index_get :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, in
 	o := wj.obj_of(obj)
 	found^ = false
 	if o == nil || o.handle == 0 || index > u32(INT32_MAX) { return wj.UNDEFINED }
-	h := wr_HTMLFormElement_elements(o.handle, i32(index))
+	h := wj.wr_HTMLFormElement_elements(o.handle, i32(index))
 	if h == 0 { return wj.UNDEFINED }
 	found^ = true
 	return wj.wj_wrap_node(ctx, h)
@@ -122,7 +122,7 @@ wjr_HTMLFormElement_named_get :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, na
 	found^ = false
 	o := wj.obj_of(obj)
 	if o == nil || o.handle == 0 { return wj.UNDEFINED }
-	h := wr_HTMLFormElement_namedControl(o.handle, name, u32(length))
+	h := wj.wr_HTMLFormElement_namedControl(o.handle, name, u32(length))
 	if h == 0 { return wj.UNDEFINED }
 	found^ = true
 	return wj.wj_wrap_node(ctx, h)
@@ -166,7 +166,7 @@ options_of :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> ^wj.Dom_Impl 
 @(export, link_name = "wjr_HTMLOptionsCollection_get_length")
 wjr_HTMLOptionsCollection_get_length :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
 	d := options_of(ctx, this_val)
-	return d != nil ? wj.new_uint32(ctx, wr_Collection_length(d.coll)) : wj.EXCEPTION
+	return d != nil ? wj.new_uint32(ctx, wj.wr_Collection_length(d.coll)) : wj.EXCEPTION
 }
 
 @(export, link_name = "wjr_HTMLOptionsCollection_set_length")
@@ -176,11 +176,11 @@ wjr_HTMLOptionsCollection_set_length :: proc "c" (ctx: ^wj.Context, this_val: wj
 	n: u32
 	if !wj.wj_to_uint32(ctx, v, &n, 32, 0) { return wj.EXCEPTION }
 	if n > 100000 { return wj.UNDEFINED }   // HTML: larger lengths are ignored
-	for cur := wr_Collection_length(d.coll); cur > n; cur -= 1 { wr_ChildNode_remove(wr_Collection_item(d.coll, cur - 1)) }
-	for cur := wr_Collection_length(d.coll); cur < n; cur += 1 {
+	for cur := wj.wr_Collection_length(d.coll); cur > n; cur -= 1 { wj.wr_ChildNode_remove(wj.wr_Collection_item(d.coll, cur - 1)) }
+	for cur := wj.wr_Collection_length(d.coll); cur < n; cur += 1 {
 		opt := u64(0)
-		if wr_Document_createElementChecked(wj.raw_bytes("option"), 6, &opt) < 0 { break }
-		wr_Node_preInsert(d.node, opt, 0)
+		if wj.wr_Document_createElementChecked(wj.raw_bytes("option"), 6, &opt) < 0 { break }
+		wj.wr_Node_preInsert(d.node, opt, 0)
 	}
 	return wj.UNDEFINED
 }
@@ -197,12 +197,12 @@ wjr_HTMLOptionsCollection_add :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 	if wj.is_number(b) {
 		i := i32(0)
 		wj.JS_ToInt32(ctx, &i, b)
-		before = i >= 0 ? wr_Collection_item(d.coll, u32(i)) : 0
+		before = i >= 0 ? wj.wr_Collection_item(d.coll, u32(i)) : 0
 	} else if !wj.dom_node_arg(ctx, b, &before, true, "add") {
 		return wj.EXCEPTION
 	}
-	parent := before != 0 ? wr_Node_parentNode(before) : d.node
-	st := wr_Node_preInsert(parent, el, before)
+	parent := before != 0 ? wj.wr_Node_parentNode(before) : d.node
+	st := wj.wr_Node_preInsert(parent, el, before)
 	return st < 0 ? wj.wj_throw_status(ctx, st, "HTMLOptionsCollection.add") : wj.UNDEFINED
 }
 
@@ -212,8 +212,8 @@ wjr_HTMLOptionsCollection_remove :: proc "c" (ctx: ^wj.Context, this_val: wj.JSV
 	if d == nil { return wj.EXCEPTION }
 	i := i32(0)
 	if argc > 0 && wj.JS_ToInt32(ctx, &i, argv[0]) < 0 { return wj.EXCEPTION }
-	opt := i >= 0 ? wr_Collection_item(d.coll, u32(i)) : 0
-	if opt != 0 { wr_ChildNode_remove(opt) }
+	opt := i >= 0 ? wj.wr_Collection_item(d.coll, u32(i)) : 0
+	if opt != 0 { wj.wr_ChildNode_remove(opt) }
 	return wj.UNDEFINED
 }
 
@@ -221,7 +221,7 @@ wjr_HTMLOptionsCollection_remove :: proc "c" (ctx: ^wj.Context, this_val: wj.JSV
 wjr_HTMLSelectElement_remove :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	o := wj.wj_this(ctx, this_val, i_select())
 	if o == nil { return wj.EXCEPTION }
-	if argc == 0 { wr_ChildNode_remove(o.handle); return wj.UNDEFINED }
+	if argc == 0 { wj.wr_ChildNode_remove(o.handle); return wj.UNDEFINED }
 	opts := wj.JS_GetPropertyStr(ctx, this_val, "options")
 	if wj.is_exception(opts) { return opts }
 	r := wjr_HTMLOptionsCollection_remove(ctx, opts, argc, argv)

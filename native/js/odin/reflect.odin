@@ -101,7 +101,7 @@ wj_reflect_get :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, iface: i32, 
 		if wj.is_undefined(v) { return wj.NULL }
 		return v
 	}
-	n := attr_get(wj.obj_handle(o), name)
+	n := attr_get(wj.handle_of(o), name)
 	v := wj.scratch_data()
 	switch Kind(kind) {
 	case .String:
@@ -175,7 +175,7 @@ wj_reflect_set :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, iface: i32, 
 		wj.JS_FreeAtom(ctx, k)
 		return wj.UNDEFINED
 	}
-	el := wj.obj_handle(o)
+	el := wj.handle_of(o)
 	nm := ([^]u8)(rawptr(name))
 	switch Kind(kind) {
 	case .Bool:

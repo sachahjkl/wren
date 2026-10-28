@@ -102,7 +102,7 @@ rd_u32 :: proc "c" (p: [^]u8) -> u32 { return u32(p[0]) | u32(p[1]) << 8 | u32(p
 @(private = "file")
 ce_create :: proc "c" (ctx: ^wj.Context, name: [^]u8, length: uint) -> wj.JSValue {
 	h := u64(0)
-	st := wr_CustomElements_create(name, u32(length), &h)
+	st := wj.wr_CustomElements_create(name, u32(length), &h)
 	if st < 0 { return wj.wj_throw_status(ctx, st, "HTMLElement") }
 	return wj.wj_wrap_node(ctx, h)
 }
@@ -110,12 +110,12 @@ ce_create :: proc "c" (ctx: ^wj.Context, name: [^]u8, length: uint) -> wj.JSValu
 ce_set_state :: proc "c" (ctx: ^wj.Context, el: wj.JSValue, state: i32) {
 	o := wj.obj_of(el)
 	if o == nil || o.kind != wj.KIND_NODE { return }
-	wr_Element_setCustomState(o.handle, u32(state))
+	wj.wr_Element_setCustomState(o.handle, u32(state))
 }
 @(private = "file")
-ce_browser_define :: proc "c" (name: [^]u8, length: uint) { wr_CustomElements_define(name, u32(length)) }
+ce_browser_define :: proc "c" (name: [^]u8, length: uint) { wj.wr_CustomElements_define(name, u32(length)) }
 @(private = "file")
-ce_browser_disable :: proc "c" (name: [^]u8, length: uint, shadow: bool, internals: bool) { wr_CustomElements_disable(name, u32(length), shadow ? 1 : 0, internals ? 1 : 0) }
+ce_browser_disable :: proc "c" (name: [^]u8, length: uint, shadow: bool, internals: bool) { wj.wr_CustomElements_disable(name, u32(length), shadow ? 1 : 0, internals ? 1 : 0) }
 
 @(private = "file")
 packed_elements :: proc "c" (ctx: ^wj.Context, n: i32) -> wj.JSValue {
@@ -131,26 +131,26 @@ packed_elements :: proc "c" (ctx: ^wj.Context, n: i32) -> wj.JSValue {
 }
 @(private = "file")
 ce_by_name_elements :: proc "c" (ctx: ^wj.Context, name: [^]u8, length: uint) -> wj.JSValue {
-	n := wr_Document_shadowIncludingByName(name, u32(length), wj.wj_scratch.data, wj.wj_scratch.cap)
-	if n > 0 && u32(n) > wj.wj_scratch.cap { if wj.wj_scratch_grow(u32(n)) { n = wr_Document_shadowIncludingByName(name, u32(length), wj.wj_scratch.data, wj.wj_scratch.cap) } }
+	n := wj.wr_Document_shadowIncludingByName(name, u32(length), wj.wj_scratch.data, wj.wj_scratch.cap)
+	if n > 0 && u32(n) > wj.wj_scratch.cap { if wj.wj_scratch_grow(u32(n)) { n = wj.wr_Document_shadowIncludingByName(name, u32(length), wj.wj_scratch.data, wj.wj_scratch.cap) } }
 	return packed_elements(ctx, n)
 }
 @(private = "file")
 ce_descendants :: proc "c" (ctx: ^wj.Context, root: wj.JSValue) -> wj.JSValue {
 	o := wj.wj_unwrap(root, iface_node())
 	if o == nil || o.handle == 0 { return wj.JS_NewArray(ctx) }
-	n := wr_Node_shadowIncludingElements(o.handle, wj.wj_scratch.data, wj.wj_scratch.cap)
-	if n > 0 && u32(n) > wj.wj_scratch.cap { if wj.wj_scratch_grow(u32(n)) { n = wr_Node_shadowIncludingElements(o.handle, wj.wj_scratch.data, wj.wj_scratch.cap) } }
+	n := wj.wr_Node_shadowIncludingElements(o.handle, wj.wj_scratch.data, wj.wj_scratch.cap)
+	if n > 0 && u32(n) > wj.wj_scratch.cap { if wj.wj_scratch_grow(u32(n)) { n = wj.wr_Node_shadowIncludingElements(o.handle, wj.wj_scratch.data, wj.wj_scratch.cap) } }
 	return packed_elements(ctx, n)
 }
 
 @(private = "file")
 ce_take_records :: proc "c" (ctx: ^wj.Context) -> wj.JSValue {
-	need := wr_CustomElements_pending()
+	need := wj.wr_CustomElements_pending()
 	out := wj.JS_NewArray(ctx)
 	if need == 0 { return out }
 	if wj.wj_scratch.cap < need && !wj.wj_scratch_grow(need) { wj.JS_FreeValue(ctx, out); return wj.JS_ThrowOutOfMemory(ctx) }
-	n := wr_CustomElements_take(wj.wj_scratch.data, wj.wj_scratch.cap)
+	n := wj.wr_CustomElements_take(wj.wj_scratch.data, wj.wj_scratch.cap)
 	if n <= 0 || u32(n) > wj.wj_scratch.cap { return out }
 	b := ([^]u8)(wj.libc_malloc(uint(n)))
 	if b == nil { wj.JS_FreeValue(ctx, out); return wj.JS_ThrowOutOfMemory(ctx) }
@@ -185,7 +185,7 @@ ce_take_records :: proc "c" (ctx: ^wj.Context) -> wj.JSValue {
 		}
 		wj.array_set(ctx, out, k, rec); k += 1
 	}
-	if handles != nil { wr_CustomElements_release(handles, nh) }
+	if handles != nil { wj.wr_CustomElements_release(handles, nh) }
 	wj.libc_free(handles)
 	wj.libc_free(b)
 	return out
@@ -379,20 +379,23 @@ ce_define :: proc "c" (ctx: ^wj.Context, namev: wj.JSValue, ctor: wj.JSValue, op
 	if wj.is_exception(name_str) { return wj.EXCEPTION }
 	name_len := uint(0)
 	name := wj.JS_ToCStringLen(ctx, &name_len, name_str)
-	namebuf := wj.web_strndup(name != nil ? name : cstring(""), name != nil ? name_len : 0)
+	namebuf := wj.cstr(wj.web_strndup(wj.cstr_bytes(name), name != nil ? name_len : 0))
 	if name != nil { wj.JS_FreeCString(ctx, name) }
 
 	if !wj.JS_IsConstructor(ctx, ctor) { wj.JS_FreeValue(ctx, name_str); wj.libc_free(rawptr(namebuf)); return wj.wj_throw_type(ctx, "Failed to execute 'define' on 'CustomElementRegistry': The provided value is not of type 'CustomElementConstructor'.") }
+	msg: [128]u8
 	if !valid_name_v(ctx, name_str) {
+		wj.snprintf(&msg[0], len(msg), "Failed to execute 'define' on 'CustomElementRegistry': \"%s\" is not a valid custom element name", namebuf)
 		wj.JS_FreeValue(ctx, name_str); wj.libc_free(rawptr(namebuf))
-		return wj.JS_Throw(ctx, wj.web_dom_exception(ctx, "SyntaxError", "is not a valid custom element name"))
+		return wj.JS_Throw(ctx, wj.web_dom_exception(ctx, "SyntaxError", wj.cstr(&msg[0])))
 	}
-	name_key := name_str
+	name_key := name_str   // the exact string value: keys byName / byCtor / pending without NUL truncation
 	if map_has(ctx, ce_by_name, name_key) {
+		wj.snprintf(&msg[0], len(msg), "Failed to execute 'define' on 'CustomElementRegistry': the name \"%s\" has already been used with this registry", namebuf)
 		wj.JS_FreeValue(ctx, name_key); wj.libc_free(rawptr(namebuf))
-		return wj.JS_Throw(ctx, wj.web_dom_exception(ctx, "NotSupportedError", "the name has already been used with this registry"))
+		return wj.JS_Throw(ctx, wj.web_dom_exception(ctx, "NotSupportedError", wj.cstr(&msg[0])))
 	}
-	if map_has(ctx, ce_by_ctor, ctor) { wj.JS_FreeValue(ctx, name_key); wj.libc_free(rawptr(namebuf)); return wj.JS_Throw(ctx, wj.web_dom_exception(ctx, "NotSupportedError", "this constructor has already been used with this registry")) }
+	if map_has(ctx, ce_by_ctor, ctor) { wj.JS_FreeValue(ctx, name_key); wj.libc_free(rawptr(namebuf)); return wj.JS_Throw(ctx, wj.web_dom_exception(ctx, "NotSupportedError", "Failed to execute 'define' on 'CustomElementRegistry': this constructor has already been used with this registry")) }
 	if !wj.is_undefined(options) && !wj.is_null(options) {
 		ext := wj.JS_GetPropertyStr(ctx, options, "extends")
 		if !wj.is_undefined(ext) {
@@ -400,12 +403,12 @@ ce_define :: proc "c" (ctx: ^wj.Context, namev: wj.JSValue, ctor: wj.JSValue, op
 			ext_valid := es != nil && valid_name(ctx, es)
 			if es != nil { wj.JS_FreeCString(ctx, es) }
 			wj.JS_FreeValue(ctx, ext); wj.JS_FreeValue(ctx, name_key); wj.libc_free(rawptr(namebuf))
-			if ext_valid { return wj.JS_Throw(ctx, wj.web_dom_exception(ctx, "NotSupportedError", "'extends' names a custom element")) }
-			return wj.JS_Throw(ctx, wj.web_dom_exception(ctx, "NotSupportedError", "customized built-in elements ('extends') are not supported"))
+			if ext_valid { return wj.JS_Throw(ctx, wj.web_dom_exception(ctx, "NotSupportedError", "Failed to execute 'define' on 'CustomElementRegistry': 'extends' names a custom element")) }
+			return wj.JS_Throw(ctx, wj.web_dom_exception(ctx, "NotSupportedError", "Failed to execute 'define' on 'CustomElementRegistry': customized built-in elements ('extends') are not supported"))
 		}
 		wj.JS_FreeValue(ctx, ext)
 	}
-	if ce_running { wj.JS_FreeValue(ctx, name_key); wj.libc_free(rawptr(namebuf)); return wj.JS_Throw(ctx, wj.web_dom_exception(ctx, "NotSupportedError", "a definition is running")) }
+	if ce_running { wj.JS_FreeValue(ctx, name_key); wj.libc_free(rawptr(namebuf)); return wj.JS_Throw(ctx, wj.web_dom_exception(ctx, "NotSupportedError", "Failed to execute 'define' on 'CustomElementRegistry': a definition is running")) }
 
 	ce_running = true
 	def := wj.UNDEFINED
@@ -478,7 +481,7 @@ ce_define :: proc "c" (ctx: ^wj.Context, namev: wj.JSValue, ctor: wj.JSValue, op
 	noShadow := wj.JS_ToBool(ctx, nsv) != 0
 	noInternals := wj.JS_ToBool(ctx, niv) != 0
 	wj.JS_FreeValue(ctx, nsv); wj.JS_FreeValue(ctx, niv)
-	nblen := c_strlen(namebuf)
+	nblen := wj.strlen(namebuf)
 	if noShadow || noInternals { ce_browser_disable(wj.cstr_bytes(namebuf), nblen, noShadow, noInternals) }
 	ce_browser_define(wj.cstr_bytes(namebuf), nblen)
 	list := ce_by_name_elements(ctx, wj.cstr_bytes(namebuf), nblen)
@@ -499,7 +502,6 @@ ce_define :: proc "c" (ctx: ^wj.Context, namev: wj.JSValue, ctor: wj.JSValue, op
 	return wj.UNDEFINED
 }
 
-@(private = "file") c_strlen :: proc "c" (s: cstring) -> uint { p := ([^]u8)(rawptr(s)); n := uint(0); for p[n] != 0 { n += 1 }; return n }
 
 // [HTMLConstructor]
 @(private = "file")
@@ -518,7 +520,7 @@ ce_construct :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue) -> wj.JSValu
 	if !from_stack {
 		namev := wj.JS_GetPropertyStr(ctx, def, "name")
 		name := wj.JS_ToCString(ctx, namev)
-		el := ce_create(ctx, name != nil ? wj.cstr_bytes(name) : wj.raw_bytes(""), name != nil ? c_strlen(name) : 0)
+		el := ce_create(ctx, name != nil ? wj.cstr_bytes(name) : wj.raw_bytes(""), name != nil ? wj.strlen(name) : 0)
 		if name != nil { wj.JS_FreeCString(ctx, name) }
 		wj.JS_FreeValue(ctx, namev)
 		if wj.is_exception(el) { wj.JS_FreeValue(ctx, proto); wj.JS_FreeValue(ctx, def); return el }
@@ -663,17 +665,13 @@ wjr_CustomElementRegistry_whenDefined :: proc "c" (ctx: ^wj.Context, this_val: w
 	if !registry_this(ctx, this_val) { return wj.web_promise_reject_pending(ctx) }
 	if argc < 1 { wj.wj_throw_arity(ctx, "CustomElementRegistry.whenDefined", 1, argc); return wj.web_promise_reject_pending(ctx) }
 	if !ce_ready { return wj.web_promise_rejected(ctx, wj.web_type_error(ctx, "custom elements are not available")) }
-	name_str := wj.JS_ToString(ctx, argv[0])
-	name := wj.JS_ToCString(ctx, name_str)
-	namebuf := wj.web_strndup(name != nil ? name : cstring(""), name != nil ? c_strlen(name) : 0)
-	if name != nil { wj.JS_FreeCString(ctx, name) }
-	wj.JS_FreeValue(ctx, name_str)
-	if !valid_name(ctx, namebuf) {
-		wj.libc_free(rawptr(namebuf))
+	// the exact string value (as define keys it): a C string would stop at an embedded NUL ("a-\0" is not "a-")
+	name_key := wj.JS_ToString(ctx, argv[0])
+	if wj.is_exception(name_key) { return wj.web_promise_reject_pending(ctx) }
+	if !valid_name_v(ctx, name_key) {
+		wj.JS_FreeValue(ctx, name_key)
 		return wj.web_promise_rejected(ctx, wj.web_dom_exception(ctx, "SyntaxError", "is not a valid custom element name"))
 	}
-	name_key := wj.JS_NewString(ctx, namebuf)
-	wj.libc_free(rawptr(namebuf))
 	def := map_get(ctx, ce_by_name, name_key)
 	if !wj.is_undefined(def) {
 		ctor := wj.JS_GetPropertyStr(ctx, def, "ctor")
@@ -687,7 +685,7 @@ wjr_CustomElementRegistry_whenDefined :: proc "c" (ctx: ^wj.Context, this_val: w
 	if wj.is_undefined(entry) {
 		wj.JS_FreeValue(ctx, entry)
 		funcs: [2]wj.JSValue
-		promise := wj.web_promise_new(ctx, &funcs)
+		promise := wj.web_promise_new(ctx, raw_data(funcs[:]))
 		entry = wj.JS_NewObject(ctx)
 		wj.JS_SetPropertyStr(ctx, entry, "promise", wj.JS_DupValue(ctx, promise))
 		wj.JS_SetPropertyStr(ctx, entry, "resolve", funcs[0])

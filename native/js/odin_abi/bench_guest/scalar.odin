@@ -11,6 +11,14 @@ foreign import _scalar "url_scalar"
 foreign _scalar {
 	@(link_name = "size") _scalar_size :: proc(params: abi_guest.URLSearchParams) -> i32 ---
 	@(link_name = "get")  _scalar_get :: proc(u: abi_guest.URL, component: abi_guest.URLComponent, buf: [^]u8, cap: u32) -> i32 ---
+	@(link_name = "has")  _scalar_has :: proc(params: abi_guest.URLSearchParams, name: [^]u8, name_len: u32, value: [^]u8, value_len: u32) -> i32 ---
+}
+
+@(export)
+scalar_calls_has :: proc "contextless" (n: i32) -> i32 {
+	s: i32
+	for _ in 0 ..< n { s += _scalar_has(the_params, raw_data(NAME), u32(len(NAME)), raw_data(VALUE), u32(len(VALUE))) }
+	return s
 }
 
 scalar_buf: [256]u8

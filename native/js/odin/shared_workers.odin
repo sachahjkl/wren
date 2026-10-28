@@ -7,23 +7,10 @@ package odin_glue
 
 import "../odin/wj"
 
-foreign import _m_scripts "scripts"
 
-@(default_calling_convention = "c")
-foreign _m_scripts {
-	@(link_name = "SharedWorker_connect")      wr_SharedWorker_connect      :: proc(url: [^]u8, url_len: u32, name: [^]u8, name_len: u32, type: i32, extended_lifetime: i32, ret: ^u64) -> i32 ---
-	@(link_name = "SharedWorker_connectBytes") wr_SharedWorker_connectBytes :: proc(url: [^]u8, url_len: u32, name: [^]u8, name_len: u32, type: i32, extended_lifetime: i32, script: [^]u8, script_len: u32, ret: ^u64) -> i32 ---
-	@(link_name = "SharedWorker_portEnd")      wr_SharedWorker_portEnd      :: proc(worker: u64) -> u64 ---
-	@(link_name = "SharedWorkerGlobalScope_takeConnection") wr_SharedWorkerGlobalScope_takeConnection :: proc() -> u64 ---
-}
 
-foreign import _m_async2 "async"
-@(default_calling_convention = "c")
-foreign _m_async2 {
-	@(link_name = "Object_release") wr_sw_Object_release :: proc(object: u64) -> i32 ---
-}
 
-// enum wr_WorkerType
+// enum wj.wr_WorkerType
 WORKER_TYPE_CLASSIC :: i32(0)
 WORKER_TYPE_MODULE  :: i32(1)
 
@@ -44,7 +31,7 @@ Shared_Impl :: struct {
 
 @(private = "file") shared_free :: proc "c" (p: rawptr) {
 	wj.JS_FreeValueRT(wj.web_rt(), (^Shared_Impl)(p).port)
-	wj.c_free(p)
+	wj.libc_free(p)
 }
 @(private = "file") shared_mark :: proc "c" (rt: rawptr, p: rawptr, mark_func: rawptr) { wj.wj_mark(rt, (^Shared_Impl)(p).port, mark_func) }
 
@@ -117,22 +104,22 @@ wjr_SharedWorker_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSVal
 	bp: [^]u8
 	bn: uint
 	if web_blob_url_bytes(ctx, url.ptr, url.len, &bp, &bn) {
-		st = wr_SharedWorker_connectBytes(url.ptr, u32(url.len), name.ptr, u32(name.len),
+		st = wj.wr_SharedWorker_connectBytes(url.ptr, u32(url.len), name.ptr, u32(name.len),
 			type == 1 ? WORKER_TYPE_MODULE : WORKER_TYPE_CLASSIC, extended ? 1 : 0, bp != nil ? bp : raw_empty_sw(), u32(bn), &h)
 	} else {
-		st = wr_SharedWorker_connect(url.ptr, u32(url.len), name.ptr, u32(name.len),
+		st = wj.wr_SharedWorker_connect(url.ptr, u32(url.len), name.ptr, u32(name.len),
 			type == 1 ? WORKER_TYPE_MODULE : WORKER_TYPE_CLASSIC, extended ? 1 : 0, &h)
 	}
 	wj.wj_str_free(ctx, &url)
 	wj.wj_str_free(ctx, &name)
 	if st < 0 { return wj.wj_throw_status(ctx, st, "SharedWorker") }
-	impl := (^Shared_Impl)(wj.calloc(1, size_of(Shared_Impl)))
-	if impl == nil { wr_sw_Object_release(h); return wj.JS_ThrowOutOfMemory(ctx) }
+	impl := (^Shared_Impl)(wj.libc_calloc(1, size_of(Shared_Impl)))
+	if impl == nil { wj.wr_Object_release(h); return wj.JS_ThrowOutOfMemory(ctx) }
 	impl.port = wj.UNDEFINED
 	obj := wj.wj_wrap_owned(ctx, h, sharedworker_iface(), new_target)
-	if wj.is_exception(obj) { wj.c_free(impl); return obj }
+	if wj.is_exception(obj) { wj.libc_free(impl); return obj }
 	wj.web_set_impl(obj, impl, shared_free, shared_mark)
-	port := web_port_remote(ctx, wr_SharedWorker_portEnd(h))
+	port := web_port_remote(ctx, wj.wr_SharedWorker_portEnd(h))
 	if wj.is_exception(port) { wj.JS_FreeValue(ctx, obj); return port }
 	impl.port = port
 	web_keep_worker(ctx, obj)   // until the browser says its worker is gone: it may still get error
@@ -151,7 +138,7 @@ wj_shared_connect :: proc "c" () {
 	ctx := wj.realm_ctx()
 	wj.wj_stack_enter(ctx)
 	for {
-		end := wr_SharedWorkerGlobalScope_takeConnection()
+		end := wj.wr_SharedWorkerGlobalScope_takeConnection()
 		if end == 0 { break }
 		port := web_port_remote(ctx, end)
 		if wj.is_exception(port) { wj.wj_report_pending(ctx); continue }

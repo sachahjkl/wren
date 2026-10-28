@@ -7,7 +7,7 @@ package odin_glue
 
 import "../odin/wj"
 
-// web.h WEB_SINGLE_SCREEN (the screen singleton index) and wr_ScreenField_* (module media).
+// web.h WEB_SINGLE_SCREEN (the screen singleton index) and wj.wr_ScreenField_* (module media).
 @(private = "file") WEB_SINGLE_SCREEN :: 8
 @(private = "file") SCREEN_WIDTH        :: 0
 @(private = "file") SCREEN_HEIGHT       :: 1

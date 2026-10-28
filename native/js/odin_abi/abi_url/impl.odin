@@ -6,11 +6,9 @@
 package abi_url
 
 import "../abi"
-import "../abi_host"
 import "../api_decl"
 import "wb:base"
 import "wb:url"
-import "wb:wasm"
 
 @(private) H :: base.Handle
 @(private) url_h :: #force_inline proc(h: api_decl.URL) -> H { return H(h) }
@@ -48,10 +46,10 @@ URL_canParse :: proc(ctx: ^Host, input: string, base_url: Maybe(string)) -> bool
 	return uok
 }
 
-URL_get :: proc(ctx: ^Host, u: api_decl.URL, component: api_decl.URLComponent) -> string {
+URL_get :: proc(ctx: ^Host, u: api_decl.URL, component: api_decl.URLComponent) -> (string, abi.Api_Error) {
 	o := url_obj(u)
-	if o == nil { return "" }
-	return url.component(o.u, url.Component(component), context.temp_allocator)
+	if o == nil { return "", .Invalid_Handle }
+	return url.component(o.u, url.Component(component), context.temp_allocator), .None
 }
 
 URL_set :: proc(ctx: ^Host, u: api_decl.URL, component: api_decl.URLComponent, value: string) -> abi.Api_Error {
@@ -152,10 +150,44 @@ URLSearchParams_sort :: proc(ctx: ^Host, params: api_decl.URLSearchParams) {
 	params_update(o)
 }
 
-URLSearchParams_toString :: proc(ctx: ^Host, params: api_decl.URLSearchParams) -> string {
+URLSearchParams_toString :: proc(ctx: ^Host, params: api_decl.URLSearchParams) -> (string, abi.Api_Error) {
 	o := params_obj(params)
-	if o == nil { return "" }
-	return url.params_serialize(o.sp, context.temp_allocator)
+	if o == nil { return "", .Invalid_Handle }
+	return url.params_serialize(o.sp, context.temp_allocator), .None
+}
+
+URLSearchParams_count :: proc(ctx: ^Host, params: api_decl.URLSearchParams, name: string) -> i32 {
+	o := params_obj(params)
+	if o == nil { return 0 }
+	n: i32
+	for p in o.sp.list { if p.name == name { n += 1 } }
+	return n
+}
+
+URLSearchParams_getNth :: proc(ctx: ^Host, params: api_decl.URLSearchParams, name: string, index: i32) -> (string, abi.Api_Error) {
+	o := params_obj(params)
+	if o == nil { return "", .Invalid_Handle }
+	k: i32
+	for p in o.sp.list {
+		if p.name != name { continue }
+		if k == index { return p.value, .None }
+		k += 1
+	}
+	return "", .Not_Found
+}
+
+URLSearchParams_nameAt :: proc(ctx: ^Host, params: api_decl.URLSearchParams, index: i32) -> (string, abi.Api_Error) {
+	o := params_obj(params)
+	if o == nil { return "", .Invalid_Handle }
+	if index < 0 || int(index) >= len(o.sp.list) { return "", .Not_Found }
+	return o.sp.list[index].name, .None
+}
+
+URLSearchParams_valueAt :: proc(ctx: ^Host, params: api_decl.URLSearchParams, index: i32) -> (string, abi.Api_Error) {
+	o := params_obj(params)
+	if o == nil { return "", .Invalid_Handle }
+	if index < 0 || int(index) >= len(o.sp.list) { return "", .Not_Found }
+	return o.sp.list[index].value, .None
 }
 
 ////////////////////////////////
@@ -166,37 +198,22 @@ pattern_component :: proc(c: api_decl.URLPatternComponent) -> url.Pattern_Compon
 	return url.Pattern_Component(c)
 }
 
-// A dictionary argument: the manual escape hatch (abi_host.bind_manual). The nineteen fields of URLPatternInit are
-// read from the wire in declaration order — the order the guest wrote them (guest_url.odin) — then the pattern is
-// built and its handle written back. Constructors are off the hot path, so a hand-written codec here keeps the
-// generic marshaller free of struct walking. The field read is still the shared wire helper (abi.read_*), so a drift
-// in the field list shows up as a wrong-looking pattern in the domain's conformance test.
-URLPattern_create_manual :: proc(cfg: ^abi_host.Host_Config(^Host), inst: ^wasm.Instance, r: ^abi.Reader, w: ^abi.Writer) -> abi.Api_Error {
-	rd :: proc(r: ^abi.Reader, v: proc "contextless" (s: []u8) -> bool) -> (s: string, present: bool, bad: bool) {
-		span, _ := abi.read_span(r)
-		present = abi.read_scalar(r, u8) != 0
-		if present && v != nil && !v(span) { return "", true, true }
-		return string(span), present, false
-	}
+// A dictionary argument arrives decoded (abi_host.bind walks URLPatternInit's fields): only the behaviour is here.
+URLPattern_create :: proc(ctx: ^Host, d: api_decl.URLPatternInit) -> (api_decl.URLPattern, abi.Api_Error) {
 	init: url.Pattern_Init
-	bad: bool
-	s: string; present: bool; b: bool
-	s, present, b = rd(r, cfg.utf8); bad |= b; if present { init.protocol = s }
-	s, present, b = rd(r, cfg.utf8); bad |= b; if present { init.username = s }
-	s, present, b = rd(r, cfg.utf8); bad |= b; if present { init.password = s }
-	s, present, b = rd(r, cfg.utf8); bad |= b; if present { init.hostname = s }
-	s, present, b = rd(r, cfg.utf8); bad |= b; if present { init.port = s }
-	s, present, b = rd(r, cfg.utf8); bad |= b; if present { init.pathname = s }
-	s, present, b = rd(r, cfg.utf8); bad |= b; if present { init.search = s }
-	s, present, b = rd(r, cfg.utf8); bad |= b; if present { init.hash = s }
-	s, present, b = rd(r, cfg.utf8); bad |= b; if present { init.base_url = s }
-	ignore_case := abi.read_scalar(r, u8) != 0
-	if bad || !r.ok { return .Type }
-	pat, ok := url.pattern_create(init, ignore_case)
-	if !ok { return .Type }
+	if d.has_protocol { init.protocol = d.protocol }
+	if d.has_username { init.username = d.username }
+	if d.has_password { init.password = d.password }
+	if d.has_hostname { init.hostname = d.hostname }
+	if d.has_port { init.port = d.port }
+	if d.has_pathname { init.pathname = d.pathname }
+	if d.has_search { init.search = d.search }
+	if d.has_hash { init.hash = d.hash }
+	if d.has_base { init.base_url = d.base }
+	pat, ok := url.pattern_create(init, d.ignore_case)
+	if !ok { return 0, .Type }
 	h, _ := base.pool_insert(&host.patterns, Pattern_Object{pat = pat})
-	abi.write_scalar(w, u64(h))
-	return .None
+	return api_decl.URLPattern(h), .None
 }
 
 URLPattern_component :: proc(ctx: ^Host, pattern: api_decl.URLPattern, component: api_decl.URLPatternComponent) -> string {

@@ -1,4 +1,4 @@
-// wjd_g1.odin: the generated Web IDL dictionaries (gen/bindings.c wjd_*) the G1 glue reads. The _from / _free
+// dicts.odin: the generated Web IDL dictionaries (gen/bindings.c wjd_*) the ported glue reads. The _from / _free
 // functions are real symbols in the generated C (bindings.c, which stays); this file mirrors each struct's layout
 // exactly (field order and types from gen/bindings.h) so the engine fills it in place, and declares the two functions
 // foreign. Do not reorder fields: the layout must match the C.

@@ -38,7 +38,7 @@ touch_mark :: proc "c" (rt: rawptr, p: rawptr, mark_func: rawptr) { wj.wj_mark(r
 touch_new :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, t: ^Touch_Impl) -> wj.JSValue {
 	obj := wj.wj_new_object_for(ctx, iface_touch(), new_target, nil, nil)
 	if wj.is_exception(obj) { touch_free(t); return obj }
-	wj.set_impl(obj, t, touch_free, touch_mark)
+	wj.web_set_impl(obj, t, touch_free, touch_mark)
 	return obj
 }
 
@@ -56,7 +56,7 @@ dom_touch_list :: proc "c" (ctx: ^wj.Context, items: wj.JSValue) -> wj.JSValue {
 	l.items = items
 	obj := wj.wj_new_object(ctx, iface_touch_list(), nil, nil)
 	if wj.is_exception(obj) { tlist_free(l); return obj }
-	wj.set_impl(obj, l, tlist_free, tlist_mark)
+	wj.web_set_impl(obj, l, tlist_free, tlist_mark)
 	return obj
 }
 
@@ -67,11 +67,11 @@ dom_touch_list :: proc "c" (ctx: ^wj.Context, items: wj.JSValue) -> wj.JSValue {
 touch_lists_from_host :: proc "c" (ctx: ^wj.Context, x: wj.JSValue, host: u64) {
 	for k in i32(0)..<3 {
 		arr := wj.JS_NewArray(ctx)
-		n := wr_TouchEvent_count(host, k)
+		n := wj.wr_TouchEvent_count(host, k)
 		for i in i32(0)..<n {
-			tp: wj.Wr_TouchPoint
-			if wr_TouchEvent_touch(host, k, i, &tp) < 0 { break }
-			t := (^Touch_Impl)(wj.calloc(1, size_of(Touch_Impl)))
+			tp: wj.wr_TouchPoint
+			if wj.wr_TouchEvent_touch(host, k, i, &tp) < 0 { break }
+			t := (^Touch_Impl)(wj.libc_calloc(1, size_of(Touch_Impl)))
 			if t == nil { break }
 			t.identifier = tp.identifier
 			t.target = tp.target != 0 ? wj.wj_wrap_node(ctx, tp.target) : wj.NULL
@@ -105,7 +105,7 @@ wjr_Touch_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, arg
 	if argc < 1 { return wj.wj_throw_arity(ctx, "Touch", 1, argc) }
 	init := argv[0]
 	if !wj.is_object(init) { return wj.wj_throw_type(ctx, "Failed to construct 'Touch': parameter 1 is not of type 'TouchInit'.") }
-	t := (^Touch_Impl)(wj.calloc(1, size_of(Touch_Impl)))
+	t := (^Touch_Impl)(wj.libc_calloc(1, size_of(Touch_Impl)))
 	if t == nil { return wj.JS_ThrowOutOfMemory(ctx) }
 	t.target = wj.UNDEFINED
 	id := wj.JS_GetPropertyStr(ctx, init, "identifier")

@@ -162,7 +162,7 @@ dom_rect_list :: proc "c" (ctx: ^wj.Context, packed: [^]u8, count: u32) -> wj.JS
 	d: ^wj.Dom_Impl
 	obj := wj.dom_new(ctx, iface_rect_list(), wj.DOM_VALUES, wj.UNDEFINED, 0, &d)
 	if wj.is_exception(obj) || count == 0 { return obj }
-	d.values = ([^]wj.JSValue)(wj.calloc(uint(count), size_of(wj.JSValue)))
+	d.values = ([^]wj.JSValue)(wj.libc_calloc(uint(count), size_of(wj.JSValue)))
 	if d.values == nil { wj.JS_FreeValue(ctx, obj); return wj.JS_ThrowOutOfMemory(ctx) }
 	for i in u32(0)..<count {
 		v: [4]f64
@@ -215,8 +215,8 @@ wjr_DOMRectList_item :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: 
 wjr_Element_getBoundingClientRect :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	o := wj.wj_this(ctx, this_val, iface_element())
 	if o == nil { return wj.EXCEPTION }
-	r := wj.Wr_DomRect{}
-	wr_Element_boundingRect(o.handle, &r)
+	r := wj.wr_DomRect{}
+	wj.wr_Element_boundingRect(o.handle, &r)
 	return dom_rect_new(ctx, r.x, r.y, r.width, r.height, false)
 }
 
@@ -224,8 +224,8 @@ wjr_Element_getBoundingClientRect :: proc "c" (ctx: ^wj.Context, this_val: wj.JS
 wjr_Element_getClientRects :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	o := wj.wj_this(ctx, this_val, iface_element())
 	if o == nil { return wj.EXCEPTION }
-	n := wr_Element_clientRectsPacked(o.handle, wj.wj_scratch.data, wj.wj_scratch.cap)
-	if n > 0 && u32(n) > wj.wj_scratch.cap { if wj.wj_scratch_grow(u32(n)) { n = wr_Element_clientRectsPacked(o.handle, wj.wj_scratch.data, wj.wj_scratch.cap) } }
+	n := wj.wr_Element_clientRectsPacked(o.handle, wj.wj_scratch.data, wj.wj_scratch.cap)
+	if n > 0 && u32(n) > wj.wj_scratch.cap { if wj.wj_scratch_grow(u32(n)) { n = wj.wr_Element_clientRectsPacked(o.handle, wj.wj_scratch.data, wj.wj_scratch.cap) } }
 	return dom_rect_list(ctx, wj.wj_scratch.data, n > 0 ? u32(n) / 32 : 0)
 }
 
@@ -268,7 +268,7 @@ element_scroll :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, a
 	x, y: f64
 	smooth: bool
 	if !scroll_args(ctx, argc, argv, &x, &y, &smooth) { return wj.EXCEPTION }
-	wr_Element_scrollToXY(o.handle, x, y, relative)
+	wj.wr_Element_scrollToXY(o.handle, x, y, relative ? 1 : 0)
 	return wj.UNDEFINED
 }
 
@@ -306,7 +306,7 @@ wjr_Element_scrollIntoView :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, 
 	} else if !wj.is_undefined(arg) && wj.JS_ToBool(ctx, arg) == 0 {
 		block = 2
 	}
-	wr_Element_scrollIntoViewAt(o.handle, block, inline_pos)
+	wj.wr_Element_scrollIntoViewAt(o.handle, block, inline_pos)
 	return wj.UNDEFINED
 }
 
@@ -318,7 +318,7 @@ window_scroll :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, ar
 	x, y: f64
 	smooth: bool
 	if !scroll_args(ctx, argc, argv, &x, &y, &smooth) { return wj.EXCEPTION }
-	wr_Window_scrollToXY(x, y, relative, smooth)
+	wj.wr_Window_scrollToXY(x, y, relative ? 1 : 0, smooth ? 1 : 0)
 	return wj.UNDEFINED
 }
 
