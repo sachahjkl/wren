@@ -214,16 +214,22 @@ cr_sort_and_merge :: proc(cr: ^Cr) {
 	resize(&cr.points, 2 * w)
 }
 
+// lre_canonicalize: unicode mode is the simple case folding, except that libunicode's table stores U+FB05 by
+// its full (two-letter) folding, so it stays itself, and folds U+FB06 to it by hand; legacy mode takes the full
+// uppercase mapping when it is one code point >= 128.
 lre_canonicalize :: proc(c: u32, is_unicode: bool) -> u32 {
-	if is_unicode && c >= 128 {
-		// the few full foldings that QuickJS maps to a single canonical code point
-		switch c {
-		case 0xfb06: return 0xfb05
-		case 0x1fd3: return 0x390
-		case 0x1fe3: return 0x3b0
-		}
+	if c < 128 {
+		return ucd.canonicalize(c, is_unicode)
 	}
-	return ucd.canonicalize(c, is_unicode)
+	if is_unicode {
+		switch c {
+		case 0xfb05, 0xfb06: return 0xfb05
+		}
+		return ucd.canonicalize(c, true)
+	}
+	res: [3]u32
+	if ucd.full_case(&res, c, .To_Upper) == 1 && res[0] >= 128 {return res[0]}
+	return c
 }
 
 // --- string sets (REStringList, for the v flag) -------------------------------------------------------------
@@ -245,8 +251,8 @@ Re_String_List :: struct {
 
 @(private = "file")
 hash32u :: #force_inline proc(v: u32) -> u32 {
-	// cutils.h hash32: the 32-bit golden-ratio multiplicative hash
-	return v * 0x9e3779b1
+	// cutils.h hash32: multiply by the negated 32-bit golden ratio
+	return v * 0x61c88647
 }
 
 @(private = "file")
@@ -523,11 +529,299 @@ is_unicode_char :: proc(c: u8) -> bool {
 	return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_'
 }
 
+// The property names and aliases libunicode accepts, in its table order; the first name is the one the `ucd`
+// tables use (the second one for script extensions, which `ucd` keys by ISO 15924 code).
+@(rodata, private = "file")
+re_gc_names := [?]string {
+	"Cn,Unassigned", "Lu,Uppercase_Letter", "Ll,Lowercase_Letter", "Lt,Titlecase_Letter", "Lm,Modifier_Letter",
+	"Lo,Other_Letter", "Mn,Nonspacing_Mark", "Mc,Spacing_Mark", "Me,Enclosing_Mark", "Nd,Decimal_Number,digit",
+	"Nl,Letter_Number", "No,Other_Number", "Sm,Math_Symbol", "Sc,Currency_Symbol", "Sk,Modifier_Symbol",
+	"So,Other_Symbol", "Pc,Connector_Punctuation", "Pd,Dash_Punctuation", "Ps,Open_Punctuation",
+	"Pe,Close_Punctuation", "Pi,Initial_Punctuation", "Pf,Final_Punctuation", "Po,Other_Punctuation",
+	"Zs,Space_Separator", "Zl,Line_Separator", "Zp,Paragraph_Separator", "Cc,Control,cntrl", "Cf,Format",
+	"Cs,Surrogate", "Co,Private_Use", "LC,Cased_Letter", "L,Letter", "M,Mark,Combining_Mark", "N,Number",
+	"S,Symbol", "P,Punctuation,punct", "Z,Separator", "C,Other",
+}
+
+@(rodata, private = "file")
+re_script_names := [?]string {
+	"Adlam,Adlm", "Ahom,Ahom", "Anatolian_Hieroglyphs,Hluw", "Arabic,Arab", "Armenian,Armn", "Avestan,Avst",
+	"Balinese,Bali", "Bamum,Bamu", "Bassa_Vah,Bass", "Batak,Batk", "Bengali,Beng", "Beria_Erfe,Berf",
+	"Bhaiksuki,Bhks", "Bopomofo,Bopo", "Brahmi,Brah", "Braille,Brai", "Buginese,Bugi", "Buhid,Buhd",
+	"Canadian_Aboriginal,Cans", "Carian,Cari", "Caucasian_Albanian,Aghb", "Chakma,Cakm", "Cham,Cham",
+	"Cherokee,Cher", "Chorasmian,Chrs", "Common,Zyyy", "Coptic,Copt,Qaac", "Cuneiform,Xsux", "Cypriot,Cprt",
+	"Cyrillic,Cyrl", "Cypro_Minoan,Cpmn", "Deseret,Dsrt", "Devanagari,Deva", "Dives_Akuru,Diak", "Dogra,Dogr",
+	"Duployan,Dupl", "Egyptian_Hieroglyphs,Egyp", "Elbasan,Elba", "Elymaic,Elym", "Ethiopic,Ethi",
+	"Georgian,Geor", "Glagolitic,Glag", "Gothic,Goth", "Garay,Gara", "Grantha,Gran", "Greek,Grek",
+	"Gujarati,Gujr", "Gunjala_Gondi,Gong", "Gurmukhi,Guru", "Gurung_Khema,Gukh", "Han,Hani", "Hangul,Hang",
+	"Hanifi_Rohingya,Rohg", "Hanunoo,Hano", "Hatran,Hatr", "Hebrew,Hebr", "Hiragana,Hira",
+	"Imperial_Aramaic,Armi", "Inherited,Zinh,Qaai", "Inscriptional_Pahlavi,Phli", "Inscriptional_Parthian,Prti",
+	"Javanese,Java", "Kaithi,Kthi", "Kannada,Knda", "Katakana,Kana", "Katakana_Or_Hiragana,Hrkt", "Kawi,Kawi",
+	"Kayah_Li,Kali", "Kharoshthi,Khar", "Khmer,Khmr", "Khojki,Khoj", "Khitan_Small_Script,Kits",
+	"Khudawadi,Sind", "Kirat_Rai,Krai", "Lao,Laoo", "Latin,Latn", "Lepcha,Lepc", "Limbu,Limb", "Linear_A,Lina",
+	"Linear_B,Linb", "Lisu,Lisu", "Lycian,Lyci", "Lydian,Lydi", "Makasar,Maka", "Mahajani,Mahj",
+	"Malayalam,Mlym", "Mandaic,Mand", "Manichaean,Mani", "Marchen,Marc", "Masaram_Gondi,Gonm",
+	"Medefaidrin,Medf", "Meetei_Mayek,Mtei", "Mende_Kikakui,Mend", "Meroitic_Cursive,Merc",
+	"Meroitic_Hieroglyphs,Mero", "Miao,Plrd", "Modi,Modi", "Mongolian,Mong", "Mro,Mroo", "Multani,Mult",
+	"Myanmar,Mymr", "Nabataean,Nbat", "Nag_Mundari,Nagm", "Nandinagari,Nand", "New_Tai_Lue,Talu", "Newa,Newa",
+	"Nko,Nkoo", "Nushu,Nshu", "Nyiakeng_Puachue_Hmong,Hmnp", "Ogham,Ogam", "Ol_Chiki,Olck", "Ol_Onal,Onao",
+	"Old_Hungarian,Hung", "Old_Italic,Ital", "Old_North_Arabian,Narb", "Old_Permic,Perm", "Old_Persian,Xpeo",
+	"Old_Sogdian,Sogo", "Old_South_Arabian,Sarb", "Old_Turkic,Orkh", "Old_Uyghur,Ougr", "Oriya,Orya",
+	"Osage,Osge", "Osmanya,Osma", "Pahawh_Hmong,Hmng", "Palmyrene,Palm", "Pau_Cin_Hau,Pauc", "Phags_Pa,Phag",
+	"Phoenician,Phnx", "Psalter_Pahlavi,Phlp", "Rejang,Rjng", "Runic,Runr", "Samaritan,Samr",
+	"Saurashtra,Saur", "Sharada,Shrd", "Shavian,Shaw", "Siddham,Sidd", "Sidetic,Sidt", "SignWriting,Sgnw",
+	"Sinhala,Sinh", "Sogdian,Sogd", "Sora_Sompeng,Sora", "Soyombo,Soyo", "Sundanese,Sund", "Sunuwar,Sunu",
+	"Syloti_Nagri,Sylo", "Syriac,Syrc", "Tagalog,Tglg", "Tagbanwa,Tagb", "Tai_Le,Tale", "Tai_Tham,Lana",
+	"Tai_Viet,Tavt", "Tai_Yo,Tayo", "Takri,Takr", "Tamil,Taml", "Tangut,Tang", "Telugu,Telu", "Thaana,Thaa",
+	"Thai,Thai", "Tibetan,Tibt", "Tifinagh,Tfng", "Tirhuta,Tirh", "Tangsa,Tnsa", "Todhri,Todr",
+	"Tolong_Siki,Tols", "Toto,Toto", "Tulu_Tigalari,Tutg", "Ugaritic,Ugar", "Vai,Vaii", "Vithkuqi,Vith",
+	"Wancho,Wcho", "Warang_Citi,Wara", "Yezidi,Yezi", "Yi,Yiii", "Zanabazar_Square,Zanb",
+}
+
+@(rodata, private = "file")
+re_prop_names := [?]string {
+	"ASCII_Hex_Digit,AHex", "Bidi_Control,Bidi_C", "Dash", "Deprecated,Dep", "Diacritic,Dia", "Extender,Ext",
+	"Hex_Digit,Hex", "IDS_Unary_Operator,IDSU", "IDS_Binary_Operator,IDSB", "IDS_Trinary_Operator,IDST",
+	"Ideographic,Ideo", "Join_Control,Join_C", "Logical_Order_Exception,LOE", "Modifier_Combining_Mark,MCM",
+	"Noncharacter_Code_Point,NChar", "Pattern_Syntax,Pat_Syn", "Pattern_White_Space,Pat_WS",
+	"Quotation_Mark,QMark", "Radical", "Regional_Indicator,RI", "Sentence_Terminal,STerm", "Soft_Dotted,SD",
+	"Terminal_Punctuation,Term", "Unified_Ideograph,UIdeo", "Variation_Selector,VS", "White_Space,space",
+	"Bidi_Mirrored,Bidi_M", "Emoji", "Emoji_Component,EComp", "Emoji_Modifier,EMod",
+	"Emoji_Modifier_Base,EBase", "Emoji_Presentation,EPres", "Extended_Pictographic,ExtPict",
+	"Default_Ignorable_Code_Point,DI", "ID_Start,IDS", "Case_Ignorable,CI", "ASCII", "Alphabetic,Alpha", "Any",
+	"Assigned", "Cased", "Changes_When_Casefolded,CWCF", "Changes_When_Casemapped,CWCM",
+	"Changes_When_Lowercased,CWL", "Changes_When_NFKC_Casefolded,CWKCF", "Changes_When_Titlecased,CWT",
+	"Changes_When_Uppercased,CWU", "Grapheme_Base,Gr_Base", "Grapheme_Extend,Gr_Ext", "ID_Continue,IDC",
+	"ID_Compat_Math_Start", "ID_Compat_Math_Continue", "Lowercase,Lower", "Math", "Uppercase,Upper",
+	"XID_Continue,XIDC", "XID_Start,XIDS",
+}
+
+@(rodata, private = "file")
+re_sequence_prop_names := [?]string {
+	"Basic_Emoji", "Emoji_Keycap_Sequence", "RGI_Emoji_Modifier_Sequence", "RGI_Emoji_Flag_Sequence",
+	"RGI_Emoji_Tag_Sequence", "RGI_Emoji_ZWJ_Sequence", "RGI_Emoji",
+}
+
+// re_find_name is unicode_find_name: the index of the entry having `name` among its aliases, or -1.
 @(private = "file")
-ucd_to_cr :: proc(s: ^Re_Parser, src: ^ucd.Char_Range, dst: ^Cr) {
-	ucd.cr_normalize(src)
-	for v in src.points {append(&dst.points, v)}
-	cr_compress(dst)
+re_find_name :: proc(table: []string, name: string) -> int {
+	for entry, idx in table {
+		rest := entry
+		for len(rest) > 0 {
+			i := 0
+			for i < len(rest) && rest[i] != ',' {i += 1}
+			if rest[:i] == name {return idx}
+			rest = rest[min(i + 1, len(rest)):]
+		}
+	}
+	return -1
+}
+
+@(private = "file")
+re_alias :: proc(entry: string, n: int) -> string {
+	rest := entry
+	for k := 0; ; k += 1 {
+		i := 0
+		for i < len(rest) && rest[i] != ',' {i += 1}
+		if k == n || i == len(rest) {return rest[:i]}
+		rest = rest[i + 1:]
+	}
+}
+
+@(private = "file")
+re_ucd_runs :: proc(tables: []ucd.Named_Table, name: string) -> []ucd.Range_Run {
+	for t in tables {
+		if t.name == name {return t.runs}
+	}
+	return nil
+}
+
+@(private = "file")
+re_add_runs :: proc(s: ^Re_Parser, cr: ^Cr, runs: []ucd.Range_Run) {
+	if len(runs) == 0 {return}
+	pts := make([]u32, 2 * len(runs), s.allocator)
+	for r, i in runs {
+		pts[2 * i] = r.lo
+		pts[2 * i + 1] = r.hi
+	}
+	cr_op1(cr, pts, .union_, s.allocator)
+}
+
+@(private = "file")
+re_unicode_gc :: proc(s: ^Re_Parser, cr: ^Cr, name: string) -> bool {
+	idx := re_find_name(re_gc_names[:], name)
+	if idx < 0 {return false}
+	mask: u32
+	switch re_alias(re_gc_names[idx], 0) {
+	case "LC": mask = re_gc_mask({"Lu", "Ll", "Lt"})
+	case "L": mask = re_gc_mask({"Lu", "Ll", "Lt", "Lm", "Lo"})
+	case "M": mask = re_gc_mask({"Mn", "Mc", "Me"})
+	case "N": mask = re_gc_mask({"Nd", "Nl", "No"})
+	case "S": mask = re_gc_mask({"Sm", "Sc", "Sk", "So"})
+	case "P": mask = re_gc_mask({"Pc", "Pd", "Ps", "Pe", "Pi", "Pf", "Po"})
+	case "Z": mask = re_gc_mask({"Zs", "Zl", "Zp"})
+	case "C": mask = re_gc_mask({"Cc", "Cf", "Cs", "Co", "Cn"})
+	case: mask = 1 << uint(idx)
+	}
+	re_gc_ranges(s, cr, mask)
+	return true
+}
+
+@(private = "file")
+re_gc_mask :: proc(names: []string) -> u32 {
+	m: u32
+	for n in names {m |= 1 << uint(re_find_name(re_gc_names[:30], n))}
+	return m
+}
+
+@(private = "file")
+Gc_Run :: struct {
+	lo, hi: u32,
+	gc:     u8,
+}
+
+// re_gc_ranges is unicode_general_category1. libunicode keeps one run per stretch of equal category, plus
+// alternating Lu/Ll stretches packed as one run, and adds the matching runs without merging neighbours; that
+// segmentation shows in the emitted ranges, so it is rebuilt here from the `ucd` tables as unicode_gen does it.
+@(private = "file")
+re_gc_ranges :: proc(s: ^Re_Parser, cr: ^Cr, mask: u32) {
+	CHARCODE_MAX :: 0x10FFFF
+	GC_LU :: 1
+	GC_LL :: 2
+	runs := make([dynamic]Gc_Run, 0, 4096, s.allocator)
+	for t in ucd.general_category_tables {
+		g := re_find_name(re_gc_names[:30], t.name)
+		if g < 0 {continue}
+		for r in t.runs {append(&runs, Gc_Run{r.lo, r.hi, u8(g)})}
+	}
+	// sort by start (shell sort), then fill the gaps with Cn (0) and merge equal neighbours
+	n := len(runs)
+	for gap := n / 2; gap > 0; gap /= 2 {
+		for i in gap ..< n {
+			x := runs[i]
+			j := i
+			for j >= gap && runs[j - gap].lo > x.lo {
+				runs[j] = runs[j - gap]
+				j -= gap
+			}
+			runs[j] = x
+		}
+	}
+	full := make([dynamic]Gc_Run, 0, 2 * n + 2, s.allocator)
+	push :: proc(full: ^[dynamic]Gc_Run, r: Gc_Run) {
+		if r.lo >= r.hi {return}
+		if len(full) > 0 {
+			last := &full[len(full) - 1]
+			if last.gc == r.gc && last.hi == r.lo {
+				last.hi = r.hi
+				return
+			}
+		}
+		append(full, r)
+	}
+	c: u32 = 0
+	for r in runs {
+		if r.lo > c {push(&full, Gc_Run{c, r.lo, 0})}
+		push(&full, r)
+		c = r.hi
+	}
+	if c <= CHARCODE_MAX {push(&full, Gc_Run{c, CHARCODE_MAX + 1, 0})}
+
+	k := 0
+	gc_at :: proc(full: []Gc_Run, k: int, c: u32) -> u8 {
+		i := k
+		for i < len(full) && full[i].hi <= c {i += 1}
+		return i < len(full) ? full[i].gc : 0
+	}
+	i: u32 = 0
+	for i <= CHARCODE_MAX {
+		for full[k].hi <= i {k += 1}
+		v := u32(full[k].gc)
+		cnt := full[k].hi - i
+		if v == GC_LU {
+			n1: u32 = 1
+			for i + n1 <= CHARCODE_MAX && u32(gc_at(full[:], k, i + n1)) == GC_LU + (n1 & 1) {n1 += 1}
+			if n1 > cnt {
+				v = 31
+				cnt = n1
+			}
+		}
+		c0 := i
+		c1 := i + cnt
+		if v == 31 {
+			b := mask & ((1 << GC_LU) | (1 << GC_LL))
+			if b == (1 << GC_LU) | (1 << GC_LL) {
+				cr_add_interval(cr, c0, c1)
+			} else if b != 0 {
+				if (mask & (1 << GC_LL)) != 0 {c0 += 1}
+				for ; c0 < c1; c0 += 2 {cr_add_interval(cr, c0, c0 + 1)}
+			}
+		} else if (mask >> v) & 1 != 0 {
+			cr_add_interval(cr, c0, c1)
+		}
+		i = c1
+	}
+}
+
+// re_unicode_script is unicode_script: Script_Extensions adds the characters whose extension list names the
+// script, except for Common and Inherited, which keep only their characters that have no extension list.
+@(private = "file")
+re_unicode_script :: proc(s: ^Re_Parser, cr: ^Cr, name: string, is_ext: bool) -> bool {
+	if name == "Unknown" || name == "Zzzz" {
+		for t in ucd.script_tables {re_add_runs(s, cr, t.runs)}
+		cr_invert(cr)
+		return true
+	}
+	idx := re_find_name(re_script_names[:], name)
+	if idx < 0 {return false}
+	long := re_alias(re_script_names[idx], 0)
+	code := re_alias(re_script_names[idx], 1)
+	if !is_ext {
+		re_add_runs(s, cr, re_ucd_runs(ucd.script_tables, long))
+		return true
+	}
+	base := cr_new(s.allocator)
+	re_add_runs(s, &base, re_ucd_runs(ucd.script_tables, long))
+	if long == "Common" || long == "Inherited" {
+		listed := cr_new(s.allocator)
+		for t in ucd.script_ext_tables {re_add_runs(s, &listed, t.runs)}
+		cr_invert(&listed)
+		cr_op_pts(cr, base.points[:], listed.points[:], .inter)
+	} else {
+		ext := cr_new(s.allocator)
+		re_add_runs(s, &ext, re_ucd_runs(ucd.script_ext_tables, code))
+		cr_op_pts(cr, base.points[:], ext.points[:], .union_)
+	}
+	return true
+}
+
+@(private = "file")
+re_unicode_prop :: proc(s: ^Re_Parser, cr: ^Cr, name: string) -> bool {
+	idx := re_find_name(re_prop_names[:], name)
+	if idx < 0 {return false}
+	long := re_alias(re_prop_names[idx], 0)
+	switch long {
+	case "ASCII":
+		cr_add_interval(cr, 0, 0x80)
+	case "Any":
+		cr_add_interval(cr, 0, 0x110000)
+	case "Assigned":
+		re_gc_ranges(s, cr, 1)
+		cr_invert(cr)
+	case "Grapheme_Base":
+		// libunicode derives it as the complement of a set, so it runs on past U+10FFFF
+		re_add_runs(s, cr, re_ucd_runs(ucd.binary_prop_tables, long))
+		hi := [2]u32{0x110000, max(u32)}
+		cr_op1(cr, hi[:], .union_, s.allocator)
+	case:
+		re_add_runs(s, cr, re_ucd_runs(ucd.binary_prop_tables, long))
+	}
+	return true
+}
+
+@(private = "file")
+re_unicode_sequence_prop :: proc(s: ^Re_Parser, sl: ^Re_String_List, name: string) -> bool {
+	return false
 }
 
 @(private = "file")
@@ -563,28 +857,24 @@ parse_unicode_property :: proc(s: ^Re_Parser, sl: ^Re_String_List, pp: ^int, is_
 	p += 1
 
 	rsl_init(s, sl)
-	ur: ucd.Char_Range
-	ucd.cr_init(&ur, s.allocator)
 	if name == "Script" || name == "sc" || name == "Script_Extensions" || name == "scx" {
 		is_ext := name == "Script_Extensions" || name == "scx"
-		if !ucd.script(&ur, value, is_ext) {
+		if !re_unicode_script(s, &sl.cr, value, is_ext) {
 			return re_error(s, "unknown unicode script")
 		}
 	} else if name == "General_Category" || name == "gc" {
-		if !ucd.general_category(&ur, value) {
+		if !re_unicode_gc(s, &sl.cr, value) {
 			return re_error(s, "unknown unicode general category")
 		}
 	} else if value == "" {
-		if !ucd.general_category(&ur, name) {
-			ucd.cr_clear(&ur)
-			if !ucd.binary_property(&ur, name) {
+		if !re_unicode_gc(s, &sl.cr, name) && !re_unicode_prop(s, &sl.cr, name) {
+			if is_inv || !allow_sequence_prop || !re_unicode_sequence_prop(s, sl, name) {
 				return re_error(s, "unknown unicode property name")
 			}
 		}
 	} else {
 		return re_error(s, "unknown unicode property name")
 	}
-	ucd_to_cr(s, &ur, &sl.cr)
 
 	if s.ignore_case && s.unicode_sets {
 		re_string_list_canonicalize(s, sl, s.is_unicode)
@@ -811,16 +1101,8 @@ re_emit_string_list :: proc(s: ^Re_Parser, sl: ^Re_String_List) -> bool {
 			}
 		}
 	}
-	// longest strings first
-	for i in 1 ..< len(tab) {
-		x := tab[i]
-		j := i - 1
-		for j >= 0 && len(tab[j].buf) < len(x.buf) {
-			tab[j + 1] = tab[j]
-			j -= 1
-		}
-		tab[j + 1] = x
-	}
+	// longest strings first; ties keep rqsort's (unstable) order, which the bytecode depends on
+	re_rqsort(tab[:])
 	last_match_pos := -1
 	n := len(tab)
 	for i in 0 ..< n {
@@ -849,6 +1131,133 @@ re_emit_string_list :: proc(s: ^Re_Parser, sl: ^Re_String_List) -> bool {
 		last_match_pos = next_pos
 	}
 	return false
+}
+
+// re_rqsort is cutils.h rqsort (three-way quicksort, heapsort past depth 50, insertion sort below 7 elements)
+// with re_string_cmp_len, ported step for step so equal-length strings end up in the same order.
+@(private = "file")
+re_rqsort :: proc(a: []^Re_String) {
+	cmp :: proc(a: []^Re_String, i, j: int) -> int {
+		l1, l2 := len(a[i].buf), len(a[j].buf)
+		return int(l1 < l2) - int(l1 > l2)
+	}
+	swap :: proc(a: []^Re_String, i, j: int) {a[i], a[j] = a[j], a[i]}
+	swap_block :: proc(a: []^Re_String, i, j, n: int) {
+		for k in 0 ..< n {a[i + k], a[j + k] = a[j + k], a[i + k]}
+	}
+	heapsort :: proc(a: []^Re_String, base, nmemb: int) {
+		if nmemb <= 1 {return}
+		i := nmemb / 2
+		for i > 0 {
+			i -= 1
+			r := i
+			for {
+				c := r * 2 + 1
+				if c >= nmemb {break}
+				if c < nmemb - 1 && cmp(a, base + c, base + c + 1) <= 0 {c += 1}
+				if cmp(a, base + r, base + c) > 0 {break}
+				swap(a, base + r, base + c)
+				r = c
+			}
+		}
+		for i = nmemb - 1; i > 0; i -= 1 {
+			swap(a, base, base + i)
+			r := 0
+			for {
+				c := r * 2 + 1
+				if c >= i {break}
+				if c < i - 1 && cmp(a, base + c, base + c + 1) <= 0 {c += 1}
+				if cmp(a, base + r, base + c) > 0 {break}
+				swap(a, base + r, base + c)
+				r = c
+			}
+		}
+	}
+	med3 :: proc(a: []^Re_String, x, y, z: int) -> int {
+		if cmp(a, x, y) < 0 {
+			return cmp(a, y, z) < 0 ? y : (cmp(a, x, z) < 0 ? z : x)
+		}
+		return cmp(a, y, z) > 0 ? y : (cmp(a, x, z) < 0 ? x : z)
+	}
+	Seg :: struct {base, count, depth: int}
+	if len(a) < 2 {return}
+	stack: [50]Seg
+	sp := 0
+	stack[sp] = {0, len(a), 0}
+	sp += 1
+	for sp > 0 {
+		sp -= 1
+		ptr, nmemb, depth := stack[sp].base, stack[sp].count, stack[sp].depth
+		for nmemb > 6 {
+			depth += 1
+			if depth > 50 {
+				heapsort(a, ptr, nmemb)
+				nmemb = 0
+				break
+			}
+			m4 := nmemb >> 2
+			m := med3(a, ptr + m4, ptr + 2 * m4, ptr + 3 * m4)
+			swap(a, ptr, m)
+			i, lt := 1, 1
+			pi, plt := ptr + 1, ptr + 1
+			gt := nmemb
+			pj, pgt, top := ptr + nmemb, ptr + nmemb, ptr + nmemb
+			for {
+				for pi < pj {
+					c := cmp(a, ptr, pi)
+					if c < 0 {break}
+					if c == 0 {
+						swap(a, plt, pi)
+						lt += 1
+						plt += 1
+					}
+					i += 1
+					pi += 1
+				}
+				for {
+					pj -= 1
+					if pi >= pj {break}
+					c := cmp(a, ptr, pj)
+					if c > 0 {break}
+					if c == 0 {
+						gt -= 1
+						pgt -= 1
+						swap(a, pgt, pj)
+					}
+				}
+				if pi >= pj {break}
+				swap(a, pi, pj)
+				i += 1
+				pi += 1
+			}
+			span := plt - ptr
+			span2 := pi - plt
+			lt = i - lt
+			if span > span2 {span = span2}
+			swap_block(a, ptr, pi - span, span)
+			span = top - pgt
+			span2 = pgt - pi
+			pgt = top - span2
+			gt = nmemb - (gt - i)
+			if span > span2 {span = span2}
+			swap_block(a, pi, top - span, span)
+			if lt > nmemb - gt {
+				stack[sp] = {ptr, lt, depth}
+				sp += 1
+				ptr = pgt
+				nmemb -= gt
+			} else {
+				stack[sp] = {pgt, nmemb - gt, depth}
+				sp += 1
+				nmemb = lt
+			}
+		}
+		for pi := ptr + 1; pi < ptr + nmemb; pi += 1 {
+			for pj := pi; pj > ptr && cmp(a, pj - 1, pj) > 0; pj -= 1 {
+				swap(a, pj, pj - 1)
+			}
+		}
+	}
 }
 
 @(private = "file")
