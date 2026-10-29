@@ -179,9 +179,19 @@ grid_contrib :: proc(c: ^Ctx, g: ^Grid, it: ^Grid_Item, axis, kind: int) -> f32 
 // (fit-content() limits included), never below the minimum contribution.
 @(private)
 grid_limited_min :: proc(c: ^Ctx, g: ^Grid, it: ^Grid_Item, axis: int) -> f32 {
-	v := grid_contrib(c, g, it, axis, 0)
 	ax := &g.ax[axis]
 	a, e := it.area[axis][0], it.area[axis][1]
+	// An item in a flexible track that states its minimum size (`min-width: 0`, `1px`: the usual way to keep a wide code block
+	// or table from stretching a `1fr` column) is sized by that minimum, not by its content: what Blink does, so that a grid
+	// of such items does not take the width of the widest line it holds (getbootstrap.com's documentation pages).
+	{
+		cs := c.l.boxes[it.box].cs
+		stated := axis == 0 ? cs.min_width.kind != .Auto : cs.min_height.kind != .Auto
+		flexible := false
+		for t in a ..< e { if ax.tracks[t].max_k == .Flex { flexible = true } }
+		if stated && flexible { return grid_contrib(c, g, it, axis, 2) }
+	}
+	v := grid_contrib(c, g, it, axis, 0)
 	sum: f32
 	capped := true
 	for t in a ..< e {
