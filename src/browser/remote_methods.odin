@@ -112,6 +112,7 @@ remote_dispatch_in_window :: proc(app: ^App, c: ^Call) -> Reply {
 	case "Wren.openDevTools":    return m_devtools(app, c)
 	case "Wren.openSetup":       setup_open(app, .Command); return done()
 	case "Wren.recordInput":     return m_record(app, c)
+	case "Wren.timeline":        return m_timeline(app, c)
 	case "Wren.replayInput":     return m_replay(app, c)
 	case "Wren.snapshot":        return m_snapshot(app, c)
 	}

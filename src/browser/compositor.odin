@@ -700,7 +700,7 @@ composite_paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin,
 	c.doc = d
 	c.dc = dc
 	composite_stats = {}
-	clear(&comp_stuck)
+	comp_stuck = make([dynamic]draw.Rect, 0, 8, context.temp_allocator)   // (this frame's: render.paint forgets it first, a frame drawn directly has none)
 	draw.set_retained_budget(dc, compositor_settings.memory)
 	c.frame += 1
 	passes := l.passes[.Full] + l.passes[.Incremental]
@@ -810,7 +810,15 @@ composite_paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin,
 			res = draw.replay(dc, ch.pic, m)
 		}
 		if res == .Drawn { composite_stats.replayed += 1 }
-		if res == .Drawn && lay.space_stuck(l, ch.root) { append(&comp_stuck, draw.Rect{ch.screen.min, ch.screen.max}) }
+		if res == .Drawn {
+			// what the chunk paints in a fixed or sticky space (a chunk holds items of several spaces: the header and what is around it)
+			for b in ch.bounds {
+				if v.singular[b.space] || !lay.space_stuck(l, b.space) { continue }
+				o := fo(&e, b.space)
+				r := lay.mat_bounds(lay.mat_mul(lay.Matrix{1, 0, 0, 1, o.x, o.y}, lay.space_world(&v, b.space)), b.r)
+				append(&comp_stuck, draw.Rect{r.min, r.max})
+			}
+		}
 	}
 	effects_end(&e)
 	return true

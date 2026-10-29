@@ -349,9 +349,15 @@ page_window_cursor :: proc(app: ^App, t: ^Tab, pos: [2]f32) -> Window_Cursor {
 	scale := page_scale(app)
 	p := pos - wnd.page_rect.min
 	if _, on_bar := scrollbar_at(app, t, p); on_bar { return {keyword = .Arrow} }
-	pc := page_cursor_at(&t.layout, t.page.doc, t.page.styled, p, draw.rect_size(wnd.page_rect), t.scroll, ccfg.page_css)
-	wc := Window_Cursor{keyword = pc.keyword, scale = scale, node = pc.node, at = p / scale}
-	wc.custom = cursor_image(app, t, pc.images, pos, scale)
+	// over a frame, the cursor is its document's (its CSS, its layout): a jQuery UI handle in its iframe says "resize"
+	ct, origin, area := t, wnd.page_rect.min, draw.rect_size(wnd.page_rect)
+	in_frame := false
+	if fv := frame_under(app, t, pos, wnd.page_rect); fv != nil && fv.tab.page != nil && fv.tab.page.styled != nil && fv.tab.layout.valid {
+		ct, origin, area, in_frame = &fv.tab, fv.rect.min, draw.rect_size(fv.rect), true
+	}
+	pc := page_cursor_at(&ct.layout, ct.page.doc, ct.page.styled, pos - origin, area, ct.scroll, ccfg.page_css)
+	wc := Window_Cursor{keyword = pc.keyword, scale = scale, node = in_frame ? base.NIL_HANDLE : pc.node, at = (pos - origin) / scale}
+	wc.custom = cursor_image(app, ct, pc.images, pos, scale)
 	// while the tab loads, the arrow is the arrow with the "working in background" sign (as Chromium does)
 	if ccfg.progress_loading && wc.keyword == .Arrow && wc.custom == 0 && tab_loading(t) { wc.keyword = .Progress }
 	return wc

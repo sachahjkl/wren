@@ -164,6 +164,7 @@
 <li><a href="../docs/releases/v0.6.3.html">Wren 0.6.3</a></li>
 <li><a href="../docs/releases/v0.6.4.html">Wren 0.6.4</a></li>
 <li><a href="../docs/releases/v0.6.5.html">Wren 0.6.5</a></li>
+<li><a href="../docs/releases/v0.6.6.html">Wren 0.6.6</a></li>
 </ul>
 </details></li>
 </ul>
@@ -391,6 +392,7 @@ path). The rest is in the <code>Wren.</code> domain.</p>
 <tr><td><code>Wren.listCommands</code> / <code>runCommand {name}</code> / <code>openDevTools {panel, dock}</code> / <code>openSetup</code></td><td>the command registry</td></tr>
 <tr><td><code>Wren.snapshot {path}</code></td><td><code>&lt;path&gt;.png</code>, <code>.html</code>, <code>.json</code> (url, size, the box of every element)</td></tr>
 <tr><td><code>Wren.recordInput {action}</code> / <code>replayInput {events, speed}</code></td><td>macros of the input a window receives (real or sent), with times</td></tr>
+<tr><td><code>Wren.timeline {action: start | stop | status, scale, max, target, dir, cols, all}</code></td><td>every frame the renderer draws (full and chrome frames) as pictures, a contact sheet and a JSON with each frame's time, scroll, kind and how much it differs from the one before (<code>wren ctl timeline</code>)</td></tr>
 </tbody>
 </table></div>
 <p>Input events are queued with <code>platform.inject_event</code> (toolkit 0.22.0) and read by the next <code>poll_events</code>: hover, focus,

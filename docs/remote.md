@@ -236,6 +236,7 @@ path). The rest is in the `Wren.` domain.
 | `Wren.listCommands` / `runCommand {name}` / `openDevTools {panel, dock}` / `openSetup` | the command registry |
 | `Wren.snapshot {path}` | `<path>.png`, `.html`, `.json` (url, size, the box of every element) |
 | `Wren.recordInput {action}` / `replayInput {events, speed}` | macros of the input a window receives (real or sent), with times |
+| `Wren.timeline {action: start \| stop \| status, scale, max, target, dir, cols, all}` | every frame the renderer draws (full and chrome frames) as pictures, a contact sheet and a JSON with each frame's time, scroll, kind and how much it differs from the one before (`wren ctl timeline`) |
 
 Input events are queued with `platform.inject_event` (toolkit 0.22.0) and read by the next `poll_events`: hover, focus,
 shortcuts, text input and the page's DOM events behave as for a real device. A command that sends input answers after the frames
