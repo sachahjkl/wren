@@ -158,6 +158,7 @@
 <li><a href="/docs/releases/v0.4.0.html">Wren 0.4.0</a></li>
 <li><a href="/docs/releases/v0.5.0.html">Wren 0.5.0</a></li>
 <li><a href="/docs/releases/v0.6.0.html">Wren 0.6.0</a></li>
+<li><a href="/docs/releases/v0.6.1.html">Wren 0.6.1</a></li>
 </ul>
 </details></li>
 </ul>
@@ -212,7 +213,10 @@ Odin idiomatique :</p>
 <li>Les chaînes sont des <code>String_Value</code> (Latin-1 ou UTF-16, comme <code>JSString</code>) sans comptage de références.</li>
 <li>Les erreurs suivent le modèle « la première gagne » de QuickJS mais sans <code>longjmp</code> ni exception : chaque
 procédure renvoie <code>bool</code> (erreur) comme dans le C, ce qui garde le portage lisible ligne à ligne.</li>
-<li>Pas de GC ni de libération : tout vit dans l'arène de la compilation.</li>
+<li>Pas de GC : tout vit dans l'allocateur de la compilation. Les tables d'une fonction (<code>free_func_def</code>) et les
+tampons des passes sont pourtant libérés explicitement (<code>delete</code>) dès que son bytecode existe : un allocateur qui
+recycle (<code>src/engine/jsrt/compile_alloc.odin</code>) les redonne aux fonctions suivantes. Avec une arène simple, <code>delete</code>
+ne fait rien et le résultat est le même. La taille passée à <code>delete</code> doit être celle de l'allocation.</li>
 </ul>
 <h2 id="fichiers"><a class="anchor" href="#fichiers" aria-hidden="true">#</a>Fichiers</h2>
 <div class="table-box"><table>
