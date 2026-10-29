@@ -128,6 +128,7 @@ dispatch :: proc(ctx: ^Context, cmd: string, args: []string) -> int {
 		if len(args) != 1 { return usage(cmd, "usage: snapshot <path-prefix>   (writes <prefix>.png, .html and .json)") }
 		return simple(ctx, "Wren.snapshot", fmt.tprintf(`{{%s"path":%s,"target":%s}}`, tab_param(ctx), q(abs_path(args[0])), q(flag(&ctx.o, "tab") ? "page" : "window")))
 	case "record":   return cmd_record(ctx, args)
+	case "timeline": return cmd_timeline(ctx, args)
 	case "replay":   return cmd_replay(ctx, args)
 	case "quit", "close": return cmd_quit(ctx)
 	case "raw":
@@ -559,6 +560,28 @@ cmd_record :: proc(ctx: ^Context, args: []string) -> int {
 		n, _ := remote.param_int(parse_result(rep), "count")
 		outln(fmt.tprintf("%d events -> %s", n, abs_path(args[1])))
 	case: return usage("record", "start or stop")
+	}
+	return 0
+}
+
+@(private)
+cmd_timeline :: proc(ctx: ^Context, args: []string) -> int {
+	if len(args) == 0 { return usage("timeline", "usage: timeline start [--scale s] [--count n] [--tab] | timeline stop <folder> [--cols n] [--all]") }
+	switch args[0] {
+	case "start":
+		return simple(ctx, "Wren.timeline", fmt.tprintf(`{{"action":"start","scale":%s,"max":%s,"target":%s}}`, opt(&ctx.o, "scale", "0.3"), opt(&ctx.o, "count", "240"), q(flag(&ctx.o, "tab") ? "page" : "window")))
+	case "stop":
+		if len(args) != 2 { return usage("timeline", "usage: timeline stop <folder> [--cols n] [--all]") }
+		rep, code := request(ctx, "Wren.timeline", fmt.tprintf(`{{"action":"stop","dir":%s,"cols":%s,"all":%v}}`, q(abs_path(args[1])), opt(&ctx.o, "cols", "6"), flag(&ctx.o, "all")))
+		if code != 0 { return code }
+		if flag(&ctx.o, "json") { outln(rep.result); return 0 }
+		res := parse_result(rep)
+		n, _ := remote.param_int(res, "count"); chrome, _ := remote.param_int(res, "chrome"); aba, _ := remote.param_int(res, "aba")
+		sheet, _ := remote.param_string(res, "sheet")
+		outln(fmt.tprintf("%d frames (%d of the chrome's, %d A-B-A: a frame unlike both its neighbours, which are alike) -> %s", n, chrome, aba, args[1]))
+		outln(fmt.tprintf("contact sheet: %s   (red frame: A-B-A, orange: a chrome frame; the folder has every frame and timeline.json)", sheet))
+	case "status": return simple(ctx, "Wren.timeline", `{"action":"status"}`)
+	case: return usage("timeline", "start, stop or status")
 	}
 	return 0
 }

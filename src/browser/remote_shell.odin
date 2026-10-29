@@ -115,12 +115,14 @@ Remote :: struct {
 	checkpoints: map[string]^Checkpoint,  // the named ones (keys are the checkpoints' own names)
 	capture_window: int,                  // a capture waits for this window's next frame (0: none): remote_capture_arm
 	capture_rect:   [4]int,
+	tl:         Timeline,                 // the frames being recorded (remote_timeline.odin)
 }
 
 // Before a frame of the active window ends (main.odin frame, shell_frames.odin): the capture a remote call waits for is asked of
 // the renderer when this is the window it is about (the renderer copies the next frame it ends, whichever window's).
 remote_capture_arm :: proc(app: ^App) {
 	r := &the_remote
+	if r.tl.on { timeline_frame(app) }   // remote_timeline.odin: every frame of the window, while one is recorded
 	if r.capture_window == 0 || r.capture_window != active_window(app).id { return }
 	r.capture_window = 0
 	_ = render.capture_request(&app.r, r.capture_rect)

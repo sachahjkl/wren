@@ -123,6 +123,7 @@ dr :: #force_inline proc(r: lay.Rect) -> draw.Rect { return draw.Rect{r.min, r.m
 // `doc_scrollbar` false: no bar for the document (a frame with scrolling="no").
 paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, page_origin, size: draw.Vec2, page_scroll: f32, clip: draw.Rect, doc_scrollbar := true) {
 	if !l.valid { return }
+	comp_stuck = nil   // (the compositor's list of the fixed and sticky parts is of the frame it paints: temp memory)
 	origin := draw.Vec2{math.round(page_origin.x), math.round(page_origin.y)}
 	scroll := math.round(page_scroll)
 	// CSS border-radius draws circular arcs, not the squircle of the browser's own UI

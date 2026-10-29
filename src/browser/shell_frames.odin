@@ -570,6 +570,13 @@ shell_paint_page :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect)
 		// a fixed header or a sticky box does not scroll with the page: it stays where the last frame drew it (the wheel moves what is under it)
 		still := s.image
 		still.image.origin += rect.min - s.rect.min
+		// the picture carried them with the page: where they now sit is a ghost of them, cleared (the next full frame paints what
+		// was under them) before they are drawn where they belong
+		for i in 0 ..< s.n_stuck {
+			g := draw.rect_intersect(draw.rect_shift(s.stuck[i], rect.min - s.rect.min - draw.Vec2{0, scroll - s.scroll}), rect)
+			if g.max.x <= g.min.x || g.max.y <= g.min.y { continue }
+			draw.rect(dc, g, s.canvas)
+		}
 		for i in 0 ..< s.n_stuck {
 			r := draw.rect_intersect(draw.rect_shift(s.stuck[i], rect.min - s.rect.min), rect)
 			if r.max.x <= r.min.x || r.max.y <= r.min.y { continue }

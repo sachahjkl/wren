@@ -7,6 +7,18 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 
 ## Unreleased
 
+## 0.6.6 - 2026-10-29
+
+### Added
+- **`wren ctl timeline`** (``Wren.timeline``): records every frame the renderer draws, the chrome frames made while a page keeps the thread included, while other commands act (scroll, click, nav); ``timeline stop <folder>`` writes the frames as pictures, a contact sheet (a red frame is an A-B-A: unlike both its neighbours, which are alike; an orange one a chrome frame) and ``timeline.json`` (time, kind, scroll, hold, loading and the pixels that differ from the frame before). It shows what a settled capture misses and the eye sees: a header drawn twice, a blank page for a frame, a bar that jumps.
+
+### Changed
+- **Middle-click autoscroll is much faster**: the top speed is 30000 px/s (was 2800), reached 300 px past the dead zone (was 420), and the speed doubles every 60 px (was 80): ``browser.scroll.autoscroll.max_speed`` (30000), ``full_distance`` (300), ``doubling_distance`` (60). A long page goes by in a second or two.
+
+### Fixed
+- **Fixed and sticky boxes while the page picture scrolls** (a script keeps the page busy): the header was drawn once, lower, by the picture that carried it with the page, and not at its place for the frames made meanwhile (found with ``wren ctl timeline``). The compositor now notes where it drew each fixed or sticky part of a chunk, the picture shows them there, and the copy the picture carried is cleared: a sticky header stays at the top of the page (Bootstrap's documentation).
+- **The cursor over an iframe** is its document's: a handle in a frame that asks for ``cursor: se-resize`` (jQuery UI's resizable, in its demo frame) shows it. The page's own cursor was looked up at the frame's box, never inside it.
+
 ## 0.6.5 - 2026-10-29
 
 ### Changed
