@@ -7,6 +7,18 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 
 ## Unreleased
 
+## 0.6.4 - 2026-10-29
+
+### Changed
+- **Tests on the CI**: the end-to-end steps that start a Wren and drive it (tools\test_all.ps1 -NoCI) run on a developer's machine, not on the shared runner where they failed at random; remote_e2e stays as the smoke test. The release workflow no longer runs the tests again (the CI of master is the gate): about 25 minutes less.
+
+### Removed
+- **Partial redraw of the window** (browser.gpu.partial_redraw and its verifier): it never ran on a window (the preference was not applied at the start, and the swap chain's buffer history that it needs never filled), yet the compositor hashed every chunk's slots at every frame for it. The compositor and the chrome frames no longer mark damage.
+
+### Fixed
+- **setAttribute with the value the attribute has**: observers and attributeChangedCallback still see the write, as the DOM says, but the document no longer changes: no new version, no restyle, no layout (classList.add of a class already there, a script that sets a data attribute at every scroll event).
+- **Fixed and sticky boxes while a page is busy**: when the wheel scrolls the kept picture of a page that a script keeps busy, a fixed header or a sticky box stays where the page drew it instead of sliding with the picture and jumping back (Bootstrap's documentation header).
+
 ## 0.6.3 - 2026-10-29
 
 ### Added
