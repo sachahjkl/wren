@@ -1,5 +1,6 @@
 package layout
 
+import "core:fmt"
 import "core:math"
 import "core:strings"
 import "core:testing"
@@ -638,4 +639,17 @@ text_wrap_balance :: proc(t: ^testing.T) {
 	// centered in the full width (100), not in the narrower width the lines were broken at
 	testing.expect(t, near(first_text(f, lc[0]).x, (100 - first_text(f, lc[0]).w) * 0.5, 1.5), "balanced, centered in the full width")
 	testing.expect_value(t, len(ld), 1)
+}
+
+// A grid item that states its minimum width (`min-width: 1px`) keeps a nested grid in a flexible track from taking the width
+// of its widest unbreakable line: getbootstrap.com's documentation (`.bd-content { min-width: 1px }` holding code blocks).
+@(test)
+grid_item_with_a_stated_minimum_does_not_stretch_flexible_tracks :: proc(t: ^testing.T) {
+	long := "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+	src := fmt.tprintf(`<body style="margin:0"><div style="display:grid;grid-template-columns:1fr 5fr;width:600px"><div></div>
+<main id=m style="display:grid;grid-template-columns:4fr 1fr"><div id=c style="min-width:1px"><pre style="margin:0;overflow:auto;white-space:pre">%s</pre></div><div></div></main></div></body>`, long)
+	f := load(src)
+	defer unload(f)
+	m := rect(f, "m")
+	testing.expectf(t, near(m.max.x - m.min.x, 500, 1), "the nested grid is its 5fr share of 600 px: %v", m.max.x - m.min.x)
 }

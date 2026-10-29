@@ -739,6 +739,9 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		draw.rect(dc, b.rect, to_draw(expected_canvas(app)))
 		return
 	}
+	// What is drawn while a document loads (the held frame, the canvas, the loading bar sweeping over it) does not go through
+	// the compositor, which is what marks the page's damage: the whole page area is repainted each frame until the first paint
+	if draw.partial_redraw(dc) && (t.page == nil || tab_loading(t) || t.hold.active) { draw.damage(dc, b.rect) }
 	defer loading_bar(app, t, dc, b.rect)
 	defer devtools_overlay(app, t, dc, b.rect)   // devtools.odin: the Elements tab's box over the page
 	if t.page == nil {

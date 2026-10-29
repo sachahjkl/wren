@@ -9,6 +9,20 @@ import "wb:url"
 import "wb:tools/testenv"
 
 @(test)
+meta_refresh_content :: proc(t: ^testing.T) {
+	d, u, ok := meta_refresh_parse("0; url=/docs/button")
+	testing.expect(t, ok && d == 0 && u == "/docs/button", "delay, url=")
+	d, u, ok = meta_refresh_parse(" 5 ; URL = 'next.html' ")
+	testing.expect(t, ok && d == 5 && u == "next.html", "quotes, case, spaces")
+	d, u, ok = meta_refresh_parse("1.5,/x")
+	testing.expect(t, ok && d == 1.5 && u == "/x", "comma, no url=")
+	_, _, ok = meta_refresh_parse("30")
+	testing.expect(t, !ok, "a delay alone reloads: not handled")
+	_, _, ok = meta_refresh_parse("soon; url=/x")
+	testing.expect(t, !ok, "no delay")
+}
+
+@(test)
 timer_nesting_clamp :: proc(t: ^testing.T) {
 	st := settings_default()
 	defer settings_destroy(&st)

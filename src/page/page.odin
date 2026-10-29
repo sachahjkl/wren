@@ -258,12 +258,61 @@ apply_meta :: proc(p: ^Page) {
 			if he, ok := dom.get_attribute(p.doc, cur, "http-equiv"); ok && strings.equal_fold(he, "content-security-policy") && csp_on(p) {
 				csp.parse_header(&p.env.policies, content, .Enforce)   // a <meta> policy cannot be report-only
 			}
+			if he, ok := dom.get_attribute(p.doc, cur, "http-equiv"); ok && strings.equal_fold(he, "refresh") { meta_refresh(p, content) }
 			if name, ok := dom.get_attribute(p.doc, cur, "name"); ok && strings.equal_fold(name, "referrer") {
 				if rp := fetch.parse_referrer_policy(content); rp != .Default { p.env.referrer_policy = rp }
 			}
 		}
 		for ch := n.last_child; ch != base.NIL_HANDLE; ch = dom.get(p.doc, ch).prev { append(&stack, ch) }
 	}
+}
+
+Meta_Refresh :: struct {
+	page: ^Page,
+	url:  string,
+	delay: f64,
+}
+
+// <meta http-equiv="refresh" content="N; url=..."> (only the form with a URL: a bare delay would reload the page).
+@(private)
+meta_refresh_parse :: proc(content: string) -> (delay: f64, target: string, ok: bool) {
+	s := strings.trim_space(content)
+	i := 0
+	for i < len(s) && (s[i] >= '0' && s[i] <= '9' || s[i] == '.') { i += 1 }
+	if i == 0 { return }
+	whole, frac, scale := 0.0, 0.0, 1.0
+	seen_dot := false
+	for c in transmute([]byte)s[:i] {
+		if c == '.' { seen_dot = true } else if seen_dot { scale /= 10; frac += f64(c - '0') * scale } else { whole = whole * 10 + f64(c - '0') }
+	}
+	rest := strings.trim_left(s[i:], " \t\r\n;,")
+	if len(rest) >= 3 && strings.equal_fold(rest[:3], "url") {
+		rest = strings.trim_left(rest[3:], " \t\r\n")
+		if len(rest) == 0 || rest[0] != '=' { return }
+		rest = strings.trim_left(rest[1:], " \t\r\n")
+	}
+	if len(rest) > 0 && (rest[0] == '\'' || rest[0] == '"') {
+		q := rest[0]
+		rest = rest[1:]
+		if e := strings.index_byte(rest, q); e >= 0 { rest = rest[:e] }
+	}
+	if rest == "" { return }
+	return whole + frac, rest, true
+}
+
+@(private)
+meta_refresh :: proc(p: ^Page, content: string) {
+	delay, rest, parsed := meta_refresh_parse(content)
+	if !parsed { return }
+	target, ok := url.parse(rest, &p.env.location, context.temp_allocator)
+	if !ok || (target.scheme != "http" && target.scheme != "https" && target.scheme != "file") { return }
+	m := new(Meta_Refresh)
+	m^ = Meta_Refresh{page = p, url = strings.clone(target.href), delay = delay}
+	host.set_timer(p.loop, delay * 1000, 0, proc(data: rawptr) {
+		m := (^Meta_Refresh)(data)
+		defer { delete(m.url); free(m) }
+		if !m.page.closed { request_navigation(m.page, m.delay == 0 ? .Replace : .Assign, m.url) }
+	}, m, p.scope)
 }
 
 // Instantiates a module in the page scope and calls its `wb_main` export. Any number of modules may be loaded.

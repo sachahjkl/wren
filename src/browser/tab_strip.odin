@@ -187,6 +187,7 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 					if tab_box(app, dragged, w, area, &move_from, &move_to, &cg, cc) == .Closed { return true }
 				}
 			}
+			if app.active != nil && app.active.dropping { drop_ghost(app, area, false, app.active.drop.mark - own.strip.offset, w * 0.8) }
 			if app.active != nil && app.active.dropping { drop_hint_mark(area, false, app.active.drop.mark - own.strip.offset, app.active.drop.group) }   // a tab carried over this bar (tab_drag.odin)
 		}
 		if move_from >= 0 {
@@ -270,7 +271,7 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 		d := tab_dims(m)
 		ui.next({fixed_x = x, fixed_y = cg.margin, width = ui.px(d.box_w), height = ui.px(cg.h), axis = .X, cross = .Center})
 		ui.push_tags("tab")
-		b = ui.build_box({.Clickable, .Focusable, .Hot_Within}, id)
+		b = ui.build_box({.Clickable, .Focusable, .Middle_Click, .Hot_Within}, id)
 		ui.pop_tags()
 		b.slant = tab_slant(d)
 		paint = ui.frame_new(Classic_Tab)
@@ -285,7 +286,7 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 		ui.next({fixed_x = x, fixed_y = 0, width = ui.px(w), height = ui.pct(1), axis = .X, cross = .Center, radius = em * 0.45})
 		// lit under the pointer, also while it is on the tab's close button
 		ui.push_tags("tab")
-		b = ui.build_box({.Clickable, .Focusable, .Draw_Hot_Effects, .Hot_Within, .Clip}, id)
+		b = ui.build_box({.Clickable, .Focusable, .Middle_Click, .Draw_Hot_Effects, .Hot_Within, .Clip}, id)
 		ui.pop_tags()
 		look := ui.frame_new(Tab_Look)
 		look.selected = ui.anim(ui.key_from_string(b.key, "sel"), on ? 1 : 0, 34)

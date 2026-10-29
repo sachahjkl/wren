@@ -11,7 +11,9 @@ package browser
 // tab into that window at that place (the carried window, empty, closes); anywhere else the window stays where it was dropped.
 // Nothing here loads a page again: tab_move only moves the pointer to the tab.
 
+import "core:fmt"
 import "core:math"
+import "core:strings"
 import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:ui"
@@ -164,11 +166,16 @@ tab_drag_events :: proc(app: ^App, events: []platform.Event) {
 			// (the system's cursor, but for input a test or a remote control injected: the real pointer is elsewhere)
 			at_event := client_origin(app.active) + ev.pos
 			screen := ev.injected ? at_event : pointer_screen(at_event)
-			if carried.win != nil {
-				x, y := keep_on_screen(int(screen.x) - tab_drag.grab.x, int(screen.y) - tab_drag.grab.y, carried)
-				platform.move_window(carried.win, x, y)
-			}
 			dest, slot := tab_drop_target(app, carried, t, screen)
+			if carried.win != nil {
+				// over another window's tabs the carried window steps aside: it would hide the place the tab takes there
+				if dest != nil {
+					platform.move_window(carried.win, -32000, -32000)
+				} else {
+					x, y := keep_on_screen(int(screen.x) - tab_drag.grab.x, int(screen.y) - tab_drag.grab.y, carried)
+					platform.move_window(carried.win, x, y)
+				}
+			}
 			for w in app.windows {
 				if w.dropping && (w != dest || w.drop != slot) { window_request(app, w, 2) }
 				if w != dest { w.dropping = false }
@@ -222,6 +229,33 @@ drop_hint_mark :: proc(area: ^ui.Box, vertical: bool, at: f32, group: u64 = 0) {
 		ui.next({fixed_x = at - th * 0.5, fixed_y = 0, width = ui.px(th), height = ui.px(area.size.y)})
 	}
 	ui.custom("###drop_hint", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) { draw.rect(dc, b.rect, (^draw.Color)(user)^, (b.rect.max.x - b.rect.min.x) * 0.25) }, c)
+}
+
+// A faded copy of the carried tab, centred on the place it would take (`at`, along the bar in the bar's own pixels; `extent`: its
+// length along the bar), drawn under the mark: what the release would put there.
+drop_ghost :: proc(app: ^App, area: ^ui.Box, vertical: bool, at, extent: f32) {
+	t := tab_by_id(app, tab_drag.tab)
+	if t == nil { return }
+	em := ui.font_size()
+	isz := f32(tab_icon_px(app))
+	r := em * 0.45
+	if vertical {
+		ui.next({fixed_x = 0, fixed_y = at - extent * 0.5, width = ui.px(area.size.x), height = ui.px(extent), axis = .X, cross = .Center, radius = r, bg = ui.color("border"), transparency = 0.45})
+	} else {
+		ui.next({fixed_x = at - extent * 0.5, fixed_y = 0, width = ui.px(extent), height = ui.pct(1), axis = .X, cross = .Center, radius = r, bg = ui.color("border"), transparency = 0.45})
+	}
+	b := ui.build_box({.Draw_Background, .Clip}, "###drop_ghost")
+	if ui.parent(b) {
+		ui.spacer(ui.px(math.round(em * 0.65)))
+		ui.next({width = ui.px(isz), height = ui.pct(1)})
+		ui.custom("###ghost_icon", tab_icon_draw, tab_icon_of(app, t, isz))
+		ui.spacer(ui.px(math.round(em * 0.5)))
+		title := t.title
+		if strings.contains(title, "###") { title, _ = strings.replace_all(title, "###", "# # #", context.temp_allocator) }
+		ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0})
+		ui.a11y({ignore = true})
+		ui.build_box({.Draw_Text}, fmt.aprintf("%s###ghost_title", title, allocator = ui.frame_allocator()))
+	}
 }
 
 tab_drag_end :: proc(app: ^App) {

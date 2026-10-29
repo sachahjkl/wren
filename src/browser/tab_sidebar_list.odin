@@ -210,6 +210,7 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, open: f32, extent: f32, cc: 
 		if drag_item >= 0 {   // built last: it draws over the others and takes the clicks
 			if row(app, items[drag_item], rh, row_x, row_w, inset, open, total, limit, area, cc, &drag_y) { return true }
 		}
+		if app.active != nil && app.active.dropping { drop_ghost(app, area, true, app.active.drop.mark - area.view_off.y, rh) }
 		if app.active != nil && app.active.dropping { drop_hint_mark(area, true, app.active.drop.mark - area.view_off.y, app.active.drop.group) }   // a tab carried over this list (tab_drag.odin)
 	}
 	// the dragged row's place moves its tab: in the list (and in or out of a group), or up to the pinned tabs
@@ -304,7 +305,7 @@ sidebar_pins :: proc(app: ^App, pos: Tabs_Position, open, extent: f32, cc: ^Clas
 			if !on { ui.push_tags("weak") }
 			ui.next({fixed_x = margin + p.x + gap, fixed_y = p.y + gap, width = ui.px(cell - gap * 2), height = ui.px(cell - gap * 2), axis = .X, cross = .Center, radius = em * 0.45})
 			ui.push_tags("tab")
-			b := ui.build_box({.Clickable, .Focusable, .Draw_Hot_Effects, .Hot_Within, .Clip}, id)
+			b := ui.build_box({.Clickable, .Focusable, .Middle_Click, .Draw_Hot_Effects, .Hot_Within, .Clip}, id)
 			ui.pop_tags()
 			look := ui.frame_new(Side_Look)
 			look.selected = ui.anim(ui.key_from_string(b.key, "sel"), on ? 1 : 0, 34)
@@ -395,7 +396,7 @@ sidebar_row :: proc(app: ^App, i: int, slot, rh, row_x, row_w, inset: f32, open:
 	b: ^ui.Box
 	if cc != nil {
 		// classic (chrome_style.odin): not clipped, the current tab's feet flare past its row
-		b = ui.build_box({.Clickable, .Focusable, .Hot_Within}, id)
+		b = ui.build_box({.Clickable, .Focusable, .Middle_Click, .Hot_Within}, id)
 		pos := favs.cfg.position
 		look := ui.frame_new(Classic_Side_Tab)
 		look^ = {c = cc, pos = pos, m = side_tab_metrics(em, dpi, rh, row_w), dragging = dragging, inset = math.round(em * 0.6), gap = math.round(em * 0.3)}
@@ -408,7 +409,7 @@ sidebar_row :: proc(app: ^App, i: int, slot, rh, row_x, row_w, inset: f32, open:
 		}
 		b.custom, b.custom_user = classic_side_tab_draw, look
 	} else {
-		b = ui.build_box({.Clickable, .Focusable, .Draw_Hot_Effects, .Hot_Within, .Clip}, id)
+		b = ui.build_box({.Clickable, .Focusable, .Middle_Click, .Draw_Hot_Effects, .Hot_Within, .Clip}, id)
 		look := ui.frame_new(Side_Look)
 		look.selected = ui.anim(ui.key_from_string(b.key, "sel"), on ? 1 : 0, 34)
 		look.accent = ui.color("accent")
@@ -501,7 +502,7 @@ sidebar_group_row :: proc(app: ^App, it: Side_Item, row_x, row_w, inset, open: f
 	y := math.round(ui.anim(ui.key_from_string(area.key, fmt.tprintf("g%d", g.id)), it.y, 30, it.y))
 	label := group_label(g, wnd.tabs[:])
 	ui.next({fixed_x = row_x, fixed_y = y, width = ui.px(row_w), height = ui.px(it.h), axis = .X, cross = .Center, radius = em * 0.45})
-	b := ui.build_box({.Clickable, .Focusable, .Draw_Hot_Effects, .Hot_Within, .Clip}, id)
+	b := ui.build_box({.Clickable, .Focusable, .Middle_Click, .Draw_Hot_Effects, .Hot_Within, .Clip}, id)
 	ui.a11y_set(b, {name = label, expanded = !g.collapsed})
 	renaming := own.sidebar.renaming == g.id && open >= 1
 	if ui.parent(b) {
