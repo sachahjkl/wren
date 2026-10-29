@@ -153,8 +153,23 @@ Native_Data :: struct {
 
 NATIVE_DATA_HEADER :: 8
 
+// A native function that carries no values of its own (the C functions of the glue: a plain C function pointer and
+// nothing else) keeps that pointer in `data` itself, shifted up by one with the low bit set, instead of a block of
+// values: the blocks are 8-aligned, so the bit tells them apart. Saves 40 bytes in each of thousands of functions.
+native_data_is_raw :: #force_inline proc "contextless" (nd: ^Native_Data) -> bool {
+	return uintptr(nd.data) & 1 != 0
+}
+
+native_data_set_raw :: #force_inline proc "contextless" (nd: ^Native_Data, p: rawptr) {
+	nd.data = cast([^]Value)((uintptr(p) << 1) | 1)
+}
+
+native_data_raw :: #force_inline proc "contextless" (nd: ^Native_Data) -> rawptr {
+	return rawptr(uintptr(nd.data) >> 1)
+}
+
 native_data_len :: #force_inline proc "contextless" (nd: ^Native_Data) -> int {
-	if nd.data == nil {return 0}
+	if nd.data == nil || native_data_is_raw(nd) {return 0}
 	return int((cast(^u32)(uintptr(nd.data) - NATIVE_DATA_HEADER))^)
 }
 
@@ -165,7 +180,7 @@ native_data_alloc :: proc(rt: ^Runtime, nd: ^Native_Data, n: int) {
 }
 
 native_data_free :: proc(rt: ^Runtime, nd: ^Native_Data) {
-	if nd.data == nil {return}
+	if nd.data == nil || native_data_is_raw(nd) {return}
 	mem_free(rt, rawptr(uintptr(nd.data) - NATIVE_DATA_HEADER), NATIVE_DATA_HEADER + native_data_len(nd) * size_of(Value))
 	nd.data = nil
 }
@@ -427,6 +442,14 @@ slots_reserve :: proc(rt: ^Runtime, o: ^Object, n: int) {
 	o.slot_cap = u32(new_cap)
 }
 
+// Room for exactly `n` slots in an object that has none yet (a function with its length and name: the 4 a growing
+// object asks for would leave half of them empty in each of thousands of functions).
+object_reserve_exact :: proc(rt: ^Runtime, o: ^Object, n: int) {
+	if o.slot_cap != 0 || n <= 0 {return}
+	o.slots = cast([^]Prop_Slot)mem_alloc(rt, n * size_of(Prop_Slot))
+	o.slot_cap = u32(n)
+}
+
 // Append a property to `o` (the caller has checked it does not exist). Returns its slot.
 add_property :: proc(rt: ^Runtime, o: ^Object, a: Atom, flags: Prop_Flags, kind: Prop_Kind = .data) -> ^Prop_Slot {
 	if o.watch_index {
@@ -683,7 +706,7 @@ object_trace :: proc(rt: ^Runtime, o: ^Object) {
 			for i in 0 ..< int(d.bc.closure_var_count) {mark_cell(rt, d.var_refs[i])}
 		}
 	case Native_Data:
-		if d.data != nil {mark_values(rt, d.data[:native_data_len(&o.data.(Native_Data))])}
+		if d.data != nil && !native_data_is_raw(&o.data.(Native_Data)) {mark_values(rt, d.data[:native_data_len(&o.data.(Native_Data))])}
 	case ^Bound_Data:
 		mark_value(rt, d.target)
 		mark_value(rt, d.this)

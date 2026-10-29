@@ -192,6 +192,23 @@ atom_from_string :: proc(rt: ^Runtime, s: ^JS_String) -> Atom {
 	return a
 }
 
+// `s`, or the string of the atom with the same text when there is one: the name of a function that is also a
+// property key is then one string, not two (thousands of native functions).
+str_interned :: proc(rt: ^Runtime, s: ^JS_String) -> ^JS_String {
+	if s.atom != 0 {return s}
+	f := str_flat(rt, s)
+	h := str_hash(rt, f)
+	mask := u32(len(rt.atom_hash) - 1)
+	i := h & mask
+	for {
+		a := rt.atom_hash[i]
+		if a == 0 {return s}
+		e := &rt.atoms[a]
+		if e.str.hash == h && str_eq(rt, e.str, f) {return e.str}
+		i = (i + 1) & mask
+	}
+}
+
 atom_from_utf8 :: proc(rt: ^Runtime, text: string) -> Atom {
 	return atom_from_string(rt, str_from_utf8(rt, text))
 }

@@ -258,8 +258,9 @@ new_native_function :: proc(ctx: ^Context, fn: Native_Proc, name: string, length
 	o := object_new_proto(ctx, proto != nil ? proto : ctx.function_proto, .c_function)
 	o.data = Native_Data{fn = fn, realm = ctx, magic = magic}
 	set_native_kind(o, kind)
+	object_reserve_exact(rt, o, 2)
 	define_value(ctx, o, pa(.A_length), mk_int(i32(length)), {.configurable})
-	define_value(ctx, o, pa(.A_name), mk_str(str_from_utf8(rt, name)), {.configurable})
+	define_value(ctx, o, pa(.A_name), mk_str(str_interned(rt, str_from_utf8(rt, name))), {.configurable})
 	return o
 }
 
