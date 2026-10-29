@@ -232,7 +232,6 @@ compile_program :: proc(src: string, kind: Program_Kind, allocator: runtime.Allo
 	}
 
 	ps := Pass_State{atoms = at, allocator = allocator, stack = s.stack}
-	ps.source_loc_size = make(map[^Func_Def]int, 64, allocator)
 	b := js_create_function(&ps, fd)
 	if b == nil {
 		msg := ps.error != "" ? ps.error : "SyntaxError"
@@ -250,8 +249,7 @@ write_object_of :: proc(res: Compile_Result, allocator: runtime.Allocator) -> []
 	w: Writer
 	writer_init(&w, res.atoms, allocator)
 	out := write_object(&w, res.top, res.module)
-	// (no-ops on an arena; they give a heap allocator its memory back before the caller goes on)
-	delete(w.buf)
+	// (no-ops on an arena; they give a heap allocator its memory back before the caller goes on; the buffer is the result)
 	delete(w.idx_to_atom)
 	delete(w.atom_to_idx)
 	return out

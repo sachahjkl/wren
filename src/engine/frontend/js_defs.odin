@@ -380,7 +380,7 @@ Func_Def :: struct {
 	func_name:                    Atom,
 
 	vars:                         [dynamic]Var_Def,
-	vars_htab:                    []u32,
+	source_loc_size:              int, // the number of OP_source_loc resolve_variables left in byte_code
 	args:                         [dynamic]Var_Def,
 	defined_arg_count:            int,
 	var_ref_count:                int,

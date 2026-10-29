@@ -267,7 +267,6 @@ get_label_pos :: proc(s: ^Func_Def, label0: int) -> int {
 Pass_State :: struct {
 	atoms:            ^Atom_Table,
 	allocator:        runtime.Allocator,
-	source_loc_size:  map[^Func_Def]int,
 	error:            string,
 	stack:            Stack_Guard,
 }
@@ -524,7 +523,8 @@ resolve_variables :: proc(ps: ^Pass_State, s: ^Func_Def) -> bool {
 			append(&bc_out, ..bc_buf[pos:pos + l])
 		}
 	}
-	ps.source_loc_size[s] = source_loc_size
+	s.source_loc_size = source_loc_size
+	delete(s.byte_code)
 	s.byte_code = bc_out
 	return false
 }
@@ -721,7 +721,7 @@ resolve_labels :: proc(ps: ^Pass_State, s: ^Func_Def) -> bool {
 	bc_len := len(bc_buf)
 	cc := Code_Context{bc_buf = bc_buf, bc_len = bc_len}
 	bc_out := make(Bc_Out, 0, bc_len + 16, ps.allocator)
-	sl_size := ps.source_loc_size[s]
+	sl_size := s.source_loc_size
 	has_slots := sl_size > 0
 	clear(&s.jump_slots)
 	clear(&s.source_loc_slots)
@@ -1382,6 +1382,7 @@ resolve_labels :: proc(ps: ^Pass_State, s: ^Func_Def) -> bool {
 		}
 	}
 	compute_pc2line_info(s, has_slots)
+	delete(s.byte_code)
 	s.byte_code = bc_out
 	s.use_short_opcodes = true
 	return false
@@ -1395,8 +1396,11 @@ compute_stack_size :: proc(fd: ^Func_Def, allocator: runtime.Allocator) -> (int,
 	if bc_len == 0 {return 0, true}
 	stack_level_tab := make([]u16, bc_len, allocator)
 	catch_pos_tab := make([]i32, bc_len, allocator)
+	defer delete(stack_level_tab, allocator)
+	defer delete(catch_pos_tab, allocator)
 	for i in 0 ..< bc_len {stack_level_tab[i] = 0xffff}
 	pc_stack := make([dynamic]int, 0, 32, allocator)
+	defer delete(pc_stack)
 	stack_len_max := 0
 
 	ss_check :: proc(stack_level_tab: []u16, catch_pos_tab: []i32, pc_stack: ^[dynamic]int, stack_len_max: ^int, pos, stack_len, catch_pos: int) -> bool {
@@ -1599,5 +1603,20 @@ js_create_function :: proc(ps: ^Pass_State, fd: ^Func_Def) -> ^Function_Bytecode
 	b.super_allowed = fd.super_allowed
 	b.arguments_allowed = fd.arguments_allowed
 	b.backtrace_barrier = fd.backtrace_barrier
+	free_func_def(ps, fd)
 	return b
+}
+
+// What the function definition held for the passes and no longer needs once its bytecode exists (the byte code,
+// constant pool, closure variables and line table now belong to the Function_Bytecode).
+free_func_def :: proc(ps: ^Pass_State, fd: ^Func_Def) {
+	delete(fd.child_list)
+	delete(fd.vars)
+	delete(fd.args)
+	delete(fd.scopes)
+	delete(fd.global_vars)
+	delete(fd.label_slots)
+	delete(fd.jump_slots)
+	delete(fd.source_loc_slots)
+	runtime.mem_free_with_size(fd, size_of(Func_Def), ps.allocator)
 }
