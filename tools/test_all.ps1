@@ -23,7 +23,8 @@ if ($CI) { $Quick = $true; if (-not $env:CI) { $env:CI = 'true' } }   # the tool
 # what they need is a desktop and a machine of known speed) run when asked; without it they are skipped with "ui: skipped, run with -Ui".
 # Never on a CI machine (-CI, or the CI variable): a shared runner failed them at random, and the logic they check has unit tests.
 # That is also the case of the end-to-end sessions of service workers, shared workers, the back/forward cache, about:config and the search
-# engines, of the EventSource / WebSocket and network transport tests, and of the same sessions on the check build.
+# engines, of the EventSource / WebSocket and network transport tests, of the middle-click autoscroll and the address-trust sessions, and of the same sessions on the check build.
+# (A step that fails at random on the runner goes behind -Ui; the unit tests of the logic it checks stay.)
 if ($Ui -or $env:WREN_UI_TESTS -eq '1' -or $env:WREN_UI_TESTS -eq 'true') { $Ui = $true }
 if ($Ui -and ($CI -or $env:CI)) { 'ui: -Ui / WREN_UI_TESTS ignored on the CI (the UI steps never run there)'; $Ui = $false }
 # -Perf (or WREN_PERF=1 in the environment): the tests that measure time (a duration, a CPU time, a frame count in a window of time, the
@@ -252,7 +253,7 @@ Step 'drag and drop end to end (tools\dnd_e2e.ps1: a file dropped on a drop zone
 Step 'middle-click autoscroll end to end (tools\autoscroll_e2e.ps1: a middle press on a tall page and the pointer moved down scrolls it, faster the farther, Escape stops it, a middle click on a link opens a new tab; no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\autoscroll_e2e.ps1
-} -Weight 20
+} -Weight 20 -UiOnly
 Step 'a window''s own state of the chrome end to end (tools\window_state_e2e.ps1: a page''s full screen in one window of two, left with Escape, the scroll given back; each window''s developer tools; the caret blinking in the front window only; no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\window_state_e2e.ps1
@@ -320,7 +321,7 @@ Step 'tabs come back after a crash and never loop (tools\crash_recovery_e2e.ps1:
 Step 'who chose an address (tools\nav_trust_e2e.ps1: a page asking by script for about:sites?clear=..., a file or a share is refused and F5, Back and Forward never obey it; the same addresses typed by the person, and the links of about:sites, still work)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\nav_trust_e2e.ps1
-} -Weight 20
+} -Weight 20 -UiOnly
 Step 'about:config end to end (tools\config_e2e.ps1: search, a switch, a number, a value out of range, a choice, reset, details, a category by type-ahead, all from the keyboard; no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\config_e2e.ps1
