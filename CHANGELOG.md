@@ -7,6 +7,15 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 
 ## Unreleased
 
+## 0.6.2 - 2026-10-29
+
+### Changed
+- **Plus de Zig, plus de bibliothèque C dans le module JavaScript** : le module du moteur est lié par le `wasm-ld` livré avec Odin (`tools\build_js.ps1` ne télécharge plus rien). La bibliothèque C n'existe plus : le tas (l'emmalloc de `base:runtime`), les fonctions de chaînes, `strtod`, `snprintf` et `ldexp` sont écrits en Odin (`native/js/odin/wj/libc.odin`), `exp` est celui de fdlibm, et `sin`, `cos` et `pow` sont fournis par l'hôte (module `libm`). Ses seuls imports sont `wasi_snapshot_preview1.{clock_time_get,random_get}`, `libm.*` et les modules `wr_*`. Retirés : le compilateur de référence QuickJS en C (`jsrt_refcompiler.c`), la comparaison native de `test262.ps1`, `jsrt_bench.ps1`, `e1_fetch_oracle.ps1`, les licences de wasi-libc, musl et cloudlibc, et le cache Zig de la CI. L'image du moteur passe de 5,6 à 5,9 Mio.
+
+### Fixed
+- **Documentation du site : le code se replie et l'accueil nomme la bonne version** : le code en ligne ne passait pas à la ligne (il débordait sur le sommaire) et les blocs de code avaient une barre de défilement horizontale : ils se replient maintenant à la largeur du texte. Un extrait de code de la page du bloqueur, coupé par un début de ligne * , était pris pour une liste. La page d'accueil du site écrit la dernière version des notes de release (elle disait 0.4.0).
+- **Documentation du site : liens relatifs** : les pages de `/wren/docs/` utilisaient des liens à la racine (`/style.css`), qui sortaient du site publié sous `/wren/` : pas de style, logo cassé. Le générateur écrit maintenant des liens relatifs à la racine du site, y compris pour la recherche. La page Changelog du site est générée depuis `docs/releases` et `CHANGELOG.md`, et les quatre images de la page d'accueil (une fenêtre à quatre onglets, chacun devant à son tour) sont refaites par `tools\hero_shots.ps1`.
+
 ## 0.6.1 - 2026-10-29
 
 ### Changed
