@@ -13,10 +13,11 @@ frontend_compile :: proc(ctx: ^Context, req: ^Compile_Request) -> Value {
 	mem.dynamic_arena_init(&arena, rt.allocator, rt.allocator, 256 * 1024, 64 * 1024, 16)
 	defer mem.dynamic_arena_destroy(&arena)
 	counter: Compile_Alloc
-	compile_alloc_init(&counter, &arena)
+	compile_alloc_init(&counter, &arena, rt.allocator)
+	defer compile_alloc_release(&counter)
 	defer {
 		rt.compile_count += 1
-		rt.compile_peak_bytes = max(rt.compile_peak_bytes, counter.bytes)
+		rt.compile_peak_bytes = max(rt.compile_peak_bytes, counter.peak)
 		rt.compile_peak_blocks = max(rt.compile_peak_blocks, arena_blocks(&arena))
 	}
 	a := compile_alloc(&counter)
@@ -90,6 +91,7 @@ frontend_compile :: proc(ctx: ^Context, req: ^Compile_Request) -> Value {
 	// returned for the runtime's heap to reuse instead of adding to it.
 	wa := req.keep_image ? rt_allocator(rt) : rt.allocator
 	bytes := fe.write_object_of(res, wa)
+	compile_alloc_release(&counter)
 	mem.dynamic_arena_destroy(&arena)
 	v := read_object(ctx, bytes)
 	if req.keep_image && v.tag == .function_bc {

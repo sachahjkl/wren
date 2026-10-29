@@ -254,8 +254,7 @@ js_parse_string :: proc(s: ^Parse_State, sep: int, do_throw: bool, p0: int, toke
 			q += 1
 		}
 		if q < s.buf_end && int(s.buf[q]) == sep {
-			bytes := make([]u8, q - p0, s.allocator)
-			copy(bytes, s.buf[p0:q])
+			bytes := s.buf[p0:q] // (the text itself: the source buffer lives as long as the compile)
 			token.val = TOK_STRING
 			token.sep = sep
 			token.str = String_Value{latin1 = bytes}

@@ -536,13 +536,46 @@ raw_slot :: #force_inline proc "contextless" (p: rawptr) -> js.Value {
 	return js.Value{tag = .int, u = {ptr = p}}
 }
 
+// A native with user data: the block holds the C function, its prototype and the data.
 @(private)
 bridge_native :: proc(ctx: ^js.Context, this: js.Value, args: []js.Value, magic: i32) -> js.Value {
-	rt := ctx.rt
-	nd := &rt.native_self.data.(js.Native_Data)
+	nd := &ctx.rt.native_self.data.(js.Native_Data)
 	data := nd.data[:js.native_data_len(nd)]
-	fn := data[0].u.ptr
-	proto := int(data[1].u.i)
+	return bridge_invoke(ctx, this, args, magic, data[0].u.ptr, int(data[1].u.i), data)
+}
+
+// A native without user data (nearly all of them): the C function is in the object (js.native_data_raw) and the
+// prototype is which of these procedures the object calls.
+@(private)
+bridge_plain :: #force_inline proc(ctx: ^js.Context, this: js.Value, args: []js.Value, magic: i32, proto: int) -> js.Value {
+	nd := &ctx.rt.native_self.data.(js.Native_Data)
+	return bridge_invoke(ctx, this, args, magic, js.native_data_raw(nd), proto, nil)
+}
+
+@(private) bridge_generic :: proc(ctx: ^js.Context, this: js.Value, args: []js.Value, magic: i32) -> js.Value {return bridge_plain(ctx, this, args, magic, CFUNC_generic)}
+@(private) bridge_generic_magic :: proc(ctx: ^js.Context, this: js.Value, args: []js.Value, magic: i32) -> js.Value {return bridge_plain(ctx, this, args, magic, CFUNC_generic_magic)}
+@(private) bridge_getter :: proc(ctx: ^js.Context, this: js.Value, args: []js.Value, magic: i32) -> js.Value {return bridge_plain(ctx, this, args, magic, CFUNC_getter)}
+@(private) bridge_setter :: proc(ctx: ^js.Context, this: js.Value, args: []js.Value, magic: i32) -> js.Value {return bridge_plain(ctx, this, args, magic, CFUNC_setter)}
+@(private) bridge_getter_magic :: proc(ctx: ^js.Context, this: js.Value, args: []js.Value, magic: i32) -> js.Value {return bridge_plain(ctx, this, args, magic, CFUNC_getter_magic)}
+@(private) bridge_setter_magic :: proc(ctx: ^js.Context, this: js.Value, args: []js.Value, magic: i32) -> js.Value {return bridge_plain(ctx, this, args, magic, CFUNC_setter_magic)}
+
+// The procedure that calls a C function of prototype `proto` that has no user data, or nil.
+@(private)
+bridge_for :: proc "contextless" (proto: int) -> js.Native_Proc {
+	switch proto {
+	case CFUNC_generic, CFUNC_constructor, CFUNC_constructor_or_func: return bridge_generic
+	case CFUNC_generic_magic, CFUNC_constructor_magic, CFUNC_constructor_or_func_magic: return bridge_generic_magic
+	case CFUNC_getter: return bridge_getter
+	case CFUNC_setter: return bridge_setter
+	case CFUNC_getter_magic: return bridge_getter_magic
+	case CFUNC_setter_magic: return bridge_setter_magic
+	}
+	return nil
+}
+
+@(private)
+bridge_invoke :: proc(ctx: ^js.Context, this: js.Value, args: []js.Value, magic: i32, fn: rawptr, proto: int, data: []js.Value) -> js.Value {
+	rt := ctx.rt
 	buf: [12]JSValue
 	argv := buf[:]
 	if len(args) > len(buf) {argv = make([]JSValue, len(args), js.tmp(rt))}
@@ -580,11 +613,17 @@ bridge_native :: proc(ctx: ^js.Context, this: js.Value, args: []js.Value, magic:
 
 @(private)
 make_native :: proc(ctx: ^js.Context, fn: rawptr, name: string, length: int, proto: int, magic: i32, user: []js.Value, proto_obj: ^js.Object = nil) -> js.Value {
-	data := make([]js.Value, 2 + len(user), js.tmp(ctx.rt))
-	data[0] = raw_slot(fn)
-	data[1] = js.mk_int(i32(proto))
-	copy(data[2:], user)
-	o := js.new_native_closure(ctx, bridge_native, name, length, data, magic)
+	o: ^js.Object
+	if plain := bridge_for(proto); plain != nil && proto != PROTO_DATA {
+		o = js.new_native_function(ctx, plain, name, length, magic)
+		js.native_data_set_raw(&o.data.(js.Native_Data), fn)
+	} else {
+		data := make([]js.Value, 2 + len(user), js.tmp(ctx.rt))
+		data[0] = raw_slot(fn)
+		data[1] = js.mk_int(i32(proto))
+		copy(data[2:], user)
+		o = js.new_native_closure(ctx, bridge_native, name, length, data, magic)
+	}
 	switch proto {
 	case CFUNC_constructor, CFUNC_constructor_magic:
 		js.set_native_kind(o, .constructor_only)
