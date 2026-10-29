@@ -22,9 +22,9 @@ if ($CI) { $Quick = $true; if (-not $env:CI) { $env:CI = 'true' } }   # the tool
 # -Ui (or WREN_UI_TESTS=1): the end-to-end steps marked -UiOnly (they drive real windows and processes, or decode heavy images under a time limit:
 # what they need is a desktop and a machine of known speed) run when asked; without it they are skipped with "ui: skipped, run with -Ui".
 # Never on a CI machine (-CI, or the CI variable): a shared runner failed them at random, and the logic they check has unit tests.
-# That is also the case of the end-to-end sessions of service workers, shared workers, the back/forward cache, about:config and the search
-# engines, of the EventSource / WebSocket and network transport tests, of the middle-click autoscroll and the address-trust sessions, and of the same sessions on the check build.
-# (A step that fails at random on the runner goes behind -Ui; the unit tests of the logic it checks stay.)
+# -NoCI: the end-to-end steps that start a Wren and drive it (a window, a profile, a few processes) are skipped on the CI (-CI, or the CI variable):
+# the shared runner fails them at random under load, and what they check has unit tests. They run on a developer's machine, as before.
+# A step that is flaky on the runner gets -NoCI; remote_e2e (a Wren starts and answers) stays as the CI's smoke test.
 if ($Ui -or $env:WREN_UI_TESTS -eq '1' -or $env:WREN_UI_TESTS -eq 'true') { $Ui = $true }
 if ($Ui -and ($CI -or $env:CI)) { 'ui: -Ui / WREN_UI_TESTS ignored on the CI (the UI steps never run there)'; $Ui = $false }
 # -Perf (or WREN_PERF=1 in the environment): the tests that measure time (a duration, a CPU time, a frame count in a window of time, the
@@ -77,7 +77,12 @@ $script:serverSteps = $false
 # clock): it does not take one of the -Jobs slots, up to -LightJobs of them run beside the others.
 # -Weight s: about how many seconds the step takes on a CI runner, for the order of a run that has no durations of a last run (a fresh checkout
 # has no build\test_all_times.txt): the longest steps start first, so that none is left alone at the end.
-function Step($name, [scriptblock]$body, [switch]$Light, [switch]$UiOnly, [int]$Weight = 0) {
+function Step($name, [scriptblock]$body, [switch]$Light, [switch]$UiOnly, [switch]$NoCI, [int]$Weight = 0) {
+    if ($NoCI -and ($CI -or $env:CI)) {
+        $short = ($name -split ' [(]')[0]
+        "ci: skipped on the CI (it runs on a developer's machine): $short"
+        return
+    }
     if ($UiOnly -and -not $Ui) {
         $short = ($name -split ' [(]')[0]
         "ui: skipped, run with -Ui (test_all.ps1 -Ui, or WREN_UI_TESTS=1): $short"
@@ -232,11 +237,11 @@ Step 'unit tests: remote client (wren ctl: options, help, picture diff, a call t
 Step 'developer tools docked: the page area follows the size of the panel, at the bottom and at the side (tools\devtools_resize_e2e.ps1 -NoDesktop: no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\devtools_resize_e2e.ps1 -NoDesktop
-}
+} -NoCI
 Step 'an open menu over the top resize band is the browser''s (tools\menu_edge_e2e.ps1: the system''s hit test sent to a window shown fully transparent and click-through, no real mouse)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\menu_edge_e2e.ps1
-}
+} -NoCI
 Step 'remote control end to end (tools\remote_e2e.ps1: wren ctl drives a Wren with no window shown: navigate, evaluate, click, type, capture from the render target and compare pixels, window off the screen, vanishing and oversized clients, quit; off and idle at no cost when not asked for)' {
     # (the browser is built unless it is newer than its sources: build.bat takes 40 s even with nothing to do, and the CI built it a step ago)
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
@@ -245,23 +250,23 @@ Step 'remote control end to end (tools\remote_e2e.ps1: wren ctl drives a Wren wi
 Step 'accessibility end to end (tools\a11y_e2e.ps1: a Wren with no window shown read and driven through UI Automation as a screen reader does: the chrome''s roles, names and states, invoke, set value, select, expand)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\a11y_e2e.ps1
-}
+} -NoCI
 Step 'drag and drop end to end (tools\dnd_e2e.ps1: a file dropped on a drop zone and elsewhere, a drag between elements, pointer events and coordinates in a scrolled page; no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\dnd_e2e.ps1
-} -Weight 20
+} -Weight 20 -NoCI
 Step 'middle-click autoscroll end to end (tools\autoscroll_e2e.ps1: a middle press on a tall page and the pointer moved down scrolls it, faster the farther, Escape stops it, a middle click on a link opens a new tab; no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\autoscroll_e2e.ps1
-} -Weight 20 -UiOnly
+} -Weight 20 -NoCI
 Step 'a window''s own state of the chrome end to end (tools\window_state_e2e.ps1: a page''s full screen in one window of two, left with Escape, the scroll given back; each window''s developer tools; the caret blinking in the front window only; no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\window_state_e2e.ps1
-} -Weight 10
+} -Weight 10 -NoCI
 Step 'a tab dragged onto another window''s tabs (tools\tab_drag_windows_e2e.ps1: the insertion mark among pinned tabs and groups, in a row and in the sidebar, where the release puts the tab; injected pointer, no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\tab_drag_windows_e2e.ps1
-} -Weight 10
+} -Weight 10 -NoCI
 Step 'windows on monitors of different scales (tools\window_dpi_e2e.ps1: WM_DPICHANGED for one window of two: its scale alone, no scroll jump, devicePixelRatio and resolution queries; a tab moved between scales; no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\window_dpi_e2e.ps1
@@ -270,34 +275,34 @@ Step 'the globals of src\browser against their list (tools\lint_globals.ps1: a n
 Step 'the frame gate end to end (tools\frame_gate_e2e.ps1: the system''s drag of a page drag, a long script preempted by chrome frames, the page''s context menu; no frame begun inside another''s build, no violation of the state machine; a window shown fully transparent and click-through)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\frame_gate_e2e.ps1
-} -Weight 15
+} -Weight 15 -NoCI
 Step 'service workers, Cache API, BroadcastChannel, OffscreenCanvas in a worker end to end (tools\sw_e2e.ps1: register, install / activate, claim, fetch intercepted and answered from the cache, a navigation answered by the worker, messages, versions and update, clients, idle stop, navigation preload, Vary; no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\sw_e2e.ps1
-} -Weight 20 -UiOnly
+} -Weight 20 -NoCI
 Step 'storage partitioning end to end (tools\partition_e2e.ps1: a third party embedded in another site has its own cookies, localStorage, sessionStorage, Cache API, BroadcastChannel and service workers there, Sec-Fetch-Storage-Access, document.requestStorageAccess() after a click; no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\partition_e2e.ps1
-} -Weight 10
+} -Weight 10 -NoCI
 Step 'origin private file system and File System Access end to end (tools\fs_e2e.ps1: handles, writables, a sync access handle in a worker, IndexedDB clones, quota, pickers on files of the disk through browser.dialogs.test_answer; no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\fs_e2e.ps1
-} -Weight 10
+} -Weight 10 -NoCI
 Step 'back/forward cache measured end to end (tools\bfcache_e2e.ps1: a hit, a page refused for its unload handler and its reason counted, a miss; wren ctl stats: bfcache)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\bfcache_e2e.ps1
-} -Weight 5 -UiOnly
+} -Weight 5 -NoCI
 Step 'downloads end to end on both network stacks (tools\download_e2e.ps1: an attachment, a binary named by its URL, a slow body; no window shown)' {
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\download_e2e.ps1
 } -UiOnly   # (two of its three big files did not end in 30 s on the CI runner, on both stacks: it depends on the machine; run with -Ui)
 Step 'shared workers and module workers end to end (tools\workers_e2e.ps1: two tabs share one worker, connect, ports, lifetime, close(), module imports; no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\workers_e2e.ps1
-} -Weight 10 -UiOnly
+} -Weight 10 -NoCI
 Step 'the policy file is read beside the executable, never from the working directory (tools\policy_file_e2e.ps1)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\policy_file_e2e.ps1
-}
+} -NoCI
 Step 'the console launcher wren.com (tools\wrencom_e2e.ps1: from a terminal wren ctl gives its output and exit code, redirections and pipes included; an address lets go at once; it dies with its child and will not start itself; Setup writes it beside wren.exe with the PATH entry and takes it away with it)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\wrencom_e2e.ps1
@@ -305,15 +310,15 @@ Step 'the console launcher wren.com (tools\wrencom_e2e.ps1: from a terminal wren
 Step 'a program of the working directory never runs in place of the system''s (tools\planted_program_e2e.ps1: the report of a session that ended without one asks wevtutil.exe for the Windows record; one planted beside the document must not run)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\planted_program_e2e.ps1
-}
+} -NoCI
 Step 'what a page can do to the answers of wren ctl eval (tools\remote_page_e2e.ps1: it sees the line, so the line holds no secret; another tab''s forgery and a value with a line break change nothing)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\remote_page_e2e.ps1
-} -Weight 15
+} -Weight 15 -NoCI
 Step 'wren ctl stop ends the Wren it started and nothing else (tools\ctl_stop_e2e.ps1: a session file whose pid is another program''s now, or that does not say who the process was, leaves that program alone)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\ctl_stop_e2e.ps1
-}
+} -NoCI
 Step 'tabs come back after a crash and never loop (tools\crash_recovery_e2e.ps1: a Wren ended by its own process id leaves running.txt and recovery.txt, the next start restores the tabs, a restoring start that ends too is followed by a blank page and the tabs kept in a file, a normal end removes both files, a Wren that still runs is not taken for a crash)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\crash_recovery_e2e.ps1
@@ -321,15 +326,15 @@ Step 'tabs come back after a crash and never loop (tools\crash_recovery_e2e.ps1:
 Step 'who chose an address (tools\nav_trust_e2e.ps1: a page asking by script for about:sites?clear=..., a file or a share is refused and F5, Back and Forward never obey it; the same addresses typed by the person, and the links of about:sites, still work)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\nav_trust_e2e.ps1
-} -Weight 20 -UiOnly
+} -Weight 20 -NoCI
 Step 'about:config end to end (tools\config_e2e.ps1: search, a switch, a number, a value out of range, a choice, reset, details, a category by type-ahead, all from the keyboard; no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\config_e2e.ps1
-} -UiOnly
+} -NoCI
 Step 'search engines end to end (tools\search_e2e.ps1: a profile of before the list keeps its choice, the default, keywords, Ctrl+Down in the suggestions, an engine added in about:config and written to the profile; engines on the test server, no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\search_e2e.ps1
-} -UiOnly
+} -NoCI
 
 Step 'unit tests: wasm' { odin test src/wasm -use-separate-modules $MemCheck -collection:wb=src -vet -define:ODIN_TEST_THREADS=1 -out:build/wasm_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
 Step 'unit tests: bindgen (description language, determinism)' { odin test src/tools/bindgen/idl -use-separate-modules $MemCheck -collection:wb=src -vet -out:build/bindgen_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
@@ -462,7 +467,7 @@ if ($CI -or -not $Quick) {
         foreach ($s in 'sw_e2e', 'workers_e2e', 'fs_e2e', 'bfcache_e2e', 'partition_e2e') { powershell -NoProfile -ExecutionPolicy Bypass -File "tools\$s.ps1" -Check; if ($LASTEXITCODE -ne 0) { $bad++ } }
         "$bad of them failed"
         $global:LASTEXITCODE = [int]($bad -gt 0)
-    } -Weight 30 -UiOnly
+    } -Weight 30 -NoCI
 }
 
 # The steps below talk to the test server: -Jobs 1, one server for all, on this run's block of ports (ready once it
@@ -538,13 +543,13 @@ try {
         if (-not $p.WaitForExit(90000 * $slow)) { $p.Kill(); Get-Content build\wt.txt; $global:LASTEXITCODE = 1; return }
         $o = Get-Content build\wt.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
-    } -UiOnly
+    } -NoCI
     Step 'forms end-to-end test (controls, validation, FormData, submission)' {
         $p = Start-Process .\build\formstest.exe -ArgumentList 'examples\site\forms.html','examples\site\formstest.wasm' -NoNewWindow -PassThru -RedirectStandardOutput build\ft.txt
         if (-not $p.WaitForExit(90000 * $slow)) { $p.Kill(); Get-Content build\ft.txt; $global:LASTEXITCODE = 1; return }
         $o = Get-Content build\ft.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
-    } -UiOnly
+    } -NoCI
     Step 'workers end-to-end test (messages, transfer, fetch, terminate, 16 in parallel)' {
         odin build examples/workerstest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:build/workerstest.wasm -o:size
         if ($LASTEXITCODE -ne 0) { return }
@@ -645,7 +650,7 @@ Step 'tab sidebar resized by its handle: the edge where the pointer is in every 
 Step 'tab sidebar features (tools\sidebar_tabs_e2e.ps1, no window shown: opening and closing go through the widths between; pinned tabs, groups, the sound of a tab, through wren ctl)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\sidebar_tabs_e2e.ps1
-}
+} -NoCI
 Step 'splitters dragged at 1 kHz (tools\splitter_cadence.ps1, no window shown: the developer tools docked right and bottom, the tab sidebar''s handle; their frames are drags of the cadence model and, on a variable refresh screen, presented at once; the rates are printed, never checked)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\splitter_cadence.ps1
