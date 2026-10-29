@@ -98,13 +98,16 @@ run :: proc() {
 	// render every page
 	for &p in pages {
 		html := render_page(&p, nav, pages[:], page_by_rel, &search)
-		emit(filepath.join({OUT_DIR, p.out_rel}) or_else "", html)
+		emit(filepath.join({OUT_DIR, p.out_rel}) or_else "", site_relative(html, p.out_rel))
 	}
 
 	// shared assets
 	emit(filepath.join({OUT_DIR, "docs.css"}) or_else "", docs_css())
 	emit(filepath.join({OUT_DIR, "search.js"}) or_else "", search_js())
 	emit(filepath.join({OUT_DIR, "search-index.json"}) or_else "", build_search_index(search[:]))
+
+	// the releases timeline of the site's changelog page
+	build_changelog_page()
 
 	// prune generated .html the docs no longer produce
 	keep := make(map[string]bool, context.temp_allocator)
@@ -206,4 +209,28 @@ prune_html :: proc(dir: string, keep: map[string]bool) {
 		}
 	}
 	walk(dir, abs_forward(dir), keep)
+}
+
+// The site is served from a path of its own (https://<user>.github.io/wren/), where a link that starts with "/" leaves it:
+// every root-absolute href and src of a page becomes relative to the site's root, from the page's depth (docs/ + its folders).
+site_relative :: proc(html, out_rel: string) -> string {
+	root := strings.builder_make(context.temp_allocator)
+	strings.write_string(&root, "../")
+	for c in out_rel { if c == '/' { strings.write_string(&root, "../") } }
+	prefix := strings.to_string(root)
+	b := strings.builder_make(context.allocator)
+	i := 0
+	scan: for i < len(html) {
+		for attr in ([?]string{"href=\"/", "src=\"/"}) {
+			if strings.has_prefix(html[i:], attr) && !strings.has_prefix(html[i + len(attr):], "/") {
+				strings.write_string(&b, attr[:len(attr) - 1])
+				strings.write_string(&b, prefix)
+				i += len(attr)
+				continue scan
+			}
+		}
+		strings.write_byte(&b, html[i])
+		i += 1
+	}
+	return strings.to_string(b)
 }

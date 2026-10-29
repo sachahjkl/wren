@@ -6,25 +6,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Writing Wren's JavaScript glue in Odin · Wren docs</title>
 <meta name="description" content="Writing Wren's JavaScript glue in Odin Wren's JavaScript engine is the Odin engine (src/engine/jsrt, through the QuickJS C API of src/engine/jscapi) compiled to one WebAs">
-<link rel="icon" type="image/png" sizes="32x32" href="/img/logo-32.png">
-<link rel="stylesheet" href="/style.css">
-<link rel="stylesheet" href="/docs/docs.css">
+<link rel="icon" type="image/png" sizes="32x32" href="../../img/logo-32.png">
+<link rel="stylesheet" href="../../style.css">
+<link rel="stylesheet" href="../../docs/docs.css">
 </head>
 <body class="docs">
 <a class="skip" href="#doc-main">Skip to content</a>
 <header class="top">
 <div class="wrap">
-<a class="brand" href="/index.html"><img src="/img/logo-64.png" alt="" width="30" height="30">Wren</a>
+<a class="brand" href="../../index.html"><img src="../../img/logo-64.png" alt="" width="30" height="30">Wren</a>
 <input class="menu-check" type="checkbox" id="menu">
 <label class="burger" for="menu" aria-label="Menu"><span></span><span></span><span></span></label>
 <ul class="nav">
-<li><a href="/index.html#features">Features</a></li>
-<li><a href="/gallery.html">Gallery</a></li>
-<li><a href="/architecture.html">Architecture</a></li>
-<li><a href="/docs/index.html" aria-current="page">Docs</a></li>
-<li><a href="/write.html">Write a page</a></li>
-<li><a href="/changelog.html">Changelog</a></li>
-<li><a href="/support.html">Pricing</a></li>
+<li><a href="../../index.html#features">Features</a></li>
+<li><a href="../../gallery.html">Gallery</a></li>
+<li><a href="../../architecture.html">Architecture</a></li>
+<li><a href="../../docs/index.html" aria-current="page">Docs</a></li>
+<li><a href="../../write.html">Write a page</a></li>
+<li><a href="../../changelog.html">Changelog</a></li>
+<li><a href="../../support.html">Pricing</a></li>
 <li><a class="btn primary nav-dl" href="https://github.com/sachahjkl/wren/releases/latest">Download</a></li>
 </ul>
 </div>
@@ -41,99 +41,99 @@
 <div class="doc-sec">
 <p class="doc-sec-title">Getting started</p>
 <ul class="doc-links">
-<li><a href="/docs/index.html">Overview</a></li>
-<li><a href="/docs/console-launcher.html">Wren from a terminal</a></li>
-<li><a href="/docs/remote.html">Remote control (wren ctl)</a></li>
-<li><a href="/docs/cdp.html">CDP and WebDriver BiDi</a></li>
-<li><a href="/docs/search-engines.html">Search engines</a></li>
-<li><a href="/docs/i18n.html">Translations</a></li>
+<li><a href="../../docs/index.html">Overview</a></li>
+<li><a href="../../docs/console-launcher.html">Wren from a terminal</a></li>
+<li><a href="../../docs/remote.html">Remote control (wren ctl)</a></li>
+<li><a href="../../docs/cdp.html">CDP and WebDriver BiDi</a></li>
+<li><a href="../../docs/search-engines.html">Search engines</a></li>
+<li><a href="../../docs/i18n.html">Translations</a></li>
 </ul>
 </div>
 <div class="doc-sec">
 <p class="doc-sec-title">Architecture</p>
 <ul class="doc-links">
-<li><a href="/docs/architecture.html">How Wren fits together</a></li>
-<li><a href="/docs/shared-memory.html">SharedArrayBuffer between realms</a></li>
-<li><a href="/docs/crash-recovery.html">Crash recovery</a></li>
-<li><a href="/docs/crash-reports.html">Crash reports and symbols</a></li>
+<li><a href="../../docs/architecture.html">How Wren fits together</a></li>
+<li><a href="../../docs/shared-memory.html">SharedArrayBuffer between realms</a></li>
+<li><a href="../../docs/crash-recovery.html">Crash recovery</a></li>
+<li><a href="../../docs/crash-reports.html">Crash reports and symbols</a></li>
 </ul>
 </div>
 <div class="doc-sec">
 <p class="doc-sec-title">Features</p>
 <ul class="doc-links">
-<li><a href="/docs/blocker.html">The content blocker</a></li>
-<li><a href="/docs/media.html">Media elements</a></li>
-<li><a href="/docs/webcodecs.html">WebCodecs</a></li>
-<li><a href="/docs/accessibility.html">Accessibility</a></li>
-<li><a href="/docs/shaders.html">Shaders in the chrome</a></li>
-<li><a href="/docs/newtab-art.html">Artistic new tab</a></li>
-<li><a href="/docs/tab-sidebar.html">Tabs in a sidebar</a></li>
-<li><a href="/docs/windows.html">Several windows</a></li>
-<li><a href="/docs/chrome-style.html">The look of the chrome</a></li>
-<li><a href="/docs/desktop-integration.html">Desktop integration</a></li>
-<li><a href="/docs/licence.html">Licences</a></li>
+<li><a href="../../docs/blocker.html">The content blocker</a></li>
+<li><a href="../../docs/media.html">Media elements</a></li>
+<li><a href="../../docs/webcodecs.html">WebCodecs</a></li>
+<li><a href="../../docs/accessibility.html">Accessibility</a></li>
+<li><a href="../../docs/shaders.html">Shaders in the chrome</a></li>
+<li><a href="../../docs/newtab-art.html">Artistic new tab</a></li>
+<li><a href="../../docs/tab-sidebar.html">Tabs in a sidebar</a></li>
+<li><a href="../../docs/windows.html">Several windows</a></li>
+<li><a href="../../docs/chrome-style.html">The look of the chrome</a></li>
+<li><a href="../../docs/desktop-integration.html">Desktop integration</a></li>
+<li><a href="../../docs/licence.html">Licences</a></li>
 </ul>
 </div>
 <div class="doc-sec">
 <p class="doc-sec-title">Web API</p>
 <ul class="doc-links">
-<li><a href="/docs/api/README.html">Overview</a></li>
-<li><a href="/docs/js/coverage.html">JavaScript bindings coverage</a></li>
+<li><a href="../../docs/api/README.html">Overview</a></li>
+<li><a href="../../docs/js/coverage.html">JavaScript bindings coverage</a></li>
 <li class="doc-group"><details><summary>Modules</summary>
 <ul class="doc-links">
-<li><a href="/docs/api/README.html">Overview</a></li>
-<li><a href="/docs/api/abort.html">Module abort</a></li>
-<li><a href="/docs/api/animations.html">Module animations</a></li>
-<li><a href="/docs/api/async.html">Module async</a></li>
-<li><a href="/docs/api/caches.html">Module caches</a></li>
-<li><a href="/docs/api/canvas.html">Module canvas</a></li>
-<li><a href="/docs/api/compression.html">Module compression</a></li>
-<li><a href="/docs/api/console.html">Module console</a></li>
-<li><a href="/docs/api/credentials.html">Module credentials</a></li>
-<li><a href="/docs/api/crypto.html">Module crypto</a></li>
-<li><a href="/docs/api/dnd.html">Module dnd</a></li>
-<li><a href="/docs/api/document.html">Module document</a></li>
-<li><a href="/docs/api/dom.html">Module dom</a></li>
-<li><a href="/docs/api/encoding.html">Module encoding</a></li>
-<li><a href="/docs/api/entries.html">Module entries</a></li>
-<li><a href="/docs/api/events.html">Module events</a></li>
-<li><a href="/docs/api/eventsource.html">Module eventsource</a></li>
-<li><a href="/docs/api/fetch.html">Module fetch</a></li>
-<li><a href="/docs/api/forms.html">Module forms</a></li>
-<li><a href="/docs/api/frames.html">Module frames</a></li>
-<li><a href="/docs/api/fs.html">Module fs</a></li>
-<li><a href="/docs/api/fullscreen.html">Module fullscreen</a></li>
-<li><a href="/docs/api/history.html">Module history</a></li>
-<li><a href="/docs/api/htmlmedia.html">Module htmlmedia</a></li>
-<li><a href="/docs/api/idb.html">Module idb</a></li>
-<li><a href="/docs/api/images.html">Module images</a></li>
-<li><a href="/docs/api/js.html">Module js</a></li>
-<li><a href="/docs/api/locks.html">Module locks</a></li>
-<li><a href="/docs/api/media.html">Module media</a></li>
-<li><a href="/docs/api/mediatracks.html">Module mediatracks</a></li>
-<li><a href="/docs/api/mse.html">Module mse</a></li>
-<li><a href="/docs/api/navigation.html">Module navigation</a></li>
-<li><a href="/docs/api/navigator.html">Module navigator</a></li>
-<li><a href="/docs/api/net.html">Module net</a></li>
-<li><a href="/docs/api/performance.html">Module performance</a></li>
-<li><a href="/docs/api/popover.html">Module popover</a></li>
-<li><a href="/docs/api/ports.html">Module ports</a></li>
-<li><a href="/docs/api/scheduler.html">Module scheduler</a></li>
-<li><a href="/docs/api/scripts.html">Module scripts</a></li>
-<li><a href="/docs/api/serviceworker.html">Module serviceworker</a></li>
-<li><a href="/docs/api/storage.html">Module storage</a></li>
-<li><a href="/docs/api/storageaccess.html">Module storageaccess</a></li>
-<li><a href="/docs/api/timers.html">Module timers</a></li>
-<li><a href="/docs/api/url.html">Module url</a></li>
-<li><a href="/docs/api/web.html">Module web</a></li>
-<li><a href="/docs/api/webcodecs.html">Module webcodecs</a></li>
-<li><a href="/docs/api/webcodecs_audio_decoder.html">Module webcodecsaudiodecoder</a></li>
-<li><a href="/docs/api/webcodecs_codec.html">Module webcodecscodec</a></li>
-<li><a href="/docs/api/webcodecs_encoders.html">Module webcodecsencoders</a></li>
-<li><a href="/docs/api/webcodecs_image.html">Module webcodecsimage</a></li>
-<li><a href="/docs/api/webcodecs_video_decoder.html">Module webcodecsvideodecoder</a></li>
-<li><a href="/docs/api/websocket.html">Module websocket</a></li>
-<li><a href="/docs/api/workers.html">Module workers</a></li>
+<li><a href="../../docs/api/README.html">Overview</a></li>
+<li><a href="../../docs/api/abort.html">Module abort</a></li>
+<li><a href="../../docs/api/animations.html">Module animations</a></li>
+<li><a href="../../docs/api/async.html">Module async</a></li>
+<li><a href="../../docs/api/caches.html">Module caches</a></li>
+<li><a href="../../docs/api/canvas.html">Module canvas</a></li>
+<li><a href="../../docs/api/compression.html">Module compression</a></li>
+<li><a href="../../docs/api/console.html">Module console</a></li>
+<li><a href="../../docs/api/credentials.html">Module credentials</a></li>
+<li><a href="../../docs/api/crypto.html">Module crypto</a></li>
+<li><a href="../../docs/api/dnd.html">Module dnd</a></li>
+<li><a href="../../docs/api/document.html">Module document</a></li>
+<li><a href="../../docs/api/dom.html">Module dom</a></li>
+<li><a href="../../docs/api/encoding.html">Module encoding</a></li>
+<li><a href="../../docs/api/entries.html">Module entries</a></li>
+<li><a href="../../docs/api/events.html">Module events</a></li>
+<li><a href="../../docs/api/eventsource.html">Module eventsource</a></li>
+<li><a href="../../docs/api/fetch.html">Module fetch</a></li>
+<li><a href="../../docs/api/forms.html">Module forms</a></li>
+<li><a href="../../docs/api/frames.html">Module frames</a></li>
+<li><a href="../../docs/api/fs.html">Module fs</a></li>
+<li><a href="../../docs/api/fullscreen.html">Module fullscreen</a></li>
+<li><a href="../../docs/api/history.html">Module history</a></li>
+<li><a href="../../docs/api/htmlmedia.html">Module htmlmedia</a></li>
+<li><a href="../../docs/api/idb.html">Module idb</a></li>
+<li><a href="../../docs/api/images.html">Module images</a></li>
+<li><a href="../../docs/api/js.html">Module js</a></li>
+<li><a href="../../docs/api/locks.html">Module locks</a></li>
+<li><a href="../../docs/api/media.html">Module media</a></li>
+<li><a href="../../docs/api/mediatracks.html">Module mediatracks</a></li>
+<li><a href="../../docs/api/mse.html">Module mse</a></li>
+<li><a href="../../docs/api/navigation.html">Module navigation</a></li>
+<li><a href="../../docs/api/navigator.html">Module navigator</a></li>
+<li><a href="../../docs/api/net.html">Module net</a></li>
+<li><a href="../../docs/api/performance.html">Module performance</a></li>
+<li><a href="../../docs/api/popover.html">Module popover</a></li>
+<li><a href="../../docs/api/ports.html">Module ports</a></li>
+<li><a href="../../docs/api/scheduler.html">Module scheduler</a></li>
+<li><a href="../../docs/api/scripts.html">Module scripts</a></li>
+<li><a href="../../docs/api/serviceworker.html">Module serviceworker</a></li>
+<li><a href="../../docs/api/storage.html">Module storage</a></li>
+<li><a href="../../docs/api/storageaccess.html">Module storageaccess</a></li>
+<li><a href="../../docs/api/timers.html">Module timers</a></li>
+<li><a href="../../docs/api/url.html">Module url</a></li>
+<li><a href="../../docs/api/web.html">Module web</a></li>
+<li><a href="../../docs/api/webcodecs.html">Module webcodecs</a></li>
+<li><a href="../../docs/api/webcodecs_audio_decoder.html">Module webcodecsaudiodecoder</a></li>
+<li><a href="../../docs/api/webcodecs_codec.html">Module webcodecscodec</a></li>
+<li><a href="../../docs/api/webcodecs_encoders.html">Module webcodecsencoders</a></li>
+<li><a href="../../docs/api/webcodecs_image.html">Module webcodecsimage</a></li>
+<li><a href="../../docs/api/webcodecs_video_decoder.html">Module webcodecsvideodecoder</a></li>
+<li><a href="../../docs/api/websocket.html">Module websocket</a></li>
+<li><a href="../../docs/api/workers.html">Module workers</a></li>
 </ul>
 </details></li>
 </ul>
@@ -141,10 +141,10 @@
 <div class="doc-sec">
 <p class="doc-sec-title">Platforms</p>
 <ul class="doc-links">
-<li><a href="/docs/portability.html">Linux and macOS</a></li>
-<li><a href="/docs/winget.html">Publishing on winget</a></li>
-<li><a href="/docs/wpt-workers.html">WPT /workers/</a></li>
-<li><a href="/docs/conformance.html">Web platform conformance</a></li>
+<li><a href="../../docs/portability.html">Linux and macOS</a></li>
+<li><a href="../../docs/winget.html">Publishing on winget</a></li>
+<li><a href="../../docs/wpt-workers.html">WPT /workers/</a></li>
+<li><a href="../../docs/conformance.html">Web platform conformance</a></li>
 </ul>
 </div>
 <div class="doc-sec">
@@ -152,13 +152,14 @@
 <ul class="doc-links">
 <li class="doc-group"><details><summary>Releases</summary>
 <ul class="doc-links">
-<li><a href="/docs/releases/v0.1.0.html">Wren 0.1.0</a></li>
-<li><a href="/docs/releases/v0.2.0.html">Wren 0.2.0</a></li>
-<li><a href="/docs/releases/v0.3.0.html">Wren 0.3.0</a></li>
-<li><a href="/docs/releases/v0.4.0.html">Wren 0.4.0</a></li>
-<li><a href="/docs/releases/v0.5.0.html">Wren 0.5.0</a></li>
-<li><a href="/docs/releases/v0.6.0.html">Wren 0.6.0</a></li>
-<li><a href="/docs/releases/v0.6.1.html">Wren 0.6.1</a></li>
+<li><a href="../../docs/releases/v0.1.0.html">Wren 0.1.0</a></li>
+<li><a href="../../docs/releases/v0.2.0.html">Wren 0.2.0</a></li>
+<li><a href="../../docs/releases/v0.2.1.html">Wren 0.2.1</a></li>
+<li><a href="../../docs/releases/v0.3.0.html">Wren 0.3.0</a></li>
+<li><a href="../../docs/releases/v0.4.0.html">Wren 0.4.0</a></li>
+<li><a href="../../docs/releases/v0.5.0.html">Wren 0.5.0</a></li>
+<li><a href="../../docs/releases/v0.6.0.html">Wren 0.6.0</a></li>
+<li><a href="../../docs/releases/v0.6.1.html">Wren 0.6.1</a></li>
 </ul>
 </details></li>
 </ul>
@@ -166,18 +167,18 @@
 <div class="doc-sec">
 <p class="doc-sec-title">More</p>
 <ul class="doc-links">
-<li><a href="/docs/README.html">Writing documentation</a></li>
-<li><a href="/docs/engine/bigint.html">bigint: arbitrary-precision integers for the JavaScript engine</a></li>
-<li><a href="/docs/engine/datetime.html">datetime (package jsdate): the JavaScript engine's Date</a></li>
-<li><a href="/docs/engine/frontend.html">Moteur JavaScript — front-end E1 (src/engine/frontend)</a></li>
-<li><a href="/docs/engine/jscapi.html">The QuickJS C API on the Odin runtime (src/engine/jscapi)</a></li>
-<li><a href="/docs/engine/numconv.html">numconv: float64 ↔ string for the JavaScript engine</a></li>
-<li><a href="/docs/engine/regexp.html">engine/regexp</a></li>
-<li><a href="/docs/engine/runtime.html">The ECMAScript runtime (src/engine/jsrt)</a></li>
-<li><a href="/docs/engine/unicode.html">engine/unicode (ucd)</a></li>
-<li><a href="/docs/js/bindgen.html">bindgen: Odin output and Odin input</a></li>
-<li><a href="/docs/js/odin-abi.html">The generic Odin ABI for the engine boundary</a></li>
-<li><a href="/docs/js/odin-glue.html" aria-current="page" class="active">Writing Wren's JavaScript glue in Odin</a></li>
+<li><a href="../../docs/README.html">Writing documentation</a></li>
+<li><a href="../../docs/engine/bigint.html">bigint: arbitrary-precision integers for the JavaScript engine</a></li>
+<li><a href="../../docs/engine/datetime.html">datetime (package jsdate): the JavaScript engine's Date</a></li>
+<li><a href="../../docs/engine/frontend.html">Moteur JavaScript — front-end E1 (src/engine/frontend)</a></li>
+<li><a href="../../docs/engine/jscapi.html">The QuickJS C API on the Odin runtime (src/engine/jscapi)</a></li>
+<li><a href="../../docs/engine/numconv.html">numconv: float64 ↔ string for the JavaScript engine</a></li>
+<li><a href="../../docs/engine/regexp.html">engine/regexp</a></li>
+<li><a href="../../docs/engine/runtime.html">The ECMAScript runtime (src/engine/jsrt)</a></li>
+<li><a href="../../docs/engine/unicode.html">engine/unicode (ucd)</a></li>
+<li><a href="../../docs/js/bindgen.html">bindgen: Odin output and Odin input</a></li>
+<li><a href="../../docs/js/odin-abi.html">The generic Odin ABI for the engine boundary</a></li>
+<li><a href="../../docs/js/odin-glue.html" aria-current="page" class="active">Writing Wren's JavaScript glue in Odin</a></li>
 </ul>
 </div>
 </nav>
@@ -185,7 +186,7 @@
 <main id="doc-main" class="doc-main">
 <article class="doc-article">
 <nav class="doc-crumbs" aria-label="Breadcrumb"><ol>
-<li><a href="/docs/index.html">Docs</a></li>
+<li><a href="../../docs/index.html">Docs</a></li>
 <li>More</li>
 <li aria-current="page">Writing Wren's JavaScript glue in Odin</li>
 </ol></nav>
@@ -196,7 +197,7 @@ implements the web platform's objects as native functions of that API and wires 
 of it is Odin (<code>native/js/odin/</code>; the binding tables are generated into <code>bindings_gen.odin</code>). No C of ours is compiled any
 more: zig is only the linker and the provider of wasi-libc.</p>
 <p>This document is the rule book: where things go, how to declare them, how to add a domain. The generic ABI that will
-replace the hand-written transmission layer is in <a href="/docs/js/odin-abi.html">odin-abi.md</a>.</p>
+replace the hand-written transmission layer is in <a href="../../docs/js/odin-abi.html">odin-abi.md</a>.</p>
 <h2 id="the-layout"><a class="anchor" href="#the-layout" aria-hidden="true">#</a>The layout</h2>
 <div class="code"><pre><code>native/js/odin/            package odin_glue: the ported domains, one file per former .c (web_url.odin, dom_style.odin...)
   ifaces.odin              interface indices several domains share (resolved by name, cached)
@@ -235,7 +236,7 @@ in <code>wj/</code>. A domain of the glue calls another domain unqualified, neve
 QuickJS C API to the procedures of <code>src/engine/jscapi</code> (the API implemented on <code>src/engine/jsrt</code>). The API types
 (<code>Context</code>, <code>Native</code>, <code>Class_Def</code>, ...) are defined once in <code>jscapi/types.odin</code> and aliased in <code>wj</code>.
 <code>-define:JSCAPI_EXPORT=true</code> also exports the API under its C names, which a few <code>foreign</code> declarations of <code>wj/</code> resolve to.
-Details and contracts: <a href="/docs/engine/jscapi.html">../engine/jscapi.md</a>.</p>
+Details and contracts: <a href="../../docs/engine/jscapi.html">../engine/jscapi.md</a>.</p>
 <h2 id="where-a-helper-goes"><a class="anchor" href="#where-a-helper-goes" aria-hidden="true">#</a>Where a helper goes</h2>
 <div class="table-box"><table>
 <thead><tr><th>What it is</th><th>Where</th></tr></thead>
@@ -260,7 +261,7 @@ types. If an import is missing, it is missing from the API description: add it t
 <p>Better still, do not call it by hand: declare the function in <code>native/js/odin_abi/api_decl/&lt;module&gt;.odin</code> and call
 <code>jsb.host(&amp;out, api_decl.X, wj.wr_X, args...)</code> (or bind the member with <code>jsb.getter</code> / <code>jsb.method</code> /
 <code>jsb.function</code>): the strings, the result buffer, the status and the wire shape are then the compiler's
-(<a href="/docs/js/odin-abi.html">odin-abi.md</a>, "How to migrate a domain"). <code>web_url.odin</code> is written that way.</p>
+(<a href="../../docs/js/odin-abi.html">odin-abi.md</a>, "How to migrate a domain"). <code>web_url.odin</code> is written that way.</p>
 <p>The generated conventions, which a hand-written call follows:</p>
 <ul>
 <li>handles are <code>u64</code>, booleans <code>i32</code> (<code>relative ? 1 : 0</code>), enums <code>i32</code>, strings <code>(ptr: [^]u8, len: u32)</code>, string
@@ -331,7 +332,7 @@ for the WPT folders of the domain (the folders must be in <code>wpt/suites.txt</
 concluding (url's worker <code>exclude=</code> variants and webstorage's <code>storage_session_window_noopener</code> were already
 different before any port).</p>
 <nav class="doc-seq" aria-label="Previous and next page">
-<a class="doc-prev" href="/docs/js/odin-abi.html"><span>Previous</span><strong>The generic Odin ABI for the engine boundary</strong></a>
+<a class="doc-prev" href="../../docs/js/odin-abi.html"><span>Previous</span><strong>The generic Odin ABI for the engine boundary</strong></a>
 </nav>
 <p class="doc-edit"><a href="https://github.com/sachahjkl/wren/blob/master/docs/js/odin-glue.md" rel="noopener">Edit this page on GitHub</a></p>
 </article>
@@ -353,17 +354,17 @@ different before any port).</p>
 </div>
 <footer class="site-foot">
 <div class="wrap">
-<p class="foot-line">Wren · a browser where WebAssembly runs everything · by <span class="maker"><img src="/img/froment-software-64.png" alt="" width="16" height="16"><a href="https://froment.software">Froment Software</a></span></p>
+<p class="foot-line">Wren · a browser where WebAssembly runs everything · by <span class="maker"><img src="../../img/froment-software-64.png" alt="" width="16" height="16"><a href="https://froment.software">Froment Software</a></span></p>
 <nav class="foot-links">
-<a href="/docs/index.html">Docs</a>
-<a href="/changelog.html">Changelog</a>
-<a href="/support.html">Pricing</a>
-<a href="/privacy.html">Privacy</a>
-<a href="/terms.html">Terms</a>
+<a href="../../docs/index.html">Docs</a>
+<a href="../../changelog.html">Changelog</a>
+<a href="../../support.html">Pricing</a>
+<a href="../../privacy.html">Privacy</a>
+<a href="../../terms.html">Terms</a>
 <a href="https://github.com/sachahjkl/wren">GitHub</a>
 </nav>
 </div>
 </footer>
-<script src="/docs/search.js" defer></script>
+<script src="../../docs/search.js" defer></script>
 </body>
 </html>
