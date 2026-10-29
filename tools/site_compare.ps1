@@ -24,7 +24,13 @@ $W = 1280; $H = $Height
 
 function Slug([string]$u) { $s = ($u -replace '^https?://', '' -replace '[^A-Za-z0-9]+', '-').Trim('-'); if ($s.Length -gt 50) { $s = $s.Substring(0, 50) }; return $s }
 
+# (Edge's children outlive a killed main process and keep the profile locked: the next shot then fails)
+function Stop-CompareEdge {
+    Get-CimInstance Win32_Process -Filter "Name='msedge.exe'" | Where-Object { $_.CommandLine -like '*wren-compare-edge*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+}
+
 function Edge-Shot([string]$url, [string]$dest) {
+    Stop-CompareEdge
     Remove-Item $dest -ErrorAction SilentlyContinue
     # (Edge takes its arguments unquoted from Start-Process: a path with a space would be several targets)
     $file = Join-Path $env:TEMP 'wren-compare-edge-shot.png'
@@ -35,6 +41,7 @@ function Edge-Shot([string]$url, [string]$dest) {
     if (-not $Dark) { $a += '--blink-settings=preferredColorScheme=1' }
     $p = Start-Process $edge -ArgumentList ($a + $url) -PassThru -NoNewWindow -RedirectStandardError (Join-Path $env:TEMP 'wren-compare-edge.err')
     if (-not $p.WaitForExit(90000)) { $p.Kill() }
+    Stop-CompareEdge
     if (Test-Path $file) { Copy-Item $file $dest -Force; return $true }
     return $false
 }
