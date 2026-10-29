@@ -28,6 +28,12 @@ package wj
 @(export, link_name = "wj_start_expose_unimplemented") wj_start_expose_unimplemented: bool
 @(export, link_name = "wj_start_unimplemented_throw")  wj_start_unimplemented_throw: bool
 @(export, link_name = "wj_start_frames")               wj_start_frames: bool
+// browser.touch.expose off: the ontouch* handler attributes of the five prototypes below are not defined
+wj_start_no_touch: bool
+@(private = "file") touch_handler_names := [?]string{"ontouchstart", "ontouchend", "ontouchmove", "ontouchcancel"}
+@(private = "file") touch_handler_ifaces := [?]string{"Window", "Document", "HTMLElement", "SVGElement", "MathMLElement"}
+// What a lazy prototype leaves out for this realm's scope (the F_NOT_* bit of the scope; 0 before wj_platform_start)
+@(private = "file") lazy_not_here: u16
 
 // An interface a host handle is wrapped as instead of another (-1: none): the abstract TextTrackCue the browser hands
 // out is a VTTCue (web_tracks.odin sets them).
@@ -859,16 +865,35 @@ member_unimplemented :: proc "contextless" (mb: ^Member) -> bool {
 @(private = "file") DEFINE_UNIMPLEMENTED :: 2
 @(private = "file") define_which: i32 = DEFINE_IMPLEMENTED
 
-// Defines the members of interface `i` of kind `kinds` (bit per M_*) on `target`.
 @(private = "file")
-define_members :: proc "contextless" (ctx: ^Context, target: JSValue, i: i32, kinds: u32, unforgeable_only: bool) -> i32 {
+touch_handler_iface :: proc "contextless" (name: cstring) -> bool {
+	for n in touch_handler_ifaces { if string(name) == n { return true } }
+	return false
+}
+
+@(private = "file")
+touch_handler_name :: proc "contextless" (name: cstring) -> bool {
+	for n in touch_handler_names { if string(name) == n { return true } }
+	return false
+}
+
+// Defines the members of interface `i` of kind `kinds` (bit per M_*) on `target`. for_scope: as a prototype that
+// was defined before the realm started would look after wj_platform_start (see lazy_proto_members).
+@(private = "file")
+define_members :: proc "contextless" (ctx: ^Context, target: JSValue, i: i32, kinds: u32, unforgeable_only: bool, for_scope := false) -> i32 {
 	it := &interfaces()[i]
 	mbs := members_of(it)
+	no_touch := for_scope && wj_start_no_touch && touch_handler_iface(it.name)
 	for m: u16 = 0; m < it.n_members; m += 1 {
 		mb := &mbs[m]
 		if mb.name == nil || kinds & (u32(1) << mb.kind) == 0 { continue }
 		if unforgeable_only != (mb.flags & F_UNFORGEABLE != 0) { continue }
 		if define_which & (member_unimplemented(mb) ? DEFINE_UNIMPLEMENTED : DEFINE_IMPLEMENTED) == 0 { continue }
+		if for_scope {
+			// (what wj_platform_start and wj_realm_start would delete from a prototype defined before them)
+			if mb.flags & lazy_not_here != 0 { continue }
+			if no_touch && touch_handler_name(mb.name) { continue }
+		}
 		enumerable: i32 = mb.flags & F_NOT_ENUMERABLE != 0 ? 0 : PROP_ENUMERABLE
 		configurable: i32 = mb.flags & F_UNFORGEABLE != 0 ? 0 : PROP_CONFIGURABLE
 		atom := JS_NewAtom(ctx, mb.name)
@@ -943,9 +968,43 @@ place_members :: proc "contextless" (ctx: ^Context, i: i32) -> i32 {
 	if it.flags & (I_NAMESPACE | I_CALLBACK) != 0 {
 		return define_members(ctx, r.ctors[i], i, (1 << M_STATIC_METHOD) | (1 << M_STATIC_ATTRIBUTE) | (1 << M_METHOD) | (1 << M_ATTRIBUTE) | (1 << M_CONSTANT), false)
 	}
-	kinds: u32 = it.flags & I_GLOBAL != 0 ? (1 << M_CONSTANT) : (1 << M_ATTRIBUTE) | (1 << M_METHOD) | (1 << M_CONSTANT)
-	if define_members(ctx, r.protos[i], i, kinds, false) < 0 { return -1 }
-	return define_members(ctx, r.ctors[i], i, (1 << M_STATIC_METHOD) | (1 << M_STATIC_ATTRIBUTE) | (1 << M_CONSTANT), false)
+	if place_proto_members(ctx, i) < 0 { return -1 }
+	return place_static_members(ctx, i)
+}
+
+@(private = "file")
+proto_member_kinds :: proc "contextless" (it: ^Interface) -> u32 {
+	return it.flags & I_GLOBAL != 0 ? (1 << M_CONSTANT) : (1 << M_ATTRIBUTE) | (1 << M_METHOD) | (1 << M_CONSTANT)
+}
+
+@(private = "file")
+place_proto_members :: proc "contextless" (ctx: ^Context, i: i32) -> i32 {
+	return define_members(ctx, wj_the_realm.protos[i], i, proto_member_kinds(&interfaces()[i]), false)
+}
+
+@(private = "file")
+place_static_members :: proc "contextless" (ctx: ^Context, i: i32) -> i32 {
+	return define_members(ctx, wj_the_realm.ctors[i], i, (1 << M_STATIC_METHOD) | (1 << M_STATIC_ATTRIBUTE) | (1 << M_CONSTANT), false)
+}
+
+// The members of a prototype that wj_platform_preinit left lazy (JS_SetLazyMembers), defined when a script first looks
+// at the prototype: what the eager code did, in the same order, for the realm that has started: the implemented ones,
+// then (javascript.bindings.unimplemented = throw) the unimplemented ones the realm exposes, without the members the
+// realm's scope hides and the touch handlers browser.touch.expose turned off. A prototype the image already holds with
+// its members goes through the same steps in wj_platform_start and wj_realm_start (delete, then add).
+@(private = "file")
+lazy_proto_members :: proc "c" (c: ^Context, obj: JSValue, user: i32) {
+	r := &wj_the_realm
+	it := &interfaces()[user]
+	kinds := proto_member_kinds(it)
+	saved := define_which
+	define_which = DEFINE_IMPLEMENTED
+	define_members(c, obj, user, kinds, false, true)
+	if wj_start_unimplemented_throw && i32(it.exposed) & r.scope != 0 {
+		define_which = DEFINE_UNIMPLEMENTED
+		define_members(c, obj, user, kinds, false, true)
+	}
+	define_which = saved
 }
 
 // Array.prototype[name] and Symbol.iterator (as an atom the caller frees), for the iterable interfaces.
@@ -1038,7 +1097,15 @@ wj_platform_preinit :: proc "c" (ctx: ^Context) -> i32 {
 		JS_DefinePropertyValueStr(ctx, ctor, "prototype", JS_DupValue(ctx, proto), 0)
 		r.protos[i] = proto
 		r.ctors[i] = ctor
-		if place_members(ctx, i) < 0 { return -1 }
+		// the prototype's members are defined when a script first looks at it (most pages never do for most of the
+		// interfaces); the interface object's own (static, constants) are few and stay eager
+		if place_static_members(ctx, i) < 0 { return -1 }
+		if it.n_members == 0 || it.flags & (I_INDEXED_ITERATOR | I_ARRAY_ITERATOR) != 0 {
+			// (the iterator functions below go after the members)
+			if place_proto_members(ctx, i) < 0 { return -1 }
+		} else if JS_SetLazyMembers(ctx, proto, lazy_proto_members, i) < 0 {
+			return -1
+		}
 		if it.flags & I_INDEXED_ITERATOR != 0 {
 			// an interface that supports indexed properties is iterable by them (HTMLCollection, NamedNodeMap...)
 			ap, ia := array_iterator_parts(ctx)
@@ -1074,13 +1141,18 @@ wj_platform_start :: proc "c" (ctx: ^Context, scope: i32) -> i32 {
 	kind := scope == EXPOSE_WINDOW ? EXPOSE_WINDOW : EXPOSE_WORKER
 	not_here: u16 = scope == EXPOSE_WINDOW ? F_NOT_WINDOW : scope == EXPOSE_SHARED_WORKER ? F_NOT_SHARED : scope == EXPOSE_SERVICE_WORKER ? F_NOT_SERVICE : F_NOT_DEDICATED
 	expose_unimplemented = wj_start_expose_unimplemented
+	lazy_not_here = not_here
 	// unimplemented members are absent (feature detection sees the truth) unless javascript.bindings.unimplemented says
-	// they throw NotSupportedError: then they are added now (the image has only the implemented ones)
+	// they throw NotSupportedError: then they are added now (the image has only the implemented ones; a prototype still
+	// lazy adds them itself, lazy_proto_members)
 	if wj_start_unimplemented_throw {
 		define_which = DEFINE_UNIMPLEMENTED
 		for i: i32 = 0; i < wj_interface_count; i += 1 {
 			if is_undefined(r.ctors[i]) || i32(ifs[i].exposed) & scope == 0 { continue }
-			if place_members(ctx, i) < 0 { return -1 }
+			if ifs[i].flags & (I_NAMESPACE | I_CALLBACK) == 0 {
+				if !JS_HasLazyMembers(r.protos[i]) && place_proto_members(ctx, i) < 0 { return -1 }
+				if place_static_members(ctx, i) < 0 { return -1 }
+			} else if place_members(ctx, i) < 0 { return -1 }
 		}
 		define_which = DEFINE_IMPLEMENTED | DEFINE_UNIMPLEMENTED
 	}
@@ -1113,7 +1185,7 @@ wj_platform_start :: proc "c" (ctx: ^Context, scope: i32) -> i32 {
 			mb := &mbs[m]
 			if mb.name == nil || mb.flags & not_here == 0 { continue }
 			target := (mb.kind == M_STATIC_METHOD || mb.kind == M_STATIC_ATTRIBUTE) ? r.ctors[i] : r.protos[i]
-			if is_object(target) {
+			if is_object(target) && !JS_HasLazyMembers(target) {
 				a := JS_NewAtom(ctx, mb.name)
 				JS_DeleteProperty(ctx, target, a, 0)
 				JS_FreeAtom(ctx, a)
