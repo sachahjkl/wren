@@ -1,3 +1,0 @@
-type: Fixed
-
-**Feuilles de style liées : ordre du document retrouvé après le chargement** : pendant que le parseur révèle la page, les `<link rel="stylesheet">` détachés gardent leur feuille mais sont classés comme s'ils n'étaient nulle part, donc dans l'ordre d'arrivée du réseau. Une fois les éléments de retour dans l'arbre, rien ne reclassait les feuilles : sur python.org, `mq.css` (blocs `@media`) passait avant `style.css` et perdait la cascade (bouton Donate affiché en bloc, logo masqué). Les feuilles sont maintenant reclassées dès que leur propriétaire revient (test `sheet_order_after_detached_owners`).
