@@ -594,6 +594,20 @@ Classic_Side_Tab :: struct {
 	dragging: bool,
 }
 
+// A stretch of the sidebar's edge line, lw wide from x0, in the two strokes of a tab's outline: the light one on the page's side\n// (outside), the dark one inside it.
+classic_edge_line :: proc(dc: ^draw.Context, c: ^Classic_Colors, x0, from, to: f32, page_on_right: bool, over_tab := false) {
+	lw := c.edge
+	y0, y1 := math.floor(from), math.ceil(to)
+	// over a tab's foot (its polygons are there): the panel's own color first, so the strokes blend as they do on the bare panel
+	if over_tab { draw.rect(dc, {{x0, y0}, {x0 + lw, y1}}, c.strip_bot) }   // whole pixels: a fractional start would blend with the stroke it joins
+	light := max(math.round(lw * 0.5), 1)
+	dark := lw - light
+	lx := page_on_right ? x0 + lw - light : x0
+	dx := page_on_right ? x0 : x0 + light
+	draw.rect(dc, {{lx, y0}, {lx + light, y1}}, c.edge_light)
+	if dark > 0 { draw.rect(dc, {{dx, y0}, {dx + dark, y1}}, c.edge_dark) }
+}
+
 classic_side_tab_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	t := (^Classic_Side_Tab)(user)
 	c := t.c
@@ -640,6 +654,11 @@ classic_side_tab_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	fill(dc, side_polygon(s.outer[:], t.pos, origin, across), {color = c.edge_dark})
 	fill(dc, side_polygon(s.mid[:], t.pos, origin, across), {color = c.edge_light})
 	fill(dc, side_polygon(s.body[:], t.pos, origin, across), {grad = true, top = c.lit_top, bot = c.lit_mid, y0 = r.min.y, y1 = r.max.y})
+	// the panel's edge line (sidebar_edge) goes on through the feet: the strokes of the flares end on it, one line with no gap
+	x0 := outer_l ? r.max.x - lw : r.min.x
+	ext := s.d.ext
+	classic_edge_line(dc, c, x0, r.max.y + ext * 0.62, r.max.y + ext, outer_l, true)
+	classic_edge_line(dc, c, x0, r.min.y - ext, r.min.y - ext * 0.62, outer_l, true)
 	if t.selected < 0.999 { draw.pop_alpha(dc) }
 }
 
