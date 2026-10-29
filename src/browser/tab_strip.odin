@@ -187,8 +187,7 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 					if tab_box(app, dragged, w, area, &move_from, &move_to, &cg, cc) == .Closed { return true }
 				}
 			}
-			if app.active != nil && app.active.dropping { drop_ghost(app, area, false, app.active.drop.mark - own.strip.offset, w * 0.8) }
-			if app.active != nil && app.active.dropping { drop_hint_mark(area, false, app.active.drop.mark - own.strip.offset, app.active.drop.group) }   // a tab carried over this bar (tab_drag.odin)
+			if app.active != nil && app.active.dropping { drop_ghost(app, area, false, app.active.drop.mark - own.strip.offset, w, 0, 0) }   // a tab carried over this bar (tab_drag.odin)
 		}
 		if move_from >= 0 {
 			// pinned tabs stay among themselves; a tab takes the group of the one whose place it takes (tab_groups.odin)
@@ -253,6 +252,7 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 	on := i == wnd.current
 	id := fmt.tprintf("###tab_%d", t.id)
 	slot := f32(i) * w - own.strip.offset
+	if app.active != nil && app.active.dropping && i >= app.active.drop.index { slot += w }   // room for the tab carried over this bar (tab_drag.odin)
 	// (the release slides from where the pointer left it)
 	x, dragging := ui.reorder_item_pos(&own.strip.drag, ui.key_from_string(area.key, fmt.tprintf("x%d", t.id)), t.id, slot,
 		ui.mouse_pos().x - area.rect.min.x, -own.strip.offset, f32(n - 1) * w - own.strip.offset)

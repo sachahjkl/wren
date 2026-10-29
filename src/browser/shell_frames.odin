@@ -28,6 +28,7 @@ package browser
 // and the screen shows its last frame, not the changes the script made so far (as before: nothing was shown at all).
 
 import "base:runtime"
+import "core:math"
 import "core:time"
 import "toolkit:draw"
 import "toolkit:platform"
@@ -36,6 +37,7 @@ import "toolkit:ui"
 import "wb:config"
 import "wb:fetch"
 import "wb:host"
+import lay "wb:layout"
 import "wb:page"
 import "wb:wasm"
 
@@ -85,10 +87,15 @@ Shell_Phase :: enum u8 {
 // The last frame of a tab's page, kept on the GPU.
 Page_Snapshot :: struct {
 	tab:    u64,
+	page:   ^page.Page,      // the document it shows
 	image:  draw.Backdrop,   // kept texture; image.origin: the screen pixel of texel 0 when captured
 	rect:   draw.Rect,       // page area when captured (screen)
 	scroll: f32,             // the document's scroll then (device px)
 	limit:  f32,             // the document's scroll range then
+	bar:    bool,            // the document had a scroll bar: not in the pixels (it would move with them), drawn again by shell_paint_page
+	bar_track: draw.Rect,    // its track (relative to the page area's corner) and the thumb's length, colors
+	bar_thumb: f32,
+	bar_thumb_c, bar_track_c: draw.Color,
 	canvas: draw.Color,
 	gen:    u64,             // render.targets_generation of the texture
 	used:   u64,             // chrome_frames.frame_no when last captured or shown (least recently used go first)
@@ -516,8 +523,14 @@ shell_capture :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect, ca
 	} else if s.image.image.tex != 0 && s.gen == gen {
 		render.unkeep_target(dc.renderer, s.image.image.tex)
 	}
-	s.image, s.rect, s.scroll, s.canvas, s.gen, s.used = bd, rect, t.scroll, canvas, gen, chrome_frames.frame_no
+	s.image, s.rect, s.scroll, s.canvas, s.gen, s.used, s.page = bd, rect, t.scroll, canvas, gen, chrome_frames.frame_no, t.page
 	s.limit = max(t.layout.height - draw.rect_size(rect).y, 0)
+	track, thumb, ok := lay.doc_scrollbar(&t.layout, draw.rect_size(rect), math.round(t.scroll))
+	s.bar = ok
+	if ok {
+		tc, kc := doc_scrollbar_colors(&t.layout)
+		s.bar_track, s.bar_thumb, s.bar_thumb_c, s.bar_track_c = draw.Rect{track.min, track.max}, thumb.max.y - thumb.min.y, to_draw(tc), to_draw(kc)
+	}
 }
 
 // Draws a tab's last page frame in the page area, moved by the wheel taken meanwhile and anchored at the top left.
@@ -525,6 +538,11 @@ shell_capture :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect, ca
 shell_paint_page :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect) -> bool {
 	s := shell_snapshot_of(t.id)
 	if s == nil || s.image.image.tex == 0 || s.gen != render.targets_generation(dc.renderer) { return false }
+	if s.page != t.page {
+		// another document since: its last frame stays only as long as the full frames hold it (first_paint.odin: hold_paint)
+		h := &t.hold
+		if !h.active || h.page != s.page || (h.committed && f64(time.duration_milliseconds(time.tick_since(h.commit))) >= scheme_ui.timeout_ms) { return false }
+	}
 	s.used = chrome_frames.frame_no
 	draw.rect(dc, rect, s.canvas)
 	scroll := t.scroll + (chrome_frames.pending_tab == t.id ? chrome_frames.pending_scroll : 0)
@@ -535,6 +553,14 @@ shell_paint_page :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect)
 	if covered.max.x <= covered.min.x || covered.max.y <= covered.min.y { return true }
 	draw.push_clip(dc, rect)
 	draw.backdrop_draw(dc, img, covered, {})
+	if s.bar {
+		tr := draw.rect_shift(s.bar_track, rect.min)
+		room := (tr.max.y - tr.min.y) - s.bar_thumb
+		y := tr.min.y + room * (s.limit > 0 ? clamp(scroll / s.limit, 0, 1) : 0)
+		w := tr.max.x - tr.min.x
+		if s.bar_track_c.a > 0 { draw.rect(dc, tr, s.bar_track_c, w * 0.5) }
+		draw.rect(dc, draw.Rect{{tr.min.x, y}, {tr.max.x, y + s.bar_thumb}}, s.bar_thumb_c, w * 0.5)
+	}
 	draw.pop_clip(dc)
 	return true
 }

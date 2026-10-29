@@ -7,7 +7,7 @@ package browser
 // own (tab_drag_begin), which then follows the pointer, held where the tab was; a tab alone in its window carries its own window.
 // The press keeps the mouse captured by the window it began in, so that window keeps getting the moves and the release, even
 // outside it: tab_drag_events reads them (positions are of that window's client area, turned into screen positions).
-// Over the tab bar of another window the tab shows where it would go (an insertion mark in that bar); the release there moves the
+// Over the tab bar of another window the tab shows where it would go (the tabs make room, a faded copy of it in the gap); the release there moves the
 // tab into that window at that place (the carried window, empty, closes); anywhere else the window stays where it was dropped.
 // Nothing here loads a page again: tab_move only moves the pointer to the tab.
 
@@ -214,35 +214,19 @@ tab_drop_target :: proc(app: ^App, carried: ^Browser_Window, t: ^Tab, screen: dr
 	return w, window_drop_slot(w, screen - origins[i], t)
 }
 
-// The mark of the place a carried tab would take (`at`: along the tab bar, in the bar's own pixels), in the colour of the group
-// it would join (`group`, else the accent).
-drop_hint_mark :: proc(area: ^ui.Box, vertical: bool, at: f32, group: u64 = 0) {
-	th := max(math.round(2.5 * ui.scale()), 2)
-	c := ui.frame_new(draw.Color)
-	c^ = ui.color("accent")
-	if group != 0 && the_app != nil {
-		if gi := group_index(active_window(the_app).groups[:], group); gi >= 0 { c^ = group_color(active_window(the_app).groups[gi].color) }
-	}
-	if vertical {
-		ui.next({fixed_x = 0, fixed_y = at - th * 0.5, width = ui.px(area.size.x), height = ui.px(th)})
-	} else {
-		ui.next({fixed_x = at - th * 0.5, fixed_y = 0, width = ui.px(th), height = ui.px(area.size.y)})
-	}
-	ui.custom("###drop_hint", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) { draw.rect(dc, b.rect, (^draw.Color)(user)^, (b.rect.max.x - b.rect.min.x) * 0.25) }, c)
-}
-
-// A faded copy of the carried tab, centred on the place it would take (`at`, along the bar in the bar's own pixels; `extent`: its
-// length along the bar), drawn under the mark: what the release would put there.
-drop_ghost :: proc(app: ^App, area: ^ui.Box, vertical: bool, at, extent: f32) {
+// The place a carried tab would take, as the tab itself: the tabs from `drop.index` on make room for it (tab_strip.odin and
+// tab_sidebar_list.odin move them by `extent`), and a faded copy of the tab stands in the gap (`from`: where it starts along the bar
+// and `extent` its length, in the bar's own pixels; a list: `x` and `w`, its side).
+drop_ghost :: proc(app: ^App, area: ^ui.Box, vertical: bool, from, extent, x, w: f32) {
 	t := tab_by_id(app, tab_drag.tab)
 	if t == nil { return }
 	em := ui.font_size()
 	isz := f32(tab_icon_px(app))
 	r := em * 0.45
 	if vertical {
-		ui.next({fixed_x = 0, fixed_y = at - extent * 0.5, width = ui.px(area.size.x), height = ui.px(extent), axis = .X, cross = .Center, radius = r, bg = ui.color("border"), transparency = 0.45})
+		ui.next({fixed_x = x, fixed_y = from, width = ui.px(w), height = ui.px(extent), axis = .X, cross = .Center, radius = r, bg = ui.color("border"), transparency = 0.35})
 	} else {
-		ui.next({fixed_x = at - extent * 0.5, fixed_y = 0, width = ui.px(extent), height = ui.pct(1), axis = .X, cross = .Center, radius = r, bg = ui.color("border"), transparency = 0.45})
+		ui.next({fixed_x = from, fixed_y = 0, width = ui.px(extent), height = ui.pct(1), axis = .X, cross = .Center, radius = r, bg = ui.color("border"), transparency = 0.35})
 	}
 	b := ui.build_box({.Draw_Background, .Clip}, "###drop_ghost")
 	if ui.parent(b) {
@@ -257,7 +241,6 @@ drop_ghost :: proc(app: ^App, area: ^ui.Box, vertical: bool, at, extent: f32) {
 		ui.build_box({.Draw_Text}, fmt.aprintf("%s###ghost_title", title, allocator = ui.frame_allocator()))
 	}
 }
-
 tab_drag_end :: proc(app: ^App) {
 	for w in app.windows { if w.dropping { w.dropping = false; window_request(app, w, 2) } }
 	tab_drag = {}

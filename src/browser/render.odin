@@ -143,14 +143,28 @@ paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, page_origin, size
 		}
 		effects_end(&fx)
 	}
-	if track, thumb, ok := lay.doc_scrollbar(l, size, scroll); ok && doc_scrollbar {
-		root := l.styled != nil ? (^style.Styled)(l.styled).root_scheme : style.Scheme.Light   // alive while the layout is painted
-		thumb_c, track_c := scrollbar_colors(root, page_render.settings.scrollbar_thumb, page_render.settings.scrollbar_track)
-		// the viewport's bar follows the root element's scrollbar-color
-		if ri := l.canvas_items[0]; ri >= 0 && int(ri) < len(l.items) { thumb_c, track_c = scrollbar_colors_of(l.items[ri].cs, thumb_c, track_c) }
-		if track_c.a > 0 { draw.rect(dc, draw.rect_shift(dr(track), origin), to_draw(track_c), (track.max.x - track.min.x) * 0.5) }
-		draw.rect(dc, draw.rect_shift(dr(thumb), origin), to_draw(thumb_c), (thumb.max.x - thumb.min.x) * 0.5)
-	}
+	if doc_scrollbar { paint_doc_scrollbar(l, dc, page_origin, size, page_scroll) }
+}
+
+// The colors of the document's scroll bar: the scheme's, then the root element's scrollbar-color.
+doc_scrollbar_colors :: proc(l: ^Layout) -> (thumb_c, track_c: css.Color) {
+	root := l.styled != nil ? (^style.Styled)(l.styled).root_scheme : style.Scheme.Light   // alive while the layout is painted
+	thumb_c, track_c = scrollbar_colors(root, page_render.settings.scrollbar_thumb, page_render.settings.scrollbar_track)
+	// the viewport's bar follows the root element's scrollbar-color
+	if ri := l.canvas_items[0]; ri >= 0 && int(ri) < len(l.items) { thumb_c, track_c = scrollbar_colors_of(l.items[ri].cs, thumb_c, track_c) }
+	return
+}
+
+// The document's own scroll bar over the page (drawn apart from the page when its last frame is kept for chrome frames:
+// shell_frames.odin draws it again at the position the wheel gives it, not shifted with the page's pixels).
+paint_doc_scrollbar :: proc(l: ^Layout, dc: ^draw.Context, page_origin, size: draw.Vec2, page_scroll: f32) {
+	if !l.valid { return }
+	origin := draw.Vec2{math.round(page_origin.x), math.round(page_origin.y)}
+	track, thumb, ok := lay.doc_scrollbar(l, size, math.round(page_scroll))
+	if !ok { return }
+	thumb_c, track_c := doc_scrollbar_colors(l)
+	if track_c.a > 0 { draw.rect(dc, draw.rect_shift(dr(track), origin), to_draw(track_c), (track.max.x - track.min.x) * 0.5) }
+	draw.rect(dc, draw.rect_shift(dr(thumb), origin), to_draw(thumb_c), (thumb.max.x - thumb.min.x) * 0.5)
 }
 
 // The box whose background is the canvas's (CSS Backgrounds §2.11.2): the root element's, or the body's when the root

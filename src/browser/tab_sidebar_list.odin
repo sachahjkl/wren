@@ -182,8 +182,15 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, open: f32, extent: f32, cc: 
 	}
 
 	drag_y: f32 = -1
+	// a tab carried over this list (tab_drag.odin): the rows from its place on make room for it
+	gap := app.active != nil && app.active.dropping ? app.active.drop.mark : -1
+	moved :: proc(it: Side_Item, gap, rh: f32) -> Side_Item {
+		it := it
+		if gap >= 0 && it.y >= gap - 0.5 { it.y += rh }
+		return it
+	}
 	if ui.parent(area) {
-		ui.spacer(ui.px(total), exact = true)   // the content's height: the scroll range
+		ui.spacer(ui.px(gap >= 0 ? total + rh : total), exact = true)   // the content's height: the scroll range
 		late_item, focus_item, drag_item := -1, -1, -1
 		for it, k in items {
 			if it.kind != .Tab { continue }
@@ -192,7 +199,7 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, open: f32, extent: f32, cc: 
 			if it.index == dragged { drag_item = k }
 		}
 		for k in first ..< last {
-			it := items[k]
+			it := moved(items[k], gap, rh)
 			if it.kind == .Header {
 				sidebar_group_row(app, it, row_x, row_w, inset, open, area, cc)
 				continue
@@ -201,17 +208,16 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, open: f32, extent: f32, cc: 
 			if row(app, it, rh, row_x, row_w, inset, open, total, limit, area, cc, &drag_y) { return true }
 		}
 		if late_item >= first && late_item < last {
-			if row(app, items[late_item], rh, row_x, row_w, inset, open, total, limit, area, cc, &drag_y) { return true }
+			if row(app, moved(items[late_item], gap, rh), rh, row_x, row_w, inset, open, total, limit, area, cc, &drag_y) { return true }
 		}
 		// a row that has the keyboard stays built when it scrolls out of view
 		if focus_item >= 0 && (focus_item < first || focus_item >= last) && focused != dragged {
-			if row(app, items[focus_item], rh, row_x, row_w, inset, open, total, limit, area, cc, &drag_y) { return true }
+			if row(app, moved(items[focus_item], gap, rh), rh, row_x, row_w, inset, open, total, limit, area, cc, &drag_y) { return true }
 		}
 		if drag_item >= 0 {   // built last: it draws over the others and takes the clicks
-			if row(app, items[drag_item], rh, row_x, row_w, inset, open, total, limit, area, cc, &drag_y) { return true }
+			if row(app, moved(items[drag_item], gap, rh), rh, row_x, row_w, inset, open, total, limit, area, cc, &drag_y) { return true }
 		}
-		if app.active != nil && app.active.dropping { drop_ghost(app, area, true, app.active.drop.mark - area.view_off.y, rh) }
-		if app.active != nil && app.active.dropping { drop_hint_mark(area, true, app.active.drop.mark - area.view_off.y, app.active.drop.group) }   // a tab carried over this list (tab_drag.odin)
+		if gap >= 0 { drop_ghost(app, area, true, gap - area.view_off.y, rh, row_x, row_w) }
 	}
 	// the dragged row's place moves its tab: in the list (and in or out of a group), or up to the pinned tabs
 	if dragged >= 0 && drag_y >= 0 && own.strip.drag.active {
