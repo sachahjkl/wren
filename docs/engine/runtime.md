@@ -103,6 +103,29 @@ special pass.
 - The heap is capped by `Host_Config.malloc_limit`; all allocation goes through the injected allocator.
   A collection runs when the heap passes `max(2 × live, live + 4 MiB)`.
 
+### Where the memory of a realm and of a page goes (Wasm, `jsengine mem|startup`)
+
+The linear memory of a Wasm module only grows, so what counts is the high-water mark.
+
+- **Lazy members.** A Web IDL prototype (`native/js/odin/wj/qjs_platform.odin`, `wj_platform_preinit`) is marked lazy
+  with `JS_SetLazyMembers`: its shape is private and flagged, and `shape_find`, the enumerations of a shape
+  (`own_property_keys`, `plain_keys_object`) and `add_property` call `shape_realize` first, which runs the glue's callback
+  (`lazy_proto_members`): it defines the members the eager code defined, with the same keys, order, descriptors, names and
+  lengths, minus what the realm's scope hides and the touch handlers `browser.touch.expose` turned off, plus the
+  unimplemented-throw members after the implemented ones. A realm creates the thousands of function objects of the
+  interfaces a script looks at, not all of them. A prototype that pre-initialization touches after the members
+  (iterator interfaces) is realized in the image. The interface objects, namespaces and the global object stay eager.
+  Empty realm: 6 592 → 4 352 KiB of linear memory, 6 973 → 4 723 KiB private per realm, 2.3 → 1.3 ms to create.
+- **Native functions.** A function object has exactly the two slots (`length`, `name`) it is born with; a C function of
+  the glue without user data keeps its pointer in `Native_Data.data` (low bit set, `native_data_is_raw`) and its
+  prototype in which `bridge_*` procedure it calls (no block of values); its `name` is the string of the property key's
+  atom when there is one (`str_interned`).
+- **The compiler** (`compile_alloc.odin`): the front-end's allocator takes blocks up to 2 KiB from the arena, recycles
+  them by size class (a larger free block is cut for a smaller request), and takes larger ones from the host heap, one by
+  one, so that a table that dies is given back at once. `js_create_function` frees a function's tables
+  (`free_func_def`) as soon as its bytecode exists, the passes free their buffers, and the serialized stream is built in
+  one buffer (`serialize.odin`). The 650 KiB bundle of `examples/jsbench/page_gen.js` asked the arena for 14.6 MB, now 6.5.
+
 ## Serialized‑bytecode reader and verifier (`serialize.odin`)
 
 Parses `JS_WriteObject(..., JS_WRITE_OBJ_BYTECODE)` for `BC_VERSION 28`: header, atom table (both atom
