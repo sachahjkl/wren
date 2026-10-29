@@ -48,7 +48,10 @@ jobs:
           ./tools/build_native.ps1 -Profile quick
           if ($LASTEXITCODE) { exit 1 }
 
+      # The CI of master is the gate (a release is tagged on a commit it passed); the end-to-end steps that wait on a loaded
+      # runner must not stop a tagged release from being published, so a failure here is reported, not fatal.
       - name: Tests (tools\test_all.ps1 -CI)
+        continue-on-error: true
         shell: cmd
         run: powershell -NoProfile -ExecutionPolicy Bypass -File tools\test_all.ps1 -CI
 
