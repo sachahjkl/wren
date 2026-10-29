@@ -54,4 +54,10 @@ foreach ($s in $shots) {
     & magick $png -quality 82 "site\img\$($s.n).webp"
     & magick $png -resize 640x -quality 80 "site\img\$($s.n)-640.webp"
 }
+# the four pictures of the home page's hero are the same captures (img\hero-*.webp: index.html gives their size, the one of the capture)
+$hero = @{ 'hero-css' = 'css-effects'; 'hero-js' = 'javascript'; 'hero-shadow' = 'shadow-dom'; 'hero-config' = 'about-config' }
+foreach ($k in $hero.Keys) {
+    $png = Join-Path $raw "$($hero[$k]).png"
+    if (Test-Path $png) { & magick $png -quality 82 "site\img\$k.webp" }
+}
 "converted to docs\screenshots and site\img"
