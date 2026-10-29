@@ -9,6 +9,7 @@ package jsrt
 // slots ([[ArrayData]], [[BoundTargetFunction]], [[MapData]], ...) live in `data`, an Odin tagged
 // union, so each exotic kind is checked by the compiler instead of being a cast from an opaque pointer.
 
+import "base:runtime"
 import "wb:engine/bigint"
 
 Prop_Flag :: enum u8 {configurable, writable, enumerable}
@@ -42,7 +43,22 @@ Shape :: struct {
 	props:       [dynamic]Shape_Prop,
 	hash:        []u32, // index+1 into props, built when len(props) > SHAPE_LINEAR_MAX
 	transitions: [dynamic]Transition,
+	lazy:        ^Lazy_Members, // the members of the object that are not defined yet (see object_set_lazy)
 	is_dict:     bool,
+}
+
+// An object whose members are defined when first needed (a Web IDL prototype: most pages touch a few of the hundreds
+// of interfaces, and each member is a function object). The object has a private shape marked lazy; shape_find, the
+// enumerations of the shape and add_property call `fn` first, which defines the members the way the eager code would
+// have (the same keys in the same order, after the properties already there).
+Lazy_Proc :: #type proc(ctx: ^Context, o: ^Object, p: rawptr, user: i32)
+
+Lazy_Members :: struct {
+	ctx:  ^Context,
+	o:    ^Object,
+	fn:   Lazy_Proc,
+	p:    rawptr,
+	user: i32,
 }
 
 SHAPE_LINEAR_MAX :: 8
@@ -292,6 +308,7 @@ shape_new :: proc(rt: ^Runtime, proto: ^Object) -> ^Shape {
 }
 
 shape_finalize :: proc(rt: ^Runtime, sh: ^Shape) {
+	if sh.lazy != nil {mem_free(rt, sh.lazy, size_of(Lazy_Members))}
 	delete(sh.props)
 	delete(sh.transitions)
 	if sh.hash != nil {delete(sh.hash, rt_allocator(rt))}
@@ -332,7 +349,35 @@ atom_mix :: #force_inline proc "contextless" (a: Atom) -> u32 {
 	return (a * 0x9E3779B1) ~ (a >> 15)
 }
 
+// Defines the members of a lazy shape's object (once: the mark is cleared first, the definitions look their keys up).
+shape_realize :: #force_no_inline proc "contextless" (sh: ^Shape) {
+	context = runtime.default_context()
+	lz := sh.lazy
+	sh.lazy = nil
+	lz.fn(lz.ctx, lz.o, lz.p, lz.user)
+	mem_free(lz.ctx.rt, lz, size_of(Lazy_Members))
+}
+
+// For the code that reads shape.props directly.
+shape_ensure :: #force_inline proc "contextless" (sh: ^Shape) {
+	if sh.lazy != nil {shape_realize(sh)}
+}
+
+// Marks `o` lazy: `fn(ctx, o, p, user)` will define its members. Call it after the properties that must come first
+// are defined (it gives o a private shape).
+object_set_lazy :: proc(ctx: ^Context, o: ^Object, fn: Lazy_Proc, p: rawptr, user: i32) {
+	rt := ctx.rt
+	shape_ensure(o.shape)
+	object_make_dict(rt, o)
+	lz := cast(^Lazy_Members)mem_alloc(rt, size_of(Lazy_Members))
+	lz^ = {ctx, o, fn, p, user}
+	o.shape.lazy = lz
+}
+
+object_is_lazy :: #force_inline proc "contextless" (o: ^Object) -> bool {return o.shape.lazy != nil}
+
 shape_find :: #force_inline proc "contextless" (sh: ^Shape, a: Atom) -> int {
+	if sh.lazy != nil {shape_realize(sh)}
 	if sh.hash == nil {
 		for p, i in sh.props {
 			if p.atom == a {return i}
@@ -387,6 +432,7 @@ add_property :: proc(rt: ^Runtime, o: ^Object, a: Atom, flags: Prop_Flags, kind:
 	if o.watch_index {
 		if _, isi := atom_index(rt, a); isi {rt.std_protos_touched = true}
 	}
+	shape_ensure(o.shape)
 	sh := o.shape
 	if sh.is_dict {
 		append(&sh.props, Shape_Prop{a, flags, kind})

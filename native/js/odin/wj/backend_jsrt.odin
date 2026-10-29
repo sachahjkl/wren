@@ -65,6 +65,9 @@ js_string_codePointRange :: proc "c" (ctx: ^Context, this_val: JSValue, argc: i3
 	JS_CallConstructor2 :: jscapi.JS_CallConstructor2
 	JS_ComputeMemoryUsage :: jscapi.JS_ComputeMemoryUsage
 	JS_DefineHostAutoInitProperty :: jscapi.JS_DefineHostAutoInitProperty
+	JS_SetLazyMembers :: jscapi.JS_SetLazyMembers
+	JS_HasLazyMembers :: jscapi.JS_HasLazyMembers
+	Lazy_Members_Callback :: jscapi.Lazy_Members_Callback
 	JS_DefineProperty :: jscapi.JS_DefineProperty
 	JS_DefinePropertyGetSet :: jscapi.JS_DefinePropertyGetSet
 	JS_DefinePropertyValue :: jscapi.JS_DefinePropertyValue

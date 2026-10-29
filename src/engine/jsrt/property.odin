@@ -931,6 +931,7 @@ Keys_Filters :: bit_set[Keys_Filter;u8]
 own_property_keys :: proc(ctx: ^Context, o: ^Object, out: ^[dynamic]Atom, filter: Keys_Filters = {.strings, .symbols}) -> bool {
 	if o.class == .proxy {return proxy_own_keys(ctx, o, out, filter)}
 	rt := ctx.rt
+	shape_ensure(o.shape)
 	if o.class == .host {
 		if ex := host_exotic_of(rt, o); ex != nil && ex.own_keys != nil {
 			if !ex.own_keys(ctx, o, out, filter) {return false}
