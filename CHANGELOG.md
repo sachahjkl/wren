@@ -13,7 +13,7 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 - **`<meta http-equiv="refresh">`** with a URL (`content="0; url=..."`) navigates after its delay (replacing the entry when the delay is 0). Bootstrap's documentation redirects its old page names that way.
 
 ### Changed
-- **Tab sidebar**: a light line along its inner edge, in both styles, so that it stands out from a dark page beside it (the border it had was too close to the panel's color).
+- **Tab sidebar**: a light line along its inner edge, in both styles, so that it stands out from a dark page beside it (the border it had was too close to the panel's color). In the classic style it is made of the two strokes of a tab's outline, and the feet of the current tab end on it with no gap.
 - **Dragging a tab onto another window**: the carried window steps aside over the other window's tabs, the tabs there make room and a faded copy of the tab stands in the gap, in the row and in the sidebar's list.
 
 ### Fixed

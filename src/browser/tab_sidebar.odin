@@ -360,7 +360,7 @@ tab_sidebar :: proc(app: ^App, pos: Tabs_Position) -> (closed: bool) {
 		bar.custom, bar.custom_user = classic_side_panel_draw, panel
 	}
 	if ui.parent(bar) {
-		sidebar_edge(pos, extent)   // first: the current tab of the classic style is drawn over it
+		sidebar_edge(pos, extent, cc)   // first: the current tab of the classic style is drawn over it
 		sidebar_header(app, pos, open, extent)
 		if sidebar_list(app, pos, open, extent, cc) { return true }
 	}
@@ -433,12 +433,25 @@ sidebar_header :: proc(app: ^App, pos: Tabs_Position, open, extent: f32) {
 // The line along the sidebar's inner edge, where the page begins: light on the dark panel (the toolkit's border color is too close to\n// the panel's for a dark page beside it). In the classic style it takes the place of the panel's dark edge, and the current tab covers it as it covers that one.
 // (flush with the page: the tab and the line end on the same pixel)
 @(private = "file")
-sidebar_edge :: proc(pos: Tabs_Position, extent: f32) {
-	th := max(math.round(ui.scale()), 1)
+Classic_Edge :: struct { c: ^Classic_Colors, page_on_right: bool }
+
+@(private = "file")
+sidebar_edge :: proc(pos: Tabs_Position, extent: f32, cc: ^Classic_Colors) {
+	th := cc != nil ? cc.edge : max(math.round(ui.scale()), 1)
 	ui.next({fixed_x = pos == .Left ? extent - th : 0, fixed_y = 0, width = ui.px(th), height = ui.pct(1)})
 	col := ui.frame_new(draw.Color)
 	col^ = ui.color("text")
 	col.a *= 0.22
+	if cc != nil {
+		// the two strokes of a classic tab's outline, which the current tab's feet end on (classic_side_tab_draw)
+		line := ui.frame_new(Classic_Edge)
+		line^ = {c = cc, page_on_right = pos == .Left}
+		ui.custom("###side_edge", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
+			e := (^Classic_Edge)(user)
+			classic_edge_line(dc, e.c, b.rect.min.x, b.rect.min.y, b.rect.max.y, e.page_on_right)
+		}, line)
+		return
+	}
 	ui.custom("###side_edge", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) { draw.rect(dc, b.rect, (^draw.Color)(user)^) }, col)
 }
 
