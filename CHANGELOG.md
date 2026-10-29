@@ -7,6 +7,11 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 
 ## Unreleased
 
+## 0.6.7 - 2026-10-29
+
+### Changed
+- **gui_toolkit** is at its latest master (4d13fe1): a Linux window with its platform services, password fields (``line_edit`` secret), ``fuzzy_score``, check boxes and switches that fit their mark and label. The README no longer opens with the toolkit's old description, and describes the JavaScript engine as the one written in Odin (it still named QuickJS-ng and measures taken with it).
+
 ## 0.6.6 - 2026-10-29
 
 ### Added

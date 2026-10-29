@@ -1,7 +1,4 @@
 <p align="center"><img src="assets/logo_256.png" width="128" alt="Wren logo"></p>
-<p align="center"><b>My personal GUI toolkit in Odin: immediate-mode UI on Direct3D 11, with a widget gallery and a todo app.</b></p>
-
-
 <h1 align="center">Wren</h1>
 
 <p align="center">
@@ -16,10 +13,10 @@
 Wren is a browser written in [Odin](https://odin-lang.org) where **WebAssembly is the only execution engine**. Pages
 can be written two ways, and both run inside the same Wasm sandbox:
 
-- **Ordinary JavaScript.** The scripts of a page run in [QuickJS-ng](https://github.com/quickjs-ng/quickjs), compiled to
-  a WebAssembly module and run by Wasmtime, one instance per page and per worker, with a memory cap and a deadline like
-  any other module. Its DOM and web APIs are bindings generated from the official Web IDL of the specifications
-  ([webref](https://github.com/w3c/webref)). There is no native JavaScript engine in the browser, and no JIT.
+- **Ordinary JavaScript.** The scripts of a page run in an engine written in Odin, compiled to a WebAssembly module and
+  run by Wasmtime, one instance per page and per worker, with a memory cap and a deadline like any other module. Its DOM
+  and web APIs are bindings generated from the official Web IDL of the specifications
+  ([webref](https://github.com/w3c/webref)). There is no native JavaScript engine in the browser.
 - **WebAssembly directly.** A page names its modules with `<script type="application/wasm" src="…">`; the web APIs
   those modules call (DOM, events, timers, fetch, storage, workers, WebSocket…) are Wasm imports resolved by the
   browser itself. Every import is described once, in a Web IDL dialect (`api/*.widl`), and a generator produces the
@@ -58,7 +55,7 @@ crypto).
 | ![The start page](docs/screenshots/home.png) | ![about:demos](docs/screenshots/demos.png) |
 | **about:home**, the start page: an ordinary document, styled by the engine | **about:demos**: every demo and test page that comes with the browser, by theme |
 | ![A page of plain JavaScript](docs/screenshots/javascript.png) | ![Shadow DOM](docs/screenshots/shadow-dom.png) |
-| **JavaScript, inside WebAssembly**: a plain HTML and JS page, run by QuickJS-ng compiled to Wasm (`JS` in the status bar) | **Shadow DOM**: declarative shadow roots (they render with JavaScript off), slots, `:host`, `::slotted()`, `::part()`, custom elements |
+| **JavaScript, inside WebAssembly**: a plain HTML and JS page, run by the engine written in Odin, compiled to Wasm (`JS` in the status bar) | **Shadow DOM**: declarative shadow roots (they render with JavaScript off), slots, `:host`, `::slotted()`, `::part()`, custom elements |
 | ![odin-lang.org in Wren](docs/screenshots/odin-lang-org.png) | ![A page whose behaviour is a Wasm module](docs/screenshots/wasm-counter.png) |
 | **odin-lang.org**, a real site over HTTPS, its scripts running (`JS` in the status bar) | **A page written in Wasm**: the counter and the clock are an Odin module, no JavaScript at all |
 | ![CSS transforms](docs/screenshots/css-transforms.png) | ![CSS Grid](docs/screenshots/css-grid.png) |
@@ -312,8 +309,8 @@ Two standard conformance suites run too, pinned by commit and checked against co
 regression fails the run:
 
 - **test262**, the ECMAScript suite ([`tools\test262.ps1`](tools/test262.ps1)): the engine compiled to Wasm passes
-  99.92 % of 82,220 runs, against 99.94 % for the same QuickJS-ng compiled natively (the difference: `Atomics.pause`
-  and growable `SharedArrayBuffer`, without threads in WASI). `test_all` runs a sample of it.
+  99.92 % of 82,220 runs (what fails: `Atomics.pause` and growable `SharedArrayBuffer`, without threads in WASI).
+  `test_all` runs a sample of it.
 - **web-platform-tests** ([`tools\wpt.ps1`](tools/wpt.ps1), [`wpt/suites.txt`](wpt/suites.txt)): 4,494 test files of
   25 folders (DOM, HTML, URL, encoding, Fetch, XHR, streams, storage, workers, shadow DOM, custom elements…), of
   which 106,188 subtests pass ([`wpt/expectations`](wpt/expectations)).
@@ -390,7 +387,7 @@ docs/api/       generated API reference (with the ABI)        docs/architecture.
 docs/js/        generated coverage of the JavaScript bindings
 examples/       Wasm guest pages (counter, forms, workers, conformance...), JavaScript test pages, site/: the demo pages
 ext/            submodules: gui_toolkit (window, UI, renderer, text), lexbor (HTML, URLs, encodings)
-native/js/      the JavaScript engine module: QuickJS-ng patches, the engine layer, hand-written members, preludes,
+native/js/      the JavaScript engine module: the engine layer, hand-written members, preludes,
                 generated bindings, the Web IDL of webref
 native/         Cargo workspace of the one Rust static library of wren.exe (native/wren_native, the assembly crate,
                 picks native/media and the toolkit's native/text and native/a11y)
@@ -428,9 +425,8 @@ across every boundary, a single UI thread, mechanism separate from policy, a bou
 Wren is a prototype. It is meant to show how far a browser with a single, sandboxed execution engine can go, not to
 replace one. Known limits:
 
-- **JavaScript is interpreted** (QuickJS-ng in Wasm, no JIT): on the Octane benchmarks it scores about 0.77 × the same
-  engine compiled natively and about 1/55 of Edge. A simple DOM call costs about ten times what it costs in Edge
-  (`node.nodeType`: 65 ns against 5). Pages that run a lot of script are slow.
+- **JavaScript is interpreted** (a bytecode interpreter in Wasm, with a JIT for numeric loops only): far slower than Edge
+  on script-heavy benchmarks, and a DOM call crosses the Wasm boundary. Pages that run a lot of script are slow.
 - **Part of the web platform is missing**: about half of the members of the specifications' Web IDL are implemented
   ([`docs/js/coverage.md`](docs/js/coverage.md)). Among what pages notice: Canvas 2D is software-drawn and partial (no workers, no video frames, no color emoji in `fillText`), IndexedDB without `SharedWorker` or partitioned storage (values stay on the disk, keys are loaded per object store), no
   `ResizeObserver`, no Web Animations API, no service workers; `Intl` follows English conventions whatever the
