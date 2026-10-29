@@ -22,6 +22,8 @@ if ($CI) { $Quick = $true; if (-not $env:CI) { $env:CI = 'true' } }   # the tool
 # -Ui (or WREN_UI_TESTS=1): the end-to-end steps marked -UiOnly (they drive real windows and processes, or decode heavy images under a time limit:
 # what they need is a desktop and a machine of known speed) run when asked; without it they are skipped with "ui: skipped, run with -Ui".
 # Never on a CI machine (-CI, or the CI variable): a shared runner failed them at random, and the logic they check has unit tests.
+# That is also the case of the end-to-end sessions of service workers, shared workers, the back/forward cache, about:config and the search
+# engines, of the EventSource / WebSocket and network transport tests, and of the same sessions on the check build.
 if ($Ui -or $env:WREN_UI_TESTS -eq '1' -or $env:WREN_UI_TESTS -eq 'true') { $Ui = $true }
 if ($Ui -and ($CI -or $env:CI)) { 'ui: -Ui / WREN_UI_TESTS ignored on the CI (the UI steps never run there)'; $Ui = $false }
 # -Perf (or WREN_PERF=1 in the environment): the tests that measure time (a duration, a CPU time, a frame count in a window of time, the
@@ -271,7 +273,7 @@ Step 'the frame gate end to end (tools\frame_gate_e2e.ps1: the system''s drag of
 Step 'service workers, Cache API, BroadcastChannel, OffscreenCanvas in a worker end to end (tools\sw_e2e.ps1: register, install / activate, claim, fetch intercepted and answered from the cache, a navigation answered by the worker, messages, versions and update, clients, idle stop, navigation preload, Vary; no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\sw_e2e.ps1
-} -Weight 20
+} -Weight 20 -UiOnly
 Step 'storage partitioning end to end (tools\partition_e2e.ps1: a third party embedded in another site has its own cookies, localStorage, sessionStorage, Cache API, BroadcastChannel and service workers there, Sec-Fetch-Storage-Access, document.requestStorageAccess() after a click; no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\partition_e2e.ps1
@@ -283,14 +285,14 @@ Step 'origin private file system and File System Access end to end (tools\fs_e2e
 Step 'back/forward cache measured end to end (tools\bfcache_e2e.ps1: a hit, a page refused for its unload handler and its reason counted, a miss; wren ctl stats: bfcache)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\bfcache_e2e.ps1
-} -Weight 5
+} -Weight 5 -UiOnly
 Step 'downloads end to end on both network stacks (tools\download_e2e.ps1: an attachment, a binary named by its URL, a slow body; no window shown)' {
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\download_e2e.ps1
 } -UiOnly   # (two of its three big files did not end in 30 s on the CI runner, on both stacks: it depends on the machine; run with -Ui)
 Step 'shared workers and module workers end to end (tools\workers_e2e.ps1: two tabs share one worker, connect, ports, lifetime, close(), module imports; no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\workers_e2e.ps1
-} -Weight 10
+} -Weight 10 -UiOnly
 Step 'the policy file is read beside the executable, never from the working directory (tools\policy_file_e2e.ps1)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\policy_file_e2e.ps1
@@ -322,11 +324,11 @@ Step 'who chose an address (tools\nav_trust_e2e.ps1: a page asking by script for
 Step 'about:config end to end (tools\config_e2e.ps1: search, a switch, a number, a value out of range, a choice, reset, details, a category by type-ahead, all from the keyboard; no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\config_e2e.ps1
-}
+} -UiOnly
 Step 'search engines end to end (tools\search_e2e.ps1: a profile of before the list keeps its choice, the default, keywords, Ctrl+Down in the suggestions, an engine added in about:config and written to the profile; engines on the test server, no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\search_e2e.ps1
-}
+} -UiOnly
 
 Step 'unit tests: wasm' { odin test src/wasm -use-separate-modules $MemCheck -collection:wb=src -vet -define:ODIN_TEST_THREADS=1 -out:build/wasm_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
 Step 'unit tests: bindgen (description language, determinism)' { odin test src/tools/bindgen/idl -use-separate-modules $MemCheck -collection:wb=src -vet -out:build/bindgen_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
@@ -459,7 +461,7 @@ if ($CI -or -not $Quick) {
         foreach ($s in 'sw_e2e', 'workers_e2e', 'fs_e2e', 'bfcache_e2e', 'partition_e2e') { powershell -NoProfile -ExecutionPolicy Bypass -File "tools\$s.ps1" -Check; if ($LASTEXITCODE -ne 0) { $bad++ } }
         "$bad of them failed"
         $global:LASTEXITCODE = [int]($bad -gt 0)
-    } -Weight 30
+    } -Weight 30 -UiOnly
 }
 
 # The steps below talk to the test server: -Jobs 1, one server for all, on this run's block of ports (ready once it
@@ -535,13 +537,13 @@ try {
         if (-not $p.WaitForExit(90000 * $slow)) { $p.Kill(); Get-Content build\wt.txt; $global:LASTEXITCODE = 1; return }
         $o = Get-Content build\wt.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
-    }
+    } -UiOnly
     Step 'forms end-to-end test (controls, validation, FormData, submission)' {
         $p = Start-Process .\build\formstest.exe -ArgumentList 'examples\site\forms.html','examples\site\formstest.wasm' -NoNewWindow -PassThru -RedirectStandardOutput build\ft.txt
         if (-not $p.WaitForExit(90000 * $slow)) { $p.Kill(); Get-Content build\ft.txt; $global:LASTEXITCODE = 1; return }
         $o = Get-Content build\ft.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
-    }
+    } -UiOnly
     Step 'workers end-to-end test (messages, transfer, fetch, terminate, 16 in parallel)' {
         odin build examples/workerstest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:build/workerstest.wasm -o:size
         if ($LASTEXITCODE -ne 0) { return }
