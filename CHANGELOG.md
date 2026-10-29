@@ -7,6 +7,23 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 
 ## Unreleased
 
+## 0.6.3 - 2026-10-29
+
+### Added
+- **`<meta http-equiv="refresh">`** with a URL (`content="0; url=..."`) navigates after its delay (replacing the entry when the delay is 0). Bootstrap's documentation redirects its old page names that way.
+
+### Changed
+- **Tab sidebar**: a light line along its inner edge, in both styles, so that it stands out from a dark page beside it (the border it had was too close to the panel's color).
+- **Dragging a tab onto another window**: the carried window steps aside over the other window's tabs, the tabs there make room and a faded copy of the tab stands in the gap, in the row and in the sidebar's list.
+
+### Fixed
+- **Scripts that write a style again**: `style.setProperty` (and the rest of the inline style API) with the value the element already has no longer changes the document: no mutation record, no restyle. Bootstrap's documentation writes a custom property of its table of contents at every scroll event, which made the page restyle and lay out again at every frame of a scroll (about a third less CPU while scrolling it).
+- **Loading a page**: the interface frames made while a script runs show the previous page only while the full frames hold it (not after the hold timed out, nor of another document), so the page no longer alternates between two pictures while it loads.
+- **Page scroll bar**: while a page's script keeps the interface busy, the document's scroll bar no longer jumps up and down: it was part of the kept picture of the page and moved with its pixels (the wheel's distance) instead of by the share of the scroll; it is drawn apart at the right place.
+- **Loading bar**: it is drawn in the chrome frames made while a page keeps the thread too, not only in the full frames (it blinked between the two while a page loaded).
+- **Tabs**: a middle click on a tab (in the row or in the sidebar) closes it again, instead of starting the autoscroll of the bar around it (`Box_Flag.Middle_Click` of the toolkit).
+- **Grid**: an item with a stated minimum width (or height) no longer stretches the flexible tracks of its grid: Bootstrap's documentation pages (`.bd-content{min-width:1px}`) have their layout again.
+
 ## 0.6.2 - 2026-10-29
 
 ### Changed
