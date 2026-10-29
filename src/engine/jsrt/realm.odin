@@ -10,8 +10,9 @@ fn_obj :: proc(ctx: ^Context, name: string, fn: Native_Proc, length: int, magic:
 }
 
 def_method :: proc(ctx: ^Context, o: ^Object, name: string, fn: Native_Proc, length: int, magic: i32 = 0) -> ^Object {
+	a := atom_from_utf8(ctx.rt, name) // (first: the function's name is then the key's string)
 	f := new_native_function(ctx, fn, name, length, magic)
-	define_value(ctx, o, atom_from_utf8(ctx.rt, name), mk_obj(f), CW)
+	define_value(ctx, o, a, mk_obj(f), CW)
 	return f
 }
 
