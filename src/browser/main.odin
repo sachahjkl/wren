@@ -732,6 +732,7 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		if t == nil || t.kind != .Web || !shell_paint_page(app, t, dc, b.rect) { draw.rect(dc, b.rect, to_draw(expected_canvas(app))) }
 		// the video fast path: keep a video playing over the frozen page (video_fast_path.odin)
 		if t != nil && t.kind == .Web { video_fast_path_overlay(app, t, dc, b.rect) }
+		if t != nil { loading_bar(app, t, dc, b.rect) }   // (the full frames draw it: it would blink between the two kinds)
 		return
 	}
 	for other in wnd.tabs { if other != t { hold_release(other) } }   // a frame held in a tab not shown is of no use
@@ -739,9 +740,6 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		draw.rect(dc, b.rect, to_draw(expected_canvas(app)))
 		return
 	}
-	// What is drawn while a document loads (the held frame, the canvas, the loading bar sweeping over it) does not go through
-	// the compositor, which is what marks the page's damage: the whole page area is repainted each frame until the first paint
-	if draw.partial_redraw(dc) && (t.page == nil || tab_loading(t) || t.hold.active) { draw.damage(dc, b.rect) }
 	defer loading_bar(app, t, dc, b.rect)
 	defer devtools_overlay(app, t, dc, b.rect)   // devtools.odin: the Elements tab's box over the page
 	if t.page == nil {
