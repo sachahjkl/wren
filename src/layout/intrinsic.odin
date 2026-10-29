@@ -54,6 +54,14 @@ intrinsic_content_min :: proc(c: ^Ctx, bi: i32) -> f32 {
 	return intrinsic_compute(c, bi, true)[0]
 }
 
+// CSS Sizing 3 §5.2.2: a replaced element whose width or max-width is a percentage is compressible: that percentage resolves against
+// zero for its min-content contribution, so the box around it (an inline-block, a table cell, a flex item) may shrink below the
+// image's natural width, and the image then fills what it gets (`img {max-width: 100%}` inside an inline-block link).
+@(private)
+compressible_replaced :: proc(cs: ^style.Computed) -> bool {
+	return cs.width.kind == .Percent || cs.max_width.kind == .Percent
+}
+
 @(private)
 intrinsic_compute :: proc(c: ^Ctx, bi: i32, ignore_width: bool) -> [2]f32 {
 	b := &c.l.boxes[bi]
@@ -66,11 +74,13 @@ intrinsic_compute :: proc(c: ^Ctx, bi: i32, ignore_width: bool) -> [2]f32 {
 		v := cs.width.v * c.scale
 		w := cs.box_sizing == .Border_Box ? max(v, pb) : v + pb
 		res = {w, w}
+		if b.kind == .Replaced && compressible_replaced(cs) { res[0] = min(pb, w) }
 	} else {
 		switch b.kind {
 		case .Replaced:
 			w := replaced_size(c, bi, -1, -1).x
 			res = {w, w}
+			if compressible_replaced(cs) { res[0] = min(pb, w) }
 		case .Block, .Cell, .Caption:
 			if .Ifc in b.flags {
 				in2 := ifc_intrinsic(c, bi)

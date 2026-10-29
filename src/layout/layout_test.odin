@@ -467,6 +467,25 @@ replaced_and_controls :: proc(t: ^testing.T) {
 }
 
 @(test)
+percent_max_width_image_in_inline_block :: proc(t: ^testing.T) {
+	// a link made inline-block holding an image whose max-width is 100% (WordPress): the image is compressible (CSS Sizing 3
+	// 5.2.2), so the link takes the width it is offered and the image fills it, instead of keeping its 400px
+	f := load(`<body style="margin:0;font-size:10px;line-height:10px">
+<div style="width:100px"><a id=a style="display:inline-block"><img id=big width=400 height=300 style="max-width:100%;height:auto"></a></div>
+<div style="width:100px"><img id=plain width=400 height=300 style="max-width:100%;height:auto"></div>
+<div style="width:100px"><a id=a3 style="display:inline-block"><img id=fixed width=40 height=30 style="max-width:100%;height:auto"></a></div>
+</body>`)
+	defer unload(f)
+	a, big := rect(f, "a"), rect(f, "big")
+	testing.expect(t, near(a.max.x - a.min.x, 100), "the inline-block takes the width offered")
+	testing.expect(t, near(big.max.x - big.min.x, 100) && near(big.max.y - big.min.y, 75), "the image fills it at its ratio")
+	plain := rect(f, "plain")
+	testing.expect(t, near(plain.max.x - plain.min.x, 100), "a plain image is clamped as before")
+	a3, fixed := rect(f, "a3"), rect(f, "fixed")
+	testing.expect(t, near(a3.max.x - a3.min.x, 40) && near(fixed.max.x - fixed.min.x, 40), "a small image keeps its size in an inline-block")
+}
+
+@(test)
 intrinsic_keywords :: proc(t: ^testing.T) {
 	f := load(`<body style="margin:0;font-size:10px;line-height:10px">
 <div id=mn style="width:min-content">aaa bbbbb cc</div>

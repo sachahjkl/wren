@@ -7,6 +7,17 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 
 ## Unreleased
 
+## 0.6.5 - 2026-10-29
+
+### Changed
+- **Middle-click autoscroll**: the speed grows geometrically with the distance from the anchor, `max * (2^(x/D) - 1) / (2^(F/D) - 1)` (`x` past the dead zone, `D` = `browser.scroll.autoscroll.doubling_distance`, 80 px, `F` = the full distance, 420 px): it doubles every `D` px and reaches the top speed at `F`. It replaces the power curve (`browser.scroll.autoscroll.curve` is gone).
+
+### Fixed
+- **Order of the pointer's events**: the events of a move (``mouseover`` / ``mouseenter`` of what the pointer reached, ``mousemove``) now come before the press or release that follows it in the same frame, as they happened. They came after, so a script that reads the element under the pointer on a press (jQuery UI's resizable handles) saw the previous one.
+- **Pointer events over an empty part of the page**: where no box is under the pointer (the canvas, a ``pointer-events: none`` overlay), the pointer is over the root element, as in other browsers: ``mousedown``, ``mousemove``, ``mouseup`` and ``click`` reach it, and ``:hover`` too. Before, nothing was sent: a script that waited for a ``mouseup`` there (a drag released over the background, a player's overlay) never got it and went on believing the button was down; jQuery UI's resizable stopped following the pointer once it left the element.
+- **Mouse moves in frames**: a `mousemove` / `pointermove` (and `mouseover`, `mouseenter`...) now reach the scripts of an iframe's document, and a document in which a button was pressed keeps the moves while it is held, wherever the pointer goes (an implicit capture). Before, a frame only got presses, releases and clicks, so a drag started in a frame did nothing: jQuery UI's demos (draggable, sortable, resizable, slider...) in their iframes.
+- **Images in a shrink-to-fit box** (blog.jquery.com): an image whose `max-width` or `width` is a percentage no longer makes its inline-block link, table cell or flex item as wide as the image itself (CSS Sizing 3 5.2.2, compressible replaced elements): `img {max-width: 100%}` fills the room it is given instead of overflowing.
+
 ## 0.6.4 - 2026-10-29
 
 ### Changed

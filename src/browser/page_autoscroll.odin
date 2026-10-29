@@ -29,8 +29,8 @@ AUTOSCROLL_PREFS := [?]config.Def{
 		description = "No scrolling while the pointer is within this many pixels of the anchor (a still disc around it)."},
 	{name = "browser.scroll.autoscroll.full_distance", kind = .Float, default = {f = 420}, bounded = true, min = 20, max = 4000, unit = "px",
 		description = "How far past the dead zone the pointer must be for autoscroll to reach its top speed."},
-	{name = "browser.scroll.autoscroll.curve", kind = .Float, default = {f = 2}, bounded = true, min = 0.2, max = 6,
-		description = "Shape of the speed curve: 1 is linear, above 1 is gentle near the anchor and steep far out, below 1 the opposite."},
+	{name = "browser.scroll.autoscroll.doubling_distance", kind = .Float, default = {f = 80}, bounded = true, min = 10, max = 4000, unit = "px",
+		description = "The speed grows geometrically with the distance from the anchor: it doubles for every this many pixels past the dead zone (speed = max * (2^(x/D) - 1) / (2^(F/D) - 1), x the distance past the dead zone, D this, F the full distance). Smaller: gentler near the anchor and steeper far out; much larger than the full distance: nearly linear."},
 	{name = "browser.scroll.autoscroll.mode", kind = .String, default = {s = "both"}, choices = {"both", "hold", "toggle"},
 		description = "both: a quick tap latches the mode on until the next click, and holding the button scrolls while it is down. hold: only while the button is held. toggle: a press latches it on until the next click."},
 }
@@ -48,7 +48,7 @@ autoscroll_settings_from_prefs :: proc(p: ^config.Prefs) -> Autoscroll_Settings_
 	cfg.max_speed = f32(config.float_of(p, "browser.scroll.autoscroll.max_speed"))
 	cfg.dead_zone = f32(config.float_of(p, "browser.scroll.autoscroll.dead_zone"))
 	cfg.full_dist = f32(config.float_of(p, "browser.scroll.autoscroll.full_distance"))
-	cfg.exponent  = f32(config.float_of(p, "browser.scroll.autoscroll.curve"))
+	cfg.doubling  = f32(config.float_of(p, "browser.scroll.autoscroll.doubling_distance"))
 	// "hold": no latching tap; "toggle": a press always latches (tap time unbounded); "both": the default tap test
 	switch mode {
 	case "hold":   cfg.toggle = false

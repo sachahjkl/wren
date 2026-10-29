@@ -918,6 +918,22 @@ anchor_href :: proc(d: ^dom.Document, h: base.Handle) -> (string, bool) {
 	return "", false
 }
 
+// The last position of a frame's pointer moves over the page: its hover state and its pointer events (route_page_input).
+@(private = "file")
+page_move_flush :: proc(app: ^App, t: ^Tab, last_move: platform.Event) {
+	wnd := active_window(app)
+	hovered := base.NIL_HANDLE
+	// (the pointer over a menu, a chrome widget that overlaps the page or the statistics panel is not over the page: its hover state and
+	// its pointer events stay where they were: the card under a menu used to light up as the pointer crossed the menu)
+	over_chrome := ui.ctx_menu_any_open() || ui.hot_key() != 0 || hud_captures(app, last_move.pos)
+	if !over_chrome && draw.rect_contains(wnd.page_rect, last_move.pos) && t.layout.valid { hovered = hit_or_root(t, hit_test(&t.layout, last_move.pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll)) }
+	st := t.page.style_state
+	was := st.hover
+	st.hover = hovered
+	page.set_style_state(t.page, st)
+	page_pointer_events(app, t, was, hovered, last_move.pos, dom_buttons(last_move.buttons), last_move.emulated)   // page_pointer.odin
+}
+
 // Mouse and wheel events that land on the page become DOM events / scrolling.
 route_page_input :: proc(app: ^App, events: []platform.Event) {
 	wnd := active_window(app)
@@ -927,20 +943,16 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 	scale := page_scale(app)
 	last_move: platform.Event
 	have_move := false
-	defer if have_move && t.page != nil {
-		hovered := base.NIL_HANDLE
-		// (the pointer over a menu, a chrome widget that overlaps the page or the statistics panel is not over the page: its hover state and
-		// its pointer events stay where they were: the card under a menu used to light up as the pointer crossed the menu)
-		over_chrome := ui.ctx_menu_any_open() || ui.hot_key() != 0 || hud_captures(app, last_move.pos)
-		if !over_chrome && draw.rect_contains(wnd.page_rect, last_move.pos) && t.layout.valid { hovered = hit_test(&t.layout, last_move.pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll) }
-		st := t.page.style_state
-		was := st.hover
-		st.hover = hovered
-		page.set_style_state(t.page, st)
-		page_pointer_events(app, t, was, hovered, last_move.pos, dom_buttons(last_move.buttons), last_move.emulated)   // page_pointer.odin
-	}
+	defer if have_move && t.page != nil { page_move_flush(app, t, last_move) }
 	for ev, index in events {
 		inside := draw.rect_contains(wnd.page_rect, ev.pos)
+		// the pointer got where it is before the button went down or up: the move's events (mouseover of a handle a script reads
+		// on the press, mousemove) come first, in the order they happened
+		if (ev.kind == .Mouse_Press || ev.kind == .Mouse_Release) && have_move && t.page != nil {
+			page_move_flush(app, t, last_move)
+			have_move = false
+			if t.page == nil { return }
+		}
 		// Escape or the pointer leaving the window ends a middle-click autoscroll session (page_autoscroll.odin)
 		if ev.kind == .Key_Press && ev.key == .Escape && autoscroll_running_page(app) { autoscroll_page_cancel(app); consume(app, index); continue }
 		if ev.kind == .Mouse_Leave && autoscroll_running_page(app) { autoscroll_page_cancel(app) }

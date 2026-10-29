@@ -20,6 +20,13 @@ Pointer_Event :: struct {
 	cancelable: bool,
 }
 
+// What the pointer is over for the scripts: the element the hit test found, else the document's root element (the part of the page no box
+// covers: its canvas, a pointer-events: none overlay), as other browsers do. NIL: no document.
+hit_or_root :: proc(t: ^Tab, h: base.Handle) -> base.Handle {
+	if h == base.NIL_HANDLE && t != nil && t.page != nil { return t.page.doc_el }
+	return h
+}
+
 // The ancestors of `h` that are elements, `h` first.
 @(private = "file")
 element_chain :: proc(d: ^dom.Document, h: base.Handle) -> []base.Handle {
