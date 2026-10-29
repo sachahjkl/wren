@@ -113,7 +113,7 @@ shrink_to_fit :: proc(c: ^Ctx, bi: i32, avail: f32) -> f32 {
 @(private)
 block_width :: proc(c: ^Ctx, bi: i32, cb_w, avail: f32) {
 	b := &c.l.boxes[bi]
-	if b.kind == .Block && .Block_In_Inline not_in b.flags && is_plain(c, bi) {
+	if b.kind == .Block && .Block_In_Inline not_in b.flags && .Control not_in b.flags && is_plain(c, bi) {
 		// width, min-width, max-width auto / none: what the general case below finds, without the style
 		ml := b.auto_l ? 0 : b.margin[3]
 		mr := b.auto_r ? 0 : b.margin[1]
@@ -139,6 +139,11 @@ block_width :: proc(c: ^Ctx, bi: i32, cb_w, avail: f32) {
 		case .Max_Content: w = intrinsic(c, bi)[1]
 		case .Fit_Content: w = shrink_to_fit(c, bi, avail - (b.auto_l ? 0 : b.margin[3]) - (b.auto_r ? 0 : b.margin[1]))
 		case:
+			if .Control in b.flags && cs.width.kind == .Auto {
+				// HTML §15.5.x: a <button> whose width is auto is as wide as its content, also as a block or a flex container
+				w = shrink_to_fit(c, bi, avail - (b.auto_l ? 0 : b.margin[3]) - (b.auto_r ? 0 : b.margin[1]))
+				break
+			}
 			ml := b.auto_l ? 0 : b.margin[3]
 			mr := b.auto_r ? 0 : b.margin[1]
 			w = avail - ml - mr
