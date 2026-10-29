@@ -270,7 +270,7 @@ build_section :: proc(sb: ^strings.Builder, d: Wren_Page) {
 	row(sb, "gui_toolkit", ui.VERSION)
 	row(sb, "Odin", odin_version_text())
 	row(sb, "Wasmtime", wasm.WASMTIME_VERSION)
-	row(sb, "QuickJS-ng", QUICKJS_VERSION)
+	row(sb, "JavaScript engine", "Wren's own, in Odin (after QuickJS-ng " + QUICKJS_VERSION + ")")
 	if d.profile_dir != "" { row(sb, "Profile", d.profile_dir) }
 	strings.write_string(sb, "</table>\n")
 }

@@ -127,7 +127,7 @@ DEMOS := [?]Demo{
 		"Text, email, number, date, range, color, select and file controls, validation pseudo-classes (<code>:user-invalid</code>, <code>:out-of-range</code>), a Wasm module that reads, fills and validates the form, and a multipart POST to the server.", true, "", false},
 
 	{.JavaScript, "JavaScript in WebAssembly", "js.html",
-		"Plain HTML and JavaScript run by QuickJS-ng compiled to WebAssembly, one sandboxed instance per page: a click listener, nodes built with <code>createElement</code>, the bindings' prototype chain (generated from the specifications' Web IDL), ES2023 features and microtasks. Off with <code>javascript.enabled</code>.", false, "", false},
+		"Plain HTML and JavaScript run by Wren's own engine (written in Odin) compiled to WebAssembly, one sandboxed instance per page: a click listener, nodes built with <code>createElement</code>, the bindings' prototype chain (generated from the specifications' Web IDL), ES2023 features and microtasks. Off with <code>javascript.enabled</code>.", false, "", false},
 	{.JavaScript, "DOM from JavaScript", "js-dom.html",
 		"A to-do list driven by <code>classList</code> and <code>dataset</code>, a <code>MutationObserver</code> log of the changes, a box resized from script and measured with <code>getBoundingClientRect</code>, and a form read through <code>elements</code> and <code>querySelectorAll</code> into a table.", false, "", false},
 	{.JavaScript, "Shadow DOM", "shadow-dom.html",
