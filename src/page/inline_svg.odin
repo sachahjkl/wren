@@ -300,6 +300,31 @@ Serializer :: struct {
 	failed:   bool,
 }
 
+// What the page's CSS sets on an element inside the <svg> (`.logo__text { fill: ... }`, `svg path { stroke: ... }`): its
+// computed values, only where a declaration set them, as the start of the element's style attribute (the cascade's
+// values beat presentation attributes; the element's own style attribute comes after and beats them).
+@(private = "file")
+inner_style :: proc(p: ^Page, h: base.Handle, name: string) -> string {
+	i := int(base.handle_index(h))
+	if p.styled == nil || i >= len(p.styled.by_node) { return "" }
+	cs := p.styled.by_node[i]
+	if cs == nil { return "" }
+	st := strings.builder_make(context.temp_allocator)
+	if !style.ps_has(cs.inherits, .Color) { fmt.sbprintf(&st, "color:%s;", css_color(cs.color)) }
+	if !style.ps_has(cs.inherits, .Fill) { write_paint(&st, "fill", cs.svg_fill, cs.color) }
+	if !style.ps_has(cs.inherits, .Stroke) { write_paint(&st, "stroke", cs.svg_stroke, cs.color) }
+	if !style.ps_has(cs.inherits, .Stroke_Width) { fmt.sbprintf(&st, "stroke-width:%.3f;", cs.stroke_width) }
+	if !style.ps_has(cs.inherits, .Stroke_Linecap) { strings.write_string(&st, cs.stroke_linecap == .Round ? "stroke-linecap:round;" : cs.stroke_linecap == .Square ? "stroke-linecap:square;" : "stroke-linecap:butt;") }
+	if !style.ps_has(cs.inherits, .Stroke_Linejoin) { strings.write_string(&st, cs.stroke_linejoin == .Round ? "stroke-linejoin:round;" : cs.stroke_linejoin == .Bevel ? "stroke-linejoin:bevel;" : "stroke-linejoin:miter;") }
+	if !style.ps_has(cs.inherits, .Visibility) && cs.visibility != .Visible { strings.write_string(&st, "visibility:hidden;") }
+	if cs.opacity != 1 { fmt.sbprintf(&st, "opacity:%.3f;", cs.opacity) }
+	switch name {
+	case "path", "g", "circle", "rect", "line", "polyline", "polygon", "ellipse", "text", "tspan", "use", "image":
+		if cs.display == .None { strings.write_string(&st, "display:none;") }
+	}
+	return strings.to_string(st)
+}
+
 // One element and its subtree, without recursion. `root_extra` is written into the root's start tag.
 @(private = "file")
 write_tree :: proc(s: ^Serializer, top: base.Handle, root_extra: string, skip_size: bool) {
@@ -330,8 +355,18 @@ write_tree :: proc(s: ^Serializer, top: base.Handle, root_extra: string, skip_si
 		strings.write_byte(&s.b, '<')
 		strings.write_string(&s.b, name)
 		if it.h == top { strings.write_string(&s.b, root_extra) }
+		css := it.h == top ? "" : inner_style(s.p, it.h, n.name)
+		wrote_style := false
 		for a in n.attrs {
 			if strings.has_prefix(a.name, "on") || a.name == "xmlns" || strings.has_prefix(a.name, "xmlns:") { continue }
+			if css != "" && a.name == "style" {
+				strings.write_string(&s.b, ` style="`)
+				write_escaped(&s.b, css, true)
+				write_escaped(&s.b, a.value, true)
+				strings.write_byte(&s.b, '"')
+				wrote_style = true
+				continue
+			}
 			if it.h == top && root_extra != "" && (a.name == "style" || (skip_size && (a.name == "width" || a.name == "height"))) { continue }
 			if a.name == "id" { s.ids[a.value] = true }
 			note_refs(a.name, a.value, &s.refs)
@@ -339,6 +374,11 @@ write_tree :: proc(s: ^Serializer, top: base.Handle, root_extra: string, skip_si
 			strings.write_string(&s.b, svg_case(SVG_ATTRIBUTES[:], a.name))
 			strings.write_string(&s.b, "=\"")
 			write_escaped(&s.b, a.value, true)
+			strings.write_byte(&s.b, '"')
+		}
+		if css != "" && !wrote_style {
+			strings.write_string(&s.b, ` style="`)
+			write_escaped(&s.b, css, true)
 			strings.write_byte(&s.b, '"')
 		}
 		if n.first_child == base.NIL_HANDLE {
