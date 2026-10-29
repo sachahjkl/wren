@@ -1,17 +1,23 @@
-// m5_libm.odin: the libm functions the geometry, canvas and Intl glue use (wasi-libc's, in the same module), under a
-// libm_ prefix: the C these domains replace called them, and keeping the same implementation keeps the serialised
-// numbers bit-identical (an Odin core:math sin differs from musl's in the last place for some inputs).
+// m5_libm.odin: the libm functions the geometry, canvas and Intl glue use (Odin's core:math: the module has no C library), under a
+// libm_ prefix, as the C these domains replace called them.
 package wj
 
-@(default_calling_convention = "c")
-foreign {
-	@(link_name = "sin")   libm_sin   :: proc(x: f64) -> f64 ---
-	@(link_name = "cos")   libm_cos   :: proc(x: f64) -> f64 ---
-	@(link_name = "tan")   libm_tan   :: proc(x: f64) -> f64 ---
-	@(link_name = "atan2") libm_atan2 :: proc(y, x: f64) -> f64 ---
-	@(link_name = "hypot") libm_hypot :: proc(x, y: f64) -> f64 ---
-	@(link_name = "floor") libm_floor :: proc(x: f64) -> f64 ---
-	@(link_name = "pow")   libm_pow   :: proc(x, y: f64) -> f64 ---
-	@(link_name = "log10") libm_log10 :: proc(x: f64) -> f64 ---
-	@(link_name = "round") libm_round :: proc(x: f64) -> f64 ---
+import "core:math"
+
+libm_sin   :: proc "contextless" (x: f64) -> f64 { return math.sin(x) }
+libm_cos   :: proc "contextless" (x: f64) -> f64 { return math.cos(x) }
+libm_tan   :: proc "contextless" (x: f64) -> f64 { return math.tan(x) }
+libm_atan2 :: proc "contextless" (y, x: f64) -> f64 { return math.atan2(y, x) }
+libm_hypot :: proc "contextless" (x, y: f64) -> f64 { return math.sqrt(x * x + y * y) }
+libm_floor :: proc "contextless" (x: f64) -> f64 { return math.floor(x) }
+libm_pow   :: proc "contextless" (x, y: f64) -> f64 { return math.pow(x, y) }
+libm_log10 :: proc "contextless" (x: f64) -> f64 { return math.log10(x) }
+// C's round (half away from zero), written here: the module is linked with no C library, and an Odin `math.round` would
+// lower to the very `round` symbol that is missing.
+libm_round :: proc "contextless" (x: f64) -> f64 {
+	t := math.trunc(x)
+	d := x - t
+	if d >= 0.5 { return t + 1 }
+	if d <= -0.5 { return t - 1 }
+	return t
 }

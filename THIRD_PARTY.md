@@ -13,7 +13,7 @@ components below; their license texts are in the executable (bout:licenses) and
 | [Unicode emoji data](https://www.unicode.org/Public/18.0.0/ucd/emoji/emoji-data.txt) (`emoji-data.txt`) | 18.0.0 | Unicode License v3 | which characters are emoji (generated `font/emoji_data.odin` of gui_toolkit) |
 | [Wasmtime](https://github.com/bytecodealliance/wasmtime) C API | 49.0.3 | Apache-2.0 WITH LLVM-exception | `build\wasmtime` (`tools\fetch_wasmtime.ps1`) |
 | [QuickJS-ng](https://github.com/quickjs-ng/quickjs) | 0.17.0, patched (`native/js/patches`) | MIT | the JavaScript engine, compiled to WebAssembly (`tools\build_js.ps1`) and embedded |
-| [wasi-libc](https://github.com/WebAssembly/wasi-libc), as shipped by Zig 0.15.2 | | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT; parts: musl (MIT), cloudlibc (BSD-2-Clause), emmalloc (MIT / NCSA, Emscripten) | the C library of the JavaScript engine module |
+| [emmalloc](https://github.com/emscripten-core/emscripten), through Odin's `base:runtime` (`wasm_allocator`) | | MIT / NCSA (Emscripten) | the heap of the JavaScript module |
 | [webref](https://github.com/w3c/webref) `@webref/idl` | 3.85.2 (`native/js/webref/VERSION`) | MIT | the Web IDL the JavaScript bindings are generated from (`native/js/gen`) |
 | [Lexbor](https://github.com/lexbor/lexbor) | 3.0.1 | Apache-2.0 | submodule `ext/lexbor` |
 | [Public Suffix List](https://publicsuffix.org) | `src/url/public_suffix_list.dat` | MPL-2.0 | embedded |
@@ -37,11 +37,10 @@ components below; their license texts are in the executable (bout:licenses) and
 | [ring](https://github.com/briansmith/ring), [rustls-webpki](https://github.com/rustls/webpki), [untrusted](https://github.com/briansmith/untrusted) | 0.17.14, 0.103.16, 0.9.0 | Apache-2.0 AND ISC (webpki, untrusted: ISC) | `native/net` (cryptography, certificate parsing) |
 | other Rust crates (with those of the toolkit's text backend and accessibility adapter) | `native/Cargo.lock` | MIT, Apache-2.0, BSD, Zlib, Unicode-3.0… | `native/rust-crates.txt` (also in `about:licenses`) lists each one |
 
-The license texts of QuickJS-ng, wasi-libc and its parts, and webref are kept in
+The license texts of QuickJS-ng, emmalloc, and webref are kept in
 [`native/js/licenses`](native/js/licenses).
 
-Build-time only (not shipped): [Odin](https://github.com/odin-lang/Odin) (BSD-3-Clause), [Zig](https://ziglang.org)
-0.15.2 (MIT), [NASM](https://www.nasm.us) 2.16.03 (BSD-2-Clause), MSVC, Rust, Go.
+Build-time only (not shipped): [Odin](https://github.com/odin-lang/Odin) (BSD-3-Clause), [NASM](https://www.nasm.us) 2.16.03 (BSD-2-Clause), MSVC, Rust, Go.
 
 Tests only (fetched at a pinned commit into `build\`, not shipped): [test262](https://github.com/tc39/test262)
 (BSD-3-Clause) and [web-platform-tests](https://github.com/web-platform-tests/wpt) (BSD-3-Clause); `wpt/` holds the

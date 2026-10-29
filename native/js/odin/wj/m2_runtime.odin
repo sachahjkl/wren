@@ -5,35 +5,33 @@
 // keep their queues and lists in [dynamic] arrays. Real symbols, one declaration each.
 package wj
 
+import "core:math"
+
 // ---- QuickJS-ng (quickjs.h JS_EXTERN) ----
 
 @(default_calling_convention = "c")
 foreign {
 }
 
-// ---- libc ----
+// ---- what the host gives (WASI calls: the module has no C library) ----
 
-// struct timespec of wasi-libc on wasm32: time_t is 64-bit, long 32-bit.
-Timespec :: struct {
-	tv_sec:  i64,
-	tv_nsec: i32,
-}
-CLOCK_REALTIME :: i32(0)
+foreign import wasi "wasi_snapshot_preview1"
 
 @(default_calling_convention = "c")
-foreign {
-	arc4random_buf :: proc(buf: rawptr, n: uint) ---
-	clock_gettime  :: proc(clock: i32, ts: ^Timespec) -> i32 ---
-	@(link_name = "floor") libc_floor :: proc(x: f64) -> f64 ---
+foreign wasi {
+	@(link_name = "clock_time_get") wasi_clock_time_get :: proc(id: u32, precision: u64, time: ^u64) -> u32 ---
+	@(link_name = "random_get")     wasi_random_get     :: proc(buf: rawptr, n: u32) -> u32 ---
 }
+
+// Random bytes from the host.
+arc4random_buf :: proc "contextless" (buf: rawptr, n: uint) { wasi_random_get(buf, u32(n)) }
 
 // The wall clock in whole milliseconds since the epoch (File's default lastModified).
 now_ms :: proc "contextless" () -> f64 {
-	ts: Timespec
-	clock_gettime(CLOCK_REALTIME, &ts)
-	return libc_floor(f64(ts.tv_sec) * 1000.0 + f64(ts.tv_nsec) / 1e6)
+	ns: u64
+	wasi_clock_time_get(0, 1_000_000, &ns)   // CLOCKID_REALTIME
+	return math.floor(f64(ns) / 1e6)
 }
-
 // ---- small things the domains share ----
 
 // JS_FreeValue on each value (the C's runs of JS_FreeValue calls).

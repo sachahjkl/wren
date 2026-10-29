@@ -1,10 +1,10 @@
 name: Set up the Wren toolchain
 description: >-
   Odin (pinned release, SHA-256 checked), Rust (pinned version) with llvm-tools, Go, the MSVC environment, and the caches of
-  what build.bat fetches or builds (Wasmtime, Lexbor, the Rust library of native/, NASM, the cargo registry, Zig and the
+  what build.bat fetches or builds (Wasmtime, Lexbor, the Rust library of native/, NASM, the cargo registry, the
   QuickJS-ng source, the JavaScript engine) and of the pinned test suites tools\test_all.ps1 fetches (test262,
   web-platform-tests). Every download is pinned: by SHA-256 in the script that fetches it (Odin here, Wasmtime, NASM,
-  Zig, QuickJS-ng, test262), by commit and a SHA-256 list of its files (web-platform-tests: wpt/MANIFEST.txt), by
+  QuickJS-ng, test262), by commit and a SHA-256 list of its files (web-platform-tests: wpt/MANIFEST.txt), by
   Cargo.lock (crates); Rust (RUST_VERSION below) and Go (go.mod's version) come from their installers.
 
 inputs:
@@ -97,15 +97,13 @@ runs:
         key: native-${{ inputs.native-profile }}-rust1.99.1-${{ hashFiles('native/Cargo.lock') }}-${{ hashFiles('native/Cargo.toml', 'native/media/src/**', 'native/media/Cargo.toml', 'native/wren_native/**', 'ext/gui_toolkit/native/text/src/**', 'ext/gui_toolkit/native/text/Cargo.toml', 'ext/gui_toolkit/native/a11y/src/**', 'ext/gui_toolkit/native/a11y/Cargo.toml', 'tools/build_native.ps1') }}
         restore-keys: native-${{ inputs.native-profile }}-rust1.99.1-${{ hashFiles('native/Cargo.lock') }}-
 
-    # tools\build_js.ps1: Zig (its clang and wasi-libc) and the QuickJS-ng release source, both pinned in the script
-    - name: Cache Zig and the QuickJS-ng source
+    # the QuickJS-ng release source (test262's configuration), pinned in tools\build_js.ps1; the engine itself links with Odin's wasm-ld
+    - name: Cache the QuickJS-ng source
       uses: actions/cache@v4
       with:
         path: |
-          build/tools/zig-x86_64-windows-*
-          !build/tools/zig-*.zip
           build/tools/quickjs-ng-*.tar.gz
-        key: zig-qjs-${{ hashFiles('tools/build_js.ps1') }}
+        key: qjs-${{ hashFiles('tools/build_js.ps1') }}
 
     # the engine and the test image of tools\test262.ps1: rebuilt anyway when build\js*\STAMP does not match the inputs
     - name: Cache the JavaScript engine

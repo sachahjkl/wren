@@ -195,7 +195,7 @@
 to one WebAssembly module (<code>build/js/wren_js.wasm</code>), run by Wasmtime. Around the engine sits the <em>glue</em>: the code that
 implements the web platform's objects as native functions of that API and wires them to the browser's <code>wr_*</code> imports. All
 of it is Odin (<code>native/js/odin/</code>; the binding tables are generated into <code>bindings_gen.odin</code>). No C of ours is compiled any
-more: zig is only the linker and the provider of wasi-libc.</p>
+more: the module is linked by the <code>wasm-ld</code> that ships with Odin, with no C library (<code>wj/libc.odin</code>).</p>
 <p>This document is the rule book: where things go, how to declare them, how to add a domain. The generic ABI that will
 replace the hand-written transmission layer is in <a href="../../docs/js/odin-abi.html">odin-abi.md</a>.</p>
 <h2 id="the-layout"><a class="anchor" href="#the-layout" aria-hidden="true">#</a>The layout</h2>
@@ -318,8 +318,8 @@ so a change of a mirrored struct stops the build.</p>
 <ul>
 <li><code>tools/build_js.ps1</code> compiles <code>native/js/odin</code> (the glue, with the engine of <code>src/engine</code>) to one wasm32 object (<code>odin
 build -build-mode:obj -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -o:size</code>) and links it with
-wasi-libc through zig's <code>wasm-ld</code>. Odin's freestanding runtime defines <code>memset</code>/<code>memcpy</code>/<code>memmove</code>/<code>bzero</code> as strong
-symbols, as wasi-libc does: the link only warns (<code>function signature mismatch: bzero</code>, expected).</li>
+the <code>wasm-ld</code> of Odin's <code>bin</code> folder (<code>--no-entry --gc-sections</code>). There is no C library: <code>wj/libc.odin</code> has<code>malloc</code>/<code>free</code> (base:runtime's emmalloc over <code>memory.grow</code>), the string functions, <code>strtod</code>, an Odin <code>snprintf</code> over <code>any</code> values and <code>ldexp</code>;
+<code>sin</code>, <code>cos</code> and <code>pow</code> are imports of the host (module <code>libm</code>, <code>src/wasm/wasi.odin</code>); <code>exp</code> is fdlibm's, in <code>src/engine/jsrt/b_number.odin</code>. A symbol that is declared <code>foreign</code> and not defined is silently an import <code>env.*</code> of the module: check the imports of <code>wren_js_raw.wasm</code> after a change (only <code>wasi_snapshot_preview1.{clock_time_get,random_get}</code>, <code>libm.*</code> and the <code>wr_*</code> modules are legitimate).</li>
 <li><code>build.bat</code> runs bindgen first, so <code>wr_imports.odin</code> is always current.</li>
 </ul>
 <h2 id="testing-a-ported-domain"><a class="anchor" href="#testing-a-ported-domain" aria-hidden="true">#</a>Testing a ported domain</h2>

@@ -224,6 +224,11 @@ when WJ_MIMALLOC {
 @(private = "file") _runtime_used :: runtime.Context
 
 // Build time: everything that does not depend on the realm. 0 ok.
+// The WASI reactor's entry, which the host calls first (src/wasm, src/tools/jsengine). With no C library in the module
+// there is nothing to initialize: the engine starts in wj_preinit.
+@(export, link_name = "_initialize")
+wj_initialize :: proc "c" () {}
+
 @(export, link_name = "wj_preinit")
 wj_preinit :: proc "c" () -> i32 {
 	if wj.wj_the_realm.ctx != nil { return 0 }

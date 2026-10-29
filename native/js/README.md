@@ -19,11 +19,12 @@ native/js/
   odin_abi/         the shared API declarations (api_decl) the bridges read
   odin_gen/         the interface table of the generated bindings, for the host (src/page/js_interfaces_generated.odin)
   webref/           the Web IDL files (webref) the bindings are generated from
-  licenses/         the licences of what is linked into the module (wasi-libc, musl, QuickJS-ng's, webref)
+  licenses/         the licences of what is linked into the module (emmalloc, QuickJS-ng's, webref)
 ```
 
 Built by `tools/build_js.ps1` (called by `build.bat`): the glue and the engine become one wasm32 object (`odin build
--build-mode:obj -target:freestanding_wasm32`), linked with wasi-libc by the pinned zig's `wasm-ld`, then pre-initialized
+-build-mode:obj -target:freestanding_wasm32`), linked by the `wasm-ld` that ships with Odin (no C library: `libc.odin`,
+`m5_libm.odin` and the host's `libm.*` imports), then pre-initialized
 under Wasmtime (`src/tools/jsengine`: interfaces, prototypes and preludes built once, stored in the memory image the
 browser embeds). The script does nothing when its inputs are unchanged.
 

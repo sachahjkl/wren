@@ -89,7 +89,7 @@ if not exist build mkdir build
 :: ------------------------------------------------------------------------------------------------------------
 ::  bindgen    the web API from its description (api\*.widl): host bindings, guest SDK, docs and conformance
 ::             tests (only what changed)
-::  JS engine  QuickJS-ng + the generated bindings, compiled to Wasm with a pinned zig and pre-initialized
+::  JS engine  the Odin engine + the generated bindings, compiled to Wasm, linked by Odin's wasm-ld, pre-initialized
 ::             -> build\js\wren_js.wasm, embedded in wren.exe (src\js\image)
 ::  launcher   wren.com, the console launcher (src\tools\wrencom)                 -> build\wren.com, embedded in wren.exe
 

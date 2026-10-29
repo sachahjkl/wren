@@ -1,6 +1,6 @@
 package wasm
 
-// The subset of WASI preview 1 (module wasi_snapshot_preview1) that a C program built against wasi-libc needs to run
+// The subset of WASI preview 1 (module wasi_snapshot_preview1) that a C program built against wasi-libc needs to run (the JavaScript engine module needs only clock_time_get and random_get: it has no C library)
 // inside the browser's sandbox: clocks, random bytes, standard output and error, empty arguments and environment.
 // Nothing reaches the file system or the network: there are no preopened directories, every descriptor other than
 // 0, 1 and 2 is EBADF, and every path or socket call is ENOTCAPABLE. Standard output and error go to `wasi_output`
@@ -10,6 +10,7 @@ package wasm
 // defined on the shared Linker like every host function (registered by `register_wasi`), for every realm.
 
 import "core:fmt"
+import "core:math"
 import "core:os"
 import "core:time"
 import "wb:base"
@@ -202,6 +203,23 @@ wasi_proc_exit :: proc "c" (env: rawptr, caller: Caller, a: [^]Raw, _: uint) -> 
 @(private) I :: Val_Kind.I32
 @(private) L :: Val_Kind.I64
 
+
+// libm: the module is linked with no C library, so the three functions Odin's core:math lowers to calls of the C library
+// (sin, cos, pow) are the host's: the C runtime's, accurate to the last place for any argument.
+@(private) D :: Val_Kind.F64
+@(private)
+libm_sin :: proc "c" (env: rawptr, caller: Caller, a: [^]Raw, _: uint) -> Trap { a[0].f64 = math.sin(a[0].f64); return nil }
+@(private)
+libm_cos :: proc "c" (env: rawptr, caller: Caller, a: [^]Raw, _: uint) -> Trap { a[0].f64 = math.cos(a[0].f64); return nil }
+@(private)
+libm_pow :: proc "c" (env: rawptr, caller: Caller, a: [^]Raw, _: uint) -> Trap { a[0].f64 = math.pow(a[0].f64, a[1].f64); return nil }
+
+@(private)
+LIBM_IMPORTS := [?]Import{
+	{module = "libm", name = "libm_sin", fn = libm_sin, params = {D}, results = {D}},
+	{module = "libm", name = "libm_cos", fn = libm_cos, params = {D}, results = {D}},
+	{module = "libm", name = "libm_pow", fn = libm_pow, params = {D, D}, results = {D}},
+}
 @(private)
 WASI_IMPORTS := [?]Import{
 	{module = WASI_MODULE, name = "args_sizes_get", fn = wasi_sizes_none, params = {I, I}, results = {I}},
@@ -246,5 +264,6 @@ WASI_IMPORTS := [?]Import{
 // Registers the WASI functions for every kind of instance. Safe to call more than once.
 register_wasi :: proc() -> bool {
 	for &im in WASI_IMPORTS { im.realms = max(u32) }
-	return register(WASI_IMPORTS[:])
+	for &im in LIBM_IMPORTS { im.realms = max(u32) }
+	return register(WASI_IMPORTS[:]) && register(LIBM_IMPORTS[:])
 }
