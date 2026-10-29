@@ -1,0 +1,3 @@
+type: Changed
+
+**Moteur JavaScript Odin (`jsrt`) par défaut, plus aucun C écrit par nous** : le moteur `jsrt`, écrit en Odin, tourne dans le module Wasm sous Wasmtime (le bac à sable est conservé). QuickJS-ng (C), son générateur de colle C, `wj_shim.c`, les correctifs et les déclarations `foreign` de QuickJS sont retirés de la compilation ; la colle des interfaces Web est générée en Odin (`native/js/odin/bindings_gen.odin`). `tools\build_js.ps1` ne télécharge ni ne compile plus QuickJS. Seul `lexbor` reste en C externe. `about:licenses` garde QuickJS-ng (ports `numconv`, `unicode`, format du bytecode). Vérifié : `jstest`, `jsdomtest` (1593), `jsloadtest`, `jswebtest` (1811), `framestest`, test262 sans régression, vérification du JIT.
