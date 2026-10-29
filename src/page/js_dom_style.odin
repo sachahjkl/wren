@@ -268,6 +268,9 @@ block_text :: proc(block: []Style_Decl) -> string {
 @(private)
 write_block :: proc(c: ^Call, element: Api_Element, block: []Style_Decl) -> Api_Error {
 	text := block_text(block)
+	// the declarations did not change (a script that writes the same custom property at every scroll event): no mutation,
+	// no restyle, as in other browsers
+	if cur, has := dom.get_attribute(c.page.doc, H(element.handle), "style"); has && cur == text { return .None }
 	if err := dom_error(dom.set_attribute(c.page.doc, H(element.handle), "style", text)); err != .None { return err }
 	// kept when the text parses back to this very block: no longhands put together into a shorthand (which parse again
 	// in their own order)
