@@ -46,15 +46,14 @@
     <h2>Releases</h2>
     <p class="intro">Eight versions in twelve days: the first public build, JavaScript, a JIT, a text engine of its own, a browser that speaks to screen readers, then a JavaScript engine written in Odin.</p>
     <div class="timeline">
-
+<!-- releases:begin -->
       <article class="release latest" id="v0-6-1">
         <div class="rail"><span class="dot"></span></div>
         <div class="release-body">
           <p class="release-date"><time datetime="2026-10-29">October 29, 2026</time></p>
           <div class="release-title"><h3>0.6.1</h3><span class="badge">Latest</span></div>
           <ul class="release-list">
-            <li><strong>A lighter JavaScript engine</strong>: an empty realm takes 4.3&nbsp;MiB instead of 6.4 and is
-              created in 1.3&nbsp;ms instead of 2.3; a page with 650&nbsp;KiB of script takes 23&nbsp;MiB instead of 27.</li>
+            <li><strong>Wren 0.6.1 makes the Odin JavaScript engine lighter.</strong> An empty realm takes 4.3 MiB of WebAssembly memory instead of 6.4, and is created in 1.3 ms instead of 2.3; a page with 650 KiB of script…</li>
           </ul>
           <p class="release-links"><a href="https://github.com/sachahjkl/wren/blob/master/docs/releases/v0.6.1.md">Release notes</a> ·
             <a href="https://github.com/sachahjkl/wren/releases/tag/v0.6.1">Download</a></p>
@@ -66,11 +65,10 @@
           <p class="release-date"><time datetime="2026-10-29">October 29, 2026</time></p>
           <div class="release-title"><h3>0.6.0</h3></div>
           <ul class="release-list">
-            <li><strong>JavaScript written in Odin</strong>: the engine runs inside the WebAssembly module under
-              Wasmtime, so the sandbox is the same, and no C of ours is left (only Lexbor remains as external C).</li>
-            <li><strong>Pages closer to Edge's</strong>: stylesheets applied in document order, <code>&lt;dialog&gt;</code>
-              styles, the page's CSS inside inline SVG, button widths and <code>text-wrap: balance</code>.</li>
-            <li>A crash fixed when going from one CSS-heavy page to another in the same window.</li>
+            <li><strong>The JavaScript engine is Odin.</strong> <code>jsrt</code> is the default and only engine: parser, bytecode interpreter, a JIT for numeric loops (compiled to WebAssembly), regular expressions, <code>BigInt</code>, dates, number…</li>
+            <li><strong>Speed and memory.</strong> The interpreter reaches about the speed of QuickJS in native code; under Wasmtime it is still 1.5 to 2.5 times slower than QuickJS in C on calls and slower to create a realm.</li>
+            <li><strong>More pages look like Edge's.</strong> A side-by-side comparison with Edge (<code>tools\site_compare.ps1</code>, 40 public pages) found and fixed: linked stylesheets applied in arrival order instead of document order…</li>
+            <li><strong>A crash fixed.</strong> Going from one CSS-heavy page to another in the same window could read freed memory (custom property layers pointed into rules a rebuild had freed).</li>
           </ul>
           <p class="release-links"><a href="https://github.com/sachahjkl/wren/blob/master/docs/releases/v0.6.0.md">Release notes</a> ·
             <a href="https://github.com/sachahjkl/wren/releases/tag/v0.6.0">Download</a></p>
@@ -82,10 +80,12 @@
           <p class="release-date"><time datetime="2026-10-28">October 28, 2026</time></p>
           <div class="release-title"><h3>0.5.0</h3></div>
           <ul class="release-list">
-            <li><strong>Driven from Puppeteer</strong>: a remote debugging port that speaks the Chrome DevTools
-              Protocol, and a headless mode.</li>
-            <li><strong>More of the web</strong>: WebCodecs, <code>URLPattern</code>, <code>scheduler.postTask</code>,
-              and the text and colour of newer CSS.</li>
+            <li><strong>A remote debugging port.</strong> <code>wren --remote-debugging-port=9222</code> speaks the Chrome DevTools Protocol (Puppeteer and Playwright attach; <code>/json/version</code> and <code>/json/list</code> answer), and <code>--headless</code> runs…</li>
+            <li><strong>More of the web.</strong> WebCodecs (<code>VideoFrame</code>, <code>ImageDecoder</code>, <code>VideoDecoder</code>, <code>AudioDecoder</code>, <code>AudioData</code>, encoded chunks; the encoders refuse honestly), <code>URLPattern</code>, <code>scheduler.postTask</code> / <code>yield</code>…</li>
+            <li><strong>Natively implemented.</strong> <code>Intl</code>, custom elements, shadow DOM, frames, the async clipboard and the IndexedDB façade moved from JavaScript prelude to native code (IndexedDB passes the same WPT as…</li>
+            <li><strong>Text.</strong> <code>lang</code> selects the <code>locl</code> feature, optical sizing, <code>text-rendering</code>, colour glyphs, and smoothing of canvas text on the CPU.</li>
+            <li><strong>Pages and chrome.</strong> Middle-click autoscroll, a translucent <code>− % +</code> zoom indicator at the end of the address bar, an optional new-tab page of public-domain artworks (<code>browser.newtab.art.enabled</code>,…</li>
+            <li><strong>Partial redraw.</strong> The compositor can repaint only what changed (<code>browser.gpu.partial_redraw</code>, with a verifier that compares against a full frame).</li>
           </ul>
           <p class="release-links"><a href="https://github.com/sachahjkl/wren/blob/master/docs/releases/v0.5.0.md">Release notes</a> ·
             <a href="https://github.com/sachahjkl/wren/releases/tag/v0.5.0">Download</a></p>
@@ -97,18 +97,12 @@
           <p class="release-date"><time datetime="2026-10-27">October 27, 2026</time></p>
           <div class="release-title"><h3>0.4.0</h3></div>
           <ul class="release-list">
-            <li><strong>Text without DirectWrite</strong>: fonts, shaping and line breaking come from Fontations,
-              HarfRust and ICU4X, the same on every machine.</li>
-            <li><strong>Accessibility</strong>: the chrome and the pages are exposed to screen readers through
-              UI Automation, with updates node by node when a page changes.</li>
-            <li>A <strong>configuration page you can read</strong>, and a <strong>list of search engines</strong> with
-              keywords (<code>@g cats</code>).</li>
-            <li><strong>Tab sidebar</strong>: pinned tabs, groups, a speaker on the tab that plays, a title that fades,
-              1000 tabs at about 1&nbsp;ms a frame.</li>
-            <li><strong>Several windows, each on its own</strong>: developer tools, caret, scale on another monitor,
-              and a splitter dragged at the screen's top rate.</li>
-            <li>Web Animations, popovers, the Navigation API, XML parsing, compression streams, and crash reports
-              with names.</li>
+            <li><strong>Text without DirectWrite.</strong> Fonts, shaping and line breaking come from Fontations, HarfRust and ICU4X (Rust), the same on every machine; <code>WREN_TEXT=dwrite</code> brings DirectWrite back for comparison.</li>
+            <li><strong>Accessibility.</strong> The browser's chrome and the pages are exposed to screen readers through UI Automation (AccessKit): roles, names, states, text fields with their caret and selection, iframes, and…</li>
+            <li><strong>A configuration page you can read.</strong> <code>about:config</code> has readable titles with the technical name beneath, categories with their counts, the value next to its name, a mark and a reset button on what…</li>
+            <li><strong>Search engines.</strong> A list of engines (DuckDuckGo, Bing, Google, Qwant, Ecosia, Startpage, Wikipedia, and your own) with a default and keywords: <code>@g cats</code> searches with Google, Ctrl+Down picks…</li>
+            <li><strong>Tab sidebar, second part.</strong> The sidebar opens and closes with a fade; pinned tabs; tab groups (name, colour, fold, drag in and out); a speaker on the tab that plays, with a mute button per tab;…</li>
+            <li><strong>Several windows, each on its own.</strong> Each window has its own developer tools (docked or detached), its own blinking caret, its own scale on a monitor of another DPI, and the drop mark of a tab…</li>
           </ul>
           <p class="release-links"><a href="https://github.com/sachahjkl/wren/blob/master/docs/releases/v0.4.0.md">Release notes</a> ·
             <a href="https://github.com/sachahjkl/wren/releases/tag/v0.4.0">Download</a></p>
@@ -120,66 +114,64 @@
           <p class="release-date"><time datetime="2026-10-21">October 21, 2026</time></p>
           <div class="release-title"><h3>0.3.0</h3></div>
           <ul class="release-list">
-            <li><strong>A JIT for JavaScript that produces WebAssembly</strong>: hot functions are compiled to Wasm
-              modules on background threads, then by Cranelift; a second tab compiles nothing.</li>
-            <li><strong>Iframes</strong>, each a document of its own: origin, scripts, sandbox, <code>postMessage</code>,
-              storage and HTTP cache partitioned by top-level site.</li>
-            <li><strong>A browser that never waits for a page</strong>: a 200&nbsp;ms script task now holds the
-              interface about 15&nbsp;ms, and a busy page keeps its last picture.</li>
-            <li>An <strong>HTTP cache</strong> in memory and on disk (RFC 9111), with <code>about:cache</code>.</li>
-            <li>Passkeys, history as a tree, a command palette, and memory given back when idle.</li>
+            <li><strong>A JIT for JavaScript that produces WebAssembly.</strong> Hot functions and loops of QuickJS-ng are compiled to Wasm modules on background threads, then by Wasmtime (Cranelift); guards fall back to the…</li>
+            <li><strong>Iframes.</strong> Each <code>&lt;iframe&gt;</code> is a document of its own, with its origin, its scripts and its JavaScript engine instance: <code>src</code>, <code>srcdoc</code>, <code>sandbox</code>, <code>allow</code> (Permissions Policy), <code>postMessage</code>,…</li>
+            <li><strong>The browser never waits for a page.</strong> A long script, style or layout pass no longer freezes tabs, the address bar or the menus: a 200 ms script task now holds the interface about 15 ms (it held it…</li>
+            <li><strong>An HTTP cache.</strong> Memory and disk, RFC 9111 (freshness, revalidation, <code>Vary</code>, partitioning by site), <code>about:cache</code>; F5 revalidates, Ctrl+F5 reloads everything.</li>
+            <li><strong>Passkeys.</strong> <code>navigator.credentials</code> and WebAuthn through Windows (Windows Hello, security keys, phones), with the specification's origin and RP ID rules.</li>
+            <li><strong>History as a tree.</strong> Going back restores the scroll position, zoom and filled forms; back and forward are instant (back/forward cache); branches are kept, <code>about:history</code> (Ctrl+H) lists every visit…</li>
           </ul>
           <p class="release-links"><a href="https://github.com/sachahjkl/wren/blob/master/docs/releases/v0.3.0.md">Release notes</a> ·
             <a href="https://github.com/sachahjkl/wren/releases/tag/v0.3.0">Download</a></p>
         </div>
       </article>
-
       <article class="release" id="v0-2-1">
         <div class="rail"><span class="dot"></span></div>
         <div class="release-body">
           <p class="release-date"><time datetime="2026-10-20">October 20, 2026</time></p>
-          <div class="release-title"><h3>0.2.1</h3><span class="badge fix">Fix</span></div>
+          <div class="release-title"><h3>0.2.1</h3></div>
           <ul class="release-list">
-            <li>Fixes a crash about three seconds after start when the pointer was over the window: the first frame
-              read the interface state before it was built.</li>
+            <li><strong>Fixes a crash about three seconds after start when the pointer was over the window: the first frame read the interface state before it was built.</strong></li>
           </ul>
-          <p class="release-links"><a href="https://github.com/sachahjkl/wren/releases">Releases on GitHub</a></p>
+          <p class="release-links"><a href="https://github.com/sachahjkl/wren/blob/master/docs/releases/v0.2.1.md">Release notes</a> ·
+            <a href="https://github.com/sachahjkl/wren/releases/tag/v0.2.1">Download</a></p>
         </div>
       </article>
-
       <article class="release" id="v0-2-0">
         <div class="rail"><span class="dot"></span></div>
         <div class="release-body">
           <p class="release-date"><time datetime="2026-10-20">October 20, 2026</time></p>
-          <div class="release-title"><h3>0.2.0</h3><span class="badge milestone">Milestone</span></div>
+          <div class="release-title"><h3>0.2.0</h3></div>
           <ul class="release-list">
-            <li><strong>JavaScript inside WebAssembly</strong>: QuickJS-ng compiled to a Wasm module, one realm per page
-              and per worker, a new one ready in about 0.5&nbsp;ms.</li>
-            <li><strong>Bindings generated from the Web IDL</strong>: 2,630 of 4,991 members implemented, the others
-              absent, so feature detection sees the truth.</li>
-            <li><strong>Shadow DOM</strong>: declarative roots, slots, <code>::part()</code>, constructable stylesheets,
-              event retargeting.</li>
-            <li>test262 at <strong>99.92&nbsp;%</strong> and 106,188 web-platform-tests subtests in every run.</li>
+            <li><strong>JavaScript inside WebAssembly.</strong> QuickJS-ng 0.17.0, compiled by a pinned Zig to a WASI module, pre-initialized at build time and embedded in <code>wren.exe</code>: a new page's realm starts in about 0.5 ms.</li>
+            <li><strong>The web platform for scripts, generated from the specifications.</strong> The bindings are generated from the official Web IDL (webref), with Web IDL's conversion rules; 2,630 of the 4,991 members of the…</li>
+            <li><strong>Shadow DOM.</strong> <code>attachShadow</code> and declarative shadow roots, which render even with JavaScript off; named and manual slots; encapsulated styles with <code>:host</code>, <code>::slotted()</code>, <code>::part()</code> and <code>:state()</code>;…</li>
+            <li><strong>Pages closer to Chromium.</strong> Text is placed vertically as Chromium places it (font metrics rounded the same way, half-leading, <code>vertical-align</code>, flex and button centering, table cells, form…</li>
+            <li><strong>A more complete browser.</strong> Tabs with favicons, loading indicators and drag to reorder; error pages by cause; downloads with the Windows Save dialog; optional session restore; Windows paths in the…</li>
+            <li><strong>Faster and safer.</strong> Shaders are precompiled, so the start page is drawn about 0.3 s after launch instead of 1.8 s; resizing no longer reallocates the swap chain and media queries only restyle when…</li>
           </ul>
-          <p class="release-links"><a href="https://github.com/sachahjkl/wren/blob/master/docs/releases/v0.2.0.md">Release notes</a></p>
+          <p class="release-links"><a href="https://github.com/sachahjkl/wren/blob/master/docs/releases/v0.2.0.md">Release notes</a> ·
+            <a href="https://github.com/sachahjkl/wren/releases/tag/v0.2.0">Download</a></p>
         </div>
       </article>
-
       <article class="release" id="v0-1-0">
         <div class="rail"><span class="dot"></span></div>
         <div class="release-body">
           <p class="release-date"><time datetime="2026-10-19">October 19, 2026</time></p>
-          <div class="release-title"><h3>0.1.0</h3><span class="badge first">First public release</span></div>
+          <div class="release-title"><h3>0.1.0</h3></div>
           <ul class="release-list">
-            <li>The first public build: <strong>WebAssembly is the only execution engine</strong>, and pages written in
-              Wasm draw on a retained GPU compositor.</li>
-            <li>The web APIs are imports generated from one description, <code>api/*.widl</code>, with an Odin SDK and
-              its conformance tests.</li>
+            <li><strong>WebAssembly runtime</strong>: Wasmtime 49 (Cranelift), compiled-code caches in memory and on disk (HMAC-authenticated), a deadline on every call (epoch interruption), several modules per document,…</li>
+            <li><strong>Web API from one description</strong>: 21 modules, 289 functions (DOM, events, forms, timers and rAF, fetch with streams, AbortController, URL, encoding, crypto, storage, history, performance, images,…</li>
+            <li><strong>HTML and CSS</strong>: Lexbor parsing, cascade layers, custom properties and <code>@property</code>, <code>:has</code> / <code>:is</code> / <code>:where</code>, media and container queries, Color 4 / 5, math functions, web fonts (WOFF, WOFF2),…</li>
+            <li><strong>Layout</strong>: block, inline (bidi), floats, positioning (sticky included), flexbox, grid with subgrid, tables; incremental relayout, parallel style and paragraph layout.</li>
+            <li><strong>Painting</strong>: a retained GPU compositor on Direct3D 11; transforms, rounded clips, opacity groups, filters, backdrop filters, blend modes, clip paths, masks, exact box shadows, gradients in every…</li>
+            <li><strong>Text</strong> on DirectWrite: font fallback, OpenType shaping, bidi, color glyphs in every format.</li>
           </ul>
-          <p class="release-links"><a href="https://github.com/sachahjkl/wren/blob/master/docs/releases/v0.1.0.md">Release notes</a></p>
+          <p class="release-links"><a href="https://github.com/sachahjkl/wren/blob/master/docs/releases/v0.1.0.md">Release notes</a> ·
+            <a href="https://github.com/sachahjkl/wren/releases/tag/v0.1.0">Download</a></p>
         </div>
       </article>
-
+    <!-- releases:end -->
     </div>
     <p class="more"><a class="btn" href="archive.html">Every version</a>
       <a class="btn" href="https://github.com/sachahjkl/wren/releases">Releases on GitHub</a></p>

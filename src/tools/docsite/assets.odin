@@ -3,7 +3,7 @@
 // generator means the whole site is one tool's output; there is nothing to install and nothing fetched at runtime.
 package docsite
 
-// Client-side full-text search over /docs/search-index.json. Vanilla JS, no framework. Keeps under 3 KB.
+// Client-side full-text search over docs/search-index.json (next to this script: the site may live under a path). Vanilla JS, no framework. Keeps under 3 KB.
 //   - "/" focuses the search box (unless already typing in a field)
 //   - results score title, section and body; Enter opens the first hit; Escape clears
 search_js :: proc() -> string {
@@ -11,9 +11,10 @@ search_js :: proc() -> string {
 var box=document.getElementById('doc-search-input');
 var out=document.getElementById('doc-search-results');
 if(!box||!out)return;
+var here=(document.currentScript&&document.currentScript.src)||'';var base=here.slice(0,here.lastIndexOf('/')+1);var site=base.replace(/docs\/$/,'');
 var idx=null,loading=false;
 function load(cb){if(idx){cb();return;}if(loading)return;loading=true;
-fetch('/docs/search-index.json').then(function(r){return r.json();}).then(function(d){idx=d;cb();});}
+fetch(base+'search-index.json').then(function(r){return r.json();}).then(function(d){idx=d;cb();});}
 function norm(s){return (s||'').toLowerCase();}
 function score(d,terms){var t=norm(d.t),s=norm(d.s),b=norm(d.b),sc=0;
 for(var i=0;i<terms.length;i++){var w=terms[i];if(!w)continue;var hit=0;
@@ -31,7 +32,7 @@ for(var i=0;i<idx.length;i++){var sc=score(idx[i],terms);if(sc>0)hits.push([sc,i
 hits.sort(function(a,b){return b[0]-a[0];});hits=hits.slice(0,8);
 if(!hits.length){out.innerHTML='<p class="doc-search-none">No matches.</p>';out.hidden=false;return;}
 var h='<ul>';for(var i=0;i<hits.length;i++){var d=hits[i][1];
-h+='<li><a href="'+d.u+'"><span class="r-sec">'+esc(d.s||'')+'</span><strong>'+esc(d.t)+'</strong>'+
+h+='<li><a href="'+site+d.u.replace(/^\//,'')+'"><span class="r-sec">'+esc(d.s||'')+'</span><strong>'+esc(d.t)+'</strong>'+
 '<span class="r-snip">'+esc(snippet(d.b,terms))+'</span></a></li>';}
 h+='</ul>';out.innerHTML=h;out.hidden=false;});}
 box.addEventListener('input',run);
