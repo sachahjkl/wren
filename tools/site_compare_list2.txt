@@ -1,0 +1,37 @@
+# Inner pages (topics, articles, threads, files, docs): the second list of tools\site_compare.ps1. Use -Height 2400 for the content further down.
+# --- reference documentation
+https://developer.mozilla.org/en-US/docs/Web/CSS/flex
+https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array
+https://developer.mozilla.org/en-US/docs/Web/HTML/Element/div
+https://developer.mozilla.org/en-US/docs/Learn_web_development
+https://docs.python.org/3/library/functions.html
+https://doc.rust-lang.org/std/vec/struct.Vec.html
+https://go.dev/doc/effective_go
+https://www.w3schools.com/css/css_flexbox.asp
+https://caniuse.com/flexbox
+# --- articles and long pages
+https://en.wikipedia.org/wiki/Odin_(programming_language)
+https://en.wikipedia.org/wiki/Main_Page
+https://en.wikipedia.org/wiki/Category:Programming_languages
+https://www.theguardian.com/technology
+https://www.bbc.com/news/technology
+https://css-tricks.com/snippets/css/a-guide-to-flexbox/
+https://blog.rust-lang.org/
+# --- forums, threads, code hosting
+https://news.ycombinator.com/item?id=1
+https://old.reddit.com/r/programming/top/
+https://stackoverflow.com/questions/11227809
+https://github.com/odin-lang/Odin/blob/master/README.md
+https://github.com/odin-lang/Odin/issues
+https://github.com/odin-lang/Odin/pulls
+https://gitlab.com/gitlab-org/gitlab
+https://www.npmjs.com/package/react
+https://crates.io/crates/serde
+# --- app-like and media pages
+https://www.youtube.com/
+https://vimeo.com/
+https://www.twitch.tv/
+https://open.spotify.com/
+# --- store pages
+https://www.ebay.com/b/Laptops-Netbooks/175672/bn_1648276
+https://www.amazon.com/
