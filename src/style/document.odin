@@ -89,7 +89,9 @@ sync_document_sheets :: proc(e: ^Engine, doc: ^dom.Document, base_url: string, a
 				if st.scope == s.scope && st.text == s.sheet.source && st.media == s.media_text { keep = true; break }
 			}
 		}
-		if !found && keep_missing != nil && keep_missing(keep_user, s.owner) { keep = true }
+		if !found && keep_missing != nil && keep_missing(keep_user, s.owner) { keep = true; s.detached = true }
+		// the owner is back in the tree: the rebuilds made meanwhile ordered the sheet as if it were nowhere
+		if found && keep && s.detached { s.detached = false; sheet_changed(e, s) }
 		if !keep {
 			sheet_changed(e, s)
 			sheet_free(s)

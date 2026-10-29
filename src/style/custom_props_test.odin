@@ -104,3 +104,29 @@ custom_properties_layer_edits :: proc(t: ^testing.T) {
 	custom_set(other, "--a", "11")
 	testing.expect(t, !custom_equal(l, other))
 }
+
+// The names and values a layer holds are its own copies: they come from the rules, which a rebuild of the rule index
+// frees, while the previous styles of a page are still compared with the next ones (transitions). Before, a page whose
+// sheets arrived between two passes crashed in string_eq (tailwindcss.com, then getbootstrap.com).
+@(test)
+custom_layer_owns_its_strings :: proc(t: ^testing.T) {
+	name := strings.clone("--from-a-rule")
+	value := strings.clone("12px")
+	removed := strings.clone("--gone")
+	defer { delete(name); delete(value); delete(removed) }
+	parent := custom_begin(nil, 8, context.temp_allocator)
+	custom_set(parent, "--gone", "1")
+	p := custom_begin(parent, 8, context.temp_allocator)
+	custom_set(p, name, value)
+	custom_remove(p, removed, context.temp_allocator)
+	for k, v in p.values {
+		testing.expect(t, raw_data(k) != raw_data(name), "the name is a copy")
+		testing.expect(t, raw_data(v) != raw_data(value), "the value is a copy")
+	}
+	testing.expect_value(t, len(p.removed), 1)
+	testing.expect(t, raw_data(p.removed[0]) != raw_data(removed), "the removed name is a copy")
+	got, ok := custom_get(p, "--from-a-rule")
+	testing.expect(t, ok && got == "12px")
+	_, gone := custom_get(p, "--gone")
+	testing.expect(t, !gone)
+}

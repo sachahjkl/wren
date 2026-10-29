@@ -1,0 +1,51 @@
+# Pages tools\site_compare.ps1 draws in Wren and in Edge (one per line; # starts a comment). Public pages, no login.
+# --- documents and docs
+https://example.com/
+https://en.wikipedia.org/wiki/WebAssembly
+https://developer.mozilla.org/en-US/
+https://www.w3.org/
+https://www.python.org/
+https://go.dev/
+https://www.rust-lang.org/
+https://odin-lang.org/
+https://ziglang.org/
+https://react.dev/
+https://vuejs.org/
+https://tailwindcss.com/
+https://getbootstrap.com/
+https://css-tricks.com/
+# --- news and magazines
+https://www.bbc.com/news
+https://www.theguardian.com/international
+https://www.lemonde.fr/
+https://www.spiegel.de/
+https://www.npr.org/
+https://arstechnica.com/
+https://www.theverge.com/
+https://www.cnn.com/
+# --- forums and aggregators
+https://news.ycombinator.com/
+https://lobste.rs/
+https://old.reddit.com/r/programming/
+https://stackoverflow.com/questions
+https://dev.to/
+https://medium.com/
+# --- code and tools
+https://github.com/odin-lang/Odin
+https://gitlab.com/explore
+https://www.npmjs.com/
+https://crates.io/
+# --- search and portals
+https://duckduckgo.com/
+https://www.bing.com/
+https://www.wikipedia.org/
+https://www.mozilla.org/
+https://www.apple.com/
+https://www.microsoft.com/
+# --- shops and listings
+https://www.ebay.com/
+https://www.imdb.com/
+https://www.craigslist.org/
+# --- government and institutions
+https://www.gov.uk/
+https://www.nasa.gov/

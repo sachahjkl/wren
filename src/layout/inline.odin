@@ -225,6 +225,7 @@ Line_Builder :: struct {
 	bi:       i32,
 	cs:       ^style.Computed,
 	cw:       f32,
+	trim:     f32,           // text-wrap: balance: the lines break this much narrower than `cw`, and align in `cw`
 	fc:       ^Flow_Ctx,
 	cx, cy:   f32,
 	root_fi:  i32,
@@ -260,14 +261,14 @@ Line_Builder :: struct {
 @(private)
 lb_band :: proc(lb: ^Line_Builder) {
 	fc := lb.fc
-	if fc.bfc == nil || len(fc.bfc.floats) == 0 { lb.left, lb.right = 0, lb.cw; return }
+	if fc.bfc == nil || len(fc.bfc.floats) == 0 { lb.left, lb.right = 0, lb.cw - lb.trim; return }
 	ty := content_top(fc) + lb.y
 	l, r := bfc_band(fc.bfc, ty, ty + lb.strut_h, fc.x, fc.x + lb.cw)
 	// a side no float narrows is exactly the content box's: lines that no float reaches do not depend on where the
 	// context sits ((x + cw) - x is not always cw in floating point), as when no float is placed at all, so that a
 	// cached result (block.odin) is the one a new layout would make
 	lb.left = l == fc.x ? 0 : l - fc.x
-	lb.right = r == fc.x + lb.cw ? lb.cw : r - fc.x
+	lb.right = (r == fc.x + lb.cw ? lb.cw : r - fc.x) - lb.trim
 }
 
 @(private)
@@ -411,7 +412,7 @@ lower_line :: proc(lb: ^Line_Builder, need: f32) {
 	if fc.bfc == nil { return }
 	for tries := 0; tries <= len(fc.bfc.floats); tries += 1 {
 		if lb.right - lb.left >= need - 0.01 { return }
-		if lb.left <= 0.01 && lb.right >= lb.cw - 0.01 { return }
+		if lb.left <= 0.01 && lb.right + lb.trim >= lb.cw - 0.01 { return }
 		nb := bfc_next_bottom(fc.bfc, content_top(fc) + lb.y)
 		if nb == math.F32_MAX { return }
 		lb.y = nb - content_top(fc)
@@ -740,7 +741,7 @@ finish_line :: proc(lb: ^Line_Builder, forced, last: bool) {
 	}
 
 	// horizontal alignment and justification
-	avail := lb.right - lb.left
+	avail := lb.right + lb.trim - lb.left
 	free := avail - used
 	align := lb.cs.text_align
 	rtl := is_rtl(lb.cs)
@@ -970,6 +971,47 @@ layout_ifc :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx, ch: f32 = -1) -> (f
 // follows: layout_contents).
 ifc_build :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx, ch: f32 = -1) -> (out: []Frag, lines: []Line, h: f32, empty: bool, trail: f32) {
 	b := &c.l.boxes[bi]
+	if b.cs != nil && b.cs.text_wrap_style == .Balance && balanceable(c, b) {
+		// text-wrap: balance (CSS Text 4 §5.3): the same lines as without it, as short as they can be: the narrowest
+		// width that keeps the number of lines. Only the line breaking narrows; the alignment keeps the full width.
+		_, lines0, _, _, _ := ifc_build_at(c, bi, cw, fc, ch, 0, true)
+		n := len(lines0)
+		trim: f32 = 0
+		if n > 1 && n <= BALANCE_MAX_LINES {
+			lo, hi := f32(0), cw
+			for _ in 0 ..< 10 {
+				mid := (lo + hi) * 0.5
+				_, l2, _, _, _ := ifc_build_at(c, bi, cw, fc, ch, mid, true)
+				if len(l2) <= n { lo = mid } else { hi = mid }
+			}
+			trim = lo
+		}
+		return ifc_build_at(c, bi, cw, fc, ch, trim, false)
+	}
+	return ifc_build_at(c, bi, cw, fc, ch, 0, false)
+}
+
+// Blink balances up to six lines.
+@(private)
+BALANCE_MAX_LINES :: 6
+
+// Only plain text (and inline boxes around it): a float, an atomic inline, a <br> or a block inside would be laid out or
+// placed again by every probe.
+@(private)
+balanceable :: proc(c: ^Ctx, b: ^Box) -> bool {
+	for i in b.items[0] ..< b.items[1] {
+		#partial switch c.l.inline_items[i].kind {
+		case .Atomic, .Float, .Abs, .Break, .Block: return false
+		}
+	}
+	return true
+}
+
+// `trim`: how much narrower than `cw` the lines break (text-wrap: balance). `probe`: only the number of lines is wanted
+// (the segments it measures are not kept).
+@(private)
+ifc_build_at :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx, ch: f32, trim: f32, probe: bool) -> (out: []Frag, lines: []Line, h: f32, empty: bool, trail: f32) {
+	b := &c.l.boxes[bi]
 	// working buffers, one set per nesting level of inline formatting contexts, reused for the whole pass
 	if c.lb_depth >= len(c.lb_bufs) {
 		nb := new(LB_Buffers, context.temp_allocator)
@@ -988,7 +1030,7 @@ ifc_build :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx, ch: f32 = -1) -> (ou
 	clear(&bufs.frags); clear(&bufs.lines); clear(&bufs.out); clear(&bufs.open); clear(&bufs.unit)
 	clear(&bufs.pending_floats); clear(&bufs.pending_abs); clear(&bufs.groups)
 	lb := Line_Builder{
-		c = c, bi = bi, cs = b.cs, cw = cw, fc = fc, cx = content_x(b), cy = content_y(b), root_fi = b.fi, first = true,
+		c = c, bi = bi, cs = b.cs, cw = cw, trim = trim, fc = fc, cx = content_x(b), cy = content_y(b), root_fi = b.fi, first = true,
 		frags = bufs.frags, lines = bufs.lines, out = bufs.out, open = bufs.open, unit = bufs.unit,
 		pending_floats = bufs.pending_floats, pending_abs = bufs.pending_abs, groups = bufs.groups,
 	}
@@ -1008,7 +1050,7 @@ ifc_build :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx, ch: f32 = -1) -> (ou
 	cached := cached_segs(c, bi)   // a range of Inc_State.segs: read by index (nested contexts may append to it)
 	ci := cached[0]
 	measuring := cached[1] <= cached[0]
-	recording := measuring && c.inc != nil   // incremental passes only: a full pass (a page load) does not pay for it
+	recording := measuring && c.inc != nil && !probe   // incremental passes only: a full pass (a page load) does not pay for it
 	clear(&bufs.segs)
 	for {
 		s: Seg
