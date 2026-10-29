@@ -1354,20 +1354,27 @@ forms_pointer_down :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: base.
 	if p == nil || p.formctl == nil { return true }
 	f := page.page_forms(p)
 	scale := page_scale(the_app)
-	fv.press_target, fv.press_down = target, ev.button == .Left
-	if target == base.NIL_HANDLE {
+	// what the pointer is over for the scripts: an empty part of the page (the canvas, a `pointer-events: none` overlay) is the root
+	// element's, as in other browsers (hit_or_root)
+	et := hit_or_root(t, target)
+	fv.press_target, fv.press_down = et, ev.button == .Left
+	if et == base.NIL_HANDLE {
 		if ev.button == .Left { forms.blur(f) }
 		return true
 	}
 	cx, cy := page_client_xy(t, local, scale)   // page_input.odin: `local` has the scroll, events want the viewport's
 	// pointerdown first (Pointer Events); a cancelled one suppresses the compatibility mousedown, not the default actions
-	if page_pointer_button(app, t, "pointerdown", target, ev, cx, cy) {
-		if !page.dispatch_event(p, target, dom.Event{type = "mousedown", bubbles = true, cancelable = true, x = cx, y = cy, button = i32(ev.button), mods = dom_mods(ev.mods), buttons = dom_buttons(ev.buttons)}) {
+	if page_pointer_button(app, t, "pointerdown", et, ev, cx, cy) {
+		if !page.dispatch_event(p, et, dom.Event{type = "mousedown", bubbles = true, cancelable = true, x = cx, y = cy, button = i32(ev.button), mods = dom_mods(ev.mods), buttons = dom_buttons(ev.buttons)}) {
 			return false
 		}
 	}
 	if t.page != p { return true }
-	if t.page != p || ev.button != .Left { return true }
+	if target == base.NIL_HANDLE {
+		if ev.button == .Left { forms.blur(f) }
+		return true
+	}
+	if ev.button != .Left { return true }
 	// click counting (double click selects a word, triple the whole field)
 	now := time.tick_now()
 	if time.duration_milliseconds(time.tick_diff(fv.last_click, now)) <= double_click_ms(app) && abs(ev.pos.x - fv.last_click_pos.x) < 4 * scale && abs(ev.pos.y - fv.last_click_pos.y) < 4 * scale {
@@ -1484,17 +1491,18 @@ forms_pointer_up :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: base.Ha
 		fv.sel_press = base.NIL_HANDLE
 	}
 	cx, cy := page_client_xy(t, local, scale)
-	up_target := page_pointer_target(t, target)   // a captured pointer's release goes to the capturing element
+	et := hit_or_root(t, target)   // (a release outside the page, or over its empty part: the root element's, which the press' document keeps)
+	up_target := page_pointer_target(t, et)   // a captured pointer's release goes to the capturing element
 	if up_target != base.NIL_HANDLE {
 		if page_pointer_button(app, t, "pointerup", up_target, ev, cx, cy) && t.page == p {
 			page.dispatch_event(p, up_target, dom.Event{type = "mouseup", bubbles = true, cancelable = true, x = cx, y = cy, button = i32(ev.button), mods = dom_mods(ev.mods), buttons = dom_buttons(ev.buttons)})
 		}
 	}
 	if t.page != p { return }
-	if t.page != p || !was_down || target == base.NIL_HANDLE || fv.press_target == base.NIL_HANDLE { return }
+	if t.page != p || !was_down || et == base.NIL_HANDLE || fv.press_target == base.NIL_HANDLE { return }
 	// common ancestor of where the button went down and where it came up
 	for a := fv.press_target; a != base.NIL_HANDLE; {
-		if dom.is_ancestor_or_self(p.doc, a, target) { return a, true }
+		if dom.is_ancestor_or_self(p.doc, a, et) { return a, true }
 		n := dom.get(p.doc, a)
 		if n == nil { break }
 		a = n.parent

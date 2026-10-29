@@ -333,18 +333,28 @@ frames_route_pointer :: proc(app: ^App, t: ^Tab, ev: platform.Event, index: int)
 		fi.focus = fv != nil ? fv.tab.page : nil
 		fi.press = fi.focus
 	}
+	// the document a button was pressed in keeps the moves while it is held, wherever the pointer goes (an implicit capture:
+	// a drag started in a frame goes on over the page around it)
+	captured := false
+	if ev.kind == .Mouse_Move && ev.buttons != {} && fi.press != nil {
+		if pv := frame_view_of(fi.press); pv != nil && pv != fv { fv, captured = pv, true }
+	}
 	if fv == nil { return false }
 	saved := wnd.page_rect
 	wnd.page_rect = fv.rect
 	defer wnd.page_rect = saved
 	used := frame_pointer_event(app, fv, ev, index)
-	if ev.kind == .Mouse_Move {
-		hovered := hit_test(&fv.tab.layout, ev.pos - fv.rect.min, draw.rect_size(fv.rect), fv.tab.scroll)
+	if ev.kind == .Mouse_Move && fv.tab.page != nil {
+		hovered := draw.rect_contains(fv.rect, ev.pos) ? hit_test(&fv.tab.layout, ev.pos - fv.rect.min, draw.rect_size(fv.rect), fv.tab.scroll) : base.NIL_HANDLE
+		if captured || draw.rect_contains(fv.rect, ev.pos) { hovered = hit_or_root(&fv.tab, hovered) }   // (the root element when no box is there, or outside it while its button is held)
 		st := fv.tab.page.style_state
+		was := st.hover
 		if st.hover != hovered {
 			st.hover = hovered
 			page.set_style_state(fv.tab.page, st)
 		}
+		// mousemove / pointermove and the boundary events, for the frame's scripts (page_pointer.odin): what a drag in a frame follows
+		page_pointer_events(app, &fv.tab, was, hovered, ev.pos, dom_buttons(ev.buttons), ev.emulated)
 	}
 	return used
 }
