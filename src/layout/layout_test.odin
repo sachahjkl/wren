@@ -620,3 +620,22 @@ table_beside_a_float_keeps_its_content_width :: proc(t: ^testing.T) {
 	defer unload(f)
 	expect_rect(t, f, "tb", 0, 0, 70, 10)   // 14 characters of 5px: one line
 }
+
+// text-wrap: balance (CSS Text 4 §5.3): the same number of lines, as short as they can be, aligned in the full width.
+@(test)
+text_wrap_balance :: proc(t: ^testing.T) {
+	f := load(`<body style="margin:0;font-size:16px"><div id=a style="width:100px">aa bb cc dd ee ff</div>
+<div id=b style="width:100px;text-wrap:balance">aa bb cc dd ee ff</div>
+<div id=c style="width:100px;text-wrap:balance;text-align:center">aa bb cc dd ee ff</div>
+<div id=d style="width:100px;text-wrap:balance">aa</div></body>`)
+	defer unload(f)
+	la, lb, lc, ld := ifc_lines(f, "a"), ifc_lines(f, "b"), ifc_lines(f, "c"), ifc_lines(f, "d")
+	testing.expect_value(t, len(la), 2)
+	testing.expect_value(t, len(lb), 2)
+	testing.expect(t, first_text(f, la[0]).w > 80, "without balance the first line is the longest that fits")
+	testing.expect(t, first_text(f, lb[0]).w < 70, "balanced: the first line is about half of the text")
+	testing.expect(t, near(first_text(f, lb[0]).x, 0), "balanced, start aligned: at the left edge")
+	// centered in the full width (100), not in the narrower width the lines were broken at
+	testing.expect(t, near(first_text(f, lc[0]).x, (100 - first_text(f, lc[0]).w) * 0.5, 1.5), "balanced, centered in the full width")
+	testing.expect_value(t, len(ld), 1)
+}

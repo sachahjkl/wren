@@ -83,6 +83,7 @@ Sheet :: struct {
 	base_url: string,                  // owned: where relative URLs in the sheet resolve from
 	id:      u64,                      // never reused: lets asynchronous loads find out whether their sheet still exists
 	from_link: bool,                   // came from <link rel=stylesheet>, not <style>
+	detached: bool,                    // kept while its owner was out of the tree (the parser's reveal): its order is stale once the owner is back
 	media_text: string,                // owned: the owner's media attribute as written
 	scope:   base.Handle,              // the shadow root whose tree the owner is in; NIL: the document (scope.odin)
 	constructed: bool,                 // a constructable stylesheet (new CSSStyleSheet()): applies where it is adopted
@@ -341,7 +342,7 @@ sheet_changed :: proc(e: ^Engine, s: ^Sheet) {
 		e.shadow.dirty = true
 		return
 	}
-	if s.scope != base.NIL_HANDLE { e.shadow.dirty = true } else { e.dirty = true }
+	if s.scope != base.NIL_HANDLE { e.shadow.dirty = true } else { e.dirty = true; clear(&e.media_seen) }
 }
 
 // A sheet the embedder adds with user priority (the content blocker's display: none !important rules): it applies to the
@@ -801,6 +802,9 @@ media_note :: proc(e: ^Engine, list: css.Media_Query_List) -> bool {
 
 @(private)
 media_flipped :: proc(e: ^Engine) -> bool {
+	// the lists live in the sheets: a rebuild already due (a sheet removed or changed since the last one) has them
+	// evaluated again, and what was seen may point into a sheet that is gone
+	if e.dirty { return false }
 	for s in e.media_seen { if css.media_matches(s.list, e.env) != s.matched { return true } }
 	return false
 }

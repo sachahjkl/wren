@@ -196,6 +196,10 @@ main :: proc() {
 	check(i7.ok && px(i7, 16, 16) == {0, 0, 255, 255}, fmt.tprintf("<svg style=color:currentColor>: the parent's color (%v)", px(i7, 16, 16)))
 	i8 := inline("inl8", 32, 32)
 	check(i8.ok && px(i8, 16, 16) == {255, 0, 0, 255}, fmt.tprintf("<svg color=#ff0000>: its own color (%v)", px(i8, 16, 16)))
+	// the page's CSS on the elements inside the <svg>: a class rule beats the fill attribute; light-dark() follows the scheme
+	i9 := inline("inl9", 32, 32)
+	check(i9.ok && px(i9, 16, 8) == {255, 128, 0, 255}, fmt.tprintf("a class rule sets the fill of an inner element (%v)", px(i9, 16, 8)))
+	check(i9.ok && px(i9, 16, 24) == {0, 255, 255, 255}, fmt.tprintf("light-dark() on an inner element's fill (%v)", px(i9, 16, 24)))
 	i1 := inline("inl1", 32, 32)
 	check(i1.ok && near(px(i1, 16, 14), {0x15, 0x65, 0xc0, 255}, 4), fmt.tprintf("<use href=#i-star> into a hidden sprite, currentColor from the parent (%v)", px(i1, 16, 14)))
 	i2 := inline("inl2", 32, 32)
