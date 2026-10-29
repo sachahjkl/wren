@@ -137,6 +137,13 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, open: f32, extent: f32, cc: 
 	_ = ui.signal(area)   // the wheel
 	own.strip.area_key = area.key
 	total := side_list_layout(wnd.tabs[:], wnd.groups[:], rh, hh, &own.sidebar.items)
+	if cc != nil {
+		// classic: the feet of the current tab reach beyond its row, above the first and below the last: room for them inside the
+		// clip, else they are cut and the tab's outline does not join the panel's edge line
+		lead := tab_dims(side_tab_metrics(em, ui_scale_of(app), rh, rh)).ext
+		for &it in own.sidebar.items { it.y += lead }
+		total += lead * 2
+	}
 	items := own.sidebar.items[:]
 	if app.active != nil { app.active.zone = {rect = area.rect, vertical = true, offset = area.view_off.y, pitch = rh, n = n, valid = true} }
 	view_h := area.size.y > 0 ? area.size.y : f32(active_window(app).win.size.y)
