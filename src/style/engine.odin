@@ -342,7 +342,7 @@ sheet_changed :: proc(e: ^Engine, s: ^Sheet) {
 		e.shadow.dirty = true
 		return
 	}
-	if s.scope != base.NIL_HANDLE { e.shadow.dirty = true } else { e.dirty = true }
+	if s.scope != base.NIL_HANDLE { e.shadow.dirty = true } else { e.dirty = true; clear(&e.media_seen) }
 }
 
 // A sheet the embedder adds with user priority (the content blocker's display: none !important rules): it applies to the
@@ -802,6 +802,9 @@ media_note :: proc(e: ^Engine, list: css.Media_Query_List) -> bool {
 
 @(private)
 media_flipped :: proc(e: ^Engine) -> bool {
+	// the lists live in the sheets: a rebuild already due (a sheet removed or changed since the last one) has them
+	// evaluated again, and what was seen may point into a sheet that is gone
+	if e.dirty { return false }
 	for s in e.media_seen { if css.media_matches(s.list, e.env) != s.matched { return true } }
 	return false
 }

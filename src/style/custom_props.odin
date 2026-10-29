@@ -1,6 +1,7 @@
 package style
 
 import "base:runtime"
+import "core:strings"
 
 // Custom properties as layers (types.odin, Custom_Props): an element that declares custom properties gets a layer of
 // its own names over its parent's set instead of a copy of every inherited name. Sites define hundreds of variables on
@@ -54,8 +55,11 @@ custom_begin :: proc(parent: ^Custom_Props, max_layers: int, a: runtime.Allocato
 	return p
 }
 
-// Sets `name` in the layer being built.
+// Sets `name` in the layer being built. The strings are copied into the layer's own memory: the names and values come
+// from the rules (a rebuild of the rule index frees them), while the previous styles of a page stay alive until the next
+// pass has been compared with them (transitions: timeline_restyled).
 custom_set :: proc(p: ^Custom_Props, name, value: string) {
+	a := p.values.allocator
 	if _, own := p.values[name]; !own {
 		if i := removed_index(p, name); i >= 0 {
 			unordered_remove_string(&p.removed, i)
@@ -63,8 +67,10 @@ custom_set :: proc(p: ^Custom_Props, name, value: string) {
 		} else if p.parent == nil || !custom_has(p.parent, name) {
 			p.total += 1
 		}
+		p.values[strings.clone(name, a)] = strings.clone(value, a)
+		return
 	}
-	p.values[name] = value
+	p.values[name] = strings.clone(value, a)
 }
 
 // Drops `name` from the layer being built (and from what it inherits).
@@ -77,7 +83,7 @@ custom_remove :: proc(p: ^Custom_Props, name: string, a: runtime.Allocator) {
 	if p.parent == nil || removed_index(p, name) >= 0 || !custom_has(p.parent, name) { return }
 	grown := make([]string, len(p.removed) + 1, a)
 	copy(grown, p.removed)
-	grown[len(p.removed)] = name
+	grown[len(p.removed)] = strings.clone(name, a)
 	p.removed = grown
 	p.total -= 1
 }
