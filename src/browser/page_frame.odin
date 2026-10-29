@@ -146,10 +146,11 @@ page_paint :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect) {
 	images_paint_begin_frame(app)
 	selection_paint_begin(app, t)
 	frames_paint_begin(t.page)   // frames paint their documents in their boxes (frames_shell.odin)
-	paint(&t.layout, dc, t.page.doc, rect.min, paint_size, t.scroll, rect)
+	paint(&t.layout, dc, t.page.doc, rect.min, paint_size, t.scroll, rect, doc_scrollbar = false)
 	forms_paint_overlays(app, dc, rect)
 	images_after_paint(app)
-	shell_capture(app, t, dc, rect, to_draw(p.canvas))   // shell_frames.odin: shown while the page is busy
+	shell_capture(app, t, dc, rect, to_draw(p.canvas))   // shell_frames.odin: shown while the page is busy (without the scroll bar: it is drawn there at the wheel's position)
+	paint_doc_scrollbar(&t.layout, dc, rect.min, paint_size, t.scroll)
 	prof_end(.Paint_Items)
 	draw.pop_clip(dc)
 	timing_painted(t)
