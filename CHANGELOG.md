@@ -7,6 +7,11 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 
 ## Unreleased
 
+## 0.6.1 - 2026-10-29
+
+### Changed
+- **Moteur Odin : moins de mémoire par royaume et par page** : le compilateur libère les tables et tampons d'une fonction dès que son bytecode existe, ses petits blocs sont recyclés et les littéraux chaîne sont des tranches de la source ; les membres des prototypes Web IDL ne sont définis qu'au premier accès (mêmes clés, même ordre, mêmes descripteurs) et les fonctions natives sont plus petites. Mémoire linéaire du module Wasm : royaume vide 6 592 → 4 352 Kio (création d'un royaume 2,3 → 1,3 ms), page de 650 Kio de script 27 904 → 23 744 Kio, même page compilée seulement 27 840 → 14 144 Kio ; l'image `wren_js.wasm` passe de 7 447 à 5 574 Kio. Bytecode identique à celui de QuickJS-ng sur les 19 006 fichiers de test262 `language/`.
+
 ## 0.6.0 - 2026-10-29
 
 ### Added

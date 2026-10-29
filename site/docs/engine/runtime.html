@@ -158,6 +158,7 @@
 <li><a href="/docs/releases/v0.4.0.html">Wren 0.4.0</a></li>
 <li><a href="/docs/releases/v0.5.0.html">Wren 0.5.0</a></li>
 <li><a href="/docs/releases/v0.6.0.html">Wren 0.6.0</a></li>
+<li><a href="/docs/releases/v0.6.1.html">Wren 0.6.1</a></li>
 </ul>
 </details></li>
 </ul>
@@ -285,6 +286,28 @@ allocation.</li>
 <li>The heap is capped by <code>Host_Config.malloc_limit</code>; all allocation goes through the injected allocator.
 A collection runs when the heap passes <code>max(2 × live, live + 4 MiB)</code>.</li>
 </ul>
+<h3 id="where-the-memory-of-a-realm-and-of-a-page-goes-wasm-jsengine-memstartup"><a class="anchor" href="#where-the-memory-of-a-realm-and-of-a-page-goes-wasm-jsengine-memstartup" aria-hidden="true">#</a>Where the memory of a realm and of a page goes (Wasm, <code>jsengine mem|startup</code>)</h3>
+<p>The linear memory of a Wasm module only grows, so what counts is the high-water mark.</p>
+<ul>
+<li><strong>Lazy members.</strong> A Web IDL prototype (<code>native/js/odin/wj/qjs_platform.odin</code>, <code>wj_platform_preinit</code>) is marked lazy
+with <code>JS_SetLazyMembers</code>: its shape is private and flagged, and <code>shape_find</code>, the enumerations of a shape
+(<code>own_property_keys</code>, <code>plain_keys_object</code>) and <code>add_property</code> call <code>shape_realize</code> first, which runs the glue's callback
+(<code>lazy_proto_members</code>): it defines the members the eager code defined, with the same keys, order, descriptors, names and
+lengths, minus what the realm's scope hides and the touch handlers <code>browser.touch.expose</code> turned off, plus the
+unimplemented-throw members after the implemented ones. A realm creates the thousands of function objects of the
+interfaces a script looks at, not all of them. A prototype that pre-initialization touches after the members
+(iterator interfaces) is realized in the image. The interface objects, namespaces and the global object stay eager.
+Empty realm: 6 592 → 4 352 KiB of linear memory, 6 973 → 4 723 KiB private per realm, 2.3 → 1.3 ms to create.</li>
+<li><strong>Native functions.</strong> A function object has exactly the two slots (<code>length</code>, <code>name</code>) it is born with; a C function of
+the glue without user data keeps its pointer in <code>Native_Data.data</code> (low bit set, <code>native_data_is_raw</code>) and its
+prototype in which <code>bridge_*</code> procedure it calls (no block of values); its <code>name</code> is the string of the property key's
+atom when there is one (<code>str_interned</code>).</li>
+<li><strong>The compiler</strong> (<code>compile_alloc.odin</code>): the front-end's allocator takes blocks up to 2 KiB from the arena, recycles
+them by size class (a larger free block is cut for a smaller request), and takes larger ones from the host heap, one by
+one, so that a table that dies is given back at once. <code>js_create_function</code> frees a function's tables
+(<code>free_func_def</code>) as soon as its bytecode exists, the passes free their buffers, and the serialized stream is built in
+one buffer (<code>serialize.odin</code>). The 650 KiB bundle of <code>examples/jsbench/page_gen.js</code> asked the arena for 14.6 MB, now 6.5.</li>
+</ul>
 <h2 id="serializedbytecode-reader-and-verifier-serializeodin"><a class="anchor" href="#serializedbytecode-reader-and-verifier-serializeodin" aria-hidden="true">#</a>Serialized‑bytecode reader and verifier (<code>serialize.odin</code>)</h2>
 <p>Parses <code>JS_WriteObject(..., JS_WRITE_OBJ_BYTECODE)</code> for <code>BC_VERSION 28</code>: header, atom table (both atom
 encodings of the format), function bytecode (flags, vardefs, closure vars, cpool, bytecode, debug info,
@@ -384,6 +407,7 @@ destructuring. Memory is 1.4× QuickJS on allocation‑heavy scripts (a plain ob
 <li><a href="#value-model-valueodin">Value model (value.odin)</a></li>
 <li><a href="#strings-atoms-shapes-objects">Strings, atoms, shapes, objects</a></li>
 <li><a href="#memory-management-gcodin">Memory management (gc.odin)</a></li>
+<li class="lvl3"><a href="#where-the-memory-of-a-realm-and-of-a-page-goes-wasm-jsengine-memstartup">Where the memory of a realm and of a page goes (Wasm, jsengine mem|startup)</a></li>
 <li><a href="#serializedbytecode-reader-and-verifier-serializeodin">Serialized‑bytecode reader and verifier (serialize.odin)</a></li>
 <li><a href="#interpreter-interpodin-opsodin-coroodin">Interpreter (interp.odin, ops.odin, coro.odin)</a></li>
 <li><a href="#standard-library">Standard library</a></li>
