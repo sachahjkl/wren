@@ -38,6 +38,7 @@ commands.odin RESERVED_SHORTCUTS process  # a table
 compositor.odin COMPOSITOR_PREFS process  # a table
 compositor.odin compositor_settings process  # preferences read once and on change
 compositor.odin composite_stats process
+compositor.odin comp_stuck process  # the fixed and sticky parts of the last paint (window pixels)
 compositor.odin comps process
 compositor_test.odin compositor_test_lock test
 console_eval.odin GLOBALS process  # a table
@@ -248,7 +249,5 @@ canvas_shell.odin color_glyph_cache process  # the cache of the colour glyph bit
 canvas_shell.odin color_glyph_next_uid process  # the next name of a cached colour glyph bitmap
 video_fast_path.odin vfast process  # the video fast path: what each video drew in the last page frame
 cdp.odin the_cdp process  # the DevTools-protocol server of the process (the debugging port)
-partial_redraw.odin GPU_PREFS process  # a table of the partial redraw preferences
-partial_redraw.odin gpu_settings process  # the partial redraw settings read from the preferences
 appearance_other.odin watch_app process  # the colour-scheme watcher (the platform's bus connection)
 date_display_other.odin MONTHS_ABBR process  # a table

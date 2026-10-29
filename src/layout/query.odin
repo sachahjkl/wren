@@ -93,6 +93,14 @@ View :: struct {
 // The space draws untransformed (only its offset applies).
 space_plain :: #force_inline proc(l: ^Layout, s: i32) -> bool { return l.spaces[s].xform == NONE }
 
+// The space belongs to a viewport-fixed box or a sticky box (or is inside one): the page's scroll does not carry it along.
+space_stuck :: proc(l: ^Layout, s: i32) -> bool {
+	for i := s; i != NONE && int(i) < len(l.spaces); i = l.spaces[i].parent {
+		if l.spaces[i].kind == .Fixed || l.spaces[i].kind == .Sticky { return true }
+	}
+	return false
+}
+
 // Viewport point -> untransformed layout point of space `s` (offset removed). ok = false: the space is flattened.
 view_to_local :: proc(l: ^Layout, v: ^View, s: i32, p: Vec2) -> (Vec2, bool) {
 	if space_plain(l, s) { return p - v.offsets[s], true }

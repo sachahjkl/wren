@@ -84,6 +84,8 @@ Shell_Phase :: enum u8 {
 	Anim,   // animation frames, styles, layout: the frame's input left for the chrome (chrome frames take it)
 }
 
+SNAPSHOT_STUCK_MAX :: 16
+
 // The last frame of a tab's page, kept on the GPU.
 Page_Snapshot :: struct {
 	tab:    u64,
@@ -96,6 +98,8 @@ Page_Snapshot :: struct {
 	bar_track: draw.Rect,    // its track (relative to the page area's corner) and the thumb's length, colors
 	bar_thumb: f32,
 	bar_thumb_c, bar_track_c: draw.Color,
+	stuck:  [SNAPSHOT_STUCK_MAX]draw.Rect,   // the fixed and sticky boxes (window pixels): they stay where they were drawn when the rest scrolls
+	n_stuck: int,
 	canvas: draw.Color,
 	gen:    u64,             // render.targets_generation of the texture
 	used:   u64,             // chrome_frames.frame_no when last captured or shown (least recently used go first)
@@ -367,9 +371,7 @@ shell_chrome_frame :: proc(app: ^App) {
 	platform.frame_gate_stage(gate, .Drawing)
 	draw.begin_frame(&app.dc, size)
 	render.frame_begin(&app.r, {0, 0, 0, 1})
-	partial_redraw_frame_begin(app)   // partial_redraw.odin
 	ui.draw_tree(wnd.ui, &app.dc)
-	partial_redraw_mark_chrome(app)   // partial_redraw.odin: the page's damage is marked by the compositor during draw_tree
 	draw.end_frame(&app.dc)
 	platform.frame_gate_stage(gate, .Presenting)
 	remote_capture_arm(app)   // remote_shell.odin: a capture of this window
@@ -525,6 +527,17 @@ shell_capture :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect, ca
 	}
 	s.image, s.rect, s.scroll, s.canvas, s.gen, s.used, s.page = bd, rect, t.scroll, canvas, gen, chrome_frames.frame_no, t.page
 	s.limit = max(t.layout.height - draw.rect_size(rect).y, 0)
+	// (more than fit: the last one takes the rest, as their union)
+	s.n_stuck = 0
+	for r in composite_stuck() {
+		if s.n_stuck < SNAPSHOT_STUCK_MAX {
+			s.stuck[s.n_stuck] = r
+			s.n_stuck += 1
+		} else {
+			last := &s.stuck[SNAPSHOT_STUCK_MAX - 1]
+			last^ = {{min(last.min.x, r.min.x), min(last.min.y, r.min.y)}, {max(last.max.x, r.max.x), max(last.max.y, r.max.y)}}
+		}
+	}
 	track, thumb, ok := lay.doc_scrollbar(&t.layout, draw.rect_size(rect), math.round(t.scroll))
 	s.bar = ok
 	if ok {
@@ -553,6 +566,18 @@ shell_paint_page :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect)
 	if covered.max.x <= covered.min.x || covered.max.y <= covered.min.y { return true }
 	draw.push_clip(dc, rect)
 	draw.backdrop_draw(dc, img, covered, {})
+	if scroll != s.scroll && s.n_stuck > 0 {
+		// a fixed header or a sticky box does not scroll with the page: it stays where the last frame drew it (the wheel moves what is under it)
+		still := s.image
+		still.image.origin += rect.min - s.rect.min
+		for i in 0 ..< s.n_stuck {
+			r := draw.rect_intersect(draw.rect_shift(s.stuck[i], rect.min - s.rect.min), rect)
+			if r.max.x <= r.min.x || r.max.y <= r.min.y { continue }
+			draw.push_clip(dc, r)
+			draw.backdrop_draw(dc, still, r, {})
+			draw.pop_clip(dc)
+		}
+	}
 	if s.bar {
 		tr := draw.rect_shift(s.bar_track, rect.min)
 		room := (tr.max.y - tr.min.y) - s.bar_thumb

@@ -39,24 +39,9 @@ jobs:
           if ($LASTEXITCODE) { throw "CHANGELOG.md is not ready for $v" }
           "version=$v" >> $env:GITHUB_OUTPUT
 
-      # The unit tests and the end-to-end steps run first, on the development build and the quick native library (what the CI
-      # tests): the toolkit's text tests hang or crash with the fat-LTO library on the runners (not on a development machine: not
-      # understood), and test_all rebuilds the exe whenever a library is newer than it, which replaced the release exe by a
-      # development one in the run before this.
-      - name: Native library for the tests (quick profile)
-        run: |
-          ./tools/build_native.ps1 -Profile quick
-          if ($LASTEXITCODE) { exit 1 }
-
-      # The CI of master is the gate (a release is tagged on a commit it passed); the end-to-end steps that wait on a loaded
-      # runner must not stop a tagged release from being published, so a failure here is reported, not fatal.
-      - name: Tests (tools\test_all.ps1 -CI)
-        continue-on-error: true
-        shell: cmd
-        run: powershell -NoProfile -ExecutionPolicy Bypass -File tools\test_all.ps1 -CI
-
-      # What is published is built last, with the fat-LTO library, and the remote-control suite (navigation, scripts, input,
-      # captures, text and images on screen) runs against that very exe before it is packed.
+      # No test run here: the CI of master is the gate (a release is tagged on a commit it passed). What is published is built, and the
+      # remote-control suite (navigation, scripts, input, captures, text and images on screen) runs against that very exe before it is
+      # packed.
       - name: Build (release)
         shell: cmd
         run: call build.bat release

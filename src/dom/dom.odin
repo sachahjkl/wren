@@ -409,6 +409,13 @@ set_attribute :: proc(d: ^Document, h: base.Handle, name, value: string) -> Erro
 	for &a in n.attrs {
 		if a.name == lname {
 			old := a.value
+			if old == value {
+				// the same value (a script that writes it again at every scroll event): observers and callbacks still see the write,
+				// as the DOM says, but the document did not change: no new version, so no restyle and no layout
+				journal_record(d, .Attribute, h, base.NIL_HANDLE, lname, old, true)
+				notify_attribute(d, h, lname)
+				return .None
+			}
 			a.value = heap_str(value)
 			touch(d)
 			d.attr_version += 1
