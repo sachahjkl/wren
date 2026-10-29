@@ -8,11 +8,6 @@ package wj
 
 import "base:runtime"
 
-@(default_calling_convention = "c")
-foreign {
-	@(link_name = "aligned_alloc") libc_aligned_alloc :: proc(alignment: uint, size: uint) -> rawptr ---
-}
-
 // malloc's own alignment on wasm32 (two words)
 @(private = "file") MALLOC_ALIGN :: 8
 

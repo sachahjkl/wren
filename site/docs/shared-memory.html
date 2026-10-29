@@ -207,12 +207,12 @@
 <li>a typed array reads <code>ptr[i]</code>.</li>
 </ul>
 <p>So the bytes of a <code>SharedArrayBuffer</code> must be in memory 0 of <strong>every</strong> realm that sees them. QuickJS has hooks for this (<code>JS_SetSharedArrayBufferFunctions</code>), but they only choose where the bytes go <em>within</em> memory 0.</p>
-<p>The only way is for all the realms of an agent cluster (a page and its dedicated workers) to have <strong>the same memory 0</strong>: one engine image built for <code>wasm32-wasip1-threads</code>, run as one instance per thread on one shared memory. That costs:</p>
+<p>The only way is for all the realms of an agent cluster (a page and its dedicated workers) to have <strong>the same memory 0</strong>: one engine image built with the threads and atomics target features, run as one instance per thread on one shared memory. That costs:</p>
 <ol>
-<li><p><strong>Building the engine for threads.</strong> <code>tools/build_js.ps1</code> would target <code>wasm32-wasip1-threads</code>:</p>
+<li><p><strong>Building the engine for threads.</strong> <code>tools/build_js.ps1</code> would build with shared memory and atomics:</p>
 <ul>
-<li>wasi-libc with locks in <code>malloc</code>;</li>
-<li><code>CONFIG_ATOMICS</code> in QuickJS, with <code>Atomics.wait</code> on a pthread condition;</li>
+<li>the module's heap (<code>wj/libc.odin</code>, base:runtime's emmalloc) with its lock taken on every thread;</li>
+<li>the engine's <code>Atomics.wait</code> on a wait address of the shared memory;</li>
 <li>a stack and thread-local storage per thread.</li>
 </ul></li>
 <li><strong>Pre-initialization.</strong> The image is pre-initialized (<code>preinit</code>: the snapshot of an engine already started, copied on write). A shared memory is initialized once (passive segments, <code>__wasm_init_memory</code>), not per instance. The snapshot and its copy-on-write start-up (which makes a realm start in about 1 ms) would have to be redone.</li>

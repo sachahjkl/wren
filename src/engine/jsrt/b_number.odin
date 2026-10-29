@@ -158,7 +158,7 @@ math_unary :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Val
 	case .ceil: r = math.ceil(d)
 	case .cos: r = math.cos(d)
 	case .cosh: r = math.cosh(d)
-	case .exp: r = math.exp(d)
+	case .exp: r = exp_f64(d)
 	case .expm1: r = d == 0 ? d : expm1_f64(d)
 	case .floor: r = math.floor(d)
 	case .fround: r = f64(f32(d))
@@ -208,7 +208,7 @@ is_finite_f64 :: #force_inline proc(d: f64) -> bool {return !math.is_nan(d) && !
 expm1_f64 :: proc(x: f64) -> f64 {
 	if math.is_inf(x) {return x > 0 ? x : -1}
 	if abs(x) < 1e-5 {return x + x * x / 2 + x * x * x / 6}
-	u := math.exp(x)
+	u := exp_f64(x)
 	if u == 1 {return x}
 	um1 := u - 1
 	if um1 == -1 {return -1}
@@ -548,4 +548,50 @@ init_bigint_builtins :: proc(ctx: ^Context) {
 	def_method(ctx, bp, "toLocaleString", bp_to_string, 0, 1)
 	def_method(ctx, bp, "valueOf", bp_value_of, 0)
 	def_tag(ctx, bp, "BigInt")
+}
+
+// exp(x), FreeBSD's e_exp.c (fdlibm): under 1 ulp. core:math's exp (and its sinh, cosh and tanh) lowers to a call of the C
+// library's `exp`, which the module, linked with no C library, does not have: it is this one, exported under that name.
+when ODIN_ARCH == .wasm32 {
+	@(export, link_name = "exp")
+	c_exp :: proc "c" (x: f64) -> f64 {
+		return exp_f64(x)
+	}
+}
+
+exp_f64 :: proc "contextless" (x: f64) -> f64 {
+	LN2_HI :: 6.93147180369123816490e-01
+	LN2_LO :: 1.90821492927058770002e-10
+	INV_LN2 :: 1.44269504088896338700e+00
+	P1 :: 1.66666666666666019037e-01
+	P2 :: -2.77777777770155933842e-03
+	P3 :: 6.61375632143793436117e-05
+	P4 :: -1.65339022054652515390e-06
+	P5 :: 4.13813679705723846039e-08
+	if x != x {return x}
+	if math.is_inf(x) {return x > 0 ? x : 0}
+	if x > 7.09782712893383973096e+02 {return math.inf_f64(1)}
+	if x < -7.45133219101941108420e+02 {return 0}
+	ax := abs(x)
+	hi, lo: f64
+	k: int
+	xr := x
+	if ax > 0.5 * math.LN2 {
+		if ax < 1.5 * math.LN2 {
+			if x > 0 {hi, lo, k = x - LN2_HI, LN2_LO, 1} else {hi, lo, k = x + LN2_HI, -LN2_LO, -1}
+		} else {
+			k = int(INV_LN2 * x + (x < 0 ? -0.5 : 0.5))
+			t := f64(k)
+			hi = x - t * LN2_HI
+			lo = t * LN2_LO
+		}
+		xr = hi - lo
+	} else if ax < 1.0 / f64(1 << 28) {
+		return 1 + x
+	}
+	t := xr * xr
+	c := xr - t * (P1 + t * (P2 + t * (P3 + t * (P4 + t * P5))))
+	if k == 0 {return 1 - ((xr * c) / (c - 2) - xr)}
+	y := 1 - ((lo - (xr * c) / (2 - c)) - hi)
+	return math.ldexp(y, k)
 }

@@ -21,11 +21,11 @@ Each realm is an instance of the JavaScript engine image (`build/js/wren_js.wasm
 
 So the bytes of a `SharedArrayBuffer` must be in memory 0 of **every** realm that sees them. QuickJS has hooks for this (`JS_SetSharedArrayBufferFunctions`), but they only choose where the bytes go *within* memory 0.
 
-The only way is for all the realms of an agent cluster (a page and its dedicated workers) to have **the same memory 0**: one engine image built for `wasm32-wasip1-threads`, run as one instance per thread on one shared memory. That costs:
+The only way is for all the realms of an agent cluster (a page and its dedicated workers) to have **the same memory 0**: one engine image built with the threads and atomics target features, run as one instance per thread on one shared memory. That costs:
 
-1. **Building the engine for threads.** `tools/build_js.ps1` would target `wasm32-wasip1-threads`:
-   - wasi-libc with locks in `malloc`;
-   - `CONFIG_ATOMICS` in QuickJS, with `Atomics.wait` on a pthread condition;
+1. **Building the engine for threads.** `tools/build_js.ps1` would build with shared memory and atomics:
+   - the module's heap (`wj/libc.odin`, base:runtime's emmalloc) with its lock taken on every thread;
+   - the engine's `Atomics.wait` on a wait address of the shared memory;
    - a stack and thread-local storage per thread.
 2. **Pre-initialization.** The image is pre-initialized (`preinit`: the snapshot of an engine already started, copied on write). A shared memory is initialized once (passive segments, `__wasm_init_memory`), not per instance. The snapshot and its copy-on-write start-up (which makes a realm start in about 1 ms) would have to be redone.
 3. **Host functions.** Every browser function reads and writes guest memory through the instance's exported memory (`wasmtime_memory_data`). With a shared memory, every access path would change (`wasmtime_sharedmemory_data`), including the generated glue (bindgen).

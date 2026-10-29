@@ -4,7 +4,7 @@ Wren's JavaScript engine is the Odin engine (`src/engine/jsrt`, through the Quic
 to one WebAssembly module (`build/js/wren_js.wasm`), run by Wasmtime. Around the engine sits the *glue*: the code that
 implements the web platform's objects as native functions of that API and wires them to the browser's `wr_*` imports. All
 of it is Odin (`native/js/odin/`; the binding tables are generated into `bindings_gen.odin`). No C of ours is compiled any
-more: zig is only the linker and the provider of wasi-libc.
+more: the module is linked by the `wasm-ld` that ships with Odin, with no C library (`wj/libc.odin`).
 
 This document is the rule book: where things go, how to declare them, how to add a domain. The generic ABI that will
 replace the hand-written transmission layer is in [odin-abi.md](odin-abi.md).
@@ -142,8 +142,8 @@ so a change of a mirrored struct stops the build.
 
 * `tools/build_js.ps1` compiles `native/js/odin` (the glue, with the engine of `src/engine`) to one wasm32 object (`odin
   build -build-mode:obj -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -o:size`) and links it with
-  wasi-libc through zig's `wasm-ld`. Odin's freestanding runtime defines `memset`/`memcpy`/`memmove`/`bzero` as strong
-  symbols, as wasi-libc does: the link only warns (`function signature mismatch: bzero`, expected).
+  the `wasm-ld` of Odin's `bin` folder (`--no-entry --gc-sections`). There is no C library: `wj/libc.odin` has`malloc`/`free` (base:runtime's emmalloc over `memory.grow`), the string functions, `strtod`, an Odin `snprintf` over `any` values and `ldexp`;
+  `sin`, `cos` and `pow` are imports of the host (module `libm`, `src/wasm/wasi.odin`); `exp` is fdlibm's, in `src/engine/jsrt/b_number.odin`. A symbol that is declared `foreign` and not defined is silently an import `env.*` of the module: check the imports of `wren_js_raw.wasm` after a change (only `wasi_snapshot_preview1.{clock_time_get,random_get}`, `libm.*` and the `wr_*` modules are legitimate).
 * `build.bat` runs bindgen first, so `wr_imports.odin` is always current.
 
 ## Testing a ported domain

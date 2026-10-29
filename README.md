@@ -94,9 +94,10 @@ Everything below exists in the code today and is covered by the tests of [`tools
 - Dedicated **workers**: a module on a thread of its own with its own store, messages and transferable buffers.
 
 **JavaScript, inside WebAssembly** ([`native/js`](native/js/README.md))
-- **QuickJS-ng 0.17.0** (ES2023 and later; 99.92 % of the 82,220 test262 runs pass), compiled by a pinned Zig to a
-  WASI module and pre-initialized at build time: the interfaces and prototypes of the web platform are already built
-  in the image (3.4 MiB, embedded in `wren.exe`), so a new realm starts in about 0.5 ms.
+- **An engine written in Odin** (`src/engine`: parser, bytecode interpreter, a JIT for numeric loops, ES2023 and later;
+  99.92 % of the test262 tests it runs pass), compiled to a WebAssembly module linked by Odin's own `wasm-ld` (no C
+  compiler, no C library) and pre-initialized at build time: the interfaces and prototypes of the web platform are
+  already built in the image (5.8 MiB, embedded in `wren.exe`), so a new realm starts in about 1.3 ms.
 - **The same sandbox as any module**: one Wasm instance per page and per JavaScript worker, a heap cap
   (`javascript.max_heap_bytes`), a script that runs too long is stopped cleanly (`javascript.slow_script_ms`) and a
   hard deadline behind it (`wasm.max_call_ms`); a crash of the engine loses that page's scripts, never the browser.
@@ -236,7 +237,7 @@ Requirements (CI installs the same: [.github/actions/setup](.github/actions/setu
 | [Go](https://go.dev/dl/) | ≥ 1.25.6 | only the test server (`tools/testserver`) |
 | Git | any | submodules, the commit shown in About |
 
-Zig (for the JavaScript engine) and NASM are downloaded by the build itself, pinned by SHA-256.
+NASM is downloaded by the build itself, pinned by SHA-256 (the JavaScript engine is linked by the `wasm-ld` that ships with Odin).
 
 ```bat
 git clone --recurse-submodules https://github.com/sachahjkl/wren.git
@@ -264,9 +265,8 @@ What `build.bat` does, each step skipped when it is already up to date:
    `build.bat release` and `profile` link it with fat LTO, 2 minutes; see `docs/architecture.md`, "The Rust library").
 4. `src/tools/bindgen` regenerates the web API bindings, SDK and docs from `api/*.widl`, and the JavaScript bindings
    and their coverage from the Web IDL of `native/js/webref` (only what changed).
-5. `tools\build_js.ps1` downloads **Zig 0.15.2** and the **QuickJS-ng 0.17.0** source (both SHA-256 pinned), applies
-   the patches of `native/js/patches`, compiles the engine with the browser's bindings to `wasm32-wasi`, and
-   pre-initializes it into `build\js\wren_js.wasm`.
+5. `tools\build_js.ps1` compiles the engine and the browser's bindings (Odin) to one wasm32 object, links it with Odin's
+   `wasm-ld` and pre-initializes it into `build\js\wren_js.wasm`.
 6. `odin build src/tools/wrencom` builds `build\wren.com`, the console launcher that makes `wren ctl ...` behave in a
    terminal ([docs/console-launcher.md](docs/console-launcher.md)); `wren.exe` embeds it.
 7. `odin build src/browser` links everything into one self-contained `build\wren.exe`, the JavaScript engine
@@ -470,9 +470,10 @@ on:
 - [gui_toolkit](https://github.com/sachahjkl/gui_toolkit) (MIT), whose design follows the UI layers of the
   [RAD Debugger](https://github.com/EpicGamesExt/raddebugger) (MIT, Epic Games Tools);
 - [Wasmtime](https://github.com/bytecodealliance/wasmtime) (Apache-2.0 with LLVM exception, Bytecode Alliance);
-- [QuickJS-ng](https://github.com/quickjs-ng/quickjs) (MIT), the JavaScript engine, after Fabrice Bellard's QuickJS,
-  with [wasi-libc](https://github.com/WebAssembly/wasi-libc) (Apache-2.0 with LLVM exception, Apache-2.0 or MIT; musl:
-  MIT) as built by [Zig](https://ziglang.org) (MIT, build time only);
+- [QuickJS-ng](https://github.com/quickjs-ng/quickjs) (MIT), after Fabrice Bellard's QuickJS: the engine in Odin ports its
+  number conversion and Unicode code and follows its bytecode format;
+- [emmalloc](https://github.com/emscripten-core/emscripten) (MIT / NCSA, Emscripten), through Odin's `base:runtime`, the
+  heap of the JavaScript module; FreeBSD's `e_exp.c` (fdlibm, Sun's permissive notice), the `exp` of the engine;
 - [webref](https://github.com/w3c/webref) (MIT), the Web IDL of the specifications, from which the JavaScript bindings
   are generated;
 - [Lexbor](https://github.com/lexbor/lexbor) (Apache-2.0);

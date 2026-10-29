@@ -73,8 +73,8 @@ front-end that compiles source to QuickJS-ng 0.17 bytecode, the interpreter (`js
 JIT that compiles numeric loops to Wasm at run time), and the numeric, Unicode, regexp and date libraries. `jscapi` gives it
 the QuickJS C API, which the glue (`native/js/odin`, all Odin) is written against; the web platform's objects are
 hand-written members plus bindings generated from the Web IDL of webref (`src/tools/bindgen`, package `jsgen`, into
-`native/js/odin/bindings_gen.odin`). `tools\build_js.ps1` compiles it all to one wasm32 module (Odin, linked with wasi-libc
-by Zig's `wasm-ld`: no C of ours is compiled) and pre-initializes it at build time (`src/wasm/preinit.odin`: interfaces,
+`native/js/odin/bindings_gen.odin`). `tools\build_js.ps1` compiles it all to one wasm32 module (Odin, linked by Odin's own `wasm-ld`, no C library:
+no C of ours is compiled) and pre-initializes it at build time (`src/wasm/preinit.odin`: interfaces,
 prototypes and preludes already built in the memory image); the image is embedded in the exe (`src/js/image`). Each page
 and each JavaScript worker gets its own instance (a realm), whose
 imports are the same `api/*.widl` functions Wasm pages use, plus `js*.widl` for what only the engine needs. So the

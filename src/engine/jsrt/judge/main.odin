@@ -14,12 +14,9 @@ package jsrt_judge
 //   judge worker <list> internal: run the listed tests, one result line per test
 //
 // Front-end: source text is compiled by the engine's own Odin front-end (src/engine/frontend, through
-// jsrt.frontend_compile). With JSRT_REFCOMPILER=1, QuickJS-ng's compiler loaded from
-// build/jsrt_refcompiler.dll (tools/jsrt_refcompiler.c) is used instead, to tell a compiler bug from a
-// runtime bug.
+// jsrt.frontend_compile).
 
 import "base:runtime"
-import "core:dynlib"
 import "core:fmt"
 import "core:os"
 import "core:path/filepath"
@@ -79,24 +76,11 @@ compile_hook :: proc() -> proc(ctx: ^js.Context, req: ^js.Compile_Request) -> js
 	return use_reference_compiler ? judge_compile : nil
 }
 
+// The reference compiler of earlier versions (QuickJS-ng's C compiler in a DLL) is gone: the front-end is Odin only.
 load_compiler :: proc() -> bool {
 	use_reference_compiler = os.get_env("JSRT_REFCOMPILER", context.temp_allocator) == "1"
-	if !use_reference_compiler {return true}
-	exe_dir := filepath.dir(os.args[0])
-	candidates := []string{pjoin(exe_dir, "jsrt_refcompiler.dll"), "build/jsrt_refcompiler.dll"}
-	for c in candidates {
-		lib, ok := dynlib.load_library(c)
-		if !ok {continue}
-		p1, ok1 := dynlib.symbol_address(lib, "qjsc_compile")
-		p2, ok2 := dynlib.symbol_address(lib, "qjsc_free")
-		if ok1 && ok2 {
-			qjsc_compile = cast(Compile_Fn)p1
-			qjsc_free = cast(Free_Fn)p2
-			return true
-		}
-	}
-	fmt.eprintln("judge: cannot load jsrt_refcompiler.dll (run tools/jsrt_test262.ps1 -BuildOnly)")
-	return false
+	if use_reference_compiler { fmt.eprintln("judge: JSRT_REFCOMPILER is no longer supported (the C reference compiler was removed)"); return false }
+	return true
 }
 
 // --- per-runtime host state ---

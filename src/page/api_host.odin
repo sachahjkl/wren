@@ -102,7 +102,7 @@ console_error :: proc(c: ^Call, message: string) { log(c.page, .Error, message) 
 // Registers every import. Call once, after wasm.runtime_init (it starts the engine if needed).
 register_imports :: proc() -> bool {
 	if !wasm.runtime_init() { return false }
-	// WASI (the JavaScript engine is a wasi-libc program): its standard output and error go to the page's console
+	// WASI (the two calls the engine module imports: the clock and random bytes; the rest of the table is for other guests): its standard output and error go to the page's console
 	wasm.wasi_output = proc(inst: ^wasm.Instance, fd: i32, text: []u8) {
 		p := (^Page)(inst.user)
 		if p == nil || p.closed { return }

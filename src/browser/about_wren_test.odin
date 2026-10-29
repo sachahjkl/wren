@@ -40,7 +40,7 @@ third_party_list_of_the_repository :: proc(t: ^testing.T) {
 		testing.expectf(t, tp.name != "" && tp.license != "", "a row without a name or a license: %v", tp)
 		seen[tp.name] = tp
 	}
-	for name in ([]string{"gui_toolkit", "Slug", "Wasmtime", "QuickJS-ng", "Lexbor", "wasi-libc"}) {
+	for name in ([]string{"gui_toolkit", "Slug", "Wasmtime", "QuickJS-ng", "Lexbor", "emmalloc"}) {
 		testing.expectf(t, name in seen, "%s is in THIRD_PARTY.md", name)
 	}
 	testing.expect_value(t, seen["gui_toolkit"].version, ui.VERSION)
@@ -64,7 +64,7 @@ pinned_versions_match_the_scripts :: proc(t: ^testing.T) {
 every_shipped_license_text_is_shown :: proc(t: ^testing.T) {
 	shipped := make(map[string]bool, context.temp_allocator)
 	list, _ := os.read_all_directory_by_path("native/js/licenses", context.temp_allocator)
-	testing.expect(t, len(list) >= 8, "native/js/licenses is found")
+	testing.expect(t, len(list) >= 3, "native/js/licenses is found")
 	for fi in list {
 		data, _ := os.read_entire_file(strings.concatenate({"native/js/licenses/", fi.name}, context.temp_allocator), context.temp_allocator)
 		found := false
