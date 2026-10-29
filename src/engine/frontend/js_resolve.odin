@@ -109,7 +109,7 @@ optimize_scope_make_global_ref :: proc(s: ^Func_Def, bc: ^Bc_Out, bc_buf: []u8, 
 // the 65535-variable cap, which the parser already enforces; they use a parse state only for that error.
 @(private = "file")
 rs_add_var :: proc(fd: ^Func_Def, name: Atom) -> int {
-	append(&fd.vars, Var_Def{var_name = name, func_pool_idx = -1})
+	append_small(&fd.vars, Var_Def{var_name = name, func_pool_idx = -1})
 	return len(fd.vars) - 1
 }
 

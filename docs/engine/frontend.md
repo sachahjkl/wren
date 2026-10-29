@@ -26,7 +26,10 @@ Odin idiomatique :
 - Les chaînes sont des `String_Value` (Latin-1 ou UTF-16, comme `JSString`) sans comptage de références.
 - Les erreurs suivent le modèle « la première gagne » de QuickJS mais sans `longjmp` ni exception : chaque
   procédure renvoie `bool` (erreur) comme dans le C, ce qui garde le portage lisible ligne à ligne.
-- Pas de GC ni de libération : tout vit dans l'arène de la compilation.
+- Pas de GC : tout vit dans l'allocateur de la compilation. Les tables d'une fonction (`free_func_def`) et les
+  tampons des passes sont pourtant libérés explicitement (`delete`) dès que son bytecode existe : un allocateur qui
+  recycle (`src/engine/jsrt/compile_alloc.odin`) les redonne aux fonctions suivantes. Avec une arène simple, `delete`
+  ne fait rien et le résultat est le même. La taille passée à `delete` doit être celle de l'allocation.
 
 ## Fichiers
 

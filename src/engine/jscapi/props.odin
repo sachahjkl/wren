@@ -261,6 +261,34 @@ auto_init_native :: proc "c" (c: ^Context, this_val: JSValue, argc: i32, argv: [
 	return res
 }
 
+Lazy_Members_Callback :: #type proc "c" (c: ^Context, obj: JSValue, user: i32)
+
+// Not in quickjs.h: the members of `obj` are defined by cb(c, obj, user) the first time one of its properties is looked
+// up or listed (jsrt's lazy shapes). The properties defined before this call stay first. The object must be an
+// ordinary one nobody else holds a shape of. Returns 0, or -1 for something that is not an object.
+JS_SetLazyMembers :: proc "c" (c: ^Context, obj: JSValue, cb: Lazy_Members_Callback, user: i32) -> i32 {
+	context = api_ctx()
+	ctx := jctx(c)
+	o, ok := obj_arg(obj)
+	if !ok {return -1}
+	m := js.host_enter(ctx.rt)
+	defer js.host_exit(ctx.rt, m, js.UNDEFINED)
+	js.object_set_lazy(ctx, o, lazy_thunk, rawptr(cb), user)
+	return 0
+}
+
+// Whether the members of `obj` are still to be defined.
+JS_HasLazyMembers :: proc "c" (obj: JSValue) -> bool {
+	o, ok := obj_arg(obj)
+	return ok && js.object_is_lazy(o)
+}
+
+@(private = "file")
+lazy_thunk :: proc(ctx: ^js.Context, o: ^js.Object, p: rawptr, user: i32) {
+	cb := cast(Lazy_Members_Callback)p
+	cb(wctx(ctx), enc(js.mk_obj(o)), user)
+}
+
 JS_DeleteProperty :: proc "c" (c: ^Context, obj: JSValue, prop: Atom, flags: i32) -> i32 {
 	context = api_ctx()
 	ctx := jctx(c)

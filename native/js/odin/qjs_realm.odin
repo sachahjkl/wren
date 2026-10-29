@@ -279,7 +279,8 @@ remove_touch_handlers :: proc "contextless" (ctx: ^wj.Context) {
 			i := wj.wj_interface_find(iname)
 			if i < 0 { continue }
 			proto := wj.wj_the_realm.protos[i]
-			if wj.is_object(proto) { wj.JS_DeleteProperty(ctx, proto, a, 0) }
+			// (a prototype still lazy leaves these out itself, qjs_platform.odin's lazy_proto_members)
+			if wj.is_object(proto) && !wj.JS_HasLazyMembers(proto) { wj.JS_DeleteProperty(ctx, proto, a, 0) }
 		}
 		wj.JS_DeleteProperty(ctx, wj.wj_the_realm.global, a, 0)
 		wj.JS_FreeAtom(ctx, a)
@@ -292,6 +293,7 @@ wj_realm_start :: proc "c" (kind: i32, seed: i64, memory_limit: f64, gc_threshol
 	wj.wj_start_frames = flags & START_FRAMES != 0   // a page's realm: the frames.* imports exist (the engine run alone has none)
 	wj.wj_start_expose_unimplemented = flags & START_EXPOSE_UNIMPLEMENTED != 0
 	wj.wj_start_unimplemented_throw = flags & START_UNIMPLEMENTED_THROW != 0
+	wj.wj_start_no_touch = flags & START_NO_TOUCH_HANDLERS != 0
 	if wj.wj_the_realm.ctx == nil && wj_preinit() != 0 { return -1 }
 	if wj.wj_the_realm.started { return 0 }
 	ctx := wj.wj_the_realm.ctx

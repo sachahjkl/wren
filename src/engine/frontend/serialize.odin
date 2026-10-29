@@ -346,7 +346,10 @@ finish_object :: proc(w: ^Writer) -> []u8 {
 			table += 6
 		}
 	}
-	head := make([dynamic]u8, 0, table + len(w.buf), w.allocator)
+	// The prefix (version, checksum, atom table) is built apart, then the object section moves up behind it
+	// inside its own buffer: a second buffer of the size of the whole stream would be paid for by every compile.
+	head := make([dynamic]u8, 0, table, w.allocator)
+	defer delete(head)
 	append(&head, BC_VERSION, 0, 0, 0, 0)
 	leb :: proc(b: ^[dynamic]u8, v0: u32) {
 		v := v0
@@ -383,16 +386,42 @@ finish_object :: proc(w: ^Writer) -> []u8 {
 			}
 		}
 	}
-	append(&head, ..w.buf[:])
-	h := bc_csum(head[5:])
-	head[1] = u8(h)
-	head[2] = u8(h >> 8)
-	head[3] = u8(h >> 16)
-	head[4] = u8(h >> 24)
-	return head[:]
+	body := len(w.buf)
+	hl := len(head)
+	resize(&w.buf, body + hl)
+	copy(w.buf[hl:], w.buf[:body])
+	copy(w.buf[:hl], head[:])
+	h := bc_csum(w.buf[5:])
+	w.buf[1] = u8(h)
+	w.buf[2] = u8(h >> 8)
+	w.buf[3] = u8(h >> 16)
+	w.buf[4] = u8(h >> 24)
+	shrink(&w.buf)
+	return w.buf[:]
+}
+
+// An upper bound of the serialized size of a function and the functions in its constant pool.
+@(private = "file")
+estimate_function :: proc(b: ^Function_Bytecode) -> int {
+	n := 64 + len(b.byte_code) + len(b.pc2line) + len(b.source) + 10 * len(b.vardefs) + 6 * len(b.closure_var)
+	for c in b.cpool {
+		#partial switch v in c {
+		case String_Value: n += 6 + (v.is_wide ? 2 * len(v.units) : len(v.latin1))
+		case ^Function_Bytecode: n += estimate_function(v)
+		case: n += 16
+		}
+	}
+	return n
 }
 
 write_object :: proc(w: ^Writer, top: ^Function_Bytecode, module: ^Module_Def) -> []u8 {
+	// one allocation for the whole stream (its growth by doubling would hold two copies of it at once), with room
+	// for the atom table that goes in front
+	if top != nil {
+		room := 128 + estimate_function(top)
+		for a in w.atoms.runtime {room += 6 + (a.is_wide ? 2 * len(a.units) : len(a.latin1))}
+		reserve(&w.buf, room)
+	}
 	if module != nil {
 		write_module(w, module)
 	} else {
