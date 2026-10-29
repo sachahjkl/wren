@@ -46,6 +46,7 @@ build_changelog_page :: proc() {
 	strings.write_string(&out, page[:b0 + len(MARK_BEGIN)])
 	strings.write_string(&out, "\n")
 	for r, i in releases { write_release(&out, r, i == 0) }
+	if len(releases) > 0 { stamp_latest_version(releases[0].version) }
 	strings.write_string(&out, "    ")
 	strings.write_string(&out, page[b1:])
 	emit(CHANGELOG_PAGE, strings.to_string(out))
@@ -207,4 +208,16 @@ write_escaped_text :: proc(b: ^strings.Builder, s: string) {
 		case: strings.write_rune(b, c)
 		}
 	}
+}
+
+// The home page names the latest version between <!-- latest --> and <!-- /latest -->.
+stamp_latest_version :: proc(version: string) {
+	data, err := os.read_entire_file("site/index.html", context.allocator)
+	if err != nil { return }
+	page := string(data)
+	a := strings.index(page, "<!-- latest -->")
+	b := strings.index(page, "<!-- /latest -->")
+	if a < 0 || b < a { return }
+	a += len("<!-- latest -->")
+	emit("site/index.html", strings.concatenate({page[:a], version, page[b:]}, context.allocator))
 }
