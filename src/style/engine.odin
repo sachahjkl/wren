@@ -83,6 +83,7 @@ Sheet :: struct {
 	base_url: string,                  // owned: where relative URLs in the sheet resolve from
 	id:      u64,                      // never reused: lets asynchronous loads find out whether their sheet still exists
 	from_link: bool,                   // came from <link rel=stylesheet>, not <style>
+	detached: bool,                    // kept while its owner was out of the tree (the parser's reveal): its order is stale once the owner is back
 	media_text: string,                // owned: the owner's media attribute as written
 	scope:   base.Handle,              // the shadow root whose tree the owner is in; NIL: the document (scope.odin)
 	constructed: bool,                 // a constructable stylesheet (new CSSStyleSheet()): applies where it is adopted

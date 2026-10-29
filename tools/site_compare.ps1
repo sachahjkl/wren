@@ -1,9 +1,11 @@
 # Compares how Wren and Microsoft Edge (headless) draw the same pages: one screenshot of each, a side-by-side image
 # (Edge on the left, Wren on the right), and the share of pixels that differ.
-#   powershell -NoProfile -File tools\site_compare.ps1 -OutDir <folder> [-Urls a,b,c | -List sites.txt] [-Dark] [-Wait stable|load]
+#   powershell -NoProfile -File tools\site_compare.ps1 -OutDir <folder> [-Urls a,b,c | -List sites.txt] [-Dark] [-Wait stable|load] [-Height 690]
+# -Height 2400 draws a taller viewport in both browsers: the content further down the page, without scrolling (Wren's window is
+# 110 px taller than its page area).
 # The two browsers are asked for the same viewport (1280 x 690, the size of Wren's page area in a 1280 x 800 window at
 # 96 dpi). Pages change between two loads (news, ads, dates): the number is a hint, the images are the judge.
-param([string]$OutDir, [string[]]$Urls = @(), [string]$List = '', [switch]$Dark, [string]$Wait = 'stable', [int]$TimeoutMs = 45000, [string]$Exe = '')
+param([string]$OutDir, [string[]]$Urls = @(), [string]$List = '', [switch]$Dark, [string]$Wait = 'stable', [int]$TimeoutMs = 45000, [string]$Exe = '', [int]$Height = 690)
 $ErrorActionPreference = 'Continue'
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
@@ -18,17 +20,23 @@ Add-Type -AssemblyName System.Drawing
 $edge = @('C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe', 'C:\Program Files\Microsoft\Edge\Application\msedge.exe') | Where-Object { Test-Path $_ } | Select-Object -First 1
 if (-not $edge) { throw 'Microsoft Edge is not installed' }
 New-Item -ItemType Directory -Force $OutDir | Out-Null
-$W = 1280; $H = 690
+$W = 1280; $H = $Height
 
 function Slug([string]$u) { $s = ($u -replace '^https?://', '' -replace '[^A-Za-z0-9]+', '-').Trim('-'); if ($s.Length -gt 50) { $s = $s.Substring(0, 50) }; return $s }
 
-function Edge-Shot([string]$url, [string]$file) {
+function Edge-Shot([string]$url, [string]$dest) {
+    Remove-Item $dest -ErrorAction SilentlyContinue
+    # (Edge takes its arguments unquoted from Start-Process: a path with a space would be several targets)
+    $file = Join-Path $env:TEMP 'wren-compare-edge-shot.png'
     Remove-Item $file -ErrorAction SilentlyContinue
-    $a = @('--headless=new', '--disable-gpu', '--hide-scrollbars', "--screenshot=$file", "--window-size=$W,$H", '--virtual-time-budget=10000', '--user-data-dir=' + (Join-Path $env:TEMP 'wren-compare-edge'))
-    if ($Dark) { $a += '--blink-settings=preferredColorScheme=1' }
+    $a = @('--headless=new', '--disable-gpu', '--hide-scrollbars', "--screenshot=$file", "--window-size=$W,$H", '--virtual-time-budget=10000', ('--user-data-dir=' + (Join-Path $env:TEMP 'wren-compare-edge')))
+    $a += '--lang=en-US', '--accept-lang=en-US'
+    # (observed with this Edge: no option follows Windows' dark theme, preferredColorScheme=1 gives the light one)
+    if (-not $Dark) { $a += '--blink-settings=preferredColorScheme=1' }
     $p = Start-Process $edge -ArgumentList ($a + $url) -PassThru -NoNewWindow -RedirectStandardError (Join-Path $env:TEMP 'wren-compare-edge.err')
     if (-not $p.WaitForExit(90000)) { $p.Kill() }
-    return (Test-Path $file)
+    if (Test-Path $file) { Copy-Item $file $dest -Force; return $true }
+    return $false
 }
 
 function Diff-Share([string]$a, [string]$b) {
@@ -56,7 +64,7 @@ function Side-By-Side([string]$left, [string]$right, [string]$out, [string]$titl
 }
 
 $rows = @()
-Start-Wren -Size "${W}x800" -Dpi 96 -Pref @('blocker.welcome_toast=false') | Out-Null
+Start-Wren -Size ("${W}x" + ($H + 110)) -Dpi 96 -Pref @('blocker.welcome_toast=false', ('style.color_scheme=' + $(if ($Dark) { 'dark' } else { 'light' }))) | Out-Null
 try {
     $i = 0
     foreach ($u in $Urls) {
