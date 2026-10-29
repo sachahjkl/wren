@@ -88,8 +88,8 @@ Cosmetic: `##`, `#@#`, entities (`google.*`), `~domain` exclusions; procedural `
 :nth-ancestor() :remove() :style()`; AdGuard `#$#` style injections and `#%#//scriptlet()`; `##+js(name, args...)`.
 
 HTML filters: `##^selector` (and the exceptions `#@#^`) remove elements from a document's markup before it is parsed, so an
-inline ad script or a tracker iframe never exists (not hidden — gone). The selector is one element with `script iframe div
-* ^script` (a tag name, `*`, or uBlock's leading `^`), `[attr] [attr=v] [attr*=v] [attr^=v] [attr$=v] [attr~=v]`,
+inline ad script or a tracker iframe never exists (not hidden — gone). The selector is one element with
+`script iframe div * ^script` (a tag name, `*`, or uBlock's leading `^`), `[attr] [attr=v] [attr*=v] [attr^=v] [attr$=v] [attr~=v]`,
 `:has-text(x)` / `:contains(x)` (plain, `*` glob or `/regex/`), and `:not(:has-text(x))` / `:not([attr])`. Examples:
 `example.com##^script:has-text(window.adConfig)`, `example.com##^iframe[src*="/ads/"]`.
 

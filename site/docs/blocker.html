@@ -270,10 +270,10 @@ exceptions <code>@@</code>. A line with an option the engine does not know (<cod
 :-abp-contains() :-abp-has() :matches-css() :matches-attr() :matches-path() :min-text-length() :not() :upward()
 :nth-ancestor() :remove() :style()</code>; AdGuard <code>#$#</code> style injections and <code>#%#//scriptlet()</code>; <code>##+js(name, args...)</code>.</p>
 <p>HTML filters: <code>##^selector</code> (and the exceptions <code>#@#^</code>) remove elements from a document's markup before it is parsed, so an
-inline ad script or a tracker iframe never exists (not hidden — gone). The selector is one element with `script iframe div</p>
-<ul>
-<li>^script<code>(a tag name,</code><em><code>, or uBlock's leading</code>^<code>),</code>[attr] [attr=v] [attr</em>=v] [attr^=v] [attr$=v] [attr~=v]<code>,</code>:has-text(x)<code>/</code>:contains(x)<code>(plain,</code><em><code>glob or</code>/regex/<code>), and</code>:not(:has-text(x))<code>/</code>:not([attr])<code>. Examples:</code>example.com##^script:has-text(window.adConfig)<code>,</code>example.com##^iframe[src</em>="/ads/"]`.</li>
-</ul>
+inline ad script or a tracker iframe never exists (not hidden — gone). The selector is one element with
+<code>script iframe div * ^script</code> (a tag name, <code>*</code>, or uBlock's leading <code>^</code>), <code>[attr] [attr=v] [attr*=v] [attr^=v] [attr$=v] [attr~=v]</code>,
+<code>:has-text(x)</code> / <code>:contains(x)</code> (plain, <code>*</code> glob or <code>/regex/</code>), and <code>:not(:has-text(x))</code> / <code>:not([attr])</code>. Examples:
+<code>example.com##^script:has-text(window.adConfig)</code>, <code>example.com##^iframe[src*="/ads/"]</code>.</p>
 <h2 id="scriptlets-where-each-one-is-carried-out"><a class="anchor" href="#scriptlets-where-each-one-is-carried-out" aria-hidden="true">#</a>Scriptlets: where each one is carried out</h2>
 <p>The blocker does not run JavaScript in a page when it can do the thing natively. Each scriptlet (uBlock Origin's names, aliases and
 <code>.js</code> suffixes; <code>scriptlet_route.odin</code>) has a route, from the cheapest for the page:</p>

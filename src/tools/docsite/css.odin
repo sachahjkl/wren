@@ -153,8 +153,8 @@ body.docs { overflow-x: hidden; }
 
 /* code blocks reuse the site's .code shell and token classes (.k .s .c .f .t) from style.css */
 .doc-article .code { margin: 1.2em 0; }
-.doc-article pre { margin: 0; padding: 14px 16px; overflow-x: auto; line-height: 1.55; font-size: 13.5px; tab-size: 4; }
-.doc-article :not(pre) > code { white-space: nowrap; }
+.doc-article pre { margin: 0; padding: 14px 16px; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.55; font-size: 13.5px; tab-size: 4; }
+.doc-article :not(pre) > code { white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* breadcrumb */
 .doc-crumbs { margin-bottom: 18px; }
