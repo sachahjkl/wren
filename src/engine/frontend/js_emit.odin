@@ -97,6 +97,13 @@ js_is_live_code :: proc(s: ^Parse_State) -> bool {
 	}
 }
 
+// append to a per-function table that most functions leave empty or short: the first room is for two entries, not the
+// eight a dynamic array starts with.
+append_small :: #force_inline proc(a: ^[dynamic]$T, v: T) {
+	if cap(a^) == 0 {reserve(a, 2)}
+	append(a, v)
+}
+
 emit_u8 :: proc(s: ^Parse_State, v: u8) {append(&s.cur_func.byte_code, v)}
 emit_u16 :: proc(s: ^Parse_State, v: u16) {append(&s.cur_func.byte_code, u8(v), u8(v >> 8))}
 emit_u32 :: proc(s: ^Parse_State, v: u32) {append(&s.cur_func.byte_code, u8(v), u8(v >> 8), u8(v >> 16), u8(v >> 24))}
@@ -127,7 +134,7 @@ update_label :: proc(fd: ^Func_Def, label: int, delta: int) -> int {
 }
 
 new_label_fd :: proc(fd: ^Func_Def) -> int {
-	append(&fd.label_slots, Label_Slot{ref_count = 0, pos = -1, pos2 = -1, addr = -1})
+	append_small(&fd.label_slots, Label_Slot{ref_count = 0, pos = -1, pos2 = -1, addr = -1})
 	return len(fd.label_slots) - 1
 }
 
@@ -163,7 +170,7 @@ emit_goto :: proc(s: ^Parse_State, opcode: int, label0: int) -> int {
 
 cpool_add :: proc(s: ^Parse_State, val: JS_Value) -> int {
 	fd := s.cur_func
-	append(&fd.cpool, val)
+	append_small(&fd.cpool, val)
 	return len(fd.cpool) - 1
 }
 
@@ -303,7 +310,7 @@ add_var :: proc(s: ^Parse_State, fd: ^Func_Def, name: Atom) -> int {
 		js_parse_error(s, "too many variables declared (only 65534 allowed)")
 		return -1
 	}
-	append(&fd.vars, Var_Def{var_name = name, func_pool_idx = -1})
+	append_small(&fd.vars, Var_Def{var_name = name, func_pool_idx = -1})
 	return len(fd.vars) - 1
 }
 
@@ -363,12 +370,12 @@ add_arg :: proc(s: ^Parse_State, fd: ^Func_Def, name: Atom) -> int {
 		js_parse_error(s, "too many parameters in function definition (only 65534 allowed)")
 		return -1
 	}
-	append(&fd.args, Var_Def{var_name = name, func_pool_idx = -1})
+	append_small(&fd.args, Var_Def{var_name = name, func_pool_idx = -1})
 	return len(fd.args) - 1
 }
 
 add_global_var :: proc(fd: ^Func_Def, name: Atom) -> ^Global_Var {
-	append(&fd.global_vars, Global_Var{cpool_idx = -1, scope_level = fd.scope_level, var_name = name})
+	append_small(&fd.global_vars, Global_Var{cpool_idx = -1, scope_level = fd.scope_level, var_name = name})
 	return &fd.global_vars[len(fd.global_vars) - 1]
 }
 

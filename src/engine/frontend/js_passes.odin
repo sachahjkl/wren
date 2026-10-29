@@ -1549,6 +1549,8 @@ js_create_function :: proc(ps: ^Pass_State, fd: ^Func_Def) -> ^Function_Bytecode
 		}
 	}
 
+	if cap(fd.closure_var) == 0 {reserve(&fd.closure_var, 2)}
+
 	if fd.has_eval_call {
 		add_eval_variables(fd)
 	}

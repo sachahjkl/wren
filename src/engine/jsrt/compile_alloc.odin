@@ -34,6 +34,7 @@ Compile_Alloc :: struct {
 	heap:       mem.Allocator, // for blocks over RECYCLE_MAX_BYTES; no procedure: they come from the arena
 	large:      ^Large_Block,
 	free:       [RECYCLE_CLASSES]^Recycled_Block,
+	nonempty:   [(RECYCLE_CLASSES + 63) / 64]u64,
 	bytes:      int, // bytes taken from the arena (not counting the reuse of recycled blocks)
 	recycled:   int, // bytes handed out again from the free lists
 	large_live: int, // bytes of the large blocks in use now
@@ -65,14 +66,42 @@ note_peak :: #force_inline proc(c: ^Compile_Alloc) {
 	if c.bytes + c.large_live > c.peak {c.peak = c.bytes + c.large_live}
 }
 
+// The free lists by size class (a multiple of 16 bytes), and a bit per class that has a block.
+@(private = "file")
+free_push :: #force_inline proc(c: ^Compile_Alloc, p: rawptr, cls: int) {
+	b := cast(^Recycled_Block)p
+	b.next = c.free[cls]
+	c.free[cls] = b
+	c.nonempty[cls >> 6] |= 1 << uint(cls & 63)
+}
+
+// The smallest class above `cls` with a free block, 0 if there is none.
+@(private = "file")
+free_class_above :: proc "contextless" (c: ^Compile_Alloc, cls: int) -> int {
+	for w := (cls + 1) >> 6; w < len(c.nonempty); w += 1 {
+		bits := c.nonempty[w]
+		if w == (cls + 1) >> 6 {bits &= ~u64(0) << uint((cls + 1) & 63)}
+		if bits != 0 {return w * 64 + int(intrinsics.count_trailing_zeros(bits))}
+	}
+	return 0
+}
+
 @(private = "file")
 small_alloc :: proc(c: ^Compile_Alloc, size, alignment: int, zero: bool, loc: runtime.Source_Code_Location) -> (rawptr, mem.Allocator_Error) {
 	n := (size + 15) &~ 15
 	mode := zero ? mem.Allocator_Mode.Alloc : mem.Allocator_Mode.Alloc_Non_Zeroed
 	if alignment <= 16 {
 		cls := n >> 4
-		if b := c.free[cls]; b != nil {
-			c.free[cls] = b.next
+		k := cls
+		if c.free[cls] == nil {k = free_class_above(c, cls)}
+		if k > 0 {
+			b := c.free[k]
+			c.free[k] = b.next
+			if b.next == nil {c.nonempty[k >> 6] &~= 1 << uint(k & 63)}
+			if k > cls {
+				// a larger block (a table that died) is cut: the rest goes back to its own class
+				free_push(c, rawptr(uintptr(b) + uintptr(n)), k - cls)
+			}
 			c.recycled += n
 			if zero {intrinsics.mem_zero(b, n)}
 			return b, nil
@@ -198,10 +227,7 @@ compile_alloc_proc :: proc(
 			if has_heap {large_free(c, old_memory, old_size)}
 			return nil, nil
 		}
-		old_n := (old_size + 15) &~ 15
-		b := cast(^Recycled_Block)old_memory
-		b.next = c.free[old_n >> 4]
-		c.free[old_n >> 4] = b
+		free_push(c, old_memory, ((old_size + 15) &~ 15) >> 4)
 		return nil, nil
 	case .Free_All:
 		return nil, nil
