@@ -7,7 +7,7 @@
   const { apply, construct } = Reflect;
   const P = Promise, E = Error, TE = TypeError, RE = RangeError, N = Number, ArrayFrom = Array.from;
   const WM = WeakMap, M = Map;
-  const weakGet = WM.prototype.get, weakSet = WM.prototype.set, mapGet = M.prototype.get, mapSet = M.prototype.set;
+  const weakGet = WM.prototype.get, weakSet = WM.prototype.set, mapGet = M.prototype.get, mapSet = M.prototype.set, mapDelete = M.prototype.delete;
   const promiseThen = P.prototype.then, isWellFormed = String.prototype.isWellFormed;
   const toStringTag = Symbol.toStringTag;
   const isFinite_ = isFinite, trunc = Math.trunc, fround = Math.fround, stringOf = String, BI = BigInt, BigIntAsIntN = BigInt.asIntN;
@@ -127,6 +127,11 @@
       if (s.buffer === null || native.memoryPages(s.id) !== s.pages) refresh(s);   // (the module may have grown it)
       return s.buffer;
     }
+    toFixedLengthBuffer() {
+      const s = thisState(this, Memory, "WebAssembly.Memory.toFixedLengthBuffer()");
+      if (s.buffer === null || native.memoryPages(s.id) !== s.pages) refresh(s);
+      return s.buffer;   // (this is the only kind of buffer a memory has here)
+    }
   }
   // the buffer as it is now; the previous one is detached
   const refresh = s => {
@@ -222,13 +227,18 @@
   };
   const funcId = f => (isObject(f) ? apply(weakGet, functionIds, [f]) : undefined);
 
-  // An externref's number, one per value: the values stay until the page closes (the store's references are not traced).
-  const externIds = new M(), externValues = [undefined];
+  // An externref's number, one per value, for as long as the store's collector finds a reference to it.
+  const externIds = new M(), externValues = new M();
+  let nextExtern = 1;
   const externId = v => {
+    for (let gone; (gone = native.externReleased()) !== 0;) {
+      apply(mapDelete, externIds, [apply(mapGet, externValues, [gone])]);
+      apply(mapDelete, externValues, [gone]);
+    }
     let id = apply(mapGet, externIds, [v]);
     if (id === undefined) {
-      id = externValues.length;
-      externValues[id] = v;
+      id = nextExtern++;
+      apply(mapSet, externValues, [id, v]);
       apply(mapSet, externIds, [v, id]);
     }
     return id;
@@ -301,14 +311,23 @@
   }
   interfaceOf(Exception);
 
-  const exceptionMake = (tagId, values) => setState(create(Exception.prototype), { kind: Exception, tag: tagObject(tagId), values });
+  // The tag of JavaScript's own exceptions in a module, made on first use: a realm that never needs it makes no store.
+  let jsTag;
+  const jsTagObject = () => jsTag || (jsTag = new Tag({ parameters: ["externref"] }));
+
+  // What crosses a module: an exception of a tag, what JavaScript threw under JSTag (so the module can catch it, and it
+  // comes out as itself).
+  const exceptionMake = (tagId, values) => {
+    if (jsTag !== undefined && stateOf(jsTag).id === tagId) return values[0];
+    return setState(create(Exception.prototype), { kind: Exception, tag: tagObject(tagId), values });
+  };
   const exceptionInfo = e => {
     const s = stateOf(e);
-    if (s === undefined || s.kind !== Exception) return undefined;
-    return [stateOf(s.tag).id, s.values];
+    if (s !== undefined && s.kind === Exception) return [stateOf(s.tag).id, s.values];
+    return [stateOf(jsTagObject()).id, [e]];
   };
 
-  native.setup({ LinkError, RuntimeError, funcId, funcWrap, externId, externValue: id => externValues[id], toList: v => ArrayFrom(v), exceptionMake, exceptionInfo });
+  native.setup({ LinkError, RuntimeError, funcId, funcWrap, externId, externValue: id => apply(mapGet, externValues, [id]), toList: v => ArrayFrom(v), exceptionMake, exceptionInfo });
 
   // ---- Instance ----
 
@@ -467,9 +486,7 @@
     ["Tag", Tag], ["Exception", Exception], ["CompileError", CompileError], ["LinkError", LinkError], ["RuntimeError", RuntimeError]]) {
     hidden(WebAssembly, name, C);
   }
-  // the tag of JavaScript's own exceptions, made on first use: a realm that never asks makes no store
-  let jsTag;
-  const jsTagGetter = getOwnPropertyDescriptor({ get JSTag() { return jsTag || (jsTag = new Tag({ parameters: ["externref"] })); } }, "JSTag").get;
+  const jsTagGetter = getOwnPropertyDescriptor({ get JSTag() { return jsTagObject(); } }, "JSTag").get;
   defineProperty(WebAssembly, "JSTag", { get: jsTagGetter, enumerable: true, configurable: true });
   return WebAssembly;
 })

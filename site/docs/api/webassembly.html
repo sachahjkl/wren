@@ -368,6 +368,10 @@ the page's Content Security Policy refuses it.</p>
 <div class="code"><pre><code>void WebAssembly_import_throw(i32 tag, bytes values)</code></pre></div>
 <p>The import running ends by throwing a WebAssembly exception of <code>tag</code> with <code>values</code> (cells).</p>
 <p>Host: <code>WebAssembly_import_throw :: proc(c: ^Call, tag: i32, values: []u8)</code></p>
+<h3 id="webassembly-extern-released"><a class="anchor" href="#webassembly-extern-released" aria-hidden="true">#</a><code>WebAssembly_extern_released</code></h3>
+<div class="code"><pre><code>i32 WebAssembly_extern_released()</code></pre></div>
+<p>The number of an externref no reference is left to, one at each call; 0 when there is none.</p>
+<p>Host: <code>WebAssembly_extern_released :: proc(c: ^Call) -&gt; i32</code></p>
 <h3 id="webassembly-instance-create"><a class="anchor" href="#webassembly-instance-create" aria-hidden="true">#</a><code>WebAssembly_Instance_create</code></h3>
 <div class="code"><pre><code>i32 WebAssembly_Instance_create(WebAssemblyModule module, bytes externs)</code></pre></div>
 <p>new WebAssembly.Instance: a number. <code>externs</code> the number of a thing for each import (4 bytes each); the start function
@@ -425,6 +429,7 @@ runs here.</p>
 <li class="lvl3"><a href="#webassembly-tag-sig">WebAssembly_Tag_sig</a></li>
 <li class="lvl3"><a href="#webassembly-exception-tag">WebAssembly_exception_tag</a></li>
 <li class="lvl3"><a href="#webassembly-import-throw">WebAssembly_import_throw</a></li>
+<li class="lvl3"><a href="#webassembly-extern-released">WebAssembly_extern_released</a></li>
 <li class="lvl3"><a href="#webassembly-instance-create">WebAssembly_Instance_create</a></li>
 <li class="lvl3"><a href="#webassembly-instance-exports">WebAssembly_Instance_exports</a></li>
 </ul>

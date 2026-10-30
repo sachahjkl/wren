@@ -376,6 +376,16 @@ The import running ends by throwing a WebAssembly exception of `tag` with `value
 
 Host: `WebAssembly_import_throw :: proc(c: ^Call, tag: i32, values: []u8)`
 
+### `WebAssembly_extern_released`
+
+```
+i32 WebAssembly_extern_released()
+```
+
+The number of an externref no reference is left to, one at each call; 0 when there is none.
+
+Host: `WebAssembly_extern_released :: proc(c: ^Call) -> i32`
+
 ### `WebAssembly_Instance_create`
 
 ```

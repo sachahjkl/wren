@@ -38,10 +38,11 @@ the image, and its functions read as native ones.
    read 186 ns (15 ns in an ordinary array), a write 292 ns, a call of an export 508 ns, `TextDecoder` on 1 KiB 19 us. Growing
    detaches the buffer, also when the module grew it (seen at the next `memory.buffer`).
 5. **Values** cross as cells (`user_store.odin`), converted in `web_wasm.odin`, so a call costs no JavaScript beyond the
-   function called. An externref is a number in a table of `web_wasm.js`: the values stay until the page closes.
+   function called. An externref is a number in a table of `web_wasm.js`: the value goes when the store's collector has
+   dropped the last reference to it (`extern_released`).
 6. **Exceptions.** One the module does not catch becomes a `WebAssembly.Exception`; one an import throws is thrown in the
-   module (so it can catch it). Any other JavaScript error goes through the module as a trap and comes out as itself: the
-   module cannot catch it, which differs from the specification (`JSTag`).
+   module, so it can catch it. Anything else JavaScript throws crosses under `WebAssembly.JSTag`: `catch_all` catches it, and
+   it comes out as itself. Only the error that stops a script past its time goes through as a trap.
 7. **The Content Security Policy**: `'wasm-unsafe-eval'` or `'unsafe-eval'` where a policy has a `script-src` or
    `default-src`, otherwise a `CompileError` and a violation report. `validate` is not subject to it.
 
@@ -58,9 +59,10 @@ exceptions exist; what fails to compile there stays interpreted.
 ## Limits
 
 - No shared memory (`shared: true` is a `TypeError`): threads are off in the engine, so an Emscripten build with pthreads
-  cannot run. SQLite Fiddle starts and answers, but its OPFS helper stops at `Atomics.wait`.
+  cannot run. Without cross-origin isolation a page has no `SharedArrayBuffer` at all, as in other browsers (SQLite Fiddle
+  then says OPFS is unavailable instead of waiting on a copy): see `docs/shared-memory.md`.
 - GC, typed function references and memory64 follow `wasm.features.*` (off by default): such modules get a `CompileError`.
-- A call has at most 32 values on each side (`MAX_CELLS`, `web_wasm.odin`).
+- An exception carries at most 32 values (`MAX_TAG_VALUES`, `web_wasm.odin`).
 - Recursion through a module is bounded by the engine's stack: at the depth of recursion through a native function, far
   below other browsers.
 - Not there: type reflection (`.type()`, `WebAssembly.Function`), `toResizableBuffer`, JSPI, string builtins, source phase

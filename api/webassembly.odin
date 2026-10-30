@@ -154,6 +154,10 @@ WebAssembly_exception_tag :: proc() -> i32
 //@wb fn
 WebAssembly_import_throw :: proc(tag: i32, values: bytes)
 
+/// The number of an externref no reference is left to, one at each call; 0 when there is none.
+//@wb fn
+WebAssembly_extern_released :: proc() -> i32
+
 /// new WebAssembly.Instance: a number. `externs` the number of a thing for each import (4 bytes each); the start function
 /// runs here.
 //@wb fn

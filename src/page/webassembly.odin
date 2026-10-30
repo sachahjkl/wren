@@ -327,6 +327,12 @@ WebAssembly_import_throw :: proc(c: ^Call, tag: i32, values: []u8) {
 	s.import_throw = true
 }
 
+WebAssembly_extern_released :: proc(c: ^Call) -> i32 {
+	s := wasm_store(c)
+	if s == nil || len(s.extern_released) == 0 { return 0 }
+	return i32(pop(&s.extern_released))
+}
+
 WebAssembly_Instance_create :: proc(c: ^Call, module: Api_WebAssemblyModule, externs: []u8) -> i32 {
 	s := wasm_store(c)
 	if s == nil || len(externs) % 4 != 0 { return NO_STORE }

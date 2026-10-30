@@ -62,6 +62,8 @@ User_Store :: struct {
 	imports:   [dynamic]^User_Import,
 	import_args, import_results: []u64,   // of the import running
 	call_results: [dynamic]u64,           // of the last call (the embedder's)
+	extern_counts: map[u32]i32,           // how many references the store has made of an externref's number
+	extern_released: [dynamic]u32,        // the numbers no reference is left to, for the embedder
 	error:     string,                    // the message of the last failure
 }
 
@@ -92,6 +94,8 @@ user_store_delete :: proc(s: ^User_Store) {
 	for i in s.imports { free(i) }
 	delete(s.imports)
 	delete(s.call_results)
+	delete(s.extern_counts)
+	delete(s.extern_released)
 	delete(s.error)
 	free(s)
 }
@@ -229,6 +233,29 @@ func_id :: proc(s: ^User_Store, f: wt_func) -> i32 {
 	return id
 }
 
+// What an externref holds. The store's collector drops it when no reference is left; the embedder's number goes back to it
+// when that was the last one (user_store.extern_released).
+@(private = "file")
+User_Extern :: struct {
+	store: ^User_Store,
+	id:    u32,
+}
+
+@(private = "file")
+user_extern_finalizer :: proc "c" (data: rawptr) {
+	context = base.process_context()
+	x := (^User_Extern)(data)
+	s := x.store
+	n := s.extern_counts[x.id] - 1
+	if n > 0 {
+		s.extern_counts[x.id] = n
+	} else {
+		delete_key(&s.extern_counts, x.id)
+		append(&s.extern_released, x.id)
+	}
+	free(x, base.process_allocator())
+}
+
 @(private = "file")
 Valid :: enum { Ok, Bad_Function, Bad_Type }
 
@@ -249,7 +276,15 @@ val_of_cell :: proc(s: ^User_Store, letter: u8, cell: u64, v: ^wt_val) -> Valid 
 		}
 	case 'e':
 		v.kind = WT_VAL_EXTERNREF
-		if cell != 0 && !wasmtime_externref_new(s.ctx, rawptr(uintptr(cell)), nil, &v.of.raw) { return .Bad_Type }
+		if cell != 0 {
+			x := new(User_Extern, base.process_allocator())
+			x.store, x.id = s, u32(cell)
+			if !wasmtime_externref_new(s.ctx, x, user_extern_finalizer, &v.of.raw) {
+				free(x, base.process_allocator())
+				return .Bad_Type
+			}
+			s.extern_counts[x.id] += 1
+		}
 	case: return .Bad_Type
 	}
 	return .Ok
@@ -268,7 +303,7 @@ cell_of_val :: proc(s: ^User_Store, letter: u8, v: ^wt_val) -> u64 {
 		return u64(func_id(s, v.of.funcref)) + 1
 	case 'e':
 		if v.of.raw[0] == 0 { return 0 }
-		return u64(uintptr(wasmtime_externref_data(s.ctx, &v.of.raw)))
+		return u64((^User_Extern)(wasmtime_externref_data(s.ctx, &v.of.raw)).id)
 	}
 	return 0
 }
