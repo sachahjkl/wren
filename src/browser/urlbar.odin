@@ -58,6 +58,8 @@ URLBAR_PREFS := [?]config.Def{
 		description = "Characters typed before the suggestions show."},
 	{name = "browser.urlbar.top_sites", kind = .Bool, default = {b = true},
 		description = "When the address bar gets the keyboard (a click, Ctrl+L, a new tab), list the pages visited most and most lately before anything is typed; Enter still opens what the field shows."},
+	{name = "browser.newtab.focus_address", kind = .Bool, default = {b = false},
+		description = "A new tab or window (Ctrl+T, Ctrl+N, the + of the strip) puts the keyboard in the address bar, as Chromium does. Off: the new tab shows its page and the address bar waits for a click or Ctrl+L."},
 }
 
 register_urlbar_prefs :: proc(p: ^config.Prefs) { config.register(p, URLBAR_PREFS[:]) }

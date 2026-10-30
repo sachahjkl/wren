@@ -13,11 +13,12 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 - **Wren runs on Linux** (`./build.sh deps`, `./build.sh wren`; `docs/portability.md`, slice 7): verified under WSLg (Wayland, software Vulkan) on NixOS: the window, the start page, `wren ctl`, example.com and GitHub's repository page. `tools/fetch_wgpu.sh` fetches wgpu-native (SHA-256 checked, sealed like Wasmtime), `tools/fetch_wasmtime.sh` also the licence text, and the Linux CI job now checks and tests `src/browser`. Linux is not released yet: only the Windows build is.
 
 ### Changed
+- **A new tab no longer puts the keyboard in the address bar** (`browser.newtab.focus_address`, off by default; on: the old behaviour, as Chromium does, also for a new window). Ctrl+T, the + of the strip and the menus open the new tab page without the list of frequent pages dropping over it; a click on the bar or Ctrl+L still opens it.
 - **Updated to the latest `gui_toolkit` master (0.54): `Build_Params.smooth_scroll`, find in page, Slug's hinted small text, the Linux window.** (`native/Cargo.lock` gains skrifa 0.49.)
-- **A `JSON.parse` error says where it stopped**: `JSON.parse: bad escape at position 23 of 1779 near ...` (the text around it), as other browsers do, so that a page's developer can find what did not parse.
+- **A `JSON.parse` error says where it stopped**: `JSON.parse: bad escape at position 23 of 1779 near "..."` (the text around it), as other browsers do, so that a page's developer can find what did not parse.
 
 ### Fixed
-- **`performance.getEntriesByType(navigation)` no longer reads freed memory.** The navigation entry's strings were freed (a `defer` inside the `if` block) before the entry was turned into JSON. The Windows heap left the bytes in place; on Linux they were overwritten, GitHub's web-vitals code threw `JSON.parse: bad escape` and its repository page showed Unable
+- **`performance.getEntriesByType("navigation")` no longer reads freed memory.** The navigation entry's strings were freed (a `defer` inside the `if` block) before the entry was turned into JSON. The Windows heap left the bytes in place; on Linux they were overwritten, GitHub's web-vitals code threw `JSON.parse: bad escape` and its repository page showed "Unable to load page".
 
 ## 0.6.17 - 2026-10-30
 
