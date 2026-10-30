@@ -47,11 +47,25 @@
     <p class="intro">Eight versions in twelve days: the first public build, JavaScript, a JIT, a text engine of its own, a browser that speaks to screen readers, then a JavaScript engine written in Odin.</p>
     <div class="timeline">
 <!-- releases:begin -->
-      <article class="release latest" id="v0-6-19">
+      <article class="release latest" id="v0-6-20">
         <div class="rail"><span class="dot"></span></div>
         <div class="release-body">
           <p class="release-date"><time datetime="2026-10-30">October 30, 2026</time></p>
-          <div class="release-title"><h3>0.6.19</h3><span class="badge">Latest</span></div>
+          <div class="release-title"><h3>0.6.20</h3><span class="badge">Latest</span></div>
+          <ul class="release-list">
+            <li><strong>The WebAssembly JavaScript API.</strong> <code>WebAssembly.compile</code>, <code>instantiate</code>, the streaming forms, <code>Module</code>, <code>Instance</code>, <code>Memory</code>, <code>Table</code>, <code>Global</code>, <code>Tag</code> and <code>Exception</code>, in windows and workers.</li>
+            <li><strong>A large module does not stop the page.</strong> <code>WebAssembly.compile</code> works on another thread: for a 34 MB module, the page's timers keep running (worst gap 25 ms) where a synchronous compile blocks for…</li>
+            <li><strong>A page that does not touch <code>WebAssembly</code> pays nothing</strong>: its objects are made on first use.</li>
+          </ul>
+          <p class="release-links"><a href="https://github.com/sachahjkl/wren/blob/master/docs/releases/v0.6.20.md">Release notes</a> ·
+            <a href="https://github.com/sachahjkl/wren/releases/tag/v0.6.20">Download</a></p>
+        </div>
+      </article>
+      <article class="release" id="v0-6-19">
+        <div class="rail"><span class="dot"></span></div>
+        <div class="release-body">
+          <p class="release-date"><time datetime="2026-10-30">October 30, 2026</time></p>
+          <div class="release-title"><h3>0.6.19</h3></div>
           <ul class="release-list">
             <li><strong><code>table-layout: fixed</code> is honoured.</strong> A table with a width and <code>table-layout: fixed</code> took its columns from the content, so a commit message that does not wrap widened the file list of a GitHub…</li>
             <li><strong>A frame less between input and screen</strong>, from the latest <code>gui_toolkit</code>: on GitHub, with the pointer moving over the page, the time from an input to the refresh that shows it goes from 49.9 ms to…</li>

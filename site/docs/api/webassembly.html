@@ -173,6 +173,7 @@
 <li><a href="../../docs/releases/v0.6.18.html">Wren 0.6.18</a></li>
 <li><a href="../../docs/releases/v0.6.19.html">Wren 0.6.19</a></li>
 <li><a href="../../docs/releases/v0.6.2.html">Wren 0.6.2</a></li>
+<li><a href="../../docs/releases/v0.6.20.html">Wren 0.6.20</a></li>
 <li><a href="../../docs/releases/v0.6.3.html">Wren 0.6.3</a></li>
 <li><a href="../../docs/releases/v0.6.4.html">Wren 0.6.4</a></li>
 <li><a href="../../docs/releases/v0.6.5.html">Wren 0.6.5</a></li>
@@ -199,7 +200,7 @@
 <li><a href="../../docs/js/bindgen.html">bindgen: Odin output and Odin input</a></li>
 <li><a href="../../docs/js/odin-abi.html">The generic Odin ABI for the engine boundary</a></li>
 <li><a href="../../docs/js/odin-glue.html">Writing Wren's JavaScript glue in Odin</a></li>
-<li><a href="../../docs/js/webassembly-api.html">The WebAssembly JavaScript API (plan and state)</a></li>
+<li><a href="../../docs/js/webassembly-api.html">The WebAssembly JavaScript API</a></li>
 </ul>
 </div>
 </nav>
@@ -216,6 +217,10 @@
 <p>The WebAssembly JavaScript API (src/page/webassembly.odin, the objects: native/js/odin/web_wasm.odin): a page's own
 WebAssembly modules, compiled and run by Wasmtime beside the engine's. Off until it is complete
 (javascript.webassembly.enabled): a page that finds a <code>WebAssembly</code> object expects all of it.</p>
+<p>What a page makes (memories, tables, globals, functions, instances) lives in one store per realm, known by numbers.
+A call that can fail gives a number &gt;= 0 or the opposite of a failure (1 LinkError, 2 RuntimeError, 3 RangeError,
+4 TypeError, 5 a WebAssembly exception), the message from WebAssembly_lastError. A value crosses as a cell: an i64 holding an i32, an i64, the
+bits of a float, a function's number + 1, or an externref's number (0: a null reference).</p>
 <p>Exposed to: Window, Worker. Source: <code>api/webassembly.widl</code>.</p>
 <h2 id="types"><a class="anchor" href="#types" aria-hidden="true">#</a>Types</h2>
 <h3 id="handle-webassemblymodule-object"><a class="anchor" href="#handle-webassemblymodule-object" aria-hidden="true">#</a>handle <code>WebAssemblyModule</code> : <code>Object</code></h3>
@@ -235,6 +240,10 @@ WebAssembly modules, compiled and run by Wasmtime beside the engine's. Off until
 the page's Content Security Policy refuses it.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../docs/api/web.html">web</a>).</p>
 <p>Host: <code>WebAssembly_compile :: proc(c: ^Call, module: []u8) -&gt; (u64, Api_Error)</code></p>
+<h3 id="webassembly-compileasync"><a class="anchor" href="#webassembly-compileasync" aria-hidden="true">#</a><code>WebAssembly_compileAsync</code></h3>
+<div class="code"><pre><code>Promise&lt;WebAssemblyModule&gt; WebAssembly_compileAsync(bytes module)</code></pre></div>
+<p>WebAssembly.compile(bytes): the same on a thread of its own; the promise is rejected with the reason.</p>
+<p>Host: <code>WebAssembly_compileAsync :: proc(c: ^Call, module: []u8) -&gt; u64</code></p>
 <h3 id="webassembly-module-imports"><a class="anchor" href="#webassembly-module-imports" aria-hidden="true">#</a><code>WebAssembly_Module_imports</code></h3>
 <div class="code"><pre><code>string WebAssembly_Module_imports(WebAssemblyModule module)</code></pre></div>
 <p>WebAssembly.Module.imports(module), as JSON.</p>
@@ -251,6 +260,123 @@ the page's Content Security Policy refuses it.</p>
 <div class="code"><pre><code>bytes WebAssembly_Module_customSection(WebAssemblyModule module, string name, i32 index)</code></pre></div>
 <p>The bytes of the custom section number <code>index</code> of those called <code>name</code>.</p>
 <p>Host: <code>WebAssembly_Module_customSection :: proc(c: ^Call, module: Api_WebAssemblyModule, name: string, index: i32) -&gt; []u8</code></p>
+<h3 id="webassembly-module-linkinfo"><a class="anchor" href="#webassembly-module-linkinfo" aria-hidden="true">#</a><code>WebAssembly_Module_linkInfo</code></h3>
+<div class="code"><pre><code>string WebAssembly_Module_linkInfo(WebAssemblyModule module)</code></pre></div>
+<p>What the module imports with the types, as JSON: [{module, name, kind, sig, value, mutable}].</p>
+<p>Host: <code>WebAssembly_Module_linkInfo :: proc(c: ^Call, module: Api_WebAssemblyModule) -&gt; string</code></p>
+<h3 id="webassembly-lasterror"><a class="anchor" href="#webassembly-lasterror" aria-hidden="true">#</a><code>WebAssembly_lastError</code></h3>
+<div class="code"><pre><code>string WebAssembly_lastError()</code></pre></div>
+<p>The message of the last failure.</p>
+<p>Host: <code>WebAssembly_lastError :: proc(c: ^Call) -&gt; string</code></p>
+<h3 id="webassembly-memory-create"><a class="anchor" href="#webassembly-memory-create" aria-hidden="true">#</a><code>WebAssembly_Memory_create</code></h3>
+<div class="code"><pre><code>i32 WebAssembly_Memory_create(i64 initial, i64 maximum)</code></pre></div>
+<p>new WebAssembly.Memory: a number. <code>maximum</code> -1 for none.</p>
+<p>Host: <code>WebAssembly_Memory_create :: proc(c: ^Call, initial: i64, maximum: i64) -&gt; i32</code></p>
+<h3 id="webassembly-memory-pages"><a class="anchor" href="#webassembly-memory-pages" aria-hidden="true">#</a><code>WebAssembly_Memory_pages</code></h3>
+<div class="code"><pre><code>i64 WebAssembly_Memory_pages(i32 memory)</code></pre></div>
+<p>The size in pages (-1: no such memory).</p>
+<p>Host: <code>WebAssembly_Memory_pages :: proc(c: ^Call, memory: i32) -&gt; i64</code></p>
+<h3 id="webassembly-memory-grow"><a class="anchor" href="#webassembly-memory-grow" aria-hidden="true">#</a><code>WebAssembly_Memory_grow</code></h3>
+<div class="code"><pre><code>i64 WebAssembly_Memory_grow(i32 memory, i64 delta)</code></pre></div>
+<p>memory.grow: the previous size in pages.</p>
+<p>Host: <code>WebAssembly_Memory_grow :: proc(c: ^Call, memory: i32, delta: i64) -&gt; i64</code></p>
+<h3 id="webassembly-memory-read"><a class="anchor" href="#webassembly-memory-read" aria-hidden="true">#</a><code>WebAssembly_Memory_read</code></h3>
+<div class="code"><pre><code>i32 WebAssembly_Memory_read(i32 memory, i64 offset, out bytes destination)</code></pre></div>
+<p>Bytes of the memory at <code>offset</code>: how many were copied. What memory.buffer reads.</p>
+<p>Host: <code>WebAssembly_Memory_read :: proc(c: ^Call, memory: i32, offset: i64, destination: []u8) -&gt; i32</code></p>
+<h3 id="webassembly-memory-write"><a class="anchor" href="#webassembly-memory-write" aria-hidden="true">#</a><code>WebAssembly_Memory_write</code></h3>
+<div class="code"><pre><code>i32 WebAssembly_Memory_write(i32 memory, i64 offset, bytes source)</code></pre></div>
+<p><code>source</code> into the memory at <code>offset</code>: how many were copied. What memory.buffer writes.</p>
+<p>Host: <code>WebAssembly_Memory_write :: proc(c: ^Call, memory: i32, offset: i64, source: []u8) -&gt; i32</code></p>
+<h3 id="webassembly-table-create"><a class="anchor" href="#webassembly-table-create" aria-hidden="true">#</a><code>WebAssembly_Table_create</code></h3>
+<div class="code"><pre><code>i32 WebAssembly_Table_create(string element, i64 initial, i64 maximum, i64 init)</code></pre></div>
+<p>new WebAssembly.Table: a number. <code>element</code> "r" (funcref) or "e" (externref), <code>maximum</code> -1 for none.</p>
+<p>Host: <code>WebAssembly_Table_create :: proc(c: ^Call, element: string, initial: i64, maximum: i64, init: i64) -&gt; i32</code></p>
+<h3 id="webassembly-table-element"><a class="anchor" href="#webassembly-table-element" aria-hidden="true">#</a><code>WebAssembly_Table_element</code></h3>
+<div class="code"><pre><code>string WebAssembly_Table_element(i32 table)</code></pre></div>
+<p>"r", "e", or "" for no such table.</p>
+<p>Host: <code>WebAssembly_Table_element :: proc(c: ^Call, table: i32) -&gt; string</code></p>
+<h3 id="webassembly-table-length"><a class="anchor" href="#webassembly-table-length" aria-hidden="true">#</a><code>WebAssembly_Table_length</code></h3>
+<div class="code"><pre><code>i64 WebAssembly_Table_length(i32 table)</code></pre></div>
+<p>Host: <code>WebAssembly_Table_length :: proc(c: ^Call, table: i32) -&gt; i64</code></p>
+<h3 id="webassembly-table-get"><a class="anchor" href="#webassembly-table-get" aria-hidden="true">#</a><code>WebAssembly_Table_get</code></h3>
+<div class="code"><pre><code>i32 WebAssembly_Table_get(i32 table, i64 index, out bytes cell)</code></pre></div>
+<p>The cell at <code>index</code>, into <code>cell</code> (8 bytes): 0, or the opposite of a failure.</p>
+<p>Host: <code>WebAssembly_Table_get :: proc(c: ^Call, table: i32, index: i64, cell: []u8) -&gt; i32</code></p>
+<h3 id="webassembly-table-set"><a class="anchor" href="#webassembly-table-set" aria-hidden="true">#</a><code>WebAssembly_Table_set</code></h3>
+<div class="code"><pre><code>i32 WebAssembly_Table_set(i32 table, i64 index, i64 cell)</code></pre></div>
+<p>Host: <code>WebAssembly_Table_set :: proc(c: ^Call, table: i32, index: i64, cell: i64) -&gt; i32</code></p>
+<h3 id="webassembly-table-grow"><a class="anchor" href="#webassembly-table-grow" aria-hidden="true">#</a><code>WebAssembly_Table_grow</code></h3>
+<div class="code"><pre><code>i64 WebAssembly_Table_grow(i32 table, i64 delta, i64 init)</code></pre></div>
+<p>table.grow: the previous length.</p>
+<p>Host: <code>WebAssembly_Table_grow :: proc(c: ^Call, table: i32, delta: i64, init: i64) -&gt; i64</code></p>
+<h3 id="webassembly-global-create"><a class="anchor" href="#webassembly-global-create" aria-hidden="true">#</a><code>WebAssembly_Global_create</code></h3>
+<div class="code"><pre><code>i32 WebAssembly_Global_create(string type, bool mutable, i64 cell)</code></pre></div>
+<p>new WebAssembly.Global: a number. <code>type</code> a value type's letter.</p>
+<p>Host: <code>WebAssembly_Global_create :: proc(c: ^Call, type: string, mutable: bool, cell: i64) -&gt; i32</code></p>
+<h3 id="webassembly-global-type"><a class="anchor" href="#webassembly-global-type" aria-hidden="true">#</a><code>WebAssembly_Global_type</code></h3>
+<div class="code"><pre><code>string WebAssembly_Global_type(i32 global)</code></pre></div>
+<p>The value type's letter, then "m" when it can change; "" for no such global.</p>
+<p>Host: <code>WebAssembly_Global_type :: proc(c: ^Call, global: i32) -&gt; string</code></p>
+<h3 id="webassembly-global-get"><a class="anchor" href="#webassembly-global-get" aria-hidden="true">#</a><code>WebAssembly_Global_get</code></h3>
+<div class="code"><pre><code>i64 WebAssembly_Global_get(i32 global)</code></pre></div>
+<p>Host: <code>WebAssembly_Global_get :: proc(c: ^Call, global: i32) -&gt; i64</code></p>
+<h3 id="webassembly-global-set"><a class="anchor" href="#webassembly-global-set" aria-hidden="true">#</a><code>WebAssembly_Global_set</code></h3>
+<div class="code"><pre><code>i32 WebAssembly_Global_set(i32 global, i64 cell)</code></pre></div>
+<p>Host: <code>WebAssembly_Global_set :: proc(c: ^Call, global: i32, cell: i64) -&gt; i32</code></p>
+<h3 id="webassembly-func-import"><a class="anchor" href="#webassembly-func-import" aria-hidden="true">#</a><code>WebAssembly_Func_import</code></h3>
+<div class="code"><pre><code>i32 WebAssembly_Func_import(i32 slot, string sig)</code></pre></div>
+<p>A function of signature <code>sig</code> that runs import <code>slot</code> of the realm (wj_wasm_import).</p>
+<p>Host: <code>WebAssembly_Func_import :: proc(c: ^Call, slot: i32, sig: string) -&gt; i32</code></p>
+<h3 id="webassembly-func-sig"><a class="anchor" href="#webassembly-func-sig" aria-hidden="true">#</a><code>WebAssembly_Func_sig</code></h3>
+<div class="code"><pre><code>string WebAssembly_Func_sig(i32 func)</code></pre></div>
+<p>The signature of a function, "params:results" (see src/wasm/user_store.odin); "" for no such function.</p>
+<p>Host: <code>WebAssembly_Func_sig :: proc(c: ^Call, func: i32) -&gt; string</code></p>
+<h3 id="webassembly-func-call"><a class="anchor" href="#webassembly-func-call" aria-hidden="true">#</a><code>WebAssembly_Func_call</code></h3>
+<div class="code"><pre><code>i32 WebAssembly_Func_call(i32 func, bytes args)</code></pre></div>
+<p>Calls a function: <code>args</code> its cells (8 bytes each). 0, or the opposite of a failure.</p>
+<p>Host: <code>WebAssembly_Func_call :: proc(c: ^Call, func: i32, args: []u8) -&gt; i32</code></p>
+<h3 id="webassembly-func-results"><a class="anchor" href="#webassembly-func-results" aria-hidden="true">#</a><code>WebAssembly_Func_results</code></h3>
+<div class="code"><pre><code>bytes WebAssembly_Func_results()</code></pre></div>
+<p>The results of the call that just ended, as cells (apart: the call may have moved the engine's memory).</p>
+<p>Host: <code>WebAssembly_Func_results :: proc(c: ^Call) -&gt; []u8</code></p>
+<h3 id="webassembly-import-args"><a class="anchor" href="#webassembly-import-args" aria-hidden="true">#</a><code>WebAssembly_import_args</code></h3>
+<div class="code"><pre><code>bytes WebAssembly_import_args()</code></pre></div>
+<p>The arguments of the import running, as cells.</p>
+<p>Host: <code>WebAssembly_import_args :: proc(c: ^Call) -&gt; []u8</code></p>
+<h3 id="webassembly-import-results"><a class="anchor" href="#webassembly-import-results" aria-hidden="true">#</a><code>WebAssembly_import_results</code></h3>
+<div class="code"><pre><code>void WebAssembly_import_results(bytes results)</code></pre></div>
+<p>The results of the import running, as cells.</p>
+<p>Host: <code>WebAssembly_import_results :: proc(c: ^Call, results: []u8)</code></p>
+<h3 id="webassembly-import-failed"><a class="anchor" href="#webassembly-import-failed" aria-hidden="true">#</a><code>WebAssembly_import_failed</code></h3>
+<div class="code"><pre><code>void WebAssembly_import_failed(string message)</code></pre></div>
+<p>Why the import running failed.</p>
+<p>Host: <code>WebAssembly_import_failed :: proc(c: ^Call, message: string)</code></p>
+<h3 id="webassembly-tag-create"><a class="anchor" href="#webassembly-tag-create" aria-hidden="true">#</a><code>WebAssembly_Tag_create</code></h3>
+<div class="code"><pre><code>i32 WebAssembly_Tag_create(string parameters)</code></pre></div>
+<p>new WebAssembly.Tag: a number. <code>parameters</code> a value type's letter for each.</p>
+<p>Host: <code>WebAssembly_Tag_create :: proc(c: ^Call, parameters: string) -&gt; i32</code></p>
+<h3 id="webassembly-tag-sig"><a class="anchor" href="#webassembly-tag-sig" aria-hidden="true">#</a><code>WebAssembly_Tag_sig</code></h3>
+<div class="code"><pre><code>string WebAssembly_Tag_sig(i32 tag)</code></pre></div>
+<p>The parameters of a tag, one letter each.</p>
+<p>Host: <code>WebAssembly_Tag_sig :: proc(c: ^Call, tag: i32) -&gt; string</code></p>
+<h3 id="webassembly-exception-tag"><a class="anchor" href="#webassembly-exception-tag" aria-hidden="true">#</a><code>WebAssembly_exception_tag</code></h3>
+<div class="code"><pre><code>i32 WebAssembly_exception_tag()</code></pre></div>
+<p>The tag of the exception a call just failed with (failure 5); its values come from WebAssembly_Func_results.</p>
+<p>Host: <code>WebAssembly_exception_tag :: proc(c: ^Call) -&gt; i32</code></p>
+<h3 id="webassembly-import-throw"><a class="anchor" href="#webassembly-import-throw" aria-hidden="true">#</a><code>WebAssembly_import_throw</code></h3>
+<div class="code"><pre><code>void WebAssembly_import_throw(i32 tag, bytes values)</code></pre></div>
+<p>The import running ends by throwing a WebAssembly exception of <code>tag</code> with <code>values</code> (cells).</p>
+<p>Host: <code>WebAssembly_import_throw :: proc(c: ^Call, tag: i32, values: []u8)</code></p>
+<h3 id="webassembly-instance-create"><a class="anchor" href="#webassembly-instance-create" aria-hidden="true">#</a><code>WebAssembly_Instance_create</code></h3>
+<div class="code"><pre><code>i32 WebAssembly_Instance_create(WebAssemblyModule module, bytes externs)</code></pre></div>
+<p>new WebAssembly.Instance: a number. <code>externs</code> the number of a thing for each import (4 bytes each); the start function
+runs here.</p>
+<p>Host: <code>WebAssembly_Instance_create :: proc(c: ^Call, module: Api_WebAssemblyModule, externs: []u8) -&gt; i32</code></p>
+<h3 id="webassembly-instance-exports"><a class="anchor" href="#webassembly-instance-exports" aria-hidden="true">#</a><code>WebAssembly_Instance_exports</code></h3>
+<div class="code"><pre><code>string WebAssembly_Instance_exports(i32 instance, WebAssemblyModule module)</code></pre></div>
+<p>The exports of an instance, as JSON: [{name, kind, id, index}].</p>
+<p>Host: <code>WebAssembly_Instance_exports :: proc(c: ^Call, instance: i32, module: Api_WebAssemblyModule) -&gt; string</code></p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../docs/api/web.html"><span>Previous</span><strong>Module web</strong></a>
 <a class="doc-next" href="../../docs/api/webcodecs.html"><span>Next</span><strong>Module webcodecs</strong></a>
@@ -266,10 +392,41 @@ the page's Content Security Policy refuses it.</p>
 <li class="lvl3"><a href="#webassembly-enabled">WebAssembly_enabled</a></li>
 <li class="lvl3"><a href="#webassembly-validate">WebAssembly_validate</a></li>
 <li class="lvl3"><a href="#webassembly-compile">WebAssembly_compile</a></li>
+<li class="lvl3"><a href="#webassembly-compileasync">WebAssembly_compileAsync</a></li>
 <li class="lvl3"><a href="#webassembly-module-imports">WebAssembly_Module_imports</a></li>
 <li class="lvl3"><a href="#webassembly-module-exports">WebAssembly_Module_exports</a></li>
 <li class="lvl3"><a href="#webassembly-module-customsectioncount">WebAssembly_Module_customSectionCount</a></li>
 <li class="lvl3"><a href="#webassembly-module-customsection">WebAssembly_Module_customSection</a></li>
+<li class="lvl3"><a href="#webassembly-module-linkinfo">WebAssembly_Module_linkInfo</a></li>
+<li class="lvl3"><a href="#webassembly-lasterror">WebAssembly_lastError</a></li>
+<li class="lvl3"><a href="#webassembly-memory-create">WebAssembly_Memory_create</a></li>
+<li class="lvl3"><a href="#webassembly-memory-pages">WebAssembly_Memory_pages</a></li>
+<li class="lvl3"><a href="#webassembly-memory-grow">WebAssembly_Memory_grow</a></li>
+<li class="lvl3"><a href="#webassembly-memory-read">WebAssembly_Memory_read</a></li>
+<li class="lvl3"><a href="#webassembly-memory-write">WebAssembly_Memory_write</a></li>
+<li class="lvl3"><a href="#webassembly-table-create">WebAssembly_Table_create</a></li>
+<li class="lvl3"><a href="#webassembly-table-element">WebAssembly_Table_element</a></li>
+<li class="lvl3"><a href="#webassembly-table-length">WebAssembly_Table_length</a></li>
+<li class="lvl3"><a href="#webassembly-table-get">WebAssembly_Table_get</a></li>
+<li class="lvl3"><a href="#webassembly-table-set">WebAssembly_Table_set</a></li>
+<li class="lvl3"><a href="#webassembly-table-grow">WebAssembly_Table_grow</a></li>
+<li class="lvl3"><a href="#webassembly-global-create">WebAssembly_Global_create</a></li>
+<li class="lvl3"><a href="#webassembly-global-type">WebAssembly_Global_type</a></li>
+<li class="lvl3"><a href="#webassembly-global-get">WebAssembly_Global_get</a></li>
+<li class="lvl3"><a href="#webassembly-global-set">WebAssembly_Global_set</a></li>
+<li class="lvl3"><a href="#webassembly-func-import">WebAssembly_Func_import</a></li>
+<li class="lvl3"><a href="#webassembly-func-sig">WebAssembly_Func_sig</a></li>
+<li class="lvl3"><a href="#webassembly-func-call">WebAssembly_Func_call</a></li>
+<li class="lvl3"><a href="#webassembly-func-results">WebAssembly_Func_results</a></li>
+<li class="lvl3"><a href="#webassembly-import-args">WebAssembly_import_args</a></li>
+<li class="lvl3"><a href="#webassembly-import-results">WebAssembly_import_results</a></li>
+<li class="lvl3"><a href="#webassembly-import-failed">WebAssembly_import_failed</a></li>
+<li class="lvl3"><a href="#webassembly-tag-create">WebAssembly_Tag_create</a></li>
+<li class="lvl3"><a href="#webassembly-tag-sig">WebAssembly_Tag_sig</a></li>
+<li class="lvl3"><a href="#webassembly-exception-tag">WebAssembly_exception_tag</a></li>
+<li class="lvl3"><a href="#webassembly-import-throw">WebAssembly_import_throw</a></li>
+<li class="lvl3"><a href="#webassembly-instance-create">WebAssembly_Instance_create</a></li>
+<li class="lvl3"><a href="#webassembly-instance-exports">WebAssembly_Instance_exports</a></li>
 </ul>
 </nav>
 </main>

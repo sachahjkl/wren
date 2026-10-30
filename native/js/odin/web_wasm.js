@@ -1,6 +1,6 @@
 // The objects of the WebAssembly JavaScript API (https://webassembly.github.io/spec/js-api/) over the natives of
-// web_wasm.odin, run at the start of a realm when javascript.webassembly.enabled is on. What it uses of the realm is
-// taken here, before a script of the page can replace it.
+// web_wasm.odin, run the first time a script of the realm reads `WebAssembly` (javascript.webassembly.enabled). What it
+// uses of the realm is taken here, so what the page replaces later does not reach it.
 (function (native, global) {
   "use strict";
   const { create, defineProperty, freeze, getOwnPropertyDescriptor, getOwnPropertyNames, keys, setPrototypeOf } = Object;
@@ -8,7 +8,7 @@
   const P = Promise, E = Error, TE = TypeError, RE = RangeError, N = Number, ArrayFrom = Array.from;
   const WM = WeakMap, M = Map;
   const weakGet = WM.prototype.get, weakSet = WM.prototype.set, mapGet = M.prototype.get, mapSet = M.prototype.set;
-  const promiseThen = P.prototype.then;
+  const promiseThen = P.prototype.then, isWellFormed = String.prototype.isWellFormed;
   const toStringTag = Symbol.toStringTag;
   const isFinite_ = isFinite, trunc = Math.trunc, fround = Math.fround, stringOf = String, BI = BigInt, BigIntAsIntN = BigInt.asIntN;
   const isObject = v => (typeof v === "object" && v !== null) || typeof v === "function";
@@ -89,7 +89,8 @@
     customSections(module, name) {
       const h = argState(module, Module, "WebAssembly.Module.customSections()").handle;
       if (name === undefined) throw new TE("WebAssembly.Module.customSections(): Argument 1 is required");
-      return native.customSections(h, name);
+      const s = stringOf(name);
+      return apply(isWellFormed, s, []) ? native.customSections(h, s) : [];   // (a lone surrogate names no section)
     },
   });
   interfaceOf(Module);
@@ -102,8 +103,9 @@
   class Memory {
     constructor(descriptor) {
       if (!isObject(descriptor)) throw new TE("WebAssembly.Memory(): Argument 0 must be a memory descriptor");
-      if (descriptor.initial === undefined) throw new TE("WebAssembly.Memory(): Property 'initial' is required");
-      const initial = enforceU32(descriptor.initial, "WebAssembly.Memory(): Property 'initial'");
+      const first = descriptor.initial;
+      if (first === undefined) throw new TE("WebAssembly.Memory(): Property 'initial' is required");
+      const initial = enforceU32(first, "WebAssembly.Memory(): Property 'initial'");
       const m = descriptor.maximum;
       const maximum = m === undefined ? -1 : enforceU32(m, "WebAssembly.Memory(): Property 'maximum'");
       if (initial > 65536) throw new RE("WebAssembly.Memory(): Property 'initial': value " + initial + " is above the upper bound");
@@ -137,7 +139,9 @@
   // ---- Table ----
 
   const tables = [];
-  const tableObject = id => tables[id] || (tables[id] = setState(create(Table.prototype), { kind: Table, id }));
+  const tableObject = id => tables[id] || (tables[id] = setState(create(Table.prototype), { kind: Table, id, letter: native.tableElement(id) }));
+  // What an element is when no value is given (a value given as undefined is one: not a funcref).
+  const tableDefault = (letter, args, i) => (args.length > i ? args[i] : letter === "r" ? null : undefined);
   const referenceLetter = (v, what) => {
     const e = stringOf(v);
     if (e === "anyfunc" || e === "funcref") return "r";
@@ -146,31 +150,33 @@
   };
 
   class Table {
-    constructor(descriptor, init) {
+    constructor(descriptor, init = undefined) {
       if (!isObject(descriptor)) throw new TE("WebAssembly.Table(): Argument 0 must be a table descriptor");
       const letter = referenceLetter(descriptor.element, "WebAssembly.Table()");
-      if (descriptor.initial === undefined) throw new TE("WebAssembly.Table(): Property 'initial' is required");
-      const initial = enforceU32(descriptor.initial, "WebAssembly.Table(): Property 'initial'");
+      const first = descriptor.initial;
+      if (first === undefined) throw new TE("WebAssembly.Table(): Property 'initial' is required");
+      const initial = enforceU32(first, "WebAssembly.Table(): Property 'initial'");
       const m = descriptor.maximum;
       const maximum = m === undefined ? -1 : enforceU32(m, "WebAssembly.Table(): Property 'maximum'");
       if (maximum >= 0 && maximum < initial) throw new RE("WebAssembly.Table(): Property 'maximum': value " + maximum + " is below the lower bound " + initial);
       if (initial > 10000000) throw new RE("WebAssembly.Table(): Property 'initial': value " + initial + " is above the upper bound");
-      const id = native.tableCreate(letter, initial, maximum, init);
-      tables[id] = setState(this, { kind: Table, id });
+      const id = native.tableCreate(letter, initial, maximum, tableDefault(letter, arguments, 1));
+      tables[id] = setState(this, { kind: Table, id, letter });
     }
     get length() { return native.tableLength(thisState(this, Table, "WebAssembly.Table.length").id); }
     get(index) {
       const s = thisState(this, Table, "WebAssembly.Table.get()");
       return native.tableGet(s.id, enforceU32(index, "WebAssembly.Table.get(): Argument 0"));
     }
-    set(index, value) {
+    set(index, value = undefined) {
       const s = thisState(this, Table, "WebAssembly.Table.set()");
       const i = enforceU32(index, "WebAssembly.Table.set(): Argument 0");
-      native.tableSet(s.id, i, value);
+      native.tableSet(s.id, i, tableDefault(s.letter, arguments, 1));
     }
-    grow(delta, init) {
+    grow(delta, init = undefined) {
       const s = thisState(this, Table, "WebAssembly.Table.grow()");
-      return native.tableGrow(s.id, enforceU32(delta, "WebAssembly.Table.grow(): Argument 0"), init);
+      const d = enforceU32(delta, "WebAssembly.Table.grow(): Argument 0");
+      return native.tableGrow(s.id, d, tableDefault(s.letter, arguments, 1));
     }
   }
   interfaceOf(Table);
@@ -182,7 +188,7 @@
   const VALUE_LETTERS = { __proto__: null, i32: "i", i64: "I", f32: "f", f64: "F", v128: "V", externref: "e", anyfunc: "r", funcref: "r" };
 
   class Global {
-    constructor(descriptor, value) {
+    constructor(descriptor, value = undefined) {
       if (!isObject(descriptor)) throw new TE("WebAssembly.Global(): Argument 0 must be a global descriptor");
       const mutable = !!descriptor.mutable;
       const letter = VALUE_LETTERS[stringOf(descriptor.value)];
@@ -196,9 +202,7 @@
     }
     get value() { return native.globalGet(thisState(this, Global, "get WebAssembly.Global.value").id); }
     set value(v) {
-      const s = thisState(this, Global, "set WebAssembly.Global.value");
-      if (arguments.length === 0) throw new TE("set WebAssembly.Global.value: Argument 0 is required");
-      native.globalSet(s.id, v);
+      native.globalSet(thisState(this, Global, "set WebAssembly.Global.value").id, v);
     }
     valueOf() { return native.globalGet(thisState(this, Global, "WebAssembly.Global.valueOf()").id); }
   }
@@ -268,7 +272,7 @@
   };
 
   class Exception {
-    constructor(tag, payload, options) {
+    constructor(tag, payload, options = undefined) {
       const t = stateOf(tag);
       if (t === undefined || t.kind !== Tag) throw new TE("WebAssembly.Exception(): Argument 0 must be a WebAssembly tag");
       if (!isObject(payload)) throw new TE("WebAssembly.Exception(): Argument 1 must be iterable");
@@ -276,9 +280,9 @@
       if (list.length !== t.letters.length) throw new TE("WebAssembly.Exception(): Number of exception values does not match signature length");
       const values = [];
       for (let i = 0; i < list.length; i++) values[i] = payloadValue(t.letters[i], list[i]);
-      setState(this, { kind: Exception, tag, values });
-      if (isObject(options) && options.traceStack) hidden(this, "stack", new E().stack);
+      setState(this, { kind: Exception, tag, values, stack: isObject(options) && options.traceStack ? new E().stack : undefined });
     }
+    get stack() { return thisState(this, Exception, "WebAssembly.Exception.stack").stack; }
     is(tag) {
       const s = thisState(this, Exception, "WebAssembly.Exception.is()");
       const t = stateOf(tag);
@@ -358,12 +362,17 @@
     throw new LinkError(at + ": this kind of import is not supported");
   };
 
-  const instantiateInto = (target, module, imports, what) => {
-    const ms = stateOf(module);
-    const wanted = native.linkInfo(ms.handle);
+  // ReadTheImports: synchronous even when the instance comes later.
+  const readImports = (module, imports, what) => {
+    const wanted = native.linkInfo(stateOf(module).handle);
     if (wanted.length > 0 && !isObject(imports)) throw new TE(what + ": Imports argument must be present and must be an object");
     const ids = [];
     for (let i = 0; i < wanted.length; i++) ids[i] = resolveImport(imports, wanted[i], i, what);
+    return ids;
+  };
+
+  const instantiateInto = (target, module, ids) => {
+    const ms = stateOf(module);
     const id = native.instanceCreate(ms.handle, ids);
     const exports = create(null);
     const list = native.instanceExports(id, ms.handle);
@@ -388,10 +397,10 @@
   };
 
   class Instance {
-    constructor(module, imports) {
+    constructor(module, imports = undefined) {
       argState(module, Module, "WebAssembly.Instance()");
       checkImports(imports, "WebAssembly.Instance()");
-      instantiateInto(this, module, imports, "WebAssembly.Instance()");
+      instantiateInto(this, module, readImports(module, imports, "WebAssembly.Instance()"));
     }
     get exports() { return thisState(this, Instance, "WebAssembly.Instance.exports").exports; }
   }
@@ -401,7 +410,7 @@
 
   const rejected = e => new P((_, reject) => reject(e));
   const compileBytes = (bytes, what) => native.compileAsync(bytes, h => moduleOf(create(Module.prototype), h, what));
-  const instanceFrom = (module, imports, what) => instantiateInto(create(Instance.prototype), module, imports, what);
+  const instanceFrom = (module, imports, what) => instantiateInto(create(Instance.prototype), module, readImports(module, imports, what));
 
   // Streaming sources: a Response (or a promise of one) of type application/wasm.
   const bytesOfResponse = (source, what) => then(new P(resolve => resolve(source)), r => {
@@ -426,12 +435,15 @@
         return rejected(e);
       }
     },
-    instantiate(source, imports) {
+    instantiate(source, imports = undefined) {
       const what = "WebAssembly.instantiate()";
       try {
         checkImports(imports, what);
         const s = stateOf(source);
-        if (s !== undefined && s.kind === Module) return later(() => instanceFrom(source, imports, what));
+        if (s !== undefined && s.kind === Module) {
+          const ids = readImports(source, imports, what);
+          return later(() => instantiateInto(create(Instance.prototype), source, ids));
+        }
         return then(compileBytes(source, what), module => ({ module, instance: instanceFrom(module, imports, what) }));
       } catch (e) {
         return rejected(e);
@@ -441,7 +453,7 @@
       const what = "WebAssembly.compileStreaming()";
       return then(bytesOfResponse(source, what), bytes => compileBytes(bytes, what));
     },
-    instantiateStreaming(source, imports) {
+    instantiateStreaming(source, imports = undefined) {
       const what = "WebAssembly.instantiateStreaming()";
       try {
         checkImports(imports, what);
@@ -455,5 +467,9 @@
     ["Tag", Tag], ["Exception", Exception], ["CompileError", CompileError], ["LinkError", LinkError], ["RuntimeError", RuntimeError]]) {
     hidden(WebAssembly, name, C);
   }
-  hidden(global, "WebAssembly", WebAssembly);
+  // the tag of JavaScript's own exceptions, made on first use: a realm that never asks makes no store
+  let jsTag;
+  const jsTagGetter = getOwnPropertyDescriptor({ get JSTag() { return jsTag || (jsTag = new Tag({ parameters: ["externref"] })); } }, "JSTag").get;
+  defineProperty(WebAssembly, "JSTag", { get: jsTagGetter, enumerable: true, configurable: true });
+  return WebAssembly;
 })

@@ -237,7 +237,6 @@ main :: proc() {
 	if selected("geometry") { run("geometry") }
 	if selected("compat") { run("compat") }
 	if selected("webassembly") {
-		settings.js.webassembly = true
 		r := open("webassembly")
 		wait(r)
 		before := host_objects(r.p)
@@ -246,7 +245,6 @@ main :: proc() {
 		after := host_objects(r.p)
 		if before > after { passes += 1 } else { fmt.printf("FAIL [webassembly] the modules of collected objects are released (%d -> %d)\n", before, after); failures += 1 }
 		close(r)
-		settings.js.webassembly = false
 	}
 	if selected("perf_timeline") {
 		actions := make(map[string]Action, context.temp_allocator)
