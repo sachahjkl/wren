@@ -475,6 +475,7 @@ no_credentials :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _:
 IMPORTS := [?]wasm.Import{
 	{module = "document", name = "Window_isSecureContext", fn = secure_context, params = {}, results = {.I32}},
 	{module = "credentials", name = "PublicKeyCredential_enabled", fn = no_credentials, params = {}, results = {.I32}},
+	{module = "webassembly", name = "WebAssembly_enabled", fn = no_credentials, params = {}, results = {.I32}},   // (the shell has no WebAssembly object)
 	{module = "js", name = "Engine_jitPoll", fn = engine_jit_poll, params = {.I32}, results = {.I32}},
 	{module = "js", name = "Engine_jitCompile", fn = engine_jit, params = {.I32, .I32}, results = {.I32}},
 	{module = "js", name = "Engine_console", fn = engine_console, params = {.I32, .I32, .I32}},
