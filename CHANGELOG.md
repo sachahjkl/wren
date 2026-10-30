@@ -7,6 +7,11 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 
 ## Unreleased
 
+## 0.6.15 - 2026-10-30
+
+### Changed
+- **Big pages are styled several times faster**: a full style pass shared its work between threads by opening the tree level by level, so a page whose elements sit under one chain of containers (GitHub, most apps) was styled by one thread while the others waited, whatever `page.threads.style` said. The work is now shared by weight: the subtrees too big to be one task are opened on the page's thread, the rest is cut into parts of about the same number of elements. On the repository page of Wren on GitHub a full pass goes from about 190 ms to 52 ms, the pages' styles taking 1.5 s instead of 3.6 s while it loads, and the gaps between two frames at the 95th percentile from 480 to 330 ms. `tools\perf.ps1 -Only github_load,github_scroll` measures it.
+
 ## 0.6.14 - 2026-10-30
 
 ### Changed

@@ -370,7 +370,7 @@ has_invalidate :: proc(m: ^Marker, x: base.Handle, self: bool, feat := Has_Chang
 			if anchor_could_match(&m.mc, a, ha.compound) {
 				trace_why = "not exact, or no members"
 				if m.exact && ha.exact && ha.members != nil && !has_flip(m, &ha, a) { continue }
-				if trace_restyle() { trace_note = fmt.tprintf(":has() anchor why=%s exact=%v chain=%v unkeyed=%v hops=%d classes=%s attrs=%s ids=%s types=%s", trace_why, ha.exact, ha.chain, ha.feat.unkeyed, ha.hops, trace_keys(ha.feat.classes), trace_keys(ha.feat.attrs), trace_keys(ha.feat.ids), trace_keys(ha.feat.types)) }
+				if trace_restyle() { trace_note = fmt.tprintf(":has() anchor why=%s m.exact=%v members=%v exact=%v chain=%v unkeyed=%v hops=%d classes=%s attrs=%s ids=%s types=%s", trace_why, m.exact, ha.members != nil, ha.exact, ha.chain, ha.feat.unkeyed, ha.hops, trace_keys(ha.feat.classes), trace_keys(ha.feat.attrs), trace_keys(ha.feat.ids), trace_keys(ha.feat.types)) }
 				apply(m, a, ha.reach)
 				trace_note = ""
 			}

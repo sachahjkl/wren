@@ -28,6 +28,67 @@ span::after { content: close-quote }
 ol { list-style-type: upper-roman }
 `
 
+// A page is rarely balanced: nearly everything under one chain of containers, a few small things beside it. The work is shared by
+// the weight of the subtrees (flat_sizes), not by how deep the tree was opened: several threads get a part, the result is the same.
+@(test)
+parallel_pass_shares_a_lopsided_tree :: proc(t: ^testing.T) {
+	settings := settings_default()
+	defer settings_destroy(&settings)
+	e := engine_make(settings)
+	defer engine_destroy(e)
+	doc := dom.document_create()
+	defer dom.document_destroy(doc)
+
+	html := dom.create_element(doc, "html")
+	dom.append_child(doc, doc.root, html)
+	head := dom.create_element(doc, "head")
+	dom.append_child(doc, html, head)
+	st := dom.create_element(doc, "style")
+	dom.append_child(doc, head, st)
+	dom.set_text_content(doc, st, PARALLEL_CSS)
+	body := dom.create_element(doc, "body")
+	dom.append_child(doc, html, body)
+	header := dom.create_element(doc, "header")
+	dom.append_child(doc, body, header)
+	for _ in 0 ..< 3 { dom.append_child(doc, header, dom.create_element(doc, "p")) }
+	holder := body
+	for _ in 0 ..< 10 {   // ten containers, one in the other: every level has the whole page under its only child
+		d := dom.create_element(doc, "div")
+		dom.append_child(doc, holder, d)
+		holder = d
+	}
+	for i in 0 ..< 400 {
+		sec := dom.create_element(doc, "section")
+		dom.set_attribute(doc, sec, "class", fmt.tprintf("k%d", i % 7))
+		dom.append_child(doc, holder, sec)
+		for k in 0 ..< 3 {
+			p := dom.create_element(doc, "p")
+			dom.set_attribute(doc, p, "data-x", fmt.tprintf("%d", (i + k) % 9))
+			dom.append_child(doc, sec, p)
+			dom.append_child(doc, p, dom.create_element(doc, "b"))
+		}
+	}
+	sync_document_sheets(e, doc, "http://x.test/")
+
+	sizes := flat_sizes(doc)
+	testing.expect_value(t, int(sizes[base.handle_index(html)]), 1 + 1 + 1 + 1 + 1 + 3 + 10 + 400 * 7)   // html, head, style, body, header + 3 p, the divs, the sections
+	testing.expect_value(t, int(sizes[base.handle_index(header)]), 4)
+
+	seq := compute_styles(e, doc, {})
+	defer styled_destroy(seq)
+	pool := host.thread_pool_make(3)
+	defer host.thread_pool_destroy(pool)
+	par := compute_styles(e, doc, {}, pool, 0)
+	defer styled_destroy(par)
+	testing.expect(t, len(par.thread_arenas) > 1, "the page was shared out, not run as one task")
+	differ := 0
+	it: u32
+	for h, n in base.pool_next(&doc.nodes, &it) {
+		if n.kind == .Element && !computed_equal(style_of(seq, h), style_of(par, h)) { differ += 1 }
+	}
+	testing.expectf(t, differ == 0, "%d elements differ", differ)
+}
+
 // The same document styled on one thread and on four: every computed style must be equal.
 @(test)
 parallel_pass_gives_the_sequential_result :: proc(t: ^testing.T) {
