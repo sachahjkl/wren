@@ -16,6 +16,7 @@ import "toolkit:font"
 import "toolkit:platform"
 import "toolkit:ui"
 import "wb:base"
+import "wb:config"
 import "wb:host"
 import "wb:i18n"
 
@@ -470,7 +471,34 @@ downloads_page :: proc(app: ^App, t: ^Tab) {
 				}
 				ui.spacer(ui.px(em * 0.8))
 			}
-			ui.spacer(ui.px(em * 0.3))
+			// where they go: the folder, and whether the Save dialog asks each time
+			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
+			if ui.row(.Center) {
+				ui.spacer(ui.px(em * 0.8))
+				ask := dls.cfg.ask
+				ui.next({width = ui.px(em * 21), height = ui.px(ui.dense(em * 1.8))})
+				if ui.toggle("###dl_ask", "Ask where to save each file", &ask).clicked {
+					_ = config.set_from_string(&app.prefs, "browser.download.ask", ask ? "true" : "false", .User)
+				}
+				ui.spacer(ui.px(em * 0.6))
+				if ui.tags("weak") {
+					ui.next({width = ui.fill(), height = ui.pct(1)})
+					ui.label(fmt.tprintf("Saved in %s###dl_dir", safe_label(download_dir(app), 120)))
+				}
+				ui.next({width = ui.px(em * 7.5), height = ui.px(ui.dense(em * 1.9)), radius = em * CHROME_BUTTON_RADIUS})
+				fb := ui.button("Change\u2026###dl_pick")
+				tip(fb, "Choose the folder the downloads go to (browser.download.directory)")
+				if fb.clicked { download_pick_folder(app) }
+				if dls.cfg.dir != "" {
+					ui.spacer(ui.px(em * 0.4))
+					ui.next({width = ui.px(em * 7.5), height = ui.px(ui.dense(em * 1.9)), radius = em * CHROME_BUTTON_RADIUS})
+					rb := ui.button("Default###dl_default")
+					tip(rb, "Back to the Downloads folder of Windows")
+					if rb.clicked { download_folder_default(app) }
+				}
+				ui.spacer(ui.px(em * 0.8))
+			}
+			ui.spacer(ui.px(em * 0.2))
 			ui.next({width = ui.fill(), height = ui.fill()})
 			if ui.scroll_y("###dl_scroll") { downloads_list(app, menu_key) }
 		}

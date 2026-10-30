@@ -32,8 +32,8 @@ import "wb:images"
 import "wb:page"
 
 DOWNLOAD_PREFS := [?]config.Def{
-	{name = "browser.download.ask", kind = .Bool, default = {b = true},
-		description = "Ask where to save each download (the Save dialog of Windows). Off: downloads go to browser.download.directory under a name that is free."},
+	{name = "browser.download.ask", kind = .Bool, default = {b = false},
+		description = "Ask where to save each download (the Save dialog of Windows). Off (the default): downloads go at once to browser.download.directory, the Downloads folder of Windows when it is empty, under a name that is free."},
 	{name = "browser.download.directory", kind = .String, default = {s = ""},
 		description = "Folder downloads go to (and where the Save dialog starts). Empty: the Downloads folder of Windows."},
 	{name = "browser.download.max_bytes", kind = .Int, default = {i = 0}, bounded = true, min = 0, max = 1 << 50, bytes = true, unit = "bytes",
@@ -331,6 +331,43 @@ Downloads :: struct {
 }
 
 dls: Downloads
+
+// The folder picker of the downloads page: the folder chosen becomes browser.download.directory.
+@(private = "file")
+Folder_Job :: struct { app: ^App, start, chosen: string }
+
+@(private = "file")
+dl_picking: bool
+
+download_pick_folder :: proc(app: ^App) {
+	if dl_picking { return }
+	dl_picking = true
+	job := new(Folder_Job)
+	job.app, job.start = app, strings.clone(download_dir(app))
+	host.run_blocking(&app.blocking, proc(data: rawptr) {
+		j := (^Folder_Job)(data)
+		dlg := platform.File_Dialog{owner = active_window(j.app).win, title = "Folder for the downloads", start_dir = j.start, start_known = .Downloads, remember_id = "download_dir"}
+		res := platform.pick_folder_dialog(dlg, context.allocator)
+		defer platform.dialog_result_destroy(&res, context.allocator)
+		if res.status == .Chosen && len(res.paths) > 0 { j.chosen = strings.clone(res.paths[0]) }
+	}, proc(data: rawptr) {
+		j := (^Folder_Job)(data)
+		dl_picking = false
+		if j.chosen != "" {
+			if err := config.set_from_string(&j.app.prefs, "browser.download.directory", j.chosen, .User); err != .None {
+				ui.toast(.Warn, "browser.download.directory: %s", config.set_error_text(err))
+			}
+		}
+		request_frames(j.app, 2)
+		delete(j.start); delete(j.chosen); free(j)
+	}, job)
+}
+
+// Back to the Downloads folder of Windows.
+download_folder_default :: proc(app: ^App) {
+	_ = config.set_from_string(&app.prefs, "browser.download.directory", "", .User)
+	request_frames(app, 2)
+}
 
 dl_now_ms :: proc() -> i64 { return time.time_to_unix_nano(time.now()) / 1e6 }
 

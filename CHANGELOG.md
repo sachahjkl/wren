@@ -7,6 +7,11 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 
 ## Unreleased
 
+## 0.6.14 - 2026-10-30
+
+### Changed
+- **Downloads go straight to the Downloads folder, and the folder is yours to choose**: `browser.download.ask` is now off by default, so no Save dialog opens for each file; the file goes to `browser.download.directory` (the Downloads folder of Windows when it is empty) under a name that is free. At the top of about:downloads, the folder in use with **Change…** (a folder picker) and **Default** (back to the Downloads folder of Windows), and a switch "Ask where to save each file" for those who want the Save dialog.
+
 ## 0.6.13 - 2026-10-30
 
 ### Added
