@@ -47,11 +47,26 @@
     <p class="intro">Eight versions in twelve days: the first public build, JavaScript, a JIT, a text engine of its own, a browser that speaks to screen readers, then a JavaScript engine written in Odin.</p>
     <div class="timeline">
 <!-- releases:begin -->
-      <article class="release latest" id="v0-6-12">
+      <article class="release latest" id="v0-6-13">
         <div class="rail"><span class="dot"></span></div>
         <div class="release-body">
           <p class="release-date"><time datetime="2026-10-30">October 30, 2026</time></p>
-          <div class="release-title"><h3>0.6.12</h3><span class="badge">Latest</span></div>
+          <div class="release-title"><h3>0.6.13</h3><span class="badge">Latest</span></div>
+          <ul class="release-list">
+            <li><strong>A downloads button and its drop-down.</strong> Once a download has run, a button joins the toolbar: a ring fills around its arrow as the files arrive, and the drop-down (it opens by itself when a download…</li>
+            <li><strong>about:downloads (Ctrl+J).</strong> Every download by day, with a search box.</li>
+            <li><strong>A list that stays.</strong> The finished downloads are kept across restarts (up to <code>browser.download.list_max</code>, 200 by default); a file moved or deleted since says so.</li>
+            <li><strong>A progress bar that is good to look at</strong>: it eases toward the real figure, with a gloss on its upper half and a light band travelling over it; a comet runs while the size is not announced.</li>
+          </ul>
+          <p class="release-links"><a href="https://github.com/sachahjkl/wren/blob/master/docs/releases/v0.6.13.md">Release notes</a> ·
+            <a href="https://github.com/sachahjkl/wren/releases/tag/v0.6.13">Download</a></p>
+        </div>
+      </article>
+      <article class="release" id="v0-6-12">
+        <div class="rail"><span class="dot"></span></div>
+        <div class="release-body">
+          <p class="release-date"><time datetime="2026-10-30">October 30, 2026</time></p>
+          <div class="release-title"><h3>0.6.12</h3></div>
           <ul class="release-list">
             <li><strong>Middle-click autoscroll is half as fast</strong>: the top speed is 15000 px/s (was 30000), reached at the same distance; every speed in between is halved.</li>
             <li><strong>The first painting comes sooner.</strong> With nothing downloaded yet, the smallest of the listed files goes first, and a file larger than <code>browser.newtab.art.max_image_bytes</code> is no longer downloaded just…</li>

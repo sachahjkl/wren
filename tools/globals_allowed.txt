@@ -94,6 +94,8 @@ dnd_shell.odin DND_PREFS process  # a table
 dnd_shell.odin dnd page  # the drag of a page (one at a time in the process)
 download.odin DOWNLOAD_PREFS process  # a table
 download.odin dls process
+download_test.odin downloads_test_lock test
+downloads_ui.odin dview page  # about:downloads' view (a page of the browser) and the button's drop-down
 drag_probe.odin drag_probe process
 drag_probe.odin drag_probe_moves process
 effects_cache.odin fx_settings process  # preferences read once and on change

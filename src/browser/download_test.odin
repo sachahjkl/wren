@@ -1,8 +1,55 @@
 package browser
 
+import "core:os"
 import "core:strings"
+import "core:sync"
 import "core:testing"
 import "core:unicode/utf8"
+
+@(private = "file")
+downloads_test_lock: sync.Mutex
+
+// The list of finished downloads is written to the profile and read back: what ended stays (with its size, times, address
+// and path; a tab or a line end in a name is a space), what still runs is not written, and a restored one has no live part.
+@(test)
+downloads_survive_a_restart :: proc(t: ^testing.T) {
+	sync.mutex_lock(&downloads_test_lock)   // (the downloads are a global)
+	defer sync.mutex_unlock(&downloads_test_lock)
+	saved := dls
+	dls = {}
+	defer { dls = saved }
+	app := new(App)
+	defer free(app)
+	dir := strings.concatenate({os.get_env("TEMP", context.temp_allocator), "/wren_downloads_test"}, context.temp_allocator)
+	_ = os.make_directory_all(dir)
+	app.profile_dir = dir
+	path := strings.concatenate({dir, "/", DOWNLOADS_FILE}, context.temp_allocator)
+	defer os.remove(path)
+
+	add :: proc(app: ^App, state: Download_State, name, url: string) {
+		d := new(Download)
+		d.app, d.state, d.started_ms, d.done_ms, d.size = app, state, 1000, 2000, 4096
+		d.url, d.path, d.name, d.error = strings.clone(url), strings.clone("C:\\Users\\x\\Downloads\\a b.zip"), strings.clone(name), strings.clone(state == .Failed ? "connection reset" : "")
+		append(&dls.list, d)
+	}
+	add(app, .Done, "a\tb.zip", "https://example.org/a\nb.zip")
+	add(app, .Failed, "broken.bin", "https://example.org/broken.bin")
+	add(app, .Receiving, "running.iso", "https://example.org/running.iso")   // (not written: it has not ended)
+	downloads_save(app)
+	downloads_shutdown()   // (everything freed, the list empty: as a new run)
+
+	downloads_load(app)
+	testing.expect_value(t, len(dls.list), 2)
+	if len(dls.list) == 2 {
+		a, b := dls.list[0], dls.list[1]
+		testing.expect_value(t, a.name, "a b.zip")
+		testing.expect_value(t, a.url, "https://example.org/a b.zip")
+		testing.expect(t, a.state == .Done && a.restored && a.size == 4096 && a.done_ms == 2000 && a.started_ms == 1000)
+		testing.expect(t, b.state == .Failed && b.error == "connection reset")
+		testing.expect(t, a.id != b.id && a.scope == nil && a.handle == nil)
+	}
+	downloads_shutdown()
+}
 
 // RFC 6266 / 8187.
 @(test)
