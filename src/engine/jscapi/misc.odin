@@ -517,3 +517,9 @@ JS_IsArrayBufferHost :: proc "c" (obj: JSValue) -> bool {
 	if !ok || (o.class != .array_buffer && o.class != .shared_array_buffer) {return false}
 	return js.array_buffer_of(o).host != nil
 }
+
+// A module is entered or left: what the engine keeps of its memory goes back, and is read again after (js.host_line).
+JS_HostBuffersSync :: proc "c" (c: ^Context) {
+	context = api_ctx()
+	js.host_cache_sync(jctx(c).rt)
+}

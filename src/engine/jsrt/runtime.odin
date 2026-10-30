@@ -101,6 +101,25 @@ Compile_Request :: struct {
 }
 
 HOST_SNAPSHOTS :: 4
+HOST_LINES :: 16
+HOST_LINE_SIZE :: 4096
+
+// A page of a host buffer's bytes, kept in this engine's memory (host_line in b_typed.odin): a script going through a
+// module's memory one element at a time needs no call of the embedder for most of them.
+Host_Line :: struct {
+	host:  ^Buffer_Host,
+	page:  int,
+	gen:   u32,    // valid when it is Host_Cache.gen
+	n:     int,    // how many bytes the buffer has there
+	dirty: bool,
+	data:  [HOST_LINE_SIZE]u8,
+}
+
+Host_Cache :: struct {
+	gen:       u32,
+	any_dirty: bool,
+	lines:     [HOST_LINES]Host_Line,
+}
 
 // host_snapshot: a copy of bytes of a host buffer
 Host_Snapshot :: struct {
@@ -113,6 +132,7 @@ Host_Snapshot :: struct {
 Runtime :: struct {
 	host_snapshots:     [HOST_SNAPSHOTS]Host_Snapshot,
 	host_snapshot_next: int,
+	host_cache:         ^Host_Cache,
 	allocator:      runtime.Allocator,
 	config:         Host_Config,
 

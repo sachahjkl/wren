@@ -63,8 +63,56 @@ array_buffer_new_host :: proc(ctx: ^Context, n: i64, host: Buffer_Host, shared :
 	ab.shared = shared
 	ab.views = make([dynamic]^Object, rt_allocator(rt))
 	ab.host = new_clone(host, rt_allocator(rt))
+	ab.host.rt = rt
 	o.data = ab
 	return o
+}
+
+// Where the element at `offset` of a host buffer is in this engine's memory: a line of the cache. An element fits in a line:
+// a typed array's offset is a multiple of its element's size. `write`: the line goes back to the embedder at the next
+// host_cache_sync, which must come before anything else reads or writes the bytes: a module entered or left (the embedder
+// calls JS_HostBuffersSync), a pin, a copy, a call with the bytes.
+host_line :: proc(ab: ^Array_Buffer, offset: int, write: bool) -> rawptr {
+	h := ab.host
+	rt := h.rt
+	c := rt.host_cache
+	if c == nil {
+		c = new(Host_Cache, rt_allocator(rt))
+		rt.host_cache = c
+		c.gen = 1
+	}
+	page := offset >> 12
+	l := &c.lines[page & (HOST_LINES - 1)]
+	if l.host != h || l.page != page || l.gen != c.gen {
+		if l.dirty {
+			l.host.write(l.host.user, l.page << 12, &l.data[0], l.n)
+			l.dirty = false
+		}
+		l.host, l.page, l.gen = h, page, c.gen
+		l.n = min(HOST_LINE_SIZE, ab.byte_length - page << 12)
+		h.read(h.user, page << 12, &l.data[0], l.n)
+	}
+	if write {
+		l.dirty = true
+		c.any_dirty = true
+	}
+	return &l.data[offset & (HOST_LINE_SIZE - 1)]
+}
+
+// What the cache holds goes back to the embedder, and it holds nothing any more.
+host_cache_sync :: proc(rt: ^Runtime) {
+	c := rt.host_cache
+	if c == nil {return}
+	if c.any_dirty {
+		for &l in c.lines {
+			if l.dirty {
+				l.host.write(l.host.user, l.page << 12, &l.data[0], l.n)
+				l.dirty = false
+			}
+		}
+		c.any_dirty = false
+	}
+	c.gen += 1
 }
 
 // The bytes [lo, hi) of a host buffer are in `data` until the matching host_unpin (`data` keeps its meaning: an offset in
@@ -89,6 +137,7 @@ host_pin :: proc(rt: ^Runtime, ab: ^Array_Buffer, lo, hi: int) {
 	h.pin = cast([^]u8)mem_alloc(rt, hi - lo)
 	h.pin_lo, h.pin_hi = lo, hi
 	n := min(hi, ab.byte_length) - lo
+	host_cache_sync(rt)
 	if n > 0 {h.read(h.user, lo, h.pin, n)}
 	ab.data = cast([^]u8)(uintptr(h.pin) - uintptr(lo))
 }
@@ -101,7 +150,10 @@ host_unpin :: proc(rt: ^Runtime, ab: ^Array_Buffer, written: bool) {
 	h.pin_depth -= 1
 	if h.pin_depth > 0 {return}
 	n := min(h.pin_hi, ab.byte_length) - h.pin_lo
-	if h.pin_dirty && n > 0 {h.write(h.user, h.pin_lo, h.pin, n)}
+	if h.pin_dirty && n > 0 {
+		host_cache_sync(rt)
+		h.write(h.user, h.pin_lo, h.pin, n)
+	}
 	mem_free(rt, h.pin, h.pin_hi - h.pin_lo)
 	h.pin = nil
 	ab.data = nil
@@ -124,6 +176,10 @@ host_unpin_view :: proc(ctx: ^Context, o: ^Object, written: bool) {
 
 // (the object is going, or the embedder detached it: a pin cannot be under way, no JavaScript runs during one)
 buffer_host_release :: proc(rt: ^Runtime, ab: ^Array_Buffer) {
+	host_cache_sync(rt)
+	if c := rt.host_cache; c != nil {
+		for &l in c.lines { if l.host == ab.host { l.host = nil } }
+	}
 	for &s in rt.host_snapshots {
 		if s.host == ab.host {s.host = nil}   // (the copy stays until its slot is used again: a caller may be reading it)
 	}
@@ -417,11 +473,7 @@ view_read :: #force_inline proc(ctx: ^Context, o: ^Object, i: int) -> Value {
 	ta := typed_array_of(o)
 	ab := array_buffer_of(ta.buffer)
 	e := class_elem(o.class)
-	if h := ab.host; h != nil && ab.data == nil {
-		tmpb: [16]u8
-		h.read(h.user, ta.offset + i * elem_size[e], &tmpb[0], elem_size[e])
-		return read_elem(ctx, e, &tmpb[0])
-	}
+	if ab.host != nil && ab.data == nil {return read_elem(ctx, e, host_line(ab, ta.offset + i * elem_size[e], false))}
 	return read_elem(ctx, e, &ab.data[ta.offset + i * elem_size[e]])
 }
 
@@ -430,10 +482,8 @@ view_write :: #force_inline proc(o: ^Object, i: int, ev: Elem_Val) {
 	ta := typed_array_of(o)
 	ab := array_buffer_of(ta.buffer)
 	e := class_elem(o.class)
-	if h := ab.host; h != nil && ab.data == nil {
-		tmpb: [16]u8
-		write_elem(e, &tmpb[0], ev)
-		h.write(h.user, ta.offset + i * elem_size[e], &tmpb[0], elem_size[e])
+	if ab.host != nil && ab.data == nil {
+		write_elem(e, host_line(ab, ta.offset + i * elem_size[e], true), ev)
 		return
 	}
 	write_elem(e, &ab.data[ta.offset + i * elem_size[e]], ev)
@@ -509,19 +559,20 @@ write_elem :: proc(e: Elem, p: rawptr, v: Elem_Val) {
 // The interpreter's element fast paths: a fixed-length view over a live buffer, an in-range index
 // and a Number element type. Anything else answers false and takes the generic path.
 @(private = "file")
-ta_fast_ptr :: #force_inline proc(o: ^Object, idx: u32) -> (rawptr, Elem, bool) {
+ta_fast_ptr :: #force_inline proc(o: ^Object, idx: u32, write: bool) -> (rawptr, Elem, bool) {
 	ta, ok := o.data.(^Typed_Array)
 	if !ok || ta.track_rab || idx >= u32(ta.length) {return nil, .u8, false}
 	ab, ok2 := ta.buffer.data.(^Array_Buffer)
-	if !ok2 || ab.data == nil {return nil, .u8, false}   // (detached, or its bytes are elsewhere: Buffer_Host)
+	if !ok2 || (ab.data == nil && ab.host == nil) {return nil, .u8, false}   // (detached)
 	e := class_elem(o.class)
 	es := elem_size[e]
 	if ta.offset + ta.length * es > ab.byte_length {return nil, e, false}
+	if ab.data == nil {return host_line(ab, ta.offset + int(idx) * es, write), e, true}
 	return &ab.data[ta.offset + int(idx) * es], e, true
 }
 
 ta_fast_get :: proc(o: ^Object, idx: u32) -> (Value, bool) {
-	p, e, ok := ta_fast_ptr(o, idx)
+	p, e, ok := ta_fast_ptr(o, idx, false)
 	if !ok {return UNDEFINED, false}
 	#partial switch e {
 	case .u8c, .u8: return mk_int(i32((cast(^u8)p)^)), true
@@ -538,7 +589,8 @@ ta_fast_get :: proc(o: ^Object, idx: u32) -> (Value, bool) {
 
 ta_fast_set :: proc(o: ^Object, idx: u32, v: Value) -> bool {
 	if v.tag != .int && v.tag != .float {return false}
-	p, e, ok := ta_fast_ptr(o, idx)
+	// (no immutable buffer or BigInt element reaches a host line: those are told apart below, where a line would be marked in vain)
+	p, e, ok := ta_fast_ptr(o, idx, true)
 	if !ok || elem_is_bigint(e) {return false}
 	ta := o.data.(^Typed_Array)
 	if ta.buffer.data.(^Array_Buffer).immutable {return false}
@@ -1148,6 +1200,7 @@ ta_set :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value {
 		es := elem_size[e]
 		if se == e && (sab.host != nil) != (dab.host != nil) {
 			if slen > 0 {
+				host_cache_sync(rt)
 				if h := dab.host; h != nil {
 					h.write(h.user, dta.offset + int(off) * es, &sab.data[sta.offset], slen * es)
 				} else {
@@ -1462,6 +1515,7 @@ dv_access :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Valu
 	ab := array_buffer_of(ta.buffer)
 	tmpb: [8]u8
 	if h := ab.host; h != nil {
+		host_cache_sync(h.rt)
 		at := ta.offset + int(idx)
 		wire: [8]u8
 		if is_set {
@@ -2103,6 +2157,7 @@ host_snapshot :: proc(rt: ^Runtime, ab: ^Array_Buffer, offset, count: int) -> [^
 	s.cap = max(n, 1)
 	s.bytes = cast([^]u8)mem_alloc(rt, s.cap)
 	s.host, s.off, s.n = h, off, n
+	host_cache_sync(rt)
 	if n > 0 {h.read(h.user, off, s.bytes, n)}
 	return cast([^]u8)(uintptr(s.bytes) - uintptr(off))
 }
@@ -2111,6 +2166,7 @@ host_snapshot_commit :: proc(rt: ^Runtime, p: [^]u8, n: int) {
 	if n <= 0 {return}
 	for &s in rt.host_snapshots {
 		if s.host == nil || uintptr(p) < uintptr(s.bytes) || uintptr(p) + uintptr(n) > uintptr(s.bytes) + uintptr(s.n) {continue}
+		host_cache_sync(rt)
 		s.host.write(s.host.user, s.off + int(uintptr(p) - uintptr(s.bytes)), p, n)
 		return
 	}

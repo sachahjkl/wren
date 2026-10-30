@@ -47,11 +47,28 @@
     <p class="intro">Eight versions in twelve days: the first public build, JavaScript, a JIT, a text engine of its own, a browser that speaks to screen readers, then a JavaScript engine written in Odin.</p>
     <div class="timeline">
 <!-- releases:begin -->
-      <article class="release latest" id="v0-6-20">
+      <article class="release latest" id="v0-6-21">
         <div class="rail"><span class="dot"></span></div>
         <div class="release-body">
           <p class="release-date"><time datetime="2026-10-30">October 30, 2026</time></p>
-          <div class="release-title"><h3>0.6.20</h3><span class="badge">Latest</span></div>
+          <div class="release-title"><h3>0.6.21</h3><span class="badge">Latest</span></div>
+          <ul class="release-list">
+            <li><strong>Modules built with the old form of WebAssembly exceptions run.</strong> <code>try</code>, <code>catch</code>, <code>rethrow</code> and <code>delegate</code> are what older Emscripten and .NET builds use, and Wasmtime refuses them: they are now…</li>
+            <li><strong>Python runs.</strong> <code>new WebAssembly.Memory({shared: true})</code> works for one agent, as other browsers allow without isolation, so Pyodide starts and answers <code>runPython</code>.</li>
+            <li><strong>Faster.</strong> A script going through a module's memory one element at a time is 3 to 4 times faster, and an instance with thousands of exports takes 104 ms instead of 5.7 s: Pyodide starts in 5.7 s…</li>
+            <li><strong>A module can catch what JavaScript throws</strong> (<code>catch_all</code>, <code>WebAssembly.JSTag</code>), a call can have any number of values, and externrefs are released once the module has dropped them.</li>
+            <li><strong>Service workers</strong>: <code>event.waitUntil()</code> works from the promise given to <code>respondWith</code>, as the specification allows.</li>
+            <li><strong>Streams</strong>: releasing a reader during a read no longer reports an unhandled rejection, which stopped DuckDB's worker and failed <code>pipeTo</code> tests.</li>
+          </ul>
+          <p class="release-links"><a href="https://github.com/sachahjkl/wren/blob/master/docs/releases/v0.6.21.md">Release notes</a> ·
+            <a href="https://github.com/sachahjkl/wren/releases/tag/v0.6.21">Download</a></p>
+        </div>
+      </article>
+      <article class="release" id="v0-6-20">
+        <div class="rail"><span class="dot"></span></div>
+        <div class="release-body">
+          <p class="release-date"><time datetime="2026-10-30">October 30, 2026</time></p>
+          <div class="release-title"><h3>0.6.20</h3></div>
           <ul class="release-list">
             <li><strong>The WebAssembly JavaScript API.</strong> <code>WebAssembly.compile</code>, <code>instantiate</code>, the streaming forms, <code>Module</code>, <code>Instance</code>, <code>Memory</code>, <code>Table</code>, <code>Global</code>, <code>Tag</code> and <code>Exception</code>, in windows and workers.</li>
             <li><strong>A large module does not stop the page.</strong> <code>WebAssembly.compile</code> works on another thread: for a 34 MB module, the page's timers keep running (worst gap 25 ms) where a synchronous compile blocks for…</li>
