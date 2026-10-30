@@ -1155,6 +1155,7 @@ apply_prop_more :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		}
 		return set_enum(vs, &c.appearance)
 	case .Resize: return set_enum(vs, &c.resize)
+	case .Table_Layout: return set_enum(vs, &c.table_layout)
 	case .Column_Count:
 		if id, ok := ident_raw(vs); ok && strings.equal_fold(id, "auto") { c.column_count = 0; return true }
 		n, ok := css.parse_integer(vs)
