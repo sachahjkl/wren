@@ -21,6 +21,8 @@ import "wb:page"
 
 // about:home with this query shows the next painting without leaving the tab (the "another painting" button links here).
 ART_NEXT_URL :: "about:home?art=next"
+ART_ON_URL :: "about:home?art=on"     // the start page's card: turn the art start page on
+ART_OFF_URL :: "about:home?art=off"   // the art page's link: back to the plain start page
 
 // Chooses what a new tab shows: the art page when the option is on, else the plain start page. Called by show_home.
 // Returns true when it handled the tab (loaded the art page).
@@ -34,8 +36,33 @@ art_newtab_maybe :: proc(app: ^App, t: ^Tab, want_next: bool) -> bool {
 	if it == nil && !art.cfg.offline_fallback { return false }   // nothing ready and no fallback: the plain start page
 	html := art_page_html(app, it, landscape)
 	art_show_page(app, t, html)
+	t.art_empty = it == nil   // no painting yet: art_fill_waiting replaces this page when the first one is ready
 	if it != nil { art_consume() }   // this painting is shown: let the window refill with a fresh one
 	return true
+}
+
+// A painting is ready: the art new tabs that showed none yet show it (still the start page, nothing typed or opened over them).
+art_fill_waiting :: proc(app: ^App) {
+	for t in tabs_all(app) {
+		if !t.art_empty || t.kind != .Web || t.url != HOME_URL || t.page == nil { continue }
+		t.art_empty = false
+		cur := app.active
+		if w, _ := window_of_tab(app, t); w != nil { window_activate(app, w) }
+		_ = art_newtab_maybe(app, t, false)
+		if cur != nil && cur != app.active { window_activate(app, cur) }
+	}
+}
+
+// about:home with a query: `art=next` shows the next painting; `art=on` / `art=off` turn the art start page on or off (a person's
+// choice or a link of the start page itself: `acts`, see nav_trust.odin) and show the start page as it is then.
+home_query :: proc(app: ^App, t: ^Tab, target: string, acts: bool) {
+	if acts {
+		switch {
+		case strings.contains(target, "art=on"):  set_pref_bool(app, "browser.newtab.art.enabled", true)
+		case strings.contains(target, "art=off"): set_pref_bool(app, "browser.newtab.art.enabled", false)
+		}
+	}
+	show_home(app, t, strings.contains(target, "art=next"))
 }
 
 // Loads the art page HTML into the tab, like show_home.
@@ -97,11 +124,11 @@ ART_STYLE :: `
   .art-meta a { color: #ffd699; text-decoration: none; }
   .art-meta a:hover { text-decoration: underline; }
   .art-license { margin: 4px 0 0; font-size: 12px; color: #9aa6c0; letter-spacing: 0.2px; }
-  .art-actions { display: flex; gap: 10px; }
-  .art-btn { padding: 9px 16px; border-radius: 10px; background-color: rgba(20,25,38,0.78);
-             border: 1px solid rgba(255,255,255,0.16); color: #f1f4fb; text-decoration: none; font-size: 14px;
-             white-space: nowrap; }
-  .art-btn:hover { background-color: rgba(40,48,70,0.9); border-color: #ffb84d; }
+  .art-actions { display: flex; gap: 2px; align-items: center; }
+  .art-btn { padding: 5px 9px; border-radius: 7px; color: rgba(241,244,251,0.58); text-decoration: none; font-size: 13px;
+             white-space: nowrap; text-shadow: 0 1px 4px rgba(0,0,0,0.8); }
+  .art-btn:hover { color: #ffffff; background-color: rgba(255,255,255,0.14); }
+  .art-sep { width: 1px; height: 12px; background-color: rgba(255,255,255,0.22); margin: 0 4px; }
   .art-empty { position: fixed; inset: 0; background-image: linear-gradient(135deg, #10213f, #1a1030 60%, #0d1017); }
   @media (prefers-reduced-motion: no-preference) { .art-bg { transition: opacity 240ms ease; } }
   @media (prefers-color-scheme: light) {
@@ -155,6 +182,9 @@ art_page_html :: proc(app: ^App, it: ^Art_Item, landscape: bool) -> string {
 	strings.write_string(&sb, "<div class=\"art-actions\">\n")
 	fmt.sbprintf(&sb, "<a class=\"art-btn\" href=\"%s\">%s</a>\n", ART_NEXT_URL, i18n.tr("Another painting"))
 	if it != nil && it.record != "" { fmt.sbprintf(&sb, "<a class=\"art-btn\" href=\"%s\">%s</a>\n", art_escape(it.record), i18n.tr("Open the record")) }
+	// back to the plain start page (the same switch as browser.newtab.art.enabled)
+	strings.write_string(&sb, "<span class=\"art-sep\"></span>\n")
+	fmt.sbprintf(&sb, "<a class=\"art-btn\" href=\"%s\">%s</a>\n", ART_OFF_URL, i18n.tr("Plain start page"))
 	strings.write_string(&sb, "</div>\n</div>\n")
 
 	strings.write_string(&sb, "</body>\n</html>\n")

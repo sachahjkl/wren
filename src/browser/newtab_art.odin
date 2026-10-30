@@ -738,7 +738,8 @@ art_keep :: proc(c: Art_Candidate, w, h: int) {
 	_ = os.write_entire_file(meta_path, transmute([]byte)art_meta_json(it^))
 	append(&art.ready, it)
 	art_candidate_destroy_copy(c)
-	request_frames(art.app, 1)   // an art new tab already open may now paint its painting
+	art_fill_waiting(art.app)   // an art new tab that showed no painting yet shows this one
+	request_frames(art.app, 1)
 }
 
 // The bytes of the download in hand still live in art.blob until it is released; art_keep runs after the probe, which

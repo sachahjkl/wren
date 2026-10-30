@@ -9,7 +9,7 @@ import "wb:page"
 
 // Identity of the program. One place, so a rename touches nothing else.
 APP_NAME    :: "Wren"
-APP_VERSION :: "0.6.8"
+APP_VERSION :: "0.6.9"
 APP_TAGLINE :: "A small browser where WebAssembly runs everything, JavaScript included."
 
 // A label for a build that is not the release of this version, set when it is built (build.bat: `set WREN_VERSION_LABEL=experimental-2026-10-24`,
@@ -154,6 +154,11 @@ HOME_TEMPLATE :: `<!doctype html>
       <h3>Demos &amp; tests</h3>
       <p>Every demo and test page that comes with Wren, by theme: CSS, layout, effects, text, images, WebAssembly, JavaScript, network, performance.</p>
       <p class="where">about:demos</p>
+    </a>
+    <a class="card" href="about:home?art=on">
+      <h3>A painting on every new tab</h3>
+      <p>Show a public-domain painting here instead of this page. Off until you turn it on: nothing is downloaded before. A link on the painting brings this page back.</p>
+      <p class="where">browser.newtab.art.enabled</p>
     </a>
   </div>
   <p class="foot"><b>$NAME$</b> $VERSION$ &middot; WebAssembly only &middot; written in Odin<br>Some demos need the test server: <b>testserver.exe</b> (demo.bat in the release).</p>
