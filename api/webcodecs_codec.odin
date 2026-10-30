@@ -1,5 +1,5 @@
 // Converted from the matching api/*.widl by bindgen -convert-widl. The Odin form is the source of truth once the .widl is removed; see src/tools/bindgen/idl/odin_in.odin.
-//@wb module name=webcodecs_codec order=70 exposed=(Window,Worker)
+//@wb module name=webcodecs_codec order=71 exposed=(Window,Worker)
 /// WebCodecs encoded chunks and AudioData (src/page/webcodecs_chunks.odin, native/js/runtime/web_webcodecs_codec.c).
 /// EncodedVideoChunk / EncodedAudioChunk are immutable coded samples; AudioData is decoded PCM with planar / interleaved
 /// copyTo. All the layouts and conversions are native.

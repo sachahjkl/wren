@@ -1,0 +1,11 @@
+/// The WebAssembly JavaScript API (src/page/webassembly.odin, the objects: native/js/odin/web_wasm.odin): a page's own
+/// WebAssembly modules, compiled and run by Wasmtime beside the engine's. Off until it is complete
+/// (javascript.webassembly.enabled): a page that finds a `WebAssembly` object expects all of it.
+[Exposed=(Window,Worker)]
+module webassembly {
+  /// Whether the page's realm has the `WebAssembly` object (javascript.webassembly.enabled).
+  bool WebAssembly_enabled();
+
+  /// WebAssembly.validate(bytes): whether `bytes` is a valid module.
+  bool WebAssembly_validate(bytes module);
+}

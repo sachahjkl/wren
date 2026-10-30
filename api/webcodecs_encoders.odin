@@ -1,5 +1,5 @@
 // Converted from the matching api/*.widl by bindgen -convert-widl. The Odin form is the source of truth once the .widl is removed; see src/tools/bindgen/idl/odin_in.odin.
-//@wb module name=webcodecs_encoders order=71 exposed=(Window,Worker)
+//@wb module name=webcodecs_encoders order=72 exposed=(Window,Worker)
 /// WebCodecs VideoEncoder / AudioEncoder (src/page/bindings_encoders.odin, native/js/runtime/web_webcodecs_encoders.c).
 /// No encoder is linked in this build, so isConfigSupported is honestly false and configure raises NotSupportedError.
 /// The objects and their state machine exist so feature detection and `new VideoEncoder({...})` behave; when an encoder

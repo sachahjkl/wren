@@ -1,5 +1,5 @@
 // Converted from the matching api/*.widl by bindgen -convert-widl. The Odin form is the source of truth once the .widl is removed; see src/tools/bindgen/idl/odin_in.odin.
-//@wb module name=websocket order=74 exposed=Window
+//@wb module name=websocket order=75 exposed=Window
 /// WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object.
 package api_websocket
 

@@ -17,6 +17,7 @@ Settings :: struct {
 	unimplemented_throw:  bool,       // javascript.bindings.unimplemented = throw
 	console_eval:         bool,
 	workers:              bool,
+	webassembly:          bool,       // the pages' realms have the WebAssembly object (javascript.webassembly.enabled)
 	offthread_min_bytes:  int,        // scripts at least this large are compiled on a background thread
 	touch_handlers:       bool,       // ontouch* and the Touch, TouchEvent, TouchList constructors are exposed (browser.touch.expose)
 	touch_points:         int,        // navigator.maxTouchPoints (browser.touch.expose)
@@ -47,6 +48,8 @@ PREFS := [?]config.Def{
 		description = "Let the tab's console run JavaScript typed by the user in the page's realm."},
 	{name = "javascript.workers.enabled", kind = .Bool, default = {b = true},
 		description = "Let pages start workers whose script is JavaScript (new Worker(url)), each with its own realm on its own thread."},
+	{name = "javascript.webassembly.enabled", kind = .Bool, default = {b = false},
+		description = "Give the pages' realms the WebAssembly object (WebAssembly.validate, compile, Module, Instance, Memory...), so they can run their own WebAssembly modules (Blazor, Emscripten, wasm-bindgen). Off until the API is complete: a page that finds the object expects all of it, so a partial one does more harm than none."},
 	{name = "javascript.compile.offthread_min_bytes", kind = .Int, default = {i = 64 << 10}, bounded = true, min = 0, max = 1 << 30, bytes = true, unit = "bytes",
 		description = "External classic scripts of a document at least this large (and at least javascript.bytecode_cache.min_source_bytes) are compiled to bytecode on a background thread while the page does other work, when the bytecode cache is on (0 = all of them, the maximum = none)."},
 	{name = "javascript.bytecode_cache.memory_bytes", kind = .Int, default = {i = 64 << 20}, bounded = true, min = 0, max = 1 << 34, bytes = true, unit = "bytes", restart = true,
@@ -76,6 +79,7 @@ settings_from_prefs :: proc(p: ^config.Prefs, profile_dir := "") -> Settings {
 		unimplemented_throw = config.string_of(p, "javascript.bindings.unimplemented") == "throw",
 		console_eval = config.bool_of(p, "javascript.console_eval"),
 		workers = config.bool_of(p, "javascript.workers.enabled"),
+		webassembly = config.bool_of(p, "javascript.webassembly.enabled"),
 		offthread_min_bytes = int(config.int_of(p, "javascript.compile.offthread_min_bytes")),
 		jit = jit_settings_from_prefs(p),
 	}

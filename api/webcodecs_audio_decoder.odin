@@ -1,5 +1,5 @@
 // Converted from the matching api/*.widl by bindgen -convert-widl. The Odin form is the source of truth once the .widl is removed; see src/tools/bindgen/idl/odin_in.odin.
-//@wb module name=webcodecs_audio_decoder order=69 exposed=(Window,Worker)
+//@wb module name=webcodecs_audio_decoder order=70 exposed=(Window,Worker)
 /// WebCodecs AudioDecoder (src/page/bindings_audio_decoder.odin, native/js/runtime/web_webcodecs_audio_decoder.c).
 /// Wires to the audio decoders of src/media behind an honest isConfigSupported; a decoded block becomes an AudioData
 /// delivered through the output callback.
