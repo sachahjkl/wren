@@ -29766,6 +29766,20 @@ _t_webassembly_WebAssembly_import_throw :: proc "c" (env: rawptr, caller: wasm.C
 	return nil
 }
 
+// WebAssembly_extern_released :: proc(c: ^Call) -> i32
+@(private = "file")
+_t_webassembly_WebAssembly_extern_released :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := WebAssembly_extern_released(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
 // WebAssembly_Instance_create :: proc(c: ^Call, module: Api_WebAssemblyModule, externs: []u8) -> i32
 @(private = "file")
 _t_webassembly_WebAssembly_Instance_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -33864,6 +33878,7 @@ api_imports := [?]wasm.Import{
 	{module = "webassembly", name = "WebAssembly_Tag_sig", fn = _t_webassembly_WebAssembly_Tag_sig, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "webassembly", name = "WebAssembly_exception_tag", fn = _t_webassembly_WebAssembly_exception_tag, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "webassembly", name = "WebAssembly_import_throw", fn = _t_webassembly_WebAssembly_import_throw, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "webassembly", name = "WebAssembly_extern_released", fn = _t_webassembly_WebAssembly_extern_released, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "webassembly", name = "WebAssembly_Instance_create", fn = _t_webassembly_WebAssembly_Instance_create, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "webassembly", name = "WebAssembly_Instance_exports", fn = _t_webassembly_WebAssembly_Instance_exports, realms = 3, params = []wasm.Val_Kind{.I32, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "webcodecs", name = "VideoFrame_fromImage", fn = _t_webcodecs_VideoFrame_fromImage, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I32, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},

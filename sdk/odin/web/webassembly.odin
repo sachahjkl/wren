@@ -53,6 +53,7 @@ foreign _m_webassembly {
 	@(link_name = "WebAssembly_Tag_sig") _WebAssembly_Tag_sig :: proc(tag: i32, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "WebAssembly_exception_tag") _WebAssembly_exception_tag :: proc() -> i32 ---
 	@(link_name = "WebAssembly_import_throw") _WebAssembly_import_throw :: proc(tag: i32, values: [^]u8, values_len: u32) ---
+	@(link_name = "WebAssembly_extern_released") _WebAssembly_extern_released :: proc() -> i32 ---
 	@(link_name = "WebAssembly_Instance_create") _WebAssembly_Instance_create :: proc(module: WebAssemblyModule, externs: [^]u8, externs_len: u32) -> i32 ---
 	@(link_name = "WebAssembly_Instance_exports") _WebAssembly_Instance_exports :: proc(instance: i32, module: WebAssemblyModule, _buf: [^]u8, _cap: u32) -> i32 ---
 }
@@ -497,6 +498,11 @@ WebAssembly_exception_tag :: proc "contextless" () -> i32 {
 // The import running ends by throwing a WebAssembly exception of `tag` with `values` (cells).
 WebAssembly_import_throw :: proc "contextless" (tag: i32, values: []u8) {
 	_WebAssembly_import_throw(tag, raw_data(values), u32(len(values)))
+}
+
+// The number of an externref no reference is left to, one at each call; 0 when there is none.
+WebAssembly_extern_released :: proc "contextless" () -> i32 {
+	return _WebAssembly_extern_released()
 }
 
 // new WebAssembly.Instance: a number. `externs` the number of a thing for each import (4 bytes each); the start function

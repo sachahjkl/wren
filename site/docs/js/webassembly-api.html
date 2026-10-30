@@ -250,10 +250,11 @@ commits what it wrote (<code>JS_ArrayBufferCommit</code>: <code>getRandomValues<
 read 186 ns (15 ns in an ordinary array), a write 292 ns, a call of an export 508 ns, <code>TextDecoder</code> on 1 KiB 19 us. Growing
 detaches the buffer, also when the module grew it (seen at the next <code>memory.buffer</code>).</li>
 <li><strong>Values</strong> cross as cells (<code>user_store.odin</code>), converted in <code>web_wasm.odin</code>, so a call costs no JavaScript beyond the
-function called. An externref is a number in a table of <code>web_wasm.js</code>: the values stay until the page closes.</li>
+function called. An externref is a number in a table of <code>web_wasm.js</code>: the value goes when the store's collector has
+dropped the last reference to it (<code>extern_released</code>).</li>
 <li><strong>Exceptions.</strong> One the module does not catch becomes a <code>WebAssembly.Exception</code>; one an import throws is thrown in the
-module (so it can catch it). Any other JavaScript error goes through the module as a trap and comes out as itself: the
-module cannot catch it, which differs from the specification (<code>JSTag</code>).</li>
+module, so it can catch it. Anything else JavaScript throws crosses under <code>WebAssembly.JSTag</code>: <code>catch_all</code> catches it, and
+it comes out as itself. Only the error that stops a script past its time goes through as a trap.</li>
 <li><strong>The Content Security Policy</strong>: <code>'wasm-unsafe-eval'</code> or <code>'unsafe-eval'</code> where a policy has a <code>script-src</code> or
 <code>default-src</code>, otherwise a <code>CompileError</code> and a violation report. <code>validate</code> is not subject to it.</li>
 </ol>
@@ -268,9 +269,10 @@ exceptions exist; what fails to compile there stays interpreted.</p>
 <h2 id="limits"><a class="anchor" href="#limits" aria-hidden="true">#</a>Limits</h2>
 <ul>
 <li>No shared memory (<code>shared: true</code> is a <code>TypeError</code>): threads are off in the engine, so an Emscripten build with pthreads
-cannot run. SQLite Fiddle starts and answers, but its OPFS helper stops at <code>Atomics.wait</code>.</li>
+cannot run. Without cross-origin isolation a page has no <code>SharedArrayBuffer</code> at all, as in other browsers (SQLite Fiddle
+then says OPFS is unavailable instead of waiting on a copy): see <code>docs/shared-memory.md</code>.</li>
 <li>GC, typed function references and memory64 follow <code>wasm.features.*</code> (off by default): such modules get a <code>CompileError</code>.</li>
-<li>A call has at most 32 values on each side (<code>MAX_CELLS</code>, <code>web_wasm.odin</code>).</li>
+<li>An exception carries at most 32 values (<code>MAX_TAG_VALUES</code>, <code>web_wasm.odin</code>).</li>
 <li>Recursion through a module is bounded by the engine's stack: at the depth of recursion through a native function, far
 below other browsers.</li>
 <li>Not there: type reflection (<code>.type()</code>, <code>WebAssembly.Function</code>), <code>toResizableBuffer</code>, JSPI, string builtins, source phase

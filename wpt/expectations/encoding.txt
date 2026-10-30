@@ -776254,7 +776254,7 @@
 	replacement - empty input decodes to empty output.: PASS
 	replacement - non-empty input decodes to one replacement character.: FAIL
 /encoding/sharedarraybuffer.https.html: OK
-	decoding SharedArrayBuffer: PASS
+	decoding SharedArrayBuffer: FAIL
 /encoding/single-byte-decoder-iframe.window.html: OK
 	IBM866: 866 (document.characterSet and document.inputEncoding): FAIL
 	IBM866: cp866 (document.characterSet and document.inputEncoding): FAIL

@@ -3599,6 +3599,8 @@ foreign _wr_wj_webassembly {
 	@(link_name = "WebAssembly_exception_tag") wr_WebAssembly_exception_tag :: proc() -> i32 ---
 	// The import running ends by throwing a WebAssembly exception of `tag` with `values` (cells).
 	@(link_name = "WebAssembly_import_throw") wr_WebAssembly_import_throw :: proc(tag: i32, values: [^]u8, values_len: u32) ---
+	// The number of an externref no reference is left to, one at each call; 0 when there is none.
+	@(link_name = "WebAssembly_extern_released") wr_WebAssembly_extern_released :: proc() -> i32 ---
 	// new WebAssembly.Instance: a number. `externs` the number of a thing for each import (4 bytes each); the start function
 	// runs here.
 	@(link_name = "WebAssembly_Instance_create") wr_WebAssembly_Instance_create :: proc(module: u64, externs: [^]u8, externs_len: u32) -> i32 ---

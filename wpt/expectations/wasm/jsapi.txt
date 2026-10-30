@@ -1231,7 +1231,7 @@
 	Memory interface: existence and properties of interface prototype object's "constructor" property: PASS
 	Memory interface: existence and properties of interface prototype object's @@unscopables property: PASS
 	Memory interface: operation grow(AddressValue): PASS
-	Memory interface: operation toFixedLengthBuffer(): FAIL
+	Memory interface: operation toFixedLengthBuffer(): PASS
 	Memory interface: operation toResizableBuffer(): FAIL
 	Module interface object length: PASS
 	Module interface object name: PASS
@@ -1305,7 +1305,7 @@
 	Memory interface: existence and properties of interface prototype object's "constructor" property: PASS
 	Memory interface: existence and properties of interface prototype object's @@unscopables property: PASS
 	Memory interface: operation grow(AddressValue): PASS
-	Memory interface: operation toFixedLengthBuffer(): FAIL
+	Memory interface: operation toFixedLengthBuffer(): PASS
 	Memory interface: operation toResizableBuffer(): FAIL
 	Module interface object length: PASS
 	Module interface object name: PASS
@@ -2043,10 +2043,10 @@
 /wasm/jsapi/memory/to-fixed-length-buffer-shared.any.worker.html: OK
 	toFixedLengthBuffer caching behavior: FAIL
 /wasm/jsapi/memory/to-fixed-length-buffer.any.html: OK
-	API surface: FAIL
+	API surface: PASS
 	toFixedLengthBuffer caching behavior: FAIL
 /wasm/jsapi/memory/to-fixed-length-buffer.any.worker.html: OK
-	API surface: FAIL
+	API surface: PASS
 	toFixedLengthBuffer caching behavior: FAIL
 /wasm/jsapi/memory/to-resizable-buffer-shared.any.html: OK
 	Resizing a Memory's resizable buffer: FAIL

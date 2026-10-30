@@ -88,6 +88,9 @@ module webassembly {
   /// The import running ends by throwing a WebAssembly exception of `tag` with `values` (cells).
   void WebAssembly_import_throw(i32 tag, bytes values);
 
+  /// The number of an externref no reference is left to, one at each call; 0 when there is none.
+  i32 WebAssembly_extern_released();
+
   /// new WebAssembly.Instance: a number. `externs` the number of a thing for each import (4 bytes each); the start function
   /// runs here.
   i32 WebAssembly_Instance_create(WebAssemblyModule module, bytes externs);

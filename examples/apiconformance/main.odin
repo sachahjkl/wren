@@ -1466,6 +1466,7 @@ foreign _m_webassembly {
 	@(link_name = "WebAssembly_Tag_sig") c_WebAssembly_Tag_sig :: proc(a0: i32, a1: i32, a2: i32) -> i32 ---
 	@(link_name = "WebAssembly_exception_tag") c_WebAssembly_exception_tag :: proc() -> i32 ---
 	@(link_name = "WebAssembly_import_throw") c_WebAssembly_import_throw :: proc(a0: i32, a1: i32, a2: i32) ---
+	@(link_name = "WebAssembly_extern_released") c_WebAssembly_extern_released :: proc() -> i32 ---
 	@(link_name = "WebAssembly_Instance_create") c_WebAssembly_Instance_create :: proc(a0: i64, a1: i32, a2: i32) -> i32 ---
 	@(link_name = "WebAssembly_Instance_exports") c_WebAssembly_Instance_exports :: proc(a0: i32, a1: i64, a2: i32, a3: i32) -> i32 ---
 }

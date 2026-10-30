@@ -34,7 +34,8 @@ Wasm_Import :: struct {
 
 @(private = "file") wr: Wasm_Realm
 
-@(private = "file") MAX_CELLS :: 32   // values of one call (on the stack of the engine, which a deep recursion through a module runs out of first)
+@(private = "file") SMALL_CELLS :: 8      // values of a call kept on the engine's stack (a deep recursion through a module runs out of it first); more take the heap
+@(private = "file") MAX_TAG_VALUES :: 32  // values of an exception
 
 // WebAssembly.validate(bytes)
 @(private = "file")
@@ -198,10 +199,10 @@ wasm_throw :: proc "contextless" (ctx: ^wj.Context, status: i64, what: cstring) 
 @(private = "file")
 wasm_throw_exception :: proc "contextless" (ctx: ^wj.Context) -> wj.JSValue {
 	tag := wj.wr_WebAssembly_exception_tag()
-	sig: [MAX_CELLS + 1]u8
-	np := wj.wr_WebAssembly_Tag_sig(tag, &sig[0], MAX_CELLS)
-	if np < 0 || np > MAX_CELLS { return wj.JS_ThrowRangeError(ctx, "the exception has too many values") }
-	cells: [MAX_CELLS]i64
+	sig: [MAX_TAG_VALUES + 1]u8
+	np := wj.wr_WebAssembly_Tag_sig(tag, &sig[0], MAX_TAG_VALUES)
+	if np < 0 || np > MAX_TAG_VALUES { return wj.JS_ThrowRangeError(ctx, "the exception has too many values") }
+	cells: [MAX_TAG_VALUES]i64
 	if np > 0 { wj.wr_WebAssembly_Func_results(([^]u8)(&cells[0]), u32(np) * 8) }
 	values := wj.JS_NewArray(ctx)
 	if wj.is_exception(values) { return values }
@@ -230,10 +231,10 @@ wasm_import_threw :: proc "contextless" (ctx: ^wj.Context, e: wj.JSValue) -> boo
 	wj.JS_FreeValue(ctx, tv)
 	values := wj.JS_GetPropertyUint32(ctx, info, 1)
 	defer wj.JS_FreeValue(ctx, values)
-	sig: [MAX_CELLS + 1]u8
-	np := wj.wr_WebAssembly_Tag_sig(tag, &sig[0], MAX_CELLS)
-	if np < 0 || np > MAX_CELLS { return false }
-	cells: [MAX_CELLS]i64
+	sig: [MAX_TAG_VALUES + 1]u8
+	np := wj.wr_WebAssembly_Tag_sig(tag, &sig[0], MAX_TAG_VALUES)
+	if np < 0 || np > MAX_TAG_VALUES { return false }
+	cells: [MAX_TAG_VALUES]i64
 	for i in 0 ..< np {
 		v := wj.JS_GetPropertyUint32(ctx, values, u32(i))
 		ok := wasm_to_cell(ctx, sig[i], v, &cells[i])
@@ -515,11 +516,13 @@ wasm_sig_of :: proc "contextless" (ctx: ^wj.Context, id: i32) -> cstring {
 		wr.sigs, wr.sigs_cap = n, cap
 	}
 	if wr.sigs[id] != nil { return wr.sigs[id] }
-	b: [512]u8
-	n := wj.wr_WebAssembly_Func_sig(id, &b[0], len(b))
-	if n <= 0 || n >= len(b) { wj.JS_ThrowTypeError(ctx, "not a function"); return nil }
-	b[n] = 0
-	s := wj.web_strndup(&b[0], uint(n))
+	n := wj.wr_WebAssembly_Func_sig(id, wj.wj_scratch.data, wj.wj_scratch.cap)
+	if n > 0 && u32(n) > wj.wj_scratch.cap {
+		if !wj.wj_scratch_grow(u32(n)) { wj.JS_ThrowOutOfMemory(ctx); return nil }
+		n = wj.wr_WebAssembly_Func_sig(id, wj.wj_scratch.data, wj.wj_scratch.cap)
+	}
+	if n <= 0 { wj.JS_ThrowTypeError(ctx, "not a function"); return nil }
+	s := wj.web_strndup(wj.wj_scratch.data, uint(n))
 	if s == nil { wj.JS_ThrowOutOfMemory(ctx); return nil }
 	wr.sigs[id] = wj.cstr(s)
 	return wr.sigs[id]
@@ -530,21 +533,22 @@ wasm_sig_of :: proc "contextless" (ctx: ^wj.Context, id: i32) -> cstring {
 wasm_invoke :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, magic: i32, func_data: [^]wj.JSValue) -> wj.JSValue {
 	sig := ([^]u8)(rawptr(wasm_sig_of(ctx, magic)))
 	if sig == nil { return wj.EXCEPTION }
-	cells: [MAX_CELLS]i64
 	np := 0
-	for sig[np] != ':' {
-		if np == MAX_CELLS { return wj.JS_ThrowRangeError(ctx, "the function has too many parameters") }
-		if !wasm_to_cell(ctx, sig[np], wj.arg(argc, argv, i32(np)), &cells[np]) { return wj.EXCEPTION }
-		np += 1
-	}
-	st := wj.wr_WebAssembly_Func_call(magic, ([^]u8)(&cells[0]), u32(np) * 8)
-	if st < 0 { return wasm_throw(ctx, i64(st), "WebAssembly function") }
+	for sig[np] != ':' { np += 1 }
 	res := sig[np + 1:]
 	nr := 0
 	for res[nr] != 0 { nr += 1 }
+	small: [SMALL_CELLS]i64
+	cells := cells_of(small[:], max(np, nr))
+	if cells == nil { return wj.JS_ThrowOutOfMemory(ctx) }
+	defer cells_free(small[:], cells)
+	for i in 0 ..< np {
+		if !wasm_to_cell(ctx, sig[i], wj.arg(argc, argv, i32(i)), &cells[i]) { return wj.EXCEPTION }
+	}
+	st := wj.wr_WebAssembly_Func_call(magic, ([^]u8)(cells), u32(np) * 8)
+	if st < 0 { return wasm_throw(ctx, i64(st), "WebAssembly function") }
 	if nr == 0 { return wj.UNDEFINED }
-	if nr > MAX_CELLS { return wj.JS_ThrowRangeError(ctx, "the function has too many results") }
-	wj.wr_WebAssembly_Func_results(([^]u8)(&cells[0]), u32(nr) * 8)
+	wj.wr_WebAssembly_Func_results(([^]u8)(cells), u32(nr) * 8)
 	if nr == 1 { return wasm_from_cell(ctx, res[0], cells[0]) }
 	arr := wj.JS_NewArray(ctx)
 	if wj.is_exception(arr) { return arr }
@@ -602,19 +606,27 @@ wj_wasm_import :: proc "c" (slot: i32) -> i32 {
 	if slot < 0 || slot >= wr.imports_n { return 1 }
 	im := wr.imports[slot]
 	sig := ([^]u8)(rawptr(im.sig))
-	cells: [MAX_CELLS]i64
-	args: [MAX_CELLS]wj.JSValue
 	np := 0
-	for sig[np] != ':' && np < MAX_CELLS { np += 1 }
-	if np > 0 { wj.wr_WebAssembly_import_args(([^]u8)(&cells[0]), u32(np) * 8) }
-	failed := false
-	made := 0
-	for i in 0 ..< np {
-		args[i] = wasm_from_cell(ctx, sig[i], cells[i])
-		if wj.is_exception(args[i]) { failed = true; break }
-		made += 1
+	for sig[np] != ':' { np += 1 }
+	small: [SMALL_CELLS]i64
+	cells := cells_of(small[:], np)
+	small_args: [SMALL_CELLS]wj.JSValue
+	args := np <= SMALL_CELLS ? ([^]wj.JSValue)(&small_args[0]) : ([^]wj.JSValue)(wj.libc_malloc(uint(np) * size_of(wj.JSValue)))
+	defer {
+		cells_free(small[:], cells)
+		if np > SMALL_CELLS { wj.libc_free(args) }
 	}
-	r := failed ? wj.EXCEPTION : wj.JS_Call(ctx, im.fn, wj.UNDEFINED, i32(np), &args[0])
+	made := 0
+	failed := cells == nil || args == nil
+	if failed { wj.JS_ThrowOutOfMemory(ctx) } else if np > 0 { wj.wr_WebAssembly_import_args(([^]u8)(cells), u32(np) * 8) }
+	if !failed {
+		for i in 0 ..< np {
+			args[i] = wasm_from_cell(ctx, sig[i], cells[i])
+			if wj.is_exception(args[i]) { failed = true; break }
+			made += 1
+		}
+	}
+	r := failed ? wj.EXCEPTION : wj.JS_Call(ctx, im.fn, wj.UNDEFINED, i32(np), args)
 	for i in 0 ..< made { wj.JS_FreeValue(ctx, args[i]) }
 	if !wj.is_exception(r) {
 		ok := wasm_import_results(ctx, sig[np + 1:], r)
@@ -622,7 +634,8 @@ wj_wasm_import :: proc "c" (slot: i32) -> i32 {
 		if ok { return 0 }
 	}
 	e := wj.JS_GetException(ctx)
-	if wasm_import_threw(ctx, e) {
+	// (any exception the module can catch; only the one that stops the script goes through it, as a trap)
+	if !wj.JS_IsUncatchableError(e) && wasm_import_threw(ctx, e) {
 		wj.JS_FreeValue(ctx, e)
 		return 1
 	}
@@ -640,8 +653,10 @@ wasm_import_results :: proc "contextless" (ctx: ^wj.Context, res: [^]u8, r: wj.J
 	nr := 0
 	for res[nr] != 0 { nr += 1 }
 	if nr == 0 { return true }
-	cells: [MAX_CELLS]i64
-	if nr > MAX_CELLS { wj.JS_ThrowRangeError(ctx, "the import has too many results"); return false }
+	small: [SMALL_CELLS]i64
+	cells := cells_of(small[:], nr)
+	if cells == nil { wj.JS_ThrowOutOfMemory(ctx); return false }
+	defer cells_free(small[:], cells)
 	if nr == 1 {
 		if !wasm_to_cell(ctx, res[0], r, &cells[0]) { return false }
 	} else {
@@ -660,7 +675,7 @@ wasm_import_results :: proc "contextless" (ctx: ^wj.Context, res: [^]u8, r: wj.J
 			if !ok { return false }
 		}
 	}
-	wj.wr_WebAssembly_import_results(([^]u8)(&cells[0]), u32(nr) * 8)
+	wj.wr_WebAssembly_import_results(([^]u8)(cells), u32(nr) * 8)
 	return true
 }
 
@@ -708,9 +723,9 @@ wasm_tag_create :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, 
 // tagSig(id): its parameters, one letter each
 @(private = "file")
 wasm_tag_sig :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
-	sig: [MAX_CELLS + 1]u8
-	n := wj.wr_WebAssembly_Tag_sig(int_arg(ctx, argc, argv, 0), &sig[0], MAX_CELLS)
-	return wj.JS_NewStringLen(ctx, &sig[0], uint(clamp(n, 0, MAX_CELLS)))
+	sig: [MAX_TAG_VALUES + 1]u8
+	n := wj.wr_WebAssembly_Tag_sig(int_arg(ctx, argc, argv, 0), &sig[0], MAX_TAG_VALUES)
+	return wj.JS_NewStringLen(ctx, &sig[0], uint(clamp(n, 0, MAX_TAG_VALUES)))
 }
 
 // setup({LinkError, RuntimeError, funcId, funcWrap, externId, externValue, toList, exceptionMake, exceptionInfo})
@@ -778,6 +793,7 @@ wasm_autoinit :: proc "c" (ctx: ^wj.Context, atom: wj.Atom) -> wj.JSValue {
 		{"globalSet", wasm_global_set, 2},
 		{"funcWrap", wasm_func_wrap, 2},
 		{"importFunc", wasm_import_func, 2},
+		{"externReleased", wasm_extern_released, 0},
 		{"tagCreate", wasm_tag_create, 1},
 		{"tagSig", wasm_tag_sig, 1},
 		{"instanceCreate", wasm_instance_create, 2},
@@ -788,4 +804,20 @@ wasm_autoinit :: proc "c" (ctx: ^wj.Context, atom: wj.Atom) -> wj.JSValue {
 	}
 	args := [2]wj.JSValue{native, wj.wj_the_realm.global}
 	return wj.JS_Call(ctx, fn, wj.UNDEFINED, 2, &args[0])
+}
+
+@(private = "file")
+cells_of :: proc "contextless" (small: []i64, n: int) -> [^]i64 {
+	return n <= len(small) ? raw_data(small) : ([^]i64)(wj.libc_malloc(uint(n) * size_of(i64)))
+}
+
+@(private = "file")
+cells_free :: proc "contextless" (small: []i64, cells: [^]i64) {
+	if cells != raw_data(small) { wj.libc_free(cells) }
+}
+
+// externReleased(): the number of an externref no reference is left to; 0 when there is none
+@(private = "file")
+wasm_extern_released :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	return wj.new_int32(wj.wr_WebAssembly_extern_released())
 }

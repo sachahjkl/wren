@@ -389,13 +389,15 @@ test("Global", () => {
 const EH = new Uint8Array([...HEADER,
   ...sec(1, [2, 0x60, 1, I32, 0, 0x60, 1, I32, 1, I32]),
   ...sec(2, [2, ...str("env"), ...str("tag"), 4, 0, 0, ...str("env"), ...str("f"), 0, 0]),
-  ...sec(3, [3, 0, 0, 1]),
-  ...sec(7, [4, ...str("thrower"), 0, 1, ...str("pass"), 0, 2, ...str("caught"), 0, 3, ...str("t"), 4, 0]),
-  ...sec(10, [3,
+  ...sec(3, [4, 0, 0, 1, 1]),
+  ...sec(7, [5, ...str("thrower"), 0, 1, ...str("pass"), 0, 2, ...str("caught"), 0, 3, ...str("any"), 0, 4, ...str("t"), 4, 0]),
+  ...sec(10, [4,
     ...fn(0x20, 0, 0x08, 0),                                                           // throw 0
     ...fn(0x20, 0, 0x10, 0),                                                           // call the import
     // block (result i32) ; try_table (catch 0 0): call the import ; i32.const -1 ; return ; end ; unreachable ; end
     ...fn(0x02, I32, 0x1f, 0x40, 1, 0, 0, 0, 0x20, 0, 0x10, 0, 0x41, 0x7f, 0x0f, 0x0b, 0x00, 0x0b),
+    // block ; try_table (catch_all 0): call the import ; i32.const 0 ; return ; end ; unreachable ; end ; i32.const 1
+    ...fn(0x02, 0x40, 0x1f, 0x40, 1, 2, 0, 0x20, 0, 0x10, 0, 0x41, 0, 0x0f, 0x0b, 0x00, 0x0b, 0x41, 1),
   ]),
 ]);
 
@@ -433,8 +435,31 @@ test("Tag and Exception", () => {
   const plain = new Error("plain");
   f = () => { throw plain; };
   try { x.pass(0); ok(false, "a plain error"); } catch (ex) { eq(ex, plain, "a plain error goes through as itself"); }
+  eq(x.any(0), 1, "a plain error can be caught by a module (catch_all)");
+  f = () => { throw 7; };
+  try { x.pass(0); ok(false, "a primitive thrown"); } catch (ex) { eq(ex, 7, "a primitive thrown goes through as itself"); }
+  f = () => {};
+  eq(x.any(0), 0, "catch_all when nothing is thrown");
+  ok(WebAssembly.JSTag instanceof WebAssembly.Tag, "JSTag");
+  eq(typeof SharedArrayBuffer, "undefined", "no SharedArrayBuffer without cross-origin isolation");
   f = () => {};
   eq(x.caught(0), -1, "nothing thrown");
+});
+
+test("a call with many values", () => {
+  const N = 40;
+  const many = new Uint8Array([...HEADER,
+    ...sec(1, [1, 0x60, N, ...new Array(N).fill(I32), N, ...new Array(N).fill(I32)]),
+    ...sec(2, [1, ...str("env"), ...str("f"), 0, 0]),
+    ...sec(3, [1, 0]),
+    ...sec(7, [1, ...str("c"), 0, 1]),
+    ...sec(10, [1, ...leb(2 * N + 2 + 2), 0, ...new Array(N).fill(0).flatMap((_, i) => [0x20, i]), 0x10, 0, 0x0b]),
+  ]);
+  const args = new Array(N).fill(0).map((_, i) => i * 3);
+  const x = new WebAssembly.Instance(new WebAssembly.Module(many), { env: { f: (...a) => a.map(v => v + 1) } }).exports;
+  const r = x.c(...args);
+  eq(r.length, N, "as many results");
+  eq(r[39], 39 * 3 + 1, "the last one, through an import");
 });
 
 test("instantiate", async () => {
