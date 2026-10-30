@@ -6,6 +6,7 @@ package wasm
 
 import "core:encoding/json"
 import "core:strings"
+import "wb:base"
 
 // A custom section of a module (Module.customSections). The name and the bytes are the module's own copies.
 User_Section :: struct {
@@ -46,21 +47,20 @@ extern_kind_name :: proc(kind: u8) -> string {
 	return ""
 }
 
-// WebAssembly.validate: whether `image` is a valid module for this engine's features. One exception: the module sites
-// test to ask "are there WebAssembly exceptions?" (wasm-feature-detect, .NET's runtime) uses the old form of the proposal
-// (try / catch_all), which Wasmtime does not take although it has exceptions (try_table): it gets yes, or a .NET
-// application built for exceptions refuses to start. A module really using the old form still gets a CompileError.
+// WebAssembly.validate: whether `image` is a valid module for this engine's features (the old form of exceptions read as
+// translate_legacy_exceptions makes it).
 validate :: proc(image: []byte) -> bool {
 	if wt.engine == nil { return false }
-	PROBE :: [28]u8{0, 97, 115, 109, 1, 0, 0, 0, 1, 4, 1, 96, 0, 0, 3, 2, 1, 0, 10, 8, 1, 6, 0, 6, 64, 25, 11, 11}
-	probe := PROBE
-	if wt.rs.features.exceptions && string(image) == string(probe[:]) { return true }
 	e := wasmtime_module_validate(wt.engine, raw_data(image), uint(len(image)))
-	if e != nil {
-		wasmtime_error_delete(e)
-		return false
-	}
-	return true
+	if e == nil { return true }
+	wasmtime_error_delete(e)
+	if !wt.rs.features.exceptions { return false }
+	translated := translate_legacy_exceptions(image, context.temp_allocator)
+	if translated == nil { return false }
+	e = wasmtime_module_validate(wt.engine, raw_data(translated), uint(len(translated)))
+	if e == nil { return true }
+	wasmtime_error_delete(e)
+	return false
 }
 
 // Reads the import, export and custom sections of a module Wasmtime has accepted (so a failure here is a kind or a form
@@ -123,16 +123,28 @@ user_module_describe :: proc(m: ^User_Module, image: []byte) -> (err: string) {
 	return ""
 }
 
-// A compilation's result, not yet a User_Module: user_module_compile touches no Odin allocator, so it can run on any
-// thread (a large module takes seconds); user_module_finish makes the module on the page's.
+// A compilation's result, not yet a User_Module: user_module_compile can run on any thread (a large module takes seconds);
+// user_module_finish makes the module on the page's.
 User_Compiled :: struct {
 	module: wt_module,
 	error:  wt_error,
 }
 
-user_module_compile :: proc "contextless" (image: []byte) -> (c: User_Compiled) {
+user_module_compile :: proc(image: []byte) -> (c: User_Compiled) {
 	if wt.engine == nil { return }
 	c.error = wasmtime_module_new(wt.engine, raw_data(image), uint(len(image)), &c.module)
+	if c.error == nil || !wt.rs.features.exceptions { return }
+	// the old form of exceptions? (only what changes the module changes the answer: the first error stands otherwise)
+	translated := translate_legacy_exceptions(image, base.process_allocator())
+	if translated == nil { return }
+	defer delete(translated, base.process_allocator())
+	module: wt_module
+	if e := wasmtime_module_new(wt.engine, raw_data(translated), uint(len(translated)), &module); e != nil {
+		wasmtime_error_delete(e)
+		return
+	}
+	wasmtime_error_delete(c.error)
+	c.error, c.module = nil, module
 	return
 }
 
@@ -151,6 +163,16 @@ user_module_finish :: proc(c: User_Compiled, image: []byte) -> (m: ^User_Module,
 		return nil, err
 	}
 	return m, ""
+}
+
+// Why Wasmtime refuses `image`, as it says it ("" when it takes it); in temporary memory.
+user_module_compile_error :: proc(image: []byte) -> string {
+	if e := wasmtime_module_validate(wt.engine, raw_data(image), uint(len(image))); e != nil {
+		text := wt_error_text(e, context.temp_allocator)
+		wasmtime_error_delete(e)
+		return text
+	}
+	return ""
 }
 
 // WebAssembly.Module: compiles `image` on this thread.

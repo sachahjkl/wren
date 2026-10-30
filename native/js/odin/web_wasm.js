@@ -111,9 +111,11 @@
       if (initial > 65536) throw new RE("WebAssembly.Memory(): Property 'initial': value " + initial + " is above the upper bound");
       if (maximum > 65536) throw new RE("WebAssembly.Memory(): Property 'maximum': value " + maximum + " is above the upper bound");
       if (maximum >= 0 && maximum < initial) throw new RE("WebAssembly.Memory(): Property 'maximum': value " + maximum + " is below the lower bound " + initial);
-      if (descriptor.shared) throw new TE("WebAssembly.Memory(): shared memories are not supported");
+      // A shared memory is an ordinary one whose buffer is a SharedArrayBuffer: only this agent can have it (no threads).
+      const shared = !!descriptor.shared;
+      if (shared && maximum < 0) throw new TE("WebAssembly.Memory(): If shared is true, maximum property must be defined.");
       const id = native.memoryCreate(initial, maximum);
-      memories[id] = setState(this, { kind: Memory, id, buffer: null, pages: -1 });
+      memories[id] = setState(this, { kind: Memory, id, buffer: null, pages: -1, shared });
     }
     grow(delta) {
       const s = thisState(this, Memory, "WebAssembly.Memory.grow()");
@@ -133,11 +135,12 @@
       return s.buffer;   // (this is the only kind of buffer a memory has here)
     }
   }
-  // the buffer as it is now; the previous one is detached
+  // the buffer as it is now; the previous one is detached, unless shared: it stays, at its length
   const refresh = s => {
-    if (s.buffer !== null) native.memoryDetach(s.buffer);
+    if (s.buffer !== null && !s.shared) native.memoryDetach(s.buffer);
     s.pages = native.memoryPages(s.id);
-    s.buffer = native.memoryBuffer(s.id);
+    s.buffer = native.memoryBuffer(s.id, !!s.shared);
+    if (s.shared) freeze(s.buffer);
   };
   interfaceOf(Memory);
 

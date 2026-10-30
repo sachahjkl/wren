@@ -366,14 +366,14 @@ wasm_memory_pages :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32
 	return wj.new_float64(ctx, f64(wj.wr_WebAssembly_Memory_pages(int_arg(ctx, argc, argv, 0))))
 }
 
-// memoryBuffer(id): the ArrayBuffer of its bytes as they are now.
+// memoryBuffer(id, shared): the ArrayBuffer (or SharedArrayBuffer) of its bytes as they are now.
 @(private = "file")
 wasm_memory_buffer :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	id := int_arg(ctx, argc, argv, 0)
 	pages := wj.wr_WebAssembly_Memory_pages(id)
 	if pages < 0 { return wj.JS_ThrowTypeError(ctx, "not a memory") }
 	if pages > 65535 { return wj.JS_ThrowRangeError(ctx, "the memory is too large for this engine's ArrayBuffer") }
-	return wj.JS_NewArrayBufferHost(ctx, uint(pages) * 65536, memory_read, memory_write, u64(id))
+	return wj.JS_NewArrayBufferHost(ctx, uint(pages) * 65536, memory_read, memory_write, u64(id), wj.to_bool(ctx, wj.arg(argc, argv, 1)))
 }
 
 @(private = "file")

@@ -51,13 +51,16 @@ array_buffer_new :: proc(ctx: ^Context, proto: ^Object, class: Class_ID, n: i64,
 	return o
 }
 
-// An ArrayBuffer of `n` bytes that live with the embedder (Buffer_Host). Not resizable, not transferable.
-array_buffer_new_host :: proc(ctx: ^Context, n: i64, host: Buffer_Host) -> ^Object {
+// An ArrayBuffer (or SharedArrayBuffer) of `n` bytes that live with the embedder (Buffer_Host). Not resizable, not
+// transferable.
+array_buffer_new_host :: proc(ctx: ^Context, n: i64, host: Buffer_Host, shared := false) -> ^Object {
 	rt := ctx.rt
-	o := object_new_proto(ctx, ctx.class_proto[.array_buffer], .array_buffer)
+	cls: Class_ID = shared ? .shared_array_buffer : .array_buffer
+	o := object_new_proto(ctx, ctx.class_proto[cls], cls)
 	ab := new(Array_Buffer, rt_allocator(rt))
 	ab.byte_length = int(n)
 	ab.max_byte_length = -1
+	ab.shared = shared
 	ab.views = make([dynamic]^Object, rt_allocator(rt))
 	ab.host = new_clone(host, rt_allocator(rt))
 	o.data = ab
@@ -306,7 +309,9 @@ buffer_slice :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> V
 		if o == nil {return EXCEPTION}
 		nv = mk_obj(o)
 	} else {
-		c := species_constructor(ctx, this, get(ctx, mk_obj(ctx.global_obj), atom_from_utf8(ctx.rt, shared ? "SharedArrayBuffer" : "ArrayBuffer")))
+		// (the realm may have no global SharedArrayBuffer: a page without cross-origin isolation reaches it through a shared memory)
+		default_c := shared ? get(ctx, mk_obj(ctx.class_proto[.shared_array_buffer]), atom_from_utf8(ctx.rt, "constructor")) : get(ctx, mk_obj(ctx.global_obj), atom_from_utf8(ctx.rt, "ArrayBuffer"))
+		c := species_constructor(ctx, this, default_c)
 		if is_exception(c) {return EXCEPTION}
 		nv = construct(ctx, c, {mk_i64(count)}, c)
 		if is_exception(nv) {return EXCEPTION}
@@ -1737,10 +1742,13 @@ atomics_wait :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> V
 	if !ok4 {return EXCEPTION}
 	if t != t {t = math.inf_f64(1)} else if t < 0 {t = 0}
 	if !ctx.rt.config.can_block {return throw_type_error(ctx, "Atomics.wait cannot block in this agent")}
+	// (a shared memory: one agent has it, so it is a lone agent's wait)
+	host_pin_view(ctx, o)
+	defer host_unpin_view(ctx, o, false)
 	addr := elem_ptr(o, idx)
 	expected := elem_val_raw(e, v) & elem_mask(e)
 	hook := ctx.rt.config.atomics_wait
-	if hook == nil {
+	if hook == nil || ab.host != nil {
 		// a lone agent: nobody can notify us, so an equal value means the wait times out
 		if elem_raw(e, addr) & elem_mask(e) != expected {return new_string(ctx, "not-equal")}
 		return new_string(ctx, "timed-out")
@@ -1766,7 +1774,8 @@ atomics_notify :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) ->
 		count = max(c, 0)
 	}
 	ta := typed_array_of(o)
-	if !array_buffer_of(ta.buffer).shared {return mk_int(0)}
+	nab := array_buffer_of(ta.buffer)
+	if !nab.shared || nab.host != nil {return mk_int(0)}
 	hook := ctx.rt.config.atomics_notify
 	if hook == nil || idx >= typed_array_length(ctx, o) {return mk_int(0)}
 	return mk_int(i32(hook(ctx.rt.config.atomics_user, elem_ptr(o, idx), count)))
