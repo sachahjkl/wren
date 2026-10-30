@@ -5,7 +5,7 @@
 //
 // What a page makes (memories, tables, globals, functions, instances) lives in one store per realm, known by numbers.
 // A call that can fail gives a number >= 0 or the opposite of a failure (1 LinkError, 2 RuntimeError, 3 RangeError,
-// 4 TypeError), the message from WebAssembly_lastError. A value crosses as a cell: an i64 holding an i32, an i64, the
+// 4 TypeError, 5 a WebAssembly exception), the message from WebAssembly_lastError. A value crosses as a cell: an i64 holding an i32, an i64, the
 // bits of a float, a function's number + 1, or an externref's number (0: a null reference).
 package web
 
@@ -49,6 +49,10 @@ foreign _m_webassembly {
 	@(link_name = "WebAssembly_import_args") _WebAssembly_import_args :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "WebAssembly_import_results") _WebAssembly_import_results :: proc(results: [^]u8, results_len: u32) ---
 	@(link_name = "WebAssembly_import_failed") _WebAssembly_import_failed :: proc(message: [^]u8, message_len: u32) ---
+	@(link_name = "WebAssembly_Tag_create") _WebAssembly_Tag_create :: proc(parameters: [^]u8, parameters_len: u32) -> i32 ---
+	@(link_name = "WebAssembly_Tag_sig") _WebAssembly_Tag_sig :: proc(tag: i32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "WebAssembly_exception_tag") _WebAssembly_exception_tag :: proc() -> i32 ---
+	@(link_name = "WebAssembly_import_throw") _WebAssembly_import_throw :: proc(tag: i32, values: [^]u8, values_len: u32) ---
 	@(link_name = "WebAssembly_Instance_create") _WebAssembly_Instance_create :: proc(module: WebAssemblyModule, externs: [^]u8, externs_len: u32) -> i32 ---
 	@(link_name = "WebAssembly_Instance_exports") _WebAssembly_Instance_exports :: proc(instance: i32, module: WebAssemblyModule, _buf: [^]u8, _cap: u32) -> i32 ---
 }
@@ -449,6 +453,50 @@ WebAssembly_import_results :: proc "contextless" (results: []u8) {
 // Why the import running failed.
 WebAssembly_import_failed :: proc "contextless" (message: string) {
 	_WebAssembly_import_failed(raw_data(message), u32(len(message)))
+}
+
+// new WebAssembly.Tag: a number. `parameters` a value type's letter for each.
+WebAssembly_Tag_create :: proc "contextless" (parameters: string) -> i32 {
+	return _WebAssembly_Tag_create(raw_data(parameters), u32(len(parameters)))
+}
+
+// The parameters of a tag, one letter each.
+WebAssembly_Tag_sig :: proc "contextless" (tag: i32, buf: []u8) -> (string, Error) {
+	n := _WebAssembly_Tag_sig(tag, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of WebAssembly_Tag_sig's result.
+WebAssembly_Tag_sig_len :: proc "contextless" (tag: i32) -> (int, Error) {
+	n := _WebAssembly_Tag_sig(tag, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// WebAssembly_Tag_sig's result in a buffer allocated to fit.
+WebAssembly_Tag_sig_alloc :: proc(tag: i32, allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _WebAssembly_Tag_sig(tag, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// The tag of the exception a call just failed with (failure 5); its values come from WebAssembly_Func_results.
+WebAssembly_exception_tag :: proc "contextless" () -> i32 {
+	return _WebAssembly_exception_tag()
+}
+
+// The import running ends by throwing a WebAssembly exception of `tag` with `values` (cells).
+WebAssembly_import_throw :: proc "contextless" (tag: i32, values: []u8) {
+	_WebAssembly_import_throw(tag, raw_data(values), u32(len(values)))
 }
 
 // new WebAssembly.Instance: a number. `externs` the number of a thing for each import (4 bytes each); the start function

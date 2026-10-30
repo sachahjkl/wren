@@ -24,6 +24,7 @@ User_Failure :: enum i32 {
 	Trap  = 2,
 	Range = 3,
 	Type  = 4,
+	Exception = 5,   // the module threw and nothing caught it: its tag in s.exn_tag, its values in s.call_results
 }
 
 // The embedder runs import `slot` with s.import_args, writes s.import_results; false fails the call that got there
@@ -52,6 +53,9 @@ User_Store :: struct {
 	tables:    [dynamic]wt_table,
 	globals:   [dynamic]wt_global,
 	instances: [dynamic]wt_instance,
+	tags:      [dynamic]wt_tag,
+	exn_tag:   i32,                 // of the last User_Failure.Exception
+	import_throw: bool,             // the import running threw a WebAssembly exception: exn_tag, call_results
 	funcs:     [dynamic]User_Func,
 	func_ids:  map[rawptr]i32,      // what a wasmtime_func_t points at, for the number of a function seen before
 	imports:   [dynamic]^User_Import,
@@ -78,6 +82,7 @@ user_store_delete :: proc(s: ^User_Store) {
 	delete(s.tables)
 	delete(s.globals)
 	delete(s.instances)
+	delete(s.tags)
 	for &f in s.funcs { delete(f.sig) }
 	delete(s.funcs)
 	delete(s.func_ids)
@@ -107,9 +112,28 @@ fail_error :: proc(s: ^User_Store, f: User_Failure, e: wt_error) -> User_Failure
 	return fail(s, f, text)
 }
 
-// The failure of a call into a module. A trap reads as in other browsers. Takes `e` and `t`.
+// The failure of a call into a module: an exception it threw, or else a trap, which reads as in other browsers. Takes `e`
+// and `t`.
 @(private = "file")
 fail_call :: proc(s: ^User_Store, e: wt_error, t: wt_trap) -> User_Failure {
+	exn: wt_exnref
+	if wasmtime_context_take_exception(s.ctx, &exn) {
+		defer wasmtime_exnref_unroot(&exn)
+		if e != nil { wasmtime_error_delete(e) }
+		if t != nil { wasm_trap_delete(t) }
+		tag: wt_tag
+		if te := wasmtime_exnref_tag(s.ctx, &exn, &tag); te != nil { return fail_error(s, .Trap, te) }
+		s.exn_tag = table_id(&s.tags, tag)
+		sig := user_tag_sig(s, s.exn_tag, context.temp_allocator)
+		clear(&s.call_results)
+		for i in 0 ..< int(wasmtime_exnref_field_count(s.ctx, &exn)) {
+			v: wt_val
+			if fe := wasmtime_exnref_field(s.ctx, &exn, uint(i), &v); fe != nil { return fail_error(s, .Trap, fe) }
+			append(&s.call_results, i < len(sig) ? cell_of_val(s, sig[i], &v) : 0)
+			wasmtime_val_unroot(&v)
+		}
+		return .Exception
+	}
 	if e != nil { return fail_error(s, .Trap, e) }
 	defer wasm_trap_delete(t)
 	code: u8
@@ -442,6 +466,10 @@ user_import_callback :: proc "c" (env: rawptr, caller: wt_caller, args: [^]wt_va
 	ok := s.on_import(s, im.slot)
 	s.import_args, s.import_results = saved_args, saved_results
 	if !ok {
+		if s.import_throw {
+			s.import_throw = false
+			if t := throw_exception(s); t != nil { return t }
+		}
 		return wasmtime_trap_new(raw_data(s.error), len(s.error))
 	}
 	for i in 0 ..< int(nresults) {
@@ -451,6 +479,54 @@ user_import_callback :: proc "c" (env: rawptr, caller: wt_caller, args: [^]wt_va
 		}
 	}
 	return nil
+}
+
+// ---- tags ----
+
+user_tag_new :: proc(s: ^User_Store, sig: string) -> (id: i32, f: User_Failure) {
+	ty := functype_of_sig(sig)
+	if ty == nil { return 0, fail(s, .Type, "not a tag's parameters") }
+	tt := wasm_tagtype_new(ty)   // (takes ty)
+	defer wasm_tagtype_delete(tt)
+	t: wt_tag
+	if e := wasmtime_tag_new(s.ctx, tt, &t); e != nil { return 0, fail_error(s, .Type, e) }
+	append(&s.tags, t)
+	return i32(len(s.tags) - 1), .None
+}
+
+// The parameters of a tag, one letter each; "" for no such tag.
+user_tag_sig :: proc(s: ^User_Store, id: i32, allocator := context.allocator) -> string {
+	if id < 0 || int(id) >= len(s.tags) { return "" }
+	tt := wasmtime_tag_type(s.ctx, &s.tags[id])
+	defer wasm_tagtype_delete(tt)
+	sig := sig_of_functype(wasm_tagtype_functype(tt), allocator)
+	return sig[:len(sig) - 1]   // (no results: what is before the ':')
+}
+
+// The import running ends by throwing: tag s.exn_tag with the values s.call_results. The trap to return; nil when it
+// cannot be made (the message: s.error).
+@(private = "file")
+throw_exception :: proc(s: ^User_Store) -> wt_trap {
+	sig := user_tag_sig(s, s.exn_tag, context.temp_allocator)
+	if s.exn_tag < 0 || int(s.exn_tag) >= len(s.tags) || len(sig) != len(s.call_results) {
+		user_set_error(s, "not an exception of this tag")
+		return nil
+	}
+	fields := make([]wt_val, max(len(sig), 1), context.temp_allocator)
+	for i in 0 ..< len(sig) {
+		if val_of_cell(s, sig[i], s.call_results[i], &fields[i]) != .Ok {
+			user_set_error(s, "not a value of the tag's type")
+			return nil
+		}
+	}
+	defer for i in 0 ..< len(sig) { if sig[i] == 'e' { wasmtime_val_unroot(&fields[i]) } }
+	exn: wt_exnref
+	if e := wasmtime_exnref_new(s.ctx, &s.tags[s.exn_tag], raw_data(fields), uint(len(sig)), &exn); e != nil {
+		fail_error(s, .Trap, e)
+		return nil
+	}
+	defer wasmtime_exnref_unroot(&exn)
+	return wasmtime_context_set_exception(s.ctx, &exn)
 }
 
 // A function of signature `sig` that calls the embedder's import `slot` (User_Import_Proc).
@@ -554,6 +630,8 @@ user_instance_new :: proc(s: ^User_Store, m: ^User_Module, externs: []u32) -> (i
 		case WT_EXTERN_GLOBAL: if g := global_at(s, at); g != nil { items[i].of.global = g^; ok = true }
 		case WT_EXTERN_TABLE: if t := table_at(s, at); t != nil { items[i].of.table = t^; ok = true }
 		case WT_EXTERN_MEMORY: if mem := memory_at(s, at); mem != nil { items[i].of.memory = mem^; ok = true }
+		case 4:   // (a tag, among the kinds of wasm.h; its wasmtime_extern_t kind is another number)
+			if at >= 0 && int(at) < len(s.tags) { items[i].kind = WT_EXTERN_TAG; items[i].of.tag = s.tags[at]; ok = true }
 		}
 		if !ok { return 0, fail(s, .Link, fmt.tprintf("import #%d is not of the kind the module asks for", i)) }
 	}
@@ -563,7 +641,11 @@ user_instance_new :: proc(s: ^User_Store, m: ^User_Module, externs: []u32) -> (i
 	trap: wt_trap
 	e := wasmtime_instance_new(s.ctx, m.module, raw_data(items), uint(len(externs)), &inst, &trap)
 	if trap != nil { return 0, fail_call(s, nil, trap) }
-	if e != nil { return 0, fail_error(s, .Link, e) }
+	if e != nil {
+		exn: wt_exnref
+		if wasmtime_context_take_exception(s.ctx, &exn) { wasmtime_exnref_unroot(&exn) }
+		return 0, fail_error(s, .Link, e)
+	}
 	append(&s.instances, inst)
 	return i32(len(s.instances) - 1), .None
 }
@@ -588,7 +670,8 @@ user_instance_exports :: proc(s: ^User_Store, id: i32, m: ^User_Module, allocato
 		case WT_EXTERN_GLOBAL: e.kind, e.id = "global", i64(global_id(s, ext.of.global))
 		case WT_EXTERN_TABLE: e.kind, e.id = "table", i64(table_id(&s.tables, ext.of.table))
 		case WT_EXTERN_MEMORY: e.kind, e.id = "memory", i64(table_id(&s.memories, ext.of.memory))
-		case: e.kind = "tag"
+		case WT_EXTERN_TAG: e.kind, e.id = "tag", i64(table_id(&s.tags, ext.of.tag))
+		case: e.kind = "other"
 		}
 		append(&entries, e)
 	}

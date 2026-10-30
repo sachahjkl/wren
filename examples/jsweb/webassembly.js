@@ -384,6 +384,59 @@ test("Global", () => {
   eq(x.g.value, 42, "an exported global");
 });
 
+// Types: 0 (i32)->() ; imports a tag of it and a function; `thrower` throws it, `pass` calls the import inside nothing,
+// `caught` calls the import in a try_table and gives the value it caught, or -1 without an exception.
+const EH = new Uint8Array([...HEADER,
+  ...sec(1, [2, 0x60, 1, I32, 0, 0x60, 1, I32, 1, I32]),
+  ...sec(2, [2, ...str("env"), ...str("tag"), 4, 0, 0, ...str("env"), ...str("f"), 0, 0]),
+  ...sec(3, [3, 0, 0, 1]),
+  ...sec(7, [4, ...str("thrower"), 0, 1, ...str("pass"), 0, 2, ...str("caught"), 0, 3, ...str("t"), 4, 0]),
+  ...sec(10, [3,
+    ...fn(0x20, 0, 0x08, 0),                                                           // throw 0
+    ...fn(0x20, 0, 0x10, 0),                                                           // call the import
+    // block (result i32) ; try_table (catch 0 0): call the import ; i32.const -1 ; return ; end ; unreachable ; end
+    ...fn(0x02, I32, 0x1f, 0x40, 1, 0, 0, 0, 0x20, 0, 0x10, 0, 0x41, 0x7f, 0x0f, 0x0b, 0x00, 0x0b),
+  ]),
+]);
+
+test("Tag and Exception", () => {
+  const t = new WebAssembly.Tag({ parameters: ["i32"] });
+  eq(String(t), "[object WebAssembly.Tag]", "Tag toString");
+  throws(() => new WebAssembly.Tag(), "TypeError", "no descriptor");
+  throws(() => new WebAssembly.Tag({ parameters: ["x"] }), "TypeError", "a bad parameter");
+  const e = new WebAssembly.Exception(t, [42.5]);
+  eq(String(e), "[object WebAssembly.Exception]", "Exception toString");
+  ok(e.is(t), "is");
+  ok(!e.is(new WebAssembly.Tag({ parameters: ["i32"] })), "is another tag");
+  eq(e.getArg(t, 0), 42, "getArg, converted");
+  throws(() => e.getArg(t, 1), "RangeError", "getArg out of range");
+  throws(() => e.getArg(new WebAssembly.Tag({ parameters: [] }), 0), "TypeError", "getArg of another tag");
+  throws(() => new WebAssembly.Exception(t, []), "TypeError", "the wrong number of values");
+  throws(() => new WebAssembly.Exception({}, []), "TypeError", "no tag");
+  eq(new WebAssembly.Exception(new WebAssembly.Tag({ parameters: ["i64"] }), [1n]).getArg instanceof Function, true, "i64");
+
+  let f = () => {};
+  const x = new WebAssembly.Instance(new WebAssembly.Module(EH), { env: { tag: t, f: v => f(v) } }).exports;
+  eq(x.t, t, "an exported tag is the object imported");
+  try { x.thrower(7); ok(false, "a module's exception reaches JavaScript"); } catch (ex) {
+    ok(ex instanceof WebAssembly.Exception, "it is a WebAssembly.Exception");
+    ok(ex.is(t), "of its tag");
+    eq(ex.getArg(t, 0), 7, "with its value");
+  }
+  f = () => { throw new WebAssembly.Exception(t, [9]); };
+  eq(x.caught(0), 9, "an Exception thrown by an import is caught by the module");
+  try { x.pass(0); ok(false, "and goes through one that does not catch"); } catch (ex) {
+    ok(ex.is(t) && ex.getArg(t, 0) === 9, "through a module that does not catch");
+  }
+  f = () => { x.thrower(11); };
+  eq(x.caught(0), 11, "module -> JavaScript -> module: caught by the first");
+  const plain = new Error("plain");
+  f = () => { throw plain; };
+  try { x.pass(0); ok(false, "a plain error"); } catch (ex) { eq(ex, plain, "a plain error goes through as itself"); }
+  f = () => {};
+  eq(x.caught(0), -1, "nothing thrown");
+});
+
 test("instantiate", async () => {
   const env = instantiate().env;
   const r = await WebAssembly.instantiate(RUN, { env });

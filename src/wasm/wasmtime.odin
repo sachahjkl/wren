@@ -51,6 +51,7 @@ wt_guestprofiler :: distinct rawptr
 wt_memorytype :: distinct rawptr
 wt_tabletype  :: distinct rawptr
 wt_globaltype :: distinct rawptr
+wt_tagtype    :: distinct rawptr
 
 wt_limits :: struct {   // wasm_limits_t
 	min, max: u32,
@@ -84,6 +85,7 @@ WT_EXTERN_FUNC :: u8(0)
 WT_EXTERN_GLOBAL :: u8(1)
 WT_EXTERN_TABLE :: u8(2)
 WT_EXTERN_MEMORY :: u8(3)
+WT_EXTERN_TAG :: u8(5)
 
 // wasm_valkind_enum (wasm.h), used for function types
 WASM_I32 :: u8(0)
@@ -122,6 +124,15 @@ wt_table :: struct {
 #assert(size_of(wt_table) == 24)
 
 wt_memory :: wt_table
+wt_tag :: wt_table
+
+// wasmtime_exnref_t: the same size as the union of a value
+wt_exnref :: struct {
+	store_id: u64,
+	private:  [2]u64,
+}
+
+#assert(size_of(wt_exnref) == 24)
 
 wt_global :: struct {
 	store_id: u64,
@@ -146,6 +157,7 @@ wt_extern :: struct {
 		table:  wt_table,
 		memory: wt_memory,
 		global: wt_global,
+		tag:    wt_tag,
 		raw:    [3]u64,
 	},
 }
@@ -336,6 +348,18 @@ foreign wasmtime_lib {
 	wasmtime_externref_data :: proc(ctx: wt_context, ref: rawptr) -> rawptr ---
 	wasmtime_val_unroot :: proc(v: ^wt_val) ---
 	wasmtime_instance_export_nth :: proc(ctx: wt_context, inst: ^wt_instance, index: uint, name: ^[^]u8, name_len: ^uint, out: ^wt_extern) -> bool ---
+	wasm_tagtype_new :: proc(ty: wt_functype) -> wt_tagtype ---
+	wasm_tagtype_delete :: proc(t: wt_tagtype) ---
+	wasm_tagtype_functype :: proc(t: wt_tagtype) -> wt_functype ---
+	wasmtime_tag_new :: proc(ctx: wt_context, ty: wt_tagtype, ret: ^wt_tag) -> wt_error ---
+	wasmtime_tag_type :: proc(ctx: wt_context, t: ^wt_tag) -> wt_tagtype ---
+	wasmtime_exnref_new :: proc(ctx: wt_context, tag: ^wt_tag, fields: [^]wt_val, nfields: uint, ret: ^wt_exnref) -> wt_error ---
+	wasmtime_exnref_unroot :: proc(e: ^wt_exnref) ---
+	wasmtime_exnref_tag :: proc(ctx: wt_context, e: ^wt_exnref, ret: ^wt_tag) -> wt_error ---
+	wasmtime_exnref_field_count :: proc(ctx: wt_context, e: ^wt_exnref) -> uint ---
+	wasmtime_exnref_field :: proc(ctx: wt_context, e: ^wt_exnref, index: uint, ret: ^wt_val) -> wt_error ---
+	wasmtime_context_set_exception :: proc(ctx: wt_context, e: ^wt_exnref) -> wt_trap ---
+	wasmtime_context_take_exception :: proc(ctx: wt_context, ret: ^wt_exnref) -> bool ---
 
 	wasmtime_wat2wasm :: proc(wat: [^]u8, len: uint, out: ^wt_byte_vec) -> wt_error ---
 }

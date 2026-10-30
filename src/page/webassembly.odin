@@ -300,6 +300,32 @@ WebAssembly_Module_linkInfo :: proc(c: ^Call, module: Api_WebAssemblyModule) -> 
 	return m.link_info
 }
 
+WebAssembly_Tag_create :: proc(c: ^Call, parameters: string) -> i32 {
+	s := wasm_store(c)
+	if s == nil { return NO_STORE }
+	return wasm_status(wasm.user_tag_new(s, fmt.tprintf("%s:", parameters)))
+}
+
+WebAssembly_Tag_sig :: proc(c: ^Call, tag: i32) -> string {
+	s := wasm_store(c)
+	return s != nil ? wasm.user_tag_sig(s, tag, context.temp_allocator) : ""
+}
+
+WebAssembly_exception_tag :: proc(c: ^Call) -> i32 {
+	s := wasm_store(c)
+	return s != nil ? s.exn_tag : -1
+}
+
+WebAssembly_import_throw :: proc(c: ^Call, tag: i32, values: []u8) {
+	s := wasm_store(c)
+	if s == nil { return }
+	clear(&s.call_results)
+	resize(&s.call_results, len(values) / 8)
+	if len(values) >= 8 { copy(([^]u8)(raw_data(s.call_results))[:len(values) &~ 7], values) }
+	s.exn_tag = tag
+	s.import_throw = true
+}
+
 WebAssembly_Instance_create :: proc(c: ^Call, module: Api_WebAssemblyModule, externs: []u8) -> i32 {
 	s := wasm_store(c)
 	if s == nil || len(externs) % 4 != 0 { return NO_STORE }

@@ -8,7 +8,7 @@ WebAssembly modules, compiled and run by Wasmtime beside the engine's. Off until
 
 What a page makes (memories, tables, globals, functions, instances) lives in one store per realm, known by numbers.
 A call that can fail gives a number >= 0 or the opposite of a failure (1 LinkError, 2 RuntimeError, 3 RangeError,
-4 TypeError), the message from WebAssembly_lastError. A value crosses as a cell: an i64 holding an i32, an i64, the
+4 TypeError, 5 a WebAssembly exception), the message from WebAssembly_lastError. A value crosses as a cell: an i64 holding an i32, an i64, the
 bits of a float, a function's number + 1, or an externref's number (0: a null reference).
 
 Exposed to: Window, Worker. Source: `api/webassembly.widl`.
@@ -335,6 +335,46 @@ void WebAssembly_import_failed(string message)
 Why the import running failed.
 
 Host: `WebAssembly_import_failed :: proc(c: ^Call, message: string)`
+
+### `WebAssembly_Tag_create`
+
+```
+i32 WebAssembly_Tag_create(string parameters)
+```
+
+new WebAssembly.Tag: a number. `parameters` a value type's letter for each.
+
+Host: `WebAssembly_Tag_create :: proc(c: ^Call, parameters: string) -> i32`
+
+### `WebAssembly_Tag_sig`
+
+```
+string WebAssembly_Tag_sig(i32 tag)
+```
+
+The parameters of a tag, one letter each.
+
+Host: `WebAssembly_Tag_sig :: proc(c: ^Call, tag: i32) -> string`
+
+### `WebAssembly_exception_tag`
+
+```
+i32 WebAssembly_exception_tag()
+```
+
+The tag of the exception a call just failed with (failure 5); its values come from WebAssembly_Func_results.
+
+Host: `WebAssembly_exception_tag :: proc(c: ^Call) -> i32`
+
+### `WebAssembly_import_throw`
+
+```
+void WebAssembly_import_throw(i32 tag, bytes values)
+```
+
+The import running ends by throwing a WebAssembly exception of `tag` with `values` (cells).
+
+Host: `WebAssembly_import_throw :: proc(c: ^Call, tag: i32, values: []u8)`
 
 ### `WebAssembly_Instance_create`
 

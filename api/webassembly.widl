@@ -4,7 +4,7 @@
 ///
 /// What a page makes (memories, tables, globals, functions, instances) lives in one store per realm, known by numbers.
 /// A call that can fail gives a number >= 0 or the opposite of a failure (1 LinkError, 2 RuntimeError, 3 RangeError,
-/// 4 TypeError), the message from WebAssembly_lastError. A value crosses as a cell: an i64 holding an i32, an i64, the
+/// 4 TypeError, 5 a WebAssembly exception), the message from WebAssembly_lastError. A value crosses as a cell: an i64 holding an i32, an i64, the
 /// bits of a float, a function's number + 1, or an externref's number (0: a null reference).
 [Exposed=(Window,Worker)]
 module webassembly {
@@ -78,6 +78,15 @@ module webassembly {
   void WebAssembly_import_results(bytes results);
   /// Why the import running failed.
   void WebAssembly_import_failed(string message);
+
+  /// new WebAssembly.Tag: a number. `parameters` a value type's letter for each.
+  i32 WebAssembly_Tag_create(string parameters);
+  /// The parameters of a tag, one letter each.
+  string WebAssembly_Tag_sig(i32 tag);
+  /// The tag of the exception a call just failed with (failure 5); its values come from WebAssembly_Func_results.
+  i32 WebAssembly_exception_tag();
+  /// The import running ends by throwing a WebAssembly exception of `tag` with `values` (cells).
+  void WebAssembly_import_throw(i32 tag, bytes values);
 
   /// new WebAssembly.Instance: a number. `externs` the number of a thing for each import (4 bytes each); the start function
   /// runs here.
