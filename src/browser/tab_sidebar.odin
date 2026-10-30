@@ -268,7 +268,7 @@ titlebar_wants :: proc(app: ^App, chips_w: f32) -> (want: [Titlebar_Part]f32, dr
 		.Field = favs.cfg.side_address_min_em * em,
 		.Chips = chips_w,
 		.Gap_After = em * 0.4,
-		.Shield = bl.started ? em * 2.3 + em * 0.2 : 0,   // (blocker_button, and the gap before the menu)
+		.Shield = (bl.started ? em * 2.3 + em * 0.2 : 0) + (downloads_button_visible() ? em * 2.3 + em * 0.2 : 0),   // (the downloads button and blocker_button, and the gap before each)
 		.Menu = em * 2.3,
 		.Drag = max(wchrome.cfg.min_drag_em * em, em * 0.5),
 		.Buttons = 3 * math.round(ui.CAPTION_BUTTON_WIDTH * dpi),
@@ -308,6 +308,7 @@ sidebar_titlebar :: proc(app: ^App, t: ^Tab) {
 		case .Field: address_bar(app, t)
 		case .Chips: address_chips(app, t)
 		case .Shield:
+			if downloads_button_visible() { downloads_button(app, t); ui.spacer(ui.px(ui.font_size() * 0.2)) }
 			if bl.started {
 				blocker_button(app, t)
 				ui.spacer(ui.px(ui.font_size() * 0.2))

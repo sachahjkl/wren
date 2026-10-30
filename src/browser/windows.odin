@@ -97,6 +97,7 @@ Window_Own :: struct {
 	page_info_request:     bool,              // chrome.odin: the security chip's page information
 	main_menu_request:     bool,              // chrome.odin: the main menu (Alt+F / Alt+E)
 	blocker_panel_request: bool,              // blocker_ui.odin: the content blocker's panel
+	downloads_panel_request: bool,            // downloads_ui.odin: the downloads button's drop-down (a download began)
 }
 
 // The window being framed (the active one); an App with no window (a test's) has one of its own, never shown.

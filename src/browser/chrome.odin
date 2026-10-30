@@ -55,6 +55,7 @@ security_of :: proc(t: ^Tab) -> Security {
 	if t == nil { return {GLYPH_INFO, "", .Weak, "", ""} }
 	if t.kind == .Config { return {GLYPH_GEAR, "Settings", .Weak, "Browser settings", "This page edits the preferences of the browser itself. It has no network connection."} }
 	if t.kind == .Blocker { return {GLYPH_GEAR, "Blocker", .Weak, "Content blocker", "This page shows and edits the content blocker of the browser. It has no network connection."} }
+	if t.kind == .Downloads { return {GLYPH_INFO, "Downloads", .Weak, "Downloads", "This page lists the files downloaded by the browser. It has no network connection."} }
 	if t.page == nil {
 		// no response yet: nothing is known about the connection, so claim nothing
 		if t.load != nil { return {GLYPH_INFO, "Loading", .Weak, "Loading", "The connection is being established."} }
@@ -147,6 +148,7 @@ address_row :: proc(app: ^App, t: ^Tab) {
 	address_bar(app, t)
 	address_chips(app, t)
 	ui.spacer(ui.px(em * 0.4))
+	if downloads_button_visible() { downloads_button(app, t); ui.spacer(ui.px(em * 0.2)) }   // downloads_ui.odin
 	blocker_button(app, t)   // blocker_ui.odin: the content blocker's icon and panel
 	ui.spacer(ui.px(em * 0.2))
 	main_menu_button(app, t)
@@ -635,7 +637,7 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 		menu_command(app, t, "page.save")
 		menu_command(app, t, "page.view_source")
 		menu_command(app, t, "page.print", force_disabled = true)   // not available (print.odin)
-		downloads_menu(app)   // download.odin
+		menu_command(app, t, "browser.downloads")
 		ui.menu_separator()
 		if ui.menu_submenu("View###view_sub") {
 			menu_command(app, t, "view.status_bar")

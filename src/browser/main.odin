@@ -79,7 +79,7 @@ Doc_Load :: struct {
 
 Load_Failure :: enum u8 { None, Other, Tls }
 
-Tab_Kind :: enum u8 { Web, Config, History, Blocker }   // Blocker: about:blocker (blocker_dashboard.odin)   // History: about:history (history_ui.odin)
+Tab_Kind :: enum u8 { Web, Config, History, Blocker, Downloads }   // Blocker: about:blocker (blocker_dashboard.odin)   // History: about:history (history_ui.odin)   // Downloads: about:downloads (downloads_ui.odin)
 
 Tab :: struct {
 	id:       u64,           // unique for the process: keys its boxes of the tab strip (tab_strip.odin)
@@ -338,6 +338,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	if target == "about:config" { show_config(app, t); return }
 	if is_history_address(target) { show_history(app, t, target); return }
 	if is_blocker_address(target) { show_blocker(app, t, target); return }   // blocker_dashboard.odin
+	if is_downloads_address(target) { show_downloads(app, t, target); return }   // downloads_ui.odin
 	if target == HOME_URL { show_home(app, t); return }
 	if strings.has_prefix(target, HOME_URL + "?") { home_query(app, t, target, verdict.acts); return }   // newtab_art_page.odin
 	if target == DEMOS_URL { show_demos(app, t); return }
@@ -822,6 +823,8 @@ page_view :: proc(app: ^App, t: ^Tab) {
 		history_page(app, t)   // history_ui.odin
 	} else if t != nil && t.kind == .Blocker {
 		blocker_page(app, t)   // blocker_dashboard.odin
+	} else if t != nil && t.kind == .Downloads {
+		downloads_page(app, t)   // downloads_ui.odin
 	} else {
 		// a Tab stop of the chrome: reaching it hands the keyboard to the page (forms_focus_from_chrome)
 		pb := ui.custom("###page_area", page_draw, nil, {.Focusable})
@@ -1564,6 +1567,7 @@ main :: proc() {
 	global_history_shutdown(app)
 	host.shutdown_step("history_ui_destroy")
 	history_ui_destroy()
+	downloads_ui_destroy()
 	host.shutdown_step("history_settings_shutdown")
 	history_settings_shutdown(app)
 	host.shutdown_step("base.scope_close")

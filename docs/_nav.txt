@@ -31,6 +31,7 @@ Features
   webcodecs.md        WebCodecs
   accessibility.md    Accessibility
   shaders.md          Shaders in the chrome
+  downloads.md        Downloads
   newtab-art.md       Artistic new tab
   tab-sidebar.md      Tabs in a sidebar
   windows.md          Several windows

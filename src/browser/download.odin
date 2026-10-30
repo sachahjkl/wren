@@ -11,7 +11,8 @@ package browser
 //     thread writes too, so a disk slower than the network slows the download instead of filling memory);
 //   * meanwhile the Save dialog of Windows asks where (browser.download.ask; off: the downloads folder, a free name);
 //     cancelled, or the network fails: the temporary file is deleted; done: it is moved to its place;
-//   * Menu > Downloads lists them (progress, cancel, show in folder); a notice says when one is saved or fails.
+//   * The toolbar's button and about:downloads (Ctrl+J) list them (progress, cancel, open, show in folder, delete): downloads_ui.odin;
+//     the finished ones are kept in the profile (downloads.txt); a notice says when one is saved or fails.
 // Images and text are shown, not downloaded (an image document; text as text), like Chrome.
 
 import "core:fmt"
@@ -19,6 +20,7 @@ import "core:os"
 import "core:path/filepath"
 import "core:strconv"
 import "core:strings"
+import "core:time"
 import "toolkit:platform"
 import "toolkit:ui"
 import "wb:base"
@@ -40,8 +42,10 @@ DOWNLOAD_PREFS := [?]config.Def{
 		description = "Bytes gathered before a chunk is written to disk (on a background thread)."},
 	{name = "browser.download.max_buffered_bytes", kind = .Int, default = {i = 64 << 20}, bounded = true, min = 64 << 10, max = 4 << 30, bytes = true, unit = "bytes",
 		description = "Most bytes of a download kept in memory while the disk is busy; past it they are written at once, which slows the download down to the disk's pace."},
-	{name = "browser.download.list_max", kind = .Int, default = {i = 20}, bounded = true, min = 1, max = 1000,
-		description = "Finished downloads Menu > Downloads keeps listing (the oldest go first)."},
+	{name = "browser.download.list_max", kind = .Int, default = {i = 200}, bounded = true, min = 1, max = 5000,
+		description = "Finished downloads about:downloads keeps listing, across restarts (the oldest go first)."},
+	{name = "browser.download.button", kind = .String, default = {s = "auto"}, choices = {"auto", "always", "never"},
+		description = "The downloads button of the toolbar: auto shows it once a download has run in this session, always keeps it, never hides it (Ctrl+J opens the list)."},
 	{name = "browser.download.temp_suffix", kind = .String, default = {s = ".wrenpart"},
 		description = "Suffix of the temporary file a download is written to until it is complete."},
 }
@@ -307,22 +311,34 @@ Download :: struct {
 	net_done:  bool,
 	state:     Download_State,
 	error:     string,          // owned
+	// what the list and the progress bars show (downloads_ui.odin)
+	started_ms: i64,            // unix ms
+	done_ms:   i64,             // unix ms of the end (Done, Failed, Cancelled)
+	size:      i64,             // the file's size once Done
+	speed:     f64,             // bytes per second, smoothed while Receiving
+	sample_ms: i64,             // when `speed` was last measured, and the bytes received then
+	sample_bytes: i64,
+	restored:  bool,            // read from the profile's list: no connection, file or scope of its own
+	unseen:    bool,            // ended since the downloads were last looked at (the button's dot)
+	missing:   bool,            // the file is no longer where it was saved
+	checked_ms: i64,            // when `missing` was last looked up
 }
 
-@(private = "file")
 Downloads :: struct {
 	list:  [dynamic]^Download,
 	ids:   u64,
-	cfg:   struct { ask: bool, dir: string, max_bytes, flush, max_buffered, list_max: int, suffix: string },
+	cfg:   struct { ask: bool, dir: string, max_bytes, flush, max_buffered, list_max: int, suffix: string, button: string },
 }
 
-@(private = "file")
 dls: Downloads
+
+dl_now_ms :: proc() -> i64 { return time.time_to_unix_nano(time.now()) / 1e6 }
 
 @(private = "file")
 download_cfg :: proc(app: ^App) {
-	delete(dls.cfg.dir); delete(dls.cfg.suffix)
+	delete(dls.cfg.dir); delete(dls.cfg.suffix); delete(dls.cfg.button)
 	p := &app.prefs
+	dls.cfg.button = strings.clone(config.string_of(p, "browser.download.button"))
 	dls.cfg.ask = config.bool_of(p, "browser.download.ask")
 	dls.cfg.dir = strings.clone(config.string_of(p, "browser.download.directory"))
 	dls.cfg.max_bytes = int(config.int_of(p, "browser.download.max_bytes"))
@@ -360,6 +376,8 @@ download_from_navigation :: proc(app: ^App, load: ^Doc_Load, task: base.Handle, 
 	d := new(Download)
 	dls.ids += 1
 	d.app, d.id, d.total = app, dls.ids, -1
+	d.started_ms = dl_now_ms()
+	d.sample_ms = d.started_ms
 	d.url = strings.clone(r.url)
 	d.name = download_file_name(suggested, r.url, mime, allocator = context.allocator)
 	if v, ok := http.get_header(r.headers, "content-length"); ok {
@@ -382,7 +400,8 @@ download_from_navigation :: proc(app: ^App, load: ^Doc_Load, task: base.Handle, 
 	if !download_open_temp(d) {
 		download_fail(d, fmt.tprintf("cannot write in %s", d.dir))
 	} else {
-		ui.toast(.Info, "Downloading %s", d.name)
+		window_own(app).downloads_panel_request = true   // the button's drop-down shows it running (downloads_ui.odin)
+		if dls.cfg.button == "never" { ui.toast(.Info, "Downloading %s", d.name) }
 		if dls.cfg.ask {
 			d.asking = true
 			host.run_blocking(&app.blocking, download_dialog_work, download_dialog_done, d)
@@ -467,6 +486,12 @@ download_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		if d.state != .Receiving { return }
 		append(&d.pending, ..ev.data)
 		d.received += i64(len(ev.data))
+		// the speed: measured over at least a third of a second, smoothed (a steady figure for the bar and the time left)
+		if now := dl_now_ms(); now - d.sample_ms >= 350 {
+			inst := f64(d.received - d.sample_bytes) * 1000 / f64(now - d.sample_ms)
+			d.speed = d.speed > 0 ? d.speed * 0.65 + inst * 0.35 : inst
+			d.sample_ms, d.sample_bytes = now, d.received
+		}
 	case .Done:
 		d.task = base.NIL_HANDLE
 		d.net_done = true
@@ -568,8 +593,10 @@ download_finish :: proc(d: ^Download) {
 			ui.toast(.Bad, "Download failed: %s", dl.name)
 		} else {
 			dl.state = .Done
+			dl.size = dl.received
 			ui.toast(.Good, "Saved %s", filepath.base(dl.path))
 		}
+		download_ended(dl)
 		request_frames(dl.app, 3)
 	}, d)
 }
@@ -583,6 +610,17 @@ download_fail :: proc(d: ^Download, why: string) {
 	if d.task != base.NIL_HANDLE { fetch.cancel(&d.app.loader, d.task); d.task = base.NIL_HANDLE }
 	ui.toast(.Bad, "Download failed: %s", d.name)
 	if !d.writing { download_discard(d) }
+	download_ended(d)
+}
+
+// A download is over (saved, failed or cancelled): when, and the list is written to the profile.
+@(private = "file")
+download_ended :: proc(d: ^Download) {
+	d.done_ms = dl_now_ms()
+	d.speed = 0
+	d.unseen = true
+	downloads_save(d.app)
+	request_frames(d.app, 2)
 }
 
 // Stops a download in progress (Menu > Downloads, or the Save dialog cancelled).
@@ -591,7 +629,7 @@ download_cancel :: proc(d: ^Download) {
 	d.state = .Cancelled
 	if d.task != base.NIL_HANDLE { fetch.cancel(&d.app.loader, d.task); d.task = base.NIL_HANDLE }
 	if !d.writing { download_discard(d) }
-	request_frames(d.app, 2)
+	download_ended(d)
 }
 
 // A download that will not complete: its temporary file goes.
@@ -680,38 +718,151 @@ download_free :: proc(d: ^Download) {
 	free(d)
 }
 
-// Menu > Downloads.
-downloads_menu :: proc(app: ^App) {
-	if ui.menu_submenu(downloads_active() > 0 ? fmt.tprintf("Downloads (%d)###dl_sub", downloads_active()) : "Downloads###dl_sub", enabled = len(dls.list) > 0) {
-		for i := len(dls.list) - 1; i >= 0; i -= 1 {
-			d := dls.list[i]
-			label: string
-			switch d.state {
-			case .Receiving:
-				if d.total > 0 { label = fmt.tprintf("Cancel %s (%d %%)###dl%d", short_name(d.name), int(d.received * 100 / max(d.total, 1)), d.id) } else { label = fmt.tprintf("Cancel %s (%s)###dl%d", short_name(d.name), human_bytes(d.received), d.id) }
-				if ui.menu_item(label).clicked { download_cancel(d) }
-			case .Saving:
-				_ = ui.menu_item(fmt.tprintf("Saving %s…###dl%d", short_name(d.name), d.id), enabled = false)
-			case .Done:
-				if ui.menu_item(fmt.tprintf("Show %s in its folder###dl%d", short_name(filepath.base(d.path)), d.id)).clicked { show_in_folder(d.path) }
-			case .Failed:
-				_ = ui.menu_item(fmt.tprintf("%s: failed###dl%d", short_name(d.name), d.id), enabled = false)
-			case .Cancelled:
-				_ = ui.menu_item(fmt.tprintf("%s: cancelled###dl%d", short_name(d.name), d.id), enabled = false)
-			}
-		}
+////////////////////////////////
+// The list: what the page and the button read and do (downloads_ui.odin shows it)
+
+download_finished :: proc(d: ^Download) -> bool { return d.state == .Done || d.state == .Failed || d.state == .Cancelled }
+
+// A finished download no job of ours still points at: its row may go.
+downloads_removable :: proc(d: ^Download) -> bool { return download_finished(d) && !d.writing && !d.asking && !d.moving }
+
+// Takes a finished download off the list (the file stays where it is).
+download_remove :: proc(app: ^App, d: ^Download) {
+	if !downloads_removable(d) { return }
+	for x, i in dls.list { if x == d { ordered_remove(&dls.list, i); break } }
+	download_free(d)
+	downloads_save(app)
+	request_frames(app, 2)
+}
+
+// "Clear list": every finished download goes off the list (the files stay).
+download_clear_finished :: proc(app: ^App) {
+	for i := 0; i < len(dls.list); {
+		if d := dls.list[i]; downloads_removable(d) { ordered_remove(&dls.list, i); download_free(d) } else { i += 1 }
+	}
+	downloads_save(app)
+	request_frames(app, 2)
+}
+
+// Is the saved file still there? (looked up at most every 1.5 s per download: the page asks every frame)
+download_file_present :: proc(d: ^Download) -> bool {
+	if d.state != .Done || d.path == "" { return false }
+	if now := dl_now_ms(); now - d.checked_ms > 1500 { d.checked_ms = now; d.missing = !os.exists(d.path) }
+	return !d.missing
+}
+
+download_open_file :: proc(d: ^Download) {
+	if !download_file_present(d) { ui.toast(.Warn, "%s is no longer there", d.name); return }
+	platform.open_path(d.path)
+}
+
+download_reveal :: proc(d: ^Download) {
+	if !download_file_present(d) { platform.reveal_in_folder(d.path); return }   // (the folder, when the file is gone)
+	platform.reveal_in_folder(d.path)
+}
+
+// Deletes the saved file (it does not go to the recycle bin); the row stays, saying so.
+download_delete_file :: proc(app: ^App, d: ^Download) {
+	if d.state != .Done || d.path == "" { return }
+	if err := os.remove(d.path); err != nil && os.exists(d.path) {
+		ui.toast(.Bad, "Could not delete %s", d.name)
+		return
+	}
+	d.missing, d.checked_ms = true, dl_now_ms()
+	ui.toast(.Info, "Deleted %s", filepath.base(d.path))
+	request_frames(app, 2)
+}
+
+// The address again, in a new tab: the server answers with the file as before.
+download_retry :: proc(app: ^App, d: ^Download) {
+	if d.url == "" { return }
+	tab_open(app, strings.clone(d.url, context.temp_allocator), origin = .User)
+}
+
+downloads_mark_seen :: proc() {
+	for d in dls.list { d.unseen = false }
+}
+
+// What the button shows: how many are running, how far they are all together (known: every size is announced), and the
+// speed of the whole.
+downloads_progress :: proc() -> (active: int, frac: f32, known: bool, speed: f64) {
+	got, of: i64
+	known = true
+	for d in dls.list {
+		if d.state != .Receiving && d.state != .Saving { continue }
+		active += 1
+		if d.state == .Receiving && d.total <= 0 { known = false } else { got += d.state == .Saving ? d.total : d.received; of += d.total }
+		if d.state == .Receiving && dl_now_ms() - d.sample_ms < 2500 { speed += d.speed }
+	}
+	if active > 0 && known && of > 0 { frac = clamp(f32(f64(got) / f64(of)), 0, 1) }
+	return
+}
+
+////////////////////////////////
+// The list in the profile (downloads.txt): the finished downloads, so about:downloads is a history that survives a restart.
+// One line each: state, started, ended (unix ms), size, address, path, name, error; tabs and line ends of them are spaces.
+
+DOWNLOADS_FILE :: "downloads.txt"
+DOWNLOADS_HEADER :: "wren-downloads 1"
+
+@(private = "file")
+downloads_path :: proc(app: ^App) -> string {
+	if app.profile_dir == "" { return "" }
+	return path_join(app.profile_dir, DOWNLOADS_FILE)
+}
+
+@(private = "file")
+line_safe :: proc(s: string) -> string {
+	if !strings.contains_any(s, "\t\r\n") { return s }
+	out := make([]byte, len(s), context.temp_allocator)
+	for i in 0 ..< len(s) { out[i] = s[i] == '\t' || s[i] == '\r' || s[i] == '\n' ? ' ' : s[i] }
+	return string(out)
+}
+
+downloads_save :: proc(app: ^App) {
+	path := downloads_path(app)
+	if path == "" { return }
+	sb := strings.builder_make(context.temp_allocator)
+	fmt.sbprintf(&sb, "%s\n", DOWNLOADS_HEADER)
+	for d in dls.list {
+		if !download_finished(d) { continue }
+		fmt.sbprintf(&sb, "%d\t%d\t%d\t%d\t%s\t%s\t%s\t%s\n", int(d.state), d.started_ms, d.done_ms, d.size, line_safe(d.url), line_safe(d.path), line_safe(d.name), line_safe(d.error))
+	}
+	_ = base.file_write_atomic(path, transmute([]byte)strings.to_string(sb), flush = true)
+}
+
+downloads_load :: proc(app: ^App) {
+	path := downloads_path(app)
+	if path == "" { return }
+	data, err := os.read_entire_file(path, context.temp_allocator)
+	if err != nil { return }
+	lines := strings.split_lines(string(data), context.temp_allocator)
+	if len(lines) == 0 || lines[0] != DOWNLOADS_HEADER { return }
+	for line in lines[1:] {
+		f := strings.split(line, "\t", context.temp_allocator)
+		if len(f) < 8 { continue }
+		st, ok := strconv.parse_int(f[0])
+		started, ok1 := strconv.parse_i64(f[1])
+		ended, ok2 := strconv.parse_i64(f[2])
+		size, ok3 := strconv.parse_i64(f[3])
+		if !ok || !ok1 || !ok2 || !ok3 || st < int(Download_State.Done) || st > int(Download_State.Cancelled) || f[6] == "" { continue }
+		d := new(Download)
+		dls.ids += 1
+		d.app, d.id, d.restored = app, dls.ids, true
+		d.state = Download_State(st)
+		d.started_ms, d.done_ms, d.size = started, ended, size
+		d.received, d.total = size, size
+		d.url, d.path, d.name, d.error = strings.clone(f[4]), strings.clone(f[5]), strings.clone(f[6]), strings.clone(f[7])
+		append(&dls.list, d)
 	}
 }
 
-@(private = "file")
-short_name :: proc(s: string) -> string {
-	if strings.rune_count(s) <= 36 { return s }
-	i, n := 0, 0
-	for _, b in s { if n == 33 { i = b; break }; n += 1 }
-	return strings.concatenate({s[:i], "…"}, context.temp_allocator)
+// What a download-less profile shows on its button: nothing, until one happens (restored ones do not count).
+downloads_session_started :: proc() -> bool {
+	for d in dls.list { if !d.restored { return true } }
+	return false
 }
 
-@(private = "file")
 human_bytes :: proc(n: i64) -> string {
 	switch {
 	case n >= 1 << 30: return fmt.tprintf("%.1f GB", f64(n) / f64(1 << 30))
@@ -728,7 +879,11 @@ show_in_folder :: proc(path: string) {
 	platform.reveal_in_folder(path)
 }
 
-downloads_init :: proc(app: ^App) { download_cfg(app) }
+downloads_init :: proc(app: ^App) {
+	download_cfg(app)
+	downloads_load(app)
+	downloads_prune()
+}
 
 // Preferences changed.
 downloads_apply :: proc(app: ^App) { download_cfg(app) }
@@ -738,6 +893,6 @@ downloads_apply :: proc(app: ^App) { download_cfg(app) }
 downloads_shutdown :: proc() {
 	for d in dls.list { download_free(d) }
 	delete(dls.list)
-	delete(dls.cfg.dir); delete(dls.cfg.suffix)
+	delete(dls.cfg.dir); delete(dls.cfg.suffix); delete(dls.cfg.button)
 	dls = {}
 }

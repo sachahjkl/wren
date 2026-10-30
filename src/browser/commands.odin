@@ -445,6 +445,8 @@ commands_build :: proc(r: ^Command_Registry) {
 		hidden = true, run = proc(app: ^App, t: ^Tab, c: ^Command) { window_own(app).main_menu_request = true }})
 	add(r, {name = "browser.history", title = "History", category = "Browser", keywords = "about:history visited pages past", url = HISTORY_URL, keys = keys(&r.arena, {key = .H, mods = ctrl}),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { open_history(app, t, false) }})
+	add(r, {name = "browser.downloads", title = "Downloads", category = "Browser", keywords = "about:downloads files saved folder progress", url = DOWNLOADS_URL, keys = keys(&r.arena, {key = .J, mods = ctrl}),
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { open_downloads(app) }})
 	add(r, {name = "browser.history_tree", title = "Tab history tree", category = "Browser", keywords = "branches back forward graph session",
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { open_history(app, t, true) }})
 	add(r, {name = "browser.settings", title = "Settings", category = "Browser", glyph = GLYPH_GEAR, keywords = "about:config preferences options", url = "about:config",

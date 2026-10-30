@@ -7,6 +7,11 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 
 ## Unreleased
 
+## 0.6.13 - 2026-10-30
+
+### Added
+- **A download manager**: a button joins the toolbar once a download has run, with a ring that fills around its arrow as the files arrive, and a drop-down (it opens by itself when a download begins) listing the latest ones, each with its progress bar, its speed and the time left; the cross cancels, a click opens the file, the folder icon shows it in the file manager. `about:downloads` (Ctrl+J, Menu > Downloads) lists all of them by day with a search box: Open, Show in folder, Copy download link, Download again, Delete the file, Remove from the list, Try again for a failed one, Clear the list. The progress bar eases toward the real figure, with a gloss and a light band travelling over it. The finished downloads stay listed across restarts (`downloads.txt` in the profile; `browser.download.list_max`, now 200), and a file moved or deleted since says so. `browser.download.button` (`auto`, `always`, `never`) sets when the button shows.
+
 ## 0.6.12 - 2026-10-30
 
 ### Changed
