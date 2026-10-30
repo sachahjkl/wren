@@ -46,9 +46,15 @@ extern_kind_name :: proc(kind: u8) -> string {
 	return ""
 }
 
-// WebAssembly.validate: whether `image` is a valid module for this engine's features.
+// WebAssembly.validate: whether `image` is a valid module for this engine's features. One exception: the module sites
+// test to ask "are there WebAssembly exceptions?" (wasm-feature-detect, .NET's runtime) uses the old form of the proposal
+// (try / catch_all), which Wasmtime does not take although it has exceptions (try_table): it gets yes, or a .NET
+// application built for exceptions refuses to start. A module really using the old form still gets a CompileError.
 validate :: proc(image: []byte) -> bool {
 	if wt.engine == nil { return false }
+	PROBE :: [28]u8{0, 97, 115, 109, 1, 0, 0, 0, 1, 4, 1, 96, 0, 0, 3, 2, 1, 0, 10, 8, 1, 6, 0, 6, 64, 25, 11, 11}
+	probe := PROBE
+	if wt.rs.features.exceptions && string(image) == string(probe[:]) { return true }
 	e := wasmtime_module_validate(wt.engine, raw_data(image), uint(len(image)))
 	if e != nil {
 		wasmtime_error_delete(e)

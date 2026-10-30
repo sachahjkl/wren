@@ -10,7 +10,7 @@
   const weakGet = WM.prototype.get, weakSet = WM.prototype.set, mapGet = M.prototype.get, mapSet = M.prototype.set;
   const promiseThen = P.prototype.then;
   const toStringTag = Symbol.toStringTag;
-  const isFinite_ = isFinite, trunc = Math.trunc, stringOf = String;
+  const isFinite_ = isFinite, trunc = Math.trunc, fround = Math.fround, stringOf = String, BI = BigInt, BigIntAsIntN = BigInt.asIntN;
   const isObject = v => (typeof v === "object" && v !== null) || typeof v === "function";
   const isCallable = v => typeof v === "function";
   const then = (p, f, r) => apply(promiseThen, p, [f, r]);
@@ -230,7 +230,81 @@
     return id;
   };
 
-  native.setup({ LinkError, RuntimeError, funcId, funcWrap, externId, externValue: id => externValues[id], toList: v => ArrayFrom(v) });
+  // ---- Tag and Exception ----
+
+  const tags = [];
+  const tagObject = id => tags[id] || (tags[id] = setState(create(Tag.prototype), { kind: Tag, id, letters: native.tagSig(id) }));
+
+  class Tag {
+    constructor(descriptor) {
+      if (!isObject(descriptor)) throw new TE("WebAssembly.Tag(): Argument 0 must be a tag type");
+      const parameters = descriptor.parameters;
+      if (!isObject(parameters)) throw new TE("WebAssembly.Tag(): Argument 0 must be a tag type with 'parameters'");
+      let letters = "";
+      for (const p of ArrayFrom(parameters)) {
+        const letter = VALUE_LETTERS[stringOf(p)];
+        if (letter === undefined) throw new TE("WebAssembly.Tag(): Argument 0 parameter type at index #" + letters.length + " must be a value type");
+        letters += letter;
+      }
+      const id = native.tagCreate(letters);
+      tags[id] = setState(this, { kind: Tag, id, letters });
+    }
+  }
+  interfaceOf(Tag);
+
+  // ToWebAssemblyValue of what is kept in an Exception, so getArg reads what the module would.
+  const payloadValue = (letter, v) => {
+    switch (letter) {
+      case "i": return v | 0;
+      case "I": return BigIntAsIntN(64, typeof v === "bigint" ? v : BI(v));
+      case "f": return fround(v);
+      case "F": return +v;
+      case "r":
+        if (v !== null && funcId(v) === undefined) throw new TE("WebAssembly.Exception(): a function reference must be null or an exported WebAssembly function");
+        return v;
+      case "e": return v;
+    }
+    throw new TE("WebAssembly.Exception(): type incompatibility when transforming from/to JS");
+  };
+
+  class Exception {
+    constructor(tag, payload, options) {
+      const t = stateOf(tag);
+      if (t === undefined || t.kind !== Tag) throw new TE("WebAssembly.Exception(): Argument 0 must be a WebAssembly tag");
+      if (!isObject(payload)) throw new TE("WebAssembly.Exception(): Argument 1 must be iterable");
+      const list = ArrayFrom(payload);
+      if (list.length !== t.letters.length) throw new TE("WebAssembly.Exception(): Number of exception values does not match signature length");
+      const values = [];
+      for (let i = 0; i < list.length; i++) values[i] = payloadValue(t.letters[i], list[i]);
+      setState(this, { kind: Exception, tag, values });
+      if (isObject(options) && options.traceStack) hidden(this, "stack", new E().stack);
+    }
+    is(tag) {
+      const s = thisState(this, Exception, "WebAssembly.Exception.is()");
+      const t = stateOf(tag);
+      if (t === undefined || t.kind !== Tag) throw new TE("WebAssembly.Exception.is(): Argument 0 must be a WebAssembly tag");
+      return s.tag === tag;
+    }
+    getArg(tag, index) {
+      const s = thisState(this, Exception, "WebAssembly.Exception.getArg()");
+      const t = stateOf(tag);
+      if (t === undefined || t.kind !== Tag) throw new TE("WebAssembly.Exception.getArg(): Argument 0 must be a WebAssembly tag");
+      const i = enforceU32(index, "WebAssembly.Exception.getArg(): Index");
+      if (s.tag !== tag) throw new TE("WebAssembly.Exception.getArg(): First argument does not match the exception tag");
+      if (i >= s.values.length) throw new RE("WebAssembly.Exception.getArg(): Index must be convertible to a valid number");
+      return s.values[i];
+    }
+  }
+  interfaceOf(Exception);
+
+  const exceptionMake = (tagId, values) => setState(create(Exception.prototype), { kind: Exception, tag: tagObject(tagId), values });
+  const exceptionInfo = e => {
+    const s = stateOf(e);
+    if (s === undefined || s.kind !== Exception) return undefined;
+    return [stateOf(s.tag).id, s.values];
+  };
+
+  native.setup({ LinkError, RuntimeError, funcId, funcWrap, externId, externValue: id => externValues[id], toList: v => ArrayFrom(v), exceptionMake, exceptionInfo });
 
   // ---- Instance ----
 
@@ -275,6 +349,11 @@
         if (s === undefined || s.kind !== Table) throw new LinkError(at + ": table import requires a WebAssembly.Table");
         return s.id;
       }
+      case "tag": {
+        const s = stateOf(v);
+        if (s === undefined || s.kind !== Tag) throw new LinkError(at + ": tag import requires a WebAssembly.Tag");
+        return s.id;
+      }
     }
     throw new LinkError(at + ": this kind of import is not supported");
   };
@@ -296,6 +375,7 @@
         case "memory": v = memoryObject(e.id); break;
         case "table": v = tableObject(e.id); break;
         case "global": v = globalObject(e.id); break;
+        case "tag": v = tagObject(e.id); break;
       }
       defineProperty(exports, e.name, { value: v, writable: false, enumerable: true, configurable: false });
     }
@@ -372,7 +452,7 @@
     },
   });
   for (const [name, C] of [["Module", Module], ["Instance", Instance], ["Memory", Memory], ["Table", Table], ["Global", Global],
-    ["CompileError", CompileError], ["LinkError", LinkError], ["RuntimeError", RuntimeError]]) {
+    ["Tag", Tag], ["Exception", Exception], ["CompileError", CompileError], ["LinkError", LinkError], ["RuntimeError", RuntimeError]]) {
     hidden(WebAssembly, name, C);
   }
   hidden(global, "WebAssembly", WebAssembly);

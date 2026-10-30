@@ -16,7 +16,9 @@ Wasm_Realm :: struct {
 	func_id, func_wrap:        wj.JSValue,   // (function) -> its number, or undefined; (number) -> its function
 	extern_id, extern_value:   wj.JSValue,   // (any) -> its number; (number) -> the value
 	to_list:                   wj.JSValue,   // (iterable) -> an array: what a function with several results returns
-	pending:                   wj.JSValue,   // what an import threw, for the call into the module that got there
+	exception_make:            wj.JSValue,   // (tag number, values) -> a WebAssembly.Exception
+	exception_info:            wj.JSValue,   // (any) -> [tag number, values], undefined when it is no WebAssembly.Exception
+	pending:                  wj.JSValue,   // what an import threw, for the call into the module that got there
 	has_pending:               bool,
 	imports:                   [^]Wasm_Import,
 	imports_n, imports_cap:    i32,
@@ -177,6 +179,7 @@ wasm_throw :: proc "contextless" (ctx: ^wj.Context, status: i64, what: cstring) 
 		wr.has_pending = false
 		return wj.JS_Throw(ctx, wr.pending)   // (takes it)
 	}
+	if status == -5 { return wasm_throw_exception(ctx) }
 	n := wj.fetch_string(wj.wr_WebAssembly_lastError)
 	msg := wj.JS_NewStringLen(ctx, wj.wj_scratch.data, n > 0 ? uint(n) : 0)
 	if wj.is_exception(msg) { return msg }
@@ -189,6 +192,56 @@ wasm_throw :: proc "contextless" (ctx: ^wj.Context, status: i64, what: cstring) 
 	case -3: return wj.JS_ThrowRangeError(ctx, "%s: %.*s", what, max(n, 0), wj.wj_scratch.data)
 	}
 	return wj.JS_ThrowTypeError(ctx, "%s: %.*s", what, max(n, 0), wj.wj_scratch.data)
+}
+
+// The module threw and nothing caught it: a WebAssembly.Exception.
+@(private = "file")
+wasm_throw_exception :: proc "contextless" (ctx: ^wj.Context) -> wj.JSValue {
+	tag := wj.wr_WebAssembly_exception_tag()
+	sig: [MAX_CELLS + 1]u8
+	np := wj.wr_WebAssembly_Tag_sig(tag, &sig[0], MAX_CELLS)
+	if np < 0 || np > MAX_CELLS { return wj.JS_ThrowRangeError(ctx, "the exception has too many values") }
+	cells: [MAX_CELLS]i64
+	if np > 0 { wj.wr_WebAssembly_Func_results(([^]u8)(&cells[0]), u32(np) * 8) }
+	values := wj.JS_NewArray(ctx)
+	if wj.is_exception(values) { return values }
+	defer wj.JS_FreeValue(ctx, values)
+	for i in 0 ..< np {
+		v := wasm_from_cell(ctx, sig[i], cells[i])
+		if wj.is_exception(v) || wj.JS_DefinePropertyValueUint32(ctx, values, u32(i), v, wj.PROP_C_W_E) < 0 { return wj.EXCEPTION }
+	}
+	args := [2]wj.JSValue{wj.new_int32(tag), values}
+	e := wj.JS_Call(ctx, wr.exception_make, wj.UNDEFINED, 2, &args[0])
+	if wj.is_exception(e) { return e }
+	return wj.JS_Throw(ctx, e)
+}
+
+// What an import threw: true when it was a WebAssembly.Exception, now the browser's to throw in the module.
+@(private = "file")
+wasm_import_threw :: proc "contextless" (ctx: ^wj.Context, e: wj.JSValue) -> bool {
+	a := e
+	info := wj.JS_Call(ctx, wr.exception_info, wj.UNDEFINED, 1, &a)
+	if wj.is_exception(info) { wj.drop_exception(ctx); return false }
+	defer wj.JS_FreeValue(ctx, info)
+	if wj.is_undefined(info) { return false }
+	tv := wj.JS_GetPropertyUint32(ctx, info, 0)
+	tag: i32
+	wj.JS_ToInt32(ctx, &tag, tv)
+	wj.JS_FreeValue(ctx, tv)
+	values := wj.JS_GetPropertyUint32(ctx, info, 1)
+	defer wj.JS_FreeValue(ctx, values)
+	sig: [MAX_CELLS + 1]u8
+	np := wj.wr_WebAssembly_Tag_sig(tag, &sig[0], MAX_CELLS)
+	if np < 0 || np > MAX_CELLS { return false }
+	cells: [MAX_CELLS]i64
+	for i in 0 ..< np {
+		v := wj.JS_GetPropertyUint32(ctx, values, u32(i))
+		ok := wasm_to_cell(ctx, sig[i], v, &cells[i])
+		wj.JS_FreeValue(ctx, v)
+		if !ok { wj.drop_exception(ctx); return false }
+	}
+	wj.wr_WebAssembly_import_throw(tag, ([^]u8)(&cells[0]), u32(np) * 8)
+	return true
 }
 
 // ---- values ----
@@ -567,8 +620,13 @@ wj_wasm_import :: proc "c" (slot: i32) -> i32 {
 		wj.JS_FreeValue(ctx, r)
 		if ok { return 0 }
 	}
+	e := wj.JS_GetException(ctx)
+	if wasm_import_threw(ctx, e) {
+		wj.JS_FreeValue(ctx, e)
+		return 1
+	}
 	if wr.has_pending { wj.JS_FreeValue(ctx, wr.pending) }
-	wr.pending = wj.JS_GetException(ctx)
+	wr.pending = e
 	wr.has_pending = true
 	msg := "an import threw an exception"
 	wj.wr_WebAssembly_import_failed(raw_data(msg), u32(len(msg)))
@@ -635,7 +693,26 @@ wasm_instance_exports :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc:
 	return wasm_described(ctx, wasm_handle_of(wj.arg(argc, argv, 1)), int_arg(ctx, argc, argv, 0), proc "contextless" (m: u64, id: i32, buf: [^]u8, cap: u32) -> i32 { return wj.wr_WebAssembly_Instance_exports(id, m, buf, cap) })
 }
 
-// setup({LinkError, RuntimeError, funcId, funcWrap, externId, externValue, toList})
+// tagCreate(parameters): a number
+@(private = "file")
+wasm_tag_create :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	s: wj.Str
+	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &s, 0, "") { return wj.EXCEPTION }
+	defer wj.wj_str_free(ctx, &s)
+	id := wj.wr_WebAssembly_Tag_create(s.ptr != nil ? s.ptr : wj.empty_ptr(), u32(s.len))
+	if id < 0 { return wasm_throw(ctx, i64(id), "WebAssembly.Tag()") }
+	return wj.new_int32(id)
+}
+
+// tagSig(id): its parameters, one letter each
+@(private = "file")
+wasm_tag_sig :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	sig: [MAX_CELLS + 1]u8
+	n := wj.wr_WebAssembly_Tag_sig(int_arg(ctx, argc, argv, 0), &sig[0], MAX_CELLS)
+	return wj.JS_NewStringLen(ctx, &sig[0], uint(clamp(n, 0, MAX_CELLS)))
+}
+
+// setup({LinkError, RuntimeError, funcId, funcWrap, externId, externValue, toList, exceptionMake, exceptionInfo})
 @(private = "file")
 wasm_setup :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	o := wj.arg(argc, argv, 0)
@@ -646,6 +723,8 @@ wasm_setup :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv:
 	wr.extern_id = wj.JS_GetPropertyStr(ctx, o, "externId")
 	wr.extern_value = wj.JS_GetPropertyStr(ctx, o, "externValue")
 	wr.to_list = wj.JS_GetPropertyStr(ctx, o, "toList")
+	wr.exception_make = wj.JS_GetPropertyStr(ctx, o, "exceptionMake")
+	wr.exception_info = wj.JS_GetPropertyStr(ctx, o, "exceptionInfo")
 	return wj.UNDEFINED
 }
 
@@ -690,6 +769,8 @@ web_wasm_start :: proc "c" (ctx: ^wj.Context, kind: i32) -> i32 {
 		{"globalSet", wasm_global_set, 2},
 		{"funcWrap", wasm_func_wrap, 2},
 		{"importFunc", wasm_import_func, 2},
+		{"tagCreate", wasm_tag_create, 1},
+		{"tagSig", wasm_tag_sig, 1},
 		{"instanceCreate", wasm_instance_create, 2},
 		{"instanceExports", wasm_instance_exports, 2},
 	}

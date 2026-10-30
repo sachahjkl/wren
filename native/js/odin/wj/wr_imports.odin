@@ -3591,6 +3591,14 @@ foreign _wr_wj_webassembly {
 	@(link_name = "WebAssembly_import_results") wr_WebAssembly_import_results :: proc(results: [^]u8, results_len: u32) ---
 	// Why the import running failed.
 	@(link_name = "WebAssembly_import_failed") wr_WebAssembly_import_failed :: proc(message: [^]u8, message_len: u32) ---
+	// new WebAssembly.Tag: a number. `parameters` a value type's letter for each.
+	@(link_name = "WebAssembly_Tag_create") wr_WebAssembly_Tag_create :: proc(parameters: [^]u8, parameters_len: u32) -> i32 ---
+	// The parameters of a tag, one letter each.
+	@(link_name = "WebAssembly_Tag_sig") wr_WebAssembly_Tag_sig :: proc(tag: i32, _buf: [^]u8, _cap: u32) -> i32 ---
+	// The tag of the exception a call just failed with (failure 5); its values come from WebAssembly_Func_results.
+	@(link_name = "WebAssembly_exception_tag") wr_WebAssembly_exception_tag :: proc() -> i32 ---
+	// The import running ends by throwing a WebAssembly exception of `tag` with `values` (cells).
+	@(link_name = "WebAssembly_import_throw") wr_WebAssembly_import_throw :: proc(tag: i32, values: [^]u8, values_len: u32) ---
 	// new WebAssembly.Instance: a number. `externs` the number of a thing for each import (4 bytes each); the start function
 	// runs here.
 	@(link_name = "WebAssembly_Instance_create") wr_WebAssembly_Instance_create :: proc(module: u64, externs: [^]u8, externs_len: u32) -> i32 ---

@@ -6,7 +6,7 @@
 ///
 /// What a page makes (memories, tables, globals, functions, instances) lives in one store per realm, known by numbers.
 /// A call that can fail gives a number >= 0 or the opposite of a failure (1 LinkError, 2 RuntimeError, 3 RangeError,
-/// 4 TypeError), the message from WebAssembly_lastError. A value crosses as a cell: an i64 holding an i32, an i64, the
+/// 4 TypeError, 5 a WebAssembly exception), the message from WebAssembly_lastError. A value crosses as a cell: an i64 holding an i32, an i64, the
 /// bits of a float, a function's number + 1, or an externref's number (0: a null reference).
 package api_webassembly
 
@@ -137,6 +137,22 @@ WebAssembly_import_results :: proc(results: bytes)
 /// Why the import running failed.
 //@wb fn
 WebAssembly_import_failed :: proc(message: string)
+
+/// new WebAssembly.Tag: a number. `parameters` a value type's letter for each.
+//@wb fn
+WebAssembly_Tag_create :: proc(parameters: string) -> i32
+
+/// The parameters of a tag, one letter each.
+//@wb fn
+WebAssembly_Tag_sig :: proc(tag: i32) -> string
+
+/// The tag of the exception a call just failed with (failure 5); its values come from WebAssembly_Func_results.
+//@wb fn
+WebAssembly_exception_tag :: proc() -> i32
+
+/// The import running ends by throwing a WebAssembly exception of `tag` with `values` (cells).
+//@wb fn
+WebAssembly_import_throw :: proc(tag: i32, values: bytes)
 
 /// new WebAssembly.Instance: a number. `externs` the number of a thing for each import (4 bytes each); the start function
 /// runs here.
