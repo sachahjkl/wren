@@ -49,6 +49,16 @@ Raises: returns an `Error` (see [web](web.md)).
 
 Host: `WebAssembly_compile :: proc(c: ^Call, module: []u8) -> (u64, Api_Error)`
 
+### `WebAssembly_compileAsync`
+
+```
+Promise<WebAssemblyModule> WebAssembly_compileAsync(bytes module)
+```
+
+WebAssembly.compile(bytes): the same on a thread of its own; the promise is rejected with the reason.
+
+Host: `WebAssembly_compileAsync :: proc(c: ^Call, module: []u8) -> u64`
+
 ### `WebAssembly_Module_imports`
 
 ```

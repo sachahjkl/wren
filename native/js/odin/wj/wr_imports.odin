@@ -3537,6 +3537,8 @@ foreign _wr_wj_webassembly {
 	// new WebAssembly.Module(bytes): `bytes` compiled. Syntax with the reason when it is not a valid module, Security when
 	// the page's Content Security Policy refuses it.
 	@(link_name = "WebAssembly_compile") wr_WebAssembly_compile :: proc(module: [^]u8, module_len: u32, _ret: ^u64) -> i32 ---
+	// WebAssembly.compile(bytes): the same on a thread of its own; the promise is rejected with the reason.
+	@(link_name = "WebAssembly_compileAsync") wr_WebAssembly_compileAsync :: proc(module: [^]u8, module_len: u32) -> u64 ---
 	// WebAssembly.Module.imports(module), as JSON.
 	@(link_name = "WebAssembly_Module_imports") wr_WebAssembly_Module_imports :: proc(module: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 	// WebAssembly.Module.exports(module), as JSON.
