@@ -9,7 +9,7 @@ import "wb:page"
 
 // Identity of the program. One place, so a rename touches nothing else.
 APP_NAME    :: "Wren"
-APP_VERSION :: "0.6.9"
+APP_VERSION :: "0.6.10"
 APP_TAGLINE :: "A small browser where WebAssembly runs everything, JavaScript included."
 
 // A label for a build that is not the release of this version, set when it is built (build.bat: `set WREN_VERSION_LABEL=experimental-2026-10-24`,
@@ -105,16 +105,16 @@ HOME_TEMPLATE :: `<!doctype html>
   .tag { font-size: 20px; color: #8993ad; margin: 6px 0 0; }
   .dev { display: inline-block; margin: 18px 0 0; padding: 5px 16px 5px 6px; border: 1px solid #2f5ea8; border-radius: 16px; background-color: #10213f; color: #9cc0f2; font-size: 14px; }
   .dev b { display: inline-block; margin-right: 10px; padding: 1px 9px; border-radius: 11px; background-color: #2363b8; color: #ffffff; font-size: 12px; letter-spacing: 1px; }
-  .hint { max-width: 560px; box-sizing: border-box; margin: 34px auto 10px; padding: 13px 24px; background-color: #151a26; border: 1px solid #272f45; border-radius: 26px; color: #6f7a96; text-align: center; }
-  .hint b { color: #c9d1e3; }
-  .grid { max-width: 640px; margin: 26px auto 0; }
-  .card { display: block; margin: 14px 0; padding: 18px 24px 18px; background-color: #131825; border: 1px solid #232b40; border-radius: 14px; color: #c9d1e3; text-decoration: none; }
-  .card:hover { background-color: #19203a; border-color: #ffb84d; }
-  .card:active { background-color: #20294a; }
-  .card h3 { margin: 0 0 4px; font-size: 19px; color: #ffb84d; }
-  .card p { margin: 0; color: #8993ad; }
-  .card .where { color: #4f5a78; font-size: 13px; margin-top: 8px; }
-  .foot { text-align: center; color: #4f5a78; font-size: 13px; padding: 36px 20px 48px; }
+  .hint { margin: 38px 0 0; text-align: center; color: #5f6a86; font-size: 15px; }
+  .links { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px 30px; max-width: 680px; margin: 34px auto 0; }
+  .links a { display: inline-flex; align-items: center; gap: 9px; padding: 7px 2px; color: #8993ad; text-decoration: none; font-size: 15px; border-bottom: 1px solid transparent; }
+  .links a svg, .paint a .ic { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .links a:hover { color: #f1f4fb; border-bottom-color: $ACCENT$; }
+  .paint { text-align: center; margin: 60px 0 0; }
+  .paint a { display: inline-flex; align-items: center; gap: 11px; padding: 8px 18px 8px 10px; border-radius: 22px; color: #8993ad; text-decoration: none; font-size: 14px; }
+  .paint a:hover { color: #f1f4fb; background-color: rgba(255,255,255,0.06); }
+  .paint a small { color: #59647f; font-size: 12px; margin-left: 2px; }
+  .foot { text-align: center; color: #4f5a78; font-size: 13px; padding: 30px 20px 48px; }
   .foot b { color: #8993ad; }
   @media (prefers-color-scheme: light) {
     html { background-color: #f5f6fa; }
@@ -123,14 +123,12 @@ HOME_TEMPLATE :: `<!doctype html>
     .logo .w { color: $ACCENT_LIGHT$; }
     .tag { color: #5d6680; }
     .dev { background-color: #e8f0fc; border-color: #9dbbe8; color: #1d4f91; }
-    .hint { background-color: #ffffff; border-color: #dce1ec; color: #6b7590; }
-    .hint b { color: #2b3245; }
-    .card { background-color: #ffffff; border-color: #e0e4ee; color: #2b3245; }
-    .card:hover { background-color: #fff8ec; border-color: #d98200; }
-    .card:active { background-color: #ffefd2; }
-    .card h3 { color: #b86e00; }
-    .card p { color: #5d6680; }
-    .card .where { color: #8a93aa; }
+    .hint { color: #8a93aa; }
+    .links a { color: #5d6680; }
+    .links a:hover { color: #1d2333; border-bottom-color: $ACCENT_LIGHT$; }
+    .paint a { color: #5d6680; }
+    .paint a:hover { color: #1d2333; background-color: rgba(0,0,0,0.05); }
+    .paint a small { color: #8a93aa; }
     .foot { color: #8a93aa; }
     .foot b { color: #5d6680; }
   }
@@ -143,24 +141,14 @@ HOME_TEMPLATE :: `<!doctype html>
     <p class="tag">$TAGLINE$</p>
     $DEV$
   </div>
-  <p class="hint">Type an address in the bar above, or pick something below.</p>
-  <div class="grid">
-    <a class="card" href="about:config">
-      <h3>Configuration</h3>
-      <p>Every setting of the browser, searchable and editable. Nothing is hard-wired.</p>
-      <p class="where">about:config</p>
-    </a>
-    <a class="card" href="about:demos">
-      <h3>Demos &amp; tests</h3>
-      <p>Every demo and test page that comes with Wren, by theme: CSS, layout, effects, text, images, WebAssembly, JavaScript, network, performance.</p>
-      <p class="where">about:demos</p>
-    </a>
-    <a class="card" href="about:home?art=on">
-      <h3>A painting on every new tab</h3>
-      <p>Show a public-domain painting here instead of this page. Off until you turn it on: nothing is downloaded before. A link on the painting brings this page back.</p>
-      <p class="where">browser.newtab.art.enabled</p>
-    </a>
-  </div>
+  <p class="hint">Type an address in the bar above.</p>
+  <nav class="links">
+    <a href="about:config"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Configuration</a>
+    <a href="about:history"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>History</a>
+    <a href="about:blocker"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l7 2.6v5.4c0 4.2-3 7.4-7 9-4-1.6-7-4.8-7-9V6.1z"/></svg>Content blocker</a>
+    <a href="about:demos"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.3"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.3"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.3"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.3"/></svg>Demos &amp; tests</a>
+  </nav>
+  <p class="paint"><a href="about:home?art=on"><svg viewBox="0 0 28 22" width="28" height="22" aria-hidden="true"><rect x="1" y="1" width="26" height="20" rx="2.5" fill="#c8923c"/><rect x="3.2" y="3.2" width="21.6" height="15.6" rx="1" fill="#7fb8e8"/><circle cx="19.5" cy="8" r="2.6" fill="#ffd36a"/><path d="M3.2 18.8V13.5Q8 9.5 12.5 13T24.8 12V18.8Z" fill="#4f9d69"/><path d="M3.2 18.8V16Q9 13.8 14 16.2T24.8 15.5V18.8Z" fill="#2f7a6a"/></svg>A painting on every new tab <small>off</small></a></p>
   <p class="foot"><b>$NAME$</b> $VERSION$ &middot; WebAssembly only &middot; written in Odin<br>Some demos need the test server: <b>testserver.exe</b> (demo.bat in the release).</p>
 </body>
 </html>
