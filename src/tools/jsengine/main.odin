@@ -172,6 +172,8 @@ IMPORTS := [?]wasm.Import{
 	{module = "document", name = "Window_isSecureContext", fn = secure_context, params = {}, results = {.I32}},
 	// (no Web Authentication in the shell: navigator.credentials and PublicKeyCredential are absent)
 	{module = "credentials", name = "PublicKeyCredential_enabled", fn = exception_message_none, params = {}, results = {.I32}},
+	// (no WebAssembly object in the shell: the page's own modules are the browser's)
+	{module = "webassembly", name = "WebAssembly_enabled", fn = exception_message_none, params = {}, results = {.I32}},
 }
 
 usage :: proc() -> ! {
