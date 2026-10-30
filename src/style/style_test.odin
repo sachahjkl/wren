@@ -776,6 +776,49 @@ partial_restyle_matches_a_full_pass :: proc(t: ^testing.T) {
 	testing.expect(t, ok && changed)
 	testing.expect(t, style_of(h.st, dom.find_by_id(h.doc, "b")) == before_b, "unrelated elements keep their computed style")
 }
+
+// A :has() with a state inside is no reason for a full pass: the anchors (ancestors, parents, earlier siblings) of the
+// element whose state changed are restyled, and the result is that of a full pass.
+@(test)
+restyle_state_has :: proc(t: ^testing.T) {
+	f := load(`<style>
+		.card:has(a:hover) { margin-top: 3px }
+		.card:has(> a:focus) { margin-left: 4px }
+		li:has(+ li:hover) { margin-top: 5px }
+		.row:has(.cell:hover) .label { margin-left: 6px }
+		.wrap:not(:has(:hover)) > i { margin-top: 7px }
+		:is(.hov:hover, .foc:focus) > b { margin-top: 8px }
+	</style>
+	<div class=card id=c1><p id=p1><a id=a1 href=x>l</a></p></div>
+	<div class=card id=c2><a id=a2 href=x>l</a><b id=b2>b</b></div>
+	<ul><li id=l1>1</li><li id=l2>2</li><li id=l3>3</li></ul>
+	<div class=row id=r1><div class=cell id=ce1>c</div><span class=label id=lb1>L</span></div>
+	<div class=wrap id=w1><i id=i1>i</i><span id=s1>s</span></div>
+	<div class=hov id=h1><b id=hb1>x</b></div><div class=other id=o1><b id=ob1>y</b></div>`)
+	defer unload(&f)
+	ids := []string{"c1", "p1", "a1", "c2", "a2", "b2", "l1", "l2", "l3", "r1", "ce1", "lb1", "w1", "i1", "s1", "h1", "hb1", "o1", "ob1"}
+	states := make([dynamic]State, context.temp_allocator)
+	append(&states, State{})
+	for id in ids { append(&states, State{hover = dom.find_by_id(f.doc, id)}) }
+	for id in ids { append(&states, State{focus = dom.find_by_id(f.doc, id)}) }
+	append(&states, State{hover = dom.find_by_id(f.doc, "a1")}, State{hover = dom.find_by_id(f.doc, "p1")}, State{hover = dom.find_by_id(f.doc, "l3")}, State{})
+	for st in states {
+		_, ok := restyle_state(f.eng, f.doc, f.st, st)
+		testing.expectf(t, ok, "state %v: scoped", st)
+		fresh := compute_styles(f.eng, f.doc, st)
+		for id in ids {
+			h := dom.find_by_id(f.doc, id)
+			testing.expectf(t, computed_equal(style_of(f.st, h), style_of(fresh, h)), "state %v: element %s differs from a full pass", st, id)
+		}
+		styled_destroy(fresh)
+	}
+	// :is() with a state in it names what it says: a hover elsewhere does not restyle the subtrees it would reach
+	before := style_of(f.st, dom.find_by_id(f.doc, "ob1"))
+	_, ok := restyle_state(f.eng, f.doc, f.st, State{hover = dom.find_by_id(f.doc, "hb1")})
+	testing.expect(t, ok)
+	testing.expect(t, style_of(f.st, dom.find_by_id(f.doc, "ob1")) == before, "an unrelated element keeps its computed style")
+}
+
 // A state that changes the root element's font size or line height (html:hover): rem and rlh everywhere follow, which a
 // partial restyle cannot scope: it refuses, the caller does a full pass.
 @(test)

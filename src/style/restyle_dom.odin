@@ -889,7 +889,7 @@ trace_why: string             // (WREN_RESTYLE_TRACE) why has_flip answered that
 
 // WREN_RESTYLE_TRACE=1: what made a restyle too big to scope, on standard error (for the measuring tools): the mutations, and the
 // elements whose whole subtree was marked, the biggest first.
-@(private = "file")
+@(private)
 trace_restyle :: proc() -> bool {
 	@(static) known, on: bool
 	if !known { known = true; on = os.get_env("WREN_RESTYLE_TRACE", context.temp_allocator) != "" }

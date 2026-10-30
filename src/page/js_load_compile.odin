@@ -19,6 +19,7 @@ import "wb:wasm"
 Compile_Job :: struct {
 	page_id: u64,
 	download: ^Script_Fetch,  // UI thread only, valid while the page lives
+	module:  string,          // owned: the key of the module entry this compiles (a module; download is nil then)
 	source:  []byte,          // owned
 	url:     string,          // owned
 	key:     js.Key,
@@ -84,6 +85,32 @@ compile_offthread :: proc(p: ^Page, f: ^Script_Fetch) {
 	sync.sema_post(&compiler.sema)
 }
 
+// A module arrived: compile it on another thread when it is large and not cached yet. True when a job took it: the
+// entry waits (compiling) until compile_done, which then prepares it from the cache or compiles it there.
+@(private)
+compile_module_offthread :: proc(p: ^Page, e: ^Module_Entry) -> bool {
+	n := compile_thread_count(p)
+	if n == 0 || p.worker != nil || e.type != .JavaScript || len(e.source) < p.settings.js.offthread_min_bytes || !js.cacheable(len(e.source)) { return false }
+	if !js_enabled(p) { return false }
+	key := js.key_of(js_version(), transmute(i32)js.Eval_Flags{.Module}, e.key, e.source[:])
+	if code := js.lookup(key, context.temp_allocator); code != nil { return false }
+	if !compile_service_start(p, n) { return false }
+	job := new(Compile_Job)
+	job.page_id = page_id(p)
+	job.module = clone_heap(e.key)
+	job.source = make([]byte, len(e.source))
+	copy(job.source, e.source[:])
+	job.url = clone_heap(e.key)
+	job.key = key
+	job.ui_loop = p.loop
+	e.compiling = true
+	sync.mutex_lock(&compiler.mu)
+	append(&compiler.queue, job)
+	sync.mutex_unlock(&compiler.mu)
+	sync.sema_post(&compiler.sema)
+	return true
+}
+
 @(private)
 compile_service_start :: proc(p: ^Page, n: int) -> bool {
 	sync.mutex_lock(&compiler.mu)
@@ -122,6 +149,7 @@ compile_shutdown :: proc() {
 compile_job_free :: proc(j: ^Compile_Job) {
 	delete(j.source)
 	delete(j.url)
+	delete(j.module)
 	free(j)
 }
 
@@ -152,7 +180,7 @@ compile_main :: proc(_: rawptr) {
 			t0 := time.tick_now()
 			ctx_page.js.pending_key = job.key
 			ctx_page.js.has_pending_key = true
-			job.ok = js.compile(inst, job.source, job.url) == .Ok
+			job.ok = js.compile(inst, job.source, job.url, flags = job.module != "" ? {.Module} : {}) == .Ok
 			ctx_page.js.has_pending_key = false
 			job.ms = time.duration_milliseconds(time.tick_since(t0))
 		}
@@ -176,6 +204,15 @@ compile_done :: proc(data: rawptr) {
 	defer compile_job_free(job)
 	p := page_by_id(job.page_id)
 	if p == nil || p.closed || p.scripts == nil { return }
+	if job.module != "" {
+		if p.scripts.modules == nil { return }
+		if e := p.scripts.modules.entries[job.module]; e != nil && e.compiling {
+			e.compiling = false
+			module_prepare(p, e)
+			modules_check(p)
+		}
+		return
+	}
 	for f in p.scripts.fetches {
 		if f == job.download { f.compiling = false; scripts_pump(p); return }
 	}

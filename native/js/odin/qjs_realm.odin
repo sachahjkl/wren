@@ -146,10 +146,11 @@ wj_compile :: proc "c" (src: u32, src_len: u32, url: u32, url_len: u32, line: i3
 	name: [1024]u8
 	opt := wj.Eval_Options{
 		version    = wj.EVAL_OPTIONS_VERSION,
-		eval_flags = (flags & EVAL_MODULE != 0 ? wj.EVAL_TYPE_MODULE : wj.EVAL_TYPE_GLOBAL) | wj.EVAL_FLAG_COMPILE_ONLY,
+		eval_flags = (flags & EVAL_MODULE != 0 ? wj.EVAL_TYPE_MODULE | wj.EVAL_FLAG_WREN_NO_RESOLVE | wj.EVAL_FLAG_WREN_NO_REGISTER : wj.EVAL_TYPE_GLOBAL) | wj.EVAL_FLAG_COMPILE_ONLY,
 		filename   = copy_name(name[:], url, url_len),
 		line_num   = line > 0 ? line : 1,
 	}
+	// (a module: its imports are not loaded here, and the compiler keeps nothing of it: only its bytecode matters)
 	fn := wj.JS_Eval2(ctx, ([^]u8)(uintptr(src)), uint(src_len), &opt)
 	if wj.is_exception(fn) {
 		wj.JS_FreeValue(ctx, wj.JS_GetException(ctx))

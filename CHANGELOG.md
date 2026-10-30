@@ -7,6 +7,16 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 
 ## Unreleased
 
+## 0.6.17 - 2026-10-30
+
+### Changed
+- **The performance report says why a state change needed a full style pass** (`tools\perf.ps1`, new scenario `github_hover`: the pointer moving over the sidebar of GitHub's repository page); `WREN_RESTYLE_TRACE=1` also lists the rules that made a state change restyle a whole subtree.
+- **Large ES modules are compiled on the compile threads, as classic scripts are** (`javascript.compile.offthread_min_bytes`). A module that arrives and is not in the bytecode cache waits for its bytecode, made on another thread, and is then prepared from the cache, so the interface thread no longer parses it. `jsloadtest` checks it with two modules of 512 KiB.
+
+### Fixed
+- **A rule such as `:is(.a:hover, .b:focus-within) .c` no longer makes every hover restyle the subtrees it could reach.** The partial restyle after a state change took any element for a match of the `:is()` as soon as a state was in it; it now looks at the rest of the list (`.a`, `.b`) too. Hovering GitHub's repository page: the style work after a state change goes from 29 ms to 1.3 ms on average, and frames over budget from 40 % to 4 %.
+- **Moving the pointer over a page with a state-dependent `:has()` no longer restyles the whole page.** One rule such as `:has([popover]:hover)` (GitHub has one) made every hover, focus or active change a full style pass, about 120 ms each on GitHub's repository page. The anchors of that `:has()` (the ancestors, parents and earlier siblings of the element whose state changed) are now the only elements restyled, and the result is checked against a full pass in a test.
+
 ## 0.6.16 - 2026-10-30
 
 ### Changed

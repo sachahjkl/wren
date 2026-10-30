@@ -470,7 +470,8 @@ eval_impl :: proc(ctx: ^js.Context, input: [^]u8, input_len: uint, filename: cst
 			// registered before its requests are loaded: a module that imports itself, or a cycle, finds it by name. Also when the host
 			// resolves nothing now (WREN_NO_RESOLVE: the browser fetches the graph first): the engine finds the module it compiled
 			// when the graph runs instead of asking the host for its source and compiling it a second time
-			js.module_register(rt, cast(^js.Module)fb.u.ptr)
+			// (a compiler that only wants the bytecode keeps nothing: WREN_NO_REGISTER)
+			if flags & EVAL_FLAG_WREN_NO_REGISTER == 0 { js.module_register(rt, cast(^js.Module)fb.u.ptr) }
 			if flags & EVAL_FLAG_WREN_NO_RESOLVE == 0 && !js.module_resolve(ctx, cast(^js.Module)fb.u.ptr) {return EXCEPTION}
 		}
 		return own(rt, fb)

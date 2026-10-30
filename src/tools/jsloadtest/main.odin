@@ -781,6 +781,16 @@ measurements :: proc() {
 	fmt.printf("  MEASURE 2 x 512 KiB scripts compiled off-thread: %d jobs, %.1f ms of compilation on %d thread(s); page done in %.1f ms\n", st1.jobs - st0.jobs, st1.total_ms - st0.total_ms, st1.threads, ms_off)
 	check(st1.jobs - st0.jobs == 2, "large scripts are compiled on the compile threads")
 	check(logged("big a 512") && logged("big b 512"), "and run from the bytecode they made")
+	// large modules too: the module waits for its bytecode, then it is prepared from the cache
+	st2 := page.compile_stats()
+	t0 = time.tick_now()
+	p = load(`<!doctype html><head><script type=module src="/jsload/big?kb=512&id=ma"></script><script type=module src="/jsload/big?kb=512&id=mb"></script><script type=module>console.log("big modules done")</script></head>`, s = &s)
+	wait_for("big modules done")
+	st3 := page.compile_stats()
+	page.page_close(p)
+	fmt.printf("  MEASURE 2 x 512 KiB modules compiled off-thread: %d jobs, %.1f ms of compilation; page done in %.1f ms\n", st3.jobs - st2.jobs, st3.total_ms - st2.total_ms, time.duration_milliseconds(time.tick_since(t0)))
+	check(st3.jobs - st2.jobs == 2, "large modules are compiled on the compile threads")
+	check(logged("big ma 512") && logged("big mb 512"), "and run from the bytecode they made")
 	s2 := settings
 	s2.js_load.compile_threads = 0
 	js.cache_clear_memory()

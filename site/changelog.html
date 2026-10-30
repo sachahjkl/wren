@@ -47,11 +47,24 @@
     <p class="intro">Eight versions in twelve days: the first public build, JavaScript, a JIT, a text engine of its own, a browser that speaks to screen readers, then a JavaScript engine written in Odin.</p>
     <div class="timeline">
 <!-- releases:begin -->
-      <article class="release latest" id="v0-6-16">
+      <article class="release latest" id="v0-6-17">
         <div class="rail"><span class="dot"></span></div>
         <div class="release-body">
           <p class="release-date"><time datetime="2026-10-30">October 30, 2026</time></p>
-          <div class="release-title"><h3>0.6.16</h3><span class="badge">Latest</span></div>
+          <div class="release-title"><h3>0.6.17</h3><span class="badge">Latest</span></div>
+          <ul class="release-list">
+            <li><strong>Hovering no longer restyles the page.</strong> On GitHub's repository page, every move of the pointer over a link or a topic tag made a full style pass, about 120 ms each, so the page drew four frames a…</li>
+            <li><strong>Large ES modules are compiled off the interface thread</strong>, like large classic scripts: the page does its other work while a compile thread makes the bytecode.</li>
+          </ul>
+          <p class="release-links"><a href="https://github.com/sachahjkl/wren/blob/master/docs/releases/v0.6.17.md">Release notes</a> ·
+            <a href="https://github.com/sachahjkl/wren/releases/tag/v0.6.17">Download</a></p>
+        </div>
+      </article>
+      <article class="release" id="v0-6-16">
+        <div class="rail"><span class="dot"></span></div>
+        <div class="release-body">
+          <p class="release-date"><time datetime="2026-10-30">October 30, 2026</time></p>
+          <div class="release-title"><h3>0.6.16</h3></div>
           <ul class="release-list">
             <li><strong>Each module is compiled once.</strong> The engine compiled every ES module twice: when it arrived, to learn what it imports, and again when the graph ran, because the first was not kept.</li>
             <li><strong>Modules are in the bytecode cache.</strong> Compiled modules go to the profile's cache, as classic scripts already did, so a module seen before is read instead of parsed.</li>

@@ -396,7 +396,8 @@ styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Style
 		}
 	}
 	if !full && !style.state_equal(effective_state(p), p.styled.state) {
-		if _, ok := style.restyle_state(e, p.doc, p.styled, effective_state(p)); !ok { full = true } else { partial = true }
+		e.last_restyle.fallback = "a state change that cannot be scoped"
+		if _, ok := style.restyle_state(e, p.doc, p.styled, effective_state(p)); !ok { full, why = true, e.last_restyle.fallback } else { partial = true }
 	}
 	cq_partial := false
 	if !full && len(e.container_pending) > 0 {
