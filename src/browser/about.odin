@@ -10,7 +10,7 @@ import "wb:url"
 
 // Identity of the program. One place, so a rename touches nothing else.
 APP_NAME    :: "Wren"
-APP_VERSION :: "0.6.11"
+APP_VERSION :: "0.6.12"
 APP_TAGLINE :: "A small browser where WebAssembly runs everything, JavaScript included."
 
 // A label for a build that is not the release of this version, set when it is built (build.bat: `set WREN_VERSION_LABEL=experimental-2026-10-24`,
@@ -107,15 +107,15 @@ HOME_TEMPLATE :: `<!doctype html>
   .dev { display: inline-block; margin: 18px 0 0; padding: 5px 16px 5px 6px; border: 1px solid #2f5ea8; border-radius: 16px; background-color: #10213f; color: #9cc0f2; font-size: 14px; }
   .dev b { display: inline-block; margin-right: 10px; padding: 1px 9px; border-radius: 11px; background-color: #2363b8; color: #ffffff; font-size: 12px; letter-spacing: 1px; }
   .search { position: relative; max-width: 580px; margin: 40px auto 0; }
-  .search input { display: block; width: 100%; box-sizing: border-box; height: 50px; padding: 0 56px 0 54px; border-radius: 25px; border: 1px solid #262e43;
+  .search input { display: block; width: 100%; box-sizing: border-box; height: 50px; padding: 0 56px 0 58px; border-radius: 25px; border: 1px solid #262e43;
                   background-color: #131824; color: #f1f4fb; font-family: system-ui; font-size: 16px; outline: none; }
   .search input::placeholder { color: #5f6a86; }
   .search input:hover { border-color: #38425d; }
   .search input:focus { border-color: $ACCENT$; background-color: #161c2a; }
-  .search .lens { position: absolute; left: 19px; top: 16px; width: 18px; height: 18px; stroke: #6b7694; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-  .search button { position: absolute; right: 8px; top: 8px; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 17px; background-color: transparent; color: #8993ad; cursor: pointer; }
+  .search .lens { position: absolute; left: 18px; top: 13px; width: 24px; height: 24px; stroke: #7b86a3; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+  .search button { position: absolute; right: 6px; top: 6px; width: 38px; height: 38px; padding: 0; border: 0; border-radius: 19px; background-color: transparent; color: #8993ad; cursor: pointer; }
   .search button:hover { background-color: rgba(255,255,255,0.07); color: #f1f4fb; }
-  .search button svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .search button svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .links { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px 30px; max-width: 680px; margin: 30px auto 0; }
   .links a { display: inline-flex; align-items: center; gap: 9px; padding: 7px 2px; color: #8993ad; text-decoration: none; font-size: 15px; border-bottom: 1px solid transparent; }
   .links a svg, .paint a .ic { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
@@ -162,9 +162,9 @@ HOME_TEMPLATE :: `<!doctype html>
     $DEV$
   </div>
   <form class="search" action="about:home" method="get" role="search">
-    <svg class="lens" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L20 20"/></svg>
+    <svg class="lens" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="7.5"/><path d="M16.2 16.2L21.5 21.5"/></svg>
     <input type="text" name="q" placeholder="$SEARCH$" autocomplete="off" spellcheck="false" aria-label="Search or type an address">
-    <button type="submit" aria-label="Search"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+    <button type="submit" aria-label="Search"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12h17M13.5 5l7 7-7 7"/></svg></button>
   </form>
   <nav class="links">
     <a href="about:config"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Configuration</a>

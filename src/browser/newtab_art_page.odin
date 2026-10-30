@@ -53,6 +53,18 @@ art_fill_waiting :: proc(app: ^App) {
 	}
 }
 
+// The first request failed: the art new tabs that still show no painting say it is trying again (not "loading" for good).
+art_empty_failed :: proc(app: ^App) {
+	for t in tabs_all(app) {
+		if !t.art_empty || t.kind != .Web || t.url != HOME_URL || t.page == nil { continue }
+		cur := app.active
+		if w, _ := window_of_tab(app, t); w != nil { window_activate(app, w) }
+		art_show_page(app, t, art_page_html(app, nil, art_window_landscape(app)))
+		t.art_empty = true
+		if cur != nil && cur != app.active { window_activate(app, cur) }
+	}
+}
+
 // about:home with a query: `art=next` shows the next painting; `art=on` / `art=off` turn the art start page on or off (a person's
 // choice or a link of the start page itself: `acts`, see nav_trust.odin) and show the start page as it is then.
 home_query :: proc(app: ^App, t: ^Tab, target: string, acts: bool) {
@@ -175,7 +187,7 @@ art_page_html :: proc(app: ^App, it: ^Art_Item, landscape: bool) -> string {
 	strings.write_string(&sb, "<div class=\"art-caption\">\n")
 	if art.cfg.show_caption {
 		strings.write_string(&sb, "<div class=\"art-text\">\n")
-		title := it != nil && it.title != "" ? it.title : i18n.tr("A painting")
+		title := it != nil && it.title != "" ? it.title : (it == nil && art.fails == 0 ? i18n.tr("Loading a painting\u2026") : i18n.tr("A painting"))
 		fmt.sbprintf(&sb, "<p class=\"art-title\">%s</p>\n", art_escape(title))
 		art_write_meta(&sb, it)
 		if it != nil && it.license != "" { fmt.sbprintf(&sb, "<p class=\"art-license\">%s</p>\n", art_escape(it.license)) }
@@ -218,7 +230,7 @@ art_fit_mode :: proc(it: ^Art_Item, landscape: bool) -> string {
 @(private = "file")
 art_write_meta :: proc(sb: ^strings.Builder, it: ^Art_Item) {
 	if it == nil {
-		fmt.sbprintf(sb, "<p class=\"art-meta\">%s</p>\n", i18n.tr("No painting could be loaded yet."))
+		if art.fails > 0 { fmt.sbprintf(sb, "<p class=\"art-meta\">%s</p>\n", i18n.tr("No painting could be loaded yet. Trying again.")) }
 		return
 	}
 	strings.write_string(sb, "<p class=\"art-meta\">")

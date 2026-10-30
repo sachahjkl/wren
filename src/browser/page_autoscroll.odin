@@ -23,7 +23,7 @@ import "wb:page"
 AUTOSCROLL_PREFS := [?]config.Def{
 	{name = "browser.scroll.autoscroll.enabled", kind = .Bool, default = {b = true},
 		description = "A press of the middle mouse button (the wheel) on the page starts autoscroll: moving the pointer away from where it was pressed scrolls, the farther the faster. Press again, Escape or a wheel notch ends it."},
-	{name = "browser.scroll.autoscroll.max_speed", kind = .Float, default = {f = 30000}, bounded = true, min = 100, max = 200000, unit = "px/s",
+	{name = "browser.scroll.autoscroll.max_speed", kind = .Float, default = {f = 15000}, bounded = true, min = 100, max = 200000, unit = "px/s",
 		description = "The fastest autoscroll goes, in CSS pixels per second, reached when the pointer is 'full distance' past the dead zone."},
 	{name = "browser.scroll.autoscroll.dead_zone", kind = .Float, default = {f = 12}, bounded = true, min = 0, max = 200, unit = "px",
 		description = "No scrolling while the pointer is within this many pixels of the anchor (a still disc around it)."},
