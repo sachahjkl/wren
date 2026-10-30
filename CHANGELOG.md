@@ -7,6 +7,11 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 
 ## Unreleased
 
+## 0.6.10 - 2026-10-30
+
+### Changed
+- **The start page, redesigned**: the large cards and the pill around the hint are gone. Under the logo and the title there is a row of thin links with a line icon each (Configuration, History, Content blocker, Demos & tests) and, further down, a link with a small coloured painting for the painting start page ("A painting on every new tab", with its state). The painting page's shortcuts at the top are the same four links, frameless and faint, instead of dark pills.
+
 ## 0.6.9 - 2026-10-30
 
 ### Added

@@ -112,10 +112,12 @@ ART_STYLE :: `
              background-image: linear-gradient(to bottom, rgba(5,8,14,0.72), rgba(5,8,14,0)); pointer-events: none; }
   .art-bottom { position: fixed; bottom: 0; left: 0; right: 0; height: 220px;
                 background-image: linear-gradient(to top, rgba(5,8,14,0.82), rgba(5,8,14,0)); pointer-events: none; }
-  .art-shortcuts { position: fixed; top: 34px; left: 0; right: 0; display: flex; justify-content: center; gap: 12px; }
-  .art-chip { padding: 9px 18px; border-radius: 20px; background-color: rgba(20,25,38,0.72);
-              border: 1px solid rgba(255,255,255,0.14); color: #e7ecf6; text-decoration: none; font-size: 14px; }
-  .art-chip:hover { background-color: rgba(40,48,70,0.85); border-color: #ffb84d; }
+  .art-shortcuts { position: fixed; top: 26px; left: 0; right: 0; display: flex; justify-content: center; flex-wrap: wrap; gap: 2px 24px; }
+  .art-chip { display: inline-flex; align-items: center; gap: 8px; padding: 5px 2px; color: rgba(241,244,251,0.62); text-decoration: none;
+              font-size: 13px; text-shadow: 0 1px 5px rgba(0,0,0,0.85); border-bottom: 1px solid transparent; }
+  .art-chip svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
+                  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.7)); }
+  .art-chip:hover { color: #ffffff; border-bottom-color: rgba(255,255,255,0.55); }
   .art-caption { position: fixed; left: 28px; bottom: 24px; right: 28px; display: flex; align-items: flex-end;
                  justify-content: space-between; gap: 20px; }
   .art-text { max-width: 70%; text-shadow: 0 1px 6px rgba(0,0,0,0.85); }
@@ -162,8 +164,10 @@ art_page_html :: proc(app: ^App, it: ^Art_Item, landscape: bool) -> string {
 	strings.write_string(&sb, "<div class=\"art-top\"></div>\n")
 	// the start page's shortcuts stay, as chips over the painting
 	strings.write_string(&sb, "<div class=\"art-shortcuts\">")
-	fmt.sbprintf(&sb, "<a class=\"art-chip\" href=\"about:config\">%s</a>", i18n.tr("Configuration"))
-	fmt.sbprintf(&sb, "<a class=\"art-chip\" href=\"about:demos\">%s</a>", i18n.tr("Demos & tests"))
+	art_shortcut(&sb, "about:config", ART_ICON_CONFIG, i18n.tr("Configuration"))
+	art_shortcut(&sb, "about:history", ART_ICON_HISTORY, i18n.tr("History"))
+	art_shortcut(&sb, "about:blocker", ART_ICON_BLOCKER, i18n.tr("Content blocker"))
+	art_shortcut(&sb, "about:demos", ART_ICON_DEMOS, i18n.tr("Demos & tests"))
 	strings.write_string(&sb, "</div>\n")
 	strings.write_string(&sb, "<div class=\"art-bottom\"></div>\n")
 
@@ -189,6 +193,17 @@ art_page_html :: proc(app: ^App, it: ^Art_Item, landscape: bool) -> string {
 
 	strings.write_string(&sb, "</body>\n</html>\n")
 	return strings.to_string(sb)
+}
+
+// The start page's links over the painting: a thin icon and a word, no frame (the same four as the plain start page, about.odin).
+ART_ICON_CONFIG :: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>`
+ART_ICON_HISTORY :: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>`
+ART_ICON_BLOCKER :: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l7 2.6v5.4c0 4.2-3 7.4-7 9-4-1.6-7-4.8-7-9V6.1z"/></svg>`
+ART_ICON_DEMOS :: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.3"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.3"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.3"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.3"/></svg>`
+
+@(private = "file")
+art_shortcut :: proc(sb: ^strings.Builder, href, icon, label: string) {
+	fmt.sbprintf(sb, "<a class=\"art-chip\" href=\"%s\">%s%s</a>", href, icon, art_escape(label))
 }
 
 // "cover" for a painting whose orientation matches the window (it fills every pixel), "contain" otherwise (it is shown
