@@ -7,6 +7,11 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 
 ## Unreleased
 
+## 0.6.8 - 2026-10-30
+
+### Added
+- **Performance tab: Pictures and Export.** ``Pictures`` records the window's frames as pictures (at most 120, about 1000 px wide); ``Export`` writes ``wren-timeline-<date>-<time>/`` to the downloads folder and opens it: ``index.html`` (the frames big, one at a time or in a strip, with a bar chart of how much each changed, and each frame's time, kind, scroll and difference from the one before), the pictures, ``sheet.png``, ``timeline.json``, and ``trace.json`` (the phases of every recorded frame as Chrome trace events: it opens in the Performance tab of Chrome and in Perfetto). ``wren ctl timeline stop`` writes the same ``index.html``.
+
 ## 0.6.7 - 2026-10-29
 
 ### Changed

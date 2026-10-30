@@ -85,24 +85,37 @@ timeline_free :: proc(tl: ^Timeline) {
 	tl.asked, tl.missed, tl.seen = false, 0, 0
 }
 
+// Starts recording (the frames already recorded go): at most `max_frames` of the window (`rect` zeros) or of a part of it, at `scale`.
+timeline_begin :: proc(app: ^App, scale: f32, max_frames: int, rect: [4]int) {
+	tl := &the_remote.tl
+	timeline_free(tl)
+	tl.scale, tl.max, tl.rect = f32(clamp(scale, 0.05, 1)), clamp(max_frames, 2, TIMELINE_MAX_FRAMES), rect
+	tl.t0, tl.on = host.now_ns(&app.loop), true
+	request_frames(app, 2)
+}
+
+// Stops recording, the frames are kept (timeline_write writes them, timeline_free forgets them).
+timeline_end :: proc(app: ^App) {
+	tl := &the_remote.tl
+	tl.on = false
+	if tl.asked { render.capture_cancel(&app.r); tl.asked = false }
+}
+
 // Wren.timeline {action: start | stop | status, scale (0.3), max (240), target: window | page (start); dir, cols (6), all (stop)}
 m_timeline :: proc(app: ^App, c: ^Call) -> Reply {
 	tl := &the_remote.tl
 	action, _ := remote.param_string(c.params, "action", "status")
 	switch action {
 	case "start":
-		timeline_free(tl)
 		s, _ := remote.param_float(c.params, "scale", 0.3)
 		mx, _ := remote.param_int(c.params, "max", 240)
 		tgt, _ := remote.param_string(c.params, "target", "window")
-		tl.scale, tl.max = f32(clamp(s, 0.05, 1)), clamp(mx, 2, TIMELINE_MAX_FRAMES)
-		tl.rect = {}
+		rect: [4]int
 		if tgt == "page" {
 			pr := active_window(app).page_rect
-			tl.rect = {int(pr.min.x), int(pr.min.y), int(pr.max.x - pr.min.x), int(pr.max.y - pr.min.y)}
+			rect = {int(pr.min.x), int(pr.min.y), int(pr.max.x - pr.min.x), int(pr.max.y - pr.min.y)}
 		}
-		tl.t0, tl.on = host.now_ns(&app.loop), true
-		request_frames(app, 2)
+		timeline_begin(app, f32(s), mx, rect)
 		return done(fmt.tprintf(`{{"recording":true,"scale":%.2f,"max":%d}}`, tl.scale, tl.max))
 	case "status":
 		return done(fmt.tprintf(`{{"recording":%v,"frames":%d}}`, tl.on, len(tl.frames)))
@@ -111,8 +124,7 @@ m_timeline :: proc(app: ^App, c: ^Call) -> Reply {
 		if !ok { return fail(remote.ERR_PARAMS, "\"dir\": the folder for the pictures") }
 		cols, _ := remote.param_int(c.params, "cols", 6)
 		all, _ := remote.param_bool(c.params, "all")
-		tl.on = false
-		if tl.asked { render.capture_cancel(&app.r); tl.asked = false }
+		timeline_end(app)
 		rep := timeline_write(tl, dir, clamp(cols, 1, 24), all)
 		timeline_free(tl)
 		return rep
@@ -129,7 +141,8 @@ pixels_differing :: proc(a, b: []u8) -> int {
 	return n
 }
 
-@(private = "file")
+// Writes the frames to `dir`: NNN.png, sheet.png, timeline.json and index.html (a page that shows them big, one at a time or in a strip,
+// with what is known of each).
 timeline_write :: proc(tl: ^Timeline, dir: string, cols: int, all: bool) -> Reply {
 	frames := tl.frames[:]
 	if len(frames) == 0 { return fail(remote.ERR_FAILED, "no frame was recorded (was `timeline start` called, and did the window draw?)") }
@@ -194,5 +207,56 @@ timeline_write :: proc(tl: ^Timeline, dir: string, cols: int, all: bool) -> Repl
 	fmt.sbprintf(&b, `],"count":%d,"chrome":%d,"aba":%d,"sheet":%s,"sheetFrames":[%s],"cols":%d,"width":%d,"height":%d}}`,
 		n, chrome, flagged, remote.quote(sheet_path), strings.to_string(shown_list), cols, w, h)
 	if err := os.write_entire_file(fmt.tprintf("%s/timeline.json", dir), transmute([]byte)strings.to_string(b)); err != nil { return fail(remote.ERR_FAILED, "cannot write timeline.json") }
+	page := strings.builder_make(context.temp_allocator)
+	strings.write_string(&page, TIMELINE_VIEWER_HEAD)
+	strings.write_string(&page, strings.to_string(b))
+	strings.write_string(&page, TIMELINE_VIEWER_TAIL)
+	_ = os.write_entire_file(fmt.tprintf("%s/index.html", dir), transmute([]byte)strings.to_string(page))
 	return done(strings.to_string(b))
 }
+
+TIMELINE_VIEWER_HEAD :: `<!doctype html><meta charset="utf-8"><title>Wren timeline</title>
+<style>
+body{margin:0;background:#161616;color:#ddd;font:13px system-ui,sans-serif;display:flex;height:100vh}
+#strip{width:200px;overflow:auto;background:#101010;padding:6px;flex:none}
+#strip img{width:100%;display:block;margin:0 0 6px;border:3px solid transparent;box-sizing:border-box;cursor:pointer}
+#strip img.chrome{border-color:#f0961e}#strip img.aba{border-color:#e62828}#strip img.sel{outline:2px solid #4af}
+#main{flex:1;display:flex;flex-direction:column;min-width:0}
+#bars{height:54px;display:flex;align-items:flex-end;gap:1px;padding:4px 8px;background:#101010;flex:none}
+#bars div{flex:1;min-width:2px;background:#3a8;cursor:pointer}#bars .chrome{background:#f0961e}#bars .aba{background:#e62828}#bars .sel{outline:2px solid #4af}
+#big{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:8px;background:#0b0b0b}
+#big img{max-width:100%;max-height:100%}
+#info{padding:8px 14px;border-top:1px solid #333;font:12px ui-monospace,Consolas,monospace;white-space:pre;flex:none}
+#help{color:#888}
+</style>
+<div id="strip"></div><div id="main"><div id="bars"></div><div id="big"><img id="pic"></div><div id="info"></div></div>
+<script>
+const T = `
+
+TIMELINE_VIEWER_TAIL :: `;
+const F = T.frames; let sel = 0;
+const strip = document.getElementById('strip'), bars = document.getElementById('bars'), pic = document.getElementById('pic'), info = document.getElementById('info');
+const name = i => String(i).padStart(3, '0') + '.png';
+const peak = Math.max(1, ...F.map(f => f.diff));
+F.forEach((f, i) => {
+  const im = document.createElement('img'); im.src = name(i); im.loading = 'lazy'; im.className = f.aba ? 'aba' : f.kind === 'chrome' ? 'chrome' : '';
+  im.onclick = () => show(i); strip.appendChild(im);
+  const b = document.createElement('div'); b.style.height = Math.max(2, 50 * Math.sqrt(f.diff / peak)) + 'px'; b.className = f.aba ? 'aba' : f.kind === 'chrome' ? 'chrome' : '';
+  b.title = '#' + i + '  ' + f.ms + ' ms  ' + f.kind + '  diff ' + f.diff; b.onclick = () => show(i); bars.appendChild(b);
+});
+function show(i) {
+  sel = Math.max(0, Math.min(F.length - 1, i)); const f = F[sel];
+  pic.src = name(sel);
+  [...strip.children].forEach((c, k) => c.classList.toggle('sel', k === sel));
+  [...bars.children].forEach((c, k) => c.classList.toggle('sel', k === sel));
+  const c = strip.children[sel];
+  if (c.offsetTop < strip.scrollTop || c.offsetTop + c.offsetHeight > strip.scrollTop + strip.clientHeight) strip.scrollTop = c.offsetTop - 12;
+  info.textContent = 'frame ' + sel + ' / ' + (F.length - 1) + '   ' + f.ms + ' ms' + (sel ? '  (+' + (f.ms - F[sel - 1].ms).toFixed(1) + ' ms)' : '') +
+    '\nkind: ' + f.kind + '   scroll: ' + f.scroll + '   hold: ' + f.hold + '   loading: ' + f.loading + '   missed before: ' + f.skipped +
+    '\npixels unlike the frame before: ' + f.diff + (f.aba ? '   A-B-A: unlike both neighbours, which are alike' : '') +
+    '\n\n<- -> frames   Home End   (red: A-B-A, orange: a chrome frame made while a page kept the thread; bars: how much each frame changed)';
+}
+addEventListener('keydown', e => { if (e.key === 'ArrowRight') show(sel + 1); else if (e.key === 'ArrowLeft') show(sel - 1); else if (e.key === 'Home') show(0); else if (e.key === 'End') show(F.length - 1); });
+show(0);
+</script>
+`
