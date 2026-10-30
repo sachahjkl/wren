@@ -10,6 +10,8 @@ import "core:os"
 import "core:strings"
 import "core:time"
 import win "core:sys/windows"
+
+_ :: win.HWND   // (Linux uses nothing of it: the import stays, as -vet counts)
 import "toolkit:draw"
 import "toolkit:font"
 import "toolkit:platform"

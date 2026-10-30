@@ -169,6 +169,7 @@
 <li><a href="../docs/releases/v0.6.15.html">Wren 0.6.15</a></li>
 <li><a href="../docs/releases/v0.6.16.html">Wren 0.6.16</a></li>
 <li><a href="../docs/releases/v0.6.17.html">Wren 0.6.17</a></li>
+<li><a href="../docs/releases/v0.6.18.html">Wren 0.6.18</a></li>
 <li><a href="../docs/releases/v0.6.2.html">Wren 0.6.2</a></li>
 <li><a href="../docs/releases/v0.6.3.html">Wren 0.6.3</a></li>
 <li><a href="../docs/releases/v0.6.4.html">Wren 0.6.4</a></li>
@@ -384,6 +385,27 @@ Unix socket works), <strong>tab tear-off</strong> across windows under a real wi
 z-order; X11 can but the toolkit does not surface it yet), the desktop's <strong>accent / selection colours</strong> and
 <strong>wheel-scroll</strong> lines-per-notch (defaults used until the platform layer reports them), and the dev-tools preview of
 audio formats the built-in player cannot demux (MP3, WAV, …; MCI is Windows-only).</p>
+<h2 id="slice-7-2026-10-30-wren-links-and-runs-on-linux"><a class="anchor" href="#slice-7-2026-10-30-wren-links-and-runs-on-linux" aria-hidden="true">#</a>Slice 7 (2026-10-30): Wren links and runs on Linux</h2>
+<p><code>./build.sh deps</code> then <code>./build.sh wren</code> makes <code>build/wren</code>, and it runs (verified in NixOS under WSLg, Wayland, with the
+software Vulkan of Mesa, lavapipe): the window, the start page, <code>wren ctl</code> (start, nav, shot, eval, console), example.com
+and GitHub's repository page load and draw. What it took:</p>
+<ul>
+<li><code>tools/fetch_wgpu.sh</code>: wgpu-native (the release Odin's <code>vendor:wgpu</code> names), SHA-256 checked and sealed like Wasmtime
+(one object, only <code>wgpu*</code> kept), put where Odin looks for it. Two Rust libraries in one link otherwise stop on
+<code>rust_eh_personality</code>. <code>tools/fetch_wasmtime.sh</code> also fetches the licence text the browser bundles.</li>
+<li>Four imports of <code>core:sys/windows</code> / <code>wb:desktop</code> that only Windows used (an unused import is an error under <code>-vet</code>).</li>
+<li>The system's <code>libopus</code>, <code>libasound</code> and <code>libfontconfig</code> to link; <code>libwayland-client</code>, <code>libxkbcommon</code> (or <code>libxcb</code>) and
+a Vulkan or GL driver at run time. On NixOS: <code>nix shell</code> with clang, lld, nasm, pkg-config, rustup (1.99.1), and
+<code>LIBRARY_PATH</code> / <code>LD_LIBRARY_PATH</code> for those libraries.</li>
+<li><code>build/js/wren_js.wasm</code> is the JS engine's image: a Windows build makes it (<code>tools\build_js.ps1</code>) and the file is
+portable, so a Linux checkout copies it.</li>
+</ul>
+<p>A bug Linux found: <code>Performance_timeline</code> freed the navigation entry's strings (a <code>defer</code> in the <code>if</code> block) before
+marshalling them, so <code>performance.getEntriesByType("navigation")</code> read freed memory. The Windows heap kept the bytes,
+glibc did not: GitHub's web-vitals code threw <code>JSON.parse: bad escape</code> and its page showed "Unable to load page".</p>
+<p>Not checked: whether the light / dark appearance follows the system (the start page came up light), drag and drop, the
+system file dialogs through zenity, a real GPU in WSL (lavapipe was used), keyboard and pointer input in the window (only
+<code>wren ctl</code>'s synthetic input was used), <code>crash_e2e.sh</code> with this binary.</p>
 <h2 id="media-on-linux-decisions"><a class="anchor" href="#media-on-linux-decisions" aria-hidden="true">#</a>Media on Linux: decisions</h2>
 <ul>
 <li><strong>AV1</strong>: rav1d (already linked for AVIF), in software, on every system (<code>av1_soft.odin</code>); Windows keeps Media
@@ -500,6 +522,7 @@ runtime is process-wide.</li>
 <li><a href="#slice-4-2026-10-28-the-toolkits-linux-window">Slice 4 (2026-10-28): the toolkit's Linux window</a></li>
 <li><a href="#slice-5-2026-10-28-night-the-renderer-on-linux-the-shells-render-path">Slice 5 (2026-10-28, night): the renderer on Linux, the shell's render path</a></li>
 <li><a href="#slice-6-2026-10-28-night-srcbrowser-type-checks-for-linux">Slice 6 (2026-10-28, night): src/browser type-checks for Linux</a></li>
+<li><a href="#slice-7-2026-10-30-wren-links-and-runs-on-linux">Slice 7 (2026-10-30): Wren links and runs on Linux</a></li>
 <li><a href="#media-on-linux-decisions">Media on Linux: decisions</a></li>
 <li><a href="#inventory-of-slice-1-2026-10-27">Inventory of slice 1 (2026-10-27)</a></li>
 <li><a href="#order-recommended-in-slices">Order recommended, in slices</a></li>

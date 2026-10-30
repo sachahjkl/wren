@@ -618,12 +618,15 @@ Performance_timeline :: proc(c: ^Call, entry_type: Api_PerformanceEntryType, fro
 	if entry_type < .Navigation || entry_type > .Long_Animation_Frame { return "[]" }
 	kind := Tl_Kind(entry_type)
 	list := make([dynamic]Tl_Entry, context.temp_allocator)
+	nav: Tl_Entry
+	has_nav := false
+	// (the entry's strings are freed once the list is marshalled: a defer in the block below would free them before)
+	defer if has_nav { tl_entry_free(&nav) }
 	if kind == .Navigation {
 		// (a worker has no navigation: Navigation Timing is a document's)
 		if from_seq > 0 || p.worker != nil { return "[]" }
-		e := nav_entry(p)
-		defer tl_entry_free(&e)
-		append(&list, e)
+		nav, has_nav = nav_entry(p), true
+		append(&list, nav)
 	} else if t := tl_of(p, false); t != nil {
 		for e in t.bufs[kind].entries { if e.seq >= from_seq { append(&list, e) } }
 	}

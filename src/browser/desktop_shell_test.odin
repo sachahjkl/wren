@@ -6,6 +6,8 @@ import "core:testing"
 import "wb:config"
 import "wb:desktop"
 
+_ :: desktop.LAUNCHER_MARK   // (Linux uses nothing of it: the import stays, as -vet counts)
+
 @(test)
 desktop_identity_is_well_formed :: proc(t: ^testing.T) {
 	id := desktop_identity()

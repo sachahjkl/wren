@@ -188,6 +188,30 @@ z-order; X11 can but the toolkit does not surface it yet), the desktop's **accen
 **wheel-scroll** lines-per-notch (defaults used until the platform layer reports them), and the dev-tools preview of
 audio formats the built-in player cannot demux (MP3, WAV, …; MCI is Windows-only).
 
+## Slice 7 (2026-10-30): Wren links and runs on Linux
+
+`./build.sh deps` then `./build.sh wren` makes `build/wren`, and it runs (verified in NixOS under WSLg, Wayland, with the
+software Vulkan of Mesa, lavapipe): the window, the start page, `wren ctl` (start, nav, shot, eval, console), example.com
+and GitHub's repository page load and draw. What it took:
+
+- `tools/fetch_wgpu.sh`: wgpu-native (the release Odin's `vendor:wgpu` names), SHA-256 checked and sealed like Wasmtime
+  (one object, only `wgpu*` kept), put where Odin looks for it. Two Rust libraries in one link otherwise stop on
+  `rust_eh_personality`. `tools/fetch_wasmtime.sh` also fetches the licence text the browser bundles.
+- Four imports of `core:sys/windows` / `wb:desktop` that only Windows used (an unused import is an error under `-vet`).
+- The system's `libopus`, `libasound` and `libfontconfig` to link; `libwayland-client`, `libxkbcommon` (or `libxcb`) and
+  a Vulkan or GL driver at run time. On NixOS: `nix shell` with clang, lld, nasm, pkg-config, rustup (1.99.1), and
+  `LIBRARY_PATH` / `LD_LIBRARY_PATH` for those libraries.
+- `build/js/wren_js.wasm` is the JS engine's image: a Windows build makes it (`tools\build_js.ps1`) and the file is
+  portable, so a Linux checkout copies it.
+
+A bug Linux found: `Performance_timeline` freed the navigation entry's strings (a `defer` in the `if` block) before
+marshalling them, so `performance.getEntriesByType("navigation")` read freed memory. The Windows heap kept the bytes,
+glibc did not: GitHub's web-vitals code threw `JSON.parse: bad escape` and its page showed "Unable to load page".
+
+Not checked: whether the light / dark appearance follows the system (the start page came up light), drag and drop, the
+system file dialogs through zenity, a real GPU in WSL (lavapipe was used), keyboard and pointer input in the window (only
+`wren ctl`'s synthetic input was used), `crash_e2e.sh` with this binary.
+
 ## Media on Linux: decisions
 
 - **AV1**: rav1d (already linked for AVIF), in software, on every system (`av1_soft.odin`); Windows keeps Media

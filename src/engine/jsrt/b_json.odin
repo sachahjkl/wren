@@ -32,9 +32,31 @@ jp_ws :: proc(p: ^JSON_Parser) {
 jp_fail :: proc(p: ^JSON_Parser, msg: string) -> Value {
 	if !p.err {
 		p.err = true
-		throw_syntax_error(p.ctx, cat(p.ctx, "JSON.parse: ", msg))
+		// where it failed, and a few characters around it (what a page's developer needs to find the text that did not parse)
+		at := min(p.pos, p.n)
+		from, to := max(at - 20, 0), min(at + 20, p.n)
+		text := make([]u8, to - from, tmp(p.ctx.rt))
+		for i in from ..< to {
+			c := str_at(p.s, i)
+			text[i - from] = c >= 0x20 && c < 0x7f ? u8(c) : '?'
+		}
+		throw_syntax_error(p.ctx, cat(p.ctx, "JSON.parse: ", msg, " at position ", digits_of(p.ctx, at), " of ", digits_of(p.ctx, p.n), " near \"", string(text), "\""))
 	}
 	return EXCEPTION
+}
+
+@(private = "file")
+digits_of :: proc(ctx: ^Context, v: int) -> string {
+	buf := make([]u8, 20, tmp(ctx.rt))
+	n := len(buf)
+	x := v
+	for {
+		n -= 1
+		buf[n] = u8('0' + x % 10)
+		x /= 10
+		if x == 0 {break}
+	}
+	return string(buf[n:])
 }
 
 // The parse record of a value (json-parse-with-source): the parsed value, the source span of a
