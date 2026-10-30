@@ -40,7 +40,7 @@ address, path and name, one line each), up to `browser.download.list_max` of the
 
 | Preference | Default | |
 |---|---|---|
-| `browser.download.ask` | `true` | Ask where to save each download (the Save dialog of Windows). |
+| `browser.download.ask` | `false` | Ask where to save each download (the Save dialog of Windows). Off: it goes at once to the folder below, under a free name. |
 | `browser.download.directory` | empty | The folder downloads go to; empty is the Downloads folder of Windows. |
 | `browser.download.button` | `auto` | When the toolbar's button shows. |
 | `browser.download.list_max` | 200 | Finished downloads the list keeps, across restarts. |

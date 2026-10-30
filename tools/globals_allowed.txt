@@ -93,6 +93,7 @@ dnd_image.odin dnd_last_picture page  # the picture of the page's drag
 dnd_shell.odin DND_PREFS process  # a table
 dnd_shell.odin dnd page  # the drag of a page (one at a time in the process)
 download.odin DOWNLOAD_PREFS process  # a table
+download.odin dl_picking process  # the folder dialog of the downloads page is open
 download.odin dls process
 download_test.odin downloads_test_lock test
 downloads_ui.odin dview page  # about:downloads' view (a page of the browser) and the button's drop-down
