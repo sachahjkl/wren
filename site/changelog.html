@@ -47,11 +47,24 @@
     <p class="intro">Eight versions in twelve days: the first public build, JavaScript, a JIT, a text engine of its own, a browser that speaks to screen readers, then a JavaScript engine written in Odin.</p>
     <div class="timeline">
 <!-- releases:begin -->
-      <article class="release latest" id="v0-6-15">
+      <article class="release latest" id="v0-6-16">
         <div class="rail"><span class="dot"></span></div>
         <div class="release-body">
           <p class="release-date"><time datetime="2026-10-30">October 30, 2026</time></p>
-          <div class="release-title"><h3>0.6.15</h3><span class="badge">Latest</span></div>
+          <div class="release-title"><h3>0.6.16</h3><span class="badge">Latest</span></div>
+          <ul class="release-list">
+            <li><strong>Each module is compiled once.</strong> The engine compiled every ES module twice: when it arrived, to learn what it imports, and again when the graph ran, because the first was not kept.</li>
+            <li><strong>Modules are in the bytecode cache.</strong> Compiled modules go to the profile's cache, as classic scripts already did, so a module seen before is read instead of parsed.</li>
+          </ul>
+          <p class="release-links"><a href="https://github.com/sachahjkl/wren/blob/master/docs/releases/v0.6.16.md">Release notes</a> ·
+            <a href="https://github.com/sachahjkl/wren/releases/tag/v0.6.16">Download</a></p>
+        </div>
+      </article>
+      <article class="release" id="v0-6-15">
+        <div class="rail"><span class="dot"></span></div>
+        <div class="release-body">
+          <p class="release-date"><time datetime="2026-10-30">October 30, 2026</time></p>
+          <div class="release-title"><h3>0.6.15</h3></div>
           <ul class="release-list">
             <li><strong>A style pass that really uses the threads.</strong> On a page whose elements sit under one chain of containers (GitHub, most web apps), the work was shared level by level, so one thread did nearly all of…</li>
             <li><strong>A way to measure a real site</strong>: <code>tools\perf.ps1 -Only github_load,github_scroll</code> loads and scrolls the repository page with the profiler.</li>
