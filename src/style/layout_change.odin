@@ -28,7 +28,7 @@ LAYOUT_ONLY_PROPS :: [?]Prop{
 	.Flex_Direction, .Flex_Wrap, .Flex_Grow, .Flex_Shrink, .Flex_Basis, .Justify_Content, .Align_Items, .Align_Self,
 	.Align_Content, .Order, .Row_Gap, .Column_Gap,
 	.Letter_Spacing, .Word_Spacing, .Text_Align, .Text_Indent, .Text_Overflow, .Word_Break, .Overflow_Wrap, .Tab_Size,
-	.Text_Wrap_Mode, .Text_Wrap_Style, .Hyphens, .Outline_Width, .Border_Collapse, .Border_Spacing,
+	.Text_Wrap_Mode, .Text_Wrap_Style, .Hyphens, .Outline_Width, .Border_Collapse, .Border_Spacing, .Table_Layout,
 	.Text_Decoration_Style, .Text_Decoration_Thickness, .Text_Underline_Offset,
 }
 

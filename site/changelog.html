@@ -47,11 +47,24 @@
     <p class="intro">Eight versions in twelve days: the first public build, JavaScript, a JIT, a text engine of its own, a browser that speaks to screen readers, then a JavaScript engine written in Odin.</p>
     <div class="timeline">
 <!-- releases:begin -->
-      <article class="release latest" id="v0-6-18">
+      <article class="release latest" id="v0-6-19">
         <div class="rail"><span class="dot"></span></div>
         <div class="release-body">
           <p class="release-date"><time datetime="2026-10-30">October 30, 2026</time></p>
-          <div class="release-title"><h3>0.6.18</h3><span class="badge">Latest</span></div>
+          <div class="release-title"><h3>0.6.19</h3><span class="badge">Latest</span></div>
+          <ul class="release-list">
+            <li><strong><code>table-layout: fixed</code> is honoured.</strong> A table with a width and <code>table-layout: fixed</code> took its columns from the content, so a commit message that does not wrap widened the file list of a GitHub…</li>
+            <li><strong>A frame less between input and screen</strong>, from the latest <code>gui_toolkit</code>: on GitHub, with the pointer moving over the page, the time from an input to the refresh that shows it goes from 49.9 ms to…</li>
+          </ul>
+          <p class="release-links"><a href="https://github.com/sachahjkl/wren/blob/master/docs/releases/v0.6.19.md">Release notes</a> ·
+            <a href="https://github.com/sachahjkl/wren/releases/tag/v0.6.19">Download</a></p>
+        </div>
+      </article>
+      <article class="release" id="v0-6-18">
+        <div class="rail"><span class="dot"></span></div>
+        <div class="release-body">
+          <p class="release-date"><time datetime="2026-10-30">October 30, 2026</time></p>
+          <div class="release-title"><h3>0.6.18</h3></div>
           <ul class="release-list">
             <li><strong><code>performance.getEntriesByType("navigation")</code> read freed memory.</strong> The strings of the navigation entry were freed before they were turned into JSON.</li>
             <li><strong><code>JSON.parse</code> errors say where they stopped</strong>, with the text around the position.</li>

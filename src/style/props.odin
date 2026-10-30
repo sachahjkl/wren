@@ -287,6 +287,7 @@ prop_fields :: proc(c: ^Computed, p: Prop) -> (a: any, b: any) {
 	case .Accent_Color: return fa(&c.accent_color), NO_FIELD
 	case .Appearance: return fa(&c.appearance), NO_FIELD
 	case .Resize: return fa(&c.resize), NO_FIELD
+	case .Table_Layout: return fa(&c.table_layout), NO_FIELD
 	case .Column_Count: return fa(&c.column_count), NO_FIELD
 	case .Column_Width: return fa(&c.column_width), NO_FIELD
 	case .Grid_Template_Columns: return fa(&c.grid_template_columns), NO_FIELD

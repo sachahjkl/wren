@@ -221,6 +221,7 @@ Stroke_Linecap :: enum u8 { Butt, Round, Square }
 Stroke_Linejoin :: enum u8 { Miter, Round, Bevel }
 Appearance :: enum u8 { None, Auto, Menulist_Button, Textfield, Base }
 Resize :: enum u8 { None, Both, Horizontal, Vertical, Block, Inline }
+Table_Layout :: enum u8 { Auto, Fixed }
 
 ////////////////////////////////
 // Grid (CSS Grid 2): stored for the grid layout

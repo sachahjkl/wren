@@ -218,6 +218,7 @@ Computed :: struct {
 	outline_offset: f32,
 	border_collapse: bool,
 	border_spacing: [2]f32,
+	table_layout: Table_Layout,
 	// --- text (CSS Text 4, Fonts 4, Text Decoration 4) ---
 	font_stretch:      f32,                 // percentage, 100 = normal
 	font_variant_caps: Font_Variant_Caps,
@@ -368,7 +369,7 @@ Prop :: enum u8 {
 	Background_Color, Background_Image, Background_Repeat, Background_Position, Background_Size,
 	Background_Origin, Background_Clip, Background_Attachment, Box_Shadow,
 	List_Style_Type, List_Style_Position, Cursor, Pointer_Events, User_Select, Content,
-	Outline_Width, Outline_Style, Outline_Color, Outline_Offset, Border_Collapse, Border_Spacing,
+	Outline_Width, Outline_Style, Outline_Color, Outline_Offset, Border_Collapse, Border_Spacing, Table_Layout,
 	Transform, Transform_Origin, Transform_Box, Transform_Style, Translate, Rotate, Scale, Perspective, Perspective_Origin,
 	Backface_Visibility,
 	Transition_Property, Transition_Duration, Transition_Timing_Function, Transition_Delay, Transition_Behavior,

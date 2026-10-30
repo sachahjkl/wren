@@ -411,7 +411,7 @@ COMPUTED_PROPERTIES :: [?]string{
 	"letter-spacing", "line-height", "list-style-position", "list-style-type", "margin-bottom", "margin-left", "margin-right",
 	"margin-top", "max-height", "max-width", "min-height", "min-width", "object-fit", "opacity", "order", "outline-color",
 	"outline-offset", "outline-style", "outline-width", "overflow-wrap", "overflow-x", "overflow-y", "padding-bottom",
-	"padding-left", "padding-right", "padding-top", "pointer-events", "position", "right", "row-gap", "text-align",
+	"padding-left", "padding-right", "padding-top", "pointer-events", "position", "right", "row-gap", "table-layout", "text-align",
 	"text-decoration-color", "text-decoration-line", "text-decoration-style", "text-indent", "text-overflow", "text-shadow",
 	"text-transform", "top", "transform", "transform-origin", "user-select", "vertical-align", "visibility",
 	"white-space", "width", "word-break", "word-spacing", "z-index",
@@ -584,6 +584,7 @@ computed_value :: proc(cs: ^style.Computed, name: string, used: Used_Box) -> str
 	case "border-bottom-left-radius": return css_length(cs.radius[.Bottom_Left].h)
 	case "border-collapse": return cs.border_collapse ? "collapse" : "separate"
 	case "border-spacing": return fmt.tprintf("%s %s", css_px(cs.border_spacing[0]), css_px(cs.border_spacing[1]))
+	case "table-layout": return kw(cs.table_layout)
 	case "opacity": return css_num(cs.opacity)
 	case "vertical-align":
 		if cs.vertical_align.kind == .Length { return css_length(cs.vertical_align.amount) }

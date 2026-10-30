@@ -297,11 +297,106 @@ distribute_columns :: proc(e: Column_Extents, avail: f32, widths: []f32) {
 @(private)
 table_pb :: proc(c: ^Ctx, b: ^Box) -> f32 { return intrinsic_pb(c, b) }
 
+// table-layout: fixed (CSS 2.1 §17.5.2.1) applies to a table whose width is not auto: the columns' widths come from the
+// <col> elements and the cells of the first row, never from the content (what does not fit is clipped or overflows),
+// and the automatic columns share what is left equally.
+@(private)
+table_is_fixed :: proc(b: ^Box) -> bool {
+	#partial switch b.cs.width.kind {
+	case .Px, .Percent, .Calc: return b.cs.table_layout == .Fixed
+	}
+	return false
+}
+
+// The widths a fixed table's columns were given: a length (border-box, px; -1 when none) or a percentage of the table
+// (0 when none). A <col> wins over a cell of the first row; a cell that spans columns gives each its share.
+@(private)
+fixed_column_specs :: proc(c: ^Ctx, bi: i32, g: ^Table_Grid, base: f32) -> (spec, pct: []f32) {
+	n := int(g.ncols)
+	fixed := make([]bool, n, context.temp_allocator)
+	pct = make([]f32, n, context.temp_allocator)
+	spec = make([]f32, n, context.temp_allocator)
+	sh, _ := spacing_of(c, c.l.boxes[bi].cs)
+	collapse := c.l.boxes[bi].cs.border_collapse
+	column_widths(c, bi, n, fixed, pct, spec)
+	given := make([]bool, n, context.temp_allocator)
+	for j in 0 ..< n { given[j] = fixed[j] || pct[j] > 0 }
+	for &gc in g.cells {
+		if gc.row != 0 { continue }
+		resolve_cell(c, gc.box, base, collapse)
+		k := &c.l.boxes[gc.box]
+		end := min(int(gc.col + gc.cs), n)
+		span := f32(end - int(gc.col))
+		#partial switch k.cs.width.kind {
+		case .Px:
+			v := k.cs.width.v * c.scale
+			pb := intrinsic_pb(c, k)
+			w := k.cs.box_sizing == .Border_Box ? max(v, pb) : v + pb
+			share := max(w - sh * (span - 1), 0) / span
+			for j in int(gc.col) ..< end {
+				if given[j] { continue }
+				fixed[j], spec[j] = true, share
+			}
+		case .Percent:
+			for j in int(gc.col) ..< end {
+				if given[j] { continue }
+				pct[j] = k.cs.width.v / span
+			}
+		}
+	}
+	for j in 0 ..< n { if !fixed[j] || pct[j] > 0 { spec[j] = -1 } }
+	return
+}
+
+// A fixed table's column widths for `avail` (the table's width less the spacing).
+@(private)
+fixed_column_widths :: proc(spec, pct: []f32, avail: f32, widths: []f32) {
+	n := len(widths)
+	known: f32
+	autos := 0
+	room: f32 = 100
+	for j in 0 ..< n {
+		switch {
+		case spec[j] >= 0: widths[j] = spec[j]
+		case pct[j] > 0:
+			p := clamp(pct[j], 0, room)
+			room -= p
+			widths[j] = p * avail / 100
+		case:
+			widths[j] = -1
+			autos += 1
+			continue
+		}
+		known += widths[j]
+	}
+	left := max(avail - known, 0)
+	if autos > 0 {
+		for j in 0 ..< n { if widths[j] < 0 { widths[j] = left / f32(autos) } }
+		return
+	}
+	// every column was given a width: the table's width is what they ask for, or more: the excess is shared by them
+	if left > 0 && known > 0 {
+		for j in 0 ..< n { widths[j] += left * widths[j] / known }
+	} else if left > 0 && n > 0 {
+		for j in 0 ..< n { widths[j] = left / f32(n) }
+	}
+}
+
 table_intrinsic :: proc(c: ^Ctx, bi: i32) -> [2]f32 {
 	g := table_grid(c, bi)
-	e := column_info(c, bi, &g, 0)
 	b := &c.l.boxes[bi]
 	sh, _ := spacing_of(c, b.cs)
+	if table_is_fixed(b) {
+		// the columns given a length: what a fixed table asks for, whatever its content
+		spec, _ := fixed_column_specs(c, bi, &g, 0)
+		pb := table_pb(c, b)
+		if b.cs.border_collapse { pb -= px_of(c, b.cs.padding[.Left], 0) + px_of(c, b.cs.padding[.Right], 0) }
+		total := pb + sh * f32(g.ncols + 1)
+		for v in spec { total += max(v, 0) }
+		for cap in g.captions { total = max(total, intrinsic(c, cap)[0]) }
+		return {total, total}
+	}
+	e := column_info(c, bi, &g, 0)
 	pb := table_pb(c, b)
 	if b.cs.border_collapse { pb -= px_of(c, b.cs.padding[.Left], 0) + px_of(c, b.cs.padding[.Right], 0) }
 	mn := pb + sh * f32(g.ncols + 1)
@@ -395,11 +490,16 @@ layout_table :: proc(c: ^Ctx, bi: i32, w, cb_h, forced_h: f32) -> f32 {
 	cx, cy := content_x(b), content_y(b)
 	cw := max(w - pb_w(b), 0)
 	n := int(g.ncols)
-	e := column_info(c, bi, &g, cw)
 
 	// column widths
 	widths := make([]f32, n, context.temp_allocator)
-	distribute_columns(e, cw - sh * f32(n + 1), widths)
+	if table_is_fixed(b) {
+		spec, pct := fixed_column_specs(c, bi, &g, cw)
+		fixed_column_widths(spec, pct, cw - sh * f32(n + 1), widths)
+	} else {
+		e := column_info(c, bi, &g, cw)
+		distribute_columns(e, cw - sh * f32(n + 1), widths)
+	}
 	col_x := make([]f32, n + 1, context.temp_allocator)
 	{
 		x := cx + sh

@@ -7,6 +7,14 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 
 ## Unreleased
 
+## 0.6.19 - 2026-10-30
+
+### Changed
+- **Updated to the latest `gui_toolkit` master (0.55): a frame less of latency (input to screen on GitHub, a pointer moving: 49.9 ms to 35.9 ms on average), a lazy column, `ui.rich_paragraph` versions, `ui.next_merge`, `ui.box_at`, layout warnings in debug builds, a find in page that no longer reads a freed scope, and a `devtools` package (CDP) that Wren does not use.**
+
+### Fixed
+- **`table-layout: fixed` is honoured.** A table with a width and `table-layout: fixed` took its columns from the content, so a commit message with `white-space: nowrap` widened the file list of a GitHub repository page over its sidebar. The columns now come from the `<col>` elements and the first row, the automatic ones share what is left, and `getComputedStyle` reports `table-layout`.
+
 ## 0.6.18 - 2026-10-30
 
 ### Added
