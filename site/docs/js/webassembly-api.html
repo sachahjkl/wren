@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>The WebAssembly JavaScript API (plan and state) · Wren docs</title>
-<meta name="description" content="The WebAssembly JavaScript API (plan and state) A page's JavaScript has no WebAssembly object yet.">
+<title>The WebAssembly JavaScript API · Wren docs</title>
+<meta name="description" content="The WebAssembly JavaScript API A page's own WebAssembly modules (Blazor WebAssembly, Emscripten, wasm-bindgen) run beside the engine's, on the same Wasmtime.">
 <link rel="icon" type="image/png" sizes="32x32" href="../../img/logo-32.png">
 <link rel="stylesheet" href="../../style.css">
 <link rel="stylesheet" href="../../docs/docs.css">
@@ -173,6 +173,7 @@
 <li><a href="../../docs/releases/v0.6.18.html">Wren 0.6.18</a></li>
 <li><a href="../../docs/releases/v0.6.19.html">Wren 0.6.19</a></li>
 <li><a href="../../docs/releases/v0.6.2.html">Wren 0.6.2</a></li>
+<li><a href="../../docs/releases/v0.6.20.html">Wren 0.6.20</a></li>
 <li><a href="../../docs/releases/v0.6.3.html">Wren 0.6.3</a></li>
 <li><a href="../../docs/releases/v0.6.4.html">Wren 0.6.4</a></li>
 <li><a href="../../docs/releases/v0.6.5.html">Wren 0.6.5</a></li>
@@ -199,7 +200,7 @@
 <li><a href="../../docs/js/bindgen.html">bindgen: Odin output and Odin input</a></li>
 <li><a href="../../docs/js/odin-abi.html">The generic Odin ABI for the engine boundary</a></li>
 <li><a href="../../docs/js/odin-glue.html">Writing Wren's JavaScript glue in Odin</a></li>
-<li><a href="../../docs/js/webassembly-api.html" aria-current="page" class="active">The WebAssembly JavaScript API (plan and state)</a></li>
+<li><a href="../../docs/js/webassembly-api.html" aria-current="page" class="active">The WebAssembly JavaScript API</a></li>
 </ul>
 </div>
 </nav>
@@ -209,69 +210,72 @@
 <nav class="doc-crumbs" aria-label="Breadcrumb"><ol>
 <li><a href="../../docs/index.html">Docs</a></li>
 <li>More</li>
-<li aria-current="page">The WebAssembly JavaScript API (plan and state)</li>
+<li aria-current="page">The WebAssembly JavaScript API</li>
 </ol></nav>
-<h1 id="the-webassembly-javascript-api-plan-and-state"><a class="anchor" href="#the-webassembly-javascript-api-plan-and-state" aria-hidden="true">#</a>The WebAssembly JavaScript API (plan and state)</h1>
-<p>A page's JavaScript has no <code>WebAssembly</code> object yet. Blazor WebAssembly, Emscripten, wasm-bindgen and every site that
-tests <code>typeof WebAssembly</code> stop there: <a href="http://jeremyetu.azurewebsites.net/" rel="noopener">http://jeremyetu.azurewebsites.net/</a> (a .NET 10 Blazor Web App) throws "This
-browser does not support WebAssembly." from <code>blazor.web.js</code> and never starts its server circuit either.</p>
-<p>Wren runs WebAssembly for itself (the engine, the pages written in Wasm), but a page's own modules need their own
-instances, and the page's JavaScript must see their memory.</p>
-<h2 id="state"><a class="anchor" href="#state" aria-hidden="true">#</a>State</h2>
-<p><code>javascript.webassembly.enabled</code> (off by default: a page that finds the object expects all of it, so a partial one does
-more harm than none) gives the realm a <code>WebAssembly</code> object with <code>validate</code>, <code>compile</code>, <code>Module</code> (<code>imports</code>, <code>exports</code>,
-<code>customSections</code>) and the three errors. A module does not run yet. The path is the one the rest of the API will take:</p>
+<h1 id="the-webassembly-javascript-api"><a class="anchor" href="#the-webassembly-javascript-api" aria-hidden="true">#</a>The WebAssembly JavaScript API</h1>
+<p>A page's own WebAssembly modules (Blazor WebAssembly, Emscripten, wasm-bindgen) run beside the engine's, on the same
+Wasmtime. On by default (<code>javascript.webassembly.enabled</code>). <code>WebAssembly</code> exists in windows and workers; it costs nothing
+until a script reads it (an auto-init property: <code>native/js/odin/web_wasm.js</code> is evaluated then).</p>
+<p>Checked: a .NET 10 Blazor Web App (<a href="https://jeremyetu.azurewebsites.net/" rel="noopener">https://jeremyetu.azurewebsites.net/</a>: its server circuit on the first visit, then
+.NET in WebAssembly with a 48 MB heap and client-side navigation), a Yew (wasm-bindgen) application, SQLite Fiddle
+(Emscripten in a worker, see the limits), and web-platform-tests <code>wasm/jsapi</code> (<code>wpt/expectations</code>).</p>
 <div class="table-box"><table>
 <thead><tr><th>Layer</th><th>File</th></tr></thead>
 <tbody>
 <tr><td>the description</td><td><code>api/webassembly.widl</code> (generates <code>wj.wr_WebAssembly_*</code> and the host table)</td></tr>
-<tr><td>the browser side</td><td><code>src/page/webassembly.odin</code> (calls) over <code>src/wasm/user_module.odin</code> (Wasmtime; the description of a module comes from <code>binary.odin</code>'s reader)</td></tr>
-<tr><td>the realm side</td><td><code>native/js/odin/web_wasm.odin</code> (the natives, <code>web_wasm_start</code> when the browser says so) and <code>web_wasm.js</code> (the objects)</td></tr>
-<tr><td>the tests</td><td><code>examples/jsweb/webassembly.js</code> (<code>jswebtest webassembly</code>), <code>src/wasm/wasm_test.odin</code>, <code>src/csp/csp_test.odin</code></td></tr>
+<tr><td>the browser side</td><td><code>src/page/webassembly.odin</code> (calls) over <code>src/wasm/user_module.odin</code> and <code>user_store.odin</code> (Wasmtime)</td></tr>
+<tr><td>the realm side</td><td><code>native/js/odin/web_wasm.odin</code> (the natives, the conversions of values) and <code>web_wasm.js</code> (the objects)</td></tr>
+<tr><td>the bytes of a memory</td><td><code>Buffer_Host</code> in <code>src/engine/jsrt</code> (<code>b_typed.odin</code>, <code>object.odin</code>), <code>JS_NewArrayBufferHost</code> in <code>jscapi</code></td></tr>
+<tr><td>the tests</td><td><code>examples/jsweb/webassembly.js</code> (<code>jswebtest webassembly</code>), <code>src/wasm/wasm_test.odin</code>, <code>src/csp/csp_test.odin</code>, <code>jsloadtest</code> (the policy)</td></tr>
 </tbody>
 </table></div>
 <p><code>web_wasm.js</code> is the one exception to the rule of <code>native/js/odin/prelude.odin</code> (no JavaScript in the realm): it is not in
-the image, and runs only when the preference is on. <code>compile</code> compiles on the calling thread for now: its promise is
-settled when it returns. The Content Security Policy applies: <code>'wasm-unsafe-eval'</code> or <code>'unsafe-eval'</code> where a policy has a
-<code>script-src</code> or <code>default-src</code>, otherwise a <code>CompileError</code> (and a violation report). <code>validate</code> is not subject to it.</p>
-<h2 id="what-a-page-needs-blazors-dotnetjs-as-the-case"><a class="anchor" href="#what-a-page-needs-blazors-dotnetjs-as-the-case" aria-hidden="true">#</a>What a page needs (Blazor's <code>dotnet.js</code> as the case)</h2>
-<p><code>WebAssembly.Module</code>, <code>Instance</code>, <code>instantiate</code>, <code>instantiateStreaming</code>, <code>compile</code>, <code>validate</code>, <code>Memory</code>, <code>Table</code>,
-<code>Global</code>, <code>Tag</code>, <code>CompileError</code>, <code>LinkError</code>, <code>RuntimeError</code>, <code>Module.imports/exports/customSections</code>. Exports are
-functions (their <code>length</code>, <code>name</code>, <code>.call</code>), memories, tables (<code>get</code>, <code>set</code>, <code>grow</code>: <code>wasmTable.get(i)</code> is the call of a
-function pointer), globals. Imports are JavaScript functions the module calls (hundreds in .NET's runtime), memories, tables,
-globals. i64 is <code>BigInt</code>. A trap is a <code>WebAssembly.RuntimeError</code>.</p>
+the image, and its functions read as native ones.</p>
 <h2 id="the-design"><a class="anchor" href="#the-design" aria-hidden="true">#</a>The design</h2>
 <ol>
-<li><strong>Instances on the host.</strong> A module the page brings is compiled by the engine Wasmtime already runs (so with the same
-features: <code>wasm.features.*</code>; threads are off, so an Emscripten build with pthreads cannot run) and instantiated in a
-store of its own. Its imports are host functions that call back into the realm: the realm's instance is suspended in the
-host call that made the module run, and Wasmtime lets a host function call back into it.</li>
-<li><strong>The JavaScript objects in a prelude.</strong> The classes are written in JavaScript (a few kilobytes, evaluated at realm
-start only when the API is on) over a handful of native primitives (compile, instantiate, call, memory and table
-access). The errors, <code>instantiate</code>'s promises, <code>Module.imports()</code> and the wrappers of exported functions are plain
-JavaScript.</li>
-<li><strong>Memory: an external <code>ArrayBuffer</code>.</strong> The engine's own <code>ArrayBuffer</code>s live in its linear memory, which a page's
-instance cannot share (its memory is its own). <code>memory.buffer</code> is an <code>ArrayBuffer</code> whose storage is the page
-instance's memory, reached through host calls: bulk operations (<code>set</code>, <code>subarray</code>, <code>slice</code>, <code>TextDecoder</code>, <code>fill</code>,
-<code>copyWithin</code>) copy in one call, an element read or write is one. Growing detaches it, as in every browser. Slower than
-a native buffer for scripts that loop over a heap view; the module itself runs at Wasmtime's speed.</li>
-<li><strong>Calls.</strong> JavaScript → export: the arguments are converted by the export's type (numbers, <code>BigInt</code> for i64, <code>null</code>
-or functions for <code>funcref</code>), the result the same way. Module → import: the host function converts the arguments, calls
-the realm (<code>wj_wasm_call_import</code>) and converts the result; an exception in the import traps the module and rethrows
-in the caller.</li>
-<li><strong>Limits</strong> from the existing preferences: the memory of a page's modules counts against <code>wasm.max_memory_pages</code>, calls
-against <code>wasm.max_call_ms</code> and <code>javascript.slow_script_ms</code>.</li>
+<li><strong>One store per realm.</strong> What a module imports (a memory, a table, a function of another instance) must be in its
+store, so everything a page makes is in one (<code>User_Store</code>), known to the script by numbers the host checks. It lives
+until the page closes, whatever the collector finds: a page that makes instances without end grows.</li>
+<li><strong>Inside the realm's call.</strong> The store's data is the realm's instance: a module's code runs under the deadline and stop
+flag of the JavaScript call that entered it (<code>wt_on_epoch</code>). A call checks the thread's stack first (<code>RangeError</code>).</li>
+<li><strong><code>compile</code> off the page's thread.</strong> <code>WebAssembly.compile</code>, <code>instantiate</code> and the streaming forms compile on a thread
+of the blocking pool (a worker compiles on its own thread): for a 34 MB module measured, the page's timers kept running
+(worst gap 25 ms) where <code>new WebAssembly.Module</code>, synchronous as specified, blocks for the 440 ms it takes.</li>
+<li><strong><code>memory.buffer</code>: an ArrayBuffer without bytes.</strong> The engine's ArrayBuffers live in its linear memory, which a page's
+instance cannot share, so a memory's buffer has <code>data == nil</code> and a <code>Buffer_Host</code> through which one element is one host
+call. The JIT and the interpreter's fast paths leave on <code>data == nil</code>. A builtin working on a range pins it (<code>host_pin</code>:
+a copy <code>data</code> points at, written back at the end, with no JavaScript running in between); <code>set</code> between it and the
+engine's memory is one call. An API of the browser gets a copy of the range of its view (<code>JS_GetArrayBufferRange</code>) and
+commits what it wrote (<code>JS_ArrayBufferCommit</code>: <code>getRandomValues</code>, <code>encodeInto</code>, <code>copyTo</code>, <code>read</code>). Measured: an element
+read 186 ns (15 ns in an ordinary array), a write 292 ns, a call of an export 508 ns, <code>TextDecoder</code> on 1 KiB 19 us. Growing
+detaches the buffer, also when the module grew it (seen at the next <code>memory.buffer</code>).</li>
+<li><strong>Values</strong> cross as cells (<code>user_store.odin</code>), converted in <code>web_wasm.odin</code>, so a call costs no JavaScript beyond the
+function called. An externref is a number in a table of <code>web_wasm.js</code>: the values stay until the page closes.</li>
+<li><strong>Exceptions.</strong> One the module does not catch becomes a <code>WebAssembly.Exception</code>; one an import throws is thrown in the
+module (so it can catch it). Any other JavaScript error goes through the module as a trap and comes out as itself: the
+module cannot catch it, which differs from the specification (<code>JSTag</code>).</li>
+<li><strong>The Content Security Policy</strong>: <code>'wasm-unsafe-eval'</code> or <code>'unsafe-eval'</code> where a policy has a <code>script-src</code> or
+<code>default-src</code>, otherwise a <code>CompileError</code> and a violation report. <code>validate</code> is not subject to it.</li>
 </ol>
-<h2 id="steps"><a class="anchor" href="#steps" aria-hidden="true">#</a>Steps</h2>
-<ol>
-<li><code>validate</code>, <code>compile</code>, <code>Module</code> (<code>imports</code>, <code>exports</code>, <code>customSections</code>), the three errors. <em>(done)</em></li>
-<li><code>Memory</code>, <code>Table</code>, <code>Global</code> made by the page (the objects without an instance), with the external <code>ArrayBuffer</code>.</li>
-<li><code>Instance</code> and <code>instantiate</code>: imports resolved against the import object (<code>LinkError</code> messages as Chromium's), exports
-wrapped, calls both ways, traps.</li>
-<li><code>instantiateStreaming</code>, <code>Tag</code> and exception handling, <code>WebAssembly.JSTag</code>.</li>
-<li>Check against a Blazor WebAssembly application, an Emscripten one and a wasm-bindgen one; the WebAssembly JS API tests
-of web-platform-tests (<code>wasm/jsapi</code>); then the preference defaults to on.</li>
-</ol>
+<h2 id="the-old-form-of-exceptions"><a class="anchor" href="#the-old-form-of-exceptions" aria-hidden="true">#</a>The old form of exceptions</h2>
+<p>Wasmtime has exceptions as <code>try_table</code>; it refuses the old form (<code>try</code>, <code>catch</code>, <code>delegate</code>), which browsers still take.
+Sites ask with the one module of <code>wasm-feature-detect</code>, and .NET's runtime refuses to start on a no even when its own module
+uses none of the old form. So <code>validate</code> says yes to exactly that module (<code>wasm.validate</code>): a lie for that probe alone. A
+module really using the old form still gets a <code>CompileError</code>: older Emscripten and .NET builds with exceptions do not run
+here (a Blazor Web App in Auto mode stays on its server circuit). What would change that: translating the old form to
+<code>try_table</code> at compilation. .NET's JIT for its interpreter (the jiterpreter) also generates the old form when it is told
+exceptions exist; what fails to compile there stays interpreted.</p>
+<h2 id="limits"><a class="anchor" href="#limits" aria-hidden="true">#</a>Limits</h2>
+<ul>
+<li>No shared memory (<code>shared: true</code> is a <code>TypeError</code>): threads are off in the engine, so an Emscripten build with pthreads
+cannot run. SQLite Fiddle starts and answers, but its OPFS helper stops at <code>Atomics.wait</code>.</li>
+<li>GC, typed function references and memory64 follow <code>wasm.features.*</code> (off by default): such modules get a <code>CompileError</code>.</li>
+<li>A call has at most 32 values on each side (<code>MAX_CELLS</code>, <code>web_wasm.odin</code>).</li>
+<li>Recursion through a module is bounded by the engine's stack: at the depth of recursion through a native function, far
+below other browsers.</li>
+<li>Not there: type reflection (<code>.type()</code>, <code>WebAssembly.Function</code>), <code>toResizableBuffer</code>, JSPI, string builtins, source phase
+imports; other realms' prototypes for <code>new.target</code> from another realm.</li>
+</ul>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../docs/js/odin-glue.html"><span>Previous</span><strong>Writing Wren's JavaScript glue in Odin</strong></a>
 </nav>
@@ -280,10 +284,9 @@ of web-platform-tests (<code>wasm/jsapi</code>); then the preference defaults to
 <nav class="doc-toc" aria-label="On this page">
 <p class="doc-toc-title">On this page</p>
 <ul>
-<li><a href="#state">State</a></li>
-<li><a href="#what-a-page-needs-blazors-dotnetjs-as-the-case">What a page needs (Blazor's dotnet.js as the case)</a></li>
 <li><a href="#the-design">The design</a></li>
-<li><a href="#steps">Steps</a></li>
+<li><a href="#the-old-form-of-exceptions">The old form of exceptions</a></li>
+<li><a href="#limits">Limits</a></li>
 </ul>
 </nav>
 </main>

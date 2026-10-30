@@ -1,68 +1,67 @@
-# The WebAssembly JavaScript API (plan and state)
+# The WebAssembly JavaScript API
 
-A page's JavaScript has no `WebAssembly` object yet. Blazor WebAssembly, Emscripten, wasm-bindgen and every site that
-tests `typeof WebAssembly` stop there: <http://jeremyetu.azurewebsites.net/> (a .NET 10 Blazor Web App) throws "This
-browser does not support WebAssembly." from `blazor.web.js` and never starts its server circuit either.
+A page's own WebAssembly modules (Blazor WebAssembly, Emscripten, wasm-bindgen) run beside the engine's, on the same
+Wasmtime. On by default (`javascript.webassembly.enabled`). `WebAssembly` exists in windows and workers; it costs nothing
+until a script reads it (an auto-init property: `native/js/odin/web_wasm.js` is evaluated then).
 
-Wren runs WebAssembly for itself (the engine, the pages written in Wasm), but a page's own modules need their own
-instances, and the page's JavaScript must see their memory.
-
-## State
-
-`javascript.webassembly.enabled` (off by default: a page that finds the object expects all of it, so a partial one does
-more harm than none) gives the realm a `WebAssembly` object with `validate`, `compile`, `Module` (`imports`, `exports`,
-`customSections`) and the three errors. A module does not run yet. The path is the one the rest of the API will take:
+Checked: a .NET 10 Blazor Web App (<https://jeremyetu.azurewebsites.net/>: its server circuit on the first visit, then
+.NET in WebAssembly with a 48 MB heap and client-side navigation), a Yew (wasm-bindgen) application, SQLite Fiddle
+(Emscripten in a worker, see the limits), and web-platform-tests `wasm/jsapi` (`wpt/expectations`).
 
 | Layer | File |
 |---|---|
 | the description | `api/webassembly.widl` (generates `wj.wr_WebAssembly_*` and the host table) |
-| the browser side | `src/page/webassembly.odin` (calls) over `src/wasm/user_module.odin` (Wasmtime; the description of a module comes from `binary.odin`'s reader) |
-| the realm side | `native/js/odin/web_wasm.odin` (the natives, `web_wasm_start` when the browser says so) and `web_wasm.js` (the objects) |
-| the tests | `examples/jsweb/webassembly.js` (`jswebtest webassembly`), `src/wasm/wasm_test.odin`, `src/csp/csp_test.odin` |
+| the browser side | `src/page/webassembly.odin` (calls) over `src/wasm/user_module.odin` and `user_store.odin` (Wasmtime) |
+| the realm side | `native/js/odin/web_wasm.odin` (the natives, the conversions of values) and `web_wasm.js` (the objects) |
+| the bytes of a memory | `Buffer_Host` in `src/engine/jsrt` (`b_typed.odin`, `object.odin`), `JS_NewArrayBufferHost` in `jscapi` |
+| the tests | `examples/jsweb/webassembly.js` (`jswebtest webassembly`), `src/wasm/wasm_test.odin`, `src/csp/csp_test.odin`, `jsloadtest` (the policy) |
 
 `web_wasm.js` is the one exception to the rule of `native/js/odin/prelude.odin` (no JavaScript in the realm): it is not in
-the image, and runs only when the preference is on. `compile` compiles on a thread of the blocking pool (the page goes
-on meanwhile, the bytes are copied at the call); `new Module` compiles on the calling thread, as the specification says.
-The Content Security Policy applies: `'wasm-unsafe-eval'` or `'unsafe-eval'` where a policy has a
-`script-src` or `default-src`, otherwise a `CompileError` (and a violation report). `validate` is not subject to it.
-
-## What a page needs (Blazor's `dotnet.js` as the case)
-
-`WebAssembly.Module`, `Instance`, `instantiate`, `instantiateStreaming`, `compile`, `validate`, `Memory`, `Table`,
-`Global`, `Tag`, `CompileError`, `LinkError`, `RuntimeError`, `Module.imports/exports/customSections`. Exports are
-functions (their `length`, `name`, `.call`), memories, tables (`get`, `set`, `grow`: `wasmTable.get(i)` is the call of a
-function pointer), globals. Imports are JavaScript functions the module calls (hundreds in .NET's runtime), memories, tables,
-globals. i64 is `BigInt`. A trap is a `WebAssembly.RuntimeError`.
+the image, and its functions read as native ones.
 
 ## The design
 
-1. **Instances on the host.** A module the page brings is compiled by the engine Wasmtime already runs (so with the same
-   features: `wasm.features.*`; threads are off, so an Emscripten build with pthreads cannot run) and instantiated in one
-   store per realm: what a module imports (a memory, a table, a function of another instance) must be in its store. So
-   what the page makes lives until the page closes, whatever the collector finds. Its imports are host functions that call back into the realm: the realm's instance is suspended in the
-   host call that made the module run, and Wasmtime lets a host function call back into it.
-2. **The JavaScript objects in a prelude.** The classes are written in JavaScript (a few kilobytes, evaluated at realm
-   start only when the API is on) over a handful of native primitives (compile, instantiate, call, memory and table
-   access). The errors, `instantiate`'s promises, `Module.imports()` and the wrappers of exported functions are plain
-   JavaScript.
-3. **Memory: an external `ArrayBuffer`.** The engine's own `ArrayBuffer`s live in its linear memory, which a page's
-   instance cannot share (its memory is its own). `memory.buffer` is an `ArrayBuffer` whose storage is the page
-   instance's memory, reached through host calls: bulk operations (`set`, `subarray`, `slice`, `TextDecoder`, `fill`,
-   `copyWithin`) copy in one call, an element read or write is one. Growing detaches it, as in every browser. Slower than
-   a native buffer for scripts that loop over a heap view; the module itself runs at Wasmtime's speed.
-4. **Calls.** JavaScript → export: the arguments are converted by the export's type (numbers, `BigInt` for i64, `null`
-   or functions for `funcref`), the result the same way. Module → import: the host function converts the arguments, calls
-   the realm (`wj_wasm_call_import`) and converts the result; an exception in the import traps the module and rethrows
-   in the caller.
-5. **Limits** from the existing preferences: the memory of a page's modules counts against `wasm.max_memory_pages`, calls
-   against `wasm.max_call_ms` and `javascript.slow_script_ms`.
+1. **One store per realm.** What a module imports (a memory, a table, a function of another instance) must be in its
+   store, so everything a page makes is in one (`User_Store`), known to the script by numbers the host checks. It lives
+   until the page closes, whatever the collector finds: a page that makes instances without end grows.
+2. **Inside the realm's call.** The store's data is the realm's instance: a module's code runs under the deadline and stop
+   flag of the JavaScript call that entered it (`wt_on_epoch`). A call checks the thread's stack first (`RangeError`).
+3. **`compile` off the page's thread.** `WebAssembly.compile`, `instantiate` and the streaming forms compile on a thread
+   of the blocking pool (a worker compiles on its own thread): for a 34 MB module measured, the page's timers kept running
+   (worst gap 25 ms) where `new WebAssembly.Module`, synchronous as specified, blocks for the 440 ms it takes.
+4. **`memory.buffer`: an ArrayBuffer without bytes.** The engine's ArrayBuffers live in its linear memory, which a page's
+   instance cannot share, so a memory's buffer has `data == nil` and a `Buffer_Host` through which one element is one host
+   call. The JIT and the interpreter's fast paths leave on `data == nil`. A builtin working on a range pins it (`host_pin`:
+   a copy `data` points at, written back at the end, with no JavaScript running in between); `set` between it and the
+   engine's memory is one call. An API of the browser gets a copy of the range of its view (`JS_GetArrayBufferRange`) and
+   commits what it wrote (`JS_ArrayBufferCommit`: `getRandomValues`, `encodeInto`, `copyTo`, `read`). Measured: an element
+   read 186 ns (15 ns in an ordinary array), a write 292 ns, a call of an export 508 ns, `TextDecoder` on 1 KiB 19 us. Growing
+   detaches the buffer, also when the module grew it (seen at the next `memory.buffer`).
+5. **Values** cross as cells (`user_store.odin`), converted in `web_wasm.odin`, so a call costs no JavaScript beyond the
+   function called. An externref is a number in a table of `web_wasm.js`: the values stay until the page closes.
+6. **Exceptions.** One the module does not catch becomes a `WebAssembly.Exception`; one an import throws is thrown in the
+   module (so it can catch it). Any other JavaScript error goes through the module as a trap and comes out as itself: the
+   module cannot catch it, which differs from the specification (`JSTag`).
+7. **The Content Security Policy**: `'wasm-unsafe-eval'` or `'unsafe-eval'` where a policy has a `script-src` or
+   `default-src`, otherwise a `CompileError` and a violation report. `validate` is not subject to it.
 
-## Steps
+## The old form of exceptions
 
-1. `validate`, `compile`, `Module` (`imports`, `exports`, `customSections`), the three errors. *(done)*
-2. `Memory`, `Table`, `Global` made by the page (the objects without an instance), with the external `ArrayBuffer`.
-3. `Instance` and `instantiate`: imports resolved against the import object (`LinkError` messages as Chromium's), exports
-   wrapped, calls both ways, traps.
-4. `instantiateStreaming`, `Tag` and exception handling, `WebAssembly.JSTag`.
-5. Check against a Blazor WebAssembly application, an Emscripten one and a wasm-bindgen one; the WebAssembly JS API tests
-   of web-platform-tests (`wasm/jsapi`); then the preference defaults to on.
+Wasmtime has exceptions as `try_table`; it refuses the old form (`try`, `catch`, `delegate`), which browsers still take.
+Sites ask with the one module of `wasm-feature-detect`, and .NET's runtime refuses to start on a no even when its own module
+uses none of the old form. So `validate` says yes to exactly that module (`wasm.validate`): a lie for that probe alone. A
+module really using the old form still gets a `CompileError`: older Emscripten and .NET builds with exceptions do not run
+here (a Blazor Web App in Auto mode stays on its server circuit). What would change that: translating the old form to
+`try_table` at compilation. .NET's JIT for its interpreter (the jiterpreter) also generates the old form when it is told
+exceptions exist; what fails to compile there stays interpreted.
+
+## Limits
+
+- No shared memory (`shared: true` is a `TypeError`): threads are off in the engine, so an Emscripten build with pthreads
+  cannot run. SQLite Fiddle starts and answers, but its OPFS helper stops at `Atomics.wait`.
+- GC, typed function references and memory64 follow `wasm.features.*` (off by default): such modules get a `CompileError`.
+- A call has at most 32 values on each side (`MAX_CELLS`, `web_wasm.odin`).
+- Recursion through a module is bounded by the engine's stack: at the depth of recursion through a native function, far
+  below other browsers.
+- Not there: type reflection (`.type()`, `WebAssembly.Function`), `toResizableBuffer`, JSPI, string builtins, source phase
+  imports; other realms' prototypes for `new.target` from another realm.

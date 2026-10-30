@@ -53,6 +53,7 @@ User_Store :: struct {
 	tables:    [dynamic]wt_table,
 	globals:   [dynamic]wt_global,
 	instances: [dynamic]wt_instance,
+	instance_funcs: [dynamic][dynamic]i32,   // by instance: the numbers of the functions it imported
 	tags:      [dynamic]wt_tag,
 	exn_tag:   i32,                 // of the last User_Failure.Exception
 	import_throw: bool,             // the import running threw a WebAssembly exception: exn_tag, call_results
@@ -82,6 +83,8 @@ user_store_delete :: proc(s: ^User_Store) {
 	delete(s.tables)
 	delete(s.globals)
 	delete(s.instances)
+	for &f in s.instance_funcs { delete(f) }
+	delete(s.instance_funcs)
 	delete(s.tags)
 	for &f in s.funcs { delete(f.sig) }
 	delete(s.funcs)
@@ -647,6 +650,12 @@ user_instance_new :: proc(s: ^User_Store, m: ^User_Module, externs: []u32) -> (i
 		return 0, fail_error(s, .Link, e)
 	}
 	append(&s.instances, inst)
+	// (an export that is a function it imported must be that function: Wasmtime gives another handle of it)
+	funcs := make([dynamic]i32)
+	for i in 0 ..< len(externs) {
+		if wasm_externtype_kind(wasm_importtype_type(wt_importtype(vec.data[i]))) == WT_EXTERN_FUNC { append(&funcs, i32(externs[i])) }
+	}
+	append(&s.instance_funcs, funcs)
 	return i32(len(s.instances) - 1), .None
 }
 
@@ -666,7 +675,10 @@ user_instance_exports :: proc(s: ^User_Store, id: i32, m: ^User_Module, allocato
 		if !wasmtime_instance_export_nth(s.ctx, &s.instances[id], i, &name, &n, &ext) { break }
 		e := Entry{name = string(name[:n]), index = m != nil && int(i) < len(m.export_index) ? i64(m.export_index[i]) : 0}
 		switch ext.kind {
-		case WT_EXTERN_FUNC: e.kind, e.id = "function", i64(func_id(s, ext.of.func))
+		case WT_EXTERN_FUNC:
+			e.kind = "function"
+			imported := s.instance_funcs[id]
+			if int(e.index) < len(imported) { e.id = i64(imported[e.index]) } else { e.id = i64(func_id(s, ext.of.func)) }
 		case WT_EXTERN_GLOBAL: e.kind, e.id = "global", i64(global_id(s, ext.of.global))
 		case WT_EXTERN_TABLE: e.kind, e.id = "table", i64(table_id(&s.tables, ext.of.table))
 		case WT_EXTERN_MEMORY: e.kind, e.id = "memory", i64(table_id(&s.memories, ext.of.memory))

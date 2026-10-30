@@ -1,0 +1,2565 @@
+# web-platform-tests expectations of Wren for wasm/jsapi, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/wasm/jsapi/constructor/compile.any.html: OK
+	Branding: PASS
+	Changing the buffer: PASS
+	Empty buffer: PASS
+	Invalid arguments: PASS
+	Invalid code: PASS
+	Missing argument: PASS
+	Promise type: PASS
+	Result type: PASS
+	Stray argument: PASS
+/wasm/jsapi/constructor/compile.any.worker.html: OK
+	Branding: PASS
+	Changing the buffer: PASS
+	Empty buffer: PASS
+	Invalid arguments: PASS
+	Invalid code: PASS
+	Missing argument: PASS
+	Promise type: PASS
+	Result type: PASS
+	Stray argument: PASS
+/wasm/jsapi/constructor/instantiate-bad-imports.any.html: OK
+	WebAssembly.instantiate(buffer): Importing a function with an incorrectly-typed value: "": PASS
+	WebAssembly.instantiate(buffer): Importing a function with an incorrectly-typed value: 0.1: PASS
+	WebAssembly.instantiate(buffer): Importing a function with an incorrectly-typed value: 1: PASS
+	WebAssembly.instantiate(buffer): Importing a function with an incorrectly-typed value: NaN: PASS
+	WebAssembly.instantiate(buffer): Importing a function with an incorrectly-typed value: null: PASS
+	WebAssembly.instantiate(buffer): Importing a function with an incorrectly-typed value: object "[object Object]": PASS
+	WebAssembly.instantiate(buffer): Importing a function with an incorrectly-typed value: symbol "Symbol()": PASS
+	WebAssembly.instantiate(buffer): Importing a function with an incorrectly-typed value: true: PASS
+	WebAssembly.instantiate(buffer): Importing a function with an incorrectly-typed value: undefined: PASS
+	WebAssembly.instantiate(buffer): Importing an f32 global with an incorrectly-typed value: "": PASS
+	WebAssembly.instantiate(buffer): Importing an f32 global with an incorrectly-typed value: BigInt: PASS
+	WebAssembly.instantiate(buffer): Importing an f32 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	WebAssembly.instantiate(buffer): Importing an f32 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	WebAssembly.instantiate(buffer): Importing an f32 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	WebAssembly.instantiate(buffer): Importing an f32 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	WebAssembly.instantiate(buffer): Importing an f32 global with an incorrectly-typed value: null: PASS
+	WebAssembly.instantiate(buffer): Importing an f32 global with an incorrectly-typed value: plain object: PASS
+	WebAssembly.instantiate(buffer): Importing an f32 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	WebAssembly.instantiate(buffer): Importing an f32 global with an incorrectly-typed value: true: PASS
+	WebAssembly.instantiate(buffer): Importing an f32 global with an incorrectly-typed value: undefined: PASS
+	WebAssembly.instantiate(buffer): Importing an f32 mutable global with a primitive value: PASS
+	WebAssembly.instantiate(buffer): Importing an f32 mutable global with an immutable Global object: PASS
+	WebAssembly.instantiate(buffer): Importing an f64 global with an incorrectly-typed value: "": PASS
+	WebAssembly.instantiate(buffer): Importing an f64 global with an incorrectly-typed value: BigInt: PASS
+	WebAssembly.instantiate(buffer): Importing an f64 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	WebAssembly.instantiate(buffer): Importing an f64 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	WebAssembly.instantiate(buffer): Importing an f64 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	WebAssembly.instantiate(buffer): Importing an f64 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	WebAssembly.instantiate(buffer): Importing an f64 global with an incorrectly-typed value: null: PASS
+	WebAssembly.instantiate(buffer): Importing an f64 global with an incorrectly-typed value: plain object: PASS
+	WebAssembly.instantiate(buffer): Importing an f64 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	WebAssembly.instantiate(buffer): Importing an f64 global with an incorrectly-typed value: true: PASS
+	WebAssembly.instantiate(buffer): Importing an f64 global with an incorrectly-typed value: undefined: PASS
+	WebAssembly.instantiate(buffer): Importing an f64 mutable global with a primitive value: PASS
+	WebAssembly.instantiate(buffer): Importing an f64 mutable global with an immutable Global object: PASS
+	WebAssembly.instantiate(buffer): Importing an i32 global with an incorrectly-typed value: "": PASS
+	WebAssembly.instantiate(buffer): Importing an i32 global with an incorrectly-typed value: BigInt: PASS
+	WebAssembly.instantiate(buffer): Importing an i32 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	WebAssembly.instantiate(buffer): Importing an i32 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	WebAssembly.instantiate(buffer): Importing an i32 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	WebAssembly.instantiate(buffer): Importing an i32 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	WebAssembly.instantiate(buffer): Importing an i32 global with an incorrectly-typed value: null: PASS
+	WebAssembly.instantiate(buffer): Importing an i32 global with an incorrectly-typed value: plain object: PASS
+	WebAssembly.instantiate(buffer): Importing an i32 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	WebAssembly.instantiate(buffer): Importing an i32 global with an incorrectly-typed value: true: PASS
+	WebAssembly.instantiate(buffer): Importing an i32 global with an incorrectly-typed value: undefined: PASS
+	WebAssembly.instantiate(buffer): Importing an i32 mutable global with a primitive value: PASS
+	WebAssembly.instantiate(buffer): Importing an i32 mutable global with an immutable Global object: PASS
+	WebAssembly.instantiate(buffer): Importing an i64 global with an incorrectly-typed value: "": PASS
+	WebAssembly.instantiate(buffer): Importing an i64 global with an incorrectly-typed value: Number: PASS
+	WebAssembly.instantiate(buffer): Importing an i64 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	WebAssembly.instantiate(buffer): Importing an i64 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	WebAssembly.instantiate(buffer): Importing an i64 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	WebAssembly.instantiate(buffer): Importing an i64 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	WebAssembly.instantiate(buffer): Importing an i64 global with an incorrectly-typed value: null: PASS
+	WebAssembly.instantiate(buffer): Importing an i64 global with an incorrectly-typed value: plain object: PASS
+	WebAssembly.instantiate(buffer): Importing an i64 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	WebAssembly.instantiate(buffer): Importing an i64 global with an incorrectly-typed value: true: PASS
+	WebAssembly.instantiate(buffer): Importing an i64 global with an incorrectly-typed value: undefined: PASS
+	WebAssembly.instantiate(buffer): Importing an i64 mutable global with a primitive value: PASS
+	WebAssembly.instantiate(buffer): Importing an i64 mutable global with an immutable Global object: PASS
+	WebAssembly.instantiate(buffer): Importing memory with an incorrectly-typed value: "": PASS
+	WebAssembly.instantiate(buffer): Importing memory with an incorrectly-typed value: 0.1: PASS
+	WebAssembly.instantiate(buffer): Importing memory with an incorrectly-typed value: 1: PASS
+	WebAssembly.instantiate(buffer): Importing memory with an incorrectly-typed value: NaN: PASS
+	WebAssembly.instantiate(buffer): Importing memory with an incorrectly-typed value: Object.create(WebAssembly.Memory.prototype): PASS
+	WebAssembly.instantiate(buffer): Importing memory with an incorrectly-typed value: WebAssembly.Memory: PASS
+	WebAssembly.instantiate(buffer): Importing memory with an incorrectly-typed value: WebAssembly.Memory object (too large): PASS
+	WebAssembly.instantiate(buffer): Importing memory with an incorrectly-typed value: WebAssembly.Memory.prototype: PASS
+	WebAssembly.instantiate(buffer): Importing memory with an incorrectly-typed value: null: PASS
+	WebAssembly.instantiate(buffer): Importing memory with an incorrectly-typed value: plain object: PASS
+	WebAssembly.instantiate(buffer): Importing memory with an incorrectly-typed value: symbol "Symbol()": PASS
+	WebAssembly.instantiate(buffer): Importing memory with an incorrectly-typed value: true: PASS
+	WebAssembly.instantiate(buffer): Importing memory with an incorrectly-typed value: undefined: PASS
+	WebAssembly.instantiate(buffer): Importing table with an incorrectly-typed value: "": PASS
+	WebAssembly.instantiate(buffer): Importing table with an incorrectly-typed value: 0.1: PASS
+	WebAssembly.instantiate(buffer): Importing table with an incorrectly-typed value: 1: PASS
+	WebAssembly.instantiate(buffer): Importing table with an incorrectly-typed value: NaN: PASS
+	WebAssembly.instantiate(buffer): Importing table with an incorrectly-typed value: Object.create(WebAssembly.Table.prototype): PASS
+	WebAssembly.instantiate(buffer): Importing table with an incorrectly-typed value: WebAssembly.Table: PASS
+	WebAssembly.instantiate(buffer): Importing table with an incorrectly-typed value: WebAssembly.Table object (too large): PASS
+	WebAssembly.instantiate(buffer): Importing table with an incorrectly-typed value: WebAssembly.Table.prototype: PASS
+	WebAssembly.instantiate(buffer): Importing table with an incorrectly-typed value: null: PASS
+	WebAssembly.instantiate(buffer): Importing table with an incorrectly-typed value: plain object: PASS
+	WebAssembly.instantiate(buffer): Importing table with an incorrectly-typed value: symbol "Symbol()": PASS
+	WebAssembly.instantiate(buffer): Importing table with an incorrectly-typed value: true: PASS
+	WebAssembly.instantiate(buffer): Importing table with an incorrectly-typed value: undefined: PASS
+	WebAssembly.instantiate(buffer): Imports argument with missing property: empty object: PASS
+	WebAssembly.instantiate(buffer): Imports argument with missing property: undefined: PASS
+	WebAssembly.instantiate(buffer): Imports argument with missing property: wrong property: PASS
+	WebAssembly.instantiate(buffer): Missing imports argument: PASS
+	WebAssembly.instantiate(buffer): Non-object imports argument: "": PASS
+	WebAssembly.instantiate(buffer): Non-object imports argument: 0.1: PASS
+	WebAssembly.instantiate(buffer): Non-object imports argument: 1: PASS
+	WebAssembly.instantiate(buffer): Non-object imports argument: NaN: PASS
+	WebAssembly.instantiate(buffer): Non-object imports argument: null: PASS
+	WebAssembly.instantiate(buffer): Non-object imports argument: symbol "Symbol()": PASS
+	WebAssembly.instantiate(buffer): Non-object imports argument: true: PASS
+	WebAssembly.instantiate(buffer): Non-object module: "": PASS
+	WebAssembly.instantiate(buffer): Non-object module: 0.1: PASS
+	WebAssembly.instantiate(buffer): Non-object module: 1: PASS
+	WebAssembly.instantiate(buffer): Non-object module: NaN: PASS
+	WebAssembly.instantiate(buffer): Non-object module: null: PASS
+	WebAssembly.instantiate(buffer): Non-object module: symbol "Symbol()": PASS
+	WebAssembly.instantiate(buffer): Non-object module: true: PASS
+	WebAssembly.instantiate(buffer): Non-object module: undefined: PASS
+	WebAssembly.instantiate(module): Importing a function with an incorrectly-typed value: "": PASS
+	WebAssembly.instantiate(module): Importing a function with an incorrectly-typed value: 0.1: PASS
+	WebAssembly.instantiate(module): Importing a function with an incorrectly-typed value: 1: PASS
+	WebAssembly.instantiate(module): Importing a function with an incorrectly-typed value: NaN: PASS
+	WebAssembly.instantiate(module): Importing a function with an incorrectly-typed value: null: PASS
+	WebAssembly.instantiate(module): Importing a function with an incorrectly-typed value: object "[object Object]": PASS
+	WebAssembly.instantiate(module): Importing a function with an incorrectly-typed value: symbol "Symbol()": PASS
+	WebAssembly.instantiate(module): Importing a function with an incorrectly-typed value: true: PASS
+	WebAssembly.instantiate(module): Importing a function with an incorrectly-typed value: undefined: PASS
+	WebAssembly.instantiate(module): Importing an f32 global with an incorrectly-typed value: "": PASS
+	WebAssembly.instantiate(module): Importing an f32 global with an incorrectly-typed value: BigInt: PASS
+	WebAssembly.instantiate(module): Importing an f32 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	WebAssembly.instantiate(module): Importing an f32 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	WebAssembly.instantiate(module): Importing an f32 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	WebAssembly.instantiate(module): Importing an f32 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	WebAssembly.instantiate(module): Importing an f32 global with an incorrectly-typed value: null: PASS
+	WebAssembly.instantiate(module): Importing an f32 global with an incorrectly-typed value: plain object: PASS
+	WebAssembly.instantiate(module): Importing an f32 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	WebAssembly.instantiate(module): Importing an f32 global with an incorrectly-typed value: true: PASS
+	WebAssembly.instantiate(module): Importing an f32 global with an incorrectly-typed value: undefined: PASS
+	WebAssembly.instantiate(module): Importing an f32 mutable global with a primitive value: PASS
+	WebAssembly.instantiate(module): Importing an f32 mutable global with an immutable Global object: PASS
+	WebAssembly.instantiate(module): Importing an f64 global with an incorrectly-typed value: "": PASS
+	WebAssembly.instantiate(module): Importing an f64 global with an incorrectly-typed value: BigInt: PASS
+	WebAssembly.instantiate(module): Importing an f64 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	WebAssembly.instantiate(module): Importing an f64 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	WebAssembly.instantiate(module): Importing an f64 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	WebAssembly.instantiate(module): Importing an f64 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	WebAssembly.instantiate(module): Importing an f64 global with an incorrectly-typed value: null: PASS
+	WebAssembly.instantiate(module): Importing an f64 global with an incorrectly-typed value: plain object: PASS
+	WebAssembly.instantiate(module): Importing an f64 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	WebAssembly.instantiate(module): Importing an f64 global with an incorrectly-typed value: true: PASS
+	WebAssembly.instantiate(module): Importing an f64 global with an incorrectly-typed value: undefined: PASS
+	WebAssembly.instantiate(module): Importing an f64 mutable global with a primitive value: PASS
+	WebAssembly.instantiate(module): Importing an f64 mutable global with an immutable Global object: PASS
+	WebAssembly.instantiate(module): Importing an i32 global with an incorrectly-typed value: "": PASS
+	WebAssembly.instantiate(module): Importing an i32 global with an incorrectly-typed value: BigInt: PASS
+	WebAssembly.instantiate(module): Importing an i32 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	WebAssembly.instantiate(module): Importing an i32 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	WebAssembly.instantiate(module): Importing an i32 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	WebAssembly.instantiate(module): Importing an i32 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	WebAssembly.instantiate(module): Importing an i32 global with an incorrectly-typed value: null: PASS
+	WebAssembly.instantiate(module): Importing an i32 global with an incorrectly-typed value: plain object: PASS
+	WebAssembly.instantiate(module): Importing an i32 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	WebAssembly.instantiate(module): Importing an i32 global with an incorrectly-typed value: true: PASS
+	WebAssembly.instantiate(module): Importing an i32 global with an incorrectly-typed value: undefined: PASS
+	WebAssembly.instantiate(module): Importing an i32 mutable global with a primitive value: PASS
+	WebAssembly.instantiate(module): Importing an i32 mutable global with an immutable Global object: PASS
+	WebAssembly.instantiate(module): Importing an i64 global with an incorrectly-typed value: "": PASS
+	WebAssembly.instantiate(module): Importing an i64 global with an incorrectly-typed value: Number: PASS
+	WebAssembly.instantiate(module): Importing an i64 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	WebAssembly.instantiate(module): Importing an i64 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	WebAssembly.instantiate(module): Importing an i64 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	WebAssembly.instantiate(module): Importing an i64 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	WebAssembly.instantiate(module): Importing an i64 global with an incorrectly-typed value: null: PASS
+	WebAssembly.instantiate(module): Importing an i64 global with an incorrectly-typed value: plain object: PASS
+	WebAssembly.instantiate(module): Importing an i64 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	WebAssembly.instantiate(module): Importing an i64 global with an incorrectly-typed value: true: PASS
+	WebAssembly.instantiate(module): Importing an i64 global with an incorrectly-typed value: undefined: PASS
+	WebAssembly.instantiate(module): Importing an i64 mutable global with a primitive value: PASS
+	WebAssembly.instantiate(module): Importing an i64 mutable global with an immutable Global object: PASS
+	WebAssembly.instantiate(module): Importing memory with an incorrectly-typed value: "": PASS
+	WebAssembly.instantiate(module): Importing memory with an incorrectly-typed value: 0.1: PASS
+	WebAssembly.instantiate(module): Importing memory with an incorrectly-typed value: 1: PASS
+	WebAssembly.instantiate(module): Importing memory with an incorrectly-typed value: NaN: PASS
+	WebAssembly.instantiate(module): Importing memory with an incorrectly-typed value: Object.create(WebAssembly.Memory.prototype): PASS
+	WebAssembly.instantiate(module): Importing memory with an incorrectly-typed value: WebAssembly.Memory: PASS
+	WebAssembly.instantiate(module): Importing memory with an incorrectly-typed value: WebAssembly.Memory object (too large): PASS
+	WebAssembly.instantiate(module): Importing memory with an incorrectly-typed value: WebAssembly.Memory.prototype: PASS
+	WebAssembly.instantiate(module): Importing memory with an incorrectly-typed value: null: PASS
+	WebAssembly.instantiate(module): Importing memory with an incorrectly-typed value: plain object: PASS
+	WebAssembly.instantiate(module): Importing memory with an incorrectly-typed value: symbol "Symbol()": PASS
+	WebAssembly.instantiate(module): Importing memory with an incorrectly-typed value: true: PASS
+	WebAssembly.instantiate(module): Importing memory with an incorrectly-typed value: undefined: PASS
+	WebAssembly.instantiate(module): Importing table with an incorrectly-typed value: "": PASS
+	WebAssembly.instantiate(module): Importing table with an incorrectly-typed value: 0.1: PASS
+	WebAssembly.instantiate(module): Importing table with an incorrectly-typed value: 1: PASS
+	WebAssembly.instantiate(module): Importing table with an incorrectly-typed value: NaN: PASS
+	WebAssembly.instantiate(module): Importing table with an incorrectly-typed value: Object.create(WebAssembly.Table.prototype): PASS
+	WebAssembly.instantiate(module): Importing table with an incorrectly-typed value: WebAssembly.Table: PASS
+	WebAssembly.instantiate(module): Importing table with an incorrectly-typed value: WebAssembly.Table object (too large): PASS
+	WebAssembly.instantiate(module): Importing table with an incorrectly-typed value: WebAssembly.Table.prototype: PASS
+	WebAssembly.instantiate(module): Importing table with an incorrectly-typed value: null: PASS
+	WebAssembly.instantiate(module): Importing table with an incorrectly-typed value: plain object: PASS
+	WebAssembly.instantiate(module): Importing table with an incorrectly-typed value: symbol "Symbol()": PASS
+	WebAssembly.instantiate(module): Importing table with an incorrectly-typed value: true: PASS
+	WebAssembly.instantiate(module): Importing table with an incorrectly-typed value: undefined: PASS
+	WebAssembly.instantiate(module): Imports argument with missing property: empty object: PASS
+	WebAssembly.instantiate(module): Imports argument with missing property: undefined: PASS
+	WebAssembly.instantiate(module): Imports argument with missing property: wrong property: PASS
+	WebAssembly.instantiate(module): Missing imports argument: PASS
+	WebAssembly.instantiate(module): Non-object imports argument: "": PASS
+	WebAssembly.instantiate(module): Non-object imports argument: 0.1: PASS
+	WebAssembly.instantiate(module): Non-object imports argument: 1: PASS
+	WebAssembly.instantiate(module): Non-object imports argument: NaN: PASS
+	WebAssembly.instantiate(module): Non-object imports argument: null: PASS
+	WebAssembly.instantiate(module): Non-object imports argument: symbol "Symbol()": PASS
+	WebAssembly.instantiate(module): Non-object imports argument: true: PASS
+	WebAssembly.instantiate(module): Non-object module: "": PASS
+	WebAssembly.instantiate(module): Non-object module: 0.1: PASS
+	WebAssembly.instantiate(module): Non-object module: 1: PASS
+	WebAssembly.instantiate(module): Non-object module: NaN: PASS
+	WebAssembly.instantiate(module): Non-object module: null: PASS
+	WebAssembly.instantiate(module): Non-object module: symbol "Symbol()": PASS
+	WebAssembly.instantiate(module): Non-object module: true: PASS
+	WebAssembly.instantiate(module): Non-object module: undefined: PASS
+/wasm/jsapi/constructor/instantiate-bad-imports.any.worker.html: OK
+	WebAssembly.instantiate(buffer): Importing a function with an incorrectly-typed value: "": PASS
+	WebAssembly.instantiate(buffer): Importing a function with an incorrectly-typed value: 0.1: PASS
+	WebAssembly.instantiate(buffer): Importing a function with an incorrectly-typed value: 1: PASS
+	WebAssembly.instantiate(buffer): Importing a function with an incorrectly-typed value: NaN: PASS
+	WebAssembly.instantiate(buffer): Importing a function with an incorrectly-typed value: null: PASS
+	WebAssembly.instantiate(buffer): Importing a function with an incorrectly-typed value: object "[object Object]": PASS
+	WebAssembly.instantiate(buffer): Importing a function with an incorrectly-typed value: symbol "Symbol()": PASS
+	WebAssembly.instantiate(buffer): Importing a function with an incorrectly-typed value: true: PASS
+	WebAssembly.instantiate(buffer): Importing a function with an incorrectly-typed value: undefined: PASS
+	WebAssembly.instantiate(buffer): Importing an f32 global with an incorrectly-typed value: "": PASS
+	WebAssembly.instantiate(buffer): Importing an f32 global with an incorrectly-typed value: BigInt: PASS
+	WebAssembly.instantiate(buffer): Importing an f32 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	WebAssembly.instantiate(buffer): Importing an f32 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	WebAssembly.instantiate(buffer): Importing an f32 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	WebAssembly.instantiate(buffer): Importing an f32 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	WebAssembly.instantiate(buffer): Importing an f32 global with an incorrectly-typed value: null: PASS
+	WebAssembly.instantiate(buffer): Importing an f32 global with an incorrectly-typed value: plain object: PASS
+	WebAssembly.instantiate(buffer): Importing an f32 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	WebAssembly.instantiate(buffer): Importing an f32 global with an incorrectly-typed value: true: PASS
+	WebAssembly.instantiate(buffer): Importing an f32 global with an incorrectly-typed value: undefined: PASS
+	WebAssembly.instantiate(buffer): Importing an f32 mutable global with a primitive value: PASS
+	WebAssembly.instantiate(buffer): Importing an f32 mutable global with an immutable Global object: PASS
+	WebAssembly.instantiate(buffer): Importing an f64 global with an incorrectly-typed value: "": PASS
+	WebAssembly.instantiate(buffer): Importing an f64 global with an incorrectly-typed value: BigInt: PASS
+	WebAssembly.instantiate(buffer): Importing an f64 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	WebAssembly.instantiate(buffer): Importing an f64 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	WebAssembly.instantiate(buffer): Importing an f64 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	WebAssembly.instantiate(buffer): Importing an f64 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	WebAssembly.instantiate(buffer): Importing an f64 global with an incorrectly-typed value: null: PASS
+	WebAssembly.instantiate(buffer): Importing an f64 global with an incorrectly-typed value: plain object: PASS
+	WebAssembly.instantiate(buffer): Importing an f64 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	WebAssembly.instantiate(buffer): Importing an f64 global with an incorrectly-typed value: true: PASS
+	WebAssembly.instantiate(buffer): Importing an f64 global with an incorrectly-typed value: undefined: PASS
+	WebAssembly.instantiate(buffer): Importing an f64 mutable global with a primitive value: PASS
+	WebAssembly.instantiate(buffer): Importing an f64 mutable global with an immutable Global object: PASS
+	WebAssembly.instantiate(buffer): Importing an i32 global with an incorrectly-typed value: "": PASS
+	WebAssembly.instantiate(buffer): Importing an i32 global with an incorrectly-typed value: BigInt: PASS
+	WebAssembly.instantiate(buffer): Importing an i32 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	WebAssembly.instantiate(buffer): Importing an i32 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	WebAssembly.instantiate(buffer): Importing an i32 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	WebAssembly.instantiate(buffer): Importing an i32 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	WebAssembly.instantiate(buffer): Importing an i32 global with an incorrectly-typed value: null: PASS
+	WebAssembly.instantiate(buffer): Importing an i32 global with an incorrectly-typed value: plain object: PASS
+	WebAssembly.instantiate(buffer): Importing an i32 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	WebAssembly.instantiate(buffer): Importing an i32 global with an incorrectly-typed value: true: PASS
+	WebAssembly.instantiate(buffer): Importing an i32 global with an incorrectly-typed value: undefined: PASS
+	WebAssembly.instantiate(buffer): Importing an i32 mutable global with a primitive value: PASS
+	WebAssembly.instantiate(buffer): Importing an i32 mutable global with an immutable Global object: PASS
+	WebAssembly.instantiate(buffer): Importing an i64 global with an incorrectly-typed value: "": PASS
+	WebAssembly.instantiate(buffer): Importing an i64 global with an incorrectly-typed value: Number: PASS
+	WebAssembly.instantiate(buffer): Importing an i64 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	WebAssembly.instantiate(buffer): Importing an i64 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	WebAssembly.instantiate(buffer): Importing an i64 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	WebAssembly.instantiate(buffer): Importing an i64 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	WebAssembly.instantiate(buffer): Importing an i64 global with an incorrectly-typed value: null: PASS
+	WebAssembly.instantiate(buffer): Importing an i64 global with an incorrectly-typed value: plain object: PASS
+	WebAssembly.instantiate(buffer): Importing an i64 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	WebAssembly.instantiate(buffer): Importing an i64 global with an incorrectly-typed value: true: PASS
+	WebAssembly.instantiate(buffer): Importing an i64 global with an incorrectly-typed value: undefined: PASS
+	WebAssembly.instantiate(buffer): Importing an i64 mutable global with a primitive value: PASS
+	WebAssembly.instantiate(buffer): Importing an i64 mutable global with an immutable Global object: PASS
+	WebAssembly.instantiate(buffer): Importing memory with an incorrectly-typed value: "": PASS
+	WebAssembly.instantiate(buffer): Importing memory with an incorrectly-typed value: 0.1: PASS
+	WebAssembly.instantiate(buffer): Importing memory with an incorrectly-typed value: 1: PASS
+	WebAssembly.instantiate(buffer): Importing memory with an incorrectly-typed value: NaN: PASS
+	WebAssembly.instantiate(buffer): Importing memory with an incorrectly-typed value: Object.create(WebAssembly.Memory.prototype): PASS
+	WebAssembly.instantiate(buffer): Importing memory with an incorrectly-typed value: WebAssembly.Memory: PASS
+	WebAssembly.instantiate(buffer): Importing memory with an incorrectly-typed value: WebAssembly.Memory object (too large): PASS
+	WebAssembly.instantiate(buffer): Importing memory with an incorrectly-typed value: WebAssembly.Memory.prototype: PASS
+	WebAssembly.instantiate(buffer): Importing memory with an incorrectly-typed value: null: PASS
+	WebAssembly.instantiate(buffer): Importing memory with an incorrectly-typed value: plain object: PASS
+	WebAssembly.instantiate(buffer): Importing memory with an incorrectly-typed value: symbol "Symbol()": PASS
+	WebAssembly.instantiate(buffer): Importing memory with an incorrectly-typed value: true: PASS
+	WebAssembly.instantiate(buffer): Importing memory with an incorrectly-typed value: undefined: PASS
+	WebAssembly.instantiate(buffer): Importing table with an incorrectly-typed value: "": PASS
+	WebAssembly.instantiate(buffer): Importing table with an incorrectly-typed value: 0.1: PASS
+	WebAssembly.instantiate(buffer): Importing table with an incorrectly-typed value: 1: PASS
+	WebAssembly.instantiate(buffer): Importing table with an incorrectly-typed value: NaN: PASS
+	WebAssembly.instantiate(buffer): Importing table with an incorrectly-typed value: Object.create(WebAssembly.Table.prototype): PASS
+	WebAssembly.instantiate(buffer): Importing table with an incorrectly-typed value: WebAssembly.Table: PASS
+	WebAssembly.instantiate(buffer): Importing table with an incorrectly-typed value: WebAssembly.Table object (too large): PASS
+	WebAssembly.instantiate(buffer): Importing table with an incorrectly-typed value: WebAssembly.Table.prototype: PASS
+	WebAssembly.instantiate(buffer): Importing table with an incorrectly-typed value: null: PASS
+	WebAssembly.instantiate(buffer): Importing table with an incorrectly-typed value: plain object: PASS
+	WebAssembly.instantiate(buffer): Importing table with an incorrectly-typed value: symbol "Symbol()": PASS
+	WebAssembly.instantiate(buffer): Importing table with an incorrectly-typed value: true: PASS
+	WebAssembly.instantiate(buffer): Importing table with an incorrectly-typed value: undefined: PASS
+	WebAssembly.instantiate(buffer): Imports argument with missing property: empty object: PASS
+	WebAssembly.instantiate(buffer): Imports argument with missing property: undefined: PASS
+	WebAssembly.instantiate(buffer): Imports argument with missing property: wrong property: PASS
+	WebAssembly.instantiate(buffer): Missing imports argument: PASS
+	WebAssembly.instantiate(buffer): Non-object imports argument: "": PASS
+	WebAssembly.instantiate(buffer): Non-object imports argument: 0.1: PASS
+	WebAssembly.instantiate(buffer): Non-object imports argument: 1: PASS
+	WebAssembly.instantiate(buffer): Non-object imports argument: NaN: PASS
+	WebAssembly.instantiate(buffer): Non-object imports argument: null: PASS
+	WebAssembly.instantiate(buffer): Non-object imports argument: symbol "Symbol()": PASS
+	WebAssembly.instantiate(buffer): Non-object imports argument: true: PASS
+	WebAssembly.instantiate(buffer): Non-object module: "": PASS
+	WebAssembly.instantiate(buffer): Non-object module: 0.1: PASS
+	WebAssembly.instantiate(buffer): Non-object module: 1: PASS
+	WebAssembly.instantiate(buffer): Non-object module: NaN: PASS
+	WebAssembly.instantiate(buffer): Non-object module: null: PASS
+	WebAssembly.instantiate(buffer): Non-object module: symbol "Symbol()": PASS
+	WebAssembly.instantiate(buffer): Non-object module: true: PASS
+	WebAssembly.instantiate(buffer): Non-object module: undefined: PASS
+	WebAssembly.instantiate(module): Importing a function with an incorrectly-typed value: "": PASS
+	WebAssembly.instantiate(module): Importing a function with an incorrectly-typed value: 0.1: PASS
+	WebAssembly.instantiate(module): Importing a function with an incorrectly-typed value: 1: PASS
+	WebAssembly.instantiate(module): Importing a function with an incorrectly-typed value: NaN: PASS
+	WebAssembly.instantiate(module): Importing a function with an incorrectly-typed value: null: PASS
+	WebAssembly.instantiate(module): Importing a function with an incorrectly-typed value: object "[object Object]": PASS
+	WebAssembly.instantiate(module): Importing a function with an incorrectly-typed value: symbol "Symbol()": PASS
+	WebAssembly.instantiate(module): Importing a function with an incorrectly-typed value: true: PASS
+	WebAssembly.instantiate(module): Importing a function with an incorrectly-typed value: undefined: PASS
+	WebAssembly.instantiate(module): Importing an f32 global with an incorrectly-typed value: "": PASS
+	WebAssembly.instantiate(module): Importing an f32 global with an incorrectly-typed value: BigInt: PASS
+	WebAssembly.instantiate(module): Importing an f32 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	WebAssembly.instantiate(module): Importing an f32 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	WebAssembly.instantiate(module): Importing an f32 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	WebAssembly.instantiate(module): Importing an f32 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	WebAssembly.instantiate(module): Importing an f32 global with an incorrectly-typed value: null: PASS
+	WebAssembly.instantiate(module): Importing an f32 global with an incorrectly-typed value: plain object: PASS
+	WebAssembly.instantiate(module): Importing an f32 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	WebAssembly.instantiate(module): Importing an f32 global with an incorrectly-typed value: true: PASS
+	WebAssembly.instantiate(module): Importing an f32 global with an incorrectly-typed value: undefined: PASS
+	WebAssembly.instantiate(module): Importing an f32 mutable global with a primitive value: PASS
+	WebAssembly.instantiate(module): Importing an f32 mutable global with an immutable Global object: PASS
+	WebAssembly.instantiate(module): Importing an f64 global with an incorrectly-typed value: "": PASS
+	WebAssembly.instantiate(module): Importing an f64 global with an incorrectly-typed value: BigInt: PASS
+	WebAssembly.instantiate(module): Importing an f64 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	WebAssembly.instantiate(module): Importing an f64 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	WebAssembly.instantiate(module): Importing an f64 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	WebAssembly.instantiate(module): Importing an f64 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	WebAssembly.instantiate(module): Importing an f64 global with an incorrectly-typed value: null: PASS
+	WebAssembly.instantiate(module): Importing an f64 global with an incorrectly-typed value: plain object: PASS
+	WebAssembly.instantiate(module): Importing an f64 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	WebAssembly.instantiate(module): Importing an f64 global with an incorrectly-typed value: true: PASS
+	WebAssembly.instantiate(module): Importing an f64 global with an incorrectly-typed value: undefined: PASS
+	WebAssembly.instantiate(module): Importing an f64 mutable global with a primitive value: PASS
+	WebAssembly.instantiate(module): Importing an f64 mutable global with an immutable Global object: PASS
+	WebAssembly.instantiate(module): Importing an i32 global with an incorrectly-typed value: "": PASS
+	WebAssembly.instantiate(module): Importing an i32 global with an incorrectly-typed value: BigInt: PASS
+	WebAssembly.instantiate(module): Importing an i32 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	WebAssembly.instantiate(module): Importing an i32 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	WebAssembly.instantiate(module): Importing an i32 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	WebAssembly.instantiate(module): Importing an i32 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	WebAssembly.instantiate(module): Importing an i32 global with an incorrectly-typed value: null: PASS
+	WebAssembly.instantiate(module): Importing an i32 global with an incorrectly-typed value: plain object: PASS
+	WebAssembly.instantiate(module): Importing an i32 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	WebAssembly.instantiate(module): Importing an i32 global with an incorrectly-typed value: true: PASS
+	WebAssembly.instantiate(module): Importing an i32 global with an incorrectly-typed value: undefined: PASS
+	WebAssembly.instantiate(module): Importing an i32 mutable global with a primitive value: PASS
+	WebAssembly.instantiate(module): Importing an i32 mutable global with an immutable Global object: PASS
+	WebAssembly.instantiate(module): Importing an i64 global with an incorrectly-typed value: "": PASS
+	WebAssembly.instantiate(module): Importing an i64 global with an incorrectly-typed value: Number: PASS
+	WebAssembly.instantiate(module): Importing an i64 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	WebAssembly.instantiate(module): Importing an i64 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	WebAssembly.instantiate(module): Importing an i64 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	WebAssembly.instantiate(module): Importing an i64 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	WebAssembly.instantiate(module): Importing an i64 global with an incorrectly-typed value: null: PASS
+	WebAssembly.instantiate(module): Importing an i64 global with an incorrectly-typed value: plain object: PASS
+	WebAssembly.instantiate(module): Importing an i64 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	WebAssembly.instantiate(module): Importing an i64 global with an incorrectly-typed value: true: PASS
+	WebAssembly.instantiate(module): Importing an i64 global with an incorrectly-typed value: undefined: PASS
+	WebAssembly.instantiate(module): Importing an i64 mutable global with a primitive value: PASS
+	WebAssembly.instantiate(module): Importing an i64 mutable global with an immutable Global object: PASS
+	WebAssembly.instantiate(module): Importing memory with an incorrectly-typed value: "": PASS
+	WebAssembly.instantiate(module): Importing memory with an incorrectly-typed value: 0.1: PASS
+	WebAssembly.instantiate(module): Importing memory with an incorrectly-typed value: 1: PASS
+	WebAssembly.instantiate(module): Importing memory with an incorrectly-typed value: NaN: PASS
+	WebAssembly.instantiate(module): Importing memory with an incorrectly-typed value: Object.create(WebAssembly.Memory.prototype): PASS
+	WebAssembly.instantiate(module): Importing memory with an incorrectly-typed value: WebAssembly.Memory: PASS
+	WebAssembly.instantiate(module): Importing memory with an incorrectly-typed value: WebAssembly.Memory object (too large): PASS
+	WebAssembly.instantiate(module): Importing memory with an incorrectly-typed value: WebAssembly.Memory.prototype: PASS
+	WebAssembly.instantiate(module): Importing memory with an incorrectly-typed value: null: PASS
+	WebAssembly.instantiate(module): Importing memory with an incorrectly-typed value: plain object: PASS
+	WebAssembly.instantiate(module): Importing memory with an incorrectly-typed value: symbol "Symbol()": PASS
+	WebAssembly.instantiate(module): Importing memory with an incorrectly-typed value: true: PASS
+	WebAssembly.instantiate(module): Importing memory with an incorrectly-typed value: undefined: PASS
+	WebAssembly.instantiate(module): Importing table with an incorrectly-typed value: "": PASS
+	WebAssembly.instantiate(module): Importing table with an incorrectly-typed value: 0.1: PASS
+	WebAssembly.instantiate(module): Importing table with an incorrectly-typed value: 1: PASS
+	WebAssembly.instantiate(module): Importing table with an incorrectly-typed value: NaN: PASS
+	WebAssembly.instantiate(module): Importing table with an incorrectly-typed value: Object.create(WebAssembly.Table.prototype): PASS
+	WebAssembly.instantiate(module): Importing table with an incorrectly-typed value: WebAssembly.Table: PASS
+	WebAssembly.instantiate(module): Importing table with an incorrectly-typed value: WebAssembly.Table object (too large): PASS
+	WebAssembly.instantiate(module): Importing table with an incorrectly-typed value: WebAssembly.Table.prototype: PASS
+	WebAssembly.instantiate(module): Importing table with an incorrectly-typed value: null: PASS
+	WebAssembly.instantiate(module): Importing table with an incorrectly-typed value: plain object: PASS
+	WebAssembly.instantiate(module): Importing table with an incorrectly-typed value: symbol "Symbol()": PASS
+	WebAssembly.instantiate(module): Importing table with an incorrectly-typed value: true: PASS
+	WebAssembly.instantiate(module): Importing table with an incorrectly-typed value: undefined: PASS
+	WebAssembly.instantiate(module): Imports argument with missing property: empty object: PASS
+	WebAssembly.instantiate(module): Imports argument with missing property: undefined: PASS
+	WebAssembly.instantiate(module): Imports argument with missing property: wrong property: PASS
+	WebAssembly.instantiate(module): Missing imports argument: PASS
+	WebAssembly.instantiate(module): Non-object imports argument: "": PASS
+	WebAssembly.instantiate(module): Non-object imports argument: 0.1: PASS
+	WebAssembly.instantiate(module): Non-object imports argument: 1: PASS
+	WebAssembly.instantiate(module): Non-object imports argument: NaN: PASS
+	WebAssembly.instantiate(module): Non-object imports argument: null: PASS
+	WebAssembly.instantiate(module): Non-object imports argument: symbol "Symbol()": PASS
+	WebAssembly.instantiate(module): Non-object imports argument: true: PASS
+	WebAssembly.instantiate(module): Non-object module: "": PASS
+	WebAssembly.instantiate(module): Non-object module: 0.1: PASS
+	WebAssembly.instantiate(module): Non-object module: 1: PASS
+	WebAssembly.instantiate(module): Non-object module: NaN: PASS
+	WebAssembly.instantiate(module): Non-object module: null: PASS
+	WebAssembly.instantiate(module): Non-object module: symbol "Symbol()": PASS
+	WebAssembly.instantiate(module): Non-object module: true: PASS
+	WebAssembly.instantiate(module): Non-object module: undefined: PASS
+/wasm/jsapi/constructor/instantiate.any.html: OK
+	Branding: PASS
+	Changing the buffer: PASS
+	Empty buffer: PASS
+	Empty module with empty imports argument: BufferSource argument: PASS
+	Empty module with empty imports argument: Module argument: PASS
+	Empty module with undefined imports argument: BufferSource argument: PASS
+	Empty module with undefined imports argument: Module argument: PASS
+	Empty module without imports argument: BufferSource argument: PASS
+	Empty module without imports argument: Module argument: PASS
+	Invalid arguments: PASS
+	Invalid code: PASS
+	Missing arguments: PASS
+	Multiple i64 arguments: BufferSource argument: PASS
+	Multiple i64 arguments: Module argument: PASS
+	No imports: BufferSource argument: PASS
+	No imports: Module argument: PASS
+	Promise type: PASS
+	Synchronous options handling: Buffer argument: PASS
+	Synchronous options handling: Module argument: PASS
+	export i64-returning function: BufferSource argument: PASS
+	export i64-returning function: Module argument: PASS
+	exports and imports: BufferSource argument: PASS
+	exports and imports: Module argument: PASS
+	exports with empty name: function: BufferSource argument: PASS
+	exports with empty name: function: Module argument: PASS
+	exports with empty name: global: BufferSource argument: PASS
+	exports with empty name: global: Module argument: PASS
+	exports with empty name: table: BufferSource argument: PASS
+	exports with empty name: table: Module argument: PASS
+	getter order for imports object: BufferSource argument: PASS
+	getter order for imports object: Module argument: PASS
+	i32 mutable WebAssembly.Global import: BufferSource argument: PASS
+	i32 mutable WebAssembly.Global import: Module argument: PASS
+	i64 exports and imports: BufferSource argument: PASS
+	i64 exports and imports: Module argument: PASS
+	i64 mutable WebAssembly.Global import: BufferSource argument: PASS
+	i64 mutable WebAssembly.Global import: Module argument: PASS
+	import with function that takes and returns i32: BufferSource argument: PASS
+	import with function that takes and returns i32: Module argument: PASS
+	import with function that takes and returns i64: BufferSource argument: PASS
+	import with function that takes and returns i64: Module argument: PASS
+	import with i32-returning function: BufferSource argument: PASS
+	import with i32-returning function: Module argument: PASS
+	import with i32-taking function: BufferSource argument: PASS
+	import with i32-taking function: Module argument: PASS
+	import with i64-returning function: BufferSource argument: PASS
+	import with i64-returning function: Module argument: PASS
+	import with i64-taking function: BufferSource argument: PASS
+	import with i64-taking function: Module argument: PASS
+	imports with empty module names: BufferSource argument: PASS
+	imports with empty module names: Module argument: PASS
+	imports with empty names: BufferSource argument: PASS
+	imports with empty names: Module argument: PASS
+	imports: BufferSource argument: PASS
+	imports: Module argument: PASS
+	stray argument: BufferSource argument: PASS
+	stray argument: Module argument: PASS
+/wasm/jsapi/constructor/instantiate.any.worker.html: OK
+	Branding: PASS
+	Changing the buffer: PASS
+	Empty buffer: PASS
+	Empty module with empty imports argument: BufferSource argument: PASS
+	Empty module with empty imports argument: Module argument: PASS
+	Empty module with undefined imports argument: BufferSource argument: PASS
+	Empty module with undefined imports argument: Module argument: PASS
+	Empty module without imports argument: BufferSource argument: PASS
+	Empty module without imports argument: Module argument: PASS
+	Invalid arguments: PASS
+	Invalid code: PASS
+	Missing arguments: PASS
+	Multiple i64 arguments: BufferSource argument: PASS
+	Multiple i64 arguments: Module argument: PASS
+	No imports: BufferSource argument: PASS
+	No imports: Module argument: PASS
+	Promise type: PASS
+	Synchronous options handling: Buffer argument: PASS
+	Synchronous options handling: Module argument: PASS
+	export i64-returning function: BufferSource argument: PASS
+	export i64-returning function: Module argument: PASS
+	exports and imports: BufferSource argument: PASS
+	exports and imports: Module argument: PASS
+	exports with empty name: function: BufferSource argument: PASS
+	exports with empty name: function: Module argument: PASS
+	exports with empty name: global: BufferSource argument: PASS
+	exports with empty name: global: Module argument: PASS
+	exports with empty name: table: BufferSource argument: PASS
+	exports with empty name: table: Module argument: PASS
+	getter order for imports object: BufferSource argument: PASS
+	getter order for imports object: Module argument: PASS
+	i32 mutable WebAssembly.Global import: BufferSource argument: PASS
+	i32 mutable WebAssembly.Global import: Module argument: PASS
+	i64 exports and imports: BufferSource argument: PASS
+	i64 exports and imports: Module argument: PASS
+	i64 mutable WebAssembly.Global import: BufferSource argument: PASS
+	i64 mutable WebAssembly.Global import: Module argument: PASS
+	import with function that takes and returns i32: BufferSource argument: PASS
+	import with function that takes and returns i32: Module argument: PASS
+	import with function that takes and returns i64: BufferSource argument: PASS
+	import with function that takes and returns i64: Module argument: PASS
+	import with i32-returning function: BufferSource argument: PASS
+	import with i32-returning function: Module argument: PASS
+	import with i32-taking function: BufferSource argument: PASS
+	import with i32-taking function: Module argument: PASS
+	import with i64-returning function: BufferSource argument: PASS
+	import with i64-returning function: Module argument: PASS
+	import with i64-taking function: BufferSource argument: PASS
+	import with i64-taking function: Module argument: PASS
+	imports with empty module names: BufferSource argument: PASS
+	imports with empty module names: Module argument: PASS
+	imports with empty names: BufferSource argument: PASS
+	imports with empty names: Module argument: PASS
+	imports: BufferSource argument: PASS
+	imports: Module argument: PASS
+	stray argument: BufferSource argument: PASS
+	stray argument: Module argument: PASS
+/wasm/jsapi/constructor/multi-value.any.html: OK
+	multiple return values from js to wasm: PASS
+	multiple return values from wasm to js: PASS
+	multiple return values inside wasm: PASS
+/wasm/jsapi/constructor/multi-value.any.worker.html: OK
+	multiple return values from js to wasm: PASS
+	multiple return values from wasm to js: PASS
+	multiple return values inside wasm: PASS
+/wasm/jsapi/constructor/toStringTag.any.html: OK
+	@@toStringTag exists on the namespace object with the appropriate descriptor: PASS
+	Object.prototype.toString applied after deleting @@toStringTag: PASS
+	Object.prototype.toString applied after modifying the namespace object's @@toStringTag: PASS
+	Object.prototype.toString applied to the namespace object: PASS
+/wasm/jsapi/constructor/toStringTag.any.worker.html: OK
+	@@toStringTag exists on the namespace object with the appropriate descriptor: PASS
+	Object.prototype.toString applied after deleting @@toStringTag: PASS
+	Object.prototype.toString applied after modifying the namespace object's @@toStringTag: PASS
+	Object.prototype.toString applied to the namespace object: PASS
+/wasm/jsapi/constructor/validate.any.html: OK
+	Branding: PASS
+	Invalid arguments: PASS
+	Missing argument: PASS
+	Stray argument: PASS
+	Validating module [0 61 73 6d 0 0 0 0] in Int16Array: PASS
+	Validating module [0 61 73 6d 0 0 0 0] in Int32Array: PASS
+	Validating module [0 61 73 6d 0 0 0 0] in Int8Array: PASS
+	Validating module [0 61 73 6d 0 0 0 0] in Uint16Array: PASS
+	Validating module [0 61 73 6d 0 0 0 0] in Uint32Array: PASS
+	Validating module [0 61 73 6d 0 0 0 0] in Uint8Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0 0 0] in Int16Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0 0 0] in Int8Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0 0 0] in Uint16Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0 0 0] in Uint8Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0 0 1 0] in Int8Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0 0 1 0] in Uint8Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0 0 2 1 61] in Int16Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0 0 2 1 61] in Int32Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0 0 2 1 61] in Int8Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0 0 2 1 61] in Uint16Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0 0 2 1 61] in Uint32Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0 0 2 1 61] in Uint8Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0] in Int16Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0] in Int32Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0] in Int8Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0] in Uint16Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0] in Uint32Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0] in Uint8Array: PASS
+	Validating module [0 61 73 6d 1 0 0] in Int8Array: PASS
+	Validating module [0 61 73 6d 1 0 0] in Uint8Array: PASS
+	Validating module [0 61 73 6d 1 0] in Int16Array: PASS
+	Validating module [0 61 73 6d 1 0] in Int8Array: PASS
+	Validating module [0 61 73 6d 1 0] in Uint16Array: PASS
+	Validating module [0 61 73 6d 1 0] in Uint8Array: PASS
+	Validating module [0 61 73 6d 1] in Int8Array: PASS
+	Validating module [0 61 73 6d 1] in Uint8Array: PASS
+	Validating module [0 61 73 6d 2 0 0 0] in Int16Array: PASS
+	Validating module [0 61 73 6d 2 0 0 0] in Int32Array: PASS
+	Validating module [0 61 73 6d 2 0 0 0] in Int8Array: PASS
+	Validating module [0 61 73 6d 2 0 0 0] in Uint16Array: PASS
+	Validating module [0 61 73 6d 2 0 0 0] in Uint32Array: PASS
+	Validating module [0 61 73 6d 2 0 0 0] in Uint8Array: PASS
+	Validating module [0 61 73 6d] in Int16Array: PASS
+	Validating module [0 61 73 6d] in Int32Array: PASS
+	Validating module [0 61 73 6d] in Int8Array: PASS
+	Validating module [0 61 73 6d] in Uint16Array: PASS
+	Validating module [0 61 73 6d] in Uint32Array: PASS
+	Validating module [0 61 73 6d] in Uint8Array: PASS
+	Validating module [0 61 73] in Int8Array: PASS
+	Validating module [0 61 73] in Uint8Array: PASS
+	Validating module [0 61] in Int16Array: PASS
+	Validating module [0 61] in Int8Array: PASS
+	Validating module [0 61] in Uint16Array: PASS
+	Validating module [0 61] in Uint8Array: PASS
+	Validating module [0] in Int8Array: PASS
+	Validating module [0] in Uint8Array: PASS
+	Validating module [] in Int16Array: PASS
+	Validating module [] in Int32Array: PASS
+	Validating module [] in Int8Array: PASS
+	Validating module [] in Uint16Array: PASS
+	Validating module [] in Uint32Array: PASS
+	Validating module [] in Uint8Array: PASS
+/wasm/jsapi/constructor/validate.any.worker.html: OK
+	Branding: PASS
+	Invalid arguments: PASS
+	Missing argument: PASS
+	Stray argument: PASS
+	Validating module [0 61 73 6d 0 0 0 0] in Int16Array: PASS
+	Validating module [0 61 73 6d 0 0 0 0] in Int32Array: PASS
+	Validating module [0 61 73 6d 0 0 0 0] in Int8Array: PASS
+	Validating module [0 61 73 6d 0 0 0 0] in Uint16Array: PASS
+	Validating module [0 61 73 6d 0 0 0 0] in Uint32Array: PASS
+	Validating module [0 61 73 6d 0 0 0 0] in Uint8Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0 0 0] in Int16Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0 0 0] in Int8Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0 0 0] in Uint16Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0 0 0] in Uint8Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0 0 1 0] in Int8Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0 0 1 0] in Uint8Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0 0 2 1 61] in Int16Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0 0 2 1 61] in Int32Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0 0 2 1 61] in Int8Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0 0 2 1 61] in Uint16Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0 0 2 1 61] in Uint32Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0 0 2 1 61] in Uint8Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0] in Int16Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0] in Int32Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0] in Int8Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0] in Uint16Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0] in Uint32Array: PASS
+	Validating module [0 61 73 6d 1 0 0 0] in Uint8Array: PASS
+	Validating module [0 61 73 6d 1 0 0] in Int8Array: PASS
+	Validating module [0 61 73 6d 1 0 0] in Uint8Array: PASS
+	Validating module [0 61 73 6d 1 0] in Int16Array: PASS
+	Validating module [0 61 73 6d 1 0] in Int8Array: PASS
+	Validating module [0 61 73 6d 1 0] in Uint16Array: PASS
+	Validating module [0 61 73 6d 1 0] in Uint8Array: PASS
+	Validating module [0 61 73 6d 1] in Int8Array: PASS
+	Validating module [0 61 73 6d 1] in Uint8Array: PASS
+	Validating module [0 61 73 6d 2 0 0 0] in Int16Array: PASS
+	Validating module [0 61 73 6d 2 0 0 0] in Int32Array: PASS
+	Validating module [0 61 73 6d 2 0 0 0] in Int8Array: PASS
+	Validating module [0 61 73 6d 2 0 0 0] in Uint16Array: PASS
+	Validating module [0 61 73 6d 2 0 0 0] in Uint32Array: PASS
+	Validating module [0 61 73 6d 2 0 0 0] in Uint8Array: PASS
+	Validating module [0 61 73 6d] in Int16Array: PASS
+	Validating module [0 61 73 6d] in Int32Array: PASS
+	Validating module [0 61 73 6d] in Int8Array: PASS
+	Validating module [0 61 73 6d] in Uint16Array: PASS
+	Validating module [0 61 73 6d] in Uint32Array: PASS
+	Validating module [0 61 73 6d] in Uint8Array: PASS
+	Validating module [0 61 73] in Int8Array: PASS
+	Validating module [0 61 73] in Uint8Array: PASS
+	Validating module [0 61] in Int16Array: PASS
+	Validating module [0 61] in Int8Array: PASS
+	Validating module [0 61] in Uint16Array: PASS
+	Validating module [0 61] in Uint8Array: PASS
+	Validating module [0] in Int8Array: PASS
+	Validating module [0] in Uint8Array: PASS
+	Validating module [] in Int16Array: PASS
+	Validating module [] in Int32Array: PASS
+	Validating module [] in Int8Array: PASS
+	Validating module [] in Uint16Array: PASS
+	Validating module [] in Uint32Array: PASS
+	Validating module [] in Uint8Array: PASS
+/wasm/jsapi/esm-integration/exports.tentative.any.html: OK
+	Exported names from a WebAssembly module: FAIL
+/wasm/jsapi/esm-integration/exports.tentative.any.worker.html: OK
+	Exported names from a WebAssembly module: FAIL
+/wasm/jsapi/esm-integration/global-exports-live-bindings.tentative.any.html: OK
+	Dep module mutable global exports should be live bindings: FAIL
+	Local mutable global exports should be live bindings: FAIL
+/wasm/jsapi/esm-integration/global-exports-live-bindings.tentative.any.worker.html: OK
+	Dep module mutable global exports should be live bindings: FAIL
+	Local mutable global exports should be live bindings: FAIL
+/wasm/jsapi/esm-integration/global-exports.tentative.any.html: OK
+	WebAssembly local global values should be unwrapped when exporting in ESM integration: FAIL
+	WebAssembly module global values should be unwrapped when importing in ESM integration: FAIL
+	WebAssembly module globals from imported WebAssembly modules should be unwrapped: FAIL
+	WebAssembly mutable global values should be unwrapped when importing in ESM integration: FAIL
+	WebAssembly should properly handle all global types: FAIL
+/wasm/jsapi/esm-integration/global-exports.tentative.any.worker.html: OK
+	WebAssembly local global values should be unwrapped when exporting in ESM integration: FAIL
+	WebAssembly module global values should be unwrapped when importing in ESM integration: FAIL
+	WebAssembly module globals from imported WebAssembly modules should be unwrapped: FAIL
+	WebAssembly mutable global values should be unwrapped when importing in ESM integration: FAIL
+	WebAssembly should properly handle all global types: FAIL
+/wasm/jsapi/esm-integration/js-wasm-cycle.tentative.any.html: OK
+	Check bindings in JavaScript and WebAssembly cycle (JS higher): FAIL
+/wasm/jsapi/esm-integration/js-wasm-cycle.tentative.any.worker.html: OK
+	Check bindings in JavaScript and WebAssembly cycle (JS higher): FAIL
+/wasm/jsapi/esm-integration/mutable-global-sharing.tentative.any.html: OK
+	Multiple JavaScript imports return the same WebAssembly module instance: FAIL
+	Wasm-to-Wasm mutable global sharing is live: FAIL
+	WebAssembly modules should export shared mutable globals with correct initial values: FAIL
+	v128 global mutations should work correctly between WebAssembly modules: FAIL
+	v128 globals should work correctly in WebAssembly-to-WebAssembly imports: FAIL
+/wasm/jsapi/esm-integration/mutable-global-sharing.tentative.any.worker.html: OK
+	Multiple JavaScript imports return the same WebAssembly module instance: FAIL
+	Wasm-to-Wasm mutable global sharing is live: FAIL
+	WebAssembly modules should export shared mutable globals with correct initial values: FAIL
+	v128 global mutations should work correctly between WebAssembly modules: FAIL
+	v128 globals should work correctly in WebAssembly-to-WebAssembly imports: FAIL
+/wasm/jsapi/esm-integration/namespace-instance.tentative.any.html: OK
+	WebAssembly.namespaceInstance() should return the underlying instance with shared state: FAIL
+	WebAssembly.namespaceInstance() should throw TypeError for non-WebAssembly namespaces: PASS
+	WebAssembly.namespaceInstance() should work correctly with multiple modules: FAIL
+/wasm/jsapi/esm-integration/namespace-instance.tentative.any.worker.html: OK
+	WebAssembly.namespaceInstance() should return the underlying instance with shared state: FAIL
+	WebAssembly.namespaceInstance() should throw TypeError for non-WebAssembly namespaces: PASS
+	WebAssembly.namespaceInstance() should work correctly with multiple modules: FAIL
+/wasm/jsapi/esm-integration/reserved-import-names.tentative.any.html: OK
+	wasm-js: reserved export names should cause WebAssembly.LinkError: FAIL
+	wasm-js: reserved import names should cause WebAssembly.LinkError: FAIL
+	wasm-js: reserved module names should cause WebAssembly.LinkError: FAIL
+	wasm: reserved export names should cause WebAssembly.LinkError: FAIL
+	wasm: reserved import names should cause WebAssembly.LinkError: FAIL
+/wasm/jsapi/esm-integration/reserved-import-names.tentative.any.worker.html: OK
+	wasm-js: reserved export names should cause WebAssembly.LinkError: FAIL
+	wasm-js: reserved import names should cause WebAssembly.LinkError: FAIL
+	wasm-js: reserved module names should cause WebAssembly.LinkError: FAIL
+	wasm: reserved export names should cause WebAssembly.LinkError: FAIL
+	wasm: reserved import names should cause WebAssembly.LinkError: FAIL
+/wasm/jsapi/esm-integration/resolve-export.tentative.any.html: OK
+	ResolveExport on invalid re-export from WebAssembly: FAIL
+/wasm/jsapi/esm-integration/resolve-export.tentative.any.worker.html: OK
+	ResolveExport on invalid re-export from WebAssembly: FAIL
+/wasm/jsapi/esm-integration/source-phase-string-builtins.tentative.any.html: ERROR
+/wasm/jsapi/esm-integration/source-phase-string-builtins.tentative.any.worker.html: ERROR
+/wasm/jsapi/esm-integration/source-phase-string-constants.tentative.any.html: ERROR
+/wasm/jsapi/esm-integration/source-phase-string-constants.tentative.any.worker.html: ERROR
+/wasm/jsapi/esm-integration/source-phase.tentative.any.html: ERROR
+/wasm/jsapi/esm-integration/source-phase.tentative.any.worker.html: ERROR
+/wasm/jsapi/esm-integration/string-builtins.tentative.any.html: OK
+	String builtins should be supported in imports in ESM integration: FAIL
+/wasm/jsapi/esm-integration/string-builtins.tentative.any.worker.html: OK
+	String builtins should be supported in imports in ESM integration: FAIL
+/wasm/jsapi/esm-integration/string-constants.tentative.any.html: OK
+	String constants from wasm:js/string-constants should be supported in ESM integration: FAIL
+/wasm/jsapi/esm-integration/string-constants.tentative.any.worker.html: OK
+	String constants from wasm:js/string-constants should be supported in ESM integration: FAIL
+/wasm/jsapi/esm-integration/v128-tdz.tentative.any.html: OK
+	v128 global exports should cause TDZ errors: FAIL
+/wasm/jsapi/esm-integration/v128-tdz.tentative.any.worker.html: OK
+	v128 global exports should cause TDZ errors: FAIL
+/wasm/jsapi/esm-integration/wasm-import-wasm-export.tentative.any.html: OK
+	Check import and export between WebAssembly modules: FAIL
+/wasm/jsapi/esm-integration/wasm-import-wasm-export.tentative.any.worker.html: OK
+	Check import and export between WebAssembly modules: FAIL
+/wasm/jsapi/exception/basic.tentative.any.html: OK
+	Imported JS function throws: FAIL
+	Imported JS function throws, Wasm catches and rethrows: FAIL
+	Wasm function throws argument: PASS
+	Wasm function throws integer: PASS
+	Wasm function throws null: PASS
+/wasm/jsapi/exception/basic.tentative.any.worker.html: OK
+	Imported JS function throws: FAIL
+	Imported JS function throws, Wasm catches and rethrows: FAIL
+	Wasm function throws argument: PASS
+	Wasm function throws integer: PASS
+	Wasm function throws null: PASS
+/wasm/jsapi/exception/constructor.tentative.any.html: OK
+	Calling: PASS
+	Invalid descriptor argument: PASS
+	Invalid exception argument: PASS
+	No arguments: PASS
+	length: PASS
+	name: PASS
+/wasm/jsapi/exception/constructor.tentative.any.worker.html: OK
+	Calling: PASS
+	Invalid descriptor argument: PASS
+	Invalid exception argument: PASS
+	No arguments: PASS
+	length: PASS
+	name: PASS
+/wasm/jsapi/exception/getArg.tentative.any.html: OK
+	Getting out-of-range argument: FAIL
+	Index out of bounds: PASS
+	Invalid exception argument: PASS
+	Missing arguments: PASS
+	getArg: PASS
+/wasm/jsapi/exception/getArg.tentative.any.worker.html: OK
+	Getting out-of-range argument: FAIL
+	Index out of bounds: PASS
+	Invalid exception argument: PASS
+	Missing arguments: PASS
+	getArg: PASS
+/wasm/jsapi/exception/identity.tentative.any.html: OK
+	Identity check: PASS
+/wasm/jsapi/exception/identity.tentative.any.worker.html: OK
+	Identity check: PASS
+/wasm/jsapi/exception/is.tentative.any.html: OK
+	Invalid exception argument: PASS
+	Missing arguments: PASS
+	is: PASS
+/wasm/jsapi/exception/is.tentative.any.worker.html: OK
+	Invalid exception argument: PASS
+	Missing arguments: PASS
+	is: PASS
+/wasm/jsapi/exception/toString.tentative.any.html: OK
+	@@toStringTag exists on the prototype with the appropriate descriptor: PASS
+	Object.prototype.toString on an Exception: PASS
+/wasm/jsapi/exception/toString.tentative.any.worker.html: OK
+	@@toStringTag exists on the prototype with the appropriate descriptor: PASS
+	Object.prototype.toString on an Exception: PASS
+/wasm/jsapi/function/call.tentative.any.html: OK
+	test calling function: FAIL
+	test constructing function: FAIL
+/wasm/jsapi/function/call.tentative.any.worker.html: OK
+	test calling function: FAIL
+	test constructing function: FAIL
+/wasm/jsapi/function/constructor.tentative.any.html: OK
+	Calling: FAIL
+	Too few arguments: FAIL
+	construct with JS function: FAIL
+	fail to construct with non-callable object: FAIL
+	fail with missing parameters: FAIL
+	fail with missing results: FAIL
+	fail with non-existent parameter and result type: FAIL
+	fail with non-function object: FAIL
+	fail with non-string parameters & results: FAIL
+	length: FAIL
+	name: FAIL
+/wasm/jsapi/function/constructor.tentative.any.worker.html: OK
+	Calling: FAIL
+	Too few arguments: FAIL
+	construct with JS function: FAIL
+	fail to construct with non-callable object: FAIL
+	fail with missing parameters: FAIL
+	fail with missing results: FAIL
+	fail with non-existent parameter and result type: FAIL
+	fail with non-function object: FAIL
+	fail with non-string parameters & results: FAIL
+	length: FAIL
+	name: FAIL
+/wasm/jsapi/function/table.tentative.any.html: OK
+	Test insertion into table: FAIL
+/wasm/jsapi/function/table.tentative.any.worker.html: OK
+	Test insertion into table: FAIL
+/wasm/jsapi/function/type.tentative.any.html: OK
+	Check all types: FAIL
+	Check empty results and parameters: FAIL
+/wasm/jsapi/function/type.tentative.any.worker.html: OK
+	Check all types: FAIL
+	Check empty results and parameters: FAIL
+/wasm/jsapi/functions/entry-different-function-realm.html: ERROR
+	Start function: FAIL
+/wasm/jsapi/functions/entry.html: ERROR
+	Sanity check: this all works as expected synchronously: FAIL
+	Start function: TIMEOUT
+/wasm/jsapi/functions/incumbent.html: ERROR
+/wasm/jsapi/gc/casts.tentative.any.html: ERROR
+/wasm/jsapi/gc/casts.tentative.any.worker.html: ERROR
+/wasm/jsapi/gc/exported-object.tentative.any.html: ERROR
+/wasm/jsapi/gc/exported-object.tentative.any.worker.html: ERROR
+/wasm/jsapi/gc/i31.tentative.any.html: ERROR
+/wasm/jsapi/gc/i31.tentative.any.worker.html: ERROR
+/wasm/jsapi/global/constructor.any.html: OK
+	BigInt value for type f32: PASS
+	BigInt value for type f64: PASS
+	BigInt value for type i32: PASS
+	Calling: PASS
+	Construct v128 global: PASS
+	Default value for type f32: PASS
+	Default value for type f64: PASS
+	Default value for type i32: PASS
+	Explicit value "3" for type f32: PASS
+	Explicit value "3" for type f64: PASS
+	Explicit value "3" for type i32: PASS
+	Explicit value "3" for type i64: PASS
+	Explicit value 123n for type i64: PASS
+	Explicit value 2 for type f32: PASS
+	Explicit value 2 for type f64: PASS
+	Explicit value 2 for type i32: PASS
+	Explicit value false for type f32: PASS
+	Explicit value false for type f64: PASS
+	Explicit value false for type i32: PASS
+	Explicit value false for type i64: PASS
+	Explicit value null for type f32: PASS
+	Explicit value null for type f64: PASS
+	Explicit value null for type i32: PASS
+	Explicit value object with toString returning bigint for type i64: PASS
+	Explicit value object with toString returning number for type f32: PASS
+	Explicit value object with toString returning number for type f64: PASS
+	Explicit value object with toString returning number for type i32: PASS
+	Explicit value object with toString returning string for type f32: PASS
+	Explicit value object with toString returning string for type f64: PASS
+	Explicit value object with toString returning string for type i32: PASS
+	Explicit value object with toString returning string for type i64: PASS
+	Explicit value object with valueOf returning bigint for type i64: PASS
+	Explicit value object with valueOf returning number for type f32: PASS
+	Explicit value object with valueOf returning number for type f64: PASS
+	Explicit value object with valueOf returning number for type i32: PASS
+	Explicit value object with valueOf returning string for type f32: PASS
+	Explicit value object with valueOf returning string for type f64: PASS
+	Explicit value object with valueOf returning string for type i32: PASS
+	Explicit value object with valueOf returning string for type i64: PASS
+	Explicit value true for type f32: PASS
+	Explicit value true for type f64: PASS
+	Explicit value true for type i32: PASS
+	Explicit value true for type i64: PASS
+	Explicit value undefined for type f32: PASS
+	Explicit value undefined for type f64: PASS
+	Explicit value undefined for type i32: PASS
+	Explicit value undefined for type i64: PASS
+	Invalid descriptor argument: PASS
+	Invalid type argument: PASS
+	No arguments: PASS
+	Order of evaluation: PASS
+	Pass non-bigint as i64 Global value: 666: PASS
+	Pass non-bigint as i64 Global value: null: PASS
+	Pass non-bigint as i64 Global value: object "5": PASS
+	Pass non-bigint as i64 Global value: object "[object Object]": PASS
+	Pass non-bigint as i64 Global value: symbol "Symbol()": PASS
+	Stray argument: PASS
+	i64 with default: PASS
+	length: PASS
+	name: PASS
+/wasm/jsapi/global/constructor.any.worker.html: OK
+	BigInt value for type f32: PASS
+	BigInt value for type f64: PASS
+	BigInt value for type i32: PASS
+	Calling: PASS
+	Construct v128 global: PASS
+	Default value for type f32: PASS
+	Default value for type f64: PASS
+	Default value for type i32: PASS
+	Explicit value "3" for type f32: PASS
+	Explicit value "3" for type f64: PASS
+	Explicit value "3" for type i32: PASS
+	Explicit value "3" for type i64: PASS
+	Explicit value 123n for type i64: PASS
+	Explicit value 2 for type f32: PASS
+	Explicit value 2 for type f64: PASS
+	Explicit value 2 for type i32: PASS
+	Explicit value false for type f32: PASS
+	Explicit value false for type f64: PASS
+	Explicit value false for type i32: PASS
+	Explicit value false for type i64: PASS
+	Explicit value null for type f32: PASS
+	Explicit value null for type f64: PASS
+	Explicit value null for type i32: PASS
+	Explicit value object with toString returning bigint for type i64: PASS
+	Explicit value object with toString returning number for type f32: PASS
+	Explicit value object with toString returning number for type f64: PASS
+	Explicit value object with toString returning number for type i32: PASS
+	Explicit value object with toString returning string for type f32: PASS
+	Explicit value object with toString returning string for type f64: PASS
+	Explicit value object with toString returning string for type i32: PASS
+	Explicit value object with toString returning string for type i64: PASS
+	Explicit value object with valueOf returning bigint for type i64: PASS
+	Explicit value object with valueOf returning number for type f32: PASS
+	Explicit value object with valueOf returning number for type f64: PASS
+	Explicit value object with valueOf returning number for type i32: PASS
+	Explicit value object with valueOf returning string for type f32: PASS
+	Explicit value object with valueOf returning string for type f64: PASS
+	Explicit value object with valueOf returning string for type i32: PASS
+	Explicit value object with valueOf returning string for type i64: PASS
+	Explicit value true for type f32: PASS
+	Explicit value true for type f64: PASS
+	Explicit value true for type i32: PASS
+	Explicit value true for type i64: PASS
+	Explicit value undefined for type f32: PASS
+	Explicit value undefined for type f64: PASS
+	Explicit value undefined for type i32: PASS
+	Explicit value undefined for type i64: PASS
+	Invalid descriptor argument: PASS
+	Invalid type argument: PASS
+	No arguments: PASS
+	Order of evaluation: PASS
+	Pass non-bigint as i64 Global value: 666: PASS
+	Pass non-bigint as i64 Global value: null: PASS
+	Pass non-bigint as i64 Global value: object "5": PASS
+	Pass non-bigint as i64 Global value: object "[object Object]": PASS
+	Pass non-bigint as i64 Global value: symbol "Symbol()": PASS
+	Stray argument: PASS
+	i64 with default: PASS
+	length: PASS
+	name: PASS
+/wasm/jsapi/global/toString.any.html: OK
+	@@toStringTag exists on the prototype with the appropriate descriptor: PASS
+	Object.prototype.toString on an Global: PASS
+/wasm/jsapi/global/toString.any.worker.html: OK
+	@@toStringTag exists on the prototype with the appropriate descriptor: PASS
+	Object.prototype.toString on an Global: PASS
+/wasm/jsapi/global/type.tentative.any.html: OK
+	externref, immutable: FAIL
+	externref, mutable: FAIL
+	f32, immutable: FAIL
+	f32, mutable: FAIL
+	f64, immutable: FAIL
+	f64, mutable: FAIL
+	funcref, immutable: FAIL
+	funcref, mutable: FAIL
+	i32, immutable: FAIL
+	i32, mutable: FAIL
+	i64, immutable: FAIL
+	i64, mutable: FAIL
+	key ordering: FAIL
+/wasm/jsapi/global/type.tentative.any.worker.html: OK
+	externref, immutable: FAIL
+	externref, mutable: FAIL
+	f32, immutable: FAIL
+	f32, mutable: FAIL
+	f64, immutable: FAIL
+	f64, mutable: FAIL
+	funcref, immutable: FAIL
+	funcref, mutable: FAIL
+	i32, immutable: FAIL
+	i32, mutable: FAIL
+	i64, immutable: FAIL
+	i64, mutable: FAIL
+	key ordering: FAIL
+/wasm/jsapi/global/value-get-set.any.html: OK
+	Branding: PASS
+	Calling setter without argument: PASS
+	Immutable f32 (empty string): PASS
+	Immutable f32 (false): PASS
+	Immutable f32 (missing): PASS
+	Immutable f32 (null): PASS
+	Immutable f32 (undefined): PASS
+	Immutable f32 (zero): PASS
+	Immutable f32 with ToNumber side-effects (empty string): PASS
+	Immutable f32 with ToNumber side-effects (false): PASS
+	Immutable f32 with ToNumber side-effects (missing): PASS
+	Immutable f32 with ToNumber side-effects (null): PASS
+	Immutable f32 with ToNumber side-effects (undefined): PASS
+	Immutable f32 with ToNumber side-effects (zero): PASS
+	Immutable f64 (empty string): PASS
+	Immutable f64 (false): PASS
+	Immutable f64 (missing): PASS
+	Immutable f64 (null): PASS
+	Immutable f64 (undefined): PASS
+	Immutable f64 (zero): PASS
+	Immutable f64 with ToNumber side-effects (empty string): PASS
+	Immutable f64 with ToNumber side-effects (false): PASS
+	Immutable f64 with ToNumber side-effects (missing): PASS
+	Immutable f64 with ToNumber side-effects (null): PASS
+	Immutable f64 with ToNumber side-effects (undefined): PASS
+	Immutable f64 with ToNumber side-effects (zero): PASS
+	Immutable i32 (empty string): PASS
+	Immutable i32 (false): PASS
+	Immutable i32 (missing): PASS
+	Immutable i32 (null): PASS
+	Immutable i32 (undefined): PASS
+	Immutable i32 (zero): PASS
+	Immutable i32 with ToNumber side-effects (empty string): PASS
+	Immutable i32 with ToNumber side-effects (false): PASS
+	Immutable i32 with ToNumber side-effects (missing): PASS
+	Immutable i32 with ToNumber side-effects (null): PASS
+	Immutable i32 with ToNumber side-effects (undefined): PASS
+	Immutable i32 with ToNumber side-effects (zero): PASS
+	Immutable i64 (empty string): PASS
+	Immutable i64 (false): PASS
+	Immutable i64 (missing): PASS
+	Immutable i64 (null): PASS
+	Immutable i64 (undefined): PASS
+	Immutable i64 (zero): PASS
+	Immutable i64 with ToNumber side-effects (empty string): PASS
+	Immutable i64 with ToNumber side-effects (false): PASS
+	Immutable i64 with ToNumber side-effects (missing): PASS
+	Immutable i64 with ToNumber side-effects (null): PASS
+	Immutable i64 with ToNumber side-effects (undefined): PASS
+	Immutable i64 with ToNumber side-effects (zero): PASS
+	Mutable f32 (one): PASS
+	Mutable f32 (string): PASS
+	Mutable f32 (true on prototype): PASS
+	Mutable f32 (true): PASS
+	Mutable f64 (one): PASS
+	Mutable f64 (string): PASS
+	Mutable f64 (true on prototype): PASS
+	Mutable f64 (true): PASS
+	Mutable i32 (one): PASS
+	Mutable i32 (string): PASS
+	Mutable i32 (true on prototype): PASS
+	Mutable i32 (true): PASS
+	Mutable i64 (one): PASS
+	Mutable i64 (string): PASS
+	Mutable i64 (true on prototype): PASS
+	Mutable i64 (true): PASS
+	Stray argument: PASS
+	i64 mutability: PASS
+/wasm/jsapi/global/value-get-set.any.worker.html: OK
+	Branding: PASS
+	Calling setter without argument: PASS
+	Immutable f32 (empty string): PASS
+	Immutable f32 (false): PASS
+	Immutable f32 (missing): PASS
+	Immutable f32 (null): PASS
+	Immutable f32 (undefined): PASS
+	Immutable f32 (zero): PASS
+	Immutable f32 with ToNumber side-effects (empty string): PASS
+	Immutable f32 with ToNumber side-effects (false): PASS
+	Immutable f32 with ToNumber side-effects (missing): PASS
+	Immutable f32 with ToNumber side-effects (null): PASS
+	Immutable f32 with ToNumber side-effects (undefined): PASS
+	Immutable f32 with ToNumber side-effects (zero): PASS
+	Immutable f64 (empty string): PASS
+	Immutable f64 (false): PASS
+	Immutable f64 (missing): PASS
+	Immutable f64 (null): PASS
+	Immutable f64 (undefined): PASS
+	Immutable f64 (zero): PASS
+	Immutable f64 with ToNumber side-effects (empty string): PASS
+	Immutable f64 with ToNumber side-effects (false): PASS
+	Immutable f64 with ToNumber side-effects (missing): PASS
+	Immutable f64 with ToNumber side-effects (null): PASS
+	Immutable f64 with ToNumber side-effects (undefined): PASS
+	Immutable f64 with ToNumber side-effects (zero): PASS
+	Immutable i32 (empty string): PASS
+	Immutable i32 (false): PASS
+	Immutable i32 (missing): PASS
+	Immutable i32 (null): PASS
+	Immutable i32 (undefined): PASS
+	Immutable i32 (zero): PASS
+	Immutable i32 with ToNumber side-effects (empty string): PASS
+	Immutable i32 with ToNumber side-effects (false): PASS
+	Immutable i32 with ToNumber side-effects (missing): PASS
+	Immutable i32 with ToNumber side-effects (null): PASS
+	Immutable i32 with ToNumber side-effects (undefined): PASS
+	Immutable i32 with ToNumber side-effects (zero): PASS
+	Immutable i64 (empty string): PASS
+	Immutable i64 (false): PASS
+	Immutable i64 (missing): PASS
+	Immutable i64 (null): PASS
+	Immutable i64 (undefined): PASS
+	Immutable i64 (zero): PASS
+	Immutable i64 with ToNumber side-effects (empty string): PASS
+	Immutable i64 with ToNumber side-effects (false): PASS
+	Immutable i64 with ToNumber side-effects (missing): PASS
+	Immutable i64 with ToNumber side-effects (null): PASS
+	Immutable i64 with ToNumber side-effects (undefined): PASS
+	Immutable i64 with ToNumber side-effects (zero): PASS
+	Mutable f32 (one): PASS
+	Mutable f32 (string): PASS
+	Mutable f32 (true on prototype): PASS
+	Mutable f32 (true): PASS
+	Mutable f64 (one): PASS
+	Mutable f64 (string): PASS
+	Mutable f64 (true on prototype): PASS
+	Mutable f64 (true): PASS
+	Mutable i32 (one): PASS
+	Mutable i32 (string): PASS
+	Mutable i32 (true on prototype): PASS
+	Mutable i32 (true): PASS
+	Mutable i64 (one): PASS
+	Mutable i64 (string): PASS
+	Mutable i64 (true on prototype): PASS
+	Mutable i64 (true): PASS
+	Stray argument: PASS
+	i64 mutability: PASS
+/wasm/jsapi/global/valueOf.any.html: OK
+	Branding: PASS
+	Stray argument: PASS
+/wasm/jsapi/global/valueOf.any.worker.html: OK
+	Branding: PASS
+	Stray argument: PASS
+/wasm/jsapi/idlharness.any.html: OK
+	Exception interface object length: PASS
+	Exception interface object name: PASS
+	Exception interface: attribute stack: PASS
+	Exception interface: existence and properties of interface object: PASS
+	Exception interface: existence and properties of interface prototype object: PASS
+	Exception interface: existence and properties of interface prototype object's "constructor" property: PASS
+	Exception interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	Exception interface: operation getArg(Tag, unsigned long): PASS
+	Exception interface: operation is(Tag): PASS
+	Global interface object length: PASS
+	Global interface object name: PASS
+	Global interface: attribute value: PASS
+	Global interface: existence and properties of interface object: PASS
+	Global interface: existence and properties of interface prototype object: PASS
+	Global interface: existence and properties of interface prototype object's "constructor" property: PASS
+	Global interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	Global interface: operation valueOf(): PASS
+	Instance interface object length: PASS
+	Instance interface object name: PASS
+	Instance interface: attribute exports: PASS
+	Instance interface: existence and properties of interface object: PASS
+	Instance interface: existence and properties of interface prototype object: PASS
+	Instance interface: existence and properties of interface prototype object's "constructor" property: PASS
+	Instance interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	Memory interface object length: PASS
+	Memory interface object name: PASS
+	Memory interface: attribute buffer: PASS
+	Memory interface: existence and properties of interface object: PASS
+	Memory interface: existence and properties of interface prototype object: PASS
+	Memory interface: existence and properties of interface prototype object's "constructor" property: PASS
+	Memory interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	Memory interface: operation grow(AddressValue): PASS
+	Memory interface: operation toFixedLengthBuffer(): FAIL
+	Memory interface: operation toResizableBuffer(): FAIL
+	Module interface object length: PASS
+	Module interface object name: PASS
+	Module interface: existence and properties of interface object: PASS
+	Module interface: existence and properties of interface prototype object: PASS
+	Module interface: existence and properties of interface prototype object's "constructor" property: PASS
+	Module interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	Module interface: operation customSections(Module, DOMString): PASS
+	Module interface: operation exports(Module): PASS
+	Module interface: operation imports(Module): PASS
+	Table interface object length: PASS
+	Table interface object name: PASS
+	Table interface: attribute length: PASS
+	Table interface: existence and properties of interface object: PASS
+	Table interface: existence and properties of interface prototype object: PASS
+	Table interface: existence and properties of interface prototype object's "constructor" property: PASS
+	Table interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	Table interface: operation get(AddressValue): PASS
+	Table interface: operation grow(AddressValue, optional any): PASS
+	Table interface: operation set(AddressValue, optional any): PASS
+	Tag interface object length: PASS
+	Tag interface object name: PASS
+	Tag interface: existence and properties of interface object: PASS
+	Tag interface: existence and properties of interface prototype object: PASS
+	Tag interface: existence and properties of interface prototype object's "constructor" property: PASS
+	Tag interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	WebAssembly namespace: [[Extensible]] is true: PASS
+	WebAssembly namespace: [[Prototype]] is Object.prototype: PASS
+	WebAssembly namespace: attribute JSTag: PASS
+	WebAssembly namespace: extended attributes: PASS
+	WebAssembly namespace: has no length property: PASS
+	WebAssembly namespace: has no name property: PASS
+	WebAssembly namespace: operation compile(AllowSharedBufferSource, optional WebAssemblyCompileOptions): PASS
+	WebAssembly namespace: operation instantiate(AllowSharedBufferSource, optional object, optional WebAssemblyCompileOptions): PASS
+	WebAssembly namespace: operation instantiate(Module, optional object): PASS
+	WebAssembly namespace: operation validate(AllowSharedBufferSource, optional WebAssemblyCompileOptions): PASS
+	WebAssembly namespace: property descriptor: PASS
+	WebAssembly namespace: typeof is "object": PASS
+	idl_test setup: FAIL
+	idl_test validation: PASS
+/wasm/jsapi/idlharness.any.worker.html: OK
+	Exception interface object length: PASS
+	Exception interface object name: PASS
+	Exception interface: attribute stack: PASS
+	Exception interface: existence and properties of interface object: PASS
+	Exception interface: existence and properties of interface prototype object: PASS
+	Exception interface: existence and properties of interface prototype object's "constructor" property: PASS
+	Exception interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	Exception interface: operation getArg(Tag, unsigned long): PASS
+	Exception interface: operation is(Tag): PASS
+	Global interface object length: PASS
+	Global interface object name: PASS
+	Global interface: attribute value: PASS
+	Global interface: existence and properties of interface object: PASS
+	Global interface: existence and properties of interface prototype object: PASS
+	Global interface: existence and properties of interface prototype object's "constructor" property: PASS
+	Global interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	Global interface: operation valueOf(): PASS
+	Instance interface object length: PASS
+	Instance interface object name: PASS
+	Instance interface: attribute exports: PASS
+	Instance interface: existence and properties of interface object: PASS
+	Instance interface: existence and properties of interface prototype object: PASS
+	Instance interface: existence and properties of interface prototype object's "constructor" property: PASS
+	Instance interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	Memory interface object length: PASS
+	Memory interface object name: PASS
+	Memory interface: attribute buffer: PASS
+	Memory interface: existence and properties of interface object: PASS
+	Memory interface: existence and properties of interface prototype object: PASS
+	Memory interface: existence and properties of interface prototype object's "constructor" property: PASS
+	Memory interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	Memory interface: operation grow(AddressValue): PASS
+	Memory interface: operation toFixedLengthBuffer(): FAIL
+	Memory interface: operation toResizableBuffer(): FAIL
+	Module interface object length: PASS
+	Module interface object name: PASS
+	Module interface: existence and properties of interface object: PASS
+	Module interface: existence and properties of interface prototype object: PASS
+	Module interface: existence and properties of interface prototype object's "constructor" property: PASS
+	Module interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	Module interface: operation customSections(Module, DOMString): PASS
+	Module interface: operation exports(Module): PASS
+	Module interface: operation imports(Module): PASS
+	Table interface object length: PASS
+	Table interface object name: PASS
+	Table interface: attribute length: PASS
+	Table interface: existence and properties of interface object: PASS
+	Table interface: existence and properties of interface prototype object: PASS
+	Table interface: existence and properties of interface prototype object's "constructor" property: PASS
+	Table interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	Table interface: operation get(AddressValue): PASS
+	Table interface: operation grow(AddressValue, optional any): PASS
+	Table interface: operation set(AddressValue, optional any): PASS
+	Tag interface object length: PASS
+	Tag interface object name: PASS
+	Tag interface: existence and properties of interface object: PASS
+	Tag interface: existence and properties of interface prototype object: PASS
+	Tag interface: existence and properties of interface prototype object's "constructor" property: PASS
+	Tag interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	WebAssembly namespace: [[Extensible]] is true: PASS
+	WebAssembly namespace: [[Prototype]] is Object.prototype: PASS
+	WebAssembly namespace: attribute JSTag: PASS
+	WebAssembly namespace: extended attributes: PASS
+	WebAssembly namespace: has no length property: PASS
+	WebAssembly namespace: has no name property: PASS
+	WebAssembly namespace: operation compile(AllowSharedBufferSource, optional WebAssemblyCompileOptions): PASS
+	WebAssembly namespace: operation instantiate(AllowSharedBufferSource, optional object, optional WebAssemblyCompileOptions): PASS
+	WebAssembly namespace: operation instantiate(Module, optional object): PASS
+	WebAssembly namespace: operation validate(AllowSharedBufferSource, optional WebAssemblyCompileOptions): PASS
+	WebAssembly namespace: property descriptor: PASS
+	WebAssembly namespace: typeof is "object": PASS
+	idl_test setup: FAIL
+	idl_test validation: PASS
+/wasm/jsapi/instance/constructor-bad-imports.any.html: OK
+	new WebAssembly.Instance(module): Importing a function with an incorrectly-typed value: "": PASS
+	new WebAssembly.Instance(module): Importing a function with an incorrectly-typed value: 0.1: PASS
+	new WebAssembly.Instance(module): Importing a function with an incorrectly-typed value: 1: PASS
+	new WebAssembly.Instance(module): Importing a function with an incorrectly-typed value: NaN: PASS
+	new WebAssembly.Instance(module): Importing a function with an incorrectly-typed value: null: PASS
+	new WebAssembly.Instance(module): Importing a function with an incorrectly-typed value: object "[object Object]": PASS
+	new WebAssembly.Instance(module): Importing a function with an incorrectly-typed value: symbol "Symbol()": PASS
+	new WebAssembly.Instance(module): Importing a function with an incorrectly-typed value: true: PASS
+	new WebAssembly.Instance(module): Importing a function with an incorrectly-typed value: undefined: PASS
+	new WebAssembly.Instance(module): Importing an f32 global with an incorrectly-typed value: "": PASS
+	new WebAssembly.Instance(module): Importing an f32 global with an incorrectly-typed value: BigInt: PASS
+	new WebAssembly.Instance(module): Importing an f32 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	new WebAssembly.Instance(module): Importing an f32 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	new WebAssembly.Instance(module): Importing an f32 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	new WebAssembly.Instance(module): Importing an f32 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	new WebAssembly.Instance(module): Importing an f32 global with an incorrectly-typed value: null: PASS
+	new WebAssembly.Instance(module): Importing an f32 global with an incorrectly-typed value: plain object: PASS
+	new WebAssembly.Instance(module): Importing an f32 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	new WebAssembly.Instance(module): Importing an f32 global with an incorrectly-typed value: true: PASS
+	new WebAssembly.Instance(module): Importing an f32 global with an incorrectly-typed value: undefined: PASS
+	new WebAssembly.Instance(module): Importing an f32 mutable global with a primitive value: PASS
+	new WebAssembly.Instance(module): Importing an f32 mutable global with an immutable Global object: PASS
+	new WebAssembly.Instance(module): Importing an f64 global with an incorrectly-typed value: "": PASS
+	new WebAssembly.Instance(module): Importing an f64 global with an incorrectly-typed value: BigInt: PASS
+	new WebAssembly.Instance(module): Importing an f64 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	new WebAssembly.Instance(module): Importing an f64 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	new WebAssembly.Instance(module): Importing an f64 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	new WebAssembly.Instance(module): Importing an f64 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	new WebAssembly.Instance(module): Importing an f64 global with an incorrectly-typed value: null: PASS
+	new WebAssembly.Instance(module): Importing an f64 global with an incorrectly-typed value: plain object: PASS
+	new WebAssembly.Instance(module): Importing an f64 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	new WebAssembly.Instance(module): Importing an f64 global with an incorrectly-typed value: true: PASS
+	new WebAssembly.Instance(module): Importing an f64 global with an incorrectly-typed value: undefined: PASS
+	new WebAssembly.Instance(module): Importing an f64 mutable global with a primitive value: PASS
+	new WebAssembly.Instance(module): Importing an f64 mutable global with an immutable Global object: PASS
+	new WebAssembly.Instance(module): Importing an i32 global with an incorrectly-typed value: "": PASS
+	new WebAssembly.Instance(module): Importing an i32 global with an incorrectly-typed value: BigInt: PASS
+	new WebAssembly.Instance(module): Importing an i32 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	new WebAssembly.Instance(module): Importing an i32 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	new WebAssembly.Instance(module): Importing an i32 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	new WebAssembly.Instance(module): Importing an i32 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	new WebAssembly.Instance(module): Importing an i32 global with an incorrectly-typed value: null: PASS
+	new WebAssembly.Instance(module): Importing an i32 global with an incorrectly-typed value: plain object: PASS
+	new WebAssembly.Instance(module): Importing an i32 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	new WebAssembly.Instance(module): Importing an i32 global with an incorrectly-typed value: true: PASS
+	new WebAssembly.Instance(module): Importing an i32 global with an incorrectly-typed value: undefined: PASS
+	new WebAssembly.Instance(module): Importing an i32 mutable global with a primitive value: PASS
+	new WebAssembly.Instance(module): Importing an i32 mutable global with an immutable Global object: PASS
+	new WebAssembly.Instance(module): Importing an i64 global with an incorrectly-typed value: "": PASS
+	new WebAssembly.Instance(module): Importing an i64 global with an incorrectly-typed value: Number: PASS
+	new WebAssembly.Instance(module): Importing an i64 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	new WebAssembly.Instance(module): Importing an i64 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	new WebAssembly.Instance(module): Importing an i64 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	new WebAssembly.Instance(module): Importing an i64 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	new WebAssembly.Instance(module): Importing an i64 global with an incorrectly-typed value: null: PASS
+	new WebAssembly.Instance(module): Importing an i64 global with an incorrectly-typed value: plain object: PASS
+	new WebAssembly.Instance(module): Importing an i64 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	new WebAssembly.Instance(module): Importing an i64 global with an incorrectly-typed value: true: PASS
+	new WebAssembly.Instance(module): Importing an i64 global with an incorrectly-typed value: undefined: PASS
+	new WebAssembly.Instance(module): Importing an i64 mutable global with a primitive value: PASS
+	new WebAssembly.Instance(module): Importing an i64 mutable global with an immutable Global object: PASS
+	new WebAssembly.Instance(module): Importing memory with an incorrectly-typed value: "": PASS
+	new WebAssembly.Instance(module): Importing memory with an incorrectly-typed value: 0.1: PASS
+	new WebAssembly.Instance(module): Importing memory with an incorrectly-typed value: 1: PASS
+	new WebAssembly.Instance(module): Importing memory with an incorrectly-typed value: NaN: PASS
+	new WebAssembly.Instance(module): Importing memory with an incorrectly-typed value: Object.create(WebAssembly.Memory.prototype): PASS
+	new WebAssembly.Instance(module): Importing memory with an incorrectly-typed value: WebAssembly.Memory: PASS
+	new WebAssembly.Instance(module): Importing memory with an incorrectly-typed value: WebAssembly.Memory object (too large): PASS
+	new WebAssembly.Instance(module): Importing memory with an incorrectly-typed value: WebAssembly.Memory.prototype: PASS
+	new WebAssembly.Instance(module): Importing memory with an incorrectly-typed value: null: PASS
+	new WebAssembly.Instance(module): Importing memory with an incorrectly-typed value: plain object: PASS
+	new WebAssembly.Instance(module): Importing memory with an incorrectly-typed value: symbol "Symbol()": PASS
+	new WebAssembly.Instance(module): Importing memory with an incorrectly-typed value: true: PASS
+	new WebAssembly.Instance(module): Importing memory with an incorrectly-typed value: undefined: PASS
+	new WebAssembly.Instance(module): Importing table with an incorrectly-typed value: "": PASS
+	new WebAssembly.Instance(module): Importing table with an incorrectly-typed value: 0.1: PASS
+	new WebAssembly.Instance(module): Importing table with an incorrectly-typed value: 1: PASS
+	new WebAssembly.Instance(module): Importing table with an incorrectly-typed value: NaN: PASS
+	new WebAssembly.Instance(module): Importing table with an incorrectly-typed value: Object.create(WebAssembly.Table.prototype): PASS
+	new WebAssembly.Instance(module): Importing table with an incorrectly-typed value: WebAssembly.Table: PASS
+	new WebAssembly.Instance(module): Importing table with an incorrectly-typed value: WebAssembly.Table object (too large): PASS
+	new WebAssembly.Instance(module): Importing table with an incorrectly-typed value: WebAssembly.Table.prototype: PASS
+	new WebAssembly.Instance(module): Importing table with an incorrectly-typed value: null: PASS
+	new WebAssembly.Instance(module): Importing table with an incorrectly-typed value: plain object: PASS
+	new WebAssembly.Instance(module): Importing table with an incorrectly-typed value: symbol "Symbol()": PASS
+	new WebAssembly.Instance(module): Importing table with an incorrectly-typed value: true: PASS
+	new WebAssembly.Instance(module): Importing table with an incorrectly-typed value: undefined: PASS
+	new WebAssembly.Instance(module): Imports argument with missing property: empty object: PASS
+	new WebAssembly.Instance(module): Imports argument with missing property: undefined: PASS
+	new WebAssembly.Instance(module): Imports argument with missing property: wrong property: PASS
+	new WebAssembly.Instance(module): Missing imports argument: PASS
+	new WebAssembly.Instance(module): Non-object imports argument: "": PASS
+	new WebAssembly.Instance(module): Non-object imports argument: 0.1: PASS
+	new WebAssembly.Instance(module): Non-object imports argument: 1: PASS
+	new WebAssembly.Instance(module): Non-object imports argument: NaN: PASS
+	new WebAssembly.Instance(module): Non-object imports argument: null: PASS
+	new WebAssembly.Instance(module): Non-object imports argument: symbol "Symbol()": PASS
+	new WebAssembly.Instance(module): Non-object imports argument: true: PASS
+	new WebAssembly.Instance(module): Non-object module: "": PASS
+	new WebAssembly.Instance(module): Non-object module: 0.1: PASS
+	new WebAssembly.Instance(module): Non-object module: 1: PASS
+	new WebAssembly.Instance(module): Non-object module: NaN: PASS
+	new WebAssembly.Instance(module): Non-object module: null: PASS
+	new WebAssembly.Instance(module): Non-object module: symbol "Symbol()": PASS
+	new WebAssembly.Instance(module): Non-object module: true: PASS
+	new WebAssembly.Instance(module): Non-object module: undefined: PASS
+/wasm/jsapi/instance/constructor-bad-imports.any.worker.html: OK
+	new WebAssembly.Instance(module): Importing a function with an incorrectly-typed value: "": PASS
+	new WebAssembly.Instance(module): Importing a function with an incorrectly-typed value: 0.1: PASS
+	new WebAssembly.Instance(module): Importing a function with an incorrectly-typed value: 1: PASS
+	new WebAssembly.Instance(module): Importing a function with an incorrectly-typed value: NaN: PASS
+	new WebAssembly.Instance(module): Importing a function with an incorrectly-typed value: null: PASS
+	new WebAssembly.Instance(module): Importing a function with an incorrectly-typed value: object "[object Object]": PASS
+	new WebAssembly.Instance(module): Importing a function with an incorrectly-typed value: symbol "Symbol()": PASS
+	new WebAssembly.Instance(module): Importing a function with an incorrectly-typed value: true: PASS
+	new WebAssembly.Instance(module): Importing a function with an incorrectly-typed value: undefined: PASS
+	new WebAssembly.Instance(module): Importing an f32 global with an incorrectly-typed value: "": PASS
+	new WebAssembly.Instance(module): Importing an f32 global with an incorrectly-typed value: BigInt: PASS
+	new WebAssembly.Instance(module): Importing an f32 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	new WebAssembly.Instance(module): Importing an f32 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	new WebAssembly.Instance(module): Importing an f32 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	new WebAssembly.Instance(module): Importing an f32 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	new WebAssembly.Instance(module): Importing an f32 global with an incorrectly-typed value: null: PASS
+	new WebAssembly.Instance(module): Importing an f32 global with an incorrectly-typed value: plain object: PASS
+	new WebAssembly.Instance(module): Importing an f32 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	new WebAssembly.Instance(module): Importing an f32 global with an incorrectly-typed value: true: PASS
+	new WebAssembly.Instance(module): Importing an f32 global with an incorrectly-typed value: undefined: PASS
+	new WebAssembly.Instance(module): Importing an f32 mutable global with a primitive value: PASS
+	new WebAssembly.Instance(module): Importing an f32 mutable global with an immutable Global object: PASS
+	new WebAssembly.Instance(module): Importing an f64 global with an incorrectly-typed value: "": PASS
+	new WebAssembly.Instance(module): Importing an f64 global with an incorrectly-typed value: BigInt: PASS
+	new WebAssembly.Instance(module): Importing an f64 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	new WebAssembly.Instance(module): Importing an f64 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	new WebAssembly.Instance(module): Importing an f64 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	new WebAssembly.Instance(module): Importing an f64 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	new WebAssembly.Instance(module): Importing an f64 global with an incorrectly-typed value: null: PASS
+	new WebAssembly.Instance(module): Importing an f64 global with an incorrectly-typed value: plain object: PASS
+	new WebAssembly.Instance(module): Importing an f64 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	new WebAssembly.Instance(module): Importing an f64 global with an incorrectly-typed value: true: PASS
+	new WebAssembly.Instance(module): Importing an f64 global with an incorrectly-typed value: undefined: PASS
+	new WebAssembly.Instance(module): Importing an f64 mutable global with a primitive value: PASS
+	new WebAssembly.Instance(module): Importing an f64 mutable global with an immutable Global object: PASS
+	new WebAssembly.Instance(module): Importing an i32 global with an incorrectly-typed value: "": PASS
+	new WebAssembly.Instance(module): Importing an i32 global with an incorrectly-typed value: BigInt: PASS
+	new WebAssembly.Instance(module): Importing an i32 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	new WebAssembly.Instance(module): Importing an i32 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	new WebAssembly.Instance(module): Importing an i32 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	new WebAssembly.Instance(module): Importing an i32 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	new WebAssembly.Instance(module): Importing an i32 global with an incorrectly-typed value: null: PASS
+	new WebAssembly.Instance(module): Importing an i32 global with an incorrectly-typed value: plain object: PASS
+	new WebAssembly.Instance(module): Importing an i32 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	new WebAssembly.Instance(module): Importing an i32 global with an incorrectly-typed value: true: PASS
+	new WebAssembly.Instance(module): Importing an i32 global with an incorrectly-typed value: undefined: PASS
+	new WebAssembly.Instance(module): Importing an i32 mutable global with a primitive value: PASS
+	new WebAssembly.Instance(module): Importing an i32 mutable global with an immutable Global object: PASS
+	new WebAssembly.Instance(module): Importing an i64 global with an incorrectly-typed value: "": PASS
+	new WebAssembly.Instance(module): Importing an i64 global with an incorrectly-typed value: Number: PASS
+	new WebAssembly.Instance(module): Importing an i64 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	new WebAssembly.Instance(module): Importing an i64 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	new WebAssembly.Instance(module): Importing an i64 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	new WebAssembly.Instance(module): Importing an i64 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	new WebAssembly.Instance(module): Importing an i64 global with an incorrectly-typed value: null: PASS
+	new WebAssembly.Instance(module): Importing an i64 global with an incorrectly-typed value: plain object: PASS
+	new WebAssembly.Instance(module): Importing an i64 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	new WebAssembly.Instance(module): Importing an i64 global with an incorrectly-typed value: true: PASS
+	new WebAssembly.Instance(module): Importing an i64 global with an incorrectly-typed value: undefined: PASS
+	new WebAssembly.Instance(module): Importing an i64 mutable global with a primitive value: PASS
+	new WebAssembly.Instance(module): Importing an i64 mutable global with an immutable Global object: PASS
+	new WebAssembly.Instance(module): Importing memory with an incorrectly-typed value: "": PASS
+	new WebAssembly.Instance(module): Importing memory with an incorrectly-typed value: 0.1: PASS
+	new WebAssembly.Instance(module): Importing memory with an incorrectly-typed value: 1: PASS
+	new WebAssembly.Instance(module): Importing memory with an incorrectly-typed value: NaN: PASS
+	new WebAssembly.Instance(module): Importing memory with an incorrectly-typed value: Object.create(WebAssembly.Memory.prototype): PASS
+	new WebAssembly.Instance(module): Importing memory with an incorrectly-typed value: WebAssembly.Memory: PASS
+	new WebAssembly.Instance(module): Importing memory with an incorrectly-typed value: WebAssembly.Memory object (too large): PASS
+	new WebAssembly.Instance(module): Importing memory with an incorrectly-typed value: WebAssembly.Memory.prototype: PASS
+	new WebAssembly.Instance(module): Importing memory with an incorrectly-typed value: null: PASS
+	new WebAssembly.Instance(module): Importing memory with an incorrectly-typed value: plain object: PASS
+	new WebAssembly.Instance(module): Importing memory with an incorrectly-typed value: symbol "Symbol()": PASS
+	new WebAssembly.Instance(module): Importing memory with an incorrectly-typed value: true: PASS
+	new WebAssembly.Instance(module): Importing memory with an incorrectly-typed value: undefined: PASS
+	new WebAssembly.Instance(module): Importing table with an incorrectly-typed value: "": PASS
+	new WebAssembly.Instance(module): Importing table with an incorrectly-typed value: 0.1: PASS
+	new WebAssembly.Instance(module): Importing table with an incorrectly-typed value: 1: PASS
+	new WebAssembly.Instance(module): Importing table with an incorrectly-typed value: NaN: PASS
+	new WebAssembly.Instance(module): Importing table with an incorrectly-typed value: Object.create(WebAssembly.Table.prototype): PASS
+	new WebAssembly.Instance(module): Importing table with an incorrectly-typed value: WebAssembly.Table: PASS
+	new WebAssembly.Instance(module): Importing table with an incorrectly-typed value: WebAssembly.Table object (too large): PASS
+	new WebAssembly.Instance(module): Importing table with an incorrectly-typed value: WebAssembly.Table.prototype: PASS
+	new WebAssembly.Instance(module): Importing table with an incorrectly-typed value: null: PASS
+	new WebAssembly.Instance(module): Importing table with an incorrectly-typed value: plain object: PASS
+	new WebAssembly.Instance(module): Importing table with an incorrectly-typed value: symbol "Symbol()": PASS
+	new WebAssembly.Instance(module): Importing table with an incorrectly-typed value: true: PASS
+	new WebAssembly.Instance(module): Importing table with an incorrectly-typed value: undefined: PASS
+	new WebAssembly.Instance(module): Imports argument with missing property: empty object: PASS
+	new WebAssembly.Instance(module): Imports argument with missing property: undefined: PASS
+	new WebAssembly.Instance(module): Imports argument with missing property: wrong property: PASS
+	new WebAssembly.Instance(module): Missing imports argument: PASS
+	new WebAssembly.Instance(module): Non-object imports argument: "": PASS
+	new WebAssembly.Instance(module): Non-object imports argument: 0.1: PASS
+	new WebAssembly.Instance(module): Non-object imports argument: 1: PASS
+	new WebAssembly.Instance(module): Non-object imports argument: NaN: PASS
+	new WebAssembly.Instance(module): Non-object imports argument: null: PASS
+	new WebAssembly.Instance(module): Non-object imports argument: symbol "Symbol()": PASS
+	new WebAssembly.Instance(module): Non-object imports argument: true: PASS
+	new WebAssembly.Instance(module): Non-object module: "": PASS
+	new WebAssembly.Instance(module): Non-object module: 0.1: PASS
+	new WebAssembly.Instance(module): Non-object module: 1: PASS
+	new WebAssembly.Instance(module): Non-object module: NaN: PASS
+	new WebAssembly.Instance(module): Non-object module: null: PASS
+	new WebAssembly.Instance(module): Non-object module: symbol "Symbol()": PASS
+	new WebAssembly.Instance(module): Non-object module: true: PASS
+	new WebAssembly.Instance(module): Non-object module: undefined: PASS
+/wasm/jsapi/instance/constructor-caching.any.html: OK
+	constructor-caching: PASS
+/wasm/jsapi/instance/constructor-caching.any.worker.html: OK
+	constructor-caching: PASS
+/wasm/jsapi/instance/constructor.any.html: OK
+	Calling: PASS
+	Empty module with empty imports argument: PASS
+	Empty module with undefined imports argument: PASS
+	Empty module without imports argument: PASS
+	Multiple i64 arguments: PASS
+	No arguments: PASS
+	No imports: PASS
+	Non-Module arguments: PASS
+	export i64-returning function: PASS
+	exports and imports: PASS
+	exports with empty name: function: PASS
+	exports with empty name: global: PASS
+	exports with empty name: table: PASS
+	getter order for imports object: PASS
+	i32 mutable WebAssembly.Global import: PASS
+	i64 exports and imports: PASS
+	i64 mutable WebAssembly.Global import: PASS
+	import with function that takes and returns i32: PASS
+	import with function that takes and returns i64: PASS
+	import with i32-returning function: PASS
+	import with i32-taking function: PASS
+	import with i64-returning function: PASS
+	import with i64-taking function: PASS
+	imports: PASS
+	imports with empty module names: PASS
+	imports with empty names: PASS
+	length: PASS
+	name: PASS
+	stray argument: PASS
+/wasm/jsapi/instance/constructor.any.worker.html: OK
+	Calling: PASS
+	Empty module with empty imports argument: PASS
+	Empty module with undefined imports argument: PASS
+	Empty module without imports argument: PASS
+	Multiple i64 arguments: PASS
+	No arguments: PASS
+	No imports: PASS
+	Non-Module arguments: PASS
+	export i64-returning function: PASS
+	exports and imports: PASS
+	exports with empty name: function: PASS
+	exports with empty name: global: PASS
+	exports with empty name: table: PASS
+	getter order for imports object: PASS
+	i32 mutable WebAssembly.Global import: PASS
+	i64 exports and imports: PASS
+	i64 mutable WebAssembly.Global import: PASS
+	import with function that takes and returns i32: PASS
+	import with function that takes and returns i64: PASS
+	import with i32-returning function: PASS
+	import with i32-taking function: PASS
+	import with i64-returning function: PASS
+	import with i64-taking function: PASS
+	imports: PASS
+	imports with empty module names: PASS
+	imports with empty names: PASS
+	length: PASS
+	name: PASS
+	stray argument: PASS
+/wasm/jsapi/instance/exports.any.html: OK
+	Branding: PASS
+	Setting (sloppy mode): PASS
+	Setting (strict mode): PASS
+	Stray argument: PASS
+/wasm/jsapi/instance/exports.any.worker.html: OK
+	Branding: PASS
+	Setting (sloppy mode): PASS
+	Setting (strict mode): PASS
+	Stray argument: PASS
+/wasm/jsapi/instance/toString.any.html: OK
+	@@toStringTag exists on the prototype with the appropriate descriptor: PASS
+	Object.prototype.toString on an Instance: PASS
+/wasm/jsapi/instance/toString.any.worker.html: OK
+	@@toStringTag exists on the prototype with the appropriate descriptor: PASS
+	Object.prototype.toString on an Instance: PASS
+/wasm/jsapi/interface.any.html: OK
+	WebAssembly.CompileError: property descriptor: PASS
+	WebAssembly.CompileError: prototype: PASS
+	WebAssembly.CompileError: prototype.constructor: PASS
+	WebAssembly.Global.value: PASS
+	WebAssembly.Global.value: getter: PASS
+	WebAssembly.Global.value: setter: PASS
+	WebAssembly.Global.valueOf: PASS
+	WebAssembly.Global.valueOf: length: PASS
+	WebAssembly.Global.valueOf: name: PASS
+	WebAssembly.Global: property descriptor: PASS
+	WebAssembly.Global: prototype: PASS
+	WebAssembly.Global: prototype.constructor: PASS
+	WebAssembly.Instance.exports: PASS
+	WebAssembly.Instance.exports: getter: PASS
+	WebAssembly.Instance.exports: setter: PASS
+	WebAssembly.Instance: property descriptor: PASS
+	WebAssembly.Instance: prototype: PASS
+	WebAssembly.Instance: prototype.constructor: PASS
+	WebAssembly.LinkError: property descriptor: PASS
+	WebAssembly.LinkError: prototype: PASS
+	WebAssembly.LinkError: prototype.constructor: PASS
+	WebAssembly.Memory.buffer: PASS
+	WebAssembly.Memory.buffer: getter: PASS
+	WebAssembly.Memory.buffer: setter: PASS
+	WebAssembly.Memory.grow: PASS
+	WebAssembly.Memory.grow: length: PASS
+	WebAssembly.Memory.grow: name: PASS
+	WebAssembly.Memory: property descriptor: PASS
+	WebAssembly.Memory: prototype: PASS
+	WebAssembly.Memory: prototype.constructor: PASS
+	WebAssembly.Module.customSections: PASS
+	WebAssembly.Module.customSections: length: PASS
+	WebAssembly.Module.customSections: name: PASS
+	WebAssembly.Module.exports: PASS
+	WebAssembly.Module.exports: length: PASS
+	WebAssembly.Module.exports: name: PASS
+	WebAssembly.Module.imports: PASS
+	WebAssembly.Module.imports: length: PASS
+	WebAssembly.Module.imports: name: PASS
+	WebAssembly.Module: property descriptor: PASS
+	WebAssembly.Module: prototype: PASS
+	WebAssembly.Module: prototype.constructor: PASS
+	WebAssembly.RuntimeError: property descriptor: PASS
+	WebAssembly.RuntimeError: prototype: PASS
+	WebAssembly.RuntimeError: prototype.constructor: PASS
+	WebAssembly.Table.get: PASS
+	WebAssembly.Table.get: length: PASS
+	WebAssembly.Table.get: name: PASS
+	WebAssembly.Table.grow: PASS
+	WebAssembly.Table.grow: length: PASS
+	WebAssembly.Table.grow: name: PASS
+	WebAssembly.Table.length: PASS
+	WebAssembly.Table.length: getter: PASS
+	WebAssembly.Table.length: setter: PASS
+	WebAssembly.Table.set: PASS
+	WebAssembly.Table.set: length: PASS
+	WebAssembly.Table.set: name: PASS
+	WebAssembly.Table: property descriptor: PASS
+	WebAssembly.Table: prototype: PASS
+	WebAssembly.Table: prototype.constructor: PASS
+	WebAssembly.compile: PASS
+	WebAssembly.compile: length: PASS
+	WebAssembly.compile: name: PASS
+	WebAssembly.instantiate: PASS
+	WebAssembly.instantiate: length: PASS
+	WebAssembly.instantiate: name: PASS
+	WebAssembly.validate: PASS
+	WebAssembly.validate: length: PASS
+	WebAssembly.validate: name: PASS
+	WebAssembly: calling: PASS
+	WebAssembly: constructing: PASS
+	WebAssembly: property descriptor: FAIL
+/wasm/jsapi/interface.any.worker.html: OK
+	WebAssembly.CompileError: property descriptor: PASS
+	WebAssembly.CompileError: prototype: PASS
+	WebAssembly.CompileError: prototype.constructor: PASS
+	WebAssembly.Global.value: PASS
+	WebAssembly.Global.value: getter: PASS
+	WebAssembly.Global.value: setter: PASS
+	WebAssembly.Global.valueOf: PASS
+	WebAssembly.Global.valueOf: length: PASS
+	WebAssembly.Global.valueOf: name: PASS
+	WebAssembly.Global: property descriptor: PASS
+	WebAssembly.Global: prototype: PASS
+	WebAssembly.Global: prototype.constructor: PASS
+	WebAssembly.Instance.exports: PASS
+	WebAssembly.Instance.exports: getter: PASS
+	WebAssembly.Instance.exports: setter: PASS
+	WebAssembly.Instance: property descriptor: PASS
+	WebAssembly.Instance: prototype: PASS
+	WebAssembly.Instance: prototype.constructor: PASS
+	WebAssembly.LinkError: property descriptor: PASS
+	WebAssembly.LinkError: prototype: PASS
+	WebAssembly.LinkError: prototype.constructor: PASS
+	WebAssembly.Memory.buffer: PASS
+	WebAssembly.Memory.buffer: getter: PASS
+	WebAssembly.Memory.buffer: setter: PASS
+	WebAssembly.Memory.grow: PASS
+	WebAssembly.Memory.grow: length: PASS
+	WebAssembly.Memory.grow: name: PASS
+	WebAssembly.Memory: property descriptor: PASS
+	WebAssembly.Memory: prototype: PASS
+	WebAssembly.Memory: prototype.constructor: PASS
+	WebAssembly.Module.customSections: PASS
+	WebAssembly.Module.customSections: length: PASS
+	WebAssembly.Module.customSections: name: PASS
+	WebAssembly.Module.exports: PASS
+	WebAssembly.Module.exports: length: PASS
+	WebAssembly.Module.exports: name: PASS
+	WebAssembly.Module.imports: PASS
+	WebAssembly.Module.imports: length: PASS
+	WebAssembly.Module.imports: name: PASS
+	WebAssembly.Module: property descriptor: PASS
+	WebAssembly.Module: prototype: PASS
+	WebAssembly.Module: prototype.constructor: PASS
+	WebAssembly.RuntimeError: property descriptor: PASS
+	WebAssembly.RuntimeError: prototype: PASS
+	WebAssembly.RuntimeError: prototype.constructor: PASS
+	WebAssembly.Table.get: PASS
+	WebAssembly.Table.get: length: PASS
+	WebAssembly.Table.get: name: PASS
+	WebAssembly.Table.grow: PASS
+	WebAssembly.Table.grow: length: PASS
+	WebAssembly.Table.grow: name: PASS
+	WebAssembly.Table.length: PASS
+	WebAssembly.Table.length: getter: PASS
+	WebAssembly.Table.length: setter: PASS
+	WebAssembly.Table.set: PASS
+	WebAssembly.Table.set: length: PASS
+	WebAssembly.Table.set: name: PASS
+	WebAssembly.Table: property descriptor: PASS
+	WebAssembly.Table: prototype: PASS
+	WebAssembly.Table: prototype.constructor: PASS
+	WebAssembly.compile: PASS
+	WebAssembly.compile: length: PASS
+	WebAssembly.compile: name: PASS
+	WebAssembly.instantiate: PASS
+	WebAssembly.instantiate: length: PASS
+	WebAssembly.instantiate: name: PASS
+	WebAssembly.validate: PASS
+	WebAssembly.validate: length: PASS
+	WebAssembly.validate: name: PASS
+	WebAssembly: calling: PASS
+	WebAssembly: constructing: PASS
+	WebAssembly: property descriptor: FAIL
+/wasm/jsapi/js-string/basic.any.html: ERROR
+/wasm/jsapi/js-string/basic.any.worker.html: ERROR
+/wasm/jsapi/js-string/constants.any.html: OK
+	constants: PASS
+	constants 1: PASS
+	constants 10: FAIL
+	constants 11: FAIL
+	constants 12: FAIL
+	constants 13: FAIL
+	constants 14: FAIL
+	constants 15: FAIL
+	constants 16: FAIL
+	constants 17: FAIL
+	constants 18: FAIL
+	constants 19: FAIL
+	constants 2: PASS
+	constants 20: FAIL
+	constants 21: FAIL
+	constants 22: FAIL
+	constants 23: FAIL
+	constants 24: FAIL
+	constants 25: FAIL
+	constants 26: FAIL
+	constants 27: FAIL
+	constants 28: FAIL
+	constants 29: FAIL
+	constants 3: PASS
+	constants 30: FAIL
+	constants 31: FAIL
+	constants 32: FAIL
+	constants 33: FAIL
+	constants 34: FAIL
+	constants 35: FAIL
+	constants 36: FAIL
+	constants 37: FAIL
+	constants 38: FAIL
+	constants 39: FAIL
+	constants 4: FAIL
+	constants 5: FAIL
+	constants 6: PASS
+	constants 7: PASS
+	constants 8: FAIL
+	constants 9: PASS
+/wasm/jsapi/js-string/constants.any.worker.html: OK
+	constants: PASS
+	constants 1: PASS
+	constants 10: FAIL
+	constants 11: FAIL
+	constants 12: FAIL
+	constants 13: FAIL
+	constants 14: FAIL
+	constants 15: FAIL
+	constants 16: FAIL
+	constants 17: FAIL
+	constants 18: FAIL
+	constants 19: FAIL
+	constants 2: PASS
+	constants 20: FAIL
+	constants 21: FAIL
+	constants 22: FAIL
+	constants 23: FAIL
+	constants 24: FAIL
+	constants 25: FAIL
+	constants 26: FAIL
+	constants 27: FAIL
+	constants 28: FAIL
+	constants 29: FAIL
+	constants 3: PASS
+	constants 30: FAIL
+	constants 31: FAIL
+	constants 32: FAIL
+	constants 33: FAIL
+	constants 34: FAIL
+	constants 35: FAIL
+	constants 36: FAIL
+	constants 37: FAIL
+	constants 38: FAIL
+	constants 39: FAIL
+	constants 4: FAIL
+	constants 5: FAIL
+	constants 6: PASS
+	constants 7: PASS
+	constants 8: FAIL
+	constants 9: PASS
+/wasm/jsapi/js-string/imports.any.html: OK
+	imports: FAIL
+/wasm/jsapi/js-string/imports.any.worker.html: OK
+	imports: FAIL
+/wasm/jsapi/jspi/js-promise-integration.any.html: OK
+	Always get a Promise: FAIL
+	Catch rejected promise: FAIL
+	Do suspend even if the import's return value is not a Promise by wrapping it with Promise.resolve: FAIL
+	Make sure we actually suspend: FAIL
+	Promising function always entered: FAIL
+	Promising with no return: FAIL
+	Suspend once: FAIL
+	Suspend two modules: FAIL
+	Suspend/resume in a loop: FAIL
+	Suspending with mismatched args and via Proxy: FAIL
+	Test sandwich with no suspension: FAIL
+	Test sandwich with suspension: FAIL
+	Valid use of API: PASS
+/wasm/jsapi/jspi/js-promise-integration.any.worker.html: OK
+	Always get a Promise: FAIL
+	Catch rejected promise: FAIL
+	Do suspend even if the import's return value is not a Promise by wrapping it with Promise.resolve: FAIL
+	Make sure we actually suspend: FAIL
+	Promising function always entered: FAIL
+	Promising with no return: FAIL
+	Suspend once: FAIL
+	Suspend two modules: FAIL
+	Suspend/resume in a loop: FAIL
+	Suspending with mismatched args and via Proxy: FAIL
+	Test sandwich with no suspension: FAIL
+	Test sandwich with suspension: FAIL
+	Valid use of API: PASS
+/wasm/jsapi/jspi/notraps.any.html: OK
+	catch SuspendError: FAIL
+	throw on reentrance: FAIL
+	unwrapped export: FAIL
+/wasm/jsapi/jspi/notraps.any.worker.html: OK
+	catch SuspendError: FAIL
+	throw on reentrance: FAIL
+	unwrapped export: FAIL
+/wasm/jsapi/jspi/rejects.any.html: OK
+	Stack overflow: FAIL
+	Throw after the first suspension: FAIL
+	Throw and propagate via Promise: FAIL
+	Throw before suspending: FAIL
+	Try to suspend JS: FAIL
+/wasm/jsapi/jspi/rejects.any.worker.html: OK
+	Stack overflow: FAIL
+	Throw after the first suspension: FAIL
+	Throw and propagate via Promise: FAIL
+	Throw before suspending: FAIL
+	Try to suspend JS: FAIL
+/wasm/jsapi/memory/buffer.any.html: OK
+	Branding: PASS
+	Setting (sloppy mode): PASS
+	Setting (strict mode): PASS
+	Stray argument: PASS
+/wasm/jsapi/memory/buffer.any.worker.html: OK
+	Branding: PASS
+	Setting (sloppy mode): PASS
+	Setting (strict mode): PASS
+	Stray argument: PASS
+/wasm/jsapi/memory/constructor-shared.tentative.any.html: OK
+	Order of evaluation for descriptor (with shared): FAIL
+	Shared memory: FAIL
+	Shared memory without maximum: PASS
+/wasm/jsapi/memory/constructor-shared.tentative.any.worker.html: OK
+	Order of evaluation for descriptor (with shared): FAIL
+	Shared memory: FAIL
+	Shared memory without maximum: PASS
+/wasm/jsapi/memory/constructor-types.tentative.any.html: OK
+	Initializing with both initial and minimum: FAIL
+	Non-zero minimum: FAIL
+	Zero minimum: FAIL
+/wasm/jsapi/memory/constructor-types.tentative.any.worker.html: OK
+	Initializing with both initial and minimum: FAIL
+	Non-zero minimum: FAIL
+	Zero minimum: FAIL
+/wasm/jsapi/memory/constructor.any.html: OK
+	Calling: PASS
+	Initial value exceeds maximum: PASS
+	Invalid descriptor argument: PASS
+	No arguments: PASS
+	Non-zero initial: PASS
+	Order of evaluation for descriptor: PASS
+	Out-of-range initial value in descriptor: -1: PASS
+	Out-of-range initial value in descriptor: -Infinity: PASS
+	Out-of-range initial value in descriptor: 4294967296: PASS
+	Out-of-range initial value in descriptor: 68719476736: PASS
+	Out-of-range initial value in descriptor: Infinity: PASS
+	Out-of-range initial value in descriptor: NaN: PASS
+	Out-of-range maximum value in descriptor: -1: PASS
+	Out-of-range maximum value in descriptor: -Infinity: PASS
+	Out-of-range maximum value in descriptor: 4294967296: PASS
+	Out-of-range maximum value in descriptor: 68719476736: PASS
+	Out-of-range maximum value in descriptor: Infinity: PASS
+	Out-of-range maximum value in descriptor: NaN: PASS
+	Proxy descriptor: PASS
+	Stray argument: PASS
+	Undefined initial value in descriptor: PASS
+	Zero initial: PASS
+	length: PASS
+	name: PASS
+/wasm/jsapi/memory/constructor.any.worker.html: OK
+	Calling: PASS
+	Initial value exceeds maximum: PASS
+	Invalid descriptor argument: PASS
+	No arguments: PASS
+	Non-zero initial: PASS
+	Order of evaluation for descriptor: PASS
+	Out-of-range initial value in descriptor: -1: PASS
+	Out-of-range initial value in descriptor: -Infinity: PASS
+	Out-of-range initial value in descriptor: 4294967296: PASS
+	Out-of-range initial value in descriptor: 68719476736: PASS
+	Out-of-range initial value in descriptor: Infinity: PASS
+	Out-of-range initial value in descriptor: NaN: PASS
+	Out-of-range maximum value in descriptor: -1: PASS
+	Out-of-range maximum value in descriptor: -Infinity: PASS
+	Out-of-range maximum value in descriptor: 4294967296: PASS
+	Out-of-range maximum value in descriptor: 68719476736: PASS
+	Out-of-range maximum value in descriptor: Infinity: PASS
+	Out-of-range maximum value in descriptor: NaN: PASS
+	Proxy descriptor: PASS
+	Stray argument: PASS
+	Undefined initial value in descriptor: PASS
+	Zero initial: PASS
+	length: PASS
+	name: PASS
+/wasm/jsapi/memory/grow.any.html: OK
+	Branding: PASS
+	Growing shared memory does not detach old buffer: FAIL
+	Missing arguments: PASS
+	Non-zero initial: PASS
+	Out-of-range argument: "0x100000000": PASS
+	Out-of-range argument: -1: PASS
+	Out-of-range argument: -Infinity: PASS
+	Out-of-range argument: 4294967296: PASS
+	Out-of-range argument: 68719476736: PASS
+	Out-of-range argument: Infinity: PASS
+	Out-of-range argument: NaN: PASS
+	Out-of-range argument: object "[object Object]": PASS
+	Out-of-range argument: undefined: PASS
+	Stray argument: PASS
+	Zero initial: PASS
+	Zero initial growing too much: PASS
+	Zero initial with respected maximum: PASS
+	Zero initial with respected maximum grown twice: PASS
+	Zero initial with valueOf: PASS
+/wasm/jsapi/memory/grow.any.worker.html: OK
+	Branding: PASS
+	Growing shared memory does not detach old buffer: FAIL
+	Missing arguments: PASS
+	Non-zero initial: PASS
+	Out-of-range argument: "0x100000000": PASS
+	Out-of-range argument: -1: PASS
+	Out-of-range argument: -Infinity: PASS
+	Out-of-range argument: 4294967296: PASS
+	Out-of-range argument: 68719476736: PASS
+	Out-of-range argument: Infinity: PASS
+	Out-of-range argument: NaN: PASS
+	Out-of-range argument: object "[object Object]": PASS
+	Out-of-range argument: undefined: PASS
+	Stray argument: PASS
+	Zero initial: PASS
+	Zero initial growing too much: PASS
+	Zero initial with respected maximum: PASS
+	Zero initial with respected maximum grown twice: PASS
+	Zero initial with valueOf: PASS
+/wasm/jsapi/memory/to-fixed-length-buffer-shared.any.html: OK
+	toFixedLengthBuffer caching behavior: FAIL
+/wasm/jsapi/memory/to-fixed-length-buffer-shared.any.worker.html: OK
+	toFixedLengthBuffer caching behavior: FAIL
+/wasm/jsapi/memory/to-fixed-length-buffer.any.html: OK
+	API surface: FAIL
+	toFixedLengthBuffer caching behavior: FAIL
+/wasm/jsapi/memory/to-fixed-length-buffer.any.worker.html: OK
+	API surface: FAIL
+	toFixedLengthBuffer caching behavior: FAIL
+/wasm/jsapi/memory/to-resizable-buffer-shared.any.html: OK
+	Resizing a Memory's resizable buffer: FAIL
+	toResizableBuffer caching behavior: FAIL
+	toResizableBuffer max size: FAIL
+/wasm/jsapi/memory/to-resizable-buffer-shared.any.worker.html: OK
+	Resizing a Memory's resizable buffer: FAIL
+	toResizableBuffer caching behavior: FAIL
+	toResizableBuffer max size: FAIL
+/wasm/jsapi/memory/to-resizable-buffer.any.html: OK
+	API surface: FAIL
+	Resizable buffers from Memory cannot be detached by JS: FAIL
+	Resizing a Memory's resizable buffer: FAIL
+	toResizableBuffer caching behavior: FAIL
+	toResizableBuffer max size: FAIL
+/wasm/jsapi/memory/to-resizable-buffer.any.worker.html: OK
+	API surface: FAIL
+	Resizable buffers from Memory cannot be detached by JS: FAIL
+	Resizing a Memory's resizable buffer: FAIL
+	toResizableBuffer caching behavior: FAIL
+	toResizableBuffer max size: FAIL
+/wasm/jsapi/memory/toString.any.html: OK
+	@@toStringTag exists on the prototype with the appropriate descriptor: PASS
+	Object.prototype.toString on an Memory: PASS
+/wasm/jsapi/memory/toString.any.worker.html: OK
+	@@toStringTag exists on the prototype with the appropriate descriptor: PASS
+	Object.prototype.toString on an Memory: PASS
+/wasm/jsapi/memory/type.tentative.any.html: OK
+	Non-zero initial, no maximum: FAIL
+	None-zero maximum: FAIL
+	Zero initial, no maximum: FAIL
+	Zero maximum: FAIL
+	non-shared memory: FAIL
+	shared memory: FAIL
+/wasm/jsapi/memory/type.tentative.any.worker.html: OK
+	Non-zero initial, no maximum: FAIL
+	None-zero maximum: FAIL
+	Zero initial, no maximum: FAIL
+	Zero maximum: FAIL
+	non-shared memory: FAIL
+	shared memory: FAIL
+/wasm/jsapi/module/constructor.any.html: OK
+	Calling: PASS
+	Empty buffer: PASS
+	Extensibility: PASS
+	Invalid arguments: PASS
+	Invalid code: PASS
+	No arguments: PASS
+	Prototype: PASS
+	Stray argument: PASS
+	length: PASS
+	name: PASS
+/wasm/jsapi/module/constructor.any.worker.html: OK
+	Calling: PASS
+	Empty buffer: PASS
+	Extensibility: PASS
+	Invalid arguments: PASS
+	Invalid code: PASS
+	No arguments: PASS
+	Prototype: PASS
+	Stray argument: PASS
+	length: PASS
+	name: PASS
+/wasm/jsapi/module/customSections.any.html: OK
+	Branding: PASS
+	Custom section buffers are independent copies: PASS
+	Custom sections: PASS
+	Custom sections with U+FFFD: PASS
+	Custom sections with surrogate pairs: PASS
+	Empty module: PASS
+	Empty module: array caching: PASS
+	Missing arguments: PASS
+	Mutating a custom section buffer does not change other copies: PASS
+	Non-Module arguments: PASS
+	Stray argument: PASS
+/wasm/jsapi/module/customSections.any.worker.html: OK
+	Branding: PASS
+	Custom section buffers are independent copies: PASS
+	Custom sections: PASS
+	Custom sections with U+FFFD: PASS
+	Custom sections with surrogate pairs: PASS
+	Empty module: PASS
+	Empty module: array caching: PASS
+	Missing arguments: PASS
+	Mutating a custom section buffer does not change other copies: PASS
+	Non-Module arguments: PASS
+	Stray argument: PASS
+/wasm/jsapi/module/exports.any.html: OK
+	Branding: PASS
+	Empty module: PASS
+	Empty module: array caching: PASS
+	Missing arguments: PASS
+	Non-Module arguments: PASS
+	Return type: PASS
+	Stray argument: PASS
+	exports: PASS
+	exports with empty name: function: PASS
+	exports with empty name: global: PASS
+	exports with empty name: table: PASS
+/wasm/jsapi/module/exports.any.worker.html: OK
+	Branding: PASS
+	Empty module: PASS
+	Empty module: array caching: PASS
+	Missing arguments: PASS
+	Non-Module arguments: PASS
+	Return type: PASS
+	Stray argument: PASS
+	exports: PASS
+	exports with empty name: function: PASS
+	exports with empty name: global: PASS
+	exports with empty name: table: PASS
+/wasm/jsapi/module/imports.any.html: OK
+	Branding: PASS
+	Empty module: PASS
+	Empty module: array caching: PASS
+	Missing arguments: PASS
+	Non-Module arguments: PASS
+	Return type: PASS
+	Stray argument: PASS
+	imports: PASS
+	imports with empty module name: PASS
+	imports with empty module names and names: PASS
+	imports with empty names: PASS
+/wasm/jsapi/module/imports.any.worker.html: OK
+	Branding: PASS
+	Empty module: PASS
+	Empty module: array caching: PASS
+	Missing arguments: PASS
+	Non-Module arguments: PASS
+	Return type: PASS
+	Stray argument: PASS
+	imports: PASS
+	imports with empty module name: PASS
+	imports with empty module names and names: PASS
+	imports with empty names: PASS
+/wasm/jsapi/module/moduleSource.tentative.any.html: OK
+	AbstractModuleSource intrinsic: FAIL
+	AbstractModuleSource is not a global: PASS
+	AbstractModuleSourceProto intrinsic: FAIL
+	AbstractModuleSourceProto toStringTag brand check: FAIL
+/wasm/jsapi/module/moduleSource.tentative.any.worker.html: OK
+	AbstractModuleSource intrinsic: FAIL
+	AbstractModuleSource is not a global: PASS
+	AbstractModuleSourceProto intrinsic: FAIL
+	AbstractModuleSourceProto toStringTag brand check: FAIL
+/wasm/jsapi/module/toString.any.html: OK
+	@@toStringTag exists on the prototype with the appropriate descriptor: PASS
+	Object.prototype.toString on an Module: PASS
+/wasm/jsapi/module/toString.any.worker.html: OK
+	@@toStringTag exists on the prototype with the appropriate descriptor: PASS
+	Object.prototype.toString on an Module: PASS
+/wasm/jsapi/proto-from-ctor-realm.html: OK
+	WebAssembly.CompileError: Proxy of Proxy of cross-realm NewTarget with `-0` prototype: FAIL
+	WebAssembly.CompileError: Proxy of bound cross-realm NewTarget with `NaN` prototype: FAIL
+	WebAssembly.CompileError: Proxy of cross-realm NewTarget with `true` prototype: FAIL
+	WebAssembly.CompileError: bound Proxy of cross-realm NewTarget with `false` prototype: FAIL
+	WebAssembly.CompileError: bound bound cross-realm NewTarget with `null` prototype: FAIL
+	WebAssembly.CompileError: bound cross-realm NewTarget with `undefined` prototype: FAIL
+	WebAssembly.CompileError: cross-realm NewTarget with `""` prototype: FAIL
+	WebAssembly.CompileError: cross-realm NewTarget with `"str"` prototype: FAIL
+	WebAssembly.CompileError: cross-realm NewTarget with `-1` prototype: FAIL
+	WebAssembly.CompileError: cross-realm NewTarget with `0` prototype: FAIL
+	WebAssembly.CompileError: cross-realm NewTarget with `false` prototype: FAIL
+	WebAssembly.CompileError: cross-realm NewTarget with `null` prototype: FAIL
+	WebAssembly.CompileError: cross-realm NewTarget with `symbol "Symbol()"` prototype: FAIL
+	WebAssembly.CompileError: cross-realm NewTarget with `true` prototype: FAIL
+	WebAssembly.CompileError: cross-realm NewTarget with `undefined` prototype: FAIL
+	WebAssembly.Global: Proxy of Proxy of cross-realm NewTarget with `-0` prototype: FAIL
+	WebAssembly.Global: Proxy of bound cross-realm NewTarget with `NaN` prototype: FAIL
+	WebAssembly.Global: Proxy of cross-realm NewTarget with `true` prototype: FAIL
+	WebAssembly.Global: bound Proxy of cross-realm NewTarget with `false` prototype: FAIL
+	WebAssembly.Global: bound bound cross-realm NewTarget with `null` prototype: FAIL
+	WebAssembly.Global: bound cross-realm NewTarget with `undefined` prototype: FAIL
+	WebAssembly.Global: cross-realm NewTarget with `""` prototype: FAIL
+	WebAssembly.Global: cross-realm NewTarget with `"str"` prototype: FAIL
+	WebAssembly.Global: cross-realm NewTarget with `-1` prototype: FAIL
+	WebAssembly.Global: cross-realm NewTarget with `0` prototype: FAIL
+	WebAssembly.Global: cross-realm NewTarget with `false` prototype: FAIL
+	WebAssembly.Global: cross-realm NewTarget with `null` prototype: FAIL
+	WebAssembly.Global: cross-realm NewTarget with `symbol "Symbol()"` prototype: FAIL
+	WebAssembly.Global: cross-realm NewTarget with `true` prototype: FAIL
+	WebAssembly.Global: cross-realm NewTarget with `undefined` prototype: FAIL
+	WebAssembly.Instance: Proxy of Proxy of cross-realm NewTarget with `-0` prototype: FAIL
+	WebAssembly.Instance: Proxy of bound cross-realm NewTarget with `NaN` prototype: FAIL
+	WebAssembly.Instance: Proxy of cross-realm NewTarget with `true` prototype: FAIL
+	WebAssembly.Instance: bound Proxy of cross-realm NewTarget with `false` prototype: FAIL
+	WebAssembly.Instance: bound bound cross-realm NewTarget with `null` prototype: FAIL
+	WebAssembly.Instance: bound cross-realm NewTarget with `undefined` prototype: FAIL
+	WebAssembly.Instance: cross-realm NewTarget with `""` prototype: FAIL
+	WebAssembly.Instance: cross-realm NewTarget with `"str"` prototype: FAIL
+	WebAssembly.Instance: cross-realm NewTarget with `-1` prototype: FAIL
+	WebAssembly.Instance: cross-realm NewTarget with `0` prototype: FAIL
+	WebAssembly.Instance: cross-realm NewTarget with `false` prototype: FAIL
+	WebAssembly.Instance: cross-realm NewTarget with `null` prototype: FAIL
+	WebAssembly.Instance: cross-realm NewTarget with `symbol "Symbol()"` prototype: FAIL
+	WebAssembly.Instance: cross-realm NewTarget with `true` prototype: FAIL
+	WebAssembly.Instance: cross-realm NewTarget with `undefined` prototype: FAIL
+	WebAssembly.LinkError: Proxy of Proxy of cross-realm NewTarget with `-0` prototype: FAIL
+	WebAssembly.LinkError: Proxy of bound cross-realm NewTarget with `NaN` prototype: FAIL
+	WebAssembly.LinkError: Proxy of cross-realm NewTarget with `true` prototype: FAIL
+	WebAssembly.LinkError: bound Proxy of cross-realm NewTarget with `false` prototype: FAIL
+	WebAssembly.LinkError: bound bound cross-realm NewTarget with `null` prototype: FAIL
+	WebAssembly.LinkError: bound cross-realm NewTarget with `undefined` prototype: FAIL
+	WebAssembly.LinkError: cross-realm NewTarget with `""` prototype: FAIL
+	WebAssembly.LinkError: cross-realm NewTarget with `"str"` prototype: FAIL
+	WebAssembly.LinkError: cross-realm NewTarget with `-1` prototype: FAIL
+	WebAssembly.LinkError: cross-realm NewTarget with `0` prototype: FAIL
+	WebAssembly.LinkError: cross-realm NewTarget with `false` prototype: FAIL
+	WebAssembly.LinkError: cross-realm NewTarget with `null` prototype: FAIL
+	WebAssembly.LinkError: cross-realm NewTarget with `symbol "Symbol()"` prototype: FAIL
+	WebAssembly.LinkError: cross-realm NewTarget with `true` prototype: FAIL
+	WebAssembly.LinkError: cross-realm NewTarget with `undefined` prototype: FAIL
+	WebAssembly.Memory: Proxy of Proxy of cross-realm NewTarget with `-0` prototype: FAIL
+	WebAssembly.Memory: Proxy of bound cross-realm NewTarget with `NaN` prototype: FAIL
+	WebAssembly.Memory: Proxy of cross-realm NewTarget with `true` prototype: FAIL
+	WebAssembly.Memory: bound Proxy of cross-realm NewTarget with `false` prototype: FAIL
+	WebAssembly.Memory: bound bound cross-realm NewTarget with `null` prototype: FAIL
+	WebAssembly.Memory: bound cross-realm NewTarget with `undefined` prototype: FAIL
+	WebAssembly.Memory: cross-realm NewTarget with `""` prototype: FAIL
+	WebAssembly.Memory: cross-realm NewTarget with `"str"` prototype: FAIL
+	WebAssembly.Memory: cross-realm NewTarget with `-1` prototype: FAIL
+	WebAssembly.Memory: cross-realm NewTarget with `0` prototype: FAIL
+	WebAssembly.Memory: cross-realm NewTarget with `false` prototype: FAIL
+	WebAssembly.Memory: cross-realm NewTarget with `null` prototype: FAIL
+	WebAssembly.Memory: cross-realm NewTarget with `symbol "Symbol()"` prototype: FAIL
+	WebAssembly.Memory: cross-realm NewTarget with `true` prototype: FAIL
+	WebAssembly.Memory: cross-realm NewTarget with `undefined` prototype: FAIL
+	WebAssembly.Module: Proxy of Proxy of cross-realm NewTarget with `-0` prototype: FAIL
+	WebAssembly.Module: Proxy of bound cross-realm NewTarget with `NaN` prototype: FAIL
+	WebAssembly.Module: Proxy of cross-realm NewTarget with `true` prototype: FAIL
+	WebAssembly.Module: bound Proxy of cross-realm NewTarget with `false` prototype: FAIL
+	WebAssembly.Module: bound bound cross-realm NewTarget with `null` prototype: FAIL
+	WebAssembly.Module: bound cross-realm NewTarget with `undefined` prototype: FAIL
+	WebAssembly.Module: cross-realm NewTarget with `""` prototype: FAIL
+	WebAssembly.Module: cross-realm NewTarget with `"str"` prototype: FAIL
+	WebAssembly.Module: cross-realm NewTarget with `-1` prototype: FAIL
+	WebAssembly.Module: cross-realm NewTarget with `0` prototype: FAIL
+	WebAssembly.Module: cross-realm NewTarget with `false` prototype: FAIL
+	WebAssembly.Module: cross-realm NewTarget with `null` prototype: FAIL
+	WebAssembly.Module: cross-realm NewTarget with `symbol "Symbol()"` prototype: FAIL
+	WebAssembly.Module: cross-realm NewTarget with `true` prototype: FAIL
+	WebAssembly.Module: cross-realm NewTarget with `undefined` prototype: FAIL
+	WebAssembly.RuntimeError: Proxy of Proxy of cross-realm NewTarget with `-0` prototype: FAIL
+	WebAssembly.RuntimeError: Proxy of bound cross-realm NewTarget with `NaN` prototype: FAIL
+	WebAssembly.RuntimeError: Proxy of cross-realm NewTarget with `true` prototype: FAIL
+	WebAssembly.RuntimeError: bound Proxy of cross-realm NewTarget with `false` prototype: FAIL
+	WebAssembly.RuntimeError: bound bound cross-realm NewTarget with `null` prototype: FAIL
+	WebAssembly.RuntimeError: bound cross-realm NewTarget with `undefined` prototype: FAIL
+	WebAssembly.RuntimeError: cross-realm NewTarget with `""` prototype: FAIL
+	WebAssembly.RuntimeError: cross-realm NewTarget with `"str"` prototype: FAIL
+	WebAssembly.RuntimeError: cross-realm NewTarget with `-1` prototype: FAIL
+	WebAssembly.RuntimeError: cross-realm NewTarget with `0` prototype: FAIL
+	WebAssembly.RuntimeError: cross-realm NewTarget with `false` prototype: FAIL
+	WebAssembly.RuntimeError: cross-realm NewTarget with `null` prototype: FAIL
+	WebAssembly.RuntimeError: cross-realm NewTarget with `symbol "Symbol()"` prototype: FAIL
+	WebAssembly.RuntimeError: cross-realm NewTarget with `true` prototype: FAIL
+	WebAssembly.RuntimeError: cross-realm NewTarget with `undefined` prototype: FAIL
+	WebAssembly.Table: Proxy of Proxy of cross-realm NewTarget with `-0` prototype: FAIL
+	WebAssembly.Table: Proxy of bound cross-realm NewTarget with `NaN` prototype: FAIL
+	WebAssembly.Table: Proxy of cross-realm NewTarget with `true` prototype: FAIL
+	WebAssembly.Table: bound Proxy of cross-realm NewTarget with `false` prototype: FAIL
+	WebAssembly.Table: bound bound cross-realm NewTarget with `null` prototype: FAIL
+	WebAssembly.Table: bound cross-realm NewTarget with `undefined` prototype: FAIL
+	WebAssembly.Table: cross-realm NewTarget with `""` prototype: FAIL
+	WebAssembly.Table: cross-realm NewTarget with `"str"` prototype: FAIL
+	WebAssembly.Table: cross-realm NewTarget with `-1` prototype: FAIL
+	WebAssembly.Table: cross-realm NewTarget with `0` prototype: FAIL
+	WebAssembly.Table: cross-realm NewTarget with `false` prototype: FAIL
+	WebAssembly.Table: cross-realm NewTarget with `null` prototype: FAIL
+	WebAssembly.Table: cross-realm NewTarget with `symbol "Symbol()"` prototype: FAIL
+	WebAssembly.Table: cross-realm NewTarget with `true` prototype: FAIL
+	WebAssembly.Table: cross-realm NewTarget with `undefined` prototype: FAIL
+/wasm/jsapi/prototypes.any.html: OK
+	_Global: PASS
+	_Instance: PASS
+	_Memory: PASS
+	_Module: PASS
+	_Table: PASS
+/wasm/jsapi/prototypes.any.worker.html: OK
+	_Global: PASS
+	_Instance: PASS
+	_Memory: PASS
+	_Module: PASS
+	_Table: PASS
+/wasm/jsapi/table/constructor-types.tentative.any.html: OK
+	Initializing with both initial and minimum: FAIL
+	Non-zero minimum: FAIL
+	Zero minimum: FAIL
+/wasm/jsapi/table/constructor-types.tentative.any.worker.html: OK
+	Initializing with both initial and minimum: FAIL
+	Non-zero minimum: FAIL
+	Zero minimum: FAIL
+/wasm/jsapi/table/constructor.any.html: OK
+	Basic (non-zero): PASS
+	Basic (zero): PASS
+	Calling: PASS
+	Empty descriptor: PASS
+	Initial value exceeds maximum: PASS
+	Invalid descriptor argument: PASS
+	No arguments: PASS
+	Order of evaluation for descriptor: PASS
+	Out-of-range initial value in descriptor: -1: PASS
+	Out-of-range initial value in descriptor: -Infinity: PASS
+	Out-of-range initial value in descriptor: 4294967296: PASS
+	Out-of-range initial value in descriptor: 68719476736: PASS
+	Out-of-range initial value in descriptor: Infinity: PASS
+	Out-of-range initial value in descriptor: NaN: PASS
+	Out-of-range maximum value in descriptor: -1: PASS
+	Out-of-range maximum value in descriptor: -Infinity: PASS
+	Out-of-range maximum value in descriptor: 4294967296: PASS
+	Out-of-range maximum value in descriptor: 68719476736: PASS
+	Out-of-range maximum value in descriptor: Infinity: PASS
+	Out-of-range maximum value in descriptor: NaN: PASS
+	Proxy descriptor: PASS
+	Stray argument: PASS
+	Type conversion for descriptor.element: PASS
+	Undefined element value in descriptor: PASS
+	Undefined initial value in descriptor: PASS
+	initialize anyfunc table with a bad default value: PASS
+	initialize anyfunc table with a bad default value and a bad descriptor: PASS
+	initialize anyfunc table with default value: PASS
+	initialize externref table with default value: PASS
+	initialize table with a wrong element value: PASS
+	length: PASS
+	name: PASS
+/wasm/jsapi/table/constructor.any.worker.html: OK
+	Basic (non-zero): PASS
+	Basic (zero): PASS
+	Calling: PASS
+	Empty descriptor: PASS
+	Initial value exceeds maximum: PASS
+	Invalid descriptor argument: PASS
+	No arguments: PASS
+	Order of evaluation for descriptor: PASS
+	Out-of-range initial value in descriptor: -1: PASS
+	Out-of-range initial value in descriptor: -Infinity: PASS
+	Out-of-range initial value in descriptor: 4294967296: PASS
+	Out-of-range initial value in descriptor: 68719476736: PASS
+	Out-of-range initial value in descriptor: Infinity: PASS
+	Out-of-range initial value in descriptor: NaN: PASS
+	Out-of-range maximum value in descriptor: -1: PASS
+	Out-of-range maximum value in descriptor: -Infinity: PASS
+	Out-of-range maximum value in descriptor: 4294967296: PASS
+	Out-of-range maximum value in descriptor: 68719476736: PASS
+	Out-of-range maximum value in descriptor: Infinity: PASS
+	Out-of-range maximum value in descriptor: NaN: PASS
+	Proxy descriptor: PASS
+	Stray argument: PASS
+	Type conversion for descriptor.element: PASS
+	Undefined element value in descriptor: PASS
+	Undefined initial value in descriptor: PASS
+	initialize anyfunc table with a bad default value: PASS
+	initialize anyfunc table with a bad default value and a bad descriptor: PASS
+	initialize anyfunc table with default value: PASS
+	initialize externref table with default value: PASS
+	initialize table with a wrong element value: PASS
+	length: PASS
+	name: PASS
+/wasm/jsapi/table/get-set.any.html: OK
+	Arguments for anyfunc table set: PASS
+	Arguments for externref table set: PASS
+	Basic: PASS
+	Branding: get: PASS
+	Branding: set: PASS
+	Getting out-of-range argument: "0x100000000": PASS
+	Getting out-of-range argument: -1: PASS
+	Getting out-of-range argument: -Infinity: PASS
+	Getting out-of-range argument: 4294967296: PASS
+	Getting out-of-range argument: 68719476736: PASS
+	Getting out-of-range argument: Infinity: PASS
+	Getting out-of-range argument: NaN: PASS
+	Getting out-of-range argument: object "[object Object]": PASS
+	Getting out-of-range argument: undefined: PASS
+	Growing: PASS
+	Missing arguments: get: PASS
+	Missing arguments: set: PASS
+	Order of argument conversion: PASS
+	Setting non-function: PASS
+	Setting non-wasm arrow function: PASS
+	Setting non-wasm function: PASS
+	Setting out-of-bounds: PASS
+	Setting out-of-range argument: "0x100000000": PASS
+	Setting out-of-range argument: -1: PASS
+	Setting out-of-range argument: -Infinity: PASS
+	Setting out-of-range argument: 4294967296: PASS
+	Setting out-of-range argument: 68719476736: PASS
+	Setting out-of-range argument: Infinity: PASS
+	Setting out-of-range argument: NaN: PASS
+	Setting out-of-range argument: object "[object Object]": PASS
+	Setting out-of-range argument: undefined: PASS
+	Stray argument: PASS
+/wasm/jsapi/table/get-set.any.worker.html: OK
+	Arguments for anyfunc table set: PASS
+	Arguments for externref table set: PASS
+	Basic: PASS
+	Branding: get: PASS
+	Branding: set: PASS
+	Getting out-of-range argument: "0x100000000": PASS
+	Getting out-of-range argument: -1: PASS
+	Getting out-of-range argument: -Infinity: PASS
+	Getting out-of-range argument: 4294967296: PASS
+	Getting out-of-range argument: 68719476736: PASS
+	Getting out-of-range argument: Infinity: PASS
+	Getting out-of-range argument: NaN: PASS
+	Getting out-of-range argument: object "[object Object]": PASS
+	Getting out-of-range argument: undefined: PASS
+	Growing: PASS
+	Missing arguments: get: PASS
+	Missing arguments: set: PASS
+	Order of argument conversion: PASS
+	Setting non-function: PASS
+	Setting non-wasm arrow function: PASS
+	Setting non-wasm function: PASS
+	Setting out-of-bounds: PASS
+	Setting out-of-range argument: "0x100000000": PASS
+	Setting out-of-range argument: -1: PASS
+	Setting out-of-range argument: -Infinity: PASS
+	Setting out-of-range argument: 4294967296: PASS
+	Setting out-of-range argument: 68719476736: PASS
+	Setting out-of-range argument: Infinity: PASS
+	Setting out-of-range argument: NaN: PASS
+	Setting out-of-range argument: object "[object Object]": PASS
+	Setting out-of-range argument: undefined: PASS
+	Stray argument: PASS
+/wasm/jsapi/table/grow.any.html: OK
+	Basic: PASS
+	Branding: PASS
+	Exceeded maximum: PASS
+	Grow with JS-function argument: PASS
+	Grow with exported-function argument: PASS
+	Grow with non-function argument: PASS
+	Missing arguments: PASS
+	Out-of-range argument: "0x100000000": PASS
+	Out-of-range argument: -1: PASS
+	Out-of-range argument: -Infinity: PASS
+	Out-of-range argument: 4294967296: PASS
+	Out-of-range argument: 68719476736: PASS
+	Out-of-range argument: Infinity: PASS
+	Out-of-range argument: NaN: PASS
+	Out-of-range argument: object "[object Object]": PASS
+	Out-of-range argument: undefined: PASS
+	Reached maximum: PASS
+	Stray argument: PASS
+/wasm/jsapi/table/grow.any.worker.html: OK
+	Basic: PASS
+	Branding: PASS
+	Exceeded maximum: PASS
+	Grow with JS-function argument: PASS
+	Grow with exported-function argument: PASS
+	Grow with non-function argument: PASS
+	Missing arguments: PASS
+	Out-of-range argument: "0x100000000": PASS
+	Out-of-range argument: -1: PASS
+	Out-of-range argument: -Infinity: PASS
+	Out-of-range argument: 4294967296: PASS
+	Out-of-range argument: 68719476736: PASS
+	Out-of-range argument: Infinity: PASS
+	Out-of-range argument: NaN: PASS
+	Out-of-range argument: object "[object Object]": PASS
+	Out-of-range argument: undefined: PASS
+	Reached maximum: PASS
+	Stray argument: PASS
+/wasm/jsapi/table/length.any.html: OK
+	Branding: PASS
+	Setting (sloppy mode): PASS
+	Setting (strict mode): PASS
+	Stray argument: PASS
+/wasm/jsapi/table/length.any.worker.html: OK
+	Branding: PASS
+	Setting (sloppy mode): PASS
+	Setting (strict mode): PASS
+	Stray argument: PASS
+/wasm/jsapi/table/toString.any.html: OK
+	@@toStringTag exists on the prototype with the appropriate descriptor: PASS
+	Object.prototype.toString on an Table: PASS
+/wasm/jsapi/table/toString.any.worker.html: OK
+	@@toStringTag exists on the prototype with the appropriate descriptor: PASS
+	Object.prototype.toString on an Table: PASS
+/wasm/jsapi/table/type.tentative.any.html: OK
+	Non-zero initial, no maximum: FAIL
+	Non-zero maximum: FAIL
+	Zero initial, no maximum: FAIL
+	Zero maximum: FAIL
+/wasm/jsapi/table/type.tentative.any.worker.html: OK
+	Non-zero initial, no maximum: FAIL
+	Non-zero maximum: FAIL
+	Zero initial, no maximum: FAIL
+	Zero maximum: FAIL
+/wasm/jsapi/tag/constructor.tentative.any.html: OK
+	Calling: PASS
+	Invalid descriptor argument: PASS
+	Invalid type parameter: PASS
+	No arguments: PASS
+	length: PASS
+	name: PASS
+/wasm/jsapi/tag/constructor.tentative.any.worker.html: OK
+	Calling: PASS
+	Invalid descriptor argument: PASS
+	Invalid type parameter: PASS
+	No arguments: PASS
+	length: PASS
+	name: PASS
+/wasm/jsapi/tag/toString.tentative.any.html: OK
+	@@toStringTag exists on the prototype with the appropriate descriptor: PASS
+	Object.prototype.toString on a Tag: PASS
+/wasm/jsapi/tag/toString.tentative.any.worker.html: OK
+	@@toStringTag exists on the prototype with the appropriate descriptor: PASS
+	Object.prototype.toString on a Tag: PASS
+/wasm/jsapi/tag/type.tentative.any.html: OK
+	[]: FAIL
+	[i32 i64 f32 f64]: FAIL
+	[i32 i64]: FAIL
+/wasm/jsapi/tag/type.tentative.any.worker.html: OK
+	[]: FAIL
+	[i32 i64 f32 f64]: FAIL
+	[i32 i64]: FAIL

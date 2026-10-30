@@ -1737,7 +1737,6 @@ atomics_wait :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> V
 	if !ok4 {return EXCEPTION}
 	if t != t {t = math.inf_f64(1)} else if t < 0 {t = 0}
 	if !ctx.rt.config.can_block {return throw_type_error(ctx, "Atomics.wait cannot block in this agent")}
-	if array_buffer_of(typed_array_of(o).buffer).host != nil {return throw_type_error(ctx, "Atomics.wait requires a shared buffer")}
 	addr := elem_ptr(o, idx)
 	expected := elem_val_raw(e, v) & elem_mask(e)
 	hook := ctx.rt.config.atomics_wait

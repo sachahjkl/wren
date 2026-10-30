@@ -396,7 +396,7 @@ wasm_table_create :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32
 	letter := letter_arg(ctx, wj.arg(argc, argv, 0))
 	if letter == 0 { return wj.EXCEPTION }
 	init: i64
-	if !wasm_cell_arg(ctx, letter, wj.arg(argc, argv, 3), &init) { return wj.EXCEPTION }
+	if !wasm_to_cell(ctx, letter, wj.arg(argc, argv, 3), &init) { return wj.EXCEPTION }
 	s := [1]u8{letter}
 	id := wj.wr_WebAssembly_Table_create(&s[0], 1, i64_arg(ctx, argc, argv, 1), i64_arg(ctx, argc, argv, 2), init)
 	if id < 0 { return wasm_throw(ctx, i64(id), "WebAssembly.Table()") }
@@ -435,7 +435,7 @@ wasm_table_get :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, a
 wasm_table_set :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	id := int_arg(ctx, argc, argv, 0)
 	cell: i64
-	if !wasm_cell_arg(ctx, wasm_table_letter(id), wj.arg(argc, argv, 2), &cell) { return wj.EXCEPTION }
+	if !wasm_to_cell(ctx, wasm_table_letter(id), wj.arg(argc, argv, 2), &cell) { return wj.EXCEPTION }
 	st := wj.wr_WebAssembly_Table_set(id, i64_arg(ctx, argc, argv, 1), cell)
 	if st < 0 { return wasm_throw(ctx, i64(st), "WebAssembly.Table.set()") }
 	return wj.UNDEFINED
@@ -446,7 +446,7 @@ wasm_table_set :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, a
 wasm_table_grow :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	id := int_arg(ctx, argc, argv, 0)
 	cell: i64
-	if !wasm_cell_arg(ctx, wasm_table_letter(id), wj.arg(argc, argv, 2), &cell) { return wj.EXCEPTION }
+	if !wasm_to_cell(ctx, wasm_table_letter(id), wj.arg(argc, argv, 2), &cell) { return wj.EXCEPTION }
 	prev := wj.wr_WebAssembly_Table_grow(id, i64_arg(ctx, argc, argv, 1), cell)
 	if prev < 0 { return wasm_throw(ctx, prev, "WebAssembly.Table.grow()") }
 	return wj.new_float64(ctx, f64(prev))
@@ -492,7 +492,8 @@ wasm_global_get :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, 
 @(private = "file")
 wasm_global_set :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	id := int_arg(ctx, argc, argv, 0)
-	letter, _ := wasm_global_letter(id)
+	letter, mutable := wasm_global_letter(id)
+	if !mutable { return wj.JS_ThrowTypeError(ctx, "set WebAssembly.Global.value: Can't set the value of an immutable global.") }
 	cell: i64
 	if !wasm_to_cell(ctx, letter, wj.arg(argc, argv, 1), &cell) { return wj.EXCEPTION }
 	st := wj.wr_WebAssembly_Global_set(id, cell)
@@ -728,17 +729,25 @@ wasm_setup :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv:
 	return wj.UNDEFINED
 }
 
+// The realm's `WebAssembly`, made on first use: a page that never looks at it pays nothing.
 @(export, link_name = "web_wasm_start")
 web_wasm_start :: proc "c" (ctx: ^wj.Context, kind: i32) -> i32 {
 	if wj.wr_WebAssembly_enabled() == 0 { return 0 }
+	a := wj.JS_NewAtom(ctx, "WebAssembly")
+	defer wj.JS_FreeAtom(ctx, a)
+	return wj.JS_DefineHostAutoInitProperty(ctx, wj.wj_the_realm.global, a, wasm_autoinit, wj.PROP_CONFIGURABLE | wj.PROP_WRITABLE) < 0 ? -1 : 0
+}
+
+@(private = "file")
+wasm_autoinit :: proc "c" (ctx: ^wj.Context, atom: wj.Atom) -> wj.JSValue {
 	if wasm_handle_class == 0 {
 		rt := wj.JS_GetRuntime(ctx)
 		wj.JS_NewClassID(rt, &wasm_handle_class)
 		def := wj.Class_Def{class_name = "WebAssemblyHandle", finalizer = wasm_handle_finalizer}
-		if wj.JS_NewClass(rt, wasm_handle_class, &def) < 0 { wasm_handle_class = 0; return -1 }
+		if wj.JS_NewClass(rt, wasm_handle_class, &def) < 0 { wasm_handle_class = 0; return wj.JS_ThrowOutOfMemory(ctx) }
 	}
 	fn := eval_prelude(ctx, "web_wasm.js", #load("web_wasm.js"))
-	if wj.is_exception(fn) { return -1 }
+	if wj.is_exception(fn) { return fn }
 	defer wj.JS_FreeValue(ctx, fn)
 	native := wj.JS_NewObject(ctx)
 	defer wj.JS_FreeValue(ctx, native)
@@ -778,8 +787,5 @@ web_wasm_start :: proc "c" (ctx: ^wj.Context, kind: i32) -> i32 {
 		wj.JS_DefinePropertyValueStr(ctx, native, e.name, wj.new_cfunction(ctx, e.fn, e.name, e.length), wj.PROP_C_W_E)
 	}
 	args := [2]wj.JSValue{native, wj.wj_the_realm.global}
-	r := wj.JS_Call(ctx, fn, wj.UNDEFINED, 2, &args[0])
-	if wj.is_exception(r) { wj.wj_report_pending(ctx); return -1 }
-	wj.JS_FreeValue(ctx, r)
-	return 0
+	return wj.JS_Call(ctx, fn, wj.UNDEFINED, 2, &args[0])
 }

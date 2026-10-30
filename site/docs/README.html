@@ -173,6 +173,7 @@
 <li><a href="../docs/releases/v0.6.18.html">Wren 0.6.18</a></li>
 <li><a href="../docs/releases/v0.6.19.html">Wren 0.6.19</a></li>
 <li><a href="../docs/releases/v0.6.2.html">Wren 0.6.2</a></li>
+<li><a href="../docs/releases/v0.6.20.html">Wren 0.6.20</a></li>
 <li><a href="../docs/releases/v0.6.3.html">Wren 0.6.3</a></li>
 <li><a href="../docs/releases/v0.6.4.html">Wren 0.6.4</a></li>
 <li><a href="../docs/releases/v0.6.5.html">Wren 0.6.5</a></li>
@@ -199,7 +200,7 @@
 <li><a href="../docs/js/bindgen.html">bindgen: Odin output and Odin input</a></li>
 <li><a href="../docs/js/odin-abi.html">The generic Odin ABI for the engine boundary</a></li>
 <li><a href="../docs/js/odin-glue.html">Writing Wren's JavaScript glue in Odin</a></li>
-<li><a href="../docs/js/webassembly-api.html">The WebAssembly JavaScript API (plan and state)</a></li>
+<li><a href="../docs/js/webassembly-api.html">The WebAssembly JavaScript API</a></li>
 </ul>
 </div>
 </nav>
@@ -322,13 +323,14 @@ understand is shown as escaped text rather than failing, so a mistake is visible
 &lt;tr&gt;&lt;td&gt;&lt;code&gt;streams&lt;/code&gt;&lt;/td&gt;&lt;td style="text-align:right"&gt;1,724&lt;/td&gt;&lt;td style="text-align:right"&gt;2,065&lt;/td&gt;&lt;td style="text-align:right"&gt;83%&lt;/td&gt;&lt;/tr&gt;
 &lt;tr&gt;&lt;td&gt;&lt;code&gt;url&lt;/code&gt;&lt;/td&gt;&lt;td style="text-align:right"&gt;11,124&lt;/td&gt;&lt;td style="text-align:right"&gt;12,514&lt;/td&gt;&lt;td style="text-align:right"&gt;89%&lt;/td&gt;&lt;/tr&gt;
 &lt;tr&gt;&lt;td&gt;&lt;code&gt;urlpattern&lt;/code&gt;&lt;/td&gt;&lt;td style="text-align:right"&gt;1,257&lt;/td&gt;&lt;td style="text-align:right"&gt;1,636&lt;/td&gt;&lt;td style="text-align:right"&gt;77%&lt;/td&gt;&lt;/tr&gt;
+&lt;tr&gt;&lt;td&gt;&lt;code&gt;wasm/jsapi&lt;/code&gt;&lt;/td&gt;&lt;td style="text-align:right"&gt;1,972&lt;/td&gt;&lt;td style="text-align:right"&gt;2,399&lt;/td&gt;&lt;td style="text-align:right"&gt;82%&lt;/td&gt;&lt;/tr&gt;
 &lt;tr&gt;&lt;td&gt;&lt;code&gt;web-locks&lt;/code&gt;&lt;/td&gt;&lt;td style="text-align:right"&gt;194&lt;/td&gt;&lt;td style="text-align:right"&gt;269&lt;/td&gt;&lt;td style="text-align:right"&gt;72%&lt;/td&gt;&lt;/tr&gt;
 &lt;tr&gt;&lt;td&gt;&lt;code&gt;webidl/ecmascript-binding&lt;/code&gt;&lt;/td&gt;&lt;td style="text-align:right"&gt;366&lt;/td&gt;&lt;td style="text-align:right"&gt;471&lt;/td&gt;&lt;td style="text-align:right"&gt;78%&lt;/td&gt;&lt;/tr&gt;
 &lt;tr&gt;&lt;td&gt;&lt;code&gt;webmessaging&lt;/code&gt;&lt;/td&gt;&lt;td style="text-align:right"&gt;166&lt;/td&gt;&lt;td style="text-align:right"&gt;204&lt;/td&gt;&lt;td style="text-align:right"&gt;81%&lt;/td&gt;&lt;/tr&gt;
 &lt;tr&gt;&lt;td&gt;&lt;code&gt;webstorage&lt;/code&gt;&lt;/td&gt;&lt;td style="text-align:right"&gt;1,215&lt;/td&gt;&lt;td style="text-align:right"&gt;1,284&lt;/td&gt;&lt;td style="text-align:right"&gt;95%&lt;/td&gt;&lt;/tr&gt;
 &lt;tr&gt;&lt;td&gt;&lt;code&gt;workers&lt;/code&gt;&lt;/td&gt;&lt;td style="text-align:right"&gt;1,022&lt;/td&gt;&lt;td style="text-align:right"&gt;1,323&lt;/td&gt;&lt;td style="text-align:right"&gt;77%&lt;/td&gt;&lt;/tr&gt;
 &lt;tr&gt;&lt;td&gt;&lt;code&gt;xhr&lt;/code&gt;&lt;/td&gt;&lt;td style="text-align:right"&gt;852&lt;/td&gt;&lt;td style="text-align:right"&gt;2,010&lt;/td&gt;&lt;td style="text-align:right"&gt;42%&lt;/td&gt;&lt;/tr&gt;
-&lt;tr&gt;&lt;td&gt;&lt;strong&gt;All measured folders&lt;/strong&gt;&lt;/td&gt;&lt;td style="text-align:right"&gt;&lt;strong&gt;130,423&lt;/strong&gt;&lt;/td&gt;&lt;td style="text-align:right"&gt;&lt;strong&gt;922,978&lt;/strong&gt;&lt;/td&gt;&lt;td style="text-align:right"&gt;&lt;strong&gt;14%&lt;/strong&gt;&lt;/td&gt;&lt;/tr&gt;
+&lt;tr&gt;&lt;td&gt;&lt;strong&gt;All measured folders&lt;/strong&gt;&lt;/td&gt;&lt;td style="text-align:right"&gt;&lt;strong&gt;132,395&lt;/strong&gt;&lt;/td&gt;&lt;td style="text-align:right"&gt;&lt;strong&gt;925,377&lt;/strong&gt;&lt;/td&gt;&lt;td style="text-align:right"&gt;&lt;strong&gt;14%&lt;/strong&gt;&lt;/td&gt;&lt;/tr&gt;
 &lt;/tbody&gt;
 &lt;/table&gt;&lt;/div&gt;</code> — the pass rate by folder, read from <code>wpt/expectations</code>.</li>
 </ul>

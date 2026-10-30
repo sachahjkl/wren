@@ -7,6 +7,11 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 
 ## Unreleased
 
+## 0.6.20 - 2026-10-30
+
+### Added
+- **The WebAssembly JavaScript API, on by default**: a page's own modules run on Wasmtime beside the engine's. `WebAssembly.validate`, `compile`, `instantiate`, the streaming forms, `Module`, `Instance`, `Memory`, `Table`, `Global`, `Tag`, `Exception` and the errors, in windows and workers. `compile` works on another thread, so a large module does not stop the page. Blazor WebAssembly (.NET 10), wasm-bindgen and Emscripten applications run; the page's Content Security Policy applies (`'wasm-unsafe-eval'`). No shared memory, so no threads. A page that does not touch `WebAssembly` pays nothing. `javascript.webassembly.enabled` turns it off. Details and limits: `docs/js/webassembly-api.md`.
+
 ## 0.6.19 - 2026-10-30
 
 ### Changed

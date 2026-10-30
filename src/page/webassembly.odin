@@ -47,11 +47,9 @@ Wasm_Compile_Job :: struct {
 }
 
 @(private = "file")
-wasm_compile_done :: proc(data: rawptr) {
-	j := (^Wasm_Compile_Job)(data)
+wasm_compile_settle :: proc(pg: ^Page, j: ^Wasm_Compile_Job) {
 	defer { delete(j.image); free(j) }
 	m, err := wasm.user_module_finish(j.compiled, j.image)
-	pg := page_by_id(j.page)
 	if pg == nil {
 		if m != nil { wasm.user_module_delete(m) }
 		return
@@ -69,18 +67,21 @@ WebAssembly_compileAsync :: proc(c: ^Call, module: []u8) -> u64 {
 		return pr
 	}
 	j := new(Wasm_Compile_Job)
-	j^ = Wasm_Compile_Job{page = p.web.id, promise = pr, owner = c.owner, image = make([]byte, len(module))}
+	j^ = Wasm_Compile_Job{page = p.web != nil ? p.web.id : 0, promise = pr, owner = c.owner, image = make([]byte, len(module))}
 	copy(j.image, module)
 	work := proc(data: rawptr) {
 		j := (^Wasm_Compile_Job)(data)
 		j.compiled = wasm.user_module_compile(j.image)
 	}
 	if p.loader != nil && p.loader.blocking != nil {
-		host.run_blocking(p.loader.blocking, work, wasm_compile_done, j)
+		host.run_blocking(p.loader.blocking, work, proc(data: rawptr) {
+			j := (^Wasm_Compile_Job)(data)
+			wasm_compile_settle(page_by_id(j.page), j)
+		}, j)
 	} else {
-		// (no pool in this embedding: the same steps, the promise still settling from a task)
+		// (no pool here, a worker: the worker's own thread compiles; the promise still settles from a task)
 		work(j)
-		post_page_task(p, proc(_: ^Page, data: rawptr) { wasm_compile_done(data) }, j)
+		post_page_task(p, proc(pg: ^Page, data: rawptr) { wasm_compile_settle(pg, (^Wasm_Compile_Job)(data)) }, j)
 	}
 	return pr
 }

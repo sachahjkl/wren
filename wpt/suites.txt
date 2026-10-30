@@ -49,3 +49,4 @@ performance-timeline
 urlpattern
 scheduler
 web-locks
+wasm/jsapi
