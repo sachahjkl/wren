@@ -1,5 +1,5 @@
 // Converted from the matching api/*.widl by bindgen -convert-widl. The Odin form is the source of truth once the .widl is removed; see src/tools/bindgen/idl/odin_in.odin.
-//@wb module name=webcodecs_image order=72 exposed=(Window,Worker)
+//@wb module name=webcodecs_image order=73 exposed=(Window,Worker)
 /// WebCodecs ImageDecoder (src/page/bindings_image_decoder.odin, native/js/runtime/web_webcodecs_image.c). The decode
 /// is native: the host decodes the encoded bytes once with src/images (every frame composed) and wraps each frame as a
 /// VideoFrame. The engine holds the ImageDecoder wrapper, builds the ImageDecoderInit dictionary, resolves decode()'s

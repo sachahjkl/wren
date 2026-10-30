@@ -721,6 +721,8 @@ wr_Error :: enum i32 {
 	No_Modification_Allowed = -46,
 }
 
+// module webassembly: types
+
 // module webcodecs: types
 wr_VideoFrame :: distinct u64
 // WebCodecs VideoPixelFormat, in the order webcodecs_frame.odin's Frame_Format uses (format() returns -1 for a
@@ -3521,6 +3523,16 @@ foreign _wr_wj_web {
 	@(link_name = "Exception_code") wr_Exception_code :: proc() -> i32 ---
 	// The message of that error ("" when it has none): what a DOMException's message would say.
 	@(link_name = "Exception_message") wr_Exception_message :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+}
+
+// module webassembly
+foreign import _wr_wj_webassembly "webassembly"
+@(default_calling_convention = "contextless")
+foreign _wr_wj_webassembly {
+	// Whether the page's realm has the `WebAssembly` object (javascript.webassembly.enabled).
+	@(link_name = "WebAssembly_enabled") wr_WebAssembly_enabled :: proc() -> i32 ---
+	// WebAssembly.validate(bytes): whether `bytes` is a valid module.
+	@(link_name = "WebAssembly_validate") wr_WebAssembly_validate :: proc(module: [^]u8, module_len: u32) -> i32 ---
 }
 
 // module webcodecs

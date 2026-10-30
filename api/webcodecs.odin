@@ -1,5 +1,5 @@
 // Converted from the matching api/*.widl by bindgen -convert-widl. The Odin form is the source of truth once the .widl is removed; see src/tools/bindgen/idl/odin_in.odin.
-//@wb module name=webcodecs order=68 exposed=(Window,Worker)
+//@wb module name=webcodecs order=69 exposed=(Window,Worker)
 /// WebCodecs (src/page/bindings_webcodecs.odin, webcodecs_frame.odin): the pixel model, memory accounting and format
 /// conversions of a VideoFrame are native. The engine (native/js/runtime/web_webcodecs.c) holds the VideoFrame
 /// wrapper, builds the VideoFrameInit / VideoFrameBufferInit / VideoFrameCopyToOptions dictionaries, resolves copyTo's

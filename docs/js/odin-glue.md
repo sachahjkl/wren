@@ -47,6 +47,8 @@ layout asserts) and QuickJS-ng itself (`native/js/{engine,jit,patches}`). Two ru
 Every symbol is declared **once**. `odin check native/js/odin -target:freestanding_wasm32 -no-entry-point` fails with
 "Redeclaration of ..." the moment a second declaration appears; that is the point.
 
+The WebAssembly JavaScript API (a page's own modules) is hand-written: [webassembly-api.md](webassembly-api.md).
+
 ## The engine (`WJ_JSRT`)
 
 `wj.WJ_JSRT` is a constant (`true`): the layer sits on the Odin runtime. `wj/backend_jsrt.odin` aliases the names of the

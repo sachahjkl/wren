@@ -1,5 +1,5 @@
 // Converted from the matching api/*.widl by bindgen -convert-widl. The Odin form is the source of truth once the .widl is removed; see src/tools/bindgen/idl/odin_in.odin.
-//@wb module name=webcodecs_video_decoder order=73 exposed=(Window,Worker)
+//@wb module name=webcodecs_video_decoder order=74 exposed=(Window,Worker)
 /// WebCodecs VideoDecoder (src/page/bindings_video_decoder.odin, native/js/runtime/web_webcodecs_video_decoder.c).
 /// Wires to the media decoders of src/media behind an honest isConfigSupported. The engine holds the output / error
 /// callbacks; a decoded VideoFrame is delivered through the output callback (user, frame handle).

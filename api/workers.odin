@@ -1,5 +1,5 @@
 // Converted from the matching api/*.widl by bindgen -convert-widl. The Odin form is the source of truth once the .widl is removed; see src/tools/bindgen/idl/odin_in.odin.
-//@wb module name=workers order=75 exposed=(Window,Worker)
+//@wb module name=workers order=76 exposed=(Window,Worker)
 /// Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in
 /// Event_code and the first one in Event_object; the buffers belong to the receiver. Invalid_Argument for a handle that
 /// is not a transferable buffer or appears twice, a message over workers.max_message_bytes, a receiver with too much

@@ -255,6 +255,7 @@ foreign wasmtime_lib {
 	wasmtime_frame_func_name :: proc(f: wt_frame) -> ^wt_byte_vec ---
 
 	wasmtime_module_new :: proc(e: wt_engine, wasm: [^]u8, len: uint, out: ^wt_module) -> wt_error ---
+	wasmtime_module_validate :: proc(e: wt_engine, wasm: [^]u8, len: uint) -> wt_error ---
 	wasmtime_module_delete :: proc(m: wt_module) ---
 	wasmtime_module_imports :: proc(m: wt_module, out: ^wt_ptr_vec) ---
 	wasmtime_module_serialize :: proc(m: wt_module, out: ^wt_byte_vec) -> wt_error ---

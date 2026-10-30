@@ -127,6 +127,7 @@
 <li><a href="../../docs/api/timers.html">Module timers</a></li>
 <li><a href="../../docs/api/url.html">Module url</a></li>
 <li><a href="../../docs/api/web.html">Module web</a></li>
+<li><a href="../../docs/api/webassembly.html">Module webassembly</a></li>
 <li><a href="../../docs/api/webcodecs.html">Module webcodecs</a></li>
 <li><a href="../../docs/api/webcodecs_audio_decoder.html">Module webcodecsaudiodecoder</a></li>
 <li><a href="../../docs/api/webcodecs_codec.html">Module webcodecscodec</a></li>
@@ -198,6 +199,7 @@
 <li><a href="../../docs/js/bindgen.html">bindgen: Odin output and Odin input</a></li>
 <li><a href="../../docs/js/odin-abi.html">The generic Odin ABI for the engine boundary</a></li>
 <li><a href="../../docs/js/odin-glue.html" aria-current="page" class="active">Writing Wren's JavaScript glue in Odin</a></li>
+<li><a href="../../docs/js/webassembly-api.html">The WebAssembly JavaScript API (plan and state)</a></li>
 </ul>
 </div>
 </nav>
@@ -250,6 +252,7 @@ in <code>wj/</code>. A domain of the glue calls another domain unqualified, neve
 </ul>
 <p>Every symbol is declared <strong>once</strong>. <code>odin check native/js/odin -target:freestanding_wasm32 -no-entry-point</code> fails with
 "Redeclaration of ..." the moment a second declaration appears; that is the point.</p>
+<p>The WebAssembly JavaScript API (a page's own modules) is hand-written: <a href="../../docs/js/webassembly-api.html">webassembly-api.md</a>.</p>
 <h2 id="the-engine-wj-jsrt"><a class="anchor" href="#the-engine-wj-jsrt" aria-hidden="true">#</a>The engine (<code>WJ_JSRT</code>)</h2>
 <p><code>wj.WJ_JSRT</code> is a constant (<code>true</code>): the layer sits on the Odin runtime. <code>wj/backend_jsrt.odin</code> aliases the names of the
 QuickJS C API to the procedures of <code>src/engine/jscapi</code> (the API implemented on <code>src/engine/jsrt</code>). The API types
@@ -352,6 +355,7 @@ concluding (url's worker <code>exclude=</code> variants and webstorage's <code>s
 different before any port).</p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../docs/js/odin-abi.html"><span>Previous</span><strong>The generic Odin ABI for the engine boundary</strong></a>
+<a class="doc-next" href="../../docs/js/webassembly-api.html"><span>Next</span><strong>The WebAssembly JavaScript API (plan and state)</strong></a>
 </nav>
 <p class="doc-edit"><a href="https://github.com/sachahjkl/wren/blob/master/docs/js/odin-glue.md" rel="noopener">Edit this page on GitHub</a></p>
 </article>

@@ -29067,6 +29067,38 @@ _t_web_Exception_message :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	return nil
 }
 
+// WebAssembly_enabled :: proc(c: ^Call) -> bool
+@(private = "file")
+_t_webassembly_WebAssembly_enabled :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := WebAssembly_enabled(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// WebAssembly_validate :: proc(c: ^Call, module: []u8) -> bool
+@(private = "file")
+_t_webassembly_WebAssembly_validate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "webassembly.WebAssembly_validate", "module") }
+	_p0 := _s0[:_n0]
+	_r := WebAssembly_validate(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
 // VideoFrame_fromImage :: proc(c: ^Call, source: u64, timestamp: i64, has_ts: bool, duration: i64, has_duration: bool) -> (u64, Api_Error)
 @(private = "file")
 _t_webcodecs_VideoFrame_fromImage :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -33081,6 +33113,8 @@ api_imports := [?]wasm.Import{
 	{module = "url", name = "URLPattern_groupValue", fn = _t_url_URLPattern_groupValue, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "web", name = "Exception_code", fn = _t_web_Exception_code, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "web", name = "Exception_message", fn = _t_web_Exception_message, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "webassembly", name = "WebAssembly_enabled", fn = _t_webassembly_WebAssembly_enabled, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
+	{module = "webassembly", name = "WebAssembly_validate", fn = _t_webassembly_WebAssembly_validate, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "webcodecs", name = "VideoFrame_fromImage", fn = _t_webcodecs_VideoFrame_fromImage, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I32, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "webcodecs", name = "VideoFrame_fromBuffer", fn = _t_webcodecs_VideoFrame_fromBuffer, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I32, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I64, .I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "webcodecs", name = "VideoFrame_format", fn = _t_webcodecs_VideoFrame_format, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
