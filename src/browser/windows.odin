@@ -614,7 +614,7 @@ window_new :: proc(app: ^App) -> ^Browser_Window {
 	nw := tab_to_new_window(app, t, src, nil, false, true)
 	window_current(app, src)^ = clamp(was, 0, max(len(window_tabs(app, src)) - 1, 0))
 	if cur := window_current_tab(app, src); cur != nil { ui.field_set(window_address(app, src), cur.url) }
-	if nw != nil { nw.ctx.focus_address = true }
+	if nw != nil && config.bool_of(&app.prefs, "browser.newtab.focus_address") { nw.ctx.focus_address = true }
 	return nw
 }
 
