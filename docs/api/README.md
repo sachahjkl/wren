@@ -92,7 +92,7 @@ function not exposed to workers is not instantiated.
 | [`timers`](timers.md) | 11 | Window, Worker | Timers and the rendering-related scheduling of HTML: setTimeout / setInterval (with the HTML nesting clamp and |
 | [`url`](url.md) | 30 | Window, Worker | URL and URLSearchParams (WHATWG URL Standard) as host objects. A URL's searchParams is linked to it both ways: |
 | [`web`](web.md) | 2 | Window, Worker | What every other module shares: the error codes (Web IDL exceptions and DOMException names), the exception record |
-| [`webassembly`](webassembly.md) | 2 | Window, Worker | The WebAssembly JavaScript API (src/page/webassembly.odin, the objects: native/js/odin/web_wasm.odin): a page's own |
+| [`webassembly`](webassembly.md) | 7 | Window, Worker | The WebAssembly JavaScript API (src/page/webassembly.odin, the objects: native/js/odin/web_wasm.odin): a page's own |
 | [`webcodecs`](webcodecs.md) | 20 | Window, Worker | WebCodecs (src/page/bindings_webcodecs.odin, webcodecs_frame.odin): the pixel model, memory accounting and format |
 | [`webcodecs_audio_decoder`](webcodecs_audio_decoder.md) | 9 | Window, Worker | WebCodecs AudioDecoder (src/page/bindings_audio_decoder.odin, native/js/runtime/web_webcodecs_audio_decoder.c). |
 | [`webcodecs_codec`](webcodecs_codec.md) | 23 | Window, Worker | WebCodecs encoded chunks and AudioData (src/page/webcodecs_chunks.odin, native/js/runtime/web_webcodecs_codec.c). |
@@ -102,4 +102,4 @@ function not exposed to workers is not instantiated.
 | [`websocket`](websocket.md) | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | 11 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-1417 imports in 1318 functions.
+1422 imports in 1323 functions.

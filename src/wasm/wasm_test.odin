@@ -546,3 +546,32 @@ binary_patch :: proc(t: ^testing.T) {
 	testing.expect(t, m64.memory64, "memory64 detected")
 	runtime_destroy()
 }
+
+@(test)
+user_module_description :: proc(t: ^testing.T) {
+	setup(t)
+	image := wat(t, `(module
+		(import "env" "f" (func))
+		(import "env" "t" (table 1 funcref))
+		(import "env" "m" (memory 1))
+		(import "env" "g" (global i32))
+		(func (export "run"))
+		(export "a\"b\n" (memory 0))
+		(@custom "meta" "\01\02")
+		(@custom "meta" (after last) "\03")
+	)`)
+	m, err := user_module_new(image)
+	if m == nil { testing.fail_now(t, err) }
+	defer user_module_delete(m)
+	testing.expect_value(t, m.imports, `[{"module":"env","name":"f","kind":"function"},{"module":"env","name":"t","kind":"table"},{"module":"env","name":"m","kind":"memory"},{"module":"env","name":"g","kind":"global"}]`)
+	testing.expect_value(t, m.exports, `[{"name":"run","kind":"function"},{"name":"a\"b\n","kind":"memory"}]`)
+	testing.expect_value(t, len(m.sections), 2)
+	testing.expect_value(t, m.sections[0].name, "meta")
+	testing.expect_value(t, string(m.sections[0].data), "\x01\x02")
+	testing.expect_value(t, string(m.sections[1].data), "\x03")
+
+	none, why := user_module_new({0, 97, 115, 109, 9, 9, 9, 9})
+	testing.expect(t, none == nil && why != "", "not a module: nil and a reason")
+	testing.expect(t, !validate({1, 2, 3}), "validate: not a module")
+	testing.expect(t, validate(image), "validate: a module")
+}

@@ -10,14 +10,20 @@ instances, and the page's JavaScript must see their memory.
 ## State
 
 `javascript.webassembly.enabled` (off by default: a page that finds the object expects all of it, so a partial one does
-more harm than none) gives the realm a `WebAssembly` object with `validate(bytes)` only. The path is the one the rest of
-the API will take:
+more harm than none) gives the realm a `WebAssembly` object with `validate`, `compile`, `Module` (`imports`, `exports`,
+`customSections`) and the three errors. A module does not run yet. The path is the one the rest of the API will take:
 
 | Layer | File |
 |---|---|
 | the description | `api/webassembly.widl` (generates `wj.wr_WebAssembly_*` and the host table) |
-| the browser side | `src/page/webassembly.odin` (calls) over `src/wasm/user_module.odin` (Wasmtime) |
-| the realm side | `native/js/odin/web_wasm.odin` (installed by `web_wasm_start` when the browser says so) |
+| the browser side | `src/page/webassembly.odin` (calls) over `src/wasm/user_module.odin` (Wasmtime; the description of a module comes from `binary.odin`'s reader) |
+| the realm side | `native/js/odin/web_wasm.odin` (the natives, `web_wasm_start` when the browser says so) and `web_wasm.js` (the objects) |
+| the tests | `examples/jsweb/webassembly.js` (`jswebtest webassembly`), `src/wasm/wasm_test.odin`, `src/csp/csp_test.odin` |
+
+`web_wasm.js` is the one exception to the rule of `native/js/odin/prelude.odin` (no JavaScript in the realm): it is not in
+the image, and runs only when the preference is on. `compile` compiles on the calling thread for now: its promise is
+settled when it returns. The Content Security Policy applies: `'wasm-unsafe-eval'` or `'unsafe-eval'` where a policy has a
+`script-src` or `default-src`, otherwise a `CompileError` (and a violation report). `validate` is not subject to it.
 
 ## What a page needs (Blazor's `dotnet.js` as the case)
 
@@ -51,7 +57,7 @@ globals. i64 is `BigInt`. A trap is a `WebAssembly.RuntimeError`.
 
 ## Steps
 
-1. `validate`, `compile`, `Module` (`imports`, `exports`, `customSections`), the three errors. *(validate: done)*
+1. `validate`, `compile`, `Module` (`imports`, `exports`, `customSections`), the three errors. *(done)*
 2. `Memory`, `Table`, `Global` made by the page (the objects without an instance), with the external `ArrayBuffer`.
 3. `Instance` and `instantiate`: imports resolved against the import object (`LinkError` messages as Chromium's), exports
    wrapped, calls both ways, traps.

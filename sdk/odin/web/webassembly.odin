@@ -4,12 +4,21 @@
 // (javascript.webassembly.enabled): a page that finds a `WebAssembly` object expects all of it.
 package web
 
+import "base:runtime"
+
+WebAssemblyModule :: distinct Object
+
 foreign import _m_webassembly "webassembly"
 
 @(private = "file", default_calling_convention = "contextless")
 foreign _m_webassembly {
 	@(link_name = "WebAssembly_enabled") _WebAssembly_enabled :: proc() -> i32 ---
 	@(link_name = "WebAssembly_validate") _WebAssembly_validate :: proc(module: [^]u8, module_len: u32) -> i32 ---
+	@(link_name = "WebAssembly_compile") _WebAssembly_compile :: proc(module: [^]u8, module_len: u32, _ret: ^WebAssemblyModule) -> Error ---
+	@(link_name = "WebAssembly_Module_imports") _WebAssembly_Module_imports :: proc(module: WebAssemblyModule, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "WebAssembly_Module_exports") _WebAssembly_Module_exports :: proc(module: WebAssemblyModule, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "WebAssembly_Module_customSectionCount") _WebAssembly_Module_customSectionCount :: proc(module: WebAssemblyModule, name: [^]u8, name_len: u32) -> i32 ---
+	@(link_name = "WebAssembly_Module_customSection") _WebAssembly_Module_customSection :: proc(module: WebAssemblyModule, name: [^]u8, name_len: u32, index: i32, _buf: [^]u8, _cap: u32) -> i32 ---
 }
 
 // Whether the page's realm has the `WebAssembly` object (javascript.webassembly.enabled).
@@ -20,5 +29,104 @@ WebAssembly_enabled :: proc "contextless" () -> bool {
 // WebAssembly.validate(bytes): whether `bytes` is a valid module.
 WebAssembly_validate :: proc "contextless" (module: []u8) -> bool {
 	return _WebAssembly_validate(raw_data(module), u32(len(module))) != 0
+}
+
+// new WebAssembly.Module(bytes): `bytes` compiled. Syntax with the reason when it is not a valid module, Security when
+// the page's Content Security Policy refuses it.
+WebAssembly_compile :: proc "contextless" (module: []u8) -> (result: WebAssemblyModule, err: Error) {
+	err = _WebAssembly_compile(raw_data(module), u32(len(module)), &result)
+	return
+}
+
+// WebAssembly.Module.imports(module), as JSON.
+WebAssembly_Module_imports :: proc "contextless" (module: WebAssemblyModule, buf: []u8) -> (string, Error) {
+	n := _WebAssembly_Module_imports(module, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of WebAssembly_Module_imports's result.
+WebAssembly_Module_imports_len :: proc "contextless" (module: WebAssemblyModule) -> (int, Error) {
+	n := _WebAssembly_Module_imports(module, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// WebAssembly_Module_imports's result in a buffer allocated to fit.
+WebAssembly_Module_imports_alloc :: proc(module: WebAssemblyModule, allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _WebAssembly_Module_imports(module, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// WebAssembly.Module.exports(module), as JSON.
+WebAssembly_Module_exports :: proc "contextless" (module: WebAssemblyModule, buf: []u8) -> (string, Error) {
+	n := _WebAssembly_Module_exports(module, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of WebAssembly_Module_exports's result.
+WebAssembly_Module_exports_len :: proc "contextless" (module: WebAssemblyModule) -> (int, Error) {
+	n := _WebAssembly_Module_exports(module, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// WebAssembly_Module_exports's result in a buffer allocated to fit.
+WebAssembly_Module_exports_alloc :: proc(module: WebAssemblyModule, allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _WebAssembly_Module_exports(module, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// How many custom sections of the module are called `name`.
+WebAssembly_Module_customSectionCount :: proc "contextless" (module: WebAssemblyModule, name: string) -> i32 {
+	return _WebAssembly_Module_customSectionCount(module, raw_data(name), u32(len(name)))
+}
+
+// The bytes of the custom section number `index` of those called `name`.
+WebAssembly_Module_customSection :: proc "contextless" (module: WebAssemblyModule, name: string, index: i32, buf: []u8) -> ([]u8, Error) {
+	n := _WebAssembly_Module_customSection(module, raw_data(name), u32(len(name)), index, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return (buf), .Truncated }
+	return (buf[:n]), .None
+}
+
+// The full length of WebAssembly_Module_customSection's result.
+WebAssembly_Module_customSection_len :: proc "contextless" (module: WebAssemblyModule, name: string, index: i32) -> (int, Error) {
+	n := _WebAssembly_Module_customSection(module, raw_data(name), u32(len(name)), index, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// WebAssembly_Module_customSection's result in a buffer allocated to fit.
+WebAssembly_Module_customSection_alloc :: proc(module: WebAssemblyModule, name: string, index: i32, allocator: runtime.Allocator) -> ([]u8, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _WebAssembly_Module_customSection(module, raw_data(name), u32(len(name)), index, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return (buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
 }
 

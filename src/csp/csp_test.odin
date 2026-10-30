@@ -124,3 +124,20 @@ nonces_and_flags :: proc(t: ^testing.T) {
 	testing.expect(t, has_directive(&l, "upgrade-insecure-requests"))
 	testing.expect(t, !has_directive(&l, "block-all-mixed-content"))
 }
+
+@(test)
+wasm_eval :: proc(t: ^testing.T) {
+	allows :: proc(policy: string) -> bool {
+		l: Policy_List
+		defer list_destroy(&l)
+		parse_header(&l, policy, .Enforce)
+		return check_wasm_eval(&l).allowed
+	}
+	testing.expect(t, allows("img-src 'none'"), "no script-src, no default-src")
+	testing.expect(t, allows("script-src 'wasm-unsafe-eval'"), "'wasm-unsafe-eval'")
+	testing.expect(t, allows("script-src 'unsafe-eval'"), "'unsafe-eval'")
+	testing.expect(t, allows("default-src 'wasm-unsafe-eval'"), "default-src")
+	testing.expect(t, !allows("script-src 'self'"), "neither")
+	testing.expect(t, !allows("default-src 'self'"), "default-src, neither")
+	testing.expect(t, !allows("default-src 'wasm-unsafe-eval'; script-src 'self'"), "script-src decides")
+}
