@@ -105,6 +105,25 @@ judge_file_policy :: proc(t: ^testing.T) {
 }
 
 @(test)
+home_search_box :: proc(t: ^testing.T) {
+	words, ok := home_search_words("about:home?q=wren+browser%21+caf%C3%A9&x=1#top")
+	testing.expect(t, ok)
+	testing.expect_value(t, words, "wren browser! café")
+	_, ok = home_search_words("about:home?art=on")
+	testing.expect(t, !ok, "no q: not a search")
+	_, ok = home_search_words("about:history?q=a")
+	testing.expect(t, !ok, "another page's q is its own filter")
+	web := env_of(WEB)
+	defer fetch.environment_destroy(&web)
+	home := env_of("about:home")
+	defer fetch.environment_destroy(&home)
+	testing.expect(t, nav_judge(.Page, &home, .Own_Tree, "about:home?q=cats").acts, "the start page's own form acts")
+	v := nav_judge(.Page, &web, .Own_Tree, "about:home?q=cats")
+	testing.expect(t, !v.acts, "a web page's form does not search through the start page")
+	testing.expect_value(t, v.address, "about:home")
+}
+
+@(test)
 only_a_person_trusts :: proc(t: ^testing.T) {
 	web := env_of(WEB)
 	defer fetch.environment_destroy(&web)

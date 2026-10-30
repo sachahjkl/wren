@@ -310,6 +310,11 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	origin := origin
 	if target == "" { target, origin = strings.clone(app.cfg.homepage, context.temp_allocator), .User }   // (the person's own setting)
 	verdict := nav_judge(origin, from != nil ? &from.env : nil, app.loader.profile.settings.file_access, target)
+	if words, searched := home_search_words(target); searched && verdict.acts {
+		// the start page's search box (about:home?q=...): what the address bar does with the same text
+		target = strings.trim_space(words) == "" ? HOME_URL : strings.clone(normalize_address(address_or_search(words)), context.temp_allocator)
+		verdict = nav_judge(origin, from != nil ? &from.env : nil, app.loader.profile.settings.file_access, target)
+	}
 	if verdict.refuse != "" { nav_refused(t, from, target, verdict.refuse); return false }
 	accepted = true   // (from here on the early returns of the built-in pages are acceptances)
 	target = verdict.address

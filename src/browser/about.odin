@@ -6,10 +6,11 @@ import "core:strings"
 import "toolkit:render"
 import "wb:base"
 import "wb:page"
+import "wb:url"
 
 // Identity of the program. One place, so a rename touches nothing else.
 APP_NAME    :: "Wren"
-APP_VERSION :: "0.6.10"
+APP_VERSION :: "0.6.11"
 APP_TAGLINE :: "A small browser where WebAssembly runs everything, JavaScript included."
 
 // A label for a build that is not the release of this version, set when it is built (build.bat: `set WREN_VERSION_LABEL=experimental-2026-10-24`,
@@ -105,8 +106,17 @@ HOME_TEMPLATE :: `<!doctype html>
   .tag { font-size: 20px; color: #8993ad; margin: 6px 0 0; }
   .dev { display: inline-block; margin: 18px 0 0; padding: 5px 16px 5px 6px; border: 1px solid #2f5ea8; border-radius: 16px; background-color: #10213f; color: #9cc0f2; font-size: 14px; }
   .dev b { display: inline-block; margin-right: 10px; padding: 1px 9px; border-radius: 11px; background-color: #2363b8; color: #ffffff; font-size: 12px; letter-spacing: 1px; }
-  .hint { margin: 38px 0 0; text-align: center; color: #5f6a86; font-size: 15px; }
-  .links { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px 30px; max-width: 680px; margin: 34px auto 0; }
+  .search { position: relative; max-width: 580px; margin: 40px auto 0; }
+  .search input { display: block; width: 100%; box-sizing: border-box; height: 50px; padding: 0 56px 0 54px; border-radius: 25px; border: 1px solid #262e43;
+                  background-color: #131824; color: #f1f4fb; font-family: system-ui; font-size: 16px; outline: none; }
+  .search input::placeholder { color: #5f6a86; }
+  .search input:hover { border-color: #38425d; }
+  .search input:focus { border-color: $ACCENT$; background-color: #161c2a; }
+  .search .lens { position: absolute; left: 19px; top: 16px; width: 18px; height: 18px; stroke: #6b7694; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .search button { position: absolute; right: 8px; top: 8px; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 17px; background-color: transparent; color: #8993ad; cursor: pointer; }
+  .search button:hover { background-color: rgba(255,255,255,0.07); color: #f1f4fb; }
+  .search button svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .links { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px 30px; max-width: 680px; margin: 30px auto 0; }
   .links a { display: inline-flex; align-items: center; gap: 9px; padding: 7px 2px; color: #8993ad; text-decoration: none; font-size: 15px; border-bottom: 1px solid transparent; }
   .links a svg, .paint a .ic { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
   .links a:hover { color: #f1f4fb; border-bottom-color: $ACCENT$; }
@@ -116,6 +126,9 @@ HOME_TEMPLATE :: `<!doctype html>
   .paint a small { color: #59647f; font-size: 12px; margin-left: 2px; }
   .foot { text-align: center; color: #4f5a78; font-size: 13px; padding: 30px 20px 48px; }
   .foot b { color: #8993ad; }
+  .foot img { width: 16px; height: 16px; vertical-align: -3px; margin: 0 5px; }
+  .foot a { color: #8993ad; font-weight: 600; text-decoration: none; }
+  .foot a:hover { color: #f1f4fb; }
   @media (prefers-color-scheme: light) {
     html { background-color: #f5f6fa; }
     body { color: #2b3245; }
@@ -123,14 +136,21 @@ HOME_TEMPLATE :: `<!doctype html>
     .logo .w { color: $ACCENT_LIGHT$; }
     .tag { color: #5d6680; }
     .dev { background-color: #e8f0fc; border-color: #9dbbe8; color: #1d4f91; }
-    .hint { color: #8a93aa; }
+    .search input { background-color: #ffffff; border-color: #d3d8e4; color: #1d2333; }
+    .search input::placeholder { color: #8a93aa; }
+    .search input:hover { border-color: #b5bdd0; }
+    .search input:focus { border-color: $ACCENT_LIGHT$; background-color: #ffffff; }
+    .search .lens { stroke: #8a93aa; }
+    .search button { color: #5d6680; }
+    .search button:hover { background-color: rgba(0,0,0,0.06); color: #1d2333; }
     .links a { color: #5d6680; }
     .links a:hover { color: #1d2333; border-bottom-color: $ACCENT_LIGHT$; }
     .paint a { color: #5d6680; }
     .paint a:hover { color: #1d2333; background-color: rgba(0,0,0,0.05); }
     .paint a small { color: #8a93aa; }
     .foot { color: #8a93aa; }
-    .foot b { color: #5d6680; }
+    .foot b, .foot a { color: #5d6680; }
+    .foot a:hover { color: #1d2333; }
   }
 </style>
 </head>
@@ -141,7 +161,11 @@ HOME_TEMPLATE :: `<!doctype html>
     <p class="tag">$TAGLINE$</p>
     $DEV$
   </div>
-  <p class="hint">Type an address in the bar above.</p>
+  <form class="search" action="about:home" method="get" role="search">
+    <svg class="lens" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L20 20"/></svg>
+    <input type="text" name="q" placeholder="$SEARCH$" autocomplete="off" spellcheck="false" aria-label="Search or type an address">
+    <button type="submit" aria-label="Search"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+  </form>
   <nav class="links">
     <a href="about:config"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Configuration</a>
     <a href="about:history"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>History</a>
@@ -149,7 +173,7 @@ HOME_TEMPLATE :: `<!doctype html>
     <a href="about:demos"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.3"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.3"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.3"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.3"/></svg>Demos &amp; tests</a>
   </nav>
   <p class="paint"><a href="about:home?art=on"><svg viewBox="0 0 28 22" width="28" height="22" aria-hidden="true"><rect x="1" y="1" width="26" height="20" rx="2.5" fill="#c8923c"/><rect x="3.2" y="3.2" width="21.6" height="15.6" rx="1" fill="#7fb8e8"/><circle cx="19.5" cy="8" r="2.6" fill="#ffd36a"/><path d="M3.2 18.8V13.5Q8 9.5 12.5 13T24.8 12V18.8Z" fill="#4f9d69"/><path d="M3.2 18.8V16Q9 13.8 14 16.2T24.8 15.5V18.8Z" fill="#2f7a6a"/></svg>A painting on every new tab <small>off</small></a></p>
-  <p class="foot"><b>$NAME$</b> $VERSION$ &middot; WebAssembly only &middot; written in Odin<br>Some demos need the test server: <b>testserver.exe</b> (demo.bat in the release).</p>
+  <p class="foot"><b>$NAME$</b> $VERSION$ &middot; by<img src="$FROMENT_LOGO$" width="16" height="16" alt=""><a href="$FROMENT_URL$">Froment Software</a></p>
 </body>
 </html>
 `
@@ -161,8 +185,21 @@ home_html :: proc() -> string {
 	s, _ = strings.replace_all(s, "$ACCENT$", IS_DEV_BUILD ? "#7fb2ff" : "#ffb84d", context.temp_allocator)
 	s, _ = strings.replace_all(s, "$ACCENT_LIGHT$", IS_DEV_BUILD ? "#1d5aa8" : "#d98200", context.temp_allocator)
 	s, _ = strings.replace_all(s, "$DEV$", dev_badge_html(), context.temp_allocator)
+	s, _ = strings.replace_all(s, "$SEARCH$", escape_html(fmt.tprintf("Search with %s or type an address", search_engine_name())), context.temp_allocator)
+	s, _ = strings.replace_all(s, "$FROMENT_URL$", FROMENT_URL, context.temp_allocator)
+	s, _ = strings.replace_all(s, "$FROMENT_LOGO$", png_url(FROMENT_LOGO_PNG), context.temp_allocator)
 	s, _ = strings.replace_all(s, "$LOGO$", app_logo_url(), context.temp_allocator)   // last: the longest
 	return s
+}
+
+// The words a submission of the start page's search box carries (about:home?q=cats+and+dogs), decoded; ok when the address has a q.
+home_search_words :: proc(target: string) -> (words: string, ok: bool) {
+	if !strings.has_prefix(target, HOME_URL + "?") { return }
+	query := target[len(HOME_URL) + 1:]
+	if i := strings.index_byte(query, '#'); i >= 0 { query = query[:i] }
+	sp := url.params_make(context.temp_allocator)
+	url.params_parse(&sp, query)
+	return url.params_get(sp, "q")
 }
 
 // What a development build says on the built-in pages: "DEV  Development build · commit 1a2b3c4, 2026-10-20" in a
