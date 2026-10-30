@@ -47,11 +47,24 @@
     <p class="intro">Eight versions in twelve days: the first public build, JavaScript, a JIT, a text engine of its own, a browser that speaks to screen readers, then a JavaScript engine written in Odin.</p>
     <div class="timeline">
 <!-- releases:begin -->
-      <article class="release latest" id="v0-6-11">
+      <article class="release latest" id="v0-6-12">
         <div class="rail"><span class="dot"></span></div>
         <div class="release-body">
           <p class="release-date"><time datetime="2026-10-30">October 30, 2026</time></p>
-          <div class="release-title"><h3>0.6.11</h3><span class="badge">Latest</span></div>
+          <div class="release-title"><h3>0.6.12</h3><span class="badge">Latest</span></div>
+          <ul class="release-list">
+            <li><strong>Middle-click autoscroll is half as fast</strong>: the top speed is 15000 px/s (was 30000), reached at the same distance; every speed in between is halved.</li>
+            <li><strong>The first painting comes sooner.</strong> With nothing downloaded yet, the smallest of the listed files goes first, and a file larger than <code>browser.newtab.art.max_image_bytes</code> is no longer downloaded just…</li>
+          </ul>
+          <p class="release-links"><a href="https://github.com/sachahjkl/wren/blob/master/docs/releases/v0.6.12.md">Release notes</a> ·
+            <a href="https://github.com/sachahjkl/wren/releases/tag/v0.6.12">Download</a></p>
+        </div>
+      </article>
+      <article class="release" id="v0-6-11">
+        <div class="rail"><span class="dot"></span></div>
+        <div class="release-body">
+          <p class="release-date"><time datetime="2026-10-30">October 30, 2026</time></p>
+          <div class="release-title"><h3>0.6.11</h3></div>
           <ul class="release-list">
             <li><strong>A search box on the start page.</strong> It does what the address bar does with the same text: words go to the default search engine (a keyword such as <code>@g cats</code> picks another), an address opens as it is.</li>
             <li><strong>Suggestions on focus.</strong> A click in the address bar, Ctrl+L or a new tab lists the pages visited most and most lately before anything is typed.</li>

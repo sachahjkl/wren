@@ -189,6 +189,7 @@ Art_Candidate :: struct {
 	museum:   string,
 	record:   string,
 	license:  string,
+	size:     i64,      // the file's size when the listing says (0: unknown)
 }
 
 art_candidate_destroy :: proc(c: ^Art_Candidate) {
@@ -201,7 +202,7 @@ art_candidate_clone :: proc(c: Art_Candidate) -> Art_Candidate {
 	return Art_Candidate{
 		id = strings.clone(c.id), image_url = strings.clone(c.image_url), source = strings.clone(c.source),
 		title = strings.clone(c.title), artist = strings.clone(c.artist), date = strings.clone(c.date),
-		museum = strings.clone(c.museum), record = strings.clone(c.record), license = strings.clone(c.license),
+		museum = strings.clone(c.museum), record = strings.clone(c.record), license = strings.clone(c.license), size = c.size,
 	}
 }
 
@@ -313,8 +314,18 @@ art_pump :: proc() {
 		return
 	}
 
-	// a candidate in hand: download it
+	// a candidate in hand: download it. With nothing ready yet the smallest file goes first: the first painting shows
+	// as soon as it can, the others follow behind it
 	if len(art.candidates) > 0 {
+		if len(art.ready) == 0 {
+			best := len(art.candidates) - 1
+			for c, i in art.candidates { if c.size > 0 && (art.candidates[best].size <= 0 || c.size < art.candidates[best].size) { best = i } }
+			c := art.candidates[best]
+			ordered_remove(&art.candidates, best)
+			if art_have_id(c.id) { art_candidate_destroy(&c); art_pump(); return }
+			art_download(c)
+			return
+		}
 		c := pop(&art.candidates)
 		if art_have_id(c.id) { art_candidate_destroy(&c); art_pump(); return }   // already cached: skip, no request
 		art_download(c)
@@ -354,6 +365,7 @@ art_backoff_ms :: proc() -> i64 {
 art_fail :: proc() {
 	art.fails += 1
 	art_wait(art_backoff_ms())
+	if art.fails == 1 { art_empty_failed(art.app) }   // (once: the page of a tab waiting for its first painting says it is trying again)
 }
 
 @(private = "file")
@@ -443,8 +455,8 @@ art_cleveland_parse :: proc(body: []byte) -> int {
 	for e in data {
 		o, ok := e.(json.Object)
 		if !ok { continue }
-		img := art_cleveland_image(o)
-		if img == "" { continue }
+		img, size := art_cleveland_image(o)
+		if img == "" || (size > 0 && size > i64(art.cfg.max_image_bytes)) { continue }   // (too big: it would only fail, and back off)
 		id := 0
 		if n, h := o["id"].(json.Float); h { id = int(n) }
 		c := Art_Candidate{
@@ -457,6 +469,7 @@ art_cleveland_parse :: proc(body: []byte) -> int {
 			museum = strings.clone("Cleveland Museum of Art"),
 			record = art_json_str(o, "url"),
 			license = strings.clone("CC0"),
+			size = size,
 		}
 		append(&art.candidates, c)
 		added += 1
@@ -465,16 +478,19 @@ art_cleveland_parse :: proc(body: []byte) -> int {
 }
 
 @(private = "file")
-art_cleveland_image :: proc(o: json.Object) -> string {
+art_cleveland_image :: proc(o: json.Object) -> (url: string, size: i64) {
 	images_o, has := o["images"].(json.Object)
-	if !has { return "" }
+	if !has { return }
 	// prefer the larger "print" rendition, fall back to "web" (~900 px); both are JPEG
 	for key in ([]string{"print", "web"}) {
 		if r, h := images_o[key].(json.Object); h {
-			if u, hu := r["url"].(json.String); hu && u != "" && art_http_url(string(u)) { return string(u) }
+			if u, hu := r["url"].(json.String); hu && u != "" && art_http_url(string(u)) {
+				if n, hn := r["filesize"].(json.Float); hn { size = i64(n) }
+				return string(u), size
+			}
 		}
 	}
-	return ""
+	return
 }
 
 @(private = "file")

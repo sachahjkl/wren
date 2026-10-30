@@ -7,6 +7,15 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 
 ## Unreleased
 
+## 0.6.12 - 2026-10-30
+
+### Changed
+- **The icons of the start page's search box are bigger** (the lens and the arrow, 20 px instead of 16), closer to the size of the text.
+- **Middle-click autoscroll is half as fast**: the top speed is 15000 px/s (was 30000), still reached 300 px past the dead zone, and every distance in between goes half as fast. `browser.scroll.autoscroll.max_speed` sets it.
+
+### Fixed
+- **The first painting comes sooner, and the page says what it is doing**: with nothing downloaded yet, the smallest of the listed files goes first, so the first painting shows as soon as it can and the others follow. A file the listing says is larger than `browser.newtab.art.max_image_bytes` is no longer downloaded just to fail (each failure made the next try wait twice as long). The page reads "Loading a painting…" instead of "No painting could be loaded yet", which now only shows, as "Trying again", after a request failed.
+
 ## 0.6.11 - 2026-10-30
 
 ### Added
