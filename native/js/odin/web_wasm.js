@@ -38,14 +38,14 @@
     if (h === undefined) throw new TE(what + ": Argument 0 must be a WebAssembly.Module");
     return h;
   };
-  const compiled = (bytes, what, promised) => {
-    const h = native.compile(bytes, promised);
+  const moduleOf = (target, h, what) => {
     if (typeof h === "string") throw new CompileError(what + ": " + h);
-    return h;
+    apply(weakSet, handles, [target, h]);
+    return target;
   };
 
   class Module {
-    constructor(bytes) { apply(weakSet, handles, [this, compiled(bytes, "WebAssembly.Module()", false)]); }
+    constructor(bytes) { moduleOf(this, native.compile(bytes), "WebAssembly.Module()"); }
   }
   operations(Module, {
     imports(module) { return native.imports(handleOf(module, "WebAssembly.Module.imports()")); },
@@ -63,11 +63,11 @@
   operations(WebAssembly, {
     validate: native.validate,
     compile(bytes) {
-      return new P(resolve => {
-        const m = create(Module.prototype);
-        apply(weakSet, handles, [m, compiled(bytes, "WebAssembly.compile()", true)]);
-        resolve(m);
-      });
+      try {
+        return native.compileAsync(bytes, h => moduleOf(create(Module.prototype), h, "WebAssembly.compile()"));
+      } catch (e) {
+        return new P((_, reject) => reject(e));
+      }
     },
   });
   hidden(WebAssembly, "Module", Module);

@@ -114,22 +114,39 @@ user_module_describe :: proc(m: ^User_Module, image: []byte) -> (err: string) {
 	return ""
 }
 
-// WebAssembly.Module: compiles `image`. nil and the reason (in temporary memory) when it is not a valid module.
-user_module_new :: proc(image: []byte) -> (m: ^User_Module, err: string) {
-	if wt.engine == nil { return nil, "the WebAssembly engine is not running" }
-	module: wt_module
-	if e := wasmtime_module_new(wt.engine, raw_data(image), uint(len(image)), &module); e != nil {
-		err = wt_error_text(e, context.temp_allocator)
-		wasmtime_error_delete(e)
+// A compilation's result, not yet a User_Module: user_module_compile touches no Odin allocator, so it can run on any
+// thread (a large module takes seconds); user_module_finish makes the module on the page's.
+User_Compiled :: struct {
+	module: wt_module,
+	error:  wt_error,
+}
+
+user_module_compile :: proc "contextless" (image: []byte) -> (c: User_Compiled) {
+	if wt.engine == nil { return }
+	c.error = wasmtime_module_new(wt.engine, raw_data(image), uint(len(image)), &c.module)
+	return
+}
+
+// Takes `c`. nil and the reason (in temporary memory) when `image`, what was compiled, is not a valid module.
+user_module_finish :: proc(c: User_Compiled, image: []byte) -> (m: ^User_Module, err: string) {
+	if c.error != nil {
+		err = wt_error_text(c.error, context.temp_allocator)
+		wasmtime_error_delete(c.error)
 		return nil, err
 	}
+	if c.module == nil { return nil, "the WebAssembly engine is not running" }
 	m = new(User_Module)
-	m.module = module
+	m.module = c.module
 	if err = user_module_describe(m, image); err != "" {
 		user_module_delete(m)
 		return nil, err
 	}
 	return m, ""
+}
+
+// WebAssembly.Module: compiles `image` on this thread.
+user_module_new :: proc(image: []byte) -> (m: ^User_Module, err: string) {
+	return user_module_finish(user_module_compile(image), image)
 }
 
 user_module_delete :: proc(m: ^User_Module) {

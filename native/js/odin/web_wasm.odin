@@ -35,20 +35,9 @@ wasm_handle_of :: proc "contextless" (v: wj.JSValue) -> u64 {
 	return h != nil ? h^ : 0
 }
 
-// compile(bytes, promised): the handle of the module, or a string, the reason it did not compile. TypeError when `bytes`
-// is no buffer source (the message names the caller, WebAssembly.compile when `promised`).
+// `module` as a handle object (takes it).
 @(private = "file")
-wasm_compile :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
-	what: cstring = wj.to_bool(ctx, wj.arg(argc, argv, 1)) ? "WebAssembly.compile()" : "WebAssembly.Module()"
-	p: [^]u8
-	n: uint
-	if !wj.wj_to_buffer_source(ctx, wj.arg(argc, argv, 0), &p, &n, wj.BS_ALLOW_SHARED, what) { return wj.EXCEPTION }
-	if n > 0xFFFF_FFFF { return wj.JS_ThrowRangeError(ctx, "%s: the module is too large", what) }
-	module: u64
-	if st := wj.wr_WebAssembly_compile(n > 0 ? p : wj.empty_ptr(), u32(n), &module); st < 0 {
-		m := wj.fetch_string(wj.wr_Exception_message)
-		return wj.JS_NewStringLen(ctx, wj.wj_scratch.data, m > 0 ? uint(m) : 0)
-	}
+wasm_handle_new :: proc "contextless" (ctx: ^wj.Context, module: u64) -> wj.JSValue {
 	h := (^u64)(wj.libc_malloc(size_of(u64)))
 	if h == nil { wj.wr_Object_release(module); return wj.JS_ThrowOutOfMemory(ctx) }
 	h^ = module
@@ -56,6 +45,42 @@ wasm_compile :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, arg
 	if wj.is_exception(obj) { wj.wr_Object_release(module); wj.libc_free(h); return obj }
 	wj.JS_SetOpaque(obj, h)
 	return obj
+}
+
+// compile(bytes): the handle of the module, or a string, the reason it did not compile.
+@(private = "file")
+wasm_compile :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	p: [^]u8
+	n: uint
+	if !wj.wj_to_buffer_source(ctx, wj.arg(argc, argv, 0), &p, &n, wj.BS_ALLOW_SHARED, "WebAssembly.Module()") { return wj.EXCEPTION }
+	if n > 0xFFFF_FFFF { return wj.JS_ThrowRangeError(ctx, "WebAssembly.Module(): the module is too large") }
+	module: u64
+	if st := wj.wr_WebAssembly_compile(n > 0 ? p : wj.empty_ptr(), u32(n), &module); st < 0 {
+		m := wj.fetch_string(wj.wr_Exception_message)
+		return wj.JS_NewStringLen(ctx, wj.wj_scratch.data, m > 0 ? uint(m) : 0)
+	}
+	return wasm_handle_new(ctx, module)
+}
+
+// What compileAsync's promise settles with: `finish` (the promise's data) called with the handle, or with the reason as
+// a string; it makes the Module or throws the CompileError.
+@(private = "file")
+wasm_compile_settle :: proc "c" (ctx: ^wj.Context, state: i32, host: u64, value: i64, data: wj.JSValue, reject: ^bool) -> wj.JSValue {
+	arg := reject^ ? wj.wj_host_promise_text(ctx, host) : wasm_handle_new(ctx, u64(value))
+	if wj.is_exception(arg) { return arg }
+	defer wj.JS_FreeValue(ctx, arg)
+	reject^ = false
+	return wj.JS_Call(ctx, data, wj.UNDEFINED, 1, &arg)
+}
+
+// compileAsync(bytes, finish): the promise of what `finish` makes of the compilation (wasm_compile_settle).
+@(private = "file")
+wasm_compile_async :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	p: [^]u8
+	n: uint
+	if !wj.wj_to_buffer_source(ctx, wj.arg(argc, argv, 0), &p, &n, wj.BS_ALLOW_SHARED, "WebAssembly.compile()") { return wj.EXCEPTION }
+	if n > 0xFFFF_FFFF { return wj.JS_ThrowRangeError(ctx, "WebAssembly.compile(): the module is too large") }
+	return wj.wj_promise_from_host(ctx, wj.wr_WebAssembly_compileAsync(n > 0 ? p : wj.empty_ptr(), u32(n)), 0, wasm_compile_settle, wj.arg(argc, argv, 1))
 }
 
 // The JSON the browser wrote of a module, as the values it describes.
@@ -125,7 +150,8 @@ web_wasm_start :: proc "c" (ctx: ^wj.Context, kind: i32) -> i32 {
 	native := wj.JS_NewObject(ctx)
 	defer wj.JS_FreeValue(ctx, native)
 	wj.JS_DefinePropertyValueStr(ctx, native, "validate", wj.new_cfunction(ctx, wasm_validate, "validate", 1), wj.PROP_C_W_E)
-	wj.JS_DefinePropertyValueStr(ctx, native, "compile", wj.new_cfunction(ctx, wasm_compile, "compile", 2), wj.PROP_C_W_E)
+	wj.JS_DefinePropertyValueStr(ctx, native, "compile", wj.new_cfunction(ctx, wasm_compile, "compile", 1), wj.PROP_C_W_E)
+	wj.JS_DefinePropertyValueStr(ctx, native, "compileAsync", wj.new_cfunction(ctx, wasm_compile_async, "compileAsync", 2), wj.PROP_C_W_E)
 	wj.JS_DefinePropertyValueStr(ctx, native, "imports", wj.new_cfunction(ctx, wasm_imports, "imports", 1), wj.PROP_C_W_E)
 	wj.JS_DefinePropertyValueStr(ctx, native, "exports", wj.new_cfunction(ctx, wasm_exports, "exports", 1), wj.PROP_C_W_E)
 	wj.JS_DefinePropertyValueStr(ctx, native, "customSections", wj.new_cfunction(ctx, wasm_custom_sections, "customSections", 2), wj.PROP_C_W_E)

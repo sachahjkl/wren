@@ -75,7 +75,18 @@ test("the description", () => {
 });
 
 test("compile", async () => {
-  const m = await WebAssembly.compile(MODULE);
+  let settled = false;
+  const pending = WebAssembly.compile(MODULE);
+  ok(pending instanceof Promise, "a promise");
+  pending.then(() => { settled = true; });
+  await Promise.resolve();
+  await Promise.resolve();
+  eq(settled, false, "not settled by the call's microtasks");
+  const copy = new Uint8Array(MODULE);
+  const kept = WebAssembly.compile(copy);
+  copy.fill(0);
+  ok(await kept instanceof WebAssembly.Module, "the bytes are copied at the call");
+  const m = await pending;
   ok(m instanceof WebAssembly.Module, "a Module");
   eq(WebAssembly.Module.exports(m)[0].name, "run", "a working one");
   await rejects(WebAssembly.compile(BAD), "CompileError", "not a module");

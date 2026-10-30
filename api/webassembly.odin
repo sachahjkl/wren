@@ -21,6 +21,10 @@ WebAssembly_validate :: proc(module: bytes) -> bool
 //@wb fn raises
 WebAssembly_compile :: proc(module: bytes) -> WebAssemblyModule
 
+/// WebAssembly.compile(bytes): the same on a thread of its own; the promise is rejected with the reason.
+//@wb fn
+WebAssembly_compileAsync :: proc(module: bytes) -> Promise(WebAssemblyModule)
+
 /// WebAssembly.Module.imports(module), as JSON.
 //@wb fn
 WebAssembly_Module_imports :: proc(module: WebAssemblyModule) -> string

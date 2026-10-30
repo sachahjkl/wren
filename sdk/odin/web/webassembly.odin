@@ -15,6 +15,7 @@ foreign _m_webassembly {
 	@(link_name = "WebAssembly_enabled") _WebAssembly_enabled :: proc() -> i32 ---
 	@(link_name = "WebAssembly_validate") _WebAssembly_validate :: proc(module: [^]u8, module_len: u32) -> i32 ---
 	@(link_name = "WebAssembly_compile") _WebAssembly_compile :: proc(module: [^]u8, module_len: u32, _ret: ^WebAssemblyModule) -> Error ---
+	@(link_name = "WebAssembly_compileAsync") _WebAssembly_compileAsync :: proc(module: [^]u8, module_len: u32) -> Promise ---
 	@(link_name = "WebAssembly_Module_imports") _WebAssembly_Module_imports :: proc(module: WebAssemblyModule, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "WebAssembly_Module_exports") _WebAssembly_Module_exports :: proc(module: WebAssemblyModule, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "WebAssembly_Module_customSectionCount") _WebAssembly_Module_customSectionCount :: proc(module: WebAssemblyModule, name: [^]u8, name_len: u32) -> i32 ---
@@ -36,6 +37,11 @@ WebAssembly_validate :: proc "contextless" (module: []u8) -> bool {
 WebAssembly_compile :: proc "contextless" (module: []u8) -> (result: WebAssemblyModule, err: Error) {
 	err = _WebAssembly_compile(raw_data(module), u32(len(module)), &result)
 	return
+}
+
+// WebAssembly.compile(bytes): the same on a thread of its own; the promise is rejected with the reason.
+WebAssembly_compileAsync :: proc "contextless" (module: []u8) -> Promise {
+	return _WebAssembly_compileAsync(raw_data(module), u32(len(module)))
 }
 
 // WebAssembly.Module.imports(module), as JSON.

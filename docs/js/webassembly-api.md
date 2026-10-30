@@ -21,8 +21,9 @@ more harm than none) gives the realm a `WebAssembly` object with `validate`, `co
 | the tests | `examples/jsweb/webassembly.js` (`jswebtest webassembly`), `src/wasm/wasm_test.odin`, `src/csp/csp_test.odin` |
 
 `web_wasm.js` is the one exception to the rule of `native/js/odin/prelude.odin` (no JavaScript in the realm): it is not in
-the image, and runs only when the preference is on. `compile` compiles on the calling thread for now: its promise is
-settled when it returns. The Content Security Policy applies: `'wasm-unsafe-eval'` or `'unsafe-eval'` where a policy has a
+the image, and runs only when the preference is on. `compile` compiles on a thread of the blocking pool (the page goes
+on meanwhile, the bytes are copied at the call); `new Module` compiles on the calling thread, as the specification says.
+The Content Security Policy applies: `'wasm-unsafe-eval'` or `'unsafe-eval'` where a policy has a
 `script-src` or `default-src`, otherwise a `CompileError` (and a violation report). `validate` is not subject to it.
 
 ## What a page needs (Blazor's `dotnet.js` as the case)
@@ -36,8 +37,9 @@ globals. i64 is `BigInt`. A trap is a `WebAssembly.RuntimeError`.
 ## The design
 
 1. **Instances on the host.** A module the page brings is compiled by the engine Wasmtime already runs (so with the same
-   features: `wasm.features.*`; threads are off, so an Emscripten build with pthreads cannot run) and instantiated in a
-   store of its own. Its imports are host functions that call back into the realm: the realm's instance is suspended in the
+   features: `wasm.features.*`; threads are off, so an Emscripten build with pthreads cannot run) and instantiated in one
+   store per realm: what a module imports (a memory, a table, a function of another instance) must be in its store. So
+   what the page makes lives until the page closes, whatever the collector finds. Its imports are host functions that call back into the realm: the realm's instance is suspended in the
    host call that made the module run, and Wasmtime lets a host function call back into it.
 2. **The JavaScript objects in a prelude.** The classes are written in JavaScript (a few kilobytes, evaluated at realm
    start only when the API is on) over a handful of native primitives (compile, instantiate, call, memory and table

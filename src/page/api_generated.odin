@@ -29129,6 +29129,24 @@ _t_webassembly_WebAssembly_compile :: proc "c" (env: rawptr, caller: wasm.Caller
 	return nil
 }
 
+// WebAssembly_compileAsync :: proc(c: ^Call, module: []u8) -> u64
+@(private = "file")
+_t_webassembly_WebAssembly_compileAsync :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "webassembly.WebAssembly_compileAsync", "module") }
+	_p0 := _s0[:_n0]
+	_r := WebAssembly_compileAsync(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
 // WebAssembly_Module_imports :: proc(c: ^Call, module: Api_WebAssemblyModule) -> string
 @(private = "file")
 _t_webassembly_WebAssembly_Module_imports :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -33252,6 +33270,7 @@ api_imports := [?]wasm.Import{
 	{module = "webassembly", name = "WebAssembly_enabled", fn = _t_webassembly_WebAssembly_enabled, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "webassembly", name = "WebAssembly_validate", fn = _t_webassembly_WebAssembly_validate, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "webassembly", name = "WebAssembly_compile", fn = _t_webassembly_WebAssembly_compile, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webassembly", name = "WebAssembly_compileAsync", fn = _t_webassembly_WebAssembly_compileAsync, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "webassembly", name = "WebAssembly_Module_imports", fn = _t_webassembly_WebAssembly_Module_imports, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "webassembly", name = "WebAssembly_Module_exports", fn = _t_webassembly_WebAssembly_Module_exports, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "webassembly", name = "WebAssembly_Module_customSectionCount", fn = _t_webassembly_WebAssembly_Module_customSectionCount, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
