@@ -219,16 +219,21 @@ browser does not support WebAssembly." from <code>blazor.web.js</code> and never
 instances, and the page's JavaScript must see their memory.</p>
 <h2 id="state"><a class="anchor" href="#state" aria-hidden="true">#</a>State</h2>
 <p><code>javascript.webassembly.enabled</code> (off by default: a page that finds the object expects all of it, so a partial one does
-more harm than none) gives the realm a <code>WebAssembly</code> object with <code>validate(bytes)</code> only. The path is the one the rest of
-the API will take:</p>
+more harm than none) gives the realm a <code>WebAssembly</code> object with <code>validate</code>, <code>compile</code>, <code>Module</code> (<code>imports</code>, <code>exports</code>,
+<code>customSections</code>) and the three errors. A module does not run yet. The path is the one the rest of the API will take:</p>
 <div class="table-box"><table>
 <thead><tr><th>Layer</th><th>File</th></tr></thead>
 <tbody>
 <tr><td>the description</td><td><code>api/webassembly.widl</code> (generates <code>wj.wr_WebAssembly_*</code> and the host table)</td></tr>
-<tr><td>the browser side</td><td><code>src/page/webassembly.odin</code> (calls) over <code>src/wasm/user_module.odin</code> (Wasmtime)</td></tr>
-<tr><td>the realm side</td><td><code>native/js/odin/web_wasm.odin</code> (installed by <code>web_wasm_start</code> when the browser says so)</td></tr>
+<tr><td>the browser side</td><td><code>src/page/webassembly.odin</code> (calls) over <code>src/wasm/user_module.odin</code> (Wasmtime; the description of a module comes from <code>binary.odin</code>'s reader)</td></tr>
+<tr><td>the realm side</td><td><code>native/js/odin/web_wasm.odin</code> (the natives, <code>web_wasm_start</code> when the browser says so) and <code>web_wasm.js</code> (the objects)</td></tr>
+<tr><td>the tests</td><td><code>examples/jsweb/webassembly.js</code> (<code>jswebtest webassembly</code>), <code>src/wasm/wasm_test.odin</code>, <code>src/csp/csp_test.odin</code></td></tr>
 </tbody>
 </table></div>
+<p><code>web_wasm.js</code> is the one exception to the rule of <code>native/js/odin/prelude.odin</code> (no JavaScript in the realm): it is not in
+the image, and runs only when the preference is on. <code>compile</code> compiles on the calling thread for now: its promise is
+settled when it returns. The Content Security Policy applies: <code>'wasm-unsafe-eval'</code> or <code>'unsafe-eval'</code> where a policy has a
+<code>script-src</code> or <code>default-src</code>, otherwise a <code>CompileError</code> (and a violation report). <code>validate</code> is not subject to it.</p>
 <h2 id="what-a-page-needs-blazors-dotnetjs-as-the-case"><a class="anchor" href="#what-a-page-needs-blazors-dotnetjs-as-the-case" aria-hidden="true">#</a>What a page needs (Blazor's <code>dotnet.js</code> as the case)</h2>
 <p><code>WebAssembly.Module</code>, <code>Instance</code>, <code>instantiate</code>, <code>instantiateStreaming</code>, <code>compile</code>, <code>validate</code>, <code>Memory</code>, <code>Table</code>,
 <code>Global</code>, <code>Tag</code>, <code>CompileError</code>, <code>LinkError</code>, <code>RuntimeError</code>, <code>Module.imports/exports/customSections</code>. Exports are
@@ -259,7 +264,7 @@ against <code>wasm.max_call_ms</code> and <code>javascript.slow_script_ms</code>
 </ol>
 <h2 id="steps"><a class="anchor" href="#steps" aria-hidden="true">#</a>Steps</h2>
 <ol>
-<li><code>validate</code>, <code>compile</code>, <code>Module</code> (<code>imports</code>, <code>exports</code>, <code>customSections</code>), the three errors. <em>(validate: done)</em></li>
+<li><code>validate</code>, <code>compile</code>, <code>Module</code> (<code>imports</code>, <code>exports</code>, <code>customSections</code>), the three errors. <em>(done)</em></li>
 <li><code>Memory</code>, <code>Table</code>, <code>Global</code> made by the page (the objects without an instance), with the external <code>ArrayBuffer</code>.</li>
 <li><code>Instance</code> and <code>instantiate</code>: imports resolved against the import object (<code>LinkError</code> messages as Chromium's), exports
 wrapped, calls both ways, traps.</li>
