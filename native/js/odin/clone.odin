@@ -616,6 +616,7 @@ transfer_list :: proc(ctx: ^wj.Context, list: wj.JSValue, items: ^[dynamic]wj.JS
 		if !movable && !wj.JS_IsArrayBuffer(item) {
 			return clone_error(ctx, "Value at index in the transfer list is not transferable (only ArrayBuffer, MessagePort, MediaSourceHandle and VideoFrame are).")
 		}
+		if wj.JS_IsArrayBufferHost(item) { return clone_error(ctx, "The buffer of a WebAssembly.Memory cannot be transferred.") }
 		bn: uint
 		if !movable && wj.JS_GetArrayBuffer(ctx, &bn, item) == nil && wj.JS_HasException(ctx) {
 			wj.drop_exception(ctx)

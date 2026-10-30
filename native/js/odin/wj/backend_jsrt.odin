@@ -140,6 +140,13 @@ js_string_codePointRange :: proc "c" (ctx: ^Context, this_val: JSValue, argc: i3
 	JS_NewArray :: jscapi.JS_NewArray
 	JS_NewArrayBuffer :: jscapi.JS_NewArrayBuffer
 	JS_NewArrayBufferCopy :: jscapi.JS_NewArrayBufferCopy
+	JS_NewArrayBufferHost :: jscapi.JS_NewArrayBufferHost
+	JS_DetachArrayBufferHost :: jscapi.JS_DetachArrayBufferHost
+	JS_IsArrayBufferHost :: jscapi.JS_IsArrayBufferHost
+	JS_GetArrayBufferRange :: jscapi.JS_GetArrayBufferRange
+	JS_ArrayBufferCommit :: jscapi.JS_ArrayBufferCommit
+	JS_ToBigInt64 :: jscapi.JS_ToBigInt64
+	JS_NewBigInt64 :: jscapi.JS_NewBigInt64
 	JS_NewAtom :: jscapi.JS_NewAtom
 	JS_NewAtomLen :: jscapi.JS_NewAtomLen
 	JS_NewAtomUInt32 :: jscapi.JS_NewAtomUInt32

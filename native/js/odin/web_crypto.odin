@@ -68,6 +68,7 @@ wjr_Crypto_getRandomValues :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, 
 			if st == ERR_QUOTA_C { return wj.wj_throw_dom(ctx, "QuotaExceededError", "Failed to execute 'getRandomValues' on 'Crypto': over crypto.max_random_bytes.") }
 			return wj.wj_throw_status(ctx, st, "Crypto.getRandomValues")
 		}
+		wj.JS_ArrayBufferCommit(ctx, p, n)   // (a WebAssembly memory: these bytes were a copy)
 	}
 	return wj.JS_DupValue(ctx, argv[0])
 }

@@ -100,7 +100,19 @@ Compile_Request :: struct {
 	user:      rawptr,
 }
 
+HOST_SNAPSHOTS :: 4
+
+// host_snapshot: a copy of bytes of a host buffer
+Host_Snapshot :: struct {
+	bytes:  [^]u8,
+	cap:    int,
+	host:   ^Buffer_Host,
+	off, n: int,
+}
+
 Runtime :: struct {
+	host_snapshots:     [HOST_SNAPSHOTS]Host_Snapshot,
+	host_snapshot_next: int,
 	allocator:      runtime.Allocator,
 	config:         Host_Config,
 

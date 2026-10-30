@@ -48,6 +48,20 @@ wt_importtype :: distinct rawptr
 wt_externtype :: distinct rawptr
 wt_instance_pre :: distinct rawptr
 wt_guestprofiler :: distinct rawptr
+wt_memorytype :: distinct rawptr
+wt_tabletype  :: distinct rawptr
+wt_globaltype :: distinct rawptr
+
+wt_limits :: struct {   // wasm_limits_t
+	min, max: u32,
+}
+
+WT_LIMITS_NO_MAX :: max(u32)
+WT_CONST :: u8(0)
+WT_VAR   :: u8(1)
+WT_EXTERNREF_KIND :: u8(128)   // wasm_valkind_enum (wasm.h)
+WT_FUNCREF_KIND   :: u8(129)
+WT_VAL_EXTERNREF  :: u8(6)     // wasmtime_valkind_t (wasmtime/val.h)
 
 wt_byte_vec :: struct {
 	size: uint,
@@ -109,6 +123,16 @@ wt_table :: struct {
 
 wt_memory :: wt_table
 
+wt_global :: struct {
+	store_id: u64,
+	private1: u32,
+	private2: u32,
+	private3: u32,
+	_:        u32,
+}
+
+#assert(size_of(wt_global) == 24)
+
 wt_instance :: struct {
 	store_id: u64,
 	private:  uint,
@@ -121,6 +145,7 @@ wt_extern :: struct {
 		func:   wt_func,
 		table:  wt_table,
 		memory: wt_memory,
+		global: wt_global,
 		raw:    [3]u64,
 	},
 }
@@ -153,6 +178,7 @@ wt_val_raw :: struct #raw_union {
 #assert(size_of(wt_extern) == 32)
 #assert(size_of(wt_val) == 32)
 
+wt_callback :: #type proc "c" (env: rawptr, caller: wt_caller, args: [^]wt_val, nargs: uint, results: [^]wt_val, nresults: uint) -> wt_trap
 wt_unchecked_callback :: #type proc "c" (env: rawptr, caller: wt_caller, args_and_results: [^]wt_val_raw, n: uint) -> wt_trap
 wt_epoch_callback :: #type proc "c" (ctx: wt_context, data: rawptr, delta: ^u64, kind: ^u8) -> wt_error
 wt_finalizer :: #type proc "c" (data: rawptr)
@@ -284,6 +310,32 @@ foreign wasmtime_lib {
 	wasmtime_memory_data :: proc(ctx: wt_context, m: ^wt_memory) -> [^]u8 ---
 	wasmtime_memory_data_size :: proc(ctx: wt_context, m: ^wt_memory) -> uint ---
 	wasmtime_global_get :: proc(ctx: wt_context, g: rawptr, out: ^wt_val) ---
+
+	wasmtime_memorytype_new :: proc(min: u64, max_present: bool, max: u64, is_64, shared: bool, page_size_log2: u8, ret: ^wt_memorytype) -> wt_error ---
+	wasm_memorytype_delete :: proc(t: wt_memorytype) ---
+	wasmtime_memory_new :: proc(ctx: wt_context, ty: wt_memorytype, ret: ^wt_memory) -> wt_error ---
+	wasmtime_memory_size :: proc(ctx: wt_context, m: ^wt_memory) -> u64 ---
+	wasmtime_memory_grow :: proc(ctx: wt_context, m: ^wt_memory, delta: u64, prev_size: ^u64) -> wt_error ---
+	wasm_tabletype_new :: proc(element: wt_valtype, limits: ^wt_limits) -> wt_tabletype ---
+	wasm_tabletype_delete :: proc(t: wt_tabletype) ---
+	wasmtime_table_new :: proc(ctx: wt_context, ty: wt_tabletype, init: ^wt_val, ret: ^wt_table) -> wt_error ---
+	wasmtime_table_size :: proc(ctx: wt_context, t: ^wt_table) -> u64 ---
+	wasmtime_table_type :: proc(ctx: wt_context, t: ^wt_table) -> wt_tabletype ---
+	wasm_tabletype_element :: proc(t: wt_tabletype) -> wt_valtype ---
+	wasm_globaltype_new :: proc(content: wt_valtype, mutability: u8) -> wt_globaltype ---
+	wasm_globaltype_delete :: proc(t: wt_globaltype) ---
+	wasm_globaltype_content :: proc(t: wt_globaltype) -> wt_valtype ---
+	wasm_globaltype_mutability :: proc(t: wt_globaltype) -> u8 ---
+	wasm_externtype_as_globaltype_const :: proc(t: wt_externtype) -> wt_globaltype ---
+	wasmtime_global_new :: proc(ctx: wt_context, ty: wt_globaltype, val: ^wt_val, ret: ^wt_global) -> wt_error ---
+	wasmtime_global_type :: proc(ctx: wt_context, g: ^wt_global) -> wt_globaltype ---
+	wasmtime_global_set :: proc(ctx: wt_context, g: ^wt_global, val: ^wt_val) -> wt_error ---
+	wasmtime_func_new :: proc(ctx: wt_context, ty: wt_functype, cb: wt_callback, env: rawptr, finalizer: wt_finalizer, ret: ^wt_func) ---
+	wasmtime_func_call :: proc(ctx: wt_context, f: ^wt_func, args: [^]wt_val, nargs: uint, results: [^]wt_val, nresults: uint, trap: ^wt_trap) -> wt_error ---
+	wasmtime_externref_new :: proc(ctx: wt_context, data: rawptr, finalizer: wt_finalizer, out: rawptr) -> bool ---
+	wasmtime_externref_data :: proc(ctx: wt_context, ref: rawptr) -> rawptr ---
+	wasmtime_val_unroot :: proc(v: ^wt_val) ---
+	wasmtime_instance_export_nth :: proc(ctx: wt_context, inst: ^wt_instance, index: uint, name: ^[^]u8, name_len: ^uint, out: ^wt_extern) -> bool ---
 
 	wasmtime_wat2wasm :: proc(wat: [^]u8, len: uint, out: ^wt_byte_vec) -> wt_error ---
 }

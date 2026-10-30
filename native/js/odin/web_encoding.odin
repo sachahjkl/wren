@@ -78,7 +78,7 @@ wjr_TextEncoder_encodeInto :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, 
 		i += n
 		read += n == 4 ? 2 : 1
 	}
-	if i > 0 { copy(dst[:i], src[:i]) }
+	if i > 0 { copy(dst[:i], src[:i]); wj.JS_ArrayBufferCommit(ctx, dst, uint(i)) }
 	wj.wj_str_free(ctx, &s)
 	r := wj.JS_NewObject(ctx)
 	wj.JS_SetPropertyStr(ctx, r, "read", wj.new_float64(ctx, f64(read)))

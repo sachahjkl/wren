@@ -18,6 +18,8 @@ User_Module :: struct {
 	module:   wt_module,
 	imports:  string,   // JSON: [{"module", "name", "kind"}], in the order of the module
 	exports:  string,   // JSON: [{"name", "kind"}], in the order of the module
+	export_index: []u32,   // the index each export has in its index space, in the same order
+	link_info: string,     // made on first use (user_module_link_info)
 	sections: []User_Section,
 }
 
@@ -62,7 +64,8 @@ user_module_describe :: proc(m: ^User_Module, image: []byte) -> (err: string) {
 	imports := make([dynamic]Import_Entry, context.temp_allocator)
 	exports := make([dynamic]Export_Entry, context.temp_allocator)
 	sections := make([dynamic]User_Section)
-	defer m.sections = sections[:]
+	indexes := make([dynamic]u32)
+	defer { m.sections = sections[:]; m.export_index = indexes[:] }
 	r := Reader{b = image, pos = 8}
 	for r.pos < len(image) {
 		id := rd_byte(&r)
@@ -99,7 +102,7 @@ user_module_describe :: proc(m: ^User_Module, image: []byte) -> (err: string) {
 				if body.bad { break }
 				name := rd_name(&body)
 				kind := rd_byte(&body)
-				rd_leb(&body, 32)
+				append(&indexes, u32(rd_leb(&body, 32)))
 				if extern_kind_name(kind) == "" { body.bad = true }
 				append(&exports, Export_Entry{name, extern_kind_name(kind)})
 			}
@@ -153,6 +156,8 @@ user_module_delete :: proc(m: ^User_Module) {
 	wasmtime_module_delete(m.module)
 	delete(m.imports)
 	delete(m.exports)
+	delete(m.export_index)
+	delete(m.link_info)
 	for s in m.sections {
 		delete(s.name)
 		delete(s.data)

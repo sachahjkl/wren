@@ -105,6 +105,7 @@ Page :: struct {
 	render:       Render_Block,         // what the first paint waits for (render_blocking.odin)
 	selection:    Page_Selection,       // the document's selection (selection.odin)
 	js:           ^Js_Realm,            // the JavaScript realm, created on first use (js_realm.odin)
+	wasm_store:   ^wasm.User_Store,     // what the page's JavaScript made with the WebAssembly API, on first use (webassembly.odin)
 	scripts:      ^Page_Scripts,        // the document's <script> elements (js_scripts.odin)
 	jsdom:        ^Js_Dom_State,        // the DOM bindings' state: selectors, observers, layout hook (js_dom_collections.odin)
 	scroll_events: ^Scroll_Events,      // scroll offsets of the last frame, for scroll events (scroll_events.odin)

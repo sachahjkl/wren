@@ -3,6 +3,8 @@ package page
 // The WebAssembly JavaScript API (api/webassembly.odin; the objects are native/js/odin/web_wasm.odin and web_wasm.js). A
 // page's own modules are compiled and run by Wasmtime beside the engine's instance (package wasm, user_module.odin).
 
+import "core:fmt"
+import "wb:base"
 import "wb:csp"
 import "wb:host"
 import "wb:wasm"
@@ -101,4 +103,213 @@ WebAssembly_Module_customSection :: proc(c: ^Call, module: Api_WebAssemblyModule
 		i += 1
 	}
 	return nil
+}
+
+// ---- what a page makes: one store per realm (package wasm, user_store.odin) ----
+
+@(private = "file")
+wasm_store :: proc(c: ^Call) -> ^wasm.User_Store {
+	p := c.page
+	if p.wasm_store != nil { return p.wasm_store }
+	if p.js == nil || p.js.inst == nil { return nil }
+	p.wasm_store = wasm.user_store_new(p.js.inst, wasm_run_import, p)
+	if p.wasm_store != nil {
+		base.on_close(p.scope, proc(data: rawptr) { wasm.user_store_delete((^wasm.User_Store)(data)) }, p.wasm_store)
+	}
+	return p.wasm_store
+}
+
+// An import of the page's module, called from inside its code: into the realm (wj_wasm_import, native/js/odin/web_wasm.odin).
+@(private = "file")
+wasm_run_import :: proc(s: ^wasm.User_Store, slot: i32) -> bool {
+	p := (^Page)(s.user)
+	r := p.js
+	if r == nil || r.failed || r.inst == nil || r.inst.dead {
+		wasm.user_set_error(s, "the realm of this module is gone")
+		return false
+	}
+	argv := [1]u32{u32(slot)}
+	if js_call(p, r.inst, "wj_wasm_import", argv[:]) != .Ok {
+		wasm.user_set_error(s, "the JavaScript engine stopped during an import")
+		return false
+	}
+	return argv[0] == 0
+}
+
+@(private = "file")
+NO_STORE :: i32(-4)   // (a TypeError: wasm.User_Failure.Type)
+
+@(private = "file")
+wasm_status :: proc(id: i32, f: wasm.User_Failure) -> i32 { return f != .None ? -i32(f) : id }
+
+WebAssembly_lastError :: proc(c: ^Call) -> string {
+	s := wasm_store(c)
+	return s != nil ? s.error : "the WebAssembly engine is not running"
+}
+
+WebAssembly_Memory_create :: proc(c: ^Call, initial: i64, maximum: i64) -> i32 {
+	s := wasm_store(c)
+	if s == nil { return NO_STORE }
+	return wasm_status(wasm.user_memory_new(s, initial, maximum))
+}
+
+WebAssembly_Memory_pages :: proc(c: ^Call, memory: i32) -> i64 {
+	s := wasm_store(c)
+	return s != nil ? wasm.user_memory_pages(s, memory) : -1
+}
+
+WebAssembly_Memory_grow :: proc(c: ^Call, memory: i32, delta: i64) -> i64 {
+	s := wasm_store(c)
+	if s == nil { return i64(NO_STORE) }
+	prev, f := wasm.user_memory_grow(s, memory, delta)
+	return f != .None ? -i64(f) : prev
+}
+
+WebAssembly_Memory_read :: proc(c: ^Call, memory: i32, offset: i64, destination: []u8) -> i32 {
+	s := wasm_store(c)
+	return s != nil ? i32(wasm.user_memory_read(s, memory, offset, destination)) : 0
+}
+
+WebAssembly_Memory_write :: proc(c: ^Call, memory: i32, offset: i64, source: []u8) -> i32 {
+	s := wasm_store(c)
+	return s != nil ? i32(wasm.user_memory_write(s, memory, offset, source)) : 0
+}
+
+WebAssembly_Table_create :: proc(c: ^Call, element: string, initial: i64, maximum: i64, init: i64) -> i32 {
+	s := wasm_store(c)
+	if s == nil || len(element) != 1 { return NO_STORE }
+	return wasm_status(wasm.user_table_new(s, element[0], initial, maximum, u64(init)))
+}
+
+WebAssembly_Table_element :: proc(c: ^Call, table: i32) -> string {
+	s := wasm_store(c)
+	if s == nil { return "" }
+	switch wasm.user_table_letter(s, table) {
+	case 'r': return "r"
+	case 'e': return "e"
+	}
+	return ""
+}
+
+WebAssembly_Table_length :: proc(c: ^Call, table: i32) -> i64 {
+	s := wasm_store(c)
+	return s != nil ? wasm.user_table_length(s, table) : -1
+}
+
+WebAssembly_Table_get :: proc(c: ^Call, table: i32, index: i64, cell: []u8) -> i32 {
+	s := wasm_store(c)
+	if s == nil || len(cell) < 8 { return NO_STORE }
+	v, f := wasm.user_table_get(s, table, index)
+	if f != .None { return -i32(f) }
+	(^u64le)(raw_data(cell))^ = u64le(v)
+	return 0
+}
+
+WebAssembly_Table_set :: proc(c: ^Call, table: i32, index: i64, cell: i64) -> i32 {
+	s := wasm_store(c)
+	if s == nil { return NO_STORE }
+	return -i32(wasm.user_table_set(s, table, index, u64(cell)))
+}
+
+WebAssembly_Table_grow :: proc(c: ^Call, table: i32, delta: i64, init: i64) -> i64 {
+	s := wasm_store(c)
+	if s == nil { return i64(NO_STORE) }
+	prev, f := wasm.user_table_grow(s, table, delta, u64(init))
+	return f != .None ? -i64(f) : prev
+}
+
+WebAssembly_Global_create :: proc(c: ^Call, type: string, mutable: bool, cell: i64) -> i32 {
+	s := wasm_store(c)
+	if s == nil || len(type) != 1 { return NO_STORE }
+	return wasm_status(wasm.user_global_new(s, type[0], mutable, u64(cell)))
+}
+
+WebAssembly_Global_type :: proc(c: ^Call, global: i32) -> string {
+	s := wasm_store(c)
+	if s == nil { return "" }
+	letter, mutable := wasm.user_global_type(s, global)
+	if letter == 0 { return "" }
+	return fmt.tprintf("%c%s", rune(letter), mutable ? "m" : "")
+}
+
+WebAssembly_Global_get :: proc(c: ^Call, global: i32) -> i64 {
+	s := wasm_store(c)
+	return s != nil ? i64(wasm.user_global_get(s, global)) : 0
+}
+
+WebAssembly_Global_set :: proc(c: ^Call, global: i32, cell: i64) -> i32 {
+	s := wasm_store(c)
+	if s == nil { return NO_STORE }
+	return -i32(wasm.user_global_set(s, global, u64(cell)))
+}
+
+WebAssembly_Func_import :: proc(c: ^Call, slot: i32, sig: string) -> i32 {
+	s := wasm_store(c)
+	if s == nil { return NO_STORE }
+	return wasm_status(wasm.user_func_import(s, slot, sig))
+}
+
+WebAssembly_Func_sig :: proc(c: ^Call, func: i32) -> string {
+	s := wasm_store(c)
+	if s == nil { return "" }
+	f := wasm.user_func(s, func)
+	return f != nil ? f.sig : ""
+}
+
+WebAssembly_Func_call :: proc(c: ^Call, func: i32, args: []u8) -> i32 {
+	s := wasm_store(c)
+	if s == nil || len(args) % 8 != 0 { return NO_STORE }
+	fn := wasm.user_func(s, func)
+	if fn == nil { return NO_STORE }
+	// (the cells are in the engine's memory, which an import may move during the call: a copy)
+	cargs := make([]u64, len(args) / 8, context.temp_allocator)
+	copy(([^]u8)(raw_data(cargs))[:len(args)], args)
+	cres := make([]u64, fn.nresults, context.temp_allocator)
+	if f := wasm.user_func_call(s, func, cargs, cres); f != .None { return -i32(f) }
+	clear(&s.call_results)
+	append(&s.call_results, ..cres)
+	return 0
+}
+
+WebAssembly_Func_results :: proc(c: ^Call) -> []u8 {
+	s := wasm_store(c)
+	if s == nil || len(s.call_results) == 0 { return nil }
+	return ([^]u8)(raw_data(s.call_results))[:len(s.call_results) * 8]
+}
+
+WebAssembly_import_args :: proc(c: ^Call) -> []u8 {
+	s := wasm_store(c)
+	if s == nil || len(s.import_args) == 0 { return nil }
+	return ([^]u8)(raw_data(s.import_args))[:len(s.import_args) * 8]
+}
+
+WebAssembly_import_results :: proc(c: ^Call, results: []u8) {
+	s := wasm_store(c)
+	if s == nil { return }
+	n := min(len(results), len(s.import_results) * 8)
+	if n > 0 { copy(([^]u8)(raw_data(s.import_results))[:n], results[:n]) }
+}
+
+WebAssembly_import_failed :: proc(c: ^Call, message: string) {
+	if s := wasm_store(c); s != nil { wasm.user_set_error(s, message) }
+}
+
+WebAssembly_Module_linkInfo :: proc(c: ^Call, module: Api_WebAssemblyModule) -> string {
+	m := module.data
+	if m.link_info == "" { m.link_info = wasm.user_module_link_info(m) }
+	return m.link_info
+}
+
+WebAssembly_Instance_create :: proc(c: ^Call, module: Api_WebAssemblyModule, externs: []u8) -> i32 {
+	s := wasm_store(c)
+	if s == nil || len(externs) % 4 != 0 { return NO_STORE }
+	ids := make([]u32, len(externs) / 4, context.temp_allocator)
+	if len(ids) > 0 { copy(([^]u8)(raw_data(ids))[:len(externs)], externs) }
+	return wasm_status(wasm.user_instance_new(s, module.data, ids))
+}
+
+WebAssembly_Instance_exports :: proc(c: ^Call, instance: i32, module: Api_WebAssemblyModule) -> string {
+	s := wasm_store(c)
+	if s == nil { return "[]" }
+	return wasm.user_instance_exports(s, instance, module.data, context.temp_allocator)
 }
