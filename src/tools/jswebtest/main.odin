@@ -236,6 +236,18 @@ main :: proc() {
 	if selected("canvas") { run("canvas") }
 	if selected("geometry") { run("geometry") }
 	if selected("compat") { run("compat") }
+	if selected("webassembly") {
+		settings.js.webassembly = true
+		r := open("webassembly")
+		wait(r)
+		before := host_objects(r.p)
+		js.collect(r.p.js.inst)
+		drain()
+		after := host_objects(r.p)
+		if before > after { passes += 1 } else { fmt.printf("FAIL [webassembly] the modules of collected objects are released (%d -> %d)\n", before, after); failures += 1 }
+		close(r)
+		settings.js.webassembly = false
+	}
 	if selected("perf_timeline") {
 		actions := make(map[string]Action, context.temp_allocator)
 		actions["click"] = proc(p: ^page.Page, l: ^Page_Log) { page.dispatch_event(p, p.body, dom.Event{type = "click", bubbles = true, cancelable = true}) }

@@ -96,6 +96,7 @@ Compile_Request :: struct {
 	// eval_direct: the caller's flags (the eval code inherits them).
 	in_class_field: bool,
 	keep_image: bool, // keep the serialized bytecode on the resulting function (the C API's JS_WriteObject returns it)
+	strip_source: bool, // the functions keep no source, whatever config.strip_source says
 	user:      rawptr,
 }
 

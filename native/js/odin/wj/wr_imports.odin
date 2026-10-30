@@ -722,6 +722,7 @@ wr_Error :: enum i32 {
 }
 
 // module webassembly: types
+wr_WebAssemblyModule :: distinct u64
 
 // module webcodecs: types
 wr_VideoFrame :: distinct u64
@@ -3533,6 +3534,17 @@ foreign _wr_wj_webassembly {
 	@(link_name = "WebAssembly_enabled") wr_WebAssembly_enabled :: proc() -> i32 ---
 	// WebAssembly.validate(bytes): whether `bytes` is a valid module.
 	@(link_name = "WebAssembly_validate") wr_WebAssembly_validate :: proc(module: [^]u8, module_len: u32) -> i32 ---
+	// new WebAssembly.Module(bytes): `bytes` compiled. Syntax with the reason when it is not a valid module, Security when
+	// the page's Content Security Policy refuses it.
+	@(link_name = "WebAssembly_compile") wr_WebAssembly_compile :: proc(module: [^]u8, module_len: u32, _ret: ^u64) -> i32 ---
+	// WebAssembly.Module.imports(module), as JSON.
+	@(link_name = "WebAssembly_Module_imports") wr_WebAssembly_Module_imports :: proc(module: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	// WebAssembly.Module.exports(module), as JSON.
+	@(link_name = "WebAssembly_Module_exports") wr_WebAssembly_Module_exports :: proc(module: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	// How many custom sections of the module are called `name`.
+	@(link_name = "WebAssembly_Module_customSectionCount") wr_WebAssembly_Module_customSectionCount :: proc(module: u64, name: [^]u8, name_len: u32) -> i32 ---
+	// The bytes of the custom section number `index` of those called `name`.
+	@(link_name = "WebAssembly_Module_customSection") wr_WebAssembly_Module_customSection :: proc(module: u64, name: [^]u8, name_len: u32, index: i32, _buf: [^]u8, _cap: u32) -> i32 ---
 }
 
 // module webcodecs

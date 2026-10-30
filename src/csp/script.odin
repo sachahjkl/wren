@@ -132,6 +132,18 @@ check_inline :: proc(l: ^Policy_List, kind: Inline_Kind, source: string, nonce: 
 	return v
 }
 
+// May a page compile a WebAssembly module? 'wasm-unsafe-eval' or 'unsafe-eval' (CSP 3 §6.7.2.6).
+check_wasm_eval :: proc(l: ^Policy_List) -> Verdict {
+	v := Verdict{allowed = true, violations = make([dynamic]Violation, context.temp_allocator)}
+	for &p in l.policies {
+		d, name := find_directive(&p, {"script-src", "default-src"})
+		if d == nil || has_keyword(d, .Unsafe_Eval) || has_keyword(d, .Wasm_Unsafe_Eval) { continue }
+		append(&v.violations, Violation{directive = name, original = p.raw, blocked = "wasm-eval", enforced = p.disposition == .Enforce})
+		if p.disposition == .Enforce { v.allowed = false }
+	}
+	return v
+}
+
 // May code be compiled from a string (eval, new Function, setTimeout(string))?
 check_eval :: proc(l: ^Policy_List) -> Verdict {
 	v := Verdict{allowed = true, violations = make([dynamic]Violation, context.temp_allocator)}

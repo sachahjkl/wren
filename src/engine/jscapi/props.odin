@@ -457,6 +457,7 @@ eval_impl :: proc(ctx: ^js.Context, input: [^]u8, input_len: uint, filename: cst
 		filename = string(filename),
 		strict   = flags & EVAL_FLAG_STRICT != 0,
 		keep_image = flags & EVAL_FLAG_COMPILE_ONLY != 0, // a compiled function may be written out (JS_WriteObject)
+		strip_source = flags & EVAL_FLAG_WREN_STRIP_SOURCE != 0,
 	}
 	switch flags & EVAL_TYPE_MASK {
 	case EVAL_TYPE_MODULE: req.kind = .module

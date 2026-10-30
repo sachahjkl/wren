@@ -3,9 +3,23 @@
 /// (javascript.webassembly.enabled): a page that finds a `WebAssembly` object expects all of it.
 [Exposed=(Window,Worker)]
 module webassembly {
+  handle WebAssemblyModule : Object = Wasm_Module via lookup_WebAssemblyModule;
+
   /// Whether the page's realm has the `WebAssembly` object (javascript.webassembly.enabled).
   bool WebAssembly_enabled();
 
   /// WebAssembly.validate(bytes): whether `bytes` is a valid module.
   bool WebAssembly_validate(bytes module);
+
+  /// new WebAssembly.Module(bytes): `bytes` compiled. Syntax with the reason when it is not a valid module, Security when
+  /// the page's Content Security Policy refuses it.
+  WebAssemblyModule WebAssembly_compile(bytes module) raises;
+  /// WebAssembly.Module.imports(module), as JSON.
+  string WebAssembly_Module_imports(WebAssemblyModule module);
+  /// WebAssembly.Module.exports(module), as JSON.
+  string WebAssembly_Module_exports(WebAssemblyModule module);
+  /// How many custom sections of the module are called `name`.
+  i32 WebAssembly_Module_customSectionCount(WebAssemblyModule module, string name);
+  /// The bytes of the custom section number `index` of those called `name`.
+  bytes WebAssembly_Module_customSection(WebAssemblyModule module, string name, i32 index);
 }

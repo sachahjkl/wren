@@ -299,6 +299,7 @@ EVAL_FLAG_STRICT :: 1 << 3
 EVAL_FLAG_COMPILE_ONLY :: 1 << 5
 EVAL_FLAG_WREN_NO_RESOLVE :: 1 << 9
 EVAL_FLAG_WREN_NO_REGISTER :: 1 << 10
+EVAL_FLAG_WREN_STRIP_SOURCE :: 1 << 11   // the functions keep no source: toString reads "[native code]"
 
 WRITE_OBJ_BYTECODE :: 1 << 0
 WRITE_OBJ_REFERENCE :: 1 << 3

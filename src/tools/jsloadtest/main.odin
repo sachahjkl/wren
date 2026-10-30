@@ -473,6 +473,26 @@ document.getElementById("b").dispatchEvent(new Event("click"));
 	wait_for("string timer ok")
 	check(logged("eval 42") && logged("string timer ok") && logged("attr ok"), "'unsafe-inline' 'unsafe-eval' allow inline code, eval and string timers")
 	page.page_close(p)
+
+	// a page's WebAssembly: 'wasm-unsafe-eval' or 'unsafe-eval'
+	s := settings
+	s.js.webassembly = true
+	WASM_PAGE :: `<!doctype html><body>` + PRELUDE + `<script>
+const bytes = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0]);
+log("wasm valid " + WebAssembly.validate(bytes));
+try { new WebAssembly.Module(bytes); log("wasm compiled"); } catch (e) { log("wasm refused " + e.name); }
+log("wasm done");
+</script></body>`
+	p = load(WASM_PAGE, csp = "script-src 'unsafe-inline'", s = &s)
+	wait_for("wasm done")
+	check(logged("wasm valid true"), "WebAssembly.validate is not subject to the policy")
+	check(logged("wasm refused CompileError"), "a WebAssembly module does not compile without 'wasm-unsafe-eval'")
+	check(!logged("wasm compiled"), "and is not compiled")
+	page.page_close(p)
+	p = load(WASM_PAGE, csp = "script-src 'unsafe-inline' 'wasm-unsafe-eval'", s = &s)
+	wait_for("wasm done")
+	check(logged("wasm compiled"), "'wasm-unsafe-eval' allows a WebAssembly module")
+	page.page_close(p)
 }
 
 test_noscript :: proc() {

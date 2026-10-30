@@ -14,37 +14,23 @@ when #exists("../prelude") {
 	@(private = "file") prelude_files: [0]struct { name: string, data: []u8 }
 }
 
-// Compiles and runs one prelude: compiled, then written and read back without its source: its functions stand in for
-// built-ins, whose toString is "function name() { [native code] }" (ECMAScript NativeFunction). 0 ok, -1 threw
-// (reported).
-@(private = "file")
-run_prelude :: proc "contextless" (ctx: ^wj.Context, file_name: string, data: []u8) -> i32 {
+// Compiles and runs one prelude, without its source: its functions stand in for built-ins, whose toString is
+// "function name() { [native code] }" (ECMAScript NativeFunction). The script's value (the caller's), or the exception
+// value when it threw (reported).
+eval_prelude :: proc "contextless" (ctx: ^wj.Context, file_name: string, data: []u8) -> wj.JSValue {
 	// QuickJS wants a NUL after the source, and a C string for the file name
 	src := ([^]u8)(wj.libc_malloc(uint(len(data)) + 1))
 	name := ([^]u8)(wj.libc_malloc(uint(len(file_name)) + 9))
 	defer { wj.libc_free(src); wj.libc_free(name) }
-	if src == nil || name == nil { wj.JS_ThrowOutOfMemory(ctx); wj.wj_report_pending(ctx); return -1 }
+	if src == nil || name == nil { wj.JS_ThrowOutOfMemory(ctx); wj.wj_report_pending(ctx); return wj.EXCEPTION }
 	if len(data) > 0 { wj.memcpy(src, raw_data(data), uint(len(data))) }
 	src[len(data)] = 0
 	wj.memcpy(name, raw_data(string("prelude/")), 8)
 	if len(file_name) > 0 { wj.memcpy(name[8:], raw_data(file_name), uint(len(file_name))) }
 	name[8 + len(file_name)] = 0
-	r := wj.JS_Eval(ctx, src, uint(len(data)), cstring(name), wj.EVAL_TYPE_GLOBAL | wj.EVAL_FLAG_COMPILE_ONLY)
-	if !wj.is_exception(r) {
-		n: uint
-		bc := wj.JS_WriteObject(ctx, &n, r, wj.WRITE_OBJ_BYTECODE | wj.WRITE_OBJ_STRIP_SOURCE)
-		wj.JS_FreeValue(ctx, r)
-		if bc == nil { wj.wj_report_pending(ctx); return -1 }
-		r = wj.JS_ReadObject(ctx, bc, n, wj.READ_OBJ_BYTECODE)
-		wj.js_free(ctx, bc)
-		if !wj.is_exception(r) { r = wj.JS_EvalFunction(ctx, r) }
-	}
-	if wj.is_exception(r) {
-		wj.wj_report_pending(ctx)
-		return -1
-	}
-	wj.JS_FreeValue(ctx, r)
-	return 0
+	r := wj.JS_Eval(ctx, src, uint(len(data)), cstring(name), wj.EVAL_TYPE_GLOBAL | wj.EVAL_FLAG_WREN_STRIP_SOURCE)
+	if wj.is_exception(r) { wj.wj_report_pending(ctx) }
+	return r
 }
 
 @(export, link_name = "wj_run_preludes")
@@ -60,7 +46,9 @@ wj_run_preludes :: proc "c" (ctx: ^wj.Context) -> i32 {
 	for &f in prelude_files {
 		n := len(f.name)
 		if n < 3 || f.name[n - 3:] != ".js" { continue }
-		if run_prelude(ctx, f.name, f.data) != 0 { return -1 }
+		r := eval_prelude(ctx, f.name, f.data)
+		if wj.is_exception(r) { return -1 }
+		wj.JS_FreeValue(ctx, r)
 	}
 	// IndexedDB's JavaScript is not run here: its interfaces appear on first use (web_idb.c)
 	wj_idb_define_lazy(ctx)

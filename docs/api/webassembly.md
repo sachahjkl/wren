@@ -8,6 +8,12 @@ WebAssembly modules, compiled and run by Wasmtime beside the engine's. Off until
 
 Exposed to: Window, Worker. Source: `api/webassembly.widl`.
 
+## Types
+
+### handle `WebAssemblyModule` : `Object`
+
+Checked by the browser on every call (`lookup_WebAssemblyModule`).
+
 ## Functions
 
 ### `WebAssembly_enabled`
@@ -29,4 +35,57 @@ bool WebAssembly_validate(bytes module)
 WebAssembly.validate(bytes): whether `bytes` is a valid module.
 
 Host: `WebAssembly_validate :: proc(c: ^Call, module: []u8) -> bool`
+
+### `WebAssembly_compile`
+
+```
+WebAssemblyModule WebAssembly_compile(bytes module) raises
+```
+
+new WebAssembly.Module(bytes): `bytes` compiled. Syntax with the reason when it is not a valid module, Security when
+the page's Content Security Policy refuses it.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `WebAssembly_compile :: proc(c: ^Call, module: []u8) -> (u64, Api_Error)`
+
+### `WebAssembly_Module_imports`
+
+```
+string WebAssembly_Module_imports(WebAssemblyModule module)
+```
+
+WebAssembly.Module.imports(module), as JSON.
+
+Host: `WebAssembly_Module_imports :: proc(c: ^Call, module: Api_WebAssemblyModule) -> string`
+
+### `WebAssembly_Module_exports`
+
+```
+string WebAssembly_Module_exports(WebAssemblyModule module)
+```
+
+WebAssembly.Module.exports(module), as JSON.
+
+Host: `WebAssembly_Module_exports :: proc(c: ^Call, module: Api_WebAssemblyModule) -> string`
+
+### `WebAssembly_Module_customSectionCount`
+
+```
+i32 WebAssembly_Module_customSectionCount(WebAssemblyModule module, string name)
+```
+
+How many custom sections of the module are called `name`.
+
+Host: `WebAssembly_Module_customSectionCount :: proc(c: ^Call, module: Api_WebAssemblyModule, name: string) -> i32`
+
+### `WebAssembly_Module_customSection`
+
+```
+bytes WebAssembly_Module_customSection(WebAssemblyModule module, string name, i32 index)
+```
+
+The bytes of the custom section number `index` of those called `name`.
+
+Host: `WebAssembly_Module_customSection :: proc(c: ^Call, module: Api_WebAssemblyModule, name: string, index: i32) -> []u8`
 
