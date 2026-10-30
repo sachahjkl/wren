@@ -107,8 +107,9 @@ json_module_init :: proc "c" (ctx: ^wj.Context, m: ^wj.Module_Def) -> i32 {
 }
 
 // Compiles a module named `name` (registered with the engine, not run): its module, nil with an exception pending.
+// `want_bytecode`: the compiled module goes to the browser's bytecode cache (Engine_storeBytecode) before anything else is done to it.
 @(private = "file")
-compile_module :: proc "contextless" (ctx: ^wj.Context, src: [^]u8, n: uint, name: cstring, type: i32) -> ^wj.Module_Def {
+compile_module :: proc "contextless" (ctx: ^wj.Context, src: [^]u8, n: uint, name: cstring, type: i32, want_bytecode := false) -> ^wj.Module_Def {
 	if type == MODULE_JSON {
 		// JS_ParseJSON reads a NUL-terminated buffer: the host's source is not one
 		buf := ([^]u8)(wj.malloc(n + 1))
@@ -132,10 +133,51 @@ compile_module :: proc "contextless" (ctx: ^wj.Context, src: [^]u8, n: uint, nam
 	}
 	fn := wj.JS_Eval2(ctx, src, n, &opt)
 	if wj.is_exception(fn) { return nil }
+	if want_bytecode {
+		size: uint
+		code := wj.JS_WriteObject(ctx, &size, fn, wj.WRITE_OBJ_BYTECODE)
+		if code != nil {
+			wj.wr_Engine_storeBytecode(code, u32(size))
+			wj.js_free(ctx, code)
+		} else if wj.JS_HasException(ctx) {
+			wj.JS_FreeValue(ctx, wj.JS_GetException(ctx))
+		}
+	}
 	m := (^wj.Module_Def)(wj.value_get_ptr(fn))
 	if set_meta(ctx, m, name) < 0 { wj.JS_FreeValue(ctx, fn); return nil }
 	wj.JS_FreeValue(ctx, fn)   // the engine keeps the module among its loaded ones
 	return m
+}
+
+// The modules `m` imports, told to the browser (it resolves them and fetches what it does not have). 0 ok, 2 an import cannot be resolved
+// (its error to rethrow is kept, not reported now).
+@(private = "file")
+report_requests :: proc "contextless" (ctx: ^wj.Context, m: ^wj.Module_Def, name: cstring, url_len: u32) -> i32 {
+	n := wj.JS_GetModuleRequestCount(m)
+	status: i32 = 0
+	for i: i32 = 0; i < n && status == 0; i += 1 {
+		attrs := wj.UNDEFINED
+		a := wj.JS_GetModuleRequest(ctx, m, i, &attrs)
+		if a == wj.ATOM_NULL { wj.JS_FreeValue(ctx, attrs); continue }
+		t := import_type(ctx, attrs)
+		wj.JS_FreeValue(ctx, attrs)
+		sl: uint
+		spec := wj.JS_AtomToCStringLen(ctx, &sl, a)
+		wj.JS_FreeAtom(ctx, a)
+		if t < 0 || spec == nil {
+			if spec != nil { wj.JS_FreeCString(ctx, spec) }
+			rethrow_keep(ctx, name, wj.JS_GetException(ctx))
+			status = 2
+			break
+		}
+		if wj.wr_Module_request(([^]u8)(rawptr(name)), url_len, ([^]u8)(rawptr(spec)), u32(sl), t) < 0 {
+			throw_resolve_failure(ctx)
+			rethrow_keep(ctx, name, wj.JS_GetException(ctx))
+			status = 2
+		}
+		wj.JS_FreeCString(ctx, spec)
+	}
+	return status
 }
 
 // The type of an import from its attributes: MODULE_JS, MODULE_JSON, -1 (TypeError pending) for another.
@@ -222,33 +264,29 @@ wj_module_prepare :: proc "c" (src: u32, src_len: u32, url: u32, url_len: u32, t
 	name := js_cstr(ctx, ([^]u8)(uintptr(url)), int(url_len))
 	if name == nil { return 2 }
 	defer wj.js_free(ctx, rawptr(name))
-	m := compile_module(ctx, ([^]u8)(uintptr(src)), uint(src_len), name, type)
+	// the type's bit 8: the compiled module goes to the browser's bytecode cache
+	m := compile_module(ctx, ([^]u8)(uintptr(src)), uint(src_len), name, type & 0xff, type & PREPARE_WANT_BYTECODE != 0)
 	if m == nil { rethrow_keep(ctx, name, wj.JS_GetException(ctx)); return 2 }
-	n := wj.JS_GetModuleRequestCount(m)
-	status: i32 = 0
-	for i: i32 = 0; i < n && status == 0; i += 1 {
-		attrs := wj.UNDEFINED
-		a := wj.JS_GetModuleRequest(ctx, m, i, &attrs)
-		if a == wj.ATOM_NULL { wj.JS_FreeValue(ctx, attrs); continue }
-		t := import_type(ctx, attrs)
-		wj.JS_FreeValue(ctx, attrs)
-		sl: uint
-		spec := wj.JS_AtomToCStringLen(ctx, &sl, a)
-		wj.JS_FreeAtom(ctx, a)
-		if t < 0 || spec == nil {
-			if spec != nil { wj.JS_FreeCString(ctx, spec) }
-			rethrow_keep(ctx, name, wj.JS_GetException(ctx))
-			status = 2
-			break
-		}
-		if wj.wr_Module_request(([^]u8)(rawptr(name)), url_len, ([^]u8)(rawptr(spec)), u32(sl), t) < 0 {
-			throw_resolve_failure(ctx)
-			rethrow_keep(ctx, name, wj.JS_GetException(ctx))
-			status = 2
-		}
-		wj.JS_FreeCString(ctx, spec)
-	}
-	return status
+	return report_requests(ctx, m, name, url_len)
+}
+
+@(private = "file") PREPARE_WANT_BYTECODE :: 1 << 8
+
+// The same from a module the browser compiled before (its bytecode, from the cache): read instead of parsed. 0 ok, 2 an import cannot be resolved,
+// 3 the bytecode cannot be read (the browser compiles the source instead).
+@(export, link_name = "wj_module_prepare_bytecode")
+wj_module_prepare_bytecode :: proc "c" (code: u32, code_len: u32, url: u32, url_len: u32) -> i32 {
+	ctx := wj.wj_the_realm.ctx
+	wj.wj_stack_enter(ctx)
+	name := js_cstr(ctx, ([^]u8)(uintptr(url)), int(url_len))
+	if name == nil { return 3 }
+	defer wj.js_free(ctx, rawptr(name))
+	fn := wj.JS_ReadObject(ctx, ([^]u8)(uintptr(code)), uint(code_len), wj.READ_OBJ_BYTECODE)
+	if wj.is_exception(fn) { wj.JS_FreeValue(ctx, wj.JS_GetException(ctx)); return 3 }
+	m := (^wj.Module_Def)(wj.value_get_ptr(fn))
+	if set_meta(ctx, m, name) < 0 { wj.JS_FreeValue(ctx, wj.JS_GetException(ctx)); wj.JS_FreeValue(ctx, fn); return 3 }
+	wj.JS_FreeValue(ctx, fn)   // the engine keeps the module among its loaded ones
+	return report_requests(ctx, m, name, url_len)
 }
 
 // ---- the engine's module loader: resolution and modules it does not have ----

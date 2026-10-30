@@ -97,6 +97,9 @@ frontend_compile :: proc(ctx: ^Context, req: ^Compile_Request) -> Value {
 	if req.keep_image && v.tag == .function_bc {
 		b := cast(^Function_Bytecode)v.u.ptr
 		b.image = bytes
+	} else if req.keep_image && v.tag == .module && (cast(^Module)v.u.ptr).func_bc != nil {
+		// a module's image is the whole module (requests, exports, imports, then its function): the function holds it
+		(cast(^Module)v.u.ptr).func_bc.image = bytes
 	} else {
 		delete(bytes, wa)
 	}

@@ -235,6 +235,20 @@ document.body.lastChild.addEventListener("x", () => console.log("listener kept")
 		page.page_close(p2)
 	}
 
+	fmt.println("-- bytecode cache: a module is compiled once, and read from the cache the next time")
+	{
+		src := `<!doctype html><body><script type="module">console.log("module run", 6 * 7, import.meta.url.indexOf("js.html") > 0); export const x = 1</script></body>`
+		p1 := load(process, src)
+		check(logged("module run 42 true"), "the module runs")
+		page.page_close(p1)
+		st0 := js.cache_stats()
+		p2 := load(process, src)
+		st1 := js.cache_stats()
+		check(logged("module run 42 true"), "it runs again, import.meta.url included")
+		check(st1.memory_hits > st0.memory_hits, "the second page reads its bytecode from the cache")
+		page.page_close(p2)
+	}
+
 	fmt.println("-- interruption of a script that loops")
 	{
 		s := settings

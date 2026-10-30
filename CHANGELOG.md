@@ -7,6 +7,11 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 
 ## Unreleased
 
+## 0.6.16 - 2026-10-30
+
+### Changed
+- **Pages made of ES modules load faster**: the engine compiled every module twice, once when it arrived (to learn what it imports) and again when the graph ran, because the first one was not kept among the loaded modules. Now it is, and the compiled modules also go to the bytecode cache of the profile (`javascript.bytecode_cache.*`), as classic scripts already did: a module seen before is read, not parsed again. On the repository page of Wren on GitHub (about 130 modules), the page is stable after 4.0 s instead of 7.8 s on a visit that finds them in the cache, and the longest stall between two frames goes from 1.9 s to 0.7 s; the first visit gains about a second.
+
 ## 0.6.15 - 2026-10-30
 
 ### Changed

@@ -21,6 +21,7 @@ import "wb:base"
 import "wb:fetch"
 import "wb:js"
 import "wb:url"
+import "wb:wasm"
 
 Module_Entry_State :: enum u8 { Fetching, Fetched, Prepared, Failed }
 
@@ -251,19 +252,41 @@ module_prepare :: proc(p: ^Page, e: ^Module_Entry) {
 	ms := modules_of(p)
 	g := Guest_Strings{inst = r.inst}
 	defer guest_strings_free(&g)
-	src := js.guest_copy(r.inst, e.source[:])
-	if src == 0 { e.state = .Failed; return }
-	defer js.guest_free(r.inst, src)
 	kp, kl, ok := guest_string(&g, e.key)
 	if !ok { e.state = .Failed; return }
 	saved := ms.preparing
 	ms.preparing = e
-	argv := [5]u32{src, u32(len(e.source)), kp, kl, u32(e.type)}
-	res := js_call(p, r.inst, "wj_module_prepare", argv[:])
+	res := wasm.Call_Result.Ok
+	status := i32(3)   // 3: not done yet (no bytecode in the cache, or it cannot be read)
+	// a module compiled before is read from the bytecode cache, as a classic script is (js_run): the same source, URL and engine
+	cacheable := p.worker == nil && e.type == .JavaScript && js.cacheable(len(e.source))
+	key: js.Key
+	if cacheable {
+		key = js.key_of(js_version(), transmute(i32)js.Eval_Flags{.Module}, e.key, e.source[:])
+		if code := js.lookup(key, context.temp_allocator); code != nil {
+			if cp := js.guest_copy(r.inst, code, false); cp != 0 {
+				argv := [4]u32{cp, u32(len(code)), kp, kl}
+				res = js_call(p, r.inst, "wj_module_prepare_bytecode", argv[:])
+				status = i32(argv[0])
+				js.guest_free(r.inst, cp)
+			}
+		}
+	}
+	if res == .Ok && status == 3 {
+		src := js.guest_copy(r.inst, e.source[:])
+		if src == 0 { ms.preparing = saved; e.state = .Failed; return }
+		defer js.guest_free(r.inst, src)
+		kind := u32(e.type) | (cacheable ? 1 << 8 : 0)   // bit 8: the compiled module goes to the cache (Engine_storeBytecode)
+		if cacheable { r.pending_key, r.has_pending_key = key, true }
+		argv := [5]u32{src, u32(len(e.source)), kp, kl, kind}
+		res = js_call(p, r.inst, "wj_module_prepare", argv[:])
+		status = i32(argv[0])
+		r.has_pending_key = false
+	}
 	ms.preparing = saved
 	if p.closed { return }
-	e.state = res == .Ok && argv[0] == 0 ? .Prepared : .Failed
-	e.rethrow = res == .Ok && argv[0] == 2
+	e.state = res == .Ok && status == 0 ? .Prepared : .Failed
+	e.rethrow = res == .Ok && status == 2
 	if e.state == .Failed && e.error == "" { e.error = strings.clone("it does not compile, or an import cannot be resolved") }
 }
 

@@ -466,10 +466,12 @@ eval_impl :: proc(ctx: ^js.Context, input: [^]u8, input_len: uint, filename: cst
 	fb := js.compile(ctx, &req)
 	if js.is_exception(fb) {return EXCEPTION}
 	if flags & EVAL_FLAG_COMPILE_ONLY != 0 {
-		if fb.tag == .module && flags & EVAL_FLAG_WREN_NO_RESOLVE == 0 {
-			// registered before its requests are loaded: a module that imports itself, or a cycle, finds it by name
+		if fb.tag == .module {
+			// registered before its requests are loaded: a module that imports itself, or a cycle, finds it by name. Also when the host
+			// resolves nothing now (WREN_NO_RESOLVE: the browser fetches the graph first): the engine finds the module it compiled
+			// when the graph runs instead of asking the host for its source and compiling it a second time
 			js.module_register(rt, cast(^js.Module)fb.u.ptr)
-			if !js.module_resolve(ctx, cast(^js.Module)fb.u.ptr) {return EXCEPTION}
+			if flags & EVAL_FLAG_WREN_NO_RESOLVE == 0 && !js.module_resolve(ctx, cast(^js.Module)fb.u.ptr) {return EXCEPTION}
 		}
 		return own(rt, fb)
 	}
@@ -532,9 +534,14 @@ JS_WriteObject :: proc "c" (c: ^Context, psize: ^uint, obj: JSValue, flags: i32)
 	context = api_ctx()
 	ctx := jctx(c)
 	if psize != nil {psize^ = 0}
-	if flags & WRITE_OBJ_BYTECODE != 0 && tag_of(obj) == TAG_FUNCTION_BYTECODE {
-		b := cast(^js.Function_Bytecode)ptr_of(obj)
-		if len(b.image) > 0 {
+	if flags & WRITE_OBJ_BYTECODE != 0 && (tag_of(obj) == TAG_FUNCTION_BYTECODE || tag_of(obj) == TAG_MODULE) {
+		b: ^js.Function_Bytecode
+		if tag_of(obj) == TAG_MODULE {
+			if m := cast(^js.Module)ptr_of(obj); m.func_bc != nil { b = m.func_bc }   // (a module's image is kept by its function)
+		} else {
+			b = cast(^js.Function_Bytecode)ptr_of(obj)
+		}
+		if b != nil && len(b.image) > 0 {
 			raw, _ := mem.alloc(len(b.image), JS_ALLOC_ALIGN, host_allocator)
 			mem.copy(raw, raw_data(b.image), len(b.image))
 			if psize != nil {psize^ = uint(len(b.image))}
@@ -553,5 +560,8 @@ JS_ReadObject :: proc "c" (c: ^Context, buf: [^]u8, buf_len: uint, flags: i32) -
 	}
 	m := js.host_enter(ctx.rt)
 	defer js.host_exit(ctx.rt, m, js.UNDEFINED)
-	return own(ctx.rt, js.read_object(ctx, buf[:buf_len]))
+	v := js.read_object(ctx, buf[:buf_len])
+	// a module read is among the loaded ones (as in QuickJS), found by name when it is imported
+	if v.tag == .module { js.module_register(ctx.rt, cast(^js.Module)v.u.ptr) }
+	return own(ctx.rt, v)
 }
