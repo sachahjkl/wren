@@ -18,6 +18,7 @@ PROFILE="${PROFILE:-quick}"
 
 deps() {
   tools/fetch_wasmtime.sh
+  tools/fetch_wgpu.sh
   CC="${CC:-clang}" tools/build_lexbor.sh
   tools/build_native.sh --profile "$PROFILE"
 }
@@ -45,7 +46,7 @@ wren() {
   local flags=(-collection:toolkit=ext/gui_toolkit -collection:wb=src -vet -target:linux_amd64)
   flags+=(-extra-linker-flags:"$(link_flags)")
   flags+=(-define:FONT_BACKEND=native -define:FONT_NATIVE_LINK=false -define:A11Y_ACCESSKIT=true -define:A11Y_NATIVE_LINK=false)
-  echo "linking $out (src/browser type-checks for Linux now; linking needs libwgpu_native.a beside Odin's wgpu vendor package and the build artifacts from ./build.sh deps)"
+  echo "linking $out (needs the build artifacts from ./build.sh deps; the system's libopus, libasound and libfontconfig; at run time libwayland-client / libxkbcommon or libxcb, and Vulkan or GL for wgpu)"
   "$ODIN" build src/browser -out:"$out" "${flags[@]}" -o:speed
 }
 

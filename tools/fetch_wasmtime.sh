@@ -40,5 +40,12 @@ ld -r --whole-archive "$TMP/$NAME/lib/libwasmtime.a" -o "$TMP/wasmtime.o"
 nm -g --defined-only "$TMP/wasmtime.o" | awk '{print $3}' | grep -E '^(wasm_|wasmtime_|wasi_|wat_)' > "$TMP/keep.txt"
 objcopy --keep-global-symbols="$TMP/keep.txt" "$TMP/wasmtime.o"
 ar rcs "$OUT/lib/libwasmtime.a" "$TMP/wasmtime.o"
+# The licence text src/browser/third_party.odin bundles (the C API archive has none; the tag's LICENSE file is the same text
+# as the Windows archive's), at the place build.bat's step puts it
+LICENSE_SHA256=268872b9816f90fd8e85db5a28d33f8150ebb8dd016653fb39ef1f94f2686bc5
+mkdir -p "$ROOT/build/wasmtime"
+curl -fsSL -o "$ROOT/build/wasmtime/LICENSE" "https://raw.githubusercontent.com/bytecodealliance/wasmtime/v$VERSION/LICENSE"
+LGOT="$(sha256sum "$ROOT/build/wasmtime/LICENSE" | cut -d' ' -f1)"
+if [ "$LGOT" != "$LICENSE_SHA256" ]; then echo "SHA-256 mismatch for the Wasmtime LICENSE: expected $LICENSE_SHA256, got $LGOT" >&2; exit 1; fi
 echo "$STAMP" > "$OUT/VERSION"
 echo "wasmtime $VERSION ($ARCH) in $OUT"

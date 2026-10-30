@@ -169,6 +169,7 @@ jobs:
       - name: Native libraries (Wasmtime, Lexbor, the Rust library)
         run: |
           tools/fetch_wasmtime.sh
+          tools/fetch_wgpu.sh
           CC=clang tools/build_lexbor.sh
           tools/build_native.sh --profile quick
 
