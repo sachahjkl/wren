@@ -9,7 +9,7 @@ import "wb:page"
 
 // Identity of the program. One place, so a rename touches nothing else.
 APP_NAME    :: "Wren"
-APP_VERSION :: "0.6.7"
+APP_VERSION :: "0.6.8"
 APP_TAGLINE :: "A small browser where WebAssembly runs everything, JavaScript included."
 
 // A label for a build that is not the release of this version, set when it is built (build.bat: `set WREN_VERSION_LABEL=experimental-2026-10-24`,

@@ -11,7 +11,9 @@ package browser
 
 import "core:fmt"
 import "core:math"
+import "core:os"
 import "core:strings"
+import "core:time"
 import "toolkit:draw"
 import "toolkit:ui"
 
@@ -82,9 +84,26 @@ performance_panel :: proc(app: ^App, t: ^Tab) {
 		dt_gap(3)
 		rec := dt_btn("###dt_perf_rec", p.frozen ? .Record : .Pause, p.frozen ? "Record" : "Stop", tooltip = p.frozen ? "Record frames again" : "Stop recording: keep what is shown", tone = p.frozen ? dtc.bad : dtc.weak)
 		if rec.clicked { toggle_record(p) }
-		if dt_btn("###dt_perf_clear", .Clear, tooltip = "Clear the recorded frames", enabled = n > 0).clicked {
+		tl := &the_remote.tl
+		if dt_btn("###dt_perf_clear", .Clear, tooltip = "Clear the recorded frames", enabled = n > 0 || len(tl.frames) > 0).clicked {
 			if p.frozen { clear(&p.snap) } else { ui.history_clear(&hud.history) }
+			timeline_end(app)
+			timeline_free(tl)
 			p.sel = -1
+		}
+		// the pictures of the frames (what the eye sees: a header drawn twice, a blank page for a frame), kept for the export
+		pics_label := len(tl.frames) > 0 ? fmt.tprintf("Pictures %d", len(tl.frames)) : "Pictures"
+		pics_tip := tl.on ? "Stop recording the pictures of the frames" : "Record the pictures of the frames (the window, at most 120): they go with the export"
+		if dt_btn("###dt_perf_pics", .Eye, pics_label, tooltip = pics_tip, on = tl.on).clicked {
+			if tl.on {
+				timeline_end(app)
+			} else {
+				width := f32(max(active_window(app).win.size.x, 1))
+				timeline_begin(app, clamp(1000 / width, 0.25, 1), 120, {})
+			}
+		}
+		if dt_btn("###dt_perf_export", .Download, "Export", tooltip = "Write the frames to the downloads folder: their pictures and a page to look at them, timeline.json, and trace.json (the phases, for the Performance tab of Chrome)", enabled = n > 0 || len(tl.frames) > 0).clicked {
+			perf_export(app, p)
 		}
 		dt_vsep("###dt_pb0")
 		// the numbers
@@ -164,6 +183,46 @@ Legend_Draw :: struct { name: string, col: draw.Color, off, hot: bool }
 
 @(private = "file")
 perf_names := [Hud_Series]string{.Tasks = "Tasks", .Styles = "Style", .Layout = "Layout", .Paint = "Paint", .UI = "Interface", .Submit = "Submit", .GPU = "GPU"}
+
+// The export: <downloads>/wren-timeline-<date>-<time>/ with the recorded pictures (NNN.png, sheet.png, index.html to look at them
+// big, timeline.json: each frame's time, scroll, kind and difference from the one before) and trace.json (the phases of every
+// frame as Chrome trace events: it opens in the Performance tab of Chrome and in Perfetto).
+@(private = "file")
+perf_export :: proc(app: ^App, p: ^Dev_Performance) {
+	tl := &the_remote.tl
+	timeline_end(app)
+	dt, _ := time.time_to_datetime(time.now())
+	dir := fmt.tprintf("%s/wren-timeline-%04d%02d%02d-%02d%02d%02d", download_dir(app), dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+	if err := os.make_directory_all(dir); err != nil && !os.exists(dir) { ui.toast(.Bad, "Could not make %s", dir); return }
+	if len(tl.frames) > 0 {
+		if rep := timeline_write(tl, dir, 6, false); rep.code != 0 { ui.toast(.Bad, "The pictures could not be written to %s", dir); return }
+	}
+	n := count_frames(p)
+	if n > 0 {
+		b := strings.builder_make(context.temp_allocator)
+		strings.write_string(&b, `{"displayTimeUnit":"ms","traceEvents":[{"name":"process_name","ph":"M","pid":1,"args":{"name":"Wren"}},{"name":"thread_name","ph":"M","pid":1,"tid":1,"args":{"name":"Frames (CPU)"}},{"name":"thread_name","ph":"M","pid":1,"tid":2,"args":{"name":"GPU"}}`)
+		for i in 0 ..< n {
+			f := frame_at(p, i)
+			ts := f.t_ms * 1000
+			fmt.sbprintf(&b, `,{{"name":"Frame","ph":"X","pid":1,"tid":1,"ts":%.0f,"dur":%.0f,"args":{{"frame":%d,"serial":%d}}}}`, ts, f64(cpu_total(f)) * 1000, i, f.tag)
+			at := ts
+			for k in Hud_Series {
+				v := f64(f.v[k]) * 1000
+				if v <= 0 { continue }
+				if k == .GPU {
+					fmt.sbprintf(&b, `,{{"name":"GPU","ph":"X","pid":1,"tid":2,"ts":%.0f,"dur":%.0f}}`, ts, v)
+				} else {
+					fmt.sbprintf(&b, `,{{"name":"%s","ph":"X","pid":1,"tid":1,"ts":%.0f,"dur":%.0f}}`, perf_names[k], at, v)
+					at += v
+				}
+			}
+		}
+		strings.write_string(&b, "]}")
+		if os.write_entire_file(fmt.tprintf("%s/trace.json", dir), transmute([]byte)strings.to_string(b)) != nil { ui.toast(.Bad, "trace.json could not be written to %s", dir); return }
+	}
+	ui.toast(.Good, "Frames saved to %s", dir)
+	shell_open_folder(dir)
+}
 
 @(private = "file")
 toggle_record :: proc(p: ^Dev_Performance) {
