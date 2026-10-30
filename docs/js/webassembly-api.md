@@ -6,7 +6,8 @@ until a script reads it (an auto-init property: `native/js/odin/web_wasm.js` is 
 
 Checked: a .NET 10 Blazor Web App (<https://jeremyetu.azurewebsites.net/>: its server circuit on the first visit, then
 .NET in WebAssembly with a 48 MB heap and client-side navigation), a Yew (wasm-bindgen) application, SQLite Fiddle
-(Emscripten in a worker, see the limits), and web-platform-tests `wasm/jsapi` (`wpt/expectations`).
+(Emscripten in a worker), DuckDB's shell (it starts; no query was run), Pyodide (Python answers `runPython`), and
+web-platform-tests `wasm/jsapi` (`wpt/expectations`).
 
 | Layer | File |
 |---|---|
@@ -48,19 +49,20 @@ the image, and its functions read as native ones.
 
 ## The old form of exceptions
 
-Wasmtime has exceptions as `try_table`; it refuses the old form (`try`, `catch`, `delegate`), which browsers still take.
-Sites ask with the one module of `wasm-feature-detect`, and .NET's runtime refuses to start on a no even when its own module
-uses none of the old form. So `validate` says yes to exactly that module (`wasm.validate`): a lie for that probe alone. A
-module really using the old form still gets a `CompileError`: older Emscripten and .NET builds with exceptions do not run
-here (a Blazor Web App in Auto mode stays on its server circuit). What would change that: translating the old form to
-`try_table` at compilation. .NET's JIT for its interpreter (the jiterpreter) also generates the old form when it is told
-exceptions exist; what fails to compile there stays interpreted.
+Wasmtime has exceptions as `try_table`; it refuses the old form (`try`, `catch`, `rethrow`, `delegate`), which browsers still
+take and many modules are built with. A module Wasmtime refuses goes through `src/wasm/legacy_eh.odin`, which rewrites it
+to the new form (its comment says how), and is compiled again; `validate` does the same. What comes out goes through
+Wasmtime's validation like any module, so a mistake there is a `CompileError`, never a wrong program, and the first error
+stands when the translation does not make the module valid. Checked on DuckDB's module (3.8 MB of C++), on .NET's runtime
+through its JIT, and by hand-written modules in the tests.
 
 ## Limits
 
-- No shared memory (`shared: true` is a `TypeError`): threads are off in the engine, so an Emscripten build with pthreads
-  cannot run. Without cross-origin isolation a page has no `SharedArrayBuffer` at all, as in other browsers (SQLite Fiddle
-  then says OPFS is unavailable instead of waiting on a copy): see `docs/shared-memory.md`.
+- No threads. `new WebAssembly.Memory({shared: true})` works, as in other browsers (Pyodide and many scripts ask for one to
+  find the `SharedArrayBuffer` constructor), but it is an ordinary memory only this agent has: a module declaring a shared
+  memory gets a `CompileError`, so an Emscripten build with pthreads cannot run. Without cross-origin isolation a page has no
+  global `SharedArrayBuffer`, as in other browsers (SQLite Fiddle then says OPFS is unavailable instead of waiting on a
+  copy): see `docs/shared-memory.md`.
 - GC, typed function references and memory64 follow `wasm.features.*` (off by default): such modules get a `CompileError`.
 - An exception carries at most 32 values (`MAX_TAG_VALUES`, `web_wasm.odin`).
 - Recursion through a module is bounded by the engine's stack: at the depth of recursion through a native function, far

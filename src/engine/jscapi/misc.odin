@@ -42,7 +42,16 @@ JS_PromiseThen :: proc "c" (c: ^Context, promise: JSValue, on_fulfilled: JSValue
 
 JS_PromiseMarkAsHandled :: proc "c" (c: ^Context, promise: JSValue) {
 	context = api_ctx()
-	if pd := js.promise_data(dec(promise)); pd != nil {pd.is_handled = true}
+	ctx := jctx(c)
+	pd := js.promise_data(dec(promise))
+	if pd == nil {return}
+	// already rejected: the tracker was told it had no handler, and must hear that it has one now
+	if pd.state == .rejected && !pd.is_handled {
+		m := js.host_enter(ctx.rt)
+		defer js.host_exit(ctx.rt, m, js.UNDEFINED)
+		js.rejection_tracker(ctx, js.as_obj(dec(promise)), pd.result, true)
+	}
+	pd.is_handled = true
 }
 
 JS_PromiseState :: proc "c" (c: ^Context, promise: JSValue) -> Promise_State {
@@ -438,12 +447,12 @@ JS_LoadModuleWithFuncs :: proc "c" (c: ^Context, basename: cstring, filename: cs
 
 Host_Buffer_IO :: #type proc "contextless" (user: u64, offset: int, bytes: [^]u8, n: int)
 
-JS_NewArrayBufferHost :: proc "c" (c: ^Context, length: uint, read, write: Host_Buffer_IO, user: u64) -> JSValue {
+JS_NewArrayBufferHost :: proc "c" (c: ^Context, length: uint, read, write: Host_Buffer_IO, user: u64, shared: bool) -> JSValue {
 	context = api_ctx()
 	ctx := jctx(c)
 	m := js.host_enter(ctx.rt)
 	defer js.host_exit(ctx.rt, m, js.UNDEFINED)
-	return own(ctx.rt, js.mk_obj(js.array_buffer_new_host(ctx, i64(length), js.Buffer_Host{read = read, write = write, user = user})))
+	return own(ctx.rt, js.mk_obj(js.array_buffer_new_host(ctx, i64(length), js.Buffer_Host{read = read, write = write, user = user}, shared)))
 }
 
 JS_DetachArrayBufferHost :: proc "c" (c: ^Context, obj: JSValue) {
@@ -505,6 +514,6 @@ JS_NewBigInt64 :: proc "c" (c: ^Context, v: i64) -> JSValue {
 JS_IsArrayBufferHost :: proc "c" (obj: JSValue) -> bool {
 	context = api_ctx()
 	o, ok := obj_arg(obj)
-	if !ok || o.class != .array_buffer {return false}
+	if !ok || (o.class != .array_buffer && o.class != .shared_array_buffer) {return false}
 	return js.array_buffer_of(o).host != nil
 }

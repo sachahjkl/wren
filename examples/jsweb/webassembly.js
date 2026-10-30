@@ -233,6 +233,31 @@ test("Memory: the bytes through JavaScript", () => {
   eq(new Int32Array(m.buffer, 1000, 1)[0], 5, "Atomics wrote");
 });
 
+test("Memory: shared", () => {
+  throws(() => new WebAssembly.Memory({ initial: 1, shared: true }), "TypeError", "shared needs a maximum");
+  const m = new WebAssembly.Memory({ initial: 1, maximum: 3, shared: true });
+  const b = m.buffer;
+  eq(b.constructor.name, "SharedArrayBuffer", "its buffer is a SharedArrayBuffer");
+  ok(Object.isFrozen(b), "frozen");
+  eq(typeof SharedArrayBuffer, "undefined", "the global stays absent");
+  const u8 = new Uint8Array(b);
+  u8[5] = 9;
+  eq(u8[5], 9, "its bytes");
+  eq(new b.constructor(4).byteLength, 4, "its constructor makes others");
+  eq(b.slice(5, 6).byteLength, 1, "slice");
+  eq(new Uint8Array(b.slice(5, 6))[0], 9, "slice's bytes");
+  const i32 = new Int32Array(b, 8, 1);
+  eq(Atomics.add(i32, 0, 3), 0, "Atomics.add");
+  eq(Atomics.load(i32, 0), 3, "Atomics.load");
+  eq(Atomics.notify(i32, 0, 1), 0, "Atomics.notify: nobody waits");
+  eq(Atomics.wait(i32, 0, 1), "not-equal", "Atomics.wait, another value");
+  m.grow(1);
+  eq(b.byteLength, 65536, "growing leaves the old buffer as it was");
+  eq(m.buffer.byteLength, 131072, "the new one is larger");
+  eq(new Uint8Array(m.buffer)[5], 9, "with the same bytes");
+  eq(new TextDecoder().decode(u8.subarray(5, 5)), "", "a decoder takes a view of it");
+});
+
 test("Memory: the browser's APIs read and write it", async () => {
   const m = new WebAssembly.Memory({ initial: 2 });
   const u8 = new Uint8Array(m.buffer);
@@ -444,6 +469,79 @@ test("Tag and Exception", () => {
   eq(typeof SharedArrayBuffer, "undefined", "no SharedArrayBuffer without cross-origin isolation");
   f = () => {};
   eq(x.caught(0), -1, "nothing thrown");
+});
+
+// The old form of exceptions (try, catch, catch_all, rethrow, delegate), translated at compilation.
+const TRY = 0x06, CATCH = 0x07, THROW = 0x08, RETHROW = 0x09, END = 0x0b, DELEGATE = 0x18, CATCH_ALL = 0x19, VOID = 0x40;
+const LEGACY = new Uint8Array([...HEADER,
+  // 0 (i32)->() ; 1 (i32)->i32
+  ...sec(1, [2, 0x60, 1, I32, 0, 0x60, 1, I32, 1, I32]),
+  // imports a function (0) and two tags (0, 1)
+  ...sec(2, [3, ...str("env"), ...str("f"), 0, 0, ...str("env"), ...str("a"), 4, 0, 0, ...str("env"), ...str("b"), 4, 0, 0]),
+  ...sec(3, [7, 1, 1, 1, 1, 1, 1, 1]),
+  ...sec(7, [8, ...str("caught"), 0, 1, ...str("all"), 0, 2, ...str("order"), 0, 3, ...str("again"), 0, 4, ...str("delegated"), 0, 5, ...str("out"), 0, 6,
+    ...str("br"), 0, 7, ...str("a"), 4, 0]),
+  ...sec(10, [7,
+    // caught: try (result i32) f(x) ; -1 ; catch a: the value + 1 ; end
+    ...fn(TRY, I32, 0x20, 0, 0x10, 0, 0x41, 0x7f, CATCH, 0, 0x41, 1, 0x6a, END),
+    // all: try (result i32) f(x) ; 0 ; catch_all: 5 ; end
+    ...fn(TRY, I32, 0x20, 0, 0x10, 0, 0x41, 0, CATCH_ALL, 0x41, 5, END),
+    // order: try (result i32) f(x) ; 0 ; catch a: drop, 1 ; catch b: drop, 2 ; catch_all: 3 ; end
+    ...fn(TRY, I32, 0x20, 0, 0x10, 0, 0x41, 0, CATCH, 0, 0x1a, 0x41, 1, CATCH, 1, 0x1a, 0x41, 2, CATCH_ALL, 0x41, 3, END),
+    // again: try (result i32) ; try: f(x) ; catch_all: rethrow 0 ; end ; 0 ; catch a: the value ; end
+    ...fn(TRY, I32, TRY, VOID, 0x20, 0, 0x10, 0, CATCH_ALL, RETHROW, 0, END, 0x41, 0, CATCH, 0, END),
+    // delegated: try (result i32) ; try (catch that is skipped) ; try: f(x) ; delegate 1 ; catch_all: 100, return ; end ; 0 ; catch a: the value ; end
+    ...fn(TRY, I32, TRY, VOID, TRY, VOID, 0x20, 0, 0x10, 0, DELEGATE, 1, CATCH_ALL, 0x41, 0xe4, 0, 0x0f, END, 0x41, 0, CATCH, 0, END),
+    // out: try ; try: f(x) ; delegate 1 (out of the function) ; catch_all: 100 return ; end ; 0
+    ...fn(TRY, VOID, TRY, VOID, 0x20, 0, 0x10, 0, DELEGATE, 1, CATCH_ALL, 0x41, 0xe4, 0, 0x0f, END, 0x41, 0),
+    // br: block (result i32) ; try (result i32) ; f(x) ; 7 ; br 1 ; catch a: 8 ; br 1 ; end ; end
+    ...fn(0x02, I32, TRY, I32, 0x20, 0, 0x10, 0, 0x41, 7, 0x0c, 1, CATCH, 0, 0x1a, 0x41, 8, 0x0c, 1, END, END),
+  ]),
+]);
+
+test("the old form of exceptions", () => {
+  eq(WebAssembly.validate(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 4, 1, 96, 0, 0, 3, 2, 1, 0, 10, 8, 1, 6, 0, 6, 64, 25, 11, 11])), true, "the module sites test with");
+  eq(WebAssembly.validate(LEGACY), true, "validate");
+  const a = new WebAssembly.Tag({ parameters: ["i32"] }), b = new WebAssembly.Tag({ parameters: ["i32"] });
+  let f = () => {};
+  const x = new WebAssembly.Instance(new WebAssembly.Module(LEGACY), { env: { f: v => f(v), a, b } }).exports;
+  eq(x.a, a, "a tag");
+  eq(x.caught(0), -1, "nothing thrown");
+  f = v => { throw new WebAssembly.Exception(a, [v]); };
+  eq(x.caught(41), 42, "catch, with its value");
+  eq(x.all(0), 5, "catch_all");
+  eq(x.order(1), 1, "the first catch");
+  eq(x.again(9), 9, "rethrow, to the try around");
+  eq(x.delegated(6), 6, "delegate skips the try in between");
+  try { x.out(3); ok(false, "delegate out of the function"); } catch (e) { eq(e.getArg(a, 0), 3, "delegate out of the function"); }
+  eq(x.br(0), 8, "a branch from a handler, past the try");
+  f = v => { throw new WebAssembly.Exception(b, [v]); };
+  eq(x.order(1), 2, "the second catch");
+  try { x.caught(1); ok(false, "another tag goes through"); } catch (e) { ok(e.is(b), "another tag goes through"); }
+  f = () => { throw new Error("js"); };
+  eq(x.order(1), 3, "catch_all, JavaScript's own");
+  f = () => {};
+  eq(x.order(1), 0, "nothing thrown, the last");
+  eq(x.br(0), 7, "a branch from the body, past the try");
+  throws(() => new WebAssembly.Module(new Uint8Array([...HEADER, ...sec(1, [1, 0x60, 0, 0]), ...sec(3, [1, 0]), ...sec(10, [1, ...fn(TRY, VOID, RETHROW, 9, END)])])), "CompileError", "a bad module stays one");
+});
+
+test("the old form of exceptions, with the new blocks' types far in the type section", () => {
+  // 70 types before the module's own, so what the translation adds has an index with bit 6 set
+  const types = new Array(70).fill(0).flatMap((_, i) => [0x60, 1, I32, 2, I32, i % 2 ? I64 : F64]);
+  const m = new Uint8Array([...HEADER,
+    ...sec(1, [72, ...types, 0x60, 1, I32, 1, I32, 0x60, 1, I32, 0]),
+    ...sec(2, [2, ...str("env"), ...str("f"), 0, 70, ...str("env"), ...str("a"), 4, 0, 71]),
+    ...sec(3, [1, 70]),
+    ...sec(7, [1, ...str("c"), 0, 1]),
+    ...sec(10, [1, ...fn(TRY, I32, 0x20, 0, 0x10, 0, CATCH, 0, 0x41, 2, 0x6a, END)]),
+  ]);
+  const a = new WebAssembly.Tag({ parameters: ["i32"] });
+  let f = v => v;
+  const x = new WebAssembly.Instance(new WebAssembly.Module(m), { env: { f: v => f(v), a } }).exports;
+  eq(x.c(5), 5, "nothing thrown");
+  f = v => { throw new WebAssembly.Exception(a, [v]); };
+  eq(x.c(5), 7, "caught");
 });
 
 test("a call with many values", () => {

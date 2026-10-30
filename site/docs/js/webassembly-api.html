@@ -218,7 +218,8 @@ Wasmtime. On by default (<code>javascript.webassembly.enabled</code>). <code>Web
 until a script reads it (an auto-init property: <code>native/js/odin/web_wasm.js</code> is evaluated then).</p>
 <p>Checked: a .NET 10 Blazor Web App (<a href="https://jeremyetu.azurewebsites.net/" rel="noopener">https://jeremyetu.azurewebsites.net/</a>: its server circuit on the first visit, then
 .NET in WebAssembly with a 48 MB heap and client-side navigation), a Yew (wasm-bindgen) application, SQLite Fiddle
-(Emscripten in a worker, see the limits), and web-platform-tests <code>wasm/jsapi</code> (<code>wpt/expectations</code>).</p>
+(Emscripten in a worker), DuckDB's shell (it starts; no query was run), Pyodide (Python answers <code>runPython</code>), and
+web-platform-tests <code>wasm/jsapi</code> (<code>wpt/expectations</code>).</p>
 <div class="table-box"><table>
 <thead><tr><th>Layer</th><th>File</th></tr></thead>
 <tbody>
@@ -259,18 +260,19 @@ it comes out as itself. Only the error that stops a script past its time goes th
 <code>default-src</code>, otherwise a <code>CompileError</code> and a violation report. <code>validate</code> is not subject to it.</li>
 </ol>
 <h2 id="the-old-form-of-exceptions"><a class="anchor" href="#the-old-form-of-exceptions" aria-hidden="true">#</a>The old form of exceptions</h2>
-<p>Wasmtime has exceptions as <code>try_table</code>; it refuses the old form (<code>try</code>, <code>catch</code>, <code>delegate</code>), which browsers still take.
-Sites ask with the one module of <code>wasm-feature-detect</code>, and .NET's runtime refuses to start on a no even when its own module
-uses none of the old form. So <code>validate</code> says yes to exactly that module (<code>wasm.validate</code>): a lie for that probe alone. A
-module really using the old form still gets a <code>CompileError</code>: older Emscripten and .NET builds with exceptions do not run
-here (a Blazor Web App in Auto mode stays on its server circuit). What would change that: translating the old form to
-<code>try_table</code> at compilation. .NET's JIT for its interpreter (the jiterpreter) also generates the old form when it is told
-exceptions exist; what fails to compile there stays interpreted.</p>
+<p>Wasmtime has exceptions as <code>try_table</code>; it refuses the old form (<code>try</code>, <code>catch</code>, <code>rethrow</code>, <code>delegate</code>), which browsers still
+take and many modules are built with. A module Wasmtime refuses goes through <code>src/wasm/legacy_eh.odin</code>, which rewrites it
+to the new form (its comment says how), and is compiled again; <code>validate</code> does the same. What comes out goes through
+Wasmtime's validation like any module, so a mistake there is a <code>CompileError</code>, never a wrong program, and the first error
+stands when the translation does not make the module valid. Checked on DuckDB's module (3.8 MB of C++), on .NET's runtime
+through its JIT, and by hand-written modules in the tests.</p>
 <h2 id="limits"><a class="anchor" href="#limits" aria-hidden="true">#</a>Limits</h2>
 <ul>
-<li>No shared memory (<code>shared: true</code> is a <code>TypeError</code>): threads are off in the engine, so an Emscripten build with pthreads
-cannot run. Without cross-origin isolation a page has no <code>SharedArrayBuffer</code> at all, as in other browsers (SQLite Fiddle
-then says OPFS is unavailable instead of waiting on a copy): see <code>docs/shared-memory.md</code>.</li>
+<li>No threads. <code>new WebAssembly.Memory({shared: true})</code> works, as in other browsers (Pyodide and many scripts ask for one to
+find the <code>SharedArrayBuffer</code> constructor), but it is an ordinary memory only this agent has: a module declaring a shared
+memory gets a <code>CompileError</code>, so an Emscripten build with pthreads cannot run. Without cross-origin isolation a page has no
+global <code>SharedArrayBuffer</code>, as in other browsers (SQLite Fiddle then says OPFS is unavailable instead of waiting on a
+copy): see <code>docs/shared-memory.md</code>.</li>
 <li>GC, typed function references and memory64 follow <code>wasm.features.*</code> (off by default): such modules get a <code>CompileError</code>.</li>
 <li>An exception carries at most 32 values (<code>MAX_TAG_VALUES</code>, <code>web_wasm.odin</code>).</li>
 <li>Recursion through a module is bounded by the engine's stack: at the depth of recursion through a native function, far
