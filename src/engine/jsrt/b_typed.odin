@@ -51,6 +51,92 @@ array_buffer_new :: proc(ctx: ^Context, proto: ^Object, class: Class_ID, n: i64,
 	return o
 }
 
+// An ArrayBuffer of `n` bytes that live with the embedder (Buffer_Host). Not resizable, not transferable.
+array_buffer_new_host :: proc(ctx: ^Context, n: i64, host: Buffer_Host) -> ^Object {
+	rt := ctx.rt
+	o := object_new_proto(ctx, ctx.class_proto[.array_buffer], .array_buffer)
+	ab := new(Array_Buffer, rt_allocator(rt))
+	ab.byte_length = int(n)
+	ab.max_byte_length = -1
+	ab.views = make([dynamic]^Object, rt_allocator(rt))
+	ab.host = new_clone(host, rt_allocator(rt))
+	o.data = ab
+	return o
+}
+
+// The bytes [lo, hi) of a host buffer are in `data` until the matching host_unpin (`data` keeps its meaning: an offset in
+// the buffer). No JavaScript may run while pinned, so nothing else sees the copy. Pins nest: a builtin with two views on
+// one buffer pins both before it writes anything (the second, when larger, reads the union again). Does nothing for an
+// ordinary buffer. `n` bytes of the engine's heap are taken for the time.
+host_pin :: proc(rt: ^Runtime, ab: ^Array_Buffer, lo, hi: int) {
+	h := ab.host
+	if h == nil {return}
+	lo, hi := lo, hi
+	if h.pin_depth > 0 {
+		h.pin_depth += 1
+		if lo >= h.pin_lo && hi <= h.pin_hi {return}
+		lo, hi = min(lo, h.pin_lo), max(hi, h.pin_hi)
+		mem_free(rt, h.pin, h.pin_hi - h.pin_lo)
+	} else {
+		h.pin_depth = 1
+		h.pin_dirty = false
+	}
+	// (never empty: `data` nil means not pinned)
+	hi = max(hi, lo + 1)
+	h.pin = cast([^]u8)mem_alloc(rt, hi - lo)
+	h.pin_lo, h.pin_hi = lo, hi
+	n := min(hi, ab.byte_length) - lo
+	if n > 0 {h.read(h.user, lo, h.pin, n)}
+	ab.data = cast([^]u8)(uintptr(h.pin) - uintptr(lo))
+}
+
+// `written`: what was pinned goes back to the embedder at the last unpin.
+host_unpin :: proc(rt: ^Runtime, ab: ^Array_Buffer, written: bool) {
+	h := ab.host
+	if h == nil {return}
+	if written {h.pin_dirty = true}
+	h.pin_depth -= 1
+	if h.pin_depth > 0 {return}
+	n := min(h.pin_hi, ab.byte_length) - h.pin_lo
+	if h.pin_dirty && n > 0 {h.write(h.user, h.pin_lo, h.pin, n)}
+	mem_free(rt, h.pin, h.pin_hi - h.pin_lo)
+	h.pin = nil
+	ab.data = nil
+}
+
+// The bytes of a whole view in `data`, for a builtin that goes through them (host_unpin_view after).
+@(private = "file")
+host_pin_view :: proc(ctx: ^Context, o: ^Object) {
+	ta := typed_array_of(o)
+	ab := array_buffer_of(ta.buffer)
+	if ab.host == nil {return}
+	es := o.class == .dataview ? 1 : elem_size[class_elem(o.class)]
+	host_pin(ctx.rt, ab, ta.offset, ta.offset + typed_array_length(ctx, o) * es)
+}
+
+@(private = "file")
+host_unpin_view :: proc(ctx: ^Context, o: ^Object, written: bool) {
+	host_unpin(ctx.rt, array_buffer_of(typed_array_of(o).buffer), written)
+}
+
+// (the object is going, or the embedder detached it: a pin cannot be under way, no JavaScript runs during one)
+buffer_host_release :: proc(rt: ^Runtime, ab: ^Array_Buffer) {
+	for &s in rt.host_snapshots {
+		if s.host == ab.host {s.host = nil}   // (the copy stays until its slot is used again: a caller may be reading it)
+	}
+	free(ab.host, rt_allocator(rt))
+	ab.host = nil
+}
+
+// What the embedder does when the memory behind a host buffer grew: the buffer is detached (only the embedder can).
+detach_host_buffer :: proc(ctx: ^Context, o: ^Object) {
+	ab := array_buffer_of(o)
+	if ab == nil || ab.host == nil {return}
+	buffer_host_release(ctx.rt, ab)
+	ab.byte_length = 0
+	ab.detached = true
+}
+
 // Free what a buffer's data pointer owns: host memory through its release proc, shared memory of
 // another agent not at all, the engine's own memory through the heap.
 buffer_release_data :: proc(rt: ^Runtime, ab: ^Array_Buffer) {
@@ -95,7 +181,7 @@ this_buffer :: proc(ctx: ^Context, this: Value, shared: bool) -> ^Array_Buffer {
 
 detach_array_buffer :: proc(ctx: ^Context, o: ^Object) -> bool {
 	ab := array_buffer_of(o)
-	if ab == nil || ab.shared {
+	if ab == nil || ab.shared || ab.host != nil {
 		throw_type_error(ctx, "not a detachable ArrayBuffer")
 		return false
 	}
@@ -236,7 +322,11 @@ buffer_slice :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> V
 	if immutable && cur < first + count {return throw_range_error(ctx, "invalid array buffer length")}
 	if first < cur {
 		end := min(first + count, cur)
+		host_pin(ctx.rt, ab, int(first), int(end))
+		host_pin(ctx.rt, nb, 0, int(end - first))
 		for i in first ..< end {nb.data[i - first] = ab.data[i]}
+		host_unpin(ctx.rt, nb, true)
+		host_unpin(ctx.rt, ab, false)
 	}
 	nb.immutable = immutable
 	return nv
@@ -256,6 +346,7 @@ buffer_transfer :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -
 	}
 	if ab.immutable {return throw_immutable(ctx)}
 	if ab.detached {return throw_type_error(ctx, "ArrayBuffer is detached")}
+	if ab.host != nil {return throw_type_error(ctx, "the buffer of a WebAssembly.Memory cannot be transferred")}
 	max_len: i64 = -1
 	if magic == 0 && ab.max_byte_length >= 0 {max_len = i64(ab.max_byte_length)}
 	if max_len >= 0 && n > max_len {return throw_range_error(ctx, "new length exceeds maxByteLength")}
@@ -313,6 +404,34 @@ elem_ptr :: #force_inline proc(o: ^Object, i: int) -> rawptr {
 	ta := typed_array_of(o)
 	ab := array_buffer_of(ta.buffer)
 	return &ab.data[ta.offset + i * elem_size[class_elem(o.class)]]
+}
+
+// One element of a view, whatever holds its bytes.
+@(private = "file")
+view_read :: #force_inline proc(ctx: ^Context, o: ^Object, i: int) -> Value {
+	ta := typed_array_of(o)
+	ab := array_buffer_of(ta.buffer)
+	e := class_elem(o.class)
+	if h := ab.host; h != nil && ab.data == nil {
+		tmpb: [16]u8
+		h.read(h.user, ta.offset + i * elem_size[e], &tmpb[0], elem_size[e])
+		return read_elem(ctx, e, &tmpb[0])
+	}
+	return read_elem(ctx, e, &ab.data[ta.offset + i * elem_size[e]])
+}
+
+@(private = "file")
+view_write :: #force_inline proc(o: ^Object, i: int, ev: Elem_Val) {
+	ta := typed_array_of(o)
+	ab := array_buffer_of(ta.buffer)
+	e := class_elem(o.class)
+	if h := ab.host; h != nil && ab.data == nil {
+		tmpb: [16]u8
+		write_elem(e, &tmpb[0], ev)
+		h.write(h.user, ta.offset + i * elem_size[e], &tmpb[0], elem_size[e])
+		return
+	}
+	write_elem(e, &ab.data[ta.offset + i * elem_size[e]], ev)
 }
 
 read_elem :: proc(ctx: ^Context, e: Elem, p: rawptr) -> Value {
@@ -389,7 +508,7 @@ ta_fast_ptr :: #force_inline proc(o: ^Object, idx: u32) -> (rawptr, Elem, bool) 
 	ta, ok := o.data.(^Typed_Array)
 	if !ok || ta.track_rab || idx >= u32(ta.length) {return nil, .u8, false}
 	ab, ok2 := ta.buffer.data.(^Array_Buffer)
-	if !ok2 || ab.detached {return nil, .u8, false}
+	if !ok2 || ab.data == nil {return nil, .u8, false}   // (detached, or its bytes are elsewhere: Buffer_Host)
 	e := class_elem(o.class)
 	es := elem_size[e]
 	if ta.offset + ta.length * es > ab.byte_length {return nil, e, false}
@@ -435,7 +554,7 @@ typed_array_get_index :: proc(ctx: ^Context, o: ^Object, n: f64) -> (Value, bool
 	if !f64_is_integer(n) || (n == 0 && math.sign_bit(n)) || n < 0 {return UNDEFINED, false}
 	l := typed_array_length(ctx, o)
 	if n >= f64(l) {return UNDEFINED, false}
-	return read_elem(ctx, class_elem(o.class), elem_ptr(o, int(n))), true
+	return view_read(ctx, o, int(n)), true
 }
 
 // [[Set]] of an element: -1 exception, 0 rejected (immutable buffer), 1 done (or out of bounds).
@@ -454,7 +573,7 @@ typed_array_set_index :: proc(ctx: ^Context, o: ^Object, n: f64, v: Value) -> bo
 	if view_is_immutable(o) {return true}
 	if !f64_is_integer(n) || (n == 0 && math.sign_bit(n)) || n < 0 {return true}
 	if n >= f64(typed_array_length(ctx, o)) {return true}
-	write_elem(e, elem_ptr(o, int(n)), ev)
+	view_write(o, int(n), ev)
 	return true
 }
 
@@ -627,6 +746,8 @@ typed_array_ctor :: proc(ctx: ^Context, nt: Value, args: []Value, magic: i32) ->
 		n := typed_array_length(ctx, src)
 		o := typed_array_new_len(ctx, proto, e, i64(n))
 		if o == nil {return EXCEPTION}
+		host_pin_view(ctx, src)
+		defer host_unpin_view(ctx, src, false)
 		for i in 0 ..< n {
 			v := read_elem(ctx, se, elem_ptr(src, i))
 			ev, _ := to_elem_val(ctx, e, v)
@@ -768,7 +889,7 @@ ta_tag :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value {
 @(private = "file")
 ta_get :: #force_inline proc(ctx: ^Context, o: ^Object, i: int) -> Value {
 	if i >= typed_array_length(ctx, o) {return UNDEFINED}
-	return read_elem(ctx, class_elem(o.class), elem_ptr(o, i))
+	return view_read(ctx, o, i)
 }
 
 @(private = "file")
@@ -852,11 +973,13 @@ ta_copy_within :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) ->
 			src := base + int(from) * es
 			dst := base + int(to) * es
 			nb := int(count) * es
+			host_pin(ctx.rt, ab, min(src, dst), max(src, dst) + nb)
 			if dst < src {
 				for i in 0 ..< nb {ab.data[dst + i] = ab.data[src + i]}
 			} else {
 				for i := nb - 1; i >= 0; i -= 1 {ab.data[dst + i] = ab.data[src + i]}
 			}
+			host_unpin(ctx.rt, ab, true)
 		}
 	}
 	return this
@@ -875,7 +998,13 @@ ta_fill :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value 
 	if !ok3 {return EXCEPTION}
 	if typed_array_is_out_of_bounds(o) {return throw_type_error(ctx, "TypedArray is detached")}
 	end = min(end, i64(typed_array_length(ctx, o)))
-	for k in start ..< end {write_elem(e, elem_ptr(o, int(k)), ev)}
+	if start < end {
+		ta := typed_array_of(o)
+		ab := array_buffer_of(ta.buffer)
+		host_pin(ctx.rt, ab, ta.offset + int(start) * elem_size[e], ta.offset + int(end) * elem_size[e])
+		for k in start ..< end {write_elem(e, elem_ptr(o, int(k)), ev)}
+		host_unpin(ctx.rt, ab, true)
+	}
 	return this
 }
 
@@ -978,6 +1107,8 @@ ta_reverse :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Val
 	o, n, ok := validate_ta_mut(ctx, this)
 	if !ok {return EXCEPTION}
 	es := elem_size[class_elem(o.class)]
+	host_pin_view(ctx, o)
+	defer host_unpin_view(ctx, o, true)
 	for i in 0 ..< n / 2 {
 		a := cast([^]u8)elem_ptr(o, i)
 		b := cast([^]u8)elem_ptr(o, n - 1 - i)
@@ -1006,6 +1137,25 @@ ta_set :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value {
 		if elem_is_bigint(se) != elem_is_bigint(e) {return throw_type_error(ctx, "TypedArray content types are incompatible")}
 		slen := typed_array_length(ctx, so)
 		if off == INF || f64(slen) + off > f64(tlen) {return throw_range_error(ctx, "offset is out of bounds")}
+		// between a host buffer and this engine's memory, same elements: one call for all of them (heap.set(bytes))
+		sta, dta := typed_array_of(so), typed_array_of(o)
+		sab, dab := array_buffer_of(sta.buffer), array_buffer_of(dta.buffer)
+		es := elem_size[e]
+		if se == e && (sab.host != nil) != (dab.host != nil) {
+			if slen > 0 {
+				if h := dab.host; h != nil {
+					h.write(h.user, dta.offset + int(off) * es, &sab.data[sta.offset], slen * es)
+				} else {
+					sh := sab.host
+					sh.read(sh.user, sta.offset, &dab.data[dta.offset + int(off) * es], slen * es)
+				}
+			}
+			return UNDEFINED
+		}
+		host_pin_view(ctx, so)
+		defer host_unpin_view(ctx, so, false)
+		host_pin_view(ctx, o)
+		defer host_unpin_view(ctx, o, true)
 		vals := make([]Value, slen, tmp(rt))
 		for i in 0 ..< slen {vals[i] = read_elem(ctx, se, elem_ptr(so, i))}
 		for v, i in vals {
@@ -1043,6 +1193,10 @@ ta_slice :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value
 		end = min(end, i64(typed_array_length(ctx, o)))
 		if class_elem(a.class) == class_elem(o.class) {
 			es := elem_size[class_elem(o.class)]
+			host_pin_view(ctx, o)
+			defer host_unpin_view(ctx, o, false)
+			host_pin_view(ctx, a)
+			defer host_unpin_view(ctx, a, true)
 			for k in start ..< end {
 				src := cast([^]u8)elem_ptr(o, int(k))
 				dst := cast([^]u8)elem_ptr(a, int(k - start))
@@ -1116,7 +1270,7 @@ ta_sort :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value 
 	for v, i in vals {
 		if i >= cur {break}
 		ev, _ := to_elem_val(ctx, e, v)
-		write_elem(e, elem_ptr(o, i), ev)
+		view_write(o, i, ev)
 	}
 	return this
 }
@@ -1147,6 +1301,8 @@ ta_to_reversed :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) ->
 	a := typed_array_new_len(ctx, ctx.class_proto[elem_class(e)], e, i64(n))
 	if a == nil {return EXCEPTION}
 	es := elem_size[e]
+	host_pin_view(ctx, o)
+	defer host_unpin_view(ctx, o, false)
 	for i in 0 ..< n {
 		src := cast([^]u8)elem_ptr(o, n - 1 - i)
 		dst := cast([^]u8)elem_ptr(a, i)
@@ -1299,8 +1455,21 @@ dv_access :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Valu
 	if idx + i64(es) > i64(vl) {return throw_range_error(ctx, "DataView access is out of bounds")}
 	ta := typed_array_of(o)
 	ab := array_buffer_of(ta.buffer)
-	p := &ab.data[ta.offset + int(idx)]
 	tmpb: [8]u8
+	if h := ab.host; h != nil {
+		at := ta.offset + int(idx)
+		wire: [8]u8
+		if is_set {
+			write_elem(e, &tmpb[0], ev)
+			for i in 0 ..< es {wire[i] = little ? tmpb[i] : tmpb[es - 1 - i]}
+			h.write(h.user, at, &wire[0], es)
+			return UNDEFINED
+		}
+		h.read(h.user, at, &wire[0], es)
+		for i in 0 ..< es {tmpb[i] = little ? wire[i] : wire[es - 1 - i]}
+		return read_elem(ctx, e, &tmpb[0])
+	}
+	p := &ab.data[ta.offset + int(idx)]
 	if is_set {
 		write_elem(e, &tmpb[0], ev)
 		for i in 0 ..< es {
@@ -1471,6 +1640,8 @@ atomics_op :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Val
 	}
 	if typed_array_is_out_of_bounds(o) {return throw_type_error(ctx, "TypedArray is detached")}
 	if idx >= typed_array_length(ctx, o) {return throw_range_error(ctx, "Atomics access index out of range")}
+	host_pin_view(ctx, o)
+	defer host_unpin_view(ctx, o, op != .load)
 	p := elem_ptr(o, idx)
 	// read-modify-write on memory other agents (threads) can reach is serialized by one process-wide lock
 	if array_buffer_of(typed_array_of(o).buffer).shared {
@@ -1566,6 +1737,7 @@ atomics_wait :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> V
 	if !ok4 {return EXCEPTION}
 	if t != t {t = math.inf_f64(1)} else if t < 0 {t = 0}
 	if !ctx.rt.config.can_block {return throw_type_error(ctx, "Atomics.wait cannot block in this agent")}
+	if array_buffer_of(typed_array_of(o).buffer).host != nil {return throw_type_error(ctx, "Atomics.wait requires a shared buffer")}
 	addr := elem_ptr(o, idx)
 	expected := elem_val_raw(e, v) & elem_mask(e)
 	hook := ctx.rt.config.atomics_wait
@@ -1673,6 +1845,8 @@ u8_to_base64 :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> V
 	n := typed_array_length(ctx, o)
 	tbl := alpha == "base64" ? B64 : B64URL
 	sb := sb_init(ctx.rt, n * 4 / 3 + 4)
+	host_pin_view(ctx, o)
+	defer host_unpin_view(ctx, o, false)
 	b := cast([^]u8)elem_ptr(o, 0)
 	for i := 0; i < n; i += 3 {
 		x := u32(b[i]) << 16
@@ -1695,6 +1869,8 @@ u8_to_hex :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Valu
 	n := typed_array_length(ctx, o)
 	HEX := "0123456789abcdef"
 	sb := sb_init(ctx.rt, n * 2)
+	host_pin_view(ctx, o)
+	defer host_unpin_view(ctx, o, false)
 	b := cast([^]u8)elem_ptr(o, 0)
 	for i in 0 ..< n {
 		sb_unit(&sb, u16(HEX[b[i] >> 4]))
@@ -1813,8 +1989,10 @@ u8_from_base64 :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) ->
 	s := str_flat(rt, as_str(sarg))
 	read, written, good := decode_base64(s, alpha == "base64url", last, max_len, &out)
 	if magic == 1 {
+		host_pin_view(ctx, target)
 		b := cast([^]u8)elem_ptr(target, 0)
 		for i in 0 ..< written {b[i] = out[i]}
+		host_unpin_view(ctx, target, true)
 		if !good {return throw_syntax_error(ctx, "invalid base64 string")}
 		r := new_plain_object(ctx)
 		define_value(ctx, r, atom_from_utf8(rt, "read"), mk_int(i32(read)), CWE)
@@ -1871,8 +2049,10 @@ u8_from_hex :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Va
 		}
 	}
 	if magic == 1 {
+		host_pin_view(ctx, target)
 		bp := cast([^]u8)elem_ptr(target, 0)
 		for x, i in out {bp[i] = x}
+		host_unpin_view(ctx, target, true)
 		if !good {return throw_syntax_error(ctx, "invalid hex string")}
 		r := new_plain_object(ctx)
 		define_value(ctx, r, atom_from_utf8(rt, "read"), mk_int(i32(read)), CWE)
@@ -1899,4 +2079,31 @@ init_uint8_base64 :: proc(ctx: ^Context) {
 	def_method(ctx, p, "toHex", u8_to_hex, 0)
 	def_method(ctx, p, "setFromBase64", u8_from_base64, 1, 1)
 	def_method(ctx, p, "setFromHex", u8_from_hex, 1, 1)
+}
+
+// ---- copies of a host buffer's bytes for the embedder's APIs (fetch a body, decode text: JS_GetArrayBufferRange) ----
+
+// A copy lives until HOST_SNAPSHOTS more were made: the caller is one native call, which takes at most a few buffers.
+host_snapshot :: proc(rt: ^Runtime, ab: ^Array_Buffer, offset, count: int) -> [^]u8 {
+	h := ab.host
+	off := clamp(offset, 0, ab.byte_length)
+	n := clamp(count, 0, ab.byte_length - off)
+	s := &rt.host_snapshots[rt.host_snapshot_next]
+	rt.host_snapshot_next = (rt.host_snapshot_next + 1) % HOST_SNAPSHOTS
+	if s.bytes != nil {mem_free(rt, s.bytes, s.cap)}
+	s^ = {}
+	s.cap = max(n, 1)
+	s.bytes = cast([^]u8)mem_alloc(rt, s.cap)
+	s.host, s.off, s.n = h, off, n
+	if n > 0 {h.read(h.user, off, s.bytes, n)}
+	return cast([^]u8)(uintptr(s.bytes) - uintptr(off))
+}
+
+host_snapshot_commit :: proc(rt: ^Runtime, p: [^]u8, n: int) {
+	if n <= 0 {return}
+	for &s in rt.host_snapshots {
+		if s.host == nil || uintptr(p) < uintptr(s.bytes) || uintptr(p) + uintptr(n) > uintptr(s.bytes) + uintptr(s.n) {continue}
+		s.host.write(s.host.user, s.off + int(uintptr(p) - uintptr(s.bytes)), p, n)
+		return
+	}
 }

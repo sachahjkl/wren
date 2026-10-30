@@ -130,7 +130,7 @@ wj_to_buffer_source :: proc "c" (ctx: ^Context, v: JSValue, ptr: ^[^]u8, length:
 		return false
 	}
 	total: uint = 0
-	p := JS_GetArrayBuffer(ctx, &total, buffer)
+	p := JS_GetArrayBufferRange(ctx, &total, buffer, off, n)
 	JS_FreeValue(ctx, buffer)   // the view keeps it alive
 	if p == nil { JS_FreeValue(ctx, JS_GetException(ctx)); return true }
 	if off > total { off = total }
@@ -182,7 +182,7 @@ wj_key_buffer_bytes :: proc "c" (ctx: ^Context, v: JSValue, ptr: ^[^]u8, length:
 		return 0
 	}
 	total: uint = 0
-	p := JS_GetArrayBuffer(ctx, &total, buffer)
+	p := JS_GetArrayBufferRange(ctx, &total, buffer, off, n)
 	JS_FreeValue(ctx, buffer)   // the view keeps it alive
 	if p == nil { JS_FreeValue(ctx, JS_GetException(ctx)); return 0 }
 	if off > total || n > total - off { return 0 }

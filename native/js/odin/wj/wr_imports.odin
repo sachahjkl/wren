@@ -3547,6 +3547,55 @@ foreign _wr_wj_webassembly {
 	@(link_name = "WebAssembly_Module_customSectionCount") wr_WebAssembly_Module_customSectionCount :: proc(module: u64, name: [^]u8, name_len: u32) -> i32 ---
 	// The bytes of the custom section number `index` of those called `name`.
 	@(link_name = "WebAssembly_Module_customSection") wr_WebAssembly_Module_customSection :: proc(module: u64, name: [^]u8, name_len: u32, index: i32, _buf: [^]u8, _cap: u32) -> i32 ---
+	// What the module imports with the types, as JSON: [{module, name, kind, sig, value, mutable}].
+	@(link_name = "WebAssembly_Module_linkInfo") wr_WebAssembly_Module_linkInfo :: proc(module: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	// The message of the last failure.
+	@(link_name = "WebAssembly_lastError") wr_WebAssembly_lastError :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	// new WebAssembly.Memory: a number. `maximum` -1 for none.
+	@(link_name = "WebAssembly_Memory_create") wr_WebAssembly_Memory_create :: proc(initial: i64, maximum: i64) -> i32 ---
+	// The size in pages (-1: no such memory).
+	@(link_name = "WebAssembly_Memory_pages") wr_WebAssembly_Memory_pages :: proc(memory: i32) -> i64 ---
+	// memory.grow: the previous size in pages.
+	@(link_name = "WebAssembly_Memory_grow") wr_WebAssembly_Memory_grow :: proc(memory: i32, delta: i64) -> i64 ---
+	// Bytes of the memory at `offset`: how many were copied. What memory.buffer reads.
+	@(link_name = "WebAssembly_Memory_read") wr_WebAssembly_Memory_read :: proc(memory: i32, offset: i64, destination: [^]u8, destination_cap: u32) -> i32 ---
+	// `source` into the memory at `offset`: how many were copied. What memory.buffer writes.
+	@(link_name = "WebAssembly_Memory_write") wr_WebAssembly_Memory_write :: proc(memory: i32, offset: i64, source: [^]u8, source_len: u32) -> i32 ---
+	// new WebAssembly.Table: a number. `element` "r" (funcref) or "e" (externref), `maximum` -1 for none.
+	@(link_name = "WebAssembly_Table_create") wr_WebAssembly_Table_create :: proc(element: [^]u8, element_len: u32, initial: i64, maximum: i64, init: i64) -> i32 ---
+	// "r", "e", or "" for no such table.
+	@(link_name = "WebAssembly_Table_element") wr_WebAssembly_Table_element :: proc(table: i32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "WebAssembly_Table_length") wr_WebAssembly_Table_length :: proc(table: i32) -> i64 ---
+	// The cell at `index`, into `cell` (8 bytes): 0, or the opposite of a failure.
+	@(link_name = "WebAssembly_Table_get") wr_WebAssembly_Table_get :: proc(table: i32, index: i64, cell: [^]u8, cell_cap: u32) -> i32 ---
+	@(link_name = "WebAssembly_Table_set") wr_WebAssembly_Table_set :: proc(table: i32, index: i64, cell: i64) -> i32 ---
+	// table.grow: the previous length.
+	@(link_name = "WebAssembly_Table_grow") wr_WebAssembly_Table_grow :: proc(table: i32, delta: i64, init: i64) -> i64 ---
+	// new WebAssembly.Global: a number. `type` a value type's letter.
+	@(link_name = "WebAssembly_Global_create") wr_WebAssembly_Global_create :: proc(type: [^]u8, type_len: u32, mutable: i32, cell: i64) -> i32 ---
+	// The value type's letter, then "m" when it can change; "" for no such global.
+	@(link_name = "WebAssembly_Global_type") wr_WebAssembly_Global_type :: proc(global: i32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "WebAssembly_Global_get") wr_WebAssembly_Global_get :: proc(global: i32) -> i64 ---
+	@(link_name = "WebAssembly_Global_set") wr_WebAssembly_Global_set :: proc(global: i32, cell: i64) -> i32 ---
+	// A function of signature `sig` that runs import `slot` of the realm (wj_wasm_import).
+	@(link_name = "WebAssembly_Func_import") wr_WebAssembly_Func_import :: proc(slot: i32, sig: [^]u8, sig_len: u32) -> i32 ---
+	// The signature of a function, "params:results" (see src/wasm/user_store.odin); "" for no such function.
+	@(link_name = "WebAssembly_Func_sig") wr_WebAssembly_Func_sig :: proc(func: i32, _buf: [^]u8, _cap: u32) -> i32 ---
+	// Calls a function: `args` its cells (8 bytes each). 0, or the opposite of a failure.
+	@(link_name = "WebAssembly_Func_call") wr_WebAssembly_Func_call :: proc(func: i32, args: [^]u8, args_len: u32) -> i32 ---
+	// The results of the call that just ended, as cells (apart: the call may have moved the engine's memory).
+	@(link_name = "WebAssembly_Func_results") wr_WebAssembly_Func_results :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	// The arguments of the import running, as cells.
+	@(link_name = "WebAssembly_import_args") wr_WebAssembly_import_args :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	// The results of the import running, as cells.
+	@(link_name = "WebAssembly_import_results") wr_WebAssembly_import_results :: proc(results: [^]u8, results_len: u32) ---
+	// Why the import running failed.
+	@(link_name = "WebAssembly_import_failed") wr_WebAssembly_import_failed :: proc(message: [^]u8, message_len: u32) ---
+	// new WebAssembly.Instance: a number. `externs` the number of a thing for each import (4 bytes each); the start function
+	// runs here.
+	@(link_name = "WebAssembly_Instance_create") wr_WebAssembly_Instance_create :: proc(module: u64, externs: [^]u8, externs_len: u32) -> i32 ---
+	// The exports of an instance, as JSON: [{name, kind, id, index}].
+	@(link_name = "WebAssembly_Instance_exports") wr_WebAssembly_Instance_exports :: proc(instance: i32, module: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 }
 
 // module webcodecs

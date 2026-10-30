@@ -6,6 +6,11 @@ The WebAssembly JavaScript API (src/page/webassembly.odin, the objects: native/j
 WebAssembly modules, compiled and run by Wasmtime beside the engine's. Off until it is complete
 (javascript.webassembly.enabled): a page that finds a `WebAssembly` object expects all of it.
 
+What a page makes (memories, tables, globals, functions, instances) lives in one store per realm, known by numbers.
+A call that can fail gives a number >= 0 or the opposite of a failure (1 LinkError, 2 RuntimeError, 3 RangeError,
+4 TypeError), the message from WebAssembly_lastError. A value crosses as a cell: an i64 holding an i32, an i64, the
+bits of a float, a function's number + 1, or an externref's number (0: a null reference).
+
 Exposed to: Window, Worker. Source: `api/webassembly.widl`.
 
 ## Types
@@ -98,4 +103,257 @@ bytes WebAssembly_Module_customSection(WebAssemblyModule module, string name, i3
 The bytes of the custom section number `index` of those called `name`.
 
 Host: `WebAssembly_Module_customSection :: proc(c: ^Call, module: Api_WebAssemblyModule, name: string, index: i32) -> []u8`
+
+### `WebAssembly_Module_linkInfo`
+
+```
+string WebAssembly_Module_linkInfo(WebAssemblyModule module)
+```
+
+What the module imports with the types, as JSON: [{module, name, kind, sig, value, mutable}].
+
+Host: `WebAssembly_Module_linkInfo :: proc(c: ^Call, module: Api_WebAssemblyModule) -> string`
+
+### `WebAssembly_lastError`
+
+```
+string WebAssembly_lastError()
+```
+
+The message of the last failure.
+
+Host: `WebAssembly_lastError :: proc(c: ^Call) -> string`
+
+### `WebAssembly_Memory_create`
+
+```
+i32 WebAssembly_Memory_create(i64 initial, i64 maximum)
+```
+
+new WebAssembly.Memory: a number. `maximum` -1 for none.
+
+Host: `WebAssembly_Memory_create :: proc(c: ^Call, initial: i64, maximum: i64) -> i32`
+
+### `WebAssembly_Memory_pages`
+
+```
+i64 WebAssembly_Memory_pages(i32 memory)
+```
+
+The size in pages (-1: no such memory).
+
+Host: `WebAssembly_Memory_pages :: proc(c: ^Call, memory: i32) -> i64`
+
+### `WebAssembly_Memory_grow`
+
+```
+i64 WebAssembly_Memory_grow(i32 memory, i64 delta)
+```
+
+memory.grow: the previous size in pages.
+
+Host: `WebAssembly_Memory_grow :: proc(c: ^Call, memory: i32, delta: i64) -> i64`
+
+### `WebAssembly_Memory_read`
+
+```
+i32 WebAssembly_Memory_read(i32 memory, i64 offset, out bytes destination)
+```
+
+Bytes of the memory at `offset`: how many were copied. What memory.buffer reads.
+
+Host: `WebAssembly_Memory_read :: proc(c: ^Call, memory: i32, offset: i64, destination: []u8) -> i32`
+
+### `WebAssembly_Memory_write`
+
+```
+i32 WebAssembly_Memory_write(i32 memory, i64 offset, bytes source)
+```
+
+`source` into the memory at `offset`: how many were copied. What memory.buffer writes.
+
+Host: `WebAssembly_Memory_write :: proc(c: ^Call, memory: i32, offset: i64, source: []u8) -> i32`
+
+### `WebAssembly_Table_create`
+
+```
+i32 WebAssembly_Table_create(string element, i64 initial, i64 maximum, i64 init)
+```
+
+new WebAssembly.Table: a number. `element` "r" (funcref) or "e" (externref), `maximum` -1 for none.
+
+Host: `WebAssembly_Table_create :: proc(c: ^Call, element: string, initial: i64, maximum: i64, init: i64) -> i32`
+
+### `WebAssembly_Table_element`
+
+```
+string WebAssembly_Table_element(i32 table)
+```
+
+"r", "e", or "" for no such table.
+
+Host: `WebAssembly_Table_element :: proc(c: ^Call, table: i32) -> string`
+
+### `WebAssembly_Table_length`
+
+```
+i64 WebAssembly_Table_length(i32 table)
+```
+
+Host: `WebAssembly_Table_length :: proc(c: ^Call, table: i32) -> i64`
+
+### `WebAssembly_Table_get`
+
+```
+i32 WebAssembly_Table_get(i32 table, i64 index, out bytes cell)
+```
+
+The cell at `index`, into `cell` (8 bytes): 0, or the opposite of a failure.
+
+Host: `WebAssembly_Table_get :: proc(c: ^Call, table: i32, index: i64, cell: []u8) -> i32`
+
+### `WebAssembly_Table_set`
+
+```
+i32 WebAssembly_Table_set(i32 table, i64 index, i64 cell)
+```
+
+Host: `WebAssembly_Table_set :: proc(c: ^Call, table: i32, index: i64, cell: i64) -> i32`
+
+### `WebAssembly_Table_grow`
+
+```
+i64 WebAssembly_Table_grow(i32 table, i64 delta, i64 init)
+```
+
+table.grow: the previous length.
+
+Host: `WebAssembly_Table_grow :: proc(c: ^Call, table: i32, delta: i64, init: i64) -> i64`
+
+### `WebAssembly_Global_create`
+
+```
+i32 WebAssembly_Global_create(string type, bool mutable, i64 cell)
+```
+
+new WebAssembly.Global: a number. `type` a value type's letter.
+
+Host: `WebAssembly_Global_create :: proc(c: ^Call, type: string, mutable: bool, cell: i64) -> i32`
+
+### `WebAssembly_Global_type`
+
+```
+string WebAssembly_Global_type(i32 global)
+```
+
+The value type's letter, then "m" when it can change; "" for no such global.
+
+Host: `WebAssembly_Global_type :: proc(c: ^Call, global: i32) -> string`
+
+### `WebAssembly_Global_get`
+
+```
+i64 WebAssembly_Global_get(i32 global)
+```
+
+Host: `WebAssembly_Global_get :: proc(c: ^Call, global: i32) -> i64`
+
+### `WebAssembly_Global_set`
+
+```
+i32 WebAssembly_Global_set(i32 global, i64 cell)
+```
+
+Host: `WebAssembly_Global_set :: proc(c: ^Call, global: i32, cell: i64) -> i32`
+
+### `WebAssembly_Func_import`
+
+```
+i32 WebAssembly_Func_import(i32 slot, string sig)
+```
+
+A function of signature `sig` that runs import `slot` of the realm (wj_wasm_import).
+
+Host: `WebAssembly_Func_import :: proc(c: ^Call, slot: i32, sig: string) -> i32`
+
+### `WebAssembly_Func_sig`
+
+```
+string WebAssembly_Func_sig(i32 func)
+```
+
+The signature of a function, "params:results" (see src/wasm/user_store.odin); "" for no such function.
+
+Host: `WebAssembly_Func_sig :: proc(c: ^Call, func: i32) -> string`
+
+### `WebAssembly_Func_call`
+
+```
+i32 WebAssembly_Func_call(i32 func, bytes args)
+```
+
+Calls a function: `args` its cells (8 bytes each). 0, or the opposite of a failure.
+
+Host: `WebAssembly_Func_call :: proc(c: ^Call, func: i32, args: []u8) -> i32`
+
+### `WebAssembly_Func_results`
+
+```
+bytes WebAssembly_Func_results()
+```
+
+The results of the call that just ended, as cells (apart: the call may have moved the engine's memory).
+
+Host: `WebAssembly_Func_results :: proc(c: ^Call) -> []u8`
+
+### `WebAssembly_import_args`
+
+```
+bytes WebAssembly_import_args()
+```
+
+The arguments of the import running, as cells.
+
+Host: `WebAssembly_import_args :: proc(c: ^Call) -> []u8`
+
+### `WebAssembly_import_results`
+
+```
+void WebAssembly_import_results(bytes results)
+```
+
+The results of the import running, as cells.
+
+Host: `WebAssembly_import_results :: proc(c: ^Call, results: []u8)`
+
+### `WebAssembly_import_failed`
+
+```
+void WebAssembly_import_failed(string message)
+```
+
+Why the import running failed.
+
+Host: `WebAssembly_import_failed :: proc(c: ^Call, message: string)`
+
+### `WebAssembly_Instance_create`
+
+```
+i32 WebAssembly_Instance_create(WebAssemblyModule module, bytes externs)
+```
+
+new WebAssembly.Instance: a number. `externs` the number of a thing for each import (4 bytes each); the start function
+runs here.
+
+Host: `WebAssembly_Instance_create :: proc(c: ^Call, module: Api_WebAssemblyModule, externs: []u8) -> i32`
+
+### `WebAssembly_Instance_exports`
+
+```
+string WebAssembly_Instance_exports(i32 instance, WebAssemblyModule module)
+```
+
+The exports of an instance, as JSON: [{name, kind, id, index}].
+
+Host: `WebAssembly_Instance_exports :: proc(c: ^Call, instance: i32, module: Api_WebAssemblyModule) -> string`
 

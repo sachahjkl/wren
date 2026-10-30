@@ -258,6 +258,19 @@ Array_Buffer :: struct {
 	free_proc:    proc(data: [^]u8, user: rawptr), // adopted host memory: how to release it
 	free_user:    rawptr,
 	views:        [dynamic]^Object, // typed arrays/data views over this buffer (weak-ish: views keep buffer alive)
+	host:         ^Buffer_Host,     // the bytes are outside this engine's memory: `data` is nil unless pinned
+}
+
+// A buffer whose bytes are not in this engine's memory (a WebAssembly.Memory of the page): reached through the embedder.
+// One element is one call; a builtin that works on a range pins it (host_pin): a copy `data` points at for that time.
+Buffer_Host :: struct {
+	read:  proc "contextless" (user: u64, offset: int, dst: [^]u8, n: int),
+	write: proc "contextless" (user: u64, offset: int, src: [^]u8, n: int),
+	user:  u64,
+	pin:   [^]u8,   // the copy of [pin_lo, pin_hi), while pinned
+	pin_lo, pin_hi: int,
+	pin_depth: int,
+	pin_dirty: bool,
 }
 
 Typed_Array :: struct {
@@ -652,6 +665,7 @@ object_finalize :: proc(rt: ^Runtime, o: ^Object) {
 		free(d, rt_allocator(rt))
 	case ^Array_Buffer:
 		buffer_release_data(rt, d)
+		if d.host != nil {buffer_host_release(rt, d)}
 		delete(d.views)
 		free(d, rt_allocator(rt))
 	case ^Typed_Array:

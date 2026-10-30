@@ -19,9 +19,7 @@ when ODIN_OS == .Windows {
 
 @(default_calling_convention = "c")
 foreign wasmtime_shm {
-	wasmtime_memorytype_new :: proc(min: u64, max_present: bool, max: u64, is_64: bool, shared: bool, page_size_log2: u8, ret: ^rawptr) -> wt_error ---
-	wasm_memorytype_delete :: proc(t: rawptr) ---
-	wasmtime_sharedmemory_new :: proc(e: wt_engine, ty: rawptr, ret: ^rawptr) -> wt_error ---
+	wasmtime_sharedmemory_new :: proc(e: wt_engine, ty: wt_memorytype, ret: ^rawptr) -> wt_error ---
 	wasmtime_sharedmemory_delete :: proc(m: rawptr) ---
 	wasmtime_sharedmemory_data :: proc(m: rawptr) -> [^]u8 ---
 }
@@ -91,7 +89,7 @@ two_stores_share_a_memory_and_wait_for_each_other :: proc(t: ^testing.T) {
 	module: wt_module
 	if e := wasmtime_module_new(engine, bin.data, bin.size, &module); e != nil { wasmtime_error_delete(e); testing.fail_now(t, "a module with a shared memory and atomics does not compile") }
 	defer wasmtime_module_delete(module)
-	ty: rawptr
+	ty: wt_memorytype
 	if e := wasmtime_memorytype_new(1, true, 1, false, true, 16, &ty); e != nil { wasmtime_error_delete(e); testing.fail_now(t, "memory type") }
 	defer wasm_memorytype_delete(ty)
 	mem: rawptr

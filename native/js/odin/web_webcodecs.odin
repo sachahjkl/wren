@@ -292,6 +292,7 @@ wjr_VideoFrame_copyTo :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc:
 	st := jsb.host_n(&planes, api_decl.VideoFrame_copyTo, wj.wr_VideoFrame_copyTo, f, dst[:dlen], o.format,
 		i32(o.rect[0]), i32(o.rect[1]), i32(o.rect[2]), i32(o.rect[3]), o.has_rect, o.offsets[:n], o.strides[:n], o.planes > 0)
 	if st != .None { return wj.web_promise_rejected(ctx, wj.web_error_value(ctx, i32(st), nil, 0)) }
+	wj.JS_ArrayBufferCommit(ctx, dst, dlen)
 	// resolve with the PlaneLayout[] the host kept
 	arr := wj.JS_NewArray(ctx)
 	for i in 0 ..< min(planes, 4) {

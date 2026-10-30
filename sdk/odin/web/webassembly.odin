@@ -2,6 +2,11 @@
 // The WebAssembly JavaScript API (src/page/webassembly.odin, the objects: native/js/odin/web_wasm.odin): a page's own
 // WebAssembly modules, compiled and run by Wasmtime beside the engine's. Off until it is complete
 // (javascript.webassembly.enabled): a page that finds a `WebAssembly` object expects all of it.
+//
+// What a page makes (memories, tables, globals, functions, instances) lives in one store per realm, known by numbers.
+// A call that can fail gives a number >= 0 or the opposite of a failure (1 LinkError, 2 RuntimeError, 3 RangeError,
+// 4 TypeError), the message from WebAssembly_lastError. A value crosses as a cell: an i64 holding an i32, an i64, the
+// bits of a float, a function's number + 1, or an externref's number (0: a null reference).
 package web
 
 import "base:runtime"
@@ -20,6 +25,32 @@ foreign _m_webassembly {
 	@(link_name = "WebAssembly_Module_exports") _WebAssembly_Module_exports :: proc(module: WebAssemblyModule, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "WebAssembly_Module_customSectionCount") _WebAssembly_Module_customSectionCount :: proc(module: WebAssemblyModule, name: [^]u8, name_len: u32) -> i32 ---
 	@(link_name = "WebAssembly_Module_customSection") _WebAssembly_Module_customSection :: proc(module: WebAssemblyModule, name: [^]u8, name_len: u32, index: i32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "WebAssembly_Module_linkInfo") _WebAssembly_Module_linkInfo :: proc(module: WebAssemblyModule, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "WebAssembly_lastError") _WebAssembly_lastError :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "WebAssembly_Memory_create") _WebAssembly_Memory_create :: proc(initial: i64, maximum: i64) -> i32 ---
+	@(link_name = "WebAssembly_Memory_pages") _WebAssembly_Memory_pages :: proc(memory: i32) -> i64 ---
+	@(link_name = "WebAssembly_Memory_grow") _WebAssembly_Memory_grow :: proc(memory: i32, delta: i64) -> i64 ---
+	@(link_name = "WebAssembly_Memory_read") _WebAssembly_Memory_read :: proc(memory: i32, offset: i64, destination: [^]u8, destination_len: u32) -> i32 ---
+	@(link_name = "WebAssembly_Memory_write") _WebAssembly_Memory_write :: proc(memory: i32, offset: i64, source: [^]u8, source_len: u32) -> i32 ---
+	@(link_name = "WebAssembly_Table_create") _WebAssembly_Table_create :: proc(element: [^]u8, element_len: u32, initial: i64, maximum: i64, init: i64) -> i32 ---
+	@(link_name = "WebAssembly_Table_element") _WebAssembly_Table_element :: proc(table: i32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "WebAssembly_Table_length") _WebAssembly_Table_length :: proc(table: i32) -> i64 ---
+	@(link_name = "WebAssembly_Table_get") _WebAssembly_Table_get :: proc(table: i32, index: i64, cell: [^]u8, cell_len: u32) -> i32 ---
+	@(link_name = "WebAssembly_Table_set") _WebAssembly_Table_set :: proc(table: i32, index: i64, cell: i64) -> i32 ---
+	@(link_name = "WebAssembly_Table_grow") _WebAssembly_Table_grow :: proc(table: i32, delta: i64, init: i64) -> i64 ---
+	@(link_name = "WebAssembly_Global_create") _WebAssembly_Global_create :: proc(type: [^]u8, type_len: u32, mutable: i32, cell: i64) -> i32 ---
+	@(link_name = "WebAssembly_Global_type") _WebAssembly_Global_type :: proc(global: i32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "WebAssembly_Global_get") _WebAssembly_Global_get :: proc(global: i32) -> i64 ---
+	@(link_name = "WebAssembly_Global_set") _WebAssembly_Global_set :: proc(global: i32, cell: i64) -> i32 ---
+	@(link_name = "WebAssembly_Func_import") _WebAssembly_Func_import :: proc(slot: i32, sig: [^]u8, sig_len: u32) -> i32 ---
+	@(link_name = "WebAssembly_Func_sig") _WebAssembly_Func_sig :: proc(func: i32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "WebAssembly_Func_call") _WebAssembly_Func_call :: proc(func: i32, args: [^]u8, args_len: u32) -> i32 ---
+	@(link_name = "WebAssembly_Func_results") _WebAssembly_Func_results :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "WebAssembly_import_args") _WebAssembly_import_args :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "WebAssembly_import_results") _WebAssembly_import_results :: proc(results: [^]u8, results_len: u32) ---
+	@(link_name = "WebAssembly_import_failed") _WebAssembly_import_failed :: proc(message: [^]u8, message_len: u32) ---
+	@(link_name = "WebAssembly_Instance_create") _WebAssembly_Instance_create :: proc(module: WebAssemblyModule, externs: [^]u8, externs_len: u32) -> i32 ---
+	@(link_name = "WebAssembly_Instance_exports") _WebAssembly_Instance_exports :: proc(instance: i32, module: WebAssemblyModule, _buf: [^]u8, _cap: u32) -> i32 ---
 }
 
 // Whether the page's realm has the `WebAssembly` object (javascript.webassembly.enabled).
@@ -130,6 +161,325 @@ WebAssembly_Module_customSection_alloc :: proc(module: WebAssemblyModule, name: 
 		n := _WebAssembly_Module_customSection(module, raw_data(name), u32(len(name)), index, raw_data(buf), u32(len(buf)))
 		if n < 0 { delete(buf, allocator); return {}, Error(n) }
 		if int(n) <= cap { return (buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// What the module imports with the types, as JSON: [{module, name, kind, sig, value, mutable}].
+WebAssembly_Module_linkInfo :: proc "contextless" (module: WebAssemblyModule, buf: []u8) -> (string, Error) {
+	n := _WebAssembly_Module_linkInfo(module, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of WebAssembly_Module_linkInfo's result.
+WebAssembly_Module_linkInfo_len :: proc "contextless" (module: WebAssemblyModule) -> (int, Error) {
+	n := _WebAssembly_Module_linkInfo(module, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// WebAssembly_Module_linkInfo's result in a buffer allocated to fit.
+WebAssembly_Module_linkInfo_alloc :: proc(module: WebAssemblyModule, allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _WebAssembly_Module_linkInfo(module, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// The message of the last failure.
+WebAssembly_lastError :: proc "contextless" (buf: []u8) -> (string, Error) {
+	n := _WebAssembly_lastError(raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of WebAssembly_lastError's result.
+WebAssembly_lastError_len :: proc "contextless" () -> (int, Error) {
+	n := _WebAssembly_lastError(nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// WebAssembly_lastError's result in a buffer allocated to fit.
+WebAssembly_lastError_alloc :: proc(allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _WebAssembly_lastError(raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// new WebAssembly.Memory: a number. `maximum` -1 for none.
+WebAssembly_Memory_create :: proc "contextless" (initial: i64, maximum: i64) -> i32 {
+	return _WebAssembly_Memory_create(initial, maximum)
+}
+
+// The size in pages (-1: no such memory).
+WebAssembly_Memory_pages :: proc "contextless" (memory: i32) -> i64 {
+	return _WebAssembly_Memory_pages(memory)
+}
+
+// memory.grow: the previous size in pages.
+WebAssembly_Memory_grow :: proc "contextless" (memory: i32, delta: i64) -> i64 {
+	return _WebAssembly_Memory_grow(memory, delta)
+}
+
+// Bytes of the memory at `offset`: how many were copied. What memory.buffer reads.
+WebAssembly_Memory_read :: proc "contextless" (memory: i32, offset: i64, destination: []u8) -> i32 {
+	return _WebAssembly_Memory_read(memory, offset, raw_data(destination), u32(len(destination)))
+}
+
+// `source` into the memory at `offset`: how many were copied. What memory.buffer writes.
+WebAssembly_Memory_write :: proc "contextless" (memory: i32, offset: i64, source: []u8) -> i32 {
+	return _WebAssembly_Memory_write(memory, offset, raw_data(source), u32(len(source)))
+}
+
+// new WebAssembly.Table: a number. `element` "r" (funcref) or "e" (externref), `maximum` -1 for none.
+WebAssembly_Table_create :: proc "contextless" (element: string, initial: i64, maximum: i64, init: i64) -> i32 {
+	return _WebAssembly_Table_create(raw_data(element), u32(len(element)), initial, maximum, init)
+}
+
+// "r", "e", or "" for no such table.
+WebAssembly_Table_element :: proc "contextless" (table: i32, buf: []u8) -> (string, Error) {
+	n := _WebAssembly_Table_element(table, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of WebAssembly_Table_element's result.
+WebAssembly_Table_element_len :: proc "contextless" (table: i32) -> (int, Error) {
+	n := _WebAssembly_Table_element(table, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// WebAssembly_Table_element's result in a buffer allocated to fit.
+WebAssembly_Table_element_alloc :: proc(table: i32, allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _WebAssembly_Table_element(table, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+WebAssembly_Table_length :: proc "contextless" (table: i32) -> i64 {
+	return _WebAssembly_Table_length(table)
+}
+
+// The cell at `index`, into `cell` (8 bytes): 0, or the opposite of a failure.
+WebAssembly_Table_get :: proc "contextless" (table: i32, index: i64, cell: []u8) -> i32 {
+	return _WebAssembly_Table_get(table, index, raw_data(cell), u32(len(cell)))
+}
+
+WebAssembly_Table_set :: proc "contextless" (table: i32, index: i64, cell: i64) -> i32 {
+	return _WebAssembly_Table_set(table, index, cell)
+}
+
+// table.grow: the previous length.
+WebAssembly_Table_grow :: proc "contextless" (table: i32, delta: i64, init: i64) -> i64 {
+	return _WebAssembly_Table_grow(table, delta, init)
+}
+
+// new WebAssembly.Global: a number. `type` a value type's letter.
+WebAssembly_Global_create :: proc "contextless" (type: string, mutable: bool, cell: i64) -> i32 {
+	return _WebAssembly_Global_create(raw_data(type), u32(len(type)), i32(1 if mutable else 0), cell)
+}
+
+// The value type's letter, then "m" when it can change; "" for no such global.
+WebAssembly_Global_type :: proc "contextless" (global: i32, buf: []u8) -> (string, Error) {
+	n := _WebAssembly_Global_type(global, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of WebAssembly_Global_type's result.
+WebAssembly_Global_type_len :: proc "contextless" (global: i32) -> (int, Error) {
+	n := _WebAssembly_Global_type(global, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// WebAssembly_Global_type's result in a buffer allocated to fit.
+WebAssembly_Global_type_alloc :: proc(global: i32, allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _WebAssembly_Global_type(global, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+WebAssembly_Global_get :: proc "contextless" (global: i32) -> i64 {
+	return _WebAssembly_Global_get(global)
+}
+
+WebAssembly_Global_set :: proc "contextless" (global: i32, cell: i64) -> i32 {
+	return _WebAssembly_Global_set(global, cell)
+}
+
+// A function of signature `sig` that runs import `slot` of the realm (wj_wasm_import).
+WebAssembly_Func_import :: proc "contextless" (slot: i32, sig: string) -> i32 {
+	return _WebAssembly_Func_import(slot, raw_data(sig), u32(len(sig)))
+}
+
+// The signature of a function, "params:results" (see src/wasm/user_store.odin); "" for no such function.
+WebAssembly_Func_sig :: proc "contextless" (func: i32, buf: []u8) -> (string, Error) {
+	n := _WebAssembly_Func_sig(func, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of WebAssembly_Func_sig's result.
+WebAssembly_Func_sig_len :: proc "contextless" (func: i32) -> (int, Error) {
+	n := _WebAssembly_Func_sig(func, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// WebAssembly_Func_sig's result in a buffer allocated to fit.
+WebAssembly_Func_sig_alloc :: proc(func: i32, allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _WebAssembly_Func_sig(func, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// Calls a function: `args` its cells (8 bytes each). 0, or the opposite of a failure.
+WebAssembly_Func_call :: proc "contextless" (func: i32, args: []u8) -> i32 {
+	return _WebAssembly_Func_call(func, raw_data(args), u32(len(args)))
+}
+
+// The results of the call that just ended, as cells (apart: the call may have moved the engine's memory).
+WebAssembly_Func_results :: proc "contextless" (buf: []u8) -> ([]u8, Error) {
+	n := _WebAssembly_Func_results(raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return (buf), .Truncated }
+	return (buf[:n]), .None
+}
+
+// The full length of WebAssembly_Func_results's result.
+WebAssembly_Func_results_len :: proc "contextless" () -> (int, Error) {
+	n := _WebAssembly_Func_results(nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// WebAssembly_Func_results's result in a buffer allocated to fit.
+WebAssembly_Func_results_alloc :: proc(allocator: runtime.Allocator) -> ([]u8, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _WebAssembly_Func_results(raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return (buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// The arguments of the import running, as cells.
+WebAssembly_import_args :: proc "contextless" (buf: []u8) -> ([]u8, Error) {
+	n := _WebAssembly_import_args(raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return (buf), .Truncated }
+	return (buf[:n]), .None
+}
+
+// The full length of WebAssembly_import_args's result.
+WebAssembly_import_args_len :: proc "contextless" () -> (int, Error) {
+	n := _WebAssembly_import_args(nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// WebAssembly_import_args's result in a buffer allocated to fit.
+WebAssembly_import_args_alloc :: proc(allocator: runtime.Allocator) -> ([]u8, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _WebAssembly_import_args(raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return (buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// The results of the import running, as cells.
+WebAssembly_import_results :: proc "contextless" (results: []u8) {
+	_WebAssembly_import_results(raw_data(results), u32(len(results)))
+}
+
+// Why the import running failed.
+WebAssembly_import_failed :: proc "contextless" (message: string) {
+	_WebAssembly_import_failed(raw_data(message), u32(len(message)))
+}
+
+// new WebAssembly.Instance: a number. `externs` the number of a thing for each import (4 bytes each); the start function
+// runs here.
+WebAssembly_Instance_create :: proc "contextless" (module: WebAssemblyModule, externs: []u8) -> i32 {
+	return _WebAssembly_Instance_create(module, raw_data(externs), u32(len(externs)))
+}
+
+// The exports of an instance, as JSON: [{name, kind, id, index}].
+WebAssembly_Instance_exports :: proc "contextless" (instance: i32, module: WebAssemblyModule, buf: []u8) -> (string, Error) {
+	n := _WebAssembly_Instance_exports(instance, module, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of WebAssembly_Instance_exports's result.
+WebAssembly_Instance_exports_len :: proc "contextless" (instance: i32, module: WebAssemblyModule) -> (int, Error) {
+	n := _WebAssembly_Instance_exports(instance, module, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// WebAssembly_Instance_exports's result in a buffer allocated to fit.
+WebAssembly_Instance_exports_alloc :: proc(instance: i32, module: WebAssemblyModule, allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _WebAssembly_Instance_exports(instance, module, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
 		delete(buf, allocator)
 		cap = int(n)
 	}

@@ -181,6 +181,7 @@ JS_GetArrayBuffer :: proc "c" (c: ^Context, psize: ^uint, obj: JSValue) -> [^]u8
 		ab := js.array_buffer_of(o)
 		if !ab.detached {
 			if psize != nil {psize^ = uint(ab.byte_length)}
+			if ab.host != nil {return js.host_snapshot(ctx.rt, ab, 0, ab.byte_length)}
 			return ab.data
 		}
 	}
@@ -431,4 +432,79 @@ JS_LoadModuleWithFuncs :: proc "c" (c: ^Context, basename: cstring, filename: cs
 	js.root(ctx.rt, base)
 	js.root(ctx.rt, spec)
 	js.dynamic_import_job(ctx, {dec(resolving_funcs[0]), dec(resolving_funcs[1]), base, spec, dec(attributes)})
+}
+
+// ---- buffers whose bytes are outside this engine's memory (a WebAssembly.Memory: js.Buffer_Host) ----
+
+Host_Buffer_IO :: #type proc "contextless" (user: u64, offset: int, bytes: [^]u8, n: int)
+
+JS_NewArrayBufferHost :: proc "c" (c: ^Context, length: uint, read, write: Host_Buffer_IO, user: u64) -> JSValue {
+	context = api_ctx()
+	ctx := jctx(c)
+	m := js.host_enter(ctx.rt)
+	defer js.host_exit(ctx.rt, m, js.UNDEFINED)
+	return own(ctx.rt, js.mk_obj(js.array_buffer_new_host(ctx, i64(length), js.Buffer_Host{read = read, write = write, user = user})))
+}
+
+JS_DetachArrayBufferHost :: proc "c" (c: ^Context, obj: JSValue) {
+	context = api_ctx()
+	if o, ok := obj_arg(obj); ok {js.detach_host_buffer(jctx(c), o)}
+}
+
+// JS_GetArrayBuffer for a caller that reads or writes only [off, off + n): the pointer is still the one of offset 0. A
+// host buffer gives a copy of the range, good until a few more of these calls (js.host_snapshot; JS_ArrayBufferCommit
+// after writing into it). The whole buffer is copied otherwise, so a view's bytes should come through here.
+JS_GetArrayBufferRange :: proc "c" (c: ^Context, psize: ^uint, obj: JSValue, off, n: uint) -> [^]u8 {
+	context = api_ctx()
+	ctx := jctx(c)
+	o, ok := obj_arg(obj)
+	if ok && (o.class == .array_buffer || o.class == .shared_array_buffer) {
+		ab := js.array_buffer_of(o)
+		if !ab.detached {
+			if psize != nil {psize^ = uint(ab.byte_length)}
+			if ab.host != nil {return js.host_snapshot(ctx.rt, ab, int(off), int(n))}
+			return ab.data
+		}
+	}
+	if psize != nil {psize^ = 0}
+	js.throw_type_error(ctx, "not an ArrayBuffer")
+	return nil
+}
+
+// `n` bytes at `p` were written, and may be in a copy JS_GetArrayBufferRange made: they go back to the buffer.
+JS_ArrayBufferCommit :: proc "c" (c: ^Context, p: [^]u8, n: uint) {
+	context = api_ctx()
+	js.host_snapshot_commit(jctx(c).rt, p, int(n))
+}
+
+// ToBigInt64: -1 with an exception when `val` is not convertible to a BigInt (a Number is not).
+JS_ToBigInt64 :: proc "c" (c: ^Context, pres: ^i64, val: JSValue) -> i32 {
+	context = api_ctx()
+	ctx := jctx(c)
+	m := js.host_enter(ctx.rt)
+	defer js.host_exit(ctx.rt, m, js.UNDEFINED)
+	ev, ok := js.to_elem_val(ctx, .i64, dec(val))
+	if !ok {
+		pres^ = 0
+		return -1
+	}
+	pres^ = i64(ev.b)
+	return 0
+}
+
+JS_NewBigInt64 :: proc "c" (c: ^Context, v: i64) -> JSValue {
+	context = api_ctx()
+	ctx := jctx(c)
+	m := js.host_enter(ctx.rt)
+	defer js.host_exit(ctx.rt, m, js.UNDEFINED)
+	x := v
+	return own(ctx.rt, js.read_elem(ctx, .i64, &x))
+}
+
+// Whether an ArrayBuffer's bytes are outside this engine's memory (it cannot be transferred).
+JS_IsArrayBufferHost :: proc "c" (obj: JSValue) -> bool {
+	context = api_ctx()
+	o, ok := obj_arg(obj)
+	if !ok || o.class != .array_buffer {return false}
+	return js.array_buffer_of(o).host != nil
 }

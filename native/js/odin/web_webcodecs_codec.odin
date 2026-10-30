@@ -107,6 +107,7 @@ copy_into :: proc(ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj
 	if !wj.wj_to_buffer_source(ctx, argv[0], &dst, &dlen, wj.BS_ALLOW_SHARED, what_bs) { return wj.EXCEPTION }
 	copied: i32
 	if st := jsb.host(&copied, D, imp, h, dst[:dlen]); st != .None { return wj.wj_throw_status(ctx, i32(st), what) }
+	wj.JS_ArrayBufferCommit(ctx, dst, dlen)
 	return wj.UNDEFINED
 }
 
@@ -298,6 +299,7 @@ wjr_AudioData_copyTo :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: 
 	copied: i32
 	st := jsb.host_n(&copied, api_decl.AudioData_copyTo, wj.wr_AudioData_copyTo, h, dst[:dlen], o.plane, o.format, o.offset, o.count, o.has_count)
 	if st != .None { return wj.wj_throw_status(ctx, i32(st), "AudioData.copyTo") }
+	wj.JS_ArrayBufferCommit(ctx, dst, dlen)
 	return wj.UNDEFINED
 }
 

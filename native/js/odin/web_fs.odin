@@ -706,6 +706,7 @@ sync_rw :: proc(ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValue,
 	done: i64
 	st := write ? jsb.host(&done, api_decl.Fs_write, wj.wr_Fs_write, s.id, at, bytes_of(p, n)) : jsb.host(&done, api_decl.Fs_read, wj.wr_Fs_read, s.id, at, bytes_of(p, n))
 	if st != .None { return fs_throw(ctx, st, what) }
+	if !write { wj.JS_ArrayBufferCommit(ctx, p, n) }
 	return wj.new_int64(ctx, done)
 }
 
