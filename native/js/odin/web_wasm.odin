@@ -384,6 +384,7 @@ wasm_memory_detach :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i3
 
 @(private = "file")
 wasm_memory_grow :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	wj.JS_HostBuffersSync(ctx)
 	prev := wj.wr_WebAssembly_Memory_grow(int_arg(ctx, argc, argv, 0), i64_arg(ctx, argc, argv, 1))
 	if prev < 0 { return wasm_throw(ctx, prev, "WebAssembly.Memory.grow()") }
 	return wj.new_float64(ctx, f64(prev))
@@ -545,7 +546,9 @@ wasm_invoke :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv
 	for i in 0 ..< np {
 		if !wasm_to_cell(ctx, sig[i], wj.arg(argc, argv, i32(i)), &cells[i]) { return wj.EXCEPTION }
 	}
+	wj.JS_HostBuffersSync(ctx)
 	st := wj.wr_WebAssembly_Func_call(magic, ([^]u8)(cells), u32(np) * 8)
+	wj.JS_HostBuffersSync(ctx)
 	if st < 0 { return wasm_throw(ctx, i64(st), "WebAssembly function") }
 	if nr == 0 { return wj.UNDEFINED }
 	wj.wr_WebAssembly_Func_results(([^]u8)(cells), u32(nr) * 8)
@@ -626,6 +629,8 @@ wj_wasm_import :: proc "c" (slot: i32) -> i32 {
 			made += 1
 		}
 	}
+	wj.JS_HostBuffersSync(ctx)   // (the module wrote since the script last read; what the script writes goes back when it returns)
+	defer wj.JS_HostBuffersSync(ctx)
 	r := failed ? wj.EXCEPTION : wj.JS_Call(ctx, im.fn, wj.UNDEFINED, i32(np), args)
 	for i in 0 ..< made { wj.JS_FreeValue(ctx, args[i]) }
 	if !wj.is_exception(r) {
@@ -698,7 +703,9 @@ wasm_instance_create :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: 
 		wj.JS_FreeValue(ctx, v)
 		list[i] = u32(x)
 	}
+	wj.JS_HostBuffersSync(ctx)
 	id := wj.wr_WebAssembly_Instance_create(module, ([^]u8)(list), u32(n) * 4)
+	wj.JS_HostBuffersSync(ctx)
 	if id < 0 { return wasm_throw(ctx, i64(id), "WebAssembly.Instance()") }
 	return wj.new_int32(id)
 }

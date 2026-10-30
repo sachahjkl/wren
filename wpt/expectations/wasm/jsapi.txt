@@ -791,14 +791,14 @@
 /wasm/jsapi/esm-integration/wasm-import-wasm-export.tentative.any.worker.html: OK
 	Check import and export between WebAssembly modules: FAIL
 /wasm/jsapi/exception/basic.tentative.any.html: OK
-	Imported JS function throws: FAIL
-	Imported JS function throws, Wasm catches and rethrows: FAIL
+	Imported JS function throws: PASS
+	Imported JS function throws, Wasm catches and rethrows: PASS
 	Wasm function throws argument: PASS
 	Wasm function throws integer: PASS
 	Wasm function throws null: PASS
 /wasm/jsapi/exception/basic.tentative.any.worker.html: OK
-	Imported JS function throws: FAIL
-	Imported JS function throws, Wasm catches and rethrows: FAIL
+	Imported JS function throws: PASS
+	Imported JS function throws, Wasm catches and rethrows: PASS
 	Wasm function throws argument: PASS
 	Wasm function throws integer: PASS
 	Wasm function throws null: PASS
@@ -1933,12 +1933,12 @@
 	Setting (strict mode): PASS
 	Stray argument: PASS
 /wasm/jsapi/memory/constructor-shared.tentative.any.html: OK
-	Order of evaluation for descriptor (with shared): FAIL
-	Shared memory: FAIL
+	Order of evaluation for descriptor (with shared): PASS
+	Shared memory: PASS
 	Shared memory without maximum: PASS
 /wasm/jsapi/memory/constructor-shared.tentative.any.worker.html: OK
-	Order of evaluation for descriptor (with shared): FAIL
-	Shared memory: FAIL
+	Order of evaluation for descriptor (with shared): PASS
+	Shared memory: PASS
 	Shared memory without maximum: PASS
 /wasm/jsapi/memory/constructor-types.tentative.any.html: OK
 	Initializing with both initial and minimum: FAIL
@@ -2000,7 +2000,7 @@
 	name: PASS
 /wasm/jsapi/memory/grow.any.html: OK
 	Branding: PASS
-	Growing shared memory does not detach old buffer: FAIL
+	Growing shared memory does not detach old buffer: PASS
 	Missing arguments: PASS
 	Non-zero initial: PASS
 	Out-of-range argument: "0x100000000": PASS
@@ -2020,7 +2020,7 @@
 	Zero initial with valueOf: PASS
 /wasm/jsapi/memory/grow.any.worker.html: OK
 	Branding: PASS
-	Growing shared memory does not detach old buffer: FAIL
+	Growing shared memory does not detach old buffer: PASS
 	Missing arguments: PASS
 	Non-zero initial: PASS
 	Out-of-range argument: "0x100000000": PASS

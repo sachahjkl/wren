@@ -7,6 +7,19 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 
 ## Unreleased
 
+## 0.6.21 - 2026-10-30
+
+### Added
+- **WebAssembly modules built with the old form of exceptions run** (`try`, `catch`, `rethrow`, `delegate`: older Emscripten and .NET builds, DuckDB): they are translated at compilation. `new WebAssembly.Memory({shared: true})` works for one agent, so Pyodide (Python) starts.
+
+### Changed
+- **A page's WebAssembly is much faster to start and to reach**: a script going through a module's memory one element at a time is 3 to 4 times faster (the engine keeps the pages it reads), and an instance with thousands of exports takes 104 ms instead of 5.7 s (Pyodide starts in 5.7 s instead of 11.5 s).
+- **Fewer limits on a page's WebAssembly**: a module can catch what JavaScript throws (`catch_all`, `WebAssembly.JSTag`), a call can have any number of values, externrefs are released once the module has dropped them, `Memory.toFixedLengthBuffer`. Without cross-origin isolation a page has no `SharedArrayBuffer`, as in other browsers: scripts that use it when available no longer wait on a copy that nothing shares (SQLite's OPFS helper). The toolkit moves to 0.56 (timelines and screencast for its development tools; nothing changes in Wren itself).
+
+### Fixed
+- **A service worker can call `event.waitUntil()` from the promise it gave `respondWith`**, as the specification allows: Wren refused, so the request failed (bitplatform.dev's Blazor application could not start).
+- **A stream's reader released while reading no longer reports an unhandled rejection** ("Releasing Default reader"), which stopped a worker in DuckDB's shell and failed `pipeTo` tests: a promise marked as handled after its rejection now tells the rejection tracker.
+
 ## 0.6.20 - 2026-10-30
 
 ### Added

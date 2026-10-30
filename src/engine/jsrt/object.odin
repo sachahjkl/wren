@@ -267,6 +267,7 @@ Buffer_Host :: struct {
 	read:  proc "contextless" (user: u64, offset: int, dst: [^]u8, n: int),
 	write: proc "contextless" (user: u64, offset: int, src: [^]u8, n: int),
 	user:  u64,
+	rt:    ^Runtime,
 	pin:   [^]u8,   // the copy of [pin_lo, pin_hi), while pinned
 	pin_lo, pin_hi: int,
 	pin_depth: int,

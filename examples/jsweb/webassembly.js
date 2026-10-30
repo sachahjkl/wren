@@ -319,6 +319,52 @@ test("Instance: memory shared with the module", () => {
   eq(new Uint8Array(memory.buffer)[10], 200, "and the memory is still there");
 });
 
+test("Instance: what JavaScript and the module see of each other's writes, at once", () => {
+  let x;
+  const seen = [];
+  const { exports, memory } = instantiate({ add1: v => {
+    // inside an import: what the module wrote before calling is seen; what is written here is seen by it after
+    const h = new Uint8Array(memory.buffer);
+    seen.push(h[100]);
+    h[101] = v;
+    return v;
+  } });
+  x = exports;
+  const h = new Uint8Array(memory.buffer);
+  for (let round = 1; round < 5; round++) {
+    h[100] = 0;                      // into the cache
+    eq(h[100], 0, "a write read back, round " + round);
+    x.store(100, round);             // the module changes the page the script has read
+    eq(h[100], round, "the module's write is seen, round " + round);
+    h[100] = round + 10;             // and the script's, by the module
+    eq(x.load(100), round + 10, "the script's write is seen, round " + round);
+  }
+  x.store(100, 55);
+  eq(x.callimp(66), 66, "a call through an import");
+  eq(seen[seen.length - 1], 55, "an import sees what the module wrote before");
+  eq(x.load(101), 66, "the module sees what the import wrote, before it returns to JavaScript");
+  // many pages, more than the cache keeps; elements on both sides of a page's end
+  const big = new WebAssembly.Memory({ initial: 4 });
+  const b = new Uint8Array(big.buffer), w = new Uint32Array(big.buffer);
+  for (let i = 0; i < 200000; i += 1000) b[i] = i % 251;
+  let bad = 0;
+  for (let i = 0; i < 200000; i += 1000) if (b[i] !== i % 251) bad++;
+  eq(bad, 0, "written and read over many pages");
+  w[1023] = 0x01020304; w[1024] = 0x05060708;
+  eq(w[1023], 0x01020304, "the last element of a page");
+  eq(w[1024], 0x05060708, "the first of the next");
+  eq(new Uint8Array(big.buffer.slice(4092, 4100)).join(), "4,3,2,1,8,7,6,5", "the same bytes for a copy, with writes not yet sent");
+  b[9] = 3;
+  eq(new DataView(big.buffer).getUint8(9), 3, "the same for a DataView");
+  eq(new TextDecoder().decode(b.subarray(9, 9)), "", "and a call with the bytes");
+  b[10] = 104;
+  eq(new TextDecoder().decode(b.subarray(10, 11)), "h", "a call with the bytes sees the last write");
+  const small = new WebAssembly.Memory({ initial: 1, maximum: 2 });
+  new Uint8Array(small.buffer)[65535] = 8;
+  small.grow(1);
+  eq(new Uint8Array(small.buffer)[65535], 8, "a write not yet sent survives grow");
+});
+
 test("Instance: errors through calls", () => {
   const boom = new Error("boom");
   const { exports: x } = instantiate({ add1() { throw boom; } });

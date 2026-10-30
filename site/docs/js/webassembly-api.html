@@ -174,6 +174,7 @@
 <li><a href="../../docs/releases/v0.6.19.html">Wren 0.6.19</a></li>
 <li><a href="../../docs/releases/v0.6.2.html">Wren 0.6.2</a></li>
 <li><a href="../../docs/releases/v0.6.20.html">Wren 0.6.20</a></li>
+<li><a href="../../docs/releases/v0.6.21.html">Wren 0.6.21</a></li>
 <li><a href="../../docs/releases/v0.6.3.html">Wren 0.6.3</a></li>
 <li><a href="../../docs/releases/v0.6.4.html">Wren 0.6.4</a></li>
 <li><a href="../../docs/releases/v0.6.5.html">Wren 0.6.5</a></li>
@@ -247,9 +248,12 @@ instance cannot share, so a memory's buffer has <code>data == nil</code> and a <
 call. The JIT and the interpreter's fast paths leave on <code>data == nil</code>. A builtin working on a range pins it (<code>host_pin</code>:
 a copy <code>data</code> points at, written back at the end, with no JavaScript running in between); <code>set</code> between it and the
 engine's memory is one call. An API of the browser gets a copy of the range of its view (<code>JS_GetArrayBufferRange</code>) and
-commits what it wrote (<code>JS_ArrayBufferCommit</code>: <code>getRandomValues</code>, <code>encodeInto</code>, <code>copyTo</code>, <code>read</code>). Measured: an element
-read 186 ns (15 ns in an ordinary array), a write 292 ns, a call of an export 508 ns, <code>TextDecoder</code> on 1 KiB 19 us. Growing
-detaches the buffer, also when the module grew it (seen at the next <code>memory.buffer</code>).</li>
+commits what it wrote (<code>JS_ArrayBufferCommit</code>: <code>getRandomValues</code>, <code>encodeInto</code>, <code>copyTo</code>, <code>read</code>). One element reads and
+writes a page of 4 KiB kept in the engine's memory (<code>host_line</code>, 16 of them): writes go back, and all is read again, when a
+module is entered or left and before anything else touches the bytes (<code>host_cache_sync</code>). Measured in a loop over 1 MiB:
+a read about 200 ns, a write about 330 ns (4 ns in an ordinary array, which the JIT compiles: not this path), <code>set</code> 0.2 ms
+for all of it; a call of an export 508 ns. Growing detaches the buffer, also when the module grew it (seen at the next
+<code>memory.buffer</code>).</li>
 <li><strong>Values</strong> cross as cells (<code>user_store.odin</code>), converted in <code>web_wasm.odin</code>, so a call costs no JavaScript beyond the
 function called. An externref is a number in a table of <code>web_wasm.js</code>: the value goes when the store's collector has
 dropped the last reference to it (<code>extern_released</code>).</li>

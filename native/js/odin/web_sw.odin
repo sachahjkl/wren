@@ -971,7 +971,15 @@ extra_or :: proc "contextless" (ctx: ^wj.Context, t: wj.JSValue, iface: i32, nam
 wjr_ExtendableEvent_waitUntil :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	if wj.wj_this(ctx, t, ifc("ExtendableEvent")) == nil { return wj.EXCEPTION }
 	if argc < 1 { return wj.wj_throw_arity(ctx, "ExtendableEvent.waitUntil", 1, argc) }
-	if wj.web_event_host(t) == 0 { return wj.wj_throw_dom(ctx, "InvalidStateError", "The event handler is already finished.") }
+	// after the dispatch too, while it waits for something: a fetch handler calls this from the promise it gave respondWith
+	// (what the event was given may have settled since, which is not followed here: a call that came too late goes unnoticed)
+	if wj.web_event_host(t) == 0 {
+		respond := wj.web_extra_get(ctx, t, "_respond")
+		waiting := wj.web_extra_get(ctx, t, "_wait")
+		pending := !wj.is_undefined(respond) || !wj.is_undefined(waiting)
+		wj.free_values(ctx, respond, waiting)
+		if !pending { return wj.wj_throw_dom(ctx, "InvalidStateError", "The event handler is already finished.") }
+	}
 	list := wj.web_extra_get(ctx, t, "_wait")
 	if wj.is_undefined(list) {
 		list = wj.JS_NewArray(ctx)

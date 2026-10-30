@@ -52,6 +52,7 @@ User_Store :: struct {
 	memories:  [dynamic]wt_memory,
 	tables:    [dynamic]wt_table,
 	globals:   [dynamic]wt_global,
+	global_ids: map[[2]u64]i32,
 	instances: [dynamic]wt_instance,
 	instance_funcs: [dynamic][dynamic]i32,   // by instance: the numbers of the functions it imported
 	tags:      [dynamic]wt_tag,
@@ -84,6 +85,7 @@ user_store_delete :: proc(s: ^User_Store) {
 	delete(s.memories)
 	delete(s.tables)
 	delete(s.globals)
+	delete(s.global_ids)
 	delete(s.instances)
 	for &f in s.instance_funcs { delete(f) }
 	delete(s.instance_funcs)
@@ -446,8 +448,7 @@ user_global_new :: proc(s: ^User_Store, letter: u8, mutable: bool, cell: u64) ->
 	defer if letter == 'e' { wasmtime_val_unroot(&v) }
 	g: wt_global
 	if e := wasmtime_global_new(s.ctx, ty, &v, &g); e != nil { return 0, fail_error(s, .Type, e) }
-	append(&s.globals, g)
-	return i32(len(s.globals) - 1), .None
+	return global_id(s, g), .None
 }
 
 @(private = "file")
@@ -702,13 +703,13 @@ user_instance_exports :: proc(s: ^User_Store, id: i32, m: ^User_Module, allocato
 		id, index: i64,
 	}
 	if id < 0 || int(id) >= len(s.instances) { return strings.clone("[]", allocator) }
-	entries := make([dynamic]Entry, context.temp_allocator)
-	for i := uint(0); ; i += 1 {
-		name: [^]u8
-		n: uint
+	if m == nil { return strings.clone("[]", allocator) }
+	entries := make([dynamic]Entry, 0, len(m.export_names), context.temp_allocator)
+	// (by name: wasmtime_instance_export_nth walks the exports from the first, which a module with thousands of them feels)
+	for name, i in m.export_names {
 		ext: wt_extern
-		if !wasmtime_instance_export_nth(s.ctx, &s.instances[id], i, &name, &n, &ext) { break }
-		e := Entry{name = string(name[:n]), index = m != nil && int(i) < len(m.export_index) ? i64(m.export_index[i]) : 0}
+		if !wasmtime_instance_export_get(s.ctx, &s.instances[id], raw_data(name), uint(len(name)), &ext) { continue }
+		e := Entry{name = name, index = i64(m.export_index[i])}
 		switch ext.kind {
 		case WT_EXTERN_FUNC:
 			e.kind = "function"
@@ -738,11 +739,18 @@ table_id :: proc(list: ^[dynamic]wt_table, item: wt_table) -> i32 {
 	return i32(len(list) - 1)
 }
 
+// (by a map: a dynamically linked module has tens of thousands of globals)
 @(private = "file")
 global_id :: proc(s: ^User_Store, item: wt_global) -> i32 {
-	for &x, i in s.globals {
-		if x.store_id == item.store_id && x.private1 == item.private1 && x.private2 == item.private2 && x.private3 == item.private3 { return i32(i) }
-	}
+	key := global_key(item)
+	if id, ok := s.global_ids[key]; ok { return id }
 	append(&s.globals, item)
-	return i32(len(s.globals) - 1)
+	id := i32(len(s.globals) - 1)
+	s.global_ids[key] = id
+	return id
+}
+
+@(private = "file")
+global_key :: proc(g: wt_global) -> [2]u64 {
+	return {g.store_id ~ u64(g.private3) << 32, u64(g.private1) | u64(g.private2) << 32}
 }

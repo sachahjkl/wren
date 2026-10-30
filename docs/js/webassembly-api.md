@@ -35,9 +35,12 @@ the image, and its functions read as native ones.
    call. The JIT and the interpreter's fast paths leave on `data == nil`. A builtin working on a range pins it (`host_pin`:
    a copy `data` points at, written back at the end, with no JavaScript running in between); `set` between it and the
    engine's memory is one call. An API of the browser gets a copy of the range of its view (`JS_GetArrayBufferRange`) and
-   commits what it wrote (`JS_ArrayBufferCommit`: `getRandomValues`, `encodeInto`, `copyTo`, `read`). Measured: an element
-   read 186 ns (15 ns in an ordinary array), a write 292 ns, a call of an export 508 ns, `TextDecoder` on 1 KiB 19 us. Growing
-   detaches the buffer, also when the module grew it (seen at the next `memory.buffer`).
+   commits what it wrote (`JS_ArrayBufferCommit`: `getRandomValues`, `encodeInto`, `copyTo`, `read`). One element reads and
+   writes a page of 4 KiB kept in the engine's memory (`host_line`, 16 of them): writes go back, and all is read again, when a
+   module is entered or left and before anything else touches the bytes (`host_cache_sync`). Measured in a loop over 1 MiB:
+   a read about 200 ns, a write about 330 ns (4 ns in an ordinary array, which the JIT compiles: not this path), `set` 0.2 ms
+   for all of it; a call of an export 508 ns. Growing detaches the buffer, also when the module grew it (seen at the next
+   `memory.buffer`).
 5. **Values** cross as cells (`user_store.odin`), converted in `web_wasm.odin`, so a call costs no JavaScript beyond the
    function called. An externref is a number in a table of `web_wasm.js`: the value goes when the store's collector has
    dropped the last reference to it (`extern_released`).
