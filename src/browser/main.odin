@@ -84,6 +84,7 @@ Tab_Kind :: enum u8 { Web, Config, History, Blocker }   // Blocker: about:blocke
 Tab :: struct {
 	id:       u64,           // unique for the process: keys its boxes of the tab strip (tab_strip.odin)
 	lazy:     bool,          // restored, not loaded yet: `url` loads when the tab is first shown (session.odin)
+	art_empty: bool,         // it shows the art new tab with no painting yet: the first one to be ready replaces it (newtab_art_page.odin)
 	icon:     Tab_Icon,      // its document's icon and title (favicon.odin)
 	kind:     Tab_Kind,      // a web page, or the about:config view
 	scope:    ^base.Scope,   // lives as long as the tab
@@ -333,7 +334,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	if is_history_address(target) { show_history(app, t, target); return }
 	if is_blocker_address(target) { show_blocker(app, t, target); return }   // blocker_dashboard.odin
 	if target == HOME_URL { show_home(app, t); return }
-	if strings.has_prefix(target, HOME_URL + "?") { show_home(app, t, strings.contains(target, "art=next")); return }
+	if strings.has_prefix(target, HOME_URL + "?") { home_query(app, t, target, verdict.acts); return }   // newtab_art_page.odin
 	if target == DEMOS_URL { show_demos(app, t); return }
 	if target == ABOUT_URL { show_about_pages(app, t); return }
 	if is_wren_address(target) { show_wren_page(app, t, target, verdict.acts); return }   // about_wren.odin

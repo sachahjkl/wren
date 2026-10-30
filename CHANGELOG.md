@@ -7,6 +7,17 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 
 ## Unreleased
 
+## 0.6.9 - 2026-10-30
+
+### Added
+- **A switch for the painting start page, on the pages themselves**: the start page has a card, "A painting on every new tab", that turns ``browser.newtab.art.enabled`` on (``about:home?art=on``), and the painting page has a "Plain start page" link that turns it off (``about:home?art=off``). A web page cannot do it: only the address bar, or a link of the start page itself, runs it (nav_trust.odin).
+
+### Changed
+- **The buttons on the painting page are discreet**: "Another painting", "Open the record" and "Plain start page" are small text links with no frame, faint until the pointer is on them, instead of large dark buttons over the painting.
+
+### Fixed
+- **The painting start page, first time**: the first new tab after turning the option on showed "No painting could be loaded yet" for good, because nothing replaced it when the first painting arrived (a tab opened later had one). A new tab that shows no painting yet now shows the first one that is ready, in place.
+
 ## 0.6.8 - 2026-10-30
 
 ### Added

@@ -38,6 +38,7 @@ nav_own_page :: proc(target: string) -> (own: proc(href: string) -> bool) {
 	case is_sites_address(target): return is_sites_address
 	case is_cache_address(target): return is_cache_address
 	case is_wren_address(target), is_license_file_address(target): return is_builtin_href
+	case is_home_address(target): return is_home_address   // about:home?art=on / off: the start page's own links
 	}
 	return nil
 }
@@ -71,6 +72,7 @@ nav_judge :: proc(origin: Nav_Origin, from: ^fetch.Environment, policy: fetch.Fi
 nav_neutral_address :: proc(target: string) -> string {
 	name_q, name_card := [1]string{"q"}, [1]string{"card"}
 	names := is_wren_address(target) ? name_card[:] : name_q[:]
+	if is_home_address(target) { names = nil }   // (art=next and art=on change nothing a page may ask for: the query goes)
 	rest, fragment := target, ""
 	if i := strings.index_byte(rest, '#'); i >= 0 { rest, fragment = rest[:i], rest[i:] }
 	query := ""
