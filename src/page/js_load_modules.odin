@@ -36,6 +36,7 @@ Module_Entry :: struct {
 	cors:      Cors_Setting,
 	error:     string,              // owned
 	rethrow:   bool,                // it does not compile (or an import cannot be resolved): the engine keeps the error
+	compiling: bool,                // its bytecode is being made on another thread (js_load_compile.odin)
 }
 
 Module_Graph_State :: enum u8 { Pending, Ready, Failed }
@@ -171,7 +172,7 @@ module_arrived :: proc(p: ^Page, e: ^Module_Entry, source: []byte, failure: stri
 	} else {
 		append(&e.source, ..source)
 		e.state = .Fetched
-		module_prepare(p, e)
+		if !compile_module_offthread(p, e) { module_prepare(p, e) }
 	}
 	modules_check(p)
 }
@@ -246,7 +247,7 @@ worker_root_settled :: proc(p: ^Page, g: ^Module_Graph) {
 // Hands a fetched module to the engine: compiled (not run), its imports requested.
 @(private)
 module_prepare :: proc(p: ^Page, e: ^Module_Entry) {
-	if e.state != .Fetched { return }
+	if e.state != .Fetched || e.compiling { return }
 	r := js_realm(p)
 	if r == nil { e.state = .Failed; return }
 	ms := modules_of(p)

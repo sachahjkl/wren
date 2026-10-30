@@ -60,6 +60,7 @@ EVAL_TYPE_MODULE          :: 1 << 0
 EVAL_FLAG_STRICT          :: 1 << 3
 EVAL_FLAG_COMPILE_ONLY    :: 1 << 5
 EVAL_FLAG_WREN_NO_RESOLVE :: 1 << 9   // native/js/patches: compile a module without resolving its imports
+EVAL_FLAG_WREN_NO_REGISTER :: 1 << 10  // ... and without keeping it among the loaded modules (a compiler that only wants its bytecode)
 
 WRITE_OBJ_BYTECODE     :: 1 << 0
 WRITE_OBJ_STRIP_SOURCE :: 1 << 4

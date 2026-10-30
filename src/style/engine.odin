@@ -52,6 +52,7 @@ Entry :: struct {
 	anc:     [4]u32,   // hashes (see bloom.odin) of simple selectors an ancestor must have: rejects most entries without matching
 	n_anc:   u8,
 	state:   State_Kinds,   // state the complex depends on, anywhere in it
+	has_state: bool,        // some of it is inside a :has() (its anchors are the ancestors and earlier siblings of the element whose state changed)
 	ctx:     u16,           // matched entries (cascade.odin): the encapsulation depth of the tree the rule came from
 	gate:    u32,           // the @media block around the rule that is kept in the index on or off (media_gate.odin); 0: none
 }
@@ -672,6 +673,7 @@ bucket_add :: proc(e: ^Engine, ent_in: Entry) {
 		kinds += k
 	}
 	ent.state = kinds
+	ent.has_state = uses_has && kinds != {}
 	if ent.state != {} {
 		rs.state_deps += ent.state
 		append(&rs.state_entries, ent)

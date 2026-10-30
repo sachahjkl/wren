@@ -445,7 +445,6 @@ matches_simple :: proc(m: ^Match_Ctx, el: base.Handle, n: ^dom.Node, s: css.Simp
 	case .Attribute: return attr_matches(n, s)
 	case .Nesting:
 		if s.list == nil { return is_scope(m, el) }
-		if m.ignore_state { if k, h := list_state(s.list^); k != {} || h { return true } }
 		return matches_list(m, el, s.list^)
 	case .Pseudo_Class: return matches_pseudo(m, el, n, s)
 	}
@@ -464,8 +463,9 @@ matches_pseudo :: proc(m: ^Match_Ctx, el: base.Handle, n: ^dom.Node, s: css.Simp
 	if m.ignore_state {
 		#partial switch s.pseudo {
 		case .Hover, .Active, .Focus, .Focus_Visible, .Focus_Within, .Target, .Fullscreen: return true
-		case .Not, .Is, .Where, .Has:
+		case .Not, .Has:
 			if s.list != nil { if k, h := list_state(s.list^); k != {} || h { return true } }
+		// (:is() and :where() are matched as they are: a state in them counts as matching, what else they name still has to)
 		}
 	}
 	switch s.pseudo {

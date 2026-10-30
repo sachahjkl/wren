@@ -250,6 +250,7 @@ Run 'effects'    (FileUrl (Join-Path $site 'effects.html')) { param($h) Start-Sl
 Run 'effects_hover' (FileUrl (Join-Path $site 'effects.html')) { param($h) Start-Sleep 3; Hover $h 8000 }
 # a real site, over the network: only when named with -Only (github_load: the load; github_scroll: the wheel once it is loaded)
 if ($Only -contains 'github_load') { Run 'github_load' 'https://github.com/sachahjkl/wren' { param($h) Start-Sleep 14 } }
+if ($Only -contains 'github_hover') { Run 'github_hover' 'https://github.com/sachahjkl/wren' { param($h) Start-Sleep 14; Mark; $c = Client $h; $sw = [Diagnostics.Stopwatch]::StartNew(); while ($sw.ElapsedMilliseconds -lt 8000) { $t = $sw.ElapsedMilliseconds / 1000.0; MouseTo $h ([int]($c.R * (0.78 + 0.1 * [Math]::Sin($t * 3)))) ([int]($c.B * (0.45 + 0.4 * [Math]::Sin($t * 1.7)))); Start-Sleep -Milliseconds 30 } } }
 if ($Only -contains 'github_scroll') { Run 'github_scroll' 'https://github.com/sachahjkl/wren' { param($h) Start-Sleep 14; Mark; Scroll $h 8000 } }
 # a module changes one text of a ~17 000-node page every 16 ms (examples/mutation): incremental layout
 if ($Only.Count -eq 0 -or $Only -contains 'mutation' -or $Only -contains 'mutation_full') {

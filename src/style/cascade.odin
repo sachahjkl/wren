@@ -2,6 +2,7 @@ package style
 
 import "base:intrinsics"
 import "base:runtime"
+import "core:fmt"
 import "core:mem"
 import "core:mem/virtual"
 import "core:strings"
@@ -1062,6 +1063,26 @@ chain_delta :: proc(doc: ^dom.Document, a, b: base.Handle, out: ^map[base.Handle
 	for k in cb { if k not_in ca { out[k] = true } }
 }
 
+// (WREN_RESTYLE_TRACE) a rule that made a state change restyle a whole subtree: its root and the compound that named the state.
+@(private = "file")
+trace_state_root :: proc(doc: ^dom.Document, target: base.Handle, c: ^css.Complex, k: int) {
+	sb := strings.builder_make(context.temp_allocator)
+	for comp, i in c.compounds {
+		if i > 0 { strings.write_string(&sb, i == k + 1 ? " <-state| " : " ") }
+		for s in comp.simples {
+			#partial switch s.kind {
+			case .Type: strings.write_string(&sb, s.name)
+			case .Id: fmt.sbprintf(&sb, "#%s", s.name)
+			case .Class: fmt.sbprintf(&sb, ".%s", s.name)
+			case .Pseudo_Class: fmt.sbprintf(&sb, ":%v", s.pseudo)
+			case: strings.write_string(&sb, "[?]")
+			}
+		}
+	}
+	n := dom.get(doc, target)
+	fmt.eprintfln("state restyle: whole subtree of <%s> by %s (state compound %d)", n != nil ? n.name : "?", strings.to_string(sb), k)
+}
+
 // Restyles only what a change from `s.state` to `new_state` can affect. Returns ok = false when the change cannot be
 // scoped (a state-dependent :has(), or too much memory left behind by earlier partial restyles): the caller then does a
 // full pass. `changed` tells whether any computed style really differs (layout is needed only then).
@@ -1077,9 +1098,9 @@ restyle_state :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, new_state: Sta
 	deps := e.state_deps
 	if shadows { deps += e.shadow.state_deps }
 	if kinds & deps == {} { set_state(s, new_state); return false, true }
-	if e.state_uses_has || (shadows && e.shadow.state_uses_has) { return false, false }
-	if shadows && e.shadow.dirty { return false, false }
-	if int(s.arena.total_used) > int(s.base_used) + e.settings.restyle_waste_bytes { return false, false }
+	if shadows && e.shadow.state_uses_has { e.last_restyle.fallback = "a state-dependent :has() in a shadow tree"; return false, false }
+	if shadows && e.shadow.dirty { e.last_restyle.fallback = "shadow tree rules changed"; return false, false }
+	if int(s.arena.total_used) > int(s.base_used) + e.settings.restyle_waste_bytes { e.last_restyle.fallback = "too much memory left behind by partial restyles"; return false, false }
 
 	p := pass_make(e, s, doc, new_state)
 	defer pass_destroy(p)
@@ -1169,10 +1190,59 @@ restyle_state :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, new_state: Sta
 						}
 					}
 					roots[target] = true
+					if trace_restyle() { trace_state_root(doc, target, c, k) }
 				}
 			}
 		}
 		p.mc.featureless = base.NIL_HANDLE
+	}
+
+	// :has() with a state inside (:has(:hover), :has(> a:focus-visible)): the element it anchors on is an ancestor of the
+	// element whose state changed, its parent's child, or one of the earlier siblings of those: the rules that name such a
+	// :has() are matched, ignoring state, against those candidates, and what they could match is restyled
+	if e.state_uses_has {
+		seeds := make(map[base.Handle]bool, context.temp_allocator)
+		for x in changed_els { seeds[x] = true }
+		for x in ([?]base.Handle{old.hover, new_state.hover, old.active, new_state.active, old.focus, new_state.focus, old.visited, new_state.visited, old.fullscreen, new_state.fullscreen}) {
+			if x != base.NIL_HANDLE { seeds[x] = true }
+		}
+		for id in ([?]string{old.target_id, new_state.target_id}) {
+			if id != "" { if h := dom.find_by_id(doc, id); h != base.NIL_HANDLE { seeds[h] = true } }
+		}
+		cands := make(map[base.Handle]bool, context.temp_allocator)
+		for x in seeds {
+			for a := x; a != base.NIL_HANDLE; a = flat_parent_element(doc, a) {
+				if a in cands && a != x { break }   // what is above was walked from another seed
+				cands[a] = true
+				for sib := dom.flat_prev(doc, a); sib != base.NIL_HANDLE; sib = dom.flat_prev(doc, sib) {
+					if sn := dom.get(doc, sib); sn != nil && sn.kind == .Element { cands[sib] = true }
+				}
+			}
+		}
+		for &ent in e.rules.state_entries {
+			if !ent.has_state || ent.state & kinds == {} { continue }
+			c := ent.complex
+			if c.pseudo_element == .Slotted || c.pseudo_element == .Part { continue }
+			last := len(c.compounds) - 1
+			for k in 0 ..= last {
+				ck, hk := compound_state(c.compounds[k])
+				if !hk || ck & kinds == {} { continue }
+				sibling := false
+				for j in k ..< last { if c.combinators[j] != .Child && c.combinators[j] != .Descendant { sibling = true } }
+				for cand in cands {
+					if !compound_could_match(&p.mc, cand, c.compounds[k]) { continue }
+					if k == last {
+						if cand not_in roots { roots[cand] = false }
+						continue
+					}
+					target := cand
+					if sibling {
+						if par := parent_element(&p.mc, cand); par != base.NIL_HANDLE { target = par }
+					}
+					roots[target] = true
+				}
+			}
+		}
 	}
 
 	for r, deep in roots {
