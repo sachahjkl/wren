@@ -7,6 +7,15 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 
 ## Unreleased
 
+## 0.6.11 - 2026-10-30
+
+### Added
+- **The address bar suggests pages as soon as it gets the keyboard** (a click, Ctrl+L, a new tab), before anything is typed: the pages visited most and most lately, without the one being shown. Nothing is chosen at first, so Enter still does what the field says; Down or Up chooses a row, a click opens one. Turn it off with `browser.urlbar.top_sites`.
+- **A search box on the start page**: it does what the address bar does with the same text. Words go to the default search engine (a keyword such as `@g cats` picks another), an address opens as it is. The line of small texts at the bottom of the start page is gone: only the version and "by Froment Software" stay, as on the About page.
+
+### Fixed
+- **The title of a visited page no longer changes to "New tab"**: a page of the browser that is not recorded in the history (the start page, an error page) used to give its title to the last page visited in the tab, and the address bar's suggestions showed it.
+
 ## 0.6.10 - 2026-10-30
 
 ### Changed

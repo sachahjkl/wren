@@ -119,6 +119,8 @@ history_title_seen :: proc(app: ^App, t: ^Tab) {
 		page.session_set_title(&t.session, t.title)
 		page.session_set_icon(&t.session, t.icon.url)
 	}
+	// the last visit belongs to the document shown: a built-in page (not recorded) or an error page has a title of its own
+	if cur != nil && history_address(cur.url, hcfg.record_files, hcfg.max_url_bytes) != t.nav_state.last_visit { return }
 	global_history_title(app, t, t.title, t.icon.url)
 }
 

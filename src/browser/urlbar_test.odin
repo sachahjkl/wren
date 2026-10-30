@@ -259,6 +259,20 @@ urlbar_rows_and_removal :: proc(t: ^testing.T) {
 	urlbar_refresh(app, .None)
 	testing.expect(t, len(uv.rows) == 3 && uv.rows[0].kind == .Go && uv.rows[1].kind == .History && uv.rows[2].kind == .Search, "go, the page, search")
 
+	// the field got the keyboard with an address in it: the pages visited most and most lately, none chosen
+	delete(uv.typed); uv.typed = strings.clone("https://example.org/")
+	ub.cfg.top_sites = true
+	uv.zero, uv.idle = true, true
+	urlbar_refresh(app, .None)
+	testing.expect(t, uv.open && len(uv.rows) == 3, "the pages of the history, no typed row")
+	for r in uv.rows { testing.expect(t, r.kind == .History, "history rows only") }
+	testing.expect_value(t, ub.idx.entries[uv.rows[0].entry].url, "https://github.com/")   // (visited twice)
+	urlbar_choose(app, 1)
+	testing.expect(t, uv.sel == 0 && uv.idle, "nothing chosen until a key does")
+	testing.expect_value(t, string(active_window(app).address.buf[:]), "github.com/")
+	uv.zero, uv.idle = false, false
+	ub.cfg.top_sites = false
+
 	// the cross on gitlab's row (chosen with Down): removed from the history, the next row chosen, the text kept
 	delete(uv.typed); uv.typed = strings.clone("git")
 	urlbar_refresh(app, .None)   // (no completion: Backspace removed it)

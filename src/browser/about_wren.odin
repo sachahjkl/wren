@@ -70,7 +70,6 @@ odin_version_text :: proc() -> string { return strings.trim_space(ODIN_VERSION_F
 // The channel in words: "release", or "development" (blueprint logo).
 channel_name :: proc() -> string { return IS_DEV_BUILD ? "development" : "release" }
 
-@(private = "file")
 png_url :: proc(png: []byte) -> string {
 	return strings.concatenate({"data:image/png;base64,", base64.encode(png, allocator = context.temp_allocator)}, context.temp_allocator)
 }

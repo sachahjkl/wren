@@ -20,6 +20,9 @@ package browser
 //   * The cross at the end of a history row (shown on the row under the pointer or the chosen one, red under the
 //     pointer) removes every visit of that address from the history at once (written to the profile right away);
 //     the row goes, the list stays open with what was typed, the next row takes the choice.
+//   * Before anything is typed (browser.urlbar.top_sites): a field that gets the keyboard (a click, Ctrl+L, a new tab)
+//     lists the pages visited most and most lately (frecency), without the one shown, whatever the field holds. No row is
+//     chosen: Enter does what the field says, Down / Up chooses the first / last row, a click opens one.
 // The rows are made again only when the text or the history changes; with the pointer still, nothing is drawn.
 
 import "core:fmt"
@@ -53,8 +56,8 @@ URLBAR_PREFS := [?]config.Def{
 		description = "Typing the start of an address visited before completes it in the field (up to its host, or the next / of its path), the completed part selected: typing on replaces it, Backspace removes it."},
 	{name = "browser.urlbar.min_chars", kind = .Int, default = {i = 1}, bounded = true, min = 1, max = 20,
 		description = "Characters typed before the suggestions show."},
-	{name = "browser.urlbar.top_sites", kind = .Bool, default = {b = false},
-		description = "When the address bar gets the keyboard empty (a new tab), list the most visited pages."},
+	{name = "browser.urlbar.top_sites", kind = .Bool, default = {b = true},
+		description = "When the address bar gets the keyboard (a click, Ctrl+L, a new tab), list the pages visited most and most lately before anything is typed; Enter still opens what the field shows."},
 }
 
 register_urlbar_prefs :: proc(p: ^config.Prefs) { config.register(p, URLBAR_PREFS[:]) }
@@ -102,6 +105,8 @@ Urlbar_View :: struct {
 	just_focused: bool,                // ... and did not have it the frame before
 	click_selects: bool,               // a click gave it the keyboard: all selected while the button is held still
 	engine_pick:  int,                 // the engine the search rows use this time (Ctrl+Up / Down), index + 1; 0: what the text says
+	zero:         bool,                // the list is the one of an address bar that got the keyboard: the pages visited, whatever the field shows
+	idle:         bool,                // ... and no row is chosen yet (Enter does what the field says; the first Down / Up chooses one)
 }
 
 Urlbar :: struct {
@@ -224,6 +229,7 @@ urlbar_close :: proc(uv: ^Urlbar_View) {
 	clear(&uv.rows)
 	uv.sel = 0
 	uv.engine_pick = 0
+	uv.zero, uv.idle = false, false
 	set_owned(&uv.fill_text, ""); set_owned(&uv.fill_address, "")
 }
 
@@ -288,7 +294,7 @@ urlbar_refresh :: proc(app: ^App, fill: Fill_Mode) {
 	uv.sel = 0
 	if fill != .Keep { set_owned(&uv.fill_text, ""); set_owned(&uv.fill_address, "") }
 	uv.rows_serial = ghist.serial
-	q := strings.trim_space(uv.typed)
+	q := uv.zero ? "" : strings.trim_space(uv.typed)
 	history := ub.cfg.history && hcfg.global
 	max_rows := max(ub.cfg.max_rows, 1)
 	if !ub.cfg.enabled { uv.open = false; return }
@@ -298,8 +304,11 @@ urlbar_refresh :: proc(app: ^App, fill: Fill_Mode) {
 		ub.query_ms = time.duration_milliseconds(time.tick_since(start))
 	}
 	if q == "" {
-		// a new tab's empty field: the most visited pages, when asked for
-		if ub.cfg.top_sites && history { urlbar_top_sites(uv, max_rows) }
+		// the field got the keyboard (or is empty): the pages visited most and most lately, when asked for
+		if ub.cfg.top_sites && history {
+			cur := current_tab(app)
+			urlbar_top_sites(uv, max_rows, cur != nil ? cur.url : "")
+		}
 		uv.open = len(uv.rows) > 0
 		return
 	}
@@ -358,11 +367,11 @@ urlbar_refresh :: proc(app: ^App, fill: Fill_Mode) {
 }
 
 @(private = "file")
-urlbar_top_sites :: proc(uv: ^Urlbar_View, n: int) {
+urlbar_top_sites :: proc(uv: ^Urlbar_View, n: int, shown: string) {
 	for _ in 0 ..< n {
 		best := -1
 		for e, i in ub.idx.entries {
-			if e.gone || skipped_address(e.url) { continue }
+			if e.gone || skipped_address(e.url) || e.url == shown { continue }
 			taken := false
 			for r in uv.rows { if r.entry == i { taken = true; break } }
 			if taken { continue }
@@ -396,7 +405,7 @@ row_address :: proc(app: ^App, r: Urlbar_Row) -> string {
 urlbar_choose :: proc(app: ^App, i: int) {
 	wnd := active_window(app)
 	uv := urlbar_view(app)
-	if len(uv.rows) == 0 { return }
+	if len(uv.rows) == 0 || uv.idle { return }   // (idle: nothing is chosen until a key or a click does)
 	uv.sel = clamp(i, 0, len(uv.rows) - 1)
 	r := uv.rows[uv.sel]
 	switch {
@@ -478,14 +487,14 @@ urlbar_keys :: proc(app: ^App, t: ^Tab) {
 		uv.tab_id = t != nil ? t.id : 0
 		// the index in step now (a first build, or the day's new weights), not at the first letter typed
 		if ub.cfg.enabled && ub.cfg.history && hcfg.global { _ = urlbar_index_ready(app, age = true) }
-		if uv.typed == "" && ub.cfg.top_sites { urlbar_refresh(app, .None) }
+		if ub.cfg.top_sites { uv.zero, uv.idle = true, true; urlbar_refresh(app, .None) }
 	}
 	uv.focused = true
 	if t != nil && t.id != uv.tab_id { urlbar_close(uv); uv.tab_id = t.id }
 	if uv.open && uv.rows_serial != ghist.serial { sel := uv.sel; urlbar_refresh(app, .Keep); urlbar_choose(app, sel) }
 
 	if ui.key_press(.Return, {.Alt}) || ui.key_press(.Return, {.Ctrl}) {
-		if !urlbar_open(app, t, uv.sel, true) {
+		if uv.idle || !urlbar_open(app, t, uv.sel, true) {
 			text := strings.clone(strings.trim_space(ui.field_string(&wnd.address)), context.temp_allocator)
 			if text != "" { urlbar_close(uv); tab_open(app, address_or_search(text), origin = .User); ui.set_focus(0) }
 		}
@@ -495,11 +504,24 @@ urlbar_keys :: proc(app: ^App, t: ^Tab) {
 		// Down on a closed list: the suggestions for what the field shows
 		if ui.field_string(&wnd.address) != "" && ui.key_press(.Down) {
 			set_owned(&uv.typed, ui.field_string(&wnd.address))
+			uv.zero, uv.idle = false, false
 			urlbar_refresh(app, .None)
 		}
 		return
 	}
 	n := len(uv.rows)
+	if uv.idle {
+		// the first key of the list chooses a row: Down / Tab the first, Up / Page Up the last (Ctrl+Down / Up: engines of a search that is not there)
+		down := ui.key_press(.Down) || ui.key_press(.Tab) || ui.key_press(.Page_Down)
+		up := ui.key_press(.Up) || ui.key_press(.Tab, {.Shift}) || ui.key_press(.Page_Up)
+		if down || up {
+			uv.idle = false
+			urlbar_choose(app, down ? 0 : n - 1)
+		} else if ui.key_press(.Escape) {
+			urlbar_close(uv)
+		}
+		return
+	}
 	switch {
 	case ui.key_press(.Down, {.Ctrl}):                      urlbar_cycle_engine(app, 1)
 	case ui.key_press(.Up, {.Ctrl}):                        urlbar_cycle_engine(app, -1)
@@ -534,10 +556,12 @@ urlbar_edited :: proc(app: ^App, t: ^Tab, res: ui.Edit_Result) -> (handled: bool
 		// letters added at the end (not a deletion, not an edit inside): the completion may follow
 		grew := strings.has_prefix(text, uv.typed) && len(text) > len(uv.typed) && f.cursor == len(f.buf) && f.mark == f.cursor
 		set_owned(&uv.typed, text)
+		uv.zero = strings.trim_space(text) == ""   // (an emptied field lists the pages visited again)
+		uv.idle = uv.zero
 		urlbar_refresh(app, grew ? .New : .None)
 		request_frames(app, 2)
 	}
-	if res.committed && t != nil && uv.open {
+	if res.committed && t != nil && uv.open && !uv.idle {
 		// the inline completion was kept (Right / End) or is still selected: it is what Enter opens
 		if uv.sel == 0 && len(uv.rows) > 0 && uv.rows[0].fill && ui.field_string(f) != uv.fill_text && ui.field_string(f) != uv.typed {
 			return false
@@ -629,7 +653,7 @@ urlbar_popup :: proc(app: ^App, t: ^Tab, field: ^ui.Box) {
 	w := math.round(field.rect.max.x - field.rect.min.x)
 	rh := ui.dense(em * 2.1)
 	pad := math.round(em * 0.3)
-	q := strings.trim_space(uv.typed)
+	q := uv.zero ? "" : strings.trim_space(uv.typed)
 	terms := strings.fields(strings.to_lower(q, context.temp_allocator), context.temp_allocator)
 	open_at, open_new, remove_at, search_with := -1, false, -1, -1
 	if ui.popover(URLBAR_POPUP, field.rect, w, .Below, align_right = false) {
@@ -639,7 +663,7 @@ urlbar_popup :: proc(app: ^App, t: ^Tab, field: ^ui.Box) {
 		ui.a11y_set(field, {popup = .Listbox, expanded = true, controls = list.key})
 		ui.spacer(ui.px(pad))
 		for r, i in uv.rows {
-			chosen := i == uv.sel
+			chosen := i == uv.sel && !uv.idle
 			ui.next({width = ui.px(w), height = ui.px(rh), axis = .X, cross = .Center})
 			outer := ui.build_box({}, fmt.tprintf("###ubo_%d", i))
 			if ui.parent(outer) {
