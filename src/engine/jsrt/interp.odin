@@ -11,6 +11,9 @@ package jsrt
 
 import "core:reflect"
 
+// The most arguments a spread or Function.prototype.apply may pass.
+APPLY_MAX_ARGS :: 65535 * 16
+
 // Debug aid: remember the last instruction of the hot loop too (for the "ran past its end" error).
 JSRT_TRACE_LAST_OP :: #config(JSRT_TRACE_LAST_OP, false)
 trace_last_op: Opcode
@@ -1773,7 +1776,7 @@ build_arg_list :: proc(ctx: ^Context, a: Value) -> ([]Value, bool) {
 	}
 	n, ok := length_of_array_like(ctx, a)
 	if !ok {return nil, false}
-	if n > 65535 * 16 {
+	if n > APPLY_MAX_ARGS {
 		throw_range_error(ctx, "too many arguments in function call")
 		return nil, false
 	}

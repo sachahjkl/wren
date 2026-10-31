@@ -10,6 +10,8 @@ package jsrt
 
 import "core:math"
 
+SORT_U32_INSERTION_BELOW :: 32   // sort_u32_desc: shorter lists are sorted by insertion
+
 Desc_Field :: enum u8 {value, writable, get, set, enumerable, configurable}
 Desc_Has :: bit_set[Desc_Field;u8]
 
@@ -395,7 +397,7 @@ array_truncate :: proc(ctx: ^Context, o: ^Object, old_len, new_len: u32) -> (u32
 sort_u32_desc :: proc(a: []u32) {
 	// insertion sort for small inputs, otherwise a simple heap sort (no allocation)
 	n := len(a)
-	if n < 32 {
+	if n < SORT_U32_INSERTION_BELOW {
 		for i in 1 ..< n {
 			x := a[i]
 			j := i

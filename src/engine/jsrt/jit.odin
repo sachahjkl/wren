@@ -28,6 +28,8 @@ JIT_BUDGET :: 16384
 JIT_MAX_RESTARTS :: 8
 JIT_MAX_LOOPS :: 4
 JIT_MAX_REJITS :: 4
+JIT_MAX_DEOPTS :: 16   // deopt exits after which a loop is not compiled again
+JIT_DEFAULT_MAX_CODE_BYTES :: 64 << 10   // the largest function compiled when the host does not choose
 JIT_PROBE :: 64        // entries after which a loop that runs too few iterations per entry is dropped
 JIT_MIN_ITERS :: 6
 
@@ -132,7 +134,7 @@ jit_configure :: proc(enabled: bool, compile: proc "contextless" (module: [^]u8,
 	jit_cfg.poll = poll
 	jit_cfg.log = log
 	jit_cfg.trace = log != nil
-	if jit_cfg.max_code_bytes == 0 {jit_cfg.max_code_bytes = 64 << 10}
+	if jit_cfg.max_code_bytes == 0 {jit_cfg.max_code_bytes = JIT_DEFAULT_MAX_CODE_BYTES}
 }
 
 jit_stat :: proc "contextless" (which: int) -> f64 {
@@ -235,7 +237,7 @@ jit_back_edge :: proc(ctx: ^Context, f: ^Frame, b: ^Function_Bytecode, target, r
 			jit_stats.exits_leave += 1
 			return .resume, xpc, xsp
 		case .budget:
-			rt.interrupt_counter = 10_000
+			rt.interrupt_counter = INTERRUPT_POLL_EVERY
 			return .resume, xpc, xsp
 		case .guard:
 			jit_stats.exits_deopt += 1
@@ -250,7 +252,7 @@ jit_back_edge :: proc(ctx: ^Context, f: ^Frame, b: ^Function_Bytecode, target, r
 				jl.n_elem_f += 1
 				jl.state = .fresh
 				b.jit_active -= 1
-				if jl.deopts > 16 || jl.compiles >= JIT_MAX_REJITS {jl.state = .never}
+				if jl.deopts > JIT_MAX_DEOPTS || jl.compiles >= JIT_MAX_REJITS {jl.state = .never}
 			} else {
 				jit_invalidate(f, b, jl, aux, false)
 			}
@@ -304,7 +306,7 @@ jit_invalidate :: proc(f: ^Frame, b: ^Function_Bytecode, jl: ^Jit_Loop, slot: in
 	} else if !at_entry && slot < 64 {
 		jl.widen |= u64(1) << uint(slot)
 	}
-	if jl.deopts > 16 || jl.compiles >= JIT_MAX_REJITS {
+	if jl.deopts > JIT_MAX_DEOPTS || jl.compiles >= JIT_MAX_REJITS {
 		jl.state = .never
 		b.jit_active -= 1
 		return

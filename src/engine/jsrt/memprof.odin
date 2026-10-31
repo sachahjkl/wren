@@ -2,6 +2,9 @@ package jsrt
 
 import "core:mem"
 
+// heap_profile_field: the index from which the counters are the entries of cell_sizes.
+PROF_CELL_SIZES_INDEX :: 1000
+
 // A census of the heap by kind of cell: how many, how many bytes the cells take, how many bytes they own
 // out of line, and how much of both is slack (capacity not used). Only walks the cell list; nothing is
 // kept between calls. Used by the judge (`JSRT_MEMPROF=1 judge eval`) and, through the C API glue, by
@@ -190,9 +193,9 @@ arena_blocks :: proc(a: ^mem.Dynamic_Arena) -> int {
 // The `index`-th counter of the profile, in row-major order (row * PROF_FIELDS + field); -1 past the end.
 // Indexes from 1000 on are the entries of cell_sizes (in field order).
 heap_profile_field :: proc(rt: ^Runtime, index: int) -> i64 {
-	if index >= 1000 {
+	if index >= PROF_CELL_SIZES_INDEX {
 		cs := cell_sizes()
-		k := index - 1000
+		k := index - PROF_CELL_SIZES_INDEX
 		if k >= size_of(Cell_Sizes) / size_of(int) {return -1}
 		return i64((cast(^[size_of(Cell_Sizes) / size_of(int)]int)&cs)[k])
 	}

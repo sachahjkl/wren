@@ -267,14 +267,14 @@ unpersist :: proc(rt: ^Runtime, v: Value) {
 back_edge_cheap :: #force_inline proc(rt: ^Runtime, root_base: int) -> bool {
 	if len(rt.temp_roots) > root_base {resize(&rt.temp_roots, root_base)}
 	rt.interrupt_counter += 1
-	return rt.interrupt_counter < 10_000 && !gc_should_run(rt)
+	return rt.interrupt_counter < INTERRUPT_POLL_EVERY && !gc_should_run(rt)
 }
 
 back_edge :: #force_inline proc(ctx: ^Context, root_base: int) -> bool {
 	rt := ctx.rt
 	if len(rt.temp_roots) > root_base {resize(&rt.temp_roots, root_base)}
 	rt.interrupt_counter += 1
-	if rt.interrupt_counter < 10_000 && !gc_should_run(rt) {return true}
+	if rt.interrupt_counter < INTERRUPT_POLL_EVERY && !gc_should_run(rt) {return true}
 	return !poll_interrupt(ctx) && gc_safepoint(ctx)
 }
 

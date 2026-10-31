@@ -8,6 +8,12 @@ package jsrt
 import "core:mem"
 import fe "wb:engine/frontend"
 
+// The arena of one pattern's compile: block size, the size from which an allocation gets a block of its own.
+RE_COMPILE_BLOCK_BYTES :: 16 * 1024
+RE_COMPILE_OUT_BAND_BYTES :: 4 * 1024
+// Host stack the pattern compiler may use.
+RE_COMPILE_STACK_BYTES :: 256 * 1024
+
 RegExp_Data :: struct {
 	bytecode:   []u8, // libregexp bytecode, owned
 	source:     ^JS_String,
@@ -138,9 +144,9 @@ regexp_initialize :: proc(ctx: ^Context, o: ^Object, pattern: Value, flags: Valu
 	unicode := re_flags & (fe.LRE_FLAG_UNICODE | fe.LRE_FLAG_UNICODE_SETS) != 0
 	src := regexp_pattern_bytes(rt, p, !unicode)
 	arena: mem.Dynamic_Arena
-	mem.dynamic_arena_init(&arena, rt.allocator, rt.allocator, 16 * 1024, 4 * 1024) // (a block is cleared when taken: most patterns are small)
+	mem.dynamic_arena_init(&arena, rt.allocator, rt.allocator, RE_COMPILE_BLOCK_BYTES, RE_COMPILE_OUT_BAND_BYTES) // (a block is cleared when taken: most patterns are small)
 	defer mem.dynamic_arena_destroy(&arena)
-	bc, err := fe.lre_compile(src, re_flags, mem.dynamic_arena_allocator(&arena), fe.stack_guard_here(256 * 1024))
+	bc, err := fe.lre_compile(src, re_flags, mem.dynamic_arena_allocator(&arena), fe.stack_guard_here(RE_COMPILE_STACK_BYTES))
 	if bc == nil {
 		if err == "stack overflow" {return throw_range_error(ctx, "Maximum call stack size exceeded")}
 		return throw_syntax_error(ctx, err)

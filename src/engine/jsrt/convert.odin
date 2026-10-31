@@ -6,6 +6,11 @@ import "core:math"
 import "wb:engine/numconv"
 import "wb:engine/bigint"
 
+// number_to_string: an integer closer to zero than this takes the fast path.
+NUM_TO_STR_INT_FAST_LIMIT :: 1_000_000_000_000
+// string_to_number: a string of at most this many Latin-1 units is tried as a decimal integer first.
+STR_TO_NUM_FAST_MAX_LEN :: 9
+
 Hint :: enum u8 {default, number, string}
 
 to_boolean :: proc(v: Value) -> bool {
@@ -183,7 +188,7 @@ relative_index :: proc(ctx: ^Context, v: Value, len: i64, default_val: i64) -> (
 number_to_string :: proc(rt: ^Runtime, d: f64) -> ^JS_String {
 	if d == 0 {return rt.char_strings['0']}
 	iv := i64(d)
-	if f64(iv) == d && iv > -1_000_000_000_000 && iv < 1_000_000_000_000 {
+	if f64(iv) == d && iv > -NUM_TO_STR_INT_FAST_LIMIT && iv < NUM_TO_STR_INT_FAST_LIMIT {
 		if iv >= 0 {return str_from_u64(rt, u64(iv))}
 	}
 	buf: [numconv.MAX_STR_LEN]u8
@@ -204,7 +209,7 @@ string_to_number :: proc(rt: ^Runtime, s: ^JS_String) -> f64 {
 	n := int(f.len)
 	if n == 0 {return 0}
 	// fast path: short decimal integer
-	if n <= 9 && !f.is_wide {
+	if n <= STR_TO_NUM_FAST_MAX_LEN && !f.is_wide {
 		d := str_u8(f)
 		v := 0
 		ok := true

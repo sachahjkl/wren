@@ -8,6 +8,11 @@ package jsrt
 // instruction stream are checked against the function's own tables (constant pool, locals,
 // closure cells) by verify_function, which also keeps the interpreter's indexing safe.
 
+BC_MAX_NESTING :: 1000            // values nested in one another
+BC_COUNT_LIMIT :: 1 << 24         // the elements of a table, unless the table says otherwise
+BC_BIGINT_COUNT_LIMIT :: 1 << 27  // the bytes of a bigint
+BC_SOURCE_COUNT_LIMIT :: 1 << 30  // the bytes of a function's source text
+
 BC_Tag :: enum u8 {
 	invalid = 0,
 	null,
@@ -127,7 +132,7 @@ sleb :: proc(r: ^Reader) -> i32 {
 
 // A count that must fit in the remaining input (each element takes at least `min_bytes`).
 @(private = "file")
-count :: proc(r: ^Reader, min_bytes: int, limit: u32 = 1 << 24) -> int {
+count :: proc(r: ^Reader, min_bytes: int, limit: u32 = BC_COUNT_LIMIT) -> int {
 	n := leb(r)
 	if r.err {return 0}
 	if n > limit || int(n) * min_bytes > len(r.buf) - r.pos {
@@ -226,7 +231,7 @@ read_value :: proc(r: ^Reader) -> Value {
 	rt := r.ctx.rt
 	r.depth += 1
 	defer r.depth -= 1
-	if r.depth > 1000 {fail(r, "bytecode nesting too deep"); return EXCEPTION}
+	if r.depth > BC_MAX_NESTING {fail(r, "bytecode nesting too deep"); return EXCEPTION}
 	t := u8_(r)
 	if r.err {return EXCEPTION}
 	if t > u8(BC_Tag.symbol) {fail(r, "invalid tag"); return EXCEPTION}
@@ -305,7 +310,7 @@ read_array :: proc(r: ^Reader, is_template: bool) -> Value {
 
 @(private = "file")
 read_bigint :: proc(r: ^Reader) -> Value {
-	n := count(r, 1, 1 << 27)
+	n := count(r, 1, BC_BIGINT_COUNT_LIMIT)
 	if r.err {return EXCEPTION}
 	ctx := r.ctx
 	if n == 0 {return bigint_from_i64(ctx, 0)}
@@ -419,7 +424,7 @@ read_function :: proc(r: ^Reader) -> Value {
 			copy(b.pc2line, r.buf[r.pos:r.pos + n])
 			r.pos += n
 		}
-		sn := count(r, 1, 1 << 30)
+		sn := count(r, 1, BC_SOURCE_COUNT_LIMIT)
 		if r.err {return EXCEPTION}
 		if sn > 0 {
 			b.source = make([]u8, sn, a)

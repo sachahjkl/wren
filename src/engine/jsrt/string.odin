@@ -14,6 +14,8 @@ import "core:unicode/utf8"
 STRING_LEN_MAX :: (1 << 30) - 1
 ROPE_MIN_LEN :: 64
 ROPE_MAX_DEPTH :: 48
+ROPE_APPEND_FLATTEN_DEPTH :: 8   // a left operand this deep is flattened into a growable buffer when appended to
+SB_WIDEN_SLACK :: 16             // room for further units when a string builder turns 16-bit
 
 JS_String :: struct {
 	using cell: Cell,
@@ -271,7 +273,7 @@ str_concat :: proc(rt: ^Runtime, a, b: ^JS_String) -> ^JS_String {
 			return s
 		}
 	}
-	if a.len >= b.len && (!a.is_rope || a.depth >= 8) {
+	if a.len >= b.len && (!a.is_rope || a.depth >= ROPE_APPEND_FLATTEN_DEPTH) {
 		fa := str_flat(rt, a)
 		cap := min(total + total / 2, STRING_LEN_MAX)
 		s := str_alloc_tail(rt, total, wide)
@@ -430,7 +432,7 @@ sb_destroy :: proc(sb: ^String_Builder) {
 
 @(private = "file")
 sb_widen :: proc(sb: ^String_Builder) {
-	reserve(&sb.b16, len(sb.b8) + 16)
+	reserve(&sb.b16, len(sb.b8) + SB_WIDEN_SLACK)
 	for c in sb.b8 {append(&sb.b16, u16(c))}
 	clear(&sb.b8)
 	sb.wide = true

@@ -617,7 +617,7 @@ interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int
 					if f.bc.jit_active != 0 {break loop}   // a compiled loop of this function: the back edge goes through the full dispatch, which offers it to the JIT
 					if temp.len > regs.root_base {temp.len = regs.root_base}
 					rt.interrupt_counter += 1
-					if rt.interrupt_counter >= 10_000 || gc_should_run(rt) {break loop}
+					if rt.interrupt_counter >= INTERRUPT_POLL_EVERY || gc_should_run(rt) {break loop}
 				}
 				ip = intrinsics.ptr_offset(ip, 1 + d)
 			} else {
@@ -633,7 +633,7 @@ interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int
 					if f.bc.jit_active != 0 {break loop}   // a compiled loop of this function: the back edge goes through the full dispatch, which offers it to the JIT
 					if temp.len > regs.root_base {temp.len = regs.root_base}
 					rt.interrupt_counter += 1
-					if rt.interrupt_counter >= 10_000 || gc_should_run(rt) {break loop}
+					if rt.interrupt_counter >= INTERRUPT_POLL_EVERY || gc_should_run(rt) {break loop}
 				}
 				ip = intrinsics.ptr_offset(ip, 1 + d)
 			} else {
@@ -646,7 +646,7 @@ interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int
 				if f.bc.jit_active != 0 {break loop}   // a compiled loop of this function: the back edge goes through the full dispatch, which offers it to the JIT
 				if temp.len > regs.root_base {temp.len = regs.root_base}
 				rt.interrupt_counter += 1
-				if rt.interrupt_counter >= 10_000 || gc_should_run(rt) {break loop}
+				if rt.interrupt_counter >= INTERRUPT_POLL_EVERY || gc_should_run(rt) {break loop}
 			}
 			ip = intrinsics.ptr_offset(ip, 1 + d)
 		case .goto16:
@@ -655,7 +655,7 @@ interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int
 				if f.bc.jit_active != 0 {break loop}   // a compiled loop of this function: the back edge goes through the full dispatch, which offers it to the JIT
 				if temp.len > regs.root_base {temp.len = regs.root_base}
 				rt.interrupt_counter += 1
-				if rt.interrupt_counter >= 10_000 || gc_should_run(rt) {break loop}
+				if rt.interrupt_counter >= INTERRUPT_POLL_EVERY || gc_should_run(rt) {break loop}
 			}
 			ip = intrinsics.ptr_offset(ip, 1 + d)
 		case .goto:
@@ -664,7 +664,7 @@ interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int
 				if f.bc.jit_active != 0 {break loop}   // a compiled loop of this function: the back edge goes through the full dispatch, which offers it to the JIT
 				if temp.len > regs.root_base {temp.len = regs.root_base}
 				rt.interrupt_counter += 1
-				if rt.interrupt_counter >= 10_000 || gc_should_run(rt) {break loop}
+				if rt.interrupt_counter >= INTERRUPT_POLL_EVERY || gc_should_run(rt) {break loop}
 			}
 			ip = intrinsics.ptr_offset(ip, 1 + d)
 
