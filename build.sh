@@ -39,8 +39,7 @@ deps() {
 link_flags() {
   # (lld: GNU ld stops on the libraries' DW.ref.rust_eh_personality, "undefined hidden symbol")
   local lld=''
-  command -v ld.lld >/dev/null && lld='-fuse-ld=lld '
-  echo "$lld-Wl,--build-id -Wl,-z,noexecstack -Wl,--no-as-needed -lpthread -ldl -lm -lopus -lasound"
+  echo "-Wl,--build-id -Wl,-z,noexecstack -Wl,--no-as-needed -lpthread -ldl -lm -lopus -lasound"
 }
 
 wren() {
