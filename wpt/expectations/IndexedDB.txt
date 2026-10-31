@@ -2900,7 +2900,7 @@
 	undefined - ['x', {toString->'y'}] (stringifies): PASS
 	undefined - [['x'], 'y'] (stringifies): PASS
 	undefined - arr.length: PASS
-	undefined - array loop -> stringify becomes ['']: FAIL
+	undefined - array loop -> stringify becomes ['']: PASS
 	undefined - delete.a7: PASS
 	undefined - length: PASS
 	undefined - list with 1 field: PASS
@@ -2921,7 +2921,7 @@
 	undefined - ['x', {toString->'y'}] (stringifies): PASS
 	undefined - [['x'], 'y'] (stringifies): PASS
 	undefined - arr.length: PASS
-	undefined - array loop -> stringify becomes ['']: FAIL
+	undefined - array loop -> stringify becomes ['']: PASS
 	undefined - delete.a7: PASS
 	undefined - length: PASS
 	undefined - list with 1 field: PASS
@@ -3142,11 +3142,11 @@
 /IndexedDB/request_bubble-and-capture.any.worker.html: OK
 	IndexedDB Request Event Propagation: Bubbling and Capturing: PASS
 /IndexedDB/serialize-sharedarraybuffer-throws.https.html: OK
-	IndexedDB: Attempting to serialize a SharedArrayBuffer should throw: FAIL
+	IndexedDB: Attempting to serialize a SharedArrayBuffer should throw: PASS
 /IndexedDB/sharedarraybuffer-key.https.html: OK
 	A SharedArrayBuffer can be used as an IndexedDB key: FAIL
 	A SharedArrayBuffer in an array can be used as an IndexedDB key: FAIL
-	A SharedArrayBuffer-backed view can be used as an IndexedDB key: FAIL
+	A SharedArrayBuffer-backed view can be used as an IndexedDB key: PASS
 /IndexedDB/storage-buckets.https.any.html: OK
 	Basic test that buckets create independent databases.: PASS
 	Tests trying to use indexedDB in a deleted bucket.: PASS
@@ -3203,7 +3203,7 @@
 	ImageData: [object ImageData]: PASS
 	Not serializable: Event: [object Event]: PASS
 	Not serializable: MessageChannel: [object MessageChannel]: PASS
-	Not serializable: Window: [object global]: PASS
+	Not serializable: Window: [object Window]: PASS
 	Not serializable: function: function() {}: PASS
 	Not serializable: symbol: Symbol(desc): PASS
 	Object: [object Object]: PASS
@@ -3331,7 +3331,7 @@
 	DOMRectReadOnly: [object DOMRectReadOnly]: PASS
 	File: [object File]: PASS
 	ImageData: [object ImageData]: PASS
-	Not serializable: DedicatedWorkerGlobalScope: [object global]: PASS
+	Not serializable: DedicatedWorkerGlobalScope: [object DedicatedWorkerGlobalScope]: PASS
 	Not serializable: Event: [object Event]: PASS
 	Not serializable: MessageChannel: [object MessageChannel]: PASS
 	Not serializable: function: function() {}: PASS

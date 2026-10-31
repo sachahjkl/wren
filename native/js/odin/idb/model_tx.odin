@@ -225,7 +225,7 @@ task_closure :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, arg
 @(private = "file")
 read_named :: proc "contextless" (ctx: ^wj.Context, r: ^Rd, obj: wj.JSValue) {
 	set_own(ctx, obj, "id", wj.new_int64(ctx, i64(rd_uv(r))))
-	wj.JS_SetPropertyStr(ctx, obj, "name", wj.new_string_len(ctx, rd_bytes(r)))
+	wj.JS_SetPropertyStr(ctx, obj, "name", wj.string_of_wtf8(ctx, rd_bytes(r)))
 	pr := Rd{ p = rd_bytes(r) }
 	wj.JS_SetPropertyStr(ctx, obj, "keyPath", unpack_path(ctx, &pr))
 }

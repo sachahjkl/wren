@@ -26,6 +26,8 @@ Compile_Options :: struct {
 	// JS_WriteModule drops import attributes; with this set a request imported `with { type: T }` is renamed
 	// "specifier\0T" so a runtime reading the bytecode still sees the type.
 	encode_import_type: bool,
+	// HTML supports only the `type` import attribute: another is a SyntaxError of the module (ECMAScript leaves it to the host).
+	only_type_attribute: bool,
 	// Keep each function's source text in the bytecode (what Function.prototype.toString returns); the
 	// differential judge compares against JS_WRITE_OBJ_STRIP_SOURCE output and leaves it off.
 	keep_source: bool,
@@ -239,6 +241,17 @@ compile_program :: proc(src: string, kind: Program_Kind, allocator: runtime.Allo
 	}
 	if m != nil {
 		m.func_obj = b
+		if opts.only_type_attribute {
+			for &rme in m.req_module_entries {
+				if rme.attributes == nil {continue}
+				for k in rme.attributes.keys {
+					key := string_to_utf8(atom_to_string(at, k), allocator)
+					if key != "type" {
+						return Compile_Result{atoms = at, err = make_error("An import attribute other than `type` is not supported", Source_Pos{})}
+					}
+				}
+			}
+		}
 		if opts.encode_import_type {encode_import_types(at, m, allocator)}
 	}
 	return Compile_Result{top = b, module = m, atoms = at, err = no_error}

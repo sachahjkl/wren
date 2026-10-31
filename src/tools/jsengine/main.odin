@@ -174,6 +174,8 @@ IMPORTS := [?]wasm.Import{
 	{module = "credentials", name = "PublicKeyCredential_enabled", fn = exception_message_none, params = {}, results = {.I32}},
 	// (no WebAssembly object in the shell: the page's own modules are the browser's)
 	{module = "webassembly", name = "WebAssembly_enabled", fn = exception_message_none, params = {}, results = {.I32}},
+	{module = "webassembly", name = "WebAssembly_canBlock", fn = exception_message_none, params = {}, results = {.I32}},
+	{module = "webassembly", name = "WebAssembly_crossOriginIsolated", fn = exception_message_none, params = {}, results = {.I32}},
 }
 
 usage :: proc() -> ! {

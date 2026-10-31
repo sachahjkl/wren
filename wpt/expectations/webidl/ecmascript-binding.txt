@@ -427,17 +427,17 @@
 /webidl/ecmascript-binding/legacy-platform-object/DefineOwnProperty.html: OK
 	Test [[DefineOwnProperty]] with indexed property setter support.: FAIL
 	Test [[DefineOwnProperty]] with named property setter support.: FAIL
-	Test [[DefineOwnProperty]] with no indexed property setter support.: FAIL
+	Test [[DefineOwnProperty]] with no indexed property setter support.: PASS
 	Test [[DefineOwnProperty]] with no named property setter support.: FAIL
 /webidl/ecmascript-binding/legacy-platform-object/GetOwnProperty.html: OK
 	[[GetOwnProperty]] with getters and no setters: FAIL
 	[[GetOwnProperty]] with indexed property getters and setters: FAIL
 	[[GetOwnProperty]] with named property getters and setters: PASS
 /webidl/ecmascript-binding/legacy-platform-object/OwnPropertyKeys.html: OK
-	must enumerate own properties after indexed and named properties even when they're added first: FAIL
+	must enumerate own properties after indexed and named properties even when they're added first: PASS
 	must enumerate property indices in ascending numerical order: PASS
 	must enumerate property names in list order: PASS
-	must enumerate symbols after strings, regardless of which ones got added first: FAIL
+	must enumerate symbols after strings, regardless of which ones got added first: PASS
 	must first enumerate property indices in ascending numerical order, then named properties in list order: PASS
 /webidl/ecmascript-binding/legacy-platform-object/Set.html: OK
 	must allow assigning to a named property on an object which implements a named property getter but not a setter in strict mode: PASS
@@ -448,8 +448,8 @@
 	must allow assigning to a symbol property on an object which implements indexed and named property getters and setters when not in strict mode: PASS
 	must allow assigning to a symbol property on an object which implements indexed and named property getters but no setters in strict mode: PASS
 	must allow assigning to a symbol property on an object which implements indexed and named property getters but no setters when not in strict mode: PASS
-	must allow setting built-in property on a [LegacyOverrideBuiltIns] object even if a named property shadows it: FAIL
-	must not set the property value when assigning to a numeric property on an object which implements an indexed property getter but not a setter when not in strict mode: FAIL
+	must allow setting built-in property on a [LegacyOverrideBuiltIns] object even if a named property shadows it: PASS
+	must not set the property value when assigning to a numeric property on an object which implements an indexed property getter but not a setter when not in strict mode: PASS
 	must throw when assigning to a numeric property on an object which implements a indexed property getter but not a setter in strict mode: PASS
 /webidl/ecmascript-binding/no-regexp-special-casing.any.html: OK
 	Can be used as an object implementing a callback interface: PASS
@@ -496,9 +496,9 @@
 	An array with an overridden Symbol.iterator on the prototype: FAIL
 	An object with an overriden Symbol.iterator: FAIL
 /webidl/ecmascript-binding/setter-argument.html: OK
-	Object attribute setter called with undefined should behave in the same way as no arguments: FAIL
+	Object attribute setter called with undefined should behave in the same way as no arguments: PASS
 	Object attribute setter should throw if this value is invalid: PASS
-	Object attribute setter should treat no arguments as undefined: FAIL
+	Object attribute setter should treat no arguments as undefined: PASS
 	String attribute setter called with string should just work: PASS
 	String attribute setter called with undefined should behave in the same way as no arguments: PASS
 	String attribute setter should throw if this value is invalid: PASS

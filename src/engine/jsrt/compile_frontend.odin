@@ -26,6 +26,7 @@ frontend_compile :: proc(ctx: ^Context, req: ^Compile_Request) -> Value {
 		filename           = req.filename,
 		strict             = req.strict,
 		encode_import_type = true,
+		only_type_attribute = rt.config.only_type_attribute,
 		stack_budget       = rt.config.compile_stack_budget,
 		keep_source        = !rt.config.strip_source && !req.strip_source,
 	}
@@ -84,7 +85,9 @@ frontend_compile :: proc(ctx: ^Context, req: ^Compile_Request) -> Value {
 		if fe.error_kind(res.err) == .range {
 			return throw_error(ctx, .range, "Maximum call stack size exceeded")
 		}
-		return throw_error(ctx, .syntax, res.err.message)
+		r := throw_error(ctx, .syntax, res.err.message)
+		error_add_location(ctx, ctx.rt.exception, req.filename, int(res.err.pos.line), int(res.err.pos.col))
+		return r
 	}
 	// The serialized form is built on the host heap (it grows by realloc, and its buffers are freed as soon as
 	// they are done with) and the arena goes before the bytecode is read, so the compiler's transient memory is

@@ -488,7 +488,7 @@
 	abort signal takes priority over errored readable: FAIL
 	abort signal takes priority over errored writable: PASS
 	an aborted signal should cause the writable stream to reject with an AbortError: PASS
-	pipeTo on a teed readable byte stream should only be aborted when both branches are aborted: FAIL
+	pipeTo on a teed readable byte stream should only be aborted when both branches are aborted: PASS
 	preventAbort should prevent aborting the readable: PASS
 	preventCancel and preventAbort should prevent canceling the readable and aborting the readable: PASS
 	preventCancel should prevent canceling the readable: PASS
@@ -522,7 +522,7 @@
 	abort signal takes priority over errored readable: FAIL
 	abort signal takes priority over errored writable: PASS
 	an aborted signal should cause the writable stream to reject with an AbortError: PASS
-	pipeTo on a teed readable byte stream should only be aborted when both branches are aborted: FAIL
+	pipeTo on a teed readable byte stream should only be aborted when both branches are aborted: PASS
 	preventAbort should prevent aborting the readable: PASS
 	preventCancel and preventAbort should prevent canceling the readable and aborting the readable: PASS
 	preventCancel should prevent canceling the readable: PASS
@@ -989,12 +989,12 @@
 	CountQueuingStrategy: size should not be a constructor: PASS
 	CountQueuingStrategy: size should not have a prototype property: PASS
 	CountQueuingStrategy: subclassing should work correctly: PASS
-/streams/readable-streams/async-iterator.any.html: ERROR
+/streams/readable-streams/async-iterator.any.html: OK
 	Acquiring a reader after exhaustively async-iterating a stream: PASS
 	Acquiring a reader after partially async-iterating a stream: PASS
 	Acquiring a reader after return()ing from a stream that errors: PASS
 	Acquiring a reader and reading the remaining chunks after partially async-iterating a stream with preventCancel = true: PASS
-	Async iterator instances should have the correct list of properties: FAIL
+	Async iterator instances should have the correct list of properties: PASS
 	Async-iterating a closed stream never executes the loop body, but works fine: PASS
 	Async-iterating a partially consumed stream: PASS
 	Async-iterating a pull source: PASS
@@ -1014,29 +1014,29 @@
 	Cancellation behavior when throwing inside loop body; preventCancel = true: PASS
 	close() while next() is pending: PASS
 	next() rejects if the stream errors: PASS
-	next() that succeeds; next() that reports an error(); next() [no awaiting]: FAIL
+	next() that succeeds; next() that reports an error(); next() [no awaiting]: PASS
 	next() that succeeds; next() that reports an error(); return(): PASS
-	next() that succeeds; next() that reports an error(); return() [no awaiting]: FAIL
+	next() that succeeds; next() that reports an error(); return() [no awaiting]: PASS
 	next() that succeeds; next() that reports an error; next(): PASS
 	next() that succeeds; return(): PASS
-	next() that succeeds; return() [no awaiting]: FAIL
+	next() that succeeds; return() [no awaiting]: PASS
 	return() does not rejects if the stream has not errored yet: PASS
-	return() rejects if the stream has errored: FAIL
+	return() rejects if the stream has errored: PASS
 	return() should unlock the stream synchronously when preventCancel = false: PASS
 	return() should unlock the stream synchronously when preventCancel = true: PASS
 	return(); next(): PASS
 	return(); next() [no awaiting]: PASS
-	return(); next() with delayed cancel(): FAIL
+	return(); next() with delayed cancel(): PASS
 	return(); next() with delayed cancel() [no awaiting]: PASS
 	return(); return(): PASS
 	return(); return() [no awaiting]: PASS
 	values() throws if there's already a lock: PASS
-/streams/readable-streams/async-iterator.any.worker.html: ERROR
+/streams/readable-streams/async-iterator.any.worker.html: OK
 	Acquiring a reader after exhaustively async-iterating a stream: PASS
 	Acquiring a reader after partially async-iterating a stream: PASS
 	Acquiring a reader after return()ing from a stream that errors: PASS
 	Acquiring a reader and reading the remaining chunks after partially async-iterating a stream with preventCancel = true: PASS
-	Async iterator instances should have the correct list of properties: FAIL
+	Async iterator instances should have the correct list of properties: PASS
 	Async-iterating a closed stream never executes the loop body, but works fine: PASS
 	Async-iterating a partially consumed stream: PASS
 	Async-iterating a pull source: PASS
@@ -1056,19 +1056,19 @@
 	Cancellation behavior when throwing inside loop body; preventCancel = true: PASS
 	close() while next() is pending: PASS
 	next() rejects if the stream errors: PASS
-	next() that succeeds; next() that reports an error(); next() [no awaiting]: FAIL
+	next() that succeeds; next() that reports an error(); next() [no awaiting]: PASS
 	next() that succeeds; next() that reports an error(); return(): PASS
-	next() that succeeds; next() that reports an error(); return() [no awaiting]: FAIL
+	next() that succeeds; next() that reports an error(); return() [no awaiting]: PASS
 	next() that succeeds; next() that reports an error; next(): PASS
 	next() that succeeds; return(): PASS
-	next() that succeeds; return() [no awaiting]: FAIL
+	next() that succeeds; return() [no awaiting]: PASS
 	return() does not rejects if the stream has not errored yet: PASS
-	return() rejects if the stream has errored: FAIL
+	return() rejects if the stream has errored: PASS
 	return() should unlock the stream synchronously when preventCancel = false: PASS
 	return() should unlock the stream synchronously when preventCancel = true: PASS
 	return(); next(): PASS
 	return(); next() [no awaiting]: PASS
-	return(); next() with delayed cancel(): FAIL
+	return(); next() with delayed cancel(): PASS
 	return(); next() with delayed cancel() [no awaiting]: PASS
 	return(); return(): PASS
 	return(); return() [no awaiting]: PASS
@@ -1515,59 +1515,59 @@
 	pipeTo() inside size() should behave as expected: NOTRUN
 	read() inside of size() should behave as expected: NOTRUN
 	tee() inside size() should work: NOTRUN
-/streams/readable-streams/tee.any.html: ERROR
+/streams/readable-streams/tee.any.html: OK
 	ReadableStream teeing: canceling both branches in reverse order should aggregate the cancel reasons into an array: PASS
-	ReadableStream teeing: canceling both branches in sequence with delay: NOTRUN
+	ReadableStream teeing: canceling both branches in sequence with delay: PASS
 	ReadableStream teeing: canceling both branches should aggregate the cancel reasons into an array: PASS
-	ReadableStream teeing: canceling branch1 should finish when branch2 reads until end of stream: NOTRUN
-	ReadableStream teeing: canceling branch1 should finish when original stream errors: NOTRUN
+	ReadableStream teeing: canceling branch1 should finish when branch2 reads until end of stream: PASS
+	ReadableStream teeing: canceling branch1 should finish when original stream errors: PASS
 	ReadableStream teeing: canceling branch1 should not impact branch2: PASS
 	ReadableStream teeing: canceling branch2 should not impact branch1: PASS
-	ReadableStream teeing: closing the original should immediately close the branches: NOTRUN
-	ReadableStream teeing: enqueue() and close() while both branches are pulling: NOTRUN
-	ReadableStream teeing: erroring a teed stream should error both branches: TIMEOUT
-	ReadableStream teeing: erroring a teed stream should properly handle canceled branches: FAIL
-	ReadableStream teeing: erroring the original should immediately error the branches: NOTRUN
-	ReadableStream teeing: errors in the source should propagate to both branches: FAIL
-	ReadableStream teeing: failing to cancel the original stream should cause cancel() to reject on branches: FAIL
-	ReadableStream teeing: failing to cancel when canceling both branches in sequence with delay: NOTRUN
+	ReadableStream teeing: closing the original should immediately close the branches: PASS
+	ReadableStream teeing: enqueue() and close() while both branches are pulling: PASS
+	ReadableStream teeing: erroring a teed stream should error both branches: PASS
+	ReadableStream teeing: erroring a teed stream should properly handle canceled branches: PASS
+	ReadableStream teeing: erroring the original should immediately error the branches: PASS
+	ReadableStream teeing: errors in the source should propagate to both branches: PASS
+	ReadableStream teeing: failing to cancel the original stream should cause cancel() to reject on branches: PASS
+	ReadableStream teeing: failing to cancel when canceling both branches in sequence with delay: PASS
 	ReadableStream teeing: rs.tee() returns an array of two ReadableStreams: PASS
 	ReadableStream teeing: should be able to read one branch to the end without affecting the other: PASS
 	ReadableStream teeing: values should be equal across each branch: PASS
-	ReadableStreamTee should not pull more chunks than can fit in the branch queue: NOTRUN
-	ReadableStreamTee should not pull when original is already errored: NOTRUN
+	ReadableStreamTee should not pull more chunks than can fit in the branch queue: FAIL
+	ReadableStreamTee should not pull when original is already errored: PASS
 	ReadableStreamTee should not use a modified ReadableStream constructor from the global object: PASS
-	ReadableStreamTee should only pull enough to fill the emptiest queue: NOTRUN
-	ReadableStreamTee stops pulling when original stream errors while both branches are reading: NOTRUN
-	ReadableStreamTee stops pulling when original stream errors while branch 1 is reading: NOTRUN
-	ReadableStreamTee stops pulling when original stream errors while branch 2 is reading: NOTRUN
+	ReadableStreamTee should only pull enough to fill the emptiest queue: FAIL
+	ReadableStreamTee stops pulling when original stream errors while both branches are reading: FAIL
+	ReadableStreamTee stops pulling when original stream errors while branch 1 is reading: FAIL
+	ReadableStreamTee stops pulling when original stream errors while branch 2 is reading: FAIL
 	Running templatedRSTeeCancel with ReadableStream teeing: PASS
-/streams/readable-streams/tee.any.worker.html: ERROR
+/streams/readable-streams/tee.any.worker.html: OK
 	ReadableStream teeing: canceling both branches in reverse order should aggregate the cancel reasons into an array: PASS
-	ReadableStream teeing: canceling both branches in sequence with delay: NOTRUN
+	ReadableStream teeing: canceling both branches in sequence with delay: PASS
 	ReadableStream teeing: canceling both branches should aggregate the cancel reasons into an array: PASS
-	ReadableStream teeing: canceling branch1 should finish when branch2 reads until end of stream: NOTRUN
-	ReadableStream teeing: canceling branch1 should finish when original stream errors: NOTRUN
+	ReadableStream teeing: canceling branch1 should finish when branch2 reads until end of stream: PASS
+	ReadableStream teeing: canceling branch1 should finish when original stream errors: PASS
 	ReadableStream teeing: canceling branch1 should not impact branch2: PASS
 	ReadableStream teeing: canceling branch2 should not impact branch1: PASS
-	ReadableStream teeing: closing the original should immediately close the branches: NOTRUN
-	ReadableStream teeing: enqueue() and close() while both branches are pulling: NOTRUN
-	ReadableStream teeing: erroring a teed stream should error both branches: TIMEOUT
-	ReadableStream teeing: erroring a teed stream should properly handle canceled branches: FAIL
-	ReadableStream teeing: erroring the original should immediately error the branches: NOTRUN
-	ReadableStream teeing: errors in the source should propagate to both branches: FAIL
-	ReadableStream teeing: failing to cancel the original stream should cause cancel() to reject on branches: FAIL
-	ReadableStream teeing: failing to cancel when canceling both branches in sequence with delay: NOTRUN
+	ReadableStream teeing: closing the original should immediately close the branches: PASS
+	ReadableStream teeing: enqueue() and close() while both branches are pulling: PASS
+	ReadableStream teeing: erroring a teed stream should error both branches: PASS
+	ReadableStream teeing: erroring a teed stream should properly handle canceled branches: PASS
+	ReadableStream teeing: erroring the original should immediately error the branches: PASS
+	ReadableStream teeing: errors in the source should propagate to both branches: PASS
+	ReadableStream teeing: failing to cancel the original stream should cause cancel() to reject on branches: PASS
+	ReadableStream teeing: failing to cancel when canceling both branches in sequence with delay: PASS
 	ReadableStream teeing: rs.tee() returns an array of two ReadableStreams: PASS
 	ReadableStream teeing: should be able to read one branch to the end without affecting the other: PASS
 	ReadableStream teeing: values should be equal across each branch: PASS
-	ReadableStreamTee should not pull more chunks than can fit in the branch queue: NOTRUN
-	ReadableStreamTee should not pull when original is already errored: NOTRUN
+	ReadableStreamTee should not pull more chunks than can fit in the branch queue: FAIL
+	ReadableStreamTee should not pull when original is already errored: PASS
 	ReadableStreamTee should not use a modified ReadableStream constructor from the global object: PASS
-	ReadableStreamTee should only pull enough to fill the emptiest queue: NOTRUN
-	ReadableStreamTee stops pulling when original stream errors while both branches are reading: NOTRUN
-	ReadableStreamTee stops pulling when original stream errors while branch 1 is reading: NOTRUN
-	ReadableStreamTee stops pulling when original stream errors while branch 2 is reading: NOTRUN
+	ReadableStreamTee should only pull enough to fill the emptiest queue: FAIL
+	ReadableStreamTee stops pulling when original stream errors while both branches are reading: FAIL
+	ReadableStreamTee stops pulling when original stream errors while branch 1 is reading: FAIL
+	ReadableStreamTee stops pulling when original stream errors while branch 2 is reading: FAIL
 	Running templatedRSTeeCancel with ReadableStream teeing: PASS
 /streams/readable-streams/templated.any.html: OK
 	ReadableStream (closed via call in start): cancel() should return a distinct fulfilled promise each time: PASS

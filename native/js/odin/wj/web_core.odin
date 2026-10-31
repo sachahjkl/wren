@@ -926,3 +926,55 @@ web_core_preinit :: proc "contextless" (ctx: ^Context) -> i32 {
 	JS_FreeValue(ctx, error)
 	return core_iterators(ctx)
 }
+
+// ---- WTF-8: the bytes of a string that keeps its lone surrogates ----
+
+// The string as WTF-8: a lone surrogate keeps its own 3-byte form (UTF-8 otherwise). In libc's heap. False with an exception pending.
+wtf8_of :: proc(ctx: ^Context, v: JSValue) -> (out: []u8, ok: bool) {
+	n: uint
+	units := JS_ToCStringLenUTF16(ctx, &n, v)
+	if units == nil { return nil, false }
+	defer JS_FreeCStringUTF16(ctx, units)
+	wtf := make([dynamic]u8, 0, int(n) + 8, libc_allocator())
+	for i := uint(0); i < n; i += 1 {
+		cp := u32(units[i])
+		if cp >= 0xd800 && cp < 0xdc00 && i + 1 < n && units[i + 1] >= 0xdc00 && units[i + 1] < 0xe000 {
+			cp = 0x10000 + (cp - 0xd800) << 10 + (u32(units[i + 1]) - 0xdc00)
+			i += 1
+		}
+		switch {
+		case cp < 0x80: append(&wtf, u8(cp))
+		case cp < 0x800: append(&wtf, u8(0xc0 | cp >> 6), u8(0x80 | cp & 63))
+		case cp < 0x10000: append(&wtf, u8(0xe0 | cp >> 12), u8(0x80 | (cp >> 6) & 63), u8(0x80 | cp & 63))
+		case: append(&wtf, u8(0xf0 | cp >> 18), u8(0x80 | (cp >> 12) & 63), u8(0x80 | (cp >> 6) & 63), u8(0x80 | cp & 63))
+		}
+	}
+	return wtf[:], true
+}
+
+// The string of WTF-8 bytes (wtf8_of), or of UTF-8.
+string_of_wtf8 :: proc "contextless" (ctx: ^Context, b: []u8) -> JSValue {
+	lone := false
+	for i := 0; i + 1 < len(b); i += 1 {
+		if b[i] == 0xed && b[i + 1] >= 0xa0 { lone = true; break }
+	}
+	if !lone { return new_string_len(ctx, b) }
+	context = heap_context()
+	units := make([dynamic]u16, 0, len(b), libc_allocator())
+	defer delete(units)
+	for i := 0; i < len(b); {
+		c := u32(b[i])
+		more := c < 0x80 ? 0 : (c < 0xe0 ? 1 : (c < 0xf0 ? 2 : 3))
+		if i + more >= len(b) { break }
+		cp := more == 0 ? c : (more == 1 ? c & 31 : (more == 2 ? c & 15 : c & 7))
+		for k in 1 ..= more { cp = cp << 6 | u32(b[i + k]) & 63 }
+		i += more + 1
+		if cp >= 0x10000 {
+			cp -= 0x10000
+			append(&units, u16(0xd800 + cp >> 10), u16(0xdc00 + cp & 0x3ff))
+		} else {
+			append(&units, u16(cp))
+		}
+	}
+	return JS_NewStringUTF16(ctx, raw_data(units), uint(len(units)))
+}

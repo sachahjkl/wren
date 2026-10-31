@@ -341,8 +341,8 @@
 /navigation-api/navigate-event/reentry-from-focus-reset-navigate-api-tracker.html: OK
 	Re-entry via focus reset using navigate(): PASS
 	Re-entry via focus reset using pushState: PASS
-/navigation-api/navigate-event/replaceState-inside-back-handler-infinite.optional.html: OK
-	infinite replaceState inside a navigate event for navigation.back(): FAIL
+/navigation-api/navigate-event/replaceState-inside-back-handler-infinite.optional.html: TIMEOUT
+	infinite replaceState inside a navigate event for navigation.back(): TIMEOUT
 /navigation-api/navigate-event/replaceState-inside-back-handler.html: OK
 	replaceState inside a navigate event for navigation.back(): PASS
 /navigation-api/navigate-event/same-url-replace-cross-document.html: OK
@@ -647,7 +647,7 @@
 /navigation-api/navigation-methods/return-value/navigate-rejection-order-pagehide-unserializablestate.html: OK
 	navigate() with an unserializable state inside onpagehide throws "DataCloneError", not "InvalidStateError": FAIL
 /navigation-api/navigation-methods/return-value/navigate-unserializable-state.html: OK
-	navigate() with an unserializable state (SharedArrayBuffer): FAIL
+	navigate() with an unserializable state (SharedArrayBuffer): PASS
 	navigate() with an unserializable state (WritableStream): PASS
 /navigation-api/navigation-methods/return-value/navigate.html: OK
 	navigate() promises: PASS
@@ -676,7 +676,7 @@
 /navigation-api/navigation-methods/return-value/reload-rejection-order-pagehide-unserializablestate.html: OK
 	reload() with an unserializable state inside onpagehide throws "DataCloneError", not "InvalidStateError": FAIL
 /navigation-api/navigation-methods/return-value/reload-unserializable-state.html: OK
-	reload() with an unserializable state (SharedArrayBuffer): FAIL
+	reload() with an unserializable state (SharedArrayBuffer): PASS
 	reload() with an unserializable state (WritableStream): PASS
 /navigation-api/navigation-methods/return-value/reload.html: OK
 	reload() promises never settle (without intercept()): FAIL
@@ -871,7 +871,7 @@
 	Detaching a frame from its own dispose handler during another frame's truncating push must not crash: FAIL
 /navigation-api/per-entry-events/dispose-same-document-intercept.html: OK
 	dispose events when forward-pruning same-document entries: FAIL
-/navigation-api/per-entry-events/dispose-same-document-navigate-during.html: OK|ERROR
+/navigation-api/per-entry-events/dispose-same-document-navigate-during.html: OK
 	navigate() during a same-document-navigation-initiated dispose works (since it's after the previous navigation): FAIL
 /navigation-api/per-entry-events/dispose-same-document-reload-with-intercept.html: OK
 	dispose events are not fired when doing a same-document reload using navigation.reload() and intercept(): PASS
@@ -930,7 +930,7 @@
 	redirect() to cross-origin url: PASS
 	redirect() to invalid url: PASS
 	redirect() traverse: PASS
-	redirect() with an unserializable state object: FAIL
+	redirect() with an unserializable state object: PASS
 /navigation-api/precommit-handler/precommitHandler-reload.html: OK
 	precommitHandler for a reload navigation, reject after commit: PASS
 	precommitHandler for a reload navigation, reject before commit: FAIL

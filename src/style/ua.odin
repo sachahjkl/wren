@@ -127,4 +127,7 @@ dialog { position: absolute; inset-inline: 0; width: fit-content; height: fit-co
 dialog:popover-open { display: block; }
 [popover] { position: fixed; inset: 0; width: fit-content; height: fit-content; margin: auto; border: solid; padding: 0.25em; overflow: auto; color: CanvasText; background-color: Canvas; }
 :popover-open { z-index: 2147483646 !important; }
+/* HTML §15.3.9 a modal dialog: in the top layer, and the rest of the document inert (a click outside reaches nothing). ::backdrop is not generated. */
+dialog:modal { position: fixed; overflow: auto; inset-block: 0; max-width: calc(100% - 6px - 2em); max-height: calc(100% - 6px - 2em); z-index: 2147483646 !important; pointer-events: auto !important; }
+:-wren-modal-active { pointer-events: none !important; }
 `

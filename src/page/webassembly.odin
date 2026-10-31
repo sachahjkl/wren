@@ -4,6 +4,7 @@ package page
 // page's own modules are compiled and run by Wasmtime beside the engine's instance (package wasm, user_module.odin).
 
 import "core:fmt"
+import "core:strings"
 import "wb:base"
 import "wb:csp"
 import "wb:host"
@@ -32,7 +33,7 @@ wasm_csp_allows :: proc(p: ^Page) -> bool {
 
 WebAssembly_compile :: proc(c: ^Call, module: []u8) -> (u64, Api_Error) {
 	if !wasm_csp_allows(c.page) { return 0, fail(c, .Security, WASM_CSP_REFUSED) }
-	m, err := wasm.user_module_new(module)
+	m, err := wasm.user_module_new(module, wasm_cache_partition(c.page))
 	if m == nil { return 0, fail(c, .Syntax, err) }
 	return object_create(c.page, &wasm_module_vt, m, c.owner), .None
 }
@@ -43,12 +44,20 @@ Wasm_Compile_Job :: struct {
 	promise:  u64,
 	owner:    u32,
 	image:    []byte,               // a copy: the bytes are the ones of the call, whatever the script does next
+	partition: string,              // (of the disk cache: wasm_cache_partition; a copy)
 	compiled: wasm.User_Compiled,
+}
+
+// What the disk cache of compiled modules keeps apart: the top-level site.
+@(private = "file")
+wasm_cache_partition :: proc(p: ^Page) -> string {
+	s := p.env.top_level_site
+	return s.opaque ? fmt.tprintf("opaque %d", s.nonce) : fmt.tprintf("%s://%s", s.scheme, s.domain)
 }
 
 @(private = "file")
 wasm_compile_settle :: proc(pg: ^Page, j: ^Wasm_Compile_Job) {
-	defer { delete(j.image); free(j) }
+	defer { delete(j.image); delete(j.partition); free(j) }
 	m, err := wasm.user_module_finish(j.compiled, j.image)
 	if pg == nil {
 		if m != nil { wasm.user_module_delete(m) }
@@ -67,11 +76,11 @@ WebAssembly_compileAsync :: proc(c: ^Call, module: []u8) -> u64 {
 		return pr
 	}
 	j := new(Wasm_Compile_Job)
-	j^ = Wasm_Compile_Job{page = p.web != nil ? p.web.id : 0, promise = pr, owner = c.owner, image = make([]byte, len(module))}
+	j^ = Wasm_Compile_Job{page = p.web != nil ? p.web.id : 0, promise = pr, owner = c.owner, image = make([]byte, len(module)), partition = strings.clone(wasm_cache_partition(p))}
 	copy(j.image, module)
 	work := proc(data: rawptr) {
 		j := (^Wasm_Compile_Job)(data)
-		j.compiled = wasm.user_module_compile(j.image)
+		j.compiled = wasm.user_module_compile(j.image, j.partition)
 	}
 	if p.loader != nil && p.loader.blocking != nil {
 		host.run_blocking(p.loader.blocking, work, proc(data: rawptr) {
@@ -174,6 +183,70 @@ WebAssembly_Memory_read :: proc(c: ^Call, memory: i32, offset: i64, destination:
 WebAssembly_Memory_write :: proc(c: ^Call, memory: i32, offset: i64, source: []u8) -> i32 {
 	s := wasm_store(c)
 	return s != nil ? i32(wasm.user_memory_write(s, memory, offset, source)) : 0
+}
+
+WebAssembly_Memory_createShared :: proc(c: ^Call, initial: i64, maximum: i64, bytes: i64) -> i32 {
+	s := wasm_store(c)
+	if s == nil { return NO_STORE }
+	return wasm_status(wasm.user_shared_new(s, initial, maximum, bytes))
+}
+
+WebAssembly_Memory_release :: proc(c: ^Call, memory: i32) {
+	if s := wasm_store(c); s != nil { wasm.user_shared_release(s, memory) }
+}
+
+WebAssembly_Memory_byteLength :: proc(c: ^Call, memory: i32) -> i64 {
+	s := wasm_store(c)
+	return s != nil ? wasm.user_shared_byte_length(s, memory) : -1
+}
+
+WebAssembly_Memory_growBytes :: proc(c: ^Call, memory: i32, bytes: i64) -> bool {
+	s := wasm_store(c)
+	return s != nil && wasm.user_shared_grow_bytes(s, memory, bytes)
+}
+
+WebAssembly_Memory_atomic :: proc(c: ^Call, memory: i32, op: i32, offset: i64, size: i32, a: i64, b: i64) -> i64 {
+	s := wasm_store(c)
+	if s == nil || op < 0 || op > i32(max(wasm.Shared_Atomic_Op)) { return 0 }
+	return i64(wasm.user_shared_atomic(s, memory, wasm.Shared_Atomic_Op(op), offset, size, u64(a), u64(b)))
+}
+
+WebAssembly_Memory_wait :: proc(c: ^Call, memory: i32, offset: i64, size: i32, expected: i64, timeout: f64) -> i32 {
+	s := wasm_store(c)
+	return s != nil && c.page.worker != nil ? wasm.user_shared_wait(s, memory, offset, size, u64(expected), timeout) : 2
+}
+
+WebAssembly_Memory_notify :: proc(c: ^Call, memory: i32, offset: i64, count: u32) -> i32 {
+	s := wasm_store(c)
+	return s != nil ? wasm.user_shared_notify(s, memory, offset, count) : 0
+}
+
+WebAssembly_Memory_share :: proc(c: ^Call, memory: i32) -> i64 {
+	s := wasm_store(c)
+	if s == nil || !c.page.env.cross_origin_isolated { return 0 }
+	return i64(wasm.user_shared_share(s, memory, page_cluster(c.page)))
+}
+
+WebAssembly_Memory_adopt :: proc(c: ^Call, token: i64) -> i32 {
+	s := wasm_store(c)
+	return s != nil ? wasm.user_shared_adopt(s, u64(token), page_cluster(c.page)) : -1
+}
+
+WebAssembly_Module_share :: proc(c: ^Call, module: Api_WebAssemblyModule) -> i64 {
+	return i64(wasm.user_module_share(module.data, page_cluster(c.page)))
+}
+
+WebAssembly_Module_adopt :: proc(c: ^Call, token: i64) -> (u64, Api_Error) {
+	m := wasm.user_module_adopt(u64(token), page_cluster(c.page))
+	if m == nil { return 0, fail(c, .Data_Clone, "The module cannot go to this agent cluster.") }
+	return object_create(c.page, &wasm_module_vt, m, c.owner), .None
+}
+
+WebAssembly_crossOriginIsolated :: proc(c: ^Call) -> bool { return c.page.env.cross_origin_isolated }
+
+WebAssembly_canBlock :: proc(c: ^Call) -> bool {
+	g := c.page.worker
+	return g != nil && g.can_block
 }
 
 WebAssembly_Table_create :: proc(c: ^Call, element: string, initial: i64, maximum: i64, init: i64) -> i32 {
@@ -296,9 +369,7 @@ WebAssembly_import_failed :: proc(c: ^Call, message: string) {
 }
 
 WebAssembly_Module_linkInfo :: proc(c: ^Call, module: Api_WebAssemblyModule) -> string {
-	m := module.data
-	if m.link_info == "" { m.link_info = wasm.user_module_link_info(m) }
-	return m.link_info
+	return module.data.link_info
 }
 
 WebAssembly_Tag_create :: proc(c: ^Call, parameters: string) -> i32 {

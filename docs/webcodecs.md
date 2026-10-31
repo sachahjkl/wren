@@ -38,8 +38,7 @@ object or the page. `about:config`:
 - **The decode is synchronous on the page thread** (the inputs are bounded and the built-in decoders are
   memory-safe); the `decode`/`flush` promises and the `output` callbacks still run as their own event-loop turns.
 - **`VideoFrame` transfer across realms** (`postMessage` to a worker) moves the pixels through a process-wide host
-  token (`VideoFrame_takeForTransfer` / `adoptTransfer`), wired into structured clone (`native/js/runtime/clone.c`,
-  tag `T_VIDEO_FRAME`): the pixels never cross a heap boundary as a JS value.
+  token (`VideoFrame_takeForTransfer` / `adoptTransfer`), wired into structured clone (`native/js/odin/clone.odin`): the pixels never cross a heap boundary as a JS value.
 - **`ImageDecoder` `data`** accepts a `BufferSource` or a `Blob`; a `ReadableStream` source is not read here (read it
   to bytes first).
 - **Encoders** are intentionally unsupported until a pure-Rust encoder (rav1e, a VP8/VP9 encoder, or an Opus encoder)

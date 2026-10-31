@@ -1,0 +1,432 @@
+# web-platform-tests expectations of Wren for html/cross-origin-embedder-policy, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/html/cross-origin-embedder-policy/about-blank-popup.https.html: ERROR
+	Cross-Origin-Embedder-Policy is inherited by about:blank popup.: FAIL
+/html/cross-origin-embedder-policy/blob.https.html: TIMEOUT
+	Cross-Origin-Embedder-Policy and blob: URL from https://127.0.0.1:8779 in popup (using dispatcher): FAIL
+	Cross-Origin-Embedder-Policy and blob: URL from https://127.0.0.1:8779 in subframe via navigate: TIMEOUT
+	Cross-Origin-Embedder-Policy and blob: URL from https://127.0.0.1:8779 in subframe via popup: TIMEOUT
+	Cross-Origin-Embedder-Policy and blob: URL from https://127.0.0.1:8779 in subframe via subframe: TIMEOUT
+	Cross-Origin-Embedder-Policy and blob: URL from https://www1.127.0.0.1:8779 in subframe via navigate: TIMEOUT
+	Cross-Origin-Embedder-Policy and blob: URL from https://www1.127.0.0.1:8779 in subframe via popup: TIMEOUT
+	Cross-Origin-Embedder-Policy and blob: URL from https://www1.127.0.0.1:8779 in subframe via subframe: TIMEOUT
+/html/cross-origin-embedder-policy/block-local-documents-inheriting-none.https.html: ERROR
+	Prevent local scheme documents from loading within a COEP: require-corp iframe if they inherit COEP: none: FAIL
+/html/cross-origin-embedder-policy/cache-storage-reporting-dedicated-worker.https.html: ERROR
+/html/cross-origin-embedder-policy/cache-storage-reporting-document.https.html: ERROR
+/html/cross-origin-embedder-policy/cache-storage-reporting-service-worker.https.html: ERROR
+/html/cross-origin-embedder-policy/cache-storage-reporting-shared-worker.https.html: ERROR
+/html/cross-origin-embedder-policy/coep-frame-javascript.https.html: OK
+	Cross-Origin-Embedder-Policy frame and javascript: URLs: PASS
+/html/cross-origin-embedder-policy/coep-on-response-from-service-worker.https.html: OK
+	making a cross-origin request for CORP: cross-origin: FAIL
+	making a cross-origin request for CORP: cross-origin [PASS THROUGH]: FAIL
+	making a cross-origin request for CORP: same-origin: FAIL
+	making a cross-origin request for CORP: same-origin [PASS THROUGH]: FAIL
+	making a cross-origin request for no CORP: FAIL
+	making a cross-origin request for no CORP [PASS THROUGH]: FAIL
+	making a cross-origin request with CORS: FAIL
+	making a cross-origin request with CORS without ACAO: FAIL
+	making a same-origin request for CORP: cross-origin: PASS
+	making a same-origin request for CORP: same-origin: PASS
+	making a same-origin request for no CORP: PASS
+	setup: PASS
+	teardown: PASS
+/html/cross-origin-embedder-policy/cross-origin-isolated-permission-iframe.https.window.html: OK
+	iframe (origin: https://127.0.0.1:8779) cross origin isolated (()) permission test: FAIL
+	iframe (origin: https://127.0.0.1:8779) cross origin isolated (*) permission test: FAIL
+	iframe (origin: https://127.0.0.1:8779) cross origin isolated (self) permission test: FAIL
+	iframe (origin: https://127.0.0.1:8779) cross origin isolated (undefined) permission test: FAIL
+	iframe (origin: https://www1.127.0.0.1:8779) cross origin isolated (()) permission test: FAIL
+	iframe (origin: https://www1.127.0.0.1:8779) cross origin isolated (*) permission test: FAIL
+	iframe (origin: https://www1.127.0.0.1:8779) cross origin isolated (self) permission test: FAIL
+	iframe (origin: https://www1.127.0.0.1:8779) cross origin isolated (undefined) permission test: FAIL
+/html/cross-origin-embedder-policy/cross-origin-isolated-permission-worker.https.window.html: ERROR
+	dedicated_worker (scheme: blob) cross origin isolated (()) permission test: PASS
+	dedicated_worker (scheme: blob) cross origin isolated (*) permission test: FAIL
+	dedicated_worker (scheme: blob) cross origin isolated (self) permission test: FAIL
+	dedicated_worker (scheme: blob) cross origin isolated (undefined) permission test: FAIL
+	dedicated_worker (scheme: data) cross origin isolated (*) permission test: PASS
+	dedicated_worker (scheme: data) cross origin isolated (self) permission test: PASS
+	dedicated_worker (scheme: data) cross origin isolated (undefined) permission test: PASS
+	dedicated_worker (scheme: https) cross origin isolated (()) permission test: TIMEOUT
+	dedicated_worker (scheme: https) cross origin isolated (*) permission test: TIMEOUT
+	dedicated_worker (scheme: https) cross origin isolated (self) permission test: TIMEOUT
+	dedicated_worker (scheme: https) cross origin isolated (undefined) permission test: FAIL
+	service_worker (withCoopCoep: false) cross origin isolated permission test: FAIL
+	service_worker (withCoopCoep: true) cross origin isolated permission test: FAIL
+	shared_worker (withCoopCoep: false) cross origin isolated permission test: FAIL
+	shared_worker (withCoopCoep: true) cross origin isolated permission test: FAIL
+/html/cross-origin-embedder-policy/data.https.html: TIMEOUT
+	Cross-Origin-Embedder-Policy and data: URLs: TIMEOUT
+/html/cross-origin-embedder-policy/dedicated-worker-cache-storage.https.html: OK
+	coep-none coep-none corp-cross-origin: FAIL
+	coep-none coep-none corp-undefined: FAIL
+	coep-none coep-require-corp corp-cross-origin: FAIL
+	coep-none coep-require-corp corp-undefined: FAIL
+	coep-require-corp coep-none corp-cross-origin: FAIL
+	coep-require-corp coep-none corp-undefined: FAIL
+	coep-require-corp coep-require-corp corp-cross-origin: FAIL
+	coep-require-corp coep-require-corp corp-undefined: FAIL
+/html/cross-origin-embedder-policy/dedicated-worker.https.html: TIMEOUT
+	COEP: none module worker in COEP: none frame: NOTRUN
+	COEP: none module worker in COEP: require-corp frame: NOTRUN
+	COEP: none worker in COEP: none frame: PASS
+	COEP: none worker in COEP: require-corp frame: TIMEOUT
+	COEP: require-corp module worker in COEP: none frame: NOTRUN
+	COEP: require-corp module worker in COEP: require-corp frame: NOTRUN
+	COEP: require-corp worker in COEP: none frame: NOTRUN
+	COEP: require-corp worker in COEP: require-corp frame: NOTRUN
+	COEP: worker inherits COEP for blob URL.: NOTRUN
+	COEP: worker inherits COEP for data URL.: NOTRUN
+	COEP: worker inherits COEP for filesystem URL.: NOTRUN
+	COEP: worker inherits COEP from blob URL creator, not owner.: NOTRUN
+	COEP: worker inherits COEP from filesystem URL creator, not owner.: NOTRUN
+	COEP: worker inherits COEP from owner, not data URL creator.: NOTRUN
+/html/cross-origin-embedder-policy/header-parsing.https.html: OK
+	navigation allowed for ["","require-corp"]: FAIL
+	navigation allowed for [""]: FAIL
+	navigation allowed for [":cmVxdWlyZS1jb3Jw:"]: FAIL
+	navigation allowed for ["Require-corp"]: FAIL
+	navigation allowed for ["\\"require-corp\\""]: FAIL
+	navigation allowed for ["\\frequire-corp\\f"]: FAIL
+	navigation allowed for ["\\rrequire-corp\\r"]: FAIL
+	navigation allowed for ["\\u000brequire-corp\\u000b"]: FAIL
+	navigation allowed for ["jibberish"]: FAIL
+	navigation allowed for ["require-corp require-corp"]: FAIL
+	navigation allowed for ["require-corp",""]: FAIL
+	navigation allowed for ["require-corp","require-corp"]: FAIL
+	navigation allowed for ["require-corp,require-corp"]: FAIL
+	navigation allowed for ["require-corp;"]: FAIL
+	navigation allowed for ["require-corp;\\tfoo=bar"]: FAIL
+	navigation allowed for []: FAIL
+	navigation allowed for [{"percentEncoded":"require%FFcorp"}]: FAIL
+	navigation blocked for [" \\trequire-corp"]: FAIL
+	navigation blocked for [" require-corp "]: FAIL
+	navigation blocked for ["\\trequire-corp\\t"]: FAIL
+	navigation blocked for ["require-corp"]: FAIL
+	navigation blocked for ["require-corp; foo=bar"]: FAIL
+	navigation blocked for ["require-corp; report-to=\\"data:","\\""]: FAIL
+	navigation blocked for ["require-corp;require-corp"]: FAIL
+	navigation blocked for ["require-corp\\t "]: FAIL
+/html/cross-origin-embedder-policy/iframe-history-none-require-corp.https.html: ERROR
+	"none" top-level: navigating a frame back from "require-corp" should succeed: FAIL
+/html/cross-origin-embedder-policy/javascript.https.html: OK
+	Cross-Origin-Embedder-Policy and javascript: URLs: PASS
+/html/cross-origin-embedder-policy/meta-http-equiv.https.html: OK
+	<meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp"> top-level: navigating a frame to "none" should not fail: FAIL
+/html/cross-origin-embedder-policy/no-secure-context-https-iframe.html: TIMEOUT
+	A dedicated worker of an HTTPS iframe in an HTTP page ignores Cross-Origin-Embedder-Policy: NOTRUN
+	An HTTPS iframe in an HTTP page ignores Cross-Origin-Embedder-Policy: TIMEOUT
+/html/cross-origin-embedder-policy/no-secure-context.html: TIMEOUT
+	COEP requires a secure context: TIMEOUT
+/html/cross-origin-embedder-policy/non-initial-about-blank.https.html: OK
+	Cross-Origin-Embedder-Policy and about:blank: FAIL
+/html/cross-origin-embedder-policy/none-load-from-cache-storage.https.html: OK
+	Fetch cross-origin cors   from service-worker and CacheStorage.: FAIL
+	Fetch cross-origin cors cors-disabled corp-cross-origin from network and CacheStorage.: FAIL
+	Fetch cross-origin cors cors-disabled corp-same-origin from network and CacheStorage.: FAIL
+	Fetch cross-origin cors cors-disabled corp-undefined from network and CacheStorage.: FAIL
+	Fetch cross-origin cors cors-enabled corp-cross-origin from network and CacheStorage.: FAIL
+	Fetch cross-origin cors cors-enabled corp-same-origin from network and CacheStorage.: FAIL
+	Fetch cross-origin cors cors-enabled corp-undefined from network and CacheStorage.: FAIL
+	Fetch cross-origin no-cors   from service-worker and CacheStorage.: FAIL
+	Fetch cross-origin no-cors cors-disabled corp-cross-origin from network and CacheStorage.: FAIL
+	Fetch cross-origin no-cors cors-disabled corp-same-origin from network and CacheStorage.: FAIL
+	Fetch cross-origin no-cors cors-disabled corp-undefined from network and CacheStorage.: FAIL
+	Fetch cross-origin no-cors cors-enabled corp-cross-origin from network and CacheStorage.: FAIL
+	Fetch cross-origin no-cors cors-enabled corp-same-origin from network and CacheStorage.: FAIL
+	Fetch cross-origin no-cors cors-enabled corp-undefined from network and CacheStorage.: FAIL
+	Fetch same-origin cors   from service-worker and CacheStorage.: PASS
+	Fetch same-origin cors cors-disabled corp-cross-origin from network and CacheStorage.: FAIL
+	Fetch same-origin cors cors-disabled corp-same-origin from network and CacheStorage.: FAIL
+	Fetch same-origin cors cors-disabled corp-undefined from network and CacheStorage.: FAIL
+	Fetch same-origin cors cors-enabled corp-cross-origin from network and CacheStorage.: FAIL
+	Fetch same-origin cors cors-enabled corp-same-origin from network and CacheStorage.: FAIL
+	Fetch same-origin cors cors-enabled corp-undefined from network and CacheStorage.: FAIL
+	Fetch same-origin no-cors   from service-worker and CacheStorage.: PASS
+	Fetch same-origin no-cors cors-disabled corp-cross-origin from network and CacheStorage.: FAIL
+	Fetch same-origin no-cors cors-disabled corp-same-origin from network and CacheStorage.: FAIL
+	Fetch same-origin no-cors cors-disabled corp-undefined from network and CacheStorage.: FAIL
+	Fetch same-origin no-cors cors-enabled corp-cross-origin from network and CacheStorage.: FAIL
+	Fetch same-origin no-cors cors-enabled corp-same-origin from network and CacheStorage.: FAIL
+	Fetch same-origin no-cors cors-enabled corp-undefined from network and CacheStorage.: FAIL
+	setting up: PASS
+/html/cross-origin-embedder-policy/none-sw-from-none.https.html: OK
+	making a cross-origin request for CORP: cross-origin: FAIL
+	making a cross-origin request for CORP: cross-origin [PASS THROUGH]: FAIL
+	making a cross-origin request for CORP: same-origin: FAIL
+	making a cross-origin request for CORP: same-origin [PASS THROUGH]: FAIL
+	making a cross-origin request for no CORP: FAIL
+	making a cross-origin request for no CORP [PASS THROUGH]: FAIL
+	making a cross-origin request with CORS: FAIL
+	making a cross-origin request with CORS without ACAO: FAIL
+	making a cross-origin request with CORS-preflight: FAIL
+	making a same-origin request for CORP: cross-origin: PASS
+	making a same-origin request for CORP: same-origin: PASS
+	making a same-origin request for no CORP: PASS
+	setting up: PASS
+/html/cross-origin-embedder-policy/none-sw-from-require-corp.https.html: OK
+	making a cross-origin request for CORP: cross-origin: FAIL
+	making a cross-origin request for CORP: cross-origin [PASS THROUGH]: FAIL
+	making a cross-origin request for CORP: same-origin: FAIL
+	making a cross-origin request for CORP: same-origin [PASS THROUGH]: FAIL
+	making a cross-origin request for no CORP: FAIL
+	making a cross-origin request for no CORP [PASS THROUGH]: FAIL
+	making a cross-origin request with CORS: FAIL
+	making a cross-origin request with CORS without ACAO: FAIL
+	making a cross-origin request with CORS-preflight: FAIL
+	making a same-origin request for CORP: cross-origin: PASS
+	making a same-origin request for CORP: same-origin: PASS
+	making a same-origin request for no CORP: PASS
+	setting up: PASS
+/html/cross-origin-embedder-policy/none.https.html: TIMEOUT
+	"none" top-level: navigating a frame from "require-corp" to "none" should succeed: FAIL
+	"none" top-level: navigating a frame to "none" should succeed: FAIL
+	"require-corp" top-level noopener popup: navigating to "none" should succeed: TIMEOUT
+	CORP: same-site is not checked.: TIMEOUT
+/html/cross-origin-embedder-policy/reflection-credentialless.tentative.https.any.html: OK
+	reflection-credentialless: FAIL
+/html/cross-origin-embedder-policy/reflection-credentialless.tentative.https.any.worker.html: OK
+	reflection-credentialless: FAIL
+/html/cross-origin-embedder-policy/reflection-require-corp.tentative.https.any.html: OK
+	reflection-require-corp: FAIL
+/html/cross-origin-embedder-policy/reflection-require-corp.tentative.https.any.worker.html: OK
+	reflection-require-corp: FAIL
+/html/cross-origin-embedder-policy/reflection-unsafe-none.tentative.https.any.html: OK
+	reflection-unsafe-none: FAIL
+/html/cross-origin-embedder-policy/reflection-unsafe-none.tentative.https.any.worker.html: OK
+	reflection-unsafe-none: FAIL
+/html/cross-origin-embedder-policy/report-only-require-corp.https.html: ERROR
+	"none" top-level: navigating a frame back from "require-corp" should succeed: FAIL
+	"none" top-level: navigating a frame from "require-corp" to "none" should succeed: FAIL
+	"none" top-level: navigating a frame to "none" should succeed: FAIL
+	"require-corp" top-level noopener popup: navigating to "none" should succeed: NOTRUN
+/html/cross-origin-embedder-policy/reporting-navigation.https.html: ERROR
+	parent: (none), target: (none), with empty frame: false: PASS
+	parent: (none), target: (none), with empty frame: true: FAIL
+	parent: (none), target: |header(cross-origin-embedder-policy,require-corp), with empty frame: false: PASS
+	parent: (none), target: |header(cross-origin-embedder-policy,require-corp), with empty frame: true: FAIL
+	parent: (none), target: |header(cross-origin-embedder-policy,require-corp)|header(cross-origin-resource-policy,cross-origin), with empty frame: false: PASS
+	parent: (none), target: |header(cross-origin-embedder-policy,require-corp)|header(cross-origin-resource-policy,cross-origin), with empty frame: true: FAIL
+	parent: (none), target: |header(cross-origin-resource-policy,cross-origin), with empty frame: false: PASS
+	parent: (none), target: |header(cross-origin-resource-policy,cross-origin), with empty frame: true: FAIL
+	parent: |header(cross-origin-embedder-policy,require-corp), target: (none), with empty frame: false: FAIL
+	parent: |header(cross-origin-embedder-policy,require-corp), target: (none), with empty frame: true: FAIL
+	parent: |header(cross-origin-embedder-policy,require-corp), target: |header(cross-origin-embedder-policy,require-corp), with empty frame: false: FAIL
+	parent: |header(cross-origin-embedder-policy,require-corp), target: |header(cross-origin-embedder-policy,require-corp), with empty frame: true: FAIL
+	parent: |header(cross-origin-embedder-policy,require-corp), target: |header(cross-origin-embedder-policy,require-corp)|header(cross-origin-resource-policy,cross-origin), with empty frame: false: PASS
+	parent: |header(cross-origin-embedder-policy,require-corp), target: |header(cross-origin-embedder-policy,require-corp)|header(cross-origin-resource-policy,cross-origin), with empty frame: true: FAIL
+	parent: |header(cross-origin-embedder-policy,require-corp), target: |header(cross-origin-embedder-policy-report-only,require-corp)|header(cross-origin-resource-policy,cross-origin), with empty frame: false: FAIL
+	parent: |header(cross-origin-embedder-policy,require-corp), target: |header(cross-origin-embedder-policy-report-only,require-corp)|header(cross-origin-resource-policy,cross-origin), with empty frame: true: FAIL
+	parent: |header(cross-origin-embedder-policy,require-corp), target: |header(cross-origin-resource-policy,cross-origin), with empty frame: false: FAIL
+	parent: |header(cross-origin-embedder-policy,require-corp), target: |header(cross-origin-resource-policy,cross-origin), with empty frame: true: FAIL
+	parent: |header(cross-origin-embedder-policy,require-corp), target: |header(cross-origin-resource-policy,cross-origin)|header(content-security-policy,frame-ancestors 'none'), with empty frame: false: PASS
+	parent: |header(cross-origin-embedder-policy,require-corp), target: |header(cross-origin-resource-policy,cross-origin)|header(content-security-policy,frame-ancestors 'none'), with empty frame: true: FAIL
+	parent: |header(cross-origin-embedder-policy,require-corp), target: |header(cross-origin-resource-policy,cross-origin)|header(x-frame-options,deny), with empty frame: false: FAIL
+	parent: |header(cross-origin-embedder-policy,require-corp), target: |header(cross-origin-resource-policy,cross-origin)|header(x-frame-options,deny), with empty frame: true: FAIL
+	parent: |header(cross-origin-embedder-policy-report-only,require-corp), target: (none), with empty frame: false: FAIL
+	parent: |header(cross-origin-embedder-policy-report-only,require-corp), target: (none), with empty frame: true: FAIL
+	parent: |header(cross-origin-embedder-policy-report-only,require-corp), target: |header(cross-origin-embedder-policy,require-corp), with empty frame: false: FAIL
+	parent: |header(cross-origin-embedder-policy-report-only,require-corp), target: |header(cross-origin-embedder-policy,require-corp), with empty frame: true: FAIL
+	parent: |header(cross-origin-embedder-policy-report-only,require-corp), target: |header(cross-origin-embedder-policy,require-corp)|header(cross-origin-resource-policy,cross-origin), with empty frame: false: PASS
+	parent: |header(cross-origin-embedder-policy-report-only,require-corp), target: |header(cross-origin-embedder-policy,require-corp)|header(cross-origin-resource-policy,cross-origin), with empty frame: true: FAIL
+	parent: |header(cross-origin-embedder-policy-report-only,require-corp), target: |header(cross-origin-resource-policy,cross-origin), with empty frame: false: FAIL
+	parent: |header(cross-origin-embedder-policy-report-only,require-corp), target: |header(cross-origin-resource-policy,cross-origin), with empty frame: true: FAIL
+/html/cross-origin-embedder-policy/reporting-report-to-must-be-string.https.window.html: TIMEOUT
+	Cross-Origin-Embedder-Policy ignores a byte sequence report-to: NOTRUN
+	Cross-Origin-Embedder-Policy ignores a token report-to: TIMEOUT
+	Cross-Origin-Embedder-Policy-Report-Only ignores a byte sequence report-to: NOTRUN
+	Cross-Origin-Embedder-Policy-Report-Only ignores a token report-to: NOTRUN
+/html/cross-origin-embedder-policy/reporting-subresource-corp.https.html: ERROR
+	[between service worker and page] blocked by CORP: same-origin: NOTRUN
+	[between service worker and page] blocked due to COEP: NOTRUN
+	[between service worker and page] blocked due to COEP (with fragment): NOTRUN
+	[between service worker and page] blocked during redirect: NOTRUN
+	[between service worker and page] same-origin: NOTRUN
+	[dedicated worker] blocked by CORP: same-origin: FAIL
+	[dedicated worker] blocked due to COEP: FAIL
+	[dedicated worker] blocked due to COEP (with fragment): FAIL
+	[dedicated worker] blocked during redirect: FAIL
+	[dedicated worker] same-origin: FAIL
+	[document] blocked by CORP: same-origin: FAIL
+	[document] blocked due to COEP: FAIL
+	[document] blocked due to COEP (with fragment): FAIL
+	[document] blocked during redirect: FAIL
+	[document] same-origin: FAIL
+	[service worker] blocked by CORP: same-origin: NOTRUN
+	[service worker] blocked due to COEP: NOTRUN
+	[service worker] blocked due to COEP (with fragment): NOTRUN
+	[service worker] blocked during redirect: NOTRUN
+	[service worker] same-origin: NOTRUN
+	[shared worker] blocked by CORP: same-origin: NOTRUN
+	[shared worker] blocked due to COEP: NOTRUN
+	[shared worker] blocked due to COEP (with fragment): NOTRUN
+	[shared worker] blocked during redirect: NOTRUN
+	[shared worker] same-origin: TIMEOUT
+	destination: script: NOTRUN
+/html/cross-origin-embedder-policy/reporting-to-document-reporting-endpoint.https.window.html: OK
+	navigation CORP on cross origin: FAIL
+	navigation CORP on same origin: FAIL
+	subresource CORP: FAIL
+/html/cross-origin-embedder-policy/reporting-to-endpoint.https.html: OK
+	COEP violation on nested frame navigation: FAIL
+	Shared worker fetch: FAIL
+	Two COEP headers, split inside report-to value: FAIL
+	navigation CORP: FAIL
+	subresource CORP: FAIL
+/html/cross-origin-embedder-policy/reporting-to-frame-owner.https.html: OK
+	Reporting to coep-none frame with coep-none worker: FAIL
+	Reporting to coep-none frame with coep-report-only worker: FAIL
+	Reporting to coep-none frame with coep-require-corp worker: FAIL
+	Reporting to coep-report-only frame with coep-none worker: FAIL
+	Reporting to coep-report-only frame with coep-report-only worker: FAIL
+	Reporting to coep-report-only frame with coep-require-corp worker: FAIL
+	Reporting to coep-require-corp frame with coep-none worker: FAIL
+	Reporting to coep-require-corp frame with coep-report-only worker: FAIL
+	Reporting to coep-require-corp frame with coep-require-corp worker: FAIL
+/html/cross-origin-embedder-policy/reporting-to-worker-owner.https.html: ERROR
+	Reporting to coep-none worker with coep-none worker: PASS
+	Reporting to coep-none worker with coep-report-only worker: PASS
+	Reporting to coep-none worker with coep-require-corp worker: PASS
+	Reporting to coep-report-only worker with coep-none worker: TIMEOUT
+	Reporting to coep-report-only worker with coep-report-only worker: NOTRUN
+	Reporting to coep-report-only worker with coep-require-corp worker: NOTRUN
+	Reporting to coep-require-corp worker with coep-none worker: NOTRUN
+	Reporting to coep-require-corp worker with coep-report-only worker: NOTRUN
+	Reporting to coep-require-corp worker with coep-require-corp worker: NOTRUN
+/html/cross-origin-embedder-policy/require-corp-about-blank.https.html: OK
+	A(B(C)) A=require-corp, B=about:blank, C=no-require-corp => C can't load: FAIL
+	Wait for the DOM to be built.: PASS
+	about:blank can always be embedded by a 'require-corp' document: FAIL
+/html/cross-origin-embedder-policy/require-corp-about-srcdoc.https.html: OK
+	A(B(C)) A=require-corp, B=about:srcdoc, C=no-require-corp => C can't load: FAIL
+	Wait for the DOM to be built.: PASS
+	about:srcdoc can always be embedded by a 'require-corp' document: FAIL
+/html/cross-origin-embedder-policy/require-corp-cached-images.https.html: TIMEOUT
+	CACHED - CORP image: NOTRUN
+	CACHED - No CORP image: NOTRUN
+	NETWORK - CORP image: NOTRUN
+	NETWORK - No CORP image: NOTRUN
+	main_test: NOTRUN
+/html/cross-origin-embedder-policy/require-corp-load-from-cache-storage.https.html: OK
+	Fetch cross-origin cors   from service-worker and CacheStorage.: FAIL
+	Fetch cross-origin cors cors-disabled corp-cross-origin from network and CacheStorage.: FAIL
+	Fetch cross-origin cors cors-disabled corp-same-origin from network and CacheStorage.: FAIL
+	Fetch cross-origin cors cors-disabled corp-undefined from network and CacheStorage.: FAIL
+	Fetch cross-origin cors cors-enabled corp-cross-origin from network and CacheStorage.: FAIL
+	Fetch cross-origin cors cors-enabled corp-same-origin from network and CacheStorage.: FAIL
+	Fetch cross-origin cors cors-enabled corp-undefined from network and CacheStorage.: FAIL
+	Fetch cross-origin no-cors   from service-worker and CacheStorage.: FAIL
+	Fetch cross-origin no-cors cors-disabled corp-cross-origin from network and CacheStorage.: FAIL
+	Fetch cross-origin no-cors cors-disabled corp-same-origin from network and CacheStorage.: FAIL
+	Fetch cross-origin no-cors cors-disabled corp-undefined from network and CacheStorage.: FAIL
+	Fetch cross-origin no-cors cors-enabled corp-cross-origin from network and CacheStorage.: FAIL
+	Fetch cross-origin no-cors cors-enabled corp-same-origin from network and CacheStorage.: FAIL
+	Fetch cross-origin no-cors cors-enabled corp-undefined from network and CacheStorage.: FAIL
+	Fetch same-origin cors   from service-worker and CacheStorage.: PASS
+	Fetch same-origin cors cors-disabled corp-cross-origin from network and CacheStorage.: FAIL
+	Fetch same-origin cors cors-disabled corp-same-origin from network and CacheStorage.: FAIL
+	Fetch same-origin cors cors-disabled corp-undefined from network and CacheStorage.: FAIL
+	Fetch same-origin cors cors-enabled corp-cross-origin from network and CacheStorage.: FAIL
+	Fetch same-origin cors cors-enabled corp-same-origin from network and CacheStorage.: FAIL
+	Fetch same-origin cors cors-enabled corp-undefined from network and CacheStorage.: FAIL
+	Fetch same-origin no-cors   from service-worker and CacheStorage.: PASS
+	Fetch same-origin no-cors cors-disabled corp-cross-origin from network and CacheStorage.: FAIL
+	Fetch same-origin no-cors cors-disabled corp-same-origin from network and CacheStorage.: FAIL
+	Fetch same-origin no-cors cors-disabled corp-undefined from network and CacheStorage.: FAIL
+	Fetch same-origin no-cors cors-enabled corp-cross-origin from network and CacheStorage.: FAIL
+	Fetch same-origin no-cors cors-enabled corp-same-origin from network and CacheStorage.: FAIL
+	Fetch same-origin no-cors cors-enabled corp-undefined from network and CacheStorage.: FAIL
+	setting up: PASS
+/html/cross-origin-embedder-policy/require-corp-revalidated-images.https.html: TIMEOUT
+	CACHED - CORP image: NOTRUN
+	CACHED - No CORP image: NOTRUN
+	NETWORK - CORP image: NOTRUN
+	NETWORK - No CORP image: NOTRUN
+	main_test: NOTRUN
+/html/cross-origin-embedder-policy/require-corp-sw-from-none.https.html: OK
+	making a cross-origin request for CORP: cross-origin: FAIL
+	making a cross-origin request for CORP: cross-origin [PASS THROUGH]: FAIL
+	making a cross-origin request for CORP: same-origin: FAIL
+	making a cross-origin request for CORP: same-origin [PASS THROUGH]: FAIL
+	making a cross-origin request for no CORP: FAIL
+	making a cross-origin request for no CORP [PASS THROUGH]: FAIL
+	making a cross-origin request with CORS: FAIL
+	making a cross-origin request with CORS without ACAO: FAIL
+	making a cross-origin request with CORS-preflight: FAIL
+	making a same-origin request for CORP: cross-origin: PASS
+	making a same-origin request for CORP: same-origin: PASS
+	making a same-origin request for no CORP: PASS
+	setting up: PASS
+/html/cross-origin-embedder-policy/require-corp-sw-from-require-corp.https.html: OK
+	making a cross-origin request for CORP: cross-origin: FAIL
+	making a cross-origin request for CORP: cross-origin [PASS THROUGH]: FAIL
+	making a cross-origin request for CORP: same-origin: FAIL
+	making a cross-origin request for CORP: same-origin [PASS THROUGH]: FAIL
+	making a cross-origin request for no CORP: FAIL
+	making a cross-origin request for no CORP [PASS THROUGH]: FAIL
+	making a cross-origin request with CORS: FAIL
+	making a cross-origin request with CORS without ACAO: FAIL
+	making a cross-origin request with CORS-preflight: FAIL
+	making a same-origin request for CORP: cross-origin: PASS
+	making a same-origin request for CORP: same-origin: PASS
+	making a same-origin request for no CORP: PASS
+	setting up: PASS
+/html/cross-origin-embedder-policy/require-corp-sw.https.html: OK
+	Clean up global state: PASS
+	Set up global state: PASS
+	fetch() to 'CORP: cross-origin' response should succeed.: FAIL
+	fetch() to no CORP response should not succeed.: PASS
+	importScripts() fails for a script with no corp.: PASS
+	importScripts() succeeds for a script with corp: cross-origin.: FAIL
+/html/cross-origin-embedder-policy/require-corp-worker-script-revalidation.html: OK
+	COEP: require-corp with revalidated worker script: FAIL
+/html/cross-origin-embedder-policy/require-corp.https.html: TIMEOUT
+	"require-corp" top-level (as noopener popup): navigating to "none" should succeed: TIMEOUT
+	"require-corp" top-level (as popup with opener set to null): navigating to "none" should succeed: TIMEOUT
+	"require-corp" top-level (as popup): navigating to "none" should succeed: TIMEOUT
+	"require-corp" top-level: creating a "none" popup should succeed.: TIMEOUT
+	"require-corp" top-level: creating a noopener "none" popup should succeed: TIMEOUT
+	"require-corp" top-level: fetch() to CORP: cross-origin response should succeed: FAIL
+	"require-corp" top-level: fetch() to response without CORP should fail: PASS
+	"require-corp" top-level: fetch() to response without CORP through a WindowProxy should fail: FAIL
+	"require-corp" top-level: navigating a frame from "require-corp" to "none" should fail: FAIL
+	"require-corp" top-level: navigating a frame to "none" should fail: FAIL
+	"require-corp" top-level: navigating an iframe to a page without CORP, through a WindowProxy, should fail: FAIL
+	CORP: same-site is checked and allowed.: TIMEOUT
+	CORP: same-site is checked and blocked.: PASS
+	navigation CORP is checked for each redirect: PASS
+	navigation CORP is checked with the parent frame, not the navigation source - to be allowed: TIMEOUT
+	navigation CORP is checked with the parent frame, not the navigation source - to be blocked: PASS
+/html/cross-origin-embedder-policy/sandbox.https.html: OK
+	Cross-Origin-Embedder-Policy and sandbox: FAIL
+/html/cross-origin-embedder-policy/service-worker-cache-storage.https.html: OK
+	A ServiceWorker with coep-none use CacheStorage to get a corp-cross-origin response.: FAIL
+	A ServiceWorker with coep-none use CacheStorage to get a corp-undefined response.: FAIL
+	A ServiceWorker with coep-require-corp use CacheStorage to get a corp-cross-origin response.: FAIL
+	A ServiceWorker with coep-require-corp use CacheStorage to get a corp-undefined response.: FAIL
+/html/cross-origin-embedder-policy/shared-workers.https.html: OK
+	"require-corp" (derived from owner set due to use of local scheme - blob URL): FAIL
+	"require-corp" (derived from owner set due to use of local scheme - data URL): FAIL
+	"require-corp" (derived from owner set due to use of local scheme - filesystem URL): FAIL
+	"require-corp" (derived from response): FAIL
+	default policy (derived from owner set due to use of local scheme - blob URL): FAIL
+	default policy (derived from owner set due to use of local scheme - data URL): FAIL
+	default policy (derived from owner set due to use of local scheme - filesystem URL): FAIL
+	default policy (derived from response): FAIL
+	default policy (not derived from data URL creator): FAIL
+	require-corp (derived from blob URL creator): FAIL
+	require-corp (derived from filesystem URL creator): FAIL
+/html/cross-origin-embedder-policy/srcdoc.https.html: OK
+	Cross-Origin-Embedder-Policy and srcdoc: PASS
+/html/cross-origin-embedder-policy/worker-inheritance.sub.https.html: OK
+	Test that local scheme workers inherit COEP: require-corp from the creating document: PASS
+	blob URL dedicated worker: Cross origin should be blocked.: PASS
+	blob URL dedicated worker: Same origin should be allowed.: PASS
+	blob URL shared worker: Cross origin should be blocked.: PASS
+	blob URL shared worker: Same origin should be allowed.: PASS
+	data URL dedicated worker: Cross origin should be blocked.: PASS
+	data URL dedicated worker: Same origin should be blocked.: PASS
+	data URL shared worker: Cross origin should be blocked.: PASS
+	data URL shared worker: Same origin should be blocked.: PASS

@@ -34,9 +34,15 @@ Clone_Tag :: enum u8 {
 	Fs_Handle,    // a FileSystemHandle: its description (web_fs), restored in the receiving realm
 	Mse_Handle,   // a MediaSourceHandle of the transfer list: the browser's token
 	Video_Frame,  // a VideoFrame of the transfer list: the host's transfer token
+	Shared_Buffer,   // a SharedArrayBuffer: a token of the agent cluster, its length and maximum
+	Wasm_Memory,     // a shared WebAssembly.Memory: a token of the agent cluster
+	Wasm_Module,     // a WebAssembly.Module: a token of the agent cluster
+	Resizable_Buffer, // an ArrayBuffer with a maximum: it, then as Array_Buffer
 }
 
 @(private = "file") MAGIC := [4]u8{'W', 'S', 'C', 1}
+// the length of a view whose length follows its buffer
+@(private = "file") VIEW_TRACKS :: ~u64(0)
 // nesting allowed; recursion is also bounded by the native stack (wj_stack_exhausted)
 @(private = "file") MAX_DEPTH :: 10000
 
@@ -115,7 +121,39 @@ web_date_time :: proc "c" (ctx: ^wj.Context, v: wj.JSValue, t: ^f64) -> bool {
 	return ok
 }
 
+// The maxByteLength of a resizable ArrayBuffer, -1 for another.
+@(private = "file")
+array_buffer_maximum :: proc "contextless" (ctx: ^wj.Context, v: wj.JSValue) -> i64 {
+	r := wj.JS_GetPropertyStr(ctx, v, "resizable")
+	resizable := wj.to_bool(ctx, r)
+	wj.JS_FreeValue(ctx, r)
+	if !resizable { return -1 }
+	m := wj.JS_GetPropertyStr(ctx, v, "maxByteLength")
+	defer wj.JS_FreeValue(ctx, m)
+	x: f64
+	wj.JS_ToFloat64(ctx, &x, m)
+	return i64(x)
+}
+
+@(private = "file")
+array_buffer_resizable :: proc "contextless" (ctx: ^wj.Context, bytes: []u8, maximum: u64) -> wj.JSValue {
+	ctor := wj.global_get(ctx, "ArrayBuffer")
+	defer wj.JS_FreeValue(ctx, ctor)
+	options := wj.JS_NewObject(ctx)
+	wj.JS_SetPropertyStr(ctx, options, "maxByteLength", wj.new_float64(ctx, f64(maximum)))
+	args := [2]wj.JSValue{wj.new_float64(ctx, f64(len(bytes))), options}
+	r := wj.JS_CallConstructor(ctx, ctor, 2, &args[0])
+	wj.JS_FreeValue(ctx, options)
+	if wj.is_exception(r) { return r }
+	n: uint
+	if p := wj.JS_GetArrayBuffer(ctx, &n, r); p != nil && n >= uint(len(bytes)) { copy(p[:n], bytes) }
+	return r
+}
+
 // ---- serialization ----
+
+// The value is being stored (IndexedDB, history), not sent: nothing that belongs to an agent cluster may go (web_clone.odin).
+clone_for_storage: bool
 
 @(private = "file")
 Ser :: struct {
@@ -141,11 +179,12 @@ put :: proc(s: ^Ser, data: []u8) {
 
 @(private = "file")
 put_string :: proc(s: ^Ser, v: wj.JSValue) -> bool {
-	c, text := to_text(s.ctx, v)
-	if c == nil { return false }
-	put_u32(s, u32(len(text)))
-	put(s, transmute([]u8)text)
-	wj.free_cstring(s.ctx, c)
+	context = wj.heap_context()
+	bytes, ok := wj.wtf8_of(s.ctx, v)
+	if !ok { return false }
+	defer delete(bytes, wj.libc_allocator())
+	put_u32(s, u32(len(bytes)))
+	put(s, bytes)
 	return true
 }
 
@@ -432,6 +471,16 @@ serialize_object :: proc(s: ^Ser, v: wj.JSValue) -> bool {
 		wj.JS_FreeValue(ctx, str)
 		return ok
 	}
+	wasm_token: u64
+	switch kind := wasm_clone_token(ctx, v, &wasm_token); kind {
+	case -1: return clone_error(ctx, "This WebAssembly object could not be cloned.")
+	case 1, 2:
+		if clone_for_storage { return clone_error(ctx, "A WebAssembly object cannot be stored.") }
+		if !remember(s, v) { return false }
+		put_tag(s, kind == 1 ? .Wasm_Memory : .Wasm_Module)
+		put_u64(s, wasm_token)
+		return true
+	}
 	if o := wj.obj_of(v); o != nil || wj.same_ptr(v, wj.realm_global()) {
 		msg: [160]u8
 		name: cstring = o != nil ? wj.interfaces()[o.iface].name : "Window"
@@ -443,6 +492,20 @@ serialize_object :: proc(s: ^Ser, v: wj.JSValue) -> bool {
 	if wj.wj_stack_exhausted() { wj.JS_ThrowRangeError(ctx, "Maximum call stack size exceeded"); return false }
 	defer s.depth -= 1
 	b := &builtins
+	shared_id: u64
+	shared_len, shared_max: i64
+	if wj.JS_GetSharedBufferHost(v, &shared_id, &shared_len, &shared_max) {
+		// (HTML: only where the capability is, and never for storage)
+		if clone_for_storage { return clone_error(ctx, "A SharedArrayBuffer cannot be stored.") }
+		token := u64(wj.wr_WebAssembly_Memory_share(i32(shared_id)))
+		if token == 0 { return clone_error(ctx, "A SharedArrayBuffer can only be sent by a cross-origin isolated realm.") }
+		if !remember(s, v) { return false }
+		put_tag(s, .Shared_Buffer)
+		put_u64(s, token)
+		put_u64(s, u64(shared_len))
+		put_u64(s, u64(shared_max))
+		return true
+	}
 	if wj.JS_IsArrayBuffer(v) {
 		if !remember(s, v) { return false }
 		n: uint
@@ -452,11 +515,18 @@ serialize_object :: proc(s: ^Ser, v: wj.JSValue) -> bool {
 			wj.drop_exception(ctx)
 			return clone_error(ctx, "An ArrayBuffer is detached and could not be cloned.")
 		}
-		put_tag(s, .Array_Buffer)
+		if maximum := array_buffer_maximum(ctx, v); maximum >= 0 {
+			put_tag(s, .Resizable_Buffer)
+			put_u64(s, u64(maximum))
+		} else {
+			put_tag(s, .Array_Buffer)
+		}
 		put_u64(s, u64(n))
 		if bytes != nil { put(s, bytes[:n]) }
 		return true
 	}
+	view_oob, view_tracks := wj.JS_GetViewState(v)
+	if view_oob { return clone_error(ctx, "A view out of the bounds of its buffer could not be cloned.") }
 	if wj.JS_GetTypedArrayType(v) >= 0 {
 		if !remember(s, v) { return false }
 		off, n, per: uint
@@ -465,7 +535,7 @@ serialize_object :: proc(s: ^Ser, v: wj.JSValue) -> bool {
 		put_tag(s, .Typed_Array)
 		put_u8(s, u8(wj.JS_GetTypedArrayType(v)))
 		put_u64(s, u64(off))
-		put_u64(s, per != 0 ? u64(n / per) : 0)
+		put_u64(s, view_tracks ? VIEW_TRACKS : (per != 0 ? u64(n / per) : 0))
 		ok := serialize(s, buf)
 		wj.JS_FreeValue(ctx, buf)
 		return ok
@@ -480,7 +550,7 @@ serialize_object :: proc(s: ^Ser, v: wj.JSValue) -> bool {
 		free_values(ctx, off, n)
 		put_tag(s, .Data_View)
 		put_u64(s, u64(o))
-		put_u64(s, u64(l))
+		put_u64(s, view_tracks ? VIEW_TRACKS : u64(l))
 		return serialize(s, prim)
 	}
 	if wj.JS_IsDate(v) {
@@ -743,7 +813,7 @@ get_string :: proc "contextless" (d: ^Deser) -> wj.JSValue {
 	if !ok { return malformed(d.ctx) }
 	b, ok2 := get_bytes(d, u64(n))
 	if !ok2 { return malformed(d.ctx) }
-	return wj.new_string_len(d.ctx, b)
+	return wj.string_of_wtf8(d.ctx, b)
 }
 
 @(private = "file")
@@ -856,8 +926,9 @@ deserialize_view :: proc(d: ^Deser, typed: bool, type: u8, off, n: u64) -> wj.JS
 	if !add_ref(d, wj.UNDEFINED) { return wj.EXCEPTION }
 	buf := deserialize(d)
 	if wj.is_exception(buf) { return buf }
-	args := [3]wj.JSValue{buf, wj.new_int64(ctx, i64(off)), wj.new_int64(ctx, i64(n))}
-	r := typed ? wj.JS_NewTypedArray(ctx, 3, &args[0], i32(type)) : wj.JS_CallConstructor(ctx, builtins.ctor_dataview, 3, &args[0])
+	args := [3]wj.JSValue{buf, wj.new_int64(ctx, i64(off)), n == VIEW_TRACKS ? wj.UNDEFINED : wj.new_int64(ctx, i64(n))}
+	argc := i32(n == VIEW_TRACKS ? 2 : 3)
+	r := typed ? wj.JS_NewTypedArray(ctx, argc, &args[0], i32(type)) : wj.JS_CallConstructor(ctx, builtins.ctor_dataview, argc, &args[0])
 	wj.JS_FreeValue(ctx, buf)
 	if !wj.is_exception(r) { d.refs[slot] = wj.JS_DupValue(ctx, r) }
 	return r
@@ -899,7 +970,14 @@ deserialize_error :: proc(d: ^Deser) -> wj.JSValue {
 	for name, i in fields {
 		has, ok := get_u8(d)
 		if !ok { wj.JS_FreeValue(ctx, r); return malformed(ctx) }
-		if has == 0 { continue }
+		if has == 0 {
+			if i == 1 {   // (the new error may have one of its own)
+				a := wj.JS_NewAtom(ctx, name)
+				wj.JS_DeleteProperty(ctx, r, a, 0)
+				wj.JS_FreeAtom(ctx, a)
+			}
+			continue
+		}
 		fv := i == 3 ? deserialize(d) : get_string(d)
 		if wj.is_exception(fv) { wj.JS_FreeValue(ctx, r); return fv }
 		if i == 0 {
@@ -1043,6 +1121,23 @@ deserialize :: proc(d: ^Deser) -> wj.JSValue {
 		bytes, okb := get_bytes(d, n)
 		if !okb { return malformed(ctx) }
 		return keep(d, wj.JS_NewArrayBufferCopy(ctx, raw_data(bytes), uint(len(bytes))))
+	case .Resizable_Buffer:
+		maximum, okm := get_u64(d)
+		n, okn := get_u64(d)
+		if !okm || !okn { return malformed(ctx) }
+		bytes, okb := get_bytes(d, n)
+		if !okb { return malformed(ctx) }
+		return keep(d, array_buffer_resizable(ctx, bytes, maximum))
+	case .Shared_Buffer:
+		token, ok1 := get_u64(d)
+		length, ok2 := get_u64(d)
+		maximum, ok3 := get_u64(d)
+		if !ok1 || !ok2 || !ok3 { return malformed(ctx) }
+		return keep(d, shared_buffer_adopt(ctx, token, i64(length), i64(maximum)))
+	case .Wasm_Memory, .Wasm_Module:
+		token, ok1 := get_u64(d)
+		if !ok1 { return malformed(ctx) }
+		return keep(d, wasm_clone_adopt(ctx, Clone_Tag(raw) == .Wasm_Module, token))
 	case .Typed_Array:
 		type, ok1 := get_u8(d)
 		off, ok2 := get_u64(d)

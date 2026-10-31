@@ -25,6 +25,9 @@ Tee_State :: struct {
 	clone2:     bool,                // chunks are copied for the second branch (Response.clone)
 	branch:     [2]^Stream,          // not counted: cleared when a branch dies
 	reasons:    [2]wj.JSValue,       // counted (marked by the branch that set it)
+	// what cancel() of a branch answers: settled when both are cancelled (or the teed stream errors). Counted, undefined until asked
+	cancel_promise: wj.JSValue,
+	cancel_funcs:   [2]wj.JSValue,
 }
 
 @(private = "file")
@@ -82,6 +85,7 @@ Stream_Controller :: struct {
 }
 
 @(private = "file") async_iter_proto: wj.JSValue   // %AsyncIteratorPrototype% (counted; set at pre-initialization)
+@(private = "file") iter_proto := wj.UNDEFINED     // what a stream's iterators inherit from, over it (made on first use)
 
 // ---- life ----
 
@@ -113,7 +117,12 @@ stream_free :: proc "c" (p: rawptr) {
 			wj.JS_FreeValueRT(rt, t.reasons[src.branch])
 			t.reasons[src.branch] = wj.UNDEFINED
 			t.refs -= 1
-			if t.refs == 0 { free(t) }
+			if t.refs == 0 {
+				wj.JS_FreeValueRT(rt, t.cancel_promise)
+				wj.JS_FreeValueRT(rt, t.cancel_funcs[0])
+				wj.JS_FreeValueRT(rt, t.cancel_funcs[1])
+				free(t)
+			}
 		}
 	}
 	free(s)
@@ -137,7 +146,12 @@ stream_mark :: proc "c" (rt: rawptr, p: rawptr, mf: rawptr) {
 		wj.wj_mark(rt, src.keep, mf)
 	case Tee_Source:
 		wj.wj_mark(rt, src.reader, mf)
-		if src.tee != nil { wj.wj_mark(rt, src.tee.reasons[src.branch], mf) }
+		if t := src.tee; t != nil {
+			wj.wj_mark(rt, t.reasons[src.branch], mf)
+			wj.wj_mark(rt, t.cancel_promise, mf)
+			wj.wj_mark(rt, t.cancel_funcs[0], mf)
+			wj.wj_mark(rt, t.cancel_funcs[1], mf)
+		}
 	}
 }
 
@@ -439,7 +453,21 @@ copy_chunk :: proc "contextless" (ctx: ^wj.Context, v: wj.JSValue) -> wj.JSValue
 			return wj.wj_is_array_buffer(v) ? wj.JS_NewArrayBufferCopy(ctx, p, n) : wj.JS_NewUint8ArrayCopy(ctx, p, n)
 		}
 	}
-	return wj.JS_DupValue(ctx, v)
+	// (another kind of view, or any other value: StructuredClone, as Streams says)
+	if !wj.is_object(v) { return wj.JS_DupValue(ctx, v) }
+	size: uint
+	bytes := wj_clone_serialize(ctx, v, wj.UNDEFINED, &size)
+	if bytes == nil {
+		wj.drop_exception(ctx)
+		return wj.JS_DupValue(ctx, v)
+	}
+	defer wj.libc_free(bytes)
+	c := wj_clone_deserialize(ctx, bytes, size)
+	if wj.is_exception(c) {
+		wj.drop_exception(ctx)
+		return wj.JS_DupValue(ctx, v)
+	}
+	return c
 }
 
 @(private = "file")
@@ -461,6 +489,7 @@ on_tee_chunk :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, arg
 	wj.JS_FreeValue(ctx, done)
 	if is_done {
 		for i in 0 ..< 2 { if t.branch[i] != nil && !t.canceled[i] { stream_close(ctx, t.branch[i]) } }
+		if !(t.canceled[0] && t.canceled[1]) { tee_settle_cancel(ctx, t, wj.UNDEFINED) }
 		return wj.UNDEFINED
 	}
 	v := wj.JS_GetPropertyStr(ctx, res, "value")
@@ -489,6 +518,8 @@ on_tee_error :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, arg
 	if t == nil { return wj.UNDEFINED }
 	t.reading = false
 	for i in 0 ..< 2 { if t.branch[i] != nil { stream_error(ctx, t.branch[i], wj.arg(argc, argv, 0)) } }
+	// (a branch's cancel() no longer waits for the other)
+	if !(t.canceled[0] && t.canceled[1]) { tee_settle_cancel(ctx, t, wj.UNDEFINED) }
 	return wj.UNDEFINED
 }
 
@@ -505,6 +536,30 @@ tee_pull :: proc(ctx: ^wj.Context, t: ^Tee_State, branch_obj: wj.JSValue) {
 	wj.JS_FreeValue(ctx, p)
 }
 
+// The teed stream closed: the branches do, whether they are reading or not.
+@(private = "file")
+on_tee_closed :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, magic: i32, data: [^]wj.JSValue) -> wj.JSValue {
+	context = wj.heap_context()
+	t := tee_of(stream_of(data[0]))
+	if t == nil || t.reading { return wj.UNDEFINED }   // (a read under way says so itself, after its chunk)
+	for i in 0 ..< 2 { if t.branch[i] != nil && !t.canceled[i] { stream_close(ctx, t.branch[i]) } }
+	if !(t.canceled[0] && t.canceled[1]) { tee_settle_cancel(ctx, t, wj.UNDEFINED) }
+	return wj.UNDEFINED
+}
+
+// Takes `v`.
+@(private = "file")
+tee_settle_cancel :: proc(ctx: ^wj.Context, t: ^Tee_State, v: wj.JSValue) {
+	if wj.is_undefined(t.cancel_funcs[0]) {
+		wj.JS_FreeValue(ctx, v)
+		return
+	}
+	wj.web_settle(ctx, t.cancel_funcs[0], v)
+	wj.JS_FreeValue(ctx, t.cancel_funcs[0])
+	wj.JS_FreeValue(ctx, t.cancel_funcs[1])
+	t.cancel_funcs = {wj.UNDEFINED, wj.UNDEFINED}
+}
+
 // stream.tee(): two streams (an array), chunks copied for the second (Response.clone)
 @(export, link_name = "web_stream_tee")
 web_stream_tee :: proc "c" (ctx: ^wj.Context, stream: wj.JSValue, clone_second: bool) -> wj.JSValue {
@@ -518,6 +573,8 @@ web_stream_tee :: proc "c" (ctx: ^wj.Context, stream: wj.JSValue, clone_second: 
 	t := new(Tee_State)
 	if t == nil { return wj.JS_ThrowOutOfMemory(ctx) }
 	t.reasons = {wj.UNDEFINED, wj.UNDEFINED}
+	t.cancel_promise = wj.UNDEFINED
+	t.cancel_funcs = {wj.UNDEFINED, wj.UNDEFINED}
 	t.clone2 = clone_second
 	arr := wj.JS_NewArray(ctx)
 	for i in 0 ..< 2 {
@@ -535,6 +592,12 @@ web_stream_tee :: proc "c" (ctx: ^wj.Context, stream: wj.JSValue, clone_second: 
 		t.branch[i] = bs
 		t.refs += 1
 		wj.array_set(ctx, arr, u32(i), b)
+	}
+	// the teed stream erroring reaches the branches whether they are reading or not
+	if r := reader_of(reader); r != nil {
+		first := wj.JS_GetPropertyUint32(ctx, arr, 0)
+		watch := wj.web_then(ctx, r.closed, rawptr(on_tee_closed), rawptr(on_tee_error), 1, &first)
+		wj.free_values(ctx, watch, first)
 	}
 	return arr
 }
@@ -571,16 +634,19 @@ stream_cancel :: proc(ctx: ^wj.Context, s: ^Stream, reason: wj.JSValue) -> wj.JS
 		t.canceled[src.branch] = true
 		wj.JS_FreeValue(ctx, t.reasons[src.branch])
 		t.reasons[src.branch] = wj.JS_DupValue(ctx, reason)
+		if wj.is_undefined(t.cancel_promise) { t.cancel_promise = wj.web_promise_new(ctx, &t.cancel_funcs[0]) }
+		answer := wj.JS_DupValue(ctx, t.cancel_promise)
 		if t.canceled[0] && t.canceled[1] {
 			// both branches cancelled: the teed stream is, with both reasons
 			reasons := wj.JS_NewArray(ctx)
 			wj.array_set(ctx, reasons, 0, wj.JS_DupValue(ctx, t.reasons[0]))
 			wj.array_set(ctx, reasons, 1, wj.JS_DupValue(ctx, t.reasons[1]))
 			if r := reader_of(src.reader); r != nil {
-				if teed := stream_of(r.stream); teed != nil { wj.JS_FreeValue(ctx, stream_cancel(ctx, teed, reasons)) }
+				if teed := stream_of(r.stream); teed != nil { tee_settle_cancel(ctx, t, stream_cancel(ctx, teed, reasons)) }
 			}
 			wj.JS_FreeValue(ctx, reasons)
 		}
+		return answer
 	}
 	return wj.web_promise_resolved(ctx, wj.UNDEFINED)
 }
@@ -800,44 +866,115 @@ release_quietly :: proc "contextless" (ctx: ^wj.Context, reader: wj.JSValue) {
 	wj.discard(ctx, wjr_ReadableStreamDefaultReader_releaseLock(ctx, reader, 0, nil))
 }
 
-// the end of the iteration releases the reader (Streams "ReadableStream async iterator": next steps)
+// Web IDL's asynchronous iterator: one call at a time (each waits for the one before: "_ongoing"), and once finished it says
+// so ("_finished"). Its methods are on a prototype of its own, over %AsyncIteratorPrototype%; the state is hidden on the object.
+@(private = "file")
+iter_state :: proc "contextless" (ctx: ^wj.Context, it: wj.JSValue) -> (reader: wj.JSValue, ok: bool) {
+	reader = wj.web_extra_get(ctx, it, "_reader")
+	if wj.is_undefined(reader) { return reader, false }
+	return reader, true
+}
+
+@(private = "file")
+iter_finished :: proc "contextless" (ctx: ^wj.Context, it: wj.JSValue) -> bool {
+	v := wj.web_extra_get(ctx, it, "_finished")
+	defer wj.JS_FreeValue(ctx, v)
+	return !wj.is_undefined(v)
+}
+
+@(private = "file")
+iter_finish :: proc "contextless" (ctx: ^wj.Context, it: wj.JSValue) {
+	wj.web_extra_set(ctx, it, "_finished", wj.new_bool(true))
+}
+
+// (data[0]: the iterator) the end of the iteration releases the reader
 @(private = "file")
 iter_step :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, magic: i32, data: [^]wj.JSValue) -> wj.JSValue {
 	res := wj.arg(argc, argv, 0)
 	done := wj.JS_GetPropertyStr(ctx, res, "done")
-	if wj.JS_ToBool(ctx, done) > 0 { release_quietly(ctx, data[0]) }
+	if wj.JS_ToBool(ctx, done) > 0 {
+		iter_finish(ctx, data[0])
+		if reader, ok := iter_state(ctx, data[0]); ok {
+			release_quietly(ctx, reader)
+			wj.JS_FreeValue(ctx, reader)
+		}
+	}
 	wj.JS_FreeValue(ctx, done)
 	return wj.JS_DupValue(ctx, res)
 }
 
 @(private = "file")
 iter_error :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, magic: i32, data: [^]wj.JSValue) -> wj.JSValue {
-	release_quietly(ctx, data[0])
+	iter_finish(ctx, data[0])
+	if reader, ok := iter_state(ctx, data[0]); ok {
+		release_quietly(ctx, reader)
+		wj.JS_FreeValue(ctx, reader)
+	}
 	return wj.JS_Throw(ctx, wj.JS_DupValue(ctx, wj.arg(argc, argv, 0)))
 }
 
+// (magic 1: return, with data[1] the value it was given; both ways once the call before it has settled)
 @(private = "file")
-iter_next :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, magic: i32, data: [^]wj.JSValue) -> wj.JSValue {
-	r := reader_of(data[0])
-	if r == nil || wj.is_undefined(r.stream) { return wj.web_promise_take(ctx, wj.web_iter_result(ctx, wj.UNDEFINED, true)) }
-	p := wjr_ReadableStreamDefaultReader_read(ctx, data[0], 0, nil)
+iter_steps :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, magic: i32, data: [^]wj.JSValue) -> wj.JSValue {
+	context = wj.heap_context()
+	it := data[0]
+	if magic == 1 {
+		value := data[1]
+		if iter_finished(ctx, it) { return wj.web_promise_take(ctx, wj.web_iter_result(ctx, wj.JS_DupValue(ctx, value), true)) }
+		iter_finish(ctx, it)
+		reader, ok := iter_state(ctx, it)
+		if !ok { return wj.web_promise_take(ctx, wj.web_iter_result(ctx, wj.JS_DupValue(ctx, value), true)) }
+		defer wj.JS_FreeValue(ctx, reader)
+		prevent := wj.web_extra_get(ctx, it, "_prevent")
+		keep_open := wj.JS_ToBool(ctx, prevent) > 0
+		wj.JS_FreeValue(ctx, prevent)
+		cancelled := wj.UNDEFINED
+		if r := reader_of(reader); r != nil && !keep_open {
+			if s := stream_of(r.stream); s != nil { cancelled = stream_cancel(ctx, s, value) }
+		}
+		release_quietly(ctx, reader)
+		if wj.is_undefined(cancelled) { return wj.web_promise_take(ctx, wj.web_iter_result(ctx, wj.JS_DupValue(ctx, value), true)) }
+		defer wj.JS_FreeValue(ctx, cancelled)
+		d := [1]wj.JSValue{value}
+		return wj.web_then(ctx, cancelled, rawptr(iter_returned), nil, 1, &d[0])
+	}
+	if iter_finished(ctx, it) { return wj.web_promise_take(ctx, wj.web_iter_result(ctx, wj.UNDEFINED, true)) }
+	reader, ok := iter_state(ctx, it)
+	if !ok { return wj.web_promise_take(ctx, wj.web_iter_result(ctx, wj.UNDEFINED, true)) }
+	defer wj.JS_FreeValue(ctx, reader)
+	p := wjr_ReadableStreamDefaultReader_read(ctx, reader, 0, nil)
 	if wj.is_exception(p) { return p }
-	d := wj.web_then(ctx, p, rawptr(iter_step), rawptr(iter_error), 1, data)
-	wj.JS_FreeValue(ctx, p)
-	return d
+	defer wj.JS_FreeValue(ctx, p)
+	d := [1]wj.JSValue{it}
+	return wj.web_then(ctx, p, rawptr(iter_step), rawptr(iter_error), 1, &d[0])
 }
 
 @(private = "file")
-iter_return :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, magic: i32, data: [^]wj.JSValue) -> wj.JSValue {
+iter_returned :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, magic: i32, data: [^]wj.JSValue) -> wj.JSValue {
+	return wj.web_iter_result(ctx, wj.JS_DupValue(ctx, data[0]), true)
+}
+
+// next() (magic 0), return(value) (magic 1): after the call before it, whichever way that went.
+@(private = "file")
+iter_call :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, magic: i32) -> wj.JSValue {
 	context = wj.heap_context()
-	value := wj.arg(argc, argv, 0)
-	p := wj.UNDEFINED
-	if r := reader_of(data[0]); r != nil && wj.JS_ToBool(ctx, data[1]) <= 0 {
-		if s := stream_of(r.stream); s != nil { p = stream_cancel(ctx, s, value) }
+	reader, ok := iter_state(ctx, this_val)
+	if !ok && !iter_finished(ctx, this_val) { return wj.web_promise_rejected(ctx, wj.web_type_error(ctx, "not a ReadableStream async iterator")) }
+	wj.JS_FreeValue(ctx, reader)
+	d := [2]wj.JSValue{this_val, wj.arg(argc, argv, 0)}
+	steps := wj.JS_NewCFunctionData(ctx, iter_steps, 0, magic, 2, &d[0])
+	defer wj.JS_FreeValue(ctx, steps)
+	ongoing := wj.web_extra_get(ctx, this_val, "_ongoing")
+	defer wj.JS_FreeValue(ctx, ongoing)
+	r: wj.JSValue
+	if wj.is_undefined(ongoing) {
+		r = wj.JS_Call(ctx, steps, wj.UNDEFINED, 0, nil)
+	} else {
+		r = wj.JS_PromiseThen(ctx, ongoing, steps, steps)
 	}
-	release_quietly(ctx, data[0])
-	wj.JS_FreeValue(ctx, p)
-	return wj.web_promise_take(ctx, wj.web_iter_result(ctx, wj.JS_DupValue(ctx, value), true))
+	if wj.is_exception(r) { return wj.web_promise_reject_pending(ctx) }
+	wj.web_extra_set(ctx, this_val, "_ongoing", wj.JS_DupValue(ctx, r))
+	return r
 }
 
 @(export, link_name = "wjr_ReadableStream_values")
@@ -852,11 +989,14 @@ wjr_ReadableStream_values :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, a
 	wj.JS_FreeValue(ctx, pc)
 	reader := get_reader(ctx, this_val)
 	if wj.is_exception(reader) { return reader }
-	it := wj.JS_NewObjectProto(ctx, async_iter_proto)
-	data := [2]wj.JSValue{reader, prevent}
-	wj.JS_DefinePropertyValueStr(ctx, it, "next", wj.JS_NewCFunctionData(ctx, iter_next, 0, 0, 2, &data[0]), wj.PROP_C_W_E)
-	wj.JS_DefinePropertyValueStr(ctx, it, "return", wj.JS_NewCFunctionData(ctx, iter_return, 1, 0, 2, &data[0]), wj.PROP_C_W_E)
-	wj.JS_FreeValue(ctx, reader)
+	if wj.is_undefined(iter_proto) {
+		iter_proto = wj.JS_NewObjectProto(ctx, async_iter_proto)
+		wj.JS_DefinePropertyValueStr(ctx, iter_proto, "next", wj.new_cfunction_magic(ctx, iter_call, "next", 0, wj.CFUNC_generic_magic, 0), wj.PROP_C_W_E)
+		wj.JS_DefinePropertyValueStr(ctx, iter_proto, "return", wj.new_cfunction_magic(ctx, iter_call, "return", 1, wj.CFUNC_generic_magic, 1), wj.PROP_C_W_E)
+	}
+	it := wj.JS_NewObjectProto(ctx, iter_proto)
+	wj.web_extra_set(ctx, it, "_reader", reader)   // (takes it)
+	wj.web_extra_set(ctx, it, "_prevent", prevent)
 	return it
 }
 

@@ -592,6 +592,7 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		ro_h := http.get_all(r.headers, "content-security-policy-report-only")
 		rp, _ := http.get_header(r.headers, "referrer-policy")
 		page.apply_response_headers(load.page, csp_h, ro_h, rp)
+		page.apply_isolation_headers(load.page, r.headers)
 	case .Data:
 	case .Done:
 		document_loaded(app, load, ev.data)

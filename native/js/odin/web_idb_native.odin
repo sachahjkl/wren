@@ -366,7 +366,7 @@ idb_read_key :: proc "contextless" (ctx: ^wj.Context, p: []u8, pos: ^int) -> wj.
 		for pos^ < n && p[pos^] != 0 {
 			e := idb_read_key(ctx, p, pos)
 			if wj.is_exception(e) { wj.JS_FreeValue(ctx, arr); return e }
-			wj.JS_SetPropertyUint32(ctx, arr, i, e)
+			wj.array_set(ctx, arr, i, e)
 			i += 1
 		}
 		pos^ += 1
@@ -417,19 +417,18 @@ host_cmp :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [
 
 @(private = "file")
 host_utf8 :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
-	n: uint
-	s := wj.to_cstring_len(ctx, &n, wj.arg(argc, argv, 0))
-	if s == nil { return wj.EXCEPTION }
-	r := idb_u8(ctx, ([^]u8)(rawptr(s))[:n])
-	wj.free_cstring(ctx, s)
-	return r
+	context = wj.heap_context()
+	bytes, ok := wj.wtf8_of(ctx, wj.arg(argc, argv, 0))
+	if !ok { return wj.EXCEPTION }
+	defer delete(bytes, wj.libc_allocator())
+	return idb_u8(ctx, bytes)
 }
 
 @(private = "file")
 host_utf8d :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	bytes, ok := idb_bytes_of(ctx, wj.arg(argc, argv, 0))
 	if !ok { return wj.EXCEPTION }
-	return wj.new_string_len(ctx, bytes)
+	return wj.string_of_wtf8(ctx, bytes)
 }
 
 // ---- key paths ----
@@ -778,7 +777,7 @@ host_inject :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv
 	for i: u32 = 0; i + 1 < count; i += 1 {
 		has := has_own(ctx, cur, atoms[i])
 		if has < 0 { return wj.EXCEPTION }
-		if has == 0 && wj.JS_SetProperty(ctx, cur, atoms[i], wj.JS_NewObject(ctx)) < 0 { return wj.EXCEPTION }
+		if has == 0 && wj.JS_DefinePropertyValue(ctx, cur, atoms[i], wj.JS_NewObject(ctx), wj.PROP_C_W_E) < 0 { return wj.EXCEPTION }
 		next := wj.JS_GetProperty(ctx, cur, atoms[i])
 		wj.JS_FreeValue(ctx, cur)
 		cur = wj.UNDEFINED

@@ -36,6 +36,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const wptWWWHost = "localhost"
@@ -495,8 +496,54 @@ func serveWPT(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(status)
 	if r.Method != http.MethodHead {
-		w.Write(data)
+		writeTrickled(w, data, r.URL.Query().Get("pipe"))
 	}
+}
+
+// The body as ?pipe=trickle(..) says: dN waits N seconds, a number sends that many bytes, rN repeats the N tokens before it
+// until the bytes are gone, and what is left goes at the end. Without that pipe, all at once.
+func writeTrickled(w http.ResponseWriter, data []byte, pipe string) {
+	var tokens []string
+	for _, p := range splitPipes(pipe) {
+		if strings.HasPrefix(p, "trickle(") && strings.HasSuffix(p, ")") {
+			tokens = strings.Split(p[len("trickle("):len(p)-1], ":")
+		}
+	}
+	flush := func() {
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
+	}
+	var run func(list []string, depth int)
+	run = func(list []string, depth int) {
+		for i, t := range list {
+			switch {
+			case t == "":
+			case t[0] == 'd':
+				if s, err := strconv.ParseFloat(t[1:], 64); err == nil {
+					flush()
+					time.Sleep(time.Duration(s * float64(time.Second)))
+				}
+			case t[0] == 'r':
+				n, err := strconv.Atoi(t[1:])
+				if err != nil || n > i || depth > 0 {
+					continue
+				}
+				for k := 0; len(data) > 0 && k < 100000; k++ {
+					run(list[i-n:i], depth+1)
+				}
+			default:
+				if n, err := strconv.Atoi(t); err == nil {
+					n = min(n, len(data))
+					w.Write(data[:n])
+					data = data[n:]
+					flush()
+				}
+			}
+		}
+	}
+	run(tokens, 0)
+	w.Write(data)
 }
 
 func fileExists(p string) bool {

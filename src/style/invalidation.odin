@@ -375,6 +375,10 @@ analyze_simple :: proc(ix: ^Inv_Index, s: ^css.Simple, comp: css.Compound, total
 			attr_dep(ix, "lang", subtree, in_has)
 			attr_dep(ix, "xml:lang", subtree, in_has)
 		case .Dir: attr_dep(ix, "dir", subtree, in_has)
+		case .Modal, .Modal_Active:
+			// (showing or closing a modal dialog asks for a restyle: page/dialog_modal.odin)
+			ix.uses_controls = true
+			ix.controls = reach_union(ix.controls, subtree)
 		case .Popover_Open:
 			// showing or hiding a popover asks for a restyle (page/popover.odin); the attribute decides whether it is one
 			attr_dep(ix, "popover", total, in_has)

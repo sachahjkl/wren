@@ -1026,7 +1026,7 @@ textContent).</p>
 <p>Host: <code>HTMLDialogElement_show :: proc(c: ^Call, dialog: Api_Element) -&gt; Api_Error</code></p>
 <h3 id="htmldialogelement-showmodal"><a class="anchor" href="#htmldialogelement-showmodal" aria-hidden="true">#</a><code>HTMLDialogElement_showModal</code></h3>
 <div class="code"><pre><code>void HTMLDialogElement_showModal(Element dialog) raises</code></pre></div>
-<p>dialog.showModal(): Invalid_State when it is not connected (no top layer: the dialog stays where it is).</p>
+<p>dialog.showModal(): Invalid_State when it is open without being modal, not connected, or a showing popover.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../docs/api/web.html">web</a>).</p>
 <p>Host: <code>HTMLDialogElement_showModal :: proc(c: ^Call, dialog: Api_Element) -&gt; Api_Error</code></p>
 <h3 id="htmldialogelement-close"><a class="anchor" href="#htmldialogelement-close" aria-hidden="true">#</a><code>HTMLDialogElement_close</code></h3>

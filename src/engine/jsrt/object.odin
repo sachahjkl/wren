@@ -263,15 +263,33 @@ Array_Buffer :: struct {
 
 // A buffer whose bytes are not in this engine's memory (a WebAssembly.Memory of the page): reached through the embedder.
 // One element is one call; a builtin that works on a range pins it (host_pin): a copy `data` points at for that time.
+// `shared`: other agents reach the bytes too: Atomics go to the embedder, and writes do not wait in a cache (host_line).
 Buffer_Host :: struct {
 	read:  proc "contextless" (user: u64, offset: int, dst: [^]u8, n: int),
 	write: proc "contextless" (user: u64, offset: int, src: [^]u8, n: int),
 	user:  u64,
+	shared: ^Host_Shared,
+	owned: bool,      // the script's own use of the bytes (shared.release when collected)
 	rt:    ^Runtime,
 	pin:   [^]u8,   // the copy of [pin_lo, pin_hi), while pinned
 	pin_lo, pin_hi: int,
 	pin_depth: int,
 	pin_dirty: bool,
+}
+
+// What the embedder does for a SharedArrayBuffer whose bytes it holds (its realm's buffers: runtime config host_shared).
+Host_Shared :: struct {
+	read:    proc "contextless" (user: u64, offset: int, dst: [^]u8, n: int),
+	write:   proc "contextless" (user: u64, offset: int, src: [^]u8, n: int),
+	create:  proc "contextless" (byte_length, max_byte_length: i64) -> (user: u64, ok: bool),
+	release: proc "contextless" (user: u64),
+	length:  proc "contextless" (user: u64) -> int,
+	grow:    proc "contextless" (user: u64, byte_length: i64) -> bool,
+	// the element of `size` bytes at `offset`: the value it held. `op`: an Atomic_Op
+	atomic:  proc "contextless" (user: u64, op: i32, offset: int, size: int, a, b: u64) -> u64,
+	// 0 woken, 1 not equal, 2 timed out (`timeout_ms` < 0: none)
+	wait:    proc "contextless" (user: u64, offset: int, size: int, expected: u64, timeout_ms: f64) -> i32,
+	notify:  proc "contextless" (user: u64, offset: int, count: u32) -> i32,
 }
 
 Typed_Array :: struct {

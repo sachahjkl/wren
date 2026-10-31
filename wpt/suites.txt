@@ -50,3 +50,10 @@ urlpattern
 scheduler
 web-locks
 wasm/jsapi
+html/infrastructure/safe-passing-of-structured-data/shared-array-buffers
+wasm/serialization/module
+html/cross-origin-embedder-policy only=.
+fetch/cross-origin-resource-policy
+html/cross-origin-opener-policy only=.
+wasm/webapi
+html/semantics/interactive-elements/the-dialog-element

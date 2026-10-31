@@ -1,0 +1,526 @@
+# web-platform-tests expectations of Wren for html/semantics/interactive-elements/the-dialog-element, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/html/semantics/interactive-elements/the-dialog-element/abspos-dialog-layout.html: OK
+	A centered dialog's position should survive becoming display:none temporarily.: PASS
+	A tall dialog should be positioned at the top of the viewport.: PASS
+	Centering should work when dialog is inside positioned containers.: PASS
+	Dialog should be recentered if showModal() is called after close(): PASS
+	Dialog should be recentered if showModal() is called after removing 'open'.: PASS
+	Dialog should not recenter on relayout.: PASS
+	Dialog should not still be centered when removed, and re-added to the document.: PASS
+	Dialog's specified position should survive after close() and showModal().: PASS
+	The dialog should be centered regardless of the presence of a horizontal scrollbar.: PASS
+	showModal() should center in the viewport: PASS
+/html/semantics/interactive-elements/the-dialog-element/backdrop-receives-element-events.html: OK
+	Test that ::backdrop receives events for the associated element: FAIL
+/html/semantics/interactive-elements/the-dialog-element/centering.html: OK
+	horizontal-tb (container vertical-rl) (dialog horizontal-tb): tall viewport, default-sizes: false: FAIL
+	horizontal-tb (container vertical-rl) (dialog horizontal-tb): tall viewport, default-sizes: true: FAIL
+	horizontal-tb (container vertical-rl): tall viewport, default-sizes: false: FAIL
+	horizontal-tb (container vertical-rl): tall viewport, default-sizes: true: FAIL
+	horizontal-tb: dialog and viewport match, default-sizes: false: FAIL
+	horizontal-tb: square viewport, default-sizes: false: FAIL
+	horizontal-tb: square viewport, default-sizes: true: FAIL
+	horizontal-tb: tall viewport, default-sizes: false: FAIL
+	horizontal-tb: tall viewport, default-sizes: true: FAIL
+	horizontal-tb: wide viewport, default-sizes: false: FAIL
+	horizontal-tb: wide viewport, default-sizes: true: FAIL
+	vertical-lr (dialog horizontal-tb): tall viewport, default-sizes: false: FAIL
+	vertical-lr (dialog horizontal-tb): tall viewport, default-sizes: true: FAIL
+	vertical-lr: tall viewport, default-sizes: false: FAIL
+	vertical-lr: tall viewport, default-sizes: true: FAIL
+	vertical-rl (container horizontal-tb) (dialog vertical-rl): tall viewport, default-sizes: false: FAIL
+	vertical-rl (container horizontal-tb) (dialog vertical-rl): tall viewport, default-sizes: true: FAIL
+	vertical-rl (container horizontal-tb): tall viewport, default-sizes: false: FAIL
+	vertical-rl (container horizontal-tb): tall viewport, default-sizes: true: FAIL
+	vertical-rl (dialog horizontal-tb): tall viewport, default-sizes: false: FAIL
+	vertical-rl (dialog horizontal-tb): tall viewport, default-sizes: true: FAIL
+	vertical-rl: tall viewport, default-sizes: false: FAIL
+	vertical-rl: tall viewport, default-sizes: true: FAIL
+/html/semantics/interactive-elements/the-dialog-element/child-sequential-focus.html: OK
+	Autofocus takes precedence over keyboard-focusable requirement.: PASS
+	Only keyboard-focusable elements should get dialog initial focus including in nested buttons.: PASS
+	Only keyboard-focusable elements should get dialog initial focus including in subtrees.: PASS
+	Only keyboard-focusable elements should get dialog initial focus.: PASS
+	dialog element with autofocus should get initial focus.: FAIL
+/html/semantics/interactive-elements/the-dialog-element/closed-dialog-does-not-block-mouse-events.html: OK
+	Ensure that closed dialogs do not block mouse events. To test manually, click the red box. The test succeeds if the red box turns green.: FAIL
+/html/semantics/interactive-elements/the-dialog-element/default-color.html: OK
+	<dialog> color and background match default: PASS
+	<dialog> colors react to dark mode: PASS
+/html/semantics/interactive-elements/the-dialog-element/dialog-active-document.html: OK
+	showModal should throw when the document isn't active: PASS
+/html/semantics/interactive-elements/the-dialog-element/dialog-autofocus-just-once.html: OK
+	An autofocus element in a dialog element should not try to get focus twice.: FAIL
+/html/semantics/interactive-elements/the-dialog-element/dialog-autofocus-multiple-times.html: ERROR
+	autofocus is run every time a dialog is opened: TIMEOUT
+/html/semantics/interactive-elements/the-dialog-element/dialog-autofocus.html: ERROR
+	autofocus when a modal dialog is opened: TIMEOUT
+/html/semantics/interactive-elements/the-dialog-element/dialog-cancel-events.html: OK
+	Test cancel event is fired when the dialog is closed by user close requests: FAIL
+/html/semantics/interactive-elements/the-dialog-element/dialog-cancel-preventDefault.html: OK
+	Test cancel event with preventDefault on cancel event for dialog element: FAIL
+/html/semantics/interactive-elements/the-dialog-element/dialog-cancel-with-input.html: TIMEOUT
+	Test dialog modal is closed by escape key with input focused: NOTRUN
+/html/semantics/interactive-elements/the-dialog-element/dialog-cancel-with-select.html: TIMEOUT
+	Test dialog modal is closed by escape key with select focused: NOTRUN
+/html/semantics/interactive-elements/the-dialog-element/dialog-canceling.html: OK
+	Modal dialogs should close when the escape key is pressed.: FAIL
+/html/semantics/interactive-elements/the-dialog-element/dialog-close-event-async.html: OK
+	close() fires a close event: PASS
+/html/semantics/interactive-elements/the-dialog-element/dialog-close-event.html: OK
+	Test that dialog receives a close event upon closing.: PASS
+/html/semantics/interactive-elements/the-dialog-element/dialog-close-via-attribute.tentative.html: OK
+	Removing the open attribute from an open modal dialog should run the closing algorithm.: FAIL
+	Removing the open attribute from an open non-modal dialog should fire a close event.: FAIL
+/html/semantics/interactive-elements/the-dialog-element/dialog-close.html: OK
+	close() fires a close event: PASS
+	close() on a <dialog> that doesn't have an open attribute aborts the steps: PASS
+	close() removes the open attribute and set the returnValue to the first argument: PASS
+	close() should set the returnValue IDL attribute but not the JS property: PASS
+	close() without argument removes the open attribute and there's no returnValue: PASS
+/html/semantics/interactive-elements/the-dialog-element/dialog-closedby-bounds-clicking.html: OK
+	Dialog show light dismisses when clicked outside of the bounds of both the dialog and the div: FAIL
+	Dialog show light dismisses when clicked outside of the bounds of the dialog - where the X direction is in-line with the div still: FAIL
+	Dialog show light dismisses when clicked outside of the bounds of the dialog - where the Y direction is in-line with the div still: FAIL
+	Dialog show will not light dismiss if clicked inside of the dialog bounds: FAIL
+	Dialog show will not light dismiss if clicked inside of the dialog bounds (bottom right): FAIL
+	Dialog show will not light dismiss if clicked inside the overflowing div bounds (bottom right): FAIL
+	Dialog show will not light dismiss if clicked inside the overflowing div bounds (center): FAIL
+	Dialog showModal light dismisses when clicked outside of the bounds of both the dialog and the div: FAIL
+	Dialog showModal light dismisses when clicked outside of the bounds of the dialog - where the X direction is in-line with the div still: FAIL
+	Dialog showModal light dismisses when clicked outside of the bounds of the dialog - where the Y direction is in-line with the div still: FAIL
+	Dialog showModal will not light dismiss if clicked inside of the dialog bounds: FAIL
+	Dialog showModal will not light dismiss if clicked inside of the dialog bounds (bottom right): FAIL
+	Dialog showModal will not light dismiss if clicked inside the overflowing div bounds (bottom right): FAIL
+	Dialog showModal will not light dismiss if clicked inside the overflowing div bounds (center): FAIL
+/html/semantics/interactive-elements/the-dialog-element/dialog-closedby-corner-cases.html: OK
+	Clicking outside, when beforetoggle calls showModal, modal: FAIL
+	Clicking outside, when beforetoggle calls showModal, modeless: FAIL
+	Clicking outside, when beforetoggle calls showModal, open: FAIL
+	Clicking outside, when beforetoggle closes dialog, modal: FAIL
+	Clicking outside, when beforetoggle closes dialog, modeless: FAIL
+	Clicking outside, when beforetoggle closes dialog, open: FAIL
+	Clicking outside, when focusin calls showModal, modal: FAIL
+	Clicking outside, when focusin calls showModal, modeless: FAIL
+	Clicking outside, when focusin calls showModal, open: FAIL
+	Clicking outside, when focusin closes dialog, modal: FAIL
+	Clicking outside, when focusin closes dialog, modeless: FAIL
+	Clicking outside, when focusin closes dialog, open: FAIL
+	Clicking outside, when focusin removes and reinserts, modal: FAIL
+	Clicking outside, when focusin removes and reinserts, modeless: FAIL
+	Clicking outside, when focusin removes and reinserts, open: FAIL
+	Pressing escape, when beforetoggle calls showModal, modal: FAIL
+	Pressing escape, when beforetoggle calls showModal, modeless: FAIL
+	Pressing escape, when beforetoggle calls showModal, open: FAIL
+	Pressing escape, when beforetoggle closes dialog, modal: FAIL
+	Pressing escape, when beforetoggle closes dialog, modeless: FAIL
+	Pressing escape, when beforetoggle closes dialog, open: FAIL
+	Pressing escape, when focusin calls showModal, modal: FAIL
+	Pressing escape, when focusin calls showModal, modeless: FAIL
+	Pressing escape, when focusin calls showModal, open: FAIL
+	Pressing escape, when focusin closes dialog, modal: FAIL
+	Pressing escape, when focusin closes dialog, modeless: FAIL
+	Pressing escape, when focusin closes dialog, open: FAIL
+	Pressing escape, when focusin removes and reinserts, modal: FAIL
+	Pressing escape, when focusin removes and reinserts, modeless: FAIL
+	Pressing escape, when focusin removes and reinserts, open: FAIL
+/html/semantics/interactive-elements/the-dialog-element/dialog-closedby-show-stacked.html: OK
+	With an inner closedby=any, the outer dialog stays open but the inner dialogs should close, when Esc is pressed: FAIL
+	With an inner closedby=any, the outer dialog stays open but the inner dialogs should close, when clicked outside: FAIL
+	With an inner closedby=none, the outer & inner dialogs stays open when Esc is pressed: FAIL
+	With an inner closedby=none, the outer & inner dialogs stays open when clicked outside: FAIL
+/html/semantics/interactive-elements/the-dialog-element/dialog-closedby-start-open.html: TIMEOUT
+	Dialogs that start open and have closedby should still function: TIMEOUT
+	Opening and closing a dialog during the dialog focus fixup should still leave closedby functional: NOTRUN
+/html/semantics/interactive-elements/the-dialog-element/dialog-closedby.html: TIMEOUT
+	closedby=, modal: NOTRUN
+	closedby=, modeless: NOTRUN
+	closedby=, open: NOTRUN
+	closedby=AnY, modal: NOTRUN
+	closedby=AnY, modeless: NOTRUN
+	closedby=AnY, open: NOTRUN
+	closedby=ClOsErEqUeSt, modal: NOTRUN
+	closedby=ClOsErEqUeSt, modeless: NOTRUN
+	closedby=ClOsErEqUeSt, open: NOTRUN
+	closedby=NoNe, modal: NOTRUN
+	closedby=NoNe, modeless: NOTRUN
+	closedby=NoNe, open: NOTRUN
+	closedby=any, modal: NOTRUN
+	closedby=any, modeless: TIMEOUT
+	closedby=any, open: NOTRUN
+	closedby=closerequest, modal: NOTRUN
+	closedby=closerequest, modeless: NOTRUN
+	closedby=closerequest, open: NOTRUN
+	closedby=invalid, modal: NOTRUN
+	closedby=invalid, modeless: NOTRUN
+	closedby=invalid, open: NOTRUN
+	closedby=none, modal: NOTRUN
+	closedby=none, modeless: NOTRUN
+	closedby=none, open: NOTRUN
+	closedby=null, modal: NOTRUN
+	closedby=null, modeless: NOTRUN
+	closedby=null, open: NOTRUN
+/html/semantics/interactive-elements/the-dialog-element/dialog-enabled.html: OK
+	The DIALOG element should be recognized: PASS
+/html/semantics/interactive-elements/the-dialog-element/dialog-focus-previous-outside.html: OK
+	Focus restore should always occur for modal dialogs.: PASS
+	Focus restore should not occur when the focused element is in a shadowroot outside of the dialog.: FAIL
+	Focus restore should occur when the focused element is in a shadowroot inside the dialog.: PASS
+	Focus restore should occur when the focused element is slotted into a dialog.: PASS
+	Focus restore should work when the dialog itself is focused.: FAIL
+	Focus should not be restored if the currently focused element is not inside the dialog.: FAIL
+/html/semantics/interactive-elements/the-dialog-element/dialog-focus-shadow-double-nested.html: OK
+	show(): FAIL
+	showModal(): FAIL
+/html/semantics/interactive-elements/the-dialog-element/dialog-focus-shadow.html: OK
+	show: Autofocus after, no delegatesFocus: PASS
+	show: Autofocus after, yes delegatesFocus: PASS
+	show: Autofocus before, no delegatesFocus: PASS
+	show: Autofocus before, yes delegatesFocus: PASS
+	show: Autofocus inside shadow tree, no delegatesFocus, no siblings: FAIL
+	show: Autofocus inside shadow tree, no delegatesFocus, sibling after: PASS
+	show: Autofocus inside shadow tree, no delegatesFocus, sibling before: PASS
+	show: Autofocus inside shadow tree, yes delegatesFocus, no siblings: FAIL
+	show: Autofocus inside shadow tree, yes delegatesFocus, sibling after: FAIL
+	show: Autofocus inside shadow tree, yes delegatesFocus, sibling before: PASS
+	show: Autofocus on shadow host, no delegatesFocus, no siblings: FAIL
+	show: Autofocus on shadow host, no delegatesFocus, sibling after: PASS
+	show: Autofocus on shadow host, no delegatesFocus, sibling before: PASS
+	show: Autofocus on shadow host, yes delegatesFocus, no siblings: PASS
+	show: Autofocus on shadow host, yes delegatesFocus, sibling after: PASS
+	show: Autofocus on shadow host, yes delegatesFocus, sibling before: PASS
+	show: No autofocus, no delegatesFocus, no siblings: FAIL
+	show: No autofocus, no delegatesFocus, sibling after: PASS
+	show: No autofocus, no delegatesFocus, sibling before: PASS
+	show: No autofocus, no delegatesFocus, slotted target: PASS
+	show: No autofocus, yes delegatesFocus, no siblings: FAIL
+	show: No autofocus, yes delegatesFocus, sibling after: FAIL
+	show: No autofocus, yes delegatesFocus, sibling before: PASS
+	show: Shadowroot on child, no autofocus, no delegatesFocus: PASS
+	show: Two shadow trees, both delegatesFocus, first tree doesn't have autofocus element, second does: FAIL
+	showModal: Autofocus after, no delegatesFocus: PASS
+	showModal: Autofocus after, yes delegatesFocus: PASS
+	showModal: Autofocus before, no delegatesFocus: PASS
+	showModal: Autofocus before, yes delegatesFocus: PASS
+	showModal: Autofocus inside shadow tree, no delegatesFocus, no siblings: FAIL
+	showModal: Autofocus inside shadow tree, no delegatesFocus, sibling after: PASS
+	showModal: Autofocus inside shadow tree, no delegatesFocus, sibling before: PASS
+	showModal: Autofocus inside shadow tree, yes delegatesFocus, no siblings: FAIL
+	showModal: Autofocus inside shadow tree, yes delegatesFocus, sibling after: FAIL
+	showModal: Autofocus inside shadow tree, yes delegatesFocus, sibling before: PASS
+	showModal: Autofocus on shadow host, no delegatesFocus, no siblings: FAIL
+	showModal: Autofocus on shadow host, no delegatesFocus, sibling after: PASS
+	showModal: Autofocus on shadow host, no delegatesFocus, sibling before: PASS
+	showModal: Autofocus on shadow host, yes delegatesFocus, no siblings: PASS
+	showModal: Autofocus on shadow host, yes delegatesFocus, sibling after: PASS
+	showModal: Autofocus on shadow host, yes delegatesFocus, sibling before: PASS
+	showModal: No autofocus, no delegatesFocus, no siblings: FAIL
+	showModal: No autofocus, no delegatesFocus, sibling after: PASS
+	showModal: No autofocus, no delegatesFocus, sibling before: PASS
+	showModal: No autofocus, no delegatesFocus, slotted target: PASS
+	showModal: No autofocus, yes delegatesFocus, no siblings: FAIL
+	showModal: No autofocus, yes delegatesFocus, sibling after: FAIL
+	showModal: No autofocus, yes delegatesFocus, sibling before: PASS
+	showModal: Shadowroot on child, no autofocus, no delegatesFocus: PASS
+	showModal: Two shadow trees, both delegatesFocus, first tree doesn't have autofocus element, second does: FAIL
+/html/semantics/interactive-elements/the-dialog-element/dialog-focusability.html: TIMEOUT
+	The dialog element itself should not be keyboard focusable.: TIMEOUT
+/html/semantics/interactive-elements/the-dialog-element/dialog-focusing-steps-disconnected.html: OK
+	dialog.show(): focusing steps should not change focus on disconnected <dialog>: FAIL
+	dialog.showModal() should throw on disconnected <dialog>: PASS
+/html/semantics/interactive-elements/the-dialog-element/dialog-focusing-steps-inert.html: OK
+	dialog.show(): focusing steps should not change focus when dialog is inert: FAIL
+	dialog.showModal(): focusing steps should apply focus fixup rule when dialog is inert: FAIL
+/html/semantics/interactive-elements/the-dialog-element/dialog-focusing-steps-prevent-autofocus.html: OK
+	After showing a dialog, non-dialog autofocus processing won't work.: FAIL
+/html/semantics/interactive-elements/the-dialog-element/dialog-form-submission-unusual.html: OK
+	A form's action and rel=noopener are ignored during submission: PASS
+	A form's action and rel=noopener are ignored during submission, part 2: PASS
+/html/semantics/interactive-elements/the-dialog-element/dialog-form-submission.html: ERROR
+	calling form.submit() in click handler of submit button should start the submission synchronously: FAIL
+	click the form submission button should close the dialog: PASS
+	closing the dialog while submitting should stop the submission: PASS
+	form submission should return correct value: PASS
+	formmethod attribute should use dialog form submission: FAIL
+	input image button should return the coordinates: FAIL
+	returnValue does update when there's an empty value attribute.: PASS
+	returnValue doesn't update when there's no value attribute.: FAIL
+/html/semantics/interactive-elements/the-dialog-element/dialog-inert.html: OK
+	dialog-inert: FAIL
+/html/semantics/interactive-elements/the-dialog-element/dialog-keydown-preventDefault.html: TIMEOUT
+	Test cancel event with preventDefault on keydown event for dialog element: NOTRUN
+/html/semantics/interactive-elements/the-dialog-element/dialog-light-dismiss-drag.html: OK
+	Dialog should not light dismiss when clicking inside the dialog and dragging outside of it.: FAIL
+/html/semantics/interactive-elements/the-dialog-element/dialog-light-dismiss-pointer-capture.html: OK
+	Light dismiss on dialog with mouse input with pointer capture.: FAIL
+	Light dismiss on dialog with touch input with pointer capture.: FAIL
+/html/semantics/interactive-elements/the-dialog-element/dialog-light-dismiss-touch.html: OK
+	Dialog light dismiss should work with touch and not trigger a click event.: FAIL
+/html/semantics/interactive-elements/the-dialog-element/dialog-no-throw-requested-state.html: OK
+	dialog-no-throw-requested-state: FAIL
+/html/semantics/interactive-elements/the-dialog-element/dialog-open-2.html: OK
+	Tests that dialog is visible after show() is called and not visible after close() is called.: PASS
+/html/semantics/interactive-elements/the-dialog-element/dialog-open-movebefore-setup.html: OK
+	reparenting a dialog should not cause it to move in the open dialogs list: FAIL
+/html/semantics/interactive-elements/the-dialog-element/dialog-open.html: OK
+	On getting, the IDL open attribute must return true if the content open attribute is set, and false if it is absent.: PASS
+	On setting it to false, the close event should not be fired: PASS
+	On setting, the content open attribute must be removed if the IDL open attribute is set to false, and must be present if the IDL open attribute is set to true.: PASS
+/html/semantics/interactive-elements/the-dialog-element/dialog-overlay.html: OK
+	Opening and closing a modal dialog changes computed overlay to 'auto' and back to 'none': FAIL
+	dialog computed overlay initially 'none': FAIL
+/html/semantics/interactive-elements/the-dialog-element/dialog-popover-closedby-complex.html: OK
+	clicking dialogA with modal dialogA and modal dialogB, normal DOM nesting: FAIL
+	clicking dialogA with modal dialogA and modal dialogB, same structure, but with shadow DOM slots: FAIL
+	clicking dialogA with modal dialogA and modeless dialogB, normal DOM nesting: FAIL
+	clicking dialogA with modal dialogA and modeless dialogB, same structure, but with shadow DOM slots: FAIL
+	clicking dialogA with modeless dialogA and modal dialogB, normal DOM nesting: FAIL
+	clicking dialogA with modeless dialogA and modal dialogB, same structure, but with shadow DOM slots: FAIL
+	clicking dialogA with modeless dialogA and modeless dialogB, normal DOM nesting: FAIL
+	clicking dialogA with modeless dialogA and modeless dialogB, same structure, but with shadow DOM slots: FAIL
+	clicking dialogB with modal dialogA and modal dialogB, normal DOM nesting: FAIL
+	clicking dialogB with modal dialogA and modal dialogB, same structure, but with shadow DOM slots: FAIL
+	clicking dialogB with modal dialogA and modeless dialogB, normal DOM nesting: FAIL
+	clicking dialogB with modal dialogA and modeless dialogB, same structure, but with shadow DOM slots: FAIL
+	clicking dialogB with modeless dialogA and modal dialogB, normal DOM nesting: FAIL
+	clicking dialogB with modeless dialogA and modal dialogB, same structure, but with shadow DOM slots: FAIL
+	clicking dialogB with modeless dialogA and modeless dialogB, normal DOM nesting: FAIL
+	clicking dialogB with modeless dialogA and modeless dialogB, same structure, but with shadow DOM slots: FAIL
+	clicking outside all with modal dialogA and modal dialogB, normal DOM nesting: FAIL
+	clicking outside all with modal dialogA and modal dialogB, same structure, but with shadow DOM slots: FAIL
+	clicking outside all with modal dialogA and modeless dialogB, normal DOM nesting: FAIL
+	clicking outside all with modal dialogA and modeless dialogB, same structure, but with shadow DOM slots: FAIL
+	clicking outside all with modeless dialogA and modal dialogB, normal DOM nesting: FAIL
+	clicking outside all with modeless dialogA and modal dialogB, same structure, but with shadow DOM slots: FAIL
+	clicking outside all with modeless dialogA and modeless dialogB, normal DOM nesting: FAIL
+	clicking outside all with modeless dialogA and modeless dialogB, same structure, but with shadow DOM slots: FAIL
+	clicking popoverA with modal dialogA and modal dialogB, normal DOM nesting: FAIL
+	clicking popoverA with modal dialogA and modal dialogB, same structure, but with shadow DOM slots: FAIL
+	clicking popoverA with modal dialogA and modeless dialogB, normal DOM nesting: FAIL
+	clicking popoverA with modal dialogA and modeless dialogB, same structure, but with shadow DOM slots: FAIL
+	clicking popoverA with modeless dialogA and modal dialogB, normal DOM nesting: FAIL
+	clicking popoverA with modeless dialogA and modal dialogB, same structure, but with shadow DOM slots: FAIL
+	clicking popoverA with modeless dialogA and modeless dialogB, normal DOM nesting: FAIL
+	clicking popoverA with modeless dialogA and modeless dialogB, same structure, but with shadow DOM slots: FAIL
+	clicking popoverB with modal dialogA and modal dialogB, normal DOM nesting: FAIL
+	clicking popoverB with modal dialogA and modal dialogB, same structure, but with shadow DOM slots: FAIL
+	clicking popoverB with modal dialogA and modeless dialogB, normal DOM nesting: FAIL
+	clicking popoverB with modal dialogA and modeless dialogB, same structure, but with shadow DOM slots: FAIL
+	clicking popoverB with modeless dialogA and modal dialogB, normal DOM nesting: FAIL
+	clicking popoverB with modeless dialogA and modal dialogB, same structure, but with shadow DOM slots: FAIL
+	clicking popoverB with modeless dialogA and modeless dialogB, normal DOM nesting: FAIL
+	clicking popoverB with modeless dialogA and modeless dialogB, same structure, but with shadow DOM slots: FAIL
+/html/semantics/interactive-elements/the-dialog-element/dialog-popover-closedby-simple.html: OK
+	Dialog closedby=any parent, popover child: FAIL
+	Dialog closedby=closerequest parent, popover child: FAIL
+	Dialog closedby=none parent, popover child: FAIL
+	Popover parent, dialog closedby=any child: FAIL
+	Popover parent, dialog closedby=closerequest child: FAIL
+	Popover parent, dialog closedby=none child: FAIL
+/html/semantics/interactive-elements/the-dialog-element/dialog-requestclose-2.html: OK
+	requestClose() should not close the dialog when disconnected: FAIL
+/html/semantics/interactive-elements/the-dialog-element/dialog-requestclose-3.html: OK
+	requestClose() should not close the dialog when is in inactive document: FAIL
+/html/semantics/interactive-elements/the-dialog-element/dialog-requestclose-closedby.tentative.html: OK
+	requestClose() should close the dialog even when computed closedby becomes none: PASS
+/html/semantics/interactive-elements/the-dialog-element/dialog-requestclose-recurse.html: OK
+	Calling requestClose inside of cancel event handler doesn't trigger another cancel event: FAIL
+/html/semantics/interactive-elements/the-dialog-element/dialog-requestclose.html: OK
+	closedby has no effect on dialog.requestClose() for modal dialog with closedby=any: PASS
+	closedby has no effect on dialog.requestClose() for modal dialog with closedby=closedrequest: PASS
+	closedby has no effect on dialog.requestClose() for modal dialog with closedby=none: PASS
+	closedby has no effect on dialog.requestClose() for modal dialog with closedby=null: PASS
+	closedby has no effect on dialog.requestClose() for modeless dialog with closedby=any: PASS
+	closedby has no effect on dialog.requestClose() for modeless dialog with closedby=closedrequest: PASS
+	closedby has no effect on dialog.requestClose() for modeless dialog with closedby=none: PASS
+	closedby has no effect on dialog.requestClose() for modeless dialog with closedby=null: PASS
+	closedby has no effect on dialog.requestClose() for open dialog with closedby=any: PASS
+	closedby has no effect on dialog.requestClose() for open dialog with closedby=closedrequest: PASS
+	closedby has no effect on dialog.requestClose() for open dialog with closedby=none: PASS
+	closedby has no effect on dialog.requestClose() for open dialog with closedby=null: PASS
+	requestClose avoids abuse prevention logic for modal dialog with closedby=any: PASS
+	requestClose avoids abuse prevention logic for modal dialog with closedby=closedrequest: PASS
+	requestClose avoids abuse prevention logic for modal dialog with closedby=null: PASS
+	requestClose avoids abuse prevention logic for modeless dialog with closedby=any: PASS
+	requestClose avoids abuse prevention logic for modeless dialog with closedby=closedrequest: PASS
+	requestClose avoids abuse prevention logic for modeless dialog with closedby=null: PASS
+	requestClose avoids abuse prevention logic for open dialog with closedby=any: PASS
+	requestClose avoids abuse prevention logic for open dialog with closedby=closedrequest: PASS
+	requestClose avoids abuse prevention logic for open dialog with closedby=null: PASS
+	requestClose basic behavior for modal dialog with closedby=any: PASS
+	requestClose basic behavior for modal dialog with closedby=closedrequest: PASS
+	requestClose basic behavior for modal dialog with closedby=none: PASS
+	requestClose basic behavior for modal dialog with closedby=null: PASS
+	requestClose basic behavior for modeless dialog with closedby=any: PASS
+	requestClose basic behavior for modeless dialog with closedby=closedrequest: PASS
+	requestClose basic behavior for modeless dialog with closedby=none: PASS
+	requestClose basic behavior for modeless dialog with closedby=null: PASS
+	requestClose basic behavior for open dialog with closedby=any: PASS
+	requestClose basic behavior for open dialog with closedby=closedrequest: PASS
+	requestClose basic behavior for open dialog with closedby=none: PASS
+	requestClose basic behavior for open dialog with closedby=null: PASS
+	requestClose basic behavior when dialog is open via attribute: PASS
+	requestClose can be cancelled for modal dialog with closedby=any: PASS
+	requestClose can be cancelled for modal dialog with closedby=closedrequest: PASS
+	requestClose can be cancelled for modal dialog with closedby=null: PASS
+	requestClose can be cancelled for modeless dialog with closedby=any: PASS
+	requestClose can be cancelled for modeless dialog with closedby=closedrequest: PASS
+	requestClose can be cancelled for modeless dialog with closedby=null: PASS
+	requestClose can be cancelled for open dialog with closedby=any: PASS
+	requestClose can be cancelled for open dialog with closedby=closedrequest: PASS
+	requestClose can be cancelled for open dialog with closedby=null: PASS
+	requestClose fires both cancel and close for modal dialog with closedby=any: PASS
+	requestClose fires both cancel and close for modal dialog with closedby=closedrequest: PASS
+	requestClose fires both cancel and close for modal dialog with closedby=none: PASS
+	requestClose fires both cancel and close for modal dialog with closedby=null: PASS
+	requestClose fires both cancel and close for modeless dialog with closedby=any: PASS
+	requestClose fires both cancel and close for modeless dialog with closedby=closedrequest: PASS
+	requestClose fires both cancel and close for modeless dialog with closedby=none: PASS
+	requestClose fires both cancel and close for modeless dialog with closedby=null: PASS
+	requestClose fires both cancel and close for open dialog with closedby=any: PASS
+	requestClose fires both cancel and close for open dialog with closedby=closedrequest: PASS
+	requestClose fires both cancel and close for open dialog with closedby=none: PASS
+	requestClose fires both cancel and close for open dialog with closedby=null: PASS
+	requestClose fires cancel and close when dialog is open via attribute: PASS
+	requestClose(returnValue) doesn't change returnvalue when cancelled for modal dialog with closedby=any: PASS
+	requestClose(returnValue) doesn't change returnvalue when cancelled for modal dialog with closedby=closedrequest: PASS
+	requestClose(returnValue) doesn't change returnvalue when cancelled for modal dialog with closedby=null: PASS
+	requestClose(returnValue) doesn't change returnvalue when cancelled for modeless dialog with closedby=any: PASS
+	requestClose(returnValue) doesn't change returnvalue when cancelled for modeless dialog with closedby=closedrequest: PASS
+	requestClose(returnValue) doesn't change returnvalue when cancelled for modeless dialog with closedby=null: PASS
+	requestClose(returnValue) doesn't change returnvalue when cancelled for open dialog with closedby=any: PASS
+	requestClose(returnValue) doesn't change returnvalue when cancelled for open dialog with closedby=closedrequest: PASS
+	requestClose(returnValue) doesn't change returnvalue when cancelled for open dialog with closedby=null: PASS
+	requestClose(returnValue) passes along the return value for modal dialog with closedby=any: PASS
+	requestClose(returnValue) passes along the return value for modal dialog with closedby=closedrequest: PASS
+	requestClose(returnValue) passes along the return value for modal dialog with closedby=null: PASS
+	requestClose(returnValue) passes along the return value for modeless dialog with closedby=any: PASS
+	requestClose(returnValue) passes along the return value for modeless dialog with closedby=closedrequest: PASS
+	requestClose(returnValue) passes along the return value for modeless dialog with closedby=null: PASS
+	requestClose(returnValue) passes along the return value for open dialog with closedby=any: PASS
+	requestClose(returnValue) passes along the return value for open dialog with closedby=closedrequest: PASS
+	requestClose(returnValue) passes along the return value for open dialog with closedby=null: PASS
+	requestClose(returnValue) passes along the return value when dialog is open via attribute: PASS
+/html/semantics/interactive-elements/the-dialog-element/dialog-return-value.html: OK
+	Tests dialog.returnValue is settable and returns the last value set.: PASS
+/html/semantics/interactive-elements/the-dialog-element/dialog-showModal-remove.html: OK
+	dialog element: removing from document after showModal(): PASS
+/html/semantics/interactive-elements/the-dialog-element/dialog-showModal.html: OK
+	When the document is not attached to any pages, showModal() should throw.: PASS
+	dialog element: showModal(): PASS
+	opening dialog with multiple focusable children: PASS
+	opening dialog with multiple focusable children, one having the autofocus attribute: PASS
+	opening dialog without focusable children: FAIL
+	showModal() on a <dialog> after initial showModal() and removing the open attribute: PASS
+	showModal() on a <dialog> not in a Document throws an InvalidStateError exception: PASS
+	showModal() on a <dialog> that already has an open attribute throws an InvalidStateError exception: PASS
+	when opening multiple dialogs, only the newest one is non-inert: PASS
+	when opening multiple dialogs, the most recently opened is rendered on top: FAIL
+/html/semantics/interactive-elements/the-dialog-element/dialog-synthetic-keydown.html: OK
+	close via synthesized Esc key must not work: PASS
+/html/semantics/interactive-elements/the-dialog-element/dialog-toggle-source.html: ERROR
+/html/semantics/interactive-elements/the-dialog-element/focus-after-close.html: TIMEOUT
+	Focus should be moved to the body if the previously focused element is removed: FAIL
+	Focus should be moved to the previously focused element (Complex dialog usage): FAIL
+	Focus should be moved to the previously focused element (Simple dialog usage): PASS
+	Focus should be moved to the previously focused element even if it has moved in between show/close: PASS
+	Focus should be moved to the previously focused element even if it has moved to shadow DOM root in between show/close: FAIL
+	Focus should be moved to the shadow DOM host if the previouly focused element is a shadow DOM node: FAIL
+	Focus should not scroll if the previously focused element is outside the viewport: TIMEOUT
+/html/semantics/interactive-elements/the-dialog-element/focus-previous-iframe.tentative.html: ERROR
+	Focus should move back from child document to parent document: PASS
+	Focus should move back from parent document to child document: PASS
+/html/semantics/interactive-elements/the-dialog-element/form-submit-dialog-shadow.html: OK
+	<form method=dialog> should not submit across shadow boundaries.: PASS
+/html/semantics/interactive-elements/the-dialog-element/inert-does-not-match-disabled-selector.html: OK
+	Tests inert elements do not match the :disabled selector.: PASS
+/html/semantics/interactive-elements/the-dialog-element/inert-focus-in-frames.html: ERROR
+/html/semantics/interactive-elements/the-dialog-element/inert-inlines.html: OK
+	Tests that inert inlines do not receive mouse events.: FAIL
+/html/semantics/interactive-elements/the-dialog-element/inert-label-focus.html: OK
+	Tests focusing of an inert label for a non-inert target.: FAIL
+/html/semantics/interactive-elements/the-dialog-element/inert-node-is-uneditable.html: OK
+	Test that inert nodes cannot be edited. The test passes if the only text you can edit is in the dialog.: FAIL
+/html/semantics/interactive-elements/the-dialog-element/inert-node-is-unfocusable.html: ERROR
+	#anchor is not  focusable: NOTRUN
+	#body is not  focusable: NOTRUN
+	#bottom-dialog is not  focusable: NOTRUN
+	#bottom-dialog-button is not  focusable: NOTRUN
+	#color is not  focusable: NOTRUN
+	#container is not  focusable: NOTRUN
+	#contenteditable-div is not  focusable: NOTRUN
+	#datetime is not  focusable: NOTRUN
+	#html is not  focusable: NOTRUN
+	#optgroup is not  focusable: NOTRUN
+	#option is not  focusable: NOTRUN
+	#select is not  focusable: NOTRUN
+	#tabindex-span is not  focusable: NOTRUN
+	#text is not  focusable: NOTRUN
+	#top-dialog is  focusable: NOTRUN
+	#top-dialog-button is  focusable: NOTRUN
+/html/semantics/interactive-elements/the-dialog-element/inert-node-is-unselectable.html: OK
+	Test that inert nodes cannot be selected. The test passes if the only text you can select is inside the dialog.: FAIL
+/html/semantics/interactive-elements/the-dialog-element/inert-svg-hittest.html: OK
+	Hit-testing can reach contents of a no longer inert SVG: FAIL
+	Hit-testing doesn't reach contents of an inert SVG: FAIL
+/html/semantics/interactive-elements/the-dialog-element/inertness-with-modal-dialogs-and-iframes.html: ERROR
+	Initially, no node is inert: NOTRUN
+	Modal dialog in the inner iframe marks outer nodes in that iframe as inert.: NOTRUN
+	Modal dialog in the main document marks outer nodes as inert. Contents of the outer iframe aren't marked as inert.: NOTRUN
+	Modal dialog in the outer iframe marks outer nodes in that iframe as inert.: NOTRUN
+	Modal dialogs in both iframes mark outer nodes in these iframes as inert.: NOTRUN
+	Modal dialogs in the main document and both iframes mark outer nodes as inert. Contents of the outer iframe aren't marked as inert.: NOTRUN
+	Modal dialogs in the main document and inner iframe mark outer nodes as inert. Contents of the outer iframe aren't marked as inert.: NOTRUN
+	Modal dialogs in the main document and outer iframe mark outer nodes as inert. Contents of the outer iframe aren't marked as inert.: NOTRUN
+/html/semantics/interactive-elements/the-dialog-element/modal-dialog-ancestor-is-inert.html: OK
+	Test that ancestors of modal dialog are inert.: FAIL
+/html/semantics/interactive-elements/the-dialog-element/modal-dialog-blocks-mouse-events.html: OK
+	Ensure that mouse events are not dispatched to an inert node.: FAIL
+/html/semantics/interactive-elements/the-dialog-element/modal-dialog-in-visibility-hidden.html: OK
+	Modal dialog should have visibility: visible by default in UA sheet: FAIL
+	Modal dialog visibility should be overridable: PASS
+	Non-modal dialog should let parent visibility inherit: PASS
+/html/semantics/interactive-elements/the-dialog-element/modal-dialog-scroll-height.html: OK
+	dialogs should be centered before computing overflow.: PASS
+/html/semantics/interactive-elements/the-dialog-element/modal-dialog-selection.html: OK
+	'user-select: none' prevents text from being selected: FAIL
+	By default, text inside a modal dialog can be selected: FAIL
+	Clicking on backdrop doesn't select text: FAIL
+/html/semantics/interactive-elements/the-dialog-element/multiple-centered-dialogs.html: OK
+	Test that multiple dialogs are centered properly.: FAIL
+/html/semantics/interactive-elements/the-dialog-element/non-modal-canceling.html: OK
+	Non-modal dialogs should not be cancelable via ESC: FAIL
+/html/semantics/interactive-elements/the-dialog-element/non-modal-dialog-does-not-block-mouse-events.html: OK
+	Ensure that non-modal dialogs do not block mouse events.: FAIL
+/html/semantics/interactive-elements/the-dialog-element/non-modal-dialog-layout.html: OK
+	Tests layout of non-modal dialogs.: FAIL
+/html/semantics/interactive-elements/the-dialog-element/popover-dialog-does-not-block-mouse-events.html: OK
+	Ensure that popover dialogs do not block mouse events. To test manually, click the red box. The test succeeds if the red box turns green.: FAIL
+/html/semantics/interactive-elements/the-dialog-element/remove-dialog-should-unblock-document.html: ERROR
+	Test that removing dialog unblocks the document.: NOTRUN
+/html/semantics/interactive-elements/the-dialog-element/show-modal-focusing-steps.html: ERROR
+	focus when a modal dialog is opened: TIMEOUT
+/html/semantics/interactive-elements/the-dialog-element/simulated-click-inert.html: OK
+	Ensure that simulated click is still dispatched to an inert node.: FAIL
+/html/semantics/interactive-elements/the-dialog-element/submit-dialog-close-event.html: OK
+	Tests submitting a dialog on a close event triggered by a previous submission.: PASS
+/html/semantics/interactive-elements/the-dialog-element/synthetic-click-inert.html: OK
+	Test that inert nodes still get programmatic click events: PASS
+/html/semantics/interactive-elements/the-dialog-element/toggle-events.html: OK
+	dialog.show() should coalesce asynchronous toggle events.: FAIL
+	dialog.show() should fire beforetoggle and toggle events.: FAIL
+	dialog.show() should fire cancelable beforetoggle which does not open dialog if canceled: FAIL
+	dialog.show() should not double-set open/close if beforetoggle re-opens: PASS
+	dialog.show() should not open if beforetoggle calls showPopover: FAIL
+	dialog.show() should not open if beforetoggle removes: FAIL
+	dialog.showModal() should coalesce asynchronous toggle events.: FAIL
+	dialog.showModal() should fire beforetoggle and toggle events.: FAIL
+	dialog.showModal() should fire cancelable beforetoggle which does not open dialog if canceled: FAIL
+	dialog.showModal() should not double-set open/close if beforetoggle re-opens: PASS
+	dialog.showModal() should not open if beforetoggle calls showPopover: FAIL
+	dialog.showModal() should not open if beforetoggle removes: FAIL
+/html/semantics/interactive-elements/the-dialog-element/top-layer-position.html: OK
+	Verifies that position:static and position:relative computed to position:absolute in the top layer.: FAIL
+/html/semantics/interactive-elements/the-dialog-element/top-layer-removal-invalidates-ua-styles.html: OK
+	Top layer UA styles stop applying once a dialog leaves the top layer: PASS

@@ -182,7 +182,9 @@ wjr_Location_reload :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i
 // the serialized state as text (malloc'ed, NUL-terminated); nil with a DataCloneError pending
 @(private = "file") state_encode :: proc "c" (ctx: ^wj.Context, v: wj.JSValue, out_len: ^uint) -> [^]u8 {
 	n: uint
+	clone_for_storage = true
 	p := web_clone_serialize(ctx, v, &n)
+	clone_for_storage = false
 	if p == nil { return nil }
 	defer web_clone_free(ctx, p)
 	prefix := transmute([]u8)string(STATE_PREFIX)

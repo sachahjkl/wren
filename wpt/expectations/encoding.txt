@@ -6911,30 +6911,30 @@
 /encoding/encodeInto.any.html: OK
 	Invalid encodeInto() destination: ArrayBuffer: PASS
 	Invalid encodeInto() destination: BigInt64Array, backed by: ArrayBuffer: PASS
-	Invalid encodeInto() destination: BigInt64Array, backed by: SharedArrayBuffer: FAIL
+	Invalid encodeInto() destination: BigInt64Array, backed by: SharedArrayBuffer: PASS
 	Invalid encodeInto() destination: BigUint64Array, backed by: ArrayBuffer: PASS
-	Invalid encodeInto() destination: BigUint64Array, backed by: SharedArrayBuffer: FAIL
+	Invalid encodeInto() destination: BigUint64Array, backed by: SharedArrayBuffer: PASS
 	Invalid encodeInto() destination: DataView, backed by: ArrayBuffer: PASS
-	Invalid encodeInto() destination: DataView, backed by: SharedArrayBuffer: FAIL
+	Invalid encodeInto() destination: DataView, backed by: SharedArrayBuffer: PASS
 	Invalid encodeInto() destination: Float16Array, backed by: ArrayBuffer: PASS
-	Invalid encodeInto() destination: Float16Array, backed by: SharedArrayBuffer: FAIL
+	Invalid encodeInto() destination: Float16Array, backed by: SharedArrayBuffer: PASS
 	Invalid encodeInto() destination: Float32Array, backed by: ArrayBuffer: PASS
-	Invalid encodeInto() destination: Float32Array, backed by: SharedArrayBuffer: FAIL
+	Invalid encodeInto() destination: Float32Array, backed by: SharedArrayBuffer: PASS
 	Invalid encodeInto() destination: Float64Array, backed by: ArrayBuffer: PASS
-	Invalid encodeInto() destination: Float64Array, backed by: SharedArrayBuffer: FAIL
+	Invalid encodeInto() destination: Float64Array, backed by: SharedArrayBuffer: PASS
 	Invalid encodeInto() destination: Int16Array, backed by: ArrayBuffer: PASS
-	Invalid encodeInto() destination: Int16Array, backed by: SharedArrayBuffer: FAIL
+	Invalid encodeInto() destination: Int16Array, backed by: SharedArrayBuffer: PASS
 	Invalid encodeInto() destination: Int32Array, backed by: ArrayBuffer: PASS
-	Invalid encodeInto() destination: Int32Array, backed by: SharedArrayBuffer: FAIL
+	Invalid encodeInto() destination: Int32Array, backed by: SharedArrayBuffer: PASS
 	Invalid encodeInto() destination: Int8Array, backed by: ArrayBuffer: PASS
-	Invalid encodeInto() destination: Int8Array, backed by: SharedArrayBuffer: FAIL
+	Invalid encodeInto() destination: Int8Array, backed by: SharedArrayBuffer: PASS
 	Invalid encodeInto() destination: SharedArrayBuffer: PASS
 	Invalid encodeInto() destination: Uint16Array, backed by: ArrayBuffer: PASS
-	Invalid encodeInto() destination: Uint16Array, backed by: SharedArrayBuffer: FAIL
+	Invalid encodeInto() destination: Uint16Array, backed by: SharedArrayBuffer: PASS
 	Invalid encodeInto() destination: Uint32Array, backed by: ArrayBuffer: PASS
-	Invalid encodeInto() destination: Uint32Array, backed by: SharedArrayBuffer: FAIL
+	Invalid encodeInto() destination: Uint32Array, backed by: SharedArrayBuffer: PASS
 	Invalid encodeInto() destination: Uint8ClampedArray, backed by: ArrayBuffer: PASS
-	Invalid encodeInto() destination: Uint8ClampedArray, backed by: SharedArrayBuffer: FAIL
+	Invalid encodeInto() destination: Uint8ClampedArray, backed by: SharedArrayBuffer: PASS
 	encodeInto() and a detached output buffer: PASS
 	encodeInto() into ArrayBuffer with A and destination length 10, offset 0, filler 0: PASS
 	encodeInto() into ArrayBuffer with A and destination length 10, offset 0, filler 128: PASS
@@ -6978,75 +6978,75 @@
 	encodeInto() into ArrayBuffer with 𝌆A and destination length 3, offset 4, filler 0: PASS
 	encodeInto() into ArrayBuffer with 𝌆A and destination length 3, offset 4, filler 128: PASS
 	encodeInto() into ArrayBuffer with 𝌆A and destination length 3, offset 4, filler random: PASS
-	encodeInto() into SharedArrayBuffer with A and destination length 10, offset 0, filler 0: FAIL
-	encodeInto() into SharedArrayBuffer with A and destination length 10, offset 0, filler 128: FAIL
-	encodeInto() into SharedArrayBuffer with A and destination length 10, offset 0, filler random: FAIL
-	encodeInto() into SharedArrayBuffer with A and destination length 10, offset 4, filler 0: FAIL
-	encodeInto() into SharedArrayBuffer with A and destination length 10, offset 4, filler 128: FAIL
-	encodeInto() into SharedArrayBuffer with A and destination length 10, offset 4, filler random: FAIL
-	encodeInto() into SharedArrayBuffer with AU+df06 and destination length 4, offset 0, filler 0: FAIL
-	encodeInto() into SharedArrayBuffer with AU+df06 and destination length 4, offset 0, filler 128: FAIL
-	encodeInto() into SharedArrayBuffer with AU+df06 and destination length 4, offset 0, filler random: FAIL
-	encodeInto() into SharedArrayBuffer with AU+df06 and destination length 4, offset 4, filler 0: FAIL
-	encodeInto() into SharedArrayBuffer with AU+df06 and destination length 4, offset 4, filler 128: FAIL
-	encodeInto() into SharedArrayBuffer with AU+df06 and destination length 4, offset 4, filler random: FAIL
-	encodeInto() into SharedArrayBuffer with Hi and destination length 0, offset 0, filler 0: FAIL
-	encodeInto() into SharedArrayBuffer with Hi and destination length 0, offset 0, filler 128: FAIL
-	encodeInto() into SharedArrayBuffer with Hi and destination length 0, offset 0, filler random: FAIL
-	encodeInto() into SharedArrayBuffer with Hi and destination length 0, offset 4, filler 0: FAIL
-	encodeInto() into SharedArrayBuffer with Hi and destination length 0, offset 4, filler 128: FAIL
-	encodeInto() into SharedArrayBuffer with Hi and destination length 0, offset 4, filler random: FAIL
-	encodeInto() into SharedArrayBuffer with U+d834AU+df06A¥Hi and destination length 10, offset 0, filler 0: FAIL
-	encodeInto() into SharedArrayBuffer with U+d834AU+df06A¥Hi and destination length 10, offset 0, filler 128: FAIL
-	encodeInto() into SharedArrayBuffer with U+d834AU+df06A¥Hi and destination length 10, offset 0, filler random: FAIL
-	encodeInto() into SharedArrayBuffer with U+d834AU+df06A¥Hi and destination length 10, offset 4, filler 0: FAIL
-	encodeInto() into SharedArrayBuffer with U+d834AU+df06A¥Hi and destination length 10, offset 4, filler 128: FAIL
-	encodeInto() into SharedArrayBuffer with U+d834AU+df06A¥Hi and destination length 10, offset 4, filler random: FAIL
-	encodeInto() into SharedArrayBuffer with ¥¥ and destination length 4, offset 0, filler 0: FAIL
-	encodeInto() into SharedArrayBuffer with ¥¥ and destination length 4, offset 0, filler 128: FAIL
-	encodeInto() into SharedArrayBuffer with ¥¥ and destination length 4, offset 0, filler random: FAIL
-	encodeInto() into SharedArrayBuffer with ¥¥ and destination length 4, offset 4, filler 0: FAIL
-	encodeInto() into SharedArrayBuffer with ¥¥ and destination length 4, offset 4, filler 128: FAIL
-	encodeInto() into SharedArrayBuffer with ¥¥ and destination length 4, offset 4, filler random: FAIL
-	encodeInto() into SharedArrayBuffer with 𝌆 and destination length 4, offset 0, filler 0: FAIL
-	encodeInto() into SharedArrayBuffer with 𝌆 and destination length 4, offset 0, filler 128: FAIL
-	encodeInto() into SharedArrayBuffer with 𝌆 and destination length 4, offset 0, filler random: FAIL
-	encodeInto() into SharedArrayBuffer with 𝌆 and destination length 4, offset 4, filler 0: FAIL
-	encodeInto() into SharedArrayBuffer with 𝌆 and destination length 4, offset 4, filler 128: FAIL
-	encodeInto() into SharedArrayBuffer with 𝌆 and destination length 4, offset 4, filler random: FAIL
-	encodeInto() into SharedArrayBuffer with 𝌆A and destination length 3, offset 0, filler 0: FAIL
-	encodeInto() into SharedArrayBuffer with 𝌆A and destination length 3, offset 0, filler 128: FAIL
-	encodeInto() into SharedArrayBuffer with 𝌆A and destination length 3, offset 0, filler random: FAIL
-	encodeInto() into SharedArrayBuffer with 𝌆A and destination length 3, offset 4, filler 0: FAIL
-	encodeInto() into SharedArrayBuffer with 𝌆A and destination length 3, offset 4, filler 128: FAIL
-	encodeInto() into SharedArrayBuffer with 𝌆A and destination length 3, offset 4, filler random: FAIL
+	encodeInto() into SharedArrayBuffer with A and destination length 10, offset 0, filler 0: PASS
+	encodeInto() into SharedArrayBuffer with A and destination length 10, offset 0, filler 128: PASS
+	encodeInto() into SharedArrayBuffer with A and destination length 10, offset 0, filler random: PASS
+	encodeInto() into SharedArrayBuffer with A and destination length 10, offset 4, filler 0: PASS
+	encodeInto() into SharedArrayBuffer with A and destination length 10, offset 4, filler 128: PASS
+	encodeInto() into SharedArrayBuffer with A and destination length 10, offset 4, filler random: PASS
+	encodeInto() into SharedArrayBuffer with AU+df06 and destination length 4, offset 0, filler 0: PASS
+	encodeInto() into SharedArrayBuffer with AU+df06 and destination length 4, offset 0, filler 128: PASS
+	encodeInto() into SharedArrayBuffer with AU+df06 and destination length 4, offset 0, filler random: PASS
+	encodeInto() into SharedArrayBuffer with AU+df06 and destination length 4, offset 4, filler 0: PASS
+	encodeInto() into SharedArrayBuffer with AU+df06 and destination length 4, offset 4, filler 128: PASS
+	encodeInto() into SharedArrayBuffer with AU+df06 and destination length 4, offset 4, filler random: PASS
+	encodeInto() into SharedArrayBuffer with Hi and destination length 0, offset 0, filler 0: PASS
+	encodeInto() into SharedArrayBuffer with Hi and destination length 0, offset 0, filler 128: PASS
+	encodeInto() into SharedArrayBuffer with Hi and destination length 0, offset 0, filler random: PASS
+	encodeInto() into SharedArrayBuffer with Hi and destination length 0, offset 4, filler 0: PASS
+	encodeInto() into SharedArrayBuffer with Hi and destination length 0, offset 4, filler 128: PASS
+	encodeInto() into SharedArrayBuffer with Hi and destination length 0, offset 4, filler random: PASS
+	encodeInto() into SharedArrayBuffer with U+d834AU+df06A¥Hi and destination length 10, offset 0, filler 0: PASS
+	encodeInto() into SharedArrayBuffer with U+d834AU+df06A¥Hi and destination length 10, offset 0, filler 128: PASS
+	encodeInto() into SharedArrayBuffer with U+d834AU+df06A¥Hi and destination length 10, offset 0, filler random: PASS
+	encodeInto() into SharedArrayBuffer with U+d834AU+df06A¥Hi and destination length 10, offset 4, filler 0: PASS
+	encodeInto() into SharedArrayBuffer with U+d834AU+df06A¥Hi and destination length 10, offset 4, filler 128: PASS
+	encodeInto() into SharedArrayBuffer with U+d834AU+df06A¥Hi and destination length 10, offset 4, filler random: PASS
+	encodeInto() into SharedArrayBuffer with ¥¥ and destination length 4, offset 0, filler 0: PASS
+	encodeInto() into SharedArrayBuffer with ¥¥ and destination length 4, offset 0, filler 128: PASS
+	encodeInto() into SharedArrayBuffer with ¥¥ and destination length 4, offset 0, filler random: PASS
+	encodeInto() into SharedArrayBuffer with ¥¥ and destination length 4, offset 4, filler 0: PASS
+	encodeInto() into SharedArrayBuffer with ¥¥ and destination length 4, offset 4, filler 128: PASS
+	encodeInto() into SharedArrayBuffer with ¥¥ and destination length 4, offset 4, filler random: PASS
+	encodeInto() into SharedArrayBuffer with 𝌆 and destination length 4, offset 0, filler 0: PASS
+	encodeInto() into SharedArrayBuffer with 𝌆 and destination length 4, offset 0, filler 128: PASS
+	encodeInto() into SharedArrayBuffer with 𝌆 and destination length 4, offset 0, filler random: PASS
+	encodeInto() into SharedArrayBuffer with 𝌆 and destination length 4, offset 4, filler 0: PASS
+	encodeInto() into SharedArrayBuffer with 𝌆 and destination length 4, offset 4, filler 128: PASS
+	encodeInto() into SharedArrayBuffer with 𝌆 and destination length 4, offset 4, filler random: PASS
+	encodeInto() into SharedArrayBuffer with 𝌆A and destination length 3, offset 0, filler 0: PASS
+	encodeInto() into SharedArrayBuffer with 𝌆A and destination length 3, offset 0, filler 128: PASS
+	encodeInto() into SharedArrayBuffer with 𝌆A and destination length 3, offset 0, filler random: PASS
+	encodeInto() into SharedArrayBuffer with 𝌆A and destination length 3, offset 4, filler 0: PASS
+	encodeInto() into SharedArrayBuffer with 𝌆A and destination length 3, offset 4, filler 128: PASS
+	encodeInto() into SharedArrayBuffer with 𝌆A and destination length 3, offset 4, filler random: PASS
 /encoding/encodeInto.any.worker.html: OK
 	Invalid encodeInto() destination: ArrayBuffer: PASS
 	Invalid encodeInto() destination: BigInt64Array, backed by: ArrayBuffer: PASS
-	Invalid encodeInto() destination: BigInt64Array, backed by: SharedArrayBuffer: FAIL
+	Invalid encodeInto() destination: BigInt64Array, backed by: SharedArrayBuffer: PASS
 	Invalid encodeInto() destination: BigUint64Array, backed by: ArrayBuffer: PASS
-	Invalid encodeInto() destination: BigUint64Array, backed by: SharedArrayBuffer: FAIL
+	Invalid encodeInto() destination: BigUint64Array, backed by: SharedArrayBuffer: PASS
 	Invalid encodeInto() destination: DataView, backed by: ArrayBuffer: PASS
-	Invalid encodeInto() destination: DataView, backed by: SharedArrayBuffer: FAIL
+	Invalid encodeInto() destination: DataView, backed by: SharedArrayBuffer: PASS
 	Invalid encodeInto() destination: Float16Array, backed by: ArrayBuffer: PASS
-	Invalid encodeInto() destination: Float16Array, backed by: SharedArrayBuffer: FAIL
+	Invalid encodeInto() destination: Float16Array, backed by: SharedArrayBuffer: PASS
 	Invalid encodeInto() destination: Float32Array, backed by: ArrayBuffer: PASS
-	Invalid encodeInto() destination: Float32Array, backed by: SharedArrayBuffer: FAIL
+	Invalid encodeInto() destination: Float32Array, backed by: SharedArrayBuffer: PASS
 	Invalid encodeInto() destination: Float64Array, backed by: ArrayBuffer: PASS
-	Invalid encodeInto() destination: Float64Array, backed by: SharedArrayBuffer: FAIL
+	Invalid encodeInto() destination: Float64Array, backed by: SharedArrayBuffer: PASS
 	Invalid encodeInto() destination: Int16Array, backed by: ArrayBuffer: PASS
-	Invalid encodeInto() destination: Int16Array, backed by: SharedArrayBuffer: FAIL
+	Invalid encodeInto() destination: Int16Array, backed by: SharedArrayBuffer: PASS
 	Invalid encodeInto() destination: Int32Array, backed by: ArrayBuffer: PASS
-	Invalid encodeInto() destination: Int32Array, backed by: SharedArrayBuffer: FAIL
+	Invalid encodeInto() destination: Int32Array, backed by: SharedArrayBuffer: PASS
 	Invalid encodeInto() destination: Int8Array, backed by: ArrayBuffer: PASS
-	Invalid encodeInto() destination: Int8Array, backed by: SharedArrayBuffer: FAIL
+	Invalid encodeInto() destination: Int8Array, backed by: SharedArrayBuffer: PASS
 	Invalid encodeInto() destination: SharedArrayBuffer: PASS
 	Invalid encodeInto() destination: Uint16Array, backed by: ArrayBuffer: PASS
-	Invalid encodeInto() destination: Uint16Array, backed by: SharedArrayBuffer: FAIL
+	Invalid encodeInto() destination: Uint16Array, backed by: SharedArrayBuffer: PASS
 	Invalid encodeInto() destination: Uint32Array, backed by: ArrayBuffer: PASS
-	Invalid encodeInto() destination: Uint32Array, backed by: SharedArrayBuffer: FAIL
+	Invalid encodeInto() destination: Uint32Array, backed by: SharedArrayBuffer: PASS
 	Invalid encodeInto() destination: Uint8ClampedArray, backed by: ArrayBuffer: PASS
-	Invalid encodeInto() destination: Uint8ClampedArray, backed by: SharedArrayBuffer: FAIL
+	Invalid encodeInto() destination: Uint8ClampedArray, backed by: SharedArrayBuffer: PASS
 	encodeInto() and a detached output buffer: PASS
 	encodeInto() into ArrayBuffer with A and destination length 10, offset 0, filler 0: PASS
 	encodeInto() into ArrayBuffer with A and destination length 10, offset 0, filler 128: PASS
@@ -7090,48 +7090,48 @@
 	encodeInto() into ArrayBuffer with 𝌆A and destination length 3, offset 4, filler 0: PASS
 	encodeInto() into ArrayBuffer with 𝌆A and destination length 3, offset 4, filler 128: PASS
 	encodeInto() into ArrayBuffer with 𝌆A and destination length 3, offset 4, filler random: PASS
-	encodeInto() into SharedArrayBuffer with A and destination length 10, offset 0, filler 0: FAIL
-	encodeInto() into SharedArrayBuffer with A and destination length 10, offset 0, filler 128: FAIL
-	encodeInto() into SharedArrayBuffer with A and destination length 10, offset 0, filler random: FAIL
-	encodeInto() into SharedArrayBuffer with A and destination length 10, offset 4, filler 0: FAIL
-	encodeInto() into SharedArrayBuffer with A and destination length 10, offset 4, filler 128: FAIL
-	encodeInto() into SharedArrayBuffer with A and destination length 10, offset 4, filler random: FAIL
-	encodeInto() into SharedArrayBuffer with AU+df06 and destination length 4, offset 0, filler 0: FAIL
-	encodeInto() into SharedArrayBuffer with AU+df06 and destination length 4, offset 0, filler 128: FAIL
-	encodeInto() into SharedArrayBuffer with AU+df06 and destination length 4, offset 0, filler random: FAIL
-	encodeInto() into SharedArrayBuffer with AU+df06 and destination length 4, offset 4, filler 0: FAIL
-	encodeInto() into SharedArrayBuffer with AU+df06 and destination length 4, offset 4, filler 128: FAIL
-	encodeInto() into SharedArrayBuffer with AU+df06 and destination length 4, offset 4, filler random: FAIL
-	encodeInto() into SharedArrayBuffer with Hi and destination length 0, offset 0, filler 0: FAIL
-	encodeInto() into SharedArrayBuffer with Hi and destination length 0, offset 0, filler 128: FAIL
-	encodeInto() into SharedArrayBuffer with Hi and destination length 0, offset 0, filler random: FAIL
-	encodeInto() into SharedArrayBuffer with Hi and destination length 0, offset 4, filler 0: FAIL
-	encodeInto() into SharedArrayBuffer with Hi and destination length 0, offset 4, filler 128: FAIL
-	encodeInto() into SharedArrayBuffer with Hi and destination length 0, offset 4, filler random: FAIL
-	encodeInto() into SharedArrayBuffer with U+d834AU+df06A¥Hi and destination length 10, offset 0, filler 0: FAIL
-	encodeInto() into SharedArrayBuffer with U+d834AU+df06A¥Hi and destination length 10, offset 0, filler 128: FAIL
-	encodeInto() into SharedArrayBuffer with U+d834AU+df06A¥Hi and destination length 10, offset 0, filler random: FAIL
-	encodeInto() into SharedArrayBuffer with U+d834AU+df06A¥Hi and destination length 10, offset 4, filler 0: FAIL
-	encodeInto() into SharedArrayBuffer with U+d834AU+df06A¥Hi and destination length 10, offset 4, filler 128: FAIL
-	encodeInto() into SharedArrayBuffer with U+d834AU+df06A¥Hi and destination length 10, offset 4, filler random: FAIL
-	encodeInto() into SharedArrayBuffer with ¥¥ and destination length 4, offset 0, filler 0: FAIL
-	encodeInto() into SharedArrayBuffer with ¥¥ and destination length 4, offset 0, filler 128: FAIL
-	encodeInto() into SharedArrayBuffer with ¥¥ and destination length 4, offset 0, filler random: FAIL
-	encodeInto() into SharedArrayBuffer with ¥¥ and destination length 4, offset 4, filler 0: FAIL
-	encodeInto() into SharedArrayBuffer with ¥¥ and destination length 4, offset 4, filler 128: FAIL
-	encodeInto() into SharedArrayBuffer with ¥¥ and destination length 4, offset 4, filler random: FAIL
-	encodeInto() into SharedArrayBuffer with 𝌆 and destination length 4, offset 0, filler 0: FAIL
-	encodeInto() into SharedArrayBuffer with 𝌆 and destination length 4, offset 0, filler 128: FAIL
-	encodeInto() into SharedArrayBuffer with 𝌆 and destination length 4, offset 0, filler random: FAIL
-	encodeInto() into SharedArrayBuffer with 𝌆 and destination length 4, offset 4, filler 0: FAIL
-	encodeInto() into SharedArrayBuffer with 𝌆 and destination length 4, offset 4, filler 128: FAIL
-	encodeInto() into SharedArrayBuffer with 𝌆 and destination length 4, offset 4, filler random: FAIL
-	encodeInto() into SharedArrayBuffer with 𝌆A and destination length 3, offset 0, filler 0: FAIL
-	encodeInto() into SharedArrayBuffer with 𝌆A and destination length 3, offset 0, filler 128: FAIL
-	encodeInto() into SharedArrayBuffer with 𝌆A and destination length 3, offset 0, filler random: FAIL
-	encodeInto() into SharedArrayBuffer with 𝌆A and destination length 3, offset 4, filler 0: FAIL
-	encodeInto() into SharedArrayBuffer with 𝌆A and destination length 3, offset 4, filler 128: FAIL
-	encodeInto() into SharedArrayBuffer with 𝌆A and destination length 3, offset 4, filler random: FAIL
+	encodeInto() into SharedArrayBuffer with A and destination length 10, offset 0, filler 0: PASS
+	encodeInto() into SharedArrayBuffer with A and destination length 10, offset 0, filler 128: PASS
+	encodeInto() into SharedArrayBuffer with A and destination length 10, offset 0, filler random: PASS
+	encodeInto() into SharedArrayBuffer with A and destination length 10, offset 4, filler 0: PASS
+	encodeInto() into SharedArrayBuffer with A and destination length 10, offset 4, filler 128: PASS
+	encodeInto() into SharedArrayBuffer with A and destination length 10, offset 4, filler random: PASS
+	encodeInto() into SharedArrayBuffer with AU+df06 and destination length 4, offset 0, filler 0: PASS
+	encodeInto() into SharedArrayBuffer with AU+df06 and destination length 4, offset 0, filler 128: PASS
+	encodeInto() into SharedArrayBuffer with AU+df06 and destination length 4, offset 0, filler random: PASS
+	encodeInto() into SharedArrayBuffer with AU+df06 and destination length 4, offset 4, filler 0: PASS
+	encodeInto() into SharedArrayBuffer with AU+df06 and destination length 4, offset 4, filler 128: PASS
+	encodeInto() into SharedArrayBuffer with AU+df06 and destination length 4, offset 4, filler random: PASS
+	encodeInto() into SharedArrayBuffer with Hi and destination length 0, offset 0, filler 0: PASS
+	encodeInto() into SharedArrayBuffer with Hi and destination length 0, offset 0, filler 128: PASS
+	encodeInto() into SharedArrayBuffer with Hi and destination length 0, offset 0, filler random: PASS
+	encodeInto() into SharedArrayBuffer with Hi and destination length 0, offset 4, filler 0: PASS
+	encodeInto() into SharedArrayBuffer with Hi and destination length 0, offset 4, filler 128: PASS
+	encodeInto() into SharedArrayBuffer with Hi and destination length 0, offset 4, filler random: PASS
+	encodeInto() into SharedArrayBuffer with U+d834AU+df06A¥Hi and destination length 10, offset 0, filler 0: PASS
+	encodeInto() into SharedArrayBuffer with U+d834AU+df06A¥Hi and destination length 10, offset 0, filler 128: PASS
+	encodeInto() into SharedArrayBuffer with U+d834AU+df06A¥Hi and destination length 10, offset 0, filler random: PASS
+	encodeInto() into SharedArrayBuffer with U+d834AU+df06A¥Hi and destination length 10, offset 4, filler 0: PASS
+	encodeInto() into SharedArrayBuffer with U+d834AU+df06A¥Hi and destination length 10, offset 4, filler 128: PASS
+	encodeInto() into SharedArrayBuffer with U+d834AU+df06A¥Hi and destination length 10, offset 4, filler random: PASS
+	encodeInto() into SharedArrayBuffer with ¥¥ and destination length 4, offset 0, filler 0: PASS
+	encodeInto() into SharedArrayBuffer with ¥¥ and destination length 4, offset 0, filler 128: PASS
+	encodeInto() into SharedArrayBuffer with ¥¥ and destination length 4, offset 0, filler random: PASS
+	encodeInto() into SharedArrayBuffer with ¥¥ and destination length 4, offset 4, filler 0: PASS
+	encodeInto() into SharedArrayBuffer with ¥¥ and destination length 4, offset 4, filler 128: PASS
+	encodeInto() into SharedArrayBuffer with ¥¥ and destination length 4, offset 4, filler random: PASS
+	encodeInto() into SharedArrayBuffer with 𝌆 and destination length 4, offset 0, filler 0: PASS
+	encodeInto() into SharedArrayBuffer with 𝌆 and destination length 4, offset 0, filler 128: PASS
+	encodeInto() into SharedArrayBuffer with 𝌆 and destination length 4, offset 0, filler random: PASS
+	encodeInto() into SharedArrayBuffer with 𝌆 and destination length 4, offset 4, filler 0: PASS
+	encodeInto() into SharedArrayBuffer with 𝌆 and destination length 4, offset 4, filler 128: PASS
+	encodeInto() into SharedArrayBuffer with 𝌆 and destination length 4, offset 4, filler random: PASS
+	encodeInto() into SharedArrayBuffer with 𝌆A and destination length 3, offset 0, filler 0: PASS
+	encodeInto() into SharedArrayBuffer with 𝌆A and destination length 3, offset 0, filler 128: PASS
+	encodeInto() into SharedArrayBuffer with 𝌆A and destination length 3, offset 0, filler random: PASS
+	encodeInto() into SharedArrayBuffer with 𝌆A and destination length 3, offset 4, filler 0: PASS
+	encodeInto() into SharedArrayBuffer with 𝌆A and destination length 3, offset 4, filler 128: PASS
+	encodeInto() into SharedArrayBuffer with 𝌆A and destination length 3, offset 4, filler random: PASS
 /encoding/idlharness.any.html: OK
 	Stringification of new TextDecoder(): PASS
 	Stringification of new TextEncoder(): PASS
@@ -776254,7 +776254,7 @@
 	replacement - empty input decodes to empty output.: PASS
 	replacement - non-empty input decodes to one replacement character.: FAIL
 /encoding/sharedarraybuffer.https.html: OK
-	decoding SharedArrayBuffer: FAIL
+	decoding SharedArrayBuffer: PASS
 /encoding/single-byte-decoder-iframe.window.html: OK
 	IBM866: 866 (document.characterSet and document.inputEncoding): FAIL
 	IBM866: cp866 (document.characterSet and document.inputEncoding): FAIL
@@ -776928,18 +776928,32 @@
 	an empty chunk inside a code point split between chunks should not change the output; split point = 4: PASS
 	an empty chunk inside a code point split between chunks should not change the output; split point = 5: PASS
 	an empty chunk inside a code point split between chunks should not change the output; split point = 6: PASS
-/encoding/streams/decode-utf8.any.html: ERROR
+/encoding/streams/decode-utf8.any.html: OK
 	UTF-8 EOF handling - ArrayBuffer: PASS
+	UTF-8 EOF handling - SharedArrayBuffer: PASS
 	a trailing empty chunk should be ignored - ArrayBuffer: PASS
+	a trailing empty chunk should be ignored - SharedArrayBuffer: PASS
 	an initial empty chunk should be ignored - ArrayBuffer: PASS
+	an initial empty chunk should be ignored - SharedArrayBuffer: PASS
+	decoding a transferred ArrayBuffer chunk should give no output: PASS
+	decoding a transferred Uint8Array chunk should give no output: PASS
 	decoding an empty chunk should give no output chunks - ArrayBuffer: PASS
+	decoding an empty chunk should give no output chunks - SharedArrayBuffer: PASS
 	decoding one UTF-8 chunk should give one output string - ArrayBuffer: PASS
-/encoding/streams/decode-utf8.any.worker.html: ERROR
+	decoding one UTF-8 chunk should give one output string - SharedArrayBuffer: PASS
+/encoding/streams/decode-utf8.any.worker.html: OK
 	UTF-8 EOF handling - ArrayBuffer: PASS
+	UTF-8 EOF handling - SharedArrayBuffer: PASS
 	a trailing empty chunk should be ignored - ArrayBuffer: PASS
+	a trailing empty chunk should be ignored - SharedArrayBuffer: PASS
 	an initial empty chunk should be ignored - ArrayBuffer: PASS
+	an initial empty chunk should be ignored - SharedArrayBuffer: PASS
+	decoding a transferred ArrayBuffer chunk should give no output: PASS
+	decoding a transferred Uint8Array chunk should give no output: PASS
 	decoding an empty chunk should give no output chunks - ArrayBuffer: PASS
+	decoding an empty chunk should give no output chunks - SharedArrayBuffer: PASS
 	decoding one UTF-8 chunk should give one output string - ArrayBuffer: PASS
+	decoding one UTF-8 chunk should give one output string - SharedArrayBuffer: PASS
 /encoding/streams/encode-bad-chunks.any.html: OK
 	a chunk that cannot be converted to a string should error the streams: PASS
 	input of type array should be converted correctly to string: PASS
@@ -777026,10 +777040,10 @@
 	Byte-order marks: utf-8: PASS
 /encoding/textdecoder-copy.any.html: OK
 	Modify buffer after passing it in (ArrayBuffer): PASS
-	Modify buffer after passing it in (SharedArrayBuffer): FAIL
+	Modify buffer after passing it in (SharedArrayBuffer): PASS
 /encoding/textdecoder-copy.any.worker.html: OK
 	Modify buffer after passing it in (ArrayBuffer): PASS
-	Modify buffer after passing it in (SharedArrayBuffer): FAIL
+	Modify buffer after passing it in (SharedArrayBuffer): PASS
 /encoding/textdecoder-eof.any.html: OK
 	TextDecoder end-of-queue handling: PASS
 	TextDecoder end-of-queue handling using stream: true: PASS
@@ -792144,70 +792158,70 @@
 	windows-1252 maps bytes outside of latin1: windows-1252: PASS
 /encoding/textdecoder-streaming.any.html: OK
 	Streaming decode: UTF-8 chunk tests (ArrayBuffer): PASS
-	Streaming decode: UTF-8 chunk tests (SharedArrayBuffer): FAIL
+	Streaming decode: UTF-8 chunk tests (SharedArrayBuffer): PASS
 	Streaming decode: utf-16be, 1 byte window (ArrayBuffer): PASS
-	Streaming decode: utf-16be, 1 byte window (SharedArrayBuffer): FAIL
+	Streaming decode: utf-16be, 1 byte window (SharedArrayBuffer): PASS
 	Streaming decode: utf-16be, 2 byte window (ArrayBuffer): PASS
-	Streaming decode: utf-16be, 2 byte window (SharedArrayBuffer): FAIL
+	Streaming decode: utf-16be, 2 byte window (SharedArrayBuffer): PASS
 	Streaming decode: utf-16be, 3 byte window (ArrayBuffer): PASS
-	Streaming decode: utf-16be, 3 byte window (SharedArrayBuffer): FAIL
+	Streaming decode: utf-16be, 3 byte window (SharedArrayBuffer): PASS
 	Streaming decode: utf-16be, 4 byte window (ArrayBuffer): PASS
-	Streaming decode: utf-16be, 4 byte window (SharedArrayBuffer): FAIL
+	Streaming decode: utf-16be, 4 byte window (SharedArrayBuffer): PASS
 	Streaming decode: utf-16be, 5 byte window (ArrayBuffer): PASS
-	Streaming decode: utf-16be, 5 byte window (SharedArrayBuffer): FAIL
+	Streaming decode: utf-16be, 5 byte window (SharedArrayBuffer): PASS
 	Streaming decode: utf-16le, 1 byte window (ArrayBuffer): PASS
-	Streaming decode: utf-16le, 1 byte window (SharedArrayBuffer): FAIL
+	Streaming decode: utf-16le, 1 byte window (SharedArrayBuffer): PASS
 	Streaming decode: utf-16le, 2 byte window (ArrayBuffer): PASS
-	Streaming decode: utf-16le, 2 byte window (SharedArrayBuffer): FAIL
+	Streaming decode: utf-16le, 2 byte window (SharedArrayBuffer): PASS
 	Streaming decode: utf-16le, 3 byte window (ArrayBuffer): PASS
-	Streaming decode: utf-16le, 3 byte window (SharedArrayBuffer): FAIL
+	Streaming decode: utf-16le, 3 byte window (SharedArrayBuffer): PASS
 	Streaming decode: utf-16le, 4 byte window (ArrayBuffer): PASS
-	Streaming decode: utf-16le, 4 byte window (SharedArrayBuffer): FAIL
+	Streaming decode: utf-16le, 4 byte window (SharedArrayBuffer): PASS
 	Streaming decode: utf-16le, 5 byte window (ArrayBuffer): PASS
-	Streaming decode: utf-16le, 5 byte window (SharedArrayBuffer): FAIL
+	Streaming decode: utf-16le, 5 byte window (SharedArrayBuffer): PASS
 	Streaming decode: utf-8, 1 byte window (ArrayBuffer): PASS
-	Streaming decode: utf-8, 1 byte window (SharedArrayBuffer): FAIL
+	Streaming decode: utf-8, 1 byte window (SharedArrayBuffer): PASS
 	Streaming decode: utf-8, 2 byte window (ArrayBuffer): PASS
-	Streaming decode: utf-8, 2 byte window (SharedArrayBuffer): FAIL
+	Streaming decode: utf-8, 2 byte window (SharedArrayBuffer): PASS
 	Streaming decode: utf-8, 3 byte window (ArrayBuffer): PASS
-	Streaming decode: utf-8, 3 byte window (SharedArrayBuffer): FAIL
+	Streaming decode: utf-8, 3 byte window (SharedArrayBuffer): PASS
 	Streaming decode: utf-8, 4 byte window (ArrayBuffer): PASS
-	Streaming decode: utf-8, 4 byte window (SharedArrayBuffer): FAIL
+	Streaming decode: utf-8, 4 byte window (SharedArrayBuffer): PASS
 	Streaming decode: utf-8, 5 byte window (ArrayBuffer): PASS
-	Streaming decode: utf-8, 5 byte window (SharedArrayBuffer): FAIL
+	Streaming decode: utf-8, 5 byte window (SharedArrayBuffer): PASS
 /encoding/textdecoder-streaming.any.worker.html: OK
 	Streaming decode: UTF-8 chunk tests (ArrayBuffer): PASS
-	Streaming decode: UTF-8 chunk tests (SharedArrayBuffer): FAIL
+	Streaming decode: UTF-8 chunk tests (SharedArrayBuffer): PASS
 	Streaming decode: utf-16be, 1 byte window (ArrayBuffer): PASS
-	Streaming decode: utf-16be, 1 byte window (SharedArrayBuffer): FAIL
+	Streaming decode: utf-16be, 1 byte window (SharedArrayBuffer): PASS
 	Streaming decode: utf-16be, 2 byte window (ArrayBuffer): PASS
-	Streaming decode: utf-16be, 2 byte window (SharedArrayBuffer): FAIL
+	Streaming decode: utf-16be, 2 byte window (SharedArrayBuffer): PASS
 	Streaming decode: utf-16be, 3 byte window (ArrayBuffer): PASS
-	Streaming decode: utf-16be, 3 byte window (SharedArrayBuffer): FAIL
+	Streaming decode: utf-16be, 3 byte window (SharedArrayBuffer): PASS
 	Streaming decode: utf-16be, 4 byte window (ArrayBuffer): PASS
-	Streaming decode: utf-16be, 4 byte window (SharedArrayBuffer): FAIL
+	Streaming decode: utf-16be, 4 byte window (SharedArrayBuffer): PASS
 	Streaming decode: utf-16be, 5 byte window (ArrayBuffer): PASS
-	Streaming decode: utf-16be, 5 byte window (SharedArrayBuffer): FAIL
+	Streaming decode: utf-16be, 5 byte window (SharedArrayBuffer): PASS
 	Streaming decode: utf-16le, 1 byte window (ArrayBuffer): PASS
-	Streaming decode: utf-16le, 1 byte window (SharedArrayBuffer): FAIL
+	Streaming decode: utf-16le, 1 byte window (SharedArrayBuffer): PASS
 	Streaming decode: utf-16le, 2 byte window (ArrayBuffer): PASS
-	Streaming decode: utf-16le, 2 byte window (SharedArrayBuffer): FAIL
+	Streaming decode: utf-16le, 2 byte window (SharedArrayBuffer): PASS
 	Streaming decode: utf-16le, 3 byte window (ArrayBuffer): PASS
-	Streaming decode: utf-16le, 3 byte window (SharedArrayBuffer): FAIL
+	Streaming decode: utf-16le, 3 byte window (SharedArrayBuffer): PASS
 	Streaming decode: utf-16le, 4 byte window (ArrayBuffer): PASS
-	Streaming decode: utf-16le, 4 byte window (SharedArrayBuffer): FAIL
+	Streaming decode: utf-16le, 4 byte window (SharedArrayBuffer): PASS
 	Streaming decode: utf-16le, 5 byte window (ArrayBuffer): PASS
-	Streaming decode: utf-16le, 5 byte window (SharedArrayBuffer): FAIL
+	Streaming decode: utf-16le, 5 byte window (SharedArrayBuffer): PASS
 	Streaming decode: utf-8, 1 byte window (ArrayBuffer): PASS
-	Streaming decode: utf-8, 1 byte window (SharedArrayBuffer): FAIL
+	Streaming decode: utf-8, 1 byte window (SharedArrayBuffer): PASS
 	Streaming decode: utf-8, 2 byte window (ArrayBuffer): PASS
-	Streaming decode: utf-8, 2 byte window (SharedArrayBuffer): FAIL
+	Streaming decode: utf-8, 2 byte window (SharedArrayBuffer): PASS
 	Streaming decode: utf-8, 3 byte window (ArrayBuffer): PASS
-	Streaming decode: utf-8, 3 byte window (SharedArrayBuffer): FAIL
+	Streaming decode: utf-8, 3 byte window (SharedArrayBuffer): PASS
 	Streaming decode: utf-8, 4 byte window (ArrayBuffer): PASS
-	Streaming decode: utf-8, 4 byte window (SharedArrayBuffer): FAIL
+	Streaming decode: utf-8, 4 byte window (SharedArrayBuffer): PASS
 	Streaming decode: utf-8, 5 byte window (ArrayBuffer): PASS
-	Streaming decode: utf-8, 5 byte window (SharedArrayBuffer): FAIL
+	Streaming decode: utf-8, 5 byte window (SharedArrayBuffer): PASS
 /encoding/textdecoder-utf16-surrogates.any.html: OK
 	utf-16le - lone surrogate lead: PASS
 	utf-16le - lone surrogate lead (fatal flag set): PASS

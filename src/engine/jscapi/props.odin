@@ -220,6 +220,7 @@ JS_DefineHostAutoInitProperty :: proc "c" (c: ^Context, obj: JSValue, prop: Atom
 	ctx := jctx(c)
 	m := js.host_enter(ctx.rt)
 	defer js.host_exit(ctx.rt, m, js.UNDEFINED)
+	js.auto_init_getter = is_auto_init_getter
 	data := [4]JSValue{obj, enc(js.mk_int(i32(prop))), enc(js.mk_int(i32(uintptr(rawptr(fn))))), enc(js.mk_int(flags))}
 	getter := JS_NewCFunctionData2(c, auto_init_native, "", 0, 0, 4, &data[0])
 	setter := JS_NewCFunctionData2(c, auto_init_native, "", 1, 1, 4, &data[0])
@@ -227,6 +228,13 @@ JS_DefineHostAutoInitProperty :: proc "c" (c: ^Context, obj: JSValue, prop: Atom
 	disown(getter)
 	disown(setter)
 	return r
+}
+
+@(private)
+is_auto_init_getter :: proc(fn: ^js.Object) -> bool {
+	nd, ok := &fn.data.(js.Native_Data)
+	if !ok || nd.magic != 0 || nd.fn != js.Native_Proc(bridge_native) || js.native_data_len(nd) < 1 { return false }
+	return nd.data[0].u.ptr == rawptr(auto_init_native)
 }
 
 // The accessor pair of JS_DefineHostAutoInitProperty (magic 0: the getter, 1: the setter).
@@ -517,7 +525,9 @@ JS_ParseJSON :: proc "c" (c: ^Context, buf: [^]u8, buf_len: uint, filename: cstr
 	defer js.host_exit(ctx.rt, m, js.UNDEFINED)
 	text := js.mk_str(js.str_from_utf8(ctx.rt, buf_len == 0 ? "" : string(buf[:buf_len])))
 	js.root(ctx.rt, text)
-	return own(ctx.rt, js.json_parse_value(ctx, text))
+	v := js.json_parse_value(ctx, text)
+	if js.is_exception(v) && filename != nil {js.error_add_location(ctx, ctx.rt.exception, string(filename), 1, 1)}
+	return own(ctx.rt, v)
 }
 
 JS_JSONStringify :: proc "c" (c: ^Context, obj: JSValue, replacer: JSValue, space0: JSValue) -> JSValue {

@@ -574,7 +574,9 @@
           <li>Sites whose scripts add to the page: menus, themes, web components, observers. <span>Wikipedia, MDN,
             webassembly.org and odin-lang.org run their scripts.</span></li>
           <li>Pages scripted in WebAssembly, with the DOM, events, timers, fetch, WebSocket, workers and storage.</li>
-          <li>HTTPS through WinHTTP, cookies, CORS and CSP.</li>
+          <li>HTTP/1.1, HTTP/2 and HTTP/3 on a built-in network stack, an HTTP cache, cookies, CORS and CSP.</li>
+          <li>Canvas 2D, <code>&lt;video&gt;</code> and <code>&lt;audio&gt;</code>, Media Source Extensions, WebCodecs
+            decoders, service workers, IndexedDB and the WebAssembly JavaScript API.</li>
           <li>Web fonts (WOFF, WOFF2, variable fonts), SVG, AVIF and WebP images.</li>
           <li>Smooth scrolling, selection, find in page and zoom on long pages.</li>
         </ul>
@@ -582,17 +584,18 @@
       <div class="card">
         <h3>Not yet</h3>
         <ul class="list no">
-          <li>JavaScript is interpreted, without a JIT. <span>About 55 times slower than Edge on the Octane
-            benchmarks, and a simple DOM call costs about ten times as much: script-heavy pages are slow.</span></li>
-          <li>About half of the web platform's members. <span>No <code>&lt;canvas&gt;</code> drawing, IndexedDB,
-            <code>ResizeObserver</code>, Web Animations or service workers; <code>&lt;iframe&gt;</code> content is not
-            loaded. The full list is <a href="https://github.com/sachahjkl/wren/blob/master/docs/js/coverage.md">docs/js/coverage.md</a>.</span></li>
-          <li>No HTTP cache: every request goes to the network. No HTTP authentication.</li>
-          <li>No IME for East Asian input, no vertical writing modes, grayscale text anti-aliasing only.</li>
-          <li>No <code>&lt;video&gt;</code> or <code>&lt;audio&gt;</code> playback.</li>
-          <li>Wasm threads and shared memory are off. The guest SDK exists for Odin only; the ABI is documented for
+          <li>JavaScript is interpreted, with a JIT for numeric loops only. <span>Script-heavy pages are slow: before
+            the Odin engine, about 55 times slower than Edge on the Octane benchmarks, and a simple DOM call cost about
+            ten times as much.</span></li>
+          <li>About 72% of the members of the web platform's Web IDL. <span>No WebGL, WebGPU, Web Audio or WebRTC, no
+            video or audio encoder in WebCodecs. The full list is <a href="https://github.com/sachahjkl/wren/blob/master/docs/js/coverage.md">docs/js/coverage.md</a>.</span></li>
+          <li>No HTTP authentication.</li>
+          <li>No IME for East Asian input, no vertical writing modes, no multi-column layout, grayscale text
+            anti-aliasing only.</li>
+          <li>No Ogg, MP3 or WAV files in <code>&lt;audio&gt;</code>, no Encrypted Media Extensions.</li>
+          <li>The guest SDK exists for Odin only; the ABI is documented for
             other languages.</li>
-          <li>Windows only.</li>
+          <li>Releases for Windows only. <span>The Linux build runs from source, with nothing to download yet.</span></li>
         </ul>
       </div>
     </div>

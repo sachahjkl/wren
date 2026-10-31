@@ -386,6 +386,11 @@ Pending_Import :: struct {
 
 @(private = "file")
 import_hook :: proc "c" (ctx: ^wj.Context, basename, specifier, attributes: wj.JSValue, resolving_funcs: [^]wj.JSValue, opaque: rawptr) -> i32 {
+	if wj.is_object(attributes) && module_check_attributes(ctx, nil, attributes) < 0 {
+		wj.drop_exception(ctx)   // (at run time: a TypeError, where a module that says it does not compile)
+		wj.JS_ThrowTypeError(ctx, "An import attribute other than `type` is not supported")
+		return -1
+	}
 	type := import_type(ctx, attributes)
 	if type < 0 { return -1 }
 	id: u32 = 0

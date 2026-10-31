@@ -1,0 +1,92 @@
+# web-platform-tests expectations of Wren for fetch/cross-origin-resource-policy, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/fetch/cross-origin-resource-policy/fetch-in-iframe.html: TIMEOUT
+	Cross-origin fetch in a cross origin iframe load fails if the server blocks cross-origin loads with a 'Cross-Origin-Resource-Policy: same-origin' response header.: TIMEOUT
+	Cross-origin fetch in a cross origin iframe load fails if the server blocks cross-origin loads with a 'Cross-Origin-Resource-Policy: same-site' response header.: NOTRUN
+	Cross-origin fetch in a data: iframe load fails if the server blocks cross-origin loads with a 'Cross-Origin-Resource-Policy: same-origin' response header.: FAIL
+	Cross-origin fetch in a data: iframe load fails if the server blocks cross-origin loads with a 'Cross-Origin-Resource-Policy: same-site' response header.: FAIL
+	Same-origin fetch in a cross origin iframe load succeeds if the server blocks cross-origin loads with a 'Cross-Origin-Resource-Policy: same-origin' response header.: NOTRUN
+/fetch/cross-origin-resource-policy/fetch.any.html: OK
+	Cross-origin cors fetch with a 'Cross-Origin-Resource-Policy: same-origin' response header.: FAIL
+	Cross-origin cors fetch with a 'Cross-Origin-Resource-Policy: same-site' response header.: FAIL
+	Cross-origin no-cors fetch to a same-site URL with a 'Cross-Origin-Resource-Policy: same-origin' response header.: PASS
+	Cross-origin no-cors fetch with a 'Cross-Origin-Resource-Policy: same-origin' redirect response header.: FAIL
+	Cross-origin no-cors fetch with a 'Cross-Origin-Resource-Policy: same-origin' response header after a cross-origin redirection.: PASS
+	Cross-origin no-cors fetch with a 'Cross-Origin-Resource-Policy: same-origin' response header after a redirection.: FAIL
+	Cross-origin no-cors fetch with a 'Cross-Origin-Resource-Policy: same-origin' response header.: FAIL
+	Cross-origin no-cors fetch with a 'Cross-Origin-Resource-Policy: same-site' response header.: FAIL
+	Cross-scheme (HTTP to HTTPS) no-cors fetch to a same-site URL with a 'Cross-Origin-Resource-Policy: same-site' response header.: PASS
+	Same-origin fetch with a 'Cross-Origin-Resource-Policy: same-origin' response header.: FAIL
+	Same-origin fetch with a 'Cross-Origin-Resource-Policy: same-site' response header.: FAIL
+	Valid cross-origin no-cors fetch with a 'Cross-Origin-Resource-Policy: same-site' response header.: FAIL
+/fetch/cross-origin-resource-policy/fetch.any.worker.html: OK
+	Cross-origin cors fetch with a 'Cross-Origin-Resource-Policy: same-origin' response header.: FAIL
+	Cross-origin cors fetch with a 'Cross-Origin-Resource-Policy: same-site' response header.: FAIL
+	Cross-origin no-cors fetch to a same-site URL with a 'Cross-Origin-Resource-Policy: same-origin' response header.: PASS
+	Cross-origin no-cors fetch with a 'Cross-Origin-Resource-Policy: same-origin' redirect response header.: FAIL
+	Cross-origin no-cors fetch with a 'Cross-Origin-Resource-Policy: same-origin' response header after a cross-origin redirection.: PASS
+	Cross-origin no-cors fetch with a 'Cross-Origin-Resource-Policy: same-origin' response header after a redirection.: FAIL
+	Cross-origin no-cors fetch with a 'Cross-Origin-Resource-Policy: same-origin' response header.: FAIL
+	Cross-origin no-cors fetch with a 'Cross-Origin-Resource-Policy: same-site' response header.: FAIL
+	Cross-scheme (HTTP to HTTPS) no-cors fetch to a same-site URL with a 'Cross-Origin-Resource-Policy: same-site' response header.: PASS
+	Same-origin fetch with a 'Cross-Origin-Resource-Policy: same-origin' response header.: FAIL
+	Same-origin fetch with a 'Cross-Origin-Resource-Policy: same-site' response header.: FAIL
+	Valid cross-origin no-cors fetch with a 'Cross-Origin-Resource-Policy: same-site' response header.: FAIL
+/fetch/cross-origin-resource-policy/fetch.https.any.html: OK
+	Cross-origin cors fetch with a 'Cross-Origin-Resource-Policy: same-origin' response header.: FAIL
+	Cross-origin cors fetch with a 'Cross-Origin-Resource-Policy: same-site' response header.: FAIL
+	Cross-origin no-cors fetch with a 'Cross-Origin-Resource-Policy: same-origin' redirect response header.: FAIL
+	Cross-origin no-cors fetch with a 'Cross-Origin-Resource-Policy: same-origin' response header after a cross-origin redirection.: FAIL
+	Cross-origin no-cors fetch with a 'Cross-Origin-Resource-Policy: same-origin' response header after a redirection.: FAIL
+	Cross-origin no-cors fetch with a 'Cross-Origin-Resource-Policy: same-origin' response header.: PASS
+	Cross-origin no-cors fetch with a 'Cross-Origin-Resource-Policy: same-site' response header.: PASS
+	Same-origin fetch with a 'Cross-Origin-Resource-Policy: same-origin' response header.: FAIL
+	Same-origin fetch with a 'Cross-Origin-Resource-Policy: same-site' response header.: FAIL
+/fetch/cross-origin-resource-policy/fetch.https.any.worker.html: OK
+	Cross-origin cors fetch with a 'Cross-Origin-Resource-Policy: same-origin' response header.: FAIL
+	Cross-origin cors fetch with a 'Cross-Origin-Resource-Policy: same-site' response header.: FAIL
+	Cross-origin no-cors fetch with a 'Cross-Origin-Resource-Policy: same-origin' redirect response header.: FAIL
+	Cross-origin no-cors fetch with a 'Cross-Origin-Resource-Policy: same-origin' response header after a cross-origin redirection.: FAIL
+	Cross-origin no-cors fetch with a 'Cross-Origin-Resource-Policy: same-origin' response header after a redirection.: FAIL
+	Cross-origin no-cors fetch with a 'Cross-Origin-Resource-Policy: same-origin' response header.: PASS
+	Cross-origin no-cors fetch with a 'Cross-Origin-Resource-Policy: same-site' response header.: PASS
+	Same-origin fetch with a 'Cross-Origin-Resource-Policy: same-origin' response header.: FAIL
+	Same-origin fetch with a 'Cross-Origin-Resource-Policy: same-site' response header.: FAIL
+/fetch/cross-origin-resource-policy/iframe-loads.html: TIMEOUT
+	Load an iframe that has Cross-Origin-Resource-Policy header: TIMEOUT
+/fetch/cross-origin-resource-policy/image-loads.html: TIMEOUT
+	Cross-origin cors image load with a 'Cross-Origin-Resource-Policy: same-origin' response header.: NOTRUN
+	Cross-origin cors image load with a 'Cross-Origin-Resource-Policy: same-site' response header.: NOTRUN
+	Cross-origin no-cors image load with a 'Cross-Origin-Resource-Policy: same-origin' response header.: NOTRUN
+	Cross-origin no-cors image load with a 'Cross-Origin-Resource-Policy: same-site' response header.: NOTRUN
+	Same-origin image load with a 'Cross-Origin-Resource-Policy: same-origin' response header.: TIMEOUT
+	Same-origin image load with a 'Cross-Origin-Resource-Policy: same-site' response header.: NOTRUN
+/fetch/cross-origin-resource-policy/scheme-restriction.any.html: OK
+	Cross-Origin-Resource-Policy: same-site blocks retrieving HTTPS from HTTP: PASS
+/fetch/cross-origin-resource-policy/scheme-restriction.any.worker.html: OK
+	Cross-Origin-Resource-Policy: same-site blocks retrieving HTTPS from HTTP: PASS
+/fetch/cross-origin-resource-policy/scheme-restriction.https.window.html: OK
+	Cross-Origin-Resource-Policy does not block Mixed Content <img>: FAIL
+/fetch/cross-origin-resource-policy/script-loads.html: OK
+	Cross-origin cors script load with a 'Cross-Origin-Resource-Policy: same-origin' response header.: FAIL
+	Cross-origin cors script load with a 'Cross-Origin-Resource-Policy: same-site' response header.: FAIL
+	Cross-origin no-cors script load with a 'Cross-Origin-Resource-Policy: same-origin' response header.: PASS
+	Cross-origin no-cors script load with a 'Cross-Origin-Resource-Policy: same-site' response header.: PASS
+	Same-origin script load with a 'Cross-Origin-Resource-Policy: same-origin' response header.: FAIL
+	Same-origin script load with a 'Cross-Origin-Resource-Policy: same-site' response header.: FAIL
+/fetch/cross-origin-resource-policy/syntax.any.html: OK
+	Parsing Cross-Origin-Resource-Policy: SAME-ORIGIN: FAIL
+	Parsing Cross-Origin-Resource-Policy: Same-Origin: FAIL
+	Parsing Cross-Origin-Resource-Policy: https://www.example.com: FAIL
+	Parsing Cross-Origin-Resource-Policy: same: FAIL
+	Parsing Cross-Origin-Resource-Policy: same, same-origin: FAIL
+	Parsing Cross-Origin-Resource-Policy: same-origin, <>: FAIL
+	Parsing Cross-Origin-Resource-Policy: same-origin, same-origin: FAIL
+/fetch/cross-origin-resource-policy/syntax.any.worker.html: OK
+	Parsing Cross-Origin-Resource-Policy: SAME-ORIGIN: FAIL
+	Parsing Cross-Origin-Resource-Policy: Same-Origin: FAIL
+	Parsing Cross-Origin-Resource-Policy: https://www.example.com: FAIL
+	Parsing Cross-Origin-Resource-Policy: same: FAIL
+	Parsing Cross-Origin-Resource-Policy: same, same-origin: FAIL
+	Parsing Cross-Origin-Resource-Policy: same-origin, <>: FAIL
+	Parsing Cross-Origin-Resource-Policy: same-origin, same-origin: FAIL

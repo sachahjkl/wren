@@ -46,6 +46,33 @@ module webassembly {
   /// `source` into the memory at `offset`: how many were copied. What memory.buffer writes.
   i32 WebAssembly_Memory_write(i32 memory, i64 offset, bytes source);
 
+  /// A memory that other agents can have: a number. Its size in bytes is ytes (-1: all of its pages).
+  i32 WebAssembly_Memory_createShared(i64 initial, i64 maximum, i64 bytes);
+  /// A SharedArrayBuffer has gone: one use of the memory less.
+  void WebAssembly_Memory_release(i32 memory);
+  /// What a SharedArrayBuffer of the memory says its length is.
+  i64 WebAssembly_Memory_byteLength(i32 memory);
+  /// SharedArrayBuffer.grow.
+  bool WebAssembly_Memory_growBytes(i32 memory, i64 bytes);
+  /// An Atomics operation on a shared memory (op: add and compareExchange exchange load or store sub xor): the value it held.
+  i64 WebAssembly_Memory_atomic(i32 memory, i32 op, i64 offset, i32 size, i64 first, i64 second);
+  /// Atomics.wait on a shared memory: 0 woken, 1 not equal, 2 timed out. 	imeout in milliseconds, < 0: none.
+  i32 WebAssembly_Memory_wait(i32 memory, i64 offset, i32 size, i64 expected, f64 timeout);
+  /// Atomics.notify on a shared memory: how many it woke.
+  i32 WebAssembly_Memory_notify(i32 memory, i64 offset, u32 count);
+  /// A token that gives another agent of the cluster this shared memory; 0 when this realm may not (not cross-origin isolated).
+  i64 WebAssembly_Memory_share(i32 memory);
+  /// The shared memory of a token, a number: -1 when the token is not of this agent cluster.
+  i32 WebAssembly_Memory_adopt(i64 token);
+  /// A token that gives another agent of the cluster this module.
+  i64 WebAssembly_Module_share(WebAssemblyModule module);
+  /// The module of a token: Data_Clone when the token is not of this agent cluster.
+  WebAssemblyModule WebAssembly_Module_adopt(i64 token) raises;
+  /// HTML's cross-origin isolated capability of this realm.
+  bool WebAssembly_crossOriginIsolated();
+  /// Whether this realm's agent may block ([[CanBlock]]): a dedicated or shared worker.
+  bool WebAssembly_canBlock();
+
   /// new WebAssembly.Table: a number. `element` "r" (funcref) or "e" (externref), `maximum` -1 for none.
   i32 WebAssembly_Table_create(string element, i64 initial, i64 maximum, i64 init);
   /// "r", "e", or "" for no such table.

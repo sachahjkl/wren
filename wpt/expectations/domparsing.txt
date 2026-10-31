@@ -22,7 +22,7 @@
 	DOMParser-created document styleSheets should contain CSSStyleSheet objects: FAIL
 	DOMParser-created document styleSheets should have accessible cssRules: FAIL
 	DOMParser-created document with full HTML structure should have accessible styleSheets: FAIL
-	DOMParser-created document without style elements should have empty styleSheets collection: FAIL
+	DOMParser-created document without style elements should have empty styleSheets collection: PASS
 /domparsing/DOMParser-parseFromString-url-base-about.window.html: OK
 	DOMParser in an about:blank document: FAIL
 	DOMParser in an about:srcdoc document: FAIL
@@ -257,7 +257,7 @@
 /domparsing/DOMParser-parseFromString-xml-internal-subset.html: OK
 	Parsing and serialization of doctype internal subset: PASS
 /domparsing/DOMParser-parseFromString-xml-parsererror.html: OK
-	A lone surrogate is replaced with U+FFFD: FAIL
+	A lone surrogate is replaced with U+FFFD: PASS
 	A valid surrogate pair is preserved: PASS
 	DOMParser: <parsererror> element added on error, 15<span: PASS
 	DOMParser: <parsererror> element added on error, 6</span>: PASS
@@ -344,7 +344,7 @@
 	Check if inconsistent xmlns="..." is dropped.: FAIL
 	Check if no special handling for XLink namespace unlike HTML serializer.: FAIL
 	Check if redundant xmlns="..." is dropped.: FAIL
-	Check if start tag serialization applied the original prefix even if it is declared in an ancestor element.: FAIL
+	Check if start tag serialization applied the original prefix even if it is declared in an ancestor element.: PASS
 	Check if start tag serialization does NOT apply the default namespace if its namespace is declared in an ancestor.: FAIL
 	Check if start tag serialization drops element prefix if the namespace is same as inherited default namespace.: FAIL
 	Check if start tag serialization finds an appropriate prefix.: FAIL

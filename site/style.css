@@ -1,6 +1,7 @@
-/* Wren's site: plain CSS, no build step, no script. It must render in Wren itself, so it sticks to what the engine
-   implements (flex, grid, custom properties, media queries, gradients, filters, border-radius, box-shadow) and
-   degrades quietly elsewhere. No color-mix, no :has: the engine may not know them yet. */
+/* Wren's site: plain CSS, no build step, and a script only where a page needs one (the gallery's viewer, the checkout);
+   each page works without it. It must render in Wren itself, so it sticks to what the engine implements (flex, grid,
+   custom properties, media queries, gradients, filters, border-radius, box-shadow) and degrades quietly elsewhere.
+   No color-mix, no :has: the engine may not know them yet. */
 
 :root {
   color-scheme: dark;
@@ -265,7 +266,36 @@ strong, b { color: var(--text); font-weight: 650; }
 .gallery figcaption { color: var(--muted); font-size: 13px; margin-top: 10px; line-height: 1.45; }
 .gallery.large { grid-template-columns: repeat(auto-fill, minmax(440px, 1fr)); gap: 28px; }
 .gallery.large .frame { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.gallery.large a.frame { cursor: zoom-in; scroll-margin-top: 76px; }
 .more { margin-top: 26px; }
+
+/* the gallery's viewer (gallery.js): one picture at a time, as large as the window allows */
+.lightbox {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 50;   /* above the sticky header, also where a dialog's top layer does not lift it */
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 16px;
+  border: 0;
+  background: var(--edge);
+  color: var(--text);
+}
+.lightbox[open] { display: flex; flex-direction: column; gap: 12px; }
+.lightbox::backdrop { background: var(--edge); }
+html.lightbox-open { overflow: hidden; }
+.lightbox-stage { position: relative; flex: 1 1 auto; min-height: 0; cursor: zoom-out; }
+.lightbox-stage img { position: absolute; left: 0; top: 0; width: 100%; height: 100%; max-width: none; object-fit: contain; }
+.lightbox-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 20px; }
+.lightbox-caption { flex: 1 1 320px; margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
+.lightbox-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.lightbox-count { margin-right: 6px; color: var(--soft); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.lightbox .btn { font-family: inherit; }
+.lightbox .btn:hover { text-decoration: none; }
 
 /* works / not yet */
 .split { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }

@@ -113,7 +113,13 @@ Environment :: struct {
 	counts:          Fetch_Counts,      // what this document's requests cost (status bar, measurements)
 	tag:             u64,               // the content blocker's handle for the document's tab (copied by environment_clone; intercept.odin)
 	storage_access:  Storage_Access,    // a cross-site frame's unpartitioned storage and cookies (Storage Access API)
+	embedder_policy: Embedder_Policy,   // Cross-Origin-Embedder-Policy of the document, or what a worker has of its creator
+	cross_origin_isolated: bool,        // HTML's capability (apply_isolation_headers in src/page/page.odin)
+	agent_cluster:   u64,               // the wasm package's number of its agent cluster: 0 until something needs one
 }
+
+// Cross-Origin-Embedder-Policy.
+Embedder_Policy :: enum u8 { Unsafe_None, Require_Corp, Credentialless }
 
 // The Storage Access API's state of a document (Sec-Fetch-Storage-Access): no permission for its site under the
 // top-level site; permission granted but not used by this document yet; in use (document.requestStorageAccess()
@@ -154,6 +160,7 @@ environment_clone :: proc(e: Environment) -> Environment {
 	c.file_root = strings.clone(e.file_root)
 	c.tag = e.tag
 	c.storage_access = e.storage_access
+	c.embedder_policy = e.embedder_policy
 	return c
 }
 

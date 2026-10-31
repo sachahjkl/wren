@@ -141,6 +141,11 @@ js_string_codePointRange :: proc "c" (ctx: ^Context, this_val: JSValue, argc: i3
 	JS_NewArrayBuffer :: jscapi.JS_NewArrayBuffer
 	JS_NewArrayBufferCopy :: jscapi.JS_NewArrayBufferCopy
 	JS_NewArrayBufferHost :: jscapi.JS_NewArrayBufferHost
+	JS_NewArrayBufferShared :: jscapi.JS_NewArrayBufferShared
+	JS_GetViewState :: jscapi.JS_GetViewState
+	Host_Shared :: jscapi.Host_Shared
+	JS_GetSharedBufferHost :: jscapi.JS_GetSharedBufferHost
+	JS_SetHostShared :: jscapi.JS_SetHostShared
 	JS_DetachArrayBufferHost :: jscapi.JS_DetachArrayBufferHost
 	JS_HostBuffersSync :: jscapi.JS_HostBuffersSync
 	JS_IsArrayBufferHost :: jscapi.JS_IsArrayBufferHost

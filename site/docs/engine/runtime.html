@@ -388,7 +388,7 @@ exported under their QuickJS names with <code>-define:JSCAPI_EXPORT=true</code>)
 <tr><td>freestanding wasm32 module, runtime + compiler (<code>-o:size</code>)</td><td style="text-align:right">1.63 MB (<code>-o:speed</code>: 1.99 MB)</td><td style="text-align:right"><code>wren_js.wasm</code> (QuickJS + glue + bindings) 4.26 MB</td></tr>
 </tbody>
 </table></div>
-<p><code>tools/jsrt_bench.ps1</code> produces the speed table; <code>tools/jsrt_ab.ps1</code> compares several builds (and QuickJS)
+<p><code>tools/jsrt_ab.ps1</code> compares several builds (and QuickJS)
 interleaved, best of N, on <code>micro.js</code> or <code>macro.js</code>; <code>tools/jsrt_prof.ps1</code> is a sampling profiler (hot
 functions and source lines; <code>JSRT_PROF=1</code> on <code>judge eval</code>); <code>tools/jsrt_mem.ps1</code> measures the peak working
 set. <code>JSRT_MEMPROF=1</code> on <code>judge eval</code> prints a census of the heap by kind of cell (count, cell bytes, bytes owned

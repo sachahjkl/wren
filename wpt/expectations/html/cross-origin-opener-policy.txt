@@ -1,0 +1,542 @@
+# web-platform-tests expectations of Wren for html/cross-origin-opener-policy, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/html/cross-origin-opener-policy/blob-popup.https.html: ERROR
+	Cross-Origin-Opener-Policy and a blob URL popup: FAIL
+/html/cross-origin-opener-policy/coep-blob-popup.https.html: ERROR
+	COOP+COEP blob URL popup: <a rel=noopener>: NOTRUN
+	COOP+COEP blob URL popup: <a>: NOTRUN
+	COOP+COEP blob URL popup: window.open(): FAIL
+/html/cross-origin-opener-policy/coep-navigate-popup.https.html: ERROR
+	Popup navigating to same-origin with coop unsafe-none/coep: NOTRUN
+	Popup navigating to same-origin with coop unsafe-none/no coep: NOTRUN
+	Popup navigating to same-origin with coop/coep: FAIL
+	Popup navigating to same-origin with coop/no coep: NOTRUN
+	Popup navigating to same-origin with no coop/coep: NOTRUN
+	Popup navigating to same-origin with no coop/no coep: NOTRUN
+	Popup navigating to same-site with coop unsafe-none/coep: NOTRUN
+	Popup navigating to same-site with coop unsafe-none/no coep: NOTRUN
+	Popup navigating to same-site with coop/coep: NOTRUN
+	Popup navigating to same-site with coop/no coep: NOTRUN
+	Popup navigating to same-site with no coop/coep: NOTRUN
+	Popup navigating to same-site with no coop/no coep: NOTRUN
+/html/cross-origin-opener-policy/coep-redirect.https.html: TIMEOUT
+	Redirect from coop unsafe-none/coep to coop unsafe-inherit/coep: TIMEOUT
+	Redirect from coop unsafe-none/coep to coop/coep: TIMEOUT
+	Redirect from coop/coep to coop/coep: TIMEOUT
+	Redirect from coop/coep to no coop/coep: TIMEOUT
+	Redirect from coop/no coep to coop/coep: TIMEOUT
+	Redirect from no coop/no coep to coop/coep: TIMEOUT
+/html/cross-origin-opener-policy/coep-with-cross-origin.https.html: OK
+	Bonus: window.crossOriginIsolated: PASS
+	Cross-origin popup with coop unsafe-none without coep: FAIL
+	Cross-origin popup with coop unsafe-none/coep: FAIL
+	Cross-origin popup with coop/coep: FAIL
+	Cross-origin popup without coep: FAIL
+/html/cross-origin-opener-policy/coep-with-same-origin.https.html: OK
+	Bonus: window.crossOriginIsolated: PASS
+	Same-origin popup with coop unsafe-none without coep: FAIL
+	Same-origin popup with coop unsafe-none/coep: FAIL
+	Same-origin popup with coop/coep: FAIL
+	Same-origin popup without coep: FAIL
+/html/cross-origin-opener-policy/coep-with-same-site.https.html: OK
+	Bonus: window.crossOriginIsolated: PASS
+	Same-site popup with coop unsafe-none without coep: FAIL
+	Same-site popup with coop unsafe-none/coep: FAIL
+	Same-site popup with coop/coep: FAIL
+	Same-site popup without coep: FAIL
+/html/cross-origin-opener-policy/coop-coep-sandbox.https.html: TIMEOUT
+	<iframe sandbox="allow-popups allow-scripts allow-popups-to-escape-sandbox"> Sandboxed Cross-Origin-Opener-Policy popup should result in a network error: TIMEOUT
+	<iframe sandbox="allow-popups allow-scripts allow-same-origin"> Sandboxed Cross-Origin-Opener-Policy popup should result in a network error: PASS
+	<iframe sandbox="allow-popups allow-scripts"> Sandboxed Cross-Origin-Opener-Policy popup should result in a network error: PASS
+	Iframe with sandbox and COOP must load.: TIMEOUT
+/html/cross-origin-opener-policy/coop-csp-sandbox-navigate.https.html: ERROR
+	CSP: sandbox allow-popups allow-scripts allow-same-origin; CSP sandbox popup navigate to Cross-Origin-Opener-Policy document should work: FAIL
+	CSP: sandbox allow-popups allow-scripts; CSP sandbox popup navigate to Cross-Origin-Opener-Policy document should work: TIMEOUT
+/html/cross-origin-opener-policy/coop-csp-sandbox.https.html: ERROR
+	CSP: sandbox allow-popups allow-scripts allow-same-origin; CSP sandboxed Cross-Origin-Opener-Policy popup should result in a network error: PASS
+	CSP: sandbox allow-popups allow-scripts; CSP sandboxed Cross-Origin-Opener-Policy popup should result in a network error: TIMEOUT
+/html/cross-origin-opener-policy/coop-navigate-same-origin-csp-sandbox.html: OK
+	coop-navigate-same-origin-csp-sandbox: FAIL
+/html/cross-origin-opener-policy/coop-navigated-history-popup.https.html: TIMEOUT
+	Popup navigating to other origin with COOP: same-origin and back in history: TIMEOUT
+/html/cross-origin-opener-policy/coop-navigated-popup.https.html: OK
+	Open a popup to a document without COOP, then navigate it to a document with: FAIL
+/html/cross-origin-opener-policy/coop-noopener-allow-popups.https.html: ERROR
+	\n    Cross-Origin-Opener-Policy: noopener-allow-popups means that the opener\n    has no access to the openee.\n: FAIL
+	\n    Cross-Origin-Opener-Policy: noopener-allow-popups means that the opener\n    has no access to the openee.\n 1: NOTRUN
+	\n    Cross-Origin-Opener-Policy: noopener-allow-popups means that the opener\n    has no access to the openee.\n 2: NOTRUN
+	\n    Cross-Origin-Opener-Policy: noopener-allow-popups means that the opener\n    has no access to the openee.\n 3: NOTRUN
+	\n    Cross-Origin-Opener-Policy: noopener-allow-popups means that the opener\n    has no access to the openee.\n 4: NOTRUN
+	\n    Cross-Origin-Opener-Policy: noopener-allow-popups means that the opener\n    has no access to the openee.\n 5: NOTRUN
+	\n    Cross-Origin-Opener-Policy: noopener-allow-popups means that the opener\n    has no access to the openee.\n 6: NOTRUN
+	\n    Cross-Origin-Opener-Policy: noopener-allow-popups means that the opener\n    has no access to the openee.\n 7: NOTRUN
+	noopener-allow-popups ensures that the opener cannot script the openee, even after a navigation: unsafe-none: NOTRUN
+/html/cross-origin-opener-policy/coop-popup-opener-navigates.https.html: OK
+	Verify that having the opener navigate instead of the openee also triggers COOP swaps.: FAIL
+/html/cross-origin-opener-policy/coop-same-origin-allow-popups-document-write.html: OK
+	coop-same-origin-allow-popups-document-write: FAIL
+/html/cross-origin-opener-policy/coop-sandbox-cuts-opener.https.html: OK
+	<iframe sandbox="allow-popups allow-scripts allow-same-origin"> Sandboxed Cross-Origin-Opener-Policy popup should cut the opener if necessary: FAIL
+	<iframe sandbox="allow-popups allow-scripts"> Sandboxed Cross-Origin-Opener-Policy popup should cut the opener if necessary: FAIL
+/html/cross-origin-opener-policy/coop-sandbox-redirects-cuts-opener.https.html: OK
+	<iframe sandbox="allow-popups allow-scripts allow-same-origin"> Sandboxed Cross-Origin-Opener-Policy popup should cut the opener if necessary including during redirects.: FAIL
+	<iframe sandbox="allow-popups allow-scripts"> Sandboxed Cross-Origin-Opener-Policy popup should cut the opener if necessary including during redirects.: FAIL
+/html/cross-origin-opener-policy/coop-sandbox.https.html: TIMEOUT
+	<iframe sandbox="allow-popups allow-scripts allow-popups-to-escape-sandbox"> Sandboxed Cross-Origin-Opener-Policy popup should result in a network error: TIMEOUT
+	<iframe sandbox="allow-popups allow-scripts allow-same-origin"> Sandboxed Cross-Origin-Opener-Policy popup should result in a network error: PASS
+	<iframe sandbox="allow-popups allow-scripts"> Sandboxed Cross-Origin-Opener-Policy popup should result in a network error: PASS
+	Iframe with sandbox and COOP must load.: TIMEOUT
+/html/cross-origin-opener-policy/header-parsing-failures.https.html?1-4: OK
+	Parsing coop with carriage return: FAIL
+	Parsing coop with form feed: FAIL
+	Parsing coop with semi-column: FAIL
+	Parsing coop with vertical tab: FAIL
+/html/cross-origin-opener-policy/header-parsing-failures.https.html?12-last: OK
+	Parsing coop as a structured header 'integer or decimal' item: FAIL
+	Parsing coop as an unrecognized structured header type: FAIL
+	Parsing coop with duplicate value: FAIL
+	Parsing coop with duplicate value, separated by a comma: FAIL
+	Parsing coop with preceding asterisk character: FAIL
+/html/cross-origin-opener-policy/header-parsing-failures.https.html?5-8: OK
+	Parsing coop with bad structured header 1: FAIL
+	Parsing coop with bad structured header 2: FAIL
+	Parsing coop with bad structured header 3: FAIL
+	Parsing coop with capital letter: FAIL
+/html/cross-origin-opener-policy/header-parsing-failures.https.html?9-12: OK
+	Parsing coop as a structured header 'boolean' item: FAIL
+	Parsing coop as a structured header 'byte sequence' item: FAIL
+	Parsing coop as a structured header 'integer or decimal' item: FAIL
+	Parsing coop as a structured header 'string' item: FAIL
+/html/cross-origin-opener-policy/header-parsing-non-ascii.https.html: OK
+	Simple document with non-ascii COOP header opening a same-origin popup: FAIL
+/html/cross-origin-opener-policy/header-parsing-repeated.https.html: OK
+	Simple document with duplicated COOP header opening a same-origin popup: FAIL
+/html/cross-origin-opener-policy/header-parsing-successes.https.html: TIMEOUT
+	Parsing coop with duplicate value, separated by semi-column: FAIL
+	Parsing coop with leading space: FAIL
+	Parsing coop with leading tab: FAIL
+	Parsing coop with trailing space: FAIL
+	Parsing coop with trailing tab: FAIL
+	Parsing coop with valid structured header: TIMEOUT
+/html/cross-origin-opener-policy/iframe-popup-same-origin-allow-popups-to-same-origin-allow-popups.https.html?1-2: TIMEOUT
+	COOP: same-origin-allow-popups to popup COOP: same-origin-allow-popups via an iframe, with same origin iframe, same origin popup with anchor: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin-allow-popups via an iframe, with same origin iframe, same origin popup with form: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin-allow-popups via an iframe, with same origin iframe, same origin popup with window_open: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin-allow-popups via an iframe, with same site iframe, same origin popup with anchor: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin-allow-popups via an iframe, with same site iframe, same origin popup with form: TIMEOUT
+	COOP: same-origin-allow-popups to popup COOP: same-origin-allow-popups via an iframe, with same site iframe, same origin popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-same-origin-allow-popups-to-same-origin-allow-popups.https.html?3-4: TIMEOUT
+	COOP: same-origin-allow-popups to popup COOP: same-origin-allow-popups via an iframe, with cross origin iframe, same origin popup with anchor: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin-allow-popups via an iframe, with cross origin iframe, same origin popup with form: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin-allow-popups via an iframe, with cross origin iframe, same origin popup with window_open: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin-allow-popups via an iframe, with same origin iframe, same site popup with anchor: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin-allow-popups via an iframe, with same origin iframe, same site popup with form: TIMEOUT
+	COOP: same-origin-allow-popups to popup COOP: same-origin-allow-popups via an iframe, with same origin iframe, same site popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-same-origin-allow-popups-to-same-origin-allow-popups.https.html?5-6: TIMEOUT
+	COOP: same-origin-allow-popups to popup COOP: same-origin-allow-popups via an iframe, with cross origin iframe, same site popup with anchor: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin-allow-popups via an iframe, with cross origin iframe, same site popup with form: TIMEOUT
+	COOP: same-origin-allow-popups to popup COOP: same-origin-allow-popups via an iframe, with cross origin iframe, same site popup with window_open: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin-allow-popups via an iframe, with same site iframe, same site popup with anchor: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin-allow-popups via an iframe, with same site iframe, same site popup with form: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin-allow-popups via an iframe, with same site iframe, same site popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-same-origin-allow-popups-to-same-origin-allow-popups.https.html?7-8: TIMEOUT
+	COOP: same-origin-allow-popups to popup COOP: same-origin-allow-popups via an iframe, with same origin iframe, cross origin popup with anchor: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin-allow-popups via an iframe, with same origin iframe, cross origin popup with form: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin-allow-popups via an iframe, with same origin iframe, cross origin popup with window_open: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin-allow-popups via an iframe, with same site iframe, cross origin popup with anchor: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin-allow-popups via an iframe, with same site iframe, cross origin popup with form: TIMEOUT
+	COOP: same-origin-allow-popups to popup COOP: same-origin-allow-popups via an iframe, with same site iframe, cross origin popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-same-origin-allow-popups-to-same-origin-allow-popups.https.html?9-last: OK
+	COOP: same-origin-allow-popups to popup COOP: same-origin-allow-popups via an iframe, with cross origin iframe, cross origin popup with anchor: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin-allow-popups via an iframe, with cross origin iframe, cross origin popup with form: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin-allow-popups via an iframe, with cross origin iframe, cross origin popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-same-origin-allow-popups-to-same-origin.https.html?1-2: TIMEOUT
+	COOP: same-origin-allow-popups to popup COOP: same-origin via an iframe, with same origin iframe, same origin popup with anchor: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin via an iframe, with same origin iframe, same origin popup with form: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin via an iframe, with same origin iframe, same origin popup with window_open: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin via an iframe, with same site iframe, same origin popup with anchor: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin via an iframe, with same site iframe, same origin popup with form: TIMEOUT
+	COOP: same-origin-allow-popups to popup COOP: same-origin via an iframe, with same site iframe, same origin popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-same-origin-allow-popups-to-same-origin.https.html?3-4: TIMEOUT
+	COOP: same-origin-allow-popups to popup COOP: same-origin via an iframe, with cross origin iframe, same origin popup with anchor: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin via an iframe, with cross origin iframe, same origin popup with form: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin via an iframe, with cross origin iframe, same origin popup with window_open: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin via an iframe, with same origin iframe, same site popup with anchor: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin via an iframe, with same origin iframe, same site popup with form: TIMEOUT
+	COOP: same-origin-allow-popups to popup COOP: same-origin via an iframe, with same origin iframe, same site popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-same-origin-allow-popups-to-same-origin.https.html?5-6: TIMEOUT
+	COOP: same-origin-allow-popups to popup COOP: same-origin via an iframe, with cross origin iframe, same site popup with anchor: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin via an iframe, with cross origin iframe, same site popup with form: TIMEOUT
+	COOP: same-origin-allow-popups to popup COOP: same-origin via an iframe, with cross origin iframe, same site popup with window_open: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin via an iframe, with same site iframe, same site popup with anchor: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin via an iframe, with same site iframe, same site popup with form: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin via an iframe, with same site iframe, same site popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-same-origin-allow-popups-to-same-origin.https.html?7-8: TIMEOUT
+	COOP: same-origin-allow-popups to popup COOP: same-origin via an iframe, with same origin iframe, cross origin popup with anchor: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin via an iframe, with same origin iframe, cross origin popup with form: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin via an iframe, with same origin iframe, cross origin popup with window_open: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin via an iframe, with same site iframe, cross origin popup with anchor: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin via an iframe, with same site iframe, cross origin popup with form: TIMEOUT
+	COOP: same-origin-allow-popups to popup COOP: same-origin via an iframe, with same site iframe, cross origin popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-same-origin-allow-popups-to-same-origin.https.html?9-last: OK
+	COOP: same-origin-allow-popups to popup COOP: same-origin via an iframe, with cross origin iframe, cross origin popup with anchor: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin via an iframe, with cross origin iframe, cross origin popup with form: FAIL
+	COOP: same-origin-allow-popups to popup COOP: same-origin via an iframe, with cross origin iframe, cross origin popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-same-origin-allow-popups-to-unsafe-none.https.html?1-2: TIMEOUT
+	COOP: same-origin-allow-popups to popup COOP: unsafe-none via an iframe, with same origin iframe, same origin popup with anchor: FAIL
+	COOP: same-origin-allow-popups to popup COOP: unsafe-none via an iframe, with same origin iframe, same origin popup with form: FAIL
+	COOP: same-origin-allow-popups to popup COOP: unsafe-none via an iframe, with same origin iframe, same origin popup with window_open: FAIL
+	COOP: same-origin-allow-popups to popup COOP: unsafe-none via an iframe, with same site iframe, same origin popup with anchor: FAIL
+	COOP: same-origin-allow-popups to popup COOP: unsafe-none via an iframe, with same site iframe, same origin popup with form: TIMEOUT
+	COOP: same-origin-allow-popups to popup COOP: unsafe-none via an iframe, with same site iframe, same origin popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-same-origin-allow-popups-to-unsafe-none.https.html?3-4: TIMEOUT
+	COOP: same-origin-allow-popups to popup COOP: unsafe-none via an iframe, with cross origin iframe, same origin popup with anchor: FAIL
+	COOP: same-origin-allow-popups to popup COOP: unsafe-none via an iframe, with cross origin iframe, same origin popup with form: FAIL
+	COOP: same-origin-allow-popups to popup COOP: unsafe-none via an iframe, with cross origin iframe, same origin popup with window_open: FAIL
+	COOP: same-origin-allow-popups to popup COOP: unsafe-none via an iframe, with same origin iframe, same site popup with anchor: FAIL
+	COOP: same-origin-allow-popups to popup COOP: unsafe-none via an iframe, with same origin iframe, same site popup with form: TIMEOUT
+	COOP: same-origin-allow-popups to popup COOP: unsafe-none via an iframe, with same origin iframe, same site popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-same-origin-allow-popups-to-unsafe-none.https.html?5-6: TIMEOUT
+	COOP: same-origin-allow-popups to popup COOP: unsafe-none via an iframe, with cross origin iframe, same site popup with anchor: FAIL
+	COOP: same-origin-allow-popups to popup COOP: unsafe-none via an iframe, with cross origin iframe, same site popup with form: TIMEOUT
+	COOP: same-origin-allow-popups to popup COOP: unsafe-none via an iframe, with cross origin iframe, same site popup with window_open: FAIL
+	COOP: same-origin-allow-popups to popup COOP: unsafe-none via an iframe, with same site iframe, same site popup with anchor: FAIL
+	COOP: same-origin-allow-popups to popup COOP: unsafe-none via an iframe, with same site iframe, same site popup with form: FAIL
+	COOP: same-origin-allow-popups to popup COOP: unsafe-none via an iframe, with same site iframe, same site popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-same-origin-allow-popups-to-unsafe-none.https.html?7-8: TIMEOUT
+	COOP: same-origin-allow-popups to popup COOP: unsafe-none via an iframe, with same origin iframe, cross origin popup with anchor: FAIL
+	COOP: same-origin-allow-popups to popup COOP: unsafe-none via an iframe, with same origin iframe, cross origin popup with form: FAIL
+	COOP: same-origin-allow-popups to popup COOP: unsafe-none via an iframe, with same origin iframe, cross origin popup with window_open: FAIL
+	COOP: same-origin-allow-popups to popup COOP: unsafe-none via an iframe, with same site iframe, cross origin popup with anchor: FAIL
+	COOP: same-origin-allow-popups to popup COOP: unsafe-none via an iframe, with same site iframe, cross origin popup with form: TIMEOUT
+	COOP: same-origin-allow-popups to popup COOP: unsafe-none via an iframe, with same site iframe, cross origin popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-same-origin-allow-popups-to-unsafe-none.https.html?9-last: OK
+	COOP: same-origin-allow-popups to popup COOP: unsafe-none via an iframe, with cross origin iframe, cross origin popup with anchor: FAIL
+	COOP: same-origin-allow-popups to popup COOP: unsafe-none via an iframe, with cross origin iframe, cross origin popup with form: FAIL
+	COOP: same-origin-allow-popups to popup COOP: unsafe-none via an iframe, with cross origin iframe, cross origin popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-same-origin-to-same-origin.https.html?1-2: TIMEOUT
+	COOP: same-origin to popup COOP: same-origin via an iframe, with same origin iframe, same origin popup with anchor: FAIL
+	COOP: same-origin to popup COOP: same-origin via an iframe, with same origin iframe, same origin popup with form: FAIL
+	COOP: same-origin to popup COOP: same-origin via an iframe, with same origin iframe, same origin popup with window_open: FAIL
+	COOP: same-origin to popup COOP: same-origin via an iframe, with same site iframe, same origin popup with anchor: FAIL
+	COOP: same-origin to popup COOP: same-origin via an iframe, with same site iframe, same origin popup with form: TIMEOUT
+	COOP: same-origin to popup COOP: same-origin via an iframe, with same site iframe, same origin popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-same-origin-to-same-origin.https.html?3-4: TIMEOUT
+	COOP: same-origin to popup COOP: same-origin via an iframe, with cross origin iframe, same origin popup with anchor: FAIL
+	COOP: same-origin to popup COOP: same-origin via an iframe, with cross origin iframe, same origin popup with form: FAIL
+	COOP: same-origin to popup COOP: same-origin via an iframe, with cross origin iframe, same origin popup with window_open: FAIL
+	COOP: same-origin to popup COOP: same-origin via an iframe, with same origin iframe, same site popup with anchor: FAIL
+	COOP: same-origin to popup COOP: same-origin via an iframe, with same origin iframe, same site popup with form: TIMEOUT
+	COOP: same-origin to popup COOP: same-origin via an iframe, with same origin iframe, same site popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-same-origin-to-same-origin.https.html?5-6: TIMEOUT
+	COOP: same-origin to popup COOP: same-origin via an iframe, with cross origin iframe, same site popup with anchor: FAIL
+	COOP: same-origin to popup COOP: same-origin via an iframe, with cross origin iframe, same site popup with form: TIMEOUT
+	COOP: same-origin to popup COOP: same-origin via an iframe, with cross origin iframe, same site popup with window_open: FAIL
+	COOP: same-origin to popup COOP: same-origin via an iframe, with same site iframe, same site popup with anchor: FAIL
+	COOP: same-origin to popup COOP: same-origin via an iframe, with same site iframe, same site popup with form: FAIL
+	COOP: same-origin to popup COOP: same-origin via an iframe, with same site iframe, same site popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-same-origin-to-same-origin.https.html?7-8: TIMEOUT
+	COOP: same-origin to popup COOP: same-origin via an iframe, with same origin iframe, cross origin popup with anchor: FAIL
+	COOP: same-origin to popup COOP: same-origin via an iframe, with same origin iframe, cross origin popup with form: FAIL
+	COOP: same-origin to popup COOP: same-origin via an iframe, with same origin iframe, cross origin popup with window_open: FAIL
+	COOP: same-origin to popup COOP: same-origin via an iframe, with same site iframe, cross origin popup with anchor: FAIL
+	COOP: same-origin to popup COOP: same-origin via an iframe, with same site iframe, cross origin popup with form: TIMEOUT
+	COOP: same-origin to popup COOP: same-origin via an iframe, with same site iframe, cross origin popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-same-origin-to-same-origin.https.html?9-last: OK
+	COOP: same-origin to popup COOP: same-origin via an iframe, with cross origin iframe, cross origin popup with anchor: FAIL
+	COOP: same-origin to popup COOP: same-origin via an iframe, with cross origin iframe, cross origin popup with form: FAIL
+	COOP: same-origin to popup COOP: same-origin via an iframe, with cross origin iframe, cross origin popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-same-origin-to-unsafe-none.https.html?1-2: TIMEOUT
+	COOP: same-origin to popup COOP: unsafe-none via an iframe, with same origin iframe, same origin popup with anchor: FAIL
+	COOP: same-origin to popup COOP: unsafe-none via an iframe, with same origin iframe, same origin popup with form: FAIL
+	COOP: same-origin to popup COOP: unsafe-none via an iframe, with same origin iframe, same origin popup with window_open: FAIL
+	COOP: same-origin to popup COOP: unsafe-none via an iframe, with same site iframe, same origin popup with anchor: FAIL
+	COOP: same-origin to popup COOP: unsafe-none via an iframe, with same site iframe, same origin popup with form: TIMEOUT
+	COOP: same-origin to popup COOP: unsafe-none via an iframe, with same site iframe, same origin popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-same-origin-to-unsafe-none.https.html?3-4: TIMEOUT
+	COOP: same-origin to popup COOP: unsafe-none via an iframe, with cross origin iframe, same origin popup with anchor: FAIL
+	COOP: same-origin to popup COOP: unsafe-none via an iframe, with cross origin iframe, same origin popup with form: FAIL
+	COOP: same-origin to popup COOP: unsafe-none via an iframe, with cross origin iframe, same origin popup with window_open: FAIL
+	COOP: same-origin to popup COOP: unsafe-none via an iframe, with same origin iframe, same site popup with anchor: FAIL
+	COOP: same-origin to popup COOP: unsafe-none via an iframe, with same origin iframe, same site popup with form: TIMEOUT
+	COOP: same-origin to popup COOP: unsafe-none via an iframe, with same origin iframe, same site popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-same-origin-to-unsafe-none.https.html?5-6: TIMEOUT
+	COOP: same-origin to popup COOP: unsafe-none via an iframe, with cross origin iframe, same site popup with anchor: FAIL
+	COOP: same-origin to popup COOP: unsafe-none via an iframe, with cross origin iframe, same site popup with form: TIMEOUT
+	COOP: same-origin to popup COOP: unsafe-none via an iframe, with cross origin iframe, same site popup with window_open: FAIL
+	COOP: same-origin to popup COOP: unsafe-none via an iframe, with same site iframe, same site popup with anchor: FAIL
+	COOP: same-origin to popup COOP: unsafe-none via an iframe, with same site iframe, same site popup with form: FAIL
+	COOP: same-origin to popup COOP: unsafe-none via an iframe, with same site iframe, same site popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-same-origin-to-unsafe-none.https.html?7-8: TIMEOUT
+	COOP: same-origin to popup COOP: unsafe-none via an iframe, with same origin iframe, cross origin popup with anchor: FAIL
+	COOP: same-origin to popup COOP: unsafe-none via an iframe, with same origin iframe, cross origin popup with form: FAIL
+	COOP: same-origin to popup COOP: unsafe-none via an iframe, with same origin iframe, cross origin popup with window_open: FAIL
+	COOP: same-origin to popup COOP: unsafe-none via an iframe, with same site iframe, cross origin popup with anchor: FAIL
+	COOP: same-origin to popup COOP: unsafe-none via an iframe, with same site iframe, cross origin popup with form: TIMEOUT
+	COOP: same-origin to popup COOP: unsafe-none via an iframe, with same site iframe, cross origin popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-same-origin-to-unsafe-none.https.html?9-last: OK
+	COOP: same-origin to popup COOP: unsafe-none via an iframe, with cross origin iframe, cross origin popup with anchor: FAIL
+	COOP: same-origin to popup COOP: unsafe-none via an iframe, with cross origin iframe, cross origin popup with form: FAIL
+	COOP: same-origin to popup COOP: unsafe-none via an iframe, with cross origin iframe, cross origin popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-unsafe-none-to-same-origin.https.html?1-2: TIMEOUT
+	COOP: unsafe-none to popup COOP: same-origin via an iframe, with same origin iframe, same origin popup with anchor: FAIL
+	COOP: unsafe-none to popup COOP: same-origin via an iframe, with same origin iframe, same origin popup with form: FAIL
+	COOP: unsafe-none to popup COOP: same-origin via an iframe, with same origin iframe, same origin popup with window_open: FAIL
+	COOP: unsafe-none to popup COOP: same-origin via an iframe, with same site iframe, same origin popup with anchor: FAIL
+	COOP: unsafe-none to popup COOP: same-origin via an iframe, with same site iframe, same origin popup with form: TIMEOUT
+	COOP: unsafe-none to popup COOP: same-origin via an iframe, with same site iframe, same origin popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-unsafe-none-to-same-origin.https.html?3-4: TIMEOUT
+	COOP: unsafe-none to popup COOP: same-origin via an iframe, with cross origin iframe, same origin popup with anchor: FAIL
+	COOP: unsafe-none to popup COOP: same-origin via an iframe, with cross origin iframe, same origin popup with form: FAIL
+	COOP: unsafe-none to popup COOP: same-origin via an iframe, with cross origin iframe, same origin popup with window_open: FAIL
+	COOP: unsafe-none to popup COOP: same-origin via an iframe, with same origin iframe, same site popup with anchor: FAIL
+	COOP: unsafe-none to popup COOP: same-origin via an iframe, with same origin iframe, same site popup with form: TIMEOUT
+	COOP: unsafe-none to popup COOP: same-origin via an iframe, with same origin iframe, same site popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-unsafe-none-to-same-origin.https.html?5-6: TIMEOUT
+	COOP: unsafe-none to popup COOP: same-origin via an iframe, with cross origin iframe, same site popup with anchor: FAIL
+	COOP: unsafe-none to popup COOP: same-origin via an iframe, with cross origin iframe, same site popup with form: TIMEOUT
+	COOP: unsafe-none to popup COOP: same-origin via an iframe, with cross origin iframe, same site popup with window_open: FAIL
+	COOP: unsafe-none to popup COOP: same-origin via an iframe, with same site iframe, same site popup with anchor: FAIL
+	COOP: unsafe-none to popup COOP: same-origin via an iframe, with same site iframe, same site popup with form: FAIL
+	COOP: unsafe-none to popup COOP: same-origin via an iframe, with same site iframe, same site popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-unsafe-none-to-same-origin.https.html?7-8: TIMEOUT
+	COOP: unsafe-none to popup COOP: same-origin via an iframe, with same origin iframe, cross origin popup with anchor: FAIL
+	COOP: unsafe-none to popup COOP: same-origin via an iframe, with same origin iframe, cross origin popup with form: FAIL
+	COOP: unsafe-none to popup COOP: same-origin via an iframe, with same origin iframe, cross origin popup with window_open: FAIL
+	COOP: unsafe-none to popup COOP: same-origin via an iframe, with same site iframe, cross origin popup with anchor: FAIL
+	COOP: unsafe-none to popup COOP: same-origin via an iframe, with same site iframe, cross origin popup with form: TIMEOUT
+	COOP: unsafe-none to popup COOP: same-origin via an iframe, with same site iframe, cross origin popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-unsafe-none-to-same-origin.https.html?9-last: OK
+	COOP: unsafe-none to popup COOP: same-origin via an iframe, with cross origin iframe, cross origin popup with anchor: FAIL
+	COOP: unsafe-none to popup COOP: same-origin via an iframe, with cross origin iframe, cross origin popup with form: FAIL
+	COOP: unsafe-none to popup COOP: same-origin via an iframe, with cross origin iframe, cross origin popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-unsafe-none-to-unsafe-none.https.html?1-2: TIMEOUT
+	COOP: unsafe-none to popup COOP: unsafe-none via an iframe, with same origin iframe, same origin popup with anchor: FAIL
+	COOP: unsafe-none to popup COOP: unsafe-none via an iframe, with same origin iframe, same origin popup with form: FAIL
+	COOP: unsafe-none to popup COOP: unsafe-none via an iframe, with same origin iframe, same origin popup with window_open: FAIL
+	COOP: unsafe-none to popup COOP: unsafe-none via an iframe, with same site iframe, same origin popup with anchor: FAIL
+	COOP: unsafe-none to popup COOP: unsafe-none via an iframe, with same site iframe, same origin popup with form: TIMEOUT
+	COOP: unsafe-none to popup COOP: unsafe-none via an iframe, with same site iframe, same origin popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-unsafe-none-to-unsafe-none.https.html?3-4: TIMEOUT
+	COOP: unsafe-none to popup COOP: unsafe-none via an iframe, with cross origin iframe, same origin popup with anchor: FAIL
+	COOP: unsafe-none to popup COOP: unsafe-none via an iframe, with cross origin iframe, same origin popup with form: FAIL
+	COOP: unsafe-none to popup COOP: unsafe-none via an iframe, with cross origin iframe, same origin popup with window_open: FAIL
+	COOP: unsafe-none to popup COOP: unsafe-none via an iframe, with same origin iframe, same site popup with anchor: FAIL
+	COOP: unsafe-none to popup COOP: unsafe-none via an iframe, with same origin iframe, same site popup with form: TIMEOUT
+	COOP: unsafe-none to popup COOP: unsafe-none via an iframe, with same origin iframe, same site popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-unsafe-none-to-unsafe-none.https.html?5-6: TIMEOUT
+	COOP: unsafe-none to popup COOP: unsafe-none via an iframe, with cross origin iframe, same site popup with anchor: FAIL
+	COOP: unsafe-none to popup COOP: unsafe-none via an iframe, with cross origin iframe, same site popup with form: TIMEOUT
+	COOP: unsafe-none to popup COOP: unsafe-none via an iframe, with cross origin iframe, same site popup with window_open: FAIL
+	COOP: unsafe-none to popup COOP: unsafe-none via an iframe, with same site iframe, same site popup with anchor: FAIL
+	COOP: unsafe-none to popup COOP: unsafe-none via an iframe, with same site iframe, same site popup with form: FAIL
+	COOP: unsafe-none to popup COOP: unsafe-none via an iframe, with same site iframe, same site popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-unsafe-none-to-unsafe-none.https.html?7-8: TIMEOUT
+	COOP: unsafe-none to popup COOP: unsafe-none via an iframe, with same origin iframe, cross origin popup with anchor: FAIL
+	COOP: unsafe-none to popup COOP: unsafe-none via an iframe, with same origin iframe, cross origin popup with form: FAIL
+	COOP: unsafe-none to popup COOP: unsafe-none via an iframe, with same origin iframe, cross origin popup with window_open: FAIL
+	COOP: unsafe-none to popup COOP: unsafe-none via an iframe, with same site iframe, cross origin popup with anchor: FAIL
+	COOP: unsafe-none to popup COOP: unsafe-none via an iframe, with same site iframe, cross origin popup with form: TIMEOUT
+	COOP: unsafe-none to popup COOP: unsafe-none via an iframe, with same site iframe, cross origin popup with window_open: FAIL
+/html/cross-origin-opener-policy/iframe-popup-unsafe-none-to-unsafe-none.https.html?9-last: OK
+	COOP: unsafe-none to popup COOP: unsafe-none via an iframe, with cross origin iframe, cross origin popup with anchor: FAIL
+	COOP: unsafe-none to popup COOP: unsafe-none via an iframe, with cross origin iframe, cross origin popup with form: FAIL
+	COOP: unsafe-none to popup COOP: unsafe-none via an iframe, with cross origin iframe, cross origin popup with window_open: FAIL
+/html/cross-origin-opener-policy/javascript-url.https.html?1-2: OK
+	navigation: SAME_ORIGIN; parentCOOP: unsafe-none; childCOOP: unsafe-none: FAIL
+	navigation: SAME_SITE; parentCOOP: unsafe-none; childCOOP: unsafe-none: FAIL
+/html/cross-origin-opener-policy/javascript-url.https.html?11-12: OK
+	navigation: SAME_ORIGIN; parentCOOP: same-origin-allow-popups; childCOOP: same-origin: FAIL
+	navigation: SAME_SITE; parentCOOP: same-origin-allow-popups; childCOOP: same-origin: FAIL
+/html/cross-origin-opener-policy/javascript-url.https.html?13-14: OK
+	navigation: SAME_ORIGIN; parentCOOP: same-origin; childCOOP: unsafe-none: FAIL
+	navigation: SAME_SITE; parentCOOP: same-origin; childCOOP: unsafe-none: FAIL
+/html/cross-origin-opener-policy/javascript-url.https.html?15-16: OK
+	navigation: SAME_ORIGIN; parentCOOP: same-origin; childCOOP: same-origin-allow-popups: FAIL
+	navigation: SAME_SITE; parentCOOP: same-origin; childCOOP: same-origin-allow-popups: FAIL
+/html/cross-origin-opener-policy/javascript-url.https.html?17-last: OK
+	navigation: SAME_ORIGIN; parentCOOP: same-origin; childCOOP: same-origin: FAIL
+	navigation: SAME_SITE; parentCOOP: same-origin; childCOOP: same-origin: FAIL
+/html/cross-origin-opener-policy/javascript-url.https.html?3-4: OK
+	navigation: SAME_ORIGIN; parentCOOP: unsafe-none; childCOOP: same-origin-allow-popups: FAIL
+	navigation: SAME_SITE; parentCOOP: unsafe-none; childCOOP: same-origin-allow-popups: FAIL
+/html/cross-origin-opener-policy/javascript-url.https.html?5-6: OK
+	navigation: SAME_ORIGIN; parentCOOP: unsafe-none; childCOOP: same-origin: FAIL
+	navigation: SAME_SITE; parentCOOP: unsafe-none; childCOOP: same-origin: FAIL
+/html/cross-origin-opener-policy/javascript-url.https.html?7-8: OK
+	navigation: SAME_ORIGIN; parentCOOP: same-origin-allow-popups; childCOOP: unsafe-none: FAIL
+	navigation: SAME_SITE; parentCOOP: same-origin-allow-popups; childCOOP: unsafe-none: FAIL
+/html/cross-origin-opener-policy/javascript-url.https.html?9-10: OK
+	navigation: SAME_ORIGIN; parentCOOP: same-origin-allow-popups; childCOOP: same-origin-allow-popups: FAIL
+	navigation: SAME_SITE; parentCOOP: same-origin-allow-popups; childCOOP: same-origin-allow-popups: FAIL
+/html/cross-origin-opener-policy/navigate-to-aboutblank.https.html: TIMEOUT
+	Navigate to about:blank from iframe with opener.top COOP: |header(Cross-Origin-Opener-Policy,same-origin), iframe origin: https://127.0.0.1:8779, openee COOP: |header(Cross-Origin-Opener-Policy,same-origin), openee origin: https://127.0.0.1:8779.: FAIL
+	Navigate to about:blank from iframe with opener.top COOP: |header(Cross-Origin-Opener-Policy,same-origin)|header(Cross-Origin-Embedder-Policy,require-corp), iframe origin: https://127.0.0.1:8779, openee COOP: |header(Cross-Origin-Opener-Policy,same-origin)|header(Cross-Origin-Embedder-Policy,require-corp), openee origin: https://127.0.0.1:8779.: TIMEOUT
+	Navigate to about:blank from iframe with opener.top COOP: |header(Cross-Origin-Opener-Policy,same-origin-allow-popups), iframe origin: https://127.0.0.1:8779, openee COOP: |header(Cross-Origin-Opener-Policy,same-origin-allow-popups), openee origin: https://127.0.0.1:8779.: NOTRUN
+	Navigate to about:blank from iframe with opener.top COOP: |header(Cross-Origin-Opener-Policy,same-origin-allow-popups), iframe origin: https://127.0.0.1:8779, openee COOP: |header(Cross-Origin-Opener-Policy,unsafe-none), openee origin: https://www1.127.0.0.1:8779.: NOTRUN
+	Navigate to about:blank from iframe with opener.top COOP: |header(Cross-Origin-Opener-Policy,same-origin-allow-popups), iframe origin: https://www1.127.0.0.1:8779, openee COOP: |header(Cross-Origin-Opener-Policy,unsafe-none), openee origin: https://www1.127.0.0.1:8779.: NOTRUN
+/html/cross-origin-opener-policy/navigate-top-to-aboutblank.https.html: TIMEOUT
+	Navigate top to about:blank from iframe with opener COOP: |header(Cross-Origin-Opener-Policy,same-origin), iframe origin: https://127.0.0.1:8779: FAIL
+	Navigate top to about:blank from iframe with opener COOP: |header(Cross-Origin-Opener-Policy,same-origin), iframe origin: https://www1.127.0.0.1:8779: FAIL
+	Navigate top to about:blank from iframe with opener COOP: |header(Cross-Origin-Opener-Policy,same-origin-allow-popups), iframe origin: https://www1.127.0.0.1:8779: TIMEOUT
+/html/cross-origin-opener-policy/no-https.html: ERROR
+	Bonus: window.crossOriginIsolated: NOTRUN
+	Cross-Origin-Opener-Policy only works over secure contexts: FAIL
+/html/cross-origin-opener-policy/non-secure-to-secure-context-navigation.https.html: TIMEOUT
+	COOP causes a browsing context group switch when navigating from a non-secure context to a secure one: TIMEOUT
+/html/cross-origin-opener-policy/popup-coop-by-sw.https.html?1-4: ERROR
+	opener:basic, openee:basic, sw:basic: FAIL
+	opener:basic, openee:basic, sw:coi: NOTRUN
+	opener:basic, openee:coi, sw:basic: NOTRUN
+	opener:basic, openee:coi, sw:coi: NOTRUN
+/html/cross-origin-opener-policy/popup-coop-by-sw.https.html?5-last: ERROR
+	opener:coi, openee:basic, sw:basic: FAIL
+	opener:coi, openee:basic, sw:coi: NOTRUN
+	opener:coi, openee:coi, sw:basic: NOTRUN
+	opener:coi, openee:coi, sw:coi: NOTRUN
+/html/cross-origin-opener-policy/popup-meta-http-equiv.https.html: OK
+	Same-origin popup without coop: FAIL
+/html/cross-origin-opener-policy/popup-redirect-cache.https.html?0-1: ERROR
+	same-origin document opening popup redirect from https://127.0.0.1:8779 to https://127.0.0.1:8779 with redirectCache false and destCache true: NOTRUN
+	same-origin document opening popup redirect from https://127.0.0.1:8779 to https://127.0.0.1:8779 with redirectCache true and destCache false: FAIL
+/html/cross-origin-opener-policy/popup-redirect-cache.https.html?2-3: ERROR
+	same-origin document opening popup redirect from https://127.0.0.1:8779 to https://127.0.0.1:8779 with redirectCache true and destCache false: NOTRUN
+	same-origin document opening popup redirect from https://127.0.0.1:8779 to https://127.0.0.1:8779 with redirectCache true and destCache true: FAIL
+/html/cross-origin-opener-policy/popup-redirect-cache.https.html?4-5: ERROR
+	same-origin document opening popup redirect from https://127.0.0.1:8779 to https://127.0.0.1:8779 with redirectCache false and destCache true: FAIL
+	same-origin document opening popup redirect from https://127.0.0.1:8779 to https://127.0.0.1:8779 with redirectCache true and destCache true: NOTRUN
+/html/cross-origin-opener-policy/popup-redirect-cache.https.html?6-7: OK
+	same-origin document opening popup redirect from https://www1.127.0.0.1:8779 to https://127.0.0.1:8779 with redirectCache false and destCache true: FAIL
+	same-origin document opening popup redirect from https://www1.127.0.0.1:8779 to https://127.0.0.1:8779 with redirectCache true and destCache false: FAIL
+/html/cross-origin-opener-policy/popup-redirect-cache.https.html?8-last: OK
+	same-origin document opening popup redirect from https://www1.127.0.0.1:8779 to https://127.0.0.1:8779 with redirectCache true and destCache true: FAIL
+/html/cross-origin-opener-policy/popup-redirect-same-origin-allow-popups.https.html: ERROR
+	Cross origin popup redirects to same-origin with same-origin-allow-popups: NOTRUN
+	Same origin popup redirects to same-origin with same-origin-allow-popups: FAIL
+/html/cross-origin-opener-policy/popup-same-origin-allow-popups-with-cross-origin.https.html: TIMEOUT
+	Cross-origin popup with coop same-origin: NOTRUN
+	Cross-origin popup with coop same-origin-allow-popups: NOTRUN
+	Cross-origin popup with coop unsafe-none: FAIL
+	Cross-origin popup with empty coop: FAIL
+	Cross-origin popup with jibberish coop: FAIL
+	Cross-origin popup with obsolete coop: FAIL
+	Cross-origin popup with obsolete coop 2: FAIL
+	Cross-origin popup with obsolete coop 3: TIMEOUT
+/html/cross-origin-opener-policy/popup-same-origin-allow-popups-with-same-origin.https.html: TIMEOUT
+	Same-origin popup with coop same-origin: NOTRUN
+	Same-origin popup with coop same-origin-allow-popups: NOTRUN
+	Same-origin popup with coop unsafe-none: FAIL
+	Same-origin popup with empty coop: FAIL
+	Same-origin popup with jibberish coop: FAIL
+	Same-origin popup with obsolete coop: FAIL
+	Same-origin popup with obsolete coop 2: FAIL
+	Same-origin popup with obsolete coop 3: TIMEOUT
+/html/cross-origin-opener-policy/popup-same-origin-allow-popups-with-same-site.https.html: OK
+	Same-site popup with coop same-origin: FAIL
+	Same-site popup with coop same-origin-allow-popups: FAIL
+	Same-site popup with coop unsafe-none: FAIL
+	Same-site popup with empty coop: FAIL
+	Same-site popup with jibberish coop: FAIL
+	Same-site popup with obsolete coop: FAIL
+	Same-site popup with obsolete coop 2: FAIL
+	Same-site popup with obsolete coop 3: FAIL
+/html/cross-origin-opener-policy/popup-same-origin-non-initial-about-blank.https.html: ERROR
+	Navigating a popup to about:blank: FAIL
+/html/cross-origin-opener-policy/popup-same-origin-with-cross-origin.https.html: TIMEOUT
+	Cross-origin popup with coop same-origin: NOTRUN
+	Cross-origin popup with coop same-origin-allow-popups: NOTRUN
+	Cross-origin popup with coop unsafe-none: FAIL
+	Cross-origin popup with empty coop: FAIL
+	Cross-origin popup with jibberish coop: FAIL
+	Cross-origin popup with obsolete coop: FAIL
+	Cross-origin popup with obsolete coop 2: FAIL
+	Cross-origin popup with obsolete coop 3: TIMEOUT
+/html/cross-origin-opener-policy/popup-same-origin-with-same-origin.https.html: TIMEOUT
+	Same-origin popup with coop same-origin: NOTRUN
+	Same-origin popup with coop same-origin-allow-popups: NOTRUN
+	Same-origin popup with coop unsafe-none: FAIL
+	Same-origin popup with empty coop: FAIL
+	Same-origin popup with jibberish coop: FAIL
+	Same-origin popup with obsolete coop: FAIL
+	Same-origin popup with obsolete coop 2: FAIL
+	Same-origin popup with obsolete coop 3: TIMEOUT
+/html/cross-origin-opener-policy/popup-same-origin-with-same-site.https.html: OK
+	Same-site popup with coop same-origin: FAIL
+	Same-site popup with coop same-origin-allow-popups: FAIL
+	Same-site popup with coop unsafe-none: FAIL
+	Same-site popup with empty coop: FAIL
+	Same-site popup with jibberish coop: FAIL
+	Same-site popup with obsolete coop: FAIL
+	Same-site popup with obsolete coop 2: FAIL
+	Same-site popup with obsolete coop 3: FAIL
+/html/cross-origin-opener-policy/popup-unsafe-none-with-cross-origin.https.html: TIMEOUT
+	Cross-origin popup with coop same-origin: NOTRUN
+	Cross-origin popup with coop same-origin-allow-popups: NOTRUN
+	Cross-origin popup with coop unsafe-none: FAIL
+	Cross-origin popup with empty coop: FAIL
+	Cross-origin popup with jibberish coop: FAIL
+	Cross-origin popup with obsolete coop: FAIL
+	Cross-origin popup with obsolete coop 2: FAIL
+	Cross-origin popup with obsolete coop 3: TIMEOUT
+/html/cross-origin-opener-policy/popup-unsafe-none-with-same-origin.https.html: TIMEOUT
+	Same-origin popup with coop same-origin: NOTRUN
+	Same-origin popup with coop same-origin-allow-popups: NOTRUN
+	Same-origin popup with coop unsafe-none: FAIL
+	Same-origin popup with empty coop: FAIL
+	Same-origin popup with jibberish coop: FAIL
+	Same-origin popup with obsolete coop: FAIL
+	Same-origin popup with obsolete coop 2: FAIL
+	Same-origin popup with obsolete coop 3: TIMEOUT
+/html/cross-origin-opener-policy/popup-unsafe-none-with-same-site.https.html: OK
+	Same-site popup with coop same-origin: FAIL
+	Same-site popup with coop same-origin-allow-popups: FAIL
+	Same-site popup with coop unsafe-none: FAIL
+	Same-site popup with empty coop: FAIL
+	Same-site popup with jibberish coop: FAIL
+	Same-site popup with obsolete coop: FAIL
+	Same-site popup with obsolete coop 2: FAIL
+	Same-site popup with obsolete coop 3: FAIL
+/html/cross-origin-opener-policy/popup-unspecified-with-cross-origin.https.html: TIMEOUT
+	Cross-origin popup with coop same-origin: NOTRUN
+	Cross-origin popup with coop same-origin-allow-popups: NOTRUN
+	Cross-origin popup with coop unsafe-none: FAIL
+	Cross-origin popup with empty coop: FAIL
+	Cross-origin popup with jibberish coop: FAIL
+	Cross-origin popup with obsolete coop: FAIL
+	Cross-origin popup with obsolete coop 2: FAIL
+	Cross-origin popup with obsolete coop 3: TIMEOUT
+/html/cross-origin-opener-policy/popup-unspecified-with-same-origin.https.html: TIMEOUT
+	Same-origin popup with coop same-origin: NOTRUN
+	Same-origin popup with coop same-origin-allow-popups: NOTRUN
+	Same-origin popup with coop unsafe-none: FAIL
+	Same-origin popup with empty coop: FAIL
+	Same-origin popup with jibberish coop: FAIL
+	Same-origin popup with obsolete coop: FAIL
+	Same-origin popup with obsolete coop 2: FAIL
+	Same-origin popup with obsolete coop 3: TIMEOUT
+/html/cross-origin-opener-policy/popup-unspecified-with-same-site.https.html: OK
+	Same-site popup with coop same-origin: FAIL
+	Same-site popup with coop same-origin-allow-popups: FAIL
+	Same-site popup with coop unsafe-none: FAIL
+	Same-site popup with empty coop: FAIL
+	Same-site popup with jibberish coop: FAIL
+	Same-site popup with obsolete coop: FAIL
+	Same-site popup with obsolete coop 2: FAIL
+	Same-site popup with obsolete coop 3: FAIL
+/html/cross-origin-opener-policy/popup-with-structured-header.https.html: OK
+	Same-origin popup with structured coop same-origin: FAIL
+	Same-origin popup with structured coop same-origin-allow-popups: FAIL
+	Same-origin popup with structured coop unsafe-none: FAIL
+/html/cross-origin-opener-policy/resource-popup.https.html: TIMEOUT
+	/common/dummy.xml - parent COOP: ""; child COOP: "same-origin": TIMEOUT
+	/common/dummy.xml - parent COOP: "same-origin"; child COOP: "": TIMEOUT
+	/common/dummy.xml - parent COOP: "same-origin"; child COOP: "same-origin": TIMEOUT
+	/common/text-plain.txt - parent COOP: ""; child COOP: "same-origin": TIMEOUT
+	/common/text-plain.txt - parent COOP: "same-origin"; child COOP: "": TIMEOUT
+	/common/text-plain.txt - parent COOP: "same-origin"; child COOP: "same-origin": TIMEOUT
+	/images/red.png - parent COOP: ""; child COOP: "same-origin": TIMEOUT
+	/images/red.png - parent COOP: "same-origin"; child COOP: "": TIMEOUT
+	/images/red.png - parent COOP: "same-origin"; child COOP: "same-origin": TIMEOUT
+	/media/2x2-green.mp4 - parent COOP: ""; child COOP: "same-origin": TIMEOUT
+	/media/2x2-green.mp4 - parent COOP: "same-origin"; child COOP: "": TIMEOUT
+	/media/2x2-green.mp4 - parent COOP: "same-origin"; child COOP: "same-origin": TIMEOUT

@@ -400,52 +400,40 @@ wjr_CSS_escape :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, a
 	if argc < 1 { return wj.wj_throw_type(ctx, "Failed to execute 'escape' on 'CSS': 1 argument required, but only 0 present.") }
 	s := wj.JS_ToString(ctx, argv[0])
 	if wj.is_exception(s) { return s }
+	defer wj.JS_FreeValue(ctx, s)
+	// (code units: a lone surrogate goes through as itself)
 	length: uint
-	utf8 := wj.JS_ToCStringLen(ctx, &length, s)
-	wj.JS_FreeValue(ctx, s)
-	if utf8 == nil { return wj.EXCEPTION }
-	cap := length * 8 + 1
-	buf := ([^]u8)(wj.js_malloc(ctx, cap))
-	if buf == nil { wj.JS_FreeCString(ctx, utf8); return wj.EXCEPTION }
-	p := ([^]u8)(rawptr(utf8))
+	p := wj.JS_ToCStringLenUTF16(ctx, &length, s)
+	if p == nil { return wj.EXCEPTION }
+	defer wj.JS_FreeCStringUTF16(ctx, p)
+	buf := ([^]u16)(wj.js_malloc(ctx, (length * 8 + 1) * size_of(u16)))
+	if buf == nil { return wj.EXCEPTION }
+	defer wj.js_free(ctx, buf)
 	o := uint(0)
-	count := uint(0)
-	first_dash := length > 0 && p[0] == '-'
-	i := uint(0)
-	for i < length {
-		c := p[i]
-		cl := c < 0x80 ? uint(1) : c < 0xE0 ? uint(2) : c < 0xF0 ? uint(3) : uint(4)
-		if i + cl > length { cl = length - i }
-		if c == 0 {
-			buf[o] = 0xEF; buf[o+1] = 0xBF; buf[o+2] = 0xBD; o += 3   // U+FFFD
-		} else if (c >= 0x01 && c <= 0x1F) || c == 0x7F || (count == 0 && c >= '0' && c <= '9') || (count == 1 && first_dash && c >= '0' && c <= '9') {
-			o += write_hex_escape(buf[o:], c)
-		} else if count == 0 && c == '-' && length == 1 {
-			buf[o] = '\\'; buf[o+1] = '-'; o += 2
-		} else if c >= 0x80 || c == '-' || c == '_' || (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') {
-			for k in 0..<cl { buf[o + k] = p[i + k] }
-			o += cl
-		} else {
-			buf[o] = '\\'; buf[o+1] = c; o += 2
-		}
-		i += cl
-		count += 1
+	hex :: proc "contextless" (buf: [^]u16, o: ^uint, c: u16) {
+		digits := "0123456789abcdef"
+		buf[o^] = '\\'; o^ += 1
+		if c >= 0x10 { buf[o^] = u16(digits[c >> 4]); o^ += 1 }
+		buf[o^] = u16(digits[c & 0xF]); o^ += 1
+		buf[o^] = ' '; o^ += 1
 	}
-	out := wj.JS_NewStringLen(ctx, buf, o)
-	wj.js_free(ctx, buf)
-	wj.JS_FreeCString(ctx, utf8)
-	return out
+	first_dash := length > 0 && p[0] == '-'
+	for i in 0 ..< length {
+		c := p[i]
+		digit := c >= '0' && c <= '9'
+		switch {
+		case c == 0:
+			buf[o] = 0xFFFD; o += 1
+		case (c >= 0x01 && c <= 0x1F) || c == 0x7F || (i == 0 && digit) || (i == 1 && first_dash && digit):
+			hex(buf, &o, c)
+		case i == 0 && c == '-' && length == 1:
+			buf[o] = '\\'; buf[o + 1] = '-'; o += 2
+		case c >= 0x80 || c == '-' || c == '_' || digit || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'):
+			buf[o] = c; o += 1
+		case:
+			buf[o] = '\\'; buf[o + 1] = c; o += 2
+		}
+	}
+	return wj.JS_NewStringUTF16(ctx, buf, o)
 }
 
-// write "\<hex> " (a code point escape, as C's snprintf(buf, "\\%x ", c)). Returns bytes written.
-@(private = "file")
-write_hex_escape :: proc "c" (buf: [^]u8, c: u8) -> uint {
-	digits := "0123456789abcdef"
-	dg := transmute([]u8)digits
-	o := uint(0)
-	buf[o] = '\\'; o += 1
-	if c >= 0x10 { buf[o] = dg[c >> 4]; o += 1 }
-	buf[o] = dg[c & 0xF]; o += 1
-	buf[o] = ' '; o += 1
-	return o
-}

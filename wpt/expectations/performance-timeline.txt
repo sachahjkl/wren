@@ -1,0 +1,300 @@
+# web-platform-tests expectations of Wren for performance-timeline, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/performance-timeline/back-forward-cache-restoration.tentative.html: OK
+	Performance API for the back forward cache restoration entry.: FAIL
+/performance-timeline/buffered-does-not-sync-invoke.html: OK
+	Buffered PerformanceObservers should not invoke callbacks synchronously.: PASS
+/performance-timeline/buffered-flag-after-timeout.any.html: OK
+	PerformanceObserver with buffered flag sees entry after timeout: PASS
+/performance-timeline/buffered-flag-after-timeout.any.worker.html: OK
+	PerformanceObserver with buffered flag sees entry after timeout: PASS
+/performance-timeline/buffered-flag-observer.any.html: OK
+	PerformanceObserver with buffered flag should see past and future entries.: PASS
+/performance-timeline/buffered-flag-observer.any.worker.html: OK
+	PerformanceObserver with buffered flag should see past and future entries.: PASS
+/performance-timeline/buffered-flag-with-entryTypes-observer.tentative.any.html: OK
+	PerformanceObserver without buffered flag set to false cannot see past entries.: FAIL
+/performance-timeline/buffered-flag-with-entryTypes-observer.tentative.any.worker.html: OK
+	PerformanceObserver without buffered flag set to false cannot see past entries.: FAIL
+/performance-timeline/case-sensitivity.any.html: OK
+	getEntriesByName values are case sensitive: FAIL
+	getEntriesByType values are case sensitive: PASS
+	observe() and case sensitivity for types/entryTypes and buffered.: PASS
+/performance-timeline/case-sensitivity.any.worker.html: OK
+	getEntriesByName values are case sensitive: FAIL
+	getEntriesByType values are case sensitive: FAIL
+	observe() and case sensitivity for types/entryTypes and buffered.: PASS
+/performance-timeline/droppedentriescount.any.html: TIMEOUT
+	Dropped entries correctly counted with multiple types.: NOTRUN
+	Dropped entries count is 0 when there are no dropped entries of relevant type.: TIMEOUT
+	Dropped entries counted even if observer was not registered at the time.: NOTRUN
+	Dropped entries only surfaced on the first callback.: NOTRUN
+	Dropped entries surfaced after an observe() call!: NOTRUN
+/performance-timeline/droppedentriescount.any.worker.html: TIMEOUT
+	Dropped entries correctly counted with multiple types.: NOTRUN
+	Dropped entries count is 0 when there are no dropped entries of relevant type.: TIMEOUT
+	Dropped entries counted even if observer was not registered at the time.: NOTRUN
+	Dropped entries only surfaced on the first callback.: NOTRUN
+	Dropped entries surfaced after an observe() call!: NOTRUN
+/performance-timeline/get-invalid-entries.html: OK
+	Get invalid entries from worker and window.: PASS
+/performance-timeline/idlharness.any.html: OK
+	Partial interface Performance: member names are unique: PASS
+	Partial interface Performance: original interface defined: PASS
+	Performance interface: calling getEntriesByName(DOMString, optional DOMString) on performance with too few arguments must throw TypeError: PASS
+	Performance interface: calling getEntriesByType(DOMString) on performance with too few arguments must throw TypeError: PASS
+	Performance interface: operation getEntries(): PASS
+	Performance interface: operation getEntriesByName(DOMString, optional DOMString): PASS
+	Performance interface: operation getEntriesByType(DOMString): PASS
+	Performance interface: performance must inherit property "getEntries()" with the proper type: PASS
+	Performance interface: performance must inherit property "getEntriesByName(DOMString, optional DOMString)" with the proper type: PASS
+	Performance interface: performance must inherit property "getEntriesByType(DOMString)" with the proper type: PASS
+	PerformanceEntry interface object length: PASS
+	PerformanceEntry interface object name: PASS
+	PerformanceEntry interface: attribute duration: PASS
+	PerformanceEntry interface: attribute entryType: PASS
+	PerformanceEntry interface: attribute id: PASS
+	PerformanceEntry interface: attribute name: PASS
+	PerformanceEntry interface: attribute navigationId: PASS
+	PerformanceEntry interface: attribute startTime: PASS
+	PerformanceEntry interface: existence and properties of interface object: PASS
+	PerformanceEntry interface: existence and properties of interface prototype object: PASS
+	PerformanceEntry interface: existence and properties of interface prototype object's "constructor" property: PASS
+	PerformanceEntry interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	PerformanceEntry interface: operation toJSON(): PASS
+	PerformanceObserver interface object length: PASS
+	PerformanceObserver interface object name: PASS
+	PerformanceObserver interface: attribute supportedEntryTypes: PASS
+	PerformanceObserver interface: calling observe(optional PerformanceObserverInit) on observer with too few arguments must throw TypeError: PASS
+	PerformanceObserver interface: existence and properties of interface object: PASS
+	PerformanceObserver interface: existence and properties of interface prototype object: PASS
+	PerformanceObserver interface: existence and properties of interface prototype object's "constructor" property: PASS
+	PerformanceObserver interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	PerformanceObserver interface: observer must inherit property "disconnect()" with the proper type: PASS
+	PerformanceObserver interface: observer must inherit property "observe(optional PerformanceObserverInit)" with the proper type: PASS
+	PerformanceObserver interface: observer must inherit property "supportedEntryTypes" with the proper type: PASS
+	PerformanceObserver interface: observer must inherit property "takeRecords()" with the proper type: PASS
+	PerformanceObserver interface: operation disconnect(): PASS
+	PerformanceObserver interface: operation observe(optional PerformanceObserverInit): PASS
+	PerformanceObserver interface: operation takeRecords(): PASS
+	PerformanceObserver must be primary interface of observer: PASS
+	PerformanceObserverEntryList interface object length: PASS
+	PerformanceObserverEntryList interface object name: PASS
+	PerformanceObserverEntryList interface: calling getEntriesByName(DOMString, optional DOMString) on entryList with too few arguments must throw TypeError: PASS
+	PerformanceObserverEntryList interface: calling getEntriesByType(DOMString) on entryList with too few arguments must throw TypeError: PASS
+	PerformanceObserverEntryList interface: entryList must inherit property "getEntries()" with the proper type: PASS
+	PerformanceObserverEntryList interface: entryList must inherit property "getEntriesByName(DOMString, optional DOMString)" with the proper type: PASS
+	PerformanceObserverEntryList interface: entryList must inherit property "getEntriesByType(DOMString)" with the proper type: PASS
+	PerformanceObserverEntryList interface: existence and properties of interface object: PASS
+	PerformanceObserverEntryList interface: existence and properties of interface prototype object: PASS
+	PerformanceObserverEntryList interface: existence and properties of interface prototype object's "constructor" property: PASS
+	PerformanceObserverEntryList interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	PerformanceObserverEntryList interface: operation getEntries(): PASS
+	PerformanceObserverEntryList interface: operation getEntriesByName(DOMString, optional DOMString): PASS
+	PerformanceObserverEntryList interface: operation getEntriesByType(DOMString): PASS
+	PerformanceObserverEntryList must be primary interface of entryList: PASS
+	Stringification of entryList: PASS
+	Stringification of observer: PASS
+	idl_test setup: PASS
+	idl_test validation: PASS
+/performance-timeline/idlharness.any.worker.html: OK
+	Partial interface Performance: member names are unique: PASS
+	Partial interface Performance: original interface defined: PASS
+	Performance interface: calling getEntriesByName(DOMString, optional DOMString) on performance with too few arguments must throw TypeError: PASS
+	Performance interface: calling getEntriesByType(DOMString) on performance with too few arguments must throw TypeError: PASS
+	Performance interface: operation getEntries(): PASS
+	Performance interface: operation getEntriesByName(DOMString, optional DOMString): PASS
+	Performance interface: operation getEntriesByType(DOMString): PASS
+	Performance interface: performance must inherit property "getEntries()" with the proper type: PASS
+	Performance interface: performance must inherit property "getEntriesByName(DOMString, optional DOMString)" with the proper type: PASS
+	Performance interface: performance must inherit property "getEntriesByType(DOMString)" with the proper type: PASS
+	PerformanceEntry interface object length: PASS
+	PerformanceEntry interface object name: PASS
+	PerformanceEntry interface: attribute duration: PASS
+	PerformanceEntry interface: attribute entryType: PASS
+	PerformanceEntry interface: attribute id: PASS
+	PerformanceEntry interface: attribute name: PASS
+	PerformanceEntry interface: attribute navigationId: PASS
+	PerformanceEntry interface: attribute startTime: PASS
+	PerformanceEntry interface: existence and properties of interface object: PASS
+	PerformanceEntry interface: existence and properties of interface prototype object: PASS
+	PerformanceEntry interface: existence and properties of interface prototype object's "constructor" property: PASS
+	PerformanceEntry interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	PerformanceEntry interface: operation toJSON(): PASS
+	PerformanceObserver interface object length: PASS
+	PerformanceObserver interface object name: PASS
+	PerformanceObserver interface: attribute supportedEntryTypes: PASS
+	PerformanceObserver interface: calling observe(optional PerformanceObserverInit) on observer with too few arguments must throw TypeError: PASS
+	PerformanceObserver interface: existence and properties of interface object: PASS
+	PerformanceObserver interface: existence and properties of interface prototype object: PASS
+	PerformanceObserver interface: existence and properties of interface prototype object's "constructor" property: PASS
+	PerformanceObserver interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	PerformanceObserver interface: observer must inherit property "disconnect()" with the proper type: PASS
+	PerformanceObserver interface: observer must inherit property "observe(optional PerformanceObserverInit)" with the proper type: PASS
+	PerformanceObserver interface: observer must inherit property "supportedEntryTypes" with the proper type: PASS
+	PerformanceObserver interface: observer must inherit property "takeRecords()" with the proper type: PASS
+	PerformanceObserver interface: operation disconnect(): PASS
+	PerformanceObserver interface: operation observe(optional PerformanceObserverInit): PASS
+	PerformanceObserver interface: operation takeRecords(): PASS
+	PerformanceObserver must be primary interface of observer: PASS
+	PerformanceObserverEntryList interface object length: PASS
+	PerformanceObserverEntryList interface object name: PASS
+	PerformanceObserverEntryList interface: calling getEntriesByName(DOMString, optional DOMString) on entryList with too few arguments must throw TypeError: PASS
+	PerformanceObserverEntryList interface: calling getEntriesByType(DOMString) on entryList with too few arguments must throw TypeError: PASS
+	PerformanceObserverEntryList interface: entryList must inherit property "getEntries()" with the proper type: PASS
+	PerformanceObserverEntryList interface: entryList must inherit property "getEntriesByName(DOMString, optional DOMString)" with the proper type: PASS
+	PerformanceObserverEntryList interface: entryList must inherit property "getEntriesByType(DOMString)" with the proper type: PASS
+	PerformanceObserverEntryList interface: existence and properties of interface object: PASS
+	PerformanceObserverEntryList interface: existence and properties of interface prototype object: PASS
+	PerformanceObserverEntryList interface: existence and properties of interface prototype object's "constructor" property: PASS
+	PerformanceObserverEntryList interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	PerformanceObserverEntryList interface: operation getEntries(): PASS
+	PerformanceObserverEntryList interface: operation getEntriesByName(DOMString, optional DOMString): PASS
+	PerformanceObserverEntryList interface: operation getEntriesByType(DOMString): PASS
+	PerformanceObserverEntryList must be primary interface of entryList: PASS
+	Stringification of entryList: PASS
+	Stringification of observer: PASS
+	idl_test setup: PASS
+	idl_test validation: PASS
+/performance-timeline/multiple-buffered-flag-observers.any.html: OK
+	Multiple PerformanceObservers with buffered flag see all entries: PASS
+/performance-timeline/multiple-buffered-flag-observers.any.worker.html: OK
+	Multiple PerformanceObservers with buffered flag see all entries: PASS
+/performance-timeline/navigation-id-detached-frame.tentative.html: TIMEOUT
+	The navigation_id getter does not crash a window of detached frame: TIMEOUT
+/performance-timeline/navigation-id-element-timing.tentative.html: ERROR
+/performance-timeline/navigation-id-initial-load.tentative.html: TIMEOUT
+	Navigation Ids should exist and are all the same as the initial navigation.: TIMEOUT
+/performance-timeline/navigation-id-long-task-task-attribution.tentative.html: ERROR
+/performance-timeline/navigation-id-mark-measure.tentative.html: ERROR
+/performance-timeline/navigation-id-reset.tentative.html: OK
+	Navigation Id should be re-generated after reload.: FAIL
+/performance-timeline/navigation-id-resource-timing.tentative.html: ERROR
+/performance-timeline/navigation-id-worker-created-entries.html: OK
+	Navigation id of performance entries created by workers should be 0.: PASS
+/performance-timeline/not-clonable.html: OK
+	Test that a postMessage of a performance entry fails: PASS
+/performance-timeline/not-restored-reasons/abort-block-bfcache.window.html: OK
+	aborting a parser should block bfcache.: FAIL
+/performance-timeline/not-restored-reasons/performance-navigation-timing-attributes.tentative.window.html: OK
+	RemoteContextHelper navigation using BFCache: FAIL
+/performance-timeline/not-restored-reasons/performance-navigation-timing-bfcache-reasons-stay.tentative.window.html: OK
+	RemoteContextHelper navigation using BFCache: FAIL
+/performance-timeline/not-restored-reasons/performance-navigation-timing-bfcache.tentative.window.html: OK
+	RemoteContextHelper navigation using BFCache: FAIL
+/performance-timeline/not-restored-reasons/performance-navigation-timing-cross-origin-bfcache.tentative.window.html: OK
+	RemoteContextHelper navigation using BFCache: FAIL
+/performance-timeline/not-restored-reasons/performance-navigation-timing-fetch.tentative.window.html: OK
+	Ensure that ongoing fetch upon entering bfcache blocks bfcache and recorded.: FAIL
+/performance-timeline/not-restored-reasons/performance-navigation-timing-iframes-without-attributes.tentative.window.html: OK
+	RemoteContextHelper navigation using BFCache: FAIL
+/performance-timeline/not-restored-reasons/performance-navigation-timing-navigation-failure.tentative.window.html: OK
+	Ensure that navigation failure blocks bfcache and gets recorded.: FAIL
+/performance-timeline/not-restored-reasons/performance-navigation-timing-not-bfcached.tentative.window.html: OK
+	RemoteContextHelper navigation using BFCache: FAIL
+/performance-timeline/not-restored-reasons/performance-navigation-timing-redirect-on-history.tentative.window.html: OK
+	RemoteContextHelper navigation using BFCache: FAIL
+/performance-timeline/not-restored-reasons/performance-navigation-timing-reload.tentative.window.html: OK
+	RemoteContextHelper navigation using BFCache: FAIL
+/performance-timeline/not-restored-reasons/performance-navigation-timing-same-origin-bfcache.tentative.window.html: OK
+	RemoteContextHelper navigation using BFCache: FAIL
+/performance-timeline/not-restored-reasons/performance-navigation-timing-same-origin-replace.tentative.window.html: OK
+	RemoteContextHelper navigation using BFCache: FAIL
+/performance-timeline/observer-buffered-false.any.html: OK
+	PerformanceObserver without buffered flag set to false cannot see past entries.: PASS
+/performance-timeline/observer-buffered-false.any.worker.html: OK
+	PerformanceObserver without buffered flag set to false cannot see past entries.: PASS
+/performance-timeline/performanceentry-tojson.any.html: OK
+	Test toJSON() in PerformanceEntry: PASS
+/performance-timeline/performanceentry-tojson.any.worker.html: OK
+	Test toJSON() in PerformanceEntry: PASS
+/performance-timeline/po-callback-mutate.any.html: OK
+	PerformanceObserver modifications inside callback should update filtering and not clear buffer: PASS
+/performance-timeline/po-callback-mutate.any.worker.html: OK
+	PerformanceObserver modifications inside callback should update filtering and not clear buffer: PASS
+/performance-timeline/po-disconnect-removes-observed-types.any.html: OK
+	Types observed are forgotten when disconnect() is called.: PASS
+/performance-timeline/po-disconnect-removes-observed-types.any.worker.html: OK
+	Types observed are forgotten when disconnect() is called.: PASS
+/performance-timeline/po-disconnect.any.html: OK
+	An observer disconnected after a mark must not have its callback invoked: PASS
+	disconnected callbacks must not be invoked: PASS
+	disconnecting an unconnected observer is a no-op: PASS
+/performance-timeline/po-disconnect.any.worker.html: OK
+	An observer disconnected after a mark must not have its callback invoked: PASS
+	disconnected callbacks must not be invoked: PASS
+	disconnecting an unconnected observer is a no-op: PASS
+/performance-timeline/po-entries-sort.any.html: OK
+	getEntries, getEntriesByType, getEntriesByName sort order: PASS
+/performance-timeline/po-entries-sort.any.worker.html: OK
+	getEntries, getEntriesByType, getEntriesByName sort order: PASS
+/performance-timeline/po-getentries.any.html: OK
+	getEntries, getEntriesByType and getEntriesByName work: PASS
+/performance-timeline/po-getentries.any.worker.html: OK
+	getEntries, getEntriesByType and getEntriesByName work: PASS
+/performance-timeline/po-mark-measure.any.html: OK
+	entries are observable: PASS
+	mark entries are observable: PASS
+	measure entries are observable: PASS
+/performance-timeline/po-mark-measure.any.worker.html: OK
+	entries are observable: PASS
+	mark entries are observable: PASS
+	measure entries are observable: PASS
+/performance-timeline/po-observe-repeated-type.any.html: OK
+	Two calls of observe() with the same 'type' cause override.: PASS
+/performance-timeline/po-observe-repeated-type.any.worker.html: OK
+	Two calls of observe() with the same 'type' cause override.: PASS
+/performance-timeline/po-observe-type.any.html: OK
+	Calling observe() with entryTypes and then type should throw an InvalidModificationError: PASS
+	Calling observe() with type and entryTypes should throw a TypeError: PASS
+	Calling observe() with type and then entryTypes should throw an InvalidModificationError: PASS
+	Calling observe() without 'type' or 'entryTypes' throws a TypeError: PASS
+	Passing in unknown values to type does throw an exception.: PASS
+	observe() with different type values stacks.: PASS
+/performance-timeline/po-observe-type.any.worker.html: OK
+	Calling observe() with entryTypes and then type should throw an InvalidModificationError: PASS
+	Calling observe() with type and entryTypes should throw a TypeError: PASS
+	Calling observe() with type and then entryTypes should throw an InvalidModificationError: PASS
+	Calling observe() without 'type' or 'entryTypes' throws a TypeError: PASS
+	Passing in unknown values to type does throw an exception.: PASS
+	observe() with different type values stacks.: PASS
+/performance-timeline/po-observe.any.html: OK
+	Check observer callback parameter and this values: PASS
+	Empty sequence entryTypes does not throw an exception.: PASS
+	Filter unsupported entryType entryType names within the entryTypes sequence: PASS
+	Unknown entryTypes do not throw an exception.: PASS
+	entryTypes must be a sequence or throw a TypeError: PASS
+	replace observer if already present: PASS
+/performance-timeline/po-observe.any.worker.html: OK
+	Check observer callback parameter and this values: PASS
+	Empty sequence entryTypes does not throw an exception.: PASS
+	Filter unsupported entryType entryType names within the entryTypes sequence: PASS
+	Unknown entryTypes do not throw an exception.: PASS
+	entryTypes must be a sequence or throw a TypeError: PASS
+	replace observer if already present: PASS
+/performance-timeline/po-observe.html: TIMEOUT
+	PerformanceObserverInit.buffered should retrieve previously buffered entries: TIMEOUT
+/performance-timeline/po-resource.html: TIMEOUT
+	resource entries are observable: TIMEOUT
+/performance-timeline/po-takeRecords.any.html: OK
+	Test PerformanceObserver's takeRecords(): PASS
+/performance-timeline/po-takeRecords.any.worker.html: OK
+	Test PerformanceObserver's takeRecords(): PASS
+/performance-timeline/supportedEntryTypes-cross-realm-access.html: OK
+	Cross-realm access of supportedEntryTypes returns Array of another realm: PASS
+/performance-timeline/supportedEntryTypes.any.html: OK
+	supportedEntryTypes caches result: PASS
+	supportedEntryTypes exists and returns entries in alphabetical order: PASS
+/performance-timeline/supportedEntryTypes.any.worker.html: OK
+	supportedEntryTypes caches result: PASS
+	supportedEntryTypes exists and returns entries in alphabetical order: PASS
+/performance-timeline/timing-removed-iframe.html: OK
+	Test that a removed iframe which timing is accessed does not crash the renderer.: FAIL
+/performance-timeline/webtiming-resolution.any.html: OK
+	Verifies the resolution of entry.startTime is at least 5 microseconds.: PASS
+	Verifies the resolution of performance.now() is at least 5 microseconds.: FAIL
+/performance-timeline/webtiming-resolution.any.worker.html: OK
+	Verifies the resolution of entry.startTime is at least 5 microseconds.: PASS
+	Verifies the resolution of performance.now() is at least 5 microseconds.: FAIL
+/performance-timeline/worker-with-performance-observer.html: OK
+	Worker: Test Performance Observer inside a worker.: PASS

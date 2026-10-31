@@ -21,6 +21,7 @@ import "wb:dom"
 import "wb:fetch"
 import "wb:host"
 import "wb:html"
+import "wb:http"
 import "wb:js"
 import "wb:net"
 import "wb:page"
@@ -195,6 +196,7 @@ main :: proc() {
 	test_javascript_urls()
 	test_csp()
 	test_noscript()
+	test_threads()
 	test_timers()
 	test_errors()
 	test_workers()
@@ -493,8 +495,122 @@ log("wasm done");
 	page.page_close(p)
 }
 
-test_noscript :: proc() {
-	fmt.println("-- <noscript>")
+// A module with a shared memory, in workers: wait(address, value) (no timeout), notify(address, count), add(address, value).
+THREAD_MODULE :: `const threadBytes = new Uint8Array([0,97,115,109,1,0,0,0,
+  1,7,1,0x60,2,0x7f,0x7f,1,0x7f,
+  2,9,1,1,101,1,109,2,3,1,1,
+  3,4,3,0,0,0,
+  7,13,3,1,119,0,0,1,110,0,1,1,97,0,2,
+  10,36,3,
+  12,0,0x20,0,0x20,1,0x42,0x7f,0xfe,1,2,0,0x0b,
+  10,0,0x20,0,0x20,1,0xfe,0,2,0,0x0b,
+  10,0,0x20,0,0x20,1,0xfe,0x1e,2,0,0x0b]);`
+
+test_threads :: proc() {
+	fmt.println("-- threads: SharedArrayBuffer, shared memories and modules between agents")
+	// without the headers: nothing is shared
+	p := load(strings.concatenate({`<!doctype html><body>`, PRELUDE, `<script>` + THREAD_MODULE + `
+log("isolated " + crossOriginIsolated);
+log("global " + typeof SharedArrayBuffer);
+const m = new WebAssembly.Memory({initial: 1, maximum: 1, shared: true});
+log("buffer " + Object.prototype.toString.call(m.buffer));
+try { structuredClone(m.buffer); log("sent"); } catch (e) { log("buffer " + e.name); }
+try { structuredClone(m); log("sent"); } catch (e) { log("memory " + e.name); }
+log("module " + (structuredClone(new WebAssembly.Module(threadBytes)) instanceof WebAssembly.Module));
+log("plain done");
+</script></body>`}, context.temp_allocator))
+	wait_for("plain done")
+	check(logged("isolated false"), "a page without the headers is not cross-origin isolated")
+	check(logged("global undefined"), "and has no global SharedArrayBuffer")
+	check(logged("buffer [object SharedArrayBuffer]"), "a shared memory's buffer is one")
+	check(logged("buffer DataCloneError") && logged("memory DataCloneError"), "which it cannot send")
+	check(logged("module true"), "a module can be sent, isolated or not")
+	page.page_close(p)
+
+	// with them: a script and a module in another thread, on the same bytes
+	headers := http.headers_make(context.temp_allocator)
+	http.append_header(&headers, "cross-origin-opener-policy", "same-origin")
+	http.append_header(&headers, "cross-origin-embedder-policy", "require-corp")
+	logs_clear()
+	p = page.page_create(&loop, &loader, &settings, process, testenv.url(BASE), console)
+	page.apply_isolation_headers(p, headers)
+	page.load_html(p, transmute([]byte)strings.concatenate({`<!doctype html><body>`, PRELUDE, `<script>` + THREAD_MODULE + `
+log("isolated " + crossOriginIsolated);
+const WORKER = URL.createObjectURL(new Blob([` + "`" + `
+onmessage = e => {
+  const d = e.data;
+  if (d.sab) {
+    const a = new Int32Array(d.sab);
+    a[1] = 42;                               // a plain write, then what orders it
+    Atomics.add(a, 0, 5);
+    Atomics.notify(a, 0);
+    postMessage("sab isolated " + crossOriginIsolated + " " + Atomics.wait(a, 2, 0, 10000));
+    return;
+  }
+  const i = new WebAssembly.Instance(d.module, {e: {m: d.memory}});
+  if (d.spin) {
+    postMessage("waiting forever");
+    i.exports.w(8, 0);                       // nothing wakes this one but terminate
+    postMessage("woke");
+    return;
+  }
+  postMessage("module woken " + i.exports.w(0, 0) + " value " + new Int32Array(d.memory.buffer)[0]);
+  i.exports.a(4, 7);
+  postMessage("module notified " + i.exports.n(4, 1));
+  postMessage("wait in js " + Atomics.wait(new Int32Array(d.memory.buffer), 3, 0, 20));
+};` + "`" + `]));
+try { Atomics.wait(new Int32Array(new SharedArrayBuffer(8)), 0, 0, 1); log("page waited"); } catch (e) { log("page wait " + e.name); }
+
+const sab = new SharedArrayBuffer(16);
+const a = new Int32Array(sab);
+const w1 = new Worker(WORKER);
+w1.onmessage = e => log(e.data);
+w1.postMessage({sab});
+(function look() {
+  if (Atomics.load(a, 0) !== 5) { setTimeout(look, 1); return; }
+  log("sab seen " + a[0] + " " + a[1]);
+  a[2] = 9;
+  Atomics.notify(a, 2);
+})();
+
+const module = new WebAssembly.Module(threadBytes);
+const memory = new WebAssembly.Memory({initial: 1, maximum: 1, shared: true});
+const heap = new Int32Array(memory.buffer);
+const w2 = new Worker(WORKER);
+w2.onmessage = e => log(e.data);
+w2.postMessage({module, memory});
+setTimeout(function wake() {
+  Atomics.store(heap, 0, 11);
+  if (Atomics.notify(heap, 0) === 0) { Atomics.store(heap, 0, 0); setTimeout(wake, 1); return; }
+  log("page woke a module");
+  (function added() { if (Atomics.load(heap, 1) === 7) log("page saw the module's add"); else setTimeout(added, 1); })();
+}, 1);
+
+const w3 = new Worker(WORKER);
+w3.onmessage = e => {
+  log(e.data);
+  if (e.data === "waiting forever") setTimeout(() => { w3.terminate(); log("terminated"); }, 100);
+};
+w3.postMessage({module, memory, spin: true});
+</script></body>`}, context.temp_allocator))
+	page.scripts_start(p)
+	wait_for("page saw the module's add")
+	wait_for("wait in js timed-out")
+	wait_for("sab isolated true")
+	wait_for("terminated")
+	check(logged("isolated true"), "COOP same-origin with COEP require-corp: cross-origin isolated")
+	check(logged("page wait TypeError"), "a window may not block")
+	check(logged("sab seen 5 42"), "a worker's writes reach the page's SharedArrayBuffer")
+	check(logged("sab isolated true not-equal") || logged("sab isolated true ok"), "the page's write reaches the worker, and it is isolated too")
+	check(logged("page woke a module"), "Atomics.notify wakes memory.atomic.wait of a module in another thread")
+	check(logged("module woken 0 value 11"), "which sees what the page stored")
+	check(logged("page saw the module's add"), "and the page sees what it adds")
+	check(logged("wait in js timed-out"), "Atomics.wait times out on a shared memory")
+	check(logged("waiting forever") && !logged("woke"), "a module's wait without timeout blocks")
+	page.page_close(p)   // (a worker terminated while it waited: its thread must end, or this never returns)
+}
+
+test_noscript :: proc() {	fmt.println("-- <noscript>")
 	src := strings.concatenate({`<!doctype html><head><noscript><link rel=stylesheet href="/nope.css"></noscript></head><body>`, PRELUDE,
 		`<noscript><p id=ns>no script</p></noscript><script>
 log("noscript content is text " + (document.getElementById("ns") === null));

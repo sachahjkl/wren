@@ -1,6 +1,6 @@
 # web-platform-tests expectations of Wren for html/semantics/embedded-content/media-elements, written by tools\wpt.ps1 -Update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
-/html/semantics/embedded-content/media-elements/audio_loop_base.html: ERROR
+/html/semantics/embedded-content/media-elements/audio_loop_base.html: OK|ERROR
 	Check if audio.loop is set to true that expecting the seeking event is fired more than once: FAIL
 /html/semantics/embedded-content/media-elements/audio_loop_seek_to_eos.html: OK
 	seeking to the end of looping audio: FAIL
@@ -55,7 +55,7 @@
 	fetch resource: FAIL
 	play() promise after error event while HAVE_NOTHING: FAIL
 	play() promise while HAVE_NOTHING: FAIL
-	urlRecord failure: PASS
+	urlRecord failure: FAIL
 /html/semantics/embedded-content/media-elements/event_canplay.html: OK
 	audio events - canplay: PASS
 	setting src attribute on autoplay audio should trigger canplay event: FAIL
@@ -200,7 +200,7 @@
 	setting video.volume/muted to the same value does not fire volumechange: PASS
 /html/semantics/embedded-content/media-elements/historical.html: OK
 	MediaController constructor should not be supported: PASS
-	TextTrackCue constructor should not be supported: FAIL
+	TextTrackCue constructor should not be supported: PASS
 	audio.addCuePoint should not be supported: PASS
 	audio.addCueRange should not be supported: PASS
 	audio.autobuffer should not be supported: PASS
@@ -255,15 +255,15 @@
 	video.webkitPreservesPitch should not be supported: PASS
 /html/semantics/embedded-content/media-elements/interfaces/HTMLElement/HTMLMediaElement/addTextTrack.html: OK
 	HTMLMediaElement.addTextTrack bogus first arg: PASS
-	HTMLMediaElement.addTextTrack captions first arg: FAIL
-	HTMLMediaElement.addTextTrack chapters first arg: FAIL
-	HTMLMediaElement.addTextTrack descriptions first arg: FAIL
-	HTMLMediaElement.addTextTrack foo and bar second and third arg: FAIL
-	HTMLMediaElement.addTextTrack foo second arg, third arg omitted: FAIL
-	HTMLMediaElement.addTextTrack metadata first arg: FAIL
-	HTMLMediaElement.addTextTrack null second and third arg: FAIL
-	HTMLMediaElement.addTextTrack subtitles first arg: FAIL
-	HTMLMediaElement.addTextTrack undefined second and third arg: FAIL
+	HTMLMediaElement.addTextTrack captions first arg: PASS
+	HTMLMediaElement.addTextTrack chapters first arg: PASS
+	HTMLMediaElement.addTextTrack descriptions first arg: PASS
+	HTMLMediaElement.addTextTrack foo and bar second and third arg: PASS
+	HTMLMediaElement.addTextTrack foo second arg, third arg omitted: PASS
+	HTMLMediaElement.addTextTrack metadata first arg: PASS
+	HTMLMediaElement.addTextTrack null second and third arg: PASS
+	HTMLMediaElement.addTextTrack subtitles first arg: PASS
+	HTMLMediaElement.addTextTrack undefined second and third arg: PASS
 	HTMLMediaElement.addTextTrack uppercase first arg: PASS
 /html/semantics/embedded-content/media-elements/interfaces/HTMLElement/HTMLMediaElement/crossOrigin.html: OK
 	HTMLMediaElement.crossOrigin: PASS
@@ -278,7 +278,7 @@
 	HTMLMediaElement.crossOrigin, setting to uppercase ANONYMOUS: PASS
 	HTMLMediaElement.crossOrigin, setting to use-credentials: PASS
 /html/semantics/embedded-content/media-elements/interfaces/HTMLElement/HTMLMediaElement/textTracks.html: OK
-	HTMLMediaElement.textTracks: FAIL
+	HTMLMediaElement.textTracks: PASS
 /html/semantics/embedded-content/media-elements/interfaces/HTMLElement/HTMLTrackElement/default.html: OK
 	HTMLTrackElement.default empty string IDL attribute: PASS
 	HTMLTrackElement.default empty string content attribute: PASS
@@ -321,7 +321,7 @@
 	HTMLTrackElement.label whitespace in content attribute: PASS
 	HTMLTrackElement.label\\u0000 in content attribute: PASS
 /html/semantics/embedded-content/media-elements/interfaces/HTMLElement/HTMLTrackElement/readyState.html: OK
-	HTMLTrackElement.readyState default value: FAIL
+	HTMLTrackElement.readyState default value: PASS
 	HTMLTrackElement.readyState values: PASS
 /html/semantics/embedded-content/media-elements/interfaces/HTMLElement/HTMLTrackElement/src.html: OK
 	HTMLTrackElement.src \\u0000 in content attribute: PASS
@@ -349,60 +349,95 @@
 	HTMLTrackElement.srclang whitespace in content attribute: PASS
 /html/semantics/embedded-content/media-elements/interfaces/HTMLElement/HTMLTrackElement/track.html: OK
 	HTMLTrackElement.track: FAIL
-/html/semantics/embedded-content/media-elements/interfaces/TextTrack/activeCues.html: ERROR
+/html/semantics/embedded-content/media-elements/interfaces/TextTrack/activeCues.html: OK
+	TextTrack.activeCues, adding cue during playback: FAIL
+	TextTrack.activeCues, after addCue(): PASS
+	TextTrack.activeCues, different modes: PASS
+	TextTrack.activeCues, empty list: PASS
+	TextTrack.activeCues, video loading: FAIL
+	TextTrack.activeCues, video playing: FAIL
 /html/semantics/embedded-content/media-elements/interfaces/TextTrack/addCue.html: OK
 	TextTrack.addCue(), adding a cue associated with a track element to other track: FAIL
-	TextTrack.addCue(), adding a cue to a track twice: FAIL
-	TextTrack.addCue(), adding a cue to two different tracks: FAIL
-	TextTrack.addCue(), adding a removed cue to a different track: FAIL
-	TextTrack.addCue(), adding an associated but removed cue to the same track: FAIL
-/html/semantics/embedded-content/media-elements/interfaces/TextTrack/constants.html: ERROR
+	TextTrack.addCue(), adding a cue to a track twice: PASS
+	TextTrack.addCue(), adding a cue to two different tracks: PASS
+	TextTrack.addCue(), adding a removed cue to a different track: PASS
+	TextTrack.addCue(), adding an associated but removed cue to the same track: PASS
+/html/semantics/embedded-content/media-elements/interfaces/TextTrack/constants.html: OK
+	TextTrack constants: PASS
 /html/semantics/embedded-content/media-elements/interfaces/TextTrack/cues.html: OK
-	TextTrack.cues, after addCue(): FAIL
+	TextTrack.cues, after addCue(): PASS
 	TextTrack.cues, changing order: FAIL
 	TextTrack.cues, default attribute: FAIL
-	TextTrack.cues, different modes: FAIL
-	TextTrack.cues, empty list: FAIL
+	TextTrack.cues, different modes: PASS
+	TextTrack.cues, empty list: PASS
 /html/semantics/embedded-content/media-elements/interfaces/TextTrack/kind.html: OK
 	TextTrack.kind, \\u0000: FAIL
-	TextTrack.kind, addTextTrack: FAIL
+	TextTrack.kind, addTextTrack: PASS
 	TextTrack.kind, track element: FAIL
-/html/semantics/embedded-content/media-elements/interfaces/TextTrack/label.html: ERROR
-/html/semantics/embedded-content/media-elements/interfaces/TextTrack/language.html: ERROR
+/html/semantics/embedded-content/media-elements/interfaces/TextTrack/label.html: OK
+	TextTrack.label: FAIL
+	TextTrack.label, \\u0000: FAIL
+/html/semantics/embedded-content/media-elements/interfaces/TextTrack/language.html: OK
+	TextTrack.language: FAIL
+	TextTrack.language, \\u0000: FAIL
 /html/semantics/embedded-content/media-elements/interfaces/TextTrack/mode.html: OK
 	TextTrack.mode, correct value: FAIL
 	TextTrack.mode, wrong value: FAIL
-/html/semantics/embedded-content/media-elements/interfaces/TextTrack/oncuechange.html: ERROR
+/html/semantics/embedded-content/media-elements/interfaces/TextTrack/oncuechange.html: OK
+	TextTrack.addEventListener/removeEventListener: PASS
+	TextTrack.oncuechange: PASS
 /html/semantics/embedded-content/media-elements/interfaces/TextTrack/removeCue.html: OK
 	TextTrack.removeCue(), cue from track element: FAIL
-	TextTrack.removeCue(), two elementless tracks: FAIL
+	TextTrack.removeCue(), two elementless tracks: PASS
 /html/semantics/embedded-content/media-elements/interfaces/TextTrackCue/constructor.html: OK
-	TextTrackCue and VTTCue are separate interfaces: FAIL
-	TextTrackCue constructor should not be supported: FAIL
-/html/semantics/embedded-content/media-elements/interfaces/TextTrackCue/endTime.html: ERROR
-/html/semantics/embedded-content/media-elements/interfaces/TextTrackCue/id.html: ERROR
-/html/semantics/embedded-content/media-elements/interfaces/TextTrackCue/onenter.html: ERROR
-/html/semantics/embedded-content/media-elements/interfaces/TextTrackCue/onexit.html: ERROR
-/html/semantics/embedded-content/media-elements/interfaces/TextTrackCue/pauseOnExit.html: ERROR
-/html/semantics/embedded-content/media-elements/interfaces/TextTrackCue/startTime.html: ERROR
-/html/semantics/embedded-content/media-elements/interfaces/TextTrackCue/track.html: ERROR
+	TextTrackCue and VTTCue are separate interfaces: PASS
+	TextTrackCue constructor should not be supported: PASS
+/html/semantics/embedded-content/media-elements/interfaces/TextTrackCue/endTime.html: OK
+	TextTrackCue.endTime, parsed cue: FAIL
+	TextTrackCue.endTime, script-created cue: FAIL
+/html/semantics/embedded-content/media-elements/interfaces/TextTrackCue/id.html: OK
+	TextTrackCue.id, parsed cue: FAIL
+	TextTrackCue.id, script-created cue: PASS
+/html/semantics/embedded-content/media-elements/interfaces/TextTrackCue/onenter.html: OK
+	TextTrackCue.addEventListener/removeEventListener: PASS
+	TextTrackCue.onenter: PASS
+/html/semantics/embedded-content/media-elements/interfaces/TextTrackCue/onexit.html: OK
+	TextTrackCue.addEventListener/removeEventListener: PASS
+	TextTrackCue.onexit: PASS
+/html/semantics/embedded-content/media-elements/interfaces/TextTrackCue/pauseOnExit.html: OK
+	TextTrackCue.pauseOnExit, parsed cue: FAIL
+	TextTrackCue.pauseOnExit, script-created cue: PASS
+/html/semantics/embedded-content/media-elements/interfaces/TextTrackCue/startTime.html: OK
+	TextTrackCue.startTime, parsed cue: FAIL
+	TextTrackCue.startTime, script-created cue: FAIL
+/html/semantics/embedded-content/media-elements/interfaces/TextTrackCue/track.html: OK
+	TextTrackCue.track, parsed cue: FAIL
+	TextTrackCue.track, script-created cue: PASS
 /html/semantics/embedded-content/media-elements/interfaces/TextTrackCueList/getCueById.html: OK
-	TextTrackCueList.getCueById, id a\\u0000b: FAIL
-	TextTrackCueList.getCueById, id foo: FAIL
-	TextTrackCueList.getCueById, no 1: FAIL
-	TextTrackCueList.getCueById, no id: FAIL
-/html/semantics/embedded-content/media-elements/interfaces/TextTrackCueList/getter.html: ERROR
-/html/semantics/embedded-content/media-elements/interfaces/TextTrackCueList/length.html: ERROR
+	TextTrackCueList.getCueById, id a\\u0000b: PASS
+	TextTrackCueList.getCueById, id foo: PASS
+	TextTrackCueList.getCueById, no 1: PASS
+	TextTrackCueList.getCueById, no id: PASS
+/html/semantics/embedded-content/media-elements/interfaces/TextTrackCueList/getter.html: OK
+	TextTrackCueList getter: PASS
+	TextTrackCueList getter, no indexed set/create: PASS
+	TextTrackCueList getter, no indexed set/create (strict): PASS
+/html/semantics/embedded-content/media-elements/interfaces/TextTrackCueList/length.html: OK
+	TextTrackCueList.length: PASS
 /html/semantics/embedded-content/media-elements/interfaces/TextTrackList/getTrackById.html: OK
-	TextTrackList.getTrackById: FAIL
-/html/semantics/embedded-content/media-elements/interfaces/TextTrackList/getter.html: ERROR
-/html/semantics/embedded-content/media-elements/interfaces/TextTrackList/length.html: ERROR
+	TextTrackList.getTrackById: PASS
+/html/semantics/embedded-content/media-elements/interfaces/TextTrackList/getter.html: OK
+	TextTrackList getter: FAIL
+	TextTrackList getter, no indexed set/create: PASS
+	TextTrackList getter, no indexed set/create (strict): PASS
+/html/semantics/embedded-content/media-elements/interfaces/TextTrackList/length.html: OK
+	TextTrackList.length: PASS
 /html/semantics/embedded-content/media-elements/interfaces/TextTrackList/onaddtrack.html: OK
-	TextTrackList.addEventListener/removeEventListener: FAIL
-	TextTrackList.onaddtrack: FAIL
+	TextTrackList.addEventListener/removeEventListener: PASS
+	TextTrackList.onaddtrack: PASS
 /html/semantics/embedded-content/media-elements/interfaces/TextTrackList/onremovetrack.html: OK
-	TextTrackList.addEventListener/removeEventListener: FAIL
-	TextTrackList.onremovetrack: FAIL
+	TextTrackList.addEventListener/removeEventListener: PASS
+	TextTrackList.onremovetrack: PASS
 /html/semantics/embedded-content/media-elements/interfaces/TrackEvent/constructor.html: OK
 	TrackEvent constructor, one arg: FAIL
 	TrackEvent constructor, two args: FAIL
@@ -748,7 +783,7 @@
 	video/webm; codecs="vorbis" (optional): PRECONDITION_FAILED
 	video/webm; codecs="vp8" (optional): PRECONDITION_FAILED
 	video/webm; codecs="vp8.0" (optional): PRECONDITION_FAILED
-	video/webm; codecs="vp9" (optional): PRECONDITION_FAILED
+	video/webm; codecs="vp9" (optional): PASS
 	video/webm; codecs="vp9.0" (optional): PRECONDITION_FAILED
 /html/semantics/embedded-content/media-elements/networkState_during_loadstart.html: OK
 	audioElement.networkState should be NETWORK_LOADING during loadstart event: PASS
@@ -782,7 +817,7 @@
 	video events - paused property: PASS
 	video.paused should be true during pause event: PASS
 /html/semantics/embedded-content/media-elements/played-loop.html: OK
-	played TimeRanges should be preserved and not reset when video loops: PASS
+	played TimeRanges should be preserved and not reset when video loops: FAIL
 /html/semantics/embedded-content/media-elements/playing-the-media-resource/fragmented-mp4-end.html: TIMEOUT
 	fragmented-mp4-end: TIMEOUT
 /html/semantics/embedded-content/media-elements/playing-the-media-resource/loop-from-ended.tentative.html: OK
@@ -864,9 +899,9 @@
 	audio.readyState - default state: PASS
 	video.readyState - default state: PASS
 /html/semantics/embedded-content/media-elements/seeking/seek-to-currentTime.html: OK
-	seek to currentTime: FAIL
+	seek to currentTime: PASS
 /html/semantics/embedded-content/media-elements/seeking/seek-to-max-value.htm: OK
-	seek to Number.MAX_VALUE: FAIL
+	seek to Number.MAX_VALUE: PASS
 /html/semantics/embedded-content/media-elements/seeking/seek-to-negative-time.htm: OK
 	seek to negative time: PASS
 /html/semantics/embedded-content/media-elements/src_object_blob.html: OK

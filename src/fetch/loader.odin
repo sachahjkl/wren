@@ -73,6 +73,7 @@ Task :: struct {
 	redirect:        Redirect_Mode,
 	destination:     Destination,
 	referrer_policy: Referrer_Policy,
+	embedder_policy: Embedder_Policy,   // of who asked
 	no_referrer:     bool,
 	user_activation: bool,
 	initiator:       ^Environment,
@@ -163,6 +164,7 @@ start :: proc(l: ^Loader, d: Start_Desc) -> base.Handle {
 	if len(r.body) > 0 { t.body = make([]byte, len(r.body)); copy(t.body, r.body) }
 	cache_task_init(&t, r)
 	if r.initiator != nil { t.origin = url.origin_clone(r.initiator.origin) } else { t.origin = url.new_opaque_origin() }
+	if r.initiator != nil { t.embedder_policy = r.initiator.embedder_policy }
 
 	h, tp := base.pool_insert(&l.tasks, t)
 	tp.self = h
@@ -383,6 +385,8 @@ http_hop :: proc(t: ^Task) {
 		t.taint = same ? .Basic : .Cors
 	}
 	if t.mode == .No_Cors { restrict_no_cors_headers(t) }
+	// (COEP: credentialless: what such a request brings is public, which is why it needs no Cross-Origin-Resource-Policy)
+	if t.mode == .No_Cors && !same && t.embedder_policy == .Credentialless { t.credentials = .Omit }
 
 	// preflight when the request is not "simple"
 	if t.cors_flag {
@@ -794,6 +798,24 @@ on_response_headers :: proc(t: ^Task, ev: ^net.Event) {
 	check_and_send_response(t)
 }
 
+// Fetch's cross-origin resource policy check: why a response from `target` for `origin` cannot be used, "" when it can.
+resource_policy_refuses :: proc(origin: url.Origin, target: url.URL, policy: Embedder_Policy, headers: http.Headers) -> string {
+	other := url.origin_of(target, context.temp_allocator)
+	if url.same_origin(origin, other) { return "" }
+	value, _ := http.get_header(headers, "cross-origin-resource-policy")
+	value = strings.trim_space(value)
+	if policy == .Require_Corp && value != "same-site" && value != "cross-origin" && value != "same-origin" {
+		return "blocked by Cross-Origin-Embedder-Policy: the response has no Cross-Origin-Resource-Policy"
+	}
+	switch value {
+	case "same-origin": return "blocked by its Cross-Origin-Resource-Policy: same-origin"
+	case "same-site":
+		if !origin.opaque && !other.opaque && url.same_site(url.site_of(origin, context.temp_allocator), url.site_of(other, context.temp_allocator)) && (origin.scheme != "https" || other.scheme == "https") { return "" }
+		return "blocked by its Cross-Origin-Resource-Policy: same-site"
+	}
+	return ""
+}
+
 // What every response goes through, from the network or from the cache: the CORS check, redirects, the MIME rules of
 // the destination, then the filtered Response. True when the Response was delivered (its body is to follow); false
 // when the task failed or went on to a redirect.
@@ -805,6 +827,14 @@ check_and_send_response :: proc(t: ^Task) -> bool {
 	if t.cors_flag {
 		if ok, why := cors_check(t.origin, credentials_include(t), raw); !ok {
 			fail(t, .Blocked_Cors, fmt.tprintf("blocked by CORS policy: %s", why))
+			return false
+		}
+	}
+
+	// Fetch: the cross-origin resource policy check, for each response of a request without CORS
+	if t.mode == .No_Cors {
+		if why := resource_policy_refuses(t.origin, t.target, t.embedder_policy, raw); why != "" {
+			fail(t, .Blocked_Cors, why)
 			return false
 		}
 	}

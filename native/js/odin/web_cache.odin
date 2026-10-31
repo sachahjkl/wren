@@ -652,9 +652,8 @@ wjr_CacheStorage_match :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, 
 	return wj.web_promise_take(ctx, found)
 }
 
-// crossOriginIsolated: every realm runs in an engine instance of its own, so memory is never shared between agents
-// (a SharedArrayBuffer cannot go to another realm): never isolated
+// crossOriginIsolated: HTML's capability, from the document's headers (apply_isolation_headers in src/page/page.odin)
 @(export, link_name = "wjr_WindowOrWorkerGlobalScope_get_crossOriginIsolated")
 wjr_WindowOrWorkerGlobalScope_get_crossOriginIsolated :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
-	return wj.FALSE
+	return wj.wr_WebAssembly_crossOriginIsolated() != 0 ? wj.TRUE : wj.FALSE
 }

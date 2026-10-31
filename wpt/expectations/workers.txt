@@ -41,8 +41,8 @@
 	Test calling functions from WorkerContext.: PASS
 /workers/Worker-constructor-proto.any.worker.html: OK
 	Tests that setting the proto of a built in constructor is not reset.: FAIL
-/workers/Worker-creation-happens-in-parallel.https.html: TIMEOUT
-	Tests that creation of a "new Worker()" will occur in parallel: TIMEOUT
+/workers/Worker-creation-happens-in-parallel.https.html: OK
+	Tests that creation of a "new Worker()" will occur in parallel: FAIL
 /workers/Worker-custom-event.any.worker.html: OK
 	Test CustomEvents on workers.: PASS
 /workers/Worker-formdata.any.worker.html: OK
@@ -66,8 +66,8 @@
 	Test postMessage without sequence throws exception: PASS
 /workers/Worker-nested-importScripts-error.html: OK
 	Tests that errors from the import scripts come from the expected file.: FAIL
-/workers/Worker-postMessage-happens-in-parallel.https.html: TIMEOUT
-	Tests that calling "worker.postMessage()" will occur truly in parallel to the main JS thread: TIMEOUT
+/workers/Worker-postMessage-happens-in-parallel.https.html: OK
+	Tests that calling "worker.postMessage()" will occur truly in parallel to the main JS thread: PASS
 /workers/Worker-replace-event-handler.any.worker.html: OK
 	Tests that repeatedly setting 'onmessage' within a worker doesn't crash.: PASS
 /workers/Worker-replace-global-constructor.any.worker.html: OK
@@ -853,7 +853,7 @@
 	Static import (redirect).: PASS
 	Static import and then dynamic import.: PASS
 	Static import.: PASS
-	eval(import()).: FAIL
+	eval(import()).: PASS
 /workers/modules/dedicated-worker-import.any.worker.html: OK
 	Dynamic import and then static import.: PASS
 	Dynamic import.: PASS
@@ -863,7 +863,7 @@
 	Static import (redirect).: PASS
 	Static import and then dynamic import.: PASS
 	Static import.: PASS
-	eval(import()).: FAIL
+	eval(import()).: PASS
 /workers/modules/dedicated-worker-options-credentials.html: OK
 	Test initialization: setting up cross-origin cookie: FAIL
 	new Worker() with type-module credentials=omit should not send the credentials for cross-origin dynamic imports: PASS
@@ -932,16 +932,16 @@
 	dynamic import script from data: URL should be blocked.: PASS
 	static import data url from data: URL should be allowed.: PASS
 	static import script from data: URL should be allowed.: FAIL
-/workers/modules/shared-worker-import-data-url.window.html: OK
-	Dynamic import and then static import.: PASS
-	Dynamic import.: PASS
-	Nested dynamic import.: PASS
+/workers/modules/shared-worker-import-data-url.window.html: TIMEOUT
+	Dynamic import and then static import.: NOTRUN
+	Dynamic import.: NOTRUN
+	Nested dynamic import.: NOTRUN
 	Nested static import.: PASS
 	Static import (cross-origin).: FAIL
 	Static import (redirect).: FAIL
-	Static import and then dynamic import.: PASS
+	Static import and then dynamic import.: TIMEOUT
 	Static import.: PASS
-	eval(import()).: FAIL
+	eval(import()).: NOTRUN
 /workers/modules/shared-worker-import-failure.html: OK
 	Dynamic import for non-existent script should throw an exception.: PASS
 	SharedWorker construction for a file URL should throw an exception.: FAIL
@@ -969,49 +969,49 @@
 	Same-origin top-level module script loading with "no-referrer" referrer policy: TIMEOUT
 	Same-origin top-level module script loading with "origin" referrer policy: NOTRUN
 	Same-origin top-level module script loading with "same-origin" referrer policy: NOTRUN
-/workers/modules/shared-worker-import.window.html: TIMEOUT
-	Dynamic import and then static import.: NOTRUN
-	Dynamic import.: NOTRUN
-	Nested dynamic import.: NOTRUN
-	Nested static import.: NOTRUN
-	Static import (cross-origin).: TIMEOUT
-	Static import (redirect).: NOTRUN
-	Static import and then dynamic import.: NOTRUN
+/workers/modules/shared-worker-import.window.html: OK
+	Dynamic import and then static import.: PASS
+	Dynamic import.: PASS
+	Nested dynamic import.: PASS
+	Nested static import.: PASS
+	Static import (cross-origin).: FAIL
+	Static import (redirect).: PASS
+	Static import and then dynamic import.: PASS
 	Static import.: PASS
-	eval(import()).: NOTRUN
-/workers/modules/shared-worker-options-credentials.html: TIMEOUT
+	eval(import()).: PASS
+/workers/modules/shared-worker-options-credentials.html: OK
 	Test initialization: setting up cross-origin cookie: FAIL
-	new SharedWorker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (default).: NOTRUN
-	new SharedWorker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (include).: NOTRUN
-	new SharedWorker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (omit).: NOTRUN
-	new SharedWorker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (same-origin).: NOTRUN
-	new SharedWorker() with type=classic should always send the credentials regardless of the credentials option (default).: NOTRUN
-	new SharedWorker() with type=classic should always send the credentials regardless of the credentials option (include).: NOTRUN
-	new SharedWorker() with type=classic should always send the credentials regardless of the credentials option (omit).: NOTRUN
-	new SharedWorker() with type=classic should always send the credentials regardless of the credentials option (same-origin).: NOTRUN
-	new SharedWorker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (default).: NOTRUN
-	new SharedWorker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (include).: NOTRUN
-	new SharedWorker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (omit).: NOTRUN
-	new SharedWorker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (same-origin).: NOTRUN
+	new SharedWorker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (default).: PASS
+	new SharedWorker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (include).: PASS
+	new SharedWorker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (omit).: PASS
+	new SharedWorker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (same-origin).: PASS
+	new SharedWorker() with type=classic should always send the credentials regardless of the credentials option (default).: PASS
+	new SharedWorker() with type=classic should always send the credentials regardless of the credentials option (include).: PASS
+	new SharedWorker() with type=classic should always send the credentials regardless of the credentials option (omit).: PASS
+	new SharedWorker() with type=classic should always send the credentials regardless of the credentials option (same-origin).: PASS
+	new SharedWorker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (default).: PASS
+	new SharedWorker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (include).: PASS
+	new SharedWorker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (omit).: PASS
+	new SharedWorker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (same-origin).: PASS
 	new SharedWorker() with type=module and credentials=include should send the credentials: PASS
-	new SharedWorker() with type=module and credentials=include should send the credentials for cross-origin dynamic imports: NOTRUN
-	new SharedWorker() with type=module and credentials=include should send the credentials for cross-origin static imports: NOTRUN
-	new SharedWorker() with type=module and credentials=include should send the credentials for same-origin dynamic imports: NOTRUN
+	new SharedWorker() with type=module and credentials=include should send the credentials for cross-origin dynamic imports: FAIL
+	new SharedWorker() with type=module and credentials=include should send the credentials for cross-origin static imports: FAIL
+	new SharedWorker() with type=module and credentials=include should send the credentials for same-origin dynamic imports: PASS
 	new SharedWorker() with type=module and credentials=include should send the credentials for same-origin static imports: PASS
 	new SharedWorker() with type=module and credentials=omit should not send the credentials: FAIL
-	new SharedWorker() with type=module and credentials=omit should not send the credentials for cross-origin dynamic imports: NOTRUN
-	new SharedWorker() with type=module and credentials=omit should not send the credentials for cross-origin static imports: NOTRUN
-	new SharedWorker() with type=module and credentials=omit should not send the credentials for same-origin dynamic imports: NOTRUN
+	new SharedWorker() with type=module and credentials=omit should not send the credentials for cross-origin dynamic imports: PASS
+	new SharedWorker() with type=module and credentials=omit should not send the credentials for cross-origin static imports: PASS
+	new SharedWorker() with type=module and credentials=omit should not send the credentials for same-origin dynamic imports: FAIL
 	new SharedWorker() with type=module and credentials=omit should not send the credentials for same-origin static imports: FAIL
-	new SharedWorker() with type=module and credentials=same-origin should not send the credentials for cross-origin dynamic imports: NOTRUN
-	new SharedWorker() with type=module and credentials=same-origin should not send the credentials for cross-origin static imports: NOTRUN
+	new SharedWorker() with type=module and credentials=same-origin should not send the credentials for cross-origin dynamic imports: PASS
+	new SharedWorker() with type=module and credentials=same-origin should not send the credentials for cross-origin static imports: PASS
 	new SharedWorker() with type=module and credentials=same-origin should send the credentials: PASS
-	new SharedWorker() with type=module and credentials=same-origin should send the credentials for same-origin dynamic imports: NOTRUN
+	new SharedWorker() with type=module and credentials=same-origin should send the credentials for same-origin dynamic imports: PASS
 	new SharedWorker() with type=module and credentials=same-origin should send the credentials for same-origin static imports: PASS
-	new SharedWorker() with type=module and default credentials option should behave as credentials=same-origin and not send the credentials for cross-origin dynamic imports: NOTRUN
-	new SharedWorker() with type=module and default credentials option should behave as credentials=same-origin and not send the credentials for cross-origin static imports: TIMEOUT
+	new SharedWorker() with type=module and default credentials option should behave as credentials=same-origin and not send the credentials for cross-origin dynamic imports: PASS
+	new SharedWorker() with type=module and default credentials option should behave as credentials=same-origin and not send the credentials for cross-origin static imports: PASS
 	new SharedWorker() with type=module and default credentials option should behave as credentials=same-origin and send the credentials: PASS
-	new SharedWorker() with type=module and default credentials option should behave as credentials=same-origin and send the credentials for same-origin dynamic imports: NOTRUN
+	new SharedWorker() with type=module and default credentials option should behave as credentials=same-origin and send the credentials for same-origin dynamic imports: PASS
 	new SharedWorker() with type=module and default credentials option should behave as credentials=same-origin and send the credentials for same-origin static imports: PASS
 /workers/modules/shared-worker-options-type.html: OK
 	Test worker construction with an empty worker type.: PASS
@@ -1047,7 +1047,7 @@
 /workers/postMessage_DataCloneErr.htm: OK
 	 postMessage() with WorkerNavigator : PASS
 /workers/postMessage_block.https.html: OK
-	postMessage and block: FAIL
+	postMessage and block: PASS
 /workers/postMessage_clone_port.htm: OK
 	 postMessage(): clone a port : FAIL
 /workers/postMessage_clone_port_error.htm: OK
@@ -1280,16 +1280,16 @@
 	EvalError object: PASS
 	File basic: PASS
 	FileList empty: FAIL
-	Growable SharedArrayBuffer: FAIL
+	Growable SharedArrayBuffer: PASS
 	ImageBitmap: FAIL
 	ImageBitmap 1x1 non-transparent non-black: FAIL
 	ImageBitmap 1x1 transparent black: FAIL
 	ImageData 1x1 non-transparent non-black: PASS
 	ImageData 1x1 transparent black: PASS
 	Length-tracking DataView: PASS
-	Length-tracking DataView is transferable: FAIL
+	Length-tracking DataView is transferable: PASS
 	Length-tracking TypedArray: PASS
-	Length-tracking TypedArray is transferable: FAIL
+	Length-tracking TypedArray is transferable: PASS
 	MessagePort: PASS
 	Number -0: PASS
 	Number -9007199254740992: PASS
@@ -1341,10 +1341,10 @@
 	RegExp slash: PASS
 	RegExp sticky flag: PASS
 	RegExp unicode flag: PASS
-	Resizable ArrayBuffer: FAIL
-	Resizable ArrayBuffer is transferable: FAIL
-	Serializing OOB DataView throws: FAIL
-	Serializing OOB TypedArray throws: FAIL
+	Resizable ArrayBuffer: PASS
+	Resizable ArrayBuffer is transferable: PASS
+	Serializing OOB DataView throws: PASS
+	Serializing OOB TypedArray throws: PASS
 	Serializing a non-serializable platform object fails: PASS
 	String NUL: PASS
 	String astral character: PASS
@@ -1352,8 +1352,8 @@
 	String lone high surrogate: PASS
 	String lone low surrogate: PASS
 	SyntaxError object: PASS
-	Transferring OOB DataView throws: FAIL
-	Transferring OOB TypedArray throws: FAIL
+	Transferring OOB DataView throws: PASS
+	Transferring OOB TypedArray throws: PASS
 	Transferring a non-transferable platform object fails: PASS
 	TypeError object: PASS
 	URIError object: PASS
@@ -1433,16 +1433,16 @@
 	EvalError object: PASS
 	File basic: PASS
 	FileList empty: FAIL
-	Growable SharedArrayBuffer: FAIL
+	Growable SharedArrayBuffer: PASS
 	ImageBitmap: FAIL
 	ImageBitmap 1x1 non-transparent non-black: FAIL
 	ImageBitmap 1x1 transparent black: FAIL
 	ImageData 1x1 non-transparent non-black: PASS
 	ImageData 1x1 transparent black: PASS
 	Length-tracking DataView: PASS
-	Length-tracking DataView is transferable: FAIL
+	Length-tracking DataView is transferable: PASS
 	Length-tracking TypedArray: PASS
-	Length-tracking TypedArray is transferable: FAIL
+	Length-tracking TypedArray is transferable: PASS
 	MessagePort: PASS
 	Number -0: PASS
 	Number -9007199254740992: PASS
@@ -1494,10 +1494,10 @@
 	RegExp slash: PASS
 	RegExp sticky flag: PASS
 	RegExp unicode flag: PASS
-	Resizable ArrayBuffer: FAIL
-	Resizable ArrayBuffer is transferable: FAIL
-	Serializing OOB DataView throws: FAIL
-	Serializing OOB TypedArray throws: FAIL
+	Resizable ArrayBuffer: PASS
+	Resizable ArrayBuffer is transferable: PASS
+	Serializing OOB DataView throws: PASS
+	Serializing OOB TypedArray throws: PASS
 	Serializing a non-serializable platform object fails: PASS
 	String NUL: PASS
 	String astral character: PASS
@@ -1505,8 +1505,8 @@
 	String lone high surrogate: PASS
 	String lone low surrogate: PASS
 	SyntaxError object: PASS
-	Transferring OOB DataView throws: FAIL
-	Transferring OOB TypedArray throws: FAIL
+	Transferring OOB DataView throws: PASS
+	Transferring OOB TypedArray throws: PASS
 	Transferring a non-transferable platform object fails: PASS
 	TypeError object: PASS
 	URIError object: PASS

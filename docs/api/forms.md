@@ -750,6 +750,14 @@ string HTMLDialogElement_returnValue(Element dialog)
 
 Host: `HTMLDialogElement_returnValue :: proc(c: ^Call, dialog: Api_Element) -> string`
 
+### `HTMLDialogElement_set_returnValue`
+
+```
+void HTMLDialogElement_set_returnValue(Element dialog, string value)
+```
+
+Host: `HTMLDialogElement_set_returnValue :: proc(c: ^Call, dialog: Api_Element, value: string)`
+
 ### `FormData_create`
 
 ```

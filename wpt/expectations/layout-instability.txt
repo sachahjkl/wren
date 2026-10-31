@@ -1,0 +1,203 @@
+# web-platform-tests expectations of Wren for layout-instability, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/layout-instability/absolute-child-shift-with-parent-contain.html: TIMEOUT
+	Parent and contained absolute child movement.: TIMEOUT
+/layout-instability/absolute-child-shift-with-parent-negative-overflow.html: TIMEOUT
+	Parent and overflowing absolute child movement.: TIMEOUT
+/layout-instability/absolute-child-shift-with-parent-overflow.html: TIMEOUT
+	Parent and overflowing absolute child movement.: TIMEOUT
+/layout-instability/absolute-child-shift-with-parent-will-change.html: TIMEOUT
+	Parent and overflowing absolute child movement.: TIMEOUT
+/layout-instability/add-remove-position-fixed.html: OK
+	No shift for adding/removing position:fixed.: PASS
+/layout-instability/add-remove-position-sticky.html: OK
+	No shift for adding/removing position:sticky.: PASS
+/layout-instability/attribution-rectangles-css-pixels.html: TIMEOUT
+	Attribution rectangles should be in CSS pixels.: TIMEOUT
+	Fractional pixel values should be handled correctly.: NOTRUN
+/layout-instability/body-display-change.html: TIMEOUT
+	Shift accompanied by body display change.: TIMEOUT
+/layout-instability/buffer-layout-shift.html: TIMEOUT
+	Layout shift before onload is not buffered into the performance timeline.: TIMEOUT
+/layout-instability/buffered-flag.html: TIMEOUT
+	PerformanceObserver with buffered flag sees previous layout-shift entry.: TIMEOUT
+/layout-instability/child-shift-with-parent-overflow-hidden.html: TIMEOUT
+	Parent (with overflow:hidden) and child moved together.: TIMEOUT
+/layout-instability/child-shift-with-parent-overflow-x-clip.html: TIMEOUT
+	Parent/child movement with overflow-x: clip.: TIMEOUT
+/layout-instability/child-shift-with-parent.html: TIMEOUT
+	Parent/child movement.: TIMEOUT
+/layout-instability/clip-negative-bottom-margin.html: OK
+	Clip with negative bottom margin.: PASS
+/layout-instability/composited-element-movement.html: TIMEOUT
+	Element with compositing layer hint.: TIMEOUT
+/layout-instability/contain-paint-fully-clipped.html: OK
+	fully clipped by contain:paint: PASS
+/layout-instability/content-visibility-auto-offscreen.html: TIMEOUT
+	off-screen content-visibility:auto: TIMEOUT
+/layout-instability/content-visibility-auto-onscreen.html: OK
+	on-screen content-visibility:auto: PASS
+/layout-instability/content-visibility-auto-resize.html: OK
+	off-screen content-visibility:auto: PASS
+/layout-instability/content-visibility-hidden.html: OK
+	on-screen content-visibility:auto: PASS
+/layout-instability/display-change-with-transform.html: OK
+	Shift accompanied by body display change.: PASS
+/layout-instability/expand-above-viewport.html: TIMEOUT
+	Layout shift when content expanded above the viewport: TIMEOUT
+/layout-instability/fixed-position-move.html: TIMEOUT
+	Movement of fixed position: TIMEOUT
+/layout-instability/fully-clipped-visual-rect.html: OK
+	Fully clipped visual rect.: PASS
+/layout-instability/idlharness.html: OK
+	LayoutShift interface object length: PASS
+	LayoutShift interface object name: PASS
+	LayoutShift interface: attribute hadRecentInput: PASS
+	LayoutShift interface: attribute lastInputTime: PASS
+	LayoutShift interface: attribute sources: PASS
+	LayoutShift interface: attribute value: PASS
+	LayoutShift interface: default toJSON operation on layoutShift: FAIL
+	LayoutShift interface: existence and properties of interface object: PASS
+	LayoutShift interface: existence and properties of interface prototype object: PASS
+	LayoutShift interface: existence and properties of interface prototype object's "constructor" property: PASS
+	LayoutShift interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	LayoutShift interface: layoutShift must inherit property "hadRecentInput" with the proper type: FAIL
+	LayoutShift interface: layoutShift must inherit property "lastInputTime" with the proper type: FAIL
+	LayoutShift interface: layoutShift must inherit property "sources" with the proper type: FAIL
+	LayoutShift interface: layoutShift must inherit property "toJSON()" with the proper type: FAIL
+	LayoutShift interface: layoutShift must inherit property "value" with the proper type: FAIL
+	LayoutShift interface: operation toJSON(): PASS
+	LayoutShift must be primary interface of layoutShift: FAIL
+	LayoutShiftAttribution interface object length: PASS
+	LayoutShiftAttribution interface object name: PASS
+	LayoutShiftAttribution interface: attribute currentRect: PASS
+	LayoutShiftAttribution interface: attribute node: PASS
+	LayoutShiftAttribution interface: attribute previousRect: PASS
+	LayoutShiftAttribution interface: existence and properties of interface object: PASS
+	LayoutShiftAttribution interface: existence and properties of interface prototype object: PASS
+	LayoutShiftAttribution interface: existence and properties of interface prototype object's "constructor" property: PASS
+	LayoutShiftAttribution interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	LayoutShiftAttribution interface: layoutShiftAttribution must inherit property "currentRect" with the proper type: FAIL
+	LayoutShiftAttribution interface: layoutShiftAttribution must inherit property "node" with the proper type: FAIL
+	LayoutShiftAttribution interface: layoutShiftAttribution must inherit property "previousRect" with the proper type: FAIL
+	LayoutShiftAttribution must be primary interface of layoutShiftAttribution: FAIL
+	Stringification of layoutShift: FAIL
+	Stringification of layoutShiftAttribution: FAIL
+	idl_test setup: FAIL
+	idl_test validation: PASS
+/layout-instability/ignore-fixed-and-sticky.html: OK
+	Ignore fixed and sticky.: PASS
+/layout-instability/inline-flow-shift-one-line.html: TIMEOUT
+	Inline flow movement.: TIMEOUT
+/layout-instability/inline-flow-shift-vertical-rl.html: TIMEOUT
+	Vertical-rl inline flow movement.: TIMEOUT
+/layout-instability/inline-flow-shift.html: TIMEOUT
+	Inline flow movement.: TIMEOUT
+/layout-instability/input-timestamp.html: OK
+	Layout shift right after user input is observable via PerformanceObserver.: FAIL
+/layout-instability/local-shift-without-viewport-shift-2.html: OK
+	Local shift without viewport shift.: PASS
+/layout-instability/local-shift-without-viewport-shift.html: OK
+	Local shift without viewport shift.: PASS
+/layout-instability/main-frame.html: TIMEOUT
+	Layout Instability: subframe layout shift score: TIMEOUT
+/layout-instability/mousemove-becomes-drag.html: OK
+	No layout shift when mouse moves with a button pressed.: FAIL
+/layout-instability/move-distance-clamped.html: TIMEOUT
+	Distance fraction not more than 1.0.: TIMEOUT
+/layout-instability/move-transformed.html: TIMEOUT
+	Move transformed container: TIMEOUT
+/layout-instability/multi-clip-visual-rect.html: TIMEOUT
+	Multi clip visual rect.: TIMEOUT
+/layout-instability/multicol-000.html: TIMEOUT
+	Move balanced multicol container: TIMEOUT
+/layout-instability/multicol-001.html: TIMEOUT
+	Move multicol container with overflow: TIMEOUT
+/layout-instability/opacity-nonzero-to-zero.html: OK
+	opacity non-zero to zero: PASS
+/layout-instability/opacity-zero-layout-and-visible.html: TIMEOUT
+	opacity:0: TIMEOUT
+/layout-instability/opacity-zero.html: OK
+	opacity:0: PASS
+/layout-instability/outline.html: OK
+	Outline.: PASS
+/layout-instability/partially-clipped-visual-rect.html: TIMEOUT
+	Partially clipped visual rect.: TIMEOUT
+/layout-instability/pointerdown-becomes-scroll.html: OK
+	Shift in pointerdown reported when it becomes a scroll.: FAIL
+/layout-instability/pointerdown-becomes-tap.html: OK
+	Shift in pointerdown excluded when it becomes a tap.: FAIL
+/layout-instability/pointermove-becomes-drag.html: OK
+	No Shift in pointerdown reported when it becomes a touch drag.: FAIL
+/layout-instability/recent-input.html: OK
+	Layout shift right after user input is observable via PerformanceObserver.: FAIL
+/layout-instability/rtl-distance.html: TIMEOUT
+	RTL element.: TIMEOUT
+/layout-instability/shift-into-viewport-inline-direction-and-scroll.html: OK
+	Shift into viewport in inline direction with scroll.: PASS
+/layout-instability/shift-into-viewport-inline-direction.html: OK
+	Shift into viewport in inline direction.: PASS
+/layout-instability/shift-into-viewport.html: TIMEOUT
+	Shift into viewport.: TIMEOUT
+/layout-instability/shift-invisible.html: OK
+	Shift of invisible element not counted.: PASS
+/layout-instability/shift-outside-viewport-inline-direction.html: OK
+	Shift out of viewport in inline direction.: PASS
+/layout-instability/shift-outside-viewport.html: OK
+	Shift outside viewport.: PASS
+/layout-instability/shift-scroll-anchoring-natural-scroll.html: OK
+	Offscreen shift with scroll annchoring and natural scroll not counted.: PASS
+/layout-instability/shift-while-scrolled.html: TIMEOUT
+	Layout shift with non-zero scroll offset.: TIMEOUT
+/layout-instability/shift-with-counter-scroll-and-transform.html: OK
+	Shift with counter scroll and transform not counted.: PASS
+/layout-instability/shift-with-counter-scroll-and-translate.html: OK
+	Shift with counter scroll and translate not counted.: PASS
+/layout-instability/shift-with-counterscroll-2.html: OK
+	Shift with counterscroll not counted, with 2 scrollers.: PASS
+/layout-instability/shift-with-counterscroll.html: OK
+	Shift with counterscroll not counted.: PASS
+/layout-instability/shift-with-overflow-status-change.html: TIMEOUT
+	Change under overflow clipping container causing shift and overflow status change at the same time: TIMEOUT
+/layout-instability/simple-block-movement.html: TIMEOUT
+	Simple block movement.: TIMEOUT
+/layout-instability/sources-enclosure.html: TIMEOUT
+	Sources with redundant enclosure.: TIMEOUT
+/layout-instability/sources-maximpact.html: TIMEOUT
+	Source attribution prioritizes by impact.: TIMEOUT
+/layout-instability/sources-pseudo-element.html: TIMEOUT
+	A shifted pseudo-element is reported with a null source node.: TIMEOUT
+/layout-instability/sources.html: TIMEOUT
+	Sources attribute.: TIMEOUT
+/layout-instability/sticky-descendant-move.html: TIMEOUT
+	Movement of descendant of sticky positioned.: TIMEOUT
+/layout-instability/sticky-layout-no-change.html: OK
+	Sticky layout no change.: PASS
+/layout-instability/sub-frame.html: TIMEOUT
+	We will see two layout shift with the same score in the subframe.: TIMEOUT
+/layout-instability/supported-layout-type.html: OK
+	supportedEntryTypes contains 'layoutShift'.: PASS
+/layout-instability/toJSON.html: TIMEOUT
+	Test toJSON() in LayoutShift.: TIMEOUT
+/layout-instability/transform-above-filter-dynamic.html: OK
+	addition of scale transform above filter: PASS
+/layout-instability/transform-above-perspective-dynamic.html: OK
+	addition of transform above perspective: PASS
+/layout-instability/transform-change.html: OK
+	no layout shift for transform change: PASS
+/layout-instability/transform-counter-layout-shift.html: OK
+	no layout shift if transform change counters location change: PASS
+/layout-instability/transform.html: TIMEOUT
+	Transformed container.: TIMEOUT
+/layout-instability/translate-change.html: OK
+	no layout shift for transform change: PASS
+/layout-instability/translate-counter-layout-shift.html: OK
+	no layout shift if translate change counters location change: PASS
+/layout-instability/video.html: TIMEOUT
+	No shifts from advancing video track.: TIMEOUT
+/layout-instability/visibility-hidden-layout-and-visible.html: TIMEOUT
+	visibility:hidden change with layout: TIMEOUT
+/layout-instability/visibility-hidden.html: OK
+	visibility:hidden: PASS
+/layout-instability/visible-to-hidden.html: OK
+	visible to hidden: PASS

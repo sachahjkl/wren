@@ -10,20 +10,6 @@ import "core:testing"
 import "core:thread"
 import "core:time"
 
-// (a foreign import belongs to its file: the library of wasmtime.odin, its system libraries come with it there)
-when ODIN_OS == .Windows {
-	foreign import wasmtime_shm "../../build/wasmtime/lib/wasmtime.lib"
-} else {
-	foreign import wasmtime_shm { "../../build/wasmtime-" + ODIN_OS_STRING + "/lib/libwasmtime.a" }
-}
-
-@(default_calling_convention = "c")
-foreign wasmtime_shm {
-	wasmtime_sharedmemory_new :: proc(e: wt_engine, ty: wt_memorytype, ret: ^rawptr) -> wt_error ---
-	wasmtime_sharedmemory_delete :: proc(m: rawptr) ---
-	wasmtime_sharedmemory_data :: proc(m: rawptr) -> [^]u8 ---
-}
-
 @(private = "file")
 SHARED_WAT :: `(module
   (import "e" "m" (memory 1 1 shared))

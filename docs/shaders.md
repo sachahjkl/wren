@@ -41,7 +41,7 @@ To add a shader: write `src/browser/shaders/<name>.wgsl` (the toolkit's frame: `
 odin run ext/gui_toolkit/tools/shaders -- app <name> src/browser/shaders/<name>.wgsl src/browser/shaders      # writes <name>.dxbc and <name>.sha256
 ```
 
-(naga is built by `tools\build_naga.ps1` the first time: it needs `cargo`), embed the three files and add the entry. The test
+(naga is built by the toolkit's `tools\build_naga.ps1` the first time: it needs `cargo`), embed the three files and add the entry. The test
 `the_embedded_pixel_shader_matches_its_sources` fails while a blob is stale (the sources, or the toolkit's `rect.wgsl` / `app.wgsl`,
 changed): the toolkit refuses such a blob when the shader is created, with a message, and the box keeps its CSS background.
 

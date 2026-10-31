@@ -2424,7 +2424,7 @@ HTMLDialogElement_show :: proc "contextless" (dialog: $T_dialog) -> Error where 
 	return _HTMLDialogElement_show(u64(dialog))
 }
 
-// dialog.showModal(): Invalid_State when it is not connected (no top layer: the dialog stays where it is).
+// dialog.showModal(): Invalid_State when it is open without being modal, not connected, or a showing popover.
 HTMLDialogElement_showModal :: proc "contextless" (dialog: $T_dialog) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_dialog)) && size_of(T_dialog) == 8 {
 	return _HTMLDialogElement_showModal(u64(dialog))
 }

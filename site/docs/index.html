@@ -214,8 +214,8 @@
 </ol></nav>
 <h1 id="wren-documentation"><a class="anchor" href="#wren-documentation" aria-hidden="true">#</a>Wren documentation</h1>
 <p><strong>Wren</strong> is a web browser written from scratch in <a href="https://odin-lang.org" rel="noopener">Odin</a>, for Windows, where
-<strong>WebAssembly is the only execution engine</strong> — JavaScript included. The scripts of a page run in
-<a href="https://github.com/quickjs-ng/quickjs" rel="noopener">QuickJS-ng</a> compiled to WebAssembly, inside the same
+<strong>WebAssembly is the only execution engine</strong> — JavaScript included. The scripts of a page run in an
+engine written in Odin and compiled to WebAssembly, inside the same
 <a href="https://wasmtime.dev/" rel="noopener">Wasmtime</a> sandbox, memory cap and interruption as every other module. The web platform
 itself (DOM, CSS, layout, painting, Fetch, the shell) is native Odin, drawn on Direct3D 11. There is no Chromium
 underneath.</p>
@@ -224,9 +224,10 @@ underneath.</p>
 <h2 id="installing"><a class="anchor" href="#installing" aria-hidden="true">#</a>Installing</h2>
 <p>Wren is a single executable for Windows x64. There is no installer to run as administrator:</p>
 <ul>
-<li>Download the latest <code>.zip</code> from the <a href="https://github.com/sachahjkl/wren/releases/latest" rel="noopener">releases page</a> and
-unzip it anywhere, then run <code>wren.exe</code>.</li>
-<li>Or install it from <a href="../docs/winget.html">winget</a>: <code>winget install Froment.Wren</code>.</li>
+<li>Download the latest <code>wren-&lt;version&gt;-windows-x64.exe</code> from the
+<a href="https://github.com/sachahjkl/wren/releases/latest" rel="noopener">releases page</a> and run it: the program is that one file, with
+nothing to unzip. <code>wren.exe --setup</code> installs it.</li>
+<li>Or, for a release that has reached <a href="../docs/winget.html">winget</a>: <code>winget install FromentSoftware.Wren</code>.</li>
 </ul>
 <p>Every version is free during the beta. A <a href="../docs/licence.html">supporter licence</a> unlocks nothing; it keeps the work going.</p>
 <h2 id="driving-wren"><a class="anchor" href="#driving-wren" aria-hidden="true">#</a>Driving Wren</h2>

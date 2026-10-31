@@ -240,7 +240,7 @@ drawn once per pass). What the shader reads, as <code>vec4</code> slots (<code>a
 pixel, 1 when <code>style.prefers_reduced_motion</code> is on), 1 = the pass, then the arguments four to a slot from slot 2.</p>
 <p>To add a shader: write <code>src/browser/shaders/&lt;name&gt;.wgsl</code> (the toolkit's frame: <code>fn app_shade(a: AppIn) -&gt; vec4&lt;f32&gt;</code>), run</p>
 <div class="code"><pre><code>odin run ext/gui_toolkit/tools/shaders -- app &lt;name&gt; src/browser/shaders/&lt;name&gt;.wgsl src/browser/shaders      # writes &lt;name&gt;.dxbc and &lt;name&gt;.sha256</code></pre></div>
-<p>(naga is built by <code>tools\build_naga.ps1</code> the first time: it needs <code>cargo</code>), embed the three files and add the entry. The test
+<p>(naga is built by the toolkit's <code>tools\build_naga.ps1</code> the first time: it needs <code>cargo</code>), embed the three files and add the entry. The test
 <code>the_embedded_pixel_shader_matches_its_sources</code> fails while a blob is stale (the sources, or the toolkit's <code>rect.wgsl</code> / <code>app.wgsl</code>,
 changed): the toolkit refuses such a blob when the shader is created, with a message, and the box keeps its CSS background.</p>
 <p>The compositor does not record a box with a shader (its arguments change with every frame of an animation): it is drawn directly, in its

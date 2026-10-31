@@ -966,30 +966,69 @@ extra_or :: proc "contextless" (ctx: ^wj.Context, t: wj.JSValue, iface: i32, nam
 	return v
 }
 
-// waitUntil(promise): while the event is dispatched (or extended), the promises the browser waits for.
+// ExtendableEvent's lifetime promises: how many have not settled ("_pending"), whether one was rejected ("_failed"), and what
+// to tell the browser when the last one settles after the dispatch ("_settle": its Sw_Event + 1).
+@(private = "file")
+extra_int :: proc "contextless" (ctx: ^wj.Context, t: wj.JSValue, name: cstring) -> i32 {
+	v := wj.web_extra_get(ctx, t, name)
+	defer wj.JS_FreeValue(ctx, v)
+	x: i32
+	if !wj.is_undefined(v) { wj.JS_ToInt32(ctx, &x, v) }
+	return x
+}
+
+@(private = "file")
+lifetime_settled :: proc "contextless" (ctx: ^wj.Context, t: wj.JSValue, failed: bool) {
+	if failed { wj.web_extra_set(ctx, t, "_failed", wj.new_int32(1)) }
+	n := extra_int(ctx, t, "_pending") - 1
+	wj.web_extra_set(ctx, t, "_pending", wj.new_int32(n))
+	settle := extra_int(ctx, t, "_settle")
+	if n > 0 || settle == 0 { return }
+	wj.web_extra_set(ctx, t, "_settle", wj.new_int32(0))
+	lifetime_finish(ctx, t, settle - 1)
+}
+
+// install / activate over. (A failed activate still activates: the standard ignores its promises' rejections.)
+@(private = "file")
+lifetime_finish :: proc "contextless" (ctx: ^wj.Context, t: wj.JSValue, kind: i32) {
+	extend_settled(ctx, kind, kind == i32(Sw_Event.Activate) || extra_int(ctx, t, "_failed") == 0 ? 1 : 0)
+}
+
+@(private = "file")
+lifetime_ok :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, magic: i32, data: [^]wj.JSValue) -> wj.JSValue {
+	lifetime_settled(ctx, data[0], false)
+	return wj.UNDEFINED
+}
+
+@(private = "file")
+lifetime_err :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, magic: i32, data: [^]wj.JSValue) -> wj.JSValue {
+	lifetime_settled(ctx, data[0], true)
+	return wj.UNDEFINED
+}
+
+// The event lives until `v` settles too.
+@(private = "file")
+lifetime_add :: proc "contextless" (ctx: ^wj.Context, t: wj.JSValue, v: wj.JSValue) -> bool {
+	p := promise_call(ctx, "resolve", v)
+	if wj.is_exception(p) { return false }
+	defer wj.JS_FreeValue(ctx, p)
+	d := t
+	r := wj.web_then(ctx, p, rawptr(lifetime_ok), rawptr(lifetime_err), 1, &d)
+	if wj.is_exception(r) { return false }
+	wj.JS_FreeValue(ctx, r)
+	wj.web_extra_set(ctx, t, "_pending", wj.new_int32(extra_int(ctx, t, "_pending") + 1))
+	return true
+}
+
+// waitUntil(promise): while the event is dispatched, or while it has promises that have not settled.
 @(export, link_name = "wjr_ExtendableEvent_waitUntil")
 wjr_ExtendableEvent_waitUntil :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	if wj.wj_this(ctx, t, ifc("ExtendableEvent")) == nil { return wj.EXCEPTION }
 	if argc < 1 { return wj.wj_throw_arity(ctx, "ExtendableEvent.waitUntil", 1, argc) }
-	// after the dispatch too, while it waits for something: a fetch handler calls this from the promise it gave respondWith
-	// (what the event was given may have settled since, which is not followed here: a call that came too late goes unnoticed)
-	if wj.web_event_host(t) == 0 {
-		respond := wj.web_extra_get(ctx, t, "_respond")
-		waiting := wj.web_extra_get(ctx, t, "_wait")
-		pending := !wj.is_undefined(respond) || !wj.is_undefined(waiting)
-		wj.free_values(ctx, respond, waiting)
-		if !pending { return wj.wj_throw_dom(ctx, "InvalidStateError", "The event handler is already finished.") }
+	if wj.web_event_host(t) == 0 && extra_int(ctx, t, "_pending") == 0 {
+		return wj.wj_throw_dom(ctx, "InvalidStateError", "The event handler is already finished.")
 	}
-	list := wj.web_extra_get(ctx, t, "_wait")
-	if wj.is_undefined(list) {
-		list = wj.JS_NewArray(ctx)
-		wj.web_extra_set(ctx, t, "_wait", wj.JS_DupValue(ctx, list))
-	}
-	n: i64
-	wj.JS_GetLength(ctx, list, &n)
-	wj.JS_SetPropertyInt64(ctx, list, n, wj.JS_DupValue(ctx, argv[0]))
-	wj.JS_FreeValue(ctx, list)
-	return wj.UNDEFINED
+	return lifetime_add(ctx, t, argv[0]) ? wj.UNDEFINED : wj.EXCEPTION
 }
 
 @(export, link_name = "wjr_InstallEvent_addRoutes")
@@ -1016,7 +1055,7 @@ wjr_FetchEvent_respondWith :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i
 	wj.JS_FreeValue(ctx, prev)
 	if again { return wj.wj_throw_dom(ctx, "InvalidStateError", "The event has already been responded to.") }
 	wj.web_extra_set(ctx, t, "_respond", wj.JS_DupValue(ctx, argv[0]))
-	return wj.UNDEFINED
+	return lifetime_add(ctx, t, argv[0]) ? wj.UNDEFINED : wj.EXCEPTION
 }
 
 @(export, link_name = "wjr_ExtendableMessageEvent_get_data")        wjr_ExtendableMessageEvent_get_data        :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return extra_or(ctx, t, ifc("ExtendableMessageEvent"), "data", wj.NULL) }
@@ -1034,22 +1073,6 @@ extend_settled :: proc "contextless" (ctx: ^wj.Context, kind: i32, code: i64) {
 	reply(kind == i32(Sw_Event.Install) ? .Install_Done : .Activate_Done, 0, code)
 }
 
-@(private = "file")
-extend_ok :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, magic: i32, data: [^]wj.JSValue) -> wj.JSValue {
-	kind: i32
-	wj.JS_ToInt32(ctx, &kind, data[0])
-	extend_settled(ctx, kind, 1)
-	return wj.UNDEFINED
-}
-
-@(private = "file")
-extend_err :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, magic: i32, data: [^]wj.JSValue) -> wj.JSValue {
-	kind: i32
-	wj.JS_ToInt32(ctx, &kind, data[0])
-	// (a failed activate still activates: the standard ignores its promises' rejections)
-	extend_settled(ctx, kind, kind == i32(Sw_Event.Activate) ? 1 : 0)
-	return wj.UNDEFINED
-}
 
 // The Response read: data = [id, status, headers, url] and the body in argv[0].
 @(private = "file")
@@ -1258,16 +1281,11 @@ fire_extendable :: proc(ctx: ^wj.Context, kind: Sw_Event) {
 	}
 	defer wj.JS_FreeValue(ctx, ev)
 	wj.web_event_fire(ctx, wj.realm_global(), ev)
-	list := wj.web_extra_get(ctx, ev, "_wait")
-	if wj.is_undefined(list) { list = wj.JS_NewArray(ctx) }
-	all := promise_call(ctx, "all", list)
-	d := wj.new_int32(i32(kind))
-	r := wj.is_exception(all) ? wj.EXCEPTION : wj.web_then(ctx, all, rawptr(extend_ok), rawptr(extend_err), 1, &d)
-	if wj.is_exception(r) {
-		wj.drop_exception(ctx)
-		reply(install ? .Install_Done : .Activate_Done, 0, kind == .Activate ? 1 : 0)
+	if extra_int(ctx, ev, "_pending") > 0 {
+		wj.web_extra_set(ctx, ev, "_settle", wj.new_int32(i32(kind) + 1))
+	} else {
+		lifetime_finish(ctx, ev, i32(kind))
 	}
-	wj.free_values(ctx, r, all, list)
 }
 
 @(private = "file")

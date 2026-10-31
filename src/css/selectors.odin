@@ -22,6 +22,8 @@ Pseudo :: enum u8 {
 	Hover, Active, Focus, Focus_Visible, Focus_Within, Link, Any_Link, Visited, Target, Fullscreen,
 	Checked, Disabled, Enabled, Required, Optional, Read_Only, Read_Write, Placeholder_Shown,
 	Valid, Invalid, User_Valid, User_Invalid, In_Range, Out_Of_Range, Indeterminate, Default, Autofill,
+	Modal,          // a dialog shown by showModal()
+	Modal_Active,   // -wren-modal-active: the root, while a modal dialog makes the rest of the document inert (the UA sheet)
 	Popover_Open,   // a popover that is showing (HTML: the page's popover state, through the style engine's control provider)
 	// other
 	Lang, Dir, Scope, Defined, Open,
@@ -431,7 +433,9 @@ simple_pseudo_class :: proc(name: string) -> (Pseudo, bool) {
 	case "has-slotted": return .Has_Slotted, true
 	case "fullscreen", "-webkit-full-screen": return .Fullscreen, true
 	case "popover-open": return .Popover_Open, true
-	case "modal", "picture-in-picture",
+	case "modal": return .Modal, true
+	case "-wren-modal-active": return .Modal_Active, true
+	case "picture-in-picture",
 	     "playing", "paused", "seeking", "buffering", "stalled", "muted", "volume-locked", "current", "past", "future",
 	     "target-current", "active-view-transition", "xr-overlay":
 		return .Never, true

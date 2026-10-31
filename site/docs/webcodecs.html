@@ -251,8 +251,7 @@ planes is reported through the <code>error</code> callback. A software H.264 pat
 <li><strong>The decode is synchronous on the page thread</strong> (the inputs are bounded and the built-in decoders are
 memory-safe); the <code>decode</code>/<code>flush</code> promises and the <code>output</code> callbacks still run as their own event-loop turns.</li>
 <li><strong><code>VideoFrame</code> transfer across realms</strong> (<code>postMessage</code> to a worker) moves the pixels through a process-wide host
-token (<code>VideoFrame_takeForTransfer</code> / <code>adoptTransfer</code>), wired into structured clone (<code>native/js/runtime/clone.c</code>,
-tag <code>T_VIDEO_FRAME</code>): the pixels never cross a heap boundary as a JS value.</li>
+token (<code>VideoFrame_takeForTransfer</code> / <code>adoptTransfer</code>), wired into structured clone (<code>native/js/odin/clone.odin</code>): the pixels never cross a heap boundary as a JS value.</li>
 <li><strong><code>ImageDecoder</code> <code>data</code></strong> accepts a <code>BufferSource</code> or a <code>Blob</code>; a <code>ReadableStream</code> source is not read here (read it
 to bytes first).</li>
 <li><strong>Encoders</strong> are intentionally unsupported until a pure-Rust encoder (rav1e, a VP8/VP9 encoder, or an Opus encoder)

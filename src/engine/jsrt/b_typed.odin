@@ -53,13 +53,13 @@ array_buffer_new :: proc(ctx: ^Context, proto: ^Object, class: Class_ID, n: i64,
 
 // An ArrayBuffer (or SharedArrayBuffer) of `n` bytes that live with the embedder (Buffer_Host). Not resizable, not
 // transferable.
-array_buffer_new_host :: proc(ctx: ^Context, n: i64, host: Buffer_Host, shared := false) -> ^Object {
+array_buffer_new_host :: proc(ctx: ^Context, n: i64, host: Buffer_Host, shared := false, max_byte_length: i64 = -1, proto: ^Object = nil) -> ^Object {
 	rt := ctx.rt
 	cls: Class_ID = shared ? .shared_array_buffer : .array_buffer
-	o := object_new_proto(ctx, ctx.class_proto[cls], cls)
+	o := object_new_proto(ctx, proto != nil ? proto : ctx.class_proto[cls], cls)
 	ab := new(Array_Buffer, rt_allocator(rt))
 	ab.byte_length = int(n)
-	ab.max_byte_length = -1
+	ab.max_byte_length = int(max_byte_length)
 	ab.shared = shared
 	ab.views = make([dynamic]^Object, rt_allocator(rt))
 	ab.host = new_clone(host, rt_allocator(rt))
@@ -81,6 +81,14 @@ host_line :: proc(ab: ^Array_Buffer, offset: int, write: bool) -> rawptr {
 		rt.host_cache = c
 		c.gen = 1
 	}
+	// (another agent may have written: what a loop reading a flag without Atomics must see in the end)
+	if h.shared != nil {
+		c.shared_reads += 1
+		if c.shared_reads >= HOST_SHARED_READS {
+			c.shared_reads = 0
+			c.gen += 1
+		}
+	}
 	page := offset >> 12
 	l := &c.lines[page & (HOST_LINES - 1)]
 	if l.host != h || l.page != page || l.gen != c.gen {
@@ -97,6 +105,23 @@ host_line :: proc(ab: ^Array_Buffer, offset: int, write: bool) -> rawptr {
 		c.any_dirty = true
 	}
 	return &l.data[offset & (HOST_LINE_SIZE - 1)]
+}
+
+// One element of a buffer that other agents reach: to the embedder at once, since a line going back later would write over
+// what they wrote beside it.
+@(private = "file")
+host_shared_write :: proc(ab: ^Array_Buffer, offset: int, e: Elem, ev: Elem_Val) {
+	h := ab.host
+	bytes: [8]u8
+	write_elem(e, &bytes[0], ev)
+	es := elem_size[e]
+	h.write(h.user, offset, &bytes[0], es)
+	if c := h.rt.host_cache; c != nil {
+		l := &c.lines[(offset >> 12) & (HOST_LINES - 1)]
+		if l.host == h && l.page == offset >> 12 && l.gen == c.gen {
+			for i in 0 ..< es {l.data[(offset & (HOST_LINE_SIZE - 1)) + i] = bytes[i]}
+		}
+	}
 }
 
 // What the cache holds goes back to the embedder, and it holds nothing any more.
@@ -183,6 +208,7 @@ buffer_host_release :: proc(rt: ^Runtime, ab: ^Array_Buffer) {
 	for &s in rt.host_snapshots {
 		if s.host == ab.host {s.host = nil}   // (the copy stays until its slot is used again: a caller may be reading it)
 	}
+	if h := ab.host; h.owned {h.shared.release(h.user)}
 	free(ab.host, rt_allocator(rt))
 	ab.host = nil
 }
@@ -278,6 +304,11 @@ buffer_ctor :: proc(ctx: ^Context, nt: Value, args: []Value, magic: i32) -> Valu
 	}
 	proto, ok3 := proto_from_ctor(ctx, nt, cls)
 	if !ok3 {return EXCEPTION}
+	if hs := ctx.rt.config.host_shared; hs != nil && cls == .shared_array_buffer {
+		user, made := hs.create(n, max_len)
+		if !made {return throw_range_error(ctx, "Array buffer allocation failed")}
+		return mk_obj(array_buffer_new_host(ctx, n, Buffer_Host{read = hs.read, write = hs.write, user = user, shared = hs, owned = true}, true, max_len, proto))
+	}
 	o := array_buffer_new(ctx, proto, cls, n, max_len)
 	if o == nil {return EXCEPTION}
 	return mk_obj(o)
@@ -297,6 +328,7 @@ buffer_getter :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> 
 	shared := magic & 0x100 != 0
 	ab := this_buffer(ctx, this, shared)
 	if ab == nil {return EXCEPTION}
+	if h := ab.host; h != nil && h.shared != nil && ab.max_byte_length >= 0 {ab.byte_length = h.shared.length(h.user)}   // (another agent may have grown it)
 	switch magic & 0xff {
 	case 0: return mk_i64(i64(ab.byte_length))
 	case 1: return mk_i64(i64(ab.max_byte_length >= 0 ? ab.max_byte_length : ab.byte_length))
@@ -332,6 +364,11 @@ buffer_resize :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> 
 	if ab.detached {return throw_type_error(ctx, "ArrayBuffer is detached")}
 	if n > i64(ab.max_byte_length) {return throw_range_error(ctx, "new length exceeds maxByteLength")}
 	if shared && n < i64(ab.byte_length) {return throw_range_error(ctx, "SharedArrayBuffer cannot shrink")}
+	if h := ab.host; h != nil {
+		if !h.shared.grow(h.user, n) {return throw_range_error(ctx, "Array buffer allocation failed")}
+		ab.byte_length = h.shared.length(h.user)
+		return UNDEFINED
+	}
 	old := ab.byte_length
 	if int(n) > old {
 		for i in old ..< int(n) {ab.data[i] = 0}
@@ -483,6 +520,10 @@ view_write :: #force_inline proc(o: ^Object, i: int, ev: Elem_Val) {
 	ab := array_buffer_of(ta.buffer)
 	e := class_elem(o.class)
 	if ab.host != nil && ab.data == nil {
+		if ab.host.shared != nil {
+			host_shared_write(ab, ta.offset + i * elem_size[e], e, ev)
+			return
+		}
 		write_elem(e, host_line(ab, ta.offset + i * elem_size[e], true), ev)
 		return
 	}
@@ -567,7 +608,10 @@ ta_fast_ptr :: #force_inline proc(o: ^Object, idx: u32, write: bool) -> (rawptr,
 	e := class_elem(o.class)
 	es := elem_size[e]
 	if ta.offset + ta.length * es > ab.byte_length {return nil, e, false}
-	if ab.data == nil {return host_line(ab, ta.offset + int(idx) * es, write), e, true}
+	if ab.data == nil {
+		if write && ab.host.shared != nil {return nil, e, false}   // (host_shared_write, by the generic path)
+		return host_line(ab, ta.offset + int(idx) * es, write), e, true
+	}
 	return &ab.data[ta.offset + int(idx) * es], e, true
 }
 
@@ -1210,9 +1254,10 @@ ta_set :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value {
 			}
 			return UNDEFINED
 		}
+		// (the range it writes, not the whole view: a heap can be gigabytes, and another agent may be writing beside it)
 		host_pin_view(ctx, so)
 		defer host_unpin_view(ctx, so, false)
-		host_pin_view(ctx, o)
+		if dab.host != nil {host_pin(rt, dab, dta.offset + int(off) * es, dta.offset + (int(off) + slen) * es)}
 		defer host_unpin_view(ctx, o, true)
 		vals := make([]Value, slen, tmp(rt))
 		for i in 0 ..< slen {vals[i] = read_elem(ctx, se, elem_ptr(so, i))}
@@ -1251,7 +1296,8 @@ ta_slice :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value
 		end = min(end, i64(typed_array_length(ctx, o)))
 		if class_elem(a.class) == class_elem(o.class) {
 			es := elem_size[class_elem(o.class)]
-			host_pin_view(ctx, o)
+			sab := array_buffer_of(typed_array_of(o).buffer)
+			if sab.host != nil {host_pin(ctx.rt, sab, typed_array_of(o).offset + int(start) * es, typed_array_of(o).offset + int(end) * es)}
 			defer host_unpin_view(ctx, o, false)
 			host_pin_view(ctx, a)
 			defer host_unpin_view(ctx, a, true)
@@ -1699,6 +1745,9 @@ atomics_op :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Val
 	}
 	if typed_array_is_out_of_bounds(o) {return throw_type_error(ctx, "TypedArray is detached")}
 	if idx >= typed_array_length(ctx, o) {return throw_range_error(ctx, "Atomics access index out of range")}
+	if hab := array_buffer_of(typed_array_of(o).buffer); hab.host != nil && hab.host.shared != nil {
+		return atomics_op_host(ctx, o, hab, op, e, idx, v1, v2, arg(args, 2))
+	}
 	host_pin_view(ctx, o)
 	defer host_unpin_view(ctx, o, op != .load)
 	p := elem_ptr(o, idx)
@@ -1735,6 +1784,26 @@ atomics_op :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Val
 	}
 	elem_store_raw(e, p, r)
 	return old
+}
+
+// An Atomics operation on bytes other agents reach: the embedder does it on them. It is also what orders this agent's reads
+// with the others' writes, so what it keeps of their pages is read again.
+@(private = "file")
+atomics_op_host :: proc(ctx: ^Context, o: ^Object, ab: ^Array_Buffer, op: Atomic_Op, e: Elem, idx: int, v1, v2: Elem_Val, stored: Value) -> Value {
+	h := ab.host
+	es := elem_size[e]
+	mask := elem_mask(e)
+	a, b: u64
+	if op != .load {a = elem_val_raw(e, v1) & mask}
+	if op == .compare_exchange {b = elem_val_raw(e, v2) & mask}
+	host_cache_sync(ctx.rt)
+	old := h.shared.atomic(h.user, i32(op), typed_array_of(o).offset + idx * es, es, a, b)
+	if op == .store {
+		if elem_is_bigint(e) {return to_bigint(ctx, stored)}
+		d, _ := to_integer(ctx, mk_number(v1.d))
+		return mk_number(d)
+	}
+	return read_elem(ctx, e, &old)
 }
 
 @(private = "file")
@@ -1796,7 +1865,14 @@ atomics_wait :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> V
 	if !ok4 {return EXCEPTION}
 	if t != t {t = math.inf_f64(1)} else if t < 0 {t = 0}
 	if !ctx.rt.config.can_block {return throw_type_error(ctx, "Atomics.wait cannot block in this agent")}
-	// (a shared memory: one agent has it, so it is a lone agent's wait)
+	if h := ab.host; h != nil && h.shared != nil {
+		host_cache_sync(ctx.rt)
+		switch h.shared.wait(h.user, ta.offset + idx * elem_size[e], elem_size[e], elem_val_raw(e, v) & elem_mask(e), t == math.inf_f64(1) ? -1 : t) {
+		case 0: return new_string(ctx, "ok")
+		case 1: return new_string(ctx, "not-equal")
+		}
+		return new_string(ctx, "timed-out")
+	}
 	host_pin_view(ctx, o)
 	defer host_unpin_view(ctx, o, false)
 	addr := elem_ptr(o, idx)
@@ -1829,6 +1905,11 @@ atomics_notify :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) ->
 	}
 	ta := typed_array_of(o)
 	nab := array_buffer_of(ta.buffer)
+	if h := nab.host; h != nil && h.shared != nil {
+		if idx >= typed_array_length(ctx, o) {return mk_int(0)}
+		host_cache_sync(ctx.rt)
+		return mk_int(h.shared.notify(h.user, ta.offset + idx * elem_size[class_elem(o.class)], u32(min(count, 4294967295))))
+	}
 	if !nab.shared || nab.host != nil {return mk_int(0)}
 	hook := ctx.rt.config.atomics_notify
 	if hook == nil || idx >= typed_array_length(ctx, o) {return mk_int(0)}

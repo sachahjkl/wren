@@ -974,7 +974,7 @@ handle_event :: proc "contextless" (ctx: ^wj.Context, e: ^Host_Event) {
 		out := wj.JS_NewArray(ctx)
 		for i: u64 = 0; i < n && !lr.bad; i += 1 {
 			o := wj.JS_NewObject(ctx)
-			wj.JS_SetPropertyStr(ctx, o, "name", wj.new_string_len(ctx, rd_bytes(&lr)))
+			wj.JS_SetPropertyStr(ctx, o, "name", wj.string_of_wtf8(ctx, rd_bytes(&lr)))
 			wj.JS_SetPropertyStr(ctx, o, "version", wj.new_int64(ctx, i64(rd_uv(&lr))))
 			wj.JS_SetPropertyUint32(ctx, out, u32(i), o)
 		}

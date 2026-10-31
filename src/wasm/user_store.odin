@@ -47,9 +47,11 @@ User_Import :: struct {
 User_Store :: struct {
 	store:     wt_store,
 	ctx:       wt_context,
+	inst:      ^Instance,           // the realm's (its stop flag: user_shared_wait)
 	on_import: User_Import_Proc,
 	user:      rawptr,
 	memories:  [dynamic]wt_memory,
+	shared:    [dynamic]User_Shared,   // from USER_SHARED_BASE among the numbers of memories (user_shared.odin)
 	tables:    [dynamic]wt_table,
 	globals:   [dynamic]wt_global,
 	global_ids: map[[2]u64]i32,
@@ -71,7 +73,7 @@ User_Store :: struct {
 user_store_new :: proc(inst: ^Instance, on_import: User_Import_Proc, user: rawptr) -> ^User_Store {
 	if wt.engine == nil { return nil }
 	s := new(User_Store)
-	s.on_import, s.user = on_import, user
+	s.on_import, s.user, s.inst = on_import, user, inst
 	s.store = wasmtime_store_new(wt.engine, inst, nil)
 	s.ctx = wasmtime_store_context(s.store)
 	o := inst.opt
@@ -83,6 +85,7 @@ user_store_new :: proc(inst: ^Instance, on_import: User_Import_Proc, user: rawpt
 user_store_delete :: proc(s: ^User_Store) {
 	wasmtime_store_delete(s.store)
 	delete(s.memories)
+	user_store_delete_shared(s)
 	delete(s.tables)
 	delete(s.globals)
 	delete(s.global_ids)
@@ -107,14 +110,14 @@ user_set_error :: proc(s: ^User_Store, message: string) {
 	s.error = strings.clone(message)
 }
 
-@(private = "file")
+@(private)
 fail :: proc(s: ^User_Store, f: User_Failure, message: string) -> User_Failure {
 	user_set_error(s, message)
 	return f
 }
 
 // Takes `e`.
-@(private = "file")
+@(private)
 fail_error :: proc(s: ^User_Store, f: User_Failure, e: wt_error) -> User_Failure {
 	text := wt_error_text(e, context.temp_allocator)
 	wasmtime_error_delete(e)
@@ -327,12 +330,14 @@ user_memory_new :: proc(s: ^User_Store, initial, maximum: i64) -> (id: i32, f: U
 memory_at :: proc(s: ^User_Store, id: i32) -> ^wt_memory { return id >= 0 && int(id) < len(s.memories) ? &s.memories[id] : nil }
 
 user_memory_pages :: proc(s: ^User_Store, id: i32) -> i64 {
+	if user_memory_is_shared(id) { return user_shared_pages(s, id) }
 	m := memory_at(s, id)
 	return m != nil ? i64(wasmtime_memory_size(s.ctx, m)) : -1
 }
 
 // The previous size in pages, or the failure.
 user_memory_grow :: proc(s: ^User_Store, id: i32, delta: i64) -> (prev: i64, f: User_Failure) {
+	if user_memory_is_shared(id) { return user_shared_grow(s, id, delta) }
 	m := memory_at(s, id)
 	if m == nil || delta < 0 { return 0, fail(s, .Type, "not a memory") }
 	p: u64
@@ -345,6 +350,7 @@ user_memory_grow :: proc(s: ^User_Store, id: i32, delta: i64) -> (prev: i64, f: 
 
 // The bytes of the memory at [offset, offset + len(out)): how many could be read.
 user_memory_read :: proc(s: ^User_Store, id: i32, offset: i64, out: []u8) -> int {
+	if user_memory_is_shared(id) { return user_shared_read(s, id, offset, out) }
 	m := memory_at(s, id)
 	if m == nil || offset < 0 { return 0 }
 	size := i64(wasmtime_memory_data_size(s.ctx, m))
@@ -355,6 +361,7 @@ user_memory_read :: proc(s: ^User_Store, id: i32, offset: i64, out: []u8) -> int
 }
 
 user_memory_write :: proc(s: ^User_Store, id: i32, offset: i64, bytes: []u8) -> int {
+	if user_memory_is_shared(id) { return user_shared_write(s, id, offset, bytes) }
 	m := memory_at(s, id)
 	if m == nil || offset < 0 { return 0 }
 	size := i64(wasmtime_memory_data_size(s.ctx, m))
@@ -668,7 +675,10 @@ user_instance_new :: proc(s: ^User_Store, m: ^User_Module, externs: []u32) -> (i
 		case WT_EXTERN_FUNC: if fn := user_func(s, at); fn != nil { items[i].of.func = fn.func; ok = true }
 		case WT_EXTERN_GLOBAL: if g := global_at(s, at); g != nil { items[i].of.global = g^; ok = true }
 		case WT_EXTERN_TABLE: if t := table_at(s, at); t != nil { items[i].of.table = t^; ok = true }
-		case WT_EXTERN_MEMORY: if mem := memory_at(s, at); mem != nil { items[i].of.memory = mem^; ok = true }
+		case WT_EXTERN_MEMORY:
+			if at >= USER_SHARED_BASE {
+				if h := user_shared_handle(s, at); h != nil { items[i].kind = WT_EXTERN_SHAREDMEMORY; items[i].of.sharedmemory = h; ok = true }
+			} else if mem := memory_at(s, at); mem != nil { items[i].of.memory = mem^; ok = true }
 		case 4:   // (a tag, among the kinds of wasm.h; its wasmtime_extern_t kind is another number)
 			if at >= 0 && int(at) < len(s.tags) { items[i].kind = WT_EXTERN_TAG; items[i].of.tag = s.tags[at]; ok = true }
 		}
@@ -718,6 +728,7 @@ user_instance_exports :: proc(s: ^User_Store, id: i32, m: ^User_Module, allocato
 		case WT_EXTERN_GLOBAL: e.kind, e.id = "global", i64(global_id(s, ext.of.global))
 		case WT_EXTERN_TABLE: e.kind, e.id = "table", i64(table_id(&s.tables, ext.of.table))
 		case WT_EXTERN_MEMORY: e.kind, e.id = "memory", i64(table_id(&s.memories, ext.of.memory))
+		case WT_EXTERN_SHAREDMEMORY: e.kind, e.id = "memory", i64(user_shared_id(s, ext.of.sharedmemory))
 		case WT_EXTERN_TAG: e.kind, e.id = "tag", i64(table_id(&s.tags, ext.of.tag))
 		case: e.kind = "other"
 		}

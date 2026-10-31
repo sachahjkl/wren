@@ -25,6 +25,8 @@ State :: struct {
 Control_Query :: enum u8 {
 	Checked, Indeterminate, Default, Disabled, Read_Write, Placeholder_Shown,
 	Valid, Invalid, User_Valid, User_Invalid, In_Range, Out_Of_Range,
+	Modal,          // the element is a dialog shown by showModal()
+	Modal_Active,   // a modal dialog is showing in the document
 	Popover_Open,   // the element is a popover that is showing (not a form control: the page's popover state)
 }
 
@@ -566,6 +568,14 @@ matches_pseudo :: proc(m: ^Match_Ctx, el: base.Handle, n: ^dom.Node, s: css.Simp
 		a, _ := control_query(m, el, q)
 		return a
 	case .Autofill: return false
+	case .Modal:
+		if n.name != "dialog" { return false }
+		a, _ := control_query(m, el, .Modal)
+		return a
+	case .Modal_Active:
+		if n.name != "html" { return false }
+		a, _ := control_query(m, el, .Modal_Active)
+		return a
 	case .Popover_Open:
 		if _, ok := attr(n, "popover"); !ok { return false }
 		a, _ := control_query(m, el, .Popover_Open)

@@ -266,11 +266,12 @@ block_text :: proc(block: []Style_Decl) -> string {
 }
 
 @(private)
-write_block :: proc(c: ^Call, element: Api_Element, block: []Style_Decl) -> Api_Error {
+// `always`: cssText, which sets the attribute whatever it held (a mutation record says so).
+write_block :: proc(c: ^Call, element: Api_Element, block: []Style_Decl, always := false) -> Api_Error {
 	text := block_text(block)
 	// the declarations did not change (a script that writes the same custom property at every scroll event): no mutation,
 	// no restyle, as in other browsers
-	if cur, has := dom.get_attribute(c.page.doc, H(element.handle), "style"); has && cur == text { return .None }
+	if cur, has := dom.get_attribute(c.page.doc, H(element.handle), "style"); !always && has && cur == text { return .None }
 	if err := dom_error(dom.set_attribute(c.page.doc, H(element.handle), "style", text)); err != .None { return err }
 	// kept when the text parses back to this very block: no longhands put together into a shorthand (which parse again
 	// in their own order)
@@ -384,7 +385,7 @@ InlineStyle_setCssText :: proc(c: ^Call, element: Api_Element, text: string) -> 
 		dom.remove_attribute(c.page.doc, H(element.handle), "style")
 		return dom_error(dom.set_attribute(c.page.doc, H(element.handle), "style", ""))
 	}
-	return write_block(c, element, block[:])
+	return write_block(c, element, block[:], always = true)
 }
 
 InlineStyle_length :: proc(c: ^Call, element: Api_Element) -> u32 { return u32(len(inline_block(c, element))) }

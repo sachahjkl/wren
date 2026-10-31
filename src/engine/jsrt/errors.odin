@@ -90,6 +90,24 @@ error_add_stack :: proc(ctx: ^Context, o: ^Object) {
 	}
 }
 
+// A place that is in no frame, first in the stack of error `e`: where a script that does not parse went wrong, which is what
+// an uncaught error reports.
+error_add_location :: proc(ctx: ^Context, e: Value, filename: string, line, col: int) {
+	if e.tag != .object || as_obj(e).class != .error || filename == "" {return}
+	o := as_obj(e)
+	rt := ctx.rt
+	sb := sb_init(rt, 64)
+	sb_ascii(&sb, "    at <anonymous> (")
+	sb_str(&sb, str_from_utf8(rt, filename))
+	sb_ascii(&sb, ":")
+	sb_str(&sb, str_from_u64(rt, u64(max(line, 1))))
+	sb_ascii(&sb, ":")
+	sb_str(&sb, str_from_u64(rt, u64(max(col, 1))))
+	sb_ascii(&sb, ")\n")
+	if pd, ok := o.data.(^Prim_Data); ok && is_string(pd.v) {sb_str(&sb, as_str(pd.v))}
+	set_prim(rt, o, mk_str(sb_finish(&sb)))
+}
+
 error_stack_get :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value {
 	if this.tag != .object {return throw_not_object(ctx)}
 	o := as_obj(this)
