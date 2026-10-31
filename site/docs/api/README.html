@@ -86,6 +86,7 @@
 <li><a href="../../docs/api/abort.html">Module abort</a></li>
 <li><a href="../../docs/api/animations.html">Module animations</a></li>
 <li><a href="../../docs/api/async.html">Module async</a></li>
+<li><a href="../../docs/api/bloburl.html">Module bloburl</a></li>
 <li><a href="../../docs/api/caches.html">Module caches</a></li>
 <li><a href="../../docs/api/canvas.html">Module canvas</a></li>
 <li><a href="../../docs/api/compression.html">Module compression</a></li>
@@ -261,6 +262,7 @@ function not exposed to workers is not instantiated.</p>
 <tr><td><a href="../../docs/api/abort.html"><code>abort</code></a></td><td style="text-align:right">10</td><td>Window</td><td>AbortController and AbortSignal (DOM Standard). A signal is an EventTarget ("abort"). Its reason is a (code, text)</td></tr>
 <tr><td><a href="../../docs/api/animations.html"><code>animations</code></a></td><td style="text-align:right">30</td><td>Window</td><td>Web Animations (src/page/web_animations.odin): Element.animate, Animation, KeyframeEffect, document.timeline. The</td></tr>
 <tr><td><a href="../../docs/api/async.html"><code>async</code></a></td><td style="text-align:right">17</td><td>Window, Worker</td><td>Promises, microtasks, buffers and host objects: the asynchronous core every other module builds on.</td></tr>
+<tr><td><a href="../../docs/api/bloburl.html"><code>bloburl</code></a></td><td style="text-align:right">2</td><td>Window, Worker</td><td>The blob URL store (src/fetch/blob_urls.odin): what <code>URL.createObjectURL</code> makes, for everything that loads a URL outside the</td></tr>
 <tr><td><a href="../../docs/api/caches.html"><code>caches</code></a></td><td style="text-align:right">11</td><td>Window, Worker</td><td>The Cache API (Service Workers §5: CacheStorage, Cache) on the browser's storage (src/page/cache_store.odin): named</td></tr>
 <tr><td><a href="../../docs/api/canvas.html"><code>canvas</code></a></td><td style="text-align:right">141</td><td>Window, Worker</td><td>Canvas 2D (HTML §4.12.5): the 2D rendering context of &lt;canvas&gt; and OffscreenCanvas, drawn by a software rasterizer</td></tr>
 <tr><td><a href="../../docs/api/compression.html"><code>compression</code></a></td><td style="text-align:right">4</td><td>Window, Worker</td><td>CompressionStream and DecompressionStream (Compression Standard; src/page/compression.odin, the streams themselves:</td></tr>
@@ -313,7 +315,7 @@ function not exposed to workers is not instantiated.</p>
 <tr><td><a href="../../docs/api/workers.html"><code>workers</code></a></td><td style="text-align:right">11</td><td>Window, Worker</td><td>Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in</td></tr>
 </tbody>
 </table></div>
-<p>1468 imports in 1369 functions.</p>
+<p>1470 imports in 1371 functions.</p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../docs/licence.html"><span>Previous</span><strong>Wren licences</strong></a>
 <a class="doc-next" href="../../docs/js/coverage.html"><span>Next</span><strong>JavaScript bindings: coverage</strong></a>

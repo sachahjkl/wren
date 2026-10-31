@@ -94,6 +94,7 @@ Page :: struct {
 	forced:       Forced_State,   // :hover / :active / :focus / :visited the developer tools force on an element (devtools_api.odin)
 	style_stale:  bool,
 	link_loads:   map[base.Handle]^Style_Load,
+	link_preloads: map[base.Handle]^Link_Preload,   // link_preload.odin
 	import_loads: [dynamic]^Style_Load,
 	web:          ^Web_State,           // platform web APIs (web.odin)
 	formctl:      ^Page_Forms,          // form controls (bindings_forms.odin)
@@ -108,6 +109,7 @@ Page :: struct {
 	selection:    Page_Selection,       // the document's selection (selection.odin)
 	js:           ^Js_Realm,            // the JavaScript realm, created on first use (js_realm.odin)
 	wasm_store:   ^wasm.User_Store,     // what the page's JavaScript made with the WebAssembly API, on first use (webassembly.odin)
+	blob_urls: ^[dynamic]string,   // what this realm's URL.createObjectURL made (bloburl.odin)
 	scripts:      ^Page_Scripts,        // the document's <script> elements (js_scripts.odin)
 	jsdom:        ^Js_Dom_State,        // the DOM bindings' state: selectors, observers, layout hook (js_dom_collections.odin)
 	scroll_events: ^Scroll_Events,      // scroll offsets of the last frame, for scroll events (scroll_events.odin)

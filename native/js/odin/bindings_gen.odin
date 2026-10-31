@@ -28283,9 +28283,9 @@ wj_install_bindings :: proc "c" () {
 	m_SVGRadialGradientElement[4] = wj.Member{name = "fy", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 112, get = nil, set = nil}
 	m_SVGRadialGradientElement[5] = wj.Member{name = "fr", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 113, get = nil, set = nil}
 	m_SVGGraphicsElement[0] = wj.Member{name = "transform", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 114, get = nil, set = nil}
-	m_SVGGraphicsElement[1] = wj.Member{name = "getBBox", kind = wj.M_METHOD, flags = 0, length = 0, fn = nil}
-	m_SVGGraphicsElement[2] = wj.Member{name = "getCTM", kind = wj.M_METHOD, flags = 0, length = 0, fn = nil}
-	m_SVGGraphicsElement[3] = wj.Member{name = "getScreenCTM", kind = wj.M_METHOD, flags = 0, length = 0, fn = nil}
+	m_SVGGraphicsElement[1] = wj.Member{name = "getBBox", kind = wj.M_METHOD, flags = 0, length = 0, fn = wjr_SVGGraphicsElement_getBBox}
+	m_SVGGraphicsElement[2] = wj.Member{name = "getCTM", kind = wj.M_METHOD, flags = 0, length = 0, fn = wjr_SVGGraphicsElement_getCTM}
+	m_SVGGraphicsElement[3] = wj.Member{name = "getScreenCTM", kind = wj.M_METHOD, flags = 0, length = 0, fn = wjr_SVGGraphicsElement_getScreenCTM}
 	m_SVGGraphicsElement[4] = wj.Member{name = "requiredExtensions", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 115, get = nil, set = nil}
 	m_SVGGraphicsElement[5] = wj.Member{name = "systemLanguage", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 116, get = nil, set = nil}
 	m_SVGAElement[0] = wj.Member{name = "target", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 117, get = nil, set = nil}
@@ -28358,9 +28358,9 @@ wj_install_bindings :: proc "c" () {
 	m_SVGSVGElement[11] = wj.Member{name = "createSVGNumber", kind = wj.M_METHOD, flags = 0, length = 0, fn = nil}
 	m_SVGSVGElement[12] = wj.Member{name = "createSVGLength", kind = wj.M_METHOD, flags = 0, length = 0, fn = nil}
 	m_SVGSVGElement[13] = wj.Member{name = "createSVGAngle", kind = wj.M_METHOD, flags = 0, length = 0, fn = nil}
-	m_SVGSVGElement[14] = wj.Member{name = "createSVGPoint", kind = wj.M_METHOD, flags = 0, length = 0, fn = nil}
-	m_SVGSVGElement[15] = wj.Member{name = "createSVGMatrix", kind = wj.M_METHOD, flags = 0, length = 0, fn = nil}
-	m_SVGSVGElement[16] = wj.Member{name = "createSVGRect", kind = wj.M_METHOD, flags = 0, length = 0, fn = nil}
+	m_SVGSVGElement[14] = wj.Member{name = "createSVGPoint", kind = wj.M_METHOD, flags = 0, length = 0, fn = wjr_SVGSVGElement_createSVGPoint}
+	m_SVGSVGElement[15] = wj.Member{name = "createSVGMatrix", kind = wj.M_METHOD, flags = 0, length = 0, fn = wjr_SVGSVGElement_createSVGMatrix}
+	m_SVGSVGElement[16] = wj.Member{name = "createSVGRect", kind = wj.M_METHOD, flags = 0, length = 0, fn = wjr_SVGSVGElement_createSVGRect}
 	m_SVGSVGElement[17] = wj.Member{name = "createSVGTransform", kind = wj.M_METHOD, flags = 0, length = 0, fn = nil}
 	m_SVGSVGElement[18] = wj.Member{name = "createSVGTransformFromMatrix", kind = wj.M_METHOD, flags = 0, length = 0, fn = nil}
 	m_SVGSVGElement[19] = wj.Member{name = "getElementById", kind = wj.M_METHOD, flags = 0, length = 1, fn = nil}

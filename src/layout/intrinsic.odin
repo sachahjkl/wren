@@ -79,6 +79,12 @@ intrinsic_compute :: proc(c: ^Ctx, bi: i32, ignore_width: bool) -> [2]f32 {
 		switch b.kind {
 		case .Replaced:
 			w := replaced_size(c, bi, -1, -1).x
+			// a ratio and no natural size (an <svg> with only a viewBox): it fills what it is given and asks for nothing (as other
+			// browsers: in a grid track or a shrink-to-fit box it does not count as 300 px)
+			if cs.width.kind == .Auto && cs.height.kind == .Auto {
+				nw, nh, has_w, has_h := natural_size(c, bi)
+				if !has_w && !has_h && nw > 0 && nh > 0 { w = 0 }
+			}
 			res = {w, w}
 			if compressible_replaced(cs) { res[0] = min(pb, w) }
 		case .Block, .Cell, .Caption:

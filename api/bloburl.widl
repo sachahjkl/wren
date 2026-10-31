@@ -1,0 +1,8 @@
+/// The blob URL store (src/fetch/blob_urls.odin): what `URL.createObjectURL` makes, for everything that loads a URL outside the
+/// realm that made it (an image, a stylesheet, a frame, a media element).
+[Exposed=(Window,Worker)]
+module bloburl {
+  /// The bytes (a copy) a blob: URL stands for, until BlobURL_revoke or the end of the realm.
+  void BlobURL_register(string url, string type, bytes data);
+  void BlobURL_revoke(string url);
+}

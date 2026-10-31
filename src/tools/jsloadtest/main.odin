@@ -554,10 +554,10 @@ onmessage = e => {
     postMessage("woke");
     return;
   }
-  postMessage("module woken " + i.exports.w(0, 0) + " value " + new Int32Array(d.memory.buffer)[0]);
+  postMessage("module woken " + i.exports.w(12, 0) + " value " + new Int32Array(d.memory.buffer)[0]);   // (nothing changes 12: only a notify ends this)
   i.exports.a(4, 7);
   postMessage("module notified " + i.exports.n(4, 1));
-  postMessage("wait in js " + Atomics.wait(new Int32Array(d.memory.buffer), 3, 0, 20));
+  postMessage("wait in js " + Atomics.wait(new Int32Array(d.memory.buffer), 5, 0, 20));
 };` + "`" + `]));
 try { Atomics.wait(new Int32Array(new SharedArrayBuffer(8)), 0, 0, 1); log("page waited"); } catch (e) { log("page wait " + e.name); }
 
@@ -579,9 +579,9 @@ const heap = new Int32Array(memory.buffer);
 const w2 = new Worker(WORKER);
 w2.onmessage = e => log(e.data);
 w2.postMessage({module, memory});
+Atomics.store(heap, 0, 11);
 setTimeout(function wake() {
-  Atomics.store(heap, 0, 11);
-  if (Atomics.notify(heap, 0) === 0) { Atomics.store(heap, 0, 0); setTimeout(wake, 1); return; }
+  if (Atomics.notify(heap, 3) === 0) { setTimeout(wake, 1); return; }   // (it is not waiting yet)
   log("page woke a module");
   (function added() { if (Atomics.load(heap, 1) === 7) log("page saw the module's add"); else setTimeout(added, 1); })();
 }, 1);

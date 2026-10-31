@@ -51,6 +51,7 @@ function not exposed to workers is not instantiated.
 | [`abort`](abort.md) | 10 | Window | AbortController and AbortSignal (DOM Standard). A signal is an EventTarget ("abort"). Its reason is a (code, text) |
 | [`animations`](animations.md) | 30 | Window | Web Animations (src/page/web_animations.odin): Element.animate, Animation, KeyframeEffect, document.timeline. The |
 | [`async`](async.md) | 17 | Window, Worker | Promises, microtasks, buffers and host objects: the asynchronous core every other module builds on. |
+| [`bloburl`](bloburl.md) | 2 | Window, Worker | The blob URL store (src/fetch/blob_urls.odin): what `URL.createObjectURL` makes, for everything that loads a URL outside the |
 | [`caches`](caches.md) | 11 | Window, Worker | The Cache API (Service Workers §5: CacheStorage, Cache) on the browser's storage (src/page/cache_store.odin): named |
 | [`canvas`](canvas.md) | 141 | Window, Worker | Canvas 2D (HTML §4.12.5): the 2D rendering context of <canvas> and OffscreenCanvas, drawn by a software rasterizer |
 | [`compression`](compression.md) | 4 | Window, Worker | CompressionStream and DecompressionStream (Compression Standard; src/page/compression.odin, the streams themselves: |
@@ -102,4 +103,4 @@ function not exposed to workers is not instantiated.
 | [`websocket`](websocket.md) | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | 11 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-1468 imports in 1369 functions.
+1470 imports in 1371 functions.

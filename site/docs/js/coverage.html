@@ -86,6 +86,7 @@
 <li><a href="../../docs/api/abort.html">Module abort</a></li>
 <li><a href="../../docs/api/animations.html">Module animations</a></li>
 <li><a href="../../docs/api/async.html">Module async</a></li>
+<li><a href="../../docs/api/bloburl.html">Module bloburl</a></li>
 <li><a href="../../docs/api/caches.html">Module caches</a></li>
 <li><a href="../../docs/api/canvas.html">Module canvas</a></li>
 <li><a href="../../docs/api/compression.html">Module compression</a></li>
@@ -227,7 +228,7 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <tr><td>interfaces, namespaces in the table</td><td style="text-align:right">605</td></tr>
 <tr><td>exposed by default</td><td style="text-align:right">368</td></tr>
 <tr><td>members</td><td style="text-align:right">5310</td></tr>
-<tr><td>members implemented</td><td style="text-align:right">3799 (71.5 %)</td></tr>
+<tr><td>members implemented</td><td style="text-align:right">3805 (71.7 %)</td></tr>
 </tbody>
 </table></div>
 <h2 id="by-specification"><a class="anchor" href="#by-specification" aria-hidden="true">#</a>By specification</h2>
@@ -236,7 +237,7 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <tbody>
 <tr><td><code>FileAPI.idl</code></td><td style="text-align:right">5 (4)</td><td style="text-align:right">33 / 38</td></tr>
 <tr><td><code>IndexedDB.idl</code></td><td style="text-align:right">12 (0)</td><td style="text-align:right">11 / 94</td></tr>
-<tr><td><code>SVG.idl</code></td><td style="text-align:right">60 (35)</td><td style="text-align:right">210 / 455</td></tr>
+<tr><td><code>SVG.idl</code></td><td style="text-align:right">60 (35)</td><td style="text-align:right">216 / 455</td></tr>
 <tr><td><code>clipboard-apis.idl</code></td><td style="text-align:right">4 (1)</td><td style="text-align:right">4 / 14</td></tr>
 <tr><td><code>compression.idl</code></td><td style="text-align:right">2 (2)</td><td style="text-align:right">6 / 6</td></tr>
 <tr><td><code>console.idl</code></td><td style="text-align:right">1 (1)</td><td style="text-align:right">19 / 19</td></tr>
@@ -3748,12 +3749,12 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <li><code>readonly fr</code>: not supported</li>
 </ul>
 <h3 id="svggraphicselement-svgelement"><a class="anchor" href="#svggraphicselement-svgelement" aria-hidden="true">#</a>SVGGraphicsElement : SVGElement</h3>
-<p>0 / 6 members.</p>
+<p>3 / 6 members.</p>
 <ul>
 <li><code>readonly transform</code>: not supported</li>
-<li><code>getBBox()</code>: not supported</li>
-<li><code>getCTM()</code>: not supported</li>
-<li><code>getScreenCTM()</code>: not supported</li>
+<li><code>getBBox()</code>: C <code>wjr_SVGGraphicsElement_getBBox</code></li>
+<li><code>getCTM()</code>: C <code>wjr_SVGGraphicsElement_getCTM</code></li>
+<li><code>getScreenCTM()</code>: C <code>wjr_SVGGraphicsElement_getScreenCTM</code></li>
 <li><code>readonly requiredExtensions</code> (SVGTests): not supported</li>
 <li><code>readonly systemLanguage</code> (SVGTests): not supported</li>
 </ul>
@@ -3858,7 +3859,7 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <li><code>readonly href</code> (SVGURIReference): not supported</li>
 </ul>
 <h3 id="svgsvgelement-svggraphicselement"><a class="anchor" href="#svgsvgelement-svggraphicselement" aria-hidden="true">#</a>SVGSVGElement : SVGGraphicsElement</h3>
-<p>20 / 46 members.</p>
+<p>23 / 46 members.</p>
 <ul>
 <li><code>readonly x</code>: not supported</li>
 <li><code>readonly y</code>: not supported</li>
@@ -3874,9 +3875,9 @@ it is the interface of a node); the others exist in the engine but are absent fr
 <li><code>createSVGNumber()</code>: not supported</li>
 <li><code>createSVGLength()</code>: not supported</li>
 <li><code>createSVGAngle()</code>: not supported</li>
-<li><code>createSVGPoint()</code>: not supported</li>
-<li><code>createSVGMatrix()</code>: not supported</li>
-<li><code>createSVGRect()</code>: not supported</li>
+<li><code>createSVGPoint()</code>: C <code>wjr_SVGSVGElement_createSVGPoint</code></li>
+<li><code>createSVGMatrix()</code>: C <code>wjr_SVGSVGElement_createSVGMatrix</code></li>
+<li><code>createSVGRect()</code>: C <code>wjr_SVGSVGElement_createSVGRect</code></li>
 <li><code>createSVGTransform()</code>: not supported</li>
 <li><code>createSVGTransformFromMatrix()</code>: not supported</li>
 <li><code>getElementById()</code>: not supported</li>

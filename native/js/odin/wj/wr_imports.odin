@@ -49,6 +49,8 @@ wr_MicrotaskCallback :: #type proc "contextless" (user: i32)
 // A reaction: read the result with Promise_value / Promise_text.
 wr_PromiseReaction :: #type proc "contextless" (user: i32, promise: u64, state: i32)
 
+// module bloburl: types
+
 // module caches: types
 
 // module canvas: types
@@ -938,6 +940,15 @@ foreign _wr_wj_async {
 	@(link_name = "Buffer_write") wr_Buffer_write :: proc(buffer: u64, offset: i64, source: [^]u8, source_len: u32) -> i32 ---
 	// buffer.slice(start, end): a copy; negative positions count from the end. Quota past the page's memory limit.
 	@(link_name = "Buffer_slice") wr_Buffer_slice :: proc(buffer: u64, start: i64, end: i64, _ret: ^u64) -> i32 ---
+}
+
+// module bloburl
+foreign import _wr_wj_bloburl "bloburl"
+@(default_calling_convention = "contextless")
+foreign _wr_wj_bloburl {
+	// The bytes (a copy) a blob: URL stands for, until BlobURL_revoke or the end of the realm.
+	@(link_name = "BlobURL_register") wr_BlobURL_register :: proc(url: [^]u8, url_len: u32, type: [^]u8, type_len: u32, data: [^]u8, data_len: u32) ---
+	@(link_name = "BlobURL_revoke") wr_BlobURL_revoke :: proc(url: [^]u8, url_len: u32) ---
 }
 
 // module caches
