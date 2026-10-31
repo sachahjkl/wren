@@ -9,6 +9,9 @@ import "wb:host"
 import "wb:http"
 
 @(private = "file")
+EVICTED_FILES_SETTLE :: 50 * time.Millisecond   // for the writer thread to delete the files of evicted entries
+
+@(private = "file")
 test_settings :: proc() -> Settings {
 	s := settings_default()
 	s.index_flush_ms = 0
@@ -229,7 +232,7 @@ test_disk_eviction :: proc(t: ^testing.T) {
 	testing.expect(t, c.stats.evicted > 0)
 	// files of evicted entries are deleted
 	pump_until(&l, proc(d: rawptr) -> bool { return true }, nil)
-	time.sleep(50 * time.Millisecond)
+	time.sleep(EVICTED_FILES_SETTLE)
 	n := 0
 	for f in list_dir(dir) { if strings.has_suffix(f.name, ".wce") { n += 1 } }
 	testing.expect_value(t, n, len(c.entries))

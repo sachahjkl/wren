@@ -13,6 +13,8 @@ import "core:strings"
 import "wb:cookies"
 import "wb:http"
 
+DELTA_SECONDS_MAX_DIGITS :: 10   // a delta-seconds of more digits than this is read as DELTA_MAX without parsing it
+
 // The directives of a Cache-Control header (RFC 9111 §5.2), request and response ones together. Unknown directives
 // are ignored; a directive given twice keeps its first value; an invalid delta-seconds makes the directive count as
 // present with the most cautious value (max-age=abc is max-age=0).
@@ -73,7 +75,7 @@ parse_cache_control :: proc(value: string) -> Cache_Control {
 			n := 0
 			for n < len(arg) && arg[n] >= '0' && arg[n] <= '9' { n += 1 }
 			if n == 0 || n != len(arg) { return 0 }   // not delta-seconds: the most cautious reading
-			if n > 10 { return DELTA_MAX }
+			if n > DELTA_SECONDS_MAX_DIGITS { return DELTA_MAX }
 			v, _ := strconv.parse_i64(arg)
 			return min(v, DELTA_MAX)
 		}
