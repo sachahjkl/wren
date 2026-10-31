@@ -503,7 +503,7 @@ convolver_set :: proc(g: ^Graph, id: i32, pcm: ^Pcm, normalize: bool) {
 	context.allocator = alloc()
 	new_data: Convolver_Data
 	new_data.normalize = normalize
-	if pcm != nil && pcm.length > 0 {
+	if pcm != nil && pcm.length > 0 && (pcm.channels == 1 || pcm.channels == 2 || pcm.channels == 4) {
 		new_data.channels = pcm.channels
 		new_data.partitions = (pcm.length + RENDER_QUANTUM - 1) / RENDER_QUANTUM
 		parts := new_data.partitions

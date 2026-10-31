@@ -437,6 +437,8 @@ audio_ops_get :: proc "contextless" (ctx: ^wj.Context) -> wj.JSValue {
 
 @(private = "file")
 audio_autoinit :: proc "c" (ctx: ^wj.Context, atom: wj.Atom) -> wj.JSValue {
+	// (asked here and not when the realm starts: a realm of the engine's own tools has no such import, and reads none of this)
+	if wj.wr_WebAudio_enabled() == 0 { return wj.UNDEFINED }
 	ops := audio_ops_get(ctx)
 	if wj.is_exception(ops) { return ops }
 	return wj.JS_GetProperty(ctx, ops, atom)
@@ -453,7 +455,9 @@ AUDIO_NAMES := [?]cstring{
 
 @(export, link_name = "web_audio_start")
 web_audio_start :: proc "c" (ctx: ^wj.Context, kind: i32) -> i32 {
-	if !wj.is_window() || wj.wr_WebAudio_enabled() == 0 { return 0 }
+	// (test262's image has only what ECMAScript needs of the browser)
+	when WREN_TEST262 { return 0 }
+	if !wj.is_window() { return 0 }
 	for name in AUDIO_NAMES {
 		a := wj.JS_NewAtom(ctx, name)
 		defer wj.JS_FreeAtom(ctx, a)

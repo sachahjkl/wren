@@ -33,7 +33,7 @@ Settings :: struct {
 
 WEBAUDIO_PREFS := [?]config.Def{
 	{name = "webaudio.enabled", kind = .Bool, default = {b = true},
-		description = "The Web Audio API (AudioContext and its nodes). Off: the interfaces do not exist, as in a browser without it."},
+		description = "The Web Audio API (AudioContext and its nodes). Off: the interfaces read as undefined, what a script tests for."},
 	{name = "webaudio.latency_ms", kind = .Float, default = {f = 30}, bounded = true, min = 5, max = 1000, unit = "ms",
 		description = "Audio a running AudioContext keeps queued ahead of the device for latencyHint \"interactive\" (\"balanced\" is twice that, \"playback\" four times). Lower answers sooner and may crackle on a busy machine."},
 	{name = "webaudio.sample_rate", kind = .Float, default = {f = 48000}, bounded = true, min = MIN_SAMPLE_RATE, max = MAX_SAMPLE_RATE, unit = "Hz",

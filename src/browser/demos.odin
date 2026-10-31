@@ -119,6 +119,8 @@ DEMOS := [?]Demo{
 	{.Images, "External link icons", "media/dark-links.html",
 		"An SVG icon in the <code>::after</code> background of external links, and <code>filter: invert()</code> to show it on a dark page.", true, "", false},
 
+	{.JavaScript, "Web Audio", "webaudio.html",
+		"A note through a filter, a delay with feedback and an analyser that draws the wave: <code>AudioContext</code> waits for the click on Play (<code>media.autoplay.policy</code>), the tab shows its speaker.", false, "", false},
 	{.Wasm, "A page with no JavaScript", "counter.html",
 		"Real HTML whose behaviour is a WebAssembly module (<code>counter.wasm</code>, written in Odin): buttons, a ticking timer, DOM updates, and a relative link.", false, "", false},
 	{.Wasm, "Page lifetime", "about.html",

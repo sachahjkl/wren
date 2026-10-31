@@ -11,7 +11,7 @@ import "wb:media"
 
 // How long the thread sleeps when the queue is full enough.
 RENDER_WAIT :: 2 * time.Millisecond
-// Quanta rendered in a go when the queue is short, before the lock of the graph is left free and the queue looked at again.
+// The stack of the render threads (the graph is ordered with a walk of its own, not by recursion).
 RENDER_STACK_BYTES :: 256 * 1024
 
 Render_Thread :: struct {
@@ -125,6 +125,15 @@ online_main :: proc(data: rawptr) {
 	started, was_muted := false, false
 	out.set_gain(out, 1)
 	for !sync.atomic_load(&t.quit) {
+		// the device went away (unplugged, its format changed): another stream, the default device or silence
+		if out.failed(out) {
+			if started { out.stop(out) }
+			out.destroy(out)
+			out = open(int(g.rate))
+			if out == nil { return }
+			started = false
+			out.set_gain(out, was_muted ? 0 : 1)
+		}
 		muted := sync.atomic_load(&t.muted)
 		if muted != was_muted {
 			out.set_gain(out, muted ? 0 : 1)

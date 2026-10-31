@@ -150,6 +150,9 @@ WebAudio_maxBufferBytes :: proc(c: ^Call) -> f64 { return f64(c.page.settings.we
 WebAudio_create :: proc(c: ^Call, rate: f64, channels, offline_frames: u32, latency: f64, notify: u32, user: i32) -> u64 {
 	p := c.page
 	if !p.settings.webaudio.enabled { return 0 }
+	// (the page's script checks all this; a Wasm module of the page calls here directly)
+	if !(rate >= webaudio.MIN_SAMPLE_RATE && rate <= webaudio.MAX_SAMPLE_RATE) || channels < 1 || channels > webaudio.MAX_CHANNELS { return 0 }
+	if webaudio.pcm_bytes(int(channels), int(offline_frames)) > p.settings.webaudio.max_buffer_bytes { return 0 }
 	pm := media_pm(p)
 	if offline_frames == 0 && len(pm.audio_graphs) >= p.settings.webaudio.max_contexts { return 0 }
 	a := new(Web_Audio_Graph)
@@ -205,7 +208,7 @@ WebAudio_queued :: proc(c: ^Call, graph: u64) -> f64 {
 
 WebAudio_render :: proc(c: ^Call, graph: u64, frames: u32) -> bool {
 	g := graph_of(c, graph)
-	return g != nil && webaudio.offline_start(g, int(frames))
+	return g != nil && g.offline && frames > 0 && webaudio.pcm_bytes(g.channels, int(frames)) <= c.page.settings.webaudio.max_buffer_bytes && webaudio.offline_start(g, int(frames))
 }
 
 WebAudio_takeResult :: proc(c: ^Call, graph: u64) -> u64 {
@@ -342,7 +345,7 @@ WebAudio_scriptPush :: proc(c: ^Call, graph: u64, node: i32, values: []u8) {
 
 WebAudio_pcmCreate :: proc(c: ^Call, channels, length: u32, rate: f64) -> u64 {
 	p := c.page
-	if channels == 0 || channels > webaudio.MAX_CHANNELS || length == 0 { return 0 }
+	if channels == 0 || channels > webaudio.MAX_CHANNELS || length == 0 || !(rate >= webaudio.MIN_SAMPLE_RATE && rate <= webaudio.MAX_SAMPLE_RATE) { return 0 }
 	if webaudio.pcm_bytes(int(channels), int(length)) > p.settings.webaudio.max_buffer_bytes { return 0 }
 	return pcm_object(p, webaudio.pcm_new(int(channels), int(length), rate), c.owner)
 }
@@ -396,6 +399,7 @@ Decode_Job :: struct {
 }
 
 WebAudio_decode :: proc(c: ^Call, data: []u8, rate: f64) -> u64 {
+	if !(rate >= webaudio.MIN_SAMPLE_RATE && rate <= webaudio.MAX_SAMPLE_RATE) { return 0 }
 	p := c.page
 	pr := promise_create(p, c.owner)
 	j := new(Decode_Job, base.process_allocator())

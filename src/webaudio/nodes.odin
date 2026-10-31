@@ -217,7 +217,9 @@ node_set :: proc(g: ^Graph, id: i32, field: Field, value: f64) {
 			d.known = false
 		}
 	case .Oversample: if d, ok := n.data.(^Shaper_Data); ok { d.oversample = int(value) }
-	case .Fft_Size:     if d, ok := n.data.(^Analyser_Data); ok { d.fft_size = clamp(int(value), ANALYSER_MIN_FFT, ANALYSER_MAX_FFT); d.smoothed_for = -1 }
+	case .Fft_Size:
+		size := int(value)
+		if d, ok := n.data.(^Analyser_Data); ok && size >= ANALYSER_MIN_FFT && size <= ANALYSER_MAX_FFT && size & (size - 1) == 0 { d.fft_size = size; d.smoothed_for = -1 }
 	case .Min_Decibels: if d, ok := n.data.(^Analyser_Data); ok { d.min_db = value }
 	case .Max_Decibels: if d, ok := n.data.(^Analyser_Data); ok { d.max_db = value }
 	case .Smoothing:    if d, ok := n.data.(^Analyser_Data); ok { d.smoothing = value }
@@ -243,6 +245,7 @@ node_start :: proc(g: ^Graph, id: i32, at, offset, duration: f64) {
 	sync.guard(&g.mu)
 	n := node_of(g, id)
 	if n == nil { return }
+	if !finite(at) || !finite(offset) || !finite(duration) || n.sched.started { return }
 	n.sched.start, n.sched.started = max(at, f64(g.frame) / g.rate), true
 	if d, ok := n.data.(^Source_Data); ok { d.offset, d.duration = offset, duration }
 }
@@ -251,6 +254,7 @@ node_stop :: proc(g: ^Graph, id: i32, at: f64) {
 	sync.guard(&g.mu)
 	n := node_of(g, id)
 	if n == nil { return }
+	if !finite(at) { return }
 	n.sched.stop, n.sched.stop_set = max(at, f64(g.frame) / g.rate), true
 }
 
@@ -308,6 +312,8 @@ param_add_event :: proc(g: ^Graph, id: i32, index: int, kind: Event_Kind, time: 
 	sync.guard(&g.mu)
 	p := param_of(g, id, index)
 	if p == nil { return true }
+	// (the page's script checks all this; a Wasm module of the page calls here directly)
+	if !finite(time) || !finite(extra) || (kind == .Set_Curve && (extra <= 0 || len(curve) < 2)) { return true }
 	now := f64(g.frame) / g.rate
 	switch kind {
 	case .Set_Value, .Set_Target:
@@ -737,3 +743,28 @@ merger_run :: proc(n: ^Node) {
 
 // Something other than the holder of this reference has it (a node that plays it).
 pcm_shared :: proc(p: ^Pcm) -> bool { return sync.atomic_load(&p.refs) > 1 }
+
+finite :: #force_inline proc "contextless" (x: f64) -> bool { return x == x && abs(x) <= max(f64) }
+
+// What can be made of these numbers: the page's script checks them, but a Wasm module of the page calls here directly.
+@(private)
+node_args_valid :: proc(kind: Kind, a, b: f64) -> bool {
+	if !finite(a) || !finite(b) { return false }
+	#partial switch kind {
+	case .Destination, .Listener:
+		return false
+	case .Splitter, .Merger:
+		return a >= 1 && a <= MAX_CHANNELS
+	case .Delay:
+		return a > 0 && a < DELAY_MAX_SECONDS
+	case .Script_Processor:
+		size, channels := int(a), int(b)
+		in_ch, out_ch := channels >> 8, channels & 0xFF
+		return a >= RENDER_QUANTUM && a <= SCRIPT_MAX_FRAMES && size & (size - 1) == 0 && b >= 0 && in_ch <= MAX_CHANNELS && out_ch <= MAX_CHANNELS
+	}
+	return true
+}
+
+// A DelayNode's longest delay, and a ScriptProcessorNode's longest block (the specification's limits).
+DELAY_MAX_SECONDS :: 180
+SCRIPT_MAX_FRAMES :: 16384
