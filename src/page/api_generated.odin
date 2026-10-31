@@ -8436,6 +8436,41 @@ _t_fetch_Stream_cancel :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	return nil
 }
 
+// FontFace_addRule :: proc(c: ^Call, rule: string) -> i32
+@(private = "file")
+_t_fontface_FontFace_addRule :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "fontface.FontFace_addRule", "rule") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "fontface.FontFace_addRule: argument rule is not valid UTF-8") }
+		return wasm.trap_new("fontface.FontFace_addRule: argument rule is not valid UTF-8")
+	}
+	_r := FontFace_addRule(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// FontFace_removeRule :: proc(c: ^Call, id: i32)
+@(private = "file")
+_t_fontface_FontFace_removeRule :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := a[0].i32
+	FontFace_removeRule(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
 // forms_value :: proc(c: ^Call, control: Api_Element) -> string
 @(private = "file")
 _t_forms_forms_value :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -33147,6 +33182,8 @@ api_imports := [?]wasm.Import{
 	{module = "fetch", name = "Response_body", fn = _t_fetch_Response_body, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "fetch", name = "Stream_read", fn = _t_fetch_Stream_read, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
 	{module = "fetch", name = "Stream_cancel", fn = _t_fetch_Stream_cancel, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "fontface", name = "FontFace_addRule", fn = _t_fontface_FontFace_addRule, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "fontface", name = "FontFace_removeRule", fn = _t_fontface_FontFace_removeRule, realms = 1, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{}},
 	{module = "forms", name = "HTMLInputElement_value", fn = _t_forms_forms_value, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "forms", name = "HTMLTextAreaElement_value", fn = _t_forms_forms_value, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "forms", name = "HTMLSelectElement_value", fn = _t_forms_forms_value, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},

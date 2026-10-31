@@ -104,15 +104,23 @@ utf8_index :: proc(s: string, off: int) -> int {
 is_ascii_ws :: #force_inline proc(c: u8) -> bool { return c == ' ' || c == '\t' || c == '\n' || c == '\f' || c == '\r' }
 
 // XML's Name production, as the DOM's "valid element / attribute name" checks it (DOM §1.4 since 2025: names may not
-// contain ASCII whitespace, NUL, '/', '>' ; element names start with an ASCII letter or a non-ASCII character).
+// contain ASCII whitespace, NUL, '/', '>' ; an element name not starting with a letter is stricter).
 @(private)
 valid_element_name :: proc(name: string) -> bool {
 	if name == "" { return false }
 	c := name[0]
-	if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c >= 0x80) { return false }
+	if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') {
+		for i in 1 ..< len(name) {
+			b := name[i]
+			if is_ascii_ws(b) || b == 0 || b == '/' || b == '>' { return false }
+		}
+		return true
+	}
+	// (not a letter first: ':', '_' or non-ASCII, then what XML's names take)
+	if c != ':' && c != '_' && c < 0x80 { return false }
 	for i in 1 ..< len(name) {
 		b := name[i]
-		if is_ascii_ws(b) || b == 0 || b == '/' || b == '>' { return false }
+		if !((b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || (b >= '0' && b <= '9') || b == '-' || b == '.' || b == ':' || b == '_' || b >= 0x80) { return false }
 	}
 	return true
 }

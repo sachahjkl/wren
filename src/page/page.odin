@@ -109,6 +109,7 @@ Page :: struct {
 	selection:    Page_Selection,       // the document's selection (selection.odin)
 	js:           ^Js_Realm,            // the JavaScript realm, created on first use (js_realm.odin)
 	wasm_store:   ^wasm.User_Store,     // what the page's JavaScript made with the WebAssembly API, on first use (webassembly.odin)
+	font_face_sheets: [dynamic]^style.Sheet,   // of FontFace objects added to document.fonts (fontface.odin)
 	blob_urls: ^[dynamic]string,   // what this realm's URL.createObjectURL made (bloburl.odin)
 	scripts:      ^Page_Scripts,        // the document's <script> elements (js_scripts.odin)
 	jsdom:        ^Js_Dom_State,        // the DOM bindings' state: selectors, observers, layout hook (js_dom_collections.odin)

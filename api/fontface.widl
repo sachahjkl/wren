@@ -1,0 +1,8 @@
+/// What `document.fonts.add(new FontFace(...))` puts in force: a rule of its own for the document's fonts (src/page/fonts.odin), in
+/// no style sheet a script can see. The objects are native/js/odin/web_fontface.js.
+[Exposed=Window]
+module fontface {
+  /// The @font-face rule, in force: a number for FontFace_removeRule, -1 when there is no document to style.
+  i32 FontFace_addRule(string rule);
+  void FontFace_removeRule(i32 id);
+}
