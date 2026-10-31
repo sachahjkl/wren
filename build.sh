@@ -37,7 +37,10 @@ deps() {
 # package's foreign import; Odin passes their directories. The 32 MiB stack is set with a soft ulimit at run time
 # (ulimit -s), as the Linux CI does, since the main-thread stack size is not a link option on Linux.
 link_flags() {
-  echo '-Wl,--build-id -Wl,-z,noexecstack -Wl,--no-as-needed -lpthread -ldl -lm -lopus -lasound'
+  # (lld: GNU ld stops on the libraries' DW.ref.rust_eh_personality, "undefined hidden symbol")
+  local lld=''
+  command -v ld.lld >/dev/null && lld='-fuse-ld=lld '
+  echo "$lld-Wl,--build-id -Wl,-z,noexecstack -Wl,--no-as-needed -lpthread -ldl -lm -lopus -lasound"
 }
 
 wren() {
