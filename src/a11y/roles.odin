@@ -6,6 +6,8 @@ package a11y
 import "core:strings"
 import "toolkit:platform"
 import "wb:base"
+
+ARIA_INT_SATURATE :: 1_000_000_000   // an integer ARIA attribute stops being read past this
 import "wb:dom"
 
 Role :: platform.A11y_Role
@@ -251,7 +253,7 @@ parse_int :: proc(s: string, fallback: int) -> int {
 	i := 0
 	if t[0] == '-' || t[0] == '+' { neg = t[0] == '-'; i = 1 }
 	if i >= len(t) || t[i] < '0' || t[i] > '9' { return fallback }
-	for ; i < len(t) && t[i] >= '0' && t[i] <= '9'; i += 1 { v = v * 10 + int(t[i] - '0'); if v > 1_000_000_000 { break } }
+	for ; i < len(t) && t[i] >= '0' && t[i] <= '9'; i += 1 { v = v * 10 + int(t[i] - '0'); if v > ARIA_INT_SATURATE { break } }
 	return neg ? -v : v
 }
 
