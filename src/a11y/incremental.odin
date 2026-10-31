@@ -10,6 +10,8 @@ import "wb:dom"
 import "wb:forms"
 import "wb:style"
 
+PARENT_WALK_MAX_STEPS :: 4096   // the steps of a walk up the live tree (a cycle must not hang it)
+
 // Incremental updates of a page's tree: after the first whole tree, an update holds only the nodes that changed, each
 // written whole (for platform.a11y_diff_patch), found from what the engine already records for its own incremental work:
 //   * the mutation journal of the document (dom.journal_since): nodes inserted, removed, text, attributes, slots;
@@ -600,7 +602,7 @@ live_patch :: proc(l: ^Live, v: ^View, out: ^platform.A11y_Update) -> string {
 @(private)
 reachable :: proc(l: ^Live, id: u64) -> bool {
 	cur := id
-	for _ in 0 ..< 4096 {
+	for _ in 0 ..< PARENT_WALK_MAX_STEPS {
 		r, ok := l.recs[cur]
 		if !ok { return false }
 		if r.kind == .Root { return true }
@@ -679,7 +681,7 @@ connected :: proc(d: ^dom.Document, h: base.Handle) -> bool {
 @(private)
 rec_depth :: proc(l: ^Live, id: u64) -> int {
 	n := 0
-	for cur := id; cur != 0 && n < 4096; n += 1 {
+	for cur := id; cur != 0 && n < PARENT_WALK_MAX_STEPS; n += 1 {
 		r, ok := l.recs[cur]
 		if !ok { break }
 		cur = r.parent

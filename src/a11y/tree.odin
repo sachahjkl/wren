@@ -13,6 +13,8 @@ import "wb:dom"
 import "wb:forms"
 import lay "wb:layout"
 
+LIVE_REGION_NAME_MAX_BYTES :: 1000   // the text of a live region given as its name
+
 View :: struct {
 	using src:  Source,
 	layout:     ^lay.Layout,   // nil: no bounds
@@ -363,7 +365,7 @@ emit_element :: proc(w: ^Walk, h: base.Handle, n: ^dom.Node, role: Role, kids: [
 	if name == "" && live != .Off {
 		// (a live region is announced when its name changes: its text is its name)
 		t := collapse(dom.text_content(v.doc, h))
-		name = len(t) > 1000 ? t[:1000] : t
+		name = len(t) > LIVE_REGION_NAME_MAX_BYTES ? t[:LIVE_REGION_NAME_MAX_BYTES] : t
 	}
 	if role == .Label && n.name != "label" {
 		platform.a11y_str(w.u, .Value, name)
