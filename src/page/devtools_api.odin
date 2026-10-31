@@ -13,6 +13,12 @@ import "wb:css"
 import "wb:dom"
 import "wb:style"
 
+// The console's byte budget, when armed, is never below this.
+DEV_CONSOLE_MIN_BYTES :: 1024
+// The frames the developer tools list: bounds on a page that nests without end.
+DEV_FRAMES_MAX :: 64
+DEV_FRAMES_MAX_DEPTH :: 6
+
 @(private = "file")
 computed_names := COMPUTED_PROPERTIES
 
@@ -188,7 +194,7 @@ dev_console_max: int
 // Turns the description of console arguments on (up to `max_bytes` per message) or off (0) in the page's realm, if it has one.
 dev_console_arm :: proc(p: ^Page, max_bytes: int) {
 	if p == nil || p.closed || p.js == nil || p.js.failed || p.worker != nil { return }
-	src := fmt.tprintf("{{ const s = console[Symbol.for(\"wren.devtools\")]; if (s) {{ s.on = %v; s.max = %d; if (!s.on) s.refs.clear(); }} }}", max_bytes > 0, max(max_bytes, 1024))
+	src := fmt.tprintf("{{ const s = console[Symbol.for(\"wren.devtools\")]; if (s) {{ s.on = %v; s.max = %d; if (!s.on) s.refs.clear(); }} }}", max_bytes > 0, max(max_bytes, DEV_CONSOLE_MIN_BYTES))
 	js_run(p, transmute([]byte)src, "devtools", 1)
 }
 
@@ -278,7 +284,7 @@ dev_frames :: proc(p: ^Page) -> []Dev_Frame {
 
 @(private)
 dev_frames_walk :: proc(p: ^Page, depth: int, out: ^[dynamic]Dev_Frame) {
-	if p == nil || p.closed || p.frames == nil || len(out) >= 64 || depth > 6 { return }
+	if p == nil || p.closed || p.frames == nil || len(out) >= DEV_FRAMES_MAX || depth > DEV_FRAMES_MAX_DEPTH { return }
 	for n in p.frames.children {
 		if n == nil || n.page == nil || n.page.closed { continue }
 		append(out, Dev_Frame{href = n.page.env.location.href, page = n.page, depth = depth})

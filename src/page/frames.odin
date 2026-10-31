@@ -44,6 +44,11 @@ import "wb:http"
 import "wb:style"
 import "wb:url"
 
+// How much of a text resource a frame shows in its <pre>.
+FRAME_TEXT_DOCUMENT_MAX_BYTES :: 1 << 20
+// How much of a frame's URL prefixes its console messages.
+FRAME_CONSOLE_URL_MAX :: 120
+
 // What the embedder (the shell) does with nested documents. All optional.
 Frame_Hooks :: struct {
 	user:     rawptr,
@@ -681,7 +686,7 @@ frame_document_body :: proc(n: ^Navigable, l: ^Frame_Load, data: []byte) {
 	case mime == "" || mime == "text/html" || mime == "application/xhtml+xml":
 		parse_document(c, data, l.charset, frame_parsed, n, mime)
 	case strings.has_prefix(mime, "text/") || mime == "application/json" || mime == "application/javascript" || strings.has_suffix(mime, "+json") || strings.has_suffix(mime, "+xml") || mime == "application/xml":
-		dec := strings.clone(string(data[:min(len(data), 1 << 20)]), context.temp_allocator)
+		dec := strings.clone(string(data[:min(len(data), FRAME_TEXT_DOCUMENT_MAX_BYTES)]), context.temp_allocator)
 		pre := dom.create_element(c.doc, "pre")
 		dom.set_attribute(c.doc, pre, "style", "word-wrap: break-word; white-space: pre-wrap;")
 		dom.set_text_content(c.doc, pre, dec)
@@ -867,7 +872,7 @@ frame_console :: proc(user: rawptr, level: Log_Level, message: string) {
 	p := n.parent
 	if p == nil || p.closed || p.console == nil { return }
 	from := n.page != nil ? n.page.env.location.href : "frame"
-	if len(from) > 120 { from = from[:120] }
+	if len(from) > FRAME_CONSOLE_URL_MAX { from = from[:FRAME_CONSOLE_URL_MAX] }
 	p.console(p.console_user, level, strings.concatenate({"[frame ", from, "] ", message}, context.temp_allocator))
 }
 

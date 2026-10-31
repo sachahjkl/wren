@@ -16,6 +16,9 @@ import "wb:base"
 import "wb:dom"
 import "wb:style"
 
+// Wrappers of stylesheets are swept for dead ones when they outnumber twice the live sheets by this many.
+CSSOM_SHEET_WRAPPERS_SLACK :: 16
+
 @(private)
 Css_Sheet :: struct {
 	id:      u64,            // the engine's sheet
@@ -64,7 +67,7 @@ element_sheet_object :: proc(c: ^Call, s: ^style.Sheet) -> u64 {
 	p := c.page
 	st := &js_dom_state(p).cssom
 	if h, ok := st.by_sheet[s.id]; ok && object_data(p, h, &css_sheet_vt) != nil { return h }
-	if len(st.by_sheet) > 2 * len(p.engine.sheets) + 16 {
+	if len(st.by_sheet) > 2 * len(p.engine.sheets) + CSSOM_SHEET_WRAPPERS_SLACK {
 		gone := make([dynamic]u64, context.temp_allocator)
 		for id, h in st.by_sheet { if style.engine_find_sheet(p.engine, id) == nil { append(&gone, h) } }
 		for h in gone { object_release(p, h) }   // (its destroy forgets it)

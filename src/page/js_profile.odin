@@ -19,6 +19,10 @@ import "wb:base"
 import "wb:host"
 import "wb:wasm"
 
+// The buffer the engine's profile is dumped into, and how many frames each table of the report lists.
+JS_PROFILE_DUMP_BYTES :: 4 << 20
+JS_PROFILE_REPORT_ROWS :: 70
+
 @(private = "file")
 Js_Profile :: struct {
 	inst:      ^wasm.Instance,
@@ -69,12 +73,11 @@ js_profile_begin :: proc(p: ^Page, inst: ^wasm.Instance) {
 
 @(private = "file")
 js_profile_dump :: proc(inst: ^wasm.Instance, path: string) {
-	SIZE :: 4 << 20
-	r, res := wasm.call_i32(inst, "wj_alloc", i32(SIZE))
+	r, res := wasm.call_i32(inst, "wj_alloc", i32(JS_PROFILE_DUMP_BYTES))
 	if res != .Ok || r == 0 { return }
 	ptr := u32(r)
 	defer { fa := [1]u32{ptr}; wasm.call_raw(inst, "wj_dealloc", fa[:]) }
-	argv := [2]u32{ptr, SIZE}
+	argv := [2]u32{ptr, JS_PROFILE_DUMP_BYTES}
 	if wasm.call_raw(inst, "wj_profile_dump", argv[:], 1) != .Ok { return }
 	n := argv[0]
 	b := wasm.guest_bytes(inst, u64(ptr), u64(n))
@@ -96,10 +99,10 @@ js_profile_dump :: proc(inst: ^wasm.Instance, path: string) {
 	fmt.sbprintf(&sb, "the page's functions (samples every few interrupt checks of the interpreter: calls and loop iterations; %d samples)\n%s\n", total, header)
 	slice.sort_by(rows[:], proc(a, b: Row) -> bool { return a.self > b.self })
 	fmt.sbprintf(&sb, "\n-- most samples of their own (%%, frame)\n")
-	for r, k in rows { if k >= 70 || r.self == 0 { break }; fmt.sbprintf(&sb, "%6.2f %%  %6d  %s\n", f64(r.self) * 100 / f64(max(total, 1)), r.self, r.frame) }
+	for r, k in rows { if k >= JS_PROFILE_REPORT_ROWS || r.self == 0 { break }; fmt.sbprintf(&sb, "%6.2f %%  %6d  %s\n", f64(r.self) * 100 / f64(max(total, 1)), r.self, r.frame) }
 	slice.sort_by(rows[:], proc(a, b: Row) -> bool { return a.incl > b.incl })
 	fmt.sbprintf(&sb, "\n-- most samples with them on the stack (%%, frame)\n")
-	for r, k in rows { if k >= 70 { break }; fmt.sbprintf(&sb, "%6.2f %%  %6d  %s\n", f64(r.incl) * 100 / f64(max(total, 1)), r.incl, r.frame) }
+	for r, k in rows { if k >= JS_PROFILE_REPORT_ROWS { break }; fmt.sbprintf(&sb, "%6.2f %%  %6d  %s\n", f64(r.incl) * 100 / f64(max(total, 1)), r.incl, r.frame) }
 	_ = os.write_entire_file(path, transmute([]byte)strings.to_string(sb))
 }
 

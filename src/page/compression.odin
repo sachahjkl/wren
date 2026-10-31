@@ -5,6 +5,9 @@ import "core:fmt"
 // build with -collection:wb=src alone
 import "../../ext/gui_toolkit/flate"
 
+// The inflate limit never goes below this, however low page.max_fetch_bytes is set.
+DECOMPRESS_LIMIT_FLOOR_BYTES :: 1 << 20
+
 // CompressionStream / DecompressionStream (Compression Standard; api/compression.widl, the streams themselves:
 // native/js/runtime/web_transform.c) on the toolkit's flate package: gzip, zlib ("deflate") or raw deflate, fed chunk by chunk; what a chunk
 // makes is returned at once (kept for Compression_output when the caller's buffer was too small). The output of one
@@ -37,7 +40,7 @@ Compression_create :: proc(c: ^Call, format: Api_CompressionFormat, decompress: 
 	case .Deflate_Raw: f = .Raw
 	}
 	if decompress {
-		flate.inflater_init(&zs.inflater, f, limit = max(c.page.settings.max_fetch_bytes, 1 << 20))
+		flate.inflater_init(&zs.inflater, f, limit = max(c.page.settings.max_fetch_bytes, DECOMPRESS_LIMIT_FLOOR_BYTES))
 	} else {
 		flate.deflater_init(&zs.deflater, f)
 	}

@@ -22,6 +22,11 @@ import "wb:dom"
 import "wb:host"
 import "wb:webauthn"
 
+// How long the exit waits for a cancelled ceremony's thread (a system dialog may ignore the cancellation), and how often
+// it looks.
+WEBAUTHN_SHUTDOWN_GRACE_MS :: 3000
+WEBAUTHN_SHUTDOWN_POLL :: 10 * time.Millisecond
+
 // What the shell tells pages about their window. nil procs: no window (headless tools): every page counts as shown and
 // focused, and the platform's dialog goes to the foreground window.
 Webauthn_Embedder :: struct {
@@ -167,12 +172,12 @@ webauthn_in_flight :: proc() -> int { return len(webauthn_ops) }
 // At exit, before the loop goes: every ceremony cancelled and its thread joined. A platform call that does not come
 // back within grace_ms of its cancellation (a system dialog that ignores it) is left to the end of the process: its
 // thread and its ceremony are not freed (the thread still uses them), and the exit is not held up.
-webauthn_shutdown :: proc(grace_ms := 3000) {
+webauthn_shutdown :: proc(grace_ms := WEBAUTHN_SHUTDOWN_GRACE_MS) {
 	for op in webauthn_ops { webauthn.cancel(op.platform, &op.c.cancel, .Not_Allowed) }
 	deadline := time.tick_now()
 	for op in webauthn_ops {
 		for !host.thread_finished(op.thread) && time.duration_milliseconds(time.tick_since(deadline)) < f64(grace_ms) {
-			time.sleep(10 * time.Millisecond)
+			time.sleep(WEBAUTHN_SHUTDOWN_POLL)
 		}
 		if !host.thread_finished(op.thread) { continue }
 		host.thread_join(op.thread)

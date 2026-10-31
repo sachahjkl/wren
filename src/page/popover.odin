@@ -19,6 +19,10 @@ import "wb:style"
 // at once (cancelable when it opens); `toggle` is queued and coalesced per popover (its oldState stays the first one).
 // A popover removed from the document stops showing without events.
 
+// Event handlers can show and hide popovers again: bounds on the rounds of hiding a stack, and on nested show and hide.
+POPOVER_HIDE_MAX_ROUNDS :: 64
+POPOVER_MAX_REENTRY :: 32
+
 Popover_Kind :: enum u8 { None, Auto, Manual, Hint }
 
 Popover_State :: struct {
@@ -145,7 +149,7 @@ popover_ancestor :: proc(p: ^Page, stack: []base.Handle, el, invoker: base.Handl
 popover_hide_until :: proc(p: ^Page, endpoint: base.Handle, focus_back, fire_events: bool) {
 	s := popover_state(p)
 	if s == nil { return }
-	for _ in 0 ..< 64 {
+	for _ in 0 ..< POPOVER_HIDE_MAX_ROUNDS {
 		stack := popover_stack(p, s)
 		if len(stack) == 0 { return }
 		top := stack[len(stack) - 1]
@@ -192,7 +196,7 @@ popover_show :: proc(p: ^Page, el, invoker: base.Handle) -> (Api_Error, string) 
 	if !ok { return err, msg }
 	s.busy += 1
 	defer s.busy -= 1
-	if s.busy > 32 { return .None, "" }
+	if s.busy > POPOVER_MAX_REENTRY { return .None, "" }
 	if !dispatch_event(p, el, dom.Event{type = "beforetoggle", cancelable = true, data = "open", text = "closed", object = u64(invoker)}) { return .None, "" }
 	if ok, err, msg = popover_check(p, el, false); !ok { return err, msg }
 	kind := popover_kind(dom.get(p.doc, el))
@@ -238,7 +242,7 @@ popover_hide :: proc(p: ^Page, el: base.Handle, focus_back := true, fire_events 
 	if !ok { return err, msg }
 	s.busy += 1
 	defer s.busy -= 1
-	if s.busy > 32 { return .None, "" }
+	if s.busy > POPOVER_MAX_REENTRY { return .None, "" }
 	kind := popover_kind(dom.get(p.doc, el))
 	if kind == .Auto || kind == .Hint {
 		popover_hide_until(p, el, focus_back, fire_events)

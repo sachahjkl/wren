@@ -35,6 +35,9 @@ import "wb:js"
 import "wb:url"
 import "wb:wasm"
 
+// The longest worker URL shown as its label; a longer one is cut and ends in "...".
+WORKER_LABEL_MAX :: 80
+
 ////////////////////////////////
 // Messages between the two threads
 
@@ -566,7 +569,7 @@ page_receive :: proc(h: ^Worker_Host, m: ^Worker_Msg) {
 @(private)
 worker_label :: proc(h: ^Worker_Host) -> string {
 	if h.name != "" { return h.name }
-	return len(h.url) <= 80 ? h.url : fmt.tprintf("%s...", h.url[:77])
+	return len(h.url) <= WORKER_LABEL_MAX ? h.url : fmt.tprintf("%s...", h.url[:WORKER_LABEL_MAX - len("...")])
 }
 
 @(private)

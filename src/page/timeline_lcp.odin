@@ -33,6 +33,8 @@ import "wb:style"
 // The gap that ends a layout-shift session window, and its longest span (Cumulative Layout Shift, informational).
 LAYOUT_SHIFT_SESSION_GAP_MS :: 1000.0
 LAYOUT_SHIFT_SESSION_MAX_MS :: 5000.0
+// A background image covering this share of the viewport counts as the whole of it, and so is no LCP candidate.
+LCP_FULL_VIEWPORT_SHARE :: 0.99
 
 @(private)
 Lcp_Candidate :: struct {
@@ -118,7 +120,7 @@ lcp_candidate_of :: proc(p: ^Page, l: ^lay.Layout, view: ^lay.View, vp: Viewport
 
 	// a background image that is not the full viewport: contentful; one covering the whole viewport is excluded
 	if background_image_candidate(p, cs) {
-		if area >= vp_area * 0.99 { return }   // a full-viewport background is not a candidate (the spec)
+		if area >= vp_area * LCP_FULL_VIEWPORT_SHARE { return }   // a full-viewport background is not a candidate (the spec)
 		return Lcp_Candidate{node = node, area = area, rect = rect, is_image = true}, true
 	}
 

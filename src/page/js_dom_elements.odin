@@ -16,6 +16,9 @@ import "wb:dom"
 import "wb:js"
 import "wb:url"
 
+// Digits of a reflected integer attribute that are parsed: 18 always fit an i64, the rest is ignored.
+REFLECTED_INT_MAX_DIGITS :: 18
+
 // The qualified name of an element; upper case for an HTML element (tagName, nodeName) when `upper`.
 @(private)
 jd_qualified_name :: proc(d: ^dom.Document, h: base.Handle, upper: bool) -> string {
@@ -277,7 +280,7 @@ parse_html_int :: proc(s: string) -> (int, bool) {
 	end := 0
 	for end < len(t) && t[end] >= '0' && t[end] <= '9' { end += 1 }
 	if end == 0 { return 0, false }
-	v, ok := strconv.parse_i64(t[:min(end, 18)])
+	v, ok := strconv.parse_i64(t[:min(end, REFLECTED_INT_MAX_DIGITS)])
 	if !ok { return 0, false }
 	return sign * int(v), true
 }

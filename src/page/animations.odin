@@ -6,6 +6,10 @@ import "wb:dom"
 import "wb:host"
 import "wb:style"
 
+// A wake-up timer for animations is set again only if the new time is this much sooner (CSS and Web Animations): clearing
+// and setting a timer for less is wasted work.
+ANIM_REARM_SLACK_MS :: 0.5
+
 // CSS transitions and animations of a page: the document clock, the style timeline (style/timeline.odin) and its events.
 //
 // The clock is the shell's event loop clock (`host.now_ns`), in milliseconds; a shell that wants every page of a frame
@@ -96,7 +100,7 @@ animations_after_tick :: proc(p: ^Page) {
 	next := style.timeline_next_ms(tl)
 	if next > 0 {
 		at := document_time_ms(p) + next
-		if p.anim.wake_timer == base.NIL_HANDLE || at < p.anim.wake_at - 0.5 {
+		if p.anim.wake_timer == base.NIL_HANDLE || at < p.anim.wake_at - ANIM_REARM_SLACK_MS {
 			if p.anim.wake_timer != base.NIL_HANDLE { host.clear_timer(p.loop, p.anim.wake_timer) }
 			p.anim.wake_timer = host.set_timer(p.loop, next, 0, wake_for_animation, p, p.scope)
 			p.anim.wake_at = at

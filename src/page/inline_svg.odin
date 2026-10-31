@@ -25,6 +25,9 @@ import "wb:base"
 import "wb:dom"
 import "wb:style"
 
+// How many referenced elements are copied into one serialized <svg>.
+INLINE_SVG_MAX_COPIED_REFS :: 4096
+
 Inline_Svg :: struct {
 	node:         base.Handle,
 	request:      ^Img_Request,   // holds the cache entry of the markup
@@ -532,7 +535,7 @@ svg_serialize :: proc(p: ^Page, node: base.Handle, css_w, css_h: f32) -> (string
 			h := element_by_id(p, id)
 			if h == base.NIL_HANDLE { continue }
 			copied += 1
-			if copied > 4096 { break }
+			if copied > INLINE_SVG_MAX_COPIED_REFS { break }
 			s.b = strings.builder_make(context.temp_allocator)
 			write_tree(&s, h, "", false)
 			if s.failed { return "", false }

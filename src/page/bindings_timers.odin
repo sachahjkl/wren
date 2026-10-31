@@ -17,6 +17,9 @@ import "wb:base"
 import "wb:dom"
 import "wb:host"
 
+// The frame period assumed when neither the frame budget nor the frame period is known (a 60 Hz display).
+FALLBACK_FRAME_MS :: 1000.0 / 60
+
 Frame_Callback :: struct {
 	id:        u64,
 	instance:  u32,
@@ -244,7 +247,7 @@ cancelIdleCallback :: proc(c: ^Call, id: u64) -> Api_Error {
 frame_interval_ms :: proc(s: Web_Settings) -> f64 {
 	if s.frame_budget_ms > 0 { return s.frame_budget_ms }
 	if s.frame_period_ms > 0 { return s.frame_period_ms }
-	return 1000.0 / 60
+	return FALLBACK_FRAME_MS
 }
 
 // Arms the idle scan: soon (timers.idle_poll_ms), or at the earliest timeout when that comes first.
