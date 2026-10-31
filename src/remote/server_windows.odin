@@ -24,6 +24,12 @@ import win "core:sys/windows"
 import "wb:base"
 import "wb:host"
 
+// The wait before trying again when no pipe instance could be made; and after this many failed connects, the wait between
+// them, so a loop that keeps failing does not spin (ms).
+PIPE_INSTANCE_RETRY_MS :: 100
+PIPE_FAILURES_BEFORE_WAIT :: 3
+PIPE_FAILURE_WAIT_MS :: 50
+
 foreign import advapi32_srv "system:Advapi32.lib"
 foreign import kernel32_srv "system:Kernel32.lib"
 
@@ -217,7 +223,7 @@ accept_main :: proc(_: ^thread.Thread) {
 	// made for a moment (out of resources): neither is a reason to stop listening, which would remove the pipe for good.
 	for {
 		if pipe == win.INVALID_HANDLE_VALUE {
-			if win.WaitForSingleObject(srv.stop_event, 100) == win.WAIT_OBJECT_0 { return }
+			if win.WaitForSingleObject(srv.stop_event, PIPE_INSTANCE_RETRY_MS) == win.WAIT_OBJECT_0 { return }
 			pipe = create_instance(false)
 			continue
 		}
@@ -246,7 +252,7 @@ accept_main :: proc(_: ^thread.Thread) {
 			next := create_instance(false)   // (before the old one goes: the name never disappears)
 			win.CloseHandle(pipe)
 			pipe = next
-			if failures > 3 && win.WaitForSingleObject(srv.stop_event, 50) == win.WAIT_OBJECT_0 {   // (no spin if it keeps failing)
+			if failures > PIPE_FAILURES_BEFORE_WAIT && win.WaitForSingleObject(srv.stop_event, PIPE_FAILURE_WAIT_MS) == win.WAIT_OBJECT_0 {   // (no spin if it keeps failing)
 				if pipe != win.INVALID_HANDLE_VALUE { win.CloseHandle(pipe) }
 				return
 			}

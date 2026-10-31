@@ -7,6 +7,18 @@ import "core:time"
 import "wb:host"
 import "wb:remote"
 
+// The waits of the test (ms): to connect, for an answer, for a name nobody listens on; and of the loop's thread.
+@(private = "file")
+CONNECT_WAIT_MS :: 2000
+@(private = "file")
+CALL_WAIT_MS :: 5000
+@(private = "file")
+NOBODY_WAIT_MS :: 50
+@(private = "file")
+LOOP_WAIT_MS :: 20
+@(private = "file")
+EXCHANGE_DEADLINE :: 30 * time.Second
+
 @(private = "file")
 Exchange :: struct {
 	name:   string,
@@ -40,19 +52,19 @@ a_call_goes_through_the_channel_and_back :: proc(t: ^testing.T) {
 	worker := host.thread_start(proc(data: rawptr) {
 		ex := (^Exchange)(data)
 		c: Conn
-		if connect(&c, ex.name, 2000) {
-			r, e := call(&c, "Echo", `{"text":"héllo"}`, 5000)
+		if connect(&c, ex.name, CONNECT_WAIT_MS) {
+			r, e := call(&c, "Echo", `{"text":"héllo"}`, CALL_WAIT_MS)
 			// (the answer is in this thread's temporary memory, gone with the thread: compared here)
 			ex.ok, ex.echoed = e == .None, r.result == `{"text":"héllo"}`
-			_, ex.err = call(&c, "Nope", "", 5000)
+			_, ex.err = call(&c, "Nope", "", CALL_WAIT_MS)
 			disconnect(&c)
 		}
 		other: Conn
-		if connect(&other, "unit-nobody-listens", 50) { disconnect(&other); ex.missing = .None } else { ex.missing = .No_Server }
+		if connect(&other, "unit-nobody-listens", NOBODY_WAIT_MS) { disconnect(&other); ex.missing = .None } else { ex.missing = .No_Server }
 		sync.atomic_store(&ex.done, true)
 	}, &ex)
-	deadline := time.tick_add(time.tick_now(), 30 * time.Second)
-	for !sync.atomic_load(&ex.done) && time.tick_diff(time.tick_now(), deadline) > 0 { host.loop_wait(&loop, 20) }
+	deadline := time.tick_add(time.tick_now(), EXCHANGE_DEADLINE)
+	for !sync.atomic_load(&ex.done) && time.tick_diff(time.tick_now(), deadline) > 0 { host.loop_wait(&loop, LOOP_WAIT_MS) }
 	host.thread_join(worker)
 	testing.expect(t, ex.ok, "the answer came")
 	testing.expect(t, ex.echoed, "the answer is the handler's, byte for byte")
