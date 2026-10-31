@@ -21,6 +21,8 @@ import "../odin_abi/api_decl"
 import "../odin/jsb"
 import "../odin/wj"
 
+@(private = "file") IFACE_NAME_BYTES :: 128   // an interface's name, NUL-terminated
+
 @(private = "file") nothing: abi.Nothing
 
 // ---- slots: the browser calls listeners back by slot (0 is never used: it means "none") ----
@@ -559,7 +561,7 @@ wj_wrap_target :: proc "c" (ctx: ^wj.Context, h: u64) -> wj.JSValue {
 	context = jsb.glue_context()
 	kind: string
 	jsb.host(&kind, api_decl.Object_kind, wj.wr_Object_kind, abi.Handle(h))
-	name: [128]u8
+	name: [IFACE_NAME_BYTES]u8
 	n := copy(name[:len(name) - 1], kind)
 	name[n] = 0
 	iface := wj.iface(cstring(&name[0]))

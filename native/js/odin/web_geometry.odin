@@ -13,6 +13,8 @@ package odin_glue
 import "../odin/jsb"
 import "../odin/wj"
 
+@(private = "file") NUMBER_TEXT_BYTES :: 400   // a number of a transform list: a longer one does not parse
+
 // The interfaces, by name (jsb.iface_of resolves a type's name once).
 @(private = "file") DOMMatrixReadOnly :: distinct u64
 @(private = "file") DOMMatrix         :: distinct u64
@@ -272,7 +274,7 @@ scan_number :: proc "contextless" (s: []u8) -> (v: f64, n: int, ok: bool) {
 			q = e
 		}
 	}
-	buf: [400]u8
+	buf: [NUMBER_TEXT_BYTES]u8
 	if q >= len(buf) { return 0, 0, false }
 	copy(buf[:], s[:q])
 	buf[q] = 0

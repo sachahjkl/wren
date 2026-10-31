@@ -19,6 +19,9 @@
 // Every call into the browser is a declaration of api_decl/serviceworker.odin through jsb.host.
 package odin_glue
 
+// The browser's failure text is "Name: message" when what comes before the colon is shorter than this.
+@(private = "file") ERROR_NAME_MAX_BYTES :: 48
+
 import "../odin_abi/abi"
 import "../odin_abi/api_decl"
 import "../odin/jsb"
@@ -860,7 +863,7 @@ answer :: proc(ctx: ^wj.Context, id: u64, ok: bool, text: string) {
 		name := "InvalidStateError"
 		msg := text
 		if colon >= 0 {
-			if colon > 0 && colon < 48 { name = text[:colon] }
+			if colon > 0 && colon < ERROR_NAME_MAX_BYTES { name = text[:colon] }
 			msg = text[colon + 1:]
 		}
 		for len(msg) > 0 && msg[0] == ' ' { msg = msg[1:] }

@@ -13,6 +13,7 @@ import "../odin_abi/api_decl"
 import "../odin/jsb"
 import "../odin/wj"
 
+@(private = "file") LINE_DASH_MAX_SEGMENTS :: 65536   // setLineDash reads no more than this of a sequence
 @(private = "file") Ctx2D :: api_decl.CanvasRenderingContext2D
 @(private = "file") ImageData :: distinct u64   // an engine object
 @(private = "file") none: abi.Nothing
@@ -609,7 +610,7 @@ wjr_CanvasPathDrawingStyles_setLineDash :: proc "c" (ctx: ^wj.Context, this_val:
 	rc := wj.JS_ToUint32(ctx, &n, lenv)
 	wj.JS_FreeValue(ctx, lenv)
 	if rc < 0 { return wj.EXCEPTION }
-	n = min(n, 65536)
+	n = min(n, LINE_DASH_MAX_SEGMENTS)
 	d: [^]f64
 	if n > 0 {
 		d = ([^]f64)(wj.js_malloc(ctx, uint(n) * size_of(f64)))

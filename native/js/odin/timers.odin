@@ -277,7 +277,7 @@ wj_cb_timer :: proc "c" (user: i64) {
 		if src == nil {
 			result = wj.EXCEPTION
 		} else {
-			name: [1024]u8
+			name: [SCRIPT_NAME_BYTES]u8
 			wj.wj_script_base_name(&name[0], len(name))
 			opt := wj.Eval_Options{ version = wj.EVAL_OPTIONS_VERSION, eval_flags = wj.EVAL_TYPE_GLOBAL, filename = cstring(&name[0]), line_num = 1 }
 			result = wj.JS_Eval2(ctx, ([^]u8)(rawptr(src)), n, &opt)

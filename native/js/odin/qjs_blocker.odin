@@ -14,6 +14,13 @@ package odin_glue
 
 import "../odin/wj"
 
+@(private = "file") SET_CONSTANT_NUMBER_MAX :: 32767   // a number as a scriptlet's value is taken up to this size either way, as uBlock Origin does
+@(private = "file") JSON_PATH_MAX_DEPTH :: 12          // objects a property path of json-prune goes through
+@(private = "file") NANO_BOOST_DEFAULT :: 0.05         // the nano boosters' factor when none or a bad one is given
+@(private = "file") NANO_BOOST_MIN :: 0.001
+@(private = "file") NANO_BOOST_MAX :: 50
+@(private = "file") RULE_MAX_FIELDS :: 16              // a record: the scriptlet's name and its arguments
+
 // ---- strings (NUL-terminated, libc heap) ----
 
 @(private = "file")
@@ -288,7 +295,7 @@ to_value :: proc "contextless" (ctx: ^wj.Context, v: [^]u8) -> wj.JSValue {
 	}
 	end: [^]u8
 	d := wj.strtod(v, &end)
-	if v[0] != 0 && end[0] == 0 && d >= -32767 && d <= 32767 { return wj.new_float64(ctx, d) }
+	if v[0] != 0 && end[0] == 0 && d >= -SET_CONSTANT_NUMBER_MAX && d <= SET_CONSTANT_NUMBER_MAX { return wj.new_float64(ctx, d) }
 	return wj.JS_NewString(ctx, cstring(v))
 }
 
@@ -688,7 +695,7 @@ webrtc_stub :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, ar
 
 @(private = "file")
 path_rec :: proc "contextless" (ctx: ^wj.Context, o: wj.JSValue, parts: Words, i: i32, del: bool, depth: int) -> bool {
-	if !wj.is_object(o) || depth > 12 { return false }
+	if !wj.is_object(o) || depth > JSON_PATH_MAX_DEPTH { return false }
 	key := parts.w[i]
 	wild := is(key, "*") || is(key, "[]") || is(key, "[-]")
 	last := i == parts.n - 1
@@ -787,8 +794,8 @@ install_rule :: proc "contextless" (ctx: ^wj.Context, name: [^]u8, a: [^][^]u8, 
 		if r == nil { return }
 		needle_init(ctx, &r.n1, argn(a, n, 0))
 		r.delay = str_dup(argn(a, n, 1), cstr_len(argn(a, n, 1)))
-		b := argn(a, n, 2)[0] != 0 ? wj.strtod(a[2], nil) : 0.05
-		r.boost = (b >= 0.001 && b <= 50) ? b : 0.05
+		b := argn(a, n, 2)[0] != 0 ? wj.strtod(a[2], nil) : NANO_BOOST_DEFAULT
+		r.boost = (b >= NANO_BOOST_MIN && b <= NANO_BOOST_MAX) ? b : NANO_BOOST_DEFAULT
 		prop: cstring = is(name, "nano-setTimeout-booster") ? "setTimeout" : "setInterval"
 		replace_property(ctx, g, prop, wrap_global_function(ctx, g, prop, timer_hook, nrules - 1, 1, 2))
 	} else if is(name, "no-fetch-if") {
@@ -859,12 +866,12 @@ wj_hook_install :: proc "c" (spec: u32, n: u32) -> i32 {
 		j := i
 		for j < int(n) && text[j] != 0x1e { j += 1 }
 		// one record text[i ..< j), its fields NUL-terminated in a copy (a field ends at 0x1f, or at a NUL of the text)
-		fields: [16][^]u8
+		fields: [RULE_MAX_FIELDS][^]u8
 		record := str_dup(text[i:], j - i)
 		if record != nil {
 			nf := 0
 			p := 0
-			for nf < 16 {
+			for nf < RULE_MAX_FIELDS {
 				fields[nf] = record[p:]
 				nf += 1
 				q := p

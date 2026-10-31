@@ -22,6 +22,8 @@ import "../odin/wj"
 @(private = "file") INSPECT_MAX_DEPTH  :: 2
 @(private = "file") INSPECT_MAX_ITEMS  :: 100
 @(private = "file") INSPECT_MAX_STRING :: 10000
+@(private = "file") LABEL_LINE_BYTES :: 600         // a console.count or console.time line, the label cut to fit
+@(private = "file") TIMER_REPORT_LINE_BYTES :: 700  // the line of console.timeLog and console.timeEnd
 
 @(private = "file") console_indent: i32
 
@@ -365,7 +367,7 @@ wjr_console_count :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv:
 	l := find_label(&counts, name, true)
 	value := l != nil ? (l.value + 1) : 0
 	if l != nil { l.value = value }
-	tbuf: [600]u8
+	tbuf: [LABEL_LINE_BYTES]u8
 	m := wj.snprintf(&tbuf[0], size_of(tbuf), "%s: %.0f", name, value)
 	wj.wj_console_text(LEVEL_INFO, &tbuf[0], m > 0 ? uint(m) : 0)
 	if s != nil { wj.JS_FreeCString(ctx, s) }
@@ -389,7 +391,7 @@ wjr_console_time :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: 
 	s := label_arg(ctx, argc, argv)
 	name := s != nil ? ([^]u8)(rawptr(s)) : default_bytes()
 	if find_label(&timers_labels, name, false) != nil {
-		tbuf: [600]u8
+		tbuf: [LABEL_LINE_BYTES]u8
 		m := wj.snprintf(&tbuf[0], size_of(tbuf), "Timer '%s' already exists", name)
 		wj.wj_console_text(LEVEL_WARN, &tbuf[0], m > 0 ? uint(m) : 0)
 	} else {
@@ -405,7 +407,7 @@ console_time_report :: proc "c" (ctx: ^wj.Context, argc: i32, argv: [^]wj.JSValu
 	s := label_arg(ctx, argc, argv)
 	name := s != nil ? ([^]u8)(rawptr(s)) : default_bytes()
 	l := find_label(&timers_labels, name, false)
-	tbuf: [700]u8
+	tbuf: [TIMER_REPORT_LINE_BYTES]u8
 	if l == nil {
 		m := wj.snprintf(&tbuf[0], size_of(tbuf), "Timer '%s' does not exist", name)
 		wj.wj_console_text(LEVEL_WARN, &tbuf[0], m > 0 ? uint(m) : 0)

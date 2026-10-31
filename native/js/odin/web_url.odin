@@ -17,6 +17,8 @@ import "../odin_abi/api_decl"
 import "../odin/jsb"
 import "../odin/wj"
 
+@(private = "file") URL_ERROR_QUOTE_MAX :: 200   // the characters of an invalid URL a message quotes
+
 URL             :: api_decl.URL
 URLSearchParams :: api_decl.URLSearchParams
 URLComponent    :: api_decl.URLComponent
@@ -56,7 +58,7 @@ wjr_URL_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc:
 	if !url_args(ctx, argc, argv, &input, &base) { return wj.EXCEPTION }
 	u := url_parse(input, base)
 	if u == 0 {
-		e := wj.wj_throw_type(ctx, "Failed to construct 'URL': Invalid URL '%.*s'", i32(min(input.len, 200)), input.ptr)
+		e := wj.wj_throw_type(ctx, "Failed to construct 'URL': Invalid URL '%.*s'", i32(min(input.len, URL_ERROR_QUOTE_MAX)), input.ptr)
 		wj.wj_str_free(ctx, &input)
 		wj.wj_str_free(ctx, &base)
 		return e
@@ -95,7 +97,7 @@ component_set :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, component: UR
 	if st := jsb.host(&none, api_decl.URL_set, wj.wr_URL_set, u, component, str_of(s)); st != .None {
 		e: wj.JSValue
 		if component == .Href {
-			e = wj.wj_throw_type(ctx, "Failed to set the 'href' property on 'URL': Invalid URL '%.*s'", i32(min(s.len, 200)), s.ptr)
+			e = wj.wj_throw_type(ctx, "Failed to set the 'href' property on 'URL': Invalid URL '%.*s'", i32(min(s.len, URL_ERROR_QUOTE_MAX)), s.ptr)
 		} else {
 			e = wj.wj_throw_status(ctx, i32(st), "URL")
 		}

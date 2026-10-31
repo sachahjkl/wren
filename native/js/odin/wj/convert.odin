@@ -9,6 +9,8 @@
 // string flags and property-descriptor shapes are unchanged (Str mirrors wj_str byte for byte).
 package wj
 
+@(private = "file") ENUM_ERROR_QUOTE_MAX :: 64   // the bytes of a bad enum value a message quotes
+
 @(export, link_name = "wj_throw_arity")
 wj_throw_arity :: proc "c" (ctx: ^Context, what: cstring, required: i32, given: i32) -> JSValue {
 	return JS_ThrowTypeError(ctx, "Failed to execute '%s': %d argument%s required, but only %d present.",
@@ -140,7 +142,7 @@ wj_enum_index :: proc "c" (s: ^Str, values: [^]cstring) -> i32 {
 @(export, link_name = "wj_check_enum")
 wj_check_enum :: proc "c" (ctx: ^Context, s: ^Str, values: [^]cstring, type: cstring) -> bool {
 	if wj_enum_index(s, values) >= 0 { return true }
-	shown := s.len > 64 ? 64 : i32(s.len)
+	shown := s.len > ENUM_ERROR_QUOTE_MAX ? ENUM_ERROR_QUOTE_MAX : i32(s.len)
 	JS_ThrowTypeError(ctx, "The provided value '%.*s' is not a valid enum value of type %s.",
 		shown, s.ptr != nil ? cstring(rawptr(s.ptr)) : cstring(""), type)
 	wj_str_free(ctx, s)

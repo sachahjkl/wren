@@ -15,6 +15,11 @@ import "../odin/wj"
 
 @(private = "file") DT_MAXKEYS :: 100
 @(private = "file") DT_MAXDEPTH :: 4
+@(private = "file") DT_STRING_MAX_UNITS :: 1000        // a string described is cut here, with an ellipsis
+@(private = "file") DT_STACK_ARGS_MAX_BYTES :: 255     // the text between the parentheses of a function's source shown
+@(private = "file") DT_STACK_LINE_MAX_BYTES :: 512     // a longer line of a stack is left out
+@(private = "file") DT_COMPLETE_MAX_PROTOS :: 8        // objects of the prototype chain `complete` lists
+@(private = "file") DT_COMPLETE_MAX_NAMES :: 400       // names `complete` lists
 
 @(private = "file") Out :: [dynamic]u8
 
@@ -80,8 +85,8 @@ dt_str :: proc(ctx: ^wj.Context, out: ^Out, sv: wj.JSValue) {
 	wj.JS_ToUint32(ctx, &n, lenv)
 	wj.JS_FreeValue(ctx, lenv)
 	use: wj.JSValue
-	if n > 1000 {
-		bounds := [2]wj.JSValue{wj.new_int32(0), wj.new_int32(1000)}
+	if n > DT_STRING_MAX_UNITS {
+		bounds := [2]wj.JSValue{wj.new_int32(0), wj.new_int32(DT_STRING_MAX_UNITS)}
 		cut := wj.invoke(ctx, s, "slice", bounds[:])
 		ell := wj.new_string(ctx, "\u2026")
 		use = wj.invoke(ctx, cut, "concat", ([^]wj.JSValue)(&ell)[:1])
@@ -159,7 +164,7 @@ dt_fdesc :: proc(ctx: ^wj.Context, f: wj.JSValue, out: ^Out) {
 			for i in lp ..< len(s) { if s[i] == ')' { rp = i; break } }
 			if rp >= lp {
 				space, started := false, false
-				for c in transmute([]u8)s[lp:min(rp, lp + 255)] {
+				for c in transmute([]u8)s[lp:min(rp, lp + DT_STACK_ARGS_MAX_BYTES)] {
 					if is_space(c) { if started { space = true }; continue }
 					if space { append(&args, ' ') }
 					space, started = false, true
@@ -480,7 +485,7 @@ dt_where :: proc(ctx: ^wj.Context, out: ^Out) {
 		line := rest
 		for ch, i in transmute([]u8)rest { if ch == '\n' { line = rest[:i]; break } }
 		rest = len(line) < len(rest) ? rest[len(line) + 1:] : ""
-		if len(line) == 0 || len(line) >= 512 || contains(line, "web_devtools") { continue }
+		if len(line) == 0 || len(line) >= DT_STACK_LINE_MAX_BYTES || contains(line, "web_devtools") { continue }
 		// trim leading whitespace and "at ", then what is inside the last "(...)"
 		b := line
 		for len(b) > 0 && (b[0] == ' ' || b[0] == '\t') { b = b[1:] }
@@ -1028,10 +1033,10 @@ dt_m_complete :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, ar
 	list := wj.JS_NewArray(ctx)
 	defer wj.JS_FreeValue(ctx, list)
 	n_list: u32
-	for depth := 0; wj.is_object(p) && depth < 8; depth += 1 {
+	for depth := 0; wj.is_object(p) && depth < DT_COMPLETE_MAX_PROTOS; depth += 1 {
 		names := wj.invoke(ctx, objc, "getOwnPropertyNames", ([^]wj.JSValue)(&p)[:1])
 		for i in 0 ..< wj.length_of(ctx, names) {
-			if n_list >= 400 { break }
+			if n_list >= DT_COMPLETE_MAX_NAMES { break }
 			k := wj.JS_GetPropertyInt64(ctx, names, i)
 			has := wj.invoke(ctx, seen, "has", ([^]wj.JSValue)(&k)[:1])
 			if wj.JS_ToBool(ctx, has) <= 0 {

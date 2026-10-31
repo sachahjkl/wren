@@ -23,6 +23,7 @@ import "../odin/wj"
 @(private = "file") MODULE_JSON :: 1
 
 @(private = "file") INLINE_MARK :: "#inline-module-"
+@(private = "file") RESOLVE_ERROR_BYTES :: 512   // the browser's message when a specifier does not resolve
 
 // ---- strings from the browser ----
 
@@ -49,7 +50,7 @@ browser_message :: proc "contextless" (buf: []u8, fallback: cstring) {
 
 @(private = "file")
 throw_resolve_failure :: proc "contextless" (ctx: ^wj.Context) -> wj.JSValue {
-	msg: [512]u8
+	msg: [RESOLVE_ERROR_BYTES]u8
 	browser_message(msg[:], "Failed to resolve module specifier")
 	return wj.JS_ThrowTypeError(ctx, "%s", cstring(&msg[0]))
 }
@@ -419,7 +420,7 @@ import_hook :: proc "c" (ctx: ^wj.Context, basename, specifier, attributes: wj.J
 	wj.wj_str_free(ctx, &spec)
 	wj.wj_str_free(ctx, &base)
 	if st < 0 {
-		msg: [512]u8
+		msg: [RESOLVE_ERROR_BYTES]u8
 		browser_message(msg[:], "Failed to resolve module specifier")
 		wj.JS_FreeValue(ctx, pi.funcs[0])
 		wj.JS_FreeValue(ctx, pi.funcs[1])

@@ -17,6 +17,8 @@ import "../odin_abi/api_decl"
 import "../odin/jsb"
 import "../odin/wj"
 
+@(private = "file") ABORT_DEPENDENTS_MAX_DEPTH :: 64   // dependent signals a reason is passed through
+
 AbortSignal     :: api_decl.AbortSignal
 AbortController :: api_decl.AbortController
 
@@ -162,7 +164,7 @@ follower_remove :: proc "contextless" (ctx: ^wj.Context, target: wj.JSValue, hos
 // sources in the browser: it is reached here too).
 @(private = "file")
 give_reason :: proc(ctx: ^wj.Context, s: ^Signal, depth: int) {
-	if depth > 64 { return }
+	if depth > ABORT_DEPENDENTS_MAX_DEPTH { return }
 	// (index loop: a dependent's abort cannot add to this list, but stay safe against it)
 	for i := 0; i < len(s.dependents); i += 1 {
 		d := s.dependents[i]

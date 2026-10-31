@@ -325,7 +325,7 @@ wjr_HTMLScriptElement_static_supports :: proc "c" (ctx: ^wj.Context, this_val: w
 wj_eval_javascript_url :: proc "c" (src: u32, src_len: u32) -> i32 {
 	ctx := wj.wj_the_realm.ctx
 	wj.wj_stack_enter(ctx)
-	name: [1024]u8
+	name: [SCRIPT_NAME_BYTES]u8
 	wj.wj_script_base_name(&name[0], len(name))
 	opt := wj.Eval_Options{version = wj.EVAL_OPTIONS_VERSION, eval_flags = wj.EVAL_TYPE_GLOBAL | wj.EVAL_FLAG_COMPILE_ONLY, filename = cstring(&name[0]), line_num = 1}
 	fn := wj.JS_Eval2(ctx, ([^]u8)(uintptr(src)), uint(src_len), &opt)

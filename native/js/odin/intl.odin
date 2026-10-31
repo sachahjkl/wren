@@ -19,6 +19,13 @@ import "../odin_abi/api_decl"
 import "../odin/jsb"
 import "../odin/wj"
 
+// Fixed buffers, of the C's sizes (the same truncation).
+@(private = "file") TIME_ZONE_MAX_BYTES :: 128     // a longer name from the browser is not believed: UTC
+@(private = "file") LOCALE_TAG_BYTES :: 256        // a canonical language tag
+@(private = "file") DIGITS_CLEAN_BYTES :: 64       // a formatted number without its separators, compared with "1"
+@(private = "file") LOCALE_SUBTAG_MAX :: 31        // the part of a subtag looked at
+@(private = "file") DISPLAY_CODE_MAX :: 63         // the part of a code looked up in a table of display names
+
 @(private = "file") NAN :: f64(0h7FF8_0000_0000_0000)
 @(private = "file") is_nan :: #force_inline proc "contextless" (x: f64) -> bool { return x != x }
 @(private = "file") is_finite :: #force_inline proc "contextless" (x: f64) -> bool { return x == x && x - x == 0 }
@@ -129,7 +136,7 @@ intl_read_info :: proc "contextless" () {
 	context = jsb.glue_context()
 	tz: string
 	jsb.host(&tz, api_decl.Engine_timeZone, wj.wr_Engine_timeZone)
-	if len(tz) > 0 && len(tz) < 128 { fset(&intl_time_zone, tz) } else { fset(&intl_time_zone, "UTC") }
+	if len(tz) > 0 && len(tz) < TIME_ZONE_MAX_BYTES { fset(&intl_time_zone, tz) } else { fset(&intl_time_zone, "UTC") }
 	intl_time_zone_utc = fstr(&intl_time_zone) == "UTC"
 }
 
@@ -313,8 +320,8 @@ get_num :: proc "contextless" (ctx: ^wj.Context, o: wj.JSValue, name: cstring, l
 // canonicalTag: lower language, upper 2-letter region, Title-case 4-letter script, lower the rest; '_' -> '-'.
 // Into `out` (256 bytes, as the C). False with a RangeError pending on a bad first subtag.
 @(private = "file")
-canonical_tag :: proc "contextless" (ctx: ^wj.Context, tag: string, out: ^[256]u8) -> (string, bool) {
-	OUT_CAP :: 256
+canonical_tag :: proc "contextless" (ctx: ^wj.Context, tag: string, out: ^[LOCALE_TAG_BYTES]u8) -> (string, bool) {
+	OUT_CAP :: LOCALE_TAG_BYTES
 	oi, start, part_i := 0, 0, 0
 	bad_first := false
 	for i in 0 ..= len(tag) {
@@ -381,7 +388,7 @@ canonical_locales :: proc "contextless" (ctx: ^wj.Context, locales: wj.JSValue) 
 		c, s := cstr_of(ctx, item)
 		wj.JS_FreeValue(ctx, item)
 		if c == nil { wj.JS_FreeValue(ctx, out); return wj.EXCEPTION }
-		buf: [256]u8
+		buf: [LOCALE_TAG_BYTES]u8
 		canon, ok := canonical_tag(ctx, s, &buf)
 		wj.JS_FreeCString(ctx, c)
 		if !ok { wj.JS_FreeValue(ctx, out); return wj.EXCEPTION }
@@ -1682,10 +1689,10 @@ pr_select :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: 
 	sc, str := cstr_of(ctx, s)
 	wj.JS_FreeValue(ctx, s)
 	// without its ',' and compared with "1"
-	clean: [64]u8
+	clean: [DIGITS_CLEAN_BYTES]u8
 	ci := 0
 	for i in 0 ..< len(str) {
-		if ci >= 63 { break }
+		if ci >= DIGITS_CLEAN_BYTES - 1 { break }
 		if str[i] != ',' { clean[ci] = str[i]; ci += 1 }
 	}
 	free_c(ctx, sc)
@@ -2183,7 +2190,7 @@ locale_ctor :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv
 		wj.JS_FreeValue(ctx, bn)
 	}
 	tc, tag := cstr_of(ctx, wj.is_undefined(ts) ? tagv : ts)
-	buf: [256]u8
+	buf: [LOCALE_TAG_BYTES]u8
 	canon: string
 	ok := false
 	if tc != nil { canon, ok = canonical_tag(ctx, tag, &buf) }
@@ -2198,7 +2205,7 @@ locale_ctor :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv
 		for i in 0 ..= len(canon) {
 			if i < len(canon) && canon[i] != '-' { continue }
 			tok := canon[start:i]
-			if len(tok) > 31 { tok = tok[:31] }
+			if len(tok) > LOCALE_SUBTAG_MAX { tok = tok[:LOCALE_SUBTAG_MAX] }
 			l := len(tok)
 			if idx == 0 {
 				fset(&language, tok)
@@ -2491,7 +2498,7 @@ dn_of :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]w
 		// t[String(code).split("-")[0]]
 		head := code
 		if d := index_of_byte(code, '-'); d >= 0 { head = code[:d] }
-		if len(head) > 63 { head = head[:63] }
+		if len(head) > DISPLAY_CODE_MAX { head = head[:DISPLAY_CODE_MAX] }
 		for e in table { if e.code == head { return str_value(ctx, e.name) } }
 	}
 	return str_value(ctx, cc != nil ? code : "")

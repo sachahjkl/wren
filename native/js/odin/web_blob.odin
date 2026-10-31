@@ -13,6 +13,9 @@ import "../odin_abi/api_decl"
 import "../odin/jsb"
 import "../odin/wj"
 
+@(private = "file") FILE_READ_MAX_CHUNK :: 1 << 30   // the most one read of a file-backed Blob asks of the browser
+@(private = "file") TYPE_STACK_BYTES :: 256          // a type this short is normalized without an allocation
+
 // The shared bytes of a Blob and its slices.
 @(private = "file")
 Store :: struct {
@@ -94,7 +97,7 @@ blob_load :: proc(b: ^Blob) -> bool {
 	if err != nil { return false }
 	got: uint
 	for got < b.len {
-		chunk := min(b.len - got, 1 << 30)
+		chunk := min(b.len - got, FILE_READ_MAX_CHUNK)
 		n: i64
 		st := jsb.host(&n, api_decl.LocalFile_read, wj.wr_LocalFile_read, b.hf.handle, i64(b.offset + got), bytes[got:][:chunk])
 		if st != .None || n <= 0 { delete(bytes); return false }
@@ -163,7 +166,7 @@ web_blob_type :: proc "c" (ctx: ^wj.Context, v: wj.JSValue) -> wj.JSValue {
 // Blob type: lower case, or "" when a character is outside U+0020-U+007E.
 @(private = "file")
 normalize_type :: proc(ctx: ^wj.Context, t: string) -> wj.JSValue {
-	small: [256]u8
+	small: [TYPE_STACK_BYTES]u8
 	buf := small[:]
 	if len(t) > len(small) {
 		heap, e := make([]u8, len(t))
