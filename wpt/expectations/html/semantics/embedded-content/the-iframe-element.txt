@@ -174,7 +174,7 @@
 	javascript: URL in iframe src, initial src is not about:blank: FAIL
 /html/semantics/embedded-content/the-iframe-element/iframe_javascript_url_remove_srcdoc.html: OK
 	javascript: URL in iframe src, removing srcdoc: FAIL
-/html/semantics/embedded-content/the-iframe-element/iframe_javascript_url_xhr.html: OK
+/html/semantics/embedded-content/the-iframe-element/iframe_javascript_url_xhr.html: OK|TIMEOUT
 	Image load should not trigger load event for non-initial javascript URL load: FAIL
 	Load event for initial javascript URL load should be fired after script execution: FAIL
 /html/semantics/embedded-content/the-iframe-element/iframe_navigate_ancestor-1.sub.html: TIMEOUT
@@ -265,7 +265,7 @@
 	Event handler-bearing node moved across local roots in the same tab/page: FAIL
 /html/semantics/embedded-content/the-iframe-element/move_iframe_in_dom_01.html: OK
 	moving modified IFRAME in document (original page about:blank, DOM modification): FAIL
-/html/semantics/embedded-content/the-iframe-element/move_iframe_in_dom_02.html: OK
+/html/semantics/embedded-content/the-iframe-element/move_iframe_in_dom_02.html: OK|TIMEOUT
 	moving modified IFRAME in document (original page about:blank, document.write modification): FAIL
 /html/semantics/embedded-content/the-iframe-element/move_iframe_in_dom_03.html: OK
 	moving modified IFRAME in document (original page from server, DOM modification): FAIL

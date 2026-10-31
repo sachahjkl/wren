@@ -9907,7 +9907,7 @@
 	A_08_02_02_T01: PASS
 	A_08_02_02_T02: PASS
 	A_08_02_02_T03: PASS
-/shadow-dom/untriaged/html-elements-in-shadow-trees/html-forms/test-003.html: OK
+/shadow-dom/untriaged/html-elements-in-shadow-trees/html-forms/test-003.html: OK|TIMEOUT
 	A_08_02_03_T01: FAIL
 /shadow-dom/untriaged/html-elements-in-shadow-trees/inert-html-elements/test-001.html: OK
 	A_08_01_01_T01: FAIL

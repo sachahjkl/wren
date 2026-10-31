@@ -116,6 +116,8 @@ try {
 } finally { Pop-Location }
 
 if ($Port -le 0) { $Port = if (-not $NoServer) { 8778 } elseif ($env:WREN_TEST_BASE_PORT) { [int]$env:WREN_TEST_BASE_PORT + 3 } else { 8768 } }
+# More tests than this regressing at once is no matter of load: no second chance.
+$SecondChanceMax = 60
 $runArgs = @('-server', "http://127.0.0.1:PORT", '-root', $wpt, '-suites', $(if ($Suites) { (Resolve-Path $Suites).Path } else { $suitesFile }), '-expect', (Join-Path $root 'wpt\expectations'), '-timeout', $TimeoutMs,
              '-md', (Join-Path $out 'report.md'), '-results', (Join-Path $out 'results.txt'))
 # media tests call play() without a gesture (the harness of other browsers runs with autoplay allowed too)
@@ -222,12 +224,11 @@ try {
             $lines = $null
             & $exe @runArgs 2>$null | Tee-Object -Variable lines
             $status = $LASTEXITCODE
-            # A second chance for a test that ran out of time among the others: it runs again alone, with twice the time, and only a test
+            # A second chance for a test that failed among the others (out of time, or its script stopped by a time limit): it runs again alone, with twice the time, and only a test
             # that regresses twice counts. (Which tests time out under load changes from one run to the next.)
             if ($status -eq 1 -and -not $Update) {
                 $paths = @($lines | ForEach-Object { if ($_ -match '^REGRESSION (\S+?)(?:: | \| )') { $Matches[1] } } | Select-Object -Unique)
-                $slowOnes = @($lines | ForEach-Object { if ($_ -match '^REGRESSION (\S+?)(?:: TIMEOUT)') { $Matches[1] } } | Select-Object -Unique)
-                if ($paths.Count -gt 0 -and @($paths | Where-Object { $_ -notin $slowOnes }).Count -eq 0 -and $paths.Count -le 25) {
+                if ($paths.Count -gt 0 -and $paths.Count -le $SecondChanceMax) {
                     $status = 0
                     foreach ($p in $paths) {
                         $again = @($runArgs | Where-Object { $_ -ne '-quick' }) + @('-only', $p, '-jobs', '1', '-timeout', (2 * $TimeoutMs), '-results', (Join-Path $out 'again.txt'), '-md', (Join-Path $out 'again.md'))

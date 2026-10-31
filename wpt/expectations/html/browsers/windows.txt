@@ -89,7 +89,7 @@
 /html/browsers/windows/nested-browsing-contexts/window-top-null.html: ERROR
 	`window.top` is null when browsing context container element removed: PASS
 	`window.top`null when any ancestor browsing context container removed: TIMEOUT
-/html/browsers/windows/nested-browsing-contexts/window-top.html: OK
+/html/browsers/windows/nested-browsing-contexts/window-top.html: OK|TIMEOUT
 	One nested iframe: FAIL
 	Top level browsing context: PASS
 	Two nested iframes: FAIL

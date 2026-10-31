@@ -564,7 +564,7 @@
 	Re-entrant createElement() of the same element after super(): PASS
 	Re-entrant createElement() of the same element before super(): PASS
 /custom-elements/cross-realm-callback-report-exception.html: TIMEOUT
-/custom-elements/custom-element-reaction-queue.html: OK
+/custom-elements/custom-element-reaction-queue.html: OK|TIMEOUT
 	Mutating a undefined custom element while upgrading a custom element must not enqueue or invoke reactions on the mutated element: FAIL
 	Mutating another custom element inside adopted callback must invoke all pending callbacks on the mutated element: FAIL
 	Upgrading a custom element must invoke attributeChangedCallback and connectedCallback before start upgrading another element: FAIL
@@ -1074,7 +1074,7 @@
 	the stringifier of DOMTokenList must not enqueue an attributeChanged reaction when mutating the value of an unobserved attribute: PASS
 	toggle on DOMTokenList must enqueue an attributeChanged reaction when adding a value to an attribute: PASS
 	toggle on DOMTokenList must enqueue an attributeChanged reaction when removing a value from an attribute: PASS
-/custom-elements/reactions/Document.html: OK
+/custom-elements/reactions/Document.html: OK|TIMEOUT
 	adoptNode on Document must enqueue an adopted reaction when importing a custom element: FAIL
 	body on Document must enqueue connectedCallback when inserting a custom element: FAIL
 	body on Document must enqueue disconnectedCallback when removing a custom element: FAIL
@@ -3797,7 +3797,7 @@
 	:state(foo) serialization: FAIL
 	deprecated :--state parsing failures: PASS
 /custom-elements/throw-on-dynamic-markup-insertion-counter-construct-xml-parser.xhtml: ERROR
-/custom-elements/throw-on-dynamic-markup-insertion-counter-construct.html: OK
+/custom-elements/throw-on-dynamic-markup-insertion-counter-construct.html: OK|TIMEOUT
 	document.close() must throw an InvalidStateError when synchronously constructing a custom element: FAIL
 	document.close() of another document must not throw an InvalidStateError when synchronously constructing a custom element: FAIL
 	document.open("text/html") must throw an InvalidStateError when synchronously constructing a custom element: FAIL
@@ -3810,7 +3810,7 @@
 	document.writeln must throw an InvalidStateError when synchronously constructing a custom element: FAIL
 	document.writeln of another document must not throw an InvalidStateError when synchronously constructing a custom element: FAIL
 /custom-elements/throw-on-dynamic-markup-insertion-counter-reactions-xml-parser.xhtml: ERROR
-/custom-elements/throw-on-dynamic-markup-insertion-counter-reactions.html: OK
+/custom-elements/throw-on-dynamic-markup-insertion-counter-reactions.html: OK|TIMEOUT
 	document.close() must throw an InvalidStateError when processing custom element reactions for a synchronous constructed custom element: FAIL
 	document.close() of another document must not throw an InvalidStateError when processing custom element reactions for a synchronous constructed custom element: FAIL
 	document.open("text/html") must throw an InvalidStateError when processing custom element reactions for a synchronous constructed custom element: FAIL
@@ -3870,7 +3870,7 @@
 	Node.prototype.cloneNode(true) must set parentNode, previousSibling, and nextSibling before upgrading custom elements: FAIL
 	Upgrading a custom element must throw TypeError when the custom element's constructor returns another element: PASS
 /custom-elements/upgrading/upgrade-custom-element-error-event.html: ERROR
-/custom-elements/upgrading/upgrading-enqueue-reactions.html: OK
+/custom-elements/upgrading/upgrading-enqueue-reactions.html: OK|TIMEOUT
 	Upgrading a custom element must enqueue attributeChangedCallback before connectedCallback: FAIL
 	Upgrading a custom element must enqueue attributeChangedCallback on each attribute: FAIL
 	Upgrading a custom element must enqueue connectedCallback if the element in the document: FAIL

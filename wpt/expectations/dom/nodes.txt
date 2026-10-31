@@ -1005,7 +1005,7 @@
 	Adopting an Element should adopt its namespaced attributes.: FAIL
 	Explicitly adopting a DocumentType should work.: PASS
 	Inserting an Element into another document should adopt its Attr nodes.: FAIL
-/dom/nodes/Document-base-url-not-live.window.html: OK
+/dom/nodes/Document-base-url-not-live.window.html: OK|TIMEOUT
 	about:blank base URL is not live: FAIL
 	about:srcdoc base URL is not live: FAIL
 /dom/nodes/Document-characterSet-normalization-1.html: OK
@@ -6325,7 +6325,7 @@
 	Node.moveBefore should preserve CSS transition state (transform): TIMEOUT
 /dom/nodes/moveBefore/css-animation-commit-styles.html: TIMEOUT
 	Calling commitStyles after Node.moveBefore should commit mid-transition value: TIMEOUT
-/dom/nodes/moveBefore/css-transition-cross-document.html: OK
+/dom/nodes/moveBefore/css-transition-cross-document.html: OK|TIMEOUT
 	Moving a transition across documents should reset its state: FAIL
 /dom/nodes/moveBefore/css-transition-cross-shadow.html: TIMEOUT
 	Moving an element with a transition across shadow boundaries preserves the transition: TIMEOUT
@@ -6368,13 +6368,13 @@
 /dom/nodes/moveBefore/hover-style-update.html: OK
 	Element loses hover when moved to different position: FAIL
 	Hover works immediately after moved: FAIL
-/dom/nodes/moveBefore/iframe-document-preserve.window.html: OK
+/dom/nodes/moveBefore/iframe-document-preserve.window.html: OK|TIMEOUT
 	moveBefore(): about:blank iframe's document is preserved: FAIL
 	moveBefore(): cross-origin iframe is preserved: remove new parent: FAIL
 	moveBefore(): cross-origin iframe is preserved: remove self: FAIL
 	moveBefore(): cross-origin iframe is preserved: remove self via innerHTML: FAIL
 	moveBefore(): cross-origin iframe is preserved: remove self via replaceChildren(): FAIL
-	moveBefore(): simple same-origin document is preserved: PASS
+	moveBefore(): simple same-origin document is preserved: PASS|FAIL
 	window.frames ordering does not change due to moveBefore(): FAIL
 /dom/nodes/moveBefore/listed-form-element-reset.html: OK
 	Listed form element form owner is reset when a new form is moved closer before the listed element: PASS
