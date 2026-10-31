@@ -9,6 +9,11 @@ import "wb:base"
 import "wb:css"
 import "wb:dom"
 
+// An invalidation chain with more steps than this becomes "all the next": a set that large filters little.
+INV_MAX_NEXT :: 64
+// So does one of more subjects than this.
+INV_MAX_SUBJECTS :: 64
+
 // Invalidation sets (in the spirit of Blink's and Stylo's): for every feature a selector can test on an element (a class,
 // an id, an attribute, a tag, a structural or attribute-driven pseudo-class), which elements a change of that feature
 // on an element E can make start or stop matching some rule. Built once per rebuild of the rule index, read by the
@@ -72,7 +77,7 @@ reach_compose :: proc(inner, outer: Reach) -> Reach {
 		}
 	}
 	if inner.sib_desc { out.sib_desc = true }
-	if out.next > 64 { out.next, out.all_next = 0, true }
+	if out.next > INV_MAX_NEXT { out.next, out.all_next = 0, true }
 	if out.desc || out.sib_desc { out.set = outer.set }   // (whatever it reaches, the subject is the outer selector's)
 	return out
 }
@@ -93,7 +98,7 @@ reach_from :: proc(c: ^css.Complex, k: int) -> Reach {
 			if !r.desc && !r.sib_desc { r.all_next = true }
 		}
 	}
-	if r.next > 64 { r.next, r.all_next = 0, true }
+	if r.next > INV_MAX_NEXT { r.next, r.all_next = 0, true }
 	return r
 }
 
@@ -505,7 +510,7 @@ key_sets_union :: proc(x, y: u32) -> u32 {
 		if !dup { append(&all, k) }
 	}
 	slice.sort_by(all[:], proc(p, q: Subject_Key) -> bool { return p.kind != q.kind ? p.kind < q.kind : p.name < q.name })
-	if len(all) > 64 { return 0 }   // (a set that large filters little)
+	if len(all) > INV_MAX_SUBJECTS { return 0 }   // (a set that large filters little)
 	return key_sets_intern(all[:])
 }
 

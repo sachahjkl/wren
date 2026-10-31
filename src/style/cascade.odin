@@ -12,6 +12,9 @@ import "wb:css"
 import "wb:dom"
 import "wb:host"
 
+// The steps of a chain of revert-layer and revert (each one leaves a layer or an origin behind).
+REVERT_CHAIN_MAX_STEPS :: 64
+
 // The cascade (CSS Cascading Level 5, without transitions and animations): origins, !important, layers, specificity, source
 // order, inheritance, var() substitution, and the final computed values.
 
@@ -569,7 +572,7 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 		}
 		// `revert` and `revert-layer` go back to the declaration that would have won without the current origin or
 		// layer; a chain of them is followed (bounded: every step leaves a layer or an origin behind)
-		for _ in 0 ..< 64 {
+		for _ in 0 ..< REVERT_CHAIN_MAX_STEPS {
 			if cand.origin == .Author {
 				// colors or fonts from pages off: the page's declaration is reverted, to the browser's own value (links keep
 				// LinkText, headings their size) rather than the inherited or initial one

@@ -7,9 +7,6 @@ import "wb:dom"
 import "wb:host"
 import "wb:style"
 
-// The floor of the time scale that the next wake-up of an animation is divided by (0 is a valid setting: frozen).
-ANIM_TIME_SCALE_MIN :: 0.0001
-
 // Web Animations 1 for scripts (api/animations.widl; the JavaScript objects: native/js/runtime/web_animations.c).
 //
 // Each Animation is a host object holding the animation's state as Web Animations 1 §4.4 defines it: start time, hold
@@ -501,7 +498,7 @@ anims_schedule :: proc(p: ^Page) {
 		}
 	}
 	if due < 0 { return }
-	ms := due / f64(max(p.engine.settings.anim_time_scale, ANIM_TIME_SCALE_MIN))
+	ms := due / f64(max(p.engine.settings.anim_time_scale, style.ANIM_TIME_SCALE_MIN))
 	at := f64(host.now_ns(p.loop)) / 1e6 + ms
 	if w.timer != base.NIL_HANDLE {
 		if at >= w.timer_at - ANIM_REARM_SLACK_MS { return }

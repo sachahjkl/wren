@@ -3,6 +3,10 @@ package style
 import "wb:css"
 import "wb:dom"
 
+// The ancestor hashes an Entry keeps (Entry.anc), and how deep inside selector lists they are looked for.
+BLOOM_ENTRY_ANCESTORS :: 4
+BLOOM_MAX_LIST_DEPTH :: 8
+
 // Ancestor filter. While the tree is walked, every element adds the hashes of its tag, id and classes to a small Bloom
 // filter that its descendants inherit. A rule whose selector needs `.sec`, `article` or `#nav` on an ancestor is rejected
 // when the filter says that name is not on the way up, before any ancestor is visited. A false positive only costs the
@@ -52,11 +56,11 @@ compute_ancestor_hashes :: proc(ent: ^Entry) {
 	c := ent.complex
 	if c.relative || len(c.compounds) < 2 { return }
 	idx := len(c.compounds) - 2
-	for idx >= 0 && ent.n_anc < 4 {
+	for idx >= 0 && ent.n_anc < BLOOM_ENTRY_ANCESTORS {
 		comb := c.combinators[idx]
 		if comb != .Child && comb != .Descendant { break }
 		for s in c.compounds[idx].simples {
-			if ent.n_anc >= 4 { break }
+			if ent.n_anc >= BLOOM_ENTRY_ANCESTORS { break }
 			h: u32
 			#partial switch s.kind {
 			case .Id: h = hash_name(s.name, SALT_ID)
@@ -86,19 +90,19 @@ compound_state :: proc(comp: css.Compound, depth := 0) -> (kinds: State_Kinds, u
 			case .Fullscreen: kinds += {.Fullscreen}
 			case .Visited, .Link, .Any_Link: kinds += {.Visited}
 			case .Not, .Is, .Where, .Nth_Child, .Nth_Last_Child, .Host, .Host_Context:
-				if s.list != nil && depth < 8 {
+				if s.list != nil && depth < BLOOM_MAX_LIST_DEPTH {
 					k, h := list_state(s.list^, depth + 1)
 					kinds += k
 					uses_has ||= h
 				}
 			case .Has:
-				if s.list != nil && depth < 8 {
+				if s.list != nil && depth < BLOOM_MAX_LIST_DEPTH {
 					k, _ := list_state(s.list^, depth + 1)
 					if k != {} { kinds += k; uses_has = true }
 				}
 			}
 		case .Nesting:
-			if s.list != nil && depth < 8 {
+			if s.list != nil && depth < BLOOM_MAX_LIST_DEPTH {
 				k, h := list_state(s.list^, depth + 1)
 				kinds += k
 				uses_has ||= h

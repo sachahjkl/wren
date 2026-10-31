@@ -5,6 +5,11 @@ import "wb:base"
 import "wb:css"
 import "wb:dom"
 
+// A family of up to this many siblings is counted directly (sibling_info); a larger one is indexed once per parent.
+SIBLINGS_COUNTED_MAX :: 32
+// A hard stop of a selector's match, independent of any configured limit.
+MATCH_MAX_DEPTH :: 4096
+
 // Selector matching (Selectors Level 4) against the DOM, right to left. The input state (hover, focus...) comes from the
 // shell; everything else is read from the tree.
 
@@ -202,12 +207,11 @@ fill_siblings :: proc(m: ^Match_Ctx, parent: base.Handle) {
 // rows used to spend more time filling and growing the maps than matching); a large one is indexed once per parent.
 @(private)
 sibling_info :: proc(m: ^Match_Ctx, h: base.Handle) -> Sib_Info {
-	SMALL :: 32
 	n := node_of(m, h)
 	if !m.filled[n.parent] {
 		info := Sib_Info{index = 1, type_index = 1, index_last = 1, type_index_last = 1}
 		steps := 0
-		for cur := n.prev; cur != base.NIL_HANDLE && steps < SMALL; steps += 1 {
+		for cur := n.prev; cur != base.NIL_HANDLE && steps < SIBLINGS_COUNTED_MAX; steps += 1 {
 			s := node_of(m, cur)
 			if s.kind == .Element {
 				info.index += 1
@@ -218,7 +222,7 @@ sibling_info :: proc(m: ^Match_Ctx, h: base.Handle) -> Sib_Info {
 		}
 		if steps < 0 || n.prev == base.NIL_HANDLE {
 			steps = 0
-			for cur := n.next; cur != base.NIL_HANDLE && steps < SMALL; steps += 1 {
+			for cur := n.next; cur != base.NIL_HANDLE && steps < SIBLINGS_COUNTED_MAX; steps += 1 {
 				s := node_of(m, cur)
 				if s.kind == .Element {
 					info.index_last += 1
@@ -329,7 +333,7 @@ matches_complex :: proc(m: ^Match_Ctx, el: base.Handle, c: ^css.Complex) -> bool
 
 @(private)
 match_chain :: proc(m: ^Match_Ctx, el: base.Handle, c: ^css.Complex, idx: int, anchor: base.Handle, depth: int) -> bool {
-	if depth > 4096 { return false }   // a hard stop independent of any configured limit
+	if depth > MATCH_MAX_DEPTH { return false }
 	if !matches_compound(m, el, c.compounds[idx]) { return false }
 	if idx == 0 {
 		if !c.relative { return true }

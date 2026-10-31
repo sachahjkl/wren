@@ -4,6 +4,9 @@ import "core:math"
 import "core:strings"
 import "wb:css"
 
+// column-count is held to this.
+COLUMN_COUNT_MAX :: 100_000
+
 // Computing the properties added after the first style engine: positions, background layers, gradients, generated
 // content, effects and the rest of `apply_prop_more`. Transforms, easing, animation lists and grid have their own files.
 
@@ -724,7 +727,7 @@ parse_counter_ops :: proc(cx: ^Cx, vs: []css.Value, default_value: i32, allow_re
 		op.value = default_value
 		if i < len(items) && tok_is(items[i], .Number) {
 			if !items[i].tok.is_int { return nil, false }
-			op.value = i32(clamp(items[i].tok.num, -2_000_000_000, 2_000_000_000))
+			op.value = i32(clamp(items[i].tok.num, -CSS_INT_CLAMP, CSS_INT_CLAMP))
 			op.has_value = true
 			i += 1
 		}
@@ -1160,7 +1163,7 @@ apply_prop_more :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		if id, ok := ident_raw(vs); ok && strings.equal_fold(id, "auto") { c.column_count = 0; return true }
 		n, ok := css.parse_integer(vs)
 		if !ok || n < 1 { return false }
-		c.column_count = i32(min(n, 100_000))
+		c.column_count = i32(min(n, COLUMN_COUNT_MAX))
 	case .Column_Width:
 		l, ok := parse_length(cx, vs, {.Auto})
 		if !ok || (l.kind != .Px && l.kind != .Auto) { return false }
