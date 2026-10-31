@@ -88,6 +88,8 @@ test("getComputedStyle: shorthands", () => {
   const c = getComputedStyle(d);
   eq(c.borderRadius, "4px 8px", "border-radius");
   eq(Number.parseInt(c.borderRadius), 4, "a number can be read from it");
+  eq(getComputedStyle(document.body).borderRadius, "0px", "border-radius unset");
+  eq(getComputedStyle(document.body).borderTopLeftRadius, "0px", "border-top-left-radius unset");
   eq(c.border, "1px solid rgb(255, 0, 0)", "border, all sides alike");
   eq(c.borderWidth, "1px", "border-width");
   eq(c.padding, "3px", "padding in its shortest form");
