@@ -99,10 +99,12 @@ js_realm :: proc(p: ^Page) -> ^Js_Realm {
 		// ends the page's scripts for good (the jstest's endless microtask chain met it once on the CI)
 		if opt.max_call_ms > 0 && opt.max_call_ms < slow * 4 { opt.max_call_ms = slow * 4 }
 	}
+	// (a worker terminated while it starts: nothing went wrong, a page may well do that at once)
+	stopping := proc(opt: ^wasm.Options) -> bool { return opt.stop != nil && bool(sync.atomic_load(opt.stop)) }
 	inst, err := wasm.instance_create(js_engine_image(), p, p.scope, opt, "javascript", nil, js_image_digest())
 	if inst == nil {
 		r.failed = true
-		log(p, .Error, fmt.tprintf("JavaScript could not start: %s", err))
+		if !stopping(&opt) { log(p, .Error, fmt.tprintf("JavaScript could not start: %s", err)) }
 		delete(err)
 		return nil
 	}
@@ -127,7 +129,7 @@ js_realm :: proc(p: ^Page) -> ^Js_Realm {
 	}
 	if !js.realm_start(inst, start) {
 		r.failed = true
-		log(p, .Error, fmt.tprintf("JavaScript could not start: %s", inst.last_error))
+		if !stopping(&opt) { log(p, .Error, fmt.tprintf("JavaScript could not start: %s", inst.last_error)) }
 		return nil
 	}
 	if p.settings.js.jit.enabled { js.jit_configure(inst, p.settings.js.jit) }
@@ -223,6 +225,7 @@ js_checkpoint :: proc(p: ^Page) -> bool {
 		return res
 	}, p)
 	p.objects.depth -= 1
+	if !r.failed { js_after_task(p, r, "a promise reaction or a microtask") }   // (a long async function is stopped here, not in a script)
 	return ran > 0
 }
 

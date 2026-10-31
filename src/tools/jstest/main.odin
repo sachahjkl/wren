@@ -266,6 +266,12 @@ document.body.lastChild.addEventListener("x", () => console.log("listener kept")
 		page.js_run(p, transmute([]byte)string(`console.log("still usable")`), "probe.js")
 		check(logged("still usable"), "the realm is usable afterwards")
 		page.page_close(p)
+		// the same in a promise reaction: no script to name, the console still says what happened
+		p = load(process, `<!doctype html><body><script>Promise.resolve().then(() => { for (;;) {} });</script><script>console.log("reaction stopped")</script></body>`)
+		said := false
+		for l in logs { if strings.contains(l, "slow_script_ms") && strings.contains(l, "promise reaction") { said = true } }
+		check(logged("reaction stopped") && said, "a reaction that loops is stopped too, and the console says so")
+		page.page_close(p)
 		settings = saved
 	}
 
