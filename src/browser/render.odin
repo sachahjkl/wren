@@ -82,9 +82,12 @@ layout_document :: proc(l: ^Layout, d: ^dom.Document, styled: ^style.Styled, mea
 	})
 }
 
+// The page's scroll offset: anchored boxes whose fallbacks or visibility follow it make the layout stale.
+layout_note_doc_scroll :: proc(l: ^Layout, scroll: f32) { lay.note_doc_scroll(l, scroll) }
+
 layout_stale :: proc(l: ^Layout, d: ^dom.Document, styled: ^style.Styled, viewport: draw.Vec2, scale: f32, images_gen: u64 = 0, fonts_gen: u64 = 0) -> bool {
 	return !l.valid || l.mutations != d.mutations || l.serial != styled.serial || l.viewport != viewport || l.scale != scale ||
-		l.inc.images_gen != images_gen || l.inc.fonts_gen != fonts_gen
+		l.inc.images_gen != images_gen || l.inc.fonts_gen != fonts_gen || l.anchor_stale
 }
 
 // Element under a point of the page area (`p` relative to its top-left corner).

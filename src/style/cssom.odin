@@ -146,6 +146,7 @@ engine_sheet_rule_text :: proc(e: ^Engine, id: u64, index: int) -> (string, bool
 	if s == nil { return "", false }
 	l := cssom_list(e, s)
 	if index < 0 || index >= len(l.texts) { return "", false }
+	if r := l.rules[index]; r.kind == .Position_Try { return try_rule_text(e, r), true }
 	return l.texts[index], true
 }
 

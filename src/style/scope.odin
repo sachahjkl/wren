@@ -49,6 +49,7 @@ Rule_Set :: struct {
 	uses_host_context: bool,
 	conditional:    bool,              // has conditional rules (media, a sheet's media list)
 	kf_refs:        [dynamic]Keyframes_Ref,
+	try_rules:      map[string]^Try_Rule,   // @position-try rules by name (anchor.odin); their memory is the set's
 	// shadow sets only
 	key:            string,
 	set_arena:      virtual.Arena,
@@ -88,6 +89,7 @@ rule_set_clear :: proc(rs: ^Rule_Set) {
 	delete(rs.slotted_entries); rs.slotted_entries = nil
 	delete(rs.part_entries); rs.part_entries = nil
 	delete(rs.kf_refs); rs.kf_refs = nil
+	delete(rs.try_rules); rs.try_rules = nil
 	rs.order, rs.rule_count, rs.state_deps, rs.state_uses_has, rs.uses_host_context, rs.conditional = 0, 0, {}, false, false, false
 }
 

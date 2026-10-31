@@ -38,6 +38,7 @@ self_align :: proc(container, item: ^style.Computed) -> style.Content_Align {
 	a := item.align_self
 	if a == .Auto { a = container.align_items }
 	if a == .Normal { a = .Stretch }
+	if a == .Anchor_Center { a = .Center }   // (of an absolutely positioned box only: layout/anchor.odin)
 	return a
 }
 
@@ -382,7 +383,7 @@ layout_flex :: proc(c: ^Ctx, bi: i32, cw, ch_def, cb_h: f32) -> f32 {
 			if free > 0 { for &ln in lines { ln.cross += free / n } }
 		case .Start, .Flex_Start, .Auto, .Baseline:
 		case .End, .Flex_End: offset = free
-		case .Center: offset = free * 0.5
+		case .Center, .Anchor_Center: offset = free * 0.5
 		case .Space_Between: if free > 0 && n > 1 { between = free / (n - 1) }
 		case .Space_Around: if free > 0 { between = free / n; offset = between * 0.5 } else { offset = free * 0.5 }
 		case .Space_Evenly: if free > 0 { between = free / (n + 1); offset = between } else { offset = free * 0.5 }
@@ -437,7 +438,7 @@ layout_flex :: proc(c: ^Ctx, bi: i32, cw, ch_def, cb_h: f32) -> f32 {
 		switch cs.justify_content {
 		case .Normal, .Start, .Flex_Start, .Stretch, .Auto, .Baseline:
 		case .End, .Flex_End: offset = free
-		case .Center: offset = free * 0.5
+		case .Center, .Anchor_Center: offset = free * 0.5
 		case .Space_Between: if free > 0 && n > 1 { between = free / (n - 1) }
 		case .Space_Around: if free > 0 { between = free / n; offset = between * 0.5 } else { offset = free * 0.5 }
 		case .Space_Evenly: if free > 0 { between = free / (n + 1); offset = between } else { offset = free * 0.5 }

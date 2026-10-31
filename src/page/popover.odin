@@ -85,6 +85,7 @@ popover_forget :: proc(p: ^Page, s: ^Popover_State, i: int) {
 	h := s.showing[i]
 	ordered_remove(&s.showing, i)
 	delete_key(&s.invokers, h)
+	delete_key(&p.doc.implicit_anchors, h)
 	delete_key(&s.focus_back, h)
 	popover_restyle(p)
 }
@@ -208,7 +209,7 @@ popover_show :: proc(p: ^Page, el, invoker: base.Handle) -> (Api_Error, string) 
 		if ok, err, msg = popover_check(p, el, false); !ok { return err, msg }
 	}
 	append(&s.showing, el)
-	if invoker != base.NIL_HANDLE { s.invokers[el] = invoker }
+	if invoker != base.NIL_HANDLE { s.invokers[el] = invoker; p.doc.implicit_anchors[el] = invoker }
 	if f := p.formctl; f != nil && f.model.focus != base.NIL_HANDLE { s.focus_back[el] = f.model.focus }
 	popover_restyle(p)
 	popover_focus_first(p, el)

@@ -30,6 +30,7 @@ LAYOUT_ONLY_PROPS :: [?]Prop{
 	.Letter_Spacing, .Word_Spacing, .Text_Align, .Text_Indent, .Text_Overflow, .Word_Break, .Overflow_Wrap, .Tab_Size,
 	.Text_Wrap_Mode, .Text_Wrap_Style, .Hyphens, .Outline_Width, .Border_Collapse, .Border_Spacing, .Table_Layout,
 	.Text_Decoration_Style, .Text_Decoration_Thickness, .Text_Underline_Offset,
+	.Anchor_Name, .Anchor_Scope, .Position_Anchor, .Position_Area, .Position_Try_Fallbacks, .Position_Try_Order, .Position_Visibility,
 }
 
 @(private) change_once: sync.Once

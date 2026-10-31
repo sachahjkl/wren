@@ -483,7 +483,7 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 	t2 := time.tick_now()
 	t3, t4: time.Tick
 	l.inc.last_spliced = false
-	if pass.snapping && try_splice(&c, roots[:], cand, input) {
+	if pass.snapping && !l.anchor_uses && try_splice(&c, roots[:], cand, input) {
 		l.inc.last_spliced = true
 		t3 = time.tick_now()
 		t4 = t3

@@ -10,7 +10,7 @@ import "../odin/wj"
 
 // CSS properties that get attributes (the standard ones browsers expose); "float" is cssFloat.
 @(private = "file") css_properties := [?]string{
-	"accent-color", "align-content", "align-items", "align-self", "all", "animation", "animation-composition",
+	"accent-color", "align-content", "align-items", "align-self", "all", "anchor-name", "anchor-scope", "animation", "animation-composition",
 	"animation-delay", "animation-direction", "animation-duration", "animation-fill-mode", "animation-iteration-count",
 	"animation-name", "animation-play-state", "animation-timing-function", "appearance", "aspect-ratio",
 	"backdrop-filter", "backface-visibility", "background", "background-attachment", "background-blend-mode",
@@ -51,7 +51,8 @@ import "../odin/wj"
 	"overscroll-behavior-y", "padding", "padding-block", "padding-block-end", "padding-block-start", "padding-bottom",
 	"padding-inline", "padding-inline-end", "padding-inline-start", "padding-left", "padding-right", "padding-top",
 	"page-break-after", "page-break-before", "page-break-inside", "perspective", "perspective-origin", "place-content",
-	"place-items", "place-self", "pointer-events", "position", "quotes", "resize", "right", "rotate", "row-gap",
+	"place-items", "place-self", "pointer-events", "position", "position-anchor", "position-area", "position-try",
+	"position-try-fallbacks", "position-try-order", "position-visibility", "quotes", "resize", "right", "rotate", "row-gap",
 	"scale", "scroll-behavior", "scroll-margin", "scroll-padding", "scroll-snap-align", "scroll-snap-type",
 	"scrollbar-color", "scrollbar-gutter", "scrollbar-width", "stroke", "stroke-width", "tab-size", "table-layout",
 	"text-align", "text-align-last", "text-decoration", "text-decoration-color", "text-decoration-line",

@@ -76,7 +76,8 @@ js_layout_now :: proc(p: ^Page) -> (^lay.Layout, Viewport) {
 	if !jl.has { return nil, Viewport{scale = 1} }
 	vp := jl.embedder.viewport(jl.embedder.user, p)
 	if vp.scale <= 0 { vp.scale = 1 }
-	if jl.result != nil && jl.result.valid && jl.mutations == p.doc.mutations && styles_clean(p) && jl.serial == p.styled.serial &&
+	if jl.result != nil && jl.result.anchor_scroll { lay.note_doc_scroll(jl.result, f32(vp.scroll_y * vp.scale)) }
+	if jl.result != nil && jl.result.valid && !jl.result.anchor_stale && jl.mutations == p.doc.mutations && styles_clean(p) && jl.serial == p.styled.serial &&
 	   jl.vp.width == vp.width && jl.vp.height == vp.height && jl.vp.scale == vp.scale {
 		jl.vp = vp   // scrolling moves nothing in the layout
 		return jl.result, vp
@@ -149,7 +150,25 @@ used_box :: proc(p: ^Page, h: base.Handle) -> Used_Box {
 	s := f32(vp.scale)
 	u := Used_Box{ok = true, width = g.content.max.x - g.content.min.x, height = g.content.max.y - g.content.min.y}
 	for i in 0 ..< 4 { u.margin[i] = g.box.margin[i] / s; u.padding[i] = g.box.padding[i] / s }
+	if bi := lay.box_index(l, h); bi != lay.NONE && len(l.anchored) > 0 { u.inset, u.bounds, u.anchored = lay.anchored_used(l, bi, s) }
 	return u
+}
+
+// used_box of an element's anchored ::before or ::after (other generated boxes answer with their computed values).
+@(private)
+used_box_pseudo :: proc(p: ^Page, h: base.Handle, after: bool) -> Used_Box {
+	l, vp := js_layout_now(p)
+	if l == nil || !l.valid || len(l.anchored) == 0 { return {} }
+	s := f32(vp.scale)
+	for &e in l.anchored {
+		b := &l.boxes[e.box]
+		if b.node != h || .Pseudo not_in b.flags || (.Pseudo_After in b.flags) != after { continue }
+		u := Used_Box{ok = true, width = (b.size.x - b.padding[1] - b.padding[3] - b.border[1] - b.border[3]) / s, height = (b.size.y - b.padding[0] - b.padding[2] - b.border[0] - b.border[2]) / s}
+		for i in 0 ..< 4 { u.margin[i] = b.margin[i] / s; u.padding[i] = b.padding[i] / s }
+		u.inset, u.bounds, u.anchored = lay.anchored_used(l, e.box, s)
+		return u
+	}
+	return {}
 }
 
 Element_boundingRect :: proc(c: ^Call, element: Api_Element) -> Api_DomRect {

@@ -242,8 +242,8 @@ interp_length :: proc(dst: ^Length, a, b: Length, t: f64, ctx: ^Interp_Ctx) -> b
 		dst^ = Length{kind = a.kind, v = lerp32(a.v, b.v, t)}
 		return true
 	}
-	numeric :: proc(k: Length_Kind) -> bool { return k == .Px || k == .Percent || k == .Calc }
-	if numeric(a.kind) && numeric(b.kind) {
+	numeric :: proc(l: Length) -> bool { return l.kind == .Px || l.kind == .Percent || l.kind == .Calc || (l.kind == .Anchor && l.calc != nil) }
+	if numeric(a) && numeric(b) {
 		if t == 0 { dst^ = a; return true }
 		if t == 1 { dst^ = b; return true }
 		wa := new(css.Calc, ctx.alloc)
@@ -256,7 +256,7 @@ interp_length :: proc(dst: ^Length, a, b: Length, t: f64, ctx: ^Interp_Ctx) -> b
 		mb^ = css.Calc{op = .Mul, a = length_to_calc(b, ctx.alloc), b = wb}
 		sum := new(css.Calc, ctx.alloc)
 		sum^ = css.Calc{op = .Add, a = ma, b = mb}
-		dst^ = Length{kind = .Calc, calc = sum}
+		dst^ = Length{kind = a.kind == .Anchor || b.kind == .Anchor ? .Anchor : .Calc, calc = sum}
 		return true
 	}
 	if a.kind == b.kind && a.v == b.v { dst^ = a; return true }   // auto, none, normal...

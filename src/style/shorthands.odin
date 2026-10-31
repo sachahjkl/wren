@@ -22,6 +22,7 @@ Longhand :: struct {
 @(private) prop_names: [Prop]string
 
 @(private) INITIAL_KW := [1]css.Value{{kind = .Token, tok = {kind = .Ident, text = "initial"}}}
+@(private) NORMAL_KW := [1]css.Value{{kind = .Token, tok = {kind = .Ident, text = "normal"}}}
 @(private) WS_VALUE := css.Value{kind = .Token, tok = {kind = .Whitespace}}
 
 dashed :: proc(enum_name: string) -> string {
@@ -173,7 +174,9 @@ short_longhands :: proc(s: Short) -> []Prop {
 	@(static) bi_style := [?]Prop{.Border_Left_Style, .Border_Right_Style}
 	@(static) bi_color := [?]Prop{.Border_Left_Color, .Border_Right_Color}
 	@(static) mask := [?]Prop{.Mask_Image, .Mask_Mode, .Mask_Repeat, .Mask_Position, .Mask_Size, .Mask_Origin, .Mask_Clip, .Mask_Composite}
+	@(static) position_try := [?]Prop{.Position_Try_Order, .Position_Try_Fallbacks}
 	switch s {
+	case .Position_Try: return position_try[:]
 	case .Mask: return mask[:]
 	case .Container: return container[:]
 	case .Border_Block: return border_block[:]
@@ -524,6 +527,21 @@ expand_shorthand :: proc(s: Short, vs: []css.Value, a: runtime.Allocator) -> ([]
 
 	case .Mask:
 		return expand_mask(vs, a)
+
+	case .Position_Try:
+		// <position-try-order>? <position-try-fallbacks>
+		rest := items
+		order := NORMAL_KW[:]
+		if len(items) > 0 {
+			switch ident_lower(items[0]) {
+			case "normal", "most-width", "most-height", "most-block-size", "most-inline-size":
+				order = items[:1]
+				rest = items[1:]
+			}
+		}
+		if len(rest) == 0 { return nil, false }
+		emit(&res, .Position_Try_Order, order)
+		emit(&res, .Position_Try_Fallbacks, join_items(rest, a))
 
 	case .White_Space, .Text_Wrap, .Font_Variant, .Transition, .Animation, .Overscroll_Behavior, .Columns,
 	     .Grid_Template, .Grid, .Grid_Row, .Grid_Column, .Grid_Area:

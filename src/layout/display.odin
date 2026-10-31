@@ -322,4 +322,5 @@ build_display_list :: proc(c: ^Ctx) {
 	defer c.dl_par = false
 	p := Paint_Ctx{c = c}
 	paint_stacking(&p, 0)
+	if len(c.l.anchored) > 0 { anchored_drop_hidden(c.l) }
 }

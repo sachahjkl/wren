@@ -200,6 +200,7 @@ view_make :: proc(l: ^Layout, viewport: Vec2, doc_scroll: f32, cull := true, all
 		case .Scroll: v.offsets[i] = v.offsets[sp.parent] - scroll_offset_of(l, sp)
 		case .Sticky: v.offsets[i] = v.offsets[sp.parent] + sticky_offset(l, sp, viewport, doc_scroll)
 		case .Transform: v.offsets[i] = v.offsets[sp.parent]
+		case .Anchored: v.offsets[i] = v.offsets[sp.parent] + anchored_shift(l, sp, viewport, doc_scroll)
 		}
 		v.mats[i], v.invs[i] = IDENTITY, IDENTITY
 		if sp.kind == .Transform && sp.proj {
@@ -359,6 +360,7 @@ scroll_wheel :: proc(l: ^Layout, p: Vec2, delta: Vec2, viewport: Vec2, doc_scrol
 		next := Vec2{clamp(cur.x + delta.x, 0, sp.max_scroll.x), clamp(cur.y + delta.y, 0, sp.max_scroll.y)}
 		if math.abs(next.x - cur.x) < 0.01 && math.abs(next.y - cur.y) < 0.01 { return false }
 		l.scroll[node] = next
+		if l.anchor_scroll { l.anchor_stale = true }
 		return true
 	}
 	if b := &l.boxes[h.box]; b.scroll_space != NONE && try(l, b.scroll_space, delta) { return true }
@@ -392,6 +394,7 @@ set_scroll :: proc(l: ^Layout, node: base.Handle, off: Vec2) -> (Vec2, bool) {
 	if bi == NONE || l.boxes[bi].scroll_space == NONE { return {}, false }
 	sp := &l.spaces[l.boxes[bi].scroll_space]
 	v := Vec2{clamp(off.x, 0, sp.max_scroll.x), clamp(off.y, 0, sp.max_scroll.y)}
+	if l.anchor_scroll && l.scroll[node] != v { l.anchor_stale = true }
 	l.scroll[node] = v
 	return v, true
 }

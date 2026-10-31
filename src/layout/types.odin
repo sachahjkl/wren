@@ -333,11 +333,12 @@ Display_Item :: struct {
 	item:     i32,                  // Text from a fragment: its inline item (whose style it shows), else NONE
 }
 
-Space_Kind :: enum u8 { Document, Fixed, Scroll, Sticky, Transform }
+Space_Kind :: enum u8 { Document, Fixed, Scroll, Sticky, Transform, Anchored }
 
 // A coordinate space items are drawn in: the document (shifted by the page scroll), the viewport (fixed boxes), the
 // content of a scroll container (shifted by its scroll offset), a sticky box (shifted by its constraint), a transformed
-// box and its content (mapped by its transformation; the box's own background and borders are in it too).
+// box and its content (mapped by its transformation; the box's own background and borders are in it too), an anchored box
+// (shifted as the scroll containers around its anchor shift it).
 //
 // Offsets (scroll, sticky) are translations; a view composes them first, then the matrices of the Transform spaces
 // above, innermost first: viewport point = W(layout point + offset), W = product of the transforms (see View).
@@ -351,6 +352,8 @@ Space :: struct {
 	port:     Rect,                 // Scroll: the container's padding box; Sticky: the box's normal border box
 	limit:    Rect,                 // Sticky: the containing block's content box
 	max_scroll: Vec2,               // Scroll
+	anchor:   i32,                  // Anchored: the box's default anchor, whose scrolling it follows (anchor.odin)...
+	follow:   [2]bool,              // ... in these axes
 	inset:    [4]f32,               // Sticky: top right bottom left, NaN = auto
 	mat:      Matrix,               // Transform: the box's transformation in layout coordinates (origin folded in)
 	// 3D (plane.odin). plane is set on every space: the innermost plane space at or above it (NONE: none)
@@ -434,6 +437,14 @@ Layout :: struct {
 	tree_gen:     u64,                     // bumped whenever boxes are made (full pass, partial rebuild)
 	dl_walks:     Dl_Walks,                // the page's own stacking context: its walks, kept while the boxes and styles stay
 	pre_keep:     Pre_Keep,                // what the layout threads found from the boxes' styles, likewise (parallel.odin)
+	// anchor positioning (anchor.odin)
+	anchor_uses:  bool,                    // some box was left for anchored_pass (until the next full pass)
+	anchor_scroll: bool,                   // what the last anchored_pass chose depends on scroll offsets
+	anchor_stale: bool,                    // ... and one of them moved: a pass is due
+	anchor_doc_scroll: f32,                // the page's scroll offset that pass saw
+	anchored:     [dynamic]Anchored,       // the boxes it laid out, in tree order
+	anchor_grid_areas: map[i32]Rect,       // anchored box whose containing block is a grid -> its grid area
+	anchor_last:  map[Anchor_Key]Anchor_Last,   // the option each box last fitted with: it stays while it fits
 }
 
 // What building the display list of the page's stacking context finds by walking the whole box tree: its layers, and
