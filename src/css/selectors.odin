@@ -3,6 +3,8 @@ package css
 import "core:fmt"
 import "core:strings"
 
+NESTING_SCAN_MAX_DEPTH :: 64   // the selectors within selectors searched for `&`
+
 // Selectors Level 4 (the parts that make sense for a document without namespaces) and CSS Nesting's `&`.
 
 Combinator :: enum u8 { Descendant, Child, Next_Sibling, Subsequent_Sibling }
@@ -116,7 +118,7 @@ parse_inner_selector_list :: proc(vs: []Value, a: Arena_Alloc, parent: ^Selector
 // `&` anywhere in the selector, inside pseudo-class arguments too (`.bar:is(&)`)
 @(private)
 uses_nesting :: proc(c: Complex, depth := 0) -> bool {
-	if depth > 64 { return false }
+	if depth > NESTING_SCAN_MAX_DEPTH { return false }
 	for comp in c.compounds {
 		for s in comp.simples {
 			if s.kind == .Nesting { return true }
