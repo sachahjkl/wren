@@ -233,6 +233,21 @@ main :: proc() {
 	if selected("xhr") { run("xhr") }
 	if selected("perf_crypto") { run("perf_crypto") }
 	if selected("webcrypto") { run("webcrypto", seconds = 120) }
+	if selected("webaudio") {
+		policy := settings.media.autoplay
+		settings.media.autoplay = .Allow_All
+		run("webaudio", seconds = 60)
+		settings.media.autoplay = policy
+	}
+	if selected("webaudio_autoplay") {
+		actions := make(map[string]Action, context.temp_allocator)
+		actions["gesture"] = proc(p: ^page.Page, l: ^Page_Log) { page.dispatch_event(p, p.body, dom.Event{type = "mousedown", bubbles = true, cancelable = true}) }
+		actions["collect"] = proc(p: ^page.Page, l: ^Page_Log) { js.collect(p.js.inst) }
+		actions["count"] = proc(p: ^page.Page, l: ^Page_Log) {
+			if n := page.web_audio_live_nodes(p); n < 20 { passes += 1 } else { fmt.printf("FAIL [webaudio_autoplay] %d nodes are still in the graph\n", n); failures += 1 }
+		}
+		run("webaudio_autoplay", actions)
+	}
 	if selected("message") { run("message") }
 	if selected("sockets") { run("sockets") }
 	if selected("canvas") { run("canvas") }

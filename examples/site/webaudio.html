@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Web Audio</title>
+  <style>
+    body { font: 16px system-ui, sans-serif; margin: 2em; }
+    button { font: inherit; padding: .4em 1em; }
+    canvas { display: block; margin-top: 1em; border: 1px solid #888; }
+  </style>
+</head>
+<body>
+  <h1>Web Audio</h1>
+  <p>A note through a filter, a delay with feedback and an analyser. State: <b id="state">?</b>, time: <span id="time">0</span> s,
+     peak: <span id="peak">0</span>.</p>
+  <p><button id="play">Play</button> <button id="stop">Stop</button></p>
+  <canvas id="scope" width="512" height="128"></canvas>
+  <script>
+    "use strict";
+    const ctx = new AudioContext();
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 1024;
+    const filter = ctx.createBiquadFilter();
+    filter.frequency.value = 1500;
+    const delay = ctx.createDelay(1);
+    delay.delayTime.value = 0.25;
+    const feedback = ctx.createGain();
+    feedback.gain.value = 0.4;
+    const master = ctx.createGain();
+    filter.connect(master);
+    filter.connect(delay);
+    delay.connect(feedback).connect(delay);
+    delay.connect(master);
+    master.connect(analyser).connect(ctx.destination);
+
+    let voice = null;
+    const note = () => {
+      const o = ctx.createOscillator(), env = ctx.createGain(), t = ctx.currentTime;
+      o.type = "sawtooth";
+      o.frequency.setValueAtTime(220, t);
+      o.frequency.exponentialRampToValueAtTime(880, t + 0.5);
+      env.gain.setValueAtTime(0, t);
+      env.gain.linearRampToValueAtTime(0.5, t + 0.02);
+      env.gain.setTargetAtTime(0.1, t + 0.1, 0.2);
+      o.connect(env).connect(filter);
+      o.start(t);
+      return { o, env };
+    };
+    document.getElementById("play").onclick = () => {
+      ctx.resume();
+      if (voice) voice.o.stop();
+      voice = note();
+    };
+    document.getElementById("stop").onclick = () => {
+      if (voice) voice.o.stop();
+      voice = null;
+    };
+
+    const scope = document.getElementById("scope").getContext("2d");
+    const wave = new Float32Array(analyser.fftSize);
+    // What the demo measures, for the driven test (nothing else looks at it).
+    window.heard = { peak: 0 };
+    const frame = () => {
+      analyser.getFloatTimeDomainData(wave);
+      let peak = 0;
+      scope.clearRect(0, 0, 512, 128);
+      scope.beginPath();
+      for (let i = 0; i < 512; i++) {
+        const v = wave[i * 2];
+        peak = Math.max(peak, Math.abs(v));
+        scope.lineTo(i, 64 - v * 60);
+      }
+      scope.stroke();
+      window.heard.peak = Math.max(window.heard.peak, peak);
+      document.getElementById("state").textContent = ctx.state;
+      document.getElementById("time").textContent = ctx.currentTime.toFixed(2);
+      document.getElementById("peak").textContent = peak.toFixed(3);
+      requestAnimationFrame(frame);
+    };
+    frame();
+  </script>
+</body>
+</html>

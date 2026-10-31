@@ -58,3 +58,4 @@ html/cross-origin-opener-policy only=.
 wasm/webapi
 html/semantics/interactive-elements/the-dialog-element
 WebCryptoAPI
+webaudio
