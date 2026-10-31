@@ -25586,7 +25586,7 @@ wj_install_bindings :: proc "c" () {
 	m_CSSPageRule[0] = wj.Member{name = "selectorText", kind = wj.M_ATTRIBUTE, flags = wj.F_SETTER_UNSUPPORTED, length = 0, get = nil, set = nil}
 	m_CSSPageRule[1] = wj.Member{name = "style", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 8, get = nil, set = wjg_CSSPageRule_set_style}
 	m_CSSStyleRule[0] = wj.Member{name = "styleMap", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 9, get = nil, set = nil}
-	m_CSSStyleRule[1] = wj.Member{name = "selectorText", kind = wj.M_ATTRIBUTE, flags = wj.F_SETTER_UNSUPPORTED, length = 0, get = wjr_CSSStyleRule_get_selectorText, set = nil}
+	m_CSSStyleRule[1] = wj.Member{name = "selectorText", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_CSSStyleRule_get_selectorText, set = wjr_CSSStyleRule_set_selectorText}
 	m_CSSStyleRule[2] = wj.Member{name = "style", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 10, get = wjr_CSSStyleRule_get_style, set = wjg_CSSStyleRule_set_style}
 	m_CSSImportRule[0] = wj.Member{name = "href", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
 	m_CSSImportRule[1] = wj.Member{name = "media", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 11, get = nil, set = wjg_CSSImportRule_set_media}

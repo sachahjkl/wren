@@ -135,10 +135,12 @@ worker_fetch_sync :: proc(p: ^Page, target: string) -> (final_url: string, body:
 	if rec == nil { return "", nil, "the request was lost" }
 	if rec.state == 3 { return "", nil, strings.clone(rec.error, context.temp_allocator) }
 	if rec.type != .Opaque && (rec.status < 200 || rec.status >= 300) { return "", nil, fmt.tprintf("HTTP %d", rec.status) }
-	// HTML "fetch a classic worker-imported script": over HTTP(S), a JavaScript MIME type (an opaque response shows no
-	// headers: it is not checked; a data: or blob: URL may have any type)
-	if rec.type != .Opaque && (strings.has_prefix(target, "http:") || strings.has_prefix(target, "https:")) {
-		m, okm := http.parse_mime(header_value(rec.headers, "content-type"), context.temp_allocator)
+	// HTML "fetch a classic worker-imported script": a JavaScript MIME type (an opaque response shows no headers: it is not checked).
+	// A blob with no type passes: new Blob([source]) given to importScripts is common, and the other browsers run it.
+	is_blob := strings.has_prefix(target, "blob:")
+	type_header := header_value(rec.headers, "content-type")
+	if rec.type != .Opaque && !(is_blob && type_header == "") && (is_blob || strings.has_prefix(target, "http:") || strings.has_prefix(target, "https:") || strings.has_prefix(target, "data:")) {
+		m, okm := http.parse_mime(type_header, context.temp_allocator)
 		js_type := false
 		if okm { for t in js_mime_types { if strings.concatenate({m.type, "/", m.subtype}, context.temp_allocator) == t { js_type = true } } }
 		if !js_type { return "", nil, okm ? fmt.tprintf("its MIME type %s/%s is not a JavaScript MIME type", m.type, m.subtype) : "it has no JavaScript MIME type" }
