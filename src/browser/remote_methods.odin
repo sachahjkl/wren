@@ -25,6 +25,9 @@ import lay "wb:layout"
 import "wb:page"
 import "wb:remote"
 
+// How many matches a queryAll call returns when it gives no `limit`.
+REMOTE_QUERY_ALL_DEFAULT_LIMIT :: 100
+
 ui_toast_remote :: proc(text: string) { ui.toast(.Warn, "%s", text) }
 ui_needs_frame :: proc(app: ^App) -> bool { return ui.needs_frame(active_window(app).ui) }
 render_capture_busy :: proc() -> bool { return the_app != nil && render.capture_pending(&the_app.r) }
@@ -651,7 +654,7 @@ m_query_all :: proc(app: ^App, c: ^Call) -> Reply {
 	t, e := tab_of(app, c)
 	if t == nil { return e }
 	if t.page == nil { return fail(remote.ERR_FAILED, "the tab has no document") }
-	limit, _ := remote.param_int(c.params, "limit", 100)
+	limit, _ := remote.param_int(c.params, "limit", REMOTE_QUERY_ALL_DEFAULT_LIMIT)
 	hs, valid := page.query_all(t.page, sel, limit)
 	if !valid { return fail(remote.ERR_PARAMS, fmt.tprintf("invalid selector %q", sel)) }
 	all, _ := page.query_all(t.page, sel)

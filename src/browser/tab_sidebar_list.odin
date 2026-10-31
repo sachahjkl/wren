@@ -321,7 +321,7 @@ sidebar_pins :: proc(app: ^App, pos: Tabs_Position, open, extent: f32, cc: ^Clas
 			b := ui.build_box({.Clickable, .Focusable, .Middle_Click, .Draw_Hot_Effects, .Hot_Within, .Clip}, id)
 			ui.pop_tags()
 			look := ui.frame_new(Side_Look)
-			look.selected = ui.anim(ui.key_from_string(b.key, "sel"), on ? 1 : 0, 34)
+			look.selected = ui.anim(ui.key_from_string(b.key, "sel"), on ? 1 : 0, CHROME_ANIM_SELECT_RATE)
 			look.accent = ui.color("accent")
 			look.left = pos == .Left
 			look.pin = true
@@ -413,8 +413,8 @@ sidebar_row :: proc(app: ^App, i: int, slot, rh, row_x, row_w, inset: f32, open:
 		pos := favs.cfg.position
 		look := ui.frame_new(Classic_Side_Tab)
 		look^ = {c = cc, pos = pos, m = side_tab_metrics(em, dpi, rh, row_w), dragging = dragging, inset = math.round(em * 0.6), gap = math.round(em * 0.3)}
-		look.selected = ui.anim(ui.key_from_string(b.key, "sel"), on ? 1 : 0, 34)
-		look.hover = ui.anim(ui.key_from_string(b.key, "hov"), (inside || dragging) && !on ? 1 : 0, 40)
+		look.selected = ui.anim(ui.key_from_string(b.key, "sel"), on ? 1 : 0, CHROME_ANIM_SELECT_RATE)
+		look.hover = ui.anim(ui.key_from_string(b.key, "hov"), (inside || dragging) && !on ? 1 : 0, CHROME_ANIM_HOVER_RATE)
 		// an engraved line under it, between two tabs that are neither current nor under the pointer
 		if open > 0 && !on && !inside && !dragging && i + 1 < n && i + 1 != wnd.current && !wnd.tabs[i + 1].pinned {
 			nb := ui.prev_box(fmt.tprintf("###tab_%d", wnd.tabs[i + 1].id))
@@ -424,7 +424,7 @@ sidebar_row :: proc(app: ^App, i: int, slot, rh, row_x, row_w, inset: f32, open:
 	} else {
 		b = ui.build_box({.Clickable, .Focusable, .Middle_Click, .Draw_Hot_Effects, .Hot_Within, .Clip}, id)
 		look := ui.frame_new(Side_Look)
-		look.selected = ui.anim(ui.key_from_string(b.key, "sel"), on ? 1 : 0, 34)
+		look.selected = ui.anim(ui.key_from_string(b.key, "sel"), on ? 1 : 0, CHROME_ANIM_SELECT_RATE)
 		look.accent = ui.color("accent")
 		look.left = favs.cfg.position == .Left
 		b.custom, b.custom_user = side_row_draw, look

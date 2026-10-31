@@ -26,6 +26,10 @@ import "toolkit:render"
 import "toolkit:ui"
 import "wb:config"
 
+// The rates of ui.anim for chrome items (halvings per second): to the selected look, and to the hovered one.
+CHROME_ANIM_SELECT_RATE :: 34
+CHROME_ANIM_HOVER_RATE :: 40
+
 CHROME_PREFS := [?]config.Def{
 	{name = "browser.ui.chrome_style", kind = .String, default = {s = "modern"}, choices = {"modern", "classic"},
 		description = "How the browser's own interface (tab bar, tabs, toolbar, address field) is drawn. modern: flat, tabs are rounded pills. classic: tabs are trapezoids with sloped sides, rounded shoulders and a concave foot, the current tab is attached to the toolbar (one gradient, no line between them), the others are darker and overlap behind it, with gradients and light and dark hairlines; with the tabs in a sidebar (browser.tabs.position), the current tab is a panel with rounded outer corners that flows into the page's side, the others lie flat on the bar, engraved apart. Either one follows browser.ui.theme: the classic colors are derived from the palette, light or dark. Applies at once."},
@@ -450,7 +454,7 @@ classic_plus_box :: proc(cc: ^Classic_Colors, m: Tab_Metrics) -> (sig: ui.Signal
 	sig = ui.signal(b)
 	p := ui.frame_new(Classic_Tab)
 	p.m, p.c, p.box = m, cc, b
-	p.hover = ui.anim(ui.key_from_string(b.key, "hov"), sig.hovering ? 1 : 0, 40)
+	p.hover = ui.anim(ui.key_from_string(b.key, "hov"), sig.hovering ? 1 : 0, CHROME_ANIM_HOVER_RATE)
 	p.top, p.bot = ui.srgb_step(cc.idle_top, cc.hot_top, p.hover), ui.srgb_step(cc.idle_bot, cc.hot_bot, p.hover)
 	p.ghost = 0.5 + 0.5 * p.hover
 	b.custom, b.custom_user = classic_tab_draw, p

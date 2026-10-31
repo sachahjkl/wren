@@ -11,6 +11,10 @@ import "wb:adblock"
 import "wb:blocker"
 import "wb:i18n"
 
+// The graph of a page's blocked requests: the bars it draws, and the shortest span they cover.
+BLOCKER_GRAPH_BINS :: 48
+BLOCKER_GRAPH_MIN_SPAN_MS :: 500
+
 // The blocker's icon at the end of the address row and its panel. The icon is a shield drawn from rectangles (no glyph
 // in the icon font): green when the page is filtered, grey when the blocker or this site is off, amber while only the
 // built-in list is loaded. The badge counts the page's blocked requests. The panel is a dense tool: the power switch of
@@ -307,16 +311,15 @@ graph_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	r := b.rect
 	draw.rect(dc, r, g.track, 3)
 	if len(g.points) == 0 || g.span_ms == 0 { return }
-	N :: 48
-	bins: [N]int
+	bins: [BLOCKER_GRAPH_BINS]int
 	most := 1
 	for p in g.points {
-		i := min(int(u64(p) * N / u64(g.span_ms + 1)), N - 1)
+		i := min(int(u64(p) * BLOCKER_GRAPH_BINS / u64(g.span_ms + 1)), BLOCKER_GRAPH_BINS - 1)
 		bins[i] += 1
 		most = max(most, bins[i])
 	}
-	w := (r.max.x - r.min.x - 4) / N
-	for i in 0 ..< N {
+	w := (r.max.x - r.min.x - 4) / BLOCKER_GRAPH_BINS
+	for i in 0 ..< BLOCKER_GRAPH_BINS {
 		if bins[i] == 0 { continue }
 		hh := (r.max.y - r.min.y - 6) * f32(bins[i]) / f32(most)
 		x := r.min.x + 2 + w * f32(i)
@@ -501,7 +504,7 @@ panel_body :: proc(app: ^App, t: ^Tab, state: Shield_State) {
 		g.points = ts.points[:]
 		span := u32(0)
 		if len(ts.points) > 0 { span = ts.points[len(ts.points) - 1] }
-		g.span_ms = max(span, 500)
+		g.span_ms = max(span, BLOCKER_GRAPH_MIN_SPAN_MS)
 		g.color = {BLOCK_RED.r, BLOCK_RED.g, BLOCK_RED.b, 0.85}
 		g.track = ui.color("hover_fill")
 		ui.next({width = ui.px(w - em * 1.2), height = ui.px(ui.dense(em * 2.4))})

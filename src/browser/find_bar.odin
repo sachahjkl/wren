@@ -18,6 +18,9 @@ import "wb:dom"
 import lay "wb:layout"
 import "wb:page"
 
+// Content that keeps changing is searched again at most this often.
+FIND_RESEARCH_MIN_MS :: 250
+
 Find_Match :: struct { start, end: lay.Text_Pos }
 Find_Span :: struct { lo, hi: int, match: int }   // a match's part in one text node
 
@@ -118,7 +121,7 @@ find_update :: proc(app: ^App, t: ^Tab) {
 	if same_query && fs.page == p && fs.mutations == p.doc.mutations && fs.styled == styled_serial { return }
 	// content that keeps changing is searched again at most a few times a second
 	now := ui.now_ms()
-	if same_query && fs.page == p && now - fs.searched_ms < 250 { request_frames(app, 2); return }
+	if same_query && fs.page == p && now - fs.searched_ms < FIND_RESEARCH_MIN_MS { request_frames(app, 2); return }
 	keep := same_query && fs.page == p ? fs.active : -1
 	find_clear_matches(fs)
 	delete(fs.query)

@@ -17,6 +17,11 @@ import "wb:js"
 import "wb:page"
 import "toolkit:render"
 
+// The Memory panel, live: redrawn at this period, and a new sample once the last one is this old (a little less, so a
+// timer that is slightly early does not miss one).
+DEV_MEMORY_TICK_MS :: 1000
+DEV_MEMORY_SAMPLE_AGE_MS :: 900
+
 Mem_Sample :: struct {
 	at_ms:   f64,
 	ws, private, js_heap, images, pictures, gpu, nodes: f64,
@@ -60,7 +65,7 @@ sample_now :: proc(app: ^App, t: ^Tab) -> Mem_Sample {
 memory_panel :: proc(app: ^App, t: ^Tab) {
 	m := &dev().mem
 	now := ui.now_ms()
-	if len(m.samples) == 0 || now - m.samples[len(m.samples) - 1].at_ms >= 900 {
+	if len(m.samples) == 0 || now - m.samples[len(m.samples) - 1].at_ms >= DEV_MEMORY_SAMPLE_AGE_MS {
 		if len(m.samples) >= MEM_MAX_SAMPLES { ordered_remove(&m.samples, 0) }
 		append(&m.samples, sample_now(app, t))
 	}
@@ -78,7 +83,7 @@ memory_panel :: proc(app: ^App, t: ^Tab) {
 		dt_gap(3)
 	}
 	if m.live && m.tick == base.NIL_HANDLE {
-		m.tick = host.set_timer(&app.loop, 1000, 0, proc(data: rawptr) {   // (the window's id: it may close before)
+		m.tick = host.set_timer(&app.loop, DEV_MEMORY_TICK_MS, 0, proc(data: rawptr) {   // (the window's id: it may close before)
 			w, d := devtools_of_window_id(the_app, int(uintptr(data)))
 			if d == nil { return }
 			d.mem.tick = base.NIL_HANDLE

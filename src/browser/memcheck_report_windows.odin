@@ -43,7 +43,7 @@ Mem_Heap_Entry :: struct {
 
 // The live blocks of the process heaps grouped by exact size (the biggest groups first): what the native libraries
 // hold that the tracker does not see. Slow; a diagnostic for the endurance run.
-memory_heap_report :: proc(file: string, top := 40) {
+memory_heap_report :: proc(file: string, top := MEMORY_REPORT_TOP) {
 	heaps: [64]win.HANDLE
 	n := min(int(mem_GetProcessHeaps(len(heaps), &heaps[0])), len(heaps))
 	sizes := make(map[u32][2]i64, 4096, context.temp_allocator)   // size -> {count, bytes}
@@ -75,7 +75,7 @@ memory_heap_report :: proc(file: string, top := 40) {
 }
 
 // The biggest private committed allocations (one line each: base, committed MB, kind), to find what a number is made of.
-memory_map_report :: proc(file: string, top := 40) {
+memory_map_report :: proc(file: string, top := MEMORY_REPORT_TOP) {
 	Region :: struct { base: uintptr, committed: i64, reserved: i64, exec: bool }
 	regions := make(map[uintptr]Region, 256, context.temp_allocator)
 	mbi: Mem_Basic_Info

@@ -17,6 +17,15 @@ package browser
 import "core:slice"
 import "core:strings"
 
+URL_DAY_MS :: 86_400_000
+// How old the index gets before a full build ages its weights.
+URL_INDEX_MAX_AGE_MS :: URL_DAY_MS
+// The age brackets of a visit's frecency weight (visit_weight).
+VISIT_AGE_RECENT_DAYS :: 4
+VISIT_AGE_FORTNIGHT_DAYS :: 14
+VISIT_AGE_MONTH_DAYS :: 31
+VISIT_AGE_QUARTER_DAYS :: 90
+
 Url_Entry :: struct {
 	url:       string,   // owned: as recorded
 	title:     string,   // owned: the title of its latest visit that had one
@@ -79,12 +88,11 @@ url_index_clear :: proc(x: ^Url_Index) {
 
 // Weight of a visit `age_ms` old in the frecency of its address.
 visit_weight :: proc(age_ms: i64) -> f32 {
-	DAY :: 86_400_000
 	switch {
-	case age_ms <= 4 * DAY:  return 100
-	case age_ms <= 14 * DAY: return 70
-	case age_ms <= 31 * DAY: return 50
-	case age_ms <= 90 * DAY: return 30
+	case age_ms <= VISIT_AGE_RECENT_DAYS * URL_DAY_MS:    return 100
+	case age_ms <= VISIT_AGE_FORTNIGHT_DAYS * URL_DAY_MS: return 70
+	case age_ms <= VISIT_AGE_MONTH_DAYS * URL_DAY_MS:     return 50
+	case age_ms <= VISIT_AGE_QUARTER_DAYS * URL_DAY_MS:   return 30
 	}
 	return 10
 }
@@ -158,8 +166,8 @@ url_index_build :: proc(x: ^Url_Index, visits: []Visit, serial: u64, now_ms: i64
 // day are computed again (a full build: the caller does it where a pause does not show, when the field gets the
 // keyboard). Anything unexpected (an order changed): a full build.
 url_index_sync :: proc(x: ^Url_Index, visits: []Visit, serial: u64, now_ms: i64, age := false) {
-	if x.serial == serial && x.serial != 0 && !(age && now_ms - x.now_ms > 86_400_000) { return }
-	if x.serial == 0 || (age && now_ms - x.now_ms > 86_400_000) { url_index_build(x, visits, serial, now_ms); return }
+	if x.serial == serial && x.serial != 0 && !(age && now_ms - x.now_ms > URL_INDEX_MAX_AGE_MS) { return }
+	if x.serial == 0 || (age && now_ms - x.now_ms > URL_INDEX_MAX_AGE_MS) { url_index_build(x, visits, serial, now_ms); return }
 	j, k := 0, 0
 	changed := false
 	for iv in x.vis {

@@ -33,6 +33,9 @@ import "toolkit:render"
 import "toolkit:ui"
 import "wb:config"
 
+// How often the compositor's live rate is read during a run of frames.
+PACER_LIVE_HZ_PERIOD_NS :: 100_000_000
+
 // PACING_DEBUG: every wait for the screen and every smooth scrolling step on stderr (build with -subsystem:console).
 PACING_DEBUG :: #config(PACING_DEBUG, false)
 _ :: fmt   // PACING_DEBUG only
@@ -352,7 +355,7 @@ pacer_end_frame :: proc(app: ^App) {
 	// the compositor's rate during a run of frames (a dynamic refresh rate goes up while something moves): the highest one seen,
 	// read every 100 ms of the run and started afresh after a rest (primary monitor only: platform.display_live_hz)
 	if !pacer.continuous { pacer.live_hz = 0 }
-	if now - pacer.live_ns >= 100_000_000 {
+	if now - pacer.live_ns >= PACER_LIVE_HZ_PERIOD_NS {
 		if hz, ok := platform.display_live_hz(active_window(app).win); ok { pacer.live_hz = max(pacer.live_hz, hz) }
 		pacer.live_ns = now
 	}

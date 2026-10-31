@@ -10,6 +10,9 @@ import "wb:blocker"
 import "wb:host"
 import "wb:i18n"
 
+// A configuration or filter file chosen in the dashboard that is bigger than this is refused.
+BLOCKER_IMPORT_MAX_BYTES :: 64 << 20
+
 // The system's Open and Save dialogs for the dashboard (export and import of the configuration and of the user's
 // filters). The dialog runs on a worker thread; what it chose is read or written back on the interface thread.
 
@@ -68,7 +71,7 @@ dialog_done :: proc(data: rawptr) {
 		data, err := os.read_entire_file(j.path, context.allocator)
 		if err != nil { ui.toast(.Bad, i18n.tr("Could not read %s"), j.path); return }
 		defer delete(data)
-		if len(data) > 64 << 20 { ui.toast(.Bad, i18n.tr("%s is too large"), name); return }
+		if len(data) > BLOCKER_IMPORT_MAX_BYTES { ui.toast(.Bad, i18n.tr("%s is too large"), name); return }
 		if j.kind == 0 {
 			ok, bad := blocker.conf_parse(b, string(data), true)
 			blocker.conf_save(b)

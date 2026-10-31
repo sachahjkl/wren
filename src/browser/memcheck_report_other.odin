@@ -8,12 +8,12 @@ package browser
 
 import "core:os"
 
-memory_heap_report :: proc(file: string, top := 40) {
+memory_heap_report :: proc(file: string, top := MEMORY_REPORT_TOP) {
 	_ = top
 	_ = os.write_entire_file(file, "heap report: not available on this platform (Windows HeapWalk only)\n")
 }
 
-memory_map_report :: proc(file: string, top := 40) {
+memory_map_report :: proc(file: string, top := MEMORY_REPORT_TOP) {
 	_ = top
 	_ = os.write_entire_file(file, "vm map report: not available on this platform (Windows VirtualQuery only)\n")
 }

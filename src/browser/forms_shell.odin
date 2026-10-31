@@ -30,6 +30,9 @@ import "wb:page"
 import lay "wb:layout"
 import "wb:style"
 
+// While a validation message shows, the window is redrawn this often.
+FORMS_REPORT_POLL_MS :: 250
+
 Painted :: struct {
 	content: draw.Rect,     // physical pixels, in the space it was drawn in (screen space unless a CSS transform applies)
 	xform:   draw.Affine,   // that space -> screen (draw.current_transform when painted)
@@ -205,7 +208,7 @@ forms_shell_frame :: proc(app: ^App) {
 		fv.blink_on = false
 	}
 	if _, _, shown := forms.current_report(f); shown && fv.report_timer == base.NIL_HANDLE {
-		fv.report_timer = host.set_timer(&app.loop, 250, 0, proc(data: rawptr) {
+		fv.report_timer = host.set_timer(&app.loop, FORMS_REPORT_POLL_MS, 0, proc(data: rawptr) {
 			if w := forms_timer_window(data); w != nil { w.own.forms.report_timer = base.NIL_HANDLE; window_request(the_app, w, 1) }
 		}, wid)
 	}

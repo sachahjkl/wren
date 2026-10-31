@@ -31,6 +31,9 @@ import "wb:desktop"
 import "wb:host"
 import win "core:sys/windows"
 
+// How long a starting instance waits on the one that owns the profile.
+INSTANCE_ACQUIRE_WAIT_MS :: 3000
+
 INSTANCE_PREFS := [?]config.Def{
 	{name = "browser.single_instance", kind = .Bool, default = {b = true},
 		description = "Starting Wren again with the same profile (a link opened from another program, a double-clicked .html file, `wren.exe https://...` in a terminal) opens a tab in the Wren that is already running, brings its window to the front and ends, instead of opening a second window on the same profile. Only the same executable does this: another copy of Wren (a newer download, another folder) opens its own window. `--new-window` on the command line opens a separate window for once. WREN_SINGLE_INSTANCE=off in the environment turns it off, =on turns it on whatever this says (for scripts). Never with browser.profile.persist off. Applied at the next start."},
@@ -115,7 +118,7 @@ instance_early :: proc(app: ^App, rest: []string, setup, new_window: bool) {
 	addresses := make([dynamic]string, context.temp_allocator)
 	for a in rest { if s := command_line_address(a); s != "" { append(&addresses, s) } }
 	message := encode_message({setup = setup, addresses = addresses[:]})
-	outcome, owner := instance.acquire({name = instance_name(app), identity = exe, wait_ms = 3000}, message)
+	outcome, owner := instance.acquire({name = instance_name(app), identity = exe, wait_ms = INSTANCE_ACQUIRE_WAIT_MS}, message)
 	switch outcome {
 	case .Forwarded:       os.exit(0)
 	case .First:           inst.owner, inst.mine = owner, true

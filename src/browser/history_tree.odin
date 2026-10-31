@@ -30,6 +30,9 @@ import "toolkit:ui"
 import "wb:config"
 import "wb:page"
 
+// A pan by keyboard takes at most this long, whatever browser.history.tree_transition_ms says.
+TREE_KEY_PAN_MAX_MS :: 140
+
 HISTORY_TREE_PREFS := [?]config.Def{
 	{name = "browser.history.tree_layout", kind = .String, default = {s = "horizontal"}, choices = {"horizontal", "vertical"},
 		description = "Layout of the tab's history tree (about:history#tree): horizontal puts the first entry on the left with time going right and branches below; vertical puts it at the top with time going down and branches to the right. The tree's toolbar and the L key switch it."},
@@ -744,7 +747,7 @@ history_tree_view :: proc(app: ^App, t: ^Tab) {
 			if ui.key_press(.Down, {.Shift}) { move.y += step * 4 }
 			if ui.key_press(.Page_Up) { move.y -= size.y * 0.85 }
 			if ui.key_press(.Page_Down) { move.y += size.y * 0.85 }
-			if move != {} { tree_go(cam_pan(tree_target(), em, -move), anims, now, ms = min(tcfg.transition_ms, 140)) }
+			if move != {} { tree_go(cam_pan(tree_target(), em, -move), anims, now, ms = min(tcfg.transition_ms, TREE_KEY_PAN_MAX_MS)) }
 			if ui.key_press(.Equal) || ui.key_press(.Num_Add) || ui.key_press(.Equal, {.Shift}) { tree_zoom_by(zstep, vc, em, anims, now) }
 			if ui.key_press(.Minus) || ui.key_press(.Num_Subtract) { tree_zoom_by(1 / zstep, vc, em, anims, now) }
 			if ui.key_press(.N0) { tree_zoom_by(1 / tree_target().zoom, vc, em, anims, now) }

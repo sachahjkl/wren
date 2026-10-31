@@ -31,6 +31,15 @@ import "wb:http"
 import "wb:images"
 import "wb:page"
 
+// The longest file name made for a download, in bytes (the extension kept).
+DOWNLOAD_NAME_MAX_BYTES :: 200
+// The speed is measured over at least this long, for a steady figure.
+DOWNLOAD_SPEED_SAMPLE_MS :: 350
+// A download with no data for this long counts as stalled: its speed is not shown (downloads_ui.odin too).
+DOWNLOAD_STALLED_MS :: 2500
+// How often a finished download's file is checked to still exist.
+DOWNLOAD_EXISTS_CHECK_MS :: 1500
+
 DOWNLOAD_PREFS := [?]config.Def{
 	{name = "browser.download.ask", kind = .Bool, default = {b = false},
 		description = "Ask where to save each download (the Save dialog of Windows). Off (the default): downloads go at once to browser.download.directory, the Downloads folder of Windows when it is empty, under a name that is free."},
@@ -151,7 +160,7 @@ decode_ext_value :: proc(v: string) -> (string, bool) {
 // A file name Windows accepts, from what the server suggested (else the URL's last segment, else "download"): no
 // folder part, no reserved character or control character, no trailing dot or space, not a device name, at most
 // `max_bytes` bytes (the extension kept), and an extension from the type when there is none.
-download_file_name :: proc(suggested, address, mime: string, max_bytes := 200, allocator := context.temp_allocator) -> string {
+download_file_name :: proc(suggested, address, mime: string, max_bytes := DOWNLOAD_NAME_MAX_BYTES, allocator := context.temp_allocator) -> string {
 	name := suggested
 	if strings.trim_space(name) == "" {
 		p := address
@@ -524,7 +533,7 @@ download_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		append(&d.pending, ..ev.data)
 		d.received += i64(len(ev.data))
 		// the speed: measured over at least a third of a second, smoothed (a steady figure for the bar and the time left)
-		if now := dl_now_ms(); now - d.sample_ms >= 350 {
+		if now := dl_now_ms(); now - d.sample_ms >= DOWNLOAD_SPEED_SAMPLE_MS {
 			inst := f64(d.received - d.sample_bytes) * 1000 / f64(now - d.sample_ms)
 			d.speed = d.speed > 0 ? d.speed * 0.65 + inst * 0.35 : inst
 			d.sample_ms, d.sample_bytes = now, d.received
@@ -784,7 +793,7 @@ download_clear_finished :: proc(app: ^App) {
 // Is the saved file still there? (looked up at most every 1.5 s per download: the page asks every frame)
 download_file_present :: proc(d: ^Download) -> bool {
 	if d.state != .Done || d.path == "" { return false }
-	if now := dl_now_ms(); now - d.checked_ms > 1500 { d.checked_ms = now; d.missing = !os.exists(d.path) }
+	if now := dl_now_ms(); now - d.checked_ms > DOWNLOAD_EXISTS_CHECK_MS { d.checked_ms = now; d.missing = !os.exists(d.path) }
 	return !d.missing
 }
 
@@ -829,7 +838,7 @@ downloads_progress :: proc() -> (active: int, frac: f32, known: bool, speed: f64
 		if d.state != .Receiving && d.state != .Saving { continue }
 		active += 1
 		if d.state == .Receiving && d.total <= 0 { known = false } else { got += d.state == .Saving ? d.total : d.received; of += d.total }
-		if d.state == .Receiving && dl_now_ms() - d.sample_ms < 2500 { speed += d.speed }
+		if d.state == .Receiving && dl_now_ms() - d.sample_ms < DOWNLOAD_STALLED_MS { speed += d.speed }
 	}
 	if active > 0 && known && of > 0 { frac = clamp(f32(f64(got) / f64(of)), 0, 1) }
 	return
