@@ -107,7 +107,7 @@ rule_text :: proc(b: ^Blocker, e: ^Engine_Ref, fid: u32) -> string {
 	}
 	if text == "" { text = fmt.tprintf("(filter %d of %s)", fid, list_name(e, ref.list)) }
 	if e.texts == nil { e.texts = make(map[u32]string) }
-	if len(e.texts) > 20000 {
+	if len(e.texts) > FILTER_TEXTS_CACHE_MAX {
 		for _, v in e.texts { delete(v) }
 		clear(&e.texts)
 	}
@@ -151,6 +151,8 @@ engine_boot :: proc(b: ^Blocker) {
 // to the network until the compile job is done, or for at most BOOT_HOLD_MS (a profile with huge lists or a slow disk must not leave
 // the browser without a network).
 BOOT_HOLD_MS :: 20_000
+// How many texts of filters are kept: once past this the cache starts over.
+FILTER_TEXTS_CACHE_MAX :: 20000
 
 @(private)
 boot_hold_begin :: proc(b: ^Blocker) {
