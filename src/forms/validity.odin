@@ -7,6 +7,11 @@ import "wb:base"
 import "wb:dom"
 import "wb:url"
 
+// A digit string read as a count stops growing here (it only needs to be larger than anything real).
+DIGITS_SATURATE :: 1 << 30
+// Compiled `pattern` attributes kept; the cache starts over when it is full.
+PATTERN_CACHE_MAX :: 256
+
 // Constraint validation (§4.10.20): ValidityState, validation messages, checkValidity / reportValidity, and the range
 // and step rules (§4.10.5.3.7-8) the number-like types share.
 
@@ -88,7 +93,7 @@ clear_patterns :: proc(f: ^Forms) {
 @(private)
 compiled_pattern :: proc(f: ^Forms, src: string) -> ^Regex {
 	if re, ok := f.patterns[src]; ok { return re }
-	if len(f.patterns) >= 256 { clear_patterns(f) }
+	if len(f.patterns) >= PATTERN_CACHE_MAX { clear_patterns(f) }
 	re := regex_compile(src, f.settings.pattern_max_program)
 	f.patterns[strings.clone(src)] = re
 	return re
@@ -204,7 +209,7 @@ parse_length_attr :: proc(n: ^dom.Node, name: string) -> (int, bool) {
 	x := 0
 	for ch in transmute([]u8)t {
 		if !is_digit(ch) { return 0, false }
-		x = min(x * 10 + int(ch - '0'), 1 << 30)
+		x = min(x * 10 + int(ch - '0'), DIGITS_SATURATE)
 	}
 	return x, true
 }

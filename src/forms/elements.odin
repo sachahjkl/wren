@@ -516,7 +516,7 @@ tabindex :: proc(n: ^dom.Node) -> (int, bool) {
 	x := 0
 	for c in transmute([]u8)s {
 		if c < '0' || c > '9' { break }
-		x = min(x * 10 + int(c - '0'), 1 << 30)
+		x = min(x * 10 + int(c - '0'), DIGITS_SATURATE)
 	}
 	if s[0] < '0' || s[0] > '9' { return 0, false }
 	return neg ? -x : x, true

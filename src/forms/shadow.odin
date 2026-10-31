@@ -3,6 +3,9 @@ package forms
 import "wb:base"
 import "wb:dom"
 
+FOCUS_DELEGATE_MAX_DEPTH :: 64   // shadow hosts delegatesFocus goes through
+FOCUS_SCOPE_MAX_DEPTH :: 256     // focus navigation scopes expanded one inside the other
+
 // Focus with shadow trees (HTML §6.6.3, §6.6.5): delegatesFocus and the sequential navigation order of focus
 // navigation scopes.
 //
@@ -27,7 +30,7 @@ delegates_focus :: proc(f: ^Forms, h: base.Handle) -> bool {
 // order the user would tab through: nested hosts that delegate are followed), an `autofocus` one first. NIL: none.
 focus_delegate :: proc(f: ^Forms, host: base.Handle, depth := 0) -> base.Handle {
 	root := dom.shadow_root_of(f.doc, host)
-	if root == base.NIL_HANDLE || depth > 64 { return base.NIL_HANDLE }
+	if root == base.NIL_HANDLE || depth > FOCUS_DELEGATE_MAX_DEPTH { return base.NIL_HANDLE }
 	first := base.NIL_HANDLE
 	for cur := dom.next_in_tree(f.doc, root, root); cur != base.NIL_HANDLE; cur = dom.next_in_tree(f.doc, cur, root) {
 		n := element(f, cur)
@@ -73,7 +76,7 @@ tab_order_scoped :: proc(f: ^Forms, visible: proc(user: rawptr, h: base.Handle) 
 		return list
 	}
 	expand :: proc(f: ^Forms, owner: base.Handle, is_slot: bool, visible: proc(user: rawptr, h: base.Handle) -> bool, user: rawptr, out: ^[dynamic]base.Handle, depth: int) {
-		if depth > 256 { return }
+		if depth > FOCUS_SCOPE_MAX_DEPTH { return }
 		d := f.doc
 		items := make([dynamic]Item, context.temp_allocator)
 		for h, i in members(f, owner, is_slot) {
