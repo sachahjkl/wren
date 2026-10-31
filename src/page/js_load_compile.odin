@@ -38,6 +38,7 @@ Compile_Service :: struct {
 	opt:      wasm.Options,
 	stack:    int,
 	jobs:     int,          // done since the start (stats)
+	failed:   int,          // ... of which the engine did not compile (a syntax error, or the engine stopped)
 	total_ms: f64,
 }
 
@@ -45,12 +46,12 @@ Compile_Service :: struct {
 compiler: Compile_Service
 
 // What the compile threads did (tests, measurements).
-Compile_Stats :: struct { threads, jobs: int, total_ms: f64 }
+Compile_Stats :: struct { threads, jobs, failed: int, total_ms: f64 }
 
 compile_stats :: proc() -> Compile_Stats {
 	sync.mutex_lock(&compiler.mu)
 	defer sync.mutex_unlock(&compiler.mu)
-	return Compile_Stats{threads = len(compiler.threads), jobs = compiler.jobs, total_ms = compiler.total_ms}
+	return Compile_Stats{threads = len(compiler.threads), jobs = compiler.jobs, failed = compiler.failed, total_ms = compiler.total_ms}
 }
 
 @(private)
@@ -164,6 +165,10 @@ compile_main :: proc(_: rawptr) {
 	sync.mutex_unlock(&compiler.mu)
 	opt.soft_call_ms = 0
 	opt.stop = nil
+	// No deadline: compiling runs none of the page's code, it ends with the source, and nothing waits on this thread. With
+	// wasm.max_call_ms (1 s by default) a large bundle trapped here, the thread's engine was dead for good, and the interface
+	// thread compiled the bundle and every later one itself, inside the task the slow script limit measures.
+	opt.max_call_ms = -1
 	inst, err := wasm.instance_create(js_engine_image(), ctx_page, nil, opt, "javascript compiler", nil)
 	delete(err)
 	if inst != nil { inst.lenient = true }
@@ -186,6 +191,7 @@ compile_main :: proc(_: rawptr) {
 		}
 		sync.mutex_lock(&compiler.mu)
 		compiler.jobs += 1
+		if !job.ok { compiler.failed += 1 }
 		compiler.total_ms += job.ms
 		// once stopping, the interface loop may be gone: the result stays in the cache only
 		if compiler.stop { compile_job_free(job) } else { host.post(job.ui_loop, compile_done, job) }

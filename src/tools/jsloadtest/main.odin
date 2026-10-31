@@ -925,6 +925,17 @@ measurements :: proc() {
 	fmt.printf("  MEASURE 2 x 512 KiB modules compiled off-thread: %d jobs, %.1f ms of compilation; page done in %.1f ms\n", st3.jobs - st2.jobs, st3.total_ms - st2.total_ms, time.duration_milliseconds(time.tick_since(t0)))
 	check(st3.jobs - st2.jobs == 2, "large modules are compiled on the compile threads")
 	check(logged("big ma 512") && logged("big mb 512"), "and run from the bytecode they made")
+	// a compile longer than a page's call may be: no deadline on the compile threads (they take the settings of the page that starts them)
+	page.compile_shutdown()
+	s_short := s
+	s_short.wasm.max_call_ms = 1
+	st4 := page.compile_stats()
+	p = load(`<!doctype html><head><script src="/jsload/big?kb=4096&id=long"></script><script>console.log("long done")</script></head>`, s = &s_short)
+	wait_for("long done")
+	st5 := page.compile_stats()
+	page.page_close(p)
+	check(st5.jobs - st4.jobs == 1 && st5.failed == st4.failed, "a compile past wasm.max_call_ms goes on, on its thread")
+	page.compile_shutdown()
 	s2 := settings
 	s2.js_load.compile_threads = 0
 	js.cache_clear_memory()
