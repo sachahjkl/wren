@@ -6,6 +6,15 @@ import "wb:base"
 import "wb:dom"
 import "wb:style"
 
+// The change journal holds at least this many entries, whatever layout.incremental.journal_entries says.
+INC_JOURNAL_MIN_ENTRIES :: 16
+// What is left by partial passes is judged against at least this many live boxes or items, and this many bytes of arena,
+// so a tiny document is not rebuilt for a little garbage.
+INC_LIVE_FLOOR_ITEMS :: 64
+INC_LIVE_FLOOR_ARENA_BYTES :: 1 << 20
+// Dead line segments are compacted once more than half of them, and past this count.
+INC_COMPACT_MIN_DEAD_SEGS :: 1024
+
 // Incremental layout. Between two passes the box tree, the inline items, the lines and the layout caches of the boxes
 // stay; a pass finds out what changed and does only the work that change invalidates, with the same result as a full
 // pass (layout.incremental.verify checks it).
@@ -120,7 +129,7 @@ inc_note_full :: proc(l: ^Layout) {
 @(private)
 inc_after_full :: proc(l: ^Layout, input: Input) {
 	if !input.doc.journal.on { dom.journal_enable(input.doc, input.settings.inc_journal) }
-	input.doc.journal.max = max(input.settings.inc_journal, 16)
+	input.doc.journal.max = max(input.settings.inc_journal, INC_JOURNAL_MIN_ENTRIES)
 }
 
 @(private)
@@ -136,9 +145,9 @@ too_much_garbage :: proc(l: ^Layout) -> string {
 	floor := f32(l.settings.inc_garbage_floor)
 	s := &l.inc
 	over :: #force_inline proc(dead, live, size, r, floor: f32) -> bool { return dead > r * live && dead * size > floor }
-	if over(f32(s.dead_boxes), f32(max(s.live_boxes, 64)), size_of(Box) + size_of(Box_Info), r, floor) { return "memory left by partial passes: boxes" }
-	if over(f32(s.dead_items), f32(max(s.live_items, 64)), size_of(Inline_Item), r, floor) { return "memory left by partial passes: inline items" }
-	if over(f32(l.arena.total_used) - f32(s.arena_base), f32(s.arena_base) + f32(1 << 20), 1, r, floor) { return "memory left by partial passes: text and lists" }
+	if over(f32(s.dead_boxes), f32(max(s.live_boxes, INC_LIVE_FLOOR_ITEMS)), size_of(Box) + size_of(Box_Info), r, floor) { return "memory left by partial passes: boxes" }
+	if over(f32(s.dead_items), f32(max(s.live_items, INC_LIVE_FLOOR_ITEMS)), size_of(Inline_Item), r, floor) { return "memory left by partial passes: inline items" }
+	if over(f32(l.arena.total_used) - f32(s.arena_base), f32(s.arena_base) + f32(INC_LIVE_FLOOR_ARENA_BYTES), 1, r, floor) { return "memory left by partial passes: text and lists" }
 	if f32(len(l.fonts)) > (1 + r) * f32(s.fonts_base) + 64 { return "memory left by partial passes: fonts" }
 	return ""
 }
@@ -484,7 +493,7 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 		build_display_list(&c)
 		note_refresh_inputs(l, same_boxes = len(roots) == 0 && len(plans) == 0)
 		t4 = time.tick_now()
-		build_bands(l, max(input.band_h, 16) * input.scale)
+		build_bands(l, max(input.band_h, BAND_MIN_H) * input.scale)
 	}
 	compact_lines(l)
 	t5 := time.tick_now()
@@ -739,7 +748,7 @@ keep_segs :: proc(c: ^Ctx, bi: i32, segs: []Seg) {
 @(private)
 compact_lines :: proc(l: ^Layout) {
 	s := &l.inc
-	if s.dead_segs * 2 > len(s.segs) && s.dead_segs > 1024 {
+	if s.dead_segs * 2 > len(s.segs) && s.dead_segs > INC_COMPACT_MIN_DEAD_SEGS {
 		segs := make([dynamic]Seg, 0, len(s.segs) - s.dead_segs, context.temp_allocator)
 		for &inf, i in s.info {
 			if .Dead in l.boxes[i].flags || inf.segs[1] <= inf.segs[0] { inf.segs = {}; continue }

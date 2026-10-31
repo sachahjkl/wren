@@ -2,6 +2,9 @@ package layout
 
 import "core:math"
 
+// The steps of a walk up the positioning chain: a bound against a chain that does not end.
+OFFSET_WALK_MAX_STEPS :: 1 << 20
+
 // Absolutely positioned boxes (CSS 2.1 §10.3.7, §10.6.4; fixed: the viewport is the containing block). They are laid
 // out when their containing block's size is known: at the end of its layout, or, for an inline containing block, at the
 // end of the inline formatting context that holds its fragments.
@@ -11,7 +14,7 @@ import "core:math"
 offset_between :: proc(c: ^Ctx, from, to: i32) -> (Vec2, bool) {
 	off: Vec2
 	cur := from
-	for steps := 0; steps < 1 << 20 && cur != NONE; steps += 1 {
+	for steps := 0; steps < OFFSET_WALK_MAX_STEPS && cur != NONE; steps += 1 {
 		if cur == to { return off, true }
 		b := &c.l.boxes[cur]
 		if b.kind != .Inline { off += b.pos }

@@ -7,6 +7,11 @@ import "wb:host"
 import "wb:style"
 import "wb:base"
 
+// How many boxes ahead the computed styles are prefetched in a parallel loop.
+PREFETCH_BOXES_AHEAD :: 8
+// A worker spins this many times waiting for work before it starts to yield its time.
+WORKER_SPINS_BEFORE_YIELD :: 4096
+
 // Parallel pre-layout of inline formatting contexts, for full passes over large documents (a page load) and for
 // incremental passes that lay many paragraphs out again (a change of the viewport width: a window being resized). Line
 // building (words, measuring, breaking, vertical alignment) is most of such a pass, and the lines of a paragraph depend
@@ -207,10 +212,9 @@ pre_predict :: proc(c: ^Ctx, pred: []f32, pool: ^host.Thread_Pool) -> []Pre_Box 
 		c := pp.c
 		l := c.l
 		n := len(l.boxes)
-		AHEAD :: 8
 		lo, hi := k * n / pp.chunks, (k + 1) * n / pp.chunks
 		for i in lo ..< hi {
-			if i + AHEAD < hi { prefetch_fields(l.boxes[i + AHEAD].cs, LAYOUT_FIELDS) }
+			if i + PREFETCH_BOXES_AHEAD < hi { prefetch_fields(l.boxes[i + PREFETCH_BOXES_AHEAD].cs, LAYOUT_FIELDS) }
 			b := &l.boxes[i]
 			x := &pp.boxes[i]
 			p := b.parent
@@ -364,7 +368,7 @@ pre_wait :: proc(pre: ^Pre_Pass, k: int) {
 			sync.atomic_store(&pre.done[j], true)
 			continue
 		}
-		if spins < 4096 { intrinsics.cpu_relax() } else { thread.yield() }
+		if spins < WORKER_SPINS_BEFORE_YIELD { intrinsics.cpu_relax() } else { thread.yield() }
 	}
 }
 
@@ -735,9 +739,8 @@ dl_chunk :: proc(data: rawptr, k: int) {
 	reserve(&ch.items5, 2 * len(part) + 16)
 	wc.dl_out = &ch.items3
 	sub := Paint_Ctx{c = &wc, outlines = &ch.outlines3, scrollers = &ch.scrollers3}
-	AHEAD :: 8
 	for x, i in part {
-		if i + AHEAD < len(part) { prefetch_fields(l.boxes[part[i + AHEAD]].cs, PAINT_FIELDS) }
+		if i + PREFETCH_BOXES_AHEAD < len(part) { prefetch_fields(l.boxes[part[i + PREFETCH_BOXES_AHEAD]].cs, PAINT_FIELDS) }
 		if l.boxes[x].kind != .Inline { emit_box(&sub, x) }
 	}
 	wc.dl_out, wc.dl_fix = &ch.items5, &ch.fix5

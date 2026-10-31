@@ -979,7 +979,7 @@ ifc_build :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx, ch: f32 = -1) -> (ou
 		trim: f32 = 0
 		if n > 1 && n <= BALANCE_MAX_LINES {
 			lo, hi := f32(0), cw
-			for _ in 0 ..< 10 {
+			for _ in 0 ..< BALANCE_SEARCH_STEPS {
 				mid := (lo + hi) * 0.5
 				_, l2, _, _, _ := ifc_build_at(c, bi, cw, fc, ch, mid, true)
 				if len(l2) <= n { lo = mid } else { hi = mid }
@@ -994,6 +994,9 @@ ifc_build :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx, ch: f32 = -1) -> (ou
 // Blink balances up to six lines.
 @(private)
 BALANCE_MAX_LINES :: 6
+// Steps of the bisection for a balanced width.
+@(private)
+BALANCE_SEARCH_STEPS :: 10
 
 // Only plain text (and inline boxes around it): a float, an atomic inline, a <br> or a block inside would be laid out or
 // placed again by every probe.

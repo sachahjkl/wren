@@ -4,6 +4,11 @@ import "wb:base"
 import "wb:host"
 import "wb:style"
 
+// Chunks of the style sums: one per this many nodes, at most this many per thread; and the styles prefetched ahead.
+STYLE_SUM_NODES_PER_CHUNK :: 2048
+STYLE_SUM_CHUNKS_PER_THREAD :: 4
+PREFETCH_STYLES_AHEAD :: 4
+
 // What box tree construction reads of each element's style, summed up on the layout threads before a full pass of a
 // large document builds its tree. Construction walks the document in order and reads, per element, a dozen cache lines
 // scattered over a 2 KB style made on another thread; with the summaries it reads 24 bytes per element, in handle
@@ -78,14 +83,13 @@ style_sums :: proc(c: ^Ctx) {
 	if pool == nil { return }
 	defer par_release()
 	sp := Sum_Pass{st = c.st, sums = make([]Style_Sum, n, context.temp_allocator)}
-	sp.chunks = clamp(n / 2048, 1, host.thread_pool_size(pool) * 4)
+	sp.chunks = clamp(n / STYLE_SUM_NODES_PER_CHUNK, 1, host.thread_pool_size(pool) * STYLE_SUM_CHUNKS_PER_THREAD)
 	host.parallel_for(pool, sp.chunks, proc(data: rawptr, k: int) {
 		sp := (^Sum_Pass)(data)
 		n := len(sp.sums)
 		lo, hi := k * n / sp.chunks, (k + 1) * n / sp.chunks
-		AHEAD :: 4
 		for i in lo ..< hi {
-			if i + AHEAD < hi { prefetch_fields(rawptr(sp.st.by_node[i + AHEAD]), BUILD_FIELDS) }
+			if i + PREFETCH_STYLES_AHEAD < hi { prefetch_fields(rawptr(sp.st.by_node[i + PREFETCH_STYLES_AHEAD]), BUILD_FIELDS) }
 			if cs := sp.st.by_node[i]; cs != nil { sp.sums[i] = style_sum_of(cs) } else { sp.sums[i] = {} }
 		}
 	}, &sp)
