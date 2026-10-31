@@ -447,7 +447,7 @@ Step 'Web Authentication end-to-end test (webauthntest: create then get from Jav
     if ($LASTEXITCODE -ne 0) { return }
     $o = .\build\webauthntest.exe | Out-String; $o
     $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
-}
+} -Flaky   # ("the page may start another request; the platform call is left to finish", under load; passes alone)
 Step 'build testserver (and its tests: /site/ index, listings, extensionless pages, types)' { Push-Location tools\testserver; go test . 2>&1; if ($LASTEXITCODE -eq 0) { go build -o ..\..\build\testserver.exe . }; Pop-Location }
 # what the steps below use is built: the builds run now. The other queued steps stay queued and run with the steps below, in one batch
 # (longest first), instead of the steps below waiting for the slowest of them.

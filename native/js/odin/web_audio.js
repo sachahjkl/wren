@@ -1156,7 +1156,8 @@
         active: new MapC(), scripts: new MapC(), pendingResume: [], pendingSuspend: [], pendingClose: [],
         handlers: null, rendering: null, frames, suspends: new MapC(),
       };
-      contexts.set(user, s);
+      // (the browser can talk to it from now on; an offline one only once it renders: until then the collector may have it)
+      if (!offline) contexts.set(user, s);
       s.destination = makeDestination(this, channels, maxChannels, offline);
       s.listener = makeListener(s);
     }
@@ -1432,6 +1433,7 @@
         if (this.#started) { reject(dom("InvalidStateError", "startRendering: it was started already.")); return; }
         this.#started = true;
         s.rendering = { resolve, reject };
+        contexts.set(s.user, s);
         if (!native.render(s.graph, this.#length)) reject(dom("InvalidStateError", "The rendering could not start."));
       });
     }

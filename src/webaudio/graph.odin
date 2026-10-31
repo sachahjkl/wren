@@ -210,7 +210,7 @@ node_of :: #force_inline proc "contextless" (g: ^Graph, id: i32) -> ^Node {
 node_create :: proc(g: ^Graph, kind: Kind, a: f64 = 0, b: f64 = 0) -> i32 {
 	context.allocator = alloc()
 	sync.guard(&g.mu)
-	if kind == .Destination || kind == .Listener { return -1 }
+	if !node_args_valid(kind, a, b) { return -1 }
 	n := node_init(g, kind, a, b)
 	return n != nil ? n.id : -1
 }
@@ -221,6 +221,7 @@ node_release :: proc(g: ^Graph, id: i32) {
 	sync.guard(&g.mu)
 	n := node_of(g, id)
 	if n == nil { return }
+	if id == DESTINATION_ID || id == LISTENER_ID { return }
 	n.released = true
 	g.sweep_due = true
 }

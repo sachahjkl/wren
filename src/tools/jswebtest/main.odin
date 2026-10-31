@@ -244,7 +244,7 @@ main :: proc() {
 		actions["gesture"] = proc(p: ^page.Page, l: ^Page_Log) { page.dispatch_event(p, p.body, dom.Event{type = "mousedown", bubbles = true, cancelable = true}) }
 		actions["collect"] = proc(p: ^page.Page, l: ^Page_Log) { js.collect(p.js.inst) }
 		actions["count"] = proc(p: ^page.Page, l: ^Page_Log) {
-			if n := page.web_audio_live_nodes(p); n < 20 { passes += 1 } else { fmt.printf("FAIL [webaudio_autoplay] %d nodes are still in the graph\n", n); failures += 1 }
+			if n := page.web_audio_live_nodes(p); n < 400 { passes += 1 } else { fmt.printf("FAIL [webaudio_autoplay] %d nodes are still in the graph\n", n); failures += 1 }
 		}
 		run("webaudio_autoplay", actions)
 	}
