@@ -48,7 +48,10 @@ page_forms :: proc(p: ^Page) -> ^forms.Forms {
 	return m
 }
 
-set_forms_embedder :: proc(p: ^Page, e: Forms_Embedder) { p.formctl.embedder = e }
+set_forms_embedder :: proc(p: ^Page, e: Forms_Embedder) {
+	p.formctl.embedder = e
+	if e.navigate != nil && p.formctl.pending != nil { forms_navigation_soon(p) }
+}
 
 @(private)
 forms_attach :: proc(p: ^Page) {
@@ -108,21 +111,28 @@ forms_plan_navigation :: proc(user: rawptr, s: ^forms.Submission) {
 	forms.submission_destroy(pf.pending)
 	pf.pending = s
 	pf.pending_replace = p.scripts != nil && p.scripts.timing.load_end_ms == 0
+	forms_navigation_soon(p)
+}
+
+// The planned navigation goes as soon as there is an embedder. The shell attaches itself to new pages between two of its frames: a
+// page that submits a form while it loads (a login's automatic POST, a challenge page) gets there first, and its navigation waits
+// (set_forms_embedder) instead of being lost, which left such a page standing.
+@(private)
+forms_navigation_soon :: proc(p: ^Page) {
+	pf := p.formctl
 	if pf.timer != base.NIL_HANDLE { host.clear_timer(p.loop, pf.timer) }
 	pf.timer = host.set_timer(p.loop, 0, 0, proc(data: rawptr) {
 		p := (^Page)(data)
 		pf := p.formctl
 		pf.timer = base.NIL_HANDLE
+		if pf.embedder.navigate == nil { return }
 		s := pf.pending
 		pf.pending = nil
 		if s == nil { return }
 		if !navigation_form(p, s, pf.pending_replace) { forms.submission_destroy(s); return }   // the navigate event took it (navigation.odin)
 		if p.closed || p.formctl == nil { forms.submission_destroy(s); return }
 		pf = p.formctl
-		if pf.embedder.navigate != nil { pf.embedder.navigate(pf.embedder.user, p, s) } else {
-			log(p, .Warn, "form submission ignored: no navigator")
-			forms.submission_destroy(s)
-		}
+		pf.embedder.navigate(pf.embedder.user, p, s)
 	}, p, p.scope)
 }
 
