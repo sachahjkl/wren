@@ -19,6 +19,12 @@ import "core:strings"
 import "core:sync"
 import "core:time"
 
+// The defaults of shutdown_begin (browser.shell.shutdown_warn_ms and shutdown_force_ms give the shell's), and how often the
+// watchdog looks at the time.
+SHUTDOWN_WARN_MS :: 2000
+SHUTDOWN_FORCE_MS :: 10_000
+SHUTDOWN_WATCHDOG_TICK :: 200 * time.Millisecond
+
 @(private = "file")
 Shutdown :: struct {
 	mu:         sync.Mutex,
@@ -60,7 +66,7 @@ fixed_copy :: proc(dst: []u8, s: string) -> int {
 }
 
 // `log_path` "" = stderr only. force_ms 0 = never force the exit. Call from the thread that tears down.
-shutdown_begin :: proc(log_path: string, warn_ms := 2000, force_ms := 10_000) {
+shutdown_begin :: proc(log_path: string, warn_ms := SHUTDOWN_WARN_MS, force_ms := SHUTDOWN_FORCE_MS) {
 	if sd.active { return }
 	sd.active, sd.stop = true, false
 	sd.start = time.tick_now()
@@ -150,7 +156,7 @@ shutdown_line :: proc(line: string) {
 shutdown_watchdog :: proc(_: rawptr) {
 	next_report := time.Duration(sd.warn_ms) * time.Millisecond
 	for !sync.atomic_load(&sd.stop) {
-		time.sleep(200 * time.Millisecond)
+		time.sleep(SHUTDOWN_WATCHDOG_TICK)
 		elapsed := time.tick_since(sd.start)
 		if elapsed < next_report || sync.atomic_load(&sd.stop) { continue }
 		next_report = elapsed + time.Second
