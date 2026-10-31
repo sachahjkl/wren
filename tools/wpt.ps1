@@ -28,7 +28,10 @@ $Shared = @('/resources/', '/common/', '/interfaces/', '/images/', '/fonts/', '/
             '/html/resources/', '/fetch/api/resources/', '/fetch/resources/', '/xhr/resources/', '/encoding/resources/',
             '/service-workers/service-worker/resources/', '/workers/support/', '/webidl/resources/', '/dom/constants.js',
             '/trusted-types/support/', '/storage/buckets/resources/', '/loading/resources/', '/webrtc/RTCPeerConnection-helper.js',
-            '/css/support/parsing-testcommon.js', '/html/webappapis/structured-clone/', '/css/support/computed-testcommon.js', '/css/support/shadow-helper.js', '/media/', '/wasm/resources/')
+            '/css/support/parsing-testcommon.js', '/html/webappapis/structured-clone/', '/css/support/computed-testcommon.js', '/css/support/shadow-helper.js', '/media/', '/wasm/resources/',
+            '/css/support/inheritance-testcommon.js', '/css/support/interpolation-testcommon.js', '/css/support/shorthand-testcommon.js',
+            '/css/css-conditional/container-queries/support/cq-testcommon.js', '/css/css-typed-om/resources/testhelper.js',
+            '/css/css-transitions/support/helper.js', '/html/semantics/popovers/resources/popover-utils.js')
 
 $root = Split-Path $PSScriptRoot -Parent
 $out = Join-Path $root 'build\wpt'
