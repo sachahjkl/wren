@@ -20,7 +20,7 @@ cat > "$STAGE/README.txt" <<EOF
 Wren $V for Linux x86-64, an early preview. Start it with ./wren
 
 It needs, from your distribution:
-  to start      libopus, libasound, libfontconfig
+  to start      glibc 2.39 or later (Ubuntu 24.04, Debian 13, Fedora 40), libopus, libasound, libfontconfig
                   Debian, Ubuntu: apt install libopus0 libasound2 libfontconfig1
                   Fedora: dnf install opus alsa-lib fontconfig
                   Arch: pacman -S opus alsa-lib fontconfig
