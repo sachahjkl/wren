@@ -7,7 +7,8 @@
 #   ./build.sh check      odin check for Linux and the unit tests of every portable package (tools/linux_ci.sh)
 #   ./build.sh crash      the crash reports end to end (tools/crash_e2e.sh)
 #   ./build.sh wren       attempt to link build/wren (needs libwgpu_native.a and ./build.sh deps; src/browser type-checks now)
-#   ./build.sh release    build/wren as the release has it: the release channel, the Rust library with fat LTO (tools/package_linux.sh packs it)
+#   ./build.sh release    build/wren as the release has it: the release channel (tools/package_linux.sh packs it). The Rust library is the quick
+#                         profile: with fat LTO the link stops on DW.ref.rust_eh_personality ("undefined hidden symbol")
 #   ./build.sh all        deps, check, crash
 #   ./build.sh help
 # ODIN: the compiler (default: odin on PATH). PROFILE: the Rust profile (quick, the default, or release).
@@ -63,7 +64,7 @@ case "${1:-help}" in
   check) tools/linux_ci.sh "$ODIN" ;;
   crash) tools/crash_e2e.sh "$ODIN" ;;
   wren)  wren ;;
-  release) PROFILE=release; WREN_CHANNEL=release; wren ;;
+  release) WREN_CHANNEL=release; wren ;;
   all)   deps; tools/linux_ci.sh "$ODIN"; tools/crash_e2e.sh "$ODIN" ;;
-  *)     sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *)     sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//' ;;
 esac
