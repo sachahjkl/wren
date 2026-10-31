@@ -49,6 +49,7 @@ Doc :: struct {
 	parsed:    bool,            // adopted, scripts started
 	console:   [dynamic]Message,
 	on_console: proc(d: ^Doc, level: page.Log_Level, text: string),
+	on_parsed:  proc(d: ^Doc),  // optional: the document is adopted, its scripts have not started (set it after open)
 	user:      rawptr,
 	navigations: [dynamic]string,   // owned: what the page asked to navigate to
 	last_frame: f64,
@@ -160,6 +161,7 @@ document_parsed :: proc(p: ^page.Page, user: rawptr, pd: ^page.Parsed_Document) 
 	page.adopt_document(p, pd)
 	if !p.render.adopted { page.render_begin(p) }
 	d.parsed = true
+	if d.on_parsed != nil { d.on_parsed(d) }
 	page.scripts_start(p)
 }
 

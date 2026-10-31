@@ -711,6 +711,7 @@ Child_State :: struct {
 	got:         bool,
 	forced:      bool,     // the runner's timeout() call returned (WPTFORCED)
 	first_error: string,   // owned: the first error the console showed (the reason when there is no result)
+	layout:      ^Layout_Host,   // tests that read geometry (layout_host.odin), nil: no layout
 }
 
 child_on_console :: proc(d: ^headless.Doc, level: page.Log_Level, text: string) {
@@ -778,7 +779,10 @@ child_main :: proc(list_path, out_path: string) -> int {
 		limit := f64(opts.timeout_ms) * (long ? 6 : 1)
 		cs: Child_State
 		t0 := time.tick_now()
+		if wants_layout(path) { cs.layout = host_make() }
+		defer host_destroy(cs.layout)
 		d := headless.open(&env, strings.concatenate({opts.server, path}, context.temp_allocator), child_on_console, &cs)
+		d.on_parsed = host_attach
 		// until the report, the time limit, or a page that can no longer do anything
 		idle_since: time.Tick
 		idle := false
