@@ -7,12 +7,17 @@ import "core:fmt"
 import "core:strings"
 import win "core:sys/windows"
 
+// From this length a path takes the \\?\ prefix: short of Win32's limit of 260, so what is added to it stays within it.
+WIN_LONG_PATH_LEN :: 240
+// UTF-16 units for the final path of a link; a longer one counts as not found.
+FINAL_PATH_MAX_UNITS :: 1024
+
 // A path Win32 accepts whatever its length: \\?\ (or \\?\UNC\) before a long one. The path is absolute and has no
 // dot segments (it comes from a parsed URL).
 win_path :: proc(path: string, allocator := context.temp_allocator) -> win.wstring {
 	p := path
 	if len(p) == 2 && p[1] == ':' { p = strings.concatenate({p, "\\"}, context.temp_allocator) }   // "C:" is the drive's current folder
-	if len(p) >= 240 && !strings.has_prefix(p, `\\?\`) {
+	if len(p) >= WIN_LONG_PATH_LEN && !strings.has_prefix(p, `\\?\`) {
 		p = strings.has_prefix(p, `\\`) ? strings.concatenate({`\\?\UNC\`, p[2:]}, context.temp_allocator) : strings.concatenate({`\\?\`, p}, context.temp_allocator)
 	}
 	return win.utf8_to_wstring(p, allocator)
@@ -48,7 +53,7 @@ final_path :: proc(path: string, allocator := context.allocator) -> (string, boo
 	h := win.CreateFileW(win_path(path), 0, win.FILE_SHARE_READ | win.FILE_SHARE_WRITE | win.FILE_SHARE_DELETE, nil, win.OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nil)
 	if h == win.INVALID_HANDLE_VALUE { return "", false }
 	defer win.CloseHandle(h)
-	buf: [1024]u16
+	buf: [FINAL_PATH_MAX_UNITS]u16
 	n := win.GetFinalPathNameByHandleW(h, cstring16(&buf[0]), u32(len(buf)), win.VOLUME_NAME_DOS)
 	if n == 0 || int(n) >= len(buf) { return "", false }
 	s, err := win.utf16_to_utf8(buf[:n], context.temp_allocator)
