@@ -40,6 +40,9 @@ Policy :: struct {
 	directives:  [dynamic]Directive,
 	raw:         string,
 	warnings:    [dynamic]string,
+	// Not zero: a <meta> the parser has not reached yet, named by the caller. The code before it ran before the policy existed, so
+	// the checks of inline code and eval (script.odin) pass over it meanwhile. Requests do see it: they start ahead of the parser.
+	held_by:     u64,
 }
 
 Policy_List :: struct {

@@ -112,6 +112,7 @@ check_script_request :: proc(l: ^Policy_List, u: url.URL, self: url.Origin, redi
 check_inline :: proc(l: ^Policy_List, kind: Inline_Kind, source: string, nonce: string, digest: Digest_Proc, user: rawptr) -> Verdict {
 	v := Verdict{allowed = true, violations = make([dynamic]Violation, context.temp_allocator)}
 	for &p in l.policies {
+		if p.held_by != 0 { continue }
 		d: ^Directive
 		name: string
 		switch kind {
@@ -136,6 +137,7 @@ check_inline :: proc(l: ^Policy_List, kind: Inline_Kind, source: string, nonce: 
 check_wasm_eval :: proc(l: ^Policy_List) -> Verdict {
 	v := Verdict{allowed = true, violations = make([dynamic]Violation, context.temp_allocator)}
 	for &p in l.policies {
+		if p.held_by != 0 { continue }
 		d, name := find_directive(&p, {"script-src", "default-src"})
 		if d == nil || has_keyword(d, .Unsafe_Eval) || has_keyword(d, .Wasm_Unsafe_Eval) { continue }
 		append(&v.violations, Violation{directive = name, original = p.raw, blocked = "wasm-eval", enforced = p.disposition == .Enforce})
@@ -148,6 +150,7 @@ check_wasm_eval :: proc(l: ^Policy_List) -> Verdict {
 check_eval :: proc(l: ^Policy_List) -> Verdict {
 	v := Verdict{allowed = true, violations = make([dynamic]Violation, context.temp_allocator)}
 	for &p in l.policies {
+		if p.held_by != 0 { continue }
 		d, name := find_directive(&p, {"script-src", "default-src"})
 		if d == nil || has_keyword(d, .Unsafe_Eval) { continue }
 		append(&v.violations, Violation{directive = name, original = p.raw, blocked = "eval", enforced = p.disposition == .Enforce})

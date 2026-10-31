@@ -321,6 +321,9 @@ reveal_node :: proc(p: ^Page, it: Reveal_Item) -> bool {
 		}
 		content_handlers_register(p, it.node)
 		if n.name == "link" { link_revealed(p, it.node) }
+		if n.name == "meta" {
+			for &pol in p.env.policies.policies { if pol.held_by == u64(it.node) { pol.held_by = 0 } }   // (apply_meta)
+		}
 		if n.name == "iframe" || n.name == "frame" { frames_note_inserted(p, it.node) }
 	}
 	return true
@@ -333,6 +336,7 @@ parser_finish :: proc(p: ^Page) {
 	s := p.scripts
 	ps := &s.parser
 	ps.active = false
+	for &pol in p.env.policies.policies { pol.held_by = 0 }   // (a <meta> a script removed before the parser came to it)
 	ps.script_created = false
 	clear(&ps.queue)
 	ps.next = 0

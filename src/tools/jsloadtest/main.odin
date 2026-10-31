@@ -476,6 +476,15 @@ document.getElementById("b").dispatchEvent(new Event("click"));
 	check(logged("eval 42") && logged("string timer ok") && logged("attr ok"), "'unsafe-inline' 'unsafe-eval' allow inline code, eval and string timers")
 	page.page_close(p)
 
+	// a <meta> policy starts where it stands: what the parser ran before it is not under it
+	p = load(`<!doctype html><head><script>console.log("before meta ran"); try { eval("1"); console.log("eval before meta"); } catch (e) {}</script>
+<meta http-equiv="Content-Security-Policy" content="script-src 'none'">
+<script>console.log("after meta ran")</script></head><body><script nonce=x>console.log("late ran")</script></body>`)
+	drain()
+	check(logged("before meta ran") && logged("eval before meta"), "a script before a <meta> policy runs, and may eval")
+	check(!logged("after meta ran") && !logged("late ran"), "a script after a <meta> policy is under it")
+	page.page_close(p)
+
 	// a page's WebAssembly: 'wasm-unsafe-eval' or 'unsafe-eval'
 	WASM_PAGE :: `<!doctype html><body>` + PRELUDE + `<script>
 const bytes = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0]);
