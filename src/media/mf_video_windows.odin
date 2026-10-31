@@ -12,6 +12,9 @@ import "core:mem"
 import "core:sync"
 import "vendor:directx/d3d11"
 
+// The frame size the video decoder is told at least, when the track says less.
+MF_VIDEO_MIN_SIZE :: 16
+
 // The device the decoders share with the renderer (set_gpu_device), and the manager Media Foundation uses it through.
 @(private) gpu_device: ^d3d11.IDevice
 @(private) gpu_manager: ^IMFDXGIDeviceManager
@@ -181,7 +184,7 @@ mf_video_input_type :: proc(v: ^MF_Video, sub: GUID) -> bool {
 	major, subtype := MFMediaType_Video, sub
 	t->SetGUID(&MF_MT_MAJOR_TYPE, &major)
 	t->SetGUID(&MF_MT_SUBTYPE, &subtype)
-	t->SetUINT64(&MF_MT_FRAME_SIZE, pack2(u32(max(v.track.width, 16)), u32(max(v.track.height, 16))))
+	t->SetUINT64(&MF_MT_FRAME_SIZE, pack2(u32(max(v.track.width, MF_VIDEO_MIN_SIZE)), u32(max(v.track.height, MF_VIDEO_MIN_SIZE))))
 	t->SetUINT64(&MF_MT_FRAME_RATE, pack2(30, 1))
 	t->SetUINT64(&MF_MT_PIXEL_ASPECT_RATIO, pack2(1, 1))
 	t->SetUINT32(&MF_MT_INTERLACE_MODE, 2)   // progressive

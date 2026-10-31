@@ -4,6 +4,9 @@ import "core:os"
 import "core:sync"
 import "wb:base"
 
+// An audio output's ring holds half a second of audio, and at least this many frames.
+AUDIO_RING_MIN_FRAMES :: 4096
+
 // An audio output with no device behind it: what the player gets on a machine that has none (a server, a CI runner, a remote
 // session without sound, every endpoint disabled). It takes the decoded audio and lets it go by at the rate of the clock, as a
 // device would play it, so the media clock follows the audio as usual and the video plays, in silence (as browsers do).
@@ -26,7 +29,7 @@ audio_output_silenced :: proc() -> bool {
 
 null_audio_open :: proc(rate: int) -> ^Audio_Output {
 	n := new(Null_Audio, base.process_allocator())
-	n.capacity = max(rate / 2, 4096)
+	n.capacity = max(rate / 2, AUDIO_RING_MIN_FRAMES)
 	o := &n.out
 	o.impl, o.rate = n, rate
 	o.write, o.room, o.queued, o.position = null_audio_write, null_audio_room, null_audio_queued, null_audio_position

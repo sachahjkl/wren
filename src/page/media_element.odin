@@ -30,9 +30,6 @@ import "wb:url"
 MEDIA_AT_END_TOLERANCE_S :: 0.05
 // `played`: a new span this close after the last one extends it (seconds), so ticks of the timer make one range.
 MEDIA_PLAYED_MERGE_GAP_S :: 0.5
-// The range playbackRate is clamped to.
-MEDIA_RATE_MIN :: 0.0625
-MEDIA_RATE_MAX :: 16
 
 NETWORK_EMPTY :: 0
 NETWORK_IDLE :: 1
@@ -1065,7 +1062,7 @@ HTMLMediaElement_set_defaultPlaybackRate :: proc(c: ^Call, e: Api_HTMLMediaEleme
 HTMLMediaElement_set_playbackRate :: proc(c: ^Call, e: Api_HTMLMediaElement, value: f64) {
 	el := e.data
 	if value == el.rate { return }
-	el.rate = clamp(value, MEDIA_RATE_MIN, MEDIA_RATE_MAX)
+	el.rate = clamp(value, media.PLAYER_RATE_MIN, media.PLAYER_RATE_MAX)
 	if el.player != nil { media.player_set_rate(el.player, el.rate); el.seeking = true; media_arm_timer(el) }
 	media_fire(el, "ratechange")
 }
