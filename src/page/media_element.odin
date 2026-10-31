@@ -85,6 +85,7 @@ Media_Element :: struct {
 	task:          base.Handle,
 	source_node:   base.Handle,   // the <source> element being tried
 	sniffed:       bool,
+	capture:       ^Web_Audio_Capture,   // a MediaElementAudioSourceNode takes its sound (bindings_webaudio.odin)
 	is_webm:       bool,
 	mp4:           ^media.Mp4_Demuxer,
 	webm:          ^media.Webm_Demuxer,
@@ -134,6 +135,7 @@ Page_Media :: struct {
 	serial:   u64,
 	activated: bool,       // the page had a click or key press
 	urls:     map[string]u64,   // object URL (URL.createObjectURL) -> Media Source handle
+	audio_graphs: [dynamic]^Web_Audio_Graph,   // the AudioContexts that are not closed (bindings_webaudio.odin)
 }
 
 Media_Notice :: struct {
@@ -159,6 +161,7 @@ media_destroy :: proc(p: ^Page) {
 	for _, el in p.media.elements { media_element_free(p, el, true) }
 	delete(p.media.elements)
 	delete(p.media.urls)
+	delete(p.media.audio_graphs)
 	free(p.media)
 	p.media = nil
 }
@@ -243,6 +246,7 @@ lookup_HTMLMediaElement :: proc(c: ^Call, h: u64) -> ^Media_Element {
 @(private)
 media_element_free :: proc(p: ^Page, el: ^Media_Element, page_closing: bool) {
 	media_teardown(el)
+	if el.capture != nil { free(el.capture, base.process_allocator()) }
 	for pr in el.pending_play { if !page_closing { promise_reject(p, pr, i64(Api_Error.Abort), "AbortError: the media element was removed") } }
 	delete(el.pending_play)
 	delete(el.played)
@@ -694,6 +698,7 @@ media_make_player :: proc(el: ^Media_Element) {
 	if el.player != nil { return }
 	el.player = media.player_create(el.vstore, el.astore, p.settings.media.player, media_player_notify, el)
 	media.player_set_volume(el.player, f32(el.volume), el.muted)
+	media_capture_apply(el)
 	if el.rate != 1 { media.player_set_rate(el.player, el.rate) }
 	// the position the element holds (a seek before the metadata) is where playback starts
 	if el.position > 0 { media.player_seek(el.player, media.seconds_time(el.position)) }
@@ -970,6 +975,7 @@ media_note_input :: proc(p: ^Page, ev: dom.Event) {
 	case: return
 	}
 	media_pm(p).activated = true
+	web_audio_activated(p)
 }
 
 ////////////////////////////////

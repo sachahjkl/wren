@@ -730,6 +730,11 @@ wr_Error :: enum i32 {
 // module webassembly: types
 wr_WebAssemblyModule :: distinct u64
 
+// module webaudio: types
+// What the render thread has to say: kind 1 the state changed (value: 0 suspended, 1 running, 2 closed), 2 a source
+// ended, 3 a block of a ScriptProcessorNode is ready, 4 an offline rendering stopped at a suspend().
+wr_WebAudioNotify :: #type proc "contextless" (user: i32, kind: i32, node: i32, value: i32)
+
 // module webcodecs: types
 wr_VideoFrame :: distinct u64
 // WebCodecs VideoPixelFormat, in the order webcodecs_frame.odin's Frame_Format uses (format() returns -1 for a
@@ -3698,6 +3703,76 @@ foreign _wr_wj_webassembly {
 	@(link_name = "WebAssembly_Instance_create") wr_WebAssembly_Instance_create :: proc(module: u64, externs: [^]u8, externs_len: u32) -> i32 ---
 	// The exports of an instance, as JSON: [{name, kind, id, index}].
 	@(link_name = "WebAssembly_Instance_exports") wr_WebAssembly_Instance_exports :: proc(instance: i32, module: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+}
+
+// module webaudio
+foreign import _wr_wj_webaudio "webaudio"
+@(default_calling_convention = "contextless")
+foreign _wr_wj_webaudio {
+	// The preference webaudio.enabled.
+	@(link_name = "WebAudio_enabled") wr_WebAudio_enabled :: proc() -> i32 ---
+	// The document can start something (not gone, not in the back/forward cache).
+	@(link_name = "WebAudio_fullyActive") wr_WebAudio_fullyActive :: proc() -> i32 ---
+	// The sample rate of a context that does not ask for one.
+	@(link_name = "WebAudio_defaultRate") wr_WebAudio_defaultRate :: proc() -> f64 ---
+	// The largest AudioBuffer, in bytes of samples.
+	@(link_name = "WebAudio_maxBufferBytes") wr_WebAudio_maxBufferBytes :: proc() -> f64 ---
+	// A graph. offline_frames 0: an AudioContext, else an OfflineAudioContext of that length. 0: too many contexts.
+	@(link_name = "WebAudio_create") wr_WebAudio_create :: proc(rate: f64, channels: u32, offline_frames: u32, latency: f64, notify: i32, user: i32) -> u64 ---
+	// The page wants the context to run: at once if the autoplay policy allows, else at the first click or key press.
+	@(link_name = "WebAudio_resume") wr_WebAudio_resume :: proc(graph: u64) ---
+	// false: it was not running (no state change will come).
+	@(link_name = "WebAudio_suspend") wr_WebAudio_suspend :: proc(graph: u64) -> i32 ---
+	@(link_name = "WebAudio_close") wr_WebAudio_close :: proc(graph: u64) ---
+	@(link_name = "WebAudio_time") wr_WebAudio_time :: proc(graph: u64) -> f64 ---
+	// Seconds of audio queued ahead of the device.
+	@(link_name = "WebAudio_queued") wr_WebAudio_queued :: proc(graph: u64) -> f64 ---
+	// Starts an OfflineAudioContext's rendering.
+	@(link_name = "WebAudio_render") wr_WebAudio_render :: proc(graph: u64, frames: u32) -> i32 ---
+	// The rendering that is over, as a buffer. 0: none.
+	@(link_name = "WebAudio_takeResult") wr_WebAudio_takeResult :: proc(graph: u64) -> u64 ---
+	@(link_name = "WebAudio_offlineSuspend") wr_WebAudio_offlineSuspend :: proc(graph: u64, frame: f64) -> i32 ---
+	@(link_name = "WebAudio_offlineResume") wr_WebAudio_offlineResume :: proc(graph: u64) ---
+	// A node. first, second: a splitter's or merger's count, a delay's longest delay, a script processor's block size and channels.
+	@(link_name = "WebAudio_nodeCreate") wr_WebAudio_nodeCreate :: proc(graph: u64, kind: i32, first: f64, second: f64) -> i32 ---
+	// The object of a node is gone: it leaves the graph once it can give nothing any more.
+	@(link_name = "WebAudio_nodeRelease") wr_WebAudio_nodeRelease :: proc(graph: u64, node: i32) ---
+	@(link_name = "WebAudio_connect") wr_WebAudio_connect :: proc(graph: u64, from: i32, output: i32, to: i32, input: i32, param: i32) -> i32 ---
+	// -1: any. The number of connections that went.
+	@(link_name = "WebAudio_disconnect") wr_WebAudio_disconnect :: proc(graph: u64, from: i32, output: i32, to: i32, input: i32, param: i32) -> i32 ---
+	@(link_name = "WebAudio_nodeSet") wr_WebAudio_nodeSet :: proc(graph: u64, node: i32, field: i32, value: f64) ---
+	@(link_name = "WebAudio_nodeGet") wr_WebAudio_nodeGet :: proc(graph: u64, node: i32, field: i32) -> f64 ---
+	@(link_name = "WebAudio_start") wr_WebAudio_start :: proc(graph: u64, node: i32, at: f64, offset: f64, duration: f64) ---
+	@(link_name = "WebAudio_stop") wr_WebAudio_stop :: proc(graph: u64, node: i32, at: f64) ---
+	@(link_name = "WebAudio_setBuffer") wr_WebAudio_setBuffer :: proc(graph: u64, node: i32, pcm: u64) ---
+	@(link_name = "WebAudio_setConvolver") wr_WebAudio_setConvolver :: proc(graph: u64, node: i32, pcm: u64, normalize: i32) ---
+	@(link_name = "WebAudio_setCurve") wr_WebAudio_setCurve :: proc(graph: u64, node: i32, curve: [^]u8, curve_len: u32) ---
+	@(link_name = "WebAudio_setWave") wr_WebAudio_setWave :: proc(graph: u64, node: i32, real: [^]u8, real_len: u32, imag: [^]u8, imag_len: u32, normalize: i32) ---
+	// The audio of a media element comes to this node from now on (and no longer to the speakers). false: not playable.
+	@(link_name = "WebAudio_captureElement") wr_WebAudio_captureElement :: proc(graph: u64, node: i32, element: u64) -> i32 ---
+	@(link_name = "WebAudio_paramGet") wr_WebAudio_paramGet :: proc(graph: u64, node: i32, index: i32) -> f64 ---
+	@(link_name = "WebAudio_paramSet") wr_WebAudio_paramSet :: proc(graph: u64, node: i32, index: i32, value: f64) -> i32 ---
+	@(link_name = "WebAudio_paramRate") wr_WebAudio_paramRate :: proc(graph: u64, node: i32, index: i32, a_rate: i32) ---
+	// kind: 0 setValue, 1 linearRamp, 2 exponentialRamp, 3 setTarget, 4 setValueCurve. false: it overlaps a value curve.
+	@(link_name = "WebAudio_paramEvent") wr_WebAudio_paramEvent :: proc(graph: u64, node: i32, index: i32, kind: i32, time: f64, value: f64, extra: f64, curve: [^]u8, curve_len: u32) -> i32 ---
+	@(link_name = "WebAudio_paramCancel") wr_WebAudio_paramCancel :: proc(graph: u64, node: i32, index: i32, time: f64, hold: i32) ---
+	@(link_name = "WebAudio_biquadResponse") wr_WebAudio_biquadResponse :: proc(graph: u64, node: i32, frequencies: [^]u8, frequencies_len: u32, magnitude: [^]u8, magnitude_cap: u32, phase: [^]u8, phase_cap: u32) ---
+	// The coefficients of an IIRFilterNode (64-bit floats).
+	@(link_name = "WebAudio_setIir") wr_WebAudio_setIir :: proc(graph: u64, node: i32, feedforward: [^]u8, feedforward_len: u32, feedback: [^]u8, feedback_len: u32) ---
+	@(link_name = "WebAudio_iirResponse") wr_WebAudio_iirResponse :: proc(graph: u64, node: i32, frequencies: [^]u8, frequencies_len: u32, magnitude: [^]u8, magnitude_cap: u32, phase: [^]u8, phase_cap: u32) ---
+	// what: 0 float frequency, 1 byte frequency, 2 float time, 3 byte time.
+	@(link_name = "WebAudio_analyserRead") wr_WebAudio_analyserRead :: proc(graph: u64, node: i32, what: i32, values: [^]u8, values_cap: u32) -> i32 ---
+	@(link_name = "WebAudio_scriptPull") wr_WebAudio_scriptPull :: proc(graph: u64, node: i32, values: [^]u8, values_cap: u32) ---
+	@(link_name = "WebAudio_scriptPush") wr_WebAudio_scriptPush :: proc(graph: u64, node: i32, values: [^]u8, values_len: u32) ---
+	// A buffer of zeros in the browser. 0: past webaudio.max_buffer_mb or the page's memory.
+	@(link_name = "WebAudio_pcmCreate") wr_WebAudio_pcmCreate :: proc(channels: u32, length: u32, rate: f64) -> u64 ---
+	// What a graph plays keeps what it had: the samples are only replaced when they differ.
+	@(link_name = "WebAudio_pcmWrite") wr_WebAudio_pcmWrite :: proc(pcm: u64, channel: u32, start: u32, values: [^]u8, values_len: u32) ---
+	@(link_name = "WebAudio_pcmRead") wr_WebAudio_pcmRead :: proc(pcm: u64, channel: u32, start: u32, values: [^]u8, values_cap: u32) ---
+	// which: 0 channels, 1 length, 2 sample rate.
+	@(link_name = "WebAudio_pcmInfo") wr_WebAudio_pcmInfo :: proc(pcm: u64, which: i32) -> f64 ---
+	// decodeAudioData: a promise of a buffer (a u64 object handle), on a blocking thread; rejected when it is not audio.
+	@(link_name = "WebAudio_decode") wr_WebAudio_decode :: proc(data: [^]u8, data_len: u32, rate: f64) -> u64 ---
 }
 
 // module webcodecs

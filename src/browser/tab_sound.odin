@@ -44,6 +44,7 @@ page_playing :: proc(p: ^page.Page, depth: int) -> bool {
 		for _, el in p.media.elements {
 			if el.player != nil && !el.paused && !el.ended_flag && el.has_ainfo && !el.muted && el.volume > 0 { return true }
 		}
+		if page.web_audio_audible(p) { return true }
 	}
 	if p.frames != nil {
 		for n in page.frames_children(p) { if page_playing(n.page, depth + 1) { return true } }
@@ -59,6 +60,7 @@ page_mute :: proc(p: ^page.Page, on: bool, depth: int) {
 		for _, el in p.media.elements {
 			if el.player != nil && el.player.host_muted != on { media.player_set_host_muted(el.player, on) }   // (only this thread writes it)
 		}
+		page.web_audio_set_muted(p, on)
 	}
 	if p.frames != nil {
 		for n in page.frames_children(p) { page_mute(n.page, on, depth + 1) }

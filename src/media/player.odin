@@ -66,6 +66,8 @@ Player :: struct {
 	gain:     f32,
 	muted:    bool,
 	host_muted: bool,              // the application silences it (a tab muted): the element's own volume and muted are kept
+	capture:  proc(user: rawptr, samples: []f32, rate: int),   // what plays goes here too, and the speakers get nothing (MediaElementAudioSourceNode)
+	capture_user: rawptr,
 	seek_gen: u32,                 // bumps with every seek
 	seek_to:  Time,
 	source_ended: bool,            // no more data will come into the stores
@@ -182,7 +184,7 @@ player_set_volume :: proc(p: ^Player, volume: f32, muted: bool) {
 	sync.mutex_lock(&p.mu)
 	p.gain, p.muted = volume, muted
 	out := p.out
-	g := muted || p.host_muted ? 0 : volume
+	g := muted || p.host_muted || p.capture != nil ? 0 : volume
 	sync.mutex_unlock(&p.mu)
 	if out != nil { out.set_gain(out, g * g) }   // (perceptual: the slider is a power curve)
 }
@@ -192,7 +194,18 @@ player_set_host_muted :: proc(p: ^Player, on: bool) {
 	sync.mutex_lock(&p.mu)
 	p.host_muted = on
 	out := p.out
-	g := p.muted || on ? 0 : p.gain
+	g := p.muted || on || p.capture != nil ? 0 : p.gain
+	sync.mutex_unlock(&p.mu)
+	if out != nil { out.set_gain(out, g * g) }
+}
+
+// What plays goes to `sink` (called from the player's audio thread) and not to the speakers; nil gives it back. When this
+// returns, the old sink is not being called any more.
+player_set_capture :: proc(p: ^Player, sink: proc(user: rawptr, samples: []f32, rate: int), user: rawptr) {
+	sync.mutex_lock(&p.mu)
+	p.capture, p.capture_user = sink, user
+	out := p.out
+	g := p.muted || p.host_muted || sink != nil ? 0 : p.gain
 	sync.mutex_unlock(&p.mu)
 	if out != nil { out.set_gain(out, g * g) }
 }
@@ -749,7 +762,7 @@ audio_write_block :: proc(p: ^Player, b: ^Audio_Block, stereo: ^[dynamic]f32, tr
 		if out == nil { set_error(p, .Audio_Lost); sync.mutex_lock(&p.mu); p.a_active = false; sync.mutex_unlock(&p.mu); return false }
 		sync.mutex_lock(&p.mu)
 		p.out, p.a_rate = out, b.rate
-		g := p.muted || p.host_muted ? 0 : p.gain
+		g := p.muted || p.host_muted || p.capture != nil ? 0 : p.gain
 		sync.mutex_unlock(&p.mu)
 		out.set_gain(out, g * g)
 		have_expect^ = false
@@ -802,6 +815,18 @@ audio_write_block :: proc(p: ^Player, b: ^Audio_Block, stereo: ^[dynamic]f32, tr
 @(private)
 audio_push :: proc(p: ^Player, samples: []f32, gen: u32) -> bool {
 	rest := samples
+	sync.mutex_lock(&p.mu)
+	if p.capture != nil && p.out != nil && p.seek_gen == gen {
+		// what the element's volume and mute make of it: the speakers are silent, and the page's graph hears this
+		heard := samples
+		if p.muted || p.gain != 1 {
+			g := p.muted ? 0 : p.gain * p.gain
+			heard = make([]f32, len(samples), context.temp_allocator)
+			for v, i in samples { heard[i] = v * g }
+		}
+		p.capture(p.capture_user, heard, p.out.rate)
+	}
+	sync.mutex_unlock(&p.mu)
 	for len(rest) > 0 {
 		sync.mutex_lock(&p.mu)
 		cancelled := p.quit || gen != p.seek_gen
