@@ -2,12 +2,13 @@
 # The packaged Linux executable end to end, as a user unpacks it: it starts, opens a window, runs script and draws a page.
 #   tools/linux_smoke.sh <wren executable>     (needs a display: xvfb-run on a machine without one, and a Vulkan or GL driver)
 set -uo pipefail
+STEP_TIMEOUT_S=120   # a step that takes longer has hung: the script must end and say so
 WREN="$(realpath "${1:?the executable}")"
 OUT="$(mktemp -d)"
 NAME="smoke$$"
 export WREN_DESKTOP_INTEGRATION=off WREN_SINGLE_INSTANCE=off WREN_AUDIO_OUTPUT=null
-ctl() { "$WREN" ctl --remote "$NAME" "$@"; }
-trap '"$WREN" ctl stop "$NAME" >/dev/null 2>&1; rm -rf "$OUT"' EXIT
+ctl() { timeout "$STEP_TIMEOUT_S" "$WREN" ctl --remote "$NAME" "$@" 2>&1; }
+trap 'timeout "$STEP_TIMEOUT_S" "$WREN" ctl stop "$NAME" >/dev/null 2>&1; rm -rf "$OUT"' EXIT
 fail=0
 check() { # name, expected substring, actual
   case "$3" in
@@ -15,16 +16,18 @@ check() { # name, expected substring, actual
     *) echo "FAIL $1: expected '$2', got '${3:0:300}'"; fail=$((fail + 1)) ;;
   esac
 }
-check "the version" "Wren" "$("$WREN" --version 2>&1)"
-"$WREN" ctl start --name "$NAME" --size 1000x700 2>&1 | tail -3
-ctl nav "data:text/html,<title>hello</title><h1 id=a>Wren</h1>" 2>&1 | tail -1
-check "script runs" "Wren 4" "$(ctl eval "document.getElementById('a').textContent + ' ' + (2 + 2)" 2>&1)"
-check "layout" "true" "$(ctl eval "document.getElementById('a').getBoundingClientRect().height > 10" 2>&1)"
+check "the version" "Wren" "$(timeout "$STEP_TIMEOUT_S" "$WREN" --version 2>&1)"
+# (to a file: the Wren it starts stays in the background and keeps what it inherited, so a pipe here would never end)
+timeout "$STEP_TIMEOUT_S" "$WREN" ctl start --name "$NAME" --size 1000x700 > "$OUT/start.log" 2>&1
+echo "start: exit $?, $(tail -3 "$OUT/start.log")"
+ctl nav "data:text/html,<title>hello</title><h1 id=a>Wren</h1>" | tail -1
+check "script runs" "Wren 4" "$(ctl eval "document.getElementById('a').textContent + ' ' + (2 + 2)")"
+check "layout" "true" "$(ctl eval "document.getElementById('a').getBoundingClientRect().height > 10")"
 # deep recursion on the main thread: the same limits as on Windows, without a ulimit from the caller
-check "deep recursion" "RangeError" "$(ctl eval "(function(){ function f(){ return f() + 1 } try { f() } catch (e) { return e.name } })()" 2>&1)"
-ctl shot "$OUT/shot.png" 2>&1 | tail -1
+check "deep recursion" "RangeError" "$(ctl eval "(function(){ function f(){ return f() + 1 } try { f() } catch (e) { return e.name } })()")"
+ctl shot "$OUT/shot.png" | tail -1
 size=$(stat -c %s "$OUT/shot.png" 2>/dev/null || echo 0)
 if [ "$size" -gt 1000 ]; then echo "PASS a capture ($size bytes)"; else echo "FAIL a capture ($size bytes)"; fail=$((fail + 1)); fi
-"$WREN" ctl stop "$NAME" 2>&1 | tail -1
+timeout "$STEP_TIMEOUT_S" "$WREN" ctl stop "$NAME" 2>&1 | tail -1
 echo "$fail failure(s)"
 exit "$fail"
