@@ -2533,6 +2533,8 @@ foreign _wr_wj_frames {
 	@(link_name = "Frame_closed") wr_Frame_closed :: proc(navigable: u64) -> i32 ---
 	// Whether its document is same origin with the calling one.
 	@(link_name = "Frame_sameOrigin") wr_Frame_sameOrigin :: proc(navigable: u64) -> i32 ---
+	// Whether its document is same origin and has no address of its own (about:blank, srcdoc).
+	@(link_name = "Frame_isBlank") wr_Frame_isBlank :: proc(navigable: u64) -> i32 ---
 	// otherWindow.postMessage(message, targetOrigin): `data` is the message's structured serialization
 	// (runtime/clone.c); `target_origin` is "*", "/" or a URL. The message is delivered from a task of the target's,
 	// if its document's origin then matches. Syntax for an invalid target origin, Data_Clone for a message over

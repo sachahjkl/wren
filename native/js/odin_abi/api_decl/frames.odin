@@ -15,6 +15,7 @@ Frame_named       :: #type proc(navigable: Navigable, name: string) -> Navigable
 Frame_childNames  :: #type proc(navigable: Navigable) -> abi.Bytes   // NUL-separated
 Frame_closed      :: #type proc(navigable: Navigable) -> bool
 Frame_sameOrigin  :: #type proc(navigable: Navigable) -> bool
+Frame_isBlank     :: #type proc(navigable: Navigable) -> bool
 Frame_ofElement   :: #type proc(element: Element) -> Navigable
 Frame_navigate    :: #type proc(navigable: Navigable, url: string, replace: bool) -> abi.Api_Error
 Frame_open        :: #type proc(url: string, target: string) -> (Navigable, abi.Api_Error)

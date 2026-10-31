@@ -34,6 +34,7 @@ Window_State :: struct {
 	id:       Navigable,
 	location: wj.JSValue,   // the cross-origin Location (counted)
 	history:  wj.JSValue,   // an object with History.prototype and no brand (counted)
+	document: wj.JSValue,   // what a blank same-origin frame's `document` reads as (blank_frame_document; counted)
 }
 
 // The state of the cross-origin Location.
@@ -61,7 +62,7 @@ WP_BUILTINS := [?]string{"JSON", "Math", "Reflect", "Intl", "Object", "Function"
 	"ArrayBuffer", "DataView", "Int8Array", "Uint8Array", "Uint8ClampedArray", "Int16Array", "Uint16Array",
 	"Int32Array", "Uint32Array", "Float32Array", "Float64Array", "BigInt64Array", "BigUint64Array", "parseInt",
 	"parseFloat", "isNaN", "isFinite", "encodeURI", "encodeURIComponent", "decodeURI", "decodeURIComponent", "escape",
-	"unescape", "NaN", "Infinity", "undefined"}
+	"unescape", "NaN", "Infinity", "undefined", "eval"}
 
 @(private = "file")
 in_list :: proc "contextless" (list: []string, s: string) -> bool {
@@ -349,6 +350,7 @@ wp_finalizer :: proc "c" (rt: ^wj.Runtime, val: wj.JSValue) {
 	if w == nil { return }
 	wj.JS_FreeValueRT(rt, w.location)
 	wj.JS_FreeValueRT(rt, w.history)
+	wj.JS_FreeValueRT(rt, w.document)
 	wj.libc_free(w)
 }
 
@@ -358,6 +360,7 @@ wp_mark :: proc "c" (rt: ^wj.Runtime, val: wj.JSValue, mark: wj.Mark_Func) {
 	if w == nil { return }
 	wj.JS_MarkValue(rt, w.location, mark)
 	wj.JS_MarkValue(rt, w.history, mark)
+	wj.JS_MarkValue(rt, w.document, mark)
 }
 
 @(private = "file")
@@ -449,6 +452,28 @@ wp_builtin :: proc "contextless" (ctx: ^wj.Context, id: Navigable, c: cstring, p
 	return global_prop(ctx, c)
 }
 
+// A blank same-origin frame's document cannot be reached (it is another realm's), and a page often makes such a frame to measure,
+// sanitize or try things in. It gets an inert document of this realm instead, the same each time: what is written there works
+// for the script and shows nowhere. A frame with an address of its own stays out of reach (UNINITIALIZED: a SecurityError).
+@(private = "file")
+blank_frame_document :: proc "contextless" (ctx: ^wj.Context, w: ^Window_State) -> wj.JSValue {
+	context = m4_context()
+	blank: bool
+	jsb.host(&blank, api_decl.Frame_isBlank, wj.wr_Frame_isBlank, w.id)
+	if !blank { return wj.UNINITIALIZED }
+	if wj.is_object(w.document) { return wj.JS_DupValue(ctx, w.document) }
+	doc := global_prop(ctx, "document")
+	defer wj.JS_FreeValue(ctx, doc)
+	impl := wj.JS_GetPropertyStr(ctx, doc, "implementation")
+	defer wj.JS_FreeValue(ctx, impl)
+	title := [1]wj.JSValue{wj.new_string(ctx, "")}
+	defer wj.JS_FreeValue(ctx, title[0])
+	made := wj.invoke(ctx, impl, "createHTMLDocument", title[:])
+	if wj.is_exception(made) { wj.drop_exception(ctx); return wj.UNINITIALIZED }
+	w.document = wj.JS_DupValue(ctx, made)
+	return made
+}
+
 // Pristine platform object / function from a same-origin frame, or UNINITIALIZED. `history` is an object with
 // History.prototype and no brand; console is this realm's console; functions are bound; constructors (an upper-case
 // name of a native function) are given as is.
@@ -465,6 +490,8 @@ wp_pristine :: proc "contextless" (ctx: ^wj.Context, w: ^Window_State, c: cstrin
 			wj.JS_FreeValue(ctx, hp)
 		}
 		return wj.JS_DupValue(ctx, w.history)
+	case p == "document":
+		return blank_frame_document(ctx, w)
 	case p == "console":
 		return global_prop(ctx, "console")
 	case in_list(WP_FUNCTIONS[:], p):
@@ -697,7 +724,7 @@ wp_new :: proc "contextless" (ctx: ^wj.Context, id: Navigable) -> wj.JSValue {
 	if wj.is_exception(obj) { return obj }
 	w := (^Window_State)(wj.libc_calloc(1, size_of(Window_State)))
 	if w == nil { wj.JS_FreeValue(ctx, obj); return wj.JS_ThrowOutOfMemory(ctx) }
-	w^ = {id = id, location = wj.UNDEFINED, history = wj.UNDEFINED}
+	w^ = {id = id, location = wj.UNDEFINED, history = wj.UNDEFINED, document = wj.UNDEFINED}
 	wj.JS_SetOpaque(obj, w)
 	wj.JS_SetPrototype(ctx, obj, wj.NULL)
 	return obj
@@ -844,14 +871,28 @@ wjr_HTMLFrameElement_get_contentWindow :: proc "c" (ctx: ^wj.Context, this_val: 
 	return content_window(ctx, this_val, ifc("HTMLFrameElement"))
 }
 
-// The nested document is another realm's: never reachable as a Document of this one (null, as across origins).
+// The nested document is another realm's: not reachable as a Document of this one (null, as across origins), but for a blank
+// frame (blank_frame_document).
+@(private = "file")
+content_document :: proc "contextless" (ctx: ^wj.Context, this_val: wj.JSValue, iface: i32) -> wj.JSValue {
+	win := content_window(ctx, this_val, iface)
+	if wj.is_exception(win) { return win }
+	defer wj.JS_FreeValue(ctx, win)
+	w := wj.is_object(win) ? state_of(win) : nil
+	if w == nil { return wj.NULL }
+	context = m4_context()
+	same := frame_same_origin(w.id)
+	if !same { return wj.NULL }
+	d := blank_frame_document(ctx, w)
+	return wj.is_uninitialized(d) ? wj.NULL : d
+}
 @(export, link_name = "wjr_HTMLIFrameElement_get_contentDocument")
 wjr_HTMLIFrameElement_get_contentDocument :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
-	return wj.wj_this(ctx, this_val, ifc("HTMLIFrameElement")) != nil ? wj.NULL : wj.EXCEPTION
+	return content_document(ctx, this_val, ifc("HTMLIFrameElement"))
 }
 @(export, link_name = "wjr_HTMLFrameElement_get_contentDocument")
 wjr_HTMLFrameElement_get_contentDocument :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
-	return wj.wj_this(ctx, this_val, ifc("HTMLFrameElement")) != nil ? wj.NULL : wj.EXCEPTION
+	return content_document(ctx, this_val, ifc("HTMLFrameElement"))
 }
 @(export, link_name = "wjr_HTMLIFrameElement_getSVGDocument")
 wjr_HTMLIFrameElement_getSVGDocument :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {

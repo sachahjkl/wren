@@ -26,6 +26,8 @@ module frames {
   bool Frame_closed(u64 navigable);
   /// Whether its document is same origin with the calling one.
   bool Frame_sameOrigin(u64 navigable);
+  /// Whether its document is same origin and has no address of its own (about:blank, srcdoc).
+  bool Frame_isBlank(u64 navigable);
   /// otherWindow.postMessage(message, targetOrigin): `data` is the message's structured serialization
   /// (runtime/clone.c); `target_origin` is "*", "/" or a URL. The message is delivered from a task of the target's,
   /// if its document's origin then matches. Syntax for an invalid target origin, Data_Clone for a message over

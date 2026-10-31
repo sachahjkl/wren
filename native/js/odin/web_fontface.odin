@@ -1,4 +1,4 @@
-// web_fontface.odin: `FontFace` on the window, made on first use (web_fontface.js).
+// web_fontface.odin: `FontFace` on the window and `SecurityPolicyViolationEvent`, made on first use (web_fontface.js, web_spv_event.js).
 package odin_glue
 
 import "../odin/wj"
@@ -33,8 +33,21 @@ fontface_autoinit :: proc "c" (ctx: ^wj.Context, atom: wj.Atom) -> wj.JSValue {
 	return wj.JS_Call(ctx, fn, wj.UNDEFINED, 2, &args[0])
 }
 
+@(private = "file")
+spv_autoinit :: proc "c" (ctx: ^wj.Context, atom: wj.Atom) -> wj.JSValue {
+	fn := eval_prelude(ctx, "web_spv_event.js", #load("web_spv_event.js"))
+	if wj.is_exception(fn) { return fn }
+	defer wj.JS_FreeValue(ctx, fn)
+	arg := wj.wj_the_realm.global
+	return wj.JS_Call(ctx, fn, wj.UNDEFINED, 1, &arg)
+}
+
 @(export, link_name = "web_fontface_start")
 web_fontface_start :: proc "c" (ctx: ^wj.Context, kind: i32) -> i32 {
+	spv := wj.JS_NewAtom(ctx, "SecurityPolicyViolationEvent")
+	r := wj.JS_DefineHostAutoInitProperty(ctx, wj.wj_the_realm.global, spv, spv_autoinit, wj.PROP_CONFIGURABLE | wj.PROP_WRITABLE)
+	wj.JS_FreeAtom(ctx, spv)
+	if r < 0 { return -1 }
 	if !wj.is_window() { return 0 }
 	a := wj.JS_NewAtom(ctx, "FontFace")
 	defer wj.JS_FreeAtom(ctx, a)

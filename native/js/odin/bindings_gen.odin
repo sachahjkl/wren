@@ -25563,10 +25563,10 @@ wj_install_bindings :: proc "c" () {
 	m_CSSRule[0] = wj.Member{name = "KEYFRAMES_RULE", kind = wj.M_CONSTANT, value = 7}
 	m_CSSRule[1] = wj.Member{name = "KEYFRAME_RULE", kind = wj.M_CONSTANT, value = 8}
 	m_CSSRule[2] = wj.Member{name = "SUPPORTS_RULE", kind = wj.M_CONSTANT, value = 12}
-	m_CSSRule[3] = wj.Member{name = "cssText", kind = wj.M_ATTRIBUTE, flags = wj.F_SETTER_UNSUPPORTED, length = 0, get = nil, set = nil}
-	m_CSSRule[4] = wj.Member{name = "parentRule", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
-	m_CSSRule[5] = wj.Member{name = "parentStyleSheet", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
-	m_CSSRule[6] = wj.Member{name = "type", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
+	m_CSSRule[3] = wj.Member{name = "cssText", kind = wj.M_ATTRIBUTE, flags = wj.F_SETTER_UNSUPPORTED, length = 0, get = wjr_CSSRule_get_cssText, set = nil}
+	m_CSSRule[4] = wj.Member{name = "parentRule", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_CSSRule_get_parentRule, set = nil}
+	m_CSSRule[5] = wj.Member{name = "parentStyleSheet", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_CSSRule_get_parentStyleSheet, set = nil}
+	m_CSSRule[6] = wj.Member{name = "type", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_CSSRule_get_type, set = nil}
 	m_CSSRule[7] = wj.Member{name = "STYLE_RULE", kind = wj.M_CONSTANT, value = 1}
 	m_CSSRule[8] = wj.Member{name = "CHARSET_RULE", kind = wj.M_CONSTANT, value = 2}
 	m_CSSRule[9] = wj.Member{name = "IMPORT_RULE", kind = wj.M_CONSTANT, value = 3}
@@ -25575,19 +25575,19 @@ wj_install_bindings :: proc "c" () {
 	m_CSSRule[12] = wj.Member{name = "PAGE_RULE", kind = wj.M_CONSTANT, value = 6}
 	m_CSSRule[13] = wj.Member{name = "MARGIN_RULE", kind = wj.M_CONSTANT, value = 9}
 	m_CSSRule[14] = wj.Member{name = "NAMESPACE_RULE", kind = wj.M_CONSTANT, value = 10}
-	m_CSSGroupingRule[0] = wj.Member{name = "cssRules", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 6, get = nil, set = nil}
+	m_CSSGroupingRule[0] = wj.Member{name = "cssRules", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 6, get = wjr_CSSGroupingRule_get_cssRules, set = nil}
 	m_CSSGroupingRule[1] = wj.Member{name = "insertRule", kind = wj.M_METHOD, flags = 0, length = 1, fn = nil}
 	m_CSSGroupingRule[2] = wj.Member{name = "deleteRule", kind = wj.M_METHOD, flags = 0, length = 1, fn = nil}
-	m_CSSConditionRule[0] = wj.Member{name = "conditionText", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
+	m_CSSConditionRule[0] = wj.Member{name = "conditionText", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_CSSConditionRule_get_conditionText, set = nil}
 	m_CSSMediaRule[0] = wj.Member{name = "media", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 7, get = nil, set = wjg_CSSMediaRule_set_media}
 	m_CSSMediaRule[1] = wj.Member{name = "matches", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
 	m_CSSSupportsRule[0] = wj.Member{name = "matches", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
-	m_CSSLayerBlockRule[0] = wj.Member{name = "name", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
+	m_CSSLayerBlockRule[0] = wj.Member{name = "name", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_CSSLayerBlockRule_get_name, set = nil}
 	m_CSSPageRule[0] = wj.Member{name = "selectorText", kind = wj.M_ATTRIBUTE, flags = wj.F_SETTER_UNSUPPORTED, length = 0, get = nil, set = nil}
 	m_CSSPageRule[1] = wj.Member{name = "style", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 8, get = nil, set = wjg_CSSPageRule_set_style}
 	m_CSSStyleRule[0] = wj.Member{name = "styleMap", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 9, get = nil, set = nil}
-	m_CSSStyleRule[1] = wj.Member{name = "selectorText", kind = wj.M_ATTRIBUTE, flags = wj.F_SETTER_UNSUPPORTED, length = 0, get = nil, set = nil}
-	m_CSSStyleRule[2] = wj.Member{name = "style", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 10, get = nil, set = wjg_CSSStyleRule_set_style}
+	m_CSSStyleRule[1] = wj.Member{name = "selectorText", kind = wj.M_ATTRIBUTE, flags = wj.F_SETTER_UNSUPPORTED, length = 0, get = wjr_CSSStyleRule_get_selectorText, set = nil}
+	m_CSSStyleRule[2] = wj.Member{name = "style", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 10, get = wjr_CSSStyleRule_get_style, set = wjg_CSSStyleRule_set_style}
 	m_CSSImportRule[0] = wj.Member{name = "href", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
 	m_CSSImportRule[1] = wj.Member{name = "media", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 11, get = nil, set = wjg_CSSImportRule_set_media}
 	m_CSSImportRule[2] = wj.Member{name = "styleSheet", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 12, get = nil, set = nil}
@@ -25595,8 +25595,8 @@ wj_install_bindings :: proc "c" () {
 	m_CSSImportRule[4] = wj.Member{name = "supportsText", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
 	m_CSSKeyframeRule[0] = wj.Member{name = "keyText", kind = wj.M_ATTRIBUTE, flags = wj.F_SETTER_UNSUPPORTED, length = 0, get = nil, set = nil}
 	m_CSSKeyframeRule[1] = wj.Member{name = "style", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 13, get = nil, set = wjg_CSSKeyframeRule_set_style}
-	m_CSSKeyframesRule[0] = wj.Member{name = "name", kind = wj.M_ATTRIBUTE, flags = wj.F_SETTER_UNSUPPORTED, length = 0, get = nil, set = nil}
-	m_CSSKeyframesRule[1] = wj.Member{name = "cssRules", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
+	m_CSSKeyframesRule[0] = wj.Member{name = "name", kind = wj.M_ATTRIBUTE, flags = wj.F_SETTER_UNSUPPORTED, length = 0, get = wjr_CSSKeyframesRule_get_name, set = nil}
+	m_CSSKeyframesRule[1] = wj.Member{name = "cssRules", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjr_CSSKeyframesRule_get_cssRules, set = nil}
 	m_CSSKeyframesRule[2] = wj.Member{name = "length", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = nil, set = nil}
 	m_CSSKeyframesRule[3] = wj.Member{name = "appendRule", kind = wj.M_METHOD, flags = 0, length = 1, fn = nil}
 	m_CSSKeyframesRule[4] = wj.Member{name = "deleteRule", kind = wj.M_METHOD, flags = 0, length = 1, fn = nil}
@@ -30437,15 +30437,15 @@ wj_install_bindings :: proc "c" () {
 		members = rawptr(&m_CSSNumericArray[0]), n_members = 1, subtree_end = 29,
 		index_get = nil, length_get = nil, named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}
-	the_interfaces[29] = wj.Interface{name = "CSSRule", parent = -1, exposed = u16(wj.EXPOSE_WINDOW), flags = u16(wj.I_UNSUPPORTED), class_kind = u8(wj.CLASS_PLAIN), ctor_length = 0, ctor = nil,
+	the_interfaces[29] = wj.Interface{name = "CSSRule", parent = -1, exposed = u16(wj.EXPOSE_WINDOW), flags = u16(0), class_kind = u8(wj.CLASS_PLAIN), ctor_length = 0, ctor = nil,
 		members = rawptr(&m_CSSRule[0]), n_members = 15, subtree_end = 46,
 		index_get = nil, length_get = nil, named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}
-	the_interfaces[30] = wj.Interface{name = "CSSGroupingRule", parent = 29, exposed = u16(wj.EXPOSE_WINDOW), flags = u16(wj.I_UNSUPPORTED), class_kind = u8(wj.CLASS_PLAIN), ctor_length = 0, ctor = nil,
+	the_interfaces[30] = wj.Interface{name = "CSSGroupingRule", parent = 29, exposed = u16(wj.EXPOSE_WINDOW), flags = u16(0), class_kind = u8(wj.CLASS_PLAIN), ctor_length = 0, ctor = nil,
 		members = rawptr(&m_CSSGroupingRule[0]), n_members = 3, subtree_end = 38,
 		index_get = nil, length_get = nil, named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}
-	the_interfaces[31] = wj.Interface{name = "CSSConditionRule", parent = 30, exposed = u16(wj.EXPOSE_WINDOW), flags = u16(wj.I_UNSUPPORTED), class_kind = u8(wj.CLASS_PLAIN), ctor_length = 0, ctor = nil,
+	the_interfaces[31] = wj.Interface{name = "CSSConditionRule", parent = 30, exposed = u16(wj.EXPOSE_WINDOW), flags = u16(0), class_kind = u8(wj.CLASS_PLAIN), ctor_length = 0, ctor = nil,
 		members = rawptr(&m_CSSConditionRule[0]), n_members = 1, subtree_end = 34,
 		index_get = nil, length_get = nil, named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}
@@ -30457,7 +30457,7 @@ wj_install_bindings :: proc "c" () {
 		members = rawptr(&m_CSSSupportsRule[0]), n_members = 1, subtree_end = 34,
 		index_get = nil, length_get = nil, named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}
-	the_interfaces[34] = wj.Interface{name = "CSSLayerBlockRule", parent = 30, exposed = u16(wj.EXPOSE_WINDOW), flags = u16(wj.I_UNSUPPORTED), class_kind = u8(wj.CLASS_PLAIN), ctor_length = 0, ctor = nil,
+	the_interfaces[34] = wj.Interface{name = "CSSLayerBlockRule", parent = 30, exposed = u16(wj.EXPOSE_WINDOW), flags = u16(0), class_kind = u8(wj.CLASS_PLAIN), ctor_length = 0, ctor = nil,
 		members = rawptr(&m_CSSLayerBlockRule[0]), n_members = 1, subtree_end = 35,
 		index_get = nil, length_get = nil, named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}
@@ -30469,7 +30469,7 @@ wj_install_bindings :: proc "c" () {
 		members = nil, n_members = 0, subtree_end = 37,
 		index_get = nil, length_get = nil, named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}
-	the_interfaces[37] = wj.Interface{name = "CSSStyleRule", parent = 30, exposed = u16(wj.EXPOSE_WINDOW), flags = u16(wj.I_UNSUPPORTED), class_kind = u8(wj.CLASS_PLAIN), ctor_length = 0, ctor = nil,
+	the_interfaces[37] = wj.Interface{name = "CSSStyleRule", parent = 30, exposed = u16(wj.EXPOSE_WINDOW), flags = u16(0), class_kind = u8(wj.CLASS_PLAIN), ctor_length = 0, ctor = nil,
 		members = rawptr(&m_CSSStyleRule[0]), n_members = 3, subtree_end = 38,
 		index_get = nil, length_get = nil, named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}
@@ -30481,7 +30481,7 @@ wj_install_bindings :: proc "c" () {
 		members = rawptr(&m_CSSKeyframeRule[0]), n_members = 2, subtree_end = 40,
 		index_get = nil, length_get = nil, named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}
-	the_interfaces[40] = wj.Interface{name = "CSSKeyframesRule", parent = 29, exposed = u16(wj.EXPOSE_WINDOW), flags = u16(wj.I_UNSUPPORTED | wj.I_INDEXED_ITERATOR), class_kind = u8(wj.CLASS_INDEXED), ctor_length = 0, ctor = nil,
+	the_interfaces[40] = wj.Interface{name = "CSSKeyframesRule", parent = 29, exposed = u16(wj.EXPOSE_WINDOW), flags = u16(wj.I_INDEXED_ITERATOR), class_kind = u8(wj.CLASS_INDEXED), ctor_length = 0, ctor = nil,
 		members = rawptr(&m_CSSKeyframesRule[0]), n_members = 6, subtree_end = 41,
 		index_get = nil, length_get = nil, named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}

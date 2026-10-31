@@ -22,6 +22,7 @@ foreign _m_frames {
 	@(link_name = "Frame_childNames") _Frame_childNames :: proc(navigable: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Frame_closed") _Frame_closed :: proc(navigable: u64) -> i32 ---
 	@(link_name = "Frame_sameOrigin") _Frame_sameOrigin :: proc(navigable: u64) -> i32 ---
+	@(link_name = "Frame_isBlank") _Frame_isBlank :: proc(navigable: u64) -> i32 ---
 	@(link_name = "Frame_postMessage") _Frame_postMessage :: proc(navigable: u64, data: [^]u8, data_len: u32, target_origin: [^]u8, target_origin_len: u32) -> Error ---
 	@(link_name = "Frame_navigate") _Frame_navigate :: proc(navigable: u64, url: [^]u8, url_len: u32, replace: i32) -> Error ---
 	@(link_name = "Frame_open") _Frame_open :: proc(url: [^]u8, url_len: u32, target: [^]u8, target_len: u32, _ret: ^u64) -> Error ---
@@ -103,6 +104,11 @@ Frame_closed :: proc "contextless" (navigable: u64) -> bool {
 // Whether its document is same origin with the calling one.
 Frame_sameOrigin :: proc "contextless" (navigable: u64) -> bool {
 	return _Frame_sameOrigin(navigable) != 0
+}
+
+// Whether its document is same origin and has no address of its own (about:blank, srcdoc).
+Frame_isBlank :: proc "contextless" (navigable: u64) -> bool {
+	return _Frame_isBlank(navigable) != 0
 }
 
 // otherWindow.postMessage(message, targetOrigin): `data` is the message's structured serialization
