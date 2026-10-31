@@ -314,3 +314,7 @@ thread priorities and `instance` have a Linux-only file to extend.
   call itself.
 - The Wasm unit tests must run on one thread on every system (`-define:ODIN_TEST_THREADS=1`), as `test_all` does: the
   runtime is process-wide.
+
+## Slice 8 (2026-10-31): a Linux package
+
+`./build.sh release` then `tools/package_linux.sh` make `build/dist/wren-<version>-linux-x64.tar.gz`; the workflow `linux-package.yml` builds it on ubuntu-24.04 (so glibc 2.39 or later), unpacks it and runs `tools/linux_smoke.sh` under xvfb before the release adds it. The engine image comes from a Windows job. Two things it took: the sealed Rust archives need `ld -r --force-group-allocation` (otherwise the linker discards their `DW.ref.rust_eh_personality`); the main thread raises its own stack limit (`host.main_stack_ensure`).
