@@ -2,6 +2,10 @@ package frontend
 
 import "base:runtime"
 
+// Bounds on following a chain of jumps (and so on a cycle of them).
+LABEL_POS_MAX_HOPS :: 20
+JUMP_TARGET_MAX_HOPS :: 10
+
 // The back half of the compiler, after parsing: resolve_variables (phase 2: scope opcodes to real accesses,
 // hoisted definitions, first peepholes), resolve_labels (phase 3: peephole optimizer, short opcodes, jump
 // sizing, the pc2line table), compute_stack_size, and js_create_function which runs them over the function tree
@@ -243,7 +247,7 @@ skip_dead_code :: proc(s: ^Func_Def, bc_buf: []u8, bc_len: int, pos0: int, linep
 get_label_pos :: proc(s: ^Func_Def, label0: int) -> int {
 	label := label0
 	pos: int
-	for _ in 0 ..< 20 {
+	for _ in 0 ..< LABEL_POS_MAX_HOPS {
 		pos = s.label_slots[label].pos
 		inner: for {
 			switch int(s.byte_code[pos]) {
@@ -637,7 +641,7 @@ find_jump_target :: proc(s: ^Func_Def, label0: int, pop: ^int) -> int {
 	label := label0
 	op: int
 	update_label(s, label, -1)
-	outer: for _ in 0 ..< 10 {
+	outer: for _ in 0 ..< JUMP_TARGET_MAX_HOPS {
 		pos := s.label_slots[label].pos2
 		for {
 			op = int(s.byte_code[pos])

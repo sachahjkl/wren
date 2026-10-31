@@ -21,6 +21,8 @@ import "core:time"
 import "core:mem"
 import fe "wb:engine/frontend"
 
+MAX_DIFFS_KEPT :: 4000   // the differences a differential run keeps for its report
+
 main :: proc() {
 	args := os.args
 	if len(args) < 2 {
@@ -458,13 +460,13 @@ cmd_diff_batch :: proc(manifest, refdir, oursdir: string) -> int {
 		} else if len(ref) != len(ours) {
 			fs.len_diff += 1
 			off := first_diff(ref, ours)
-			if len(diffs) < 4000 {
+			if len(diffs) < MAX_DIFFS_KEPT {
 				append(&diffs, fmt.aprintf("LEN  %s ref=%d ours=%d @%d", path, len(ref), len(ours), off))
 			}
 		} else {
 			fs.content_diff += 1
 			off := first_diff(ref, ours)
-			if len(diffs) < 4000 {
+			if len(diffs) < MAX_DIFFS_KEPT {
 				append(&diffs, fmt.aprintf("CNT  %s len=%d @%d ref=%02x ours=%02x", path, len(ref), off, ref[off], ours[off]))
 			}
 		}

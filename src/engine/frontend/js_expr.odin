@@ -4,6 +4,8 @@ package frontend
 // decisions are taken by looking at (and rewriting) the last emitted instruction. Every procedure returns true
 // on a syntax error (the C `-1`), so the bodies read like the original.
 
+ARRAY_LITERAL_PUSH_MAX :: 32   // leading elements of an array literal pushed on the stack and built by one instruction
+
 PF_IN_ACCEPTED :: 1 << 0
 PF_POSTFIX_CALL :: 1 << 1
 PF_POW_ALLOWED :: 1 << 2
@@ -791,7 +793,7 @@ js_parse_class :: proc(s: ^Parse_State, is_class_expr: bool, export_flag: Parse_
 js_parse_array_literal :: proc(s: ^Parse_State) -> bool {
 	if next_token(s) {return true}
 	idx: u32 = 0
-	for s.token.val != ']' && idx < 32 {
+	for s.token.val != ']' && idx < ARRAY_LITERAL_PUSH_MAX {
 		if s.token.val == ',' || s.token.val == TOK_ELLIPSIS {break}
 		if js_parse_assign_expr(s) {return true}
 		idx += 1

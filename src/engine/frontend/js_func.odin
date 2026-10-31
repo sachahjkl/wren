@@ -3,6 +3,8 @@ package frontend
 // Function definitions and the program entry: js_new_function_def, directives, parameter lists, function
 // bodies (js_parse_function_decl2) and js_parse_program.
 
+DIRECTIVE_RAW_MAX :: 19   // the source text of a directive compared with "use strict" (the C's 20-byte buffer)
+
 js_new_function_def :: proc(s: ^Parse_State, parent: ^Func_Def, is_eval, is_func_expr: bool, line_num, col_num: int) -> ^Func_Def {
 	a := s.allocator
 	fd := new(Func_Def, a)
@@ -58,7 +60,7 @@ js_parse_directives :: proc(s: ^Parse_State) -> bool {
 		// the raw source text between the quotes, truncated like the C's 20-byte buffer
 		raw_len := s.buf_ptr - s.token.ptr - 2
 		if raw_len < 0 {raw_len = 0}
-		if raw_len > 19 {raw_len = 19}
+		if raw_len > DIRECTIVE_RAW_MAX {raw_len = DIRECTIVE_RAW_MAX}
 		str := string(s.buf[s.token.ptr + 1:][:raw_len])
 		if next_token(s) {return true}
 		has_semi := false

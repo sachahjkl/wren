@@ -44,6 +44,11 @@ LRE_FLAG_NAMED_GROUPS :: 1 << 7
 LRE_FLAG_UNICODE_SETS :: 1 << 8
 LRE_GROUP_NAME_TRAILER_LEN :: 2
 
+@(private = "file") RE_MAX_NESTING :: 2000            // groups and class operands nested in a pattern
+@(private = "file") RE_PROPERTY_NAME_MAX :: 63         // the length of a Unicode property's name or value in \p{...}
+@(private = "file") RE_GROUP_NAME_MAX_BYTES :: 128     // a group's name in UTF-8, its terminator included
+@(private = "file") QSORT_INSERTION_MAX :: 6           // a run this short is left to insertion sort
+@(private = "file") QSORT_MAX_DEPTH :: 50              // partitions before a run falls back to heapsort
 @(private = "file") CAPTURE_COUNT_MAX :: 255
 @(private = "file") REGISTER_COUNT_MAX :: 255
 @(private = "file") GROUP_NAME_SCOPE_MAX :: 255
@@ -845,7 +850,7 @@ parse_unicode_property :: proc(s: ^Re_Parser, sl: ^Re_String_List, pp: ^int, is_
 	p += 1
 	name_start := p
 	for is_unicode_char(s.buf[p]) {
-		if p - name_start >= 63 {
+		if p - name_start >= RE_PROPERTY_NAME_MAX {
 			return re_error(s, "unknown unicode property name")
 		}
 		p += 1
@@ -856,7 +861,7 @@ parse_unicode_property :: proc(s: ^Re_Parser, sl: ^Re_String_List, pp: ^int, is_
 		p += 1
 		v_start := p
 		for is_unicode_char(s.buf[p]) {
-			if p - v_start >= 63 {
+			if p - v_start >= RE_PROPERTY_NAME_MAX {
 				return re_error(s, "unknown unicode property value")
 			}
 			p += 1
@@ -1200,9 +1205,9 @@ re_rqsort :: proc(a: []^Re_String) {
 	for sp > 0 {
 		sp -= 1
 		ptr, nmemb, depth := stack[sp].base, stack[sp].count, stack[sp].depth
-		for nmemb > 6 {
+		for nmemb > QSORT_INSERTION_MAX {
 			depth += 1
-			if depth > 50 {
+			if depth > QSORT_MAX_DEPTH {
 				heapsort(a, ptr, nmemb)
 				nmemb = 0
 				break
@@ -1293,7 +1298,7 @@ re_parse_class_set_operand :: proc(s: ^Re_Parser, sl: ^Re_String_List, pp: ^int)
 re_parse_nested_class :: proc(s: ^Re_Parser, sl: ^Re_String_List, pp: ^int) -> bool {
 	s.depth += 1
 	defer s.depth -= 1
-	if s.depth > 2000 || stack_exhausted(s.stack) {
+	if s.depth > RE_MAX_NESTING || stack_exhausted(s.stack) {
 		return re_error(s, "stack overflow")
 	}
 	rsl_init(s, sl)
@@ -1482,7 +1487,7 @@ re_parse_group_name :: proc(s: ^Re_Parser, pp: ^int) -> (string, bool) {
 		} else {
 			if !lre_js_is_ident_next(c) {return "", false}
 		}
-		if len(out) + 4 + 1 > 128 {return "", false}
+		if len(out) + 4 + 1 > RE_GROUP_NAME_MAX_BYTES {return "", false}
 		utf8_append(&out, c)
 	}
 	if len(out) == 0 {return "", false}
@@ -2071,7 +2076,7 @@ re_parse_alternative :: proc(s: ^Re_Parser, is_backward_dir: bool) -> bool {
 re_parse_disjunction :: proc(s: ^Re_Parser, is_backward_dir: bool) -> bool {
 	s.depth += 1
 	defer s.depth -= 1
-	if s.depth > 2000 || stack_exhausted(s.stack) {
+	if s.depth > RE_MAX_NESTING || stack_exhausted(s.stack) {
 		return re_error(s, "stack overflow")
 	}
 	start := len(s.byte_code)
