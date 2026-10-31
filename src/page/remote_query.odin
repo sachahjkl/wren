@@ -2,6 +2,9 @@ package page
 
 import "wb:base"
 
+// query_all's default limit: in effect every match, the bound is against a runaway document.
+QUERY_ALL_DEFAULT_LIMIT :: 1 << 20
+
 // Selector queries for the shell (the remote control channel: waiting for an element, clicking or capturing it): the
 // document's own selector engine, with no script engine involved (a Wasm-only page has none).
 
@@ -15,7 +18,7 @@ query_first :: proc(p: ^Page, selector: string) -> (h: base.Handle, valid: bool)
 }
 
 // Every match, in tree order, at most `limit` of them (temporary memory).
-query_all :: proc(p: ^Page, selector: string, limit := 1 << 20) -> (hs: []base.Handle, valid: bool) {
+query_all :: proc(p: ^Page, selector: string, limit := QUERY_ALL_DEFAULT_LIMIT) -> (hs: []base.Handle, valid: bool) {
 	if p == nil || p.doc == nil { return nil, false }
 	list, ok := selector_list(p, selector)
 	if !ok { return nil, false }

@@ -35,6 +35,15 @@ import "wb:images"
 import "wb:style"
 import "wb:url"
 
+// The viewport assumed for image selection when the page has no style engine yet (srcset, sizes, media).
+IMAGE_FALLBACK_VIEWPORT_W :: 1280
+IMAGE_FALLBACK_VIEWPORT_H :: 800
+// Parse limits for the CSS of a `sizes` or `<source media>` attribute.
+IMAGE_ATTR_CSS_MAX_NESTING :: 32
+IMAGE_ATTR_CSS_MAX_RULES :: 16
+// Decode priority of work something waits on: a probe for the image's size, and pixels for img.decode().
+IMAGE_PRIORITY_WAITED_ON :: 1 << 20
+
 ////////////////////////////////
 // Process image cache
 
@@ -608,7 +617,7 @@ entry_start :: proc(p: ^Page, r: ^Img_Request, data: []byte) {
 	r.entry = e
 	r.state = .Probing
 	entry_account(e)
-	e.probe = images.submit(cache.port, images.job_make(.Probe, e.blob, decode_options(&cache.settings, e), 1 << 20, e))
+	e.probe = images.submit(cache.port, images.job_make(.Probe, e.blob, decode_options(&cache.settings, e), IMAGE_PRIORITY_WAITED_ON, e))
 	if e.probe == 0 {
 		e.state, e.err = .Broken, .Platform
 		entry_notify(e, true)
@@ -713,7 +722,7 @@ images_sync :: proc(p: ^Page) {
 	images_adopt_document(p)
 	if cache.ready { cache.settings, cache.limit = p.settings.images, p.settings.images.cache_max_bytes }
 	pi := &p.images
-	env := p.engine != nil ? p.engine.env : css.Media_Env{width = 1280, height = 800, dppx = 1}
+	env := p.engine != nil ? p.engine.env : css.Media_Env{width = IMAGE_FALLBACK_VIEWPORT_W, height = IMAGE_FALLBACK_VIEWPORT_H, dppx = 1}
 	env_changed := env.width != pi.env.width || env.dppx != pi.env.dppx || env.height != pi.env.height
 	mutated := pi.mutations != p.doc.mutations
 	if mutated || env_changed {
@@ -804,7 +813,7 @@ parse_srcset :: proc(srcset: string, allocator := context.temp_allocator) -> []C
 source_size :: proc(p: ^Page, sizes: string, env: css.Media_Env) -> f32 {
 	fallback := f32(env.width)
 	if strings.trim_space(sizes) == "" { return fallback }
-	vals := css.parse_component_values(sizes, css.Parse_Options{max_nesting_depth = 32, max_rules = 16}, context.temp_allocator)
+	vals := css.parse_component_values(sizes, css.Parse_Options{max_nesting_depth = IMAGE_ATTR_CSS_MAX_NESTING, max_rules = IMAGE_ATTR_CSS_MAX_RULES}, context.temp_allocator)
 	lc := css.Length_Context{font_size = 16, root_font_size = 16, vw = env.width, vh = env.height}
 	if p.styled != nil && p.styled.root_font_size > 0 { lc.font_size, lc.root_font_size = f64(p.styled.root_font_size), f64(p.styled.root_font_size) }
 	for entry in css.split_commas(vals, context.temp_allocator) {
@@ -888,7 +897,7 @@ select_source :: proc(p: ^Page, el: ^Img_Element, env: css.Media_Env) -> Selecti
 				srcset, has_set := dom.get_attribute(d, c, "srcset")
 				if !has_set || strings.trim_space(srcset) == "" { continue }
 				if media, has_media := dom.get_attribute(d, c, "media"); has_media && strings.trim_space(media) != "" {
-					vals := css.parse_component_values(media, css.Parse_Options{max_nesting_depth = 32, max_rules = 16}, context.temp_allocator)
+					vals := css.parse_component_values(media, css.Parse_Options{max_nesting_depth = IMAGE_ATTR_CSS_MAX_NESTING, max_rules = IMAGE_ATTR_CSS_MAX_RULES}, context.temp_allocator)
 					if !css.media_matches(css.parse_media_query_list(vals, context.temp_allocator), env) { continue }
 				}
 				if t, has_type := dom.get_attribute(d, c, "type"); has_type && strings.trim_space(t) != "" {
@@ -976,7 +985,7 @@ set_string :: proc(dst: ^string, s: string) {
 @(private)
 element_update :: proc(p: ^Page, el: ^Img_Element) {
 	env := p.images.env
-	if env.width == 0 { env = p.engine != nil ? p.engine.env : css.Media_Env{width = 1280, height = 800, dppx = 1} }
+	if env.width == 0 { env = p.engine != nil ? p.engine.env : css.Media_Env{width = IMAGE_FALLBACK_VIEWPORT_W, height = IMAGE_FALLBACK_VIEWPORT_H, dppx = 1} }
 	sig := selection_signature(p, el, env)
 	if sig == el.signature { return }
 	set_string(&el.signature, sig)
@@ -1077,7 +1086,7 @@ element_settle :: proc(p: ^Page, el: ^Img_Element) {
 			clear(&el.decodes)
 		} else if e != nil {
 			e.want_full = true
-			entry_want_pixels(e, 0, 0, 1 << 20)
+			entry_want_pixels(e, 0, 0, IMAGE_PRIORITY_WAITED_ON)
 		}
 	case .Queued, .Loading, .Probing:
 	}

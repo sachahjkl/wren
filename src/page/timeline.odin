@@ -30,6 +30,17 @@ import "wb:dom"
 import "wb:fetch"
 import "wb:host"
 
+// Entries kept for the types with no preference of their own (navigation, paint, first-input: few by nature).
+TIMELINE_FEW_ENTRIES :: 64
+// What the navigation entry's transferSize adds to the body for the response's headers (an estimate; they are not kept).
+NAV_HEADERS_ESTIMATE_BYTES :: 300
+// Event types longer than this are not measured: a cheap test before looking the type up. (pointercancel, 13, is listed
+// in event_timed and so never gets past it.)
+EVENT_TIMED_TYPE_MAX_LEN :: 12
+// Event timing durations are rounded up to this granularity (ms); the second is the addend that does it.
+EVENT_DURATION_STEP_MS :: 8.0
+EVENT_DURATION_ROUND_UP_MS :: 7.999
+
 Timeline_Settings :: struct {
 	resource_entries: int,
 	event_entries:    int,
@@ -436,7 +447,7 @@ timeline_add :: proc(p: ^Page, kind: Tl_Kind, e: Tl_Entry) {
 	case .Visibility_State: limit = p.settings.timeline.visibility_entries
 	case .Long_Animation_Frame: limit = p.settings.timeline.long_animation_frame_entries
 	case .Script: limit = 0   // scripts are carried inside long-animation-frame entries, never buffered on their own
-	case .Navigation, .Paint, .First_Input: limit = 64
+	case .Navigation, .Paint, .First_Input: limit = TIMELINE_FEW_ENTRIES
 	}
 	if limit <= 0 { tmp := e; tl_entry_free(&tmp); b.next_seq += 1; return }
 	for len(b.entries) >= limit {
@@ -512,7 +523,7 @@ nav_entry :: proc(p: ^Page) -> Tl_Entry {
 		e.status, e.redirects = n.status, n.redirects
 		if n.reload { delete(e.nav_type); e.nav_type = strings.clone("reload") }
 		if n.back_forward { delete(e.nav_type); e.nav_type = strings.clone("back_forward") }
-		if !n.from_cache { e.transfer_size = n.bytes + 300 }
+		if !n.from_cache { e.transfer_size = n.bytes + NAV_HEADERS_ESTIMATE_BYTES }
 		e.encoded_size, e.decoded_size = n.bytes, n.bytes
 		e.content_type = strings.clone(n.mime)
 	}
@@ -559,7 +570,7 @@ event_timed :: proc(type: string) -> (known: bool, interaction: bool) {
 // Before a browser input event is dispatched: the start of its measure (0: it is not measured).
 @(private)
 timeline_event_begin :: proc(p: ^Page, ev: ^dom.Event) -> i64 {
-	if ev.engine_id != 0 || len(ev.type) > 12 || p.settings.timeline.event_entries == 0 { return 0 }
+	if ev.engine_id != 0 || len(ev.type) > EVENT_TIMED_TYPE_MAX_LEN || p.settings.timeline.event_entries == 0 { return 0 }
 	if known, _ := event_timed(ev.type); !known { return 0 }
 	return host.now_ns(p.loop)
 }
@@ -570,7 +581,7 @@ timeline_event_end :: proc(p: ^Page, ev: ^dom.Event, begin: i64) {
 	end := host.now_ns(p.loop)
 	processing := f64(end - begin) / 1e6
 	// the presentation of the next frame is not known: the duration is the processing, up to the next 8 ms
-	dur := max(8.0, 8.0 * f64(int((processing + 7.999) / 8)))
+	dur := max(EVENT_DURATION_STEP_MS, EVENT_DURATION_STEP_MS * f64(int((processing + EVENT_DURATION_ROUND_UP_MS) / EVENT_DURATION_STEP_MS)))
 	t := tl_of(p)
 	if t == nil { return }
 	_, interaction := event_timed(ev.type)

@@ -17,6 +17,9 @@ import "wb:host"
 import "wb:http"
 import "wb:url"
 
+// A worker blocked on a synchronous fetch looks at its messages and its stop flag at least this often.
+WORKER_SYNC_WAIT_POLL :: 50 * time.Millisecond
+
 Worker_createScript :: proc(c: ^Call, u: string, name: string, type: Api_WorkerType) -> (u64, Api_Error) {
 	p := c.page
 	if p.worker != nil && p.worker.sw.version != 0 { return 0, fail(c, .Not_Supported, "NotSupportedError: a service worker does not start workers") }
@@ -194,7 +197,7 @@ worker_fetch_wait :: proc(p: ^Page, h: base.Handle, limit_ms: i64) -> (res: Sync
 		sync.mutex_unlock(&l.mu)
 		for m in mine { worker_fetch_event(p, m); msg_free(m) }
 		if rec = base.pool_get(&p.fetches, h); rec == nil || rec.state >= 2 { return .Done }
-		sync.sema_wait_with_timeout(&l.loop.sema, 50 * time.Millisecond)
+		sync.sema_wait_with_timeout(&l.loop.sema, WORKER_SYNC_WAIT_POLL)
 	}
 }
 

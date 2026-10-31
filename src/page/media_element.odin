@@ -26,6 +26,14 @@ import "wb:http"
 import "wb:media"
 import "wb:url"
 
+// A position this close to the duration counts as the end of the media (seconds): the last frame's time is not exact.
+MEDIA_AT_END_TOLERANCE_S :: 0.05
+// `played`: a new span this close after the last one extends it (seconds), so ticks of the timer make one range.
+MEDIA_PLAYED_MERGE_GAP_S :: 0.5
+// The range playbackRate is clamped to.
+MEDIA_RATE_MIN :: 0.0625
+MEDIA_RATE_MAX :: 16
+
 NETWORK_EMPTY :: 0
 NETWORK_IDLE :: 1
 NETWORK_LOADING :: 2
@@ -806,7 +814,7 @@ media_update :: proc(el: ^Media_Element) {
 		have_picture := !el.is_video || el.vstore == nil || media.player_has_picture(el.player)
 		complete := el.download_done || (el.ms != nil && media_source_ended(el))
 		dur := el.duration
-		at_end := !math.is_nan(dur) && !math.is_inf(dur) && t >= dur - 0.05
+		at_end := !math.is_nan(dur) && !math.is_inf(dur) && t >= dur - MEDIA_AT_END_TOLERANCE_S
 		rs: i32 = HAVE_METADATA
 		if have_picture && (ahead > 0 || complete) { rs = HAVE_CURRENT_DATA }
 		if have_picture && (ahead * 1e9 >= f64(st.future_ahead) || at_end || (complete && ahead > 0)) && !stalled { rs = HAVE_FUTURE_DATA }
@@ -875,7 +883,7 @@ media_update :: proc(el: ^Media_Element) {
 media_note_played :: proc(el: ^Media_Element, from, to: f64) {
 	if to <= from { return }
 	n := len(el.played)
-	if n > 0 && from <= el.played[n - 1][1] + 0.5 && to >= el.played[n - 1][0] {
+	if n > 0 && from <= el.played[n - 1][1] + MEDIA_PLAYED_MERGE_GAP_S && to >= el.played[n - 1][0] {
 		el.played[n - 1][1] = max(el.played[n - 1][1], to)
 		el.played[n - 1][0] = min(el.played[n - 1][0], from)
 	} else {
@@ -1057,7 +1065,7 @@ HTMLMediaElement_set_defaultPlaybackRate :: proc(c: ^Call, e: Api_HTMLMediaEleme
 HTMLMediaElement_set_playbackRate :: proc(c: ^Call, e: Api_HTMLMediaElement, value: f64) {
 	el := e.data
 	if value == el.rate { return }
-	el.rate = clamp(value, 0.0625, 16)
+	el.rate = clamp(value, MEDIA_RATE_MIN, MEDIA_RATE_MAX)
 	if el.player != nil { media.player_set_rate(el.player, el.rate); el.seeking = true; media_arm_timer(el) }
 	media_fire(el, "ratechange")
 }

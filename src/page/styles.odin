@@ -11,6 +11,9 @@ import "wb:html"
 import "wb:style"
 import "wb:url"
 
+// How far an @charset rule's label is looked for after the opening quote.
+CSS_CHARSET_LABEL_MAX :: 64
+
 // Styling of a page: the style engine, the stylesheets the document asks for (<style>, <link rel=stylesheet>, @import) and
 // the computed styles for the current DOM. Stylesheets are fetched through the policy layer like every other resource
 // (CSP style-src, MIME checks, mixed content), so a blocked or mistyped stylesheet is an error in the console and nothing
@@ -364,7 +367,7 @@ held_by_reveal :: proc(p: ^Page, node: base.Handle) -> bool {
 decode_css :: proc(data: []byte, max_bytes: int) -> []byte {
 	label := ""
 	if len(data) > 10 && string(data[:9]) == `@charset "` {
-		rest := string(data[9:min(len(data), 9 + 64)])
+		rest := string(data[9:min(len(data), 9 + CSS_CHARSET_LABEL_MAX)])
 		if end := strings.index_byte(rest, '"'); end > 0 { label = rest[:end] }
 	}
 	d, ok := html.decode_document(data, label, "utf-8", prescan_meta = false)

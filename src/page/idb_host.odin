@@ -29,6 +29,14 @@ import "wb:base"
 import "wb:host"
 import "wb:idb"
 
+// The idle-unload sweep runs at half idb's idle_unload_ms, held between these.
+IDB_SWEEP_MIN_MS :: 1000
+IDB_SWEEP_MAX_MS :: 30_000
+// One delivery runs at most this many events, for at most this long (microseconds), before handing back to the loop:
+// a hand-over for each costs more than the handlers, and a long run would hold up the page.
+IDB_DELIVERY_MAX_EVENTS :: 24
+IDB_DELIVERY_MAX_US :: 1500
+
 Idb_Host :: struct {
 	m:     idb.Manager,
 	sm:    ^Storage_Manager,
@@ -135,7 +143,7 @@ idb_arm :: proc(h: ^Idb_Host) {
 @(private)
 idb_arm_timer :: proc(h: ^Idb_Host) {
 	if h.timer != base.NIL_HANDLE { return }
-	interval := clamp(h.m.settings.idle_unload_ms / 2, 1000, 30_000)
+	interval := clamp(h.m.settings.idle_unload_ms / 2, IDB_SWEEP_MIN_MS, IDB_SWEEP_MAX_MS)
 	h.timer = host.set_timer(h.sm.loop, interval, 0, proc(data: rawptr) {
 		h := (^Idb_Host)(data)
 		h.timer = base.NIL_HANDLE
@@ -229,7 +237,7 @@ idb_deliver :: proc(p: ^Page, _: rawptr) {
 	// closes a connection...), but the events that are already waiting go in the same task of the loop, a bounded number or
 	// for a bounded time: a hand-over to the loop for each costs more than the handlers.
 	start := time.tick_now()
-	for n := 0; n < 24; n += 1 {
+	for n := 0; n < IDB_DELIVERY_MAX_EVENTS; n += 1 {
 		if p.closed || p.web == nil || p.web.idb == nil || p.web.idb.client == nil { return }
 		var_c: ^idb.Client
 		ev: idb.Event
@@ -246,7 +254,7 @@ idb_deliver :: proc(p: ^Page, _: rawptr) {
 		ip.event = w.data[:]
 		if r := js_realm(p); r != nil { js_call(p, r.inst, "wj_idb_event", nil) }
 		ip.event = nil
-		if time.duration_microseconds(time.tick_since(start)) > 1500 { break }
+		if time.duration_microseconds(time.tick_since(start)) > IDB_DELIVERY_MAX_US { break }
 	}
 	if !p.closed && p.web != nil && p.web.idb != nil && p.web.idb.client != nil && idb_has_events(p.web.idb) { idb_post_delivery(p) }
 }

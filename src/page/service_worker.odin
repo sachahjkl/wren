@@ -43,6 +43,9 @@ import "wb:host"
 import "wb:http"
 import "wb:url"
 
+// updateViaCache "all": the HTTP cache may answer until the last update check is this old (a day, seconds; the spec's limit).
+SW_VIA_CACHE_MAX_AGE_S :: 86400
+
 Sw_State :: enum u8 { Parsed, Installing, Installed, Activating, Activated, Redundant }
 SW_STATE_NAMES := [Sw_State]string{.Parsed = "parsed", .Installing = "installing", .Installed = "installed", .Activating = "activating", .Activated = "activated", .Redundant = "redundant"}
 
@@ -605,7 +608,7 @@ sw_update :: proc(r: ^Sw_Registration, script: string, module: bool, waiter: May
 	r.module = module
 	// updateViaCache: "all" lets the HTTP cache answer (unless the last check is a day old), else it is bypassed
 	cache := fetch.Cache_Mode.No_Cache
-	if r.via_cache == "all" && !force_network && sw_now() - r.last_check < 86400 { cache = .Default }
+	if r.via_cache == "all" && !force_network && sw_now() - r.last_check < SW_VIA_CACHE_MAX_AGE_S { cache = .Default }
 	clear(&r.job_body)
 	for s in r.job_csp { delete(s) }
 	clear(&r.job_csp)

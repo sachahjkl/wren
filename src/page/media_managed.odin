@@ -19,6 +19,9 @@ import "core:strings"
 import "wb:dom"
 import "wb:media"
 
+// Two buffered-range boundaries this close (seconds) are the same one.
+MANAGED_RANGE_EPSILON_S :: 0.001
+
 ////////////////////////////////
 // ManagedMediaSource
 
@@ -112,5 +115,5 @@ range_in :: proc(list: [][2]f64, v: [2]f64) -> bool {
 @(private)
 range_close :: proc(a, b: f64) -> bool {
 	d := a - b
-	return d > -0.001 && d < 0.001
+	return d > -MANAGED_RANGE_EPSILON_S && d < MANAGED_RANGE_EPSILON_S
 }

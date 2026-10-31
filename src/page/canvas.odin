@@ -24,6 +24,9 @@ import "wb:css"
 import "wb:dom"
 import "wb:style"
 
+// The font size a canvas resolves relative sizes against when its element has no style: the default "10px sans-serif".
+CANVAS_DEFAULT_FONT_PX :: 10
+
 // Textures of canvases are keyed in the shell by their backing's id with this bit, apart from the image cache's ids.
 CANVAS_TEXTURE_BIT :: u64(1) << 62
 
@@ -387,7 +390,7 @@ cx :: proc(o: ^Canvas_Obj) -> ^canvas2d.Context {
 canvas_refresh_inherit :: proc(o: ^Canvas_Obj) {
 	b := o.backing
 	if b == nil { return }
-	inh := canvas2d.Inherited{font_size = 10, color = {0, 0, 0, 1}}
+	inh := canvas2d.Inherited{font_size = CANVAS_DEFAULT_FONT_PX, color = {0, 0, 0, 1}}
 	p := b.page
 	if b.node != base.NIL_HANDLE && p.styled != nil {
 		i := int(base.handle_index(b.node))
