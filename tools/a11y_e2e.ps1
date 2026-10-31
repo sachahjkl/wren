@@ -187,8 +187,10 @@ try {
 
     # the caret and the selection of a text field (the text pattern), and a selection made by the reader
     $null = Wren-Eval "var f = document.getElementById('field'); f.focus(); f.setSelectionRange(0, 5); 'ok'"
-    Start-Sleep -Milliseconds 300
-    $tx = Probe text --pid $wpid --type edit --name 'Field'
+    # (the page's tree is brought up to date ten times a second at most: a11y_page.odin)
+    $tx = ''; $sw = [Diagnostics.Stopwatch]::StartNew()
+    for ($i = 0; $i -lt 30 -and $tx -notmatch 'selection="Grace"'; $i++) { Start-Sleep -Milliseconds 100; $tx = Probe text --pid $wpid --type edit --name 'Field' }
+    "selection seen after $($sw.ElapsedMilliseconds) ms"
     Check 'the field''s text is read by characters' ($tx -match 'text="Grace Hopper"') $tx
     Check 'the field''s selection is read' ($tx -match 'selection="Grace"') $tx
     $null = Probe select-text --pid $wpid --type edit --name 'Field' --start 6 --end 12

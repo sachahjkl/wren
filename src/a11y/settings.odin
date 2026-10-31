@@ -10,6 +10,7 @@ Settings :: struct {
 	verify:      bool,   // every patch compared with a whole tree, a difference logged (slow: for debugging)
 	max_nodes:   int,    // nodes of one document's tree at most
 	frames:      bool,   // the documents of frames (iframes) grafted under their element
+	interval_ms: int,    // the trees are brought up to date this often at most
 }
 
 PREFS := [?]config.Def{
@@ -21,6 +22,8 @@ PREFS := [?]config.Def{
 		description = "Compare every node-by-node update of a page's accessibility tree with a whole tree and log a difference (slow; for debugging)."},
 	{name = "accessibility.page.max_nodes", kind = .Int, default = {i = 50_000}, bounded = true, min = 100, max = 10_000_000, unit = "nodes",
 		description = "Most nodes of one document's accessibility tree; what comes after is left out."},
+	{name = "accessibility.page.interval_ms", kind = .Int, default = {i = 100}, bounded = true, min = 0, max = 2000,
+		description = "Least time between two updates of a page's accessibility tree. A page that changes every frame costs less with a longer one; a request of a screen reader is always answered at once."},
 	{name = "accessibility.page.frames", kind = .Bool, default = {b = true},
 		description = "Show the documents of frames (iframes) to assistive technologies, under their frame element."},
 }
@@ -34,6 +37,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		verify = config.bool_of(p, "accessibility.page.verify"),
 		max_nodes = int(config.int_of(p, "accessibility.page.max_nodes")),
 		frames = config.bool_of(p, "accessibility.page.frames"),
+		interval_ms = int(config.int_of(p, "accessibility.page.interval_ms")),
 	}
 }
 

@@ -145,6 +145,7 @@ Marker :: struct {
 	emptied: map[Walk_Key]bool,   // children_removed per parent, per index
 	keyed:   map[[2]u64]bool,      // (element, key set) subtrees scanned by mark_keyed
 	flips:   map[Flip_Key]bool,    // has_flip answered in this pass
+	has_walked: map[Has_Walk_Key]int,   // has_invalidate: the closest hop each ancestor was reached at in this pass
 	exact:   bool,                 // the members of the exact anchors can be used
 }
 
@@ -361,37 +362,49 @@ has_invalidate :: proc(m: ^Marker, x: base.Handle, self: bool, feat := Has_Chang
 	feat := feat
 	// the masks are of the document's watch, which only the index of the document's own rules sets up (watch_sync)
 	if feat.kind == .Tree && (ix.watched != m.doc || ix.watched_gen != m.doc.journal.watch.gen) { feat.known = false }
-	test :: proc(m: ^Marker, ix: ^Inv_Index, a: base.Handle, feat: Has_Change, hop: int) {
-		for &ha in ix.has_anchors {
+	// a feature that changed on an element: only the anchors whose :has() tests it can be affected (a bare
+	// `:not(:has(.a))` is every element's candidate: without this every class change restyled the document). Decided once here,
+	// not for each ancestor and sibling: on a deep page that lookup was the hottest part of a restyle.
+	stack: [32]^Has_Anchor
+	concerned := len(ix.has_anchors) <= len(stack) ? stack[:] : make([]^Has_Anchor, len(ix.has_anchors), context.temp_allocator)
+	n := 0
+	// the farthest level any of them reaches: the walk up stops there
+	top := 0
+	for &ha in ix.has_anchors {
+		if !has_tests(ha.feat, feat) { continue }
+		concerned[n] = &ha
+		n += 1
+		if ha.hops < 0 { top = -1 } else if top >= 0 { top = max(top, ha.hops) }
+	}
+	if n == 0 { return }
+	concerned = concerned[:n]
+	test :: proc(m: ^Marker, anchors: []^Has_Anchor, a: base.Handle, hop: int) {
+		for hap in anchors {
+			ha := hap
 			if ha.hops >= 0 && hop > ha.hops { continue }   // (`:has(> .a)`: only the parent of the changed element)
-			// a feature that changed on an element: only the anchors whose :has() tests it can be affected (a bare
-			// `:not(:has(.a))` is every element's candidate: without this every class change restyled the document)
-			if !has_tests(ha.feat, feat) { continue }
 			if anchor_could_match(&m.mc, a, ha.compound) {
 				trace_why = "not exact, or no members"
-				if m.exact && ha.exact && ha.members != nil && !has_flip(m, &ha, a) { continue }
+				if m.exact && ha.exact && ha.members != nil && !has_flip(m, ha, a) { continue }
 				if trace_restyle() { trace_note = fmt.tprintf(":has() anchor why=%s m.exact=%v members=%v exact=%v chain=%v unkeyed=%v hops=%d classes=%s attrs=%s ids=%s types=%s", trace_why, m.exact, ha.members != nil, ha.exact, ha.chain, ha.feat.unkeyed, ha.hops, trace_keys(ha.feat.classes), trace_keys(ha.feat.attrs), trace_keys(ha.feat.ids), trace_keys(ha.feat.types)) }
 				apply(m, a, ha.reach)
 				trace_note = ""
 			}
 		}
 	}
-	any := false
-	for &ha in ix.has_anchors { if has_tests(ha.feat, feat) { any = true; break } }
-	if !any { return }
-	if self { test(m, ix, x, feat, 0) }
-	// the farthest level any anchor reaches: the walk up stops there
-	top := 0
-	for &ha in ix.has_anchors {
-		if ha.hops < 0 { top = -1; break }
-		top = max(top, ha.hops)
-	}
+	if self { test(m, concerned, x, 0) }
 	hop := 0
 	for cur := x; cur != base.NIL_HANDLE; cur = parent_element(&m.mc, cur) {
 		if top >= 0 && hop > top { break }
-		if cur != x { test(m, ix, cur, feat, hop) }
+		if cur != x {
+			// the elements inserted under one parent walk up the same ancestors: from one reached before at a hop no farther than this one,
+			// everything above was tested with at least as many anchors (test skips only by being too far)
+			key := Has_Walk_Key{ix, cur, feat}
+			if before, seen := m.has_walked[key]; seen && before <= hop { break }
+			m.has_walked[key] = hop
+			test(m, concerned, cur, hop)
+		}
 		if ix.has_sibling {
-			for ps := prev_element(&m.mc, cur); ps != base.NIL_HANDLE; ps = prev_element(&m.mc, ps) { test(m, ix, ps, feat, hop) }
+			for ps := prev_element(&m.mc, cur); ps != base.NIL_HANDLE; ps = prev_element(&m.mc, ps) { test(m, concerned, ps, hop) }
 		}
 		hop += 1
 	}
@@ -1173,6 +1186,7 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 	m.walked = make(map[Walk_Key]bool, 16, context.temp_allocator)
 	m.emptied = make(map[Walk_Key]bool, 4, context.temp_allocator)
 	m.flips = make(map[Flip_Key]bool, 16, context.temp_allocator)
+	m.has_walked = make(map[Has_Walk_Key]int, 16, context.temp_allocator)
 	match_ctx_init(&m.mc, doc, s.state, context.temp_allocator)
 	w := Walker{e = e, s = s, doc = doc, marks = &m.marks}
 	w.p = pass_make(e, s, doc, s.state)
@@ -1575,6 +1589,9 @@ container_changed :: proc(old, nc: ^Computed) -> bool {
 
 @(private = "file")
 Flip_Key :: struct { ha: rawptr, a: base.Handle }
+
+@(private = "file")
+Has_Walk_Key :: struct { ix: rawptr, at: base.Handle, change: Has_Change }
 
 // An attribute named `name` changed: could it change whether an element matches the argument of `ha`?
 @(private = "file")

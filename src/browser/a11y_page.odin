@@ -2,6 +2,7 @@ package browser
 
 import "core:fmt"
 import "core:strings"
+import "core:time"
 import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:ui"
@@ -36,12 +37,17 @@ Doc_Tree :: struct {
 }
 
 // A window's page trees (Window_Own.a11y).
+// A costly update (a whole tree of a page that changes too much to patch) waits this many times what it took: at most a fifth of the time.
+@(private = "file") PAGE_A11Y_COST_FACTOR :: 4
+
 Page_A11y :: struct {
 	tab_id:   u64,
 	top:      ^Doc_Tree,
 	frames:   [dynamic]^Doc_Tree,
 	grafted:  u64,       // the tab whose tree the chrome's build grafted (0: none this build)
 	round:    u64,
+	sent_at:  time.Tick, // when the trees were last brought up to date
+	cost:     time.Duration,   // what that took
 	// statistics (wren ctl stats)
 	builds, patches, sends, refused, verify_failed: int,
 	verify_diff: string,   // the last difference accessibility.page.verify found (owned)
@@ -127,6 +133,16 @@ page_a11y_frame :: proc(app: ^App) {
 		if r.tree == pa.top.tree { page_a11y_request(app, t, t.page, r); continue }
 		for d in pa.frames { if r.tree == d.tree && d.tab != nil { page_a11y_request(app, d.tab, d.page, r); break } }
 	}
+
+	// Ten updates a second are plenty for a reader, and any program that once asked UI Automation (a screenshot tool, PowerToys) keeps the
+	// tree alive: on a page that changes every frame the updates were up to a quarter of the CPU time. A costly update (a whole tree of a page
+	// that changes too much to patch) waits longer (PAGE_A11Y_COST_FACTOR). A request above goes through at once.
+	if pa.top.sent && len(ui.a11y_requests()) == 0 && time.tick_since(pa.sent_at) < max(time.Duration(set.interval_ms) * time.Millisecond, PAGE_A11Y_COST_FACTOR * pa.cost) {
+		request_frames(app, 1)   // (the page may stop changing: a later frame sends what is left)
+		return
+	}
+	pa.sent_at = time.tick_now()
+	defer pa.cost = time.tick_since(pa.sent_at)
 
 	// where the keyboard is: the frame documents down to the one that has it
 	chain := focus_chain(app, t.page)

@@ -10,6 +10,9 @@ import "wb:fetch"
 import "wb:host"
 import "wb:dom"
 
+// How long a terminated worker may take to end, thread included (generous: AddressSanitizer on a shared runner is slow).
+WORKER_STOP_DEADLINE_S :: 10
+
 ////////////////////////////////
 // Message queue between threads
 
@@ -222,8 +225,10 @@ terminate_stops_a_worker_busy_in_a_long_computation :: proc(t: ^testing.T) {
 	testing.expect_value(t, worker_terminate_object(p, w), dom.Error.None)
 	object_release(p, w)
 	start := time.tick_now()
-	for len(p.workers.hosts) > 0 && time.duration_seconds(time.tick_since(start)) < 10 { host.loop_wait(&e.loop, 1) }
+	for len(p.workers.hosts) > 0 && time.duration_seconds(time.tick_since(start)) < WORKER_STOP_DEADLINE_S { host.loop_wait(&e.loop, 1) }
 	testing.expect_value(t, len(p.workers.hosts), 0)
+	// (the count falls as the thread ends, a moment after its host went: longer under AddressSanitizer)
+	for workers_running() > 0 && time.duration_seconds(time.tick_since(start)) < WORKER_STOP_DEADLINE_S { time.sleep(time.Millisecond) }
 	testing.expect_value(t, workers_running(), 0)
 }
 
