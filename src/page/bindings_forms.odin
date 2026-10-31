@@ -35,6 +35,7 @@ Page_Forms :: struct {
 	embedder:  Forms_Embedder,
 	pending:   ^forms.Submission,   // the planned navigation (a newer submission replaces it)
 	pending_replace: bool,          // planned before the document completely loaded: it replaces the entry (HTML)
+	pending_announced: bool,        // its navigate event fired: it only waits for the embedder
 	timer:     base.Handle,
 	picker:    base.Handle,         // input waiting for its picker
 	picker_color: bool,
@@ -111,6 +112,7 @@ forms_plan_navigation :: proc(user: rawptr, s: ^forms.Submission) {
 	forms.submission_destroy(pf.pending)
 	pf.pending = s
 	pf.pending_replace = p.scripts != nil && p.scripts.timing.load_end_ms == 0
+	pf.pending_announced = false
 	forms_navigation_soon(p)
 }
 
@@ -125,13 +127,18 @@ forms_navigation_soon :: proc(p: ^Page) {
 		p := (^Page)(data)
 		pf := p.formctl
 		pf.timer = base.NIL_HANDLE
-		if pf.embedder.navigate == nil { return }
 		s := pf.pending
-		pf.pending = nil
 		if s == nil { return }
-		if !navigation_form(p, s, pf.pending_replace) { forms.submission_destroy(s); return }   // the navigate event took it (navigation.odin)
-		if p.closed || p.formctl == nil { forms.submission_destroy(s); return }
-		pf = p.formctl
+		if !pf.pending_announced {
+			pf.pending = nil
+			if !navigation_form(p, s, pf.pending_replace) { forms.submission_destroy(s); return }   // the navigate event took it (navigation.odin)
+			if p.closed || p.formctl == nil { forms.submission_destroy(s); return }
+			pf = p.formctl
+			if pf.pending != nil { forms.submission_destroy(s); return }   // the event's listener submitted again: that one goes
+			pf.pending, pf.pending_announced = s, true
+		}
+		if pf.embedder.navigate == nil { return }
+		pf.pending, pf.pending_announced = nil, false
 		pf.embedder.navigate(pf.embedder.user, p, s)
 	}, p, p.scope)
 }
