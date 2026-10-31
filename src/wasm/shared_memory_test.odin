@@ -10,6 +10,8 @@ import "core:testing"
 import "core:thread"
 import "core:time"
 
+@(private = "file") WAITER_HEAD_START :: 50 * time.Millisecond   // for the waiting side to be blocked before the other stores
+
 @(private = "file")
 SHARED_WAT :: `(module
   (import "e" "m" (memory 1 1 shared))
@@ -88,7 +90,7 @@ two_stores_share_a_memory_and_wait_for_each_other :: proc(t: ^testing.T) {
 	storer := Side{engine = engine, module = module, memory = mem, export = "store", arg = 42}
 	th := thread.create_and_start_with_poly_data(&waiter, run_side)
 	sync.sema_wait(&ready)
-	time.sleep(50 * time.Millisecond)
+	time.sleep(WAITER_HEAD_START)
 	run_side(&storer)
 	thread.join(th)
 	thread.destroy(th)
