@@ -10,7 +10,7 @@ $Version = '3.85.2'
 $Integrity = 'sha512-rpl9CwsQi9Ft+KmkC6YvgaTbWtusqUzIGiI3qHKIQ8skjph+W47OlSdaUGERwzzVGhtwMCOsQ+tMm9x9LGw8jg=='
 $Files = @(
     'dom', 'html', 'webidl', 'console', 'hr-time', 'uievents', 'url', 'encoding', 'fetch', 'xhr', 'FileAPI', 'streams',
-    'cssom', 'cssom-view', 'css-conditional', 'css-font-loading', 'css-animations', 'css-animations-2', 'css-transitions', 'css-transitions-2', 'web-animations', 'web-animations-2',
+    'cssom', 'cssom-view', 'css-cascade', 'css-conditional', 'css-font-loading', 'css-animations', 'css-animations-2', 'css-transitions', 'css-transitions-2', 'web-animations', 'web-animations-2',
     'geometry', 'selection-api', 'pointerevents', 'touch-events', 'input-events', 'clipboard-apis', 'fullscreen',
     'user-timing', 'performance-timeline', 'navigation-timing', 'resource-timing', 'requestidlecallback',
     'intersection-observer', 'resize-observer', 'websockets', 'webcrypto', 'permissions', 'page-lifecycle',

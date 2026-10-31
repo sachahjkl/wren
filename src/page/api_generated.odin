@@ -9870,6 +9870,32 @@ _t_forms_HTMLDialogElement_returnValue :: proc "c" (env: rawptr, caller: wasm.Ca
 	return nil
 }
 
+// HTMLDialogElement_set_returnValue :: proc(c: ^Call, dialog: Api_Element, value: string)
+@(private = "file")
+_t_forms_HTMLDialogElement_set_returnValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "forms.HTMLDialogElement_set_returnValue", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "forms.HTMLDialogElement_set_returnValue: argument value is not valid UTF-8") }
+		return wasm.trap_new("forms.HTMLDialogElement_set_returnValue: argument value is not valid UTF-8")
+	}
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "forms.HTMLDialogElement_set_returnValue: argument dialog is not a live Element") }
+		return wasm.trap_new("forms.HTMLDialogElement_set_returnValue: argument dialog is not a live Element")
+	}
+	HTMLDialogElement_set_returnValue(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
 // FormData_create :: proc(c: ^Call, form: Api_Element, submitter: Api_Element) -> (u64, Api_Error)
 @(private = "file")
 _t_forms_FormData_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -29380,6 +29406,222 @@ _t_webassembly_WebAssembly_Memory_write :: proc "c" (env: rawptr, caller: wasm.C
 	return nil
 }
 
+// WebAssembly_Memory_createShared :: proc(c: ^Call, initial: i64, maximum: i64, bytes: i64) -> i32
+@(private = "file")
+_t_webassembly_WebAssembly_Memory_createShared :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := a[0].i64
+	_p1 := a[1].i64
+	_p2 := a[2].i64
+	_r := WebAssembly_Memory_createShared(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// WebAssembly_Memory_release :: proc(c: ^Call, memory: i32)
+@(private = "file")
+_t_webassembly_WebAssembly_Memory_release :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := a[0].i32
+	WebAssembly_Memory_release(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// WebAssembly_Memory_byteLength :: proc(c: ^Call, memory: i32) -> i64
+@(private = "file")
+_t_webassembly_WebAssembly_Memory_byteLength :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := a[0].i32
+	_r := WebAssembly_Memory_byteLength(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = _r
+	return nil
+}
+
+// WebAssembly_Memory_growBytes :: proc(c: ^Call, memory: i32, bytes: i64) -> bool
+@(private = "file")
+_t_webassembly_WebAssembly_Memory_growBytes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := a[0].i32
+	_p1 := a[1].i64
+	_r := WebAssembly_Memory_growBytes(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// WebAssembly_Memory_atomic :: proc(c: ^Call, memory: i32, op: i32, offset: i64, size: i32, first: i64, second: i64) -> i64
+@(private = "file")
+_t_webassembly_WebAssembly_Memory_atomic :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := a[0].i32
+	_p1 := a[1].i32
+	_p2 := a[2].i64
+	_p3 := a[3].i32
+	_p4 := a[4].i64
+	_p5 := a[5].i64
+	_r := WebAssembly_Memory_atomic(&c, _p0, _p1, _p2, _p3, _p4, _p5)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = _r
+	return nil
+}
+
+// WebAssembly_Memory_wait :: proc(c: ^Call, memory: i32, offset: i64, size: i32, expected: i64, timeout: f64) -> i32
+@(private = "file")
+_t_webassembly_WebAssembly_Memory_wait :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := a[0].i32
+	_p1 := a[1].i64
+	_p2 := a[2].i32
+	_p3 := a[3].i64
+	_p4 := a[4].f64
+	_r := WebAssembly_Memory_wait(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// WebAssembly_Memory_notify :: proc(c: ^Call, memory: i32, offset: i64, count: u32) -> i32
+@(private = "file")
+_t_webassembly_WebAssembly_Memory_notify :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := a[0].i32
+	_p1 := a[1].i64
+	_p2 := u32(a[2].i32)
+	_r := WebAssembly_Memory_notify(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// WebAssembly_Memory_share :: proc(c: ^Call, memory: i32) -> i64
+@(private = "file")
+_t_webassembly_WebAssembly_Memory_share :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := a[0].i32
+	_r := WebAssembly_Memory_share(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = _r
+	return nil
+}
+
+// WebAssembly_Memory_adopt :: proc(c: ^Call, token: i64) -> i32
+@(private = "file")
+_t_webassembly_WebAssembly_Memory_adopt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := a[0].i64
+	_r := WebAssembly_Memory_adopt(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// WebAssembly_Module_share :: proc(c: ^Call, module: Api_WebAssemblyModule) -> i64
+@(private = "file")
+_t_webassembly_WebAssembly_Module_share :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_WebAssemblyModule{handle = u64(a[0].i64)}
+	_p0.data = lookup_WebAssemblyModule(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webassembly.WebAssembly_Module_share: argument module is not a live WebAssemblyModule") }
+		return wasm.trap_new("webassembly.WebAssembly_Module_share: argument module is not a live WebAssemblyModule")
+	}
+	_r := WebAssembly_Module_share(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = _r
+	return nil
+}
+
+// WebAssembly_Module_adopt :: proc(c: ^Call, token: i64) -> (u64, Api_Error)
+@(private = "file")
+_t_webassembly_WebAssembly_Module_adopt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Module_adopt", "result pointer") }
+	_p0 := a[0].i64
+	_r, _err := WebAssembly_Module_adopt(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// WebAssembly_crossOriginIsolated :: proc(c: ^Call) -> bool
+@(private = "file")
+_t_webassembly_WebAssembly_crossOriginIsolated :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := WebAssembly_crossOriginIsolated(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// WebAssembly_canBlock :: proc(c: ^Call) -> bool
+@(private = "file")
+_t_webassembly_WebAssembly_canBlock :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := WebAssembly_canBlock(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
 // WebAssembly_Table_create :: proc(c: ^Call, element: string, initial: i64, maximum: i64, init: i64) -> i32
 @(private = "file")
 _t_webassembly_WebAssembly_Table_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -33018,6 +33260,7 @@ api_imports := [?]wasm.Import{
 	{module = "forms", name = "HTMLElement_click", fn = _t_forms_HTMLElement_click, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "forms", name = "Document_activeElement", fn = _t_forms_Document_activeElement, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
 	{module = "forms", name = "HTMLDialogElement_returnValue", fn = _t_forms_HTMLDialogElement_returnValue, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "forms", name = "HTMLDialogElement_set_returnValue", fn = _t_forms_HTMLDialogElement_set_returnValue, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "forms", name = "FormData_create", fn = _t_forms_FormData_create, realms = 1, params = []wasm.Val_Kind{.I64, .I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "forms", name = "FormData_append", fn = _t_forms_FormData_append, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "forms", name = "FormData_appendBlob", fn = _t_forms_FormData_appendBlob, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
@@ -33857,6 +34100,19 @@ api_imports := [?]wasm.Import{
 	{module = "webassembly", name = "WebAssembly_Memory_grow", fn = _t_webassembly_WebAssembly_Memory_grow, realms = 3, params = []wasm.Val_Kind{.I32, .I64}, results = []wasm.Val_Kind{.I64}},
 	{module = "webassembly", name = "WebAssembly_Memory_read", fn = _t_webassembly_WebAssembly_Memory_read, realms = 3, params = []wasm.Val_Kind{.I32, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "webassembly", name = "WebAssembly_Memory_write", fn = _t_webassembly_WebAssembly_Memory_write, realms = 3, params = []wasm.Val_Kind{.I32, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webassembly", name = "WebAssembly_Memory_createShared", fn = _t_webassembly_WebAssembly_Memory_createShared, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webassembly", name = "WebAssembly_Memory_release", fn = _t_webassembly_WebAssembly_Memory_release, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{}},
+	{module = "webassembly", name = "WebAssembly_Memory_byteLength", fn = _t_webassembly_WebAssembly_Memory_byteLength, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{.I64}},
+	{module = "webassembly", name = "WebAssembly_Memory_growBytes", fn = _t_webassembly_WebAssembly_Memory_growBytes, realms = 3, params = []wasm.Val_Kind{.I32, .I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webassembly", name = "WebAssembly_Memory_atomic", fn = _t_webassembly_WebAssembly_Memory_atomic, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I64, .I32, .I64, .I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "webassembly", name = "WebAssembly_Memory_wait", fn = _t_webassembly_WebAssembly_Memory_wait, realms = 3, params = []wasm.Val_Kind{.I32, .I64, .I32, .I64, .F64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webassembly", name = "WebAssembly_Memory_notify", fn = _t_webassembly_WebAssembly_Memory_notify, realms = 3, params = []wasm.Val_Kind{.I32, .I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "webassembly", name = "WebAssembly_Memory_share", fn = _t_webassembly_WebAssembly_Memory_share, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{.I64}},
+	{module = "webassembly", name = "WebAssembly_Memory_adopt", fn = _t_webassembly_WebAssembly_Memory_adopt, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webassembly", name = "WebAssembly_Module_share", fn = _t_webassembly_WebAssembly_Module_share, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "webassembly", name = "WebAssembly_Module_adopt", fn = _t_webassembly_WebAssembly_Module_adopt, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webassembly", name = "WebAssembly_crossOriginIsolated", fn = _t_webassembly_WebAssembly_crossOriginIsolated, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
+	{module = "webassembly", name = "WebAssembly_canBlock", fn = _t_webassembly_WebAssembly_canBlock, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "webassembly", name = "WebAssembly_Table_create", fn = _t_webassembly_WebAssembly_Table_create, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I64, .I64, .I64}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "webassembly", name = "WebAssembly_Table_element", fn = _t_webassembly_WebAssembly_Table_element, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "webassembly", name = "WebAssembly_Table_length", fn = _t_webassembly_WebAssembly_Table_length, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{.I64}},

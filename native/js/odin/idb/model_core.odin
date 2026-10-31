@@ -334,13 +334,13 @@ wr_u8array :: proc "contextless" (ctx: ^wj.Context, w: ^Wr) -> wj.JSValue {
 	if w.n > 0 { wj.memcpy(copy_p, w.p, uint(w.n)) }
 	return wj.wj_uint8array_take(ctx, copy_p, uint(w.n))
 }
-// a JS string's bytes (JS_ToCStringLen: WTF-8), length-prefixed
+// a JS string's bytes (WTF-8), length-prefixed
 wr_jsstr :: proc "contextless" (ctx: ^wj.Context, w: ^Wr, v: wj.JSValue) -> bool {
-	n: uint
-	s := wj.to_cstring_len(ctx, &n, v)
-	if s == nil { wr_bytes(w, nil); return false }
-	wr_bytes(w, ([^]u8)(rawptr(s))[:n])
-	wj.free_cstring(ctx, s)
+	context = wj.heap_context()
+	bytes, ok := wj.wtf8_of(ctx, v)
+	if !ok { wr_bytes(w, nil); return false }
+	wr_bytes(w, bytes)
+	delete(bytes, wj.libc_allocator())
 	return true
 }
 
@@ -491,14 +491,14 @@ unpack_path :: proc "contextless" (ctx: ^wj.Context, r: ^Rd) -> wj.JSValue {
 	if tag == 0 { return wj.NULL }
 	if tag == 1 {
 		p := rd_bytes(r)
-		return r.bad ? wj.NULL : wj.new_string_len(ctx, p)
+		return r.bad ? wj.NULL : wj.string_of_wtf8(ctx, p)
 	}
 	n := rd_uv(r)
 	arr := wj.JS_NewArray(ctx)
 	for i: u64 = 0; i < n && !r.bad; i += 1 {
 		s := rd_bytes(r)
 		if r.bad { break }
-		wj.JS_SetPropertyUint32(ctx, arr, u32(i), wj.new_string_len(ctx, s))
+		wj.JS_SetPropertyUint32(ctx, arr, u32(i), wj.string_of_wtf8(ctx, s))
 	}
 	wj.web_freeze(ctx, arr)
 	return arr

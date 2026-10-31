@@ -590,6 +590,7 @@ frame_fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		ro_h := http.get_all(r.headers, "content-security-policy-report-only")
 		rp, _ := http.get_header(r.headers, "referrer-policy")
 		apply_response_headers(c, csp_h, ro_h, rp)
+		apply_isolation_headers(c, r.headers, n.parent)
 		frame_apply_permissions_header(c, http.get_all(r.headers, "permissions-policy"))
 	case .Data:
 	case .Done:
@@ -617,6 +618,12 @@ frame_embedding_allowed :: proc(n: ^Navigable, final: url.URL, headers: http.Hea
 	p := n.parent
 	s := &p.settings.frames
 	self := url.origin_of(final, context.temp_allocator)
+	// (COEP: a frame's document too must agree to be embedded: its own policy, and what the resource policy asks of a navigation)
+	if p.env.embedder_policy == .Require_Corp {
+		coep, _ := http.get_header(headers, "cross-origin-embedder-policy")
+		if parse_embedder_policy(coep) == .Unsafe_None { return "it has no Cross-Origin-Embedder-Policy, which its parent requires", false }
+		if refused := fetch.resource_policy_refuses(p.env.origin, final, p.env.embedder_policy, headers); refused != "" { return refused, false }
+	}
 	ancestors := make([dynamic]url.Origin, context.temp_allocator)
 	for cur := p; cur != nil; {
 		append(&ancestors, cur.env.origin)

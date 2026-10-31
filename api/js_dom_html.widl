@@ -60,7 +60,7 @@ partial module dom {
 
   /// dialog.show()
   void HTMLDialogElement_show(Element dialog) raises;
-  /// dialog.showModal(): Invalid_State when it is not connected (no top layer: the dialog stays where it is).
+  /// dialog.showModal(): Invalid_State when it is open without being modal, not connected, or a showing popover.
   void HTMLDialogElement_showModal(Element dialog) raises;
   /// dialog.close(result)
   void HTMLDialogElement_close(Element dialog, optional string result);

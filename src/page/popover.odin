@@ -26,6 +26,7 @@ Popover_State :: struct {
 	invokers:   map[base.Handle]base.Handle,    // the button (or element given as source) that showed each
 	focus_back: map[base.Handle]base.Handle,    // what had the focus before each was shown
 	toggles:    [dynamic]Popover_Toggle,        // queued toggle events
+	modals:     [dynamic]base.Handle,           // the dialogs shown by showModal(), bottom to top (dialog_modal.odin)
 	timer:      base.Handle,
 	busy:       int,                            // nesting of show / hide (listeners may call them again)
 }
@@ -40,6 +41,7 @@ popover_state_destroy :: proc(p: ^Page, s: ^Popover_State) {
 	delete(s.invokers)
 	delete(s.focus_back)
 	delete(s.toggles)
+	delete(s.modals)
 }
 
 @(private)
@@ -88,7 +90,15 @@ popover_restyle :: proc(p: ^Page) {
 	if p.engine == nil { return }
 	p.engine.restyle_needed = true
 	// the showing popovers are the top layer: their ancestors no longer hold them inside the page
-	if s := popover_state(p); s != nil { style.engine_set_top_layer(p.engine, s.showing[:]) } else { style.engine_set_top_layer(p.engine, nil) }
+	s := popover_state(p)
+	if s == nil {
+		style.engine_set_top_layer(p.engine, nil)
+		return
+	}
+	top := make([dynamic]base.Handle, 0, len(s.showing) + len(s.modals), context.temp_allocator)
+	append(&top, ..s.showing[:])
+	append(&top, ..s.modals[:])
+	style.engine_set_top_layer(p.engine, top[:])
 }
 
 // The auto (and hint) popovers showing, bottom to top.

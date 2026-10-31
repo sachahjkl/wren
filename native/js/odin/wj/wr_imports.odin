@@ -1655,7 +1655,7 @@ foreign _wr_wj_dom {
 	@(link_name = "HTMLInputElement_list") wr_HTMLInputElement_list :: proc(input: u64) -> u64 ---
 	// dialog.show()
 	@(link_name = "HTMLDialogElement_show") wr_HTMLDialogElement_show :: proc(dialog: u64) -> i32 ---
-	// dialog.showModal(): Invalid_State when it is not connected (no top layer: the dialog stays where it is).
+	// dialog.showModal(): Invalid_State when it is open without being modal, not connected, or a showing popover.
 	@(link_name = "HTMLDialogElement_showModal") wr_HTMLDialogElement_showModal :: proc(dialog: u64) -> i32 ---
 	// dialog.close(result)
 	@(link_name = "HTMLDialogElement_close") wr_HTMLDialogElement_close :: proc(dialog: u64, result: [^]u8, result_len: u32) ---
@@ -2451,6 +2451,7 @@ foreign _wr_wj_forms {
 	// document.activeElement (the body when nothing has the focus).
 	@(link_name = "Document_activeElement") wr_Document_activeElement :: proc() -> u64 ---
 	@(link_name = "HTMLDialogElement_returnValue") wr_HTMLDialogElement_returnValue :: proc(dialog: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "HTMLDialogElement_set_returnValue") wr_HTMLDialogElement_set_returnValue :: proc(dialog: u64, value: [^]u8, value_len: u32) ---
 	// new FormData(form, submitter): both optional. Invalid_Handle when form is not a form or submitter not one of its
 	// submit buttons, Invalid_State while the form is constructing its entry list.
 	@(link_name = "FormData_create") wr_FormData_create :: proc(form: u64, submitter: u64, _ret: ^u64) -> i32 ---
@@ -3561,6 +3562,32 @@ foreign _wr_wj_webassembly {
 	@(link_name = "WebAssembly_Memory_read") wr_WebAssembly_Memory_read :: proc(memory: i32, offset: i64, destination: [^]u8, destination_cap: u32) -> i32 ---
 	// `source` into the memory at `offset`: how many were copied. What memory.buffer writes.
 	@(link_name = "WebAssembly_Memory_write") wr_WebAssembly_Memory_write :: proc(memory: i32, offset: i64, source: [^]u8, source_len: u32) -> i32 ---
+	// A memory that other agents can have: a number. Its size in bytes is ytes (-1: all of its pages).
+	@(link_name = "WebAssembly_Memory_createShared") wr_WebAssembly_Memory_createShared :: proc(initial: i64, maximum: i64, bytes: i64) -> i32 ---
+	// A SharedArrayBuffer has gone: one use of the memory less.
+	@(link_name = "WebAssembly_Memory_release") wr_WebAssembly_Memory_release :: proc(memory: i32) ---
+	// What a SharedArrayBuffer of the memory says its length is.
+	@(link_name = "WebAssembly_Memory_byteLength") wr_WebAssembly_Memory_byteLength :: proc(memory: i32) -> i64 ---
+	// SharedArrayBuffer.grow.
+	@(link_name = "WebAssembly_Memory_growBytes") wr_WebAssembly_Memory_growBytes :: proc(memory: i32, bytes: i64) -> i32 ---
+	// An Atomics operation on a shared memory (op: add and compareExchange exchange load or store sub xor): the value it held.
+	@(link_name = "WebAssembly_Memory_atomic") wr_WebAssembly_Memory_atomic :: proc(memory: i32, op: i32, offset: i64, size: i32, first: i64, second: i64) -> i64 ---
+	// Atomics.wait on a shared memory: 0 woken, 1 not equal, 2 timed out. 	imeout in milliseconds, < 0: none.
+	@(link_name = "WebAssembly_Memory_wait") wr_WebAssembly_Memory_wait :: proc(memory: i32, offset: i64, size: i32, expected: i64, timeout: f64) -> i32 ---
+	// Atomics.notify on a shared memory: how many it woke.
+	@(link_name = "WebAssembly_Memory_notify") wr_WebAssembly_Memory_notify :: proc(memory: i32, offset: i64, count: u32) -> i32 ---
+	// A token that gives another agent of the cluster this shared memory; 0 when this realm may not (not cross-origin isolated).
+	@(link_name = "WebAssembly_Memory_share") wr_WebAssembly_Memory_share :: proc(memory: i32) -> i64 ---
+	// The shared memory of a token, a number: -1 when the token is not of this agent cluster.
+	@(link_name = "WebAssembly_Memory_adopt") wr_WebAssembly_Memory_adopt :: proc(token: i64) -> i32 ---
+	// A token that gives another agent of the cluster this module.
+	@(link_name = "WebAssembly_Module_share") wr_WebAssembly_Module_share :: proc(module: u64) -> i64 ---
+	// The module of a token: Data_Clone when the token is not of this agent cluster.
+	@(link_name = "WebAssembly_Module_adopt") wr_WebAssembly_Module_adopt :: proc(token: i64, _ret: ^u64) -> i32 ---
+	// HTML's cross-origin isolated capability of this realm.
+	@(link_name = "WebAssembly_crossOriginIsolated") wr_WebAssembly_crossOriginIsolated :: proc() -> i32 ---
+	// Whether this realm's agent may block ([[CanBlock]]): a dedicated or shared worker.
+	@(link_name = "WebAssembly_canBlock") wr_WebAssembly_canBlock :: proc() -> i32 ---
 	// new WebAssembly.Table: a number. `element` "r" (funcref) or "e" (externref), `maximum` -1 for none.
 	@(link_name = "WebAssembly_Table_create") wr_WebAssembly_Table_create :: proc(element: [^]u8, element_len: u32, initial: i64, maximum: i64, init: i64) -> i32 ---
 	// "r", "e", or "" for no such table.

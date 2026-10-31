@@ -11,6 +11,7 @@ package page
 // Events: "open", "error", "message" and any name the stream gives with `event:`. MessageEvent.data is Event_data,
 // lastEventId is Event_text, origin is MessageEvent_origin (the origin of the response URL).
 
+import "core:fmt"
 import "core:math"
 import "core:strings"
 import "wb:base"
@@ -70,6 +71,7 @@ Event_Source :: struct {
 	with_credentials: bool,
 	state:            i32,
 	task:             base.Handle,
+	relayed:          base.Handle,   // in a worker: its request (a Fetch of the realm), through the interface thread
 	timer:            base.Handle,
 	parser:           fetch.Sse_Parser,
 	origin:           string,   // owned: serialized origin of the response URL
@@ -116,6 +118,13 @@ eventsource_close :: proc(es: ^Event_Source) {
 @(private)
 eventsource_stop :: proc(es: ^Event_Source) {
 	p := es.page
+	if es.relayed != base.NIL_HANDLE {
+		if rf := base.pool_get(&p.fetches, es.relayed); rf != nil {
+			worker_fetch_cancel(p, rf)
+			base.pool_remove(&p.fetches, es.relayed)
+		}
+		es.relayed = base.NIL_HANDLE
+	}
 	if es.task != base.NIL_HANDLE { fetch.cancel(p.loader, es.task); es.task = base.NIL_HANDLE }
 	if es.timer != base.NIL_HANDLE { host.clear_timer(p.loop, es.timer); es.timer = base.NIL_HANDLE }
 }
@@ -135,6 +144,16 @@ eventsource_connect :: proc(es: ^Event_Source) {
 		append(&headers, fetch.Header_Pair{"Cache-Control", "no-store"})
 	}
 	if es.parser.last_event_id != "" { append(&headers, fetch.Header_Pair{"Last-Event-ID", es.parser.last_event_id}) }
+	if p.worker != nil {
+		// (the request goes through the interface thread, where the loader lives: worker_fetch_event comes back here)
+		lines := strings.builder_make(context.temp_allocator)
+		for h in headers { fmt.sbprintf(&lines, "%s: %s\n", h.name, h.value) }
+		h, f := base.pool_insert(&p.fetches, Fetch{page = p, instance = es.owner, event_source = es})
+		f.self = h
+		es.relayed = h
+		worker_fetch_start(p, f, es.href, "GET", strings.to_string(lines), nil, es.with_credentials ? 2 << 2 : 0)
+		return
+	}
 	es.task = fetch.start(p.loader, {
 		request = {
 			url = es.href, headers = headers[:], mode = .Cors, credentials = es.with_credentials ? .Include : .Same_Origin,
@@ -187,20 +206,51 @@ eventsource_timer :: proc(data: rawptr) {
 @(private)
 eventsource_fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	es := (^Event_Source)(user)
+	u := Fetch_Update{kind = ev.kind, data = ev.data, error = ev.error, detail = ev.detail}
+	event_stream := false
+	if ev.kind == .Response {
+		r := ev.response
+		u.status, u.url = r.status, r.url
+		event_stream = r.has_mime && http.mime_essence(r.mime) == "text/event-stream"
+	}
+	eventsource_update(es, u, event_stream)
+}
+
+// The same from the interface thread, for a worker's (the MIME type is in the headers).
+eventsource_relay_event :: proc(f: ^Fetch, u: Fetch_Update) {
+	es := f.event_source
+	event_stream := false
+	if u.kind == .Response {
+		pairs := make([dynamic]fetch.Header_Pair, context.temp_allocator)
+		parse_header_lines(u.headers, &pairs)
+		for h in pairs {
+			if !strings.equal_fold(h.name, "content-type") { continue }
+			essence := strings.trim_space(strings.split(h.value, ";", context.temp_allocator)[0])
+			event_stream = strings.equal_fold(essence, "text/event-stream")
+		}
+	}
+	if u.kind == .Done || u.kind == .Failed {
+		base.pool_remove(&f.page.fetches, es.relayed)
+		es.relayed = base.NIL_HANDLE
+	}
+	eventsource_update(es, u, event_stream)
+}
+
+@(private)
+eventsource_update :: proc(es: ^Event_Source, ev: Fetch_Update, event_stream: bool) {
 	p, self := es.page, es.self
 	switch ev.kind {
 	case .Response:
-		r := ev.response
-		if r.status != 200 {
-			eventsource_fail(es, strings.concatenate({"the response status is ", status_text(r.status), ", not 200"}, context.temp_allocator))
+		if ev.status != 200 {
+			eventsource_fail(es, strings.concatenate({"the response status is ", status_text(ev.status), ", not 200"}, context.temp_allocator))
 			return
 		}
-		if !r.has_mime || http.mime_essence(r.mime) != "text/event-stream" {
+		if !event_stream {
 			eventsource_fail(es, "the response is not text/event-stream")
 			return
 		}
 		delete(es.origin)
-		if ru, ok := url.parse_absolute(r.url, context.temp_allocator); ok {
+		if ru, ok := url.parse_absolute(ev.url, context.temp_allocator); ok {
 			es.origin = url.origin_serialize(url.origin_of(ru, context.temp_allocator))
 		} else {
 			es.origin = strings.clone("null")

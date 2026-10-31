@@ -19,6 +19,7 @@ import "wb:dom"
 import "wb:fetch"
 import "wb:host"
 import "wb:html"
+import "wb:http"
 import "wb:style"
 import "wb:url"
 import "wb:wasm"
@@ -45,6 +46,7 @@ Fetch :: struct {
 	error:      string,
 	error_kind: fetch.Error_Kind,
 	ext:        ^Fetch_Ext,     // promise / stream / abort signal state (bindings_fetch.odin), nil for plain callback fetches
+	event_source: ^Event_Source,   // a worker realm's EventSource (eventsource.odin)
 	module:     ^Module_Entry,  // a worker realm fetching a module of its graph (js_load_modules.odin)
 }
 
@@ -229,6 +231,46 @@ apply_response_headers :: proc(p: ^Page, csp_values, csp_report_only_values: []s
 	if referrer_policy_value != "" {
 		if rp := fetch.parse_referrer_policy(referrer_policy_value); rp != .Default { p.env.referrer_policy = rp }
 	}
+}
+
+// Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy of the document's own response: HTML's cross-origin isolated
+// capability. A frame (`parent`) has it from its parent, when of the same origin; it has no opener policy of its own.
+// What makes a SharedArrayBuffer safe here is that a realm cannot read another's memory at all (each is a Wasm instance): the
+// embedder policy still holds, since what such a page may read is what the web expects of it.
+apply_isolation_headers :: proc(p: ^Page, headers: http.Headers, parent: ^Page = nil) {
+	if !p.env.secure_context { return }
+	coep, _ := http.get_header(headers, "cross-origin-embedder-policy")
+	p.env.embedder_policy = parse_embedder_policy(coep)
+	coop, _ := http.get_header(headers, "cross-origin-opener-policy")
+	if parent != nil {
+		same := url.same_origin(p.env.origin, parent.env.origin)
+		p.env.cross_origin_isolated = parent.env.cross_origin_isolated && same && p.env.embedder_policy != .Unsafe_None
+		if same {
+			p.env.agent_cluster = page_cluster(parent)
+			wasm.user_cluster_retain(p.env.agent_cluster)
+			base.on_close(p.scope, proc(data: rawptr) { wasm.user_cluster_release(u64(uintptr(data))) }, rawptr(uintptr(p.env.agent_cluster)))
+		}
+		return
+	}
+	value := strings.trim_space(strings.split(coop, ";", context.temp_allocator)[0])
+	p.env.cross_origin_isolated = value == "same-origin" && p.env.embedder_policy != .Unsafe_None
+}
+
+parse_embedder_policy :: proc(value: string) -> fetch.Embedder_Policy {
+	switch strings.trim_space(strings.split(value, ";", context.temp_allocator)[0]) {
+	case "require-corp": return .Require_Corp
+	case "credentialless": return .Credentialless
+	}
+	return .Unsafe_None
+}
+
+// The page's agent cluster, made the first time it matters.
+page_cluster :: proc(p: ^Page) -> u64 {
+	if p.env.agent_cluster == 0 {
+		p.env.agent_cluster = wasm.user_cluster_new()
+		base.on_close(p.scope, proc(data: rawptr) { wasm.user_cluster_release(u64(uintptr(data))) }, rawptr(uintptr(p.env.agent_cluster)))
+	}
+	return p.env.agent_cluster
 }
 
 // Replaces the blank skeleton by the parsed document, then applies <meta http-equiv="Content-Security-Policy"> and

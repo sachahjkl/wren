@@ -20,10 +20,10 @@ native/js/odin/            package odin_glue: the ported domains, one file per f
                            wr_* import that carries each, by comptime bridges (odin-abi.md)
   wj/                      package wj: the one helper layer every domain imports
     wj.odin                core types (JSValue = u64, Context, Runtime, Native/Getter/Setter)
-    quickjs.odin           the QuickJS-ng C API (foreign) + its static inlines reimplemented on the NAN box
+    quickjs.odin           the static inlines of quickjs.h reimplemented on the NAN box (the API itself: backend_jsrt.odin)
     engine.odin            the engine's structs mirrored (Obj, Realm, Interface, Listener, Buf), its globals
                            (wj_the_realm, wj_scratch, wj_interfaces, wj_class_*), obj_of / web_set_impl / realm_*
-    host.odin              wj_* / web_* functions of the C that stays (native/js/engine, native/js/runtime)
+    host.odin              what a domain calls of the engine and of the runtime that is not a value or a string helper
     wr_imports.odin        GENERATED (src/tools/bindgen, from api/*.widl): every browser import wr_*
     strings.odin           Str, WJ_FETCH_STRING (fetch_string), scratch helpers, JS-string constructors
     values.odin            promises as values, blobs, FormData, Headers, streams, signals, structured clone
@@ -75,9 +75,7 @@ A domain calls everything of the layer qualified: `wj.wj_to_str`, `wj.JS_NewStri
 
 ## How to declare a browser import
 
-You do not. `src/tools/bindgen` emits `native/js/odin/wj/wr_imports.odin` from `api/*.widl` on every `build.bat` (in
-both `-emit:c` and `-emit:odin` modes), next to the C header `native/js/gen/wren_api.h`: same module, same names, same
-types. If an import is missing, it is missing from the API description: add it to the `.widl` (and the host side in
+You do not. `src/tools/bindgen` emits `native/js/odin/wj/wr_imports.odin` from `api/*.widl` on every `build.bat`. If an import is missing, it is missing from the API description: add it to the `.widl` (and the host side in
 `src/page`), run `build.bat`, and it appears as `wj.wr_<Name>`.
 
 Better still, do not call it by hand: declare the function in `native/js/odin_abi/api_decl/<module>.odin` and call
@@ -95,16 +93,12 @@ The generated conventions, which a hand-written call follows:
 
 ## How to add a domain
 
-1. Port `native/js/runtime/<x>.c` to `native/js/odin/<x>.odin`, `package odin_glue`, `import "../odin/wj"`. Port the
-   behaviour; for what only carries a call to the host, declare it in api_decl and bind it with jsb (odin-abi.md,
-   the 10 steps) instead of translating the C line by line.
-2. Keep every symbol the generated table (`native/js/gen/bindings.c`) or other C references: `@(export, link_name =
-   "wjr_<Interface>_<member>")`, `proc "c"`, the `wj` types. Same behaviour, same error messages (WPT and the test
-   pages compare them).
+1. Write `native/js/odin/<x>.odin`, `package odin_glue`, `import "../odin/wj"`. For what only carries a call to the host,
+   declare it in api_decl and bind it with jsb (odin-abi.md, the 10 steps).
+2. Name a hand-written member as the generated table (`bindings_gen.odin`) expects: `wjr_<Interface>_<member>`,
+   `proc "c"`, the `wj` types. Error messages matter: WPT and the test pages compare them.
 3. Interface indices by name, once: `wj.iface("Element")` cached in a file-private variable (or `ifaces.odin`).
-4. Add `'<x>.c'` to `$odinified` in `tools/build_js.ps1`: one entry per line, sorted. The C file stays in the tree (the
-   bindgen scans it for raw members) but is no longer compiled.
-5. `odin check native/js/odin -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator`, then `build.bat`,
+4. `odin check native/js/odin -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator`, then `build.bat`,
    then the tests of the domain (jstest, jsdomtest, jswebtest, the WPT folders; see the end).
 
 ## Pitfalls (each one was hit)

@@ -242,7 +242,8 @@ until the page closes, whatever the collector finds: a page that makes instances
 flag of the JavaScript call that entered it (<code>wt_on_epoch</code>). A call checks the thread's stack first (<code>RangeError</code>).</li>
 <li><strong><code>compile</code> off the page's thread.</strong> <code>WebAssembly.compile</code>, <code>instantiate</code> and the streaming forms compile on a thread
 of the blocking pool (a worker compiles on its own thread): for a 34 MB module measured, the page's timers kept running
-(worst gap 25 ms) where <code>new WebAssembly.Module</code>, synchronous as specified, blocks for the 440 ms it takes.</li>
+(worst gap 25 ms) where <code>new WebAssembly.Module</code>, synchronous as specified, blocks for the 440 ms it takes. What was
+compiled is kept in the profile's disk cache (<code>wasm.cache.disk</code>), by top-level site: what one site compiled says nothing to another.</li>
 <li><strong><code>memory.buffer</code>: an ArrayBuffer without bytes.</strong> The engine's ArrayBuffers live in its linear memory, which a page's
 instance cannot share, so a memory's buffer has <code>data == nil</code> and a <code>Buffer_Host</code> through which one element is one host
 call. The JIT and the interpreter's fast paths leave on <code>data == nil</code>. A builtin working on a range pins it (<code>host_pin</code>:
@@ -272,11 +273,8 @@ stands when the translation does not make the module valid. Checked on DuckDB's 
 through its JIT, and by hand-written modules in the tests.</p>
 <h2 id="limits"><a class="anchor" href="#limits" aria-hidden="true">#</a>Limits</h2>
 <ul>
-<li>No threads. <code>new WebAssembly.Memory({shared: true})</code> works, as in other browsers (Pyodide and many scripts ask for one to
-find the <code>SharedArrayBuffer</code> constructor), but it is an ordinary memory only this agent has: a module declaring a shared
-memory gets a <code>CompileError</code>, so an Emscripten build with pthreads cannot run. Without cross-origin isolation a page has no
-global <code>SharedArrayBuffer</code>, as in other browsers (SQLite Fiddle then says OPFS is unavailable instead of waiting on a
-copy): see <code>docs/shared-memory.md</code>.</li>
+<li>Threads are in <code>docs/shared-memory.md</code>, with their limits. Without cross-origin isolation a page has no global
+<code>SharedArrayBuffer</code>, as in other browsers (SQLite Fiddle then says OPFS is unavailable instead of waiting on a copy).</li>
 <li>GC, typed function references and memory64 follow <code>wasm.features.*</code> (off by default): such modules get a <code>CompileError</code>.</li>
 <li>An exception carries at most 32 values (<code>MAX_TAG_VALUES</code>, <code>web_wasm.odin</code>).</li>
 <li>Recursion through a module is bounded by the engine's stack: at the depth of recursion through a native function, far

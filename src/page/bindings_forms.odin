@@ -79,7 +79,10 @@ forms_attach :: proc(p: ^Page) {
 		pick_color = proc(user: rawptr, input: base.Handle) { forms_plan_picker((^Page)(user), input, true) },
 		popover_invoke = proc(user: rawptr, invoker: base.Handle) { popover_invoke((^Page)(user), invoker) },
 		popover_dismiss = proc(user: rawptr, target: base.Handle) { popover_light_dismiss((^Page)(user), target) },
-		close_request = proc(user: rawptr) -> bool { return popover_close_request((^Page)(user)) },
+		close_request = proc(user: rawptr) -> bool { return popover_close_request((^Page)(user)) || dialog_close_request((^Page)(user)) },
+		dialog_closed = proc(user: rawptr, dialog: base.Handle) { dialog_closed((^Page)(user), dialog) },
+		queue_close = proc(user: rawptr, dialog: base.Handle) { dialog_queue_close((^Page)(user), dialog) },
+		inert = proc(user: rawptr, h: base.Handle) -> bool { return dialog_makes_inert((^Page)(user), h) },
 		follow_link = proc(user: rawptr, link: base.Handle) { navigation_follow_script_link((^Page)(user), link) },
 	})
 	p.style_state.controls = style.Control_Provider{query = forms_style_query, user = p}
@@ -152,10 +155,12 @@ forms_style_query :: proc(user: rawptr, el: base.Handle, q: style.Control_Query)
 	n := dom.get(p.doc, el)
 	if n == nil || n.kind != .Element { return false, false }
 	if q == .Popover_Open { return popover_showing(p, el), true }   // (popover.odin)
+	if q == .Modal { return dialog_is_modal(p, el), true }           // (dialog_modal.odin)
+	if q == .Modal_Active { return dialog_top_modal(p) != base.NIL_HANDLE, true }
 	k := forms.kind_of(n)
 	if k == .None && n.name != "progress" { return false, false }
 	switch q {
-	case .Popover_Open: return false, false
+	case .Popover_Open, .Modal, .Modal_Active: return false, false
 	case .Checked: return forms.matches_checked(f, el), true
 	case .Indeterminate: return forms.matches_indeterminate(f, el), true
 	case .Default: return forms.matches_default(f, el), true
@@ -445,6 +450,8 @@ Document_activeElement :: proc(c: ^Call) -> u64 {
 	if f := page_forms(p).focus; f != base.NIL_HANDLE { return u64(dom.retarget(p.doc, f, p.doc.root)) }
 	return u64(p.body)
 }
+
+HTMLDialogElement_set_returnValue :: proc(c: ^Call, dialog: Api_Element, value: string) { forms.dialog_set_return_value(page_forms(c.page), H(dialog.handle), value) }
 
 HTMLDialogElement_returnValue :: proc(c: ^Call, dialog: Api_Element) -> string { return forms.dialog_return_value(F(c), H(dialog.handle)) }
 

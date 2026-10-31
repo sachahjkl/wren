@@ -193,7 +193,7 @@ exported under their QuickJS names with `-define:JSCAPI_EXPORT=true`) over `jsrt
 | peak working set, 300 k objects + 100 k Map entries (`examples/jsbench/cases/memory.js`) | 188 MiB (was 244) | 135 MiB |
 | freestanding wasm32 module, runtime + compiler (`-o:size`) | 1.63 MB (`-o:speed`: 1.99 MB) | `wren_js.wasm` (QuickJS + glue + bindings) 4.26 MB |
 
-`tools/jsrt_bench.ps1` produces the speed table; `tools/jsrt_ab.ps1` compares several builds (and QuickJS)
+`tools/jsrt_ab.ps1` compares several builds (and QuickJS)
 interleaved, best of N, on `micro.js` or `macro.js`; `tools/jsrt_prof.ps1` is a sampling profiler (hot
 functions and source lines; `JSRT_PROF=1` on `judge eval`); `tools/jsrt_mem.ps1` measures the peak working
 set. `JSRT_MEMPROF=1` on `judge eval` prints a census of the heap by kind of cell (count, cell bytes, bytes owned

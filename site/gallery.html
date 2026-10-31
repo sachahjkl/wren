@@ -9,6 +9,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="img/logo-32.png">
   <link rel="icon" type="image/png" sizes="64x64" href="img/logo-64.png">
   <link rel="stylesheet" href="style.css">
+  <script src="gallery.js" defer></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -35,7 +36,8 @@
 <div class="page-head">
   <div class="wrap">
     <h1>Gallery</h1>
-    <p class="intro">Unedited captures of Wren 0.2.0 on Windows 11, at 175% display scaling. The demonstration pages are in <a href="https://github.com/sachahjkl/wren/tree/master/examples/site"><code>examples/site</code></a>.</p>
+    <p class="intro">Unedited captures of Wren 0.6.1 on Windows 11, at 175% display scaling. Later versions changed some of what they show, the start page above all (0.6.10 and 0.6.11). The demonstration pages are in <a href="https://github.com/sachahjkl/wren/tree/master/examples/site"><code>examples/site</code></a>.</p>
+    <p class="fine">Click a capture to open it large. In the viewer, the left and right arrow keys go through the captures and Esc closes it.</p>
   </div>
 </div>
 
@@ -44,35 +46,35 @@
     <h2>The browser</h2>
     <ul class="gallery large">
       <li><figure>
-        <div class="frame" id="home" style="aspect-ratio: 1580 / 990"><img src="img/home.webp" alt="Wren&#39;s start page, with the tabs drawn in the window&#39;s title bar" width="1580" height="990" loading="lazy"></div>
+        <a class="frame" id="home" href="img/home.webp" style="aspect-ratio: 1580 / 990"><img src="img/home.webp" alt="Wren&#39;s start page, with the tabs drawn in the window&#39;s title bar" width="1580" height="990" loading="lazy"></a>
         <figcaption>The start page. Tabs live in the title bar, next to the window buttons.</figcaption>
       </figure></li>
       <li><figure>
-        <div class="frame" id="tabs" style="aspect-ratio: 1580 / 990"><img src="img/tabs.webp" alt="Three tabs open in the title bar: webassembly.org, sacha.house and about:demos" width="1580" height="990" loading="lazy"></div>
+        <a class="frame" id="tabs" href="img/tabs.webp" style="aspect-ratio: 1580 / 990"><img src="img/tabs.webp" alt="Three tabs open in the title bar: webassembly.org, sacha.house and about:demos" width="1580" height="990" loading="lazy"></a>
         <figcaption>Tabs in the title bar, with favicons and loading indicators; the window keeps Snap Layouts on its maximize button.</figcaption>
       </figure></li>
       <li><figure>
-        <div class="frame" id="demos" style="aspect-ratio: 1580 / 990"><img src="img/demos.webp" alt="about:demos, the index of every demo and test page that comes with the browser" width="1580" height="990" loading="lazy"></div>
+        <a class="frame" id="demos" href="img/demos.webp" style="aspect-ratio: 1580 / 990"><img src="img/demos.webp" alt="about:demos, the index of every demo and test page that comes with the browser" width="1580" height="990" loading="lazy"></a>
         <figcaption><code>about:demos</code>: every demo and test page, by theme.</figcaption>
       </figure></li>
       <li><figure>
-        <div class="frame" id="frame-statistics" style="aspect-ratio: 1580 / 990"><img src="img/frame-statistics.webp" alt="The frame statistics panel open over a page of rotated cards" width="1580" height="990" loading="lazy"></div>
+        <a class="frame" id="frame-statistics" href="img/frame-statistics.webp" style="aspect-ratio: 1580 / 990"><img src="img/frame-statistics.webp" alt="The frame statistics panel open over a page of rotated cards" width="1580" height="990" loading="lazy"></a>
         <figcaption>Frame statistics: phases, GPU steps, compositor, display, memory, build.</figcaption>
       </figure></li>
       <li><figure>
-        <div class="frame" id="about-config" style="aspect-ratio: 1580 / 990"><img src="img/about-config.webp" alt="about:config: every preference with its description, default and bounds" width="1580" height="990" loading="lazy"></div>
+        <a class="frame" id="about-config" href="img/about-config.webp" style="aspect-ratio: 1580 / 990"><img src="img/about-config.webp" alt="about:config: every preference with its description, default and bounds" width="1580" height="990" loading="lazy"></a>
         <figcaption><code>about:config</code>: every setting, searchable, with its description.</figcaption>
       </figure></li>
       <li><figure>
-        <div class="frame" id="find" style="aspect-ratio: 1580 / 990"><img src="img/find.webp" alt="Find in page on a CV: the first of nine matches highlighted" width="1580" height="990" loading="lazy"></div>
+        <a class="frame" id="find" href="img/find.webp" style="aspect-ratio: 1580 / 990"><img src="img/find.webp" alt="Find in page on a CV: the first of nine matches highlighted" width="1580" height="990" loading="lazy"></a>
         <figcaption>Find in page (Ctrl+F) with a match count.</figcaption>
       </figure></li>
       <li><figure>
-        <div class="frame" id="context-menu" style="aspect-ratio: 1580 / 990"><img src="img/context-menu.webp" alt="A word selected in a paragraph and the selection&#39;s context menu" width="1580" height="990" loading="lazy"></div>
+        <a class="frame" id="context-menu" href="img/context-menu.webp" style="aspect-ratio: 1580 / 990"><img src="img/context-menu.webp" alt="A word selected in a paragraph and the selection&#39;s context menu" width="1580" height="990" loading="lazy"></a>
         <figcaption>Text selection and its context menu.</figcaption>
       </figure></li>
       <li><figure>
-        <div class="frame" id="daylight" style="aspect-ratio: 1580 / 990"><img src="img/daylight.webp" alt="The browser in its Daylight palette, showing a light page" width="1580" height="990" loading="lazy"></div>
+        <a class="frame" id="daylight" href="img/daylight.webp" style="aspect-ratio: 1580 / 990"><img src="img/daylight.webp" alt="The browser in its Daylight palette, showing a light page" width="1580" height="990" loading="lazy"></a>
         <figcaption>The Daylight palette of the interface.</figcaption>
       </figure></li>
     </ul>
@@ -84,11 +86,11 @@
     <h2>JavaScript and web components</h2>
     <ul class="gallery large">
       <li><figure>
-        <div class="frame" id="javascript" style="aspect-ratio: 1580 / 990"><img src="img/javascript.webp" alt="A page of plain HTML and JavaScript: a click counter, a list built with createElement, facts about the realm" width="1580" height="990" loading="lazy"></div>
+        <a class="frame" id="javascript" href="img/javascript.webp" style="aspect-ratio: 1580 / 990"><img src="img/javascript.webp" alt="A page of plain HTML and JavaScript: a click counter, a list built with createElement, facts about the realm" width="1580" height="990" loading="lazy"></a>
         <figcaption>Plain HTML and JavaScript, run by Wren's own engine, compiled to WebAssembly; <code>JS</code> in the status bar.</figcaption>
       </figure></li>
       <li><figure>
-        <div class="frame" id="shadow-dom" style="aspect-ratio: 1580 / 990"><img src="img/shadow-dom.webp" alt="The shadow DOM demo: encapsulated styles, slots, parts and a tabs custom element" width="1580" height="990" loading="lazy"></div>
+        <a class="frame" id="shadow-dom" href="img/shadow-dom.webp" style="aspect-ratio: 1580 / 990"><img src="img/shadow-dom.webp" alt="The shadow DOM demo: encapsulated styles, slots, parts and a tabs custom element" width="1580" height="990" loading="lazy"></a>
         <figcaption>Shadow DOM: declarative roots that render without JavaScript, <code>:host</code>, <code>::slotted()</code>, <code>::part()</code>, a tabs custom element.</figcaption>
       </figure></li>
     </ul>
@@ -100,31 +102,31 @@
     <h2>Engine demos</h2>
     <ul class="gallery large">
       <li><figure>
-        <div class="frame" id="css-effects" style="aspect-ratio: 1580 / 990"><img src="img/css-effects.webp" alt="Filters, backdrop-filter, mix-blend-mode and clip-path on the effects demo page" width="1580" height="990" loading="lazy"></div>
+        <a class="frame" id="css-effects" href="img/css-effects.webp" style="aspect-ratio: 1580 / 990"><img src="img/css-effects.webp" alt="Filters, backdrop-filter, mix-blend-mode and clip-path on the effects demo page" width="1580" height="990" loading="lazy"></a>
         <figcaption><code>filter</code>, <code>backdrop-filter</code>, <code>mix-blend-mode</code>, <code>clip-path</code>, drawn on the GPU.</figcaption>
       </figure></li>
       <li><figure>
-        <div class="frame" id="css-transforms" style="aspect-ratio: 1580 / 990"><img src="img/css-transforms.webp" alt="Rotated text, nested rounded clips, a rotated scroller and form, group opacity, animated cards" width="1580" height="990" loading="lazy"></div>
+        <a class="frame" id="css-transforms" href="img/css-transforms.webp" style="aspect-ratio: 1580 / 990"><img src="img/css-transforms.webp" alt="Rotated text, nested rounded clips, a rotated scroller and form, group opacity, animated cards" width="1580" height="990" loading="lazy"></a>
         <figcaption>2D transforms, rounded clips, group opacity, 500 animated cards.</figcaption>
       </figure></li>
       <li><figure>
-        <div class="frame" id="css-grid" style="aspect-ratio: 1580 / 990"><img src="img/css-grid.webp" alt="A CSS Grid demo: auto-fill gallery, dense packing, alignment" width="1580" height="990" loading="lazy"></div>
+        <a class="frame" id="css-grid" href="img/css-grid.webp" style="aspect-ratio: 1580 / 990"><img src="img/css-grid.webp" alt="A CSS Grid demo: auto-fill gallery, dense packing, alignment" width="1580" height="990" loading="lazy"></a>
         <figcaption>CSS Grid: auto-fill, dense packing, alignment, subgrid.</figcaption>
       </figure></li>
       <li><figure>
-        <div class="frame" id="css-gradients" style="aspect-ratio: 1580 / 990"><img src="img/css-gradients.webp" alt="Linear, radial, conic and repeating gradients in several colour spaces" width="1580" height="990" loading="lazy"></div>
+        <a class="frame" id="css-gradients" href="img/css-gradients.webp" style="aspect-ratio: 1580 / 990"><img src="img/css-gradients.webp" alt="Linear, radial, conic and repeating gradients in several colour spaces" width="1580" height="990" loading="lazy"></a>
         <figcaption>Gradients computed per pixel, in several colour spaces.</figcaption>
       </figure></li>
       <li><figure>
-        <div class="frame" id="masks-and-color-glyphs" style="aspect-ratio: 1580 / 990"><img src="img/masks-and-color-glyphs.webp" alt="Masks, background-clip text, fieldset legends and colour glyphs" width="1580" height="990" loading="lazy"></div>
+        <a class="frame" id="masks-and-color-glyphs" href="img/masks-and-color-glyphs.webp" style="aspect-ratio: 1580 / 990"><img src="img/masks-and-color-glyphs.webp" alt="Masks, background-clip text, fieldset legends and colour glyphs" width="1580" height="990" loading="lazy"></a>
         <figcaption>Masks, <code>background-clip: text</code>, legends, colour glyphs.</figcaption>
       </figure></li>
       <li><figure>
-        <div class="frame" id="text" style="aspect-ratio: 1580 / 990"><img src="img/text.webp" alt="A text test page: font fallback, colour emoji, ligatures, OpenType features, many scripts" width="1580" height="990" loading="lazy"></div>
+        <a class="frame" id="text" href="img/text.webp" style="aspect-ratio: 1580 / 990"><img src="img/text.webp" alt="A text test page: font fallback, colour emoji, ligatures, OpenType features, many scripts" width="1580" height="990" loading="lazy"></a>
         <figcaption>DirectWrite text: fallback, emoji, ligatures, OpenType features, bidi.</figcaption>
       </figure></li>
       <li><figure>
-        <div class="frame" id="wasm-counter" style="aspect-ratio: 1580 / 990"><img src="img/wasm-counter.webp" alt="A page whose behaviour is a WebAssembly module" width="1580" height="990" loading="lazy"></div>
+        <a class="frame" id="wasm-counter" href="img/wasm-counter.webp" style="aspect-ratio: 1580 / 990"><img src="img/wasm-counter.webp" alt="A page whose behaviour is a WebAssembly module" width="1580" height="990" loading="lazy"></a>
         <figcaption>A page written in WebAssembly: an Odin module, no JavaScript at all.</figcaption>
       </figure></li>
     </ul>
@@ -136,15 +138,15 @@
     <h2>Real sites</h2>
     <ul class="gallery large">
       <li><figure>
-        <div class="frame" id="sacha-house" style="aspect-ratio: 1580 / 990"><img src="img/sacha-house.webp" alt="sacha.house: a dark monospace site with a fire-gradient ASCII logo and emoji" width="1580" height="990" loading="lazy"></div>
+        <a class="frame" id="sacha-house" href="img/sacha-house.webp" style="aspect-ratio: 1580 / 990"><img src="img/sacha-house.webp" alt="sacha.house: a dark monospace site with a fire-gradient ASCII logo and emoji" width="1580" height="990" loading="lazy"></a>
         <figcaption>sacha.house: Tailwind CSS, <code>background-clip: text</code>, a fieldset legend, COLRv1 emoji.</figcaption>
       </figure></li>
       <li><figure>
-        <div class="frame" id="webassembly-org" style="aspect-ratio: 1580 / 990"><img src="img/webassembly-org.webp" alt="webassembly.org in its dark theme" width="1580" height="990" loading="lazy"></div>
+        <a class="frame" id="webassembly-org" href="img/webassembly-org.webp" style="aspect-ratio: 1580 / 990"><img src="img/webassembly-org.webp" alt="webassembly.org in its dark theme" width="1580" height="990" loading="lazy"></a>
         <figcaption>webassembly.org: dark stylesheet from <code>prefers-color-scheme</code>, SVG icons, an AVIF image.</figcaption>
       </figure></li>
       <li><figure>
-        <div class="frame" id="odin-lang-org" style="aspect-ratio: 1580 / 990"><img src="img/odin-lang-org.webp" alt="odin-lang.org in Wren, with its scripts running" width="1580" height="990" loading="lazy"></div>
+        <a class="frame" id="odin-lang-org" href="img/odin-lang-org.webp" style="aspect-ratio: 1580 / 990"><img src="img/odin-lang-org.webp" alt="odin-lang.org in Wren, with its scripts running" width="1580" height="990" loading="lazy"></a>
         <figcaption>odin-lang.org over HTTPS, its scripts running.</figcaption>
       </figure></li>
     </ul>

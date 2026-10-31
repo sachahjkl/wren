@@ -1933,7 +1933,7 @@ Host: `HTMLDialogElement_show :: proc(c: ^Call, dialog: Api_Element) -> Api_Erro
 void HTMLDialogElement_showModal(Element dialog) raises
 ```
 
-dialog.showModal(): Invalid_State when it is not connected (no top layer: the dialog stays where it is).
+dialog.showModal(): Invalid_State when it is open without being modal, not connected, or a showing popover.
 
 Raises: returns an `Error` (see [web](web.md)).
 

@@ -400,13 +400,7 @@ pstr :: proc "contextless" (ctx: ^wj.Context, o: wj.JSValue, name: cstring, s: c
 // two JS string values equal byte for byte (NUL-safe, full UTF-16 as WTF-8): a store/index name may hold U+0000 or a
 // lone surrogate, so comparing them as C strings would conflate "" and "\u0000".
 jsstr_eq :: proc "contextless" (ctx: ^wj.Context, a, b: wj.JSValue) -> bool {
-	na, nb: uint
-	sa := wj.to_cstring_len(ctx, &na, a)
-	sb := wj.to_cstring_len(ctx, &nb, b)
-	eq := sa != nil && sb != nil && na == nb && wj.memcmp(rawptr(sa), rawptr(sb), na) == 0
-	if sa != nil { wj.free_cstring(ctx, sa) }
-	if sb != nil { wj.free_cstring(ctx, sb) }
-	return eq
+	return wj.JS_IsStrictEqual(ctx, a, b)   // (code units: two lone surrogates differ)
 }
 // o[name] equals the JS string value s (NUL-safe)
 pstr_eq_val :: proc "contextless" (ctx: ^wj.Context, o: wj.JSValue, name: cstring, s: wj.JSValue) -> bool {
@@ -416,64 +410,20 @@ pstr_eq_val :: proc "contextless" (ctx: ^wj.Context, o: wj.JSValue, name: cstrin
 	return eq
 }
 
-// the next UTF-16 code unit of a WTF-8 byte run starting at i, advancing i. WTF-8 is UTF-8 that also admits the
-// three-byte encodings of lone surrogates; a supplementary code point yields two units across two calls. Malformed
-// bytes are passed through as their own value so the order stays total.
-@(private = "file")
-wtf8_next_unit :: proc "contextless" (p: []u8, i: ^int, pending: ^u32) -> u32 {
-	if pending^ != 0 { u := pending^; pending^ = 0; return u }
-	n := len(p)
-	c := p[i^]
-	i^ += 1
-	cp: u32
-	switch {
-	case c < 0x80:
-		return u32(c)
-	case c & 0xE0 == 0xC0 && i^ < n:
-		cp = u32(c & 0x1F) << 6 | u32(p[i^] & 0x3F)
-		i^ += 1
-	case c & 0xF0 == 0xE0 && i^ + 1 < n:
-		cp = u32(c & 0x0F) << 12 | u32(p[i^] & 0x3F) << 6 | u32(p[i^ + 1] & 0x3F)
-		i^ += 2
-	case c & 0xF8 == 0xF0 && i^ + 2 < n:
-		cp = u32(c & 0x07) << 18 | u32(p[i^] & 0x3F) << 12 | u32(p[i^ + 1] & 0x3F) << 6 | u32(p[i^ + 2] & 0x3F)
-		i^ += 3
-	case:
-		return u32(c)
-	}
-	if cp >= 0x10000 {
-		cp -= 0x10000
-		pending^ = 0xDC00 + (cp & 0x3FF)
-		return 0xD800 + (cp >> 10)
-	}
-	return cp
-}
-
-// compare two JS strings by UTF-16 code unit, as ECMAScript's `<` on strings and Array.prototype.sort do (a byte-wise
-// compare of the WTF-8 would order U+1D11E after U+FFFD). <0, 0 or >0.
+// compare two JS strings by UTF-16 code unit, as ECMAScript's `<` on strings and Array.prototype.sort do. <0, 0 or >0.
 jsstr_cmp :: proc "contextless" (ctx: ^wj.Context, a, b: wj.JSValue) -> i32 {
 	na, nb: uint
-	sa := wj.to_cstring_len(ctx, &na, a)
-	sb := wj.to_cstring_len(ctx, &nb, b)
+	sa := wj.JS_ToCStringLenUTF16(ctx, &na, a)
+	sb := wj.JS_ToCStringLenUTF16(ctx, &nb, b)
 	r: i32
 	if sa != nil && sb != nil {
-		pa := ([^]u8)(rawptr(sa))[:na]
-		pb := ([^]u8)(rawptr(sb))[:nb]
-		ia, ib: int
-		qa, qb: u32
-		for r == 0 {
-			da := ia >= len(pa) && qa == 0
-			db := ib >= len(pb) && qb == 0
-			if da || db { r = da == db ? 0 : (da ? -1 : 1); break }
-			ua := wtf8_next_unit(pa, &ia, &qa)
-			ub := wtf8_next_unit(pb, &ib, &qb)
-			if ua != ub { r = ua < ub ? -1 : 1 }
+		for i in 0 ..< min(na, nb) {
+			if sa[i] != sb[i] { r = sa[i] < sb[i] ? -1 : 1; break }
 		}
-	} else {
-		r = i32(sa != nil) - i32(sb != nil)
+		if r == 0 && na != nb { r = na < nb ? -1 : 1 }
 	}
-	if sa != nil { wj.free_cstring(ctx, sa) }
-	if sb != nil { wj.free_cstring(ctx, sb) }
+	if sa != nil { wj.JS_FreeCStringUTF16(ctx, sa) }
+	if sb != nil { wj.JS_FreeCStringUTF16(ctx, sb) }
 	return r
 }
 

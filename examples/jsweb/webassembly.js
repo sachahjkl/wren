@@ -250,7 +250,7 @@ test("Memory: shared", () => {
   eq(Atomics.add(i32, 0, 3), 0, "Atomics.add");
   eq(Atomics.load(i32, 0), 3, "Atomics.load");
   eq(Atomics.notify(i32, 0, 1), 0, "Atomics.notify: nobody waits");
-  eq(Atomics.wait(i32, 0, 1), "not-equal", "Atomics.wait, another value");
+  throws(() => Atomics.wait(i32, 0, 1), "TypeError", "a window may not block");
   m.grow(1);
   eq(b.byteLength, 65536, "growing leaves the old buffer as it was");
   eq(m.buffer.byteLength, 131072, "the new one is larger");

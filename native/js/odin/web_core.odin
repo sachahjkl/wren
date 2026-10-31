@@ -31,13 +31,7 @@ wj_web_start :: proc "c" (ctx: ^wj.Context, kind: i32) -> i32 {
 		web_crypto_start, web_credentials_start, web_clipboard_start, web_compat_start, web_idb_start, web_wasm_start,
 	}
 	for p in parts { if p(ctx, kind) < 0 { return -1 } }
-	// Without cross-origin isolation a page has no SharedArrayBuffer, as in other browsers: what it sends to a worker would
-	// not be shared here, and a script asking for it (SQLite's OPFS) must learn so rather than wait on a copy.
-	// (test262's image keeps it: it measures ECMAScript, where the global is always there)
-	when !WREN_TEST262 {
-		sab := wj.JS_NewAtom(ctx, "SharedArrayBuffer")
-		wj.JS_DeleteProperty(ctx, wj.wj_the_realm.global, sab, 0)
-		wj.JS_FreeAtom(ctx, sab)
-	}
+	// (test262's image keeps its own: it measures ECMAScript, where the global is always there and its agents are not realms)
+	when !WREN_TEST262 { web_shared_start(ctx) }
 	return 0
 }

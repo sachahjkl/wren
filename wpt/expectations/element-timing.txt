@@ -1,0 +1,109 @@
+# web-platform-tests expectations of Wren for element-timing, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/element-timing/background-image-data-uri.html: TIMEOUT
+	Element with elementtiming attribute and inline background image is observable.: TIMEOUT
+/element-timing/background-image-multiple-elements.html: TIMEOUT
+	Background image affecting various elements is observed.: TIMEOUT
+/element-timing/background-image-stretched.html: TIMEOUT
+	Element with background image shows correct image size.: TIMEOUT
+/element-timing/buffer-before-onload.html: TIMEOUT
+	Element Timing: image loads before onload available from buffered flag.: TIMEOUT
+/element-timing/buffered-flag.html: TIMEOUT
+	Element Timing entries are observable via buffered flag.: TIMEOUT
+/element-timing/cross-origin-element.sub.html: TIMEOUT
+	Cross-origin image element is NOT observable.: TIMEOUT
+/element-timing/cross-origin-iframe-element.sub.html: OK
+	Element from cross origin iframe is NOT observable.: PASS
+/element-timing/css-generated-text.html: TIMEOUT
+	Generated text content is observable.: TIMEOUT
+/element-timing/disconnect-image.html: TIMEOUT
+	Disconnected elements have null as their |element| attribute.: TIMEOUT
+/element-timing/element-only-when-fully-active.html: TIMEOUT
+	Only expose element attribute for fully active documents: TIMEOUT
+/element-timing/first-letter-background.html: TIMEOUT
+	Element with elementtiming attribute and background image in first-letter is observable.: TIMEOUT
+/element-timing/fixed-id-identifier.html: TIMEOUT
+	PerformanceElementTiming id and identifier do not change when Element changes.: TIMEOUT
+/element-timing/idlharness.window.html: OK
+	Partial interface Element: member names are unique: PASS
+	Partial interface Element: original interface defined: PASS
+	idl_test setup: FAIL
+	idl_test validation: PASS
+/element-timing/image-TAO.sub.html: TIMEOUT
+	Cross-origin elements with valid TAO have correct renderTime, with invalid TAO have renderTime set to 0.: TIMEOUT
+/element-timing/image-carousel.html: TIMEOUT
+	Entries for elements within an image carousel are dispatched when the elements are redrawn.: TIMEOUT
+/element-timing/image-clipped-svg.html: TIMEOUT
+	Able to observe svg image.: TIMEOUT
+/element-timing/image-data-uri.html: TIMEOUT
+	Inline image is observable via Element Timing.: TIMEOUT
+/element-timing/image-not-added.html: OK
+	Image which is not added to DOM tree is not observable.: PASS
+/element-timing/image-not-fully-visible.html: TIMEOUT
+	The intersectionRect of an img element overflowing is computed correctly: TIMEOUT
+/element-timing/image-rect-iframe.html: TIMEOUT
+	Element Timing entry in iframe has coordinates relative to the iframe.: TIMEOUT
+/element-timing/image-src-change.html: TIMEOUT
+	Element Timing: changing src causes a new entry to be dispatched.: TIMEOUT
+/element-timing/image-with-css-scale.html: TIMEOUT
+	Image intersectionRect is affected by scaling, but not its intrinsic size.: TIMEOUT
+/element-timing/image-with-rotation.html: TIMEOUT
+	Image intersectionRect is affected by rotation, but not its intrinsic size.: TIMEOUT
+/element-timing/images-repeated-resource.html: TIMEOUT
+	Elements with elementtiming and same src are observable.: TIMEOUT
+/element-timing/input-type-image.html: TIMEOUT
+	Element with an image input.: TIMEOUT
+/element-timing/invisible-images.html: OK
+	Images with opacity: 0, visibility: hidden, or display: none are not observable.: PASS
+/element-timing/list-style-image.html: TIMEOUT
+	Element with an li using an image list style.: TIMEOUT
+/element-timing/multiple-background-images.html: TIMEOUT
+	Element with two background images receives both.: TIMEOUT
+/element-timing/object.html: TIMEOUT
+	Element with an object containing an image.: TIMEOUT
+/element-timing/observe-background-image.html: TIMEOUT
+	Element with elementtiming attribute and background image is observable.: TIMEOUT
+/element-timing/observe-child-element.html: OK
+	Element in child iframe is not observed, even if same-origin.: PASS
+/element-timing/observe-elementtiming.html: TIMEOUT
+	Element with elementtiming attribute is observable.: TIMEOUT
+/element-timing/observe-empty-attribute.html: TIMEOUT
+	Able to observe image and text with empty elementtiming attribute.: TIMEOUT
+/element-timing/observe-multiple-images.html: TIMEOUT
+	PerformanceObserver can observe multiple image elements.: TIMEOUT
+/element-timing/observe-shadow-image.html: OK
+	Image in shadow tree with elementtiming attribute is not observable.: PASS
+/element-timing/observe-shadow-text.html: OK
+	Text in shadow tree with elementtiming attribute is not observable.: PASS
+/element-timing/observe-svg-image.html: TIMEOUT
+	Able to observe svg image.: TIMEOUT
+/element-timing/observe-text.html: TIMEOUT
+	Paragraph with elementtiming attribute is observed.: TIMEOUT
+/element-timing/observe-video-poster.html: TIMEOUT
+	Able to observe a video's poster image.: TIMEOUT
+/element-timing/picture.html: TIMEOUT
+	Element with a rectangular image and an alternate picture image with precedence reports the correct image.: TIMEOUT
+/element-timing/progressively-loaded-image.html: TIMEOUT
+	Element Timing: image render timestamp occurs after it is fully loaded.: FAIL
+/element-timing/pseudo-background-image.html: TIMEOUT
+	Element with elementtiming attribute and a ::before background image is observable.: TIMEOUT
+/element-timing/pseudo-content-image.html: TIMEOUT
+	Element with elementtiming attribute and a ::before content image is observable.: TIMEOUT
+/element-timing/pseudo-content-text.html: TIMEOUT
+	Element with elementtiming attribute and a ::before content image is observable.: TIMEOUT
+/element-timing/rectangular-image.html: TIMEOUT
+	Element with rectangular image has correct rect and instrinsic size.: TIMEOUT
+/element-timing/retrievability.html: TIMEOUT
+	Element Timing entries are not accessible via performance.getEntries*: TIMEOUT
+/element-timing/same-origin-redirects.html: TIMEOUT
+	Same-origin image redirect without TAO should have its renderTime set.: TIMEOUT
+/element-timing/scroll-to-text.html: TIMEOUT
+	Paragraph with elementtiming attribute is observed even when not initially visible.: TIMEOUT
+/element-timing/supported-element-type.html: OK
+	supportedEntryTypes contains 'element'.: PASS
+/element-timing/text-not-observed-when-changed.html: TIMEOUT
+	Changing the text of an already-observed element is not observed: TIMEOUT
+/element-timing/text-with-display-style.html: TIMEOUT
+	Text with display style is observable.: TIMEOUT
+/element-timing/toJSON.html: TIMEOUT
+	Test toJSON() in PerformanceElementTiming.: TIMEOUT

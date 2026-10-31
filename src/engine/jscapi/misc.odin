@@ -176,6 +176,14 @@ JS_NewTypedArray :: proc "c" (c: ^Context, argc: i32, argv: [^]JSValue, array_ty
 	return own(ctx.rt, js.construct(ctx, ctor, args, ctor))
 }
 
+// What structured clone must know of a view (a typed array or a DataView): whether it is out of bounds, and whether its length follows its buffer.
+JS_GetViewState :: proc "c" (v: JSValue) -> (out_of_bounds, tracks_length: bool) {
+	context = api_ctx()
+	o, ok := obj_arg(v)
+	if !ok || (!js.is_typed_array_class(o.class) && o.class != .dataview) {return false, false}
+	return js.typed_array_is_out_of_bounds(o), js.typed_array_of(o).track_rab
+}
+
 JS_GetTypedArrayType :: proc "c" (v: JSValue) -> i32 {
 	cl, ok := class_of(v)
 	if !ok || !js.is_typed_array_class(cl) {return -1}
@@ -445,6 +453,8 @@ JS_LoadModuleWithFuncs :: proc "c" (c: ^Context, basename: cstring, filename: cs
 
 // ---- buffers whose bytes are outside this engine's memory (a WebAssembly.Memory: js.Buffer_Host) ----
 
+Host_Shared :: js.Host_Shared
+
 Host_Buffer_IO :: #type proc "contextless" (user: u64, offset: int, bytes: [^]u8, n: int)
 
 JS_NewArrayBufferHost :: proc "c" (c: ^Context, length: uint, read, write: Host_Buffer_IO, user: u64, shared: bool) -> JSValue {
@@ -453,6 +463,33 @@ JS_NewArrayBufferHost :: proc "c" (c: ^Context, length: uint, read, write: Host_
 	m := js.host_enter(ctx.rt)
 	defer js.host_exit(ctx.rt, m, js.UNDEFINED)
 	return own(ctx.rt, js.mk_obj(js.array_buffer_new_host(ctx, i64(length), js.Buffer_Host{read = read, write = write, user = user}, shared)))
+}
+
+// A SharedArrayBuffer of the embedder's bytes (js.Host_Shared). `owned`: the script is one of the uses of the bytes.
+JS_NewArrayBufferShared :: proc "c" (c: ^Context, length: uint, ops: ^js.Host_Shared, user: u64, owned: bool, max_length: i64) -> JSValue {
+	context = api_ctx()
+	ctx := jctx(c)
+	m := js.host_enter(ctx.rt)
+	defer js.host_exit(ctx.rt, m, js.UNDEFINED)
+	return own(ctx.rt, js.mk_obj(js.array_buffer_new_host(ctx, i64(length), js.Buffer_Host{read = ops.read, write = ops.write, user = user, shared = ops, owned = owned}, true, max_length)))
+}
+
+// Whether a value is a SharedArrayBuffer of the embedder's bytes: its number, its length and its maximum (-1: not growable).
+JS_GetSharedBufferHost :: proc "c" (obj: JSValue, user: ^u64, length, max_length: ^i64) -> bool {
+	context = api_ctx()
+	o, ok := obj_arg(obj)
+	if !ok || o.class != .shared_array_buffer {return false}
+	ab := js.array_buffer_of(o)
+	if ab.host == nil || ab.host.shared == nil {return false}
+	user^, length^, max_length^ = ab.host.user, i64(ab.byte_length), i64(ab.max_byte_length)
+	return true
+}
+
+// The embedder holds the bytes of this runtime's SharedArrayBuffers from now on.
+JS_SetHostShared :: proc "c" (r: ^Runtime, ops: ^js.Host_Shared) {
+	context = api_ctx()
+	jrt(r).config.host_shared = ops
+	jrt(r).config.only_type_attribute = true   // (the same embedder: a page, not test262)
 }
 
 JS_DetachArrayBufferHost :: proc "c" (c: ^Context, obj: JSValue) {

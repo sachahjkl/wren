@@ -174,6 +174,138 @@ i32 WebAssembly_Memory_write(i32 memory, i64 offset, bytes source)
 
 Host: `WebAssembly_Memory_write :: proc(c: ^Call, memory: i32, offset: i64, source: []u8) -> i32`
 
+### `WebAssembly_Memory_createShared`
+
+```
+i32 WebAssembly_Memory_createShared(i64 initial, i64 maximum, i64 bytes)
+```
+
+A memory that other agents can have: a number. Its size in bytes is ytes (-1: all of its pages).
+
+Host: `WebAssembly_Memory_createShared :: proc(c: ^Call, initial: i64, maximum: i64, bytes: i64) -> i32`
+
+### `WebAssembly_Memory_release`
+
+```
+void WebAssembly_Memory_release(i32 memory)
+```
+
+A SharedArrayBuffer has gone: one use of the memory less.
+
+Host: `WebAssembly_Memory_release :: proc(c: ^Call, memory: i32)`
+
+### `WebAssembly_Memory_byteLength`
+
+```
+i64 WebAssembly_Memory_byteLength(i32 memory)
+```
+
+What a SharedArrayBuffer of the memory says its length is.
+
+Host: `WebAssembly_Memory_byteLength :: proc(c: ^Call, memory: i32) -> i64`
+
+### `WebAssembly_Memory_growBytes`
+
+```
+bool WebAssembly_Memory_growBytes(i32 memory, i64 bytes)
+```
+
+SharedArrayBuffer.grow.
+
+Host: `WebAssembly_Memory_growBytes :: proc(c: ^Call, memory: i32, bytes: i64) -> bool`
+
+### `WebAssembly_Memory_atomic`
+
+```
+i64 WebAssembly_Memory_atomic(i32 memory, i32 op, i64 offset, i32 size, i64 first, i64 second)
+```
+
+An Atomics operation on a shared memory (op: add and compareExchange exchange load or store sub xor): the value it held.
+
+Host: `WebAssembly_Memory_atomic :: proc(c: ^Call, memory: i32, op: i32, offset: i64, size: i32, first: i64, second: i64) -> i64`
+
+### `WebAssembly_Memory_wait`
+
+```
+i32 WebAssembly_Memory_wait(i32 memory, i64 offset, i32 size, i64 expected, f64 timeout)
+```
+
+Atomics.wait on a shared memory: 0 woken, 1 not equal, 2 timed out. 	imeout in milliseconds, < 0: none.
+
+Host: `WebAssembly_Memory_wait :: proc(c: ^Call, memory: i32, offset: i64, size: i32, expected: i64, timeout: f64) -> i32`
+
+### `WebAssembly_Memory_notify`
+
+```
+i32 WebAssembly_Memory_notify(i32 memory, i64 offset, u32 count)
+```
+
+Atomics.notify on a shared memory: how many it woke.
+
+Host: `WebAssembly_Memory_notify :: proc(c: ^Call, memory: i32, offset: i64, count: u32) -> i32`
+
+### `WebAssembly_Memory_share`
+
+```
+i64 WebAssembly_Memory_share(i32 memory)
+```
+
+A token that gives another agent of the cluster this shared memory; 0 when this realm may not (not cross-origin isolated).
+
+Host: `WebAssembly_Memory_share :: proc(c: ^Call, memory: i32) -> i64`
+
+### `WebAssembly_Memory_adopt`
+
+```
+i32 WebAssembly_Memory_adopt(i64 token)
+```
+
+The shared memory of a token, a number: -1 when the token is not of this agent cluster.
+
+Host: `WebAssembly_Memory_adopt :: proc(c: ^Call, token: i64) -> i32`
+
+### `WebAssembly_Module_share`
+
+```
+i64 WebAssembly_Module_share(WebAssemblyModule module)
+```
+
+A token that gives another agent of the cluster this module.
+
+Host: `WebAssembly_Module_share :: proc(c: ^Call, module: Api_WebAssemblyModule) -> i64`
+
+### `WebAssembly_Module_adopt`
+
+```
+WebAssemblyModule WebAssembly_Module_adopt(i64 token) raises
+```
+
+The module of a token: Data_Clone when the token is not of this agent cluster.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `WebAssembly_Module_adopt :: proc(c: ^Call, token: i64) -> (u64, Api_Error)`
+
+### `WebAssembly_crossOriginIsolated`
+
+```
+bool WebAssembly_crossOriginIsolated()
+```
+
+HTML's cross-origin isolated capability of this realm.
+
+Host: `WebAssembly_crossOriginIsolated :: proc(c: ^Call) -> bool`
+
+### `WebAssembly_canBlock`
+
+```
+bool WebAssembly_canBlock()
+```
+
+Whether this realm's agent may block ([[CanBlock]]): a dedicated or shared worker.
+
+Host: `WebAssembly_canBlock :: proc(c: ^Call) -> bool`
+
 ### `WebAssembly_Table_create`
 
 ```

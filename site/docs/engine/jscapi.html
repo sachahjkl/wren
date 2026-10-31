@@ -216,16 +216,16 @@
 <h1 id="the-quickjs-c-api-on-the-odin-runtime-srcenginejscapi"><a class="anchor" href="#the-quickjs-c-api-on-the-odin-runtime-srcenginejscapi" aria-hidden="true">#</a>The QuickJS C API on the Odin runtime (<code>src/engine/jscapi</code>)</h1>
 <p>Wren's glue (<code>native/js/odin</code>, package <code>wj</code> and the domains above it) is written against the QuickJS‑ng
 C API: <code>JSValue</code> words, <code>JS_DupValue</code>/<code>JS_FreeValue</code>, classes with an opaque pointer and a finalizer,
-<code>JS_NewCFunction2</code>, <code>JS_Call</code>… <code>jscapi</code> implements that API on <code>src/engine/jsrt</code>, so the glue can run on the
-Odin engine <strong>without touching a domain file</strong>. Select it with <code>-define:WJ_JSRT=true</code> (default: QuickJS in C).</p>
+<code>JS_NewCFunction2</code>, <code>JS_Call</code>… <code>jscapi</code> implements that API on <code>src/engine/jsrt</code>, so the glue runs on the
+Odin engine <strong>without touching a domain file</strong>. It is the only engine now (<code>WJ_JSRT :: true</code>, <code>wj/backend.odin</code>): the
+QuickJS-ng C engine is gone since 0.6.0.</p>
 <div class="code"><pre><code>domain files (web_url.odin, dom_core.odin, …)        unchanged
    wj.JS_Call, wj.JS_NewObject …                     the layer's names
-       wj/quickjs.odin, m*_quickjs.odin             WJ_JSRT=false: `foreign` QuickJS C symbols
-       wj/backend_jsrt.odin                          WJ_JSRT=true : aliases of src/engine/jscapi
+       wj/backend_jsrt.odin                          aliases of src/engine/jscapi
            src/engine/jscapi (167 procedures, "c")  the QuickJS contracts
                src/engine/jsrt                       the engine</code></pre></div>
 <p>The API types (<code>Context</code>, <code>Runtime</code>, <code>Class_Def</code>, <code>Native</code>, <code>Property_Descriptor</code>, …) are defined once, in
-<code>jscapi/types.odin</code>, and <code>wj</code> aliases them for both backends.</p>
+<code>jscapi/types.odin</code>, and <code>wj</code> aliases them.</p>
 <h2 id="contracts-kept"><a class="anchor" href="#contracts-kept" aria-hidden="true">#</a>Contracts kept</h2>
 <ul>
 <li><strong><code>JSValue</code></strong> is the 64‑bit NaN‑boxed word of QuickJS on wasm32 (<code>types.odin</code>: tags <code>-9 … 8</code>, floats
@@ -261,31 +261,22 @@ copies, <code>JS_NewUint8Array*</code>, <code>JS_GetArrayBuffer</code>, <code>JS
 <li><strong><code>JS_WriteObject</code>/<code>JS_ReadObject</code> of bytecode</strong>: a function compiled with <code>COMPILE_ONLY</code> keeps its image
 (<code>Compile_Request.keep_image</code>), so the realm snapshot of <code>qjs_realm.odin</code> / <code>prelude.odin</code> works.</li>
 </ul>
-<p>With <code>-define:JSCAPI_EXPORT=true</code> every procedure is also exported under its QuickJS name, so C that still
-calls the API (the generated <code>native/js/gen/bindings.c</code>) links against it instead of <code>quickjs.c</code>.</p>
-<h2 id="numbers-the-plan"><a class="anchor" href="#numbers-the-plan" aria-hidden="true">#</a>Numbers (the plan)</h2>
+<p>With <code>-define:JSCAPI_EXPORT=true</code> every procedure is also exported under its QuickJS name, for C that calls the API.
+The build has no such C any more.</p>
+<h2 id="numbers-when-the-api-was-written"><a class="anchor" href="#numbers-when-the-api-was-written" aria-hidden="true">#</a>Numbers (when the API was written)</h2>
 <p>Distinct <code>JS_*</code> / <code>js_*</code> names the glue references: <strong>176</strong>.</p>
 <div class="table-box"><table>
 <thead><tr><th></th><th style="text-align:right">count</th></tr></thead>
 <tbody>
-<tr><td>provided by <code>jscapi</code> (all type‑check against the glue with <code>-define:WJ_JSRT=true</code>)</td><td style="text-align:right">167</td></tr>
+<tr><td>provided by <code>jscapi</code></td><td style="text-align:right">167</td></tr>
 <tr><td><code>static inline</code> of quickjs.h reimplemented in <code>wj</code> (unchanged)</td><td style="text-align:right">4</td></tr>
 <tr><td>helper names of the glue that are not API (<code>js_str</code>, <code>js_cstr</code> …)</td><td style="text-align:right">5</td></tr>
 <tr><td>missing</td><td style="text-align:right">0</td></tr>
 </tbody>
 </table></div>
-<p><code>odin check native\js\odin -vet -no-entry-point -target:freestanding_wasm32 -default-to-nil-allocator
--collection:wb=src -collection:toolkit=ext/gui_toolkit [-define:WJ_JSRT=true]</code> passes in both modes. The API
-itself is tested natively by <code>judge capi</code> (40 checks). <strong>Nothing of the glue has been run on this backend</strong>:
-the build was not performed, as agreed.</p>
+<p>The API itself is tested natively by <code>judge capi</code> (40 checks); the glue runs on it in every build.</p>
 <h3 id="what-is-approximated-or-absent-by-weight"><a class="anchor" href="#what-is-approximated-or-absent-by-weight" aria-hidden="true">#</a>What is approximated or absent (by weight)</h3>
 <ol>
-<li><strong>Build wiring</strong> (the lead): link the <code>odin build native/js/odin</code> object with <code>-define:WJ_JSRT=true
--define:JSCAPI_EXPORT=true</code>; stop compiling <code>quickjs.c</code>, <code>libregexp.c</code>, <code>libunicode.c</code>, <code>dtoa.c</code> (keep
-<code>quickjs.h</code> for the inlines <code>bindings.c</code> uses); the engine allocates from the C heap
-(<code>JS_NewRuntime</code> sets <code>jscapi.host_allocator = libc_allocator()</code>); the wasm module no longer needs the
-<code>wren_js_timezone_offset</code> patch (jsrt takes <code>jsdate.timezone_offset_proc</code>, and <code>js.date_now_hook</code> for the
-clock) — set both in the module's init.</li>
 <li><strong>Atoms are permanent</strong> (<code>JS_FreeAtom</code> is a no‑op): a page that builds millions of distinct property
 names keeps them. QuickJS frees them.</li>
 <li><strong><code>JS_WriteObject</code>/<code>JS_ReadObject</code> of data</strong> (the structured clone format with <code>REFERENCE</code>): absent;
@@ -299,16 +290,13 @@ operator is unaffected).</li>
 <li><strong><code>JS_IsUncatchableError</code></strong> looks at the last created runtime (no context argument).</li>
 <li><strong><code>JS_ComputeMemoryUsage</code></strong> fills the totals only (<code>malloc_size</code>, counts).</li>
 <li><strong>Class <code>call</code> hooks</strong> (callable platform objects) are not supported.</li>
-<li><strong>Performance</strong>: each API call enters/leaves the host bracket and copies the Odin context; measure
-<code>jsbench</code> through the glue before judging (the engine itself is at 69 % of QuickJS on the micro
-benchmarks, see <a href="../../docs/engine/runtime.html">runtime.md</a>).</li>
+<li><strong>Performance</strong>: each API call enters/leaves the host bracket and copies the Odin context (the engine's own speed
+is in <a href="../../docs/engine/runtime.html">runtime.md</a>).</li>
 <li><strong>Memory</strong>: a tracing heap holds garbage until the next collection (1.6× QuickJS on allocation‑heavy
 scripts); <code>JS_SetGCThresholdFloor</code> raises the threshold now and is not re‑applied after a collection
 (the engine keeps <code>max(2 × live, live + 4 MiB)</code>).</li>
-<li><strong>What to run first</strong> once the build works: <code>jstest</code>, <code>jsdomtest</code>, <code>jswebtest</code>, <code>jsloadtest</code>,
-<code>workerstest</code>, then <code>tools\test262.ps1 -NoNative -Quick</code>. The ownership model is the most likely source
-of defects (a missing <code>JS_FreeValue</code> leaks a root, an extra one lets a value die early): a debug counter of
-<code>ext</code> per cell is easy to add in <code>ext_ref</code>/<code>ext_unref</code>.</li>
+<li><strong>The ownership model</strong> is the most likely source of defects (a missing <code>JS_FreeValue</code> leaks a root, an extra one
+lets a value die early): a debug counter of <code>ext</code> per cell is easy to add in <code>ext_ref</code>/<code>ext_unref</code>.</li>
 </ol>
 <h2 id="testing"><a class="anchor" href="#testing" aria-hidden="true">#</a>Testing</h2>
 <p><code>judge capi</code> (<code>src/engine/jsrt/judge/capi_test.odin</code>) runs the API natively on a heap below 4 GiB: values,
@@ -326,7 +314,7 @@ a native module imported by a script module, a compiled function written out and
 <p class="doc-toc-title">On this page</p>
 <ul>
 <li><a href="#contracts-kept">Contracts kept</a></li>
-<li><a href="#numbers-the-plan">Numbers (the plan)</a></li>
+<li><a href="#numbers-when-the-api-was-written">Numbers (when the API was written)</a></li>
 <li class="lvl3"><a href="#what-is-approximated-or-absent-by-weight">What is approximated or absent (by weight)</a></li>
 <li><a href="#testing">Testing</a></li>
 </ul>

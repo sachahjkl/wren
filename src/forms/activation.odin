@@ -102,6 +102,7 @@ focus_next :: proc(f: ^Forms, dir: int, visible: proc(user: rawptr, h: base.Hand
 	// radio groups are one tab stop: skip unchecked members of a group that has a checked one
 	for next >= 0 && next < len(order) {
 		h := order[next]
+		if f.host.inert != nil && f.host.inert(f.host.user, h) { next += dir; continue }
 		if input_type(f, h) == .Radio && kind(f, h) == .Input && !checked(f, h) {
 			group := radio_group(f, h)
 			any_checked := false

@@ -388,7 +388,7 @@
 /css/cssom/MediaList2.xhtml: TIMEOUT
 /css/cssom/MutationObserver-style.html: OK
 	Updating cssText triggers an observation callback even if the value is the same: PASS
-	Updating style property with the same value does not trigger an observation callback: FAIL
+	Updating style property with the same value does not trigger an observation callback: PASS
 /css/cssom/StyleSheet-properties.html: OK
 	<link>: cssRules is a CSSRuleList with rules: FAIL
 	<link>: disabled is false initially: FAIL
@@ -467,11 +467,11 @@
 	ShadowRoot: setting length to 0 removes the adopted styles: PASS
 	ShadowRoot: shrinking length removes the truncated styles: PASS
 /css/cssom/adoptedstylesheets-observablearray.html: OK
-	: FAIL
 	adoptedStyleSheets defineProperty should reject accessors that become non-callable during descriptor conversion: PASS
 	adoptedStyleSheets should not expose its backing object via prototype: FAIL
 	adoptedStyleSheets should return true for isArray(): PASS
 	document.adoptedStyleSheets should allow mutation in-place: PASS
+	shadowRoot.adoptedStyleSheets should allow mutation in-place: PASS
 /css/cssom/at-namespace.html: OK
 	CSS Test: @namespace in CSSOM is not severely broken: FAIL
 /css/cssom/base-uri.html: OK
@@ -3341,8 +3341,8 @@
 	Document interface: attribute styleSheets: PASS
 	Document interface: document must inherit property "adoptedStyleSheets" with the proper type: PASS
 	Document interface: document must inherit property "styleSheets" with the proper type: PASS
-	Document interface: new Document() must inherit property "adoptedStyleSheets" with the proper type: FAIL
-	Document interface: new Document() must inherit property "styleSheets" with the proper type: FAIL
+	Document interface: new Document() must inherit property "adoptedStyleSheets" with the proper type: PASS
+	Document interface: new Document() must inherit property "styleSheets" with the proper type: PASS
 	DocumentFragment includes NonElementParentNode: member names are unique: PASS
 	DocumentFragment includes ParentNode: member names are unique: PASS
 	Element includes ChildNode: member names are unique: PASS
@@ -4363,9 +4363,9 @@
 	right: 5%: PASS
 	right: auto: PASS
 	right: inherit: PASS
-	table-layout: auto: FAIL
-	table-layout: fixed: FAIL
-	table-layout: inherit: FAIL
+	table-layout: auto: PASS
+	table-layout: fixed: PASS
+	table-layout: inherit: PASS
 	text-align: center: PASS
 	text-align: inherit: PASS
 	text-align: justify: PASS
@@ -4536,7 +4536,7 @@
 	Setting a mixed percent and value color should NOT update the style: FAIL
 	Setting an hsl color should update the style: FAIL
 /css/cssom/style-cssText-mutations.html: OK
-	Reading cssText preserves style mutation records: FAIL
+	Reading cssText preserves style mutation records: PASS
 	cssText reflects style attribute replacement and removal: PASS
 	inline cssText reflects property, priority, shorthand, and declaration replacements: PASS
 	rule cssText reflects property, priority, shorthand, and declaration replacements: FAIL

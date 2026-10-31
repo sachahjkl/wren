@@ -24,15 +24,15 @@ can be written two ways, and both run inside the same Wasm sandbox:
 
 Everything else is a real browser engine: HTML parsed by Lexbor, a CSS engine with the modern cascade, shadow DOM,
 block, inline, flex, grid and table layout, incremental and parallel, painted by a retained GPU compositor on
-Direct3D 11, with text on DirectWrite. The window and its chrome are built with
-[gui_toolkit](https://github.com/sachahjkl/gui_toolkit), an immediate-mode UI toolkit by the same author. Windows
-first: the platform does what it does best (WinHTTP for HTTP and TLS, WIC for images, DirectWrite for text, BCrypt for
-crypto).
+Direct3D 11, with text shaped by Fontations, HarfRust and ICU4X. The window and its chrome are built with
+[gui_toolkit](https://github.com/sachahjkl/gui_toolkit), an immediate-mode UI toolkit by the same author. The
+network stack and the image decoders are built in too (Rust, the same on every system); the platform gives Direct3D 11,
+Media Foundation, WASAPI, UI Automation and BCrypt.
 
 ![Wren rendering the CSS effects demo: filters, backdrop-filter, mix-blend-mode](docs/screenshots/css-effects.png)
 
-> **Status: prototype.** Wren is a research project, not a daily browser. It runs the JavaScript of real sites, but
-> through an interpreter, with part of the web platform still missing, and it is Windows-only. See
+> **Status: beta.** Wren is a research project, not a daily browser. It runs the JavaScript of real sites, but
+> through an interpreter, with part of the web platform still missing, and its releases are Windows-only. See
 > [Status and limits](#status-and-limits).
 
 ## Contents
@@ -74,7 +74,8 @@ crypto).
 | The **Daylight** palette of the interface (`browser.ui.theme`) | |
 
 The demo pages are in [`examples/site`](examples/site); `about:demos` lists them all (see [Try it](#try-it)).
-Screenshots show the whole window and are all taken in one pass by `tools\shots.ps1` (README and site).
+Screenshots show the whole window and are all taken in one pass by `tools\shots.ps1` (README and site). These are of
+Wren 0.6.1: later versions changed some of what they show, the start page above all (0.6.10 and 0.6.11).
 
 ## Features
 
@@ -100,8 +101,8 @@ Everything below exists in the code today and is covered by the tests of [`tools
   hard deadline behind it (`wasm.max_call_ms`); a crash of the engine loses that page's scripts, never the browser.
 - **Bindings generated from the specifications**: `src/tools/bindgen` reads the Web IDL of
   [webref](https://github.com/w3c/webref) (`native/js/webref`, pinned) and writes the glue with Web IDL's rules
-  (conversions, dictionaries, unions, overloads, `[Reflect]`, iterables, named and indexed properties). 2,630 of
-  4,991 members are implemented; a member that is not is absent, so feature detection sees the truth.
+  (conversions, dictionaries, unions, overloads, `[Reflect]`, iterables, named and indexed properties). 3,798 of
+  5,308 members are implemented; a member that is not is absent, so feature detection sees the truth.
   [`docs/js/coverage.md`](docs/js/coverage.md) lists every interface and member.
 - **The DOM**: tree and mutations, live collections, `innerHTML`, selectors, CSSOM and `getComputedStyle`, geometry,
   UI events, `MutationObserver`, `IntersectionObserver`, `PerformanceObserver`, ranges and traversal, custom elements,
@@ -111,14 +112,16 @@ Everything below exists in the code today and is covered by the tests of [`tools
   inline), timers, JavaScript workers, `structuredClone`.
 - **Web APIs**: `fetch` / `Request` / `Response` / `Headers`, `XMLHttpRequest`, streams, `Blob` / `FormData`, URL,
   encoding, `AbortController`, Web Storage, IndexedDB (pages and dedicated workers, storage buckets), history and location, navigator, performance, `crypto` with
-  `crypto.subtle`, `matchMedia`, WebSocket, EventSource, `MessageChannel`, a minimal `Intl`.
+  `crypto.subtle`, `matchMedia`, WebSocket, EventSource, `MessageChannel`, service workers and the Cache API, shared
+  workers, Web Animations, `ResizeObserver`, Canvas 2D, WebCodecs decoders, the WebAssembly JavaScript API, a minimal
+  `Intl`.
 - Compiled scripts are kept in a bytecode cache, in memory and in the profile.
 - **On or off**, globally or per site: `javascript.enabled`, `javascript.sites.disabled`,
   `javascript.sites.enabled`. The status bar shows `JS` on pages that run scripts. Off, pages show their `<noscript>`
   content and their Wasm modules still run.
 
 **The web API of Wasm pages: one description, everything generated** ([`api/`](api), [`docs/api`](docs/api))
-- 25 modules, 672 functions: DOM, events, document, forms, timers and `requestAnimationFrame`, fetch (with streams),
+- 53 modules, 1,355 functions: DOM, events, document, forms, timers and `requestAnimationFrame`, fetch (with streams),
   AbortController, URL, TextEncoder / TextDecoder, crypto (`getRandomValues`, digests), Web Storage, history,
   performance, images, EventSource, WebSocket, workers, console, and what the JavaScript engine needs from the
   browser.
@@ -153,23 +156,27 @@ Everything below exists in the code today and is covered by the tests of [`tools
   `clip-path`, box shadows (exact gaussian, in the shader), gradients of every kind, `mask-image` and
   `-webkit-mask-*`, `background-clip: text`.
 - Colors blended on sRGB values as browsers do (with Chromium's text contrast settings), gamma-correct where it should.
-- Text on **DirectWrite**: per-character font fallback, OpenType shaping, bidi, synthetic italics, color emoji and
-  color fonts in every format (COLRv1, sbix, CBDT, OT-SVG, rasterized off the UI thread).
-- Images decoded off the UI thread: PNG, JPEG, GIF, BMP, ICO and TIFF through WIC; **WebP**, **AVIF** and **SVG**
-  always, through a built-in Rust library (image-webp, rav1d, resvg); ICC profiles and CICP color management (qcms);
+- Text on **Fontations, HarfRust and ICU4X**, the same on every machine (`text.backend`; DirectWrite stays selectable):
+  per-character font fallback, OpenType shaping, bidi, synthetic italics, color emoji and color fonts in every format
+  (COLRv1, sbix, CBDT, OT-SVG, rasterized off the UI thread).
+- Images decoded off the UI thread by a built-in Rust library, the same on every system: PNG, JPEG, GIF, BMP, ICO, TIFF,
+  **WebP**, **AVIF** and **SVG** (image, image-webp, rav1d, resvg); HEIF through WIC where its codec is installed; ICC profiles and CICP color management (qcms);
   `srcset`, `<picture>`, lazy loading, inline `<svg>`.
-- **`<video>` and `<audio>`**: MP4 and WebM (progressive files and fragmented ones) decoded by the system's Media
-  Foundation decoders (H.264, AAC and Opus; AV1, VP9 and HEVC where the system has a decoder), on the GPU where it can: the picture stays in video memory and is drawn like an image (`border-radius`, `object-fit`,
+- **`<video>` and `<audio>`**: MP4 and WebM (progressive files and fragmented ones): H.264, HEVC and AAC through
+  Media Foundation, AV1 and VP9 in software when the system has no decoder, Opus, Vorbis, FLAC, MP3 and PCM; on the GPU where it can: the picture stays in video memory and is drawn like an image (`border-radius`, `object-fit`,
   filters and transforms apply), the sound goes to WASAPI, the clock follows the audio. Built-in controls, the
   `HTMLMediaElement` state machine (events, `buffered`, `seekable`, `play()` and the autoplay policy) and **Media
   Source Extensions** (`MediaSource`, `SourceBuffer`, `URL.createObjectURL`) for adaptive streaming. Preferences:
   `media.*`.
 
 **Network and security**
-- HTTP(S) on WinHTTP, asynchronous, with per-host and global queues, back-pressure and cancellation.
+- HTTP/1.1, HTTP/2, HTTP/3 and WebSockets on a built-in Rust stack (hyper, rustls, quinn, tungstenite; `network.backend`,
+  WinHTTP stays selectable), asynchronous, with per-host and global queues, back-pressure and cancellation; an HTTP cache
+  in memory and on disk (`network.cache.*`).
 - A Fetch Standard policy layer: CORS with preflight cache (checked on every redirect), credentials modes, referrer
   policy, mixed content blocking, Fetch Metadata, bad ports, MIME checks.
-- Cookies (RFC 6265bis: SameSite, prefixes, Public Suffix List, third-party cookies blocked by default), **HSTS**,
+- Cookies (RFC 6265bis: SameSite, prefixes, Public Suffix List) and storage partitioned by top-level site
+  (`storage.partitioned`), with the Storage Access API, **HSTS**,
   **Content Security Policy** 3 (`script-src` governs JavaScript and Wasm modules), secure contexts.
 - A `file:` page may read only its own directory tree (paths are checked again once the file is open: no escape
   through junctions, links or device names); web pages never read local files.
@@ -179,7 +186,8 @@ Everything below exists in the code today and is covered by the tests of [`tools
   bar with search, find in page (Ctrl+F), text selection (word, paragraph, Shift+click), context menus, page zoom,
   keyboard navigation everywhere in the chrome.
 - Error pages by cause (DNS, refused, timeout, TLS, missing file), downloads (`Content-Disposition`, types that cannot
-  be shown) with the Windows Save dialog, optional session restore.
+  be shown) straight to a folder you choose, with a toolbar button and `about:downloads` (Ctrl+J), optional session
+  restore.
 - Local files as in other browsers: the address bar takes Windows paths, files and folders can be dropped on the
   window, a folder opens its `index.html` or a sortable list of its files.
 - **Frame pacing** on the display's exact refresh rate (60 to 180 Hz and beyond), vblank-aligned animation clock,
@@ -230,7 +238,7 @@ Requirements (CI installs the same: [.github/actions/setup](.github/actions/setu
 | Windows | 10 or 11, x64 | the only platform |
 | [Odin](https://github.com/odin-lang/Odin/releases/tag/dev-2026-10) | **`dev-2026-10`** (`dev-2026-10-nightly:84bc3fc`) | the browser and its tools |
 | Visual Studio 2022 or later (or its Build Tools) | "Desktop development with C++": MSVC x64 and a Windows SDK (CI: the runner's Visual Studio) | Odin's linker, Lexbor and the C shims |
-| [Rust](https://rustup.rs) | 1.99.1 (CI's pinned version; any recent stable works), `x86_64-pc-windows-msvc` | the built-in image and font decoders, the text backend and the accessibility adapter (`native/`) |
+| [Rust](https://rustup.rs) | 1.99.1 (CI's pinned version; any recent stable works), `x86_64-pc-windows-msvc` | the built-in image and font decoders, the network stack, the text backend and the accessibility adapter (`native/`) |
 | [Go](https://go.dev/dl/) | ≥ 1.25.6 | only the test server (`tools/testserver`) |
 | Git | any | submodules, the commit shown in About |
 
@@ -258,7 +266,7 @@ What `build.bat` does, each step skipped when it is already up to date:
 3. `tools\build_native.ps1` builds the Cargo workspace `native/` with Cargo (`--locked`, every crate pinned by version
    and hash), downloads **NASM 2.16.03** (SHA-256 pinned) for rav1d's assembly, adds the `llvm-tools` rustup component
    on first use, and produces `build\native\wren_native.lib`, the one Rust library of `wren.exe`: the image and font
-   decoders (`native/media`) and the toolkit's text backend and accessibility adapter (about 1 minute the first time;
+   decoders (`native/media`), the network stack (`native/net`) and the toolkit's text backend and accessibility adapter (about 1 minute the first time;
    `build.bat release` and `profile` link it with fat LTO, 2 minutes; see `docs/architecture.md`, "The Rust library").
 4. `src/tools/bindgen` regenerates the web API bindings, SDK and docs from `api/*.widl`, and the JavaScript bindings
    and their coverage from the Web IDL of `native/js/webref` (only what changed).
@@ -311,9 +319,9 @@ regression fails the run:
 - **test262**, the ECMAScript suite ([`tools\test262.ps1`](tools/test262.ps1)): the engine compiled to Wasm passes
   99.92 % of 82,220 runs (what fails: `Atomics.pause` and growable `SharedArrayBuffer`, without threads in WASI).
   `test_all` runs a sample of it.
-- **web-platform-tests** ([`tools\wpt.ps1`](tools/wpt.ps1), [`wpt/suites.txt`](wpt/suites.txt)): 4,494 test files of
-  25 folders (DOM, HTML, URL, encoding, Fetch, XHR, streams, storage, workers, shadow DOM, custom elements…), of
-  which 106,188 subtests pass ([`wpt/expectations`](wpt/expectations)).
+- **web-platform-tests** ([`tools\wpt.ps1`](tools/wpt.ps1), [`wpt/suites.txt`](wpt/suites.txt)): the tests of 48
+  folders (DOM, HTML, URL, encoding, Fetch, XHR, streams, storage, workers, shadow DOM, custom elements…), of which more
+  than 130,000 subtests pass ([`wpt/expectations`](wpt/expectations), [`docs/conformance.md`](docs/conformance.md)).
 
 `-CI` is `-Quick` for shared build machines: end-to-end timeouts are tripled and a failed step's whole output is
 shown, one step at a time on the default ports. Locally, steps run several at a time (`-Jobs n`) and the test server
@@ -390,20 +398,21 @@ ext/            submodules: gui_toolkit (window, UI, renderer, text), lexbor (HT
 native/js/      the JavaScript engine module: the engine layer, hand-written members, preludes,
                 generated bindings, the Web IDL of webref
 native/         Cargo workspace of the one Rust static library of wren.exe (native/wren_native, the assembly crate,
-                picks native/media and the toolkit's native/text and native/a11y)
-native/media/   SVG (resvg), WebP (image-webp), AVIF (rav1d), color (qcms), WOFF2 (brotli)
+                picks native/media, native/net and the toolkit's native/text and native/a11y)
+native/media/   raster images (image), SVG (resvg), WebP (image-webp), AVIF (rav1d), color (qcms), WOFF2 (brotli)
+native/net/     the network stack: HTTP/1.1, HTTP/2, HTTP/3, WebSockets, TLS
 sdk/odin/web/   generated Odin guest SDK
 src/
   base/         scopes (ownership tree with cleanups) and generational handle pools
   host/         event loop, thread-safe posts, timers, blocking-work pool
-  net/          transport: HTTP(S) and WebSocket on WinHTTP; no policy
+  net/          transport: HTTP(S) and WebSocket on native/net, or WinHTTP; no policy
   url/ http/    WHATWG URLs, origins, Public Suffix List; headers and MIME types
   cookies/ csp/ the cookie jar (RFC 6265bis) and Content Security Policy 3
   fetch/        the policy layer (Fetch Standard): CORS, credentials, redirects, HSTS, referrer, mixed content, file:
   html/ dom/    HTML parsing (Lexbor), charsets; the document tree, shadow trees, events and the mutation journal
   css/ style/   tokenizer, parser, selectors, values; the style engine (cascade, layers, shadow scopes, animations)
   layout/       box tree, block / inline / flex / grid / table layout, incremental and parallel passes, display list
-  images/ webfont/  image decoding threads (WIC + native/media); web font unpacking (WOFF, WOFF2)
+  images/ webfont/  image decoding threads (native/media; WIC for HEIF); web font unpacking (WOFF, WOFF2)
   media/        MP4 / WebM parsers, track stores, Media Foundation decoders, WASAPI output, the player (audio clock)
   forms/        HTML form controls as a model: values, validation, editing, submission
   wasm/         the Wasm engine (Wasmtime): instances, linker, deadlines, limits, caches, WASI, pre-initialization
@@ -422,21 +431,21 @@ across every boundary, a single UI thread, mechanism separate from policy, a bou
 
 ## Status and limits
 
-Wren is a prototype. It is meant to show how far a browser with a single, sandboxed execution engine can go, not to
+Wren is a beta. It is meant to show how far a browser with a single, sandboxed execution engine can go, not to
 replace one. Known limits:
 
 - **JavaScript is interpreted** (a bytecode interpreter in Wasm, with a JIT for numeric loops only): far slower than Edge
   on script-heavy benchmarks, and a DOM call crosses the Wasm boundary. Pages that run a lot of script are slow.
-- **Part of the web platform is missing**: about half of the members of the specifications' Web IDL are implemented
-  ([`docs/js/coverage.md`](docs/js/coverage.md)). Among what pages notice: Canvas 2D is software-drawn and partial (no workers, no video frames, no color emoji in `fillText`), IndexedDB without `SharedWorker` or partitioned storage (values stay on the disk, keys are loaded per object store), no
-  `ResizeObserver`, no Web Animations API, no service workers; `Intl` follows English conventions whatever the
-  locale; `<iframe>` content is not loaded. Single-page applications that rely on these show little or nothing.
-- **Windows only** (Win32, Direct3D 11, DirectWrite, WinHTTP, WIC). The layers above the platform are portable Odin.
-- No HTTP cache yet (every load goes to the network); no HTTP authentication, no SRI, CSP violations are reported to
-  the console only; no cookie partitioning.
+- **Part of the web platform is missing**: about 72 % of the members of the specifications' Web IDL are implemented
+  ([`docs/js/coverage.md`](docs/js/coverage.md)). Among what pages notice: no WebGL, WebGPU, Web Audio or WebRTC, no
+  video or audio encoder in WebCodecs; Canvas 2D is software-drawn; `Intl` follows English conventions whatever the
+  locale. Applications that rely on these show little or nothing.
+- **Releases for Windows only** (Win32, Direct3D 11, Media Foundation). The Linux build links and runs from source, with
+  nothing to download yet ([`docs/portability.md`](docs/portability.md)).
+- No HTTP authentication; CSP violations are reported to the console only.
 - No IME composition, no vertical writing modes, no multi-column layout; no `captureStream`, Encrypted Media Extensions (DRM), Ogg, MP3 or WAV files in
   `<audio>`.
-- Wasm threads and shared memory are off (each worker has its own memory); the Wasm GC proposal is off by default.
+- The Wasm GC proposal is off by default. A page has WebAssembly threads and `SharedArrayBuffer` under cross-origin isolation (`docs/shared-memory.md`).
 - Response bodies are bounded (`max_body` and a per-page ceiling).
 
 ## Releases
@@ -477,6 +486,11 @@ on:
   [rav1d](https://github.com/memorysafety/rav1d) (BSD-2-Clause), [zenavif-parse](https://crates.io/crates/zenavif-parse)
   (MPL-2.0), [qcms](https://github.com/FirefoxGraphics/qcms) (MIT),
   [brotli-decompressor](https://github.com/dropbox/rust-brotli-decompressor) and the crates they depend on;
+- [hyper](https://github.com/hyperium/hyper), [rustls](https://github.com/rustls/rustls),
+  [quinn](https://github.com/quinn-rs/quinn) and [tungstenite](https://github.com/snapview/tungstenite-rs), the network
+  stack; [Fontations](https://github.com/googlefonts/fontations), [HarfRust](https://github.com/harfbuzz/harfrust) and
+  [ICU4X](https://github.com/unicode-org/icu4x), fonts, shaping and line breaks;
+  [AccessKit](https://github.com/AccessKit/accesskit), the accessibility tree;
 - [NASM](https://www.nasm.us) (build time only), the [Public Suffix List](https://publicsuffix.org) (MPL-2.0);
 - the test suites [test262](https://github.com/tc39/test262) and
   [web-platform-tests](https://github.com/web-platform-tests/wpt) (BSD-3-Clause; fetched at a pinned commit for the
@@ -486,5 +500,5 @@ on:
   algorithm of the optional `text.renderer = slug` (glyphs drawn from their outlines on the GPU), through gui_toolkit.
 
 - [Noto Color Emoji](https://github.com/googlefonts/noto-emoji) (COLR v1, Google; SIL OFL 1.1), the built-in emoji font (`text.emoji = builtin`), compiled into `wren.exe`; and Unicode's `emoji-data.txt` (Unicode License v3), which tells emoji characters from the others.
- used by the demo pages and tests come with their licenses next to them (`examples/site/fonts`,
+Fonts used by the demo pages and tests come with their licenses next to them (`examples/site/fonts`,
 `native/media/tests/fonts`). [THIRD_PARTY.md](THIRD_PARTY.md) lists every component linked into `wren.exe`.

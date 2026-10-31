@@ -32,6 +32,19 @@ foreign _m_webassembly {
 	@(link_name = "WebAssembly_Memory_grow") _WebAssembly_Memory_grow :: proc(memory: i32, delta: i64) -> i64 ---
 	@(link_name = "WebAssembly_Memory_read") _WebAssembly_Memory_read :: proc(memory: i32, offset: i64, destination: [^]u8, destination_len: u32) -> i32 ---
 	@(link_name = "WebAssembly_Memory_write") _WebAssembly_Memory_write :: proc(memory: i32, offset: i64, source: [^]u8, source_len: u32) -> i32 ---
+	@(link_name = "WebAssembly_Memory_createShared") _WebAssembly_Memory_createShared :: proc(initial: i64, maximum: i64, bytes: i64) -> i32 ---
+	@(link_name = "WebAssembly_Memory_release") _WebAssembly_Memory_release :: proc(memory: i32) ---
+	@(link_name = "WebAssembly_Memory_byteLength") _WebAssembly_Memory_byteLength :: proc(memory: i32) -> i64 ---
+	@(link_name = "WebAssembly_Memory_growBytes") _WebAssembly_Memory_growBytes :: proc(memory: i32, bytes: i64) -> i32 ---
+	@(link_name = "WebAssembly_Memory_atomic") _WebAssembly_Memory_atomic :: proc(memory: i32, op: i32, offset: i64, size: i32, first: i64, second: i64) -> i64 ---
+	@(link_name = "WebAssembly_Memory_wait") _WebAssembly_Memory_wait :: proc(memory: i32, offset: i64, size: i32, expected: i64, timeout: f64) -> i32 ---
+	@(link_name = "WebAssembly_Memory_notify") _WebAssembly_Memory_notify :: proc(memory: i32, offset: i64, count: u32) -> i32 ---
+	@(link_name = "WebAssembly_Memory_share") _WebAssembly_Memory_share :: proc(memory: i32) -> i64 ---
+	@(link_name = "WebAssembly_Memory_adopt") _WebAssembly_Memory_adopt :: proc(token: i64) -> i32 ---
+	@(link_name = "WebAssembly_Module_share") _WebAssembly_Module_share :: proc(module: WebAssemblyModule) -> i64 ---
+	@(link_name = "WebAssembly_Module_adopt") _WebAssembly_Module_adopt :: proc(token: i64, _ret: ^WebAssemblyModule) -> Error ---
+	@(link_name = "WebAssembly_crossOriginIsolated") _WebAssembly_crossOriginIsolated :: proc() -> i32 ---
+	@(link_name = "WebAssembly_canBlock") _WebAssembly_canBlock :: proc() -> i32 ---
 	@(link_name = "WebAssembly_Table_create") _WebAssembly_Table_create :: proc(element: [^]u8, element_len: u32, initial: i64, maximum: i64, init: i64) -> i32 ---
 	@(link_name = "WebAssembly_Table_element") _WebAssembly_Table_element :: proc(table: i32, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "WebAssembly_Table_length") _WebAssembly_Table_length :: proc(table: i32) -> i64 ---
@@ -253,6 +266,72 @@ WebAssembly_Memory_read :: proc "contextless" (memory: i32, offset: i64, destina
 // `source` into the memory at `offset`: how many were copied. What memory.buffer writes.
 WebAssembly_Memory_write :: proc "contextless" (memory: i32, offset: i64, source: []u8) -> i32 {
 	return _WebAssembly_Memory_write(memory, offset, raw_data(source), u32(len(source)))
+}
+
+// A memory that other agents can have: a number. Its size in bytes is ytes (-1: all of its pages).
+WebAssembly_Memory_createShared :: proc "contextless" (initial: i64, maximum: i64, bytes: i64) -> i32 {
+	return _WebAssembly_Memory_createShared(initial, maximum, bytes)
+}
+
+// A SharedArrayBuffer has gone: one use of the memory less.
+WebAssembly_Memory_release :: proc "contextless" (memory: i32) {
+	_WebAssembly_Memory_release(memory)
+}
+
+// What a SharedArrayBuffer of the memory says its length is.
+WebAssembly_Memory_byteLength :: proc "contextless" (memory: i32) -> i64 {
+	return _WebAssembly_Memory_byteLength(memory)
+}
+
+// SharedArrayBuffer.grow.
+WebAssembly_Memory_growBytes :: proc "contextless" (memory: i32, bytes: i64) -> bool {
+	return _WebAssembly_Memory_growBytes(memory, bytes) != 0
+}
+
+// An Atomics operation on a shared memory (op: add and compareExchange exchange load or store sub xor): the value it held.
+WebAssembly_Memory_atomic :: proc "contextless" (memory: i32, op: i32, offset: i64, size: i32, first: i64, second: i64) -> i64 {
+	return _WebAssembly_Memory_atomic(memory, op, offset, size, first, second)
+}
+
+// Atomics.wait on a shared memory: 0 woken, 1 not equal, 2 timed out. 	imeout in milliseconds, < 0: none.
+WebAssembly_Memory_wait :: proc "contextless" (memory: i32, offset: i64, size: i32, expected: i64, timeout: f64) -> i32 {
+	return _WebAssembly_Memory_wait(memory, offset, size, expected, timeout)
+}
+
+// Atomics.notify on a shared memory: how many it woke.
+WebAssembly_Memory_notify :: proc "contextless" (memory: i32, offset: i64, count: u32) -> i32 {
+	return _WebAssembly_Memory_notify(memory, offset, count)
+}
+
+// A token that gives another agent of the cluster this shared memory; 0 when this realm may not (not cross-origin isolated).
+WebAssembly_Memory_share :: proc "contextless" (memory: i32) -> i64 {
+	return _WebAssembly_Memory_share(memory)
+}
+
+// The shared memory of a token, a number: -1 when the token is not of this agent cluster.
+WebAssembly_Memory_adopt :: proc "contextless" (token: i64) -> i32 {
+	return _WebAssembly_Memory_adopt(token)
+}
+
+// A token that gives another agent of the cluster this module.
+WebAssembly_Module_share :: proc "contextless" (module: WebAssemblyModule) -> i64 {
+	return _WebAssembly_Module_share(module)
+}
+
+// The module of a token: Data_Clone when the token is not of this agent cluster.
+WebAssembly_Module_adopt :: proc "contextless" (token: i64) -> (result: WebAssemblyModule, err: Error) {
+	err = _WebAssembly_Module_adopt(token, &result)
+	return
+}
+
+// HTML's cross-origin isolated capability of this realm.
+WebAssembly_crossOriginIsolated :: proc "contextless" () -> bool {
+	return _WebAssembly_crossOriginIsolated() != 0
+}
+
+// Whether this realm's agent may block ([[CanBlock]]): a dedicated or shared worker.
+WebAssembly_canBlock :: proc "contextless" () -> bool {
+	return _WebAssembly_canBlock() != 0
 }
 
 // new WebAssembly.Table: a number. `element` "r" (funcref) or "e" (externref), `maximum` -1 for none.

@@ -1,0 +1,57 @@
+# web-platform-tests expectations of Wren for wasm/serialization/module, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/wasm/serialization/module/broadcastchannel-success-and-failure.html: TIMEOUT
+	WebAssembly.Module cannot cross agent clusters, BroadcastChannel edition: TIMEOUT
+/wasm/serialization/module/broadcastchannel-success.html: OK
+	Structured cloning of WebAssembly.Module: BroadcastChannel within the same agent cluster: PASS
+/wasm/serialization/module/identity-not-preserved.html: OK
+	postMessaging to a worker and back does not give back the same WebAssembly.Module: PASS
+	postMessaging to an iframe and back does not give back the same WebAssembly.Module: PASS
+	postMessaging to this window does not give back the same WebAssembly.Module: PASS
+/wasm/serialization/module/nested-worker-success.any.worker.html: OK
+	postMessaging to a dedicated sub-worker allows them to see each others' modifications: PASS
+/wasm/serialization/module/no-transferring.html: OK
+	Trying to transfer a WebAssembly.Module through a MessagePort throws: PASS
+	Trying to transfer a WebAssembly.Module to a worker throws: PASS
+	Trying to transfer a WebAssembly.Module to this window throws: PASS
+/wasm/serialization/module/serialization-via-history.html: OK
+	history.pushState(): is interleaved correctly: PASS
+	history.pushState(): simple case: PASS
+	history.replaceState(): is interleaved correctly: PASS
+	history.replaceState(): simple case: PASS
+/wasm/serialization/module/serialization-via-idb.any.html: OK
+	WebAssembly.Module cloning via IndexedDB: basic case: PASS
+	WebAssembly.Module cloning via the IndexedDB: is interleaved correctly: PASS
+/wasm/serialization/module/serialization-via-idb.any.worker.html: OK
+	WebAssembly.Module cloning via IndexedDB: basic case: PASS
+	WebAssembly.Module cloning via the IndexedDB: is interleaved correctly: PASS
+/wasm/serialization/module/serialization-via-notifications-api.any.html: OK
+	WebAssembly.Module cloning via the Notifications API's data member: basic case: FAIL
+	WebAssembly.Module cloning via the Notifications API's data member: is interleaved correctly: FAIL
+/wasm/serialization/module/serialization-via-notifications-api.any.worker.html: OK
+	WebAssembly.Module cloning via the Notifications API's data member: basic case: FAIL
+	WebAssembly.Module cloning via the Notifications API's data member: is interleaved correctly: FAIL
+/wasm/serialization/module/window-cross-origin-isolated.https.sub.html: OK
+	The window is cross-origin isolated: PASS
+	postMessaging a wasm module to a same-origin iframe succeeds: PASS
+	postMessaging a wasm module to a same-site cross-origin iframe fails: PASS
+/wasm/serialization/module/window-cross-site-failure.html: TIMEOUT
+	postMessaging a wasm module to a cross-site iframe fails: TIMEOUT
+	postMessaging a wasm module to a same-host iframe with a different scheme fails: NOTRUN
+	postMessaging a wasm module to a sandboxed iframe fails: NOTRUN
+/wasm/serialization/module/window-domain-success.sub.html: ERROR
+/wasm/serialization/module/window-messagechannel-success.html: OK
+	postMessaging to a dedicated worker via MessageChannel allows them to instantiate: PASS
+/wasm/serialization/module/window-same-site-success.sub.html: TIMEOUT
+	postMessaging a wasm module to a same-site iframe on another host succeeds: TIMEOUT
+	postMessaging a wasm module to a same-site iframe on another port succeeds: NOTRUN
+/wasm/serialization/module/window-serviceworker-failure.https.html: OK
+	WebAssembly.Module cannot cross agent clusters, service worker edition: FAIL
+/wasm/serialization/module/window-sharedworker-failure.html: OK
+	WebAssembly.Modules cannot cross agent clusters, shared worker edition: FAIL
+/wasm/serialization/module/window-similar-but-cross-origin-success.sub.html: ERROR
+/wasm/serialization/module/window-simple-success.html: OK
+	postMessaging to a dedicated worker allows them to instantiate: PASS
+	postMessaging to a same-origin deeply-nested iframe allows them to instantiate: PASS
+	postMessaging to a same-origin iframe allows them to instantiate: PASS
+	postMessaging to a same-origin opened window allows them to instantiate: FAIL

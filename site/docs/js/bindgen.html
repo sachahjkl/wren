@@ -222,8 +222,9 @@ against was generated in <strong>C</strong> (<code>native/js/gen/*</code>). Two 
 <li>The description itself can be written in <strong>Odin</strong> (<code>-convert-widl</code> migrates the existing <code>.widl</code>), read with a
 dedicated Odin reader.</li>
 </ol>
-<p>Both are off by default: <code>bindgen</code> with no flag, and <code>build.bat</code>, still emit C from <code>.widl</code>. Nothing in the current
-build changes until the engine is Odin (agent <code>spk</code>'s <code>wj</code> layer).</p>
+<p>The engine is Odin now, and neither of these is what the build runs: <code>bindgen</code> with no flag, and <code>build.bat</code>, read
+<code>.widl</code> and emit <code>-emit:glue</code>, the whole glue in Odin (<code>native/js/odin/bindings_gen.odin</code>). The C output (<code>native/js/gen/*</code>)
+is no longer used. What follows describes the two optional forms.</p>
 <h2 id="emitodin-the-engine-glue-in-odin"><a class="anchor" href="#emitodin-the-engine-glue-in-odin" aria-hidden="true">#</a><code>-emit:odin</code> : the engine glue in Odin</h2>
 <p><code>bindgen -emit:odin</code> writes, instead of <code>native/js/gen/*</code>:</p>
 <div class="table-box"><table>
@@ -238,7 +239,7 @@ part of <code>native/js/engine/wj.h</code> (the types <code>Interface</code>, <c
 bit-sets, the <code>Native</code> / <code>Getter</code> / <code>Setter</code> glue signatures, and the conversion / wrap / throw surface the trampolines
 call). No macros: tagged enums, <code>bit_set</code>, and plain slice literals.</p>
 <p><code>wj_iface.odin</code> is <strong>stubs</strong> today: every procedure panics or returns a sentinel. It defines exactly what the generated
-code and the hand-written members expect, so <code>spk</code> can implement it (or re-point the generated <code>import</code> at <code>spk</code>'s
+code and the hand-written members expect, so a layer can implement it (or re-point the generated <code>import</code> at its
 package) without touching a line of the generated output. The member <em>glue bodies</em> (the per-member trampolines that
 marshal strings, bytes, handles, <code>raises</code> → status, <code>[Owned]</code>) are <strong>not</strong> generated in Odin yet: they are the part most
 tightly coupled to the engine's value type and conversions. The table's <code>fn</code> / <code>get</code> / <code>set</code> slots are left <code>nil</code> with
@@ -299,8 +300,8 @@ generates the host trampolines, every guest SDK module, the docs, the conformanc
 and reports the first byte that differs. It prints <code>identical (host, guests, docs, conformance, imports)</code> when the Odin
 form reproduces the exact output (the docs' <code>Source:</code> line, which names the file, is normalized away — the migration
 renames the source, not the API).</p>
-<h2 id="what-spk-must-provide"><a class="anchor" href="#what-spk-must-provide" aria-hidden="true">#</a>What <code>spk</code> must provide</h2>
-<p><code>native/js/odin_gen/wj_iface.odin</code> is the contract. <code>spk</code> backs it with the engine-agnostic Odin layer (the <code>wj.h</code>
+<h2 id="what-emitodin-would-need"><a class="anchor" href="#what-emitodin-would-need" aria-hidden="true">#</a>What <code>-emit:odin</code> would need</h2>
+<p><code>native/js/odin_gen/wj_iface.odin</code> is the contract. A real layer would back it with the engine-agnostic Odin layer (the <code>wj.h</code>
 equivalent): the real <code>Ctx</code> / <code>Val</code>, the <code>to_*</code> conversions, <code>wrap_node</code> / <code>wrap_host</code> / <code>wrap_owned</code>, the <code>throw_*</code>
 helpers, the scratch buffer, and it publishes <code>interfaces</code> / <code>interface_count</code> (the generated <code>@(init)</code> already assigns
 them). The member-glue body generator (the Odin equivalent of <code>jsgen</code>'s <code>emit_import_glue</code>) comes once that surface is
@@ -319,7 +320,7 @@ real.</p>
 <li class="lvl3"><a href="#why-a-hand-written-reader-not-coreodinparser">Why a hand-written reader, not core:odin/parser</a></li>
 <li class="lvl3"><a href="#guardrails-read-time-with-file-and-line">Guardrails (read time, with file and line)</a></li>
 <li><a href="#verifying-the-migration-is-lossless">Verifying the migration is lossless</a></li>
-<li><a href="#what-spk-must-provide">What spk must provide</a></li>
+<li><a href="#what-emitodin-would-need">What -emit:odin would need</a></li>
 </ul>
 </nav>
 </main>

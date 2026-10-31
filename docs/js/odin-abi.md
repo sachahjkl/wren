@@ -104,7 +104,7 @@ Readings:
 
 ## Inside the engine: `jsb`
 
-The engine (QuickJS in C today) reaches the host through the generated `wr_*` imports (`native/js/odin/wj/wr_imports.odin`).
+The engine reaches the host through the generated `wr_*` imports (`native/js/odin/wj/wr_imports.odin`).
 `jsb` binds a WebIDL member to a declaration and the import that carries it, with no per-function code:
 
 ```odin

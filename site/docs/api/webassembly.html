@@ -289,6 +289,59 @@ the page's Content Security Policy refuses it.</p>
 <div class="code"><pre><code>i32 WebAssembly_Memory_write(i32 memory, i64 offset, bytes source)</code></pre></div>
 <p><code>source</code> into the memory at <code>offset</code>: how many were copied. What memory.buffer writes.</p>
 <p>Host: <code>WebAssembly_Memory_write :: proc(c: ^Call, memory: i32, offset: i64, source: []u8) -&gt; i32</code></p>
+<h3 id="webassembly-memory-createshared"><a class="anchor" href="#webassembly-memory-createshared" aria-hidden="true">#</a><code>WebAssembly_Memory_createShared</code></h3>
+<div class="code"><pre><code>i32 WebAssembly_Memory_createShared(i64 initial, i64 maximum, i64 bytes)</code></pre></div>
+<p>A memory that other agents can have: a number. Its size in bytes is ytes (-1: all of its pages).</p>
+<p>Host: <code>WebAssembly_Memory_createShared :: proc(c: ^Call, initial: i64, maximum: i64, bytes: i64) -&gt; i32</code></p>
+<h3 id="webassembly-memory-release"><a class="anchor" href="#webassembly-memory-release" aria-hidden="true">#</a><code>WebAssembly_Memory_release</code></h3>
+<div class="code"><pre><code>void WebAssembly_Memory_release(i32 memory)</code></pre></div>
+<p>A SharedArrayBuffer has gone: one use of the memory less.</p>
+<p>Host: <code>WebAssembly_Memory_release :: proc(c: ^Call, memory: i32)</code></p>
+<h3 id="webassembly-memory-bytelength"><a class="anchor" href="#webassembly-memory-bytelength" aria-hidden="true">#</a><code>WebAssembly_Memory_byteLength</code></h3>
+<div class="code"><pre><code>i64 WebAssembly_Memory_byteLength(i32 memory)</code></pre></div>
+<p>What a SharedArrayBuffer of the memory says its length is.</p>
+<p>Host: <code>WebAssembly_Memory_byteLength :: proc(c: ^Call, memory: i32) -&gt; i64</code></p>
+<h3 id="webassembly-memory-growbytes"><a class="anchor" href="#webassembly-memory-growbytes" aria-hidden="true">#</a><code>WebAssembly_Memory_growBytes</code></h3>
+<div class="code"><pre><code>bool WebAssembly_Memory_growBytes(i32 memory, i64 bytes)</code></pre></div>
+<p>SharedArrayBuffer.grow.</p>
+<p>Host: <code>WebAssembly_Memory_growBytes :: proc(c: ^Call, memory: i32, bytes: i64) -&gt; bool</code></p>
+<h3 id="webassembly-memory-atomic"><a class="anchor" href="#webassembly-memory-atomic" aria-hidden="true">#</a><code>WebAssembly_Memory_atomic</code></h3>
+<div class="code"><pre><code>i64 WebAssembly_Memory_atomic(i32 memory, i32 op, i64 offset, i32 size, i64 first, i64 second)</code></pre></div>
+<p>An Atomics operation on a shared memory (op: add and compareExchange exchange load or store sub xor): the value it held.</p>
+<p>Host: <code>WebAssembly_Memory_atomic :: proc(c: ^Call, memory: i32, op: i32, offset: i64, size: i32, first: i64, second: i64) -&gt; i64</code></p>
+<h3 id="webassembly-memory-wait"><a class="anchor" href="#webassembly-memory-wait" aria-hidden="true">#</a><code>WebAssembly_Memory_wait</code></h3>
+<div class="code"><pre><code>i32 WebAssembly_Memory_wait(i32 memory, i64 offset, i32 size, i64 expected, f64 timeout)</code></pre></div>
+<p>Atomics.wait on a shared memory: 0 woken, 1 not equal, 2 timed out. 	imeout in milliseconds, &lt; 0: none.</p>
+<p>Host: <code>WebAssembly_Memory_wait :: proc(c: ^Call, memory: i32, offset: i64, size: i32, expected: i64, timeout: f64) -&gt; i32</code></p>
+<h3 id="webassembly-memory-notify"><a class="anchor" href="#webassembly-memory-notify" aria-hidden="true">#</a><code>WebAssembly_Memory_notify</code></h3>
+<div class="code"><pre><code>i32 WebAssembly_Memory_notify(i32 memory, i64 offset, u32 count)</code></pre></div>
+<p>Atomics.notify on a shared memory: how many it woke.</p>
+<p>Host: <code>WebAssembly_Memory_notify :: proc(c: ^Call, memory: i32, offset: i64, count: u32) -&gt; i32</code></p>
+<h3 id="webassembly-memory-share"><a class="anchor" href="#webassembly-memory-share" aria-hidden="true">#</a><code>WebAssembly_Memory_share</code></h3>
+<div class="code"><pre><code>i64 WebAssembly_Memory_share(i32 memory)</code></pre></div>
+<p>A token that gives another agent of the cluster this shared memory; 0 when this realm may not (not cross-origin isolated).</p>
+<p>Host: <code>WebAssembly_Memory_share :: proc(c: ^Call, memory: i32) -&gt; i64</code></p>
+<h3 id="webassembly-memory-adopt"><a class="anchor" href="#webassembly-memory-adopt" aria-hidden="true">#</a><code>WebAssembly_Memory_adopt</code></h3>
+<div class="code"><pre><code>i32 WebAssembly_Memory_adopt(i64 token)</code></pre></div>
+<p>The shared memory of a token, a number: -1 when the token is not of this agent cluster.</p>
+<p>Host: <code>WebAssembly_Memory_adopt :: proc(c: ^Call, token: i64) -&gt; i32</code></p>
+<h3 id="webassembly-module-share"><a class="anchor" href="#webassembly-module-share" aria-hidden="true">#</a><code>WebAssembly_Module_share</code></h3>
+<div class="code"><pre><code>i64 WebAssembly_Module_share(WebAssemblyModule module)</code></pre></div>
+<p>A token that gives another agent of the cluster this module.</p>
+<p>Host: <code>WebAssembly_Module_share :: proc(c: ^Call, module: Api_WebAssemblyModule) -&gt; i64</code></p>
+<h3 id="webassembly-module-adopt"><a class="anchor" href="#webassembly-module-adopt" aria-hidden="true">#</a><code>WebAssembly_Module_adopt</code></h3>
+<div class="code"><pre><code>WebAssemblyModule WebAssembly_Module_adopt(i64 token) raises</code></pre></div>
+<p>The module of a token: Data_Clone when the token is not of this agent cluster.</p>
+<p>Raises: returns an <code>Error</code> (see <a href="../../docs/api/web.html">web</a>).</p>
+<p>Host: <code>WebAssembly_Module_adopt :: proc(c: ^Call, token: i64) -&gt; (u64, Api_Error)</code></p>
+<h3 id="webassembly-crossoriginisolated"><a class="anchor" href="#webassembly-crossoriginisolated" aria-hidden="true">#</a><code>WebAssembly_crossOriginIsolated</code></h3>
+<div class="code"><pre><code>bool WebAssembly_crossOriginIsolated()</code></pre></div>
+<p>HTML's cross-origin isolated capability of this realm.</p>
+<p>Host: <code>WebAssembly_crossOriginIsolated :: proc(c: ^Call) -&gt; bool</code></p>
+<h3 id="webassembly-canblock"><a class="anchor" href="#webassembly-canblock" aria-hidden="true">#</a><code>WebAssembly_canBlock</code></h3>
+<div class="code"><pre><code>bool WebAssembly_canBlock()</code></pre></div>
+<p>Whether this realm's agent may block ([[CanBlock]]): a dedicated or shared worker.</p>
+<p>Host: <code>WebAssembly_canBlock :: proc(c: ^Call) -&gt; bool</code></p>
 <h3 id="webassembly-table-create"><a class="anchor" href="#webassembly-table-create" aria-hidden="true">#</a><code>WebAssembly_Table_create</code></h3>
 <div class="code"><pre><code>i32 WebAssembly_Table_create(string element, i64 initial, i64 maximum, i64 init)</code></pre></div>
 <p>new WebAssembly.Table: a number. <code>element</code> "r" (funcref) or "e" (externref), <code>maximum</code> -1 for none.</p>
@@ -409,6 +462,19 @@ runs here.</p>
 <li class="lvl3"><a href="#webassembly-memory-grow">WebAssembly_Memory_grow</a></li>
 <li class="lvl3"><a href="#webassembly-memory-read">WebAssembly_Memory_read</a></li>
 <li class="lvl3"><a href="#webassembly-memory-write">WebAssembly_Memory_write</a></li>
+<li class="lvl3"><a href="#webassembly-memory-createshared">WebAssembly_Memory_createShared</a></li>
+<li class="lvl3"><a href="#webassembly-memory-release">WebAssembly_Memory_release</a></li>
+<li class="lvl3"><a href="#webassembly-memory-bytelength">WebAssembly_Memory_byteLength</a></li>
+<li class="lvl3"><a href="#webassembly-memory-growbytes">WebAssembly_Memory_growBytes</a></li>
+<li class="lvl3"><a href="#webassembly-memory-atomic">WebAssembly_Memory_atomic</a></li>
+<li class="lvl3"><a href="#webassembly-memory-wait">WebAssembly_Memory_wait</a></li>
+<li class="lvl3"><a href="#webassembly-memory-notify">WebAssembly_Memory_notify</a></li>
+<li class="lvl3"><a href="#webassembly-memory-share">WebAssembly_Memory_share</a></li>
+<li class="lvl3"><a href="#webassembly-memory-adopt">WebAssembly_Memory_adopt</a></li>
+<li class="lvl3"><a href="#webassembly-module-share">WebAssembly_Module_share</a></li>
+<li class="lvl3"><a href="#webassembly-module-adopt">WebAssembly_Module_adopt</a></li>
+<li class="lvl3"><a href="#webassembly-crossoriginisolated">WebAssembly_crossOriginIsolated</a></li>
+<li class="lvl3"><a href="#webassembly-canblock">WebAssembly_canBlock</a></li>
 <li class="lvl3"><a href="#webassembly-table-create">WebAssembly_Table_create</a></li>
 <li class="lvl3"><a href="#webassembly-table-element">WebAssembly_Table_element</a></li>
 <li class="lvl3"><a href="#webassembly-table-length">WebAssembly_Table_length</a></li>

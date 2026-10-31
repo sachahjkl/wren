@@ -522,9 +522,14 @@ close_dialog :: proc(f: ^Forms, dialog: base.Handle, result: string, has_result:
 	n := element(f, dialog)
 	if n == nil || !has_attr(n, "open") { return }
 	dom.remove_attribute(f.doc, dialog, "open")
+	if f.host.dialog_closed != nil { f.host.dialog_closed(f.host.user, dialog) }
 	if c := control_of(f, dialog); c != nil && has_result { replace_owned(&c.return_value, result) }
 	changed_widely(f)
-	fire(f, dialog, "close")
+	if f.host.queue_close != nil { f.host.queue_close(f.host.user, dialog) } else { fire(f, dialog, "close") }
+}
+
+dialog_set_return_value :: proc(f: ^Forms, dialog: base.Handle, value: string) {
+	if c := control_of(f, dialog); c != nil { replace_owned(&c.return_value, value) }
 }
 
 dialog_return_value :: proc(f: ^Forms, dialog: base.Handle) -> string {

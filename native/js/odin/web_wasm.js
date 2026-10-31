@@ -98,7 +98,8 @@
   // ---- Memory ----
 
   const memories = [];
-  const memoryObject = id => memories[id] || (memories[id] = setState(create(Memory.prototype), { kind: Memory, id, buffer: null, pages: -1 }));
+  const SHARED_BASE = 1 << 20;   // (USER_SHARED_BASE: a number of a shared memory)
+  const memoryObject = id => memories[id] || (memories[id] = setState(create(Memory.prototype), { kind: Memory, id, buffer: null, pages: -1, shared: id >= SHARED_BASE }));
 
   class Memory {
     constructor(descriptor) {
@@ -111,10 +112,9 @@
       if (initial > 65536) throw new RE("WebAssembly.Memory(): Property 'initial': value " + initial + " is above the upper bound");
       if (maximum > 65536) throw new RE("WebAssembly.Memory(): Property 'maximum': value " + maximum + " is above the upper bound");
       if (maximum >= 0 && maximum < initial) throw new RE("WebAssembly.Memory(): Property 'maximum': value " + maximum + " is below the lower bound " + initial);
-      // A shared memory is an ordinary one whose buffer is a SharedArrayBuffer: only this agent can have it (no threads).
       const shared = !!descriptor.shared;
       if (shared && maximum < 0) throw new TE("WebAssembly.Memory(): If shared is true, maximum property must be defined.");
-      const id = native.memoryCreate(initial, maximum);
+      const id = native.memoryCreate(initial, maximum, shared);
       memories[id] = setState(this, { kind: Memory, id, buffer: null, pages: -1, shared });
     }
     grow(delta) {
@@ -330,7 +330,17 @@
     return [stateOf(jsTagObject()).id, [e]];
   };
 
-  native.setup({ LinkError, RuntimeError, funcId, funcWrap, externId, externValue: id => apply(mapGet, externValues, [id]), toList: v => ArrayFrom(v), exceptionMake, exceptionInfo });
+  native.setup({ LinkError, RuntimeError, funcId, funcWrap, externId, externValue: id => apply(mapGet, externValues, [id]), toList: v => ArrayFrom(v), exceptionMake, exceptionInfo,
+    // what structured clone asks (clone.odin): what can go to another agent of the cluster, and what comes
+    cloneOf: v => {
+      const s = stateOf(v);
+      if (s === undefined) return undefined;
+      if (s.kind === Module) return s.handle;
+      return s.kind === Memory && s.shared ? s.id : false;
+    },
+    cloneModule: h => setState(create(Module.prototype), { kind: Module, handle: h }),
+    cloneMemory: id => memoryObject(id),
+  });
 
   // ---- Instance ----
 

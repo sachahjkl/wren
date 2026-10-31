@@ -125,6 +125,7 @@ module forms {
   /// document.activeElement (the body when nothing has the focus).
   Element Document_activeElement();
   string HTMLDialogElement_returnValue(Element dialog);
+  void HTMLDialogElement_set_returnValue(Element dialog, string value);
 
   /// new FormData(form, submitter): both optional. Invalid_Handle when form is not a form or submitter not one of its
   /// submit buttons, Invalid_State while the form is constructing its entry list.

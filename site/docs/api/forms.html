@@ -550,6 +550,9 @@ FormDataEvent.formData are Event_object.</li>
 <h3 id="htmldialogelement-returnvalue"><a class="anchor" href="#htmldialogelement-returnvalue" aria-hidden="true">#</a><code>HTMLDialogElement_returnValue</code></h3>
 <div class="code"><pre><code>string HTMLDialogElement_returnValue(Element dialog)</code></pre></div>
 <p>Host: <code>HTMLDialogElement_returnValue :: proc(c: ^Call, dialog: Api_Element) -&gt; string</code></p>
+<h3 id="htmldialogelement-set-returnvalue"><a class="anchor" href="#htmldialogelement-set-returnvalue" aria-hidden="true">#</a><code>HTMLDialogElement_set_returnValue</code></h3>
+<div class="code"><pre><code>void HTMLDialogElement_set_returnValue(Element dialog, string value)</code></pre></div>
+<p>Host: <code>HTMLDialogElement_set_returnValue :: proc(c: ^Call, dialog: Api_Element, value: string)</code></p>
 <h3 id="formdata-create"><a class="anchor" href="#formdata-create" aria-hidden="true">#</a><code>FormData_create</code></h3>
 <div class="code"><pre><code>FormData FormData_create(optional Element form, optional Element submitter) raises</code></pre></div>
 <p>new FormData(form, submitter): both optional. Invalid_Handle when form is not a form or submitter not one of its
@@ -715,6 +718,7 @@ is no such entry or it is not a file.</p>
 <li class="lvl3"><a href="#htmlelement-click">HTMLElement_click</a></li>
 <li class="lvl3"><a href="#document-activeelement">Document_activeElement</a></li>
 <li class="lvl3"><a href="#htmldialogelement-returnvalue">HTMLDialogElement_returnValue</a></li>
+<li class="lvl3"><a href="#htmldialogelement-set-returnvalue">HTMLDialogElement_set_returnValue</a></li>
 <li class="lvl3"><a href="#formdata-create">FormData_create</a></li>
 <li class="lvl3"><a href="#formdata-append">FormData_append</a></li>
 <li class="lvl3"><a href="#formdata-appendblob">FormData_appendBlob</a></li>

@@ -231,7 +231,7 @@ section("map, dialog, document, element", () => {
   d.show();
   t("show opens", d.open && d.hasAttribute("open"));
   d.close("done");
-  t("close", !d.open && d.returnValue === "done" && closes === 1);
+  t("close (its event comes from a task)", !d.open && d.returnValue === "done" && closes === 0);
   d.showModal();
   d.requestClose("r1");
   t("requestClose cancelled", d.open && cancels === 1);

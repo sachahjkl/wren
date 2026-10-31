@@ -1712,7 +1712,7 @@
 	WebAssembly.validate: name: PASS
 	WebAssembly: calling: PASS
 	WebAssembly: constructing: PASS
-	WebAssembly: property descriptor: FAIL
+	WebAssembly: property descriptor: PASS
 /wasm/jsapi/interface.any.worker.html: OK
 	WebAssembly.CompileError: property descriptor: PASS
 	WebAssembly.CompileError: prototype: PASS
@@ -1785,7 +1785,7 @@
 	WebAssembly.validate: name: PASS
 	WebAssembly: calling: PASS
 	WebAssembly: constructing: PASS
-	WebAssembly: property descriptor: FAIL
+	WebAssembly: property descriptor: PASS
 /wasm/jsapi/js-string/basic.any.html: ERROR
 /wasm/jsapi/js-string/basic.any.worker.html: ERROR
 /wasm/jsapi/js-string/constants.any.html: OK

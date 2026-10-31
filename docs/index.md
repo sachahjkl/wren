@@ -1,8 +1,8 @@
 # Wren documentation
 
 **Wren** is a web browser written from scratch in [Odin](https://odin-lang.org), for Windows, where
-**WebAssembly is the only execution engine** — JavaScript included. The scripts of a page run in
-[QuickJS-ng](https://github.com/quickjs-ng/quickjs) compiled to WebAssembly, inside the same
+**WebAssembly is the only execution engine** — JavaScript included. The scripts of a page run in an
+engine written in Odin and compiled to WebAssembly, inside the same
 [Wasmtime](https://wasmtime.dev/) sandbox, memory cap and interruption as every other module. The web platform
 itself (DOM, CSS, layout, painting, Fetch, the shell) is native Odin, drawn on Direct3D 11. There is no Chromium
 underneath.
@@ -14,9 +14,10 @@ A page can also be a single `.wasm` file that calls the browser directly, throug
 
 Wren is a single executable for Windows x64. There is no installer to run as administrator:
 
-- Download the latest `.zip` from the [releases page](https://github.com/sachahjkl/wren/releases/latest) and
-  unzip it anywhere, then run `wren.exe`.
-- Or install it from [winget](winget.md): `winget install Froment.Wren`.
+- Download the latest `wren-<version>-windows-x64.exe` from the
+  [releases page](https://github.com/sachahjkl/wren/releases/latest) and run it: the program is that one file, with
+  nothing to unzip. `wren.exe --setup` installs it.
+- Or, for a release that has reached [winget](winget.md): `winget install FromentSoftware.Wren`.
 
 Every version is free during the beta. A [supporter licence](licence.md) unlocks nothing; it keeps the work going.
 

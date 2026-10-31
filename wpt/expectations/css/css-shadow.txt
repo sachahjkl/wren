@@ -53,13 +53,13 @@
 	:has-slotted must match/querySelector when an element is assigned: PASS
 	:has-slotted must match/querySelector when an element is assigned (flattened): PASS
 /css/css-shadow/host-context-parsing.html: OK
-	":host-context" should be an invalid selector: FAIL
-	":host-context()" should be an invalid selector: FAIL
-	":host-context(.a + .b)" should be an invalid selector: FAIL
-	":host-context(.a + .b, #c > #d)" should be an invalid selector: FAIL
-	":host-context(.a)" should be a valid selector: FAIL
-	":host-context(.a, .b)" should be an invalid selector: FAIL
-	":host-context(div.a)" should be a valid selector: FAIL
+	":host-context" should be an invalid selector: PASS
+	":host-context()" should be an invalid selector: PASS
+	":host-context(.a + .b)" should be an invalid selector: PASS
+	":host-context(.a + .b, #c > #d)" should be an invalid selector: PASS
+	":host-context(.a)" should be a valid selector: PASS
+	":host-context(.a, .b)" should be an invalid selector: PASS
+	":host-context(div.a)" should be a valid selector: PASS
 /css/css-shadow/host-descendant-invalidation.html: OK
 	CSS Test: element style is correctly updated for rule with :host: PASS
 /css/css-shadow/host-dom-001.html: OK
@@ -73,13 +73,13 @@
 /css/css-shadow/host-is-featureless.html: OK
 	CSS Scoping: Shadow host is featureless: PASS
 /css/css-shadow/host-parsing.html: OK
-	":host" should be a valid selector: FAIL
-	":host()" should be an invalid selector: FAIL
-	":host(.a + .b)" should be an invalid selector: FAIL
-	":host(.a + .b, #c > #d)" should be an invalid selector: FAIL
-	":host(.a)" should be a valid selector: FAIL
-	":host(.a, .b)" should be an invalid selector: FAIL
-	":host(div.a)" should be a valid selector: FAIL
+	":host" should be a valid selector: PASS
+	":host()" should be an invalid selector: PASS
+	":host(.a + .b)" should be an invalid selector: PASS
+	":host(.a + .b, #c > #d)" should be an invalid selector: PASS
+	":host(.a)" should be a valid selector: PASS
+	":host(.a, .b)" should be an invalid selector: PASS
+	":host(div.a)" should be a valid selector: PASS
 /css/css-shadow/hover-invalidates-slotted-descendant.html: OK
 	Ancestor :hover invalidates a descendant slotted into a shadow tree: FAIL
 /css/css-shadow/idlharness.html: OK
@@ -87,7 +87,7 @@
 	Element includes NonDocumentTypeChildNode: member names are unique: PASS
 	Element includes ParentNode: member names are unique: PASS
 	Element includes Slottable: member names are unique: PASS
-	Element interface: attribute part: FAIL
+	Element interface: attribute part: PASS
 	Element interface: element must inherit property "part" with the proper type: PASS
 	Element interface: htmlElement must inherit property "part" with the proper type: PASS
 	Element interface: svgElement must inherit property "part" with the proper type: PASS
@@ -196,90 +196,90 @@
 /css/css-shadow/part/precedence-part-vs-part.html: OK
 	Style from document overrides style from outer CE: PASS
 /css/css-shadow/part/pseudo-classes-after-part.html: OK
-	"::part(mypart):active" should be a valid selector: FAIL
-	"::part(mypart):active-view-transition" should be a valid selector: FAIL
-	"::part(mypart):active-view-transition-type(mytype)" should be a valid selector: FAIL
-	"::part(mypart):any-link" should be a valid selector: FAIL
-	"::part(mypart):autofill" should be a valid selector: FAIL
-	"::part(mypart):checked" should be a valid selector: FAIL
-	"::part(mypart):default" should be a valid selector: FAIL
-	"::part(mypart):defined" should be a valid selector: FAIL
-	"::part(mypart):dir(ltr)" should be a valid selector: FAIL
-	"::part(mypart):disabled" should be a valid selector: FAIL
+	"::part(mypart):active" should be a valid selector: PASS
+	"::part(mypart):active-view-transition" should be a valid selector: PASS
+	"::part(mypart):active-view-transition-type(mytype)" should be a valid selector: PASS
+	"::part(mypart):any-link" should be a valid selector: PASS
+	"::part(mypart):autofill" should be a valid selector: PASS
+	"::part(mypart):checked" should be a valid selector: PASS
+	"::part(mypart):default" should be a valid selector: PASS
+	"::part(mypart):defined" should be a valid selector: PASS
+	"::part(mypart):dir(ltr)" should be a valid selector: PASS
+	"::part(mypart):disabled" should be a valid selector: PASS
 	"::part(mypart):empty" should be an invalid selector: FAIL
-	"::part(mypart):enabled" should be a valid selector: FAIL
-	"::part(mypart):first" should be an invalid selector: FAIL
+	"::part(mypart):enabled" should be a valid selector: PASS
+	"::part(mypart):first" should be an invalid selector: PASS
 	"::part(mypart):first-child" should be an invalid selector: FAIL
 	"::part(mypart):first-of-type" should be an invalid selector: FAIL
-	"::part(mypart):focus" should be a valid selector: FAIL
-	"::part(mypart):focus-visible" should be a valid selector: FAIL
-	"::part(mypart):focus-within" should be a valid selector: FAIL
-	"::part(mypart):fullscreen" should be a valid selector: FAIL
-	"::part(mypart):future" should be a valid selector: FAIL
+	"::part(mypart):focus" should be a valid selector: PASS
+	"::part(mypart):focus-visible" should be a valid selector: PASS
+	"::part(mypart):focus-within" should be a valid selector: PASS
+	"::part(mypart):fullscreen" should be a valid selector: PASS
+	"::part(mypart):future" should be a valid selector: PASS
 	"::part(mypart):has(:hover)" should be an invalid selector: FAIL
 	"::part(mypart):has(p)" should be an invalid selector: FAIL
 	"::part(mypart):host" should be an invalid selector: FAIL
 	"::part(mypart):host-context(:hover)" should be an invalid selector: FAIL
-	"::part(mypart):hover" should be a valid selector: FAIL
-	"::part(mypart):in-range" should be a valid selector: FAIL
-	"::part(mypart):indeterminate" should be a valid selector: FAIL
-	"::part(mypart):invalid" should be a valid selector: FAIL
+	"::part(mypart):hover" should be a valid selector: PASS
+	"::part(mypart):in-range" should be a valid selector: PASS
+	"::part(mypart):indeterminate" should be a valid selector: PASS
+	"::part(mypart):invalid" should be a valid selector: PASS
 	"::part(mypart):is(:first-child)" should be a valid selector: FAIL
-	"::part(mypart):is(:hover)" should be a valid selector: FAIL
-	"::part(mypart):lang(en)" should be a valid selector: FAIL
+	"::part(mypart):is(:hover)" should be a valid selector: PASS
+	"::part(mypart):lang(en)" should be a valid selector: PASS
 	"::part(mypart):last-child" should be an invalid selector: FAIL
 	"::part(mypart):last-of-type" should be an invalid selector: FAIL
-	"::part(mypart):left" should be an invalid selector: FAIL
-	"::part(mypart):link" should be a valid selector: FAIL
-	"::part(mypart):modal" should be a valid selector: FAIL
+	"::part(mypart):left" should be an invalid selector: PASS
+	"::part(mypart):link" should be a valid selector: PASS
+	"::part(mypart):modal" should be a valid selector: PASS
 	"::part(mypart):not(:first-child)" should be an invalid selector: FAIL
-	"::part(mypart):not(:hover)" should be a valid selector: FAIL
+	"::part(mypart):not(:hover)" should be a valid selector: PASS
 	"::part(mypart):nth-child(1)" should be an invalid selector: FAIL
 	"::part(mypart):nth-last-child(1)" should be an invalid selector: FAIL
 	"::part(mypart):nth-last-of-type(1)" should be an invalid selector: FAIL
 	"::part(mypart):nth-of-type(1)" should be an invalid selector: FAIL
 	"::part(mypart):only-child" should be an invalid selector: FAIL
 	"::part(mypart):only-of-type" should be an invalid selector: FAIL
-	"::part(mypart):open" should be a valid selector: FAIL
-	"::part(mypart):optional" should be a valid selector: FAIL
-	"::part(mypart):out-of-range" should be a valid selector: FAIL
-	"::part(mypart):past" should be a valid selector: FAIL
-	"::part(mypart):paused" should be a valid selector: FAIL
-	"::part(mypart):picture-in-picture" should be a valid selector: FAIL
-	"::part(mypart):placeholder-shown" should be a valid selector: FAIL
-	"::part(mypart):playing" should be a valid selector: FAIL
-	"::part(mypart):popover-open" should be a valid selector: FAIL
-	"::part(mypart):read-only" should be a valid selector: FAIL
-	"::part(mypart):read-write" should be a valid selector: FAIL
-	"::part(mypart):required" should be a valid selector: FAIL
-	"::part(mypart):right" should be an invalid selector: FAIL
+	"::part(mypart):open" should be a valid selector: PASS
+	"::part(mypart):optional" should be a valid selector: PASS
+	"::part(mypart):out-of-range" should be a valid selector: PASS
+	"::part(mypart):past" should be a valid selector: PASS
+	"::part(mypart):paused" should be a valid selector: PASS
+	"::part(mypart):picture-in-picture" should be a valid selector: PASS
+	"::part(mypart):placeholder-shown" should be a valid selector: PASS
+	"::part(mypart):playing" should be a valid selector: PASS
+	"::part(mypart):popover-open" should be a valid selector: PASS
+	"::part(mypart):read-only" should be a valid selector: PASS
+	"::part(mypart):read-write" should be a valid selector: PASS
+	"::part(mypart):required" should be a valid selector: PASS
+	"::part(mypart):right" should be an invalid selector: PASS
 	"::part(mypart):scope" should be an invalid selector: FAIL
-	"::part(mypart):state(mystate)" should be a valid selector: FAIL
-	"::part(mypart):target" should be a valid selector: FAIL
-	"::part(mypart):user-invalid" should be a valid selector: FAIL
-	"::part(mypart):user-valid" should be a valid selector: FAIL
-	"::part(mypart):valid" should be a valid selector: FAIL
-	"::part(mypart):visited" should be a valid selector: FAIL
+	"::part(mypart):state(mystate)" should be a valid selector: PASS
+	"::part(mypart):target" should be a valid selector: PASS
+	"::part(mypart):user-invalid" should be a valid selector: PASS
+	"::part(mypart):user-valid" should be a valid selector: PASS
+	"::part(mypart):valid" should be a valid selector: PASS
+	"::part(mypart):visited" should be a valid selector: PASS
 	"::part(mypart):where(:first-child)" should be a valid selector: FAIL
-	"::part(mypart):where(:hover)" should be a valid selector: FAIL
-	"::part(mypart):xr-overlay" should be a valid selector: FAIL
+	"::part(mypart):where(:hover)" should be a valid selector: PASS
+	"::part(mypart):xr-overlay" should be a valid selector: PASS
 /css/css-shadow/part/pseudo-elements-after-part.html: OK
-	"::part(mypart)::after" should be a valid selector: FAIL
+	"::part(mypart)::after" should be a valid selector: PASS
 	"::part(mypart)::backdrop" should be a valid selector: FAIL
-	"::part(mypart)::before" should be a valid selector: FAIL
+	"::part(mypart)::before" should be a valid selector: PASS
 	"::part(mypart)::cue" should be a valid selector: FAIL
 	"::part(mypart)::details-content" should be a valid selector: FAIL
 	"::part(mypart)::file-selector-button" should be a valid selector: FAIL
-	"::part(mypart)::first-letter" should be a valid selector: FAIL
-	"::part(mypart)::first-line" should be a valid selector: FAIL
+	"::part(mypart)::first-letter" should be a valid selector: PASS
+	"::part(mypart)::first-line" should be a valid selector: PASS
 	"::part(mypart)::grammar-error" should be a valid selector: FAIL
 	"::part(mypart)::highlight(myhighlight)" should be a valid selector: FAIL
-	"::part(mypart)::marker" should be a valid selector: FAIL
-	"::part(mypart)::notarealpseudoelement" should be an invalid selector: FAIL
-	"::part(mypart)::part(anotherpart)" should be an invalid selector: FAIL
-	"::part(mypart)::placeholder" should be a valid selector: FAIL
+	"::part(mypart)::marker" should be a valid selector: PASS
+	"::part(mypart)::notarealpseudoelement" should be an invalid selector: PASS
+	"::part(mypart)::part(anotherpart)" should be an invalid selector: PASS
+	"::part(mypart)::placeholder" should be a valid selector: PASS
 	"::part(mypart)::search-text" should be a valid selector: FAIL
-	"::part(mypart)::selection" should be a valid selector: FAIL
+	"::part(mypart)::selection" should be a valid selector: PASS
 	"::part(mypart)::spelling-error" should be a valid selector: FAIL
 	"::part(mypart)::target-text" should be a valid selector: FAIL
 	"::part(mypart)::view-transition" should be a valid selector: FAIL
@@ -308,7 +308,10 @@
 	computed style for ::part()::selection: FAIL
 	computed style for ::part()::spelling-error: FAIL
 	computed style for ::part()::target-text: FAIL
-/css/css-shadow/part/serialization.html: ERROR
+/css/css-shadow/part/serialization.html: OK
+	Collapse spaces in ::part names list.: FAIL
+	Escape start parenthesis in ::part name.: PASS
+	Escape start space in ::part name.: FAIL
 /css/css-shadow/part/simple-forward-shorthand.html: OK
 	Part in inner host is forwarded, under the same name, for styling by document style sheet: PASS
 /css/css-shadow/part/simple-forward.html: OK
@@ -420,44 +423,44 @@
 	Slotted matches rules against the slot in the right tree: PASS
 	Style invalidation works correctly for nested slots: PASS
 /css/css-shadow/slotted-parsing.html: OK
-	"::slotted" should be an invalid selector: FAIL
-	"::slotted()" should be an invalid selector: FAIL
-	"::slotted(*) span" should be an invalid selector: FAIL
-	"::slotted(*)" should be a valid selector: FAIL
-	"::slotted(*)#id {}" should be an invalid selector: FAIL
-	"::slotted(*).class" should be an invalid selector: FAIL
-	"::slotted(*)::after" should be a valid selector: FAIL
-	"::slotted(*)::before" should be a valid selector: FAIL
-	"::slotted(*)::before::slotted(*)" should be an invalid selector: FAIL
+	"::slotted" should be an invalid selector: PASS
+	"::slotted()" should be an invalid selector: PASS
+	"::slotted(*) span" should be an invalid selector: PASS
+	"::slotted(*)" should be a valid selector: PASS
+	"::slotted(*)#id {}" should be an invalid selector: PASS
+	"::slotted(*).class" should be an invalid selector: PASS
+	"::slotted(*)::after" should be a valid selector: PASS
+	"::slotted(*)::before" should be a valid selector: PASS
+	"::slotted(*)::before::slotted(*)" should be an invalid selector: PASS
 	"::slotted(*)::details-content" should be a valid selector: FAIL
 	"::slotted(*)::file-selector-button" should be a valid selector: FAIL
 	"::slotted(*)::first-letter" should be an invalid selector: FAIL
 	"::slotted(*)::first-line" should be an invalid selector: FAIL
-	"::slotted(*)::marker" should be a valid selector: FAIL
+	"::slotted(*)::marker" should be a valid selector: PASS
 	"::slotted(*)::picker-icon" should be a valid selector: FAIL
-	"::slotted(*)::placeholder" should be a valid selector: FAIL
+	"::slotted(*)::placeholder" should be a valid selector: PASS
 	"::slotted(*)::scroll-button(up)" should be a valid selector: FAIL
 	"::slotted(*)::scroll-marker" should be a valid selector: FAIL
 	"::slotted(*)::scroll-marker-group" should be a valid selector: FAIL
 	"::slotted(*)::selection" should be an invalid selector: FAIL
-	"::slotted(*)::slotted(*)" should be an invalid selector: FAIL
-	"::slotted(*):has(span)" should be an invalid selector: FAIL
-	"::slotted(*):host" should be an invalid selector: FAIL
-	"::slotted(*):host(div)" should be an invalid selector: FAIL
-	"::slotted(*):hover" should be an invalid selector: FAIL
+	"::slotted(*)::slotted(*)" should be an invalid selector: PASS
+	"::slotted(*):has(span)" should be an invalid selector: PASS
+	"::slotted(*):host" should be an invalid selector: PASS
+	"::slotted(*):host(div)" should be an invalid selector: PASS
+	"::slotted(*):hover" should be an invalid selector: PASS
 	"::slotted(*):is(#id)" should be a valid selector: FAIL
 	"::slotted(*):is()" should be a valid selector: FAIL
 	"::slotted(*):is(:hover)" should be a valid selector: FAIL
-	"::slotted(*):read-only" should be an invalid selector: FAIL
+	"::slotted(*):read-only" should be an invalid selector: PASS
 	"::slotted(*):where(#id)" should be a valid selector: FAIL
 	"::slotted(*):where()" should be a valid selector: FAIL
 	"::slotted(*):where(::before)" should be a valid selector: FAIL
 	"::slotted(*):where(:hover)" should be a valid selector: FAIL
-	"::slotted(*)[attr]" should be an invalid selector: FAIL
-	"::slotted(:not(.a))" should be a valid selector: FAIL
-	"::slotted([attr]:hover)" should be a valid selector: FAIL
-	"::slotted(div)" should be a valid selector: FAIL
-	"::slotted(select)::picker" should be an invalid selector: FAIL
+	"::slotted(*)[attr]" should be an invalid selector: PASS
+	"::slotted(:not(.a))" should be a valid selector: PASS
+	"::slotted([attr]:hover)" should be a valid selector: PASS
+	"::slotted(div)" should be a valid selector: PASS
+	"::slotted(select)::picker" should be an invalid selector: PASS
 	"::slotted(select)::picker(select)" should be a valid selector: FAIL
 /css/css-shadow/slotted-slot.html: OK
 	Check that ::slotted does not match slot elements: PASS

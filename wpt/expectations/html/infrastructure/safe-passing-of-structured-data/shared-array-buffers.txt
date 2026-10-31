@@ -1,0 +1,89 @@
+# web-platform-tests expectations of Wren for html/infrastructure/safe-passing-of-structured-data/shared-array-buffers, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/blob-data.https.html: TIMEOUT
+	blob worker: postMessaging to a dedicated HTTP sub-worker allows them to see each others' modifications: FAIL
+	blob worker: postMessaging to a dedicated blob sub-worker allows them to see each others' modifications: PASS
+	blob worker: self.crossOriginIsolated: PASS
+	blob worker: self.isSecureContext: PASS
+	blob worker: self.origin: PASS
+	data worker: postMessaging to a dedicated blob sub-worker allows them to see each others' modifications: TIMEOUT
+	data worker: self.crossOriginIsolated: FAIL
+	data worker: self.isSecureContext: FAIL
+	data worker: self.origin: PASS
+/html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/broadcastchannel-success-and-failure.https.html: TIMEOUT
+	SharedArrayBuffer cannot cross agent clusters, BroadcastChannel edition: TIMEOUT
+/html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/broadcastchannel-success.https.html: OK
+	Structured cloning of SharedArrayBuffers: BroadcastChannel within the same agent cluster: PASS
+/html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/identity-not-preserved.https.html: TIMEOUT
+	postMessaging to a worker and back does not give back the same SharedArrayBuffer: TIMEOUT
+	postMessaging to an iframe and back does not give back the same SharedArrayBuffer: TIMEOUT
+	postMessaging to this window does not give back the same SharedArrayBuffer (but does use the same backing block): PASS
+/html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/nested-sharedworker-success.https.html: OK
+	Bonus: self.crossOriginIsolated: FAIL
+	postMessaging to a dedicated sub-worker allows them to see each others' modifications: FAIL
+/html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/nested-worker-success.https.html: OK
+	Bonus: self.crossOriginIsolated: PASS
+	postMessaging to a dedicated sub-worker allows them to see each others' modifications: FAIL
+/html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/no-coop-coep.https.any.html: OK
+	Bonus: self.crossOriginIsolated: PASS
+	SharedArrayBuffer constructor does not exist without COOP+COEP: PASS
+	SharedArrayBuffer over BroadcastChannel without COOP+COEP: PASS
+	SharedArrayBuffer over MessageChannel without COOP+COEP: PASS
+	SharedArrayBuffer over postMessage() without COOP+COEP: PASS
+/html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/no-coop-coep.https.any.worker.html: OK
+	Bonus: self.crossOriginIsolated: PASS
+	SharedArrayBuffer constructor does not exist without COOP+COEP: PASS
+	SharedArrayBuffer over BroadcastChannel without COOP+COEP: PASS
+	SharedArrayBuffer over MessageChannel without COOP+COEP: PASS
+/html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/no-transferring.https.html: OK
+	Trying to transfer a SharedArrayBuffer through a MessagePort throws: PASS
+	Trying to transfer a SharedArrayBuffer to a worker throws: PASS
+	Trying to transfer a SharedArrayBuffer to this window throws: PASS
+/html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/serialization-via-history.https.html: OK
+	history.pushState(): is interleaved correctly: PASS
+	history.pushState(): simple case: PASS
+	history.replaceState(): is interleaved correctly: PASS
+	history.replaceState(): simple case: PASS
+/html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/serialization-via-idb.any.html: OK
+	SharedArrayBuffer cloning via IndexedDB: basic case: PASS
+	SharedArrayBuffer cloning via the IndexedDB: is interleaved correctly: PASS
+/html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/serialization-via-idb.any.worker.html: OK
+	SharedArrayBuffer cloning via IndexedDB: basic case: PASS
+	SharedArrayBuffer cloning via the IndexedDB: is interleaved correctly: PASS
+/html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/serialization-via-notifications-api.any.html: OK
+	SharedArrayBuffer cloning via the Notifications API's data member: basic case: FAIL
+	SharedArrayBuffer cloning via the Notifications API's data member: is interleaved correctly: FAIL
+/html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/serialization-via-notifications-api.any.worker.html: OK
+	SharedArrayBuffer cloning via the Notifications API's data member: basic case: FAIL
+	SharedArrayBuffer cloning via the Notifications API's data member: is interleaved correctly: FAIL
+/html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/window-domain-failure.https.sub.html: ERROR
+/html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/window-failure.https.html: TIMEOUT
+	SharedArrayBuffer and a cross-site <iframe>: TIMEOUT
+/html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/window-iframe-messagechannel.https.html: TIMEOUT
+	postMessaging to a cross-site iframe via MessageChannel should fail: NOTRUN
+	postMessaging to a same-origin iframe via MessageChannel allows them to see each others' modifications: FAIL
+	postMessaging to a same-site iframe via MessageChannel should fail: TIMEOUT
+	postMessaging with a MessageChannel that's been cross-site should succeed: NOTRUN
+/html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/window-messagechannel-success.https.html: OK
+	postMessaging to a dedicated worker via MessageChannel allows them to see each others' modifications: FAIL
+/html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/window-serviceworker-failure.https.html: OK
+	SharedArrayBuffer cannot cross agent clusters, service worker edition: FAIL
+/html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/window-sharedworker-failure.https.html: TIMEOUT
+	SharedArrayBuffer cannot cross agent clusters, shared worker edition: TIMEOUT
+/html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/window-simple-success.https.html: OK
+	postMessaging to a dedicated worker allows them to see each others' modifications with BigInt64Array: FAIL
+	postMessaging to a dedicated worker allows them to see each others' modifications with BigUint64Array: FAIL
+	postMessaging to a dedicated worker allows them to see each others' modifications with DataView: PASS
+	postMessaging to a dedicated worker allows them to see each others' modifications with Float16Array: FAIL
+	postMessaging to a dedicated worker allows them to see each others' modifications with Float32Array: FAIL
+	postMessaging to a dedicated worker allows them to see each others' modifications with Float64Array: FAIL
+	postMessaging to a dedicated worker allows them to see each others' modifications with Int16Array: FAIL
+	postMessaging to a dedicated worker allows them to see each others' modifications with Int32Array: FAIL
+	postMessaging to a dedicated worker allows them to see each others' modifications with Int8Array: FAIL
+	postMessaging to a dedicated worker allows them to see each others' modifications with Uint16Array: FAIL
+	postMessaging to a dedicated worker allows them to see each others' modifications with Uint32Array: FAIL
+	postMessaging to a dedicated worker allows them to see each others' modifications with Uint8Array: FAIL
+	postMessaging to a dedicated worker allows them to see each others' modifications with Uint8ClampedArray: FAIL
+	postMessaging to a same-origin deeply-nested iframe allows them to see each others' modifications: FAIL
+	postMessaging to a same-origin iframe allows them to see each others' modifications: FAIL
+	postMessaging to a same-origin opened window allows them to see each others' modifications: FAIL

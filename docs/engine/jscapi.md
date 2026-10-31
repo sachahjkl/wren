@@ -2,20 +2,20 @@
 
 Wren's glue (`native/js/odin`, package `wj` and the domains above it) is written against the QuickJS‑ng
 C API: `JSValue` words, `JS_DupValue`/`JS_FreeValue`, classes with an opaque pointer and a finalizer,
-`JS_NewCFunction2`, `JS_Call`… `jscapi` implements that API on `src/engine/jsrt`, so the glue can run on the
-Odin engine **without touching a domain file**. Select it with `-define:WJ_JSRT=true` (default: QuickJS in C).
+`JS_NewCFunction2`, `JS_Call`… `jscapi` implements that API on `src/engine/jsrt`, so the glue runs on the
+Odin engine **without touching a domain file**. It is the only engine now (`WJ_JSRT :: true`, `wj/backend.odin`): the
+QuickJS-ng C engine is gone since 0.6.0.
 
 ```
 domain files (web_url.odin, dom_core.odin, …)        unchanged
    wj.JS_Call, wj.JS_NewObject …                     the layer's names
-       wj/quickjs.odin, m*_quickjs.odin             WJ_JSRT=false: `foreign` QuickJS C symbols
-       wj/backend_jsrt.odin                          WJ_JSRT=true : aliases of src/engine/jscapi
+       wj/backend_jsrt.odin                          aliases of src/engine/jscapi
            src/engine/jscapi (167 procedures, "c")  the QuickJS contracts
                src/engine/jsrt                       the engine
 ```
 
 The API types (`Context`, `Runtime`, `Class_Def`, `Native`, `Property_Descriptor`, …) are defined once, in
-`jscapi/types.odin`, and `wj` aliases them for both backends.
+`jscapi/types.odin`, and `wj` aliases them.
 
 ## Contracts kept
 
@@ -52,56 +52,44 @@ The API types (`Context`, `Runtime`, `Class_Def`, `Native`, `Property_Descriptor
 - **`JS_WriteObject`/`JS_ReadObject` of bytecode**: a function compiled with `COMPILE_ONLY` keeps its image
   (`Compile_Request.keep_image`), so the realm snapshot of `qjs_realm.odin` / `prelude.odin` works.
 
-With `-define:JSCAPI_EXPORT=true` every procedure is also exported under its QuickJS name, so C that still
-calls the API (the generated `native/js/gen/bindings.c`) links against it instead of `quickjs.c`.
+With `-define:JSCAPI_EXPORT=true` every procedure is also exported under its QuickJS name, for C that calls the API.
+The build has no such C any more.
 
-## Numbers (the plan)
+## Numbers (when the API was written)
 
 Distinct `JS_*` / `js_*` names the glue references: **176**.
 
 | | count |
 |---|---:|
-| provided by `jscapi` (all type‑check against the glue with `-define:WJ_JSRT=true`) | 167 |
+| provided by `jscapi` | 167 |
 | `static inline` of quickjs.h reimplemented in `wj` (unchanged) | 4 |
 | helper names of the glue that are not API (`js_str`, `js_cstr` …) | 5 |
 | missing | 0 |
 
-`odin check native\js\odin -vet -no-entry-point -target:freestanding_wasm32 -default-to-nil-allocator
--collection:wb=src -collection:toolkit=ext/gui_toolkit [-define:WJ_JSRT=true]` passes in both modes. The API
-itself is tested natively by `judge capi` (40 checks). **Nothing of the glue has been run on this backend**:
-the build was not performed, as agreed.
+The API itself is tested natively by `judge capi` (40 checks); the glue runs on it in every build.
 
 ### What is approximated or absent (by weight)
 
-1. **Build wiring** (the lead): link the `odin build native/js/odin` object with `-define:WJ_JSRT=true
-   -define:JSCAPI_EXPORT=true`; stop compiling `quickjs.c`, `libregexp.c`, `libunicode.c`, `dtoa.c` (keep
-   `quickjs.h` for the inlines `bindings.c` uses); the engine allocates from the C heap
-   (`JS_NewRuntime` sets `jscapi.host_allocator = libc_allocator()`); the wasm module no longer needs the
-   `wren_js_timezone_offset` patch (jsrt takes `jsdate.timezone_offset_proc`, and `js.date_now_hook` for the
-   clock) — set both in the module's init.
-2. **Atoms are permanent** (`JS_FreeAtom` is a no‑op): a page that builds millions of distinct property
+1. **Atoms are permanent** (`JS_FreeAtom` is a no‑op): a page that builds millions of distinct property
    names keeps them. QuickJS frees them.
-3. **`JS_WriteObject`/`JS_ReadObject` of data** (the structured clone format with `REFERENCE`): absent;
+2. **`JS_WriteObject`/`JS_ReadObject` of data** (the structured clone format with `REFERENCE`): absent;
    `web_clone.odin` reads with it (`READ_OBJ_REFERENCE`) — the clone path must use its own walk.
-4. **`JS_DefineHostAutoInitProperty`** makes the value at definition time (correct, not lazy: IndexedDB's
+3. **`JS_DefineHostAutoInitProperty`** makes the value at definition time (correct, not lazy: IndexedDB's
    interfaces are built in every realm that defines them).
-5. **Direct `eval` from the API** (`EVAL_TYPE_DIRECT`) behaves as an indirect eval (the script `eval(…)`
+4. **Direct `eval` from the API** (`EVAL_TYPE_DIRECT`) behaves as an indirect eval (the script `eval(…)`
    operator is unaffected).
-6. **`JS_LoadModule`** returns the namespace promise through the dynamic‑import job; the layer's own
+5. **`JS_LoadModule`** returns the namespace promise through the dynamic‑import job; the layer's own
    `wren` module graph fetcher is exercised by `LoadModuleWithFuncs` only structurally.
-7. **`JS_IsUncatchableError`** looks at the last created runtime (no context argument).
-8. **`JS_ComputeMemoryUsage`** fills the totals only (`malloc_size`, counts).
-9. **Class `call` hooks** (callable platform objects) are not supported.
-10. **Performance**: each API call enters/leaves the host bracket and copies the Odin context; measure
-    `jsbench` through the glue before judging (the engine itself is at 69 % of QuickJS on the micro
-    benchmarks, see [runtime.md](runtime.md)).
-11. **Memory**: a tracing heap holds garbage until the next collection (1.6× QuickJS on allocation‑heavy
+6. **`JS_IsUncatchableError`** looks at the last created runtime (no context argument).
+7. **`JS_ComputeMemoryUsage`** fills the totals only (`malloc_size`, counts).
+8. **Class `call` hooks** (callable platform objects) are not supported.
+9. **Performance**: each API call enters/leaves the host bracket and copies the Odin context (the engine's own speed
+    is in [runtime.md](runtime.md)).
+10. **Memory**: a tracing heap holds garbage until the next collection (1.6× QuickJS on allocation‑heavy
     scripts); `JS_SetGCThresholdFloor` raises the threshold now and is not re‑applied after a collection
     (the engine keeps `max(2 × live, live + 4 MiB)`).
-12. **What to run first** once the build works: `jstest`, `jsdomtest`, `jswebtest`, `jsloadtest`,
-    `workerstest`, then `tools\test262.ps1 -NoNative -Quick`. The ownership model is the most likely source
-    of defects (a missing `JS_FreeValue` leaks a root, an extra one lets a value die early): a debug counter of
-    `ext` per cell is easy to add in `ext_ref`/`ext_unref`.
+11. **The ownership model** is the most likely source of defects (a missing `JS_FreeValue` leaks a root, an extra one
+    lets a value die early): a debug counter of `ext` per cell is easy to add in `ext_ref`/`ext_unref`.
 
 ## Testing
 

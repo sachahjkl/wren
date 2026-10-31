@@ -112,7 +112,7 @@ out_blocktype :: proc(b: ^[dynamic]u8, index: int) {
 }
 
 // A block type's bytes at r, moved past.
-@(private = "file")
+@(private)
 rd_blocktype :: proc(r: ^Reader) -> []u8 {
 	start := r.pos
 	if r.pos >= len(r.b) { r.bad = true; return nil }
@@ -140,7 +140,7 @@ blocktype_params :: proc(t: ^Translator, bt: []u8) -> (params: []u8, np: int) {
 
 // What the code of a function has at r, up to its operator's immediates: the operator, moved past them unless it has
 // labels or block types (those the callers read). false for an operator this does not know.
-@(private = "file")
+@(private)
 skip_immediates :: proc(r: ^Reader, op: u8) -> bool {
 	memarg :: proc(r: ^Reader) {
 		align := rd_leb(r, 32)

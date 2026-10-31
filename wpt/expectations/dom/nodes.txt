@@ -1697,9 +1697,9 @@
 	A relative <base> inserted into a shallow clone of an about:srcdoc document resolves against the inherited base URL: FAIL
 	Clone of an about:srcdoc document with a relative <base>: FAIL
 /dom/nodes/Document-constructor.html: OK
-	new Document(): URL parsing: FAIL
-	new Document(): characterSet aliases: FAIL
-	new Document(): children: FAIL
+	new Document(): URL parsing: PASS
+	new Document(): characterSet aliases: PASS
+	new Document(): children: PASS
 	new Document(): interfaces: FAIL
 	new Document(): metadata: FAIL
 /dom/nodes/Document-contentType/contentType/contenttype_bmp.html: OK
@@ -2908,7 +2908,7 @@
 	Required arguments to createTreeWalker should be required.: PASS
 /dom/nodes/Document-doctype.html: OK
 	Window document with doctype: PASS
-	new Document(): FAIL
+	new Document(): PASS
 /dom/nodes/Document-getElementById.html: OK
 	Calling document.getElementById with a null argument.: PASS
 	Calling document.getElementById with an empty string argument.: PASS
@@ -2945,7 +2945,7 @@
 	Interfaces: PASS
 	Should be able to set expando shadowing a proto prop (item): PASS
 	Should be able to set expando shadowing a proto prop (namedItem): PASS
-	Shouldn't be able to set unsigned properties on a HTMLCollection (non-strict mode): FAIL
+	Shouldn't be able to set unsigned properties on a HTMLCollection (non-strict mode): PASS
 	Shouldn't be able to set unsigned properties on a HTMLCollection (strict mode): PASS
 	getElementsByTagName('*'): PASS
 	getElementsByTagName() should be a live collection: PASS
@@ -4494,7 +4494,7 @@
 	Matching the context object: PASS
 	Should be able to set expando shadowing a proto prop (item): PASS
 	Should be able to set expando shadowing a proto prop (namedItem): PASS
-	Shouldn't be able to set unsigned properties on a HTMLCollection (non-strict mode): FAIL
+	Shouldn't be able to set unsigned properties on a HTMLCollection (non-strict mode): PASS
 	Shouldn't be able to set unsigned properties on a HTMLCollection (strict mode): PASS
 	getElementsByTagName('*'): PASS
 	getElementsByTagName() should be a live collection: PASS
@@ -4818,7 +4818,7 @@
 /dom/nodes/Node-childNodes.html: OK
 	Caching of Node.childNodes: PASS
 	Iterator behavior of Node.childNodes: PASS
-	Node.childNodes on a Document.: FAIL
+	Node.childNodes on a Document.: PASS
 	Node.childNodes on a DocumentFragment.: PASS
 	Node.childNodes on an Element.: PASS
 	Node.childNodes should be a live collection: PASS
@@ -5055,19 +5055,26 @@
 	elements should be compared on reference (namespaced element): PASS
 	processing instructions should be compared on reference: FAIL
 	text nodes should be compared on reference: PASS
-/dom/nodes/Node-lookupNamespaceURI.html: ERROR
+/dom/nodes/Node-lookupNamespaceURI.html: OK
 	Child element has namespace URI matching prefix: PASS
 	Child element should have XMLNS namespace: PASS
 	Child element should have null namespace: PASS
 	Child element should inherit baz namespace: PASS
+	Comment does not have bar namespace: PASS
 	Comment should inherit  baz namespace: PASS
 	Comment should inherit bar namespace: PASS
 	Comment should inherit baz namespace: PASS
 	Comment should inherit namespace URI matching prefix: PASS
+	Connected Attr has namespace URI matching "xml": FAIL
+	Connected Attr no namespace URI matching "xmlns": FAIL
+	Disconnected Attr has no namespace URI matching "xml": FAIL
+	Disconnected Attr has no namespace URI matching "xmlns": FAIL
 	Document has bar namespace: PASS
 	Document has no namespace URI matching prefix: PASS
 	Document should have xhtml namespace, prefix "": PASS
 	Document should have xhtml namespace, prefix null: PASS
+	Document without documentElement has no namespace URI matching "xml": FAIL
+	Document without documentElement has no namespace URI matching "xmlns": FAIL
 	DocumentFragment is in default namespace, prefix "": PASS
 	DocumentFragment is in default namespace, prefix "foo": PASS
 	DocumentFragment is in default namespace, prefix "xmlns": PASS
@@ -5345,17 +5352,17 @@
 	NodeList live mutations: NodeList.item(index): PASS
 	NodeList live mutations: NodeList.length: PASS
 	NodeList live mutations: NodeList[index]: PASS
-/dom/nodes/NodeList-static-length-getter-tampered-1.html: TIMEOUT
+/dom/nodes/NodeList-static-length-getter-tampered-1.html: ERROR
 	NodeList (static collection) "length" getter tampered: TIMEOUT
-/dom/nodes/NodeList-static-length-getter-tampered-2.html: OK
-	NodeList (static collection) "length" getter tampered: PASS
-/dom/nodes/NodeList-static-length-getter-tampered-3.html: OK
-	NodeList (static collection) "length" getter tampered: PASS
-/dom/nodes/NodeList-static-length-getter-tampered-indexOf-1.html: TIMEOUT
+/dom/nodes/NodeList-static-length-getter-tampered-2.html: ERROR
+	NodeList (static collection) "length" getter tampered: TIMEOUT
+/dom/nodes/NodeList-static-length-getter-tampered-3.html: ERROR
+	NodeList (static collection) "length" getter tampered: TIMEOUT
+/dom/nodes/NodeList-static-length-getter-tampered-indexOf-1.html: ERROR
 	NodeList (static collection) "length" getter tampered (Array.prototype.indexOf): TIMEOUT
-/dom/nodes/NodeList-static-length-getter-tampered-indexOf-2.html: TIMEOUT
+/dom/nodes/NodeList-static-length-getter-tampered-indexOf-2.html: ERROR
 	NodeList (static collection) "length" getter tampered (Array.prototype.indexOf): TIMEOUT
-/dom/nodes/NodeList-static-length-getter-tampered-indexOf-3.html: TIMEOUT
+/dom/nodes/NodeList-static-length-getter-tampered-indexOf-3.html: ERROR
 	NodeList (static collection) "length" getter tampered (Array.prototype.indexOf): TIMEOUT
 /dom/nodes/NonDocumentTypeChildNode-sibling-element.html: OK
 	Comment node's nextElementSibling skips non-element siblings: PASS
@@ -5711,9 +5718,9 @@
 /dom/nodes/Text-wholeText.html: OK
 	wholeText returns text of all Text nodes logically adjacent to the node, in document order.: PASS
 /dom/nodes/adoption.window.html: OK
-	adoptNode() and DocumentFragment: FAIL
+	adoptNode() and DocumentFragment: PASS
 	adoptNode() and DocumentFragment with host: FAIL
-	adoptNode() and ShadowRoot: FAIL
+	adoptNode() and ShadowRoot: PASS
 	appendChild() and DocumentFragment: FAIL
 	appendChild() and DocumentFragment with host: PASS
 	appendChild() and ShadowRoot: FAIL
@@ -6227,7 +6234,7 @@
 	Empty <source> immediately sets media.networkState during DOM insertion, so that an earlier-running script can observe networkState: FAIL
 /dom/nodes/insertion-removing-steps/Node-appendChild-script-and-style.html: OK
 	An earlier-inserted <script> synchronously observes a later-inserted <style> (via a DocumentFragment) being applied: FAIL
-	An earlier-inserted <script> synchronously observes a later-inserted <style> (via a div) being applied: FAIL
+	An earlier-inserted <script> synchronously observes a later-inserted <style> (via a div) being applied: PASS
 	Earlier-inserted <script> (via a DocumentFragment) synchronously observes a later-inserted <link rel=stylesheet>'s CSSStyleSheet creation: FAIL
 	Earlier-inserted <script> (via a append()) synchronously observes a later-inserted <link rel=stylesheet>'s CSSStyleSheet creation: FAIL
 	Earlier-inserted <script> (via a div) synchronously observes a later-inserted <link rel=stylesheet>'s CSSStyleSheet creation: FAIL
@@ -6235,7 +6242,7 @@
 	An outer script whose preparation/execution gets triggered by the insertion of a 'nested'/'inner' script, executes *before* the inner script executes: FAIL
 /dom/nodes/insertion-removing-steps/Node-appendChild-script-with-mutation-observer-takeRecords.html: OK
 	An inserted script should be able to observe its own mutation record with takeRecords: PASS
-/dom/nodes/insertion-removing-steps/Node-appendChild-text-and-script-in-style.html: ERROR
+/dom/nodes/insertion-removing-steps/Node-appendChild-text-and-script-in-style.html: OK
 	All style rules appended to a <style> element are inserted and script-observable to scripts inserted in the `<style>` element, by the time scripts execute after DOM insertions.: FAIL
 /dom/nodes/insertion-removing-steps/Node-appendChild-text-in-script.html: OK
 	Node.appendChild: inserting two text nodes in an empty script: FAIL
@@ -6376,7 +6383,7 @@
 	moveBefore still causes range startContainer to snap up to parent, when startContainer ancestor is moved: FAIL
 	moveBefore still results in range startContainer snapping up to parent when startContainer is moved: FAIL
 /dom/nodes/moveBefore/modal-dialog.html: OK
-	when reparenting a modal dialog, the dialog should stay modal: FAIL
+	when reparenting a modal dialog, the dialog should stay modal: PASS
 /dom/nodes/moveBefore/moveBefore-child-list-selector-invalidation.html: OK
 	.a + .b on the next siblings in the old and new parents: PASS
 	:empty on the old and new parents when moving a Text node: PASS
@@ -6447,7 +6454,7 @@
 /dom/nodes/moveBefore/popover-preserve.html: OK
 	when reparenting an open popover, it shouldn't be closed automatically: PASS
 /dom/nodes/moveBefore/preserve-render-blocking-script.html: OK
-	A moved script should keep its render-blocking state: PASS|FAIL
+	A moved script should keep its render-blocking state: FAIL
 /dom/nodes/moveBefore/preserve-render-blocking-style.html: OK
 	A moved script should keep its render-blocking state: FAIL
 /dom/nodes/moveBefore/relevant-mutations.html: TIMEOUT

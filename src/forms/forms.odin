@@ -148,6 +148,10 @@ Host :: struct {
 	popover_invoke:  proc(user: rawptr, invoker: base.Handle),
 	popover_dismiss: proc(user: rawptr, target: base.Handle),
 	close_request:   proc(user: rawptr) -> bool,
+	// A dialog closes; whether a modal dialog makes an element inert (no focus by Tab). Optional.
+	dialog_closed:   proc(user: rawptr, dialog: base.Handle),
+	queue_close:     proc(user: rawptr, dialog: base.Handle),   // "close" is fired from a task (at once without this)
+	inert:           proc(user: rawptr, h: base.Handle) -> bool,
 	// The activation of a link (<a> / <area> with href) clicked by a script (element.click(), a dispatched click): the
 	// page follows it. A user's click is the embedder's (it follows links itself). Optional.
 	follow_link:     proc(user: rawptr, link: base.Handle),

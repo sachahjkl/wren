@@ -92,7 +92,9 @@ host_call :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: 
 @(private = "file")
 host_serialize :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	n: uint
+	clone_for_storage = true
 	p := web_clone_serialize(ctx, wj.arg(argc, argv, 0), &n)
+	clone_for_storage = false
 	if p == nil { return wj.EXCEPTION }
 	r := idb_u8(ctx, p[:n])
 	web_clone_free(ctx, p)

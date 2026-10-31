@@ -623,6 +623,17 @@ wjr_DOMImplementation_createDocument :: proc "c" (ctx: ^wj.Context, this_val: wj
 	return node_or_throw(ctx, h, st, "DOMImplementation.createDocument")
 }
 
+// new Document(): an empty XML document (as DOM's "new Document" is, whose interface is the base of XMLDocument here).
+@(export, link_name = "wjr_Document_constructor")
+wjr_Document_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	context = jsb.glue_context()
+	if wj.is_undefined(new_target) { return wj.wj_throw_type(ctx, "Constructor Document requires 'new'") }
+	ns, name: wj.Str
+	h: api_decl.Document
+	st := jsb.host(&h, api_decl.DOMImplementation_createDocument, wj.wr_DOMImplementation_createDocument, namespace_of(ns), str_view(name), api_decl.Node(0))
+	return node_or_throw(ctx, h, st, "Document")
+}
+
 @(export, link_name = "wjr_DOMImplementation_hasFeature")
 wjr_DOMImplementation_hasFeature :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	return wj.dom_impl_of(ctx, this_val, ifc("DOMImplementation")) != nil ? wj.TRUE : wj.EXCEPTION

@@ -1,0 +1,197 @@
+# web-platform-tests expectations of Wren for largest-contentful-paint, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/largest-contentful-paint/animated/observe-animated-image-gif.tentative.html: TIMEOUT
+	Same origin animated image is observable and has a first frame.: TIMEOUT
+/largest-contentful-paint/animated/observe-animated-image-webp.tentative.html: TIMEOUT
+	Same origin animated image is observable and has a first frame.: TIMEOUT
+/largest-contentful-paint/animated/observe-animated-image.tentative.html: TIMEOUT
+	Same origin animated image is observable and has a first frame.: TIMEOUT
+/largest-contentful-paint/animated/observe-cross-origin-animated-image.tentative.html: TIMEOUT
+	Same origin animated image is observable and has a first frame.: TIMEOUT
+/largest-contentful-paint/animated/observe-cross-origin-tao-animated-image.tentative.html: TIMEOUT
+	Same origin animated image is observable and has a first frame.: TIMEOUT
+/largest-contentful-paint/animated/observe-non-animated-image.tentative.html: TIMEOUT
+	Same origin animated image is observable and has a first frame.: TIMEOUT
+/largest-contentful-paint/animated/observe-video.tentative.html: TIMEOUT
+	Same origin animated image is observable and has a first frame.: TIMEOUT
+/largest-contentful-paint/background-image-set-image.html: OK
+	Background image-set images should be eligible for LCP candidates: FAIL
+/largest-contentful-paint/broken-image-icon.html: TIMEOUT
+	The broken image icon should not emit an LCP entry.: TIMEOUT
+/largest-contentful-paint/contracted-image.html: TIMEOUT
+	Largest Contentful Paint: |size| attribute is bounded by display size.: TIMEOUT
+/largest-contentful-paint/cross-origin-image.sub.html: TIMEOUT
+	Cross-origin image is observable, with renderTime equal to 0.: TIMEOUT
+/largest-contentful-paint/element-only-when-fully-active.html: TIMEOUT
+	Only expose element attribute for fully active documents: NOTRUN
+/largest-contentful-paint/expanded-image.html: TIMEOUT
+	Largest Contentful Paint: |size| attribute is bounded by intrinsic size.: TIMEOUT
+/largest-contentful-paint/first-letter-background.html: TIMEOUT
+	Largest Contentful Paint: first-letter is observable.: TIMEOUT
+/largest-contentful-paint/first-paint-equals-lcp-text.html: TIMEOUT
+	FCP and LCP are the same when there is a single text element in the page.: TIMEOUT
+/largest-contentful-paint/idlharness.html: OK
+	Element includes ChildNode: member names are unique: PASS
+	Element includes NonDocumentTypeChildNode: member names are unique: PASS
+	Element includes ParentNode: member names are unique: PASS
+	Element includes Slottable: member names are unique: PASS
+	LargestContentfulPaint includes PaintTimingMixin: member names are unique: PASS
+	LargestContentfulPaint interface object length: PASS
+	LargestContentfulPaint interface object name: PASS
+	LargestContentfulPaint interface: attribute element: PASS
+	LargestContentfulPaint interface: attribute id: PASS
+	LargestContentfulPaint interface: attribute loadTime: PASS
+	LargestContentfulPaint interface: attribute renderTime: PASS
+	LargestContentfulPaint interface: attribute size: PASS
+	LargestContentfulPaint interface: attribute url: PASS
+	LargestContentfulPaint interface: default toJSON operation on lcp: FAIL
+	LargestContentfulPaint interface: existence and properties of interface object: PASS
+	LargestContentfulPaint interface: existence and properties of interface prototype object: PASS
+	LargestContentfulPaint interface: existence and properties of interface prototype object's "constructor" property: PASS
+	LargestContentfulPaint interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	LargestContentfulPaint interface: lcp must inherit property "element" with the proper type: FAIL
+	LargestContentfulPaint interface: lcp must inherit property "id" with the proper type: FAIL
+	LargestContentfulPaint interface: lcp must inherit property "loadTime" with the proper type: FAIL
+	LargestContentfulPaint interface: lcp must inherit property "renderTime" with the proper type: FAIL
+	LargestContentfulPaint interface: lcp must inherit property "size" with the proper type: FAIL
+	LargestContentfulPaint interface: lcp must inherit property "toJSON()" with the proper type: FAIL
+	LargestContentfulPaint interface: lcp must inherit property "url" with the proper type: FAIL
+	LargestContentfulPaint interface: operation toJSON(): PASS
+	LargestContentfulPaint must be primary interface of lcp: FAIL
+	Stringification of lcp: FAIL
+	idl_test setup: FAIL
+	idl_test validation: PASS
+/largest-contentful-paint/iframe-content-not-observed.html: OK
+	Element in child iframe is not observed, even if same-origin.: PASS
+/largest-contentful-paint/image-TAO.sub.html: TIMEOUT
+	Cross-origin elements with valid TAO have correct renderTime, with invalid TAO have renderTime set to 0.: TIMEOUT
+/largest-contentful-paint/image-element-when-fully-active.html: TIMEOUT
+	Element is null after iframe with LCP image is removed: NOTRUN
+/largest-contentful-paint/image-full-viewport.html: TIMEOUT
+	The intersectionRect of an img element overflowing is computed correctly: TIMEOUT
+/largest-contentful-paint/image-inside-svg.html: TIMEOUT
+	Image inside SVG is observable.: TIMEOUT
+/largest-contentful-paint/image-not-fully-visible.html: TIMEOUT
+	The intersectionRect of an img element overflowing is computed correctly: TIMEOUT
+/largest-contentful-paint/image-removed-after-paint.html: TIMEOUT
+	Element removed after LCP entry should reflect in entry.element: TIMEOUT
+/largest-contentful-paint/image-removed-before-load.html: TIMEOUT
+	Largest Contentful Paint: image removed before loaded does not produce entry.: TIMEOUT
+/largest-contentful-paint/image-src-change.html: TIMEOUT
+	Largest Contentful Paint: changing src causes a new entry to be dispatched.: TIMEOUT
+/largest-contentful-paint/image-sw-same-origin.https.html: TIMEOUT
+	Same-origin images served from a service-worker should have a correct renderTime: TIMEOUT
+/largest-contentful-paint/image-upscaling-empty-url.html: OK
+	A background image larger than the container should report the container size: FAIL
+	A background image smaller than the container should report the natural size: FAIL
+	A downscaled image (using scale) should report the displayed size: FAIL
+	A downscaled image (width/height) should report the displayed size: FAIL
+	A scaled-down background image should report the background size: FAIL
+	An upscaled image (using object-size) should report the natural size: FAIL
+	An upscaled image (using scale) should report the natural size: FAIL
+	An upscaled image (width/height) should report the natural size: FAIL
+	Intersecting element with partial-intersecting image to report image intersection: FAIL
+	Non-scaled image should report the natural size: FAIL
+/largest-contentful-paint/image-upscaling.html: OK
+	A background image larger than the container should report the container size: FAIL
+	A background image smaller than the container should report the natural size: FAIL
+	A downscaled image (using scale) should report the displayed size: FAIL
+	A downscaled image (width/height) should report the displayed size: FAIL
+	A scaled-down background image should report the background size: FAIL
+	An upscaled image (using object-size) should report the natural size: FAIL
+	An upscaled image (using scale) should report the natural size: FAIL
+	An upscaled image (width/height) should report the natural size: FAIL
+	Intersecting element with partial-intersecting image to report image intersection: FAIL
+	Non-scaled image should report the natural size: FAIL
+/largest-contentful-paint/initially-invisible-images.html: OK
+	Image visibility: out-of-viewport images are observable by LargestContentfulPaint once they become visible.: FAIL
+/largest-contentful-paint/invisible-images-composited-1.html: OK
+	Images with opacity: 0, visibility: hidden, or display: none are not observable by LargestContentfulPaint.: PASS
+/largest-contentful-paint/invisible-images-composited-2.html: OK
+	Images with opacity: 0, visibility: hidden, or display: none are not observable by LargestContentfulPaint.: PASS
+/largest-contentful-paint/invisible-images.html: OK
+	Images with opacity: 0, visibility: hidden, or display: none are not observable by LargestContentfulPaint.: PASS
+/largest-contentful-paint/larger-image.html: TIMEOUT
+	Largest Contentful Paint: largest image is reported.: TIMEOUT
+/largest-contentful-paint/larger-text.html: TIMEOUT
+	Largest Contentful Paint: largest text is reported.: TIMEOUT
+/largest-contentful-paint/loadTime-after-appendChild.html: TIMEOUT
+	Image loadTime occurs after appendChild is called.: TIMEOUT
+/largest-contentful-paint/modified-text-not-reconsidered.html: OK
+	Text element should not be reconsidered as LCP after text content changes.: FAIL
+/largest-contentful-paint/multiple-image-same-src.html: TIMEOUT
+	Largest Contentful Paint:dynamically appended image with different dimensions but same src triggers new entry.: TIMEOUT
+/largest-contentful-paint/multiple-redirects-TAO.html: TIMEOUT
+	Cross-origin images with passing/failing TAO should/shouldn't have its renderTime set.: TIMEOUT
+/largest-contentful-paint/observe-after-untrusted-scroll.html: TIMEOUT
+	Same-origin image after a JS initiated scroll event is observable.: TIMEOUT
+/largest-contentful-paint/observe-css-generated-image.html: TIMEOUT
+	Largest Contentful Paint: CSS generated image is observable.: TIMEOUT
+/largest-contentful-paint/observe-css-generated-text.html: OK
+	CSS generated text is observable as a LargestContentfulPaint candidate: FAIL
+	CSS generated text on a inline element is observable as a LargestContentfulPaint candidate: FAIL
+	Text generated with CSS using content:attr() is observable as a LargestContentfulPaint candidate: FAIL
+/largest-contentful-paint/observe-image.html: TIMEOUT
+	Same-origin image is observable.: TIMEOUT
+/largest-contentful-paint/observe-mathml.html: TIMEOUT
+	Element rendered by MathML is observable: TIMEOUT
+/largest-contentful-paint/observe-pseudo-element.tentative.html: TIMEOUT
+	largest-contentful-paint should not expose pseudo-elements: TIMEOUT
+/largest-contentful-paint/observe-random-namespace.html: TIMEOUT
+	Element created with different namespace is observable: TIMEOUT
+/largest-contentful-paint/observe-svg-background-image.html: OK
+	Same-origin SVG background image is observable.: FAIL
+/largest-contentful-paint/observe-svg-data-uri-background-image.html: OK
+	Data-URI background SVG image is observable.: FAIL
+/largest-contentful-paint/observe-svg-data-uri-image.html: TIMEOUT
+	Same-origin image is observable.: TIMEOUT
+/largest-contentful-paint/observe-svg-image.html: TIMEOUT
+	Same-origin image is observable.: TIMEOUT
+/largest-contentful-paint/observe-text.html: TIMEOUT
+	Text element is observable as a LargestContentfulPaint candidate.: TIMEOUT
+/largest-contentful-paint/performance-entry-sequence.html: TIMEOUT
+	Exactly one LargestContentfulPaint entry is emitted per frame when a new candidate is rendered: TIMEOUT
+/largest-contentful-paint/placeholder-image.html: TIMEOUT
+	Largest Contentful Paint: changing src causes a new entry to be dispatched.: TIMEOUT
+/largest-contentful-paint/progressively-loaded-image.html: TIMEOUT
+	Ensure Progressive JPEG LCP load and render events occur after resource loading: TIMEOUT
+/largest-contentful-paint/redirects-tao-star.html: TIMEOUT
+	Cross-origin image without TAO should not have its renderTime set, with full TAO it should.: TIMEOUT
+/largest-contentful-paint/repeated-image.html: TIMEOUT
+	Repeated image produces different timestamps.: TIMEOUT
+/largest-contentful-paint/resized-image-not-reconsidered.html: OK
+	Resized image should not be reconsidered as LCP: FAIL
+/largest-contentful-paint/same-origin-redirects.html: TIMEOUT
+	Same-origin image redirect without TAO should have its renderTime set.: TIMEOUT
+/largest-contentful-paint/supported-lcp-type.html: OK
+	supportedEntryTypes contains 'largest-contentful-paint'.: PASS
+/largest-contentful-paint/text-fragment-union.html: TIMEOUT
+	Text fragment union: wrapped text LCP size reflects the union of all line boxes.: TIMEOUT
+/largest-contentful-paint/text-with-display-style.html: TIMEOUT
+	Text with display style is observable.: TIMEOUT
+/largest-contentful-paint/toJSON.html: TIMEOUT
+	Test toJSON() in LargestContentfulPaint.: TIMEOUT
+/largest-contentful-paint/transparent-text-with-shadow.html: TIMEOUT
+	Transparent text with shadow decoration should not be excluded from LCP.: TIMEOUT
+/largest-contentful-paint/transparent-text-with-text-stroke.html: TIMEOUT
+	Transparent text with text stroke decoration should not be excluded from LCP.: TIMEOUT
+/largest-contentful-paint/transparent-text.html: TIMEOUT
+	Transparent text should not be LCP.: TIMEOUT
+/largest-contentful-paint/update-on-style-change.html: TIMEOUT
+	LargestContentfulPaint entries should NOT be emitted for updates to previous LargestContentfulPaint elements.: TIMEOUT
+/largest-contentful-paint/video-data-uri.html: TIMEOUT
+	Video of data URI src should trigger an LCP entry to be emitted.: TIMEOUT
+/largest-contentful-paint/video-play-after-poster.html: TIMEOUT
+	Video with poster should not emit a second LCP entry after playing.: TIMEOUT
+/largest-contentful-paint/video-poster.html: TIMEOUT
+	Able to observe a video's poster image.: TIMEOUT
+/largest-contentful-paint/web-font-styled-text-resize-block.html: OK
+	LCP should be not updated if the web font styled text resize occurs during the block period.: FAIL
+/largest-contentful-paint/web-font-styled-text-resize-swap-after-interaction.html: TIMEOUT
+	LCP should be not updated if the web font styled text resize occurs after an interaction happens: TIMEOUT
+/largest-contentful-paint/web-font-styled-text-resize-swap-smaller.html: OK
+	LCP should be not updated if the web font styled text resizes to be smaller during the swap period: FAIL
+/largest-contentful-paint/web-font-styled-text-resize-swap-subnode.html: OK
+	LCP should be updated if the web font styled text resizes to be larger during the swap period: FAIL
+/largest-contentful-paint/web-font-styled-text-resize-swap.html: OK
+	LCP should be updated if the web font styled text resizes to be larger during the swap period: FAIL

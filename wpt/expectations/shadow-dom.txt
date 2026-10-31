@@ -152,8 +152,8 @@
 	ShadowRoot.innerHTML must replace all with the result of invoking the fragment parsing algorithm when shadow root is open.: PASS
 	ShadowRoot.innerHTML must return the result of the HTML fragment serialization algorithm when shadow root is closed.: PASS
 	ShadowRoot.innerHTML must return the result of the HTML fragment serialization algorithm when shadow root is open.: PASS
-	ShadowRoot.styleSheets must return a StyleSheetList sequence containing the shadow root style sheets when shadow root is closed.: FAIL
-	ShadowRoot.styleSheets must return a StyleSheetList sequence containing the shadow root style sheets when shadow root is open.: FAIL
+	ShadowRoot.styleSheets must return a StyleSheetList sequence containing the shadow root style sheets when shadow root is closed.: PASS
+	ShadowRoot.styleSheets must return a StyleSheetList sequence containing the shadow root style sheets when shadow root is open.: PASS
 /shadow-dom/Slottable-mixin.html: OK
 	assignedSlot attribute must be defined on Element and Text interfaces: FAIL
 	assignedSlot must return null when the assigned slot element is inside a closed shadow tree: PASS
@@ -8320,7 +8320,7 @@
 /shadow-dom/declarative/tentative/shadowrootadoptedstylesheets/shadowrootadoptedstylesheets-placeholder-identity.html: OK
 	Placeholder CSSStyleSheet is replaced by a different object after fetch.: FAIL
 /shadow-dom/declarative/tentative/shadowrootadoptedstylesheets/shadowrootadoptedstylesheets-same-document.html: OK
-	adoptedStyleSheets is populated from a <template> element's shadowrootadoptedstylesheets attribute via Document.parseHTMLUnsafe.: FAIL
+	adoptedStyleSheets is populated from a <template> element's shadowrootadoptedstylesheets attribute via Document.parseHTMLUnsafe.: PASS
 /shadow-dom/declarative/tentative/shadowrootadoptedstylesheets/shadowrootadoptedstylesheets-serialization.html: OK
 	Element.getHTML() round-trips shadowrootadoptedstylesheets across absent, empty, basic, and whitespace values.: FAIL
 	ShadowRoot.getHTML() returns children-only markup (no wrapping template).: PASS
@@ -9913,9 +9913,9 @@
 	A_08_01_01_T01: FAIL
 /shadow-dom/untriaged/html-elements-in-shadow-trees/inert-html-elements/test-002.html: OK
 	A_08_01_02_T01: FAIL
-/shadow-dom/untriaged/shadow-trees/upper-boundary-encapsulation/dom-tree-accessors-001.html: OK
+/shadow-dom/untriaged/shadow-trees/upper-boundary-encapsulation/dom-tree-accessors-001.html: TIMEOUT
 	<head> and <body> in a shadow tree should not be accessible from owner document's "head" and "body" properties, respectively.: PASS
-	Elements in a shadow tree should not be accessible from owner document's "all" attribute.: FAIL
+	Elements in a shadow tree should not be accessible from owner document's "all" attribute.: PASS
 	Elements in a shadow tree should not be accessible from owner document's "anchors" attribute.: PASS
 	Elements in a shadow tree should not be accessible from owner document's "embeds" attribute.: PASS
 	Elements in a shadow tree should not be accessible from owner document's "forms" attribute.: PASS
@@ -9926,19 +9926,19 @@
 	Elements in a shadow tree should not be accessible from owner document's getElementById() method.: PASS
 	Elements in a shadow tree should not be accessible from owner document's getElementsByName() method.: PASS
 	Elements in a shadow tree should not be accessible from owner document's getElementsByTagName() method.: PASS
-	Elements in a shadow tree should not be accessible from owner document's getElementsByTagNameNS() method.: FAIL
+	Elements in a shadow tree should not be accessible from owner document's getElementsByTagNameNS() method.: PASS
 	The content of title element in a shadow tree should not be accessible from owner document's "title" attribute.: FAIL
 /shadow-dom/untriaged/shadow-trees/upper-boundary-encapsulation/dom-tree-accessors-002.html: OK
 	Elements in a shadow tree should be accessible via shadow root's getElementById() DOM tree accessor.: PASS
 	Elements in a shadow tree should be accessible via shadow root's querySelectorAll() DOM tree accessor.: PASS
 	Elements with a specific class in a shadow tree should be accessible viashadow root's querySelectorAll() DOM tree accessor.: PASS
 /shadow-dom/untriaged/shadow-trees/upper-boundary-encapsulation/ownerdocument-001.html: OK
-	All children nodes of a shadow root get a valid ownerDocument when added to a shadow tree.: FAIL
+	All children nodes of a shadow root get a valid ownerDocument when added to a shadow tree.: PASS
 	Elements added to a shadow tree should automatically get a valid ownerDocument.: PASS
-	ownerDocument property of a node should remain the same, even if its child is adopted into a shadow tree.: FAIL
+	ownerDocument property of a node should remain the same, even if its child is adopted into a shadow tree.: PASS
 	ownerDocument property of a shadow root should be the document of the shadow host, regardless of the location of the shadow host.: PASS
 	ownerDocument property of an element in a shadow tree should be the document of the shadow host, even if the host element is created from another document.: PASS
-	ownerDocument property of elements in a shadow tree should match the document of the shadow host, regardless of the element's location in a shadow tree.: FAIL
+	ownerDocument property of elements in a shadow tree should match the document of the shadow host, regardless of the element's location in a shadow tree.: PASS
 /shadow-dom/untriaged/shadow-trees/upper-boundary-encapsulation/ownerdocument-002.html: OK
 	ownerDocument property of any elements in a shadow tree should match the document of the shadow host, when the host is a "article" element.: PASS
 	ownerDocument property of any elements in a shadow tree should match the document of the shadow host, when the host is a "aside" element.: PASS

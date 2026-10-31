@@ -33,6 +33,7 @@ import "wb:host"
 import "wb:http"
 import "wb:js"
 import "wb:url"
+import "wb:wasm"
 
 ////////////////////////////////
 // Messages between the two threads
@@ -270,7 +271,9 @@ worker_create :: proc(p: ^Page, src: string, name: string, owner: u32, javascrip
 	if !worker_take_slot(ws) {
 		log(p, .Error, fmt.tprintf("Worker: the browser already runs %d workers (workers.max_total)", ws.max_total)); return 0
 	}
+	if sw == nil && shared == nil { page_cluster(p) }   // (a dedicated worker is of its document's agent cluster)
 	h := worker_host_new(p, u, name, javascript, module, link_make(p.loop, ws.max_pending_bytes), &p.env)
+	if sw != nil || shared != nil { h.env.agent_cluster, h.env.cross_origin_isolated = 0, false }
 	h.owner, h.sw, h.shared = owner, sw, shared
 	if shared != nil { h.storage_key = strings.clone(shared.key) }   // (a shared worker's realm: its documents' storage key)
 	if sw != nil { h.storage_key = strings.clone(sw.reg.origin) }    // (a service worker's: its registration's storage key)
@@ -309,6 +312,9 @@ worker_host_new :: proc(p: ^Page, u: url.URL, name: string, javascript, module: 
 	h.link = link
 	h.link.host = h
 	h.env = fetch.environment_make(u, creator.referrer_policy)
+	h.env.embedder_policy = creator.embedder_policy
+	h.env.cross_origin_isolated = creator.cross_origin_isolated
+	h.env.agent_cluster = creator.agent_cluster
 	h.env.on_violation = worker_csp_violation
 	h.env.violation_user = h
 	if u.scheme == "data" {
@@ -405,6 +411,10 @@ worker_spawn :: proc(h: ^Worker_Host, image: []byte) {
 	g.settings.sw.fs_permission = ""
 	g.url, g.name = strings.clone(h.url), strings.clone(h.name)
 	g.module, g.shared, g.depth = h.module, h.shared != nil, h.depth
+	g.can_block = h.sw == nil
+	g.embedder_policy, g.cross_origin_isolated = h.env.embedder_policy, h.env.cross_origin_isolated
+	if h.env.agent_cluster == 0 { h.env.agent_cluster = wasm.user_cluster_new() } else { wasm.user_cluster_retain(h.env.agent_cluster) }
+	g.agent_cluster = h.env.agent_cluster
 	// service_worker.odin: a service worker's instance, or another worker's view as a client of its document's controller
 	if h.sw != nil { sw_global_init(&g.sw, h.sw) } else { sw_client_init(g, p) }
 	g.image = make([]byte, len(image))
@@ -772,6 +782,10 @@ Worker_Global :: struct {
 	client_inbox: [dynamic][]byte,   // service workers' messages to it: the version's id (8 bytes) then the data
 	children: [dynamic]^Nested_Worker,   // the Worker objects of its realm (nested_workers.odin)
 	depth:    int,                       // how deep it is nested (1: a document's worker)
+	can_block: bool,                     // [[CanBlock]] of its agent: not a service worker
+	embedder_policy: fetch.Embedder_Policy,
+	cross_origin_isolated: bool,
+	agent_cluster: u64,                  // (one reference, given back when it goes)
 }
 
 @(private)
@@ -787,6 +801,7 @@ worker_global_free :: proc(g: ^Worker_Global) {
 	for m in g.client_inbox { delete(m) }
 	delete(g.client_inbox)
 	delete(g.children)   // (their objects went with the realm)
+	wasm.user_cluster_release(g.agent_cluster)
 	for e in g.connects { port_close_end(e) }
 	delete(g.connects)
 	for m in g.inbox { msg_free(m) }
@@ -857,6 +872,7 @@ worker_realm_create :: proc(g: ^Worker_Global) -> ^Page {
 	u, ok := url.parse_absolute(g.url, context.temp_allocator)
 	if !ok { u, _ = url.parse_absolute("about:blank", context.temp_allocator) }
 	p.env = fetch.environment_make(u)
+	p.env.embedder_policy, p.env.cross_origin_isolated, p.env.agent_cluster = g.embedder_policy, g.cross_origin_isolated, g.agent_cluster
 	p.doc = dom.document_create(p.scope)   // never exposed: holds the listener id counter of the realm's objects
 	p.dp.invoke = invoke_listener
 	p.dp.user = p
@@ -989,6 +1005,7 @@ worker_fetch_event :: proc(p: ^Page, m: ^Worker_Msg) {
 		u.error, u.detail = fetch.Error_Kind(m.code2), m.text
 	case .Data, .Done:
 	}
+	if f.event_source != nil { eventsource_relay_event(f, u); return }
 	if f.ext != nil { fetch_ext_event(f, u); return }   // promise / stream / abort signal, as on the page's thread
 	fetch_update(f, u)
 	if f.module != nil && f.state >= 2 { module_worker_fetched(p, f) }   // a module of the realm's graph (js_load_modules.odin)

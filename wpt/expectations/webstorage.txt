@@ -199,8 +199,8 @@
 	sessionStorage retains comparable quota after localStorage exhaustion: FAIL
 /webstorage/storage_session_setitem_quotaexceedederr.window.html: OK
 	Throws QuotaExceededError when the quota has been exceeded: FAIL
-/webstorage/storage_session_window_noopener.window.html: OK
-	A new noopener window to make sure there is a not copy of the previous window's sessionStorage: FAIL
+/webstorage/storage_session_window_noopener.window.html: TIMEOUT
+	A new noopener window to make sure there is a not copy of the previous window's sessionStorage: TIMEOUT
 /webstorage/storage_session_window_open.window.html: TIMEOUT
 	A new window to make sure there is a copy of the previous window's sessionStorage, and that they diverge after a change: TIMEOUT
 /webstorage/storage_session_window_reopen.window.html: OK
@@ -270,11 +270,11 @@
 	localStorage["S"]: PASS
 	localStorage["T"]: PASS
 	localStorage["U"]: PASS
-	localStorage["U+d800"]: FAIL
-	localStorage["U+d83ca"]: FAIL
-	localStorage["U+dbff"]: FAIL
-	localStorage["U+dc00"]: FAIL
-	localStorage["U+dfff"]: FAIL
+	localStorage["U+d800"]: PASS
+	localStorage["U+d83ca"]: PASS
+	localStorage["U+dbff"]: PASS
+	localStorage["U+dc00"]: PASS
+	localStorage["U+dfff"]: PASS
 	localStorage["V"]: PASS
 	localStorage["W"]: PASS
 	localStorage["X"]: PASS
@@ -323,7 +323,7 @@
 	localStorage["_"]: PASS
 	localStorage["`"]: PASS
 	localStorage["a"]: PASS
-	localStorage["aU+df4d"]: FAIL
+	localStorage["aU+df4d"]: PASS
 	localStorage["b"]: PASS
 	localStorage["c"]: PASS
 	localStorage["d"]: PASS
@@ -823,11 +823,11 @@
 	sessionStorage["S"]: PASS
 	sessionStorage["T"]: PASS
 	sessionStorage["U"]: PASS
-	sessionStorage["U+d800"]: FAIL
-	sessionStorage["U+d83ca"]: FAIL
-	sessionStorage["U+dbff"]: FAIL
-	sessionStorage["U+dc00"]: FAIL
-	sessionStorage["U+dfff"]: FAIL
+	sessionStorage["U+d800"]: PASS
+	sessionStorage["U+d83ca"]: PASS
+	sessionStorage["U+dbff"]: PASS
+	sessionStorage["U+dc00"]: PASS
+	sessionStorage["U+dfff"]: PASS
 	sessionStorage["V"]: PASS
 	sessionStorage["W"]: PASS
 	sessionStorage["X"]: PASS
@@ -876,7 +876,7 @@
 	sessionStorage["_"]: PASS
 	sessionStorage["`"]: PASS
 	sessionStorage["a"]: PASS
-	sessionStorage["aU+df4d"]: FAIL
+	sessionStorage["aU+df4d"]: PASS
 	sessionStorage["b"]: PASS
 	sessionStorage["c"]: PASS
 	sessionStorage["d"]: PASS

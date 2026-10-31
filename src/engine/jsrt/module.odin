@@ -515,6 +515,8 @@ execute_sync_module :: proc(ctx: ^Context, m: ^Module) -> (Value, bool) {
 	case .fulfilled:
 		return UNDEFINED, true
 	case .rejected:
+		// (the tracker was told it had no handler: this promise is the engine's, and the error goes on as the module's)
+		if !pd.is_handled {rejection_tracker(ctx, as_obj(p), pd.result, true)}
 		pd.is_handled = true
 		return pd.result, false
 	case .pending:

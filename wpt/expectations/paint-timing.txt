@@ -1,0 +1,138 @@
+# web-platform-tests expectations of Wren for paint-timing, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/paint-timing/basetest.html: TIMEOUT
+	Basic test to check existence of FP and FCP.: TIMEOUT
+/paint-timing/buffered-flag.window.html: TIMEOUT
+	PerformanceObserver with buffered flag sees previous paint entries.: TIMEOUT
+/paint-timing/fcp-only/buffered-flag.window.html: TIMEOUT
+	PerformanceObserver with buffered flag sees previous FCP entry.: TIMEOUT
+/paint-timing/fcp-only/fcp-after-scroll.html: TIMEOUT
+	First contentful paint is reported even though a scroll event was dispatched before it.: TIMEOUT
+/paint-timing/fcp-only/fcp-background-size.html: TIMEOUT
+	First contentful paint fires due to background size.: TIMEOUT
+/paint-timing/fcp-only/fcp-bg-image-set.html: TIMEOUT
+	First contentful paint fires due to background image in image-set.: TIMEOUT
+/paint-timing/fcp-only/fcp-bg-image-two-steps.html: TIMEOUT
+	First contentful paint fires for background image only when visible.: TIMEOUT
+/paint-timing/fcp-only/fcp-border-image-with-svg.html: TIMEOUT
+	Border image triggers First Contentful Paint.: TIMEOUT
+/paint-timing/fcp-only/fcp-border-image.html: TIMEOUT
+	Border image triggers First Contentful Paint.: TIMEOUT
+/paint-timing/fcp-only/fcp-broken-image.html: OK
+	Broken image should not trigger First Contentful Paint.: PASS
+/paint-timing/fcp-only/fcp-canvas-context.html: TIMEOUT
+	Canvas should count as contentful when context is created: TIMEOUT
+/paint-timing/fcp-only/fcp-gradient.html: OK
+	Gradients should not count as contentful: PASS
+/paint-timing/fcp-only/fcp-ignore-from-subframe.html: TIMEOUT
+	Parent frame should not fire own paint-timing events for subframes.: TIMEOUT
+/paint-timing/fcp-only/fcp-invisible-3d-rotate-descendant.html: TIMEOUT
+	First contentful paint fires due to its ancestor getting rotating into view.: TIMEOUT
+/paint-timing/fcp-only/fcp-invisible-3d-rotate.html: TIMEOUT
+	First contentful paint fires due to 3d rotation into view.: TIMEOUT
+/paint-timing/fcp-only/fcp-invisible-scale-transition.html: TIMEOUT
+	First contentful paint fires when revealed during transition.: TIMEOUT
+/paint-timing/fcp-only/fcp-invisible-scale.html: TIMEOUT
+	First contentful paint fires due to scale becoming positive.: TIMEOUT
+/paint-timing/fcp-only/fcp-invisible-text.html: TIMEOUT
+	First contentful paint fires due to pseudo-element becoming visible.: TIMEOUT
+/paint-timing/fcp-only/fcp-opacity-descendant.html: TIMEOUT
+	First contentful paint fires due to its ancestor getting positive opacity.: TIMEOUT
+/paint-timing/fcp-only/fcp-opacity.html: TIMEOUT
+	First contentful paint fires due to opacity-revealed element.: TIMEOUT
+/paint-timing/fcp-only/fcp-out-of-bounds-translate.html: TIMEOUT
+	First contentful paint fires due to transform-based intersection with document.: TIMEOUT
+/paint-timing/fcp-only/fcp-out-of-bounds.html: TIMEOUT
+	First contentful paint fires due to intersection with document.: TIMEOUT
+/paint-timing/fcp-only/fcp-pseudo-element-display.html: TIMEOUT
+	First contentful paint fires due to pseudo-element text.: TIMEOUT
+/paint-timing/fcp-only/fcp-pseudo-element-image.html: TIMEOUT
+	First contentful paint fires due to pseudo-element image.: TIMEOUT
+/paint-timing/fcp-only/fcp-pseudo-element-opacity.html: TIMEOUT
+	First contentful paint fires due to pseudo-element getting positive opacity.: TIMEOUT
+/paint-timing/fcp-only/fcp-pseudo-element-text.html: TIMEOUT
+	First contentful paint fires due to pseudo-element text.: TIMEOUT
+/paint-timing/fcp-only/fcp-pseudo-element-visibility.html: TIMEOUT
+	First contentful paint fires due to pseudo-element becoming visible.: TIMEOUT
+/paint-timing/fcp-only/fcp-requires-both-paintable-and-contentful.html: OK
+	FCP requires an element that is both paintable and contentful.: PASS
+/paint-timing/fcp-only/fcp-svg.html: TIMEOUT
+	First contentful paint fires when SVG becomes contentful.: TIMEOUT
+/paint-timing/fcp-only/fcp-text-input.html: TIMEOUT
+	Text input should become contentful when its value is non-empty: TIMEOUT
+/paint-timing/fcp-only/fcp-typographic-pseudo.html: TIMEOUT
+	First contentful paint fires only when some of the text is visible, considering ::first-letter.: TIMEOUT
+/paint-timing/fcp-only/fcp-video-frame.html: TIMEOUT
+	Video should become contentful when first frame is loaded: TIMEOUT
+/paint-timing/fcp-only/fcp-video-poster.html: TIMEOUT
+	Video should become contentful when poster is loaded: TIMEOUT
+/paint-timing/fcp-only/fcp-whitespace.html: TIMEOUT
+	Whitespace should not count as contentful.: TIMEOUT
+/paint-timing/fcp-only/fcp-with-rtl.html: TIMEOUT
+	FCP should fire when coordinates are negative, if within document scrollable area: TIMEOUT
+/paint-timing/fcp-only/first-contentful-canvas-none.html: OK
+	First contentful paint should not fire for canvas type none: PASS
+/paint-timing/fcp-only/input-text.html: TIMEOUT
+	Text from a form control triggers First Contentful Paint.: TIMEOUT
+/paint-timing/fcp-only/mask-image.html: TIMEOUT
+	Mask image triggers First Contentful Paint.: TIMEOUT
+/paint-timing/fcp-only/replaced-content-image.html: TIMEOUT
+	Replaced content image triggers First Contentful Paint.: TIMEOUT
+/paint-timing/fcp-only/svg-in-iframe.html: TIMEOUT
+	SVG in an iframe does not trigger FCP in the main frame: TIMEOUT
+/paint-timing/first-contentful-bg-image.html: TIMEOUT
+	First contentful paint fires due to background image render.: TIMEOUT
+/paint-timing/first-contentful-canvas-webgl2.html: OK
+	First contentful paint fires due to webgl2 canvas render.: PRECONDITION_FAILED
+/paint-timing/first-contentful-canvas.html: TIMEOUT
+	First contentful paint fires due to canvas render.: TIMEOUT
+/paint-timing/first-contentful-image.html: TIMEOUT
+	First contentful paint fires due to image render.: TIMEOUT
+/paint-timing/first-contentful-paint.html: TIMEOUT
+	First Paint triggered by non-contentful paint. Image load triggers First Contentful Paint.: TIMEOUT
+/paint-timing/first-contentful-svg.html: TIMEOUT
+	First contentful paint fires due to svg.: TIMEOUT
+/paint-timing/first-image-child.html: TIMEOUT
+	Child iframe ignores paint-timing events fired from parent image rendering.: TIMEOUT
+/paint-timing/first-paint-only/child-painting-first-image.html: TIMEOUT
+	Parent frame ignores paint-timing events fired from child image rendering.: TIMEOUT
+/paint-timing/first-paint-only/first-paint-bg-color.html: TIMEOUT
+	First paint fires due to background color. No FCP: TIMEOUT
+/paint-timing/first-paint-only/first-paint-only.html: TIMEOUT
+	Performance first paint timing entry exists. No first contentful paint.: TIMEOUT
+/paint-timing/first-paint-only/iframe-in-invisible-ancestor.html: TIMEOUT
+	First paint is not reported for an iframe inside an invisible ancestor.: PASS
+/paint-timing/first-paint-only/sibling-painting-first-image.html: TIMEOUT
+	Frame ignores paint-timing events fired from sibling frame.: TIMEOUT
+/paint-timing/idlharness.window.html: OK
+	PerformancePaintTiming includes PaintTimingMixin: member names are unique: PASS
+	PerformancePaintTiming interface object length: PASS
+	PerformancePaintTiming interface object name: PASS
+	PerformancePaintTiming interface: attribute paintTime: PASS
+	PerformancePaintTiming interface: attribute presentationTime: PASS
+	PerformancePaintTiming interface: default toJSON operation on paintTiming: FAIL
+	PerformancePaintTiming interface: existence and properties of interface object: PASS
+	PerformancePaintTiming interface: existence and properties of interface prototype object: PASS
+	PerformancePaintTiming interface: existence and properties of interface prototype object's "constructor" property: PASS
+	PerformancePaintTiming interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	PerformancePaintTiming interface: operation toJSON(): PASS
+	PerformancePaintTiming interface: paintTiming must inherit property "paintTime" with the proper type: FAIL
+	PerformancePaintTiming interface: paintTiming must inherit property "presentationTime" with the proper type: FAIL
+	PerformancePaintTiming interface: paintTiming must inherit property "toJSON()" with the proper type: FAIL
+	PerformancePaintTiming must be primary interface of paintTiming: FAIL
+	Stringification of paintTiming: FAIL
+	idl_test setup: FAIL
+	idl_test validation: PASS
+/paint-timing/paint-visited.html: TIMEOUT
+	Visited-attack test to check existence of FP and FCP.: TIMEOUT
+/paint-timing/supported-paint-type.window.html: TIMEOUT
+	'paint' entries should be observable.: TIMEOUT
+	supportedEntryTypes contains 'paint'.: PASS
+/paint-timing/with-lcp/fcp-document-opacity-image.html: TIMEOUT
+	Test that FCP after opacity change is not a larger value than LCP: TIMEOUT
+/paint-timing/with-lcp/fcp-document-opacity-text.html: OK
+	Test that FCP after opacity change is not a larger value than LCP: FAIL
+/paint-timing/with-paint-timing-mixin/paint-timing-mixin-to-json.html: TIMEOUT
+	Paint timing entries should serialize paintTime and presentationTime with toJSON: TIMEOUT
+/paint-timing/with-paint-timing-mixin/paint-timing-mixin.html: TIMEOUT
+	Paint timing entries should expose paintTime and presentationTime: TIMEOUT

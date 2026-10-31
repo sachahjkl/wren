@@ -56,6 +56,10 @@ Host_Config :: struct {
 	atomics_wait:    proc(user: rawptr, addr: rawptr, size: int, expected: u64, timeout_ms: f64) -> Wait_Result,
 	atomics_notify:  proc(user: rawptr, addr: rawptr, count: f64) -> int,
 	atomics_user:    rawptr,
+	// The bytes of a new SharedArrayBuffer are the embedder's (nil: this engine's memory, one agent's).
+	host_shared:     ^Host_Shared,
+	// HTML's modules: an import attribute other than `type` is a SyntaxError.
+	only_type_attribute: bool,
 	// Called at the start of every collection, before anything is marked.
 	gc_prologue:      proc(rt: ^Runtime, user: rawptr),
 	gc_prologue_user: rawptr,
@@ -104,6 +108,9 @@ HOST_SNAPSHOTS :: 4
 HOST_LINES :: 16
 HOST_LINE_SIZE :: 4096
 
+// (host_line: how many reads of a shared buffer's pages until they are read again)
+HOST_SHARED_READS :: 256
+
 // A page of a host buffer's bytes, kept in this engine's memory (host_line in b_typed.odin): a script going through a
 // module's memory one element at a time needs no call of the embedder for most of them.
 Host_Line :: struct {
@@ -118,6 +125,7 @@ Host_Line :: struct {
 Host_Cache :: struct {
 	gen:       u32,
 	any_dirty: bool,
+	shared_reads: int,
 	lines:     [HOST_LINES]Host_Line,
 }
 

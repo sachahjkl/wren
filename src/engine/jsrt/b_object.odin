@@ -249,6 +249,21 @@ obj_define_properties :: proc(ctx: ^Context, this: Value, args: []Value, magic: 
 	return o
 }
 
+// The embedder's property made on first read (auto_init_getter: JS_DefineHostAutoInitProperty) is a data property to a script:
+// asking what it is makes it.
+auto_init_getter: proc(fn: ^Object) -> bool
+
+@(private = "file")
+get_own_property_resolved :: proc(ctx: ^Context, o: ^Object, a: Atom, d: ^Prop_Desc) -> int {
+	r := get_own_property(ctx, o, a, d)
+	if r > 0 && auto_init_getter != nil && desc_is_accessor(d) && d.getter.tag == .object && auto_init_getter(as_obj(d.getter)) {
+		if is_exception(call(ctx, d.getter, mk_obj(o), nil)) {return -1}
+		d^ = {}
+		return get_own_property(ctx, o, a, d)
+	}
+	return r
+}
+
 @(private = "file")
 obj_get_own_property_descriptor :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value {
 	o := to_obj_this(ctx, arg(args, 0))
@@ -256,7 +271,7 @@ obj_get_own_property_descriptor :: proc(ctx: ^Context, this: Value, args: []Valu
 	a, ok := to_property_key(ctx, arg(args, 1))
 	if !ok {return EXCEPTION}
 	d: Prop_Desc
-	r := get_own_property(ctx, o, a, &d)
+	r := get_own_property_resolved(ctx, o, a, &d)
 	if r < 0 {return EXCEPTION}
 	if r == 0 {return UNDEFINED}
 	return from_property_descriptor(ctx, &d)
@@ -959,7 +974,7 @@ reflect_fn :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Val
 		a, ok := to_property_key(ctx, arg(args, 1))
 		if !ok {return EXCEPTION}
 		d: Prop_Desc
-		r := get_own_property(ctx, as_obj(t), a, &d)
+		r := get_own_property_resolved(ctx, as_obj(t), a, &d)
 		if r < 0 {return EXCEPTION}
 		if r == 0 {return UNDEFINED}
 		return from_property_descriptor(ctx, &d)

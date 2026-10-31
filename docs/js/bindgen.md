@@ -8,8 +8,9 @@ against was generated in **C** (`native/js/gen/*`). Two changes move the whole c
 2. The description itself can be written in **Odin** (`-convert-widl` migrates the existing `.widl`), read with a
    dedicated Odin reader.
 
-Both are off by default: `bindgen` with no flag, and `build.bat`, still emit C from `.widl`. Nothing in the current
-build changes until the engine is Odin (agent `spk`'s `wj` layer).
+The engine is Odin now, and neither of these is what the build runs: `bindgen` with no flag, and `build.bat`, read
+`.widl` and emit `-emit:glue`, the whole glue in Odin (`native/js/odin/bindings_gen.odin`). The C output (`native/js/gen/*`)
+is no longer used. What follows describes the two optional forms.
 
 ## `-emit:odin` : the engine glue in Odin
 
@@ -26,7 +27,7 @@ bit-sets, the `Native` / `Getter` / `Setter` glue signatures, and the conversion
 call). No macros: tagged enums, `bit_set`, and plain slice literals.
 
 `wj_iface.odin` is **stubs** today: every procedure panics or returns a sentinel. It defines exactly what the generated
-code and the hand-written members expect, so `spk` can implement it (or re-point the generated `import` at `spk`'s
+code and the hand-written members expect, so a layer can implement it (or re-point the generated `import` at its
 package) without touching a line of the generated output. The member *glue bodies* (the per-member trampolines that
 marshal strings, bytes, handles, `raises` → status, `[Owned]`) are **not** generated in Odin yet: they are the part most
 tightly coupled to the engine's value type and conversions. The table's `fn` / `get` / `set` slots are left `nil` with
@@ -102,9 +103,9 @@ and reports the first byte that differs. It prints `identical (host, guests, doc
 form reproduces the exact output (the docs' `Source:` line, which names the file, is normalized away — the migration
 renames the source, not the API).
 
-## What `spk` must provide
+## What `-emit:odin` would need
 
-`native/js/odin_gen/wj_iface.odin` is the contract. `spk` backs it with the engine-agnostic Odin layer (the `wj.h`
+`native/js/odin_gen/wj_iface.odin` is the contract. A real layer would back it with the engine-agnostic Odin layer (the `wj.h`
 equivalent): the real `Ctx` / `Val`, the `to_*` conversions, `wrap_node` / `wrap_host` / `wrap_owned`, the `throw_*`
 helpers, the scratch buffer, and it publishes `interfaces` / `interface_count` (the generated `@(init)` already assigns
 them). The member-glue body generator (the Odin equivalent of `jsgen`'s `emit_import_glue`) comes once that surface is

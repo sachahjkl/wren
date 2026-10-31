@@ -284,18 +284,26 @@ HTMLInputElement_list :: proc(c: ^Call, input: Api_Element) -> u64 {
 ////////////////////////////////
 // <dialog>
 
-// show(): open, not modal. showModal(): the same (no top layer: the dialog is laid out where it is), after its checks.
+// show(): open, not modal. showModal(): dialog_modal.odin.
 HTMLDialogElement_show :: proc(c: ^Call, dialog: Api_Element) -> Api_Error {
 	if _, open := attr_of(dialog.data, "open"); open { return .None }
 	err := dom_error(dom.set_attribute(c.page.doc, H(dialog.handle), "open", ""))
 	forms.changed(page_forms(c.page), H(dialog.handle))
+	if err == .None && !dialog_opening_modal { dialog_shown(c.page, H(dialog.handle)) }
 	return err
 }
 
 HTMLDialogElement_showModal :: proc(c: ^Call, dialog: Api_Element) -> Api_Error {
-	if _, open := attr_of(dialog.data, "open"); open { return .None }
+	if dialog_is_modal(c.page, H(dialog.handle)) { return .None }
+	if _, open := attr_of(dialog.data, "open"); open { return fail(c, .Invalid_State, "The dialog is already open.") }
 	if !dom.is_connected(c.page.doc, H(dialog.handle)) { return fail(c, .Invalid_State, "The dialog is not connected.") }
-	return HTMLDialogElement_show(c, dialog)
+	if popover_showing(c.page, H(dialog.handle)) { return fail(c, .Invalid_State, "The dialog is a showing popover.") }
+	dialog_opening_modal = true
+	err := HTMLDialogElement_show(c, dialog)
+	dialog_opening_modal = false
+	if err != .None { return err }
+	dialog_modal_shown(c.page, H(dialog.handle))
+	return .None
 }
 
 // close(result): `open` removed, returnValue set, "close" fired (package forms).

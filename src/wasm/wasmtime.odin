@@ -85,6 +85,7 @@ WT_EXTERN_FUNC :: u8(0)
 WT_EXTERN_GLOBAL :: u8(1)
 WT_EXTERN_TABLE :: u8(2)
 WT_EXTERN_MEMORY :: u8(3)
+WT_EXTERN_SHAREDMEMORY :: u8(4)
 WT_EXTERN_TAG :: u8(5)
 
 // wasm_valkind_enum (wasm.h), used for function types
@@ -158,6 +159,7 @@ wt_extern :: struct {
 		memory: wt_memory,
 		global: wt_global,
 		tag:    wt_tag,
+		sharedmemory: rawptr,
 		raw:    [3]u64,
 	},
 }
@@ -219,6 +221,12 @@ foreign wasmtime_lib {
 	wasmtime_config_async_stack_size_set :: proc(c: wt_config, v: uint) ---
 	wasmtime_config_wasm_threads_set :: proc(c: wt_config, v: bool) ---
 	wasmtime_config_shared_memory_set :: proc(c: wt_config, v: bool) ---
+	wasmtime_sharedmemory_new :: proc(e: wt_engine, ty: wt_memorytype, ret: ^rawptr) -> wt_error ---
+	wasmtime_sharedmemory_delete :: proc(m: rawptr) ---
+	wasmtime_sharedmemory_data :: proc(m: rawptr) -> [^]u8 ---
+	wasmtime_sharedmemory_data_size :: proc(m: rawptr) -> uint ---
+	wasmtime_sharedmemory_size :: proc(m: rawptr) -> u64 ---
+	wasmtime_sharedmemory_grow :: proc(m: rawptr, delta: u64, prev: ^u64) -> wt_error ---
 	wasmtime_config_wasm_tail_call_set :: proc(c: wt_config, v: bool) ---
 	wasmtime_config_wasm_reference_types_set :: proc(c: wt_config, v: bool) ---
 	wasmtime_config_wasm_function_references_set :: proc(c: wt_config, v: bool) ---

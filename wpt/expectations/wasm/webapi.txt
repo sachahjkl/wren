@@ -1,0 +1,645 @@
+# web-platform-tests expectations of Wren for wasm/webapi, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/wasm/webapi/abort.any.html: OK
+	compileStreaming() asynchronously racing with abort should succeed or reject with AbortError: FAIL
+	compileStreaming() on an already-aborted request should reject with AbortError: PASS
+	compileStreaming() synchronously followed by abort should reject with AbortError: PASS
+	instantiateStreaming() asynchronously racing with abort should succeed or reject with AbortError: FAIL
+	instantiateStreaming() on an already-aborted request should reject with AbortError: PASS
+	instantiateStreaming() synchronously followed by abort should reject with AbortError: PASS
+/wasm/webapi/abort.any.worker.html: OK
+	compileStreaming() asynchronously racing with abort should succeed or reject with AbortError: FAIL
+	compileStreaming() on an already-aborted request should reject with AbortError: PASS
+	compileStreaming() synchronously followed by abort should reject with AbortError: PASS
+	instantiateStreaming() asynchronously racing with abort should succeed or reject with AbortError: FAIL
+	instantiateStreaming() on an already-aborted request should reject with AbortError: PASS
+	instantiateStreaming() synchronously followed by abort should reject with AbortError: PASS
+/wasm/webapi/body.any.html: OK
+	compileStreaming after consumption: PASS
+	compileStreaming before consumption: PASS
+	instantiateStreaming after consumption: PASS
+	instantiateStreaming before consumption: PASS
+/wasm/webapi/body.any.worker.html: OK
+	compileStreaming after consumption: PASS
+	compileStreaming before consumption: PASS
+	instantiateStreaming after consumption: PASS
+	instantiateStreaming before consumption: PASS
+/wasm/webapi/contenttype.any.html: OK
+	Response with Content-Type "": compileStreaming: PASS
+	Response with Content-Type "": instantiateStreaming: PASS
+	Response with Content-Type "APPLICATION/WASM": compileStreaming: FAIL
+	Response with Content-Type "APPLICATION/WASM": instantiateStreaming: FAIL
+	Response with Content-Type "APPLICATION/wasm": compileStreaming: FAIL
+	Response with Content-Type "APPLICATION/wasm": instantiateStreaming: FAIL
+	Response with Content-Type "application/javascript": compileStreaming: PASS
+	Response with Content-Type "application/javascript": instantiateStreaming: PASS
+	Response with Content-Type "application/octet-stream": compileStreaming: PASS
+	Response with Content-Type "application/octet-stream": instantiateStreaming: PASS
+	Response with Content-Type "application/wasm": compileStreaming: FAIL
+	Response with Content-Type "application/wasm": instantiateStreaming: FAIL
+	Response with Content-Type "application/wasm;": compileStreaming: PASS
+	Response with Content-Type "application/wasm;": instantiateStreaming: PASS
+	Response with Content-Type "application/wasm;charset=UTF-8": compileStreaming: PASS
+	Response with Content-Type "application/wasm;charset=UTF-8": instantiateStreaming: PASS
+	Response with Content-Type "application/wasm;x": compileStreaming: PASS
+	Response with Content-Type "application/wasm;x": instantiateStreaming: PASS
+	Response with Content-Type "text/wasm": compileStreaming: PASS
+	Response with Content-Type "text/wasm": instantiateStreaming: PASS
+	Response with no Content-Type: compileStreaming: PASS
+	Response with no Content-Type: instantiateStreaming: PASS
+/wasm/webapi/contenttype.any.worker.html: OK
+	Response with Content-Type "": compileStreaming: PASS
+	Response with Content-Type "": instantiateStreaming: PASS
+	Response with Content-Type "APPLICATION/WASM": compileStreaming: FAIL
+	Response with Content-Type "APPLICATION/WASM": instantiateStreaming: FAIL
+	Response with Content-Type "APPLICATION/wasm": compileStreaming: FAIL
+	Response with Content-Type "APPLICATION/wasm": instantiateStreaming: FAIL
+	Response with Content-Type "application/javascript": compileStreaming: PASS
+	Response with Content-Type "application/javascript": instantiateStreaming: PASS
+	Response with Content-Type "application/octet-stream": compileStreaming: PASS
+	Response with Content-Type "application/octet-stream": instantiateStreaming: PASS
+	Response with Content-Type "application/wasm": compileStreaming: FAIL
+	Response with Content-Type "application/wasm": instantiateStreaming: FAIL
+	Response with Content-Type "application/wasm;": compileStreaming: PASS
+	Response with Content-Type "application/wasm;": instantiateStreaming: PASS
+	Response with Content-Type "application/wasm;charset=UTF-8": compileStreaming: PASS
+	Response with Content-Type "application/wasm;charset=UTF-8": instantiateStreaming: PASS
+	Response with Content-Type "application/wasm;x": compileStreaming: PASS
+	Response with Content-Type "application/wasm;x": instantiateStreaming: PASS
+	Response with Content-Type "text/wasm": compileStreaming: PASS
+	Response with Content-Type "text/wasm": instantiateStreaming: PASS
+	Response with no Content-Type: compileStreaming: PASS
+	Response with no Content-Type: instantiateStreaming: PASS
+/wasm/webapi/empty-body.any.html: OK
+	compileStreaming: empty body: PASS
+	compileStreaming: empty body in a promise: PASS
+	compileStreaming: no body: PASS
+	compileStreaming: no body in a promise: PASS
+	instantiateStreaming: empty body: PASS
+	instantiateStreaming: empty body in a promise: PASS
+	instantiateStreaming: no body: PASS
+	instantiateStreaming: no body in a promise: PASS
+/wasm/webapi/empty-body.any.worker.html: OK
+	compileStreaming: empty body: PASS
+	compileStreaming: empty body in a promise: PASS
+	compileStreaming: no body: PASS
+	compileStreaming: no body in a promise: PASS
+	instantiateStreaming: empty body: PASS
+	instantiateStreaming: empty body in a promise: PASS
+	instantiateStreaming: no body: PASS
+	instantiateStreaming: no body in a promise: PASS
+/wasm/webapi/esm-integration/execute-start.tentative.html: OK
+	Importing a WebAssembly module should execute the start function.: FAIL
+/wasm/webapi/esm-integration/exported-names.tentative.html: TIMEOUT
+/wasm/webapi/esm-integration/invalid-bytecode.tentative.html: OK
+	Test that imports of invalid WebAssembly modules leads to WebAssembly.CompileError on window.: FAIL
+/wasm/webapi/esm-integration/js-wasm-cycle-errors.tentative.html: OK
+	Check cyclic linking between JavaScript and WebAssembly where JavaScript is higher in the module graph.: FAIL
+/wasm/webapi/esm-integration/js-wasm-cycle.tentative.html: TIMEOUT
+/wasm/webapi/esm-integration/module-parse-error.tentative.html: OK
+	Test that imports of invalid WebAssembly modules leads to WebAssembly.CompileError on window.: FAIL
+/wasm/webapi/esm-integration/resolve-export.tentative.html: OK
+	Re-export of missing Wasm export should result in SyntaxError.: FAIL
+/wasm/webapi/esm-integration/reuse-wasm-loaded-as-classic-script.tentative.html: TIMEOUT
+	Reuse Wasm loaded as classic script: TIMEOUT
+/wasm/webapi/esm-integration/script-src-allows-source-phase-wasm.tentative.html: ERROR
+/wasm/webapi/esm-integration/script-src-allows-wasm.tentative.html: OK
+	Importing a WebAssembly module should be allowed by script-src CSP.: FAIL
+/wasm/webapi/esm-integration/script-src-blocks-wasm.tentative.sub.html: OK
+	Importing a WebAssembly module should be guarded by script-src CSP.: FAIL
+/wasm/webapi/esm-integration/scripting-disabled.tentative.html: OK
+	An invalid WebAssembly module script does not fail when scripting is disabled: FAIL
+/wasm/webapi/esm-integration/source-phase-blocked-by-csp.tentative.html: TIMEOUT
+	Importing a WebAssembly module should be guarded by script-src CSP.: NOTRUN
+/wasm/webapi/esm-integration/source-phase-import-non-UTF8.tentative.html: ERROR
+/wasm/webapi/esm-integration/source-phase-js-string.tentative.html: ERROR
+/wasm/webapi/esm-integration/source-phase-preload.tentative.html: TIMEOUT
+	Dynamic source phase import.: NOTRUN
+	Static source phase import.: TIMEOUT
+/wasm/webapi/esm-integration/source-phase.tentative.html: ERROR
+/wasm/webapi/esm-integration/wasm-import-wasm-export.tentative.html: TIMEOUT
+/wasm/webapi/esm-integration/wasm-import.tentative.html: OK
+	Invalid imports for WebAssembly modules should error.: FAIL
+/wasm/webapi/esm-integration/wasm-js-cycle.tentative.html: TIMEOUT
+/wasm/webapi/esm-integration/wasm-to-wasm-link-error.tentative.html: OK
+	Link errors for imports between WebAssembly modules should be reported.: FAIL
+/wasm/webapi/esm-integration/worker-import-source-phase.tentative.html: TIMEOUT
+	Testing import of WebAssembly source phase from JavaScript worker: NOTRUN
+/wasm/webapi/esm-integration/worker-import.tentative.html: TIMEOUT
+	Testing import of WebAssembly from JavaScript worker: NOTRUN
+/wasm/webapi/esm-integration/worker.tentative.html: OK
+	Testing WebAssembly worker: FAIL
+/wasm/webapi/esm-integration/worklet-import-source-phase.tentative.https.html: OK
+	Import a source phase module to a worklet: FAIL
+/wasm/webapi/historical.any.html: OK
+	historical: FAIL
+/wasm/webapi/historical.any.worker.html: OK
+	historical: FAIL
+/wasm/webapi/idlharness.any.html: OK
+	Partial namespace WebAssembly: member names are unique: PASS
+	Partial namespace WebAssembly: original namespace defined: PASS
+	Partial namespace WebAssembly: valid exposure set: PASS
+	WebAssembly namespace: attribute JSTag: PASS
+	WebAssembly namespace: operation compile(AllowSharedBufferSource, optional WebAssemblyCompileOptions): PASS
+	WebAssembly namespace: operation compileStreaming(Promise<Response>, optional WebAssemblyCompileOptions): PASS
+	WebAssembly namespace: operation instantiate(AllowSharedBufferSource, optional object, optional WebAssemblyCompileOptions): PASS
+	WebAssembly namespace: operation instantiate(Module, optional object): PASS
+	WebAssembly namespace: operation instantiateStreaming(Promise<Response>, optional object, optional WebAssemblyCompileOptions): PASS
+	WebAssembly namespace: operation validate(AllowSharedBufferSource, optional WebAssemblyCompileOptions): PASS
+	idl_test setup: PASS
+	idl_test validation: PASS
+/wasm/webapi/idlharness.any.worker.html: OK
+	Partial namespace WebAssembly: member names are unique: PASS
+	Partial namespace WebAssembly: original namespace defined: PASS
+	Partial namespace WebAssembly: valid exposure set: PASS
+	WebAssembly namespace: attribute JSTag: PASS
+	WebAssembly namespace: operation compile(AllowSharedBufferSource, optional WebAssemblyCompileOptions): PASS
+	WebAssembly namespace: operation compileStreaming(Promise<Response>, optional WebAssemblyCompileOptions): PASS
+	WebAssembly namespace: operation instantiate(AllowSharedBufferSource, optional object, optional WebAssemblyCompileOptions): PASS
+	WebAssembly namespace: operation instantiate(Module, optional object): PASS
+	WebAssembly namespace: operation instantiateStreaming(Promise<Response>, optional object, optional WebAssemblyCompileOptions): PASS
+	WebAssembly namespace: operation validate(AllowSharedBufferSource, optional WebAssemblyCompileOptions): PASS
+	idl_test setup: PASS
+	idl_test validation: PASS
+/wasm/webapi/instantiateStreaming-bad-imports.any.html: OK
+	Importing a function with an incorrectly-typed value: "": PASS
+	Importing a function with an incorrectly-typed value: 0.1: PASS
+	Importing a function with an incorrectly-typed value: 1: PASS
+	Importing a function with an incorrectly-typed value: NaN: PASS
+	Importing a function with an incorrectly-typed value: null: PASS
+	Importing a function with an incorrectly-typed value: object "[object Object]": PASS
+	Importing a function with an incorrectly-typed value: symbol "Symbol()": PASS
+	Importing a function with an incorrectly-typed value: true: PASS
+	Importing a function with an incorrectly-typed value: undefined: PASS
+	Importing an f32 global with an incorrectly-typed value: "": PASS
+	Importing an f32 global with an incorrectly-typed value: BigInt: PASS
+	Importing an f32 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	Importing an f32 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	Importing an f32 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	Importing an f32 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	Importing an f32 global with an incorrectly-typed value: null: PASS
+	Importing an f32 global with an incorrectly-typed value: plain object: PASS
+	Importing an f32 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	Importing an f32 global with an incorrectly-typed value: true: PASS
+	Importing an f32 global with an incorrectly-typed value: undefined: PASS
+	Importing an f32 mutable global with a primitive value: PASS
+	Importing an f32 mutable global with an immutable Global object: PASS
+	Importing an f64 global with an incorrectly-typed value: "": PASS
+	Importing an f64 global with an incorrectly-typed value: BigInt: PASS
+	Importing an f64 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	Importing an f64 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	Importing an f64 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	Importing an f64 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	Importing an f64 global with an incorrectly-typed value: null: PASS
+	Importing an f64 global with an incorrectly-typed value: plain object: PASS
+	Importing an f64 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	Importing an f64 global with an incorrectly-typed value: true: PASS
+	Importing an f64 global with an incorrectly-typed value: undefined: PASS
+	Importing an f64 mutable global with a primitive value: PASS
+	Importing an f64 mutable global with an immutable Global object: PASS
+	Importing an i32 global with an incorrectly-typed value: "": PASS
+	Importing an i32 global with an incorrectly-typed value: BigInt: PASS
+	Importing an i32 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	Importing an i32 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	Importing an i32 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	Importing an i32 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	Importing an i32 global with an incorrectly-typed value: null: PASS
+	Importing an i32 global with an incorrectly-typed value: plain object: PASS
+	Importing an i32 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	Importing an i32 global with an incorrectly-typed value: true: PASS
+	Importing an i32 global with an incorrectly-typed value: undefined: PASS
+	Importing an i32 mutable global with a primitive value: PASS
+	Importing an i32 mutable global with an immutable Global object: PASS
+	Importing an i64 global with an incorrectly-typed value: "": PASS
+	Importing an i64 global with an incorrectly-typed value: Number: PASS
+	Importing an i64 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	Importing an i64 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	Importing an i64 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	Importing an i64 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	Importing an i64 global with an incorrectly-typed value: null: PASS
+	Importing an i64 global with an incorrectly-typed value: plain object: PASS
+	Importing an i64 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	Importing an i64 global with an incorrectly-typed value: true: PASS
+	Importing an i64 global with an incorrectly-typed value: undefined: PASS
+	Importing an i64 mutable global with a primitive value: PASS
+	Importing an i64 mutable global with an immutable Global object: PASS
+	Importing memory with an incorrectly-typed value: "": PASS
+	Importing memory with an incorrectly-typed value: 0.1: PASS
+	Importing memory with an incorrectly-typed value: 1: PASS
+	Importing memory with an incorrectly-typed value: NaN: PASS
+	Importing memory with an incorrectly-typed value: Object.create(WebAssembly.Memory.prototype): PASS
+	Importing memory with an incorrectly-typed value: WebAssembly.Memory: PASS
+	Importing memory with an incorrectly-typed value: WebAssembly.Memory object (too large): PASS
+	Importing memory with an incorrectly-typed value: WebAssembly.Memory.prototype: PASS
+	Importing memory with an incorrectly-typed value: null: PASS
+	Importing memory with an incorrectly-typed value: plain object: PASS
+	Importing memory with an incorrectly-typed value: symbol "Symbol()": PASS
+	Importing memory with an incorrectly-typed value: true: PASS
+	Importing memory with an incorrectly-typed value: undefined: PASS
+	Importing table with an incorrectly-typed value: "": PASS
+	Importing table with an incorrectly-typed value: 0.1: PASS
+	Importing table with an incorrectly-typed value: 1: PASS
+	Importing table with an incorrectly-typed value: NaN: PASS
+	Importing table with an incorrectly-typed value: Object.create(WebAssembly.Table.prototype): PASS
+	Importing table with an incorrectly-typed value: WebAssembly.Table: PASS
+	Importing table with an incorrectly-typed value: WebAssembly.Table object (too large): PASS
+	Importing table with an incorrectly-typed value: WebAssembly.Table.prototype: PASS
+	Importing table with an incorrectly-typed value: null: PASS
+	Importing table with an incorrectly-typed value: plain object: PASS
+	Importing table with an incorrectly-typed value: symbol "Symbol()": PASS
+	Importing table with an incorrectly-typed value: true: PASS
+	Importing table with an incorrectly-typed value: undefined: PASS
+	Imports argument with missing property: empty object: PASS
+	Imports argument with missing property: undefined: PASS
+	Imports argument with missing property: wrong property: PASS
+	Missing imports argument: PASS
+	Non-object imports argument: "": PASS
+	Non-object imports argument: 0.1: PASS
+	Non-object imports argument: 1: PASS
+	Non-object imports argument: NaN: PASS
+	Non-object imports argument: null: PASS
+	Non-object imports argument: symbol "Symbol()": PASS
+	Non-object imports argument: true: PASS
+	Non-object module: "": PASS
+	Non-object module: 0.1: PASS
+	Non-object module: 1: PASS
+	Non-object module: NaN: PASS
+	Non-object module: null: PASS
+	Non-object module: symbol "Symbol()": PASS
+	Non-object module: true: PASS
+	Non-object module: undefined: PASS
+/wasm/webapi/instantiateStreaming-bad-imports.any.worker.html: OK
+	Importing a function with an incorrectly-typed value: "": PASS
+	Importing a function with an incorrectly-typed value: 0.1: PASS
+	Importing a function with an incorrectly-typed value: 1: PASS
+	Importing a function with an incorrectly-typed value: NaN: PASS
+	Importing a function with an incorrectly-typed value: null: PASS
+	Importing a function with an incorrectly-typed value: object "[object Object]": PASS
+	Importing a function with an incorrectly-typed value: symbol "Symbol()": PASS
+	Importing a function with an incorrectly-typed value: true: PASS
+	Importing a function with an incorrectly-typed value: undefined: PASS
+	Importing an f32 global with an incorrectly-typed value: "": PASS
+	Importing an f32 global with an incorrectly-typed value: BigInt: PASS
+	Importing an f32 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	Importing an f32 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	Importing an f32 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	Importing an f32 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	Importing an f32 global with an incorrectly-typed value: null: PASS
+	Importing an f32 global with an incorrectly-typed value: plain object: PASS
+	Importing an f32 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	Importing an f32 global with an incorrectly-typed value: true: PASS
+	Importing an f32 global with an incorrectly-typed value: undefined: PASS
+	Importing an f32 mutable global with a primitive value: PASS
+	Importing an f32 mutable global with an immutable Global object: PASS
+	Importing an f64 global with an incorrectly-typed value: "": PASS
+	Importing an f64 global with an incorrectly-typed value: BigInt: PASS
+	Importing an f64 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	Importing an f64 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	Importing an f64 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	Importing an f64 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	Importing an f64 global with an incorrectly-typed value: null: PASS
+	Importing an f64 global with an incorrectly-typed value: plain object: PASS
+	Importing an f64 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	Importing an f64 global with an incorrectly-typed value: true: PASS
+	Importing an f64 global with an incorrectly-typed value: undefined: PASS
+	Importing an f64 mutable global with a primitive value: PASS
+	Importing an f64 mutable global with an immutable Global object: PASS
+	Importing an i32 global with an incorrectly-typed value: "": PASS
+	Importing an i32 global with an incorrectly-typed value: BigInt: PASS
+	Importing an i32 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	Importing an i32 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	Importing an i32 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	Importing an i32 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	Importing an i32 global with an incorrectly-typed value: null: PASS
+	Importing an i32 global with an incorrectly-typed value: plain object: PASS
+	Importing an i32 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	Importing an i32 global with an incorrectly-typed value: true: PASS
+	Importing an i32 global with an incorrectly-typed value: undefined: PASS
+	Importing an i32 mutable global with a primitive value: PASS
+	Importing an i32 mutable global with an immutable Global object: PASS
+	Importing an i64 global with an incorrectly-typed value: "": PASS
+	Importing an i64 global with an incorrectly-typed value: Number: PASS
+	Importing an i64 global with an incorrectly-typed value: Object.create(WebAssembly.Global.prototype): PASS
+	Importing an i64 global with an incorrectly-typed value: WebAssembly.Global: PASS
+	Importing an i64 global with an incorrectly-typed value: WebAssembly.Global object (wrong value type): PASS
+	Importing an i64 global with an incorrectly-typed value: WebAssembly.Global.prototype: PASS
+	Importing an i64 global with an incorrectly-typed value: null: PASS
+	Importing an i64 global with an incorrectly-typed value: plain object: PASS
+	Importing an i64 global with an incorrectly-typed value: symbol "Symbol()": PASS
+	Importing an i64 global with an incorrectly-typed value: true: PASS
+	Importing an i64 global with an incorrectly-typed value: undefined: PASS
+	Importing an i64 mutable global with a primitive value: PASS
+	Importing an i64 mutable global with an immutable Global object: PASS
+	Importing memory with an incorrectly-typed value: "": PASS
+	Importing memory with an incorrectly-typed value: 0.1: PASS
+	Importing memory with an incorrectly-typed value: 1: PASS
+	Importing memory with an incorrectly-typed value: NaN: PASS
+	Importing memory with an incorrectly-typed value: Object.create(WebAssembly.Memory.prototype): PASS
+	Importing memory with an incorrectly-typed value: WebAssembly.Memory: PASS
+	Importing memory with an incorrectly-typed value: WebAssembly.Memory object (too large): PASS
+	Importing memory with an incorrectly-typed value: WebAssembly.Memory.prototype: PASS
+	Importing memory with an incorrectly-typed value: null: PASS
+	Importing memory with an incorrectly-typed value: plain object: PASS
+	Importing memory with an incorrectly-typed value: symbol "Symbol()": PASS
+	Importing memory with an incorrectly-typed value: true: PASS
+	Importing memory with an incorrectly-typed value: undefined: PASS
+	Importing table with an incorrectly-typed value: "": PASS
+	Importing table with an incorrectly-typed value: 0.1: PASS
+	Importing table with an incorrectly-typed value: 1: PASS
+	Importing table with an incorrectly-typed value: NaN: PASS
+	Importing table with an incorrectly-typed value: Object.create(WebAssembly.Table.prototype): PASS
+	Importing table with an incorrectly-typed value: WebAssembly.Table: PASS
+	Importing table with an incorrectly-typed value: WebAssembly.Table object (too large): PASS
+	Importing table with an incorrectly-typed value: WebAssembly.Table.prototype: PASS
+	Importing table with an incorrectly-typed value: null: PASS
+	Importing table with an incorrectly-typed value: plain object: PASS
+	Importing table with an incorrectly-typed value: symbol "Symbol()": PASS
+	Importing table with an incorrectly-typed value: true: PASS
+	Importing table with an incorrectly-typed value: undefined: PASS
+	Imports argument with missing property: empty object: PASS
+	Imports argument with missing property: undefined: PASS
+	Imports argument with missing property: wrong property: PASS
+	Missing imports argument: PASS
+	Non-object imports argument: "": PASS
+	Non-object imports argument: 0.1: PASS
+	Non-object imports argument: 1: PASS
+	Non-object imports argument: NaN: PASS
+	Non-object imports argument: null: PASS
+	Non-object imports argument: symbol "Symbol()": PASS
+	Non-object imports argument: true: PASS
+	Non-object module: "": PASS
+	Non-object module: 0.1: PASS
+	Non-object module: 1: PASS
+	Non-object module: NaN: PASS
+	Non-object module: null: PASS
+	Non-object module: symbol "Symbol()": PASS
+	Non-object module: true: PASS
+	Non-object module: undefined: PASS
+/wasm/webapi/instantiateStreaming.any.html: OK
+	Empty module with empty imports argument: PASS
+	Empty module with undefined imports argument: PASS
+	Empty module without imports argument: PASS
+	Multiple i64 arguments: PASS
+	No imports: PASS
+	Synchronous options handling: PASS
+	export i64-returning function: PASS
+	exports and imports: PASS
+	exports with empty name: function: PASS
+	exports with empty name: global: PASS
+	exports with empty name: table: PASS
+	getter order for imports object: PASS
+	i32 mutable WebAssembly.Global import: PASS
+	i64 exports and imports: PASS
+	i64 mutable WebAssembly.Global import: PASS
+	import with function that takes and returns i32: PASS
+	import with function that takes and returns i64: PASS
+	import with i32-returning function: PASS
+	import with i32-taking function: PASS
+	import with i64-returning function: PASS
+	import with i64-taking function: PASS
+	imports: PASS
+	imports with empty module names: PASS
+	imports with empty names: PASS
+	stray argument: PASS
+/wasm/webapi/instantiateStreaming.any.worker.html: OK
+	Empty module with empty imports argument: PASS
+	Empty module with undefined imports argument: PASS
+	Empty module without imports argument: PASS
+	Multiple i64 arguments: PASS
+	No imports: PASS
+	Synchronous options handling: PASS
+	export i64-returning function: PASS
+	exports and imports: PASS
+	exports with empty name: function: PASS
+	exports with empty name: global: PASS
+	exports with empty name: table: PASS
+	getter order for imports object: PASS
+	i32 mutable WebAssembly.Global import: PASS
+	i64 exports and imports: PASS
+	i64 mutable WebAssembly.Global import: PASS
+	import with function that takes and returns i32: PASS
+	import with function that takes and returns i64: PASS
+	import with i32-returning function: PASS
+	import with i32-taking function: PASS
+	import with i64-returning function: PASS
+	import with i64-taking function: PASS
+	imports: PASS
+	imports with empty module names: PASS
+	imports with empty names: PASS
+	stray argument: PASS
+/wasm/webapi/invalid-args.any.html: OK
+	compileStreaming: "test": PASS
+	compileStreaming: "test" in a promise: PASS
+	compileStreaming: 0: PASS
+	compileStreaming: 0 in a promise: PASS
+	compileStreaming: 0.1: PASS
+	compileStreaming: 0.1 in a promise: PASS
+	compileStreaming: Empty object: PASS
+	compileStreaming: Empty object in a promise: PASS
+	compileStreaming: NaN: PASS
+	compileStreaming: NaN in a promise: PASS
+	compileStreaming: Response interface object: PASS
+	compileStreaming: Response interface object in a promise: PASS
+	compileStreaming: Response interface prototype object: PASS
+	compileStreaming: Response interface prototype object in a promise: PASS
+	compileStreaming: null: PASS
+	compileStreaming: null in a promise: PASS
+	compileStreaming: symbol "Symbol()": PASS
+	compileStreaming: symbol "Symbol()" in a promise: PASS
+	compileStreaming: true: PASS
+	compileStreaming: true in a promise: PASS
+	compileStreaming: undefined: PASS
+	compileStreaming: undefined in a promise: PASS
+	instantiateStreaming: "test": PASS
+	instantiateStreaming: "test" in a promise: PASS
+	instantiateStreaming: 0: PASS
+	instantiateStreaming: 0 in a promise: PASS
+	instantiateStreaming: 0.1: PASS
+	instantiateStreaming: 0.1 in a promise: PASS
+	instantiateStreaming: Empty object: PASS
+	instantiateStreaming: Empty object in a promise: PASS
+	instantiateStreaming: NaN: PASS
+	instantiateStreaming: NaN in a promise: PASS
+	instantiateStreaming: Response interface object: PASS
+	instantiateStreaming: Response interface object in a promise: PASS
+	instantiateStreaming: Response interface prototype object: PASS
+	instantiateStreaming: Response interface prototype object in a promise: PASS
+	instantiateStreaming: null: PASS
+	instantiateStreaming: null in a promise: PASS
+	instantiateStreaming: symbol "Symbol()": PASS
+	instantiateStreaming: symbol "Symbol()" in a promise: PASS
+	instantiateStreaming: true: PASS
+	instantiateStreaming: true in a promise: PASS
+	instantiateStreaming: undefined: PASS
+	instantiateStreaming: undefined in a promise: PASS
+/wasm/webapi/invalid-args.any.worker.html: OK
+	compileStreaming: "test": PASS
+	compileStreaming: "test" in a promise: PASS
+	compileStreaming: 0: PASS
+	compileStreaming: 0 in a promise: PASS
+	compileStreaming: 0.1: PASS
+	compileStreaming: 0.1 in a promise: PASS
+	compileStreaming: Empty object: PASS
+	compileStreaming: Empty object in a promise: PASS
+	compileStreaming: NaN: PASS
+	compileStreaming: NaN in a promise: PASS
+	compileStreaming: Response interface object: PASS
+	compileStreaming: Response interface object in a promise: PASS
+	compileStreaming: Response interface prototype object: PASS
+	compileStreaming: Response interface prototype object in a promise: PASS
+	compileStreaming: null: PASS
+	compileStreaming: null in a promise: PASS
+	compileStreaming: symbol "Symbol()": PASS
+	compileStreaming: symbol "Symbol()" in a promise: PASS
+	compileStreaming: true: PASS
+	compileStreaming: true in a promise: PASS
+	compileStreaming: undefined: PASS
+	compileStreaming: undefined in a promise: PASS
+	instantiateStreaming: "test": PASS
+	instantiateStreaming: "test" in a promise: PASS
+	instantiateStreaming: 0: PASS
+	instantiateStreaming: 0 in a promise: PASS
+	instantiateStreaming: 0.1: PASS
+	instantiateStreaming: 0.1 in a promise: PASS
+	instantiateStreaming: Empty object: PASS
+	instantiateStreaming: Empty object in a promise: PASS
+	instantiateStreaming: NaN: PASS
+	instantiateStreaming: NaN in a promise: PASS
+	instantiateStreaming: Response interface object: PASS
+	instantiateStreaming: Response interface object in a promise: PASS
+	instantiateStreaming: Response interface prototype object: PASS
+	instantiateStreaming: Response interface prototype object in a promise: PASS
+	instantiateStreaming: null: PASS
+	instantiateStreaming: null in a promise: PASS
+	instantiateStreaming: symbol "Symbol()": PASS
+	instantiateStreaming: symbol "Symbol()" in a promise: PASS
+	instantiateStreaming: true: PASS
+	instantiateStreaming: true in a promise: PASS
+	instantiateStreaming: undefined: PASS
+	instantiateStreaming: undefined in a promise: PASS
+/wasm/webapi/invalid-code.any.html: OK
+	Invalid code (0x0000): compileStreaming: PASS
+	Invalid code (0x0000): instantiateStreaming: PASS
+	Invalid code (0xCAFE): compileStreaming: PASS
+	Invalid code (0xCAFE): instantiateStreaming: PASS
+/wasm/webapi/invalid-code.any.worker.html: OK
+	Invalid code (0x0000): compileStreaming: PASS
+	Invalid code (0x0000): instantiateStreaming: PASS
+	Invalid code (0xCAFE): compileStreaming: PASS
+	Invalid code (0xCAFE): instantiateStreaming: PASS
+/wasm/webapi/modified-contenttype.any.html: OK
+	compileStreaming with Content-Type removed late: PASS
+	compileStreaming with Content-Type set late: PASS
+	instantiateStreaming with Content-Type removed late: PASS
+	instantiateStreaming with Content-Type set late: PASS
+/wasm/webapi/modified-contenttype.any.worker.html: OK
+	compileStreaming with Content-Type removed late: PASS
+	compileStreaming with Content-Type set late: PASS
+	instantiateStreaming with Content-Type removed late: PASS
+	instantiateStreaming with Content-Type set late: PASS
+/wasm/webapi/origin.sub.any.html: OK
+	Opaque redirect response: compileStreaming: PASS
+	Opaque redirect response: instantiateStreaming: PASS
+	Opaque response: compileStreaming: PASS
+	Opaque response: instantiateStreaming: PASS
+/wasm/webapi/origin.sub.any.worker.html: OK
+	Opaque redirect response: compileStreaming: PASS
+	Opaque redirect response: instantiateStreaming: PASS
+	Opaque response: compileStreaming: PASS
+	Opaque response: instantiateStreaming: PASS
+/wasm/webapi/rejected-arg.any.html: OK
+	compileStreaming: PASS
+	instantiateStreaming: PASS
+/wasm/webapi/rejected-arg.any.worker.html: OK
+	compileStreaming: PASS
+	instantiateStreaming: PASS
+/wasm/webapi/status.any.html: OK
+	Response with status 0: compileStreaming: PASS
+	Response with status 0: instantiateStreaming: PASS
+	Response with status 300: compileStreaming: PASS
+	Response with status 300: instantiateStreaming: PASS
+	Response with status 400: compileStreaming: PASS
+	Response with status 400: instantiateStreaming: PASS
+	Response with status 404: compileStreaming: PASS
+	Response with status 404: instantiateStreaming: PASS
+	Response with status 500: compileStreaming: PASS
+	Response with status 500: instantiateStreaming: PASS
+	Response with status 600: compileStreaming: PASS
+	Response with status 600: instantiateStreaming: PASS
+	Response with status 700: compileStreaming: PASS
+	Response with status 700: instantiateStreaming: PASS
+	Response with status 999: compileStreaming: PASS
+	Response with status 999: instantiateStreaming: PASS
+/wasm/webapi/status.any.worker.html: OK
+	Response with status 0: compileStreaming: PASS
+	Response with status 0: instantiateStreaming: PASS
+	Response with status 300: compileStreaming: PASS
+	Response with status 300: instantiateStreaming: PASS
+	Response with status 400: compileStreaming: PASS
+	Response with status 400: instantiateStreaming: PASS
+	Response with status 404: compileStreaming: PASS
+	Response with status 404: instantiateStreaming: PASS
+	Response with status 500: compileStreaming: PASS
+	Response with status 500: instantiateStreaming: PASS
+	Response with status 600: compileStreaming: PASS
+	Response with status 600: instantiateStreaming: PASS
+	Response with status 700: compileStreaming: PASS
+	Response with status 700: instantiateStreaming: PASS
+	Response with status 999: compileStreaming: PASS
+	Response with status 999: instantiateStreaming: PASS
+/wasm/webapi/wasm_stream_compile_test.any.html: OK
+	compileStreaming check CORS: PASS
+	compileStreaming raise error if 404 status: PASS
+	compileStreaming raise error if no mime type: PASS
+	compileStreaming raise error if no-cors: FAIL
+	compileStreaming raise error if wrong mime type: PASS
+	compileStreaming receive promise with response created from ArrayBuffer: PASS
+	compileStreaming using FormData: PASS
+	compileStreaming using ReadableStream with ArrayBuffer chunk: PASS
+	compileStreaming using ReadableStream with Uint8Array chunks: PASS
+	compileStreaming using blob: PASS
+	compileStreaming using promise response from fetch and check instantiate: PASS
+	compileStreaming using resolved response: PASS
+	compileStreaming using resolved response and check instantiate: PASS
+/wasm/webapi/wasm_stream_compile_test.any.worker.html: OK
+	compileStreaming check CORS: PASS
+	compileStreaming raise error if 404 status: PASS
+	compileStreaming raise error if no mime type: PASS
+	compileStreaming raise error if no-cors: FAIL
+	compileStreaming raise error if wrong mime type: PASS
+	compileStreaming receive promise with response created from ArrayBuffer: PASS
+	compileStreaming using FormData: PASS
+	compileStreaming using ReadableStream with ArrayBuffer chunk: PASS
+	compileStreaming using ReadableStream with Uint8Array chunks: PASS
+	compileStreaming using blob: PASS
+	compileStreaming using promise response from fetch and check instantiate: PASS
+	compileStreaming using resolved response: PASS
+	compileStreaming using resolved response and check instantiate: PASS
+/wasm/webapi/wasm_stream_instantiate_test.any.html: OK
+	instantiateStreaming check CORS: PASS
+	instantiateStreaming raise error if 404 status: PASS
+	instantiateStreaming raise error if no mime type: PASS
+	instantiateStreaming raise error if no-cors: FAIL
+	instantiateStreaming raise error if wrong mime type: PASS
+	instantiateStreaming receive promise with response created from ArrayBuffer: PASS
+	instantiateStreaming using FormData: PASS
+	instantiateStreaming using ReadableStream with ArrayBuffer chunk: PASS
+	instantiateStreaming using ReadableStream with Uint8Array chunks: PASS
+	instantiateStreaming using blob: PASS
+	instantiateStreaming using promise response from fetch and check instantiate: PASS
+	instantiateStreaming using resolved response: PASS
+	instantiateStreaming using resolved response and check instantiate: PASS
+/wasm/webapi/wasm_stream_instantiate_test.any.worker.html: OK
+	instantiateStreaming check CORS: PASS
+	instantiateStreaming raise error if 404 status: PASS
+	instantiateStreaming raise error if no mime type: PASS
+	instantiateStreaming raise error if no-cors: FAIL
+	instantiateStreaming raise error if wrong mime type: PASS
+	instantiateStreaming receive promise with response created from ArrayBuffer: PASS
+	instantiateStreaming using FormData: PASS
+	instantiateStreaming using ReadableStream with ArrayBuffer chunk: PASS
+	instantiateStreaming using ReadableStream with Uint8Array chunks: PASS
+	instantiateStreaming using blob: PASS
+	instantiateStreaming using promise response from fetch and check instantiate: PASS
+	instantiateStreaming using resolved response: PASS
+	instantiateStreaming using resolved response and check instantiate: PASS

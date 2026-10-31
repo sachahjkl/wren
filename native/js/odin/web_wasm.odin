@@ -353,10 +353,50 @@ memory_write :: proc "contextless" (user: u64, offset: int, bytes: [^]u8, n: int
 	wj.wr_WebAssembly_Memory_write(i32(user), i64(offset), bytes, u32(n))
 }
 
-// memoryCreate(initial, maximum): a number. maximum -1: none.
+// A SharedArrayBuffer's bytes: a shared memory of the realm's store (src/wasm/user_shared.odin).
+@(private = "file")
+shared_ops := wj.Host_Shared{
+	read = memory_read,
+	write = memory_write,
+	create = proc "contextless" (n, max_bytes: i64) -> (user: u64, ok: bool) {
+		pages := max((n + 65535) / 65536, 1)
+		limit := max_bytes >= 0 ? max((max_bytes + 65535) / 65536, 1) : pages
+		if pages > 65535 || limit > 65535 { return 0, false }
+		id := wj.wr_WebAssembly_Memory_createShared(pages, limit, n)
+		return u64(id), id >= 0
+	},
+	release = proc "contextless" (user: u64) { wj.wr_WebAssembly_Memory_release(i32(user)) },
+	length = proc "contextless" (user: u64) -> int { return int(wj.wr_WebAssembly_Memory_byteLength(i32(user))) },
+	grow = proc "contextless" (user: u64, n: i64) -> bool { return wj.wr_WebAssembly_Memory_growBytes(i32(user), n) != 0 },
+	atomic = proc "contextless" (user: u64, op: i32, offset: int, size: int, a, b: u64) -> u64 {
+		return u64(wj.wr_WebAssembly_Memory_atomic(i32(user), op, i64(offset), i32(size), i64(a), i64(b)))
+	},
+	wait = proc "contextless" (user: u64, offset: int, size: int, expected: u64, timeout: f64) -> i32 {
+		return wj.wr_WebAssembly_Memory_wait(i32(user), i64(offset), i32(size), i64(expected), timeout)
+	},
+	notify = proc "contextless" (user: u64, offset: int, count: u32) -> i32 {
+		return wj.wr_WebAssembly_Memory_notify(i32(user), i64(offset), count)
+	},
+}
+
+// A realm starts: where its SharedArrayBuffers' bytes are, whether its agent may block, and whether it has the global at all
+// (without cross-origin isolation a page has none, as in other browsers).
+web_shared_start :: proc "contextless" (ctx: ^wj.Context) {
+	rt := wj.JS_GetRuntime(ctx)
+	wj.JS_SetHostShared(rt, &shared_ops)
+	wj.JS_SetCanBlock(rt, wj.wr_WebAssembly_canBlock() != 0)
+	if wj.wr_WebAssembly_crossOriginIsolated() != 0 { return }
+	sab := wj.JS_NewAtom(ctx, "SharedArrayBuffer")
+	wj.JS_DeleteProperty(ctx, wj.wj_the_realm.global, sab, 0)
+	wj.JS_FreeAtom(ctx, sab)
+}
+
+// memoryCreate(initial, maximum, shared): a number. maximum -1: none.
 @(private = "file")
 wasm_memory_create :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
-	id := wj.wr_WebAssembly_Memory_create(i64_arg(ctx, argc, argv, 0), i64_arg(ctx, argc, argv, 1))
+	shared := wj.to_bool(ctx, wj.arg(argc, argv, 2))
+	initial, maximum := i64_arg(ctx, argc, argv, 0), i64_arg(ctx, argc, argv, 1)
+	id := shared ? wj.wr_WebAssembly_Memory_createShared(initial, maximum, -1) : wj.wr_WebAssembly_Memory_create(initial, maximum)
 	if id < 0 { return wasm_throw(ctx, i64(id), "WebAssembly.Memory()") }
 	return wj.new_int32(id)
 }
@@ -373,7 +413,8 @@ wasm_memory_buffer :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i3
 	pages := wj.wr_WebAssembly_Memory_pages(id)
 	if pages < 0 { return wj.JS_ThrowTypeError(ctx, "not a memory") }
 	if pages > 65535 { return wj.JS_ThrowRangeError(ctx, "the memory is too large for this engine's ArrayBuffer") }
-	return wj.JS_NewArrayBufferHost(ctx, uint(pages) * 65536, memory_read, memory_write, u64(id), wj.to_bool(ctx, wj.arg(argc, argv, 1)))
+	if wj.to_bool(ctx, wj.arg(argc, argv, 1)) { return wj.JS_NewArrayBufferShared(ctx, uint(pages) * 65536, &shared_ops, u64(id), false, -1) }
+	return wj.JS_NewArrayBufferHost(ctx, uint(pages) * 65536, memory_read, memory_write, u64(id), false)
 }
 
 @(private = "file")
@@ -388,6 +429,58 @@ wasm_memory_grow :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32,
 	prev := wj.wr_WebAssembly_Memory_grow(int_arg(ctx, argc, argv, 0), i64_arg(ctx, argc, argv, 1))
 	if prev < 0 { return wasm_throw(ctx, prev, "WebAssembly.Memory.grow()") }
 	return wj.new_float64(ctx, f64(prev))
+}
+
+// ---- between agents (clone.odin) ----
+
+// cloneOf(value): undefined when it is not one of the objects of this API; a shared Memory's number; a Module's handle;
+// false for any other, which cannot be sent.
+@(private = "file") wasm_clone_of, wasm_clone_module, wasm_clone_memory: wj.JSValue
+@(private = "file") wasm_clone_ready: bool
+
+// 0 not an object of this API, -1 not one that can be sent, 1 a shared Memory, 2 a Module.
+wasm_clone_token :: proc "contextless" (ctx: ^wj.Context, v: wj.JSValue, token: ^u64) -> i32 {
+	if !wasm_clone_ready { return 0 }
+	arg := v
+	r := wj.JS_Call(ctx, wasm_clone_of, wj.UNDEFINED, 1, &arg)
+	if wj.is_exception(r) { wj.drop_exception(ctx); return 0 }
+	defer wj.JS_FreeValue(ctx, r)
+	if wj.is_undefined(r) { return 0 }
+	if h := wasm_handle_of(r); h != 0 {
+		token^ = u64(wj.wr_WebAssembly_Module_share(h))
+		return token^ != 0 ? 2 : -1
+	}
+	id: i32   // (false: 0, and a shared memory's number is not)
+	wj.JS_ToInt32(ctx, &id, r)
+	if id == 0 { return -1 }
+	token^ = u64(wj.wr_WebAssembly_Memory_share(id))
+	return token^ != 0 ? 1 : -1
+}
+
+// The object of a token in this realm. WebAssembly is read first: it may not have been made here yet.
+wasm_clone_adopt :: proc "contextless" (ctx: ^wj.Context, module: bool, token: u64) -> wj.JSValue {
+	g := wj.global_get(ctx, "WebAssembly")
+	wj.JS_FreeValue(ctx, g)
+	if !wasm_clone_ready { return wj.wj_throw_dom(ctx, "DataCloneError", "WebAssembly is not available in this realm.") }
+	if module {
+		h: u64
+		if wj.wr_WebAssembly_Module_adopt(i64(token), &h) < 0 { return wj.wj_throw_dom(ctx, "DataCloneError", "The module cannot go to this agent cluster.") }
+		arg := wasm_handle_new(ctx, h)
+		if wj.is_exception(arg) { return arg }
+		defer wj.JS_FreeValue(ctx, arg)
+		return wj.JS_Call(ctx, wasm_clone_module, wj.UNDEFINED, 1, &arg)
+	}
+	id := wj.wr_WebAssembly_Memory_adopt(i64(token))
+	if id < 0 { return wj.wj_throw_dom(ctx, "DataCloneError", "The memory cannot go to this agent cluster.") }
+	arg := wj.new_int32(id)
+	return wj.JS_Call(ctx, wasm_clone_memory, wj.UNDEFINED, 1, &arg)
+}
+
+// A SharedArrayBuffer from another agent. (It works without the object WebAssembly.)
+shared_buffer_adopt :: proc "contextless" (ctx: ^wj.Context, token: u64, length, max_length: i64) -> wj.JSValue {
+	id := wj.wr_WebAssembly_Memory_adopt(i64(token))
+	if id < 0 { return wj.wj_throw_dom(ctx, "DataCloneError", "The SharedArrayBuffer cannot go to this agent cluster.") }
+	return wj.JS_NewArrayBufferShared(ctx, uint(length), &shared_ops, u64(id), true, max_length)
 }
 
 // ---- tables ----
@@ -748,6 +841,10 @@ wasm_setup :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv:
 	wr.to_list = wj.JS_GetPropertyStr(ctx, o, "toList")
 	wr.exception_make = wj.JS_GetPropertyStr(ctx, o, "exceptionMake")
 	wr.exception_info = wj.JS_GetPropertyStr(ctx, o, "exceptionInfo")
+	wasm_clone_of = wj.JS_GetPropertyStr(ctx, o, "cloneOf")
+	wasm_clone_module = wj.JS_GetPropertyStr(ctx, o, "cloneModule")
+	wasm_clone_memory = wj.JS_GetPropertyStr(ctx, o, "cloneMemory")
+	wasm_clone_ready = true
 	return wj.UNDEFINED
 }
 
@@ -783,7 +880,7 @@ wasm_autoinit :: proc "c" (ctx: ^wj.Context, atom: wj.Atom) -> wj.JSValue {
 		{"exports", wasm_exports, 1},
 		{"customSections", wasm_custom_sections, 2},
 		{"linkInfo", wasm_link_info, 1},
-		{"memoryCreate", wasm_memory_create, 2},
+		{"memoryCreate", wasm_memory_create, 3},
 		{"memoryPages", wasm_memory_pages, 1},
 		{"memoryBuffer", wasm_memory_buffer, 1},
 		{"memoryDetach", wasm_memory_detach, 1},

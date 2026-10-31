@@ -2894,7 +2894,7 @@
 	Parsing origin: <http://example.com/./.foo> against <about:blank>: PASS
 	Parsing origin: <http://example.com////../..> against <about:blank>: PASS
 	Parsing origin: <http://example.com/@asdf%40> against <about:blank>: PASS
-	Parsing origin: <http://example.com/U+d800𐟾U+dfff﷐﷏﷯ﷰ￾￿?U+d800𐟾U+dfff﷐﷏﷯ﷰ￾￿> against <about:blank>: FAIL
+	Parsing origin: <http://example.com/U+d800𐟾U+dfff﷐﷏﷯ﷰ￾￿?U+d800𐟾U+dfff﷐﷏﷯ﷰ￾￿> against <about:blank>: PASS
 	Parsing origin: <http://example.com/foo\tbar> against <about:blank>: PASS
 	Parsing origin: <http://example.com/foo\t%91> against <about:blank>: PASS
 	Parsing origin: <http://example.com/foo%00%51> against <about:blank>: PASS
@@ -3310,7 +3310,7 @@
 	Parsing origin: <http://example.com/./.foo> against <about:blank>: PASS
 	Parsing origin: <http://example.com////../..> against <about:blank>: PASS
 	Parsing origin: <http://example.com/@asdf%40> against <about:blank>: PASS
-	Parsing origin: <http://example.com/U+d800𐟾U+dfff﷐﷏﷯ﷰ￾￿?U+d800𐟾U+dfff﷐﷏﷯ﷰ￾￿> against <about:blank>: FAIL
+	Parsing origin: <http://example.com/U+d800𐟾U+dfff﷐﷏﷯ﷰ￾￿?U+d800𐟾U+dfff﷐﷏﷯ﷰ￾￿> against <about:blank>: PASS
 	Parsing origin: <http://example.com/foo\tbar> against <about:blank>: PASS
 	Parsing origin: <http://example.com/foo\t%91> against <about:blank>: PASS
 	Parsing origin: <http://example.com/foo%00%51> against <about:blank>: PASS
@@ -3880,7 +3880,7 @@
 	Parsing: <http://example.com/./.foo> against <about:blank>: PASS
 	Parsing: <http://example.com////../..> against <about:blank>: PASS
 	Parsing: <http://example.com/@asdf%40> against <about:blank>: PASS
-	Parsing: <http://example.com/U+d800𐟾U+dfff﷐﷏﷯ﷰ￾￿?U+d800𐟾U+dfff﷐﷏﷯ﷰ￾￿> against <about:blank>: FAIL
+	Parsing: <http://example.com/U+d800𐟾U+dfff﷐﷏﷯ﷰ￾￿?U+d800𐟾U+dfff﷐﷏﷯ﷰ￾￿> against <about:blank>: PASS
 	Parsing: <http://example.com/foo\tbar> against <about:blank>: PASS
 	Parsing: <http://example.com/foo\t%91> against <about:blank>: PASS
 	Parsing: <http://example.com/foo%00%51> against <about:blank>: PASS
@@ -4786,7 +4786,7 @@
 	Parsing: <http://example.com/./.foo> against <about:blank>: PASS
 	Parsing: <http://example.com////../..> against <about:blank>: PASS
 	Parsing: <http://example.com/@asdf%40> against <about:blank>: PASS
-	Parsing: <http://example.com/U+d800𐟾U+dfff﷐﷏﷯ﷰ￾￿?U+d800𐟾U+dfff﷐﷏﷯ﷰ￾￿> against <about:blank>: FAIL
+	Parsing: <http://example.com/U+d800𐟾U+dfff﷐﷏﷯ﷰ￾￿?U+d800𐟾U+dfff﷐﷏﷯ﷰ￾￿> against <about:blank>: PASS
 	Parsing: <http://example.com/foo\tbar> against <about:blank>: PASS
 	Parsing: <http://example.com/foo\t%91> against <about:blank>: PASS
 	Parsing: <http://example.com/foo%00%51> against <about:blank>: PASS
@@ -6698,13 +6698,13 @@
 	URLSearchParams must be primary interface of new URLSearchParams("hi=there&thank=you"): PASS
 	idl_test setup: PASS
 	idl_test validation: PASS
-/url/javascript-urls.window.html: TIMEOUT
-	javascript: URL containing a JavaScript string split over path and query: NOTRUN
-	javascript: URL containing a JavaScript string split over path and query and has a U+000A in scheme: NOTRUN
-	javascript: URL that fails to parse due to invalid host: TIMEOUT
-	javascript: URL that fails to parse due to invalid host and has a U+0009 in scheme: NOTRUN
-	javascript: URL with extra slashes at the start: NOTRUN
-	javascript: URL without an opaque path: NOTRUN
+/url/javascript-urls.window.html: OK
+	javascript: URL containing a JavaScript string split over path and query: PASS
+	javascript: URL containing a JavaScript string split over path and query and has a U+000A in scheme: PASS
+	javascript: URL that fails to parse due to invalid host: PASS
+	javascript: URL that fails to parse due to invalid host and has a U+0009 in scheme: PASS
+	javascript: URL with extra slashes at the start: PASS
+	javascript: URL without an opaque path: PASS
 /url/percent-encoding.window.html: OK
 	Input A with encoding big5: FAIL
 	Input A with encoding iso-2022-jp: FAIL
@@ -8421,7 +8421,6 @@
 	Parsing: <  http://example.com/ \r > without base: PASS
 	Parsing: <\t   :foo.com   \n> against <http://example.org/foo/bar>: PASS
 	Parsing: <  \t> against <http://example.org/foo/bar>: PASS
-	Parsing: <  File:c|////foo\\bar.html> against <file:///tmp/mock/path>: PASS
 	Parsing: < foo.com  > against <http://example.org/foo/bar>: PASS
 	Parsing: <#/> against <http://example.org/foo/bar>: PASS
 	Parsing: <#;?> against <http://example.org/foo/bar>: PASS
@@ -8439,8 +8438,6 @@
 	Parsing: <#x:y> against <about:blank>: PASS
 	Parsing: <#x> against <about:blank>: PASS
 	Parsing: <#x> against <data:,>: PASS
-	Parsing: <#x> against <file:///test?test#test>: PASS
-	Parsing: <#x> against <mailto:x@x.com>: PASS
 	Parsing: <#x> against <sc://ñ>: PASS
 	Parsing: <#β> against <http://example.org/foo/bar>: PASS
 	Parsing: <../../test.txt> against <http://www.example.com/test>: PASS
@@ -8454,74 +8451,39 @@
 	Parsing: <../path> against <non-spec:/.//p>: PASS
 	Parsing: <../test.txt> against <http://www.example.com/test>: PASS
 	Parsing: <..> against <abc://x/y/z/C:/>: PASS
-	Parsing: <..> against <file:///1:/>: PASS
-	Parsing: <..> against <file:///>: PASS
-	Parsing: <..> against <file:///C:/>: PASS
-	Parsing: <..> against <file:///ab:/>: PASS
-	Parsing: <..> against <file://x/C:/>: PASS
 	Parsing: <..> against <http://www.example.com/test>: PASS
 	Parsing: <./test.txt> against <http://www.example.com/test>: PASS
 	Parsing: <.> against <http://www.example.com/test>: PASS
-	Parsing: </..//localhost//pig> against <file://lion/>: PASS
 	Parsing: </..//path> against <non-spec:/p>: FAIL
 	Parsing: </.//path> against <non-spec:/p>: FAIL
-	Parsing: </////mouse> against <file:///elephant>: PASS
 	Parsing: <////> against <sc://x/>: PASS
-	Parsing: <////one/two> against <file:///>: PASS
 	Parsing: <////x/> against <sc://x/>: PASS
-	Parsing: <///> against <file:///tmp/mock/path>: PASS
 	Parsing: <///> against <sc://x/>: PASS
-	Parsing: <///C:/> against <file://host/>: PASS
 	Parsing: <///\\//\\//test> against <http://example.org/>: PASS
-	Parsing: <///abcdef/../> against <file:///>: PASS
 	Parsing: <///example.org/../../> against <http://example.org/>: PASS
 	Parsing: <///example.org/../path/../../> against <http://example.org/>: PASS
 	Parsing: <///example.org/../path/../../path> against <http://example.org/>: PASS
 	Parsing: <///example.org/../path> against <http://example.org/>: PASS
 	Parsing: <///example.org/path> against <http://example.org/>: PASS
-	Parsing: <///one/two> against <file:///>: PASS
-	Parsing: <///test> against <file:///tmp/mock/path>: PASS
 	Parsing: <///test> against <http://example.org/>: PASS
-	Parsing: <//> against <file:///tmp/mock/path>: PASS
-	Parsing: <//C:/> against <file://host/>: PASS
-	Parsing: <//C|/foo/bar> against <file:///tmp/mock/path>: PASS
-	Parsing: <//a/../> against <file:///>: PASS
-	Parsing: <//d:/..> against <file:///C:/a/b>: PASS
-	Parsing: <//d:> against <file:///C:/a/b>: PASS
 	Parsing: <//foo/bar> against <http://example.org/foo/bar>: PASS
-	Parsing: <//localhost//pig> against <file://lion/>: PASS
-	Parsing: <//one/two> against <file:///>: PASS
-	Parsing: <//server/file> against <file:///tmp/mock/path>: PASS
 	Parsing: <//www.example2.com> against <http://www.example.com/test>: PASS
 	Parsing: </:23> against <http://example.org/foo/bar>: PASS
-	Parsing: </> against <file:///C:/a/b>: PASS
-	Parsing: </> against <file://h/C:/a/b>: PASS
-	Parsing: </> against <file://h/a/b>: PASS
 	Parsing: </> against <http://example.org/foo/bar>: PASS
 	Parsing: </> against <http://www.example.com/test>: PASS
-	Parsing: </?chai> against <file://tea/>: PASS
-	Parsing: </C:/> against <file://host/>: PASS
-	Parsing: </C|\\foo\\bar> against <file:///tmp/mock/path>: PASS
-	Parsing: </\\//\\/a/../> against <file:///>: PASS
 	Parsing: </\\/\\//example.org/../path> against <http://example.org/>: PASS
-	Parsing: </\\server/file> against <file:///tmp/mock/path>: PASS
 	Parsing: </a%2fc> against <http://example.org/foo/bar>: PASS
 	Parsing: </a/ /c> against <http://example.org/foo/bar>: PASS
 	Parsing: </a/%2f/c> against <http://example.org/foo/bar>: PASS
 	Parsing: </a/b/c> against <http://example.org/foo/bar>: PASS
-	Parsing: </c:/foo/bar> against <file:///c:/baz/qux>: PASS
-	Parsing: </c:/foo/bar> against <file://host/path>: PASS
-	Parsing: </c|/foo/bar> against <file:///c:/baz/qux>: PASS
 	Parsing: </i> against <sc:///pa/pa>: PASS
 	Parsing: </i> against <sc://ho/pa>: PASS
 	Parsing: </i> against <sc:/pa/pa>: PASS
 	Parsing: </i> against <sc:sd/sd>: PASS
 	Parsing: </i> against <sc:sd>: PASS
-	Parsing: </rooibos> against <file://tea/>: PASS
 	Parsing: </some/path> against <http://user:pass@example.org:21/smth>: PASS
 	Parsing: </some/path> against <http://user@example.org/smth>: PASS
 	Parsing: </test.txt> against <http://www.example.com/test>: PASS
-	Parsing: <10.0.0.7:8080/foo.html> against <file:///some/dir/bar.html>: PASS
 	Parsing: <:#> against <http://example.org/foo/bar>: PASS
 	Parsing: <:/> against <http://example.org/foo/bar>: PASS
 	Parsing: <:23> against <http://example.org/foo/bar>: PASS
@@ -8532,7 +8494,6 @@
 	Parsing: <:a> against <http://example.org/foo/bar>: PASS
 	Parsing: <:foo.com/> against <http://example.org/foo/bar>: PASS
 	Parsing: <:foo.com\\> against <http://example.org/foo/bar>: PASS
-	Parsing: <> against <file:///test?test#test>: PASS
 	Parsing: <> against <http://example.org/foo/bar>: PASS
 	Parsing: <> against <http://user:pass@example.org:21/smth>: PASS
 	Parsing: <> against <non-spec:/..//p>: FAIL
@@ -8546,31 +8507,15 @@
 	Parsing: <?i> against <sc:/pa/pa>: PASS
 	Parsing: <?i> against <sc:sd/sd>: PASS
 	Parsing: <?i> against <sc:sd>: PASS
-	Parsing: <?x> against <file:///test?test#test>: PASS
 	Parsing: <?x> against <sc://ñ>: PASS
-	Parsing: <C> against <file://host/dir/file>: PASS
-	Parsing: <C|\n/> against <file://host/dir/file>: PASS
-	Parsing: <C|#> against <file://host/dir/file>: PASS
-	Parsing: <C|/> against <file://host/>: PASS
-	Parsing: <C|/> against <file://host/dir/file>: PASS
-	Parsing: <C|/foo/bar> against <file:///tmp/mock/path>: PASS
-	Parsing: <C|> against <file://host/D:/dir1/dir2/file>: PASS
-	Parsing: <C|> against <file://host/dir/file>: PASS
-	Parsing: <C|?> against <file://host/dir/file>: PASS
-	Parsing: <C|\\> against <file://host/dir/file>: PASS
-	Parsing: <C|a> against <file://host/dir/file>: PASS
 	Parsing: <[61:24:74]:98> against <http://example.org/foo/bar>: PASS
-	Parsing: <\\//pig> against <file://lion/>: PASS
 	Parsing: <\\/a> against <foo://foo/a>: PASS
-	Parsing: <\\/localhost//pig> against <file://lion/>: PASS
 	Parsing: <\\\\\\.\\Y:> without base: PASS
 	Parsing: <\\\\\\.\\y:> without base: PASS
 	Parsing: <\\\\a> against <foo://foo/a>: PASS
-	Parsing: <\\\\server\\file> against <file:///tmp/mock/path>: PASS
 	Parsing: <\\\\x\\hello> against <http://example.org/foo/bar>: PASS
 	Parsing: <\\a> against <foo://foo/a>: PASS
 	Parsing: <\\x> against <http://example.org/foo/bar>: PASS
-	Parsing: <a!@$*=/foo.html> against <file:///some/dir/bar.html>: PASS
 	Parsing: <a/..//path> against <non-spec:/p>: FAIL
 	Parsing: <a//> without base: PASS
 	Parsing: <a/> without base: PASS
@@ -8627,85 +8572,6 @@
 	Parsing: <data:text/plain,test#<foo> <bar>> without base: PASS
 	Parsing: <dns://fw.example.org:9999/foo.bar.org?type=TXT> without base: PASS
 	Parsing: <drivefs://x:0/a> without base: PASS
-	Parsing: <file:#frag> without base: PASS
-	Parsing: <file:#x> against <file:///test?test#test>: PASS
-	Parsing: <file:...> against <http://www.example.com/test>: PASS
-	Parsing: <file:..> against <http://www.example.com/test>: PASS
-	Parsing: <file:.//p> without base: PASS
-	Parsing: <file:.> against <http://www.example.com/test>: PASS
-	Parsing: <file:.> without base: PASS
-	Parsing: <file:/.//p> without base: PASS
-	Parsing: <file://%43%3A> without base: PASS
-	Parsing: <file://%43%7C/> without base: PASS
-	Parsing: <file://%43%7C> without base: PASS
-	Parsing: <file://%43|> without base: PASS
-	Parsing: <file://%C2%AD/p> without base: PASS
-	Parsing: <file:///.//> against <file:////>: PASS
-	Parsing: <file:///./Y:> without base: PASS
-	Parsing: <file:///./Y> without base: PASS
-	Parsing: <file:///./y:> without base: PASS
-	Parsing: <file:///./y> without base: PASS
-	Parsing: <file:////foo> without base: PASS
-	Parsing: <file:////one/two> against <file:///>: PASS
-	Parsing: <file:///C%3A/> without base: PASS
-	Parsing: <file:///C%7C/> without base: PASS
-	Parsing: <file:///C:/> against <file://host/>: PASS
-	Parsing: <file:///Y:/> without base: PASS
-	Parsing: <file:///Y:> without base: PASS
-	Parsing: <file:///foo/bar.txt> against <file:///tmp/mock/path>: PASS
-	Parsing: <file:///home/me> against <file:///tmp/mock/path>: PASS
-	Parsing: <file:///localhost//cat> without base: PASS
-	Parsing: <file:///one/two> against <file:///>: PASS
-	Parsing: <file:///w|/m> without base: PASS
-	Parsing: <file:///w|m> without base: PASS
-	Parsing: <file:///w||m> without base: PASS
-	Parsing: <file:///y:/> without base: PASS
-	Parsing: <file:///y:> without base: PASS
-	Parsing: <file://1.2.3.4/C:/> without base: PASS
-	Parsing: <file://> against <file://ape/>: PASS
-	Parsing: <file://C%7C> without base: PASS
-	Parsing: <file://C:/> against <file://host/>: PASS
-	Parsing: <file://C|/> without base: PASS
-	Parsing: <file://[1::8]/C:/> without base: PASS
-	Parsing: <file://[example]/> without base: PASS
-	Parsing: <file://\\/localhost//cat> without base: PASS
-	Parsing: <file://a%C2%ADb/p> without base: PASS
-	Parsing: <file://a­b/p> without base: PASS
-	Parsing: <file://example%/> without base: PASS
-	Parsing: <file://example.net/C:/> without base: PASS
-	Parsing: <file://example:1/> without base: PASS
-	Parsing: <file://example:test/> without base: PASS
-	Parsing: <file://loC𝐀𝐋𝐇𝐨𝐬𝐭/usr/bin> without base: PASS
-	Parsing: <file://localhost////foo> without base: PASS
-	Parsing: <file://localhost//a//../..//> without base: PASS
-	Parsing: <file://localhost//a//../..//foo> without base: PASS
-	Parsing: <file://localhost/> against <file:///tmp/mock/path>: PASS
-	Parsing: <file://localhost/test> against <file:///tmp/mock/path>: PASS
-	Parsing: <file://localhost> against <file:///tmp/mock/path>: PASS
-	Parsing: <file://spider///> without base: PASS
-	Parsing: <file://test> against <file:///tmp/mock/path>: PASS
-	Parsing: <file://xn--/p> without base: FAIL
-	Parsing: <file://­/p> without base: PASS
-	Parsing: <file:/C:/> against <file://host/>: PASS
-	Parsing: <file:/C|/> without base: PASS
-	Parsing: <file:/example.com/> against <http://example.org/foo/bar>: PASS
-	Parsing: <file:/example.com/> without base: PASS
-	Parsing: <file:> against <file:///test?test#test>: PASS
-	Parsing: <file:> without base: PASS
-	Parsing: <file:?q=v> without base: PASS
-	Parsing: <file:?x> against <file:///test?test#test>: PASS
-	Parsing: <file:C:/> against <file://host/>: PASS
-	Parsing: <file:C|/m/> without base: PASS
-	Parsing: <file:C||/m/> without base: PASS
-	Parsing: <file:\\\\//> without base: PASS
-	Parsing: <file:\\\\\\\\#guppy> without base: PASS
-	Parsing: <file:\\\\\\\\> without base: PASS
-	Parsing: <file:\\\\\\\\?fox> without base: PASS
-	Parsing: <file:\\\\localhost//> without base: PASS
-	Parsing: <file:\\c:\\foo\\bar> against <file:///c:/baz/qux>: PASS
-	Parsing: <file:a> against <http://www.example.com/test>: PASS
-	Parsing: <file:c:\\foo\\bar.html> against <file:///tmp/mock/path>: PASS
-	Parsing: <file:test> against <file:///tmp/mock/path>: PASS
 	Parsing: <foo:// !"$%&'()*+,-.;<=>@[\\]^_`{|}~@host/> without base: PASS
 	Parsing: <foo://!"$%&'()*+,-.;=_`{}~/> without base: PASS
 	Parsing: <foo://///////> against <http://example.org/foo/bar>: PASS
@@ -9150,34 +9016,12 @@
 	Parsing: <intent://test:test> without base: PASS
 	Parsing: <irc://myserver.com:6999/channel?passwd> without base: PASS
 	Parsing: <isolated-app://x:0> without base: PASS
-	Parsing: <javascript:/../> without base: PASS
-	Parsing: <javascript:///test> without base: PASS
-	Parsing: <javascript://:443> without base: PASS
-	Parsing: <javascript://[:1]> without base: PASS
-	Parsing: <javascript://example.com:8080/pathname?search#hash> without base: PASS
-	Parsing: <javascript://test/a/../b> without base: PASS
-	Parsing: <javascript://test:test> without base: PASS
-	Parsing: <javascript:/example.com/> against <http://example.org/foo/bar>: PASS
-	Parsing: <javascript:/example.com/> without base: PASS
-	Parsing: <javascript:example.com/> against <http://example.org/foo/bar>: PASS
-	Parsing: <javascript:example.com/> without base: PASS
 	Parsing: <ldap://localhost:389/ou=People,o=JNDITutorial> without base: PASS
 	Parsing: <lolscheme:x x#x x> without base: PASS
 	Parsing: <madeupscheme:/example.com/> against <http://example.org/foo/bar>: PASS
 	Parsing: <madeupscheme:/example.com/> without base: PASS
 	Parsing: <madeupscheme:example.com/> against <http://example.org/foo/bar>: PASS
 	Parsing: <madeupscheme:example.com/> without base: PASS
-	Parsing: <mailto:/../> without base: PASS
-	Parsing: <mailto:///test> without base: PASS
-	Parsing: <mailto://:443> without base: PASS
-	Parsing: <mailto://[:1]> without base: PASS
-	Parsing: <mailto://example.com:8080/pathname?search#hash> without base: PASS
-	Parsing: <mailto://test/a/../b> without base: PASS
-	Parsing: <mailto://test:test> without base: PASS
-	Parsing: <mailto:/example.com/> against <http://example.org/foo/bar>: PASS
-	Parsing: <mailto:/example.com/> without base: PASS
-	Parsing: <mailto:example.com/> against <http://example.org/foo/bar>: PASS
-	Parsing: <mailto:example.com/> without base: PASS
 	Parsing: <materialized-view://x:0/a> without base: PASS
 	Parsing: <non-spec:/..//> without base: FAIL
 	Parsing: <non-spec:/..//path> without base: FAIL
@@ -9223,7 +9067,6 @@
 	Parsing: <non-special:￿y> without base: PASS
 	Parsing: <notspecial://host/?'> without base: PASS
 	Parsing: <path> against <non-spec:/..//p>: FAIL
-	Parsing: <pix/submit.gif> against <file:///C:/Users/Domenic/Dropbox/GitHub/tmpvar/jsdom/test/level2/html/files/anchor.html>: PASS
 	Parsing: <redis://foo:bar@somehost:6379/0?baz=bam&qux=baz> without base: PASS
 	Parsing: <rsync://foo@host:911/sup> without base: PASS
 	Parsing: <sc://!"$%&'()*+,-.;=_`{}~/> without base: PASS
@@ -9269,7 +9112,6 @@
 	Parsing: <test-a-colon-slash.html> against <a:/>: PASS
 	Parsing: <test-a-colon.html> against <a:>: PASS
 	Parsing: <test.txt> against <http://www.example.com/test>: PASS
-	Parsing: <test> against <file:///tmp/mock/path>: PASS
 	Parsing: <tftp://foobar.com/someconfig;mode=netascii> without base: PASS
 	Parsing: <turn:///test> without base: PASS
 	Parsing: <turn://:443> without base: PASS
@@ -11847,27 +11689,6 @@
 	URL: Setting <data:text/plain,Stuff>.hostname = 'example.net' Cannot-be-a-base means no host: PASS
 	URL: Setting <data:text/plain,test>.hash = '# \t\n\r !"#$%&'()*+,-./09:;<=>?@AZ[\\]^_`az{|}~Éé' Fragment percent-encode set on data: URI; tabs and newlines are removed: PASS
 	URL: Setting <data:text/plain,test>.hash = '#<foo> <bar>' Fragment with <> on data: URI: PASS
-	URL: Setting <file:///home/me/index.html>.password = 'secret' No host means no password: PASS
-	URL: Setting <file:///home/you/index.html>.username = 'me' No host means no username: PASS
-	URL: Setting <file:///some/path>.pathname = '' Special URLs cannot have their paths erased: PASS
-	URL: Setting <file:///test>.protocol = 'https': PASS
-	URL: Setting <file:///unicorn>.pathname = '//\\/' File URLs and (back)slashes: PASS
-	URL: Setting <file:///unicorn>.pathname = '//monkey/..//' File URLs and (back)slashes: PASS
-	URL: Setting <file:///var/log/system.log>.href = 'http://0300.168.0xF0': PASS
-	URL: Setting <file://hi/path>.protocol = 's': PASS
-	URL: Setting <file://hi/x>.host = '': PASS
-	URL: Setting <file://hi/x>.hostname = '': PASS
-	URL: Setting <file://localhost/>.port = '12': PASS
-	URL: Setting <file://localhost/>.protocol = 'http' Can’t switch from file URL with no host: PASS
-	URL: Setting <file://monkey/>.pathname = '\\\\' File URLs and (back)slashes: PASS
-	URL: Setting <file://test/>.password = 'test': PASS
-	URL: Setting <file://test/>.port = '12': PASS
-	URL: Setting <file://test/>.username = 'test': PASS
-	URL: Setting <file://y/>.host = 'loc%41lhost': FAIL
-	URL: Setting <file://y/>.host = 'x:123': PASS
-	URL: Setting <file://y/>.hostname = 'loc%41lhost': FAIL
-	URL: Setting <file://y/>.hostname = 'x:123': PASS
-	URL: Setting <file:>.protocol = 'wss': PASS
 	URL: Setting <foo:///some/path>.pathname = '' Non-special URLs with an empty host can have their paths erased: PASS
 	URL: Setting <foo://path/to>.host = ':80': PASS
 	URL: Setting <foo://path/to>.pathname = '/..': PASS
@@ -12023,18 +11844,6 @@
 	URL: Setting <https://test.invalid/>.hostname = 'x@x': PASS
 	URL: Setting <https://www.google.com:4343>.port = '4wpt' Should use all ascii prefixed characters as port: PASS
 	URL: Setting <https://x/>.host = 'ß' IDNA Nontransitional_Processing: PASS
-	URL: Setting <javascript://x/>.password = 'bowser': PASS
-	URL: Setting <javascript://x/>.port = '12': PASS
-	URL: Setting <javascript://x/>.username = 'wario': PASS
-	URL: Setting <javascript:alert(1)>.hash = 'castle': PASS
-	URL: Setting <javascript:alert(1)>.protocol = 'defuse': PASS
-	URL: Setting <javascript:alert(1)>.username = 'wario': PASS
-	URL: Setting <mailto:me@example.net>.host = 'example.com' Cannot-be-a-base means no host: PASS
-	URL: Setting <mailto:me@example.net>.hostname = 'example.com' Cannot-be-a-base means no host: PASS
-	URL: Setting <mailto:me@example.net>.password = 'secret' Cannot-be-a-base means no password: PASS
-	URL: Setting <mailto:me@example.net>.pathname = '/foo' Opaque paths cannot be set: PASS
-	URL: Setting <mailto:me@example.net>.protocol = 'http' Cannot-be-a-base URL doesn’t have a host, but URL in a special scheme must.: PASS
-	URL: Setting <mailto:you@example.net>.username = 'me' Cannot-be-a-base means no username: PASS
 	URL: Setting <non-base:value>.port = '12': PASS
 	URL: Setting <non-spec:/.//>.pathname = 'p' Drop /. from path: PASS
 	URL: Setting <non-spec:/.//p>.hostname = '': PASS

@@ -23,9 +23,9 @@
 /xhr/abort-after-stop.window.html: OK
 	XMLHttpRequest: abort event should fire when stop() method is used: FAIL
 /xhr/abort-after-timeout.any.html: OK
-	XMLHttpRequest: abort() after a timeout should not fire "abort" event: FAIL
+	XMLHttpRequest: abort() after a timeout should not fire "abort" event: PASS
 /xhr/abort-after-timeout.any.worker.html: OK
-	abort-after-timeout: FAIL
+	abort-after-timeout: PASS
 /xhr/abort-during-done.window.html: OK
 	XMLHttpRequest: abort() during DONE (async): FAIL
 	XMLHttpRequest: abort() during DONE (sync aborted in readystatechange): FAIL
@@ -35,7 +35,7 @@
 /xhr/abort-during-loading.window.html: OK
 	XMLHttpRequest: abort() during LOADING: PASS
 /xhr/abort-during-navigation.window.html: OK
-	XHR should not fire abort or error events when cancelled by navigation: PASS
+	XHR should not fire abort or error events when cancelled by navigation: FAIL
 /xhr/abort-during-open.any.html: OK
 	XMLHttpRequest: abort() during OPEN: PASS
 /xhr/abort-during-open.any.worker.html: OK
@@ -392,7 +392,7 @@
 /xhr/event-timeout.any.html: OK
 	XMLHttpRequest: timeout event: FAIL
 /xhr/event-timeout.any.worker.html: OK
-	event-timeout: PASS
+	event-timeout: FAIL
 /xhr/event-upload-progress-crossorigin.any.html: OK
 	Upload events registered on time (http://www1.127.0.0.1:8778/xhr/resources/corsenabled.py): FAIL
 	Upload events registered on time (resources/redirect.py?code=307&location=http://www1.127.0.0.1:8778/xhr/resources/corsenabled.py): PASS
@@ -1195,7 +1195,7 @@
 	Synchronous XMLHttpRequest should throw on bad chunk: PASS
 /xhr/response-body-errors.any.worker.html: OK
 	Asynchronous XMLHttpRequest should clear response on bad chunk: FAIL
-	Synchronous XMLHttpRequest should throw on bad chunk: PASS
+	Synchronous XMLHttpRequest should throw on bad chunk: FAIL
 /xhr/response-data-arraybuffer.htm: OK
 	XMLHttpRequest: The response attribute: ArrayBuffer data: FAIL
 /xhr/response-data-blob.htm: OK
@@ -1566,35 +1566,35 @@
 	Modifying a typed array view after send() does not affect the sent data: FAIL
 	Modifying an ArrayBuffer after send() does not affect the sent data: FAIL
 /xhr/send-data-sharedarraybuffer.any.html: OK
-	sending a BigInt64Array backed by a SharedArrayBuffer: FAIL
-	sending a BigUint64Array backed by a SharedArrayBuffer: FAIL
-	sending a DataView backed by a SharedArrayBuffer: FAIL
-	sending a Float16Array backed by a SharedArrayBuffer: FAIL
-	sending a Float32Array backed by a SharedArrayBuffer: FAIL
-	sending a Float64Array backed by a SharedArrayBuffer: FAIL
-	sending a Int16Array backed by a SharedArrayBuffer: FAIL
-	sending a Int32Array backed by a SharedArrayBuffer: FAIL
-	sending a Int8Array backed by a SharedArrayBuffer: FAIL
-	sending a SharedArrayBuffer: FAIL
-	sending a Uint16Array backed by a SharedArrayBuffer: FAIL
-	sending a Uint32Array backed by a SharedArrayBuffer: FAIL
-	sending a Uint8Array backed by a SharedArrayBuffer: FAIL
-	sending a Uint8ClampedArray backed by a SharedArrayBuffer: FAIL
+	sending a BigInt64Array backed by a SharedArrayBuffer: PASS
+	sending a BigUint64Array backed by a SharedArrayBuffer: PASS
+	sending a DataView backed by a SharedArrayBuffer: PASS
+	sending a Float16Array backed by a SharedArrayBuffer: PASS
+	sending a Float32Array backed by a SharedArrayBuffer: PASS
+	sending a Float64Array backed by a SharedArrayBuffer: PASS
+	sending a Int16Array backed by a SharedArrayBuffer: PASS
+	sending a Int32Array backed by a SharedArrayBuffer: PASS
+	sending a Int8Array backed by a SharedArrayBuffer: PASS
+	sending a SharedArrayBuffer: PASS
+	sending a Uint16Array backed by a SharedArrayBuffer: PASS
+	sending a Uint32Array backed by a SharedArrayBuffer: PASS
+	sending a Uint8Array backed by a SharedArrayBuffer: PASS
+	sending a Uint8ClampedArray backed by a SharedArrayBuffer: PASS
 /xhr/send-data-sharedarraybuffer.any.worker.html: OK
-	sending a BigInt64Array backed by a SharedArrayBuffer: FAIL
-	sending a BigUint64Array backed by a SharedArrayBuffer: FAIL
-	sending a DataView backed by a SharedArrayBuffer: FAIL
-	sending a Float16Array backed by a SharedArrayBuffer: FAIL
-	sending a Float32Array backed by a SharedArrayBuffer: FAIL
-	sending a Float64Array backed by a SharedArrayBuffer: FAIL
-	sending a Int16Array backed by a SharedArrayBuffer: FAIL
-	sending a Int32Array backed by a SharedArrayBuffer: FAIL
-	sending a Int8Array backed by a SharedArrayBuffer: FAIL
-	sending a SharedArrayBuffer: FAIL
-	sending a Uint16Array backed by a SharedArrayBuffer: FAIL
-	sending a Uint32Array backed by a SharedArrayBuffer: FAIL
-	sending a Uint8Array backed by a SharedArrayBuffer: FAIL
-	sending a Uint8ClampedArray backed by a SharedArrayBuffer: FAIL
+	sending a BigInt64Array backed by a SharedArrayBuffer: PASS
+	sending a BigUint64Array backed by a SharedArrayBuffer: PASS
+	sending a DataView backed by a SharedArrayBuffer: PASS
+	sending a Float16Array backed by a SharedArrayBuffer: PASS
+	sending a Float32Array backed by a SharedArrayBuffer: PASS
+	sending a Float64Array backed by a SharedArrayBuffer: PASS
+	sending a Int16Array backed by a SharedArrayBuffer: PASS
+	sending a Int32Array backed by a SharedArrayBuffer: PASS
+	sending a Int8Array backed by a SharedArrayBuffer: PASS
+	sending a SharedArrayBuffer: PASS
+	sending a Uint16Array backed by a SharedArrayBuffer: PASS
+	sending a Uint32Array backed by a SharedArrayBuffer: PASS
+	sending a Uint8Array backed by a SharedArrayBuffer: PASS
+	sending a Uint8ClampedArray backed by a SharedArrayBuffer: PASS
 /xhr/send-data-string-invalid-unicode.any.html: OK
 	invalid unicode '\\u{d83d}' should be fixed with replacement character: FAIL
 	invalid unicode '\\u{d83d}ab' should be fixed with replacement character: FAIL
@@ -1628,7 +1628,11 @@
 	XMLHttpRequest: send() - data argument (2,2): FAIL
 	XMLHttpRequest: send() - data argument (A A): FAIL
 	XMLHttpRequest: send() - data argument (false): FAIL
-/xhr/send-entity-body-document-bogus.htm: ERROR
+/xhr/send-entity-body-document-bogus.htm: OK
+	Serializing documents through XMLHttpRequest: '': FAIL
+	Serializing documents through XMLHttpRequest: '<test:test test:test="gee" x="�"/>': FAIL
+	Serializing documents through XMLHttpRequest: '<test:test test:test="gee"/>': FAIL
+	Serializing documents through XMLHttpRequest: '<test:test/>': FAIL
 /xhr/send-entity-body-document.htm: OK
 	HTML document, invalid UTF-8: FAIL
 	HTML document, shift-jis: FAIL
@@ -1792,7 +1796,7 @@
 /xhr/send-sync-timeout.htm: OK
 	XMLHttpRequest: timeout during sync send() should not run: FAIL
 /xhr/send-timeout-events.htm: OK
-	XMLHttpRequest: The send() method: timeout is not 0 : PASS
+	XMLHttpRequest: The send() method: timeout is not 0 : FAIL
 /xhr/send-usp.any.html: OK
 	Overall fetch with URLSearchParams: PASS
 	XMLHttpRequest.send(URLSearchParams) (0): FAIL

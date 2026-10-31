@@ -151,7 +151,7 @@
 /html/semantics/scripting-1/the-script-element/execution-timing/028.html: OK
 	 scheduler: javascript: URL: FAIL
 /html/semantics/scripting-1/the-script-element/execution-timing/030.html: OK
-	 scheduler: javascript: URL in HREF, onclick handler: FAIL
+	 scheduler: javascript: URL in HREF, onclick handler: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/031.html: OK
 	 scheduler: focus and blur events: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/032.html: OK
@@ -163,7 +163,7 @@
 /html/semantics/scripting-1/the-script-element/execution-timing/035.html: OK
 	 scheduler: innerHTML adding frames with JS in and moving scripts: FAIL
 /html/semantics/scripting-1/the-script-element/execution-timing/036.html: OK
-	 scheduler: DOM cloning: FAIL
+	 scheduler: DOM cloning: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/037.html: OK
 	 scheduler: DOM movement with appendChild, inline: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/038.html: OK
@@ -201,19 +201,19 @@
 /html/semantics/scripting-1/the-script-element/execution-timing/060.html: OK
 	 scheduler: appending code to initially non-empty SCRIPT tag in DOM after setting textContent/innerHTML: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/061.html: OK
-	 scheduler: cloneNode and script execution: FAIL
+	 scheduler: cloneNode and script execution: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/062.html: OK
-	 scheduler: cloneNode (shallow) and script execution: FAIL
+	 scheduler: cloneNode (shallow) and script execution: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/063.html: OK
-	 scheduler: cloneNode (deep) of the currently executing script : FAIL
+	 scheduler: cloneNode (deep) of the currently executing script : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/064.html: OK
-	 scheduler: cloneNode with external script: FAIL
+	 scheduler: cloneNode with external script: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/065.html: OK
-	 scheduler: cloneNode with external script, changed .src: FAIL
+	 scheduler: cloneNode with external script, changed .src: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/066.html: OK
-	 scheduler: cloneNode with external script, removing .src and adding content: FAIL
+	 scheduler: cloneNode with external script, removing .src and adding content: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/067.html: OK
-	 scheduler: is a script with syntax error marked as "has run"? : FAIL
+	 scheduler: is a script with syntax error marked as "has run"? : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/068.html: OK
 	 scheduler: external script and parsing of markup added with document.write : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/069.html: OK
@@ -235,11 +235,11 @@
 /html/semantics/scripting-1/the-script-element/execution-timing/081.html: OK
 	 scheduler: slow loading external script added with DOM (appendChild): PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/082.html: OK
-	 scheduler: multiple slow loading external scripts added with DOM (appendChild): FAIL
+	 scheduler: multiple slow loading external scripts added with DOM (appendChild): PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/083.html: ERROR
 /html/semantics/scripting-1/the-script-element/execution-timing/084.html: ERROR
 /html/semantics/scripting-1/the-script-element/execution-timing/085.html: OK
-	 scheduler: async script and slow-loading defer script: FAIL
+	 scheduler: async script and slow-loading defer script: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/086.html: OK
 	 scheduler: async script and slow-loading async script: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/087.html: OK
@@ -309,7 +309,7 @@
 /html/semantics/scripting-1/the-script-element/execution-timing/110.html: OK
 	 scheduler: removing defer script at runtime: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/111.html: OK
-	 scheduler: removing async attribute at runtime: FAIL
+	 scheduler: removing async attribute at runtime: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/112.html: OK
 	 scheduler: removing async attribute at runtime, script also has defer attribute: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/113.html: OK
@@ -430,11 +430,11 @@
 	script.onbeforescriptexecute should not be supported: PASS
 /html/semantics/scripting-1/the-script-element/import-attributes/dynamic-import-with-attributes-argument.any.html: OK
 	Dynamic import with an empty with clause should succeed: PASS
-	Dynamic import with an unsupported import attribute should fail: FAIL
+	Dynamic import with an unsupported import attribute should fail: PASS
 	Dynamic import with an unsupported type attribute should fail: PASS
 /html/semantics/scripting-1/the-script-element/import-attributes/dynamic-import-with-attributes-argument.any.worker.html: OK
 	Dynamic import with an empty with clause should succeed: PASS
-	Dynamic import with an unsupported import attribute should fail: FAIL
+	Dynamic import with an unsupported import attribute should fail: PASS
 	Dynamic import with an unsupported type attribute should fail: PASS
 /html/semantics/scripting-1/the-script-element/import-attributes/empty-attributes-clause.html: OK
 	Test that no error occurs when an empty import attributes clause is provided.: PASS
@@ -862,7 +862,7 @@
 	Multiple concurrent imports of a failing module should all reject but only fetch once: FAIL
 /html/semantics/scripting-1/the-script-element/module/dynamic-import/cyclic-tla-defer-eval.tentative.html: ERROR
 /html/semantics/scripting-1/the-script-element/module/dynamic-import/delay-load-event.html: OK
-	Dynamic imports don't delay the load event.: FAIL
+	Dynamic imports don't delay the load event.: PASS
 /html/semantics/scripting-1/the-script-element/module/dynamic-import/dynamic-imports-credentials-setTimeout.sub.html: TIMEOUT
 	Cross-origin dynamic import from setTimeout(string) from classic script (crossOrigin not specified): NOTRUN
 	Cross-origin dynamic import from setTimeout(string) from classic script (crossOrigin=anonymous): NOTRUN
@@ -980,17 +980,17 @@
 	setTimeout should successfully import: FAIL
 	the Function constructor should successfully import: FAIL
 /html/semantics/scripting-1/the-script-element/module/dynamic-import/string-compilation-classic.html: OK
-	eval should successfully import: FAIL
+	eval should successfully import: PASS
 	inline event handlers triggered via UA code should successfully import: PASS
 	reflected inline event handlers should successfully import: PASS
 	setTimeout should successfully import: PASS
-	the Function constructor should successfully import: FAIL
+	the Function constructor should successfully import: PASS
 /html/semantics/scripting-1/the-script-element/module/dynamic-import/string-compilation-module.html: OK
-	eval should successfully import: FAIL
+	eval should successfully import: PASS
 	inline event handlers triggered via UA code should successfully import: PASS
 	reflected inline event handlers should successfully import: PASS
 	setTimeout should successfully import: PASS
-	the Function constructor should successfully import: FAIL
+	the Function constructor should successfully import: PASS
 /html/semantics/scripting-1/the-script-element/module/dynamic-import/string-compilation-nonce-classic.html: OK
 	direct eval must inherit the nonce from the triggering script, thus execute: FAIL
 	indirect eval must inherit the nonce from the triggering script, thus execute: FAIL
@@ -1085,7 +1085,7 @@
 /html/semantics/scripting-1/the-script-element/module/inactive-context-import.html: OK
 	dynamic import from inactive context should not crash: FAIL
 /html/semantics/scripting-1/the-script-element/module/inline-async-execorder.html: OK
-	Inline async module script execution order: FAIL
+	Inline async module script execution order: PASS
 /html/semantics/scripting-1/the-script-element/module/inline-async-inserted-execorder.html: OK
 	Inline async="" module scripts execute or throw parse errors asynchronously: PASS
 /html/semantics/scripting-1/the-script-element/module/inline-async-onload.html: OK
@@ -1099,11 +1099,11 @@
 /html/semantics/scripting-1/the-script-element/module/instantiation-error-2.html: OK
 	Test that missing exports lead to SyntaxError events on window and load events on script: PASS
 /html/semantics/scripting-1/the-script-element/module/instantiation-error-3.html: OK
-	Test that unresolvable cycles lead to SyntaxError events on window and load events on script: FAIL
+	Test that unresolvable cycles lead to SyntaxError events on window and load events on script: PASS
 /html/semantics/scripting-1/the-script-element/module/instantiation-error-4.html: OK
-	Test that loading a graph in which a module is already errored results in an error.: FAIL
+	Test that loading a graph in which a module is already errored results in an error.: PASS
 /html/semantics/scripting-1/the-script-element/module/instantiation-error-5.html: OK
-	Test that loading a graph in which a module is already errored results an error.: FAIL
+	Test that loading a graph in which a module is already errored results an error.: PASS
 /html/semantics/scripting-1/the-script-element/module/instantiation-error-6.html: OK
 	Test that ambiguous star exports lead to an instantiation error and that the correct module is blamed.: PASS
 /html/semantics/scripting-1/the-script-element/module/instantiation-error-7.html: OK
@@ -1146,8 +1146,8 @@
 	Test that evaluating something as classic script does not prevent it from being evaluated as module script.: PASS
 /html/semantics/scripting-1/the-script-element/module/modulepreload-cross-origin-referrerpolicy.sub.html: TIMEOUT
 	Cross-origin modulepreload with default referrer policy should load: FAIL
-	Cross-origin modulepreload with no-referrer policy should load: TIMEOUT
-	Cross-origin modulepreload with origin policy should load: NOTRUN
+	Cross-origin modulepreload with no-referrer policy should load: FAIL
+	Cross-origin modulepreload with origin policy should load: TIMEOUT
 	Cross-origin modulepreload with same-origin policy should load: NOTRUN
 	Cross-origin modulepreload with strict-origin policy should load: NOTRUN
 	Cross-origin modulepreload with strict-origin-when-cross-origin policy should load: NOTRUN
@@ -2595,9 +2595,9 @@
 	module script with empty src fires error event asynchronously: PASS
 	module script with invalid src fires error event asynchronously: PASS
 /html/semantics/scripting-1/the-script-element/svg-script-fragment-parsed-not-executed-on-clone.html: OK
-	A fragment-parsed SVG <script> does not execute when cloned into the document: FAIL
-	Control: a fragment-parsed HTML <script> does not execute when cloned into the document: FAIL
-	Deep-cloning a subtree containing a fragment-parsed SVG <script> does not execute it: FAIL
+	A fragment-parsed SVG <script> does not execute when cloned into the document: PASS
+	Control: a fragment-parsed HTML <script> does not execute when cloned into the document: PASS
+	Deep-cloning a subtree containing a fragment-parsed SVG <script> does not execute it: PASS
 	Sanity check: a normally-created SVG <script> runs when inserted: PASS
 /html/semantics/scripting-1/the-script-element/text-module/charset-2.html: ERROR
 /html/semantics/scripting-1/the-script-element/text-module/charset-bom.any.html: OK
@@ -2878,13 +2878,13 @@
 	Parsing XHTML: Node's node document must be set to that of the element to which it will be appended. Test empty template: FAIL
 	Parsing XHTML: Node's node document must be set to that of the element to which it will be appended. Test loading XHTML document from a file: FAIL
 	Parsing XHTML: Node's node document must be set to that of the element to which it will be appended. Test loading of XHTML document with nested templates from a file: FAIL
-	Parsing XHTML: Node's node document must be set to that of the element to which it will be appended. Test nested templates: FAIL
-	Parsing XHTML: Node's node document must be set to that of the element to which it will be appended. Test not empty template: FAIL
+	Parsing XHTML: Node's node document must be set to that of the element to which it will be appended. Test nested templates: PASS
+	Parsing XHTML: Node's node document must be set to that of the element to which it will be appended. Test not empty template: PASS
 /html/semantics/scripting-1/the-template-element/additions-to-parsing-xhtml-documents/tag-name.xhtml: ERROR
 /html/semantics/scripting-1/the-template-element/additions-to-parsing-xhtml-documents/template-child-nodes.html: OK
-	Child nodes of nested template element in XHTML documents must be appended to template content: FAIL
+	Child nodes of nested template element in XHTML documents must be appended to template content: PASS
 	Child nodes of nested template element in XHTML documents must be appended to template content. Test loading XHTML document from a file: FAIL
-	Child nodes of template element in XHTML documents must be appended to template content: FAIL
+	Child nodes of template element in XHTML documents must be appended to template content: PASS
 	Child nodes of template element in XHTML documents must be appended to template content. Test loading XHTML document from a file: FAIL
 /html/semantics/scripting-1/the-template-element/additions-to-serializing-xhtml-documents/outerhtml.html: OK
 	Template contents should be serialized instead of template element if serializing template element: FAIL
@@ -3117,7 +3117,7 @@
 	template.hidden: IDL set to "+100": PASS
 	template.hidden: IDL set to ".5": PASS
 	template.hidden: IDL set to "5%": PASS
-	template.hidden: IDL set to "\\0": FAIL
+	template.hidden: IDL set to "\\0": PASS
 	template.hidden: IDL set to -Infinity: PASS
 	template.hidden: IDL set to 1.5: PASS
 	template.hidden: IDL set to 7: PASS

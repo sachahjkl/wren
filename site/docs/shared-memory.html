@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SharedArrayBuffer between realms: the trial of tranche 4 · Wren docs</title>
-<meta name="description" content="SharedArrayBuffer between realms: the trial of tranche 4 Question: can a page and its workers share a SharedArrayBuffer? That means postMessage sends the same bytes, not ">
+<title>SharedArrayBuffer and WebAssembly threads · Wren docs</title>
+<meta name="description" content="SharedArrayBuffer and WebAssembly threads A page and its workers can share memory: postMessage of a SharedArrayBuffer or of a shared WebAssembly.Memory gives the same byt">
 <link rel="icon" type="image/png" sizes="32x32" href="../img/logo-32.png">
 <link rel="stylesheet" href="../style.css">
 <link rel="stylesheet" href="../docs/docs.css">
@@ -211,46 +211,61 @@
 <nav class="doc-crumbs" aria-label="Breadcrumb"><ol>
 <li><a href="../docs/index.html">Docs</a></li>
 <li>Architecture</li>
-<li aria-current="page">SharedArrayBuffer between realms: the trial of tranche 4</li>
+<li aria-current="page">SharedArrayBuffer and WebAssembly threads</li>
 </ol></nav>
-<h1 id="sharedarraybuffer-between-realms-the-trial-of-tranche-4"><a class="anchor" href="#sharedarraybuffer-between-realms-the-trial-of-tranche-4" aria-hidden="true">#</a>SharedArrayBuffer between realms: the trial of tranche 4</h1>
-<p>Question: can a page and its workers share a <code>SharedArrayBuffer</code>? That means <code>postMessage</code> sends the same bytes, not a copy, and <code>Atomics.wait</code> / <code>Atomics.notify</code> work between them. Wren would expose it under COOP/COEP (<code>crossOriginIsolated</code>).</p>
-<h2 id="what-was-tried"><a class="anchor" href="#what-was-tried" aria-hidden="true">#</a>What was tried</h2>
-<p>The test is <code>src/wasm/shared_memory_test.odin</code> (<code>two_stores_share_a_memory_and_wait_for_each_other</code>). The setup is the one a page and a worker would have: two Wasm instances, each in its own Wasmtime store and on its own thread. Wasmtime 49 has the threads proposal and shared memories turned on.</p>
+<h1 id="sharedarraybuffer-and-webassembly-threads"><a class="anchor" href="#sharedarraybuffer-and-webassembly-threads" aria-hidden="true">#</a>SharedArrayBuffer and WebAssembly threads</h1>
+<p>A page and its workers can share memory: <code>postMessage</code> of a <code>SharedArrayBuffer</code> or of a shared <code>WebAssembly.Memory</code> gives the
+same bytes, <code>Atomics.wait</code> and <code>Atomics.notify</code> work between them and with <code>memory.atomic.wait</code> and <code>notify</code> of a module, and a
+<code>WebAssembly.Module</code> goes to a worker without being compiled again. An Emscripten build with pthreads needs all of that.</p>
+<h2 id="where-the-bytes-are"><a class="anchor" href="#where-the-bytes-are" aria-hidden="true">#</a>Where the bytes are</h2>
+<p>Each realm is an instance of the JavaScript engine image, whose objects live in its own linear memory; no pointer in it can reach
+another's. So a shared buffer's bytes are outside every realm: a Wasmtime shared memory (<code>src/wasm/user_shared.odin</code>).</p>
 <ul>
-<li>Both instances import one <code>wasmtime_sharedmemory</code>.</li>
-<li>One thread blocks in <code>memory.atomic.wait32</code>, the instruction behind <code>Atomics.wait</code>.</li>
-<li>The other thread does <code>i32.atomic.store</code>, then <code>memory.atomic.notify</code>.</li>
+<li>A module reaches them by its instructions, at full speed.</li>
+<li>A script reaches them through a host buffer (<code>Buffer_Host</code> in <code>src/engine/jsrt</code>): <code>data == nil</code>, one element is one call to
+the browser, and the JIT and the fast paths step aside. <code>new SharedArrayBuffer</code> makes such a memory too (<code>Host_Shared</code>,
+<code>config.host_shared</code>), a whole number of pages holding a length in bytes.</li>
+<li><code>test262</code>'s image keeps the engine's own SharedArrayBuffers: its agents are not realms.</li>
 </ul>
-<p>Result: the test passes. The waiting thread wakes up and reads the other thread's write. <code>notify</code> reports one woken waiter. The host sees the same bytes through <code>wasmtime_sharedmemory_data</code>. <strong>The Wasmtime side works.</strong></p>
-<h2 id="why-it-stops-there-for-now-the-javascript-engine"><a class="anchor" href="#why-it-stops-there-for-now-the-javascript-engine" aria-hidden="true">#</a>Why it stops there for now: the JavaScript engine</h2>
-<p>Each realm is an instance of the JavaScript engine image (<code>build/js/wren_js.wasm</code>, QuickJS compiled to <code>wasm32</code>). Its objects, including an <code>ArrayBuffer</code>'s bytes, live in <strong>its own linear memory, memory 0</strong>. C code in Wasm can only point into memory 0:</p>
+<p>So the JavaScript engine's image did not have to be built with threads, and a realm that crashes still loses only itself.</p>
+<h2 id="what-a-script-sees-of-another-agents-writes"><a class="anchor" href="#what-a-script-sees-of-another-agents-writes" aria-hidden="true">#</a>What a script sees of another agent's writes</h2>
+<p>Reads go through the same cache of 4 KiB pages as an ordinary memory's (<code>host_line</code>). It holds nothing after an <code>Atomics</code>
+operation or a message, the points that order a program without data races, and at most for 256 reads, so a loop on a flag
+without <code>Atomics</code> ends too. Writes go to the bytes at once (<code>host_shared_write</code>): a page written back later would overwrite what
+another agent wrote beside it. A builtin working on a range pins only that range, for the same reason.</p>
+<h2 id="waiting"><a class="anchor" href="#waiting" aria-hidden="true">#</a>Waiting</h2>
+<p>The place where waiters park belongs to the memory inside Wasmtime, which only the wait and notify instructions reach, so each
+store has a small module importing the memory (<code>WAIT_MODULE</code>), through which <code>Atomics.wait</code> and <code>Atomics.notify</code> pass.</p>
+<p>Nothing can interrupt a <code>memory.atomic.wait</code> in Wasmtime: a worker waiting without a timeout could never be stopped, and closing
+its page waits for it. So a module with a shared memory is rewritten when it is compiled (<code>src/wasm/shared_waits.odin</code>): each wait
+calls a function added at the end of the module, which waits for 50 ms at a time in a loop, and the epoch is checked at a loop's
+back edge. <code>Atomics.wait</code> checks the stop flag between the same slices.</p>
+<p>A window may not block (<code>[[CanBlock]]</code>): <code>Atomics.wait</code> throws there, and in a service worker. A module's own wait in a window
+does block its thread, where browsers trap; Emscripten does not do it (it spins on the main thread), and the page can still be stopped.</p>
+<h2 id="between-agents"><a class="anchor" href="#between-agents" aria-hidden="true">#</a>Between agents</h2>
+<p>A message carries a token, not the memory (<code>Clone_Tag.Shared_Buffer</code>, <code>Wasm_Memory</code>, <code>Wasm_Module</code>). Messages pass through the
+engine's memory, so a token is 64 random bits, good only in its agent cluster: a page, its dedicated workers and frames of its
+origin. Elsewhere it does not resolve, and the message fails to deserialize. What was sent goes when the last realm of the
+cluster goes. A store keeps the memories its script has; a <code>SharedArrayBuffer</code> collected gives its use back.</p>
+<p>Serializing for storage (IndexedDB, history) refuses all of these; a SharedArrayBuffer or a shared memory is sent only from a
+cross-origin isolated realm.</p>
+<h2 id="cross-origin-isolation"><a class="anchor" href="#cross-origin-isolation" aria-hidden="true">#</a>Cross-origin isolation</h2>
+<p><code>Cross-Origin-Opener-Policy: same-origin</code> with <code>Cross-Origin-Embedder-Policy: require-corp</code> or <code>credentialless</code>, in a secure context,
+gives a document <code>crossOriginIsolated</code> and the global <code>SharedArrayBuffer</code> (<code>apply_isolation_headers</code> in <code>src/page/page.odin</code>). A
+frame has it from its parent when of the same origin; a dedicated worker from its creator.</p>
 <ul>
-<li>clang has no pointers into a second memory (multi-memory);</li>
-<li>a typed array reads <code>ptr[i]</code>.</li>
+<li>The embedder policy holds on what the document loads (<code>resource_policy_refuses</code> in <code>src/fetch/loader.odin</code>, the check of Fetch
+that also applies <code>Cross-Origin-Resource-Policy</code> to every page): a cross-origin response to a request without CORS needs that
+header, or under <code>credentialless</code> the request goes without credentials. A frame must have a policy of its own.</li>
+<li>Other browsers rely on the opener policy to put the document in a process of its own. Here a realm cannot read another's memory
+at all, being a Wasm instance, whichever the process.</li>
 </ul>
-<p>So the bytes of a <code>SharedArrayBuffer</code> must be in memory 0 of <strong>every</strong> realm that sees them. QuickJS has hooks for this (<code>JS_SetSharedArrayBufferFunctions</code>), but they only choose where the bytes go <em>within</em> memory 0.</p>
-<p>The only way is for all the realms of an agent cluster (a page and its dedicated workers) to have <strong>the same memory 0</strong>: one engine image built with the threads and atomics target features, run as one instance per thread on one shared memory. That costs:</p>
-<ol>
-<li><p><strong>Building the engine for threads.</strong> <code>tools/build_js.ps1</code> would build with shared memory and atomics:</p>
+<h2 id="limits"><a class="anchor" href="#limits" aria-hidden="true">#</a>Limits</h2>
 <ul>
-<li>the module's heap (<code>wj/libc.odin</code>, base:runtime's emmalloc) with its lock taken on every thread;</li>
-<li>the engine's <code>Atomics.wait</code> on a wait address of the shared memory;</li>
-<li>a stack and thread-local storage per thread.</li>
-</ul></li>
-<li><strong>Pre-initialization.</strong> The image is pre-initialized (<code>preinit</code>: the snapshot of an engine already started, copied on write). A shared memory is initialized once (passive segments, <code>__wasm_init_memory</code>), not per instance. The snapshot and its copy-on-write start-up (which makes a realm start in about 1 ms) would have to be redone.</li>
-<li><strong>Host functions.</strong> Every browser function reads and writes guest memory through the instance's exported memory (<code>wasmtime_memory_data</code>). With a shared memory, every access path would change (<code>wasmtime_sharedmemory_data</code>), including the generated glue (bindgen).</li>
-<li><strong>Isolation.</strong> A trap or a memory corruption in one realm would reach every realm of the cluster, page included. Today a worker that crashes loses only its own memory. The <code>wasm32</code> limit of 4 GiB would also apply to the whole cluster instead of each realm.</li>
-<li><strong>Memory accounting.</strong> The per-realm limits and the memory tracking of the check build would have to count a shared heap.</li>
-</ol>
-<h2 id="conclusion"><a class="anchor" href="#conclusion" aria-hidden="true">#</a>Conclusion</h2>
-<p>Feasible, but not at a reasonable cost now. It is a rewrite of how the JavaScript engine is built and started (items 1 to 3), and it weakens isolation (item 4). That is out of proportion to what pages gain from it today: the sites that need <code>SharedArrayBuffer</code> (Wasm threads, some codecs) also require COOP/COEP, which is rare.</p>
-<p>What stays as it is:</p>
-<ul>
-<li><code>crossOriginIsolated</code> is <code>false</code>;</li>
-<li>a <code>SharedArrayBuffer</code> sent by <code>postMessage</code> (or <code>structuredClone</code>) is not shared: the receiver gets a copy of its bytes, as it already does.</li>
+<li><code>Atomics.waitAsync</code> does not exist; Emscripten has its own fallback.</li>
+<li>A growable <code>SharedArrayBuffer</code> grown by another agent is seen at the next <code>byteLength</code>, not on the next index.</li>
+<li>A shared memory is not counted against <code>wasm.max_pages</code> of a store: only its own declared maximum holds it.</li>
 </ul>
-<p>The trial and its test stay as a base if the decision is made later. The order would be items 1, 2, 3, then the COOP/COEP checks.</p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../docs/architecture.html"><span>Previous</span><strong>Architecture</strong></a>
 <a class="doc-next" href="../docs/crash-recovery.html"><span>Next</span><strong>Crash recovery</strong></a>
@@ -260,9 +275,12 @@
 <nav class="doc-toc" aria-label="On this page">
 <p class="doc-toc-title">On this page</p>
 <ul>
-<li><a href="#what-was-tried">What was tried</a></li>
-<li><a href="#why-it-stops-there-for-now-the-javascript-engine">Why it stops there for now: the JavaScript engine</a></li>
-<li><a href="#conclusion">Conclusion</a></li>
+<li><a href="#where-the-bytes-are">Where the bytes are</a></li>
+<li><a href="#what-a-script-sees-of-another-agents-writes">What a script sees of another agent's writes</a></li>
+<li><a href="#waiting">Waiting</a></li>
+<li><a href="#between-agents">Between agents</a></li>
+<li><a href="#cross-origin-isolation">Cross-origin isolation</a></li>
+<li><a href="#limits">Limits</a></li>
 </ul>
 </nav>
 </main>

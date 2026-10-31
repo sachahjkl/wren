@@ -121,6 +121,7 @@ foreign _m_forms {
 	@(link_name = "HTMLElement_click") _HTMLElement_click :: proc(element: u64) -> i32 ---
 	@(link_name = "Document_activeElement") _Document_activeElement :: proc() -> Element ---
 	@(link_name = "HTMLDialogElement_returnValue") _HTMLDialogElement_returnValue :: proc(dialog: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "HTMLDialogElement_set_returnValue") _HTMLDialogElement_set_returnValue :: proc(dialog: u64, value: [^]u8, value_len: u32) ---
 	@(link_name = "FormData_create") _FormData_create :: proc(form: u64, submitter: u64, _ret: ^FormData) -> Error ---
 	@(link_name = "FormData_append") _FormData_append :: proc(data: FormData, name: [^]u8, name_len: u32, value: [^]u8, value_len: u32) -> Error ---
 	@(link_name = "FormData_appendBlob") _FormData_appendBlob :: proc(data: FormData, name: [^]u8, name_len: u32, blob: Buffer, filename: [^]u8, filename_len: u32, mime: [^]u8, mime_len: u32) -> Error ---
@@ -904,6 +905,10 @@ HTMLDialogElement_returnValue_alloc :: proc(dialog: $T_dialog, allocator: runtim
 		cap = int(n)
 	}
 	return {}, .Truncated
+}
+
+HTMLDialogElement_set_returnValue :: proc "contextless" (dialog: $T_dialog, value: string) where intrinsics.type_is_integer(intrinsics.type_core_type(T_dialog)) && size_of(T_dialog) == 8 {
+	_HTMLDialogElement_set_returnValue(u64(dialog), raw_data(value), u32(len(value)))
 }
 
 // new FormData(form, submitter): both optional. Invalid_Handle when form is not a form or submitter not one of its

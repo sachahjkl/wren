@@ -306,7 +306,7 @@ dictionaries, cold functions; not the hot getters.</li>
 <p><code>bench</code> also checks that every shape gives the same answer through the scalar bridge and the serialised path
 (<code>check_shapes</code>), and <code>check</code> verifies the serialised answers against the expected values in process.</p>
 <h2 id="inside-the-engine-jsb"><a class="anchor" href="#inside-the-engine-jsb" aria-hidden="true">#</a>Inside the engine: <code>jsb</code></h2>
-<p>The engine (QuickJS in C today) reaches the host through the generated <code>wr_*</code> imports (<code>native/js/odin/wj/wr_imports.odin</code>).
+<p>The engine reaches the host through the generated <code>wr_*</code> imports (<code>native/js/odin/wj/wr_imports.odin</code>).
 <code>jsb</code> binds a WebIDL member to a declaration and the import that carries it, with no per-function code:</p>
 <div class="code"><div class="file">Odin</div><pre><code>jsb.<span class="f">getter</span>(ctx, this_val, api_decl.<span class="t">URL_get</span>, wj.wr_URL_get, <span class="t">URLComponent</span>.<span class="t">Pathname</span>, <span class="s">"URL"</span>)      <span class="c">// an attribute</span>
 jsb.<span class="f">method</span>(ctx, this_val, argc, argv, api_decl.<span class="t">URLSearchParams_toString</span>, wj.wr_URLSearchParams_toString, <span class="s">"URLSearchParams.toString"</span>)

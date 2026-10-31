@@ -194,14 +194,14 @@
 /web-locks/mode-exclusive.https.any.worker.html: TIMEOUT
 	Lock requests are granted in order: TIMEOUT
 	Requests for distinct resources can be granted: NOTRUN
-/web-locks/mode-mixed.https.any.html: ERROR
-	An exclusive lock between shared locks: NOTRUN
-	Lock requests are granted in order: FAIL
-	Releasing exclusive lock grants multiple shared locks: FAIL
+/web-locks/mode-mixed.https.any.html: OK
+	An exclusive lock between shared locks: FAIL
+	Lock requests are granted in order: PASS
+	Releasing exclusive lock grants multiple shared locks: PASS
 /web-locks/mode-mixed.https.any.worker.html: TIMEOUT
 	An exclusive lock between shared locks: NOTRUN
-	Lock requests are granted in order: FAIL
-	Releasing exclusive lock grants multiple shared locks: TIMEOUT
+	Lock requests are granted in order: TIMEOUT
+	Releasing exclusive lock grants multiple shared locks: NOTRUN
 /web-locks/mode-shared.https.any.html: TIMEOUT
 	Lock requests are granted in order: TIMEOUT
 	Shared locks are not exclusive: NOTRUN
@@ -227,9 +227,9 @@
 	WebLocks of a nested iframe with a cross-site ancestor are partitioned: NOTRUN
 	WebLocks of an iframe under a 3rd-party site are partitioned: TIMEOUT
 /web-locks/query-empty.https.any.html: OK
-	query() returns dictionary with empty arrays when no locks are held: PASS
+	query() returns dictionary with empty arrays when no locks are held: FAIL
 /web-locks/query-empty.https.any.worker.html: OK
-	query() returns dictionary with empty arrays when no locks are held: PASS
+	query() returns dictionary with empty arrays when no locks are held: FAIL
 /web-locks/query-ordering.https.html: OK
 	Requests appear in state in order made.: PASS
 /web-locks/query.https.any.html: OK
@@ -254,7 +254,7 @@
 	query() returns dictionaries with expected properties: PASS
 /web-locks/resource-names.https.any.html: OK
 	DOMString: : PASS
-	DOMString: 0x61 0x62 0x63 0x0 0x64 0x65 0x66: FAIL
+	DOMString: 0x61 0x62 0x63 0x0 0x64 0x65 0x66: PASS
 	DOMString: 0xD800: FAIL
 	DOMString: 0xDC00: FAIL
 	DOMString: 0xDC00 0xD800: FAIL
@@ -263,7 +263,7 @@
 	Resource names that are not valid UTF-16 are not mangled: FAIL
 /web-locks/resource-names.https.any.worker.html: OK
 	DOMString: : PASS
-	DOMString: 0x61 0x62 0x63 0x0 0x64 0x65 0x66: FAIL
+	DOMString: 0x61 0x62 0x63 0x0 0x64 0x65 0x66: PASS
 	DOMString: 0xD800: FAIL
 	DOMString: 0xDC00: FAIL
 	DOMString: 0xDC00 0xD800: FAIL

@@ -29,7 +29,8 @@ the image, and its functions read as native ones.
    flag of the JavaScript call that entered it (`wt_on_epoch`). A call checks the thread's stack first (`RangeError`).
 3. **`compile` off the page's thread.** `WebAssembly.compile`, `instantiate` and the streaming forms compile on a thread
    of the blocking pool (a worker compiles on its own thread): for a 34 MB module measured, the page's timers kept running
-   (worst gap 25 ms) where `new WebAssembly.Module`, synchronous as specified, blocks for the 440 ms it takes.
+   (worst gap 25 ms) where `new WebAssembly.Module`, synchronous as specified, blocks for the 440 ms it takes. What was
+   compiled is kept in the profile's disk cache (`wasm.cache.disk`), by top-level site: what one site compiled says nothing to another.
 4. **`memory.buffer`: an ArrayBuffer without bytes.** The engine's ArrayBuffers live in its linear memory, which a page's
    instance cannot share, so a memory's buffer has `data == nil` and a `Buffer_Host` through which one element is one host
    call. The JIT and the interpreter's fast paths leave on `data == nil`. A builtin working on a range pins it (`host_pin`:
@@ -61,11 +62,8 @@ through its JIT, and by hand-written modules in the tests.
 
 ## Limits
 
-- No threads. `new WebAssembly.Memory({shared: true})` works, as in other browsers (Pyodide and many scripts ask for one to
-  find the `SharedArrayBuffer` constructor), but it is an ordinary memory only this agent has: a module declaring a shared
-  memory gets a `CompileError`, so an Emscripten build with pthreads cannot run. Without cross-origin isolation a page has no
-  global `SharedArrayBuffer`, as in other browsers (SQLite Fiddle then says OPFS is unavailable instead of waiting on a
-  copy): see `docs/shared-memory.md`.
+- Threads are in `docs/shared-memory.md`, with their limits. Without cross-origin isolation a page has no global
+  `SharedArrayBuffer`, as in other browsers (SQLite Fiddle then says OPFS is unavailable instead of waiting on a copy).
 - GC, typed function references and memory64 follow `wasm.features.*` (off by default): such modules get a `CompileError`.
 - An exception carries at most 32 values (`MAX_TAG_VALUES`, `web_wasm.odin`).
 - Recursion through a module is bounded by the engine's stack: at the depth of recursion through a native function, far
