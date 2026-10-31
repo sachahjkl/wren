@@ -4,6 +4,9 @@ import "base:runtime"
 import "core:mem/virtual"
 import "core:strings"
 
+MAX_PARSE_ERRORS_KEPT :: 100          // the parse errors a sheet keeps
+SELECTOR_ERROR_TEXT_MAX_BYTES :: 200  // the text of a rejected selector quoted in a parse error
+
 Arena_Alloc :: runtime.Allocator
 
 Value_Kind :: enum u8 { Token, Function, Block }
@@ -106,7 +109,7 @@ keep_values :: proc(p: ^Parser, vs: []Value) -> []Value {
 
 @(private)
 perr :: proc(p: ^Parser, msg: string) {
-	if len(p.errors^) < 100 { append(p.errors, strings.clone(msg, p.errors.allocator)) }
+	if len(p.errors^) < MAX_PARSE_ERRORS_KEPT { append(p.errors, strings.clone(msg, p.errors.allocator)) }
 }
 
 // Parses `source` as a stylesheet (CSS Syntax §5, "parse a stylesheet").
@@ -307,8 +310,8 @@ finish_style_rule :: proc(p: ^Parser, prelude, body: []Value, parent: ^Rule) -> 
 	sel, ok := parse_selector_list(trim_values(prelude), p.a, parent != nil ? &parent.selectors : nil)
 	if !ok {
 		text := serialize_values(trim_values(prelude), context.temp_allocator)
-		if len(text) > 200 {
-			n := 200
+		if len(text) > SELECTOR_ERROR_TEXT_MAX_BYTES {
+			n := SELECTOR_ERROR_TEXT_MAX_BYTES
 			for n > 0 && text[n] & 0xC0 == 0x80 { n -= 1 }
 			text = text[:n]
 		}
