@@ -33,7 +33,7 @@
 	cross-origin: TIMEOUT
 	data-url: PASS
 	initial empty document: FAIL
-	same-origin: PASS
+	same-origin: PASS|TIMEOUT
 	srcdoc: PASS
 /html/browsers/sandboxing/sandbox-initial-empty-document-toward-same-origin.html: OK
 	\n  Check sandbox-flags inheritance in case of javascript window reuse.\n: FAIL

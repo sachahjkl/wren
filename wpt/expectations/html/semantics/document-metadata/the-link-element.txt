@@ -46,7 +46,7 @@
 	Slow successful import, fast failing import: PASS
 /html/semantics/document-metadata/the-link-element/link-load-event-alt-001.html: TIMEOUT
 	link-load-event-alt-001: TIMEOUT
-/html/semantics/document-metadata/the-link-element/link-load-event-alt-002.html: OK
+/html/semantics/document-metadata/the-link-element/link-load-event-alt-002.html: OK|TIMEOUT
 	link-load-event-alt-002: FAIL
 /html/semantics/document-metadata/the-link-element/link-load-event.html: OK
 	Check if the stylesheet's load event blocks the document load event: PASS

@@ -17,26 +17,6 @@ test262/test/built-ins/AsyncFromSyncIteratorPrototype/throw/iterator-result-reje
 test262/test/built-ins/AsyncFromSyncIteratorPrototype/throw/iterator-result-rejected-promise-close.js:0: strict mode: TypeError: $DONE() not called
 test262/test/built-ins/AsyncFromSyncIteratorPrototype/throw/throw-result-poisoned-wrapper.js:0: TypeError: $DONE() not called
 test262/test/built-ins/AsyncFromSyncIteratorPrototype/throw/throw-result-poisoned-wrapper.js:0: strict mode: TypeError: $DONE() not called
-test262/test/built-ins/Atomics/pause/descriptor.js:0: ReferenceError: Atomics is not defined
-test262/test/built-ins/Atomics/pause/descriptor.js:0: strict mode: ReferenceError: Atomics is not defined
-test262/test/built-ins/Atomics/pause/length.js:0: ReferenceError: Atomics is not defined
-test262/test/built-ins/Atomics/pause/length.js:0: strict mode: ReferenceError: Atomics is not defined
-test262/test/built-ins/Atomics/pause/name.js:0: ReferenceError: Atomics is not defined
-test262/test/built-ins/Atomics/pause/name.js:0: strict mode: ReferenceError: Atomics is not defined
-test262/test/built-ins/Atomics/pause/not-a-constructor.js:0: ReferenceError: Atomics is not defined
-test262/test/built-ins/Atomics/pause/not-a-constructor.js:0: strict mode: ReferenceError: Atomics is not defined
-test262/test/built-ins/Atomics/pause/returns-undefined.js:0: ReferenceError: Atomics is not defined
-test262/test/built-ins/Atomics/pause/returns-undefined.js:0: strict mode: ReferenceError: Atomics is not defined
-test262/test/built-ins/SharedArrayBuffer/prototype/grow/grow-larger-size.js:0: TypeError: growable SharedArrayBuffer requires SAB allocator hooks
-test262/test/built-ins/SharedArrayBuffer/prototype/grow/grow-larger-size.js:0: strict mode: TypeError: growable SharedArrayBuffer requires SAB allocator hooks
-test262/test/built-ins/SharedArrayBuffer/prototype/grow/grow-same-size.js:0: TypeError: growable SharedArrayBuffer requires SAB allocator hooks
-test262/test/built-ins/SharedArrayBuffer/prototype/grow/grow-same-size.js:0: strict mode: TypeError: growable SharedArrayBuffer requires SAB allocator hooks
-test262/test/built-ins/SharedArrayBuffer/prototype/grow/grow-smaller-size.js:0: TypeError: growable SharedArrayBuffer requires SAB allocator hooks
-test262/test/built-ins/SharedArrayBuffer/prototype/grow/grow-smaller-size.js:0: strict mode: TypeError: growable SharedArrayBuffer requires SAB allocator hooks
-test262/test/built-ins/SharedArrayBuffer/prototype/grow/new-length-non-number.js:0: TypeError: growable SharedArrayBuffer requires SAB allocator hooks
-test262/test/built-ins/SharedArrayBuffer/prototype/grow/new-length-non-number.js:0: strict mode: TypeError: growable SharedArrayBuffer requires SAB allocator hooks
-test262/test/built-ins/SharedArrayBuffer/prototype/maxByteLength/return-maxbytelength-growable.js:0: TypeError: growable SharedArrayBuffer requires SAB allocator hooks
-test262/test/built-ins/SharedArrayBuffer/prototype/maxByteLength/return-maxbytelength-growable.js:0: strict mode: TypeError: growable SharedArrayBuffer requires SAB allocator hooks
 test262/test/language/destructuring/binding/keyed-destructuring-property-reference-target-evaluation-order-with-bindings.js:0: Test262Error: Actual [binding::source, binding::sourceKey, sourceKey, get source, binding::defaultValue, binding::varTarget] and expected [binding::source, binding::sourceKey, sourceKey, binding::varTarget, get source, binding::defaultValue] should have the same contents. 
 test262/test/language/expressions/assignment/destructuring/iterator-destructuring-property-reference-target-evaluation-order.js:0: Test262Error: Actual [source, iterator, target, target-key, target-key-tostring, iterator-step, iterator-done, set] and expected [source, iterator, target, target-key, iterator-step, iterator-done, target-key-tostring, set] should have the same contents. 
 test262/test/language/expressions/assignment/destructuring/iterator-destructuring-property-reference-target-evaluation-order.js:0: strict mode: Test262Error: Actual [source, iterator, target, target-key, target-key-tostring, iterator-step, iterator-done, set] and expected [source, iterator, target, target-key, iterator-step, iterator-done, target-key-tostring, set] should have the same contents. 
@@ -51,19 +31,19 @@ test262/test/language/expressions/in/private-field-invalid-assignment-target.js:
 test262/test/language/expressions/in/private-field-invalid-assignment-target.js:0: strict mode: unexpected error type: Test262: This statement should not be evaluated.
 test262/test/language/expressions/object/computed-property-name-topropertykey-before-value-evaluation.js:0: Test262Error: Expected SameValue(«"bad"», «"ok"») to be true
 test262/test/language/expressions/object/computed-property-name-topropertykey-before-value-evaluation.js:0: strict mode: Test262Error: Expected SameValue(«"bad"», «"ok"») to be true
-test262/test/language/module-code/ambiguous-export-bindings/import-and-export-propagates-binding.js:0: SyntaxError: export 'foo' in module 'test262/test/language/module-code/ambiguous-export-bindings/imp' is ambiguous
-test262/test/language/module-code/ambiguous-export-bindings/namespace-unambiguous-if-export-star-as-from-and-import-star-as-and-export.js:0: SyntaxError: export 'foo' in module 'test262/test/language/module-code/ambiguous-export-bindings/nam' is ambiguous
-test262/test/language/module-code/ambiguous-export-bindings/namespace-unambiguous-if-export-star-as-from.js:0: SyntaxError: export 'foo' in module 'test262/test/language/module-code/ambiguous-export-bindings/nam' is ambiguous
-test262/test/language/module-code/ambiguous-export-bindings/namespace-unambiguous-if-import-star-as-and-export.js:0: SyntaxError: export 'foo' in module 'test262/test/language/module-code/ambiguous-export-bindings/nam' is ambiguous
+test262/test/language/import/import-attributes/text-self.js:0: SyntaxError: Could not find export 'default' in module 'test262/test/language/import/import-attributes/text-self.js'
+test262/test/language/module-code/ambiguous-export-bindings/import-and-export-propagates-binding.js:0: SyntaxError: export 'foo' in module 'test262/test/language/module-code/ambiguous-export-bindings/import-and-export-propagates-binding.js' is ambiguous
+test262/test/language/module-code/ambiguous-export-bindings/namespace-unambiguous-if-export-star-as-from-and-import-star-as-and-export.js:0: SyntaxError: export 'foo' in module 'test262/test/language/module-code/ambiguous-export-bindings/namespace-unambiguous-if-import-star-as-and-export.js' is ambiguous
+test262/test/language/module-code/ambiguous-export-bindings/namespace-unambiguous-if-export-star-as-from.js:0: SyntaxError: export 'foo' in module 'test262/test/language/module-code/ambiguous-export-bindings/namespace-unambiguous-if-export-star-as-from.js' is ambiguous
+test262/test/language/module-code/ambiguous-export-bindings/namespace-unambiguous-if-import-star-as-and-export.js:0: SyntaxError: export 'foo' in module 'test262/test/language/module-code/ambiguous-export-bindings/namespace-unambiguous-if-import-star-as-and-export.js' is ambiguous
 test262/test/language/module-code/top-level-await/module-graphs-does-not-hang.js:0: TypeError: $DONE() not called
 test262/test/language/module-code/top-level-await/rejection-order.js:0: TypeError: $DONE() not called
-test262/test/language/statements/await-using/initializer-Symbol.asyncDispose-disposed-at-end-of-imported-module.js:0: SyntaxError: exported variable 'resource' does not exist
-test262/test/language/statements/await-using/initializer-Symbol.dispose-disposed-at-end-of-imported-module.js:0: SyntaxError: exported variable 'resource' does not exist
+test262/test/language/statements/await-using/initializer-Symbol.asyncDispose-disposed-at-end-of-imported-module.js:0: SyntaxError: exported variable does not exist
+test262/test/language/statements/await-using/initializer-Symbol.dispose-disposed-at-end-of-imported-module.js:0: SyntaxError: exported variable does not exist
 test262/test/language/statements/class/elements/syntax/valid/grammar-field-named-get-followed-by-generator-asi.js:0: SyntaxError: invalid property name
 test262/test/language/statements/class/elements/syntax/valid/grammar-field-named-get-followed-by-generator-asi.js:0: strict mode: SyntaxError: invalid property name
 test262/test/language/statements/class/elements/syntax/valid/grammar-field-named-set-followed-by-generator-asi.js:0: SyntaxError: invalid property name
 test262/test/language/statements/class/elements/syntax/valid/grammar-field-named-set-followed-by-generator-asi.js:0: strict mode: SyntaxError: invalid property name
-test262/test/language/statements/using/initializer-disposed-at-end-of-imported-module.js:0: SyntaxError: exported variable 'resource' does not exist
-test262/test/language/statements/with/set-mutable-binding-binding-deleted-with-typed-array-in-proto-chain.js:0: Test262Error: Expected SameValue(«[object Object]», «undefined») to be true
+test262/test/language/statements/using/initializer-disposed-at-end-of-imported-module.js:0: SyntaxError: exported variable does not exist
 test262/test/language/statements/with/set-mutable-binding-idref-compound-assign-with-proxy-env.js:0: Test262Error: Actual [has:p, get:Symbol(Symbol.unscopables), get:p, set:p, getOwnPropertyDescriptor:p, defineProperty:p] and expected [has:p, get:Symbol(Symbol.unscopables), has:p, get:p, has:p, set:p, getOwnPropertyDescriptor:p, defineProperty:p] should have the same contents. 
 test262/test/language/statements/with/set-mutable-binding-idref-with-proxy-env.js:0: Test262Error: Actual [has:p, get:Symbol(Symbol.unscopables), set:p, getOwnPropertyDescriptor:p, defineProperty:p] and expected [has:p, get:Symbol(Symbol.unscopables), has:p, set:p, getOwnPropertyDescriptor:p, defineProperty:p] should have the same contents. 

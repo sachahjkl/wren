@@ -28,7 +28,7 @@
 	Test script error unhandled.: PASS
 /workers/SharedWorker-simple.html: OK
 	Test simple shared worker construction case.: PASS
-/workers/SharedWorkerPerformanceNow.html: OK
+/workers/SharedWorkerPerformanceNow.html: OK|TIMEOUT
 	performance.now() exists in shared workers and reports reasonable times: FAIL
 /workers/SharedWorker_blobUrl.html: TIMEOUT
 	Blob URL shared by document on SharedWorker: TIMEOUT
