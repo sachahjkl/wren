@@ -79,6 +79,12 @@ Frame_sameOrigin :: proc(c: ^Call, navigable: u64) -> bool {
 	return url.same_origin(c.page.env.origin, n.page.env.origin)
 }
 
+Frame_isBlank :: proc(c: ^Call, navigable: u64) -> bool {
+	n := navigable_by_id(navigable)
+	if n == nil || n.page == nil || !url.same_origin(c.page.env.origin, n.page.env.origin) { return false }
+	return n.page.env.location.scheme == "about"
+}
+
 Frame_postMessage :: proc(c: ^Call, navigable: u64, data: []u8, target_origin: string) -> Api_Error {
 	n := navigable_by_id(navigable)
 	if n == nil { return .None }   // a closed window: nothing happens

@@ -113,6 +113,16 @@ Whether its document is same origin with the calling one.
 
 Host: `Frame_sameOrigin :: proc(c: ^Call, navigable: u64) -> bool`
 
+### `Frame_isBlank`
+
+```
+bool Frame_isBlank(u64 navigable)
+```
+
+Whether its document is same origin and has no address of its own (about:blank, srcdoc).
+
+Host: `Frame_isBlank :: proc(c: ^Call, navigable: u64) -> bool`
+
 ### `Frame_postMessage`
 
 ```

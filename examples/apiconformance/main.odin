@@ -895,6 +895,7 @@ foreign _m_frames {
 	@(link_name = "Frame_childNames") c_Frame_childNames :: proc(a0: i64, a1: i32, a2: i32) -> i32 ---
 	@(link_name = "Frame_closed") c_Frame_closed :: proc(a0: i64) -> i32 ---
 	@(link_name = "Frame_sameOrigin") c_Frame_sameOrigin :: proc(a0: i64) -> i32 ---
+	@(link_name = "Frame_isBlank") c_Frame_isBlank :: proc(a0: i64) -> i32 ---
 	@(link_name = "Frame_postMessage") c_Frame_postMessage :: proc(a0: i64, a1: i32, a2: i32, a3: i32, a4: i32) -> i32 ---
 	@(link_name = "Frame_navigate") c_Frame_navigate :: proc(a0: i64, a1: i32, a2: i32, a3: i32) -> i32 ---
 	@(link_name = "Frame_open") c_Frame_open :: proc(a0: i32, a1: i32, a2: i32, a3: i32, a4: i32) -> i32 ---

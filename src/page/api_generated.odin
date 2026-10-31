@@ -10647,6 +10647,21 @@ _t_frames_Frame_sameOrigin :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	return nil
 }
 
+// Frame_isBlank :: proc(c: ^Call, navigable: u64) -> bool
+@(private = "file")
+_t_frames_Frame_isBlank :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_r := Frame_isBlank(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
 // Frame_postMessage :: proc(c: ^Call, navigable: u64, data: []u8, target_origin: string) -> Api_Error
 @(private = "file")
 _t_frames_Frame_postMessage :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -33378,6 +33393,7 @@ api_imports := [?]wasm.Import{
 	{module = "frames", name = "Frame_childNames", fn = _t_frames_Frame_childNames, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "frames", name = "Frame_closed", fn = _t_frames_Frame_closed, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "frames", name = "Frame_sameOrigin", fn = _t_frames_Frame_sameOrigin, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "frames", name = "Frame_isBlank", fn = _t_frames_Frame_isBlank, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "frames", name = "Frame_postMessage", fn = _t_frames_Frame_postMessage, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "frames", name = "Frame_navigate", fn = _t_frames_Frame_navigate, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I32}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "frames", name = "Frame_open", fn = _t_frames_Frame_open, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},

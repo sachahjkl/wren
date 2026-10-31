@@ -602,8 +602,7 @@ wjr_CSSStyleSheet_deleteRule :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc:
 	return st != .None ? wj.wj_throw_status(ctx, i32(st), "CSSStyleSheet.deleteRule") : wj.UNDEFINED
 }
 
-// cssRules ([SameObject]): a CSSRuleList whose length is the browser's; its items (objects with cssText, selectorText
-// for a style rule, parentStyleSheet: CSSRule is not otherwise modelled) are made when one is read, again only after
+// cssRules ([SameObject]): a CSSRuleList whose length is the browser's; its items (dom_css_rules.odin) are made when one is read, again only after
 // the sheet's rules changed (CSSStyleSheet_rulesVersion). insertRule(rule, sheet.cssRules.length) in a loop, as
 // CSS-in-JS libraries do, makes no rule object at all.
 @(private = "file")
@@ -651,24 +650,6 @@ rule_count :: proc(h: api_decl.CSSStyleSheet) -> u32 {
 	return n
 }
 
-// A rule object: cssText, a style rule's selectorText (what comes before its block), parentStyleSheet.
-@(private = "file")
-rule_object :: proc "contextless" (ctx: ^wj.Context, text: string, sheet: wj.JSValue) -> wj.JSValue {
-	rule := wj.JS_NewObject(ctx)
-	wj.JS_DefinePropertyValueStr(ctx, rule, "cssText", wj.new_string_len(ctx, text), wj.PROP_ENUMERABLE)
-	if len(text) > 0 && text[0] != '@' {
-		for c, b in transmute([]u8)text {
-			if c != '{' { continue }
-			sl := b
-			for sl > 0 && (text[sl - 1] == ' ' || text[sl - 1] == '\n' || text[sl - 1] == '\t') { sl -= 1 }
-			wj.JS_DefinePropertyValueStr(ctx, rule, "selectorText", wj.new_string_len(ctx, text[:sl]), wj.PROP_ENUMERABLE)
-			break
-		}
-	}
-	wj.JS_DefinePropertyValueStr(ctx, rule, "parentStyleSheet", wj.JS_DupValue(ctx, sheet), 0)
-	return rule
-}
-
 // the rule objects (not counted), made again when the sheet's rules changed since
 @(private = "file")
 rules_items :: proc(ctx: ^wj.Context, r: ^Rules) -> wj.JSValue {
@@ -693,7 +674,7 @@ rules_items :: proc(ctx: ^wj.Context, r: ^Rules) -> wj.JSValue {
 		wj.JS_FreeValue(ctx, kept)
 		text: string
 		if jsb.host(&text, api_decl.CSSStyleSheet_ruleText, wj.wr_CSSStyleSheet_ruleText, h, i) != .None { break }
-		rule := rule_object(ctx, text, r.sheet)
+		rule := css_rule_make(ctx, text, r.sheet, wj.NULL)   // dom_css_rules.odin
 		if id != 0 { wj.JS_SetPropertyUint32(ctx, by_id, id, wj.JS_DupValue(ctx, rule)) }
 		wj.array_set(ctx, arr, i, rule)
 	}
