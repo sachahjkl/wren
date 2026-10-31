@@ -936,7 +936,7 @@ grid_align_tracks :: proc(g: ^Grid, axis: int, size: f32, align: style.Content_A
 	switch align {
 	case .Normal, .Stretch, .Start, .Flex_Start, .Auto, .Baseline:
 	case .End, .Flex_End: offset = free
-	case .Center: offset = free * 0.5
+	case .Center, .Anchor_Center: offset = free * 0.5
 	case .Space_Between: if free > 0 && nv > 1 { between = free / (nv - 1) }
 	case .Space_Around: if free > 0 && nv > 0 { between = free / nv; offset = between * 0.5 }
 	case .Space_Evenly: if free > 0 { between = free / (nv + 1); offset = between }
@@ -974,6 +974,7 @@ grid_self :: proc(c: ^Ctx, container: ^style.Computed, k: ^Box, axis: int) -> st
 		replaced := k.kind == .Replaced && .Control not_in k.flags
 		a = (replaced || ratio_sized) ? .Start : .Stretch
 	}
+	if a == .Anchor_Center { a = .Center }   // (of an absolutely positioned box only: layout/anchor.odin)
 	return a
 }
 
@@ -1267,7 +1268,11 @@ grid_abs :: proc(c: ^Ctx, cbi: i32) {
 	origin := Vec2{cx, cy}
 	for a := cb.abs_first; a != NONE; a = c.l.boxes[a].abs_next {
 		ab := &c.l.boxes[a]
-		if .Fixed in ab.flags { layout_abs(c, a, cbi, Rect{{0, 0}, c.vp}); continue }
+		anchored := style.anchored_style(ab.cs)
+		if .Fixed in ab.flags {
+			if anchored { c.l.anchor_uses = true } else { layout_abs(c, a, cbi, Rect{{0, 0}, c.vp}) }
+			continue
+		}
 		r := pad
 		ks := ab.cs
 		for axis in 0 ..< 2 {
@@ -1288,6 +1293,12 @@ grid_abs :: proc(c: ^Ctx, cbi: i32) {
 				if hb { hi = origin[axis] + grid_line_pos(ax, tb, true) }
 			}
 			r.min[axis], r.max[axis] = lo, max(hi, lo)
+		}
+		if anchored {
+			// laid out later, in this area (kept: a pass that finds the grid in its cache does not come here)
+			c.l.anchor_uses = true
+			c.l.anchor_grid_areas[a] = r
+			continue
 		}
 		layout_abs(c, a, cbi, r)
 	}

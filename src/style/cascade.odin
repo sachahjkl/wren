@@ -634,6 +634,7 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 		deep_clone(&list, type_info_of([]Pre_Decl), a)
 		c.anim_vars = list
 	}
+	if len(c.position_try_fallbacks) > 0 && (c.position == .Absolute || c.position == .Fixed) { try_options_resolve(&cx, &env, e, p.mc.doc, h) }
 	finish_style(&cx, h)
 	if len(p.fs_chain) > 0 { if _, above := p.fs_chain[h]; above { fullscreen_ancestor_reset(c) } }
 	if e.container_dependent || c.container_type != .Normal || (parent != nil && parent.containers != nil) {

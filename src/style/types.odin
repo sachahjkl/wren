@@ -16,6 +16,7 @@ Length_Kind :: enum u8 {
 	Min_Content,
 	Max_Content,
 	Fit_Content,
+	Anchor,        // calc has anchor() or anchor-size(), for layout (layout/anchor.odin); no calc: as if auto (style/anchor.odin)
 }
 
 Length :: struct {
@@ -33,7 +34,7 @@ resolve :: proc(l: Length, base: f32, fallback: f32 = 0) -> f32 {
 	case .Px: return l.v
 	case .Percent: return base * l.v / 100
 	case .Calc: return f32(css.eval_calc(l.calc, css.Length_Context{percent_base = f64(base)}))
-	case .Auto, .None, .Normal, .Min_Content, .Max_Content, .Fit_Content: return fallback
+	case .Auto, .None, .Normal, .Min_Content, .Max_Content, .Fit_Content, .Anchor: return fallback
 	}
 	return fallback
 }
@@ -88,7 +89,8 @@ Object_Fit :: enum u8 { Fill, Contain, Cover, None, Scale_Down }
 Repeat :: enum u8 { Repeat, No_Repeat, Repeat_X, Repeat_Y, Space, Round }
 Flex_Direction :: enum u8 { Row, Row_Reverse, Column, Column_Reverse }
 Flex_Wrap :: enum u8 { Nowrap, Wrap, Wrap_Reverse }
-Content_Align :: enum u8 { Normal, Auto, Start, End, Flex_Start, Flex_End, Center, Stretch, Space_Between, Space_Around, Space_Evenly, Baseline }
+// Anchor_Center (self-alignment only): an absolutely positioned box centered on its anchor (style/anchor.odin); elsewhere as Center.
+Content_Align :: enum u8 { Normal, Auto, Start, End, Flex_Start, Flex_End, Center, Stretch, Space_Between, Space_Around, Space_Evenly, Baseline, Anchor_Center }
 Vertical_Align_Kind :: enum u8 { Baseline, Sub, Super, Top, Text_Top, Middle, Bottom, Text_Bottom, Length }
 
 Vertical_Align :: struct { kind: Vertical_Align_Kind, amount: Length }   // Length: px or percent of line-height
@@ -327,6 +329,14 @@ Computed :: struct {
 	mask_clips:        []Mask_Box,
 	mask_composites:   []Mask_Composite,
 	text_fill_color:   Auto_Color,          // auto = currentcolor
+	// --- anchor positioning (anchor.odin) ---
+	anchor_name:       []string,            // nil: none
+	anchor_scope:      Anchor_Scope,
+	position_anchor:   Position_Anchor,
+	position_area:     Position_Area,
+	position_try_fallbacks: []Try_Option,   // nil: none
+	position_try_order: Try_Order,
+	position_visibility: Position_Visibility,
 	// --- bookkeeping ---
 	containers: ^Container_Ctx, // the query containers this element's children see (nearest first)
 	anim_vars:  []Pre_Decl,     // an animated element: its declarations that use var(), copied (registered custom properties animate through them)
@@ -385,6 +395,7 @@ Prop :: enum u8 {
 	Mask_Image, Mask_Mode, Mask_Repeat, Mask_Position, Mask_Size, Mask_Origin, Mask_Clip, Mask_Composite, Text_Fill_Color,
 	Fill, Stroke, Stroke_Width, Stroke_Linecap, Stroke_Linejoin,
 	Wren_Shader,
+	Anchor_Name, Anchor_Scope, Position_Anchor, Position_Area, Position_Try_Fallbacks, Position_Try_Order, Position_Visibility,
 }
 
 // A set of properties. Wider than a bit_set can be (there are more than 128 longhands), hence the procedures in props.odin:
@@ -415,5 +426,5 @@ Short :: enum u8 {
 	Grid_Template, Grid, Grid_Row, Grid_Column, Grid_Area,
 	Container, Border_Block, Border_Inline, Border_Block_Width, Border_Block_Style, Border_Block_Color,
 	Border_Inline_Width, Border_Inline_Style, Border_Inline_Color,
-	Mask,
+	Mask, Position_Try,
 }

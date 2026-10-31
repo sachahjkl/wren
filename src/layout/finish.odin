@@ -82,7 +82,15 @@ compute_overflow :: proc(l: ^Layout, order: []i32, in_fixed: []bool, vp: Vec2) -
 			hm = true
 		}
 		inner[x], has[x] = m, hm
-		add(l, b.clip_owner, hm ? mat_bounds(m, border_rect(b)) : border_rect(b), in_fixed[x], &doc)
+		r := border_rect(b)
+		// the end margins of the in-flow children of a scroll container are scrollable too (CSS Overflow 3 §2.2). As specified:
+		// the used right margin of a block gives way when its width is over-constrained
+		if b.clip_owner == b.parent && b.clip_owner != NONE && .Scroll in l.boxes[b.clip_owner].flags && b.flags & {.Abs, .Float} == {} && b.kind != .Inline && b.cs != nil {
+			port := padding_rect(&l.boxes[b.clip_owner])
+			r.max.x += max(style.resolve(b.cs.margin[.Right], (port.max.x - port.min.x) / l.scale) * l.scale, 0)
+			r.max.y += max(b.margin[2], 0)
+		}
+		add(l, b.clip_owner, hm ? mat_bounds(m, r) : r, in_fixed[x], &doc)
 		if .Ifc in b.flags && b.lines[1] > b.lines[0] {
 			clips := .Clips in b.flags && .Propagated not_in b.flags
 			owner := clips ? x : b.clip_owner
@@ -139,6 +147,26 @@ relative_offset :: proc(c: ^Ctx, b: ^Box) -> Vec2 {
 	return off
 }
 
+// The final coordinates of box `x`; those of the box it is positioned against are known.
+@(private)
+place_box :: #force_inline proc(c: ^Ctx, x: i32) {
+	l := c.l
+	b := &l.boxes[x]
+	if .Relative in b.flags { b.rel = relative_offset(c, b) } else { b.rel = {} }
+	if b.pos_ref == NONE { b.abs = b.pos; return }
+	ref := &l.boxes[b.pos_ref]
+	if b.kind == .Inline {
+		// inline boxes: `abs` is the origin of their fragments (their IFC root, moved by relative offsets)
+		b.abs = ref.abs + b.rel
+		if p := b.parent; p != NONE && l.boxes[p].kind == .Inline { b.abs += l.boxes[p].abs - ref.abs }
+		return
+	}
+	b.abs = ref.abs + b.pos + b.rel
+	if .Abs not_in b.flags {
+		if p := b.parent; p != NONE && l.boxes[p].kind == .Inline { b.abs += l.boxes[p].abs - l.boxes[l.boxes[p].ifc_root].abs }
+	}
+}
+
 @(private)
 finish :: proc(c: ^Ctx) {
 	l := c.l
@@ -152,22 +180,7 @@ finish :: proc(c: ^Ctx) {
 	}
 
 	// coordinates
-	for x in order {
-		b := &l.boxes[x]
-		if .Relative in b.flags { b.rel = relative_offset(c, b) } else { b.rel = {} }
-		if b.pos_ref == NONE { b.abs = b.pos; continue }
-		ref := &l.boxes[b.pos_ref]
-		if b.kind == .Inline {
-			// inline boxes: `abs` is the origin of their fragments (their IFC root, moved by relative offsets)
-			b.abs = ref.abs + b.rel
-			if p := b.parent; p != NONE && l.boxes[p].kind == .Inline { b.abs += l.boxes[p].abs - ref.abs }
-			continue
-		}
-		b.abs = ref.abs + b.pos + b.rel
-		if .Abs not_in b.flags {
-			if p := b.parent; p != NONE && l.boxes[p].kind == .Inline { b.abs += l.boxes[p].abs - l.boxes[l.boxes[p].ifc_root].abs }
-		}
-	}
+	for x in order { place_box(c, x) }
 
 	// clip owners, scrollable overflow, document extent
 	for x in order {
@@ -189,6 +202,7 @@ finish :: proc(c: ^Ctx) {
 	append(&l.spaces, Space{kind = .Fixed, parent = NONE, box = 0, frame = NONE, clip = NONE, xform = NONE, plane = NONE, persp_from = NONE, ctx = NONE, dest = NONE})
 	nan := math.nan_f32()
 	isolate := isolated_contexts(l)
+	anchored := anchored_by_box(l)
 	for x in order {
 		b := &l.boxes[x]
 		if .Root in b.flags {
@@ -202,6 +216,7 @@ finish :: proc(c: ^Ctx) {
 		} else {
 			b.space, b.clip = pb.content_space, pb.content_clip
 		}
+		if anchored != nil { anchored_space(l, x, anchored) }
 		tp := &l.boxes[b.parent]
 		b.group = tp.group
 		fx := isolate[x] ? Group_Effects{.Isolate} : {}

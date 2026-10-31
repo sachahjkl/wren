@@ -22,7 +22,7 @@ Cx :: struct {
 	explicit: Prop_Set,             // color-valued properties that were given a concrete color
 }
 
-Len_Flag :: enum u8 { Auto, None, Normal, Percent, Negative, Intrinsic }
+Len_Flag :: enum u8 { Auto, None, Normal, Percent, Negative, Intrinsic, Anchor, Anchor_Size }   // Anchor: anchor() and anchor-size(); Anchor_Size: the latter
 Len_Flags :: bit_set[Len_Flag; u8]
 
 ////////////////////////////////
@@ -120,8 +120,9 @@ parse_length :: proc(cx: ^Cx, input: []css.Value, flags: Len_Flags) -> (Length, 
 			}
 		}
 	case .Function:
-		tree := css.parse_calc(v, cx.alloc)
+		tree := css.parse_calc_anchored(v, cx.alloc)
 		if tree == nil { return {}, false }
+		if css.calc_has_anchor(tree) { return anchor_length(cx, tree, flags) }
 		#partial switch css.calc_type(tree) {
 		case .Length, .Length_Percent:
 		case .Percent: if .Percent not_in flags { return {}, false }
@@ -213,6 +214,7 @@ initial_computed :: proc(s: ^Settings) -> Computed {
 	c.stroke_linejoin = .Miter
 	c.scrollbar_color = Scrollbar_Colors{auto = true}
 	c.column_width = auto_length
+	c.position_visibility = {.Anchor_Visible}
 	c.transform_box = .View_Box
 	// the list-valued properties keep their initial value as a one-element list, so that a missing list is never an
 	// ambiguous "empty": these are shared, read-only, process-wide constants
@@ -615,7 +617,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		return set_enum(vs, &c.float)
 	case .Clear: return set_enum(vs, &c.clear)
 	case .Top, .Right, .Bottom, .Left:
-		l, ok := parse_length(cx, vs, {.Auto, .Percent, .Negative})
+		l, ok := parse_length(cx, vs, {.Auto, .Percent, .Negative, .Anchor})
 		if !ok { return false }
 		c.inset[Side(int(p) - int(Prop.Top))] = l
 	case .Z_Index:
@@ -625,7 +627,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		c.z_auto, c.z_index = false, i32(clamp(n, -CSS_INT_CLAMP, CSS_INT_CLAMP))
 	case .Box_Sizing: return set_enum(vs, &c.box_sizing)
 	case .Width, .Height, .Min_Width, .Min_Height, .Max_Width, .Max_Height:
-		flags := Len_Flags{.Percent, .Intrinsic}
+		flags := Len_Flags{.Percent, .Intrinsic, .Anchor_Size}
 		#partial switch p {
 		case .Width, .Height: flags += {.Auto}
 		case .Min_Width, .Min_Height: flags += {.Auto}
@@ -642,7 +644,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		case .Max_Height: c.max_height = l
 		}
 	case .Margin_Top, .Margin_Right, .Margin_Bottom, .Margin_Left:
-		l, ok := parse_length(cx, vs, {.Auto, .Percent, .Negative})
+		l, ok := parse_length(cx, vs, {.Auto, .Percent, .Negative, .Anchor_Size})
 		if !ok { return false }
 		c.margin[Side(int(p) - int(Prop.Margin_Top))] = l
 	case .Padding_Top, .Padding_Right, .Padding_Bottom, .Padding_Left:
@@ -756,6 +758,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 			case "left", "self-start", "start": a = .Start
 			case "right", "self-end", "end": a = .End
 			case "safe", "unsafe": return false
+			case "anchor-center": if p != .Align_Self { return false }; a = .Anchor_Center
 			case: if !set_enum(vs, &a) { return false }
 			}
 		} else {
@@ -905,6 +908,8 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		return apply_mask_prop(cx, p, vs)
 	case .Wren_Shader:
 		return apply_shader_prop(cx, p, vs)
+	case .Anchor_Name, .Anchor_Scope, .Position_Anchor, .Position_Area, .Position_Try_Fallbacks, .Position_Try_Order, .Position_Visibility:
+		return apply_anchor_prop(cx, p, vs)
 	}
 	return true
 }

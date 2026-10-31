@@ -1,6 +1,7 @@
 package layout
 
 import "core:math"
+import "wb:style"
 
 // The steps of a walk up the positioning chain: a bound against a chain that does not end.
 OFFSET_WALK_MAX_STEPS :: 1 << 20
@@ -25,8 +26,21 @@ offset_between :: proc(c: ^Ctx, from, to: i32) -> (Vec2, bool) {
 
 layout_abs_list :: proc(c: ^Ctx, cbi: i32) {
 	cb := &c.l.boxes[cbi]
-	ref := cbi
-	cbr: Rect
+	ref, cbr := abs_containing_rect(c, cbi)
+	for a := cb.abs_first; a != NONE; a = c.l.boxes[a].abs_next {
+		// a box that uses anchors waits for them: laid out after the rest of the document (anchor.odin)
+		if style.anchored_style(c.l.boxes[a].cs) { c.l.anchor_uses = true; continue }
+		cbr2 := cbr
+		if .Fixed in c.l.boxes[a].flags { cbr2 = Rect{{0, 0}, c.vp} }
+		layout_abs(c, a, ref, cbr2)
+	}
+}
+
+// The padding box of containing block `cbi`, and the box its coordinates are relative to.
+@(private)
+abs_containing_rect :: proc(c: ^Ctx, cbi: i32) -> (ref: i32, cbr: Rect) {
+	cb := &c.l.boxes[cbi]
+	ref = cbi
 	switch {
 	case .Root in cb.flags:
 		cbr = Rect{{0, 0}, c.vp}
@@ -36,11 +50,7 @@ layout_abs_list :: proc(c: ^Ctx, cbi: i32) {
 	case:
 		cbr = Rect{{cb.border[3], cb.border[0]}, cb.size - {cb.border[1], cb.border[2]}}
 	}
-	for a := cb.abs_first; a != NONE; a = c.l.boxes[a].abs_next {
-		cbr2 := cbr
-		if .Fixed in c.l.boxes[a].flags { cbr2 = Rect{{0, 0}, c.vp} }
-		layout_abs(c, a, ref, cbr2)
-	}
+	return
 }
 
 @(private)

@@ -39,7 +39,7 @@ gateable :: proc(r: ^css.Rule) -> bool {
 		for n in r.rules { if !gateable(n) { return false } }
 		return true
 	case .Namespace, .Page, .Unknown: return true
-	case .Layer_Block, .Layer_Statement, .Font_Face, .Keyframes, .Property, .Import: return false
+	case .Layer_Block, .Layer_Statement, .Font_Face, .Keyframes, .Property, .Position_Try, .Import: return false
 	}
 	return false
 }

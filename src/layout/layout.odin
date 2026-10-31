@@ -67,6 +67,7 @@ run_full :: proc(l: ^Layout, input: Input) {
 	clear(&l.font_lookup)
 	clear(&l.node_box)
 	inc_reset(l)
+	anchor_reset(l)
 	note_inputs(l, input)
 	l.last_pass = .Full
 	l.passes[.Full] += 1
@@ -108,6 +109,7 @@ layout_root :: proc(c: ^Ctx) {
 	root.size = c.vp
 	layout_contents(c, 0, c.vp.x, c.vp.y, -1, nil)
 	l.boxes[0].size = c.vp
+	if l.anchor_uses { anchored_pass(c) }
 }
 
 @(private)
@@ -146,6 +148,8 @@ reset :: proc(l: ^Layout, keep_scroll := false) {
 	if !keep_scroll { clear(&l.scroll) }
 	clear(&l.deco_items)
 	inc_reset(l)
+	anchor_reset(l)
+	clear(&l.anchor_last)
 	pre_destroy(l)
 	dl_walks_destroy(&l.dl_walks)
 	l.tree_gen += 1
@@ -162,6 +166,9 @@ destroy :: proc(l: ^Layout) {
 	delete(l.scroll)
 	delete(l.scratch)
 	delete(l.deco_items)
+	delete(l.anchored)
+	delete(l.anchor_grid_areas)
+	delete(l.anchor_last)
 	inc_destroy(l)
 	pre_destroy(l)
 	dl_walks_destroy(&l.dl_walks)

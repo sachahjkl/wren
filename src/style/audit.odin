@@ -69,7 +69,7 @@ audit_rule :: proc(e: ^Engine, cx: ^Cx, r: ^css.Rule, out: ^[dynamic]Audit_Entry
 		if len(r.supports) > 0 && !supports_condition(e, r.supports) {
 			append(out, Audit_Entry{.Supports_False, strings.concatenate({"@import supports(", css.serialize_values(r.supports, context.temp_allocator), ")"}, allocator)})
 		}
-	case .Font_Face, .Layer_Statement, .Namespace, .Page, .Property, .Unknown:
+	case .Font_Face, .Layer_Statement, .Namespace, .Page, .Property, .Position_Try, .Unknown:
 	}
 }
 

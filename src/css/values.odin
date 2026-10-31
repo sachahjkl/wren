@@ -398,6 +398,21 @@ Calc_Op :: enum u8 {
 	Number, Dimension, Add, Sub, Mul, Div, Min, Max, Clamp, Abs, Neg,
 	// CSS Values 4 math functions
 	Round, Mod, Rem, Sign, Pow, Sqrt, Hypot, Log, Exp, Sin, Cos, Tan, Asin, Acos, Atan, Atan2,
+	// CSS Anchor Positioning: anchor() and anchor-size(), known once the anchor is laid out. `anchor` says what they ask,
+	// `a` is the fallback (nil: none), `b` a percentage <anchor-side> (anchor(25%))
+	Anchor, Anchor_Size,
+}
+
+// <anchor-side> of anchor() and <anchor-size> of anchor-size(). Percent: the percentage is in Calc.b. None: anchor-size()
+// with no size named (the axis of the property it is in).
+Anchor_Keyword :: enum u8 {
+	None, Inside, Outside, Left, Right, Top, Bottom, Start, End, Self_Start, Self_End, Center, Percent,
+	Width, Height, Block, Inline, Self_Block, Self_Inline,
+}
+
+Anchor_Ref :: struct {
+	name: string,            // <dashed-ident>; "": the default anchor
+	side: Anchor_Keyword,
 }
 
 Round_Strategy :: enum u8 { Nearest, Up, Down, To_Zero }
@@ -411,6 +426,7 @@ Calc :: struct {
 	unit: Unit,
 	strategy: Round_Strategy,
 	a, b, c: ^Calc,
+	anchor: ^Anchor_Ref,     // Anchor, Anchor_Size
 }
 
 // The CSS name and arguments of a math function node (serialisation).
@@ -474,10 +490,126 @@ is_math_function :: proc(name: string) -> bool {
 
 // Parses calc() and the math functions: min(), max(), clamp(), abs(), sign(), round(), mod(), rem(), pow(), sqrt(),
 // hypot(), log(), exp(), sin(), cos(), tan(), asin(), acos(), atan(), atan2() (and parenthesised sums inside them).
+// anchor() and anchor-size() are refused here: only the properties that take them read them (parse_calc_anchored).
 parse_calc :: proc(f: Value, alloc: Arena_Alloc) -> ^Calc {
+	n := parse_calc_anchored(f, alloc)
+	if n != nil && calc_has_anchor(n) { return nil }
+	return n
+}
+
+// parse_calc, also of anchor(), anchor-size() and math functions that hold them.
+parse_calc_anchored :: proc(f: Value, alloc: Arena_Alloc) -> ^Calc {
 	n := parse_calc_tree(f, alloc)
 	if n != nil && !calc_depth_ok(n) { return nil }
 	return n
+}
+
+// Some node of the tree is anchor() or anchor-size().
+calc_has_anchor :: proc(n: ^Calc) -> bool {
+	if n == nil { return false }
+	if n.op == .Anchor || n.op == .Anchor_Size { return true }
+	return calc_has_anchor(n.a) || calc_has_anchor(n.b) || calc_has_anchor(n.c)
+}
+
+// Some node of the tree is anchor() (anchor-size() is the rest of what calc_has_anchor finds).
+calc_has_anchor_position :: proc(n: ^Calc) -> bool {
+	if n == nil { return false }
+	if n.op == .Anchor { return true }
+	return calc_has_anchor_position(n.a) || calc_has_anchor_position(n.b) || calc_has_anchor_position(n.c)
+}
+
+// anchor( <anchor-name>? && <anchor-side> , <length-percentage>? ) and
+// anchor-size( [ <anchor-name> || <anchor-size> ]? , <length-percentage>? ).
+@(private)
+parse_anchor_function :: proc(f: Value, alloc: Arena_Alloc, size_fn: bool) -> ^Calc {
+	parts := split_commas(f.children, context.temp_allocator)
+	if len(parts) == 0 { return size_fn ? calc_anchor_node(alloc, .Anchor_Size, "", .None) : nil }
+	if len(parts) > 2 { return nil }
+	name := ""
+	key := Anchor_Keyword.None
+	pct: ^Calc
+	for v in parts[0] {
+		if is_ws_value(v) { continue }
+		if v.kind == .Token && v.tok.kind == .Ident {
+			if strings.has_prefix(v.tok.text, "--") {
+				if name != "" { return nil }
+				name = strings.clone(v.tok.text, alloc)
+				continue
+			}
+			k, ok := anchor_keyword(lower_temp(v.tok.text), size_fn)
+			if !ok || key != .None { return nil }
+			key = k
+			continue
+		}
+		// a percentage, or a math function of percentages
+		if size_fn || key != .None { return nil }
+		#partial switch v.kind {
+		case .Token:
+			if v.tok.kind != .Percentage { return nil }
+			pct = new(Calc, alloc)
+			pct.op, pct.num, pct.unit = .Dimension, v.tok.num, .Percent
+		case .Function:
+			pct = parse_calc_tree(v, alloc)
+			if pct == nil || calc_type(pct) != .Percent { return nil }
+		case: return nil
+		}
+		key = .Percent
+	}
+	if !size_fn && key == .None { return nil }
+	if len(parts) == 2 && len(trim_values(parts[0])) == 0 { return nil }   // anchor-size(, 1px)
+	n := calc_anchor_node(alloc, size_fn ? .Anchor_Size : .Anchor, name, key)
+	n.b = pct
+	if len(parts) == 2 {
+		n.a = calc_sum(trim_values(parts[1]), alloc, 0)
+		if n.a == nil { return nil }
+		#partial switch calc_type(n.a) {
+		case .Length, .Percent, .Length_Percent:
+		case .Number:
+			// a unitless zero is a length here
+			if n.a.op != .Number || n.a.num != 0 { return nil }
+			n.a.op, n.a.unit = .Dimension, .Px
+		case: return nil
+		}
+	}
+	return n
+}
+
+@(private)
+calc_anchor_node :: proc(alloc: Arena_Alloc, op: Calc_Op, name: string, key: Anchor_Keyword) -> ^Calc {
+	n := new(Calc, alloc)
+	n.op = op
+	n.anchor = new(Anchor_Ref, alloc)
+	n.anchor^ = Anchor_Ref{name = name, side = key}
+	return n
+}
+
+@(private)
+anchor_keyword :: proc(id: string, size_fn: bool) -> (Anchor_Keyword, bool) {
+	if size_fn {
+		switch id {
+		case "width": return .Width, true
+		case "height": return .Height, true
+		case "block": return .Block, true
+		case "inline": return .Inline, true
+		case "self-block": return .Self_Block, true
+		case "self-inline": return .Self_Inline, true
+		}
+		return .None, false
+	}
+	switch id {
+	case "inside": return .Inside, true
+	case "outside": return .Outside, true
+	case "left": return .Left, true
+	case "right": return .Right, true
+	case "top": return .Top, true
+	case "bottom": return .Bottom, true
+	case "start": return .Start, true
+	case "end": return .End, true
+	case "self-start": return .Self_Start, true
+	case "self-end": return .Self_End, true
+	case "center": return .Center, true
+	}
+	return .None, false
 }
 
 @(private)
@@ -496,6 +628,8 @@ parse_calc_tree :: proc(f: Value, alloc: Arena_Alloc) -> ^Calc {
 	}
 	switch name {
 	case "calc", "-webkit-calc", "-moz-calc": return calc_sum(trim_values(f.children), alloc, 0)
+	case "anchor": return parse_anchor_function(f, alloc, false)
+	case "anchor-size": return parse_anchor_function(f, alloc, true)
 	case "min", "max", "hypot":
 		xs, ok := args(f, alloc, 1, 64)
 		if !ok { return nil }
@@ -699,6 +833,7 @@ eval_calc_node :: proc(n: ^Calc, c: Length_Context) -> f64 {
 	switch n.op {
 	case .Number: return n.num
 	case .Dimension: return resolve_unit(n.num, n.unit, c)
+	case .Anchor, .Anchor_Size: return eval_calc(n.a, c)   // what layout did not replace (layout/anchor.odin): the fallback
 	case .Add: return eval_calc(n.a, c) + eval_calc(n.b, c)
 	case .Sub: return eval_calc(n.a, c) - eval_calc(n.b, c)
 	case .Mul: return eval_calc(n.a, c) * eval_calc(n.b, c)
@@ -786,6 +921,7 @@ calc_type :: proc(n: ^Calc) -> Calc_Type {
 	}
 	switch n.op {
 	case .Number: return .Number
+	case .Anchor, .Anchor_Size: return .Length
 	case .Dimension:
 		#partial switch n.unit {
 		case .Percent: return .Percent

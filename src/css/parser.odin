@@ -25,7 +25,7 @@ Declaration :: struct {
 	raw:       string,    // @font-face descriptors only: the value as written (unicode-range needs the token representation)
 }
 
-Rule_Kind :: enum u8 { Style, Media, Supports, Import, Font_Face, Keyframes, Layer_Block, Layer_Statement, Namespace, Page, Container, Property, Unknown }
+Rule_Kind :: enum u8 { Style, Media, Supports, Import, Font_Face, Keyframes, Layer_Block, Layer_Statement, Namespace, Page, Container, Property, Position_Try, Unknown }
 
 Rule :: struct {
 	kind:         Rule_Kind,
@@ -615,6 +615,12 @@ build_at_rule :: proc(p: ^Parser, name: string, prelude: []Value, blk: Value, pa
 		if !has_block || len(prelude) != 1 || prelude[0].kind != .Token || prelude[0].tok.kind != .Ident || !strings.has_prefix(prelude[0].tok.text, "--") { return nil }
 		r.kind = .Property
 		r.name = prelude[0].tok.text
+		r.declarations, _ = parse_block_contents(p, blk.children, r)
+	case "position-try":
+		// @position-try --name { insets, margins, sizes, self-alignment... }: the style system keeps the descriptors it allows
+		if !has_block || len(prelude) != 1 || prelude[0].kind != .Token || prelude[0].tok.kind != .Ident || !strings.has_prefix(prelude[0].tok.text, "--") { return nil }
+		r.kind = .Position_Try
+		r.name = strings.clone(prelude[0].tok.text, p.a)
 		r.declarations, _ = parse_block_contents(p, blk.children, r)
 	case "page":
 		if !has_block { return nil }

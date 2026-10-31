@@ -99,11 +99,11 @@ length_of :: proc(cx: ^Cx, v: css.Value, flags: Len_Flags) -> (Length, bool) {
 
 // A Length as a calc() leaf or tree (allocated in `a`).
 length_to_calc :: proc(l: Length, a := context.allocator) -> ^css.Calc {
-	if l.kind == .Calc && l.calc != nil { return l.calc }
+	if (l.kind == .Calc || l.kind == .Anchor) && l.calc != nil { return l.calc }
 	n := new(css.Calc, a)
 	switch l.kind {
 	case .Percent: n^ = css.Calc{op = .Dimension, num = f64(l.v), unit = .Percent}
-	case .Px, .Calc, .Auto, .None, .Normal, .Min_Content, .Max_Content, .Fit_Content: n^ = css.Calc{op = .Dimension, num = f64(l.v), unit = .Px}
+	case .Px, .Calc, .Auto, .None, .Normal, .Min_Content, .Max_Content, .Fit_Content, .Anchor: n^ = css.Calc{op = .Dimension, num = f64(l.v), unit = .Px}
 	}
 	return n
 }
@@ -940,7 +940,7 @@ parse_align :: proc(vs: []css.Value) -> (Content_Align, bool) {
 		case "legacy": return .Normal, true   // justify-items: legacy is `normal` outside the legacy block layout
 		case "left", "self-start", "start": return .Start, true
 		case "right", "self-end", "end": return .End, true
-		case "anchor-center": return .Center, true
+		case "anchor-center": return .Anchor_Center, true
 		}
 		if set_enum(vs, &a) { return a, true }
 		return {}, false

@@ -89,6 +89,7 @@ Document :: struct {
 	listener_changes: u64,         // bumped when a listener is added or removed (what a click acts on: accessibility)
 	mutations:  u64,               // monotonic: renderers compare it to know when to re-layout
 	journal:    Journal,           // what the mutations were, when some reader asked (journal.odin)
+	implicit_anchors: map[base.Handle]base.Handle,   // showing popover -> its invoker: its implicit anchor (CSS Anchor Positioning; page/popover.odin)
 	scope:      ^base.Scope,
 	cleanup:    base.Cleanup_Id,
 	mode:       Document_Mode,     // set by the HTML parser from the doctype (HTML §13.2.6.4.1)
@@ -190,6 +191,7 @@ free_document :: proc(d: ^Document) {
 	for _, n in base.pool_next(&d.nodes, &it) { free_node_data(n) }
 	base.pool_destroy(&d.nodes)
 	journal_free(d)
+	delete(d.implicit_anchors)
 	hooks_free(d)
 	ids_destroy(d)
 	for _, x in d.ns_extra { delete(x.uri); delete(x.prefix) }

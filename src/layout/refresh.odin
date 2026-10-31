@@ -17,7 +17,7 @@ import "wb:style"
 
 @(private)
 can_refresh :: proc(l: ^Layout, input: Input) -> bool {
-	if !l.valid || l.last_pass == .None || !input.settings.paint_refresh { return false }
+	if !l.valid || l.last_pass == .None || !input.settings.paint_refresh || l.anchor_stale { return false }
 	st := input.styled
 	return l.styled == rawptr(st) && l.layout_serial == st.layout_serial && l.canvas == st.canvas &&
 		l.mutations == input.doc.mutations && l.viewport == input.viewport && l.scale == input.scale &&

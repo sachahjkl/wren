@@ -72,6 +72,7 @@ page_prepare :: proc(app: ^App, t: ^Tab, size: draw.Vec2) {
 	adopt_web_fonts(t)
 	images_before_layout(t)
 	fonts_gen := u64(t.web_fonts)
+	layout_note_doc_scroll(&t.layout, t.scroll)
 	if layout_stale(&t.layout, t.page.doc, styled, size, scale, t.image_sizes, fonts_gen) {
 		prof_begin(.Layout)
 		failures := t.layout.inc.verify_failures

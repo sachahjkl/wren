@@ -101,6 +101,7 @@ add_compiled :: proc(p: ^Page, block: ^[dynamic]Style_Decl, name, value_in: stri
 			continue
 		}
 		v := css_text_of(pd.value)
+		if t := style.canonical_declared(pd.prop, pd.value); t != "" { v = t }
 		block_set(block, Style_Decl{name = style.prop_name(pd.prop), value = v, important = important})
 		if styled != nil { style.inline_declaration_register(p.engine, styled, style.prop_name(pd.prop), v, pre[i:i + 1], nil) }
 	}
@@ -196,8 +197,21 @@ inline_block :: proc(c: ^Call, element: Api_Element) -> [dynamic]Style_Decl {
 block_value :: proc(block: []Style_Decl, name: string) -> (value: string, important: bool) {
 	for d in block { if d.name == name { return d.value, d.important } }
 	if strings.has_prefix(name, "--") { return "", false }
-	_, sh, known := style.lookup_property(strings.to_lower(name, context.temp_allocator))
-	if !known || sh == .None { return "", false }
+	lp0, sh, known := style.lookup_property(strings.to_lower(name, context.temp_allocator))
+	if !known { return "", false }
+	if sh == .None {
+		// another name of a longhand (block-size: height)
+		canon := style.prop_name(lp0)
+		if canon == name { return "", false }
+		for d in block { if d.name == canon { return d.value, d.important } }
+		return "", false
+	}
+	if sh == .Position_Try {
+		order, im := block_value(block, "position-try-order")
+		fb, im2 := block_value(block, "position-try-fallbacks")
+		if order == "" || fb == "" || im != im2 { return "", false }
+		return order == "normal" ? fb : strings.concatenate({order, " ", fb}, context.temp_allocator), im
+	}
 	longs := style.short_longhands(sh)
 	vals := make([dynamic]string, 0, len(longs), context.temp_allocator)
 	imp := false
@@ -401,7 +415,7 @@ InlineStyle_item :: proc(c: ^Call, element: Api_Element, index: u32) -> string {
 // The properties getComputedStyle lists, in alphabetical order as browsers do.
 @(private)
 COMPUTED_PROPERTIES :: [?]string{
-	"align-content", "align-items", "align-self", "aspect-ratio", "background-attachment", "background-clip", "background-color",
+	"align-content", "align-items", "align-self", "anchor-name", "anchor-scope", "aspect-ratio", "background-attachment", "background-clip", "background-color",
 	"background-image", "background-origin", "background-position", "background-repeat", "background-size",
 	"border-bottom-color", "border-bottom-left-radius", "border-bottom-right-radius", "border-bottom-style", "border-bottom-width",
 	"border-collapse", "border-left-color", "border-left-style", "border-left-width", "border-right-color", "border-right-style",
@@ -412,7 +426,8 @@ COMPUTED_PROPERTIES :: [?]string{
 	"letter-spacing", "line-height", "list-style-position", "list-style-type", "margin-bottom", "margin-left", "margin-right",
 	"margin-top", "max-height", "max-width", "min-height", "min-width", "object-fit", "opacity", "order", "outline-color",
 	"outline-offset", "outline-style", "outline-width", "overflow-wrap", "overflow-x", "overflow-y", "padding-bottom",
-	"padding-left", "padding-right", "padding-top", "pointer-events", "position", "right", "row-gap", "table-layout", "text-align",
+	"padding-left", "padding-right", "padding-top", "pointer-events", "position", "position-anchor", "position-area", "position-try-fallbacks",
+	"position-try-order", "position-visibility", "right", "row-gap", "table-layout", "text-align",
 	"text-decoration-color", "text-decoration-line", "text-decoration-style", "text-indent", "text-overflow", "text-shadow",
 	"text-transform", "top", "transform", "transform-origin", "user-select", "vertical-align", "visibility",
 	"white-space", "width", "word-break", "word-spacing", "z-index",
@@ -479,6 +494,7 @@ css_length :: proc(l: style.Length) -> string {
 	case .Min_Content: return "min-content"
 	case .Max_Content: return "max-content"
 	case .Fit_Content: return "fit-content"
+	case .Anchor: return "auto"   // no box to ask (a used value otherwise: Used_Box.anchored)
 	}
 	return ""
 }
@@ -528,6 +544,9 @@ Used_Box :: struct {
 	ok:              bool,
 	width, height:   f32,       // content box, CSS px
 	margin, padding: [4]f32,    // top right bottom left
+	anchored:        bool,      // an anchored box (lay.anchored_used): its insets and size bounds are used values
+	inset:           [4]f32,    // top right bottom left, CSS px
+	bounds:          [4]style.Length,   // min-width, min-height, max-width, max-height
 }
 
 // The resolved value of property `name` for computed style `cs` (CSSOM §9 "resolved value"), "" when not known.
@@ -552,14 +571,18 @@ computed_value :: proc(cs: ^style.Computed, name: string, used: Used_Box) -> str
 	case "overflow":
 		x, y := kw(cs.overflow_x), kw(cs.overflow_y)
 		return x == y ? x : strings.concatenate({x, " ", y}, context.temp_allocator)
-	case "top", "right", "bottom", "left": return css_length(cs.inset[style.Side(side(name))])
+	case "top", "right", "bottom", "left":
+		if used.anchored { return css_px(used.inset[side(name)]) }
+		return css_length(cs.inset[style.Side(side(name))])
 	case "z-index": return cs.z_auto ? "auto" : fmt.tprintf("%d", cs.z_index)
 	case "width": if used.ok && cs.display != .Inline { return css_px(used.width) }; return css_length(cs.width)
 	case "height": if used.ok && cs.display != .Inline { return css_px(used.height) }; return css_length(cs.height)
-	case "min-width": return cs.min_width.kind == .Auto ? "auto" : css_length(cs.min_width)
-	case "min-height": return cs.min_height.kind == .Auto ? "auto" : css_length(cs.min_height)
-	case "max-width": return css_length(cs.max_width)
-	case "max-height": return css_length(cs.max_height)
+	case "min-width", "min-height", "max-width", "max-height":
+		i := name == "min-width" ? 0 : name == "min-height" ? 1 : name == "max-width" ? 2 : 3
+		l := used.anchored ? used.bounds[i] : (i == 0 ? cs.min_width : i == 1 ? cs.min_height : i == 2 ? cs.max_width : cs.max_height)
+		return css_length(l)
+	case "anchor-name", "anchor-scope", "position-anchor", "position-area", "position-try", "position-try-fallbacks", "position-try-order", "position-visibility":
+		return style.anchor_prop_text(cs, name)
 	case "margin-top", "margin-right", "margin-bottom", "margin-left":
 		s := side(name)
 		if used.ok { return css_px(used.margin[s]) }
@@ -606,6 +629,8 @@ computed_value :: proc(cs: ^style.Computed, name: string, used: Used_Box) -> str
 	case "align-items": return css_align(cs.align_items)
 	case "align-self": return css_align(cs.align_self)
 	case "align-content": return css_align(cs.align_content)
+	case "justify-self": return css_align(cs.justify_self)
+	case "justify-items": return css_align(cs.justify_items)
 	case "order": return fmt.tprintf("%d", cs.order)
 	case "row-gap": return css_length(cs.row_gap)
 	case "column-gap": return css_length(cs.column_gap)
@@ -834,8 +859,12 @@ ComputedStyle_get :: proc(c: ^Call, element: Api_Element, pseudo: string, name: 
 	if cs == nil { return "" }
 	used: Used_Box
 	switch pseudo {
-	case "::before", ":before": cs = cs.before
-	case "::after", ":after": cs = cs.after
+	case "::before", ":before":
+		cs = cs.before
+		used = used_box_pseudo(p, h, false)
+	case "::after", ":after":
+		cs = cs.after
+		used = used_box_pseudo(p, h, true)
 	case "":
 		used = used_box(p, h)
 	}

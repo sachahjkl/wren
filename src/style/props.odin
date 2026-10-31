@@ -322,6 +322,13 @@ prop_fields :: proc(c: ^Computed, p: Prop) -> (a: any, b: any) {
 	case .Stroke_Linecap: return fa(&c.stroke_linecap), NO_FIELD
 	case .Stroke_Linejoin: return fa(&c.stroke_linejoin), NO_FIELD
 	case .Wren_Shader: return fa(&c.wren_shader), NO_FIELD
+	case .Anchor_Name: return fa(&c.anchor_name), NO_FIELD
+	case .Anchor_Scope: return fa(&c.anchor_scope), NO_FIELD
+	case .Position_Anchor: return fa(&c.position_anchor), NO_FIELD
+	case .Position_Area: return fa(&c.position_area), NO_FIELD
+	case .Position_Try_Fallbacks: return fa(&c.position_try_fallbacks), NO_FIELD
+	case .Position_Try_Order: return fa(&c.position_try_order), NO_FIELD
+	case .Position_Visibility: return fa(&c.position_visibility), NO_FIELD
 	}
 	return NO_FIELD, NO_FIELD
 }
