@@ -47,11 +47,28 @@
     <p class="intro">Eight versions in twelve days: the first public build, JavaScript, a JIT, a text engine of its own, a browser that speaks to screen readers, then a JavaScript engine written in Odin.</p>
     <div class="timeline">
 <!-- releases:begin -->
-      <article class="release latest" id="v0-6-22">
+      <article class="release latest" id="v0-6-23">
+        <div class="rail"><span class="dot"></span></div>
+        <div class="release-body">
+          <p class="release-date"><time datetime="2026-11-01">November 1, 2026</time></p>
+          <div class="release-title"><h3>0.6.23</h3><span class="badge">Latest</span></div>
+          <ul class="release-list">
+            <li><strong>Web Audio.</strong> <code>AudioContext</code>, <code>OfflineAudioContext</code>, the usual nodes, <code>decodeAudioData</code> and <code>ScriptProcessorNode</code>, on Windows and Linux, following the autoplay policy.</li>
+            <li><strong>vscode.dev works</strong>: its compile no longer runs into a time limit, large scripts compile about 3.6 times faster, a service worker's opaque answer reaches the page, and a <code>&lt;meta&gt;</code> policy no longer…</li>
+            <li><strong>reddit works</strong>: a form submitted while the page loads goes through, a hang that grew to 22 GB of memory is gone, and <code>getComputedStyle</code> answers for shorthands.</li>
+            <li><strong>tldraw's icons show</strong>: an SVG image's fragment now makes <code>:target</code> match.</li>
+            <li><strong>Regular expressions search faster</strong>: Octane's regexp from 127 to about 165.</li>
+            <li><strong>A same-origin frame gives <code>navigator</code>, <code>screen</code> and <code>crypto</code></strong>, which scripts often take from a frame they just made.</li>
+          </ul>
+          <p class="release-links"><a href="https://github.com/sachahjkl/wren/blob/master/docs/releases/v0.6.23.md">Release notes</a> ·
+            <a href="https://github.com/sachahjkl/wren/releases/tag/v0.6.23">Download</a></p>
+        </div>
+      </article>
+      <article class="release" id="v0-6-22">
         <div class="rail"><span class="dot"></span></div>
         <div class="release-body">
           <p class="release-date"><time datetime="2026-10-31">October 31, 2026</time></p>
-          <div class="release-title"><h3>0.6.22</h3><span class="badge">Latest</span></div>
+          <div class="release-title"><h3>0.6.22</h3></div>
           <ul class="release-list">
             <li><strong>A Linux package.</strong> <code>wren-0.6.22-linux-x64.tar.gz</code> for x86-64, an early preview: it needs glibc 2.39 or later (Ubuntu 24.04, Debian 13, Fedora 40).</li>
             <li><strong>WebAssembly threads and <code>SharedArrayBuffer</code></strong> under cross-origin isolation.</li>
