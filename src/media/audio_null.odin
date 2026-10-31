@@ -1,5 +1,6 @@
 package media
 
+import "core:os"
 import "core:sync"
 import "wb:base"
 
@@ -16,6 +17,11 @@ Null_Audio :: struct {
 	frac:     f64,      // the part of a frame the clock has gone through
 	started:  bool,
 	at:       i64,      // mono_ns of the last update
+}
+
+// WREN_AUDIO_OUTPUT=null: never the device, whatever the preference. Every test script sets it (tools\test_env.ps1): a test hears nothing.
+audio_output_silenced :: proc() -> bool {
+	return os.get_env("WREN_AUDIO_OUTPUT", context.temp_allocator) == "null"
 }
 
 null_audio_open :: proc(rate: int) -> ^Audio_Output {

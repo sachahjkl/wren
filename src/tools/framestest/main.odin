@@ -227,7 +227,7 @@ main :: proc() {
 <iframe id=b name=second srcdoc="<script>parent.postMessage('srcdoc ran ' + window.name + ' ' + (parent === top) + ' ' + (window.parent !== window) + ' ' + location.href + ' ' + origin, '*')</script>"></iframe>
 <script>
 const a = document.getElementById("a"), b = document.getElementById("b");
-log("blank " + (a.contentWindow !== null) + " " + (a.contentWindow === frames[0]) + " " + (frames.first === a.contentWindow) + " " + window.length + " " + (a.contentDocument === null));
+log("blank " + (a.contentWindow !== null) + " " + (a.contentWindow === frames[0]) + " " + (frames.first === a.contentWindow) + " " + window.length + " " + (a.contentDocument !== null));
 addEventListener("message", e => log("message " + e.data + " from " + e.origin + " " + (e.source === b.contentWindow) + " " + e.isTrusted));
 b.addEventListener("load", () => log("b load"));
 addEventListener("load", () => log("window load"));
@@ -240,7 +240,7 @@ c.remove();
 log("after removal " + c.contentWindow + " " + window.length);
 </script></body>`)
 		check(wait_for("window load"), "the parent's load event fires")
-		check(logged("blank true true true 2 true"), "an about:blank frame has a window at once: frames[0], window[name], length; contentDocument is null (another realm)")
+		check(logged("blank true true true 2 true"), "an about:blank frame has a window at once: frames[0], window[name], length; contentDocument is an inert document (another realm has the real one)")
 		check(logged("sync load on insertion true 3"), "an iframe without src fires load synchronously when inserted")
 		check(logged("after removal null 2"), "removal destroys the nested document at once")
 		check(wait_for(fill("message srcdoc ran second true true about:srcdoc %s from %s true true", testenv.url(SAME), testenv.url(SAME))), "srcdoc: parent, top, window.name from the name attribute, the parent's origin; message origin and source")
@@ -350,7 +350,7 @@ t("navigator", () => w.navigator);
 t("descriptor", () => Object.getOwnPropertyDescriptor(w, "history").value === w.history);
 log("same-origin " + r.join(" | "));
 </script></body>`)
-		check(wait_for("same-origin pushState:function true | replace:#viaframe 7 | push:#second 1 | brandless:TypeError | instanceof:true true | builtins:true true true true | console:true | fetch:function true | timer:number | in:true true false | document:SecurityError | location:SecurityError | page global:SecurityError | page lowercase:SecurityError | navigator:SecurityError | descriptor:true"), "history's methods, the built-ins and the interface objects of this realm; the frame's state stays out of reach")
+		check(wait_for("same-origin pushState:function true | replace:#viaframe 7 | push:#second 1 | brandless:TypeError | instanceof:true true | builtins:true true true true | console:true | fetch:function true | timer:number | in:true true false | document:[object Document] | location:SecurityError | page global:SecurityError | page lowercase:SecurityError | navigator:SecurityError | descriptor:true"), "history's methods, the built-ins and the interface objects of this realm; the frame's state stays out of reach")
 		page.page_close(p)
 	}
 

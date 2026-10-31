@@ -3,6 +3,7 @@
 # captured, then deleted. No test server; each capture (tools\screenshot.ps1) holds desktop.lock while its window lives.
 #   powershell -File tools\effects_shots.ps1 [-OutDir build\effects_shots] [-WaitMs 3000] [-Exe wren.exe]
 param([string]$OutDir = 'build\effects_shots', [int]$WaitMs = 3000)
+$env:WREN_AUDIO_OUTPUT = 'null'
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 $site = Join-Path $root 'examples\site'

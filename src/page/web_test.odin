@@ -2,6 +2,7 @@ package page
 
 import "core:strings"
 import "core:testing"
+import "core:time"
 import "wb:base"
 import "wb:dom"
 import "wb:host"
@@ -197,12 +198,21 @@ storage_quota_order_events_persistence :: proc(t: ^testing.T) {
 
 	// events: only for the other pages of the origin (b; c is another origin); sessionStorage only within the tab
 	before := storage_events_delivered
-	for _ in 0 ..< 3 { host.run_ready(&f.loop) }
+	// (the events arrive as tasks of the pages: a test running beside this one can hold them up for a moment)
+	pump_until :: proc(f: ^$F, before, want: u64) {
+		for _ in 0 ..< 2000 {
+			host.run_ready(&f.loop)
+			if storage_events_delivered - before >= want { break }
+			time.sleep(time.Millisecond)
+		}
+		for _ in 0 ..< 3 { host.run_ready(&f.loop) }
+	}
+	pump_until(&f, before, 4)
 	testing.expect_value(t, storage_events_delivered - before, 4)   // 4 local changes seen by b, none by c or a
 
 	testing.expect_value(t, storage_remove_item(a, .Local, "k2"), 0)
 	testing.expect_value(t, storage_remove_item(a, .Local, "nope"), 0)
-	for _ in 0 ..< 3 { host.run_ready(&f.loop) }
+	pump_until(&f, before, 5)
 	testing.expect_value(t, storage_events_delivered - before, 5)   // removing a missing key fires nothing
 
 	// persistence: a new manager on the same directory ("restart") sees localStorage, not sessionStorage

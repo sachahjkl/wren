@@ -14,6 +14,8 @@ jobs:
   release:
     runs-on: windows-2025
     timeout-minutes: 90
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     defaults:
       run:
         shell: pwsh
@@ -74,3 +76,23 @@ jobs:
           gh release create $tag "build/dist/wren-$v-windows-x64.exe" build/dist/SHA256SUMS.txt --title "Wren $v" --notes-file build/dist/NOTES.md --verify-tag
           if ($LASTEXITCODE -ne 0) { exit 1 }
 
+
+  # The Linux file, added to the release the job above published: a failure here leaves the Windows release standing.
+  linux:
+    needs: release
+    uses: ./.github/workflows/linux-package.yml
+    with:
+      version: ${{ needs.release.outputs.version }}
+
+  publish-linux:
+    needs: linux
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: wren-linux-x64
+          path: dist
+      - name: Add the Linux file to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.ref_name }}" dist/*.tar.gz dist/SHA256SUMS-linux.txt --repo "${{ github.repository }}"

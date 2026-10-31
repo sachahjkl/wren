@@ -35,7 +35,7 @@ backend_video_decoder :: proc(t: Track, prefer_gpu: bool) -> ^Video_Decoder {
 backend_audio_decoder :: proc(t: Track) -> ^Audio_Decoder { return rust_audio_create(t) }
 
 backend_audio_output :: proc(rate: int) -> ^Audio_Output {
-	if Audio_Backend(sync.atomic_load((^u8)(&audio_backend))) == .Cpal {
+	if Audio_Backend(sync.atomic_load((^u8)(&audio_backend))) == .Cpal && !audio_output_silenced() {
 		if o := cpal_audio_open(rate); o != nil { return o }
 	}
 	// No device, cpal failed to open, or the preference asks for silence: let audio go by at the pace of the clock.

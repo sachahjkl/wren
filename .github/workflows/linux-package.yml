@@ -1,0 +1,95 @@
+name: Linux package
+
+# The Linux release file (tools/package_linux.sh), built and started on a machine with nothing of Wren's on it. The release workflow calls
+# this; run it by hand (Actions, or gh workflow run linux-package.yml) to check a commit before tagging it. The engine's image (wren_js.wasm)
+# is portable and only the Windows toolchain builds it: the first job makes it for the second.
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: false
+
+jobs:
+  js-image:
+    runs-on: windows-2025
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: ./.github/actions/setup
+      - name: The JavaScript engine's image
+        run: |
+          ./tools/build_js.ps1
+          if ($LASTEXITCODE) { exit 1 }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wren-js-image
+          path: build/js/wren_js.wasm
+          if-no-files-found: error
+          retention-days: 3
+
+  package:
+    needs: js-image
+    # the oldest supported runner: the executable runs on a glibc at least as new as the one it was linked against
+    runs-on: ubuntu-22.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/download-artifact@v4
+        with:
+          name: wren-js-image
+          path: build/js
+
+      - name: Odin dev-2026-10, clang, NASM, the libraries
+        env:
+          ODIN_TAG: dev-2026-10
+          ODIN_SHA256: c3c8b095621fd0c75f7f73e3a0829f1b4d45324225f20ba11ed8dc4da310a8ab
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq clang lld nasm pkg-config libasound2-dev libopus-dev libfontconfig1-dev \
+            xvfb mesa-vulkan-drivers libxkbcommon-x11-0 libxkbcommon0 libwayland-client0
+          curl -fsSL -o "$RUNNER_TEMP/odin.tar.gz" "https://github.com/odin-lang/Odin/releases/download/$ODIN_TAG/odin-linux-amd64-$ODIN_TAG.tar.gz"
+          echo "$ODIN_SHA256  $RUNNER_TEMP/odin.tar.gz" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/odin" && tar -xzf "$RUNNER_TEMP/odin.tar.gz" -C "$RUNNER_TEMP/odin"
+          dirname "$(find "$RUNNER_TEMP/odin" -maxdepth 2 -name odin -type f | head -1)" >> "$GITHUB_PATH"
+
+      - name: Rust 1.99.1
+        run: |
+          rustup toolchain install 1.99.1 --profile minimal
+          rustup default 1.99.1
+
+      - name: Native libraries
+        run: |
+          tools/fetch_wasmtime.sh
+          tools/fetch_wgpu.sh
+          CC=clang tools/build_lexbor.sh
+
+      - name: Build (release)
+        run: ./build.sh release
+
+      - name: Package
+        run: tools/package_linux.sh ${{ inputs.version }}
+
+      - name: The packaged executable end to end (tools/linux_smoke.sh)
+        run: |
+          mkdir -p "$RUNNER_TEMP/unpacked"
+          tar -xzf build/dist/wren-*-linux-x64.tar.gz -C "$RUNNER_TEMP/unpacked"
+          ldd "$RUNNER_TEMP"/unpacked/*/wren | grep -v 'linux-vdso\|ld-linux'
+          xvfb-run -a tools/linux_smoke.sh "$RUNNER_TEMP"/unpacked/*/wren
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wren-linux-x64
+          path: |
+            build/dist/wren-*-linux-x64.tar.gz
+            build/dist/SHA256SUMS-linux.txt
+          if-no-files-found: error
+          retention-days: 30

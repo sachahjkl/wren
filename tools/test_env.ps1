@@ -197,7 +197,7 @@ function Ensure-WrenBuild([string]$Variant = 'dev') {
         try { [void]$mutex.WaitOne() } catch [Threading.AbandonedMutexException] { }
         if (Test-WrenBuildFresh $name) { return $true }
         Push-Location $root
-        try { $global:WrenBuildOutput = (cmd /c "build.bat $Variant 2>&1" | Out-String) } finally { Pop-Location }
+        try { $global:WrenBuildOutput = (cmd /c ".\build.bat $Variant 2>&1" | Out-String) } finally { Pop-Location }
         if ($LASTEXITCODE -ne 0) { return $false }
         return $true
     } finally { $mutex.ReleaseMutex(); $mutex.Dispose() }
@@ -268,6 +268,8 @@ function Show-WrenSections([string]$Title = '') {
 # No script that sources this file (tests, captures, measurements, the agents' runs) lets a Wren integrate itself with the machine's desktop:
 # Setup's offer at the start (setup.odin), the system watcher of the integration (desktop_shell.odin) and the update check (update_check.odin) read this variable. (--desktop-integration=... on the command line still works.)
 $env:WREN_DESKTOP_INTEGRATION = 'off'
+# ... and none makes a sound: the media player's audio goes by in silence at the pace of the clock (src/media/audio_null.odin), what it does on a machine with no device.
+$env:WREN_AUDIO_OUTPUT = 'null'
 # ... and none lets itself be taken for the user's Wren, or for another run's: a second start with the same profile hands its addresses to the first and ends
 # (src/browser/instance_shell.odin). WREN_SINGLE_INSTANCE=on, set by the one script that checks it (instance_e2e.ps1), turns it back on.
 $env:WREN_SINGLE_INSTANCE = 'off'

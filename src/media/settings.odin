@@ -82,7 +82,7 @@ MEDIA_PREFS := [?]config.Def{
 	{name = "media.software.threads", kind = .Int, default = {i = 0}, bounded = true, min = 0, max = 64, unit = "threads",
 		description = "Threads of one video decoded in software (the built-in AV1 decoder). 0: half the processors, at least one."},
 	{name = "media.audio.backend", kind = .String, default = {s = "auto"}, choices = {"auto", "null"},
-		description = "Where decoded audio is played where the system has no native output (Linux): auto uses the system's device through cpal (ALSA, which PipeWire and PulseAudio serve), falling back to silence when there is none; null plays silence at the pace of the clock. No effect on Windows (WASAPI)."},
+		description = "Where decoded audio is played: auto uses the system's device (WASAPI on Windows; cpal on Linux: ALSA, which PipeWire and PulseAudio serve), falling back to silence when there is none; null plays silence at the pace of the clock."},
 	{name = "media.h264.backend", kind = .String, default = {s = "auto"}, choices = {"auto", "vaapi", "openh264", "off"},
 		description = "Which H.264 decoder to use where the system has no native one (Linux): auto prefers the GPU (VA-API) and falls back to Cisco's openh264 binary; vaapi uses only the GPU; openh264 uses only the software binary; off refuses H.264. No effect on Windows (Media Foundation / DXVA)."},
 	{name = "media.h264.openh264_path", kind = .String, default = {s = ""},
