@@ -105,4 +105,38 @@ test("performance.timing and performance.navigation (legacy)", () => {
   eq(n.redirectCount, 0, "no redirect");
 });
 
+// What an async function hands over lives only in its frame until the promise has it, and the call of the promise's
+// resolve function is a safe point: a buffer this large makes a collection due right there, whatever the heap's size
+// (src\engine\jsrt\gc.odin: the threshold is at most the live size again, or 4 MiB, above the last collection).
+const COLLECTION_DUE_BYTES = 64 << 20;
+// enough small objects to reuse the cell of a value collected too early: its contents are then visibly wrong
+const CHURN_OBJECTS = 2000;
+
+test("a value an async function hands over survives a collection at that moment", async () => {
+  const pad = () => new ArrayBuffer(COLLECTION_DUE_BYTES);
+  const churn = () => { const a = []; for (let i = 0; i < CHURN_OBJECTS; i++) a.push({ i }, () => i, new ArrayBuffer(0)); return a; };
+  const made = tag => ({ tag, pad: pad() });
+  const error = () => { const e = new Error("thrown"); e.pad = pad(); return e; };
+
+  let v = await (async () => made("returned"))();
+  churn();
+  eq(v && v.tag, "returned", "async function: the returned value");
+  v = await (async () => { await 0; return made("returned"); })();
+  churn();
+  eq(v && v.tag, "returned", "async function: the value returned after an await");
+  try { await (async () => { throw error(); })(); ok(false, "async function: throws"); }
+  catch (e) { churn(); eq(e && e.message, "thrown", "async function: the thrown value"); }
+  try { await (async () => { await 0; throw error(); })(); ok(false, "async function: throws after an await"); }
+  catch (e) { churn(); eq(e && e.message, "thrown", "async function: the value thrown after an await"); }
+  v = await (async () => await made("awaited"))();
+  churn();
+  eq(v && v.tag, "awaited", "async function: an awaited new object");
+  for await (v of (async function* () { yield made("yielded"); })()) { churn(); eq(v && v.tag, "yielded", "async generator: the yielded value"); }
+  v = await (async function* () { return made("returned"); })().next();
+  churn();
+  eq(v && v.value && v.value.tag, "returned", "async generator: the returned value");
+  try { for await (v of (async function* () { throw error(); })()) { ok(false, "async generator: throws"); } }
+  catch (e) { churn(); eq(e && e.message, "thrown", "async generator: the thrown value"); }
+});
+
 __run();

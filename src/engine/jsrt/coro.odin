@@ -86,10 +86,13 @@ coro_new :: proc(ctx: ^Context, kind: Coro_Kind, holder: ^Object, fo: ^Object, t
 	return co
 }
 
+// The value on top of a coroutine's stack, taken out of the frame: from here on the frame does not keep it alive
+// (and the frame may be freed), and the next call of a native is a safe point.
 @(private = "file")
 frame_top :: proc(f: ^Frame) -> Value {
 	v := f.stack[f.sp - 1]
 	f.stack[f.sp - 1] = UNDEFINED
+	root(f.ctx.rt, v)
 	return v
 }
 
