@@ -94,9 +94,10 @@ Data :: struct {
 }
 
 KEY_GEN_LIMIT :: f64(1 << 53)
+DATA_DEFAULT_CACHE_BYTES :: 64 << 20   // the value cache until the manager sets it (indexeddb.value_cache_bytes)
 
 data_init :: proc(d: ^Data, allocator: runtime.Allocator) {
-	d^ = {allocator = allocator, replay_base = -1, cache_limit = 64 << 20}
+	d^ = {allocator = allocator, replay_base = -1, cache_limit = DATA_DEFAULT_CACHE_BYTES}
 	d.dbs = make([dynamic]^Database, allocator)
 }
 

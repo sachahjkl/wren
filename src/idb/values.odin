@@ -2,6 +2,9 @@ package idb
 
 import "base:runtime"
 
+// A value read from the file joins the cache if it is at most 1/this of the cache's size.
+VALUE_CACHE_MAX_SHARE :: 16
+
 // Values on the disk. A record's key and index keys are in memory; its value is, until the journal has it, and afterwards
 // only when it is among the most recently used (a list through the records, Data.cache_limit bytes): any other is read from the
 // journal at (voff, vlen) when a request asks for it, straight into the reply. A transaction keeps a Value_Ref for each value it
@@ -102,7 +105,7 @@ w_value :: proc(d: ^Data, w: ^Writer, r: ^Record) -> Error {
 		resize(&w.data, mark)
 		return .Io
 	}
-	if i64(n) <= d.cache_limit / 16 {
+	if i64(n) <= d.cache_limit / VALUE_CACHE_MAX_SHARE {
 		keep := make([]byte, n, d.allocator)
 		copy(keep, w.data[start:])
 		r.value = keep

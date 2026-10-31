@@ -46,7 +46,7 @@ file_read_at :: proc(f: File, off: i64, buf: []byte) -> bool {
 		ov.Offset = win.DWORD(o & 0xFFFF_FFFF)
 		ov.OffsetHigh = win.DWORD(o >> 32)
 		n: win.DWORD
-		chunk := win.DWORD(min(len(buf) - at, 1 << 30))
+		chunk := win.DWORD(min(len(buf) - at, FILE_IO_MAX_CHUNK))
 		if !win.ReadFile(f.h, raw_data(buf[at:]), chunk, &n, &ov) || n == 0 { return false }
 		at += int(n)
 	}
@@ -61,7 +61,7 @@ file_write_at :: proc(f: File, off: i64, data: []byte) -> bool {
 		ov.Offset = win.DWORD(o & 0xFFFF_FFFF)
 		ov.OffsetHigh = win.DWORD(o >> 32)
 		n: win.DWORD
-		chunk := win.DWORD(min(len(data) - at, 1 << 30))
+		chunk := win.DWORD(min(len(data) - at, FILE_IO_MAX_CHUNK))
 		if !win.WriteFile(f.h, raw_data(data[at:]), chunk, &n, &ov) || n == 0 { return false }
 		at += int(n)
 	}

@@ -26,6 +26,8 @@ CK_MAGIC       :: "WIDX"
 CK_FORMAT      :: 1
 CK_HEADER      :: 32
 CK_BLOCK_BYTES :: 256 << 10
+CK_COPY_BUF_BYTES :: 1 << 20   // the buffer that copies parts of the old file into the new one
+CK_READ_BUF_BYTES :: 1 << 20   // the first capacity of the buffer a section is read into
 
 // A store's records in the checkpoint file (offset from the start of the file).
 Section :: struct { off, len: i64, count: int }
@@ -239,7 +241,7 @@ ck_write :: proc(plan: ^Ck_Plan, old_path: string, path: string, flush: bool, re
 			continue
 		}
 		if buf == nil {
-			buf = make([]byte, 1 << 20)
+			buf = make([]byte, CK_COPY_BUF_BYTES)
 			ok2: bool
 			old, ok2 = file_open(old_path, false, false)
 			if !ok2 { good = false; break }
@@ -369,7 +371,7 @@ src_read :: proc(src: Ck_Src, off: i64, buf: []byte) -> bool {
 // Each record of a section, in order, goes to `visit`(key, value length, value offset, index keys); false stops it. The key and
 // index key bytes are valid until `visit` returns. ok false when the section is damaged.
 ck_read_section :: proc(src: Ck_Src, sec: Section, user: rawptr, visit: proc(user: rawptr, key: []byte, vlen: u32, voff: i64, ikeys: []Index_Key) -> bool, allocator: runtime.Allocator) -> (ok: bool) {
-	buf := make([dynamic]byte, 0, 1 << 20, allocator)
+	buf := make([dynamic]byte, 0, CK_READ_BUF_BYTES, allocator)
 	defer delete(buf)
 	ikeys := make([dynamic]Index_Key, 0, 8, allocator)
 	defer delete(ikeys)

@@ -7,6 +7,13 @@ import "core:slice"
 import "core:strconv"
 import "core:strings"
 
+// A frame reader reads at least this much at a time, and moves its buffer down once this much of it is consumed.
+FRAME_READ_CHUNK_BYTES :: 1 << 20
+// A snapshot is written as records of about this size.
+SNAPSHOT_RECORD_BYTES :: 1 << 20
+// The most one read or write call is asked to transfer (the positional calls take a 32-bit size on Windows).
+FILE_IO_MAX_CHUNK :: 1 << 30
+
 // The file of an origin: a journal. After an 8-byte header ("WIDB", format 1) come records, each
 //
 //   u32 length | u32 CRC-32 of the payload | payload     (little endian)
@@ -78,7 +85,7 @@ Frame_Reader :: struct {
 
 frame_reader_init :: proc(fr: ^Frame_Reader, f: File, size, from: i64, allocator: runtime.Allocator) {
 	fr^ = {f = f, size = size, base = from, end = from}
-	fr.buf = make([dynamic]byte, 0, 1 << 20, allocator)
+	fr.buf = make([dynamic]byte, 0, FRAME_READ_CHUNK_BYTES, allocator)
 }
 
 frame_reader_destroy :: proc(fr: ^Frame_Reader) { delete(fr.buf) }
@@ -87,7 +94,7 @@ frame_reader_destroy :: proc(fr: ^Frame_Reader) { delete(fr.buf) }
 fr_fill :: proc(fr: ^Frame_Reader, need: int) -> bool {
 	have := len(fr.buf) - fr.pos
 	if have >= need { return true }
-	if fr.pos > 0 && (fr.pos >= len(fr.buf) / 2 || fr.pos > 1 << 20) {
+	if fr.pos > 0 && (fr.pos >= len(fr.buf) / 2 || fr.pos > FRAME_READ_CHUNK_BYTES) {
 		copy(fr.buf[:], fr.buf[fr.pos:])
 		resize(&fr.buf, have)
 		fr.base += i64(fr.pos)
@@ -96,7 +103,7 @@ fr_fill :: proc(fr: ^Frame_Reader, need: int) -> bool {
 	at := fr.base + i64(len(fr.buf))
 	left := fr.size - at
 	if left < i64(need - have) { return false }
-	n := int(min(left, i64(max(need - have, 1 << 20))))
+	n := int(min(left, i64(max(need - have, FRAME_READ_CHUNK_BYTES))))
 	old := len(fr.buf)
 	resize(&fr.buf, old + n)
 	if !file_read_at(fr.f, at, fr.buf[old:]) { resize(&fr.buf, old); return false }
@@ -228,7 +235,7 @@ snapshot_file :: proc(d: ^Data, allocator: runtime.Allocator) -> []byte {
 	append(&out, ..h[:])
 	Ctx :: struct { out: ^[dynamic]byte }
 	c := Ctx{&out}
-	snapshot_ops(d, 1 << 20, proc(user: rawptr, payload: []byte) {
+	snapshot_ops(d, SNAPSHOT_RECORD_BYTES, proc(user: rawptr, payload: []byte) {
 		frame_payload((^Ctx)(user).out, payload)
 	}, &c)
 	return out[:]

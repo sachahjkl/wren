@@ -45,7 +45,7 @@ file_size :: proc(f: File) -> (n: i64, ok: bool) {
 file_read_at :: proc(f: File, off: i64, buf: []byte) -> bool {
 	at := 0
 	for at < len(buf) {
-		n := posix.pread(f.fd, raw_data(buf[at:]), uint(min(len(buf) - at, 1 << 30)), posix.off_t(off + i64(at)))
+		n := posix.pread(f.fd, raw_data(buf[at:]), uint(min(len(buf) - at, FILE_IO_MAX_CHUNK)), posix.off_t(off + i64(at)))
 		if n < 0 && posix.errno() == .EINTR { continue }
 		if n <= 0 { return false }
 		at += int(n)
@@ -56,7 +56,7 @@ file_read_at :: proc(f: File, off: i64, buf: []byte) -> bool {
 file_write_at :: proc(f: File, off: i64, data: []byte) -> bool {
 	at := 0
 	for at < len(data) {
-		n := posix.pwrite(f.fd, raw_data(data[at:]), uint(min(len(data) - at, 1 << 30)), posix.off_t(off + i64(at)))
+		n := posix.pwrite(f.fd, raw_data(data[at:]), uint(min(len(data) - at, FILE_IO_MAX_CHUNK)), posix.off_t(off + i64(at)))
 		if n < 0 && posix.errno() == .EINTR { continue }
 		if n <= 0 { return false }
 		at += int(n)
