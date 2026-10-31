@@ -13,6 +13,21 @@ package jsrt
 import "base:runtime"
 import "core:mem"
 
+// Back edges and calls between two polls of the interrupt hook.
+INTERRUPT_POLL_EVERY :: 10_000
+// Interpreter call depth when the host does not choose one (Host_Config.max_stack_depth).
+DEFAULT_MAX_STACK_DEPTH :: 10_000
+// Host stack the engine may use when the host does not choose (Host_Config.max_stack_bytes): fits a 1 MiB thread stack.
+DEFAULT_MAX_STACK_BYTES :: 640 * 1024
+// First capacity of the collector's gray stack and of the temporary roots.
+GC_LIST_INITIAL_CAP :: 256
+// The runtime's scratch arena: block size and the size from which an allocation gets a block of its own.
+SCRATCH_BLOCK_BYTES :: 32 * 1024
+SCRATCH_OUT_BAND_BYTES :: 8 * 1024
+// The same for the arena of the regular expressions.
+REGEXP_ARENA_BLOCK_BYTES :: 64 * 1024
+REGEXP_ARENA_OUT_BAND_BYTES :: 16 * 1024
+
 Host_Config :: struct {
 	// Heap budget in bytes (-1: unlimited). Checked at safe points and by large allocations; going
 	// over raises an uncatchable "out of memory" error.
@@ -77,7 +92,7 @@ Wait_Result :: enum u8 {ok, not_equal, timed_out}
 
 DEFAULT_CONFIG :: Host_Config {
 	malloc_limit    = -1,
-	max_stack_depth = 10_000,
+	max_stack_depth = DEFAULT_MAX_STACK_DEPTH,
 	can_block       = true,
 }
 
@@ -357,12 +372,12 @@ runtime_new :: proc(allocator := context.allocator, config := DEFAULT_CONFIG) ->
 	rt := new(Runtime, allocator)
 	rt.allocator = allocator
 	rt.config = config
-	if rt.config.max_stack_depth <= 0 {rt.config.max_stack_depth = 10_000}
-	if rt.config.max_stack_bytes <= 0 {rt.config.max_stack_bytes = 640 * 1024}
+	if rt.config.max_stack_depth <= 0 {rt.config.max_stack_depth = DEFAULT_MAX_STACK_DEPTH}
+	if rt.config.max_stack_bytes <= 0 {rt.config.max_stack_bytes = DEFAULT_MAX_STACK_BYTES}
 	rt.gc_threshold = GC_STRESS_BYTES > 0 ? GC_STRESS_BYTES : GC_MIN_ALLOCATION
 	rt.exception = UNINITIALIZED
-	rt.gray = make([dynamic]^Cell, 0, 256, allocator)
-	rt.temp_roots = make([dynamic]^Cell, 0, 256, allocator)
+	rt.gray = make([dynamic]^Cell, 0, GC_LIST_INITIAL_CAP, allocator)
+	rt.temp_roots = make([dynamic]^Cell, 0, GC_LIST_INITIAL_CAP, allocator)
 	rt.ext_cells = make([dynamic]^Cell, allocator)
 	rt.host_classes = make([dynamic]Class_Hooks, allocator)
 	rt.gc_hooked = make([dynamic]^Object, allocator)
@@ -375,8 +390,8 @@ runtime_new :: proc(allocator := context.allocator, config := DEFAULT_CONFIG) ->
 	rt.symbol_registry = make(map[Atom]^Symbol, allocator)
 	rt.vstack = make([dynamic]Value_Segment, allocator)
 	rt.join_stack = make([dynamic]^Object, allocator)
-	mem.dynamic_arena_init(&rt.scratch, allocator, allocator, 32 * 1024, 8 * 1024)
-	mem.dynamic_arena_init(&rt.regexp_arena, allocator, allocator, 64 * 1024, 16 * 1024)
+	mem.dynamic_arena_init(&rt.scratch, allocator, allocator, SCRATCH_BLOCK_BYTES, SCRATCH_OUT_BAND_BYTES)
+	mem.dynamic_arena_init(&rt.regexp_arena, allocator, allocator, REGEXP_ARENA_BLOCK_BYTES, REGEXP_ARENA_OUT_BAND_BYTES)
 	rt.gc_disabled += 1
 	atoms_init(rt)
 	rt.gc_disabled -= 1
@@ -473,7 +488,7 @@ take_exception :: proc(ctx: ^Context) -> Value {
 poll_interrupt :: proc(ctx: ^Context) -> bool {
 	rt := ctx.rt
 	rt.interrupt_counter += 1
-	if rt.interrupt_counter < 10_000 {return false}
+	if rt.interrupt_counter < INTERRUPT_POLL_EVERY {return false}
 	rt.interrupt_counter = 0
 	if rt.config.interrupt != nil && rt.config.interrupt(rt, rt.config.interrupt_user) {
 		throw_uncatchable(ctx, "interrupted")

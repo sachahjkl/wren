@@ -11,6 +11,8 @@ import "core:thread"
 import "core:time"
 import js "wb:engine/jsrt"
 
+AGENT_WAIT_RECHECK :: 20 * time.Millisecond   // a broadcast's wait for the agents looks again this often
+
 Agent :: struct {
 	thread:      ^thread.Thread,
 	source:      string,
@@ -124,7 +126,7 @@ agent_broadcast :: proc(data: [^]u8, length, max_length: int) {
 			if a.pending && !a.leaving {all = false}
 		}
 		if all || g.shutdown {break}
-		sync.cond_wait_with_timeout(&g.cond, &g.mutex, 20 * time.Millisecond)
+		sync.cond_wait_with_timeout(&g.cond, &g.mutex, AGENT_WAIT_RECHECK)
 	}
 }
 
@@ -182,7 +184,7 @@ agent_main :: proc(data: rawptr) {
 	h := new(Host)
 	h.test_path = "<agent>"
 	h.agent = a
-	h.deadline = time.tick_add(time.tick_now(), 20 * time.Second)
+	h.deadline = time.tick_add(time.tick_now(), TEST_DEADLINE)
 	h.can_block = true
 	strings.builder_init(&h.output)
 	cfgr := js.DEFAULT_CONFIG

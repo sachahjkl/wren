@@ -5,6 +5,10 @@ package jsrt
 // result is indistinguishable.
 
 MAX_SAFE_INT :: 9007199254740991
+// merge_sort: runs up to this length are sorted by insertion.
+SORT_INSERTION_MAX :: 8
+// The largest capacity reserved up front for the elements of a sort (a length can be a lie).
+SORT_COLLECT_RESERVE_MAX :: 1 << 20
 
 has_index :: proc(ctx: ^Context, o: ^Object, i: i64) -> int {
 	if o.fast_array && i >= 0 && i < i64(o.data.(Array_Data).count) {return 1}
@@ -793,7 +797,7 @@ sort_compare :: proc(sc: ^Sort_Ctx, x, y: Value) -> int {
 merge_sort :: proc(sc: ^Sort_Ctx, a: []Value, tmpbuf: []Value) {
 	n := len(a)
 	if n < 2 {return}
-	if n <= 8 {
+	if n <= SORT_INSERTION_MAX {
 		for i in 1 ..< n {
 			x := a[i]
 			j := i
@@ -832,7 +836,7 @@ merge_sort :: proc(sc: ^Sort_Ctx, a: []Value, tmpbuf: []Value) {
 sort_collect :: proc(ctx: ^Context, o: Value, n: i64, cmp: Value, skip_holes: bool) -> ([]Value, bool) {
 	rt := ctx.rt
 	oo := as_obj(o)
-	vals := make([dynamic]Value, 0, int(min(n, 1 << 20)), tmp(rt))
+	vals := make([dynamic]Value, 0, int(min(n, SORT_COLLECT_RESERVE_MAX)), tmp(rt))
 	for k in 0 ..< n {
 		if skip_holes {
 			h := has_index(ctx, oo, k)

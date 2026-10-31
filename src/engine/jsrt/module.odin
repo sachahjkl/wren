@@ -4,6 +4,8 @@ package jsrt
 // the exporters' closure cells), evaluation with top-level await (the spec's InnerModuleEvaluation
 // as QuickJS-ng implements it), namespace objects, dynamic import() and import.meta.
 
+MODULE_IMPORT_CHAIN_MAX :: 100   // re-exports followed to find the cell of an export
+
 Module_Status :: enum u8 {unlinked, linking, linked, evaluating, evaluating_async, evaluated}
 
 Req_Entry :: struct {
@@ -236,7 +238,7 @@ local_export_ref :: proc(ctx: ^Context, m: ^Module, me: ^Export_Entry, depth := 
 		fd := m.func_obj.data.(Func_Data)
 		if fd.var_refs != nil && fd.var_refs[me.var_idx] != nil {return fd.var_refs[me.var_idx]}
 	}
-	if depth > 100 {return nil}
+	if depth > MODULE_IMPORT_CHAIN_MAX {return nil}
 	for &mi in m.imports {
 		if mi.var_idx != me.var_idx {continue}
 		m1 := m.req[mi.req_idx].module

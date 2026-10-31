@@ -19,6 +19,15 @@ import "core:time"
 import fe "wb:engine/frontend"
 import js "wb:engine/jsrt"
 
+FUZZ_ITERATION_BUDGET :: 20 * time.Millisecond   // the interrupt budget of one mutant
+FUZZ_REPLAY_BUDGET :: 200 * time.Millisecond     // the budget when one image is run again by itself
+FUZZ_HEAP_LIMIT :: 64 << 20                      // the heap of one mutant
+FUZZ_SRC_STACK_BYTES :: 512 << 10                // the host stack of a source mutant
+FUZZ_CORPUS_MAX_FILE_BYTES :: 64 << 10           // larger scripts stay out of the source corpus
+FUZZ_BC_REPORT_EVERY :: 1000                     // iterations between two progress lines (bytecode)
+FUZZ_SRC_REPORT_EVERY :: 2000                    // iterations between two progress lines (source)
+FUZZ_DEFAULT_ITERATIONS :: 10000
+
 @(private = "file")
 Fuzz_Host :: struct {
 	deadline: time.Tick,
@@ -102,11 +111,11 @@ fuzz_main :: proc(dir: string, iterations: int, seed: u64) -> int {
 		}
 		img = img[:n]
 		_ = os.write_entire_file("build/fuzz/last.bin", img)
-		h := Fuzz_Host{deadline = time.tick_add(time.tick_now(), 20 * time.Millisecond)}
+		h := Fuzz_Host{deadline = time.tick_add(time.tick_now(), FUZZ_ITERATION_BUDGET)}
 		cfgr := js.DEFAULT_CONFIG
 		cfgr.interrupt = fuzz_interrupt
 		cfgr.interrupt_user = &h
-		cfgr.malloc_limit = 64 << 20
+		cfgr.malloc_limit = FUZZ_HEAP_LIMIT
 		rt := js.engine_new(context.allocator, cfgr)
 		ctx := js.context_new(rt)
 		v := js.read_object(ctx, img)
@@ -124,7 +133,7 @@ fuzz_main :: proc(dir: string, iterations: int, seed: u64) -> int {
 		}
 		js.engine_free(rt)
 		free_all(context.temp_allocator)
-		if (it + 1) % 1000 == 0 {
+		if (it + 1) % FUZZ_BC_REPORT_EVERY == 0 {
 			fmt.eprintf("fuzz: %d/%d (accepted %d, threw %d, completed %d) %.0f s\n", it + 1, iterations, accepted, threw, completed, time.duration_seconds(time.tick_since(t0)))
 		}
 	}
@@ -148,7 +157,7 @@ fuzz_src_main :: proc(dir: string, iterations: int, seed: u64) -> int {
 	corpus := make([dynamic]string)
 	for p in files {
 		data, err := os.read_entire_file(p, context.allocator)
-		if err == nil && len(data) < 64 << 10 {append(&corpus, string(data))}
+		if err == nil && len(data) < FUZZ_CORPUS_MAX_FILE_BYTES {append(&corpus, string(data))}
 	}
 	tokens := []string{"{", "}", "(", ")", "[", "]", ";", ",", "=>", "...", "**", "?.", "??", "yield", "await", "class", "#x", "async", "function*", "\\u", "`${", "/", "/*", "super", "new.target", "import(", "let", "static", "get ", "0n", "\"", "'", "\n"}
 	// the test262 harness, when <dir> sits inside a test262 checkout
@@ -195,13 +204,13 @@ fuzz_src_main :: proc(dir: string, iterations: int, seed: u64) -> int {
 			}
 		}
 		_ = os.write_entire_file("build/fuzz/last.js", buf[:])
-		h := Fuzz_Host{deadline = time.tick_add(time.tick_now(), 20 * time.Millisecond)}
+		h := Fuzz_Host{deadline = time.tick_add(time.tick_now(), FUZZ_ITERATION_BUDGET)}
 		cfgr := js.DEFAULT_CONFIG
 		cfgr.compile = compile_hook()
 		cfgr.interrupt = fuzz_interrupt
 		cfgr.interrupt_user = &h
-		cfgr.malloc_limit = 64 << 20
-		cfgr.max_stack_bytes = 512 << 10
+		cfgr.malloc_limit = FUZZ_HEAP_LIMIT
+		cfgr.max_stack_bytes = FUZZ_SRC_STACK_BYTES
 		rt := js.engine_new(context.allocator, cfgr)
 		ctx := js.context_new(rt)
 		for hs, i in harness {
@@ -213,7 +222,7 @@ fuzz_src_main :: proc(dir: string, iterations: int, seed: u64) -> int {
 		js.run_jobs(rt)
 		js.engine_free(rt)
 		free_all(context.temp_allocator)
-		if (it + 1) % 2000 == 0 {
+		if (it + 1) % FUZZ_SRC_REPORT_EVERY == 0 {
 			fmt.eprintf("fuzzsrc: %d/%d (ran %d, threw or failed to compile %d) %.0f s\n", it + 1, iterations, compiled, threw, time.duration_seconds(time.tick_since(t0)))
 		}
 	}
@@ -272,7 +281,7 @@ fuzz_run_one :: proc(path: string) -> int {
 	windows.AddVectoredExceptionHandler(1, crash_handler)
 	img, err := os.read_entire_file(path, context.allocator)
 	if err != nil {return 2}
-	h := Fuzz_Host{deadline = time.tick_add(time.tick_now(), 200 * time.Millisecond)}
+	h := Fuzz_Host{deadline = time.tick_add(time.tick_now(), FUZZ_REPLAY_BUDGET)}
 	cfgr := js.DEFAULT_CONFIG
 	cfgr.interrupt = fuzz_interrupt
 	cfgr.interrupt_user = &h
@@ -302,7 +311,7 @@ fuzz_args :: proc(args: []string) -> int {
 		return os.write_entire_file(args[3], bc) == nil ? 0 : 2
 	}
 	if len(args) < 3 {return 2}
-	iters := 10000
+	iters := FUZZ_DEFAULT_ITERATIONS
 	seed: u64 = 1
 	if len(args) > 3 {iters, _ = strconv.parse_int(args[3])}
 	if len(args) > 4 {

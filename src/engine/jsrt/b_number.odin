@@ -7,6 +7,9 @@ import "core:math"
 import "wb:engine/bigint"
 import "wb:engine/numconv"
 
+// BigInt.asUintN / asIntN: a wider width only changes negative values (asUintN) or nothing.
+BIGINT_AS_N_MAX_BITS :: 1 << 30
+
 @(private = "file")
 number_ctor :: proc(ctx: ^Context, nt: Value, args: []Value, magic: i32) -> Value {
 	n := mk_int(0)
@@ -530,7 +533,7 @@ bigint_as_n :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Va
 	if is_exception(bv) {return EXCEPTION}
 	context.allocator = rt_allocator(rt)
 	b := as_big(bv).val
-	if bits > (1 << 30) {
+	if bits > BIGINT_AS_N_MAX_BITS {
 		// huge widths only change negative values (asUintN) or nothing
 		if magic == 1 || !b.neg {return bv}
 		return throw_range_error(ctx, "BigInt is too large")

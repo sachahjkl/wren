@@ -4,6 +4,8 @@ package jsrt
 
 import "core:strings"
 
+ERROR_STACK_MAX_FRAMES :: 32   // the frames an error's "stack" names
+
 // Concatenate message parts in scratch memory.
 cat :: proc(ctx: ^Context, parts: ..string) -> string {
 	return strings.concatenate(parts, tmp(ctx.rt))
@@ -55,7 +57,7 @@ error_add_stack :: proc(ctx: ^Context, o: ^Object) {
 	rt := ctx.rt
 	sb := sb_init(rt, 64)
 	n := 0
-	for f := rt.cur_frame; f != nil && n < 32; f = f.prev {
+	for f := rt.cur_frame; f != nil && n < ERROR_STACK_MAX_FRAMES; f = f.prev {
 		if f.bc == nil {continue}
 		sb_ascii(&sb, "    at ")
 		name := f.bc.func_name

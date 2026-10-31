@@ -13,12 +13,14 @@ Value_Segment :: struct {
 }
 
 VSEGMENT_SIZE :: 32 * 1024
+VSEGMENT_FIRST_SIZE :: 4 * 1024
+VSEGMENT_SECOND_SIZE :: 16 * 1024
 
 // Segments grow with the stack: most realms never leave the first, small one.
 vsegment_size :: #force_inline proc "contextless" (index: int) -> int {
 	switch index {
-	case 0: return 4 * 1024
-	case 1: return 16 * 1024
+	case 0: return VSEGMENT_FIRST_SIZE
+	case 1: return VSEGMENT_SECOND_SIZE
 	}
 	return VSEGMENT_SIZE
 }

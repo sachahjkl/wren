@@ -7,10 +7,15 @@ package jsrt
 import "core:mem"
 import fe "wb:engine/frontend"
 
+// The arena of one compile: block size, the size from which an allocation gets a block of its own, alignment.
+COMPILE_ARENA_BLOCK_BYTES :: 256 * 1024
+COMPILE_ARENA_OUT_BAND_BYTES :: 64 * 1024
+COMPILE_ARENA_ALIGN :: 16
+
 frontend_compile :: proc(ctx: ^Context, req: ^Compile_Request) -> Value {
 	rt := ctx.rt
 	arena: mem.Dynamic_Arena
-	mem.dynamic_arena_init(&arena, rt.allocator, rt.allocator, 256 * 1024, 64 * 1024, 16)
+	mem.dynamic_arena_init(&arena, rt.allocator, rt.allocator, COMPILE_ARENA_BLOCK_BYTES, COMPILE_ARENA_OUT_BAND_BYTES, COMPILE_ARENA_ALIGN)
 	defer mem.dynamic_arena_destroy(&arena)
 	counter: Compile_Alloc
 	compile_alloc_init(&counter, &arena, rt.allocator)

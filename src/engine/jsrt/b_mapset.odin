@@ -5,6 +5,11 @@ package jsrt
 
 import "core:math"
 
+// A table of more entries than this gets a hash index; up to it, a linear search does.
+MAP_LINEAR_MAX_ENTRIES :: 8
+// A table of fewer entries than this is not compacted, however many are deleted.
+MAP_COMPACT_MIN_ENTRIES :: 16
+
 @(private = "file")
 map_hash :: proc(rt: ^Runtime, v: Value) -> u32 {
 	switch v.tag {
@@ -118,7 +123,7 @@ map_set :: proc(rt: ^Runtime, ms: ^Map_State, key: Value, val: Value) {
 	}
 	append(&ms.entries, Map_Entry{key = k, value = val})
 	ms.live += 1
-	if len(ms.entries) > 8 {
+	if len(ms.entries) > MAP_LINEAR_MAX_ENTRIES {
 		if ms.index == nil || len(ms.entries) * 2 > len(ms.index) {
 			map_rehash(rt, ms)
 		} else {
@@ -148,7 +153,7 @@ map_delete_index :: proc(rt: ^Runtime, ms: ^Map_State, i: int) {
 	e.key = UNDEFINED
 	e.value = UNDEFINED
 	ms.live -= 1
-	if ms.iterators == 0 && len(ms.entries) > 16 && ms.live < len(ms.entries) / 2 {
+	if ms.iterators == 0 && len(ms.entries) > MAP_COMPACT_MIN_ENTRIES && ms.live < len(ms.entries) / 2 {
 		map_compact(rt, ms)
 	}
 }
@@ -163,7 +168,7 @@ map_compact :: proc(rt: ^Runtime, ms: ^Map_State) {
 		}
 	}
 	resize(&ms.entries, j)
-	if j > 8 {map_rehash(rt, ms)} else if ms.index != nil {
+	if j > MAP_LINEAR_MAX_ENTRIES {map_rehash(rt, ms)} else if ms.index != nil {
 		delete(ms.index, rt_allocator(rt))
 		ms.index = nil
 	}

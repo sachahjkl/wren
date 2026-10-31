@@ -30,6 +30,15 @@ import jsdate "wb:engine/datetime"
 
 // The judge is linked with a 64 MiB main-thread stack (/STACK, see tools/jsrt_test262.ps1); the engine may use 48 MiB of it.
 JUDGE_STACK_BYTES :: 48 << 20
+// How long a test may run, and an agent thread of one; the interrupt hook ends it past this.
+TEST_DEADLINE :: 20 * time.Second
+// The deadline of `judge eval`, which runs what a person gave it.
+EVAL_DEADLINE :: 3600 * time.Second
+// A worker whose output has not grown for this long is killed.
+WORKER_HANG_TIMEOUT :: 90 * time.Second
+// Between two progress lines, and between two looks at the workers.
+PROGRESS_REPORT_EVERY :: 10 * time.Second
+WORKER_POLL_INTERVAL :: 50 * time.Millisecond
 
 // Monotonic clock for GC statistics, wall clock for Date; local time is UTC in the judge.
 set_host_hooks :: proc() {
@@ -531,7 +540,7 @@ run_test262_file :: proc(cfg: ^Config, hc: ^Harness_Cache, rel: string, verbose:
 
 	h := new(Host)
 	h.test_path, _ = strings.replace_all(full, "\\", "/")
-	h.deadline = time.tick_add(time.tick_now(), 20 * time.Second)
+	h.deadline = time.tick_add(time.tick_now(), TEST_DEADLINE)
 	h.can_block = can_block
 	strings.builder_init(&h.output)
 	cfgr := js.DEFAULT_CONFIG
@@ -853,7 +862,7 @@ supervise :: proc(cfg: ^Config, tests: []string, jobs: int, out_dir: string) -> 
 				if fi.size != w.last_size {
 					w.last_size = fi.size
 					w.last_progress = time.tick_now()
-				} else if time.tick_since(w.last_progress) > 90 * time.Second {
+				} else if time.tick_since(w.last_progress) > WORKER_HANG_TIMEOUT {
 					_ = os.process_kill(w.process)
 					_, _ = os.process_wait(w.process)
 					w.running = false
@@ -863,13 +872,13 @@ supervise :: proc(cfg: ^Config, tests: []string, jobs: int, out_dir: string) -> 
 			}
 		}
 		if active == 0 {break}
-		if time.tick_since(last_report) > 10 * time.Second {
+		if time.tick_since(last_report) > PROGRESS_REPORT_EVERY {
 			done := 0
 			for &w in workers {done += w.next}
 			fmt.eprintf("judge: ~%d/%d tests\n", done, total)
 			last_report = time.tick_now()
 		}
-		time.sleep(50 * time.Millisecond)
+		time.sleep(WORKER_POLL_INTERVAL)
 	}
 	return results
 }
@@ -959,7 +968,7 @@ eval_main :: proc(path: string) -> int {
 	}
 	h := new(Host)
 	h.test_path = path
-	h.deadline = time.tick_add(time.tick_now(), 3600 * time.Second)
+	h.deadline = time.tick_add(time.tick_now(), EVAL_DEADLINE)
 	strings.builder_init(&h.output)
 	cfgr := js.DEFAULT_CONFIG
 	cfgr.compile = compile_hook()
