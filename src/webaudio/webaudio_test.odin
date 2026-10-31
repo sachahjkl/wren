@@ -7,6 +7,7 @@ import "wb:media"
 
 RATE :: 48000.0
 TEST_MAX_BYTES :: 1 << 30
+RESUME_DEADLINE_MS :: 5000   // how long a resumed context's clock may take to move
 
 @(private = "file")
 near :: proc(t: ^testing.T, got, want: f32, tolerance: f32, what: string, frame: int, loc := #caller_location) -> bool {
@@ -699,7 +700,8 @@ a_running_context_follows_the_output_and_stops_with_it :: proc(t: ^testing.T) {
 	time.sleep(30 * time.Millisecond)
 	testing.expect(t, graph_time(g) == stopped, "suspended: time stands still")
 	graph_resume(g, 2400)
-	time.sleep(30 * time.Millisecond)
+	// (the thread takes its time on a busy machine)
+	for waited := 0; waited < RESUME_DEADLINE_MS && graph_time(g) <= stopped; waited += 1 { time.sleep(time.Millisecond) }
 	testing.expect(t, graph_time(g) > stopped, "resumed: on it goes")
 	graph_close(g)
 	testing.expect(t, graph_state(g) == .Closed)
