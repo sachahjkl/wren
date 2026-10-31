@@ -15,6 +15,9 @@ package url
 import "core:unicode/utf8"
 
 @(private = "file")
+RX_FOLD_RANGE_MAX :: 64   // only character ranges narrower than this are folded rune by rune
+
+@(private = "file")
 Rx_Op :: enum u8 {
 	Char,        // a literal code point (arg = rune)
 	Any,         // .
@@ -409,7 +412,7 @@ class_match :: proc(rx: ^Regexp, cls: int, r: rune, fold: bool) -> bool {
 			if r >= rg[0] && r <= rg[1] { matched = true; break }
 			if fold {
 				fr := fold_rune(r)
-				if fr >= fold_rune(rg[0]) && fr <= fold_rune(rg[1]) && rg[1] - rg[0] < 64 {
+				if fr >= fold_rune(rg[0]) && fr <= fold_rune(rg[1]) && rg[1] - rg[0] < RX_FOLD_RANGE_MAX {
 					// fold only for simple ASCII ranges to avoid surprises
 					for x := rg[0]; x <= rg[1]; x += 1 { if fold_rune(x) == fr { matched = true; break } }
 					if matched { break }
