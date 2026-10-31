@@ -21,6 +21,8 @@ import "core:os"
 import "core:strings"
 
 MANIFEST_NAME :: "wren_install.txt"
+// The longest install folder accepted (the files inside need room too).
+INSTALL_PATH_MAX :: 180
 OLD_SUFFIX    :: ".old"
 
 // What is on the disk about an installed copy.
@@ -114,7 +116,7 @@ check_install_dir :: proc(dir: string, probe := false) -> string {
 		if !strings.has_prefix(d, "/") { return "Use a full path." }
 		if strings.trim_right(d, "/") == "" { return "Pick a folder, not the root." }
 	}
-	if len(d) > 180 { return "The path is too long (the files inside need room too)." }
+	if len(d) > INSTALL_PATH_MAX { return "The path is too long (the files inside need room too)." }
 	// a name made of dots and spaces cannot be made (Windows trims them)
 	for part in split_path_parts(d) { if part != "" && strings.trim(part, ". ") == "" { return "A folder name cannot be only dots or spaces." } }
 	if sys := system_folder_of(d); sys != "" { return strings.concatenate({"Not inside ", sys, ": that is the system's."}, context.temp_allocator) }
