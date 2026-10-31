@@ -602,7 +602,11 @@ entry_start :: proc(p: ^Page, r: ^Img_Request, data: []byte) {
 	cache.next_id += 1
 	e.id = cache.next_id
 	e.key, e.url = strings.clone(r.key), strings.clone(r.url)
-	e.blob = images.blob_make(slice.clone(data))
+	bytes: []byte   // (an entry per address, fragment included: the same sprite with another icon is another picture)
+	if h := strings.index_byte(r.url, '#'); h >= 0 && images.sniff(data, r.mime, r.nosniff) == .Svg {
+		bytes = images.svg_with_target(data, r.url[h + 1:])
+	}
+	e.blob = images.blob_make(bytes != nil ? bytes : slice.clone(data))
 	e.state = .Probing
 	cache.settings = p.settings.images
 	cache.limit = p.settings.images.cache_max_bytes

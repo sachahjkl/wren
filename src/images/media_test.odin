@@ -162,6 +162,25 @@ icc_profiles :: proc(t: ^testing.T) {
 	}
 }
 
+// A sprite: one icon shown through its address's fragment and `:target`.
+@(test)
+svg_fragment_target :: proc(t: ^testing.T) {
+	sprite := `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="none"><style><![CDATA[svg>[id]{display:none}svg>[id]:target{display:inline}]]></style><rect id="a" width="10" height="10" fill="red"/><g id="b-1"><rect width="10" height="10" fill="blue"/></g></svg>`
+	Case :: struct { frag: string, want: [4]u8 }
+	for c in ([]Case{{"a", RED}, {"b-1", BLUE}, {"none", CLEAR}}) {
+		frag, want := c.frag, c.want
+		bytes := svg_with_target(transmute([]byte)sprite, frag)
+		defer delete(bytes)
+		img, _, err := svg_decode(string(bytes))
+		defer image_destroy(img)
+		testing.expect_value(t, err, Error.None)
+		testing.expectf(t, img != nil && px(img, 0, 5, 5) == want, "#%s shows %v", frag, want)
+	}
+	testing.expect(t, svg_with_target(transmute([]byte)sprite, "") == nil, "no fragment: nothing to do")
+	testing.expect(t, svg_with_target(transmute([]byte)sprite, `x"]{}`) == nil, "a fragment that would write into the style sheet is left out")
+	testing.expect(t, svg_with_target(transmute([]byte)string(`<svg xmlns="http://www.w3.org/2000/svg"/>`), "a") == nil, "no :target: the document as it is")
+}
+
 @(test)
 svg_rendering :: proc(t: ^testing.T) {
 	// shapes, at the natural size and twice as large (rasterised again, not scaled)

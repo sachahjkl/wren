@@ -192,6 +192,25 @@ is_xml_mime :: proc(m: string) -> bool {
 	return strings.has_suffix(m, "+xml") || m == "text/xml" || m == "application/xml"
 }
 
+// An SVG document as its address's fragment shows it: `icons.svg#save` makes the element with that id the `:target` of the document's
+// style sheets, which is how a sprite shows one icon of many (`svg > [id] { display: none } svg > [id]:target { display: inline }`). The
+// renderer has no address and does not know `:target`, so it becomes a selector of that id. Nil when nothing changes: no such
+// selector, or a fragment that would need escaping (an id of that kind is not used by sprites).
+svg_with_target :: proc(data: []byte, fragment: string, allocator := context.allocator) -> []byte {
+	if fragment == "" { return nil }
+	for c in transmute([]byte)fragment {
+		switch c {
+		case 'a' ..= 'z', 'A' ..= 'Z', '0' ..= '9', '-', '_', '.', ':':
+		case: return nil
+		}
+	}
+	TARGET :: ":target"
+	text := string(data)
+	if !strings.contains(text, TARGET) { return nil }
+	out, _ := strings.replace_all(text, TARGET, strings.concatenate({`[id="`, fragment, `"]`}, context.temp_allocator), allocator)
+	return transmute([]byte)out
+}
+
 // Format of `data`, from its signature. `supplied` is the Content-Type essence (lower case), "" if none.
 sniff :: proc(data: []byte, supplied := "", nosniff := false) -> Format {
 	m := strings.to_lower(strings.trim_space(supplied), context.temp_allocator)
