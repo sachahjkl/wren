@@ -17,6 +17,8 @@ import "wb:i18n"
 SEARCH_ENGINE_PREF :: "browser.search.engine"
 // The name of the search engines' row (search, labels): it has no preference of its own.
 CONFIG_ENGINES_ROW :: "browser.search.engines"
+// Height of a line of the list and of the form, in em.
+ENGINES_ROW_H_EM :: 2.2
 
 Engines_Editor :: struct {
 	edit:          int,             // the engine being edited, index + 1; -1: a new one; 0: none
@@ -122,7 +124,7 @@ engines_row :: proc(v: ^Config_View, index: int) {
 		def := search_default_index()
 		action, target := 0, -1   // 1 default, 2 edit, 3 up, 4 down, 5 remove
 		for e, i in sengines.list {
-			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.2))})
+			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * ENGINES_ROW_H_EM))})
 			if ui.row(.Center, {}, fmt.tprintf("###eng_%d", i)) {
 				engine_badge(fmt.tprintf("###eb_%d", i), e, math.round(em * 1.5))
 				ui.spacer(ui.px(em * 0.6))
@@ -150,7 +152,7 @@ engines_row :: proc(v: ^Config_View, index: int) {
 				ui.spacer(ui.px(em * 0.3))
 				btn :: proc(id, glyph, tooltip: string, enabled := true) -> bool {
 					em := ui.font_size()
-					ui.next({width = ui.px(em * 1.9), height = ui.px(ui.dense(em * 1.9)), radius = em * CHROME_BUTTON_RADIUS})
+					ui.next({width = ui.px(em * 1.9), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM)), radius = em * CHROME_BUTTON_RADIUS})
 					clicked := false
 					if ui.disabled(!enabled) {
 						s := ui.icon_button(id, glyph)
@@ -172,11 +174,11 @@ engines_row :: proc(v: ^Config_View, index: int) {
 		ui.spacer(ui.px(em * 0.4))
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.1))})
 		if ui.row(.Center, {}, "###eng_actions") {
-			ui.next({width = ui.text_size(em * 0.8), height = ui.px(ui.dense(em * 1.9))})
+			ui.next({width = ui.text_size(em * 0.8), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 			if ui.button(i18n.tr("Add a search engine###eng_add")).clicked { engines_edit_start(ed, -1) }
 			ui.spacer(ui.px(em * 0.6))
 			missing := engines_missing_builtins(&sengines)
-			ui.next({width = ui.text_size(em * 0.8), height = ui.px(ui.dense(em * 1.9))})
+			ui.next({width = ui.text_size(em * 0.8), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 			if ui.disabled(missing == 0) {
 				label := missing > 0 ? fmt.tprintf(i18n.tr("Restore the built-in engines (%d)###eng_restore"), missing) : i18n.tr("Restore the built-in engines###eng_restore")
 				if ui.button(label).clicked && missing > 0 { engines_restore_builtins(&sengines); search_engines_changed(app) }
@@ -220,7 +222,7 @@ engines_form :: proc(app: ^App, ed: ^Engines_Editor) {
 			if focus { ui.set_focus(res.box.key); ui.field_select_all(f) }
 			return res
 		}
-		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.2))})
+		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * ENGINES_ROW_H_EM))})
 		if ui.row(.Center, {}, "###eng_f1") {
 			ui.spacer(ui.px(em * 0.6))
 			r1 := field("###ef_name", i18n.tr("Name###efl_name"), i18n.tr("Example"), &ed.name, ui.px(em * 12), ed.want_focus)
@@ -232,7 +234,7 @@ engines_form :: proc(app: ^App, ed: ^Engines_Editor) {
 		}
 		ed.want_focus = false
 		ui.spacer(ui.px(em * 0.3))
-		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.2))})
+		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * ENGINES_ROW_H_EM))})
 		if ui.row(.Center, {}, "###eng_f2") {
 			ui.spacer(ui.px(em * 0.6))
 			r3 := field("###ef_url", i18n.tr("Address###efl_url"), "https://example.com/search?q=%s", &ed.url, ui.fill(), false)
@@ -251,13 +253,13 @@ engines_form :: proc(app: ^App, ed: ^Engines_Editor) {
 			}
 		}
 		ui.spacer(ui.px(em * 0.3))
-		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.2))})
+		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * ENGINES_ROW_H_EM))})
 		if ui.row(.Center, {}, "###eng_f3") {
 			ui.spacer(ui.px(em * 0.6))
-			ui.next({width = ui.text_size(em * 0.8), height = ui.px(ui.dense(em * 1.9))})
+			ui.next({width = ui.text_size(em * 0.8), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 			if ui.tags("accent_button") { if ui.button(ed.edit < 0 ? i18n.tr("Add###ef_save") : i18n.tr("Save###ef_save")).clicked { committed = true } }
 			ui.spacer(ui.px(em * 0.4))
-			ui.next({width = ui.text_size(em * 0.8), height = ui.px(ui.dense(em * 1.9))})
+			ui.next({width = ui.text_size(em * 0.8), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 			if ui.button(i18n.tr("Cancel###ef_cancel")).clicked { cancelled = true }
 		}
 		ui.spacer(ui.px(em * 0.5))
