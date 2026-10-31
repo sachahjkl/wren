@@ -380,10 +380,23 @@ call_internal :: proc(ctx: ^Context, f: Value, this: Value, new_target: Value, a
 	return throw_not_a_function(ctx)
 }
 
+// A native call in progress, on the host stack: what it was called with is a root for as long as it runs (gc.odin). A
+// caller in the interpreter has all of it on its operand stack, but a builtin may pass values it only holds in locals
+// (`call(ctx, co.resolve, UNDEFINED, {v})`), and the entry of the callee is a safe point.
+Native_Call :: struct {
+	prev: ^Native_Call,
+	fn:   ^Object,
+	this: Value,
+	args: []Value,
+}
+
 call_native :: proc(ctx: ^Context, o: ^Object, nd: ^Native_Data, this: Value, args: []Value) -> Value {
 	rt := ctx.rt
 	realm := nd.realm != nil ? nd.realm : ctx
 	m := temp_mark(rt)
+	nc := Native_Call{rt.native_calls, o, this, args}
+	rt.native_calls = &nc
+	defer rt.native_calls = nc.prev
 	if gc_should_run(rt) && !gc_safepoint(ctx) {return EXCEPTION}
 	when GC_POISON {
 		poison_check(o)
