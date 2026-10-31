@@ -25,6 +25,9 @@ $global:WrenCtlCalls = 0
 $global:WrenCtlMs = 0
 
 # A path as PowerShell means it (relative to the current location, which is not the process's current folder).
+# A driven Wren makes no sound (src/media/audio_null.odin); $env:WREN_AUDIO_OUTPUT = '' before starting one to hear it.
+if ($null -eq $env:WREN_AUDIO_OUTPUT) { $env:WREN_AUDIO_OUTPUT = 'null' }
+
 function Resolve-PathHere([string]$p) { return $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($p) }
 
 function ConvertTo-WinArg([string]$a) {

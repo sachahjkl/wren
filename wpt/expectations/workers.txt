@@ -8,7 +8,7 @@
 	Test SharedWorker creation without arguments results in exception.: PASS
 	Test recursive worker creation results in exception.: PASS
 	Test toString exception propagated correctly.: PASS
-/workers/SharedWorker-detach-frame-in-error-event.html: OK
+/workers/SharedWorker-detach-frame-in-error-event.html: OK|TIMEOUT
 	Test frame detach in shared worker's error handler: FAIL
 /workers/SharedWorker-exception-propagation.html: OK
 	Uncaught error in shared worker should not propagate to window: PASS

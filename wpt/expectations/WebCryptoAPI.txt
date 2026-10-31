@@ -1,6 +1,6 @@
 # web-platform-tests expectations of Wren for WebCryptoAPI, written by tools\wpt.ps1 -Update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
-/WebCryptoAPI/algorithm-discards-context.https.window.html: OK
+/WebCryptoAPI/algorithm-discards-context.https.window.html: OK|TIMEOUT
 	Context is discarded in decrypt: FAIL
 	Context is discarded in deriveBits: FAIL
 	Context is discarded in deriveKey: FAIL

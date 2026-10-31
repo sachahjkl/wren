@@ -40,6 +40,7 @@ param(
     [string]$AcceptLanguage = 'en-US,en;q=0.9',
     [string]$Exe = ''
 )
+$env:WREN_AUDIO_OUTPUT = 'null'
 $ErrorActionPreference = 'Stop'
 if ($Snapshot) { $NoScript = [switch]$true }
 if ($Js -and $NoScript) { throw '-Js compares with scripts: not with -NoScript or -Snapshot' }

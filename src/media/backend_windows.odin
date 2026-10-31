@@ -1,6 +1,8 @@
 #+build windows
 package media
 
+import "core:sync"
+
 // The platform backend: what the player asks for, answered by Media Foundation and WASAPI. Another platform provides the same
 // five procedures (backend_<os>.odin) with its own decoders and audio output.
 
@@ -24,7 +26,9 @@ backend_audio_decoder :: proc(t: Track) -> ^Audio_Decoder {
 // The default device, or, on a machine that has none (a server, a CI runner), an output that lets the audio go by in silence at the
 // pace of the clock: the video still plays, as in the browsers.
 backend_audio_output :: proc(rate: int) -> ^Audio_Output {
-	if o := audio_open(rate); o != nil { return o }
+	if !sync.atomic_load(&audio_null_asked) && !audio_output_silenced() {
+		if o := audio_open(rate); o != nil { return o }
+	}
 	return null_audio_open(rate)
 }
 
@@ -46,9 +50,9 @@ backend_audio_support :: proc(c: Codec) -> Decoder_Support {
 // Threads that drive decoders start with the platform's component runtime initialized.
 com_thread_init_any :: proc() { com_thread_init() }
 
-// media.audio.backend selects an alternative audio output on systems without a native one (Linux); on Windows WASAPI
-// is always the output, so the preference does nothing here.
-apply_audio_backend_pref :: proc(name: string) {}
+// media.audio.backend: null lets the audio go by in silence; anything else is the device, through WASAPI.
+audio_null_asked: bool
+apply_audio_backend_pref :: proc(name: string) { sync.atomic_store(&audio_null_asked, name == "null") }
 
 // media.h264.* select the H.264 decoder on systems without a native one (Linux: VA-API / openh264); on Windows Media
 // Foundation (DXVA) is always used, so the preferences do nothing here.

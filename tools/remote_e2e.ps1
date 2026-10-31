@@ -774,6 +774,20 @@ using System; using System.Runtime.InteropServices;
 public static class PipeStorm {
   [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)] static extern IntPtr CreateFileW(string n, uint a, uint s, IntPtr sa, uint c, uint f, IntPtr t);
   [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr h);
+  [DllImport("advapi32.dll", SetLastError=true)] static extern bool GetKernelObjectSecurity(IntPtr h, uint info, byte[] sd, uint len, out uint need);
+  // who the pipe's DACL names, read from an open handle (Get-Acl says of a pipe that its path does not exist on some machines); null: not open now
+  public static string[] Sids(string path) {
+    IntPtr h = CreateFileW(path, 0x00020000 /*READ_CONTROL*/, 0, IntPtr.Zero, 3, 0, IntPtr.Zero);
+    if (h == new IntPtr(-1)) return null;
+    try {
+      uint need; byte[] sd = new byte[8192];
+      if (!GetKernelObjectSecurity(h, 4 /*DACL*/, sd, (uint)sd.Length, out need)) return null;
+      var raw = new System.Security.AccessControl.RawSecurityDescriptor(sd, 0);
+      var names = new System.Collections.Generic.List<string>();
+      foreach (System.Security.AccessControl.GenericAce ace in raw.DiscretionaryAcl) names.Add(((System.Security.AccessControl.CommonAce)ace).SecurityIdentifier.Value);
+      return names.ToArray();
+    } finally { CloseHandle(h); }
+  }
   public static int Run(string path, int n) { int ok = 0; for (int i = 0; i < n; i++) { IntPtr h = CreateFileW(path, 0xC0000000, 0, IntPtr.Zero, 3, 0, IntPtr.Zero); if (h != new IntPtr(-1)) { CloseHandle(h); ok++; } } return ok; }
 }
 '@
@@ -783,11 +797,9 @@ public static class PipeStorm {
 
     # the pipe is for this user only
     # (the server makes the next instance of its pipe a moment after it ended a connection: a path that does not exist for an instant on a slow machine)
-    $acl = $null; for ($try = 0; $try -lt 200 -and -not $acl; $try++) { try { $acl = (Get-Acl "\\.\pipe\wren-remote-$name" -ErrorAction Stop).Access } catch { Start-Sleep -Milliseconds 100 } }
-    if (-not $acl) { $acl = @() }
-    $me = [Security.Principal.WindowsIdentity]::GetCurrent().User
-    $others = @($acl | Where-Object { try { $_.IdentityReference.Translate([Security.Principal.SecurityIdentifier]) -ne $me } catch { $true } })
-    Check 'the pipe lets in this user only' ($acl.Count -ge 1 -and $others.Count -eq 0) (($acl | ForEach-Object { $_.IdentityReference }) -join ',')
+    $sids = $null; for ($try = 0; $try -lt 200 -and -not $sids; $try++) { $sids = [PipeStorm]::Sids("\\.\pipe\wren-remote-$name"); if (-not $sids) { Start-Sleep -Milliseconds 100 } }
+    $me = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    Check 'the pipe lets in this user only' (@($sids).Count -ge 1 -and @($sids | Where-Object { $_ -ne $me }).Count -eq 0) (@($sids) -join ',')
 
     # a second Wren with another profile has a name of its own; the same name is refused
     Section '2i second Wren, taken name'

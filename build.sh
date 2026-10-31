@@ -7,6 +7,7 @@
 #   ./build.sh check      odin check for Linux and the unit tests of every portable package (tools/linux_ci.sh)
 #   ./build.sh crash      the crash reports end to end (tools/crash_e2e.sh)
 #   ./build.sh wren       attempt to link build/wren (needs libwgpu_native.a and ./build.sh deps; src/browser type-checks now)
+#   ./build.sh release    build/wren as the release has it: the release channel, the Rust library with fat LTO (tools/package_linux.sh packs it)
 #   ./build.sh all        deps, check, crash
 #   ./build.sh help
 # ODIN: the compiler (default: odin on PATH). PROFILE: the Rust profile (quick, the default, or release).
@@ -45,6 +46,13 @@ wren() {
   tools/build_native.sh --profile "$PROFILE" --features text,a11y
   local flags=(-collection:toolkit=ext/gui_toolkit -collection:wb=src -vet -target:linux_amd64)
   flags+=(-extra-linker-flags:"$(link_flags)")
+  # as build.bat: the channel, the first block of each thread's temporary allocator (1 MiB), the version of the sources
+  flags+=(-define:WREN_CHANNEL="${WREN_CHANNEL:-dev}" -define:DEFAULT_TEMP_ALLOCATOR_BACKING_SIZE=1048576)
+  local commit
+  if commit="g$(git rev-parse --short HEAD 2>/dev/null)"; then
+    git diff --quiet HEAD -- 2>/dev/null || commit="$commit+"
+    flags+=(-define:WREN_COMMIT="$commit" -define:WREN_COMMIT_DATE="$(git log -1 --format=%cs)")
+  fi
   flags+=(-define:FONT_BACKEND=native -define:FONT_NATIVE_LINK=false -define:A11Y_ACCESSKIT=true -define:A11Y_NATIVE_LINK=false)
   echo "linking $out (needs the build artifacts from ./build.sh deps; the system's libopus, libasound and libfontconfig; at run time libwayland-client / libxkbcommon or libxcb, and Vulkan or GL for wgpu)"
   "$ODIN" build src/browser -out:"$out" "${flags[@]}" -o:speed
@@ -55,6 +63,7 @@ case "${1:-help}" in
   check) tools/linux_ci.sh "$ODIN" ;;
   crash) tools/crash_e2e.sh "$ODIN" ;;
   wren)  wren ;;
+  release) PROFILE=release; WREN_CHANNEL=release; wren ;;
   all)   deps; tools/linux_ci.sh "$ODIN"; tools/crash_e2e.sh "$ODIN" ;;
-  *)     sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *)     sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//' ;;
 esac

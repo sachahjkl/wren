@@ -1324,6 +1324,7 @@ extract_flag :: proc(args: []string, flag: string) -> (value: string, rest: [dyn
 
 main :: proc() {
 	context = base.process_context()   // the tracker of the check build (memcheck.odin)
+	host.main_stack_ensure()   // (Linux: main_stack_linux.odin)
 	prof_mark(.Main)
 	app := new(App)
 	the_app = app

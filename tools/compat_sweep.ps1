@@ -24,6 +24,7 @@ param(
     [int]$WaitMs = 7000,
     [switch]$Rebuild
 )
+$env:WREN_AUDIO_OUTPUT = 'null'
 $ErrorActionPreference = 'Stop'
 # (powershell -File passes "a,b" as one string)
 $Sites = @($Sites | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
