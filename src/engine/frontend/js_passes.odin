@@ -148,8 +148,8 @@ instantiate_hoisted_definitions :: proc(s: ^Func_Def, bc: ^Bc_Out) {
 	for &hf in s.global_vars {
 		has_closure := 0
 		force_init := hf.force_init
-		idx := 0
-		for ; idx < len(s.closure_var); idx += 1 {
+		idx, end := closure_search_range(s, hf.var_name)
+		for ; idx < end; idx += 1 {
 			cv := &s.closure_var[idx]
 			if cv.var_name == hf.var_name {
 				has_closure = 2

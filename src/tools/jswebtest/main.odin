@@ -223,6 +223,7 @@ main :: proc() {
 	process = base.scope_make("process")
 
 	if selected("core") { run("core") }
+	if selected("compile_large") { run("compile_large") }
 	if selected("url") { run("url") }
 	if selected("abort") { run("abort") }
 	if selected("blob") { run("blob") }

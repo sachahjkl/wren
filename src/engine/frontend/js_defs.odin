@@ -401,6 +401,9 @@ Func_Def :: struct {
 	body_scope:                   int,
 
 	global_vars:                  [dynamic]Global_Var,
+	var_index:                    Name_Index, // the lookups by name in vars, global_vars and closure_var when they are long (js_emit.odin)
+	global_index:                 Name_Index,
+	closure_index:                Name_Index,
 
 	byte_code:                    [dynamic]u8,
 	last_opcode_pos:              int,

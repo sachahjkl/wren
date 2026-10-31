@@ -197,12 +197,43 @@ find_arg :: proc(fd: ^Func_Def, name: Atom) -> int {
 	return -1
 }
 
-// find_var: the function-scope ('var', scope_level 0) variable of that name, else the argument. QuickJS speeds
-// this up with a hash index over vars; the answer is the same because a name has at most one scope-0 entry.
+// A list of variables that a bundle makes long: the top level of a module holds tens of thousands of names, and each reference
+// from a function below it looks its name up there (4 billion comparisons for the 21 MB of vscode.dev, most of a compile of
+// many seconds). Past this many entries a table answers instead; below it the loop costs less than the table.
+NAME_INDEX_MIN_ENTRIES :: 64
+
+// A name's position in such a list, made when the list first reaches NAME_INDEX_MIN_ENTRIES and extended as it grows, from the
+// compilation's arena like the rest. An entry never changes its name, and an entry of `vars` its scope once add_var's caller has
+// set it, so what the table holds stays true.
+Name_Index :: struct {
+	names: map[Atom]i32,
+	upto:  int,  // entries of the list already in `names`
+	mixed: bool, // the table does not settle every search: a name given twice (vars), a name a search reports on its way (closure_var)
+}
+
+// Brings the table of function-scope variables up to date: a name maps to its last entry, what the search from the end finds.
+@(private = "file")
+var_index_update :: proc(fd: ^Func_Def) -> ^Name_Index {
+	ix := &fd.var_index
+	if ix.names == nil {ix.names = make(map[Atom]i32, len(fd.vars) * 2)}
+	for ; ix.upto < len(fd.vars); ix.upto += 1 {
+		vd := &fd.vars[ix.upto]
+		if vd.scope_level != 0 {continue}
+		if vd.var_name in ix.names {ix.mixed = true}
+		ix.names[vd.var_name] = i32(ix.upto)
+	}
+	return ix
+}
+
+// find_var: the function-scope ('var', scope_level 0) variable of that name, else the argument.
 find_var :: proc(fd: ^Func_Def, name: Atom) -> int {
-	for i := len(fd.vars) - 1; i >= 0; i -= 1 {
-		vd := &fd.vars[i]
-		if vd.var_name == name && vd.scope_level == 0 {return i}
+	if len(fd.vars) >= NAME_INDEX_MIN_ENTRIES {
+		if i, ok := var_index_update(fd).names[name]; ok {return int(i)}
+	} else {
+		for i := len(fd.vars) - 1; i >= 0; i -= 1 {
+			vd := &fd.vars[i]
+			if vd.var_name == name && vd.scope_level == 0 {return i}
+		}
 	}
 	return find_arg(fd, name)
 }
@@ -225,6 +256,15 @@ is_child_scope :: proc(fd: ^Func_Def, scope0, parent_scope: int) -> bool {
 }
 
 find_var_in_child_scope :: proc(fd: ^Func_Def, name: Atom, scope_level: int) -> int {
+	if len(fd.vars) >= NAME_INDEX_MIN_ENTRIES {
+		ix := var_index_update(fd)
+		// (a name given twice: this search answers the first that fits, the table knows the last)
+		if !ix.mixed {
+			i, ok := ix.names[name]
+			if ok && is_child_scope(fd, fd.vars[i].scope_next, scope_level) {return int(i)}
+			return -1
+		}
+	}
 	for i in 0 ..< len(fd.vars) {
 		vd := &fd.vars[i]
 		if vd.var_name == name && vd.scope_level == 0 {
@@ -235,6 +275,16 @@ find_var_in_child_scope :: proc(fd: ^Func_Def, name: Atom, scope_level: int) -> 
 }
 
 find_global_var :: proc(fd: ^Func_Def, name: Atom) -> ^Global_Var {
+	if len(fd.global_vars) >= NAME_INDEX_MIN_ENTRIES {
+		ix := &fd.global_index
+		if ix.names == nil {ix.names = make(map[Atom]i32, len(fd.global_vars) * 2)}
+		for ; ix.upto < len(fd.global_vars); ix.upto += 1 {
+			n := fd.global_vars[ix.upto].var_name
+			if n not_in ix.names {ix.names[n] = i32(ix.upto)}
+		}
+		if i, ok := ix.names[name]; ok {return &fd.global_vars[i]}
+		return nil
+	}
 	for &hf in fd.global_vars {
 		if hf.var_name == name {return &hf}
 	}
