@@ -68,7 +68,7 @@ Store :: struct {
 	loading:        bool,     // being read
 	has_section:    bool,     // the checkpoint has its records: section
 	section:        Section,
-	ck_rev:         u32,      // ev of the data its checkpoint section holds: unchanged since (rev == ck_rev) means clean, and it can be dropped from memory
+	ck_rev:         u32,      // rev of the data its checkpoint section holds: unchanged since (rev == ck_rev) means clean, and it can be dropped from memory
 	rev:            u32,      // bumped by every change of its data
 	used_ms:        f64,      // when a transaction last used it
 }
