@@ -3,6 +3,9 @@ package canvas2d
 import "core:math"
 import "core:slice"
 
+// Pixels waiting for the GPU (putImageData and the like) are flushed once past this.
+GPU_PENDING_PIXELS_MAX_BYTES :: 64 << 20
+
 // The drawing calls of a context on the GPU path (see gpu.odin): each turns the call's geometry into a Gpu_Geom and hands it
 // to gpu_draw with a paint.
 
@@ -365,7 +368,7 @@ gpu_put_pixels :: proc(c: ^Context, pix: []u8, x, y, w, h: int) {
 	off := len(g.pixels)
 	append(&g.pixels, ..pix[:w * h * 4])
 	append(&g.cmds, Gpu_Cmd{kind = .Put, box = {i32(x), i32(y), i32(w), i32(h)}, pix = off})
-	if len(g.pixels) > 64 << 20 { gpu_flush(g) }
+	if len(g.pixels) > GPU_PENDING_PIXELS_MAX_BYTES { gpu_flush(g) }
 }
 
 ////////////////////////////////
