@@ -385,6 +385,11 @@ call_native :: proc(ctx: ^Context, o: ^Object, nd: ^Native_Data, this: Value, ar
 	realm := nd.realm != nil ? nd.realm : ctx
 	m := temp_mark(rt)
 	if gc_should_run(rt) && !gc_safepoint(ctx) {return EXCEPTION}
+	when GC_POISON {
+		poison_check(o)
+		if is_heap(this) {poison_check(this.u.ptr)}
+		for a in args {if is_heap(a) {poison_check(a.u.ptr)}}
+	}
 	saved := rt.native_self
 	rt.native_self = o
 	when JSRT_TRACE_LAST_OP {trace_native = nd.fn; trace_native_obj = o; trace_native_args = args}

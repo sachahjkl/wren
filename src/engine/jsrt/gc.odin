@@ -35,6 +35,11 @@ GC_HEAP_GROWTH :: 2
 GC_MIN_ALLOCATION :: 4 << 20
 // -define:JSRT_GC_STRESS=<bytes>: a collection each time this much was allocated, to find what is not rooted (0: off). Never in a shipped build.
 GC_STRESS_BYTES :: #config(JSRT_GC_STRESS, 0)
+// -define:JSRT_GC_POISON=true: a swept cell is finalized but its memory is never reused and its kind becomes CELL_DEAD, and reading a value
+// that points at one traps there (as_obj & co., mark_cell): the first use of what was collected too early has a stack, instead of reading
+// whatever the block holds next. With JSRT_GC_STRESS, to find what is not rooted. Never in a shipped build.
+GC_POISON :: #config(JSRT_GC_POISON, false)
+CELL_DEAD :: Cell_Kind(0xDD)
 
 Cell_Kind :: enum u8 {
 	string,
@@ -290,6 +295,7 @@ gc_safepoint :: proc(ctx: ^Context) -> bool {
 // --- the collector ---
 
 mark_cell :: #force_inline proc(rt: ^Runtime, c: ^Cell) {
+	poison_check(c)
 	if c != nil && !c.mark {
 		c.mark = true
 		append(&rt.gray, c)
@@ -606,6 +612,7 @@ gc_sweep :: proc(rt: ^Runtime) {
 		}
 	}
 	prev: ^Cell = nil
+	dead: ^Cell = nil // GC_POISON: the cells of this sweep (a finalizer may still read another one of them)
 	c := rt.cells
 	for c != nil {
 		next := c.gc_next
@@ -616,10 +623,17 @@ gc_sweep :: proc(rt: ^Runtime) {
 			if prev == nil {rt.cells = next} else {prev.gc_next = next}
 			cell_finalize(rt, c)
 			rt.cell_count -= 1
-			mem_free(rt, c, int(c.size))
+			when GC_POISON {
+				rt.heap_bytes -= i64(c.size)
+				c.gc_next = dead
+				dead = c
+			} else {
+				mem_free(rt, c, int(c.size))
+			}
 		}
 		c = next
 	}
+	for d := dead; d != nil; d = d.gc_next {d.kind = CELL_DEAD}
 }
 
 // Release the out-of-line storage a cell owns (not the cell itself).
