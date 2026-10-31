@@ -9,6 +9,10 @@ import "wb:dom"
 import "wb:html"
 import "wb:style"
 
+// A threaded pass is tried this many times, this far apart, while another layout holds the threads.
+@(private = "file") PT_TAKE_TRIES :: 200
+@(private = "file") PT_TAKE_RETRY :: 5 * time.Millisecond
+
 // Full passes with inline formatting contexts laid out ahead on the layout threads against the same passes on one
 // thread (compare_layouts: every box, line, fragment, display item, space, clip, group, band), then incremental passes
 // on top of the threaded result against full passes.
@@ -60,11 +64,11 @@ pt_input :: proc(f: ^Pt, set: ^Settings, vp: Vec2) -> Input {
 pt_check :: proc(t: ^testing.T, f: ^Pt, l: ^Layout, vp: Vec2, what: string, want_taken := true, loc := #caller_location) {
 	par := settings_default()
 	par.threads, par.threads_min_contexts, par.threads_min_boxes = 3, 0, 0
-	for tries in 0 ..< 200 {
+	for tries in 0 ..< PT_TAKE_TRIES {
 		l.valid = false
 		run(l, pt_input(f, &par, vp))
-		if l.pre_counts[0] > 0 || tries == 199 || !want_taken { break }
-		time.sleep(5 * time.Millisecond)
+		if l.pre_counts[0] > 0 || tries == PT_TAKE_TRIES - 1 || !want_taken { break }
+		time.sleep(PT_TAKE_RETRY)
 	}
 	if want_taken {
 		testing.expectf(t, l.pre_counts[1] > 0, "%s: no context laid out ahead was taken (%v)", what, l.pre_counts, loc = loc)
