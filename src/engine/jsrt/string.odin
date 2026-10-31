@@ -486,7 +486,35 @@ sb_str :: proc(sb: ^String_Builder, s: ^JS_String) {
 
 sb_str_range :: proc(sb: ^String_Builder, s: ^JS_String, start, end: int) {
 	f := str_flat(sb.rt, s)
-	for i in start ..< end {sb_unit(sb, str_at(f, i))}
+	n := end - start
+	if n <= 0 {return}
+	if sb.len + n > STRING_LEN_MAX {sb.overflow = true; return}
+	if !f.is_wide {
+		bytes := str_u8(f)[start:end]
+		sb.len += n
+		if sb.wide {
+			reserve(&sb.b16, len(sb.b16) + n)
+			for c in bytes {append(&sb.b16, u16(c))}
+		} else {
+			append(&sb.b8, ..bytes)
+		}
+		return
+	}
+	units := str_u16(f)[start:end]
+	if !sb.wide {
+		// (a wide string's slice may hold only Latin-1: the builder stays narrow until a unit needs it)
+		narrow := true
+		for c in units {if c > 0xff {narrow = false; break}}
+		if narrow {
+			reserve(&sb.b8, len(sb.b8) + n)
+			for c in units {append(&sb.b8, u8(c))}
+			sb.len += n
+			return
+		}
+		sb_widen(sb)
+	}
+	sb.len += n
+	append(&sb.b16, ..units)
 }
 
 sb_finish :: proc(sb: ^String_Builder) -> ^JS_String {
