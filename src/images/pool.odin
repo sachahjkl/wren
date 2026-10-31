@@ -25,6 +25,9 @@ import "core:time"
 import "wb:base"
 import "wb:host"
 
+// How long starting the pool waits for the first thread to look at the optional codecs (for <source type> selection).
+CODECS_PROBE_WAIT :: 2 * time.Second
+
 Port_Id :: distinct u64
 Job_Id :: distinct u64   // 0: none (a job refused by submit, or one not submitted)
 
@@ -194,7 +197,7 @@ decoder_start :: proc(threads: int, stack_bytes := DECODER_STACK_DEFAULT, idle_m
 	for _ in 0 ..< d.max_threads { spawn_thread(d) }
 	sync.mutex_unlock(&d.mu)
 	// <source type> selection needs to know the optional codecs: the first thread looks (a few CoCreateInstance calls)
-	if len(d.threads) > 0 && !codecs.probed { _ = sync.sema_wait_with_timeout(&codecs_ready, 2 * time.Second) }
+	if len(d.threads) > 0 && !codecs.probed { _ = sync.sema_wait_with_timeout(&codecs_ready, CODECS_PROBE_WAIT) }
 }
 
 decoder_running :: proc() -> bool { return dec != nil }
