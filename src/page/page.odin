@@ -296,14 +296,23 @@ apply_meta :: proc(p: ^Page) {
 	stack: [dynamic]base.Handle
 	defer delete(stack)
 	append(&stack, p.doc.root)
+	script_seen := false
 	for len(stack) > 0 {
 		cur := pop(&stack)
 		n := dom.get(p.doc, cur)
 		if n == nil { continue }
+		// (document order. The first script the reveal stops at, as scripts_start finds it: a <meta> after it is revealed later)
+		if is_script_element(n) {
+			if _, ok := script_kind_of(p.doc, cur); ok { script_seen = true }
+		}
 		if n.kind == .Element && n.name == "meta" {
 			content, _ := dom.get_attribute(p.doc, cur, "content")
 			if he, ok := dom.get_attribute(p.doc, cur, "http-equiv"); ok && strings.equal_fold(he, "content-security-policy") && csp_on(p) {
+				before := len(p.env.policies.policies)
 				csp.parse_header(&p.env.policies, content, .Enforce)   // a <meta> policy cannot be report-only
+				if script_seen {
+					for &pol in p.env.policies.policies[before:] { pol.held_by = u64(cur) }
+				}
 			}
 			if he, ok := dom.get_attribute(p.doc, cur, "http-equiv"); ok && strings.equal_fold(he, "refresh") { meta_refresh(p, content) }
 			if name, ok := dom.get_attribute(p.doc, cur, "name"); ok && strings.equal_fold(name, "referrer") {
