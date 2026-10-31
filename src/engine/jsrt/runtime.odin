@@ -455,10 +455,12 @@ throw_uncatchable :: proc(ctx: ^Context, msg: string) -> Value {
 	return EXCEPTION
 }
 
-// Take ownership of the pending exception (clears it).
+// Take ownership of the pending exception (clears it). It leaves a root: it goes on temp_roots, or the next call of
+// a native (a safe point) could collect it before the caller has stored it anywhere.
 take_exception :: proc(ctx: ^Context) -> Value {
 	rt := ctx.rt
 	v := rt.exception
+	root(rt, v)
 	rt.exception = UNINITIALIZED
 	rt.uncatchable = false
 	if v.tag == .uninitialized {return UNDEFINED}

@@ -19,7 +19,8 @@ package jsrt
 //      interpreter frame truncates to its own entry height at each safe point (everything it still
 //      needs is on its operand stack). So values a builtin holds across a callback into JS stay alive.
 // Builtins that read values straight out of internal storage (a Map's entries, a fast array) and then
-// call back into JS root them explicitly with `root`.
+// call back into JS root them explicitly with `root`; so does what takes a value out of a root (take_exception,
+// coro.odin's frame_top): the next native call is a safe point.
 //
 // Weak references (WeakMap/WeakSet keys, WeakRef targets, FinalizationRegistry targets) are
 // ephemerons processed after the strong marking reaches a fixpoint; shape transition caches and the
