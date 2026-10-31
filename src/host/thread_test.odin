@@ -5,6 +5,8 @@ import "core:testing"
 import "core:time"
 import "wb:base"
 
+@(private = "file") WAIT_HOOK_ITEM_TIME :: 2 * time.Millisecond   // what an item of parallel_for_wait_hook takes
+
 @(private = "file")
 Probe :: struct { depth: int, temp_ok: bool }
 
@@ -120,7 +122,7 @@ parallel_for_wait_hook :: proc(t: ^testing.T) {
 	parallel_for(pool, len(job.done), proc(data: rawptr, i: int) {
 		j := (^Job)(data)
 		sync.atomic_add(&j.done[i], 1)
-		time.sleep(2 * time.Millisecond)
+		time.sleep(WAIT_HOOK_ITEM_TIME)
 	}, &job)
 	for d, i in job.done { testing.expectf(t, d == 1, "item %d ran %d times", i, d) }
 	testing.expectf(t, job.hooks >= 1, "the hook ran while the items did (%d times)", job.hooks)
