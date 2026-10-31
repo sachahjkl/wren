@@ -102,6 +102,7 @@ Page :: struct {
 	worker:       ^Worker_Global,       // non-nil: this Page is the global scope of a dedicated worker, on its thread, without a document
 	workers:      Page_Workers,         // the workers this page started
 	offthread:    Offthread_State,      // background parsing in flight
+	crypto_jobs:  int,                  // computations of crypto.subtle in flight (bindings_crypto_subtle.odin)
 	anim:         Page_Animations,      // transitions and animations (animations.odin)
 	fonts:        Page_Fonts,           // @font-face downloads (fonts.odin)
 	images:       Page_Images,          // <img>, CSS images, Image_decode (images.odin)

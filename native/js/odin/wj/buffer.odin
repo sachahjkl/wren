@@ -193,7 +193,7 @@ wj_key_buffer_bytes :: proc "c" (ctx: ^Context, v: JSValue, ptr: ^[^]u8, length:
 
 @(export, link_name = "wj_arraybuffer_take")
 wj_arraybuffer_take :: proc "c" (ctx: ^Context, p: [^]u8, n: uint) -> JSValue {
-	ab := JS_NewArrayBuffer(ctx, p, n, 0, web_ab_realloc, nil, false)
+	ab := JS_NewArrayBuffer(ctx, p, n, max(uint), web_ab_realloc, nil, false)   // (max(uint): not resizable)
 	if is_exception(ab) { js_free(ctx, p) }
 	return ab
 }

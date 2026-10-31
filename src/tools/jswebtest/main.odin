@@ -231,6 +231,7 @@ main :: proc() {
 	if selected("fetch") { run("fetch", seconds = 90) }
 	if selected("xhr") { run("xhr") }
 	if selected("perf_crypto") { run("perf_crypto") }
+	if selected("webcrypto") { run("webcrypto", seconds = 120) }
 	if selected("message") { run("message") }
 	if selected("sockets") { run("sockets") }
 	if selected("canvas") { run("canvas") }

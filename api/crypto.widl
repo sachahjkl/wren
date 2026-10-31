@@ -1,7 +1,12 @@
 /// Web Crypto: random values, UUIDs and digests (SHA-1, SHA-256, SHA-384, SHA-512 through BCrypt; large inputs are
-/// hashed on a worker thread).
-[Exposed=Window]
+/// hashed on a worker thread), and the operations of crypto.subtle (src/page/bindings_crypto_subtle.odin; the objects and
+/// the rules of the specification: native/js/odin/web_crypto.odin and web_crypto.js). A key's material stays here: a
+/// realm holds a CryptoKeyData, and CryptoKey_export gives what is secret only of a key that is extractable.
+[Exposed=(Window,Worker)]
 module crypto {
+  /// The material of a key, known by the realm's CryptoKey.
+  handle CryptoKeyData : Object = Crypto_Key via lookup_CryptoKeyData;
+
   /// crypto.getRandomValues(destination). Quota past crypto.max_random_bytes.
   void Crypto_getRandomValues(out bytes destination) raises;
   /// crypto.randomUUID()
@@ -10,4 +15,45 @@ module crypto {
   Promise<Buffer> SubtleCrypto_digest(string algorithm, bytes data);
   /// The same over a buffer.
   Promise<Buffer> SubtleCrypto_digestBuffer(string algorithm, Buffer data);
+
+  /// A key from its values. `kind` "secret" (`value`: the bytes), "P-256", "P-384", "Ed25519", "X25519": `value` the
+  /// private value when `is_private`, and `public_value` empty or what must match it; else `value` the public value.
+  /// 0 when they are not a valid key.
+  CryptoKeyData CryptoKey_importRaw(string kind, bytes value, bytes public_value, bool is_private, bool extractable);
+  /// A key from a DER SubjectPublicKeyInfo (`pkcs8` false) or PrivateKeyInfo (`pkcs8` true) that must be of `kind`
+  /// (as above, or "RSA"). 0 when it is not.
+  CryptoKeyData CryptoKey_importDer(string kind, bool pkcs8, bytes der, bool extractable);
+  /// An RSA key from its integers, big-endian: a public key when `d` is empty. 0 when they are not a valid key.
+  CryptoKeyData CryptoKey_importRsa(bytes n, bytes e, bytes d, bytes p, bytes q, bytes dp, bytes dq, bytes qi, bool extractable);
+  /// A new key of `kind`: "secret" of `bits` random bits, "RSA" of a modulus of `bits` bits and the exponent 65537, or a
+  /// curve (the private key of a pair). On a thread of the blocking pool; rejected when it cannot be made.
+  Promise<CryptoKeyData> CryptoKey_generate(string kind, i32 bits, bool extractable);
+  /// The public key of a private key, a new object.
+  CryptoKeyData CryptoKey_publicOf(CryptoKeyData key);
+  /// A part of a key: "secret", "spki", "pkcs8", "public" (a curve's public value), "x", "y", "d" (of a curve), or of an RSA key
+  /// "n", "e", "rsa_d", "p", "q", "dp", "dq", "qi". Invalid_Access for what is secret in a key that is not extractable, Not_Supported for
+  /// a part the key does not have.
+  bytes CryptoKey_export(CryptoKeyData key, string part) raises;
+  /// The size of an RSA key's modulus in bits.
+  i32 CryptoKey_modulusBits(CryptoKeyData key);
+  /// The form of a key that goes through structured serialization, whether it is extractable or not.
+  bytes CryptoKey_serialize(CryptoKeyData key);
+  /// The key of CryptoKey_serialize's bytes. 0 when they are not one.
+  CryptoKeyData CryptoKey_deserialize(bytes data);
+
+  /// AES-GCM, AES-CBC, AES-CTR (`mode` "GCM", "CBC", "CTR"). `iv` the IV or the counter block, `aad` GCM's additional
+  /// data, `n` GCM's tag size in bytes or CTR's counter size in bits. Every rejection here is an OperationError.
+  Promise<Buffer> SubtleCrypto_aes(string mode, bool encrypt, CryptoKeyData key, bytes iv, bytes aad, i32 n, bytes data);
+  /// AES-KW: RFC 3394.
+  Promise<Buffer> SubtleCrypto_aesKw(bool wrap, CryptoKeyData key, bytes data);
+  /// RSA-OAEP, with MGF1 over the same hash.
+  Promise<Buffer> SubtleCrypto_rsaOaep(bool encrypt, CryptoKeyData key, string hash, bytes label, bytes data);
+  /// A signature. `scheme` "HMAC", "ECDSA", "Ed25519", "PKCS1", "PSS" (`salt`: its salt size in bytes).
+  Promise<Buffer> SubtleCrypto_sign(string scheme, CryptoKeyData key, string hash, i32 salt, bytes data);
+  /// Whether `signature` is one.
+  Promise<bool> SubtleCrypto_verify(string scheme, CryptoKeyData key, string hash, i32 salt, bytes signature, bytes data);
+  /// ECDH and X25519: the shared secret of a private key and a public key of the same curve.
+  Promise<Buffer> SubtleCrypto_agree(CryptoKeyData key, CryptoKeyData peer);
+  /// `size` bytes of PBKDF2 (`iterations` > 0; `info` unused) or HKDF (`iterations` 0).
+  Promise<Buffer> SubtleCrypto_derive(CryptoKeyData key, string hash, bytes salt, bytes info, i64 iterations, i32 size);
 }

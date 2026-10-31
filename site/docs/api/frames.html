@@ -203,6 +203,7 @@
 <li><a href="../../docs/js/bindgen.html">bindgen: Odin output and Odin input</a></li>
 <li><a href="../../docs/js/odin-abi.html">The generic Odin ABI for the engine boundary</a></li>
 <li><a href="../../docs/js/odin-glue.html">Writing Wren's JavaScript glue in Odin</a></li>
+<li><a href="../../docs/js/web-crypto.html">crypto.subtle</a></li>
 <li><a href="../../docs/js/webassembly-api.html">The WebAssembly JavaScript API</a></li>
 </ul>
 </div>
@@ -265,6 +266,10 @@ connected, frames off).</p>
 <div class="code"><pre><code>bool Frame_sameOrigin(u64 navigable)</code></pre></div>
 <p>Whether its document is same origin with the calling one.</p>
 <p>Host: <code>Frame_sameOrigin :: proc(c: ^Call, navigable: u64) -&gt; bool</code></p>
+<h3 id="frame-isblank"><a class="anchor" href="#frame-isblank" aria-hidden="true">#</a><code>Frame_isBlank</code></h3>
+<div class="code"><pre><code>bool Frame_isBlank(u64 navigable)</code></pre></div>
+<p>Whether its document is same origin and has no address of its own (about:blank, srcdoc).</p>
+<p>Host: <code>Frame_isBlank :: proc(c: ^Call, navigable: u64) -&gt; bool</code></p>
 <h3 id="frame-postmessage"><a class="anchor" href="#frame-postmessage" aria-hidden="true">#</a><code>Frame_postMessage</code></h3>
 <div class="code"><pre><code>void Frame_postMessage(u64 navigable, bytes data, usvstring target_origin) raises</code></pre></div>
 <p>otherWindow.postMessage(message, targetOrigin): <code>data</code> is the message's structured serialization
@@ -320,6 +325,7 @@ shipped as port ends (Port_ship / Port_entangle): the receiver's MessageEvent.po
 <li class="lvl3"><a href="#frame-childnames">Frame_childNames</a></li>
 <li class="lvl3"><a href="#frame-closed">Frame_closed</a></li>
 <li class="lvl3"><a href="#frame-sameorigin">Frame_sameOrigin</a></li>
+<li class="lvl3"><a href="#frame-isblank">Frame_isBlank</a></li>
 <li class="lvl3"><a href="#frame-postmessage">Frame_postMessage</a></li>
 <li class="lvl3"><a href="#frame-navigate">Frame_navigate</a></li>
 <li class="lvl3"><a href="#frame-open">Frame_open</a></li>

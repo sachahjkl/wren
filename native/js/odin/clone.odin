@@ -9,7 +9,7 @@
 // String / BigInt objects, Date, RegExp, ArrayBuffer (transferred ones are detached after the whole value is
 // serialized), typed arrays and DataView (with their buffer), Map, Set, Error (name, message, stack, cause), arrays
 // (holes and extra properties kept), plain objects (own enumerable string keys), Blob / File, the geometry objects and
-// ImageData, FileSystemHandles, and in a transfer list MessagePorts, MediaSourceHandles and VideoFrames. Functions,
+// ImageData, FileSystemHandles, CryptoKeys, and in a transfer list MessagePorts, MediaSourceHandles and VideoFrames. Functions,
 // symbols and other platform objects throw DataCloneError, as in browsers.
 //
 // The output is a dynamic array on the libc heap (the bytes handed out are free()-able, as the C's were); the memory of
@@ -38,6 +38,7 @@ Clone_Tag :: enum u8 {
 	Wasm_Memory,     // a shared WebAssembly.Memory: a token of the agent cluster
 	Wasm_Module,     // a WebAssembly.Module: a token of the agent cluster
 	Resizable_Buffer, // an ArrayBuffer with a maximum: it, then as Array_Buffer
+	Crypto_Key,      // a CryptoKey: what it says of itself, then the browser's form of its material (web_crypto.odin)
 }
 
 @(private = "file") MAGIC := [4]u8{'W', 'S', 'C', 1}
@@ -369,6 +370,51 @@ serialize_blob :: proc(s: ^Ser, v: wj.JSValue, bytes: []u8) -> bool {
 	return ok
 }
 
+// A CryptoKey: its type, whether it is extractable, its algorithm and usages (as the state has them), then the
+// browser's form of its material. That form leaves the browser here and only here, whatever the key's [[extractable]]:
+// a script never sees these bytes, and a stored key must come back.
+@(private = "file")
+serialize_crypto_key :: proc(s: ^Ser, v: wj.JSValue, state: wj.JSValue) -> bool {
+	ctx := s.ctx
+	if !remember(s, v) { return false }
+	put_tag(s, .Crypto_Key)
+	FIELDS :: [4]cstring{"type", "extractable", "alg", "list"}
+	fields := FIELDS
+	for name in fields {
+		x := wj.JS_GetPropertyStr(ctx, state, name)
+		ok := !wj.is_exception(x) && serialize(s, x)
+		wj.JS_FreeValue(ctx, x)
+		if !ok { return false }
+	}
+	n := crypto_key_serialize(ctx, state)
+	if n < 0 { return clone_error(ctx, "The CryptoKey could not be cloned.") }
+	put_u64(s, u64(n))
+	if n > 0 { put(s, wj.wj_scratch.data[:n]) }
+	return true
+}
+
+@(private = "file")
+deserialize_crypto_key :: proc(d: ^Deser) -> wj.JSValue {
+	ctx := d.ctx
+	slot := len(d.refs)   // (its reference index comes before those of what it holds)
+	if !add_ref(d, wj.UNDEFINED) { return wj.EXCEPTION }
+	v: [4]wj.JSValue
+	got := 0
+	defer for x in v[:got] { wj.JS_FreeValue(ctx, x) }
+	for i in 0 ..< len(v) {
+		v[i] = deserialize(d)
+		if wj.is_exception(v[i]) { return v[i] }
+		got += 1
+	}
+	n, ok := get_u64(d)
+	if !ok { return malformed(ctx) }
+	bytes, ok2 := get_bytes(d, n)
+	if !ok2 { return malformed(ctx) }
+	r := crypto_key_adopt(ctx, bytes, v[0], v[1], v[2], v[3])
+	if !wj.is_exception(r) { d.refs[slot] = wj.JS_DupValue(ctx, r) }
+	return r
+}
+
 @(private = "file")
 serialize_error :: proc(s: ^Ser, v: wj.JSValue) -> bool {
 	ctx := s.ctx
@@ -460,6 +506,7 @@ serialize_object :: proc(s: ^Ser, v: wj.JSValue) -> bool {
 	bn: uint
 	if web_blob_bytes(v, &bp, &bn) { return serialize_blob(s, v, bp != nil ? bp[:bn] : nil) }
 	if g := serialize_geom(s, v); g != 0 { return g > 0 }
+	if state, is_key := crypto_key_state(v); is_key { return serialize_crypto_key(s, v, state) }
 	if is_a(v, &if_fs_handle, "FileSystemHandle") {
 		desc := web_fs_handle_describe(ctx, v)
 		if desc == nil { return clone_error(ctx, "FileSystemHandle object could not be cloned.") }
@@ -1138,6 +1185,8 @@ deserialize :: proc(d: ^Deser) -> wj.JSValue {
 		token, ok1 := get_u64(d)
 		if !ok1 { return malformed(ctx) }
 		return keep(d, wasm_clone_adopt(ctx, Clone_Tag(raw) == .Wasm_Module, token))
+	case .Crypto_Key:
+		return deserialize_crypto_key(d)
 	case .Typed_Array:
 		type, ok1 := get_u8(d)
 		off, ok2 := get_u64(d)
