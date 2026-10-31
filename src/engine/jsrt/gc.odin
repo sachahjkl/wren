@@ -247,6 +247,7 @@ ext_ref :: #force_inline proc(rt: ^Runtime, c: ^Cell) {
 }
 
 ext_unref :: #force_inline proc "contextless" (c: ^Cell) {
+	when GC_POISON {if c.ext == 0 {intrinsics.trap()}} // a reference released twice, or one the host never owned
 	if c.ext > 0 {c.ext -= 1}
 }
 
