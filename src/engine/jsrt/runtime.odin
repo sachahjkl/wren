@@ -187,6 +187,7 @@ Runtime :: struct {
 	// execution
 	cur_frame:      ^Frame,
 	native_self:    ^Object, // the native function currently running (for native_data)
+	native_calls:   ^Native_Call, // the native calls in progress, innermost first (each one's function, this and arguments are roots)
 	join_stack:     [dynamic]^Object, // arrays being joined (cycle detection)
 	random_state:   [2]u64,           // Math.random (xorshift128+)
 	stack_depth:    int,

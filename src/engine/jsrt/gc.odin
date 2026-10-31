@@ -7,7 +7,7 @@ package jsrt
 // not exist, cycles need no special pass, and the hot interpreter paths do no counting at all.
 //
 // Roots: the realms, the interpreter frame chain (arguments, locals, operand stacks, open closure
-// cells), the job queue, the pending exception, the atom table, host-held handles and the module
+// cells), the native calls in progress, the job queue, the pending exception, the atom table, host-held handles and the module
 // registry, plus `temp_roots`.
 //
 // Native code (builtins, the embedding API) holds Values in Odin locals that the collector cannot
@@ -20,7 +20,8 @@ package jsrt
 //      needs is on its operand stack). So values a builtin holds across a callback into JS stay alive.
 // Builtins that read values straight out of internal storage (a Map's entries, a fast array) and then
 // call back into JS root them explicitly with `root`; so does what takes a value out of a root (take_exception,
-// coro.odin's frame_top): the next native call is a safe point.
+// coro.odin's frame_top): the next native call is a safe point. A native call in progress keeps its function, `this`
+// and arguments alive (Native_Call, call.odin).
 //
 // Weak references (WeakMap/WeakSet keys, WeakRef targets, FinalizationRegistry targets) are
 // ephemerons processed after the strong marking reaches a fixpoint; shape transition caches and the
@@ -361,11 +362,15 @@ gc_mark_roots :: proc(rt: ^Runtime) {
 	for _, s in rt.symbol_registry {mark_cell(rt, s)}
 	for ctx in rt.contexts {mark_context(rt, ctx)}
 	for f := rt.cur_frame; f != nil; f = f.prev {mark_frame(rt, f)}
+	for nc := rt.native_calls; nc != nil; nc = nc.prev {
+		mark_cell(rt, nc.fn)
+		mark_value(rt, nc.this)
+		mark_values(rt, nc.args)
+	}
 	for c in rt.temp_roots {mark_cell(rt, c)}
 	gc_mark_ext(rt)
 	for &j in rt.jobs {mark_values(rt, j.args[:])}
 	mark_value(rt, rt.exception)
-	mark_cell(rt, rt.native_self)
 	for m in rt.modules {mark_cell(rt, m)}
 	mark_values(rt, rt.finrec_cleanup[:])
 }
