@@ -128,7 +128,7 @@ if (-not $NoVerify) {
     }
 }
 # ---- 4. the notes: what is new since the last release (titles only) and what to know. What is new is what the next version
-# would bring: the fragments of changelog.d and what a branch still wrote under the CHANGELOG's "## Unreleased" (tools\changelog.ps1 -Assemble)
+# would bring: the fragments of changelog.d and what a branch still wrote under the CHANGELOG's "## [Unreleased]" (tools\changelog.ps1 -Assemble)
 $changes = Join-Path $out 'changes.md'
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\changelog.ps1 -Assemble -Out $changes | Out-Host
 if ($LASTEXITCODE -ne 0) { throw 'tools\changelog.ps1 -Assemble failed: a fragment of changelog.d is malformed (tools\changelog.ps1 -Check)' }
@@ -176,7 +176,7 @@ if ($NoEmbed) {
 [void]$nb.AppendLine('-------')
 [void]$nb.AppendLine($known.TrimEnd())
 [void]$nb.AppendLine('')
-foreach ($s in 'Added', 'Changed', 'Removed', 'Fixed') {
+foreach ($s in 'Added', 'Changed', 'Deprecated', 'Removed', 'Fixed', 'Security') {
     if ($titles.ContainsKey($s) -and $titles[$s].Count -gt 0) {
         [void]$nb.AppendLine("$s since the last release ($($titles[$s].Count))")
         [void]$nb.AppendLine(('-' * ("$s since the last release ($($titles[$s].Count))").Length))

@@ -5,9 +5,12 @@ What each version of Wren brings. The release notes on GitHub add the list of ev
 `docs/releases/` and the history). What is not released yet is in [changelog.d/](changelog.d/README.md), one file per
 change, assembled here when a version is published (`tools/changelog.ps1`).
 
-## Unreleased
+This file follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/); its version numbers do not follow
+Semantic Versioning, since a patch version can add or remove features.
 
-## 0.6.21 - 2026-10-30
+## [Unreleased]
+
+## [0.6.21] - 2026-10-30
 
 ### Added
 - **WebAssembly modules built with the old form of exceptions run** (`try`, `catch`, `rethrow`, `delegate`: older Emscripten and .NET builds, DuckDB): they are translated at compilation. `new WebAssembly.Memory({shared: true})` works for one agent, so Pyodide (Python) starts.
@@ -20,12 +23,12 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 - **A service worker can call `event.waitUntil()` from the promise it gave `respondWith`**, as the specification allows: Wren refused, so the request failed (bitplatform.dev's Blazor application could not start).
 - **A stream's reader released while reading no longer reports an unhandled rejection** ("Releasing Default reader"), which stopped a worker in DuckDB's shell and failed `pipeTo` tests: a promise marked as handled after its rejection now tells the rejection tracker.
 
-## 0.6.20 - 2026-10-30
+## [0.6.20] - 2026-10-30
 
 ### Added
 - **The WebAssembly JavaScript API, on by default**: a page's own modules run on Wasmtime beside the engine's. `WebAssembly.validate`, `compile`, `instantiate`, the streaming forms, `Module`, `Instance`, `Memory`, `Table`, `Global`, `Tag`, `Exception` and the errors, in windows and workers. `compile` works on another thread, so a large module does not stop the page. Blazor WebAssembly (.NET 10), wasm-bindgen and Emscripten applications run; the page's Content Security Policy applies (`'wasm-unsafe-eval'`). No shared memory, so no threads. A page that does not touch `WebAssembly` pays nothing. `javascript.webassembly.enabled` turns it off. Details and limits: `docs/js/webassembly-api.md`.
 
-## 0.6.19 - 2026-10-30
+## [0.6.19] - 2026-10-30
 
 ### Changed
 - **Updated to the latest `gui_toolkit` master (0.55): a frame less of latency (input to screen on GitHub, a pointer moving: 49.9 ms to 35.9 ms on average), a lazy column, `ui.rich_paragraph` versions, `ui.next_merge`, `ui.box_at`, layout warnings in debug builds, a find in page that no longer reads a freed scope, and a `devtools` package (CDP) that Wren does not use.**
@@ -33,7 +36,7 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 ### Fixed
 - **`table-layout: fixed` is honoured.** A table with a width and `table-layout: fixed` took its columns from the content, so a commit message with `white-space: nowrap` widened the file list of a GitHub repository page over its sidebar. The columns now come from the `<col>` elements and the first row, the automatic ones share what is left, and `getComputedStyle` reports `table-layout`.
 
-## 0.6.18 - 2026-10-30
+## [0.6.18] - 2026-10-30
 
 ### Added
 - **Wren runs on Linux** (`./build.sh deps`, `./build.sh wren`; `docs/portability.md`, slice 7): verified under WSLg (Wayland, software Vulkan) on NixOS: the window, the start page, `wren ctl`, example.com and GitHub's repository page. `tools/fetch_wgpu.sh` fetches wgpu-native (SHA-256 checked, sealed like Wasmtime), `tools/fetch_wasmtime.sh` also the licence text, and the Linux CI job now checks and tests `src/browser`. Linux is not released yet: only the Windows build is.
@@ -46,7 +49,7 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 ### Fixed
 - **`performance.getEntriesByType("navigation")` no longer reads freed memory.** The navigation entry's strings were freed (a `defer` inside the `if` block) before the entry was turned into JSON. The Windows heap left the bytes in place; on Linux they were overwritten, GitHub's web-vitals code threw `JSON.parse: bad escape` and its repository page showed "Unable to load page".
 
-## 0.6.17 - 2026-10-30
+## [0.6.17] - 2026-10-30
 
 ### Changed
 - **The performance report says why a state change needed a full style pass** (`tools\perf.ps1`, new scenario `github_hover`: the pointer moving over the sidebar of GitHub's repository page); `WREN_RESTYLE_TRACE=1` also lists the rules that made a state change restyle a whole subtree.
@@ -56,27 +59,27 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 - **A rule such as `:is(.a:hover, .b:focus-within) .c` no longer makes every hover restyle the subtrees it could reach.** The partial restyle after a state change took any element for a match of the `:is()` as soon as a state was in it; it now looks at the rest of the list (`.a`, `.b`) too. Hovering GitHub's repository page: the style work after a state change goes from 29 ms to 1.3 ms on average, and frames over budget from 40 % to 4 %.
 - **Moving the pointer over a page with a state-dependent `:has()` no longer restyles the whole page.** One rule such as `:has([popover]:hover)` (GitHub has one) made every hover, focus or active change a full style pass, about 120 ms each on GitHub's repository page. The anchors of that `:has()` (the ancestors, parents and earlier siblings of the element whose state changed) are now the only elements restyled, and the result is checked against a full pass in a test.
 
-## 0.6.16 - 2026-10-30
+## [0.6.16] - 2026-10-30
 
 ### Changed
 - **Pages made of ES modules load faster**: the engine compiled every module twice, once when it arrived (to learn what it imports) and again when the graph ran, because the first one was not kept among the loaded modules. Now it is, and the compiled modules also go to the bytecode cache of the profile (`javascript.bytecode_cache.*`), as classic scripts already did: a module seen before is read, not parsed again. On the repository page of Wren on GitHub (about 130 modules), the page is stable after 4.0 s instead of 7.8 s on a visit that finds them in the cache, and the longest stall between two frames goes from 1.9 s to 0.7 s; the first visit gains about a second.
 
-## 0.6.15 - 2026-10-30
+## [0.6.15] - 2026-10-30
 
 ### Changed
 - **Big pages are styled several times faster**: a full style pass shared its work between threads by opening the tree level by level, so a page whose elements sit under one chain of containers (GitHub, most apps) was styled by one thread while the others waited, whatever `page.threads.style` said. The work is now shared by weight: the subtrees too big to be one task are opened on the page's thread, the rest is cut into parts of about the same number of elements. On the repository page of Wren on GitHub a full pass goes from about 190 ms to 52 ms, the pages' styles taking 1.5 s instead of 3.6 s while it loads, and the gaps between two frames at the 95th percentile from 480 to 330 ms. `tools\perf.ps1 -Only github_load,github_scroll` measures it.
 
-## 0.6.14 - 2026-10-30
+## [0.6.14] - 2026-10-30
 
 ### Changed
 - **Downloads go straight to the Downloads folder, and the folder is yours to choose**: `browser.download.ask` is now off by default, so no Save dialog opens for each file; the file goes to `browser.download.directory` (the Downloads folder of Windows when it is empty) under a name that is free. At the top of about:downloads, the folder in use with **Change…** (a folder picker) and **Default** (back to the Downloads folder of Windows), and a switch "Ask where to save each file" for those who want the Save dialog.
 
-## 0.6.13 - 2026-10-30
+## [0.6.13] - 2026-10-30
 
 ### Added
 - **A download manager**: a button joins the toolbar once a download has run, with a ring that fills around its arrow as the files arrive, and a drop-down (it opens by itself when a download begins) listing the latest ones, each with its progress bar, its speed and the time left; the cross cancels, a click opens the file, the folder icon shows it in the file manager. `about:downloads` (Ctrl+J, Menu > Downloads) lists all of them by day with a search box: Open, Show in folder, Copy download link, Download again, Delete the file, Remove from the list, Try again for a failed one, Clear the list. The progress bar eases toward the real figure, with a gloss and a light band travelling over it. The finished downloads stay listed across restarts (`downloads.txt` in the profile; `browser.download.list_max`, now 200), and a file moved or deleted since says so. `browser.download.button` (`auto`, `always`, `never`) sets when the button shows.
 
-## 0.6.12 - 2026-10-30
+## [0.6.12] - 2026-10-30
 
 ### Changed
 - **The icons of the start page's search box are bigger** (the lens and the arrow, 20 px instead of 16), closer to the size of the text.
@@ -85,7 +88,7 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 ### Fixed
 - **The first painting comes sooner, and the page says what it is doing**: with nothing downloaded yet, the smallest of the listed files goes first, so the first painting shows as soon as it can and the others follow. A file the listing says is larger than `browser.newtab.art.max_image_bytes` is no longer downloaded just to fail (each failure made the next try wait twice as long). The page reads "Loading a painting…" instead of "No painting could be loaded yet", which now only shows, as "Trying again", after a request failed.
 
-## 0.6.11 - 2026-10-30
+## [0.6.11] - 2026-10-30
 
 ### Added
 - **The address bar suggests pages as soon as it gets the keyboard** (a click, Ctrl+L, a new tab), before anything is typed: the pages visited most and most lately, without the one being shown. Nothing is chosen at first, so Enter still does what the field says; Down or Up chooses a row, a click opens one. Turn it off with `browser.urlbar.top_sites`.
@@ -94,12 +97,12 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 ### Fixed
 - **The title of a visited page no longer changes to "New tab"**: a page of the browser that is not recorded in the history (the start page, an error page) used to give its title to the last page visited in the tab, and the address bar's suggestions showed it.
 
-## 0.6.10 - 2026-10-30
+## [0.6.10] - 2026-10-30
 
 ### Changed
 - **The start page, redesigned**: the large cards and the pill around the hint are gone. Under the logo and the title there is a row of thin links with a line icon each (Configuration, History, Content blocker, Demos & tests) and, further down, a link with a small coloured painting for the painting start page ("A painting on every new tab", with its state). The painting page's shortcuts at the top are the same four links, frameless and faint, instead of dark pills.
 
-## 0.6.9 - 2026-10-30
+## [0.6.9] - 2026-10-30
 
 ### Added
 - **A switch for the painting start page, on the pages themselves**: the start page has a card, "A painting on every new tab", that turns ``browser.newtab.art.enabled`` on (``about:home?art=on``), and the painting page has a "Plain start page" link that turns it off (``about:home?art=off``). A web page cannot do it: only the address bar, or a link of the start page itself, runs it (nav_trust.odin).
@@ -110,17 +113,17 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 ### Fixed
 - **The painting start page, first time**: the first new tab after turning the option on showed "No painting could be loaded yet" for good, because nothing replaced it when the first painting arrived (a tab opened later had one). A new tab that shows no painting yet now shows the first one that is ready, in place.
 
-## 0.6.8 - 2026-10-30
+## [0.6.8] - 2026-10-30
 
 ### Added
 - **Performance tab: Pictures and Export.** ``Pictures`` records the window's frames as pictures (at most 120, about 1000 px wide); ``Export`` writes ``wren-timeline-<date>-<time>/`` to the downloads folder and opens it: ``index.html`` (the frames big, one at a time or in a strip, with a bar chart of how much each changed, and each frame's time, kind, scroll and difference from the one before), the pictures, ``sheet.png``, ``timeline.json``, and ``trace.json`` (the phases of every recorded frame as Chrome trace events: it opens in the Performance tab of Chrome and in Perfetto). ``wren ctl timeline stop`` writes the same ``index.html``.
 
-## 0.6.7 - 2026-10-29
+## [0.6.7] - 2026-10-29
 
 ### Changed
 - **gui_toolkit** is at its latest master (4d13fe1): a Linux window with its platform services, password fields (``line_edit`` secret), ``fuzzy_score``, check boxes and switches that fit their mark and label. The README no longer opens with the toolkit's old description, and describes the JavaScript engine as the one written in Odin (it still named QuickJS-ng and measures taken with it).
 
-## 0.6.6 - 2026-10-29
+## [0.6.6] - 2026-10-29
 
 ### Added
 - **`wren ctl timeline`** (``Wren.timeline``): records every frame the renderer draws, the chrome frames made while a page keeps the thread included, while other commands act (scroll, click, nav); ``timeline stop <folder>`` writes the frames as pictures, a contact sheet (a red frame is an A-B-A: unlike both its neighbours, which are alike; an orange one a chrome frame) and ``timeline.json`` (time, kind, scroll, hold, loading and the pixels that differ from the frame before). It shows what a settled capture misses and the eye sees: a header drawn twice, a blank page for a frame, a bar that jumps.
@@ -132,7 +135,7 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 - **Fixed and sticky boxes while the page picture scrolls** (a script keeps the page busy): the header was drawn once, lower, by the picture that carried it with the page, and not at its place for the frames made meanwhile (found with ``wren ctl timeline``). The compositor now notes where it drew each fixed or sticky part of a chunk, the picture shows them there, and the copy the picture carried is cleared: a sticky header stays at the top of the page (Bootstrap's documentation).
 - **The cursor over an iframe** is its document's: a handle in a frame that asks for ``cursor: se-resize`` (jQuery UI's resizable, in its demo frame) shows it. The page's own cursor was looked up at the frame's box, never inside it.
 
-## 0.6.5 - 2026-10-29
+## [0.6.5] - 2026-10-29
 
 ### Changed
 - **Middle-click autoscroll**: the speed grows geometrically with the distance from the anchor, `max * (2^(x/D) - 1) / (2^(F/D) - 1)` (`x` past the dead zone, `D` = `browser.scroll.autoscroll.doubling_distance`, 80 px, `F` = the full distance, 420 px): it doubles every `D` px and reaches the top speed at `F`. It replaces the power curve (`browser.scroll.autoscroll.curve` is gone).
@@ -143,7 +146,7 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 - **Mouse moves in frames**: a `mousemove` / `pointermove` (and `mouseover`, `mouseenter`...) now reach the scripts of an iframe's document, and a document in which a button was pressed keeps the moves while it is held, wherever the pointer goes (an implicit capture). Before, a frame only got presses, releases and clicks, so a drag started in a frame did nothing: jQuery UI's demos (draggable, sortable, resizable, slider...) in their iframes.
 - **Images in a shrink-to-fit box** (blog.jquery.com): an image whose `max-width` or `width` is a percentage no longer makes its inline-block link, table cell or flex item as wide as the image itself (CSS Sizing 3 5.2.2, compressible replaced elements): `img {max-width: 100%}` fills the room it is given instead of overflowing.
 
-## 0.6.4 - 2026-10-29
+## [0.6.4] - 2026-10-29
 
 ### Changed
 - **Tests on the CI**: the end-to-end steps that start a Wren and drive it (tools\test_all.ps1 -NoCI) run on a developer's machine, not on the shared runner where they failed at random; remote_e2e stays as the smoke test. The release workflow no longer runs the tests again (the CI of master is the gate): about 25 minutes less.
@@ -155,7 +158,7 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 - **setAttribute with the value the attribute has**: observers and attributeChangedCallback still see the write, as the DOM says, but the document no longer changes: no new version, no restyle, no layout (classList.add of a class already there, a script that sets a data attribute at every scroll event).
 - **Fixed and sticky boxes while a page is busy**: when the wheel scrolls the kept picture of a page that a script keeps busy, a fixed header or a sticky box stays where the page drew it instead of sliding with the picture and jumping back (Bootstrap's documentation header).
 
-## 0.6.3 - 2026-10-29
+## [0.6.3] - 2026-10-29
 
 ### Added
 - **`<meta http-equiv="refresh">`** with a URL (`content="0; url=..."`) navigates after its delay (replacing the entry when the delay is 0). Bootstrap's documentation redirects its old page names that way.
@@ -172,7 +175,7 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 - **Tabs**: a middle click on a tab (in the row or in the sidebar) closes it again, instead of starting the autoscroll of the bar around it (`Box_Flag.Middle_Click` of the toolkit).
 - **Grid**: an item with a stated minimum width (or height) no longer stretches the flexible tracks of its grid: Bootstrap's documentation pages (`.bd-content{min-width:1px}`) have their layout again.
 
-## 0.6.2 - 2026-10-29
+## [0.6.2] - 2026-10-29
 
 ### Changed
 - **Plus de Zig, plus de bibliothèque C dans le module JavaScript** : le module du moteur est lié par le `wasm-ld` livré avec Odin (`tools\build_js.ps1` ne télécharge plus rien). La bibliothèque C n'existe plus : le tas (l'emmalloc de `base:runtime`), les fonctions de chaînes, `strtod`, `snprintf` et `ldexp` sont écrits en Odin (`native/js/odin/wj/libc.odin`), `exp` est celui de fdlibm, et `sin`, `cos` et `pow` sont fournis par l'hôte (module `libm`). Ses seuls imports sont `wasi_snapshot_preview1.{clock_time_get,random_get}`, `libm.*` et les modules `wr_*`. Retirés : le compilateur de référence QuickJS en C (`jsrt_refcompiler.c`), la comparaison native de `test262.ps1`, `jsrt_bench.ps1`, `e1_fetch_oracle.ps1`, les licences de wasi-libc, musl et cloudlibc, et le cache Zig de la CI. L'image du moteur passe de 5,6 à 5,9 Mio.
@@ -181,12 +184,12 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 - **Documentation du site : le code se replie et l'accueil nomme la bonne version** : le code en ligne ne passait pas à la ligne (il débordait sur le sommaire) et les blocs de code avaient une barre de défilement horizontale : ils se replient maintenant à la largeur du texte. Un extrait de code de la page du bloqueur, coupé par un début de ligne * , était pris pour une liste. La page d'accueil du site écrit la dernière version des notes de release (elle disait 0.4.0).
 - **Documentation du site : liens relatifs** : les pages de `/wren/docs/` utilisaient des liens à la racine (`/style.css`), qui sortaient du site publié sous `/wren/` : pas de style, logo cassé. Le générateur écrit maintenant des liens relatifs à la racine du site, y compris pour la recherche. La page Changelog du site est générée depuis `docs/releases` et `CHANGELOG.md`, et les quatre images de la page d'accueil (une fenêtre à quatre onglets, chacun devant à son tour) sont refaites par `tools\hero_shots.ps1`.
 
-## 0.6.1 - 2026-10-29
+## [0.6.1] - 2026-10-29
 
 ### Changed
 - **Moteur Odin : moins de mémoire par royaume et par page** : le compilateur libère les tables et tampons d'une fonction dès que son bytecode existe, ses petits blocs sont recyclés et les littéraux chaîne sont des tranches de la source ; les membres des prototypes Web IDL ne sont définis qu'au premier accès (mêmes clés, même ordre, mêmes descripteurs) et les fonctions natives sont plus petites. Mémoire linéaire du module Wasm : royaume vide 6 592 → 4 352 Kio (création d'un royaume 2,3 → 1,3 ms), page de 650 Kio de script 27 904 → 23 744 Kio, même page compilée seulement 27 840 → 14 144 Kio ; l'image `wren_js.wasm` passe de 7 447 à 5 574 Kio. Bytecode identique à celui de QuickJS-ng sur les 19 006 fichiers de test262 `language/`.
 
-## 0.6.0 - 2026-10-29
+## [0.6.0] - 2026-10-29
 
 ### Added
 - **`text-wrap: balance`** : un paragraphe de six lignes au plus garde son nombre de lignes, mais ses lignes se coupent à la largeur la plus étroite qui le permet (recherche par dichotomie sur la largeur de coupure) ; l'alignement (`text-align: center`, `end`) reste calculé sur la largeur entière, comme Blink. Les titres `text-balance` de Bootstrap 6, Tailwind et d'autres s'affichent comme dans Edge. Ignoré quand le paragraphe contient un flottant, un élément en ligne atomique, un `<br>` ou un bloc.
@@ -242,7 +245,7 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 - **`<dialog>` : style par défaut de la spécification** : un `<dialog>` est hors flux, centré, de taille `fit-content` (`position: absolute`, `margin: auto`). Sans cela, un dialogue fermé que la feuille de la page met en `display: flex` (Bootstrap 6) poussait toute la page de 185 px vers le bas ; getbootstrap.com passe de 50 % à 9 % d'écart avec Edge.
 - **Feuilles de style liées : ordre du document retrouvé après le chargement** : pendant que le parseur révèle la page, les `<link rel="stylesheet">` détachés gardent leur feuille mais sont classés comme s'ils n'étaient nulle part, donc dans l'ordre d'arrivée du réseau. Une fois les éléments de retour dans l'arbre, rien ne reclassait les feuilles : sur python.org, `mq.css` (blocs `@media`) passait avant `style.css` et perdait la cascade (bouton Donate affiché en bloc, logo masqué). Les feuilles sont maintenant reclassées dès que leur propriétaire revient (test `sheet_order_after_detached_owners`).
 
-## 0.5.0 - 2026-10-28
+## [0.5.0] - 2026-10-28
 
 ### Added
 - **WebCodecs `VideoEncoder` / `AudioEncoder`** (`webcodecs.allow_encoders`): the interfaces exist so feature detection and construction behave, but no encoder is linked in this build, so `isConfigSupported` honestly reports `{ supported: false }` and `configure` raises `NotSupportedError` (the single place to wire a future encoder crate).
@@ -358,7 +361,7 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 - **The Network panel shows the whole remote address on the WinHTTP stack** (`net.remember_address`): it was cut to "127.0:port" (WinHTTP gives a wide address's length in characters, not bytes).
 - **Detached developer tools on WebGPU**: the detached developer tools window now works with the WebGPU renderer (`TOOLKIT_RENDER=wgpu`), not only Direct3D 11; the toolkit gained a per-window WebGPU surface (`render.surface_*`) alongside the Direct3D one.
 
-## 0.4.0 - 2026-10-27
+## [0.4.0] - 2026-10-27
 
 ### Added
 - **`blocker.welcome_toast`** (default on): off, a new profile is not told that the content blocker is on; automation (`wren ctl` throwaway profiles) and `tools\screenshot.ps1` turn it off. The screenshots tool also uses a throwaway profile (the default look) instead of the user's.
@@ -452,7 +455,7 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 - **Classic style in the tab sidebar** (`browser.ui.chrome_style = classic` with `browser.tabs.position = left | right`; `src/browser/chrome_style.odin` "The classic sidebar", [docs/chrome-style.md](docs/chrome-style.md)): the sidebar is the classic tab bar turned on its side (its gradient toward the page, a dark line along its inner edge), the current tab a classic tab with upright sides whose rounded shoulders are on the outer side and whose concave feet flare into the inner edge's line and flow into the page's side (mirrored at the right), the other tabs flat and engraved apart, a rounded panel of an inactive tab's colors under the pointer, the top's small trapezoid as new-tab button, the scroll bar on the outer side (gui_toolkit 0.35.4 `Box_Flag.Scrollbar_Left`), icons-only mode with the same shapes; the title row and the toolbar are the classic ones. Light and dark palettes; the top row of tabs is unchanged (same pixels). Tests: `side_tab_lies_across_its_row`, `side_colors_compose_with_palettes`, `classic_on_follows_the_style_at_every_position`.
 - **The tabs in a sidebar, at the left or at the right of the page** (`browser.tabs.position` = `top` (default, unchanged) | `left` | `right`, at once from about:config, `wren ctl pref set`, the View menu, the command palette and the tab menu's `Tab bar` submenu; `browser.tabs.sidebar_width` (120 to 640 px, dragged by the sidebar's inner edge), `sidebar_collapsed` (icons only, `Ctrl+Shift+Comma` or the button at the top of the sidebar), `sidebar_collapsed_width`, `sidebar_row_em`; `src/browser/tab_sidebar.odin`, [docs/tab-sidebar.md](docs/tab-sidebar.md)): only another layout of the same tabs. One tab per row (icon or loading indicator, title, a close button on the current tab and under the pointer, an accent bar on the current one), a press selects, a middle click closes, a right click opens the tab's menu, the pointer resting on a row shows its title and address beside it, a drag along the column reorders (the other rows slide, the order is the row of tabs'), the wheel and a scroll bar move the list, the new-tab button is at the top. Only the rows in view are built, whatever the number of tabs. The integrated title bar keeps its drag area and its window buttons above the address row, the sidebar and the page share what is below, and the window's resize bands are the system's frame, outside the sidebar. The classic style has a sidebar of its own (Classic style in the tab sidebar, above); full screen shows the row of tabs over the page as before.
 - **`wren ctl stats` counts the frames' presents and the gaps between them** (`src/browser/frame_log.odin`, `stats --reset-frames`): `framesPresented`, `frameGapP50Ms` / `P95` / `P99` / `MaxMs`, and from the toolkit's `platform.pump_stats` `paintFrames`, `modalLoops`, `ignoredSizeMoves`. `tools\altdrag_sim.ps1` uses them: what AltSnap does to a window (a run of `SetWindowPos` from another thread, the posted `WM_ENTERSIZEMOVE` / `WM_EXITSIZEMOVE`, the `WM_SIZING` sent before each step), with no mouse and no AltSnap, and how long each call took to return.
-- **The licence card turns all the way, and has a back** (`about:wren?card=sample`, `src/browser/about_card.odin`, `about_card_back.odin`, `shaders/card_foil.wgsl`, [docs/shaders.md](docs/shaders.md)): the pointer's tilt and the sweeping light are unchanged; a small `Rotate` button under the card (an icon and a label, shown when the pointer is over the card or the button has the focus, a real `<button>` with an `aria-label`) switches to a manipulation mode where a drag turns the card freely on two axes with a fling that slows down (a CSS transition, no script loop: nothing is drawn at rest), arrow keys turn it by 30 degrees, and `Done` or Escape brings it back to the tilt by the short way. Past a quarter turn the card shows its back, drawn natively like the front: the same foil with the front's relief inside out (the lip a trough, the ridges furrows), the logo of Wren raised in the middle (its height field made from `assets/logo_256.png`, discreet, lit by both lights), a raised line `WREN Ã‚Â· FROMENT SOFTWARE` and nothing about the person. The two faces are back to back (`backface-visibility: hidden`), the shaders take the card's turn (`--rx`, `--ry`) to place the eye and the two lights so the back is lit as an object seen from behind. No back and no button with reduced motion or on a narrow card.
+- **The licence card turns all the way, and has a back** (`about:wren?card=sample`, `src/browser/about_card.odin`, `about_card_back.odin`, `shaders/card_foil.wgsl`, [docs/shaders.md](docs/shaders.md)): the pointer's tilt and the sweeping light are unchanged; a small `Rotate` button under the card (an icon and a label, shown when the pointer is over the card or the button has the focus, a real `<button>` with an `aria-label`) switches to a manipulation mode where a drag turns the card freely on two axes with a fling that slows down (a CSS transition, no script loop: nothing is drawn at rest), arrow keys turn it by 30 degrees, and `Done` or Escape brings it back to the tilt by the short way. Past a quarter turn the card shows its back, drawn natively like the front: the same foil with the front's relief inside out (the lip a trough, the ridges furrows), the logo of Wren raised in the middle (its height field made from `assets/logo_256.png`, discreet, lit by both lights), a raised line `WREN · FROMENT SOFTWARE` and nothing about the person. The two faces are back to back (`backface-visibility: hidden`), the shaders take the card's turn (`--rx`, `--ry`) to place the eye and the two lights so the back is lit as an object seen from behind. No back and no button with reduced motion or on a narrow card.
 - **A face with `backface-visibility: hidden` that is turned away is not painted at all** (`paint_planes.odin`, `open_plane`): its layer used to be rasterized (with a shader in it, for the licence card) and thrown away when composited. A plane that keeps its children in 3D is left alone.
 - **Input -> screen latency, measured stage by stage** (toolkit 0.32.0, `render/latency.odin`; `src/browser/pacing.odin`): `WREN_LATENCY=1` (or `browser.frame.latency_probe`) records, for each frame built from input, the wait for the frame, build + draw, `Present` and scan-out; `wren ctl stats` then has a `latency` field (p50 / p95 / max / mean per stage, the total in refreshes of the monitor, `framesShown`, `queueMean`, `tearingSupported`), and `stats --reset-latency` starts a new measure. `wren ctl hover x,y [--window]` moves the pointer by one synthetic event. `tools\hover_latency_bench.ps1` sweeps the main menu or the toolbar (headless, synthetic input) and prints the stages. Off by default: nothing recorded.
 - **`wren version`, `wren help`, `wren --version` / `-V`, `wren --help` / `-h` / `-?`** (`src/browser/cli_usage.odin`): the program says its version and build, or its usage (the commands, every option), on the console and ends with code 0, before any profile or window is set up; `wren.com` waits for them like for `ctl`, so they print in a terminal and can be redirected. `version`, `help` and `ctl` are commands only as the first argument (`./help` opens a file of that name; after an option the word is refused with a message and exit code 2, not opened as `https://help`).
@@ -623,7 +626,7 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 - **`wren ctl eval` no longer puts a secret where a page can read it, and a page cannot answer for another tab or add a line to the protocol** (`remote_shell.odin`, `remote_json.odin`, security review of 2026-10-25, finding 5): the answer of a script came back as a console line starting with a prefix made at each start, "so that a page cannot forge it". The line goes through the `console.log` of the page, which a page can replace: it read the prefix at the first `eval` (or the first `wait load`), then answered in place of the script, for a question waiting in another tab too, and a value with a line break in it cut the JSON line of the protocol in two (the client hung). The mark is now a constant, and an answer counts only if it comes from the tab the question was asked in, for an id that waits, the first time; the value is checked to be one JSON value on one line before it is put in a reply (anything else is an error). A page can still lie about the value of what it is asked, as it can about `document.title` to its own scripts; `docs/remote.md` says so. Tests: `remote_page_e2e.ps1` (fails 4 of 5 checks on the build before), `remote_forge_test.odin`.
 - **The programs the browser starts are the system's, by their full path** (`desktop.system_file`, `crashtrace`, security review of 2026-10-25, finding 4): the report of a session that ended without one ran `wevtutil.exe` by its bare name, and `CreateProcess` looks in the working directory before the system folder, so a `wevtutil.exe` planted in the folder a page was opened from ran, without a window, at the next start after a crash or a kill. It is now `System32\wevtutil.exe`, as the application of the process. The same for the two other bare names found in `src`: `explorer.exe` of "Show in folder" (`ShellExecute` searches the working directory too; now `C:\Windows\explorer.exe`) and the `cmd.exe` of the deferred clean-up script of the installer (now `System32\cmd.exe`); `icu.dll` (the time zone's name) is loaded from the system folder only. Test: `tools\planted_program_e2e.ps1` (fails on the build before), `crashtrace_test.odin`, `system_windows_test.odin`.
 - **The policy file is read beside the executable, no longer from the working directory** (`policy_file.odin`, security review of 2026-10-25, finding 3): without `--policy FILE` the browser read `policies.txt` from the working directory, at the highest layer (it locks any preference). Windows may give a program the folder of the document it opens as its working directory, so an archive holding `page.html` and a `policies.txt` with `security.file_access.policy` set to `all`, or `security.csp.enabled` to `false`, could widen what a local page may read. The file is now `policies.txt` in the executable's folder (the Start menu shortcut already had that folder as working directory, which is what `docs/desktop-integration.md` meant); `--policy FILE` is unchanged. Test: `tools\policy_file_e2e.ps1` (fails on the build before) and `policy_file_test.odin`.
-- **A download name with a very long extension no longer ends the browser** (`download_file_name`, security review of 2026-10-25, finding 2): a server answering `Content-Disposition: attachment; filename="a.xxxxÃ¢â‚¬Â¦"` with 250 `x` made the name shortener index past the end of the name's stem (a bounds-check panic: every tab closed), with no action from the person. The cut is now one procedure that keeps whole characters, drops an extension as long as the limit, never leaves a dot or a space at the end, and the device-name test (CON, NUL, COM0-9, LPT0-9 and the superscript digits) looks at the part before the first dot, as Windows does (`con.tar.gz` was written as the console device) and runs after the cut, so a cut cannot make a device name. Tests: the very long extension at nine limits, ninety hostile names (empty, dots, controls, bidi, reserved characters, devices, invalid UTF-8, 1000 bytes in one- to four-byte characters), and 30000 random names against the same invariants.
+- **A download name with a very long extension no longer ends the browser** (`download_file_name`, security review of 2026-10-25, finding 2): a server answering `Content-Disposition: attachment; filename="a.xxxx…"` with 250 `x` made the name shortener index past the end of the name's stem (a bounds-check panic: every tab closed), with no action from the person. The cut is now one procedure that keeps whole characters, drops an extension as long as the limit, never leaves a dot or a space at the end, and the device-name test (CON, NUL, COM0-9, LPT0-9 and the superscript digits) looks at the part before the first dot, as Windows does (`con.tar.gz` was written as the console device) and runs after the cut, so a cut cannot make a device name. Tests: the very long extension at nine limits, ninety hostile names (empty, dots, controls, bidi, reserved characters, devices, invalid UTF-8, 1000 bytes in one- to four-byte characters), and 30000 random names against the same invariants.
 - **An address chosen by a web page is never taken for one the person typed** (`src/browser/nav_trust.odin`, security review of 2026-10-25, finding 1): `navigate` took "no `from`" for "the address bar", and the reload, the history, the new-tab paths (a `_blank` link or form of a frame, the menu's "Open link in new tab", Duplicate, Reopen closed tab) passed none. A page that asked for `about:sites?clear=*&type=all` was refused but left that address in the tab and in the history; the next F5, Back or Forward ran it as the person's own and cleared the cookies and the storage of every site (a framed `<form target=_blank action="about:sites">` with two hidden fields did so with no click at all, and `file://127.0.0.1/c$/...` or `file:///C:/...` asked the same way was opened, over SMB for a share, with the browser's rights). `navigate` now takes an explicit `Nav_Origin` (`.User`, `.Replay`, and `.Page`, the default: a navigation nobody vouches for has no privilege). The effects of `about:sites?clear=`, `about:cache?clear=1` and `about:wren?action=` / `choose=` / a licence file run only for the person or from the page itself, never for a page or a replay; a page's address loses them (it is `about:sites` in the tab and the history); `file:` and shares from a web page, or from a local page that the loader would refuse, are refused before anything changes (a line in the console of the page that asked, no history entry, no new tab left empty); a deferred navigation keeps its origin; `location.replace` is judged before it replaces the entry. Test: `tools\nav_trust_e2e.ps1` (fails 9 checks on the build before this fix) and the origin by address table in `nav_trust_test.odin`.
 - **The content blocker no longer lets the first page of a session through unfiltered** (`fetch.hold_requests`, `engine_build.odin`): until the compiled index of the lists is loaded (no valid cache in the profile: first start, a throwaway profile, a new index format) only the small base list was in force, so a YouTube watch page opened at once kept `ytInitialPlayerResponse.adPlacements`, `adSlots` and the ad entries (the next page, with the index there, was clean). The requests to the network now wait for the compile job (at most 20 s), then go through the lists.
 - **Ad data of `/youtubei/v1/player` is removed from its answers**: a `set-constant ytInitialPlayerResponse.<key> undefined` rule also prunes `<key>` from the answers of `/youtubei/v1/player` (the page asks for the next video that way), before the list's `$replace=` / `trusted-replace-*` filters, so `playerAds` and the ad entries no longer stay behind a renamed `adPlacements` (`"no_ads"`).
@@ -640,7 +643,7 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 - **Custom elements**: `document.importNode()` (Polymer's way of stamping a template) and `cloneNode()` of a node of the document now upgrade the clone's elements of a defined name before they return (the contents of a template stay inert); and a custom element reaction's own DOM calls (a `connectedCallback` appending a stamped template) run the reactions they queued before they return, as the specification's stack of element queues does, where they used to wait for the outer reaction to end. YouTube's elements (`ytd-watch-flexy`'s `attached` called `preparePlayer()` on a player not upgraded yet) stopped on `TypeError: not a function`, which left the home page and the watch page without their contents.
 - **Template contents have a document of their own** (HTML "template contents owner document"): `template.content.ownerDocument` (and that of every node in it) is an inert document, not the page's, so `ownerDocument.createElement("dom-repeat")` (Polymer prepares `<template is="dom-repeat">` this way) makes a plain element that is neither constructed nor given its attributes' callbacks; the documents of `createHTMLDocument` and `DOMParser` are inert the same way (`Document_createElementInert`). A script's insertion of nodes into a tree that is not connected no longer upgrades them (only a connected node is, as the specification says; the parser's `innerHTML` still upgrades what it makes). Before, moving a template's contents into another fragment constructed YouTube's elements inside them, which changed the child indexes Polymer had recorded, left `nodeList[i]` undefined and stopped with `cannot set property '__dataHost' of undefined`, and logged `Polymer::Attributes: couldn't decode Array as JSON: [[shownItems]]`; YouTube's watch page now builds its recommendations, comments and controls.
 - **Fullscreen on a page that lays itself out again** (YouTube's player): the window's `resize` event is fired (once per rendering update whose viewport size differs from the last one; it was never fired), the `fullscreenchange` events and the promise wait for the window to have its new size and the page to have been laid out for it (`Fullscreen_Embedder.deferred`, `fullscreen_settled`; they run in the rendering update, before that frame's `resize`).
-- **Developer tools, console**: a message of several lines (an error and its call stack) selected alone is shown one line per row in a pane under the list (the folders of the script addresses left out of the stack lines; copying still gives the whole text), instead of one line with `Ã¢â€Â¬Ãƒâ€š` marks only. An image answered with an empty body (a `204`, the connectivity pings `new Image().src = ".../generate_204"` that YouTube makes) fires `error` and no longer logs a warning.
+- **Developer tools, console**: a message of several lines (an error and its call stack) selected alone is shown one line per row in a pane under the list (the folders of the script addresses left out of the stack lines; copying still gives the whole text), instead of one line with `┬Â` marks only. An image answered with an empty body (a `204`, the connectivity pings `new Image().src = ".../generate_204"` that YouTube makes) fires `error` and no longer logs a warning.
 - **Incremental layout** could crash (`has_block_child`, a dead box rebuilt) when an attribute that rebuilds an element's box changed inside a box the same pass made again alone (found on YouTube's home page): the boxes a plan took with it are no longer rebuilt as roots.
 - A detached `new Image()` never loaded when `src` was set before it was attached to the document; it now starts loading at once (needed by `drawImage`).
 - Closing the window after a heavy page (GitHub) could take 5 to 15 s or more: the Wasm module cache wrote every compiled module still queued to its disk cache, each one scanning the folder. It stops after 1.5 s and drops the rest.
@@ -649,16 +652,16 @@ change, assembled here when a version is published (`tools/changelog.ps1`).
 - Image decoding threads end after `images.decode.thread_idle_ms` of idleness and start again on demand: the stack a large decode commits (about 14 MB per thread for an AVIF) goes back to the system. A job still belongs to one owner at a time (its holders keep an identifier, not a pointer).
 - **Images appear sooner** (toolkit 0.26.0): a new image texture is no longer zeroed one row at a time (551 driver calls and 1 to 4 ms for a photo), opaque images (every JPEG, most PNG, WebP and AVIF) are uploaded from the decoder's buffer with no conversion pass, and translucent ones are premultiplied a word at a time.
 
-## 0.3.0 - 2026-10-21
+## [0.3.0] - 2026-10-21
 
 The highlights are in [docs/releases/v0.3.0.md](docs/releases/v0.3.0.md): a JavaScript JIT that produces WebAssembly, iframes, a browser that never waits for a busy page, an HTTP cache, passkeys, history as a tree, a command palette and address bar suggestions, immediate hover feedback and CSS cursors, memory leaks failing the tests and memory given back when idle.
 
-## 0.2.1 - 2026-10-20
+## [0.2.1] - 2026-10-20
 
 ### Fixed
 - Wren crashed about three seconds after start when the mouse pointer was over its window: the mouse input of the first frame read the interface state before it was built (gui_toolkit 0.11.1).
 
-## 0.2.0 Ãƒâ€Ãƒâ€¡ÃƒÂ¶ 2026-10-20
+## [0.2.0] - 2026-10-20
 
 JavaScript, inside WebAssembly: WebAssembly is still the only execution engine.
 
@@ -707,18 +710,19 @@ JavaScript, inside WebAssembly: WebAssembly is still the only execution engine.
 - About 90 problems found by a review of the whole engine: use-after-frees (microtasks during host tasks, fetch,
   workers, streams), `file:` pages leaving their folder (escaped separators, junctions, links, alternate streams,
   device names), NTLM leaks through `file://server/share`, hostile content that crashed or froze the browser (huge
-  `calc()`, exponential `var()`, cyclic `@import`, extreme transformsÃƒâ€Ãƒâ€¡Ã‚Âª), CORS on redirects, lost `localStorage` at
+  `calc()`, exponential `var()`, cyclic `@import`, extreme transforms…), CORS on redirects, lost `localStorage` at
   exit, ten divergences of the incremental restyle and layout, `--pref` erasing profile values.
 - Synthetic italics of static web fonts.
 - Closing a WebSocket right after a message no longer ends in an error.
 - Flaky tests fixed at their cause; CI no longer retries a failed step.
 
-## 0.1.0 Ãƒâ€Ãƒâ€¡ÃƒÂ¶ 2026-10-19
+## [0.1.0] - 2026-10-19
 
 The first public build: a browser for Windows where WebAssembly is the only execution engine, with no JavaScript.
 Pages name their Wasm modules with `<script type="application/wasm">`; the web APIs are Wasm imports generated from
 `api/*.widl`.
 
+### Added
 - **WebAssembly runtime**: Wasmtime 49 (Cranelift), compiled-code caches in memory and on disk, a deadline on every
   call, several modules per document, memory64, dedicated workers.
 - **Web API from one description**: 21 modules, 289 functions, with generated host trampolines, Odin SDK,
@@ -732,3 +736,33 @@ Pages name their Wasm modules with `<script type="application/wasm">`; the web A
 - **Network and security**: WinHTTP, a Fetch Standard policy layer, cookies, HSTS, Content Security Policy 3.
 - **The browser**: tabs, history, find in page, selection, zoom, view-source, `about:config`, frame pacing and
   statistics.
+
+[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.6.21...HEAD
+[0.6.21]: https://github.com/sachahjkl/wren/compare/v0.6.20...v0.6.21
+[0.6.20]: https://github.com/sachahjkl/wren/compare/v0.6.19...v0.6.20
+[0.6.19]: https://github.com/sachahjkl/wren/compare/v0.6.18...v0.6.19
+[0.6.18]: https://github.com/sachahjkl/wren/compare/v0.6.17...v0.6.18
+[0.6.17]: https://github.com/sachahjkl/wren/compare/v0.6.16...v0.6.17
+[0.6.16]: https://github.com/sachahjkl/wren/compare/v0.6.15...v0.6.16
+[0.6.15]: https://github.com/sachahjkl/wren/compare/v0.6.14...v0.6.15
+[0.6.14]: https://github.com/sachahjkl/wren/compare/v0.6.13...v0.6.14
+[0.6.13]: https://github.com/sachahjkl/wren/compare/v0.6.12...v0.6.13
+[0.6.12]: https://github.com/sachahjkl/wren/compare/v0.6.11...v0.6.12
+[0.6.11]: https://github.com/sachahjkl/wren/compare/v0.6.10...v0.6.11
+[0.6.10]: https://github.com/sachahjkl/wren/compare/v0.6.9...v0.6.10
+[0.6.9]: https://github.com/sachahjkl/wren/compare/v0.6.8...v0.6.9
+[0.6.8]: https://github.com/sachahjkl/wren/compare/v0.6.7...v0.6.8
+[0.6.7]: https://github.com/sachahjkl/wren/compare/v0.6.6...v0.6.7
+[0.6.6]: https://github.com/sachahjkl/wren/compare/v0.6.5...v0.6.6
+[0.6.5]: https://github.com/sachahjkl/wren/compare/v0.6.4...v0.6.5
+[0.6.4]: https://github.com/sachahjkl/wren/compare/v0.6.3...v0.6.4
+[0.6.3]: https://github.com/sachahjkl/wren/compare/v0.6.2...v0.6.3
+[0.6.2]: https://github.com/sachahjkl/wren/compare/v0.6.1...v0.6.2
+[0.6.1]: https://github.com/sachahjkl/wren/compare/v0.6.0...v0.6.1
+[0.6.0]: https://github.com/sachahjkl/wren/compare/v0.5.0...v0.6.0
+[0.5.0]: https://github.com/sachahjkl/wren/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/sachahjkl/wren/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/sachahjkl/wren/compare/v0.2.1...v0.3.0
+[0.2.1]: https://github.com/sachahjkl/wren/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/sachahjkl/wren/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/sachahjkl/wren/releases/tag/v0.1.0
