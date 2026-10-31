@@ -4,6 +4,12 @@ import "core:math"
 import "core:strings"
 import "wb:css"
 
+// The number of steps of a steps() function is held to this.
+EASING_MAX_STEPS :: 1 << 24
+// A cubic-bezier is solved by Newton-Raphson in at most this many iterations, then by bisection in at most this many.
+BEZIER_NEWTON_ITERATIONS :: 8
+BEZIER_BISECT_ITERATIONS :: 64
+
 // Easing functions (CSS Easing 2) and the list-valued transition-* / animation-* properties.
 
 ////////////////////////////////
@@ -53,7 +59,7 @@ parse_easing :: proc(cx: ^Cx, input: []css.Value) -> (Easing, bool) {
 			}
 		}
 		if n < 1 || (e.pos == .Jump_None && n < 2) { return {}, false }
-		e.steps = i32(min(n, 1 << 24))
+		e.steps = i32(min(n, EASING_MAX_STEPS))
 		return e, true
 	case "linear":
 		return parse_linear_points(cx, args)
@@ -175,7 +181,7 @@ cubic_bezier :: proc(x1, y1, x2, y2, t: f64) -> f64 {
 	sample_x :: #force_inline proc(a, b, c, s: f64) -> f64 { return ((a * s + b) * s + c) * s }
 	// Newton-Raphson from s = t, then bisection if it did not converge (flat derivative)
 	s := t
-	for _ in 0 ..< 8 {
+	for _ in 0 ..< BEZIER_NEWTON_ITERATIONS {
 		x := sample_x(ax, bx, cx, s) - t
 		if abs(x) < 1e-7 { return sample_x(ay, by, cy, s) }
 		d := (3 * ax * s + 2 * bx) * s + cx
@@ -184,7 +190,7 @@ cubic_bezier :: proc(x1, y1, x2, y2, t: f64) -> f64 {
 	}
 	lo, hi := 0.0, 1.0
 	s = t
-	for _ in 0 ..< 64 {
+	for _ in 0 ..< BEZIER_BISECT_ITERATIONS {
 		x := sample_x(ax, bx, cx, s)
 		if abs(x - t) < 1e-7 { break }
 		if x < t { lo = s } else { hi = s }

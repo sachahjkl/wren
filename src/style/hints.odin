@@ -6,6 +6,14 @@ import "wb:base"
 import "wb:css"
 import "wb:dom"
 
+// What the digits of a presentational attribute add up to at most, against overflow: an integer, and a dimension.
+HINT_INT_MAX :: 1 << 30
+HINT_DIMENSION_MAX :: 1e9
+// The HTML rules for parsing a legacy color value keep the first 128 characters.
+LEGACY_COLOR_MAX_DIGITS :: 128
+// What the digits of <font size> add up to at most.
+LEGACY_FONT_SIZE_DIGITS_MAX :: 100
+
 // HTML's presentational hints (HTML §15 Rendering): attributes such as align, valign, bgcolor, width / height,
 // cellpadding, cellspacing, border, <font size color face>, hspace / vspace, <hr size noshade>, list types... map to CSS
 // declarations. They take part in the cascade as author declarations of specificity zero that come before every author
@@ -220,7 +228,7 @@ parse_nonneg_int :: proc(s: string) -> (int, bool) {
 	start := i
 	v := 0
 	for i < len(s) && s[i] >= '0' && s[i] <= '9' {
-		v = min(v * 10 + int(s[i] - '0'), 1 << 30)
+		v = min(v * 10 + int(s[i] - '0'), HINT_INT_MAX)
 		i += 1
 	}
 	return v, i > start
@@ -232,7 +240,7 @@ parse_dimension :: proc(s: string) -> (value: f64, percent: bool, ok: bool) {
 	for i < len(s) && is_html_space(s[i]) { i += 1 }
 	if i >= len(s) || s[i] < '0' || s[i] > '9' { return }
 	for i < len(s) && s[i] >= '0' && s[i] <= '9' {
-		value = min(value * 10 + f64(s[i] - '0'), 1e9)
+		value = min(value * 10 + f64(s[i] - '0'), HINT_DIMENSION_MAX)
 		i += 1
 	}
 	ok = true
@@ -276,7 +284,7 @@ parse_legacy_color :: proc(input: string) -> (rgb: u32, ok: bool) {
 		}
 		append(&digits, '0')
 	}
-	if len(digits) > 128 { resize(&digits, 128) }
+	if len(digits) > LEGACY_COLOR_MAX_DIGITS { resize(&digits, LEGACY_COLOR_MAX_DIGITS) }
 	d := digits[:]
 	if len(d) > 0 && s[0] == '#' { d = d[1:] }
 	buf := make([dynamic]u8, 0, len(d) + 3, context.temp_allocator)
@@ -306,7 +314,7 @@ legacy_font_size :: proc(s: string) -> (string, bool) {
 	if s[i] == '+' { mode = 1; i += 1 } else if s[i] == '-' { mode = -1; i += 1 }
 	start := i
 	v := 0
-	for i < len(s) && s[i] >= '0' && s[i] <= '9' { v = min(v * 10 + int(s[i] - '0'), 100); i += 1 }
+	for i < len(s) && s[i] >= '0' && s[i] <= '9' { v = min(v * 10 + int(s[i] - '0'), LEGACY_FONT_SIZE_DIGITS_MAX); i += 1 }
 	if i == start { return "", false }
 	if mode == 1 { v = 3 + v } else if mode == -1 { v = 3 - v }
 	v = clamp(v, 1, 7)

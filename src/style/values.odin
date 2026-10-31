@@ -7,6 +7,9 @@ import "core:reflect"
 import "core:strings"
 import "wb:css"
 
+// Integers kept as an i32 (z-index, order, the values in values_more.odin) are clamped to +/- this.
+CSS_INT_CLAMP :: 2_000_000_000
+
 // Per-element context while specified values become computed values.
 Cx :: struct {
 	settings: ^Settings,
@@ -619,7 +622,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		if id, ok := ident_raw(vs); ok && strings.equal_fold(id, "auto") { c.z_auto = true; return true }
 		n, ok := css.parse_integer(vs)
 		if !ok { return false }
-		c.z_auto, c.z_index = false, i32(clamp(n, -2_000_000_000, 2_000_000_000))
+		c.z_auto, c.z_index = false, i32(clamp(n, -CSS_INT_CLAMP, CSS_INT_CLAMP))
 	case .Box_Sizing: return set_enum(vs, &c.box_sizing)
 	case .Width, .Height, .Min_Width, .Min_Height, .Max_Width, .Max_Height:
 		flags := Len_Flags{.Percent, .Intrinsic}
@@ -770,7 +773,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 	case .Order:
 		n, ok := css.parse_integer(vs)
 		if !ok { return false }
-		c.order = i32(clamp(n, -2_000_000_000, 2_000_000_000))
+		c.order = i32(clamp(n, -CSS_INT_CLAMP, CSS_INT_CLAMP))
 	case .Row_Gap, .Column_Gap:
 		l, ok := parse_length(cx, vs, {.Normal, .Percent})
 		if !ok { return false }

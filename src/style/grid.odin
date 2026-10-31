@@ -3,6 +3,10 @@ package style
 import "core:strings"
 import "wb:css"
 
+// What repeat() counts and grid line numbers are held to (+/- for a line).
+GRID_REPEAT_MAX :: 10_000
+GRID_LINE_MAX :: 10_000
+
 // CSS Grid 2 values, parsed into structures for the grid layout: track lists with line names and repeat(), template
 // areas, auto tracks and line placement.
 
@@ -100,7 +104,7 @@ parse_track_list :: proc(cx: ^Cx, items: []css.Value, allow_repeat: bool) -> (tr
 			case:
 				n, good := css.parse_integer(head)
 				if !good || n < 1 { return nil, nil, false }
-				t.repeat, t.count = .Count, i32(min(n, 10_000))
+				t.repeat, t.count = .Count, i32(min(n, GRID_REPEAT_MAX))
 			}
 			inner, inner_end, good := parse_track_list(cx, split_items(args[1]), false)
 			if !good || len(inner) == 0 { return nil, nil, false }
@@ -243,7 +247,7 @@ parse_grid_line :: proc(cx: ^Cx, vs: []css.Value) -> (Grid_Line, bool) {
 		}
 		if tok_is(it, .Number) {
 			if !it.tok.is_int || have_n || it.tok.num == 0 { return {}, false }
-			gl.n, have_n = i32(clamp(it.tok.num, -10_000, 10_000)), true
+			gl.n, have_n = i32(clamp(it.tok.num, -GRID_LINE_MAX, GRID_LINE_MAX)), true
 			continue
 		}
 		if tok_is(it, .Ident) {

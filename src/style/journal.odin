@@ -3,6 +3,9 @@ package style
 import "wb:base"
 import "wb:host"
 
+// The comparison of two passes is shared out by chunks of this many nodes.
+JOURNAL_DIFF_CHUNK_NODES :: 1024
+
 // The layout journal of a style pass: which elements changed style since an earlier pass, and how much layout work
 // each change invalidates (Change_Level). An incremental layout reads it to lay out again only what changed.
 //
@@ -127,7 +130,7 @@ journal_diff :: proc(old, new: ^Styled, pool: ^host.Thread_Pool = nil) {
 	j := &new.journal
 	if !j.on || old == nil { return }
 	n := len(new.by_node)
-	chunk := 1024
+	chunk := JOURNAL_DIFF_CHUNK_NODES
 	count := (n + chunk - 1) / chunk
 	job := Diff_Job{old = old, new = new, n = n, chunk = chunk, out = make([][dynamic]Journal_Entry, count, context.temp_allocator)}
 	host.parallel_for(pool, count, diff_chunk, &job)

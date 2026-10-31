@@ -35,9 +35,6 @@ import "wb:images"
 import "wb:style"
 import "wb:url"
 
-// The viewport assumed for image selection when the page has no style engine yet (srcset, sizes, media).
-IMAGE_FALLBACK_VIEWPORT_W :: 1280
-IMAGE_FALLBACK_VIEWPORT_H :: 800
 // Parse limits for the CSS of a `sizes` or `<source media>` attribute.
 IMAGE_ATTR_CSS_MAX_NESTING :: 32
 IMAGE_ATTR_CSS_MAX_RULES :: 16
@@ -722,7 +719,7 @@ images_sync :: proc(p: ^Page) {
 	images_adopt_document(p)
 	if cache.ready { cache.settings, cache.limit = p.settings.images, p.settings.images.cache_max_bytes }
 	pi := &p.images
-	env := p.engine != nil ? p.engine.env : css.Media_Env{width = IMAGE_FALLBACK_VIEWPORT_W, height = IMAGE_FALLBACK_VIEWPORT_H, dppx = 1}
+	env := p.engine != nil ? p.engine.env : css.Media_Env{width = style.DEFAULT_VIEWPORT_W, height = style.DEFAULT_VIEWPORT_H, dppx = 1}
 	env_changed := env.width != pi.env.width || env.dppx != pi.env.dppx || env.height != pi.env.height
 	mutated := pi.mutations != p.doc.mutations
 	if mutated || env_changed {
@@ -985,7 +982,7 @@ set_string :: proc(dst: ^string, s: string) {
 @(private)
 element_update :: proc(p: ^Page, el: ^Img_Element) {
 	env := p.images.env
-	if env.width == 0 { env = p.engine != nil ? p.engine.env : css.Media_Env{width = IMAGE_FALLBACK_VIEWPORT_W, height = IMAGE_FALLBACK_VIEWPORT_H, dppx = 1} }
+	if env.width == 0 { env = p.engine != nil ? p.engine.env : css.Media_Env{width = style.DEFAULT_VIEWPORT_W, height = style.DEFAULT_VIEWPORT_H, dppx = 1} }
 	sig := selection_signature(p, el, env)
 	if sig == el.signature { return }
 	set_string(&el.signature, sig)

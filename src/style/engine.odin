@@ -11,6 +11,10 @@ import "wb:base"
 import "wb:css"
 import "wb:dom"
 
+// The viewport before the embedder has given one.
+DEFAULT_VIEWPORT_W :: 1280
+DEFAULT_VIEWPORT_H :: 800
+
 // The style engine: stylesheets in, an index of rules out. `compute_styles` (cascade.odin) then turns a document into
 // computed styles.
 
@@ -49,7 +53,7 @@ State_Kinds :: bit_set[State_Kind; u8]
 Entry :: struct {
 	rule:    ^Rule,
 	complex: ^css.Complex,
-	anc:     [4]u32,   // hashes (see bloom.odin) of simple selectors an ancestor must have: rejects most entries without matching
+	anc:     [BLOOM_ENTRY_ANCESTORS]u32,   // hashes (see bloom.odin) of simple selectors an ancestor must have: rejects most entries without matching
 	n_anc:   u8,
 	state:   State_Kinds,   // state the complex depends on, anywhere in it
 	has_state: bool,        // some of it is inside a :has() (its anchors are the ancestors and earlier siblings of the element whose state changed)
@@ -156,7 +160,7 @@ engine_make :: proc(settings: Settings) -> ^Engine {
 	e.settings = clone_settings(settings)
 	_ = virtual.arena_init_growing(&e.arena)
 	e.alloc = virtual.arena_allocator(&e.arena)
-	e.env = css.Media_Env{type = .Screen, width = 1280, height = 800, dppx = 1, color_bits = 24}
+	e.env = css.Media_Env{type = .Screen, width = DEFAULT_VIEWPORT_W, height = DEFAULT_VIEWPORT_H, dppx = 1, color_bits = 24}
 	pc := pointer_caps   // (the devices before the first style computation too: matchMedia may come first)
 	e.env.hover, e.env.pointer_fine, e.env.pointer_none = pc.hover, pc.fine, pc.none
 	e.env.any_fine, e.env.any_coarse, e.env.any_hover = pc.any_fine, pc.any_coarse, pc.any_hover
@@ -1083,6 +1087,6 @@ probe_context :: proc(e: ^Engine, a: runtime.Allocator) -> Cx {
 	// a root without a parent: what `initial`, `currentcolor` on the root and unset non-inherited values read
 	init := new(Computed, a)
 	init^ = c^
-	return Cx{settings = &e.settings, c = c, initial = init, alloc = a, lc = css.Length_Context{font_size = 16, root_font_size = 16, vw = 1280, vh = 800},
+	return Cx{settings = &e.settings, c = c, initial = init, alloc = a, lc = css.Length_Context{font_size = 16, root_font_size = 16, vw = DEFAULT_VIEWPORT_W, vh = DEFAULT_VIEWPORT_H},
 		cenv = css.Color_Env{system = system_color, user = &e.settings}}
 }

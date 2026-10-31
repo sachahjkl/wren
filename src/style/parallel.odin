@@ -15,6 +15,9 @@ import "wb:base"
 import "wb:dom"
 import "wb:host"
 
+// Rounds of splitting the subtrees too big to be one task.
+STYLE_SPLIT_MAX_ROUNDS :: 64
+
 @(private)
 Par_Frame :: struct {
 	h:      base.Handle,
@@ -53,7 +56,7 @@ style_document_parallel :: proc(e: ^Engine, s: ^Styled, doc: ^dom.Document, stat
 	// a subtree above this many elements is opened on this thread (its children go on the frontier); the rest is shared out
 	limit := max(total / (threads * 8), 24)
 	// the root element always on this thread (it sets the root font size); then every subtree that is too big to be a task
-	for round := 0; len(frontier) > 0 && round < 64; round += 1 {
+	for round := 0; len(frontier) > 0 && round < STYLE_SPLIT_MAX_ROUNDS; round += 1 {
 		next := make([dynamic]Par_Frame, context.temp_allocator)
 		opened := false
 		for f in frontier {

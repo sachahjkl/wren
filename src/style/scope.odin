@@ -9,6 +9,13 @@ import "wb:base"
 import "wb:css"
 import "wb:dom"
 
+// How deep a chain of @import sheets is followed when one is copied or described.
+SHEET_COPY_MAX_DEPTH :: 16
+// How deep selector lists are looked into for :host.
+HOST_LIST_MAX_DEPTH :: 16
+// How many slots an element's assignment is followed through.
+SLOT_MAX_HOPS :: 256
+
 // Style scoping (CSS Scoping 1): every shadow tree has rules of its own.
 //
 // Rule sets. The document's rules are the engine's own (`Engine.rules`); each shadow root whose tree has stylesheets
@@ -247,7 +254,7 @@ fnv64 :: proc(s: string) -> u64 {
 sheet_key :: proc(sb: ^strings.Builder, s: ^Sheet, depth := 0) {
 	src := sheet_rules_text(s)
 	fmt.sbprintf(sb, "{%x:%d|%s|%v%s|%s", fnv64(src), len(src), s.media_text, s.in_layer, s.layer, s.base_url)
-	if depth < 16 {
+	if depth < SHEET_COPY_MAX_DEPTH {
 		for &slot in s.imports {
 			if slot.child != nil { sheet_key(sb, slot.child, depth + 1) } else { strings.write_string(sb, "-") }
 		}
@@ -270,7 +277,7 @@ sheet_copy :: proc(e: ^Engine, s: ^Sheet, depth := 0) -> ^Sheet {
 	for r in c.sheet.rules {
 		if r.kind != .Import { continue }
 		slot := Import_Slot{rule = r, requested = true}
-		if k < len(s.imports) && s.imports[k].child != nil && depth < 16 { slot.child = sheet_copy(e, s.imports[k].child, depth + 1) }
+		if k < len(s.imports) && s.imports[k].child != nil && depth < SHEET_COPY_MAX_DEPTH { slot.child = sheet_copy(e, s.imports[k].child, depth + 1) }
 		append(&c.imports, slot)
 		k += 1
 	}
@@ -297,7 +304,7 @@ set_compile :: proc(e: ^Engine, key: string, sheets: []^Sheet) -> ^Rule_Set {
 		append(&rs.copies, c)
 		copy_media :: proc(c: ^Sheet, opt: css.Parse_Options, a: runtime.Allocator, depth: int) {
 			if c.media_text != "" { c.media = css.parse_media_query_list(css.parse_component_values(c.media_text, opt, context.temp_allocator), a) }
-			if depth < 16 { for &slot in c.imports { if slot.child != nil { copy_media(slot.child, opt, a, depth + 1) } } }
+			if depth < SHEET_COPY_MAX_DEPTH { for &slot in c.imports { if slot.child != nil { copy_media(slot.child, opt, a, depth + 1) } } }
 		}
 		copy_media(c, opt, rs.set_alloc, 0)
 		flatten_sheet(e, c, LayerCtx{rank = UNLAYERED})
@@ -422,7 +429,7 @@ compound_host :: proc(comp: css.Compound) -> (host_only: bool, has: bool) {
 
 @(private)
 list_has_host :: proc(list: css.Selector_List, depth: int) -> bool {
-	if depth > 16 { return false }
+	if depth > HOST_LIST_MAX_DEPTH { return false }
 	for &c in list {
 		for comp in c.compounds {
 			for s in comp.simples {
@@ -561,7 +568,7 @@ shadow_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ctx: Elem_Ctx) {
 	// declarations, later for important ones) for one element: the trees of its host chain (::part), its own tree,
 	// the trees of the slots it goes through (outermost first), its shadow tree (:host) last.
 	n_slots := 0
-	for slot := n.slot; slot != base.NIL_HANDLE && n_slots < 256; n_slots += 1 {
+	for slot := n.slot; slot != base.NIL_HANDLE && n_slots < SLOT_MAX_HOPS; n_slots += 1 {
 		sn := dom.get(doc, slot)
 		if sn == nil { break }
 		slot = sn.slot
@@ -580,7 +587,7 @@ shadow_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ctx: Elem_Ctx) {
 	}
 	// a slot assigned to a slot is flattened away: ::slotted() sees what it is assigned instead
 	is_flattened_slot := n.slot != base.NIL_HANDLE && n.ns == .HTML && n.name == "slot" && ctx.root != base.NIL_HANDLE
-	for slot, hops := n.slot, 0; slot != base.NIL_HANDLE && hops < 256 && !is_flattened_slot; hops += 1 {
+	for slot, hops := n.slot, 0; slot != base.NIL_HANDLE && hops < SLOT_MAX_HOPS && !is_flattened_slot; hops += 1 {
 		sc := ctx_for_root(p, dom.tree_root(doc, slot))
 		if sc.set != nil {
 			for &ent in sc.set.slotted_entries {
@@ -602,7 +609,7 @@ shadow_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ctx: Elem_Ctx) {
 		host := ctx.host
 		// first its own tree's (`:host::part()`: the host seen featureless), then the trees of its host chain
 		own := true
-		for hops := 0; len(names) > 0 && host != base.NIL_HANDLE && hops < 256; hops += 1 {
+		for hops := 0; len(names) > 0 && host != base.NIL_HANDLE && hops < SLOT_MAX_HOPS; hops += 1 {
 			hc := own ? ctx : ctx_for_root(p, dom.tree_root(doc, host))
 			if own && (hc.set == nil || len(hc.set.part_entries) == 0) {
 				own = false

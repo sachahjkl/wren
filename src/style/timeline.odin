@@ -8,6 +8,9 @@ import "core:strings"
 import "wb:base"
 import "wb:dom"
 
+// The floor of style.animations.time_scale in the arithmetic of the timelines (page/web_animations.odin too).
+ANIM_TIME_SCALE_MIN :: 0.0001
+
 // The document timeline: CSS Transitions 1 and CSS Animations 1 on top of the cascade.
 //
 // After each style pass the page calls `timeline_restyled` (full pass) or `timeline_restyled_partial` (state restyle);
@@ -234,7 +237,7 @@ overlay_free :: proc(ov: ^Overlay) { virtual.arena_destroy(&ov.arena); free(ov) 
 advance :: proc(tl: ^Timeline, wall_ms: f64) {
 	if !tl.has_wall { tl.has_wall, tl.last_wall = true, wall_ms; return }
 	d := wall_ms - tl.last_wall
-	if d > 0 { tl.now += d * f64(max(tl.engine.settings.anim_time_scale, 0.0001)) }
+	if d > 0 { tl.now += d * f64(max(tl.engine.settings.anim_time_scale, ANIM_TIME_SCALE_MIN)) }
 	tl.last_wall = wall_ms
 }
 
@@ -259,7 +262,7 @@ timeline_active :: proc(tl: ^Timeline) -> bool { return tl != nil && tl.next_ms 
 // Wall-clock milliseconds until the next change of an animated value (0 = now / every frame, -1 = nothing pending).
 timeline_next_ms :: proc(tl: ^Timeline) -> f64 {
 	if tl == nil || tl.next_ms < 0 { return -1 }
-	return tl.next_ms / f64(max(tl.engine.settings.anim_time_scale, 0.0001))
+	return tl.next_ms / f64(max(tl.engine.settings.anim_time_scale, ANIM_TIME_SCALE_MIN))
 }
 
 timeline_running :: proc(tl: ^Timeline) -> int { return tl != nil ? tl.running : 0 }
