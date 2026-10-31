@@ -7,6 +7,12 @@ import "core:testing"
 import "core:time"
 import "wb:host"
 
+// How long pump runs the loop for what a test expects, and the loop's wait each time (ms).
+@(private = "file")
+PUMP_DEADLINE :: 2 * time.Second
+@(private = "file")
+PUMP_WAIT_MS :: 20
+
 @(private = "file")
 Seen :: struct {
 	lines:   [dynamic]string,
@@ -30,12 +36,12 @@ seen_destroy :: proc(s: ^Seen) {
 	delete(s.lines); delete(s.closed)
 }
 
-// Runs the loop until `done` or two seconds.
+// Runs the loop until `done` or PUMP_DEADLINE.
 @(private = "file")
 pump :: proc(loop: ^host.Loop, done: proc(s: ^Seen) -> bool, s: ^Seen) -> bool {
-	deadline := time.tick_add(time.tick_now(), 2 * time.Second)
+	deadline := time.tick_add(time.tick_now(), PUMP_DEADLINE)
 	for time.tick_diff(time.tick_now(), deadline) > 0 {
-		host.loop_wait(loop, 20)
+		host.loop_wait(loop, PUMP_WAIT_MS)
 		if done(s) { return true }
 	}
 	return false
