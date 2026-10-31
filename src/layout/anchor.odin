@@ -17,7 +17,8 @@ import "wb:style"
 //     rectangle it is laid out in (its inset-modified containing block) smaller;
 //   * laid out by layout_abs with that copy as its style, for the time of the call: a box keeps pointing at its element's
 //     record, so incremental passes find it as they expect;
-//   * an option that does not overflow stays until it no longer fits (Layout.anchor_last, which survives full passes).
+//   * an option that does not overflow stays until it no longer fits: the choice of the last frame (Layout.anchor_last, which
+//     survives full passes; anchored_commit), not what layouts a script forces in between found.
 //
 // Scrolling. Offsets are not part of layout: a box follows the scroll containers around its default anchor through a space
 // of its own (Space_Kind.Anchored), whose offset is what they add to the offset of its containing block: no layout on
@@ -48,12 +49,14 @@ Anchored :: struct {
 	sizes:   [4]style.Length, // resolved min-width, min-height, max-width, max-height (what getComputedStyle answers)
 	aligned: [2]bool,         // it was aligned in the rectangle in these axes (position-area, anchor-center, self-alignment)...
 	declared: [4]f32,         // ... its insets are then these (CSS px: top, right, bottom, left), not what the alignment left
+	auto_inset: [4]bool,      // top, right, bottom, left are auto in what was chosen
 }
 
 @(private)
 anchor_reset :: proc(l: ^Layout) {
 	l.anchor_uses, l.anchor_scroll, l.anchor_stale = false, false, false
 	clear(&l.anchored)
+	clear(&l.anchor_chosen)
 	clear(&l.anchor_grid_areas)
 }
 
@@ -80,8 +83,8 @@ Prep :: struct {
 	anchor:  i32,                // default anchor
 	imcb:    Rect,               // what it is laid out in
 	inner:   Rect,               // imcb less its insets
-	fit:     Rect,               // what it may not overflow (inner, but for anchor-center: all it had before centering)
-	moves:   [2][2]bool,         // per axis, the start and end edges of `fit` come from the anchor (they follow its scrolling)
+	moves:   [2][2]bool,         // per axis, the start and end edges of `inner` come from the anchor (they follow its scrolling)
+	mid:     Vec2,               // anchor-center: the middle of the anchor
 	cb:      Rect,               // the containing block
 	ref:     i32,
 	align:   [2]Align_Mode,
@@ -91,7 +94,7 @@ Prep :: struct {
 }
 
 @(private = "file")
-Align_Mode :: enum u8 { None, Start, Center, End }
+Align_Mode :: enum u8 { None, Start, Center, End, Anchor }
 
 // Where a length is used: the side of an inset, or just an axis.
 @(private = "file")
@@ -317,6 +320,7 @@ length_resolve :: proc(ac: ^A, q: i32, p: ^Prep, l: style.Length, use: Len_Use, 
 	if l.calc == nil { return unset }
 	tree := tree_resolve(ac, q, p, l.calc, use)
 	if tree == nil { return unset }
+	if tree.op == .Dimension && tree.unit == .Percent { return style.Length{kind = .Percent, v = f32(tree.num)} }
 	return style.Length{kind = .Calc, calc = tree}
 }
 
@@ -398,32 +402,23 @@ prepare :: proc(ac: ^A, q: i32, base: ^style.Computed, opt: i32, ref: i32, cb: R
 		if p.align[1] != .None && v.height.kind == .Auto { v.height = box_h }
 	}
 
-	// anchor-center: a rectangle centered on the anchor, as large as what it has allows
-	before := p.imcb
-	centered: [2]bool
+	// anchor-center: the middle of the anchor, as far as the rectangle allows (the box is sized in all of it)
 	if p.anchor != NONE {
 		r := border_rect(&l.boxes[p.anchor])
-		center_on :: proc(p: ^Prep, axis: int, lo, hi: f32) {
-			mid := (lo + hi) / 2
-			half := max(min(mid - p.imcb.min[axis], p.imcb.max[axis] - mid), 0)
-			p.imcb.min[axis], p.imcb.max[axis] = mid - half, mid + half
-			p.align[axis] = .Center
-			p.follow[axis] = true
-		}
-		center_x := centered_track[0] || (v.justify_self == .Anchor_Center && v.inset[.Left].kind == .Auto && v.inset[.Right].kind == .Auto)
-		center_y := centered_track[1] || (v.align_self == .Anchor_Center && v.inset[.Top].kind == .Auto && v.inset[.Bottom].kind == .Auto)
-		if center_x {
-			center_on(&p, 0, r.min.x - refabs.x, r.max.x - refabs.x)
-			centered[0] = true
+		if centered_track[0] || v.justify_self == .Anchor_Center {
+			p.align[0] = .Anchor
+			p.follow[0] = true
+			p.mid[0] = (r.min.x + r.max.x) / 2 - refabs.x
 			if v.inset[.Left].kind == .Auto { v.inset[.Left] = style.px(0) }
 			if v.inset[.Right].kind == .Auto { v.inset[.Right] = style.px(0) }
 			if v.margin[.Left].kind == .Auto { v.margin[.Left] = style.px(0) }
 			if v.margin[.Right].kind == .Auto { v.margin[.Right] = style.px(0) }
 			if v.width.kind == .Auto { v.width = box_h }
 		}
-		if center_y {
-			center_on(&p, 1, r.min.y - refabs.y, r.max.y - refabs.y)
-			centered[1] = true
+		if centered_track[1] || v.align_self == .Anchor_Center {
+			p.align[1] = .Anchor
+			p.follow[1] = true
+			p.mid[1] = (r.min.y + r.max.y) / 2 - refabs.y
 			if v.inset[.Top].kind == .Auto { v.inset[.Top] = style.px(0) }
 			if v.inset[.Bottom].kind == .Auto { v.inset[.Bottom] = style.px(0) }
 			if v.margin[.Top].kind == .Auto { v.margin[.Top] = style.px(0) }
@@ -466,10 +461,6 @@ prepare :: proc(ac: ^A, q: i32, base: ^style.Computed, opt: i32, ref: i32, cb: R
 	if d, ok := definite(c, v.inset[.Right], w); ok { p.inner.max.x -= d }
 	if d, ok := definite(c, v.inset[.Top], h); ok { p.inner.min.y += d }
 	if d, ok := definite(c, v.inset[.Bottom], h); ok { p.inner.max.y -= d }
-	p.fit = p.inner
-	for axis in 0 ..< 2 {
-		if centered[axis] { p.fit.min[axis], p.fit.max[axis] = before.min[axis], before.max[axis] }
-	}
 	return p
 }
 
@@ -493,6 +484,10 @@ align_box :: proc(c: ^Ctx, q: i32, p: ^Prep) {
 		case .None, .Start: start = lo
 		case .Center: start = lo + free / 2
 		case .End: start = hi - size
+		case .Anchor:
+			start = p.mid[axis] - size / 2
+			if start + size > hi { start = hi - size }
+			if start < lo { start = lo }
 		}
 		if free < 0 && p.area {
 			if start + size > p.cb.max[axis] { start = p.cb.max[axis] - size }
@@ -525,7 +520,7 @@ fits :: proc(ac: ^A, q: i32, p: ^Prep, shift: Vec2) -> bool {
 	e := ANCHOR_FIT_EPSILON
 	for axis in 0 ..< 2 {
 		// scrolled, the box moves with its anchor, and so do the edges that come from the anchor; the others stay
-		lo, hi := p.fit.min[axis], p.fit.max[axis]
+		lo, hi := p.inner.min[axis], p.inner.max[axis]
 		if !p.moves[axis][0] { lo -= shift[axis] }
 		if !p.moves[axis][1] { hi -= shift[axis] }
 		if r.min[axis] < lo - e || r.max[axis] > hi + e { return false }
@@ -626,8 +621,7 @@ lay_anchored :: proc(ac: ^A, q: i32) {
 		ref, cb = abs_containing_rect(c, b.cb)
 		if area, ok := l.anchor_grid_areas[q]; ok { cb = area }
 	}
-	key := Anchor_Key{node = b.node}
-	if .Pseudo in b.flags { key.pseudo = .Pseudo_After in b.flags ? 2 : 1 }
+	key := anchored_key(b)
 	sig := style_sig(base)
 
 	// the options to try, in the order of position-try-order
@@ -680,7 +674,7 @@ lay_anchored :: proc(ac: ^A, q: i32) {
 	}
 	if laid != chosen { try_layout(ac, q, base, &preps[chosen]) }
 	p := &preps[chosen]
-	if fit { l.anchor_last[key] = Anchor_Last{option = opts[chosen], sig = sig} }
+	if fit { l.anchor_chosen[key] = Anchor_Last{option = opts[chosen], sig = sig} } else { delete_key(&l.anchor_chosen, key) }
 
 	shift := shift_of(ac, q, p)
 	e := Anchored{box = q, anchor = p.anchor, follow = p.follow, shift = shift, rect = p.imcb, ref = ref}
@@ -693,6 +687,8 @@ lay_anchored :: proc(ac: ^A, q: i32) {
 		v, ok := definite(c, p.cs.inset[s], s == .Left || s == .Right ? w : h)
 		e.declared[i] = ok ? v / c.scale : 0
 	}
+	sides2 := [4]style.Side{.Top, .Right, .Bottom, .Left}
+	for s, i in sides2 { e.auto_inset[i] = p.cs.inset[s].kind == .Auto }
 	for &s, i in e.sizes {
 		if s.kind == .Calc {
 			base_size := i % 2 == 0 ? p.imcb.max.x - p.imcb.min.x : p.imcb.max.y - p.imcb.min.y
@@ -717,6 +713,7 @@ anchored_pass :: proc(c: ^Ctx) {
 	c.plain = nil   // (found from the elements' records: what is laid out here has other values)
 	defer c.plain = plain
 	clear(&l.anchored)
+	clear(&l.anchor_chosen)
 	l.anchor_scroll, l.anchor_stale = false, false
 	order := preorder(l)
 	ac := A{c = c, l = l, pos = make([]i32, len(l.boxes), context.temp_allocator), entry = make([]i32, len(l.boxes), context.temp_allocator)}
@@ -815,7 +812,7 @@ anchored_drop_hidden :: proc(l: ^Layout) {
 
 // For getComputedStyle: the used insets of an anchored box (CSS px: top, right, bottom, left), and the bounds it was laid
 // out with (min-width, min-height, max-width, max-height).
-anchored_used :: proc(l: ^Layout, bi: i32, scale: f32) -> (insets: [4]f32, sizes: [4]style.Length, ok: bool) {
+anchored_used :: proc(l: ^Layout, bi: i32, scale: f32) -> (insets: [4]f32, auto_inset: [4]bool, sizes: [4]style.Length, ok: bool) {
 	for &e in l.anchored {
 		if e.box != bi { continue }
 		k := &l.boxes[bi]
@@ -825,7 +822,26 @@ anchored_used :: proc(l: ^Layout, bi: i32, scale: f32) -> (insets: [4]f32, sizes
 			(e.rect.max.y - (k.pos.y + k.size.y + k.margin[2])) / scale, (left - e.rect.min.x) / scale}
 		if e.aligned[0] { insets[1], insets[3] = e.declared[1], e.declared[3] }
 		if e.aligned[1] { insets[0], insets[2] = e.declared[0], e.declared[2] }
-		return insets, e.sizes, true
+		return insets, e.auto_inset, e.sizes, true
 	}
-	return {}, {}, false
+	return {}, {}, {}, false
+}
+
+// The options now in force are what later layouts keep while they fit. Called once per frame, after layout (§last-successful:
+// layouts a script forces in between record nothing). A box that is gone starts afresh.
+anchored_commit :: proc(l: ^Layout) {
+	if !l.anchor_uses && len(l.anchor_last) == 0 { return }
+	live := make(map[Anchor_Key]bool, len(l.anchored), context.temp_allocator)
+	for &e in l.anchored { live[anchored_key(&l.boxes[e.box])] = true }
+	gone := make([dynamic]Anchor_Key, 0, 4, context.temp_allocator)
+	for k in l.anchor_last { if k not_in live { append(&gone, k) } }
+	for k in gone { delete_key(&l.anchor_last, k) }
+	for k, v in l.anchor_chosen { l.anchor_last[k] = v }
+}
+
+@(private = "file")
+anchored_key :: proc(b: ^Box) -> Anchor_Key {
+	k := Anchor_Key{node = b.node}
+	if .Pseudo in b.flags { k.pseudo = .Pseudo_After in b.flags ? 2 : 1 }
+	return k
 }

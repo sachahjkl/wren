@@ -169,6 +169,7 @@ destroy :: proc(l: ^Layout) {
 	delete(l.anchored)
 	delete(l.anchor_grid_areas)
 	delete(l.anchor_last)
+	delete(l.anchor_chosen)
 	inc_destroy(l)
 	pre_destroy(l)
 	dl_walks_destroy(&l.dl_walks)

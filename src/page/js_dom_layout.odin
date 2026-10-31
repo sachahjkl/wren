@@ -150,8 +150,18 @@ used_box :: proc(p: ^Page, h: base.Handle) -> Used_Box {
 	s := f32(vp.scale)
 	u := Used_Box{ok = true, width = g.content.max.x - g.content.min.x, height = g.content.max.y - g.content.min.y}
 	for i in 0 ..< 4 { u.margin[i] = g.box.margin[i] / s; u.padding[i] = g.box.padding[i] / s }
-	if bi := lay.box_index(l, h); bi != lay.NONE && len(l.anchored) > 0 { u.inset, u.bounds, u.anchored = lay.anchored_used(l, bi, s) }
+	if bi := lay.box_index(l, h); bi != lay.NONE && len(l.anchored) > 0 { u.inset, u.inset_auto, u.bounds, u.anchored = lay.anchored_used(l, bi, s) }
 	return u
+}
+
+// A frame's layout is done: anchored boxes keep what it chose while that fits (lay.anchored_commit). A script's readings between
+// two frames record nothing.
+anchored_frame_done :: proc(p: ^Page) {
+	if p.worker != nil || p.jsdom == nil { return }
+	jl := &p.jsdom.layout
+	if !jl.has || jl.result == nil || !jl.result.anchor_uses { return }
+	js_layout_now(p)
+	if jl.result != nil { lay.anchored_commit(jl.result) }
 }
 
 // used_box of an element's anchored ::before or ::after (other generated boxes answer with their computed values).
@@ -165,7 +175,7 @@ used_box_pseudo :: proc(p: ^Page, h: base.Handle, after: bool) -> Used_Box {
 		if b.node != h || .Pseudo not_in b.flags || (.Pseudo_After in b.flags) != after { continue }
 		u := Used_Box{ok = true, width = (b.size.x - b.padding[1] - b.padding[3] - b.border[1] - b.border[3]) / s, height = (b.size.y - b.padding[0] - b.padding[2] - b.border[0] - b.border[2]) / s}
 		for i in 0 ..< 4 { u.margin[i] = b.margin[i] / s; u.padding[i] = b.padding[i] / s }
-		u.inset, u.bounds, u.anchored = lay.anchored_used(l, e.box, s)
+		u.inset, u.inset_auto, u.bounds, u.anchored = lay.anchored_used(l, e.box, s)
 		return u
 	}
 	return {}
