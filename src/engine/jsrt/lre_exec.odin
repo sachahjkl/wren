@@ -15,6 +15,9 @@ import fe "wb:engine/frontend"
 
 LRE_HEADER_LEN :: 8
 LRE_STACK_MAX :: 8 << 20 // backtrack stack words before "out of memory in regexp execution"
+LRE_SEARCH_ANY_LEN :: 1 // the search prefix (has_search_prefix): the size of its any, of its goto, and its whole
+LRE_SEARCH_GOTO_LEN :: 5
+LRE_SEARCH_PREFIX_LEN :: 11
 
 Lre_Status :: enum u8 {
 	no_match,
@@ -221,7 +224,75 @@ lre_exec :: proc(ctx: ^Context, capture: []int, bc: []u8, str: ^JS_String, cinde
 		cptr -= 1
 	}
 	end := LRE_HEADER_LEN + lre_bytecode_len(bc)
+	if has_search_prefix(bc[:end]) {return exec_search(&e, &sub, bc[:end], cptr)}
 	return exec_backtrack(&e, &sub, bc[:end], LRE_HEADER_LEN, cptr)
+}
+
+// A regexp that is not sticky starts with a lazy `.*?` (lre_compile): split_goto_first +6; any; goto -11. Run as bytecode, that
+// pushes and pops a state for each position of the subject; exec_search tries the positions itself.
+@(private = "file")
+has_search_prefix :: proc(bc: []u8) -> bool {
+	H :: LRE_HEADER_LEN
+	if len(bc) < H + LRE_SEARCH_PREFIX_LEN {return false}
+	return bc[H] == u8(fe.REOP.split_goto_first) && i32(rd_u32(bc, H + 1)) == LRE_SEARCH_ANY_LEN + LRE_SEARCH_GOTO_LEN &&
+		bc[H + 5] == u8(fe.REOP.any) && bc[H + 6] == u8(fe.REOP.goto) && i32(rd_u32(bc, H + 7)) == -LRE_SEARCH_PREFIX_LEN
+}
+
+// Whether character c is one of the sorted ranges of a .range instruction (cnt pairs of 16-bit bounds at p).
+@(private = "file")
+range_has :: #force_inline proc(bc: []u8, p, cnt: int, c: u32) -> bool {
+	lo, hi := 0, cnt - 1
+	for lo <= hi {
+		mid := (lo + hi) / 2
+		if c < rd_u16(bc, p + mid * 4) {hi = mid - 1} else if c > rd_u16(bc, p + mid * 4 + 2) {lo = mid + 1} else {return true}
+	}
+	return false
+}
+
+// The search of a regexp that is not sticky: each position in turn, skipping at once those where the instruction that must match
+// first (a character or a range, right after the save of the start) cannot.
+@(private = "file")
+exec_search :: proc(e: ^Exec, s: ^Subject, bc: []u8, from: int) -> Lre_Status {
+	start := LRE_HEADER_LEN + LRE_SEARCH_PREFIX_LEN
+	first := start
+	if first + 2 <= len(bc) && bc[first] == u8(fe.REOP.save_start) {first += 2}
+	// (over UTF-16 in unicode mode a position may be the middle of a pair: no shortcut there)
+	want_char, want_range := false, false
+	val: u32
+	cnt, ranges := 0, 0
+	if !s.utf && first + 3 <= len(bc) {
+		if bc[first] == u8(fe.REOP.char) {
+			want_char = true
+			val = rd_u16(bc, first + 1)
+		} else if bc[first] == u8(fe.REOP.range) {
+			cnt = int(rd_u16(bc, first + 1))
+			ranges = first + 3
+			want_range = cnt > 0 && ranges + 4 * cnt <= len(bc) && rd_u16(bc, ranges + (cnt - 1) * 4 + 2) != 0xffff
+		}
+	}
+	n := s.n
+	cptr := from
+	for {
+		if want_char {
+			if s.wide {
+				for cptr < n && u32(s.u16s[cptr]) != val {cptr += 1}
+			} else {
+				for cptr < n && u32(s.u8s[cptr]) != val {cptr += 1}
+			}
+			if cptr >= n {return .no_match}
+		} else if want_range {
+			for cptr < n && !range_has(bc, ranges, cnt, unit(s, cptr)) {cptr += 1}
+			if cptr >= n {return .no_match}
+		}
+		clear(&e.stack)
+		st := exec_backtrack(e, s, bc, start, cptr)
+		if st != .no_match {return st}
+		// what was saved outside any state (no state below it to undo it, as the prefix's was): the captures and registers as they were
+		for sp := len(e.stack); sp > 0; sp -= 2 {e.capture[e.stack[sp - 2]] = e.stack[sp - 1]}
+		if cptr >= n {return .no_match}
+		_, cptr = get_char(s, cptr)
+		if poll(e) {return .timeout}
+	}
 }
 
 @(private = "file")
