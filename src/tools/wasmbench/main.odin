@@ -47,6 +47,7 @@ memory_now :: proc() -> (working_set, private: int) {
 Call :: struct { inst: ^wasm.Instance, message: string }
 api_begin :: #force_inline proc "contextless" (inst: ^wasm.Instance) -> Call { return Call{inst = inst} }
 api_scrub :: proc(s: string, allocator := context.allocator) -> string { return s }
+api_end :: #force_inline proc "contextless" (c: ^Call) {}
 
 nop :: proc(c: ^Call) {}
 touch :: proc(c: ^Call, data: []u8) -> i32 { return i32(data[0]) + i32(len(data)) }
