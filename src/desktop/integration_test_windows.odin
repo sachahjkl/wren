@@ -12,6 +12,12 @@ import "wb:base"
 import "core:time"
 import win "core:sys/windows"
 
+@(private = "file") CLEANUP_WAIT :: 20 * time.Second            // for the helper to delete the files, the folder and itself
+@(private = "file") CLEANUP_POLL :: 200 * time.Millisecond
+@(private = "file") WATCHER_WAKE_WAIT :: 5 * time.Second         // for a change to wake the watcher
+@(private = "file") WATCHER_WAKE_POLL :: 20 * time.Millisecond
+@(private = "file") WATCHER_SETTLE :: 100 * time.Millisecond     // for the notifications of one change to settle
+
 @(private = "file")
 Scratch :: struct {
 	dir:  string,   // a folder in %TEMP%
@@ -605,12 +611,12 @@ windows_cleanup_later_deletes_after_the_process_ends :: proc(t: ^testing.T) {
 	ok := cleanup_later({a, b}, dir, u32(p.pid))
 	testing.expect(t, ok, "the helper starts")
 	t0 := time.now()
-	for time.since(t0) < 20 * time.Second && os.exists(dir) { time.sleep(200 * time.Millisecond) }
+	for time.since(t0) < CLEANUP_WAIT && os.exists(dir) { time.sleep(CLEANUP_POLL) }
 	_, _ = os.process_wait(p)
 	testing.expect(t, !os.exists(a) && !os.exists(b), "the files are deleted")
 	testing.expect(t, !os.exists(dir), "and the folder")
 	script := fmt.tprintf("%s\\wren_cleanup_%d.cmd", strings.trim_right(os.temp_dir(context.temp_allocator) or_else "", "\\/"), win.GetCurrentProcessId())
-	for time.since(t0) < 20 * time.Second && os.exists(script) { time.sleep(200 * time.Millisecond) }
+	for time.since(t0) < CLEANUP_WAIT && os.exists(script) { time.sleep(CLEANUP_POLL) }
 	testing.expect(t, !os.exists(script), "the batch file deleted itself")
 }
 // The watcher: a change in the registry subtree, the PATH key, the Start menu folder and the Desktop folder each wake the
@@ -634,9 +640,9 @@ windows_watcher_wakes_on_every_place_it_watches :: proc(t: ^testing.T) {
 
 	woken :: proc(before: int) -> bool {
 		t0 := time.now()
-		for time.since(t0) < 5 * time.Second {
+		for time.since(t0) < WATCHER_WAKE_WAIT {
 			if sync.atomic_load(&watch_counter) > before { return true }
-			time.sleep(20 * time.Millisecond)
+			time.sleep(WATCHER_WAKE_POLL)
 		}
 		return false
 	}
@@ -644,7 +650,7 @@ windows_watcher_wakes_on_every_place_it_watches :: proc(t: ^testing.T) {
 		before := sync.atomic_load(&watch_counter)
 		testing.expect(t, change(), what)
 		testing.expectf(t, woken(before), "%s wakes the watcher", what)
-		time.sleep(100 * time.Millisecond)   // (the notifications of one change settle)
+		time.sleep(WATCHER_SETTLE)
 	}
 	@(static) sc: ^Scratch
 	sc = &s
