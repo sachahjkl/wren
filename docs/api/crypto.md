@@ -3,9 +3,19 @@
 # Module `crypto`
 
 Web Crypto: random values, UUIDs and digests (SHA-1, SHA-256, SHA-384, SHA-512 through BCrypt; large inputs are
-hashed on a worker thread).
+hashed on a worker thread), and the operations of crypto.subtle (src/page/bindings_crypto_subtle.odin; the objects and
+the rules of the specification: native/js/odin/web_crypto.odin and web_crypto.js). A key's material stays here: a
+realm holds a CryptoKeyData, and CryptoKey_export gives what is secret only of a key that is extractable.
 
-Exposed to: Window. Source: `api/crypto.widl`.
+Exposed to: Window, Worker. Source: `api/crypto.widl`.
+
+## Types
+
+### handle `CryptoKeyData` : `Object`
+
+The material of a key, known by the realm's CryptoKey.
+
+Checked by the browser on every call (`lookup_CryptoKeyData`).
 
 ## Functions
 
@@ -54,4 +64,173 @@ Promise<Buffer> SubtleCrypto_digestBuffer(string algorithm, Buffer data)
 The same over a buffer.
 
 Host: `SubtleCrypto_digestBuffer :: proc(c: ^Call, algorithm: string, data: Api_Buffer) -> u64`
+
+### `CryptoKey_importRaw`
+
+```
+CryptoKeyData CryptoKey_importRaw(string kind, bytes value, bytes public_value, bool is_private, bool extractable)
+```
+
+A key from its values. `kind` "secret" (`value`: the bytes), "P-256", "P-384", "Ed25519", "X25519": `value` the
+private value when `is_private`, and `public_value` empty or what must match it; else `value` the public value.
+0 when they are not a valid key.
+
+Host: `CryptoKey_importRaw :: proc(c: ^Call, kind: string, value: []u8, public_value: []u8, is_private: bool, extractable: bool) -> u64`
+
+### `CryptoKey_importDer`
+
+```
+CryptoKeyData CryptoKey_importDer(string kind, bool pkcs8, bytes der, bool extractable)
+```
+
+A key from a DER SubjectPublicKeyInfo (`pkcs8` false) or PrivateKeyInfo (`pkcs8` true) that must be of `kind`
+(as above, or "RSA"). 0 when it is not.
+
+Host: `CryptoKey_importDer :: proc(c: ^Call, kind: string, pkcs8: bool, der: []u8, extractable: bool) -> u64`
+
+### `CryptoKey_importRsa`
+
+```
+CryptoKeyData CryptoKey_importRsa(bytes n, bytes e, bytes d, bytes p, bytes q, bytes dp, bytes dq, bytes qi, bool extractable)
+```
+
+An RSA key from its integers, big-endian: a public key when `d` is empty. 0 when they are not a valid key.
+
+Host: `CryptoKey_importRsa :: proc(c: ^Call, n: []u8, e: []u8, d: []u8, p: []u8, q: []u8, dp: []u8, dq: []u8, qi: []u8, extractable: bool) -> u64`
+
+### `CryptoKey_generate`
+
+```
+Promise<CryptoKeyData> CryptoKey_generate(string kind, i32 bits, bool extractable)
+```
+
+A new key of `kind`: "secret" of `bits` random bits, "RSA" of a modulus of `bits` bits and the exponent 65537, or a
+curve (the private key of a pair). On a thread of the blocking pool; rejected when it cannot be made.
+
+Host: `CryptoKey_generate :: proc(c: ^Call, kind: string, bits: i32, extractable: bool) -> u64`
+
+### `CryptoKey_publicOf`
+
+```
+CryptoKeyData CryptoKey_publicOf(CryptoKeyData key)
+```
+
+The public key of a private key, a new object.
+
+Host: `CryptoKey_publicOf :: proc(c: ^Call, key: Api_CryptoKeyData) -> u64`
+
+### `CryptoKey_export`
+
+```
+bytes CryptoKey_export(CryptoKeyData key, string part) raises
+```
+
+A part of a key: "secret", "spki", "pkcs8", "public" (a curve's public value), "x", "y", "d" (of a curve), or of an RSA key
+"n", "e", "rsa_d", "p", "q", "dp", "dq", "qi". Invalid_Access for what is secret in a key that is not extractable, Not_Supported for
+a part the key does not have.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `CryptoKey_export :: proc(c: ^Call, key: Api_CryptoKeyData, part: string) -> ([]u8, Api_Error)`
+
+### `CryptoKey_modulusBits`
+
+```
+i32 CryptoKey_modulusBits(CryptoKeyData key)
+```
+
+The size of an RSA key's modulus in bits.
+
+Host: `CryptoKey_modulusBits :: proc(c: ^Call, key: Api_CryptoKeyData) -> i32`
+
+### `CryptoKey_serialize`
+
+```
+bytes CryptoKey_serialize(CryptoKeyData key)
+```
+
+The form of a key that goes through structured serialization, whether it is extractable or not.
+
+Host: `CryptoKey_serialize :: proc(c: ^Call, key: Api_CryptoKeyData) -> []u8`
+
+### `CryptoKey_deserialize`
+
+```
+CryptoKeyData CryptoKey_deserialize(bytes data)
+```
+
+The key of CryptoKey_serialize's bytes. 0 when they are not one.
+
+Host: `CryptoKey_deserialize :: proc(c: ^Call, data: []u8) -> u64`
+
+### `SubtleCrypto_aes`
+
+```
+Promise<Buffer> SubtleCrypto_aes(string mode, bool encrypt, CryptoKeyData key, bytes iv, bytes aad, i32 n, bytes data)
+```
+
+AES-GCM, AES-CBC, AES-CTR (`mode` "GCM", "CBC", "CTR"). `iv` the IV or the counter block, `aad` GCM's additional
+data, `n` GCM's tag size in bytes or CTR's counter size in bits. Every rejection here is an OperationError.
+
+Host: `SubtleCrypto_aes :: proc(c: ^Call, mode: string, encrypt: bool, key: Api_CryptoKeyData, iv: []u8, aad: []u8, n: i32, data: []u8) -> u64`
+
+### `SubtleCrypto_aesKw`
+
+```
+Promise<Buffer> SubtleCrypto_aesKw(bool wrap, CryptoKeyData key, bytes data)
+```
+
+AES-KW: RFC 3394.
+
+Host: `SubtleCrypto_aesKw :: proc(c: ^Call, wrap: bool, key: Api_CryptoKeyData, data: []u8) -> u64`
+
+### `SubtleCrypto_rsaOaep`
+
+```
+Promise<Buffer> SubtleCrypto_rsaOaep(bool encrypt, CryptoKeyData key, string hash, bytes label, bytes data)
+```
+
+RSA-OAEP, with MGF1 over the same hash.
+
+Host: `SubtleCrypto_rsaOaep :: proc(c: ^Call, encrypt: bool, key: Api_CryptoKeyData, hash: string, label: []u8, data: []u8) -> u64`
+
+### `SubtleCrypto_sign`
+
+```
+Promise<Buffer> SubtleCrypto_sign(string scheme, CryptoKeyData key, string hash, i32 salt, bytes data)
+```
+
+A signature. `scheme` "HMAC", "ECDSA", "Ed25519", "PKCS1", "PSS" (`salt`: its salt size in bytes).
+
+Host: `SubtleCrypto_sign :: proc(c: ^Call, scheme: string, key: Api_CryptoKeyData, hash: string, salt: i32, data: []u8) -> u64`
+
+### `SubtleCrypto_verify`
+
+```
+Promise<bool> SubtleCrypto_verify(string scheme, CryptoKeyData key, string hash, i32 salt, bytes signature, bytes data)
+```
+
+Whether `signature` is one.
+
+Host: `SubtleCrypto_verify :: proc(c: ^Call, scheme: string, key: Api_CryptoKeyData, hash: string, salt: i32, signature: []u8, data: []u8) -> u64`
+
+### `SubtleCrypto_agree`
+
+```
+Promise<Buffer> SubtleCrypto_agree(CryptoKeyData key, CryptoKeyData peer)
+```
+
+ECDH and X25519: the shared secret of a private key and a public key of the same curve.
+
+Host: `SubtleCrypto_agree :: proc(c: ^Call, key: Api_CryptoKeyData, peer: Api_CryptoKeyData) -> u64`
+
+### `SubtleCrypto_derive`
+
+```
+Promise<Buffer> SubtleCrypto_derive(CryptoKeyData key, string hash, bytes salt, bytes info, i64 iterations, i32 size)
+```
+
+`size` bytes of PBKDF2 (`iterations` > 0; `info` unused) or HKDF (`iterations` 0).
+
+Host: `SubtleCrypto_derive :: proc(c: ^Call, key: Api_CryptoKeyData, hash: string, salt: []u8, info: []u8, iterations: i64, size: i32) -> u64`
 

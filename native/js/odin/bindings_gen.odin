@@ -25870,10 +25870,10 @@ wj_install_bindings :: proc "c" () {
 	m_Crypto[0] = wj.Member{name = "subtle", kind = wj.M_ATTRIBUTE, flags = wj.F_SECURE, length = 0, get = wjr_Crypto_get_subtle, set = nil}
 	m_Crypto[1] = wj.Member{name = "getRandomValues", kind = wj.M_METHOD, flags = 0, length = 1, fn = wjr_Crypto_getRandomValues}
 	m_Crypto[2] = wj.Member{name = "randomUUID", kind = wj.M_METHOD, flags = wj.F_SECURE, length = 0, fn = wjg_Crypto_randomUUID}
-	m_CryptoKey[0] = wj.Member{name = "type", kind = wj.M_ATTRIBUTE, flags = wj.F_SECURE, length = 0, get = nil, set = nil}
-	m_CryptoKey[1] = wj.Member{name = "extractable", kind = wj.M_ATTRIBUTE, flags = wj.F_SECURE, length = 0, get = nil, set = nil}
-	m_CryptoKey[2] = wj.Member{name = "algorithm", kind = wj.M_ATTRIBUTE, flags = wj.F_SECURE, length = 0, get = nil, set = nil}
-	m_CryptoKey[3] = wj.Member{name = "usages", kind = wj.M_ATTRIBUTE, flags = wj.F_SECURE, length = 0, get = nil, set = nil}
+	m_CryptoKey[0] = wj.Member{name = "type", kind = wj.M_ATTRIBUTE, flags = wj.F_SECURE, length = 0, get = wjr_CryptoKey_get_type, set = nil}
+	m_CryptoKey[1] = wj.Member{name = "extractable", kind = wj.M_ATTRIBUTE, flags = wj.F_SECURE, length = 0, get = wjr_CryptoKey_get_extractable, set = nil}
+	m_CryptoKey[2] = wj.Member{name = "algorithm", kind = wj.M_ATTRIBUTE, flags = wj.F_SECURE, length = 0, get = wjr_CryptoKey_get_algorithm, set = nil}
+	m_CryptoKey[3] = wj.Member{name = "usages", kind = wj.M_ATTRIBUTE, flags = wj.F_SECURE, length = 0, get = wjr_CryptoKey_get_usages, set = nil}
 	m_CustomElementRegistry[0] = wj.Member{name = "define", kind = wj.M_METHOD, flags = 0, length = 2, fn = wjr_CustomElementRegistry_define}
 	m_CustomElementRegistry[1] = wj.Member{name = "get", kind = wj.M_METHOD, flags = 0, length = 1, fn = wjr_CustomElementRegistry_get}
 	m_CustomElementRegistry[2] = wj.Member{name = "getName", kind = wj.M_METHOD, flags = 0, length = 1, fn = wjr_CustomElementRegistry_getName}
@@ -30737,7 +30737,7 @@ wj_install_bindings :: proc "c" () {
 		members = rawptr(&m_Crypto[0]), n_members = 3, subtree_end = 104,
 		index_get = nil, length_get = nil, named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}
-	the_interfaces[104] = wj.Interface{name = "CryptoKey", parent = -1, exposed = u16(wj.EXPOSE_WINDOW | wj.EXPOSE_WORKER | wj.EXPOSE_SHARED_WORKER | wj.EXPOSE_SERVICE_WORKER), flags = u16(wj.I_UNSUPPORTED | wj.I_SECURE), class_kind = u8(wj.CLASS_PLAIN), ctor_length = 0, ctor = nil,
+	the_interfaces[104] = wj.Interface{name = "CryptoKey", parent = -1, exposed = u16(wj.EXPOSE_WINDOW | wj.EXPOSE_WORKER | wj.EXPOSE_SHARED_WORKER | wj.EXPOSE_SERVICE_WORKER), flags = u16(wj.I_SECURE), class_kind = u8(wj.CLASS_PLAIN), ctor_length = 0, ctor = nil,
 		members = rawptr(&m_CryptoKey[0]), n_members = 4, subtree_end = 105,
 		index_get = nil, length_get = nil, named_get = nil, named_set = nil, named_delete = nil, named_keys = nil,
 		legacy_alias = nil, factory_name = nil, factory = nil, factory_length = 0}

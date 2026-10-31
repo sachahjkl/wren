@@ -57,7 +57,7 @@ function not exposed to workers is not instantiated.
 | [`compression`](compression.md) | 4 | Window, Worker | CompressionStream and DecompressionStream (Compression Standard; src/page/compression.odin, the streams themselves: |
 | [`console`](console.md) | 3 | Window, Worker | The console of the page (or of the worker): messages appear in the browser's console. Invalid UTF-8 is shown as |
 | [`credentials`](credentials.md) | 16 | Window | Web Authentication Level 3 (passkeys, security keys) and the Credential Management container it hangs off |
-| [`crypto`](crypto.md) | 4 | Window | Web Crypto: random values, UUIDs and digests (SHA-1, SHA-256, SHA-384, SHA-512 through BCrypt; large inputs are |
+| [`crypto`](crypto.md) | 20 | Window, Worker | Web Crypto: random values, UUIDs and digests (SHA-1, SHA-256, SHA-384, SHA-512 through BCrypt; large inputs are |
 | [`document`](document.md) | 5 | Window, Worker | The document's address, origin and cookies. Window_origin and Window_isSecureContext belong to |
 | [`dom`](dom.md) | 381 | Window, Worker | The document tree (DOM Standard: Document, Node, Element). In a worker there is no document: the functions taking a |
 | [`encoding`](encoding.md) | 8 | Window, Worker | TextEncoder and TextDecoder (Encoding Standard). Decoders keep their state between calls, so every WHATWG label |
@@ -104,4 +104,4 @@ function not exposed to workers is not instantiated.
 | [`websocket`](websocket.md) | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | 11 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-1473 imports in 1374 functions.
+1489 imports in 1390 functions.

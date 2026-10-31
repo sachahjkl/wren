@@ -112,6 +112,8 @@ wr_CredentialBytes :: enum i32 {
 }
 
 // module crypto: types
+// The material of a key, known by the realm's CryptoKey.
+wr_CryptoKeyData :: distinct u64
 
 // module document: types
 
@@ -1297,6 +1299,45 @@ foreign _wr_wj_crypto {
 	@(link_name = "SubtleCrypto_digest") wr_SubtleCrypto_digest :: proc(algorithm: [^]u8, algorithm_len: u32, data: [^]u8, data_len: u32) -> u64 ---
 	// The same over a buffer.
 	@(link_name = "SubtleCrypto_digestBuffer") wr_SubtleCrypto_digestBuffer :: proc(algorithm: [^]u8, algorithm_len: u32, data: u64) -> u64 ---
+	// A key from its values. `kind` "secret" (`value`: the bytes), "P-256", "P-384", "Ed25519", "X25519": `value` the
+	// private value when `is_private`, and `public_value` empty or what must match it; else `value` the public value.
+	// 0 when they are not a valid key.
+	@(link_name = "CryptoKey_importRaw") wr_CryptoKey_importRaw :: proc(kind: [^]u8, kind_len: u32, value: [^]u8, value_len: u32, public_value: [^]u8, public_value_len: u32, is_private: i32, extractable: i32) -> u64 ---
+	// A key from a DER SubjectPublicKeyInfo (`pkcs8` false) or PrivateKeyInfo (`pkcs8` true) that must be of `kind`
+	// (as above, or "RSA"). 0 when it is not.
+	@(link_name = "CryptoKey_importDer") wr_CryptoKey_importDer :: proc(kind: [^]u8, kind_len: u32, pkcs8: i32, der: [^]u8, der_len: u32, extractable: i32) -> u64 ---
+	// An RSA key from its integers, big-endian: a public key when `d` is empty. 0 when they are not a valid key.
+	@(link_name = "CryptoKey_importRsa") wr_CryptoKey_importRsa :: proc(n: [^]u8, n_len: u32, e: [^]u8, e_len: u32, d: [^]u8, d_len: u32, p: [^]u8, p_len: u32, q: [^]u8, q_len: u32, dp: [^]u8, dp_len: u32, dq: [^]u8, dq_len: u32, qi: [^]u8, qi_len: u32, extractable: i32) -> u64 ---
+	// A new key of `kind`: "secret" of `bits` random bits, "RSA" of a modulus of `bits` bits and the exponent 65537, or a
+	// curve (the private key of a pair). On a thread of the blocking pool; rejected when it cannot be made.
+	@(link_name = "CryptoKey_generate") wr_CryptoKey_generate :: proc(kind: [^]u8, kind_len: u32, bits: i32, extractable: i32) -> u64 ---
+	// The public key of a private key, a new object.
+	@(link_name = "CryptoKey_publicOf") wr_CryptoKey_publicOf :: proc(key: u64) -> u64 ---
+	// A part of a key: "secret", "spki", "pkcs8", "public" (a curve's public value), "x", "y", "d" (of a curve), or of an RSA key
+	// "n", "e", "rsa_d", "p", "q", "dp", "dq", "qi". Invalid_Access for what is secret in a key that is not extractable, Not_Supported for
+	// a part the key does not have.
+	@(link_name = "CryptoKey_export") wr_CryptoKey_export :: proc(key: u64, part: [^]u8, part_len: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	// The size of an RSA key's modulus in bits.
+	@(link_name = "CryptoKey_modulusBits") wr_CryptoKey_modulusBits :: proc(key: u64) -> i32 ---
+	// The form of a key that goes through structured serialization, whether it is extractable or not.
+	@(link_name = "CryptoKey_serialize") wr_CryptoKey_serialize :: proc(key: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	// The key of CryptoKey_serialize's bytes. 0 when they are not one.
+	@(link_name = "CryptoKey_deserialize") wr_CryptoKey_deserialize :: proc(data: [^]u8, data_len: u32) -> u64 ---
+	// AES-GCM, AES-CBC, AES-CTR (`mode` "GCM", "CBC", "CTR"). `iv` the IV or the counter block, `aad` GCM's additional
+	// data, `n` GCM's tag size in bytes or CTR's counter size in bits. Every rejection here is an OperationError.
+	@(link_name = "SubtleCrypto_aes") wr_SubtleCrypto_aes :: proc(mode: [^]u8, mode_len: u32, encrypt: i32, key: u64, iv: [^]u8, iv_len: u32, aad: [^]u8, aad_len: u32, n: i32, data: [^]u8, data_len: u32) -> u64 ---
+	// AES-KW: RFC 3394.
+	@(link_name = "SubtleCrypto_aesKw") wr_SubtleCrypto_aesKw :: proc(wrap: i32, key: u64, data: [^]u8, data_len: u32) -> u64 ---
+	// RSA-OAEP, with MGF1 over the same hash.
+	@(link_name = "SubtleCrypto_rsaOaep") wr_SubtleCrypto_rsaOaep :: proc(encrypt: i32, key: u64, hash: [^]u8, hash_len: u32, label: [^]u8, label_len: u32, data: [^]u8, data_len: u32) -> u64 ---
+	// A signature. `scheme` "HMAC", "ECDSA", "Ed25519", "PKCS1", "PSS" (`salt`: its salt size in bytes).
+	@(link_name = "SubtleCrypto_sign") wr_SubtleCrypto_sign :: proc(scheme: [^]u8, scheme_len: u32, key: u64, hash: [^]u8, hash_len: u32, salt: i32, data: [^]u8, data_len: u32) -> u64 ---
+	// Whether `signature` is one.
+	@(link_name = "SubtleCrypto_verify") wr_SubtleCrypto_verify :: proc(scheme: [^]u8, scheme_len: u32, key: u64, hash: [^]u8, hash_len: u32, salt: i32, signature: [^]u8, signature_len: u32, data: [^]u8, data_len: u32) -> u64 ---
+	// ECDH and X25519: the shared secret of a private key and a public key of the same curve.
+	@(link_name = "SubtleCrypto_agree") wr_SubtleCrypto_agree :: proc(key: u64, peer: u64) -> u64 ---
+	// `size` bytes of PBKDF2 (`iterations` > 0; `info` unused) or HKDF (`iterations` 0).
+	@(link_name = "SubtleCrypto_derive") wr_SubtleCrypto_derive :: proc(key: u64, hash: [^]u8, hash_len: u32, salt: [^]u8, salt_len: u32, info: [^]u8, info_len: u32, iterations: i64, size: i32) -> u64 ---
 }
 
 // module document

@@ -54,7 +54,7 @@ test("crypto", async () => {
   eq(hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode("abc"))), "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", "SHA-256");
   eq(hex(await crypto.subtle.digest({ name: "sha-1" }, new Uint8Array([0x61, 0x62, 0x63]).buffer)), "a9993e364706816aba3e25717850c26c9cd0d89d", "SHA-1, algorithm object, case-insensitive");
   await rejects(crypto.subtle.digest("MD5", new Uint8Array(1)), "NotSupportedError", "unknown algorithm");
-  await rejects(crypto.subtle.generateKey({ name: "AES-GCM" }, true, ["encrypt"]), "NotSupportedError", "other operations reject");
+  await rejects(crypto.subtle.generateKey({ name: "AES-GCM" }, true, ["encrypt"]), "TypeError", "other operations check their arguments (webcrypto.js)");
 });
 
 __run();

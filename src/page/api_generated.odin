@@ -191,6 +191,13 @@ Api_CredentialBytes :: enum i32 {
 	Public_Key = 6,
 }
 
+// The material of a key, known by the realm's CryptoKey.
+// A live CryptoKeyData: its handle and what lookup_CryptoKeyData found.
+Api_CryptoKeyData :: struct {
+	handle: u64,
+	data:   ^Crypto_Key,
+}
+
 // A node of the document. A node created by the module and never inserted lives until Node_release.
 // A live Node: its handle and what lookup_Node found.
 Api_Node :: struct {
@@ -6691,6 +6698,504 @@ _t_crypto_SubtleCrypto_digestBuffer :: proc "c" (env: rawptr, caller: wasm.Calle
 		return wasm.trap_new("crypto.SubtleCrypto_digestBuffer: argument data is not a live Buffer")
 	}
 	_r := SubtleCrypto_digestBuffer(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// CryptoKey_importRaw :: proc(c: ^Call, kind: string, value: []u8, public_value: []u8, is_private: bool, extractable: bool) -> u64
+@(private = "file")
+_t_crypto_CryptoKey_importRaw :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "crypto.CryptoKey_importRaw", "kind") }
+	_n1 := wasm.addr(&f, a[3])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[2]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "crypto.CryptoKey_importRaw", "value") }
+	_n2 := wasm.addr(&f, a[5])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[4]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "crypto.CryptoKey_importRaw", "public_value") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "crypto.CryptoKey_importRaw: argument kind is not valid UTF-8") }
+		return wasm.trap_new("crypto.CryptoKey_importRaw: argument kind is not valid UTF-8")
+	}
+	_p1 := _s1[:_n1]
+	_p2 := _s2[:_n2]
+	_p3 := a[6].i32 != 0
+	_p4 := a[7].i32 != 0
+	_r := CryptoKey_importRaw(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// CryptoKey_importDer :: proc(c: ^Call, kind: string, pkcs8: bool, der: []u8, extractable: bool) -> u64
+@(private = "file")
+_t_crypto_CryptoKey_importDer :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "crypto.CryptoKey_importDer", "kind") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "crypto.CryptoKey_importDer", "der") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "crypto.CryptoKey_importDer: argument kind is not valid UTF-8") }
+		return wasm.trap_new("crypto.CryptoKey_importDer: argument kind is not valid UTF-8")
+	}
+	_p2 := _s2[:_n2]
+	_p1 := a[2].i32 != 0
+	_p3 := a[5].i32 != 0
+	_r := CryptoKey_importDer(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// CryptoKey_importRsa :: proc(c: ^Call, n: []u8, e: []u8, d: []u8, p: []u8, q: []u8, dp: []u8, dq: []u8, qi: []u8, extractable: bool) -> u64
+@(private = "file")
+_t_crypto_CryptoKey_importRsa :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "crypto.CryptoKey_importRsa", "n") }
+	_n1 := wasm.addr(&f, a[3])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[2]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "crypto.CryptoKey_importRsa", "e") }
+	_n2 := wasm.addr(&f, a[5])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[4]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "crypto.CryptoKey_importRsa", "d") }
+	_n3 := wasm.addr(&f, a[7])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[6]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "crypto.CryptoKey_importRsa", "p") }
+	_n4 := wasm.addr(&f, a[9])
+	_s4, _k4 := wasm.span(&f, wasm.addr(&f, a[8]), _n4)
+	if !_k4 { return wasm.trap_bounds(&f, "crypto.CryptoKey_importRsa", "q") }
+	_n5 := wasm.addr(&f, a[11])
+	_s5, _k5 := wasm.span(&f, wasm.addr(&f, a[10]), _n5)
+	if !_k5 { return wasm.trap_bounds(&f, "crypto.CryptoKey_importRsa", "dp") }
+	_n6 := wasm.addr(&f, a[13])
+	_s6, _k6 := wasm.span(&f, wasm.addr(&f, a[12]), _n6)
+	if !_k6 { return wasm.trap_bounds(&f, "crypto.CryptoKey_importRsa", "dq") }
+	_n7 := wasm.addr(&f, a[15])
+	_s7, _k7 := wasm.span(&f, wasm.addr(&f, a[14]), _n7)
+	if !_k7 { return wasm.trap_bounds(&f, "crypto.CryptoKey_importRsa", "qi") }
+	_p0 := _s0[:_n0]
+	_p1 := _s1[:_n1]
+	_p2 := _s2[:_n2]
+	_p3 := _s3[:_n3]
+	_p4 := _s4[:_n4]
+	_p5 := _s5[:_n5]
+	_p6 := _s6[:_n6]
+	_p7 := _s7[:_n7]
+	_p8 := a[16].i32 != 0
+	_r := CryptoKey_importRsa(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6, _p7, _p8)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// CryptoKey_generate :: proc(c: ^Call, kind: string, bits: i32, extractable: bool) -> u64
+@(private = "file")
+_t_crypto_CryptoKey_generate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "crypto.CryptoKey_generate", "kind") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "crypto.CryptoKey_generate: argument kind is not valid UTF-8") }
+		return wasm.trap_new("crypto.CryptoKey_generate: argument kind is not valid UTF-8")
+	}
+	_p1 := a[2].i32
+	_p2 := a[3].i32 != 0
+	_r := CryptoKey_generate(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// CryptoKey_publicOf :: proc(c: ^Call, key: Api_CryptoKeyData) -> u64
+@(private = "file")
+_t_crypto_CryptoKey_publicOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CryptoKeyData{handle = u64(a[0].i64)}
+	_p0.data = lookup_CryptoKeyData(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "crypto.CryptoKey_publicOf: argument key is not a live CryptoKeyData") }
+		return wasm.trap_new("crypto.CryptoKey_publicOf: argument key is not a live CryptoKeyData")
+	}
+	_r := CryptoKey_publicOf(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// CryptoKey_export :: proc(c: ^Call, key: Api_CryptoKeyData, part: string) -> ([]u8, Api_Error)
+@(private = "file")
+_t_crypto_CryptoKey_export :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "crypto.CryptoKey_export", "part") }
+	_on := wasm.addr(&f, a[4])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "crypto.CryptoKey_export", "result buffer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_size(&c, &f, a, .Type, "crypto.CryptoKey_export: argument part is not valid UTF-8")
+	}
+	_p0 := Api_CryptoKeyData{handle = u64(a[0].i64)}
+	_p0.data = lookup_CryptoKeyData(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_size(&c, &f, a, .Invalid_Handle, "crypto.CryptoKey_export: argument key is not a live CryptoKeyData")
+	}
+	_r, _err := CryptoKey_export(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], _r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// CryptoKey_modulusBits :: proc(c: ^Call, key: Api_CryptoKeyData) -> i32
+@(private = "file")
+_t_crypto_CryptoKey_modulusBits :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CryptoKeyData{handle = u64(a[0].i64)}
+	_p0.data = lookup_CryptoKeyData(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "crypto.CryptoKey_modulusBits: argument key is not a live CryptoKeyData") }
+		return wasm.trap_new("crypto.CryptoKey_modulusBits: argument key is not a live CryptoKeyData")
+	}
+	_r := CryptoKey_modulusBits(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// CryptoKey_serialize :: proc(c: ^Call, key: Api_CryptoKeyData) -> []u8
+@(private = "file")
+_t_crypto_CryptoKey_serialize :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "crypto.CryptoKey_serialize", "result buffer") }
+	_p0 := Api_CryptoKeyData{handle = u64(a[0].i64)}
+	_p0.data = lookup_CryptoKeyData(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "crypto.CryptoKey_serialize: argument key is not a live CryptoKeyData") }
+		return wasm.trap_new("crypto.CryptoKey_serialize: argument key is not a live CryptoKeyData")
+	}
+	_r := CryptoKey_serialize(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], _r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// CryptoKey_deserialize :: proc(c: ^Call, data: []u8) -> u64
+@(private = "file")
+_t_crypto_CryptoKey_deserialize :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "crypto.CryptoKey_deserialize", "data") }
+	_p0 := _s0[:_n0]
+	_r := CryptoKey_deserialize(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// SubtleCrypto_aes :: proc(c: ^Call, mode: string, encrypt: bool, key: Api_CryptoKeyData, iv: []u8, aad: []u8, n: i32, data: []u8) -> u64
+@(private = "file")
+_t_crypto_SubtleCrypto_aes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "crypto.SubtleCrypto_aes", "mode") }
+	_n3 := wasm.addr(&f, a[5])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[4]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "crypto.SubtleCrypto_aes", "iv") }
+	_n4 := wasm.addr(&f, a[7])
+	_s4, _k4 := wasm.span(&f, wasm.addr(&f, a[6]), _n4)
+	if !_k4 { return wasm.trap_bounds(&f, "crypto.SubtleCrypto_aes", "aad") }
+	_n6 := wasm.addr(&f, a[10])
+	_s6, _k6 := wasm.span(&f, wasm.addr(&f, a[9]), _n6)
+	if !_k6 { return wasm.trap_bounds(&f, "crypto.SubtleCrypto_aes", "data") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "crypto.SubtleCrypto_aes: argument mode is not valid UTF-8") }
+		return wasm.trap_new("crypto.SubtleCrypto_aes: argument mode is not valid UTF-8")
+	}
+	_p3 := _s3[:_n3]
+	_p4 := _s4[:_n4]
+	_p6 := _s6[:_n6]
+	_p1 := a[2].i32 != 0
+	_p2 := Api_CryptoKeyData{handle = u64(a[3].i64)}
+	_p2.data = lookup_CryptoKeyData(&c, _p2.handle)
+	if _p2.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "crypto.SubtleCrypto_aes: argument key is not a live CryptoKeyData") }
+		return wasm.trap_new("crypto.SubtleCrypto_aes: argument key is not a live CryptoKeyData")
+	}
+	_p5 := a[8].i32
+	_r := SubtleCrypto_aes(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// SubtleCrypto_aesKw :: proc(c: ^Call, wrap: bool, key: Api_CryptoKeyData, data: []u8) -> u64
+@(private = "file")
+_t_crypto_SubtleCrypto_aesKw :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n2 := wasm.addr(&f, a[3])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "crypto.SubtleCrypto_aesKw", "data") }
+	_p2 := _s2[:_n2]
+	_p0 := a[0].i32 != 0
+	_p1 := Api_CryptoKeyData{handle = u64(a[1].i64)}
+	_p1.data = lookup_CryptoKeyData(&c, _p1.handle)
+	if _p1.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "crypto.SubtleCrypto_aesKw: argument key is not a live CryptoKeyData") }
+		return wasm.trap_new("crypto.SubtleCrypto_aesKw: argument key is not a live CryptoKeyData")
+	}
+	_r := SubtleCrypto_aesKw(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// SubtleCrypto_rsaOaep :: proc(c: ^Call, encrypt: bool, key: Api_CryptoKeyData, hash: string, label: []u8, data: []u8) -> u64
+@(private = "file")
+_t_crypto_SubtleCrypto_rsaOaep :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n2 := wasm.addr(&f, a[3])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "crypto.SubtleCrypto_rsaOaep", "hash") }
+	_n3 := wasm.addr(&f, a[5])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[4]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "crypto.SubtleCrypto_rsaOaep", "label") }
+	_n4 := wasm.addr(&f, a[7])
+	_s4, _k4 := wasm.span(&f, wasm.addr(&f, a[6]), _n4)
+	if !_k4 { return wasm.trap_bounds(&f, "crypto.SubtleCrypto_rsaOaep", "data") }
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "crypto.SubtleCrypto_rsaOaep: argument hash is not valid UTF-8") }
+		return wasm.trap_new("crypto.SubtleCrypto_rsaOaep: argument hash is not valid UTF-8")
+	}
+	_p3 := _s3[:_n3]
+	_p4 := _s4[:_n4]
+	_p0 := a[0].i32 != 0
+	_p1 := Api_CryptoKeyData{handle = u64(a[1].i64)}
+	_p1.data = lookup_CryptoKeyData(&c, _p1.handle)
+	if _p1.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "crypto.SubtleCrypto_rsaOaep: argument key is not a live CryptoKeyData") }
+		return wasm.trap_new("crypto.SubtleCrypto_rsaOaep: argument key is not a live CryptoKeyData")
+	}
+	_r := SubtleCrypto_rsaOaep(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// SubtleCrypto_sign :: proc(c: ^Call, scheme: string, key: Api_CryptoKeyData, hash: string, salt: i32, data: []u8) -> u64
+@(private = "file")
+_t_crypto_SubtleCrypto_sign :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "crypto.SubtleCrypto_sign", "scheme") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "crypto.SubtleCrypto_sign", "hash") }
+	_n4 := wasm.addr(&f, a[7])
+	_s4, _k4 := wasm.span(&f, wasm.addr(&f, a[6]), _n4)
+	if !_k4 { return wasm.trap_bounds(&f, "crypto.SubtleCrypto_sign", "data") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "crypto.SubtleCrypto_sign: argument scheme is not valid UTF-8") }
+		return wasm.trap_new("crypto.SubtleCrypto_sign: argument scheme is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "crypto.SubtleCrypto_sign: argument hash is not valid UTF-8") }
+		return wasm.trap_new("crypto.SubtleCrypto_sign: argument hash is not valid UTF-8")
+	}
+	_p4 := _s4[:_n4]
+	_p1 := Api_CryptoKeyData{handle = u64(a[2].i64)}
+	_p1.data = lookup_CryptoKeyData(&c, _p1.handle)
+	if _p1.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "crypto.SubtleCrypto_sign: argument key is not a live CryptoKeyData") }
+		return wasm.trap_new("crypto.SubtleCrypto_sign: argument key is not a live CryptoKeyData")
+	}
+	_p3 := a[5].i32
+	_r := SubtleCrypto_sign(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// SubtleCrypto_verify :: proc(c: ^Call, scheme: string, key: Api_CryptoKeyData, hash: string, salt: i32, signature: []u8, data: []u8) -> u64
+@(private = "file")
+_t_crypto_SubtleCrypto_verify :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "crypto.SubtleCrypto_verify", "scheme") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "crypto.SubtleCrypto_verify", "hash") }
+	_n4 := wasm.addr(&f, a[7])
+	_s4, _k4 := wasm.span(&f, wasm.addr(&f, a[6]), _n4)
+	if !_k4 { return wasm.trap_bounds(&f, "crypto.SubtleCrypto_verify", "signature") }
+	_n5 := wasm.addr(&f, a[9])
+	_s5, _k5 := wasm.span(&f, wasm.addr(&f, a[8]), _n5)
+	if !_k5 { return wasm.trap_bounds(&f, "crypto.SubtleCrypto_verify", "data") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "crypto.SubtleCrypto_verify: argument scheme is not valid UTF-8") }
+		return wasm.trap_new("crypto.SubtleCrypto_verify: argument scheme is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "crypto.SubtleCrypto_verify: argument hash is not valid UTF-8") }
+		return wasm.trap_new("crypto.SubtleCrypto_verify: argument hash is not valid UTF-8")
+	}
+	_p4 := _s4[:_n4]
+	_p5 := _s5[:_n5]
+	_p1 := Api_CryptoKeyData{handle = u64(a[2].i64)}
+	_p1.data = lookup_CryptoKeyData(&c, _p1.handle)
+	if _p1.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "crypto.SubtleCrypto_verify: argument key is not a live CryptoKeyData") }
+		return wasm.trap_new("crypto.SubtleCrypto_verify: argument key is not a live CryptoKeyData")
+	}
+	_p3 := a[5].i32
+	_r := SubtleCrypto_verify(&c, _p0, _p1, _p2, _p3, _p4, _p5)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// SubtleCrypto_agree :: proc(c: ^Call, key: Api_CryptoKeyData, peer: Api_CryptoKeyData) -> u64
+@(private = "file")
+_t_crypto_SubtleCrypto_agree :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CryptoKeyData{handle = u64(a[0].i64)}
+	_p0.data = lookup_CryptoKeyData(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "crypto.SubtleCrypto_agree: argument key is not a live CryptoKeyData") }
+		return wasm.trap_new("crypto.SubtleCrypto_agree: argument key is not a live CryptoKeyData")
+	}
+	_p1 := Api_CryptoKeyData{handle = u64(a[1].i64)}
+	_p1.data = lookup_CryptoKeyData(&c, _p1.handle)
+	if _p1.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "crypto.SubtleCrypto_agree: argument peer is not a live CryptoKeyData") }
+		return wasm.trap_new("crypto.SubtleCrypto_agree: argument peer is not a live CryptoKeyData")
+	}
+	_r := SubtleCrypto_agree(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// SubtleCrypto_derive :: proc(c: ^Call, key: Api_CryptoKeyData, hash: string, salt: []u8, info: []u8, iterations: i64, size: i32) -> u64
+@(private = "file")
+_t_crypto_SubtleCrypto_derive :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "crypto.SubtleCrypto_derive", "hash") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "crypto.SubtleCrypto_derive", "salt") }
+	_n3 := wasm.addr(&f, a[6])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[5]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "crypto.SubtleCrypto_derive", "info") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "crypto.SubtleCrypto_derive: argument hash is not valid UTF-8") }
+		return wasm.trap_new("crypto.SubtleCrypto_derive: argument hash is not valid UTF-8")
+	}
+	_p2 := _s2[:_n2]
+	_p3 := _s3[:_n3]
+	_p0 := Api_CryptoKeyData{handle = u64(a[0].i64)}
+	_p0.data = lookup_CryptoKeyData(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "crypto.SubtleCrypto_derive: argument key is not a live CryptoKeyData") }
+		return wasm.trap_new("crypto.SubtleCrypto_derive: argument key is not a live CryptoKeyData")
+	}
+	_p4 := a[7].i64
+	_p5 := a[8].i32
+	_r := SubtleCrypto_derive(&c, _p0, _p1, _p2, _p3, _p4, _p5)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
@@ -33123,10 +33628,26 @@ api_imports := [?]wasm.Import{
 	{module = "credentials", name = "PublicKeyCredential_publicKeyAlgorithm", fn = _t_credentials_PublicKeyCredential_publicKeyAlgorithm, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "credentials", name = "PublicKeyCredential_clientExtensionResults", fn = _t_credentials_PublicKeyCredential_clientExtensionResults, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "credentials", name = "PublicKeyCredential_toJSON", fn = _t_credentials_PublicKeyCredential_toJSON, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "crypto", name = "Crypto_getRandomValues", fn = _t_crypto_Crypto_getRandomValues, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "crypto", name = "Crypto_randomUUID", fn = _t_crypto_Crypto_randomUUID, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "crypto", name = "SubtleCrypto_digest", fn = _t_crypto_SubtleCrypto_digest, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "crypto", name = "SubtleCrypto_digestBuffer", fn = _t_crypto_SubtleCrypto_digestBuffer, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I64}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "crypto", name = "Crypto_getRandomValues", fn = _t_crypto_Crypto_getRandomValues, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "crypto", name = "Crypto_randomUUID", fn = _t_crypto_Crypto_randomUUID, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "crypto", name = "SubtleCrypto_digest", fn = _t_crypto_SubtleCrypto_digest, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "crypto", name = "SubtleCrypto_digestBuffer", fn = _t_crypto_SubtleCrypto_digestBuffer, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I64}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "crypto", name = "CryptoKey_importRaw", fn = _t_crypto_CryptoKey_importRaw, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I32, .I32}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "crypto", name = "CryptoKey_importDer", fn = _t_crypto_CryptoKey_importDer, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I64, .I64, .I32}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "crypto", name = "CryptoKey_importRsa", fn = _t_crypto_CryptoKey_importRsa, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I32}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "crypto", name = "CryptoKey_generate", fn = _t_crypto_CryptoKey_generate, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "crypto", name = "CryptoKey_publicOf", fn = _t_crypto_CryptoKey_publicOf, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "crypto", name = "CryptoKey_export", fn = _t_crypto_CryptoKey_export, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "crypto", name = "CryptoKey_modulusBits", fn = _t_crypto_CryptoKey_modulusBits, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "crypto", name = "CryptoKey_serialize", fn = _t_crypto_CryptoKey_serialize, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "crypto", name = "CryptoKey_deserialize", fn = _t_crypto_CryptoKey_deserialize, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "crypto", name = "SubtleCrypto_aes", fn = _t_crypto_SubtleCrypto_aes, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I64, .I64, .I64, .I64, .I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "crypto", name = "SubtleCrypto_aesKw", fn = _t_crypto_SubtleCrypto_aesKw, realms = 3, params = []wasm.Val_Kind{.I32, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "crypto", name = "SubtleCrypto_rsaOaep", fn = _t_crypto_SubtleCrypto_rsaOaep, realms = 3, params = []wasm.Val_Kind{.I32, .I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "crypto", name = "SubtleCrypto_sign", fn = _t_crypto_SubtleCrypto_sign, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I64, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "crypto", name = "SubtleCrypto_verify", fn = _t_crypto_SubtleCrypto_verify, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I32, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "crypto", name = "SubtleCrypto_agree", fn = _t_crypto_SubtleCrypto_agree, realms = 3, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "crypto", name = "SubtleCrypto_derive", fn = _t_crypto_SubtleCrypto_derive, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32, .I64, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I32}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "document", name = "Document_URL", fn = _t_document_Document_URL, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "document", name = "Window_origin", fn = _t_document_Window_origin, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "document", name = "Window_isSecureContext", fn = _t_document_Window_isSecureContext, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
