@@ -3,6 +3,9 @@ package dom
 import "core:strings"
 import "wb:base"
 
+SLOT_FLATTEN_MAX_DEPTH :: 1024   // slots followed when a slot's assigned nodes are flattened
+SLOT_CHAIN_MAX_HOPS :: 256       // the chain of slots a node is assigned through
+
 // Shadow trees (DOM Standard §4.2.2, §4.8 attachShadow, HTML slots).
 //
 // A shadow root is a Fragment node (`is_shadow`) whose `shadow` field is its host; the host's `shadow` field is its
@@ -239,7 +242,7 @@ assigned_nodes :: proc(d: ^Document, slot: base.Handle, flatten: bool, allocator
 	}
 	if containing_shadow_root(d, slot) == base.NIL_HANDLE { return out[:] }
 	flatten_into :: proc(d: ^Document, slot: base.Handle, out: ^[dynamic]base.Handle, depth: int) {
-		if depth > 1024 { return }
+		if depth > SLOT_FLATTEN_MAX_DEPTH { return }
 		list := assigned_nodes_raw(d, slot)
 		if len(list) == 0 {
 			// fallback: the slot's own slottable children
@@ -377,7 +380,7 @@ assign_slottables_for_tree :: proc(d: ^Document, root: base.Handle) {
 		d.tree_version += 1
 		journal_record(d, .Reslot, s, base.NIL_HANDLE)
 		// the slots `s` is assigned through: their flattened assigned nodes changed too (:has-slotted)
-		for t, hops := get(d, s).slot, 0; t != base.NIL_HANDLE && hops < 256; hops += 1 {
+		for t, hops := get(d, s).slot, 0; t != base.NIL_HANDLE && hops < SLOT_CHAIN_MAX_HOPS; hops += 1 {
 			journal_record(d, .Reslot, t, base.NIL_HANDLE)
 			tn := get(d, t)
 			if tn == nil { break }
