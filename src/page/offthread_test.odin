@@ -12,6 +12,12 @@ import "wb:fetch"
 import "wb:host"
 import "wb:style"
 
+// How long a test waits for the parse off the thread before it reports what it has, and the loop's wait each time (ms).
+OFFTHREAD_DEADLINE_S :: 10
+OFFTHREAD_POLL_MS :: 5
+// Rounds of the loop in which the parse of a closed page must not call back.
+OFFTHREAD_QUIET_ROUNDS :: 50
+
 // The tree as text: kinds, names, attributes, texts, in document order.
 @(private = "file")
 dump_tree :: proc(d: ^dom.Document) -> string {
@@ -103,7 +109,7 @@ document_parsed_in_the_background_is_identical_to_the_synchronous_parse :: proc(
 		s.done = true
 	}, &st)
 	start := time.tick_now()
-	for !st.done && time.duration_seconds(time.tick_since(start)) < 10 { host.loop_wait(&loop, 5) }
+	for !st.done && time.duration_seconds(time.tick_since(start)) < OFFTHREAD_DEADLINE_S { host.loop_wait(&loop, OFFTHREAD_POLL_MS) }
 	testing.expect(t, st.done && st.offthread, "parsed on the pool, delivered on the loop thread")
 	testing.expect(t, st.result.ok && st.result.nodes == ra.nodes && st.result.utf8, "same parse result")
 	testing.expect(t, dump_tree(a.doc) == dump_tree(b.doc), "identical trees")
@@ -129,7 +135,7 @@ document_parsed_in_the_background_is_identical_to_the_synchronous_parse :: proc(
 	called := false
 	parse_document(c, transmute([]byte)src, "", proc(p: ^Page, user: rawptr, d: ^Parsed_Document) { (^bool)(user)^ = true }, &called)
 	page_close(c)
-	for _ in 0 ..< 50 { host.loop_wait(&loop, 5) }
+	for _ in 0 ..< OFFTHREAD_QUIET_ROUNDS { host.loop_wait(&loop, OFFTHREAD_POLL_MS) }
 	testing.expect(t, !called, "no callback for a closed page")
 
 	// preference off: synchronous, same result
