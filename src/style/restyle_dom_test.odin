@@ -397,6 +397,23 @@ restyle_dom_falls_back :: proc(t: ^testing.T) {
 // Rules that ask about groups of controls (:checked of a radio group, :valid of a form...): any control inserted,
 // removed or changed may change another one's answer, so those restyle everything. Rules with only element-local
 // questions (:disabled... Tailwind's disabled: variants) restyle what changed (rows of buttons in a virtual list).
+// The search for such controls goes through shadow trees, and comes back: a shadow root names its host in `shadow` too.
+@(test)
+restyle_dom_forms_shadow_root :: proc(t: ^testing.T) {
+	provider := Control_Provider{query = proc(user: rawptr, el: base.Handle, q: Control_Query) -> (bool, bool) { return false, false }}
+	f := rx_load(`<style>input:checked { color: red }</style><div id=host></div><div id=d><p id=p>x</p></div>`)
+	defer rx_unload(f)
+	_, serr := dom.attach_shadow(f.doc, by_id(f, "host"), dom.Shadow_Init{})
+	testing.expect_value(t, serr, dom.Error.None)
+	old := f.st
+	f.st = compute_styles(f.eng, f.doc, {controls = provider})
+	styled_destroy(old)
+	p := by_id(f, "p")
+	dom.remove_child(f.doc, by_id(f, "d"), p)
+	dom.release(f.doc, p)
+	expect_partial(t, f, "an element gone from a document with a shadow tree and no radio buttons")
+}
+
 @(test)
 restyle_dom_forms :: proc(t: ^testing.T) {
 	provider := Control_Provider{query = proc(user: rawptr, el: base.Handle, q: Control_Query) -> (bool, bool) { return false, false }}
