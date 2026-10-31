@@ -4,6 +4,10 @@ import "core:strings"
 import "core:unicode"
 import "core:unicode/utf8"
 
+REGEX_MAX_NESTING :: 256         // groups and alternatives nested in a pattern
+REGEX_CLASS_MAX_NESTING :: 64    // character classes nested in one another (the `v` flag)
+REGEX_REPEAT_SATURATE :: 1 << 24 // a repetition count {n,m} stops growing here
+
 // The `pattern` attribute (§4.10.5.3.6): an ECMAScript regular expression compiled with the `v` flag and matched against
 // the whole value, as if written ^(?:pattern)$.
 //
@@ -128,7 +132,7 @@ fail :: proc(p: ^Parser) -> ^Node { p.ok = false; return node(.Empty) }
 
 @(private)
 parse_alt :: proc(p: ^Parser, depth: int) -> ^Node {
-	if depth > 256 { return fail(p) }
+	if depth > REGEX_MAX_NESTING { return fail(p) }
 	first := parse_concat(p, depth)
 	if peek(p) != '|' { return first }
 	alt := node(.Alt)
@@ -159,7 +163,7 @@ parse_int :: proc(p: ^Parser) -> (int, bool) {
 	start := p.i
 	v := 0
 	for p.i < len(p.src) && p.src[p.i] >= '0' && p.src[p.i] <= '9' {
-		v = min(v * 10 + int(p.src[p.i] - '0'), 1 << 24)
+		v = min(v * 10 + int(p.src[p.i] - '0'), REGEX_REPEAT_SATURATE)
 		p.i += 1
 	}
 	return v, p.i > start
@@ -487,7 +491,7 @@ class_operand :: proc(p: ^Parser, depth: int) -> (item: Class_Item, ok: bool) {
 @(private)
 parse_class :: proc(p: ^Parser, depth: int) -> ^Class {
 	cls := new_class(p)
-	if depth > 64 { p.ok = false; return cls }
+	if depth > REGEX_CLASS_MAX_NESTING { p.ok = false; return cls }
 	if peek(p) == '^' { cls.negated = true; p.i += 1 }
 	op_set := false
 	for p.ok {

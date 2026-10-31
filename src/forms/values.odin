@@ -5,6 +5,8 @@ import "core:unicode/utf8"
 import "wb:base"
 import "wb:dom"
 
+SELECT_SIZE_SATURATE :: 1 << 20   // a select's size attribute stops growing here
+
 // Values (§4.10.5 value modes and sanitization, §4.10.11 textarea), checkedness (with radio groups), option selectedness
 // (§4.10.7 selectedness setting algorithm) and files.
 
@@ -591,7 +593,7 @@ display_size :: proc(f: ^Forms, sel: base.Handle) -> int {
 		x := 0
 		s := trim_ascii_ws(v)
 		valid := len(s) > 0
-		for c in transmute([]u8)s { if !is_digit(c) { valid = false; break }; x = min(x * 10 + int(c - '0'), 1 << 20) }
+		for c in transmute([]u8)s { if !is_digit(c) { valid = false; break }; x = min(x * 10 + int(c - '0'), SELECT_SIZE_SATURATE) }
 		if valid && x > 0 { return x }
 	}
 	return has_attr(n, "multiple") ? 4 : 1
