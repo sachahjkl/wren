@@ -100,12 +100,12 @@ loaf_frame_begin :: proc(p: ^Page) -> bool {
 }
 
 // A caller (timer, animation frame, event listener, idle callback, module script) tells the frame what will invoke the
-// next depth-0 guest call. Read once by loaf_script_in and reset. `invoker` and `source_url` may be temporary (they are
-// cloned when the script is kept). Safe to call when no frame is open (it is simply ignored).
-loaf_set_invoker :: proc(p: ^Page, kind: Loaf_Invoker, invoker: string = "", source_url: string = "") {
+// next depth-0 guest call. Read once by loaf_script_in and reset. `invoker` is copied here: when no guest code runs after all (an
+// event without listeners), the next call reads it, and a temporary string would be long gone (garbage in the entries' JSON, which
+// JSON.parse refused on reddit.com). Safe to call when no frame is open (it is simply ignored).
+loaf_set_invoker :: proc(p: ^Page, kind: Loaf_Invoker, invoker: string = "") {
 	p.objects.loaf_kind = kind
-	p.objects.loaf_invoker = invoker
-	p.objects.loaf_source_url = source_url
+	p.objects.loaf_invoker_len = copy(p.objects.loaf_invoker[:], invoker)
 }
 
 // Open the script timing for the next depth-0 call, using the invoker the caller set (or a bare user-callback). Resets the
@@ -113,12 +113,10 @@ loaf_set_invoker :: proc(p: ^Page, kind: Loaf_Invoker, invoker: string = "", sou
 @(private)
 loaf_script_in :: proc(p: ^Page) -> i64 {
 	kind := p.objects.loaf_kind
-	invoker := p.objects.loaf_invoker
-	src := p.objects.loaf_source_url
-	if src == "" && p.web != nil { src = p.env.location.href }   // the realm's document URL for the page's own scripts
+	invoker := string(p.objects.loaf_invoker[:p.objects.loaf_invoker_len])
+	src := p.web != nil ? p.env.location.href : ""   // the realm's document URL for the page's own scripts
 	p.objects.loaf_kind = .User_Callback
-	p.objects.loaf_invoker = ""
-	p.objects.loaf_source_url = ""
+	p.objects.loaf_invoker_len = 0
 	return loaf_script_begin(p, kind, invoker, "", src)
 }
 
