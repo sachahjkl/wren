@@ -12,6 +12,12 @@ import "wb:host"
 // The files come from `testserver -gen-images examples/site/images` (tools/testserver/images.go); run from the
 // repository root.
 
+// How many looks, and how long apart, the decoder threads get to end.
+@(private = "file")
+DECODERS_END_TRIES :: 300
+@(private = "file")
+DECODERS_END_POLL :: 10 * time.Millisecond
+
 @(private = "file")
 read :: proc(t: ^testing.T, name: string) -> []byte {
 	data, err := os.read_entire_file(fmt.tprintf("examples/site/images/%s", name), context.allocator)
@@ -276,7 +282,7 @@ decoding_threads :: proc(t: ^testing.T) {
 	testing.expect(t, submit(port, job_make(.Probe, blob, opts())) == 0, "submitting to a closed port fails (and frees the job)")
 
 	// an idle thread ends (its stack goes back to the system); the next job starts one again
-	for i := 0; i < 300 && decoder_threads() > 0; i += 1 { time.sleep(10 * time.Millisecond) }
+	for i := 0; i < DECODERS_END_TRIES && decoder_threads() > 0; i += 1 { time.sleep(DECODERS_END_POLL) }
 	testing.expect_value(t, decoder_threads(), 0)
 	port2 := port_open(&loop, proc(user: rawptr, j: ^Job) { append(&(^Pool_Test)(user).done, j) }, &st)
 	before := len(st.done)
