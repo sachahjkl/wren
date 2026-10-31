@@ -6,6 +6,8 @@ package odin_glue
 
 import "../odin/wj"
 
+@(private = "file") CSS_NAME_BYTES :: 128   // a property's name in any spelling, NUL-terminated (longer than every name below)
+
 // CSS properties that get attributes (the standard ones browsers expose); "float" is cssFloat.
 @(private = "file") css_properties := [?]string{
 	"accent-color", "align-content", "align-items", "align-self", "all", "animation", "animation-composition",
@@ -187,11 +189,11 @@ wj_dom_preinit :: proc "c" (ctx: ^wj.Context) -> i32 {
 	proto := wj.wj_the_realm.protos[i_style_props()]
 	if !wj.is_object(proto) { return 0 }
 	for css in css_properties {
-		cssz: [128]u8
+		cssz: [CSS_NAME_BYTES]u8
 		for i in 0..<len(css) { cssz[i] = css[i] }
 		cssz[len(css)] = 0
 		css_c := cstring(&cssz[0])
-		name: [128]u8
+		name: [CSS_NAME_BYTES]u8
 		if css != "float" {
 			define_prop(ctx, proto, camel(css, name[:], true), css_c)
 			if css[0] == '-' {

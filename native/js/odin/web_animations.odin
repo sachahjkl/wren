@@ -17,6 +17,7 @@ import "../odin_abi/api_decl"
 import "../odin/jsb"
 import "../odin/wj"
 
+@(private = "file") ANIMATION_OPS_BATCH_BYTES :: 256   // the operations of one report taken at a time
 @(private = "file") Animation :: api_decl.Animation
 @(private = "file") none: abi.Nothing
 
@@ -1110,7 +1111,7 @@ an_sync :: proc(ctx: ^wj.Context, obj: wj.JSValue, a: ^Anim) {
 		s: string
 		jsb.host(&s, api_decl.Animation_takeOps, wj.wr_Animation_takeOps, a.host)
 		if len(s) == 0 { return }
-		ops: [256]u8
+		ops: [ANIMATION_OPS_BATCH_BYTES]u8
 		take := copy(ops[:], s)   // (the scratch buffer is reused by the calls below)
 		more := len(s) > take
 		jsb.host(&none, api_decl.Animation_dropOps, wj.wr_Animation_dropOps, a.host, i32(take))

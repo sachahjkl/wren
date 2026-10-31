@@ -21,6 +21,9 @@ import "../odin/wj"
 // tools/build_js.ps1 -Allocator mimalloc: the engine's heap through mimalloc, the C library's own through dlmalloc
 WJ_MIMALLOC :: #config(WJ_MIMALLOC, false)
 
+// The name a script is compiled under (its address, NUL-terminated; wj_script_base_name): a longer one is cut.
+SCRIPT_NAME_BYTES :: 1024
+
 // ---- jobs (microtasks): run by the browser at each microtask checkpoint ----
 
 @(export, link_name = "wj_run_jobs")
@@ -86,7 +89,7 @@ copy_name :: proc "contextless" (name: []u8, url: u32, url_len: u32) -> cstring 
 wj_eval_script :: proc "c" (src: u32, src_len: u32, url: u32, url_len: u32, line: i32, flags: i32) -> i32 {
 	ctx := wj.wj_the_realm.ctx
 	wj.wj_stack_enter(ctx)
-	name: [1024]u8
+	name: [SCRIPT_NAME_BYTES]u8
 	opt := wj.Eval_Options{
 		version    = wj.EVAL_OPTIONS_VERSION,
 		eval_flags = (flags & EVAL_MODULE != 0 ? wj.EVAL_TYPE_MODULE : wj.EVAL_TYPE_GLOBAL) | wj.EVAL_FLAG_COMPILE_ONLY |
@@ -143,7 +146,7 @@ wj_eval_bytecode :: proc "c" (code: u32, code_len: u32, flags: i32) -> i32 {
 wj_compile :: proc "c" (src: u32, src_len: u32, url: u32, url_len: u32, line: i32, flags: i32) -> i32 {
 	ctx := wj.wj_the_realm.ctx
 	wj.wj_stack_enter(ctx)
-	name: [1024]u8
+	name: [SCRIPT_NAME_BYTES]u8
 	opt := wj.Eval_Options{
 		version    = wj.EVAL_OPTIONS_VERSION,
 		eval_flags = (flags & EVAL_MODULE != 0 ? wj.EVAL_TYPE_MODULE | wj.EVAL_FLAG_WREN_NO_RESOLVE | wj.EVAL_FLAG_WREN_NO_REGISTER : wj.EVAL_TYPE_GLOBAL) | wj.EVAL_FLAG_COMPILE_ONLY,

@@ -16,6 +16,9 @@ import "../odin_abi/api_decl"
 import "../odin/jsb"
 import "../odin/wj"
 
+@(private = "file") ATTR_CACHE_KEY_BYTES :: 256       // the name of an attribute, as the cache key of a map (cut if longer)
+@(private = "file") PREFIXED_ATTR_NAME_BYTES :: 300   // "xlink:" or "xml:" and a local name
+
 @(private = "file") nothing: abi.Nothing
 
 @(private = "file")
@@ -1207,7 +1210,7 @@ map_attr :: proc(ctx: ^wj.Context, m: ^wj.Dom_Impl, name: string) -> wj.JSValue 
 	jsb.host(&has, api_decl.Element_hasAttribute, wj.wr_Element_hasAttribute, api_decl.Element(m.node), name)
 	if !has { return wj.NULL }
 	// the stored name (lower case) is the cache key
-	key: [256]u8
+	key: [ATTR_CACHE_KEY_BYTES]u8
 	kl := min(len(name), len(key) - 1)
 	for i in 0 ..< kl { key[i] = lower_ascii(name[i]) }
 	key[kl] = 0
@@ -1358,7 +1361,7 @@ wjr_NamedNodeMap_getNamedItemNS :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVa
 	case "http://www.w3.org/1999/xlink":         prefix = "xlink:"
 	case "http://www.w3.org/XML/1998/namespace": prefix = "xml:"
 	}
-	name: [300]u8
+	name: [PREFIXED_ATTR_NAME_BYTES]u8
 	n := copy(name[:len(name) - 1], prefix)
 	n += copy(name[n:len(name) - 1], wj.str_slice(local))
 	return map_attr(ctx, m, string(name[:n]))

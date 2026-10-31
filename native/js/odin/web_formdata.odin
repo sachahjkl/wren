@@ -11,6 +11,8 @@ import "../odin_abi/api_decl"
 import "../odin/jsb"
 import "../odin/wj"
 
+@(private = "file") MULTIPART_DELIM_BYTES :: 128   // "--" and the boundary of a body parsed: a longer boundary is refused
+
 FormData :: api_decl.FormData
 
 @(private = "file")
@@ -317,7 +319,7 @@ find_bytes :: proc "contextless" (hay: []u8, needle: string) -> int {
 
 @(private = "file")
 parse_multipart :: proc(ctx: ^wj.Context, fd: wj.JSValue, body: []u8, boundary: string) -> bool {
-	delim: [128]u8
+	delim: [MULTIPART_DELIM_BYTES]u8
 	if len(boundary) + 4 >= len(delim) { return false }
 	delim[0], delim[1] = '-', '-'
 	copy(delim[2:], boundary)

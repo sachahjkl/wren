@@ -8,6 +8,12 @@ package wj
 
 import "base:intrinsics"
 
+// The page's profiler.
+@(private = "file") PROF_FRAME_MAX_BYTES :: 220        // the part of a stack line that names a frame
+@(private = "file") PROF_NATIVE_CHAIN_BYTES :: 700     // the text "native <= native <= caller"
+@(private = "file") PROF_NATIVE_CHAIN_FRAMES :: 4      // the frames in it
+@(private = "file") PROF_NATIVE_CHAIN_FRAME_BYTES :: 160
+
 @(export, link_name = "wj_the_realm") wj_the_realm: Realm
 @(export, link_name = "wj_scratch")   wj_scratch: Buf
 
@@ -119,7 +125,7 @@ prof_sample :: proc "contextless" (ctx: ^Context) {
 			a := p
 			for a < le && s[a] == ' ' { a += 1 }
 			if le - a > 3 && s[a] == 'a' && s[a + 1] == 't' && s[a + 2] == ' ' { a += 3 }
-			n := min(le - a, 220)
+			n := min(le - a, PROF_FRAME_MAX_BYTES)
 			if n > 0 {
 				// distinct frames only (a recursion counts once)
 				dup := false
@@ -139,10 +145,10 @@ prof_sample :: proc "contextless" (ctx: ^Context) {
 		// a native function on top (exec, test, replace, forEach...): the frames down to the first that is not native,
 		// as one ("native <= native <= caller"): who is behind the time the natives take
 		if nseen >= 2 && ends_native(seen[0], seen_n[0]) {
-			two: [700]u8
+			two: [PROF_NATIVE_CHAIN_BYTES]u8
 			used := 0
-			for k in 0 ..< min(nseen, 4) {
-				nk := min(seen_n[k], 160)
+			for k in 0 ..< min(nseen, PROF_NATIVE_CHAIN_FRAMES) {
+				nk := min(seen_n[k], PROF_NATIVE_CHAIN_FRAME_BYTES)
 				if used + nk + 4 >= len(two) { break }
 				if k > 0 { memcpy(&two[used], raw_data(string(" <= ")), 4); used += 4 }
 				memcpy(&two[used], seen[k], uint(nk)); used += nk

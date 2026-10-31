@@ -9,6 +9,8 @@ package idb
 
 import "../wj"
 
+@(private = "file") INDEX_FILL_BATCH :: 256   // the records asked of the browser at a time when an index is filled
+
 // the kinds of exec closures (magic of the native function)
 EX_CREATE_STORE :: 1
 EX_DELETE_STORE :: 2
@@ -1365,7 +1367,7 @@ populate_index :: proc "contextless" (ctx: ^wj.Context, T: wj.JSValue, s_meta: w
 		}
 		wr_u8(&w, 3)
 		wr_u8(&w, 0)
-		wr_uv(&w, 256)
+		wr_uv(&w, INDEX_FILL_BATCH)
 		r: Rd
 		keep: wj.JSValue
 		if !exec_frame(ctx, &w, &r, &keep) { return }
@@ -1410,7 +1412,7 @@ populate_index :: proc "contextless" (ctx: ^wj.Context, T: wj.JSValue, s_meta: w
 		more := rd_u8(&r)
 		wj.JS_FreeValue(ctx, keep)
 		if failed { return }
-		if n < 256 && more == 0 { break }
+		if n < INDEX_FILL_BATCH && more == 0 { break }
 	}
 }
 

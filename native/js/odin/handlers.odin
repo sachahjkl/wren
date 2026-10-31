@@ -18,6 +18,8 @@ import "../odin_abi/api_decl"
 import "../odin/jsb"
 import "../odin/wj"
 
+@(private = "file") EVENT_TYPE_BYTES :: 128   // a longer event type has no handler
+
 // The kind of a handler (wj.Listener.handler): what its result means.
 @(private = "file")
 Handler_Kind :: enum u8 { Plain = 1, On_Error = 2, On_Before_Unload = 3 }
@@ -130,7 +132,7 @@ compile_handler :: proc(ctx: ^wj.Context, o: ^wj.Obj, l: ^wj.Listener) -> wj.JSV
 		pack_bytes(&text, body_bytes) && pack_bytes(&text, transmute([]u8)string("\n};})")) && pack_u8(&text, 0)   // (the engine reads a NUL-terminated source)
 	if !ok { return wj.JS_ThrowOutOfMemory(ctx) }
 	text.n -= 1
-	name: [1024]u8
+	name: [SCRIPT_NAME_BYTES]u8
 	wj.wj_script_base_name(&name[0], len(name))
 	opt := wj.Eval_Options{version = wj.EVAL_OPTIONS_VERSION, eval_flags = wj.EVAL_TYPE_GLOBAL, filename = cstring(&name[0]), line_num = line > 1 ? line - 1 : 1}
 	maker := wj.JS_Eval2(ctx, text.p, uint(text.n), &opt)
@@ -194,7 +196,7 @@ wj_content_handler :: proc "c" (element: u64, window_owner: i32, svg: i32, name:
 		if has < 0 { wj.JS_FreeValue(ctx, wj.JS_GetException(ctx)) }
 		return 0
 	}
-	tname: [128]u8
+	tname: [EVENT_TYPE_BYTES]u8
 	if len(type) >= len(tname) { return 0 }
 	copy(tname[:], type)
 	special := i32(0)
