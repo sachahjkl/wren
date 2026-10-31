@@ -441,7 +441,7 @@ replace one. Known limits:
 - **JavaScript is interpreted** (a bytecode interpreter in Wasm, with a JIT for numeric loops only): far slower than Edge
   on script-heavy benchmarks, and a DOM call crosses the Wasm boundary. Pages that run a lot of script are slow.
 - **Part of the web platform is missing**: about 72 % of the members of the specifications' Web IDL are implemented
-  ([`docs/js/coverage.md`](docs/js/coverage.md)). Among what pages notice: no WebGL, WebGPU, Web Audio or WebRTC, no
+  ([`docs/js/coverage.md`](docs/js/coverage.md)). Among what pages notice: no WebGL, WebGPU or WebRTC, no `AudioWorklet`, no
   video or audio encoder in WebCodecs; Canvas 2D is software-drawn; `Intl` follows English conventions whatever the
   locale. Applications that rely on these show little or nothing.
 - **Linux is newer than Windows**: releases for Linux x86-64 need glibc 2.39 or later (Ubuntu 24.04, Debian 13, Fedora 40); what is checked and what is not is in

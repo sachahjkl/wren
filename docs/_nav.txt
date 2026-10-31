@@ -29,6 +29,7 @@ Features
   blocker.md          The content blocker
   media.md            Media elements
   webcodecs.md        WebCodecs
+  js/web-audio.md     Web Audio
   accessibility.md    Accessibility
   shaders.md          Shaders in the chrome
   downloads.md        Downloads
