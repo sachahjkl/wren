@@ -546,6 +546,7 @@ Used_Box :: struct {
 	margin, padding: [4]f32,    // top right bottom left
 	anchored:        bool,      // an anchored box (lay.anchored_used): its insets and size bounds are used values
 	inset:           [4]f32,    // top right bottom left, CSS px
+	inset_auto:      [4]bool,   // ... those that are auto in what was chosen
 	bounds:          [4]style.Length,   // min-width, min-height, max-width, max-height
 }
 
@@ -572,7 +573,7 @@ computed_value :: proc(cs: ^style.Computed, name: string, used: Used_Box) -> str
 		x, y := kw(cs.overflow_x), kw(cs.overflow_y)
 		return x == y ? x : strings.concatenate({x, " ", y}, context.temp_allocator)
 	case "top", "right", "bottom", "left":
-		if used.anchored { return css_px(used.inset[side(name)]) }
+		if used.anchored { return used.inset_auto[side(name)] ? "auto" : css_px(used.inset[side(name)]) }
 		return css_length(cs.inset[style.Side(side(name))])
 	case "z-index": return cs.z_auto ? "auto" : fmt.tprintf("%d", cs.z_index)
 	case "width": if used.ok && cs.display != .Inline { return css_px(used.width) }; return css_length(cs.width)

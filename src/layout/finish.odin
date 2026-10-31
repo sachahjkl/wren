@@ -82,15 +82,15 @@ compute_overflow :: proc(l: ^Layout, order: []i32, in_fixed: []bool, vp: Vec2) -
 			hm = true
 		}
 		inner[x], has[x] = m, hm
-		r := border_rect(b)
+		box_r := border_rect(b)
 		// the end margins of the in-flow children of a scroll container are scrollable too (CSS Overflow 3 §2.2). As specified:
 		// the used right margin of a block gives way when its width is over-constrained
 		if b.clip_owner == b.parent && b.clip_owner != NONE && .Scroll in l.boxes[b.clip_owner].flags && b.flags & {.Abs, .Float} == {} && b.kind != .Inline && b.cs != nil {
 			port := padding_rect(&l.boxes[b.clip_owner])
-			r.max.x += max(style.resolve(b.cs.margin[.Right], (port.max.x - port.min.x) / l.scale) * l.scale, 0)
-			r.max.y += max(b.margin[2], 0)
+			box_r.max.x += max(style.resolve(b.cs.margin[.Right], (port.max.x - port.min.x) / l.scale) * l.scale, 0)
+			box_r.max.y += max(b.margin[2], 0)
 		}
-		add(l, b.clip_owner, hm ? mat_bounds(m, r) : r, in_fixed[x], &doc)
+		add(l, b.clip_owner, hm ? mat_bounds(m, box_r) : box_r, in_fixed[x], &doc)
 		if .Ifc in b.flags && b.lines[1] > b.lines[0] {
 			clips := .Clips in b.flags && .Propagated not_in b.flags
 			owner := clips ? x : b.clip_owner

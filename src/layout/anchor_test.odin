@@ -46,6 +46,7 @@ ax_load :: proc(src: string, vw: f32 = 800, vh: f32 = 600) -> ^Ax {
 	f.set.inc_verify = true
 	f.vp = {vw, vh}
 	ax_run(f)
+	anchored_commit(&f.l)
 	return f
 }
 
@@ -69,6 +70,7 @@ ax_frame :: proc(t: ^testing.T, f: ^Ax, loc := #caller_location) {
 	}
 	ax_run(f)
 	testing.expectf(t, f.l.inc.verify_failures == 0, "incremental differs from full: %s", f.l.inc.verify_report, loc = loc)
+	anchored_commit(&f.l)
 }
 
 // Where the box of an element is drawn (no scrolling of the page).

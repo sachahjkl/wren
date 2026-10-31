@@ -444,7 +444,8 @@ Layout :: struct {
 	anchor_doc_scroll: f32,                // the page's scroll offset that pass saw
 	anchored:     [dynamic]Anchored,       // the boxes it laid out, in tree order
 	anchor_grid_areas: map[i32]Rect,       // anchored box whose containing block is a grid -> its grid area
-	anchor_last:  map[Anchor_Key]Anchor_Last,   // the option each box last fitted with: it stays while it fits
+	anchor_last:  map[Anchor_Key]Anchor_Last,   // the option each box fitted with at the last frame: it stays while it fits
+	anchor_chosen: map[Anchor_Key]Anchor_Last,  // what the last pass found (anchored_commit)
 }
 
 // What building the display list of the page's stacking context finds by walking the whole box tree: its layers, and
