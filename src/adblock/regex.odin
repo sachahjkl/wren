@@ -11,6 +11,8 @@ import "core:slice"
 import "core:strings"
 
 REGEX_MAX_PROGRAM :: 6000
+// The longest pattern compiled.
+REGEX_MAX_PATTERN :: 4096
 REGEX_MAX_REPEAT  :: 1000
 REGEX_MAX_DEPTH   :: 64
 REGEX_MAX_TEXT    :: 8192   // longer URLs are matched on their first 8 KB
@@ -74,7 +76,7 @@ new_node :: proc(p: ^Parser, n: Node) -> i32 {
 }
 
 regex_compile :: proc(pattern: string, icase: bool) -> (re: Regex, ok: bool) {
-	if len(pattern) == 0 || len(pattern) > 4096 { return {}, false }
+	if len(pattern) == 0 || len(pattern) > REGEX_MAX_PATTERN { return {}, false }
 	p := Parser{s = pattern, icase = icase}
 	p.nodes = make([dynamic]Node, 0, 32, context.temp_allocator)
 	p.classes = make([dynamic][32]u8, 0, 4, context.temp_allocator)

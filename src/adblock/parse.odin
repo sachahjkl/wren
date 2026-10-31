@@ -3,6 +3,11 @@ package adblock
 import "core:slice"
 import "core:strings"
 
+// A filter longer than this is skipped: a whole line, its network pattern, the body of a cosmetic rule.
+FILTER_LINE_MAX :: 8192
+FILTER_PATTERN_MAX :: 4096
+FILTER_COSMETIC_BODY_MAX :: 4096
+
 // Filter classes: each one is its own index (a request asks "is it blocked?" first and consults the others only when it
 // has to).
 Class :: enum u8 {
@@ -94,7 +99,7 @@ hosts_line_host :: proc(line: string) -> string {
 parse_line :: proc(line_in: string, list: u8, text_off: u32, allocator := context.allocator) -> (p: Parsed) {
 	context.allocator = allocator
 	line := strings.trim_space(line_in)
-	if len(line) == 0 || len(line) > 8192 { return }
+	if len(line) == 0 || len(line) > FILTER_LINE_MAX { return }
 	switch line[0] {
 	case '!': return
 	case '[':
@@ -333,7 +338,7 @@ parse_network :: proc(line: string, d: ^Net_Draft) -> bool {
 		for len(p) > 0 && p[0] == '*' { p = p[1:]; d.flags -= {.Host_Anchor, .Left_Anchor} }
 		for len(p) > 0 && p[len(p) - 1] == '*' { p = p[:len(p) - 1]; d.flags -= {.Right_Anchor} }
 	}
-	if len(p) > 4096 { return false }
+	if len(p) > FILTER_PATTERN_MAX { return false }
 	if match_case { d.flags += {.Match_Case} }
 	if regex {
 		d.flags += {.Regex, .Needs_Original}
@@ -536,7 +541,7 @@ parse_cosmetic :: proc(line: string, list: u8, text_off: u32) -> (c: Cos_Draft, 
 		sep, found := cos_separator(line[i:])
 		if !found { at = i + 1; continue }
 		body := strings.trim_space(line[i + sep.len:])
-		if body == "" || len(body) > 4096 { return {}, false }
+		if body == "" || len(body) > FILTER_COSMETIC_BODY_MAX { return {}, false }
 		c = Cos_Draft{list = list, text_off = text_off}
 		if sep.exception { c.flags += {.Exception} }
 		if dom != "" {
