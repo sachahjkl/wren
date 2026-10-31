@@ -238,6 +238,40 @@ sibling_info :: proc(m: ^Match_Ctx, h: base.Handle) -> Sib_Info {
 	return m.sibs[h]
 }
 
+// Whether an element (of h's type, with `same_type`) comes before h. The first-child family stops at the first one met: counting the
+// whole family for each element was a fifth of a querySelectorAll. A long walk (of-type in a large family) goes to the index.
+@(private)
+sibling_before :: proc(m: ^Match_Ctx, h: base.Handle, same_type: bool) -> bool {
+	n := node_of(m, h)
+	steps := 0
+	for cur := n.prev; cur != base.NIL_HANDLE; steps += 1 {
+		if steps >= SIBLINGS_COUNTED_MAX {
+			i := sibling_info(m, h)
+			return (same_type ? i.type_index : i.index) != 1
+		}
+		s := node_of(m, cur)
+		if s.kind == .Element && (!same_type || s.name == n.name) { return true }
+		cur = s.prev
+	}
+	return false
+}
+
+@(private)
+sibling_after :: proc(m: ^Match_Ctx, h: base.Handle, same_type: bool) -> bool {
+	n := node_of(m, h)
+	steps := 0
+	for cur := n.next; cur != base.NIL_HANDLE; steps += 1 {
+		if steps >= SIBLINGS_COUNTED_MAX {
+			i := sibling_info(m, h)
+			return (same_type ? i.type_index_last : i.index_last) != 1
+		}
+		s := node_of(m, cur)
+		if s.kind == .Element && (!same_type || s.name == n.name) { return true }
+		cur = s.next
+	}
+	return false
+}
+
 @(private)
 nth_hit :: proc(a, b, idx: int) -> bool {
 	if a == 0 { return idx == b }
@@ -481,12 +515,12 @@ matches_pseudo :: proc(m: ^Match_Ctx, el: base.Handle, n: ^dom.Node, s: css.Simp
 		return p != nil && p.kind == .Document
 	case .Scope: return is_scope(m, el)
 	case .Empty: return is_empty_element(m, el)
-	case .First_Child: return sibling_info(m, el).index == 1
-	case .Last_Child: return sibling_info(m, el).index_last == 1
-	case .Only_Child: i := sibling_info(m, el); return i.index == 1 && i.index_last == 1
-	case .First_Of_Type: return sibling_info(m, el).type_index == 1
-	case .Last_Of_Type: return sibling_info(m, el).type_index_last == 1
-	case .Only_Of_Type: i := sibling_info(m, el); return i.type_index == 1 && i.type_index_last == 1
+	case .First_Child: return !sibling_before(m, el, false)
+	case .Last_Child: return !sibling_after(m, el, false)
+	case .Only_Child: return !sibling_before(m, el, false) && !sibling_after(m, el, false)
+	case .First_Of_Type: return !sibling_before(m, el, true)
+	case .Last_Of_Type: return !sibling_after(m, el, true)
+	case .Only_Of_Type: return !sibling_before(m, el, true) && !sibling_after(m, el, true)
 	case .Nth_Child, .Nth_Last_Child:
 		if s.list != nil { return nth_of_selector(m, el, s) }
 		i := sibling_info(m, el)

@@ -89,6 +89,12 @@ wjr_CSSRule_get_parentStyleSheet :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -
 
 @(export, link_name = "wjr_CSSStyleRule_get_selectorText")
 wjr_CSSStyleRule_get_selectorText :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return extra_or_null(ctx, t, "CSSStyleRule", "head", empty_string(ctx)) }
+// (ignored, as the header says: an invalid selector must leave the rule as it is, and a script's assignment must not throw)
+@(export, link_name = "wjr_CSSStyleRule_set_selectorText")
+wjr_CSSStyleRule_set_selectorText :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, v: wj.JSValue) -> wj.JSValue {
+	return wj.wj_this(ctx, t, wj.iface("CSSStyleRule")) == nil ? wj.EXCEPTION : wj.UNDEFINED
+}
+
 @(export, link_name = "wjr_CSSConditionRule_get_conditionText")
 wjr_CSSConditionRule_get_conditionText :: proc "c" (ctx: ^wj.Context, t: wj.JSValue) -> wj.JSValue { return extra_or_null(ctx, t, "CSSConditionRule", "head", empty_string(ctx)) }
 @(export, link_name = "wjr_CSSLayerBlockRule_get_name")

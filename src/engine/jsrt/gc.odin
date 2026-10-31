@@ -29,6 +29,13 @@ import "base:intrinsics"
 import "base:runtime"
 import "core:mem"
 
+// When the next collection runs: once the heap has grown this many times over since the last one ...
+GC_HEAP_GROWTH :: 2
+// ... and by this many bytes at least, so that a small heap does not collect all the time. Also the first threshold.
+GC_MIN_ALLOCATION :: 4 << 20
+// -define:JSRT_GC_STRESS=<bytes>: a collection each time this much was allocated, to find what is not rooted (0: off). Never in a shipped build.
+GC_STRESS_BYTES :: #config(JSRT_GC_STRESS, 0)
+
 Cell_Kind :: enum u8 {
 	string,
 	symbol,
@@ -314,8 +321,12 @@ gc_collect :: proc(rt: ^Runtime) {
 	gc_sweep(rt)
 
 	rt.gc_count += 1
-	// Next collection when the heap has grown by the live size again (min 4 MiB of headroom).
-	rt.gc_threshold = max(rt.heap_bytes * 2, rt.heap_bytes + (4 << 20))
+	// Next collection when the heap has grown by the live size again (GC_MIN_ALLOCATION of headroom at least).
+	if GC_STRESS_BYTES > 0 {
+		rt.gc_threshold = rt.heap_bytes + GC_STRESS_BYTES
+	} else {
+		rt.gc_threshold = max(rt.heap_bytes * GC_HEAP_GROWTH, rt.heap_bytes + GC_MIN_ALLOCATION)
+	}
 	dt := now_ns(rt) - t0
 	rt.gc_last_pause_ns = dt
 	if dt > rt.gc_max_pause_ns {rt.gc_max_pause_ns = dt}

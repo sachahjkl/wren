@@ -444,7 +444,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 2 / 3 members.
 
 - `readonly styleMap`: not supported
-- `selectorText`: C `wjr_CSSStyleRule_get_selectorText (setter not supported)`
+- `selectorText`: C `wjr_CSSStyleRule_get_selectorText`
 - `readonly style`: C `wjr_CSSStyleRule_get_style`
 
 ### CSSKeyframesRule : CSSRule

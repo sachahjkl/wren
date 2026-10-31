@@ -358,7 +358,7 @@ runtime_new :: proc(allocator := context.allocator, config := DEFAULT_CONFIG) ->
 	rt.config = config
 	if rt.config.max_stack_depth <= 0 {rt.config.max_stack_depth = 10_000}
 	if rt.config.max_stack_bytes <= 0 {rt.config.max_stack_bytes = 640 * 1024}
-	rt.gc_threshold = 4 << 20
+	rt.gc_threshold = GC_MIN_ALLOCATION
 	rt.exception = UNINITIALIZED
 	rt.gray = make([dynamic]^Cell, 0, 256, allocator)
 	rt.temp_roots = make([dynamic]^Cell, 0, 256, allocator)
