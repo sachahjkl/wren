@@ -17,6 +17,16 @@ import "core:time"
 import "wb:base"
 import "wb:tools/testenv"
 
+// preemption: the call's deadline, the tick of the hook, what the hook takes in its first calls.
+@(private = "file") PREEMPT_CALL_MS :: 150
+@(private = "file") PREEMPT_TICK_MS :: 2
+@(private = "file") PREEMPT_SLEEPING_CALLS :: 5
+@(private = "file") PREEMPT_HOOK_SLEEP_MS :: 20
+// interruption: the deadline and how much before it a stop still counts as the deadline's; when the flag is set.
+@(private = "file") INTERRUPT_CALL_MS :: 100
+@(private = "file") INTERRUPT_MIN_ELAPSED_MS :: 90
+@(private = "file") STOP_FLAG_AFTER :: 80 * time.Millisecond
+
 @(private = "file")
 wat :: proc(t: ^testing.T, text: string) -> []byte {
 	b, err := wat_to_wasm(text, context.temp_allocator)
@@ -322,7 +332,7 @@ memory_limit :: proc(t: ^testing.T) {
 preemption :: proc(t: ^testing.T) {
 	setup(t)
 	o := options_default()
-	o.max_call_ms = 150
+	o.max_call_ms = PREEMPT_CALL_MS
 	inst := make_instance(t, wat(t, MODULE), o)
 	if inst == nil { return }
 	defer destroy(inst)
@@ -333,8 +343,8 @@ preemption :: proc(t: ^testing.T) {
 		p.calls += 1
 		_, res := call_i32(p.inst, "add", 1, 2)   // a guest call from the hook: refused
 		if res != .Ok { p.refused = true }
-		if p.calls <= 5 { time.sleep(20 * time.Millisecond); p.slept_ms += 20 }   // the hook's time is not the call's
-	}, &probe, tick_ms = 2)
+		if p.calls <= PREEMPT_SLEEPING_CALLS { time.sleep(PREEMPT_HOOK_SLEEP_MS * time.Millisecond); p.slept_ms += PREEMPT_HOOK_SLEEP_MS }   // the hook's time is not the call's
+	}, &probe, tick_ms = PREEMPT_TICK_MS)
 	defer set_preempt_hook(nil, nil)
 	t0 := time.tick_now()
 	_, res := call_i32(inst, "spin")
@@ -348,7 +358,7 @@ preemption :: proc(t: ^testing.T) {
 		testing.expectf(t, probe.calls >= 2, "the hook ran during the call (%d times in %.0f ms; the tick rate is checked with -Perf)", probe.calls, dt)
 	}
 	testing.expect(t, probe.refused, "a guest call from the hook is refused")
-	testing.expectf(t, dt >= 150 + probe.slept_ms * 0.9, "the hook's %.0f ms are given back to the deadline (%.0f ms)", probe.slept_ms, dt)
+	testing.expectf(t, dt >= PREEMPT_CALL_MS + probe.slept_ms * 0.9, "the hook's %.0f ms are given back to the deadline (%.0f ms)", probe.slept_ms, dt)
 	r, res2 := call_i32(inst, "add", 1, 2)
 	testing.expect(t, res2 == .Ok && r == 3, "calls run again once the hook returned")
 }
@@ -357,13 +367,13 @@ preemption :: proc(t: ^testing.T) {
 interruption :: proc(t: ^testing.T) {
 	setup(t)
 	o := options_default()
-	o.max_call_ms = 100
+	o.max_call_ms = INTERRUPT_CALL_MS
 	inst := make_instance(t, wat(t, MODULE), o)
 	if inst != nil {
 		t0 := time.tick_now()
 		_, res := call_i32(inst, "spin")
 		dt := time.duration_milliseconds(time.tick_since(t0))
-		testing.expectf(t, res == .Trapped && dt >= 90, "endless loop stopped by the deadline, not before it (%.0f ms; %s)", dt, inst.last_error)
+		testing.expectf(t, res == .Trapped && dt >= INTERRUPT_MIN_ELAPSED_MS, "endless loop stopped by the deadline, not before it (%.0f ms; %s)", dt, inst.last_error)
 		testing.expect(t, strings.contains(inst.last_error, "wasm.max_call_ms"), inst.last_error)
 		r, res2 := call_i32(inst, "add", 1, 2)
 		testing.expect(t, res2 == .Ok && r == 3, "usable after the deadline")
@@ -377,7 +387,7 @@ interruption :: proc(t: ^testing.T) {
 	o.stop = &stop
 	inst = make_instance(t, wat(t, MODULE), o)
 	if inst != nil {
-		th := thread.create_and_start(proc() { time.sleep(80 * time.Millisecond); sync.atomic_store(&stop, true) })
+		th := thread.create_and_start(proc() { time.sleep(STOP_FLAG_AFTER); sync.atomic_store(&stop, true) })
 		t0 := time.tick_now()
 		_, res := call_i32(inst, "spin")
 		dt := time.duration_milliseconds(time.tick_since(t0))
