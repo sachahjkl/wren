@@ -10,6 +10,7 @@ package fetch
 import "core:fmt"
 import "wb:base"
 import "wb:http"
+import "wb:url"
 
 Sw_Hook :: struct {
 	// true: the hook took the task (it calls respond or fall_back later, on this thread)
@@ -77,6 +78,22 @@ sw_fall_back :: proc(l: ^Loader, h: base.Handle) {
 	t.stage = .Created
 	t.skip_service_worker = true
 	http_hop(t)
+}
+
+// The service worker answered with an opaque response of `address`. Its realm does not have the bytes (scripts must never see
+// them), so this request fetches that address itself, with the page's own taint: an opaque answer, usable as the page asked.
+// Only a no-cors request may take one (Fetch Standard, "HTTP fetch": anything else is a network error).
+sw_respond_opaque :: proc(l: ^Loader, h: base.Handle, address: string) {
+	t := base.pool_get(&l.tasks, h)
+	if t == nil { return }
+	if t.mode != .No_Cors { fail(t, .Transport, "the service worker answered with an opaque response a request that is not no-cors"); return }
+	if address != "" && address != t.target.href {
+		next, ok := url.parse_absolute(address)
+		if !ok { fail(t, .Transport, "the service worker answered with an opaque response of an invalid address"); return }
+		url.destroy(&t.target)
+		t.target = next
+	}
+	sw_fall_back(l, h)
 }
 
 // The service worker failed the request (respondWith rejected, or a Response.error()): a network error.

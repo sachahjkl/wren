@@ -33,6 +33,9 @@ import "../odin/wj"
 @(private = "file") Sw_Event :: enum i32 { None, Install, Activate, Fetch, Message, Answer, Registration, Preload }
 // What the worker replies (ServiceWorkerGlobalScope_reply's kind).
 @(private = "file") Reply :: enum i32 { None, Install_Done, Activate_Done, Respond, Fall_Back, Fail, Skip_Waiting, Claim, Post_Client, Request = 10, Preload = 11 }
+// Fall_Back's code: the worker answered with an opaque response of this address (its text), or with an opaque redirect.
+@(private = "file") REPLY_OPAQUE :: i64(1)
+@(private = "file") REPLY_OPAQUE_REDIRECT :: i64(2)
 // The requests a worker makes of the browser, answered by an event.
 @(private = "file") Op :: enum i32 { None, Match_All, Get, Open_Window, Navigate, Focus, Update, Unregister }
 
@@ -1128,11 +1131,18 @@ respond_value :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, ar
 	if tc != nil { wj.JS_FreeCString(ctx, tc) }
 	wj.JS_FreeValue(ctx, type)
 	if error { reply(.Fail, u64(id), 0, text = "Response.error()"); return wj.UNDEFINED }
+	// An opaque response: the page may use it (a <script>, a stylesheet, an image from another origin), but this realm does not
+	// have its bytes, a script must never see them. The browser gets them for the page instead (Fall_Back with a code).
+	if internal, opaque, redirect := web_response_opaque(resp); opaque {
+		uc, u := to_text(ctx, internal)
+		reply(.Fall_Back, u64(id), redirect ? REPLY_OPAQUE_REDIRECT : REPLY_OPAQUE, text = u)
+		if uc != nil { wj.JS_FreeCString(ctx, uc) }
+		return wj.UNDEFINED
+	}
 	sv := wj.JS_GetPropertyStr(ctx, resp, "status")
 	status: i32 = 200
 	wj.JS_ToInt32(ctx, &status, sv)
 	wj.JS_FreeValue(ctx, sv)
-	if status == 0 { status = 200 }   // an opaque response: the page sees it as one it may not read anyway
 	hv := wj.JS_GetPropertyStr(ctx, resp, "headers")
 	lines: wj.Web_Buf
 	web_headers_serialize(hv, &lines)
