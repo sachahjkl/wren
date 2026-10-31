@@ -24,6 +24,8 @@ import "wb:i18n"
 //   About         the syntax that is understood, and how it works
 
 BLOCKER_URL :: "about:blocker"
+// Height of a row of controls, in em.
+BLOCKER_ROW_H_EM :: 2.4
 
 is_blocker_address :: proc(a: string) -> bool { return a == BLOCKER_URL || strings.has_prefix(a, BLOCKER_URL + "#") }
 
@@ -112,7 +114,7 @@ cell :: proc(text: string, id: string, w: f32, weak := false, align := ui.Text_A
 @(private = "file")
 tool_button :: proc(text, id: string, w: f32, tip_text := "") -> bool {
 	em := ui.font_size()
-	ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 1.9)), radius = em * 0.35})
+	ui.next({width = ui.px(w), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM)), radius = em * 0.35})
 	sig := ui.button(fmt.aprintf("%s###%s", text, id, allocator = ui.frame_allocator()))
 	if tip_text != "" { tip(sig, tip_text) }
 	return sig.clicked
@@ -170,7 +172,7 @@ blocker_page :: proc(app: ^App, t: ^Tab) {
 		root := ui.build_box({.Draw_Background}, "###blocker_page")
 		if ui.parent(root) {
 			ui.spacer(ui.px(em * 0.5))
-			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.4))})
+			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * BLOCKER_ROW_H_EM))})
 			if ui.row(.Center) {
 				ui.spacer(ui.px(em * 0.8))
 				ui.next({width = ui.text_size(0), height = ui.px(ui.dense(em * 2))})
@@ -246,7 +248,7 @@ tab_settings :: proc(app: ^App, t: ^Tab) {
 			hours := []int{1, 6, 12, 24, 72, 168, 720}
 			sel := 3
 			for h, i in hours { if h == b.cfg.update_hours { sel = i } }
-			ui.next({width = ui.px(em * 9), height = ui.px(ui.dense(em * 1.9))})
+			ui.next({width = ui.px(em * 9), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 			if ui.dropdown("###bs_interval", opts, &sel) { config.set_from_string(&app.prefs, "blocker.update.interval_hours", fmt.tprintf("%d", hours[sel]), .User) }
 			ui.spacer(ui.px(em * 0.8))
 			if tool_button(i18n.tr("Update now"), "bs_update_now", em * 8, i18n.tr("Ask every enabled list for a newer version now")) { blocker.updater_round(b, true) }
@@ -297,7 +299,7 @@ tab_lists :: proc(app: ^App, t: ^Tab) {
 	em := ui.font_size()
 	b := &bl.b
 	// toolbar
-	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.4))})
+	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * BLOCKER_ROW_H_EM))})
 	if ui.row(.Center) {
 		ui.spacer(ui.px(em * 0.9))
 		if tool_button(i18n.tr("Update now"), "bl_update", em * 8) { blocker.updater_round(b, true) }
@@ -356,10 +358,10 @@ tab_lists :: proc(app: ^App, t: ^Tab) {
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.2))})
 		if ui.row(.Center) {
 			ui.spacer(ui.px(em * 0.9))
-			ui.next({width = ui.px(em * 12), height = ui.px(ui.dense(em * 1.9))})
+			ui.next({width = ui.px(em * 12), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 			ui.line_edit("###bl_cname", &dash.custom_name, i18n.tr("Name (optional)"))
 			ui.spacer(ui.px(em * 0.5))
-			ui.next({width = ui.px(em * 36), height = ui.px(ui.dense(em * 1.9))})
+			ui.next({width = ui.px(em * 36), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 			res := ui.line_edit("###bl_curl", &dash.custom_url, "https://example.org/filters.txt")
 			ui.spacer(ui.px(em * 0.5))
 			url := strings.trim_space(ui.field_string(&dash.custom_url))
@@ -424,7 +426,7 @@ tab_my_filters :: proc(app: ^App, t: ^Tab) {
 		dash.my_loaded, dash.my_dirty = true, false
 		diagnose(b.conf.my_filters)
 	}
-	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.4))})
+	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * BLOCKER_ROW_H_EM))})
 	if ui.row(.Center) {
 		ui.spacer(ui.px(em * 0.9))
 		if ui.disabled(!dash.my_dirty) {
@@ -485,21 +487,21 @@ dash_apply_filters :: proc(app: ^App) {
 tab_my_rules :: proc(app: ^App, t: ^Tab) {
 	em := ui.font_size()
 	b := &bl.b
-	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.4))})
+	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * BLOCKER_ROW_H_EM))})
 	if ui.row(.Center) {
 		ui.spacer(ui.px(em * 0.9))
-		ui.next({width = ui.px(em * 11), height = ui.px(ui.dense(em * 1.9))})
+		ui.next({width = ui.px(em * 11), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 		ui.line_edit("###mr_src", &dash.rule_src, i18n.tr("site or *"))
 		ui.spacer(ui.px(em * 0.4))
-		ui.next({width = ui.px(em * 15), height = ui.px(ui.dense(em * 1.9))})
+		ui.next({width = ui.px(em * 15), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 		ui.line_edit("###mr_dst", &dash.rule_dst, i18n.tr("destination host or *"))
 		ui.spacer(ui.px(em * 0.4))
 		names := make([]string, len(blocker.DYN_TYPE_NAMES), context.temp_allocator)
 		for n, i in blocker.DYN_TYPE_NAMES { names[i] = n }
-		ui.next({width = ui.px(em * 8.5), height = ui.px(ui.dense(em * 1.9))})
+		ui.next({width = ui.px(em * 8.5), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 		ui.dropdown("###mr_type", names, &dash.rule_type)
 		ui.spacer(ui.px(em * 0.4))
-		ui.next({width = ui.px(em * 7), height = ui.px(ui.dense(em * 1.9))})
+		ui.next({width = ui.px(em * 7), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 		ui.dropdown("###mr_action", []string{i18n.tr("rule action", "block"), i18n.tr("rule action", "allow")}, &dash.rule_action)
 		ui.spacer(ui.px(em * 0.4))
 		src := strings.to_lower(strings.trim_space(ui.field_string(&dash.rule_src)), context.temp_allocator)
@@ -528,7 +530,7 @@ tab_my_rules :: proc(app: ^App, t: ^Tab) {
 		rules := blocker.dyn_sorted(&b.dyn)
 		remove: int = -1
 		for r, i in rules {
-			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.9))})
+			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 			if ui.row(.Center) {
 				ui.spacer(ui.px(em * 0.9))
 				cell(r.src, fmt.tprintf("mrs_%d", i), em * 11)
@@ -562,10 +564,10 @@ blocker_rules_saved :: proc() {
 tab_whitelist :: proc(app: ^App, t: ^Tab) {
 	em := ui.font_size()
 	b := &bl.b
-	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.4))})
+	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * BLOCKER_ROW_H_EM))})
 	if ui.row(.Center) {
 		ui.spacer(ui.px(em * 0.9))
-		ui.next({width = ui.px(em * 26), height = ui.px(ui.dense(em * 1.9))})
+		ui.next({width = ui.px(em * 26), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 		res := ui.line_edit("###wl_add", &dash.wl_add, i18n.tr("example.org: a site where the blocker stays off"))
 		ui.spacer(ui.px(em * 0.5))
 		host := strings.to_lower(strings.trim_space(ui.field_string(&dash.wl_add)), context.temp_allocator)
@@ -590,7 +592,7 @@ tab_whitelist :: proc(app: ^App, t: ^Tab) {
 			f := b.conf.sites[h]
 			if f == {} { continue }
 			any = true
-			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.9))})
+			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 			if ui.row(.Center) {
 				ui.spacer(ui.px(em * 0.9))
 				cell(h, fmt.tprintf("wlh_%d", i), em * 24)
@@ -683,23 +685,23 @@ log_model :: proc(b: ^blocker.Blocker, query: string) {
 tab_journal :: proc(app: ^App, t: ^Tab) {
 	em := ui.font_size()
 	b := &bl.b
-	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.4))})
+	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * BLOCKER_ROW_H_EM))})
 	if ui.row(.Center) {
 		ui.spacer(ui.px(em * 0.9))
-		ui.next({width = ui.px(em * 22), height = ui.px(ui.dense(em * 1.9))})
+		ui.next({width = ui.px(em * 22), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 		ui.line_edit("###lg_search", &dash.log_search, i18n.tr("Search URL, rule or document"))
 		ui.spacer(ui.px(em * 0.5))
 		outs := make([]string, len(blocker.Outcome) + 1, context.temp_allocator)
 		outs[0] = i18n.tr("all outcomes")
 		for o in blocker.Outcome { outs[int(o) + 1] = outcome_name(o) }
-		ui.next({width = ui.px(em * 11), height = ui.px(ui.dense(em * 1.9))})
+		ui.next({width = ui.px(em * 11), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 		if ui.dropdown("###lg_outcome", outs, &dash.log_outcome) { dash.log_version = 0 }
 		ui.spacer(ui.px(em * 0.4))
 		types := make([]string, 22, context.temp_allocator)
 		types[0] = i18n.tr("all types")
 		k := 1
 		for r in adblock.Resource { if r <= .Webrtc { types[k] = adblock.resource_name(r); k += 1 } }
-		ui.next({width = ui.px(em * 11), height = ui.px(ui.dense(em * 1.9))})
+		ui.next({width = ui.px(em * 11), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
 		if ui.dropdown("###lg_type", types[:k], &dash.log_type) { dash.log_version = 0 }
 		ui.spacer(ui.px(em * 0.5))
 		if tool_button(dash.log_pause ? i18n.tr("Resume") : i18n.tr("Pause"), "lg_pause", em * 7) { dash.log_pause = !dash.log_pause; dash.log_version = 0 }

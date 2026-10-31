@@ -120,6 +120,8 @@ burger_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 
 // Corner radius of the chrome's buttons (back, forward, reload, the zoom chip, the menu), in em: one shape for all
 CHROME_BUTTON_RADIUS :: 0.4
+// Height of a control (field, button, choice) in the rows of about:blocker and about:config's search engines, in em
+TOOL_CONTROL_H_EM :: 1.9
 
 nav_button :: proc(id, glyph, tooltip: string, enabled: bool) -> bool {
 	em := ui.font_size()
