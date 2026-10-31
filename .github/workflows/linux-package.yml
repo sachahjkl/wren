@@ -38,7 +38,7 @@ jobs:
     needs: js-image
     # the executable runs on a glibc at least as new as this runner's, 2.39 (ubuntu-22.04's tools stop on the Wasmtime release: "LLVM ERROR: Invalid encoding")
     runs-on: ubuntu-24.04
-    timeout-minutes: 75
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
