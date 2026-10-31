@@ -10,6 +10,39 @@ Semantic Versioning, since a patch version can add or remove features.
 
 ## [Unreleased]
 
+## [0.6.22] - 2026-10-31
+
+### Added
+- **A real `crypto.subtle`**: `CryptoKey`, `importKey` / `exportKey` (raw, jwk, spki, pkcs8), `generateKey`, `encrypt` / `decrypt` (AES-GCM, AES-CBC, AES-CTR, RSA-OAEP), `sign` / `verify` (HMAC, ECDSA, RSASSA-PKCS1-v1_5, RSA-PSS, Ed25519), `deriveBits` / `deriveKey` (PBKDF2, HKDF, ECDH, X25519), `wrapKey` / `unwrapKey` (with AES-KW): in windows and workers, heavy work off the page's thread; a key's material stays in the browser, and a `CryptoKey` goes through `structuredClone`, `postMessage` and IndexedDB. amazon.com stopped at `importKey`. No P-521, which `core:crypto` does not have.
+- **A Linux package**: each release now has `wren-<version>-linux-x64.tar.gz` (x86-64, an early preview), built by `./build.sh release` and `tools/package_linux.sh` and started end to end on the runner before it is published. The site offers it. The main thread gets its 32 MiB stack by itself on Linux, without a `ulimit`.
+- **A blank same-origin frame has a `document`**: `iframe.contentDocument` of an `about:blank` or `srcdoc` frame is an inert document of the page's own realm (nothing written there shows), and a same-origin frame gives `eval` and `SecurityPolicyViolationEvent` exists. A frame with an address of its own stays out of reach: each document has its own engine instance.
+- **`sheet.cssRules` gives real rule objects**: `CSSStyleRule`, `CSSMediaRule`, `CSSLayerBlockRule` and the others exist for `instanceof`, with `type`, `selectorText`, `style`, `conditionText`, `name` and nested `cssRules` (read-only views of the sheet).
+- **`FontFace`**: a face loaded from a URL or from bytes and added to `document.fonts` is in force (Excalidraw and tldraw stopped on its absence).
+- **`<link rel=preload>` and `modulepreload`** fetch and fire `load` or `error`, which code loaders wait for (Squoosh's never finished without it).
+- **The common SVG DOM**: `createSVGMatrix`, `createSVGPoint`, `createSVGRect`, `getBBox`, `getCTM`, `getScreenCTM`; an `<svg>` with only a `viewBox` no longer asks for 300 px in a grid track or a shrink-to-fit box.
+- **WebAssembly threads and SharedArrayBuffer**: under cross-origin isolation (`Cross-Origin-Opener-Policy: same-origin` with `Cross-Origin-Embedder-Policy`) a page and its workers share memory, with `Atomics.wait` and `Atomics.notify` working with a module's `memory.atomic.wait` and `notify`; a `WebAssembly.Module` and a shared `WebAssembly.Memory` can be sent to a worker. `docs/shared-memory.md`.
+- **`dialog.showModal()` is modal**: the dialog is above everything, what is outside it does not take the pointer or Tab, Escape asks it to close, the focus goes in and comes back; `:modal` matches, `returnValue` can be set, and `close` is fired from a task.
+- **Cross-Origin-Resource-Policy and Cross-Origin-Embedder-Policy** are enforced: a response to a request without CORS can refuse other origins, and a page with `require-corp` or `credentialless` loads only what agrees.
+- **A page's WebAssembly modules are kept compiled** in the profile's disk cache, by top-level site.
+
+### Changed
+- **Pages that change every frame run much faster when a program uses UI Automation.** A page's accessibility tree is brought up to date ten times a second at most, and less often when the update is costly (`accessibility.page.interval_ms`); a screen reader's request is still answered at once. Any program that once asked UI Automation (a screenshot tool, PowerToys) kept that tree alive. Measured: flex 10 000 resize from 6.9 to 28.6 frames a second, a page of 10 000 changing nodes from 1.9 to 8.7. `:has()` invalidation walks each ancestor once per change.
+- **`media.audio.backend` works on Windows too**: `null` lets audio go by in silence at the pace of the clock. The environment variable `WREN_AUDIO_OUTPUT=null` does the same whatever the preference, and every test script sets it: the tests no longer make a sound.
+- **`CHANGELOG.md` follows Keep a Changelog 1.1.0**: versions are linkable (`## [0.6.21] - 2026-10-30`, with compare links at the end of the file, written when a version is published), a fragment can also be `Deprecated` or `Security`, and `tools\changelog.ps1 -Check` enforces the form of the file.
+
+### Fixed
+- **The value an async function returned or threw could be lost**, depending on when memory was reclaimed: `await` then gave an empty buffer, another object, or `undefined`. It showed in `crypto.subtle.exportKey`, whose result could come back empty, and as an unhandled rejection with no reason where a script had thrown an error.
+- `importScripts` refuses a `blob:` or `data:` URL whose type is not JavaScript (a blob with no type still runs). Assigning `selectorText` on a CSS rule no longer throws. `:first-child` and its family stop at the first sibling met instead of counting the whole family. `pointercancel` is measured by the event timing.
+- **Found on real sites**: `performance.measure` with empty options and an end mark, element names such as `_x` or `:x` in `createElement`, a `<track>` outside a media element having a `track`.
+- **Streams**: `for await` over a stream follows Web IDL's iterator, `tee()` passes errors and closes on at once and answers `cancel` when both branches are cancelled, and it clones every kind of chunk.
+- **`blob:` URLs work everywhere**: an image, a stylesheet, a frame or a media element can load what `URL.createObjectURL` made, not only `fetch` and XHR of its realm.
+- **Structured clone** keeps lone surrogates, a resizable `ArrayBuffer`'s maximum and a view's length tracking; a view out of bounds throws instead of reaching a worker as `null`; an `Error` without a message has none.
+- **`waitUntil`** works for as long as the event has promises pending, and install and activate wait for those added late.
+- **A module that throws no longer fires `unhandledrejection`** as well as `error`, and an import attribute other than `type` is an error (a SyntaxError in a module, a rejected `import()`).
+- **`new Document()`**, `EventSource` in a worker (it crashed the browser), syntax errors with their file and line, `CSS.escape` and IndexedDB names with lone surrogates, IndexedDB's interfaces as plain properties of the global, `cssText` set to the same value queuing a mutation record, and `CSSLayerBlockRule` and `CSSLayerStatementRule` existing.
+- **The README, the site and the documentation catch up with the code**: the JavaScript engine in Odin (no QuickJS-ng, no Zig), the built-in network stack, text and image decoders, the HTTP cache, the single-file download, the counts of the API and of the bindings, and a list of limits that no longer names what exists (Canvas 2D, video, iframes, service workers, `ResizeObserver`, Web Animations).
+- **The site's gallery**: a click on a capture opens it large (arrow keys to go through them, Esc to close), each capture stays a plain link to its image without the script, and the page says which version the captures show (0.6.1, not 0.2.0).
+
 ## [0.6.21] - 2026-10-30
 
 ### Added
@@ -737,7 +770,8 @@ Pages name their Wasm modules with `<script type="application/wasm">`; the web A
 - **The browser**: tabs, history, find in page, selection, zoom, view-source, `about:config`, frame pacing and
   statistics.
 
-[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.6.21...HEAD
+[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.6.22...HEAD
+[0.6.22]: https://github.com/sachahjkl/wren/compare/v0.6.21...v0.6.22
 [0.6.21]: https://github.com/sachahjkl/wren/compare/v0.6.20...v0.6.21
 [0.6.20]: https://github.com/sachahjkl/wren/compare/v0.6.19...v0.6.20
 [0.6.19]: https://github.com/sachahjkl/wren/compare/v0.6.18...v0.6.19

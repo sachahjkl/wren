@@ -47,11 +47,28 @@
     <p class="intro">Eight versions in twelve days: the first public build, JavaScript, a JIT, a text engine of its own, a browser that speaks to screen readers, then a JavaScript engine written in Odin.</p>
     <div class="timeline">
 <!-- releases:begin -->
-      <article class="release latest" id="v0-6-21">
+      <article class="release latest" id="v0-6-22">
+        <div class="rail"><span class="dot"></span></div>
+        <div class="release-body">
+          <p class="release-date"><time datetime="2026-10-31">October 31, 2026</time></p>
+          <div class="release-title"><h3>0.6.22</h3><span class="badge">Latest</span></div>
+          <ul class="release-list">
+            <li><strong>A Linux package.</strong> <code>wren-0.6.22-linux-x64.tar.gz</code> for x86-64, an early preview: it needs glibc 2.39 or later (Ubuntu 24.04, Debian 13, Fedora 40).</li>
+            <li><strong>WebAssembly threads and <code>SharedArrayBuffer</code></strong> under cross-origin isolation.</li>
+            <li><strong>A real <code>crypto.subtle</code></strong>: AES, HMAC, PBKDF2, HKDF, ECDSA and ECDH on P-256 and P-384, RSA, Ed25519 and X25519, in pages and workers.</li>
+            <li><strong>Much smoother with a UI Automation program around.</strong> A screenshot tool or PowerToys kept a page's accessibility tree updating on every frame.</li>
+            <li><strong>A value lost by the garbage collector.</strong> What an <code>async</code> function returned could be collected before its promise took it: an <code>ArrayBuffer</code> turned up empty, a rejection reason <code>undefined</code>.</li>
+            <li><strong>More of the web works</strong>: <code>blob:</code> URLs for every load, link preload, the common SVG DOM, <code>FontFace</code>, real <code>CSSRule</code> objects, a <code>document</code> for blank frames.</li>
+          </ul>
+          <p class="release-links"><a href="https://github.com/sachahjkl/wren/blob/master/docs/releases/v0.6.22.md">Release notes</a> ·
+            <a href="https://github.com/sachahjkl/wren/releases/tag/v0.6.22">Download</a></p>
+        </div>
+      </article>
+      <article class="release" id="v0-6-21">
         <div class="rail"><span class="dot"></span></div>
         <div class="release-body">
           <p class="release-date"><time datetime="2026-10-30">October 30, 2026</time></p>
-          <div class="release-title"><h3>0.6.21</h3><span class="badge">Latest</span></div>
+          <div class="release-title"><h3>0.6.21</h3></div>
           <ul class="release-list">
             <li><strong>Modules built with the old form of WebAssembly exceptions run.</strong> <code>try</code>, <code>catch</code>, <code>rethrow</code> and <code>delegate</code> are what older Emscripten and .NET builds use, and Wasmtime refuses them: they are now…</li>
             <li><strong>Python runs.</strong> <code>new WebAssembly.Memory({shared: true})</code> works for one agent, as other browsers allow without isolation, so Pyodide starts and answers <code>runPython</code>.</li>
