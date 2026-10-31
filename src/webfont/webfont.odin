@@ -44,6 +44,12 @@ foreign wren_native {
 	wm_woff2_decode :: proc(data: [^]u8, len: uint, max_bytes: u64, sink: ^Wm_Byte_Sink) -> i32 ---
 }
 
+SFNT_MAX_TABLES :: 4096     // a font that says it has more tables is refused
+TTC_MAX_FACES :: 65536      // a collection that says it has more faces is refused
+// What the decompressor may allocate for a table: this many times the output (it may double its buffer), and this much more.
+INFLATE_BUDGET_FACTOR :: 3
+INFLATE_BUDGET_SLACK_BYTES :: 256 * 1024
+
 Format :: enum u8 { Unknown, Truetype, Opentype, Collection, Woff, Woff2, Eot }
 
 Error :: enum u8 {
@@ -124,7 +130,7 @@ Table :: struct {
 read_tables :: proc(data: []byte, allocator := context.temp_allocator) -> ([]Table, Error) {
 	if len(data) < 12 { return nil, .Too_Small }
 	n := int(be16(data, 4))
-	if n == 0 || n > 4096 { return nil, .Malformed }
+	if n == 0 || n > SFNT_MAX_TABLES { return nil, .Malformed }
 	if 12 + 16 * n > len(data) { return nil, .Malformed }
 	out := make([]Table, n, allocator)
 	for i in 0 ..< n {
@@ -168,7 +174,7 @@ unwoff :: proc(data: []byte, max_bytes: int, allocator: runtime.Allocator) -> ([
 	flavor := be32(data, 4)
 	length := int(be32(data, 8))
 	n := int(be16(data, 12))
-	if length != len(data) || n == 0 || n > 4096 || be16(data, 14) != 0 { return nil, .Malformed }
+	if length != len(data) || n == 0 || n > SFNT_MAX_TABLES || be16(data, 14) != 0 { return nil, .Malformed }
 	if WOFF_HEADER + WOFF_ENTRY * n > len(data) { return nil, .Malformed }
 	Entry :: struct { tag, offset, comp, orig, checksum: u32 }
 	entries := make([]Entry, n, context.temp_allocator)
@@ -271,12 +277,12 @@ unwoff2 :: proc(data: []byte, max_bytes: int, allocator: runtime.Allocator) -> (
 collection_face :: proc(ttc: []byte, index: int, max_bytes: int, allocator := context.allocator) -> ([]byte, Error) {
 	if len(ttc) < 12 || be32(ttc, 0) != TAG_TTCF { return nil, .Malformed }
 	n := int(be32(ttc, 8))
-	if n == 0 || n > 65536 || 12 + 4 * n > len(ttc) { return nil, .Malformed }
+	if n == 0 || n > TTC_MAX_FACES || 12 + 4 * n > len(ttc) { return nil, .Malformed }
 	if index < 0 || index >= n { return nil, .Malformed }
 	off := int(be32(ttc, 12 + 4 * index))
 	if off + 12 > len(ttc) { return nil, .Malformed }
 	count := int(be16(ttc, off + 4))
-	if count == 0 || count > 4096 || off + 12 + 16 * count > len(ttc) { return nil, .Malformed }
+	if count == 0 || count > SFNT_MAX_TABLES || off + 12 + 16 * count > len(ttc) { return nil, .Malformed }
 	total := 12 + 16 * count
 	for i in 0 ..< count {
 		rec := off + 12 + 16 * i
@@ -310,7 +316,7 @@ collection_face :: proc(ttc: []byte, index: int, max_bytes: int, allocator := co
 @(private)
 inflate_into :: proc(src, dst: []byte) -> bool {
 	// the decompressor starts with an output buffer of at least COMPRESS_OUTPUT_ALLOCATE_MIN and may double it once
-	budget := Budget{parent = context.allocator, left = max(len(dst), compress.COMPRESS_OUTPUT_ALLOCATE_MIN) * 3 + 256 * 1024}
+	budget := Budget{parent = context.allocator, left = max(len(dst), compress.COMPRESS_OUTPUT_ALLOCATE_MIN) * INFLATE_BUDGET_FACTOR + INFLATE_BUDGET_SLACK_BYTES}
 	context.allocator = budget_allocator(&budget)
 	buf: bytes.Buffer
 	defer bytes.buffer_destroy(&buf)
