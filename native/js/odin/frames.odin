@@ -474,8 +474,12 @@ blank_frame_document :: proc "contextless" (ctx: ^wj.Context, w: ^Window_State) 
 	return made
 }
 
+// Objects a same-origin frame's own would answer the same for: this realm's are given (a page takes a clean `navigator` or `crypto`
+// from a blank frame it made).
+@(private = "file", rodata) WP_SHARED := [?]string{"console", "navigator", "screen", "crypto"}
+
 // Pristine platform object / function from a same-origin frame, or UNINITIALIZED. `history` is an object with
-// History.prototype and no brand; console is this realm's console; functions are bound; constructors (an upper-case
+// History.prototype and no brand; WP_SHARED are this realm's own; functions are bound; constructors (an upper-case
 // name of a native function) are given as is.
 @(private = "file")
 wp_pristine :: proc "contextless" (ctx: ^wj.Context, w: ^Window_State, c: cstring, p: string) -> wj.JSValue {
@@ -492,8 +496,8 @@ wp_pristine :: proc "contextless" (ctx: ^wj.Context, w: ^Window_State, c: cstrin
 		return wj.JS_DupValue(ctx, w.history)
 	case p == "document":
 		return blank_frame_document(ctx, w)
-	case p == "console":
-		return global_prop(ctx, "console")
+	case in_list(WP_SHARED[:], p):
+		return global_prop(ctx, c)
 	case in_list(WP_FUNCTIONS[:], p):
 		return pristine_function(ctx, c)
 	case len(p) > 0 && p[0] >= 'A' && p[0] <= 'Z':

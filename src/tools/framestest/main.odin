@@ -238,7 +238,10 @@ document.body.appendChild(c);
 log("sync load on insertion " + sync + " " + window.length);
 c.remove();
 log("after removal " + c.contentWindow + " " + window.length);
+const w = a.contentWindow;
+log("shared " + (w.navigator.userAgent === navigator.userAgent) + " " + (w.screen.width === screen.width) + " " + (w.crypto.getRandomValues(new Uint8Array(4)).length));
 </script></body>`)
+		check(wait_for("shared true true 4"), "a same-origin frame gives a navigator, screen and crypto")
 		check(wait_for("window load"), "the parent's load event fires")
 		check(logged("blank true true true 2 true"), "an about:blank frame has a window at once: frames[0], window[name], length; contentDocument is an inert document (another realm has the real one)")
 		check(logged("sync load on insertion true 3"), "an iframe without src fires load synchronously when inserted")
