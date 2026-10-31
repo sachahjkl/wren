@@ -342,7 +342,16 @@ wjr_HTMLTrackElement_get_track :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVal
 	if wj.is_object(v) { return v }
 	wj.JS_FreeValue(ctx, v)
 	h := wj.wr_HTMLTrackElement_track(wj.handle_of(self))
-	if h == 0 { return wj.NULL }
+	if h == 0 {
+		// not in a media element yet: the browser has no track for it. `track` is never null (a page probes `"oncuechange" in
+		// el.track` on an element it just made), so an object of the interface stands in, without a track behind it
+		d := wj.web_extra_get(ctx, this_val, "detachedTrack")
+		if wj.is_object(d) { return d }
+		wj.JS_FreeValue(ctx, d)
+		d = wj.JS_NewObjectProto(ctx, wj.realm_proto(IF_text()))
+		if wj.is_object(d) { wj.web_extra_set(ctx, this_val, "detachedTrack", wj.JS_DupValue(ctx, d)) }
+		return d
+	}
 	t := wj.wj_wrap_host(ctx, h, IF_text())
 	if wj.is_object(t) { wj.web_extra_set(ctx, this_val, "track", wj.JS_DupValue(ctx, t)) }
 	return t

@@ -891,7 +891,6 @@ wjr_Performance_measure :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, arg
 	ok := true
 	if wj.is_object(so) {
 		// PerformanceMeasureOptions: {start, end, duration, detail}
-		if !wj.is_undefined(em) { return wj.JS_ThrowTypeError(ctx, "Failed to execute 'measure' on 'Performance': endMark cannot be given with options.") }
 		s, e, d: wj.JSValue
 		if !wj.web_dict_get(ctx, so, "start", &s) { return wj.EXCEPTION }
 		if !wj.web_dict_get(ctx, so, "end", &e) { wj.JS_FreeValue(ctx, s); return wj.EXCEPTION }
@@ -900,6 +899,11 @@ wjr_Performance_measure :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, arg
 		detail_check: wj.JSValue
 		has_detail := wj.web_dict_get(ctx, so, "detail", &detail_check) && !wj.is_undefined(detail_check)
 		wj.JS_FreeValue(ctx, detail_check)
+		// (User Timing: only a dictionary with something in it excludes endMark)
+		if (hs || he || hd || has_detail) && !wj.is_undefined(em) {
+			wj.free_values(ctx, s, e, d)
+			return wj.JS_ThrowTypeError(ctx, "Failed to execute 'measure' on 'Performance': endMark cannot be given with options.")
+		}
 		switch {
 		case !hs && !he && !hd && !has_detail:   // an empty dictionary: like no options
 		case !hs && !he:

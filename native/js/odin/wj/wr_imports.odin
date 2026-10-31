@@ -171,6 +171,8 @@ wr_EventSourceState :: enum i32 {
 // The body of a response being read in chunks.
 wr_ReadableStream :: distinct u64
 
+// module fontface: types
+
 // module forms: types
 wr_FormData :: distinct u64
 // ValidityState: every flag that is set (none = valid).
@@ -2265,6 +2267,15 @@ foreign _wr_wj_fetch {
 	// fetch with a FormData body: the Content-Type (with its boundary) is set unless `headers` name one. Same callback
 	// and options as Fetch_start.
 	@(link_name = "Fetch_startFormData") wr_Fetch_startFormData :: proc(url: [^]u8, url_len: u32, data: u64, callback: i32, user: i32, method: [^]u8, method_len: u32, headers: [^]u8, headers_len: u32, enctype: i32, options_mode: u32, options_credentials: u32, options_redirect: u32, options_referrer_policy: u32, options_no_referrer: i32, options_cache: u32) -> u64 ---
+}
+
+// module fontface
+foreign import _wr_wj_fontface "fontface"
+@(default_calling_convention = "contextless")
+foreign _wr_wj_fontface {
+	// The @font-face rule, in force: a number for FontFace_removeRule, -1 when there is no document to style.
+	@(link_name = "FontFace_addRule") wr_FontFace_addRule :: proc(rule: [^]u8, rule_len: u32) -> i32 ---
+	@(link_name = "FontFace_removeRule") wr_FontFace_removeRule :: proc(id: i32) ---
 }
 
 // module forms

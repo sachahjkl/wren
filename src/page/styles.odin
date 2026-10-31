@@ -56,6 +56,7 @@ styles_destroy :: proc(p: ^Page) {
 	for _, l in p.link_loads { free_load(p, l) }
 	delete(p.link_loads)
 	link_preloads_free(p)
+	delete(p.font_face_sheets)
 	for l in p.import_loads { free_load(p, l) }
 	delete(p.import_loads)
 	fonts_destroy(p)
