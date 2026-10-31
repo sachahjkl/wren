@@ -649,7 +649,8 @@ groups_in_document :: proc(s: ^Styled, doc: ^dom.Document) -> bool {
 			if n == nil { continue }
 			if n.kind == .Element && is_listed_control(n.name) && group_control(doc, x, n) { s.forms_scan = 2; break }
 			for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next { append(&stack, ch) }
-			if n.shadow != base.NIL_HANDLE { append(&stack, n.shadow) }
+			// (a host's shadow root. A shadow root's `shadow` is its host: following it never ended, and the stack took all the memory)
+			if n.shadow != base.NIL_HANDLE && !n.is_shadow { append(&stack, n.shadow) }
 		}
 	}
 	return s.forms_scan == 2
