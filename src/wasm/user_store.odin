@@ -17,6 +17,9 @@ import "core:fmt"
 import "core:strings"
 import "wb:base"
 
+// The largest memory a script can ask for, in pages of 64 KiB: what the 32-bit address space holds (the JS API's limit).
+USER_MEMORY_MAX_PAGES :: 65536
+
 // How a call failed: what JavaScript makes of it (a WebAssembly.LinkError, RuntimeError, RangeError or a TypeError).
 User_Failure :: enum i32 {
 	None  = 0,
@@ -316,7 +319,7 @@ cell_of_val :: proc(s: ^User_Store, letter: u8, v: ^wt_val) -> u64 {
 // ---- memories ----
 
 user_memory_new :: proc(s: ^User_Store, initial, maximum: i64) -> (id: i32, f: User_Failure) {
-	if initial < 0 || initial > 65536 || maximum > 65536 { return 0, fail(s, .Range, "the size of the memory is out of range") }
+	if initial < 0 || initial > USER_MEMORY_MAX_PAGES || maximum > USER_MEMORY_MAX_PAGES { return 0, fail(s, .Range, "the size of the memory is out of range") }
 	ty: wt_memorytype
 	if e := wasmtime_memorytype_new(u64(initial), maximum >= 0, u64(max(maximum, 0)), false, false, 16, &ty); e != nil { return 0, fail_error(s, .Range, e) }
 	defer wasm_memorytype_delete(ty)

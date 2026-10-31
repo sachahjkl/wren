@@ -176,7 +176,7 @@ user_memory_is_shared :: proc(id: i32) -> bool { return id >= USER_SHARED_BASE }
 
 // `byte_length` < 0: all of its pages.
 user_shared_new :: proc(s: ^User_Store, initial, maximum: i64, byte_length: i64 = -1) -> (id: i32, f: User_Failure) {
-	if initial < 0 || initial > 65536 || maximum < initial || maximum > 65536 { return 0, fail(s, .Range, "the size of the memory is out of range") }
+	if initial < 0 || initial > USER_MEMORY_MAX_PAGES || maximum < initial || maximum > USER_MEMORY_MAX_PAGES { return 0, fail(s, .Range, "the size of the memory is out of range") }
 	ty: wt_memorytype
 	if e := wasmtime_memorytype_new(u64(initial), true, u64(maximum), false, true, 16, &ty); e != nil { return 0, fail_error(s, .Range, e) }
 	defer wasm_memorytype_delete(ty)
