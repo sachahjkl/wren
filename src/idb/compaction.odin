@@ -8,6 +8,10 @@ import "core:sync"
 import "core:time"
 import "wb:base"
 
+CMP_BATCH_BYTES :: 1 << 20         // copied values wait in a batch of this size before they are written
+CMP_COPY_BUF_BYTES :: 1 << 20      // the buffer that copies the tail of the old journal
+CMP_ABANDON_WAIT_MS :: 20000       // how long an abandoned job is waited for before the old journal is written again
+
 // Compaction: when the journal is much larger than the data it holds (dead records: replaced and deleted values), the live
 // values are copied into a new journal, in the background, without stopping anything.
 //
@@ -201,7 +205,7 @@ cmp_visit :: proc(user: rawptr, key: []byte, vlen: u32, voff: i64, ikeys: []Inde
 		append(w.pairs, Pair{old = voff})
 		append(&w.pend, Cmp_Pend{pair = len(w.pairs) - 1, rel = rel})
 	}
-	if len(w.batch.data) >= 1 << 20 { cmp_flush(w) }
+	if len(w.batch.data) >= CMP_BATCH_BYTES { cmp_flush(w) }
 	return w.good
 }
 
@@ -237,7 +241,7 @@ compact_copy :: proc(j: ^Compact_Job) -> bool {
 		off += i64(len(fr))
 	}
 	w := Cmp_Work{oldj = oldj, fnew = fnew, off = off, good = good, pairs = &j.pairs}
-	w.batch.data = make([dynamic]byte, 0, 1 << 20)
+	w.batch.data = make([dynamic]byte, 0, CMP_BATCH_BYTES)
 	w.held = make([dynamic]Cmp_Held)
 	w.pend = make([dynamic]Cmp_Pend)
 	w.vbuf = make([dynamic]byte)
@@ -366,7 +370,7 @@ compact_tail_run :: proc(data: rawptr) {
 	if !ok1 { file_close(&fnew); return }
 	defer file_close(&oldj)
 	good := true
-	buf := make([]byte, 1 << 20)
+	buf := make([]byte, CMP_COPY_BUF_BYTES)
 	defer delete(buf)
 	for at := j.copy_from; at < j.copy_to && good; {
 		n := int(min(i64(len(buf)), j.copy_to - at))
@@ -558,7 +562,7 @@ compaction_abandon :: proc(m: ^Manager, o: ^Origin) {
 	sync.atomic_store(&c.abandoned, true)
 	// a job that may give the new files their names must be over before the old journal is written again
 	waited := 0
-	for sync.atomic_load(&c.busy) && waited < 20000 {
+	for sync.atomic_load(&c.busy) && waited < CMP_ABANDON_WAIT_MS {
 		time.sleep(time.Millisecond)
 		waited += 1
 	}
