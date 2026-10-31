@@ -1168,6 +1168,14 @@ invoke_IdleRequestCallback :: proc(ctx: ^Page, inst: ^wasm.Instance, fn: u32, us
 	return call_guest(ctx, inst, fn, argv[:4])
 }
 
+// What the render thread has to say: kind 1 the state changed (value: 0 suspended, 1 running, 2 closed), 2 a source
+// ended, 3 a block of a ScriptProcessorNode is ready, 4 an offline rendering stopped at a suspend().
+// Calls a guest's WebAudioNotify (a function of its table) as a task of the realm; false when it trapped.
+invoke_WebAudioNotify :: proc(ctx: ^Page, inst: ^wasm.Instance, fn: u32, user: i32, kind: i32, node: i32, value: i32) -> bool {
+	argv := [4]u32{u32(user), u32(kind), u32(node), u32(value)}
+	return call_guest(ctx, inst, fn, argv[:4])
+}
+
 // Calls a guest's AudioDecoderOutput (a function of its table) as a task of the realm; false when it trapped.
 invoke_AudioDecoderOutput :: proc(ctx: ^Page, inst: ^wasm.Instance, fn: u32, user: i32, data: u64) -> bool {
 	argv := [3]u32{u32(user), u32(u64(data)), u32(u64(data) >> 32)}
@@ -30677,6 +30685,758 @@ _t_webassembly_WebAssembly_Instance_exports :: proc "c" (env: rawptr, caller: wa
 	return nil
 }
 
+// WebAudio_enabled :: proc(c: ^Call) -> bool
+@(private = "file")
+_t_webaudio_WebAudio_enabled :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := WebAudio_enabled(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// WebAudio_fullyActive :: proc(c: ^Call) -> bool
+@(private = "file")
+_t_webaudio_WebAudio_fullyActive :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := WebAudio_fullyActive(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// WebAudio_defaultRate :: proc(c: ^Call) -> f64
+@(private = "file")
+_t_webaudio_WebAudio_defaultRate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := WebAudio_defaultRate(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// WebAudio_maxBufferBytes :: proc(c: ^Call) -> f64
+@(private = "file")
+_t_webaudio_WebAudio_maxBufferBytes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := WebAudio_maxBufferBytes(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// WebAudio_create :: proc(c: ^Call, rate: f64, channels: u32, offline_frames: u32, latency: f64, notify: u32, user: i32) -> u64
+@(private = "file")
+_t_webaudio_WebAudio_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := a[0].f64
+	_p1 := u32(a[1].i32)
+	_p2 := u32(a[2].i32)
+	_p3 := a[3].f64
+	_p4 := u32(a[4].i32)
+	_p5 := a[5].i32
+	_r := WebAudio_create(&c, _p0, _p1, _p2, _p3, _p4, _p5)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// WebAudio_resume :: proc(c: ^Call, graph: u64)
+@(private = "file")
+_t_webaudio_WebAudio_resume :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	WebAudio_resume(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// WebAudio_suspend :: proc(c: ^Call, graph: u64) -> bool
+@(private = "file")
+_t_webaudio_WebAudio_suspend :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_r := WebAudio_suspend(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// WebAudio_close :: proc(c: ^Call, graph: u64)
+@(private = "file")
+_t_webaudio_WebAudio_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	WebAudio_close(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// WebAudio_time :: proc(c: ^Call, graph: u64) -> f64
+@(private = "file")
+_t_webaudio_WebAudio_time :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_r := WebAudio_time(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// WebAudio_queued :: proc(c: ^Call, graph: u64) -> f64
+@(private = "file")
+_t_webaudio_WebAudio_queued :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_r := WebAudio_queued(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// WebAudio_render :: proc(c: ^Call, graph: u64, frames: u32) -> bool
+@(private = "file")
+_t_webaudio_WebAudio_render :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := u32(a[1].i32)
+	_r := WebAudio_render(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// WebAudio_takeResult :: proc(c: ^Call, graph: u64) -> u64
+@(private = "file")
+_t_webaudio_WebAudio_takeResult :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_r := WebAudio_takeResult(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// WebAudio_offlineSuspend :: proc(c: ^Call, graph: u64, frame: f64) -> bool
+@(private = "file")
+_t_webaudio_WebAudio_offlineSuspend :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].f64
+	_r := WebAudio_offlineSuspend(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// WebAudio_offlineResume :: proc(c: ^Call, graph: u64)
+@(private = "file")
+_t_webaudio_WebAudio_offlineResume :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	WebAudio_offlineResume(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// WebAudio_nodeCreate :: proc(c: ^Call, graph: u64, kind: i32, first: f64, second: f64) -> i32
+@(private = "file")
+_t_webaudio_WebAudio_nodeCreate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32
+	_p2 := a[2].f64
+	_p3 := a[3].f64
+	_r := WebAudio_nodeCreate(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// WebAudio_nodeRelease :: proc(c: ^Call, graph: u64, node: i32)
+@(private = "file")
+_t_webaudio_WebAudio_nodeRelease :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32
+	WebAudio_nodeRelease(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// WebAudio_connect :: proc(c: ^Call, graph: u64, from: i32, output: i32, to: i32, input: i32, param: bool) -> bool
+@(private = "file")
+_t_webaudio_WebAudio_connect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32
+	_p2 := a[2].i32
+	_p3 := a[3].i32
+	_p4 := a[4].i32
+	_p5 := a[5].i32 != 0
+	_r := WebAudio_connect(&c, _p0, _p1, _p2, _p3, _p4, _p5)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// WebAudio_disconnect :: proc(c: ^Call, graph: u64, from: i32, output: i32, to: i32, input: i32, param: bool) -> i32
+@(private = "file")
+_t_webaudio_WebAudio_disconnect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32
+	_p2 := a[2].i32
+	_p3 := a[3].i32
+	_p4 := a[4].i32
+	_p5 := a[5].i32 != 0
+	_r := WebAudio_disconnect(&c, _p0, _p1, _p2, _p3, _p4, _p5)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// WebAudio_nodeSet :: proc(c: ^Call, graph: u64, node: i32, field: i32, value: f64)
+@(private = "file")
+_t_webaudio_WebAudio_nodeSet :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32
+	_p2 := a[2].i32
+	_p3 := a[3].f64
+	WebAudio_nodeSet(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// WebAudio_nodeGet :: proc(c: ^Call, graph: u64, node: i32, field: i32) -> f64
+@(private = "file")
+_t_webaudio_WebAudio_nodeGet :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32
+	_p2 := a[2].i32
+	_r := WebAudio_nodeGet(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// WebAudio_start :: proc(c: ^Call, graph: u64, node: i32, at: f64, offset: f64, duration: f64)
+@(private = "file")
+_t_webaudio_WebAudio_start :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32
+	_p2 := a[2].f64
+	_p3 := a[3].f64
+	_p4 := a[4].f64
+	WebAudio_start(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// WebAudio_stop :: proc(c: ^Call, graph: u64, node: i32, at: f64)
+@(private = "file")
+_t_webaudio_WebAudio_stop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32
+	_p2 := a[2].f64
+	WebAudio_stop(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// WebAudio_setBuffer :: proc(c: ^Call, graph: u64, node: i32, pcm: u64)
+@(private = "file")
+_t_webaudio_WebAudio_setBuffer :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32
+	_p2 := u64(a[2].i64)
+	WebAudio_setBuffer(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// WebAudio_setConvolver :: proc(c: ^Call, graph: u64, node: i32, pcm: u64, normalize: bool)
+@(private = "file")
+_t_webaudio_WebAudio_setConvolver :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32
+	_p2 := u64(a[2].i64)
+	_p3 := a[3].i32 != 0
+	WebAudio_setConvolver(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// WebAudio_setCurve :: proc(c: ^Call, graph: u64, node: i32, curve: []u8)
+@(private = "file")
+_t_webaudio_WebAudio_setCurve :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n2 := wasm.addr(&f, a[3])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "webaudio.WebAudio_setCurve", "curve") }
+	_p2 := _s2[:_n2]
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32
+	WebAudio_setCurve(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// WebAudio_setWave :: proc(c: ^Call, graph: u64, node: i32, real: []u8, imag: []u8, normalize: bool)
+@(private = "file")
+_t_webaudio_WebAudio_setWave :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n2 := wasm.addr(&f, a[3])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "webaudio.WebAudio_setWave", "real") }
+	_n3 := wasm.addr(&f, a[5])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[4]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "webaudio.WebAudio_setWave", "imag") }
+	_p2 := _s2[:_n2]
+	_p3 := _s3[:_n3]
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32
+	_p4 := a[6].i32 != 0
+	WebAudio_setWave(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// WebAudio_captureElement :: proc(c: ^Call, graph: u64, node: i32, element: Api_Element) -> bool
+@(private = "file")
+_t_webaudio_WebAudio_captureElement :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32
+	_p2 := Api_Element{handle = u64(a[2].i64)}
+	_p2.data = lookup_Element(&c, _p2.handle)
+	if _p2.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webaudio.WebAudio_captureElement: argument element is not a live Element") }
+		return wasm.trap_new("webaudio.WebAudio_captureElement: argument element is not a live Element")
+	}
+	_r := WebAudio_captureElement(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// WebAudio_paramGet :: proc(c: ^Call, graph: u64, node: i32, index: i32) -> f64
+@(private = "file")
+_t_webaudio_WebAudio_paramGet :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32
+	_p2 := a[2].i32
+	_r := WebAudio_paramGet(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// WebAudio_paramSet :: proc(c: ^Call, graph: u64, node: i32, index: i32, value: f64) -> bool
+@(private = "file")
+_t_webaudio_WebAudio_paramSet :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32
+	_p2 := a[2].i32
+	_p3 := a[3].f64
+	_r := WebAudio_paramSet(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// WebAudio_paramRate :: proc(c: ^Call, graph: u64, node: i32, index: i32, a_rate: bool)
+@(private = "file")
+_t_webaudio_WebAudio_paramRate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32
+	_p2 := a[2].i32
+	_p3 := a[3].i32 != 0
+	WebAudio_paramRate(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// WebAudio_paramEvent :: proc(c: ^Call, graph: u64, node: i32, index: i32, kind: i32, time: f64, value: f64, extra: f64, curve: []u8) -> bool
+@(private = "file")
+_t_webaudio_WebAudio_paramEvent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n7 := wasm.addr(&f, a[8])
+	_s7, _k7 := wasm.span(&f, wasm.addr(&f, a[7]), _n7)
+	if !_k7 { return wasm.trap_bounds(&f, "webaudio.WebAudio_paramEvent", "curve") }
+	_p7 := _s7[:_n7]
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32
+	_p2 := a[2].i32
+	_p3 := a[3].i32
+	_p4 := a[4].f64
+	_p5 := a[5].f64
+	_p6 := a[6].f64
+	_r := WebAudio_paramEvent(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6, _p7)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// WebAudio_paramCancel :: proc(c: ^Call, graph: u64, node: i32, index: i32, time: f64, hold: bool)
+@(private = "file")
+_t_webaudio_WebAudio_paramCancel :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32
+	_p2 := a[2].i32
+	_p3 := a[3].f64
+	_p4 := a[4].i32 != 0
+	WebAudio_paramCancel(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// WebAudio_biquadResponse :: proc(c: ^Call, graph: u64, node: i32, frequencies: []u8, magnitude: []u8, phase: []u8)
+@(private = "file")
+_t_webaudio_WebAudio_biquadResponse :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n2 := wasm.addr(&f, a[3])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "webaudio.WebAudio_biquadResponse", "frequencies") }
+	_n3 := wasm.addr(&f, a[5])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[4]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "webaudio.WebAudio_biquadResponse", "magnitude") }
+	_n4 := wasm.addr(&f, a[7])
+	_s4, _k4 := wasm.span(&f, wasm.addr(&f, a[6]), _n4)
+	if !_k4 { return wasm.trap_bounds(&f, "webaudio.WebAudio_biquadResponse", "phase") }
+	_p2 := _s2[:_n2]
+	_p3 := _s3[:_n3]
+	_p4 := _s4[:_n4]
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32
+	WebAudio_biquadResponse(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// WebAudio_setIir :: proc(c: ^Call, graph: u64, node: i32, feedforward: []u8, feedback: []u8)
+@(private = "file")
+_t_webaudio_WebAudio_setIir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n2 := wasm.addr(&f, a[3])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "webaudio.WebAudio_setIir", "feedforward") }
+	_n3 := wasm.addr(&f, a[5])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[4]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "webaudio.WebAudio_setIir", "feedback") }
+	_p2 := _s2[:_n2]
+	_p3 := _s3[:_n3]
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32
+	WebAudio_setIir(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// WebAudio_iirResponse :: proc(c: ^Call, graph: u64, node: i32, frequencies: []u8, magnitude: []u8, phase: []u8)
+@(private = "file")
+_t_webaudio_WebAudio_iirResponse :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n2 := wasm.addr(&f, a[3])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "webaudio.WebAudio_iirResponse", "frequencies") }
+	_n3 := wasm.addr(&f, a[5])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[4]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "webaudio.WebAudio_iirResponse", "magnitude") }
+	_n4 := wasm.addr(&f, a[7])
+	_s4, _k4 := wasm.span(&f, wasm.addr(&f, a[6]), _n4)
+	if !_k4 { return wasm.trap_bounds(&f, "webaudio.WebAudio_iirResponse", "phase") }
+	_p2 := _s2[:_n2]
+	_p3 := _s3[:_n3]
+	_p4 := _s4[:_n4]
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32
+	WebAudio_iirResponse(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// WebAudio_analyserRead :: proc(c: ^Call, graph: u64, node: i32, what: i32, values: []u8) -> i32
+@(private = "file")
+_t_webaudio_WebAudio_analyserRead :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n3 := wasm.addr(&f, a[4])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[3]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "webaudio.WebAudio_analyserRead", "values") }
+	_p3 := _s3[:_n3]
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32
+	_p2 := a[2].i32
+	_r := WebAudio_analyserRead(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// WebAudio_scriptPull :: proc(c: ^Call, graph: u64, node: i32, values: []u8)
+@(private = "file")
+_t_webaudio_WebAudio_scriptPull :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n2 := wasm.addr(&f, a[3])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "webaudio.WebAudio_scriptPull", "values") }
+	_p2 := _s2[:_n2]
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32
+	WebAudio_scriptPull(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// WebAudio_scriptPush :: proc(c: ^Call, graph: u64, node: i32, values: []u8)
+@(private = "file")
+_t_webaudio_WebAudio_scriptPush :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n2 := wasm.addr(&f, a[3])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "webaudio.WebAudio_scriptPush", "values") }
+	_p2 := _s2[:_n2]
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32
+	WebAudio_scriptPush(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// WebAudio_pcmCreate :: proc(c: ^Call, channels: u32, length: u32, rate: f64) -> u64
+@(private = "file")
+_t_webaudio_WebAudio_pcmCreate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u32(a[0].i32)
+	_p1 := u32(a[1].i32)
+	_p2 := a[2].f64
+	_r := WebAudio_pcmCreate(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// WebAudio_pcmWrite :: proc(c: ^Call, pcm: u64, channel: u32, start: u32, values: []u8)
+@(private = "file")
+_t_webaudio_WebAudio_pcmWrite :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n3 := wasm.addr(&f, a[4])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[3]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "webaudio.WebAudio_pcmWrite", "values") }
+	_p3 := _s3[:_n3]
+	_p0 := u64(a[0].i64)
+	_p1 := u32(a[1].i32)
+	_p2 := u32(a[2].i32)
+	WebAudio_pcmWrite(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// WebAudio_pcmRead :: proc(c: ^Call, pcm: u64, channel: u32, start: u32, values: []u8)
+@(private = "file")
+_t_webaudio_WebAudio_pcmRead :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n3 := wasm.addr(&f, a[4])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[3]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "webaudio.WebAudio_pcmRead", "values") }
+	_p3 := _s3[:_n3]
+	_p0 := u64(a[0].i64)
+	_p1 := u32(a[1].i32)
+	_p2 := u32(a[2].i32)
+	WebAudio_pcmRead(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// WebAudio_pcmInfo :: proc(c: ^Call, pcm: u64, which: i32) -> f64
+@(private = "file")
+_t_webaudio_WebAudio_pcmInfo :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32
+	_r := WebAudio_pcmInfo(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// WebAudio_decode :: proc(c: ^Call, data: []u8, rate: f64) -> u64
+@(private = "file")
+_t_webaudio_WebAudio_decode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "webaudio.WebAudio_decode", "data") }
+	_p0 := _s0[:_n0]
+	_p1 := a[2].f64
+	_r := WebAudio_decode(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
 // VideoFrame_fromImage :: proc(c: ^Call, source: u64, timestamp: i64, has_ts: bool, duration: i64, has_duration: bool) -> (u64, Api_Error)
 @(private = "file")
 _t_webcodecs_VideoFrame_fromImage :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -34765,6 +35525,49 @@ api_imports := [?]wasm.Import{
 	{module = "webassembly", name = "WebAssembly_extern_released", fn = _t_webassembly_WebAssembly_extern_released, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "webassembly", name = "WebAssembly_Instance_create", fn = _t_webassembly_WebAssembly_Instance_create, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "webassembly", name = "WebAssembly_Instance_exports", fn = _t_webassembly_WebAssembly_Instance_exports, realms = 3, params = []wasm.Val_Kind{.I32, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "webaudio", name = "WebAudio_enabled", fn = _t_webaudio_WebAudio_enabled, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
+	{module = "webaudio", name = "WebAudio_fullyActive", fn = _t_webaudio_WebAudio_fullyActive, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
+	{module = "webaudio", name = "WebAudio_defaultRate", fn = _t_webaudio_WebAudio_defaultRate, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.F64}},
+	{module = "webaudio", name = "WebAudio_maxBufferBytes", fn = _t_webaudio_WebAudio_maxBufferBytes, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.F64}},
+	{module = "webaudio", name = "WebAudio_create", fn = _t_webaudio_WebAudio_create, realms = 1, params = []wasm.Val_Kind{.F64, .I32, .I32, .F64, .I32, .I32}, results = []wasm.Val_Kind{.I64}},
+	{module = "webaudio", name = "WebAudio_resume", fn = _t_webaudio_WebAudio_resume, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "webaudio", name = "WebAudio_suspend", fn = _t_webaudio_WebAudio_suspend, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webaudio", name = "WebAudio_close", fn = _t_webaudio_WebAudio_close, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "webaudio", name = "WebAudio_time", fn = _t_webaudio_WebAudio_time, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "webaudio", name = "WebAudio_queued", fn = _t_webaudio_WebAudio_queued, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "webaudio", name = "WebAudio_render", fn = _t_webaudio_WebAudio_render, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "webaudio", name = "WebAudio_takeResult", fn = _t_webaudio_WebAudio_takeResult, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "webaudio", name = "WebAudio_offlineSuspend", fn = _t_webaudio_WebAudio_offlineSuspend, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webaudio", name = "WebAudio_offlineResume", fn = _t_webaudio_WebAudio_offlineResume, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "webaudio", name = "WebAudio_nodeCreate", fn = _t_webaudio_WebAudio_nodeCreate, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .F64, .F64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webaudio", name = "WebAudio_nodeRelease", fn = _t_webaudio_WebAudio_nodeRelease, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}},
+	{module = "webaudio", name = "WebAudio_connect", fn = _t_webaudio_WebAudio_connect, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "webaudio", name = "WebAudio_disconnect", fn = _t_webaudio_WebAudio_disconnect, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "webaudio", name = "WebAudio_nodeSet", fn = _t_webaudio_WebAudio_nodeSet, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .F64}, results = []wasm.Val_Kind{}},
+	{module = "webaudio", name = "WebAudio_nodeGet", fn = _t_webaudio_WebAudio_nodeGet, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.F64}},
+	{module = "webaudio", name = "WebAudio_start", fn = _t_webaudio_WebAudio_start, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "webaudio", name = "WebAudio_stop", fn = _t_webaudio_WebAudio_stop, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .F64}, results = []wasm.Val_Kind{}},
+	{module = "webaudio", name = "WebAudio_setBuffer", fn = _t_webaudio_WebAudio_setBuffer, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I64}, results = []wasm.Val_Kind{}},
+	{module = "webaudio", name = "WebAudio_setConvolver", fn = _t_webaudio_WebAudio_setConvolver, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I64, .I32}, results = []wasm.Val_Kind{}},
+	{module = "webaudio", name = "WebAudio_setCurve", fn = _t_webaudio_WebAudio_setCurve, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "webaudio", name = "WebAudio_setWave", fn = _t_webaudio_WebAudio_setWave, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64, .I64, .I64, .I32}, wide_results = []wasm.Val_Kind{}},
+	{module = "webaudio", name = "WebAudio_captureElement", fn = _t_webaudio_WebAudio_captureElement, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webaudio", name = "WebAudio_paramGet", fn = _t_webaudio_WebAudio_paramGet, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.F64}},
+	{module = "webaudio", name = "WebAudio_paramSet", fn = _t_webaudio_WebAudio_paramSet, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .F64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webaudio", name = "WebAudio_paramRate", fn = _t_webaudio_WebAudio_paramRate, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{}},
+	{module = "webaudio", name = "WebAudio_paramEvent", fn = _t_webaudio_WebAudio_paramEvent, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .F64, .F64, .F64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .F64, .F64, .F64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webaudio", name = "WebAudio_paramCancel", fn = _t_webaudio_WebAudio_paramCancel, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .F64, .I32}, results = []wasm.Val_Kind{}},
+	{module = "webaudio", name = "WebAudio_biquadResponse", fn = _t_webaudio_WebAudio_biquadResponse, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "webaudio", name = "WebAudio_setIir", fn = _t_webaudio_WebAudio_setIir, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "webaudio", name = "WebAudio_iirResponse", fn = _t_webaudio_WebAudio_iirResponse, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "webaudio", name = "WebAudio_analyserRead", fn = _t_webaudio_WebAudio_analyserRead, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webaudio", name = "WebAudio_scriptPull", fn = _t_webaudio_WebAudio_scriptPull, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "webaudio", name = "WebAudio_scriptPush", fn = _t_webaudio_WebAudio_scriptPush, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "webaudio", name = "WebAudio_pcmCreate", fn = _t_webaudio_WebAudio_pcmCreate, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .F64}, results = []wasm.Val_Kind{.I64}},
+	{module = "webaudio", name = "WebAudio_pcmWrite", fn = _t_webaudio_WebAudio_pcmWrite, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "webaudio", name = "WebAudio_pcmRead", fn = _t_webaudio_WebAudio_pcmRead, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "webaudio", name = "WebAudio_pcmInfo", fn = _t_webaudio_WebAudio_pcmInfo, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.F64}},
+	{module = "webaudio", name = "WebAudio_decode", fn = _t_webaudio_WebAudio_decode, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .F64}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .F64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "webcodecs", name = "VideoFrame_fromImage", fn = _t_webcodecs_VideoFrame_fromImage, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I32, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "webcodecs", name = "VideoFrame_fromBuffer", fn = _t_webcodecs_VideoFrame_fromBuffer, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I32, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I64, .I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "webcodecs", name = "VideoFrame_format", fn = _t_webcodecs_VideoFrame_format, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},

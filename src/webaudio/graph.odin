@@ -452,3 +452,10 @@ delay_write :: proc(n: ^Node) {
 	for &in_put in n.inputs { mix_input(n, &in_put) }
 	delay_store(n)
 }
+
+live_nodes :: proc(g: ^Graph) -> int {
+	sync.guard(&g.mu)
+	n := 0
+	for node in g.nodes { if node != nil { n += 1 } }
+	return n
+}
