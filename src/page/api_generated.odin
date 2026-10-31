@@ -2447,6 +2447,58 @@ _t_async_Buffer_slice :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	return nil
 }
 
+// BlobURL_register :: proc(c: ^Call, url: string, type: string, data: []u8)
+@(private = "file")
+_t_bloburl_BlobURL_register :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "bloburl.BlobURL_register", "url") }
+	_n1 := wasm.addr(&f, a[3])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[2]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "bloburl.BlobURL_register", "type") }
+	_n2 := wasm.addr(&f, a[5])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[4]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "bloburl.BlobURL_register", "data") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "bloburl.BlobURL_register: argument url is not valid UTF-8") }
+		return wasm.trap_new("bloburl.BlobURL_register: argument url is not valid UTF-8")
+	}
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "bloburl.BlobURL_register: argument type is not valid UTF-8") }
+		return wasm.trap_new("bloburl.BlobURL_register: argument type is not valid UTF-8")
+	}
+	_p2 := _s2[:_n2]
+	BlobURL_register(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// BlobURL_revoke :: proc(c: ^Call, url: string)
+@(private = "file")
+_t_bloburl_BlobURL_revoke :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "bloburl.BlobURL_revoke", "url") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "bloburl.BlobURL_revoke: argument url is not valid UTF-8") }
+		return wasm.trap_new("bloburl.BlobURL_revoke: argument url is not valid UTF-8")
+	}
+	BlobURL_revoke(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
 // CacheStorage_check :: proc(c: ^Call) -> Api_Error
 @(private = "file")
 _t_caches_CacheStorage_check :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -32844,6 +32896,8 @@ api_imports := [?]wasm.Import{
 	{module = "async", name = "Buffer_read", fn = _t_async_Buffer_read, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "async", name = "Buffer_write", fn = _t_async_Buffer_write, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "async", name = "Buffer_slice", fn = _t_async_Buffer_slice, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "bloburl", name = "BlobURL_register", fn = _t_bloburl_BlobURL_register, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "bloburl", name = "BlobURL_revoke", fn = _t_bloburl_BlobURL_revoke, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "caches", name = "CacheStorage_check", fn = _t_caches_CacheStorage_check, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "caches", name = "CacheStorage_openName", fn = _t_caches_CacheStorage_openName, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "caches", name = "CacheStorage_hasName", fn = _t_caches_CacheStorage_hasName, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},

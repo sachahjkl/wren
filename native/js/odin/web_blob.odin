@@ -3,8 +3,8 @@
 //
 // A Blob's bytes live in the engine, in a reference-counted store a slice shares (slicing copies nothing). Reading a
 // Blob gives copies (text(), arrayBuffer(), bytes()); a browser function that takes the bytes reads them in place
-// (web_blob_bytes). blob: URLs are known to this realm only: fetch() and XMLHttpRequest of this realm resolve them
-// (web_blob_url_lookup), other loads of the page (an <img src="blob:...">) do not. The URL -> Blob table is a native
+// (web_blob_bytes). blob: URLs: fetch() and XMLHttpRequest of this realm resolve them
+// (web_blob_url_lookup), other loads go through the browser's store (src/fetch/blob_urls.odin). The URL -> Blob table is a native
 // map (the C kept a JavaScript Map made at pre-initialization).
 package odin_glue
 
@@ -604,6 +604,16 @@ wjr_URL_static_createObjectURL :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVal
 		copy(k, url[:])
 		blob_urls[string(k)] = wj.JS_DupValue(ctx, argv[0])
 	}
+	// (for what loads a URL outside this realm: an image, a stylesheet, a frame...)
+	bytes: [^]u8
+	size: uint
+	if web_blob_bytes(argv[0], &bytes, &size) {
+		tv := wj.JS_GetPropertyStr(ctx, argv[0], "type")
+		ty, tc, tok := wj.to_string_view(ctx, tv)
+		wj.wr_BlobURL_register(raw_data(url), u32(len(url)), raw_data(ty), tok ? u32(len(ty)) : 0, size > 0 ? bytes : wj.empty_ptr(), u32(size))
+		if tc != nil { wj.free_cstring(ctx, tc) }
+		wj.JS_FreeValue(ctx, tv)
+	}
 	return wj.new_string_len(ctx, url[:])
 }
 
@@ -619,6 +629,7 @@ wjr_URL_static_revokeObjectURL :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVal
 	defer wj.free_cstring(ctx, kc)
 	if len(k) >= 5 && k[:5] == "blob:" { jsb.host(&none_m2, api_decl.MediaSource_revokeObjectURL, wj.wr_MediaSource_revokeObjectURL, k) }
 	if k in blob_urls {
+		wj.wr_BlobURL_revoke(raw_data(k), u32(len(k)))
 		stored_key, b := delete_key(&blob_urls, k)
 		wj.JS_FreeValue(ctx, b)
 		delete(stored_key)

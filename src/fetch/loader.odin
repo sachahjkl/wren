@@ -312,6 +312,7 @@ run_hop :: proc(t: ^Task) {
 	switch t.target.scheme {
 	case "http", "https": http_hop(t)
 	case "data":          data_hop(t)
+	case "blob":          blob_hop(t)
 	case "file":          file_hop(t)
 	case "about":
 		if t.target.href == "about:blank" { synthetic(t, 200, "text/html;charset=utf-8", nil); return }

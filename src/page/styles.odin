@@ -55,6 +55,7 @@ free_load :: proc(p: ^Page, l: ^Style_Load) {
 styles_destroy :: proc(p: ^Page) {
 	for _, l in p.link_loads { free_load(p, l) }
 	delete(p.link_loads)
+	link_preloads_free(p)
 	for l in p.import_loads { free_load(p, l) }
 	delete(p.import_loads)
 	fonts_destroy(p)
@@ -291,6 +292,7 @@ import_failed :: proc(p: ^Page, l: ^Style_Load) {
 // The parser revealed `node` (js_load.odin reveal_node): a <link> whose sheet settled meanwhile gets its event now.
 @(private)
 link_revealed :: proc(p: ^Page, node: base.Handle) {
+	link_preload_note(p, node)
 	l, ok := p.link_loads[node]
 	if !ok || l.held_event == .None || l.held_event == .Imports { return }
 	ev := l.held_event
@@ -306,13 +308,16 @@ styles_note_inserted :: proc(p: ^Page, node: base.Handle) {
 	d := p.doc
 	stack := make([dynamic]base.Handle, 0, 8, context.temp_allocator)
 	append(&stack, node)
+	sheets := false
 	for len(stack) > 0 {
 		cur := pop(&stack)
 		n := dom.get(d, cur)
 		if n == nil || n.kind != .Element { continue }
-		if n.name == "link" || n.name == "style" { styles_sync_soon(p); return }
+		if n.name == "link" { link_preload_note(p, cur) }
+		if n.name == "link" || n.name == "style" { sheets = true }
 		for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(d, ch).next { append(&stack, ch) }
 	}
+	if sheets { styles_sync_soon(p) }
 }
 
 // An attribute of `el` changed: a <link>'s rel, href, media, type, disabled, crossorigin decide what it loads.
@@ -320,6 +325,7 @@ styles_note_inserted :: proc(p: ^Page, node: base.Handle) {
 styles_note_attribute :: proc(p: ^Page, el: base.Handle, name: string) {
 	n := dom.get(p.doc, el)
 	if n == nil || n.kind != .Element || n.name != "link" { return }
+	if name == "rel" || name == "href" || name == "as" { link_preload_note(p, el) }
 	switch name {
 	case "rel", "href", "media", "type", "disabled", "crossorigin":
 		if dom.is_connected(p.doc, el) || name == "rel" { styles_sync_soon(p) }

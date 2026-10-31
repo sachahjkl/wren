@@ -15,7 +15,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | interfaces, namespaces in the table | 605 |
 | exposed by default | 368 |
 | members | 5310 |
-| members implemented | 3799 (71.5 %) |
+| members implemented | 3805 (71.7 %) |
 
 ## By specification
 
@@ -23,7 +23,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 |---|---:|---:|
 | `FileAPI.idl` | 5 (4) | 33 / 38 |
 | `IndexedDB.idl` | 12 (0) | 11 / 94 |
-| `SVG.idl` | 60 (35) | 210 / 455 |
+| `SVG.idl` | 60 (35) | 216 / 455 |
 | `clipboard-apis.idl` | 4 (1) | 4 / 14 |
 | `compression.idl` | 2 (2) | 6 / 6 |
 | `console.idl` | 1 (1) | 19 / 19 |
@@ -3746,12 +3746,12 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### SVGGraphicsElement : SVGElement
 
-0 / 6 members.
+3 / 6 members.
 
 - `readonly transform`: not supported
-- `getBBox()`: not supported
-- `getCTM()`: not supported
-- `getScreenCTM()`: not supported
+- `getBBox()`: C `wjr_SVGGraphicsElement_getBBox`
+- `getCTM()`: C `wjr_SVGGraphicsElement_getCTM`
+- `getScreenCTM()`: C `wjr_SVGGraphicsElement_getScreenCTM`
 - `readonly requiredExtensions` (SVGTests): not supported
 - `readonly systemLanguage` (SVGTests): not supported
 
@@ -3873,7 +3873,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### SVGSVGElement : SVGGraphicsElement
 
-20 / 46 members.
+23 / 46 members.
 
 - `readonly x`: not supported
 - `readonly y`: not supported
@@ -3889,9 +3889,9 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `createSVGNumber()`: not supported
 - `createSVGLength()`: not supported
 - `createSVGAngle()`: not supported
-- `createSVGPoint()`: not supported
-- `createSVGMatrix()`: not supported
-- `createSVGRect()`: not supported
+- `createSVGPoint()`: C `wjr_SVGSVGElement_createSVGPoint`
+- `createSVGMatrix()`: C `wjr_SVGSVGElement_createSVGMatrix`
+- `createSVGRect()`: C `wjr_SVGSVGElement_createSVGRect`
 - `createSVGTransform()`: not supported
 - `createSVGTransformFromMatrix()`: not supported
 - `getElementById()`: not supported
