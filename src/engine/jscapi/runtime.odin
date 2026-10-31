@@ -125,6 +125,7 @@ JS_SetMemoryLimit :: proc "c" (r: ^Runtime, limit: uint) {
 }
 
 JS_SetGCThreshold :: proc "c" (r: ^Runtime, gc_threshold: uint) {
+	if js.GC_STRESS_BYTES > 0 {return} // a stress build keeps its own pace from the first allocation
 	jrt(r).gc_threshold = i64(gc_threshold)
 }
 
@@ -137,7 +138,7 @@ JS_GetGCThreshold :: proc "c" (r: ^Runtime) -> uint {
 JS_SetGCThresholdFloor :: proc "c" (r: ^Runtime, floor: uint) {
 	rt := jrt(r)
 	state_of(rt).gc_floor = i64(floor)
-	if rt.gc_threshold < i64(floor) {rt.gc_threshold = i64(floor)}
+	if js.GC_STRESS_BYTES == 0 && rt.gc_threshold < i64(floor) {rt.gc_threshold = i64(floor)}
 }
 
 JS_SetGCPrologue :: proc "c" (r: ^Runtime, cb: GC_Prologue, opaque: rawptr) {

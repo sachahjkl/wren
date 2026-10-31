@@ -10,6 +10,7 @@ package jsrt
 // Memory is traced, not reference counted (see gc.odin): copying a Value is a plain copy, there is no
 // dup/free discipline to get wrong. What keeps a heap cell alive is reachability from the roots.
 
+import "base:intrinsics"
 import "core:math"
 
 Tag :: enum u8 {
@@ -116,11 +117,18 @@ is_heap :: #force_inline proc "contextless" (v: Value) -> bool {
 	return v.tag >= .string && v.tag <= .module
 }
 
-as_obj :: #force_inline proc "contextless" (v: Value) -> ^Object {return cast(^Object)v.u.ptr}
-as_str :: #force_inline proc "contextless" (v: Value) -> ^JS_String {return cast(^JS_String)v.u.ptr}
-as_sym :: #force_inline proc "contextless" (v: Value) -> ^Symbol {return cast(^Symbol)v.u.ptr}
-as_big :: #force_inline proc "contextless" (v: Value) -> ^JS_BigInt {return cast(^JS_BigInt)v.u.ptr}
-as_cell :: #force_inline proc "contextless" (v: Value) -> ^Cell {return cast(^Cell)v.u.ptr}
+// GC_POISON (gc.odin): a value that points at a swept cell traps where it is read.
+poison_check :: #force_inline proc "contextless" (p: rawptr) {
+	when GC_POISON {
+		if p != nil && (cast(^Cell)p).kind == CELL_DEAD {intrinsics.trap()}
+	}
+}
+
+as_obj :: #force_inline proc "contextless" (v: Value) -> ^Object {poison_check(v.u.ptr); return cast(^Object)v.u.ptr}
+as_str :: #force_inline proc "contextless" (v: Value) -> ^JS_String {poison_check(v.u.ptr); return cast(^JS_String)v.u.ptr}
+as_sym :: #force_inline proc "contextless" (v: Value) -> ^Symbol {poison_check(v.u.ptr); return cast(^Symbol)v.u.ptr}
+as_big :: #force_inline proc "contextless" (v: Value) -> ^JS_BigInt {poison_check(v.u.ptr); return cast(^JS_BigInt)v.u.ptr}
+as_cell :: #force_inline proc "contextless" (v: Value) -> ^Cell {poison_check(v.u.ptr); return cast(^Cell)v.u.ptr}
 as_f64 :: #force_inline proc "contextless" (v: Value) -> f64 {
 	return v.tag == .int ? f64(v.u.i) : v.u.f
 }
