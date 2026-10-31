@@ -298,7 +298,7 @@ exec_search :: proc(e: ^Exec, s: ^Subject, bc: []u8, from: int) -> Lre_Status {
 @(private = "file")
 poll :: #force_inline proc(e: ^Exec) -> bool {
 	rt := e.ctx.rt
-	if rt.interrupt_counter + 1 < 10_000 {
+	if rt.interrupt_counter + 1 < INTERRUPT_POLL_EVERY {
 		rt.interrupt_counter += 1
 		return false
 	}

@@ -70,7 +70,8 @@ $script:flaky = @{}
 function Report($name, $ok, $out, $secs, $port = 0) {
     if (-not $ok -and $script:flaky.ContainsKey($name)) {
         "FLAKY {0} (known to fail at random: not counted)" -f $name
-        ($out -split "`n" | Select-Object -Last 15) -join "`n"
+        # which checks failed, wherever they are in its output: a step marked flaky must still say what went wrong
+        ($out -split "`n" | Where-Object { $_ -match '^\s*FAIL|^REGRESSION|^\[ERROR\]|failed' } | Select-Object -First 15) -join "`n"
         return
     }
     "{0} {1}{2}" -f $(if ($ok) { 'PASS' } else { 'FAIL' }), $name, $(if ($CI -or $Jobs -gt 1) { " ($secs s$(if ($port) { ", server on $port" }))" } else { '' })
