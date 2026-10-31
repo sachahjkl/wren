@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>Wren - A browser where WebAssembly runs everything</title>
-  <meta name="description" content="Wren is a browser written from scratch in Odin, for Windows: WebAssembly is its only execution engine, JavaScript included, and everything is drawn on the GPU.">
+  <meta name="description" content="Wren is a browser written from scratch in Odin, for Windows and Linux: WebAssembly is its only execution engine, JavaScript included, and everything is drawn on the GPU.">
   <link rel="icon" type="image/png" sizes="32x32" href="img/logo-32.png">
   <link rel="icon" type="image/png" sizes="64x64" href="img/logo-64.png">
   <link rel="stylesheet" href="style.css">
@@ -42,9 +42,10 @@
     <p class="tagline">A browser where WebAssembly runs everything, JavaScript included</p>
     <div class="actions">
       <a class="btn primary" href="https://github.com/sachahjkl/wren/releases/latest">Download for Windows</a>
+      <a class="btn" href="https://github.com/sachahjkl/wren/releases/latest">Download for Linux</a>
       <a class="btn" href="https://github.com/sachahjkl/wren">View on GitHub</a>
     </div>
-    <p class="fine">Version <!-- latest -->0.6.21<!-- /latest -->, an early preview · Windows x64 · PolyForm Strict license</p>
+    <p class="fine">Version <!-- latest -->0.6.21<!-- /latest -->, an early preview · Windows x64, Linux x86-64 · PolyForm Strict license</p>
 
     <div class="shot-stage">
       <input class="shot-radio" type="radio" name="shot" id="shot-1" checked>
@@ -211,7 +212,7 @@
             slow.</li>
           <li><strong>Part of the web platform</strong>: about 72&nbsp;% of the members of its Web IDL are implemented;
             no WebGL, WebGPU, Web Audio or WebRTC.</li>
-          <li><strong>Releases for Windows only</strong>; Linux builds from source.</li>
+          <li><strong>Linux is newer than Windows</strong>: a release needs glibc 2.39 or later, and its GPU video decoding is software for now.</li>
         </ul>
       </div>
     </div>

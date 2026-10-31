@@ -515,6 +515,8 @@ call itself.</li>
 <li>The Wasm unit tests must run on one thread on every system (<code>-define:ODIN_TEST_THREADS=1</code>), as <code>test_all</code> does: the
 runtime is process-wide.</li>
 </ul>
+<h2 id="slice-8-2026-10-31-a-linux-package"><a class="anchor" href="#slice-8-2026-10-31-a-linux-package" aria-hidden="true">#</a>Slice 8 (2026-10-31): a Linux package</h2>
+<p><code>./build.sh release</code> then <code>tools/package_linux.sh</code> make <code>build/dist/wren-&lt;version&gt;-linux-x64.tar.gz</code>; the workflow <code>linux-package.yml</code> builds it on ubuntu-24.04 (so glibc 2.39 or later), unpacks it and runs <code>tools/linux_smoke.sh</code> under xvfb before the release adds it. The engine image comes from a Windows job. Two things it took: the sealed Rust archives need <code>ld -r --force-group-allocation</code> (otherwise the linker discards their <code>DW.ref.rust_eh_personality</code>); the main thread raises its own stack limit (<code>host.main_stack_ensure</code>).</p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../docs/api/workers.html"><span>Previous</span><strong>Module workers</strong></a>
 <a class="doc-next" href="../docs/winget.html"><span>Next</span><strong>Publishing Wren on winget</strong></a>
@@ -535,6 +537,7 @@ runtime is process-wide.</li>
 <li><a href="#inventory-of-slice-1-2026-10-27">Inventory of slice 1 (2026-10-27)</a></li>
 <li><a href="#order-recommended-in-slices">Order recommended, in slices</a></li>
 <li><a href="#risks">Risks</a></li>
+<li><a href="#slice-8-2026-10-31-a-linux-package">Slice 8 (2026-10-31): a Linux package</a></li>
 </ul>
 </nav>
 </main>

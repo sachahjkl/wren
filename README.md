@@ -203,6 +203,10 @@ Download `wren-<version>-windows-x64.exe` from the [latest release](https://gith
 the program is that one file (its licenses are in it, `about:licenses`; `wren.exe --setup` installs it). It needs Windows 10 or 11 (x64)
 with a Direct3D 11 GPU; nothing else to install.
 
+On Linux, download `wren-<version>-linux-x64.tar.gz`, unpack it and run `./wren`; its `README.txt` lists what it needs from the
+distribution (glibc 2.39 or later, libopus, libasound, libfontconfig; for a window, libwayland-client and libxkbcommon or libxcb, and a
+Vulkan or OpenGL driver).
+
 The download is the program and nothing else. The demo and test pages (`examples\site`), the examples and the small test server
 (`tools\testserver`, Go) belong to the repository: clone it to get them (`tools\package.ps1 -Extras` also packs them as a zip to
 extract beside `wren.exe`).
@@ -440,8 +444,8 @@ replace one. Known limits:
   ([`docs/js/coverage.md`](docs/js/coverage.md)). Among what pages notice: no WebGL, WebGPU, Web Audio or WebRTC, no
   video or audio encoder in WebCodecs; Canvas 2D is software-drawn; `Intl` follows English conventions whatever the
   locale. Applications that rely on these show little or nothing.
-- **Releases for Windows only** (Win32, Direct3D 11, Media Foundation). The Linux build links and runs from source, with
-  nothing to download yet ([`docs/portability.md`](docs/portability.md)).
+- **Linux is newer than Windows**: releases for Linux x86-64 need glibc 2.39 or later (Ubuntu 24.04, Debian 13, Fedora 40); what is checked and what is not is in
+  [`docs/portability.md`](docs/portability.md).
 - No HTTP authentication; CSP violations are reported to the console only.
 - No IME composition, no vertical writing modes, no multi-column layout; no `captureStream`, Encrypted Media Extensions (DRM), Ogg, MP3 or WAV files in
   `<audio>`.
