@@ -52,9 +52,12 @@ Objects :: struct {
 	// can name it. A caller (a timer, requestAnimationFrame, an event listener, a module's script) sets it just before
 	// call_guest; it is read once and reset. The default is a user-callback with no source.
 	loaf_kind:       Loaf_Invoker,
-	loaf_invoker:    string,   // static or temp: the invoker name (e.g. the event type)
-	loaf_source_url: string,   // static or temp: the script's source URL
+	loaf_invoker:    [LOAF_INVOKER_MAX_BYTES]u8,   // the invoker's name (e.g. the event type), a copy
+	loaf_invoker_len: int,
 }
+
+// More than the names of events and callbacks need: a longer one is cut in the timing entry.
+LOAF_INVOKER_MAX_BYTES :: 64
 
 @(private)
 objects_destroy :: proc(p: ^Page) {
