@@ -10,6 +10,27 @@ Semantic Versioning, since a patch version can add or remove features.
 
 ## [Unreleased]
 
+## [0.6.23] - 2026-11-01
+
+### Added
+- **Web Audio**: `AudioContext` and `OfflineAudioContext` with their nodes (buffer sources, oscillators with `PeriodicWave`, gain, constant source, biquad and IIR filters, delay, stereo and equal-power panners, splitter, merger, compressor, wave shaper, analyser, convolver, `ScriptProcessorNode`, `MediaElementAudioSourceNode`), `AudioParam` with all its automation, and `decodeAudioData` (off the page's thread: MP4, WebM, WAV, MP3, AAC, FLAC, Ogg). The graph renders in the browser (`src/webaudio`) on a thread per running context; `media.autoplay.policy` holds a context until a click or a key press; the tab's mute and speaker follow it. No `AudioWorklet`, `MediaStream` nodes or HRTF yet (`docs/js/web-audio.md`). The web-platform-tests of `webaudio/` go from 24.4 % to about 90 %.
+
+### Changed
+- **Regular expressions search faster**: a regexp that is not sticky no longer goes through a bytecode loop for each position of the subject, and skips at once the positions where its first character or range cannot match; `replace` copies the text between matches in one go. Octane's regexp from 127 to about 165 (measured with other work on the machine).
+
+### Fixed
+- Long Animation Frames entries no longer carry garbage as the invoker's name, which made the page's PerformanceObserver throw `JSON.parse: bad escape` (reddit.com): the name was kept by reference, and read after it was gone when an event had no listener.
+- `getComputedStyle` answers for shorthands (`border-radius`, `border`, `border-*`, `outline`, `inset`, `gap`, `flex`, `flex-flow`, `text-decoration`, `background`, `font`) and `mask-image` instead of an empty string, and `margin` and `padding` in their shortest form: reddit.com's scripts threw on the NaN they made of it.
+- An element removed from a page with a shadow root and rules on form controls (`:valid`, `:checked`...) no longer hangs the browser while it takes all the memory: a walk of the document went from a shadow root to its host and back for ever (reddit.com, 22 GB in five minutes).
+- A form submitted while the page loads (a login's automatic POST, reddit's check page) navigates: it reached the browser before the shell had attached itself to the page, and was dropped with `form submission ignored: no navigator`.
+- The console explains an `InternalError: interrupted` from a promise reaction or an async function (`javascript.slow_script_ms`), as it did for a script, and no longer reports an error for a worker terminated while it starts.
+- A same-origin frame's `navigator`, `screen` and `crypto` no longer throw a SecurityError: the frame gives this realm's own, as it did for `console` (x.com's scripts read them from a blank frame).
+- An SVG image addressed with a fragment (`icons.svg#save`, in `<img>`, `background-image` or `mask-image`) gets `:target` in its style sheets: sprites that show one icon that way no longer come out empty (the icons of tldraw.com).
+- A `<meta>` Content-Security-Policy applies to inline code and eval from where it stands: a script the parser ran before it is no longer refused.
+- A service worker answering a no-cors request with an opaque response (`respondWith(fetch(e.request))`, a stylesheet or script of another origin, also from the Cache API) no longer gives the page an empty body: the browser fetches that address for the page, scripts in the worker still never see the bytes. Such a response from the Cache API stays opaque, and a request that is not no-cors gets a network error. A second visit to vscode.dev stayed blank.
+- Compiling a large bundle no longer compares every reference with every top-level name: three to four times quicker on the 21 MB of vscode.dev, the same bytecode.
+- Large scripts compile on their background threads whatever `wasm.max_call_ms` says: past that limit (1 s) the thread's engine died and the interface thread compiled that bundle and all later ones itself, inside the time `javascript.slow_script_ms` allows a task (vscode.dev stayed blank).
+
 ## [0.6.22] - 2026-10-31
 
 ### Added
@@ -770,7 +791,8 @@ Pages name their Wasm modules with `<script type="application/wasm">`; the web A
 - **The browser**: tabs, history, find in page, selection, zoom, view-source, `about:config`, frame pacing and
   statistics.
 
-[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.6.22...HEAD
+[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.6.23...HEAD
+[0.6.23]: https://github.com/sachahjkl/wren/compare/v0.6.22...v0.6.23
 [0.6.22]: https://github.com/sachahjkl/wren/compare/v0.6.21...v0.6.22
 [0.6.21]: https://github.com/sachahjkl/wren/compare/v0.6.20...v0.6.21
 [0.6.20]: https://github.com/sachahjkl/wren/compare/v0.6.19...v0.6.20
