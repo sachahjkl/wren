@@ -16,6 +16,11 @@ self.addEventListener("fetch", (e) => {
     e.respondWith(new Response('<!doctype html><p id="x">a page the service worker made</p>', { headers: { "content-type": "text/html" } }));
   } else if (u.pathname.endsWith("/data.txt") || u.pathname.endsWith("/cached-only.txt")) {
     e.respondWith(caches.match(e.request).then((r) => r || fetch(e.request)));
+  } else if (u.hostname === "localhost") {
+    // a script of another origin without CORS: its answer is opaque here, the page gets it all the same; the next time from the cache
+    e.respondWith(caches.open("opaque").then((c) => c.match(e.request).then((r) => r || fetch(e.request).then((n) => c.put(e.request, n.clone()).then(() => n)))));
+  } else if (u.pathname.endsWith("/opaque-for-cors")) {
+    e.respondWith(fetch(u.searchParams.get("to"), { mode: "no-cors" }));
   }
 });
 self.addEventListener("message", (e) => {

@@ -43,6 +43,18 @@ try {
   Expect ($data -match 'data from the network') 'a request answered from the cache (respondWith(caches.match))' $data
   $only = Wren-Ctl eval 'fetch("cached-only.txt").then((r) => r.text())' --await
   Expect ($only -eq 'put by the worker') 'a response the worker put in its cache, which the network does not have' $only
+  # an opaque response handed to the page: scripts in the worker never have its bytes, the page's <script> runs it all the same
+  $foreign = $srv.Origin -replace '127\.0\.0\.1', 'localhost'
+  $opaqueUrl = "$foreign/jsload/gen?code=window.opaqueRan%3D(window.opaqueRan%7C%7C0)%2B1"
+  $addScript = 'new Promise((ok) => { const s = document.createElement("script"); s.src = "' + $opaqueUrl + '"; s.onload = () => ok(String(window.opaqueRan)); s.onerror = () => ok("error"); document.head.appendChild(s); })'
+  $o1 = Wren-Ctl eval $addScript --await
+  Expect ($o1 -eq '1') 'a no-cors script of another origin answered with fetch(e.request), an opaque response: it runs' $o1
+  $o2 = Wren-Ctl eval $addScript --await
+  Expect ($o2 -eq '2') 'the same answered from the cache, where the opaque response was put' $o2
+  $oHead = Wren-Ctl eval ('caches.open("opaque").then((c) => c.match("' + $opaqueUrl + '")).then((r) => r.text().then((t) => [r.type, r.status, "[" + r.url + "]", "[" + t + "]"].join(" ")))') --await
+  Expect ($oHead -eq 'opaque 0 [] []') 'read from the cache, it is still opaque to scripts' $oHead
+  $oCors = Wren-Ctl eval ('fetch("opaque-for-cors?to=" + encodeURIComponent("' + $opaqueUrl + '")).then(() => "answered", (e) => e.name)') --await
+  Expect ($oCors -eq 'TypeError') 'an opaque response for a request that is not no-cors is a network error' $oCors
   Wren-Ctl eval 'navigator.serviceWorker.controller.postMessage("ping"); "sent"' | Out-Null
   Start-Sleep -Milliseconds 800
   $msgs = Wren-Ctl eval 'swMessages.join(",")'

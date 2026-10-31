@@ -996,6 +996,7 @@ Fetch_Request :: struct {
 Fetch_Response :: struct {
 	status:                              i32,
 	status_text, headers, url, signal:   wj.JSValue,
+	internal_url:                        wj.JSValue,       // an opaque response's address: `url` is "" to scripts, the browser may fetch it for a page (web_response_opaque)
 	type:                                Response_Type,
 	redirected:                          bool,
 	body:                                Body,
@@ -1024,7 +1025,7 @@ response_free :: proc "c" (p: rawptr) {
 	context = wj.heap_context()
 	r := (^Fetch_Response)(p)
 	rt := wj.web_rt()
-	for v in ([]wj.JSValue{r.status_text, r.headers, r.url, r.signal}) { wj.JS_FreeValueRT(rt, v) }
+	for v in ([]wj.JSValue{r.status_text, r.headers, r.url, r.signal, r.internal_url}) { wj.JS_FreeValueRT(rt, v) }
 	body_free(rt, &r.body)
 	if r.record != 0 { jsb.host(&none_fetch, api_decl.Fetch_release, wj.wr_Fetch_release, r.record) }
 	free(r)
@@ -1035,7 +1036,7 @@ response_free :: proc "c" (p: rawptr) {
 @(private = "file")
 response_mark :: proc "c" (rt: rawptr, p: rawptr, mf: rawptr) {
 	r := (^Fetch_Response)(p)
-	for v in ([]wj.JSValue{r.status_text, r.headers, r.url, r.signal}) { wj.wj_mark(rt, v, mf) }
+	for v in ([]wj.JSValue{r.status_text, r.headers, r.url, r.signal, r.internal_url}) { wj.wj_mark(rt, v, mf) }
 	body_mark(rt, &r.body, mf)
 }
 
@@ -1678,6 +1679,7 @@ response_new_impl :: proc(ctx: ^wj.Context) -> ^Fetch_Response {
 		headers     = wj.UNDEFINED,
 		url         = js_str(ctx, ""),
 		signal      = wj.UNDEFINED,
+		internal_url = wj.UNDEFINED,
 		type        = .Default,
 	}
 	return r
@@ -1889,6 +1891,24 @@ web_response_set_url :: proc "c" (ctx: ^wj.Context, resp: wj.JSValue, url: [^]u8
 	r.url = wj.new_string_len(ctx, url, n)
 }
 
+// Whether a response is opaque to scripts, and the address it came from. A service worker's realm never holds its bytes
+// (the browser drops them, scripts must not see them), so handing one to a page means fetching that address for it.
+web_response_opaque :: proc "contextless" (resp: wj.JSValue) -> (internal_url: wj.JSValue, opaque, redirect: bool) {
+	r := response_of(resp)
+	if r == nil { return wj.UNDEFINED, false, false }
+	return r.internal_url, r.type == .Opaque || r.type == .Opaque_Redirect, r.type == .Opaque_Redirect
+}
+
+// A response the Cache API read back from an entry stored from an opaque one: opaque again, its address kept out of scripts' sight.
+web_response_make_opaque :: proc "c" (ctx: ^wj.Context, resp: wj.JSValue, internal_url: [^]u8, n: uint) {
+	r := response_of(resp)
+	if r == nil { return }
+	r.type = .Opaque
+	r.status = 0
+	wj.JS_FreeValue(ctx, r.internal_url)
+	r.internal_url = wj.new_string_len(ctx, internal_url, n)
+}
+
 @(export, link_name = "wjr_Response_clone")
 wjr_Response_clone :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	context = wj.heap_context()
@@ -1903,6 +1923,7 @@ wjr_Response_clone :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i3
 	r.status_text = wj.JS_DupValue(ctx, src.status_text)
 	wj.JS_FreeValue(ctx, r.url)
 	r.url = wj.JS_DupValue(ctx, src.url)
+	r.internal_url = wj.JS_DupValue(ctx, src.internal_url)
 	r.signal = wj.JS_DupValue(ctx, src.signal)
 	sh := headers_of(src.headers)
 	r.headers = headers_copy(ctx, sh, sh != nil ? sh.guard : .Response)
@@ -1942,6 +1963,10 @@ response_from_host :: proc(ctx: ^wj.Context, record: api_decl.Fetch, signal: wj.
 		wj.JS_FreeValue(ctx, r.url)
 		r.url = wj.new_string_len(ctx, url)
 		r.body = Body_Host{record = record}
+	} else {
+		url: string
+		jsb.host(&url, api_decl.Fetch_url, wj.wr_Fetch_url, record)
+		r.internal_url = wj.new_string_len(ctx, url)
 	}
 	return response_object(ctx, wj.UNDEFINED, r)
 }

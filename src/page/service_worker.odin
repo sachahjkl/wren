@@ -52,6 +52,8 @@ SW_STATE_NAMES := [Sw_State]string{.Parsed = "parsed", .Installing = "installing
 Sw_Event_Kind :: enum i64 { None, Install, Activate, Fetch, Message, Answer, Registration, Preload }
 Sw_Reply_Kind :: enum i64 { None, Install_Done, Activate_Done, Respond, Fall_Back, Fail, Skip_Waiting, Claim, Post_Client, Script_Ran, Request, Preload }
 Sw_Request_Op :: enum i64 { None, Match_All, Get, Open_Window, Navigate, Focus, Update, Unregister }
+// Fall_Back's code: the worker answered with an opaque response (web_sw.odin's REPLY_OPAQUE), the text says of which address.
+SW_REPLY_OPAQUE :: i64(1)
 
 // The shell's side of clients.openWindow and WindowClient.focus (browser/sw_shell.odin); nil procedures: refused.
 Sw_Embedder :: struct {
@@ -794,6 +796,12 @@ sw_page_reply :: proc(h: ^Worker_Host, m: ^Worker_Msg) {
 			fetch.sw_respond(f.loader, f.task, int(m.code2), m.text, m.bytes)
 			f.answered = true
 		case .Fall_Back:
+			if m.code2 == SW_REPLY_OPAQUE {
+				fetch.sw_respond_opaque(f.loader, f.task, m.text2)
+				f.answered = true
+				break
+			}
+			// (or an opaque redirect: the network's answer has it, and the loader follows it for the page)
 			if f.pre_state != 0 { f.fall_back = true; sw_preload_settle(f); return }   // the preload's response answers
 			fetch.sw_fall_back(f.loader, f.task)
 			f.answered = true

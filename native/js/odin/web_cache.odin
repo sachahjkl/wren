@@ -191,7 +191,8 @@ entry_response :: proc(ctx: ^wj.Context, name: string, id: u64) -> wj.JSValue {
 	defer wj.libc_free(head_mem)
 	f := split_head(string(head_mem[:len(text)]))
 	status := atoi(f[.Status])
-	null_body := false
+	opaque := status == 0   // (the only response stored with this status: Response's constructor refuses it)
+	null_body := opaque
 	switch status { case 101, 103, 204, 205, 304: null_body = true }
 	if status < 200 || status > 599 { status = 200 }
 	body := wj.NULL
@@ -211,6 +212,10 @@ entry_response :: proc(ctx: ^wj.Context, name: string, id: u64) -> wj.JSValue {
 	wj.JS_FreeValue(ctx, ctor)
 	wj.JS_FreeValue(ctx, body)
 	wj.JS_FreeValue(ctx, init)
+	if opaque {
+		if !wj.is_exception(r) { web_response_make_opaque(ctx, r, raw_data(f[.Response_Url]), uint(len(f[.Response_Url]))) }
+		return r
+	}
 	// the response keeps the URL it had ("" for a Response a script constructed, as stored)
 	if !wj.is_exception(r) && len(f[.Response_Url]) > 0 {
 		web_response_set_url(ctx, r, raw_data(f[.Response_Url]), uint(len(f[.Response_Url])))
@@ -365,7 +370,9 @@ put_body_read :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, ar
 	wj.wj_to_str(ctx, tv, &st_text, 0, nil)
 	wj.JS_FreeValue(ctx, tv)
 	defer wj.wj_str_free(ctx, &st_text)
-	uv := wj.JS_GetPropertyStr(ctx, resp, "url")
+	// (an opaque response's `url` is "": the entry keeps the address it came from, never shown to scripts)
+	internal, opaque, _ := web_response_opaque(resp)
+	uv := opaque ? wj.JS_DupValue(ctx, internal) : wj.JS_GetPropertyStr(ctx, resp, "url")
 	wj.wj_to_str(ctx, uv, &rurl, 0, nil)
 	wj.JS_FreeValue(ctx, uv)
 	defer wj.wj_str_free(ctx, &rurl)
