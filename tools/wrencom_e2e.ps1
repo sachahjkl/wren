@@ -112,7 +112,7 @@ try {
     $r = (& $copyAsExe ctl help 2>&1 | Out-String); $code = $LASTEXITCODE
     Check 'named .exe it would start itself: refused (126)' ($code -eq 126 -and $r -match 'would\s+start\s+itself') "code $code $r"
     $r = (& "$lone\wren.com" ctl help 2>&1 | Out-String); $code = $LASTEXITCODE
-    Check 'without a wren.exe beside it: says so (127)' ($code -eq 127 -and $r -match 'no .*wren\.exe') "code $code $r"
+    Check 'without a wren.exe beside it: says so (127)' ($code -eq 127 -and $r -match '(?s)no\s.*wren\.exe') "code $code $r"
 
     # --- an interface start lets go; the Wren it started answers; it ends with `ctl quit`
     Push-Location $app
