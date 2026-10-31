@@ -101,6 +101,22 @@ main :: proc() {
 	if !page.register_imports() { fmt.eprintln("register failed"); os.exit(2) }
 	process := base.scope_make("process")
 
+	fmt.println("-- a form submitted while the page loads, before the embedder is there")
+	{
+		early := page.page_create(&loop, &loader, &settings, process, testenv.url("http://127.0.0.1:8765/site/early.html"), console)
+		page.load_html(early, transmute([]byte)string(`<!doctype html><form id=f action="/next"></form><script>document.getElementById("f").submit()</script>`))
+		page.scripts_start(early)
+		for _ in 0 ..< 20 { host.loop_wait(&loop, 1) }
+		page.set_forms_embedder(early, page.Forms_Embedder{
+			navigate = proc(user: rawptr, pg: ^page.Page, s: ^forms.Submission) { append(&submissions, s) },
+		})
+		for i := 0; i < 200 && len(submissions) == 0; i += 1 { host.loop_wait(&loop, 1) }
+		check(len(submissions) == 1, "its navigation waited, and goes when the embedder comes")
+		for s in submissions { forms.submission_destroy(s) }
+		clear(&submissions)
+		page.page_close(early)
+	}
+
 	fmt.println("-- the page and its form")
 	p := page.page_create(&loop, &loader, &settings, process, testenv.url("http://127.0.0.1:8765/site/forms.html"), console)
 	the_page = p
