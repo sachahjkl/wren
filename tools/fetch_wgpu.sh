@@ -30,7 +30,7 @@ if [ "$GOT" != "$SHA256" ]; then echo "SHA-256 mismatch for wgpu-linux-$ARCH-rel
 unzip -q "$TMP/wgpu.zip" -d "$TMP/x"
 # Sealed, as tools/fetch_wasmtime.sh does: the archive carries its own copy of Rust's standard library, and so does
 # build/native-linux/libwren_native.a; the program sees the C API (wgpu*) only, each Rust keeps its own runtime.
-ld -r --whole-archive "$TMP/x/lib/libwgpu_native.a" -o "$TMP/wgpu.o"
+ld -r --force-group-allocation --whole-archive "$TMP/x/lib/libwgpu_native.a" -o "$TMP/wgpu.o"
 nm -g --defined-only "$TMP/wgpu.o" | awk '{print $3}' | grep -E '^wgpu' > "$TMP/keep.txt"
 objcopy --keep-global-symbols="$TMP/keep.txt" "$TMP/wgpu.o"
 mkdir -p "$DEST"

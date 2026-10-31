@@ -36,7 +36,7 @@ mkdir -p "$OUT/lib"
 # archive is linked into one relocatable object and every symbol but the C API's (wasm_*, wasmtime_*, wasi_*, wat_*)
 # made local: the program sees the C API only, each Rust keeps its own runtime. (On Windows the MSVC toolchain has no
 # such shared symbol: wasmtime.lib links as shipped.)
-ld -r --whole-archive "$TMP/$NAME/lib/libwasmtime.a" -o "$TMP/wasmtime.o"
+ld -r --force-group-allocation --whole-archive "$TMP/$NAME/lib/libwasmtime.a" -o "$TMP/wasmtime.o"
 nm -g --defined-only "$TMP/wasmtime.o" | awk '{print $3}' | grep -E '^(wasm_|wasmtime_|wasi_|wat_)' > "$TMP/keep.txt"
 objcopy --keep-global-symbols="$TMP/keep.txt" "$TMP/wasmtime.o"
 ar rcs "$OUT/lib/libwasmtime.a" "$TMP/wasmtime.o"
