@@ -25,6 +25,12 @@ import "wb:dom"
 import lay "wb:layout"
 import "wb:page"
 
+// Nodes an "expand / collapse all" touches at once.
+DEV_ELEMENTS_TOGGLE_BUDGET :: 5000
+// A search of the Elements panel visits at most this many nodes, and stops at this many matches.
+DEV_ELEMENTS_SEARCH_VISITS :: 400000
+DEV_ELEMENTS_SEARCH_MATCHES :: 5000
+
 El_Kind :: enum u8 { Open, Close, Inline, Text, Comment, Doctype }
 
 El_Span :: struct { name_a, name_b, val_a, val_b: int }   // an attribute in a row's label (value spans are of the text inside the quotes)
@@ -461,10 +467,10 @@ tree_view :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 		if dt_btn("###dt_el_search", .Search, tooltip = "Find in the tree (text, tag, attribute, selector, XPath)", shortcut = "Ctrl+F", on = e.search_on).clicked { e.search_on = !e.search_on }
 		dt_vsep("###dt_eb0")
 		if dt_btn("###dt_el_expand", .Chevron_Down, tooltip = "Expand the selected node and all that is in it", enabled = e.selected != base.NIL_HANDLE).clicked {
-			if t.page != nil { budget := 5000; toggle_all(e, t.page.doc, e.selected, true, &budget) }
+			if t.page != nil { budget := DEV_ELEMENTS_TOGGLE_BUDGET; toggle_all(e, t.page.doc, e.selected, true, &budget) }
 		}
 		if dt_btn("###dt_el_collapse", .Chevron_Right, tooltip = "Collapse the selected node and all that is in it", enabled = e.selected != base.NIL_HANDLE).clicked {
-			if t.page != nil { budget := 5000; toggle_all(e, t.page.doc, e.selected, false, &budget) }
+			if t.page != nil { budget := DEV_ELEMENTS_TOGGLE_BUDGET; toggle_all(e, t.page.doc, e.selected, false, &budget) }
 		}
 		ui.next({width = ui.fill(), height = ui.pct(1)})
 		ui.custom("###dt_el_info", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
@@ -858,8 +864,8 @@ elements_menu_items :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 		}
 	}
 	ui.menu_separator()
-	if ui.menu_item("Expand all underneath###dt_em_exp", enabled = r.expandable).clicked { budget := 5000; toggle_all(e, t.page.doc, h, true, &budget) }
-	if ui.menu_item("Collapse all underneath###dt_em_col", enabled = r.expandable).clicked { budget := 5000; toggle_all(e, t.page.doc, h, false, &budget) }
+	if ui.menu_item("Expand all underneath###dt_em_exp", enabled = r.expandable).clicked { budget := DEV_ELEMENTS_TOGGLE_BUDGET; toggle_all(e, t.page.doc, h, true, &budget) }
+	if ui.menu_item("Collapse all underneath###dt_em_col", enabled = r.expandable).clicked { budget := DEV_ELEMENTS_TOGGLE_BUDGET; toggle_all(e, t.page.doc, h, false, &budget) }
 	if ui.menu_item("Scroll into view###dt_em_scroll", enabled = is_el).clicked { scroll_into_view(app, t, h) }
 	if ui.menu_item("Store as global variable###dt_em_store", enabled = r.kind != .Close && r.kind != .Doctype).clicked {
 		dev().con.evaluating = true
@@ -995,8 +1001,8 @@ run_search :: proc(t: ^Tab, e: ^Dev_Elements) {
 	path := sel ? strings.split(strings.trim_prefix(q, "//"), "/", context.temp_allocator) : nil
 	stack := make([dynamic]base.Handle, context.temp_allocator)
 	append(&stack, d.root)
-	budget := 400000
-	for len(stack) > 0 && budget > 0 && len(e.found) < 5000 {
+	budget := DEV_ELEMENTS_SEARCH_VISITS
+	for len(stack) > 0 && budget > 0 && len(e.found) < DEV_ELEMENTS_SEARCH_MATCHES {
 		h := pop(&stack)
 		budget -= 1
 		n := dom.get(d, h)

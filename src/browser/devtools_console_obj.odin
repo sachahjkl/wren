@@ -12,6 +12,10 @@ import "core:fmt"
 import "core:strings"
 import "toolkit:draw"
 
+// Console: how long a string is shown inside an object, and how long at the top level (in runes).
+DEV_CONSOLE_NESTED_STRING_RUNES :: 80
+DEV_CONSOLE_STRING_RUNES :: 4000
+
 Obj_Line :: struct { depth: int, runs: []Dt_Run }
 
 Con_Table :: struct {
@@ -107,7 +111,7 @@ render :: proc(out: ^Out, v: json.Value, nested: bool) {
 	switch val_str(o, "t") {
 	case "s":
 		s := val_str(o, "v")
-		if nested { emit(out, fmt.tprintf("'%s'", dev_line(s, 80)), .String) } else { emit(out, dev_line(s, 4000), .Plain) }
+		if nested { emit(out, fmt.tprintf("'%s'", dev_line(s, DEV_CONSOLE_NESTED_STRING_RUNES)), .String) } else { emit(out, dev_line(s, DEV_CONSOLE_STRING_RUNES), .Plain) }
 	case "n": emit(out, val_str(o, "v"), .Number)
 	case "i": emit(out, val_str(o, "v"), .Number)
 	case "b", "u", "z": emit(out, node_text(v), .Atom)

@@ -27,6 +27,12 @@ import "wb:style"
 import "wb:wasm"
 import "wb:base"
 
+// The frames shown are kept for the rate window and this much more, at most this many of them.
+HUD_SHOWN_EXTRA_MS :: 1000
+HUD_SHOWN_MAX :: 8192
+// The status bar settles this long after the rate window has passed (so the last frame has left it).
+HUD_SETTLE_EXTRA_MS :: 20
+
 HUD_PREFS := [?]config.Def{
 	{name = "browser.status_bar.visible", kind = .Bool, default = {b = true},
 		description = "Show the status bar at the bottom of the window (Ctrl+B): the page's state on the left, the frame graph and counters on the right."},
@@ -274,7 +280,7 @@ hud_displayed :: proc(d: render.Displayed_Frame) {
 	append(&hud.shown, Shown_Sample{t_ms = now, latency_ms = lat, missed = d.missed})
 	// keep the rate window (and a bound)
 	keep_from := 0
-	for keep_from < len(hud.shown) && (hud.shown[keep_from].t_ms < now - hud.cfg.window_ms - 1000 || len(hud.shown) - keep_from > 8192) { keep_from += 1 }
+	for keep_from < len(hud.shown) && (hud.shown[keep_from].t_ms < now - hud.cfg.window_ms - HUD_SHOWN_EXTRA_MS || len(hud.shown) - keep_from > HUD_SHOWN_MAX) { keep_from += 1 }
 	if keep_from > 0 { remove_range(&hud.shown, 0, keep_from) }
 	prof_displayed(d, lat)
 }
@@ -427,7 +433,7 @@ hud_sample :: proc(app: ^App, now: f64) {
 @(private = "file")
 hud_arm_settle :: proc() {
 	if hud.settle != base.NIL_HANDLE || the_app == nil { return }
-	hud.settle = host.set_timer(&the_app.loop, hud.cfg.window_ms + 20, 0, hud_settle_timer, the_app)
+	hud.settle = host.set_timer(&the_app.loop, hud.cfg.window_ms + HUD_SETTLE_EXTRA_MS, 0, hud_settle_timer, the_app)
 }
 
 @(private = "file")
@@ -436,7 +442,7 @@ hud_settle_timer :: proc(data: rawptr) {
 	app := (^App)(data)
 	now := ui.now_ms()
 	if idle := now - hud.last_frame_ms; idle < hud.cfg.window_ms {
-		hud.settle = host.set_timer(&app.loop, hud.cfg.window_ms - idle + 20, 0, hud_settle_timer, app)
+		hud.settle = host.set_timer(&app.loop, hud.cfg.window_ms - idle + HUD_SETTLE_EXTRA_MS, 0, hud_settle_timer, app)
 		return
 	}
 	hud.settle_skip = true   // the frame this wakes is no sample

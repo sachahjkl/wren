@@ -32,6 +32,9 @@ import "wb:page"
 import "wb:remote"
 import "wb:url"
 import "wb:wasm"
+
+// How much of a text resource a tab shows in its <pre>.
+SHOW_TEXT_MAX_BYTES :: 1 << 20
 import "wb:tools/crashtrace"   // a crash leaves its symbolized stack and a minidump in <profile>\crashes
 
 DEBUG_INPUT :: #config(DEBUG_INPUT, false)
@@ -663,7 +666,7 @@ show_text :: proc(app: ^App, load: ^Doc_Load, data: []byte) {
 	defer delete(d.text)
 	p := load.page
 	pre := dom.create_element(p.doc, "pre")
-	dom.set_text_content(p.doc, pre, string(d.text[:min(len(d.text), 1 << 20)]))
+	dom.set_text_content(p.doc, pre, string(d.text[:min(len(d.text), SHOW_TEXT_MAX_BYTES)]))
 	dom.append_child(p.doc, p.body, pre)
 	page.render_begin(p)
 	set_status(load.tab, fmt.tprintf("HTTP %d, %d bytes of text", load.status, len(data)))

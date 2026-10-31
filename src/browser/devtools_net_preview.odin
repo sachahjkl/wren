@@ -20,6 +20,10 @@ import "wb:html"
 import "wb:images"
 import "wb:webfont"
 
+// The Network panel's reader view of an HTML response: the nodes it parses, and the bytes of text it shows.
+NET_PREVIEW_HTML_MAX_NODES :: 20000
+NET_PREVIEW_HTML_MAX_TEXT :: 400_000
+
 Pv_Kind :: enum u8 { None, Image, Font, Html, Media }
 
 Preview_State :: struct {
@@ -656,9 +660,9 @@ rd_walk :: proc(c: ^Rd_Ctx, h: base.Handle) {
 html_reader_make :: proc(h: ^Html_Reader, body: []byte) {
 	d := dom.document_create()
 	defer dom.document_destroy(d)
-	res := html.parse_into(d, d.root, body, 20000)
+	res := html.parse_into(d, d.root, body, NET_PREVIEW_HTML_MAX_NODES)
 	h.nodes = res.nodes
-	c := Rd_Ctx{h = h, d = d, budget = 400_000}
+	c := Rd_Ctx{h = h, d = d, budget = NET_PREVIEW_HTML_MAX_TEXT}
 	rd_walk(&c, d.root)
 	if h.title == "" { h.title = strings.clone(strings.trim_space(html.title(d))) }
 	h.raw = strings.split_lines(string(body))

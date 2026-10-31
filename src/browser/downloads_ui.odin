@@ -20,6 +20,10 @@ import "wb:config"
 import "wb:host"
 import "wb:i18n"
 
+// Periods of the animations of a download of unknown size: the sweep of its bar, and the turn of its ring.
+DOWNLOAD_SWEEP_PERIOD_MS :: 1500
+DOWNLOAD_RING_TURN_MS :: 1100
+
 DOWNLOADS_URL :: "about:downloads"
 
 is_downloads_address :: proc(a: string) -> bool { return a == DOWNLOADS_URL || strings.has_prefix(a, DOWNLOADS_URL + "#") }
@@ -95,7 +99,7 @@ dl_duration :: proc(secs: f64) -> string {
 
 @(private = "file")
 dl_speed_of :: proc(d: ^Download) -> f64 {
-	if d.state != .Receiving || dl_now_ms() - d.sample_ms > 2500 { return 0 }   // (nothing came for a while: stalled)
+	if d.state != .Receiving || dl_now_ms() - d.sample_ms > DOWNLOAD_STALLED_MS { return 0 }   // (nothing came for a while: stalled)
 	return d.speed
 }
 
@@ -225,7 +229,7 @@ dl_bar_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	fill: draw.Rect
 	if d.unknown {
 		seg := w * 0.34
-		phase := f32(math.mod(d.now_ms, 1500) / 1500)
+		phase := f32(math.mod(d.now_ms, DOWNLOAD_SWEEP_PERIOD_MS) / DOWNLOAD_SWEEP_PERIOD_MS)
 		e := phase * phase * (3 - 2 * phase)
 		x := math.lerp(-seg, w, e)
 		fill = {{r.min.x + max(0, x), r.min.y}, {r.min.x + min(w, x + seg), r.max.y}}
@@ -249,7 +253,7 @@ dl_bar_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	draw.gradient(dc, {fill.min, {fill.max.x, fill.min.y + h * 0.62}}, draw.Gradient{kind = .Linear, start = {0, 0}, end = {0, h * 0.62}, stops = gloss[:]})
 	// a light band travelling over the fill
 	bw := max(h * 5, fw * 0.28)
-	pos := f32(math.mod(d.now_ms, 1500) / 1500) * (fw + bw) - bw
+	pos := f32(math.mod(d.now_ms, DOWNLOAD_SWEEP_PERIOD_MS) / DOWNLOAD_SWEEP_PERIOD_MS) * (fw + bw) - bw
 	band := draw.Rect{{fill.min.x + max(pos, 0), fill.min.y}, {fill.min.x + min(pos + bw, fw), fill.max.y}}
 	if band.max.x > band.min.x {
 		hi := [3]draw.Gradient_Stop{{color = {1, 1, 1, 0}, pos = 0}, {color = {1, 1, 1, 0.42}, pos = 0.5}, {color = {1, 1, 1, 0}, pos = 1}}
@@ -650,7 +654,7 @@ dl_button_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		draw.rect(dc, bounds, tr)
 		clear_c := draw.Color{d.accent.r, d.accent.g, d.accent.b, 0}
 		if d.unknown {
-			turn := f32(math.mod(d.now_ms, 1100) / 1100)
+			turn := f32(math.mod(d.now_ms, DOWNLOAD_RING_TURN_MS) / DOWNLOAD_RING_TURN_MS)
 			stops := [4]draw.Gradient_Stop{{color = clear_c, pos = 0}, {color = d.accent, pos = 0.3}, {color = clear_c, pos = 0.3001}, {color = clear_c, pos = 1}}
 			draw.gradient(dc, bounds, draw.Gradient{kind = .Conic, center = {c.x - bounds.min.x, c.y - bounds.min.y}, angle = turn * 2 * math.PI - 0.3 * 2 * math.PI, stops = stops[:]})
 		} else {

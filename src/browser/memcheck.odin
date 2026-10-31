@@ -36,6 +36,11 @@ import "wb:webfont"
 import "toolkit:platform"
 import "toolkit:render"
 
+// The script driver's wait for a page load, unless the environment gives another.
+MEMCHECK_LOAD_MS :: 30_000
+// How many lines the memory reports list by default (memcheck_report_*.odin).
+MEMORY_REPORT_TOP :: 40
+
 // `profile_dir` is a copy the caller keeps until this returns (the app's is freed before).
 memcheck_exit :: proc(profile_dir: string) {
 	when base.TRACK_MEMORY {
@@ -132,7 +137,7 @@ driver_start :: proc() {
 	data, err := os.read_entire_file(path, context.allocator)
 	if err != nil { return }
 	driver.text = data
-	driver.load_ms = 30_000
+	driver.load_ms = MEMCHECK_LOAD_MS
 	if v := os.get_env("WREN_MEMCHECK_LOAD_MS", context.temp_allocator); v != "" {
 		if n, ok := strconv.parse_f64(v); ok && n > 0 { driver.load_ms = n }
 	}

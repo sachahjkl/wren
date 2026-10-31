@@ -20,6 +20,16 @@ DAY :: i64(86_400_000)
 @(private = "file")
 NOW :: i64(1_800_000_000_000)
 
+// How long a test waits for the history to be saved and for the index job, and the sleep between looks.
+@(private = "file")
+SAVE_DEADLINE_S :: 10
+@(private = "file")
+INDEX_JOB_DEADLINE_S :: 20
+@(private = "file")
+SAVE_POLL :: 5 * time.Millisecond
+@(private = "file")
+INDEX_JOB_POLL :: 2 * time.Millisecond
+
 @(private = "file")
 visit_list :: proc(spec: []struct { url, title: string, n: int, age_days: i64 }) -> [dynamic]Visit {
 	out := make([dynamic]Visit)
@@ -292,7 +302,7 @@ urlbar_rows_and_removal :: proc(t: ^testing.T) {
 	testing.expect_value(t, uv.sel, min(at, len(uv.rows) - 1))
 	// written at once: wait for the background write
 	deadline := time.tick_now()
-	for ghist.saving && time.duration_seconds(time.tick_since(deadline)) < 10 { host.run_ready(&app.loop); time.sleep(5 * time.Millisecond) }
+	for ghist.saving && time.duration_seconds(time.tick_since(deadline)) < SAVE_DEADLINE_S { host.run_ready(&app.loop); time.sleep(SAVE_POLL) }
 	data, err := os.read_entire_file(path, context.temp_allocator)
 	testing.expect(t, err == nil, "the history file was written")
 	testing.expect(t, strings.contains(string(data), "https://github.com/") && !strings.contains(string(data), "gitlab"), "the profile's history has no gitlab")
@@ -340,7 +350,7 @@ urlbar_thread_build :: proc(t: ^testing.T) {
 	append(&ghist.visits, Visit{id = ghist.next_id, at_ms = now, url = strings.clone("https://site12-new.example/"), title = strings.clone("New")})
 	ghist.serial = 2
 	start := time.tick_now()
-	for ub.job.state != .Idle && time.duration_seconds(time.tick_since(start)) < 20 { host.run_ready(&app.loop); time.sleep(2 * time.Millisecond) }
+	for ub.job.state != .Idle && time.duration_seconds(time.tick_since(start)) < INDEX_JOB_DEADLINE_S { host.run_ready(&app.loop); time.sleep(INDEX_JOB_POLL) }
 	testing.expect(t, ub.job.state == .Idle, "the build came back")
 	urlbar_refresh(app, .None)
 	urls := make([dynamic]string, context.temp_allocator)

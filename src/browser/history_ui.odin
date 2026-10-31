@@ -24,6 +24,9 @@ import "wb:base"
 import "wb:js"
 import "wb:page"
 
+// Where a label from a page's title or URL is cut by default (runes).
+SAFE_LABEL_MAX_RUNES :: 60
+
 HISTORY_URL :: "about:history"
 
 is_builtin_address :: proc(a: string) -> bool {
@@ -175,7 +178,7 @@ entry_label :: proc(e: ^page.History_Entry) -> string {
 }
 
 // "###" ends a label for the toolkit: keep it out of what a page chose.
-safe_label :: proc(s: string, max_runes := 60) -> string {
+safe_label :: proc(s: string, max_runes := SAFE_LABEL_MAX_RUNES) -> string {
 	out, _ := strings.replace_all(s, "#", "\u2009#", context.temp_allocator)   // (a thin space breaks "###")
 	n := 0
 	for _, i in out {

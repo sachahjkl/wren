@@ -319,7 +319,7 @@ cursor_image :: proc(app: ^App, t: ^Tab, images: []style.Cursor_Image, pos: [2]f
 			if lo.x < r.min.x || lo.y < r.min.y || hi.x > r.max.x || hi.y > r.max.y { continue }
 		}
 		want := [2]int{max(int(css.x * scale + 0.5), 1), max(int(css.y * scale + 0.5), 1)}
-		fp := page.frame_pixels(v.id, f64(host.now_ns(&app.loop)) / 1e6, want.x, want.y, 1000)
+		fp := page.frame_pixels(v.id, f64(host.now_ns(&app.loop)) / 1e6, want.x, want.y, IMAGE_PIXELS_PRIORITY_ON_SCREEN)
 		if !fp.ok || fp.width <= 0 || fp.height <= 0 { continue }
 		density := f32(fp.width) / css.x   // image pixels per CSS pixel of what was decoded (an SVG's raster, a reduced decode)
 		kb: [5]u64 = {fp.texture, fp.generation, u64(transmute(u32)hot.x) << 32 | u64(transmute(u32)hot.y), u64(transmute(u32)css.x) << 32 | u64(transmute(u32)css.y), u64(fp.width) << 32 | u64(fp.height)}

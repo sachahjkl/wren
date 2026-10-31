@@ -19,6 +19,9 @@ import "wb:page"
 import "wb:base"
 import "wb:host"
 
+// While requests are pending the Network panel is redrawn this often (their timings grow).
+DEV_NETWORK_TICK_MS :: 250
+
 Net_Col_Cfg :: struct { col: Net_Col, w: f32 }   // w: logical px, 0 = the room that is left
 
 Dev_Network :: struct {
@@ -453,7 +456,7 @@ net_entry_of_id :: proc(t: ^Tab, v: ^Dev_Network) -> ^Net_Entry {
 @(private = "file")
 net_tick :: proc(app: ^App, v: ^Dev_Network) {
 	if v.pending > 0 && v.tick == base.NIL_HANDLE {
-		v.tick = host.set_timer(&app.loop, 250, 0, proc(data: rawptr) {   // (the window's id: it may close before)
+		v.tick = host.set_timer(&app.loop, DEV_NETWORK_TICK_MS, 0, proc(data: rawptr) {   // (the window's id: it may close before)
 			w, d := devtools_of_window_id(the_app, int(uintptr(data)))
 			if d == nil { return }
 			d.net.tick = base.NIL_HANDLE

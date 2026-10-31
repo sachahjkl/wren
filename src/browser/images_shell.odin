@@ -34,6 +34,10 @@ import lay "wb:layout"
 import "wb:page"
 import "wb:style"
 
+// Decode priority of pixels asked for by what is drawn: on screen before anything prefetched, tiles after a whole image.
+IMAGE_PIXELS_PRIORITY_ON_SCREEN :: 1000
+IMAGE_PIXELS_PRIORITY_TILE :: 500
+
 Image_Texture :: distinct int   // the renderer's texture handle; 0 = none
 
 @(private = "file")
@@ -425,7 +429,7 @@ images_paint_content :: proc(dc: ^draw.Context, d: ^dom.Document, node: base.Han
 	case .Ready:
 		dst := fit_rect(content, v.natural, cs, scale)
 		ww, wh := want_size(dst)
-		fp := page.frame_pixels(v.id, shell.now_ms, ww, wh, 1000)   // on screen: before anything prefetched
+		fp := page.frame_pixels(v.id, shell.now_ms, ww, wh, IMAGE_PIXELS_PRIORITY_ON_SCREEN)   // on screen: before anything prefetched
 		if !fp.ok { draw_placeholder(dc, content, .Loading); return true }
 		note_next(fp)
 		tex, ok := texture_for(fp.texture, fp)
@@ -509,7 +513,7 @@ paint_inline_svg :: proc(dc: ^draw.Context, node: base.Handle, content: draw.Rec
 	v := page.inline_svg_view(shell.page, node, cw / s, ch / s)
 	if v.state != .Ready { return }
 	ww, wh := want_size(content)
-	fp := page.frame_pixels(v.id, shell.now_ms, ww, wh, 1000)
+	fp := page.frame_pixels(v.id, shell.now_ms, ww, wh, IMAGE_PIXELS_PRIORITY_ON_SCREEN)
 	if !fp.ok { return }
 	tex, ok := texture_for(fp.texture, fp)
 	if !ok { return }
@@ -599,7 +603,7 @@ images_paint_background_layer :: proc(dc: ^draw.Context, layer: ^style.Bg_Layer,
 		if !rep_y { dst.min.y, dst.max.y = max(dst.min.y, tile.min.y), min(dst.max.y, tile.max.y) }
 		if dst.max.x <= dst.min.x || dst.max.y <= dst.min.y { return }
 		ww, wh := want_size(tile)
-		fp := page.frame_pixels(v.id, shell.now_ms, ww, wh, 500)
+		fp := page.frame_pixels(v.id, shell.now_ms, ww, wh, IMAGE_PIXELS_PRIORITY_TILE)
 		if !fp.ok { return }
 		note_next(fp)
 		tex, ok := texture_for(fp.texture, fp)

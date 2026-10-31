@@ -276,8 +276,8 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 		b.slant = tab_slant(d)
 		paint = ui.frame_new(Classic_Tab)
 		paint.m, paint.c, paint.box, paint.dragging = m, cc, b, dragging
-		paint.selected = ui.anim(ui.key_from_string(b.key, "sel"), on ? 1 : 0, 34)
-		paint.hover = ui.anim(ui.key_from_string(b.key, "hov"), inside && !on ? 1 : 0, 40)
+		paint.selected = ui.anim(ui.key_from_string(b.key, "sel"), on ? 1 : 0, CHROME_ANIM_SELECT_RATE)
+		paint.hover = ui.anim(ui.key_from_string(b.key, "hov"), inside && !on ? 1 : 0, CHROME_ANIM_HOVER_RATE)
 		idle_top, idle_bot := ui.srgb_step(cc.idle_top, cc.hot_top, paint.hover), ui.srgb_step(cc.idle_bot, cc.hot_bot, paint.hover)
 		paint.top = ui.srgb_step(idle_top, cc.lit_top, paint.selected)
 		paint.bot = ui.srgb_step(idle_bot, cc.lit_mid, paint.selected)
@@ -289,7 +289,7 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 		b = ui.build_box({.Clickable, .Focusable, .Middle_Click, .Draw_Hot_Effects, .Hot_Within, .Clip}, id)
 		ui.pop_tags()
 		look := ui.frame_new(Tab_Look)
-		look.selected = ui.anim(ui.key_from_string(b.key, "sel"), on ? 1 : 0, 34)
+		look.selected = ui.anim(ui.key_from_string(b.key, "sel"), on ? 1 : 0, CHROME_ANIM_SELECT_RATE)
 		look.accent = ui.color("accent")
 		look.divider = ui.color("border")
 		look.hot = inside

@@ -17,6 +17,9 @@ import "toolkit:font"
 import "toolkit:platform"
 import "toolkit:ui"
 
+// Where a label made by dev_line is cut by default (runes).
+DEV_LINE_MAX_RUNES :: 500
+
 Dt_Density :: enum u8 { Compact, Comfortable }
 
 Dt_Metrics :: struct {
@@ -164,7 +167,7 @@ dt_runs :: proc(dc: ^draw.Context, f: font.Font_Id, size: f32, x, cy: f32, runs:
 }
 
 // A line for a label: one line, cut at max_runes, with nothing in it the toolkit reads as an id ("###").
-dev_line :: proc(s: string, max_runes := 500) -> string {
+dev_line :: proc(s: string, max_runes := DEV_LINE_MAX_RUNES) -> string {
 	out := s
 	if strings.contains(out, "###") { out, _ = strings.replace_all(out, "###", "#\u200b##", context.temp_allocator) }
 	if strings.contains_any(out, "\r\n\t") {

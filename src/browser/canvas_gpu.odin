@@ -15,6 +15,10 @@ import "wb:base"
 import "wb:canvas2d"
 import "wb:page"
 
+// A picture on the GPU unused for this many frames goes; and, while the budget is passed, one unused for this many.
+CANVAS_SOURCE_IDLE_FRAMES :: 1200
+CANVAS_SOURCE_IDLE_FRAMES_OVER_BUDGET :: 30
+
 #assert(size_of(canvas2d.Gpu_Inst) == size_of(render.Canvas_Inst))
 #assert(size_of(canvas2d.Gpu_Paint) == size_of(render.Canvas_Paint))
 #assert(size_of(canvas2d.Gpu_Cmd) == size_of(render.Canvas_Cmd))
@@ -100,7 +104,7 @@ canvas_gpu_begin_frame :: proc(app: ^App) {
 	for uid, e in cgpu.sources {
 		if e.pins > 0 { continue }
 		idle := cgpu.epoch - e.epoch
-		if idle > 1200 || (cgpu.bytes > limit && idle > 30) { source_free(cgpu.r, e); delete_key(&cgpu.sources, uid) }
+		if idle > CANVAS_SOURCE_IDLE_FRAMES || (cgpu.bytes > limit && idle > CANVAS_SOURCE_IDLE_FRAMES_OVER_BUDGET) { source_free(cgpu.r, e); delete_key(&cgpu.sources, uid) }
 	}
 }
 

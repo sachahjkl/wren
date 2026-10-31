@@ -20,6 +20,9 @@ import "wb:fetch"
 import "wb:host"
 import "wb:net"
 
+// The Network log always keeps at least this many entries (the lower bound of browser.devtools.network.max_entries).
+NET_LOG_MIN_ENTRIES :: 100
+
 Net_Type :: enum u8 { Doc, JS, CSS, Img, Media, Font, XHR, WS, Wasm, Other }
 
 NET_TYPE_NAMES := [Net_Type]string{.Doc = "Doc", .JS = "JS", .CSS = "CSS", .Img = "Img", .Media = "Media", .Font = "Font", .XHR = "Fetch/XHR", .WS = "WS", .Wasm = "Wasm", .Other = "Other"}
@@ -235,7 +238,7 @@ net_destroy_owner :: proc() {
 // Drops the oldest entries (a batch at a time) once the limit is passed.
 @(private = "file")
 net_trim :: proc(l: ^Net_Log) {
-	limit := max(net_prefs.max_entries, 100)
+	limit := max(net_prefs.max_entries, NET_LOG_MIN_ENTRIES)
 	if len(l.entries) <= limit + max(limit / 8, 16) { return }
 	drop := len(l.entries) - limit
 	for &e in l.entries[:drop] {

@@ -141,7 +141,7 @@ urlbar_index_ready :: proc(app: ^App, age := false) -> bool {
 	j := &ub.job
 	if j.state != .Idle { return false }
 	now := unix_ms_now()
-	stale := ub.idx.serial == 0 || (age && now - ub.idx.now_ms > 86_400_000)
+	stale := ub.idx.serial == 0 || (age && now - ub.idx.now_ms > URL_INDEX_MAX_AGE_MS)
 	if stale && len(ghist.visits) >= URLBAR_THREAD_VISITS {
 		urlbar_index_start(app, now)
 		return false

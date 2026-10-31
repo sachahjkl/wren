@@ -12,6 +12,9 @@ import lay "wb:layout"
 import "wb:page"
 import "wb:style"
 
+// A candidate selector matching more elements than this (or an invalid one, counted as 1 << 30) is no candidate.
+BLOCKER_PICK_MAX_MATCHES :: 1 << 20
+
 // The element picker. Aim: the pointer outlines the element of the page under it, a click chooses it (Escape or a right
 // click cancels). Then a bar over the bottom of the page proposes a cosmetic filter for it: a precision slider walks the
 // candidate selectors from the most specific to the broadest, the selector can be edited, the number of elements it
@@ -164,7 +167,7 @@ picker_candidates :: proc(p: ^page.Page, h: base.Handle) {
 	// drop the ones that match nothing or the whole page
 	w := 0
 	for i in 0 ..< len(pick.cands) {
-		if counts[i] == 0 || counts[i] > 1 << 20 { delete(pick.cands[i]); continue }
+		if counts[i] == 0 || counts[i] > BLOCKER_PICK_MAX_MATCHES { delete(pick.cands[i]); continue }
 		pick.cands[w] = pick.cands[i]; w += 1
 	}
 	resize(&pick.cands, w)
