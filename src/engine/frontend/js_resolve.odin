@@ -18,10 +18,27 @@ add_closure_var :: proc(s: ^Func_Def, closure_type: Closure_Type, var_idx: int, 
 }
 
 find_closure_var :: proc(s: ^Func_Def, var_name: Atom) -> int {
-	for cv, i in s.closure_var {
-		if cv.var_name == var_name {return i}
+	from, to := closure_search_range(s, var_name)
+	for i in from ..< to {
+		if s.closure_var[i].var_name == var_name {return i}
 	}
 	return -1
+}
+
+// The part of fd.closure_var a search for `name` has to go through, in order. All of it when the list is short, or holds a
+// variable object or a with (a search reports those it passes: resolve_scope_var); else the name's first entry, or nothing.
+closure_search_range :: proc(fd: ^Func_Def, name: Atom) -> (from, to: int) {
+	if len(fd.closure_var) < NAME_INDEX_MIN_ENTRIES {return 0, len(fd.closure_var)}
+	ix := &fd.closure_index
+	if ix.names == nil {ix.names = make(map[Atom]i32, len(fd.closure_var) * 2)}
+	for ; ix.upto < len(fd.closure_var); ix.upto += 1 {
+		n := fd.closure_var[ix.upto].var_name
+		if n == A__var_ || n == A__arg_var_ || n == A__with_ {ix.mixed = true}
+		if n not_in ix.names {ix.names[n] = i32(ix.upto)}
+	}
+	if ix.mixed {return 0, len(fd.closure_var)}
+	if i, ok := ix.names[name]; ok {return int(i), int(i) + 1}
+	return 0, 0
 }
 
 // get_closure_var: 'fd' must be a parent of 's'; create in 's' a closure referencing one in 'fd'.
@@ -404,7 +421,8 @@ resolve_scope_var :: proc(s: ^Func_Def, var_name: Atom, scope_level0: int, op: i
 
 	cidx := -1
 	if var_idx < 0 && fd.is_eval {
-		for idx1 in 0 ..< len(fd.closure_var) {
+		from, to := closure_search_range(fd, var_name)
+		for idx1 in from ..< to {
 			cv := fd.closure_var[idx1]
 			if var_name == cv.var_name {
 				if fd != s {
