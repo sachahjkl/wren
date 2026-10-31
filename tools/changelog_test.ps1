@@ -1,6 +1,6 @@
 # Tests of tools\changelog.ps1 on a throwaway checkout (a CHANGELOG.md, the file that holds the version, fragments):
 # well formed and malformed fragments, -New, -Check (orphans, duplicates, -Release), -Assemble with and without fragments,
-# -Migrate, -Section. A few seconds; the CI runs it beside `changelog.ps1 -Check`.
+# -Migrate, -Section, the form of CHANGELOG.md (Keep a Changelog 1.1.0). A few seconds; the CI runs it beside `changelog.ps1 -Check`.
 #   powershell -NoProfile -File tools\changelog_test.ps1
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
@@ -28,9 +28,17 @@ function Fresh {
     $script:vfile = Join-Path $script:dir $vf
     # the last released version is the one the sources say, as on master
     $script:base = [regex]::Match([IO.File]::ReadAllText($script:vfile), 'VERSION\s*::\s*"([^"]+)"').Groups[1].Value
-    $head = if ($vsrc -match "Unreleased\s+=\s+'## Unreleased'") { "## Unreleased`r`n`r`n" } else { '' }
+    $hasUnreleased = $vsrc -match "Unreleased\s+=\s+'## \[Unreleased\]'"
+    $head = if ($hasUnreleased) { "## [Unreleased]`r`n`r`n" } else { '' }
+    $script:url = [regex]::Match($vsrc, "RepoUrl\s+=\s+'([^']*)'").Groups[1].Value
+    $links = ''
+    if ($script:url) {
+        $links = "`r`n"
+        if ($hasUnreleased) { $links += "[Unreleased]: $script:url/compare/v$base...HEAD`r`n" }
+        $links += "[$base]: $script:url/releases/tag/v$base`r`n"
+    }
     $hd = if ($vsrc -match "Heading\s+=\s+'## \[") { "## [$base] - 2026-01-01" } else { "## $base - 2026-01-01" }
-    [IO.File]::WriteAllText((Join-Path $script:dir 'CHANGELOG.md'), "# Changelog`r`n`r`nIntro.`r`n`r`n$head$hd`r`n`r`n### Added`r`n- **Old thing**: shipped.`r`n", $utf8)
+    [IO.File]::WriteAllText((Join-Path $script:dir 'CHANGELOG.md'), "# Changelog`r`n`r`nIntro.`r`n`r`n$head$hd`r`n`r`n### Added`r`n- **Old thing**: shipped.`r`n$links", $utf8)
 }
 $dirs = @()
 try {
@@ -78,6 +86,15 @@ try {
     $r = Run '-Check'; Expect ($r.Code -ne 0 -and $r.Out -match 'already in a released section') 'a fragment already released (an orphan) fails -Check' $r
     Remove-Item (Join-Path $dir 'changelog.d\20261026-100007-orphan.md')
 
+    # ---- the six types of Keep a Changelog, in its order
+    $six = @{ 'Security' = '20261026-100010-security.md'; 'Removed' = '20261026-100011-removed.md'; 'Deprecated' = '20261026-100012-deprecated.md' }
+    foreach ($t in $six.Keys) { Frag $six[$t] "type: $t`n`n**$t thing**.`n" }
+    $r = Run '-Check'; Expect ($r.Code -eq 0) 'Deprecated, Removed and Security are types' $r
+    $r = Run '-Assemble'
+    $o = $r.Out; $pos = 'Added', 'Changed', 'Deprecated', 'Removed', 'Fixed', 'Security' | ForEach-Object { $o.IndexOf("### $_") }
+    Expect ($r.Code -eq 0 -and @($pos | Where-Object { $_ -lt 0 }).Count -eq 0 -and (($pos -join ',') -eq (($pos | Sort-Object) -join ','))) 'the preview lists the six in the order of the format' $r
+    foreach ($t in $six.Keys) { Remove-Item (Join-Path $dir "changelog.d\$($six[$t])") }
+
     # ---- -New
     $r = Run '-New', '-Type', 'Removed', '-Subject', 'Old Pref!', '-Text', 'The `x.y` preference.'
     $made = Get-ChildItem (Join-Path $dir 'changelog.d') -Filter '*-old-pref.md'
@@ -86,6 +103,8 @@ try {
 
     # ---- the release: a section, the version written, the fragments gone; -Check -Release; -Section
     $r = Run '-Check', '-Release', '9.9.9'; Expect ($r.Code -ne 0 -and $r.Out -match 'not assembled') '-Check -Release refuses while fragments are left' $r
+    $r = Run '-Assemble', '-Version', '9.9.9', '-Date', '27/10/2026'; Expect ($r.Code -ne 0 -and $r.Out -match '-Date is') '-Assemble refuses a date that is not ISO' $r
+    Frag '20261026-100013-fix.md' "type: Fixed`n`n**A fix**.`n"
     $r = Run '-Assemble', '-Version', '9.9.9', '-Date', '2026-10-27'
     $cl = [IO.File]::ReadAllText((Join-Path $dir 'CHANGELOG.md'))
     $left = @(Get-ChildItem (Join-Path $dir 'changelog.d')).Count
@@ -96,12 +115,46 @@ try {
     $r = Run '-Check', '-Release', '9.9.9'; Expect ($r.Code -eq 0) '-Check -Release passes after it' $r
     $r = Run '-Check'; Expect ($r.Code -eq 0) '-Check passes after it' $r
     $r = Run '-Section', '-Version', '9.9.9'; Expect ($r.Code -eq 0 -and $r.Out -match '### Removed' -and $r.Out -notmatch [regex]::Escape($base)) '-Section gives that section only' $r
+    $r = Run '-Section', '-Version', $base; Expect ($r.Code -eq 0 -and $r.Out -match 'Old thing' -and $r.Out -notmatch ']:') '-Section of the last section stops before the link references' $r
+    if ($url) {
+        Expect ($cl.Contains("[9.9.9]: $url/compare/v$base...v9.9.9`r`n") -and $cl.Contains("[$base]: $url/releases/tag/v$base`r`n") -and $cl.IndexOf('[9.9.9]: ') -lt $cl.IndexOf("[${base}]: ")) '-Assemble -Version writes the link of the version, the older ones kept'
+        if ((Get-Content -Raw $script) -match "Unreleased\s+=\s+'## \[") { Expect ($cl.Contains("[Unreleased]: $url/compare/v9.9.9...HEAD`r`n") -and -not $cl.Contains("compare/v$base...HEAD")) '-Assemble -Version moves the Unreleased link' }
+        Expect ($cl.TrimEnd().EndsWith("[$base]: $url/releases/tag/v$base")) 'the link references close the file'
+    }
+    # the form the tool enforces: each case breaks a copy of a file that is right, -Check names what is wrong
+    $good = [IO.File]::ReadAllText((Join-Path $dir 'CHANGELOG.md'))
+    $cases = @(
+        @{ What = 'a heading of the old form';  From = '## [9.9.9] - 2026-10-27'; To = '## 9.9.9 - 2026-10-27'; Want = 'is not' }
+        @{ What = 'a date that is not ISO';     From = '] - 2026-10-27';          To = '] - 27/10/2026';        Want = 'not an ISO date' }
+        @{ What = 'a date that does not exist'; From = '] - 2026-10-27';          To = '] - 2026-13-45';        Want = 'not an ISO date' }
+        @{ What = 'an older date above';        From = '] - 2026-10-27';          To = '] - 2025-10-27';        Want = 'the newest comes first' }
+        @{ What = 'an unknown section';         From = '### Removed';             To = '### Improved';          Want = 'unknown section' }
+        @{ What = 'a section out of order';     From = '### Removed';             To = '### Security';          Want = 'comes after' }
+        @{ What = 'a section twice';            From = '### Removed';             To = '### Added';             Want = 'twice in one version' }
+        @{ What = 'an entry outside a section'; From = "### Added`r`n- **Old";    To = '- **Old';               Want = 'outside a' }
+        @{ What = 'a duplicate version';        From = "## [$base] -";            To = '## [9.9.9] -';          Want = 'twice' }
+    )
+    foreach ($k in $cases) {
+        $i = $good.IndexOf($k.From)
+        if ($i -lt 0) { Expect $false "the fixture holds '$($k.From)'"; continue }
+        [IO.File]::WriteAllText((Join-Path $dir 'CHANGELOG.md'), ($good.Substring(0, $i) + $k.To + $good.Substring($i + $k.From.Length)), $utf8)
+        $r = Run '-Check'; Expect ($r.Code -ne 0 -and $r.Out -match $k.Want) "-Check refuses $($k.What)" $r
+    }
+    if ($url) {
+        [IO.File]::WriteAllText((Join-Path $dir 'CHANGELOG.md'), $good.Replace("[9.9.9]: $url/compare/v$base...v9.9.9`r`n", ''), $utf8)
+        $r = Run '-Check'; Expect ($r.Code -ne 0 -and $r.Out -match 'link reference is missing') '-Check refuses a version without its link' $r
+        [IO.File]::WriteAllText((Join-Path $dir 'CHANGELOG.md'), $good.Replace('/compare/v9.9.9...HEAD', '/compare/v0.0.1...HEAD'), $utf8)
+        $r = Run '-Check'; Expect ($r.Code -ne 0 -and $r.Out -match 'wrong one') '-Check refuses a stale link' $r
+        [IO.File]::WriteAllText((Join-Path $dir 'CHANGELOG.md'), ($good.TrimEnd() + "`r`n[1.2.3]: $url/releases/tag/v1.2.3`r`n"), $utf8)
+        $r = Run '-Check'; Expect ($r.Code -ne 0 -and $r.Out -match 'names no version') '-Check refuses a link to no version' $r
+    }
+    [IO.File]::WriteAllText((Join-Path $dir 'CHANGELOG.md'), $good, $utf8)
     $r = Run '-Assemble', '-Version', '9.9.9'; Expect ($r.Code -ne 0) 'a version is not assembled twice' $r
 
-    # ---- -Migrate: what a branch still wrote under "## Unreleased"
-    if ((Get-Content -Raw $script) -match "Unreleased\s+=\s+'## Unreleased'") {
+    # ---- -Migrate: what a branch still wrote under "## [Unreleased]"
+    if ((Get-Content -Raw $script) -match "Unreleased\s+=\s+'## \[Unreleased\]'") {
         $cl = [IO.File]::ReadAllText((Join-Path $dir 'CHANGELOG.md'))
-        $cl = $cl.Replace("## Unreleased`r`n", "## Unreleased`r`n`r`n- Untyped one.`r`n- Untyped two.`r`n`r`n### Fixed`r`n- A fix.`r`n  - its detail.`r`n")
+        $cl = $cl.Replace("## [Unreleased]`r`n", "## [Unreleased]`r`n`r`n- Untyped one.`r`n- Untyped two.`r`n`r`n### Fixed`r`n- A fix.`r`n  - its detail.`r`n")
         [IO.File]::WriteAllText((Join-Path $dir 'CHANGELOG.md'), $cl, $utf8)
         $r = Run '-Check'; Expect ($r.Code -eq 0 -and $r.Out -match 'warning: 3 entries') 'entries under Unreleased: a warning' $r
         $r = Run '-Assemble', '-Version', '9.9.10'; Expect ($r.Code -ne 0 -and $r.Out -match "no '### Type'") 'untyped Unreleased entries stop a release' $r

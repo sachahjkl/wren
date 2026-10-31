@@ -52,19 +52,19 @@ build_changelog_page :: proc() {
 	emit(CHANGELOG_PAGE, strings.to_string(out))
 }
 
-// "## 0.6.1 - 2026-10-29" (older headings carry odd separators: the date is the last 10 characters)
+// "## [0.6.1] - 2026-10-29" (Keep a Changelog; "## [Unreleased]" has no date)
 changelog_dates :: proc() -> map[string]string {
 	m := make(map[string]string, context.allocator)
 	data, err := os.read_entire_file("CHANGELOG.md", context.allocator)
 	if err != nil { return m }
 	text := string(data)
 	for line in strings.split_lines_iterator(&text) {
-		if !strings.has_prefix(line, "## ") || len(line) < 13 { continue }
-		rest := strings.trim_space(line[3:])
-		sp := strings.index_byte(rest, ' ')
-		if sp < 0 { continue }
-		date := rest[len(rest) - 10:]
-		if len(date) == 10 && date[4] == '-' && date[7] == '-' { m[rest[:sp]] = date }
+		if !strings.has_prefix(line, "## [") { continue }
+		rest := strings.trim_space(line[4:])
+		bracket := strings.index(rest, "] - ")
+		if bracket < 0 || len(rest) < bracket + 14 { continue }
+		date := rest[bracket + 4:bracket + 14]
+		if date[4] == '-' && date[7] == '-' { m[rest[:bracket]] = date }
 	}
 	return m
 }
