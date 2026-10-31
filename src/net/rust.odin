@@ -14,6 +14,10 @@ import "core:sync"
 import "wb:base"
 import "wb:host"
 
+// What the native client gets at least, whatever the preferences say (network.read_chunk_bytes, network.queue.high_water_bytes).
+NET_READ_CHUNK_MIN_BYTES :: 1024
+NET_HIGH_WATER_MIN_BYTES :: 4096
+
 when ODIN_OS == .Windows {
 	foreign import wren_native_net {
 		"../../build/native/wren_native.lib",
@@ -152,7 +156,7 @@ rust_config :: proc(c: ^Client, ca: []byte) -> Wn_Config {
 		extra_ca_pem = raw_data(ca), extra_ca_pem_len = uint(len(ca)),
 		timeout_resolve_ms = clamp_u32(int(s.timeout_resolve_ms)), timeout_connect_ms = clamp_u32(int(s.timeout_connect_ms)),
 		timeout_send_ms = clamp_u32(int(s.timeout_send_ms)), timeout_receive_ms = clamp_u32(int(s.timeout_receive_ms)),
-		read_chunk = u64(max(s.read_chunk, 1024)), high_water = u64(max(s.high_water, 4096)), low_water = u64(max(s.low_water, 0)),
+		read_chunk = u64(max(s.read_chunk, NET_READ_CHUNK_MIN_BYTES)), high_water = u64(max(s.high_water, NET_HIGH_WATER_MIN_BYTES)), low_water = u64(max(s.low_water, 0)),
 		idle_timeout_ms = clamp_u32(s.idle_timeout_ms), max_idle_per_host = clamp_u32(s.max_idle_per_host),
 		h3_race_ms = clamp_u32(s.h3_race_ms), h3_broken_ms = clamp_u32(s.h3_broken_ms), threads = clamp_u32(max(s.threads, 1)),
 		http2 = u8(s.http2), http3 = u8(s.http3), proxy_system = u8(s.proxy == .System),

@@ -21,6 +21,15 @@ Throttle_Link :: struct {
 }
 
 THROTTLE_PACKET :: 1460
+// A piece of the body counts this many packets at most for losses.
+THROTTLE_LOSS_MAX_PACKETS :: 64
+// The retransmission timeout: a multiple of the latency, at least the floor (ms).
+THROTTLE_RTO_LATENCIES :: 3
+THROTTLE_RTO_MIN_MS :: 200
+// The most that losses delay one piece (ms).
+THROTTLE_LOSS_MAX_DELAY_MS :: 5000
+// What a request's start line and framing weigh on top of its headers and body, for the time they take to go up.
+THROTTLE_REQUEST_HEAD_BYTES :: 300
 
 // kbit/s to bytes/s.
 throttle_kbps :: proc(kbps: f64) -> f64 { return kbps * 1000 / 8 }
@@ -38,11 +47,11 @@ link_random :: proc(l: ^Throttle_Link) -> f32 {
 // The extra time lost packets add to a piece of `bytes` bytes.
 link_loss_ms :: proc(l: ^Throttle_Link, bytes: int) -> f64 {
 	if l.loss <= 0 || bytes <= 0 { return 0 }
-	packets := min((bytes + THROTTLE_PACKET - 1) / THROTTLE_PACKET, 64)
-	rto := f64(max(l.latency_ms * 3, 200))
+	packets := min((bytes + THROTTLE_PACKET - 1) / THROTTLE_PACKET, THROTTLE_LOSS_MAX_PACKETS)
+	rto := f64(max(l.latency_ms * THROTTLE_RTO_LATENCIES, THROTTLE_RTO_MIN_MS))
 	extra: f64
 	for _ in 0 ..< packets { if link_random(l) < l.loss { extra += rto } }
-	return min(extra, 5000)
+	return min(extra, THROTTLE_LOSS_MAX_DELAY_MS)
 }
 
 // When a piece of `bytes` bytes is through the link in the given direction (loop clock, ms); the link is busy until then.
