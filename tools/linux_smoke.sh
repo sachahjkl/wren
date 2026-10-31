@@ -20,7 +20,8 @@ check "the version" "Wren" "$(timeout "$STEP_TIMEOUT_S" "$WREN" --version 2>&1)"
 # (to a file: the Wren it starts stays in the background and keeps what it inherited, so a pipe here would never end)
 timeout "$STEP_TIMEOUT_S" "$WREN" ctl start --name "$NAME" --size 1000x700 > "$OUT/start.log" 2>&1
 echo "start: exit $?, $(tail -3 "$OUT/start.log")"
-ctl nav "data:text/html,<title>hello</title><h1 id=a>Wren</h1>" | tail -1
+printf "%s" "<!doctype html><title>hello</title><h1 id=a>Wren</h1>" > "$OUT/page.html"
+ctl nav "file://$OUT/page.html" | tail -1
 check "script runs" "Wren 4" "$(ctl eval "document.getElementById('a').textContent + ' ' + (2 + 2)")"
 check "layout" "true" "$(ctl eval "document.getElementById('a').getBoundingClientRect().height > 10")"
 # deep recursion on the main thread: the same limits as on Windows, without a ulimit from the caller
