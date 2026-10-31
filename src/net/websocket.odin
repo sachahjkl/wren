@@ -31,6 +31,11 @@ import "wb:base"
 import "wb:host"
 import "wb:url"
 
+// A socket's receive chunk and send fragment are at least this.
+WS_CHUNK_MIN_BYTES :: 1024
+// After a message, an assembly buffer bigger than this many receive chunks is given back rather than kept for the next.
+WS_MSG_KEEP_CHUNKS :: 4
+
 // Socket-level errors that are not WinHTTP's own (below 12000, above the HTTP client's ERROR_*).
 WS_ERROR_HANDSHAKE_TIMEOUT :: 20
 WS_ERROR_MESSAGE_TOO_BIG   :: 21
@@ -216,7 +221,7 @@ websockets_destroy :: proc(c: ^Client) {
 	for h, _ in base.pool_next(&m.sockets, &it) { append(&handles, h) }
 	for h in handles { ws_release(m, h) }
 	start := time.tick_now()
-	for sync.atomic_load(&m.live_jobs) > 0 && time.duration_seconds(time.tick_since(start)) < 5 { time.sleep(time.Millisecond) }
+	for sync.atomic_load(&m.live_jobs) > 0 && time.duration_seconds(time.tick_since(start)) < NET_STOP_DRAIN_S { time.sleep(time.Millisecond) }
 	sync.mutex_lock(&m.mu)
 	for &r in m.events { raw_free(&r) }
 	clear(&m.events)
@@ -241,8 +246,8 @@ websockets_destroy :: proc(c: ^Client) {
 websocket_open :: proc(c: ^Client, d: Ws_Desc) -> base.Handle {
 	m := ws_manager(c)
 	s := Socket{on_event = d.on_event, user = d.user, free_user = d.free_user, scope = d.scope, limits = d.limits}
-	s.limits.receive_chunk = max(s.limits.receive_chunk, 1024)
-	s.limits.send_fragment = max(s.limits.send_fragment, 1024)
+	s.limits.receive_chunk = max(s.limits.receive_chunk, WS_CHUNK_MIN_BYTES)
+	s.limits.send_fragment = max(s.limits.send_fragment, WS_CHUNK_MIN_BYTES)
 	s.limits.max_connecting_per_host = max(s.limits.max_connecting_per_host, 1)
 	s.limits.low_water = min(s.limits.low_water, s.limits.high_water)
 	h, sp := base.pool_insert(&m.sockets, s)
@@ -648,7 +653,7 @@ ws_handle :: proc(m: ^Ws_Manager, r: ^Raw) {
 		ws_deliver(s, &ev)
 		if s = base.pool_get(&m.sockets, h); s == nil { return }
 		s.msg_open = false
-		if cap(s.msg) > 4 * s.limits.receive_chunk { delete(s.msg); s.msg = nil } else { clear(&s.msg) }
+		if cap(s.msg) > WS_MSG_KEEP_CHUNKS * s.limits.receive_chunk { delete(s.msg); s.msg = nil } else { clear(&s.msg) }
 
 	case .Peer_Close:
 		was_open := s.state == .Open

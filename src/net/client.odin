@@ -28,6 +28,9 @@ import "wb:base"
 import "wb:host"
 import "wb:url"
 
+// How long stopping a client or the WebSocket manager waits for their jobs to end (websocket.odin too), in seconds.
+NET_STOP_DRAIN_S :: 5
+
 // Errors that are not WinHTTP's own live below 12000.
 ERROR_BAD_URL        :: 1
 ERROR_BODY_TOO_LARGE :: 2
@@ -213,7 +216,7 @@ client_destroy :: proc(c: ^Client) {
 	if c.session != nil { winhttp_close(c.session); c.session = nil }
 	rust_destroy(c)
 	start := time.tick_now()
-	for sync.atomic_load(&c.live_jobs) > 0 && time.duration_seconds(time.tick_since(start)) < 5 { time.sleep(time.Millisecond) }
+	for sync.atomic_load(&c.live_jobs) > 0 && time.duration_seconds(time.tick_since(start)) < NET_STOP_DRAIN_S { time.sleep(time.Millisecond) }
 	for &ev in c.events { free_event(&ev) }
 	delete(c.events)
 	delete(c.scratch)
@@ -279,7 +282,7 @@ activate :: proc(c: ^Client, h: base.Handle, r: ^Request) {
 	if r.link != nil {
 		// the request starts after its latency and the time its head and body need to go up
 		now := now_ms(c)
-		bytes := 300 + len(r.job.body) + len(r.job.headers_w)
+		bytes := THROTTLE_REQUEST_HEAD_BYTES + len(r.job.body) + len(r.job.headers_w)
 		due := link_schedule(r.link, now, bytes, true) + f64(r.link.latency_ms)
 		if due > now + 0.5 {
 			r.begin_pending = true
