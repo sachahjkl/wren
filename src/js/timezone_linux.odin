@@ -4,7 +4,9 @@ import "core:os"
 import "core:strings"
 import "core:sys/posix"
 
-@(private) tz_name_cache: [64]u8
+@(private) TZ_NAME_MAX_BYTES :: 64     // room for a zone's IANA name, a terminator included
+@(private) LOCALTIME_LINK_BYTES :: 512 // the target of /etc/localtime
+@(private) tz_name_cache: [TZ_NAME_MAX_BYTES]u8
 @(private) tz_name_len: int
 @(private) tz_name_done: bool
 
@@ -30,7 +32,7 @@ timezone_name :: proc() -> string {
 		// a zone name, not a POSIX rule ("CET-1CEST,M3.5.0,M10.5.0/3": the clock still follows it, the name is unknown)
 		if strings.contains_rune(tz, '/') || tz == "UTC" { if set(tz) { return string(tz_name_cache[:tz_name_len]) } }
 	}
-	buf: [512]u8
+	buf: [LOCALTIME_LINK_BYTES]u8
 	if n := posix.readlink("/etc/localtime", &buf[0], len(buf) - 1); n > 0 {
 		target := string(buf[:n])
 		if i := strings.index(target, "zoneinfo/"); i >= 0 && set(target[i + len("zoneinfo/"):]) { return string(tz_name_cache[:tz_name_len]) }
