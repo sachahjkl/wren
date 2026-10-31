@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CSS anchor positioning</title>
+<style>
+  body { font: 15px/1.45 system-ui, sans-serif; margin: 24px; color: #222; background: #fafafa; }
+  h2 { margin: 28px 0 8px; font-size: 18px; }
+  p { max-width: 62ch; }
+  code { background: #eee; padding: 0 3px; border-radius: 3px; }
+  .stage { position: relative; height: 170px; border: 1px solid #ccc; background: #fff; margin: 8px 0 16px; }
+  .anchor { width: 96px; height: 38px; line-height: 38px; text-align: center; color: #fff; background: #2a6fdb; border-radius: 5px; }
+  .tip { position: absolute; padding: 3px 9px; font-size: 13px; color: #fff; background: #333; border-radius: 4px; white-space: nowrap; }
+
+  /* anchor() and anchor-size() */
+  #a1 { anchor-name: --one; margin: 60px 0 0 200px; }
+  #t1 { position-anchor: --one; left: anchor(right); top: anchor(top); margin-left: 6px; }
+  #t2 { position-anchor: --one; right: anchor(left); bottom: anchor(bottom); margin-right: 6px; }
+  #t3 { position-anchor: --one; left: anchor(50%); bottom: anchor(top); margin-bottom: 6px; }
+  #t4 { left: anchor(--one left); top: calc(anchor(--one bottom) + 8px); width: anchor-size(--one width); box-sizing: border-box; text-align: center; }
+
+  /* position-area */
+  #a2 { anchor-name: --two; margin: 62px auto 0; }
+  .cell { position: absolute; position-anchor: --two; font-size: 12px; padding: 1px 6px; color: #333; background: #ffe7a8; border: 1px solid #d9b45c; }
+
+  /* fallbacks */
+  .row { display: flex; justify-content: space-between; align-items: center; height: 100%; padding: 0 8px; }
+  .row .anchor { anchor-name: --row; }
+  .row .tip { position-anchor: --row; position-area: right; margin: 0 6px; position-try-fallbacks: flip-inline; }
+  .holder { anchor-scope: --row; }
+  @position-try --below { position-area: bottom; margin: 6px 0 0; }
+
+  /* scrolling */
+  #sc { height: 170px; width: 340px; overflow: auto; border: 1px solid #ccc; background: #fff; }
+  #sc .pad { height: 90px; }
+  #a4 { anchor-name: --four; margin-left: 20px; }
+  #t5 { position-anchor: --four; left: anchor(right); top: anchor(top); margin-left: 8px; }
+  #t6 { position-anchor: --four; position-area: right; position-try-fallbacks: --below; margin-left: 8px; background: #7a2bbf; position-visibility: anchor-visible; }
+  #scroll-host { position: relative; height: 200px; }
+
+  /* popover */
+  #pop { position-area: bottom; margin: 6px 0 0; padding: 8px 12px; border: 1px solid #999; border-radius: 6px; }
+</style>
+</head>
+<body>
+<h1>CSS anchor positioning</h1>
+<p>Boxes placed against other boxes, whatever their containing block: without script, and on every layout.</p>
+
+<h2><code>anchor()</code> and <code>anchor-size()</code></h2>
+<div class="stage">
+  <div id="a1" class="anchor">anchor</div>
+  <div id="t1" class="tip">right, top</div>
+  <div id="t2" class="tip">left, bottom</div>
+  <div id="t3" class="tip">50%, above</div>
+  <div id="t4" class="tip">its width</div>
+</div>
+<button id="move">Move the anchor</button>
+
+<h2><code>position-area</code></h2>
+<div class="stage">
+  <div id="a2" class="anchor">anchor</div>
+  <div class="cell" style="position-area: top left">top left</div>
+  <div class="cell" style="position-area: top">top</div>
+  <div class="cell" style="position-area: top right">top right</div>
+  <div class="cell" style="position-area: left">left</div>
+  <div class="cell" style="position-area: right">right</div>
+  <div class="cell" style="position-area: bottom left">bottom left</div>
+  <div class="cell" style="position-area: bottom">bottom</div>
+  <div class="cell" style="position-area: bottom right">bottom right</div>
+</div>
+
+<h2><code>position-try-fallbacks</code></h2>
+<p>The same tooltip for both: on the right when it fits, else flipped.</p>
+<div class="stage" style="height: 60px">
+  <div class="row">
+    <div class="holder"><div class="anchor">fits</div><div class="tip">right when there is room</div></div>
+    <div class="holder"><div class="anchor">flips</div><div class="tip">no room: on its left</div></div>
+  </div>
+</div>
+
+<h2>A scrolling anchor</h2>
+<p>The tooltips follow the scroll container without any layout. The purple one has a fallback below, and goes away with
+its anchor (<code>position-visibility: anchor-visible</code>).</p>
+<div id="scroll-host">
+  <div id="sc">
+    <div class="pad"></div>
+    <div id="a4" class="anchor">scroll me</div>
+    <div class="pad"></div><div class="pad"></div><div class="pad"></div>
+  </div>
+  <div id="t5" class="tip">follows</div>
+  <div id="t6" class="tip">anchor-visible</div>
+</div>
+
+<h2>A popover and its invoker</h2>
+<p>A popover shown by a button has that button as its implicit anchor.</p>
+<button id="inv" popovertarget="pop">Show the popover</button>
+<div id="pop" popover>Under the button.</div>
+
+<script>
+  document.getElementById('move').addEventListener('click', () => {
+    const a = document.getElementById('a1');
+    a.style.marginLeft = (60 + Math.random() * 400 | 0) + 'px';
+    a.style.marginTop = (40 + Math.random() * 70 | 0) + 'px';
+  });
+</script>
+</body>
+</html>
