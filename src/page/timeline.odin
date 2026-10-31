@@ -34,9 +34,8 @@ import "wb:host"
 TIMELINE_FEW_ENTRIES :: 64
 // What the navigation entry's transferSize adds to the body for the response's headers (an estimate; they are not kept).
 NAV_HEADERS_ESTIMATE_BYTES :: 300
-// Event types longer than this are not measured: a cheap test before looking the type up. (pointercancel, 13, is listed
-// in event_timed and so never gets past it.)
-EVENT_TIMED_TYPE_MAX_LEN :: 12
+// Event types longer than this are not measured: a cheap test before looking the type up. (The longest of event_timed: pointercancel.)
+EVENT_TIMED_TYPE_MAX_LEN :: 13
 // Event timing durations are rounded up to this granularity (ms); the second is the addend that does it.
 EVENT_DURATION_STEP_MS :: 8.0
 EVENT_DURATION_ROUND_UP_MS :: 7.999
