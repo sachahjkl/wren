@@ -17,6 +17,18 @@ import "core:sync"
 import "core:thread"
 import "core:time"
 
+// The range the playback rate is clamped to (the page's playbackRate too).
+PLAYER_RATE_MIN :: 0.0625
+PLAYER_RATE_MAX :: 16
+// The floor of the rate a late picture's delay is scaled by.
+PLAYER_DELAY_RATE_FLOOR :: 0.01
+// What the threads wait for at most before looking again: the store to change for video (a new frame, the end of the
+// source, a seek), the store or the ring for audio, room in the ring for the samples in hand, and a decoder to exist.
+PLAYER_VIDEO_WAIT :: 20 * time.Millisecond
+PLAYER_AUDIO_WAIT :: 10 * time.Millisecond
+PLAYER_AUDIO_ROOM_WAIT :: 5 * time.Millisecond
+PLAYER_NO_DECODER_WAIT :: 5 * time.Millisecond
+
 Player_Settings :: struct {
 	video_queue:  int,    // decoded pictures kept ready
 	audio_ahead:  Time,   // audio decoded ahead of the play position
@@ -195,7 +207,7 @@ player_host_muted :: proc(p: ^Player) -> bool {
 player_set_rate :: proc(p: ^Player, rate: f64) {
 	t := player_time(p)
 	sync.mutex_lock(&p.mu)
-	p.rate = clamp(rate, 0.0625, 16)
+	p.rate = clamp(rate, PLAYER_RATE_MIN, PLAYER_RATE_MAX)
 	sync.mutex_unlock(&p.mu)
 	player_seek(p, t)
 }
@@ -344,7 +356,7 @@ player_present :: proc(p: ^Player, ahead: i64 = 0) -> (frame: ^Video_Frame, chan
 		ordered_remove(&p.queue, 0)
 		p.has_cur, p.need_cur, changed = true, false, true
 		p.stats.presented += 1
-		if p.started && t > p.cur.pts { p.stats.delay_ns += i64(f64(t - p.cur.pts) / max(p.rate, 0.01)) }
+		if p.started && t > p.cur.pts { p.stats.delay_ns += i64(f64(t - p.cur.pts) / max(p.rate, PLAYER_DELAY_RATE_FLOOR)) }
 		sync.cond_broadcast(&p.cv)   // room in the queue
 		p.vsize = {p.cur.width, p.cur.height}
 	}
@@ -490,7 +502,7 @@ video_thread :: proc(p: ^Player) {
 				sync.mutex_lock(&p.mu)
 				if !p.v_starved { p.v_starved = true }
 				// wait for the store to change (a new frame), the end of the source or a seek
-				if !p.quit && gen == p.seek_gen && !p.source_ended { sync.cond_wait_with_timeout(&p.cv, &p.mu, 20 * time.Millisecond) }
+				if !p.quit && gen == p.seek_gen && !p.source_ended { sync.cond_wait_with_timeout(&p.cv, &p.mu, PLAYER_VIDEO_WAIT) }
 				sync.mutex_unlock(&p.mu)
 				poke(p)
 				continue
@@ -519,7 +531,7 @@ video_thread :: proc(p: ^Player) {
 				}
 			}
 		}
-		if dec == nil { time.sleep(5 * time.Millisecond); continue }
+		if dec == nil { time.sleep(PLAYER_NO_DECODER_WAIT); continue }
 
 		if has_input {
 			s := coded_sample(input)
@@ -642,7 +654,7 @@ audio_thread :: proc(p: ^Player) {
 			queued_ns := Time(i64(p.out.queued(p.out)) * NS_PER_S / i64(max(p.a_rate, 1)))
 			if queued_ns > p.settings.audio_ahead {
 				sync.mutex_lock(&p.mu)
-				if gen == p.seek_gen && !p.quit { sync.cond_wait_with_timeout(&p.cv, &p.mu, 10 * time.Millisecond) }
+				if gen == p.seek_gen && !p.quit { sync.cond_wait_with_timeout(&p.cv, &p.mu, PLAYER_AUDIO_WAIT) }
 				sync.mutex_unlock(&p.mu)
 				continue
 			}
@@ -659,7 +671,7 @@ audio_thread :: proc(p: ^Player) {
 			} else {
 				sync.mutex_lock(&p.mu)
 				p.a_starved = true
-				sync.cond_wait_with_timeout(&p.cv, &p.mu, 10 * time.Millisecond)
+				sync.cond_wait_with_timeout(&p.cv, &p.mu, PLAYER_AUDIO_WAIT)
 				sync.mutex_unlock(&p.mu)
 				continue
 			}
@@ -682,7 +694,7 @@ audio_thread :: proc(p: ^Player) {
 				}
 			}
 		}
-		if dec == nil { time.sleep(5 * time.Millisecond); continue }
+		if dec == nil { time.sleep(PLAYER_NO_DECODER_WAIT); continue }
 
 		if has_input {
 			s := coded_sample(input)
@@ -804,7 +816,7 @@ audio_push :: proc(p: ^Player, samples: []f32, gen: u32) -> bool {
 			continue
 		}
 		sync.mutex_lock(&p.mu)
-		sync.cond_wait_with_timeout(&p.cv, &p.mu, 5 * time.Millisecond)
+		sync.cond_wait_with_timeout(&p.cv, &p.mu, PLAYER_AUDIO_ROOM_WAIT)
 		sync.mutex_unlock(&p.mu)
 	}
 	sync.mutex_lock(&p.mu)

@@ -7,6 +7,10 @@ package media
 import "wb:base"
 import "core:mem"
 
+// What the audio decoder is told at least: the sample rate when the track says less, and the size of its output buffer.
+MF_AUDIO_MIN_RATE :: 8000
+MF_AUDIO_MIN_OUT_BYTES :: 8192
+
 @(private)
 MF_Audio :: struct {
 	mft:      ^IMFTransform,
@@ -63,7 +67,7 @@ mf_audio_create :: proc(track: Track) -> ^Audio_Decoder {
 	a.mft = mft
 	a.track = track_clone(track)
 	a.channels = max(track.channels, 1)
-	a.rate = max(track.sample_rate, 8000)
+	a.rate = max(track.sample_rate, MF_AUDIO_MIN_RATE)
 	a.discont = true
 	a.skip_ns = track.codec_delay
 	if !mf_audio_input_type(a, sub) || !mf_audio_output_type(a) {
@@ -150,7 +154,7 @@ mf_audio_read_output :: proc(a: ^MF_Audio) -> bool {
 	info: MFT_OUTPUT_STREAM_INFO
 	a.mft->GetOutputStreamInfo(0, &info)
 	a.provides = info.dwFlags & (MFT_OUTPUT_STREAM_PROVIDES_SAMPLES | MFT_OUTPUT_STREAM_CAN_PROVIDE_SAMPLES) != 0
-	a.out_bytes = max(info.cbSize, 8192)
+	a.out_bytes = max(info.cbSize, MF_AUDIO_MIN_OUT_BYTES)
 	return true
 }
 

@@ -13,6 +13,13 @@ import "wb:base"
 import "core:slice"
 import "core:strings"
 
+// Entries of an edit list that are read.
+MP4_MAX_EDIT_ENTRIES :: 64
+// A sample table claiming more entries than this is refused.
+MP4_MAX_TABLE_ENTRIES :: 1 << 26
+// Consumed bytes at the front of the pending data are dropped once past this (and more than half of it).
+MP4_PENDING_COMPACT_BYTES :: 4096
+
 Mp4_Limits :: struct {
 	max_box_bytes:   int,   // largest moov / moof read whole
 	max_retain_bytes: int,  // payload of an mdat kept while the moov is still to come
@@ -434,7 +441,7 @@ mp4_elst :: proc(d: ^Mp4_Demuxer, buf: []u8, el: Box, t: ^Mp4_Track) {
 	o := el.payload + 8
 	step := v == 1 ? 20 : 12
 	delay: i64   // movie timescale ticks of empty edits before the first media edit
-	for _ in 0 ..< min(n, 64) {
+	for _ in 0 ..< min(n, MP4_MAX_EDIT_ENTRIES) {
 		if o + step > el.end { break }
 		seg, mt: i64
 		if v == 1 { seg, mt = i64(be64(buf, o)), i64(be64(buf, o + 8)) } else { seg, mt = i64(be32(buf, o)), i64(i32(be32(buf, o + 4))) }
@@ -502,7 +509,7 @@ mp4_stbl :: proc(d: ^Mp4_Demuxer, buf: []u8, stbl: Box, t: ^Mp4_Track) {
 
 @(private = "file")
 read_u32s :: proc(buf: []u8, o, n, limit: int) -> []u32 {
-	if n < 0 || o + n * 4 > limit || n > (1 << 26) { return nil }
+	if n < 0 || o + n * 4 > limit || n > MP4_MAX_TABLE_ENTRIES { return nil }
 	out := make([]u32, n)
 	for i in 0 ..< n { out[i] = be32(buf, o + i * 4) }
 	return out
@@ -911,7 +918,7 @@ mp4_mdat_bytes :: proc(d: ^Mp4_Demuxer, chunk: []u8) {
 			d.carry_off = next
 		}
 	}
-	if d.head > 4096 && d.head * 2 > len(d.pending) {
+	if d.head > MP4_PENDING_COMPACT_BYTES && d.head * 2 > len(d.pending) {
 		remove_range(&d.pending, 0, d.head)
 		d.head = 0
 	}

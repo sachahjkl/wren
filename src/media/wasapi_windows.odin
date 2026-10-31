@@ -15,6 +15,12 @@ import "core:sync"
 import "core:thread"
 import win "core:sys/windows"
 
+// How many milliseconds stop and flush wait for the audio thread to answer (one Sleep(1) a try); and how long the thread
+// waits for its event before it looks at its work.
+WASAPI_STOP_WAIT_TRIES :: 100
+WASAPI_FLUSH_WAIT_TRIES :: 200
+WASAPI_THREAD_WAIT_MS :: 100
+
 foreign import kernel32 "system:kernel32.lib"
 
 @(default_calling_convention = "system")
@@ -182,7 +188,7 @@ audio_open :: proc(rate: int) -> ^Audio_Output {
 	w.client->GetBufferSize(&w.buf_frames)
 	if !hr_ok(w.client->GetService(&IID_IAudioRenderClient, (^rawptr)(&w.render))) || w.render == nil { return nil }
 	if !hr_ok(w.client->GetService(&IID_IAudioClock, (^rawptr)(&w.clock))) || w.clock == nil { return nil }
-	w.ring_frames = max(rate / 2, 4096)   // half a second
+	w.ring_frames = max(rate / 2, AUDIO_RING_MIN_FRAMES)   // half a second
 	w.ring = make([]f32, w.ring_frames * 2, base.process_allocator())
 	w.thread = thread.create_and_start_with_data(rawptr(w), wasapi_thread, context, .High)   // (the context of the creating thread)
 	if w.thread == nil { return nil }
@@ -262,7 +268,7 @@ wasapi_stop :: proc(o: ^Audio_Output) {
 	sync.atomic_store(&w.start_req, 0)
 	win.SetEvent(w.event)
 	// the thread stops the client; wait for it so that the caller may flush right after
-	for _ in 0 ..< 100 {
+	for _ in 0 ..< WASAPI_STOP_WAIT_TRIES {
 		if sync.atomic_load(&w.started) == 0 { break }
 		win.Sleep(1)
 	}
@@ -274,7 +280,7 @@ wasapi_flush :: proc(o: ^Audio_Output) {
 	sync.atomic_store(&w.flush_ack, 0)
 	sync.atomic_store(&w.flush_req, 1)
 	win.SetEvent(w.event)
-	for _ in 0 ..< 200 {
+	for _ in 0 ..< WASAPI_FLUSH_WAIT_TRIES {
 		if sync.atomic_load(&w.flush_ack) != 0 { break }
 		win.Sleep(1)
 	}
@@ -304,7 +310,7 @@ wasapi_thread :: proc(data: rawptr) {
 	mm := AvSetMmThreadCharacteristicsW(win.L("Pro Audio"), &task_index)
 	defer if mm != nil { AvRevertMmThreadCharacteristics(mm) }
 	for sync.atomic_load(&w.quit) == 0 {
-		win.WaitForSingleObject(w.event, 100)
+		win.WaitForSingleObject(w.event, WASAPI_THREAD_WAIT_MS)
 		if sync.atomic_load(&w.quit) != 0 { break }
 		if sync.atomic_load(&w.flush_req) != 0 {
 			if w.started != 0 { w.client->Stop(); sync.atomic_store(&w.started, 0) }
