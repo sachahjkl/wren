@@ -23,6 +23,9 @@ import "core:time"
 import "wb:wasm"
 import "wb:base"
 
+CACHE_FLUSH_POLL :: time.Millisecond   // cache_flush looks at the writer this often
+STALE_TMP_AGE :: time.Hour             // a temporary file older than this was left by a run that ended; it is removed
+
 Cache_Settings :: struct {
 	memory_bytes:     i64,
 	disk:             bool,
@@ -138,7 +141,7 @@ cache_flush :: proc() {
 		idle := len(cache.queue) == 0 && cache.writing == 0
 		sync.mutex_unlock(&cache.qlock)
 		if idle { break }
-		time.sleep(time.Millisecond)
+		time.sleep(CACHE_FLUSH_POLL)
 	}
 }
 
@@ -354,7 +357,7 @@ disk_trim :: proc() {
 	entries := make([dynamic]os.File_Info, context.temp_allocator)
 	total: i64
 	for fi in infos {
-		if strings.has_suffix(fi.name, ".tmp") && time.diff(fi.modification_time, time.now()) > time.Hour { _ = os.remove(fi.fullpath); continue }
+		if strings.has_suffix(fi.name, ".tmp") && time.diff(fi.modification_time, time.now()) > STALE_TMP_AGE { _ = os.remove(fi.fullpath); continue }
 		if !strings.has_suffix(fi.name, DISK_EXT) { continue }
 		append(&entries, fi)
 		total += fi.size

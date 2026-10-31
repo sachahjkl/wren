@@ -10,7 +10,8 @@ foreign kernel32 {
 	@(private) SystemTimeToFileTime :: proc(st: ^win.SYSTEMTIME, ft: ^win.FILETIME) -> win.BOOL ---
 }
 
-@(private) tz_name_cache: [64]u8
+@(private) TZ_NAME_MAX_BYTES :: 64   // room for a zone's IANA name, a terminator included
+@(private) tz_name_cache: [TZ_NAME_MAX_BYTES]u8
 @(private) tz_name_len: int
 @(private) tz_name_done: bool
 
@@ -27,10 +28,10 @@ timezone_name :: proc() -> string {
 	fp := win.GetProcAddress(lib, "ucal_getDefaultTimeZone")
 	if fp == nil { return "UTC" }
 	get := Get_Default(fp)
-	buf: [64]u16
+	buf: [TZ_NAME_MAX_BYTES]u16
 	status: i32
-	n := get(&buf[0], 64, &status)
-	if status > 0 || n <= 0 || n > 63 { return "UTC" }
+	n := get(&buf[0], TZ_NAME_MAX_BYTES, &status)
+	if status > 0 || n <= 0 || n > TZ_NAME_MAX_BYTES - 1 { return "UTC" }
 	for i in 0 ..< int(n) {
 		if buf[i] > 127 { return "UTC" }
 		tz_name_cache[i] = u8(buf[i])
