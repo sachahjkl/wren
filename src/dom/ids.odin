@@ -3,6 +3,8 @@ package dom
 import "core:strings"
 import "wb:base"
 
+IDS_INITIAL_BUCKETS :: 64   // first capacity of the map of the id index
+
 // The id index: elements by the value of their id attribute, for getElementById, fragment navigation and the like.
 // Off until the first lookup, which builds it from every element of the document (in the tree or not); from then on
 // set_attribute, remove_attribute and the destruction of nodes keep it exact. Insertions and removals cost nothing
@@ -72,7 +74,7 @@ ids_forget_node :: proc(d: ^Document, h: base.Handle, n: ^Node) {
 @(private = "file")
 ids_build :: proc(d: ^Document) {
 	d.ids.on = true
-	d.ids.by_id = make(map[string]Id_Bucket, 64)
+	d.ids.by_id = make(map[string]Id_Bucket, IDS_INITIAL_BUCKETS)
 	it: u32
 	for h, n in base.pool_next(&d.nodes, &it) {
 		if n.kind != .Element { continue }
