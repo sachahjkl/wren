@@ -81,4 +81,25 @@ test("in a worker", async () => {
   w.terminate();
 });
 
+test("getComputedStyle: shorthands", () => {
+  const d = document.createElement("div");
+  d.style.cssText = "border-radius:4px 8px;border:1px solid red;margin:1px 2px;padding:3px;gap:2px;inset:1px 2px 3px 4px;flex:2 3 10px;mask-image:url(x.svg);outline:1px solid blue;font:italic 700 12px/20px serif";
+  document.body.appendChild(d);
+  const c = getComputedStyle(d);
+  eq(c.borderRadius, "4px 8px", "border-radius");
+  eq(Number.parseInt(c.borderRadius), 4, "a number can be read from it");
+  eq(c.border, "1px solid rgb(255, 0, 0)", "border, all sides alike");
+  eq(c.borderWidth, "1px", "border-width");
+  eq(c.padding, "3px", "padding in its shortest form");
+  eq(c.gap, "2px", "gap");
+  eq(c.inset, "1px 2px 3px 4px", "inset");
+  eq(c.flex, "2 3 10px", "flex");
+  eq(c.outline, "rgb(0, 0, 255) solid 1px", "outline");
+  eq(c.font, "italic 700 12px / 20px serif", "font");
+  ok(c.maskImage.startsWith('url("') && c.maskImage.endsWith('x.svg")'), "mask-image");
+  d.style.borderLeftWidth = "5px";
+  eq(c.border, "", "border, sides that differ: no value");
+  d.remove();
+});
+
 __run();

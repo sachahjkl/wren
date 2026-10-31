@@ -572,7 +572,7 @@ computed_value :: proc(cs: ^style.Computed, name: string, used: Used_Box) -> str
 		parts: [4]string
 		sides := [4]string{"top", "right", "bottom", "left"}
 		for s in 0 ..< 4 { parts[s] = computed_value(cs, fmt.tprintf("%s-%s", name, sides[s]), used) }
-		return strings.join(parts[:], " ", context.temp_allocator)
+		return css_four(parts[0], parts[1], parts[2], parts[3])
 	case "border-top-width", "border-right-width", "border-bottom-width", "border-left-width":
 		s := style.Side(side(name))
 		w := cs.border_style[s] == .None || cs.border_style[s] == .Hidden ? 0 : cs.border_width[s]
@@ -750,7 +750,74 @@ computed_value :: proc(cs: ^style.Computed, name: string, used: Used_Box) -> str
 	if strings.has_prefix(name, "--") && cs.custom != nil {
 		if v, ok := style.custom_get(cs.custom, name); ok { return v }
 	}
+	return computed_shorthand(cs, name, used)
+}
+
+// What a shorthand's longhands make, in the order browsers answer. Pages read them as often as the longhands: reddit computes a
+// point from Number.parseInt(getComputedStyle(e).borderRadius), which was NaN here, and elementFromPoint threw. "" when not known,
+// and for a side-by-side shorthand whose sides differ (`border`), as CSSOM says.
+@(private = "file")
+computed_shorthand :: proc(cs: ^style.Computed, name: string, used: Used_Box) -> string {
+	get :: proc(cs: ^style.Computed, used: Used_Box, name: string) -> string { return computed_value(cs, name, used) }
+	four :: proc(cs: ^style.Computed, used: Used_Box, top, right, bottom, left: string) -> string { return css_four(get(cs, used, top), get(cs, used, right), get(cs, used, bottom), get(cs, used, left)) }
+	line :: proc(cs: ^style.Computed, used: Used_Box, width, stl, color: string) -> string {
+		return strings.join({get(cs, used, width), get(cs, used, stl), get(cs, used, color)}, " ", context.temp_allocator)
+	}
+	switch name {
+	case "border-radius": return four(cs, used, "border-top-left-radius", "border-top-right-radius", "border-bottom-right-radius", "border-bottom-left-radius")
+	case "border-width": return four(cs, used, "border-top-width", "border-right-width", "border-bottom-width", "border-left-width")
+	case "border-style": return four(cs, used, "border-top-style", "border-right-style", "border-bottom-style", "border-left-style")
+	case "border-color": return four(cs, used, "border-top-color", "border-right-color", "border-bottom-color", "border-left-color")
+	case "border-top": return line(cs, used, "border-top-width", "border-top-style", "border-top-color")
+	case "border-right": return line(cs, used, "border-right-width", "border-right-style", "border-right-color")
+	case "border-bottom": return line(cs, used, "border-bottom-width", "border-bottom-style", "border-bottom-color")
+	case "border-left": return line(cs, used, "border-left-width", "border-left-style", "border-left-color")
+	case "border":
+		t := get(cs, used, "border-top")
+		for s in ([3]string{"border-right", "border-bottom", "border-left"}) { if get(cs, used, s) != t { return "" } }
+		return t
+	case "outline": return strings.join({get(cs, used, "outline-color"), get(cs, used, "outline-style"), get(cs, used, "outline-width")}, " ", context.temp_allocator)
+	case "inset": return four(cs, used, "top", "right", "bottom", "left")
+	case "gap":
+		r, c := get(cs, used, "row-gap"), get(cs, used, "column-gap")
+		return r == c ? r : strings.concatenate({r, " ", c}, context.temp_allocator)
+	case "flex": return strings.join({get(cs, used, "flex-grow"), get(cs, used, "flex-shrink"), get(cs, used, "flex-basis")}, " ", context.temp_allocator)
+	case "flex-flow": return strings.join({get(cs, used, "flex-direction"), get(cs, used, "flex-wrap")}, " ", context.temp_allocator)
+	case "text-decoration": return strings.join({get(cs, used, "text-decoration-line"), get(cs, used, "text-decoration-style"), get(cs, used, "text-decoration-color")}, " ", context.temp_allocator)
+	case "background":
+		if len(cs.background_images) > 1 { return "" }   // (the longhands below answer for the first layer)
+		return fmt.tprintf("%s %s %s %s %s / %s %s %s", get(cs, used, "background-color"), get(cs, used, "background-image"), get(cs, used, "background-repeat"),
+			get(cs, used, "background-attachment"), get(cs, used, "background-position"), get(cs, used, "background-size"), get(cs, used, "background-origin"), get(cs, used, "background-clip"))
+	case "font":
+		parts := make([dynamic]string, 0, 4, context.temp_allocator)
+		if st := get(cs, used, "font-style"); st != "normal" { append(&parts, st) }
+		if w := get(cs, used, "font-weight"); w != "400" { append(&parts, w) }
+		size := get(cs, used, "font-size")
+		lh := get(cs, used, "line-height")
+		append(&parts, lh == "normal" ? size : strings.concatenate({size, " / ", lh}, context.temp_allocator))
+		append(&parts, get(cs, used, "font-family"))
+		return strings.join(parts[:], " ", context.temp_allocator)
+	case "mask-image":   // (no shorthand, but no case above: the first layer, as the background's)
+		if len(cs.mask_images) > 0 {
+			#partial switch im := cs.mask_images[0]; im.kind {
+			case .Url: return fmt.tprintf("url(\"%s\")", im.url)
+			case .Gradient: return im.gradient
+			}
+		}
+		return "none"
+	}
 	return ""
+}
+
+// Four sides in the fewest values that say them (CSSOM: top right bottom left, with what repeats left out).
+@(private)
+css_four :: proc(a, b, c, d: string) -> string {
+	switch {
+	case b != d: return strings.join({a, b, c, d}, " ", context.temp_allocator)
+	case a != c: return strings.join({a, b, c}, " ", context.temp_allocator)
+	case a != b: return strings.concatenate({a, " ", b}, context.temp_allocator)
+	}
+	return a
 }
 
 ComputedStyle_get :: proc(c: ^Call, element: Api_Element, pseudo: string, name: string) -> string {
