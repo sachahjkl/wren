@@ -11,6 +11,10 @@ import "wb:base"
 // near (a long scrolling list inside a box is indexed in its own coordinates).
 @(private)
 BAND_ENTRIES_PER_ITEM :: 15
+// Allowance on top of BAND_ENTRIES_PER_ITEM per item, so a space of few items is not held to few bands.
+BAND_ENTRIES_FLOOR :: 4096
+// The shortest band, in CSS pixels, whatever the input asks.
+BAND_MIN_H :: 16
 
 @(private)
 build_bands :: proc(l: ^Layout, band_h: f32) {
@@ -34,7 +38,7 @@ build_bands :: proc(l: ^Layout, band_h: f32) {
 		// an item is listed in every band it crosses: about tall / bh + count entries. Bands are made taller when items
 		// are (thousands of overlapping page-high boxes listed in thousands of bands each: gigabytes, then u32 sums that
 		// wrapped): at most BAND_ENTRIES_PER_ITEM entries per item on average
-		bh := max(band_h, f32(tall[i] / f64(BAND_ENTRIES_PER_ITEM * count[i] + 4096)))
+		bh := max(band_h, f32(tall[i] / f64(BAND_ENTRIES_PER_ITEM * count[i] + BAND_ENTRIES_FLOOR)))
 		nb := int((ymax[i] - ymin[i]) / bh) + 1
 		nb = clamp(nb, 1, 2 * count[i] + 1)
 		sp.band0 = ymin[i]

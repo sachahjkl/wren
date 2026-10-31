@@ -93,7 +93,7 @@ run_full :: proc(l: ^Layout, input: Input) {
 	build_display_list(&c)
 	note_refresh_inputs(l)
 	t4 := time.tick_now()
-	build_bands(l, max(input.band_h, 16) * input.scale)
+	build_bands(l, max(input.band_h, BAND_MIN_H) * input.scale)
 	t5 := time.tick_now()
 	l.stats = {ms(t0, t1), ms(t1, t2), ms(t2, t3), ms(t3, t4), ms(t4, t5)}
 	inc_note_full(l)

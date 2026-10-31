@@ -8,6 +8,9 @@ import "wb:css"
 import "wb:dom"
 import "wb:style"
 
+// Added before a border width is floored to device pixels: a width that is whole but for rounding keeps its value.
+BORDER_FLOOR_EPSILON :: 0.001
+
 // State of one layout pass. Everything allocated for the pass alone uses the temp allocator or the Layout's arena.
 @(private)
 Ctx :: struct {
@@ -129,7 +132,7 @@ definite :: proc(c: ^Ctx, l: style.Length, base: f32) -> (f32, bool) {
 @(private)
 border_px :: proc(c: ^Ctx, w: f32) -> f32 {
 	if w <= 0 { return 0 }
-	return max(1, math.floor(w * c.scale + 0.001))
+	return max(1, math.floor(w * c.scale + BORDER_FLOOR_EPSILON))
 }
 
 // Margins, borders and padding against the containing block's width.

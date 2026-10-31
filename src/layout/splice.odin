@@ -301,13 +301,13 @@ try_splice :: proc(c: ^Ctx, roots: []i32, cand: map[i32]Splice_Root, input: Inpu
 			if it.node != base.NIL_HANDLE && box_index(l, it.node) == NONE { l.loose_styles = true }
 		}
 	}
-	if !bands_kept { build_bands(l, max(input.band_h, 16) * input.scale) }
+	if !bands_kept { build_bands(l, max(input.band_h, BAND_MIN_H) * input.scale) }
 	if !refresh_paint_values(l, input) {
 		// a transform moved and some container starts or stops scrolling: finish everything after all
 		finish(c)
 		build_display_list(c)
 		note_refresh_inputs(l)
-		build_bands(l, max(input.band_h, 16) * input.scale)
+		build_bands(l, max(input.band_h, BAND_MIN_H) * input.scale)
 	}
 	return true
 }

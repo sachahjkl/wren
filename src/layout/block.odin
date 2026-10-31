@@ -3,6 +3,11 @@ package layout
 import "core:math"
 import "wb:style"
 
+// Floats are tested against a band at least this tall (CSS px), even an empty one.
+FLOAT_PROBE_MIN_H :: 0.01
+// How many boxes the search for the first baseline of a list item visits.
+FIRST_BASELINE_MAX_STEPS :: 4096
+
 // Block formatting (CSS 2.1 §9.4.1, §10.3.3, §10.6.3, §8.3.1 margin collapsing, §9.5 floats).
 //
 // Margin collapsing works with "struts": the margins that adjoin so far (largest positive, most negative). While a box's
@@ -62,7 +67,7 @@ bfc_band :: proc(bfc: ^Bfc, y0, y1, left, right: f32) -> (l, r: f32) {
 	l, r = left, right
 	if bfc == nil { return }
 	for &f in bfc.floats {
-		if f.r.max.y <= y0 || f.r.min.y >= max(y1, y0 + 0.01) { continue }
+		if f.r.max.y <= y0 || f.r.min.y >= max(y1, y0 + FLOAT_PROBE_MIN_H) { continue }
 		if f.left { l = max(l, f.r.max.x) } else { r = min(r, f.r.min.x) }
 	}
 	return
@@ -626,7 +631,7 @@ place_float :: proc(c: ^Ctx, fi, ci: i32, cw: f32, fc: ^Flow_Ctx, min_y: f32) {
 first_baseline_in :: proc(c: ^Ctx, bi: i32) -> (f32, bool) {
 	off: f32 = 0
 	cur := bi
-	for steps := 0; steps < 4096 && cur != NONE; steps += 1 {
+	for steps := 0; steps < FIRST_BASELINE_MAX_STEPS && cur != NONE; steps += 1 {
 		b := &c.l.boxes[cur]
 		if .Ifc in b.flags && b.lines[1] > b.lines[0] {
 			ln := &c.l.lines[b.lines[0]]

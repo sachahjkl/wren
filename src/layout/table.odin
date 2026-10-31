@@ -5,6 +5,11 @@ import "wb:base"
 import "wb:dom"
 import "wb:style"
 
+// The cap on the max-content width of a table that holds percentage columns (CSS px; times the scale).
+TABLE_MAX_CONTENT_CAP :: 1_000_000
+// Below this, the percentages left for the other columns count as none.
+TABLE_ROOM_EPSILON_PCT :: 0.01
+
 // Tables (CSS 2.1 §17, automatic table layout §17.5.2.2): a slot grid with colspan / rowspan, column widths from the
 // cells' min-content / max-content widths (spanning cells spread their excess), distribution of the table width between
 // the minimum and maximum, row heights, vertical-align in cells, border-spacing, captions above the table. With
@@ -404,7 +409,6 @@ table_intrinsic :: proc(c: ^Ctx, bi: i32) -> [2]f32 {
 	for v in e.mins { mn += v }
 	// max-content: wide enough that percentage columns get their share of the columns' width with their content
 	// whole, and the others theirs (as browsers compute it; capped)
-	TABLE_MAX :: 1_000_000
 	sum_max, non_pct, room: f32 = 0, 0, 100
 	need: f32 = 0
 	for v, i in e.maxs {
@@ -416,8 +420,8 @@ table_intrinsic :: proc(c: ^Ctx, bi: i32) -> [2]f32 {
 			non_pct += v
 		}
 	}
-	if non_pct > 0 { need = max(need, room > 0.01 ? non_pct * 100 / room : TABLE_MAX) }
-	mx += min(max(sum_max, need), TABLE_MAX * c.scale)
+	if non_pct > 0 { need = max(need, room > TABLE_ROOM_EPSILON_PCT ? non_pct * 100 / room : TABLE_MAX_CONTENT_CAP) }
+	mx += min(max(sum_max, need), TABLE_MAX_CONTENT_CAP * c.scale)
 	for cap in g.captions {
 		in2 := intrinsic(c, cap)
 		mn = max(mn, in2[0])
