@@ -579,10 +579,15 @@ computed_value :: proc(cs: ^style.Computed, name: string, used: Used_Box) -> str
 		return css_px(w)
 	case "border-top-style", "border-right-style", "border-bottom-style", "border-left-style": return kw(cs.border_style[style.Side(side(name))])
 	case "border-top-color", "border-right-color", "border-bottom-color", "border-left-color": return css_color(cs.border_color[style.Side(side(name))])
-	case "border-top-left-radius": return css_length(cs.radius[.Top_Left].h)
-	case "border-top-right-radius": return css_length(cs.radius[.Top_Right].h)
-	case "border-bottom-right-radius": return css_length(cs.radius[.Bottom_Right].h)
-	case "border-bottom-left-radius": return css_length(cs.radius[.Bottom_Left].h)
+	case "border-top-left-radius", "border-top-right-radius", "border-bottom-right-radius", "border-bottom-left-radius":
+		corner := style.Corner.Top_Left
+		switch name {
+		case "border-top-right-radius": corner = .Top_Right
+		case "border-bottom-right-radius": corner = .Bottom_Right
+		case "border-bottom-left-radius": corner = .Bottom_Left
+		}
+		r := cs.radius[corner].h
+		return r.kind == .Auto ? "0px" : css_length(r)   // (the initial value is held as an unset length)
 	case "border-collapse": return cs.border_collapse ? "collapse" : "separate"
 	case "border-spacing": return fmt.tprintf("%s %s", css_px(cs.border_spacing[0]), css_px(cs.border_spacing[1]))
 	case "table-layout": return kw(cs.table_layout)
