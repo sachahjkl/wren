@@ -113,7 +113,7 @@ JS_SetContextOpaque :: proc "c" (c: ^Context, opaque: rawptr) {
 
 JS_SetMaxStackSize :: proc "c" (r: ^Runtime, stack_size: uint) {
 	rt := jrt(r)
-	rt.config.max_stack_bytes = stack_size == 0 ? 640 * 1024 : int(stack_size)
+	rt.config.max_stack_bytes = stack_size == 0 ? js.DEFAULT_MAX_STACK_BYTES : int(stack_size)
 }
 
 // The engine measures the host stack from the outermost entry (host_enter), so there is no stack top to
