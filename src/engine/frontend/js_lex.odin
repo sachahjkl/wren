@@ -4,6 +4,12 @@ import "core:strings"
 import ucd "wb:engine/unicode"
 import "wb:engine/numconv"
 
+// A number literal of at most this many digits is exact in a double and takes the fast path.
+NUM_FAST_MAX_DIGITS_DEC :: 15
+NUM_FAST_MAX_DIGITS_HEX :: 13
+// The brackets js_parse_skip_parens_token follows; past them it gives up looking ahead.
+SKIP_PARENS_MAX_LEVELS :: 256
+
 // The lexer, as QuickJS's next_token(): a pull lexer over a NUL-padded byte buffer, tracking the exact line and
 // column bookkeeping QuickJS uses (the `mark`/`eol` pair), because those positions end up in the pc2line debug
 // table and the judge compares it byte for byte. Identifiers become atoms, strings become JS strings, numbers
@@ -570,7 +576,7 @@ js_atof_lex :: proc(s: ^Parse_State, p0: int) -> (JS_Value, int) {
 		}
 	}
 	if p == p_start {return nil, p}
-	if !is_float && buf[p] != 'n' && p - p_start <= 15 && (radix == 10 || radix == 16 && p - p_start <= 13) {
+	if !is_float && buf[p] != 'n' && p - p_start <= NUM_FAST_MAX_DIGITS_DEC && (radix == 10 || radix == 16 && p - p_start <= NUM_FAST_MAX_DIGITS_HEX) {
 		// fast path: a short integer is exact in a double, no conversion routine needed
 		v: u64 = 0
 		plain := true
@@ -1132,7 +1138,7 @@ SKIP_HAS_ASSIGNMENT :: 1 << 2
 // js_parse_skip_parens_token scans ahead over a balanced (), [] or {} group and returns the token after it,
 // then rewinds. Errors raised while scanning are discarded, as in QuickJS.
 js_parse_skip_parens_token :: proc(s: ^Parse_State, pbits: ^int, no_line_terminator: bool) -> int {
-	state: [256]u8
+	state: [SKIP_PARENS_MAX_LEVELS]u8
 	level := 0
 	bits := 0
 	tok := TOK_EOF
