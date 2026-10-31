@@ -13,6 +13,9 @@ package fetch
 import "core:strings"
 import "core:unicode/utf8"
 
+// The parser's event limit is at least this (eventsource.max_event_bytes can be set lower).
+SSE_MIN_EVENT_BYTES :: 64
+
 Sse_Event :: struct {
 	type:          string,   // "message" unless the event named itself
 	data:          string,
@@ -41,7 +44,7 @@ Sse_Parser :: struct {
 }
 
 sse_parser_init :: proc(p: ^Sse_Parser, max_bytes: int) {
-	p.max_bytes = max(max_bytes, 64)
+	p.max_bytes = max(max_bytes, SSE_MIN_EVENT_BYTES)
 	p.retry_ms = -1
 	sse_reset_stream(p)
 }

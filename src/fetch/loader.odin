@@ -11,6 +11,9 @@ import "wb:http"
 import "wb:net"
 import "wb:url"
 
+// The body of a preflight's answer is collected up to this (only its headers count).
+PREFLIGHT_MAX_BODY_BYTES :: 1 << 20
+
 Loader :: struct {
 	loop:     ^host.Loop,
 	net:      ^net.Client,
@@ -646,7 +649,7 @@ send_preflight :: proc(t: ^Task, unsafe: []string) {
 	t.net_user = pf
 	t.net_req = net.fetch(l.net, {
 		url = url_no_fragment(t.target), method = "OPTIONS", headers = join_headers(h), on_event = preflight_event, user = pf,
-		collect = true, max_body = 1 << 20, priority = .High, link = link_of(l, t.scope),
+		collect = true, max_body = PREFLIGHT_MAX_BODY_BYTES, priority = .High, link = link_of(l, t.scope),
 	})
 }
 
