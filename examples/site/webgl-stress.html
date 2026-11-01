@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>WebGL stress</title>
+<style>
+  body { font: 15px/1.5 system-ui, sans-serif; margin: 24px; background: #15171c; color: #dde; }
+  canvas { background: #000; display: block; margin: 0 0 16px; }
+  #result { white-space: pre-wrap; color: #9a9; font-family: monospace; }
+  button { font: inherit; }
+</style>
+</head>
+<body>
+<h1>WebGL stress</h1>
+<p>Thousands of draws a frame on a large canvas, and what a page has to wait for: questions, pixels, uploads. <code>tools\webgl_bench.ps1</code> reads <code>measure()</code> for its table.</p>
+<p><button id="run">Measure</button></p>
+<canvas id="c" width="1920" height="1080" style="width: 960px; height: 540px"></canvas>
+<p id="result"></p>
+<script>
+"use strict";
+// One program, a quad per draw, a uniform per draw: each draw is a few commands in the stream and a pipeline already made.
+const DRAWS_PER_FRAME = 5000;
+const SETTLE_FRAMES = 30;           // frames left out of a measure: the first ones make pipelines
+const MEASURE_MS = 4000;
+const QUESTIONS = 5000;             // getError round trips
+const SMALL_READS = 500;            // readPixels of a pixel
+const LARGE_READS = 30;             // readPixels of the whole canvas
+const UPLOAD_SIDE = 4096;           // texImage2D of this many pixels squared, RGBA
+const UPLOADS = 5;
+const BUFFER_MB = 64;               // bufferData of this size
+const BUFFERS = 5;
+const SHADERS = 20;                 // shaders compiled and linked, each different
+
+const canvas = document.getElementById("c");
+const out = document.getElementById("result");
+
+const VS = "attribute vec2 p; uniform vec4 at; void main() { gl_Position = vec4(p * at.zw + at.xy, 0.0, 1.0); }";
+const FS = "precision mediump float; uniform vec4 color; void main() { gl_FragColor = color; }";
+
+function build(gl, vs, fs) {
+  const make = (type, source) => {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, source);
+    gl.compileShader(s);
+    return s;
+  };
+  const p = gl.createProgram();
+  gl.attachShader(p, make(gl.VERTEX_SHADER, vs));
+  gl.attachShader(p, make(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  return p;
+}
+
+const before = performance.now();
+const gl = canvas.getContext("webgl", { antialias: false, alpha: false });
+const firstContextMs = performance.now() - before;
+const program = build(gl, VS, FS);
+const at = gl.getUniformLocation(program, "at"), color = gl.getUniformLocation(program, "color");
+const buffer = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+gl.useProgram(program);
+gl.enableVertexAttribArray(gl.getAttribLocation(program, "p"));
+gl.vertexAttribPointer(gl.getAttribLocation(program, "p"), 2, gl.FLOAT, false, 0, 0);
+
+let t = 0;
+function drawFrame() {
+  t += 0.01;
+  gl.clearColor(0.05, 0.05, 0.08, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  for (let i = 0; i < DRAWS_PER_FRAME; i++) {
+    const a = i * 0.0013 + t;
+    gl.uniform4f(at, Math.cos(a * 3) * 0.9, Math.sin(a * 2) * 0.9, 0.02, 0.03);
+    gl.uniform4f(color, 0.5 + 0.5 * Math.sin(a), 0.5 + 0.5 * Math.cos(a * 1.3), 0.6, 1);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+}
+
+const median = list => { list.sort((a, b) => a - b); return list[list.length >> 1]; };
+const nextFrame = () => new Promise(requestAnimationFrame);
+
+async function frames(ms) {
+  for (let i = 0; i < SETTLE_FRAMES; i++) { drawFrame(); await nextFrame(); }
+  const start = performance.now();
+  let n = 0, work = 0;
+  while (performance.now() - start < ms) {
+    const w = performance.now();
+    drawFrame();
+    gl.flush();
+    work += performance.now() - w;
+    n++;
+    await nextFrame();
+  }
+  return { fps: n / ((performance.now() - start) / 1000), scriptMsPerFrame: work / n };
+}
+
+function timed(n, f) {
+  const list = [];
+  for (let i = 0; i < n; i++) {
+    const s = performance.now();
+    f(i);
+    list.push(performance.now() - s);
+  }
+  return median(list);
+}
+
+// What a machine's numbers are made of; a run takes half a minute.
+async function measureAll() {
+  const r = { firstContextMs };
+  Object.assign(r, await frames(MEASURE_MS));
+  // (a turn of the loop between measures: this page must not look like a script that never ends)
+  await nextFrame();
+  r.getErrorUs = timed(QUESTIONS, () => gl.getError()) * 1000;
+  await nextFrame();
+  const one = new Uint8Array(4);
+  r.readPixelMs = timed(SMALL_READS, () => gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, one));
+  await nextFrame();
+  const all = new Uint8Array(canvas.width * canvas.height * 4);
+  r.readCanvasMs = timed(LARGE_READS, () => gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, all));
+  await nextFrame();
+  const pixels = new Uint8Array(UPLOAD_SIDE * UPLOAD_SIDE * 4);
+  const texture = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  r.uploadMs = timed(UPLOADS, () => {
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, UPLOAD_SIDE, UPLOAD_SIDE, 0, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+    gl.finish();
+  });
+  gl.deleteTexture(texture);
+  await nextFrame();
+  const data = new Uint8Array(BUFFER_MB << 20);
+  r.bufferMs = timed(BUFFERS, () => {
+    gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
+    gl.finish();
+  });
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+  await nextFrame();
+  r.linkMs = timed(SHADERS, i => {
+    const p = build(gl, VS, FS.replace("color;", "color; const float unused" + i + " = 1.0;"));
+    gl.deleteProgram(p);
+  });
+  r.draws = DRAWS_PER_FRAME;
+  return r;
+}
+
+let running = false;
+(function spin() {
+  if (!running) drawFrame();
+  requestAnimationFrame(spin);
+})();
+
+window.measure = async () => {
+  running = true;
+  try { return JSON.stringify(await measureAll()); } finally { running = false; }
+};
+document.getElementById("run").onclick = async () => {
+  out.textContent = "...";
+  out.textContent = await window.measure();
+};
+</script>
+</body>
+</html>

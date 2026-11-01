@@ -125,6 +125,8 @@ DEMOS := [?]Demo{
 
 	{.JavaScript, "WebGL", "webgl.html",
 		"A spinning cube with a depth buffer, and a quad textured by a 2D canvas: shaders, buffers, a mipmapped texture, frames back to the page.", false, "", false},
+	{.JavaScript, "WebGL stress", "webgl-stress.html",
+		"Thousands of draws a frame on a large canvas, and what a page has to wait for: questions, pixels, uploads. <code>tools\\webgl_bench.ps1</code> measures it.", false, "", false},
 	{.JavaScript, "Web Audio", "webaudio.html",
 		"A note through a filter, a delay with feedback and an analyser that draws the wave: <code>AudioContext</code> waits for the click on Play (<code>media.autoplay.policy</code>), the tab shows its speaker.", false, "", false},
 	{.Wasm, "A page with no JavaScript", "counter.html",

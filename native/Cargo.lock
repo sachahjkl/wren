@@ -3882,10 +3882,12 @@ dependencies = [
 name = "wren_webgl"
 version = "0.1.0"
 dependencies = [
+ "libc",
  "naga",
  "pollster",
  "pp-rs",
  "wgpu",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
