@@ -73,6 +73,7 @@ Page :: struct {
 	close_pending:  bool,      // closed while in use: closes once nothing runs in it (frames_access.odin)
 	frames_pending_parent: ^Page,   // the document it was a frame of, while it waits
 	foreign_owners: [dynamic]Foreign_Owner,   // realms of other documents with listeners or callbacks here
+	bridge_reply:   []u8,      // owned: the last reply of the value bridge (Frame_bridge)
 	loop:      ^host.Loop,
 	loader:    ^fetch.Loader,
 	settings:  ^Settings,     // shared, owned by the shell; follows preference changes
@@ -198,6 +199,7 @@ page_cleanup :: proc(data: rawptr) {
 	dom.dispatcher_destroy(&p.dp)
 	delete(p.instances)
 	delete(p.foreign_owners)
+	delete(p.bridge_reply)
 	fetch.document_end(p.loader, &p.env)
 	fetch.environment_destroy(&p.env)
 	free(p)

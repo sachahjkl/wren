@@ -27,6 +27,11 @@ foreign _m_frames {
 	@(link_name = "Frame_elementOf") _Frame_elementOf :: proc(navigable: u64) -> u64 ---
 	@(link_name = "Frame_ofDocument") _Frame_ofDocument :: proc(node: u64) -> u64 ---
 	@(link_name = "Frame_target") _Frame_target :: proc(node: u64) -> i32 ---
+	@(link_name = "Frame_windowTarget") _Frame_windowTarget :: proc(navigable: u64) -> u64 ---
+	@(link_name = "Frame_realmSelf") _Frame_realmSelf :: proc() -> u64 ---
+	@(link_name = "Frame_realmOf") _Frame_realmOf :: proc(navigable: u64) -> u64 ---
+	@(link_name = "Frame_bridge") _Frame_bridge :: proc(realm: u64, request: [^]u8, request_len: u32) -> u32 ---
+	@(link_name = "Frame_bridgeReply") _Frame_bridgeReply :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Frame_adoptNode") _Frame_adoptNode :: proc(node: u64, into: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Frame_postMessage") _Frame_postMessage :: proc(navigable: u64, data: [^]u8, data_len: u32, target_origin: [^]u8, target_origin_len: u32) -> Error ---
 	@(link_name = "Frame_navigate") _Frame_navigate :: proc(navigable: u64, url: [^]u8, url_len: u32, replace: i32) -> Error ---
@@ -133,6 +138,56 @@ Frame_ofDocument :: proc "contextless" (node: u64) -> u64 {
 // (document.createTextNode of another document). False when that document cannot be reached (gone, another origin).
 Frame_target :: proc "contextless" (node: u64) -> bool {
 	return _Frame_target(node) != 0
+}
+
+// The browser's object for the window of this navigable (a target for events), when the calling document may reach it; 0 otherwise.
+Frame_windowTarget :: proc "contextless" (navigable: u64) -> u64 {
+	return _Frame_windowTarget(navigable)
+}
+
+// The realm of the calling document (a number for Frame_bridge).
+Frame_realmSelf :: proc "contextless" () -> u64 {
+	return _Frame_realmSelf()
+}
+
+// The realm of the document this navigable shows, when the calling document may reach it; 0 otherwise.
+Frame_realmOf :: proc "contextless" (navigable: u64) -> u64 {
+	return _Frame_realmOf(navigable)
+}
+
+// A request of the value bridge (native/js/odin/frames_bridge.odin) to another realm: the size of its reply, read
+// with Frame_bridgeReply; 0 when that realm is gone or may not be reached.
+Frame_bridge :: proc "contextless" (realm: u64, request: []u8) -> u32 {
+	return _Frame_bridge(realm, raw_data(request), u32(len(request)))
+}
+
+// The reply of the last Frame_bridge.
+Frame_bridgeReply :: proc "contextless" (buf: []u8) -> ([]u8, Error) {
+	n := _Frame_bridgeReply(raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return (buf), .Truncated }
+	return (buf[:n]), .None
+}
+
+// The full length of Frame_bridgeReply's result.
+Frame_bridgeReply_len :: proc "contextless" () -> (int, Error) {
+	n := _Frame_bridgeReply(nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Frame_bridgeReply's result in a buffer allocated to fit.
+Frame_bridgeReply_alloc :: proc(allocator: runtime.Allocator) -> ([]u8, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Frame_bridgeReply(raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return (buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
 }
 
 // Moves `node`, of another document, to the document holding `into` (DOM "adopt"), as lone nodes: the handles of the

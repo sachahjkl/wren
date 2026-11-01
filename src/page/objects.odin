@@ -203,7 +203,7 @@ call_guest :: proc(p_in: ^Page, inst: ^wasm.Instance, table_index: u32, argv: []
 	res := wasm.call_indirect(inst, table_index, argv)
 	p.objects.depth -= 1
 	if res != .Ok { guest_failed(p, inst) }
-	if p.objects.depth == 0 { microtask_checkpoint(p) }
+	if p.objects.depth == 0 && p.route_busy == 0 { microtask_checkpoint(p) }
 	if loaf != 0 { loaf_script_end(p, loaf) }
 	if task != 0 { timeline_task_end(p, task) }
 	if opened { loaf_frame_end(p) }
@@ -220,7 +220,7 @@ call_export :: proc(p: ^Page, inst: ^wasm.Instance, name: cstring, argv: []u32 =
 	res := wasm.call_raw(inst, name, argv)
 	p.objects.depth -= 1
 	if res != .Ok { guest_failed(p, inst) }
-	if p.objects.depth == 0 { microtask_checkpoint(p) }
+	if p.objects.depth == 0 && p.route_busy == 0 { microtask_checkpoint(p) }
 	if loaf != 0 { loaf_script_end(p, loaf) }
 	if task != 0 { timeline_task_end(p, task) }
 	if opened { loaf_frame_end(p) }

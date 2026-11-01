@@ -158,6 +158,57 @@ The next import of the calling realm that names no node acts on the document hol
 
 Host: `Frame_target :: proc(c: ^Call, node: u64) -> bool`
 
+### `Frame_windowTarget`
+
+```
+u64 Frame_windowTarget(u64 navigable)
+```
+
+The browser's object for the window of this navigable (a target for events), when the calling document may reach it; 0 otherwise.
+
+Host: `Frame_windowTarget :: proc(c: ^Call, navigable: u64) -> u64`
+
+### `Frame_realmSelf`
+
+```
+u64 Frame_realmSelf()
+```
+
+The realm of the calling document (a number for Frame_bridge).
+
+Host: `Frame_realmSelf :: proc(c: ^Call) -> u64`
+
+### `Frame_realmOf`
+
+```
+u64 Frame_realmOf(u64 navigable)
+```
+
+The realm of the document this navigable shows, when the calling document may reach it; 0 otherwise.
+
+Host: `Frame_realmOf :: proc(c: ^Call, navigable: u64) -> u64`
+
+### `Frame_bridge`
+
+```
+u32 Frame_bridge(u64 realm, bytes request)
+```
+
+A request of the value bridge (native/js/odin/frames_bridge.odin) to another realm: the size of its reply, read
+with Frame_bridgeReply; 0 when that realm is gone or may not be reached.
+
+Host: `Frame_bridge :: proc(c: ^Call, realm: u64, request: []u8) -> u32`
+
+### `Frame_bridgeReply`
+
+```
+bytes Frame_bridgeReply()
+```
+
+The reply of the last Frame_bridge.
+
+Host: `Frame_bridgeReply :: proc(c: ^Call) -> []u8`
+
 ### `Frame_adoptNode`
 
 ```

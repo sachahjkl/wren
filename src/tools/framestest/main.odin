@@ -440,6 +440,19 @@ log("still sync");
 		page.page_close(p)
 	}
 
+	fmt.println("-- recursion across realms ends without a crash")
+	{
+		p := load(`<body><iframe id=f srcdoc="<script>window.down = n => parent.up(n + 1);</script>"></iframe><script>
+window.deepest = 0;
+window.up = n => { deepest = n; return document.getElementById("f").contentWindow.down(n + 1); };
+addEventListener("load", () => {
+  try { up(0); } catch (e) { log("recursion stopped " + (deepest > 2)); }
+  log("still alive " + document.body.tagName);
+});
+</script></body>`)
+		check(wait_for("still alive BODY"), "unbounded recursion through two realms is stopped; the page survives")
+		page.page_close(p)
+	}
 }
 
 // document.open / write / close on a frame's document, from the parent.
@@ -483,13 +496,124 @@ log("second " + f.contentDocument.body.textContent);
 	}
 }
 
+// Globals through the value bridge: frame.contentWindow.foo, parent.foo().
+value_bridge :: proc() {
+	fmt.println("-- values across realms: primitives, objects, functions")
+	{
+		p := load(`<body><iframe id=f srcdoc="<p id=fp>in frame</p><script>
+window.n = 42; window.s = 'text'; window.big = 12345678901234567890n; window.nul = null;
+window.obj = {a: 1, nested: {b: [1, 2, 3]}, method(x) { return this.a + x; }};
+window.fn = (a, b) => a + b;
+window.thrower = () => { throw new RangeError('from frame'); };
+window.Klass = class Klass { constructor(v) { this.v = v; } get double() { return this.v * 2; } static make() { return new Klass(7); } };
+window.takesCallback = cb => cb(20) + 1;
+window.getNode = () => document.getElementById('fp');
+window.takesNode = n => n.nodeName + ' ' + (n.ownerDocument === parent.document);
+window.identity = x => x;
+window.me = window;
+parent.fromFrame();
+</script>"></iframe><script>
+window.parentValue = "from parent";
+window.parentFn = x => x * 2;
+window.parentObj = {list: [1, 2]};
+window.fromFrame = () => { log("called by frame"); };
+addEventListener("load", () => {
+  const f = document.getElementById("f"), w = f.contentWindow;
+  log("primitives " + w.n + " " + w.s + " " + w.big + " " + w.nul + " " + w.missing);
+  log("object " + w.obj.a + " " + w.obj.nested.b.length + " " + w.obj.nested.b[1] + " " + w.obj.method(2) + " " + (w.obj === w.obj) + " " + (w.obj.nested === w.obj.nested));
+  log("keys " + Object.keys(w.obj).join() + " " + ("a" in w.obj) + " " + ("zz" in w.obj) + " " + Array.isArray(w.obj.nested.b) + " " + JSON.stringify(w.obj.nested));
+  log("function " + typeof w.fn + " " + w.fn(1, 2) + " " + w.takesCallback(x => x * 2));
+  try { w.thrower(); log("no throw"); } catch (e) { log("thrown " + e.name + " " + e.message); }
+  const k = new w.Klass(4);
+  log("class " + k.v + " " + k.double + " " + (k instanceof w.Klass) + " " + w.Klass.make().v);
+  w.obj.written = "by parent";
+  log("write " + w.obj.written);
+  w.fresh = 5;
+  log("set global " + w.fresh + " " + ("fresh" in w) + " " + delete w.fresh + " " + w.fresh);
+  const fromFrame = w.getNode();
+  log("node " + fromFrame.textContent + " " + (fromFrame === f.contentDocument.getElementById("fp")) + " " + (fromFrame instanceof HTMLElement));
+  log("node to frame " + w.takesNode(document.body));
+  const mine = {};
+  log("identity " + (w.identity(mine) === mine) + " " + (w.identity(w.obj) === w.obj) + " " + (w.me === w) + " " + (w.identity(window) === window));
+  log("window members " + w.location.href + " " + (w.document === f.contentDocument) + " " + typeof w.setTimeout + " " + w.name);
+  log("frames " + (w.parent === window) + " " + (w.top === window));
+  w.eval("window.byEval = parent === top");
+  log("eval " + w.byEval);
+  const seen = [];
+  w.addEventListener("hello", e => seen.push(e.type));
+  w.dispatchEvent(new w.Event("hello"));
+  log("window listener " + seen.join());
+  w.setTimeout(() => log("timer through the frame"), 0);
+  log("sync end");
+});
+</script></body>`)
+		check(wait_for("called by frame"), "parent.foo() from the frame")
+		check(wait_for("primitives 42 text 12345678901234567890 null undefined"), "primitives copied, a missing name is undefined")
+		check(wait_for("object 1 3 2 3 true true"), "objects by reference: nested, methods, the same proxy each time")
+		check(wait_for(`keys a,nested,method true false true {"b":[1,2,3]}`), "keys, in, Array.isArray, JSON.stringify through the proxies")
+		check(wait_for("function function 3 41"), "functions both ways: a callback of the parent called by the frame")
+		check(wait_for("thrown RangeError from frame"), "an exception crosses")
+		check(wait_for("class 4 8 true 7"), "new of a frame's class, getters, instanceof, static methods")
+		check(wait_for("write by parent"), "set on an object of the frame")
+		check(wait_for("set global 5 true true undefined"), "set, in and delete on the frame's global")
+		check(wait_for("node in frame true true"), "a DOM node returned from the frame is this realm's wrapper of it")
+		check(wait_for("node to frame BODY true"), "and a parent's node is the frame's wrapper of it")
+		check(wait_for("identity true true true true"), "an object coming home is itself; a window is the window")
+		check(logged_contains("window members about:srcdoc true function"), "location, document, setTimeout of the frame")
+		check(wait_for("frames true true"), "parent and top")
+		check(wait_for("eval true"), "contentWindow.eval runs in the frame")
+		check(wait_for("window listener hello"), "addEventListener on the frame's window, from the parent")
+		check(wait_for("timer through the frame"), "a timer of the frame calling the parent")
+		page.page_close(p)
+	}
+
+	fmt.println("-- the frame reads and calls the parent")
+	{
+		p := load(`<body><iframe id=f srcdoc="<script>
+const r = [];
+r.push(parent.parentValue, parent.parentFn(21), parent.parentObj.list.length, typeof parent.missing);
+parent.parentObj.fromFrame = 'yes';
+parent.report(r.join(' '), parent.document === document);
+</script>"></iframe><script>
+window.parentValue = "from-parent";
+window.parentFn = x => x * 2;
+window.parentObj = {list: [1, 2]};
+window.report = (t, same) => { log("frame read " + t + " " + same + " " + parentObj.fromFrame); };
+</script></body>`)
+		check(wait_for("frame read from-parent 42 2 undefined false yes"), "parent.foo, parent.foo(), objects both ways; a frame's document is not its parent's")
+		page.page_close(p)
+	}
+
+	fmt.println("-- a realm gone: what was held of it does no harm")
+	{
+		p := load(`<body><iframe id=f srcdoc="<script>window.o = {a: 1}; window.fn = () => 1;</script>"></iframe><script>
+addEventListener("load", () => {
+  const f = document.getElementById("f"), w = f.contentWindow;
+  const o = w.o, fn = w.fn;
+  log("held " + o.a + " " + fn());
+  f.remove();
+  log("gone " + o.a + " " + fn() + " " + Object.keys(o).length + " " + ("a" in o));
+  log("window gone " + w.closed);
+});
+</script></body>`)
+		check(wait_for("held 1 1"), "before")
+		check(wait_for("gone undefined undefined 0 false"), "a proxy of a realm gone answers nothing")
+		check(wait_for("window gone true"), "its window is closed")
+		page.page_close(p)
+	}
+}
+
 // What another origin, or a sandbox, must not reach: every route (src/page/frames_access.odin).
 cross_origin_boundary :: proc() {
 	fmt.println("-- the boundary: a cross-origin frame stays out of reach by every route")
 	{
 		child := doc(OTHER, `<p id=secret>secret</p><script>
+window.secretGlobal = 1;
 const r = [];
 const t = (n, f) => { try { const v = f(); r.push(n + ":" + (v === null ? "null" : typeof v)); } catch (e) { r.push(n + ":" + e.name); } };
+t("parent.parentGlobal", () => parent.parentGlobal);
+t("set parent.x", () => { parent.x = 1; return 1; });
+t("parent.eval", () => parent.eval);
 t("parent.document", () => parent.document);
 t("top.document", () => top.document);
 t("sibling.document", () => parent.frames[1].document);
@@ -497,6 +621,7 @@ t("frameElement", () => window.frameElement);
 parent.postMessage("from child " + r.join(" "), "*");
 </script>`)
 		p := load(fill(`<body><iframe id=f src="%s"></iframe><iframe id=f2 name=named src="%s"></iframe><script>
+window.parentGlobal = "must stay here";
 addEventListener("message", e => log(e.data));
 const f = document.getElementById("f");
 f.addEventListener("load", () => {
@@ -509,11 +634,17 @@ f.addEventListener("load", () => {
   t("getSVGDocument", () => f.getSVGDocument());
   t("get own descriptor", () => Object.getOwnPropertyDescriptor(f.contentWindow, "document"));
   t("Reflect.get", () => Reflect.get(f.contentWindow, "document"));
+  t("global", () => f.contentWindow.secretGlobal);
+  t("set global", () => { f.contentWindow.x = 1; return 1; });
+  t("has", () => "secretGlobal" in f.contentWindow);
+  t("eval", () => f.contentWindow.eval);
+  t("define", () => Object.defineProperty(f.contentWindow, "y", {value: 1}));
+  t("delete", () => delete f.contentWindow.secretGlobal);
   log("routes " + r.join(" "));
 });
 </script></body>`, child, doc(SITE2, "sibling")))
-		check(wait_for("routes contentDocument:null contentWindow.document:SecurityError frames[0].document:SecurityError window.named.document:SecurityError getSVGDocument:null get own descriptor:SecurityError Reflect.get:SecurityError"), "from the parent: contentDocument is null, every other route a SecurityError")
-		check(wait_for("from child parent.document:SecurityError top.document:SecurityError sibling.document:SecurityError frameElement:null"), "from the frame: parent.document, top.document, a sibling's document, frameElement")
+		check(wait_for("routes contentDocument:null contentWindow.document:SecurityError frames[0].document:SecurityError window.named.document:SecurityError getSVGDocument:null get own descriptor:SecurityError Reflect.get:SecurityError global:SecurityError set global:SecurityError has:boolean eval:SecurityError define:SecurityError delete:SecurityError"), "from the parent: contentDocument is null, every other route a SecurityError")
+		check(wait_for("from child parent.parentGlobal:SecurityError set parent.x:SecurityError parent.eval:SecurityError parent.document:SecurityError top.document:SecurityError sibling.document:SecurityError frameElement:null"), "from the frame: parent.document, top.document, a sibling's document, frameElement")
 		page.page_close(p)
 	}
 
@@ -724,7 +855,7 @@ t("navigator", () => w.navigator);
 t("descriptor", () => Object.getOwnPropertyDescriptor(w, "history").value === w.history);
 log("same-origin " + r.join(" | "));
 </script></body>`)
-		check(wait_for("same-origin pushState:function true | replace:#viaframe 7 | push:#second 1 | brandless:TypeError | instanceof:true true | builtins:true true true true | console:true | fetch:function true | timer:number | in:true true false | document:[object Document] | location:SecurityError | page global:SecurityError | page lowercase:SecurityError | navigator:[object Navigator] | descriptor:true"), "history's methods, the built-ins, the interface objects and navigator of this realm; the frame's state stays out of reach")
+		check(wait_for("same-origin pushState:function true | replace:#viaframe 7 | push:#second 1 | brandless:TypeError | instanceof:true true | builtins:true true true true | console:true | fetch:function true | timer:number | in:true true false | document:[object Document] | location:about:blank | page global:undefined | page lowercase:undefined | navigator:[object Navigator] | descriptor:true"), "history's methods, the built-ins, the interface objects and navigator of this realm; the frame's document, location and globals are its own")
 		page.page_close(p)
 	}
 
@@ -879,6 +1010,7 @@ addEventListener("message", e => log("nav " + e.data));
 	same_origin_dom()
 	events_and_scripts()
 	document_write()
+	value_bridge()
 	cross_origin_boundary()
 
 	fmt.println("-- Permissions Policy: the allow attribute delegates features")

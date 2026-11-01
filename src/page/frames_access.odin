@@ -27,8 +27,12 @@ package page
 import "wb:base"
 import "wb:dom"
 import "wb:host"
+import "wb:js"
 import "wb:url"
 import "wb:wasm"
+
+// The reply of the value bridge starts with its size, in the guest's memory.
+BRIDGE_REPLY_HEADER :: 4
 
 // In a listener's or a host object's `owner`: not an instance of this page (index into Page.foreign_owners).
 FOREIGN_OWNER :: u32(1) << 31
@@ -204,6 +208,42 @@ move_listeners :: proc(src, dst: ^Page, from, to: base.Handle) {
 		}
 		dom.listener_copy(dst.doc, to, l, page == dst ? index : foreign_owner_of(dst, page, index))
 	}
+}
+
+////////////////////////////////
+// The value bridge (native/js/odin/frames_bridge.odin)
+
+// Runs a request of `from`'s realm in the realm numbered `realm`, a nested call into its instance; its reply (owned), nil
+// when that realm is gone, or may not be reached now. The origin is checked here, on each request. An instance with a call in
+// progress takes this one on top: it is what a script calling another realm calling back is.
+frames_bridge_call :: proc(from: ^Page, realm: u64, request: []u8) -> []u8 {
+	if from == nil || from.worker != nil || from.close_pending { return nil }
+	t := find_by_id(page_top(from), realm)
+	if t == nil || t == from || !frames_may_reach(from, t) { return nil }
+	r := js_realm(t)
+	if r == nil || r.failed || r.inst == nil || r.inst.dead { return nil }
+	d := js.guest_copy(r.inst, request, false)
+	if d == 0 { return nil }
+	defer js.guest_free(r.inst, d)
+	t.route_busy += 1
+	defer {
+		t.route_busy -= 1
+		if t.route_busy == 0 && t.objects.depth == 0 && !t.closed { microtask_checkpoint(t) }
+	}
+	argv := [2]u32{d, u32(len(request))}
+	if js_call(t, r.inst, "wj_bridge_dispatch", argv[:]) != .Ok { return nil }
+	js_after_task(t, r, "bridge")
+	at := argv[0]
+	if at == 0 { return nil }
+	defer js.guest_free(r.inst, at)
+	head := wasm.guest_bytes(r.inst, u64(at), BRIDGE_REPLY_HEADER)
+	if head == nil { return nil }
+	size := u32(head[0]) | u32(head[1]) << 8 | u32(head[2]) << 16 | u32(head[3]) << 24
+	if size < BRIDGE_REPLY_HEADER { return nil }
+	body := wasm.guest_bytes(r.inst, u64(at) + BRIDGE_REPLY_HEADER, u64(size) - BRIDGE_REPLY_HEADER)
+	out := make([]u8, len(body))
+	copy(out, body)
+	return out
 }
 
 ////////////////////////////////

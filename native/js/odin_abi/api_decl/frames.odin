@@ -20,6 +20,11 @@ Frame_elementOf   :: #type proc(navigable: Navigable) -> Node
 Frame_ofDocument  :: #type proc(node: Node) -> Navigable
 Frame_target      :: #type proc(node: Node) -> bool
 Frame_adoptNode   :: #type proc(node: Node, into: Node) -> (abi.Bytes, abi.Api_Error)
+Frame_windowTarget :: #type proc(navigable: Navigable) -> EventTarget
+Frame_realmSelf   :: #type proc() -> u64
+Frame_realmOf     :: #type proc(navigable: Navigable) -> u64
+Frame_bridge      :: #type proc(realm: u64, request: abi.Bytes) -> u32
+Frame_bridgeReply :: #type proc() -> abi.Bytes
 Frame_ofElement   :: #type proc(element: Element) -> Navigable
 Frame_navigate    :: #type proc(navigable: Navigable, url: string, replace: bool) -> abi.Api_Error
 Frame_open        :: #type proc(url: string, target: string) -> (Navigable, abi.Api_Error)
