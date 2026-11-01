@@ -1919,7 +1919,10 @@
         const st = this[S];
         if (!st.lost) { fail(st, INVALID_OPERATION); return; }
         if (!st.preventedRestore) return;
-        setTimeoutFn(() => restore(st), 0);
+        setTimeoutFn(() => {
+          restore(st);
+          if (st.lost) restoreSoon(st, RESTORE_TRIES);
+        }, 0);
       },
     }, {}),
   };

@@ -52,8 +52,6 @@ pub const MAX_ERROR_BYTES: u64 = 1024;
 pub const PONG_ENTRY_BYTES: u64 = 16;
 /// A Pong: the contexts a process can have, many times what webgl.max_contexts lets one page make.
 pub const MAX_PONG_BYTES: u64 = PONG_ENTRY_BYTES * 65536;
-/// How much of a message's body is allocated before its bytes are seen: a lie about a length costs no more than this.
-pub const BODY_STEP_BYTES: usize = 1 << 20;
 
 /// What goes to the child.
 #[repr(u32)]
@@ -365,15 +363,22 @@ impl RingReader {
     }
 
     /// Exactly these bytes, however long they take.
-    pub fn read(&mut self, mut out: &mut [u8], bell: &sys::Bell) -> Result<(), IpcError> {
+    pub fn read(&mut self, out: &mut [u8], bell: &sys::Bell) -> Result<(), IpcError> {
+        // (safe: they are the caller's bytes)
+        unsafe { self.read_raw(out.as_mut_ptr(), out.len(), bell) }
+    }
+
+    /// # Safety
+    /// `out` has room for `len` bytes (which may be uninitialized).
+    unsafe fn read_raw(&mut self, mut out: *mut u8, mut len: usize, bell: &sys::Bell) -> Result<(), IpcError> {
         let cap = self.ring.cap;
-        while !out.is_empty() {
+        while len > 0 {
             let have = self.available(bell)?;
             let at = self.pos % cap;
-            let n = (have.min(cap - at) as usize).min(out.len());
-            let (now, rest) = out.split_at_mut(n);
-            unsafe { std::ptr::copy_nonoverlapping(self.ring.data.add(at as usize), now.as_mut_ptr(), n) };
-            out = rest;
+            let n = (have.min(cap - at) as usize).min(len);
+            std::ptr::copy_nonoverlapping(self.ring.data.add(at as usize), out, n);
+            out = out.add(n);
+            len -= n;
             self.pos += n as u64;
             self.ring.head().read.0.store(self.pos, Ordering::Release);
         }
@@ -386,17 +391,16 @@ impl RingReader {
         Ok(Head::of_bytes(&b))
     }
 
-    /// A body of `len` bytes (checked against the kind's limit by the caller), allocated as its bytes arrive.
+    /// A body of `len` bytes, already checked against its kind's limit by the caller. (No zeroing, no growing: a texture of 64 MiB
+    /// would pay for both.)
     pub fn body(&mut self, len: u64, bell: &sys::Bell) -> Result<Vec<u8>, IpcError> {
         let len = usize::try_from(len).map_err(|_| IpcError::Corrupt)?;
-        let mut v = Vec::with_capacity(len.min(BODY_STEP_BYTES));
-        let mut done = 0;
-        while done < len {
-            let step = (len - done).min(BODY_STEP_BYTES.max(done));
-            // (the vector doubles at most: a claimed length is only ever paid for by bytes that came)
-            v.resize(done + step, 0);
-            self.read(&mut v[done..done + step], bell)?;
-            done += step;
+        let mut v: Vec<u8> = Vec::new();
+        v.try_reserve_exact(len).map_err(|_| IpcError::Corrupt)?;
+        // (the length is set when all of them came)
+        unsafe {
+            self.read_raw(v.as_mut_ptr(), len, bell)?;
+            v.set_len(len);
         }
         Ok(v)
     }

@@ -37,13 +37,14 @@ WebGL_State :: struct {
 	token:    ^WebGL_Token,
 }
 
-// Why the last getContext gave nothing (read at once by the realm's script, on its thread).
-@(private = "file", thread_local) create_error: string
+// Why the last getContext gave nothing (read at once by the realm's script, on its thread). In the thread's own memory: a worker's
+// thread ends without a word.
+@(private = "file", thread_local) create_error_bytes: [WEBGL_MESSAGE_BYTES]u8
+@(private = "file", thread_local) create_error_len: int
 
 @(private = "file")
 set_create_error :: proc(text: string) {
-	delete(create_error, base.process_allocator())
-	create_error = strings.clone(text, base.process_allocator())
+	create_error_len = copy(create_error_bytes[:], text)
 }
 
 @(private = "file")
@@ -256,7 +257,7 @@ WebGL_createOffscreen :: proc(c: ^Call, canvas: Api_OffscreenCanvas, flags: u32,
 	return webgl_make(c, b, flags, notify, user, info)
 }
 
-WebGL_createError :: proc(c: ^Call) -> string { return create_error }
+WebGL_createError :: proc(c: ^Call) -> string { return string(create_error_bytes[:create_error_len]) }
 
 WebGL_submit :: proc(c: ^Call, ctx: u64, commands: []u8, data: []u8, drew: bool) {
 	gl := state_of(c, ctx)

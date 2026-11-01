@@ -50,6 +50,8 @@ for ($run = 0; $run -lt $Runs; $run++) {
         $bp = [int](Get-CimInstance Win32_Process -Filter "Name='$(Split-Path $Exe -Leaf)'" | Where-Object { $_.CommandLine -like "*$($script:Name)*" } | Select-Object -First 1).ProcessId
         $r = [ordered]@{}
         $r.memNoWebGl = Memory $bp
+        # the browser's first context: the GPU process starts with it
+        $r.coldContextMs = [math]::Round([double](Ctl @('eval', "(function () { const t = performance.now(); document.createElement('canvas').getContext('webgl'); return performance.now() - t; })()")), 1)
         Ctl @('nav', (Url 'webgl.html')) | Out-Null
         Start-Sleep -Milliseconds $SettleMs
         $fps = Ctl @('eval', "new Promise(ok => { let n = 0; const s = performance.now(); const f = () => { n++; const e = performance.now() - s; if (e >= $FrameRateMs) ok(n / e * 1000); else requestAnimationFrame(f); }; requestAnimationFrame(f); })", '--await')
@@ -71,7 +73,7 @@ for ($run = 0; $run -lt $Runs; $run++) {
 $table = [ordered]@{}
 # The best of the runs: what other programs did to a run only makes it worse.
 foreach ($k in 'demoFps', 'fps') { $table[$k] = (@($all | ForEach-Object { [double]$_.$k }) | Measure-Object -Maximum).Maximum }
-foreach ($k in 'scriptMsPerFrame', 'firstContextMs', 'getErrorUs', 'readPixelMs', 'readCanvasMs', 'uploadMs', 'bufferMs', 'linkMs') { $table[$k] = (@($all | ForEach-Object { [double]$_.$k }) | Measure-Object -Minimum).Minimum }
+foreach ($k in 'scriptMsPerFrame', 'coldContextMs', 'firstContextMs', 'getErrorUs', 'readPixelMs', 'readCanvasMs', 'uploadMs', 'bufferMs', 'linkMs') { $table[$k] = (@($all | ForEach-Object { [double]$_.$k }) | Measure-Object -Minimum).Minimum }
 foreach ($k in 'memNoWebGl', 'memDemo', 'memStress') {
     $last = $all[$all.Count - 1].$k
     $table["$k.browserMb"] = $last.browserMb
