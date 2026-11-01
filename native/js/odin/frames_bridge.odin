@@ -6,11 +6,12 @@
 //   well-known symbols                                    by name (any other symbol is not carried: undefined)
 //   a DOM node                                            its handle: the receiving realm's wrapper of that node
 //   a window                                              its navigable: the receiving realm's WindowProxy, or its global
+//   a built-in, an interface, their prototypes            by name: the receiving realm's own, as what a window gives for them is
 //   any other object, function                            a reference: a Proxy in the receiving realm (web_bridge.js) that forwards
 //                                                         get, set, call, construct... to the realm that has it
 //
-// What it is not: one heap. Objects keep their realm's prototypes, as in a browser (`x instanceof Array` is false across frames),
-// a native function refuses a Proxy for one of its own objects (a typed array or a Blob passed across), and a cycle between two realms
+// What it is not: one heap. Since `w.Array` is the reader's Array, an array of another window is `instanceof Array` here, where a
+// browser says false and only `instanceof w.Array` holds; a native function refuses a Proxy for one of its own objects (a typed array or a Blob passed across), and a cycle between two realms
 // (a listener of one kept by the other) lives until one of them goes. A realm that is gone answers undefined.
 package odin_glue
 
@@ -28,12 +29,15 @@ import "../odin/wj"
 @(private = "file") OP_DEFINE :: 7
 @(private = "file") OP_APPLY :: 10
 @(private = "file") OP_CONSTRUCT :: 11
+@(private = "file") OP_ALIVE :: 13
+@(private = "file") OP_REPORT :: 14
+@(private = "file") OP_DOCUMENT_METHOD :: 15
 @(private = "file") GLOBAL_NUMBER :: 0
 
-@(private = "file") Tag :: enum u8 { Undefined, Null, False, True, Number, String, Bigint, Node, Window, Object, Symbol, List, Error }
+@(private = "file") Tag :: enum u8 { Undefined, Null, False, True, Number, String, Bigint, Node, Window, Object, Symbol, List, Error, Intrinsic }
 
 @(private = "file") bridge: wj.JSValue   // what web_bridge.js returned (in the image: counted for good)
-@(private = "file") dispatch_fn, import_ref_fn, export_ref_fn, symbol_name_fn, symbol_of_fn, bigint_fn, describe_error_fn, make_error_fn, is_remote_fn: wj.JSValue
+@(private = "file") dispatch_fn, import_ref_fn, export_ref_fn, symbol_name_fn, symbol_of_fn, bigint_fn, describe_error_fn, make_error_fn, is_remote_fn, realm_of_fn, intrinsic_of_fn: wj.JSValue
 @(private = "file") self_realm: f64      // this realm's number (its document's), once asked
 
 @(private = "file")
@@ -102,6 +106,12 @@ put_object :: proc "contextless" (ctx: ^wj.Context, b: ^Pack, v: wj.JSValue) -> 
 	ref := wj.JS_Call(ctx, export_ref_fn, wj.UNDEFINED, 2, &args[0])
 	if wj.is_exception(ref) { return false }
 	defer wj.JS_FreeValue(ctx, ref)
+	if wj.is_string(ref) {
+		c, s := to_text(ctx, ref)
+		if c == nil { return false }
+		defer wj.JS_FreeCString(ctx, c)
+		return pack_u8(b, u8(Tag.Intrinsic)) && put_string(b, s)
+	}
 	realm, number, kind: f64
 	for x, i in ([3]^f64{&realm, &number, &kind}) {
 		f := wj.JS_GetPropertyUint32(ctx, ref, u32(i))
@@ -162,11 +172,11 @@ take_value :: proc "contextless" (ctx: ^wj.Context, r: ^Reader) -> wj.JSValue {
 	case .String:
 		s := read_string(r)
 		return wj.JS_NewStringLen(ctx, raw_data(s), uint(len(s)))
-	case .Bigint, .Symbol:
+	case .Bigint, .Symbol, .Intrinsic:
 		s := read_string(r)
 		text := wj.JS_NewStringLen(ctx, raw_data(s), uint(len(s)))
 		defer wj.JS_FreeValue(ctx, text)
-		return wj.JS_Call(ctx, tag == .Bigint ? bigint_fn : symbol_of_fn, wj.UNDEFINED, 1, &text)
+		return wj.JS_Call(ctx, tag == .Bigint ? bigint_fn : tag == .Symbol ? symbol_of_fn : intrinsic_of_fn, wj.UNDEFINED, 1, &text)
 	case .Node: return wj.wj_wrap_node(ctx, read_le(r, 8))
 	case .Window: return frames_window_value(ctx, api_decl.Navigable(read_le(r, 8)))
 	case .Object:
@@ -313,6 +323,44 @@ frames_bridge_is_remote :: proc "contextless" (ctx: ^wj.Context, v: wj.JSValue) 
 	return wj.JS_ToBool(ctx, r) > 0
 }
 
+// The realm of an object this realm holds a proxy of; 0 for anything else (every listener call asks: no script runs for a value
+// that is no proxy).
+frames_bridge_realm_of :: proc "contextless" (ctx: ^wj.Context, v: wj.JSValue) -> u64 {
+	if !wj.is_object(v) || !wj.JS_IsProxy(v) { return 0 }
+	arg := v
+	r := wj.JS_Call(ctx, realm_of_fn, wj.UNDEFINED, 1, &arg)
+	if wj.is_exception(r) { wj.drop_exception(ctx); return 0 }
+	defer wj.JS_FreeValue(ctx, r)
+	d: f64
+	wj.JS_ToFloat64(ctx, &d, r)
+	return u64(d)
+}
+
+// Whether that realm is still there for this one: its document in the tab and in reach (DOM "inner invoke": a callback whose
+// global's document is not fully active does not run).
+frames_bridge_alive :: proc "contextless" (ctx: ^wj.Context, realm: u64) -> bool {
+	r := frames_bridge_send(ctx, realm, OP_ALIVE, GLOBAL_NUMBER, wj.UNDEFINED, wj.UNDEFINED)
+	if wj.is_exception(r) { wj.drop_exception(ctx); return false }
+	defer wj.JS_FreeValue(ctx, r)
+	return wj.is_bool(r)
+}
+
+// Web IDL "report" of what a callback threw: at the global of the callback's realm, not the caller's. Takes the pending
+// exception. (A realm gone meanwhile: nobody to tell.)
+frames_bridge_report_pending :: proc "contextless" (ctx: ^wj.Context, realm: u64) {
+	e := wj.JS_GetException(ctx)
+	defer wj.JS_FreeValue(ctx, e)
+	r := frames_bridge_send(ctx, realm, OP_REPORT, GLOBAL_NUMBER, e, wj.UNDEFINED)
+	if wj.is_exception(r) { wj.drop_exception(ctx) } else { wj.JS_FreeValue(ctx, r) }
+}
+
+// report(value), for web_bridge.js: the exception of a callback of this realm that another realm called.
+@(private = "file")
+bridge_native_report :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	wj.wj_report_exception(ctx, wj.JS_DupValue(ctx, wj.arg(argc, argv, 0)))
+	return wj.UNDEFINED
+}
+
 // document.<method>() of a document of another realm, run in that realm: what comes back is its object (a Range its Selection takes).
 frames_bridge_document_call :: proc "contextless" (ctx: ^wj.Context, this_val: wj.JSValue, doc: u64, method: cstring) -> wj.JSValue {
 	context = jsb.glue_context()
@@ -320,18 +368,9 @@ frames_bridge_document_call :: proc "contextless" (ctx: ^wj.Context, this_val: w
 	jsb.host(&id, api_decl.Frame_ofDocument, wj.wr_Frame_ofDocument, api_decl.Node(doc))
 	realm := id != 0 ? frames_bridge_realm(id) : 0
 	if realm == 0 { return wj.wj_throw_gone(ctx) }
-	key := wj.new_string(ctx, "Document")
-	defer wj.JS_FreeValue(ctx, key)
-	ctor := frames_bridge_get(ctx, realm, key)
-	if wj.is_exception(ctor) { return ctor }
-	defer wj.JS_FreeValue(ctx, ctor)
-	proto := wj.JS_GetPropertyStr(ctx, ctor, "prototype")
-	if wj.is_exception(proto) { return proto }
-	defer wj.JS_FreeValue(ctx, proto)
-	fn := wj.JS_GetPropertyStr(ctx, proto, method)
-	if wj.is_exception(fn) { return fn }
-	defer wj.JS_FreeValue(ctx, fn)
-	return wj.JS_Call(ctx, fn, this_val, 0, nil)
+	name := wj.new_string(ctx, method)
+	defer wj.JS_FreeValue(ctx, name)
+	return frames_bridge_send(ctx, realm, OP_DOCUMENT_METHOD, GLOBAL_NUMBER, name, this_val)
 }
 
 // At pre-initialization: the bridge's JavaScript, so that it holds this realm's pristine built-ins.
@@ -342,6 +381,7 @@ frames_bridge_install :: proc "contextless" (ctx: ^wj.Context) {
 	native := wj.JS_NewObject(ctx)
 	defer wj.JS_FreeValue(ctx, native)
 	wj.JS_DefinePropertyValueStr(ctx, native, "send", wj.new_cfunction(ctx, bridge_native_send, "send", 5), wj.PROP_C_W_E)
+	wj.JS_DefinePropertyValueStr(ctx, native, "report", wj.new_cfunction(ctx, bridge_native_report, "report", 1), wj.PROP_C_W_E)
 	wj.JS_DefinePropertyValueStr(ctx, native, "global", wj.JS_DupValue(ctx, wj.wj_the_realm.global), wj.PROP_C_W_E)
 	arg := native
 	bridge = wj.JS_Call(ctx, fn, wj.UNDEFINED, 1, &arg)
@@ -355,4 +395,14 @@ frames_bridge_install :: proc "contextless" (ctx: ^wj.Context) {
 	describe_error_fn = wj.JS_GetPropertyStr(ctx, bridge, "describeError")
 	make_error_fn = wj.JS_GetPropertyStr(ctx, bridge, "makeError")
 	is_remote_fn = wj.JS_GetPropertyStr(ctx, bridge, "isRemote")
+	realm_of_fn = wj.JS_GetPropertyStr(ctx, bridge, "realmOf")
+	intrinsic_of_fn = wj.JS_GetPropertyStr(ctx, bridge, "intrinsicOf")
+	register := wj.JS_GetPropertyStr(ctx, bridge, "registerIntrinsic")
+	defer wj.JS_FreeValue(ctx, register)
+	for i in 0 ..< wj.wj_interface_count {
+		args := [3]wj.JSValue{wj.new_string(ctx, wj.interfaces()[i].name), wj.wj_the_realm.ctors[i], wj.wj_the_realm.protos[i]}
+		wj.JS_FreeValue(ctx, wj.JS_Call(ctx, register, wj.UNDEFINED, 3, &args[0]))
+		wj.JS_FreeValue(ctx, args[0])
+	}
+	frames_builtins_each(ctx, register)
 }

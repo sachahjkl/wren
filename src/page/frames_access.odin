@@ -204,9 +204,19 @@ frames_adopt :: proc(c: ^Call, node: base.Handle, into_tag: u32) -> (out: []u8, 
 		for ch := s.first_child; ch != base.NIL_HANDLE; ch = dom.get(sd, ch).next { append(&kids, ch) }
 		#reverse for k in kids { append(&stack, Copy{k, h}) }
 	}
-	for m in moved { move_custom_element(src, dst, m.from, m.parent) }
+	for m in moved {
+		dom.event_path_moved(&src.dp, m.from, m.parent)
+		move_custom_element(src, dst, m.from, m.parent)
+	}
 	dom.destroy_unpinned(sd, node)   // (wrappers pin what they hold: the realm's moves release it, wj_node_rekey)
 	return pairs[:], true
+}
+
+// dom.Dispatcher.other: where a node of an event's path is, when a listener moved it to another document of the tab.
+frames_dispatcher_of :: proc(user: rawptr, node: base.Handle) -> (^dom.Document, ^dom.Dispatcher) {
+	t := frames_reach_tag((^Page)(user), base.handle_tag(u64(node)))
+	if t == nil { return nil, nil }
+	return t.doc, &t.dp
 }
 
 // A custom element moved keeps its definition, which is its realm's: its reactions go on there, adoptedCallback first.
@@ -332,7 +342,10 @@ frames_close_later :: proc(p: ^Page) -> bool {
 			f.nav = nil
 		}
 	}
-	if p.web != nil { set_embedder(p, Embedder{}) }
+	if p.web != nil {
+		set_embedder(p, Embedder{})
+		p.web.session = &p.web.own_session   // (the navigable's goes with it)
+	}
 	append(&frames_pending_closes, p)
 	arm_pending(p)
 	return true

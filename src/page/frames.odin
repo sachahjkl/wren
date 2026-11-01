@@ -49,6 +49,9 @@ import "wb:url"
 FRAME_TEXT_DOCUMENT_MAX_BYTES :: 1 << 20
 // How much of a frame's URL prefixes its console messages.
 FRAME_CONSOLE_URL_MAX :: 120
+FRAME_SRCDOC_URL :: "about:srcdoc"
+HTTP_NO_CONTENT :: 204     // a navigation's response of these: no document comes of it, the frame keeps the one it has
+HTTP_RESET_CONTENT :: 205
 
 // What the embedder (the shell) does with nested documents. All optional.
 Frame_Hooks :: struct {
@@ -79,6 +82,14 @@ Navigable :: struct {
 	distance:    f32,            // CSS px from the viewport, as the embedder last said (max: unknown)
 	cleanup:     base.Cleanup_Id,   // on page's scope: forgets the page when it closes
 	navigations: u64,
+	requests:    u64,            // navigations its documents asked for (bindings_history.odin: the last one wins)
+	history_calls: int,          // history.go() in the window that began at history_window_ns (history_rate_limited)
+	history_window_ns: i64,
+	session:     Session_History,   // its entries, across its documents (a nested navigable's; a tab's is the shell's)
+	initial:     bool,           // still on its initial about:blank: the next navigation replaces it
+	activated:   bool,           // a navigation brought its document (navigation.activation)
+	activated_by: Nav_Type,
+	activated_from: u64,         // the entry it came from (0: none the API shows)
 }
 
 // A page's side of nesting (made on first use).
@@ -161,6 +172,7 @@ navigable_free :: proc(n: ^Navigable) {
 	delete(n.lazy_url)
 	permissions_policy_destroy(&n.allow)
 	url.origin_destroy(&n.src_origin)
+	session_destroy(&n.session)
 	free(n)
 }
 
@@ -364,6 +376,8 @@ frame_create :: proc(p: ^Page, el: base.Handle) {
 	// the initial about:blank document, made at once: contentWindow exists as soon as the element is connected
 	frame_install_page(n, "about:blank", .Inherit)
 	if n.page == nil || p.closed { return }
+	n.initial = true
+	n.activated = false
 	frame_process_attributes(n, initial = true)
 }
 
@@ -375,6 +389,7 @@ frame_destroy :: proc(n: ^Navigable) {
 	}
 	frame_load_cancel(n)
 	if c := n.page; c != nil {
+		if p != nil && !p.closed { navigation_detached(c) }
 		n.page = nil
 		base.forget_cleanup(c.scope, n.cleanup)
 		page_close(c)
@@ -402,14 +417,29 @@ frame_snapshot_container :: proc(n: ^Navigable) {
 
 // HTML "process the iframe attributes" (and the frame element's equivalent).
 @(private)
-frame_process_attributes :: proc(n: ^Navigable, initial: bool) {
+frame_process_attributes :: proc(n_in: ^Navigable, initial: bool) {
+	n := n_in
 	p := n.parent
 	d := p.doc
 	el := n.element
 	frame_snapshot_container(n)
+	// (a change of the attributes is a navigation as any other: its navigate event, in the frame's document)
+	go_on :: proc(n: ^Navigable, href: string) -> (still: ^Navigable, proceed: bool) {
+		u, ok := url.parse(href, nil, context.temp_allocator)
+		if !ok || n.page == nil { return n, true }
+		id := n.id
+		proceed = navigation_begin(n.page, u, false, opts = Nav_Options{cross_origin = !url.same_origin(n.parent.env.origin, n.page.env.origin)})
+		still = navigable_by_id(id)
+		return still, proceed && still != nil
+	}
 	if n.kind == .Iframe {
 		if srcdoc, has := dom.get_attribute(d, el, "srcdoc"); has {
-			frame_navigate_srcdoc(n, srcdoc)
+			markup := strings.clone(srcdoc, context.temp_allocator)
+			if !initial {
+				proceed: bool
+				if n, proceed = go_on(n, FRAME_SRCDOC_URL); !proceed { return }
+			}
+			frame_navigate_srcdoc(n, markup)
 			return
 		}
 	}
@@ -426,7 +456,11 @@ frame_process_attributes :: proc(n: ^Navigable, initial: bool) {
 	}
 	if !ok {
 		// no src (or an invalid one): the initial about:blank stays; its load event fires now on first insertion
-		if initial { frame_load_event_now(n) } else { frame_navigate(n, "about:blank") }
+		if initial {
+			frame_load_event_now(n)
+		} else if still, proceed := go_on(n, "about:blank"); proceed {
+			frame_navigate(still, "about:blank")
+		}
 		return
 	}
 	if target.href == "about:blank" && initial {
@@ -440,6 +474,10 @@ frame_process_attributes :: proc(n: ^Navigable, initial: bool) {
 			n.lazy_url = strings.clone(target.href)
 			return
 		}
+	}
+	if !initial {
+		proceed: bool
+		if n, proceed = go_on(n, strings.clone(target.href, context.temp_allocator)); !proceed { return }
 	}
 	frame_navigate(n, target.href)
 }
@@ -474,11 +512,20 @@ Frame_Load :: struct {
 	charset:   string,   // owned
 	page:      ^Page,    // the new document, once the response is in
 	disposition: string, // owned: Content-Disposition
+	commit:    Frame_Commit,   // its state owned
+}
+
+// What a navigation of a frame does to the frame's session history when its document comes in.
+Frame_Commit :: struct {
+	type:      Nav_Type,
+	entry:     u64,      // Traverse: the entry
+	state:     string,   // the Navigation API state of the entry
+	has_state: bool,
 }
 
 @(private)
 frame_load_free :: proc(l: ^Frame_Load) {
-	delete(l.url); delete(l.final_url); delete(l.mime); delete(l.charset); delete(l.disposition)
+	delete(l.url); delete(l.final_url); delete(l.mime); delete(l.charset); delete(l.disposition); delete(l.commit.state)
 	free(l)
 }
 
@@ -493,16 +540,25 @@ frame_load_cancel :: proc(n: ^Navigable) {
 
 // Navigates a frame to `href` (absolute). Fragments of the same document stay in it; javascript: runs in the current
 // document; about:blank is made at once; anything else is fetched.
-frame_navigate :: proc(n: ^Navigable, href: string, replace := false, method := "", body: []byte = nil, content_type := "") {
+frame_navigate :: proc(n: ^Navigable, href: string, replace := false, method := "", body: []byte = nil, content_type := "", commit: Frame_Commit = {}) {
 	p := n.parent
 	if p == nil || p.closed { return }
 	target, ok := url.parse(href, nil, context.temp_allocator)
 	if !ok { return }
+	commit := commit
+	if replace { commit.type = .Replace }
 	n.lazy_wait = false
 	if cur := n.page; cur != nil {
 		if target.scheme == "javascript" { follow_javascript_url(cur, target); return }
-		if target.has_fragment && url.without_fragment(target) == url.without_fragment(cur.env.location) && cur.env.location.href != "about:blank" {
+		// (a reload, or a traversal to another document's entry, loads whatever the fragment)
+		if commit.type != .Reload && commit.type != .Traverse && target.has_fragment && url.without_fragment(target) == url.without_fragment(cur.env.location) && cur.env.location.href != "about:blank" {
 			navigate_fragment(cur, target, replace)
+			return
+		}
+	}
+	if target.href == FRAME_SRCDOC_URL {   // (a reload of a srcdoc document, a traversal back to it: the attribute has the markup)
+		if srcdoc, has := dom.get_attribute(p.doc, n.element, "srcdoc"); has {
+			frame_navigate_srcdoc(n, strings.clone(srcdoc, context.temp_allocator), commit)
 			return
 		}
 	}
@@ -511,7 +567,7 @@ frame_navigate :: proc(n: ^Navigable, href: string, replace := false, method := 
 	url.origin_destroy(&n.src_origin)
 	n.src_origin = url.origin_of(target)
 	if target.href == "about:blank" {
-		c := frame_install_page(n, "about:blank", .Inherit)
+		c := frame_install_page(n, "about:blank", .Inherit, commit)
 		if c != nil { frame_document_ready(c) }
 		return
 	}
@@ -526,6 +582,8 @@ frame_navigate :: proc(n: ^Navigable, href: string, replace := false, method := 
 	l := new(Frame_Load)
 	l.nav = n
 	l.url = strings.clone(target.href)
+	l.commit = commit
+	l.commit.state = strings.clone(commit.state)
 	n.load = l
 	n.delaying = true
 	rp := fetch.Referrer_Policy.Default
@@ -540,26 +598,27 @@ frame_navigate :: proc(n: ^Navigable, href: string, replace := false, method := 
 }
 
 @(private)
-Srcdoc_Task :: struct { nav: u64, gen: u64, html: string }
+Srcdoc_Task :: struct { nav: u64, gen: u64, html: string, commit: Frame_Commit }
 
 // srcdoc: a document made of the attribute's markup, URL about:srcdoc, the parent's origin; from a task, as HTML's
 // navigation is.
 @(private)
-frame_navigate_srcdoc :: proc(n: ^Navigable, markup: string) {
+frame_navigate_srcdoc :: proc(n: ^Navigable, markup: string, commit: Frame_Commit = {}) {
 	frame_load_cancel(n)
 	n.navigations += 1
 	n.delaying = true
 	url.origin_destroy(&n.src_origin)
 	n.src_origin = url.origin_clone(n.parent.env.origin)
 	t := new(Srcdoc_Task)
-	t^ = Srcdoc_Task{nav = n.id, gen = n.navigations, html = strings.clone(markup)}
+	t^ = Srcdoc_Task{nav = n.id, gen = n.navigations, html = strings.clone(markup), commit = commit}
+	t.commit.state = strings.clone(commit.state)
 	post_page_task(n.parent, proc(pg: ^Page, data: rawptr) {
 		t := (^Srcdoc_Task)(data)
-		defer { delete(t.html); free(t) }
+		defer { delete(t.html); delete(t.commit.state); free(t) }
 		if pg == nil { return }
 		n := navigable_by_id(t.nav)
 		if n == nil || n.navigations != t.gen || n.parent != pg { return }
-		c := frame_install_page(n, "about:srcdoc", .Inherit)
+		c := frame_install_page(n, FRAME_SRCDOC_URL, .Inherit, t.commit)
 		if c == nil { return }
 		load_html(c, transmute([]byte)t.html)
 		frame_document_adopted(c)
@@ -591,7 +650,22 @@ frame_fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 			frame_show_error(n, fmt.tprintf("%s refused to connect.", host_name), why)
 			return
 		}
-		c := frame_install_page(n, r.url, .Own)
+		// HTML "navigate": no document comes of these, the frame keeps the one it has
+		disposition := strings.to_lower(strings.trim_space(l.disposition), context.temp_allocator)
+		if r.status == HTTP_NO_CONTENT || r.status == HTTP_RESET_CONTENT || strings.has_prefix(disposition, "attachment") {
+			if strings.has_prefix(disposition, "attachment") { log(n.parent, .Warn, fmt.tprintf("frame %s: a download (Content-Disposition: attachment) is not shown in a frame", r.url)) }
+			fetch.cancel(n.parent.loader, l.task)
+			l.task = base.NIL_HANDLE
+			frame_load_done(n)
+			frame_stopped_delaying(n)
+			return
+		}
+		// (a response knows nothing of the fragment of the request)
+		href := r.url
+		if req, rok := url.parse(l.url, nil, context.temp_allocator); rok && req.has_fragment && !final.has_fragment {
+			href = strings.concatenate({r.url, "#", req.fragment}, context.temp_allocator)
+		}
+		c := frame_install_page(n, href, .Own, l.commit)
 		if c == nil { return }
 		l.page = c
 		csp_h := http.get_all(r.headers, "content-security-policy")
@@ -678,13 +752,6 @@ apply_permissions_policy :: proc(p: ^Page, values: []string) {
 frame_document_body :: proc(n: ^Navigable, l: ^Frame_Load, data: []byte) {
 	c := l.page
 	mime := l.mime
-	disp := strings.to_lower(strings.trim_space(l.disposition), context.temp_allocator)
-	if strings.has_prefix(disp, "attachment") {
-		log(n.parent, .Warn, fmt.tprintf("frame %s: a download (Content-Disposition: attachment) is not shown in a frame", l.final_url))
-		frame_document_ready(c)
-		frame_load_done(n)
-		return
-	}
 	switch {
 	case mime == "" || mime == "text/html" || mime == "application/xhtml+xml":
 		parse_document(c, data, l.charset, frame_parsed, n, mime)
@@ -731,6 +798,15 @@ frame_load_done :: proc(n: ^Navigable) {
 		n.load = nil
 		frame_load_free(l)
 	}
+}
+
+// A navigation that brings no document: the parent's load event does not wait for it, and a frame on its initial about:blank,
+// which had nothing else to wait for, has its load event.
+@(private)
+frame_stopped_delaying :: proc(n: ^Navigable) {
+	if !n.delaying { return }
+	n.delaying = false
+	if n.initial && n.page != nil { frames_document_complete(n.page) }
 }
 
 // A nested document was adopted (parsed, srcdoc, error page): its scripts start; one without scripts finds its own
@@ -790,7 +866,9 @@ frames_delay_load :: proc(p: ^Page) -> bool {
 @(private)
 frame_show_error :: proc(n: ^Navigable, headline, detail: string, collapse := false) {
 	p := n.parent
-	c := frame_install_page(n, "about:blank", .Opaque)
+	commit := Frame_Commit{type = .Replace}
+	if l := n.load; l != nil { commit = l.commit }
+	c := frame_install_page(n, "about:blank", .Opaque, commit)
 	if c == nil { return }
 	frames_of(c).sandbox = Sandbox{active = true}   // nothing runs in it
 	// a frame the content blocker stopped leaves no box (embedder.odin)
@@ -823,11 +901,56 @@ Origin_Mode :: enum u8 {
 	Opaque,    // a fresh opaque origin (error pages)
 }
 
-// Makes the navigable's next document (closing the current one): its origin, sandboxing, policies and embedder.
+// The navigable's session history takes the document that comes: a new entry, the one it replaces, the one it goes back to.
 @(private)
-frame_install_page :: proc(n: ^Navigable, href: string, mode: Origin_Mode) -> ^Page {
+frame_session_commit :: proc(n: ^Navigable, href: string, commit: Frame_Commit, max_entries: int) {
+	sh := &n.session
+	prev := session_current(sh)
+	type := commit.type
+	// HTML "navigate": a navigation from an initial about:blank, of a document still loading, or to the URL it has replaces
+	if type == .Push && prev != nil {
+		f := n.page != nil ? n.page.frames : nil
+		if n.initial || f == nil || !f.complete || prev.url == href { type = .Replace }
+	}
+	n.activated, n.activated_by, n.activated_from = true, type, 0
+	if type != .Replace && prev != nil { n.activated_from = prev.id }
+	switch type {
+	case .Push:
+		session_push(sh, href, 0, dedupe = false, max_entries = max_entries)
+		session_set_nav_state(sh, commit.state, commit.has_state)
+	case .Replace:
+		session_replace(sh, href)
+		session_set_nav_state(sh, commit.state, commit.has_state)
+	case .Reload:
+		if prev == nil { session_push(sh, href, 0, dedupe = false, max_entries = max_entries); return }
+		if prev.url != href { delete(prev.url); prev.url = strings.clone(href); sh.serial += 1 }   // (a redirect: the same entry, key and id)
+		if commit.has_state { session_set_nav_state(sh, commit.state, true) }
+	case .Traverse:
+		if e := session_find(sh, commit.entry); e != nil {
+			session_goto(sh, e)
+			if e.url != href { delete(e.url); e.url = strings.clone(href); sh.serial += 1 }
+		}
+	}
+}
+
+// Makes the navigable's next document (closing the current one, which is unloaded first): its origin, sandboxing, policies and
+// embedder, its place in the navigable's session history. nil: the frame is gone, or a listener of the unload navigated it.
+@(private)
+frame_install_page :: proc(n_in: ^Navigable, href_in: string, mode: Origin_Mode, commit: Frame_Commit = {}) -> ^Page {
+	n := n_in
+	if n.parent == nil || n.parent.closed { return nil }
+	href := strings.clone(href_in, context.temp_allocator)
+	commit := commit
+	commit.state = strings.clone(commit.state, context.temp_allocator)   // (of the navigation, which that navigation would free)
+	if leaving := n.page; leaving != nil && leaving.web != nil && leaving.web.unloading == 0 {
+		id, gen := n.id, n.navigations
+		page_unload(leaving)
+		if n = navigable_by_id(id); n == nil || n.page != leaving || n.navigations != gen { return nil }
+	}
 	p := n.parent
 	if p == nil || p.closed { return nil }
+	frame_session_commit(n, href, commit, p.settings.web.history_max_entries)
+	n.initial = false
 	c := page_create(p.loop, p.loader, p.settings, p.scope, href, p.console != nil ? frame_console : nil, n)
 	cf := frames_of(c)
 	cf.nav = n
@@ -852,7 +975,7 @@ frame_install_page :: proc(n: ^Navigable, href: string, mode: Origin_Mode) -> ^P
 	cf.inherited_off = inherited_disabled(pf.features, p.env.origin, &n.allow, c.env.origin, n.src_origin)
 	cf.features = enabled_features(cf.inherited_off, nil, c.env.origin)
 	pe := p.web.embedder
-	set_embedder(c, Embedder{navigate = frame_navigate_hook, user = n, tab_key = pe.tab_key, storage = pe.storage})
+	set_embedder(c, Embedder{navigate = frame_navigate_hook, user = n, session = &n.session, tab_key = pe.tab_key, storage = pe.storage})
 	old := n.page
 	n.page = c
 	if old != nil {
@@ -892,13 +1015,26 @@ env_set_origin :: proc(e: ^fetch.Environment, o: url.Origin) {
 frame_navigate_hook :: proc(user: rawptr, p: ^Page, req: Navigate_Request) {
 	n := (^Navigable)(user)
 	if n.page != p { return }
+	commit := Frame_Commit{state = req.nav_state, has_state = req.has_nav_state}
 	switch req.kind {
-	case .Assign: frame_navigate(n, req.url)
-	case .Replace: frame_navigate(n, req.url, replace = true)
-	case .Reload: frame_navigate(n, p.env.location.href)
-	case .Traverse: log(p, .Warn, "frames: history traversal across the documents of a frame is not supported")
+	case .Assign: frame_navigate(n, req.url, commit = commit)
+	case .Replace: frame_navigate(n, req.url, replace = true, commit = commit)
+	case .Reload:
+		commit.type = .Reload
+		frame_navigate(n, strings.clone(p.env.location.href, context.temp_allocator), commit = commit)
+	case .Traverse:
+		e := session_peek(&n.session, req.delta)
+		if e == nil { return }
+		commit.type, commit.entry = .Traverse, e.id
+		frame_navigate(n, strings.clone(e.url, context.temp_allocator), commit = commit)
 	case .Url_Changed:
 	}
+}
+
+// The navigable of a frame's document; nil for a tab's.
+frame_navigable_of :: proc(p: ^Page) -> ^Navigable {
+	if p.frames == nil || p.frames.nav == nil || p.frames.nav.parent == nil { return nil }
+	return p.frames.nav
 }
 
 // The document's base URL fallback for about:blank and about:srcdoc documents: their parent's base URL.
@@ -941,16 +1077,25 @@ navigation_allowed :: proc(src: ^Page, target: ^Navigable) -> string {
 }
 
 // Navigates another navigable on behalf of `src` (window.location of a WindowProxy, window.open to a frame name).
-frames_navigate_from :: proc(src: ^Page, target: ^Navigable, href: string, replace: bool, method := "", body: []byte = nil, content_type := "") -> (why: string) {
+frames_navigate_from :: proc(src: ^Page, target_in: ^Navigable, href: string, replace: bool, method := "", body: []byte = nil, content_type := "", source := base.NIL_HANDLE, form := base.NIL_HANDLE, submitter := base.NIL_HANDLE) -> (why: string) {
+	target := target_in
 	if w := navigation_allowed(src, target); w != "" { return w }
 	u, ok := url.parse(href, &src.env.location, context.temp_allocator)
 	if !ok { return "invalid URL" }
+	opts := Nav_Options{source = source, form = form, submitter = submitter}
+	opts.cross_origin = target.page != nil && !url.same_origin(src.env.origin, target.page.env.origin)
 	if target.parent == nil {
 		// a tab's document: its embedder navigates the tab (a POST to the top level is the shell's: forms_shell.odin)
-		if tp := target.page; tp != nil { request_navigation(tp, replace ? .Replace : .Assign, u.href) }
+		if tp := target.page; tp != nil { location_navigate(tp, u, replace, opts = opts) }
 		return ""
 	}
 	h := strings.clone(u.href, context.temp_allocator)
+	if cur := target.page; cur != nil {
+		// the navigate event, in the frame's document (a listener may remove the frame)
+		id := target.id
+		if !navigation_begin(cur, u, replace, opts = opts) { return "" }
+		if target = navigable_by_id(id); target == nil { return "" }
+	}
 	frame_navigate(target, h, replace, method, body, content_type)
 	return ""
 }

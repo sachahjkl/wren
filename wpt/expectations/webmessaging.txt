@@ -93,7 +93,7 @@
 	MessageChannel is supported.: PASS
 	Test Description: event.ports returns the MessagePort array sent with the message.: PASS
 /webmessaging/event.source.htm: OK
-	Test Description: Same-origin: event.source returns the WindowProxy of the source window.: FAIL
+	Test Description: Same-origin: event.source returns the WindowProxy of the source window.: PASS
 /webmessaging/event.source.xorigin.sub.htm: OK
 	Test Description: Cross-origin: event.source returns the WindowProxy of the source window.: PASS
 /webmessaging/global-postMessage.html: OK
@@ -158,7 +158,7 @@
 	The onmessageerror content attribute must be compiled into the onmessageerror property: PASS
 	The onmessageerror content attribute must execute when an event is dispatched on the window: PASS
 /webmessaging/postMessage-to-target-not-fully-active-on-reload.html: OK
-	postMessage() to a target whose document is no longer fully active (after a reload) is not delivered: FAIL
+	postMessage() to a target whose document is no longer fully active (after a reload) is not delivered: PASS
 /webmessaging/postMessage_ArrayBuffer.sub.htm: OK
 	ArrayBuffer is supported.: PASS
 	Test Description: postMessage with ArrayBuffer object.: PASS
@@ -244,11 +244,11 @@
 /webmessaging/with-ports/016.html: OK
 	origin of the script that invoked the method, data:: PASS
 /webmessaging/with-ports/017.html: OK
-	origin of the script that invoked the method, about:blank: FAIL
+	origin of the script that invoked the method, about:blank: PASS
 /webmessaging/with-ports/018.html: OK
-	origin of the script that invoked the method, javascript:: FAIL
+	origin of the script that invoked the method, javascript:: PASS
 /webmessaging/with-ports/019.html: OK
-	origin of the script that invoked the method, scheme/host/port: FAIL
+	origin of the script that invoked the method, scheme/host/port: PASS
 /webmessaging/with-ports/020.html: OK
 	cross-origin test: FAIL
 /webmessaging/with-ports/021.html: TIMEOUT
@@ -309,11 +309,11 @@
 /webmessaging/without-ports/016.html: OK
 	origin of the script that invoked the method, data:: PASS
 /webmessaging/without-ports/017.html: OK
-	origin of the script that invoked the method, about:blank: FAIL
+	origin of the script that invoked the method, about:blank: PASS
 /webmessaging/without-ports/018.html: OK
-	origin of the script that invoked the method, javascript:: FAIL
+	origin of the script that invoked the method, javascript:: PASS
 /webmessaging/without-ports/019.html: OK
-	origin of the script that invoked the method, scheme/host/port: FAIL
+	origin of the script that invoked the method, scheme/host/port: PASS
 /webmessaging/without-ports/020.html: OK
 	cross-origin test: FAIL
 /webmessaging/without-ports/021.html: TIMEOUT

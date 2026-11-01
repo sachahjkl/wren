@@ -159,9 +159,9 @@
 /html/semantics/scripting-1/the-script-element/execution-timing/033.html: OK
 	 scheduler: innerHTML and scripts moved in DOM: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/034.html: OK
-	 scheduler: innerHTML adding frames with JS in: FAIL
+	 scheduler: innerHTML adding frames with JS in: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/035.html: OK
-	 scheduler: innerHTML adding frames with JS in and moving scripts: FAIL
+	 scheduler: innerHTML adding frames with JS in and moving scripts: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/036.html: OK
 	 scheduler: DOM cloning: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/037.html: OK
@@ -169,9 +169,9 @@
 /html/semantics/scripting-1/the-script-element/execution-timing/038.html: OK
 	 scheduler: DOM movement with appendChild, external: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/039.html: OK
-	iframes should load asynchronously after inline script run: FAIL
+	iframes should load asynchronously after inline script run: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/040.html: OK
-	 scheduler: IFRAMEs added with DOM (innerHTML), javascript: URL: FAIL
+	 scheduler: IFRAMEs added with DOM (innerHTML), javascript: URL: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/041.html: OK
 	 scheduler: document.write scripts that write scripts: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/046.html: OK
@@ -218,12 +218,18 @@
 	 scheduler: external script and parsing of markup added with document.write : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/069.html: OK
 	scheduler: external files added through DOM should not block further parsing while loading: PASS
-/html/semantics/scripting-1/the-script-element/execution-timing/070.html: ERROR
-/html/semantics/scripting-1/the-script-element/execution-timing/071.html: ERROR
-/html/semantics/scripting-1/the-script-element/execution-timing/072.html: ERROR
-/html/semantics/scripting-1/the-script-element/execution-timing/073.html: ERROR
-/html/semantics/scripting-1/the-script-element/execution-timing/074.html: ERROR
-/html/semantics/scripting-1/the-script-element/execution-timing/075.html: ERROR
+/html/semantics/scripting-1/the-script-element/execution-timing/070.html: OK
+	 scheduler: document.write into IFRAME a script that adds a SCRIPT through DOM: PASS
+/html/semantics/scripting-1/the-script-element/execution-timing/071.html: OK
+	 scheduler: document.write several scripts into IFRAME : PASS
+/html/semantics/scripting-1/the-script-element/execution-timing/072.html: OK
+	 scheduler: document.write into IFRAME a script that creates new inline script in parent : PASS
+/html/semantics/scripting-1/the-script-element/execution-timing/073.html: OK
+	 scheduler: document.write into IFRAME a script that creates new external script in parent : PASS
+/html/semantics/scripting-1/the-script-element/execution-timing/074.html: OK
+	 scheduler: document.write into IFRAME a script that creates new inline script in parent that again adds script to IFRAME : PASS
+/html/semantics/scripting-1/the-script-element/execution-timing/075.html: OK
+	dispatchEvent from child frame during document.write :-o : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/076.html: OK
 	 scheduler: adding and removing external and inline scripts : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/077.html: OK
@@ -236,8 +242,9 @@
 	 scheduler: slow loading external script added with DOM (appendChild): PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/082.html: OK
 	 scheduler: multiple slow loading external scripts added with DOM (appendChild): PASS
-/html/semantics/scripting-1/the-script-element/execution-timing/083.html: ERROR
-/html/semantics/scripting-1/the-script-element/execution-timing/084.html: ERROR
+/html/semantics/scripting-1/the-script-element/execution-timing/083.html: OK
+/html/semantics/scripting-1/the-script-element/execution-timing/084.html: OK
+	 scheduler: event listener defined by script in a removed IFRAME: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/085.html: OK
 	 scheduler: async script and slow-loading defer script: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/086.html: OK
@@ -255,7 +262,7 @@
 /html/semantics/scripting-1/the-script-element/execution-timing/092.html: OK
 	 scheduler: defer script and slow-loading non-async external script: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/094.html: OK
-	 scheduler: parser-created defer script after document load: FAIL
+	 scheduler: parser-created defer script after document load: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/095.html: OK
 	 scheduler: slow-loading script added from defer blocking load event: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/096.html: OK
@@ -263,9 +270,9 @@
 /html/semantics/scripting-1/the-script-element/execution-timing/097.html: OK
 	 scheduler: slow-loading async script added from document.write: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/099.html: OK
-	 scheduler: defer adding iframe containing script: FAIL
+	 scheduler: defer adding iframe containing script: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/101.html: OK
-	 scheduler: defer script after initial onload event: FAIL
+	 scheduler: defer script after initial onload event: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/102.html: OK
 	 scheduler: defer script after initial onload event: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/103.html: OK

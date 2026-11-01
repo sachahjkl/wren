@@ -161,6 +161,7 @@ page_create :: proc(loop: ^host.Loop, loader: ^fetch.Loader, settings: ^Settings
 	p.dp.invoke = invoke_listener
 	p.dp.user = p
 	p.dp.window = window_phase   // js_dom_events.odin: the Window after the document in the propagation path
+	p.dp.other = frames_dispatcher_of
 	styles_init(p)
 	forms_attach(p)
 	blank_document(p)
@@ -340,12 +341,15 @@ apply_meta :: proc(p: ^Page) {
 }
 
 Meta_Refresh :: struct {
+	loaded: bool,   // the document was seen complete
 	page: ^Page,
 	url:  string,
 	delay: f64,
 }
 
-// <meta http-equiv="refresh" content="N; url=..."> (only the form with a URL: a bare delay would reload the page).
+META_REFRESH_MS_PER_S :: 1000
+
+// <meta http-equiv="refresh" content="N; url=...">, or "N": a delay alone reloads the document ("" for the URL).
 @(private)
 meta_refresh_parse :: proc(content: string) -> (delay: f64, target: string, ok: bool) {
 	s := strings.trim_space(content)
@@ -358,6 +362,7 @@ meta_refresh_parse :: proc(content: string) -> (delay: f64, target: string, ok: 
 		if c == '.' { seen_dot = true } else if seen_dot { scale /= 10; frac += f64(c - '0') * scale } else { whole = whole * 10 + f64(c - '0') }
 	}
 	rest := strings.trim_left(s[i:], " \t\r\n;,")
+	if rest == "" { return whole + frac, "", true }
 	if len(rest) >= 3 && strings.equal_fold(rest[:3], "url") {
 		rest = strings.trim_left(rest[3:], " \t\r\n")
 		if len(rest) == 0 || rest[0] != '=' { return }
@@ -376,15 +381,36 @@ meta_refresh_parse :: proc(content: string) -> (delay: f64, target: string, ok: 
 meta_refresh :: proc(p: ^Page, content: string) {
 	delay, rest, parsed := meta_refresh_parse(content)
 	if !parsed { return }
-	target, ok := url.parse(rest, &p.env.location, context.temp_allocator)
-	if !ok || (target.scheme != "http" && target.scheme != "https" && target.scheme != "file") { return }
+	href := ""   // (none: a delay alone reloads the document)
+	if rest != "" {
+		target, ok := url.parse(rest, &p.env.location, context.temp_allocator)
+		if !ok || (target.scheme != "http" && target.scheme != "https" && target.scheme != "file") { return }
+		href = target.href
+	}
 	m := new(Meta_Refresh)
-	m^ = Meta_Refresh{page = p, url = strings.clone(target.href), delay = delay}
-	host.set_timer(p.loop, delay * 1000, 0, proc(data: rawptr) {
-		m := (^Meta_Refresh)(data)
-		defer { delete(m.url); free(m) }
-		if !m.page.closed { request_navigation(m.page, m.delay == 0 ? .Replace : .Assign, m.url) }
-	}, m, p.scope)
+	m^ = Meta_Refresh{page = p, url = strings.clone(href), delay = delay}
+	host.set_timer(p.loop, delay * META_REFRESH_MS_PER_S, 0, meta_refresh_fire, m, p.scope)
+}
+
+// HTML "refresh": once the document has completely loaded, a navigation as a script's would be, with its navigate event.
+@(private = "file")
+meta_refresh_fire :: proc(data: rawptr) {
+	m := (^Meta_Refresh)(data)
+	p := m.page
+	// (one turn more once it has: its container's load event goes first)
+	if !p.closed && !m.loaded {
+		f := frame_navigable_of(p) != nil ? p.frames : nil
+		m.loaded = f != nil ? f.complete : p.scripts == nil || p.scripts.timing.load_end_ms != 0
+		host.set_timer(p.loop, p.settings.js_load.poll_ms, 0, meta_refresh_fire, m, p.scope)
+		return
+	}
+	defer { delete(m.url); free(m) }
+	if p.closed { return }
+	if m.url == "" {
+		navigation_reload(p, {})
+	} else if target, ok := url.parse(m.url, nil, context.temp_allocator); ok {
+		location_navigate(p, target, m.delay == 0)
+	}
 }
 
 // Instantiates a module in the page scope and calls its `wb_main` export. Any number of modules may be loaded.

@@ -34,7 +34,7 @@ import "../odin/wj"
 Window_State :: struct {
 	id:       Navigable,
 	location: wj.JSValue,   // the cross-origin Location (counted)
-	history:  wj.JSValue,   // an object with History.prototype and no brand (counted)
+	history:  wj.JSValue,   // a frame without a realm: an object with History.prototype and no brand (counted)
 }
 
 // The state of the cross-origin Location.
@@ -496,17 +496,35 @@ wp_dispatch_event_fn :: proc "contextless" (ctx: ^wj.Context, id: Navigable) -> 
 	return fn
 }
 
+// Registers this realm's ECMAScript built-ins and their prototypes with the bridge (what WP_BUILTINS gives is the reader's own).
+frames_builtins_each :: proc "contextless" (ctx: ^wj.Context, register: wj.JSValue) {
+	for name in WP_BUILTINS {
+		key := wj.new_string_len(ctx, name)
+		defer wj.JS_FreeValue(ctx, key)
+		atom := wj.JS_ValueToAtom(ctx, key)
+		defer wj.JS_FreeAtom(ctx, atom)
+		v := wj.JS_GetProperty(ctx, wj.realm_global(), atom)
+		defer wj.JS_FreeValue(ctx, v)
+		proto := wj.is_object(v) ? wj.JS_GetPropertyStr(ctx, v, "prototype") : wj.UNDEFINED
+		defer wj.JS_FreeValue(ctx, proto)
+		args := [3]wj.JSValue{key, v, proto}
+		wj.JS_FreeValue(ctx, wj.JS_Call(ctx, register, wj.UNDEFINED, 3, &args[0]))
+	}
+}
+
 // Objects a same-origin frame's own would answer the same for: this realm's are given (a page takes a clean `navigator` or `crypto`
 // from a blank frame it made).
 @(private = "file", rodata) WP_SHARED := [?]string{"console", "navigator", "screen", "crypto"}
 
 // Pristine platform object / function from a same-origin frame, or UNINITIALIZED. `history` is an object with
-// History.prototype and no brand; WP_SHARED are this realm's own; functions are bound; constructors (an upper-case
+// History.prototype and no brand, for a frame without a realm (one with a realm gives its own, by the bridge); WP_SHARED are this realm's own; functions are bound; constructors (an upper-case
 // name of a native function) are given as is.
 @(private = "file")
 wp_pristine :: proc "contextless" (ctx: ^wj.Context, w: ^Window_State, c: cstring, p: string) -> wj.JSValue {
 	if !frame_same_origin(w.id) { return wj.UNINITIALIZED }
 	switch {
+	case p == "history" && frames_bridge_realm(w.id) != 0:
+		return wj.UNINITIALIZED   // (its own: its entries, not the caller's)
 	case p == "history":
 		if wj.is_undefined(w.history) {
 			hc := global_prop(ctx, "History")

@@ -95,6 +95,8 @@ Dispatcher :: struct {
 	// optional: the Window's listeners. The propagation path of an event whose path reaches the document goes on to
 	// the Window (HTML "get the parent" of a Document), except for `load`.
 	window:  Window_Proc,
+	// optional: the document and dispatcher of a node of another document (a listener moved a node of the path there)
+	other:   proc(user: rawptr, node: base.Handle) -> (^Document, ^Dispatcher),
 	// the event's target and relatedTarget once the last dispatch ended (NIL / 0 when cleared: they were in a shadow tree)
 	last_target:  base.Handle,
 	last_related: u64,
@@ -299,10 +301,22 @@ dispatch_ex :: proc(d: ^Document, dp: ^Dispatcher, target: base.Handle, proto: E
 	}
 	if e := base.pool_get(&dp.events, eh); e != nil { e.path = path } else { delete(path) }
 
-	run_node :: proc(d: ^Document, dp: ^Dispatcher, eh: base.Handle, node: base.Handle, phase: Phase, capture: bool) -> bool {
+	// The node of the path's current entry and the document holding it now: this one, or the one a listener moved it to while
+	// the event was on its way (event_path_moved rewrites the path).
+	holder :: proc(d: ^Document, dp: ^Dispatcher, e: ^Event) -> (^Document, ^Dispatcher, base.Handle) {
+		node := e.path[e.path_index].node
+		if get(d, node) != nil { return d, dp, node }
+		if dp.other == nil { return nil, nil, node }
+		od, odp := dp.other(dp.user, node)
+		return od, odp, node
+	}
+
+	run_node :: proc(d_in: ^Document, dp: ^Dispatcher, eh: base.Handle, phase: Phase, capture: bool) -> bool {
 		e := base.pool_get(&dp.events, eh)
-		n := get(d, node)
-		if e == nil || n == nil { return true }
+		if e == nil { return true }
+		d, runner, node := holder(d_in, dp, e)
+		n := d != nil ? get(d, node) : nil
+		if n == nil { return true }
 		e.current_target = node
 		e.phase = phase
 		snapshot: [dynamic]Listener
@@ -314,18 +328,28 @@ dispatch_ex :: proc(d: ^Document, dp: ^Dispatcher, target: base.Handle, proto: E
 			append(&snapshot, snap)
 		}
 		for l in snapshot {
-			n = get(d, node)
+			// (a listener may have moved the node to another document: its listeners went with it, owners in that document's terms)
+			d, runner, node = holder(d_in, dp, e)
+			n = d != nil ? get(d, node) : nil
 			if n == nil { return true }
+			run := l
 			still := false
-			for cur in n.listeners { if cur.id == l.id && !cur.removed { still = true; break } }
+			for cur in n.listeners {
+				if cur.id != l.id || cur.removed { continue }
+				still = true
+				run.owner = cur.owner
+				break
+			}
 			if !still { continue }
+			e.current_target = node
 			if l.once { remove_listener(d, node, l.id) }
-			ok := dp.invoke(dp.user, l, eh)
+			ok := runner.invoke(runner.user, run, eh)
 			if !ok { return false }
 			e = base.pool_get(&dp.events, eh)
 			if e == nil || e.stop_immediate { return true }
 		}
-		if n = get(d, node); n != nil { compact_listeners(n) }
+		d, _, node = holder(d_in, dp, e)
+		if d != nil { if n = get(d, node); n != nil { compact_listeners(n) } }
 		return true
 	}
 
@@ -346,7 +370,7 @@ dispatch_ex :: proc(d: ^Document, dp: ^Dispatcher, target: base.Handle, proto: E
 			e.current_target = base.NIL_HANDLE
 			return dp.window(dp.user, eh, capture)
 		}
-		return run_node(d, dp, eh, s.node, phase, capture)
+		return run_node(d, dp, eh, phase, capture)
 	}
 
 	n_path := len(path)
@@ -369,6 +393,20 @@ dispatch_ex :: proc(d: ^Document, dp: ^Dispatcher, target: base.Handle, proto: E
 	if clear_targets { final_target, final_related = base.NIL_HANDLE, 0 }
 	dp.last_target, dp.last_related = final_target, final_related
 	return !(e.cancelable && e.default_prevented), final_target
+}
+
+// A node moved to another document under a new handle (Frame_adoptNode): the events on their way through it go on there, as
+// DOM's path does not change.
+event_path_moved :: proc(dp: ^Dispatcher, from, to: base.Handle) {
+	it: u32
+	for _, e in base.pool_next(&dp.events, &it) {
+		if e.target == from { e.target = to }
+		if e.current_target == from { e.current_target = to }
+		for &s in e.path {
+			if s.node == from { s.node = to }
+			if s.shadow_target == from { s.shadow_target = to }
+		}
+	}
 }
 
 // The type ("click", "load"...) of the event being dispatched, by its handle, or "" when the handle is stale. Used by the

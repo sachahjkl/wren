@@ -99,10 +99,30 @@ fire_page_transition :: proc(p: ^Page, type: string, persisted: bool) {
 	fire_window_event(p, dom.Event{type = type, code = persisted ? 1 : 0})
 }
 
-// A document that is not kept goes: pagehide (not persisted), then unload (HTML "unload a document").
+// A document that is not kept goes: its frames' documents first, then pagehide (not persisted) and unload (HTML "unload a
+// document and its descendants"). While that runs it starts no navigation.
 page_unload :: proc(p: ^Page) {
 	if p == nil || p.closed || p.web.frozen { return }
+	if p.frames != nil {
+		ids := make([dynamic]u64, 0, len(p.frames.children), context.temp_allocator)
+		for n in p.frames.children { append(&ids, n.id) }
+		for id in ids {
+			if n := navigable_by_id(id); n != nil { page_unload(n.page) }
+			if p.closed { return }
+		}
+	}
+	p.web.unloading += 1
 	fire_page_transition(p, "pagehide", false)
 	if p.closed { return }
 	fire_window_event(p, dom.Event{type = "unload"})
+	if !p.closed { p.web.unloading -= 1 }
+}
+
+// The document is about to be left: beforeunload (no prompt: a script's navigation has no user activation to ask with, HTML
+// "prompt to unload"). While that runs it starts no navigation.
+page_before_unload :: proc(p: ^Page) {
+	if p == nil || p.closed || p.web.frozen { return }
+	p.web.unloading += 1
+	fire_window_event(p, dom.Event{type = "beforeunload", cancelable = true})
+	if !p.closed { p.web.unloading -= 1 }
 }

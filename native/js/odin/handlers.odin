@@ -320,6 +320,8 @@ wj_handler_invoke :: proc "c" (ctx: ^wj.Context, target: wj.JSValue, handler_val
 	}
 	defer wj.JS_FreeValue(ctx, fn)
 	if !wj.JS_IsFunction(ctx, fn) { return }
+	realm := frames_bridge_realm_of(ctx, fn)   // a function of another realm: as call_listener (events.odin)
+	if realm != 0 && !frames_bridge_alive(ctx, realm) { return }
 	// special error event handling: an ErrorEvent "error" at a global, onerror(message, source, lineno, colno, error)
 	special_error := false
 	args: [5]wj.JSValue
@@ -333,7 +335,10 @@ wj_handler_invoke :: proc "c" (ctx: ^wj.Context, target: wj.JSValue, handler_val
 	if !special_error { args[0] = wj.JS_DupValue(ctx, ev) }
 	r := wj.JS_Call(ctx, fn, target, i32(argc), &args[0])
 	for i in 0 ..< argc { wj.JS_FreeValue(ctx, args[i]) }
-	if wj.is_exception(r) { wj.wj_report_pending(ctx); return }
+	if wj.is_exception(r) {
+		if realm != 0 { frames_bridge_report_pending(ctx, realm) } else { wj.wj_report_pending(ctx) }
+		return
+	}
 	defer wj.JS_FreeValue(ctx, r)
 	cancel: bool
 	switch {

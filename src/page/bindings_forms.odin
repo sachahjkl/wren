@@ -15,6 +15,7 @@ package page
 //     FocusEvent.relatedTarget and FormDataEvent.formData -> Event_object
 
 import "core:math"
+import "core:strings"
 import "wb:base"
 import "wb:dom"
 import "wb:forms"
@@ -137,10 +138,49 @@ forms_navigation_soon :: proc(p: ^Page) {
 			if pf.pending != nil { forms.submission_destroy(s); return }   // the event's listener submitted again: that one goes
 			pf.pending, pf.pending_announced = s, true
 		}
+		// (a frame of the tab: neither the tab's concern nor its embedder's)
+		if n := frames_find_target(p, strings.trim_space(s.target)); n != nil && n.parent != nil && !s.mailto {
+			replace := pf.pending_replace
+			pf.pending, pf.pending_announced = nil, false
+			forms_navigate_frame(p, n, s, replace)
+			forms.submission_destroy(s)
+			return
+		}
 		if pf.embedder.navigate == nil { return }
 		pf.pending, pf.pending_announced = nil, false
 		pf.embedder.navigate(pf.embedder.user, p, s)
 	}, p, p.scope)
+}
+
+@(private = "file")
+forms_navigate_frame :: proc(p: ^Page, n: ^Navigable, s: ^forms.Submission, replace: bool) {
+	if sb := page_sandbox(p); sb.active && .Forms not_in sb.allow {
+		log(p, .Error, "Blocked form submission because the form's frame is sandboxed and the 'allow-forms' permission is not set.")
+		return
+	}
+	method, ctype := "", ""
+	if s.method == .Post {
+		if forms.needs_file_reads(s.entries[:]) {
+			log(p, .Warn, "a form with files is not sent to a frame")
+			return
+		}
+		ok, msg := forms.encode_submission(s, p.settings.forms)
+		defer delete(msg)
+		if !ok {
+			log(p, .Error, msg)
+			return
+		}
+		method, ctype = "POST", s.content_type
+	}
+	// (its own frame: navigation_form has fired the navigate event)
+	if n == page_navigable(p) {
+		frame_navigate(n, s.url, replace, method, s.body, ctype)
+		return
+	}
+	source := s.submitter != base.NIL_HANDLE ? s.submitter : s.form
+	form, submitter := base.NIL_HANDLE, base.NIL_HANDLE
+	if s.method == .Post { form, submitter = s.form, s.submitter }
+	if why := frames_navigate_from(p, n, s.url, false, method, s.body, ctype, source, form, submitter); why != "" { log(p, .Error, why) }
 }
 
 @(private)

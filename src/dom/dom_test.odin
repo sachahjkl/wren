@@ -195,6 +195,64 @@ once_and_removal_during_dispatch :: proc(t: ^testing.T) {
 	testing.expect_value(t, remove_listener(d, n, id), Error.Not_Found)
 }
 
+// A listener moves the node to another document under a new handle (Frame_adoptNode): the event goes on through it there, with the
+// listeners that went with it, invoked by that document's dispatcher.
+@(private = "file") MOVED_TAG_FROM :: 1
+@(private = "file") MOVED_TAG_TO :: 2
+@(private = "file") MOVED_FIRST :: 1    // the listener that moves the node
+@(private = "file") MOVED_SECOND :: 2
+
+@(private = "file")
+Moved_Trace :: struct {
+	from, to:       ^Document,
+	from_dp, to_dp: ^Dispatcher,
+	node:           base.Handle,
+	by_from, by_to: [dynamic]u32,   // the callbacks each dispatcher invoked
+}
+
+@(test)
+event_follows_a_node_moved_to_another_document :: proc(t: ^testing.T) {
+	from := document_create(nil, MOVED_TAG_FROM)
+	defer document_destroy(from)
+	to := document_create(nil, MOVED_TAG_TO)
+	defer document_destroy(to)
+	from_dp, to_dp: Dispatcher
+	defer dispatcher_destroy(&from_dp)
+	defer dispatcher_destroy(&to_dp)
+	from_dp.tag, to_dp.tag = MOVED_TAG_FROM, MOVED_TAG_TO
+	n := create_element(from, "n")
+	append_child(from, from.root, n)
+	tr := Moved_Trace{from = from, to = to, from_dp = &from_dp, to_dp = &to_dp, node = n}
+	defer { delete(tr.by_from); delete(tr.by_to) }
+	from_dp.user = &tr
+	to_dp.user = &tr
+	from_dp.other = proc(user: rawptr, node: base.Handle) -> (^Document, ^Dispatcher) {
+		x := (^Moved_Trace)(user)
+		return x.to, x.to_dp
+	}
+	to_dp.invoke = proc(user: rawptr, l: Listener, event: base.Handle) -> bool {
+		append(&(^Moved_Trace)(user).by_to, l.callback)
+		return true
+	}
+	from_dp.invoke = proc(user: rawptr, l: Listener, event: base.Handle) -> bool {
+		x := (^Moved_Trace)(user)
+		append(&x.by_from, l.callback)
+		moved := create_element(x.to, "n")
+		append_child(x.to, x.to.root, moved)
+		for cur in get(x.from, x.node).listeners { if !cur.removed { listener_copy(x.to, moved, cur, cur.owner) } }
+		event_path_moved(x.from_dp, x.node, moved)
+		detach(x.from, x.node)
+		destroy_unpinned(x.from, x.node)
+		return true
+	}
+	add_listener(from, n, "go", MOVED_FIRST, 0, false, false, false)
+	add_listener(from, n, "go", MOVED_SECOND, 0, false, false, false)
+	dispatch(from, &from_dp, n, Event{type = "go"})
+	testing.expect_value(t, len(tr.by_from), 1)
+	testing.expect_value(t, len(tr.by_to), 1)
+	if len(tr.by_to) == 1 { testing.expect_value(t, tr.by_to[0], u32(MOVED_SECOND)) }
+}
+
 @(test)
 document_scope_frees_everything :: proc(t: ^testing.T) {
 	scope := base.scope_make("doc")

@@ -11,7 +11,12 @@ package page
 
 import "core:strings"
 import "wb:dom"
+import "wb:host"
 import "wb:url"
+
+// HTML lets a browser ignore a navigable's traversals past a rate (Chromium's numbers): a page reloading a frame in a loop.
+HISTORY_RATE_LIMIT_CALLS :: 200
+HISTORY_RATE_LIMIT_WINDOW_NS :: 10_000_000_000
 
 window_vt := Object_VTable{name = "Window"}
 
@@ -55,8 +60,9 @@ Nav_Task :: struct {
 	delta: int,
 	nav_state: string,
 	has_nav_state: bool,
-	nav:   ^Navigable,   // a frame's: a later navigation of it (src set meanwhile) supersedes this one
+	nav:   ^Navigable,   // a frame's: a later navigation of it (src set meanwhile, another one asked for) supersedes this one
 	gen:   u64,
+	request: u64,        // its number among the navigations asked of `nav` (0: a traversal, which supersedes none)
 }
 
 // Hands a navigation to the embedder from a task of its own (`nav_state`: the Navigation API state of its entry).
@@ -64,12 +70,18 @@ Nav_Task :: struct {
 request_navigation :: proc(p: ^Page, kind: Navigate_Kind, href: string, delta := 0, nav_state := "", has_nav_state := false) {
 	t := new(Nav_Task)
 	t^ = Nav_Task{kind = kind, url = strings.clone(href), delta = delta, nav_state = strings.clone(nav_state), has_nav_state = has_nav_state}
-	if p.frames != nil && p.frames.nav != nil { t.nav, t.gen = p.frames.nav, p.frames.nav.navigations }
+	if p.frames != nil && p.frames.nav != nil {
+		t.nav, t.gen = p.frames.nav, p.frames.nav.navigations
+		if kind != .Traverse {
+			t.nav.requests += 1
+			t.request = t.nav.requests
+		}
+	}
 	post_page_task(p, proc(pg: ^Page, data: rawptr) {
 		t := (^Nav_Task)(data)
 		defer { delete(t.url); delete(t.nav_state); free(t) }
 		if pg == nil { return }
-		if t.nav != nil && pg.frames != nil && pg.frames.nav == t.nav && t.nav.navigations != t.gen { return }
+		if t.nav != nil && pg.frames != nil && pg.frames.nav == t.nav && (t.nav.navigations != t.gen || t.request != 0 && t.request != t.nav.requests) { return }
 		if t.kind == .Traverse {
 			switch history_traverse(pg, t.delta) {
 			case .None, .Canceled: return
@@ -138,29 +150,43 @@ follow_fragment_link :: proc(p: ^Page, target: url.URL) -> bool {
 // first (navigation.odin); then a fragment navigation stays in the document, anything else goes to the embedder.
 @(private)
 location_navigate :: proc(p: ^Page, target: url.URL, replace: bool, user := false, opts: Nav_Options = {}) {
-	if follow_javascript_url(p, target) { return }   // javascript: runs in this document (js_load_realm.odin)
+	if !navigation_begin(p, target, replace, user, opts) { return }
+	request_navigation(p, replace ? .Replace : .Assign, target.href, nav_state = opts.state, has_nav_state = opts.has_state)
+}
+
+// What a navigation of the document does first, whoever started it: a javascript: URL runs, the navigate event fires, a fragment
+// stays in the document. True when it goes on to another document (the caller's work then; beforeunload has fired). A document
+// being unloaded starts no navigation (HTML "unload counter").
+@(private)
+navigation_begin :: proc(p: ^Page, target: url.URL, replace: bool, user := false, opts: Nav_Options = {}) -> bool {
+	if p.web.unloading > 0 { return false }
+	if follow_javascript_url(p, target) { return false }   // javascript: runs in this document (js_load_realm.odin)
 	cur := p.env.location
 	fragment := target.has_fragment && url.without_fragment(target) == url.without_fragment(cur)
 	pend := Nav_Pending{
 		type = replace ? .Replace : .Push, url = target.href, same_document = fragment, user_initiated = user,
 		hash_change = fragment && (target.fragment != cur.fragment || !cur.has_fragment),
 		can_intercept = can_rewrite_url(cur, target), cancelable = true, state = opts.state, has_state = opts.has_state,
+		source = opts.source, form = opts.form, submitter = opts.submitter,
 	}
-	switch navigation_fire(p, &pend) {
-	case .Canceled: return
+	// HTML "navigate": a document of another origin leaving this one to another document is not told to this one's script
+	verdict := opts.cross_origin && !fragment ? Nav_Verdict.Proceed : navigation_fire(p, &pend)
+	switch verdict {
+	case .Canceled: return false
 	case .Intercepted:
 		navigation_commit_url(p, target.href, replace, opts)
 		navigation_committed(p, pend.type, true)
-		return
+		return false
 	case .Proceed:
 	}
 	if fragment {
 		navigate_fragment(p, target, replace)
 		session_set_nav_state(p.web.session, opts.state, opts.has_state)
 		navigation_committed(p, pend.type, false)
-		return
+		return false
 	}
-	request_navigation(p, replace ? .Replace : .Assign, target.href, nav_state = opts.state, has_nav_state = opts.has_state)
+	page_before_unload(p)
+	return !p.closed
 }
 
 // Canceled: a listener of navigate cancelled the traversal (nothing changed).
@@ -187,7 +213,15 @@ history_traverse_to :: proc(p: ^Page, target: ^History_Entry, user := true) -> T
 	if p == nil || p.closed || target == nil { return .None }
 	sh := p.web.session
 	if target == session_current(sh) { return .None }
-	if target.doc != p.web.id { return .Other_Document }
+	if target.doc != p.web.id {
+		if p.web.unloading > 0 { return .Canceled }
+		// the navigate event of a traversal to another document can be neither canceled nor intercepted
+		pend := Nav_Pending{type = .Traverse, url = strings.clone(target.url, context.temp_allocator), dest = target, user_initiated = user, state = strings.clone(target.nav_state, context.temp_allocator), has_state = target.has_nav_state}
+		navigation_fire(p, &pend)
+		if p.closed { return .Canceled }
+		page_before_unload(p)
+		return p.closed ? .Canceled : .Other_Document
+	}
 	old := strings.clone(p.env.location.href, context.temp_allocator)
 	target := target
 	{
@@ -195,8 +229,8 @@ history_traverse_to :: proc(p: ^Page, target: ^History_Entry, user := true) -> T
 		tu, _ := url.parse(target.url, nil, context.temp_allocator)
 		pend := Nav_Pending{
 			type = .Traverse, url = strings.clone(target.url, context.temp_allocator), dest = target, same_document = true, user_initiated = user,
-			hash_change = url.without_fragment(ou) == url.without_fragment(tu) && ou.fragment != tu.fragment,
-			can_intercept = true, cancelable = true, state = strings.clone(target.nav_state, context.temp_allocator), has_state = target.has_nav_state,
+			hash_change = url.without_fragment(ou) == url.without_fragment(tu) && (ou.fragment != tu.fragment || ou.has_fragment != tu.has_fragment),
+			can_intercept = true, cancelable = frame_navigable_of(p) == nil, state = strings.clone(target.nav_state, context.temp_allocator), has_state = target.has_nav_state,   // (a frame's traversal cannot be canceled)
 		}
 		id := target.id
 		verdict := navigation_fire(p, &pend)
@@ -242,6 +276,18 @@ Document_self :: proc(c: ^Call) -> u64 { return u64(c.page.doc.root) }
 
 Location_get :: proc(c: ^Call, component: Api_URLComponent) -> string {
 	return url.component(c.page.env.location, url.Component(component), context.temp_allocator)
+}
+
+@(private = "file")
+history_rate_limited :: proc(p: ^Page) -> bool {
+	n := page_navigable(p)
+	if n == nil { return false }
+	now := host.now_ns(p.loop)
+	if n.history_calls == 0 || now - n.history_window_ns >= HISTORY_RATE_LIMIT_WINDOW_NS { n.history_calls, n.history_window_ns = 0, now }
+	n.history_calls += 1
+	if n.history_calls <= HISTORY_RATE_LIMIT_CALLS { return false }
+	if n.history_calls == HISTORY_RATE_LIMIT_CALLS + 1 { log(p, .Warn, "history.go() is called too often: it is ignored for a while") }
+	return true
 }
 
 @(private)
@@ -345,6 +391,7 @@ History_set_scrollRestoration :: proc(c: ^Call, mode: Api_ScrollRestoration) {
 // history.go(delta); back() is go(-1), forward() go(1), go(0) reloads. Asynchronous, as in HTML.
 History_go :: proc(c: ^Call, delta: i32) {
 	p := c.page
+	if history_rate_limited(p) { return }
 	if delta == 0 {
 		navigation_reload(p, {})
 	} else {

@@ -90,6 +90,7 @@ Web_State :: struct {
 	history_state:   string,    // history.state of the current entry (owned)
 	has_state:       bool,
 	nav_pending:     ^Nav_Pending,   // the navigation whose navigate event is being fired (navigation.odin)
+	unloading:       int,            // beforeunload, pagehide or unload is running (HTML "unload counter")
 	perf:            [dynamic]Perf_Entry,
 	perf_warned:     bool,
 	event_details:   [dynamic]Event_Detail,   // StorageEvent / PopStateEvent / HashChangeEvent fields while dispatching

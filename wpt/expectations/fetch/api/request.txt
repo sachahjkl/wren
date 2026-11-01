@@ -1,9 +1,9 @@
 # web-platform-tests expectations of Wren for fetch/api/request, written by tools\wpt.ps1 -Update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
-/fetch/api/request/destination/fetch-destination-frame.https.html: ERROR
+/fetch/api/request/destination/fetch-destination-frame.https.html: OK
 	Initialize global state: PASS
 	frame fetches with a "frame" Request.destination: PASS
-/fetch/api/request/destination/fetch-destination-iframe.https.html: ERROR
+/fetch/api/request/destination/fetch-destination-iframe.https.html: OK
 	Initialize global state: PASS
 	iframe fetches with a "iframe" Request.destination: PASS
 /fetch/api/request/destination/fetch-destination-no-load-event.https.html: TIMEOUT

@@ -20,7 +20,9 @@ package page
 //      document goes away);
 //   3. navigation_committed calls the engine's wj_nav_commit after a same-document commit: currententrychange, the
 //      intercept handlers, then navigatesuccess / navigateerror when their promises settle.
-// Cross-document traversals fire no navigate event (HTML), and a document without a realm (scripts off) skips 1 and 3.
+// A traversal to another document fires a navigate event that can be neither canceled nor intercepted. A document without a
+// realm (scripts off) skips 1 and 3. A navigation of a frame started from elsewhere (its parent's script, a link or a form with
+// a target, the src attribute) fires in the frame's document, not the source's (frames_navigate_from).
 
 import "core:fmt"
 import "core:strings"
@@ -37,6 +39,10 @@ Nav_Verdict :: enum u8 { Proceed, Canceled, Intercepted }
 Nav_Options :: struct {
 	state:     string,   // valid during the call
 	has_state: bool,
+	source:    base.Handle,   // event.sourceElement (of another document when the link or the form has a target)
+	form:      base.Handle,   // a POST form submission: event.formData
+	submitter: base.Handle,
+	cross_origin: bool,         // started by a document of another origin than the one navigated
 }
 
 // The navigation whose navigate event is being fired (Navigation_pending reads it).
@@ -54,6 +60,7 @@ Nav_Pending :: struct {
 	source:         base.Handle,      // event.sourceElement: the link or the submitter (the form without one); NIL: null
 	form:           base.Handle,      // a POST form submission's form: event.formData is made of it and `submitter`
 	submitter:      base.Handle,
+	download:       Maybe(string),    // event.downloadRequest
 }
 
 // A form submission about to navigate this document (forms_plan_navigation): `navigate` with its sourceElement and,
@@ -68,6 +75,7 @@ navigation_form :: proc(p: ^Page, s: ^forms.Submission, before_loaded: bool) -> 
 	pend := Nav_Pending{type = before_loaded || target.href == p.env.location.href ? .Replace : .Push, url = target.href, can_intercept = can_rewrite_url(p.env.location, target), cancelable = true}
 	pend.source = s.submitter != base.NIL_HANDLE ? s.submitter : s.form
 	if s.method == .Post { pend.form, pend.submitter = s.form, s.submitter }
+	if p.web.unloading > 0 { return false }
 	switch navigation_fire(p, &pend) {
 	case .Proceed: return true
 	case .Canceled: return false
@@ -100,9 +108,15 @@ navigation_user_reload :: proc(p: ^Page) -> bool {
 Navigation_activation :: proc(c: ^Call) -> string {
 	p := c.page
 	t := p.timeline
-	if t == nil || !t.nav_known || p.web == nil { return "" }
+	if p.web == nil { return "" }
 	list, cur := nav_entries(p)
 	if cur < 0 { return "" }
+	// a frame's document: its navigable says how it came (none: it is the initial about:blank)
+	if n := frame_navigable_of(p); n != nil {
+		if !n.activated { return "" }
+		return fmt.tprintf("%d %d", int(n.activated_by), n.activated_from)
+	}
+	if t == nil || !t.nav_known { return "" }
 	type := Nav_Type.Push
 	if t.nav.reload { type = .Reload }
 	if t.nav.back_forward { type = .Traverse }
@@ -121,6 +135,8 @@ Navigation_activation :: proc(c: ^Call) -> string {
 Navigation_pendingSource :: proc(c: ^Call) -> Api_NavigationSource {
 	n := c.page.web.nav_pending
 	if n == nil { return {} }
+	// (of a document of another origin than the one navigated: it knows nothing of them)
+	if n.source != base.NIL_HANDLE && frames_reach_tag(c.page, base.handle_tag(u64(n.source))) == nil { return {} }
 	return {source = u64(n.source), form = u64(n.form), submitter = u64(n.submitter)}
 }
 
@@ -160,6 +176,15 @@ navigation_committed :: proc(p: ^Page, type: Nav_Type, intercepted: bool) {
 	call_export(p, inst, "wj_nav_commit", argv[:])
 }
 
+// The frame of the document is going away: the navigation under way is aborted, its promises reject, what they run runs while the
+// realm can still reach its callers.
+navigation_detached :: proc(p: ^Page) {
+	inst := nav_realm(p)
+	if inst == nil { return }
+	argv := [1]u32{0}
+	call_export(p, inst, "wj_nav_detach", argv[:])
+}
+
 // An intercepted push / replace towards any URL the document can be rewritten to: a same-document change, like
 // pushState, with a null history.state and the navigation's own state.
 @(private)
@@ -192,26 +217,40 @@ navigation_link :: proc(p: ^Page, target: url.URL) -> bool {
 	return true
 }
 
-// A link a script clicked (element.click(), forms' activation behaviour of <a> / <area>): followed in this document's
-// browsing context as a link the user follows is by the shell, after the navigate event. A download link (the shell's
-// downloads) and a link to another browsing context (`target` other than _self) are left alone, as before.
+// A link a script clicked (element.click(), forms' activation behaviour of <a> / <area>): followed in the browsing context it
+// targets, as a link the user follows is by the shell, after the navigate event of that context's document. A link with
+// `download` only fires it (the shell's downloads take a user's click), and one to a new window is left alone.
 navigation_follow_script_link :: proc(p: ^Page, link: base.Handle) {
 	if p == nil || p.closed || p.web == nil { return }
 	href, ok := dom.get_attribute(p.doc, link, "href")
 	if !ok { return }
-	if _, dl := dom.get_attribute(p.doc, link, "download"); dl { return }
-	if target, has := dom.get_attribute(p.doc, link, "target"); has && target != "" && !strings.equal_fold(target, "_self") { return }
 	base_href := document_base_url(p)
 	base_url, bok := url.parse(base_href, nil, context.temp_allocator)
 	if !bok { return }
 	u, uok := url.parse(strings.clone(href, context.temp_allocator), &base_url, context.temp_allocator)
 	if !uok { return }
-	location_navigate(p, u, false)
+	if dl, is_dl := dom.get_attribute(p.doc, link, "download"); is_dl {
+		if p.web.unloading > 0 { return }
+		pend := Nav_Pending{type = .Push, url = u.href, cancelable = true, can_intercept = can_rewrite_url(p.env.location, u), source = link, download = strings.clone(dl, context.temp_allocator)}
+		if navigation_fire(p, &pend) == .Intercepted {
+			navigation_commit_url(p, u.href, false, {})
+			navigation_committed(p, .Push, true)
+		}
+		return
+	}
+	if target, has := dom.get_attribute(p.doc, link, "target"); has && target != "" && !strings.equal_fold(target, "_self") {
+		n := frames_find_target(p, strings.trim_space(strings.clone(target, context.temp_allocator)))
+		if n == nil { return }
+		if why := frames_navigate_from(p, n, u.href, false, source = link); why != "" { log(p, .Warn, why) }
+		return
+	}
+	location_navigate(p, u, false, opts = Nav_Options{source = link})
 }
 
 // location.reload(), history.go(0), navigation.reload(): an intercepted reload keeps the document.
 @(private)
 navigation_reload :: proc(p: ^Page, opts: Nav_Options) {
+	if p.web.unloading > 0 { return }
 	sh := p.web.session
 	cur := session_current(sh)
 	state, has_state := opts.state, opts.has_state
@@ -225,6 +264,8 @@ navigation_reload :: proc(p: ^Page, opts: Nav_Options) {
 		return
 	case .Proceed:
 	}
+	page_before_unload(p)
+	if p.closed { return }
 	request_navigation(p, .Reload, p.env.location.href, nav_state = state, has_nav_state = has_state)
 }
 
@@ -294,6 +335,8 @@ Navigation_updateCurrentEntry :: proc(c: ^Call, state: string) -> Api_Error {
 
 Nav_History :: enum i32 { Auto, Push, Replace }
 
+@(private = "file") NAV_WHILE_UNLOADING :: "InvalidStateError: the document is being unloaded"
+
 // navigation.navigate(url, {state, history}): Syntax for an invalid URL, Not_Supported for a push to a javascript: URL,
 // Data_Clone past history.max_state_bytes. The navigate event fires inside the call.
 Navigation_navigate :: proc(c: ^Call, target: string, state: Maybe(string), history: i32) -> Api_Error {
@@ -302,8 +345,14 @@ Navigation_navigate :: proc(c: ^Call, target: string, state: Maybe(string), hist
 	if len(target) > s.url_max_length { return fail(c, .Type, "TypeError: the URL is too long (url.max_length)") }
 	st, has_state := state.?
 	if has_state && len(st) > s.history_max_state_bytes { return fail(c, .Data_Clone, "DataCloneError: the state is over history.max_state_bytes") }
-	u, ok := url.parse(target, &p.env.location, context.temp_allocator)
+	// (a blank frame has no address of its own to resolve against: its parent's, what the script that asks usually has)
+	against := p.env.location
+	if b := frame_fallback_base(p); b != "" {
+		if bu, bok := url.parse(b, nil, context.temp_allocator); bok { against = bu }
+	}
+	u, ok := url.parse(target, &against, context.temp_allocator)
 	if !ok { return fail(c, .Syntax, "SyntaxError: invalid URL") }
+	if p.web.unloading > 0 { return fail(c, .Invalid_State, NAV_WHILE_UNLOADING) }
 	if u.scheme == "javascript" && Nav_History(history) == .Push { return fail(c, .Not_Supported, "NotSupportedError: a javascript: URL cannot be pushed") }
 	// "auto" replaces the entry when it goes to the URL the document already has
 	replace := Nav_History(history) == .Replace || Nav_History(history) == .Auto && u.href == p.env.location.href
@@ -317,6 +366,7 @@ Navigation_reload :: proc(c: ^Call, state: Maybe(string)) -> Api_Error {
 	p := c.page
 	st, has_state := state.?
 	if has_state && len(st) > p.settings.web.history_max_state_bytes { return fail(c, .Data_Clone, "DataCloneError: the state is over history.max_state_bytes") }
+	if p.web.unloading > 0 { return fail(c, .Invalid_State, NAV_WHILE_UNLOADING) }
 	navigation_reload(p, Nav_Options{state = strings.clone(st, context.temp_allocator), has_state = has_state})
 	return .None
 }
@@ -325,6 +375,7 @@ Navigation_reload :: proc(c: ^Call, state: Maybe(string)) -> Api_Error {
 // this key. The traversal happens from a task of its own, as history.go does.
 Navigation_traverseTo :: proc(c: ^Call, key: i64) -> Api_Error {
 	p := c.page
+	if p.web.unloading > 0 { return fail(c, .Invalid_State, NAV_WHILE_UNLOADING) }
 	list, _ := nav_entries(p)
 	for e in list {
 		if e.id != u64(key) { continue }
@@ -336,8 +387,9 @@ Navigation_traverseTo :: proc(c: ^Call, key: i64) -> Api_Error {
 	return fail(c, .Invalid_State, "InvalidStateError: no entry of navigation.entries() has this key")
 }
 
-// The navigation being fired: "<type> <flags> <key> <id> <index> <url>"; flags: 1 same document, 2 user initiated,
-// 4 hash change, 8 can intercept, 16 cancelable, 32 has a state. Not_Found outside wj_nav_fire.
+// The navigation being fired: "<type> <flags> <key> <id> <index> <url>", then a line break and the downloadRequest when there is
+// one; flags: 1 same document, 2 user initiated, 4 hash change, 8 can intercept, 16 cancelable, 32 has a state, 64 a download.
+// Not_Found outside wj_nav_fire.
 Navigation_pending :: proc(c: ^Call) -> (string, Api_Error) {
 	p := c.page
 	n := p.web.nav_pending
@@ -349,6 +401,7 @@ Navigation_pending :: proc(c: ^Call) -> (string, Api_Error) {
 	if n.can_intercept { flags |= 8 }
 	if n.cancelable { flags |= 16 }
 	if n.has_state { flags |= 32 }
+	if dl, is_dl := n.download.?; is_dl { return fmt.tprintf("%d %d %d %d %d %s\n%s", int(n.type), flags | 64, 0, 0, -1, n.url, dl), .None }
 	key, id, index: i64 = 0, 0, -1
 	if n.dest != nil { key, id, index = i64(n.dest.id), i64(n.dest.nav_id), i64(nav_index_of(p, n.dest)) }
 	return fmt.tprintf("%d %d %d %d %d %s", int(n.type), flags, key, id, index, n.url), .None

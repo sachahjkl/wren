@@ -282,27 +282,48 @@ bytes the browser carries from an instance to another (<code>Frame_bridge</code>
 <tr><td>well-known symbols</td><td>by name; any other symbol is not carried</td></tr>
 <tr><td>a DOM node</td><td>that realm's wrapper of the node</td></tr>
 <tr><td>a window</td><td>that realm's <code>WindowProxy</code>, or its global</td></tr>
+<tr><td>a built-in, an interface, their prototypes</td><td>by name: that realm's own (what a window gives for them is the reader's)</td></tr>
 <tr><td>any other object, a function</td><td>a <code>Proxy</code> forwarding get, set, has, delete, keys, descriptors, prototype, call, construct</td></tr>
 </tbody>
 </table></div>
 <p>An object coming home is itself. A realm that is gone answers <code>undefined</code>. Proxies are collected with <code>FinalizationRegistry</code>, which
 releases the object in its realm.</p>
+<p>A listener or a handler that is a <code>Proxy</code> of another realm's function runs as a callback of that realm: what it throws is reported at
+that window's <code>error</code> event, and once that realm is gone it is not called.</p>
 <p>What it is not is one heap:</p>
 <ul>
-<li>objects keep their realm's prototypes, as in a browser: <code>x instanceof Array</code> is false across frames;</li>
+<li>since <code>w.Array</code> is the reader's <code>Array</code>, an object of another window reaches the reader's prototypes: <code>x instanceof w.Promise</code> and
+<code>x.constructor === w.Object</code> hold, and so does <code>x instanceof Array</code>, where a browser says false;</li>
+<li>an object made with <code>new w.Object</code> is the caller's, so a listener made that way is the caller's too: what it throws goes to the caller's
+window (<code>dom/events/EventListener-handleEvent-cross-realm.html</code>);</li>
 <li>a native function refuses a <code>Proxy</code> for one of its own objects: a typed array or a <code>Blob</code> of one realm passed to a native of
 another throws a <code>TypeError</code>. An <code>Event</code> to <code>otherWindow.dispatchEvent</code> is handled, and <code>frameDocument.createRange()</code> and
 <code>getSelection()</code> give the frame's own, which its <code>Selection</code> takes;</li>
 <li>a cycle between two realms (a listener of one kept by the other) lives until one of them goes;</li>
 <li>ECMAScript built-ins and interface objects read from another window are the caller's own: <code>frame.contentWindow.Array === Array</code>, and
 <code>new frame.contentWindow.HTMLElement</code> makes one of the caller's. A DOM wrapper's prototype is its realm's too:
-<code>contentDocument.body instanceof HTMLElement</code> is true, where a browser says false. <code>history</code>, <code>navigator</code>, <code>screen</code>, <code>crypto</code>
+<code>contentDocument.body instanceof HTMLElement</code> is true, where a browser says false. <code>navigator</code>, <code>screen</code>, <code>crypto</code>
 and <code>console</code> of another window are the caller's as well.</li>
 </ul>
 <p>A custom element class of one realm defined in the registry of another (<code>frame.contentWindow.customElements.define(name, class extends
 HTMLElement {})</code>) is not supported: its constructor would run in one realm for an element of another.</p>
 <p>Rich-text editors reach their frame, but Wren has no editing of its own in <code>contenteditable</code> or <code>designMode</code> (typing, caret, <code>execCommand</code>):
 that limit is not about frames.</p>
+<h2 id="navigating-a-frame"><a class="anchor" href="#navigating-a-frame" aria-hidden="true">#</a>Navigating a frame</h2>
+<p>A navigable keeps its session history across its documents (<code>Navigable.session</code>): <code>navigation.entries()</code>, <code>back()</code>, <code>traverseTo()</code> and
+<code>reload()</code> see them, keys and ids stay. The navigate event fires in the frame's document whoever starts the navigation (<code>location</code> of
+another window, <code>window.open</code> or a link or a form with a target, the <code>src</code> and <code>srcdoc</code> attributes), but for a navigation to another
+document started from another origin. The document that leaves gets <code>beforeunload</code>, then <code>pagehide</code> and <code>unload</code>, and starts no
+navigation while they run. A 204, a 205 or an attachment leaves the document as it is.</p>
+<p>What is not there:</p>
+<ul>
+<li><strong>joint session history.</strong> Each frame has its own: <code>history.back()</code> in the tab does not go back in a frame, a traversal moves one
+frame, and a push in a frame does not prune another's forward entries. The browser's back button leaves the tab's document;</li>
+<li><strong>a Window kept from the initial about:blank.</strong> HTML keeps the <code>Window</code> when a frame goes from its initial about:blank to a document
+of the same origin. Here every document has an instance of its own, so what a script put on a blank frame's window
+(<code>frame.contentWindow.navigation.onnavigate = ...</code>, <code>window[0].foo = ...</code>) goes with that document;</li>
+<li><strong><code>precommitHandler</code></strong> of <code>NavigateEvent.intercept()</code>.</li>
+</ul>
 <h2 id="cost"><a class="anchor" href="#cost" aria-hidden="true">#</a>Cost</h2>
 <p>A page without frames pays two comparisons per handle argument of an import call, and one load per call. The tag replaces bits of
 the generation: <code>pool_get</code> compares what it compared. A slot reused 65536 times is retired rather than wrapped.</p>
@@ -318,6 +339,7 @@ the generation: <code>pool_get</code> compares what it compared. A slot reused 6
 <li><a href="#nodes-handles-that-name-their-document">Nodes: handles that name their document</a></li>
 <li><a href="#blank-frames">Blank frames</a></li>
 <li><a href="#globals-a-value-bridge">Globals: a value bridge</a></li>
+<li><a href="#navigating-a-frame">Navigating a frame</a></li>
 <li><a href="#cost">Cost</a></li>
 </ul>
 </nav>

@@ -464,7 +464,7 @@ script_prepare :: proc(p: ^Page, el: base.Handle, parser_inserted: bool) {
 			post_script_event(p, el, "error")
 			return
 		}
-		resolved, okurl := url.parse(src, &p.env.location, context.temp_allocator)
+		resolved, okurl := url.parse(src, script_base_url(p), context.temp_allocator)
 		if !okurl {
 			sc.state = .Failed
 			sc.url = strings.clone(src)
@@ -767,6 +767,15 @@ poll_schedule :: proc(p: ^Page) {
 ////////////////////////////////
 // Fetching classic scripts (and the preload scanner)
 
+// What the src of a script is resolved against: the document's base URL (a blank frame written to has its parent's). Temporary.
+@(private)
+script_base_url :: proc(p: ^Page) -> ^url.URL {
+	u := new(url.URL, context.temp_allocator)
+	parsed, ok := url.parse(document_base_url(p), nil, context.temp_allocator)
+	u^ = ok ? parsed : p.env.location
+	return u
+}
+
 // Starts the download of an external script of the document as parsed, before its element is reached.
 @(private)
 scripts_preload :: proc(p: ^Page, el: base.Handle) {
@@ -776,7 +785,7 @@ scripts_preload :: proc(p: ^Page, el: base.Handle) {
 	src, has := dom.get_attribute(d, el, "src")
 	if !has || src == "" { return }
 	if _, nomodule := dom.get_attribute(d, el, "nomodule"); nomodule && kind == .Classic { return }
-	resolved, okurl := url.parse(src, &p.env.location, context.temp_allocator)
+	resolved, okurl := url.parse(src, script_base_url(p), context.temp_allocator)
 	if !okurl { return }
 	if kind == .Module {
 		module_preload(p, resolved.href, cors_setting(d, el))

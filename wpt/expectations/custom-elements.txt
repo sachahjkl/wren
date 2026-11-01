@@ -687,7 +687,7 @@
 /custom-elements/form-associated/ElementInternals-setFormValue-nullish-value.html: OK
 	ElementInternals.setFormValue(null) clears submission value: FAIL
 	ElementInternals.setFormValue(undefined) clears submission value: FAIL
-/custom-elements/form-associated/ElementInternals-setFormValue.html: TIMEOUT
+/custom-elements/form-associated/ElementInternals-setFormValue.html: OK
 	ElementInternals.setFormValue() should throw NotSupportedError if the target element is not a form-associated custom element: FAIL
 	Multiple values - name content attribute is ignored: NOTRUN
 	Newline normalization - \\n in FormData filename (formdata): NOTRUN
@@ -741,7 +741,7 @@
 	Null value should submit nothing: NOTRUN
 	Single value - Non-empty name exists: NOTRUN
 	Single value - empty name exists: NOTRUN
-	Single value - name is missing: TIMEOUT
+	Single value - name is missing: PASS
 	setFormValue with an empty FormData should submit nothing: NOTRUN
 /custom-elements/form-associated/ElementInternals-setValidity-normalize-newlines.html: OK
 	setValidity() should normalize newlines with another validity flag set: FAIL

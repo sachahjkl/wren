@@ -626,10 +626,10 @@
 	window.event is set when dispatching on Performance: PASS
 /dom/events/event-global-extra.window.html: OK
 	Listener from a different global: FAIL
-	window.event and element from another document: FAIL
-	window.event and moving an element post-dispatch: FAIL
-	window.event for constructors from another global: EventTarget: FAIL
-	window.event for constructors from another global: XMLHttpRequest: FAIL
+	window.event and element from another document: PASS
+	window.event and moving an element post-dispatch: PASS
+	window.event for constructors from another global: EventTarget: PASS
+	window.event for constructors from another global: XMLHttpRequest: PASS
 	window.event should not be affected by nodes moving post-dispatch: PASS
 /dom/events/event-global-is-still-set-when-coercing-beforeunload-result.html: OK
 	window.event is still set when 'beforeunload' result is coerced to string: FAIL
@@ -655,15 +655,15 @@
 	Replacing a wheel event handler attribute on body via setAttribute preserves its passive flag: PASS
 	Replacing a wheel event handler attribute on document element via setAttribute preserves its passive flag: PASS
 /dom/events/event-listener-not-fully-active-adopted-node.html: OK
-	Adopting the target into a fully active iframe's document during dispatch: FAIL
-	Adopting the target into a removed iframe's document during dispatch: FAIL
-	Event from a node created in a removed iframe's realm still reaches listeners in this document: FAIL
+	Adopting the target into a fully active iframe's document during dispatch: PASS
+	Adopting the target into a removed iframe's document during dispatch: PASS
+	Event from a node created in a removed iframe's realm still reaches listeners in this document: PASS
 	Node created in an iframe's realm and adopted into this document, iframe removed: FAIL
 	Node created in this realm and adopted into an iframe's document, iframe removed: FAIL
 /dom/events/event-listener-not-fully-active-callback.html: OK
 	Event handler attribute set to a function from a removed iframe: PASS
-	Function callback from a removed iframe, with a fully active target: FAIL
-	Listener added from a removed iframe, with a fully active target and callback: FAIL
+	Function callback from a removed iframe, with a fully active target: PASS
+	Listener added from a removed iframe, with a fully active target and callback: PASS
 	handleEvent() callback from a removed iframe, with a fully active target: PASS
 /dom/events/event-listener-not-fully-active-navigated.html: OK
 	Targets in a document that its iframe has navigated away from: FAIL
@@ -681,7 +681,7 @@
 	EventTarget created in a removed iframe, with a listener added after removal: FAIL
 	EventTarget created in a removed iframe, with an event from that iframe: FAIL
 	It is the target's global that matters, not the event's: FAIL
-	Removing the iframe during the capture phase skips the remaining objects in the event path: FAIL
+	Removing the iframe during the capture phase skips the remaining objects in the event path: PASS
 	Removing the iframe from within a listener skips the remaining listeners on the same target: FAIL
 	Window of a removed iframe: FAIL
 	dispatchEvent() on an EventTarget in a removed iframe returns true: FAIL
@@ -937,8 +937,8 @@
 	scrollTop and scrollLeft should fire scroll event.: FAIL
 	scrollTop and scrollLeft when scrolling above maximum offset.: FAIL
 /dom/events/scrolling/scroll-event-fired-to-iframe.html: OK
-	scrollX and scrollY being set with invalid scroll Scroll.: FAIL
-	scrollX and scrollY being set with the same value.: FAIL
+	scrollX and scrollY being set with invalid scroll Scroll.: PASS
+	scrollX and scrollY being set with the same value.: PASS
 	scrollX and scrollY should fire scroll event.: FAIL
 	scrollX and scrollY when scrolling above maximum Scroll.: FAIL
 /dom/events/scrolling/scroll-event-not-fired-on-ancestor-style-change.html: TIMEOUT
@@ -1013,6 +1013,8 @@
 	scrollend event is fired after repeated Page Down key presses reach the end of the scroll region.: FAIL
 /dom/events/scrolling/scrollend-event-fires-on-visual-viewport.html: ERROR
 /dom/events/scrolling/scrollend-event-fires-to-iframe-window.html: ERROR
+	Tests that the target_div within iframe gets scrollend event when clicking scrollbar.: PASS
+	Tests that the target_div within iframe gets scrollend event when dragging the scrollbar thumb.: PASS
 /dom/events/scrolling/scrollend-event-for-user-scroll.html: TIMEOUT
 	Tests that the target_div gets scrollend event when clicking scrollbar.: PASS
 	Tests that the target_div gets scrollend event when dragging the scrollbar thumb.: PASS
