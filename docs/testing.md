@@ -14,7 +14,7 @@ ask for less of it while you work, and which tools tell you where the time goes.
 | What failed in the last run | `tools\test_all.ps1 -Quick -Failed` |
 | The names of the steps, and how many files each depends on | `tools\test_all.ps1 -Quick -List` |
 | Where the time of a run goes | `tools\test_all.ps1 -Quick -Profile` |
-| What the CI runs | `tools\test_all.ps1 -CI -NoAsan` |
+| What the CI runs (with test262 as a job of its own, and `tools\asan.ps1`) | `tools\test_all.ps1 -CI -NoAsan` |
 | The full run | `tools\test_all.ps1` |
 
 Run them with `powershell -NoProfile -File`. A step that `-Only`, `-Failed` or `-Changed` chooses brings with it the

@@ -68,7 +68,7 @@ jobs:
         shell: cmd
         env:
           WREN_CI_CACHE: ${{ github.event_name == 'pull_request' && '-Cache' || '' }}
-        run: powershell -NoProfile -ExecutionPolicy Bypass -File tools\test_all.ps1 -CI -NoAsan %WREN_CI_CACHE%
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File tools\test_all.ps1 -CI -NoAsan -Except "^test262" %WREN_CI_CACHE%
 
       # what the JavaScript conformance steps of test_all measured (WPT sample per folder, test262 failures)
       - uses: actions/upload-artifact@v4
@@ -140,6 +140,34 @@ jobs:
       - name: Unit tests under AddressSanitizer (tools\asan.ps1 -Jobs 3)
         shell: cmd
         run: powershell -NoProfile -ExecutionPolicy Bypass -File tools\asan.ps1 -Jobs 3
+
+  # test262, interpreted and with the JIT: the longest step of test_all on this runner (390 to 460 s of 850 to 1040, two steps at a time; 200 s of CPU on any machine). A job of its own, as the
+  # AddressSanitizer one: the wall clock of a run is the longest job, and this one needs no browser.
+  test262:
+    runs-on: windows-2025
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: ./.github/actions/setup
+
+      - name: Native libraries and the JavaScript engine (what build.bat builds first)
+        timeout-minutes: 20
+        run: |
+          ./tools/fetch_wasmtime.ps1
+          ./tools/build_lexbor.ps1
+          ./tools/build_native.ps1 -Profile quick
+          ./tools/fetch_emoji.ps1
+          ./tools/build_js.ps1
+
+      - name: test262 (tools\test_all.ps1 -CI -Only "^test262")
+        shell: cmd
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File tools\test_all.ps1 -CI -NoAsan -Only "^test262"
 
   # The packages that are portable already (docs/portability.md): odin check for Linux and their unit tests, without a
   # window. Every download pinned as on Windows: Odin by SHA-256 here, Wasmtime in tools/fetch_wasmtime.sh, crates by
