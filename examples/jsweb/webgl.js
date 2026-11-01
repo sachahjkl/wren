@@ -1175,8 +1175,10 @@ const shown = canvas => {
   return g.getImageData(1, 1, 1, 1).data.join();
 };
 
+const FRAME_WAIT_MS = 60000;   // (what a worker's frames may take on a loaded machine: a count of turns was 6 s)
 const frameUntil = async (f, what) => {
-  for (let i = 0; i < 300; i++) {
+  const start = performance.now();
+  while (performance.now() - start < FRAME_WAIT_MS) {
     if (f()) return true;
     await signal("frame");
     await sleep(20);

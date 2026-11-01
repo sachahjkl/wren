@@ -132,8 +132,12 @@ try {
 
     $null = Probe set-value --pid $wpid --type edit --name 'Your name' --value 'Grace'
     Check 'set the field' ($script:ProbeExit -eq 0)
-    Start-Sleep -Milliseconds 300
-    $val = Wren-Eval "document.getElementById('name').value"
+    # (typed character by character: wait for the last one)
+    for ($i = 0; $i -lt $BoundsTries; $i++) {
+        $val = Wren-Eval "document.getElementById('name').value"
+        if ($val -match 'Grace') { break }
+        Start-Sleep -Milliseconds $BoundsPauseMs
+    }
     Check 'the page sees the value' ($val -match 'Grace') $val
     $null = Probe toggle --pid $wpid --type checkbox --name 'Newsletter'
     Start-Sleep -Milliseconds 300
