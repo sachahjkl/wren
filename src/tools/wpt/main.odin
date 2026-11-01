@@ -5,7 +5,8 @@
 //
 //   wpt [-root build/wpt/wpt] [-suites wpt/suites.txt] [-expect wpt/expectations] [-server http://127.0.0.1:8768]
 //       [-timeout ms] [-idle ms] [-jobs n] [-quick] [-update] [-md report.md] [-results results.txt] [-only prefix]
-//       [-reference edge_results.txt] [-list] [--pref name=value]...
+//       [-reference edge_results.txt] [-list] [--pref name=value]... [-reftests | -no-reftests] [-reftest-folder folder]...
+//       [-dump dir] [-dump-all]
 // WPT_CONSOLE=1 writes every console message of the tests to the children's logs (build/wpt/children/log_*.txt).
 // -list prints the tests (path, long timeout, folder) and stops; -reference adds the subtests of a reference run in
 // another browser to the table (tools\wpt.ps1 -Edge writes it in the format of the expectations).
@@ -19,6 +20,12 @@
 // and per subtest PASS, FAIL, TIMEOUT, NOTRUN, PRECONDITION_FAILED ("A|B" accepts either: flaky). The exit status is 1
 // on a regression: an expected OK test that is not OK, an expected PASS subtest that does not pass. Improvements are
 // listed (refresh with -update). -quick runs a fixed sample (a few tests per folder).
+// Reference tests (reftest_run.odin, package reftest) run in the folders of REFTEST_FOLDERS (layout_host.odin), and of
+// -reftest-folder for a checkout that has them: counted apart from testharness tests, their own table in the report, their
+// own expectations (wpt/expectations/<folder>.reftest: PASS, FAIL, TIMEOUT, ERROR, CRASH per test), results in <results
+// file stem>.reftest.txt. -reftests runs only them, -no-reftests none. -dump writes the pictures of what fails (test,
+// reference, difference, PNG) to a directory outside the repository, also from the environment (WPT_REFTEST_DUMP);
+// -dump-all those of what passes too. -update with -only of one whole folder rewrites only that folder.
 package wpt
 
 import _ "wb:tools/crashtrace"   // a crash prints its symbolized stack
@@ -31,17 +38,25 @@ import "core:slice"
 import "core:strings"
 import "core:time"
 import "wb:config"
+import "wb:desktop"
 import "wb:host"
 import "wb:js"
 import "wb:page"
 import "wb:wasm"
 import "wb:tools/headless"
 import "wb:tools/testenv"
+import "wb:tools/wpt/reftest"
+
+// A test with <meta name=timeout content=long> has this many times the time limit.
+LONG_TIMEOUT_FACTOR :: 6
+// What a hung child gets on top of the longest time a test may take, ms.
+CHILD_HANG_MARGIN_MS :: 30_000
 
 Test :: struct {
 	folder: string,   // the suite folder it belongs to ("dom/nodes")
 	path:   string,   // URL path with its variant ("/dom/nodes/x.any.html?a")
 	long:   bool,     // <meta name=timeout content=long> / META: timeout=long
+	is_reftest: bool, // compared with its references (else testharness.js reports)
 }
 
 Sub :: struct { name, status, message: string }
@@ -57,12 +72,14 @@ Result :: struct {
 Suite :: struct {
 	folder: string,
 	only:   [dynamic]string,   // sub-folders (relative to the folder; "." = its own files) when sampled
+	reftests_only: bool,       // from -reftest-folder: not in the suites file, no testharness results of it
 }
 
 Options :: struct {
-	root, suites, expect, server, md, results, only, self, reference: string,
+	root, suites, expect, server, md, results, only, self, reference, dump: string,
 	timeout_ms, idle_ms, jobs, chunk: int,
-	quick, update, list: bool,
+	quick, update, list, reftests_only, no_reftests, dump_all: bool,
+	reftest_folders: [dynamic]string,
 	prefs_args: [dynamic]string,
 }
 
@@ -73,7 +90,8 @@ main :: proc() {
 		root = "build/wpt/wpt", suites = "wpt/suites.txt", expect = "wpt/expectations", server = testenv.url("http://127.0.0.1:8768"),
 		timeout_ms = 10_000, idle_ms = 1000, jobs = max(1, host.processor_count() / 2), chunk = 25, self = os.args[0],
 	}
-	args := os.args[1:]
+	opts.dump = dump_dir_from_env()
+	args := desktop.command_line_args(context.allocator)   // (os.args is the C runtime's ANSI: a folder may have accents)
 	if len(args) >= 3 && args[0] == "-child" {
 		parse_options(args[3:])
 		os.exit(child_main(args[1], args[2]))
@@ -83,7 +101,7 @@ main :: proc() {
 }
 
 usage :: proc() -> ! {
-	fmt.eprintln("usage: wpt [-root dir] [-suites file] [-expect dir] [-server url] [-timeout ms] [-idle ms] [-jobs n] [-quick] [-update] [-md file] [-results file] [-only prefix] [--pref name=value]...")
+	fmt.eprintln("usage: wpt [-root dir] [-suites file] [-expect dir] [-server url] [-timeout ms] [-idle ms] [-jobs n] [-quick] [-update] [-md file] [-results file] [-only prefix] [--pref name=value]... [-reftests | -no-reftests] [-reftest-folder folder]... [-dump dir] [-dump-all]")
 	os.exit(2)
 }
 
@@ -107,6 +125,11 @@ parse_options :: proc(args: []string) {
 		case "-list": opts.list = true
 		case "-reference": opts.reference = need(args, &i)
 		case "--pref": append(&opts.prefs_args, "--pref", need(args, &i))
+		case "-reftests": opts.reftests_only = true
+		case "-no-reftests": opts.no_reftests = true
+		case "-reftest-folder": append(&opts.reftest_folders, strings.trim(need(args, &i), "/"))
+		case "-dump": opts.dump = need(args, &i)
+		case "-dump-all": opts.dump_all = true
 		case: usage()
 		}
 	}
@@ -197,9 +220,20 @@ script_meta :: proc(text: string) -> (m: Script_Meta) {
 	return
 }
 
-add_test :: proc(out: ^[dynamic]Test, folder, path: string, variants: []string, long: bool) {
-	if len(variants) == 0 { append(out, Test{folder, strings.clone(path), long}); return }
-	for v in variants { append(out, Test{folder, strings.concatenate({path, v}), long}) }
+add_test :: proc(out: ^[dynamic]Test, folder, path: string, variants: []string, long: bool, is_reftest := false) {
+	if len(variants) == 0 { append(out, Test{folder, strings.clone(path), long, is_reftest}); return }
+	for v in variants { append(out, Test{folder, strings.concatenate({path, v}), long, is_reftest}) }
+}
+
+// A page with links to references is a reference test, unless WPT's names make it a reference, a print or a visual test.
+add_reftest :: proc(out: ^[dynamic]Test, folder, url_path, text: string) {
+	if reftest.is_reference_name(url_path) || reftest.is_unmeasured_name(url_path) { return }
+	info := reftest.scan_page(text, url_path, context.temp_allocator)
+	if len(info.refs) == 0 || info.paged { return }
+	vars := make([dynamic]string, context.temp_allocator)
+	variants_html(text, &vars)
+	long := strings.contains(text, "name=\"timeout\" content=\"long\"") || strings.contains(text, "name=timeout content=long")
+	add_test(out, folder, url_path, vars[:], long, true)
 }
 
 discover_dir :: proc(out: ^[dynamic]Test, folder, dir_rel: string, recurse: bool) {
@@ -240,11 +274,20 @@ discover_dir :: proc(out: ^[dynamic]Test, folder, dir_rel: string, recurse: bool
 			data, rerr := os.read_entire_file(e.fullpath, context.temp_allocator)
 			if rerr != nil { continue }
 			text := string(data)
-			if !has_testharness(text) || is_reftest(text) { continue }
+			// a page with both a harness and references is a testharness test (WPT's manifest): where reference tests do not
+			// run such pages stay out, as they always have
+			runs_reftests := wants_reftests(folder)
+			harness := has_testharness(text)
+			if !harness && runs_reftests { add_reftest(out, folder, url_path, text); continue }
+			if !harness || (is_reftest(text) && !runs_reftests) { continue }
 			vars := make([dynamic]string, context.temp_allocator)
 			variants_html(text, &vars)
 			long := strings.contains(text, "name=\"timeout\" content=\"long\"") || strings.contains(text, "name=timeout content=long")
 			add_test(out, folder, url_path, vars[:], long)
+		case strings.has_suffix(name, ".svg") && wants_reftests(folder):
+			data, rerr := os.read_entire_file(e.fullpath, context.temp_allocator)
+			if rerr != nil { continue }
+			if !has_testharness(string(data)) { add_reftest(out, folder, url_path, string(data)) }
 		}
 	}
 }
@@ -351,6 +394,16 @@ expect_file :: proc(folder: string) -> string {
 	return filepath.join({opts.expect, strings.concatenate({folder, ".txt"}, context.temp_allocator)}, context.temp_allocator) or_else ""
 }
 
+reftest_expect_file :: proc(folder: string) -> string {
+	return filepath.join({opts.expect, strings.concatenate({folder, ".reftest"}, context.temp_allocator)}, context.temp_allocator) or_else ""
+}
+
+// The results of reference tests beside those of testharness tests: "results.txt" -> "results.reftest.txt".
+reftest_results_file :: proc(path: string) -> string {
+	stem := strings.trim_suffix(path, filepath.ext(path))
+	return strings.concatenate({stem, ".reftest.txt"})
+}
+
 ////////////////////////////////
 // Parent: children, aggregation, comparison
 
@@ -428,11 +481,13 @@ child_start :: proc(c: ^Child, index: int, tests: []Test) -> bool {
 	c.list = fmt.aprintf("%s/list_%d.txt", logs, index)
 	c.out = fmt.aprintf("%s/out_%d.txt", logs, index)
 	b := strings.builder_make(context.temp_allocator)
-	for t in tests { fmt.sbprintfln(&b, "%s\t%d", t.path, t.long ? 1 : 0) }
+	for t in tests { fmt.sbprintfln(&b, "%s\t%d\t%d", t.path, t.long ? 1 : 0, t.is_reftest ? 1 : 0) }
 	_ = os.write_entire_file(c.list, strings.to_string(b))
 	_ = os.write_entire_file(c.out, "")
 	cmd := make([dynamic]string, context.temp_allocator)
-	append(&cmd, opts.self, "-child", c.list, c.out, "-server", opts.server, "-timeout", fmt.tprint(opts.timeout_ms), "-idle", fmt.tprint(opts.idle_ms))
+	append(&cmd, opts.self, "-child", c.list, c.out, "-server", opts.server, "-timeout", fmt.tprint(opts.timeout_ms), "-idle", fmt.tprint(opts.idle_ms), "-root", opts.root)
+	if opts.dump != "" { append(&cmd, "-dump", opts.dump) }
+	if opts.dump_all { append(&cmd, "-dump-all") }
 	append(&cmd, ..opts.prefs_args[:])
 	logf, _ := os.create(fmt.tprintf("%s/log_%d.txt", logs, index))
 	p, err := os.process_start({command = cmd[:], stdout = logf, stderr = logf})
@@ -450,38 +505,60 @@ parent_main :: proc() -> int {
 	suites, ok := read_suites(opts.suites)
 	if !ok { return 2 }
 	if !os.exists(opts.root) { fmt.eprintfln("wpt: no checkout at %s (tools\\wpt.ps1 -Fetch)", opts.root); return 2 }
-	tests := discover(suites[:])
+	if opts.reftests_only && opts.no_reftests { usage() }
+	if opts.dump != "" && !dump_dir_allowed(opts.dump) { fmt.printfln("wpt: %s is inside a repository: pictures go elsewhere", opts.dump); return 2 }
+	for f in opts.reftest_folders {
+		known := false
+		for s in suites { if s.folder == f { known = true } }
+		if !known { append(&suites, Suite{folder = f, reftests_only = true}) }
+	}
+	all_tests := discover(suites[:])
+	tests := make([dynamic]Test, 0, len(all_tests))
+	extra := make(map[string]bool)
+	for s in suites { if s.reftests_only { extra[s.folder] = true } }
+	for t in all_tests {
+		if t.is_reftest ? opts.no_reftests : (opts.reftests_only || t.folder in extra) { continue }
+		append(&tests, t)
+	}
 	if opts.only != "" {
 		kept := make([dynamic]Test)
 		for t in tests { if strings.has_prefix(t.path, opts.only) || strings.has_prefix(t.path[1:], opts.only) { append(&kept, t) } }
 		tests = kept
 	}
 	expected := make(map[string]Expect)
-	for s in suites { read_expectations(expect_file(s.folder), &expected) }
+	for s in suites {
+		read_expectations(expect_file(s.folder), &expected)
+		read_expectations(reftest_expect_file(s.folder), &expected)
+	}
 	if opts.quick {
 		// a fixed sample: per folder, the first QUICK_PER_FOLDER tests (in path order), those not expected to time out
 		// first (they say the most for the time they take)
 		QUICK_PER_FOLDER :: 2
 		kept := make([dynamic]Test)
-		per := make(map[string]int)
+		per := make(map[string]int)   // (by folder, and apart for its reference tests)
 		taken := make(map[string]bool)
 		for pass in 0 ..< 2 {
 			for t in tests {
-				if per[t.folder] >= QUICK_PER_FOLDER || taken[t.path] { continue }
+				key := t.is_reftest ? strings.concatenate({t.folder, " reftest"}) : t.folder
+				if per[key] >= QUICK_PER_FOLDER || taken[t.path] { continue }
 				if e, found := expected[t.path]; pass == 0 && found && (strings.contains(e.status, "TIMEOUT") || strings.contains(e.status, "CRASH")) { continue }
 				append(&kept, t)
 				taken[t.path] = true
-				per[t.folder] += 1
+				per[key] += 1
 			}
 		}
 		slice.sort_by(kept[:], proc(a, b: Test) -> bool { return a.path < b.path })
 		tests = kept
 	}
-	if opts.update && (opts.quick || opts.only != "") { fmt.eprintln("wpt: -update needs a full run (no -quick, no -only)"); return 2 }
+	// (-only of one whole folder: that folder's expectations are rewritten)
+	whole_folder := false
+	for s in suites { if strings.trim(opts.only, "/") == s.folder { whole_folder = true } }
+	if opts.update && (opts.quick || (opts.only != "" && !whole_folder)) { fmt.eprintln("wpt: -update needs a full run (no -quick, -only of one whole folder at most)"); return 2 }
 	if len(tests) == 0 { fmt.eprintln("wpt: no test"); return 2 }
 	if opts.list {
 		// what a reference run in another browser needs: path, long timeout, folder
-		for t in tests { fmt.printfln("%s\t%d\t%s", t.path, t.long ? 1 : 0, t.folder) }
+		// (testharness tests: that browser's reference run has no use for the others)
+		for t in tests { if !t.is_reftest { fmt.printfln("%s\t%d\t%s", t.path, t.long ? 1 : 0, t.folder) } }
 		return 0
 	}
 	fmt.printfln("%d tests in %d folders, %d at a time", len(tests), len(suites), opts.jobs)
@@ -492,7 +569,7 @@ parent_main :: proc() -> int {
 	children := make([]Child, opts.jobs)
 	next_index := 0
 	t0 := time.tick_now()
-	hang_ms := f64(opts.timeout_ms) * 6 + 30_000   // longer than any one test may take
+	hang_ms := f64(opts.timeout_ms) * LONG_TIMEOUT_FACTOR + CHILD_HANG_MARGIN_MS   // longer than any one test may take
 	done_tests := 0
 	for {
 		running := 0
@@ -566,6 +643,12 @@ Folder_Stats :: struct {
 	ref_subs, ref_pass, both_pass: int,   // the reference run (Edge): its subtests, its passes, those Wren passes too
 }
 
+// Reference tests of a folder: one result each, counted apart.
+Reftest_Stats :: struct {
+	tests, pass, fail, timeout, error, crash: int,
+	regressions, improvements, new_tests: int,
+}
+
 report :: proc(suites: []Suite, tests: []Test, results: map[string]^Result, expected: map[string]Expect, elapsed: f64) -> int {
 	stats := make(map[string]Folder_Stats)
 	reference := make(map[string]Expect)
@@ -573,9 +656,38 @@ report :: proc(suites: []Suite, tests: []Test, results: map[string]^Result, expe
 	regress := strings.builder_make()
 	better := strings.builder_make()
 	by_folder := make(map[string][dynamic]^Result)
+	ref_stats := make(map[string]Reftest_Stats)
+	ref_by_folder := make(map[string][dynamic]^Result)
 	for t in tests {
 		r, found := results[t.path]
 		if !found { continue }
+		if t.is_reftest {
+			rs := ref_stats[t.folder]
+			rs.tests += 1
+			switch r.status {
+			case STATUS_PASS: rs.pass += 1
+			case STATUS_FAIL: rs.fail += 1
+			case STATUS_TIMEOUT: rs.timeout += 1
+			case "CRASH": rs.crash += 1
+			case: rs.error += 1
+			}
+			if e, has := expected[t.path]; has {
+				if status_ok(e.status, STATUS_PASS) && !status_ok(e.status, r.status) {
+					rs.regressions += 1
+					fmt.sbprintfln(&regress, "REGRESSION %s: %s (expected %s) %s", t.path, r.status, e.status, r.message)
+				} else if r.status == STATUS_PASS && !status_ok(e.status, STATUS_PASS) {
+					rs.improvements += 1
+					fmt.sbprintfln(&better, "better %s: PASS (expected %s)", t.path, e.status)
+				}
+			} else {
+				rs.new_tests += 1
+			}
+			ref_stats[t.folder] = rs
+			list := ref_by_folder[t.folder]
+			append(&list, r)
+			ref_by_folder[t.folder] = list
+			continue
+		}
 		st := stats[t.folder]
 		st.files += 1
 		switch r.status {
@@ -632,7 +744,7 @@ report :: proc(suites: []Suite, tests: []Test, results: map[string]^Result, expe
 		by_folder[t.folder] = list
 	}
 
-	// the table
+	// the tables: testharness tests, then reference tests, which never count together
 	md := strings.builder_make()
 	if have_ref {
 		fmt.sbprintln(&md, "| folder | tests | OK | TIMEOUT | ERROR | CRASH | subtests | PASS | pass rate | Edge subtests | Edge PASS | Wren PASS / Edge PASS | regressions |")
@@ -644,7 +756,7 @@ report :: proc(suites: []Suite, tests: []Test, results: map[string]^Result, expe
 	total: Folder_Stats
 	for s in suites {
 		st := stats[s.folder]
-		if st.files == 0 && opts.only != "" { continue }
+		if st.files == 0 && (opts.only != "" || opts.reftests_only || s.reftests_only) { continue }
 		rate := st.subs > 0 ? 100 * f64(st.pass) / f64(st.subs) : 0
 		if have_ref {
 			rr := st.ref_pass > 0 ? 100 * f64(st.both_pass) / f64(st.ref_pass) : 0
@@ -664,8 +776,27 @@ report :: proc(suites: []Suite, tests: []Test, results: map[string]^Result, expe
 	} else {
 		fmt.sbprintfln(&md, "| **total** | **%d** | **%d** | **%d** | **%d** | **%d** | **%d** | **%d** | **%.1f %%** | **%d** |", total.files, total.files_ok, total.files_timeout, total.files_error, total.files_crash, total.subs, total.pass, trate, total.regressions)
 	}
-	fmt.sbprintfln(&md, "\n%d tests in %.0f s (%d at a time, -timeout %d ms); %d improvement(s) over the expectations, %d test(s) without expectations.",
+	// (no testharness test ran, as with -reftests: its table says nothing)
+	if total.files == 0 { strings.builder_reset(&md) }
+	fmt.sbprintfln(&md, "\n%d testharness tests in %.0f s (%d at a time, -timeout %d ms); %d improvement(s) over the expectations, %d test(s) without expectations.",
 		total.files, elapsed, opts.jobs, opts.timeout_ms, total.improvements, total.new_tests)
+	ref_total: Reftest_Stats
+	for s in suites {
+		rs := ref_stats[s.folder]
+		if rs.tests == 0 { continue }
+		if ref_total.tests == 0 {
+			fmt.sbprintln(&md, "\n| folder (reference tests) | tests | PASS | FAIL | TIMEOUT | ERROR | CRASH | pass rate | regressions |")
+			fmt.sbprintln(&md, "|---|---:|---:|---:|---:|---:|---:|---:|---:|")
+		}
+		fmt.sbprintfln(&md, "| %s | %d | %d | %d | %d | %d | %d | %.1f %% | %d |", s.folder, rs.tests, rs.pass, rs.fail, rs.timeout, rs.error, rs.crash, 100 * f64(rs.pass) / f64(rs.tests), rs.regressions)
+		ref_total.tests += rs.tests; ref_total.pass += rs.pass; ref_total.fail += rs.fail; ref_total.timeout += rs.timeout; ref_total.error += rs.error; ref_total.crash += rs.crash
+		ref_total.regressions += rs.regressions; ref_total.improvements += rs.improvements; ref_total.new_tests += rs.new_tests
+	}
+	if ref_total.tests > 0 {
+		fmt.sbprintfln(&md, "| **total** | **%d** | **%d** | **%d** | **%d** | **%d** | **%d** | **%.1f %%** | **%d** |", ref_total.tests, ref_total.pass, ref_total.fail, ref_total.timeout, ref_total.error, ref_total.crash, 100 * f64(ref_total.pass) / f64(ref_total.tests), ref_total.regressions)
+	}
+	fmt.sbprintfln(&md, "\n%d reference tests: %d PASS, %d not; %d improvement(s) over the expectations, %d test(s) without expectations.",
+		ref_total.tests, ref_total.pass, ref_total.tests - ref_total.pass, ref_total.improvements, ref_total.new_tests)
 	fmt.print(strings.to_string(md))
 	if opts.md != "" { _ = os.write_entire_file(opts.md, strings.to_string(md)) }
 	if strings.builder_len(regress) > 0 { fmt.print(strings.to_string(regress)) }
@@ -683,9 +814,29 @@ report :: proc(suites: []Suite, tests: []Test, results: map[string]^Result, expe
 			write_results(&b, list[:], messages = true)
 		}
 		_ = os.write_entire_file(opts.results, strings.to_string(b))
+		rb := strings.builder_make()
+		for s in suites {
+			list := ref_by_folder[s.folder]
+			slice.sort_by(list[:], proc(a, b: ^Result) -> bool { return a.path < b.path })
+			write_results(&rb, list[:], messages = true)
+		}
+		if ref_total.tests > 0 { _ = os.write_entire_file(reftest_results_file(opts.results), strings.to_string(rb)) }
 	}
 	if opts.update {
 		for s in suites {
+			if opts.only != "" && strings.trim(opts.only, "/") != s.folder { continue }
+			if len(ref_by_folder[s.folder]) > 0 {
+				list := ref_by_folder[s.folder]
+				slice.sort_by(list[:], proc(a, b: ^Result) -> bool { return a.path < b.path })
+				b := strings.builder_make()
+				fmt.sbprintfln(&b, "# web-platform-tests reference tests of Wren for %s, written by tools\\wpt.ps1 -Update", s.folder)
+				fmt.sbprintln(&b, "# <test>: PASS|FAIL|TIMEOUT|ERROR|CRASH; \"A|B\" accepts either")
+				write_results(&b, list[:])
+				path := reftest_expect_file(s.folder)
+				_ = os.make_directory_all(filepath.dir(path))
+				_ = os.write_entire_file(path, strings.to_string(b))
+			}
+			if opts.reftests_only || s.reftests_only { continue }
 			list := by_folder[s.folder]
 			slice.sort_by(list[:], proc(a, b: ^Result) -> bool { return a.path < b.path })
 			b := strings.builder_make()
@@ -699,8 +850,8 @@ report :: proc(suites: []Suite, tests: []Test, results: map[string]^Result, expe
 		fmt.printfln("expectations written in %s", opts.expect)
 		return 0
 	}
-	fmt.printfln("%d regression(s)", total.regressions)
-	return total.regressions > 0 ? 1 : 0
+	fmt.printfln("%d regression(s)", total.regressions + ref_total.regressions)
+	return total.regressions + ref_total.regressions > 0 ? 1 : 0
 }
 
 ////////////////////////////////
@@ -771,12 +922,14 @@ child_main :: proc(list_path, out_path: string) -> int {
 	if err != nil { return 2 }
 	out, oerr := os.open(out_path, {.Write, .Append, .Create})
 	if oerr != nil { return 2 }
+	reftests_child_begin(&env)
 	for line in strings.split_lines(string(data)) {
 		if line == "" { continue }
 		parts := strings.split(line, "\t", context.temp_allocator)
 		path := parts[0]
 		long := len(parts) > 1 && parts[1] == "1"
-		limit := f64(opts.timeout_ms) * (long ? 6 : 1)
+		if len(parts) > 2 && parts[2] == "1" { reftest_one(out, path, long); continue }
+		limit := f64(opts.timeout_ms) * (long ? LONG_TIMEOUT_FACTOR : 1)
 		cs: Child_State
 		t0 := time.tick_now()
 		if wants_layout(path) { cs.layout = host_make() }

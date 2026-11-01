@@ -73,4 +73,6 @@ the layout stale (`Layout.anchor_stale`), and the next frame or reading lays out
 
 Tests: `src/css/anchor_test.odin`, `src/style/anchor_test.odin`, `src/layout/anchor_test.odin` (with incremental layout checked
 against full passes), the `css/css-anchor-position` folder of web-platform-tests. That folder runs with a layout (the rest of
-the runner has none: `src/tools/wpt/layout_host.odin`); reference tests are not run.
+the runner has none: `src/tools/wpt/layout_host.odin`); its reference tests are not run: the runner runs reference tests
+only in the folders of its `REFTEST_FOLDERS` ([Web platform conformance](conformance.md#reference-tests)), which this one
+is not yet.
