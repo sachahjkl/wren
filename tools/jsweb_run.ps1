@@ -2,6 +2,7 @@
 # own (tools\test_env.ps1): no lock, other runs keep theirs. The names are those of its tests, one per section: core, fetch_api,
 # webgl_api, webgl_process, media_queries, storage_event... (src\tools\jswebtest\sections.odin).
 #   powershell -NoProfile -File tools\jsweb_run.ps1 [test names...]
+[CmdletBinding(PositionalBinding = $false)]
 param([int]$TimeoutSec = 600, [Parameter(ValueFromRemainingArguments = $true)][string[]]$Tests = @())
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
