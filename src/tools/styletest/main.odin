@@ -62,6 +62,8 @@ body { font-family: Same, Cross, Notfont, serif }
 #d { animation: later 100ms linear 500ms }
 </style></head><body><p id=t>t</p><div id=d>d</div></body></html>`
 
+ANIMATION_DELAY_MS :: 500   // (of `later`, above)
+
 main :: proc() {
 	context = testenv.context_of_process()
 	host.loop_init(&loop)
@@ -76,6 +78,7 @@ main :: proc() {
 	the_page = p
 	page.load_html(p, transmute([]byte)testenv.url(DOC))
 	page.set_frame_time(p, 0)
+	styled_at := time.tick_now()
 	st := page.styles(p, 800, 600, 1)
 	check(st != nil, "styles computed")
 
@@ -103,7 +106,8 @@ main :: proc() {
 	check(!page.animations_active(p), "the delayed animation needs no frame yet")
 	next := page.animations_next_ms(p)
 	check(next > 400 && next <= 500, fmt.tprintf("its start is the next deadline (%v ms)", next))
-	check(p.anim.wake_timer != base.NIL_HANDLE, "a wake-up timer is armed for it")
+	// (the timer runs on the real clock, from the first styles: fonts that took longer than the delay on a loaded machine have seen it fire, and that is no failure)
+	check(p.anim.wake_timer != base.NIL_HANDLE || time.duration_milliseconds(time.tick_since(styled_at)) >= ANIMATION_DELAY_MS, "a wake-up timer is armed for it")
 
 	state := p.style_state
 	state.hover = t
