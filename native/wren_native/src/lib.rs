@@ -3,6 +3,7 @@
 
 pub use wren_media;
 pub use wren_net;
+pub use wren_webgl;
 #[cfg(feature = "text")]
 pub use gt_text;
 #[cfg(feature = "a11y")]
