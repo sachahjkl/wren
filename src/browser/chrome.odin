@@ -206,12 +206,11 @@ address_bar :: proc(app: ^App, t: ^Tab) {
 		ui.a11y({name = i18n.tr("Address and search bar"), shortcut = "Ctrl+L"})
 		res = ui.line_edit("###address", &wnd.address, i18n.tr("Search or enter an address"))
 		field_radius := res.box != nil ? res.box.radius : em * 0.5
-		// The focus ring (the toolkit draws it 1.5 scale units wide, over the field's border) is wider than the border: a chip
-		// that starts one border in repaints the inner half of the ring where it covers, so the ring goes from two pixels to
-		// one and back at the chip's divider (a double border). The focused bar's chip starts where the ring ends.
-		seg_inset := inset
-		if ui.focus_key() == window_own(app).address_key { seg_inset = max(math.ceil(1.5 * ui.scale()), inset) }
-		security_chip(app, t, seg_inset, h - 2 * seg_inset, max(field_radius - seg_inset, 0))
+		if classic_on() {
+			security_chip(app, t, inset, h - 2 * inset, max(field_radius - inset, 0))
+		} else {
+			security_chip(app, t, inset, h - 2 * inset, field_radius, res.box)
+		}
 		zoom_overlay(app, t, res.box, h)
 	}
 	if bw := active_window(app); bw.focus_address {
@@ -334,7 +333,19 @@ tab_move_current :: proc(app: ^App, delta: int) {
 // set by address_bar from security_chip_measure.)
 
 // `inset` >= 0: placed inside the address field, `inset` from its top-left corner, `height` tall.
-Chip_Segment :: struct { color, divider, under: draw.Color, radius: f32, state: string }
+// The width of the toolkit's focus ring, in scale units (ui/draw_ui.odin), and the fade under which it isn't drawn.
+@(private = "file") FOCUS_RING_WIDTH :: 1.5
+@(private = "file") CHIP_RING_SHOWN :: 0.01
+
+Chip_Segment :: struct {
+	color, divider, under: draw.Color,
+	radius:                f32,
+	state:                 string,
+	// the bar's own frame, drawn again over the fill (empty: a classic bar, whose frame is outside the chip)
+	border, ring:          draw.Color,
+	border_w, ring_w:      f32,
+	bar_right:             f32,
+}
 Chip_Icon :: struct { glyph: string, color: draw.Color }
 
 // The chip as the address bar's left segment: its tint up to a divider, rounded on the left like the bar.
@@ -351,9 +362,18 @@ chip_segment_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	}
 	w := max(math.round(ui.scale()), 1)
 	draw.rect(dc, {{r.max.x - w, r.min.y}, {r.max.x, r.max.y}}, s.divider)
+	// The fill has the bar's outer shape, and the frame goes over it, as the bar's own: two shapes that only touch would leave a seam
+	// wherever their antialiased edges or their radii differ (the corners). Clipped to the chip, the frame coincides with the bar's.
+	if s.border.a > 0 || s.ring.a > 0 {
+		whole := draw.Rect{r.min, {s.bar_right, r.max.y}}
+		draw.push_clip(dc, r)
+		if s.border.a > 0 { draw.rect(dc, whole, s.border, s.radius, s.border_w) }
+		if s.ring.a > 0 { draw.rect(dc, whole, s.ring, s.radius, s.ring_w) }
+		draw.pop_clip(dc)
+	}
 }
 
-security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0, radius: f32 = 0) {
+security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0, radius: f32 = 0, field: ^ui.Box = nil) {
 	em := ui.font_size()
 	sec := security_of(t)
 	if sec.label == "" { return }
@@ -385,7 +405,19 @@ security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0, radi
 				chip_segment.under = ui.srgb_step(cc.field_top, cc.field, 0.5)
 			}
 		}
-		ui.next({fixed_x = inset, fixed_y = inset, width = ui.px(own.security_chip_width), height = ui.px(height)})
+		if field != nil {
+			// to the bar's edge, under its frame (chip_segment_draw)
+			chip_segment.border, chip_segment.border_w = field.border, inset
+			chip_segment.bar_right = field.rect.max.x
+			if field.focus_t > CHIP_RING_SHOWN {
+				chip_segment.ring = ui.color("focus border")
+				chip_segment.ring.a *= field.focus_t
+				chip_segment.ring_w = FOCUS_RING_WIDTH * ui.scale()
+			}
+			ui.next({fixed_x = 0, fixed_y = 0, width = ui.px(own.security_chip_width + inset), height = ui.px(height + 2 * inset)})
+		} else {
+			ui.next({fixed_x = inset, fixed_y = inset, width = ui.px(own.security_chip_width), height = ui.px(height)})
+		}
 		ui.custom("###sec_segment", chip_segment_draw, chip_segment)
 	} else if sec.tone != .Weak {
 		// tints tuned for linear light: ui.tuned keeps their look in an sRGB frame (render.blend_space)

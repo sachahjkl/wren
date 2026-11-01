@@ -2,8 +2,8 @@ package browser
 
 // Page zoom, per tab: the page is laid out with `ui.scale() * tab.zoom` device pixels per CSS pixel (its viewport in
 // CSS pixels shrinks as the zoom grows, so it reflows, as in Chromium). Ctrl+Plus / Ctrl+Minus step through
-// browser.zoom.levels, Ctrl+0 resets, Ctrl+wheel over the page steps too. The browser's own interface keeps its size
-// (browser.ui.font_size sets that).
+// browser.zoom.levels, Ctrl+0 resets, Ctrl+wheel over the page steps too. The browser's own interface has a zoom of its own
+// (chrome_zoom.odin).
 
 import "toolkit:ui"
 
@@ -13,7 +13,7 @@ page_scale :: proc(app: ^App) -> f32 {
 	z: f32 = 1
 	if t := current_tab(app); t != nil && t.zoom > 0 { z = t.zoom }
 	if active_window(app).win == nil { return ui.scale() * z }
-	return ui_scale_of(app) * z
+	return display_scale_of(app) * z
 }
 
 // The tab's document scroll (t.scroll: device pixels) follows its window's scale: a window that changed monitor (WM_DPICHANGED), a
@@ -21,7 +21,7 @@ page_scale :: proc(app: ^App) -> f32 {
 // Called at the start of a frame, before the page's input and layout, for the window's current tab.
 tab_scale_follow :: proc(app: ^App, t: ^Tab) {
 	if t == nil || active_window(app).win == nil { return }
-	now := ui_scale_of(app)
+	now := display_scale_of(app)
 	if t.scroll_dpi > 0 && abs(now - t.scroll_dpi) > 1e-4 {
 		k := now / t.scroll_dpi
 		t.scroll *= k

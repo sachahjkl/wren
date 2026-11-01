@@ -358,7 +358,7 @@ window_open :: proc(app: ^App, size: [2]int, at: Maybe([2]int) = nil, show := tr
 	if app.headless {
 		// a headless second window: no HWND, and no per-window render Surface (the renderer is offscreen, one target for all;
 		// the active window's size is applied before its frame, see window_activate). The capture is one window at a time.
-		sc := ui_scale_of(app)
+		sc := display_scale_of(app)
 		nw = platform.open_window_offscreen(APP_NAME, {int(f32(size.x) * sc + 0.5), int(f32(size.y) * sc + 0.5)}, dpi_scale = sc, on_frame = window_on_frame)
 		if nw == nil { free(bw); return nil }
 		if p, ok := at.?; ok { platform.move_window(nw, p.x, p.y) }
