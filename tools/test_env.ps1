@@ -191,6 +191,8 @@ $global:WrenBuildOutput = ''
 function Ensure-WrenBuild([string]$Variant = 'dev') {
     $name = if ($Variant -eq 'check') { 'wren_check' } else { 'wren' }
     if (Test-WrenBuildFresh $name) { return $true }
+    # (a build that failed in this run fails for the next step too, after its 40 s: said once and for all. test_all.ps1 sets the file; a run where a Wren of an earlier one held build\wren.exe spent 1700 s on this.)
+    $failedFile = $env:WREN_BUILD_FAILED_FILE
     $root = Get-WrenRepoRoot
     $sha = [Security.Cryptography.SHA1]::Create()
     $key = ([BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($root.ToLowerInvariant().TrimEnd('\')))) -replace '-', '').Substring(0, 16)
@@ -198,9 +200,17 @@ function Ensure-WrenBuild([string]$Variant = 'dev') {
     try {
         try { [void]$mutex.WaitOne() } catch [Threading.AbandonedMutexException] { }
         if (Test-WrenBuildFresh $name) { return $true }
+        if ($failedFile -and (Test-Path -LiteralPath "$failedFile.$Variant")) {
+            $global:WrenBuildOutput = "not tried again: the build of '$Variant' failed for an earlier step of this run:`n" + [IO.File]::ReadAllText("$failedFile.$Variant")
+            $global:LASTEXITCODE = 1
+            return $false
+        }
         Push-Location $root
         try { $global:WrenBuildOutput = (cmd /c ".\build.bat $Variant 2>&1" | Out-String) } finally { Pop-Location }
-        if ($LASTEXITCODE -ne 0) { return $false }
+        if ($LASTEXITCODE -ne 0) {
+            if ($failedFile) { try { [IO.File]::WriteAllText("$failedFile.$Variant", $global:WrenBuildOutput) } catch { } }
+            return $false
+        }
         return $true
     } finally { $mutex.ReleaseMutex(); $mutex.Dispose() }
 }
@@ -267,6 +277,17 @@ function Show-WrenSections([string]$Title = '') {
     $global:WrenSections.Clear()
 }
 
+# How long the scripts sleep, by script (test_all.ps1 sets WREN_SLEEPS_FILE and prints the table at its end): a fixed wait is time lost on a fast machine and a failure on a slow one; a wait for a condition has neither.
+if ($env:WREN_SLEEPS_FILE) {
+    function global:Start-Sleep {
+        param([Parameter(Position = 0)][double]$Seconds = 0, [double]$Milliseconds = 0)
+        $ms = [int]($Seconds * 1000 + $Milliseconds)
+        [Threading.Thread]::Sleep($ms)
+        $top = Get-PSCallStack | Where-Object { $_.ScriptName } | Select-Object -Last 1
+        try { [IO.File]::AppendAllText($env:WREN_SLEEPS_FILE, "$(if ($top) { [IO.Path]::GetFileNameWithoutExtension($top.ScriptName) } else { 'script' })`t$ms`n") } catch { }
+    }
+}
+
 # No script that sources this file (tests, captures, measurements, the agents' runs) lets a Wren integrate itself with the machine's desktop:
 # Setup's offer at the start (setup.odin), the system watcher of the integration (desktop_shell.odin) and the update check (update_check.odin) read this variable. (--desktop-integration=... on the command line still works.)
 $env:WREN_DESKTOP_INTEGRATION = 'off'
@@ -275,3 +296,6 @@ $env:WREN_AUDIO_OUTPUT = 'null'
 # ... and none lets itself be taken for the user's Wren, or for another run's: a second start with the same profile hands its addresses to the first and ends
 # (src/browser/instance_shell.odin). WREN_SINGLE_INSTANCE=on, set by the one script that checks it (instance_e2e.ps1), turns it back on.
 $env:WREN_SINGLE_INSTANCE = 'off'
+# ... and all share the code the JavaScript engine's image compiled to (build\wasm_cache, keyed by the image and the engine's configuration, src/wasm/module_cache.odin): 5 s of CPU per
+# process otherwise, with hundreds of processes in a run. WREN_NO_TEST_CACHE=1 (test_all.ps1 -NoCache) turns it off.
+if ($env:WREN_NO_TEST_CACHE -eq '1') { $env:WREN_TEST_WASM_CACHE = $null } elseif (-not $env:WREN_TEST_WASM_CACHE) { $env:WREN_TEST_WASM_CACHE = Join-Path (Get-WrenRepoRoot) 'build\wasm_cache' }

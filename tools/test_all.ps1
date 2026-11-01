@@ -17,7 +17,25 @@
 # Steps that mostly wait (the HTTP cache, network policy, content blocker, WebSocket and image tests: seconds of wall clock for a fraction of a second of CPU)
 # are marked -Light: they do not use one of the -Jobs slots, up to -LightJobs (2) of them run beside the others.
 # -Jobs 1: one step after the other, one server for all, as before.
-param([switch]$Quick, [switch]$CI, [int]$StepTimeoutSec = 900, [int]$Jobs = 0, [int]$BasePort = 0, [int]$LightJobs = 2, [switch]$NoAsan, [switch]$Perf, [switch]$Ui)
+# What to run (docs/testing.md):
+#   -Only <regex>  the steps whose name matches, with the steps that build what they use
+#   -Failed        the steps that failed (or were FLAKY) in the last run, from build\test_failed.txt
+#   -Changed       the steps with an input changed since -Base (default: where this branch left master), the working tree's changes included. Never instead of the CI's run: it says how many it left out.
+#   -List          the steps of this configuration and their number of inputs; nothing runs
+#   -Profile       the run under tools\test_profile.ps1: every process, its CPU, the use of the processors (build\prof\<time>.*)
+# Result cache (tools\test_cache.ps1): with -Quick on a developer's machine a step whose inputs (by content: sources, tools, flags, Odin's version) have passed already says CACHED and does not
+# run again. -NoCache (or WREN_TEST_CACHE=0) runs everything, and turns off the shared code cache of the test processes too. -Cache: on for this run as well (the CI's branches). Never with -Perf,
+# and never on a full run unless asked. A run ends with what failed, its log and how to run it again (also build\test_report.txt; every step's result: build\test_steps.tsv).
+param([switch]$Quick, [switch]$CI, [int]$StepTimeoutSec = 900, [int]$Jobs = 0, [int]$BasePort = 0, [int]$LightJobs = 2, [switch]$NoAsan, [switch]$Perf, [switch]$Ui,
+      [switch]$NoCache, [switch]$Cache, [string]$Only = '', [Alias('Failed')][switch]$RerunFailed, [switch]$Changed, [string]$Base = '', [switch]$List, [switch]$Profile)
+if ($Profile) {
+    # (the same run, under the profiler; a CI step or a person reads the tables it ends with)
+    $again = @($PSBoundParameters.GetEnumerator() | Where-Object { $_.Key -ne 'Profile' } | ForEach-Object { if ($_.Value -is [switch]) { if ($_.Value) { "-$($_.Key)" } } else { "-$($_.Key)"; "`"$($_.Value)`"" } }) -join ' '
+    $prof = Join-Path (Split-Path $PSScriptRoot -Parent) "build\prof\$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+    & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'test_profile.ps1') -Out $prof -Run "powershell -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" $again"
+    exit $LASTEXITCODE
+}
+if ($NoCache -or $env:WREN_TEST_CACHE -eq '0') { $NoCache = $true; $env:WREN_NO_TEST_CACHE = '1' }
 if ($CI) { $Quick = $true; if (-not $env:CI) { $env:CI = 'true' } }   # the tools that skip a check on the CI read the variable
 # -Ui (or WREN_UI_TESTS=1): the end-to-end steps marked -UiOnly (they drive real windows and processes, or decode heavy images under a time limit:
 # what they need is a desktop and a machine of known speed) run when asked; without it they are skipped with "ui: skipped, run with -Ui".
@@ -44,10 +62,59 @@ Set-Location $root
 # cores slow each other down. More jobs only help where there are more cores than the steps use.
 if ($Jobs -le 0) { $Jobs = if ($CI) { 2 } else { [Math]::Max(1, [Math]::Min(8, [Environment]::ProcessorCount)) } }
 if ($BasePort -le 0) { $BasePort = if ($CI) { 8765 } else { Get-WrenPreferredBasePort $root } }
+if ($List) { $Jobs = 2 }   # (nothing starts, no server for all)
 $failed = 0
 # the emoji font and Unicode's emoji data (the toolkit's tests/colr skip without them): fetched before the steps start, so none races it
-& powershell -NoProfile -File (Join-Path $PSScriptRoot 'fetch_emoji.ps1') -Unicode | Out-Null
+if (-not $List) { & powershell -NoProfile -File (Join-Path $PSScriptRoot 'fetch_emoji.ps1') -Unicode | Out-Null }
 $runStart = Get-Date
+# The result cache (tools\test_cache.ps1), the choice of steps. (Decided here: the keys need the flags above, the steps below read these.)
+$script:useCache = (-not $NoCache) -and (-not $Perf) -and ($Cache -or ($Quick -and -not $CI))
+$script:selecting = [bool]($Only -or $RerunFailed -or $Changed)
+if ($script:useCache -or $Changed -or $List) {
+    . (Join-Path $PSScriptRoot 'test_cache.ps1')
+    Initialize-WrenCache $root "Quick=$([bool]$Quick) CI=$([bool]$CI) Ui=$([bool]$Ui) slow=$slow NoAsan=$([bool]$NoAsan) Jobs1=$($Jobs -le 1) WrenNoTestCache=$env:WREN_NO_TEST_CACHE"
+}
+$script:keyMs = 0; $script:firstStep = $null
+$script:results = New-Object System.Collections.Generic.List[object]   # what happened to each step, for the end of the run
+$script:builders = @{}    # out file -> the step left out that builds it (-Only and the like): a chosen step that uses the file runs it first
+$script:leftOut = 0
+$script:failedBefore = @{}
+if ($RerunFailed) {
+    $ff = Join-Path $root 'build\test_failed.txt'
+    if (Test-Path $ff) { foreach ($l in [IO.File]::ReadAllLines($ff)) { if ($l) { $script:failedBefore[$l] = $true } } }
+    "-Failed: $($script:failedBefore.Count) step(s) of the last run"
+}
+$script:changedFiles = @()
+if ($Changed) {
+    $b = if ($Base) { $Base } else { (git merge-base HEAD master 2>$null) }
+    if (-not $b) { 'no -Base and no merge base with master: every step is chosen'; $b = 'HEAD' }
+    $script:changedFiles = @(@(git diff --name-only $b -- 2>$null) + @(git status --porcelain --untracked-files=all 2>$null | ForEach-Object { $_.Substring(3).Trim('"') }) +
+        @(git -C ext/gui_toolkit status --porcelain --untracked-files=all 2>$null | ForEach-Object { 'ext/gui_toolkit/' + $_.Substring(3).Trim('"') }) | Where-Object { $_ } | Select-Object -Unique)
+    "-Changed: $($script:changedFiles.Count) file(s) changed since $b"
+}
+function Test-StepChosen($item) {
+    if ($item.Name -like 'JavaScript engine*') { return $true }   # what the builds embed (nothing to do when up to date)
+    if ($item.Name -like 'console launcher*' -and -not (Test-Path (Join-Path $root 'build\wren.com'))) { return $true }
+    if ($Only -and $item.Name -notmatch $Only) { return $false }
+    if ($RerunFailed -and -not $script:failedBefore.ContainsKey($item.Name)) { return $false }
+    if ($Changed) {
+        $inputs = New-Object 'System.Collections.Generic.HashSet[string]' ([string[]](Get-WrenStepInputs $item.Name $item.Body $item.Vars), [StringComparer]::OrdinalIgnoreCase)
+        foreach ($c in $script:changedFiles) {
+            if ($inputs.Contains($c.Replace('\', '/'))) { return $true }
+            # (a submodule's new commit is one line: everything in it)
+            if ($c -eq 'ext/gui_toolkit' -or $c -eq 'ext/lexbor') { foreach ($i in $inputs) { if ($i.StartsWith("$c/")) { return $true } } }
+        }
+        return $false
+    }
+    return $true
+}
+# The files a step reads that another step writes: build\x.exe, build\x.wasm, examples\site\x.wasm.
+function Get-StepNeeds([string]$Body) {
+    @([regex]::Matches($Body, '(?:build|examples[\\/]site)[\\/][A-Za-z0-9_.-]+\.(?:exe|wasm)') | ForEach-Object { $_.Value.Replace('\', '/').ToLowerInvariant() } | Select-Object -Unique)
+}
+function Get-StepOuts([string]$Body) {
+    @([regex]::Matches($Body, '-out:"?([^\s";]+)"?') | ForEach-Object { $_.Groups[1].Value.Replace('\', '/').ToLowerInvariant() } | Where-Object { $_ -notmatch '\$' } | Select-Object -Unique)
+}
 # No step is ever run twice: a test checks properties (order, counts, state), never a wall-clock duration, so a slow
 # shared runner takes longer but gets the same result. Waits for something that must come have generous bounds that
 # only end a failing run. What does assert on time is a performance test, behind -Perf (see the top of this file).
@@ -67,15 +134,51 @@ function Start-Watchdog {
 
 # -Flaky: a step known to fail at random under load (it passes alone): its failure is printed as FLAKY and fails nothing, on the CI either.
 $script:flaky = @{}
+# How many checks a step's output says it made (Odin's runner, the tools' "n passed", the PASS lines of a script, WPT's and test262's counts): a run can be compared with another (build\test_steps.tsv).
+function Get-CheckCount([string]$out) {
+    $n = 0
+    foreach ($m in [regex]::Matches($out, '(?m)Finished (\d+) tests?\b')) { $n += [int]$m.Groups[1].Value }
+    foreach ($m in [regex]::Matches($out, '(?m)^\s*(\d+) passed, \d+ failure')) { $n += [int]$m.Groups[1].Value }
+    foreach ($m in [regex]::Matches($out, '(?m)^(\d+) tests in \d+ folders')) { $n += [int]$m.Groups[1].Value }
+    $n += [regex]::Matches($out, '(?m)^\s*(?:PASS|ok)\b').Count
+    return $n
+}
 function Report($name, $ok, $out, $secs, $port = 0) {
-    if (-not $ok -and $script:flaky.ContainsKey($name)) {
+    # the whole output of what did not pass, where the end of the run says it is
+    $log = ''
+    if (-not $ok) {
+        $logs = New-Item -ItemType Directory -Force (Join-Path $root 'build\test_logs')
+        $slug = ($name -replace '[^A-Za-z0-9]+', '_'); $slug = $slug.Substring(0, [Math]::Min(60, $slug.Length))
+        $log = Join-Path $logs.FullName "$slug.log"
+        try { [IO.File]::WriteAllText($log, "$name`n$out") } catch { }
+    }
+    $status = if ($ok) { 'PASS' } elseif ($script:flaky.ContainsKey($name)) { 'FLAKY' } else { 'FAIL' }
+    $script:results.Add([pscustomobject]@{ Name = $name; Status = $status; Secs = $secs; Checks = (Get-CheckCount "$out"); Log = $log; Out = $(if ($ok) { '' } else { "$out" }) })
+    if ($status -eq 'FLAKY') {
         "FLAKY {0} (known to fail at random: not counted)" -f $name
         # which checks failed, wherever they are in its output: a step marked flaky must still say what went wrong
         ($out -split "`n" | Where-Object { $_ -match '^\s*FAIL|^REGRESSION|^\[ERROR\]|failed' } | Select-Object -First 15) -join "`n"
         return
     }
-    "{0} {1}{2}" -f $(if ($ok) { 'PASS' } else { 'FAIL' }), $name, $(if ($CI -or $Jobs -gt 1) { " ($secs s$(if ($port) { ", server on $port" }))" } else { '' })
+    "{0} {1}{2}" -f $status, $name, $(if ($CI -or $Jobs -gt 1) { " ($secs s$(if ($port) { ", server on $port" }))" } else { '' })
     if (-not $ok) { $script:failed++; if ($CI) { $out } else { ($out -split "`n" | Select-Object -Last 15) -join "`n" } }
+}
+# A step that passed with these inputs already: the line to print, nothing otherwise (with its key in $s.Key when the cache is on, to save its result when it has run).
+function Get-CachedLine($s) {
+    if (-not $script:useCache) { return $null }
+    $clock = [Diagnostics.Stopwatch]::StartNew()
+    $s | Add-Member -NotePropertyName Key -NotePropertyValue (Get-WrenStepKey $s.Name $s.Body $s.Vars) -Force
+    $script:keyMs += $clock.ElapsedMilliseconds
+    $r = Get-WrenCachedResult $s.Key $s.Body
+    if (-not $r) { return $null }
+    $script:results.Add([pscustomobject]@{ Name = $s.Name; Status = 'CACHED'; Secs = 0; Checks = $r.Checks; Log = ''; Out = '' })
+    return "CACHED {0} (passed {1}, {2} s; -NoCache runs it)" -f $s.Name, $r.When, $r.Secs
+}
+# Keeps the pass of a step, if its inputs are still those it started with (a file edited while it ran is another run's).
+function Save-StepResult($s, $ok, $out, $secs) {
+    if (-not $script:useCache -or -not $ok -or -not $s.PSObject.Properties['Key']) { return }
+    if ((Get-WrenStepKey $s.Name $s.Body $s.Vars) -ne $s.Key) { return }
+    Save-WrenCachedResult $s.Key $secs (Get-CheckCount "$out") $s.Body
 }
 
 # -Jobs 1: the step runs now. Otherwise it is queued (with whether it needs the test server) until Flush-Steps.
@@ -97,27 +200,47 @@ function Step($name, [scriptblock]$body, [switch]$Light, [switch]$UiOnly, [switc
         "ui: skipped, run with -Ui (test_all.ps1 -Ui, or WREN_UI_TESTS=1): $short"
         return
     }
-    if ($Jobs -gt 1) {
-        # the caller's variables the body reads (a loop's $pkg...), as values: the step runs in another process
-        $vars = @{}
-        foreach ($v in $body.Ast.FindAll({ $args[0] -is [Management.Automation.Language.VariableExpressionAst] }, $true)) {
-            $n = $v.VariablePath.UserPath
-            if ($vars.ContainsKey($n) -or $n -in 'Stack', 'slow', 'Quick', 'CI', 'root', 'BasePort', '_', 'args', 'true', 'false', 'null', 'LASTEXITCODE') { continue }
-            $val = Get-Variable -Name $n -Scope 1 -ValueOnly -ErrorAction SilentlyContinue
-            if ($val -is [string] -or $val -is [int] -or $val -is [bool]) { $vars[$n] = $val }
-            elseif ($val -is [array] -and @($val | Where-Object { $_ -isnot [string] }).Count -eq 0) { $vars[$n] = [string[]]$val }
-        }
-        $script:queue.Add([pscustomobject]@{ Name = $name; Body = $body.ToString(); Server = $script:serverSteps; Vars = $vars; Light = [bool]$Light; Weight = $Weight })
-        return
+    # the caller's variables the body reads (a loop's $pkg...), as values: the step runs in another process
+    $vars = @{}
+    foreach ($v in $body.Ast.FindAll({ $args[0] -is [Management.Automation.Language.VariableExpressionAst] }, $true)) {
+        $n = $v.VariablePath.UserPath
+        if ($vars.ContainsKey($n) -or $n -in 'Stack', 'slow', 'Quick', 'CI', 'root', 'BasePort', '_', 'args', 'true', 'false', 'null', 'LASTEXITCODE') { continue }
+        $val = Get-Variable -Name $n -Scope 1 -ValueOnly -ErrorAction SilentlyContinue
+        if ($val -is [string] -or $val -is [int] -or $val -is [bool]) { $vars[$n] = $val }
+        elseif ($val -is [array] -and @($val | Where-Object { $_ -isnot [string] }).Count -eq 0) { $vars[$n] = [string[]]$val }
     }
+    $item = [pscustomobject]@{ Name = $name; Body = $body.ToString(); Script = $body; Server = $script:serverSteps; Vars = $vars; Light = [bool]$Light; Weight = $Weight }
+    if ($List) { "{0,5} inputs  {1}" -f ([string[]](Get-WrenStepInputs $item.Name $item.Body $item.Vars)).Count, $name; return }
+    if ($script:selecting) {
+        if (-not (Test-StepChosen $item)) {
+            $script:leftOut++
+            foreach ($o in (Get-StepOuts $item.Body)) { $script:builders[$o] = $item }
+            return
+        }
+        # what it uses, from a step left out: built now (they run before the steps that use them in a run of everything)
+        $first = New-Object System.Collections.Generic.List[object]
+        foreach ($need in (Get-StepNeeds $item.Body)) {
+            if ($script:builders.ContainsKey($need)) { $b = $script:builders[$need]; if (-not $first.Contains($b)) { $first.Add($b) }; $script:leftOut-- ; foreach ($o in @($script:builders.Keys)) { if ($script:builders[$o] -eq $b) { $script:builders.Remove($o) } } }
+        }
+        foreach ($b in $first) { Invoke-StepNow $b }
+    }
+    if ($Jobs -gt 1) { $script:queue.Add($item); return }
+    Invoke-StepNow $item
+}
+# Runs a step in this process (-Jobs 1), or alone in a job of its own and waits for it.
+function Invoke-StepNow($item) {
+    if ($Jobs -gt 1) { $script:queue.Add($item); Flush-Steps -Items @($item); return }
+    $hit = Get-CachedLine $item
+    if ($hit) { $hit; return }
     $t0 = Get-Date
-    $out = & $body 2>&1 | Out-String
+    $out = & $item.Script 2>&1 | Out-String
     $killed = Receive-Job $script:watchdog -ErrorAction SilentlyContinue
     if ($killed) { $out += "`n" + ($killed -join "`n"); $global:LASTEXITCODE = 1 }
     $ok = $LASTEXITCODE -eq 0 -or $out -match 'All tests were successful'
     $secs = [int]((Get-Date) - $t0).TotalSeconds
-    $script:times[$name] = $secs
-    Report $name $ok $out $secs
+    $script:times[$item.Name] = $secs
+    Report $item.Name $ok $out $secs
+    Save-StepResult $item $ok $out $secs
 }
 
 # What a queued step runs in its own process: the variables the steps use, its own test server if it needs one.
@@ -144,14 +267,21 @@ $stepJob = {
 
 # Runs the queued steps, -Jobs at a time, the longest (last time) first; prints each result as it comes.
 # $NameLike: only the queued steps whose name matches (the others stay queued for a later call)
-function Flush-Steps([string]$NameLike = '*') {
+function Flush-Steps([string]$NameLike = '*', $Items = $null) {
+    if (-not $script:firstStep) { $script:firstStep = Get-Date }
     $pending = New-Object System.Collections.Generic.List[object]
-    $mine = @($script:queue | Where-Object { $_.Name -like $NameLike })
-    foreach ($s in ($mine | Sort-Object { if ($script:times.ContainsKey($_.Name)) { -$script:times[$_.Name] } elseif ($_.Weight -gt 0) { -$_.Weight } else { -60 } })) { $pending.Add($s) }
+    $mine = if ($null -ne $Items) { @($Items) } else { @($script:queue | Where-Object { $_.Name -like $NameLike }) }
     foreach ($s in $mine) { [void]$script:queue.Remove($s) }
+    # (what has passed with these inputs does not start; the keys are computed here, once what this batch needs is built)
+    if ($script:useCache) { [WrenInputs]::Forget() }
+    $kept = New-Object System.Collections.Generic.List[object]
+    foreach ($s in $mine) { $hit = Get-CachedLine $s; if ($hit) { $hit } else { $kept.Add($s) } }
+    $mine = $kept
+    foreach ($s in ($mine | Sort-Object { if ($script:times.ContainsKey($_.Name)) { -$script:times[$_.Name] } elseif ($_.Weight -gt 0) { -$_.Weight } else { -60 } })) { $pending.Add($s) }
     $running = @{}
     $names = @{}
     $light = @{}
+    $stepOf = @{}
     while ($pending.Count -gt 0 -or $running.Count -gt 0) {
         # the first pending step that may start now (longest first): a normal one while fewer than -Jobs normal ones run, a light one while fewer than -LightJobs do
         while ($pending.Count -gt 0) {
@@ -168,16 +298,19 @@ function Flush-Steps([string]$NameLike = '*') {
             $running[$j.Id] = $j
             $names[$j.Id] = $s.Name
             $light[$j.Id] = $s.Light
+            $stepOf[$j.Id] = $s
         }
         foreach ($j in @($running.Values)) {
             if ($j.State -eq 'Running' -or $j.State -eq 'NotStarted') { continue }
             $all = @(Receive-Job $j -ErrorAction SilentlyContinue -ErrorVariable jerr)
             $r = $all | Where-Object { $_.PSObject.Properties['Ok'] } | Select-Object -Last 1
             $why = "$($j.ChildJobs[0].JobStateInfo.Reason) $jerr"
-            Remove-Job $j -Force; $running.Remove($j.Id)
-            if (-not $r) { Report "$($names[$j.Id]) (ended without a result: job $($j.Id), $($j.State))" $false $why 0; continue }
+            $jid = $j.Id
+            Remove-Job $j -Force; $running.Remove($jid)
+            if (-not $r) { Report "$($names[$jid]) (ended without a result: job $jid, $($j.State))" $false $why 0; continue }
             $script:times[$r.Name] = $r.Secs
             Report $r.Name $r.Ok $r.Out $r.Secs $r.Port
+            Save-StepResult $stepOf[$jid] $r.Ok $r.Out $r.Secs
         }
         $killed = Receive-Job $script:watchdog -ErrorAction SilentlyContinue
         if ($killed) { $killed }
@@ -202,8 +335,45 @@ function Show-TestTimes {
         $starts = @(Get-Content $env:WREN_STARTS_FILE | ForEach-Object { ($_ -split "`t")[0] })
         $lines += "Wren processes started by the scripts (wren ctl start / run): $($starts.Count) ($((($starts | Group-Object | Sort-Object Count -Descending | ForEach-Object { "$($_.Name) $($_.Count)" }) -join ', ')))"
     }
+    if ($env:WREN_SLEEPS_FILE -and (Test-Path $env:WREN_SLEEPS_FILE)) {
+        $sleeps = @(Get-Content $env:WREN_SLEEPS_FILE | ForEach-Object { $a = $_ -split "`t"; [pscustomobject]@{ Script = $a[0]; Ms = [int]$a[1] } })
+        $lines += "fixed waits of the scripts (Start-Sleep): $([int](($sleeps | Measure-Object Ms -Sum).Sum / 1000)) s in $($sleeps.Count) calls: $((($sleeps | Group-Object Script | ForEach-Object { [pscustomobject]@{ N = $_.Name; S = (($_.Group | Measure-Object Ms -Sum).Sum / 1000) } } | Sort-Object S -Descending | Select-Object -First 8 | ForEach-Object { "$($_.N) $([int]$_.S) s" }) -join ', '))"
+    }
     $lines
     if ($env:GITHUB_STEP_SUMMARY) { try { Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value (@('### Test times', '```') + $lines + '```') } catch { } }
+}
+
+# The end of the run for whoever reads it (a person, an agent, a CI log): how many steps did what, what failed, its log and how to run it again; the same in build\test_report.txt,
+# every step's result and number of checks in build\test_steps.tsv, what failed in build\test_failed.txt (-Failed reads it).
+function Show-RunReport {
+    # what a step that failed left running (started by this run, from this worktree's build\): it would hold its program against the next build
+    foreach ($p in @(Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path.StartsWith($buildDir, [StringComparison]::OrdinalIgnoreCase) -and $_.StartTime -gt $runStart -and $_.ProcessName -ne 'testserver' })) {
+        "left running by a step: $($p.ProcessName) (pid $($p.Id)): stopped"
+        Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+    }
+    $counts = ($script:results | Group-Object Status | Sort-Object Name | ForEach-Object { "$($_.Count) $($_.Name)" }) -join ', '
+    $checks = ($script:results | Measure-Object Checks -Sum).Sum
+    $lines = @("steps: $counts; $checks checks counted")
+    $cached = @($script:results | Where-Object Status -EQ 'CACHED').Count
+    if ($cached) { $lines += "$cached step(s) did not run: they passed with exactly these inputs (tools\test_cache.ps1). -NoCache runs them." }
+    if ($script:useCache) { $lines += "the inputs of the steps were read in $([Math]::Round($script:keyMs / 1000.0, 1)) s; this run began $([Math]::Round(($script:firstStep - $runStart).TotalSeconds, 1)) s after its start" }
+    if ($script:selecting) { $lines += "$($script:leftOut) step(s) left out by -Only / -Failed / -Changed: this is not what the CI runs." }
+    foreach ($r in @($script:results | Where-Object { $_.Status -in 'FAIL', 'FLAKY' })) {
+        $lines += "$($r.Status) $($r.Name)"
+        $lines += "  log: $($r.Log)"
+        $pattern = [regex]::Escape(($r.Name -split ' [(]')[0])
+        $lines += "  again: powershell -NoProfile -File tools\test_all.ps1 $(if ($Quick) { '-Quick ' })-NoCache -Only '$pattern'"
+        $names = [regex]::Match($r.Out, '-define:ODIN_TEST_NAMES=[^\s]+')
+        if ($names.Success) { $lines += "  only the failed tests: add $($names.Value.TrimEnd(',')) to its odin test" }
+        foreach ($l in @($r.Out -split "`n" | Where-Object { $_ -match '^\s*FAIL\b|^\s+- \S+\.\S+\s|^REGRESSION' } | Select-Object -First 8)) { $lines += "  $($l.Trim())" }
+    }
+    $lines
+    try {
+        [IO.File]::WriteAllText((Join-Path $root 'build\test_report.txt'), ($lines -join "`n") + "`n")
+        [IO.File]::WriteAllText((Join-Path $root 'build\test_steps.tsv'), (@("status`tseconds`tchecks`tname") + @($script:results | Sort-Object Name | ForEach-Object { "$($_.Status)`t$($_.Secs)`t$($_.Checks)`t$($_.Name)" }) -join "`n") + "`n")
+        [IO.File]::WriteAllText((Join-Path $root 'build\test_failed.txt'), (@($script:results | Where-Object { $_.Status -in 'FAIL', 'FLAKY' } | ForEach-Object { $_.Name }) -join "`n") + "`n")
+    } catch { "could not write the report: $_" }
+    if ($env:GITHUB_STEP_SUMMARY) { try { Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value (@('### Result', '```') + $lines + '```') } catch { } }
 }
 
 $timesFile = Join-Path $root 'build\test_all_times.txt'
@@ -219,6 +389,18 @@ Remove-Item $env:WREN_TIMINGS_FILE -ErrorAction SilentlyContinue
 # the Wren processes the scripts start (Note-WrenStart in wrenctl.ps1), counted at the end: a start and a close are a second or more of a runner's time
 $env:WREN_STARTS_FILE = Join-Path $env:TEMP 'test_all_wren_starts.tsv'
 Remove-Item $env:WREN_STARTS_FILE -ErrorAction SilentlyContinue
+# a build of the browser that failed is said once (Ensure-WrenBuild, test_env.ps1); a Wren that holds build\wren.exe, left by a run that was stopped, fails every build: said here
+$env:WREN_BUILD_FAILED_FILE = Join-Path $env:TEMP 'test_all_build_failed'
+Remove-Item "$env:WREN_BUILD_FAILED_FILE.*" -ErrorAction SilentlyContinue
+$buildDir = Join-Path $root 'build\'
+if (-not $List) {
+    foreach ($p in @(Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path.StartsWith($buildDir, [StringComparison]::OrdinalIgnoreCase) -and $_.ProcessName -like 'wren*' })) {
+        "warning: $($p.ProcessName) (pid $($p.Id), since $($p.StartTime)) runs from this worktree's build\: a build of the browser cannot replace it"
+    }
+}
+# the fixed waits of the scripts (Start-Sleep in test_env.ps1), counted at the end
+$env:WREN_SLEEPS_FILE = Join-Path $env:TEMP 'test_all_sleeps.tsv'
+Remove-Item $env:WREN_SLEEPS_FILE -ErrorAction SilentlyContinue
 # Wasm calls run on the calling thread: every program that runs modules (the JavaScript engine needs 16 MiB of wasm
 # stack, wasm.wasmtime.max_stack_bytes) is linked with a 32 MiB default thread stack
 $Stack = '-extra-linker-flags:/STACK:33554432'
@@ -284,6 +466,7 @@ Step 'windows on monitors of different scales (tools\window_dpi_e2e.ps1: WM_DPIC
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\window_dpi_e2e.ps1
 } -UiOnly   # (the size the system suggests for a new scale depends on the machine's window frame: 1000x700 -> 1028x780 on the CI runner)
+Step 'the result cache of this script (tools\test_cache_test.ps1: what a step depends on, against the compiler''s import graph; a change of an input and of nothing else changes a key; a result needs the program it built)' -Light { powershell -NoProfile -ExecutionPolicy Bypass -File tools\test_cache_test.ps1 }
 Step 'the globals of src\browser against their list (tools\lint_globals.ps1: a new global of a window or a tab goes into Browser_Window or Tab)' -Light { powershell -NoProfile -ExecutionPolicy Bypass -File tools\lint_globals.ps1 }
 Step 'the frame gate end to end (tools\frame_gate_e2e.ps1: the system''s drag of a page drag, a long script preempted by chrome frames, the page''s context menu; no frame begun inside another''s build, no violation of the state machine; a window shown fully transparent and click-through)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
@@ -711,7 +894,9 @@ if ($Perf) {
 }
 if ($Jobs -gt 1) { Flush-Steps }
 Stop-Job $script:watchdog; Remove-Job $script:watchdog -Force
+if ($List) { exit 0 }
 Show-TestTimes
 [IO.File]::WriteAllText($timesFile, (($script:times.Keys | Sort-Object | ForEach-Object { "$_`t$($script:times[$_])" }) -join "`n") + "`n")
+Show-RunReport
 "failed steps: $failed ($([int]((Get-Date) - $runStart).TotalSeconds) s, -Jobs $Jobs)"
 exit $failed

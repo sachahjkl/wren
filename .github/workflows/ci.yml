@@ -54,9 +54,21 @@ jobs:
       # here any more or read a stronger pixel; one that fails again under the load depends on the machine's speed and goes behind -Perf. The AddressSanitizer unit tests
       # are the long step (six minutes one package after the other): the `asan` job below runs them beside this one, three packages at a time.
       # The tests that measure time are not run here (the runner's speed is unknown): `test_all.ps1 -Perf` is for our own machines, and is ignored when CI is set.
+      # A pull request does not run again what has passed with exactly the same inputs (tools\test_cache.ps1: results by the content of what a step reads, its text, its flags and Odin's
+      # version); master, and a run by hand, always run everything: a result never comes from a cache there.
+      - name: Results of earlier runs of this pull request's steps
+        if: github.event_name == 'pull_request'
+        uses: actions/cache@v4
+        with:
+          path: build/test_cache
+          key: test-results-${{ github.event.pull_request.number }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: test-results-${{ github.event.pull_request.number }}-
+
       - name: Tests (tools\test_all.ps1 -CI -NoAsan)
         shell: cmd
-        run: powershell -NoProfile -ExecutionPolicy Bypass -File tools\test_all.ps1 -CI -NoAsan
+        env:
+          WREN_CI_CACHE: ${{ github.event_name == 'pull_request' && '-Cache' || '' }}
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File tools\test_all.ps1 -CI -NoAsan %WREN_CI_CACHE%
 
       # what the JavaScript conformance steps of test_all measured (WPT sample per folder, test262 failures)
       - uses: actions/upload-artifact@v4

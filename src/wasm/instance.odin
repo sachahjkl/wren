@@ -15,6 +15,7 @@ package wasm
 
 import "base:runtime"
 import "core:fmt"
+import "core:os"
 import "core:strings"
 import "core:sync"
 import "wb:base"
@@ -82,6 +83,16 @@ configure :: proc(rs: Runtime_Settings) {
 	context.allocator = base.process_allocator()
 	runtime_settings_destroy(&settings)
 	settings = clone_settings(rs)
+	// A test run's processes share one disk cache (tools\test_env.ps1): the JavaScript engine's image compiles in 5 s of CPU, and a run starts
+	// hundreds of them, each on a throwaway profile or on none. Never in a release: an address in the environment is not where machine code comes from.
+	when #config(WREN_CHANNEL, "dev") != "release" {
+		if rs.test_shared_cache {
+			if shared := os.get_env("WREN_TEST_WASM_CACHE", context.temp_allocator); shared != "" {
+				delete(settings.cache_dir)
+				settings.cache_dir = strings.clone(shared)
+			}
+		}
+	}
 	settings_set = true
 }
 
