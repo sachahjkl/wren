@@ -115,6 +115,8 @@ Everything below exists in the code today and is covered by the tests of [`tools
   `crypto.subtle`, `matchMedia`, WebSocket, EventSource, `MessageChannel`, service workers and the Cache API, shared
   workers, Web Animations, `ResizeObserver`, Canvas 2D, WebCodecs decoders, the WebAssembly JavaScript API, a minimal
   `Intl`.
+- **WebGL and WebGL 2** ([`docs/js/webgl.md`](docs/js/webgl.md)), in pages and in workers (`transferControlToOffscreen` too): drawn through wgpu in a **GPU process**, started by the first
+  context of the browser, with lowered rights, that ends with its parent. A crash or a hang in a driver costs contexts (`webglcontextlost`, then `webglcontextrestored` from a new process), never the browser.
 - Compiled scripts are kept in a bytecode cache, in memory and in the profile.
 - **On or off**, globally or per site: `javascript.enabled`, `javascript.sites.disabled`,
   `javascript.sites.enabled`. The status bar shows `JS` on pages that run scripts. Off, pages show their `<noscript>`
