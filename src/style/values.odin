@@ -214,6 +214,8 @@ initial_computed :: proc(s: ^Settings) -> Computed {
 	c.stroke_linejoin = .Miter
 	c.scrollbar_color = Scrollbar_Colors{auto = true}
 	c.column_width = auto_length
+	c.column_rule_width = COLUMN_RULE_MEDIUM_PX
+	c.orphans, c.widows = ORPHANS_WIDOWS_INITIAL, ORPHANS_WIDOWS_INITIAL
 	c.position_visibility = {.Anchor_Visible}
 	c.transform_box = .View_Box
 	// the list-valued properties keep their initial value as a one-element list, so that a missing list is never an
@@ -899,6 +901,8 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 	     .Object_Position, .Filter, .Backdrop_Filter, .Clip_Path, .Isolation, .Mix_Blend_Mode,
 	     .Will_Change, .Contain, .Content_Visibility, .Scroll_Behavior, .Overscroll_Behavior_X, .Overscroll_Behavior_Y, .Touch_Action,
 	     .Caret_Color, .Accent_Color, .Appearance, .Resize, .Table_Layout, .Column_Count, .Column_Width,
+	     .Column_Span, .Column_Fill, .Column_Rule_Width, .Column_Rule_Style, .Column_Rule_Color, .Break_Before, .Break_After,
+	     .Break_Inside, .Orphans, .Widows, .Writing_Mode, .Text_Orientation, .Text_Combine_Upright,
 	     .Grid_Template_Columns, .Grid_Template_Rows, .Grid_Template_Areas, .Grid_Auto_Columns, .Grid_Auto_Rows,
 	     .Grid_Auto_Flow, .Grid_Row_Start, .Grid_Row_End, .Grid_Column_Start, .Grid_Column_End, .Justify_Items, .Justify_Self:
 		return apply_prop_more(cx, p, vs)

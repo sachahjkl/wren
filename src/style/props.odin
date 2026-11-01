@@ -290,6 +290,19 @@ prop_fields :: proc(c: ^Computed, p: Prop) -> (a: any, b: any) {
 	case .Table_Layout: return fa(&c.table_layout), NO_FIELD
 	case .Column_Count: return fa(&c.column_count), NO_FIELD
 	case .Column_Width: return fa(&c.column_width), NO_FIELD
+	case .Column_Span: return fa(&c.column_span), NO_FIELD
+	case .Column_Fill: return fa(&c.column_fill), NO_FIELD
+	case .Column_Rule_Width: return fa(&c.column_rule_width), NO_FIELD
+	case .Column_Rule_Style: return fa(&c.column_rule_style), NO_FIELD
+	case .Column_Rule_Color: return fa(&c.column_rule_color), NO_FIELD
+	case .Break_Before: return fa(&c.break_before), NO_FIELD
+	case .Break_After: return fa(&c.break_after), NO_FIELD
+	case .Break_Inside: return fa(&c.break_inside), NO_FIELD
+	case .Orphans: return fa(&c.orphans), NO_FIELD
+	case .Widows: return fa(&c.widows), NO_FIELD
+	case .Writing_Mode: return fa(&c.writing_mode), NO_FIELD
+	case .Text_Orientation: return fa(&c.text_orientation), NO_FIELD
+	case .Text_Combine_Upright: return fa(&c.text_combine_upright), NO_FIELD
 	case .Grid_Template_Columns: return fa(&c.grid_template_columns), NO_FIELD
 	case .Grid_Template_Rows: return fa(&c.grid_template_rows), NO_FIELD
 	case .Grid_Template_Areas: return fa(&c.grid_template_areas), NO_FIELD

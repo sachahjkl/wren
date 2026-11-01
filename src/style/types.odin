@@ -137,6 +137,7 @@ Custom_Props :: struct {
 Computed :: struct {
 	node:   base.Handle,
 	// --- box ---
+	frames:     bool,     // a vertical writing mode, columns, or column-span (writing_mode_fixup): what building boxes looks at first
 	display:    Display,
 	position:   Position,
 	float:      Float,
@@ -305,6 +306,18 @@ Computed :: struct {
 	resize:            Resize,
 	column_count:      i32,                 // 0 = auto
 	column_width:      Length,              // Auto or Px
+	column_span:       Column_Span,
+	column_fill:       Column_Fill,
+	column_rule_width: f32,                 // px; 0 when the style is none or hidden (finish_style)
+	column_rule_style: Border_Style,
+	column_rule_color: css.Color,
+	break_before, break_after: Break_Value,
+	break_inside:      Break_Inside,
+	orphans, widows:   i32,
+	// --- writing modes (writing_modes.odin) ---
+	writing_mode:      Writing_Mode,
+	text_orientation:  Text_Orientation,
+	text_combine_upright: Text_Combine_Upright,
 	// --- grid (stored for the grid layout) ---
 	grid_template_columns, grid_template_rows: Grid_Template,
 	grid_template_areas: Grid_Areas,
@@ -389,6 +402,8 @@ Prop :: enum u8 {
 	Object_Position, Filter, Backdrop_Filter, Clip_Path, Isolation, Mix_Blend_Mode,
 	Will_Change, Contain, Content_Visibility, Scroll_Behavior, Overscroll_Behavior_X, Overscroll_Behavior_Y, Touch_Action,
 	Caret_Color, Accent_Color, Appearance, Resize, Column_Count, Column_Width,
+	Column_Span, Column_Fill, Column_Rule_Width, Column_Rule_Style, Column_Rule_Color, Break_Before, Break_After, Break_Inside,
+	Orphans, Widows, Writing_Mode, Text_Orientation, Text_Combine_Upright,
 	Grid_Template_Columns, Grid_Template_Rows, Grid_Template_Areas, Grid_Auto_Columns, Grid_Auto_Rows, Grid_Auto_Flow,
 	Grid_Row_Start, Grid_Row_End, Grid_Column_Start, Grid_Column_End, Justify_Items, Justify_Self,
 	Container_Type, Container_Name, Scrollbar_Width, Scrollbar_Color, Scrollbar_Gutter,
@@ -409,7 +424,8 @@ INHERITED_PROPS :: [?]Prop{
 	.Letter_Spacing, .Word_Spacing, .Text_Align, .Text_Transform, .Text_Indent, .White_Space_Collapse, .Text_Wrap_Mode,
 	.Text_Wrap_Style, .Word_Break, .Overflow_Wrap, .Hyphens, .Tab_Size, .Direction, .Text_Shadow, .Text_Underline_Offset,
 	.Visibility, .List_Style_Type, .List_Style_Position, .Cursor, .Pointer_Events, .Border_Collapse, .Border_Spacing,
-	.Quotes, .Caret_Color, .Accent_Color, .Scrollbar_Color,
+	.Quotes, .Caret_Color, .Accent_Color, .Scrollbar_Color, .Orphans, .Widows, .Writing_Mode, .Text_Orientation,
+	.Text_Combine_Upright,
 	.Font_Feature_Settings, .Font_Variation_Settings, .Font_Kerning, .Font_Variant_Ligatures, .Font_Variant_Numeric,
 	.Font_Variant_East_Asian, .Font_Variant_Position, .Font_Optical_Sizing, .Text_Rendering, .Text_Fill_Color,
 	.Fill, .Stroke, .Stroke_Width, .Stroke_Linecap, .Stroke_Linejoin,
@@ -422,7 +438,7 @@ Short :: enum u8 {
 	Border_Radius, Background, Font, Flex, Flex_Flow, Gap, Overflow, Inset, List_Style, Text_Decoration, Outline,
 	Place_Content, Place_Items, Place_Self,
 	Margin_Block, Margin_Inline, Padding_Block, Padding_Inline, Inset_Block, Inset_Inline,
-	White_Space, Text_Wrap, Font_Variant, Transition, Animation, Overscroll_Behavior, Columns,
+	White_Space, Text_Wrap, Font_Variant, Transition, Animation, Overscroll_Behavior, Columns, Column_Rule,
 	Grid_Template, Grid, Grid_Row, Grid_Column, Grid_Area,
 	Container, Border_Block, Border_Inline, Border_Block_Width, Border_Block_Style, Border_Block_Color,
 	Border_Inline_Width, Border_Inline_Style, Border_Inline_Color,

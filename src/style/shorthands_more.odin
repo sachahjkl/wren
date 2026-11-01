@@ -312,6 +312,21 @@ expand_shorthand_more :: proc(s: Short, vs: []css.Value, a: runtime.Allocator) -
 		}
 		emit(&res, .Column_Width, or_initial(width))
 		emit(&res, .Column_Count, or_initial(count))
+	case .Column_Rule:
+		if len(items) < 1 || len(items) > 3 { return nil, false }
+		width, rule_style, color: []css.Value
+		for it, i in items {
+			one := items[i:i + 1]
+			switch {
+			case rule_style == nil && is_border_style_value(it): rule_style = one
+			case width == nil && is_line_width_value(it): width = one
+			case color == nil: color = one
+			case: return nil, false
+			}
+		}
+		emit(&res, .Column_Rule_Width, or_initial(width))
+		emit(&res, .Column_Rule_Style, or_initial(rule_style))
+		emit(&res, .Column_Rule_Color, or_initial(color))
 	case .Transition: return expand_transition(vs, a)
 	case .Animation: return expand_animation(vs, a)
 	case .Grid_Row, .Grid_Column:

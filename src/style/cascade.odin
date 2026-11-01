@@ -333,6 +333,8 @@ substitute :: proc(env: ^Var_Env, vs: []css.Value, depth: int) -> ([]css.Value, 
 
 @(private)
 Pass :: struct {
+	saw_logical: bool,                 // a flow-relative declaration was considered for this element (writing_modes.odin)
+	flow_map:    ^[Prop]Prop,          // considering again: where flow-relative declarations go
 	e:        ^Engine,
 	s:        ^Styled,
 	mc:       Match_Ctx,
@@ -366,10 +368,15 @@ consider :: proc(p: ^Pass, cust: ^map[string]Custom_Cand, rule: ^Rule, spec: css
 	if rule.cq != nil && !container_conditions_hold(rule.cq, parent != nil ? parent.containers : nil, parent != nil ? parent.custom : nil) { return }
 	for &d in rule.decls {
 		k := make_key(rule, d.important, spec, ctx)
-		cand := &p.ws[d.prop]
+		prop := d.prop
+		if d.logical {
+			p.saw_logical = true
+			if p.flow_map != nil { prop = p.flow_map[prop] }
+		}
+		cand := &p.ws[prop]
 		if !cand.valid {
-			append(&p.touched, d.prop)
-			ps_add(&p.touched_set, d.prop)
+			append(&p.touched, prop)
+			ps_add(&p.touched_set, prop)
 			cand^ = Cand{&d, k, rule.origin, true}
 		} else if key_ge(k, cand.key) {
 			cand^ = Cand{&d, k, rule.origin, true}
@@ -464,6 +471,21 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 	}
 	for ent in entries { consider(p, &cust, ent.rule, ent.complex.specificity, parent, ent.ctx) }
 	if inline_rule != nil { consider(p, &cust, inline_rule, css.Specificity{max(u32), 0, 0}, parent, p.own_depth) }
+	// flow-relative properties, when this element is not horizontal left to right: considered again, mapped for it
+	if p.saw_logical {
+		p.saw_logical = false
+		if m := element_flow_map(p, parent); m != nil {
+			for pr in p.touched { p.ws[pr] = {} }
+			clear(&p.touched)
+			p.touched_set = {}
+			if cust != nil { clear(&cust) }
+			p.flow_map = m
+			for ent in entries { consider(p, &cust, ent.rule, ent.complex.specificity, parent, ent.ctx) }
+			if inline_rule != nil { consider(p, &cust, inline_rule, css.Specificity{max(u32), 0, 0}, parent, p.own_depth) }
+			p.flow_map = nil
+			p.saw_logical = false
+		}
+	}
 	// enum order = dependency order (font-size and color first): read back from the bit set the properties went into (a sort of
 	// forty values of an enum was 6 % of a style pass)
 	{
@@ -591,7 +613,8 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 			if cand.decl.short != .None {
 				longs, ok := expand_shorthand(cand.decl.short, vals, env.scratch)   // (short: only with var())
 				found := false
-				if ok { for l in longs { if l.prop == pr { vals = l.vals; found = true; break } } }
+				// (cand.decl.prop: a logical declaration's own longhand, whichever physical property it went to)
+				if ok { for l in longs { if l.prop == cand.decl.prop { vals = l.vals; found = true; break } } }
 				if !found { apply_unset(&cx, pr); break }
 			}
 			switch kw := css_wide_keyword(vals); kw {
@@ -733,7 +756,10 @@ finish_style :: proc(cx: ^Cx, h: base.Handle) {
 	}
 	if !ps_has(cx.explicit, .Outline_Color) { c.outline_color = c.color }
 	if !ps_has(cx.explicit, .Text_Decoration_Color) { c.text_decoration_color = c.color }
+	if !ps_has(cx.explicit, .Column_Rule_Color) { c.column_rule_color = c.color }
+	if c.column_rule_style == .None || c.column_rule_style == .Hidden { c.column_rule_width = 0 }
 	derive_fields(c)
+	writing_mode_fixup(cx)
 	// a query container has size containment in the axes it measures, layout and style containment (CSS Contain 3 §6.2)
 	switch c.container_type {
 	case .Normal:
