@@ -38,11 +38,11 @@ Wt_Export :: struct {
 	is_func: bool,
 }
 
-// How many epoch ticks a module that was asked to stop (Instance.soft_flag) runs through before the hard stop may end it. They
-// are counted, not timed: the callback runs on the module's own thread, at most once each time that thread runs on, so on a
-// machine under load a module that nobody lets run is not stopped for good for not having seen the flag. An idle machine
-// gets them long before wasm.max_call_ms, at the default wasm.wasmtime.epoch_tick_ms: half a second of running.
-HARD_STOP_MIN_TICKS_AFTER_SOFT :: 100
+// How many epoch ticks a module runs through, in a call or once asked to stop (Instance.soft_flag), before the hard stop may end it.
+// They are counted, not timed: the callback runs on the module's own thread, at most once each time that thread runs on, so on a
+// machine under load a module that nobody lets run is not stopped for good for not having run. An idle machine gets them before
+// the default wasm.max_call_ms: half a second of running at the default wasm.wasmtime.epoch_tick_ms.
+HARD_STOP_MIN_TICKS :: 100
 
 Wt_State :: struct {
 	store:        wt_store,
@@ -54,8 +54,7 @@ Wt_State :: struct {
 	has_table:    bool,
 	deadline:     time.Tick,  // of the outermost call in progress; zero = none
 	soft_deadline: time.Tick, // when Instance.soft_flag is raised; zero = none (or raised already)
-	soft_raised:  bool,       // Instance.soft_flag was raised in the call in progress ...
-	ticks_since_soft: int,    // ... and the module ran through this many ticks since
+	deadline_ticks: int,      // the ticks the module ran through since the call began, or since Instance.soft_flag was raised
 	stopped:      bool,       // the epoch callback ended the call because of the stop flag
 	timed_out:    bool,
 	pending_trap: string,     // set by `trap` from a host function
@@ -289,13 +288,10 @@ wt_on_epoch :: proc "c" (ctx: wt_context, data: rawptr, delta: ^u64, kind: ^u8) 
 		sync.atomic_store(inst.soft_flag, 1)
 		inst.wt.soft_deadline = {}
 		inst.soft_fired += 1
-		inst.wt.soft_raised = true
-		inst.wt.ticks_since_soft = 0
+		inst.wt.deadline_ticks = 0   // (raised, the module unwinds by itself: it gets the time to)
 	}
-	if inst.wt.soft_raised { inst.wt.ticks_since_soft += 1 }
-	// (raised, the module unwinds by itself; the hard stop, which ends its scripts for good, waits until it had the time to)
-	unwinding := inst.wt.soft_raised && inst.wt.ticks_since_soft < HARD_STOP_MIN_TICKS_AFTER_SOFT
-	if inst.wt.deadline != {} && !unwinding && time.tick_diff(inst.wt.deadline, time.tick_now()) >= 0 {
+	inst.wt.deadline_ticks += 1
+	if inst.wt.deadline != {} && inst.wt.deadline_ticks >= HARD_STOP_MIN_TICKS && time.tick_diff(inst.wt.deadline, time.tick_now()) >= 0 {
 		inst.wt.timed_out = true
 		return wasmtime_error_new("interrupted: the call ran longer than wasm.max_call_ms")
 	}
@@ -448,7 +444,7 @@ wt_enter :: proc(inst: ^Instance) -> bool {
 		s.deadline = {}
 		if inst.opt.max_call_ms > 0 { s.deadline = time.tick_add(time.tick_now(), time.Duration(inst.opt.max_call_ms) * time.Millisecond) }
 		s.soft_deadline = {}
-		s.soft_raised, s.ticks_since_soft = false, 0
+		s.deadline_ticks = 0
 		if inst.soft_flag != nil {
 			sync.atomic_store(inst.soft_flag, 0)
 			if inst.opt.soft_call_ms > 0 { s.soft_deadline = time.tick_add(time.tick_now(), time.Duration(inst.opt.soft_call_ms) * time.Millisecond) }
