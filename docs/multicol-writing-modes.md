@@ -44,7 +44,9 @@ cut:
 3. `apply_shifts` moves the boxes for the height found. The strip is now the "flow": each column is a band of it, and a box with
    nothing that must stay whole in it may lie across bands (a tall empty box, a background).
 
-A container inside the flow of another stays whole in the outer column where it starts when it fits; when it would cross it, the outer one lays its content out again with that container in rows of columns (`Mc_Rows`): all of what the outer column leaves, then the next outer column. Its columns are spaces under the outer column they show in.
+A container inside the flow of another stays whole in the outer column where it starts when it fits; when it would cross it, the outer one (given a height or balanced) lays its content out again with that container in rows of columns (`Mc_Rows`): all of what the outer column leaves, then the next outer column; what must stay whole and is too tall for what is left waits for the next one. Its columns are spaces under the outer column they show in. Column rules reach the content edge of a container with a height of its own, or the end of the outer column, however low its columns are balanced.
+
+The containing block of a spanner is its container, whatever lies between them: for what is positioned in it (`child_frame`), for anchors, for `offsetParent`.
 
 A column is a fragment: a band of the flow and the translation to where it shows (`Mc_Frag`). Finishing makes a space per column
 (`Space_Kind.Column`) under a space of the flow (`Space_Kind.Flow`), which the boxes inside point to; `push_item` makes of every display
@@ -67,7 +69,7 @@ queries, the painter) sees physical boxes.
   is flow-relative already stays: `flex-direction`, `grid-template-columns`, `align-*`, `justify-*`, `text-align`. So flex, grid and tables have no code for writing modes.
 - `frames_to_physical` saves what it changes; `frames_to_logical` puts it back at the next pass, exactly: the layout caches of the boxes (which are
   logical) hold across passes, and a vertical page has incremental layout as any other. It is checked against full passes as any other (`layout.incremental.verify`).
-- The viewport takes the mode of the body, else the root element (the principal writing mode). A `vertical-rl` document starts at the right and scrolls to the left.
+- The viewport takes the mode and the direction of the body, else the root element (the principal writing mode). A `vertical-rl` document starts at the right and scrolls to the left (`doc_min_x`); one whose lines run upwards (`vertical-*` with `direction: rtl`, `sideways-lr`) starts at the bottom and scrolls up, with negative offsets (`doc_min_y`). In a scroll container too, the end margins of what is in it count where its axes end.
 - Text: a font in vertical text has a central baseline (`Font_Vmode.Central`: half of the face's height on each side), the `vert` feature on, and a length along
   the line made of upright clusters (an em for what has an em box, else the face's height) and sideways runs. The painter draws upright clusters one by one and
   sideways runs through a rotation (`draw_vertical_text`); the text interface needs no vertical direction.
@@ -80,7 +82,7 @@ in `layout_contents`, `flow_children` and `compute_overflow`, one flag in `push_
 
 Columns:
 
-- Nested containers: a balanced outer container grows around a nested one rather than cutting it; in rows, a nested container with a definite height keeps what its content takes, not as other engines balance it; of the nested and `multicol-breaking` reference tests, part pass.
+- Nested containers: of the `multicol-nested` reference tests, part pass; `multicol-breaking` fails only with `box-decoration-break: clone`. What is left is break priorities across containers (`orphans` or `widows` given up inside before a `break-before: avoid` outside: 015, 020), monolithic content wider than its column with a height of the outer container too small for it (011), nested margins of a first child.
 - `column-height` and `column-wrap` (CSS Multicol 2, about 30 reference tests) are not there.
 - `flex`, `grid` and table cells are cut between their lines and rows, not inside items; a float is not cut, and lines beside a float that moves to the next column move with it.
 - A float that is taller than a column, and monolithic content taller than one, are cut at the band rather than overflowing as some engines do.
@@ -96,7 +98,7 @@ Writing modes:
 - `text-combine-upright: digits <n>` is kept as a value and combines nothing (as Blink); `all` applies to a text of an element as one unit, and scales horizontally only.
 - `clip` (the CSS 2 property) does not exist in this engine, in any writing mode: about 16 reference tests.
 - `ruby` has no layout in this engine. `text-emphasis`, `text-underline-position` are not there (underlines are on the left of a vertical line).
-- `caret` in vertical editable text: `<input>` and `<textarea>` stay horizontal controls.
+- `caret` in vertical editable text: `<input>` and `<textarea>` stay horizontal controls. `<meter>` and `<progress>` follow their own writing mode and direction; the rasteriser of the reference tests draws no control, so `forms/meter-*` and `forms/progress-*` cannot tell.
 - Baselines across frames: an orthogonal box has none (it is aligned by its margin edge); `dominant-baseline` is not there.
 
 Tests: `src/layout/multicol_test.odin` (every test checks incremental passes against full ones through `layout.incremental.verify`), `src/style` for the values, the folders `css/css-multicol` and
