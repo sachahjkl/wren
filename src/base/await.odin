@@ -7,6 +7,10 @@ import "core:time"
 // only ends a failing run.
 AWAIT_LIMIT :: 60 * time.Second
 
+// (not in the generic procedure: a package that never instantiates it would leave core:thread unused)
+@(private = "file")
+await_give_way :: proc() { thread.yield() }
+
 // Test programs. Waits until `ready` says that the state another thread is reaching is there: a barrier on that state, where
 // the code under test has no signal of its own. It gives its time slice away between looks and sleeps for no fixed time.
 // False when the limit passed (the caller's check then fails).
@@ -14,7 +18,7 @@ await :: proc(data: ^$T, ready: proc(data: ^T) -> bool, limit := AWAIT_LIMIT) ->
 	start := time.tick_now()
 	for !ready(data) {
 		if time.tick_since(start) > limit { return false }
-		thread.yield()
+		await_give_way()
 	}
 	return true
 }
