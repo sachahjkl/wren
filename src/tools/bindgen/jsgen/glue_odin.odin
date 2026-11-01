@@ -249,7 +249,15 @@ emit_import_glue_odin :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member
 	callee := fmt.tprintf("wj.wr_%s", import_name)
 	// a member of Document whose import names no node acts on the calling document: this one may be another's
 	if !has_self && !mb.static_ && it.name == "Document" {
-		wl(b, "\tif !wj.wj_doc_target(self.handle) {{ %sreturn wj.wj_throw_gone(ctx) }}", strings.to_string(freed))
+		if mb.name == "adoptNode" {
+			// a node of another document moves here now (DOM "adopt")
+			wl(b, "\tif !wj.wj_same_doc(self.handle, a0) {")
+			wl(b, "\t\tif !adopt_for(ctx, self.handle, &a0) { return wj.EXCEPTION }")
+			wl(b, "\t\treturn wj.wj_wrap_node(ctx, a0)")
+			wl(b, "\t}")
+		} else {
+			wl(b, "\tif !wj.wj_doc_target(self.handle) {{ %sreturn wj.wj_throw_gone(ctx) }}", strings.to_string(freed))
+		}
 	}
 	callstr := strings.join(call[:], ", ", context.temp_allocator)
 	sep := len(call) > 0 ? ", " : ""

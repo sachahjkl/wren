@@ -14,8 +14,11 @@
   const wmGet = WeakMapC.prototype.get, wmSet = WeakMapC.prototype.set, derefF = WeakRefC.prototype.deref, regF = FR.prototype.register;
   const bindF = Function.prototype.bind, arrayIsArray = Array.isArray;
   const emptyFn = function () {};
+  const ObjectC = Object;
+  const isConstructor = f => { try { rConstruct(ObjectC, [], f); return true; } catch (e) { return false; } };
   const OP_GET = 1, OP_SET = 2, OP_HAS = 3, OP_DELETE = 4, OP_KEYS = 5, OP_GOPD = 6, OP_DEFINE = 7, OP_GET_PROTO = 8, OP_SET_PROTO = 9, OP_APPLY = 10, OP_CONSTRUCT = 11, OP_RELEASE = 12;
-  const KIND_OBJECT = 0, KIND_FUNCTION = 1, KIND_ARRAY = 2;
+  const KIND_OBJECT = 0, KIND_FUNCTION = 1, KIND_ARRAY = 2, KIND_PLAIN_FUNCTION = 3;
+  const emptyArrow = () => {};
   const REALM_FACTOR = 4294967296;   // a key of `imported`: realm * 2^32 + number
   const send = native.send, global = native.global;
 
@@ -93,7 +96,7 @@
       if (p !== undefined) return p;
     }
     // a bound function is constructible and has no `prototype` the proxy's invariants would have to report
-    const target = kind === KIND_FUNCTION ? apply(bindF, emptyFn, [undefined]) : kind === KIND_ARRAY ? [] : {};
+    const target = kind === KIND_FUNCTION ? apply(bindF, emptyFn, [undefined]) : kind === KIND_PLAIN_FUNCTION ? apply(bindF, emptyArrow, [undefined]) : kind === KIND_ARRAY ? [] : {};
     const fresh = { realm, number, kind };
     apply(wmSet, info, [target, fresh]);
     const p = new P(target, handler);
@@ -107,7 +110,7 @@
   const exportRef = (self, o) => {
     const i = apply(wmGet, info, [o]);
     if (i !== undefined) return [i.realm, i.number, i.kind];
-    return [self, numberOf(o), typeof o === "function" ? KIND_FUNCTION : arrayIsArray(o) ? KIND_ARRAY : KIND_OBJECT];
+    return [self, numberOf(o), typeof o === "function" ? (isConstructor(o) ? KIND_FUNCTION : KIND_PLAIN_FUNCTION) : arrayIsArray(o) ? KIND_ARRAY : KIND_OBJECT];
   };
 
   // ---- an operation another realm asks for, on an object of this one ----
@@ -151,25 +154,31 @@
   // `e instanceof otherWindow.TypeError` or a DOMException's name has to hold. Any other value thrown crosses as a value.
   const errorTypes = [Error, TypeError, RangeError, SyntaxError, ReferenceError, EvalError, URIError];
   const errorNames = ["Error", "TypeError", "RangeError", "SyntaxError", "ReferenceError", "EvalError", "URIError"];
-  const describeError = e => {
-    if (typeof e !== "object" || e === null) return undefined;
+  // The copy remembers its original (d[3], d[4]): thrown back where it came from, it is the original (rethrowing keeps identity).
+  const describeError = (e, self) => {
+    if (typeof e !== "object" || e === null || apply(wmGet, info, [e]) !== undefined) return undefined;
     const proto = rGetProto(e);
-    if (proto === rGet(rGet(global, "DOMException"), "prototype")) return ["DOMException", e.message, e.name];
+    if (proto === rGet(rGet(global, "DOMException"), "prototype")) return ["DOMException", e.message, e.name, self, numberOf(e)];
     for (let i = 0; i < errorTypes.length; i++) {
-      if (proto === errorTypes[i].prototype) return [errorNames[i], e.message, e.stack];
+      if (proto === errorTypes[i].prototype) return [errorNames[i], e.message, e.stack, self, numberOf(e)];
     }
     return undefined;
   };
   const makeError = d => {
-    if (d[0] === "DOMException") return rConstruct(rGet(global, "DOMException"), [d[1], d[2]]);
-    for (let i = 0; i < errorTypes.length; i++) {
-      if (errorNames[i] === d[0]) {
-        const e = new errorTypes[i](d[1]);
-        if (d[2] !== undefined) rDefine(e, "stack", { __proto__: null, value: d[2], writable: true, configurable: true });
-        return e;
+    let e;
+    if (d[0] === "DOMException") {
+      e = rConstruct(rGet(global, "DOMException"), [d[1], d[2]]);
+    } else {
+      for (let i = 0; i < errorTypes.length; i++) {
+        if (errorNames[i] === d[0]) {
+          e = new errorTypes[i](d[1]);
+          if (d[2] !== undefined) rDefine(e, "stack", { __proto__: null, value: d[2], writable: true, configurable: true });
+          break;
+        }
       }
     }
-    return undefined;
+    if (e !== undefined) apply(wmSet, info, [e, { realm: d[3], number: d[4], kind: KIND_OBJECT }]);
+    return e;
   };
 
   return {
@@ -179,6 +188,7 @@
     dispatch,
     importRef,
     exportRef,
+    isRemote: o => (typeof o === "object" || typeof o === "function") && o !== null && apply(wmGet, info, [o]) !== undefined,
     symbolName: s => apply(mapGet, symbolNames, [s]),
     symbolOf: name => apply(mapGet, symbolsByName, [name]),
     bigint: text => BigIntF(text),

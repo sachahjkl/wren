@@ -241,6 +241,13 @@ log("after adopt " + own.className);
 document.body.appendChild(d.getElementById("x"));
 const back = document.getElementById("x");
 log("back " + (back.ownerDocument === document) + " " + (d.getElementById("x") === null) + " " + back.textContent);
+const toAdopt = document.createElement("u");
+log("adoptNode " + (d.adoptNode(toAdopt) === toAdopt) + " " + (toAdopt.ownerDocument === d));
+const toImport = document.createElement("s");
+toImport.innerHTML = "<q>x</q>";
+const imported = d.importNode(toImport, true);
+log("importNode " + (imported !== toImport) + " " + (imported.ownerDocument === d) + " " + (toImport.ownerDocument === document) + " " + imported.firstChild.tagName);
+try { document.body.removeChild(d.body); log("no throw"); } catch (e) { log("removeChild across documents " + e.name); }
 d.title = "frame title";
 log("title " + d.title + " | " + document.title + " | " + d.readyState + " " + d.URL + " " + d.compatMode);
 </script></body>`)
@@ -254,6 +261,9 @@ log("title " + d.title + " | " + document.title + " | " + d.readyState + " " + d
 		check(logged("adopt true true true true true inside"), "appendChild of a parent's node moves it: its wrapper and its children's follow")
 		check(logged("after adopt after"), "the objects a moved wrapper keeps (classList) follow")
 		check(logged("back true true hello there"), "and back from the frame to the parent")
+		check(logged("adoptNode true true"), "document.adoptNode of a frame takes a parent's node")
+		check(logged("importNode true true true Q"), "document.importNode of a frame makes a copy there")
+		check(logged("removeChild across documents NotFoundError"), "a node of another document is not a child")
 		check(logged_contains("title frame title |  | "), "document.title of the frame, not of the parent")
 		c := child_of(p)
 		check(c != nil && strings.contains(page.serialize_html(c.doc, c.body, false), `<span data-a="1"`), "what was written is in the frame's own DOM (seen from the browser's side)")
@@ -777,11 +787,22 @@ addEventListener("load", () => {
   try { o.contentWindow.document; r.push("open"); } catch (e) { r.push(e.name); }
   log("opaque " + r.join(" "));
   log("same " + s.contentDocument.getElementById("s").textContent);
+  // no allow-scripts: the parent reaches its DOM, and nothing it inserts there runs
+  const d = s.contentDocument, el = d.createElement("script");
+  el.textContent = "parent.postMessage('script ran in a sandbox without scripts', '*')";
+  d.body.appendChild(el);
+  d.body.insertAdjacentHTML("beforeend", "<img src=x onerror=\"parent.postMessage('handler ran in a sandbox without scripts', '*')\">");
+  const w = s.contentWindow;
+  log("no realm " + typeof w.eval + " " + w.foo);
+  log("sandbox checked");
 });
 </script></body>`)
 		check(wait_for("opaque null SecurityError"), "a sandbox without allow-same-origin: out of reach from the parent")
 		check(wait_for("sandboxed child SecurityError SecurityError null"), "and the parent is out of reach from it")
 		check(wait_for("same reached"), "allow-same-origin keeps the origin: reachable")
+		check(wait_for("no realm undefined undefined") && wait_for("sandbox checked"), "allow-same-origin without allow-scripts: the frame has no realm to reach")
+		run_for(300)
+		check(!logged_contains("in a sandbox without scripts"), "and no script or handler inserted from the parent runs there")
 		page.page_close(p)
 	}
 }

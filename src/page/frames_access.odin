@@ -329,7 +329,7 @@ frames_close_later :: proc(p: ^Page) -> bool {
 			f.nav = nil
 		}
 	}
-	if p.web != nil { p.web.embedder = {} }
+	if p.web != nil { set_embedder(p, Embedder{}) }
 	append(&frames_pending_closes, p)
 	arm_pending(p)
 	return true
