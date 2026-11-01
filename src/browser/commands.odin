@@ -289,6 +289,14 @@ commands_build :: proc(r: ^Command_Registry) {
 			if ui.focus_key() != 0 && ui.focus_key() == address_key(app) { ui.set_focus(0); forms_focus_from_chrome(app, t, 1) } else { active_window(app).focus_address = true }
 		}})
 
+	// --- the interface's own zoom (chrome_zoom.odin)
+	add(r, {name = "view.chrome_zoom_in", title = "Zoom the interface in", category = "View", keywords = "bigger larger chrome ui toolbar",
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { chrome_zoom_step(app, 1) }})
+	add(r, {name = "view.chrome_zoom_out", title = "Zoom the interface out", category = "View", keywords = "smaller chrome ui toolbar",
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { chrome_zoom_step(app, -1) }})
+	add(r, {name = "view.chrome_zoom_reset", title = "Interface at actual size", category = "View", keywords = "zoom reset 100 chrome ui toolbar",
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { chrome_zoom_step(app, 0) }})
+
 	// --- page
 	add(r, {name = "page.zoom_in", title = "Zoom in", category = "Page", keywords = "bigger larger magnify",
 		keys = keys(&r.arena, {key = .Equal, mods = ctrl}, {key = .Num_Add, mods = ctrl}, {key = .Equal, mods = cs}),

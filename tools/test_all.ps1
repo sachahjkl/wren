@@ -265,6 +265,9 @@ Step 'drag and drop end to end (tools\dnd_e2e.ps1: a file dropped on a drop zone
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\dnd_e2e.ps1
 } -Weight 20 -NoCI
+Step 'the interface''s own zoom end to end (tools\chrome_zoom_e2e.ps1: Ctrl+wheel over the chrome and the keys while it has the keyboard zoom it and leave the page''s scale alone; over the page they zoom the page; no window shown)' {
+    powershell -NoProfile -ExecutionPolicy Bypass -File tools\chrome_zoom_e2e.ps1
+} -Weight 20 -NoCI
 Step 'middle-click autoscroll end to end (tools\autoscroll_e2e.ps1: a middle press on a tall page and the pointer moved down scrolls it, faster the farther, Escape stops it, a middle click on a link opens a new tab; no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\autoscroll_e2e.ps1

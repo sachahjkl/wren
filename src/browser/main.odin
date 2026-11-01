@@ -1218,6 +1218,7 @@ frame :: proc(app: ^App, idled := false) {
 	route_page_input(app, events)
 	events = forms_unconsumed_events(app, events)   // keys the page used do not reach the chrome
 	events = history_tree_events(app, events)   // the wheel and zoom keys of about:history's tree (history_tree.odin)
+	events = chrome_zoom_events(app, events)    // Ctrl+wheel and Ctrl +, -, 0 for the interface itself (chrome_zoom.odin)
 	events = devtools_events(app, events)       // Ctrl+wheel and Ctrl +, -, 0 over the developer tools: their text size (devtools.odin)
 	forms_shell_frame(app)
 	selection_shell_frame(app)
