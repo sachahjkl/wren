@@ -10,7 +10,7 @@ EventTarget_dispatchEngineEvent :: proc(c: ^Call, target: u64, type: string, ini
 	p := c.page
 	ev := dom.Event{
 		type = type, bubbles = .Bubbles in init, cancelable = .Cancelable in init, composed = .Composed in init,
-		engine_id = engine_id, untrusted = true, time_stamp = time_stamp,
+		engine_id = engine_id, engine_realm = page_id(c.caller), untrusted = true, time_stamp = time_stamp,
 	}
 	if p.jsdom != nil {
 		p.jsdom.shadow.last_target = target
@@ -22,6 +22,12 @@ EventTarget_dispatchEngineEvent :: proc(c: ^Call, target: u64, type: string, ini
 		if object_get(p, target) == nil { return false, fail(c, .Invalid_Handle, "dispatchEvent: the target is gone") }
 		return object_dispatch(p, target, ev), .None
 	}
+	// (the realm that dispatched asks for the results next, with no node to name this document)
+	defer if c.routed {
+		q := js_dom_state(c.caller)
+		q.shadow.last_target = js_dom_state(p).shadow.last_target
+		c.caller.dp.last_related = p.dp.last_related
+	}
 	if p.worker != nil || dom.get(p.doc, H(target)) == nil { return false, fail(c, .Invalid_Handle, "dispatchEvent: the target is gone") }
 	ok, final := dom.dispatch_ex(p.doc, &p.dp, H(target), ev)
 	// the target as the event shows it once dispatched (EventTarget_lastTarget): null when it was in a shadow tree
@@ -29,7 +35,10 @@ EventTarget_dispatchEngineEvent :: proc(c: ^Call, target: u64, type: string, ini
 	return ok, .None
 }
 
-Event_engineId :: proc(c: ^Call, event: Api_Event) -> i64 { return event.data.engine_id }
+// (0 for the listeners of another realm than the one that made it: to them it is an event of the browser's)
+Event_engineId :: proc(c: ^Call, event: Api_Event) -> i64 {
+	return event.data.engine_realm == page_id(c.caller) ? event.data.engine_id : 0
+}
 
 Event_isLive :: proc(c: ^Call, event: u64) -> bool { return base.pool_get(&c.page.dp.events, H(event)) != nil }
 
