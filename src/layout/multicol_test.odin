@@ -437,5 +437,25 @@ multicol_anchor_and_static_position :: proc(t: ^testing.T) {
 	mf_expect(t, f, "q", 100, 20, 105, 25)
 }
 
+@(test)
+multicol_flex_item_style_set_later :: proc(t: ^testing.T) {
+	// a paragraph as a flex item, centered, that a script gives columns (MDN's examples)
+	f := mf_load(`<!doctype html><style>body{margin:0;font:20px/20px x} section{display:flex;align-items:center;justify-content:center;height:300px;width:300px} p{margin:0}</style><section><p id=p>aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa</p></section>`)
+	defer mf_unload(f)
+	dom.set_attribute(f.doc, dom.find_by_id(f.doc, "p"), "style", "column-count:2;column-gap:20px")
+	mf_frame(t, f)
+	xs: [dynamic]f32
+	defer delete(xs)
+	v := view_make(&f.l, f.vp, 0, cull = false)
+	seen_first, seen_second: bool
+	for &it in f.l.items {
+		if it.kind != .Text { continue }
+		x := it.rect.min.x + v.offsets[it.space].x
+		testing.expect(t, it.clip == NONE || !rect_empty(v.clips[it.clip]), "the clip of a column leaves something")
+		if x < 100 { seen_first = true } else { seen_second = true }
+	}
+	testing.expectf(t, seen_first && seen_second, "lines in both columns: %v %v", seen_first, seen_second)
+}
+
 _ :: base.NIL_HANDLE
 _ :: fmt.tprintf

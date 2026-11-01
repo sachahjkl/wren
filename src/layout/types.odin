@@ -384,7 +384,7 @@ Space :: struct {
 	back_hidden: bool,              // plane: backface-visibility: hidden
 	ctx:      i32,                  // plane: the plane that roots its 3D rendering context (itself when it is the root)
 	dest:     i32,                  // plane: the plane its context is drawn into (NONE: the page)
-	flow:     [2]i32,               // Flow: the flow of a multi-column container (no item is left in it): its range of Layout.flow_frags
+	flow:     [2]i32,               // Flow: the flow of a multi-column container (no item is left in it): its range of Layout.flow_frags; Column: [0] which column of it
 	shift:    Vec2,                 // Column: from the flow to where the column shows
 	band0:    f32,                  // spatial index: layout y of the first band
 	band_h:   f32,

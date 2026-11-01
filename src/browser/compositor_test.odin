@@ -162,7 +162,12 @@ html, body { margin: 0; background: #f4f6fb; font-size: 13px; color: #1d2433 }
 ul { margin: 4px 24px } li { text-decoration: underline }
 .out { outline: 2px dashed #e8590c; outline-offset: 2px; display: inline-block; padding: 2px }
 .tall { height: 400px; background: linear-gradient(#fff, #c5f6fa) }
+.cols { column-count: 3; column-gap: 12px; column-rule: 2px dashed #e03131; width: 300px }
+.cols div { height: 90px; background: #b2f2bb }
+.vert { writing-mode: vertical-rl; height: 70px; width: 90px; border: 1px solid #888 }
 </style></head><body>
+<div class="cols"><div></div>Text in columns, and more text to go in the other columns, so that each of them shows something.</div>
+<div class="vert">Vertical 縦書き <u>text</u></div>
 <div class="row"><div class="card"></div><div class="card lin"></div><div class="card rad"></div><div class="card con"></div></div>
 <div class="row"><div class="card rep"></div><div class="card inset"></div><div class="card layers"></div><div class="ghost"><div></div><div></div></div></div>
 <div class="row"><div class="clip"><p>Clipped text inside a rounded box that hides what overflows it.</p></div>
