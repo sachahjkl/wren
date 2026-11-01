@@ -10,6 +10,8 @@ $Exe = (Resolve-Path $Exe).Path
 $ExeName = Split-Path $Exe -Leaf
 $Name = "gpue2e$PID"
 $WaitSec = 60      # only ends a failing run
+$HangMs = 3000     # webgl.gpu_hang_ms, so that a hung process does not take half a minute
+$Restarts = 100    # (what is killed on purpose)
 $script:failures = 0
 
 function Check([string]$What, [bool]$Ok, [string]$Detail = '') {
@@ -37,7 +39,7 @@ function FileUrl([string]$Path) { return 'file:///' + ($Path -replace '\\', '/')
 $dir = Join-Path $root 'build\webgl_e2e'
 New-Item -ItemType Directory -Force $dir | Out-Null
 $log = Join-Path $dir "$Name.log"
-& $Exe ctl start --name $Name --size 800x600 *> $log
+& $Exe ctl start --name $Name --size 800x600 --pref "webgl.gpu_hang_ms=$HangMs" --pref "webgl.gpu_max_restarts=$Restarts" *> $log
 try {
     if (-not (WaitUntil { (Ctl @('eval', '40+2')) -eq '42' })) { throw "no Wren answers: $(Get-Content $log -Raw)" }
     $browser = [int](Get-CimInstance Win32_Process -Filter "Name='$ExeName'" | Where-Object { $_.CommandLine -like "*$Name*" } | Select-Object -First 1).ProcessId
@@ -83,6 +85,15 @@ window.pixel = () => { gl.clearColor(0, 1, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT);
     $kids = @(Children $browser)
     Check 'in a new process' ($kids.Count -eq 1 -and $kids[0].ProcessId -ne $first)
     $second = [int]$kids[0].ProcessId
+
+    # A process that does nothing any more (suspended from outside: what a deadlock in a driver looks like from here): the page's frames
+    # have work for it, and at webgl.gpu_hang_ms the watcher kills it.
+    Add-Type -Namespace WrenE2e -Name Nt -MemberDefinition '[DllImport("ntdll.dll")] public static extern int NtSuspendProcess(IntPtr h);'
+    [void][WrenE2e.Nt]::NtSuspendProcess((Get-Process -Id $second).Handle)
+    Check 'suspended: killed by the watcher' (WaitUntil { -not (Alive $second) })
+    Check 'the page gets its context back' (WaitUntil { (Eval 'events.join()') -eq 'lost,restored,lost,restored' }) (Eval 'events.join()')
+    Check 'and draws' ((Eval 'pixel()') -eq '0,255,0,255')
+    $second = [int]@(Children $browser)[0].ProcessId
 
     Stop-Process -Id $browser -Force
     Check 'a killed browser takes its process along' (WaitUntil { -not (Alive $second) })

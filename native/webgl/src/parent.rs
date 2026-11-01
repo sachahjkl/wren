@@ -34,6 +34,8 @@ const BACKPRESSURE_WAIT: Duration = Duration::from_millis(1000);
 const MAX_QUEUED_BYTES: usize = 512 << 20;
 /// Frames on their way to the CPU before a present waits (a page drawing faster than the GPU).
 const MAX_FRAMES_IN_FLIGHT: usize = 3;
+/// How long a restore waits for the context's thread to say it let go of its device, before the script is told to try again.
+const LOSE_ACK_WAIT: Duration = Duration::from_millis(100);
 /// A process that did not say hello by then is no process.
 const MIN_START_WAIT: Duration = Duration::from_millis(100);
 
@@ -1144,10 +1146,16 @@ impl Handle {
     }
 
     fn restore_in(&self, p: &Arc<Proc>) -> bool {
-        // (its thread has not said it let go: it may be stuck, and then only the end of the process frees it; the page's thread
-        // does not wait for that here, the script tries again)
-        if lock(&p.table).entries.get(&self.id).is_some_and(|e| e.lose_asked) {
-            return false;
+        // Its thread has not said it let go: usually it is about to, but it may be stuck, and then only the end of the process frees it.
+        // The page's thread does not wait for that here: the script tries again.
+        let told_by = Instant::now() + LOSE_ACK_WAIT;
+        while lock(&p.table).entries.get(&self.id).is_some_and(|e| e.lose_asked) {
+            let now = Instant::now();
+            if now >= told_by || p.is_dead() {
+                return false;
+            }
+            let Ok(g) = self.shared.state_change.lock() else { return false };
+            let _ = self.shared.state_changed.wait_timeout(g, told_by - now);
         }
         let deadline = Instant::now() + self.wait;
         let (qid, slot) = p.ask(self.id, 0);

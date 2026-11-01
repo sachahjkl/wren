@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>WebGL in a worker</title>
+<style>
+  body { font: 15px/1.5 system-ui, sans-serif; margin: 24px; background: #15171c; color: #dde; }
+  canvas { background: #000; display: block; margin: 0 0 16px; border-radius: 6px; }
+  #log { white-space: pre-wrap; color: #9a9; }
+</style>
+</head>
+<body>
+<h1>WebGL in a worker</h1>
+<p>A worker draws, on the canvas it was given with <code>transferControlToOffscreen()</code>: the page's own thread does nothing for it, and goes on while it draws.</p>
+<canvas id="c" width="800" height="500"></canvas>
+<p id="log"></p>
+<script id="worker" type="text/plain">
+"use strict";
+const TRIANGLES = 2000;
+const VS = "attribute vec2 p; attribute vec3 c; uniform float t; varying vec3 v; void main() { float s = sin(t), k = cos(t); gl_Position = vec4(p.x * k - p.y * s, p.x * s + p.y * k, 0.0, 1.0); v = c; }";
+const FS = "precision mediump float; varying vec3 v; void main() { gl_FragColor = vec4(v, 1.0); }";
+onmessage = e => {
+  const gl = e.data.getContext("webgl2", { antialias: false });
+  const make = (type, source) => { const s = gl.createShader(type); gl.shaderSource(s, source); gl.compileShader(s); return s; };
+  const program = gl.createProgram();
+  gl.attachShader(program, make(gl.VERTEX_SHADER, VS));
+  gl.attachShader(program, make(gl.FRAGMENT_SHADER, FS));
+  gl.linkProgram(program);
+  gl.useProgram(program);
+  const data = new Float32Array(TRIANGLES * 3 * 5);
+  for (let i = 0; i < TRIANGLES; i++) {
+    const a = i / TRIANGLES * Math.PI * 2 * 7, r = i / TRIANGLES * 0.9;
+    for (let k = 0; k < 3; k++) {
+      const b = a + k * 2.1, at = (i * 3 + k) * 5;
+      data[at] = Math.cos(a) * r + Math.cos(b) * 0.04;
+      data[at + 1] = Math.sin(a) * r + Math.sin(b) * 0.04;
+      data[at + 2] = 0.5 + 0.5 * Math.sin(a);
+      data[at + 3] = 0.5 + 0.5 * Math.cos(a * 0.7);
+      data[at + 4] = i / TRIANGLES;
+    }
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+  const p = gl.getAttribLocation(program, "p"), c = gl.getAttribLocation(program, "c");
+  gl.enableVertexAttribArray(p);
+  gl.enableVertexAttribArray(c);
+  gl.vertexAttribPointer(p, 2, gl.FLOAT, false, 20, 0);
+  gl.vertexAttribPointer(c, 3, gl.FLOAT, false, 20, 8);
+  const t = gl.getUniformLocation(program, "t");
+  let frames = 0, last = performance.now();
+  const draw = now => {
+    gl.clearColor(0.05, 0.05, 0.08, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.uniform1f(t, now / 1000);
+    gl.drawArrays(gl.TRIANGLES, 0, TRIANGLES * 3);
+    frames++;
+    if (now - last >= 1000) {
+      postMessage(frames / ((now - last) / 1000));
+      frames = 0;
+      last = now;
+    }
+    requestAnimationFrame(draw);
+  };
+  requestAnimationFrame(draw);
+};
+</script>
+<script>
+"use strict";
+const canvas = document.getElementById("c");
+const offscreen = canvas.transferControlToOffscreen();
+const source = document.getElementById("worker").textContent;
+const worker = new Worker("data:text/javascript," + encodeURIComponent(source));
+worker.onmessage = e => { window.workerFps = e.data; document.getElementById("log").textContent = "The worker draws " + Math.round(e.data) + " frames a second."; };
+worker.onerror = e => { document.getElementById("log").textContent = e.message; };
+worker.postMessage(offscreen, [offscreen]);
+</script>
+</body>
+</html>

@@ -125,6 +125,8 @@ DEMOS := [?]Demo{
 
 	{.JavaScript, "WebGL", "webgl.html",
 		"A spinning cube with a depth buffer, and a quad textured by a 2D canvas: shaders, buffers, a mipmapped texture, frames back to the page.", false, "", false},
+	{.JavaScript, "WebGL in a worker", "webgl-worker.html",
+		"A worker draws on the canvas it was given with <code>transferControlToOffscreen()</code>: the page's own thread does nothing for it.", false, "", false},
 	{.JavaScript, "WebGL stress", "webgl-stress.html",
 		"Thousands of draws a frame on a large canvas, and what a page has to wait for: questions, pixels, uploads. <code>tools\\webgl_bench.ps1</code> measures it.", false, "", false},
 	{.JavaScript, "Web Audio", "webaudio.html",
