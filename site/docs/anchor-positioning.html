@@ -63,6 +63,7 @@
 <p class="doc-sec-title">Features</p>
 <ul class="doc-links">
 <li><a href="../docs/blocker.html">The content blocker</a></li>
+<li><a href="../docs/multicol-writing-modes.html">Multi-column layout and writing modes</a></li>
 <li><a href="../docs/media.html">Media elements</a></li>
 <li><a href="../docs/webcodecs.html">WebCodecs</a></li>
 <li><a href="../docs/js/web-audio.html">Web Audio</a></li>
@@ -255,6 +256,7 @@ behave as <code>auto</code>.</p>
 an absolutely positioned one if it comes first. Outside of the containing block, what comes first. Not the containing block
 itself, nothing inside the box, nothing out of an <code>anchor-scope</code>.</p>
 <h2 id="how-it-works"><a class="anchor" href="#how-it-works" aria-hidden="true">#</a>How it works</h2>
+<p>With writing modes (<code>docs/multicol-writing-modes.md</code>), an anchored box is laid out once everything else is physical: <code>start</code>, <code>end</code>, the flow-relative keywords of <code>position-area</code>, <code>flip-block</code>, <code>flip-inline</code>, <code>flip-start</code>, <code>most-block-size</code>, <code>justify-self</code> and <code>align-self</code> take the axis and the direction they mean for the writing mode of the containing block, and the box's own for <code>self-*</code>; the box itself, if vertical, is an orthogonal frame root.</p>
 <p>Style (<code>src/style/anchor.odin</code>): a length with <code>anchor()</code> or <code>anchor-size()</code> keeps its tree (<code>Length_Kind.Anchor</code>), and only
 on an absolutely positioned box; on another one it becomes its fallback when computed. The rules of <code>@position-try</code> are
 applied when the element's style is computed, for each option in <code>position-try-fallbacks</code>: they may use <code>var()</code> and <code>em</code>.</p>
@@ -272,7 +274,7 @@ chosen depends on it (fallbacks, <code>position-visibility</code>, when anchor a
 the layout stale (<code>Layout.anchor_stale</code>), and the next frame or reading lays out again.</p>
 <h2 id="what-is-missing"><a class="anchor" href="#what-is-missing" aria-hidden="true">#</a>What is missing</h2>
 <ul>
-<li><strong>Writing modes</strong>, which this engine does not have: block is y and inline is x. <strong>Multi-column</strong>: same.</li>
+<li>In a <strong>multi-column</strong> flow an anchor is read where it shows, as the union of its fragments, not fragment by fragment.</li>
 <li><code>anchor-scope</code> and names across shadow trees, by the rules of tree-scoped names: a name only matches in the tree of its
 element (<code>::part()</code> and <code>::slotted()</code> rules that set it are told apart from no other).</li>
 <li>The size of a scrollable containing block is its padding box, not its scrollable overflow.</li>
