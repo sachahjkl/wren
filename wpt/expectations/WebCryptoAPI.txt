@@ -1,19 +1,19 @@
 # web-platform-tests expectations of Wren for WebCryptoAPI, written by tools\wpt.ps1 -Update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
-/WebCryptoAPI/algorithm-discards-context.https.window.html: TIMEOUT
-	Context is discarded in decrypt: TIMEOUT
-	Context is discarded in deriveBits: TIMEOUT
-	Context is discarded in deriveKey: TIMEOUT
-	Context is discarded in deriveKey (2): TIMEOUT
-	Context is discarded in digest: TIMEOUT
-	Context is discarded in encrypt: TIMEOUT
-	Context is discarded in generateKey: TIMEOUT
-	Context is discarded in importKey: TIMEOUT
-	Context is discarded in sign: TIMEOUT
-	Context is discarded in unwrapKey: TIMEOUT
-	Context is discarded in unwrapKey (2): TIMEOUT
-	Context is discarded in verify: TIMEOUT
-	Context is discarded in wrapKey: TIMEOUT
+/WebCryptoAPI/algorithm-discards-context.https.window.html: OK|TIMEOUT
+	Context is discarded in decrypt: FAIL
+	Context is discarded in deriveBits: FAIL
+	Context is discarded in deriveKey: FAIL
+	Context is discarded in deriveKey (2): FAIL
+	Context is discarded in digest: FAIL
+	Context is discarded in encrypt: FAIL
+	Context is discarded in generateKey: FAIL
+	Context is discarded in importKey: FAIL
+	Context is discarded in sign: FAIL
+	Context is discarded in unwrapKey: FAIL
+	Context is discarded in unwrapKey (2): FAIL
+	Context is discarded in verify: FAIL
+	Context is discarded in wrapKey: FAIL
 /WebCryptoAPI/crypto_key_cached_slots.https.any.html: OK
 	CryptoKey.algorithm getter returns cached object: PASS
 	CryptoKey.usages getter returns cached object: PASS
@@ -50878,7 +50878,8 @@
 	cSHAKE256 with 512 bit output and short source data and altered buffer during call: FAIL
 	cSHAKE256 with 512 bit output and short source data and transferred buffer after call: FAIL
 	cSHAKE256 with 512 bit output and short source data and transferred buffer during call: FAIL
-/WebCryptoAPI/modern-algos/digest/kangarootwelve.https.any.html: OK
+/WebCryptoAPI/modern-algos/digest/kangarootwelve.https.any.html: ERROR
+/WebCryptoAPI/modern-algos/digest/kangarootwelve.https.any.worker.html: TIMEOUT
 	KT128 vector #1 (256 bit output, 0 byte input): FAIL
 	KT128 vector #10 (256 bit output, 0 byte input, C=1 bytes): FAIL
 	KT128 vector #11 (256 bit output, 1 byte input, C=41 bytes): FAIL
@@ -50954,42 +50955,42 @@
 	KT128 vector #9 (256 bit output, 24137569 byte input) and transferred buffer during call: FAIL
 	KT128 with 80256 bit output, verify last 32 bytes: FAIL
 	KT256 vector #1 (512 bit output, 0 byte input): FAIL
-	KT256 vector #10 (512 bit output, 0 byte input, C=1 bytes): FAIL
-	KT256 vector #11 (512 bit output, 1 byte input, C=41 bytes): FAIL
-	KT256 vector #11 (512 bit output, 1 byte input, C=41 bytes) and altered buffer after call: FAIL
-	KT256 vector #11 (512 bit output, 1 byte input, C=41 bytes) and altered buffer during call: FAIL
-	KT256 vector #11 (512 bit output, 1 byte input, C=41 bytes) and transferred buffer after call: FAIL
-	KT256 vector #11 (512 bit output, 1 byte input, C=41 bytes) and transferred buffer during call: FAIL
-	KT256 vector #12 (512 bit output, 3 byte input, C=1681 bytes): FAIL
-	KT256 vector #12 (512 bit output, 3 byte input, C=1681 bytes) and altered buffer after call: FAIL
-	KT256 vector #12 (512 bit output, 3 byte input, C=1681 bytes) and altered buffer during call: FAIL
-	KT256 vector #12 (512 bit output, 3 byte input, C=1681 bytes) and transferred buffer after call: FAIL
-	KT256 vector #12 (512 bit output, 3 byte input, C=1681 bytes) and transferred buffer during call: FAIL
-	KT256 vector #13 (512 bit output, 7 byte input, C=68921 bytes): FAIL
-	KT256 vector #13 (512 bit output, 7 byte input, C=68921 bytes) and altered buffer after call: FAIL
-	KT256 vector #13 (512 bit output, 7 byte input, C=68921 bytes) and altered buffer during call: FAIL
-	KT256 vector #13 (512 bit output, 7 byte input, C=68921 bytes) and transferred buffer after call: FAIL
-	KT256 vector #13 (512 bit output, 7 byte input, C=68921 bytes) and transferred buffer during call: FAIL
-	KT256 vector #14 (512 bit output, 8191 byte input): FAIL
-	KT256 vector #14 (512 bit output, 8191 byte input) and altered buffer after call: FAIL
-	KT256 vector #14 (512 bit output, 8191 byte input) and altered buffer during call: FAIL
-	KT256 vector #14 (512 bit output, 8191 byte input) and transferred buffer after call: FAIL
-	KT256 vector #14 (512 bit output, 8191 byte input) and transferred buffer during call: FAIL
-	KT256 vector #15 (512 bit output, 8192 byte input): FAIL
-	KT256 vector #15 (512 bit output, 8192 byte input) and altered buffer after call: FAIL
-	KT256 vector #15 (512 bit output, 8192 byte input) and altered buffer during call: FAIL
-	KT256 vector #15 (512 bit output, 8192 byte input) and transferred buffer after call: FAIL
-	KT256 vector #15 (512 bit output, 8192 byte input) and transferred buffer during call: FAIL
-	KT256 vector #16 (512 bit output, 8192 byte input, C=8189 bytes): FAIL
-	KT256 vector #16 (512 bit output, 8192 byte input, C=8189 bytes) and altered buffer after call: FAIL
-	KT256 vector #16 (512 bit output, 8192 byte input, C=8189 bytes) and altered buffer during call: FAIL
-	KT256 vector #16 (512 bit output, 8192 byte input, C=8189 bytes) and transferred buffer after call: FAIL
-	KT256 vector #16 (512 bit output, 8192 byte input, C=8189 bytes) and transferred buffer during call: FAIL
-	KT256 vector #17 (512 bit output, 8192 byte input, C=8190 bytes): FAIL
-	KT256 vector #17 (512 bit output, 8192 byte input, C=8190 bytes) and altered buffer after call: FAIL
-	KT256 vector #17 (512 bit output, 8192 byte input, C=8190 bytes) and altered buffer during call: FAIL
-	KT256 vector #17 (512 bit output, 8192 byte input, C=8190 bytes) and transferred buffer after call: FAIL
-	KT256 vector #17 (512 bit output, 8192 byte input, C=8190 bytes) and transferred buffer during call: FAIL
+	KT256 vector #10 (512 bit output, 0 byte input, C=1 bytes): NOTRUN
+	KT256 vector #11 (512 bit output, 1 byte input, C=41 bytes): NOTRUN
+	KT256 vector #11 (512 bit output, 1 byte input, C=41 bytes) and altered buffer after call: NOTRUN
+	KT256 vector #11 (512 bit output, 1 byte input, C=41 bytes) and altered buffer during call: NOTRUN
+	KT256 vector #11 (512 bit output, 1 byte input, C=41 bytes) and transferred buffer after call: NOTRUN
+	KT256 vector #11 (512 bit output, 1 byte input, C=41 bytes) and transferred buffer during call: NOTRUN
+	KT256 vector #12 (512 bit output, 3 byte input, C=1681 bytes): NOTRUN
+	KT256 vector #12 (512 bit output, 3 byte input, C=1681 bytes) and altered buffer after call: NOTRUN
+	KT256 vector #12 (512 bit output, 3 byte input, C=1681 bytes) and altered buffer during call: NOTRUN
+	KT256 vector #12 (512 bit output, 3 byte input, C=1681 bytes) and transferred buffer after call: NOTRUN
+	KT256 vector #12 (512 bit output, 3 byte input, C=1681 bytes) and transferred buffer during call: NOTRUN
+	KT256 vector #13 (512 bit output, 7 byte input, C=68921 bytes): NOTRUN
+	KT256 vector #13 (512 bit output, 7 byte input, C=68921 bytes) and altered buffer after call: NOTRUN
+	KT256 vector #13 (512 bit output, 7 byte input, C=68921 bytes) and altered buffer during call: NOTRUN
+	KT256 vector #13 (512 bit output, 7 byte input, C=68921 bytes) and transferred buffer after call: NOTRUN
+	KT256 vector #13 (512 bit output, 7 byte input, C=68921 bytes) and transferred buffer during call: NOTRUN
+	KT256 vector #14 (512 bit output, 8191 byte input): NOTRUN
+	KT256 vector #14 (512 bit output, 8191 byte input) and altered buffer after call: NOTRUN
+	KT256 vector #14 (512 bit output, 8191 byte input) and altered buffer during call: NOTRUN
+	KT256 vector #14 (512 bit output, 8191 byte input) and transferred buffer after call: NOTRUN
+	KT256 vector #14 (512 bit output, 8191 byte input) and transferred buffer during call: NOTRUN
+	KT256 vector #15 (512 bit output, 8192 byte input): NOTRUN
+	KT256 vector #15 (512 bit output, 8192 byte input) and altered buffer after call: NOTRUN
+	KT256 vector #15 (512 bit output, 8192 byte input) and altered buffer during call: NOTRUN
+	KT256 vector #15 (512 bit output, 8192 byte input) and transferred buffer after call: NOTRUN
+	KT256 vector #15 (512 bit output, 8192 byte input) and transferred buffer during call: NOTRUN
+	KT256 vector #16 (512 bit output, 8192 byte input, C=8189 bytes): NOTRUN
+	KT256 vector #16 (512 bit output, 8192 byte input, C=8189 bytes) and altered buffer after call: NOTRUN
+	KT256 vector #16 (512 bit output, 8192 byte input, C=8189 bytes) and altered buffer during call: NOTRUN
+	KT256 vector #16 (512 bit output, 8192 byte input, C=8189 bytes) and transferred buffer after call: NOTRUN
+	KT256 vector #16 (512 bit output, 8192 byte input, C=8189 bytes) and transferred buffer during call: NOTRUN
+	KT256 vector #17 (512 bit output, 8192 byte input, C=8190 bytes): NOTRUN
+	KT256 vector #17 (512 bit output, 8192 byte input, C=8190 bytes) and altered buffer after call: NOTRUN
+	KT256 vector #17 (512 bit output, 8192 byte input, C=8190 bytes) and altered buffer during call: NOTRUN
+	KT256 vector #17 (512 bit output, 8192 byte input, C=8190 bytes) and transferred buffer after call: NOTRUN
+	KT256 vector #17 (512 bit output, 8192 byte input, C=8190 bytes) and transferred buffer during call: NOTRUN
 	KT256 vector #2 (1024 bit output, 0 byte input): FAIL
 	KT256 vector #3 (512 bit output, 1 byte input): FAIL
 	KT256 vector #3 (512 bit output, 1 byte input) and altered buffer after call: FAIL
@@ -51024,156 +51025,7 @@
 	KT256 vector #9 (512 bit output, 24137569 byte input): FAIL
 	KT256 vector #9 (512 bit output, 24137569 byte input) and altered buffer after call: FAIL
 	KT256 vector #9 (512 bit output, 24137569 byte input) and altered buffer during call: FAIL
-	KT256 vector #9 (512 bit output, 24137569 byte input) and transferred buffer after call: FAIL
-	KT256 vector #9 (512 bit output, 24137569 byte input) and transferred buffer during call: FAIL
-	KT256 with 80512 bit output, verify last 64 bytes: FAIL
-/WebCryptoAPI/modern-algos/digest/kangarootwelve.https.any.worker.html: OK
-	KT128 vector #1 (256 bit output, 0 byte input): FAIL
-	KT128 vector #10 (256 bit output, 0 byte input, C=1 bytes): FAIL
-	KT128 vector #11 (256 bit output, 1 byte input, C=41 bytes): FAIL
-	KT128 vector #11 (256 bit output, 1 byte input, C=41 bytes) and altered buffer after call: FAIL
-	KT128 vector #11 (256 bit output, 1 byte input, C=41 bytes) and altered buffer during call: FAIL
-	KT128 vector #11 (256 bit output, 1 byte input, C=41 bytes) and transferred buffer after call: FAIL
-	KT128 vector #11 (256 bit output, 1 byte input, C=41 bytes) and transferred buffer during call: FAIL
-	KT128 vector #12 (256 bit output, 3 byte input, C=1681 bytes): FAIL
-	KT128 vector #12 (256 bit output, 3 byte input, C=1681 bytes) and altered buffer after call: FAIL
-	KT128 vector #12 (256 bit output, 3 byte input, C=1681 bytes) and altered buffer during call: FAIL
-	KT128 vector #12 (256 bit output, 3 byte input, C=1681 bytes) and transferred buffer after call: FAIL
-	KT128 vector #12 (256 bit output, 3 byte input, C=1681 bytes) and transferred buffer during call: FAIL
-	KT128 vector #13 (256 bit output, 7 byte input, C=68921 bytes): FAIL
-	KT128 vector #13 (256 bit output, 7 byte input, C=68921 bytes) and altered buffer after call: FAIL
-	KT128 vector #13 (256 bit output, 7 byte input, C=68921 bytes) and altered buffer during call: FAIL
-	KT128 vector #13 (256 bit output, 7 byte input, C=68921 bytes) and transferred buffer after call: FAIL
-	KT128 vector #13 (256 bit output, 7 byte input, C=68921 bytes) and transferred buffer during call: FAIL
-	KT128 vector #14 (256 bit output, 8191 byte input): FAIL
-	KT128 vector #14 (256 bit output, 8191 byte input) and altered buffer after call: FAIL
-	KT128 vector #14 (256 bit output, 8191 byte input) and altered buffer during call: FAIL
-	KT128 vector #14 (256 bit output, 8191 byte input) and transferred buffer after call: FAIL
-	KT128 vector #14 (256 bit output, 8191 byte input) and transferred buffer during call: FAIL
-	KT128 vector #15 (256 bit output, 8192 byte input): FAIL
-	KT128 vector #15 (256 bit output, 8192 byte input) and altered buffer after call: FAIL
-	KT128 vector #15 (256 bit output, 8192 byte input) and altered buffer during call: FAIL
-	KT128 vector #15 (256 bit output, 8192 byte input) and transferred buffer after call: FAIL
-	KT128 vector #15 (256 bit output, 8192 byte input) and transferred buffer during call: FAIL
-	KT128 vector #16 (256 bit output, 8192 byte input, C=8189 bytes): FAIL
-	KT128 vector #16 (256 bit output, 8192 byte input, C=8189 bytes) and altered buffer after call: FAIL
-	KT128 vector #16 (256 bit output, 8192 byte input, C=8189 bytes) and altered buffer during call: FAIL
-	KT128 vector #16 (256 bit output, 8192 byte input, C=8189 bytes) and transferred buffer after call: FAIL
-	KT128 vector #16 (256 bit output, 8192 byte input, C=8189 bytes) and transferred buffer during call: FAIL
-	KT128 vector #17 (256 bit output, 8192 byte input, C=8190 bytes): FAIL
-	KT128 vector #17 (256 bit output, 8192 byte input, C=8190 bytes) and altered buffer after call: FAIL
-	KT128 vector #17 (256 bit output, 8192 byte input, C=8190 bytes) and altered buffer during call: FAIL
-	KT128 vector #17 (256 bit output, 8192 byte input, C=8190 bytes) and transferred buffer after call: FAIL
-	KT128 vector #17 (256 bit output, 8192 byte input, C=8190 bytes) and transferred buffer during call: FAIL
-	KT128 vector #2 (512 bit output, 0 byte input): FAIL
-	KT128 vector #3 (256 bit output, 1 byte input): FAIL
-	KT128 vector #3 (256 bit output, 1 byte input) and altered buffer after call: FAIL
-	KT128 vector #3 (256 bit output, 1 byte input) and altered buffer during call: FAIL
-	KT128 vector #3 (256 bit output, 1 byte input) and transferred buffer after call: FAIL
-	KT128 vector #3 (256 bit output, 1 byte input) and transferred buffer during call: FAIL
-	KT128 vector #4 (256 bit output, 17 byte input): FAIL
-	KT128 vector #4 (256 bit output, 17 byte input) and altered buffer after call: FAIL
-	KT128 vector #4 (256 bit output, 17 byte input) and altered buffer during call: FAIL
-	KT128 vector #4 (256 bit output, 17 byte input) and transferred buffer after call: FAIL
-	KT128 vector #4 (256 bit output, 17 byte input) and transferred buffer during call: FAIL
-	KT128 vector #5 (256 bit output, 289 byte input): FAIL
-	KT128 vector #5 (256 bit output, 289 byte input) and altered buffer after call: FAIL
-	KT128 vector #5 (256 bit output, 289 byte input) and altered buffer during call: FAIL
-	KT128 vector #5 (256 bit output, 289 byte input) and transferred buffer after call: FAIL
-	KT128 vector #5 (256 bit output, 289 byte input) and transferred buffer during call: FAIL
-	KT128 vector #6 (256 bit output, 4913 byte input): FAIL
-	KT128 vector #6 (256 bit output, 4913 byte input) and altered buffer after call: FAIL
-	KT128 vector #6 (256 bit output, 4913 byte input) and altered buffer during call: FAIL
-	KT128 vector #6 (256 bit output, 4913 byte input) and transferred buffer after call: FAIL
-	KT128 vector #6 (256 bit output, 4913 byte input) and transferred buffer during call: FAIL
-	KT128 vector #7 (256 bit output, 83521 byte input): FAIL
-	KT128 vector #7 (256 bit output, 83521 byte input) and altered buffer after call: FAIL
-	KT128 vector #7 (256 bit output, 83521 byte input) and altered buffer during call: FAIL
-	KT128 vector #7 (256 bit output, 83521 byte input) and transferred buffer after call: FAIL
-	KT128 vector #7 (256 bit output, 83521 byte input) and transferred buffer during call: FAIL
-	KT128 vector #8 (256 bit output, 1419857 byte input): FAIL
-	KT128 vector #8 (256 bit output, 1419857 byte input) and altered buffer after call: FAIL
-	KT128 vector #8 (256 bit output, 1419857 byte input) and altered buffer during call: FAIL
-	KT128 vector #8 (256 bit output, 1419857 byte input) and transferred buffer after call: FAIL
-	KT128 vector #8 (256 bit output, 1419857 byte input) and transferred buffer during call: FAIL
-	KT128 vector #9 (256 bit output, 24137569 byte input): FAIL
-	KT128 vector #9 (256 bit output, 24137569 byte input) and altered buffer after call: FAIL
-	KT128 vector #9 (256 bit output, 24137569 byte input) and altered buffer during call: FAIL
-	KT128 vector #9 (256 bit output, 24137569 byte input) and transferred buffer after call: FAIL
-	KT128 vector #9 (256 bit output, 24137569 byte input) and transferred buffer during call: FAIL
-	KT128 with 80256 bit output, verify last 32 bytes: FAIL
-	KT256 vector #1 (512 bit output, 0 byte input): FAIL
-	KT256 vector #10 (512 bit output, 0 byte input, C=1 bytes): FAIL
-	KT256 vector #11 (512 bit output, 1 byte input, C=41 bytes): FAIL
-	KT256 vector #11 (512 bit output, 1 byte input, C=41 bytes) and altered buffer after call: FAIL
-	KT256 vector #11 (512 bit output, 1 byte input, C=41 bytes) and altered buffer during call: FAIL
-	KT256 vector #11 (512 bit output, 1 byte input, C=41 bytes) and transferred buffer after call: FAIL
-	KT256 vector #11 (512 bit output, 1 byte input, C=41 bytes) and transferred buffer during call: FAIL
-	KT256 vector #12 (512 bit output, 3 byte input, C=1681 bytes): FAIL
-	KT256 vector #12 (512 bit output, 3 byte input, C=1681 bytes) and altered buffer after call: FAIL
-	KT256 vector #12 (512 bit output, 3 byte input, C=1681 bytes) and altered buffer during call: FAIL
-	KT256 vector #12 (512 bit output, 3 byte input, C=1681 bytes) and transferred buffer after call: FAIL
-	KT256 vector #12 (512 bit output, 3 byte input, C=1681 bytes) and transferred buffer during call: FAIL
-	KT256 vector #13 (512 bit output, 7 byte input, C=68921 bytes): FAIL
-	KT256 vector #13 (512 bit output, 7 byte input, C=68921 bytes) and altered buffer after call: FAIL
-	KT256 vector #13 (512 bit output, 7 byte input, C=68921 bytes) and altered buffer during call: FAIL
-	KT256 vector #13 (512 bit output, 7 byte input, C=68921 bytes) and transferred buffer after call: FAIL
-	KT256 vector #13 (512 bit output, 7 byte input, C=68921 bytes) and transferred buffer during call: FAIL
-	KT256 vector #14 (512 bit output, 8191 byte input): FAIL
-	KT256 vector #14 (512 bit output, 8191 byte input) and altered buffer after call: FAIL
-	KT256 vector #14 (512 bit output, 8191 byte input) and altered buffer during call: FAIL
-	KT256 vector #14 (512 bit output, 8191 byte input) and transferred buffer after call: FAIL
-	KT256 vector #14 (512 bit output, 8191 byte input) and transferred buffer during call: FAIL
-	KT256 vector #15 (512 bit output, 8192 byte input): FAIL
-	KT256 vector #15 (512 bit output, 8192 byte input) and altered buffer after call: FAIL
-	KT256 vector #15 (512 bit output, 8192 byte input) and altered buffer during call: FAIL
-	KT256 vector #15 (512 bit output, 8192 byte input) and transferred buffer after call: FAIL
-	KT256 vector #15 (512 bit output, 8192 byte input) and transferred buffer during call: FAIL
-	KT256 vector #16 (512 bit output, 8192 byte input, C=8189 bytes): FAIL
-	KT256 vector #16 (512 bit output, 8192 byte input, C=8189 bytes) and altered buffer after call: FAIL
-	KT256 vector #16 (512 bit output, 8192 byte input, C=8189 bytes) and altered buffer during call: FAIL
-	KT256 vector #16 (512 bit output, 8192 byte input, C=8189 bytes) and transferred buffer after call: FAIL
-	KT256 vector #16 (512 bit output, 8192 byte input, C=8189 bytes) and transferred buffer during call: FAIL
-	KT256 vector #17 (512 bit output, 8192 byte input, C=8190 bytes): FAIL
-	KT256 vector #17 (512 bit output, 8192 byte input, C=8190 bytes) and altered buffer after call: FAIL
-	KT256 vector #17 (512 bit output, 8192 byte input, C=8190 bytes) and altered buffer during call: FAIL
-	KT256 vector #17 (512 bit output, 8192 byte input, C=8190 bytes) and transferred buffer after call: FAIL
-	KT256 vector #17 (512 bit output, 8192 byte input, C=8190 bytes) and transferred buffer during call: FAIL
-	KT256 vector #2 (1024 bit output, 0 byte input): FAIL
-	KT256 vector #3 (512 bit output, 1 byte input): FAIL
-	KT256 vector #3 (512 bit output, 1 byte input) and altered buffer after call: FAIL
-	KT256 vector #3 (512 bit output, 1 byte input) and altered buffer during call: FAIL
-	KT256 vector #3 (512 bit output, 1 byte input) and transferred buffer after call: FAIL
-	KT256 vector #3 (512 bit output, 1 byte input) and transferred buffer during call: FAIL
-	KT256 vector #4 (512 bit output, 17 byte input): FAIL
-	KT256 vector #4 (512 bit output, 17 byte input) and altered buffer after call: FAIL
-	KT256 vector #4 (512 bit output, 17 byte input) and altered buffer during call: FAIL
-	KT256 vector #4 (512 bit output, 17 byte input) and transferred buffer after call: FAIL
-	KT256 vector #4 (512 bit output, 17 byte input) and transferred buffer during call: FAIL
-	KT256 vector #5 (512 bit output, 289 byte input): FAIL
-	KT256 vector #5 (512 bit output, 289 byte input) and altered buffer after call: FAIL
-	KT256 vector #5 (512 bit output, 289 byte input) and altered buffer during call: FAIL
-	KT256 vector #5 (512 bit output, 289 byte input) and transferred buffer after call: FAIL
-	KT256 vector #5 (512 bit output, 289 byte input) and transferred buffer during call: FAIL
-	KT256 vector #6 (512 bit output, 4913 byte input): FAIL
-	KT256 vector #6 (512 bit output, 4913 byte input) and altered buffer after call: FAIL
-	KT256 vector #6 (512 bit output, 4913 byte input) and altered buffer during call: FAIL
-	KT256 vector #6 (512 bit output, 4913 byte input) and transferred buffer after call: FAIL
-	KT256 vector #6 (512 bit output, 4913 byte input) and transferred buffer during call: FAIL
-	KT256 vector #7 (512 bit output, 83521 byte input): FAIL
-	KT256 vector #7 (512 bit output, 83521 byte input) and altered buffer after call: FAIL
-	KT256 vector #7 (512 bit output, 83521 byte input) and altered buffer during call: FAIL
-	KT256 vector #7 (512 bit output, 83521 byte input) and transferred buffer after call: FAIL
-	KT256 vector #7 (512 bit output, 83521 byte input) and transferred buffer during call: FAIL
-	KT256 vector #8 (512 bit output, 1419857 byte input): FAIL
-	KT256 vector #8 (512 bit output, 1419857 byte input) and altered buffer after call: FAIL
-	KT256 vector #8 (512 bit output, 1419857 byte input) and altered buffer during call: FAIL
-	KT256 vector #8 (512 bit output, 1419857 byte input) and transferred buffer after call: FAIL
-	KT256 vector #8 (512 bit output, 1419857 byte input) and transferred buffer during call: FAIL
-	KT256 vector #9 (512 bit output, 24137569 byte input): FAIL
-	KT256 vector #9 (512 bit output, 24137569 byte input) and altered buffer after call: FAIL
-	KT256 vector #9 (512 bit output, 24137569 byte input) and altered buffer during call: FAIL
-	KT256 vector #9 (512 bit output, 24137569 byte input) and transferred buffer after call: FAIL
+	KT256 vector #9 (512 bit output, 24137569 byte input) and transferred buffer after call: TIMEOUT
 	KT256 vector #9 (512 bit output, 24137569 byte input) and transferred buffer during call: FAIL
 	KT256 with 80512 bit output, verify last 64 bytes: FAIL
 /WebCryptoAPI/modern-algos/digest/sha3.https.any.html: OK
