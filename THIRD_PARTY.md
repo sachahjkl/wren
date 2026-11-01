@@ -36,6 +36,7 @@ components below; their license texts are in the executable (bout:licenses) and
 | [rustls](https://github.com/rustls/rustls), [rustls-platform-verifier](https://github.com/rustls/rustls-platform-verifier), [tokio-rustls](https://github.com/rustls/tokio-rustls) | 0.23.46, 0.6.2, 0.26.6 | Apache-2.0 OR ISC OR MIT (the verifier and tokio-rustls: MIT OR Apache-2.0) | `native/net` (TLS) |
 | [ring](https://github.com/briansmith/ring), [rustls-webpki](https://github.com/rustls/webpki), [untrusted](https://github.com/briansmith/untrusted) | 0.17.14, 0.103.16, 0.9.0 | Apache-2.0 AND ISC (webpki, untrusted: ISC) | `native/net` (cryptography, certificate parsing) |
 | [wgpu](https://github.com/gfx-rs/wgpu), [naga](https://github.com/gfx-rs/wgpu/tree/trunk/naga), [pp-rs](https://github.com/Kangz/glslpp-rs) (WebGL: the device, the shader translator) | 30.0.1, 0.2.1 | MIT OR Apache-2.0; pp-rs BSD-3-Clause | `native/webgl` |
+| [p521](https://github.com/RustCrypto/elliptic-curves) (RustCrypto: P-521 for `crypto.subtle`, with `ecdsa` and `elliptic-curve`) | 0.14.0 | Apache-2.0 OR MIT | `native/crypto` |
 | other Rust crates (with those of the toolkit's text backend and accessibility adapter) | `native/Cargo.lock` | MIT, Apache-2.0, BSD, Zlib, Unicode-3.0… | `native/rust-crates.txt` (also in `about:licenses`) lists each one |
 
 The license texts of QuickJS-ng, emmalloc, and webref are kept in

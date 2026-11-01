@@ -228,12 +228,12 @@
     "Ed25519": [["verify"], ["sign"]], "RSA-OAEP": [["encrypt", "wrapKey"], ["decrypt", "unwrapKey"]],
     "ECDH": [[], ["deriveKey", "deriveBits"]], "X25519": [[], ["deriveKey", "deriveBits"]],
   };
-  const NATIVE_CURVES = ["P-256", "P-384"];   // (core:crypto has no P-521)
+  const NATIVE_CURVES = ["P-256", "P-384", "P-521"];
   const curveOf = name => {
     if (!has(NATIVE_CURVES, name)) throw dom("NotSupportedError", `The curve ${name} is not supported`);
     return name;
   };
-  const curveSize = curve => (curve === "P-256" ? 32 : 48);
+  const curveSize = curve => (curve === "P-256" ? 32 : (curve === "P-384" ? 48 : 66));
   const HASH_BLOCK_BITS = { "SHA-1": 512, "SHA-256": 512, "SHA-384": 1024, "SHA-512": 1024 };
 
   const ensureUsages = (type, list) => {

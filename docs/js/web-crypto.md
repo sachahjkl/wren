@@ -5,7 +5,7 @@ computations are on `core:crypto`, in the browser; the JavaScript engine never h
 exported or cloned. It costs nothing until a script calls an operation (`native/js/odin/web_crypto.js` is evaluated then).
 
 Checked: amazon.com (its scripts call `importKey`; without it the page stayed empty), and web-platform-tests `WebCryptoAPI`
-(`wpt/expectations`): of the subtests outside `modern-algos` and `secure-curves`, what fails is almost only P-521.
+(`wpt/expectations`).
 
 | Layer | File |
 |---|---|
@@ -26,8 +26,8 @@ is not in the image, and its source is stripped.
 | AES-KW | wrapKey, unwrapKey, generateKey | raw, jwk |
 | HMAC | sign, verify, generateKey | raw, jwk |
 | PBKDF2, HKDF | deriveBits, deriveKey | raw (import only) |
-| ECDSA (P-256, P-384) | sign, verify, generateKey | raw (public), spki, pkcs8, jwk |
-| ECDH (P-256, P-384) | deriveBits, deriveKey, generateKey | raw (public), spki, pkcs8, jwk |
+| ECDSA (P-256, P-384, P-521) | sign, verify, generateKey | raw (public), spki, pkcs8, jwk |
+| ECDH (P-256, P-384, P-521) | deriveBits, deriveKey, generateKey | raw (public), spki, pkcs8, jwk |
 | RSASSA-PKCS1-v1_5, RSA-PSS | sign, verify, generateKey | spki, pkcs8, jwk |
 | RSA-OAEP | encrypt, decrypt, wrapKey, unwrapKey, generateKey | spki, pkcs8, jwk |
 | Ed25519 | sign, verify, generateKey | raw (public), spki, pkcs8, jwk |
@@ -45,19 +45,20 @@ Hashes: SHA-1, SHA-256, SHA-384, SHA-512.
    the blocking pool; a worker has no pool and works on its own thread. The promise settles from a task either way.
 4. **The library's `ensure`s end the process**, so `bindings_crypto_subtle.odin` checks sizes before it calls `core:crypto`, even
    what `web_crypto.js` has checked.
-5. **What `core:crypto` does not do is here:** CBC and AES-KW over its ECB; CTR's counter of `length` bits, in two runs of its
+5. **P-521 is RustCrypto's** (`p521`, in `native/crypto`, behind `src/page/crypto_p521.odin`): `core:crypto` has only P-256 and P-384, and this curve's arithmetic is not one to write by hand. The material stays
+   in the `Crypto_Key` and goes to the library for the call; hashes and random bytes are the browser's. Its nonces are RustCrypto's deterministic ones, not the bytes of RFC 6979's examples for this curve: signatures verify, in both directions, against that RFC's.
+6. **What `core:crypto` does not do is here:** CBC and AES-KW over its ECB; CTR's counter of `length` bits, in two runs of its
    128-bit one; GCM tags shorter than 128 bits, by sealing twice (the keystream is the same both ways); DER, read and written by
    hand; compressed points, through `core:crypto/_weierstrass`.
-6. **`CryptoKey` is native** (generated from `webcrypto.idl`, `wjr_CryptoKey_get_*`): it holds a state made by `web_crypto.js` that
+7. **`CryptoKey` is native** (generated from `webcrypto.idl`, `wjr_CryptoKey_get_*`): it holds a state made by `web_crypto.js` that
    a page never sees. What `key.algorithm` and `key.usages` return are copies: changing them changes nothing.
-7. **Structured serialization** (`structuredClone`, messages, IndexedDB, history) writes the key's description and
+8. **Structured serialization** (`structuredClone`, messages, IndexedDB, history) writes the key's description and
    `CryptoKey_serialize`'s bytes, for a key that is not extractable too: a script does not see them, and a key must survive in
    IndexedDB. These bytes are the one way a non-extractable key's material enters the engine's memory, and what IndexedDB writes is
    not encrypted.
 
 ## What is not there
 
-- **P-521**: `core:crypto` has only P-256 and P-384. `NotSupportedError`.
 - **RSA moduli over 4096 bits**, public exponents over 32 bits (the library's limits): `DataError`. `generateKey` makes only the
   exponent 65537 (`OperationError` otherwise), of 1024 to 4096 bits. RSA keys of more than two primes: `NotSupportedError`. A
   private JWK needs all of `p`, `q`, `dp`, `dq`, `qi`.
