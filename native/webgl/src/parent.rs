@@ -28,6 +28,8 @@ const END_WAIT_MS: u32 = 2000;
 const LOST_POLL: Duration = Duration::from_millis(50);
 /// Lines for the console, per context, kept until the page's thread takes them.
 const MAX_CONSOLE_LINES: usize = 64;
+/// How many processes one getContext tries, when the process dies while making the context.
+const CREATE_ATTEMPTS: u32 = 3;
 /// How long a page's thread waits for commands to be taken, or for a frame's turn, before it gives up on this one.
 const BACKPRESSURE_WAIT: Duration = Duration::from_millis(1000);
 /// Queued commands, in bytes, before a page's thread waits for the context to catch up.
@@ -877,16 +879,32 @@ impl Handle {
             *l = Some(Limits::of(a));
         }
         let wait = Duration::from_millis(a.wait_ms.max(100) as u64);
-        let id = NEXT_ID.fetch_add(1, Ordering::SeqCst) as u32;
-        let shared = Shared::new(a);
-        let entry = Entry { shared: shared.clone(), tomb: false, software: a.force_software != 0, ops: 0, progress: Instant::now(), asked: 0, lose_asked: false };
-        let proc = gpu.ensure(id, entry, wait)?;
         let mut attrs = *a;
         attrs.notify = None;
         attrs.notify_user = std::ptr::null_mut();
-        let info = Self::make_in(&proc, id, &attrs, wait)?;
-        let h = Box::new(Handle { gpu, id, attrs, shared, wait, state: Mutex::new(Binding { proc: Some(proc), frames: None, w: a.width, h: a.height }), refusal_said: AtomicBool::new(false) });
-        Ok((h, info))
+        let mut attempt = 1;
+        loop {
+            let id = NEXT_ID.fetch_add(1, Ordering::SeqCst) as u32;
+            let shared = Shared::new(a);
+            let entry = Entry { shared: shared.clone(), tomb: false, software: a.force_software != 0, ops: 0, progress: Instant::now(), asked: 0, lose_asked: false };
+            let proc = gpu.ensure(id, entry, wait)?;
+            match Self::make_in(&proc, id, &attrs, wait) {
+                Ok(info) => {
+                    let h = Box::new(Handle { gpu, id, attrs, shared, wait, state: Mutex::new(Binding { proc: Some(proc), frames: None, w: a.width, h: a.height }), refusal_said: AtomicBool::new(false) });
+                    return Ok((h, info));
+                }
+                // The process went while it made this one: a page isn't told "no WebGL" for that, the next process makes it.
+                // (`ensure` stops starting them after webgl.gpu_max_restarts.)
+                Err(_) if proc.is_dead() && attempt < CREATE_ATTEMPTS => {
+                    shared.silence();
+                    attempt += 1;
+                }
+                Err(e) => {
+                    shared.silence();
+                    return Err(e);
+                }
+            }
+        }
     }
 
     /// Asks the process for this context and waits for it.
