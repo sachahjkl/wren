@@ -249,7 +249,7 @@ function Invoke-WrenBuildIfStale([string]$Output, [string]$Flags, [scriptblock]$
 function Invoke-WrenE2E([string]$Exe, [string]$Scenario) {
     $root = Get-WrenRepoRoot
     $source = [IO.File]::ReadAllText((Join-Path $root "src\tools\e2e\$Scenario.odin"))
-    $names = @([regex]::Matches($source, '(?m)^@\(test\)\s*\r?\n([A-Za-z0-9_]+)\s*::') | ForEach-Object { $_.Groups[1].Value })
+    $names = @([regex]::Matches($source, '(?m)^@\(test\)\s*([A-Za-z0-9_]+)\s*::') | ForEach-Object { $_.Groups[1].Value })
     if ($names.Count -eq 0) { "no @(test) in src\tools\e2e\$Scenario.odin"; $global:LASTEXITCODE = 1; return }
     $o = & (Join-Path $root $Exe) "-tests:$($names -join ',')" 2>&1 | Out-String
     $code = $LASTEXITCODE
