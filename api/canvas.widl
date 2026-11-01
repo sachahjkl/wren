@@ -256,6 +256,13 @@ module canvas {
   ////////////////////////////////
   // OffscreenCanvas and ImageBitmap
 
+  /// canvas.transferControlToOffscreen(): an OffscreenCanvas (in this realm, for now) whose frames this element shows. Invalid_State:
+  /// it has a context or was transferred before.
+  OffscreenCanvas HTMLCanvasElement_transferControl(HTMLCanvasElement canvas) raises;
+  /// Transferring an OffscreenCanvas in a message: a token the receiving realm adopts; the object is left detached. Invalid_State: it
+  /// has a context. Data_Clone: it was transferred before.
+  u64 OffscreenCanvas_takeForTransfer(OffscreenCanvas canvas) raises;
+  OffscreenCanvas OffscreenCanvas_adoptTransfer(u64 token) raises;
   /// new OffscreenCanvas(width, height): Quota over the limits.
   OffscreenCanvas OffscreenCanvas_create(u64 width, u64 height) raises;
   u64 OffscreenCanvas_width(OffscreenCanvas canvas);

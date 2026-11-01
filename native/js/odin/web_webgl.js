@@ -1,5 +1,5 @@
 // WebGL 1 and 2 (https://registry.khronos.org/webgl/specs/latest/) over the natives of web_webgl.odin, run the first time a script
-// of a window asks for a context or reads one of the interfaces. Here: the objects, Web IDL's conversions and overloads, and a
+// of a window or a worker asks for a context or reads one of the interfaces. Here: the objects, Web IDL's conversions and overloads, and a
 // command buffer; calls are written to it and sent at the end of the task, or when something has to wait for an answer.
 // OpenGL ES's rules and the errors of getError are on the device's side (native/webgl: a thread per context in the GPU process); what is
 // checked here is what only the realm can know: which object is whose. What it uses of the realm is taken here, so what the
@@ -11,7 +11,8 @@
   const microtask = global.queueMicrotask, Ev = global.Event, dispatch = global.EventTarget.prototype.dispatchEvent;
   const TD = global.TextDecoder, setTimeoutFn = global.setTimeout;
   const HTMLCanvas = global.HTMLCanvasElement, Offscreen = global.OffscreenCanvas, ImageDataC = global.ImageData;
-  const canvasGetWidth = Object.getOwnPropertyDescriptor(HTMLCanvas.prototype, "width").get;
+  // (a worker has no elements)
+  const canvasGetWidth = HTMLCanvas === undefined ? undefined : Object.getOwnPropertyDescriptor(HTMLCanvas.prototype, "width").get;
   const utf8 = new TD();
   const S = Symbol("webgl"), TOKEN = {};
 
@@ -869,14 +870,15 @@
   };
 
   // A canvas with WebGL about to be read (toDataURL, drawImage, texImage2D): what was drawn so far, in its bitmap.
-  const syncCanvas = canvas => {
+  // `commit`: the frame ends with this (transferToImageBitmap).
+  const syncCanvas = (canvas, commit) => {
     if (canvas === null || typeof canvas !== "object") return;
     const gl = contextOf.get(canvas);
     if (gl === undefined) return;
     const s = gl[S];
     if (s.lost) return;
     flush(s);
-    native.snapshot(s.ref);
+    if (commit === true) native.commit(s.ref); else native.snapshot(s.ref);
   };
 
   // ---- the interface ----
@@ -1961,12 +1963,14 @@
     const d = proto && Object.getOwnPropertyDescriptor(proto, name);
     if (d === undefined || typeof d.value !== "function") return;
     const f = d.value;
-    const wrapped = { [name](source) { syncCanvas(name === "drawImage" || name === "createPattern" || name === "createImageBitmap" ? source : this); return apply(f, this, arguments); } }[name];
+    const wrapped = { [name](source) { syncCanvas(name === "drawImage" || name === "createPattern" || name === "createImageBitmap" ? source : this, name === "transferToImageBitmap"); return apply(f, this, arguments); } }[name];
     defineProperty(wrapped, "length", { value: f.length, configurable: true });
     defineProperty(proto, name, { value: wrapped, writable: d.writable, enumerable: d.enumerable, configurable: d.configurable });
   };
-  before(HTMLCanvas.prototype, "toDataURL");
-  before(HTMLCanvas.prototype, "toBlob");
+  if (HTMLCanvas !== undefined) {
+    before(HTMLCanvas.prototype, "toDataURL");
+    before(HTMLCanvas.prototype, "toBlob");
+  }
   if (Offscreen !== undefined) {
     before(Offscreen.prototype, "convertToBlob");
     before(Offscreen.prototype, "transferToImageBitmap");

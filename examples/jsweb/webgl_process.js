@@ -112,6 +112,37 @@ test("hung: the question is let go at its deadline, the process killed, the page
   ok(now.pid !== first.pid && now.pid !== 0, "the hung process is gone");
 });
 
+// A worker's context goes through the same: it hears of the end of the process too, on its own loop.
+test("a worker's context is lost and restored with the others", async () => {
+  const source = `
+    const c = new OffscreenCanvas(8, 8);
+    const gl = c.getContext("webgl", { antialias: false });
+    let lost = 0, restored = 0;
+    c.addEventListener("webglcontextlost", e => { lost++; e.preventDefault(); postMessage("lost"); });
+    c.addEventListener("webglcontextrestored", () => {
+      restored++;
+      gl.clearColor(0, 1, 0, 1);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      const p = new Uint8Array(4);
+      gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, p);
+      postMessage("restored " + p.join());
+    });
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    postMessage("ready " + gl.getError());
+  `;
+  const said = [];
+  const w = new Worker("data:text/javascript," + encodeURIComponent(source));
+  w.onmessage = e => said.push(e.data);
+  w.onerror = e => said.push("error " + e.message);
+  await until("the worker", () => said.length > 0);
+  eq(said[0], "ready 0", "it has a context");
+  await signal("gpu_kill");
+  await until("lost and restored", () => said.length >= 3);
+  eq(said[1], "lost", "the lost event in the worker");
+  eq(said[2], "restored 0,255,0,255", "the restored event, and it draws");
+  w.terminate();
+});
+
 // (a machine with no adapter has no process to look at)
 if (document.createElement("canvas").getContext("webgl")) __run();
 else { ok(true, "no adapter: nothing to show"); console.log("DONE"); }

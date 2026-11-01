@@ -877,6 +877,7 @@ worker_main :: proc(data: rawptr) {
 			if link_stopping(l) { break }
 			if g.worklet != nil { worklet_realm_poll(p, g) }   // the render thread's requests, after what the page said first (bindings_webaudio.odin)
 			if sync.atomic_exchange(&g.idb_wake, false) { idb_worker_wake(p) }   // IndexedDB events (idb_host.odin)
+			canvas_worker_tick(p)   // frames of its WebGL contexts, what goes to a placeholder (canvas_offscreen.odin)
 			host.loop_wait(&l.loop)
 			free_all(context.temp_allocator)
 		}

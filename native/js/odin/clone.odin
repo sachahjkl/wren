@@ -19,6 +19,7 @@
 // Map.prototype.forEach does not change what gets cloned).
 package odin_glue
 
+import "../odin_abi/abi"
 import "../odin_abi/api_decl"
 import "../odin/jsb"
 import "../odin/wj"
@@ -39,6 +40,7 @@ Clone_Tag :: enum u8 {
 	Wasm_Module,     // a WebAssembly.Module: a token of the agent cluster
 	Resizable_Buffer, // an ArrayBuffer with a maximum: it, then as Array_Buffer
 	Crypto_Key,      // a CryptoKey: what it says of itself, then the browser's form of its material (web_crypto.odin)
+	Offscreen,       // an OffscreenCanvas of the transfer list: the browser's token
 }
 
 @(private = "file") MAGIC := [4]u8{'W', 'S', 'C', 1}
@@ -47,7 +49,7 @@ Clone_Tag :: enum u8 {
 // nesting allowed; recursion is also bounded by the native stack (wj_stack_exhausted)
 @(private = "file") MAX_DEPTH :: 10000
 
-@(private = "file") if_port, if_msh, if_video_frame, if_file, if_fs_handle := i32(-2), i32(-2), i32(-2), i32(-2), i32(-2)
+@(private = "file") if_port, if_msh, if_video_frame, if_file, if_fs_handle, if_offscreen := i32(-2), i32(-2), i32(-2), i32(-2), i32(-2), i32(-2)
 
 // ---- the realm's original built-ins ----
 
@@ -494,6 +496,16 @@ serialize_object :: proc(s: ^Ser, v: wj.JSValue) -> bool {
 		}
 		return serialize_token(s, v, .Mse_Handle, token)
 	}
+	if is_a(v, &if_offscreen, "OffscreenCanvas") {
+		// transferable only, as a MediaSourceHandle; what can go wrong has its own exception (HTML: its transfer steps)
+		if !listed(s, v) { return clone_error(ctx, "An OffscreenCanvas could not be cloned because it was not transferred.") }
+		token: u64
+		if st := jsb.host(&token, api_decl.OffscreenCanvas_takeForTransfer, wj.wr_OffscreenCanvas_takeForTransfer, api_decl.OffscreenCanvas(wj.obj_handle(v))); st != .None {
+			wj.wj_throw_status(ctx, i32(st), "postMessage")
+			return false
+		}
+		return serialize_token(s, v, .Offscreen, token)
+	}
 	if is_a(v, &if_video_frame, "VideoFrame") {
 		// a VideoFrame is transferable only: it must be in the transfer list; the host moves its pixels into a token
 		if !listed(s, v) { return clone_error(ctx, "A VideoFrame could not be cloned because it was not transferred.") }
@@ -729,9 +741,9 @@ transfer_list :: proc(ctx: ^wj.Context, list: wj.JSValue, items: ^[dynamic]wj.JS
 		if wj.is_exception(item) { return false }
 		append(items, item)
 		port := is_a(item, &if_port, "MessagePort")
-		movable := port || is_a(item, &if_msh, "MediaSourceHandle") || is_a(item, &if_video_frame, "VideoFrame")
+		movable := port || is_a(item, &if_msh, "MediaSourceHandle") || is_a(item, &if_video_frame, "VideoFrame") || is_a(item, &if_offscreen, "OffscreenCanvas")
 		if !movable && !wj.JS_IsArrayBuffer(item) {
-			return clone_error(ctx, "Value at index in the transfer list is not transferable (only ArrayBuffer, MessagePort, MediaSourceHandle and VideoFrame are).")
+			return clone_error(ctx, "Value at index in the transfer list is not transferable (only ArrayBuffer, MessagePort, MediaSourceHandle, VideoFrame and OffscreenCanvas are).")
 		}
 		if wj.JS_IsArrayBufferHost(item) { return clone_error(ctx, "The buffer of a WebAssembly.Memory cannot be transferred.") }
 		bn: uint
@@ -1219,6 +1231,12 @@ deserialize :: proc(d: ^Deser) -> wj.JSValue {
 		h: api_decl.MediaSourceHandle
 		if jsb.host(&h, api_decl.MediaSourceHandle_adopt, wj.wr_MediaSourceHandle_adopt, token) != .None || h == 0 { return malformed(ctx) }
 		return keep(d, wj.wj_wrap_owned(ctx, u64(h), jsb.iface_of(api_decl.MediaSourceHandle), wj.UNDEFINED))
+	case .Offscreen:
+		token, okt := get_u64(d)
+		if !okt { return malformed(ctx) }
+		h: abi.Owned(api_decl.OffscreenCanvas)
+		if jsb.host(&h, api_decl.OffscreenCanvas_adoptTransfer, wj.wr_OffscreenCanvas_adoptTransfer, token) != .None || h.handle == 0 { return malformed(ctx) }
+		return keep(d, wj.wj_wrap_owned(ctx, u64(h.handle), jsb.iface_of(api_decl.OffscreenCanvas), wj.UNDEFINED))
 	case .Video_Frame:
 		token, okt := get_u64(d)
 		if !okt { return malformed(ctx) }

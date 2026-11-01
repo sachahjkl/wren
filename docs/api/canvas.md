@@ -1198,13 +1198,49 @@ addPath(path, matrix).
 
 Host: `Path2D_addPath :: proc(c: ^Call, target: Api_Path2D, path: Api_Path2D, m11: f64, m12: f64, m21: f64, m22: f64, m41: f64, m42: f64)`
 
+### `HTMLCanvasElement_transferControl`
+
+```
+OffscreenCanvas HTMLCanvasElement_transferControl(HTMLCanvasElement canvas) raises
+```
+
+/////////////////////////////
+canvas.transferControlToOffscreen(): an OffscreenCanvas (in this realm, for now) whose frames this element shows. Invalid_State:
+it has a context or was transferred before.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLCanvasElement_transferControl :: proc(c: ^Call, canvas: Api_HTMLCanvasElement) -> (u64, Api_Error)`
+
+### `OffscreenCanvas_takeForTransfer`
+
+```
+u64 OffscreenCanvas_takeForTransfer(OffscreenCanvas canvas) raises
+```
+
+Transferring an OffscreenCanvas in a message: a token the receiving realm adopts; the object is left detached. Invalid_State: it
+has a context. Data_Clone: it was transferred before.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `OffscreenCanvas_takeForTransfer :: proc(c: ^Call, canvas: Api_OffscreenCanvas) -> (u64, Api_Error)`
+
+### `OffscreenCanvas_adoptTransfer`
+
+```
+OffscreenCanvas OffscreenCanvas_adoptTransfer(u64 token) raises
+```
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `OffscreenCanvas_adoptTransfer :: proc(c: ^Call, token: u64) -> (u64, Api_Error)`
+
 ### `OffscreenCanvas_create`
 
 ```
 OffscreenCanvas OffscreenCanvas_create(u64 width, u64 height) raises
 ```
 
-/////////////////////////////
 new OffscreenCanvas(width, height): Quota over the limits.
 
 Raises: returns an `Error` (see [web](web.md)).

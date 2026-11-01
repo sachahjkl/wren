@@ -1186,6 +1186,13 @@ foreign _wr_wj_canvas {
 	// addPath(path, matrix).
 	@(link_name = "Path2D_addPath") wr_Path2D_addPath :: proc(target: u64, path: u64, m11: f64, m12: f64, m21: f64, m22: f64, m41: f64, m42: f64) ---
 	// /////////////////////////////
+	// canvas.transferControlToOffscreen(): an OffscreenCanvas (in this realm, for now) whose frames this element shows. Invalid_State:
+	// it has a context or was transferred before.
+	@(link_name = "HTMLCanvasElement_transferControl") wr_HTMLCanvasElement_transferControl :: proc(canvas: u64, _ret: ^u64) -> i32 ---
+	// Transferring an OffscreenCanvas in a message: a token the receiving realm adopts; the object is left detached. Invalid_State: it
+	// has a context. Data_Clone: it was transferred before.
+	@(link_name = "OffscreenCanvas_takeForTransfer") wr_OffscreenCanvas_takeForTransfer :: proc(canvas: u64, _ret: ^u64) -> i32 ---
+	@(link_name = "OffscreenCanvas_adoptTransfer") wr_OffscreenCanvas_adoptTransfer :: proc(token: u64, _ret: ^u64) -> i32 ---
 	// new OffscreenCanvas(width, height): Quota over the limits.
 	@(link_name = "OffscreenCanvas_create") wr_OffscreenCanvas_create :: proc(width: u64, height: u64, _ret: ^u64) -> i32 ---
 	@(link_name = "OffscreenCanvas_width") wr_OffscreenCanvas_width :: proc(canvas: u64) -> u64 ---
@@ -4051,6 +4058,8 @@ foreign _wr_wj_webgl {
 	@(link_name = "WebGL_height") wr_WebGL_height :: proc(gl: u64) -> u32 ---
 	// What was drawn so far into the canvas's bitmap, now (toDataURL, drawImage).
 	@(link_name = "WebGL_snapshot") wr_WebGL_snapshot :: proc(gl: u64) ---
+	// The same, and the frame ends: the drawing buffer starts again as after a present (transferToImageBitmap).
+	@(link_name = "WebGL_commit") wr_WebGL_commit :: proc(gl: u64) ---
 	@(link_name = "WebGL_isLost") wr_WebGL_isLost :: proc(gl: u64) -> i32 ---
 	@(link_name = "WebGL_lose") wr_WebGL_lose :: proc(gl: u64) ---
 	@(link_name = "WebGL_restore") wr_WebGL_restore :: proc(gl: u64) -> i32 ---

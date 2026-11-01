@@ -1099,4 +1099,145 @@ test("what a page sets on the canvas does not need a shell", () => {
   eq(px(gl), "255,255,0,255", "a size given later");
 });
 
+// ---- in a worker ----
+
+// Runs `body` in a dedicated worker, as the body of an async function given (say, gl, px): each say() is a line. Comes back with the
+// lines when it says "end".
+const inWorker = (body, message, transfer) => new Promise(done => {
+  const source = `
+    const say = t => postMessage(String(t));
+    const px = gl => { const p = new Uint8Array(4); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, p); return p.join(); };
+    const frameIn = () => new Promise(requestAnimationFrame);
+    const run = async m => { try { ${body} } catch (e) { say("threw " + e.name + " " + e.message); } say("end"); };
+    onmessage = e => run(e.data);
+  `;
+  const lines = [];
+  const w = new Worker("data:text/javascript," + encodeURIComponent(source));
+  w.onmessage = e => { if (e.data === "end") { w.terminate(); done(lines); } else lines.push(e.data); };
+  w.onerror = e => { lines.push("error " + e.message); w.terminate(); done(lines); };
+  w.postMessage(message === undefined ? 0 : message, transfer === undefined ? [] : transfer);
+});
+
+test("a worker: the interfaces, and a context on an OffscreenCanvas", async () => {
+  if (mk() === null) return;
+  const lines = await inWorker(`
+    say(typeof WebGLRenderingContext + " " + typeof WebGL2RenderingContext + " " + typeof WebGLBuffer + " " + typeof WebGLContextEvent);
+    const c = new OffscreenCanvas(16, 16);
+    const gl = c.getContext("webgl", { antialias: false });
+    say(gl instanceof WebGLRenderingContext);
+    say(gl.canvas === c);
+    gl.clearColor(0, 1, 0, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    say(px(gl));
+    say(gl.getError());
+    const g2 = new OffscreenCanvas(16, 16).getContext("webgl2", { antialias: false });
+    say(g2 instanceof WebGL2RenderingContext);
+    g2.clearColor(1, 0, 0, 1);
+    g2.clear(g2.COLOR_BUFFER_BIT);
+    say(px(g2));
+    const s = gl.createShader(gl.VERTEX_SHADER);
+    gl.shaderSource(s, "attribute vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }");
+    gl.compileShader(s);
+    say(gl.getShaderParameter(s, gl.COMPILE_STATUS));
+  `);
+  eq(lines.join("|"), "function function function function|true|true|0,255,0,255|0|true|255,0,0,255|true", "what the worker saw");
+});
+
+test("a worker: transferToImageBitmap takes the frame and starts another", async () => {
+  if (mk() === null) return;
+  const lines = await inWorker(`
+    const c = new OffscreenCanvas(16, 16);
+    const gl = c.getContext("webgl", { antialias: false });
+    gl.clearColor(0, 0, 1, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    const b = c.transferToImageBitmap();
+    say(b.width + "x" + b.height);
+    const read = new OffscreenCanvas(16, 16).getContext("2d");
+    read.drawImage(b, 0, 0);
+    say(read.getImageData(4, 4, 1, 1).data.join());
+    // the drawing buffer starts again; the clear color stays
+    say(px(gl));
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    say(px(gl));
+    const blob = await c.convertToBlob();
+    say(blob.type + " " + (blob.size > 0));
+  `);
+  eq(lines.join("|"), "16x16|0,0,255,255|0,0,0,0|0,0,255,255|image/png true", "what the worker saw");
+});
+
+// What an element shows, read back as a page can.
+const shown = canvas => {
+  const r = document.createElement("canvas");
+  r.width = canvas.width;
+  r.height = canvas.height;
+  const g = r.getContext("2d");
+  g.drawImage(canvas, 0, 0);
+  return g.getImageData(1, 1, 1, 1).data.join();
+};
+
+const frameUntil = async (f, what) => {
+  for (let i = 0; i < 300; i++) {
+    if (f()) return true;
+    await signal("frame");
+    await sleep(20);
+  }
+  console.log("FAIL waited too long for " + what);
+  return false;
+};
+
+test("transferControlToOffscreen: a worker's frames reach the page's canvas", async () => {
+  if (mk() === null) return;
+  const c = document.createElement("canvas");
+  c.width = c.height = SIZE;
+  const off = c.transferControlToOffscreen();
+  ok(off instanceof OffscreenCanvas, "an OffscreenCanvas");
+  eq(off.width, SIZE, "of the element's size");
+  throws(() => c.transferControlToOffscreen(), "InvalidStateError", "only once");
+  throws(() => c.getContext("2d"), "InvalidStateError", "the element has no context from now on");
+  throws(() => c.getContext("webgl"), "InvalidStateError", "of any kind");
+  inWorker(`
+    const gl = m.canvas.getContext("webgl", { antialias: false });
+    say(m.canvas.width);
+    for (const color of [[1, 0, 0], [0, 1, 0]]) {
+      for (let i = 0; i < 40; i++) {
+        gl.clearColor(color[0], color[1], color[2], 1);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        await frameIn();
+      }
+    }
+    // (it stays, with its last frame on its way, until the page goes)
+    await new Promise(() => {});
+  `, { canvas: off }, [off]);
+  eq(off.width, 0, "the object here is detached");
+  throws(() => structuredClone(off, { transfer: [off] }), "DataCloneError", "it cannot be transferred again");
+  await frameUntil(() => shown(c) === "0,255,0,255", "the worker's last color on the page's canvas");
+  eq(shown(c), "0,255,0,255", "the worker's color");
+});
+
+test("transferControlToOffscreen: a worker's 2D canvas too, and a context stays with its canvas", async () => {
+  const c = document.createElement("canvas");
+  c.width = c.height = SIZE;
+  const off = c.transferControlToOffscreen();
+  const lines = [];
+  const worker = new Worker("data:text/javascript," + encodeURIComponent(`
+    onmessage = e => {
+      const g = e.data.getContext("2d");
+      g.fillStyle = "#0000ff";
+      g.fillRect(0, 0, 100, 100);
+      postMessage("drawn");
+    };
+  `));
+  worker.onmessage = e => lines.push(e.data);
+  worker.postMessage(off, [off]);
+  await frameUntil(() => lines.length > 0 && shown(c) === "0,0,255,255", "the worker's 2D drawing on the page's canvas");
+  worker.terminate();
+  const owned = new OffscreenCanvas(4, 4);
+  owned.getContext("2d");
+  throws(() => structuredClone(owned, { transfer: [owned] }), "InvalidStateError", "a canvas with a context cannot be transferred");
+  throws(() => structuredClone(new OffscreenCanvas(4, 4)), "DataCloneError", "nor cloned at all");
+  const other = document.createElement("canvas");
+  other.getContext("2d");
+  throws(() => other.transferControlToOffscreen(), "InvalidStateError", "nor an element with a context give up its drawing");
+});
+
 __run();

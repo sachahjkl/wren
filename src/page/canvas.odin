@@ -18,6 +18,7 @@ import "core:fmt"
 import "core:math"
 import "core:strconv"
 import "core:strings"
+import "core:sync"
 import "wb:base"
 import "wb:canvas2d"
 import "wb:css"
@@ -66,6 +67,8 @@ Canvas_Backing :: struct {
 	warned:    bool,
 	virtual:   bool,                      // the bitmap has no pixels: the canvas is drawn on the GPU (canvas2d.Gpu)
 	read_freq: bool,                      // getContext's willReadFrequently: always software
+	placeholder: ^Canvas_Placeholder,     // transferControlToOffscreen: the element's and its OffscreenCanvas's (canvas_offscreen.odin)
+	committed: u64,                       // the bitmap's version the placeholder has
 }
 
 @(private)
@@ -86,14 +89,11 @@ Canvas_Page :: struct {
 	tick:        u64,
 }
 
-@(private)
-canvas_pages: map[^Page]^Canvas_Page
-
-// Ids of backings that died: the shell frees their textures.
+// Ids of backings that died: the shell frees their textures. (Only a window's: a worker's canvases have no texture.)
 @(private)
 canvas_released: [dynamic]u64
 @(private)
-canvas_next_id: u64
+canvas_next_id: u64   // atomic: workers make canvases too
 
 // What the shell provides for text (fonts, shaping, glyph outlines). Set once at start-up; `user` is replaced by the
 // page when a context is made.
@@ -168,23 +168,22 @@ lookup_HTMLCanvasElement :: proc(c: ^Call, h: u64) -> ^dom.Node {
 
 @(private)
 canvas_page :: proc(p: ^Page) -> ^Canvas_Page {
-	if cp, ok := canvas_pages[p]; ok { return cp }
+	if p.canvases != nil { return p.canvases }
 	cp := new(Canvas_Page)
-	canvas_pages[p] = cp
+	p.canvases = cp
 	// runs before page_cleanup frees the objects (registered after it): the backings go first, and the objects that
 	// outlive them see their backing gone
 	base.on_close(p.scope, proc(data: rawptr) {
 		pg := (^Page)(data)
-		cp, ok := canvas_pages[pg]
-		if !ok { return }
+		cp := pg.canvases
+		if cp == nil { return }
 		for len(cp.all) > 0 { canvas_backing_free(cp.all[len(cp.all) - 1]) }
 		for _, im in cp.images { canvas2d.bitmap_destroy(&im.bmp); free(im) }
 		delete(cp.images)
 		delete(cp.backings)
 		delete(cp.all)
 		free(cp)
-		delete_key(&canvas_pages, pg)
-		if len(canvas_pages) == 0 { delete(canvas_pages); canvas_pages = nil }
+		pg.canvases = nil
 	}, p)
 	return cp
 }
@@ -211,7 +210,7 @@ canvas_bitmap :: proc(p: ^Page, w, h: int) -> (bmp: canvas2d.Bitmap, ok: bool) {
 @(private)
 canvas_bitmap_free :: proc(p: ^Page, bmp: ^canvas2d.Bitmap) {
 	if !p.closed {
-		if cp, ok := canvas_pages[p]; ok { cp.bytes -= bmp.accounted > 0 ? bmp.accounted : len(bmp.pix) }
+		if cp := p.canvases; cp != nil { cp.bytes -= bmp.accounted > 0 ? bmp.accounted : len(bmp.pix) }
 	}
 	canvas2d.bitmap_destroy(bmp)
 }
@@ -277,9 +276,8 @@ canvas_dims :: proc(d: ^dom.Document, node: base.Handle) -> (w, h: int) {
 @(private)
 canvas_backing_new :: proc(p: ^Page, node: base.Handle, w, h: int) -> ^Canvas_Backing {
 	cp := canvas_page(p)
-	canvas_next_id += 1
 	b := new(Canvas_Backing)
-	b.page, b.node, b.id = p, node, canvas_next_id | CANVAS_TEXTURE_BIT
+	b.page, b.node, b.id = p, node, (sync.atomic_add(&canvas_next_id, 1) + 1) | CANVAS_TEXTURE_BIT
 	b.width, b.height = w, h
 	if p.doc != nil { b.seen = p.doc.mutations }
 	append(&cp.all, b)
@@ -316,7 +314,8 @@ canvas_backing_alloc :: proc(b: ^Canvas_Backing) -> bool {
 @(private)
 canvas_backing_free :: proc(b: ^Canvas_Backing) {
 	p := b.page
-	if cp, ok := canvas_pages[p]; ok {
+	placeholder_forget(b)
+	if cp := p.canvases; cp != nil {
 		if b.node != base.NIL_HANDLE { delete_key(&cp.backings, b.node) }
 		for x, i in cp.all { if x == b { unordered_remove(&cp.all, i); break } }
 	}
@@ -330,8 +329,10 @@ canvas_backing_free :: proc(b: ^Canvas_Backing) {
 	}
 	if b.owner != nil { b.owner.backing = nil }
 	canvas_bitmap_free(p, &b.bmp)
-	if canvas_released.allocator.procedure == nil { canvas_released.allocator = base.permanent_allocator() }
-	append(&canvas_released, b.id)
+	if p.worker == nil {
+		if canvas_released.allocator.procedure == nil { canvas_released.allocator = base.permanent_allocator() }
+		append(&canvas_released, b.id)
+	}
 	free(b)
 }
 
@@ -349,7 +350,8 @@ canvas_element_backing :: proc(p: ^Page, node: base.Handle, create: bool) -> ^Ca
 // size clears the canvas and resets its context. Checked when the document's mutation counter moved.
 @(private)
 canvas_sync :: proc(b: ^Canvas_Backing) {
-	if b == nil || b.node == base.NIL_HANDLE { return }
+	// (a placeholder has the size of what its OffscreenCanvas draws)
+	if b == nil || b.node == base.NIL_HANDLE || b.placeholder != nil { return }
 	d := b.page.doc
 	if d == nil || b.seen == d.mutations { return }
 	b.seen = d.mutations
@@ -424,7 +426,7 @@ canvas_make_context :: proc(c: ^Call, b: ^Canvas_Backing, alpha, read_freq: bool
 	if b.ctx_handle != 0 { return b.ctx_obj != nil && b.ctx_obj.kind == .Context ? b.ctx_handle : 0 }
 	p := c.page
 	b.opaque = !alpha
-	b.read_freq = read_freq
+	b.read_freq = read_freq || b.placeholder != nil   // (what a placeholder shows is copied from the bitmap)
 	canvas_backing_alloc(b)
 	o, h := canvas_new_object(p, c.owner, .Context)
 	o.backing, o.alpha, o.read_freq = b, alpha, read_freq
@@ -450,22 +452,26 @@ Canvas_View :: struct {
 // The pixels of a <canvas> element (ok = false: nothing to draw, no script asked for a context or the bitmap could not
 // be had).
 canvas_view :: proc(p: ^Page, node: base.Handle) -> Canvas_View {
-	cp, has := canvas_pages[p]
-	if !has { return {} }
+	cp := p.canvases
+	if cp == nil { return {} }
 	b, found := cp.backings[node]
-	if !found || b.ctx_obj == nil { return {} }
+	if !found || (b.ctx_obj == nil && b.placeholder == nil) { return {} }
 	canvas_sync(b)
 	if b.bmp.w == 0 || b.bmp.h == 0 { return {} }
+	if b.ctx_obj == nil { return Canvas_View{ok = true, id = b.id, bmp = &b.bmp} }
 	canvas2d.gpu_check(&b.ctx_obj.ctx)
 	return Canvas_View{ok = true, id = b.id, bmp = &b.bmp, gpu = b.ctx_obj.ctx.gpu}
 }
 
 // Once per frame: backings of elements the document freed go (their textures with them).
 canvas_frame :: proc(p: ^Page) {
-	cp, has := canvas_pages[p]
-	if !has { return }
+	cp := p.canvases
+	if cp == nil { return }
 	for b in cp.all {
 		if b.ctx_obj != nil && b.ctx_obj.kind == .WebGL { webgl_frame(p, b.ctx_obj) }
+		if b.placeholder != nil {
+			if b.node != base.NIL_HANDLE { placeholder_take(b) } else { placeholder_commit(b) }
+		}
 	}
 	if len(cp.backings) == 0 || p.doc == nil { return }
 	gone: [dynamic]^Canvas_Backing
@@ -477,8 +483,8 @@ canvas_frame :: proc(p: ^Page) {
 
 // Changes whenever a canvas of the page was drawn on (effects that cache what is under them look at it).
 canvas_generation :: proc(p: ^Page) -> u64 {
-	cp, ok := canvas_pages[p]
-	if !ok { return 0 }
+	cp := p.canvases
+	if cp == nil { return 0 }
 	g: u64
 	for b in cp.all {
 		g += b.bmp.version
@@ -503,7 +509,7 @@ canvas_drain_released :: proc(out: ^[dynamic]u64) {
 
 // How many canvas bytes the page holds (for the memory view and tests).
 canvas_bytes :: proc(p: ^Page) -> int {
-	if cp, ok := canvas_pages[p]; ok { return cp.bytes + cp.image_bytes }
+	if cp := p.canvases; cp != nil { return cp.bytes + cp.image_bytes }
 	return 0
 }
 
