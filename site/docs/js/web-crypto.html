@@ -229,7 +229,7 @@
 computations are on <code>core:crypto</code>, in the browser; the JavaScript engine never holds a key's material except while a key is being
 exported or cloned. It costs nothing until a script calls an operation (<code>native/js/odin/web_crypto.js</code> is evaluated then).</p>
 <p>Checked: amazon.com (its scripts call <code>importKey</code>; without it the page stayed empty), and web-platform-tests <code>WebCryptoAPI</code>
-(<code>wpt/expectations</code>): of the subtests outside <code>modern-algos</code> and <code>secure-curves</code>, what fails is almost only P-521.</p>
+(<code>wpt/expectations</code>).</p>
 <div class="table-box"><table>
 <thead><tr><th>Layer</th><th>File</th></tr></thead>
 <tbody>
@@ -250,8 +250,8 @@ is not in the image, and its source is stripped.</p>
 <tr><td>AES-KW</td><td>wrapKey, unwrapKey, generateKey</td><td>raw, jwk</td></tr>
 <tr><td>HMAC</td><td>sign, verify, generateKey</td><td>raw, jwk</td></tr>
 <tr><td>PBKDF2, HKDF</td><td>deriveBits, deriveKey</td><td>raw (import only)</td></tr>
-<tr><td>ECDSA (P-256, P-384)</td><td>sign, verify, generateKey</td><td>raw (public), spki, pkcs8, jwk</td></tr>
-<tr><td>ECDH (P-256, P-384)</td><td>deriveBits, deriveKey, generateKey</td><td>raw (public), spki, pkcs8, jwk</td></tr>
+<tr><td>ECDSA (P-256, P-384, P-521)</td><td>sign, verify, generateKey</td><td>raw (public), spki, pkcs8, jwk</td></tr>
+<tr><td>ECDH (P-256, P-384, P-521)</td><td>deriveBits, deriveKey, generateKey</td><td>raw (public), spki, pkcs8, jwk</td></tr>
 <tr><td>RSASSA-PKCS1-v1_5, RSA-PSS</td><td>sign, verify, generateKey</td><td>spki, pkcs8, jwk</td></tr>
 <tr><td>RSA-OAEP</td><td>encrypt, decrypt, wrapKey, unwrapKey, generateKey</td><td>spki, pkcs8, jwk</td></tr>
 <tr><td>Ed25519</td><td>sign, verify, generateKey</td><td>raw (public), spki, pkcs8, jwk</td></tr>
@@ -269,6 +269,8 @@ in a key that is not extractable, whatever the realm asks. Usages are checked in
 the blocking pool; a worker has no pool and works on its own thread. The promise settles from a task either way.</li>
 <li><strong>The library's <code>ensure</code>s end the process</strong>, so <code>bindings_crypto_subtle.odin</code> checks sizes before it calls <code>core:crypto</code>, even
 what <code>web_crypto.js</code> has checked.</li>
+<li><strong>P-521 is RustCrypto's</strong> (<code>p521</code>, in <code>native/crypto</code>, behind <code>src/page/crypto_p521.odin</code>): <code>core:crypto</code> has only P-256 and P-384, and this curve's arithmetic is not one to write by hand. The material stays
+in the <code>Crypto_Key</code> and goes to the library for the call; hashes and random bytes are the browser's. Its nonces are RustCrypto's deterministic ones, not the bytes of RFC 6979's examples for this curve: signatures verify, in both directions, against that RFC's.</li>
 <li><strong>What <code>core:crypto</code> does not do is here:</strong> CBC and AES-KW over its ECB; CTR's counter of <code>length</code> bits, in two runs of its
 128-bit one; GCM tags shorter than 128 bits, by sealing twice (the keystream is the same both ways); DER, read and written by
 hand; compressed points, through <code>core:crypto/_weierstrass</code>.</li>
@@ -281,7 +283,6 @@ not encrypted.</li>
 </ol>
 <h2 id="what-is-not-there"><a class="anchor" href="#what-is-not-there" aria-hidden="true">#</a>What is not there</h2>
 <ul>
-<li><strong>P-521</strong>: <code>core:crypto</code> has only P-256 and P-384. <code>NotSupportedError</code>.</li>
 <li><strong>RSA moduli over 4096 bits</strong>, public exponents over 32 bits (the library's limits): <code>DataError</code>. <code>generateKey</code> makes only the
 exponent 65537 (<code>OperationError</code> otherwise), of 1024 to 4096 bits. RSA keys of more than two primes: <code>NotSupportedError</code>. A
 private JWK needs all of <code>p</code>, <code>q</code>, <code>dp</code>, <code>dq</code>, <code>qi</code>.</li>
