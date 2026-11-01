@@ -247,7 +247,7 @@ ask for less of it while you work, which tools tell you where the time goes, and
 </tbody>
 </table></div>
 <p>Run them with <code>powershell -NoProfile -File</code>. A step that <code>-Only</code>, <code>-Failed</code> or <code>-Changed</code> chooses brings with it the
-steps that build what it uses (<code>build\policytest.exe</code>, <code>build\e2e.wasm</code>). They all say at the end how many steps they
+steps that build what it uses (<code>build\web_test.exe</code>, <code>build\e2e.wasm</code>). They all say at the end how many steps they
 left out: they are for your loop, never instead of the CI's run.</p>
 <h2 id="the-end-of-a-run"><a class="anchor" href="#the-end-of-a-run" aria-hidden="true">#</a>The end of a run</h2>
 <p>A run ends with the slowest steps, how many Wren processes the scripts started, how long they spent in
@@ -266,7 +266,7 @@ checks: compare two of them to see that a change lost nothing), <code>test_faile
 person at the machine, and their clicks reach no step. <code>-Ui</code> stays on the real desktop, its steps need the real input.</p>
 <p>Every step is a process of its own; <code>-Jobs</code> of them run at a time (three per four processors, at most 12; two with <code>-CI</code>), longest
 first by the durations of the last run. A step marked <code>-Light</code> mostly waits and takes no slot, up to <code>-LightJobs</code> of them (4; 2 with <code>-CI</code>).
-Each step that talks to the test server has a server of its own on a block of ports of its own, so several worktrees test
+A test that talks to the test server starts it in its own process, on a block of ports of its own (<a href="#the-test-server">below</a>), so several worktrees test
 side by side. What a step builds comes first (the steps named <code>build *</code>). <code>-Perf</code> and <code>-Ui</code> add the steps that depend on
 the machine's speed or on a desktop (<a href="https://github.com/sachahjkl/wren/blob/master/CONTRIBUTING.md">CONTRIBUTING</a>); a full run adds the check build, the
 AddressSanitizer unit tests, the whole of WPT and test262, the network stress.</p>
@@ -361,27 +361,47 @@ the_title_shows :: <span class="k">proc</span>(t: ^testing.T) {
 <h2 id="writing-a-test-that-is-quick"><a class="anchor" href="#writing-a-test-that-is-quick" aria-hidden="true">#</a>Writing a test that is quick</h2>
 <p>The rules are in <a href="https://github.com/sachahjkl/wren/blob/master/CONTRIBUTING.md">CONTRIBUTING</a>: wait for a condition, with a limit that only ends a failing run (the barriers above, <code>wren
 ctl wait</code> for a script, <code>Invoke-WrenBuildIfStale</code>, <code>Ensure-WrenBuild</code>), one shared Wren between scenarios. And check what a wait returns:
-a tool that waited for a line nobody logs (<code>jsloadtest</code>) spent its 120 s limit in every run, and passed.</p>
+a tool that waited for a line nobody logs spent its 120 s limit in every run, and passed.</p>
 <h2 id="virtual-time"><a class="anchor" href="#virtual-time" aria-hidden="true">#</a>Virtual time</h2>
 <p><code>host.Loop</code> reads its time through <code>host.now_ns</code>. A test gives the loop a <code>host.Virtual_Clock</code> (<code>clock_virtual</code>) and moves it:
 <code>clock_advance(&amp;loop, d)</code> runs at once what falls due on the way, each timer at its own deadline; <code>clock_move</code> only moves it, as a
 stalled machine would. <code>loop_wait</code> on such a clock does not wait for a timer. Production pays one test of a pointer.</p>
 <p>A test does not sleep to wait for another thread: it waits on the state (a semaphore, a completion posted to the loop,
 <code>base.await</code> when the code under test has no signal). The few real sleeps left in unit tests measure the real clock, and say so.</p>
-<h2 id="the-test-programs-and-their-pages"><a class="anchor" href="#the-test-programs-and-their-pages" aria-hidden="true">#</a>The test programs and their pages</h2>
-<p><code>jswebtest</code> and <code>jsdomtest</code> are test programs of <code>core:testing</code>: one <code>@(test)</code> per section (<code>build\jswebtest.exe -tests:core,webgl_process</code>, or
-<code>tools\jsweb_run.ps1 core webgl_process</code> with a test server). They run one test at a time (<code>-define:ODIN_TEST_THREADS=1</code>) and share one loop: what the
-process keeps (image cache, stores) binds to the first loop it sees. A last test, <code>zz_the_process_ends_with_nothing_left</code>, undoes it all and checks the leaks.</p>
-<p>A page's script talks to its program through the functions of <code>wrenTest</code> (<code>api/testhost.widl</code>, <code>native/js/odin/test_host.odin</code>,
-<code>src/page/test_host.odin</code>, <code>src/tools/testhost</code>), which exists only in a page given a test host: <code>testBegin</code>, <code>testEnd</code>, <code>check</code>, <code>measure</code>, <code>note</code>,
-<code>signal</code>, <code>skip</code>, <code>done</code>. The console is no protocol any more. <code>testhost.finish</code> fails:</p>
+<h2 id="the-web-tests"><a class="anchor" href="#the-web-tests" aria-hidden="true">#</a>The web tests</h2>
+<p>Everything under the browser's window (fetch, the network stacks, the HTTP cache, the content blocker, pages and their scripts, Wasm guests, workers, images, forms, frames: no shell, no frame) is tested by one program of <code>core:testing</code>, <code>src/tools/webtests</code>, built once as <code>build\web_test.exe</code> with every allocation tracked. One file per subject (<code>cache.odin</code>, <code>frames.odin</code>, <code>jsweb.odin</code>...), <code>#+private file</code> with its own helpers, its tests named after it (<code>cache_freshness</code>); what they share is <code>harness.odin</code>.</p>
+<div class="code"><div class="file">Odin</div><pre><code><span class="f">#</span>+private file
+<span class="k">package</span> webtests
+
+<span class="k">import</span> <span class="s">"core:testing"</span>
+<span class="k">import</span> <span class="s">"wb:base"</span>
+
+@(test)
+history_scroll_restoration :: <span class="k">proc</span>(t: ^testing.T) {
+	<span class="k">context</span>.allocator = base.<span class="f">process_allocator</span>()   <span class="c">// (what the Wasm imports make and free)</span>
+	<span class="f">begin</span>(t)                                       <span class="c">// the world, as far as .Net or .Pages</span>
+	<span class="k">defer</span> <span class="f">end</span>()
+	<span class="f">serve</span>(t)                                       <span class="c">// only when it talks to the test server</span>
+	pr := <span class="f">open_page</span>(t, <span class="s">"scroll"</span>, PAGE, <span class="s">"http://127.0.0.1:8765/a.html"</span>)
+	<span class="f">wait_note</span>(pr, <span class="s">"loaded"</span>)                        <span class="c">// the page said wrenTest.note('loaded')</span>
+	<span class="f">run</span>(pr, <span class="s">`wrenTest.check(history.scrollRestoration === 'auto', 'it starts auto')`</span>)
+	<span class="f">close_page</span>(pr, min_checks = <span class="t">1</span>)                 <span class="c">// fewer checks than this fails the test</span>
+}</code></pre></div>
+<p>The rules, besides those of the <a href="#writing-an-end-to-end-test">end-to-end tests</a>:</p>
 <ul>
-<li>a section that ran another number of tests than the one its <code>@(test)</code> declares (<code>tests = 8</code>), or none, or fewer checks than it declares (<code>min_checks</code>);</li>
-<li>a section whose script never said <code>done()</code>, a test that checked nothing;</li>
-<li>a <code>skip("webgl-adapter" | "av1-decoder", why)</code> that the program does not find true of the machine: it makes a context of its own for the first (only
-"no graphics adapter" from the GPU process counts as none), asks the media backend for the second.</li>
+<li><strong>One world, one test at a time</strong> (<code>-define:ODIN_TEST_THREADS=1</code>): what the process keeps (the image cache, the stores, the timeline) binds to the first loop it sees, so a loop per test would leave it on a dead one. <code>begin</code> makes the world as far as the test asks; the last test, <code>zz_the_process_ends_with_nothing_left</code>, undoes it all and fails on anything still allocated.</li>
+<li><strong>A step of <code>test_all</code> is a subject in a process of its own</strong>: <code>Step '...' { Invoke-WrenWebTests 'build\web_test.exe' 'cache' }</code>, with its marks. By hand: <code>build\web_test.exe -tests:cache_freshness,zz_the_process_ends_with_nothing_left</code>, on a desktop nobody uses (<code>tools\test_desktop.ps1 -Command "..."</code>). The program with no name runs every subject in one process.</li>
+<li><strong>No result is read from the console.</strong> A page's script talks to its test through the functions of <code>wrenTest</code> (<code>api/testhost.widl</code>, <code>native/js/odin/test_host.odin</code>, <code>src/page/test_host.odin</code>, <code>src/tools/testhost</code>), which exists only in a page given a test host: <code>testBegin</code>, <code>testEnd</code>, <code>check</code>, <code>measure</code>, <code>note</code>, <code>signal</code>, <code>skip</code>, <code>done</code>. What is uncaught fails the page unless the test expects it (<code>pr.expect_uncaught</code>).</li>
+<li><strong>A page declares what it runs.</strong> <code>close_page</code> (<code>testhost.finish</code>) fails a section that ran another number of tests than it declares (<code>tests = 8</code>), or none, or fewer checks than it declares (<code>min_checks</code>), a section whose script never said <code>done()</code> when it is the one to end, a test that checked nothing, and a <code>skip("webgl-adapter" | "av1-decoder", why)</code> that the program does not find true of the machine: it makes a context of its own for the first (only "no graphics adapter" from the GPU process counts as none), asks the media backend for the second. A true skip prints <code>SKIP [section] ...</code>, is counted, and <code>test_all</code> lists it at the end of a run.</li>
+<li><strong>Barriers, not time.</strong> <code>wait_until(t, what, data, ready)</code>, <code>wait_note</code>, <code>wait_done</code> run the loop until a state holds. What a loop's timer does or must not do yet goes by <code>virtual_clock(t)</code> and <code>host.clock_advance</code> (a page's <code>setTimeout</code> follows it). Only what a real clock on the other side decides (the <code>Date</code> of an HTTP answer) waits for that exact condition in real time.</li>
 </ul>
-<p>A true skip prints <code>SKIP [section] ...</code>, is counted, and <code>test_all</code> lists it at the end of a run.</p>
+<h2 id="the-test-server"><a class="anchor" href="#the-test-server" aria-hidden="true">#</a>The test server</h2>
+<p><code>tools/testserver</code> is a Go package (Go's HTTP/2, quic-go's HTTP/3, TLS). It is a library first:</p>
+<ul>
+<li><code>build\testserver.dll</code> (<code>go build -buildmode=c-shared</code> of <code>tools/testserver/cdll</code>, which needs a C compiler for Go's cgo), loaded by <code>src/testserver</code>. An Odin test calls <code>e2e.test_server(t)</code>, or <code>serve(t)</code> in the web tests: it listens when that returns, with its base port, on the threads of Go's runtime in the test's own process. No process to start or to stop, no file to read: it goes with the process. One per process; each call forgets what the handlers counted, as a new server would.</li>
+<li><code>build\testserver.exe</code> (<code>tools/testserver/cmd/testserver</code>), a thin main over the same package, for what is not Odin: <code>tools\test_env.ps1</code> <code>Start-WrenTestServer</code> for the scripts (<code>wpt.ps1</code>, which runs it as <code>wptserver.exe</code>, <code>perf.ps1</code>, <code>endurance.ps1</code>, <code>net_stress.ps1</code>, <code>remote_bench.ps1</code>...; it writes its base port to <code>-port-file</code> once it listens), <code>demo.bat</code> and the release's extras.</li>
+</ul>
+<p>Every origin is an offset from the base port (<code>tools/testserver/ports.go</code>): +0 http on 127.0.0.1 and localhost, +1 https, +2 a second http origin, +3 and +4 the web-platform-tests origin, +5 to +9 the transports. A block is free or taken as a whole; a test takes the next free one from a port derived from the worktree's path. A test writes the default ports (<code>testenv.url("http://127.0.0.1:8765/x")</code>) and they move with the block, in the text files of <code>/site/</code> too.</p>
 <h2 id="debugging-the-tests-time"><a class="anchor" href="#debugging-the-tests-time" aria-hidden="true">#</a>Debugging the tests' time</h2>
 <ul>
 <li><code>tools\test_profile.ps1 -Out build\prof\x -Run "&lt;command&gt;"</code> (or <code>test_all -Profile</code>): every process of the tree, by program,
@@ -412,7 +432,8 @@ seconds when other runs share the machine: they barely move, the wall clock does
 <li><a href="#writing-an-end-to-end-test">Writing an end-to-end test</a></li>
 <li><a href="#writing-a-test-that-is-quick">Writing a test that is quick</a></li>
 <li><a href="#virtual-time">Virtual time</a></li>
-<li><a href="#the-test-programs-and-their-pages">The test programs and their pages</a></li>
+<li><a href="#the-web-tests">The web tests</a></li>
+<li><a href="#the-test-server">The test server</a></li>
 <li><a href="#debugging-the-tests-time">Debugging the tests' time</a></li>
 </ul>
 </nav>
