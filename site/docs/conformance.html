@@ -345,6 +345,49 @@ folder; it says nothing about the subtests Wren does not run yet.</p>
 folder. The chart and the table on this page are generated from <code>wpt/expectations</code> (and <code>build\wpt\report.md</code>
 when a run has produced it) by <code>src/tools/docsite</code>, the same tool that builds this site. Nothing here is typed by
 hand, so it cannot drift from the recorded results.</p>
+<h2 id="reference-tests"><a class="anchor" href="#reference-tests" aria-hidden="true">#</a>Reference tests</h2>
+<p>The numbers above are testharness subtests. Reference tests compare two pages pixel by pixel, and they are counted apart:
+never in the chart or the table above, in a table of their own in <code>build\wpt\report.md</code>, with expectations of their own
+(<code>wpt/expectations/&lt;folder&gt;.reftest</code>, one result per test: <code>PASS</code>, <code>FAIL</code>, <code>TIMEOUT</code>, <code>ERROR</code>, <code>CRASH</code>). They run only in
+the folders of <code>REFTEST_FOLDERS</code> (<code>src/tools/wpt/layout_host.odin</code>): <code>css/css-multicol</code> and <code>css/css-writing-modes</code>.</p>
+<div class="code"><pre><code>tools\wpt.ps1 -Reftests                                  all of them
+tools\wpt.ps1 -Reftests -Only css/css-multicol           one folder's
+tools\wpt.ps1 -Reftests -Only css/css-multicol -Update   ...and rewrite that folder's expectations
+tools\wpt.ps1 -NoReftests                                testharness tests only
+tools\wpt.ps1 -Reftests -ReftestDump &lt;directory&gt;         the pictures of what fails</code></pre></div>
+<p><strong>How a test is told.</strong> As WPT's manifest does at the pinned commit: a page with <code>&lt;link rel=match&gt;</code> or <code>rel=mismatch</code>, not
+one with <code>testharness.js</code> (that is a testharness test), not one WPT's names make a reference (a <code>reference</code> folder, <code>-ref</code>,
+<code>ref-</code>, <code>-notref</code>), a print test (<code>-print</code>, a <code>print</code> folder, <code>&lt;meta name=reftest-pages&gt;</code>: there is no paged layout here)
+or a visual one.</p>
+<p><strong>What is compared.</strong> Both pages load as any test does, and are laid out on the same headless layout as the folders with
+geometry: a viewport of 800 x 600 (<code>&lt;meta name=viewport-size&gt;</code> is honoured), fixed text metrics. The screenshot comes after
+the load event and web fonts; with <code>class=reftest-wait</code> on the root, <code>TestRendered</code> is fired there and the class is waited
+for, within the test's time limit (<code>TIMEOUT</code>). Then a software rasteriser (<code>src/tools/wpt/reftest</code>) draws the layout's display
+list, with no GPU and no font engine: every pixel is sampled at its centre, through clips (rounded ones too) and
+transforms (3D planes too), edges of boxes snapped to whole pixels first. It draws the canvas, background colours,
+gradients (linear, radial, conic; interpolated in sRGB whatever the space asked for), images (the page's decoders),
+box shadows (a gaussian: exact for a square box, by distance to the edge for a rounded one), borders of every style,
+outlines, inline boxes, list markers, opacity groups and separable blend modes.</p>
+<p><strong>Text</strong> is the rasteriser's own, and that is the limit of what a pass says. Ahem is exact: its metrics and every glyph
+shape come from <code>fonts/Ahem.ttf</code>. Any other font is one cell per character, half an em wide, filled with a pattern derived
+from the code point (and from bold and italic): the same text at the same place gives the same pixels, different
+characters differ, a turned run differs from an upright one. So a test comparing text in other fonts says that the same
+characters landed in the same places, not that they would look alike in a real font. An item of vertical text
+(<code>Item_Flag.Vertical</code>) is turned a quarter turn clockwise, its upright characters are not.</p>
+<p><strong>What is not drawn</strong>, so that tests depending on it fail honestly or (for a mismatch) pass without saying much: filters,
+backdrop filters, clip paths and masks (the group composites plainly), antialiasing, non-separable blend modes,
+<code>background-clip: text</code> (the content box instead). What cannot be had headless stands in as a solid colour derived from the
+URL, so that both sides of a test agree only when they show the same thing: video, the document in a frame, a broken
+image; form controls are their box plus such a colour derived from their type and value.</p>
+<p><strong>Comparing</strong> follows WPT: <code>&lt;meta name=fuzzy&gt;</code> (<code>maxDifference=a-b;totalPixels=c-d</code> or <code>a-b;c-d</code>, optionally for one
+reference with a leading <code>url:</code>; a single number is that exact value) as <code>wptrunner</code> reads it, exact without one. Of a
+page's links, at least one match must hold when there are any and every mismatch must (<code>docs/writing-tests/reftests.md</code> at
+the pinned commit); a reference's own links must hold in turn. With <code>-ReftestDump</code> (or the environment's
+<code>WPT_REFTEST_DUMP</code>), the first comparison that failed goes to <code>&lt;test&gt;.test.png</code>, <code>.ref.png</code> and <code>.diff.png</code> in that directory,
+which the tool refuses inside a repository, with the display list of each page (<code>.test.items.txt</code>, <code>.ref.items.txt</code>: the
+quickest way to tell a layout's fault from the rasteriser's); <code>-ReftestDumpAll</code> adds what passes.</p>
+<p><code>tools\wpt.ps1 -ReftestFolder css/css-flexbox -WptRoot &lt;another checkout&gt; -Reftests</code> looks at a folder that is not measured:
+a check of the rasteriser on code that is known to work. It records nothing unless <code>-Update</code> is given.</p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../docs/wpt-workers.html"><span>Previous</span><strong>WPT /workers/: what still fails, and why</strong></a>
 <a class="doc-next" href="../docs/releases/v0.1.0.html"><span>Next</span><strong>Wren 0.1.0</strong></a>
@@ -357,6 +400,7 @@ hand, so it cannot drift from the recorded results.</p>
 <li><a href="#passing-subtests-over-time">Passing subtests over time</a></li>
 <li><a href="#pass-rate-by-folder">Pass rate by folder</a></li>
 <li><a href="#how-this-is-measured">How this is measured</a></li>
+<li><a href="#reference-tests">Reference tests</a></li>
 </ul>
 </nav>
 </main>

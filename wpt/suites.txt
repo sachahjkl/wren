@@ -61,3 +61,5 @@ WebCryptoAPI
 webaudio
 css/css-anchor-position
 webgl
+css/css-multicol
+css/css-writing-modes

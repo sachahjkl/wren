@@ -18,8 +18,18 @@
 # run only). -Quick: a fixed sample of a few tests per folder (tools\test_all.ps1 -Quick).
 # -Edge runs the same tests in Microsoft Edge headless instead (build\wpt\edge_results.txt): the reference columns of
 # the table of later runs (how many subtests there are, how many Edge passes, the share of those Wren passes).
+# Reference tests run in the folders of REFTEST_FOLDERS (src\tools\wpt\layout_host.odin), on the headless layout, drawn by
+# a software rasteriser (src\tools\wpt\reftest): counted apart from testharness tests, in a table of their own, with
+# expectations of their own (wpt\expectations\<folder>.reftest) and results in build\wpt\results.reftest.txt.
+#   -Reftests: only them; with -Only css/css-multicol, only that folder's (-Update then rewrites only that folder's file).
+#   -NoReftests: none of them.
+#   -ReftestDump dir: the pictures of what fails (test, reference, difference, PNG), outside the repository (the tool
+#   refuses a folder inside one); also from the environment, WPT_REFTEST_DUMP. -ReftestDumpAll: of what passes too.
+#   -ReftestFolder css/css-flexbox,css/CSS2/floats: also these folders, reference tests only, when the checkout has them (-WptRoot: another
+#   checkout, not verified, for a look at the rasteriser on folders that are not measured).
 param([switch]$Quick, [switch]$Update, [string]$Only = '', [int]$Jobs = 0, [int]$TimeoutMs = 10000, [switch]$Fetch,
-      [switch]$UpdateManifest, [switch]$NoServer, [int]$Port = 0, [string[]]$Pref = @(), [switch]$Edge, [string]$Suites = '')
+      [switch]$UpdateManifest, [switch]$NoServer, [int]$Port = 0, [string[]]$Pref = @(), [switch]$Edge, [string]$Suites = '',
+      [switch]$Reftests, [switch]$NoReftests, [string]$ReftestDump = '', [switch]$ReftestDumpAll, [string[]]$ReftestFolder = @(), [string]$WptRoot = '')
 # (failures are checked by exit status: what native tools write on stderr is not an error; throw stops the script)
 $ErrorActionPreference = 'Continue'
 $WptCommit = '4ad507b28db0a636f528def9161d109fe11b93a3'
@@ -31,7 +41,8 @@ $Shared = @('/resources/', '/common/', '/interfaces/', '/images/', '/fonts/', '/
             '/css/support/parsing-testcommon.js', '/html/webappapis/structured-clone/', '/css/support/computed-testcommon.js', '/css/support/shadow-helper.js', '/media/', '/wasm/resources/',
             '/css/support/inheritance-testcommon.js', '/css/support/interpolation-testcommon.js', '/css/support/shorthand-testcommon.js',
             '/css/css-conditional/container-queries/support/cq-testcommon.js', '/css/css-typed-om/resources/testhelper.js',
-            '/css/css-transitions/support/helper.js', '/html/semantics/popovers/resources/popover-utils.js')
+            '/css/css-transitions/support/helper.js', '/html/semantics/popovers/resources/popover-utils.js',
+            '/css/reference/')   # (the references reftests of many folders share)
 
 $root = Split-Path $PSScriptRoot -Parent
 $out = Join-Path $root 'build\wpt'
@@ -123,7 +134,8 @@ if ($Port -le 0) { $Port = if (-not $NoServer) { 8778 } elseif ($env:WREN_TEST_B
 $SecondChanceMax = 60
 # ... and how many times its time limit a test gets alone (the other steps of test_all still run beside it).
 $SecondChanceTimeFactor = 4
-$runArgs = @('-server', "http://127.0.0.1:PORT", '-root', $wpt, '-suites', $(if ($Suites) { (Resolve-Path $Suites).Path } else { $suitesFile }), '-expect', (Join-Path $root 'wpt\expectations'), '-timeout', $TimeoutMs,
+$checkout = if ($WptRoot) { (Resolve-Path $WptRoot).Path } else { $wpt }
+$runArgs = @('-server', "http://127.0.0.1:PORT", '-root', $checkout, '-suites', $(if ($Suites) { (Resolve-Path $Suites).Path } else { $suitesFile }), '-expect', (Join-Path $root 'wpt\expectations'), '-timeout', $TimeoutMs,
              '-md', (Join-Path $out 'report.md'), '-results', (Join-Path $out 'results.txt'))
 # media tests call play() without a gesture (the harness of other browsers runs with autoplay allowed too)
 $runArgs += @('--pref', 'media.autoplay.policy=allow-all')
@@ -131,6 +143,11 @@ if ($Jobs -gt 0) { $runArgs += @('-jobs', $Jobs) }
 if ($Quick) { $runArgs += '-quick' }
 if ($Update) { $runArgs += '-update' }
 if ($Only) { $runArgs += @('-only', $Only) }
+if ($Reftests) { $runArgs += '-reftests' }
+if ($NoReftests) { $runArgs += '-no-reftests' }
+if ($ReftestDump) { $runArgs += @('-dump', $ReftestDump) }
+if ($ReftestDumpAll) { $runArgs += '-dump-all' }
+foreach ($f in @($ReftestFolder | ForEach-Object { $_ -split ',' } | Where-Object { $_ })) { $runArgs += @('-reftest-folder', $f) }
 foreach ($p in @($Pref | ForEach-Object { $_ -split ',' } | Where-Object { $_ })) { $runArgs += @('--pref', $p) }
 
 $edgeResults = Join-Path $out 'edge_results.txt'
@@ -215,6 +232,7 @@ try {
         # a copy under its own name: what stops the shared test servers by name (other worktrees' scripts) leaves it alone
         $wptServer = Join-Path $root 'build\wptserver.exe'
         Copy-Item (Join-Path $root 'build\testserver.exe') $wptServer -Force
+        if ($WptRoot) { $env:WREN_WPT_ROOT = $checkout }
         $server = Start-WrenTestServer -WptOnly -BasePort $Port -Exe $wptServer -Log (Join-Path $out 'server.log')
         $srv = $server.Process
         $Port = $server.BasePort

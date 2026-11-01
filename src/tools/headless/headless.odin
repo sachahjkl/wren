@@ -50,6 +50,8 @@ Doc :: struct {
 	console:   [dynamic]Message,
 	on_console: proc(d: ^Doc, level: page.Log_Level, text: string),
 	on_parsed:  proc(d: ^Doc),  // optional: the document is adopted, its scripts have not started (set it after open)
+	by_type:   bool,            // application/xhtml+xml is parsed as XML, as the browser does (set it after open); else as HTML
+	mime:      string,          // owned: the response's type
 	user:      rawptr,
 	navigations: [dynamic]string,   // owned: what the page asked to navigate to
 	last_frame: f64,
@@ -136,6 +138,7 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		d.final_url = strings.clone(r.url)
 		if r.has_mime {
 			if cs, ok := http.mime_param(r.mime, "charset"); ok { d.charset = strings.clone(cs) }
+			d.mime = strings.clone(http.mime_essence(r.mime))
 		}
 		d.page = page.page_create(&e.loop, &e.loader, &e.settings, d.scope, r.url, console_sink, d)
 		page.set_embedder(d.page, {navigate = navigate_hook, user = d, tab_key = d.url, storage = e.has_storage ? &e.storage : nil})
@@ -147,7 +150,7 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	case .Done:
 		d.task = base.NIL_HANDLE
 		if d.page == nil { d.failed = strings.clone("no response"); return }
-		page.parse_document(d.page, ev.data, d.charset, document_parsed, d)
+		page.parse_document(d.page, ev.data, d.charset, document_parsed, d, d.by_type ? d.mime : "")
 	case .Failed:
 		d.task = base.NIL_HANDLE
 		d.failed = strings.clone(ev.detail != "" ? ev.detail : "the request failed")
@@ -203,6 +206,6 @@ close :: proc(d: ^Doc) {
 	delete(d.console)
 	for n in d.navigations { delete(n) }
 	delete(d.navigations)
-	delete(d.url); delete(d.final_url); delete(d.charset); delete(d.failed)
+	delete(d.url); delete(d.final_url); delete(d.charset); delete(d.failed); delete(d.mime)
 	free(d)
 }

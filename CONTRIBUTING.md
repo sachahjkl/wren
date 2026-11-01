@@ -69,7 +69,8 @@
 Odin is pinned to the `dev-2026-10` release (`.github/actions/setup/action.yml`: tag and SHA-256 of the archive). To
 move to another one, change both there and in the README, and build and test locally first. Wasmtime, NASM,
 Lexbor, the Rust crates, webref's Web IDL, test262 and web-platform-tests are pinned in their scripts,
-submodules, `native/Cargo.lock`, `native/js/webref/VERSION` and `wpt/MANIFEST.txt`.
+submodules, `native/Cargo.lock`, `native/js/webref/VERSION` and `wpt/MANIFEST.txt`. `tools\wpt.ps1` runs testharness tests,
+and the reference tests of the folders that have them, counted apart ([docs/conformance.md](docs/conformance.md#reference-tests)).
 
 ## Making a release
 
