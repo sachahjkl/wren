@@ -118,11 +118,20 @@ function Test-VideoLayers($server, [int]$n = 30) {
     $bmps = @()
     foreach ($f in $shots) { $bmps += ,(New-Object Drawing.Bitmap($f)) }
     try {
+        $index = -1
         foreach ($b in $bmps) {
+            $index++
+            $before = $badCorner + $badDialog + $badBar
             $c = $b.GetPixel(45, 45); $d = $b.GetPixel(300, 150); $bar = $b.GetPixel(200, 255)
             if (-not ($c.R -gt 200 -and $c.R -lt 240 -and [Math]::Abs($c.R - $c.G) -lt 4 -and [Math]::Abs($c.R - $c.B) -lt 4)) { $badCorner++ }
             if (-not ($d.R -gt 190 -and $d.G -lt 70 -and $d.B -lt 70)) { $badDialog++ }
             if (-not ($bar.B -gt 180 -and $bar.R -lt 60 -and $bar.G -lt 110)) { $badBar++ }
+            if ($badCorner + $badDialog + $badBar -ne $before) {   # what it looked like is what says why
+                $kept = Join-Path $root 'build\remote_e2e_failed'
+                New-Item -ItemType Directory -Force $kept | Out-Null
+                Copy-Item $shots[$index] $kept -Force
+                "  capture $index is wrong: $($b.Width)x$($b.Height), kept in $kept"
+            }
         }
         Check "video layers: $n captures, the box's corner is rounded in all (missing in $badCorner)" ($badCorner -eq 0)
         Check "video layers: the dialog is above the video in all (hidden in $badDialog)" ($badDialog -eq 0)
