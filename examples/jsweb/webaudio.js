@@ -4,6 +4,7 @@
 
 const near = (got, want, tolerance, what) => ok(Math.abs(got - want) <= tolerance, what + " (got " + got + ", want " + want + ")");
 const RATE = 48000;
+const ANSWER_WAIT_MS = 10000;   // how long a loaded machine may take to run the blocks a test waits for
 
 test("the interfaces", () => {
   for (const name of ["AudioContext", "OfflineAudioContext", "BaseAudioContext", "AudioNode", "AudioParam", "AudioBuffer", "GainNode", "OscillatorNode",
@@ -330,7 +331,12 @@ test("ScriptProcessorNode", async () => {
   eq(size, 256, "block size");
   eq(seen, 1, "the input");
   const wave = new Float32Array(a.fftSize);
-  a.getFloatTimeDomainData(wave);
+  // (the blocks above have run; what they answered reaches the analyser when the output's thread next gets a turn)
+  const asked = performance.now();
+  do {
+    await sleep(10);
+    a.getFloatTimeDomainData(wave);
+  } while (Math.max(...wave) < 0.5 - 1e-6 && performance.now() - asked < ANSWER_WAIT_MS);
   near(Math.max(...wave), 0.5, 1e-6, "the page's answer plays");
   await c.close();
 });
