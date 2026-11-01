@@ -173,7 +173,7 @@ webgl_make :: proc(c: ^Call, b: ^Canvas_Backing, flags, notify: u32, user: i32, 
 		webgl2 = flag(flags, 1), alpha = flag(flags, 2), depth = flag(flags, 4), stencil = flag(flags, 8), antialias = flag(flags, 16),
 		premultiplied = flag(flags, 32), preserve = flag(flags, 64), fail_if_major_performance_caveat = flag(flags, 128),
 		width = u32(max(b.width, 0)), height = u32(max(b.height, 0)), max_dimension = u32(p.settings.canvas.max_dimension),
-		allow_software = s.allow_software ? 1 : 0, force_software = s.force_software ? 1 : 0, max_bytes = s.max_bytes, wait_ms = s.wait_ms,
+		allow_software = s.allow_software ? 1 : 0, force_software = s.force_software ? 1 : 0, backend = s.backend, max_bytes = s.max_bytes, wait_ms = s.wait_ms,
 	}
 	token := new(WebGL_Token, base.process_allocator())
 	attrs.notify, attrs.notify_user = gl_notify, token
@@ -246,13 +246,13 @@ WebGL_submit :: proc(c: ^Call, ctx: u64, commands: []u8, data: []u8, drew: bool)
 }
 
 @(private = "file")
-query :: proc(c: ^Call, ctx: u64, request, text, reply: []u8) -> f64 {
+query :: proc(c: ^Call, ctx: u64, request, text, reply: []u8, has_text: bool) -> f64 {
 	gl := state_of(c, ctx)
 	if gl == nil { return -1 }
 	o := canvas_obj_of(c.page, ctx)
 	if o.backing != nil { canvas_sync(o.backing) }
 	n: i64
-	if len(text) > 0 {
+	if has_text {
 		full := make([]u8, len(request) + WORD + (len(text) + WORD - 1) &~ (WORD - 1), context.temp_allocator)
 		copy(full, request)
 		(^u32)(raw_data(full[len(request):]))^ = u32(len(text))
@@ -265,9 +265,9 @@ query :: proc(c: ^Call, ctx: u64, request, text, reply: []u8) -> f64 {
 	return f64(n)
 }
 
-WebGL_query :: proc(c: ^Call, ctx: u64, request: []u8, reply: []u8) -> f64 { return query(c, ctx, request, nil, reply) }
+WebGL_query :: proc(c: ^Call, ctx: u64, request: []u8, reply: []u8) -> f64 { return query(c, ctx, request, nil, reply, false) }
 
-WebGL_queryText :: proc(c: ^Call, ctx: u64, request: []u8, text: []u8, reply: []u8) -> f64 { return query(c, ctx, request, text, reply) }
+WebGL_queryText :: proc(c: ^Call, ctx: u64, request: []u8, text: []u8, reply: []u8) -> f64 { return query(c, ctx, request, text, reply, true) }
 
 WebGL_upload :: proc(c: ^Call, ctx: u64, command: []u8, source: u64) -> (i32, Api_Error) {
 	gl := state_of(c, ctx)

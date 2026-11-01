@@ -36,12 +36,16 @@ DEFAULT_WAIT_MS :: 10_000
 
 Handle :: distinct rawptr
 
+BACKEND_AUTO :: 0
+BACKEND_DX12 :: 1
+BACKEND_VULKAN :: 2
+
 // wg_create's input: the same layout as WgAttrs in native/webgl/src/lib.rs.
 Attrs :: struct #packed {
 	webgl2, alpha, depth, stencil, antialias, premultiplied, preserve, fail_if_major_performance_caveat: i32,
 	width, height, max_dimension: u32,
 	allow_software, force_software: i32,
-	_pad0: i32,
+	backend: i32,
 	max_bytes: u64,
 	wait_ms: u32,
 	_pad1: u32,
@@ -79,6 +83,7 @@ Settings :: struct {
 	webgl2:         bool,
 	allow_software: bool,
 	force_software: bool,
+	backend:        i32,       // BACKEND_*
 	max_contexts:   int,
 	max_bytes:      u64,
 	wait_ms:        u32,
@@ -93,6 +98,8 @@ WEBGL_PREFS := [?]config.Def{
 		description = "Without a GPU, draw on the system's software rasterizer (WARP on Windows, lavapipe on Linux). Slow, and for most pages better than nothing. Off: getContext gives null there."},
 	{name = "webgl.force_software", kind = .Bool, default = {b = false},
 		description = "Draw on the software rasterizer even with a GPU (for tests)."},
+	{name = "webgl.backend", kind = .String, default = {s = "auto"}, choices = {"auto", "dx12", "vulkan"},
+		description = "Windows: what WebGL draws through. auto: Vulkan on a real GPU that has it (shaders compile much sooner), else Direct3D 12. dx12, vulkan: that one first."},
 	{name = "webgl.max_contexts", kind = .Int, default = {i = 16}, bounded = true, min = 1, max = 256,
 		description = "Most WebGL contexts a page may have at once (each is a thread and a device). Past it the oldest is lost, as other browsers do."},
 	{name = "webgl.max_mb", kind = .Int, default = {i = 4096}, bounded = true, min = 16, max = 1 << 20, unit = "MB",
@@ -104,7 +111,13 @@ WEBGL_PREFS := [?]config.Def{
 register_prefs :: proc(p: ^config.Prefs) { config.register(p, WEBGL_PREFS[:]) }
 
 settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
+	backend: i32 = BACKEND_AUTO
+	switch config.string_of(p, "webgl.backend") {
+	case "dx12": backend = BACKEND_DX12
+	case "vulkan": backend = BACKEND_VULKAN
+	}
 	return Settings{
+		backend        = backend,
 		enabled        = config.bool_of(p, "webgl.enabled"),
 		webgl2         = config.bool_of(p, "webgl.webgl2"),
 		allow_software = config.bool_of(p, "webgl.allow_software"),

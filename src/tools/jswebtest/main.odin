@@ -251,6 +251,15 @@ main :: proc() {
 	if selected("message") { run("message") }
 	if selected("sockets") { run("sockets") }
 	if selected("canvas") { run("canvas") }
+	if selected("webgl") {
+		// (the software adapter: the same pixels everywhere, and what the CI has)
+		software := settings.webgl.force_software
+		settings.webgl.force_software = true
+		actions := make(map[string]Action, context.temp_allocator)
+		actions["frame"] = proc(p: ^page.Page, l: ^Page_Log) { page.images_sync(p); page.canvas_frame(p) }
+		run("webgl", actions, seconds = 120)
+		settings.webgl.force_software = software
+	}
 	if selected("geometry") { run("geometry") }
 	if selected("compat") { run("compat") }
 	if selected("webassembly") {

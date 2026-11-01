@@ -140,6 +140,45 @@ pub const OBJ_VAO: u32 = 6;
 pub const OBJ_SAMPLER: u32 = 7;
 pub const OBJ_SHADER: u32 = 8;
 
+/// What an operation is called in the console.
+pub fn name(op: u32) -> &'static str {
+    match op {
+        BIND_BUFFER => "bindBuffer",
+        BIND_FRAMEBUFFER => "bindFramebuffer",
+        BIND_TEXTURE => "bindTexture",
+        BLEND_FUNC => "blendFunc",
+        BUFFER_DATA => "bufferData",
+        BUFFER_SUB_DATA => "bufferSubData",
+        CLEAR => "clear",
+        COMPRESSED_TEX_IMAGE => "compressedTexImage",
+        COPY_TEX_IMAGE => "copyTexImage2D",
+        COPY_TEX_SUB_IMAGE => "copyTexSubImage2D",
+        DISABLE => "disable",
+        ENABLE => "enable",
+        DRAW_ARRAYS => "drawArrays",
+        DRAW_ELEMENTS => "drawElements",
+        FRAMEBUFFER_RENDERBUFFER => "framebufferRenderbuffer",
+        FRAMEBUFFER_TEXTURE => "framebufferTexture2D",
+        GENERATE_MIPMAP => "generateMipmap",
+        LINK_PROGRAM => "linkProgram",
+        PIXEL_STOREI => "pixelStorei",
+        RENDERBUFFER_STORAGE => "renderbufferStorage",
+        TEX_IMAGE => "texImage",
+        TEX_SUB_IMAGE => "texSubImage",
+        TEX_IMAGE_SOURCE => "texImage2D of an image",
+        TEX_PARAMETER_I | TEX_PARAMETER_F => "texParameter",
+        TEX_STORAGE => "texStorage",
+        UNIFORM => "uniform",
+        USE_PROGRAM => "useProgram",
+        VERTEX_ATTRIB_POINTER => "vertexAttribPointer",
+        BLIT_FRAMEBUFFER => "blitFramebuffer",
+        BIND_BUFFER_RANGE => "bindBufferRange",
+        CLEAR_BUFFER => "clearBuffer",
+        DRAW_BUFFERS => "drawBuffers",
+        _ => "a call",
+    }
+}
+
 /// Reads a stream. A truncated or malformed one comes from something other than our JavaScript (a Wasm module of the page can
 /// call the host function): the context stops.
 pub struct Reader<'a> {
