@@ -66,6 +66,7 @@
 <li><a href="../../docs/webcodecs.html">WebCodecs</a></li>
 <li><a href="../../docs/js/web-audio.html">Web Audio</a></li>
 <li><a href="../../docs/anchor-positioning.html">CSS anchor positioning</a></li>
+<li><a href="../../docs/js/webgl.html">WebGL</a></li>
 <li><a href="../../docs/accessibility.html">Accessibility</a></li>
 <li><a href="../../docs/shaders.html">Shaders in the chrome</a></li>
 <li><a href="../../docs/downloads.html">Downloads</a></li>
@@ -139,6 +140,7 @@
 <li><a href="../../docs/api/webcodecs_encoders.html">Module webcodecsencoders</a></li>
 <li><a href="../../docs/api/webcodecs_image.html">Module webcodecsimage</a></li>
 <li><a href="../../docs/api/webcodecs_video_decoder.html">Module webcodecsvideodecoder</a></li>
+<li><a href="../../docs/api/webgl.html">Module webgl</a></li>
 <li><a href="../../docs/api/websocket.html">Module websocket</a></li>
 <li><a href="../../docs/api/workers.html">Module workers</a></li>
 </ul>
@@ -320,11 +322,12 @@ function not exposed to workers is not instantiated.</p>
 <tr><td><a href="../../docs/api/webcodecs_encoders.html"><code>webcodecs_encoders</code></a></td><td style="text-align:right">18</td><td>Window, Worker</td><td>WebCodecs VideoEncoder / AudioEncoder (src/page/bindings_encoders.odin, native/js/runtime/web_webcodecs_encoders.c).</td></tr>
 <tr><td><a href="../../docs/api/webcodecs_image.html"><code>webcodecs_image</code></a></td><td style="text-align:right">16</td><td>Window, Worker</td><td>WebCodecs ImageDecoder (src/page/bindings_image_decoder.odin, native/js/runtime/web_webcodecs_image.c). The decode</td></tr>
 <tr><td><a href="../../docs/api/webcodecs_video_decoder.html"><code>webcodecs_video_decoder</code></a></td><td style="text-align:right">9</td><td>Window, Worker</td><td>WebCodecs VideoDecoder (src/page/bindings_video_decoder.odin, native/js/runtime/web_webcodecs_video_decoder.c).</td></tr>
+<tr><td><a href="../../docs/api/webgl.html"><code>webgl</code></a></td><td style="text-align:right">14</td><td>Window</td><td>WebGL 1 and 2 for native/js/odin/web_webgl.js: a context is a host object over a device of its own (native/webgl, a thread); the</td></tr>
 <tr><td><a href="../../docs/api/websocket.html"><code>websocket</code></a></td><td style="text-align:right">12</td><td>Window</td><td>WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object.</td></tr>
 <tr><td><a href="../../docs/api/workers.html"><code>workers</code></a></td><td style="text-align:right">11</td><td>Window, Worker</td><td>Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in</td></tr>
 </tbody>
 </table></div>
-<p>1532 imports in 1433 functions.</p>
+<p>1546 imports in 1447 functions.</p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../docs/licence.html"><span>Previous</span><strong>Wren licences</strong></a>
 <a class="doc-next" href="../../docs/js/coverage.html"><span>Next</span><strong>JavaScript bindings: coverage</strong></a>
