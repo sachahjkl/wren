@@ -466,24 +466,27 @@ Step 'accessibility end to end (tools\a11y_e2e.ps1: a Wren with no window shown 
 Step 'drag and drop end to end (src\tools\e2e\dnd.odin: a file dropped on a drop zone and elsewhere, a drag between elements, pointer events and coordinates in a scrolled page; no window at all)' {
     Invoke-WrenE2E 'build\e2e_test.exe' 'dnd'
 } -Weight 20 -NoCI
-Step 'the interface''s own zoom end to end (tools\chrome_zoom_e2e.ps1: Ctrl+wheel over the chrome and the keys while it has the keyboard zoom it and leave the page''s scale alone; over the page they zoom the page; no window shown)' {
-    powershell -NoProfile -ExecutionPolicy Bypass -File tools\chrome_zoom_e2e.ps1
+Step 'the interface''s own zoom end to end (src\tools\e2e\chrome_zoom.odin: Ctrl+wheel over the chrome and the keys while it has the keyboard zoom it and leave the page''s scale alone; over the page they zoom the page; no window at all)' {
+    Invoke-WrenE2E 'build\e2e_test.exe' 'chrome_zoom'
 } -Weight 20 -NoCI
-Step 'middle-click autoscroll end to end (tools\autoscroll_e2e.ps1: a middle press on a tall page and the pointer moved down scrolls it, faster the farther, Escape stops it, a middle click on a link opens a new tab; no window shown)' {
-    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
-    powershell -NoProfile -ExecutionPolicy Bypass -File tools\autoscroll_e2e.ps1
+Step 'middle-click autoscroll end to end (src\tools\e2e\autoscroll.odin: a middle press on a tall page and the pointer moved down scrolls it, faster the farther, Escape stops it, a middle click on a link opens a new tab; no window at all)' {
+    Invoke-WrenE2E 'build\e2e_test.exe' 'autoscroll'
 } -Weight 20 -NoCI
 Step 'a window''s own state of the chrome end to end (src\tools\e2e\window_state.odin: a page''s full screen in one window of two, left with Escape, the scroll given back; each window''s developer tools; the caret blinking in the front window only; no window at all)' {
     Invoke-WrenE2E 'build\e2e_test.exe' 'window_state'
 } -Weight 10 -NoCI
-Step 'a tab dragged onto another window''s tabs (tools\tab_drag_windows_e2e.ps1: the insertion mark among pinned tabs and groups, in a row and in the sidebar, where the release puts the tab; injected pointer, no window shown)' {
-    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
-    powershell -NoProfile -ExecutionPolicy Bypass -File tools\tab_drag_windows_e2e.ps1
+Step 'a tab dragged onto another window''s tabs (src\tools\e2e\tab_drag_windows.odin: the insertion mark among pinned tabs and groups, in a row and in the sidebar, where the release puts the tab; injected pointer, no window at all)' {
+    Invoke-WrenE2E 'build\e2e_test.exe' 'tab_drag_windows'
 } -Weight 10 -NoCI
-Step 'windows on monitors of different scales (tools\window_dpi_e2e.ps1: WM_DPICHANGED for one window of two: its scale alone, no scroll jump, devicePixelRatio and resolution queries; a tab moved between scales; no window shown)' {
-    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
-    powershell -NoProfile -ExecutionPolicy Bypass -File tools\window_dpi_e2e.ps1
-} -UiOnly   # (the size the system suggests for a new scale depends on the machine's window frame: 1000x700 -> 1028x780 on the CI runner)
+Step 'windows on monitors of different scales (src\tools\e2e\window_dpi.odin: the scale of one window of two changes: its scale alone, no scroll jump, devicePixelRatio and resolution queries; a tab moved between scales; no window at all)' {
+    Invoke-WrenE2E 'build\e2e_test.exe' 'window_dpi'
+} -UiOnly   # (the mark of the script it was: the size the system suggested depended on the window's frame. Headless it has no frame, and could leave -UiOnly)
+Step 'the docked developer tools while their splitter is dragged (src\tools\e2e\devtools_split.odin: for each panel and side, the first frame at a new width is the settled one; no window at all)' {
+    Invoke-WrenE2E 'build\e2e_test.exe' 'devtools_split'
+} -NoCI
+Step 'the address bar''s suggestions end to end (src\tools\e2e\urlbar.odin: the inline completion and Enter, Shift+Delete and the cross of a row against the profile''s history, Down and Escape; no window at all)' {
+    Invoke-WrenE2E 'build\e2e_test.exe' 'urlbar'
+} -NoCI
 Step 'the result cache of this script (tools\test_cache_test.ps1: what a step depends on, against the compiler''s import graph; a change of an input and of nothing else changes a key; a result needs the program it built)' -Light { powershell -NoProfile -ExecutionPolicy Bypass -File tools\test_cache_test.ps1 }
 Step 'the globals of src\browser against their list (tools\lint_globals.ps1: a new global of a window or a tab goes into Browser_Window or Tab)' -Light { powershell -NoProfile -ExecutionPolicy Bypass -File tools\lint_globals.ps1 }
 Step 'the frame gate end to end (tools\frame_gate_e2e.ps1: the system''s drag of a page drag, a long script preempted by chrome frames, the page''s context menu; no frame begun inside another''s build, no violation of the state machine; a window shown fully transparent and click-through)' {
@@ -537,13 +540,11 @@ Step 'tabs come back after a crash and never loop (tools\crash_recovery_e2e.ps1:
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\crash_recovery_e2e.ps1
 } -UiOnly
-Step 'who chose an address (tools\nav_trust_e2e.ps1: a page asking by script for about:sites?clear=..., a file or a share is refused and F5, Back and Forward never obey it; the same addresses typed by the person, and the links of about:sites, still work)' {
-    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
-    powershell -NoProfile -ExecutionPolicy Bypass -File tools\nav_trust_e2e.ps1
+Step 'who chose an address (src\tools\e2e\nav_trust.odin: a page asking by script for about:sites?clear=..., a file or a share is refused and F5, Back and Forward never obey it; the same addresses typed by the person, and the links of about:sites, still work)' {
+    Invoke-WrenE2E 'build\e2e_test.exe' 'nav_trust'
 } -Weight 20 -NoCI
-Step 'about:config end to end (tools\config_e2e.ps1: search, a switch, a number, a value out of range, a choice, reset, details, a category by type-ahead, all from the keyboard; no window shown)' {
-    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
-    powershell -NoProfile -ExecutionPolicy Bypass -File tools\config_e2e.ps1
+Step 'about:config end to end (src\tools\e2e\config.odin: search, a switch, a number, a value out of range, a choice, reset, details, a category by type-ahead, all from the keyboard; no window at all)' {
+    Invoke-WrenE2E 'build\e2e_test.exe' 'config'
 } -NoCI
 Step 'search engines end to end (src\tools\e2e\search.odin: a profile of before the list keeps its choice, the default, keywords, Ctrl+Down in the suggestions, an engine added in about:config and written to the profile; engines on the test server, build\testserver.exe, no window at all)' {
     Invoke-WrenE2E 'build\e2e_test.exe' 'search'

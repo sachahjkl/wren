@@ -30,6 +30,7 @@ import "core:sync"
 import "core:testing"
 import "core:time"
 import "wb:base"
+import "toolkit:platform"
 import "wb:browser"
 import "wb:remote/api"
 
@@ -68,6 +69,9 @@ Drag_Options :: api.Drag_Options
 Drop_Data :: api.Drop_Data
 Wait :: api.Wait
 Window_Change :: api.Window_Change
+Urlbar :: api.Urlbar
+Urlbar_Row :: api.Urlbar_Row
+diff_pictures :: api.diff_pictures
 center :: api.center
 pixel :: api.pixel
 window_with_id :: api.window_with_id
@@ -421,6 +425,16 @@ wait_until_with :: proc(s: ^Session, data: $D, ready: proc(s: ^Session, data: D)
 
 wait_until :: proc { wait_until_plain, wait_until_with }
 
+// The interface's animations have ended (several frames in a row: a frame in which a change has not begun to move yet is not the end of it).
+wait_chrome_still :: proc(s: ^Session, deadline: time.Duration = DEFAULT_DEADLINE, loc := #caller_location) {
+	quiet := 0
+	wait_until(s, &quiet, proc(s: ^Session, quiet: ^int) -> bool {
+		quiet^ = stats(s).chrome_animating ? 0 : quiet^ + 1
+		return quiet^ >= CHROME_STILL_FRAMES
+	}, "the interface's animations to end", deadline, loc)
+}
+@(private) CHROME_STILL_FRAMES :: 4
+
 ////////////////////////////////
 // Navigation
 
@@ -431,6 +445,32 @@ navigate :: proc(s: ^Session, url: string, deadline: time.Duration = DEFAULT_DEA
 		prev := enter(s, loc)
 		defer browser.control_leave(s.app, prev)
 		browser.control_navigate(s.app, tab_of(s, loc), url)
+	}
+	wait_load(s, deadline, loc)
+}
+
+// The page again; returns once it has loaded.
+reload :: proc(s: ^Session, deadline: time.Duration = DEFAULT_DEADLINE, loc := #caller_location) {
+	{
+		context = s.ctx
+		prev := enter(s, loc)
+		defer browser.control_leave(s.app, prev)
+		browser.control_reload(s.app, tab_of(s, loc))
+	}
+	wait_load(s, deadline, loc)
+}
+
+// Back and forward in the tab's history; each returns once what it went to has loaded.
+go_back :: proc(s: ^Session, deadline: time.Duration = DEFAULT_DEADLINE, loc := #caller_location) { go_history(s, -1, deadline, loc) }
+go_forward :: proc(s: ^Session, deadline: time.Duration = DEFAULT_DEADLINE, loc := #caller_location) { go_history(s, 1, deadline, loc) }
+
+@(private)
+go_history :: proc(s: ^Session, delta: int, deadline: time.Duration, loc: runtime.Source_Code_Location) {
+	{
+		context = s.ctx
+		prev := enter(s, loc)
+		defer browser.control_leave(s.app, prev)
+		browser.control_history(s.app, tab_of(s, loc), delta)
 	}
 	wait_load(s, deadline, loc)
 }
@@ -562,15 +602,38 @@ hover :: proc(s: ^Session, at: Point, space := Space.Page, loc := #caller_locati
 	answer(s, &o, browser.control_hover(s.app, &c, browser.control_point(s.app, at, space)), "hover", loc)
 }
 
-// The wheel at a point of the page: `notches` positive goes down (one is WHEEL_NOTCH px).
-scroll :: proc(s: ^Session, notches: f64, at := Point{api.SCROLL_X, api.SCROLL_Y}, loc := #caller_location) {
+// A button goes down at a point and stays down until `release`; `hover` moves it meanwhile.
+press :: proc(s: ^Session, at: Point, space := Space.Page, button := Button.Left, loc := #caller_location) {
 	context = s.ctx
 	prev := enter(s, loc)
 	defer browser.control_leave(s.app, prev)
 	o: browser.Control_Outcome
 	defer browser.control_outcome_free(&o)
 	c := browser.control_call(&o)
-	answer(s, &o, browser.control_wheel(s.app, &c, browser.control_point(s.app, at, .Page), {0, notches * WHEEL_NOTCH}), "scroll", loc)
+	answer(s, &o, browser.control_press(s.app, &c, browser.control_point(s.app, at, space), browser.control_button(button)), "press", loc)
+}
+
+release :: proc(s: ^Session, at: Point, space := Space.Page, button := Button.Left, loc := #caller_location) {
+	context = s.ctx
+	prev := enter(s, loc)
+	defer browser.control_leave(s.app, prev)
+	o: browser.Control_Outcome
+	defer browser.control_outcome_free(&o)
+	c := browser.control_call(&o)
+	answer(s, &o, browser.control_release(s.app, &c, browser.control_point(s.app, at, space), browser.control_button(button)), "release", loc)
+}
+
+// The wheel at a point: `notches` positive goes down (one is WHEEL_NOTCH px); `ctrl`: with Ctrl held.
+scroll :: proc(s: ^Session, notches: f64, at := Point{api.SCROLL_X, api.SCROLL_Y}, space := Space.Page, ctrl := false, loc := #caller_location) {
+	context = s.ctx
+	prev := enter(s, loc)
+	defer browser.control_leave(s.app, prev)
+	o: browser.Control_Outcome
+	defer browser.control_outcome_free(&o)
+	c := browser.control_call(&o)
+	mods: platform.Modifiers
+	if ctrl { mods += {.Ctrl} }
+	answer(s, &o, browser.control_wheel(s.app, &c, browser.control_point(s.app, at, space), {0, notches * WHEEL_NOTCH}, mods), "scroll", loc)
 }
 WHEEL_NOTCH :: 100
 
@@ -656,6 +719,14 @@ pref_get :: proc(s: ^Session, name: string, loc := #caller_location) -> string {
 	return strings.clone(v, back)
 }
 
+// Back to what it was when the browser started.
+pref_reset :: proc(s: ^Session, name: string, loc := #caller_location) {
+	context = s.ctx
+	prev := enter(s, loc)
+	defer browser.control_leave(s.app, prev)
+	if why := browser.control_pref_reset(s.app, name); why != "" { failed(s, why, loc) }
+}
+
 ////////////////////////////////
 // Tabs, windows, commands
 
@@ -704,6 +775,24 @@ move_tab_to_new_window :: proc(s: ^Session, id: int, loc := #caller_location) ->
 	dest, why := browser.control_move_tab(s.app, id, -1, -1)
 	if dest == nil { failed(s, why, loc) }
 	return dest.id
+}
+
+// The tab goes to window `to`, at `index` (-1: its end), with its page as it is.
+move_tab :: proc(s: ^Session, id, to: int, index := -1, loc := #caller_location) {
+	context = s.ctx
+	prev := enter(s, loc)
+	defer browser.control_leave(s.app, prev)
+	dest, why := browser.control_move_tab(s.app, id, to, index)
+	if dest == nil { failed(s, why, loc) }
+}
+
+// The address bar of the window as the last frame laid it out.
+urlbar :: proc(s: ^Session, loc := #caller_location) -> Urlbar {
+	back := s.test.temp_allocator
+	context = s.ctx
+	prev := enter(s, loc)
+	defer browser.control_leave(s.app, prev)
+	return browser.control_urlbar(s.app, back)
 }
 
 windows :: proc(s: ^Session, loc := #caller_location) -> []Window {

@@ -10,6 +10,7 @@ import "core:fmt"
 import "core:mem"
 import "core:slice"
 import "core:strings"
+import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:render"
 import "toolkit:ui"
@@ -232,6 +233,17 @@ control_hover :: proc(app: ^App, c: ^Call, pos: [2]f32, mods: platform.Modifiers
 	return frames_op(app, c, nil, the_remote.cfg.settle_frames)
 }
 
+// A button goes down, and stays down until control_release (a press held over frames: autoscroll, a splitter).
+control_press :: proc(app: ^App, c: ^Call, pos: [2]f32, button: platform.Mouse_Button, mods: platform.Modifiers = {}) -> Reply {
+	inject(app, {kind = .Mouse_Press, pos = pos, button = button, mods = mods})
+	return frames_op(app, c, nil, the_remote.cfg.settle_frames)
+}
+
+control_release :: proc(app: ^App, c: ^Call, pos: [2]f32, button: platform.Mouse_Button, mods: platform.Modifiers = {}) -> Reply {
+	inject(app, {kind = .Mouse_Release, pos = pos, button = button, mods = mods})
+	return frames_op(app, c, nil, the_remote.cfg.settle_frames)
+}
+
 // The wheel: `delta` in pixels.
 control_wheel :: proc(app: ^App, c: ^Call, pos: [2]f32, delta: [2]f64, mods: platform.Modifiers = {}) -> Reply {
 	inject(app, {kind = .Scroll, pos = pos, delta = {f32(delta.x) / 100, f32(delta.y) / 100}, mods = mods})
@@ -320,14 +332,14 @@ control_tabs :: proc(app: ^App, allocator := context.temp_allocator) -> api.Targ
 			}
 			id := fmt.tprintf("###tab_%d", t.id)
 			if r, ok := chrome_box_rect(w, t.pinned && favs.cfg.position != .Top ? w.own.sidebar.pins_key : w.own.strip.area_key, id); ok {
-				x.rect, x.has_rect = {f64(int(r.min.x)), f64(int(r.min.y)), f64(int(r.max.x - r.min.x)), f64(int(r.max.y - r.min.y))}, true
+				x.rect, x.has_rect = api_rect(r), true
 			}
 			append(&tabs, x)
 		}
 		for g in w.groups {
 			x := api.Tab_Group{id = int(g.id), window = w.id, name = s(g.name, allocator), color = GROUP_COLOR_NAMES[g.color], collapsed = g.collapsed}
 			if r, ok := chrome_box_rect(w, w.own.strip.area_key, fmt.tprintf("###grp_%d", g.id)); ok {
-				x.rect, x.has_rect = {f64(int(r.min.x)), f64(int(r.min.y)), f64(int(r.max.x - r.min.x)), f64(int(r.max.y - r.min.y))}, true
+				x.rect, x.has_rect = api_rect(r), true
 			}
 			append(&groups, x)
 		}
@@ -419,7 +431,7 @@ control_bounds :: proc(app: ^App) -> api.Bounds {
 		width = wnd.win.size.x, height = wnd.win.size.y, state = window_state(app),
 		dpi_scale = f64(wnd.win.dpi_scale), ui_scale = f64(ui_scale_of(app)), page_scale = f64(page_scale(app)),
 		headless = platform.is_offscreen(wnd.win), visible = !platform.is_offscreen(wnd.win) && platform.is_window_visible(wnd.win),
-		page_rect = {f64(int(pr.min.x)), f64(int(pr.min.y)), f64(int(pr.max.x - pr.min.x)), f64(int(pr.max.y - pr.min.y))},
+		page_rect = api_rect(pr),
 	}
 }
 
@@ -446,6 +458,33 @@ control_devtools :: proc(app: ^App, panel, dock: string) -> string {
 	}
 	return ""
 }
+
+// The address bar of the active window as the last frame laid it out: its field, and the rows of its list while it is open.
+control_urlbar :: proc(app: ^App, allocator := context.temp_allocator) -> api.Urlbar {
+	w := app.active
+	uv := urlbar_view(app)
+	bar := api.Urlbar{open = uv.open}
+	if b, ok := w.ui.boxes[window_own(app).address_key]; ok { bar.field = api_rect(b.rect) }
+	if !uv.open { return bar }
+	rows := make([]api.Urlbar_Row, len(uv.rows), allocator)
+	list := ui.key_from_string(w.ui.root.key, URLBAR_POPUP)
+	for r, i in uv.rows {
+		#partial switch r.kind {
+		case .History: rows[i].url = strings.clone(ub.idx.entries[r.entry].url, allocator)
+		case .Tab:     if x := tab_by_id(app, r.tab_id); x != nil { rows[i].url = strings.clone(x.url, allocator) }
+		}
+		outer := ui.key_from_string(list, fmt.tprintf("###ubo_%d", i))
+		id := fmt.tprintf("###ubr_%d", i)
+		if b, ok := chrome_box_rect(w, outer, id); ok { rows[i].rect = api_rect(b) }
+		if b, ok := chrome_box_rect(w, ui.key_from_string(outer, id), "###ubx"); ok { rows[i].cross, rows[i].has_cross = api_rect(b), true }
+	}
+	bar.rows = rows
+	return bar
+}
+
+// A rectangle of the interface as a call gives it: whole pixels.
+@(private = "file")
+api_rect :: proc(r: draw.Rect) -> api.Rect { return {f64(int(r.min.x)), f64(int(r.min.y)), f64(int(r.max.x - r.min.x)), f64(int(r.max.y - r.min.y))} }
 
 // A command of the interface by name. "": it ran, else why not.
 control_command :: proc(app: ^App, t: ^Tab, name: string) -> string {
@@ -475,6 +514,20 @@ control_pref_set :: proc(app: ^App, name, text: string, override := false) -> st
 	remote_reload_settings(app)
 	request_frames(app, 3)
 	return ""
+}
+
+// As it was when the channel started (control_begin for a program in this process). "": done, else why not.
+control_pref_reset :: proc(app: ^App, name: string) -> string {
+	r := &the_remote
+	if r.baseline == nil { return "no baseline" }
+	for st, i in r.baseline.prefs {
+		if st.name != name { continue }
+		config.restore(&app.prefs, r.baseline.prefs[i:i + 1])
+		remote_reload_settings(app)
+		request_frames(app, 3)
+		return ""
+	}
+	return fmt.tprintf("no preference %q", name)
 }
 
 ////////////////////////////////
@@ -519,6 +572,7 @@ control_stats :: proc(app: ^App, allocator := context.temp_allocator) -> api.Sta
 	}
 	if sz, hot, held := platform.drag_image_held(wnd.win); held { st.drag_image = fmt.aprintf("%dx%d@%d,%d", sz.x, sz.y, hot.x, hot.y, allocator = allocator) }
 	st.group_name_focused = window_own(app).sidebar.rename_focused
+	st.devtools_room_checks, st.devtools_room_wrong = dev().room_checks, dev().room_wrong
 	if t := current_tab(app); t != nil && t.page != nil { st.nodes = int(t.page.doc.nodes.count) }
 	for w in app.windows { if w.own.devtools.win != nil { st.devtools_windows += 1 } }
 	return st
@@ -533,6 +587,12 @@ control_navigate :: proc(app: ^App, t: ^Tab, address: string) {
 	navigate(app, t, address, origin = .User)
 	request_frames(app, 3)
 }
+
+// The tab's page again (F5; `bypass_cache`: Ctrl+F5); nothing waits for it: control_wait.
+control_reload :: proc(app: ^App, t: ^Tab, bypass_cache := false) { reload(app, t, bypass_cache) }
+
+// Back (-1) or forward (1) in the tab's history; nothing waits for it.
+control_history :: proc(app: ^App, t: ^Tab, delta: int) { go_history(app, t, delta) }
 
 // What another application's drag carries: the system's form (its `files` are the caller's to delete).
 control_drop_data :: proc(d: api.Drop_Data) -> platform.Drag_Data {
