@@ -1174,9 +1174,9 @@
 	document.open() of a document created with parseHTMLUnsafe keeps declarative shadow DOM opt-in: FAIL
 	document.write allowed from synchronous script loaded from main document: FAIL
 	document.write disallowed on fresh document: FAIL
-	iframe: FAIL
+	iframe: PASS
 	iframe with no sandbox allows declarative Shadow DOM: PASS
-	iframe, no sandbox: FAIL
+	iframe, no sandbox: PASS
 	innerHTML on a <a>: PASS
 	innerHTML on a <abbr>: PASS
 	innerHTML on a <address>: PASS
@@ -8297,19 +8297,19 @@
 	Unresolvable bare specifier produces no entry and applies no styles.: PASS
 /shadow-dom/declarative/tentative/shadowrootadoptedstylesheets/shadowrootadoptedstylesheets-modulepreload-async.html: OK
 	Modulepreload after shadow root creation resolves the placeholder.: FAIL
-/shadow-dom/declarative/tentative/shadowrootadoptedstylesheets/shadowrootadoptedstylesheets-modulepreload-basic.html: TIMEOUT
-	Modulepreloaded CSS module is available synchronously for shadowrootadoptedstylesheets.: TIMEOUT
-/shadow-dom/declarative/tentative/shadowrootadoptedstylesheets/shadowrootadoptedstylesheets-modulepreload-failure.html: TIMEOUT
-	Failed modulepreload (404) results in empty sheet for shadowrootadoptedstylesheets.: TIMEOUT
-	Mixed valid/invalid modulepreloads: valid ones work, failed ones leave empty sheets.: NOTRUN
-/shadow-dom/declarative/tentative/shadowrootadoptedstylesheets/shadowrootadoptedstylesheets-modulepreload-identity.html: TIMEOUT
-	Modulepreload, import(), and shadowrootadoptedstylesheets all share the same CSSStyleSheet.: TIMEOUT
-/shadow-dom/declarative/tentative/shadowrootadoptedstylesheets/shadowrootadoptedstylesheets-modulepreload-nested.html: TIMEOUT
-	Nested shadow roots with modulepreloaded CSS independently resolve their styles.: TIMEOUT
-/shadow-dom/declarative/tentative/shadowrootadoptedstylesheets/shadowrootadoptedstylesheets-modulepreload-ordering.html: TIMEOUT
-	Modulepreloaded CSS modules maintain attribute order in adoptedStyleSheets.: TIMEOUT
-/shadow-dom/declarative/tentative/shadowrootadoptedstylesheets/shadowrootadoptedstylesheets-modulepreload-shared.html: TIMEOUT
-	Modulepreloaded CSS module is shared across multiple shadow roots.: TIMEOUT
+/shadow-dom/declarative/tentative/shadowrootadoptedstylesheets/shadowrootadoptedstylesheets-modulepreload-basic.html: OK
+	Modulepreloaded CSS module is available synchronously for shadowrootadoptedstylesheets.: FAIL
+/shadow-dom/declarative/tentative/shadowrootadoptedstylesheets/shadowrootadoptedstylesheets-modulepreload-failure.html: OK
+	Failed modulepreload (404) results in empty sheet for shadowrootadoptedstylesheets.: FAIL
+	Mixed valid/invalid modulepreloads: valid ones work, failed ones leave empty sheets.: FAIL
+/shadow-dom/declarative/tentative/shadowrootadoptedstylesheets/shadowrootadoptedstylesheets-modulepreload-identity.html: OK
+	Modulepreload, import(), and shadowrootadoptedstylesheets all share the same CSSStyleSheet.: FAIL
+/shadow-dom/declarative/tentative/shadowrootadoptedstylesheets/shadowrootadoptedstylesheets-modulepreload-nested.html: OK
+	Nested shadow roots with modulepreloaded CSS independently resolve their styles.: FAIL
+/shadow-dom/declarative/tentative/shadowrootadoptedstylesheets/shadowrootadoptedstylesheets-modulepreload-ordering.html: OK
+	Modulepreloaded CSS modules maintain attribute order in adoptedStyleSheets.: FAIL
+/shadow-dom/declarative/tentative/shadowrootadoptedstylesheets/shadowrootadoptedstylesheets-modulepreload-shared.html: OK
+	Modulepreloaded CSS module is shared across multiple shadow roots.: FAIL
 /shadow-dom/declarative/tentative/shadowrootadoptedstylesheets/shadowrootadoptedstylesheets-multiple.html: OK
 	Styles from the sheets applied via shadowrootadoptedstylesheets are applied to elements.: FAIL
 	adoptedStyleSheets is populated from a <template> element's shadowrootadoptedstylesheets attribute.: FAIL
@@ -8738,7 +8738,6 @@
 /shadow-dom/focus/focus-tabindex-order-shadow-negative.html: TIMEOUT
 	Order when all elements in shadow tree has negative tabindex: TIMEOUT
 /shadow-dom/focus/focus-tabindex-order-shadow-slot-one.html: TIMEOUT
-	Order when all tabindex=0, except for one slot that has tabindex=1: TIMEOUT
 /shadow-dom/focus/focus-tabindex-order-shadow-varying-delegatesFocus.html: TIMEOUT
 	Order when tabindex varies and delegatesFocus = true: TIMEOUT
 /shadow-dom/focus/focus-tabindex-order-shadow-varying-tabindex-2.html: TIMEOUT
@@ -8852,7 +8851,7 @@
 /shadow-dom/leaktests/selection.html: ERROR
 	selection API should not leak nodes in Shadow DOM.: TIMEOUT
 /shadow-dom/leaktests/window-frames.html: OK
-	window.frames should not leak frames in Shadow DOM.: FAIL
+	window.frames should not leak frames in Shadow DOM.: PASS
 /shadow-dom/offsetParent-across-shadow-boundaries.html: OK
 	offsetParent must find the first offset parent which is a shadow-including ancestor of the context object even some shadow tree of closed mode did not have any offset parent: FAIL
 	offsetParent must find the first offset parent which is a shadow-including ancestor of the context object even some shadow tree of open mode did not have any offset parent: FAIL
@@ -9840,25 +9839,25 @@
 /shadow-dom/untriaged/elements-and-dom-objects/extensions-to-element-interface/methods/test-001.html: OK
 	A_10_02_02_01_T01: PASS
 /shadow-dom/untriaged/elements-and-dom-objects/extensions-to-element-interface/methods/test-002.html: OK
-	A_10_02_02_02_T01: FAIL
+	A_10_02_02_02_T01: PASS
 /shadow-dom/untriaged/elements-and-dom-objects/shadowroot-object/shadowroot-attributes/activeElement-confirm-return-null.html: OK
-	confirm activeElement return null: FAIL
-	confirm activeElement return null when focus on the element in the outer shadow tree: FAIL
-	confirm activeElement return null when there is other element in body: FAIL
+	confirm activeElement return null: PASS
+	confirm activeElement return null when focus on the element in the outer shadow tree: PASS
+	confirm activeElement return null when there is other element in body: PASS
 /shadow-dom/untriaged/elements-and-dom-objects/shadowroot-object/shadowroot-attributes/test-007.html: OK
-	A_10_01_01_03_01_T01: FAIL
+	A_10_01_01_03_01_T01: PASS
 /shadow-dom/untriaged/elements-and-dom-objects/shadowroot-object/shadowroot-attributes/test-009.html: OK
-	A_10_01_01_04_01_T01: FAIL
+	A_10_01_01_04_01_T01: PASS
 /shadow-dom/untriaged/elements-and-dom-objects/shadowroot-object/shadowroot-attributes/test-010.html: OK
-	A_10_01_01_04_02_T01_01: FAIL
-	A_10_01_01_04_02_T01_02: FAIL
+	A_10_01_01_04_02_T01_01: PASS
+	A_10_01_01_04_02_T01_02: PASS
 /shadow-dom/untriaged/elements-and-dom-objects/shadowroot-object/shadowroot-attributes/test-011.html: OK
-	A_10_01_01_05_01_T01: FAIL
-	A_10_01_01_05_01_T02: FAIL
+	A_10_01_01_05_01_T01: PASS
+	A_10_01_01_05_01_T02: PASS
 /shadow-dom/untriaged/elements-and-dom-objects/shadowroot-object/shadowroot-attributes/test-012.html: OK
-	A_10_01_01_06_T01: FAIL
+	A_10_01_01_06_T01: PASS
 /shadow-dom/untriaged/elements-and-dom-objects/shadowroot-object/shadowroot-attributes/test-013.html: OK
-	A_10_01_01_07_T01: FAIL
+	A_10_01_01_07_T01: PASS
 /shadow-dom/untriaged/elements-and-dom-objects/shadowroot-object/shadowroot-methods/test-001.html: OK
 	A_10_01_02_01_T01: PASS
 	A_10_01_02_01_T02: PASS
@@ -9871,35 +9870,35 @@
 	A_10_01_02_06_02_T01: PASS
 	A_10_01_02_06_02_T02: PASS
 /shadow-dom/untriaged/elements-and-dom-objects/shadowroot-object/shadowroot-methods/test-010.html: OK
-	A_10_01_02_09_T01: FAIL
+	A_10_01_02_09_T01: PASS
 /shadow-dom/untriaged/events/event-dispatch/test-002.html: OK
-	A_05_05_02_T01: FAIL
+	A_05_05_02_T01: PASS
 /shadow-dom/untriaged/events/event-dispatch/test-003.html: OK
 	A_05_05_03_T01: FAIL
 /shadow-dom/untriaged/events/event-retargeting/test-001.html: OK
-	A_05_01_01_T1: FAIL
-	A_05_01_01_T2: FAIL
+	A_05_01_01_T1: PASS
+	A_05_01_01_T2: PASS
 /shadow-dom/untriaged/events/event-retargeting/test-003.html: OK
-	A_05_01_03_T01: FAIL
+	A_05_01_03_T01: PASS
 /shadow-dom/untriaged/events/retargeting-focus-events/test-001.html: OK
-	A_05_03_01_T01: FAIL
-	A_05_03_01_T02: FAIL
-	A_05_03_01_T03: FAIL
-	A_05_03_01_T04: FAIL
-	A_05_03_01_T05: FAIL
-	A_05_03_01_T06: FAIL
+	A_05_03_01_T01: PASS
+	A_05_03_01_T02: PASS
+	A_05_03_01_T03: PASS
+	A_05_03_01_T04: PASS
+	A_05_03_01_T05: PASS
+	A_05_03_01_T06: PASS
 /shadow-dom/untriaged/events/retargeting-focus-events/test-002.html: OK
-	A_05_03_02_T01: FAIL
+	A_05_03_02_T01: PASS
 /shadow-dom/untriaged/events/retargeting-focus-events/test-003.html: OK
-	A_05_03_03_T01: FAIL
+	A_05_03_03_T01: PASS
 /shadow-dom/untriaged/events/retargeting-relatedtarget/test-001.html: OK
-	A_05_02_01_T1: FAIL
+	A_05_02_01_T1: PASS
 /shadow-dom/untriaged/events/retargeting-relatedtarget/test-002.html: OK
-	A_05_02_02_T01: FAIL
+	A_05_02_02_T01: PASS
 /shadow-dom/untriaged/events/retargeting-relatedtarget/test-003.html: OK
-	A_05_02_03_T01: FAIL
+	A_05_02_03_T01: PASS
 /shadow-dom/untriaged/events/test-001.html: OK
-	A_05_00_01_T1: FAIL
+	A_05_00_01_T1: PASS
 /shadow-dom/untriaged/html-elements-in-shadow-trees/html-forms/test-001.html: OK
 	A_08_02_01_T01: PASS
 	A_08_02_01_T02: PASS
@@ -9908,11 +9907,11 @@
 	A_08_02_02_T02: PASS
 	A_08_02_02_T03: PASS
 /shadow-dom/untriaged/html-elements-in-shadow-trees/html-forms/test-003.html: OK|TIMEOUT
-	A_08_02_03_T01: FAIL
+	A_08_02_03_T01: TIMEOUT
 /shadow-dom/untriaged/html-elements-in-shadow-trees/inert-html-elements/test-001.html: OK
-	A_08_01_01_T01: FAIL
+	A_08_01_01_T01: PASS
 /shadow-dom/untriaged/html-elements-in-shadow-trees/inert-html-elements/test-002.html: OK
-	A_08_01_02_T01: FAIL
+	A_08_01_02_T01: PASS
 /shadow-dom/untriaged/shadow-trees/upper-boundary-encapsulation/dom-tree-accessors-001.html: TIMEOUT
 	<head> and <body> in a shadow tree should not be accessible from owner document's "head" and "body" properties, respectively.: PASS
 	Elements in a shadow tree should not be accessible from owner document's "all" attribute.: PASS
@@ -9991,7 +9990,7 @@
 	A_04_01_09_T15: PASS
 	A_04_01_09_T16: PASS
 /shadow-dom/untriaged/shadow-trees/upper-boundary-encapsulation/test-011.html: OK
-	A_04_01_11_T2: FAIL
+	A_04_01_11_T2: PASS
 /shadow-dom/untriaged/shadow-trees/upper-boundary-encapsulation/window-named-properties-001.html: OK
 	An iframe element in a shadow tree should not be accessible from window's named properties with its "name" attribute value.: PASS
 /shadow-dom/untriaged/shadow-trees/upper-boundary-encapsulation/window-named-properties-002.html: OK
@@ -10119,24 +10118,24 @@
 	A_06_00_01_T01: FAIL
 	A_06_00_01_T02: FAIL
 /shadow-dom/untriaged/styles/test-003.html: OK
-	A_06_00_03_T01: FAIL
-	A_06_00_03_T02: FAIL
-	A_06_00_03_T03: FAIL
+	A_06_00_03_T01: PASS
+	A_06_00_03_T02: PASS
+	A_06_00_03_T03: PASS
 /shadow-dom/untriaged/styles/test-005.html: OK
 	A_06_00_06_T01: FAIL
 /shadow-dom/untriaged/styles/test-008.html: OK
 	A_06_00_09_T01: FAIL
 /shadow-dom/untriaged/user-interaction/active-element/test-001.html: OK
-	A_07_03_01_T01: FAIL
+	A_07_03_01_T01: PASS
 /shadow-dom/untriaged/user-interaction/active-element/test-002.html: OK
-	A_07_03_02_T01: FAIL
+	A_07_03_02_T01: PASS
 /shadow-dom/untriaged/user-interaction/editing/inheritance-of-content-editable-001.html: OK
-	contentEditable of shadow trees must be undefined when contentEditable attribute of shadow host is "inherit": FAIL
-	contentEditable of shadow trees must be undefined when contentEditable attribute of shadow host is "true": FAIL
-	contentEditable of shadow trees must be undefined when contentEditable of shadow host is "false": FAIL
+	contentEditable of shadow trees must be undefined when contentEditable attribute of shadow host is "inherit": PASS
+	contentEditable of shadow trees must be undefined when contentEditable attribute of shadow host is "true": PASS
+	contentEditable of shadow trees must be undefined when contentEditable of shadow host is "false": PASS
 /shadow-dom/untriaged/user-interaction/ranges-and-selections/test-001.html: OK
-	A_07_07_01_T01: FAIL
-	A_07_07_01_T02: FAIL
+	A_07_07_01_T01: PASS
+	A_07_07_01_T02: PASS
 /shadow-dom/untriaged/user-interaction/ranges-and-selections/test-002.html: OK
 	A_07_01_02_T01: FAIL
 	A_07_07_02_T02: FAIL

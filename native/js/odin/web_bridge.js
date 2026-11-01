@@ -14,8 +14,9 @@
   const wmGet = WeakMapC.prototype.get, wmSet = WeakMapC.prototype.set, derefF = WeakRefC.prototype.deref, regF = FR.prototype.register;
   const bindF = Function.prototype.bind, arrayIsArray = Array.isArray;
   const emptyFn = function () {};
-  const ObjectC = Object;
-  const isConstructor = f => { try { rConstruct(ObjectC, [], f); return true; } catch (e) { return false; } };
+  // (a construct trap: nothing of `f` is read, a getter of its `prototype` does not run)
+  const probeHandler = { __proto__: null, construct() { return emptyFn; } };
+  const isConstructor = f => { try { new (new P(f, probeHandler))(); return true; } catch (e) { return false; } };
   const OP_GET = 1, OP_SET = 2, OP_HAS = 3, OP_DELETE = 4, OP_KEYS = 5, OP_GOPD = 6, OP_DEFINE = 7, OP_GET_PROTO = 8, OP_SET_PROTO = 9, OP_APPLY = 10, OP_CONSTRUCT = 11, OP_RELEASE = 12;
   const KIND_OBJECT = 0, KIND_FUNCTION = 1, KIND_ARRAY = 2, KIND_PLAIN_FUNCTION = 3;
   const emptyArrow = () => {};
