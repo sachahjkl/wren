@@ -13,7 +13,7 @@ $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
 $fails = 0
 function Expect([bool]$ok, [string]$what, [string]$got) {
-  if ($ok) { "PASS $what" } else { "FAIL $what (got: $got)"; $script:fails++ }
+  if ($ok) { "PASS $what" } else { "FAIL $what (got: $got)$(if (-not $got -and $global:WrenErr) { " wren ctl: $global:WrenErr" })"; $script:fails++ }
 }
 $srv = Start-WrenTestServer
 $name = $null
