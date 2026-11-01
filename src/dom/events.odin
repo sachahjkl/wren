@@ -28,6 +28,7 @@ Event :: struct {
 	// an Event object of the JavaScript engine being dispatched (its identifier; 0 for events the browser makes), which
 	// is then not trusted, and its timeStamp (0: the time of the dispatch)
 	engine_id:       i64,
+	engine_realm:    u64,       // the page whose realm made it: its address means nothing to another realm's listeners
 	untrusted:       bool,
 	time_stamp:      f64,
 	// UI Events details the shell may give (zero: unknown, derived from the fields above where UI Events allows)

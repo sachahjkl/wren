@@ -357,6 +357,91 @@ window.tick = 0;
 	}
 }
 
+// Events and scripts of a frame reached from the parent: both realms' listeners, scripts inserted there.
+events_and_scripts :: proc() {
+	fmt.println("-- events: listeners of both realms on one node")
+	{
+		p := load(`<body><iframe id=f srcdoc="<button id=b>go</button><script>
+window.order = [];
+const b = document.getElementById('b');
+b.addEventListener('click', e => { order.push('frame ' + e.type + ' ' + (e.target === b) + ' ' + (this === window)); parent.postMessage('frame heard ' + e.type + ' ' + e.isTrusted + ' ' + (e.target === b), '*'); });
+parent.postMessage('ready', '*');
+</script>"></iframe><script>
+addEventListener("message", e => {
+  log(e.data);
+  if (e.data !== "ready") return;
+  const d = document.getElementById("f").contentDocument;
+  const b = d.getElementById("b");
+  let parentHeard = [];
+  const fn = e => { parentHeard.push(e.type + " " + (e.target === b) + " " + (e.currentTarget === b) + " " + (e instanceof Event)); };
+  b.addEventListener("click", fn);
+  b.click();
+  log("parent heard " + parentHeard.join());
+  b.dispatchEvent(new Event("custom"));
+  b.addEventListener("custom", e => { parentHeard.push("custom " + e.bubbles); e.preventDefault(); });
+  const ev = new Event("custom", {bubbles: true, cancelable: true});
+  const notCanceled = b.dispatchEvent(ev);
+  log("own event " + parentHeard[parentHeard.length - 1] + " " + notCanceled + " " + ev.defaultPrevented + " " + (ev.target === b));
+  b.removeEventListener("click", fn);
+  parentHeard = [];
+  b.click();
+  log("removed " + parentHeard.length);
+  let viaAttr = 0;
+  b.onclick = () => { viaAttr++; };
+  b.click();
+  log("on attribute " + viaAttr + " " + (typeof b.onclick));
+  d.body.addEventListener("click", e => { log("bubbled to frame body " + (e.target === b)); e.stopPropagation(); });
+  d.addEventListener("click", () => log("must not run"));
+  b.click();
+});
+</script></body>`)
+		check(wait_for("ready"), "the frame is ready")
+		check(wait_for("parent heard click true true true"), "a parent's listener on a node of the frame is called, with its own wrappers")
+		check(wait_for("frame heard click true true"), "the frame's own listener is called too, with its wrappers")
+		check(wait_for("own event custom true false true true"), "an Event of the parent dispatched on a frame's node: preventDefault counts, target is the node")
+		check(wait_for("removed 0"), "removeEventListener from the parent")
+		check(wait_for("on attribute 1 function"), "an event handler attribute set from the parent")
+		check(wait_for("bubbled to frame body true"), "propagation goes through the frame's tree")
+		check(!logged("must not run"), "stopPropagation from the parent's listener stops it")
+		page.page_close(p)
+	}
+
+	fmt.println("-- scripts inserted in a frame run in its realm")
+	{
+		p := load(fill(`<body><iframe id=f></iframe><script>
+window.who = "parent realm";
+addEventListener("message", e => log(e.data));
+const f = document.getElementById("f");
+const d = f.contentDocument;
+const s = d.createElement("script");
+s.textContent = "window.who = 'frame realm'; parent.postMessage('inline ran: ' + who + ' ' + (document.currentScript !== null) + ' ' + (document !== parent.document) + ' ' + (window !== parent), '*');";
+d.head.appendChild(s);
+log("after insert " + who);
+const moved = document.createElement("script");
+moved.textContent = "parent.postMessage('moved script ran in ' + who, '*');";
+d.body.appendChild(moved);
+const ext = d.createElement("script");
+ext.src = "%s";
+ext.onload = () => log("external loaded");
+d.body.appendChild(ext);
+d.body.innerHTML += "<p id=h onclick=\"parent.postMessage('attribute handler in ' + who, '*')\">x</p>";
+d.getElementById("h").click();
+const tm = d.createElement("script");
+tm.textContent = "setTimeout(() => parent.postMessage('timer of the frame in ' + who, '*'), 0); Promise.resolve().then(() => parent.postMessage('microtask of the frame', '*'));";
+d.body.appendChild(tm);
+log("still sync");
+</script></body>`, testenv.url(SAME + "/jsload/gen?ms=0&code=parent.postMessage('external%20ran%20in%20'%20%2B%20who%2C%20'*')")))
+		check(wait_for("inline ran: frame realm true true true"), "a script created through contentDocument runs at once, in the frame's realm")
+		check(wait_for("after insert parent realm"), "the parent's global is untouched")
+		check(wait_for("moved script ran in frame realm"), "a script made in the parent and moved to the frame runs in the frame's realm")
+		check(wait_for("external ran in frame realm") && wait_for("external loaded"), "an external script loads in the frame, with its load event seen by the parent")
+		check(wait_for("attribute handler in frame realm"), "an onclick attribute written from the parent is compiled in the frame's realm")
+		check(wait_for("timer of the frame in frame realm") && wait_for("microtask of the frame"), "timers and microtasks of an inserted script are the frame's")
+		page.page_close(p)
+	}
+
+}
+
 // What another origin, or a sandbox, must not reach: every route (src/page/frames_access.odin).
 cross_origin_boundary :: proc() {
 	fmt.println("-- the boundary: a cross-origin frame stays out of reach by every route")
@@ -751,6 +836,7 @@ addEventListener("message", e => log("nav " + e.data));
 	}
 
 	same_origin_dom()
+	events_and_scripts()
 	cross_origin_boundary()
 
 	fmt.println("-- Permissions Policy: the allow attribute delegates features")
