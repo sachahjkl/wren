@@ -269,7 +269,15 @@ try {
                     $res = & $exe @again 2>$null
                     $status = $LASTEXITCODE
                     $still = @($res | ForEach-Object { if ($_ -match '^REGRESSION (\S+?)(?:: | \| )') { $Matches[1] } } | Select-Object -Unique)
-                    "again, nearly alone: $($paths.Count - $still.Count) of $($paths.Count) tests pass (a timeout under load, or -FastTimeouts)"
+                    "again, two at a time: $($paths.Count - $still.Count) of $($paths.Count) tests pass (a timeout under load, or -FastTimeouts)"
+                    # (what is left truly alone: a script stopped by a wall-clock limit of the engine, with the other test beside it)
+                    if ($status -ne 0 -and $still.Count -gt 0 -and $still.Count -le $SecondChanceMax) {
+                        [IO.File]::WriteAllText($againList, ($still -join "`n") + "`n")
+                        $i = [Array]::IndexOf($again, '-jobs'); $again[$i + 1] = 1
+                        $res = & $exe @again 2>$null
+                        $status = $LASTEXITCODE
+                        "again, alone: $($still.Count) test(s), $(if ($status -eq 0) { 'they pass' } else { 'still failing' })"
+                    }
                     if ($status -ne 0) { $res | Where-Object { $_ -match '^REGRESSION' } }
                 }
             }
