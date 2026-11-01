@@ -154,7 +154,7 @@ test("PBKDF2 (RFC 6070), HKDF (RFC 5869)", async () => {
 });
 
 test("ECDSA", async () => {
-  for (const [curve, size, hash] of [["P-256", 32, "SHA-256"], ["P-384", 48, "SHA-384"]]) {
+  for (const [curve, size, hash] of [["P-256", 32, "SHA-256"], ["P-384", 48, "SHA-384"], ["P-521", 66, "SHA-512"]]) {
     const pair = await subtle.generateKey({ name: "ECDSA", namedCurve: curve }, true, ["sign", "verify"]);
     eq(pair.publicKey.type, "public", `${curve}: the public key`);
     eq(pair.publicKey.extractable, true, `${curve}: a public key is extractable`);
@@ -188,7 +188,7 @@ test("ECDSA", async () => {
     await rejects(subtle.exportKey("spki", pair.privateKey), "InvalidAccessError", `${curve}: spki is for public keys`);
     await rejects(subtle.exportKey("pkcs8", pair.publicKey), "InvalidAccessError", `${curve}: pkcs8 is for private keys`);
   }
-  await rejects(subtle.generateKey({ name: "ECDSA", namedCurve: "P-521" }, true, ["sign"]), "NotSupportedError", "P-521 is not there");
+  await rejects(subtle.generateKey({ name: "ECDSA", namedCurve: "P-512" }, true, ["sign"]), "NotSupportedError", "no such curve");
   await rejects(subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["encrypt"]), "SyntaxError", "a usage of no ECDSA key");
   await rejects(subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["verify"]), "SyntaxError", "no usage left for the private key");
 });
@@ -213,6 +213,93 @@ test("ECDH", async () => {
   await rejects(subtle.deriveBits({ name: "ECDH", public: c.publicKey }, a.privateKey, 256), "InvalidAccessError", "a key of another curve");
   const key = await subtle.deriveKey({ name: "ECDH", public: b.publicKey }, a.privateKey, { name: "AES-GCM", length: 256 }, true, ["encrypt"]);
   eq(toHex(await subtle.exportKey("raw", key)), toHex(s1), "deriveKey");
+});
+
+// RFC 6979, A.2.7: x, U, and r || s of the message "sample" (the key's numbers with a zero nibble in front: 66 bytes)
+const P521_X = "00FAD06DAA62BA3B25D2FB40133DA757205DE67F5BB0018FEE8C86E1B68C7E75CAA896EB32F1F47C70855836A6D16FCC1466F6D8FBEC67DB89EC0C08B0E996B83538";
+const P521_UX = "01894550D0785932E00EAA23B694F213F8C3121F86DC97A04E5A7167DB4E5BCD371123D46E45DB6B5D5370A7F20FB633155D38FFA16D2BD761DCAC474B9A2F5023A4";
+const P521_UY = "00493101C962CD4D2FDDF782285E64584139C2F91B47F87FF82354D6630F746A28A0DB25741B5B34A828008B22ACC23F924FAAFBD4D33F81EA66956DFEAA2BFDFCF5";
+const P521_SAMPLE = {
+  "SHA-1": ["00343B6EC45728975EA5CBA6659BBB6062A5FF89EEA58BE3C80B619F322C87910FE092F7D45BB0F8EEE01ED3F20BABEC079D202AE677B243AB40B5431D497C55D75D",
+    "00E7B0E675A9B24413D448B8CC119D2BF7B2D2DF032741C096634D6D65D0DBE3D5694625FB9E8104D3B842C1B0E2D0B98BEA19341E8676AEF66AE4EBA3D5475D5D16"],
+  "SHA-256": ["01511BB4D675114FE266FC4372B87682BAECC01D3CC62CF2303C92B3526012659D16876E25C7C1E57648F23B73564D67F61C6F14D527D54972810421E7D87589E1A7",
+    "004A171143A83163D6DF460AAF61522695F207A58B95C0644D87E52AA1A347916E4F7A72930B1BC06DBE22CE3F58264AFD23704CBB63B29B931F7DE6C9D949A7ECFC"],
+  "SHA-384": ["01EA842A0E17D2DE4F92C15315C63DDF72685C18195C2BB95E572B9C5136CA4B4B576AD712A52BE9730627D16054BA40CC0B8D3FF035B12AE75168397F5D50C67451",
+    "01F21A3CEE066E1961025FB048BD5FE2B7924D0CD797BABE0A83B66F1E35EEAF5FDE143FA85DC394A7DEE766523393784484BDF3E00114A1C857CDE1AA203DB65D61"],
+  "SHA-512": ["00C328FAFCBD79DD77850370C46325D987CB525569FB63C5D3BC53950E6D4C5F174E25A1EE9017B5D450606ADD152B534931D7D4E8455CC91F9B15BF05EC36E377FA",
+    "00617CCE7CF5064806C467F678D3B4080D6F1CC50AF26CA209417308281B68AF282623EAA63E5B5C0723D8B8C37FF0777B1A20F8CCB1DCCC43997F1EE0E44DA4A67A"],
+};
+// RFC 5903, 8.3
+const IKE_I = "0037ADE9319A89F4DABDB3EF411AACCCA5123C61ACAB57B5393DCE47608172A095AA85A30FE1C2952C6771D937BA9777F5957B2639BAB072462F68C27A57382D4A52";
+const IKE_GIX = "0015417E84DBF28C0AD3C278713349DC7DF153C897A1891BD98BAB4357C9ECBEE1E3BF42E00B8E380AEAE57C2D107564941885942AF5A7F4601723C4195D176CED3E";
+const IKE_GIY = "017CAE20B6641D2EEB695786D8C946146239D099E18E1D5A514C739D7CB4A10AD8A788015AC405D7799DC75E7B7D5B6CF2261A6A7F1507438BF01BEB6CA3926F9582";
+const IKE_GRX = "00D0B3975AC4B799F5BEA16D5E13E9AF971D5E9B984C9F39728B5E5739735A219B97C356436ADC6E95BB0352F6BE64A6C2912D4EF2D0433CED2B6171640012D9460F";
+const IKE_GRY = "015C68226383956E3BD066E797B623C27CE0EAC2F551A10C2C724D9852077B87220B6536C5C408A1D2AEBB8E86D678AE49CB57091F4732296579AB44FCD17F0FC56A";
+const IKE_GIR = "01144C7D79AE6956BC8EDB8E7C787C4521CB086FA64407F97894E5E6B2D79B04D1427E73CA4BAA240A34786859810C06B3C715A3A8CC3151F2BEE417996D19F3DDEA";
+const p521Jwk = (x, y, d, usages) => ({ kty: "EC", crv: "P-521", x: b64url(hex(x)), y: b64url(hex(y)), ...(d ? { d: b64url(hex(d)) } : {}), key_ops: usages, ext: true });
+
+test("P-521: ECDSA (RFC 6979)", async () => {
+  const alg = { name: "ECDSA", namedCurve: "P-521" };
+  const pub = await subtle.importKey("jwk", p521Jwk(P521_UX, P521_UY, null, ["verify"]), alg, true, ["verify"]);
+  const prv = await subtle.importKey("jwk", p521Jwk(P521_UX, P521_UY, P521_X, ["sign"]), alg, true, ["sign"]);
+  eq(prv.algorithm.namedCurve, "P-521", "the curve");
+  eq(toHex(await subtle.exportKey("raw", pub)), ("04" + P521_UX + P521_UY).toLowerCase(), "raw");
+  for (const [hash, [r, s]] of Object.entries(P521_SAMPLE)) {
+    const sig = hex(r + s);
+    eq(await subtle.verify({ name: "ECDSA", hash }, pub, sig, utf8("sample")), true, `${hash}: the RFC's signature`);
+    eq(await subtle.verify({ name: "ECDSA", hash }, pub, sig, utf8("sampl")), false, `${hash}: of another message`);
+    sig[131] ^= 1;
+    eq(await subtle.verify({ name: "ECDSA", hash }, pub, sig, utf8("sample")), false, `${hash}: changed`);
+    eq(await subtle.verify({ name: "ECDSA", hash }, pub, sig.subarray(0, 131), utf8("sample")), false, `${hash}: too short`);
+    const mine = await subtle.sign({ name: "ECDSA", hash }, prv, utf8("sample"));
+    eq(mine.byteLength, 132, `${hash}: r and s`);
+    eq(await subtle.verify({ name: "ECDSA", hash }, pub, mine, utf8("sample")), true, `${hash}: signs what verifies`);
+  }
+  await rejects(subtle.importKey("jwk", p521Jwk(P521_UX, P521_UY.replace("00", "01"), null, ["verify"]), alg, true, ["verify"]), "DataError", "a point not on the curve");
+  await rejects(subtle.importKey("jwk", p521Jwk(P521_UX, P521_UY, IKE_I, ["sign"]), alg, true, ["sign"]), "DataError", "d is not of this x, y");
+  await rejects(subtle.importKey("raw", hex("04" + P521_UX), alg, true, ["verify"]), "DataError", "half a point");
+});
+
+test("P-521: ECDH (RFC 5903), formats, wrapping, travelling", async () => {
+  const alg = { name: "ECDH", namedCurve: "P-521" };
+  const me = await subtle.importKey("jwk", p521Jwk(IKE_GIX, IKE_GIY, IKE_I, ["deriveBits", "deriveKey"]), alg, true, ["deriveBits", "deriveKey"]);
+  const peer = await subtle.importKey("raw", hex("04" + IKE_GRX + IKE_GRY), alg, true, []);
+  eq(toHex(await subtle.deriveBits({ name: "ECDH", public: peer }, me, 528)), IKE_GIR.toLowerCase(), "g^ir, of 66 bytes");
+  eq(toHex(await subtle.deriveBits({ name: "ECDH", public: peer }, me)), IKE_GIR.toLowerCase(), "without a length: all of it");
+  const short = await subtle.deriveBits({ name: "ECDH", public: peer }, me, 256);
+  eq(toHex(short), IKE_GIR.slice(0, 64).toLowerCase(), "256 bits: the first ones");
+  await rejects(subtle.deriveBits({ name: "ECDH", public: peer }, me, 536), "OperationError", "more bits than the secret");
+  const other = await subtle.generateKey({ name: "ECDH", namedCurve: "P-384" }, true, ["deriveBits"]);
+  await rejects(subtle.deriveBits({ name: "ECDH", public: other.publicKey }, me, 256), "InvalidAccessError", "a key of another curve");
+  const aes = await subtle.deriveKey({ name: "ECDH", public: peer }, me, { name: "AES-GCM", length: 256 }, true, ["encrypt"]);
+  eq(toHex(await subtle.exportKey("raw", aes)), IKE_GIR.slice(0, 64).toLowerCase(), "deriveKey");
+  // both ends of a generated pair
+  const a = await subtle.generateKey(alg, true, ["deriveBits"]);
+  const b = await subtle.generateKey(alg, true, ["deriveBits"]);
+  eq(new Uint8Array(await subtle.exportKey("raw", a.publicKey)).length, 133, "the uncompressed point");
+  eq(toHex(await subtle.deriveBits({ name: "ECDH", public: b.publicKey }, a.privateKey, 528)), toHex(await subtle.deriveBits({ name: "ECDH", public: a.publicKey }, b.privateKey, 528)), "both sides have it");
+  // spki, pkcs8 and jwk both ways
+  const spki = await subtle.exportKey("spki", a.publicKey);
+  ok(toHex(spki).includes("2b81040023"), "spki names the curve");
+  eq(toHex(await subtle.exportKey("spki", await subtle.importKey("spki", spki, alg, true, []))), toHex(spki), "spki round trip");
+  const pkcs8 = await subtle.exportKey("pkcs8", a.privateKey);
+  ok(toHex(pkcs8).includes("2b81040023"), "pkcs8 names the curve");
+  eq(toHex(await subtle.exportKey("pkcs8", await subtle.importKey("pkcs8", pkcs8, alg, true, ["deriveBits"]))), toHex(pkcs8), "pkcs8 round trip");
+  const jwk = await subtle.exportKey("jwk", a.privateKey);
+  eq(jwk.crv, "P-521", "jwk crv");
+  eq(jwk.d.length, 88, "jwk d of 66 bytes");
+  // wrapKey and unwrapKey
+  const kek = await subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["wrapKey", "unwrapKey"]);
+  const iv = fill(12, 3);
+  const wrapped = await subtle.wrapKey("pkcs8", a.privateKey, kek, { name: "AES-GCM", iv });
+  const unwrapped = await subtle.unwrapKey("pkcs8", wrapped, kek, { name: "AES-GCM", iv }, alg, true, ["deriveBits"]);
+  eq(toHex(await subtle.exportKey("pkcs8", unwrapped)), toHex(pkcs8), "through wrapKey and unwrapKey");
+  // a structured clone, unextractable
+  const locked = await subtle.importKey("pkcs8", pkcs8, alg, false, ["deriveBits"]);
+  const copy = structuredClone(locked);
+  eq(copy.extractable, false, "the copy is locked too");
+  await rejects(subtle.exportKey("pkcs8", copy), "InvalidAccessError", "not extractable");
+  eq(toHex(await subtle.deriveBits({ name: "ECDH", public: b.publicKey }, copy, 528)), toHex(await subtle.deriveBits({ name: "ECDH", public: b.publicKey }, a.privateKey, 528)), "it derives the same");
 });
 
 test("RSA", async () => {

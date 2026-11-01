@@ -28,7 +28,7 @@ import "wb:host"
 // The rejection of an operation that failed. No error code names it: an unknown one is an OperationError (web_error_value).
 @(private = "file") WEB_ERR_OPERATION :: -100
 
-Crypto_Kind :: enum u8 { Secret, P256, P384, Ed25519, X25519, RSA }
+Crypto_Kind :: enum u8 { Secret, P256, P384, Ed25519, X25519, RSA, P521 }
 
 Crypto_Key :: struct {
 	refs:        i32,
@@ -92,6 +92,7 @@ kind_of_name :: proc(name: string) -> (Crypto_Kind, bool) {
 	case "secret":  return .Secret, true
 	case "P-256":   return .P256, true
 	case "P-384":   return .P384, true
+	case "P-521":   return .P521, true
 	case "Ed25519": return .Ed25519, true
 	case "X25519":  return .X25519, true
 	case "RSA":     return .RSA, true
@@ -138,6 +139,8 @@ point_uncompressed :: proc(kind: Crypto_Kind, b: []byte) -> []byte {
 		out := make([]byte, 97)
 		if !secec.pt_sec_bytes(out, &pt, false) { delete(out); return nil }
 		return out
+	case .P521:
+		return p521_point(b)
 	}
 	return nil
 }
@@ -153,6 +156,8 @@ curve_key :: proc(kind: Crypto_Kind, value, public_value: []byte, is_private, ex
 			if !ed25519.private_key_set_bytes(&sk, value) { return nil }
 			public_bytes = make([]byte, ed25519.PUBLIC_KEY_SIZE)
 			ed25519.private_key_public_bytes(&sk, public_bytes)
+		} else if kind == .P521 {
+			if public_bytes = p521_public_of(value); public_bytes == nil { return nil }
 		} else {
 			sk: ecdh.Private_Key
 			defer ecdh.private_key_clear(&sk)
@@ -170,7 +175,7 @@ curve_key :: proc(kind: Crypto_Kind, value, public_value: []byte, is_private, ex
 	}
 	public_bytes: []byte
 	switch kind {
-	case .P256, .P384:
+	case .P256, .P384, .P521:
 		public_bytes = point_uncompressed(kind, value)
 		if public_bytes == nil { return nil }
 	case .Ed25519, .X25519:
@@ -266,6 +271,7 @@ CryptoKey_modulusBits :: proc(c: ^Call, key: Api_CryptoKeyData) -> i32 {
 @(private = "file") OID_EC      := []byte{0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x02, 0x01}
 @(private = "file") OID_P256    := []byte{0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x03, 0x01, 0x07}
 @(private = "file") OID_P384    := []byte{0x2B, 0x81, 0x04, 0x00, 0x22}
+@(private = "file") OID_P521    := []byte{0x2B, 0x81, 0x04, 0x00, 0x23}
 @(private = "file") OID_ED25519 := []byte{0x2B, 0x65, 0x70}
 @(private = "file") OID_X25519  := []byte{0x2B, 0x65, 0x6E}
 
@@ -360,6 +366,9 @@ der_put_algorithm :: proc(out: ^[dynamic]byte, kind: Crypto_Kind) {
 	case .P384:
 		der_put(&a, DER_OID, OID_EC)
 		der_put(&a, DER_OID, OID_P384)
+	case .P521:
+		der_put(&a, DER_OID, OID_EC)
+		der_put(&a, DER_OID, OID_P521)
 	case .Ed25519: der_put(&a, DER_OID, OID_ED25519)
 	case .X25519:  der_put(&a, DER_OID, OID_X25519)
 	case .Secret:
@@ -379,6 +388,7 @@ der_algorithm_is :: proc(d: ^[]byte, kind: Crypto_Kind) -> bool {
 	case .RSA:     want = OID_RSA
 	case .P256:    want, curve = OID_EC, OID_P256
 	case .P384:    want, curve = OID_EC, OID_P384
+	case .P521:    want, curve = OID_EC, OID_P521
 	case .Ed25519: want = OID_ED25519
 	case .X25519:  want = OID_X25519
 	case:          return false
@@ -429,7 +439,7 @@ key_of_pkcs8 :: proc(kind: Crypto_Kind, der: []byte, extractable: bool) -> ^Cryp
 		for &x in v { if x, ok = der_read_int(&seq); !ok { return nil } }
 		if len(seq) != 0 || len(v[0]) != 1 || v[0][0] != 0 || len(trim_zeros(v[3])) == 0 { return nil }
 		return rsa_key(v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8], extractable)
-	case .P256, .P384:
+	case .P256, .P384, .P521:
 		seq: []byte
 		if seq, ok = der_read(&octets, DER_SEQUENCE); !ok || len(octets) != 0 { return nil }
 		ec_version, value, public_bits: []byte
@@ -439,7 +449,7 @@ key_of_pkcs8 :: proc(kind: Crypto_Kind, der: []byte, extractable: bool) -> ^Cryp
 			params: []byte
 			if params, ok = der_read(&seq, DER_CONTEXT_0); !ok { return nil }
 			named: []byte
-			if named, ok = der_read(&params, DER_OID); !ok || len(params) != 0 || !slice.equal(named, kind == .P256 ? OID_P256 : OID_P384) { return nil }
+			if named, ok = der_read(&params, DER_OID); !ok || len(params) != 0 || !slice.equal(named, kind == .P256 ? OID_P256 : (kind == .P384 ? OID_P384 : OID_P521)) { return nil }
 		}
 		if len(seq) > 0 {
 			wrapped: []byte
@@ -516,7 +526,7 @@ pkcs8_of :: proc(k: ^Crypto_Key) -> []byte {
 		der_put_int(&seq, nil)
 		for x in ([8][]byte{parts.n, parts.e, parts.d, parts.p, parts.q, parts.dp, parts.dq, parts.qi}) { der_put_int(&seq, x) }
 		der_put(&body, DER_SEQUENCE, seq[:])
-	case .P256, .P384:
+	case .P256, .P384, .P521:
 		seq := make([dynamic]byte, context.temp_allocator)
 		der_put(&seq, DER_INTEGER, []byte{1})
 		der_put(&seq, DER_OCTET_STRING, k.value)
@@ -540,8 +550,8 @@ pkcs8_of :: proc(k: ^Crypto_Key) -> []byte {
 // A part of a key, if it has it. secret: whether it is what an unextractable key does not give.
 @(private = "file")
 key_part :: proc(k: ^Crypto_Key, part: string) -> (value: []byte, secret, ok: bool) {
-	size := k.kind == .P256 ? 32 : 48
-	is_ec := k.kind == .P256 || k.kind == .P384
+	size := k.kind == .P256 ? 32 : (k.kind == .P384 ? 48 : P521_PRIVATE_BYTES)
+	is_ec := k.kind == .P256 || k.kind == .P384 || k.kind == .P521
 	switch part {
 	case "secret":
 		if k.kind == .Secret { return k.value, true, true }
@@ -851,6 +861,12 @@ work_sign :: proc(j: ^Crypto_Job) {
 		hmac.sum(j.alg, j.out, j.data, j.key.value)
 		j.ok = true
 	case .Ecdsa:
+		if j.key.kind == .P521 {
+			if !j.key.is_private || j.alg == .Invalid { return }
+			j.out = make([]byte, P521_SIGNATURE_BYTES)
+			j.ok = p521_sign(j.key.value, j.alg, j.data, j.out)
+			return
+		}
 		curve: ecdsa.Curve
 		#partial switch j.key.kind {
 		case .P256: curve = .SECP256R1
@@ -920,6 +936,10 @@ work_verify :: proc(j: ^Crypto_Job) {
 	case .Hmac:
 		if j.key.kind == .Secret && j.alg != .Invalid { j.ok = hmac.verify(j.alg, j.signature, j.data, j.key.value) }
 	case .Ecdsa:
+		if j.key.kind == .P521 {
+			if !j.key.is_private && j.alg != .Invalid { j.ok = p521_verify(j.key.public, j.alg, j.data, j.signature) }
+			return
+		}
 		curve: ecdsa.Curve
 		#partial switch j.key.kind {
 		case .P256: curve = .SECP256R1
@@ -946,6 +966,12 @@ work_verify :: proc(j: ^Crypto_Job) {
 
 @(private = "file")
 work_agree :: proc(j: ^Crypto_Job) {
+	if j.key.kind == .P521 {
+		if j.peer.kind != .P521 || !j.key.is_private || j.peer.is_private { return }
+		j.out = make([]byte, P521_SECRET_BYTES)
+		j.ok = p521_agree(j.key.value, j.peer.public, j.out)
+		return
+	}
 	curve := curve_of(j.key.kind)
 	if curve == .Invalid || j.key.kind != j.peer.kind || !j.key.is_private || j.peer.is_private { return }
 	sk: ecdh.Private_Key
@@ -986,6 +1012,11 @@ work_generate :: proc(j: ^Crypto_Job) {
 		sk := new(rsa.Private_Key)
 		if !rsa.private_key_generate(sk, j.n) { free(sk); return }
 		j.made = rsa_private_key(sk, j.encrypt)
+	case .P521:
+		value, public_value := p521_generate()
+		if value == nil { return }
+		j.made = key_new(.P521, true, j.encrypt)
+		j.made.value, j.made.public = value, public_value
 	case .P256, .P384, .X25519:
 		sk: ecdh.Private_Key
 		defer ecdh.private_key_clear(&sk)

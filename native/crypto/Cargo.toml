@@ -1,0 +1,14 @@
+# P-521 for crypto.subtle, a library of the native/ workspace: linked into wren.exe through the assembly crate native/wren_native.
+# core:crypto has P-256 and P-384 only; the arithmetic of this curve is RustCrypto's, not ours (docs/js/web-crypto.md).
+[package]
+name = "wren_crypto"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "MIT"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+p521 = { version = "=0.14.0", default-features = false, features = ["ecdsa", "ecdh", "arithmetic"] }

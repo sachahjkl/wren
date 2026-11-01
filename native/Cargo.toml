@@ -6,6 +6,7 @@
 # assembly crate `wren_native` (a staticlib) picks them:
 #   media         the image decoders (SVG, WebP, AVIF, colour management) and WOFF2: crate `wren_media`
 #   webgl         WebGL's device side (wgpu, naga): crate `wren_webgl`
+#   crypto        P-521 for crypto.subtle (RustCrypto): crate `wren_crypto`
 #   gt_text       the toolkit's native text backend (ext/gui_toolkit/native/text), feature `text`
 #   gt_a11y       the toolkit's accessibility adapter (ext/gui_toolkit/native/a11y), feature `a11y`
 # The toolkit's crates stay in the toolkit (its own Cargo.lock builds them alone into gt_text.lib / gt_a11y.lib for its
@@ -15,7 +16,7 @@
 # runs with --locked. Profiles live here only (Cargo ignores those of members and path dependencies).
 [workspace]
 resolver = "2"
-members = ["media", "net", "webgl", "wren_native"]
+members = ["crypto", "media", "net", "webgl", "wren_native"]
 
 # Two profiles, the same code generation for each crate; they differ only in what happens across crates:
 #   release   what is shipped (build.bat release, and profile: measured as shipped): fat LTO, the whole graph optimized
