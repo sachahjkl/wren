@@ -57,6 +57,17 @@ foreign _m_webaudio {
 	@(link_name = "WebAudio_pcmRead") _WebAudio_pcmRead :: proc(pcm: u64, channel: u32, start: u32, values: [^]u8, values_len: u32) ---
 	@(link_name = "WebAudio_pcmInfo") _WebAudio_pcmInfo :: proc(pcm: u64, which: i32) -> f64 ---
 	@(link_name = "WebAudio_decode") _WebAudio_decode :: proc(data: [^]u8, data_len: u32, rate: f64) -> u64 ---
+	@(link_name = "WebAudio_workletStart") _WebAudio_workletStart :: proc(graph: u64) -> u64 ---
+	@(link_name = "WebAudio_workletStop") _WebAudio_workletStop :: proc(graph: u64) ---
+	@(link_name = "WebAudio_workletNode") _WebAudio_workletNode :: proc(graph: u64, inputs: i32, outputs: i32, params: i32, processor: i32, output_channels: [^]u8, output_channels_len: u32) -> i32 ---
+	@(link_name = "WebAudio_workletParam") _WebAudio_workletParam :: proc(graph: u64, node: i32, index: i32, default_value: f64, min_value: f64, max_value: f64, a_rate: i32) ---
+	@(link_name = "AudioWorkletRealm_sampleRate") _AudioWorkletRealm_sampleRate :: proc() -> f64 ---
+	@(link_name = "AudioWorkletRealm_frame") _AudioWorkletRealm_frame :: proc() -> f64 ---
+	@(link_name = "AudioWorkletRealm_layout") _AudioWorkletRealm_layout :: proc(layout: [^]u8, layout_len: u32) -> i32 ---
+	@(link_name = "AudioWorkletRealm_read") _AudioWorkletRealm_read :: proc(at: i32, values: [^]u8, values_len: u32) ---
+	@(link_name = "AudioWorkletRealm_write") _AudioWorkletRealm_write :: proc(at: i32, values: [^]u8, values_len: u32) ---
+	@(link_name = "AudioWorkletRealm_finish") _AudioWorkletRealm_finish :: proc(status: i32) ---
+	@(link_name = "AudioWorkletRealm_dropped") _AudioWorkletRealm_dropped :: proc() -> i32 ---
 }
 
 // The preference webaudio.enabled.
@@ -250,5 +261,61 @@ WebAudio_pcmInfo :: proc "contextless" (pcm: u64, which: i32) -> f64 {
 // decodeAudioData: a promise of a buffer (a u64 object handle), on a blocking thread; rejected when it is not audio.
 WebAudio_decode :: proc "contextless" (data: []u8, rate: f64) -> u64 {
 	return _WebAudio_decode(raw_data(data), u32(len(data)), rate)
+}
+
+// The realm of a context's AudioWorklet: a Worker object on its own thread, started once. 0: refused (workers disabled, too many).
+WebAudio_workletStart :: proc "contextless" (graph: u64) -> u64 {
+	return _WebAudio_workletStart(graph)
+}
+
+// Stops the realm (a context closed, or its realm stalled); the nodes then give silence and fire processorerror.
+WebAudio_workletStop :: proc "contextless" (graph: u64) {
+	_WebAudio_workletStop(graph)
+}
+
+// An AudioWorkletNode's node: processor is the number the realm knows it by, output_channels the counts asked for (i32 each, or none). -1: refused.
+WebAudio_workletNode :: proc "contextless" (graph: u64, inputs: i32, outputs: i32, params: i32, processor: i32, output_channels: []u8) -> i32 {
+	return _WebAudio_workletNode(graph, inputs, outputs, params, processor, raw_data(output_channels), u32(len(output_channels)))
+}
+
+// What a registered parameter is (AudioParamDescriptor).
+WebAudio_workletParam :: proc "contextless" (graph: u64, node: i32, index: i32, default_value: f64, min_value: f64, max_value: f64, a_rate: bool) {
+	_WebAudio_workletParam(graph, node, index, default_value, min_value, max_value, i32(1 if a_rate else 0))
+}
+
+// In an AudioWorklet's realm: its context's sample rate (0 in any other realm).
+AudioWorkletRealm_sampleRate :: proc "contextless" () -> f64 {
+	return _AudioWorkletRealm_sampleRate()
+}
+
+// The request taken (AudioWorkletRealm_layout): its first frame.
+AudioWorkletRealm_frame :: proc "contextless" () -> f64 {
+	return _AudioWorkletRealm_frame()
+}
+
+// Takes the waiting request and writes what it is into `layout` (i32 each: processor, inputs, outputs, params, then
+// channels per input, values per param, channels per output). The number of values there are: 0 no request, more than
+// fits (nothing written) the array is too small and the request stays taken.
+AudioWorkletRealm_layout :: proc "contextless" (layout: []u8) -> i32 {
+	return _AudioWorkletRealm_layout(raw_data(layout), u32(len(layout)))
+}
+
+// Samples of the request taken, from a position in samples (inputs, then params, then outputs).
+AudioWorkletRealm_read :: proc "contextless" (at: i32, values: []u8) {
+	_AudioWorkletRealm_read(at, raw_data(values), u32(len(values)))
+}
+
+AudioWorkletRealm_write :: proc "contextless" (at: i32, values: []u8) {
+	_AudioWorkletRealm_write(at, raw_data(values), u32(len(values)))
+}
+
+// The answer: 0 process() returned true, 1 false, 2 it threw, 3 no processor yet.
+AudioWorkletRealm_finish :: proc "contextless" (status: i32) {
+	_AudioWorkletRealm_finish(status)
+}
+
+// A processor whose node left the graph, -1 when none is left to tell.
+AudioWorkletRealm_dropped :: proc "contextless" () -> i32 {
+	return _AudioWorkletRealm_dropped()
 }
 

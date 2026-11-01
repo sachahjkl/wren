@@ -69,12 +69,43 @@ Linux. Vorbis has no decoder on Windows. The argument is detached at the call, a
 | `AnalyserNode` | all four reads, smoothing, Blackman window |
 | `ConvolverNode` | uniform partitioned convolution with no latency, 1, 2 and 4 channels. A very long impulse response (over about 10 s) may be more than a quantum's time |
 | `ScriptProcessorNode` | blocks to the page and back through rings, two blocks of delay; an offline rendering waits for the page's answer |
+| `AudioWorkletNode` | see below: `process()` in a realm of its own, `parameters`, `port`, `processorerror`, realtime and offline |
 | `MediaElementAudioSourceNode` | the player sends what it plays to the node, with the element's volume, and the speakers get silence. The media clock goes on |
+
+## AudioWorklet
+
+`context.audioWorklet.addModule(url)` starts the context's realm the first time: a JavaScript worker of the document, its own Wasm
+instance on a thread of its own (`worker.odin`, counted in `workers.max_per_page` and `workers.max_total`), with a worklet's scope
+(`native/js/odin/web_audio_worklet.js`): `AudioWorkletGlobalScope`, `registerProcessor`, `currentFrame`, `currentTime`, `sampleRate`,
+`AudioWorkletProcessor`, and of what a worker has only what is exposed to worklets. Modules are `import()`ed there, by requests
+relayed to the page's thread under the document's policies. `AudioWorkletNode`, its `port` and `parameters` are in `web_audio.js`;
+the page and the realm talk with the worker's messages, so `processorOptions` and ports are structured clones.
+
+A node's quantum is a request to that thread (`src/webaudio/worklet.odin`), since the render thread cannot read a Wasm instance's memory:
+
+- the input channels and the param values are copied to the context's one exchange buffer, the realm's thread is woken, and the render
+  thread waits, `Graph.mu` let go, so the page never waits for a processor;
+- the realm reads them into `Float32Array`s it keeps per processor (new ones when the channels change or the script transferred a
+  buffer), calls `process()`, and the output comes back the same way. Nothing allocates on the render thread once the buffer has its
+  size, and the realm allocates only what its script does;
+- a realtime quantum waits half of what is queued ahead of the device, between 5 and 100 ms, an offline one `webaudio.worklet_stall_ms`.
+  Past that the quantum is silence and the next ones do not wait until the realm has caught up: what it was running is dropped. The
+  microtasks of the realm run once per quantum, after all its processors;
+- a throw in `process()` or in a constructor is `processorerror`, with the message, on that node, which then gives silence. A realm that
+  stops (a trap, out of memory), or stays busy past `webaudio.worklet_stall_ms` and is then stopped by the page, is `processorerror` on
+  every node. `process()` that never returns costs that silence and that delay, never a hung render thread: closing a page or a context
+  interrupts the wait and joins the render thread first.
+
+A node is kept while its processor is at work (`process()` returned true). A context collected or closed stops its realm.
+
+Each context with a worklet has its realm: an instance and a thread (about what a worker costs). One realm serves one context, where the
+specification has one global scope per context as well.
 
 ## What there is not
 
-- **`AudioWorklet`** (`AudioWorkletNode`): absent, so that a page can test for it. It needs a realm on a render thread of its own, or a
-  Wasm instance answering in time; `ScriptProcessorNode` is the old way that works today.
+- **`AudioWorklet`'s corners**: `import()` also works inside a worklet's modules (the specification rejects it); an error thrown that is
+  not an `Error` (`throw "text"`) has no line and no file in its event; `AudioParamMap`'s values are real params, but a getter a script
+  puts on `Object.prototype` for a param's name is not read (`audioworkletprocessor-param-getter-overridden`).
 - **`MediaStreamAudioSourceNode`, `MediaStreamAudioDestinationNode`, `createMediaStreamTrackSource`**: Wren has no `MediaStream`.
 - **HRTF** panning; **`setSinkId`** (`sinkId` reads `""`, the default device); **`playbackStats`**, `AudioRenderCapacity`.
 - **Other render quantum sizes**: `renderSizeHint` is ignored, `renderQuantumSize` is 128.
@@ -83,7 +114,7 @@ Linux. Vorbis has no decoder on Windows. The argument is detached at the call, a
 ## Preferences
 
 `webaudio.enabled`, `webaudio.latency_ms` (`latencyHint` "interactive"; "balanced" is twice that, "playback" four times),
-`webaudio.sample_rate`, `webaudio.max_buffer_mb`, `webaudio.max_contexts`.
+`webaudio.sample_rate`, `webaudio.max_buffer_mb`, `webaudio.max_contexts`, `webaudio.worklet_stall_ms`.
 
 ## Tests
 

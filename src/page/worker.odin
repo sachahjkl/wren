@@ -34,6 +34,7 @@ import "wb:http"
 import "wb:js"
 import "wb:url"
 import "wb:wasm"
+import "wb:webaudio"
 
 // The longest worker URL shown as its label; a longer one is cut and ends in "...".
 WORKER_LABEL_MAX :: 80
@@ -203,6 +204,7 @@ Worker_Host :: struct {
 	ref_held:   bool,                   // a nested worker's Worker object still exists in its parent's realm
 	ref_id:     u64,                    // a nested worker's name in its parent's realm (its link's address)
 	depth:      int,                    // 1 for a document's worker, its parent's + 1 for a nested one
+	worklet:    ^webaudio.Worklet,      // an AudioWorklet's realm (one reference, given to the thread), nil else
 }
 
 Relay :: struct {
@@ -258,14 +260,15 @@ page_worker_count :: proc(p: ^Page) -> int {
 // Starts a dedicated worker running the module at `src` (resolved against the document). Returns the Worker object,
 // or 0 when the browser refuses (workers disabled, too many, invalid or cross-origin URL); the reason is logged.
 // `image`: the script the browser already has (a service worker's stored version): it starts at once, nothing is fetched.
-worker_create :: proc(p: ^Page, src: string, name: string, owner: u32, javascript := false, module := false, image: []byte = nil, sw: ^Sw_Version = nil, shared: ^Shared_Worker = nil) -> u64 {
+// `worklet`: the realm of an AudioWorklet (bindings_webaudio.odin), named after its document whatever that document's URL is.
+worker_create :: proc(p: ^Page, src: string, name: string, owner: u32, javascript := false, module := false, image: []byte = nil, sw: ^Sw_Version = nil, shared: ^Shared_Worker = nil, worklet: ^webaudio.Worklet = nil) -> u64 {
 	// in a worker: a nested worker, started by the interface thread for this realm (nested_workers.odin)
 	if p.worker != nil { return nested_worker_request(p, src, name, owner, javascript, module, image) }
 	ws := &p.settings.workers
 	if why := worker_refused(p, javascript); why != "" { log(p, .Error, why); return 0 }
 	u, ok := url.parse(src, &p.env.location, context.temp_allocator)
 	if !ok { log(p, .Error, fmt.tprintf("Worker: invalid URL %q", src)); return 0 }
-	if u.scheme != "data" {
+	if u.scheme != "data" && worklet == nil {
 		o := url.origin_of(u, context.temp_allocator)
 		if !url.same_origin(o, p.env.origin) {
 			log(p, .Error, fmt.tprintf("Worker: %s is not same-origin with the document (SecurityError)", u.href)); return 0
@@ -278,6 +281,18 @@ worker_create :: proc(p: ^Page, src: string, name: string, owner: u32, javascrip
 	h := worker_host_new(p, u, name, javascript, module, link_make(p.loop, ws.max_pending_bytes), &p.env)
 	if sw != nil || shared != nil { h.env.agent_cluster, h.env.cross_origin_isolated = 0, false }
 	h.owner, h.sw, h.shared = owner, sw, shared
+	if worklet != nil {
+		// a worklet is of its document: its origin, its policies (the requests of its modules go by them)
+		h.worklet = worklet
+		webaudio.worklet_retain(worklet)
+		fetch.environment_destroy(&h.env)
+		h.env = fetch.environment_make(p.env.location, p.env.referrer_policy)
+		url.origin_destroy(&h.env.origin)
+		h.env.origin = url.origin_clone(p.env.origin)
+		h.env.embedder_policy, h.env.cross_origin_isolated, h.env.agent_cluster = p.env.embedder_policy, p.env.cross_origin_isolated, p.env.agent_cluster
+		h.env.on_violation, h.env.violation_user = worker_csp_violation, h
+		for pol in p.env.policies.policies { append(&h.env.policies.policies, csp.parse_policy(pol.raw, pol.disposition)) }
+	}
 	if shared != nil { h.storage_key = strings.clone(shared.key) }   // (a shared worker's realm: its documents' storage key)
 	if sw != nil { h.storage_key = strings.clone(sw.reg.origin) }    // (a service worker's: its registration's storage key)
 	h.self = object_create(p, &worker_vt, h, owner)
@@ -415,6 +430,8 @@ worker_spawn :: proc(h: ^Worker_Host, image: []byte) {
 	g.url, g.name = strings.clone(h.url), strings.clone(h.name)
 	g.module, g.shared, g.depth = h.module, h.shared != nil, h.depth
 	g.can_block = h.sw == nil
+	g.worklet = h.worklet
+	h.worklet = nil
 	g.embedder_policy, g.cross_origin_isolated = h.env.embedder_policy, h.env.cross_origin_isolated
 	if h.env.agent_cluster == 0 { h.env.agent_cluster = wasm.user_cluster_new() } else { wasm.user_cluster_retain(h.env.agent_cluster) }
 	g.agent_cluster = h.env.agent_cluster
@@ -470,6 +487,7 @@ worker_free :: proc(h: ^Worker_Host) {
 	delete(h.relays)
 	worker_uncount(h)
 	fetch.environment_destroy(&h.env)
+	webaudio.worklet_release(h.worklet)   // (a thread that never started)
 	delete(h.url)
 	delete(h.name)
 	delete(h.storage_key)
@@ -789,6 +807,7 @@ Worker_Global :: struct {
 	embedder_policy: fetch.Embedder_Policy,
 	cross_origin_isolated: bool,
 	agent_cluster: u64,                  // (one reference, given back when it goes)
+	worklet:  ^webaudio.Worklet,         // an AudioWorklet's realm: what the render thread asks of it (one reference)
 }
 
 @(private)
@@ -798,6 +817,7 @@ worker_global_vt := Object_VTable{name = "DedicatedWorkerGlobalScope"}
 worker_global_free :: proc(g: ^Worker_Global) {
 	if g.javascript { js.settings_destroy(&g.settings.js) }
 	js_web_settings_destroy(&g.settings.js_web)
+	webaudio.worklet_release(g.worklet)
 	delete(g.url); delete(g.name); delete(g.image); delete(g.storage_key)
 	sw_global_free(&g.sw)
 	delete(g.client_sw)
@@ -825,6 +845,7 @@ worker_main :: proc(data: rawptr) {
 	g := (^Worker_Global)(data)
 	l := g.link
 	defer {
+		if g.worklet != nil { webaudio.worklet_realm_gone(g.worklet) }
 		m := new(Worker_Msg)
 		m.kind = .Exited
 		link_send(l, false, m)
@@ -854,6 +875,7 @@ worker_main :: proc(data: rawptr) {
 		for !link_stopping(l) {
 			worker_run_inbox(g)
 			if link_stopping(l) { break }
+			if g.worklet != nil { worklet_realm_poll(p, g) }   // the render thread's requests, after what the page said first (bindings_webaudio.odin)
 			if sync.atomic_exchange(&g.idb_wake, false) { idb_worker_wake(p) }   // IndexedDB events (idb_host.odin)
 			host.loop_wait(&l.loop)
 			free_all(context.temp_allocator)

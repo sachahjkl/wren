@@ -3,6 +3,8 @@
 // computations are in the browser (src/webaudio, src/page/bindings_webaudio.odin). A page that never asks pays nothing.
 package odin_glue
 
+import "../odin_abi/api_decl"
+import "../odin/jsb"
 import "../odin/wj"
 
 // A host object as a JavaScript object with nothing to see: a graph, a buffer. Released when collected.
@@ -388,6 +390,123 @@ native_dom :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv:
 	return wj.web_dom_exception(ctx, wj.cstr(name.ptr), wj.cstr(message.ptr))
 }
 
+// ---- AudioWorklet: the page's side ----
+
+// workletStart(graph): the realm's Worker object (kept alive while it runs, as any Worker), null when refused
+@(private = "file")
+native_worklet_start :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	h := wj.wr_WebAudio_workletStart(ref_of(wj.arg(argc, argv, 0)))
+	if h == 0 { return wj.NULL }
+	obj := wj.wj_wrap_owned(ctx, h, jsb.iface_of(api_decl.Worker), wj.UNDEFINED)
+	if !wj.is_exception(obj) { web_keep_worker(ctx, obj) }
+	return obj
+}
+
+@(private = "file")
+native_worklet_stop :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	wj.wr_WebAudio_workletStop(ref_of(wj.arg(argc, argv, 0)))
+	return wj.UNDEFINED
+}
+
+// workletNode(graph, inputs, outputs, params, processor, outputChannels): the node, -1 when refused
+@(private = "file")
+native_worklet_node :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	b: Bytes
+	if !bytes_of(ctx, argc, argv, 5, &b) { return wj.EXCEPTION }
+	return wj.new_int32(wj.wr_WebAudio_workletNode(ref_of(wj.arg(argc, argv, 0)), int_of(ctx, argc, argv, 1), int_of(ctx, argc, argv, 2), int_of(ctx, argc, argv, 3), int_of(ctx, argc, argv, 4), b.p, b.n))
+}
+
+// workletParam(graph, node, index, default, min, max, aRate)
+@(private = "file")
+native_worklet_param :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	wj.wr_WebAudio_workletParam(ref_of(wj.arg(argc, argv, 0)), int_of(ctx, argc, argv, 1), int_of(ctx, argc, argv, 2), num(ctx, argc, argv, 3), num(ctx, argc, argv, 4), num(ctx, argc, argv, 5), bool_of(ctx, argc, argv, 6))
+	return wj.UNDEFINED
+}
+
+// ---- AudioWorklet: the realm's side (web_audio_worklet.js) ----
+
+@(private = "file") worklet_ops: wj.JSValue
+@(private = "file") worklet_ops_ready: bool
+
+@(private = "file")
+native_realm_layout :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	b: Bytes
+	if !bytes_of(ctx, argc, argv, 0, &b) { return wj.EXCEPTION }
+	n := wj.wr_AudioWorkletRealm_layout(b.p, b.n)
+	if n > 0 && b.n > 0 { wj.JS_ArrayBufferCommit(ctx, b.p, uint(b.n)) }
+	return wj.new_int32(n)
+}
+
+@(private = "file")
+native_realm_frame :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	return wj.new_float64(ctx, wj.wr_AudioWorkletRealm_frame())
+}
+
+@(private = "file")
+native_realm_read :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	b: Bytes
+	if !bytes_of(ctx, argc, argv, 1, &b) { return wj.EXCEPTION }
+	wj.wr_AudioWorkletRealm_read(int_of(ctx, argc, argv, 0), b.p, b.n)
+	if b.n > 0 { wj.JS_ArrayBufferCommit(ctx, b.p, uint(b.n)) }
+	return wj.UNDEFINED
+}
+
+@(private = "file")
+native_realm_write :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	b: Bytes
+	if !bytes_of(ctx, argc, argv, 1, &b) { return wj.EXCEPTION }
+	wj.wr_AudioWorkletRealm_write(int_of(ctx, argc, argv, 0), b.p, b.n)
+	return wj.UNDEFINED
+}
+
+@(private = "file")
+native_realm_finish :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	wj.wr_AudioWorkletRealm_finish(int_of(ctx, argc, argv, 0))
+	return wj.UNDEFINED
+}
+
+@(private = "file")
+native_realm_dropped :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	return wj.new_int32(wj.wr_AudioWorkletRealm_dropped())
+}
+
+// The browser: this worker's realm is an AudioWorklet's. Its global scope is made here, once.
+@(export, link_name = "wj_worklet_boot")
+wj_worklet_boot :: proc "c" () {
+	ctx := wj.realm_ctx()
+	wj.wj_stack_enter(ctx)
+	if worklet_ops_ready { return }
+	fn := eval_prelude(ctx, "web_audio_worklet.js", #load("web_audio_worklet.js"))
+	if wj.is_exception(fn) { return }
+	defer wj.JS_FreeValue(ctx, fn)
+	native := wj.JS_NewObject(ctx)
+	defer wj.JS_FreeValue(ctx, native)
+	Entry :: struct { name: cstring, fn: wj.Native, length: i32 }
+	entries := [?]Entry{
+		{"layout", native_realm_layout, 1}, {"frame", native_realm_frame, 0}, {"read", native_realm_read, 2}, {"write", native_realm_write, 2},
+		{"finish", native_realm_finish, 1}, {"dropped", native_realm_dropped, 0},
+	}
+	for &e in entries {
+		wj.JS_DefinePropertyValueStr(ctx, native, e.name, wj.new_cfunction(ctx, e.fn, e.name, e.length), wj.PROP_C_W_E)
+	}
+	args := [3]wj.JSValue{native, wj.wj_the_realm.global, wj.new_float64(ctx, wj.wr_AudioWorkletRealm_sampleRate())}
+	ops := wj.JS_Call(ctx, fn, wj.UNDEFINED, 3, &args[0])
+	if wj.is_exception(ops) { wj.wj_report_pending(ctx); return }
+	worklet_ops, worklet_ops_ready = ops, true
+}
+
+// The browser: a request of the render thread waits.
+@(export, link_name = "wj_worklet_quantum")
+wj_worklet_quantum :: proc "c" () {
+	ctx := wj.realm_ctx()
+	wj.wj_stack_enter(ctx)
+	if !worklet_ops_ready { return }
+	fn := wj.JS_GetPropertyStr(ctx, worklet_ops, "quantum")
+	defer wj.JS_FreeValue(ctx, fn)
+	r := wj.JS_Call(ctx, fn, wj.UNDEFINED, 0, nil)
+	if wj.is_exception(r) { wj.wj_report_pending(ctx) } else { wj.JS_FreeValue(ctx, r) }
+}
+
 @(private = "file")
 audio_ops_get :: proc "contextless" (ctx: ^wj.Context) -> wj.JSValue {
 	if audio_ops_ready { return audio_ops }
@@ -424,6 +543,7 @@ audio_ops_get :: proc "contextless" (ctx: ^wj.Context) -> wj.JSValue {
 		{"scriptPull", native_script_pull, 3}, {"scriptPush", native_script_push, 3},
 		{"pcmCreate", native_pcm_create, 3}, {"pcmWrite", native_pcm_write, 4}, {"pcmRead", native_pcm_read, 4}, {"pcmInfo", native_pcm_info, 2},
 		{"decode", native_decode, 2},
+		{"workletStart", native_worklet_start, 1}, {"workletStop", native_worklet_stop, 1}, {"workletNode", native_worklet_node, 6}, {"workletParam", native_worklet_param, 7},
 	}
 	for &e in entries {
 		wj.JS_DefinePropertyValueStr(ctx, native, e.name, wj.new_cfunction(ctx, e.fn, e.name, e.length), wj.PROP_C_W_E)
@@ -451,6 +571,7 @@ AUDIO_NAMES := [?]cstring{
 	"BiquadFilterNode", "DelayNode", "StereoPannerNode", "PannerNode", "ChannelSplitterNode", "ChannelMergerNode",
 	"DynamicsCompressorNode", "WaveShaperNode", "AnalyserNode", "ConvolverNode", "ScriptProcessorNode", "AudioProcessingEvent",
 	"OfflineAudioCompletionEvent", "MediaElementAudioSourceNode", "IIRFilterNode",
+	"Worklet", "AudioWorklet", "AudioWorkletNode", "AudioParamMap",
 }
 
 @(export, link_name = "web_audio_start")

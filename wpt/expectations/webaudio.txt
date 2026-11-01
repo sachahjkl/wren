@@ -192,7 +192,7 @@
 	AudioNode interface: calling connect(AudioNode, optional unsigned long, optional unsigned long) on new PannerNode(context) with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling connect(AudioNode, optional unsigned long, optional unsigned long) on new StereoPannerNode(context) with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling connect(AudioNode, optional unsigned long, optional unsigned long) on new WaveShaperNode(context) with too few arguments must throw TypeError: PASS
-	AudioNode interface: calling connect(AudioNode, optional unsigned long, optional unsigned long) on worklet_node with too few arguments must throw TypeError: FAIL
+	AudioNode interface: calling connect(AudioNode, optional unsigned long, optional unsigned long) on worklet_node with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling connect(AudioParam, optional unsigned long) on context.createScriptProcessor() with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling connect(AudioParam, optional unsigned long) on context.destination with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling connect(AudioParam, optional unsigned long) on new AnalyserNode(context) with too few arguments must throw TypeError: PASS
@@ -212,7 +212,7 @@
 	AudioNode interface: calling connect(AudioParam, optional unsigned long) on new PannerNode(context) with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling connect(AudioParam, optional unsigned long) on new StereoPannerNode(context) with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling connect(AudioParam, optional unsigned long) on new WaveShaperNode(context) with too few arguments must throw TypeError: PASS
-	AudioNode interface: calling connect(AudioParam, optional unsigned long) on worklet_node with too few arguments must throw TypeError: FAIL
+	AudioNode interface: calling connect(AudioParam, optional unsigned long) on worklet_node with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling disconnect(AudioNode) on context.createScriptProcessor() with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling disconnect(AudioNode) on context.destination with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling disconnect(AudioNode) on new AnalyserNode(context) with too few arguments must throw TypeError: PASS
@@ -232,7 +232,7 @@
 	AudioNode interface: calling disconnect(AudioNode) on new PannerNode(context) with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling disconnect(AudioNode) on new StereoPannerNode(context) with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling disconnect(AudioNode) on new WaveShaperNode(context) with too few arguments must throw TypeError: PASS
-	AudioNode interface: calling disconnect(AudioNode) on worklet_node with too few arguments must throw TypeError: FAIL
+	AudioNode interface: calling disconnect(AudioNode) on worklet_node with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling disconnect(AudioNode, unsigned long) on context.createScriptProcessor() with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling disconnect(AudioNode, unsigned long) on context.destination with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling disconnect(AudioNode, unsigned long) on new AnalyserNode(context) with too few arguments must throw TypeError: PASS
@@ -252,7 +252,7 @@
 	AudioNode interface: calling disconnect(AudioNode, unsigned long) on new PannerNode(context) with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling disconnect(AudioNode, unsigned long) on new StereoPannerNode(context) with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling disconnect(AudioNode, unsigned long) on new WaveShaperNode(context) with too few arguments must throw TypeError: PASS
-	AudioNode interface: calling disconnect(AudioNode, unsigned long) on worklet_node with too few arguments must throw TypeError: FAIL
+	AudioNode interface: calling disconnect(AudioNode, unsigned long) on worklet_node with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling disconnect(AudioNode, unsigned long, unsigned long) on context.createScriptProcessor() with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling disconnect(AudioNode, unsigned long, unsigned long) on context.destination with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling disconnect(AudioNode, unsigned long, unsigned long) on new AnalyserNode(context) with too few arguments must throw TypeError: PASS
@@ -272,7 +272,7 @@
 	AudioNode interface: calling disconnect(AudioNode, unsigned long, unsigned long) on new PannerNode(context) with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling disconnect(AudioNode, unsigned long, unsigned long) on new StereoPannerNode(context) with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling disconnect(AudioNode, unsigned long, unsigned long) on new WaveShaperNode(context) with too few arguments must throw TypeError: PASS
-	AudioNode interface: calling disconnect(AudioNode, unsigned long, unsigned long) on worklet_node with too few arguments must throw TypeError: FAIL
+	AudioNode interface: calling disconnect(AudioNode, unsigned long, unsigned long) on worklet_node with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling disconnect(AudioParam) on context.createScriptProcessor() with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling disconnect(AudioParam) on context.destination with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling disconnect(AudioParam) on new AnalyserNode(context) with too few arguments must throw TypeError: PASS
@@ -292,7 +292,7 @@
 	AudioNode interface: calling disconnect(AudioParam) on new PannerNode(context) with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling disconnect(AudioParam) on new StereoPannerNode(context) with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling disconnect(AudioParam) on new WaveShaperNode(context) with too few arguments must throw TypeError: PASS
-	AudioNode interface: calling disconnect(AudioParam) on worklet_node with too few arguments must throw TypeError: FAIL
+	AudioNode interface: calling disconnect(AudioParam) on worklet_node with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling disconnect(AudioParam, unsigned long) on context.createScriptProcessor() with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling disconnect(AudioParam, unsigned long) on context.destination with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling disconnect(AudioParam, unsigned long) on new AnalyserNode(context) with too few arguments must throw TypeError: PASS
@@ -312,7 +312,7 @@
 	AudioNode interface: calling disconnect(AudioParam, unsigned long) on new PannerNode(context) with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling disconnect(AudioParam, unsigned long) on new StereoPannerNode(context) with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling disconnect(AudioParam, unsigned long) on new WaveShaperNode(context) with too few arguments must throw TypeError: PASS
-	AudioNode interface: calling disconnect(AudioParam, unsigned long) on worklet_node with too few arguments must throw TypeError: FAIL
+	AudioNode interface: calling disconnect(AudioParam, unsigned long) on worklet_node with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling disconnect(unsigned long) on context.createScriptProcessor() with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling disconnect(unsigned long) on context.destination with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling disconnect(unsigned long) on new AnalyserNode(context) with too few arguments must throw TypeError: PASS
@@ -332,7 +332,7 @@
 	AudioNode interface: calling disconnect(unsigned long) on new PannerNode(context) with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling disconnect(unsigned long) on new StereoPannerNode(context) with too few arguments must throw TypeError: PASS
 	AudioNode interface: calling disconnect(unsigned long) on new WaveShaperNode(context) with too few arguments must throw TypeError: PASS
-	AudioNode interface: calling disconnect(unsigned long) on worklet_node with too few arguments must throw TypeError: FAIL
+	AudioNode interface: calling disconnect(unsigned long) on worklet_node with too few arguments must throw TypeError: PASS
 	AudioNode interface: context.createScriptProcessor() must inherit property "channelCount" with the proper type: PASS
 	AudioNode interface: context.createScriptProcessor() must inherit property "channelCountMode" with the proper type: PASS
 	AudioNode interface: context.createScriptProcessor() must inherit property "channelInterpretation" with the proper type: PASS
@@ -631,21 +631,21 @@
 	AudioNode interface: operation disconnect(AudioParam): PASS
 	AudioNode interface: operation disconnect(AudioParam, unsigned long): PASS
 	AudioNode interface: operation disconnect(unsigned long): PASS
-	AudioNode interface: worklet_node must inherit property "channelCount" with the proper type: FAIL
-	AudioNode interface: worklet_node must inherit property "channelCountMode" with the proper type: FAIL
-	AudioNode interface: worklet_node must inherit property "channelInterpretation" with the proper type: FAIL
-	AudioNode interface: worklet_node must inherit property "connect(AudioNode, optional unsigned long, optional unsigned long)" with the proper type: FAIL
-	AudioNode interface: worklet_node must inherit property "connect(AudioParam, optional unsigned long)" with the proper type: FAIL
-	AudioNode interface: worklet_node must inherit property "context" with the proper type: FAIL
-	AudioNode interface: worklet_node must inherit property "disconnect()" with the proper type: FAIL
-	AudioNode interface: worklet_node must inherit property "disconnect(AudioNode)" with the proper type: FAIL
-	AudioNode interface: worklet_node must inherit property "disconnect(AudioNode, unsigned long)" with the proper type: FAIL
-	AudioNode interface: worklet_node must inherit property "disconnect(AudioNode, unsigned long, unsigned long)" with the proper type: FAIL
-	AudioNode interface: worklet_node must inherit property "disconnect(AudioParam)" with the proper type: FAIL
-	AudioNode interface: worklet_node must inherit property "disconnect(AudioParam, unsigned long)" with the proper type: FAIL
-	AudioNode interface: worklet_node must inherit property "disconnect(unsigned long)" with the proper type: FAIL
-	AudioNode interface: worklet_node must inherit property "numberOfInputs" with the proper type: FAIL
-	AudioNode interface: worklet_node must inherit property "numberOfOutputs" with the proper type: FAIL
+	AudioNode interface: worklet_node must inherit property "channelCount" with the proper type: PASS
+	AudioNode interface: worklet_node must inherit property "channelCountMode" with the proper type: PASS
+	AudioNode interface: worklet_node must inherit property "channelInterpretation" with the proper type: PASS
+	AudioNode interface: worklet_node must inherit property "connect(AudioNode, optional unsigned long, optional unsigned long)" with the proper type: PASS
+	AudioNode interface: worklet_node must inherit property "connect(AudioParam, optional unsigned long)" with the proper type: PASS
+	AudioNode interface: worklet_node must inherit property "context" with the proper type: PASS
+	AudioNode interface: worklet_node must inherit property "disconnect()" with the proper type: PASS
+	AudioNode interface: worklet_node must inherit property "disconnect(AudioNode)" with the proper type: PASS
+	AudioNode interface: worklet_node must inherit property "disconnect(AudioNode, unsigned long)" with the proper type: PASS
+	AudioNode interface: worklet_node must inherit property "disconnect(AudioNode, unsigned long, unsigned long)" with the proper type: PASS
+	AudioNode interface: worklet_node must inherit property "disconnect(AudioParam)" with the proper type: PASS
+	AudioNode interface: worklet_node must inherit property "disconnect(AudioParam, unsigned long)" with the proper type: PASS
+	AudioNode interface: worklet_node must inherit property "disconnect(unsigned long)" with the proper type: PASS
+	AudioNode interface: worklet_node must inherit property "numberOfInputs" with the proper type: PASS
+	AudioNode interface: worklet_node must inherit property "numberOfOutputs" with the proper type: PASS
 	AudioParam interface object length: PASS
 	AudioParam interface object name: PASS
 	AudioParam interface: attribute automationRate: PASS
@@ -684,14 +684,14 @@
 	AudioParam interface: operation setValueAtTime(float, double): PASS
 	AudioParam interface: operation setValueCurveAtTime(sequence<float>, double, double): PASS
 	AudioParam must be primary interface of new AudioBufferSourceNode(context).playbackRate: PASS
-	AudioParamMap interface object length: FAIL
-	AudioParamMap interface object name: FAIL
-	AudioParamMap interface: existence and properties of interface object: FAIL
-	AudioParamMap interface: existence and properties of interface prototype object: FAIL
-	AudioParamMap interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	AudioParamMap interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	AudioParamMap interface object length: PASS
+	AudioParamMap interface object name: PASS
+	AudioParamMap interface: existence and properties of interface object: PASS
+	AudioParamMap interface: existence and properties of interface prototype object: PASS
+	AudioParamMap interface: existence and properties of interface prototype object's "constructor" property: PASS
+	AudioParamMap interface: existence and properties of interface prototype object's @@unscopables property: PASS
 	AudioParamMap interface: maplike<DOMString, AudioParam>: FAIL
-	AudioParamMap must be primary interface of worklet_node.parameters: FAIL
+	AudioParamMap must be primary interface of worklet_node.parameters: PASS
 	AudioPlaybackStats interface object length: FAIL
 	AudioPlaybackStats interface object name: FAIL
 	AudioPlaybackStats interface: attribute averageLatency: FAIL
@@ -750,33 +750,33 @@
 	AudioSinkInfo interface: existence and properties of interface prototype object: FAIL
 	AudioSinkInfo interface: existence and properties of interface prototype object's "constructor" property: FAIL
 	AudioSinkInfo interface: existence and properties of interface prototype object's @@unscopables property: FAIL
-	AudioWorklet interface object length: FAIL
-	AudioWorklet interface object name: FAIL
-	AudioWorklet interface: attribute port: FAIL
-	AudioWorklet interface: context.audioWorklet must inherit property "port" with the proper type: FAIL
-	AudioWorklet interface: existence and properties of interface object: FAIL
-	AudioWorklet interface: existence and properties of interface prototype object: FAIL
-	AudioWorklet interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	AudioWorklet interface: existence and properties of interface prototype object's @@unscopables property: FAIL
-	AudioWorklet must be primary interface of context.audioWorklet: FAIL
+	AudioWorklet interface object length: PASS
+	AudioWorklet interface object name: PASS
+	AudioWorklet interface: attribute port: PASS
+	AudioWorklet interface: context.audioWorklet must inherit property "port" with the proper type: PASS
+	AudioWorklet interface: existence and properties of interface object: PASS
+	AudioWorklet interface: existence and properties of interface prototype object: PASS
+	AudioWorklet interface: existence and properties of interface prototype object's "constructor" property: PASS
+	AudioWorklet interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	AudioWorklet must be primary interface of context.audioWorklet: PASS
 	AudioWorkletGlobalScope interface: existence and properties of interface object: PASS
-	AudioWorkletNode interface object length: FAIL
-	AudioWorkletNode interface object name: FAIL
+	AudioWorkletNode interface object length: PASS
+	AudioWorkletNode interface object name: PASS
 	AudioWorkletNode interface: attribute onprocessorerror: FAIL
-	AudioWorkletNode interface: attribute parameters: FAIL
-	AudioWorkletNode interface: attribute port: FAIL
-	AudioWorkletNode interface: existence and properties of interface object: FAIL
-	AudioWorkletNode interface: existence and properties of interface prototype object: FAIL
-	AudioWorkletNode interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	AudioWorkletNode interface: existence and properties of interface prototype object's @@unscopables property: FAIL
-	AudioWorkletNode interface: worklet_node must inherit property "onprocessorerror" with the proper type: FAIL
-	AudioWorkletNode interface: worklet_node must inherit property "parameters" with the proper type: FAIL
-	AudioWorkletNode interface: worklet_node must inherit property "port" with the proper type: FAIL
-	AudioWorkletNode must be primary interface of worklet_node: FAIL
+	AudioWorkletNode interface: attribute parameters: PASS
+	AudioWorkletNode interface: attribute port: PASS
+	AudioWorkletNode interface: existence and properties of interface object: PASS
+	AudioWorkletNode interface: existence and properties of interface prototype object: PASS
+	AudioWorkletNode interface: existence and properties of interface prototype object's "constructor" property: PASS
+	AudioWorkletNode interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	AudioWorkletNode interface: worklet_node must inherit property "onprocessorerror" with the proper type: PASS
+	AudioWorkletNode interface: worklet_node must inherit property "parameters" with the proper type: PASS
+	AudioWorkletNode interface: worklet_node must inherit property "port" with the proper type: PASS
+	AudioWorkletNode must be primary interface of worklet_node: PASS
 	AudioWorkletProcessor interface: existence and properties of interface object: PASS
 	BaseAudioContext interface object length: PASS
 	BaseAudioContext interface object name: PASS
-	BaseAudioContext interface: attribute audioWorklet: FAIL
+	BaseAudioContext interface: attribute audioWorklet: PASS
 	BaseAudioContext interface: attribute currentTime: PASS
 	BaseAudioContext interface: attribute destination: PASS
 	BaseAudioContext interface: attribute listener: PASS
@@ -800,7 +800,7 @@
 	BaseAudioContext interface: calling createScriptProcessor(optional unsigned long, optional unsigned long, optional unsigned long) on new OfflineAudioContext(1, 1, sample_rate) with too few arguments must throw TypeError: PASS
 	BaseAudioContext interface: calling decodeAudioData(ArrayBuffer, optional DecodeSuccessCallback?, optional DecodeErrorCallback?) on context with too few arguments must throw TypeError: PASS
 	BaseAudioContext interface: calling decodeAudioData(ArrayBuffer, optional DecodeSuccessCallback?, optional DecodeErrorCallback?) on new OfflineAudioContext(1, 1, sample_rate) with too few arguments must throw TypeError: PASS
-	BaseAudioContext interface: context must inherit property "audioWorklet" with the proper type: FAIL
+	BaseAudioContext interface: context must inherit property "audioWorklet" with the proper type: PASS
 	BaseAudioContext interface: context must inherit property "createAnalyser()" with the proper type: PASS
 	BaseAudioContext interface: context must inherit property "createBiquadFilter()" with the proper type: PASS
 	BaseAudioContext interface: context must inherit property "createBuffer(unsigned long, unsigned long, float)" with the proper type: PASS
@@ -831,7 +831,7 @@
 	BaseAudioContext interface: existence and properties of interface prototype object: PASS
 	BaseAudioContext interface: existence and properties of interface prototype object's "constructor" property: PASS
 	BaseAudioContext interface: existence and properties of interface prototype object's @@unscopables property: PASS
-	BaseAudioContext interface: new OfflineAudioContext(1, 1, sample_rate) must inherit property "audioWorklet" with the proper type: FAIL
+	BaseAudioContext interface: new OfflineAudioContext(1, 1, sample_rate) must inherit property "audioWorklet" with the proper type: PASS
 	BaseAudioContext interface: new OfflineAudioContext(1, 1, sample_rate) must inherit property "createAnalyser()" with the proper type: PASS
 	BaseAudioContext interface: new OfflineAudioContext(1, 1, sample_rate) must inherit property "createBiquadFilter()" with the proper type: PASS
 	BaseAudioContext interface: new OfflineAudioContext(1, 1, sample_rate) must inherit property "createBuffer(unsigned long, unsigned long, float)" with the proper type: PASS
@@ -1134,7 +1134,7 @@
 	StereoPannerNode must be primary interface of new StereoPannerNode(context): PASS
 	Stringification of buffer: PASS
 	Stringification of context: PASS
-	Stringification of context.audioWorklet: FAIL
+	Stringification of context.audioWorklet: PASS
 	Stringification of context.createScriptProcessor(): PASS
 	Stringification of context.destination: PASS
 	Stringification of context.listener: PASS
@@ -1160,8 +1160,8 @@
 	Stringification of new PeriodicWave(context): PASS
 	Stringification of new StereoPannerNode(context): PASS
 	Stringification of new WaveShaperNode(context): PASS
-	Stringification of worklet_node: FAIL
-	Stringification of worklet_node.parameters: FAIL
+	Stringification of worklet_node: PASS
+	Stringification of worklet_node.parameters: PASS
 	WaveShaperNode interface object length: PASS
 	WaveShaperNode interface object name: PASS
 	WaveShaperNode interface: attribute curve: PASS
@@ -1173,7 +1173,7 @@
 	WaveShaperNode interface: new WaveShaperNode(context) must inherit property "curve" with the proper type: PASS
 	WaveShaperNode interface: new WaveShaperNode(context) must inherit property "oversample" with the proper type: PASS
 	WaveShaperNode must be primary interface of new WaveShaperNode(context): PASS
-	idl_test setup: FAIL
+	idl_test setup: PASS
 	idl_test validation: PASS
 /webaudio/the-audio-api/media-playback-while-not-visible-permission-policy/interrupt-when-created-hidden.tentative.sub.html?origin=cross-origin&frame=direct&visibility=display: OK
 	cross-origin direct: AudioContext in an iframe created hidden should be interrupted (visibility=display): FAIL
@@ -1642,7 +1642,7 @@
 	Executing "required options": PASS
 	Executing "valid constructor": PASS
 /webaudio/the-audio-api/the-audiobuffersourcenode-interface/active-processing.https.html: OK
-	Setup graph with AudioWorklet and AudioBufferSourceNode: FAIL
+	Setup graph with AudioWorklet and AudioBufferSourceNode: PASS
 	Verify input channel count change after AudioBufferSourceNode stops: PASS
 /webaudio/the-audio-api/the-audiobuffersourcenode-interface/audiobuffersource-basic.html: OK
 	  Calling start() twice threw InvalidStateError: "start: it was started already.".: PASS
@@ -2008,7 +2008,7 @@
 	> [getoutputtimestamp-cross-realm] : PASS
 	Audit report: PASS
 	Executing "getoutputtimestamp-cross-realm": PASS
-	X mainContext's performanceTime is not greater than iframeContext's performanceTime. Got 1016.3511.: FAIL
+	X mainContext's performanceTime is not greater than iframeContext's performanceTime. Got 1026.1352.: FAIL
 /webaudio/the-audio-api/the-audiocontext-interface/audiocontext-getoutputtimestamp.html: OK
 	  timestamp.contextTime does exist.: PASS
 	  timestamp.contextTime is greater than or equal to 0.: PASS
@@ -3151,9 +3151,9 @@
 	Verify k-rate AudioParam input works correctly for detune: PASS
 	Verify k-rate AudioParam input works correctly for playbackRate: PASS
 /webaudio/the-audio-api/the-audioparam-interface/k-rate-audioworklet-connections.https.html: OK
-	AudioWorklet k-rate AudioParam: FAIL
+	AudioWorklet k-rate AudioParam: PASS
 /webaudio/the-audio-api/the-audioparam-interface/k-rate-audioworklet.https.html: OK
-	AudioWorklet k-rate AudioParam: FAIL
+	AudioWorklet k-rate AudioParam: PASS
 /webaudio/the-audio-api/the-audioparam-interface/k-rate-biquad-connection.html: OK
 	  All k-rate AudioParams equals [0,0.3311063051223755,0.6248595118522644,0.8481203317642212,0.9757021069526672,0.9932119250297546,0.898674488067627,0.7027547359466553,0.4275550842285156,0.104121632874012,-0.23105810582637787,-0.5401714444160461,-0.7883464097976685,-0.9475855827331543,-0.9999247193336487,-0.9394592046737671...] with an element-wise tolerance of {"absoluteThreshold":0,"relativeThreshold":0}.: PASS
 	  All k-rate AudioParams is not constantly 0 (contains 4095 different values).: PASS
@@ -3590,149 +3590,247 @@
 /webaudio/the-audio-api/the-audioparam-interface/setValueAtTime-within-block.html: OK
 	Test setValueAtTime with start time not on a block boundary: PASS
 /webaudio/the-audio-api/the-audioworklet-interface/audioworklet-addmodule-resolution.https.html: OK
-	Test the invocation order of AudioWorklet.addModule() and BaseAudioContext: FAIL
-/webaudio/the-audio-api/the-audioworklet-interface/audioworklet-audioparam-iterable.https.html: ERROR
+	Test the invocation order of AudioWorklet.addModule() and BaseAudioContext: PASS
+/webaudio/the-audio-api/the-audioworklet-interface/audioworklet-audioparam-iterable.https.html: OK
+	Attempting to create an AudioWorkletNode from a processor\n            that does not have a parameterDescriptors getter should work: PASS
+	Attempting to create an AudioWorkletNode with an non\n              iterable for parameter descriptor should not work: PASS
+	Attempting to create an AudioWorkletNode with two parameter\n            descriptor with the same name should not work: PASS
+	Creating an AudioWorkletNode with a array for\n                    parameter descriptor worked: PASS
+	Creating an AudioWorkletNode with a generator for\n                    parameter descriptor worked: PASS
+	Creating an AudioWorkletNode with a set for\n                    parameter descriptor worked: PASS
+	Map match in size for array: PASS
+	Map match in size for generator: PASS
+	Map match in size for set: PASS
+	Values for a control-rate parameter.automationRate match for array: PASS
+	Values for a control-rate parameter.automationRate match for generator: PASS
+	Values for a control-rate parameter.automationRate match for set: PASS
+	Values for a control-rate parameter.defaultValue match for array: PASS
+	Values for a control-rate parameter.defaultValue match for generator: PASS
+	Values for a control-rate parameter.defaultValue match for set: PASS
+	Values for a control-rate parameter.maxValue match for array: PASS
+	Values for a control-rate parameter.maxValue match for generator: PASS
+	Values for a control-rate parameter.maxValue match for set: PASS
+	Values for a control-rate parameter.minValue match for array: PASS
+	Values for a control-rate parameter.minValue match for generator: PASS
+	Values for a control-rate parameter.minValue match for set: PASS
+	Values for 你好.automationRate match for array: PASS
+	Values for 你好.automationRate match for generator: PASS
+	Values for 你好.automationRate match for set: PASS
+	Values for 你好.defaultValue match for array: PASS
+	Values for 你好.defaultValue match for generator: PASS
+	Values for 你好.defaultValue match for set: PASS
+	Values for 你好.maxValue match for array: PASS
+	Values for 你好.maxValue match for generator: PASS
+	Values for 你好.maxValue match for set: PASS
+	Values for 你好.minValue match for array: PASS
+	Values for 你好.minValue match for generator: PASS
+	Values for 你好.minValue match for set: PASS
+	Values for 🎶.automationRate match for array: PASS
+	Values for 🎶.automationRate match for generator: PASS
+	Values for 🎶.automationRate match for set: PASS
+	Values for 🎶.defaultValue match for array: PASS
+	Values for 🎶.defaultValue match for generator: PASS
+	Values for 🎶.defaultValue match for set: PASS
+	Values for 🎶.maxValue match for array: PASS
+	Values for 🎶.maxValue match for generator: PASS
+	Values for 🎶.maxValue match for set: PASS
+	Values for 🎶.minValue match for array: PASS
+	Values for 🎶.minValue match for generator: PASS
+	Values for 🎶.minValue match for set: PASS
+	array: a control-rate parameter exists in both maps: PASS
+	array: 你好 exists in both maps: PASS
+	array: 🎶 exists in both maps: PASS
+	generator: a control-rate parameter exists in both maps: PASS
+	generator: 你好 exists in both maps: PASS
+	generator: 🎶 exists in both maps: PASS
+	set: a control-rate parameter exists in both maps: PASS
+	set: 你好 exists in both maps: PASS
+	set: 🎶 exists in both maps: PASS
 /webaudio/the-audio-api/the-audioworklet-interface/audioworklet-audioparam-range.https.html: OK
-	Invalid parameter descriptors should fail registration.: FAIL
-	Valid parameter descriptors should have successful registration.: FAIL
+	Invalid parameter descriptors should fail registration.: PASS
+	Valid parameter descriptors should have successful registration.: PASS
 /webaudio/the-audio-api/the-audioworklet-interface/audioworklet-audioparam-size.https.html: OK
 	  Creating offline context for testing did not throw an exception.: PASS
+	  Creating test worklet resolved correctly.: PASS
+	  Remaining renders: array size contains only the constant 1.: PASS
+	  Render quantum 0: array size contains only the constant 1.: PASS
+	  Render quantum 1: array size contains only the constant 1.: PASS
+	  Render quantum 2-3: array size contains only the constant 128.: PASS
 	# AUDIT TASK RUNNER FINISHED: 2 tasks ran successfully.: PASS
 	# AUDIT TASK RUNNER STARTED.: PASS
+	< [Initializing AudioWorklet and Context] All assertions passed. (total 2 assertions): PASS
+	< [Verify Size of AudioParam Arrays] All assertions passed. (total 4 assertions): PASS
 	> [Initializing AudioWorklet and Context] : PASS
 	> [Verify Size of AudioParam Arrays] : PASS
 	Audit report: PASS
-	Executing "Initializing AudioWorklet and Context": FAIL
-	Executing "Verify Size of AudioParam Arrays": FAIL
+	Executing "Initializing AudioWorklet and Context": PASS
+	Executing "Verify Size of AudioParam Arrays": PASS
 /webaudio/the-audio-api/the-audioworklet-interface/audioworklet-audioparam.https.html: OK
-	Verifying AudioParam in AudioWorkletNode: FAIL
+	Verifying AudioParam in AudioWorkletNode: PASS
 /webaudio/the-audio-api/the-audioworklet-interface/audioworklet-denormals.https.window.html: OK
-	Test denormal behavior in AudioWorkletGlobalScope: FAIL
+	Test denormal behavior in AudioWorkletGlobalScope: PASS
 /webaudio/the-audio-api/the-audioworklet-interface/audioworklet-messageport-wasm.https.html: OK
-	AudioWorkletGlobalScope: global port can exchange a WebAssembly.Module: FAIL
-	AudioWorkletProcessor: processor port can exchange a WebAssembly.Module: FAIL
+	AudioWorkletGlobalScope: global port can exchange a WebAssembly.Module: PASS
+	AudioWorkletProcessor: processor port can exchange a WebAssembly.Module: PASS
 /webaudio/the-audio-api/the-audioworklet-interface/audioworklet-messageport.https.html: OK
-	AudioWorklet: shared port exists before addModule(): FAIL
-	AudioWorkletGlobalScope: shared port is available at module evaluation time and supports message passing: FAIL
-	AudioWorkletProcessor: initialization message: FAIL
-	AudioWorkletProcessor: message via instance port: FAIL
-/webaudio/the-audio-api/the-audioworklet-interface/audioworklet-postmessage-sharedarraybuffer.https.html: ERROR
-/webaudio/the-audio-api/the-audioworklet-interface/audioworklet-registerprocessor-called-on-globalthis.https.html: OK
+	AudioWorklet: shared port exists before addModule(): PASS
+	AudioWorkletGlobalScope: shared port is available at module evaluation time and supports message passing: PASS
+	AudioWorkletProcessor: initialization message: PASS
+	AudioWorkletProcessor: message via instance port: PASS
+/webaudio/the-audio-api/the-audioworklet-interface/audioworklet-postmessage-sharedarraybuffer.https.html: OK
+	  event.data from main thread is an instance of SharedArrayBuffer is true.: PASS
+	  event.data.sab from worklet is an instance of SharedArrayBuffer is true.: PASS
 	# AUDIT TASK RUNNER FINISHED: 1 tasks ran successfully.: PASS
 	# AUDIT TASK RUNNER STARTED.: PASS
+	< [Test postMessage from AudioWorkletProcessor to AudioWorkletNode] All assertions passed. (total 2 assertions): PASS
+	> [Test postMessage from AudioWorkletProcessor to AudioWorkletNode] : PASS
+	Audit report: PASS
+	Executing "Test postMessage from AudioWorkletProcessor to AudioWorkletNode": PASS
+/webaudio/the-audio-api/the-audioworklet-interface/audioworklet-registerprocessor-called-on-globalthis.https.html: OK
+	  "dummyWorkletNode" is an instance of AudioWorkletNode is true.: PASS
+	# AUDIT TASK RUNNER FINISHED: 1 tasks ran successfully.: PASS
+	# AUDIT TASK RUNNER STARTED.: PASS
+	< [registerprocessor-called-on-globalthis] All assertions passed. (total 1 assertions): PASS
 	> [registerprocessor-called-on-globalthis] : PASS
 	Audit report: PASS
-	Executing "registerprocessor-called-on-globalthis": FAIL
+	Executing "registerprocessor-called-on-globalthis": PASS
 /webaudio/the-audio-api/the-audioworklet-interface/audioworklet-registerprocessor-constructor.https.window.html: OK
-	Verifies two TypeError cases from registerProcessor() method.: FAIL
-/webaudio/the-audio-api/the-audioworklet-interface/audioworklet-registerprocessor-dynamic.https.html: ERROR
-	Dynamic registration in AudioWorkletGlobalScope: NOTRUN
+	Verifies two TypeError cases from registerProcessor() method.: PASS
+/webaudio/the-audio-api/the-audioworklet-interface/audioworklet-registerprocessor-dynamic.https.html: OK
+	Dynamic registration in AudioWorkletGlobalScope: PASS
 /webaudio/the-audio-api/the-audioworklet-interface/audioworklet-rendersizehint.https.html: OK
 	Worklet inherits context render quantum size: FAIL
 	Worklet process block size matches hint: FAIL
 /webaudio/the-audio-api/the-audioworklet-interface/audioworklet-suspend.https.html: OK
+	  context.currentTime did not change after worklet started is true.: PASS
+	  context.state is equal to suspended.: PASS
 	# AUDIT TASK RUNNER FINISHED: 1 tasks ran successfully.: PASS
 	# AUDIT TASK RUNNER STARTED.: PASS
+	< [load-worklet-and-suspend] All assertions passed. (total 2 assertions): PASS
 	> [load-worklet-and-suspend] : PASS
 	Audit report: PASS
-	Executing "load-worklet-and-suspend": FAIL
-/webaudio/the-audio-api/the-audioworklet-interface/audioworklet-throw-onmessage.https.html: ERROR
-	Throwing in an onmessage handler in the AudioWorkletGlobalScope shouldn't stop AudioWorkletProcessor: NOTRUN
+	Executing "load-worklet-and-suspend": PASS
+/webaudio/the-audio-api/the-audioworklet-interface/audioworklet-throw-onmessage.https.html: OK
+	Throwing in an onmessage handler in the AudioWorkletGlobalScope shouldn't stop AudioWorkletProcessor: PASS
 /webaudio/the-audio-api/the-audioworklet-interface/audioworkletglobalscope-creation-time.https.html: OK
-	currentTime vs currentFrames in Audio Worklet global scope: FAIL
-/webaudio/the-audio-api/the-audioworklet-interface/audioworkletglobalscope-sample-rate.https.html: ERROR
-/webaudio/the-audio-api/the-audioworklet-interface/audioworkletglobalscope-timing-info.https.html: OK
-	Check the timing information from AudioWorkletProcessor: FAIL
-/webaudio/the-audio-api/the-audioworklet-interface/audioworkletnode-automatic-pull.https.html: OK
+	currentTime vs currentFrames in Audio Worklet global scope: PASS
+/webaudio/the-audio-api/the-audioworklet-interface/audioworkletglobalscope-sample-rate.https.html: OK
+	  frequencyParam.maxValue is equal to 24000.: PASS
 	# AUDIT TASK RUNNER FINISHED: 1 tasks ran successfully.: PASS
 	# AUDIT TASK RUNNER STARTED.: PASS
+	< [Query |sampleRate| upon AudioWorkletGlobalScope construction] All assertions passed. (total 1 assertions): PASS
+	> [Query |sampleRate| upon AudioWorkletGlobalScope construction] : PASS
+	Audit report: PASS
+	Executing "Query |sampleRate| upon AudioWorkletGlobalScope construction": PASS
+/webaudio/the-audio-api/the-audioworklet-interface/audioworkletglobalscope-timing-info.https.html: OK
+	Check the timing information from AudioWorkletProcessor: PASS
+/webaudio/the-audio-api/the-audioworklet-interface/audioworkletnode-automatic-pull.https.html: OK
+	  The first half of the captured buffer contains only the constant 0.5.: PASS
+	  The second half of the captured buffer contains only the constant 0.: PASS
+	# AUDIT TASK RUNNER FINISHED: 1 tasks ran successfully.: PASS
+	# AUDIT TASK RUNNER STARTED.: PASS
+	< [setup-worklet] All assertions passed. (total 2 assertions): PASS
 	> [setup-worklet] : PASS
 	Audit report: PASS
-	Executing "setup-worklet": FAIL
+	Executing "setup-worklet": PASS
 /webaudio/the-audio-api/the-audioworklet-interface/audioworkletnode-channel-count.https.html: OK
-	setup-buffer-and-worklet-verify-rendered-buffer: FAIL
+	setup-buffer-and-worklet-verify-rendered-buffer: PASS
 /webaudio/the-audio-api/the-audioworklet-interface/audioworkletnode-construction.https.html: OK
-	# AUDIT TASK RUNNER FINISHED: 1 out of 2 tasks were failed.: FAIL
+	  "dummyWorkletNode" is an instance of AudioWorkletNode is true.: PASS
+	  Creating a node before loading a module should throw. threw InvalidStateError: "AudioWorkletNode: no processor is registered as 'dummy'.".: PASS
+	  Unregistered name "foobar" must throw an exception. threw InvalidStateError: "AudioWorkletNode: no processor is registered as 'foobar'.".: PASS
+	# AUDIT TASK RUNNER FINISHED: 2 tasks ran successfully.: PASS
 	# AUDIT TASK RUNNER STARTED.: PASS
-	< [construction-before-module-loading] 1 out of 1 assertions were failed.: FAIL
+	< [construction-after-module-loading] All assertions passed. (total 2 assertions): PASS
+	< [construction-before-module-loading] All assertions passed. (total 1 assertions): PASS
 	> [construction-after-module-loading] : PASS
 	> [construction-before-module-loading] : PASS
 	Audit report: PASS
-	Executing "construction-after-module-loading": FAIL
+	Executing "construction-after-module-loading": PASS
 	Executing "construction-before-module-loading": PASS
-	X Creating a node before loading a module should throw. threw "ReferenceError" instead of InvalidStateError.: FAIL
 /webaudio/the-audio-api/the-audioworklet-interface/audioworkletnode-constructor-no-coop-coep.https.html: OK
-	non cross-origin isolated shared memory clone error in AudioWorkletNodeOptions processorOptions: FAIL
+	non cross-origin isolated shared memory clone error in AudioWorkletNodeOptions processorOptions: PASS
 /webaudio/the-audio-api/the-audioworklet-interface/audioworkletnode-constructor-options.https.html: OK
-	Construct AudioWorkletNode with explicit AudioNodeOptions: FAIL
-	Construct AudioWorkletNode without options and check default values: FAIL
-	Validate allowed and disallowed channelCountMode options: FAIL
-	Validate allowed and disallowed channelInterpretation values: FAIL
-	Validate channelCount boundaries for AudioWorkletNode: FAIL
+	Construct AudioWorkletNode with explicit AudioNodeOptions: PASS
+	Construct AudioWorkletNode without options and check default values: PASS
+	Validate allowed and disallowed channelCountMode options: PASS
+	Validate allowed and disallowed channelInterpretation values: PASS
+	Validate channelCount boundaries for AudioWorkletNode: PASS
 /webaudio/the-audio-api/the-audioworklet-interface/audioworkletnode-disconnected-input.https.html: OK
-	Input array length should be zero for disconnected input: FAIL
+	Input array length should be zero for disconnected input: PASS
 /webaudio/the-audio-api/the-audioworklet-interface/audioworkletnode-lifetime.https.html: OK
-	Test AudioWorkletNode lifetime when process() returns false: FAIL
-/webaudio/the-audio-api/the-audioworklet-interface/audioworkletnode-onerror.https.html: ERROR
-	Test if |onprocessorerror| is called for a transfered object that cannot be deserialized on the AudioWorkletGlobalScope.: NOTRUN
-	Test if |onprocessorerror| is called for an exception thrown from the processor constructor.: NOTRUN
-	Test if |onprocessorerror| is called upon failure of process() method.: NOTRUN
+	Test AudioWorkletNode lifetime when process() returns false: PASS
+/webaudio/the-audio-api/the-audioworklet-interface/audioworkletnode-onerror.https.html: OK
+	Test if |onprocessorerror| is called for a transfered object that cannot be deserialized on the AudioWorkletGlobalScope.: PASS
+	Test if |onprocessorerror| is called for an exception thrown from the processor constructor.: PASS
+	Test if |onprocessorerror| is called upon failure of process() method.: FAIL
 /webaudio/the-audio-api/the-audioworklet-interface/audioworkletnode-output-channel-count.https.html: OK
-	AudioWorkletNode channel count: dynamic propagation and honoring outputChannelCount (single serialized test).: FAIL
+	AudioWorkletNode channel count: dynamic propagation and honoring outputChannelCount (single serialized test).: PASS
 /webaudio/the-audio-api/the-audioworklet-interface/audioworkletprocessor-malformed-process.https.html: OK
-	Test an AudioWorkletProcessor whose process is assigned after construction.: FAIL
-	Test an AudioWorkletProcessor with a non-callable process data property.: FAIL
-	Test an AudioWorkletProcessor with a process getter returning a non-callable value.: FAIL
-	Test an AudioWorkletProcessor with a process getter throwing an Error.: FAIL
-	Test an AudioWorkletProcessor with undefined process function.: FAIL
+	Test an AudioWorkletProcessor whose process is assigned after construction.: PASS
+	Test an AudioWorkletProcessor with a non-callable process data property.: PASS
+	Test an AudioWorkletProcessor with a process getter returning a non-callable value.: PASS
+	Test an AudioWorkletProcessor with a process getter throwing an Error.: PASS
+	Test an AudioWorkletProcessor with undefined process function.: PASS
 /webaudio/the-audio-api/the-audioworklet-interface/audioworkletprocessor-options.https.html: OK
-	empty-option: default processorOptions behavior: FAIL
-	valid-processor-data: processorOptions round-trip: FAIL
+	empty-option: default processorOptions behavior: PASS
+	valid-processor-data: processorOptions round-trip: PASS
 /webaudio/the-audio-api/the-audioworklet-interface/audioworkletprocessor-param-getter-overridden.https.html: OK
 	Test if AudioWorkletProcessor with invalid parameters array getter: FAIL
 /webaudio/the-audio-api/the-audioworklet-interface/audioworkletprocessor-process-frozen-array.https.html: OK
+	  Transferring ArrayBuffers was successful as expected. is true.: PASS
+	  Transferring inputs/outputs, an individual input/output array, or a channel Float32Array is not allowed as expected. is true.: PASS
+	  |inputs| is frozen is true.: PASS
+	  |outputs| is frozen is true.: PASS
 	# AUDIT TASK RUNNER FINISHED: 2 tasks ran successfully.: PASS
 	# AUDIT TASK RUNNER STARTED.: PASS
+	< [check-frozen-array] All assertions passed. (total 2 assertions): PASS
+	< [transfer-frozen-array] All assertions passed. (total 2 assertions): PASS
 	> [check-frozen-array] : PASS
 	> [transfer-frozen-array] : PASS
 	Audit report: PASS
-	Executing "check-frozen-array": FAIL
-	Executing "transfer-frozen-array": FAIL
+	Executing "check-frozen-array": PASS
+	Executing "transfer-frozen-array": PASS
 /webaudio/the-audio-api/the-audioworklet-interface/audioworkletprocessor-process-zero-outputs.https.html: OK
+	  |outputs| has been all zeros for 1 seconds as expected. is true.: PASS
 	# AUDIT TASK RUNNER FINISHED: 1 tasks ran successfully.: PASS
 	# AUDIT TASK RUNNER STARTED.: PASS
+	< [check-zero-outputs] All assertions passed. (total 1 assertions): PASS
 	> [check-zero-outputs] : PASS
 	Audit report: PASS
-	Executing "check-zero-outputs": FAIL
+	Executing "check-zero-outputs": PASS
 /webaudio/the-audio-api/the-audioworklet-interface/audioworkletprocessor-promises.https.html: OK
-	test: FAIL
+	test: PASS
 /webaudio/the-audio-api/the-audioworklet-interface/audioworkletprocessor-unconnected-outputs.https.window.html: OK
-	Test if outputs connected to AudioParam provides a non-zero length array for channels: FAIL
-	Test if unconnected outputs provides a non-zero length array for channels: FAIL
+	Test if outputs connected to AudioParam provides a non-zero length array for channels: PASS
+	Test if unconnected outputs provides a non-zero length array for channels: PASS
 /webaudio/the-audio-api/the-audioworklet-interface/baseaudiocontext-audioworklet.https.html: OK
+	  BaseAudioContext.audioWorklet is an instance of AudioWorklet is true.: PASS
 	# AUDIT TASK RUNNER FINISHED: 1 tasks ran successfully.: PASS
 	# AUDIT TASK RUNNER STARTED.: PASS
+	< [Test if AudioWorklet exists] All assertions passed. (total 1 assertions): PASS
 	> [Test if AudioWorklet exists] : PASS
 	Audit report: PASS
-	Executing "Test if AudioWorklet exists": FAIL
-/webaudio/the-audio-api/the-audioworklet-interface/extended-audioworkletnode-with-parameters.https.html: ERROR
+	Executing "Test if AudioWorklet exists": PASS
+/webaudio/the-audio-api/the-audioworklet-interface/extended-audioworkletnode-with-parameters.https.html: OK
+	Test AudioWorkletNode subclass with parameters: PASS
 /webaudio/the-audio-api/the-audioworklet-interface/process-getter.https.html: OK
-	'process' getter on instance: FAIL
-	'process' getter on prototype: FAIL
-/webaudio/the-audio-api/the-audioworklet-interface/process-parameters.https.html: ERROR
-	0 inputs; 3 outputs: NOTRUN
-	3 inputs; 0 outputs: NOTRUN
+	'process' getter on instance: PASS
+	'process' getter on prototype: PASS
+/webaudio/the-audio-api/the-audioworklet-interface/process-parameters.https.html: OK
+	0 inputs; 3 outputs: PASS
+	3 inputs; 0 outputs: PASS
 /webaudio/the-audio-api/the-audioworklet-interface/processor-construction-port.https.html: OK
-	Singleton AudioWorkletProcessor: FAIL
-	new AudioWorkletProcessor() after new AudioWorkletProcessor(): FAIL
-	new AudioWorkletProcessor() after super(): FAIL
-	super() after new AudioWorkletProcessor(): FAIL
+	Singleton AudioWorkletProcessor: PASS
+	new AudioWorkletProcessor() after new AudioWorkletProcessor(): PASS
+	new AudioWorkletProcessor() after super(): PASS
+	super() after new AudioWorkletProcessor(): PASS
 /webaudio/the-audio-api/the-audioworklet-interface/simple-input-output.https.html: OK
-	Simple AudioWorklet I/O: FAIL
+	Simple AudioWorklet I/O: PASS
 /webaudio/the-audio-api/the-audioworklet-interface/suspended-context-messageport.https.html: OK
-	offline before start: FAIL
-	offline on complete: FAIL
-	realtime suspended: FAIL
+	offline before start: PASS
+	offline on complete: PASS
+	realtime suspended: PASS
 /webaudio/the-audio-api/the-biquadfilternode-interface/biquad-allpass.html: OK
 	  Max error in Allpass filter response is less than or equal to 3.9337e-8.: PASS
 	  Number of filters tested is equal to 4.: PASS
@@ -4038,8 +4136,8 @@
 	X Modulation: Output from frequency setter does not equal [0,0.16928274929523468,0.3364662826061249,0.4967508614063263,0.6454094648361206,0.7779972553253174,0.890390157699585,0.9789289832115173,1.040857195854187,1.0747398138046265,1.0793081521987915,1.0542930364608765,0.9999784827232361,0.9176621437072754,0.8091651201248169,0.6772654056549072...] with an element-wise tolerance of {"absoluteThreshold":0,"relativeThreshold":0}.\n\tIndex\tActual\t\t\tExpected\t\tAbsError\t\tRelError\t\tTest threshold\n\t[1033]\t-9.9865335226058960e-1\t-9.9864023923873901e-1\t1.3113021850585938e-5\t1.3130876701485574e-5\t0.0000000000000000e+0\n\t[1034]\t-9.9324727058410645e-1\t-9.9321711063385010e-1\t3.0159950256347656e-5\t3.0365918924916843e-5\t0.0000000000000000e+0\n\t[1035]\t-9.5960032939910889e-1\t-9.5956188440322876e-1\t3.8444995880126953e-5\t4.0065155259930614e-5\t0.0000000000000000e+0\n\t[1036]\t-8.9859837293624878e-1\t-8.9857286214828491e-1\t2.5510787963867188e-5\t2.8390338767717347e-5\t0.0000000000000000e+0\n\t[1037]\t-8.1187802553176880e-1\t-8.1189805269241333e-1\t2.0027160644531250e-5\t2.4667087915923994e-5\t0.0000000000000000e+0\n\t...and 498 more errors.\n\tMax AbsError of 9.7412467002868652e-3 at index of 1794.\n\t[1794]\t9.1109007596969604e-1\t9.0134882926940918e-1\t9.7412467002868652e-3\t1.0807410387588411e-2\t0.0000000000000000e+0\n\tMax RelError of 1.8936378697899553e-1 at index of 1415.\n\t[1415]\t7.0922886952757835e-3\t5.9630945324897766e-3\t1.1291941627860069e-3\t1.8936378697899553e-1\t0.0000000000000000e+0\n: FAIL
 	X Modulation: Output from frequency setter matches setValueAtTime output is not true. Got false.: FAIL
 /webaudio/the-audio-api/the-channelmergernode-interface/active-processing.https.html: OK
-	initialize: AudioWorklet module loading: FAIL
-	test: Active processing emits expected channel-count changes: FAIL
+	initialize: AudioWorklet module loading: PASS
+	test: Active processing emits expected channel-count changes: PASS
 /webaudio/the-audio-api/the-channelmergernode-interface/audiochannelmerger-basic.html: OK
 	  context.createChannelMerger() did not throw an exception.: PASS
 	  context.createChannelMerger(0) threw IndexSizeError: "ChannelMergerNode: 0 inputs is not between 1 and 32.".: PASS
@@ -4158,8 +4256,8 @@
 	ConstantSourceNode with automation: PASS
 	ConstantSourceNode with no automation: PASS
 /webaudio/the-audio-api/the-convolvernode-interface/active-processing.https.html: OK
-	AudioWorklet module should load successfully: FAIL
-	ConvolverNode should stop active processing after source stops: FAIL
+	AudioWorklet module should load successfully: PASS
+	ConvolverNode should stop active processing after source stops: PASS
 /webaudio/the-audio-api/the-convolvernode-interface/convolution-mono-mono.html: OK
 	  Deviation in first part of tail of convolutions is less than or equal to -129.7.: PASS
 	  Rendered signal after tail of convolution is silent is true.: PASS
@@ -4756,12 +4854,38 @@
 	more than 20 feedforward coefficients can not be used: PASS
 	the first feedback coefficient must be non-zero: PASS
 /webaudio/the-audio-api/the-mediaelementaudiosourcenode-interface/cors-check.https.html: ERROR
+	# AUDIT TASK RUNNER FINISHED: 1 out of 2 tasks were failed.: FAIL
+	# AUDIT TASK RUNNER STARTED.: PASS
+	< [setting-up-graph] All assertions passed. (total 0 assertions): PASS
+	< [start-playback-and-capture] 4 out of 4 assertions were failed.: FAIL
+	> [setting-up-graph] : PASS
+	> [start-playback-and-capture] : PASS
+	Audit report: PASS
+	Executing "setting-up-graph": PASS
+	Executing "start-playback-and-capture": PASS
+	X Recorded channel #0 should have contain at least one value different from 0.: FAIL
+	X Recorded channel #1 should have contain at least one value different from 0.: FAIL
+	X Recorded channel #2 should have contain at least one value different from 0.: FAIL
+	X Recorded channel #3 should have contain at least one value different from 0.: FAIL
 /webaudio/the-audio-api/the-mediaelementaudiosourcenode-interface/mediaElementAudioSourceToScriptProcessorTest.html: ERROR
 	Element Source tests completed: TIMEOUT
 /webaudio/the-audio-api/the-mediaelementaudiosourcenode-interface/mediaElementAudioSource_volumeChange.html: OK
 	createMediaElementSource() output reflects HTMLMediaElement effective volume changes (volume/muted)(src-file): FAIL
 	createMediaElementSource() output reflects HTMLMediaElement effective volume changes (volume/muted)(src-stream): FAIL
 /webaudio/the-audio-api/the-mediaelementaudiosourcenode-interface/no-cors.https.html: ERROR
+	  Recorded channel #0 contains only the constant 0.: PASS
+	  Recorded channel #1 contains only the constant 0.: PASS
+	  Recorded channel #2 contains only the constant 0.: PASS
+	  Recorded channel #3 contains only the constant 0.: PASS
+	# AUDIT TASK RUNNER FINISHED: 2 tasks ran successfully.: PASS
+	# AUDIT TASK RUNNER STARTED.: PASS
+	< [setting-up-graph] All assertions passed. (total 0 assertions): PASS
+	< [start-playback-and-capture] All assertions passed. (total 4 assertions): PASS
+	> [setting-up-graph] : PASS
+	> [start-playback-and-capture] : PASS
+	Audit report: PASS
+	Executing "setting-up-graph": PASS
+	Executing "start-playback-and-capture": PASS
 /webaudio/the-audio-api/the-mediaelementaudiosourcenode-interface/setSinkId-with-MediaElementAudioSourceNode.https.html: TIMEOUT
 	setSinkId fails with NotFoundError on made up deviceid: NOTRUN
 	setSinkId on default audio output should always work: NOTRUN

@@ -31444,6 +31444,183 @@ _t_webaudio_WebAudio_decode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	return nil
 }
 
+// WebAudio_workletStart :: proc(c: ^Call, graph: u64) -> u64
+@(private = "file")
+_t_webaudio_WebAudio_workletStart :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_r := WebAudio_workletStart(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// WebAudio_workletStop :: proc(c: ^Call, graph: u64)
+@(private = "file")
+_t_webaudio_WebAudio_workletStop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	WebAudio_workletStop(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// WebAudio_workletNode :: proc(c: ^Call, graph: u64, inputs: i32, outputs: i32, params: i32, processor: i32, output_channels: []u8) -> i32
+@(private = "file")
+_t_webaudio_WebAudio_workletNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n5 := wasm.addr(&f, a[6])
+	_s5, _k5 := wasm.span(&f, wasm.addr(&f, a[5]), _n5)
+	if !_k5 { return wasm.trap_bounds(&f, "webaudio.WebAudio_workletNode", "output_channels") }
+	_p5 := _s5[:_n5]
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32
+	_p2 := a[2].i32
+	_p3 := a[3].i32
+	_p4 := a[4].i32
+	_r := WebAudio_workletNode(&c, _p0, _p1, _p2, _p3, _p4, _p5)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// WebAudio_workletParam :: proc(c: ^Call, graph: u64, node: i32, index: i32, default_value: f64, min_value: f64, max_value: f64, a_rate: bool)
+@(private = "file")
+_t_webaudio_WebAudio_workletParam :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32
+	_p2 := a[2].i32
+	_p3 := a[3].f64
+	_p4 := a[4].f64
+	_p5 := a[5].f64
+	_p6 := a[6].i32 != 0
+	WebAudio_workletParam(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// AudioWorkletRealm_sampleRate :: proc(c: ^Call) -> f64
+@(private = "file")
+_t_webaudio_AudioWorkletRealm_sampleRate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := AudioWorkletRealm_sampleRate(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// AudioWorkletRealm_frame :: proc(c: ^Call) -> f64
+@(private = "file")
+_t_webaudio_AudioWorkletRealm_frame :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := AudioWorkletRealm_frame(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// AudioWorkletRealm_layout :: proc(c: ^Call, layout: []u8) -> i32
+@(private = "file")
+_t_webaudio_AudioWorkletRealm_layout :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "webaudio.AudioWorkletRealm_layout", "layout") }
+	_p0 := _s0[:_n0]
+	_r := AudioWorkletRealm_layout(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// AudioWorkletRealm_read :: proc(c: ^Call, at: i32, values: []u8)
+@(private = "file")
+_t_webaudio_AudioWorkletRealm_read :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "webaudio.AudioWorkletRealm_read", "values") }
+	_p1 := _s1[:_n1]
+	_p0 := a[0].i32
+	AudioWorkletRealm_read(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// AudioWorkletRealm_write :: proc(c: ^Call, at: i32, values: []u8)
+@(private = "file")
+_t_webaudio_AudioWorkletRealm_write :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "webaudio.AudioWorkletRealm_write", "values") }
+	_p1 := _s1[:_n1]
+	_p0 := a[0].i32
+	AudioWorkletRealm_write(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// AudioWorkletRealm_finish :: proc(c: ^Call, status: i32)
+@(private = "file")
+_t_webaudio_AudioWorkletRealm_finish :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := a[0].i32
+	AudioWorkletRealm_finish(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// AudioWorkletRealm_dropped :: proc(c: ^Call) -> i32
+@(private = "file")
+_t_webaudio_AudioWorkletRealm_dropped :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := AudioWorkletRealm_dropped(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
 // VideoFrame_fromImage :: proc(c: ^Call, source: u64, timestamp: i64, has_ts: bool, duration: i64, has_duration: bool) -> (u64, Api_Error)
 @(private = "file")
 _t_webcodecs_VideoFrame_fromImage :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -35845,6 +36022,17 @@ api_imports := [?]wasm.Import{
 	{module = "webaudio", name = "WebAudio_pcmRead", fn = _t_webaudio_WebAudio_pcmRead, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "webaudio", name = "WebAudio_pcmInfo", fn = _t_webaudio_WebAudio_pcmInfo, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.F64}},
 	{module = "webaudio", name = "WebAudio_decode", fn = _t_webaudio_WebAudio_decode, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .F64}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .F64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "webaudio", name = "WebAudio_workletStart", fn = _t_webaudio_WebAudio_workletStart, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "webaudio", name = "WebAudio_workletStop", fn = _t_webaudio_WebAudio_workletStop, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "webaudio", name = "WebAudio_workletNode", fn = _t_webaudio_WebAudio_workletNode, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webaudio", name = "WebAudio_workletParam", fn = _t_webaudio_WebAudio_workletParam, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .F64, .F64, .F64, .I32}, results = []wasm.Val_Kind{}},
+	{module = "webaudio", name = "AudioWorkletRealm_sampleRate", fn = _t_webaudio_AudioWorkletRealm_sampleRate, realms = 2, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.F64}},
+	{module = "webaudio", name = "AudioWorkletRealm_frame", fn = _t_webaudio_AudioWorkletRealm_frame, realms = 2, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.F64}},
+	{module = "webaudio", name = "AudioWorkletRealm_layout", fn = _t_webaudio_AudioWorkletRealm_layout, realms = 2, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webaudio", name = "AudioWorkletRealm_read", fn = _t_webaudio_AudioWorkletRealm_read, realms = 2, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "webaudio", name = "AudioWorkletRealm_write", fn = _t_webaudio_AudioWorkletRealm_write, realms = 2, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "webaudio", name = "AudioWorkletRealm_finish", fn = _t_webaudio_AudioWorkletRealm_finish, realms = 2, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{}},
+	{module = "webaudio", name = "AudioWorkletRealm_dropped", fn = _t_webaudio_AudioWorkletRealm_dropped, realms = 2, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "webcodecs", name = "VideoFrame_fromImage", fn = _t_webcodecs_VideoFrame_fromImage, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I32, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "webcodecs", name = "VideoFrame_fromBuffer", fn = _t_webcodecs_VideoFrame_fromBuffer, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I32, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I64, .I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "webcodecs", name = "VideoFrame_format", fn = _t_webcodecs_VideoFrame_format, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},

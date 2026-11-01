@@ -54,6 +54,7 @@ thread_stop :: proc(g: ^Graph) {
 	g.thread.th = nil
 	sync.atomic_store(&g.thread.quit, true)
 	sync.cond_broadcast(&g.thread.wake)
+	worklet_interrupt(g)
 	sync.unlock(&g.mu)
 	if th != nil { host.thread_join(th) }
 	if g.thread.result != nil { pcm_release(g.thread.result); g.thread.result = nil }
