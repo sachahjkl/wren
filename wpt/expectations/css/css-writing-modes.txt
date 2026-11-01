@@ -68,12 +68,12 @@
 	writing-mode: vertical-rl: FAIL
 /css/css-writing-modes/forms/meter-appearance-native-computed-style.optional.html: OK
 	meter[style="writing-mode: horizontal-tb"] block size should match height and inline size should match width: PASS
-	meter[style="writing-mode: vertical-lr"] block size should match width and inline size should match height: FAIL
-	meter[style="writing-mode: vertical-rl"] block size should match width and inline size should match height: FAIL
+	meter[style="writing-mode: vertical-lr"] block size should match width and inline size should match height: PASS
+	meter[style="writing-mode: vertical-rl"] block size should match width and inline size should match height: PASS
 /css/css-writing-modes/forms/progress-appearance-native-computed-style.optional.html: OK
 	progress[style="writing-mode: horizontal-tb"] block size should match height and inline size should match width: PASS
-	progress[style="writing-mode: vertical-lr"] block size should match width and inline size should match height: FAIL
-	progress[style="writing-mode: vertical-rl"] block size should match width and inline size should match height: FAIL
+	progress[style="writing-mode: vertical-lr"] block size should match width and inline size should match height: PASS
+	progress[style="writing-mode: vertical-rl"] block size should match width and inline size should match height: PASS
 /css/css-writing-modes/forms/select-appearance-native-computed-style.html: OK
 	select[style="writing-mode: horizontal-tb"] block size should match height and inline size should match width: PASS
 	select[style="writing-mode: vertical-lr"] block size should match width and inline size should match height: FAIL
