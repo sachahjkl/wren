@@ -65,21 +65,28 @@ bytes the browser carries from an instance to another (`Frame_bridge`, which che
 | well-known symbols | by name; any other symbol is not carried |
 | a DOM node | that realm's wrapper of the node |
 | a window | that realm's `WindowProxy`, or its global |
+| a built-in, an interface, their prototypes | by name: that realm's own (what a window gives for them is the reader's) |
 | any other object, a function | a `Proxy` forwarding get, set, has, delete, keys, descriptors, prototype, call, construct |
 
 An object coming home is itself. A realm that is gone answers `undefined`. Proxies are collected with `FinalizationRegistry`, which
 releases the object in its realm.
 
+A listener or a handler that is a `Proxy` of another realm's function runs as a callback of that realm: what it throws is reported at
+that window's `error` event, and once that realm is gone it is not called.
+
 What it is not is one heap:
 
-- objects keep their realm's prototypes, as in a browser: `x instanceof Array` is false across frames;
+- since `w.Array` is the reader's `Array`, an object of another window reaches the reader's prototypes: `x instanceof w.Promise` and
+  `x.constructor === w.Object` hold, and so does `x instanceof Array`, where a browser says false;
+- an object made with `new w.Object` is the caller's, so a listener made that way is the caller's too: what it throws goes to the caller's
+  window (`dom/events/EventListener-handleEvent-cross-realm.html`);
 - a native function refuses a `Proxy` for one of its own objects: a typed array or a `Blob` of one realm passed to a native of
   another throws a `TypeError`. An `Event` to `otherWindow.dispatchEvent` is handled, and `frameDocument.createRange()` and
   `getSelection()` give the frame's own, which its `Selection` takes;
 - a cycle between two realms (a listener of one kept by the other) lives until one of them goes;
 - ECMAScript built-ins and interface objects read from another window are the caller's own: `frame.contentWindow.Array === Array`, and
   `new frame.contentWindow.HTMLElement` makes one of the caller's. A DOM wrapper's prototype is its realm's too:
-  `contentDocument.body instanceof HTMLElement` is true, where a browser says false. `history`, `navigator`, `screen`, `crypto`
+  `contentDocument.body instanceof HTMLElement` is true, where a browser says false. `navigator`, `screen`, `crypto`
   and `console` of another window are the caller's as well.
 
 A custom element class of one realm defined in the registry of another (`frame.contentWindow.customElements.define(name, class extends
@@ -87,6 +94,23 @@ HTMLElement {})`) is not supported: its constructor would run in one realm for a
 
 Rich-text editors reach their frame, but Wren has no editing of its own in `contenteditable` or `designMode` (typing, caret, `execCommand`):
 that limit is not about frames.
+
+## Navigating a frame
+
+A navigable keeps its session history across its documents (`Navigable.session`): `navigation.entries()`, `back()`, `traverseTo()` and
+`reload()` see them, keys and ids stay. The navigate event fires in the frame's document whoever starts the navigation (`location` of
+another window, `window.open` or a link or a form with a target, the `src` and `srcdoc` attributes), but for a navigation to another
+document started from another origin. The document that leaves gets `beforeunload`, then `pagehide` and `unload`, and starts no
+navigation while they run. A 204, a 205 or an attachment leaves the document as it is.
+
+What is not there:
+
+- **joint session history.** Each frame has its own: `history.back()` in the tab does not go back in a frame, a traversal moves one
+  frame, and a push in a frame does not prune another's forward entries. The browser's back button leaves the tab's document;
+- **a Window kept from the initial about:blank.** HTML keeps the `Window` when a frame goes from its initial about:blank to a document
+  of the same origin. Here every document has an instance of its own, so what a script put on a blank frame's window
+  (`frame.contentWindow.navigation.onnavigate = ...`, `window[0].foo = ...`) goes with that document;
+- **`precommitHandler`** of `NavigateEvent.intercept()`.
 
 ## Cost
 

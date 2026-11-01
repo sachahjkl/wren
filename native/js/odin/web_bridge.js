@@ -17,11 +17,13 @@
   // (a construct trap: nothing of `f` is read, a getter of its `prototype` does not run)
   const probeHandler = { __proto__: null, construct() { return emptyFn; } };
   const isConstructor = f => { try { new (new P(f, probeHandler))(); return true; } catch (e) { return false; } };
-  const OP_GET = 1, OP_SET = 2, OP_HAS = 3, OP_DELETE = 4, OP_KEYS = 5, OP_GOPD = 6, OP_DEFINE = 7, OP_GET_PROTO = 8, OP_SET_PROTO = 9, OP_APPLY = 10, OP_CONSTRUCT = 11, OP_RELEASE = 12;
+  const OP_GET = 1, OP_SET = 2, OP_HAS = 3, OP_DELETE = 4, OP_KEYS = 5, OP_GOPD = 6, OP_DEFINE = 7, OP_GET_PROTO = 8, OP_SET_PROTO = 9, OP_APPLY = 10, OP_CONSTRUCT = 11, OP_RELEASE = 12, OP_ALIVE = 13, OP_REPORT = 14, OP_DOCUMENT_METHOD = 15;
   const KIND_OBJECT = 0, KIND_FUNCTION = 1, KIND_ARRAY = 2, KIND_PLAIN_FUNCTION = 3;
   const emptyArrow = () => {};
+  const startsWith = String.prototype.startsWith, ILLEGAL_INVOCATION = "Illegal invocation";
+  const fnCall = Function.prototype.call, fnApply = Function.prototype.apply, arraySlice = Array.prototype.slice;
   const REALM_FACTOR = 4294967296;   // a key of `imported`: realm * 2^32 + number
-  const send = native.send, global = native.global;
+  const send = native.send, global = native.global, report = native.report;
 
   // the symbols a realm can name to another: the well-known ones, by name
   const symbolNames = new MapC(), symbolsByName = new MapC();
@@ -30,6 +32,20 @@
     const s = SymbolC[wellKnown[i]];
     if (s !== undefined) { apply(mapSet, symbolNames, [s, wellKnown[i]]); apply(mapSet, symbolsByName, [wellKnown[i], s]); }
   }
+
+  // The built-ins and interfaces of a realm cross as their names, as the well-known symbols do: what a window gives for `Array` or
+  // `Node` is the reader's own (frames.odin), so what is reached through an object of that window has to be too:
+  // x.constructor === w.Object, Object.getPrototypeOf(x) === w.Object.prototype, x instanceof w.Promise.
+  const intrinsicNames = new WeakMapC(), intrinsicsByName = new MapC();
+  const addIntrinsic = (name, v) => {
+    if (typeof v !== "object" && typeof v !== "function" || v === null) return;
+    apply(wmSet, intrinsicNames, [v, name]);
+    apply(mapSet, intrinsicsByName, [name, v]);
+  };
+  const registerIntrinsic = (name, ctor, proto) => {
+    addIntrinsic(name, ctor);
+    addIntrinsic(name + ".prototype", proto);
+  };
 
   // ---- what this realm gives others ----
   const exported = new MapC(), numbers = new WeakMapC();
@@ -107,11 +123,26 @@
     return p;
   };
 
-  // A reference to send for an object of this realm, or a proxy it holds: [realm, number, kind].
+  // A reference to send for an object of this realm, or a proxy it holds: [realm, number, kind]; for an intrinsic, its name.
   const exportRef = (self, o) => {
+    const name = apply(wmGet, intrinsicNames, [o]);
+    if (name !== undefined) return name;
     const i = apply(wmGet, info, [o]);
     if (i !== undefined) return [i.realm, i.number, i.kind];
     return [self, numberOf(o), typeof o === "function" ? (isConstructor(o) ? KIND_FUNCTION : KIND_PLAIN_FUNCTION) : arrayIsArray(o) ? KIND_ARRAY : KIND_OBJECT];
+  };
+
+  // A platform method of this realm called on an object of another (w.history.back.call(history)) runs there, on that object's
+  // document, as the method of that name.
+  const applyTo = (f, self, args) => {
+    try {
+      return apply(f, self, args);
+    } catch (e) {
+      if (apply(wmGet, info, [self]) === undefined || typeof e !== "object" || e === null || apply(startsWith, `${e.message}`, [ILLEGAL_INVOCATION]) !== true) throw e;
+      const there = rGet(self, f.name);
+      if (typeof there !== "function") throw e;
+      return apply(there, self, args);
+    }
   };
 
   // ---- an operation another realm asks for, on an object of this one ----
@@ -144,9 +175,16 @@
       }
       case OP_GET_PROTO: return rGetProto(o);
       case OP_SET_PROTO: return rSetProto(o, a);
-      case OP_APPLY: return apply(o, a, b);
+      case OP_APPLY:
+        // (f.call(x) from another realm: Function.prototype.call of this one, on f)
+        if (o === fnCall && typeof a === "function") return applyTo(a, b[0], apply(arraySlice, b, [1]));
+        if (o === fnApply && typeof a === "function") return applyTo(a, b[0], b[1] === undefined || b[1] === null ? [] : b[1]);
+        return applyTo(o, a, b);
       case OP_CONSTRUCT: return rConstruct(o, a);
       case OP_RELEASE: apply(mapDel, exported, [number]); return undefined;
+      case OP_ALIVE: return true;
+      case OP_REPORT: report(a); return undefined;
+      case OP_DOCUMENT_METHOD: return apply(rGet(rGet(rGet(global, "Document"), "prototype"), a), b, []);
     }
     return undefined;
   };
@@ -190,6 +228,9 @@
     importRef,
     exportRef,
     isRemote: o => (typeof o === "object" || typeof o === "function") && o !== null && apply(wmGet, info, [o]) !== undefined,
+    realmOf: o => { const i = apply(wmGet, info, [o]); return i === undefined ? 0 : i.realm; },
+    registerIntrinsic,
+    intrinsicOf: name => apply(mapGet, intrinsicsByName, [name]),
     symbolName: s => apply(mapGet, symbolNames, [s]),
     symbolOf: name => apply(mapGet, symbolsByName, [name]),
     bigint: text => BigIntF(text),

@@ -384,6 +384,7 @@ Page_Images :: struct {
 	port:       images.Port_Id,         // Image_decode of scripts (on this page's loop: a worker's own)
 	guest:      [dynamic]Guest_Decode,
 	started:    int,                    // downloads started (statistics, tests)
+	pump_armed: bool,                   // a turn of the loop will start what is queued (images_pump_soon)
 	shared:     int,                    // entries taken from the cache
 	svgs:       map[base.Handle]^Inline_Svg,   // inline <svg> elements drawn so far (inline_svg.odin)
 	svg_ids:    map[string]base.Handle, // id -> element, for the references of inline <svg> (rebuilt on mutation)
@@ -529,7 +530,21 @@ page_request :: proc(p: ^Page, abs: string, mode: fetch.Mode, cred: fetch.Creden
 	}
 	r.state = .Queued
 	append(&p.images.queue, r)
+	images_pump_soon(p)
 	return r
+}
+
+// A request does not wait for the shell's next frame, which a document that is not shown never gets (a blank window's new Image(),
+// a frame out of sight, no shell at all): the next turn of the loop starts it, by then the task has asked for all its images.
+@(private = "file")
+images_pump_soon :: proc(p: ^Page) {
+	if p.images.pump_armed || p.worker != nil { return }
+	p.images.pump_armed = true
+	host.set_timer(p.loop, 0, 0, proc(data: rawptr) {
+		p := (^Page)(data)
+		p.images.pump_armed = false
+		images_pump(p)
+	}, p, p.scope)
 }
 
 // Starts queued downloads up to the page's limit, nearest the viewport first.

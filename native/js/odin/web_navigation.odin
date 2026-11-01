@@ -28,7 +28,7 @@ import "../odin/wj"
 // (no global NAV_TYPES_Z: a global with a nil in it is built by the Odin runtime start-up, which this module does not run)
 
 // What the browser says about a navigation (Navigation_pending's flags).
-@(private = "file") Nav_Flag :: enum { Same_Doc, User, Hash, Can_Intercept, Cancelable, Has_State }
+@(private = "file") Nav_Flag :: enum { Same_Doc, User, Hash, Can_Intercept, Cancelable, Has_State, Download }
 @(private = "file") Nav_Flags :: bit_set[Nav_Flag; u32]
 
 // A cursor over the browser's text: the numbers are read as strtoll did (leading white space skipped).
@@ -616,11 +616,16 @@ read_history :: proc(ctx: ^wj.Context, opt: wj.JSValue, out: ^i32) -> bool {
 	return true
 }
 
-// After the browser call that started the navigation: a tracker no navigate event took (a javascript: URL) is let go
-// (its promises never settle); a refusal of the browser rejects both.
+// After the browser call that started the navigation: a tracker no navigate event took is that of a javascript: URL, which is no
+// navigation (both promises reject, HTML navigation.navigate()); a refusal of the browser rejects both.
 @(private = "file")
 tracker_done :: proc(ctx: ^wj.Context, t: ^Tracker, r: abi.Api_Error, res: wj.JSValue, what: cstring) -> wj.JSValue {
-	if upcoming == t { upcoming = nil; tracker_free(ctx, t) }
+	untaken := upcoming == t
+	if untaken { upcoming = nil; tracker_free(ctx, t) }
+	if r == .None && untaken {
+		wj.JS_FreeValue(ctx, res)
+		return early_dom_error(ctx, "NotSupportedError", "Failed to execute on 'Navigation': a javascript: URL is not navigated to.")
+	}
 	if r == .None { return res }
 	wj.JS_FreeValue(ctx, res)
 	if r == .Syntax { return early_dom_error(ctx, "SyntaxError", "Failed to execute on 'Navigation': the URL is invalid.") }
@@ -839,7 +844,16 @@ wj_nav_fire :: proc "c" (unused: i32) -> i32 {
 	nav_type := Nav_Type(type)
 	d := new(Destination)
 	if d == nil { return 0 }
-	d.url = wj.new_string_len(ctx, text[s.at:])
+	dest_url := text[s.at:]
+	download := ""
+	if .Download in flags {   // (after the URL, which holds no line break)
+		for i in 0 ..< len(dest_url) {
+			if dest_url[i] != '\n' { continue }
+			dest_url, download = dest_url[:i], dest_url[i + 1:]
+			break
+		}
+	}
+	d.url = wj.new_string_len(ctx, dest_url)
 	d.key, d.id, d.index = key, id, index
 	d.same_doc = .Same_Doc in flags
 	if .Has_State in flags {
@@ -890,6 +904,7 @@ wj_nav_fire :: proc "c" (unused: i32) -> i32 {
 	wj.web_extra_set(ctx, ev, "userInitiated", wj.new_bool(.User in flags))
 	wj.web_extra_set(ctx, ev, "hashChange", wj.new_bool(.Hash in flags))
 	wj.web_extra_set(ctx, ev, "signal", signal)
+	if .Download in flags { wj.web_extra_set(ctx, ev, "downloadRequest", wj.new_string_len(ctx, download)) }
 	wj.web_extra_set(ctx, ev, "info", o.tracker != nil ? wj.JS_DupValue(ctx, o.tracker.info) : wj.UNDEFINED)
 	// what started it: sourceElement, and a POST form submission's formData (new FormData(form, submitter))
 	src: wj.wr_NavigationSource
@@ -915,11 +930,34 @@ wj_nav_fire :: proc "c" (unused: i32) -> i32 {
 	if o.aborted { ongoing_free(ctx, o); return 1 }   // (another navigation started from a listener)
 	if !go_on { nav_abort(ctx, o, abort_error(ctx, "The navigation was cancelled.")); return 1 }
 	if o.intercepted { return 2 }
-	if .Same_Doc in flags { return 0 }   // wj_nav_commit follows
-	// another document: this one goes away (the promises never settle)
-	ongoing = nil
-	ongoing_free(ctx, o)
+	// (the same document: wj_nav_commit follows. Another document: it stays ongoing until this one goes away, its promises never
+	// settling then, or the next navigation aborts it.)
 	return 0
+}
+
+// The document's frame is going (Navigation_detached): the navigation under way and the traversals asked for are aborted. Their
+// reactions run now: the realm will not reach its callers once this returns.
+@(export, link_name = "wj_nav_detach")
+wj_nav_detach :: proc "c" (unused: i32) {
+	context = wj.heap_context()
+	ctx := wj.realm_ctx()
+	if ctx == nil || wj.is_undefined(nav_obj) { return }
+	wj.wj_stack_enter(ctx)
+	if ongoing != nil { nav_abort(ctx, ongoing, abort_error(ctx, "The document's frame was removed.")) }
+	for traversals != nil {
+		t := traversals
+		traversals = t.next
+		e := abort_error(ctx, "The document's frame was removed.")
+		prom_reject(ctx, &t.committed, e)
+		prom_reject(ctx, &t.finished, e)
+		wj.JS_FreeValue(ctx, e)
+		tracker_free(ctx, t)
+	}
+	rt := wj.JS_GetRuntime(ctx)
+	for wj.JS_IsJobPending(rt) {
+		jctx: ^wj.Context
+		if wj.JS_ExecutePendingJob(rt, &jctx) < 0 { wj.wj_report_pending(jctx) }
+	}
 }
 
 @(private = "file")

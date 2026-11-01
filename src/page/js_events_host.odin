@@ -87,6 +87,7 @@ Event_interface :: proc(c: ^Call, event: Api_Event) -> u32 {
 	case "transitionrun", "transitionstart", "transitionend", "transitioncancel": return JS_IFACE_TransitionEvent
 	case "animationstart", "animationend", "animationiteration", "animationcancel": return JS_IFACE_AnimationEvent
 	case "pageshow", "pagehide": return JS_IFACE_PageTransitionEvent
+	case "beforeunload": return JS_IFACE_BeforeUnloadEvent
 	case "finish", "cancel", "remove":
 		if object_data(c.page, u64(event.data.target), &web_animation_vt) != nil { return JS_IFACE_AnimationPlaybackEvent }
 	case "progress", "loadstart", "loadend", "abort", "timeout":

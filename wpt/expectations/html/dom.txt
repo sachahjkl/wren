@@ -1880,7 +1880,7 @@
 	Script dom-ext: PASS
 	Script dom-inline: PASS
 	Script eval: PASS
-	Script iframe-src: NOTRUN
+	Script iframe-src: PASS
 	Script microtask: PASS
 	Script nested: PASS
 	Script parse-ext: PASS
@@ -2472,7 +2472,7 @@
 /html/dom/elements/global-attributes/id-name.html: OK
 	id and name attributes and getElementById: PASS
 /html/dom/elements/global-attributes/lang-attribute-document-element-replacement.html: OK
-	Disconnected descendants of a replaced document element should resolve lang from their actual ancestor: FAIL
+	Disconnected descendants of a replaced document element should resolve lang from their actual ancestor: PASS
 /html/dom/elements/global-attributes/lang-attribute-shadow.window.html: OK
 	lang on host and slot: PASS
 	lang on host and slot and slotted element: PASS
@@ -6451,7 +6451,7 @@
 	StorageEvent must be primary interface of new StorageEvent("storage"): PASS
 	Stringification of document.createElement("canvas").getContext("2d"): PASS
 	Stringification of document.createElement("input").validity: PASS
-	Stringification of document.createElement("track").track: FAIL
+	Stringification of document.createElement("track").track: PASS
 	Stringification of document.createElement("video").addTextTrack("subtitles").cues: PASS
 	Stringification of document.createElement("video").buffered: PASS
 	Stringification of document.createElement("video").textTracks: PASS
@@ -6511,25 +6511,26 @@
 	TextTrack interface: attribute language: PASS
 	TextTrack interface: attribute mode: PASS
 	TextTrack interface: attribute oncuechange: PASS
-	TextTrack interface: calling addCue(TextTrackCue) on document.createElement("track").track with too few arguments must throw TypeError: FAIL
-	TextTrack interface: calling removeCue(TextTrackCue) on document.createElement("track").track with too few arguments must throw TypeError: FAIL
-	TextTrack interface: document.createElement("track").track must inherit property "activeCues" with the proper type: FAIL
-	TextTrack interface: document.createElement("track").track must inherit property "addCue(TextTrackCue)" with the proper type: FAIL
-	TextTrack interface: document.createElement("track").track must inherit property "cues" with the proper type: FAIL
-	TextTrack interface: document.createElement("track").track must inherit property "id" with the proper type: FAIL
-	TextTrack interface: document.createElement("track").track must inherit property "inBandMetadataTrackDispatchType" with the proper type: FAIL
-	TextTrack interface: document.createElement("track").track must inherit property "kind" with the proper type: FAIL
-	TextTrack interface: document.createElement("track").track must inherit property "label" with the proper type: FAIL
-	TextTrack interface: document.createElement("track").track must inherit property "language" with the proper type: FAIL
-	TextTrack interface: document.createElement("track").track must inherit property "mode" with the proper type: FAIL
-	TextTrack interface: document.createElement("track").track must inherit property "oncuechange" with the proper type: FAIL
-	TextTrack interface: document.createElement("track").track must inherit property "removeCue(TextTrackCue)" with the proper type: FAIL
+	TextTrack interface: calling addCue(TextTrackCue) on document.createElement("track").track with too few arguments must throw TypeError: PASS
+	TextTrack interface: calling removeCue(TextTrackCue) on document.createElement("track").track with too few arguments must throw TypeError: PASS
+	TextTrack interface: document.createElement("track").track must inherit property "activeCues" with the proper type: PASS
+	TextTrack interface: document.createElement("track").track must inherit property "addCue(TextTrackCue)" with the proper type: PASS
+	TextTrack interface: document.createElement("track").track must inherit property "cues" with the proper type: PASS
+	TextTrack interface: document.createElement("track").track must inherit property "id" with the proper type: PASS
+	TextTrack interface: document.createElement("track").track must inherit property "inBandMetadataTrackDispatchType" with the proper type: PASS
+	TextTrack interface: document.createElement("track").track must inherit property "kind" with the proper type: PASS
+	TextTrack interface: document.createElement("track").track must inherit property "label" with the proper type: PASS
+	TextTrack interface: document.createElement("track").track must inherit property "language" with the proper type: PASS
+	TextTrack interface: document.createElement("track").track must inherit property "mode" with the proper type: PASS
+	TextTrack interface: document.createElement("track").track must inherit property "oncuechange" with the proper type: PASS
+	TextTrack interface: document.createElement("track").track must inherit property "removeCue(TextTrackCue)" with the proper type: PASS
 	TextTrack interface: existence and properties of interface object: PASS
 	TextTrack interface: existence and properties of interface prototype object: PASS
 	TextTrack interface: existence and properties of interface prototype object's "constructor" property: PASS
 	TextTrack interface: existence and properties of interface prototype object's @@unscopables property: PASS
 	TextTrack interface: operation addCue(TextTrackCue): PASS
 	TextTrack interface: operation removeCue(TextTrackCue): PASS
+	TextTrack must be primary interface of document.createElement("track").track: PASS
 	TextTrackCue interface object length: PASS
 	TextTrackCue interface object name: PASS
 	TextTrackCue interface: attribute endTime: PASS
@@ -6708,12 +6709,12 @@
 	WorkerNavigator includes NavigatorLanguage: member names are unique: PASS
 	WorkerNavigator includes NavigatorOnLine: member names are unique: PASS
 	WorkerNavigator interface: existence and properties of interface object: PASS
-	Worklet interface object length: FAIL
-	Worklet interface object name: FAIL
-	Worklet interface: existence and properties of interface object: FAIL
-	Worklet interface: existence and properties of interface prototype object: FAIL
-	Worklet interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	Worklet interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	Worklet interface object length: PASS
+	Worklet interface object name: PASS
+	Worklet interface: existence and properties of interface object: PASS
+	Worklet interface: existence and properties of interface prototype object: PASS
+	Worklet interface: existence and properties of interface prototype object's "constructor" property: PASS
+	Worklet interface: existence and properties of interface prototype object's @@unscopables property: PASS
 	Worklet interface: operation addModule(USVString, optional WorkletOptions): FAIL
 	WorkletGlobalScope interface: existence and properties of interface object: PASS
 	XMLSerializer interface object length: PASS
@@ -6755,19 +6756,19 @@
 	Document interface: calling execCommand(DOMString, optional boolean, optional DOMString) on iframe.contentDocument with too few arguments must throw TypeError: FAIL
 	Document interface: calling execCommand(DOMString, optional boolean, optional DOMString) on new Document() with too few arguments must throw TypeError: FAIL
 	Document interface: calling getElementsByName(DOMString) on documentWithHandlers with too few arguments must throw TypeError: PASS
-	Document interface: calling getElementsByName(DOMString) on iframe.contentDocument with too few arguments must throw TypeError: FAIL
+	Document interface: calling getElementsByName(DOMString) on iframe.contentDocument with too few arguments must throw TypeError: PASS
 	Document interface: calling getElementsByName(DOMString) on new Document() with too few arguments must throw TypeError: PASS
 	Document interface: calling open(USVString, DOMString, DOMString) on documentWithHandlers with too few arguments must throw TypeError: PASS
-	Document interface: calling open(USVString, DOMString, DOMString) on iframe.contentDocument with too few arguments must throw TypeError: FAIL
+	Document interface: calling open(USVString, DOMString, DOMString) on iframe.contentDocument with too few arguments must throw TypeError: PASS
 	Document interface: calling open(USVString, DOMString, DOMString) on new Document() with too few arguments must throw TypeError: PASS
 	Document interface: calling open(optional DOMString, optional DOMString) on documentWithHandlers with too few arguments must throw TypeError: PASS
-	Document interface: calling open(optional DOMString, optional DOMString) on iframe.contentDocument with too few arguments must throw TypeError: FAIL
+	Document interface: calling open(optional DOMString, optional DOMString) on iframe.contentDocument with too few arguments must throw TypeError: PASS
 	Document interface: calling open(optional DOMString, optional DOMString) on new Document() with too few arguments must throw TypeError: PASS
 	Document interface: calling parseHTML(DOMString, optional SetHTMLOptions) on documentWithHandlers with too few arguments must throw TypeError: FAIL
 	Document interface: calling parseHTML(DOMString, optional SetHTMLOptions) on iframe.contentDocument with too few arguments must throw TypeError: FAIL
 	Document interface: calling parseHTML(DOMString, optional SetHTMLOptions) on new Document() with too few arguments must throw TypeError: FAIL
 	Document interface: calling parseHTMLUnsafe((TrustedHTML or DOMString), optional (ParseHTMLUnsafeOptions or TrustedHTMLParserOptions)) on documentWithHandlers with too few arguments must throw TypeError: FAIL
-	Document interface: calling parseHTMLUnsafe((TrustedHTML or DOMString), optional (ParseHTMLUnsafeOptions or TrustedHTMLParserOptions)) on iframe.contentDocument with too few arguments must throw TypeError: FAIL
+	Document interface: calling parseHTMLUnsafe((TrustedHTML or DOMString), optional (ParseHTMLUnsafeOptions or TrustedHTMLParserOptions)) on iframe.contentDocument with too few arguments must throw TypeError: PASS
 	Document interface: calling parseHTMLUnsafe((TrustedHTML or DOMString), optional (ParseHTMLUnsafeOptions or TrustedHTMLParserOptions)) on new Document() with too few arguments must throw TypeError: FAIL
 	Document interface: calling queryCommandEnabled(DOMString) on documentWithHandlers with too few arguments must throw TypeError: FAIL
 	Document interface: calling queryCommandEnabled(DOMString) on iframe.contentDocument with too few arguments must throw TypeError: FAIL
@@ -6785,10 +6786,10 @@
 	Document interface: calling queryCommandValue(DOMString) on iframe.contentDocument with too few arguments must throw TypeError: FAIL
 	Document interface: calling queryCommandValue(DOMString) on new Document() with too few arguments must throw TypeError: FAIL
 	Document interface: calling write((TrustedHTML or DOMString)...) on documentWithHandlers with too few arguments must throw TypeError: PASS
-	Document interface: calling write((TrustedHTML or DOMString)...) on iframe.contentDocument with too few arguments must throw TypeError: FAIL
+	Document interface: calling write((TrustedHTML or DOMString)...) on iframe.contentDocument with too few arguments must throw TypeError: PASS
 	Document interface: calling write((TrustedHTML or DOMString)...) on new Document() with too few arguments must throw TypeError: PASS
 	Document interface: calling writeln((TrustedHTML or DOMString)...) on documentWithHandlers with too few arguments must throw TypeError: PASS
-	Document interface: calling writeln((TrustedHTML or DOMString)...) on iframe.contentDocument with too few arguments must throw TypeError: FAIL
+	Document interface: calling writeln((TrustedHTML or DOMString)...) on iframe.contentDocument with too few arguments must throw TypeError: PASS
 	Document interface: calling writeln((TrustedHTML or DOMString)...) on new Document() with too few arguments must throw TypeError: PASS
 	Document interface: documentWithHandlers must have own property "location": PASS
 	Document interface: documentWithHandlers must inherit property "body" with the proper type: PASS
@@ -6828,44 +6829,44 @@
 	Document interface: documentWithHandlers must inherit property "visibilityState" with the proper type: PASS
 	Document interface: documentWithHandlers must inherit property "write((TrustedHTML or DOMString)...)" with the proper type: PASS
 	Document interface: documentWithHandlers must inherit property "writeln((TrustedHTML or DOMString)...)" with the proper type: PASS
-	Document interface: iframe.contentDocument must have own property "location": FAIL
-	Document interface: iframe.contentDocument must inherit property "body" with the proper type: FAIL
-	Document interface: iframe.contentDocument must inherit property "close()" with the proper type: FAIL
-	Document interface: iframe.contentDocument must inherit property "cookie" with the proper type: FAIL
-	Document interface: iframe.contentDocument must inherit property "currentScript" with the proper type: FAIL
-	Document interface: iframe.contentDocument must inherit property "defaultView" with the proper type: FAIL
+	Document interface: iframe.contentDocument must have own property "location": PASS
+	Document interface: iframe.contentDocument must inherit property "body" with the proper type: PASS
+	Document interface: iframe.contentDocument must inherit property "close()" with the proper type: PASS
+	Document interface: iframe.contentDocument must inherit property "cookie" with the proper type: PASS
+	Document interface: iframe.contentDocument must inherit property "currentScript" with the proper type: PASS
+	Document interface: iframe.contentDocument must inherit property "defaultView" with the proper type: PASS
 	Document interface: iframe.contentDocument must inherit property "designMode" with the proper type: FAIL
-	Document interface: iframe.contentDocument must inherit property "dir" with the proper type: FAIL
-	Document interface: iframe.contentDocument must inherit property "domain" with the proper type: FAIL
-	Document interface: iframe.contentDocument must inherit property "embeds" with the proper type: FAIL
-	Document interface: iframe.contentDocument must inherit property "execCommand(DOMString, optional boolean, optional DOMString)" with the proper type: FAIL
-	Document interface: iframe.contentDocument must inherit property "forms" with the proper type: FAIL
-	Document interface: iframe.contentDocument must inherit property "getElementsByName(DOMString)" with the proper type: FAIL
-	Document interface: iframe.contentDocument must inherit property "hasFocus()" with the proper type: FAIL
-	Document interface: iframe.contentDocument must inherit property "head" with the proper type: FAIL
-	Document interface: iframe.contentDocument must inherit property "hidden" with the proper type: FAIL
-	Document interface: iframe.contentDocument must inherit property "images" with the proper type: FAIL
-	Document interface: iframe.contentDocument must inherit property "lastModified" with the proper type: FAIL
-	Document interface: iframe.contentDocument must inherit property "links" with the proper type: FAIL
-	Document interface: iframe.contentDocument must inherit property "onreadystatechange" with the proper type: FAIL
-	Document interface: iframe.contentDocument must inherit property "onvisibilitychange" with the proper type: FAIL
-	Document interface: iframe.contentDocument must inherit property "open(USVString, DOMString, DOMString)" with the proper type: FAIL
-	Document interface: iframe.contentDocument must inherit property "open(optional DOMString, optional DOMString)" with the proper type: FAIL
+	Document interface: iframe.contentDocument must inherit property "dir" with the proper type: PASS
+	Document interface: iframe.contentDocument must inherit property "domain" with the proper type: PASS
+	Document interface: iframe.contentDocument must inherit property "embeds" with the proper type: PASS
+	Document interface: iframe.contentDocument must inherit property "execCommand(DOMString, optional boolean, optional DOMString)" with the proper type: PASS
+	Document interface: iframe.contentDocument must inherit property "forms" with the proper type: PASS
+	Document interface: iframe.contentDocument must inherit property "getElementsByName(DOMString)" with the proper type: PASS
+	Document interface: iframe.contentDocument must inherit property "hasFocus()" with the proper type: PASS
+	Document interface: iframe.contentDocument must inherit property "head" with the proper type: PASS
+	Document interface: iframe.contentDocument must inherit property "hidden" with the proper type: PASS
+	Document interface: iframe.contentDocument must inherit property "images" with the proper type: PASS
+	Document interface: iframe.contentDocument must inherit property "lastModified" with the proper type: PASS
+	Document interface: iframe.contentDocument must inherit property "links" with the proper type: PASS
+	Document interface: iframe.contentDocument must inherit property "onreadystatechange" with the proper type: PASS
+	Document interface: iframe.contentDocument must inherit property "onvisibilitychange" with the proper type: PASS
+	Document interface: iframe.contentDocument must inherit property "open(USVString, DOMString, DOMString)" with the proper type: PASS
+	Document interface: iframe.contentDocument must inherit property "open(optional DOMString, optional DOMString)" with the proper type: PASS
 	Document interface: iframe.contentDocument must inherit property "parseHTML(DOMString, optional SetHTMLOptions)" with the proper type: PASS
 	Document interface: iframe.contentDocument must inherit property "parseHTMLUnsafe((TrustedHTML or DOMString), optional (ParseHTMLUnsafeOptions or TrustedHTMLParserOptions))" with the proper type: PASS
-	Document interface: iframe.contentDocument must inherit property "plugins" with the proper type: FAIL
-	Document interface: iframe.contentDocument must inherit property "queryCommandEnabled(DOMString)" with the proper type: FAIL
+	Document interface: iframe.contentDocument must inherit property "plugins" with the proper type: PASS
+	Document interface: iframe.contentDocument must inherit property "queryCommandEnabled(DOMString)" with the proper type: PASS
 	Document interface: iframe.contentDocument must inherit property "queryCommandIndeterm(DOMString)" with the proper type: FAIL
 	Document interface: iframe.contentDocument must inherit property "queryCommandState(DOMString)" with the proper type: FAIL
-	Document interface: iframe.contentDocument must inherit property "queryCommandSupported(DOMString)" with the proper type: FAIL
+	Document interface: iframe.contentDocument must inherit property "queryCommandSupported(DOMString)" with the proper type: PASS
 	Document interface: iframe.contentDocument must inherit property "queryCommandValue(DOMString)" with the proper type: FAIL
-	Document interface: iframe.contentDocument must inherit property "readyState" with the proper type: FAIL
-	Document interface: iframe.contentDocument must inherit property "referrer" with the proper type: FAIL
-	Document interface: iframe.contentDocument must inherit property "scripts" with the proper type: FAIL
-	Document interface: iframe.contentDocument must inherit property "title" with the proper type: FAIL
-	Document interface: iframe.contentDocument must inherit property "visibilityState" with the proper type: FAIL
-	Document interface: iframe.contentDocument must inherit property "write((TrustedHTML or DOMString)...)" with the proper type: FAIL
-	Document interface: iframe.contentDocument must inherit property "writeln((TrustedHTML or DOMString)...)" with the proper type: FAIL
+	Document interface: iframe.contentDocument must inherit property "readyState" with the proper type: PASS
+	Document interface: iframe.contentDocument must inherit property "referrer" with the proper type: PASS
+	Document interface: iframe.contentDocument must inherit property "scripts" with the proper type: PASS
+	Document interface: iframe.contentDocument must inherit property "title" with the proper type: PASS
+	Document interface: iframe.contentDocument must inherit property "visibilityState" with the proper type: PASS
+	Document interface: iframe.contentDocument must inherit property "write((TrustedHTML or DOMString)...)" with the proper type: PASS
+	Document interface: iframe.contentDocument must inherit property "writeln((TrustedHTML or DOMString)...)" with the proper type: PASS
 	Document interface: new Document() must have own property "location": PASS
 	Document interface: new Document() must inherit property "body" with the proper type: PASS
 	Document interface: new Document() must inherit property "close()" with the proper type: PASS
@@ -72463,10 +72464,10 @@
 	Loading of script-inserted module script should eventually succeed: PASS
 	Loading of script-inserted script should eventually succeed: PASS
 	Loading of script-inserted stylesheet link should eventually succeed: PASS
-	Render-blocking on parser-inserted async module script is cancellable: FAIL
-	Render-blocking on parser-inserted async script is cancellable: FAIL
-	Render-blocking on parser-inserted defer script is cancellable: FAIL
-	Render-blocking on parser-inserted module script is cancellable: FAIL
+	Render-blocking on parser-inserted async module script is cancellable: PASS
+	Render-blocking on parser-inserted async script is cancellable: PASS
+	Render-blocking on parser-inserted defer script is cancellable: PASS
+	Render-blocking on parser-inserted module script is cancellable: PASS
 	Render-blocking on script-inserted inline style is cancellable: PASS
 	Render-blocking on script-inserted module script is cancellable: PASS
 	Render-blocking on script-inserted script is cancellable: PASS
@@ -72508,10 +72509,10 @@
 	Should have the right origin for cross-origin subframe after setting document.domain: FAIL
 	Should have the right origin for sandboxed iframe: NOTRUN
 	We should have the right origin for our page: PASS
-	about:blank subframe origins: FAIL
-	blob: subframe origins: FAIL
-	javascript: subframe origins: FAIL
-	srcdoc subframe origins: FAIL
+	about:blank subframe origins: PASS
+	blob: subframe origins: PASS
+	javascript: subframe origins: PASS
+	srcdoc subframe origins: PASS
 /html/dom/usvstring-reflection.https.html: OK
 	Document URLs: unpaired surrogate codepoint should be replaced with U+FFFD: FAIL
 	EventSource : unpaired surrogate codepoint should be replaced with U+FFFD: PASS

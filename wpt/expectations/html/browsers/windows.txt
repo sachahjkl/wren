@@ -37,8 +37,8 @@
 	No removal, no document.domain: FAIL
 	Removal, document.domain: FAIL
 	Removal, no document.domain: FAIL
-/html/browsers/windows/embedded-opener-a-form.html: TIMEOUT
-	opener and embedded documents; using a and form: TIMEOUT
+/html/browsers/windows/embedded-opener-a-form.html: OK
+	opener and embedded documents; using a and form: PASS
 /html/browsers/windows/embedded-opener-remove-frame.html: OK
 	opener of discarded auxiliary browsing context: FAIL
 	opener of discarded nested browsing context: FAIL
@@ -97,11 +97,11 @@
 	rel=noreferrer nullifies window.opener: TIMEOUT
 /html/browsers/windows/noreferrer-window-name.html: TIMEOUT
 	Following a noreferrer link with a named target should not cause creation of a window that can be targeted by another noreferrer link with the same named target: TIMEOUT
-	Targeting a rel=noreferrer link at an existing named subframe should work: TIMEOUT
+	Targeting a rel=noreferrer link at an existing named subframe should work: PASS
 	Targeting a rel=noreferrer link at an existing named window should work: TIMEOUT
 /html/browsers/windows/opener-string.window.html: ERROR
 	Setting popup.opener to a string: FAIL
 /html/browsers/windows/targeting-cross-origin-nested-browsing-contexts.html: TIMEOUT
 	Targeting nested browsing contexts: TIMEOUT
-/html/browsers/windows/targeting-with-embedded-null-in-target.html: TIMEOUT
-	Targeting with embedded null in target: TIMEOUT
+/html/browsers/windows/targeting-with-embedded-null-in-target.html: OK
+	Targeting with embedded null in target: PASS

@@ -574,10 +574,13 @@ wj_wrap_target :: proc "c" (ctx: ^wj.Context, h: u64) -> wj.JSValue {
 @(export, link_name = "wjr_Window_get_event")
 wjr_Window_get_event :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj.JS_DupValue(ctx, current_event) }
 
-// Calls a listener's callback: a function, or an object's handleEvent method. Reports what it throws.
+// Calls a listener's callback: a function, or an object's handleEvent method. Reports what it throws, at the global of the
+// callback's realm. A callback of a realm that is gone (its frame removed or navigated) is not called (DOM "inner invoke").
 @(private = "file")
 call_listener :: proc "contextless" (ctx: ^wj.Context, cb, target, ev: wj.JSValue) {
 	ev := ev
+	realm := frames_bridge_realm_of(ctx, cb)
+	if realm != 0 && !frames_bridge_alive(ctx, realm) { return }
 	r: wj.JSValue
 	if wj.JS_IsFunction(ctx, cb) {
 		r = wj.JS_Call(ctx, cb, target, 1, &ev)
@@ -594,7 +597,11 @@ call_listener :: proc "contextless" (ctx: ^wj.Context, cb, target, ev: wj.JSValu
 			wj.JS_FreeValue(ctx, he)
 		}
 	}
-	if wj.is_exception(r) { wj.wj_report_pending(ctx) } else { wj.JS_FreeValue(ctx, r) }
+	switch {
+	case !wj.is_exception(r): wj.JS_FreeValue(ctx, r)
+	case realm != 0: frames_bridge_report_pending(ctx, realm)
+	case: wj.wj_report_pending(ctx)
+	}
 }
 
 // Called by the browser for each listener it runs: user = the listener's slot.

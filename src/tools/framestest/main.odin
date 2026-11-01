@@ -936,7 +936,7 @@ f.addEventListener("load", () => {
 		page.page_close(p)
 	}
 
-	fmt.println("-- a same-origin frame: pristine copies of the platform (what SPF takes from contentWindow.history)")
+	fmt.println("-- a same-origin frame: pristine copies of the platform, and its history (SPF calls contentWindow.history.pushState on its own)")
 	{
 		p := load(`<body><iframe id=a></iframe><script>
 const w = document.getElementById("a").contentWindow;
@@ -960,7 +960,7 @@ t("navigator", () => w.navigator);
 t("descriptor", () => Object.getOwnPropertyDescriptor(w, "history").value === w.history);
 log("same-origin " + r.join(" | "));
 </script></body>`)
-		check(wait_for("same-origin pushState:function true | replace:#viaframe 7 | push:#second 1 | brandless:TypeError | instanceof:true true | builtins:true true true true | console:true | fetch:function true | timer:number | in:true true false | document:[object Document] | location:about:blank | page global:undefined | page lowercase:undefined | navigator:[object Navigator] | descriptor:true"), "history's methods, the built-ins, the interface objects and navigator of this realm; the frame's document, location and globals are its own")
+		check(wait_for("same-origin pushState:function false | replace:#viaframe 7 | push:#second 1 | brandless:1 | instanceof:true true | builtins:true true true true | console:true | fetch:function true | timer:number | in:true true false | document:[object Document] | location:about:blank | page global:undefined | page lowercase:undefined | navigator:[object Navigator] | descriptor:false"), "the built-ins, the interface objects and navigator of this realm; the frame's document, location, history and globals are its own, and its history's methods act on the history they are called on")
 		page.page_close(p)
 	}
 

@@ -9912,7 +9912,7 @@
 	A_08_01_01_T01: PASS
 /shadow-dom/untriaged/html-elements-in-shadow-trees/inert-html-elements/test-002.html: OK
 	A_08_01_02_T01: PASS
-/shadow-dom/untriaged/shadow-trees/upper-boundary-encapsulation/dom-tree-accessors-001.html: TIMEOUT
+/shadow-dom/untriaged/shadow-trees/upper-boundary-encapsulation/dom-tree-accessors-001.html: OK
 	<head> and <body> in a shadow tree should not be accessible from owner document's "head" and "body" properties, respectively.: PASS
 	Elements in a shadow tree should not be accessible from owner document's "all" attribute.: PASS
 	Elements in a shadow tree should not be accessible from owner document's "anchors" attribute.: PASS
