@@ -68,8 +68,10 @@ fake_realm_main :: proc(th: ^thread.Thread) {
 }
 
 @(private = "file")
-fake_start :: proc(r: ^Fake_Realm, g: ^Graph) -> ^thread.Thread {
-	r.w = worklet_attach(g, STALL_LIMIT)
+// limit: what the graph gives the realm to answer. Only a test of a realm that hangs says 200 ms: on a loaded machine this thread may
+// not even have started by then, and the graph gives up on it.
+fake_start :: proc(r: ^Fake_Realm, g: ^Graph, limit := GENEROUS_LIMIT) -> ^thread.Thread {
+	r.w = worklet_attach(g, limit)
 	worklet_realm_attach(r.w, proc(user: rawptr) {}, nil)
 	th := thread.create(fake_realm_main)
 	th.data = r
@@ -164,7 +166,7 @@ a_hung_realm_is_given_up_on_and_the_render_goes_on :: proc(t: ^testing.T) {
 	defer graph_destroy(g)
 	r := Fake_Realm{status = .Keep_Alive}
 	sync.atomic_store(&r.hang, true)
-	th := fake_start(&r, g)
+	th := fake_start(&r, g, STALL_LIMIT)
 	defer fake_stop(&r, th)
 	id := constant_into_worklet(g)
 	start := time.tick_now()
