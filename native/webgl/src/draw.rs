@@ -85,6 +85,8 @@ layout(location = 0) out vec4 color0;
 layout(std140, set = 0, binding = 0) uniform P { vec4 rect; vec4 clear_color; vec4 depth; };
 void main() { color0 = clear_color; }";
 
+/// A pipeline that takes this long is told to the console.
+const SLOW_PIPELINE: std::time::Duration = std::time::Duration::from_millis(1000);
 /// Bytes of the parameters of the utility shaders.
 const UTILITY_PARAMS: u64 = 48;
 
@@ -97,7 +99,7 @@ pub struct Utility {
     pub src: wgpu::BindGroupLayout,
     pub blit_layout: wgpu::PipelineLayout,
     pub clear_layout: wgpu::PipelineLayout,
-    pub blit: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
+    pub blit: HashMap<(wgpu::TextureFormat, u32), wgpu::RenderPipeline>,
     pub clear: HashMap<(Vec<(wgpu::TextureFormat, [bool; 4])>, Option<(wgpu::TextureFormat, bool, u32)>, u32), wgpu::RenderPipeline>,
     pub linear: wgpu::Sampler,
     pub nearest: wgpu::Sampler,
@@ -1569,6 +1571,7 @@ impl Ctx {
             conservative: false,
         };
         let layout = &l.layouts[&key.binds].1;
+        let started = std::time::Instant::now();
         let validation = self.device.push_error_scope(wgpu::ErrorFilter::Validation);
         let internal = self.device.push_error_scope(wgpu::ErrorFilter::Internal);
         let p = self.device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -1584,6 +1587,9 @@ impl Ctx {
         });
         let e1 = pollster::block_on(internal.pop());
         let e2 = pollster::block_on(validation.pop());
+        if started.elapsed() >= SLOW_PIPELINE {
+            self.warn(format!("WebGL: a pipeline took {} ms to compile", started.elapsed().as_millis()));
+        }
         let made = if let Some(e) = e1.or(e2) {
             self.warn(format!("WebGL: the device refused a pipeline: {}", e));
             None
@@ -1812,6 +1818,9 @@ impl Ctx {
         };
         let df = self.st.draw_fb;
         let Some(dst) = self.target_of(df) else { return };
+        if df == 0 && self.needs_clear {
+            self.ensure_pass(None);   // (the buffer's lazy clear comes before what is copied onto it)
+        }
         let [sx0, sy0, sx1, sy1, dx0, dy0, dx1, dy1] = v;
         self.end_pass();
         self.ensure_encoder();
@@ -1844,7 +1853,7 @@ impl Ctx {
         let same_size = (sx1 - sx0) == (dx1 - dx0) && (sy1 - sy0) == (dy1 - dy0) && sx1 > sx0 && sy1 > sy0;
         // the plain case: a copy to each draw buffer
         for (i, c) in dst.colors.iter().enumerate() {
-            let Some((view, _, format)) = c else { continue };
+            let Some((view, resolve, format)) = c else { continue };
             let dest_tex = if df == 0 {
                 Some((self.bb.color.clone(), 0, 0))
             } else {
@@ -1873,7 +1882,7 @@ impl Ctx {
                 }
             }
             // scaled, flipped, or between formats: drawn
-            if formats::sample_kind(s_fmt.wgpu) != SampleKind::Float || formats::sample_kind(*format) != SampleKind::Float || dst.samples > 1 {
+            if formats::sample_kind(s_fmt.wgpu) != SampleKind::Float || formats::sample_kind(*format) != SampleKind::Float {
                 self.warn("WebGL: this blitFramebuffer is not supported".to_string());
                 self.set_error(INVALID_OPERATION);
                 return;
@@ -1909,7 +1918,8 @@ impl Ctx {
             if x as u32 >= dst.w || y as u32 >= dst.h || ww <= 0 || hh <= 0 {
                 continue;
             }
-            self.blit_quad(&src_view, &view, format, [x as f32, y as f32, ww as f32, hh as f32], r, filter == LINEAR, dst.w, dst.h);
+            let resolve = resolve.clone();
+            self.blit_quad(&src_view, &view, resolve.as_ref(), dst.samples, format, [x as f32, y as f32, ww as f32, hh as f32], r, filter == LINEAR, dst.w, dst.h);
         }
         if df == 0 {
             self.drew_since_present = true;
@@ -1957,22 +1967,22 @@ impl Ctx {
 
     /// Draws a texture onto a view.
     #[allow(clippy::too_many_arguments)]
-    pub fn blit_quad(&mut self, src: &wgpu::TextureView, dst: &wgpu::TextureView, format: wgpu::TextureFormat, viewport: [f32; 4], rect: [f32; 4], linear: bool, tw: u32, th: u32) {
+    pub fn blit_quad(&mut self, src: &wgpu::TextureView, dst: &wgpu::TextureView, resolve: Option<&wgpu::TextureView>, samples: u32, format: wgpu::TextureFormat, viewport: [f32; 4], rect: [f32; 4], linear: bool, tw: u32, th: u32) {
         self.end_pass();
         self.ensure_encoder();
-        if !self.utility.blit.contains_key(&format) {
+        if !self.utility.blit.contains_key(&(format, samples)) {
             let p = self.device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: Some("blit"),
                 layout: Some(&self.utility.blit_layout),
                 vertex: wgpu::VertexState { module: &self.utility.vs, entry_point: Some("main"), compilation_options: Default::default(), buffers: &[] },
                 primitive: wgpu::PrimitiveState::default(),
                 depth_stencil: None,
-                multisample: wgpu::MultisampleState::default(),
+                multisample: wgpu::MultisampleState { count: samples, mask: !0, alpha_to_coverage_enabled: false },
                 fragment: Some(wgpu::FragmentState { module: &self.utility.blit_fs, entry_point: Some("main"), compilation_options: Default::default(), targets: &[Some(wgpu::ColorTargetState { format, blend: None, write_mask: wgpu::ColorWrites::ALL })] }),
                 multiview_mask: None,
                 cache: None,
             });
-            self.utility.blit.insert(format, p);
+            self.utility.blit.insert((format, samples), p);
         }
         let mut params = [0f32; 12];
         params[0..4].copy_from_slice(&rect);
@@ -1991,11 +2001,11 @@ impl Ctx {
             layout: &self.utility.src,
             entries: &[wgpu::BindGroupEntry { binding: 0, resource: wgpu::BindingResource::TextureView(src) }, wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::Sampler(&sampler) }],
         });
-        let pipeline = self.utility.blit[&format].clone();
+        let pipeline = self.utility.blit[&(format, samples)].clone();
         let enc = self.encoder.as_mut().unwrap();
         let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: None,
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment { view: dst, depth_slice: None, resolve_target: None, ops: wgpu::Operations { load: wgpu::LoadOp::Load, store: wgpu::StoreOp::Store } })],
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment { view: dst, depth_slice: None, resolve_target: resolve, ops: wgpu::Operations { load: wgpu::LoadOp::Load, store: wgpu::StoreOp::Store } })],
             depth_stencil_attachment: None,
             timestamp_writes: None,
             occlusion_query_set: None,
@@ -2169,7 +2179,7 @@ pub fn generate_mipmaps(ctx: &mut Ctx, id: u32) {
                 })
             };
             let (w, h) = ((w0 >> level).max(1), (h0 >> level).max(1));
-            ctx.blit_quad(&make(level - 1), &make(level), fmt.wgpu, [0.0, 0.0, w as f32, h as f32], [0.0, 0.0, 1.0, 1.0], true, w, h);
+            ctx.blit_quad(&make(level - 1), &make(level), None, 1, fmt.wgpu, [0.0, 0.0, w as f32, h as f32], [0.0, 0.0, 1.0, 1.0], true, w, h);
         }
     }
     let enc_gen = ctx.enc_gen;

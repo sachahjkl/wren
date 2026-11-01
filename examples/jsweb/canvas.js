@@ -17,7 +17,7 @@ test("the element", () => {
   c.width = 0;
   eq(c.width, 0, "zero is allowed");
   ok(c instanceof HTMLCanvasElement, "an HTMLCanvasElement");
-  eq(c.getContext("webgl"), null, "no webgl");
+  eq(document.createElement("canvas").getContext("webgpu"), null, "no webgpu");
   const br = document.createElement("canvas").getContext("bitmaprenderer");
   ok(br instanceof ImageBitmapRenderingContext, "a bitmaprenderer context");
   eq(br.getContext === undefined, true, "it is not a canvas");
@@ -411,7 +411,7 @@ test("OffscreenCanvas and ImageBitmap", async () => {
   const g = o.getContext("2d");
   ok(g instanceof OffscreenCanvasRenderingContext2D, "an OffscreenCanvasRenderingContext2D");
   eq(g.canvas, o, "context.canvas");
-  eq(o.getContext("webgl"), null, "no webgl");
+  eq(o.getContext("webgpu"), null, "no webgpu");
   g.fillStyle = "#0f0";
   g.fillRect(0, 0, 20, 10);
   eq(px(g, 3, 3).join(), "0,255,0,255", "drawing");

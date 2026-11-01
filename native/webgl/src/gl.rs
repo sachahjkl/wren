@@ -143,6 +143,8 @@ pub const MAX_CACHED_BIND_GROUPS: usize = 1024;
 pub const MAX_CACHED_PIPELINES: usize = 4096;
 /// Texture bytes above which a draw with a converted stream is refused rather than converted.
 pub const MAX_CONVERTED_STREAM_BYTES: usize = 256 << 20;
+/// How many GL errors go to the page's console, per context.
+pub const MAX_ERRORS_TOLD: u32 = 32;
 /// How many staging buffers of canvas size are kept for showing the canvas.
 pub const FRAME_POOL: usize = 4;
 
@@ -161,6 +163,7 @@ pub struct Attrs {
     pub max_bytes: u64,
     pub max_dimension: u32,
     pub force_software: bool,
+    pub backend: i32,
 }
 
 /// Set from other threads: the device is gone or an error got out.
@@ -663,6 +666,18 @@ pub struct Ctx {
     pub bytes: u64,
     pub frames_free: Vec<wgpu::Buffer>,
     pub fallback_group: Option<(wgpu::BindGroupLayout, wgpu::BindGroup)>,
+    pub errors_told: u32,
+}
+
+fn error_name(code: u32) -> &'static str {
+    match code {
+        INVALID_ENUM => "INVALID_ENUM",
+        INVALID_VALUE => "INVALID_VALUE",
+        INVALID_OPERATION => "INVALID_OPERATION",
+        OUT_OF_MEMORY => "OUT_OF_MEMORY",
+        INVALID_FRAMEBUFFER_OPERATION => "INVALID_FRAMEBUFFER_OPERATION",
+        _ => "an error",
+    }
 }
 
 fn base_limits(adapter: &wgpu::Adapter) -> wgpu::Limits {
@@ -818,6 +833,7 @@ impl Ctx {
             bytes: 0,
             frames_free: Vec::new(),
             fallback_group: None,
+            errors_told: 0,
         };
         if ctx.attrs.webgl2 {
             ctx.ext.standard_derivatives = true;
@@ -924,7 +940,13 @@ impl Ctx {
         let mut r = Reader::new(data);
         while !r.done() {
             let op = r.u().ok_or("truncated")?;
+            let before = (self.error, self.errors_pending.len());
             self.step(op, &mut r).ok_or_else(|| format!("malformed command {op}"))?;
+            if (self.error, self.errors_pending.len()) != before && self.errors_told < MAX_ERRORS_TOLD && op != ops::ERROR {
+                self.errors_told += 1;
+                let code = self.errors_pending.last().copied().unwrap_or(self.error);
+                self.warn(format!("WebGL: {} in {}", error_name(code), ops::name(op)));
+            }
             if self.draws_in_submit >= MAX_DRAWS_PER_SUBMIT {
                 self.submit();
             }
@@ -2845,7 +2867,8 @@ impl Ctx {
                 let vs_mod = crate::draw::shader_module(&self.device, l.vertex);
                 let fs_mod = crate::draw::shader_module(&self.device, l.fragment);
                 let (Some(vs_mod), Some(fs_mod)) = (vs_mod, fs_mod) else {
-                    self.programs.get_mut(&id).unwrap().log = "ERROR: the device refused the program\n".to_string();
+                    let why = crate::draw::LAST_SHADER_ERROR.with(|s| s.borrow().clone());
+                    self.programs.get_mut(&id).unwrap().log = format!("ERROR: the device refused the program: {why}\n");
                     return;
                 };
                 let mut uniforms: Vec<UniformInfo> = Vec::new();

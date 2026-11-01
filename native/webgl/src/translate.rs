@@ -1206,11 +1206,14 @@ fn read_declarations(stage: Stage, es3: bool, toks: Vec<Tok>, warnings: Vec<Stri
         }
         s.frag_data_used.sort_unstable();
     }
-    // names that collide with naga's words
+    // names that collide with naga's words, and the functions of GLSL naga has not
     for t in &toks {
         if let T::Id(n) = &t.t {
             if clashes_with_naga(n, es3) && !s.renames.contains_key(n) {
                 s.renames.insert(n.clone(), format!("{}n_{}", PREFIX, n));
+            }
+            if MISSING_FUNCTIONS.iter().any(|f| f.0 == n) && !s.renames.contains_key(n) {
+                s.renames.insert(n.clone(), format!("{}f_{}", PREFIX, n));
             }
         }
     }
@@ -1493,6 +1496,11 @@ impl Shader {
                             i = j;
                             continue;
                         }
+                        // (naga has no `const in`: it says nothing a parameter can be held to)
+                        if name == "const" {
+                            i += 1;
+                            continue;
+                        }
                     }
                     // a sampler used as an argument
                     let kind = local.get(name).copied().map(|k| (k, true)).or_else(|| self.samplers.iter().find(|d| &d.name == name).map(|d| (d.kind, false)));
@@ -1554,8 +1562,9 @@ impl Shader {
                             "gl_FragDepthEXT" => text = "gl_FragDepth",
                             "gl_PointSize" => text = "_wr_PointSize",
                             "gl_PointCoord" => text = "_wr_PointCoord",
-                            "gl_VertexID" => text = if map.points { "gl_InstanceIndex" } else { "gl_VertexIndex" },
-                            "gl_InstanceID" => text = "gl_InstanceIndex",
+                            // (naga's are uint, GL's int)
+                            "gl_VertexID" => text = if map.points { "int(gl_InstanceIndex)" } else { "int(gl_VertexIndex)" },
+                            "gl_InstanceID" => text = "int(gl_InstanceIndex)",
                             "gl_FragData" if !self.es3 => {
                                 let close = (Reader { toks, i: 0 }).matching(i + 1, Punct::LeftBracket, Punct::RightBracket).ok_or_else(|| log_line(tk.line, "bad index"))?;
                                 let v = eval_int(&toks[i + 2..close], &self.consts).unwrap_or(0);
@@ -1842,6 +1851,9 @@ impl Shader {
         }
         // inputs and outputs
         let mut next_loc: u32 = 0;
+        // (naga walks arrays and structures of inputs and outputs, not matrices: one vector per column, and a private matrix)
+        let mut column_copies_in = String::new();
+        let mut column_copies_out = String::new();
         for (v, input) in self.inputs.iter().map(|v| (v, true)).chain(self.outputs.iter().map(|v| (v, false))) {
             let dir = if input { "in" } else { "out" };
             let key = &v.name;
@@ -1876,6 +1888,30 @@ impl Shader {
                 q.push(' ');
             }
             let arr = if v.array_toks.is_empty() { String::new() } else { format!("[{}]", self.array_text(&v.array_toks)) };
+            if v.ty.cols > 1 {
+                if v.array > 0 {
+                    return Err(log_line(0, &format!("{}: arrays of matrices as attributes or varyings are not supported", v.name)));
+                }
+                let visible = self.word(&v.name).to_string();
+                out.raw(&format!("{} {visible};\n", v.type_name));
+                let mut columns = String::new();
+                for c in 0..v.ty.cols {
+                    let column = format!("{PREFIX}c_{visible}_{c}");
+                    out.raw(&format!("layout(location = {}) {q}{dir} vec{} {column};\n", loc + c, v.ty.rows));
+                    if input {
+                        if c > 0 {
+                            columns.push_str(", ");
+                        }
+                        columns.push_str(&column);
+                    } else {
+                        let _ = writeln!(column_copies_out, "{column} = {visible}[{c}];");
+                    }
+                }
+                if input {
+                    let _ = writeln!(column_copies_in, "{visible} = {}({columns});", v.type_name);
+                }
+                continue;
+            }
             out.raw(&format!("layout(location = {loc}) {q}{dir} {} {}{};\n", v.type_name, self.word(&v.name), arr));
         }
         // what the stage writes or reads that GL has and this GLSL does not
@@ -1906,6 +1942,11 @@ impl Shader {
         if self.toks.iter().any(|t| matches!(&t.t, T::Id(n) if n == "gl_DepthRange")) {
             out.raw("struct _wr_DepthRangeT { float near_; float far_; float diff; };\nconst _wr_DepthRangeT _wr_DepthRange = _wr_DepthRangeT(0.0, 1.0, 1.0);\n");
         }
+        for (name, code) in MISSING_FUNCTIONS {
+            if self.renames.contains_key(*name) {
+                out.raw(code);
+            }
+        }
         // the code, in order
         let mut skip: Vec<(usize, usize)> = self.decl_ranges.clone();
         skip.extend(hoisted.iter().copied());
@@ -1925,7 +1966,9 @@ impl Shader {
         // the wrapper
         out.raw("void main() {\n");
         out.raw(&copies);
+        out.raw(&column_copies_in);
         out.raw("_wr_main();\n");
+        out.raw(&column_copies_out);
         if self.stage == Stage::Vertex {
             if map.points {
                 out.raw(&format!(
@@ -2154,6 +2197,29 @@ fn merged(ranges: &[(usize, usize)]) -> Vec<(usize, usize)> {
     }
     out
 }
+
+/// Functions of GLSL ES that naga's front end has not: what stands for each, written only into shaders that name it.
+const MISSING_FUNCTIONS: &[(&str, &str)] = &[
+    (
+        "modf",
+        "float _wr_f_modf(float x, out float i) { i = trunc(x); return x - i; }\n\
+         vec2 _wr_f_modf(vec2 x, out vec2 i) { i = trunc(x); return x - i; }\n\
+         vec3 _wr_f_modf(vec3 x, out vec3 i) { i = trunc(x); return x - i; }\n\
+         vec4 _wr_f_modf(vec4 x, out vec4 i) { i = trunc(x); return x - i; }\n",
+    ),
+    (
+        "matrixCompMult",
+        "mat2 _wr_f_matrixCompMult(mat2 a, mat2 b) { return mat2(a[0] * b[0], a[1] * b[1]); }\n\
+         mat3 _wr_f_matrixCompMult(mat3 a, mat3 b) { return mat3(a[0] * b[0], a[1] * b[1], a[2] * b[2]); }\n\
+         mat4 _wr_f_matrixCompMult(mat4 a, mat4 b) { return mat4(a[0] * b[0], a[1] * b[1], a[2] * b[2], a[3] * b[3]); }\n\
+         mat2x3 _wr_f_matrixCompMult(mat2x3 a, mat2x3 b) { return mat2x3(a[0] * b[0], a[1] * b[1]); }\n\
+         mat2x4 _wr_f_matrixCompMult(mat2x4 a, mat2x4 b) { return mat2x4(a[0] * b[0], a[1] * b[1]); }\n\
+         mat3x2 _wr_f_matrixCompMult(mat3x2 a, mat3x2 b) { return mat3x2(a[0] * b[0], a[1] * b[1], a[2] * b[2]); }\n\
+         mat3x4 _wr_f_matrixCompMult(mat3x4 a, mat3x4 b) { return mat3x4(a[0] * b[0], a[1] * b[1], a[2] * b[2]); }\n\
+         mat4x2 _wr_f_matrixCompMult(mat4x2 a, mat4x2 b) { return mat4x2(a[0] * b[0], a[1] * b[1], a[2] * b[2], a[3] * b[3]); }\n\
+         mat4x3 _wr_f_matrixCompMult(mat4x3 a, mat4x3 b) { return mat4x3(a[0] * b[0], a[1] * b[1], a[2] * b[2], a[3] * b[3]); }\n",
+    ),
+];
 
 /// The names `gl_*` that a shader may use and naga knows.
 const KNOWN_GL: &[&str] = &["gl_Position", "gl_FragCoord", "gl_FrontFacing", "gl_FragDepth"];
@@ -2406,6 +2472,41 @@ mod tests {
         let fs = "#extension GL_OES_standard_derivatives : enable\nprecision highp float;\n#define TEX(s, u) texture2D(s, u)\nuniform sampler2D a; uniform samplerCube c; varying vec2 uv;\nvec4 pick(const in sampler2D s, in vec2 p) { return TEX(s, p); }\nvoid main(){ gl_FragColor = pick(a, uv) + textureCube(c, vec3(uv, 1.0)) + vec4(fwidth(uv.x)); }";
         let f = compile(Stage::Fragment, fs, &caps()).unwrap();
         assert_eq!(f.samplers.len(), 2);
+    }
+
+    #[test]
+    fn morph_like_function() {
+        let vs = "#version 300 es\nprecision highp float;\n#define MORPHTARGETS_TEXTURE_STRIDE 2\nuniform float morphTargetInfluences[ 4 ];\nuniform sampler2DArray morphTargetsTexture;\nuniform ivec2 morphTargetsTextureSize;\nvec4 getMorph( const in int vertexIndex, const in int morphTargetIndex, const in int offset ) {\n int texelIndex = vertexIndex * MORPHTARGETS_TEXTURE_STRIDE + offset;\n int y = texelIndex / morphTargetsTextureSize.x;\n int x = texelIndex - y * morphTargetsTextureSize.x;\n ivec3 morphUV = ivec3( x, y, morphTargetIndex );\n return texelFetch( morphTargetsTexture, morphUV, 0 );\n}\nvoid main(){ vec3 transformed = vec3(0.0); for ( int i = 0; i < 4; i ++ ) { if ( morphTargetInfluences[ i ] != 0.0 ) transformed += getMorph( gl_VertexID, i, 0 ).xyz * morphTargetInfluences[ i ]; } gl_Position = vec4(transformed, 1.0); }";
+        let r = compile(Stage::Vertex, vs, &caps());
+        assert!(r.is_ok(), "{}", r.unwrap_err());
+    }
+
+    /// The builtin functions of GLSL ES 3.00 that naga has to know, one per shader.
+    #[test]
+    fn es3_builtins() {
+        let calls = [
+            "radians(1.0)", "degrees(1.0)", "sin(1.0)", "cos(1.0)", "tan(1.0)", "asin(1.0)", "acos(1.0)", "atan(1.0)", "atan(1.0, 2.0)", "sinh(1.0)", "cosh(1.0)", "tanh(1.0)", "asinh(1.0)", "acosh(1.0)", "atanh(0.5)",
+            "pow(1.0, 2.0)", "exp(1.0)", "log(1.0)", "exp2(1.0)", "log2(1.0)", "sqrt(1.0)", "inversesqrt(1.0)", "abs(1.0)", "sign(1.0)", "floor(1.0)", "trunc(1.0)", "round(1.0)", "roundEven(1.0)", "ceil(1.0)", "fract(1.0)",
+            "mod(1.0, 2.0)", "min(1.0, 2.0)", "max(1.0, 2.0)", "clamp(1.0, 0.0, 2.0)", "mix(1.0, 2.0, 0.5)", "step(1.0, 2.0)", "smoothstep(0.0, 1.0, 0.5)", "float(isnan(1.0))", "float(isinf(1.0))",
+            "float(floatBitsToInt(1.0))", "float(floatBitsToUint(1.0))", "intBitsToFloat(1)", "uintBitsToFloat(1u)", "length(vec3(1.0))", "distance(vec3(1.0), vec3(0.0))", "dot(vec3(1.0), vec3(0.0))", "cross(vec3(1.0), vec3(0.0)).x",
+            "normalize(vec3(1.0)).x", "faceforward(vec3(1.0), vec3(1.0), vec3(1.0)).x", "reflect(vec3(1.0), vec3(1.0)).x", "refract(vec3(1.0), vec3(1.0), 1.0).x", "matrixCompMult(mat2(1.0), mat2(1.0))[0][0]", "outerProduct(vec2(1.0), vec2(1.0))[0][0]",
+            "transpose(mat3(1.0))[0][0]", "determinant(mat3(1.0))", "inverse(mat3(1.0))[0][0]", "float(lessThan(vec2(1.0), vec2(2.0)).x)", "float(lessThanEqual(vec2(1.0), vec2(2.0)).x)", "float(greaterThan(vec2(1.0), vec2(2.0)).x)",
+            "float(greaterThanEqual(vec2(1.0), vec2(2.0)).x)", "float(equal(vec2(1.0), vec2(2.0)).x)", "float(notEqual(vec2(1.0), vec2(2.0)).x)", "float(any(bvec2(true)))", "float(all(bvec2(true)))", "float(not(bvec2(true)).x)",
+            "dFdx(1.0)", "dFdy(1.0)", "fwidth(1.0)", "float(packSnorm2x16(vec2(1.0)))", "unpackSnorm2x16(1u).x", "float(packUnorm2x16(vec2(1.0)))", "unpackUnorm2x16(1u).x", "float(packHalf2x16(vec2(1.0)))", "unpackHalf2x16(1u).x",
+            "modf(1.5, mf)", "modf(vec2(1.5), mfv).x", "float(abs(-1))", "float(sign(-1))", "float(min(1, 2))", "float(max(1, 2))", "float(clamp(1, 0, 2))", "float(min(1u, 2u))", "float(max(1u, 2u))", "float(clamp(1u, 0u, 2u))", "mix(1.0, 2.0, true)",
+            "textureLod(s2, vec2(0.0), 0.0).x", "texture(s2, vec2(0.0), 1.0).x", "textureProj(s2, vec3(1.0)).x", "textureProj(s2, vec4(1.0)).x", "textureGrad(s2, vec2(0.0), vec2(1.0), vec2(1.0)).x", "textureOffset(s2, vec2(0.0), ivec2(1)).x", "texelFetch(s2, ivec2(0), 0).x", "texelFetchOffset(s2, ivec2(0), 0, ivec2(1)).x",
+            "float(textureSize(s2, 0).x)", "float(textureSize(sc, 0).x)", "texture(sc, vec3(1.0)).x", "textureLod(sc, vec3(1.0), 0.0).x", "texture(s3, vec3(1.0)).x", "texture(sa, vec3(1.0)).x", "texture(ss, vec3(1.0))", "textureLod(ss, vec3(1.0), 0.0)", "textureProj(ss, vec4(1.0))", "texture(scs, vec4(1.0))", "texture(sas, vec4(1.0))",
+            "textureGrad(sc, vec3(1.0), vec3(1.0), vec3(1.0)).x", "textureLodOffset(s2, vec2(0.0), 0.0, ivec2(1)).x", "textureProjLod(s2, vec3(1.0), 0.0).x",
+        ];
+        let prelude = "#version 300 es\nprecision highp float; precision highp sampler3D; precision highp sampler2DArray; precision highp sampler2DShadow; precision highp samplerCubeShadow; precision highp sampler2DArrayShadow;\nuniform sampler2D s2; uniform samplerCube sc; uniform sampler3D s3; uniform sampler2DArray sa; uniform sampler2DShadow ss; uniform samplerCubeShadow scs; uniform sampler2DArrayShadow sas; out vec4 color;\n";
+        let mut failures = String::new();
+        for c in calls {
+            let src = format!("{prelude}void main(){{ float mf; vec2 mfv; float v = {c}; color = vec4(v); }}");
+            if let Err(e) = compile(Stage::Fragment, &src, &caps()) {
+                failures.push_str(&format!("{c}: {e}"));
+            }
+        }
+        assert!(failures.is_empty(), "{failures}");
     }
 
     #[test]

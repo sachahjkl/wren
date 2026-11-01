@@ -36,6 +36,10 @@ const MAX_FRAMES_IN_FLIGHT: usize = 3;
 /// How often the thread looks at frames being mapped while it has nothing else to do.
 const MAP_POLL: Duration = Duration::from_millis(1);
 
+pub const BACKEND_AUTO: i32 = 0;
+pub const BACKEND_DX12: i32 = 1;
+pub const BACKEND_VULKAN: i32 = 2;
+
 /// What a page asks of a context, in the C ABI.
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
@@ -54,6 +58,8 @@ pub struct WgAttrs {
     pub allow_software: i32,
     /// Take the software adapter even when there is a GPU (tests, webgl.force_software).
     pub force_software: i32,
+    /// Windows: BACKEND_AUTO, BACKEND_DX12 or BACKEND_VULKAN (webgl.backend).
+    pub backend: i32,
     pub max_bytes: u64,
     /// Wait for a query, in milliseconds.
     pub wait_ms: u32,
@@ -163,18 +169,30 @@ fn software_turn(software: bool) -> Option<std::sync::MutexGuard<'static, ()>> {
 
 fn make_device(a: &WgAttrs, take_turn: bool) -> Init {
     let _turn = software_turn(take_turn);
-    let backends = if cfg!(windows) { wgpu::Backends::DX12 } else { wgpu::Backends::VULKAN };
-    let mut desc = wgpu::InstanceDescriptor::new_without_display_handle();
-    desc.backends = backends;
-    desc.flags = wgpu::InstanceFlags::DISCARD_HAL_LABELS;
-    let instance = wgpu::Instance::new(desc);
-    let mut adapter = if a.force_software != 0 {
-        None
-    } else {
-        pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions { power_preference: wgpu::PowerPreference::HighPerformance, force_fallback_adapter: false, compatible_surface: None, apply_limit_buckets: false })).ok()
+    let request = |backends: wgpu::Backends, fallback: bool| -> Option<wgpu::Adapter> {
+        let mut desc = wgpu::InstanceDescriptor::new_without_display_handle();
+        desc.backends = backends;
+        desc.flags = wgpu::InstanceFlags::DISCARD_HAL_LABELS;
+        let instance = wgpu::Instance::new(desc);
+        let preference = if fallback { wgpu::PowerPreference::None } else { wgpu::PowerPreference::HighPerformance };
+        pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions { power_preference: preference, force_fallback_adapter: fallback, compatible_surface: None, apply_limit_buckets: false })).ok()
     };
+    // A GPU: on Windows through Vulkan first (FXC, the compiler behind Direct3D 12's path, takes seconds on the large shaders
+    // of real pages, for every state a shader is drawn with), if its adapter is a real one. Otherwise Direct3D 12, then software.
+    let mut adapter = None;
+    if a.force_software == 0 {
+        if cfg!(windows) && a.backend != BACKEND_DX12 {
+            adapter = request(wgpu::Backends::VULKAN, false).filter(|x| x.get_info().device_type != wgpu::DeviceType::Cpu);
+        }
+        if adapter.is_none() && (cfg!(windows) && a.backend != BACKEND_VULKAN) {
+            adapter = request(wgpu::Backends::DX12, false);
+        }
+        if adapter.is_none() && !cfg!(windows) {
+            adapter = request(wgpu::Backends::VULKAN, false);
+        }
+    }
     if adapter.is_none() {
-        adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions { power_preference: wgpu::PowerPreference::None, force_fallback_adapter: true, compatible_surface: None, apply_limit_buckets: false })).ok();
+        adapter = request(if cfg!(windows) { wgpu::Backends::DX12 } else { wgpu::Backends::VULKAN }, true);
     }
     let Some(adapter) = adapter else {
         return Init { result: Err("no graphics adapter (Direct3D 12 or Vulkan)".to_string()) };
@@ -232,6 +250,7 @@ fn attrs_of(a: &WgAttrs) -> Attrs {
         max_bytes: a.max_bytes,
         max_dimension: a.max_dimension,
         force_software: a.force_software != 0,
+        backend: a.backend,
     }
 }
 
@@ -448,6 +467,7 @@ fn handle(ctx: &mut Option<Ctx>, msg: Msg, shared: &Arc<Shared>, attrs: &Attrs, 
                     max_dimension: attrs.max_dimension,
                     allow_software: 1,
                     force_software: attrs.force_software as i32,
+                    backend: attrs.backend,
                     max_bytes: attrs.max_bytes,
                     wait_ms: 0,
                     notify: None,

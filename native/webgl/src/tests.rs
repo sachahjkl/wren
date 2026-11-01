@@ -57,6 +57,7 @@ fn attrs(webgl2: bool, w: u32, h: u32) -> WgAttrs {
         max_dimension: 16384,
         allow_software: 1,
         force_software: std::env::var_os("WREN_WEBGL_TEST_GPU").is_none() as i32,
+        backend: BACKEND_AUTO,
         max_bytes: 1 << 30,
         wait_ms: 60_000,
         notify: None,
@@ -193,6 +194,40 @@ fn the_rows_are_gls() {
     // y = 0 is the bottom row, as in GL
     assert_eq!(gl.pixels(4, 0, 1, 1), [255, 0, 0, 255]);
     assert_eq!(gl.pixels(4, 7, 1, 1), [0, 0, 0, 0]);
+}
+
+#[test]
+fn counter_clockwise_is_the_front() {
+    let Some(gl) = context(attrs(false, 4, 4)) else { return };
+    assert!(gl.program(10, VS, "precision mediump float; void main(){ gl_FragColor = gl_FrontFacing ? vec4(1.0, 0.0, 0.0, 1.0) : vec4(0.0, 1.0, 0.0, 1.0); }"));
+    let mut c = C::default();
+    c.u(ops::USE_PROGRAM).u(10);
+    c.u(ops::BIND_BUFFER).u(ARRAY_BUFFER).u(1);
+    // counter-clockwise in clip space, y up
+    c.u(ops::BUFFER_DATA).u(ARRAY_BUFFER).u(0x88E4).u(0).u(1).b(&floats(&[-1.0, -1.0, 3.0, -1.0, -1.0, 3.0]));
+    c.u(ops::ENABLE_ATTRIB).u(0);
+    c.u(ops::VERTEX_ATTRIB_POINTER).u(0).u(2).u(formats::FLOAT).u(0).u(0).u(0).u(0);
+    c.u(ops::DRAW_ARRAYS).u(4).u(0).u(3).u(1);
+    gl.send(&c);
+    assert_eq!(gl.pixels(1, 1, 1, 1), [255, 0, 0, 255], "gl_FrontFacing");
+    let mut c = C::default();
+    c.u(ops::CLEAR).u(COLOR_BUFFER_BIT);
+    c.u(ops::ENABLE).u(CULL_FACE);
+    c.u(ops::DRAW_ARRAYS).u(4).u(0).u(3).u(1);
+    gl.send(&c);
+    assert_eq!(gl.pixels(1, 1, 1, 1), [255, 0, 0, 255], "culling the back keeps it");
+    let mut c = C::default();
+    c.u(ops::CLEAR).u(COLOR_BUFFER_BIT);
+    c.u(ops::CULL_FACE).u(FRONT);
+    c.u(ops::DRAW_ARRAYS).u(4).u(0).u(3).u(1);
+    gl.send(&c);
+    assert_eq!(gl.pixels(1, 1, 1, 1), [0, 0, 0, 0], "culling the front drops it");
+    let mut c = C::default();
+    c.u(ops::FRONT_FACE).u(0x0900);
+    c.u(ops::DRAW_ARRAYS).u(4).u(0).u(3).u(1);
+    gl.send(&c);
+    assert_eq!(gl.pixels(1, 1, 1, 1), [0, 255, 0, 255], "clockwise as the front: it is the back, and it is kept");
+    assert_eq!(gl.error(), 0);
 }
 
 #[test]

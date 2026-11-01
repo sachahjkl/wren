@@ -35,13 +35,14 @@
   const EXT = { element_index_uint: 1, standard_derivatives: 2, vao: 3, instanced: 4, texture_float: 5, texture_half_float: 6, texture_float_linear: 7, texture_half_float_linear: 8,
     blend_minmax: 9, depth_texture: 10, anisotropic: 11, frag_depth: 12, shader_texture_lod: 13, srgb: 14, color_buffer_float: 15, color_buffer_half_float: 16, draw_buffers: 17, s3tc: 18 };
 
-  const INVALID_ENUM = 0x500, INVALID_VALUE = 0x501, INVALID_OPERATION = 0x502, CONTEXT_LOST = 0x9242;
+  const INVALID_ENUM = 0x500, INVALID_VALUE = 0x501, INVALID_OPERATION = 0x502, OUT_OF_MEMORY = 0x505, CONTEXT_LOST = 0x9242;
   const COMMAND_WORDS = 1 << 16;   // the command buffer of a context (flushed when it is nearly full)
   const FLUSH_AT = COMMAND_WORDS - 256;   // room left for the largest fixed command
   const REPLY_BYTES = 1 << 20;
   const INFO_WORDS = 8;
   const WHOLE_BUFFER = -1;   // BIND_BUFFER_RANGE: no size (u32::MAX on the wire)
-  const NO_OFFSET = 0;
+  const SOURCE_COMMAND_WORDS = 13;   // TEX_IMAGE_SOURCE before its bytes (the browser fills in the source's size)
+  const MAX_BUFFER_BYTES = 2 ** 31 - 1;   // larger than any buffer a context can hold
 
   // The constants of the WebGL IDL (Khronos, webgl.idl and webgl2.idl).
   const CONSTANTS1 = {
@@ -420,6 +421,7 @@
     if (typeof data === "number") {
       const size = Math.trunc(data);
       if (size < 0) return fail(s, INVALID_VALUE);
+      if (size > MAX_BUFFER_BYTES) return fail(s, OUT_OF_MEMORY);
       w[3] = size; w[4] = 0; w[5] = 0;
       s.n = 6;
       return flush(s);
@@ -664,9 +666,8 @@
     flush(s);
     const c = s.w;
     c[0] = OP.TEX_IMAGE_SOURCE; c[1] = 0; c[2] = 0; c[3] = 0; c[4] = target; c[5] = level; c[6] = internal; c[7] = format; c[8] = type; c[9] = sub ? 1 : 0; c[10] = x; c[11] = y; c[12] = z;
-    s.n = 13;
-    const r = native.upload(s.ref, s.buffer, s.n, source);
-    s.n = 0;
+    s.n = 0;   // (the command is not left in the buffer: this may throw)
+    const r = native.upload(s.ref, s.buffer, SOURCE_COMMAND_WORDS, source);
     if (r === 1) fail(s, INVALID_VALUE);
   };
 
@@ -770,17 +771,25 @@
     if (kind === 1) contextLost(s);
   };
 
-  const contextLost = s => {
-    if (s.lost) return;
+  const markLost = s => {
     s.lost = true;
     s.lostError = true;
     s.n = 0;
-    s.scheduled = false;
+    s.drew = false;
     s.generation++;
     s.program = null;
     s.objects.clear();
+  };
+
+  const fireLost = s => {
     const e = fire(s.canvas, "webglcontextlost", "", true);
     s.preventedRestore = e.defaultPrevented;
+  };
+
+  const contextLost = s => {
+    if (s.lost) return;
+    markLost(s);
+    fireLost(s);
   };
 
   // A context lost while the page was running: seen at the next call that waits.
@@ -1742,8 +1751,9 @@
         if (st.lost) { fail(st, INVALID_OPERATION); return; }
         flush(st);
         native.lose(st.ref);
+        markLost(st);
         // the event comes in a task of its own, as the specification says
-        setTimeoutFn(() => contextLost(st), 0);
+        setTimeoutFn(() => fireLost(st), 0);
       },
       restoreContext() {
         const st = this[S];
