@@ -28,6 +28,7 @@ Pre_Decl :: struct {
 	value:     []css.Value,
 	important: bool,
 	has_var:   bool,
+	logical:   bool,          // written with a flow-relative name: `prop` is its horizontal left-to-right mapping (writing_modes.odin)
 }
 
 Custom_Decl :: struct {
@@ -640,18 +641,19 @@ compile_declarations :: proc(e: ^Engine, decls: []css.Declaration, a: runtime.Al
 		}
 		p, sh, known := lookup_property(d.name)
 		if !known { st.ignored += 1; continue }
+		logical := is_logical_name(d.name)
 		hv := contains_var(d.value)
 		if sh == .None {
 			if !hv && !valid(&probe, p, d.value) { continue }
-			append(&res, Pre_Decl{prop = p, value = d.value, important = d.important, has_var = hv})
+			append(&res, Pre_Decl{prop = p, value = d.value, important = d.important, has_var = hv, logical = logical})
 			continue
 		}
 		if kw := css_wide_keyword(d.value); kw != "" {
-			for lp in short_longhands(sh) { append(&res, Pre_Decl{prop = lp, value = d.value, important = d.important}) }
+			for lp in short_longhands(sh) { append(&res, Pre_Decl{prop = lp, value = d.value, important = d.important, logical = logical}) }
 			continue
 		}
 		if hv {
-			for lp in short_longhands(sh) { append(&res, Pre_Decl{prop = lp, short = sh, value = d.value, important = d.important, has_var = true}) }
+			for lp in short_longhands(sh) { append(&res, Pre_Decl{prop = lp, short = sh, value = d.value, important = d.important, has_var = true, logical = logical}) }
 			continue
 		}
 		longs, ok := expand_shorthand(sh, d.value, a)
@@ -659,7 +661,7 @@ compile_declarations :: proc(e: ^Engine, decls: []css.Declaration, a: runtime.Al
 		all_valid := true
 		for l in longs { if !valid(&probe, l.prop, l.vals) { all_valid = false; break } }
 		if !all_valid { continue }
-		for l in longs { append(&res, Pre_Decl{prop = l.prop, value = l.vals, important = d.important}) }
+		for l in longs { append(&res, Pre_Decl{prop = l.prop, value = l.vals, important = d.important, logical = logical}) }
 	}
 	if len(res) > 0 { out = make([]Pre_Decl, len(res), a); copy(out, res[:]) }
 	if len(cus) > 0 { customs = make([]Custom_Decl, len(cus), a); copy(customs, cus[:]) }

@@ -19,6 +19,7 @@ Longhand :: struct {
 @(private) prop_by_name: map[string]Prop
 @(private) short_by_name: map[string]Short
 @(private) alias_by_name: map[string]string
+@(private) logical_names: map[string]bool   // flow-relative property names (writing_modes.odin)
 @(private) prop_names: [Prop]string
 
 @(private) INITIAL_KW := [1]css.Value{{kind = .Token, tok = {kind = .Ident, text = "initial"}}}
@@ -51,6 +52,7 @@ tables_build :: proc() {
 	prop_by_name = make(map[string]Prop)
 	short_by_name = make(map[string]Short)
 	alias_by_name = make(map[string]string)
+	logical_names = make(map[string]bool)
 	for p in Prop {
 		n := dashed(reflect.enum_string(p))
 		prop_names[p] = n
@@ -83,7 +85,23 @@ tables_build :: proc() {
 		alias_by_name[strings.concatenate({"-webkit-", name})] = name
 		alias_by_name[strings.concatenate({"-moz-", name})] = name
 	}
-	// logical properties, mapped for horizontal left-to-right text (writing modes are not supported)
+	alias_by_name["page-break-before"] = "break-before"
+	alias_by_name["page-break-after"] = "break-after"
+	alias_by_name["page-break-inside"] = "break-inside"
+	alias_by_name["-webkit-column-break-before"] = "break-before"
+	alias_by_name["-webkit-column-break-after"] = "break-after"
+	alias_by_name["-webkit-column-break-inside"] = "break-inside"
+	alias_by_name["-webkit-column-rule"] = "column-rule"
+	alias_by_name["-moz-column-rule"] = "column-rule"
+	for name in ([?]string{"column-span", "column-fill", "column-rule-width", "column-rule-style", "column-rule-color"}) {
+		alias_by_name[strings.concatenate({"-webkit-", name})] = name
+		alias_by_name[strings.concatenate({"-moz-", name})] = name
+	}
+	alias_by_name["-webkit-writing-mode"] = "writing-mode"
+	alias_by_name["-webkit-text-orientation"] = "text-orientation"
+	alias_by_name["-webkit-text-combine"] = "text-combine-upright"
+	// logical properties: under their horizontal left-to-right name; a declaration remembers it was written logically
+	// (Pre_Decl.logical), and the cascade maps it for the element's writing mode and direction (writing_modes.odin)
 	for pair in ([?][2]string{
 		{"margin-block-start", "margin-top"}, {"margin-block-end", "margin-bottom"}, {"margin-inline-start", "margin-left"}, {"margin-inline-end", "margin-right"},
 		{"padding-block-start", "padding-top"}, {"padding-block-end", "padding-bottom"}, {"padding-inline-start", "padding-left"}, {"padding-inline-end", "padding-right"},
@@ -99,7 +117,15 @@ tables_build :: proc() {
 		{"border-start-start-radius", "border-top-left-radius"}, {"border-start-end-radius", "border-top-right-radius"},
 		{"border-end-end-radius", "border-bottom-right-radius"}, {"border-end-start-radius", "border-bottom-left-radius"},
 		{"border-block-start", "border-top"}, {"border-block-end", "border-bottom"}, {"border-inline-start", "border-left"}, {"border-inline-end", "border-right"},
-	}) { alias_by_name[pair[0]] = pair[1] }
+	}) {
+		alias_by_name[pair[0]] = pair[1]
+		logical_names[pair[0]] = true
+	}
+	for name in ([?]string{"margin-block", "margin-inline", "padding-block", "padding-inline", "inset-block", "inset-inline",
+		"border-block", "border-inline", "border-block-width", "border-block-style", "border-block-color",
+		"border-inline-width", "border-inline-style", "border-inline-color"}) {
+		logical_names[name] = true
+	}
 	mask_names()
 	shader_names()
 }
@@ -142,6 +168,7 @@ short_longhands :: proc(s: Short) -> []Prop {
 	@(static) animation := [?]Prop{.Animation_Name, .Animation_Duration, .Animation_Timing_Function, .Animation_Delay, .Animation_Iteration_Count, .Animation_Direction, .Animation_Fill_Mode, .Animation_Play_State, .Animation_Composition}
 	@(static) overscroll := [?]Prop{.Overscroll_Behavior_X, .Overscroll_Behavior_Y}
 	@(static) columns := [?]Prop{.Column_Width, .Column_Count}
+	@(static) column_rule := [?]Prop{.Column_Rule_Width, .Column_Rule_Style, .Column_Rule_Color}
 	@(static) grid_template := [?]Prop{.Grid_Template_Rows, .Grid_Template_Columns, .Grid_Template_Areas}
 	@(static) grid := [?]Prop{.Grid_Template_Rows, .Grid_Template_Columns, .Grid_Template_Areas, .Grid_Auto_Rows, .Grid_Auto_Columns, .Grid_Auto_Flow}
 	@(static) grid_row := [?]Prop{.Grid_Row_Start, .Grid_Row_End}
@@ -225,6 +252,7 @@ short_longhands :: proc(s: Short) -> []Prop {
 	case .Animation: return animation[:]
 	case .Overscroll_Behavior: return overscroll[:]
 	case .Columns: return columns[:]
+	case .Column_Rule: return column_rule[:]
 	case .Grid_Template: return grid_template[:]
 	case .Grid: return grid[:]
 	case .Grid_Row: return grid_row[:]
@@ -543,7 +571,7 @@ expand_shorthand :: proc(s: Short, vs: []css.Value, a: runtime.Allocator) -> ([]
 		emit(&res, .Position_Try_Order, order)
 		emit(&res, .Position_Try_Fallbacks, join_items(rest, a))
 
-	case .White_Space, .Text_Wrap, .Font_Variant, .Transition, .Animation, .Overscroll_Behavior, .Columns,
+	case .White_Space, .Text_Wrap, .Font_Variant, .Transition, .Animation, .Overscroll_Behavior, .Columns, .Column_Rule,
 	     .Grid_Template, .Grid, .Grid_Row, .Grid_Column, .Grid_Area:
 		return expand_shorthand_more(s, vs, a)
 	}

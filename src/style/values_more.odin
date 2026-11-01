@@ -1168,6 +1168,44 @@ apply_prop_more :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		l, ok := parse_length(cx, vs, {.Auto})
 		if !ok || (l.kind != .Px && l.kind != .Auto) { return false }
 		c.column_width = l
+	case .Column_Span:
+		return set_enum(vs, &c.column_span)
+	case .Column_Fill:
+		if id, ok := ident_raw(vs); ok && strings.equal_fold(id, "balance-all") { c.column_fill = .Balance; return true }
+		return set_enum(vs, &c.column_fill)
+	case .Column_Rule_Width:
+		w, ok := parse_line_width(cx, vs)
+		if !ok { return false }
+		c.column_rule_width = w
+	case .Column_Rule_Style: return set_enum(vs, &c.column_rule_style)
+	case .Column_Rule_Color:
+		col, ok := parse_color(cx, vs)
+		if !ok { return false }
+		c.column_rule_color = col
+		ps_add(&cx.explicit, p)
+	case .Break_Before, .Break_After:
+		v, ok := parse_break_value(vs)
+		if !ok { return false }
+		if p == .Break_Before { c.break_before = v } else { c.break_after = v }
+	case .Break_Inside: return set_enum(vs, &c.break_inside)
+	case .Orphans, .Widows:
+		n, ok := css.parse_integer(vs)
+		if !ok || n < 1 { return false }
+		v := i32(min(n, ORPHANS_WIDOWS_MAX))
+		if p == .Orphans { c.orphans = v } else { c.widows = v }
+	case .Writing_Mode:
+		v, ok := parse_writing_mode(vs)
+		if !ok { return false }
+		c.writing_mode = v
+	case .Text_Orientation:
+		// `sideways-right` is the older name of sideways; `vertical-right` of mixed
+		if id, ok := ident_raw(vs); ok {
+			if strings.equal_fold(id, "sideways-right") { c.text_orientation = .Sideways; return true }
+			if strings.equal_fold(id, "vertical-right") { c.text_orientation = .Mixed; return true }
+		}
+		return set_enum(vs, &c.text_orientation)
+	case .Text_Combine_Upright:
+		return set_enum(vs, &c.text_combine_upright)
 	case .Grid_Template_Columns, .Grid_Template_Rows:
 		tpl, ok := parse_grid_template(cx, vs)
 		if !ok { return false }
