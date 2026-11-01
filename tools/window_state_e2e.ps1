@@ -94,6 +94,12 @@ try {
             Wren-Ctl wait frames 2 --win-id $back | Out-Null
         }
         $blinks = 0; $backShown = 0; $backTimer = 0
+        # (the window in front may take a while to show it knows, on a loaded machine: the check is what it does then)
+        for ($settle = 0; $settle -lt 20; $settle++) {
+            $f0 = Caret-Of $front
+            if ($f0.caretBlinking -and $f0.frontWindow) { break }
+            Wren-Ctl wait frames 2 --win-id $front | Out-Null
+        }
         for ($i = 0; $i -lt 6; $i++) {
             $f = Caret-Of $front; $b = Caret-Of $back
             if ($f.caretBlinking -and $f.frontWindow) { $blinks++ }
