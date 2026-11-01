@@ -331,7 +331,7 @@ test("ScriptProcessorNode", async () => {
   };
   k.connect(sp).connect(a).connect(c.destination);
   k.start();
-  await until(() => blocks > 2);
+  await until(() => blocks > 2 && seen === 1);   // (the first blocks may come before the source has begun)
   ok(blocks > 2, "blocks: " + blocks);
   eq(size, 256, "block size");
   eq(seen, 1, "the input");
