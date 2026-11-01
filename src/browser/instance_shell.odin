@@ -92,13 +92,15 @@ Instance_State :: struct {
 
 @(private = "file") inst: Instance_State
 
-// Does this start take part? `env` is WREN_SINGLE_INSTANCE ("" when unset).
-instance_wanted :: proc(pref, new_window: bool, env: string, persisted: bool) -> bool {
+// Does this start take part? `env` is WREN_SINGLE_INSTANCE ("" when unset). `driven`: a window with a channel or none shown is its own, unless the
+// environment says otherwise.
+instance_wanted :: proc(pref, new_window, driven: bool, env: string, persisted: bool) -> bool {
 	switch {
 	case !persisted:        return false   // (its folder is the user's, shared with a Wren that keeps it)
 	case new_window:        return false
 	case env == "off":      return false
 	case env == "on":       return true
+	case driven:            return false
 	}
 	return pref
 }
@@ -111,9 +113,9 @@ instance_name :: proc(app: ^App) -> string {
 }
 
 // Before the window exists. May end the process (exit code 0) when the first Wren took the hand-over.
-instance_early :: proc(app: ^App, rest: []string, setup, new_window: bool) {
+instance_early :: proc(app: ^App, rest: []string, setup, new_window, driven: bool) {
 	env, _ := os.lookup_env("WREN_SINGLE_INSTANCE", context.temp_allocator)
-	if !instance_wanted(config.bool_of(&app.prefs, "browser.single_instance"), new_window, env, app.cfg.persist_profile) { return }
+	if !instance_wanted(config.bool_of(&app.prefs, "browser.single_instance"), new_window, driven, env, app.cfg.persist_profile) { return }
 	exe := desktop.executable_path()
 	addresses := make([dynamic]string, context.temp_allocator)
 	for a in rest { if s := command_line_address(a); s != "" { append(&addresses, s) } }

@@ -62,5 +62,5 @@ when there is none: the process was ended from outside). The x dismisses the bar
 
 `odin test src/browser` (`crash_recovery_test.odin`): marker format and every truncation, the start decision (clean, crashed, live,
 twice), the snapshot round trip, a truncated and a hostile file, the plan over a scratch profile (crash, restore, crash again,
-backup, blank page), live instance, backup pruning, report lookup, the preferences. `tools\crash_recovery_e2e.ps1` (in `test_all`):
-real processes ended by their own id.
+backup, blank page), live instance, backup pruning, report lookup, the preferences. `src\tools\e2e\crash_recovery.odin` (in `test_all`):
+real processes that are killed.

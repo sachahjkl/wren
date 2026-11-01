@@ -5,15 +5,17 @@ import "wb:config"
 
 @(test)
 single_instance_applies_by_default_and_gives_way_to_the_escapes :: proc(t: ^testing.T) {
-	testing.expect(t, instance_wanted(true, false, "", true), "the default")
-	testing.expect(t, !instance_wanted(false, false, "", true), "browser.single_instance off")
-	testing.expect(t, !instance_wanted(true, true, "", true), "--new-window / --no-single-instance")
-	testing.expect(t, !instance_wanted(true, false, "off", true), "WREN_SINGLE_INSTANCE=off (every script's environment)")
-	testing.expect(t, instance_wanted(false, false, "on", true), "=on turns it on whatever the preference says")
-	testing.expect(t, !instance_wanted(true, true, "on", true), "but not against --new-window")
-	testing.expect(t, !instance_wanted(true, false, "", false), "never for a profile that is not kept: its folder is the user's")
-	testing.expect(t, !instance_wanted(true, false, "on", false), "(also not when forced)")
-	testing.expect(t, instance_wanted(true, false, "anything else", true), "an unknown value is not an off switch")
+	testing.expect(t, instance_wanted(true, false, false, "", true), "the default")
+	testing.expect(t, !instance_wanted(false, false, false, "", true), "browser.single_instance off")
+	testing.expect(t, !instance_wanted(true, true, false, "", true), "--new-window / --no-single-instance")
+	testing.expect(t, !instance_wanted(true, false, false, "off", true), "WREN_SINGLE_INSTANCE=off (every script's environment)")
+	testing.expect(t, instance_wanted(false, false, false, "on", true), "=on turns it on whatever the preference says")
+	testing.expect(t, !instance_wanted(true, false, true, "", true), "a driven window is its own")
+	testing.expect(t, instance_wanted(true, false, true, "on", true), "... unless =on says otherwise: what a scenario of the hand-over runs on")
+	testing.expect(t, !instance_wanted(true, true, false, "on", true), "but not against --new-window")
+	testing.expect(t, !instance_wanted(true, false, false, "", false), "never for a profile that is not kept: its folder is the user's")
+	testing.expect(t, !instance_wanted(true, false, false, "on", false), "(also not when forced)")
+	testing.expect(t, instance_wanted(true, false, false, "anything else", true), "an unknown value is not an off switch")
 }
 
 @(test)

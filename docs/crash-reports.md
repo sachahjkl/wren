@@ -64,7 +64,7 @@ with the same flags:
 
 ## Tests
 
-`tools\crash_e2e.ps1` (with `-Ui` in `test_all`: it needs a desktop session) builds `src/tools/crashmodes` as a release is
+`src\tools\e2e\crash_reports.odin` (in `test_all`) makes `src/tools/crashmodes` die in each way and looks at what is left. `tools\crash_symbolize_test.ps1` builds it as a release is
 built (no PDB, a map), makes it index out of range, and checks that the report has the `build` line and module offsets,
 that `crash_symbolize.ps1` names `crashmodes.index_out_of_range` under `main`, and that a report without the `build`
 line is named through its minidump. `src/tools/crashtrace` has a unit test of the fingerprint (read in memory and from

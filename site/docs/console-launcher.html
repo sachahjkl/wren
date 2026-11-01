@@ -279,8 +279,8 @@ write or removal (on uninstall it is reported with the other files a running pro
 the quoting of the command line (read back by <code>CommandLineToArgvW</code>).</li>
 <li><code>odin test src/desktop</code>: Setup's side (written with the PATH option, replaced by a new version, removed with it, never
 over another program's file, removed with the install folder).</li>
-<li><code>tools\wrencom_e2e.ps1</code> (a step of <code>test_all.ps1</code>): the launcher and <code>wren.exe</code> copied into a scratch folder; <code>ctl help</code>,
-an unknown command, <code>&gt; file</code>, <code>2&gt;</code>, <code>2&gt;&amp;1</code>, <code>| findstr</code>, <code>%ERRORLEVEL%</code>, <code>--desktop-integration=status</code>, the integration
+<li><code>src\tools\e2e\wrencom.odin</code> (a step of <code>test_all.ps1</code>): the launcher and <code>wren.exe</code> copied into a scratch folder; <code>ctl help</code>,
+an unknown command, what <code>&gt; file</code>, <code>2&gt;</code>, <code>2&gt;&amp;1</code> and <code>|</code> hand over to it, its exit code, <code>--desktop-integration=status</code>, the integration
 writing and removing <code>wren.com</code>, the refusals, an interface start that returns at once, <code>--cli</code>, and the death of the child
 with the launcher.</li>
 </ul>

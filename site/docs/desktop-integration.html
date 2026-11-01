@@ -371,8 +371,8 @@ integration; <code>uninstall</code> takes away the installed copy. <code>--insta
 states of the dialog and install -&gt; every state -&gt; uninstall on scratch roots. A run can be pointed at scratch roots by the
 environment too: <code>WREN_DESKTOP_MENU_DIR</code>, <code>WREN_DESKTOP_DESKTOP_DIR</code>, <code>WREN_DESKTOP_REGISTRY_ROOT</code>,
 <code>WREN_DESKTOP_ENVIRONMENT_ROOT</code> (the key that stands for <code>HKCU\Environment</code>), <code>WREN_DESKTOP_INSTALL_DIR</code> (Windows),
-<code>WREN_DESKTOP_APPLICATIONS_DIR</code>, <code>WREN_DESKTOP_ICONS_DIR</code> (Linux). <code>tools\setup_e2e.ps1</code> drives the real dialog of a built
-<code>wren.exe</code> on such a scratch desktop (install with Enter, uninstall of the running copy and its deferred deletion, standalone,
+<code>WREN_DESKTOP_APPLICATIONS_DIR</code>, <code>WREN_DESKTOP_ICONS_DIR</code> (Linux). <code>src\tools\e2e\setup.odin</code> drives the real dialog of a built
+<code>wren.exe</code> on such a scratch desktop, through Wren's own input (install with Enter, uninstall of the running copy and its deferred deletion, standalone,
 the automatic opening and its exceptions, a portable copy) and compares the real Start menu, PATH, StartMenuInternet and
 Settings &gt; Apps before and after. The one test that touches the real desktop runs only with <code>WREN_TEST_DESKTOP_REAL=1</code> and
 uses an identity of its own.</p>
@@ -396,7 +396,7 @@ foreground. Nothing is done per frame.</p>
 </tbody>
 </table></div>
 <p><code>tools\test_env.ps1</code> sets <code>WREN_SINGLE_INSTANCE=off</code> for every script that starts the browser, so none can hand its address
-to the user's Wren and end. <code>tools\instance_e2e.ps1</code> checks the table on real processes and scratch profiles;
+to the user's Wren and end. <code>src\tools\e2e\instance.odin</code> checks the table on real processes and scratch profiles (hidden windows, <code>WREN_SINGLE_INSTANCE=on</code>: a driven Wren is its own otherwise);
 <code>tools\instance_startup.ps1</code> measures the cost of a start (one <code>CreateMutexW</code>: no measurable difference of the first present).</p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../docs/chrome-style.html"><span>Previous</span><strong>The look of the browser's own interface</strong></a>

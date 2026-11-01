@@ -281,6 +281,18 @@ temp_folder :: proc(t: ^testing.T, what := "dir") -> string {
 	return dir
 }
 
+// A name nothing else has.
+unique :: proc() -> string { return base.unique_name(context.temp_allocator) }
+
+// The paths of the entries of a folder whose names begin (and end) so, in no order.
+files_with_prefix :: proc(dir, prefix: string, suffix := "") -> []string {
+	found := make([dynamic]string, context.temp_allocator)
+	entries, err := os.read_all_directory_by_path(dir, context.temp_allocator)
+	if err != nil { return found[:] }
+	for e in entries { if strings.has_prefix(e.name, prefix) && strings.has_suffix(e.name, suffix) { append(&found, e.fullpath) } }
+	return found[:]
+}
+
 // A profile folder for this test (for what `restart` must find again), gone at its end.
 temp_profile :: proc(t: ^testing.T) -> string { return temp_folder(t, "profile") }
 

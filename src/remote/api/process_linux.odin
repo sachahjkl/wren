@@ -78,8 +78,9 @@ wait_process_exit :: proc(pid: int, ms: int) -> (code: int, ended: bool) {
 // (Windows only for now: gdb -p does it here.)
 process_stacks :: proc(pid: int, minidump := "") -> (text: string, ok: bool) { return "reading another process's stacks is not written for this system", false }
 
-// Starts `args` (args[0] the program, a path) with this process's environment. err "": started.
-process_start :: proc(args: []string) -> (p: Process, pid: int, err: string) {
+// Starts `args` (args[0] the program, a path) with this process's environment. err "": started. (Options are not written for this system.)
+process_start :: proc(args: []string, o := Start_Options{}) -> (p: Process, pid: int, err: string) {
+	if o.cwd != "" || o.env != nil || o.stdout != {} || o.stderr != {} || o.merged { return {}, 0, "a folder, an environment or outputs of its own are not written for this system" }
 	argv := make([]cstring, len(args) + 1, context.temp_allocator)
 	for a, i in args { argv[i] = strings.clone_to_cstring(a, context.temp_allocator) }
 	child: posix.pid_t
@@ -117,6 +118,15 @@ process_wait :: proc(p: ^Process, ms: int) -> bool {
 	}
 	return true
 }
+
+// Has it been ended?
+process_ended :: proc(p: ^Process) -> bool { return !process_alive(p) }
+
+// What it wrote to its pipes (it has none here).
+process_output :: proc(p: ^Process, allocator := context.temp_allocator) -> (out, err: string) { return "", "" }
+
+// The time it has spent on the processors (ms): not read here.
+process_cpu_ms :: proc(p: ^Process) -> f64 { return 0 }
 
 process_kill :: proc(p: ^Process) { if !p.ended { posix.kill(p.pid, .SIGKILL) } }
 

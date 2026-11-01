@@ -48,10 +48,13 @@ jobs:
         shell: cmd
         run: call build.bat release
 
-      - name: The release exe end to end (tools\remote_e2e.ps1)
+      - name: The release exe end to end (src\tools\e2e\remote_channel.odin, remote_state.odin, on build\wren.exe)
         run: |
-          ./tools/remote_e2e.ps1
+          Push-Location tools\testserver; go build -o ..\..\build\testserver.exe .; Pop-Location
+          odin build src/tools/e2e -build-mode:test -out:build/e2e_test.exe -o:speed -debug -use-separate-modules -collection:toolkit=ext/gui_toolkit -collection:wb=src -define:FONT_BACKEND=native -define:FONT_NATIVE_LINK=false -define:A11Y_ACCESSKIT=true -define:A11Y_NATIVE_LINK=false -define:WREN_CHANNEL=dev -define:DEFAULT_TEMP_ALLOCATOR_BACKING_SIZE=1048576 -define:ODIN_TEST_THREADS=1 -define:ODIN_TEST_FANCY=false -extra-linker-flags:"/STACK:33554432 /NODEFAULTLIB:vcruntime.lib /DEFAULTLIB:libvcruntime.lib"
           if ($LASTEXITCODE) { exit 1 }
+          . .\tools\test_env.ps1
+          foreach ($s in 'remote_channel', 'remote_state') { Invoke-WrenE2E 'build\e2e_test.exe' $s; if ($LASTEXITCODE) { exit 1 } }
       - name: Package
         shell: cmd
         run: |

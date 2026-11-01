@@ -114,6 +114,8 @@ remote_dispatch_in_window :: proc(app: ^App, c: ^Call) -> Reply {
 	case "Wren.runCommand":      return m_command(app, c)
 	case "Wren.openDevTools":    return m_devtools(app, c)
 	case "Wren.openSetup":       setup_open(app, .Command); return done()
+	case "Wren.setupState":      return done(setup_state_json())
+	case "Wren.updateState":     return done(update_state_json())
 	case "Wren.recordInput":     return m_record(app, c)
 	case "Wren.timeline":        return m_timeline(app, c)
 	case "Wren.replayInput":     return m_replay(app, c)
@@ -231,7 +233,6 @@ m_subscribe :: proc(app: ^App, c: ^Call, on: bool) -> Reply {
 m_close :: proc(app: ^App, c: ^Call) -> Reply {
 	code, _ := remote.param_int(c.params, "exitCode")
 	the_remote.exit_code = code
-	the_remote.fast_exit, _ = remote.param_bool(c.params, "fast")
 	remote_answer(c.conn, c.id, done())
 	remote.close_client(c.conn)
 	app.quitting = true
@@ -778,7 +779,11 @@ capture_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 		defer delete(pixels)
 		if op.local != nil && op.path == "" {
 			op.local.done, op.local.size = true, size
-			op.local.rgba = slice.clone(pixels)
+			if op.scale != 1 {
+				op.local.rgba, op.local.size.x, op.local.size.y = scale_rgba(pixels, size.x, size.y, op.scale)
+			} else {
+				op.local.rgba = slice.clone(pixels)
+			}
 			op.local = nil
 			if op.asked { the_remote.capture_window = 0 }
 			op_finish_silent(op)
@@ -939,6 +944,8 @@ click_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 	r := &the_remote
 	request_frames(app, 2)
 	if r.frame_no < op.until { return }
+	// (the click is done and its frames are made: what it did to the element, which may have gone with it, is the page's)
+	if op.stage == CLICK_DONE { op_finish(op, done(fmt.tprintf(`{{"x":%.1f,"y":%.1f}}`, op.pos.x, op.pos.y))); return }
 	h, valid := page.query_first(t.page, op.arg)
 	if !valid { op_finish(op, fail(remote.ERR_PARAMS, fmt.tprintf("invalid selector %q", op.arg))); return }
 	er: [4]f32
@@ -968,12 +975,11 @@ click_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 		pos := [2]f32{er[0] + er[2] / 2, er[1] + er[3] / 2}
 		click_at(app, pos, op.button, op.count, {})
 		op.pos = pos
-		op.stage = 3
+		op.stage = CLICK_DONE
 		op.until = r.frame_no + u64(max(r.cfg.settle_frames, 1))
-	case:
-		op_finish(op, done(fmt.tprintf(`{{"x":%.1f,"y":%.1f}}`, op.pos.x, op.pos.y)))
 	}
 }
+@(private = "file") CLICK_DONE :: 3
 
 // Wren.drop {x, y, files: [paths], text, url, html, leave}: another application's drag over the window, through the
 // toolkit's drop target path (platform.drop_inject): enter, over, then the drop at (x, y) (with `leave`: it leaves

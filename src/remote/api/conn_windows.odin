@@ -55,7 +55,7 @@ disconnect :: proc(c: ^Conn) {
 	c^ = {}
 }
 
-@(private)
+// One line of the protocol, as it is (what has no call: a client that speaks it badly).
 write_line :: proc(c: ^Conn, line: string, timeout_ms: int) -> Error {
 	data := transmute([]byte)strings.concatenate({line, "\n"}, context.temp_allocator)
 	for len(data) > 0 {
@@ -76,7 +76,6 @@ write_line :: proc(c: ^Conn, line: string, timeout_ms: int) -> Error {
 }
 
 // The next line (without its newline), waiting at most until `deadline`.
-@(private)
 read_line :: proc(c: ^Conn, deadline: time.Tick) -> (line: string, err: Error) {
 	buf: [64 << 10]byte
 	for {

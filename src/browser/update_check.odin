@@ -97,6 +97,9 @@ update_startup :: proc(app: ^App, profile_explicit: bool) {
 	update_request(app, false)
 }
 
+// What a client of the channel reads (Wren.updateState): whether a request is out.
+update_state_json :: proc() -> string { return fmt.tprintf(`{{"checking":%v}}`, upd.checking) }
+
 // The command: asks now.
 update_check_now :: proc(app: ^App) {
 	update_load(app)

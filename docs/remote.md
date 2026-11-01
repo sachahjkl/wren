@@ -223,7 +223,7 @@ path). The rest is in the `Wren.` domain.
 | `Remote.ping` | → `{protocol, version, pid}` |
 | `Remote.subscribe` / `unsubscribe` | events `Page.loadEventFired {tabId, url}`, `Runtime.consoleAPICalled {tabId, type, text}` |
 | `Browser.getVersion` | → product, revision, toolkit, protocol |
-| `Browser.close` | `{exitCode, fast}` (fast: end at once, no teardown: for a throwaway profile) |
+| `Browser.close` | `{exitCode}` |
 | `Browser.getWindowBounds` / `setWindowBounds` | `{left, top, width, height, windowState}`: width and height are the client area in pixels; state normal, minimized, maximized, fullscreen |
 | `Target.getTargets` / `createTarget {url, wait, background}` / `activateTarget {targetId}` / `closeTarget {targetId}` | tabs |
 | `Page.navigate {url, wait, tabId, timeout}` | wait: none, load, idle, stable |
@@ -272,9 +272,7 @@ off by default, binds `127.0.0.1` only, and refuses any handshake whose `Host` o
 
 ## Tests
 
-`tools\remote_e2e.ps1` (also a step of `test_all`; it prints the seconds of each of its sections at the end): off by default and idle at no cost, a driven session with pixel checks, window
-off the screen and minimized, vanishing and oversized clients, the pipe's ACL, two instances, a taken name, quit with a client
-connected, and on that same Wren, one after the other with a `reset` between: the reset itself (everything it names is back, a page sees no cookie or storage), the checkpoints, the video planes, the layout read after a navigation; `-Check` runs a session on the check build (`wren_check.exe`) that must exit with nothing allocated. Unit tests:
+`src\tools\e2e` (steps of `test_all`): over the channel, `remote_channel.odin` (off by default and idle at no cost, the protocol, vanishing and oversized clients, the pipe's ACL, two instances, a taken name, quit with a client connected, `wren ctl run`), `remote_state.odin` (reset: everything it names is back, a page sees no cookie or storage; the checkpoints), `ctl_stop.odin` (`wren ctl stop`), and on the check build `remote_check.odin` (a session that must exit with nothing allocated); in the test's process, through the same procedures, `driven.odin` (pages driven, captures and their pixels, a window off the screen and minimized), `video_layers.odin`, `page_apis.odin`, `remote_page.odin`.
 `src/remote` (protocol; the server against raw pipe clients), `src/remote/client`, `src/browser/remote_test.odin`.
-`tools\remote_e2e.ps1 -Stress -1` saturates every logical processor with busy loops and checks that `wren ctl quit` (with a client connected) and a `WM_CLOSE` to the window, each with a video playing, end within 8 s without the watchdog forcing the exit; `test_all -Perf` runs it last and alone (a performance test: skipped without `-Perf`, never on the CI). With 16 busy loops on 16 processors the close went from a median of 8.8 s (p95 40 s, nine of sixteen over 8 s) to 0.75 s (p95 under 1 s in 80 closings, longest 5.9 s). What was waiting: threads of lower priority that the teardown joins (the disk cache, the image decoders, the Wasm compile threads), every hand-over of the teardown behind other programs' busy loops (the process now runs above normal priority while it closes), a compile in flight (no longer waited for), and the compositor releasing the swap chain (`browser.shell.shutdown_surface_wait_ms`). `shutdown.log` in the profile names the slowest steps of a close that took a second or more.
+`src\tools\e2e\remote_close_load.odin` saturates every logical processor and checks that `quit` (with a client connected) and a `WM_CLOSE` to the window, each with a video playing, end within 8 s without the watchdog forcing the exit; `test_all -Perf` runs it last and alone.
 `tools\remote_bench.ps1` measures "load a page, wait, capture" the old way and the new way.

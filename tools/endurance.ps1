@@ -13,7 +13,7 @@
 # after the first cycles (a short run with -NoNative checks them: test_all -CI). The native memory is compared by its
 # highest value over 5 cycles (it drops when caches trim: every ~100 tabs), the tracked bytes by their median.
 # Writes <Out>\stats.csv (one line per cycle), <Out>\endurance.svg (the curves) and the places whose blocks grew after the
-# warm-up (base.mem_snapshot). The check build drives itself (tools\memcheck_e2e.ps1: WREN_MEMCHECK_SCRIPT).
+# warm-up (base.mem_snapshot). The check build drives itself (WREN_MEMCHECK_SCRIPT, src\browser\memcheck.odin).
 param([int]$Cycles = 40, [int]$TabsPerCycle = 10, [int]$Warmup = 20, [switch]$NoBuild, [switch]$NoNative, [string]$Out = '', [string]$Exe = '', [int]$IdleMs = 6500, [string[]]$Pref = @(),
     [double]$MaxLiveGrowthMB = 0.5, [double]$MaxPrivateGrowthMB = 64, [int]$MaxHandleGrowth = 100, [int]$MaxGdiGrowth = 30, [int]$MaxUserGrowth = 20,
     [int]$TimeoutSec = 3600)
@@ -21,9 +21,45 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 if (-not $Out) { $Out = Join-Path $root 'build\endurance' }
 New-Item -ItemType Directory -Force $Out | Out-Null
-$e2eArgs = @{ NoBuild = [bool]$NoBuild; Out = $Out; TimeoutSec = $TimeoutSec }
-if ($Exe) { $e2eArgs.Exe = $Exe }
-. (Join-Path $PSScriptRoot 'memcheck_e2e.ps1') @e2eArgs
+. (Join-Path $PSScriptRoot 'test_env.ps1')
+if (-not $Exe) { $Exe = Join-Path $root 'build\wren_check.exe' }
+if (-not $NoBuild -and $Exe -eq (Join-Path $root 'build\wren_check.exe')) {
+    # (built unless newer than its sources, and never beside another build of this tree: the other steps of test_all that need it wait here)
+    if (-not (Ensure-WrenBuild 'check')) { $global:WrenBuildOutput; 'FAIL building the check build'; exit 1 }
+}
+
+# Runs the check build on `$script` (lines; {o} is the test server's origin) with a fresh profile; returns its exit code.
+function Invoke-CheckSession($name, [string[]]$script, $statsFile = '', [string[]]$extra = @()) {
+    # (no download of the blocker's lists in a session of the check build: one still in flight when the browser exits, or an engine
+    # being built from it, is memory left allocated at the exit test, which then depends on how fast the network of the day is)
+    $extra = @('--pref', 'blocker.update.enabled=false', '--pref', 'blocker.welcome_toast=false') + $extra
+    $dir = Join-Path $Out $name
+    $profileDir = Join-Path $dir 'profile'
+    if (Test-Path $profileDir) { Get-ChildItem $profileDir -Recurse -File | Remove-Item -Force }
+    New-Item -ItemType Directory -Force $profileDir | Out-Null
+    $srv = Start-WrenTestServer
+    try {
+        $scriptFile = Join-Path $dir 'session.txt'
+        [IO.File]::WriteAllText($scriptFile, (($script | ForEach-Object { $_.Replace('{o}', $srv.Origin) }) -join "`n") + "`n")
+        $env:WREN_MEMCHECK_SCRIPT = $scriptFile
+        $env:WREN_MEMTRACK_FAIL = '1'
+        $env:WREN_MEMCHECK_STATS = $statsFile
+        $p = Start-Process $Exe -ArgumentList (@('--profile', $profileDir) + $extra + @("$($srv.Origin)/site/index.html")) -PassThru
+        if (-not $p.WaitForExit($TimeoutSec * 1000)) { $p.Kill(); $p.WaitForExit(5000) | Out-Null; Write-Host "FAIL ${name}: the session did not end in $TimeoutSec s"; return 1 }
+        $code = $p.ExitCode
+    } finally {
+        Stop-WrenTestServer $srv
+        foreach ($v in 'WREN_MEMCHECK_SCRIPT', 'WREN_MEMTRACK_FAIL', 'WREN_MEMCHECK_STATS') { Remove-Item "Env:\$v" -ErrorAction SilentlyContinue }
+    }
+    $report = Join-Path $profileDir 'memtrack.txt'
+    if (Test-Path $report) { Get-Content $report | Select-Object -First 80 | Out-Host }
+    switch ($code) {
+        0 { Write-Host "PASS ${name}: the check build exits clean ($report)" }
+        3 { Write-Host "FAIL ${name}: allocations left at exit ($report)" }
+        default { Write-Host "FAIL ${name}: the check build ended with code $code" }
+    }
+    return $code
+}
 
 $pages = 'js.html', 'images.html', 'forms.html', 'js-dom.html', 'animations.html', 'mutation.html', 'shadow-dom.html', 'layout.html',
     'media.html', 'style.html', 'text.html', 'grid.html', 'effects.html', 'modern-css.html', 'transforms.html', 'interaction.html'

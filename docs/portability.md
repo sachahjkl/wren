@@ -59,8 +59,8 @@ Before: master `4c37924` (slice 1 and the Rust network stack merged). After: `fe
 | tools/crashmodes, pagetest and most headless tools | deps | ok | (their packages) |
 
 Linux end to end: `tools/crash_e2e.sh` (8 ways of dying, each with its report or an unclean-exit report). Windows after
-the slice: the unit tests of every package touched, `nettest` and `wsclosetest` on both stacks, `remote_e2e`,
-`crash_e2e`, the dev build.
+the slice: the unit tests of every package touched, `nettest` and `wsclosetest` on both stacks, the scenarios of the channel and of
+crash reports (`src\tools\e2e`), the dev build.
 
 ## Slice 3 (2026-10-27, night): what it adds
 

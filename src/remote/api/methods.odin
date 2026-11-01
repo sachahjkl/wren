@@ -169,11 +169,10 @@ version :: proc(s: ^Session, loc := #caller_location) -> (r: Version, e: Error) 
 	return {s_of(o, "product"), s_of(o, "revision"), s_of(o, "toolkit"), s_of(o, "build"), i_of(o, "protocol")}, .None
 }
 
-// Asks the browser to close (the answer comes before it does). `fast`: nothing of the profile is kept (a throwaway one).
-browser_close :: proc(s: ^Session, exit_code := 0, fast := false, loc := #caller_location) -> Error {
+// Asks the browser to close (the answer comes before it does).
+browser_close :: proc(s: ^Session, exit_code := 0, loc := #caller_location) -> Error {
 	p := params(loc)
 	p_int(&p, "exitCode", exit_code)
-	if fast { p_bool(&p, "fast", true) }
 	_, e := request(s, "Browser.close", &p)
 	return e
 }
@@ -181,7 +180,7 @@ browser_close :: proc(s: ^Session, exit_code := 0, fast := false, loc := #caller
 // The browser closes; waits for its process to end, within `limit`. The process's exit code.
 quit :: proc(s: ^Session, exit_code := 0, limit := time.Duration(QUIT_WAIT_MS * time.Millisecond), loc := #caller_location) -> (code: int, e: Error) {
 	who := ping(s, loc) or_return
-	browser_close(s, exit_code, false, loc) or_return
+	browser_close(s, exit_code, loc) or_return
 	close_session(s)
 	c, ended := wait_process_exit(who.pid, int(time.duration_milliseconds(limit)))
 	if !ended {
@@ -712,6 +711,10 @@ Stats :: struct {
 	surface:             Surface,
 	panel_surface:       Surface,  // of the developer tools' window
 	a11y:                A11y_Stats,
+	// over the channel only: the process, and what a reset takes away
+	cpu_time_ms:         f64,
+	threads, handles:    int,
+	cookies, storage_sites, cache_entries, history_visits, closed_tabs: int,
 }
 
 stats :: proc(s: ^Session, reset_latency := false, reset_frames := false, loc := #caller_location) -> (r: Stats, e: Error) {
@@ -762,6 +765,8 @@ stats :: proc(s: ^Session, reset_latency := false, reset_frames := false, loc :=
 			page_nodes = i_of(o, "a11yPageNodes"), page_written = i_of(o, "a11yPageWritten"), page_frames = i_of(o, "a11yPageFrames"), page_verify_failed = i_of(o, "a11yPageVerifyFailed"),
 			page_fallback = s_of(o, "a11yPageFallback"), page_verify_diff = s_of(o, "a11yPageVerifyDiff"),
 		},
+		cpu_time_ms = f_of(o, "cpuTimeMs"), threads = i_of(o, "threads"), handles = i_of(o, "handles"),
+		cookies = i_of(o, "cookies"), storage_sites = i_of(o, "storageSites"), cache_entries = i_of(o, "cacheEntries"), history_visits = i_of(o, "historyVisits"), closed_tabs = i_of(o, "closedTabs"),
 	}, .None
 }
 
@@ -1135,6 +1140,31 @@ open_setup :: proc(s: ^Session, loc := #caller_location) -> Error {
 	p := params(loc)
 	_, e := request(s, "Wren.openSetup", &p)
 	return e
+}
+
+// The Setup dialog as the last frame showed it, and what happens in it: its buttons in window pixels.
+Setup_State :: struct {
+	open, known, confirm_uninstall: bool,
+	busy:                           int,      // jobs out: 0 once what was asked for has been done, and after the start, once it has decided whether to offer it
+	note:                           string,   // the outcome of the last action
+	primary, uninstall, secondary:  Rect,
+}
+
+setup_state :: proc(s: ^Session, loc := #caller_location) -> (r: Setup_State, e: Error) {
+	p := params(loc)
+	o := request(s, "Wren.setupState", &p) or_return
+	r = {open = b_of(o, "open"), known = b_of(o, "known"), confirm_uninstall = b_of(o, "confirmUninstall"), busy = i_of(o, "busy"), note = s_of(o, "note")}
+	r.primary, _ = rect_of(o, "primary")
+	r.uninstall, _ = rect_of(o, "uninstall")
+	r.secondary, _ = rect_of(o, "secondary")
+	return r, .None
+}
+
+// The daily update check: whether a request is out (update_check.odin).
+update_checking :: proc(s: ^Session, loc := #caller_location) -> (checking: bool, e: Error) {
+	p := params(loc)
+	o := request(s, "Wren.updateState", &p) or_return
+	return b_of(o, "checking"), .None
 }
 
 ////////////////////////////////

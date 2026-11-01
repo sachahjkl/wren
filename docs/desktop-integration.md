@@ -160,8 +160,8 @@ integration; `uninstall` takes away the installed copy. `--install` is the short
 states of the dialog and install -> every state -> uninstall on scratch roots. A run can be pointed at scratch roots by the
 environment too: `WREN_DESKTOP_MENU_DIR`, `WREN_DESKTOP_DESKTOP_DIR`, `WREN_DESKTOP_REGISTRY_ROOT`,
 `WREN_DESKTOP_ENVIRONMENT_ROOT` (the key that stands for `HKCU\Environment`), `WREN_DESKTOP_INSTALL_DIR` (Windows),
-`WREN_DESKTOP_APPLICATIONS_DIR`, `WREN_DESKTOP_ICONS_DIR` (Linux). `tools\setup_e2e.ps1` drives the real dialog of a built
-`wren.exe` on such a scratch desktop (install with Enter, uninstall of the running copy and its deferred deletion, standalone,
+`WREN_DESKTOP_APPLICATIONS_DIR`, `WREN_DESKTOP_ICONS_DIR` (Linux). `src\tools\e2e\setup.odin` drives the real dialog of a built
+`wren.exe` on such a scratch desktop, through Wren's own input (install with Enter, uninstall of the running copy and its deferred deletion, standalone,
 the automatic opening and its exceptions, a portable copy) and compares the real Start menu, PATH, StartMenuInternet and
 Settings > Apps before and after. The one test that touches the real desktop runs only with `WREN_TEST_DESKTOP_REAL=1` and
 uses an identity of its own.
@@ -186,5 +186,5 @@ foreground. Nothing is done per frame.
 | `browser.profile.persist` off | never: its folder is the user's, shared with a Wren that keeps it |
 
 `tools\test_env.ps1` sets `WREN_SINGLE_INSTANCE=off` for every script that starts the browser, so none can hand its address
-to the user's Wren and end. `tools\instance_e2e.ps1` checks the table on real processes and scratch profiles;
+to the user's Wren and end. `src\tools\e2e\instance.odin` checks the table on real processes and scratch profiles (hidden windows, `WREN_SINGLE_INSTANCE=on`: a driven Wren is its own otherwise);
 `tools\instance_startup.ps1` measures the cost of a start (one `CreateMutexW`: no measurable difference of the first present).

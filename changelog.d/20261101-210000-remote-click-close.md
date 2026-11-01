@@ -1,0 +1,3 @@
+type: Fixed
+
+`wren ctl click --selector` on a button that hides or removes itself said it had timed out, after waiting for the whole limit, though the click was done. It now answers once the click's frames are made. `wren ctl`'s throwaway Wrens no longer take seconds to end on a crowded machine: `Browser.close` has lost its `fast` option, which skipped letting go of the graphics device (17 to 22 s with every processor busy, past the wait that then ended the process by force; the whole close is about 200 ms). `wren ctl stop` of a throwaway profile no longer waits for the system to finish with the process it killed.

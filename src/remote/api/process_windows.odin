@@ -5,6 +5,7 @@ package api
 // and image path.
 
 import "core:fmt"
+import "core:os"
 import "core:strings"
 import win "core:sys/windows"
 import "wb:tools/stacks"
@@ -16,7 +17,15 @@ foreign kernel32 {
 	QueryFullProcessImageNameW :: proc(hProcess: win.HANDLE, dwFlags: win.DWORD, lpExeName: win.LPWSTR, lpdwSize: ^win.DWORD) -> win.BOOL ---
 }
 
-Process :: struct { handle: win.HANDLE }
+Process :: struct {
+	handle:   win.HANDLE,
+	out, err: win.HANDLE,   // the read ends of the pipes it writes to, those it was given (Start_Options)
+}
+
+// What a pipe of Output holds before the program writing to it waits (a program that writes more waits for process_output).
+OUTPUT_PIPE_BYTES :: 1 << 20
+// GetExitCodeProcess of a process that runs.
+STILL_ACTIVE :: 259
 
 this_pid :: proc() -> int { return int(win.GetCurrentProcessId()) }
 
@@ -67,27 +76,109 @@ quote_arg :: proc(s: string) -> string {
 }
 
 // Starts `args` (args[0] the program). err "": started.
-process_start :: proc(args: []string) -> (p: Process, pid: int, err: string) {
+process_start :: proc(args: []string, o := Start_Options{}) -> (p: Process, pid: int, err: string) {
 	line := strings.builder_make(context.temp_allocator)
 	for a, i in args { if i > 0 { strings.write_byte(&line, ' ') }; strings.write_string(&line, quote_arg(a)) }
 	si := win.STARTUPINFOW{cb = size_of(win.STARTUPINFOW)}
 	pi: win.PROCESS_INFORMATION
 	wline := win.utf8_to_wstring(strings.to_string(line), context.temp_allocator)
-	if !win.CreateProcessW(nil, cstring16(wline), nil, nil, false, 0, nil, nil, &si, &pi) {
-		return {}, 0, fmt.tprintf("error %d", win.GetLastError())
+	redirected := o.stdout != {} || o.stderr != {} || o.merged
+	if redirected {
+		si.dwFlags = win.STARTF_USESTDHANDLES
+		si.hStdOutput = output_of_child(o.stdout, &p.out)
+		si.hStdError = o.merged ? si.hStdOutput : output_of_child(o.stderr, &p.err)
+	}
+	defer if redirected {
+		if si.hStdOutput != nil { win.CloseHandle(si.hStdOutput) }
+		if si.hStdError != nil && !o.merged { win.CloseHandle(si.hStdError) }
+	}
+	flags: win.DWORD
+	block: [^]u16
+	if o.env != nil { flags |= win.CREATE_UNICODE_ENVIRONMENT; block = environment_block(o.env) }
+	cwd: win.LPCWSTR = o.cwd != "" ? win.utf8_to_wstring(o.cwd, context.temp_allocator) : nil
+	if !win.CreateProcessW(nil, cstring16(wline), nil, nil, win.BOOL(redirected), flags, block, cwd, &si, &pi) {
+		code := win.GetLastError()
+		process_release(&p)
+		return {}, 0, fmt.tprintf("error %d", code)
 	}
 	win.CloseHandle(pi.hThread)
-	return {pi.hProcess}, int(pi.dwProcessId), ""
+	p.handle = pi.hProcess
+	return p, int(pi.dwProcessId), ""
+}
+
+// The handle a child writes one of its outputs to (nil: it has none); `read` gets the read end of a pipe.
+@(private = "file")
+output_of_child :: proc(o: Output, read: ^win.HANDLE) -> win.HANDLE {
+	sa := win.SECURITY_ATTRIBUTES{nLength = size_of(win.SECURITY_ATTRIBUTES), bInheritHandle = true}
+	if o.file != "" {
+		h := win.CreateFileW(win.utf8_to_wstring(o.file, context.temp_allocator), win.GENERIC_WRITE, win.FILE_SHARE_READ | win.FILE_SHARE_WRITE, &sa, win.CREATE_ALWAYS, win.FILE_ATTRIBUTE_NORMAL, nil)
+		return h != win.INVALID_HANDLE_VALUE ? h : nil
+	}
+	if !o.pipe { return nil }
+	r, w: win.HANDLE
+	if !win.CreatePipe(&r, &w, &sa, OUTPUT_PIPE_BYTES) { return nil }
+	win.SetHandleInformation(r, win.HANDLE_FLAG_INHERIT, 0)
+	read^ = r
+	return w
+}
+
+// This process's environment with `over` on it: UTF-16, each "NAME=value" ended by a zero, a zero at the end.
+@(private = "file")
+environment_block :: proc(over: []string) -> [^]u16 {
+	b := strings.builder_make(context.temp_allocator)
+	name_of :: proc(v: string) -> string { i := strings.index_byte(v[1:], '='); return i < 0 ? v : v[:i + 1] }   // (a name of the system's may begin with =)
+	vars, _ := os.environ(context.temp_allocator)
+	outer: for v in vars {
+		for n in over { if strings.equal_fold(name_of(v), name_of(n)) { continue outer } }
+		strings.write_string(&b, v); strings.write_byte(&b, 0)
+	}
+	for n in over { if !strings.has_suffix(n, "=") { strings.write_string(&b, n); strings.write_byte(&b, 0) } }
+	strings.write_byte(&b, 0)
+	return raw_data(win.utf8_to_utf16(strings.to_string(b), context.temp_allocator))
+}
+
+// What the program wrote to its pipes since the last look, without waiting (the program may go on, and what it started may hold the pipes for ever).
+process_output :: proc(p: ^Process, allocator := context.temp_allocator) -> (out, err: string) {
+	drain :: proc(pipe: win.HANDLE, allocator := context.allocator) -> string {
+		if pipe == nil { return "" }
+		b := strings.builder_make(allocator)
+		for {
+			there: win.DWORD
+			if !win.PeekNamedPipe(pipe, nil, 0, nil, &there, nil) || there == 0 { break }
+			chunk := make([]byte, there, context.temp_allocator)
+			n: win.DWORD
+			if !win.ReadFile(pipe, raw_data(chunk), there, &n, nil) || n == 0 { break }
+			strings.write_bytes(&b, chunk[:n])
+		}
+		return strings.to_string(b)
+	}
+	return drain(p.out, allocator), drain(p.err, allocator)
 }
 
 // A handle to process `pid`, to wait for it and end it (false: it is gone, or not ours to open).
 process_open :: proc(pid: int) -> (Process, bool) {
 	if pid <= 0 { return {}, false }
 	h := win.OpenProcess(win.PROCESS_TERMINATE | win.SYNCHRONIZE | win.PROCESS_QUERY_LIMITED_INFORMATION, false, win.DWORD(pid))
-	return {h}, h != nil
+	return {handle = h}, h != nil
 }
 
 process_alive :: proc(p: ^Process) -> bool { return win.WaitForSingleObject(p.handle, 0) == win.WAIT_TIMEOUT }
+
+// Has it been ended, even if it has not left the system yet? A process killed while it holds a graphics device has its exit code at once, and is
+// on the list of processes for seconds more, while the system lets go of the device.
+process_ended :: proc(p: ^Process) -> bool {
+	c: win.DWORD
+	return bool(win.GetExitCodeProcess(p.handle, &c)) && c != STILL_ACTIVE
+}
+
+// The time it has spent on the processors (ms).
+process_cpu_ms :: proc(p: ^Process) -> f64 {
+	c, e, k, u: win.FILETIME
+	if !win.GetProcessTimes(p.handle, &c, &e, &k, &u) { return 0 }
+	ticks :: proc(t: win.FILETIME) -> f64 { return f64(u64(t.dwHighDateTime) << 32 | u64(t.dwLowDateTime)) }
+	return (ticks(k) + ticks(u)) / FILETIME_TICKS_PER_MS
+}
+@(private = "file") FILETIME_TICKS_PER_MS :: 10_000.0
 
 // True once it has ended (within `ms`).
 process_wait :: proc(p: ^Process, ms: int) -> bool { return win.WaitForSingleObject(p.handle, win.DWORD(ms)) == win.WAIT_OBJECT_0 }
@@ -96,6 +187,8 @@ process_kill :: proc(p: ^Process) { win.TerminateProcess(p.handle, 1) }
 
 process_release :: proc(p: ^Process) {
 	if p.handle != nil { win.CloseHandle(p.handle) }
+	if p.out != nil { win.CloseHandle(p.out) }
+	if p.err != nil { win.CloseHandle(p.err) }
 	p^ = {}
 }
 

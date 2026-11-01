@@ -152,7 +152,7 @@ cmd_stop :: proc(ctx: ^Context, args: []string) -> int {
 	// asked to close, since it saves what it keeps.
 	if !temp && api.connect(&ctx.s.conn, name, STOP_CONNECT_MS) {
 		ctx.s.connected = true
-		_ = api.browser_close(&ctx.s, 0, false)
+		_ = api.browser_close(&ctx.s, 0)
 		api.close_session(&ctx.s)
 	}
 	code := 0
@@ -166,15 +166,18 @@ cmd_stop :: proc(ctx: ^Context, args: []string) -> int {
 			errln(fmt.tprintf("wren ctl: process %d is not the Wren that %q started (it ended, and the number is another program's now): left alone", pid, name))
 		} else if temp {
 			api.process_kill(&p)
-			api.process_wait(&p, api.KILL_WAIT_MS)
+			// (what it held is let go well before the system has done with a process killed with its graphics device: not waited for)
+			if strings.contains(profile, "wren-ctl") { api.remove_folder_of(&p, profile) }
 		} else if !api.process_wait(&p, api.CLOSE_WAIT_MS) {
 			errln("wren ctl: Wren did not close in time: ending it")
 			api.process_kill(&p)
 			api.process_wait(&p, api.KILL_WAIT_MS)
 			code = EXIT_TIMEOUT
 		}
+	} else if temp && strings.contains(profile, "wren-ctl") {
+		// (it had ended already)
+		base.remove_tree(profile)
 	}
-	if temp && strings.contains(profile, "wren-ctl") { base.remove_tree(profile) }
 	_ = os.remove(state_file(name))
 	return code
 }

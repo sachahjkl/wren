@@ -23,7 +23,7 @@ left out: they are for your loop, never instead of the CI's run.
 
 ## The end of a run
 
-A run ends with the slowest steps and sections, how many Wren processes the scripts started, how long they spent in
+A run ends with the slowest steps, how many Wren processes the scripts started, how long they spent in
 fixed waits (`Start-Sleep`, by script), and then what matters:
 
 ```
@@ -142,12 +142,12 @@ The rules:
 - **The browser's animations go by frames** (`control_begin`: each frame is one of the usual length for them, however fast it is made), so a 500 ms animation is 30 frames. What a page does on a real timer is still real time: the preference that shortens it (`forms.caret.blink_ms`) rather than a wait for it.
 - **Something the browser does not let you see or do**: add it to the browser, not to the test. A typed procedure in `src/browser/control.odin`, which the remote method (`remote_methods.odin`, only the JSON's decoding there) calls too; a field of `api.Stats`, filled by `control_stats`. Then the wrapper in `src/e2e/e2e.odin`.
 - **One browser at a time in a process** (the browser's state is the process's), and `e2e.start` ends with the test, as do its profile (`e2e.temp_profile(t)` for one that `e2e.restart` must find again), `e2e.temp_folder(t)` and `e2e.test_server(t)`. The tests of one run go one after the other (`ODIN_TEST_THREADS=1`); `test_all` runs one process per file, side by side.
-- **Only what is about a process starts one**: a launch, an exit code, a crash, a second start, the console launcher. `e2e.launch(t, {...})` gives a Wren of its own, over the channel, with the typed client `wb:remote/api` (`api.navigate(p.s, url)`), and `e2e.quit(p)` its exit code. `e2e.launch` is headless too unless `hidden = true`.
+- **Only what is about a process starts one**: a launch, an exit code, a crash, a second start, the console launcher, the channel itself. `e2e.launch(t, {...})` gives a Wren of its own, over the channel, with the typed client `wb:remote/api` (`api.navigate(p.s, url)`), `e2e.quit(p)` its exit code, `e2e.kill(p)` a crash. It is headless too unless `hidden = true`; `start` holds its environment, its folder, its outputs. Any other program is `e2e.program` (`e2e.run` to its end: its exit code and what it printed). What another process does to the disk is waited for with `e2e.wait_file`, `e2e.wait_gone`, `e2e.wait_for`. A hidden window needs a desktop nobody uses: `test_all`'s, or by hand `tools\test_desktop.ps1 -Command "..."`.
 - **What is about the window of the system runs on a real one, never shown**: `e2e.start(t, {hidden = true})`, in the test's process, so that the window procedure is called on the test's thread as the system calls it. `src/tools/e2e/real_window.odin` is that core (WM_DPICHANGED, WM_NCHITTEST, WM_SETCURSOR, the z-order for a drop, the swap chain), `frame_gate.odin` and `devtools_resize.odin` use it too; `e2e.launch(t, {hidden = true})` when something else must read it from outside (`a11y_uia.odin`). It needs a desktop session: `test_all`'s own, `tools\test_desktop.ps1 -Command "build\e2e_test.exe -tests:name"` by hand. What needs a paint or the system's frame goes through `show_unseen` (`window_native.odin`): shown where nobody sees nor touches it.
 
 - **Nothing left allocated**: `build\e2e_test_check.exe` is the same program built with `-define:WREN_TRACK_MEMORY=true` (full runs: every allocation of the process goes through the tracker of `base`). When a test's browser has ended and the test has let go of what it holds, whatever is still allocated, or was freed twice, is listed and fails the test (`end_of_test`). Only scenarios about what a session holds (workers, service workers, file systems, the back/forward cache, partitions) run there: a step of `test_all` says which.
 
-Running them by hand: `build\e2e_test.exe -tests:the_title_shows` (no window opens, no other desktop is needed, a test with `hidden` aside), or `test_all -Quick -NoCache -Only 'src.tools.e2e'`. `WREN_E2E_TRACE=1` prints every call with its time, `WREN_PHASES=1` the phases of a start and an end of the browser (a real `wren.exe` says them too).
+Running them by hand: `build\e2e_test.exe -tests:the_title_shows` (no window opens, no other desktop is needed, except for a scenario with `hidden = true`), or `test_all -Quick -NoCache -Only 'src.tools.e2e'`. `WREN_E2E_TRACE=1` prints every call with its time, `WREN_PHASES=1` the phases of a start and an end of the browser (a real `wren.exe` says them too).
 
 Two things `core:testing` does not give: a test stopped by a signal (`testing.fail_now`, a panic) can happen once per run on Windows, the runner lets go of a lock it does not hold, and the next signal waits for ever; `e2e` stops its tests through a limit of 0 instead (hence the "Test timed out" after a failure's message). And checks that pass say nothing: `test_all` counts tests here, not checks.
 
@@ -189,7 +189,6 @@ A true skip prints `SKIP [section] ...`, is counted, and `test_all` lists it at 
   count, wall and CPU seconds; the use of the processors second by second, the tree's and the rest of the machine's.
   `-Compare a -With b` compares two runs; `build\prof\x.processes.tsv` has each process and its command line. Read the CPU
   seconds when other runs share the machine: they barely move, the wall clock does.
-- `Section 'name'` / `Show-WrenSections` in a script: the time of its stretches, in the table at the end of the run.
 - `WREN_SLEEPS_FILE`, set by `test_all`: the fixed waits of the scripts, by script.
 - `WREN_STARTS_FILE`, set by `test_all`: the Wren processes they start.
 - `wren ctl wait load|idle|stable|quiet|selector|function|frames`, `wren ctl stats`, `wren ctl reset`, `wren ctl checkpoint`:

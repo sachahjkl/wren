@@ -14,14 +14,12 @@
   (`screenshot.ps1`) or measure performance (`perf.ps1`, `js_bench.ps1`, `cfg_bench.ps1`) take
   `desktop.lock` / `bench.lock` themselves, only for that part (`tools/test_env.ps1`, which also starts a test server
   on a free block: `Start-WrenTestServer`). A step that needs either goes through those scripts or `Use-WrenLock`.
-- Tests are meant to be quick: a run prints, at its end, the slowest steps and (for the scripts that time themselves with `Section`
-  / `Show-WrenSections` of `tools/test_env.ps1`) the slowest sections, and the job summary of a GitHub run has the same table.
+- Tests are meant to be quick: a run prints, at its end, the slowest steps, and the job summary of a GitHub run has the same table.
   Wait for a condition, not for a delay (`wren ctl wait quiet | function`, a file that appears, a process that ends), with a
   limit; one Wren serves many scenarios, `wren ctl reset` between them ([docs/remote.md](docs/remote.md)); a step that mostly waits
   is `-Light` in `test_all.ps1`; do not build twice what a run already built (`Test-WrenBuildFresh`, `Invoke-WrenBuildIfStale`).
-- A scenario does not get a Wren of its own, nor a new `build.bat`. Drive one shared Wren (`Start-Shared`, `Reset-Shared` in `tools/remote_e2e.ps1`)
-  and `wren ctl reset` (or `checkpoint restore`) between scenarios; start a process only when the check is about a process's life (crash, a
-  second instance, `--policy` or a program planted in the working directory, `wren ctl stop`, `wren.com`, quit with a client connected).
+- A scenario runs in the test's process (`e2e.start`, [docs/testing.md](docs/testing.md)), and needs no new `build.bat`; start a process (`e2e.launch`) only when the check is about a process's life (crash, a
+  second instance, `--policy` or a program planted in the working directory, `wren ctl stop`, `wren.com`, the channel, quit with a client connected).
   Build the browser through `Ensure-WrenBuild [dev|check]` (`tools/test_env.ps1`: built unless newer than its sources, one `build.bat` of a tree
   at a time): two steps of a parallel run that both call `build.bat` refuse each other's files. A capture of a playing page uses `--settle 0`
   (the next frame, not the third) and no more frames than the check needs: a frame costs 0.7 s on a runner. `test_all` prints how many Wren it started.

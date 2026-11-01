@@ -28,6 +28,8 @@ START_WAIT_MS :: 30_000
 CLOSE_ANSWER_MS :: 5000
 CLOSE_WAIT_MS :: 15_000
 KILL_WAIT_MS :: 5000
+// How soon the folder of a killed process is tried again (ms).
+FOLDER_RETRY_MS :: 20
 // One try of the connection while a Wren starts (ms): how soon its end is noticed.
 CONNECT_TRY_MS :: 100
 // What a call may wait with no limit of its own (ms), and what is added to a limit, for the server's own timeout error to come first.
@@ -49,10 +51,27 @@ Identity :: struct {
 // system's hit test); Visible is for a person.
 Window_Mode :: enum u8 { Hidden, Headless, Visible }
 
+// Where an output of a started program goes (neither: nowhere).
+Output :: struct {
+	pipe: bool,     // read with process_output
+	file: string,   // a file made for it
+}
+
+// What a program is started with, beyond its arguments.
+Start_Options :: struct {
+	cwd:            string,     // its working folder ("": this process's)
+	env:            []string,   // "NAME=value" over this process's environment; "NAME=": without it
+	stdout, stderr: Output,     // both left out: it writes where a program with no console writes
+	merged:         bool,       // stderr goes where stdout goes
+}
+
 Launch_Options :: struct {
 	exe:        string,        // the program (wren.exe)
 	name:       string,        // of the channel ("": a unique one)
 	profile:    string,        // "": a folder made for this Wren, removed by finish
+	own_profile: bool,         // no --profile: it finds its folder as a user's start does (APPDATA, a portable copy)
+	single_instance: bool,     // no --no-single-instance: with WREN_SINGLE_INSTANCE=on, it may hand over to the Wren of its profile, and take the addresses of a later start
+	start:      Start_Options,
 	window:     Window_Mode,
 	dpi:        f64,           // 0: the system's (96 = 100 %)
 	prefs:      []string,      // "name=value", as the command line's --pref (they stay above what is set later)
@@ -96,15 +115,19 @@ state_dir :: proc() -> string {
 launch :: proc(o: Launch_Options, allocator := context.temp_allocator) -> (l: Launched, err: string) {
 	name := o.name != "" ? o.name : fmt.tprintf("s%s", base.unique_name(context.temp_allocator))
 	profile := o.profile
-	if profile == "" {
+	if profile == "" && !o.own_profile {
 		profile = strings.concatenate({state_dir(), filepath.SEPARATOR_STRING, "profile-", name}, context.temp_allocator)
 		l.temp = true
 	}
 	l.name = strings.clone(name, allocator)
 	l.profile = strings.clone(profile, allocator)
-	_ = os.make_directory_all(profile)
 	args := make([dynamic]string, context.temp_allocator)
-	append(&args, o.exe, "--profile", profile, fmt.tprintf("--remote=%s", name), "--no-single-instance")
+	append(&args, o.exe, fmt.tprintf("--remote=%s", name))
+	if profile != "" {
+		_ = os.make_directory_all(profile)
+		append(&args, "--profile", profile)
+	}
+	if !o.single_instance { append(&args, "--no-single-instance") }
 	switch o.window {
 	case .Headless: append(&args, "--headless")
 	case .Hidden:   append(&args, "--hidden")
@@ -117,7 +140,7 @@ launch :: proc(o: Launch_Options, allocator := context.temp_allocator) -> (l: La
 	for p in o.prefs { append(&args, "--pref", p) }
 	for e in o.extra { append(&args, e) }
 	if !o.no_address { append(&args, "about:blank") }
-	p, pid, started := process_start(args[:])
+	p, pid, started := process_start(args[:], o.start)
 	if started != "" { return l, started }
 	l.process, l.pid = p, pid
 	return l, ""
@@ -139,20 +162,30 @@ connect_launched :: proc(s: ^Session, l: ^Launched, wait_ms: int) -> Error {
 }
 
 // Ends a Wren we started: asks it to close, waits, and as a last resort ends this very process (the one we hold); removes
-// a profile that was made for it. `forced`: it had to be ended; `exit_code`: what it ended with (-1: not known).
-finish :: proc(s: ^Session, l: ^Launched, ask: bool) -> (exit_code: int, forced: bool) {
-	if ask && s.connected { _ = browser_close(s, 0, l.temp) }
+// a profile that was made for it. `code`: the exit code it is asked to end with. `forced`: it had to be ended; `exit_code`: what it ended with (-1: not known).
+finish :: proc(s: ^Session, l: ^Launched, ask: bool, code := 0) -> (exit_code: int, forced: bool) {
+	if ask && s.connected { _ = browser_close(s, code) }
 	if s.connected { disconnect(&s.conn); s.connected = false }
 	if !process_wait(&l.process, CLOSE_WAIT_MS) {
 		process_kill(&l.process)
-		process_wait(&l.process, KILL_WAIT_MS)
 		forced = true
 	}
 	exit_code = process_exit_code(&l.process)
-	process_release(&l.process)
 	// (only a folder of state_dir: what a caller named is never removed)
-	if l.temp && strings.contains(l.profile, "wren-ctl") { base.remove_tree(l.profile) }
+	if l.temp && strings.contains(l.profile, "wren-ctl") { remove_folder_of(&l.process, l.profile) }
+	process_release(&l.process)
 	return
+}
+
+// Removes the folder of a process that has ended or was killed. A process killed with its graphics device stays in the system for seconds (10 to 22 measured with every processor
+// busy), its exit code set at once: what it held in the folder is let go well before that, so this looks at the folder, not at the process.
+remove_folder_of :: proc(p: ^Process, folder: string) {
+	end := time.tick_add(time.tick_now(), KILL_WAIT_MS * time.Millisecond)
+	for {
+		base.remove_tree(folder)
+		if !os.exists(folder) || time.tick_diff(time.tick_now(), end) <= 0 { return }
+		process_wait(p, FOLDER_RETRY_MS)
+	}
 }
 
 // Closes the connection. A Wren ended by `quit`, or that goes on, stays as it is.
