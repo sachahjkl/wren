@@ -1469,6 +1469,8 @@ fn tok_text(t: &T, out: &mut String) {
 /// One frame of the stack of open parentheses: the function called, when it is a call.
 struct Call {
     callee: Option<String>,
+    /// A texture read of the vertex stage: it has no derivatives, GLSL means level 0, and naga wants it said.
+    level_zero: bool,
 }
 
 fn is_texture_builtin(name: &str) -> bool {
@@ -1649,7 +1651,11 @@ impl Shader {
                         text = self.word(name);
                     }
                     if open {
-                        calls.push(Call { callee: Some(name.clone()) });
+                        let level_zero = self.stage == Stage::Vertex && !prev_dot && matches!(text, "texture" | "textureProj") && is_texture_builtin(name);
+                        if level_zero {
+                            text = if text == "texture" { "textureLod" } else { "textureProjLod" };
+                        }
+                        calls.push(Call { callee: Some(name.clone()), level_zero });
                         out.tok(text);
                         out.tok("(");
                         i += 2;
@@ -1660,9 +1666,11 @@ impl Shader {
                 }
                 T::P(p) => {
                     match p {
-                        Punct::LeftParen => calls.push(Call { callee: None }),
+                        Punct::LeftParen => calls.push(Call { callee: None, level_zero: false }),
                         Punct::RightParen => {
-                            calls.pop();
+                            if calls.pop().map_or(false, |c| c.level_zero) {
+                                out.tok(", 0.0");
+                            }
                             if calls.is_empty() {
                                 in_header = false;
                             }
@@ -2544,6 +2552,15 @@ mod tests {
         let fs = "#extension GL_OES_standard_derivatives : enable\nprecision highp float;\n#define TEX(s, u) texture2D(s, u)\nuniform sampler2D a; uniform samplerCube c; varying vec2 uv;\nvec4 pick(const in sampler2D s, in vec2 p) { return TEX(s, p); }\nvoid main(){ gl_FragColor = pick(a, uv) + textureCube(c, vec3(uv, 1.0)) + vec4(fwidth(uv.x)); }";
         let f = compile(Stage::Fragment, fs, &caps()).unwrap();
         assert_eq!(f.samplers.len(), 2);
+    }
+
+    #[test]
+    fn texture_reads_of_the_vertex_stage_are_level_zero() {
+        let vs = "uniform sampler2D t; attribute vec2 p; void main(){ gl_Position = texture2D(t, p) + texture2DProj(t, vec3(p, 1.0)); }";
+        let s = compile(Stage::Vertex, vs, &caps()).unwrap();
+        let l = link(&s, &compile(Stage::Fragment, "precision mediump float; void main(){ gl_FragColor = vec4(1.0); }", &caps()).unwrap(), &HashMap::new(), &caps()).unwrap();
+        let mut validator = naga::valid::Validator::new(naga::valid::ValidationFlags::all(), naga::valid::Capabilities::empty());
+        assert!(validator.validate(&l.vertex).is_ok(), "the vertex stage validates");
     }
 
     #[test]

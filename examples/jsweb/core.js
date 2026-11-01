@@ -139,4 +139,18 @@ test("a value an async function hands over survives a collection at that moment"
   catch (e) { churn(); eq(e && e.message, "thrown", "async generator: the thrown value"); }
 });
 
+test("TypedArray.prototype.set of a large array", () => {
+  const SIZE = 1 << 24;   // more values than the engine's scratch memory holds
+  const from = new Uint8Array(SIZE);
+  from[SIZE - 1] = 7;
+  const to = new Uint8Array(SIZE + 1);
+  to.set(from, 1);
+  eq(to[SIZE], 7, "the same type");
+  const floats = new Float32Array(SIZE);
+  floats.set(from);
+  eq(floats[SIZE - 1], 7, "another type");
+  to.set(to.subarray(0, SIZE), 1);
+  eq(to[SIZE], 0, "overlapping");
+});
+
 __run();
