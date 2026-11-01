@@ -33,7 +33,7 @@ param([switch]$Quick, [switch]$CI, [int]$StepTimeoutSec = 900, [int]$Jobs = 0, [
 # their clicks reach no step. -Ui stays here, its steps need the real input; a CI runner has nobody to disturb.
 if (-not $Ui -and -not $env:CI -and -not $env:WREN_ON_TEST_DESKTOP -and -not $List) {
     $again = @($PSBoundParameters.GetEnumerator() | ForEach-Object { if ($_.Value -is [switch]) { if ($_.Value) { "-$($_.Key)" } } else { "-$($_.Key) `"$($_.Value)`"" } })
-    & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'test_desktop.ps1') -Command "powershell -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" $($again -join ' ')"
+    & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'test_desktop.ps1') -Command ("powershell -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" $($again -join ' ')" -replace '"', '\"')   # (a native call keeps inner quotes only escaped)
     exit $LASTEXITCODE
 }
 if ($Profile) {
