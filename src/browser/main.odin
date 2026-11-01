@@ -1336,10 +1336,12 @@ extract_flag :: proc(args: []string, flag: string) -> (value: string, rest: [dyn
 main :: proc() {
 	context = base.process_context()   // the tracker of the check build (memcheck.odin)
 	host.main_stack_ensure()   // (Linux: main_stack_linux.odin)
+	host.thread_raise_interface()   // above the browser's background threads (host.Thread_Priority)
 	prof_mark(.Main)
 	// (UTF-8 from the UTF-16 command line: os.args is the C runtime's ANSI)
 	app := app_start(desktop.command_line_args(base.permanent_allocator()))
 	if app == nil { return }
+	host.shutdown_stacks_program = desktop.executable_path(base.permanent_allocator())   // (`wren ctl stacks`: a teardown that hangs says where)
 	for app_turn(app) {}
 	app_stop(app, process_ends = true)
 	host.process_end(remote_exit_code)   // (at once: unloading the system's libraries takes longer than the whole teardown, and leaves nothing done)
@@ -1571,9 +1573,10 @@ app_turn :: proc(app: ^App) -> bool {
 	return true
 }
 
-// The browser ends: what it keeps is written, everything it holds is let go. `process_ends`: the process ends right after this, so what is
-// only memory and handles is left to that (the renderer's device alone takes 20 to 30 ms to let go of), unless the check build is here to
-// prove that the teardown frees everything.
+// The browser ends: what it keeps is written, everything it holds is let go, the renderer's device above all, here and under the watchdog. A
+// process that ends holding its device leaves that to the system, inside the end of the process, where nothing can hurry or end it: with
+// every core busy the process stayed there 6 to 15 s (a `wren ctl quit` that waits for it, past 20 s), against 40 ms once it had let go.
+// `process_ends`: the process ends right after this.
 app_stop :: proc(app: ^App, process_ends := false) {
 	profile_dir := strings.clone(app.profile_dir, context.temp_allocator)
 	// closed means gone from the screen at once, whatever the teardown below takes. Hiding the window first is a Win32
@@ -1704,7 +1707,6 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	page.fs_store_shutdown()   // file system roots, open writables and sync handles, locks
 	host.shutdown_step("wasm.runtime_destroy")
 	wasm.runtime_destroy()
-	if !process_ends || base.TRACK_MEMORY {
 	host.shutdown_step("measure_destroy")
 	measure_destroy(&app.measure)
 	host.shutdown_step("forms_shell_destroy")
@@ -1746,7 +1748,6 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	delete(app.bare.tabs)
 	free(app)
 	the_app = nil
-	}
 	host.shutdown_step("instance_release")
 	instance_release()   // instance_shell.odin: the profile is written and free: a start that waited becomes the owner (before the watchdog's stop, which can wait for its next tick)
 	host.shutdown_step("shutdown_end")

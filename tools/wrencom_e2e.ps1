@@ -138,8 +138,14 @@ try {
     Check '--cli: the launcher waits (still there) while the Wren it started runs' ($found -and -not $p.HasExited)
     if ($script:child) {
         $started.Add([int]$script:child.ProcessId)
+        # Killed is an exit code on the process (259: still running). Not the process gone from the list: a process killed with its graphics
+        # device leaves it to the system, which took 7 to 18 s with every core busy after the code was set at once.
+        Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public static class KilledProcess { [DllImport("kernel32.dll")] public static extern bool GetExitCodeProcess(IntPtr h, out uint code); }'
+        $wrenProcess = Get-Process -Id $script:child.ProcessId
+        $wrenHandle = $wrenProcess.Handle
         Stop-Process -Id $p.Id -Force
-        Check 'killing the launcher kills the Wren it started' (Wait-Until { -not (Get-Process -Id $script:child.ProcessId -ErrorAction SilentlyContinue) } 15)
+        $stillRunning = 259
+        Check 'killing the launcher kills the Wren it started' (Wait-Until { $code = [uint32]$stillRunning; $null = [KilledProcess]::GetExitCodeProcess($wrenHandle, [ref]$code); $code -ne $stillRunning } 15)
     }
 } finally {
     foreach ($procId in $started) { Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue }   # (only what this script started; normally already gone)
