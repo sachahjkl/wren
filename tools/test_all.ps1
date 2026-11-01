@@ -351,7 +351,8 @@ function Show-TestTimes {
 # every step's result and number of checks in build\test_steps.tsv, what failed in build\test_failed.txt (-Failed reads it).
 function Show-RunReport {
     # what a step that failed left running (started by this run, from this worktree's build\): it would hold its program against the next build
-    foreach ($p in @(Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path.StartsWith($buildDir, [StringComparison]::OrdinalIgnoreCase) -and $_.StartTime -gt $runStart -and $_.ProcessName -ne 'testserver' })) {
+    # (by name first: reading the path of every process of the machine takes 10 s under load)
+    foreach ($p in @(Get-Process -Name 'wren*', '*test', '*_test', 'uia_probe' -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -ne 'testserver' -and $_.Path -and $_.Path.StartsWith($buildDir, [StringComparison]::OrdinalIgnoreCase) -and $_.StartTime -gt $runStart })) {
         "left running by a step: $($p.ProcessName) (pid $($p.Id)): stopped"
         Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
     }
@@ -398,7 +399,7 @@ $env:WREN_BUILD_FAILED_FILE = Join-Path $env:TEMP 'test_all_build_failed'
 Remove-Item "$env:WREN_BUILD_FAILED_FILE.*" -ErrorAction SilentlyContinue
 $buildDir = Join-Path $root 'build\'
 if (-not $List) {
-    foreach ($p in @(Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path.StartsWith($buildDir, [StringComparison]::OrdinalIgnoreCase) -and $_.ProcessName -like 'wren*' })) {
+    foreach ($p in @(Get-Process -Name 'wren*' -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path.StartsWith($buildDir, [StringComparison]::OrdinalIgnoreCase) })) {
         "warning: $($p.ProcessName) (pid $($p.Id), since $($p.StartTime)) runs from this worktree's build\: a build of the browser cannot replace it"
     }
 }
