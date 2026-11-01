@@ -1,5 +1,6 @@
 package host
 
+import "core:fmt"
 import win "core:sys/windows"
 
 @(private = "file")
@@ -18,6 +19,19 @@ shutdown_raise_priority :: proc() { SetPriorityClass(win.GetCurrentProcess(), AB
 @(private)
 shutdown_force_exit :: proc() -> ! {
 	win.ExitProcess(0)
+}
+
+// `program ctl stacks <this process> --out path`, waited for within `wait_ms`. At the priority of the process that ends: it is there to be
+// read before it goes, whatever else the machine is doing.
+@(private)
+shutdown_read_stacks :: proc(program, path: string, wait_ms: int) {
+	line := fmt.tprintf(`"%s" ctl stacks %d --out "%s"`, program, win.GetCurrentProcessId(), path)
+	si := win.STARTUPINFOW{cb = size_of(win.STARTUPINFOW)}
+	pi: win.PROCESS_INFORMATION
+	if !win.CreateProcessW(nil, cstring16(win.utf8_to_wstring(line, context.temp_allocator)), nil, nil, false, win.CREATE_NO_WINDOW | ABOVE_NORMAL_PRIORITY_CLASS, nil, nil, &si, &pi) { return }
+	win.CloseHandle(pi.hThread)
+	win.WaitForSingleObject(pi.hProcess, win.DWORD(wait_ms))
+	win.CloseHandle(pi.hProcess)
 }
 
 // The process ends now, with this code: every thread and every library left as they are (no library is told to unload: Direct3D's driver takes

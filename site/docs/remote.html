@@ -269,7 +269,12 @@ checkpoint save|restore|delete &lt;name&gt; | list
 window [--size WxH] [--pos x,y] [--state normal|minimized|maximized|fullscreen]    cmds [filter]   cmd &lt;name&gt;
 devtools [console|elements|network|none] [--dock ...]   setup   html [sel]   query sel   box sel   style sel [props]
 snapshot &lt;prefix&gt;   record start|stop &lt;file&gt;   replay &lt;file&gt; [--speed n]   diff a.png b.png [--tolerance n] [--out d.png] [--max-percent p]
-quit [--code n]     raw '&lt;json request&gt;'     ping     version</code></pre></div>
+quit [--code n]     raw '&lt;json request&gt;'     ping     version
+stacks &lt;process id&gt; [--out file.txt] [--dump file.dmp]</code></pre></div>
+<p><code>stacks</code> needs no Wren and reads any process of this user (a test tool too): what each thread is doing, named with the program's PDB, read from
+outside, for what hangs and leaves nothing behind. A thread that says "cannot suspend" under "ending with code n" belongs to a process that has
+already been told to end, and that the system is still taking down. <code>quit</code> prints the same when the Wren does not end, and the shutdown
+watchdog leaves it in <code>shutdown.log.stacks.txt</code> before it ends a browser whose teardown is stuck.</p>
 <p>Options of every command: <code>--remote &lt;name&gt;</code> (or <code>WREN_REMOTE</code>), <code>--profile &lt;dir&gt;</code> (finds the Wren by its profile folder),
 <code>--timeout &lt;ms&gt;</code>, <code>--tab-id &lt;id&gt;</code>, <code>--json</code> (the raw answer), <code>--quiet</code>. Exit codes: <strong>0</strong> done, <strong>1</strong> failed (an error
 answer, a script exception), <strong>2</strong> timed out, <strong>3</strong> no Wren answers or the connection ended, <strong>4</strong> wrong usage.</p>

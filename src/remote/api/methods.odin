@@ -185,7 +185,9 @@ quit :: proc(s: ^Session, exit_code := 0, limit := time.Duration(QUIT_WAIT_MS * 
 	close_session(s)
 	c, ended := wait_process_exit(who.pid, int(time.duration_milliseconds(limit)))
 	if !ended {
-		set_failure(fmt.tprintf("Wren did not end within %v", limit))
+		// (what it was doing, read while it still hangs: the failure of an intermittent run is the only look anyone gets)
+		stuck, _ := process_stacks(who.pid)
+		set_failure(fmt.tprintf("Wren did not end within %v", limit), stuck)
 		call_failed(s, .Timeout, "quit", loc)
 		return 0, .Timeout
 	}

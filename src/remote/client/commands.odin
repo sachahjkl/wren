@@ -67,6 +67,7 @@ dispatch :: proc(ctx: ^Context, cmd: string, args: []string) -> int {
 	case "start":    return cmd_start(ctx, args)
 	case "stop":     return cmd_stop(ctx, args)
 	case "diff":     return cmd_diff(ctx, args)
+	case "stacks":   return cmd_stacks(ctx, args)
 	case "ping":     _, e := api.ping(s); return simple(ctx, e)
 	case "version":  _, e := api.version(s); return simple(ctx, e)
 	case "nav", "navigate", "open":
@@ -548,6 +549,19 @@ cmd_replay :: proc(ctx: ^Context, args: []string) -> int {
 	speed := 1.0
 	if t := opt(&ctx.o, "speed"); t != "" { speed, _ = strconv.parse_f64(t) }
 	return simple(ctx, api.replay(&ctx.s, string(evs), speed))
+}
+
+@(private)
+cmd_stacks :: proc(ctx: ^Context, args: []string) -> int {
+	if len(args) != 1 { return usage("stacks", "usage: stacks <process id> [--out file.txt] [--dump file.dmp]") }
+	pid, good := strconv.parse_int(args[0])
+	if !good { return usage("stacks", "the process id is a number") }
+	text, ok := api.process_stacks(pid, abs_path(opt(&ctx.o, "dump")))
+	if !ok { errln(text); return EXIT_FAILED }
+	path := opt(&ctx.o, "out")
+	if path == "" { outln(text); return EXIT_OK }
+	if err := os.write_entire_file(abs_path(path), transmute([]byte)text); err != nil { errln(fmt.tprintf("cannot write %s", path)); return EXIT_FAILED }
+	return EXIT_OK
 }
 
 @(private)

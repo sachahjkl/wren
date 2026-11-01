@@ -851,6 +851,11 @@ public static class PipeStorm {
     Scenario '6 idle timer: ticks that change nothing draw no frame' { Test-IdleTimers $server }
     Scenario '7 web APIs in the browser' { Test-WebApis $server }
 
+    # what a process is doing, read from outside and named with its PDB: what `quit` prints for a Wren that does not end
+    Section '2j0 stacks of a running Wren'
+    $stacks = Wren-Ctl stacks $pidOf
+    Check 'stacks names the frames of the browser' ($global:WrenExit -eq 0 -and $stacks -match "process $pidOf, running" -and $stacks -match 'browser::') "exit $global:WrenExit $global:WrenErr"
+
     # closing with a client connected, and the exit code
     Section '2j quit with a client connected'
     $pipe = New-Object IO.Pipes.NamedPipeClientStream('.', "wren-remote-$name", [IO.Pipes.PipeDirection]::InOut)
