@@ -247,6 +247,10 @@ emit_import_glue_odin :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member
 	}
 	_, owned := idl.attr_find(d.attrs, "Owned")
 	callee := fmt.tprintf("wj.wr_%s", import_name)
+	// a member of Document whose import names no node acts on the calling document: this one may be another's
+	if !has_self && !mb.static_ && it.name == "Document" {
+		wl(b, "\tif !wj.wj_doc_target(self.handle) {{ %sreturn wj.wj_throw_gone(ctx) }}", strings.to_string(freed))
+	}
 	callstr := strings.join(call[:], ", ", context.temp_allocator)
 	sep := len(call) > 0 ? ", " : ""
 	cl := strings.to_string(cleanup)

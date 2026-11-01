@@ -181,7 +181,7 @@ attach_shadow :: proc(d: ^Document, host: base.Handle, init: Shadow_Init) -> (ba
 		if info = shadow_info(d, root); info != nil { info.declarative = false }
 		return root, .None
 	}
-	root, rn := base.pool_insert(&d.nodes, Node{kind = .Fragment, is_shadow = true, shadow = host})
+	root, rn := base.pool_insert_tagged(&d.nodes, d.tag, Node{kind = .Fragment, is_shadow = true, shadow = host})
 	_ = rn
 	get(d, host).shadow = root
 	d.shadow_roots[root] = Shadow_Info{init = init}

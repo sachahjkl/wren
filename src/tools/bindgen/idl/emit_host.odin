@@ -17,6 +17,8 @@ Host_Config :: struct {
 	wasm_import:  string,   // import path of package wasm
 	call_type:    string,
 	begin:        string,
+	route:        string,   // called with every handle argument, before its lookup ("": none)
+	unroute:      string,   // closes what `route` opened, when the trampoline returns
 	raise:        string,
 	scrub:        string,
 	invoke:       string,
@@ -429,6 +431,7 @@ emit_trampoline :: proc(cfg: Host_Config, o: ^Out, d: ^Decl) {
 	wl(o, "\tf := wasm.frame(env, caller)")
 	wl(o, "\tcontext = wasm.default_context()")
 	wl(o, "\tc := %s(f.inst)", cfg.begin)
+	if cfg.unroute != "" { wl(o, "\tdefer if c.routed {{ %s(&c) }}", cfg.unroute) }
 
 	// 1. every memory range first: a bad pointer traps before anything else happens
 	slot := 0
@@ -511,6 +514,7 @@ emit_trampoline :: proc(cfg: Host_Config, o: ^Out, d: ^Decl) {
 				wl(o, "\t%s := _s%d[:_n%d]", name, i, i)
 			}
 		case t.kind == .Handle:
+			if cfg.route != "" { wl(o, "\t%s(&c, %s)", cfg.route, raw_read(t, s)) }
 			h := handle_checker(t.decl)
 			if h == nil {
 				wl(o, "\t%s := %s", name, raw_read(t, s))
@@ -535,6 +539,9 @@ emit_trampoline :: proc(cfg: Host_Config, o: ^Out, d: ^Decl) {
 			fail(o, mode, "\t\t", "Invalid_Argument", quote(fmt.tprintf("%s: argument %s has flags %s does not define", q, p.name, t.decl.name)))
 			wl(o, "\t}")
 			wl(o, "\t%s := transmute(%s%s)_e%d", name, PREFIX, t.decl.name, i)
+		case t.kind == .U64 && cfg.route != "":
+			wl(o, "\t%s(&c, %s)", cfg.route, raw_read(t, s))
+			wl(o, "\t%s := %s", name, raw_read(t, s))
 		case t.kind == .Struct:
 			wl(o, "\t%s: %s%s", name, PREFIX, t.decl.name)
 			for fl, k in t.decl.fields {

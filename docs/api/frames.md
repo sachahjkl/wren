@@ -2,11 +2,12 @@
 
 # Module `frames`
 
-Nested browsing contexts for JavaScript (src/page/frames.odin, frames_scripts.odin; native/js/runtime/frames.c and
-prelude/frames.js). A window of another document is named by its navigable's id: each document runs in its own
-engine instance, so another window is a WindowProxy of the calling realm that only reaches what HTML lets a
-cross-origin window reach (postMessage, location as a setter, closed, frames, length, top, parent, opener, window,
-self, close, focus, blur); documents never share objects, same origin or not.
+Nested browsing contexts for JavaScript (src/page/frames.odin, frames_scripts.odin, frames_access.odin;
+native/js/odin/frames.odin). A window of another document is named by its navigable's id: each document runs in its
+own engine instance, so another window is a WindowProxy of the calling realm. Across origins it reaches what HTML lets
+a cross-origin window reach (postMessage, location as a setter, closed, frames, length, top, parent, opener, window,
+self, close, focus, blur). Between documents of one origin, nodes are reached directly: every node handle names its
+document (base.pool_insert_tagged), the browser routes the call to it and checks the origin on each call.
 
 Exposed to: Window. Source: `api/frames.widl`.
 
@@ -113,15 +114,63 @@ Whether its document is same origin with the calling one.
 
 Host: `Frame_sameOrigin :: proc(c: ^Call, navigable: u64) -> bool`
 
-### `Frame_isBlank`
+### `Frame_documentOf`
 
 ```
-bool Frame_isBlank(u64 navigable)
+u64 Frame_documentOf(u64 navigable)
 ```
 
-Whether its document is same origin and has no address of its own (about:blank, srcdoc).
+Its document's Document node, when the calling document may reach it (same origin); 0 otherwise.
+iframe.contentDocument, otherWindow.document.
 
-Host: `Frame_isBlank :: proc(c: ^Call, navigable: u64) -> bool`
+Host: `Frame_documentOf :: proc(c: ^Call, navigable: u64) -> u64`
+
+### `Frame_elementOf`
+
+```
+u64 Frame_elementOf(u64 navigable)
+```
+
+The frame element holding this navigable's document, when the calling document may reach it; 0 otherwise
+(window.frameElement).
+
+Host: `Frame_elementOf :: proc(c: ^Call, navigable: u64) -> u64`
+
+### `Frame_ofDocument`
+
+```
+u64 Frame_ofDocument(u64 node)
+```
+
+The navigable whose document holds `node`, a node the calling document may reach; 0 otherwise
+(document.defaultView of another document).
+
+Host: `Frame_ofDocument :: proc(c: ^Call, node: u64) -> u64`
+
+### `Frame_target`
+
+```
+bool Frame_target(u64 node)
+```
+
+The next import of the calling realm that names no node acts on the document holding `node`
+(document.createTextNode of another document). False when that document cannot be reached (gone, another origin).
+
+Host: `Frame_target :: proc(c: ^Call, node: u64) -> bool`
+
+### `Frame_adoptNode`
+
+```
+bytes Frame_adoptNode(u64 node, u64 into) raises
+```
+
+Moves `node`, of another document, to the document holding `into` (DOM "adopt"), as lone nodes: the handles of the
+nodes moved, each old one (u64) followed by its new one (the first pair is `node`'s). Security when one of the two
+cannot be reached.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Frame_adoptNode :: proc(c: ^Call, node: u64, into: u64) -> ([]u8, Api_Error)`
 
 ### `Frame_postMessage`
 

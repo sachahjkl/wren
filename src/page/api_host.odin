@@ -13,7 +13,11 @@ import "wb:dom"
 import "wb:wasm"
 
 Call :: struct {
-	page:    ^Page,
+	page:    ^Page,    // the document the call acts on: the caller's, or one it reaches (frames_access.odin)
+	caller:  ^Page,    // the document whose realm is calling
+	tag:     u32,      // of `page`: what a handle of `page` carries (base.pool_insert_tagged)
+	own:     bool,     // a handle argument named `page` already: another document's handle does not move the call
+	routed:  bool,     // page != caller
 	inst:    ^wasm.Instance,
 	owner:   u32,      // the instance's index in the page: owner of what the call creates, target of its callbacks
 	message: string,   // detail of the error an implementation returns (optional; must outlive the return)
@@ -23,7 +27,22 @@ Call :: struct {
 api_begin :: #force_inline proc "contextless" (inst: ^wasm.Instance) -> Call {
 	p := (^Page)(inst.user)
 	mark := p != nil && p.jsdom != nil ? len(p.jsdom.ce.queue) : 0
-	return Call{page = p, inst = inst, owner = inst.index, ce_mark = mark}
+	c := Call{page = p, caller = p, inst = inst, owner = inst.index, ce_mark = mark}
+	if p != nil {
+		c.tag = p.tag
+		if p.route_next != 0 { api_take_target(&c) }
+	}
+	return c
+}
+
+// A handle argument of the call (generated, before its lookup). A handle of another document moves the whole call there
+// (api_route_cold): the checks are there, the common case is two comparisons. Numbers that are not handles have a tag of
+// 0, or one that names nothing reachable.
+api_route :: #force_inline proc "contextless" (c: ^Call, h: u64) {
+	t := base.handle_tag(h)
+	if t == 0 { return }
+	if t == c.tag { c.own = true; return }
+	api_route_cold(c, t)
 }
 
 api_raise :: proc(c: ^Call, code: Api_Error, message: string) {

@@ -24,8 +24,9 @@ package page
 //   * Security: a sandboxed frame gets an opaque origin unless allow-same-origin, no scripts unless allow-scripts
 //     (frames_policy.odin); about:blank and srcdoc documents inherit their parent's origin; data: documents are opaque.
 //     The Permissions Policy (allow attribute, Permissions-Policy header) gives each document its enabled features
-//     (feature_enabled). Scripts of different documents never share objects (one engine instance per realm): what
-//     crosses is messages (postMessage) and navigations, both as tasks.
+//     (feature_enabled). Each document has its engine instance. Across origins what crosses is messages (postMessage)
+//     and navigations, both as tasks; between documents of one origin a realm reaches the other's nodes
+//     (frames_access.odin), with the origin checked on each call.
 //   * Embedding: the shell lays out and paints each child document in its container's content box (frame_hooks),
 //     routes input to it by hit testing and reports how far a lazy frame is from the viewport.
 //
@@ -106,6 +107,8 @@ navigable_count: int
 frames_shutdown :: proc() {
 	shared_workers_shutdown()   // (lingering ones: extendedLifetime)
 	ports_shutdown()
+	delete(frames_pending_closes)
+	frames_pending_closes = nil
 	delete(navigables)
 	navigables = nil
 }
@@ -128,7 +131,7 @@ frames_of :: proc(p: ^Page) -> ^Page_Frames {
 // The navigable of a document: a nested one's, or (made on first use) the top-level one of a tab's document. nil in a
 // worker.
 page_navigable :: proc(p: ^Page) -> ^Navigable {
-	if p == nil || p.worker != nil || p.closed { return nil }
+	if p == nil || p.worker != nil || p.closed || p.close_pending { return nil }
 	f := frames_of(p)
 	if f.nav != nil { return f.nav }
 	n := navigable_new()

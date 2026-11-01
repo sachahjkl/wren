@@ -1245,6 +1245,7 @@ _t_abort_AbortController_create :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := AbortController_create(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -1259,6 +1260,8 @@ _t_abort_AbortController_signal :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AbortController{handle = u64(a[0].i64)}
 	_p0.data = lookup_AbortController(&c, _p0.handle)
 	if _p0.data == nil {
@@ -1279,6 +1282,7 @@ _t_abort_AbortController_abort :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "abort.AbortController_abort", "reason") }
@@ -1287,6 +1291,7 @@ _t_abort_AbortController_abort :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "abort.AbortController_abort: argument reason is not valid UTF-8") }
 		return wasm.trap_new("abort.AbortController_abort: argument reason is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AbortController{handle = u64(a[0].i64)}
 	_p0.data = lookup_AbortController(&c, _p0.handle)
 	if _p0.data == nil {
@@ -1306,6 +1311,8 @@ _t_abort_AbortSignal_aborted :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AbortSignal{handle = u64(a[0].i64)}
 	_p0.data = lookup_AbortSignal(&c, _p0.handle)
 	if _p0.data == nil {
@@ -1326,6 +1333,8 @@ _t_abort_AbortSignal_reasonCode :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AbortSignal{handle = u64(a[0].i64)}
 	_p0.data = lookup_AbortSignal(&c, _p0.handle)
 	if _p0.data == nil {
@@ -1346,9 +1355,11 @@ _t_abort_AbortSignal_reason :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "abort.AbortSignal_reason", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AbortSignal{handle = u64(a[0].i64)}
 	_p0.data = lookup_AbortSignal(&c, _p0.handle)
 	if _p0.data == nil {
@@ -1369,6 +1380,8 @@ _t_abort_AbortSignal_throwIfAborted :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AbortSignal{handle = u64(a[0].i64)}
 	_p0.data = lookup_AbortSignal(&c, _p0.handle)
 	if _p0.data == nil {
@@ -1389,6 +1402,7 @@ _t_abort_AbortSignal_abort :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "abort.AbortSignal_abort", "reason") }
@@ -1412,6 +1426,7 @@ _t_abort_AbortSignal_timeout :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "abort.AbortSignal_timeout", "result pointer") }
 	_p0 := a[0].f64
@@ -1433,6 +1448,7 @@ _t_abort_AbortSignal_any :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0, 8)
 	if !_k0 { return wasm.trap_bounds(&f, "abort.AbortSignal_any", "signals") }
@@ -1457,6 +1473,7 @@ _t_animations_Animation_create :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := u32(a[0].i32)
 	_p1 := a[1].i32
 	_r := Animation_create(&c, _p0, _p1)
@@ -1473,6 +1490,7 @@ _t_animations_Animation_setEffect :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "animations.Animation_setEffect", "keyframes") }
@@ -1487,11 +1505,13 @@ _t_animations_Animation_setEffect :: proc "c" (env: rawptr, caller: wasm.Caller,
 	if !wasm.valid_utf8(_p10) {
 		return _fail_status(&c, a, .Type, "animations.Animation_setEffect: argument easing is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Animation{handle = u64(a[0].i64)}
 	_p0.data = lookup_Animation(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "animations.Animation_setEffect: argument animation is not a live Animation")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_Element{handle = u64(a[1].i64)}
 	if _p1.handle != 0 { _p1.data = lookup_Element(&c, _p1.handle) }
 	if _p1.handle != 0 && _p1.data == nil {
@@ -1522,6 +1542,8 @@ _t_animations_Animation_clearEffect :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Animation{handle = u64(a[0].i64)}
 	_p0.data = lookup_Animation(&c, _p0.handle)
 	if _p0.data == nil {
@@ -1540,6 +1562,8 @@ _t_animations_Animation_setTimeline :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Animation{handle = u64(a[0].i64)}
 	_p0.data = lookup_Animation(&c, _p0.handle)
 	if _p0.data == nil {
@@ -1559,6 +1583,8 @@ _t_animations_Animation_play :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Animation{handle = u64(a[0].i64)}
 	_p0.data = lookup_Animation(&c, _p0.handle)
 	if _p0.data == nil {
@@ -1581,6 +1607,8 @@ _t_animations_Animation_pause :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Animation{handle = u64(a[0].i64)}
 	_p0.data = lookup_Animation(&c, _p0.handle)
 	if _p0.data == nil {
@@ -1603,6 +1631,8 @@ _t_animations_Animation_finish :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Animation{handle = u64(a[0].i64)}
 	_p0.data = lookup_Animation(&c, _p0.handle)
 	if _p0.data == nil {
@@ -1625,6 +1655,8 @@ _t_animations_Animation_cancel :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Animation{handle = u64(a[0].i64)}
 	_p0.data = lookup_Animation(&c, _p0.handle)
 	if _p0.data == nil {
@@ -1643,6 +1675,8 @@ _t_animations_Animation_reverse :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Animation{handle = u64(a[0].i64)}
 	_p0.data = lookup_Animation(&c, _p0.handle)
 	if _p0.data == nil {
@@ -1665,6 +1699,8 @@ _t_animations_Animation_persist :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Animation{handle = u64(a[0].i64)}
 	_p0.data = lookup_Animation(&c, _p0.handle)
 	if _p0.data == nil {
@@ -1683,6 +1719,8 @@ _t_animations_Animation_commitStyles :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Animation{handle = u64(a[0].i64)}
 	_p0.data = lookup_Animation(&c, _p0.handle)
 	if _p0.data == nil {
@@ -1705,6 +1743,8 @@ _t_animations_Animation_updatePlaybackRate :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Animation{handle = u64(a[0].i64)}
 	_p0.data = lookup_Animation(&c, _p0.handle)
 	if _p0.data == nil {
@@ -1724,6 +1764,8 @@ _t_animations_Animation_playbackRate :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Animation{handle = u64(a[0].i64)}
 	_p0.data = lookup_Animation(&c, _p0.handle)
 	if _p0.data == nil {
@@ -1744,6 +1786,8 @@ _t_animations_Animation_set_playbackRate :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Animation{handle = u64(a[0].i64)}
 	_p0.data = lookup_Animation(&c, _p0.handle)
 	if _p0.data == nil {
@@ -1763,6 +1807,8 @@ _t_animations_Animation_currentTime :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Animation{handle = u64(a[0].i64)}
 	_p0.data = lookup_Animation(&c, _p0.handle)
 	if _p0.data == nil {
@@ -1783,6 +1829,8 @@ _t_animations_Animation_set_currentTime :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Animation{handle = u64(a[0].i64)}
 	_p0.data = lookup_Animation(&c, _p0.handle)
 	if _p0.data == nil {
@@ -1806,6 +1854,8 @@ _t_animations_Animation_startTime :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Animation{handle = u64(a[0].i64)}
 	_p0.data = lookup_Animation(&c, _p0.handle)
 	if _p0.data == nil {
@@ -1826,6 +1876,8 @@ _t_animations_Animation_set_startTime :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Animation{handle = u64(a[0].i64)}
 	_p0.data = lookup_Animation(&c, _p0.handle)
 	if _p0.data == nil {
@@ -1845,6 +1897,8 @@ _t_animations_Animation_playState :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Animation{handle = u64(a[0].i64)}
 	_p0.data = lookup_Animation(&c, _p0.handle)
 	if _p0.data == nil {
@@ -1865,6 +1919,8 @@ _t_animations_Animation_replaceState :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Animation{handle = u64(a[0].i64)}
 	_p0.data = lookup_Animation(&c, _p0.handle)
 	if _p0.data == nil {
@@ -1885,6 +1941,8 @@ _t_animations_Animation_pending :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Animation{handle = u64(a[0].i64)}
 	_p0.data = lookup_Animation(&c, _p0.handle)
 	if _p0.data == nil {
@@ -1905,9 +1963,11 @@ _t_animations_Animation_takeOps :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "animations.Animation_takeOps", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Animation{handle = u64(a[0].i64)}
 	_p0.data = lookup_Animation(&c, _p0.handle)
 	if _p0.data == nil {
@@ -1928,6 +1988,8 @@ _t_animations_Animation_dropOps :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Animation{handle = u64(a[0].i64)}
 	_p0.data = lookup_Animation(&c, _p0.handle)
 	if _p0.data == nil {
@@ -1947,6 +2009,8 @@ _t_animations_AnimationPlaybackEvent_time :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -1968,6 +2032,8 @@ _t_animations_Animation_computedTiming :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Animation{handle = u64(a[0].i64)}
 	_p0.data = lookup_Animation(&c, _p0.handle)
 	if _p0.data == nil {
@@ -1989,9 +2055,11 @@ _t_animations_Animation_relevant :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "animations.Animation_relevant", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	if _p0.handle != 0 { _p0.data = lookup_Node(&c, _p0.handle) }
 	if _p0.handle != 0 && _p0.data == nil {
@@ -2013,8 +2081,10 @@ _t_animations_Animation_cssBind :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[3]), 40)
 	if !_rk { return wasm.trap_bounds(&f, "animations.Animation_cssBind", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Animation{handle = u64(a[0].i64)}
 	_p0.data = lookup_Animation(&c, _p0.handle)
 	if _p0.data == nil {
@@ -2040,9 +2110,11 @@ _t_animations_Animation_cssName :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "animations.Animation_cssName", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Animation{handle = u64(a[0].i64)}
 	_p0.data = lookup_Animation(&c, _p0.handle)
 	if _p0.data == nil {
@@ -2063,6 +2135,7 @@ _t_animations_DocumentTimeline_currentTime :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := DocumentTimeline_currentTime(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -2077,6 +2150,7 @@ _t_animations_Animation_validEasing :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "animations.Animation_validEasing", "easing") }
@@ -2099,6 +2173,7 @@ _t_async_queueMicrotask :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := u32(a[0].i32)
 	_p1 := a[1].i32
 	queueMicrotask(&c, _p0, _p1)
@@ -2113,6 +2188,7 @@ _t_async_Promise_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Promise_create(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -2127,6 +2203,7 @@ _t_async_Promise_resolve :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "async.Promise_resolve", "text") }
@@ -2134,6 +2211,7 @@ _t_async_Promise_resolve :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	if !wasm.valid_utf8(_p2) {
 		return _fail_status(&c, a, .Type, "async.Promise_resolve: argument text is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Promise{handle = u64(a[0].i64)}
 	_p0.data = lookup_Promise(&c, _p0.handle)
 	if _p0.data == nil {
@@ -2157,6 +2235,7 @@ _t_async_Promise_reject :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "async.Promise_reject", "message") }
@@ -2164,6 +2243,7 @@ _t_async_Promise_reject :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	if !wasm.valid_utf8(_p2) {
 		return _fail_status(&c, a, .Type, "async.Promise_reject: argument message is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Promise{handle = u64(a[0].i64)}
 	_p0.data = lookup_Promise(&c, _p0.handle)
 	if _p0.data == nil {
@@ -2187,6 +2267,8 @@ _t_async_Promise_then :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Promise{handle = u64(a[0].i64)}
 	_p0.data = lookup_Promise(&c, _p0.handle)
 	if _p0.data == nil {
@@ -2207,6 +2289,8 @@ _t_async_Promise_state :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Promise{handle = u64(a[0].i64)}
 	_p0.data = lookup_Promise(&c, _p0.handle)
 	if _p0.data == nil {
@@ -2227,6 +2311,8 @@ _t_async_Promise_value :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Promise{handle = u64(a[0].i64)}
 	_p0.data = lookup_Promise(&c, _p0.handle)
 	if _p0.data == nil {
@@ -2247,9 +2333,11 @@ _t_async_Promise_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "async.Promise_text", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Promise{handle = u64(a[0].i64)}
 	_p0.data = lookup_Promise(&c, _p0.handle)
 	if _p0.data == nil {
@@ -2270,6 +2358,7 @@ _t_async_Promise_all :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0, 8)
 	if !_k0 { return wasm.trap_bounds(&f, "async.Promise_all", "promises") }
@@ -2288,6 +2377,8 @@ _t_async_Object_release :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Object{handle = u64(a[0].i64)}
 	_p0.data = lookup_Object(&c, _p0.handle)
 	if _p0.data == nil {
@@ -2310,9 +2401,11 @@ _t_async_Object_kind :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "async.Object_kind", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Object{handle = u64(a[0].i64)}
 	_p0.data = lookup_Object(&c, _p0.handle)
 	if _p0.data == nil {
@@ -2333,6 +2426,7 @@ _t_async_Buffer_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "async.Buffer_create", "data") }
@@ -2357,6 +2451,7 @@ _t_async_Buffer_alloc :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "async.Buffer_alloc", "result pointer") }
 	_p0 := a[0].i64
@@ -2378,6 +2473,8 @@ _t_async_Buffer_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Buffer{handle = u64(a[0].i64)}
 	_p0.data = lookup_Buffer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -2398,10 +2495,12 @@ _t_async_Buffer_read :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "async.Buffer_read", "destination") }
 	_p2 := _s2[:_n2]
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Buffer{handle = u64(a[0].i64)}
 	_p0.data = lookup_Buffer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -2423,10 +2522,12 @@ _t_async_Buffer_write :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "async.Buffer_write", "source") }
 	_p2 := _s2[:_n2]
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Buffer{handle = u64(a[0].i64)}
 	_p0.data = lookup_Buffer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -2448,8 +2549,10 @@ _t_async_Buffer_slice :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[3]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "async.Buffer_slice", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Buffer{handle = u64(a[0].i64)}
 	_p0.data = lookup_Buffer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -2475,6 +2578,7 @@ _t_bloburl_BlobURL_register :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "bloburl.BlobURL_register", "url") }
@@ -2507,6 +2611,7 @@ _t_bloburl_BlobURL_revoke :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "bloburl.BlobURL_revoke", "url") }
@@ -2527,6 +2632,7 @@ _t_caches_CacheStorage_check :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_err := CacheStorage_check(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -2544,6 +2650,7 @@ _t_caches_CacheStorage_openName :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "caches.CacheStorage_openName", "name") }
@@ -2568,6 +2675,7 @@ _t_caches_CacheStorage_hasName :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "caches.CacheStorage_hasName", "name") }
@@ -2595,6 +2703,7 @@ _t_caches_CacheStorage_deleteName :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "caches.CacheStorage_deleteName", "name") }
@@ -2622,6 +2731,7 @@ _t_caches_CacheStorage_names :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "caches.CacheStorage_names", "result buffer") }
@@ -2642,6 +2752,7 @@ _t_caches_Cache_matchIds :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "caches.Cache_matchIds", "cache") }
@@ -2693,6 +2804,7 @@ _t_caches_Cache_entryRequestHeaders :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "caches.Cache_entryRequestHeaders", "cache") }
@@ -2703,6 +2815,7 @@ _t_caches_Cache_entryRequestHeaders :: proc "c" (env: rawptr, caller: wasm.Calle
 	if !wasm.valid_utf8(_p0) {
 		return _fail_size(&c, &f, a, .Type, "caches.Cache_entryRequestHeaders: argument cache is not valid UTF-8")
 	}
+	api_route(&c, u64(a[2].i64))
 	_p1 := u64(a[2].i64)
 	_r, _err := Cache_entryRequestHeaders(&c, _p0, _p1)
 	api_end(&c)
@@ -2721,6 +2834,7 @@ _t_caches_Cache_entryHead :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "caches.Cache_entryHead", "cache") }
@@ -2731,6 +2845,7 @@ _t_caches_Cache_entryHead :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	if !wasm.valid_utf8(_p0) {
 		return _fail_size(&c, &f, a, .Type, "caches.Cache_entryHead: argument cache is not valid UTF-8")
 	}
+	api_route(&c, u64(a[2].i64))
 	_p1 := u64(a[2].i64)
 	_r, _err := Cache_entryHead(&c, _p0, _p1)
 	api_end(&c)
@@ -2749,6 +2864,7 @@ _t_caches_Cache_entryBody :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "caches.Cache_entryBody", "cache") }
@@ -2759,6 +2875,7 @@ _t_caches_Cache_entryBody :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	if !wasm.valid_utf8(_p0) {
 		return _fail_size(&c, &f, a, .Type, "caches.Cache_entryBody: argument cache is not valid UTF-8")
 	}
+	api_route(&c, u64(a[2].i64))
 	_p1 := u64(a[2].i64)
 	_r, _err := Cache_entryBody(&c, _p0, _p1)
 	api_end(&c)
@@ -2777,6 +2894,7 @@ _t_caches_Cache_putEntry :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "caches.Cache_putEntry", "cache") }
@@ -2841,6 +2959,7 @@ _t_caches_Cache_deleteEntries :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "caches.Cache_deleteEntries", "cache") }
@@ -2892,6 +3011,8 @@ _t_canvas_HTMLCanvasElement_width :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLCanvasElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLCanvasElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -2912,6 +3033,8 @@ _t_canvas_HTMLCanvasElement_set_width :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLCanvasElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLCanvasElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -2931,6 +3054,8 @@ _t_canvas_HTMLCanvasElement_height :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLCanvasElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLCanvasElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -2951,6 +3076,8 @@ _t_canvas_HTMLCanvasElement_set_height :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLCanvasElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLCanvasElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -2970,8 +3097,10 @@ _t_canvas_HTMLCanvasElement_context2d :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[3]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "canvas.HTMLCanvasElement_context2d", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLCanvasElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLCanvasElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -2997,6 +3126,7 @@ _t_canvas_Canvas_encode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "canvas.Canvas_encode", "type") }
@@ -3006,6 +3136,7 @@ _t_canvas_Canvas_encode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "canvas.Canvas_encode: argument type is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p2 := a[3].f64
 	_r, _err := Canvas_encode(&c, _p0, _p1, _p2)
@@ -3026,6 +3157,8 @@ _t_canvas_CanvasRenderingContext2D_canvas :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3046,6 +3179,8 @@ _t_canvas_OffscreenCanvasRenderingContext2D_canvas :: proc "c" (env: rawptr, cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3066,6 +3201,8 @@ _t_canvas_CanvasSettings_alpha :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3086,6 +3223,8 @@ _t_canvas_CanvasSettings_willReadFrequently :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3106,6 +3245,8 @@ _t_canvas_CanvasState_save :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3124,6 +3265,8 @@ _t_canvas_CanvasState_restore :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3142,6 +3285,8 @@ _t_canvas_CanvasState_reset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3160,6 +3305,8 @@ _t_canvas_CanvasState_isContextLost :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3180,6 +3327,8 @@ _t_canvas_CanvasTransform_scale :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3200,6 +3349,8 @@ _t_canvas_CanvasTransform_rotate :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3219,6 +3370,8 @@ _t_canvas_CanvasTransform_translate :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3239,6 +3392,8 @@ _t_canvas_CanvasTransform_transform :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3263,6 +3418,8 @@ _t_canvas_CanvasTransform_setTransform :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3287,6 +3444,8 @@ _t_canvas_CanvasTransform_resetTransform :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3305,6 +3464,8 @@ _t_canvas_CanvasTransform_matrixElement :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3326,6 +3487,8 @@ _t_canvas_CanvasCompositing_globalAlpha :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3346,6 +3509,8 @@ _t_canvas_CanvasCompositing_set_globalAlpha :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3365,9 +3530,11 @@ _t_canvas_CanvasCompositing_globalCompositeOperation :: proc "c" (env: rawptr, c
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasCompositing_globalCompositeOperation", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3388,6 +3555,7 @@ _t_canvas_CanvasCompositing_set_globalCompositeOperation :: proc "c" (env: rawpt
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasCompositing_set_globalCompositeOperation", "value") }
@@ -3396,6 +3564,7 @@ _t_canvas_CanvasCompositing_set_globalCompositeOperation :: proc "c" (env: rawpt
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasCompositing_set_globalCompositeOperation: argument value is not valid UTF-8") }
 		return wasm.trap_new("canvas.CanvasCompositing_set_globalCompositeOperation: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3414,6 +3583,8 @@ _t_canvas_CanvasImageSmoothing_imageSmoothingEnabled :: proc "c" (env: rawptr, c
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3434,6 +3605,8 @@ _t_canvas_CanvasImageSmoothing_set_imageSmoothingEnabled :: proc "c" (env: rawpt
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3453,9 +3626,11 @@ _t_canvas_CanvasImageSmoothing_imageSmoothingQuality :: proc "c" (env: rawptr, c
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasImageSmoothing_imageSmoothingQuality", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3476,6 +3651,7 @@ _t_canvas_CanvasImageSmoothing_set_imageSmoothingQuality :: proc "c" (env: rawpt
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasImageSmoothing_set_imageSmoothingQuality", "value") }
@@ -3484,6 +3660,7 @@ _t_canvas_CanvasImageSmoothing_set_imageSmoothingQuality :: proc "c" (env: rawpt
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasImageSmoothing_set_imageSmoothingQuality: argument value is not valid UTF-8") }
 		return wasm.trap_new("canvas.CanvasImageSmoothing_set_imageSmoothingQuality: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3502,6 +3679,8 @@ _t_canvas_CanvasStyle_kind :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3523,9 +3702,11 @@ _t_canvas_CanvasStyle_color :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasStyle_color", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3547,6 +3728,8 @@ _t_canvas_CanvasStyle_object :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3568,6 +3751,7 @@ _t_canvas_CanvasStyle_setColor :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "canvas.CanvasStyle_setColor", "color") }
@@ -3576,6 +3760,7 @@ _t_canvas_CanvasStyle_setColor :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasStyle_setColor: argument color is not valid UTF-8") }
 		return wasm.trap_new("canvas.CanvasStyle_setColor: argument color is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3597,6 +3782,8 @@ _t_canvas_CanvasStyle_setObject :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3604,6 +3791,7 @@ _t_canvas_CanvasStyle_setObject :: proc "c" (env: rawptr, caller: wasm.Caller, a
 		return wasm.trap_new("canvas.CanvasStyle_setObject: argument ctx is not a live CanvasRenderingContext2D")
 	}
 	_p1 := a[1].i32 != 0
+	api_route(&c, u64(a[2].i64))
 	_p2 := u64(a[2].i64)
 	CanvasStyle_setObject(&c, _p0, _p1, _p2)
 	api_end(&c)
@@ -3617,6 +3805,8 @@ _t_canvas_CanvasFillStrokeStyles_createLinearGradient :: proc "c" (env: rawptr, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3641,8 +3831,10 @@ _t_canvas_CanvasFillStrokeStyles_createRadialGradient :: proc "c" (env: rawptr, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[7]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "canvas.CanvasFillStrokeStyles_createRadialGradient", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3672,6 +3864,8 @@ _t_canvas_CanvasFillStrokeStyles_createConicGradient :: proc "c" (env: rawptr, c
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3695,6 +3889,7 @@ _t_canvas_Canvas_createPattern :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "canvas.Canvas_createPattern", "repetition") }
@@ -3704,11 +3899,13 @@ _t_canvas_Canvas_createPattern :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	if !wasm.valid_utf8(_p2) {
 		return _fail_status(&c, a, .Type, "canvas.Canvas_createPattern: argument repetition is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "canvas.Canvas_createPattern: argument ctx is not a live CanvasRenderingContext2D")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := u64(a[1].i64)
 	_r, _err := Canvas_createPattern(&c, _p0, _p1, _p2)
 	api_end(&c)
@@ -3728,6 +3925,7 @@ _t_canvas_CanvasGradient_addColorStop :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "canvas.CanvasGradient_addColorStop", "color") }
@@ -3735,6 +3933,7 @@ _t_canvas_CanvasGradient_addColorStop :: proc "c" (env: rawptr, caller: wasm.Cal
 	if !wasm.valid_utf8(_p2) {
 		return _fail_status(&c, a, .Type, "canvas.CanvasGradient_addColorStop: argument color is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasGradient{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasGradient(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3758,6 +3957,8 @@ _t_canvas_CanvasPattern_setTransformMatrix :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasPattern{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasPattern(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3782,6 +3983,8 @@ _t_canvas_CanvasShadowStyles_shadowOffsetX :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3802,6 +4005,8 @@ _t_canvas_CanvasShadowStyles_set_shadowOffsetX :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3821,6 +4026,8 @@ _t_canvas_CanvasShadowStyles_shadowOffsetY :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3841,6 +4048,8 @@ _t_canvas_CanvasShadowStyles_set_shadowOffsetY :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3860,6 +4069,8 @@ _t_canvas_CanvasShadowStyles_shadowBlur :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3880,6 +4091,8 @@ _t_canvas_CanvasShadowStyles_set_shadowBlur :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3899,9 +4112,11 @@ _t_canvas_CanvasShadowStyles_shadowColor :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasShadowStyles_shadowColor", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3922,6 +4137,7 @@ _t_canvas_CanvasShadowStyles_set_shadowColor :: proc "c" (env: rawptr, caller: w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasShadowStyles_set_shadowColor", "value") }
@@ -3930,6 +4146,7 @@ _t_canvas_CanvasShadowStyles_set_shadowColor :: proc "c" (env: rawptr, caller: w
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasShadowStyles_set_shadowColor: argument value is not valid UTF-8") }
 		return wasm.trap_new("canvas.CanvasShadowStyles_set_shadowColor: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3948,9 +4165,11 @@ _t_canvas_CanvasFilters_filter :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasFilters_filter", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3971,6 +4190,7 @@ _t_canvas_CanvasFilters_set_filter :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasFilters_set_filter", "value") }
@@ -3979,6 +4199,7 @@ _t_canvas_CanvasFilters_set_filter :: proc "c" (env: rawptr, caller: wasm.Caller
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasFilters_set_filter: argument value is not valid UTF-8") }
 		return wasm.trap_new("canvas.CanvasFilters_set_filter: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -3997,6 +4218,8 @@ _t_canvas_CanvasRect_clearRect :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4019,6 +4242,8 @@ _t_canvas_CanvasRect_fillRect :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4041,6 +4266,8 @@ _t_canvas_CanvasRect_strokeRect :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4063,6 +4290,8 @@ _t_canvas_CanvasDrawPath_beginPath :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4081,6 +4310,7 @@ _t_canvas_CanvasDrawPath_fill :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "canvas.CanvasDrawPath_fill", "rule") }
@@ -4089,12 +4319,14 @@ _t_canvas_CanvasDrawPath_fill :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasDrawPath_fill: argument rule is not valid UTF-8") }
 		return wasm.trap_new("canvas.CanvasDrawPath_fill: argument rule is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
 		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasDrawPath_fill: argument ctx is not a live CanvasRenderingContext2D") }
 		return wasm.trap_new("canvas.CanvasDrawPath_fill: argument ctx is not a live CanvasRenderingContext2D")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := u64(a[1].i64)
 	CanvasDrawPath_fill(&c, _p0, _p1, _p2)
 	api_end(&c)
@@ -4108,12 +4340,15 @@ _t_canvas_CanvasDrawPath_stroke :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
 		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasDrawPath_stroke: argument ctx is not a live CanvasRenderingContext2D") }
 		return wasm.trap_new("canvas.CanvasDrawPath_stroke: argument ctx is not a live CanvasRenderingContext2D")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := u64(a[1].i64)
 	CanvasDrawPath_stroke(&c, _p0, _p1)
 	api_end(&c)
@@ -4127,6 +4362,7 @@ _t_canvas_CanvasDrawPath_clip :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "canvas.CanvasDrawPath_clip", "rule") }
@@ -4135,12 +4371,14 @@ _t_canvas_CanvasDrawPath_clip :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasDrawPath_clip: argument rule is not valid UTF-8") }
 		return wasm.trap_new("canvas.CanvasDrawPath_clip: argument rule is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
 		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasDrawPath_clip: argument ctx is not a live CanvasRenderingContext2D") }
 		return wasm.trap_new("canvas.CanvasDrawPath_clip: argument ctx is not a live CanvasRenderingContext2D")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := u64(a[1].i64)
 	CanvasDrawPath_clip(&c, _p0, _p1, _p2)
 	api_end(&c)
@@ -4154,6 +4392,7 @@ _t_canvas_CanvasDrawPath_isPointInPath :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n4 := wasm.addr(&f, a[5])
 	_s4, _k4 := wasm.span(&f, wasm.addr(&f, a[4]), _n4)
 	if !_k4 { return wasm.trap_bounds(&f, "canvas.CanvasDrawPath_isPointInPath", "rule") }
@@ -4162,12 +4401,14 @@ _t_canvas_CanvasDrawPath_isPointInPath :: proc "c" (env: rawptr, caller: wasm.Ca
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasDrawPath_isPointInPath: argument rule is not valid UTF-8") }
 		return wasm.trap_new("canvas.CanvasDrawPath_isPointInPath: argument rule is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
 		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasDrawPath_isPointInPath: argument ctx is not a live CanvasRenderingContext2D") }
 		return wasm.trap_new("canvas.CanvasDrawPath_isPointInPath: argument ctx is not a live CanvasRenderingContext2D")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := u64(a[1].i64)
 	_p2 := a[2].f64
 	_p3 := a[3].f64
@@ -4185,12 +4426,15 @@ _t_canvas_CanvasDrawPath_isPointInStroke :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
 		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasDrawPath_isPointInStroke: argument ctx is not a live CanvasRenderingContext2D") }
 		return wasm.trap_new("canvas.CanvasDrawPath_isPointInStroke: argument ctx is not a live CanvasRenderingContext2D")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := u64(a[1].i64)
 	_p2 := a[2].f64
 	_p3 := a[3].f64
@@ -4208,6 +4452,7 @@ _t_canvas_CanvasText_fillText :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasText_fillText", "text") }
@@ -4216,6 +4461,7 @@ _t_canvas_CanvasText_fillText :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasText_fillText: argument text is not valid UTF-8") }
 		return wasm.trap_new("canvas.CanvasText_fillText: argument text is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4238,6 +4484,7 @@ _t_canvas_CanvasText_strokeText :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasText_strokeText", "text") }
@@ -4246,6 +4493,7 @@ _t_canvas_CanvasText_strokeText :: proc "c" (env: rawptr, caller: wasm.Caller, a
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasText_strokeText: argument text is not valid UTF-8") }
 		return wasm.trap_new("canvas.CanvasText_strokeText: argument text is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4268,6 +4516,7 @@ _t_canvas_CanvasText_measureText :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasText_measureText", "text") }
@@ -4276,6 +4525,7 @@ _t_canvas_CanvasText_measureText :: proc "c" (env: rawptr, caller: wasm.Caller, 
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasText_measureText: argument text is not valid UTF-8") }
 		return wasm.trap_new("canvas.CanvasText_measureText: argument text is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4296,6 +4546,8 @@ _t_canvas_TextMetrics_width :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextMetrics{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextMetrics(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4316,6 +4568,8 @@ _t_canvas_TextMetrics_actualBoundingBoxLeft :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextMetrics{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextMetrics(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4336,6 +4590,8 @@ _t_canvas_TextMetrics_actualBoundingBoxRight :: proc "c" (env: rawptr, caller: w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextMetrics{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextMetrics(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4356,6 +4612,8 @@ _t_canvas_TextMetrics_fontBoundingBoxAscent :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextMetrics{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextMetrics(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4376,6 +4634,8 @@ _t_canvas_TextMetrics_fontBoundingBoxDescent :: proc "c" (env: rawptr, caller: w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextMetrics{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextMetrics(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4396,6 +4656,8 @@ _t_canvas_TextMetrics_actualBoundingBoxAscent :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextMetrics{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextMetrics(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4416,6 +4678,8 @@ _t_canvas_TextMetrics_actualBoundingBoxDescent :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextMetrics{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextMetrics(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4436,6 +4700,8 @@ _t_canvas_TextMetrics_emHeightAscent :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextMetrics{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextMetrics(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4456,6 +4722,8 @@ _t_canvas_TextMetrics_emHeightDescent :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextMetrics{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextMetrics(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4476,6 +4744,8 @@ _t_canvas_TextMetrics_hangingBaseline :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextMetrics{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextMetrics(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4496,6 +4766,8 @@ _t_canvas_TextMetrics_alphabeticBaseline :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextMetrics{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextMetrics(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4516,6 +4788,8 @@ _t_canvas_TextMetrics_ideographicBaseline :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextMetrics{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextMetrics(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4536,11 +4810,14 @@ _t_canvas_CanvasDrawImage_drawImage :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "canvas.CanvasDrawImage_drawImage: argument ctx is not a live CanvasRenderingContext2D")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := u64(a[1].i64)
 	_p2 := a[2].i32
 	_p3 := a[3].f64
@@ -4568,6 +4845,7 @@ _t_canvas_CanvasImageData_maxBytes :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := CanvasImageData_maxBytes(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -4582,10 +4860,12 @@ _t_canvas_CanvasImageData_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n5 := wasm.addr(&f, a[6])
 	_s5, _k5 := wasm.span(&f, wasm.addr(&f, a[5]), _n5)
 	if !_k5 { return wasm.trap_bounds(&f, "canvas.CanvasImageData_get", "data") }
 	_p5 := _s5[:_n5]
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4612,10 +4892,12 @@ _t_canvas_CanvasImageData_put :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasImageData_put", "data") }
 	_p1 := _s1[:_n1]
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4642,6 +4924,8 @@ _t_canvas_CanvasPathDrawingStyles_lineWidth :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4662,6 +4946,8 @@ _t_canvas_CanvasPathDrawingStyles_set_lineWidth :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4681,9 +4967,11 @@ _t_canvas_CanvasPathDrawingStyles_lineCap :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasPathDrawingStyles_lineCap", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4704,6 +4992,7 @@ _t_canvas_CanvasPathDrawingStyles_set_lineCap :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasPathDrawingStyles_set_lineCap", "value") }
@@ -4712,6 +5001,7 @@ _t_canvas_CanvasPathDrawingStyles_set_lineCap :: proc "c" (env: rawptr, caller: 
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasPathDrawingStyles_set_lineCap: argument value is not valid UTF-8") }
 		return wasm.trap_new("canvas.CanvasPathDrawingStyles_set_lineCap: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4730,9 +5020,11 @@ _t_canvas_CanvasPathDrawingStyles_lineJoin :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasPathDrawingStyles_lineJoin", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4753,6 +5045,7 @@ _t_canvas_CanvasPathDrawingStyles_set_lineJoin :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasPathDrawingStyles_set_lineJoin", "value") }
@@ -4761,6 +5054,7 @@ _t_canvas_CanvasPathDrawingStyles_set_lineJoin :: proc "c" (env: rawptr, caller:
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasPathDrawingStyles_set_lineJoin: argument value is not valid UTF-8") }
 		return wasm.trap_new("canvas.CanvasPathDrawingStyles_set_lineJoin: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4779,6 +5073,8 @@ _t_canvas_CanvasPathDrawingStyles_miterLimit :: proc "c" (env: rawptr, caller: w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4799,6 +5095,8 @@ _t_canvas_CanvasPathDrawingStyles_set_miterLimit :: proc "c" (env: rawptr, calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4818,6 +5116,8 @@ _t_canvas_CanvasPathDrawingStyles_lineDashOffset :: proc "c" (env: rawptr, calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4838,6 +5138,8 @@ _t_canvas_CanvasPathDrawingStyles_set_lineDashOffset :: proc "c" (env: rawptr, c
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4857,10 +5159,12 @@ _t_canvas_CanvasPathDrawingStyles_setLineDash :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1, 8)
 	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasPathDrawingStyles_setLineDash", "segments") }
 	_p1 := ([^]f64)(_s1)[:_n1]
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4879,6 +5183,8 @@ _t_canvas_CanvasPathDrawingStyles_lineDashCount :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4899,6 +5205,8 @@ _t_canvas_CanvasPathDrawingStyles_lineDashAt :: proc "c" (env: rawptr, caller: w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4920,9 +5228,11 @@ _t_canvas_CanvasTextDrawingStyles_lang :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_lang", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4943,6 +5253,7 @@ _t_canvas_CanvasTextDrawingStyles_set_lang :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_set_lang", "value") }
@@ -4951,6 +5262,7 @@ _t_canvas_CanvasTextDrawingStyles_set_lang :: proc "c" (env: rawptr, caller: was
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasTextDrawingStyles_set_lang: argument value is not valid UTF-8") }
 		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_lang: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4969,9 +5281,11 @@ _t_canvas_CanvasTextDrawingStyles_font :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_font", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -4992,6 +5306,7 @@ _t_canvas_CanvasTextDrawingStyles_set_font :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_set_font", "value") }
@@ -5000,6 +5315,7 @@ _t_canvas_CanvasTextDrawingStyles_set_font :: proc "c" (env: rawptr, caller: was
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasTextDrawingStyles_set_font: argument value is not valid UTF-8") }
 		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_font: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5018,9 +5334,11 @@ _t_canvas_CanvasTextDrawingStyles_textAlign :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_textAlign", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5041,6 +5359,7 @@ _t_canvas_CanvasTextDrawingStyles_set_textAlign :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_set_textAlign", "value") }
@@ -5049,6 +5368,7 @@ _t_canvas_CanvasTextDrawingStyles_set_textAlign :: proc "c" (env: rawptr, caller
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasTextDrawingStyles_set_textAlign: argument value is not valid UTF-8") }
 		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_textAlign: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5067,9 +5387,11 @@ _t_canvas_CanvasTextDrawingStyles_textBaseline :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_textBaseline", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5090,6 +5412,7 @@ _t_canvas_CanvasTextDrawingStyles_set_textBaseline :: proc "c" (env: rawptr, cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_set_textBaseline", "value") }
@@ -5098,6 +5421,7 @@ _t_canvas_CanvasTextDrawingStyles_set_textBaseline :: proc "c" (env: rawptr, cal
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasTextDrawingStyles_set_textBaseline: argument value is not valid UTF-8") }
 		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_textBaseline: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5116,9 +5440,11 @@ _t_canvas_CanvasTextDrawingStyles_direction :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_direction", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5139,6 +5465,7 @@ _t_canvas_CanvasTextDrawingStyles_set_direction :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_set_direction", "value") }
@@ -5147,6 +5474,7 @@ _t_canvas_CanvasTextDrawingStyles_set_direction :: proc "c" (env: rawptr, caller
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasTextDrawingStyles_set_direction: argument value is not valid UTF-8") }
 		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_direction: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5165,9 +5493,11 @@ _t_canvas_CanvasTextDrawingStyles_letterSpacing :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_letterSpacing", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5188,6 +5518,7 @@ _t_canvas_CanvasTextDrawingStyles_set_letterSpacing :: proc "c" (env: rawptr, ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_set_letterSpacing", "value") }
@@ -5196,6 +5527,7 @@ _t_canvas_CanvasTextDrawingStyles_set_letterSpacing :: proc "c" (env: rawptr, ca
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasTextDrawingStyles_set_letterSpacing: argument value is not valid UTF-8") }
 		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_letterSpacing: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5214,9 +5546,11 @@ _t_canvas_CanvasTextDrawingStyles_wordSpacing :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_wordSpacing", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5237,6 +5571,7 @@ _t_canvas_CanvasTextDrawingStyles_set_wordSpacing :: proc "c" (env: rawptr, call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_set_wordSpacing", "value") }
@@ -5245,6 +5580,7 @@ _t_canvas_CanvasTextDrawingStyles_set_wordSpacing :: proc "c" (env: rawptr, call
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasTextDrawingStyles_set_wordSpacing: argument value is not valid UTF-8") }
 		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_wordSpacing: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5263,9 +5599,11 @@ _t_canvas_CanvasTextDrawingStyles_fontKerning :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_fontKerning", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5286,6 +5624,7 @@ _t_canvas_CanvasTextDrawingStyles_set_fontKerning :: proc "c" (env: rawptr, call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_set_fontKerning", "value") }
@@ -5294,6 +5633,7 @@ _t_canvas_CanvasTextDrawingStyles_set_fontKerning :: proc "c" (env: rawptr, call
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasTextDrawingStyles_set_fontKerning: argument value is not valid UTF-8") }
 		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_fontKerning: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5312,9 +5652,11 @@ _t_canvas_CanvasTextDrawingStyles_fontStretch :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_fontStretch", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5335,6 +5677,7 @@ _t_canvas_CanvasTextDrawingStyles_set_fontStretch :: proc "c" (env: rawptr, call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_set_fontStretch", "value") }
@@ -5343,6 +5686,7 @@ _t_canvas_CanvasTextDrawingStyles_set_fontStretch :: proc "c" (env: rawptr, call
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasTextDrawingStyles_set_fontStretch: argument value is not valid UTF-8") }
 		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_fontStretch: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5361,9 +5705,11 @@ _t_canvas_CanvasTextDrawingStyles_fontVariantCaps :: proc "c" (env: rawptr, call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_fontVariantCaps", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5384,6 +5730,7 @@ _t_canvas_CanvasTextDrawingStyles_set_fontVariantCaps :: proc "c" (env: rawptr, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_set_fontVariantCaps", "value") }
@@ -5392,6 +5739,7 @@ _t_canvas_CanvasTextDrawingStyles_set_fontVariantCaps :: proc "c" (env: rawptr, 
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasTextDrawingStyles_set_fontVariantCaps: argument value is not valid UTF-8") }
 		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_fontVariantCaps: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5410,9 +5758,11 @@ _t_canvas_CanvasTextDrawingStyles_textRendering :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_textRendering", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5433,6 +5783,7 @@ _t_canvas_CanvasTextDrawingStyles_set_textRendering :: proc "c" (env: rawptr, ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_set_textRendering", "value") }
@@ -5441,6 +5792,7 @@ _t_canvas_CanvasTextDrawingStyles_set_textRendering :: proc "c" (env: rawptr, ca
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasTextDrawingStyles_set_textRendering: argument value is not valid UTF-8") }
 		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_textRendering: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5459,6 +5811,8 @@ _t_canvas_CanvasPath_closePath :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasPathTarget{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasPathTarget(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5477,6 +5831,8 @@ _t_canvas_CanvasPath_moveTo :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasPathTarget{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasPathTarget(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5497,6 +5853,8 @@ _t_canvas_CanvasPath_lineTo :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasPathTarget{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasPathTarget(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5517,6 +5875,8 @@ _t_canvas_CanvasPath_quadraticCurveTo :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasPathTarget{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasPathTarget(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5539,6 +5899,8 @@ _t_canvas_CanvasPath_bezierCurveTo :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasPathTarget{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasPathTarget(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5563,6 +5925,8 @@ _t_canvas_CanvasPath_arcTo :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasPathTarget{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasPathTarget(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5590,6 +5954,8 @@ _t_canvas_CanvasPath_rect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasPathTarget{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasPathTarget(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5612,10 +5978,12 @@ _t_canvas_CanvasPath_roundRect :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n5 := wasm.addr(&f, a[6])
 	_s5, _k5 := wasm.span(&f, wasm.addr(&f, a[5]), _n5, 8)
 	if !_k5 { return wasm.trap_bounds(&f, "canvas.CanvasPath_roundRect", "radii") }
 	_p5 := ([^]f64)(_s5)[:_n5]
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasPathTarget{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasPathTarget(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5642,6 +6010,8 @@ _t_canvas_CanvasPath_arc :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasPathTarget{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasPathTarget(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5670,6 +6040,8 @@ _t_canvas_CanvasPath_ellipse :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CanvasPathTarget{handle = u64(a[0].i64)}
 	_p0.data = lookup_CanvasPathTarget(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5700,6 +6072,7 @@ _t_canvas_Path2D_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "canvas.Path2D_create", "svg") }
@@ -5708,6 +6081,7 @@ _t_canvas_Path2D_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.Path2D_create: argument svg is not valid UTF-8") }
 		return wasm.trap_new("canvas.Path2D_create: argument svg is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := Path2D_create(&c, _p0, _p1)
 	api_end(&c)
@@ -5723,12 +6097,15 @@ _t_canvas_Path2D_addPath :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Path2D{handle = u64(a[0].i64)}
 	_p0.data = lookup_Path2D(&c, _p0.handle)
 	if _p0.data == nil {
 		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.Path2D_addPath: argument target is not a live Path2D") }
 		return wasm.trap_new("canvas.Path2D_addPath: argument target is not a live Path2D")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_Path2D{handle = u64(a[1].i64)}
 	_p1.data = lookup_Path2D(&c, _p1.handle)
 	if _p1.data == nil {
@@ -5753,9 +6130,12 @@ _t_canvas_OffscreenCanvas_create :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "canvas.OffscreenCanvas_create", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
+	api_route(&c, u64(a[1].i64))
 	_p1 := u64(a[1].i64)
 	_r, _err := OffscreenCanvas_create(&c, _p0, _p1)
 	api_end(&c)
@@ -5775,6 +6155,8 @@ _t_canvas_OffscreenCanvas_width :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_OffscreenCanvas{handle = u64(a[0].i64)}
 	_p0.data = lookup_OffscreenCanvas(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5795,6 +6177,8 @@ _t_canvas_OffscreenCanvas_height :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_OffscreenCanvas{handle = u64(a[0].i64)}
 	_p0.data = lookup_OffscreenCanvas(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5815,11 +6199,14 @@ _t_canvas_OffscreenCanvas_set_width :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_OffscreenCanvas{handle = u64(a[0].i64)}
 	_p0.data = lookup_OffscreenCanvas(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "canvas.OffscreenCanvas_set_width: argument canvas is not a live OffscreenCanvas")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := u64(a[1].i64)
 	_err := OffscreenCanvas_set_width(&c, _p0, _p1)
 	api_end(&c)
@@ -5838,11 +6225,14 @@ _t_canvas_OffscreenCanvas_set_height :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_OffscreenCanvas{handle = u64(a[0].i64)}
 	_p0.data = lookup_OffscreenCanvas(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "canvas.OffscreenCanvas_set_height: argument canvas is not a live OffscreenCanvas")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := u64(a[1].i64)
 	_err := OffscreenCanvas_set_height(&c, _p0, _p1)
 	api_end(&c)
@@ -5861,8 +6251,10 @@ _t_canvas_OffscreenCanvas_context2d :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[3]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "canvas.OffscreenCanvas_context2d", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_OffscreenCanvas{handle = u64(a[0].i64)}
 	_p0.data = lookup_OffscreenCanvas(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5888,8 +6280,10 @@ _t_canvas_OffscreenCanvas_transferToImageBitmap :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "canvas.OffscreenCanvas_transferToImageBitmap", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_OffscreenCanvas{handle = u64(a[0].i64)}
 	_p0.data = lookup_OffscreenCanvas(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5913,6 +6307,8 @@ _t_canvas_ImageBitmap_width :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_ImageBitmap{handle = u64(a[0].i64)}
 	_p0.data = lookup_ImageBitmap(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5933,6 +6329,8 @@ _t_canvas_ImageBitmap_height :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_ImageBitmap{handle = u64(a[0].i64)}
 	_p0.data = lookup_ImageBitmap(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5953,6 +6351,8 @@ _t_canvas_ImageBitmap_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_ImageBitmap{handle = u64(a[0].i64)}
 	_p0.data = lookup_ImageBitmap(&c, _p0.handle)
 	if _p0.data == nil {
@@ -5971,8 +6371,10 @@ _t_canvas_Canvas_createBitmap :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[12]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "canvas.Canvas_createBitmap", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
 	_p2 := a[2].f64
@@ -6003,6 +6405,7 @@ _t_canvas_Canvas_bitmapFromPixels :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "canvas.Canvas_bitmapFromPixels", "data") }
@@ -6035,8 +6438,10 @@ _t_canvas_HTMLCanvasElement_bitmapRenderer :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "canvas.HTMLCanvasElement_bitmapRenderer", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLCanvasElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLCanvasElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -6061,8 +6466,10 @@ _t_canvas_OffscreenCanvas_bitmapRenderer :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "canvas.OffscreenCanvas_bitmapRenderer", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_OffscreenCanvas{handle = u64(a[0].i64)}
 	_p0.data = lookup_OffscreenCanvas(&c, _p0.handle)
 	if _p0.data == nil {
@@ -6087,6 +6494,8 @@ _t_canvas_ImageBitmapRenderingContext_canvas :: proc "c" (env: rawptr, caller: w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_ImageBitmapRenderingContext{handle = u64(a[0].i64)}
 	_p0.data = lookup_ImageBitmapRenderingContext(&c, _p0.handle)
 	if _p0.data == nil {
@@ -6107,11 +6516,14 @@ _t_canvas_ImageBitmapRenderingContext_transferFromImageBitmap :: proc "c" (env: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_ImageBitmapRenderingContext{handle = u64(a[0].i64)}
 	_p0.data = lookup_ImageBitmapRenderingContext(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "canvas.ImageBitmapRenderingContext_transferFromImageBitmap: argument ctx is not a live ImageBitmapRenderingContext")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := u64(a[1].i64)
 	_p2 := a[2].i32 != 0
 	_err := ImageBitmapRenderingContext_transferFromImageBitmap(&c, _p0, _p1, _p2)
@@ -6131,6 +6543,7 @@ _t_compression_Compression_create :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "compression.Compression_create", "result pointer") }
 	_e0 := i32(a[0].i32)
@@ -6157,6 +6570,7 @@ _t_compression_Compression_push :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "compression.Compression_push", "input") }
@@ -6164,6 +6578,7 @@ _t_compression_Compression_push :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "compression.Compression_push", "result buffer") }
 	_p1 := _s1[:_n1]
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Compressor{handle = u64(a[0].i64)}
 	_p0.data = lookup_Compressor(&c, _p0.handle)
 	if _p0.data == nil {
@@ -6186,9 +6601,11 @@ _t_compression_Compression_finish :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "compression.Compression_finish", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Compressor{handle = u64(a[0].i64)}
 	_p0.data = lookup_Compressor(&c, _p0.handle)
 	if _p0.data == nil {
@@ -6211,9 +6628,11 @@ _t_compression_Compression_output :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "compression.Compression_output", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Compressor{handle = u64(a[0].i64)}
 	_p0.data = lookup_Compressor(&c, _p0.handle)
 	if _p0.data == nil {
@@ -6234,6 +6653,7 @@ _t_console_console_log :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "console.console_log", "message") }
@@ -6250,6 +6670,7 @@ _t_console_console_warn :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "console.console_warn", "message") }
@@ -6266,6 +6687,7 @@ _t_console_console_error :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "console.console_error", "message") }
@@ -6282,6 +6704,7 @@ _t_credentials_CredentialsContainer_create :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "credentials.CredentialsContainer_create", "options") }
@@ -6296,6 +6719,7 @@ _t_credentials_CredentialsContainer_create :: proc "c" (env: rawptr, caller: was
 		return wasm.trap_new("credentials.CredentialsContainer_create: argument mediation is not a CredentialMediation")
 	}
 	_p1 := Api_CredentialMediation(_e1)
+	api_route(&c, u64(a[3].i64))
 	_p2 := Api_AbortSignal{handle = u64(a[3].i64)}
 	if _p2.handle != 0 { _p2.data = lookup_AbortSignal(&c, _p2.handle) }
 	if _p2.handle != 0 && _p2.data == nil {
@@ -6316,6 +6740,7 @@ _t_credentials_CredentialsContainer_get :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "credentials.CredentialsContainer_get", "options") }
@@ -6330,6 +6755,7 @@ _t_credentials_CredentialsContainer_get :: proc "c" (env: rawptr, caller: wasm.C
 		return wasm.trap_new("credentials.CredentialsContainer_get: argument mediation is not a CredentialMediation")
 	}
 	_p1 := Api_CredentialMediation(_e1)
+	api_route(&c, u64(a[3].i64))
 	_p2 := Api_AbortSignal{handle = u64(a[3].i64)}
 	if _p2.handle != 0 { _p2.data = lookup_AbortSignal(&c, _p2.handle) }
 	if _p2.handle != 0 && _p2.data == nil {
@@ -6350,6 +6776,7 @@ _t_credentials_CredentialsContainer_preventSilentAccess :: proc "c" (env: rawptr
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := CredentialsContainer_preventSilentAccess(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -6364,6 +6791,7 @@ _t_credentials_PublicKeyCredential_enabled :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := PublicKeyCredential_enabled(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -6378,6 +6806,7 @@ _t_credentials_PublicKeyCredential_isUserVerifyingPlatformAuthenticatorAvailable
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := PublicKeyCredential_isUserVerifyingPlatformAuthenticatorAvailable(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -6392,6 +6821,7 @@ _t_credentials_PublicKeyCredential_isConditionalMediationAvailable :: proc "c" (
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := PublicKeyCredential_isConditionalMediationAvailable(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -6406,6 +6836,7 @@ _t_credentials_PublicKeyCredential_getClientCapabilities :: proc "c" (env: rawpt
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := PublicKeyCredential_getClientCapabilities(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -6420,6 +6851,7 @@ _t_credentials_PublicKeyCredential_checkRpId :: proc "c" (env: rawptr, caller: w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "credentials.PublicKeyCredential_checkRpId", "rp_id") }
@@ -6444,6 +6876,8 @@ _t_credentials_PublicKeyCredential_isAssertion :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_PublicKeyCredential{handle = u64(a[0].i64)}
 	_p0.data = lookup_PublicKeyCredential(&c, _p0.handle)
 	if _p0.data == nil {
@@ -6464,9 +6898,11 @@ _t_credentials_PublicKeyCredential_id :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "credentials.PublicKeyCredential_id", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_PublicKeyCredential{handle = u64(a[0].i64)}
 	_p0.data = lookup_PublicKeyCredential(&c, _p0.handle)
 	if _p0.data == nil {
@@ -6487,8 +6923,10 @@ _t_credentials_PublicKeyCredential_bytes :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "credentials.PublicKeyCredential_bytes", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_PublicKeyCredential{handle = u64(a[0].i64)}
 	_p0.data = lookup_PublicKeyCredential(&c, _p0.handle)
 	if _p0.data == nil {
@@ -6517,9 +6955,11 @@ _t_credentials_PublicKeyCredential_authenticatorAttachment :: proc "c" (env: raw
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "credentials.PublicKeyCredential_authenticatorAttachment", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_PublicKeyCredential{handle = u64(a[0].i64)}
 	_p0.data = lookup_PublicKeyCredential(&c, _p0.handle)
 	if _p0.data == nil {
@@ -6542,9 +6982,11 @@ _t_credentials_PublicKeyCredential_transports :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "credentials.PublicKeyCredential_transports", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_PublicKeyCredential{handle = u64(a[0].i64)}
 	_p0.data = lookup_PublicKeyCredential(&c, _p0.handle)
 	if _p0.data == nil {
@@ -6565,6 +7007,8 @@ _t_credentials_PublicKeyCredential_publicKeyAlgorithm :: proc "c" (env: rawptr, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_PublicKeyCredential{handle = u64(a[0].i64)}
 	_p0.data = lookup_PublicKeyCredential(&c, _p0.handle)
 	if _p0.data == nil {
@@ -6585,9 +7029,11 @@ _t_credentials_PublicKeyCredential_clientExtensionResults :: proc "c" (env: rawp
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "credentials.PublicKeyCredential_clientExtensionResults", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_PublicKeyCredential{handle = u64(a[0].i64)}
 	_p0.data = lookup_PublicKeyCredential(&c, _p0.handle)
 	if _p0.data == nil {
@@ -6608,9 +7054,11 @@ _t_credentials_PublicKeyCredential_toJSON :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "credentials.PublicKeyCredential_toJSON", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_PublicKeyCredential{handle = u64(a[0].i64)}
 	_p0.data = lookup_PublicKeyCredential(&c, _p0.handle)
 	if _p0.data == nil {
@@ -6631,6 +7079,7 @@ _t_crypto_Crypto_getRandomValues :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "crypto.Crypto_getRandomValues", "destination") }
@@ -6652,6 +7101,7 @@ _t_crypto_Crypto_randomUUID :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "crypto.Crypto_randomUUID", "result buffer") }
@@ -6672,6 +7122,7 @@ _t_crypto_SubtleCrypto_digest :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "crypto.SubtleCrypto_digest", "algorithm") }
@@ -6698,6 +7149,7 @@ _t_crypto_SubtleCrypto_digestBuffer :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "crypto.SubtleCrypto_digestBuffer", "algorithm") }
@@ -6706,6 +7158,7 @@ _t_crypto_SubtleCrypto_digestBuffer :: proc "c" (env: rawptr, caller: wasm.Calle
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "crypto.SubtleCrypto_digestBuffer: argument algorithm is not valid UTF-8") }
 		return wasm.trap_new("crypto.SubtleCrypto_digestBuffer: argument algorithm is not valid UTF-8")
 	}
+	api_route(&c, u64(a[2].i64))
 	_p1 := Api_Buffer{handle = u64(a[2].i64)}
 	_p1.data = lookup_Buffer(&c, _p1.handle)
 	if _p1.data == nil {
@@ -6726,6 +7179,7 @@ _t_crypto_CryptoKey_importRaw :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "crypto.CryptoKey_importRaw", "kind") }
@@ -6758,6 +7212,7 @@ _t_crypto_CryptoKey_importDer :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "crypto.CryptoKey_importDer", "kind") }
@@ -6786,6 +7241,7 @@ _t_crypto_CryptoKey_importRsa :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "crypto.CryptoKey_importRsa", "n") }
@@ -6833,6 +7289,7 @@ _t_crypto_CryptoKey_generate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "crypto.CryptoKey_generate", "kind") }
@@ -6857,6 +7314,8 @@ _t_crypto_CryptoKey_publicOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CryptoKeyData{handle = u64(a[0].i64)}
 	_p0.data = lookup_CryptoKeyData(&c, _p0.handle)
 	if _p0.data == nil {
@@ -6877,6 +7336,7 @@ _t_crypto_CryptoKey_export :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "crypto.CryptoKey_export", "part") }
@@ -6887,6 +7347,7 @@ _t_crypto_CryptoKey_export :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	if !wasm.valid_utf8(_p1) {
 		return _fail_size(&c, &f, a, .Type, "crypto.CryptoKey_export: argument part is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CryptoKeyData{handle = u64(a[0].i64)}
 	_p0.data = lookup_CryptoKeyData(&c, _p0.handle)
 	if _p0.data == nil {
@@ -6909,6 +7370,8 @@ _t_crypto_CryptoKey_modulusBits :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CryptoKeyData{handle = u64(a[0].i64)}
 	_p0.data = lookup_CryptoKeyData(&c, _p0.handle)
 	if _p0.data == nil {
@@ -6929,9 +7392,11 @@ _t_crypto_CryptoKey_serialize :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "crypto.CryptoKey_serialize", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CryptoKeyData{handle = u64(a[0].i64)}
 	_p0.data = lookup_CryptoKeyData(&c, _p0.handle)
 	if _p0.data == nil {
@@ -6952,6 +7417,7 @@ _t_crypto_CryptoKey_deserialize :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "crypto.CryptoKey_deserialize", "data") }
@@ -6970,6 +7436,7 @@ _t_crypto_SubtleCrypto_aes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "crypto.SubtleCrypto_aes", "mode") }
@@ -6991,6 +7458,7 @@ _t_crypto_SubtleCrypto_aes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	_p4 := _s4[:_n4]
 	_p6 := _s6[:_n6]
 	_p1 := a[2].i32 != 0
+	api_route(&c, u64(a[3].i64))
 	_p2 := Api_CryptoKeyData{handle = u64(a[3].i64)}
 	_p2.data = lookup_CryptoKeyData(&c, _p2.handle)
 	if _p2.data == nil {
@@ -7012,11 +7480,13 @@ _t_crypto_SubtleCrypto_aesKw :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "crypto.SubtleCrypto_aesKw", "data") }
 	_p2 := _s2[:_n2]
 	_p0 := a[0].i32 != 0
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_CryptoKeyData{handle = u64(a[1].i64)}
 	_p1.data = lookup_CryptoKeyData(&c, _p1.handle)
 	if _p1.data == nil {
@@ -7037,6 +7507,7 @@ _t_crypto_SubtleCrypto_rsaOaep :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "crypto.SubtleCrypto_rsaOaep", "hash") }
@@ -7054,6 +7525,7 @@ _t_crypto_SubtleCrypto_rsaOaep :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	_p3 := _s3[:_n3]
 	_p4 := _s4[:_n4]
 	_p0 := a[0].i32 != 0
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_CryptoKeyData{handle = u64(a[1].i64)}
 	_p1.data = lookup_CryptoKeyData(&c, _p1.handle)
 	if _p1.data == nil {
@@ -7074,6 +7546,7 @@ _t_crypto_SubtleCrypto_sign :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "crypto.SubtleCrypto_sign", "scheme") }
@@ -7094,6 +7567,7 @@ _t_crypto_SubtleCrypto_sign :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		return wasm.trap_new("crypto.SubtleCrypto_sign: argument hash is not valid UTF-8")
 	}
 	_p4 := _s4[:_n4]
+	api_route(&c, u64(a[2].i64))
 	_p1 := Api_CryptoKeyData{handle = u64(a[2].i64)}
 	_p1.data = lookup_CryptoKeyData(&c, _p1.handle)
 	if _p1.data == nil {
@@ -7115,6 +7589,7 @@ _t_crypto_SubtleCrypto_verify :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "crypto.SubtleCrypto_verify", "scheme") }
@@ -7139,6 +7614,7 @@ _t_crypto_SubtleCrypto_verify :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	}
 	_p4 := _s4[:_n4]
 	_p5 := _s5[:_n5]
+	api_route(&c, u64(a[2].i64))
 	_p1 := Api_CryptoKeyData{handle = u64(a[2].i64)}
 	_p1.data = lookup_CryptoKeyData(&c, _p1.handle)
 	if _p1.data == nil {
@@ -7160,12 +7636,15 @@ _t_crypto_SubtleCrypto_agree :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CryptoKeyData{handle = u64(a[0].i64)}
 	_p0.data = lookup_CryptoKeyData(&c, _p0.handle)
 	if _p0.data == nil {
 		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "crypto.SubtleCrypto_agree: argument key is not a live CryptoKeyData") }
 		return wasm.trap_new("crypto.SubtleCrypto_agree: argument key is not a live CryptoKeyData")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_CryptoKeyData{handle = u64(a[1].i64)}
 	_p1.data = lookup_CryptoKeyData(&c, _p1.handle)
 	if _p1.data == nil {
@@ -7186,6 +7665,7 @@ _t_crypto_SubtleCrypto_derive :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "crypto.SubtleCrypto_derive", "hash") }
@@ -7202,6 +7682,7 @@ _t_crypto_SubtleCrypto_derive :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	}
 	_p2 := _s2[:_n2]
 	_p3 := _s3[:_n3]
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_CryptoKeyData{handle = u64(a[0].i64)}
 	_p0.data = lookup_CryptoKeyData(&c, _p0.handle)
 	if _p0.data == nil {
@@ -7224,6 +7705,7 @@ _t_document_Document_URL :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "document.Document_URL", "result buffer") }
@@ -7244,6 +7726,7 @@ _t_document_Window_origin :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "document.Window_origin", "result buffer") }
@@ -7261,6 +7744,7 @@ _t_document_Window_isSecureContext :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Window_isSecureContext(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -7275,6 +7759,7 @@ _t_document_Document_cookie_get :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "document.Document_cookie_get", "result buffer") }
@@ -7295,6 +7780,7 @@ _t_document_Document_cookie_set :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "document.Document_cookie_set", "cookie") }
@@ -7322,6 +7808,7 @@ _t_dom_Document_documentElement :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Document_documentElement(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -7336,6 +7823,7 @@ _t_dom_Document_head :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Document_head(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -7350,6 +7838,7 @@ _t_dom_Document_body :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Document_body(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -7364,6 +7853,7 @@ _t_dom_Document_createElement :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "dom.Document_createElement", "tag") }
@@ -7391,6 +7881,7 @@ _t_dom_Document_createTextNode :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "dom.Document_createTextNode", "text") }
@@ -7418,6 +7909,7 @@ _t_dom_Document_getElementById :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "dom.Document_getElementById", "id") }
@@ -7440,11 +7932,14 @@ _t_dom_Node_appendChild :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_appendChild: argument parent is not a live Node")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_Node{handle = u64(a[1].i64)}
 	_p1.data = lookup_Node(&c, _p1.handle)
 	if _p1.data == nil {
@@ -7467,16 +7962,20 @@ _t_dom_Node_insertBefore :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_insertBefore: argument parent is not a live Node")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_Node{handle = u64(a[1].i64)}
 	_p1.data = lookup_Node(&c, _p1.handle)
 	if _p1.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_insertBefore: argument child is not a live Node")
 	}
+	api_route(&c, u64(a[2].i64))
 	_p2 := Api_Node{handle = u64(a[2].i64)}
 	if _p2.handle != 0 { _p2.data = lookup_Node(&c, _p2.handle) }
 	if _p2.handle != 0 && _p2.data == nil {
@@ -7499,11 +7998,14 @@ _t_dom_Node_removeChild :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_removeChild: argument parent is not a live Node")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_Node{handle = u64(a[1].i64)}
 	_p1.data = lookup_Node(&c, _p1.handle)
 	if _p1.data == nil {
@@ -7526,6 +8028,8 @@ _t_dom_Node_release :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -7548,6 +8052,8 @@ _t_dom_Node_parentNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -7568,6 +8074,8 @@ _t_dom_Node_firstChild :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -7588,6 +8096,8 @@ _t_dom_Node_lastChild :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -7608,6 +8118,8 @@ _t_dom_Node_previousSibling :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -7628,6 +8140,8 @@ _t_dom_Node_nextSibling :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -7648,6 +8162,8 @@ _t_dom_Node_nodeType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -7668,6 +8184,7 @@ _t_dom_Node_setTextContent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Node_setTextContent", "text") }
@@ -7675,6 +8192,7 @@ _t_dom_Node_setTextContent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.Node_setTextContent: argument text is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -7697,9 +8215,11 @@ _t_dom_Node_getTextContent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Node_getTextContent", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -7720,9 +8240,11 @@ _t_dom_Element_tagName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Element_tagName", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -7743,6 +8265,7 @@ _t_dom_Element_setAttribute :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_setAttribute", "name") }
@@ -7757,6 +8280,7 @@ _t_dom_Element_setAttribute :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	if !wasm.valid_utf8(_p2) {
 		return _fail_status(&c, a, .Type, "dom.Element_setAttribute: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -7779,6 +8303,7 @@ _t_dom_Element_getAttribute :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_getAttribute", "name") }
@@ -7789,6 +8314,7 @@ _t_dom_Element_getAttribute :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	if !wasm.valid_utf8(_p1) {
 		return _fail_size(&c, &f, a, .Type, "dom.Element_getAttribute: argument name is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -7811,6 +8337,7 @@ _t_dom_Element_removeAttribute :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_removeAttribute", "name") }
@@ -7818,6 +8345,7 @@ _t_dom_Element_removeAttribute :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.Element_removeAttribute: argument name is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -7840,6 +8368,7 @@ _t_encoding_TextEncoder_encode :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "encoding.TextEncoder_encode", "text") }
@@ -7864,6 +8393,7 @@ _t_encoding_TextEncoder_encodeInto :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "encoding.TextEncoder_encodeInto", "source") }
@@ -7888,6 +8418,7 @@ _t_encoding_TextDecoder_create :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "encoding.TextDecoder_create", "label") }
@@ -7920,9 +8451,11 @@ _t_encoding_TextDecoder_encoding :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "encoding.TextDecoder_encoding", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextDecoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextDecoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -7943,6 +8476,8 @@ _t_encoding_TextDecoder_flags :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextDecoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextDecoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -7963,6 +8498,7 @@ _t_encoding_TextDecoder_decode :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "encoding.TextDecoder_decode", "input") }
@@ -7970,6 +8506,7 @@ _t_encoding_TextDecoder_decode :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[4]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "encoding.TextDecoder_decode", "result buffer") }
 	_p1 := _s1[:_n1]
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextDecoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextDecoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -7993,14 +8530,17 @@ _t_encoding_TextDecoder_decodeBuffer :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "encoding.TextDecoder_decodeBuffer", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextDecoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextDecoder(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_size(&c, &f, a, .Invalid_Handle, "encoding.TextDecoder_decodeBuffer: argument decoder is not a live TextDecoder")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_Buffer{handle = u64(a[1].i64)}
 	_p1.data = lookup_Buffer(&c, _p1.handle)
 	if _p1.data == nil {
@@ -8024,9 +8564,11 @@ _t_encoding_TextDecoder_output :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "encoding.TextDecoder_output", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextDecoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextDecoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -8047,6 +8589,7 @@ _t_events_EventTarget_addEventListener :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "events.EventTarget_addEventListener", "type") }
@@ -8056,6 +8599,7 @@ _t_events_EventTarget_addEventListener :: proc "c" (env: rawptr, caller: wasm.Ca
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "events.EventTarget_addEventListener: argument type is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p2 := u32(a[3].i32)
 	_p3 := a[4].i32
@@ -8082,6 +8626,8 @@ _t_events_EventTarget_removeEventListener :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
 	_err := EventTarget_removeEventListener(&c, _p0, _p1)
@@ -8101,6 +8647,7 @@ _t_events_EventTarget_dispatchEvent :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "events.EventTarget_dispatchEvent", "type") }
@@ -8110,6 +8657,7 @@ _t_events_EventTarget_dispatchEvent :: proc "c" (env: rawptr, caller: wasm.Calle
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "events.EventTarget_dispatchEvent: argument type is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_e2 := u32(a[3].i32)
 	if !_valid_EventInit(u32(_e2)) {
@@ -8134,6 +8682,8 @@ _t_events_Event_preventDefault :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -8152,6 +8702,8 @@ _t_events_Event_stopPropagation :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -8170,6 +8722,8 @@ _t_events_Event_stopImmediatePropagation :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -8188,6 +8742,8 @@ _t_events_Event_target :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -8208,6 +8764,8 @@ _t_events_Event_currentTarget :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -8228,9 +8786,11 @@ _t_events_Event_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "events.Event_type", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -8251,6 +8811,8 @@ _t_events_Event_defaultPrevented :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -8271,9 +8833,11 @@ _t_events_Event_data :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "events.Event_data", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -8294,9 +8858,11 @@ _t_events_Event_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "events.Event_text", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -8317,6 +8883,8 @@ _t_events_Event_code :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -8337,6 +8905,8 @@ _t_events_Event_object :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -8357,6 +8927,8 @@ _t_events_MouseEvent_clientX :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -8377,6 +8949,8 @@ _t_events_MouseEvent_clientY :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -8397,6 +8971,8 @@ _t_events_MouseEvent_button :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -8417,6 +8993,8 @@ _t_events_KeyboardEvent_keyCode :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -8437,6 +9015,7 @@ _t_eventsource_EventSource_create :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "eventsource.EventSource_create", "url") }
@@ -8465,6 +9044,8 @@ _t_eventsource_EventSource_readyState :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_EventSource{handle = u64(a[0].i64)}
 	_p0.data = lookup_EventSource(&c, _p0.handle)
 	if _p0.data == nil {
@@ -8485,9 +9066,11 @@ _t_eventsource_EventSource_url :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "eventsource.EventSource_url", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_EventSource{handle = u64(a[0].i64)}
 	_p0.data = lookup_EventSource(&c, _p0.handle)
 	if _p0.data == nil {
@@ -8508,6 +9091,8 @@ _t_eventsource_EventSource_withCredentials :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_EventSource{handle = u64(a[0].i64)}
 	_p0.data = lookup_EventSource(&c, _p0.handle)
 	if _p0.data == nil {
@@ -8528,6 +9113,8 @@ _t_eventsource_EventSource_close :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_EventSource{handle = u64(a[0].i64)}
 	_p0.data = lookup_EventSource(&c, _p0.handle)
 	if _p0.data == nil {
@@ -8546,9 +9133,11 @@ _t_eventsource_MessageEvent_origin :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "eventsource.MessageEvent_origin", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -8569,9 +9158,11 @@ _t_eventsource_MessageEvent_lastEventId :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "eventsource.MessageEvent_lastEventId", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -8592,6 +9183,7 @@ _t_fetch_Fetch_promise :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "fetch.Fetch_promise", "url") }
@@ -8620,11 +9212,13 @@ _t_fetch_Fetch_promise :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	}
 	_p3: Maybe([]u8)
 	if !_absent3 { _p3 = _s3[:wasm.addr(&f, a[7])] }
+	api_route(&c, u64(a[8].i64))
 	_p4 := Api_Buffer{handle = u64(a[8].i64)}
 	if _p4.handle != 0 { _p4.data = lookup_Buffer(&c, _p4.handle) }
 	if _p4.handle != 0 && _p4.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "fetch.Fetch_promise: argument body_buffer is not a live Buffer")
 	}
+	api_route(&c, u64(a[9].i64))
 	_p5 := Api_AbortSignal{handle = u64(a[9].i64)}
 	if _p5.handle != 0 { _p5.data = lookup_AbortSignal(&c, _p5.handle) }
 	if _p5.handle != 0 && _p5.data == nil {
@@ -8670,6 +9264,7 @@ _t_fetch_Fetch_startWithSignal :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "fetch.Fetch_startWithSignal", "url") }
@@ -8700,11 +9295,13 @@ _t_fetch_Fetch_startWithSignal :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	if !_absent5 { _p5 = _s5[:wasm.addr(&f, a[9])] }
 	_p1 := u32(a[2].i32)
 	_p2 := a[3].i32
+	api_route(&c, u64(a[10].i64))
 	_p6 := Api_Buffer{handle = u64(a[10].i64)}
 	if _p6.handle != 0 { _p6.data = lookup_Buffer(&c, _p6.handle) }
 	if _p6.handle != 0 && _p6.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "fetch.Fetch_startWithSignal: argument body_buffer is not a live Buffer")
 	}
+	api_route(&c, u64(a[11].i64))
 	_p7 := Api_AbortSignal{handle = u64(a[11].i64)}
 	if _p7.handle != 0 { _p7.data = lookup_AbortSignal(&c, _p7.handle) }
 	if _p7.handle != 0 && _p7.data == nil {
@@ -8750,6 +9347,7 @@ _t_fetch_Fetch_sync :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "fetch.Fetch_sync", "url") }
@@ -8819,6 +9417,8 @@ _t_fetch_Response_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
 	if _p0.data == nil {
@@ -8839,6 +9439,8 @@ _t_fetch_Response_arrayBuffer :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
 	if _p0.data == nil {
@@ -8859,6 +9461,8 @@ _t_fetch_Response_bytes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
 	if _p0.data == nil {
@@ -8879,6 +9483,8 @@ _t_fetch_Response_bodyUsed :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
 	if _p0.data == nil {
@@ -8899,8 +9505,10 @@ _t_fetch_Response_body :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "fetch.Response_body", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
 	if _p0.data == nil {
@@ -8924,6 +9532,8 @@ _t_fetch_Stream_read :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_ReadableStream{handle = u64(a[0].i64)}
 	_p0.data = lookup_ReadableStream(&c, _p0.handle)
 	if _p0.data == nil {
@@ -8944,6 +9554,8 @@ _t_fetch_Stream_cancel :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_ReadableStream{handle = u64(a[0].i64)}
 	_p0.data = lookup_ReadableStream(&c, _p0.handle)
 	if _p0.data == nil {
@@ -8962,6 +9574,7 @@ _t_fontface_FontFace_addRule :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "fontface.FontFace_addRule", "rule") }
@@ -8984,6 +9597,7 @@ _t_fontface_FontFace_removeRule :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := a[0].i32
 	FontFace_removeRule(&c, _p0)
 	api_end(&c)
@@ -8997,9 +9611,11 @@ _t_forms_forms_value :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "forms.HTMLInputElement_value", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9020,6 +9636,7 @@ _t_forms_forms_setValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "forms.HTMLInputElement_setValue", "value") }
@@ -9027,6 +9644,7 @@ _t_forms_forms_setValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "forms.HTMLInputElement_setValue: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9049,9 +9667,11 @@ _t_forms_forms_defaultValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "forms.HTMLInputElement_defaultValue", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9072,6 +9692,7 @@ _t_forms_forms_setDefaultValue :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "forms.HTMLInputElement_setDefaultValue", "value") }
@@ -9079,6 +9700,7 @@ _t_forms_forms_setDefaultValue :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "forms.HTMLInputElement_setDefaultValue: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9101,6 +9723,8 @@ _t_forms_forms_checked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9121,6 +9745,8 @@ _t_forms_forms_setChecked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9144,6 +9770,8 @@ _t_forms_forms_defaultChecked :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9164,6 +9792,8 @@ _t_forms_forms_setDefaultChecked :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9183,6 +9813,8 @@ _t_forms_forms_indeterminate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9203,6 +9835,8 @@ _t_forms_forms_setIndeterminate :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9222,9 +9856,11 @@ _t_forms_forms_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "forms.HTMLInputElement_type", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9245,9 +9881,11 @@ _t_forms_forms_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "forms.HTMLInputElement_name", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9268,6 +9906,8 @@ _t_forms_forms_form :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9288,6 +9928,8 @@ _t_forms_forms_disabled :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9308,6 +9950,8 @@ _t_forms_forms_setDisabled :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9327,6 +9971,8 @@ _t_forms_forms_readOnly :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9347,6 +9993,8 @@ _t_forms_forms_setReadOnly :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9366,6 +10014,8 @@ _t_forms_forms_required :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9386,6 +10036,8 @@ _t_forms_forms_setRequired :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9405,6 +10057,8 @@ _t_forms_forms_willValidate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9425,6 +10079,8 @@ _t_forms_forms_validity :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9445,9 +10101,11 @@ _t_forms_forms_validationMessage :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "forms.HTMLInputElement_validationMessage", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9468,6 +10126,7 @@ _t_forms_forms_setCustomValidity :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "forms.HTMLInputElement_setCustomValidity", "message") }
@@ -9476,6 +10135,7 @@ _t_forms_forms_setCustomValidity :: proc "c" (env: rawptr, caller: wasm.Caller, 
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "forms.HTMLInputElement_setCustomValidity: argument message is not valid UTF-8") }
 		return wasm.trap_new("forms.HTMLInputElement_setCustomValidity: argument message is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9494,6 +10154,8 @@ _t_forms_forms_checkValidity :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9514,6 +10176,8 @@ _t_forms_forms_reportValidity :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9534,6 +10198,8 @@ _t_forms_forms_select :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9556,6 +10222,8 @@ _t_forms_forms_selectionStart :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9576,6 +10244,8 @@ _t_forms_forms_selectionEnd :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9596,9 +10266,11 @@ _t_forms_forms_selectionDirection :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "forms.HTMLInputElement_selectionDirection", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9621,6 +10293,8 @@ _t_forms_forms_setSelectionRange :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9650,6 +10324,7 @@ _t_forms_forms_setRangeText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "forms.HTMLInputElement_setRangeText", "text") }
@@ -9657,6 +10332,7 @@ _t_forms_forms_setRangeText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "forms.HTMLInputElement_setRangeText: argument text is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9686,6 +10362,8 @@ _t_forms_forms_maxLength :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9706,6 +10384,8 @@ _t_forms_forms_minLength :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9726,6 +10406,8 @@ _t_forms_forms_stepUp :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9749,6 +10431,8 @@ _t_forms_forms_stepDown :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9772,6 +10456,8 @@ _t_forms_forms_valueAsNumber :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9792,6 +10478,8 @@ _t_forms_forms_setValueAsNumber :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9815,6 +10503,8 @@ _t_forms_forms_valueAsDate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9835,6 +10525,8 @@ _t_forms_forms_setValueAsDate :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9858,6 +10550,8 @@ _t_forms_forms_files_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9878,9 +10572,11 @@ _t_forms_forms_fileName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "forms.HTMLInputElement_fileName", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9904,6 +10600,8 @@ _t_forms_forms_fileSize :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9925,9 +10623,11 @@ _t_forms_forms_fileType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "forms.HTMLInputElement_fileType", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9951,6 +10651,8 @@ _t_forms_HTMLSelectElement_selectedIndex :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9971,6 +10673,8 @@ _t_forms_HTMLSelectElement_setSelectedIndex :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -9994,6 +10698,8 @@ _t_forms_HTMLSelectElement_length :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10014,6 +10720,8 @@ _t_forms_HTMLSelectElement_item :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10035,6 +10743,8 @@ _t_forms_HTMLSelectElement_selectedOptions_length :: proc "c" (env: rawptr, call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10055,6 +10765,8 @@ _t_forms_HTMLSelectElement_selectedOptions_item :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10076,6 +10788,8 @@ _t_forms_HTMLOptionElement_selected :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10096,6 +10810,8 @@ _t_forms_HTMLOptionElement_setSelected :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10119,6 +10835,8 @@ _t_forms_HTMLOptionElement_defaultSelected :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10139,6 +10857,8 @@ _t_forms_HTMLOptionElement_setDefaultSelected :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10162,6 +10882,8 @@ _t_forms_HTMLOptionElement_index :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10182,9 +10904,11 @@ _t_forms_HTMLOptionElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "forms.HTMLOptionElement_text", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10205,9 +10929,11 @@ _t_forms_HTMLOptionElement_label :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "forms.HTMLOptionElement_label", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10228,6 +10954,8 @@ _t_forms_HTMLFormElement_submit :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10250,11 +10978,14 @@ _t_forms_HTMLFormElement_requestSubmit :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "forms.HTMLFormElement_requestSubmit: argument form is not a live Element")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_Element{handle = u64(a[1].i64)}
 	if _p1.handle != 0 { _p1.data = lookup_Element(&c, _p1.handle) }
 	if _p1.handle != 0 && _p1.data == nil {
@@ -10277,6 +11008,8 @@ _t_forms_HTMLFormElement_reset :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10299,6 +11032,8 @@ _t_forms_HTMLFormElement_length :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10319,6 +11054,8 @@ _t_forms_HTMLFormElement_elements :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10340,6 +11077,7 @@ _t_forms_HTMLFormElement_namedItem :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "forms.HTMLFormElement_namedItem", "name") }
@@ -10348,6 +11086,7 @@ _t_forms_HTMLFormElement_namedItem :: proc "c" (env: rawptr, caller: wasm.Caller
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "forms.HTMLFormElement_namedItem: argument name is not valid UTF-8") }
 		return wasm.trap_new("forms.HTMLFormElement_namedItem: argument name is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10368,6 +11107,8 @@ _t_forms_HTMLLabelElement_control :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10388,6 +11129,8 @@ _t_forms_HTMLElement_focus :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10408,6 +11151,8 @@ _t_forms_HTMLElement_blur :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10426,6 +11171,8 @@ _t_forms_HTMLElement_click :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10446,6 +11193,7 @@ _t_forms_Document_activeElement :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Document_activeElement(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -10460,9 +11208,11 @@ _t_forms_HTMLDialogElement_returnValue :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "forms.HTMLDialogElement_returnValue", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10483,6 +11233,7 @@ _t_forms_HTMLDialogElement_set_returnValue :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "forms.HTMLDialogElement_set_returnValue", "value") }
@@ -10491,6 +11242,7 @@ _t_forms_HTMLDialogElement_set_returnValue :: proc "c" (env: rawptr, caller: was
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "forms.HTMLDialogElement_set_returnValue: argument value is not valid UTF-8") }
 		return wasm.trap_new("forms.HTMLDialogElement_set_returnValue: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10509,13 +11261,16 @@ _t_forms_FormData_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "forms.FormData_create", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	if _p0.handle != 0 { _p0.data = lookup_Element(&c, _p0.handle) }
 	if _p0.handle != 0 && _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "forms.FormData_create: argument form is not a live Element")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_Element{handle = u64(a[1].i64)}
 	if _p1.handle != 0 { _p1.data = lookup_Element(&c, _p1.handle) }
 	if _p1.handle != 0 && _p1.data == nil {
@@ -10539,6 +11294,7 @@ _t_forms_FormData_append :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "forms.FormData_append", "name") }
@@ -10547,6 +11303,7 @@ _t_forms_FormData_append :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	if !_k2 { return wasm.trap_bounds(&f, "forms.FormData_append", "value") }
 	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
 	_p2 := utf8_scrub(string(_s2[:_n2]), context.temp_allocator)
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_FormData{handle = u64(a[0].i64)}
 	_p0.data = lookup_FormData(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10569,6 +11326,7 @@ _t_forms_FormData_appendBlob :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "forms.FormData_appendBlob", "name") }
@@ -10584,11 +11342,13 @@ _t_forms_FormData_appendBlob :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	if !wasm.valid_utf8(_p4) {
 		return _fail_status(&c, a, .Type, "forms.FormData_appendBlob: argument mime is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_FormData{handle = u64(a[0].i64)}
 	_p0.data = lookup_FormData(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "forms.FormData_appendBlob: argument data is not a live FormData")
 	}
+	api_route(&c, u64(a[3].i64))
 	_p2 := Api_Buffer{handle = u64(a[3].i64)}
 	_p2.data = lookup_Buffer(&c, _p2.handle)
 	if _p2.data == nil {
@@ -10611,6 +11371,7 @@ _t_forms_FormData_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "forms.FormData_set", "name") }
@@ -10619,6 +11380,7 @@ _t_forms_FormData_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	if !_k2 { return wasm.trap_bounds(&f, "forms.FormData_set", "value") }
 	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
 	_p2 := utf8_scrub(string(_s2[:_n2]), context.temp_allocator)
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_FormData{handle = u64(a[0].i64)}
 	_p0.data = lookup_FormData(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10641,6 +11403,7 @@ _t_forms_FormData_delete :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "forms.FormData_delete", "name") }
@@ -10649,6 +11412,7 @@ _t_forms_FormData_delete :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "forms.FormData_delete: argument name is not valid UTF-8") }
 		return wasm.trap_new("forms.FormData_delete: argument name is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_FormData{handle = u64(a[0].i64)}
 	_p0.data = lookup_FormData(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10667,6 +11431,7 @@ _t_forms_FormData_has :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "forms.FormData_has", "name") }
@@ -10675,6 +11440,7 @@ _t_forms_FormData_has :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "forms.FormData_has: argument name is not valid UTF-8") }
 		return wasm.trap_new("forms.FormData_has: argument name is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_FormData{handle = u64(a[0].i64)}
 	_p0.data = lookup_FormData(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10695,6 +11461,7 @@ _t_forms_FormData_count :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "forms.FormData_count", "name") }
@@ -10703,6 +11470,7 @@ _t_forms_FormData_count :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "forms.FormData_count: argument name is not valid UTF-8") }
 		return wasm.trap_new("forms.FormData_count: argument name is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_FormData{handle = u64(a[0].i64)}
 	_p0.data = lookup_FormData(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10723,6 +11491,7 @@ _t_forms_FormData_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "forms.FormData_get", "name") }
@@ -10733,6 +11502,7 @@ _t_forms_FormData_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	if !wasm.valid_utf8(_p1) {
 		return _fail_size(&c, &f, a, .Type, "forms.FormData_get: argument name is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_FormData{handle = u64(a[0].i64)}
 	_p0.data = lookup_FormData(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10755,6 +11525,7 @@ _t_forms_FormData_getAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "forms.FormData_getAt", "name") }
@@ -10765,6 +11536,7 @@ _t_forms_FormData_getAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	if !wasm.valid_utf8(_p1) {
 		return _fail_size(&c, &f, a, .Type, "forms.FormData_getAt: argument name is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_FormData{handle = u64(a[0].i64)}
 	_p0.data = lookup_FormData(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10788,6 +11560,8 @@ _t_forms_FormData_size :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_FormData{handle = u64(a[0].i64)}
 	_p0.data = lookup_FormData(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10808,9 +11582,11 @@ _t_forms_FormData_nameAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "forms.FormData_nameAt", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_FormData{handle = u64(a[0].i64)}
 	_p0.data = lookup_FormData(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10834,9 +11610,11 @@ _t_forms_FormData_valueAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "forms.FormData_valueAt", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_FormData{handle = u64(a[0].i64)}
 	_p0.data = lookup_FormData(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10860,8 +11638,10 @@ _t_forms_FormData_isFileAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 1)
 	if !_rk { return wasm.trap_bounds(&f, "forms.FormData_isFileAt", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_FormData{handle = u64(a[0].i64)}
 	_p0.data = lookup_FormData(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10886,6 +11666,8 @@ _t_forms_FormData_fileSizeAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_FormData{handle = u64(a[0].i64)}
 	_p0.data = lookup_FormData(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10907,9 +11689,11 @@ _t_forms_FormData_fileTypeAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "forms.FormData_fileTypeAt", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_FormData{handle = u64(a[0].i64)}
 	_p0.data = lookup_FormData(&c, _p0.handle)
 	if _p0.data == nil {
@@ -10933,6 +11717,7 @@ _t_fetch_Fetch_startFormData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "fetch.Fetch_startFormData", "url") }
@@ -10957,6 +11742,7 @@ _t_fetch_Fetch_startFormData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "fetch.Fetch_startFormData: argument headers is not valid UTF-8") }
 		return wasm.trap_new("fetch.Fetch_startFormData: argument headers is not valid UTF-8")
 	}
+	api_route(&c, u64(a[2].i64))
 	_p1 := Api_FormData{handle = u64(a[2].i64)}
 	_p1.data = lookup_FormData(&c, _p1.handle)
 	if _p1.data == nil {
@@ -11012,6 +11798,7 @@ _t_frames_Frame_self :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Frame_self(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -11026,6 +11813,8 @@ _t_frames_Frame_ofElement :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := Frame_ofElement(&c, _p0)
 	api_end(&c)
@@ -11041,6 +11830,8 @@ _t_frames_Frame_parent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := Frame_parent(&c, _p0)
 	api_end(&c)
@@ -11056,6 +11847,8 @@ _t_frames_Frame_top :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := Frame_top(&c, _p0)
 	api_end(&c)
@@ -11071,6 +11864,8 @@ _t_frames_Frame_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := Frame_length(&c, _p0)
 	api_end(&c)
@@ -11086,6 +11881,8 @@ _t_frames_Frame_child :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := u32(a[1].i32)
 	_r := Frame_child(&c, _p0, _p1)
@@ -11102,6 +11899,7 @@ _t_frames_Frame_named :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "frames.Frame_named", "name") }
@@ -11110,6 +11908,7 @@ _t_frames_Frame_named :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "frames.Frame_named: argument name is not valid UTF-8") }
 		return wasm.trap_new("frames.Frame_named: argument name is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := Frame_named(&c, _p0, _p1)
 	api_end(&c)
@@ -11125,9 +11924,11 @@ _t_frames_Frame_childNames :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "frames.Frame_childNames", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := Frame_childNames(&c, _p0)
 	api_end(&c)
@@ -11143,6 +11944,8 @@ _t_frames_Frame_closed :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := Frame_closed(&c, _p0)
 	api_end(&c)
@@ -11158,6 +11961,8 @@ _t_frames_Frame_sameOrigin :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := Frame_sameOrigin(&c, _p0)
 	api_end(&c)
@@ -11167,18 +11972,96 @@ _t_frames_Frame_sameOrigin :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	return nil
 }
 
-// Frame_isBlank :: proc(c: ^Call, navigable: u64) -> bool
+// Frame_documentOf :: proc(c: ^Call, navigable: u64) -> u64
 @(private = "file")
-_t_frames_Frame_isBlank :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+_t_frames_Frame_documentOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
-	_r := Frame_isBlank(&c, _p0)
+	_r := Frame_documentOf(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Frame_elementOf :: proc(c: ^Call, navigable: u64) -> u64
+@(private = "file")
+_t_frames_Frame_elementOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
+	_p0 := u64(a[0].i64)
+	_r := Frame_elementOf(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Frame_ofDocument :: proc(c: ^Call, node: u64) -> u64
+@(private = "file")
+_t_frames_Frame_ofDocument :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
+	_p0 := u64(a[0].i64)
+	_r := Frame_ofDocument(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Frame_target :: proc(c: ^Call, node: u64) -> bool
+@(private = "file")
+_t_frames_Frame_target :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
+	_p0 := u64(a[0].i64)
+	_r := Frame_target(&c, _p0)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// Frame_adoptNode :: proc(c: ^Call, node: u64, into: u64) -> ([]u8, Api_Error)
+@(private = "file")
+_t_frames_Frame_adoptNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_on := wasm.addr(&f, a[3])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "frames.Frame_adoptNode", "result buffer") }
+	api_route(&c, u64(a[0].i64))
+	_p0 := u64(a[0].i64)
+	api_route(&c, u64(a[1].i64))
+	_p1 := u64(a[1].i64)
+	_r, _err := Frame_adoptNode(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], _r)
+	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
 
@@ -11188,6 +12071,7 @@ _t_frames_Frame_postMessage :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "frames.Frame_postMessage", "data") }
@@ -11196,6 +12080,7 @@ _t_frames_Frame_postMessage :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	if !_k2 { return wasm.trap_bounds(&f, "frames.Frame_postMessage", "target_origin") }
 	_p1 := _s1[:_n1]
 	_p2 := utf8_scrub(string(_s2[:_n2]), context.temp_allocator)
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_err := Frame_postMessage(&c, _p0, _p1, _p2)
 	api_end(&c)
@@ -11214,10 +12099,12 @@ _t_frames_Frame_navigate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "frames.Frame_navigate", "url") }
 	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p2 := a[3].i32 != 0
 	_err := Frame_navigate(&c, _p0, _p1, _p2)
@@ -11237,6 +12124,7 @@ _t_frames_Frame_open :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "frames.Frame_open", "url") }
@@ -11268,6 +12156,7 @@ _t_frames_Frame_postMessagePorts :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "frames.Frame_postMessagePorts", "data") }
@@ -11280,6 +12169,7 @@ _t_frames_Frame_postMessagePorts :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	_p1 := _s1[:_n1]
 	_p2 := utf8_scrub(string(_s2[:_n2]), context.temp_allocator)
 	_p3 := ([^]u64)(_s3)[:_n3]
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_err := Frame_postMessagePorts(&c, _p0, _p1, _p2, _p3)
 	api_end(&c)
@@ -11298,6 +12188,7 @@ _t_frames_Window_get_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "frames.Window_get_name", "result buffer") }
@@ -11315,6 +12206,7 @@ _t_frames_Window_set_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "frames.Window_set_name", "value") }
@@ -11335,9 +12227,11 @@ _t_dom_HTMLIFrameElement_srcdoc :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.HTMLIFrameElement_srcdoc", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -11358,6 +12252,7 @@ _t_dom_HTMLIFrameElement_set_srcdoc :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLIFrameElement_set_srcdoc", "value") }
@@ -11365,6 +12260,7 @@ _t_dom_HTMLIFrameElement_set_srcdoc :: proc "c" (env: rawptr, caller: wasm.Calle
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.HTMLIFrameElement_set_srcdoc: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -11387,6 +12283,7 @@ _t_fs_Fs_opfsRoot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "fs.Fs_opfsRoot", "bucket") }
@@ -11411,6 +12308,7 @@ _t_fs_Fs_getEntry :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "fs.Fs_getEntry", "path") }
@@ -11428,6 +12326,7 @@ _t_fs_Fs_getEntry :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 	if !wasm.valid_utf8(_p2) {
 		return _fail_size(&c, &f, a, .Type, "fs.Fs_getEntry: argument name is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p3 := a[5].i32 != 0
 	_p4 := a[6].i32 != 0
@@ -11448,6 +12347,7 @@ _t_fs_Fs_removeEntry :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "fs.Fs_removeEntry", "path") }
@@ -11462,6 +12362,7 @@ _t_fs_Fs_removeEntry :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	if !wasm.valid_utf8(_p2) {
 		return _fail_status(&c, a, .Type, "fs.Fs_removeEntry: argument name is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p3 := a[5].i32 != 0
 	_err := Fs_removeEntry(&c, _p0, _p1, _p2, _p3)
@@ -11481,6 +12382,7 @@ _t_fs_Fs_list :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "fs.Fs_list", "path") }
@@ -11491,6 +12393,7 @@ _t_fs_Fs_list :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: 
 	if !wasm.valid_utf8(_p1) {
 		return _fail_size(&c, &f, a, .Type, "fs.Fs_list: argument path is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r, _err := Fs_list(&c, _p0, _p1)
 	api_end(&c)
@@ -11509,6 +12412,7 @@ _t_fs_Fs_resolve :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "fs.Fs_resolve", "path") }
@@ -11526,7 +12430,9 @@ _t_fs_Fs_resolve :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, 
 	if !wasm.valid_utf8(_p3) {
 		return _fail_size(&c, &f, a, .Type, "fs.Fs_resolve: argument path2 is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
+	api_route(&c, u64(a[3].i64))
 	_p2 := u64(a[3].i64)
 	_r, _err := Fs_resolve(&c, _p0, _p1, _p2, _p3)
 	api_end(&c)
@@ -11545,6 +12451,7 @@ _t_fs_Fs_same :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "fs.Fs_same", "path") }
@@ -11561,7 +12468,9 @@ _t_fs_Fs_same :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: 
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "fs.Fs_same: argument path2 is not valid UTF-8") }
 		return wasm.trap_new("fs.Fs_same: argument path2 is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
+	api_route(&c, u64(a[3].i64))
 	_p2 := u64(a[3].i64)
 	_r := Fs_same(&c, _p0, _p1, _p2, _p3)
 	api_end(&c)
@@ -11577,6 +12486,7 @@ _t_fs_Fs_getFile :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "fs.Fs_getFile", "path") }
@@ -11586,6 +12496,7 @@ _t_fs_Fs_getFile :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, 
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "fs.Fs_getFile: argument path is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r, _err := Fs_getFile(&c, _p0, _p1)
 	api_end(&c)
@@ -11605,6 +12516,7 @@ _t_fs_Fs_open :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "fs.Fs_open", "path") }
@@ -11614,6 +12526,7 @@ _t_fs_Fs_open :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: 
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "fs.Fs_open: argument path is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p2 := a[3].i32 != 0
 	_p3 := a[4].i32 != 0
@@ -11635,12 +12548,14 @@ _t_fs_Fs_write :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "fs.Fs_write", "data") }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "fs.Fs_write", "result pointer") }
 	_p2 := _s2[:_n2]
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i64
 	_r, _err := Fs_write(&c, _p0, _p1, _p2)
@@ -11661,12 +12576,14 @@ _t_fs_Fs_read :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "fs.Fs_read", "into") }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "fs.Fs_read", "result pointer") }
 	_p2 := _s2[:_n2]
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i64
 	_r, _err := Fs_read(&c, _p0, _p1, _p2)
@@ -11687,6 +12604,8 @@ _t_fs_Fs_seek :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i64
 	_err := Fs_seek(&c, _p0, _p1)
@@ -11706,6 +12625,8 @@ _t_fs_Fs_truncate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i64
 	_err := Fs_truncate(&c, _p0, _p1)
@@ -11725,8 +12646,10 @@ _t_fs_Fs_size :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "fs.Fs_size", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r, _err := Fs_size(&c, _p0)
 	api_end(&c)
@@ -11746,6 +12669,8 @@ _t_fs_Fs_flush :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_err := Fs_flush(&c, _p0)
 	api_end(&c)
@@ -11764,6 +12689,8 @@ _t_fs_Fs_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32 != 0
 	_err := Fs_close(&c, _p0, _p1)
@@ -11783,6 +12710,8 @@ _t_fs_Fs_permission :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32 != 0
 	_r := Fs_permission(&c, _p0, _p1)
@@ -11799,8 +12728,10 @@ _t_fs_Fs_requestPermission :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "fs.Fs_requestPermission", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32 != 0
 	_r, _err := Fs_requestPermission(&c, _p0, _p1)
@@ -11821,6 +12752,7 @@ _t_fs_Fs_showPicker :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "fs.Fs_showPicker", "types") }
@@ -11861,6 +12793,7 @@ _t_fs_Fs_showPicker :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	_p0 := a[0].i32
 	_p2 := a[3].i32 != 0
 	_p3 := a[4].i32 != 0
+	api_route(&c, u64(a[9].i64))
 	_p6 := u64(a[9].i64)
 	_p9 := a[14].i32 != 0
 	_r, _err := Fs_showPicker(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6, _p7, _p8, _p9)
@@ -11881,9 +12814,11 @@ _t_fs_Fs_describe :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "fs.Fs_describe", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := Fs_describe(&c, _p0)
 	api_end(&c)
@@ -11899,6 +12834,7 @@ _t_fs_Fs_restore :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "fs.Fs_restore", "description") }
@@ -11926,6 +12862,8 @@ _t_fullscreen_Element_requestFullscreen :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -11952,6 +12890,7 @@ _t_fullscreen_Document_exitFullscreen :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Document_exitFullscreen(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -11966,6 +12905,7 @@ _t_fullscreen_Document_fullscreenElement :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Document_fullscreenElement(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -11980,6 +12920,8 @@ _t_fullscreen_ShadowRoot_fullscreenElement :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -12000,6 +12942,7 @@ _t_fullscreen_Document_fullscreenEnabled :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Document_fullscreenEnabled(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -12014,6 +12957,7 @@ _t_fullscreen_Document_fullscreen :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Document_fullscreen(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -12028,6 +12972,7 @@ _t_history_Window_self :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Window_self(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -12042,6 +12987,7 @@ _t_history_Document_self :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Document_self(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -12056,6 +13002,7 @@ _t_history_Location_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "history.Location_get", "result buffer") }
@@ -12079,6 +13026,7 @@ _t_history_Location_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "history.Location_set", "value") }
@@ -12108,6 +13056,7 @@ _t_history_Location_assign :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "history.Location_assign", "url") }
@@ -12132,6 +13081,7 @@ _t_history_Location_replace :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "history.Location_replace", "url") }
@@ -12156,6 +13106,7 @@ _t_history_Location_reload :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	Location_reload(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -12168,6 +13119,7 @@ _t_history_History_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := History_length(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -12182,6 +13134,7 @@ _t_history_History_state :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "history.History_state", "result buffer") }
@@ -12202,6 +13155,7 @@ _t_history_History_pushState :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_absent0 := wasm.is_absent(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), 0 if _absent0 else wasm.addr(&f, a[1]))
 	if !_k0 { return wasm.trap_bounds(&f, "history.History_pushState", "state") }
@@ -12241,6 +13195,7 @@ _t_history_History_replaceState :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_absent0 := wasm.is_absent(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), 0 if _absent0 else wasm.addr(&f, a[1]))
 	if !_k0 { return wasm.trap_bounds(&f, "history.History_replaceState", "state") }
@@ -12280,6 +13235,7 @@ _t_history_History_go :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := a[0].i32
 	History_go(&c, _p0)
 	api_end(&c)
@@ -12293,6 +13249,7 @@ _t_history_History_scrollRestoration :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := History_scrollRestoration(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -12307,6 +13264,7 @@ _t_history_History_set_scrollRestoration :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_e0 := i32(a[0].i32)
 	if !_valid_ScrollRestoration(_e0) {
 		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Argument, "history.History_set_scrollRestoration: argument mode is not a ScrollRestoration") }
@@ -12325,6 +13283,7 @@ _t_idb_Idb_call :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "idb.Idb_call", "args") }
@@ -12350,6 +13309,8 @@ _t_images_HTMLImageElement_naturalWidth :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLImageElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLImageElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -12370,6 +13331,8 @@ _t_images_HTMLImageElement_naturalHeight :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLImageElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLImageElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -12390,6 +13353,8 @@ _t_images_HTMLImageElement_complete :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLImageElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLImageElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -12410,9 +13375,11 @@ _t_images_HTMLImageElement_currentSrc :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "images.HTMLImageElement_currentSrc", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLImageElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLImageElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -12433,6 +13400,8 @@ _t_images_HTMLImageElement_decode :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLImageElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLImageElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -12453,6 +13422,8 @@ _t_images_Image_decode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Buffer{handle = u64(a[0].i64)}
 	_p0.data = lookup_Buffer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -12473,6 +13444,7 @@ _t_js_Engine_console :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "js.Engine_console", "text") }
@@ -12495,6 +13467,7 @@ _t_js_Engine_reportException :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "js.Engine_reportException", "message") }
@@ -12521,6 +13494,7 @@ _t_js_Engine_storeBytecode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "js.Engine_storeBytecode", "code") }
@@ -12537,6 +13511,7 @@ _t_js_Engine_timezoneOffset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := a[0].f64
 	_r := Engine_timezoneOffset(&c, _p0)
 	api_end(&c)
@@ -12552,6 +13527,7 @@ _t_js_Engine_timeZone :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "js.Engine_timeZone", "result buffer") }
@@ -12569,6 +13545,7 @@ _t_js_Engine_locale :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "js.Engine_locale", "result buffer") }
@@ -12586,6 +13563,7 @@ _t_js_Engine_jitCompile :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "js.Engine_jitCompile", "module") }
@@ -12604,6 +13582,7 @@ _t_js_Engine_jitPoll :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := a[0].i32
 	_r := Engine_jitPoll(&c, _p0)
 	api_end(&c)
@@ -12619,6 +13598,8 @@ _t_js_Node_wrap :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -12639,6 +13620,8 @@ _t_js_Node_unpin :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	Node_unpin(&c, _p0)
 	api_end(&c)
@@ -12652,6 +13635,7 @@ _t_js_Node_treeRoots :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0, 8)
 	if !_k0 { return wasm.trap_bounds(&f, "js.Node_treeRoots", "nodes") }
@@ -12672,6 +13656,8 @@ _t_dom_LinkStyle_sheetOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -12692,6 +13678,8 @@ _t_dom_DocumentOrShadowRoot_sheetCount :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -12712,6 +13700,8 @@ _t_dom_DocumentOrShadowRoot_sheetAt :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -12733,6 +13723,8 @@ _t_dom_CSSStyleSheet_isSheet :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := CSSStyleSheet_isSheet(&c, _p0)
 	api_end(&c)
@@ -12748,6 +13740,8 @@ _t_dom_CSSStyleSheet_ownerNodeOf :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := CSSStyleSheet_ownerNodeOf(&c, _p0)
 	api_end(&c)
@@ -12763,9 +13757,11 @@ _t_dom_CSSStyleSheet_hrefOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.CSSStyleSheet_hrefOf", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := CSSStyleSheet_hrefOf(&c, _p0)
 	api_end(&c)
@@ -12781,9 +13777,11 @@ _t_dom_CSSStyleSheet_titleOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.CSSStyleSheet_titleOf", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := CSSStyleSheet_titleOf(&c, _p0)
 	api_end(&c)
@@ -12799,6 +13797,8 @@ _t_dom_CSSStyleSheet_rulesVersion :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := CSSStyleSheet_rulesVersion(&c, _p0)
 	api_end(&c)
@@ -12814,6 +13814,8 @@ _t_dom_CSSStyleSheet_ruleId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := u32(a[1].i32)
 	_r := CSSStyleSheet_ruleId(&c, _p0, _p1)
@@ -12830,6 +13832,7 @@ _t_dom_CustomElements_define :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "dom.CustomElements_define", "name") }
@@ -12850,6 +13853,7 @@ _t_dom_CustomElements_pending :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := CustomElements_pending(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -12864,6 +13868,7 @@ _t_dom_CustomElements_take :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.CustomElements_take", "result buffer") }
@@ -12881,6 +13886,7 @@ _t_dom_CustomElements_release :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0, 8)
 	if !_k0 { return wasm.trap_bounds(&f, "dom.CustomElements_release", "elements") }
@@ -12897,6 +13903,7 @@ _t_dom_CustomElements_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "dom.CustomElements_create", "name") }
@@ -12924,6 +13931,8 @@ _t_dom_Element_setCustomState :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -12943,6 +13952,7 @@ _t_dnd_DataTransfer_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := DataTransfer_create(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -12957,9 +13967,11 @@ _t_dnd_DataTransfer_get_dropEffect :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dnd.DataTransfer_get_dropEffect", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
 	_p0.data = lookup_DataTransfer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -12980,6 +13992,7 @@ _t_dnd_DataTransfer_set_dropEffect :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dnd.DataTransfer_set_dropEffect", "value") }
@@ -12988,6 +14001,7 @@ _t_dnd_DataTransfer_set_dropEffect :: proc "c" (env: rawptr, caller: wasm.Caller
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dnd.DataTransfer_set_dropEffect: argument value is not valid UTF-8") }
 		return wasm.trap_new("dnd.DataTransfer_set_dropEffect: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
 	_p0.data = lookup_DataTransfer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13006,9 +14020,11 @@ _t_dnd_DataTransfer_get_effectAllowed :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dnd.DataTransfer_get_effectAllowed", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
 	_p0.data = lookup_DataTransfer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13029,6 +14045,7 @@ _t_dnd_DataTransfer_set_effectAllowed :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dnd.DataTransfer_set_effectAllowed", "value") }
@@ -13037,6 +14054,7 @@ _t_dnd_DataTransfer_set_effectAllowed :: proc "c" (env: rawptr, caller: wasm.Cal
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dnd.DataTransfer_set_effectAllowed: argument value is not valid UTF-8") }
 		return wasm.trap_new("dnd.DataTransfer_set_effectAllowed: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
 	_p0.data = lookup_DataTransfer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13055,6 +14073,7 @@ _t_dnd_DataTransfer_getData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dnd.DataTransfer_getData", "format") }
@@ -13066,6 +14085,7 @@ _t_dnd_DataTransfer_getData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dnd.DataTransfer_getData: argument format is not valid UTF-8") }
 		return wasm.trap_new("dnd.DataTransfer_getData: argument format is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
 	_p0.data = lookup_DataTransfer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13086,6 +14106,7 @@ _t_dnd_DataTransfer_setData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dnd.DataTransfer_setData", "format") }
@@ -13102,6 +14123,7 @@ _t_dnd_DataTransfer_setData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dnd.DataTransfer_setData: argument data is not valid UTF-8") }
 		return wasm.trap_new("dnd.DataTransfer_setData: argument data is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
 	_p0.data = lookup_DataTransfer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13120,6 +14142,7 @@ _t_dnd_DataTransfer_clearData :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_absent1 := wasm.is_absent(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
 	if !_k1 { return wasm.trap_bounds(&f, "dnd.DataTransfer_clearData", "format") }
@@ -13132,6 +14155,7 @@ _t_dnd_DataTransfer_clearData :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		}
 		_p1 = _v1
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
 	_p0.data = lookup_DataTransfer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13150,12 +14174,15 @@ _t_dnd_DataTransfer_setDragImage :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
 	_p0.data = lookup_DataTransfer(&c, _p0.handle)
 	if _p0.data == nil {
 		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.DataTransfer_setDragImage: argument dt is not a live DataTransfer") }
 		return wasm.trap_new("dnd.DataTransfer_setDragImage: argument dt is not a live DataTransfer")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_Element{handle = u64(a[1].i64)}
 	_p1.data = lookup_Element(&c, _p1.handle)
 	if _p1.data == nil {
@@ -13176,9 +14203,11 @@ _t_dnd_DataTransfer_typeList :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dnd.DataTransfer_typeList", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
 	_p0.data = lookup_DataTransfer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13199,6 +14228,8 @@ _t_dnd_DataTransfer_itemCount :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
 	_p0.data = lookup_DataTransfer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13219,8 +14250,10 @@ _t_dnd_DataTransfer_itemKind :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 4)
 	if !_rk { return wasm.trap_bounds(&f, "dnd.DataTransfer_itemKind", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
 	_p0.data = lookup_DataTransfer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13245,9 +14278,11 @@ _t_dnd_DataTransfer_itemType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dnd.DataTransfer_itemType", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
 	_p0.data = lookup_DataTransfer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13271,9 +14306,11 @@ _t_dnd_DataTransfer_itemString :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dnd.DataTransfer_itemString", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
 	_p0.data = lookup_DataTransfer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13297,8 +14334,10 @@ _t_dnd_DataTransfer_itemFile :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "dnd.DataTransfer_itemFile", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
 	_p0.data = lookup_DataTransfer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13323,6 +14362,7 @@ _t_dnd_DataTransfer_addString :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dnd.DataTransfer_addString", "data") }
@@ -13337,6 +14377,7 @@ _t_dnd_DataTransfer_addString :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	if !wasm.valid_utf8(_p2) {
 		return _fail_status(&c, a, .Type, "dnd.DataTransfer_addString: argument type is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
 	_p0.data = lookup_DataTransfer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13359,11 +14400,14 @@ _t_dnd_DataTransfer_addFile :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
 	_p0.data = lookup_DataTransfer(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "dnd.DataTransfer_addFile: argument dt is not a live DataTransfer")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_LocalFile{handle = u64(a[1].i64)}
 	_p1.data = lookup_LocalFile(&c, _p1.handle)
 	if _p1.data == nil {
@@ -13386,6 +14430,7 @@ _t_dnd_DataTransfer_addBytes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dnd.DataTransfer_addBytes", "name") }
@@ -13404,6 +14449,7 @@ _t_dnd_DataTransfer_addBytes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		return _fail_status(&c, a, .Type, "dnd.DataTransfer_addBytes: argument type is not valid UTF-8")
 	}
 	_p3 := _s3[:_n3]
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
 	_p0.data = lookup_DataTransfer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13427,6 +14473,8 @@ _t_dnd_DataTransfer_removeItem :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
 	_p0.data = lookup_DataTransfer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13450,6 +14498,8 @@ _t_dnd_DataTransfer_clearItems :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
 	_p0.data = lookup_DataTransfer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13472,6 +14522,8 @@ _t_dnd_DataTransfer_fileCount :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
 	_p0.data = lookup_DataTransfer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13492,8 +14544,10 @@ _t_dnd_DataTransfer_file :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "dnd.DataTransfer_file", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
 	_p0.data = lookup_DataTransfer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13518,6 +14572,8 @@ _t_dnd_DataTransfer_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
 	_p0.data = lookup_DataTransfer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13538,9 +14594,11 @@ _t_dnd_LocalFile_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dnd.LocalFile_name", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_LocalFile{handle = u64(a[0].i64)}
 	_p0.data = lookup_LocalFile(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13561,9 +14619,11 @@ _t_dnd_LocalFile_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dnd.LocalFile_type", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_LocalFile{handle = u64(a[0].i64)}
 	_p0.data = lookup_LocalFile(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13584,8 +14644,10 @@ _t_dnd_LocalFile_info :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 16)
 	if !_rk { return wasm.trap_bounds(&f, "dnd.LocalFile_info", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_LocalFile{handle = u64(a[0].i64)}
 	_p0.data = lookup_LocalFile(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13606,12 +14668,14 @@ _t_dnd_LocalFile_read :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "dnd.LocalFile_read", "into") }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "dnd.LocalFile_read", "result pointer") }
 	_p2 := _s2[:_n2]
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_LocalFile{handle = u64(a[0].i64)}
 	_p0.data = lookup_LocalFile(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13636,9 +14700,11 @@ _t_dnd_DataTransfer_itemFsHandle :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dnd.DataTransfer_itemFsHandle", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
 	_p0.data = lookup_DataTransfer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13662,6 +14728,8 @@ _t_dnd_DragEvent_dataTransfer :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13682,6 +14750,8 @@ _t_dnd_InputFiles_count :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13702,8 +14772,10 @@ _t_dnd_InputFiles_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "dnd.InputFiles_item", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13728,11 +14800,14 @@ _t_dnd_InputFiles_assign :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "dnd.InputFiles_assign: argument input is not a live Element")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_DataTransfer{handle = u64(a[1].i64)}
 	_p1.data = lookup_DataTransfer(&c, _p1.handle)
 	if _p1.data == nil {
@@ -13755,6 +14830,7 @@ _t_dom_Document_readyState :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_readyState", "result buffer") }
@@ -13772,6 +14848,7 @@ _t_dom_Document_currentScript :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Document_currentScript(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -13786,6 +14863,7 @@ _t_dom_Window_document :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Window_document(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -13800,6 +14878,7 @@ _t_dom_Document_resolveURL :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "dom.Document_resolveURL", "url") }
@@ -13827,9 +14906,11 @@ _t_dom_Element_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Element_id", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13850,6 +14931,7 @@ _t_dom_Element_set_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_set_id", "value") }
@@ -13857,6 +14939,7 @@ _t_dom_Element_set_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.Element_set_id: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13879,9 +14962,11 @@ _t_dom_Element_className :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Element_className", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13902,6 +14987,7 @@ _t_dom_Element_set_className :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_set_className", "value") }
@@ -13909,6 +14995,7 @@ _t_dom_Element_set_className :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.Element_set_className: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13931,6 +15018,7 @@ _t_dom_Collection_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "dom.Collection_create", "arg") }
@@ -13940,6 +15028,7 @@ _t_dom_Collection_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	if !wasm.valid_utf8(_p2) {
 		return _fail_status(&c, a, .Type, "dom.Collection_create: argument arg is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -13964,6 +15053,8 @@ _t_dom_Collection_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := Collection_length(&c, _p0)
 	api_end(&c)
@@ -13979,6 +15070,8 @@ _t_dom_Collection_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := u32(a[1].i32)
 	_r := Collection_item(&c, _p0, _p1)
@@ -13995,6 +15088,7 @@ _t_dom_Collection_namedItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Collection_namedItem", "name") }
@@ -14003,6 +15097,7 @@ _t_dom_Collection_namedItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.Collection_namedItem: argument name is not valid UTF-8") }
 		return wasm.trap_new("dom.Collection_namedItem: argument name is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := Collection_namedItem(&c, _p0, _p1)
 	api_end(&c)
@@ -14018,9 +15113,11 @@ _t_dom_Collection_names :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Collection_names", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := Collection_names(&c, _p0)
 	api_end(&c)
@@ -14036,6 +15133,7 @@ _t_dom_ParentNode_querySelectorAllPacked :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.ParentNode_querySelectorAllPacked", "selectors") }
@@ -14046,6 +15144,7 @@ _t_dom_ParentNode_querySelectorAllPacked :: proc "c" (env: rawptr, caller: wasm.
 	if !wasm.valid_utf8(_p1) {
 		return _fail_size(&c, &f, a, .Type, "dom.ParentNode_querySelectorAllPacked: argument selectors is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -14068,6 +15167,7 @@ _t_dom_HTMLFormElement_namedControl :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLFormElement_namedControl", "name") }
@@ -14076,6 +15176,7 @@ _t_dom_HTMLFormElement_namedControl :: proc "c" (env: rawptr, caller: wasm.Calle
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.HTMLFormElement_namedControl: argument name is not valid UTF-8") }
 		return wasm.trap_new("dom.HTMLFormElement_namedControl: argument name is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -14096,6 +15197,7 @@ _t_dom_ParentNode_querySelector :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.ParentNode_querySelector", "selectors") }
@@ -14105,6 +15207,7 @@ _t_dom_ParentNode_querySelector :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.ParentNode_querySelector: argument selectors is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -14128,6 +15231,7 @@ _t_dom_TokenList_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.TokenList_length", "attr") }
@@ -14136,6 +15240,7 @@ _t_dom_TokenList_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.TokenList_length: argument attr is not valid UTF-8") }
 		return wasm.trap_new("dom.TokenList_length: argument attr is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -14156,6 +15261,7 @@ _t_dom_TokenList_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.TokenList_item", "attr") }
@@ -14166,6 +15272,7 @@ _t_dom_TokenList_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	if !wasm.valid_utf8(_p1) {
 		return _fail_size(&c, &f, a, .Type, "dom.TokenList_item: argument attr is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -14189,6 +15296,7 @@ _t_dom_TokenList_contains :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.TokenList_contains", "attr") }
@@ -14205,6 +15313,7 @@ _t_dom_TokenList_contains :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.TokenList_contains: argument token is not valid UTF-8") }
 		return wasm.trap_new("dom.TokenList_contains: argument token is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -14225,6 +15334,7 @@ _t_dom_TokenList_add :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.TokenList_add", "attr") }
@@ -14239,6 +15349,7 @@ _t_dom_TokenList_add :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	if !wasm.valid_utf8(_p2) {
 		return _fail_status(&c, a, .Type, "dom.TokenList_add: argument tokens is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -14261,6 +15372,7 @@ _t_dom_TokenList_remove :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.TokenList_remove", "attr") }
@@ -14275,6 +15387,7 @@ _t_dom_TokenList_remove :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	if !wasm.valid_utf8(_p2) {
 		return _fail_status(&c, a, .Type, "dom.TokenList_remove: argument tokens is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -14297,6 +15410,7 @@ _t_dom_TokenList_toggle :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.TokenList_toggle", "attr") }
@@ -14313,6 +15427,7 @@ _t_dom_TokenList_toggle :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	if !wasm.valid_utf8(_p2) {
 		return _fail_status(&c, a, .Type, "dom.TokenList_toggle: argument token is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -14337,6 +15452,7 @@ _t_dom_TokenList_replace :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.TokenList_replace", "attr") }
@@ -14360,6 +15476,7 @@ _t_dom_TokenList_replace :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	if !wasm.valid_utf8(_p3) {
 		return _fail_status(&c, a, .Type, "dom.TokenList_replace: argument new_token is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -14383,6 +15500,7 @@ _t_dom_TokenList_supports :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.TokenList_supports", "attr") }
@@ -14399,6 +15517,7 @@ _t_dom_TokenList_supports :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	if !wasm.valid_utf8(_p2) {
 		return _fail_status(&c, a, .Type, "dom.TokenList_supports: argument token is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -14422,6 +15541,7 @@ _t_dom_Dataset_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Dataset_get", "name") }
@@ -14432,6 +15552,7 @@ _t_dom_Dataset_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	if !wasm.valid_utf8(_p1) {
 		return _fail_size(&c, &f, a, .Type, "dom.Dataset_get: argument name is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -14454,6 +15575,7 @@ _t_dom_Dataset_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Dataset_set", "name") }
@@ -14468,6 +15590,7 @@ _t_dom_Dataset_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	if !wasm.valid_utf8(_p2) {
 		return _fail_status(&c, a, .Type, "dom.Dataset_set: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -14490,6 +15613,7 @@ _t_dom_Dataset_delete :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Dataset_delete", "name") }
@@ -14498,6 +15622,7 @@ _t_dom_Dataset_delete :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.Dataset_delete: argument name is not valid UTF-8") }
 		return wasm.trap_new("dom.Dataset_delete: argument name is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -14518,9 +15643,11 @@ _t_dom_Dataset_names :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Dataset_names", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -14541,9 +15668,11 @@ _t_dom_Element_namespaceURI :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Element_namespaceURI", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -14566,9 +15695,11 @@ _t_dom_Element_prefix :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Element_prefix", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -14591,9 +15722,11 @@ _t_dom_Element_localName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Element_localName", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -14614,9 +15747,11 @@ _t_dom_Element_qualifiedTagName :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Element_qualifiedTagName", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -14637,9 +15772,11 @@ _t_dom_Element_slot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Element_slot", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -14660,6 +15797,7 @@ _t_dom_Element_set_slot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_set_slot", "value") }
@@ -14667,6 +15805,7 @@ _t_dom_Element_set_slot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.Element_set_slot: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -14689,6 +15828,8 @@ _t_dom_Element_hasAttributes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -14709,9 +15850,11 @@ _t_dom_Element_attributeNames :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Element_attributeNames", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -14732,6 +15875,8 @@ _t_dom_Element_attributeCount :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -14752,9 +15897,11 @@ _t_dom_Element_attributeNameAt :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Element_attributeNameAt", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -14778,6 +15925,7 @@ _t_dom_Element_getAttributeNS :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_absent1 := wasm.is_absent(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_getAttributeNS", "namespace") }
@@ -14799,6 +15947,7 @@ _t_dom_Element_getAttributeNS :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	if !wasm.valid_utf8(_p2) {
 		return _fail_size(&c, &f, a, .Type, "dom.Element_getAttributeNS: argument local_name is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -14821,6 +15970,7 @@ _t_dom_Element_setAttributeChecked :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_setAttributeChecked", "name") }
@@ -14835,6 +15985,7 @@ _t_dom_Element_setAttributeChecked :: proc "c" (env: rawptr, caller: wasm.Caller
 	if !wasm.valid_utf8(_p2) {
 		return _fail_status(&c, a, .Type, "dom.Element_setAttributeChecked: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -14857,6 +16008,7 @@ _t_dom_Element_setAttributeNS :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_absent1 := wasm.is_absent(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_setAttributeNS", "namespace") }
@@ -14882,6 +16034,7 @@ _t_dom_Element_setAttributeNS :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	if !wasm.valid_utf8(_p3) {
 		return _fail_status(&c, a, .Type, "dom.Element_setAttributeNS: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -14904,6 +16057,7 @@ _t_dom_Element_removeAttributeNS :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_absent1 := wasm.is_absent(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_removeAttributeNS", "namespace") }
@@ -14924,6 +16078,7 @@ _t_dom_Element_removeAttributeNS :: proc "c" (env: rawptr, caller: wasm.Caller, 
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.Element_removeAttributeNS: argument local_name is not valid UTF-8") }
 		return wasm.trap_new("dom.Element_removeAttributeNS: argument local_name is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -14942,6 +16097,7 @@ _t_dom_Element_toggleAttributeChecked :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_toggleAttributeChecked", "name") }
@@ -14951,6 +16107,7 @@ _t_dom_Element_toggleAttributeChecked :: proc "c" (env: rawptr, caller: wasm.Cal
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.Element_toggleAttributeChecked: argument name is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -14975,6 +16132,7 @@ _t_dom_Element_hasAttribute :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_hasAttribute", "name") }
@@ -14983,6 +16141,7 @@ _t_dom_Element_hasAttribute :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.Element_hasAttribute: argument name is not valid UTF-8") }
 		return wasm.trap_new("dom.Element_hasAttribute: argument name is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15003,6 +16162,7 @@ _t_dom_Element_hasAttributeNS :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_absent1 := wasm.is_absent(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_hasAttributeNS", "namespace") }
@@ -15023,6 +16183,7 @@ _t_dom_Element_hasAttributeNS :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.Element_hasAttributeNS: argument local_name is not valid UTF-8") }
 		return wasm.trap_new("dom.Element_hasAttributeNS: argument local_name is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15043,6 +16204,7 @@ _t_dom_Element_closest :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_closest", "selectors") }
@@ -15052,6 +16214,7 @@ _t_dom_Element_closest :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.Element_closest: argument selectors is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15075,6 +16238,7 @@ _t_dom_Element_matches :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_matches", "selectors") }
@@ -15084,6 +16248,7 @@ _t_dom_Element_matches :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.Element_matches: argument selectors is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15107,6 +16272,7 @@ _t_dom_Element_webkitMatchesSelector :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_webkitMatchesSelector", "selectors") }
@@ -15116,6 +16282,7 @@ _t_dom_Element_webkitMatchesSelector :: proc "c" (env: rawptr, caller: wasm.Call
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.Element_webkitMatchesSelector: argument selectors is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15139,6 +16306,7 @@ _t_dom_Element_insertAdjacentElement :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_insertAdjacentElement", "position") }
@@ -15148,11 +16316,13 @@ _t_dom_Element_insertAdjacentElement :: proc "c" (env: rawptr, caller: wasm.Call
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.Element_insertAdjacentElement: argument position is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Element_insertAdjacentElement: argument element is not a live Element")
 	}
+	api_route(&c, u64(a[3].i64))
 	_p2 := Api_Element{handle = u64(a[3].i64)}
 	_p2.data = lookup_Element(&c, _p2.handle)
 	if _p2.data == nil {
@@ -15176,6 +16346,7 @@ _t_dom_Element_insertAdjacentText :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_insertAdjacentText", "position") }
@@ -15190,6 +16361,7 @@ _t_dom_Element_insertAdjacentText :: proc "c" (env: rawptr, caller: wasm.Caller,
 	if !wasm.valid_utf8(_p2) {
 		return _fail_status(&c, a, .Type, "dom.Element_insertAdjacentText: argument data is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15212,6 +16384,7 @@ _t_dom_Element_insertAdjacentHTML :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_insertAdjacentHTML", "position") }
@@ -15226,6 +16399,7 @@ _t_dom_Element_insertAdjacentHTML :: proc "c" (env: rawptr, caller: wasm.Caller,
 	if !wasm.valid_utf8(_p2) {
 		return _fail_status(&c, a, .Type, "dom.Element_insertAdjacentHTML: argument text is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15248,9 +16422,11 @@ _t_dom_Element_innerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Element_innerHTML", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15271,6 +16447,7 @@ _t_dom_Element_set_innerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_set_innerHTML", "value") }
@@ -15278,6 +16455,7 @@ _t_dom_Element_set_innerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.Element_set_innerHTML: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15300,9 +16478,11 @@ _t_dom_Element_outerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Element_outerHTML", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15323,6 +16503,7 @@ _t_dom_Element_set_outerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Element_set_outerHTML", "value") }
@@ -15330,6 +16511,7 @@ _t_dom_Element_set_outerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.Element_set_outerHTML: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15352,6 +16534,8 @@ _t_dom_Element_shadowRoot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15372,6 +16556,8 @@ _t_dom_HTMLElement_hiddenState :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15392,9 +16578,11 @@ _t_dom_HTMLElement_dir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.HTMLElement_dir", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15415,6 +16603,7 @@ _t_dom_HTMLElement_set_dir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLElement_set_dir", "value") }
@@ -15422,6 +16611,7 @@ _t_dom_HTMLElement_set_dir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.HTMLElement_set_dir: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15444,6 +16634,8 @@ _t_dom_HTMLElement_translate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15464,6 +16656,8 @@ _t_dom_HTMLElement_set_translate :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15487,6 +16681,8 @@ _t_dom_HTMLElement_draggable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15507,6 +16703,8 @@ _t_dom_HTMLElement_set_draggable :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15530,6 +16728,8 @@ _t_dom_HTMLElement_spellcheck :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15550,6 +16750,8 @@ _t_dom_HTMLElement_set_spellcheck :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15573,9 +16775,11 @@ _t_dom_HTMLElement_innerText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.HTMLElement_innerText", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15596,6 +16800,7 @@ _t_dom_HTMLElement_set_innerText :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLElement_set_innerText", "value") }
@@ -15603,6 +16808,7 @@ _t_dom_HTMLElement_set_innerText :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.HTMLElement_set_innerText: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15625,9 +16831,11 @@ _t_dom_HTMLElement_outerText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.HTMLElement_outerText", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15648,6 +16856,7 @@ _t_dom_HTMLElement_set_outerText :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLElement_set_outerText", "value") }
@@ -15655,6 +16864,7 @@ _t_dom_HTMLElement_set_outerText :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.HTMLElement_set_outerText: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15677,9 +16887,11 @@ _t_dom_HTMLElement_accessKeyLabel :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.HTMLElement_accessKeyLabel", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15700,6 +16912,8 @@ _t_dom_HTMLOrSVGOrMathMLElement_tabIndex :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15720,6 +16934,8 @@ _t_dom_HTMLOrSVGOrMathMLElement_set_tabIndex :: proc "c" (env: rawptr, caller: w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15743,9 +16959,11 @@ _t_dom_HTMLOrSVGOrMathMLElement_nonce :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.HTMLOrSVGOrMathMLElement_nonce", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15766,6 +16984,7 @@ _t_dom_HTMLOrSVGOrMathMLElement_set_nonce :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLOrSVGOrMathMLElement_set_nonce", "value") }
@@ -15773,6 +16992,7 @@ _t_dom_HTMLOrSVGOrMathMLElement_set_nonce :: proc "c" (env: rawptr, caller: wasm
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.HTMLOrSVGOrMathMLElement_set_nonce: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15795,9 +17015,11 @@ _t_dom_ElementContentEditable_contentEditable :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.ElementContentEditable_contentEditable", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15818,6 +17040,7 @@ _t_dom_ElementContentEditable_set_contentEditable :: proc "c" (env: rawptr, call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.ElementContentEditable_set_contentEditable", "value") }
@@ -15825,6 +17048,7 @@ _t_dom_ElementContentEditable_set_contentEditable :: proc "c" (env: rawptr, call
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.ElementContentEditable_set_contentEditable: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15847,6 +17071,8 @@ _t_dom_ElementContentEditable_isContentEditable :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15867,9 +17093,11 @@ _t_dom_HTMLHyperlinkElementUtils_href :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.HTMLHyperlinkElementUtils_href", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15890,6 +17118,7 @@ _t_dom_HTMLHyperlinkElementUtils_set_href :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLHyperlinkElementUtils_set_href", "value") }
@@ -15897,6 +17126,7 @@ _t_dom_HTMLHyperlinkElementUtils_set_href :: proc "c" (env: rawptr, caller: wasm
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.HTMLHyperlinkElementUtils_set_href: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15919,9 +17149,11 @@ _t_dom_HyperlinkElementUtils_origin :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_origin", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15942,9 +17174,11 @@ _t_dom_HyperlinkElementUtils_protocol :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_protocol", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15965,6 +17199,7 @@ _t_dom_HyperlinkElementUtils_set_protocol :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_set_protocol", "value") }
@@ -15972,6 +17207,7 @@ _t_dom_HyperlinkElementUtils_set_protocol :: proc "c" (env: rawptr, caller: wasm
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.HyperlinkElementUtils_set_protocol: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -15994,9 +17230,11 @@ _t_dom_HyperlinkElementUtils_username :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_username", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16017,6 +17255,7 @@ _t_dom_HyperlinkElementUtils_set_username :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_set_username", "value") }
@@ -16024,6 +17263,7 @@ _t_dom_HyperlinkElementUtils_set_username :: proc "c" (env: rawptr, caller: wasm
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.HyperlinkElementUtils_set_username: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16046,9 +17286,11 @@ _t_dom_HyperlinkElementUtils_password :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_password", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16069,6 +17311,7 @@ _t_dom_HyperlinkElementUtils_set_password :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_set_password", "value") }
@@ -16076,6 +17319,7 @@ _t_dom_HyperlinkElementUtils_set_password :: proc "c" (env: rawptr, caller: wasm
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.HyperlinkElementUtils_set_password: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16098,9 +17342,11 @@ _t_dom_HyperlinkElementUtils_host :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_host", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16121,6 +17367,7 @@ _t_dom_HyperlinkElementUtils_set_host :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_set_host", "value") }
@@ -16128,6 +17375,7 @@ _t_dom_HyperlinkElementUtils_set_host :: proc "c" (env: rawptr, caller: wasm.Cal
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.HyperlinkElementUtils_set_host: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16150,9 +17398,11 @@ _t_dom_HyperlinkElementUtils_hostname :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_hostname", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16173,6 +17423,7 @@ _t_dom_HyperlinkElementUtils_set_hostname :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_set_hostname", "value") }
@@ -16180,6 +17431,7 @@ _t_dom_HyperlinkElementUtils_set_hostname :: proc "c" (env: rawptr, caller: wasm
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.HyperlinkElementUtils_set_hostname: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16202,9 +17454,11 @@ _t_dom_HyperlinkElementUtils_port :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_port", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16225,6 +17479,7 @@ _t_dom_HyperlinkElementUtils_set_port :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_set_port", "value") }
@@ -16232,6 +17487,7 @@ _t_dom_HyperlinkElementUtils_set_port :: proc "c" (env: rawptr, caller: wasm.Cal
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.HyperlinkElementUtils_set_port: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16254,9 +17510,11 @@ _t_dom_HyperlinkElementUtils_pathname :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_pathname", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16277,6 +17535,7 @@ _t_dom_HyperlinkElementUtils_set_pathname :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_set_pathname", "value") }
@@ -16284,6 +17543,7 @@ _t_dom_HyperlinkElementUtils_set_pathname :: proc "c" (env: rawptr, caller: wasm
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.HyperlinkElementUtils_set_pathname: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16306,9 +17566,11 @@ _t_dom_HyperlinkElementUtils_search :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_search", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16329,6 +17591,7 @@ _t_dom_HyperlinkElementUtils_set_search :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_set_search", "value") }
@@ -16336,6 +17599,7 @@ _t_dom_HyperlinkElementUtils_set_search :: proc "c" (env: rawptr, caller: wasm.C
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.HyperlinkElementUtils_set_search: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16358,9 +17622,11 @@ _t_dom_HyperlinkElementUtils_hash :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_hash", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16381,6 +17647,7 @@ _t_dom_HyperlinkElementUtils_set_hash :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.HyperlinkElementUtils_set_hash", "value") }
@@ -16388,6 +17655,7 @@ _t_dom_HyperlinkElementUtils_set_hash :: proc "c" (env: rawptr, caller: wasm.Cal
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.HyperlinkElementUtils_set_hash: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16410,9 +17678,11 @@ _t_dom_HTMLAnchorElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.HTMLAnchorElement_text", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16433,6 +17703,7 @@ _t_dom_HTMLAnchorElement_set_text :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLAnchorElement_set_text", "value") }
@@ -16440,6 +17711,7 @@ _t_dom_HTMLAnchorElement_set_text :: proc "c" (env: rawptr, caller: wasm.Caller,
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.HTMLAnchorElement_set_text: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16462,6 +17734,8 @@ _t_dom_HTMLTemplateElement_content :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16482,6 +17756,8 @@ _t_events_TouchEvent_count :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16508,8 +17784,10 @@ _t_events_TouchEvent_touch :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[3]), 96)
 	if !_rk { return wasm.trap_bounds(&f, "events.TouchEvent_touch", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16550,6 +17828,8 @@ _t_events_PointerCapture_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16573,6 +17853,8 @@ _t_events_PointerCapture_release :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16596,6 +17878,8 @@ _t_events_PointerCapture_has :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16617,8 +17901,10 @@ _t_events_Event_uiData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 200)
 	if !_rk { return wasm.trap_bounds(&f, "events.Event_uiData", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16667,9 +17953,11 @@ _t_events_UiEvent_key :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "events.UiEvent_key", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16690,9 +17978,11 @@ _t_events_UiEvent_code :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "events.UiEvent_code", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16713,6 +18003,7 @@ _t_dom_HTMLInputElement_set_type :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLInputElement_set_type", "value") }
@@ -16720,6 +18011,7 @@ _t_dom_HTMLInputElement_set_type :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.HTMLInputElement_set_type: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16742,6 +18034,8 @@ _t_dom_HTMLInputElement_set_maxLength :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16765,6 +18059,8 @@ _t_dom_HTMLInputElement_set_minLength :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16788,6 +18084,8 @@ _t_dom_HTMLTextAreaElement_set_maxLength :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16811,6 +18109,8 @@ _t_dom_HTMLTextAreaElement_set_minLength :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16834,6 +18134,7 @@ _t_dom_HTMLOptionElement_set_text :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLOptionElement_set_text", "value") }
@@ -16841,6 +18142,7 @@ _t_dom_HTMLOptionElement_set_text :: proc "c" (env: rawptr, caller: wasm.Caller,
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.HTMLOptionElement_set_text: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16863,6 +18165,8 @@ _t_dom_HTMLTableElement_caption :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16883,11 +18187,14 @@ _t_dom_HTMLTableElement_set_caption :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLTableElement_set_caption: argument table is not a live Element")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_Element{handle = u64(a[1].i64)}
 	if _p1.handle != 0 { _p1.data = lookup_Element(&c, _p1.handle) }
 	if _p1.handle != 0 && _p1.data == nil {
@@ -16910,6 +18217,8 @@ _t_dom_HTMLTableElement_createCaption :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16930,6 +18239,8 @@ _t_dom_HTMLTableElement_deleteCaption :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16948,6 +18259,8 @@ _t_dom_HTMLTableElement_tHead :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -16968,11 +18281,14 @@ _t_dom_HTMLTableElement_set_tHead :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLTableElement_set_tHead: argument table is not a live Element")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_Element{handle = u64(a[1].i64)}
 	if _p1.handle != 0 { _p1.data = lookup_Element(&c, _p1.handle) }
 	if _p1.handle != 0 && _p1.data == nil {
@@ -16995,6 +18311,8 @@ _t_dom_HTMLTableElement_createTHead :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17015,6 +18333,8 @@ _t_dom_HTMLTableElement_deleteTHead :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17033,6 +18353,8 @@ _t_dom_HTMLTableElement_tFoot :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17053,11 +18375,14 @@ _t_dom_HTMLTableElement_set_tFoot :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "dom.HTMLTableElement_set_tFoot: argument table is not a live Element")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_Element{handle = u64(a[1].i64)}
 	if _p1.handle != 0 { _p1.data = lookup_Element(&c, _p1.handle) }
 	if _p1.handle != 0 && _p1.data == nil {
@@ -17080,6 +18405,8 @@ _t_dom_HTMLTableElement_createTFoot :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17100,6 +18427,8 @@ _t_dom_HTMLTableElement_deleteTFoot :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17118,6 +18447,8 @@ _t_dom_HTMLTableElement_createTBody :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17138,8 +18469,10 @@ _t_dom_HTMLTableElement_insertRow :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "dom.HTMLTableElement_insertRow", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17164,6 +18497,8 @@ _t_dom_HTMLTableElement_deleteRow :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17187,8 +18522,10 @@ _t_dom_HTMLTableSectionElement_insertRow :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "dom.HTMLTableSectionElement_insertRow", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17213,6 +18550,8 @@ _t_dom_HTMLTableSectionElement_deleteRow :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17236,8 +18575,10 @@ _t_dom_HTMLTableRowElement_insertCell :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "dom.HTMLTableRowElement_insertCell", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17262,6 +18603,8 @@ _t_dom_HTMLTableRowElement_deleteCell :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17285,6 +18628,8 @@ _t_dom_HTMLTableRowElement_rowIndex :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17305,6 +18650,8 @@ _t_dom_HTMLTableRowElement_sectionRowIndex :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17325,6 +18672,8 @@ _t_dom_HTMLTableCellElement_cellIndex :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17345,9 +18694,11 @@ _t_dom_HTMLTitleElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.HTMLTitleElement_text", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17368,6 +18719,7 @@ _t_dom_HTMLTitleElement_set_text :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLTitleElement_set_text", "value") }
@@ -17375,6 +18727,7 @@ _t_dom_HTMLTitleElement_set_text :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.HTMLTitleElement_set_text: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17397,9 +18750,11 @@ _t_dom_HTMLScriptElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.HTMLScriptElement_text", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17420,6 +18775,7 @@ _t_dom_HTMLScriptElement_set_text :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLScriptElement_set_text", "value") }
@@ -17427,6 +18783,7 @@ _t_dom_HTMLScriptElement_set_text :: proc "c" (env: rawptr, caller: wasm.Caller,
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.HTMLScriptElement_set_text: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17449,6 +18806,8 @@ _t_dom_HTMLInputElement_list :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17469,6 +18828,8 @@ _t_dom_HTMLDialogElement_show :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17491,6 +18852,8 @@ _t_dom_HTMLDialogElement_showModal :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17513,6 +18876,7 @@ _t_dom_HTMLDialogElement_close :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_absent1 := wasm.is_absent(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
 	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLDialogElement_close", "result") }
@@ -17525,6 +18889,7 @@ _t_dom_HTMLDialogElement_close :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		}
 		_p1 = _v1
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17543,6 +18908,7 @@ _t_dom_HTMLDialogElement_requestClose :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_absent1 := wasm.is_absent(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
 	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLDialogElement_requestClose", "result") }
@@ -17555,6 +18921,7 @@ _t_dom_HTMLDialogElement_requestClose :: proc "c" (env: rawptr, caller: wasm.Cal
 		}
 		_p1 = _v1
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17573,8 +18940,10 @@ _t_dom_Element_boundingRect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 32)
 	if !_rk { return wasm.trap_bounds(&f, "dom.Element_boundingRect", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17597,9 +18966,11 @@ _t_dom_Element_clientRectsPacked :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Element_clientRectsPacked", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17620,6 +18991,8 @@ _t_dom_Element_clientTop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17640,6 +19013,8 @@ _t_dom_Element_clientLeft :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17660,6 +19035,8 @@ _t_dom_Element_clientWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17680,6 +19057,8 @@ _t_dom_Element_clientHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17700,6 +19079,8 @@ _t_dom_Element_scrollTop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17720,6 +19101,8 @@ _t_dom_Element_set_scrollTop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17739,6 +19122,8 @@ _t_dom_Element_scrollLeft :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17759,6 +19144,8 @@ _t_dom_Element_set_scrollLeft :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17778,6 +19165,8 @@ _t_dom_Element_scrollWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17798,6 +19187,8 @@ _t_dom_Element_scrollHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17818,6 +19209,8 @@ _t_dom_Element_scrollToXY :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17839,6 +19232,8 @@ _t_dom_Element_scrollIntoViewAt :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17859,6 +19254,8 @@ _t_dom_HTMLElement_offsetParent :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17879,6 +19276,8 @@ _t_dom_HTMLElement_offsetTop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17899,6 +19298,8 @@ _t_dom_HTMLElement_offsetLeft :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17919,6 +19320,8 @@ _t_dom_HTMLElement_offsetWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17939,6 +19342,8 @@ _t_dom_HTMLElement_offsetHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -17959,6 +19364,7 @@ _t_dom_Document_elementFromPoint :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := a[0].f64
 	_p1 := a[1].f64
 	_r := Document_elementFromPoint(&c, _p0, _p1)
@@ -17975,6 +19381,7 @@ _t_dom_Window_innerWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Window_innerWidth(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -17989,6 +19396,7 @@ _t_dom_Window_innerHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Window_innerHeight(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -18003,6 +19411,7 @@ _t_dom_Window_outerWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Window_outerWidth(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -18017,6 +19426,7 @@ _t_dom_Window_outerHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Window_outerHeight(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -18031,6 +19441,7 @@ _t_dom_Window_scrollX :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Window_scrollX(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -18045,6 +19456,7 @@ _t_dom_Window_scrollY :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Window_scrollY(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -18059,6 +19471,7 @@ _t_dom_Window_pageXOffset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Window_pageXOffset(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -18073,6 +19486,7 @@ _t_dom_Window_pageYOffset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Window_pageYOffset(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -18087,6 +19501,7 @@ _t_dom_Window_devicePixelRatio :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Window_devicePixelRatio(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -18101,6 +19516,7 @@ _t_dom_Window_screenX :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Window_screenX(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -18115,6 +19531,7 @@ _t_dom_Window_screenY :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Window_screenY(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -18129,6 +19546,7 @@ _t_dom_Window_screenLeft :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Window_screenLeft(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -18143,6 +19561,7 @@ _t_dom_Window_screenTop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Window_screenTop(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -18157,6 +19576,7 @@ _t_dom_Window_scrollToXY :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := a[0].f64
 	_p1 := a[1].f64
 	_p2 := a[2].i32 != 0
@@ -18173,8 +19593,10 @@ _t_dom_Range_boundingRect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 32)
 	if !_rk { return wasm.trap_bounds(&f, "dom.Range_boundingRect", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -18182,6 +19604,7 @@ _t_dom_Range_boundingRect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 		return wasm.trap_new("dom.Range_boundingRect: argument start is not a live Node")
 	}
 	_p1 := u32(a[1].i32)
+	api_route(&c, u64(a[2].i64))
 	_p2 := Api_Node{handle = u64(a[2].i64)}
 	_p2.data = lookup_Node(&c, _p2.handle)
 	if _p2.data == nil {
@@ -18205,9 +19628,11 @@ _t_dom_Range_clientRectsPacked :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[5])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[4]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Range_clientRectsPacked", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -18215,6 +19640,7 @@ _t_dom_Range_clientRectsPacked :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		return wasm.trap_new("dom.Range_clientRectsPacked: argument start is not a live Node")
 	}
 	_p1 := u32(a[1].i32)
+	api_route(&c, u64(a[2].i64))
 	_p2 := Api_Node{handle = u64(a[2].i64)}
 	_p2.data = lookup_Node(&c, _p2.handle)
 	if _p2.data == nil {
@@ -18236,6 +19662,7 @@ _t_dom_MutationObserver_create :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := u32(a[0].i32)
 	_p1 := a[1].i32
 	_r := MutationObserver_create(&c, _p0, _p1)
@@ -18252,6 +19679,7 @@ _t_dom_MutationObserver_observe :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n3 := wasm.addr(&f, a[4])
 	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[3]), _n3)
 	if !_k3 { return wasm.trap_bounds(&f, "dom.MutationObserver_observe", "filter") }
@@ -18259,7 +19687,9 @@ _t_dom_MutationObserver_observe :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	if !wasm.valid_utf8(_p3) {
 		return _fail_status(&c, a, .Type, "dom.MutationObserver_observe: argument filter is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_Node{handle = u64(a[1].i64)}
 	_p1.data = lookup_Node(&c, _p1.handle)
 	if _p1.data == nil {
@@ -18283,6 +19713,8 @@ _t_dom_MutationObserver_disconnect :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	MutationObserver_disconnect(&c, _p0)
 	api_end(&c)
@@ -18296,9 +19728,11 @@ _t_dom_MutationObserver_takeRecords :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.MutationObserver_takeRecords", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := MutationObserver_takeRecords(&c, _p0)
 	api_end(&c)
@@ -18314,6 +19748,8 @@ _t_dom_MutationObserver_release :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	MutationObserver_release(&c, _p0)
 	api_end(&c)
@@ -18327,6 +19763,8 @@ _t_dom_MutationObserver_live :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := MutationObserver_live(&c, _p0)
 	api_end(&c)
@@ -18342,6 +19780,8 @@ _t_dom_Range_comparePoints :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -18349,6 +19789,7 @@ _t_dom_Range_comparePoints :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 		return wasm.trap_new("dom.Range_comparePoints: argument first is not a live Node")
 	}
 	_p1 := u32(a[1].i32)
+	api_route(&c, u64(a[2].i64))
 	_p2 := Api_Node{handle = u64(a[2].i64)}
 	_p2.data = lookup_Node(&c, _p2.handle)
 	if _p2.data == nil {
@@ -18370,9 +19811,11 @@ _t_dom_Range_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[5])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[4]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Range_text", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -18380,6 +19823,7 @@ _t_dom_Range_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 		return wasm.trap_new("dom.Range_text: argument start is not a live Node")
 	}
 	_p1 := u32(a[1].i32)
+	api_route(&c, u64(a[2].i64))
 	_p2 := Api_Node{handle = u64(a[2].i64)}
 	_p2.data = lookup_Node(&c, _p2.handle)
 	if _p2.data == nil {
@@ -18401,14 +19845,17 @@ _t_dom_Range_contents :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[5]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "dom.Range_contents", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Range_contents: argument start is not a live Node")
 	}
 	_p1 := u32(a[1].i32)
+	api_route(&c, u64(a[2].i64))
 	_p2 := Api_Node{handle = u64(a[2].i64)}
 	_p2.data = lookup_Node(&c, _p2.handle)
 	if _p2.data == nil {
@@ -18434,6 +19881,7 @@ _t_dom_Range_createContextualFragment :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Range_createContextualFragment", "markup") }
@@ -18443,6 +19891,7 @@ _t_dom_Range_createContextualFragment :: proc "c" (env: rawptr, caller: wasm.Cal
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.Range_createContextualFragment: argument markup is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -18466,6 +19915,7 @@ _t_dom_Selection_state :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[0]), 32)
 	if !_rk { return wasm.trap_bounds(&f, "dom.Selection_state", "result pointer") }
 	_r := Selection_state(&c)
@@ -18485,12 +19935,15 @@ _t_dom_Selection_setRange :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Selection_setRange: argument anchor is not a live Node")
 	}
 	_p1 := u32(a[1].i32)
+	api_route(&c, u64(a[2].i64))
 	_p2 := Api_Node{handle = u64(a[2].i64)}
 	_p2.data = lookup_Node(&c, _p2.handle)
 	if _p2.data == nil {
@@ -18514,6 +19967,7 @@ _t_dom_Selection_clear :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	Selection_clear(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -18526,6 +19980,7 @@ _t_dom_Selection_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Selection_text", "result buffer") }
@@ -18543,6 +19998,7 @@ _t_dom_InlineStyle_getProperty :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.InlineStyle_getProperty", "name") }
@@ -18554,6 +20010,7 @@ _t_dom_InlineStyle_getProperty :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.InlineStyle_getProperty: argument name is not valid UTF-8") }
 		return wasm.trap_new("dom.InlineStyle_getProperty: argument name is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -18574,6 +20031,7 @@ _t_dom_InlineStyle_priority :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.InlineStyle_priority", "name") }
@@ -18585,6 +20043,7 @@ _t_dom_InlineStyle_priority :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.InlineStyle_priority: argument name is not valid UTF-8") }
 		return wasm.trap_new("dom.InlineStyle_priority: argument name is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -18605,6 +20064,7 @@ _t_dom_InlineStyle_setProperty :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.InlineStyle_setProperty", "name") }
@@ -18626,6 +20086,7 @@ _t_dom_InlineStyle_setProperty :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	if !wasm.valid_utf8(_p3) {
 		return _fail_status(&c, a, .Type, "dom.InlineStyle_setProperty: argument priority is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -18648,6 +20109,7 @@ _t_dom_InlineStyle_removeProperty :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.InlineStyle_removeProperty", "name") }
@@ -18658,6 +20120,7 @@ _t_dom_InlineStyle_removeProperty :: proc "c" (env: rawptr, caller: wasm.Caller,
 	if !wasm.valid_utf8(_p1) {
 		return _fail_size(&c, &f, a, .Type, "dom.InlineStyle_removeProperty: argument name is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -18680,9 +20143,11 @@ _t_dom_InlineStyle_cssText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.InlineStyle_cssText", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -18703,6 +20168,7 @@ _t_dom_InlineStyle_setCssText :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.InlineStyle_setCssText", "text") }
@@ -18710,6 +20176,7 @@ _t_dom_InlineStyle_setCssText :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.InlineStyle_setCssText: argument text is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -18732,6 +20199,8 @@ _t_dom_InlineStyle_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -18752,9 +20221,11 @@ _t_dom_InlineStyle_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.InlineStyle_item", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -18776,6 +20247,7 @@ _t_dom_ComputedStyle_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.ComputedStyle_get", "pseudo") }
@@ -18795,6 +20267,7 @@ _t_dom_ComputedStyle_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.ComputedStyle_get: argument name is not valid UTF-8") }
 		return wasm.trap_new("dom.ComputedStyle_get: argument name is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -18815,6 +20288,7 @@ _t_dom_ComputedStyle_count :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := ComputedStyle_count(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -18829,6 +20303,7 @@ _t_dom_ComputedStyle_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.ComputedStyle_name", "result buffer") }
@@ -18847,6 +20322,7 @@ _t_dom_CSS_supportsDeclaration :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "dom.CSS_supportsDeclaration", "property") }
@@ -18877,6 +20353,7 @@ _t_dom_CSS_supportsCondition :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "dom.CSS_supportsCondition", "condition") }
@@ -18899,9 +20376,11 @@ _t_dom_Node_nodeName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Node_nodeName", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -18922,9 +20401,11 @@ _t_dom_Node_baseURI :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Node_baseURI", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -18945,6 +20426,8 @@ _t_dom_Node_isConnected :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -18965,6 +20448,8 @@ _t_dom_Node_ownerDocument :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -18985,6 +20470,8 @@ _t_dom_Node_parentElement :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -19005,6 +20492,8 @@ _t_dom_Node_hasChildNodes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -19025,9 +20514,11 @@ _t_dom_Node_nodeValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Node_nodeValue", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -19050,6 +20541,7 @@ _t_dom_Node_set_nodeValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Node_set_nodeValue", "value") }
@@ -19057,6 +20549,7 @@ _t_dom_Node_set_nodeValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.Node_set_nodeValue: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -19079,9 +20572,11 @@ _t_dom_Node_textContent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Node_textContent", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -19104,6 +20599,7 @@ _t_dom_Node_set_textContent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Node_set_textContent", "value") }
@@ -19111,6 +20607,7 @@ _t_dom_Node_set_textContent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.Node_set_textContent: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -19133,6 +20630,8 @@ _t_dom_Node_normalize :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -19151,8 +20650,10 @@ _t_dom_Node_cloneNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "dom.Node_cloneNode", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -19177,8 +20678,10 @@ _t_dom_Document_importNodeCopy :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "dom.Document_importNodeCopy", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -19203,12 +20706,15 @@ _t_dom_Node_isEqualNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
 		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Node_isEqualNode: argument node is not a live Node") }
 		return wasm.trap_new("dom.Node_isEqualNode: argument node is not a live Node")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_Node{handle = u64(a[1].i64)}
 	if _p1.handle != 0 { _p1.data = lookup_Node(&c, _p1.handle) }
 	if _p1.handle != 0 && _p1.data == nil {
@@ -19229,12 +20735,15 @@ _t_dom_Node_isSameNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
 		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Node_isSameNode: argument node is not a live Node") }
 		return wasm.trap_new("dom.Node_isSameNode: argument node is not a live Node")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_Node{handle = u64(a[1].i64)}
 	if _p1.handle != 0 { _p1.data = lookup_Node(&c, _p1.handle) }
 	if _p1.handle != 0 && _p1.data == nil {
@@ -19255,12 +20764,15 @@ _t_dom_Node_compareDocumentPosition :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
 		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Node_compareDocumentPosition: argument node is not a live Node") }
 		return wasm.trap_new("dom.Node_compareDocumentPosition: argument node is not a live Node")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_Node{handle = u64(a[1].i64)}
 	_p1.data = lookup_Node(&c, _p1.handle)
 	if _p1.data == nil {
@@ -19281,12 +20793,15 @@ _t_dom_Node_contains :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
 		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.Node_contains: argument node is not a live Node") }
 		return wasm.trap_new("dom.Node_contains: argument node is not a live Node")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_Node{handle = u64(a[1].i64)}
 	if _p1.handle != 0 { _p1.data = lookup_Node(&c, _p1.handle) }
 	if _p1.handle != 0 && _p1.data == nil {
@@ -19307,6 +20822,7 @@ _t_dom_Node_lookupPrefix :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_absent1 := wasm.is_absent(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Node_lookupPrefix", "namespace") }
@@ -19321,6 +20837,7 @@ _t_dom_Node_lookupPrefix :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 		}
 		_p1 = _v1
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -19343,6 +20860,7 @@ _t_dom_Node_lookupNamespaceURI :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_absent1 := wasm.is_absent(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Node_lookupNamespaceURI", "prefix") }
@@ -19357,6 +20875,7 @@ _t_dom_Node_lookupNamespaceURI :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		}
 		_p1 = _v1
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -19379,6 +20898,7 @@ _t_dom_Node_isDefaultNamespace :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_absent1 := wasm.is_absent(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Node_isDefaultNamespace", "namespace") }
@@ -19391,6 +20911,7 @@ _t_dom_Node_isDefaultNamespace :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		}
 		_p1 = _v1
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -19411,6 +20932,8 @@ _t_dom_Node_rootNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -19431,6 +20954,8 @@ _t_dom_Node_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -19451,16 +20976,20 @@ _t_dom_Node_preInsert :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_preInsert: argument parent is not a live Node")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_Node{handle = u64(a[1].i64)}
 	_p1.data = lookup_Node(&c, _p1.handle)
 	if _p1.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_preInsert: argument node is not a live Node")
 	}
+	api_route(&c, u64(a[2].i64))
 	_p2 := Api_Node{handle = u64(a[2].i64)}
 	if _p2.handle != 0 { _p2.data = lookup_Node(&c, _p2.handle) }
 	if _p2.handle != 0 && _p2.data == nil {
@@ -19483,16 +21012,20 @@ _t_dom_Node_replaceChildChecked :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_replaceChildChecked: argument parent is not a live Node")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_Node{handle = u64(a[1].i64)}
 	_p1.data = lookup_Node(&c, _p1.handle)
 	if _p1.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_replaceChildChecked: argument node is not a live Node")
 	}
+	api_route(&c, u64(a[2].i64))
 	_p2 := Api_Node{handle = u64(a[2].i64)}
 	_p2.data = lookup_Node(&c, _p2.handle)
 	if _p2.data == nil {
@@ -19515,11 +21048,14 @@ _t_dom_Node_preRemove :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "dom.Node_preRemove: argument parent is not a live Node")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_Node{handle = u64(a[1].i64)}
 	_p1.data = lookup_Node(&c, _p1.handle)
 	if _p1.data == nil {
@@ -19542,10 +21078,12 @@ _t_dom_Node_insertItems :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "dom.Node_insertItems", "items") }
 	_p2 := _s2[:_n2]
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -19569,6 +21107,7 @@ _t_dom_Node_pinAll :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0, 8)
 	if !_k0 { return wasm.trap_bounds(&f, "dom.Node_pinAll", "nodes") }
@@ -19585,6 +21124,7 @@ _t_dom_Node_unpinAll :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0, 8)
 	if !_k0 { return wasm.trap_bounds(&f, "dom.Node_unpinAll", "nodes") }
@@ -19601,6 +21141,8 @@ _t_dom_ParentNode_firstElementChild :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -19621,6 +21163,8 @@ _t_dom_ParentNode_lastElementChild :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -19641,6 +21185,8 @@ _t_dom_ParentNode_childElementCount :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -19661,6 +21207,8 @@ _t_dom_ChildNode_remove :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -19679,6 +21227,8 @@ _t_dom_NonDocumentTypeChildNode_previousElementSibling :: proc "c" (env: rawptr,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -19699,6 +21249,8 @@ _t_dom_NonDocumentTypeChildNode_nextElementSibling :: proc "c" (env: rawptr, cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -19719,6 +21271,7 @@ _t_dom_NonElementParentNode_getElementById :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.NonElementParentNode_getElementById", "id") }
@@ -19727,6 +21280,7 @@ _t_dom_NonElementParentNode_getElementById :: proc "c" (env: rawptr, caller: was
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.NonElementParentNode_getElementById: argument id is not valid UTF-8") }
 		return wasm.trap_new("dom.NonElementParentNode_getElementById: argument id is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -19747,9 +21301,11 @@ _t_dom_CharacterData_data :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.CharacterData_data", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -19770,6 +21326,7 @@ _t_dom_CharacterData_set_data :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.CharacterData_set_data", "value") }
@@ -19778,6 +21335,7 @@ _t_dom_CharacterData_set_data :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.CharacterData_set_data: argument value is not valid UTF-8") }
 		return wasm.trap_new("dom.CharacterData_set_data: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -19796,6 +21354,8 @@ _t_dom_CharacterData_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -19816,9 +21376,11 @@ _t_dom_CharacterData_substringData :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.CharacterData_substringData", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -19843,6 +21405,7 @@ _t_dom_CharacterData_appendData :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.CharacterData_appendData", "data") }
@@ -19851,6 +21414,7 @@ _t_dom_CharacterData_appendData :: proc "c" (env: rawptr, caller: wasm.Caller, a
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.CharacterData_appendData: argument data is not valid UTF-8") }
 		return wasm.trap_new("dom.CharacterData_appendData: argument data is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -19869,6 +21433,7 @@ _t_dom_CharacterData_insertData :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "dom.CharacterData_insertData", "data") }
@@ -19876,6 +21441,7 @@ _t_dom_CharacterData_insertData :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	if !wasm.valid_utf8(_p2) {
 		return _fail_status(&c, a, .Type, "dom.CharacterData_insertData: argument data is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -19899,6 +21465,8 @@ _t_dom_CharacterData_deleteData :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -19923,6 +21491,7 @@ _t_dom_CharacterData_replaceData :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n3 := wasm.addr(&f, a[4])
 	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[3]), _n3)
 	if !_k3 { return wasm.trap_bounds(&f, "dom.CharacterData_replaceData", "data") }
@@ -19930,6 +21499,7 @@ _t_dom_CharacterData_replaceData :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	if !wasm.valid_utf8(_p3) {
 		return _fail_status(&c, a, .Type, "dom.CharacterData_replaceData: argument data is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -19954,8 +21524,10 @@ _t_dom_Text_splitText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "dom.Text_splitText", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -19980,9 +21552,11 @@ _t_dom_Text_wholeText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Text_wholeText", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -20003,9 +21577,11 @@ _t_dom_DocumentType_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.DocumentType_name", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -20026,9 +21602,11 @@ _t_dom_DocumentType_publicId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.DocumentType_publicId", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -20049,9 +21627,11 @@ _t_dom_DocumentType_systemId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.DocumentType_systemId", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -20072,6 +21652,7 @@ _t_dom_Document_createElementChecked :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "dom.Document_createElementChecked", "local_name") }
@@ -20099,6 +21680,7 @@ _t_dom_Document_createElementInert :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "dom.Document_createElementInert", "local_name") }
@@ -20126,6 +21708,7 @@ _t_dom_Document_createElementNSChecked :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_absent0 := wasm.is_absent(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), 0 if _absent0 else wasm.addr(&f, a[1]))
 	if !_k0 { return wasm.trap_bounds(&f, "dom.Document_createElementNSChecked", "namespace") }
@@ -20164,6 +21747,7 @@ _t_dom_Document_createDocumentFragment :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[0]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "dom.Document_createDocumentFragment", "result pointer") }
 	_r, _err := Document_createDocumentFragment(&c)
@@ -20184,6 +21768,7 @@ _t_dom_Document_createComment :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "dom.Document_createComment", "data") }
@@ -20211,6 +21796,7 @@ _t_dom_Document_createCDATASection :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "dom.Document_createCDATASection", "data") }
@@ -20238,8 +21824,10 @@ _t_dom_Document_adoptNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "dom.Document_adoptNode", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -20263,6 +21851,7 @@ _t_dom_Document_documentURI :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_documentURI", "result buffer") }
@@ -20280,6 +21869,7 @@ _t_dom_Document_compatMode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_compatMode", "result buffer") }
@@ -20297,6 +21887,7 @@ _t_dom_Document_characterSet :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_characterSet", "result buffer") }
@@ -20314,6 +21905,7 @@ _t_dom_Document_charset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_charset", "result buffer") }
@@ -20331,6 +21923,7 @@ _t_dom_Document_inputEncoding :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_inputEncoding", "result buffer") }
@@ -20348,6 +21941,7 @@ _t_dom_Document_contentType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_contentType", "result buffer") }
@@ -20365,6 +21959,7 @@ _t_dom_Document_doctype :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Document_doctype(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -20379,6 +21974,7 @@ _t_dom_Document_title :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_title", "result buffer") }
@@ -20396,6 +21992,7 @@ _t_dom_Document_set_title :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "dom.Document_set_title", "value") }
@@ -20416,6 +22013,7 @@ _t_dom_Document_dir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_dir", "result buffer") }
@@ -20433,6 +22031,7 @@ _t_dom_Document_set_dir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "dom.Document_set_dir", "value") }
@@ -20453,6 +22052,7 @@ _t_dom_Document_hasFocus :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Document_hasFocus(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -20467,6 +22067,7 @@ _t_dom_Document_referrer :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_referrer", "result buffer") }
@@ -20484,6 +22085,7 @@ _t_dom_Document_lastModified :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_lastModified", "result buffer") }
@@ -20501,6 +22103,7 @@ _t_dom_Document_domain :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_domain", "result buffer") }
@@ -20518,6 +22121,7 @@ _t_dom_Document_scrollingElement :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Document_scrollingElement(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -20532,6 +22136,8 @@ _t_dom_Document_set_body :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	if _p0.handle != 0 { _p0.data = lookup_Element(&c, _p0.handle) }
 	if _p0.handle != 0 && _p0.data == nil {
@@ -20554,6 +22160,7 @@ _t_dom_DOMImplementation_createHTMLDocument :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_absent0 := wasm.is_absent(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), 0 if _absent0 else wasm.addr(&f, a[1]))
 	if !_k0 { return wasm.trap_bounds(&f, "dom.DOMImplementation_createHTMLDocument", "title") }
@@ -20585,6 +22192,7 @@ _t_dom_DOMParser_parseHTMLNode :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "dom.DOMParser_parseHTMLNode", "html") }
@@ -20612,6 +22220,7 @@ _t_dom_DOMParser_parseXMLNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "dom.DOMParser_parseXMLNode", "text") }
@@ -20646,9 +22255,11 @@ _t_dom_ProcessingInstruction_target :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.ProcessingInstruction_target", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -20669,9 +22280,11 @@ _t_dom_Document_xmlContentType :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Document_xmlContentType", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -20694,6 +22307,7 @@ _t_dom_Document_createXMLElement :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_absent1 := wasm.is_absent(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Document_createXMLElement", "namespace") }
@@ -20714,6 +22328,7 @@ _t_dom_Document_createXMLElement :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	if !wasm.valid_utf8(_p2) {
 		return _fail_status(&c, a, .Type, "dom.Document_createXMLElement: argument qualified_name is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -20738,6 +22353,7 @@ _t_dom_DOMImplementation_createDocument :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_absent0 := wasm.is_absent(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), 0 if _absent0 else wasm.addr(&f, a[1]))
 	if !_k0 { return wasm.trap_bounds(&f, "dom.DOMImplementation_createDocument", "namespace") }
@@ -20758,6 +22374,7 @@ _t_dom_DOMImplementation_createDocument :: proc "c" (env: rawptr, caller: wasm.C
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.DOMImplementation_createDocument: argument qualified_name is not valid UTF-8")
 	}
+	api_route(&c, u64(a[4].i64))
 	_p2 := Api_Node{handle = u64(a[4].i64)}
 	if _p2.handle != 0 { _p2.data = lookup_Node(&c, _p2.handle) }
 	if _p2.handle != 0 && _p2.data == nil {
@@ -20781,6 +22398,7 @@ _t_dom_DOMImplementation_createDocumentType :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "dom.DOMImplementation_createDocumentType", "name") }
@@ -20822,6 +22440,8 @@ _t_dom_Document_partOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -20843,8 +22463,10 @@ _t_entries_DataTransfer_itemEntry :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "entries.DataTransfer_itemEntry", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
 	_p0.data = lookup_DataTransfer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -20869,8 +22491,10 @@ _t_entries_FsEntry_info :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 1)
 	if !_rk { return wasm.trap_bounds(&f, "entries.FsEntry_info", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_FsEntry{handle = u64(a[0].i64)}
 	_p0.data = lookup_FsEntry(&c, _p0.handle)
 	if _p0.data == nil {
@@ -20890,9 +22514,11 @@ _t_entries_FsEntry_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "entries.FsEntry_name", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_FsEntry{handle = u64(a[0].i64)}
 	_p0.data = lookup_FsEntry(&c, _p0.handle)
 	if _p0.data == nil {
@@ -20913,9 +22539,11 @@ _t_entries_FsEntry_fullPath :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "entries.FsEntry_fullPath", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_FsEntry{handle = u64(a[0].i64)}
 	_p0.data = lookup_FsEntry(&c, _p0.handle)
 	if _p0.data == nil {
@@ -20936,9 +22564,11 @@ _t_entries_FsEntry_filesystemName :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "entries.FsEntry_filesystemName", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_FsEntry{handle = u64(a[0].i64)}
 	_p0.data = lookup_FsEntry(&c, _p0.handle)
 	if _p0.data == nil {
@@ -20959,6 +22589,8 @@ _t_entries_FsEntry_parent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_FsEntry{handle = u64(a[0].i64)}
 	_p0.data = lookup_FsEntry(&c, _p0.handle)
 	if _p0.data == nil {
@@ -20979,6 +22611,8 @@ _t_entries_FsEntry_root :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_FsEntry{handle = u64(a[0].i64)}
 	_p0.data = lookup_FsEntry(&c, _p0.handle)
 	if _p0.data == nil {
@@ -20999,6 +22633,8 @@ _t_entries_FsEntry_file :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_FsEntry{handle = u64(a[0].i64)}
 	_p0.data = lookup_FsEntry(&c, _p0.handle)
 	if _p0.data == nil {
@@ -21019,6 +22655,7 @@ _t_entries_FsEntry_lookup :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "entries.FsEntry_lookup", "path") }
@@ -21027,6 +22664,7 @@ _t_entries_FsEntry_lookup :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "entries.FsEntry_lookup: argument path is not valid UTF-8") }
 		return wasm.trap_new("entries.FsEntry_lookup: argument path is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_FsEntry{handle = u64(a[0].i64)}
 	_p0.data = lookup_FsEntry(&c, _p0.handle)
 	if _p0.data == nil {
@@ -21048,6 +22686,8 @@ _t_entries_FsEntry_createReader :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_FsEntry{handle = u64(a[0].i64)}
 	_p0.data = lookup_FsEntry(&c, _p0.handle)
 	if _p0.data == nil {
@@ -21068,6 +22708,8 @@ _t_entries_FsReader_read :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_FsReader{handle = u64(a[0].i64)}
 	_p0.data = lookup_FsReader(&c, _p0.handle)
 	if _p0.data == nil {
@@ -21088,6 +22730,8 @@ _t_entries_FsReader_entry :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_FsReader{handle = u64(a[0].i64)}
 	_p0.data = lookup_FsReader(&c, _p0.handle)
 	if _p0.data == nil {
@@ -21109,6 +22753,7 @@ _t_events_EventTarget_dispatchEngineEvent :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "events.EventTarget_dispatchEngineEvent", "type") }
@@ -21118,6 +22763,7 @@ _t_events_EventTarget_dispatchEngineEvent :: proc "c" (env: rawptr, caller: wasm
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "events.EventTarget_dispatchEngineEvent: argument type is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_e2 := u32(a[3].i32)
 	if !_valid_EventInit(u32(_e2)) {
@@ -21144,6 +22790,8 @@ _t_events_Event_engineId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -21164,6 +22812,8 @@ _t_events_Event_interface :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -21184,6 +22834,8 @@ _t_events_Event_isLive :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := Event_isLive(&c, _p0)
 	api_end(&c)
@@ -21199,6 +22851,8 @@ _t_events_Event_bubbles :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -21219,6 +22873,8 @@ _t_events_Event_cancelable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -21239,6 +22895,8 @@ _t_events_Event_composed :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -21259,6 +22917,8 @@ _t_events_Event_eventPhase :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -21279,6 +22939,8 @@ _t_events_Event_timeStamp :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -21299,6 +22961,8 @@ _t_events_Event_isTrusted :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -21319,6 +22983,8 @@ _t_events_Event_propagationStopped :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -21339,6 +23005,7 @@ _t_events_EventTarget_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := EventTarget_create(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -21353,6 +23020,7 @@ _t_scripts_Document_writeMarkup :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "scripts.Document_writeMarkup", "markup") }
@@ -21374,6 +23042,7 @@ _t_scripts_Document_openStream :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_err := Document_openStream(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -21391,6 +23060,7 @@ _t_scripts_Document_closeStream :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_err := Document_closeStream(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -21408,6 +23078,8 @@ _t_scripts_HTMLScriptElement_forceAsync :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := HTMLScriptElement_forceAsync(&c, _p0)
 	api_end(&c)
@@ -21423,6 +23095,8 @@ _t_scripts_HTMLScriptElement_setForceAsync :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32 != 0
 	HTMLScriptElement_setForceAsync(&c, _p0, _p1)
@@ -21437,10 +23111,12 @@ _t_scripts_Script_allowInline :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "scripts.Script_allowInline", "source") }
 	_p2 := utf8_scrub(string(_s2[:_n2]), context.temp_allocator)
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_e1 := i32(a[1].i32)
 	if !_valid_InlineScriptKind(_e1) {
@@ -21462,6 +23138,7 @@ _t_scripts_Script_allowEval :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "scripts.Script_allowEval", "source") }
@@ -21480,6 +23157,7 @@ _t_scripts_Script_javascriptResult :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "scripts.Script_javascriptResult", "html") }
@@ -21496,6 +23174,7 @@ _t_scripts_Script_baseName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "scripts.Script_baseName", "result buffer") }
@@ -21513,6 +23192,7 @@ _t_scripts_Module_resolve :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "scripts.Module_resolve", "specifier") }
@@ -21541,6 +23221,7 @@ _t_scripts_Module_source :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "scripts.Module_source", "url") }
@@ -21565,6 +23246,7 @@ _t_scripts_Module_request :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "scripts.Module_request", "module_url") }
@@ -21595,6 +23277,7 @@ _t_scripts_Module_import :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "scripts.Module_import", "specifier") }
@@ -21626,6 +23309,7 @@ _t_scripts_Engine_queueRejectionCheck :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	Engine_queueRejectionCheck(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -21638,6 +23322,7 @@ _t_scripts_Worker_createScript :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "scripts.Worker_createScript", "url") }
@@ -21671,10 +23356,12 @@ _t_scripts_Worker_postSerialized :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "scripts.Worker_postSerialized", "data") }
 	_p1 := _s1[:_n1]
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_err := Worker_postSerialized(&c, _p0, _p1)
 	api_end(&c)
@@ -21693,6 +23380,7 @@ _t_scripts_DedicatedWorkerGlobalScope_postSerialized :: proc "c" (env: rawptr, c
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "scripts.DedicatedWorkerGlobalScope_postSerialized", "data") }
@@ -21714,6 +23402,7 @@ _t_scripts_WorkerGlobalScope_importScript :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "scripts.WorkerGlobalScope_importScript", "url") }
@@ -21738,6 +23427,7 @@ _t_scripts_WorkerGlobalScope_isModule :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := WorkerGlobalScope_isModule(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -21752,6 +23442,7 @@ _t_scripts_SharedWorker_connect :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "scripts.SharedWorker_connect", "url") }
@@ -21786,6 +23477,7 @@ _t_scripts_Worker_createScriptBytes :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "scripts.Worker_createScriptBytes", "url") }
@@ -21823,6 +23515,7 @@ _t_scripts_Worker_pendingError :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "scripts.Worker_pendingError", "result buffer") }
@@ -21840,6 +23533,7 @@ _t_scripts_SharedWorker_connectBytes :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "scripts.SharedWorker_connectBytes", "url") }
@@ -21878,6 +23572,8 @@ _t_scripts_SharedWorker_portEnd :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := SharedWorker_portEnd(&c, _p0)
 	api_end(&c)
@@ -21893,6 +23589,7 @@ _t_scripts_SharedWorkerGlobalScope_takeConnection :: proc "c" (env: rawptr, call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := SharedWorkerGlobalScope_takeConnection(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -21907,6 +23604,7 @@ _t_dom_ResizeObserver_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := u32(a[0].i32)
 	_p1 := a[1].i32
 	_r := ResizeObserver_create(&c, _p0, _p1)
@@ -21923,7 +23621,10 @@ _t_dom_ResizeObserver_observe :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_Element{handle = u64(a[1].i64)}
 	_p1.data = lookup_Element(&c, _p1.handle)
 	if _p1.data == nil {
@@ -21947,7 +23648,10 @@ _t_dom_ResizeObserver_unobserve :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_Element{handle = u64(a[1].i64)}
 	_p1.data = lookup_Element(&c, _p1.handle)
 	if _p1.data == nil {
@@ -21966,6 +23670,8 @@ _t_dom_ResizeObserver_disconnect :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	ResizeObserver_disconnect(&c, _p0)
 	api_end(&c)
@@ -21979,6 +23685,8 @@ _t_dom_ResizeObserver_observed :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := ResizeObserver_observed(&c, _p0)
 	api_end(&c)
@@ -21994,9 +23702,11 @@ _t_dom_ResizeObserver_takeEntries :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.ResizeObserver_takeEntries", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := ResizeObserver_takeEntries(&c, _p0)
 	api_end(&c)
@@ -22012,6 +23722,7 @@ _t_dom_IntersectionObserver_create :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n3 := wasm.addr(&f, a[4])
 	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[3]), _n3)
 	if !_k3 { return wasm.trap_bounds(&f, "dom.IntersectionObserver_create", "root_margin") }
@@ -22034,6 +23745,7 @@ _t_dom_IntersectionObserver_create :: proc "c" (env: rawptr, caller: wasm.Caller
 	_p5 := _s5[:_n5]
 	_p0 := u32(a[0].i32)
 	_p1 := a[1].i32
+	api_route(&c, u64(a[2].i64))
 	_p2 := u64(a[2].i64)
 	_r, _err := IntersectionObserver_create(&c, _p0, _p1, _p2, _p3, _p4, _p5)
 	api_end(&c)
@@ -22053,9 +23765,11 @@ _t_dom_IntersectionObserver_rootMargin :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.IntersectionObserver_rootMargin", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := IntersectionObserver_rootMargin(&c, _p0)
 	api_end(&c)
@@ -22071,9 +23785,11 @@ _t_dom_IntersectionObserver_scrollMargin :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.IntersectionObserver_scrollMargin", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := IntersectionObserver_scrollMargin(&c, _p0)
 	api_end(&c)
@@ -22089,7 +23805,10 @@ _t_dom_IntersectionObserver_observe :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_Element{handle = u64(a[1].i64)}
 	_p1.data = lookup_Element(&c, _p1.handle)
 	if _p1.data == nil {
@@ -22112,7 +23831,10 @@ _t_dom_IntersectionObserver_unobserve :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_Element{handle = u64(a[1].i64)}
 	_p1.data = lookup_Element(&c, _p1.handle)
 	if _p1.data == nil {
@@ -22131,6 +23853,8 @@ _t_dom_IntersectionObserver_disconnect :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	IntersectionObserver_disconnect(&c, _p0)
 	api_end(&c)
@@ -22144,6 +23868,8 @@ _t_dom_IntersectionObserver_observed :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := IntersectionObserver_observed(&c, _p0)
 	api_end(&c)
@@ -22159,9 +23885,11 @@ _t_dom_IntersectionObserver_takeRecords :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.IntersectionObserver_takeRecords", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := IntersectionObserver_takeRecords(&c, _p0)
 	api_end(&c)
@@ -22177,6 +23905,8 @@ _t_dom_IntersectionObserver_release :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	IntersectionObserver_release(&c, _p0)
 	api_end(&c)
@@ -22190,6 +23920,7 @@ _t_dom_Window_print :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	Window_print(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -22202,8 +23933,10 @@ _t_dom_Element_attachShadowInit :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[6]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "dom.Element_attachShadowInit", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -22232,6 +23965,7 @@ _t_dom_CustomElements_disable :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "dom.CustomElements_disable", "name") }
@@ -22254,9 +23988,11 @@ _t_dom_ShadowRoot_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.ShadowRoot_mode", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -22277,6 +24013,8 @@ _t_dom_ShadowRoot_delegatesFocus :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -22297,6 +24035,8 @@ _t_dom_ShadowRoot_clonable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -22317,6 +24057,8 @@ _t_dom_ShadowRoot_serializable :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -22337,9 +24079,11 @@ _t_dom_ShadowRoot_slotAssignment :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.ShadowRoot_slotAssignment", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -22360,6 +24104,8 @@ _t_dom_ShadowRoot_host :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -22380,9 +24126,11 @@ _t_dom_ShadowRoot_innerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.ShadowRoot_innerHTML", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -22403,6 +24151,7 @@ _t_dom_ShadowRoot_set_innerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.ShadowRoot_set_innerHTML", "value") }
@@ -22410,6 +24159,7 @@ _t_dom_ShadowRoot_set_innerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.ShadowRoot_set_innerHTML: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -22432,6 +24182,8 @@ _t_dom_ShadowRoot_activeElement :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -22452,6 +24204,7 @@ _t_dom_Node_getHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2, 8)
 	if !_k2 { return wasm.trap_bounds(&f, "dom.Node_getHTML", "roots") }
@@ -22459,6 +24212,7 @@ _t_dom_Node_getHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[4]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Node_getHTML", "result buffer") }
 	_p2 := ([^]u64)(_s2)[:_n2]
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -22480,6 +24234,7 @@ _t_dom_Node_setHTMLUnsafe :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.Node_setHTMLUnsafe", "html") }
@@ -22487,6 +24242,7 @@ _t_dom_Node_setHTMLUnsafe :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.Node_setHTMLUnsafe: argument html is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -22509,6 +24265,7 @@ _t_dom_Document_parseHTMLUnsafeNode :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "dom.Document_parseHTMLUnsafeNode", "html") }
@@ -22536,6 +24293,8 @@ _t_dom_Node_rootNodeComposed :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -22557,6 +24316,8 @@ _t_dom_Slottable_assignedSlot :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -22577,9 +24338,11 @@ _t_dom_HTMLSlotElement_assignedPacked :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.HTMLSlotElement_assignedPacked", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -22602,10 +24365,12 @@ _t_dom_HTMLSlotElement_assignNodes :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1, 8)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.HTMLSlotElement_assignNodes", "nodes") }
 	_p1 := ([^]u64)(_s1)[:_n1]
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -22628,6 +24393,7 @@ _t_dom_Document_shadowIncludingByName :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "dom.Document_shadowIncludingByName", "name") }
@@ -22653,9 +24419,11 @@ _t_dom_DocumentOrShadowRoot_elementsFromPointPacked :: proc "c" (env: rawptr, ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.DocumentOrShadowRoot_elementsFromPointPacked", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -22678,6 +24446,7 @@ _t_dom_Shadow_fireSlotChanges :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	Shadow_fireSlotChanges(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -22690,6 +24459,8 @@ _t_dom_Node_isLive :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := Node_isLive(&c, _p0)
 	api_end(&c)
@@ -22705,9 +24476,11 @@ _t_dom_Node_shadowIncludingElements :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.Node_shadowIncludingElements", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -22728,9 +24501,11 @@ _t_events_Event_composedPathPacked :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "events.Event_composedPathPacked", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -22751,6 +24526,7 @@ _t_events_EventTarget_lastTarget :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := EventTarget_lastTarget(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -22765,6 +24541,7 @@ _t_events_EventTarget_lastRelated :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := EventTarget_lastRelated(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -22779,6 +24556,8 @@ _t_events_Event_setNextRelated :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	Event_setNextRelated(&c, _p0)
 	api_end(&c)
@@ -22792,6 +24571,8 @@ _t_events_Event_relatedNow :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -22812,6 +24593,8 @@ _t_events_Event_inShadowTreeNow :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := Event_inShadowTreeNow(&c, _p0)
 	api_end(&c)
@@ -22827,8 +24610,10 @@ _t_dom_Element_attachInternals :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "dom.Element_attachInternals", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -22852,6 +24637,8 @@ _t_dom_ElementInternals_shadowRootOf :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := ElementInternals_shadowRootOf(&c, _p0)
 	api_end(&c)
@@ -22867,6 +24654,8 @@ _t_dom_ElementInternals_element :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := ElementInternals_element(&c, _p0)
 	api_end(&c)
@@ -22882,6 +24671,7 @@ _t_dom_CustomStates_add :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.CustomStates_add", "state") }
@@ -22890,6 +24680,7 @@ _t_dom_CustomStates_add :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.CustomStates_add: argument state is not valid UTF-8") }
 		return wasm.trap_new("dom.CustomStates_add: argument state is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	CustomStates_add(&c, _p0, _p1)
 	api_end(&c)
@@ -22903,6 +24694,7 @@ _t_dom_CustomStates_delete :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.CustomStates_delete", "state") }
@@ -22911,6 +24703,7 @@ _t_dom_CustomStates_delete :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.CustomStates_delete: argument state is not valid UTF-8") }
 		return wasm.trap_new("dom.CustomStates_delete: argument state is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := CustomStates_delete(&c, _p0, _p1)
 	api_end(&c)
@@ -22926,6 +24719,7 @@ _t_dom_CustomStates_has :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.CustomStates_has", "state") }
@@ -22934,6 +24728,7 @@ _t_dom_CustomStates_has :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.CustomStates_has: argument state is not valid UTF-8") }
 		return wasm.trap_new("dom.CustomStates_has: argument state is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := CustomStates_has(&c, _p0, _p1)
 	api_end(&c)
@@ -22949,6 +24744,8 @@ _t_dom_CustomStates_clear :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	CustomStates_clear(&c, _p0)
 	api_end(&c)
@@ -22962,9 +24759,11 @@ _t_dom_CustomStates_list :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.CustomStates_list", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := CustomStates_list(&c, _p0)
 	api_end(&c)
@@ -22980,6 +24779,7 @@ _t_dom_CSSStyleSheet_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "dom.CSSStyleSheet_create", "media") }
@@ -23011,6 +24811,7 @@ _t_dom_CSSStyleSheet_replaceText :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.CSSStyleSheet_replaceText", "text") }
@@ -23018,6 +24819,7 @@ _t_dom_CSSStyleSheet_replaceText :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.CSSStyleSheet_replaceText: argument text is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_err := CSSStyleSheet_replaceText(&c, _p0, _p1)
 	api_end(&c)
@@ -23036,6 +24838,8 @@ _t_dom_CSSStyleSheet_ruleCount :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := CSSStyleSheet_ruleCount(&c, _p0)
 	api_end(&c)
@@ -23051,9 +24855,11 @@ _t_dom_CSSStyleSheet_ruleText :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.CSSStyleSheet_ruleText", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := u32(a[1].i32)
 	_r, _err := CSSStyleSheet_ruleText(&c, _p0, _p1)
@@ -23073,6 +24879,7 @@ _t_dom_CSSStyleSheet_insertRuleAt :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.CSSStyleSheet_insertRuleAt", "rule") }
@@ -23082,6 +24889,7 @@ _t_dom_CSSStyleSheet_insertRuleAt :: proc "c" (env: rawptr, caller: wasm.Caller,
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "dom.CSSStyleSheet_insertRuleAt: argument rule is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p2 := u32(a[3].i32)
 	_r, _err := CSSStyleSheet_insertRuleAt(&c, _p0, _p1, _p2)
@@ -23102,6 +24910,8 @@ _t_dom_CSSStyleSheet_deleteRuleAt :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := u32(a[1].i32)
 	_err := CSSStyleSheet_deleteRuleAt(&c, _p0, _p1)
@@ -23121,6 +24931,8 @@ _t_dom_CSSStyleSheet_isDisabled :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := CSSStyleSheet_isDisabled(&c, _p0)
 	api_end(&c)
@@ -23136,6 +24948,8 @@ _t_dom_CSSStyleSheet_setDisabled :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32 != 0
 	CSSStyleSheet_setDisabled(&c, _p0, _p1)
@@ -23150,9 +24964,11 @@ _t_dom_CSSStyleSheet_mediaText :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.CSSStyleSheet_mediaText", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := CSSStyleSheet_mediaText(&c, _p0)
 	api_end(&c)
@@ -23168,6 +24984,7 @@ _t_dom_CSSStyleSheet_setMediaText :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.CSSStyleSheet_setMediaText", "media") }
@@ -23176,6 +24993,7 @@ _t_dom_CSSStyleSheet_setMediaText :: proc "c" (env: rawptr, caller: wasm.Caller,
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dom.CSSStyleSheet_setMediaText: argument media is not valid UTF-8") }
 		return wasm.trap_new("dom.CSSStyleSheet_setMediaText: argument media is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	CSSStyleSheet_setMediaText(&c, _p0, _p1)
 	api_end(&c)
@@ -23189,6 +25007,8 @@ _t_dom_CSSStyleSheet_isConstructed :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := CSSStyleSheet_isConstructed(&c, _p0)
 	api_end(&c)
@@ -23204,10 +25024,12 @@ _t_dom_DocumentOrShadowRoot_adopt :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1, 8)
 	if !_k1 { return wasm.trap_bounds(&f, "dom.DocumentOrShadowRoot_adopt", "sheets") }
 	_p1 := ([^]u64)(_s1)[:_n1]
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -23230,6 +25052,7 @@ _t_storageaccess_Document_hasStorageAccess :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Document_hasStorageAccess(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -23244,6 +25067,7 @@ _t_storageaccess_Document_requestStorageAccess :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Document_requestStorageAccess(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -23258,6 +25082,7 @@ _t_navigator_Navigator_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "navigator.Navigator_get", "result buffer") }
@@ -23281,6 +25106,7 @@ _t_navigator_Navigator_hardwareConcurrency :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Navigator_hardwareConcurrency(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -23295,6 +25121,7 @@ _t_navigator_Navigator_onLine :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Navigator_onLine(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -23309,6 +25136,7 @@ _t_navigator_Navigator_maxTouchPoints :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Navigator_maxTouchPoints(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -23323,6 +25151,7 @@ _t_navigator_Navigator_cookieEnabled :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Navigator_cookieEnabled(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -23337,6 +25166,7 @@ _t_navigator_UserActivation_isActive :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := UserActivation_isActive(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -23351,6 +25181,7 @@ _t_navigator_UserActivation_hasBeenActive :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := UserActivation_hasBeenActive(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -23365,6 +25196,7 @@ _t_navigator_Beacon_send :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "navigator.Beacon_send", "url") }
@@ -23400,6 +25232,7 @@ _t_navigator_Clipboard_writeText :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "navigator.Clipboard_writeText", "data") }
@@ -23422,6 +25255,7 @@ _t_navigator_Clipboard_readText :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Clipboard_readText(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -23436,6 +25270,7 @@ _t_media_MediaQueryList_create :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "media.MediaQueryList_create", "query") }
@@ -23458,9 +25293,11 @@ _t_media_MediaQueryList_media :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "media.MediaQueryList_media", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_MediaQueryList{handle = u64(a[0].i64)}
 	_p0.data = lookup_MediaQueryList(&c, _p0.handle)
 	if _p0.data == nil {
@@ -23481,6 +25318,8 @@ _t_media_MediaQueryList_matches :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_MediaQueryList{handle = u64(a[0].i64)}
 	_p0.data = lookup_MediaQueryList(&c, _p0.handle)
 	if _p0.data == nil {
@@ -23501,6 +25340,7 @@ _t_media_Screen_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_e0 := i32(a[0].i32)
 	if !_valid_ScreenField(_e0) {
 		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Argument, "media.Screen_get: argument field is not a ScreenField") }
@@ -23521,8 +25361,10 @@ _t_forms_FormData_fileAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "forms.FormData_fileAt", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_FormData{handle = u64(a[0].i64)}
 	_p0.data = lookup_FormData(&c, _p0.handle)
 	if _p0.data == nil {
@@ -23547,6 +25389,7 @@ _t_forms_FormData_setBlob :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "forms.FormData_setBlob", "name") }
@@ -23562,11 +25405,13 @@ _t_forms_FormData_setBlob :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	if !wasm.valid_utf8(_p4) {
 		return _fail_status(&c, a, .Type, "forms.FormData_setBlob: argument mime is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_FormData{handle = u64(a[0].i64)}
 	_p0.data = lookup_FormData(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "forms.FormData_setBlob: argument data is not a live FormData")
 	}
+	api_route(&c, u64(a[3].i64))
 	_p2 := Api_Buffer{handle = u64(a[3].i64)}
 	_p2.data = lookup_Buffer(&c, _p2.handle)
 	if _p2.data == nil {
@@ -23589,6 +25434,7 @@ _t_forms_FormData_encode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "forms.FormData_encode", "boundary") }
@@ -23598,6 +25444,7 @@ _t_forms_FormData_encode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "forms.FormData_encode: argument boundary is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_FormData{handle = u64(a[0].i64)}
 	_p0.data = lookup_FormData(&c, _p0.handle)
 	if _p0.data == nil {
@@ -23621,9 +25468,11 @@ _t_dom_XMLSerializer_serialize :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "dom.XMLSerializer_serialize", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Node{handle = u64(a[0].i64)}
 	_p0.data = lookup_Node(&c, _p0.handle)
 	if _p0.data == nil {
@@ -23646,6 +25495,7 @@ _t_locks_LockManager_request :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "locks.LockManager_request", "name") }
@@ -23680,6 +25530,8 @@ _t_locks_LockManager_release :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	LockManager_release(&c, _p0)
 	api_end(&c)
@@ -23693,6 +25545,7 @@ _t_locks_LockManager_queryCount :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := a[0].i32 != 0
 	_r := LockManager_queryCount(&c, _p0)
 	api_end(&c)
@@ -23708,6 +25561,7 @@ _t_locks_LockManager_queryName :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "locks.LockManager_queryName", "result buffer") }
@@ -23730,6 +25584,7 @@ _t_locks_LockManager_queryMode :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "locks.LockManager_queryMode", "result buffer") }
@@ -23752,6 +25607,7 @@ _t_locks_LockManager_queryClient :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "locks.LockManager_queryClient", "result buffer") }
@@ -23774,9 +25630,11 @@ _t_htmlmedia_HTMLMediaElement_currentSrc :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "htmlmedia.HTMLMediaElement_currentSrc", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -23797,6 +25655,8 @@ _t_htmlmedia_HTMLMediaElement_networkState :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -23817,6 +25677,8 @@ _t_htmlmedia_HTMLMediaElement_readyState :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -23837,6 +25699,8 @@ _t_htmlmedia_HTMLMediaElement_seeking :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -23857,6 +25721,8 @@ _t_htmlmedia_HTMLMediaElement_currentTime :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -23877,6 +25743,8 @@ _t_htmlmedia_HTMLMediaElement_set_currentTime :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -23896,6 +25764,8 @@ _t_htmlmedia_HTMLMediaElement_duration :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -23916,6 +25786,8 @@ _t_htmlmedia_HTMLMediaElement_paused :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -23936,6 +25808,8 @@ _t_htmlmedia_HTMLMediaElement_ended :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -23956,6 +25830,8 @@ _t_htmlmedia_HTMLMediaElement_defaultPlaybackRate :: proc "c" (env: rawptr, call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -23976,6 +25852,8 @@ _t_htmlmedia_HTMLMediaElement_set_defaultPlaybackRate :: proc "c" (env: rawptr, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -23995,6 +25873,8 @@ _t_htmlmedia_HTMLMediaElement_playbackRate :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24015,6 +25895,8 @@ _t_htmlmedia_HTMLMediaElement_set_playbackRate :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24034,6 +25916,8 @@ _t_htmlmedia_HTMLMediaElement_preservesPitch :: proc "c" (env: rawptr, caller: w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24054,6 +25938,8 @@ _t_htmlmedia_HTMLMediaElement_set_preservesPitch :: proc "c" (env: rawptr, calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24073,6 +25959,8 @@ _t_htmlmedia_HTMLMediaElement_volume :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24093,6 +25981,8 @@ _t_htmlmedia_HTMLMediaElement_set_volume :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24116,6 +26006,8 @@ _t_htmlmedia_HTMLMediaElement_muted :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24136,6 +26028,8 @@ _t_htmlmedia_HTMLMediaElement_set_muted :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24155,9 +26049,11 @@ _t_htmlmedia_HTMLMediaElement_ranges :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "htmlmedia.HTMLMediaElement_ranges", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24179,11 +26075,14 @@ _t_htmlmedia_HTMLMediaElement_setSourceHandle :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_setSourceHandle: argument element is not a live HTMLMediaElement")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := u64(a[1].i64)
 	_err := HTMLMediaElement_setSourceHandle(&c, _p0, _p1)
 	api_end(&c)
@@ -24202,6 +26101,8 @@ _t_htmlmedia_HTMLMediaElement_errorCode :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24222,9 +26123,11 @@ _t_htmlmedia_HTMLMediaElement_errorMessage :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "htmlmedia.HTMLMediaElement_errorMessage", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24245,6 +26148,8 @@ _t_htmlmedia_HTMLMediaElement_play :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24265,6 +26170,8 @@ _t_htmlmedia_HTMLMediaElement_pause :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24283,6 +26190,8 @@ _t_htmlmedia_HTMLMediaElement_load :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24301,6 +26210,7 @@ _t_htmlmedia_HTMLMediaElement_canPlayType :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "htmlmedia.HTMLMediaElement_canPlayType", "type") }
@@ -24312,6 +26222,7 @@ _t_htmlmedia_HTMLMediaElement_canPlayType :: proc "c" (env: rawptr, caller: wasm
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "htmlmedia.HTMLMediaElement_canPlayType: argument type is not valid UTF-8") }
 		return wasm.trap_new("htmlmedia.HTMLMediaElement_canPlayType: argument type is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24332,6 +26243,8 @@ _t_htmlmedia_HTMLVideoElement_videoWidth :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24352,6 +26265,8 @@ _t_htmlmedia_HTMLVideoElement_videoHeight :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24372,9 +26287,11 @@ _t_htmlmedia_HTMLVideoElement_playbackQuality :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "htmlmedia.HTMLVideoElement_playbackQuality", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24395,6 +26312,8 @@ _t_htmlmedia_HTMLVideoElement_requestVideoFrameCallback :: proc "c" (env: rawptr
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24417,12 +26336,15 @@ _t_htmlmedia_HTMLVideoElement_cancelVideoFrameCallback :: proc "c" (env: rawptr,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
 		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLVideoElement_cancelVideoFrameCallback: argument element is not a live HTMLMediaElement") }
 		return wasm.trap_new("htmlmedia.HTMLVideoElement_cancelVideoFrameCallback: argument element is not a live HTMLMediaElement")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := u64(a[1].i64)
 	HTMLVideoElement_cancelVideoFrameCallback(&c, _p0, _p1)
 	api_end(&c)
@@ -24436,15 +26358,18 @@ _t_htmlmedia_HTMLVideoElement_videoFrameMetadata :: proc "c" (env: rawptr, calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "htmlmedia.HTMLVideoElement_videoFrameMetadata", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
 		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLVideoElement_videoFrameMetadata: argument element is not a live HTMLMediaElement") }
 		return wasm.trap_new("htmlmedia.HTMLVideoElement_videoFrameMetadata: argument element is not a live HTMLMediaElement")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := u64(a[1].i64)
 	_r := HTMLVideoElement_videoFrameMetadata(&c, _p0, _p1)
 	api_end(&c)
@@ -24460,6 +26385,8 @@ _t_htmlmedia_HTMLMediaElement_audioTracks :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24480,6 +26407,8 @@ _t_htmlmedia_HTMLMediaElement_videoTracks :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24500,6 +26429,8 @@ _t_htmlmedia_HTMLMediaElement_textTracks :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24520,6 +26451,7 @@ _t_htmlmedia_HTMLMediaElement_addTextTrack :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "htmlmedia.HTMLMediaElement_addTextTrack", "kind") }
@@ -24543,6 +26475,7 @@ _t_htmlmedia_HTMLMediaElement_addTextTrack :: proc "c" (env: rawptr, caller: was
 	if !wasm.valid_utf8(_p3) {
 		return _fail_status(&c, a, .Type, "htmlmedia.HTMLMediaElement_addTextTrack: argument language is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24566,6 +26499,7 @@ _t_mse_MediaSource_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[0]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "mse.MediaSource_create", "result pointer") }
 	_r, _err := MediaSource_create(&c)
@@ -24586,6 +26520,7 @@ _t_mse_ManagedMediaSource_create :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[0]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "mse.ManagedMediaSource_create", "result pointer") }
 	_r, _err := ManagedMediaSource_create(&c)
@@ -24606,6 +26541,8 @@ _t_mse_ManagedMediaSource_streaming :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_MediaSource{handle = u64(a[0].i64)}
 	_p0.data = lookup_MediaSource(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24626,6 +26563,7 @@ _t_mse_MediaSource_registerObjectURL :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "mse.MediaSource_registerObjectURL", "url") }
@@ -24633,6 +26571,7 @@ _t_mse_MediaSource_registerObjectURL :: proc "c" (env: rawptr, caller: wasm.Call
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "mse.MediaSource_registerObjectURL: argument url is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_MediaSource{handle = u64(a[0].i64)}
 	_p0.data = lookup_MediaSource(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24655,8 +26594,10 @@ _t_mse_MediaSource_handle :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "mse.MediaSource_handle", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_MediaSource{handle = u64(a[0].i64)}
 	_p0.data = lookup_MediaSource(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24680,8 +26621,10 @@ _t_mse_MediaSourceHandle_take :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "mse.MediaSourceHandle_take", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_MediaSourceHandle{handle = u64(a[0].i64)}
 	_p0.data = lookup_MediaSourceHandle(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24705,8 +26648,10 @@ _t_mse_MediaSourceHandle_adopt :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "mse.MediaSourceHandle_adopt", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r, _err := MediaSourceHandle_adopt(&c, _p0)
 	api_end(&c)
@@ -24726,6 +26671,7 @@ _t_mse_MediaSource_revokeObjectURL :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "mse.MediaSource_revokeObjectURL", "url") }
@@ -24746,6 +26692,7 @@ _t_mse_MediaSource_isTypeSupported :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "mse.MediaSource_isTypeSupported", "type") }
@@ -24768,6 +26715,8 @@ _t_mse_MediaSource_sourceBuffers :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_MediaSource{handle = u64(a[0].i64)}
 	_p0.data = lookup_MediaSource(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24788,6 +26737,8 @@ _t_mse_MediaSource_activeSourceBuffers :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_MediaSource{handle = u64(a[0].i64)}
 	_p0.data = lookup_MediaSource(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24808,9 +26759,11 @@ _t_mse_MediaSource_readyState :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mse.MediaSource_readyState", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_MediaSource{handle = u64(a[0].i64)}
 	_p0.data = lookup_MediaSource(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24831,6 +26784,8 @@ _t_mse_MediaSource_duration :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_MediaSource{handle = u64(a[0].i64)}
 	_p0.data = lookup_MediaSource(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24851,6 +26806,8 @@ _t_mse_MediaSource_set_duration :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_MediaSource{handle = u64(a[0].i64)}
 	_p0.data = lookup_MediaSource(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24874,6 +26831,7 @@ _t_mse_MediaSource_addSourceBuffer :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "mse.MediaSource_addSourceBuffer", "type") }
@@ -24883,6 +26841,7 @@ _t_mse_MediaSource_addSourceBuffer :: proc "c" (env: rawptr, caller: wasm.Caller
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "mse.MediaSource_addSourceBuffer: argument type is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_MediaSource{handle = u64(a[0].i64)}
 	_p0.data = lookup_MediaSource(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24906,11 +26865,14 @@ _t_mse_MediaSource_removeSourceBuffer :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_MediaSource{handle = u64(a[0].i64)}
 	_p0.data = lookup_MediaSource(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "mse.MediaSource_removeSourceBuffer: argument source is not a live MediaSource")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_SourceBuffer{handle = u64(a[1].i64)}
 	_p1.data = lookup_SourceBuffer(&c, _p1.handle)
 	if _p1.data == nil {
@@ -24933,6 +26895,7 @@ _t_mse_MediaSource_endOfStream :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "mse.MediaSource_endOfStream", "error") }
@@ -24940,6 +26903,7 @@ _t_mse_MediaSource_endOfStream :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "mse.MediaSource_endOfStream: argument error is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_MediaSource{handle = u64(a[0].i64)}
 	_p0.data = lookup_MediaSource(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24962,6 +26926,8 @@ _t_mse_MediaSource_setLiveSeekableRange :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_MediaSource{handle = u64(a[0].i64)}
 	_p0.data = lookup_MediaSource(&c, _p0.handle)
 	if _p0.data == nil {
@@ -24986,6 +26952,8 @@ _t_mse_MediaSource_clearLiveSeekableRange :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_MediaSource{handle = u64(a[0].i64)}
 	_p0.data = lookup_MediaSource(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25008,6 +26976,8 @@ _t_mse_SourceBufferList_length :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_SourceBufferList{handle = u64(a[0].i64)}
 	_p0.data = lookup_SourceBufferList(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25028,8 +26998,10 @@ _t_mse_SourceBufferList_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "mse.SourceBufferList_item", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_SourceBufferList{handle = u64(a[0].i64)}
 	_p0.data = lookup_SourceBufferList(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25054,9 +27026,11 @@ _t_mse_SourceBuffer_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mse.SourceBuffer_mode", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_SourceBuffer{handle = u64(a[0].i64)}
 	_p0.data = lookup_SourceBuffer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25077,6 +27051,7 @@ _t_mse_SourceBuffer_set_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "mse.SourceBuffer_set_mode", "mode") }
@@ -25084,6 +27059,7 @@ _t_mse_SourceBuffer_set_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "mse.SourceBuffer_set_mode: argument mode is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_SourceBuffer{handle = u64(a[0].i64)}
 	_p0.data = lookup_SourceBuffer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25106,6 +27082,8 @@ _t_mse_SourceBuffer_updating :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_SourceBuffer{handle = u64(a[0].i64)}
 	_p0.data = lookup_SourceBuffer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25126,9 +27104,11 @@ _t_mse_SourceBuffer_ranges :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mse.SourceBuffer_ranges", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_SourceBuffer{handle = u64(a[0].i64)}
 	_p0.data = lookup_SourceBuffer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25151,6 +27131,8 @@ _t_mse_SourceBuffer_timestampOffset :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_SourceBuffer{handle = u64(a[0].i64)}
 	_p0.data = lookup_SourceBuffer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25171,6 +27153,8 @@ _t_mse_SourceBuffer_set_timestampOffset :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_SourceBuffer{handle = u64(a[0].i64)}
 	_p0.data = lookup_SourceBuffer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25194,6 +27178,8 @@ _t_mse_SourceBuffer_appendWindowStart :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_SourceBuffer{handle = u64(a[0].i64)}
 	_p0.data = lookup_SourceBuffer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25214,6 +27200,8 @@ _t_mse_SourceBuffer_set_appendWindowStart :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_SourceBuffer{handle = u64(a[0].i64)}
 	_p0.data = lookup_SourceBuffer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25237,6 +27225,8 @@ _t_mse_SourceBuffer_appendWindowEnd :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_SourceBuffer{handle = u64(a[0].i64)}
 	_p0.data = lookup_SourceBuffer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25257,6 +27247,8 @@ _t_mse_SourceBuffer_set_appendWindowEnd :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_SourceBuffer{handle = u64(a[0].i64)}
 	_p0.data = lookup_SourceBuffer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25280,10 +27272,12 @@ _t_mse_SourceBuffer_appendBuffer :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "mse.SourceBuffer_appendBuffer", "data") }
 	_p1 := _s1[:_n1]
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_SourceBuffer{handle = u64(a[0].i64)}
 	_p0.data = lookup_SourceBuffer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25306,6 +27300,8 @@ _t_mse_SourceBuffer_abort :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_SourceBuffer{handle = u64(a[0].i64)}
 	_p0.data = lookup_SourceBuffer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25328,6 +27324,7 @@ _t_mse_SourceBuffer_changeType :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "mse.SourceBuffer_changeType", "type") }
@@ -25335,6 +27332,7 @@ _t_mse_SourceBuffer_changeType :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "mse.SourceBuffer_changeType: argument type is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_SourceBuffer{handle = u64(a[0].i64)}
 	_p0.data = lookup_SourceBuffer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25357,6 +27355,8 @@ _t_mse_SourceBuffer_remove :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_SourceBuffer{handle = u64(a[0].i64)}
 	_p0.data = lookup_SourceBuffer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25381,6 +27381,8 @@ _t_mediatracks_AudioTrackList_length :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioTrackList{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioTrackList(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25401,8 +27403,10 @@ _t_mediatracks_AudioTrackList_item :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "mediatracks.AudioTrackList_item", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioTrackList{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioTrackList(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25427,6 +27431,7 @@ _t_mediatracks_AudioTrackList_getTrackById :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "mediatracks.AudioTrackList_getTrackById", "id") }
@@ -25435,6 +27440,7 @@ _t_mediatracks_AudioTrackList_getTrackById :: proc "c" (env: rawptr, caller: was
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "mediatracks.AudioTrackList_getTrackById: argument id is not valid UTF-8") }
 		return wasm.trap_new("mediatracks.AudioTrackList_getTrackById: argument id is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioTrackList{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioTrackList(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25455,6 +27461,8 @@ _t_mediatracks_VideoTrackList_length :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoTrackList{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoTrackList(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25475,8 +27483,10 @@ _t_mediatracks_VideoTrackList_item :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "mediatracks.VideoTrackList_item", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoTrackList{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoTrackList(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25501,6 +27511,7 @@ _t_mediatracks_VideoTrackList_getTrackById :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "mediatracks.VideoTrackList_getTrackById", "id") }
@@ -25509,6 +27520,7 @@ _t_mediatracks_VideoTrackList_getTrackById :: proc "c" (env: rawptr, caller: was
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "mediatracks.VideoTrackList_getTrackById: argument id is not valid UTF-8") }
 		return wasm.trap_new("mediatracks.VideoTrackList_getTrackById: argument id is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoTrackList{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoTrackList(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25529,6 +27541,8 @@ _t_mediatracks_VideoTrackList_selectedIndex :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoTrackList{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoTrackList(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25549,6 +27563,8 @@ _t_mediatracks_TextTrackList_length :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrackList{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrackList(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25569,8 +27585,10 @@ _t_mediatracks_TextTrackList_item :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "mediatracks.TextTrackList_item", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrackList{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrackList(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25595,6 +27613,7 @@ _t_mediatracks_TextTrackList_getTrackById :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "mediatracks.TextTrackList_getTrackById", "id") }
@@ -25603,6 +27622,7 @@ _t_mediatracks_TextTrackList_getTrackById :: proc "c" (env: rawptr, caller: wasm
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "mediatracks.TextTrackList_getTrackById: argument id is not valid UTF-8") }
 		return wasm.trap_new("mediatracks.TextTrackList_getTrackById: argument id is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrackList{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrackList(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25623,9 +27643,11 @@ _t_mediatracks_AudioTrack_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mediatracks.AudioTrack_id", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioTrack(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25646,9 +27668,11 @@ _t_mediatracks_AudioTrack_kind :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mediatracks.AudioTrack_kind", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioTrack(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25669,9 +27693,11 @@ _t_mediatracks_AudioTrack_label :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mediatracks.AudioTrack_label", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioTrack(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25692,9 +27718,11 @@ _t_mediatracks_AudioTrack_language :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mediatracks.AudioTrack_language", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioTrack(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25715,6 +27743,8 @@ _t_mediatracks_AudioTrack_enabled :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioTrack(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25735,6 +27765,8 @@ _t_mediatracks_AudioTrack_set_enabled :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioTrack(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25754,9 +27786,11 @@ _t_mediatracks_VideoTrack_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mediatracks.VideoTrack_id", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoTrack(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25777,9 +27811,11 @@ _t_mediatracks_VideoTrack_kind :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mediatracks.VideoTrack_kind", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoTrack(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25800,9 +27836,11 @@ _t_mediatracks_VideoTrack_label :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mediatracks.VideoTrack_label", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoTrack(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25823,9 +27861,11 @@ _t_mediatracks_VideoTrack_language :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mediatracks.VideoTrack_language", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoTrack(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25846,6 +27886,8 @@ _t_mediatracks_VideoTrack_selected :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoTrack(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25866,6 +27908,8 @@ _t_mediatracks_VideoTrack_set_selected :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoTrack(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25885,9 +27929,11 @@ _t_mediatracks_TextTrack_kind :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mediatracks.TextTrack_kind", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrack(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25908,9 +27954,11 @@ _t_mediatracks_TextTrack_label :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mediatracks.TextTrack_label", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrack(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25931,9 +27979,11 @@ _t_mediatracks_TextTrack_language :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mediatracks.TextTrack_language", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrack(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25954,9 +28004,11 @@ _t_mediatracks_TextTrack_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mediatracks.TextTrack_id", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrack(&c, _p0.handle)
 	if _p0.data == nil {
@@ -25977,9 +28029,11 @@ _t_mediatracks_TextTrack_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mediatracks.TextTrack_mode", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrack(&c, _p0.handle)
 	if _p0.data == nil {
@@ -26000,6 +28054,7 @@ _t_mediatracks_TextTrack_set_mode :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "mediatracks.TextTrack_set_mode", "value") }
@@ -26008,6 +28063,7 @@ _t_mediatracks_TextTrack_set_mode :: proc "c" (env: rawptr, caller: wasm.Caller,
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "mediatracks.TextTrack_set_mode: argument value is not valid UTF-8") }
 		return wasm.trap_new("mediatracks.TextTrack_set_mode: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrack(&c, _p0.handle)
 	if _p0.data == nil {
@@ -26026,6 +28082,8 @@ _t_mediatracks_TextTrack_cues :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrack(&c, _p0.handle)
 	if _p0.data == nil {
@@ -26046,6 +28104,8 @@ _t_mediatracks_TextTrack_activeCues :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrack(&c, _p0.handle)
 	if _p0.data == nil {
@@ -26066,11 +28126,14 @@ _t_mediatracks_TextTrack_addCue :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrack(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "mediatracks.TextTrack_addCue: argument track is not a live TextTrack")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_TextTrackCue{handle = u64(a[1].i64)}
 	_p1.data = lookup_TextTrackCue(&c, _p1.handle)
 	if _p1.data == nil {
@@ -26093,11 +28156,14 @@ _t_mediatracks_TextTrack_removeCue :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrack(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "mediatracks.TextTrack_removeCue: argument track is not a live TextTrack")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_TextTrackCue{handle = u64(a[1].i64)}
 	_p1.data = lookup_TextTrackCue(&c, _p1.handle)
 	if _p1.data == nil {
@@ -26120,9 +28186,11 @@ _t_mediatracks_TextTrackCue_id :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mediatracks.TextTrackCue_id", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrackCue{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrackCue(&c, _p0.handle)
 	if _p0.data == nil {
@@ -26143,6 +28211,7 @@ _t_mediatracks_TextTrackCue_set_id :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "mediatracks.TextTrackCue_set_id", "value") }
@@ -26151,6 +28220,7 @@ _t_mediatracks_TextTrackCue_set_id :: proc "c" (env: rawptr, caller: wasm.Caller
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "mediatracks.TextTrackCue_set_id: argument value is not valid UTF-8") }
 		return wasm.trap_new("mediatracks.TextTrackCue_set_id: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrackCue{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrackCue(&c, _p0.handle)
 	if _p0.data == nil {
@@ -26169,6 +28239,8 @@ _t_mediatracks_TextTrackCue_startTime :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrackCue{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrackCue(&c, _p0.handle)
 	if _p0.data == nil {
@@ -26189,6 +28261,8 @@ _t_mediatracks_TextTrackCue_set_startTime :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrackCue{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrackCue(&c, _p0.handle)
 	if _p0.data == nil {
@@ -26208,6 +28282,8 @@ _t_mediatracks_TextTrackCue_endTime :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrackCue{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrackCue(&c, _p0.handle)
 	if _p0.data == nil {
@@ -26228,6 +28304,8 @@ _t_mediatracks_TextTrackCue_set_endTime :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrackCue{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrackCue(&c, _p0.handle)
 	if _p0.data == nil {
@@ -26247,6 +28325,8 @@ _t_mediatracks_TextTrackCue_pauseOnExit :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrackCue{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrackCue(&c, _p0.handle)
 	if _p0.data == nil {
@@ -26267,6 +28347,8 @@ _t_mediatracks_TextTrackCue_set_pauseOnExit :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrackCue{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrackCue(&c, _p0.handle)
 	if _p0.data == nil {
@@ -26286,6 +28368,8 @@ _t_mediatracks_TextTrackCue_track :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrackCue{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrackCue(&c, _p0.handle)
 	if _p0.data == nil {
@@ -26306,6 +28390,7 @@ _t_mediatracks_VTTCue_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "mediatracks.VTTCue_create", "text") }
@@ -26335,9 +28420,11 @@ _t_mediatracks_VTTCue_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "mediatracks.VTTCue_text", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrackCue{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrackCue(&c, _p0.handle)
 	if _p0.data == nil {
@@ -26358,6 +28445,7 @@ _t_mediatracks_VTTCue_set_text :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "mediatracks.VTTCue_set_text", "value") }
@@ -26366,6 +28454,7 @@ _t_mediatracks_VTTCue_set_text :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "mediatracks.VTTCue_set_text: argument value is not valid UTF-8") }
 		return wasm.trap_new("mediatracks.VTTCue_set_text: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrackCue{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrackCue(&c, _p0.handle)
 	if _p0.data == nil {
@@ -26384,6 +28473,8 @@ _t_mediatracks_TextTrackCueList_length :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrackCueList{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrackCueList(&c, _p0.handle)
 	if _p0.data == nil {
@@ -26404,8 +28495,10 @@ _t_mediatracks_TextTrackCueList_item :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "mediatracks.TextTrackCueList_item", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrackCueList{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrackCueList(&c, _p0.handle)
 	if _p0.data == nil {
@@ -26430,6 +28523,7 @@ _t_mediatracks_TextTrackCueList_getCueById :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "mediatracks.TextTrackCueList_getCueById", "id") }
@@ -26438,6 +28532,7 @@ _t_mediatracks_TextTrackCueList_getCueById :: proc "c" (env: rawptr, caller: was
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "mediatracks.TextTrackCueList_getCueById: argument id is not valid UTF-8") }
 		return wasm.trap_new("mediatracks.TextTrackCueList_getCueById: argument id is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_TextTrackCueList{handle = u64(a[0].i64)}
 	_p0.data = lookup_TextTrackCueList(&c, _p0.handle)
 	if _p0.data == nil {
@@ -26458,6 +28553,8 @@ _t_mediatracks_HTMLTrackElement_track :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLTrackElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLTrackElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -26478,6 +28575,8 @@ _t_mediatracks_HTMLTrackElement_readyState :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLTrackElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLTrackElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -26498,6 +28597,7 @@ _t_navigation_Navigation_entries :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "navigation.Navigation_entries", "result buffer") }
@@ -26515,6 +28615,7 @@ _t_navigation_Navigation_serial :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Navigation_serial(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -26529,6 +28630,7 @@ _t_navigation_Navigation_getState :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "navigation.Navigation_getState", "result buffer") }
@@ -26551,6 +28653,7 @@ _t_navigation_Navigation_updateCurrentEntry :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "navigation.Navigation_updateCurrentEntry", "state") }
@@ -26575,6 +28678,7 @@ _t_navigation_Navigation_navigate :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "navigation.Navigation_navigate", "url") }
@@ -26611,6 +28715,7 @@ _t_navigation_Navigation_reload :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_absent0 := wasm.is_absent(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), 0 if _absent0 else wasm.addr(&f, a[1]))
 	if !_k0 { return wasm.trap_bounds(&f, "navigation.Navigation_reload", "state") }
@@ -26639,6 +28744,7 @@ _t_navigation_Navigation_traverseTo :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := a[0].i64
 	_err := Navigation_traverseTo(&c, _p0)
 	api_end(&c)
@@ -26657,6 +28763,7 @@ _t_navigation_Navigation_pending :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "navigation.Navigation_pending", "result buffer") }
@@ -26677,6 +28784,7 @@ _t_navigation_Navigation_pendingState :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "navigation.Navigation_pendingState", "result buffer") }
@@ -26697,6 +28805,7 @@ _t_navigation_Navigation_pendingSource :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[0]), 24)
 	if !_rk { return wasm.trap_bounds(&f, "navigation.Navigation_pendingSource", "result pointer") }
 	_r := Navigation_pendingSource(&c)
@@ -26714,6 +28823,7 @@ _t_navigation_Navigation_activation :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "navigation.Navigation_activation", "result buffer") }
@@ -26731,6 +28841,7 @@ _t_net_Fetch_start :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "net.Fetch_start", "url") }
@@ -26803,6 +28914,8 @@ _t_net_Fetch_state :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
 	if _p0.data == nil {
@@ -26823,6 +28936,8 @@ _t_net_Fetch_status :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
 	if _p0.data == nil {
@@ -26843,6 +28958,8 @@ _t_net_Fetch_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
 	if _p0.data == nil {
@@ -26863,6 +28980,8 @@ _t_net_Fetch_redirected :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
 	if _p0.data == nil {
@@ -26883,9 +29002,11 @@ _t_net_Fetch_headers :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "net.Fetch_headers", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
 	if _p0.data == nil {
@@ -26906,9 +29027,11 @@ _t_net_Fetch_url :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "net.Fetch_url", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
 	if _p0.data == nil {
@@ -26929,9 +29052,11 @@ _t_net_Fetch_error :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "net.Fetch_error", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
 	if _p0.data == nil {
@@ -26952,6 +29077,8 @@ _t_net_Fetch_errorKind :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
 	if _p0.data == nil {
@@ -26972,6 +29099,8 @@ _t_net_Fetch_bodyLength :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
 	if _p0.data == nil {
@@ -26992,16 +29121,19 @@ _t_net_Fetch_readBody :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "net.Fetch_readBody", "buffer") }
 	_p2 := _s2[:_n2]
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
 	if _p0.data == nil {
 		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "net.Fetch_readBody: argument request is not a live Fetch") }
 		return wasm.trap_new("net.Fetch_readBody: argument request is not a live Fetch")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := u64(a[1].i64)
 	_r := Fetch_readBody(&c, _p0, _p1, _p2)
 	api_end(&c)
@@ -27017,6 +29149,8 @@ _t_net_Fetch_release :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Fetch{handle = u64(a[0].i64)}
 	_p0.data = lookup_Fetch(&c, _p0.handle)
 	if _p0.data == nil {
@@ -27039,6 +29173,7 @@ _t_performance_Performance_now :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Performance_now(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -27053,6 +29188,7 @@ _t_performance_Performance_timeOrigin :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Performance_timeOrigin(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -27067,6 +29203,7 @@ _t_performance_Performance_mark :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "performance.Performance_mark", "name") }
@@ -27092,6 +29229,7 @@ _t_performance_Performance_measure :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "performance.Performance_measure", "name") }
@@ -27130,6 +29268,7 @@ _t_performance_Performance_measureTimes :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "performance.Performance_measureTimes", "name") }
@@ -27156,6 +29295,7 @@ _t_performance_Performance_entryCount :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "performance.Performance_entryCount", "name") }
@@ -27184,6 +29324,7 @@ _t_performance_Performance_entryStartTime :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "performance.Performance_entryStartTime", "name") }
@@ -27213,6 +29354,7 @@ _t_performance_Performance_entryDuration :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "performance.Performance_entryDuration", "name") }
@@ -27242,6 +29384,7 @@ _t_performance_Performance_entryName :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "performance.Performance_entryName", "name") }
@@ -27275,6 +29418,7 @@ _t_performance_Performance_entryType :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "performance.Performance_entryType", "name") }
@@ -27308,6 +29452,7 @@ _t_performance_Performance_clearMarks :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "performance.Performance_clearMarks", "name") }
@@ -27328,6 +29473,7 @@ _t_performance_Performance_clearMeasures :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "performance.Performance_clearMeasures", "name") }
@@ -27348,6 +29494,7 @@ _t_performance_Performance_timeline :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "performance.Performance_timeline", "result buffer") }
@@ -27357,6 +29504,7 @@ _t_performance_Performance_timeline :: proc "c" (env: rawptr, caller: wasm.Calle
 		return wasm.trap_new("performance.Performance_timeline: argument entry_type is not a PerformanceEntryType")
 	}
 	_p0 := Api_PerformanceEntryType(_e0)
+	api_route(&c, u64(a[1].i64))
 	_p1 := u64(a[1].i64)
 	_r := Performance_timeline(&c, _p0, _p1)
 	api_end(&c)
@@ -27372,6 +29520,7 @@ _t_performance_Performance_timelineNextSeq :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_e0 := i32(a[0].i32)
 	if !_valid_PerformanceEntryType(_e0) {
 		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Argument, "performance.Performance_timelineNextSeq: argument entry_type is not a PerformanceEntryType") }
@@ -27392,12 +29541,14 @@ _t_performance_Performance_timelineNode :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_e0 := i32(a[0].i32)
 	if !_valid_PerformanceEntryType(_e0) {
 		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Argument, "performance.Performance_timelineNode: argument entry_type is not a PerformanceEntryType") }
 		return wasm.trap_new("performance.Performance_timelineNode: argument entry_type is not a PerformanceEntryType")
 	}
 	_p0 := Api_PerformanceEntryType(_e0)
+	api_route(&c, u64(a[1].i64))
 	_p1 := u64(a[1].i64)
 	_p2 := u32(a[2].i32)
 	_r := Performance_timelineNode(&c, _p0, _p1, _p2)
@@ -27414,6 +29565,7 @@ _t_performance_Performance_timelineInterest :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := u32(a[0].i32)
 	Performance_timelineInterest(&c, _p0)
 	api_end(&c)
@@ -27427,6 +29579,7 @@ _t_performance_Performance_onTimeline :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := u32(a[0].i32)
 	_p1 := a[1].i32
 	Performance_onTimeline(&c, _p0, _p1)
@@ -27441,6 +29594,7 @@ _t_performance_Performance_setResourceTimingBufferSize :: proc "c" (env: rawptr,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := u32(a[0].i32)
 	Performance_setResourceTimingBufferSize(&c, _p0)
 	api_end(&c)
@@ -27454,6 +29608,7 @@ _t_performance_Performance_clearResourceTimings :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	Performance_clearResourceTimings(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -27466,6 +29621,7 @@ _t_performance_Performance_timingOf :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := a[0].i32
 	_r := Performance_timingOf(&c, _p0)
 	api_end(&c)
@@ -27481,11 +29637,14 @@ _t_popover_Popover_show :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "popover.Popover_show: argument element is not a live Element")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_Element{handle = u64(a[1].i64)}
 	if _p1.handle != 0 { _p1.data = lookup_Element(&c, _p1.handle) }
 	if _p1.handle != 0 && _p1.data == nil {
@@ -27508,6 +29667,8 @@ _t_popover_Popover_hide :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -27530,14 +29691,17 @@ _t_popover_Popover_toggle :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[3]), 1)
 	if !_rk { return wasm.trap_bounds(&f, "popover.Popover_toggle", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "popover.Popover_toggle: argument element is not a live Element")
 	}
 	_p1 := a[1].i32
+	api_route(&c, u64(a[2].i64))
 	_p2 := Api_Element{handle = u64(a[2].i64)}
 	if _p2.handle != 0 { _p2.data = lookup_Element(&c, _p2.handle) }
 	if _p2.handle != 0 && _p2.data == nil {
@@ -27561,6 +29725,8 @@ _t_popover_Popover_state :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -27581,6 +29747,8 @@ _t_popover_Popover_targetOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Element{handle = u64(a[0].i64)}
 	_p0.data = lookup_Element(&c, _p0.handle)
 	if _p0.data == nil {
@@ -27601,6 +29769,7 @@ _t_ports_Port_entangle :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Port_entangle(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -27615,6 +29784,8 @@ _t_ports_Port_bind :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_err := Port_bind(&c, _p0)
 	api_end(&c)
@@ -27633,6 +29804,8 @@ _t_ports_Port_ship :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	Port_ship(&c, _p0)
 	api_end(&c)
@@ -27646,6 +29819,7 @@ _t_ports_Port_post :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "ports.Port_post", "data") }
@@ -27654,6 +29828,7 @@ _t_ports_Port_post :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	if !_k2 { return wasm.trap_bounds(&f, "ports.Port_post", "ports") }
 	_p1 := _s1[:_n1]
 	_p2 := ([^]u64)(_s2)[:_n2]
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_err := Port_post(&c, _p0, _p1, _p2)
 	api_end(&c)
@@ -27672,6 +29847,8 @@ _t_ports_Port_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	Port_close(&c, _p0)
 	api_end(&c)
@@ -27685,6 +29862,7 @@ _t_ports_Worker_postSerializedPorts :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "ports.Worker_postSerializedPorts", "data") }
@@ -27693,6 +29871,7 @@ _t_ports_Worker_postSerializedPorts :: proc "c" (env: rawptr, caller: wasm.Calle
 	if !_k2 { return wasm.trap_bounds(&f, "ports.Worker_postSerializedPorts", "ports") }
 	_p1 := _s1[:_n1]
 	_p2 := ([^]u64)(_s2)[:_n2]
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_err := Worker_postSerializedPorts(&c, _p0, _p1, _p2)
 	api_end(&c)
@@ -27711,6 +29890,7 @@ _t_ports_DedicatedWorkerGlobalScope_postSerializedPorts :: proc "c" (env: rawptr
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "ports.DedicatedWorkerGlobalScope_postSerializedPorts", "data") }
@@ -27736,6 +29916,7 @@ _t_ports_Broadcast_open :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "ports.Broadcast_open", "name") }
@@ -27758,10 +29939,12 @@ _t_ports_Broadcast_post :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "ports.Broadcast_post", "data") }
 	_p1 := _s1[:_n1]
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_err := Broadcast_post(&c, _p0, _p1)
 	api_end(&c)
@@ -27780,9 +29963,11 @@ _t_ports_MessageEvent_portEnds :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "ports.MessageEvent_portEnds", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -27803,6 +29988,7 @@ _t_scheduler_Scheduler_post :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := u32(a[0].i32)
 	_p1 := a[1].i32
 	_e2 := i32(a[2].i32)
@@ -27826,6 +30012,8 @@ _t_scheduler_Scheduler_cancel :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_err := Scheduler_cancel(&c, _p0)
 	api_end(&c)
@@ -27844,6 +30032,8 @@ _t_scheduler_Scheduler_setPriority :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_e1 := i32(a[1].i32)
 	if !_valid_TaskPriority(_e1) {
@@ -27867,6 +30057,7 @@ _t_scheduler_Scheduler_isInputPending :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := a[0].i32 != 0
 	_r := Scheduler_isInputPending(&c, _p0)
 	api_end(&c)
@@ -27882,6 +30073,7 @@ _t_serviceworker_ServiceWorker_register :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "serviceworker.ServiceWorker_register", "script") }
@@ -27928,6 +30120,7 @@ _t_serviceworker_ServiceWorker_ready :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := ServiceWorker_ready(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -27942,6 +30135,7 @@ _t_serviceworker_ServiceWorker_getRegistration :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "serviceworker.ServiceWorker_getRegistration", "client_url") }
@@ -27964,6 +30158,7 @@ _t_serviceworker_ServiceWorker_registrationIds :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "serviceworker.ServiceWorker_registrationIds", "result buffer") }
@@ -27981,6 +30176,7 @@ _t_serviceworker_ServiceWorker_controller :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := ServiceWorker_controller(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -27995,9 +30191,11 @@ _t_serviceworker_ServiceWorkerRegistration_info :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "serviceworker.ServiceWorkerRegistration_info", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := ServiceWorkerRegistration_info(&c, _p0)
 	api_end(&c)
@@ -28013,9 +30211,11 @@ _t_serviceworker_ServiceWorker_info :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "serviceworker.ServiceWorker_info", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := ServiceWorker_info(&c, _p0)
 	api_end(&c)
@@ -28031,6 +30231,8 @@ _t_serviceworker_ServiceWorkerRegistration_unregisterId :: proc "c" (env: rawptr
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := ServiceWorkerRegistration_unregisterId(&c, _p0)
 	api_end(&c)
@@ -28046,8 +30248,10 @@ _t_serviceworker_ServiceWorkerRegistration_updateId :: proc "c" (env: rawptr, ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "serviceworker.ServiceWorkerRegistration_updateId", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r, _err := ServiceWorkerRegistration_updateId(&c, _p0)
 	api_end(&c)
@@ -28067,6 +30271,7 @@ _t_serviceworker_ServiceWorkerRegistration_preload :: proc "c" (env: rawptr, cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "serviceworker.ServiceWorkerRegistration_preload", "header") }
@@ -28077,6 +30282,7 @@ _t_serviceworker_ServiceWorkerRegistration_preload :: proc "c" (env: rawptr, cal
 	if !wasm.valid_utf8(_p2) {
 		return _fail_size(&c, &f, a, .Type, "serviceworker.ServiceWorkerRegistration_preload: argument header is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
 	_r, _err := ServiceWorkerRegistration_preload(&c, _p0, _p1, _p2)
@@ -28096,10 +30302,12 @@ _t_serviceworker_ServiceWorker_postToWorker :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "serviceworker.ServiceWorker_postToWorker", "data") }
 	_p1 := _s1[:_n1]
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_err := ServiceWorker_postToWorker(&c, _p0, _p1)
 	api_end(&c)
@@ -28118,6 +30326,7 @@ _t_serviceworker_ServiceWorker_takeMessage :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "serviceworker.ServiceWorker_takeMessage", "result buffer") }
@@ -28138,6 +30347,7 @@ _t_serviceworker_ServiceWorkerGlobalScope_registration :: proc "c" (env: rawptr,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := ServiceWorkerGlobalScope_registration(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -28152,6 +30362,7 @@ _t_serviceworker_ServiceWorkerGlobalScope_version :: proc "c" (env: rawptr, call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := ServiceWorkerGlobalScope_version(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -28166,6 +30377,7 @@ _t_serviceworker_ServiceWorkerGlobalScope_scope :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "serviceworker.ServiceWorkerGlobalScope_scope", "result buffer") }
@@ -28183,6 +30395,7 @@ _t_serviceworker_ServiceWorkerGlobalScope_scriptURL :: proc "c" (env: rawptr, ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "serviceworker.ServiceWorkerGlobalScope_scriptURL", "result buffer") }
@@ -28200,6 +30413,7 @@ _t_serviceworker_SwEvent_next :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[0]), 40)
 	if !_rk { return wasm.trap_bounds(&f, "serviceworker.SwEvent_next", "result pointer") }
 	_r := SwEvent_next(&c)
@@ -28220,6 +30434,7 @@ _t_serviceworker_SwEvent_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "serviceworker.SwEvent_text", "result buffer") }
@@ -28238,6 +30453,7 @@ _t_serviceworker_SwEvent_body :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "serviceworker.SwEvent_body", "result buffer") }
@@ -28255,6 +30471,7 @@ _t_serviceworker_SwEvent_done :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	SwEvent_done(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -28267,6 +30484,7 @@ _t_serviceworker_ServiceWorkerGlobalScope_reply :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n3 := wasm.addr(&f, a[4])
 	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[3]), _n3)
 	if !_k3 { return wasm.trap_bounds(&f, "serviceworker.ServiceWorkerGlobalScope_reply", "headers") }
@@ -28288,6 +30506,7 @@ _t_serviceworker_ServiceWorkerGlobalScope_reply :: proc "c" (env: rawptr, caller
 	}
 	_p5 := _s5[:_n5]
 	_p0 := a[0].i32
+	api_route(&c, u64(a[1].i64))
 	_p1 := u64(a[1].i64)
 	_p2 := a[2].i64
 	ServiceWorkerGlobalScope_reply(&c, _p0, _p1, _p2, _p3, _p4, _p5)
@@ -28302,6 +30521,7 @@ _t_storage_Storage_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 4)
 	if !_rk { return wasm.trap_bounds(&f, "storage.Storage_length", "result pointer") }
 	_e0 := i32(a[0].i32)
@@ -28327,6 +30547,7 @@ _t_storage_Storage_key :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "storage.Storage_key", "result buffer") }
@@ -28353,6 +30574,7 @@ _t_storage_Storage_getItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "storage.Storage_getItem", "key") }
@@ -28385,6 +30607,7 @@ _t_storage_Storage_setItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "storage.Storage_setItem", "key") }
@@ -28415,6 +30638,7 @@ _t_storage_Storage_removeItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "storage.Storage_removeItem", "key") }
@@ -28444,6 +30668,7 @@ _t_storage_Storage_clear :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_e0 := i32(a[0].i32)
 	if !_valid_StorageArea(_e0) {
 		return _fail_status(&c, a, .Invalid_Argument, "storage.Storage_clear: argument area is not a StorageArea")
@@ -28466,9 +30691,11 @@ _t_storage_StorageEvent_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "storage.StorageEvent_get", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -28496,8 +30723,10 @@ _t_storage_StorageEvent_storageArea :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 4)
 	if !_rk { return wasm.trap_bounds(&f, "storage.StorageEvent_storageArea", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -28521,6 +30750,7 @@ _t_timers_Timers_setTimeout :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := u32(a[0].i32)
 	_p1 := a[1].i32
 	_p2 := a[2].f64
@@ -28538,6 +30768,7 @@ _t_timers_Timers_setInterval :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := u32(a[0].i32)
 	_p1 := a[1].i32
 	_p2 := a[2].f64
@@ -28555,6 +30786,7 @@ _t_timers_Timers_setTimeout64 :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := u32(a[0].i32)
 	_p1 := a[1].i64
 	_p2 := a[2].f64
@@ -28572,6 +30804,7 @@ _t_timers_Timers_setInterval64 :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := u32(a[0].i32)
 	_p1 := a[1].i64
 	_p2 := a[2].f64
@@ -28589,6 +30822,8 @@ _t_timers_Timers_clear :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Timer{handle = u64(a[0].i64)}
 	_p0.data = lookup_Timer(&c, _p0.handle)
 	if _p0.data == nil {
@@ -28611,6 +30846,7 @@ _t_timers_Timers_now :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Timers_now(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -28625,6 +30861,7 @@ _t_timers_requestAnimationFrame :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := u32(a[0].i32)
 	_p1 := a[1].i32
 	_r := requestAnimationFrame(&c, _p0, _p1)
@@ -28641,6 +30878,8 @@ _t_timers_cancelAnimationFrame :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_err := cancelAnimationFrame(&c, _p0)
 	api_end(&c)
@@ -28659,6 +30898,7 @@ _t_timers_requestIdleCallback :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := u32(a[0].i32)
 	_p1 := a[1].i32
 	_p2 := a[2].f64
@@ -28676,6 +30916,8 @@ _t_timers_cancelIdleCallback :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_err := cancelIdleCallback(&c, _p0)
 	api_end(&c)
@@ -28694,6 +30936,7 @@ _t_timers_Document_visibilityState :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Document_visibilityState(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -28708,6 +30951,7 @@ _t_url_URL_parse :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "url.URL_parse", "input") }
@@ -28746,6 +30990,7 @@ _t_url_URL_canParse :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "url.URL_canParse", "input") }
@@ -28780,9 +31025,11 @@ _t_url_URL_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "url.URL_get", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URL{handle = u64(a[0].i64)}
 	_p0.data = lookup_URL(&c, _p0.handle)
 	if _p0.data == nil {
@@ -28809,6 +31056,7 @@ _t_url_URL_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "url.URL_set", "value") }
@@ -28816,6 +31064,7 @@ _t_url_URL_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _:
 	if !wasm.valid_utf8(_p2) {
 		return _fail_status(&c, a, .Type, "url.URL_set: argument value is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URL{handle = u64(a[0].i64)}
 	_p0.data = lookup_URL(&c, _p0.handle)
 	if _p0.data == nil {
@@ -28843,6 +31092,8 @@ _t_url_URL_searchParams :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URL{handle = u64(a[0].i64)}
 	_p0.data = lookup_URL(&c, _p0.handle)
 	if _p0.data == nil {
@@ -28863,6 +31114,7 @@ _t_url_URLSearchParams_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "url.URLSearchParams_create", "init") }
@@ -28890,6 +31142,8 @@ _t_url_URLSearchParams_size :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URLSearchParams{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLSearchParams(&c, _p0.handle)
 	if _p0.data == nil {
@@ -28910,6 +31164,7 @@ _t_url_URLSearchParams_append :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "url.URLSearchParams_append", "name") }
@@ -28918,6 +31173,7 @@ _t_url_URLSearchParams_append :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	if !_k2 { return wasm.trap_bounds(&f, "url.URLSearchParams_append", "value") }
 	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
 	_p2 := utf8_scrub(string(_s2[:_n2]), context.temp_allocator)
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URLSearchParams{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLSearchParams(&c, _p0.handle)
 	if _p0.data == nil {
@@ -28936,6 +31192,7 @@ _t_url_URLSearchParams_delete :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "url.URLSearchParams_delete", "name") }
@@ -28956,6 +31213,7 @@ _t_url_URLSearchParams_delete :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		}
 		_p2 = _v2
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URLSearchParams{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLSearchParams(&c, _p0.handle)
 	if _p0.data == nil {
@@ -28974,6 +31232,7 @@ _t_url_URLSearchParams_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "url.URLSearchParams_get", "name") }
@@ -28984,6 +31243,7 @@ _t_url_URLSearchParams_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	if !wasm.valid_utf8(_p1) {
 		return _fail_size(&c, &f, a, .Type, "url.URLSearchParams_get: argument name is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URLSearchParams{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLSearchParams(&c, _p0.handle)
 	if _p0.data == nil {
@@ -29006,6 +31266,7 @@ _t_url_URLSearchParams_count :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "url.URLSearchParams_count", "name") }
@@ -29014,6 +31275,7 @@ _t_url_URLSearchParams_count :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "url.URLSearchParams_count: argument name is not valid UTF-8") }
 		return wasm.trap_new("url.URLSearchParams_count: argument name is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URLSearchParams{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLSearchParams(&c, _p0.handle)
 	if _p0.data == nil {
@@ -29034,6 +31296,7 @@ _t_url_URLSearchParams_getNth :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "url.URLSearchParams_getNth", "name") }
@@ -29044,6 +31307,7 @@ _t_url_URLSearchParams_getNth :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	if !wasm.valid_utf8(_p1) {
 		return _fail_size(&c, &f, a, .Type, "url.URLSearchParams_getNth: argument name is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URLSearchParams{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLSearchParams(&c, _p0.handle)
 	if _p0.data == nil {
@@ -29067,6 +31331,7 @@ _t_url_URLSearchParams_has :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "url.URLSearchParams_has", "name") }
@@ -29087,6 +31352,7 @@ _t_url_URLSearchParams_has :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 		}
 		_p2 = _v2
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URLSearchParams{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLSearchParams(&c, _p0.handle)
 	if _p0.data == nil {
@@ -29107,6 +31373,7 @@ _t_url_URLSearchParams_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "url.URLSearchParams_set", "name") }
@@ -29115,6 +31382,7 @@ _t_url_URLSearchParams_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	if !_k2 { return wasm.trap_bounds(&f, "url.URLSearchParams_set", "value") }
 	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
 	_p2 := utf8_scrub(string(_s2[:_n2]), context.temp_allocator)
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URLSearchParams{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLSearchParams(&c, _p0.handle)
 	if _p0.data == nil {
@@ -29133,6 +31401,8 @@ _t_url_URLSearchParams_sort :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URLSearchParams{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLSearchParams(&c, _p0.handle)
 	if _p0.data == nil {
@@ -29151,9 +31421,11 @@ _t_url_URLSearchParams_toString :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "url.URLSearchParams_toString", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URLSearchParams{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLSearchParams(&c, _p0.handle)
 	if _p0.data == nil {
@@ -29174,9 +31446,11 @@ _t_url_URLSearchParams_nameAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "url.URLSearchParams_nameAt", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URLSearchParams{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLSearchParams(&c, _p0.handle)
 	if _p0.data == nil {
@@ -29200,9 +31474,11 @@ _t_url_URLSearchParams_valueAt :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "url.URLSearchParams_valueAt", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URLSearchParams{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLSearchParams(&c, _p0.handle)
 	if _p0.data == nil {
@@ -29226,6 +31502,7 @@ _t_url_URLPattern_createString :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "url.URLPattern_createString", "input") }
@@ -29262,6 +31539,7 @@ _t_url_URLPattern_createInit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "url.URLPattern_createInit", "protocol") }
@@ -29355,9 +31633,11 @@ _t_url_URLPattern_component :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "url.URLPattern_component", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URLPattern{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLPattern(&c, _p0.handle)
 	if _p0.data == nil {
@@ -29384,6 +31664,8 @@ _t_url_URLPattern_hasRegExpGroups :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URLPattern{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLPattern(&c, _p0.handle)
 	if _p0.data == nil {
@@ -29404,6 +31686,7 @@ _t_url_URLPattern_execString :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "url.URLPattern_execString", "input") }
@@ -29420,6 +31703,7 @@ _t_url_URLPattern_execString :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "url.URLPattern_execString: argument base is not valid UTF-8") }
 		return wasm.trap_new("url.URLPattern_execString: argument base is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URLPattern{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLPattern(&c, _p0.handle)
 	if _p0.data == nil {
@@ -29441,6 +31725,7 @@ _t_url_URLPattern_execInit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "url.URLPattern_execInit", "protocol") }
@@ -29505,6 +31790,7 @@ _t_url_URLPattern_execInit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "url.URLPattern_execInit: argument hash is not valid UTF-8") }
 		return wasm.trap_new("url.URLPattern_execInit: argument hash is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URLPattern{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLPattern(&c, _p0.handle)
 	if _p0.data == nil {
@@ -29533,6 +31819,8 @@ _t_url_URLPattern_resultInputCount :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URLPattern{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLPattern(&c, _p0.handle)
 	if _p0.data == nil {
@@ -29553,9 +31841,11 @@ _t_url_URLPattern_resultInput :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "url.URLPattern_resultInput", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URLPattern{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLPattern(&c, _p0.handle)
 	if _p0.data == nil {
@@ -29579,9 +31869,11 @@ _t_url_URLPattern_componentInput :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "url.URLPattern_componentInput", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URLPattern{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLPattern(&c, _p0.handle)
 	if _p0.data == nil {
@@ -29608,6 +31900,8 @@ _t_url_URLPattern_groupCount :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URLPattern{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLPattern(&c, _p0.handle)
 	if _p0.data == nil {
@@ -29634,9 +31928,11 @@ _t_url_URLPattern_groupName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "url.URLPattern_groupName", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URLPattern{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLPattern(&c, _p0.handle)
 	if _p0.data == nil {
@@ -29665,9 +31961,11 @@ _t_url_URLPattern_groupValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[4])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "url.URLPattern_groupValue", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_URLPattern{handle = u64(a[0].i64)}
 	_p0.data = lookup_URLPattern(&c, _p0.handle)
 	if _p0.data == nil {
@@ -29696,6 +31994,7 @@ _t_web_Exception_code :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := Exception_code(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -29710,6 +32009,7 @@ _t_web_Exception_message :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "web.Exception_message", "result buffer") }
@@ -29727,6 +32027,7 @@ _t_webassembly_WebAssembly_enabled :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := WebAssembly_enabled(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -29741,6 +32042,7 @@ _t_webassembly_WebAssembly_validate :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "webassembly.WebAssembly_validate", "module") }
@@ -29759,6 +32061,7 @@ _t_webassembly_WebAssembly_compile :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "webassembly.WebAssembly_compile", "module") }
@@ -29783,6 +32086,7 @@ _t_webassembly_WebAssembly_compileAsync :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "webassembly.WebAssembly_compileAsync", "module") }
@@ -29801,9 +32105,11 @@ _t_webassembly_WebAssembly_Module_imports :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Module_imports", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_WebAssemblyModule{handle = u64(a[0].i64)}
 	_p0.data = lookup_WebAssemblyModule(&c, _p0.handle)
 	if _p0.data == nil {
@@ -29824,9 +32130,11 @@ _t_webassembly_WebAssembly_Module_exports :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Module_exports", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_WebAssemblyModule{handle = u64(a[0].i64)}
 	_p0.data = lookup_WebAssemblyModule(&c, _p0.handle)
 	if _p0.data == nil {
@@ -29847,6 +32155,7 @@ _t_webassembly_WebAssembly_Module_customSectionCount :: proc "c" (env: rawptr, c
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Module_customSectionCount", "name") }
@@ -29855,6 +32164,7 @@ _t_webassembly_WebAssembly_Module_customSectionCount :: proc "c" (env: rawptr, c
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "webassembly.WebAssembly_Module_customSectionCount: argument name is not valid UTF-8") }
 		return wasm.trap_new("webassembly.WebAssembly_Module_customSectionCount: argument name is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_WebAssemblyModule{handle = u64(a[0].i64)}
 	_p0.data = lookup_WebAssemblyModule(&c, _p0.handle)
 	if _p0.data == nil {
@@ -29875,6 +32185,7 @@ _t_webassembly_WebAssembly_Module_customSection :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Module_customSection", "name") }
@@ -29886,6 +32197,7 @@ _t_webassembly_WebAssembly_Module_customSection :: proc "c" (env: rawptr, caller
 		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "webassembly.WebAssembly_Module_customSection: argument name is not valid UTF-8") }
 		return wasm.trap_new("webassembly.WebAssembly_Module_customSection: argument name is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_WebAssemblyModule{handle = u64(a[0].i64)}
 	_p0.data = lookup_WebAssemblyModule(&c, _p0.handle)
 	if _p0.data == nil {
@@ -29907,9 +32219,11 @@ _t_webassembly_WebAssembly_Module_linkInfo :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Module_linkInfo", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_WebAssemblyModule{handle = u64(a[0].i64)}
 	_p0.data = lookup_WebAssemblyModule(&c, _p0.handle)
 	if _p0.data == nil {
@@ -29930,6 +32244,7 @@ _t_webassembly_WebAssembly_lastError :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "webassembly.WebAssembly_lastError", "result buffer") }
@@ -29947,6 +32262,7 @@ _t_webassembly_WebAssembly_Memory_create :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := a[0].i64
 	_p1 := a[1].i64
 	_r := WebAssembly_Memory_create(&c, _p0, _p1)
@@ -29963,6 +32279,7 @@ _t_webassembly_WebAssembly_Memory_pages :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := a[0].i32
 	_r := WebAssembly_Memory_pages(&c, _p0)
 	api_end(&c)
@@ -29978,6 +32295,7 @@ _t_webassembly_WebAssembly_Memory_grow :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := a[0].i32
 	_p1 := a[1].i64
 	_r := WebAssembly_Memory_grow(&c, _p0, _p1)
@@ -29994,6 +32312,7 @@ _t_webassembly_WebAssembly_Memory_read :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Memory_read", "destination") }
@@ -30014,6 +32333,7 @@ _t_webassembly_WebAssembly_Memory_write :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Memory_write", "source") }
@@ -30034,6 +32354,7 @@ _t_webassembly_WebAssembly_Memory_createShared :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := a[0].i64
 	_p1 := a[1].i64
 	_p2 := a[2].i64
@@ -30051,6 +32372,7 @@ _t_webassembly_WebAssembly_Memory_release :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := a[0].i32
 	WebAssembly_Memory_release(&c, _p0)
 	api_end(&c)
@@ -30064,6 +32386,7 @@ _t_webassembly_WebAssembly_Memory_byteLength :: proc "c" (env: rawptr, caller: w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := a[0].i32
 	_r := WebAssembly_Memory_byteLength(&c, _p0)
 	api_end(&c)
@@ -30079,6 +32402,7 @@ _t_webassembly_WebAssembly_Memory_growBytes :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := a[0].i32
 	_p1 := a[1].i64
 	_r := WebAssembly_Memory_growBytes(&c, _p0, _p1)
@@ -30095,6 +32419,7 @@ _t_webassembly_WebAssembly_Memory_atomic :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := a[0].i32
 	_p1 := a[1].i32
 	_p2 := a[2].i64
@@ -30115,6 +32440,7 @@ _t_webassembly_WebAssembly_Memory_wait :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := a[0].i32
 	_p1 := a[1].i64
 	_p2 := a[2].i32
@@ -30134,6 +32460,7 @@ _t_webassembly_WebAssembly_Memory_notify :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := a[0].i32
 	_p1 := a[1].i64
 	_p2 := u32(a[2].i32)
@@ -30151,6 +32478,7 @@ _t_webassembly_WebAssembly_Memory_share :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := a[0].i32
 	_r := WebAssembly_Memory_share(&c, _p0)
 	api_end(&c)
@@ -30166,6 +32494,7 @@ _t_webassembly_WebAssembly_Memory_adopt :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := a[0].i64
 	_r := WebAssembly_Memory_adopt(&c, _p0)
 	api_end(&c)
@@ -30181,6 +32510,8 @@ _t_webassembly_WebAssembly_Module_share :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_WebAssemblyModule{handle = u64(a[0].i64)}
 	_p0.data = lookup_WebAssemblyModule(&c, _p0.handle)
 	if _p0.data == nil {
@@ -30201,6 +32532,7 @@ _t_webassembly_WebAssembly_Module_adopt :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Module_adopt", "result pointer") }
 	_p0 := a[0].i64
@@ -30222,6 +32554,7 @@ _t_webassembly_WebAssembly_crossOriginIsolated :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := WebAssembly_crossOriginIsolated(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -30236,6 +32569,7 @@ _t_webassembly_WebAssembly_canBlock :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := WebAssembly_canBlock(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -30250,6 +32584,7 @@ _t_webassembly_WebAssembly_Table_create :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Table_create", "element") }
@@ -30275,6 +32610,7 @@ _t_webassembly_WebAssembly_Table_element :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Table_element", "result buffer") }
@@ -30293,6 +32629,7 @@ _t_webassembly_WebAssembly_Table_length :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := a[0].i32
 	_r := WebAssembly_Table_length(&c, _p0)
 	api_end(&c)
@@ -30308,6 +32645,7 @@ _t_webassembly_WebAssembly_Table_get :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Table_get", "cell") }
@@ -30328,6 +32666,7 @@ _t_webassembly_WebAssembly_Table_set :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := a[0].i32
 	_p1 := a[1].i64
 	_p2 := a[2].i64
@@ -30345,6 +32684,7 @@ _t_webassembly_WebAssembly_Table_grow :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := a[0].i32
 	_p1 := a[1].i64
 	_p2 := a[2].i64
@@ -30362,6 +32702,7 @@ _t_webassembly_WebAssembly_Global_create :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Global_create", "type") }
@@ -30386,6 +32727,7 @@ _t_webassembly_WebAssembly_Global_type :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Global_type", "result buffer") }
@@ -30404,6 +32746,7 @@ _t_webassembly_WebAssembly_Global_get :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := a[0].i32
 	_r := WebAssembly_Global_get(&c, _p0)
 	api_end(&c)
@@ -30419,6 +32762,7 @@ _t_webassembly_WebAssembly_Global_set :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := a[0].i32
 	_p1 := a[1].i64
 	_r := WebAssembly_Global_set(&c, _p0, _p1)
@@ -30435,6 +32779,7 @@ _t_webassembly_WebAssembly_Func_import :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Func_import", "sig") }
@@ -30458,6 +32803,7 @@ _t_webassembly_WebAssembly_Func_sig :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Func_sig", "result buffer") }
@@ -30476,6 +32822,7 @@ _t_webassembly_WebAssembly_Func_call :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Func_call", "args") }
@@ -30495,6 +32842,7 @@ _t_webassembly_WebAssembly_Func_results :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Func_results", "result buffer") }
@@ -30512,6 +32860,7 @@ _t_webassembly_WebAssembly_import_args :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "webassembly.WebAssembly_import_args", "result buffer") }
@@ -30529,6 +32878,7 @@ _t_webassembly_WebAssembly_import_results :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "webassembly.WebAssembly_import_results", "results") }
@@ -30545,6 +32895,7 @@ _t_webassembly_WebAssembly_import_failed :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "webassembly.WebAssembly_import_failed", "message") }
@@ -30565,6 +32916,7 @@ _t_webassembly_WebAssembly_Tag_create :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Tag_create", "parameters") }
@@ -30587,6 +32939,7 @@ _t_webassembly_WebAssembly_Tag_sig :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Tag_sig", "result buffer") }
@@ -30605,6 +32958,7 @@ _t_webassembly_WebAssembly_exception_tag :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := WebAssembly_exception_tag(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -30619,6 +32973,7 @@ _t_webassembly_WebAssembly_import_throw :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "webassembly.WebAssembly_import_throw", "values") }
@@ -30636,6 +32991,7 @@ _t_webassembly_WebAssembly_extern_released :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := WebAssembly_extern_released(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -30650,10 +33006,12 @@ _t_webassembly_WebAssembly_Instance_create :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Instance_create", "externs") }
 	_p1 := _s1[:_n1]
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_WebAssemblyModule{handle = u64(a[0].i64)}
 	_p0.data = lookup_WebAssemblyModule(&c, _p0.handle)
 	if _p0.data == nil {
@@ -30674,10 +33032,12 @@ _t_webassembly_WebAssembly_Instance_exports :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[3])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "webassembly.WebAssembly_Instance_exports", "result buffer") }
 	_p0 := a[0].i32
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_WebAssemblyModule{handle = u64(a[1].i64)}
 	_p1.data = lookup_WebAssemblyModule(&c, _p1.handle)
 	if _p1.data == nil {
@@ -30698,6 +33058,7 @@ _t_webaudio_WebAudio_enabled :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := WebAudio_enabled(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -30712,6 +33073,7 @@ _t_webaudio_WebAudio_fullyActive :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := WebAudio_fullyActive(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -30726,6 +33088,7 @@ _t_webaudio_WebAudio_defaultRate :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := WebAudio_defaultRate(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -30740,6 +33103,7 @@ _t_webaudio_WebAudio_maxBufferBytes :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := WebAudio_maxBufferBytes(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -30754,6 +33118,7 @@ _t_webaudio_WebAudio_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := a[0].f64
 	_p1 := u32(a[1].i32)
 	_p2 := u32(a[2].i32)
@@ -30774,6 +33139,8 @@ _t_webaudio_WebAudio_resume :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	WebAudio_resume(&c, _p0)
 	api_end(&c)
@@ -30787,6 +33154,8 @@ _t_webaudio_WebAudio_suspend :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := WebAudio_suspend(&c, _p0)
 	api_end(&c)
@@ -30802,6 +33171,8 @@ _t_webaudio_WebAudio_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	WebAudio_close(&c, _p0)
 	api_end(&c)
@@ -30815,6 +33186,8 @@ _t_webaudio_WebAudio_time :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := WebAudio_time(&c, _p0)
 	api_end(&c)
@@ -30830,6 +33203,8 @@ _t_webaudio_WebAudio_queued :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := WebAudio_queued(&c, _p0)
 	api_end(&c)
@@ -30845,6 +33220,8 @@ _t_webaudio_WebAudio_render :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := u32(a[1].i32)
 	_r := WebAudio_render(&c, _p0, _p1)
@@ -30861,6 +33238,8 @@ _t_webaudio_WebAudio_takeResult :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := WebAudio_takeResult(&c, _p0)
 	api_end(&c)
@@ -30876,6 +33255,8 @@ _t_webaudio_WebAudio_offlineSuspend :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].f64
 	_r := WebAudio_offlineSuspend(&c, _p0, _p1)
@@ -30892,6 +33273,8 @@ _t_webaudio_WebAudio_offlineResume :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	WebAudio_offlineResume(&c, _p0)
 	api_end(&c)
@@ -30905,6 +33288,8 @@ _t_webaudio_WebAudio_nodeCreate :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
 	_p2 := a[2].f64
@@ -30923,6 +33308,8 @@ _t_webaudio_WebAudio_nodeRelease :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
 	WebAudio_nodeRelease(&c, _p0, _p1)
@@ -30937,6 +33324,8 @@ _t_webaudio_WebAudio_connect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
 	_p2 := a[2].i32
@@ -30957,6 +33346,8 @@ _t_webaudio_WebAudio_disconnect :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
 	_p2 := a[2].i32
@@ -30977,6 +33368,8 @@ _t_webaudio_WebAudio_nodeSet :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
 	_p2 := a[2].i32
@@ -30993,6 +33386,8 @@ _t_webaudio_WebAudio_nodeGet :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
 	_p2 := a[2].i32
@@ -31010,6 +33405,8 @@ _t_webaudio_WebAudio_start :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
 	_p2 := a[2].f64
@@ -31027,6 +33424,8 @@ _t_webaudio_WebAudio_stop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
 	_p2 := a[2].f64
@@ -31042,8 +33441,11 @@ _t_webaudio_WebAudio_setBuffer :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
+	api_route(&c, u64(a[2].i64))
 	_p2 := u64(a[2].i64)
 	WebAudio_setBuffer(&c, _p0, _p1, _p2)
 	api_end(&c)
@@ -31057,8 +33459,11 @@ _t_webaudio_WebAudio_setConvolver :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
+	api_route(&c, u64(a[2].i64))
 	_p2 := u64(a[2].i64)
 	_p3 := a[3].i32 != 0
 	WebAudio_setConvolver(&c, _p0, _p1, _p2, _p3)
@@ -31073,10 +33478,12 @@ _t_webaudio_WebAudio_setCurve :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "webaudio.WebAudio_setCurve", "curve") }
 	_p2 := _s2[:_n2]
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
 	WebAudio_setCurve(&c, _p0, _p1, _p2)
@@ -31091,6 +33498,7 @@ _t_webaudio_WebAudio_setWave :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "webaudio.WebAudio_setWave", "real") }
@@ -31099,6 +33507,7 @@ _t_webaudio_WebAudio_setWave :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	if !_k3 { return wasm.trap_bounds(&f, "webaudio.WebAudio_setWave", "imag") }
 	_p2 := _s2[:_n2]
 	_p3 := _s3[:_n3]
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
 	_p4 := a[6].i32 != 0
@@ -31114,8 +33523,11 @@ _t_webaudio_WebAudio_captureElement :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
+	api_route(&c, u64(a[2].i64))
 	_p2 := Api_Element{handle = u64(a[2].i64)}
 	_p2.data = lookup_Element(&c, _p2.handle)
 	if _p2.data == nil {
@@ -31136,6 +33548,8 @@ _t_webaudio_WebAudio_paramGet :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
 	_p2 := a[2].i32
@@ -31153,6 +33567,8 @@ _t_webaudio_WebAudio_paramSet :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
 	_p2 := a[2].i32
@@ -31171,6 +33587,8 @@ _t_webaudio_WebAudio_paramRate :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
 	_p2 := a[2].i32
@@ -31187,10 +33605,12 @@ _t_webaudio_WebAudio_paramEvent :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n7 := wasm.addr(&f, a[8])
 	_s7, _k7 := wasm.span(&f, wasm.addr(&f, a[7]), _n7)
 	if !_k7 { return wasm.trap_bounds(&f, "webaudio.WebAudio_paramEvent", "curve") }
 	_p7 := _s7[:_n7]
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
 	_p2 := a[2].i32
@@ -31212,6 +33632,8 @@ _t_webaudio_WebAudio_paramCancel :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
 	_p2 := a[2].i32
@@ -31229,6 +33651,7 @@ _t_webaudio_WebAudio_biquadResponse :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "webaudio.WebAudio_biquadResponse", "frequencies") }
@@ -31241,6 +33664,7 @@ _t_webaudio_WebAudio_biquadResponse :: proc "c" (env: rawptr, caller: wasm.Calle
 	_p2 := _s2[:_n2]
 	_p3 := _s3[:_n3]
 	_p4 := _s4[:_n4]
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
 	WebAudio_biquadResponse(&c, _p0, _p1, _p2, _p3, _p4)
@@ -31255,6 +33679,7 @@ _t_webaudio_WebAudio_setIir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "webaudio.WebAudio_setIir", "feedforward") }
@@ -31263,6 +33688,7 @@ _t_webaudio_WebAudio_setIir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	if !_k3 { return wasm.trap_bounds(&f, "webaudio.WebAudio_setIir", "feedback") }
 	_p2 := _s2[:_n2]
 	_p3 := _s3[:_n3]
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
 	WebAudio_setIir(&c, _p0, _p1, _p2, _p3)
@@ -31277,6 +33703,7 @@ _t_webaudio_WebAudio_iirResponse :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "webaudio.WebAudio_iirResponse", "frequencies") }
@@ -31289,6 +33716,7 @@ _t_webaudio_WebAudio_iirResponse :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	_p2 := _s2[:_n2]
 	_p3 := _s3[:_n3]
 	_p4 := _s4[:_n4]
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
 	WebAudio_iirResponse(&c, _p0, _p1, _p2, _p3, _p4)
@@ -31303,10 +33731,12 @@ _t_webaudio_WebAudio_analyserRead :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n3 := wasm.addr(&f, a[4])
 	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[3]), _n3)
 	if !_k3 { return wasm.trap_bounds(&f, "webaudio.WebAudio_analyserRead", "values") }
 	_p3 := _s3[:_n3]
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
 	_p2 := a[2].i32
@@ -31324,10 +33754,12 @@ _t_webaudio_WebAudio_scriptPull :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "webaudio.WebAudio_scriptPull", "values") }
 	_p2 := _s2[:_n2]
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
 	WebAudio_scriptPull(&c, _p0, _p1, _p2)
@@ -31342,10 +33774,12 @@ _t_webaudio_WebAudio_scriptPush :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "webaudio.WebAudio_scriptPush", "values") }
 	_p2 := _s2[:_n2]
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
 	WebAudio_scriptPush(&c, _p0, _p1, _p2)
@@ -31360,6 +33794,7 @@ _t_webaudio_WebAudio_pcmCreate :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := u32(a[0].i32)
 	_p1 := u32(a[1].i32)
 	_p2 := a[2].f64
@@ -31377,10 +33812,12 @@ _t_webaudio_WebAudio_pcmWrite :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n3 := wasm.addr(&f, a[4])
 	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[3]), _n3)
 	if !_k3 { return wasm.trap_bounds(&f, "webaudio.WebAudio_pcmWrite", "values") }
 	_p3 := _s3[:_n3]
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := u32(a[1].i32)
 	_p2 := u32(a[2].i32)
@@ -31396,10 +33833,12 @@ _t_webaudio_WebAudio_pcmRead :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n3 := wasm.addr(&f, a[4])
 	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[3]), _n3)
 	if !_k3 { return wasm.trap_bounds(&f, "webaudio.WebAudio_pcmRead", "values") }
 	_p3 := _s3[:_n3]
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := u32(a[1].i32)
 	_p2 := u32(a[2].i32)
@@ -31415,6 +33854,8 @@ _t_webaudio_WebAudio_pcmInfo :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
 	_r := WebAudio_pcmInfo(&c, _p0, _p1)
@@ -31431,6 +33872,7 @@ _t_webaudio_WebAudio_decode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "webaudio.WebAudio_decode", "data") }
@@ -31627,8 +34069,10 @@ _t_webcodecs_VideoFrame_fromImage :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[5]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "webcodecs.VideoFrame_fromImage", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i64
 	_p2 := a[2].i32 != 0
@@ -31652,6 +34096,7 @@ _t_webcodecs_VideoFrame_fromBuffer :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "webcodecs.VideoFrame_fromBuffer", "data") }
@@ -31708,6 +34153,8 @@ _t_webcodecs_VideoFrame_format :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoFrame(&c, _p0.handle)
 	if _p0.data == nil {
@@ -31728,6 +34175,8 @@ _t_webcodecs_VideoFrame_codedWidth :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoFrame(&c, _p0.handle)
 	if _p0.data == nil {
@@ -31748,6 +34197,8 @@ _t_webcodecs_VideoFrame_codedHeight :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoFrame(&c, _p0.handle)
 	if _p0.data == nil {
@@ -31768,6 +34219,8 @@ _t_webcodecs_VideoFrame_displayWidth :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoFrame(&c, _p0.handle)
 	if _p0.data == nil {
@@ -31788,6 +34241,8 @@ _t_webcodecs_VideoFrame_displayHeight :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoFrame(&c, _p0.handle)
 	if _p0.data == nil {
@@ -31808,6 +34263,8 @@ _t_webcodecs_VideoFrame_timestamp :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoFrame(&c, _p0.handle)
 	if _p0.data == nil {
@@ -31828,6 +34285,8 @@ _t_webcodecs_VideoFrame_duration :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoFrame(&c, _p0.handle)
 	if _p0.data == nil {
@@ -31848,6 +34307,8 @@ _t_webcodecs_VideoFrame_visibleRect :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoFrame(&c, _p0.handle)
 	if _p0.data == nil {
@@ -31869,6 +34330,8 @@ _t_webcodecs_VideoFrame_colorSpace :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoFrame(&c, _p0.handle)
 	if _p0.data == nil {
@@ -31890,6 +34353,8 @@ _t_webcodecs_VideoFrame_isClosed :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoFrame(&c, _p0.handle)
 	if _p0.data == nil {
@@ -31910,6 +34375,7 @@ _t_webcodecs_VideoFrame_allocationSize :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n7 := wasm.addr(&f, a[8])
 	_s7, _k7 := wasm.span(&f, wasm.addr(&f, a[7]), _n7, 4)
 	if !_k7 { return wasm.trap_bounds(&f, "webcodecs.VideoFrame_allocationSize", "layout_offsets") }
@@ -31920,6 +34386,7 @@ _t_webcodecs_VideoFrame_allocationSize :: proc "c" (env: rawptr, caller: wasm.Ca
 	if !_rk { return wasm.trap_bounds(&f, "webcodecs.VideoFrame_allocationSize", "result pointer") }
 	_p7 := ([^]i32)(_s7)[:_n7]
 	_p8 := ([^]i32)(_s8)[:_n8]
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoFrame(&c, _p0.handle)
 	if _p0.data == nil {
@@ -31950,6 +34417,7 @@ _t_webcodecs_VideoFrame_copyTo :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "webcodecs.VideoFrame_copyTo", "dst") }
@@ -31964,6 +34432,7 @@ _t_webcodecs_VideoFrame_copyTo :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	_p1 := _s1[:_n1]
 	_p8 := ([^]i32)(_s8)[:_n8]
 	_p9 := ([^]i32)(_s9)[:_n9]
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoFrame(&c, _p0.handle)
 	if _p0.data == nil {
@@ -31994,6 +34463,8 @@ _t_webcodecs_VideoFrame_copyLayout :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoFrame(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32016,8 +34487,10 @@ _t_webcodecs_VideoFrame_clone :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "webcodecs.VideoFrame_clone", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoFrame(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32041,6 +34514,8 @@ _t_webcodecs_VideoFrame_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoFrame(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32059,8 +34534,10 @@ _t_webcodecs_VideoFrame_transfer :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "webcodecs.VideoFrame_transfer", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoFrame(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32085,6 +34562,8 @@ _t_webcodecs_VideoFrame_takeForTransfer :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoFrame{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoFrame(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32105,6 +34584,8 @@ _t_webcodecs_VideoFrame_adoptTransfer :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := VideoFrame_adoptTransfer(&c, _p0)
 	api_end(&c)
@@ -32120,6 +34601,7 @@ _t_webcodecs_audio_decoder_AudioDecoder_create :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "webcodecs_audio_decoder.AudioDecoder_create", "result pointer") }
 	_p0 := u32(a[0].i32)
@@ -32144,6 +34626,7 @@ _t_webcodecs_audio_decoder_AudioDecoder_isConfigSupported :: proc "c" (env: rawp
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "webcodecs_audio_decoder.AudioDecoder_isConfigSupported", "codec") }
@@ -32166,6 +34649,7 @@ _t_webcodecs_audio_decoder_AudioDecoder_configure :: proc "c" (env: rawptr, call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "webcodecs_audio_decoder.AudioDecoder_configure", "codec") }
@@ -32177,6 +34661,7 @@ _t_webcodecs_audio_decoder_AudioDecoder_configure :: proc "c" (env: rawptr, call
 		return _fail_status(&c, a, .Type, "webcodecs_audio_decoder.AudioDecoder_configure: argument codec is not valid UTF-8")
 	}
 	_p2 := _s2[:_n2]
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioDecoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioDecoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32201,10 +34686,12 @@ _t_webcodecs_audio_decoder_AudioDecoder_decode :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n5 := wasm.addr(&f, a[6])
 	_s5, _k5 := wasm.span(&f, wasm.addr(&f, a[5]), _n5)
 	if !_k5 { return wasm.trap_bounds(&f, "webcodecs_audio_decoder.AudioDecoder_decode", "data") }
 	_p5 := _s5[:_n5]
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioDecoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioDecoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32231,6 +34718,8 @@ _t_webcodecs_audio_decoder_AudioDecoder_flush :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioDecoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioDecoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32253,6 +34742,8 @@ _t_webcodecs_audio_decoder_AudioDecoder_reset :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioDecoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioDecoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32271,6 +34762,8 @@ _t_webcodecs_audio_decoder_AudioDecoder_close :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioDecoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioDecoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32289,6 +34782,8 @@ _t_webcodecs_audio_decoder_AudioDecoder_decodeQueueSize :: proc "c" (env: rawptr
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioDecoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioDecoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32309,6 +34804,8 @@ _t_webcodecs_audio_decoder_AudioDecoder_state :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioDecoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioDecoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32329,6 +34826,7 @@ _t_webcodecs_codec_EncodedVideoChunk_create :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n4 := wasm.addr(&f, a[5])
 	_s4, _k4 := wasm.span(&f, wasm.addr(&f, a[4]), _n4)
 	if !_k4 { return wasm.trap_bounds(&f, "webcodecs_codec.EncodedVideoChunk_create", "data") }
@@ -32357,6 +34855,7 @@ _t_webcodecs_codec_EncodedAudioChunk_create :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n4 := wasm.addr(&f, a[5])
 	_s4, _k4 := wasm.span(&f, wasm.addr(&f, a[4]), _n4)
 	if !_k4 { return wasm.trap_bounds(&f, "webcodecs_codec.EncodedAudioChunk_create", "data") }
@@ -32385,6 +34884,8 @@ _t_webcodecs_codec_EncodedVideoChunk_type :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_EncodedVideoChunk{handle = u64(a[0].i64)}
 	_p0.data = lookup_EncodedVideoChunk(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32405,6 +34906,8 @@ _t_webcodecs_codec_EncodedVideoChunk_timestamp :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_EncodedVideoChunk{handle = u64(a[0].i64)}
 	_p0.data = lookup_EncodedVideoChunk(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32425,6 +34928,8 @@ _t_webcodecs_codec_EncodedVideoChunk_duration :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_EncodedVideoChunk{handle = u64(a[0].i64)}
 	_p0.data = lookup_EncodedVideoChunk(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32445,6 +34950,8 @@ _t_webcodecs_codec_EncodedVideoChunk_byteLength :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_EncodedVideoChunk{handle = u64(a[0].i64)}
 	_p0.data = lookup_EncodedVideoChunk(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32465,12 +34972,14 @@ _t_webcodecs_codec_EncodedVideoChunk_copyTo :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "webcodecs_codec.EncodedVideoChunk_copyTo", "dst") }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[3]), 4)
 	if !_rk { return wasm.trap_bounds(&f, "webcodecs_codec.EncodedVideoChunk_copyTo", "result pointer") }
 	_p1 := _s1[:_n1]
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_EncodedVideoChunk{handle = u64(a[0].i64)}
 	_p0.data = lookup_EncodedVideoChunk(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32494,6 +35003,8 @@ _t_webcodecs_codec_EncodedAudioChunk_type :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_EncodedAudioChunk{handle = u64(a[0].i64)}
 	_p0.data = lookup_EncodedAudioChunk(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32514,6 +35025,8 @@ _t_webcodecs_codec_EncodedAudioChunk_timestamp :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_EncodedAudioChunk{handle = u64(a[0].i64)}
 	_p0.data = lookup_EncodedAudioChunk(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32534,6 +35047,8 @@ _t_webcodecs_codec_EncodedAudioChunk_duration :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_EncodedAudioChunk{handle = u64(a[0].i64)}
 	_p0.data = lookup_EncodedAudioChunk(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32554,6 +35069,8 @@ _t_webcodecs_codec_EncodedAudioChunk_byteLength :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_EncodedAudioChunk{handle = u64(a[0].i64)}
 	_p0.data = lookup_EncodedAudioChunk(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32574,12 +35091,14 @@ _t_webcodecs_codec_EncodedAudioChunk_copyTo :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "webcodecs_codec.EncodedAudioChunk_copyTo", "dst") }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[3]), 4)
 	if !_rk { return wasm.trap_bounds(&f, "webcodecs_codec.EncodedAudioChunk_copyTo", "result pointer") }
 	_p1 := _s1[:_n1]
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_EncodedAudioChunk{handle = u64(a[0].i64)}
 	_p0.data = lookup_EncodedAudioChunk(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32603,6 +35122,7 @@ _t_webcodecs_codec_AudioData_create :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n5 := wasm.addr(&f, a[6])
 	_s5, _k5 := wasm.span(&f, wasm.addr(&f, a[5]), _n5)
 	if !_k5 { return wasm.trap_bounds(&f, "webcodecs_codec.AudioData_create", "data") }
@@ -32636,6 +35156,8 @@ _t_webcodecs_codec_AudioData_format :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioData{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioData(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32656,6 +35178,8 @@ _t_webcodecs_codec_AudioData_sampleRate :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioData{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioData(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32676,6 +35200,8 @@ _t_webcodecs_codec_AudioData_numberOfFrames :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioData{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioData(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32696,6 +35222,8 @@ _t_webcodecs_codec_AudioData_numberOfChannels :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioData{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioData(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32716,6 +35244,8 @@ _t_webcodecs_codec_AudioData_timestamp :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioData{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioData(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32736,6 +35266,8 @@ _t_webcodecs_codec_AudioData_duration :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioData{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioData(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32756,8 +35288,10 @@ _t_webcodecs_codec_AudioData_allocationSize :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[6]), 4)
 	if !_rk { return wasm.trap_bounds(&f, "webcodecs_codec.AudioData_allocationSize", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioData{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioData(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32786,12 +35320,14 @@ _t_webcodecs_codec_AudioData_copyTo :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "webcodecs_codec.AudioData_copyTo", "dst") }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[8]), 4)
 	if !_rk { return wasm.trap_bounds(&f, "webcodecs_codec.AudioData_copyTo", "result pointer") }
 	_p1 := _s1[:_n1]
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioData{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioData(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32820,8 +35356,10 @@ _t_webcodecs_codec_AudioData_clone :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "webcodecs_codec.AudioData_clone", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioData{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioData(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32845,6 +35383,8 @@ _t_webcodecs_codec_AudioData_close :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioData{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioData(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32863,6 +35403,7 @@ _t_webcodecs_encoders_VideoEncoder_create :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "webcodecs_encoders.VideoEncoder_create", "result pointer") }
 	_p0 := u32(a[0].i32)
@@ -32887,6 +35428,7 @@ _t_webcodecs_encoders_AudioEncoder_create :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "webcodecs_encoders.AudioEncoder_create", "result pointer") }
 	_p0 := u32(a[0].i32)
@@ -32911,6 +35453,7 @@ _t_webcodecs_encoders_VideoEncoder_isConfigSupported :: proc "c" (env: rawptr, c
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "webcodecs_encoders.VideoEncoder_isConfigSupported", "codec") }
@@ -32933,6 +35476,7 @@ _t_webcodecs_encoders_AudioEncoder_isConfigSupported :: proc "c" (env: rawptr, c
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "webcodecs_encoders.AudioEncoder_isConfigSupported", "codec") }
@@ -32955,6 +35499,7 @@ _t_webcodecs_encoders_VideoEncoder_configure :: proc "c" (env: rawptr, caller: w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "webcodecs_encoders.VideoEncoder_configure", "codec") }
@@ -32962,6 +35507,7 @@ _t_webcodecs_encoders_VideoEncoder_configure :: proc "c" (env: rawptr, caller: w
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "webcodecs_encoders.VideoEncoder_configure: argument codec is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoEncoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoEncoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -32984,6 +35530,7 @@ _t_webcodecs_encoders_AudioEncoder_configure :: proc "c" (env: rawptr, caller: w
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "webcodecs_encoders.AudioEncoder_configure", "codec") }
@@ -32991,6 +35538,7 @@ _t_webcodecs_encoders_AudioEncoder_configure :: proc "c" (env: rawptr, caller: w
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "webcodecs_encoders.AudioEncoder_configure: argument codec is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioEncoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioEncoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33013,6 +35561,8 @@ _t_webcodecs_encoders_VideoEncoder_encode :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoEncoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoEncoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33035,6 +35585,8 @@ _t_webcodecs_encoders_AudioEncoder_encode :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioEncoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioEncoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33057,6 +35609,8 @@ _t_webcodecs_encoders_VideoEncoder_flush :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoEncoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoEncoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33079,6 +35633,8 @@ _t_webcodecs_encoders_AudioEncoder_flush :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioEncoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioEncoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33101,6 +35657,8 @@ _t_webcodecs_encoders_VideoEncoder_reset :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoEncoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoEncoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33119,6 +35677,8 @@ _t_webcodecs_encoders_AudioEncoder_reset :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioEncoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioEncoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33137,6 +35697,8 @@ _t_webcodecs_encoders_VideoEncoder_close :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoEncoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoEncoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33155,6 +35717,8 @@ _t_webcodecs_encoders_AudioEncoder_close :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioEncoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioEncoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33173,6 +35737,8 @@ _t_webcodecs_encoders_VideoEncoder_encodeQueueSize :: proc "c" (env: rawptr, cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoEncoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoEncoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33193,6 +35759,8 @@ _t_webcodecs_encoders_AudioEncoder_encodeQueueSize :: proc "c" (env: rawptr, cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioEncoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioEncoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33213,6 +35781,8 @@ _t_webcodecs_encoders_VideoEncoder_state :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoEncoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoEncoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33233,6 +35803,8 @@ _t_webcodecs_encoders_AudioEncoder_state :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_AudioEncoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_AudioEncoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33253,6 +35825,7 @@ _t_webcodecs_image_ImageDecoder_create :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "webcodecs_image.ImageDecoder_create", "data") }
@@ -33285,6 +35858,7 @@ _t_webcodecs_image_ImageDecoder_isTypeSupported :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "webcodecs_image.ImageDecoder_isTypeSupported", "mime") }
@@ -33307,9 +35881,11 @@ _t_webcodecs_image_ImageDecoder_type :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "webcodecs_image.ImageDecoder_type", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_ImageDecoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_ImageDecoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33330,6 +35906,8 @@ _t_webcodecs_image_ImageDecoder_complete :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_ImageDecoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_ImageDecoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33350,6 +35928,8 @@ _t_webcodecs_image_ImageDecoder_frameCount :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_ImageDecoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_ImageDecoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33370,8 +35950,10 @@ _t_webcodecs_image_ImageDecoder_decode :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "webcodecs_image.ImageDecoder_decode", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_ImageDecoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_ImageDecoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33396,6 +35978,8 @@ _t_webcodecs_image_ImageDecoder_reset :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_ImageDecoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_ImageDecoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33414,6 +35998,8 @@ _t_webcodecs_image_ImageDecoder_close :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_ImageDecoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_ImageDecoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33432,6 +36018,8 @@ _t_webcodecs_image_ImageDecoder_tracks :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_ImageDecoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_ImageDecoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33452,6 +36040,8 @@ _t_webcodecs_image_ImageTrackList_length :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_ImageTrackList{handle = u64(a[0].i64)}
 	_p0.data = lookup_ImageTrackList(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33472,8 +36062,10 @@ _t_webcodecs_image_ImageTrackList_item :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "webcodecs_image.ImageTrackList_item", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_ImageTrackList{handle = u64(a[0].i64)}
 	_p0.data = lookup_ImageTrackList(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33498,6 +36090,8 @@ _t_webcodecs_image_ImageTrackList_selectedIndex :: proc "c" (env: rawptr, caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_ImageTrackList{handle = u64(a[0].i64)}
 	_p0.data = lookup_ImageTrackList(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33518,6 +36112,8 @@ _t_webcodecs_image_ImageTrack_animated :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_ImageTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_ImageTrack(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33538,6 +36134,8 @@ _t_webcodecs_image_ImageTrack_frameCount :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_ImageTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_ImageTrack(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33558,6 +36156,8 @@ _t_webcodecs_image_ImageTrack_repetitionCount :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_ImageTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_ImageTrack(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33578,6 +36178,8 @@ _t_webcodecs_image_ImageTrack_selected :: proc "c" (env: rawptr, caller: wasm.Ca
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_ImageTrack{handle = u64(a[0].i64)}
 	_p0.data = lookup_ImageTrack(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33598,6 +36200,7 @@ _t_webcodecs_video_decoder_VideoDecoder_create :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "webcodecs_video_decoder.VideoDecoder_create", "result pointer") }
 	_p0 := u32(a[0].i32)
@@ -33622,6 +36225,7 @@ _t_webcodecs_video_decoder_VideoDecoder_isConfigSupported :: proc "c" (env: rawp
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "webcodecs_video_decoder.VideoDecoder_isConfigSupported", "codec") }
@@ -33644,6 +36248,7 @@ _t_webcodecs_video_decoder_VideoDecoder_configure :: proc "c" (env: rawptr, call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "webcodecs_video_decoder.VideoDecoder_configure", "codec") }
@@ -33655,6 +36260,7 @@ _t_webcodecs_video_decoder_VideoDecoder_configure :: proc "c" (env: rawptr, call
 		return _fail_status(&c, a, .Type, "webcodecs_video_decoder.VideoDecoder_configure: argument codec is not valid UTF-8")
 	}
 	_p2 := _s2[:_n2]
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoDecoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoDecoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33679,10 +36285,12 @@ _t_webcodecs_video_decoder_VideoDecoder_decode :: proc "c" (env: rawptr, caller:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n5 := wasm.addr(&f, a[6])
 	_s5, _k5 := wasm.span(&f, wasm.addr(&f, a[5]), _n5)
 	if !_k5 { return wasm.trap_bounds(&f, "webcodecs_video_decoder.VideoDecoder_decode", "data") }
 	_p5 := _s5[:_n5]
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoDecoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoDecoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33709,6 +36317,8 @@ _t_webcodecs_video_decoder_VideoDecoder_flush :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoDecoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoDecoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33731,6 +36341,8 @@ _t_webcodecs_video_decoder_VideoDecoder_reset :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoDecoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoDecoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33749,6 +36361,8 @@ _t_webcodecs_video_decoder_VideoDecoder_close :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoDecoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoDecoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33767,6 +36381,8 @@ _t_webcodecs_video_decoder_VideoDecoder_decodeQueueSize :: proc "c" (env: rawptr
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoDecoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoDecoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33787,6 +36403,8 @@ _t_webcodecs_video_decoder_VideoDecoder_state :: proc "c" (env: rawptr, caller: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_VideoDecoder{handle = u64(a[0].i64)}
 	_p0.data = lookup_VideoDecoder(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33807,6 +36425,7 @@ _t_webgl_WebGL_enabled :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := a[0].i32
 	_r := WebGL_enabled(&c, _p0)
 	api_end(&c)
@@ -33822,10 +36441,12 @@ _t_webgl_WebGL_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n4 := wasm.addr(&f, a[5])
 	_s4, _k4 := wasm.span(&f, wasm.addr(&f, a[4]), _n4)
 	if !_k4 { return wasm.trap_bounds(&f, "webgl.WebGL_create", "info") }
 	_p4 := _s4[:_n4]
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLCanvasElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLCanvasElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33849,10 +36470,12 @@ _t_webgl_WebGL_createOffscreen :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n4 := wasm.addr(&f, a[5])
 	_s4, _k4 := wasm.span(&f, wasm.addr(&f, a[4]), _n4)
 	if !_k4 { return wasm.trap_bounds(&f, "webgl.WebGL_createOffscreen", "info") }
 	_p4 := _s4[:_n4]
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_OffscreenCanvas{handle = u64(a[0].i64)}
 	_p0.data = lookup_OffscreenCanvas(&c, _p0.handle)
 	if _p0.data == nil {
@@ -33876,6 +36499,7 @@ _t_webgl_WebGL_createError :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "webgl.WebGL_createError", "result buffer") }
@@ -33893,6 +36517,7 @@ _t_webgl_WebGL_submit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "webgl.WebGL_submit", "commands") }
@@ -33901,6 +36526,7 @@ _t_webgl_WebGL_submit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	if !_k2 { return wasm.trap_bounds(&f, "webgl.WebGL_submit", "data") }
 	_p1 := _s1[:_n1]
 	_p2 := _s2[:_n2]
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p3 := a[5].i32 != 0
 	WebGL_submit(&c, _p0, _p1, _p2, _p3)
@@ -33915,6 +36541,7 @@ _t_webgl_WebGL_query :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "webgl.WebGL_query", "request") }
@@ -33923,6 +36550,7 @@ _t_webgl_WebGL_query :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	if !_k2 { return wasm.trap_bounds(&f, "webgl.WebGL_query", "reply") }
 	_p1 := _s1[:_n1]
 	_p2 := _s2[:_n2]
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := WebGL_query(&c, _p0, _p1, _p2)
 	api_end(&c)
@@ -33938,6 +36566,7 @@ _t_webgl_WebGL_queryText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "webgl.WebGL_queryText", "request") }
@@ -33950,6 +36579,7 @@ _t_webgl_WebGL_queryText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	_p1 := _s1[:_n1]
 	_p2 := _s2[:_n2]
 	_p3 := _s3[:_n3]
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := WebGL_queryText(&c, _p0, _p1, _p2, _p3)
 	api_end(&c)
@@ -33965,13 +36595,16 @@ _t_webgl_WebGL_upload :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "webgl.WebGL_upload", "command") }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 4)
 	if !_rk { return wasm.trap_bounds(&f, "webgl.WebGL_upload", "result pointer") }
 	_p1 := _s1[:_n1]
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
+	api_route(&c, u64(a[3].i64))
 	_p2 := u64(a[3].i64)
 	_r, _err := WebGL_upload(&c, _p0, _p1, _p2)
 	api_end(&c)
@@ -33991,6 +36624,8 @@ _t_webgl_WebGL_width :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := WebGL_width(&c, _p0)
 	api_end(&c)
@@ -34006,6 +36641,8 @@ _t_webgl_WebGL_height :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := WebGL_height(&c, _p0)
 	api_end(&c)
@@ -34021,6 +36658,8 @@ _t_webgl_WebGL_snapshot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	WebGL_snapshot(&c, _p0)
 	api_end(&c)
@@ -34034,6 +36673,8 @@ _t_webgl_WebGL_isLost :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := WebGL_isLost(&c, _p0)
 	api_end(&c)
@@ -34049,6 +36690,8 @@ _t_webgl_WebGL_lose :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	WebGL_lose(&c, _p0)
 	api_end(&c)
@@ -34062,6 +36705,8 @@ _t_webgl_WebGL_restore :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := WebGL_restore(&c, _p0)
 	api_end(&c)
@@ -34077,6 +36722,7 @@ _t_websocket_WebSocket_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "websocket.WebSocket_create", "url") }
@@ -34111,6 +36757,8 @@ _t_websocket_WebSocket_readyState :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_WebSocket{handle = u64(a[0].i64)}
 	_p0.data = lookup_WebSocket(&c, _p0.handle)
 	if _p0.data == nil {
@@ -34131,9 +36779,11 @@ _t_websocket_WebSocket_url :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "websocket.WebSocket_url", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_WebSocket{handle = u64(a[0].i64)}
 	_p0.data = lookup_WebSocket(&c, _p0.handle)
 	if _p0.data == nil {
@@ -34154,9 +36804,11 @@ _t_websocket_WebSocket_protocol :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "websocket.WebSocket_protocol", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_WebSocket{handle = u64(a[0].i64)}
 	_p0.data = lookup_WebSocket(&c, _p0.handle)
 	if _p0.data == nil {
@@ -34177,9 +36829,11 @@ _t_websocket_WebSocket_extensions :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[2])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "websocket.WebSocket_extensions", "result buffer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_WebSocket{handle = u64(a[0].i64)}
 	_p0.data = lookup_WebSocket(&c, _p0.handle)
 	if _p0.data == nil {
@@ -34200,6 +36854,8 @@ _t_websocket_WebSocket_bufferedAmount :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_WebSocket{handle = u64(a[0].i64)}
 	_p0.data = lookup_WebSocket(&c, _p0.handle)
 	if _p0.data == nil {
@@ -34220,6 +36876,8 @@ _t_websocket_WebSocket_binaryType :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_WebSocket{handle = u64(a[0].i64)}
 	_p0.data = lookup_WebSocket(&c, _p0.handle)
 	if _p0.data == nil {
@@ -34240,6 +36898,8 @@ _t_websocket_WebSocket_setBinaryType :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_WebSocket{handle = u64(a[0].i64)}
 	_p0.data = lookup_WebSocket(&c, _p0.handle)
 	if _p0.data == nil {
@@ -34263,10 +36923,12 @@ _t_websocket_WebSocket_send :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "websocket.WebSocket_send", "text") }
 	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_WebSocket{handle = u64(a[0].i64)}
 	_p0.data = lookup_WebSocket(&c, _p0.handle)
 	if _p0.data == nil {
@@ -34289,11 +36951,14 @@ _t_websocket_WebSocket_sendBuffer :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_WebSocket{handle = u64(a[0].i64)}
 	_p0.data = lookup_WebSocket(&c, _p0.handle)
 	if _p0.data == nil {
 		return _fail_status(&c, a, .Invalid_Handle, "websocket.WebSocket_sendBuffer: argument socket is not a live WebSocket")
 	}
+	api_route(&c, u64(a[1].i64))
 	_p1 := Api_Buffer{handle = u64(a[1].i64)}
 	_p1.data = lookup_Buffer(&c, _p1.handle)
 	if _p1.data == nil {
@@ -34316,6 +36981,7 @@ _t_websocket_WebSocket_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n2 := wasm.addr(&f, a[3])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "websocket.WebSocket_close", "reason") }
@@ -34323,6 +36989,7 @@ _t_websocket_WebSocket_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	if !wasm.valid_utf8(_p2) {
 		return _fail_status(&c, a, .Type, "websocket.WebSocket_close: argument reason is not valid UTF-8")
 	}
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_WebSocket{handle = u64(a[0].i64)}
 	_p0.data = lookup_WebSocket(&c, _p0.handle)
 	if _p0.data == nil {
@@ -34346,6 +37013,8 @@ _t_websocket_CloseEvent_wasClean :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -34366,6 +37035,7 @@ _t_workers_Worker_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "workers.Worker_create", "url") }
@@ -34400,6 +37070,7 @@ _t_workers_Worker_postMessage :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "workers.Worker_postMessage", "message") }
@@ -34411,6 +37082,7 @@ _t_workers_Worker_postMessage :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return _fail_status(&c, a, .Type, "workers.Worker_postMessage: argument message is not valid UTF-8")
 	}
 	_p2 := ([^]u64)(_s2)[:_n2]
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Object{handle = u64(a[0].i64)}
 	_p0.data = lookup_Object(&c, _p0.handle)
 	if _p0.data == nil {
@@ -34433,6 +37105,8 @@ _t_workers_Worker_terminate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Object{handle = u64(a[0].i64)}
 	_p0.data = lookup_Object(&c, _p0.handle)
 	if _p0.data == nil {
@@ -34455,6 +37129,7 @@ _t_workers_DedicatedWorkerGlobalScope_self :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := DedicatedWorkerGlobalScope_self(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -34469,6 +37144,7 @@ _t_workers_DedicatedWorkerGlobalScope_postMessage :: proc "c" (env: rawptr, call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "workers.DedicatedWorkerGlobalScope_postMessage", "message") }
@@ -34497,6 +37173,7 @@ _t_workers_DedicatedWorkerGlobalScope_close :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_err := DedicatedWorkerGlobalScope_close(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -34514,6 +37191,7 @@ _t_workers_DedicatedWorkerGlobalScope_name :: proc "c" (env: rawptr, caller: was
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "workers.DedicatedWorkerGlobalScope_name", "result buffer") }
@@ -34534,6 +37212,7 @@ _t_workers_SharedWorkerGlobalScope_close :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_err := SharedWorkerGlobalScope_close(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -34551,6 +37230,7 @@ _t_workers_SharedWorkerGlobalScope_name :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "workers.SharedWorkerGlobalScope_name", "result buffer") }
@@ -34571,6 +37251,7 @@ _t_workers_WorkerGlobalScope_location :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_on := wasm.addr(&f, a[1])
 	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "workers.WorkerGlobalScope_location", "result buffer") }
@@ -34591,6 +37272,8 @@ _t_workers_MessageEvent_transfer :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
 	if _p0.data == nil {
@@ -35128,7 +37811,11 @@ api_imports := [?]wasm.Import{
 	{module = "frames", name = "Frame_childNames", fn = _t_frames_Frame_childNames, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "frames", name = "Frame_closed", fn = _t_frames_Frame_closed, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "frames", name = "Frame_sameOrigin", fn = _t_frames_Frame_sameOrigin, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
-	{module = "frames", name = "Frame_isBlank", fn = _t_frames_Frame_isBlank, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "frames", name = "Frame_documentOf", fn = _t_frames_Frame_documentOf, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "frames", name = "Frame_elementOf", fn = _t_frames_Frame_elementOf, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "frames", name = "Frame_ofDocument", fn = _t_frames_Frame_ofDocument, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "frames", name = "Frame_target", fn = _t_frames_Frame_target, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "frames", name = "Frame_adoptNode", fn = _t_frames_Frame_adoptNode, realms = 1, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "frames", name = "Frame_postMessage", fn = _t_frames_Frame_postMessage, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "frames", name = "Frame_navigate", fn = _t_frames_Frame_navigate, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I32}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "frames", name = "Frame_open", fn = _t_frames_Frame_open, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},

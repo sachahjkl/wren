@@ -88,6 +88,7 @@ Invoke_Proc :: #type proc(user: rawptr, l: Listener, event: base.Handle) -> bool
 
 Dispatcher :: struct {
 	events:  base.Pool(Event),   // transient: alive only while the dispatch runs
+	tag:     u32,                // of its handles: the document (base.pool_insert_tagged)
 	invoke:  Invoke_Proc,
 	user:    rawptr,
 	// optional: the Window's listeners. The propagation path of an event whose path reaches the document goes on to
@@ -206,10 +207,10 @@ dispatch_ex :: proc(d: ^Document, dp: ^Dispatcher, target: base.Handle, proto: E
 	ev.path = nil
 	if !proto.untrusted && proto.engine_id == 0 && !proto.composed { ev.composed = ui_composed(proto.type) }
 	original_related := proto.related
-	eh, _ := base.pool_insert(&dp.events, ev)
+	eh, _ := base.pool_insert_tagged(&dp.events, dp.tag, ev)
 	defer {
 		if e := base.pool_get(&dp.events, eh); e != nil { delete(e.type); delete(e.data); delete(e.text); delete(e.path) }
-		base.pool_remove(&dp.events, eh)
+		base.pool_remove_tagged(&dp.events, eh)
 	}
 	composed := base.pool_get(&dp.events, eh).composed
 	to_window_ok := dp.window != nil && proto.type != "load"

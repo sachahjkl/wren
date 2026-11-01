@@ -679,7 +679,7 @@ wj_connected_listening_nodes :: proc "c" (ctx: ^Context, count: ^u32) -> [^]JSVa
 		s := &nodes.slots[i]
 		if s.key == 0 { continue }
 		o := obj_of(s.obj)
-		if o == nil || o.listeners == nil || wr_Node_isConnected(o.handle) == 0 { continue }
+		if o == nil || o.listeners == nil || wj_is_foreign(o.handle) || wr_Node_isConnected(o.handle) == 0 { continue }
 		if count^ == cap {
 			ncap := cap != 0 ? cap * 2 : 16
 			n := ([^]JSValue)(libc_realloc(out, uint(ncap) * size_of(JSValue)))
@@ -691,6 +691,57 @@ wj_connected_listening_nodes :: proc "c" (ctx: ^Context, count: ^u32) -> [^]JSVa
 		count^ += 1
 	}
 	return out
+}
+
+// ---- nodes of other documents (src/page/frames_access.odin) ----
+
+// A handle names its document: bits 62..48 (src/base/pool.odin). The tag of this realm's own document, once asked.
+@(private = "file") HANDLE_TAG_SHIFT :: 48
+@(private = "file") HANDLE_TAG_MASK :: u64(0x7FFF)
+@(private = "file") own_tag: u64
+
+@(private = "file")
+own_doc_tag :: #force_inline proc "contextless" () -> u64 {
+	if own_tag == 0 { own_tag = (wr_Window_document() >> HANDLE_TAG_SHIFT) & HANDLE_TAG_MASK }
+	return own_tag
+}
+
+// Whether two handles belong to one document.
+wj_same_doc :: #force_inline proc "contextless" (a, b: u64) -> bool {
+	return (a >> HANDLE_TAG_SHIFT) & HANDLE_TAG_MASK == (b >> HANDLE_TAG_SHIFT) & HANDLE_TAG_MASK
+}
+
+// Whether a node's handle is of another document than this realm's.
+wj_is_foreign :: #force_inline proc "contextless" (h: u64) -> bool {
+	t := (h >> HANDLE_TAG_SHIFT) & HANDLE_TAG_MASK
+	return t != 0 && t != own_doc_tag()
+}
+
+// Before an import that names no node, for a member of the Document `doc`: the next import acts on that document. False when
+// it cannot be reached any more (gone, navigated away).
+wj_doc_target :: #force_inline proc "contextless" (doc: u64) -> bool {
+	return !wj_is_foreign(doc) || wr_Frame_target(doc) != 0
+}
+
+wj_throw_gone :: proc "c" (ctx: ^Context) -> JSValue {
+	return wj_throw_dom(ctx, "InvalidStateError", "The document of this object is gone.")
+}
+
+// The node's handle changed (moved to another document: Frame_adoptNode): its wrapper in this realm follows, with the
+// objects it keeps (classList, attributes...).
+wj_node_rekey :: proc "contextless" (old, new: u64) {
+	v := map_get(&nodes, old)
+	if is_undefined(v) { return }
+	o := obj_of(v)
+	if o == nil { return }
+	wr_Node_wrap(new)   // pins the new node
+	map_del(&nodes, old)
+	o.handle = new
+	map_put(&nodes, new, v)
+	for i: u16 = 0; i < o.n_same; i += 1 {
+		if d := dom_impl_any(o.same[i]); d != nil && d.node == old { d.node = new }
+	}
+	wr_Node_unpin(old)
 }
 
 // The wrapper of a node handle (created on first use, the most derived interface chosen from the node), or null.

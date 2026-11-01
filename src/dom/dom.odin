@@ -84,6 +84,7 @@ Node :: struct {
 
 Document :: struct {
 	nodes:      base.Pool(Node),
+	tag:        u32,               // in every handle of this document (base.pool_insert_tagged): names it to scripts of others
 	root:       base.Handle,       // the Document node
 	next_listener: Listener_Id,
 	listener_changes: u64,         // bumped when a listener is added or removed (what a click acts on: accessibility)
@@ -141,11 +142,12 @@ Error :: enum i32 {
 @(private)
 heap_str :: proc(s: string) -> string { return strings.clone(s) }
 
-document_create :: proc(scope: ^base.Scope = nil) -> ^Document {
+document_create :: proc(scope: ^base.Scope = nil, tag: u32 = 0) -> ^Document {
 	d := new(Document)
+	d.tag = tag != 0 ? tag : base.tag_new()
 	d.scope = scope
 	d.next_listener = 1
-	h, n := base.pool_insert(&d.nodes, Node{kind = .Document})
+	h, n := base.pool_insert_tagged(&d.nodes, d.tag, Node{kind = .Document})
 	_ = n
 	d.root = h
 	if scope != nil { d.cleanup = base.on_close(scope, scope_closed, d) }
@@ -220,17 +222,17 @@ touch :: proc(d: ^Document) { d.mutations += 1 }
 
 create_element :: proc(d: ^Document, tag: string) -> base.Handle {
 	name := strings.to_lower(tag)
-	h, _ := base.pool_insert(&d.nodes, Node{kind = .Element, name = name})
+	h, _ := base.pool_insert_tagged(&d.nodes, d.tag, Node{kind = .Element, name = name})
 	return h
 }
 
 create_text :: proc(d: ^Document, text: string) -> base.Handle {
-	h, _ := base.pool_insert(&d.nodes, Node{kind = .Text, text = heap_str(text)})
+	h, _ := base.pool_insert_tagged(&d.nodes, d.tag, Node{kind = .Text, text = heap_str(text)})
 	return h
 }
 
 create_comment :: proc(d: ^Document, text: string) -> base.Handle {
-	h, _ := base.pool_insert(&d.nodes, Node{kind = .Comment, text = heap_str(text)})
+	h, _ := base.pool_insert_tagged(&d.nodes, d.tag, Node{kind = .Comment, text = heap_str(text)})
 	return h
 }
 
@@ -247,14 +249,14 @@ create_element_ns :: proc(d: ^Document, tag: string, ns: Namespace, uri := "", p
 }
 
 create_doctype :: proc(d: ^Document, name, public_id, system_id: string) -> base.Handle {
-	h, n := base.pool_insert(&d.nodes, Node{kind = .Doctype, name = heap_str(name)})
+	h, n := base.pool_insert_tagged(&d.nodes, d.tag, Node{kind = .Doctype, name = heap_str(name)})
 	if public_id != "" { append(&n.attrs, Attr{heap_str("publicId"), heap_str(public_id)}) }
 	if system_id != "" { append(&n.attrs, Attr{heap_str("systemId"), heap_str(system_id)}) }
 	return h
 }
 
 create_fragment :: proc(d: ^Document) -> base.Handle {
-	h, _ := base.pool_insert(&d.nodes, Node{kind = .Fragment})
+	h, _ := base.pool_insert_tagged(&d.nodes, d.tag, Node{kind = .Fragment})
 	return h
 }
 
@@ -391,7 +393,7 @@ destroy_subtree :: proc(d: ^Document, h: base.Handle) {
 		}
 		if len(d.shadow_roots) > 0 || len(d.assigned) > 0 || len(d.manual_slot) > 0 || len(d.custom_states) > 0 || len(d.ce_custom) > 0 { shadow_forget_node(d, cur, n) }
 		free_node_data(n)
-		base.pool_remove(&d.nodes, cur)
+		base.pool_remove_tagged(&d.nodes, cur)
 	}
 }
 

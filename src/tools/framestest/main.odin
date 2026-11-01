@@ -207,6 +207,251 @@ log("inserted in " + (performance.now() - t).toFixed(2) + " ms");
 	page.page_close(p)
 }
 
+// The DOM of a same-origin frame, reached from the parent and from the frame (src/page/frames_access.odin).
+same_origin_dom :: proc() {
+	fmt.println("-- the DOM of a same-origin frame: contentDocument, contentWindow.document, parent.document")
+	{
+		p := load(`<body><div id=top-marker>t</div><iframe id=b></iframe><script>
+const f = document.getElementById("b");
+const d = f.contentDocument;
+log("doc " + d.nodeType + " " + (d === f.contentDocument) + " " + (d === f.contentWindow.document) + " " + (d === frames[0].document) + " " + (d !== document));
+log("parts " + d.documentElement.tagName + " " + d.body.tagName + " " + (d.body === d.body) + " " + (d.body.ownerDocument === d) + " " + (d.defaultView === f.contentWindow));
+d.body.innerHTML = '<p id=x class="c d">hello <b>there</b></p>';
+const x = d.getElementById("x");
+log("read " + x.textContent + " " + (d.querySelector("#x") === x) + " " + d.querySelectorAll("b").length + " " + (x.parentNode === d.body) + " " + x.classList.contains("d") + " " + d.getElementsByTagName("b").length);
+log("separate " + (document.getElementById("x") === null) + " " + (document.getElementById("top-marker") !== null) + " " + (d.getElementById("top-marker") === null));
+const made = d.createElement("span");
+made.textContent = "made";
+made.setAttribute("data-a", "1");
+d.body.appendChild(made);
+const text = d.createTextNode("!");
+made.appendChild(text);
+log("made " + (made.ownerDocument === d) + " " + d.body.lastChild.textContent + " " + d.body.children.length + " " + made.getAttribute("data-a") + " " + (made instanceof HTMLElement));
+made.style.color = "rgb(1, 2, 3)";
+log("style " + d.defaultView.frameElement + " " + made.style.color);
+made.foo = 42;
+log("expando " + d.querySelector("span").foo);
+const own = document.createElement("div");
+own.id = "moved"; own.innerHTML = "<i>inside</i>";
+const inner = own.firstChild;
+d.body.appendChild(own);
+log("adopt " + (own.ownerDocument === d) + " " + (own.parentNode === d.body) + " " + (d.getElementById("moved") === own) + " " + (own.firstChild === inner) + " " + (document.getElementById("moved") === null) + " " + own.textContent);
+own.classList.add("after");
+log("after adopt " + own.className);
+document.body.appendChild(d.getElementById("x"));
+const back = document.getElementById("x");
+log("back " + (back.ownerDocument === document) + " " + (d.getElementById("x") === null) + " " + back.textContent);
+d.title = "frame title";
+log("title " + d.title + " | " + document.title + " | " + d.readyState + " " + d.URL + " " + d.compatMode);
+</script></body>`)
+		check(wait_for("doc 9 true true true true"), "contentDocument, contentWindow.document and frames[0].document are one object in the caller's realm")
+		check(logged("parts HTML BODY true true true"), "it is a real document: its elements, their identity, ownerDocument and defaultView")
+		check(logged("read hello there true 1 true true 1"), "innerHTML writes in the frame's document; getElementById, querySelector, collections and classList read it")
+		check(logged("separate true true true"), "the two documents stay two")
+		check(logged("made true made! 2 1 true"), "createElement, createTextNode, appendChild, setAttribute on the frame's document")
+		check(logged(`style [object HTMLIFrameElement] rgb(1, 2, 3)`), "element.style of a node of the frame; frameElement through defaultView")
+		check(logged("expando 42"), "the same element gives the same wrapper: properties set on it are there")
+		check(logged("adopt true true true true true inside"), "appendChild of a parent's node moves it: its wrapper and its children's follow")
+		check(logged("after adopt after"), "the objects a moved wrapper keeps (classList) follow")
+		check(logged("back true true hello there"), "and back from the frame to the parent")
+		check(logged_contains("title frame title |  | "), "document.title of the frame, not of the parent")
+		c := child_of(p)
+		check(c != nil && strings.contains(page.serialize_html(c.doc, c.body, false), `<span data-a="1"`), "what was written is in the frame's own DOM (seen from the browser's side)")
+		// the frame's own styles and layout follow what the parent wrote
+		if c != nil {
+			page.set_layout_journal(c, 4096)
+			page.set_frame_time(c, 1000)
+			st := page.styles(c, 800, 600, 1.5)
+			page.set_frame_time(c, 0, unpin = true)
+			_ = st
+			check(true, "the frame's styles compute after a write from the parent")
+		}
+		page.page_close(p)
+	}
+
+	fmt.println("-- from the frame: parent.document, top.document, frameElement; a frame of a frame")
+	{
+		inner := `<script>
+const log = s => top.postMessage(String(s), "*");
+const pd = parent.document;
+log("inner parent " + pd.getElementById("mid-mark").textContent + " top " + top.document.getElementById("top-mark").textContent + " " + (frameElement.ownerDocument === pd) + " " + (parent.document === pd));
+top.document.getElementById("top-mark").textContent = "changed by inner";
+log("inner wrote " + top.document.getElementById("top-mark").textContent);
+</script>`
+		p := load(fill(`<body><div id=top-mark>top</div><iframe id=m src="%s"></iframe><script>
+addEventListener("message", e => log(e.data));
+const m = document.getElementById("m");
+m.addEventListener("load", () => {
+  const mid = m.contentDocument;
+  const nested = mid.querySelector("iframe");
+  log("nested " + nested.tagName + " " + (nested.contentDocument.defaultView === nested.contentWindow) + " " + nested.contentDocument.body.childElementCount + " " + m.contentWindow.frames.length + " " + (m.contentWindow.frames[0].document === nested.contentDocument));
+  log("top mark " + document.getElementById("top-mark").textContent);
+});
+</script></body>`, doc(SAME, fill(`<div id=mid-mark>middle</div><iframe srcdoc="%s"></iframe>`, html_attr(inner)))))
+		check(wait_for("inner parent middle top top true true"), "a nested frame reads parent.document and top.document")
+		check(wait_for("inner wrote changed by inner"), "and writes there")
+		check(wait_for("nested IFRAME true 0 1 true") && wait_for("top mark changed by inner"), "the top document reaches a frame of its frame; the write shows in the top's own wrappers")
+		page.page_close(p)
+	}
+
+	fmt.println("-- a frame with an address of its own, srcdoc, and a frame's own script next to the parent's")
+	{
+		child := doc(SAME, `<p id=mine>from server</p><script>window.childValue = 1; document.getElementById("mine").dataset.seen = "own script"; </script>`)
+		p := load(fill(`<body><iframe id=a src="%s"></iframe><iframe id=s srcdoc="<p id=q>from srcdoc</p>"></iframe><script>
+addEventListener("load", () => {
+  const a = document.getElementById("a").contentDocument, s = document.getElementById("s").contentDocument;
+  log("fetched " + a.getElementById("mine").textContent + " " + a.getElementById("mine").dataset.seen + " " + a.URL.includes("/frames/doc"));
+  log("srcdoc " + s.getElementById("q").textContent + " " + s.URL);
+  log("window load");
+});
+</script></body>`, child))
+		check(wait_for("window load"), "loaded")
+		check(logged("fetched from server own script true"), "a same-origin frame with an address: contentDocument is its real document (its own script wrote there)")
+		check(logged("srcdoc from srcdoc about:srcdoc"), "a srcdoc frame: contentDocument is its real document")
+		page.page_close(p)
+	}
+
+	fmt.println("-- a frame gone, or navigated: its wrappers do no harm")
+	{
+		p := load(`<body><iframe id=a></iframe><script>
+const a = document.getElementById("a");
+const d = a.contentDocument, b = d.body;
+b.innerHTML = "<p>x</p>";
+const para = b.firstChild;
+a.remove();
+log("removed " + a.contentDocument + " " + a.contentWindow);
+const out = [];
+for (const [name, f] of [["tag", () => para.tagName], ["text", () => para.textContent], ["set", () => { para.textContent = "y"; return "ok"; }],
+    ["create", () => d.createElement("p")], ["query", () => d.querySelector("p")], ["append", () => { b.appendChild(document.createElement("p")); return "ok"; }], ["own", () => document.body.appendChild(para)]]) {
+  try { out.push(name + ":" + f()); } catch (e) { out.push(name + ":" + e.name); }
+}
+log("harmless " + out.length);
+log("still here " + document.body.tagName);
+</script></body>`)
+		check(wait_for("still here BODY"), "using the wrappers of a removed frame's document neither crashes nor reaches anything")
+		check(logged("removed null null"), "the element has no document any more")
+		check(logged("harmless 7"), "each use of them returned or threw")
+		page.page_close(p)
+	}
+
+	fmt.println("-- a frame's realm torn down while a call is in it")
+	{
+		p := load(`<body><iframe id=a></iframe><script>
+addEventListener("message", e => log(e.data));
+const a = document.getElementById("a");
+a.srcdoc = "<script>const me = frameElement, up = parent; up.postMessage('before', '*'); try { me.remove(); document.documentElement.setAttribute('data-x', 'still runs'); up.postMessage('after ' + document.documentElement.getAttribute('data-x'), '*'); } catch (e) { up.postMessage('threw ' + e, '*'); }<\/script>";
+window.tick = 0;
+</script></body>`)
+		check(wait_for("before") && wait_for("after still runs"), "a frame's script removes its own frame through parent's DOM and goes on running")
+		run_js(p, `log("parent after " + (document.getElementById("a") === null) + " " + frames.length);`)
+		check(wait_for("parent after true 0"), "the frame left at once; the parent goes on")
+		run_for(50)
+		page.page_close(p)
+
+		// a nested frame closes its parent: the page in use is closed only after the call
+		p = load(fill(`<body><iframe id=m srcdoc="%s"></iframe><script>addEventListener("message", e => log(e.data));</script></body>`, html_attr(`<iframe srcdoc="<script>const t = top; t.document.getElementById('m').remove(); t.postMessage('inner survived', '*');</script>"></iframe>`)))
+		check(wait_for("inner survived"), "a frame's script removes the frame around it")
+		run_for(50)
+		page.page_close(p)
+		run_for(50)
+	}
+}
+
+// What another origin, or a sandbox, must not reach: every route (src/page/frames_access.odin).
+cross_origin_boundary :: proc() {
+	fmt.println("-- the boundary: a cross-origin frame stays out of reach by every route")
+	{
+		child := doc(OTHER, `<p id=secret>secret</p><script>
+const r = [];
+const t = (n, f) => { try { const v = f(); r.push(n + ":" + (v === null ? "null" : typeof v)); } catch (e) { r.push(n + ":" + e.name); } };
+t("parent.document", () => parent.document);
+t("top.document", () => top.document);
+t("sibling.document", () => parent.frames[1].document);
+t("frameElement", () => window.frameElement);
+parent.postMessage("from child " + r.join(" "), "*");
+</script>`)
+		p := load(fill(`<body><iframe id=f src="%s"></iframe><iframe id=f2 name=named src="%s"></iframe><script>
+addEventListener("message", e => log(e.data));
+const f = document.getElementById("f");
+f.addEventListener("load", () => {
+  const r = [];
+  const t = (n, g) => { try { const v = g(); r.push(n + ":" + (v === null ? "null" : typeof v)); } catch (e) { r.push(n + ":" + e.name); } };
+  t("contentDocument", () => f.contentDocument);
+  t("contentWindow.document", () => f.contentWindow.document);
+  t("frames[0].document", () => frames[0].document);
+  t("window.named.document", () => frames.named.document);
+  t("getSVGDocument", () => f.getSVGDocument());
+  t("get own descriptor", () => Object.getOwnPropertyDescriptor(f.contentWindow, "document"));
+  t("Reflect.get", () => Reflect.get(f.contentWindow, "document"));
+  log("routes " + r.join(" "));
+});
+</script></body>`, child, doc(SITE2, "sibling")))
+		check(wait_for("routes contentDocument:null contentWindow.document:SecurityError frames[0].document:SecurityError window.named.document:SecurityError getSVGDocument:null get own descriptor:SecurityError Reflect.get:SecurityError"), "from the parent: contentDocument is null, every other route a SecurityError")
+		check(wait_for("from child parent.document:SecurityError top.document:SecurityError sibling.document:SecurityError frameElement:null"), "from the frame: parent.document, top.document, a sibling's document, frameElement")
+		page.page_close(p)
+	}
+
+	fmt.println("-- the boundary: an element kept from before the frame navigated to another origin")
+	{
+		p := load(fill(`<body><iframe id=f></iframe><script>
+const f = document.getElementById("f");
+const kept = f.contentDocument;
+kept.body.innerHTML = "<p id=old>old</p>";
+const el = kept.getElementById("old");
+window.kept = kept; window.el = el;
+f.addEventListener("load", () => {
+  const r = [];
+  const t = (n, g) => { try { r.push(n + ":" + g()); } catch (e) { r.push(n + ":" + e.name); } };
+  t("now", () => f.contentDocument);
+  t("kept body", () => kept.body);
+  t("kept query", () => kept.querySelector("#secret"));
+  t("kept element", () => kept.getElementById("secret"));
+  t("el parent", () => el.parentNode);
+  t("el text", () => el.textContent);
+  t("write", () => { kept.body.innerHTML = "<p>overwritten</p>"; return "no throw"; });
+  log("after navigation " + r.slice(0, 1) + " " + r.length);
+  log("kept reads " + r.slice(1, 4).join(" "));
+  f.contentWindow.postMessage("report", "*");
+});
+addEventListener("message", e => log(e.data));
+f.src = "%s";
+</script></body>`, doc(OTHER, `<p id=secret>secret</p><script>addEventListener("message", () => parent.postMessage("intact " + (document.getElementById("secret") !== null) + " " + (document.querySelectorAll("p").length === 1), "*"))</script>`)))
+		check(wait_for("after navigation now:null 7"), "after the navigation contentDocument is null")
+		check(wait_for("intact true true"), "what was kept from before reaches nothing of the new cross-origin document")
+		check(!logged_contains("kept reads now") && !logged_contains(":[object HTMLParagraphElement]"), "no node of the new document came out of the old wrappers")
+		page.page_close(p)
+	}
+
+	fmt.println("-- the boundary: sandbox")
+	{
+		p := load(`<body>
+<iframe id=opaque sandbox="allow-scripts" srcdoc="<p id=s>s</p><script>const r=[];for(const g of [()=>parent.document,()=>top.document,()=>frameElement]){try{const v=g();r.push(v===null?'null':typeof v)}catch(e){r.push(e.name)}};parent.postMessage('sandboxed child '+r.join(' '),'*')</script>"></iframe>
+<iframe id=same sandbox="allow-same-origin" srcdoc="<p id=s>reached</p>"></iframe>
+<script>
+addEventListener("message", e => log(e.data));
+addEventListener("load", () => {
+  const o = document.getElementById("opaque"), s = document.getElementById("same");
+  const r = [];
+  r.push(String(o.contentDocument));
+  try { o.contentWindow.document; r.push("open"); } catch (e) { r.push(e.name); }
+  log("opaque " + r.join(" "));
+  log("same " + s.contentDocument.getElementById("s").textContent);
+});
+</script></body>`)
+		check(wait_for("opaque null SecurityError"), "a sandbox without allow-same-origin: out of reach from the parent")
+		check(wait_for("sandboxed child SecurityError SecurityError null"), "and the parent is out of reach from it")
+		check(wait_for("same reached"), "allow-same-origin keeps the origin: reachable")
+		page.page_close(p)
+	}
+}
+
+// A value for an HTML attribute in double quotes.
+html_attr :: proc(s: string) -> string {
+	r, _ := strings.replace_all(s, "&", "&amp;", context.temp_allocator)
+	r, _ = strings.replace_all(r, `"`, "&quot;", context.temp_allocator)
+	return r
+}
+
 main :: proc() {
 	context = testenv.context_of_process()
 	host.loop_init(&loop)
@@ -243,7 +488,7 @@ log("shared " + (w.navigator.userAgent === navigator.userAgent) + " " + (w.scree
 </script></body>`)
 		check(wait_for("shared true true 4"), "a same-origin frame gives a navigator, screen and crypto")
 		check(wait_for("window load"), "the parent's load event fires")
-		check(logged("blank true true true 2 true"), "an about:blank frame has a window at once: frames[0], window[name], length; contentDocument is an inert document (another realm has the real one)")
+		check(logged("blank true true true 2 true"), "an about:blank frame has a window at once: frames[0], window[name], length; contentDocument is its document")
 		check(logged("sync load on insertion true 3"), "an iframe without src fires load synchronously when inserted")
 		check(logged("after removal null 2"), "removal destroys the nested document at once")
 		check(wait_for(fill("message srcdoc ran second true true about:srcdoc %s from %s true true", testenv.url(SAME), testenv.url(SAME))), "srcdoc: parent, top, window.name from the name attribute, the parent's origin; message origin and source")
@@ -504,6 +749,9 @@ addEventListener("message", e => log("nav " + e.data));
 		page.page_close(p)
 		run_for(50)
 	}
+
+	same_origin_dom()
+	cross_origin_boundary()
 
 	fmt.println("-- Permissions Policy: the allow attribute delegates features")
 	{

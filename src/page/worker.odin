@@ -888,6 +888,7 @@ worker_main :: proc(data: rawptr) {
 worker_realm_create :: proc(g: ^Worker_Global) -> ^Page {
 	p := new(Page)
 	p.scope = base.scope_make("worker")
+	p.tag = base.tag_new()
 	p.loop = &g.link.loop
 	p.settings = &g.settings
 	p.console = worker_console
@@ -898,7 +899,8 @@ worker_realm_create :: proc(g: ^Worker_Global) -> ^Page {
 	if !ok { u, _ = url.parse_absolute("about:blank", context.temp_allocator) }
 	p.env = fetch.environment_make(u)
 	p.env.embedder_policy, p.env.cross_origin_isolated, p.env.agent_cluster = g.embedder_policy, g.cross_origin_isolated, g.agent_cluster
-	p.doc = dom.document_create(p.scope)   // never exposed: holds the listener id counter of the realm's objects
+	p.doc = dom.document_create(p.scope, p.tag)   // never exposed: holds the listener id counter of the realm's objects
+	p.dp.tag = p.tag
 	p.dp.invoke = invoke_listener
 	p.dp.user = p
 	web_init(p, live = false)   // timers (nesting clamp), performance, encoding work the same in a worker
