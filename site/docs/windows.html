@@ -270,9 +270,10 @@ tasks of the loop). A minimized window does not draw. The pacer (<code>pacing.od
 (<code>window_drop_slot</code>: <code>drop_slot_row</code> for a row of tabs, <code>drop_slot_list</code> for the sidebar's list with its group headers and
 collapsed groups): its index, the group it joins (between two tabs of a group, or under a group's header) and whether it is
 pinned (a pinned tab among the pinned ones in a row; none in the sidebar's list), and the mark is drawn there, in the group's
-colour. The release puts it exactly there (<code>tab_move(..., slot = ...)</code>). <code>tools\tab_drag_windows_e2e.ps1</code> drags with an
+colour. The release puts it exactly there (<code>tab_move(..., slot = ...)</code>). <code>src\tools\e2e\tab_drag_windows.odin</code> drags with an
 injected pointer (<code>platform.Event.injected</code>: positions of the event, not the system's cursor), holds the drag on its way
-(<code>wren ctl drag --hold</code>, <code>--resume</code>), reads the mark (<code>wren ctl windows --json</code>: <code>drop</code>) and captures it.</li>
+(<code>e2e.drag</code> with <code>hold</code>, <code>resume</code>; <code>wren ctl drag --hold</code>, <code>--resume</code>), reads the mark (<code>e2e.windows</code>: <code>dropping</code>,
+<code>drop_index</code>, <code>drop_mark</code>; <code>wren ctl windows --json</code>: <code>drop</code>) and captures it.</li>
 <li>Developer tools (<code>devtools.odin</code>, <code>devtools_window.odin</code>): each window has its own (<code>Window_Own.devtools</code>, read as <code>dev()</code>, the
 active window's), docked in it or in a window of their own, showing its current tab. F12 in one window opens them there only.
 A tab they show that moves to a window with none open takes them along (<code>devtools_follow_tab</code>: docked or in their window); a
@@ -290,8 +291,9 @@ page laid out at it (<code>page_scale</code> reads the window's scale, not the l
 stays where it was scrolled to (<code>tab_scale_follow</code>: <code>Tab.scroll</code> is in device pixels, rescaled when the scale it was in
 changed, also for a tab moved to a window of another scale). A developer tools' window has its own. Tab icons are decoded for
 the largest scale of the windows and decoded again when a window's grows (<code>favicon_decode_px</code>). <code>wren ctl window --dpi n</code>
-sends the window a <code>WM_DPICHANGED</code> (a machine with one monitor tests it: <code>tools\window_dpi_e2e.ps1</code>); what the screen shows
-while a window straddles two monitors of different scales is the system's and is not tested.</li>
+sends a real window a <code>WM_DPICHANGED</code>, and changes a headless window's emulated scale (<code>platform.set_offscreen_dpi</code>:
+<code>src\tools\e2e\window_dpi.odin</code> tests the scale's consequences that way, not the system's message and the rectangle it suggests);
+what the screen shows while a window straddles two monitors of different scales is the system's and is not tested.</li>
 <li>Remote calls with <code>--win-id</code> (or a tab of that window) act on that window until they answer: their waits count its frames,
 and a capture is of its frame (<code>remote_capture_arm</code>: the renderer copies the next frame it ends, so it is asked for in that
 window's frame).</li>

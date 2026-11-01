@@ -650,6 +650,8 @@ Stats :: struct {
 	drag_image:          string,
 	drag_picture:        string,
 	prefs_net_applied:   int,
+	devtools_room_checks: int,     // frames whose panel width, as taken for its content, was compared with its layout's
+	devtools_room_wrong:  int,     // ... and differed
 }
 
 stats :: proc(s: ^Session, reset_latency := false, reset_frames := false, loc := #caller_location) -> (r: Stats, e: Error) {
@@ -667,7 +669,7 @@ stats :: proc(s: ^Session, reset_latency := false, reset_frames := false, loc :=
 		menu_open = b_of(o, "menuOpen"), devtools = b_of(o, "devtools"), front_window = b_of(o, "frontWindow"),
 		caret_blinking = b_of(o, "caretBlinking"), caret_shown = b_of(o, "caretShown"), drop_target = b_of(o, "dropTarget"),
 		chrome_animating = b_of(o, "chromeAnimating"), group_name_focused = b_of(o, "groupNameFocused"), backend = s_of(o, "backend"), drag_image = s_of(o, "dragImage"), drag_picture = s_of(o, "dragPicture"),
-		prefs_net_applied = i_of(o, "prefsNetApplied"),
+		prefs_net_applied = i_of(o, "prefsNetApplied"), devtools_room_checks = i_of(o, "devtoolsRoomChecks"), devtools_room_wrong = i_of(o, "devtoolsRoomWrong"),
 	}, .None
 }
 
@@ -861,6 +863,20 @@ windows :: proc(s: ^Session, loc := #caller_location) -> (r: []Window, e: Error)
 		}
 	}
 	return r, .None
+}
+
+// A row of the address bar's list: its address ("" when it is what was typed), where it is, the cross that removes it (a row of the history).
+Urlbar_Row :: struct {
+	url:         string,
+	rect, cross: Rect,
+	has_cross:   bool,
+}
+
+// The address bar of a window, in window pixels.
+Urlbar :: struct {
+	open:  bool,
+	field: Rect,
+	rows:  []Urlbar_Row,
 }
 
 // The one with this id, from a list `windows` gave.

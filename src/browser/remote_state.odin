@@ -410,13 +410,7 @@ m_pref_reset :: proc(app: ^App, c: ^Call) -> Reply {
 	}
 	name, bad := need_string(c, "name")
 	if bad.code != 0 { return bad }
-	for st, i in r.baseline.prefs {
-		if st.name != name { continue }
-		config.restore(&app.prefs, r.baseline.prefs[i:i + 1])
-		remote_reload_settings(app)
-		request_frames(app, 3)
-		s, _ := pref_json(app, name)
-		return done(s)
-	}
-	return fail(remote.ERR_PARAMS, fmt.tprintf("no preference %q", name))
+	if why := control_pref_reset(app, name); why != "" { return fail(remote.ERR_PARAMS, why) }
+	s, _ := pref_json(app, name)
+	return done(s)
 }

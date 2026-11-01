@@ -516,7 +516,7 @@ m_reload :: proc(app: ^App, c: ^Call) -> Reply {
 	t, e := tab_of(app, c)
 	if t == nil { return e }
 	ignore, _ := remote.param_bool(c.params, "ignoreCache")
-	reload(app, t, ignore)
+	control_reload(app, t, ignore)
 	what, _ := remote.param_string(c.params, "wait")
 	return start_wait(app, c, t, what, fmt.tprintf(`{{"tabId":%d}}`, t.id))
 }
@@ -525,7 +525,7 @@ m_reload :: proc(app: ^App, c: ^Call) -> Reply {
 m_history :: proc(app: ^App, c: ^Call, delta: int) -> Reply {
 	t, e := tab_of(app, c)
 	if t == nil { return e }
-	go_history(app, t, delta)
+	control_history(app, t, delta)
 	what, _ := remote.param_string(c.params, "wait")
 	return start_wait(app, c, t, what, fmt.tprintf(`{{"tabId":%d}}`, t.id))
 }
@@ -911,16 +911,15 @@ m_mouse_event :: proc(app: ^App, c: ^Call) -> Reply {
 	mods := mods_of(c)
 	switch kind {
 	case "mouseMoved":    return control_hover(app, c, pos, mods)
-	case "mousePressed":  inject(app, {kind = .Mouse_Press, pos = pos, button = button_of(c), mods = mods})
-	case "mouseReleased": inject(app, {kind = .Mouse_Release, pos = pos, button = button_of(c), mods = mods})
+	case "mousePressed":  return control_press(app, c, pos, button_of(c), mods)
+	case "mouseReleased": return control_release(app, c, pos, button_of(c), mods)
 	case "mouseWheel":
 		dx, _ := remote.param_float(c.params, "deltaX")
 		dy, _ := remote.param_float(c.params, "deltaY")
 		if n, has := remote.param_float(c.params, "notches"); has { dy = n * 100 }
 		return control_wheel(app, c, pos, {dx, dy}, mods)
-	case: return fail(remote.ERR_PARAMS, "type: mouseMoved, mousePressed, mouseReleased or mouseWheel")
 	}
-	return frames_op(app, c, nil, the_remote.cfg.settle_frames)
+	return fail(remote.ERR_PARAMS, "type: mouseMoved, mousePressed, mouseReleased or mouseWheel")
 }
 
 // Wren.click {x, y | selector, button, count, space}

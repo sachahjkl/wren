@@ -43,9 +43,10 @@ window the user is in (the front one).
   (`window_drop_slot`: `drop_slot_row` for a row of tabs, `drop_slot_list` for the sidebar's list with its group headers and
   collapsed groups): its index, the group it joins (between two tabs of a group, or under a group's header) and whether it is
   pinned (a pinned tab among the pinned ones in a row; none in the sidebar's list), and the mark is drawn there, in the group's
-  colour. The release puts it exactly there (`tab_move(..., slot = ...)`). `tools\tab_drag_windows_e2e.ps1` drags with an
+  colour. The release puts it exactly there (`tab_move(..., slot = ...)`). `src\tools\e2e\tab_drag_windows.odin` drags with an
   injected pointer (`platform.Event.injected`: positions of the event, not the system's cursor), holds the drag on its way
-  (`wren ctl drag --hold`, `--resume`), reads the mark (`wren ctl windows --json`: `drop`) and captures it.
+  (`e2e.drag` with `hold`, `resume`; `wren ctl drag --hold`, `--resume`), reads the mark (`e2e.windows`: `dropping`,
+  `drop_index`, `drop_mark`; `wren ctl windows --json`: `drop`) and captures it.
 * Developer tools (`devtools.odin`, `devtools_window.odin`): each window has its own (`Window_Own.devtools`, read as `dev()`, the
   active window's), docked in it or in a window of their own, showing its current tab. F12 in one window opens them there only.
   A tab they show that moves to a window with none open takes them along (`devtools_follow_tab`: docked or in their window); a
@@ -63,8 +64,9 @@ window the user is in (the front one).
   stays where it was scrolled to (`tab_scale_follow`: `Tab.scroll` is in device pixels, rescaled when the scale it was in
   changed, also for a tab moved to a window of another scale). A developer tools' window has its own. Tab icons are decoded for
   the largest scale of the windows and decoded again when a window's grows (`favicon_decode_px`). `wren ctl window --dpi n`
-  sends the window a `WM_DPICHANGED` (a machine with one monitor tests it: `tools\window_dpi_e2e.ps1`); what the screen shows
-  while a window straddles two monitors of different scales is the system's and is not tested.
+  sends a real window a `WM_DPICHANGED`, and changes a headless window's emulated scale (`platform.set_offscreen_dpi`:
+  `src\tools\e2e\window_dpi.odin` tests the scale's consequences that way, not the system's message and the rectangle it suggests);
+  what the screen shows while a window straddles two monitors of different scales is the system's and is not tested.
 * Remote calls with `--win-id` (or a tab of that window) act on that window until they answer: their waits count its frames,
   and a capture is of its frame (`remote_capture_arm`: the renderer copies the next frame it ends, so it is asked for in that
   window's frame).

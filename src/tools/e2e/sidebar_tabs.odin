@@ -17,7 +17,6 @@ import "wb:e2e"
 @(private = "file") WIDTH_SLACK :: 0.5           // of a page's innerWidth, between two looks at one width
 @(private = "file") LEAST_WIDTHS_BETWEEN :: 2    // a sidebar that does not jump goes through at least these
 @(private = "file") TAB_DRAG_STEPS :: 12
-@(private = "file") SETTLED_FRAMES :: 4
 @(private = "file") SOUND_FILE :: "examples/site/devtools/assets/tone_opus.webm"
 
 // A page of its own per title (file: pages; a top-level data: address is refused).
@@ -39,14 +38,7 @@ order :: proc(s: ^e2e.Session) -> string {
 
 // The interface's animations have ended: what the tab bar draws is where a tab is.
 @(private = "file")
-settled :: proc(s: ^e2e.Session, loc := #caller_location) {
-	// (several frames in a row: a frame in which a change has not begun to move yet is not the end of it)
-	quiet := 0
-	e2e.wait_until(s, &quiet, proc(s: ^e2e.Session, quiet: ^int) -> bool {
-		quiet^ = e2e.stats(s).chrome_animating ? 0 : quiet^ + 1
-		return quiet^ >= SETTLED_FRAMES
-	}, "the interface's animations to end", loc = loc)
-}
+settled :: proc(s: ^e2e.Session, loc := #caller_location) { e2e.wait_chrome_still(s, loc = loc) }
 
 // A tab is in its place in the tab bar: it has a rectangle in the last frame.
 @(private = "file")
