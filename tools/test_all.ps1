@@ -461,7 +461,7 @@ Step 'the interface''s own zoom end to end (tools\chrome_zoom_e2e.ps1: Ctrl+whee
 Step 'middle-click autoscroll end to end (tools\autoscroll_e2e.ps1: a middle press on a tall page and the pointer moved down scrolls it, faster the farther, Escape stops it, a middle click on a link opens a new tab; no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\autoscroll_e2e.ps1
-} -Flaky -Weight 20 -NoCI
+} -Weight 20 -NoCI
 Step 'a window''s own state of the chrome end to end (tools\window_state_e2e.ps1: a page''s full screen in one window of two, left with Escape, the scroll given back; each window''s developer tools; the caret blinking in the front window only; no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\window_state_e2e.ps1

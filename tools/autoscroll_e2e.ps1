@@ -20,6 +20,10 @@ function Mouse([string]$type, [double]$x, [double]$y, [string]$button = 'left') 
     Wren-Ctl raw "{`"method`":`"Input.dispatchMouseEvent`",`"params`":$p}" | Out-Null
 }
 function ScrollY { return [double](Wren-Eval 'window.scrollY') }
+$SpeedFrames = 10
+function FramesMoved {
+    return [double](Wren-Eval -Await "new Promise((ok) => { window.scrollTo(0, 0); let n = 0, y0 = 0; const step = () => { if (n === 1) y0 = window.scrollY; if (n++ === $SpeedFrames) ok(window.scrollY - y0); else requestAnimationFrame(step); }; requestAnimationFrame(step); })")
+}
 function TabCount { return ([int]((Wren-Ctl tabs) -split "`n" | Where-Object { $_ -match '\S' }).Count) }
 
 $srv = Start-WrenTestServer
@@ -42,15 +46,12 @@ try {
         $y1 = ScrollY
         Check 'middle drag down scrolls down' ($y1 -gt $y0 + 2) "scrollY $y0 -> $y1"
 
-        # farther from the anchor scrolls faster: the same frames move more
-        $before = ScrollY
+        # farther from the anchor scrolls faster: the same frames move more (FramesMoved: from the top, inside one call: between
+        # two calls of wren ctl any number of frames go by, on a loaded machine enough to reach the end of the page)
         Mouse 'mouseMoved' 450 690 'middle'   # near the edge: fast
-        Wren-Ctl wait frames 10 | Out-Null
-        $fast = (ScrollY) - $before
-        $before2 = ScrollY
+        $fast = FramesMoved
         Mouse 'mouseMoved' 450 420 'middle'   # just past the dead zone: slow
-        Wren-Ctl wait frames 10 | Out-Null
-        $slow = (ScrollY) - $before2
+        $slow = FramesMoved
         Check 'the speed grows with the distance' ($fast -gt $slow + 1) "fast=$fast slow=$slow"
 
         # Escape ends the session
