@@ -85,6 +85,15 @@
   function eqs(a) { return [a == null, a === null, a == undefined, a != null, a === undefined].join(","); }
   [null, undefined, 0, "", {}, false].forEach(function (v) { p("eq", show(v), eqs(v)); });
 
+  // a return from inside a compiled loop, in a function called from JavaScript: the caller goes on, no frame is left behind
+  function find(list, x) { for (var i = 0; i < list.length; i++) { if (list[i] === x) { return i * 2 + 1; } } return -1; }
+  function twice(list, x) { return find(list, x) + ":" + find(list, x + 1); }
+  var hay = []; for (var h = 0; h < 2000; h++) { hay.push(h); }
+  var found = ""; for (var r = 0; r < 300; r++) { found = twice(hay, 1500 + r); }
+  p("loop return", found);
+  function depth() { var n = 0; function f() { n++; f(); } try { f(); } catch (e) {} return n; }
+  var before = depth(); for (var q = 0; q < 500; q++) { twice(hay, 1000); } p("loop return leaves the depth", before === depth());
+
   // switch, strings, generators (not compiled) next to compiled code
   function sw(x) { switch (x) { case 1: return "one"; case "1": return "string"; default: return "other"; } }
   p("switch", sw(1), sw("1"), sw(2));

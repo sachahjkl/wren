@@ -1011,7 +1011,7 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 				if d < 0 {
 					if !back_edge(ctx, root_base) {exc = true} else if jit_cfg.enabled {
 						jr, jpc, jsp := jit_back_edge(ctx, f, b, pc, jend, sp)
-						if jr == .resume {pc = jpc; sp = jsp} else if jr == .ret {return finish(f, rt, stack[0], root_base)}
+						if jr == .resume {pc = jpc; sp = jsp} else if jr == .ret {ret_val = stack[0]; returning = true}
 					}
 				}
 			case .goto16:
@@ -1021,7 +1021,7 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 				if d < 0 {
 					if !back_edge(ctx, root_base) {exc = true} else if jit_cfg.enabled {
 						jr, jpc, jsp := jit_back_edge(ctx, f, b, pc, jend, sp)
-						if jr == .resume {pc = jpc; sp = jsp} else if jr == .ret {return finish(f, rt, stack[0], root_base)}
+						if jr == .resume {pc = jpc; sp = jsp} else if jr == .ret {ret_val = stack[0]; returning = true}
 					}
 				}
 			case .goto8:
@@ -1031,7 +1031,7 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 				if d < 0 {
 					if !back_edge(ctx, root_base) {exc = true} else if jit_cfg.enabled {
 						jr, jpc, jsp := jit_back_edge(ctx, f, b, pc, jend, sp)
-						if jr == .resume {pc = jpc; sp = jsp} else if jr == .ret {return finish(f, rt, stack[0], root_base)}
+						if jr == .resume {pc = jpc; sp = jsp} else if jr == .ret {ret_val = stack[0]; returning = true}
 					}
 				}
 			case .if_true, .if_false:
@@ -1046,7 +1046,7 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 					if d < 0 {
 						if !back_edge(ctx, root_base) {exc = true} else if jit_cfg.enabled {
 							jr, jpc, jsp := jit_back_edge(ctx, f, b, pc, jend, sp)
-							if jr == .resume {pc = jpc; sp = jsp} else if jr == .ret {return finish(f, rt, stack[0], root_base)}
+							if jr == .resume {pc = jpc; sp = jsp} else if jr == .ret {ret_val = stack[0]; returning = true}
 						}
 					}
 				}
@@ -1062,7 +1062,7 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 					if d < 0 {
 						if !back_edge(ctx, root_base) {exc = true} else if jit_cfg.enabled {
 							jr, jpc, jsp := jit_back_edge(ctx, f, b, pc, jend, sp)
-							if jr == .resume {pc = jpc; sp = jsp} else if jr == .ret {return finish(f, rt, stack[0], root_base)}
+							if jr == .resume {pc = jpc; sp = jsp} else if jr == .ret {ret_val = stack[0]; returning = true}
 						}
 					}
 				}
