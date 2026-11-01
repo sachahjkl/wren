@@ -53,6 +53,7 @@ Mc_Record :: struct {
 	frags: [dynamic]Mc_Frag,
 	rules: [dynamic]Rect,            // between columns with content, in the container's frame
 	phys:  [2]i32,                   // its range of Layout.flow_frags (finish)
+	first_chain: f32,                // how high what must start it together is: less room than that and it starts in the next outer column
 	outer_space, outer_clip: i32,    // the space and clip of the container's own content: for what is not in the flow
 }
 
@@ -242,7 +243,7 @@ gather_child :: proc(g: ^Gather, ch, bi: i32, top: f32) {
 	} else if is_monolithic(l, k) {
 		g.trunc_next = max(g.trunc_next, ktop - g.last_end)
 		unit_add(g, ktop, ktop + k.size.y)
-		if .Multicol in k.fx { g.units[len(g.units) - 1].nested = ch }
+		if .Multicol in k.fx && ch not_in g.c.mc_whole { g.units[len(g.units) - 1].nested = ch }
 	} else {
 		g.trunc_next = max(g.trunc_next, ktop - g.last_end)
 		// border and padding do not leave their first line: at the head of a column they go with it
@@ -322,6 +323,12 @@ place_units :: proc(units: []Unit, s0, s1, start, h: f32, base_shift: f32, out: 
 			}
 		} else {
 			for y0 >= col_end { col_start, col_end = col_end, col_end + h; col += 1 }
+			// a nested container is not pushed: where it crosses a column it goes in rows (layout_multicol)
+			if u.nested != NONE {
+				prev_end = max(prev_end, u.y1 + shift)
+				i += 1
+				continue
+			}
 			// the margins above what starts a column are gone (CSS Fragmentation 3 §5.2)
 			if col > 0 && u.trunc > 0 && y0 > col_start && y0 - u.trunc <= col_start + 0.001 && prev_end <= col_start + 0.001 {
 				shift -= y0 - col_start
@@ -561,6 +568,14 @@ layout_multicol :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx) -> f32
 	} else if mx, ok := to_border_h(c, b, cs.max_height, -1); ok && cs.max_height.kind != .None {
 		limit = max(mx - pb_h(b), 0)
 	}
+	// (columns balanced around a nested container stay around it whole: only a given height cuts it)
+	if limit < 0 { for &u in g.units { u.nested = NONE } }
+	rec.first_chain = 0
+	if len(g.units) > 0 {
+		e := 0
+		for e + 1 < len(g.units) && g.units[e + 1].avoid && !g.units[e + 1].forced { e += 1 }
+		rec.first_chain = g.units[e].y1 - g.units[0].y0
+	}
 
 	shifts := make([dynamic]Shift, 0, 32, context.temp_allocator)
 	visual_y := cy
@@ -669,9 +684,16 @@ layout_multicol :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx) -> f32
 			for &f in rec.frags {
 				if f.spanner || top < f.flow_min || top >= f.flow_max { continue }
 				if f.flow_max == FLOW_UNBOUNDED || bottom <= f.flow_max + 0.5 { break }
-				if c.mc_rows == nil { c.mc_rows = make(map[i32]Mc_Rows, 8, context.temp_allocator) }
 				ib := &l.boxes[u.nested]
-				c.mc_rows[u.nested] = Mc_Rows{f.flow_max - top - content_y(ib), f.flow_max - f.flow_min}
+				room := f.flow_max - top - content_y(ib)
+				if nr, ok := l.mc_records[u.nested]; ok && nr.first_chain > room {
+					// no room for what must start it: whole, in the next column
+					if c.mc_whole == nil { c.mc_whole = make(map[i32]bool, 8, context.temp_allocator) }
+					c.mc_whole[u.nested] = true
+				} else {
+					if c.mc_rows == nil { c.mc_rows = make(map[i32]Mc_Rows, 8, context.temp_allocator) }
+					c.mc_rows[u.nested] = Mc_Rows{room, f.flow_max - f.flow_min}
+				}
 				again = true
 				break
 			}
