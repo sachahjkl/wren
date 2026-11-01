@@ -1,6 +1,6 @@
 package desktop
 
-// The Windows backend on a scratch Start menu folder and a scratch registry key (HKCU\Software\WrenTest\<id>): never on
+// The Windows backend on a scratch Start menu folder and a scratch registry key (HKCU\Software\WrenTest_<id>): never on
 // the real desktop. One test touches the real one, and only when WREN_TEST_DESKTOP_REAL=1 is in the environment.
 
 import "core:fmt"
@@ -12,7 +12,9 @@ import "wb:base"
 import "core:time"
 import win "core:sys/windows"
 
-@(private = "file") CLEANUP_WAIT :: 20 * time.Second            // for the helper to delete the files, the folder and itself
+// For the helper to delete the files, the folder and itself; it only ends a failing run: each of the helper's looks at the process
+// is a run of tasklist, which on a loaded machine takes seconds (the 20 s this was failed one run in ten, the helper still at work).
+@(private = "file") CLEANUP_WAIT :: 180 * time.Second
 @(private = "file") CLEANUP_POLL :: 200 * time.Millisecond
 @(private = "file") WATCHER_WAKE_WAIT :: 5 * time.Second         // for a change to wake the watcher
 @(private = "file") WATCHER_WAKE_POLL :: 20 * time.Millisecond
@@ -24,9 +26,9 @@ Scratch :: struct {
 	menu: string,   // its "Start menu"
 	exe:  string,   // a file standing for the program
 	exe2: string,   // the program after an update into another folder
-	root: string,   // Software\WrenTest\<id>
+	root: string,   // Software\WrenTest_<id>
 	desk: string,   // its "Desktop"
-	env:  string,   // Software\WrenTest\<id>\Environment: what stands for HKCU\Environment
+	env:  string,   // Software\WrenTest_<id>\Environment: what stands for HKCU\Environment
 	opts: Options,
 }
 
@@ -39,7 +41,7 @@ scratch_make :: proc() -> Scratch {
 	s.menu = fmt.aprintf("%s\\Start Menu\\Programs", s.dir)
 	s.exe = fmt.aprintf("%s\\v1\\wren.exe", s.dir)
 	s.exe2 = fmt.aprintf("%s\\v2\\wren.exe", s.dir)
-	s.root = fmt.aprintf("Software\\WrenTest\\%s", id)
+	s.root = fmt.aprintf("Software\\WrenTest_%s", id)
 	s.desk = fmt.aprintf("%s\\Desktop", s.dir)
 	s.env = fmt.aprintf("%s\\Environment", s.root)
 	for p in ([]string{s.exe, s.exe2}) {
@@ -59,8 +61,10 @@ scratch_make :: proc() -> Scratch {
 
 @(private = "file")
 scratch_destroy :: proc(s: ^Scratch) {
+	// Each test has a key directly under Software. A shared parent deleted here when it looked empty made RegCreateKeyExW of
+	// another test (or of the browser's tests, in another process) fail with ERROR_KEY_DELETED or ERROR_FILE_NOT_FOUND, about
+	// 2 % of the time with four threads at it: its PATH value was then never written (the "PATH found empty" of the CI).
 	RegDeleteTreeW(win.HKEY_CURRENT_USER, wide(s.root))
-	RegDeleteKeyW(win.HKEY_CURRENT_USER, wide("Software\\WrenTest"))   // (fails while another test's key is in it: then it stays)
 	_ = base.remove_tree(s.dir)   // (not os.remove_all: it hands the folder to the Windows shell, which meets the shell links the other tests make)
 	delete(s.dir); delete(s.menu); delete(s.exe); delete(s.exe2); delete(s.root); delete(s.desk); delete(s.env)
 }

@@ -1,6 +1,6 @@
 package browser
 
-// Setup on scratch folders and a scratch registry root (Software\WrenTest\<id>): the states of the dialog, what Install,
+// Setup on scratch folders and a scratch registry root (Software\WrenTest_<id>): the states of the dialog, what Install,
 // Replace, Repair and Uninstall do to the disk, and what the profile remembers. Nothing of the real desktop is touched.
 
 import "core:fmt"
@@ -19,7 +19,7 @@ Scene :: struct {
 	pkg:     string,   // an unpacked package: wren.exe, licenses\a.txt
 	pkg2:    string,   // another one (a newer download)
 	target:  string,   // the install folder (not made)
-	reg:     string,   // Software\WrenTest\<id>
+	reg:     string,   // Software\WrenTest_<id>
 	opts:    desktop.Options,
 }
 
@@ -38,7 +38,7 @@ scene_make :: proc() -> Scene {
 	s.pkg = fmt.aprintf("%s\\pkg1", s.root)
 	s.pkg2 = fmt.aprintf("%s\\pkg2", s.root)
 	s.target = fmt.aprintf("%s\\Programs\\Wren", s.root)
-	s.reg = fmt.aprintf("Software\\WrenTest\\%s", id)
+	s.reg = fmt.aprintf("Software\\WrenTest_%s", id)
 	for p in ([]string{s.pkg, s.pkg2}) {
 		_ = os.make_directory_all(fmt.tprintf("%s\\licenses", p))
 		_ = os.write_entire_file(fmt.tprintf("%s\\wren.exe", p), "MZ fake program")

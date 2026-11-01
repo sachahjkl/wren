@@ -156,7 +156,7 @@ integration; `uninstall` takes away the installed copy. `--install` is the short
 ## Tests
 
 `odin test src/desktop` runs the backend and the installed copy on scratch folders and a scratch registry key
-(`HKCU\Software\WrenTest\<id>`, deleted afterwards), and, on Linux, on scratch directories. `odin test src/browser` has the
+(`HKCU\Software\WrenTest_<id>`, deleted afterwards), and, on Linux, on scratch directories. `odin test src/browser` has the
 states of the dialog and install -> every state -> uninstall on scratch roots. A run can be pointed at scratch roots by the
 environment too: `WREN_DESKTOP_MENU_DIR`, `WREN_DESKTOP_DESKTOP_DIR`, `WREN_DESKTOP_REGISTRY_ROOT`,
 `WREN_DESKTOP_ENVIRONMENT_ROOT` (the key that stands for `HKCU\Environment`), `WREN_DESKTOP_INSTALL_DIR` (Windows),
