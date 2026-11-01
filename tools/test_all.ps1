@@ -137,7 +137,11 @@ function Start-Watchdog {
     }
 }
 
-# -Flaky: a step known to fail at random under load (it passes alone): its failure is printed as FLAKY and fails nothing, on the CI either.
+# -Flaky: a step known to fail at random: its failure is printed as FLAKY and fails nothing, on the CI either. A mark also hides a real
+# bug, so a step gets one only when the cause is known and outside our reach, with the reason in a comment on the step; none has one now.
+# A step that fails under load and passes alone is reproduced first: its program in a loop with CPU load beside it, several copies at once
+# (each with a test server of its own), and a stress build for the engine (-define:JSRT_GC_STRESS=65536 -define:JSRT_GC_POISON=true). See
+# "Tests that fail at random" in CONTRIBUTING.md for what the marks used to hide.
 $script:flaky = @{}
 # How many checks a step's output says it made (Odin's runner, the tools' "n passed", the PASS lines of a script, WPT's and test262's counts): a run can be compared with another (build\test_steps.tsv).
 function Get-CheckCount([string]$out) {
@@ -428,8 +432,7 @@ Step 'console launcher: build\wren.com (src\tools\wrencom; the browser embeds it
 if ($Jobs -gt 1) { Flush-Steps 'JavaScript engine*'; Flush-Steps 'console launcher*' }
 foreach ($pkg in 'base', 'host', 'dom', 'html', 'url', 'http', 'cookies', 'csp', 'httpcache', 'fetch', 'css', 'style', 'webfont', 'xml', 'images', 'media', 'webaudio', 'canvas2d', 'idb', 'layout', 'forms', 'js', 'page', 'webauthn', 'license', 'desktop', 'adblock', 'blocker', 'a11y', 'browser') {
     # (images: its tests share the process-wide decoder pool and one of them sets its idle time: one test at a time)
-    Step "unit tests: $pkg" { $one = @(); if ($pkg -eq 'images') { $one = @('-define:ODIN_TEST_THREADS=1') }; odin test "src/$pkg" -use-separate-modules $MemCheck -collection:toolkit=ext/gui_toolkit -collection:wb=src -vet @one -out:"build/${pkg}_test.exe" $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
-}
+    Step "unit tests: $pkg" { $one = @(); if ($pkg -eq 'images') { $one = @('-define:ODIN_TEST_THREADS=1') }; odin test "src/$pkg" -use-separate-modules $MemCheck -collection:toolkit=ext/gui_toolkit -collection:wb=src -vet @one -out:"build/${pkg}_test.exe" $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }}
 
 # the pipe server is one per process, so its tests run one at a time; the client's tests link the image encoder
 Step 'unit tests: remote (protocol, pipe server: requests, answers, limits, vanishing clients, stopping with clients connected)' { odin test src/remote -use-separate-modules $MemCheck -define:ODIN_TEST_THREADS=1 -collection:wb=src -vet -out:build/remote_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
