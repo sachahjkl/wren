@@ -656,16 +656,16 @@
 	Test playing then seeking back.: PASS
 /media-source/mediasource-play.html: OK
 	Test normal playback case with MediaSource API: PASS
-/media-source/mediasource-preload.html: TIMEOUT|TIMEOUT
-	error occurs with bogus blob URL (corrupted MediaSource object URL) and element preload=auto: PASS|TIMEOUT|FAIL|NOTRUN
-	error occurs with bogus blob URL (corrupted MediaSource object URL) and element preload=metadata: PASS|TIMEOUT|FAIL|NOTRUN
-	error occurs with bogus blob URL (corrupted MediaSource object URL) and element preload=none: PASS|TIMEOUT|FAIL|NOTRUN
-	error occurs with bogus blob URL (revoked MediaSource object URL) and element preload=auto: PASS|TIMEOUT|FAIL|NOTRUN
-	error occurs with bogus blob URL (revoked MediaSource object URL) and element preload=metadata: PASS|TIMEOUT|FAIL|NOTRUN
-	error occurs with bogus blob URL (revoked MediaSource object URL) and element preload=none: PASS|TIMEOUT|FAIL|NOTRUN
-	sourceopen occurs with element preload=auto: PASS|TIMEOUT|FAIL|NOTRUN
-	sourceopen occurs with element preload=metadata: TIMEOUT
-	sourceopen occurs with element preload=none: TIMEOUT
+/media-source/mediasource-preload.html: OK
+	error occurs with bogus blob URL (corrupted MediaSource object URL) and element preload=auto: PASS
+	error occurs with bogus blob URL (corrupted MediaSource object URL) and element preload=metadata: PASS
+	error occurs with bogus blob URL (corrupted MediaSource object URL) and element preload=none: PASS
+	error occurs with bogus blob URL (revoked MediaSource object URL) and element preload=auto: PASS
+	error occurs with bogus blob URL (revoked MediaSource object URL) and element preload=metadata: PASS
+	error occurs with bogus blob URL (revoked MediaSource object URL) and element preload=none: PASS
+	sourceopen occurs with element preload=auto: PASS
+	sourceopen occurs with element preload=metadata: PASS
+	sourceopen occurs with element preload=none: PASS
 /media-source/mediasource-redundant-seek.html: OK
 	Test redundant fully prebuffered seek: PASS
 /media-source/mediasource-remove.html: OK

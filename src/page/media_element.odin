@@ -180,13 +180,17 @@ is_media_node :: proc(n: ^dom.Node) -> (is_video: bool, ok: bool) {
 @(private)
 media_note_blob :: proc(el: ^Media_Element) {
 	p := el.page
+	ms_named_change(p, el.blob_ms, -1)
 	el.blob_ms = 0
 	delete(el.blob_href); el.blob_href = ""
 	v, ok := dom.get_attribute(p.doc, el.node, "src")
 	if !ok || p.media == nil || !strings.has_prefix(strings.trim_space(v), "blob:") { return }
 	u, uok := url.parse(strings.trim_space(v), &p.env.location, context.temp_allocator)
 	if !uok { return }
-	if h, found := p.media.urls[u.href]; found { el.blob_ms, el.blob_href = h, strings.clone(u.href) }
+	if h, found := p.media.urls[u.href]; found {
+		el.blob_ms, el.blob_href = h, strings.clone(u.href)
+		ms_named_change(p, h, 1)
+	}
 }
 
 // The state of a <video> / <audio> element, made on first use. nil: not a media element.
@@ -246,6 +250,7 @@ lookup_HTMLMediaElement :: proc(c: ^Call, h: u64) -> ^Media_Element {
 @(private)
 media_element_free :: proc(p: ^Page, el: ^Media_Element, page_closing: bool) {
 	media_teardown(el)
+	ms_named_change(p, el.blob_ms, -1)
 	if el.capture != nil { free(el.capture, base.process_allocator()) }
 	for pr in el.pending_play { if !page_closing { promise_reject(p, pr, i64(Api_Error.Abort), "AbortError: the media element was removed") } }
 	delete(el.pending_play)
