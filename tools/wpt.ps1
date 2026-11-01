@@ -29,7 +29,7 @@
 #   checkout, not verified, for a look at the rasteriser on folders that are not measured).
 param([switch]$Quick, [switch]$Update, [string]$Only = '', [int]$Jobs = 0, [int]$TimeoutMs = 10000, [switch]$Fetch,
       [switch]$UpdateManifest, [switch]$NoServer, [int]$Port = 0, [string[]]$Pref = @(), [switch]$Edge, [string]$Suites = '',
-      [switch]$Reftests, [switch]$NoReftests, [string]$ReftestDump = '', [switch]$ReftestDumpAll, [string[]]$ReftestFolder = @(), [string]$WptRoot = '')
+      [switch]$Reftests, [switch]$NoReftests, [string]$ReftestDump = '', [switch]$ReftestDumpAll, [string[]]$ReftestFolder = @(), [string]$WptRoot = '', [switch]$FastTimeouts, [switch]$NoFastTimeouts)
 # (failures are checked by exit status: what native tools write on stderr is not an error; throw stops the script)
 $ErrorActionPreference = 'Continue'
 $WptCommit = '4ad507b28db0a636f528def9161d109fe11b93a3'
@@ -132,8 +132,11 @@ try {
 if ($Port -le 0) { $Port = if (-not $NoServer) { 8778 } elseif ($env:WREN_TEST_BASE_PORT) { [int]$env:WREN_TEST_BASE_PORT + 3 } else { 8768 } }
 # More tests than this regressing at once is no matter of load: no second chance.
 $SecondChanceMax = 60
+# (with -FastTimeouts, a test expected to time out may just not have reached its subtests by the cap: those go too)
+if ($Quick -or $FastTimeouts) { $SecondChanceMax = 600 }
 # ... and how many times its time limit a test gets alone (the other steps of test_all still run beside it).
 $SecondChanceTimeFactor = 4
+$SecondChanceJobs = 2
 $checkout = if ($WptRoot) { (Resolve-Path $WptRoot).Path } else { $wpt }
 $runArgs = @('-server', "http://127.0.0.1:PORT", '-root', $checkout, '-suites', $(if ($Suites) { (Resolve-Path $Suites).Path } else { $suitesFile }), '-expect', (Join-Path $root 'wpt\expectations'), '-timeout', $TimeoutMs,
              '-md', (Join-Path $out 'report.md'), '-results', (Join-Path $out 'results.txt'))
@@ -141,6 +144,12 @@ $runArgs = @('-server', "http://127.0.0.1:PORT", '-root', $checkout, '-suites', 
 $runArgs += @('--pref', 'media.autoplay.policy=allow-all')
 if ($Jobs -gt 0) { $runArgs += @('-jobs', $Jobs) }
 if ($Quick) { $runArgs += '-quick' }
+# -FastTimeouts (always with -Quick): a test expected to time out stops at -CapMs, and a page that can do nothing more is given up on after -IdleMs instead of
+# a second (58 % of a full run's time goes to timeouts). A test that fails for it goes through the second chance below, with neither: it can only cost time.
+# What it does not see is a test that has begun to pass: a full run without it and -Update do. -Update never uses it, nor does -Only (someone looking at tests).
+$FastCapFactor = 0.3
+$FastIdleMs = 300
+if (($Quick -or $FastTimeouts) -and -not $Update -and -not $Only -and -not $NoFastTimeouts) { $runArgs += @('-timeout-cap', [int]($FastCapFactor * $TimeoutMs), '-idle', $FastIdleMs) }
 if ($Update) { $runArgs += '-update' }
 if ($Only) { $runArgs += @('-only', $Only) }
 if ($Reftests) { $runArgs += '-reftests' }
@@ -252,12 +261,16 @@ try {
             if ($status -eq 1 -and -not $Update) {
                 $paths = @($lines | ForEach-Object { if ($_ -match '^REGRESSION (\S+?)(?:: | \| )') { $Matches[1] } } | Select-Object -Unique)
                 if ($paths.Count -gt 0 -and $paths.Count -le $SecondChanceMax) {
-                    $status = 0
-                    foreach ($p in $paths) {
-                        $again = @($runArgs | Where-Object { $_ -ne '-quick' }) + @('-only', $p, '-jobs', '1', '-timeout', ($SecondChanceTimeFactor * $TimeoutMs), '-results', (Join-Path $out 'again.txt'), '-md', (Join-Path $out 'again.md'))
-                        $res = & $exe @again 2>$null
-                        if ($LASTEXITCODE -ne 0) { $status = 1; $res | Where-Object { $_ -match '^REGRESSION' } } else { "again, alone: $p passes (a timeout under load)" }
-                    }
+                    # (all in one run: looking for the tests takes seconds under load, for each of them)
+                    $kept = @(); for ($ai = 0; $ai -lt $runArgs.Count; $ai++) { if ($runArgs[$ai] -in '-timeout-cap', '-idle') { $ai++ } elseif ($runArgs[$ai] -ne '-quick') { $kept += $runArgs[$ai] } }
+                    $againList = Join-Path $out 'again_list.txt'
+                    [IO.File]::WriteAllText($againList, ($paths -join "`n") + "`n")
+                    $again = $kept + @('-only-file', $againList, '-jobs', $SecondChanceJobs, '-timeout', ($SecondChanceTimeFactor * $TimeoutMs), '-results', (Join-Path $out 'again.txt'), '-md', (Join-Path $out 'again.md'))
+                    $res = & $exe @again 2>$null
+                    $status = $LASTEXITCODE
+                    $still = @($res | ForEach-Object { if ($_ -match '^REGRESSION (\S+?)(?:: | \| )') { $Matches[1] } } | Select-Object -Unique)
+                    "again, nearly alone: $($paths.Count - $still.Count) of $($paths.Count) tests pass (a timeout under load, or -FastTimeouts)"
+                    if ($status -ne 0) { $res | Where-Object { $_ -match '^REGRESSION' } }
                 }
             }
         }

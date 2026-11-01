@@ -4,8 +4,8 @@
 // server (tools/testserver/wpt.go, http://127.0.0.1:8768/).
 //
 //   wpt [-root build/wpt/wpt] [-suites wpt/suites.txt] [-expect wpt/expectations] [-server http://127.0.0.1:8768]
-//       [-timeout ms] [-idle ms] [-jobs n] [-quick] [-update] [-md report.md] [-results results.txt] [-only prefix]
-//       [-reference edge_results.txt] [-list] [--pref name=value]... [-reftests | -no-reftests] [-reftest-folder folder]...
+//       [-timeout ms] [-timeout-cap ms] [-idle ms] [-jobs n] [-quick] [-update] [-md report.md] [-results results.txt] [-only prefix]
+//       [-only-file list.txt] [-reference edge_results.txt] [-list] [--pref name=value]... [-reftests | -no-reftests] [-reftest-folder folder]...
 //       [-dump dir] [-dump-all]
 // WPT_CONSOLE=1 writes every console message of the tests to the children's logs (build/wpt/children/log_*.txt).
 // -list prints the tests (path, long timeout, folder) and stops; -reference adds the subtests of a reference run in
@@ -57,6 +57,7 @@ Test :: struct {
 	path:   string,   // URL path with its variant ("/dom/nodes/x.any.html?a")
 	long:   bool,     // <meta name=timeout content=long> / META: timeout=long
 	is_reftest: bool, // compared with its references (else testharness.js reports)
+	cap_ms: int,      // -timeout-cap: this test is expected to time out, it gets this much (0: its normal limit)
 }
 
 Sub :: struct { name, status, message: string }
@@ -76,8 +77,8 @@ Suite :: struct {
 }
 
 Options :: struct {
-	root, suites, expect, server, md, results, only, self, reference, dump: string,
-	timeout_ms, idle_ms, jobs, chunk: int,
+	root, suites, expect, server, md, results, only, only_file, self, reference, dump: string,
+	timeout_ms, idle_ms, jobs, chunk, timeout_cap_ms: int,
 	quick, update, list, reftests_only, no_reftests, dump_all: bool,
 	reftest_folders: [dynamic]string,
 	prefs_args: [dynamic]string,
@@ -115,6 +116,7 @@ parse_options :: proc(args: []string) {
 		case "-server": opts.server = strings.trim_right(need(args, &i), "/")
 		case "-timeout": opts.timeout_ms = max(500, atoi(need(args, &i)))
 		case "-idle": opts.idle_ms = atoi(need(args, &i))
+		case "-timeout-cap": opts.timeout_cap_ms = atoi(need(args, &i))
 		case "-jobs": opts.jobs = max(1, atoi(need(args, &i)))
 		case "-chunk": opts.chunk = max(1, atoi(need(args, &i)))
 		case "-quick": opts.quick = true
@@ -122,6 +124,7 @@ parse_options :: proc(args: []string) {
 		case "-md": opts.md = need(args, &i)
 		case "-results": opts.results = need(args, &i)
 		case "-only": opts.only = need(args, &i)
+		case "-only-file": opts.only_file = need(args, &i)
 		case "-list": opts.list = true
 		case "-reference": opts.reference = need(args, &i)
 		case "--pref": append(&opts.prefs_args, "--pref", need(args, &i))
@@ -221,8 +224,8 @@ script_meta :: proc(text: string) -> (m: Script_Meta) {
 }
 
 add_test :: proc(out: ^[dynamic]Test, folder, path: string, variants: []string, long: bool, is_reftest := false) {
-	if len(variants) == 0 { append(out, Test{folder, strings.clone(path), long, is_reftest}); return }
-	for v in variants { append(out, Test{folder, strings.concatenate({path, v}), long, is_reftest}) }
+	if len(variants) == 0 { append(out, Test{folder = folder, path = strings.clone(path), long = long, is_reftest = is_reftest}); return }
+	for v in variants { append(out, Test{folder = folder, path = strings.concatenate({path, v}), long = long, is_reftest = is_reftest}) }
 }
 
 // A page with links to references is a reference test, unless WPT's names make it a reference, a print or a visual test.
@@ -481,7 +484,7 @@ child_start :: proc(c: ^Child, index: int, tests: []Test) -> bool {
 	c.list = fmt.aprintf("%s/list_%d.txt", logs, index)
 	c.out = fmt.aprintf("%s/out_%d.txt", logs, index)
 	b := strings.builder_make(context.temp_allocator)
-	for t in tests { fmt.sbprintfln(&b, "%s\t%d\t%d", t.path, t.long ? 1 : 0, t.is_reftest ? 1 : 0) }
+	for t in tests { fmt.sbprintfln(&b, "%s\t%d\t%d\t%d", t.path, t.long ? 1 : 0, t.is_reftest ? 1 : 0, t.cap_ms) }
 	_ = os.write_entire_file(c.list, strings.to_string(b))
 	_ = os.write_entire_file(c.out, "")
 	cmd := make([dynamic]string, context.temp_allocator)
@@ -530,6 +533,16 @@ parent_main :: proc() -> int {
 		read_expectations(expect_file(s.folder), &expected)
 		read_expectations(reftest_expect_file(s.folder), &expected)
 	}
+	if opts.only_file != "" {
+		// (the tests of the second chance of tools\wpt.ps1, all at once: looking for the tests takes seconds, for each)
+		data, ferr := os.read_entire_file(opts.only_file, context.allocator)
+		if ferr != nil { fmt.eprintfln("wpt: cannot read %s", opts.only_file); return 2 }
+		wanted := make(map[string]bool)
+		for line in strings.split_lines(string(data)) { if l := strings.trim_space(line); l != "" { wanted[l] = true } }
+		kept := make([dynamic]Test)
+		for t in tests { if t.path in wanted { append(&kept, t) } }
+		tests = kept
+	}
 	if opts.quick {
 		// a fixed sample: per folder, the first QUICK_PER_FOLDER tests (in path order), those not expected to time out
 		// first (they say the most for the time they take)
@@ -554,7 +567,18 @@ parent_main :: proc() -> int {
 	whole_folder := false
 	for s in suites { if strings.trim(opts.only, "/") == s.folder { whole_folder = true } }
 	if opts.update && (opts.quick || (opts.only != "" && !whole_folder)) { fmt.eprintln("wpt: -update needs a full run (no -quick, -only of one whole folder at most)"); return 2 }
+	if opts.update && opts.timeout_cap_ms > 0 { fmt.eprintln("wpt: -update needs every test's whole time limit (no -timeout-cap)"); return 2 }
 	if len(tests) == 0 { fmt.eprintln("wpt: no test"); return 2 }
+	// A test expected to time out spends its whole limit waiting for what will not come (58 % of the time of a full run: 1300 tests, 50 of them
+	// 60 s each), and what its expectations check came early if it came: it gets -timeout-cap ms. A subtest expected to pass that it has not
+	// reached by then is a regression of this run, which tools\wpt.ps1 runs again with the whole limit: only a real regression counts. What
+	// this does not see is a test that has begun to pass: -update and a run without the cap do.
+	capped := 0
+	if opts.timeout_cap_ms > 0 {
+		for &t in tests {
+			if e, found := expected[t.path]; found && strings.contains(e.status, "TIMEOUT") { t.cap_ms = opts.timeout_cap_ms; capped += 1 }
+		}
+	}
 	if opts.list {
 		// what a reference run in another browser needs: path, long timeout, folder
 		// (testharness tests: that browser's reference run has no use for the others)
@@ -562,6 +586,7 @@ parent_main :: proc() -> int {
 		return 0
 	}
 	fmt.printfln("%d tests in %d folders, %d at a time", len(tests), len(suites), opts.jobs)
+	if capped > 0 { fmt.printfln("%d of them expected to time out: at most %d ms each (-timeout-cap)", capped, opts.timeout_cap_ms) }
 
 	results := make(map[string]^Result)
 	queue := make([dynamic][]Test)
@@ -930,6 +955,7 @@ child_main :: proc(list_path, out_path: string) -> int {
 		long := len(parts) > 1 && parts[1] == "1"
 		if len(parts) > 2 && parts[2] == "1" { reftest_one(out, path, long); continue }
 		limit := f64(opts.timeout_ms) * (long ? LONG_TIMEOUT_FACTOR : 1)
+		if len(parts) > 3 && atoi(parts[3]) > 0 { limit = min(limit, f64(atoi(parts[3]))) }
 		cs: Child_State
 		t0 := time.tick_now()
 		if wants_layout(path) { cs.layout = host_make() }
