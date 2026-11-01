@@ -154,8 +154,8 @@ network_apply_prefs :: proc(p: ^config.Prefs) {
 	old_profile := net_prefs.profile
 	net_prefs = {
 		max_entries = int(config.int_of(p, "browser.devtools.network.max_entries")),
-		max_body = int(config.int_of(p, "browser.devtools.network.max_body_kb")) * 1024,
-		max_total = config.int_of(p, "browser.devtools.network.max_body_mb") * 1024 * 1024,
+		max_body = int(config.int_of(p, "browser.devtools.network.max_body_kb")) * BYTES_PER_KIB,
+		max_total = config.int_of(p, "browser.devtools.network.max_body_mb") * BYTES_PER_MIB,
 		keep_media = config.bool_of(p, "browser.devtools.network.keep_media"),
 		preserve = config.bool_of(p, "browser.devtools.network.preserve"),
 		disable_cache = config.bool_of(p, "browser.devtools.network.disable_cache"),

@@ -22,6 +22,6 @@ pacer_timer_destroy :: proc(timer: rawptr) {
 pacer_timer_wait :: proc(w: ^platform.Window, timer: rawptr, wait_ns: i64) {
 	due := win.LARGE_INTEGER(-(wait_ns / 100))   // relative, in 100 ns units
 	if win.SetWaitableTimerEx(win.HANDLE(timer), &due, 0, nil, nil, nil, 0) {
-		platform.wait_handle(w, timer, int(wait_ns / 1_000_000) + 50)
+		platform.wait_handle(w, timer, int(wait_ns / NS_PER_MS) + 50)
 	}
 }

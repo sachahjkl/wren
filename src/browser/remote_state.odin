@@ -90,7 +90,7 @@ quiet_look :: proc(q: ^Quiet_Window, busy: bool, now_ns: i64, cpu_ms: f64, quiet
 		q^ = {since_ns = now_ns, cpu_ms = cpu_ms, open = true}
 		return false
 	}
-	return now_ns - q.since_ns >= i64(quiet_ms) * 1_000_000
+	return now_ns - q.since_ns >= i64(quiet_ms) * NS_PER_MS
 }
 
 // Is something being loaded, in any tab or by any request? (Without asking a page's script: a wait for quiet must not make the

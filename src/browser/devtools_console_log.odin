@@ -79,7 +79,7 @@ console_apply_prefs :: proc(p: ^config.Prefs) {
 		hide_network = config.bool_of(p, "browser.devtools.console.hide_network"),
 		autocomplete = config.bool_of(p, "browser.devtools.console.autocomplete"),
 		eager_eval = config.bool_of(p, "browser.devtools.console.eager_eval"),
-		max_payload = int(config.int_of(p, "browser.devtools.console.max_payload_kb")) * 1024,
+		max_payload = int(config.int_of(p, "browser.devtools.console.max_payload_kb")) * BYTES_PER_KIB,
 		context_only = config.bool_of(p, "browser.devtools.console.context_only"),
 	}
 }
@@ -262,15 +262,15 @@ parse_uint :: proc(s: string) -> (int, bool) {
 
 // "09:41:07.123" from a time of day in ms.
 con_time_text :: proc(at_ms: i64) -> string {
-	s := at_ms / 1000
-	return fmt.tprintf("%02d:%02d:%02d.%03d", s / 3600 %% 24, s / 60 %% 60, s %% 60, at_ms %% 1000)
+	s := at_ms / MS_PER_SECOND
+	return fmt.tprintf("%02d:%02d:%02d.%03d", s / SECONDS_PER_HOUR %% 24, s / SECONDS_PER_MINUTE %% MINUTES_PER_HOUR, s %% SECONDS_PER_MINUTE, at_ms %% MS_PER_SECOND)
 }
 
 // The local time of day in ms (0 at local midnight). js.timezone_offset gives the user's zone (Win32 / the C library);
 // the time of day is then the local ms within the day.
 local_time_ms :: proc() -> i64 {
 	unix_ms := time.time_to_unix_nano(time.now()) / 1e6
-	local_ms := unix_ms - i64(js.timezone_offset(f64(unix_ms))) * 60_000
+	local_ms := unix_ms - i64(js.timezone_offset(f64(unix_ms))) * MS_PER_MINUTE
 	tod := local_ms % 86_400_000
 	if tod < 0 { tod += 86_400_000 }
 	return tod

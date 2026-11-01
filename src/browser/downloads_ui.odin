@@ -92,9 +92,9 @@ dl_duration :: proc(secs: f64) -> string {
 	s := int(math.ceil(secs))
 	switch {
 	case s < 60:   return fmt.tprintf("%d s", max(s, 1))
-	case s < 3600: return fmt.tprintf("%d min %d s", s / 60, s % 60)
+	case s < SECONDS_PER_HOUR: return fmt.tprintf("%d min %d s", s / SECONDS_PER_MINUTE, s % SECONDS_PER_MINUTE)
 	}
-	return fmt.tprintf("%d h %d min", s / 3600, (s % 3600) / 60)
+	return fmt.tprintf("%d h %d min", s / SECONDS_PER_HOUR, (s % SECONDS_PER_HOUR) / SECONDS_PER_MINUTE)
 }
 
 @(private = "file")

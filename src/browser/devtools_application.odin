@@ -315,13 +315,13 @@ cell_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 expiry_text :: proc(ms: i64) -> string {
 	now := cookies.now_ms()
 	if ms <= now { return "expired" }
-	secs := (ms - now) / 1000
+	secs := (ms - now) / MS_PER_SECOND
 	switch {
-	case secs < 3600: return fmt.tprintf("in %d min", secs / 60 + 1)
-	case secs < 86400: return fmt.tprintf("in %d h", secs / 3600)
-	case secs < 86400 * 400: return fmt.tprintf("in %d days", secs / 86400)
+	case secs < SECONDS_PER_HOUR: return fmt.tprintf("in %d min", secs / SECONDS_PER_MINUTE + 1)
+	case secs < SECONDS_PER_DAY: return fmt.tprintf("in %d h", secs / SECONDS_PER_HOUR)
+	case secs < SECONDS_PER_DAY * 400: return fmt.tprintf("in %d days", secs / SECONDS_PER_DAY)
 	}
-	return fmt.tprintf("in %d years", secs / (86400 * 365))
+	return fmt.tprintf("in %d years", secs / (SECONDS_PER_DAY * 365))
 }
 
 @(private = "file")

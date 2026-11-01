@@ -168,10 +168,10 @@ net_media_open :: proc(app: ^App, e: ^Net_Entry) {
 		return
 	}
 	mci("set dtmedia time format milliseconds")
-	if s, ok := mci("status dtmedia length"); ok { m.duration = f64(parse_int(s)) / 1000 }
+	if s, ok := mci("status dtmedia length"); ok { m.duration = f64(parse_int(s)) / MCI_UNITS_PER_SECOND }
 	m.audio = true
 	m.mode = .System
-	mci(fmt.tprintf("setaudio dtmedia volume to %d", int(m.muted ? 0 : m.volume * 1000)))
+	mci(fmt.tprintf("setaudio dtmedia volume to %d", int(m.muted ? 0 : m.volume * MCI_VOLUME_FULL)))
 }
 
 @(private = "file")
@@ -185,7 +185,7 @@ parse_int :: proc(s: string) -> int {
 position_s :: proc(m: ^Net_Media) -> f64 {
 	switch m.mode {
 	case .Player: return media.time_seconds(media.player_time(m.player))
-	case .System: if s, ok := mci("status dtmedia position"); ok { return f64(parse_int(s)) / 1000 }
+	case .System: if s, ok := mci("status dtmedia position"); ok { return f64(parse_int(s)) / MCI_UNITS_PER_SECOND }
 	case .None:
 	}
 	return 0
@@ -212,7 +212,7 @@ seek_to :: proc(m: ^Net_Media, s: f64) {
 	switch m.mode {
 	case .Player: media.player_seek(m.player, media.seconds_time(clamp(s, 0, max(m.duration, 0))))
 	case .System:
-		mci(fmt.tprintf("seek dtmedia to %d", int(clamp(s, 0, m.duration) * 1000)))
+		mci(fmt.tprintf("seek dtmedia to %d", int(clamp(s, 0, m.duration) * MCI_UNITS_PER_SECOND)))
 		if m.playing { mci("play dtmedia") }
 	case .None:
 	}
@@ -222,7 +222,7 @@ seek_to :: proc(m: ^Net_Media, s: f64) {
 apply_volume :: proc(m: ^Net_Media) {
 	switch m.mode {
 	case .Player: media.player_set_volume(m.player, m.volume, m.muted)
-	case .System: mci(fmt.tprintf("setaudio dtmedia volume to %d", int(m.muted ? 0 : m.volume * 1000)))
+	case .System: mci(fmt.tprintf("setaudio dtmedia volume to %d", int(m.muted ? 0 : m.volume * MCI_VOLUME_FULL)))
 	case .None:
 	}
 }
@@ -230,8 +230,8 @@ apply_volume :: proc(m: ^Net_Media) {
 @(private = "file")
 time_text :: proc(s: f64) -> string {
 	t := int(max(s, 0))
-	if t >= 3600 { return fmt.tprintf("%d:%02d:%02d", t / 3600, t / 60 % 60, t % 60) }
-	return fmt.tprintf("%d:%02d", t / 60, t % 60)
+	if t >= SECONDS_PER_HOUR { return fmt.tprintf("%d:%02d:%02d", t / SECONDS_PER_HOUR, t / SECONDS_PER_MINUTE % MINUTES_PER_HOUR, t % SECONDS_PER_MINUTE) }
+	return fmt.tprintf("%d:%02d", t / SECONDS_PER_MINUTE, t % SECONDS_PER_MINUTE)
 }
 
 @(private = "file")

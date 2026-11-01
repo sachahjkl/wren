@@ -812,7 +812,7 @@ preview_html :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 			for k in lst.first ..< lst.last {
 				ld := ui.frame_new(Src_Draw)
 				ln := hr.raw[k]
-				if len(ln) > 2000 { ln = ln[:2000] }
+				if len(ln) > DEVTOOLS_PREVIEW_LINE_MAX { ln = ln[:DEVTOOLS_PREVIEW_LINE_MAX] }
 				ld.text, ld.n = dt_frame_str(ln), k + 1
 				ui.next({width = ui.fill(), height = ui.px(dtm.row), cursor = .Text})
 				rb := ui.build_box({}, fmt.tprintf("###phs%d", k))

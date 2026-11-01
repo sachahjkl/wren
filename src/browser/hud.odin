@@ -680,7 +680,7 @@ title_values :: proc(app: ^App, t: ^Tab) -> (v: [Title_Field]string) {
 		v[.Fps] = fmt.tprintf("%.0f", n.fps)
 		if n.frames > 0 { v[.Cpu] = fmt_ms(n.cpu_mean, c) }
 		if n.gpu_n > 0 { v[.Gpu] = fmt_ms(n.gpu_mean, c) }
-		if n.mem_valid { v[.Mem] = fmt.tprintf("%d", n.working_set / 1_000_000) }
+		if n.mem_valid { v[.Mem] = fmt.tprintf("%d", n.working_set / BYTES_PER_MB_DECIMAL) }
 	}
 	return
 }

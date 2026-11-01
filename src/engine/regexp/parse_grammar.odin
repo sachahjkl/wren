@@ -154,7 +154,7 @@ parse_decimal :: proc(p: ^Parser) -> (int, bool) {
 	for p.pos < len(p.src) && p.src[p.pos] >= '0' && p.src[p.pos] <= '9' {
 		v = v * 10 + int(p.src[p.pos] - '0')
 		p.pos += 1
-		if v > 1 << 30 { v = 1 << 30 } // clamp to avoid overflow; spec allows large but we cap
+		if v > QUANTIFIER_COUNT_CAP { v = QUANTIFIER_COUNT_CAP } // clamp to avoid overflow; spec allows large but we cap
 	}
 	return v, p.pos > start
 }

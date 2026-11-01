@@ -765,9 +765,9 @@ dt_hsplit :: proc(id: string) -> (dy: f32, started, dragging: bool) {
 // "1.5 kB" the way the panel writes sizes (powers of 1000, as the network panels of other browsers do).
 dt_size_text :: proc(n: i64) -> string {
 	switch {
-	case n < 1000: return fmt.tprintf("%d B", n)
-	case n < 1_000_000: return fmt.tprintf("%.1f kB", f64(n) / 1000)
-	case n < 1_000_000_000: return fmt.tprintf("%.2f MB", f64(n) / 1_000_000)
+	case n < BYTES_PER_KB_DECIMAL: return fmt.tprintf("%d B", n)
+	case n < BYTES_PER_MB_DECIMAL: return fmt.tprintf("%.1f kB", f64(n) / BYTES_PER_KB_DECIMAL)
+	case n < 1_000_000_000: return fmt.tprintf("%.2f MB", f64(n) / BYTES_PER_MB_DECIMAL)
 	}
 	return fmt.tprintf("%.2f GB", f64(n) / 1_000_000_000)
 }
@@ -777,10 +777,10 @@ dt_ms_text :: proc(ms: f32) -> string {
 	case ms < 0: return "\u2026"
 	case ms < 1: return fmt.tprintf("%.2f ms", ms)
 	case ms < 10: return fmt.tprintf("%.1f ms", ms)
-	case ms < 1000: return fmt.tprintf("%d ms", int(ms + 0.5))
-	case ms < 60000: return fmt.tprintf("%.2f s", ms / 1000)
+	case ms < MS_PER_SECOND: return fmt.tprintf("%d ms", int(ms + 0.5))
+	case ms < MS_PER_MINUTE: return fmt.tprintf("%.2f s", ms / MS_PER_SECOND)
 	}
-	return fmt.tprintf("%d:%02d min", int(ms / 60000), int(ms / 1000) % 60)
+	return fmt.tprintf("%d:%02d min", int(ms / MS_PER_MINUTE), int(ms / MS_PER_SECOND) % SECONDS_PER_MINUTE)
 }
 
 _ :: platform

@@ -71,7 +71,7 @@ canvas_shell_init :: proc(app: ^App) {
 		outline = proc(user: rawptr, face: u64, gid: u16) -> ^canvas2d.Path {
 			key := face << 16 | u64(gid)
 			if p, ok := outline_cache[key]; ok { return p }
-			limit := the_app != nil ? the_app.page_settings.canvas.glyph_cache_entries : 4096
+			limit := the_app != nil ? the_app.page_settings.canvas.glyph_cache_entries : CANVAS_GLYPH_CACHE_FALLBACK
 			if len(outline_cache) >= limit { canvas_outlines_clear() }
 			o: font.Outline
 			defer font.outline_destroy(&o)
@@ -117,7 +117,7 @@ canvas_shell_init :: proc(app: ^App) {
 				if !e.ok { return {}, false }
 				return canvas2d.Color_Glyph{px = e.px, w = e.w, h = e.h, ox = e.ox, oy = e.oy, uid = e.uid}, true
 			}
-			limit := the_app != nil ? the_app.page_settings.canvas.glyph_cache_entries : 4096
+			limit := the_app != nil ? the_app.page_settings.canvas.glyph_cache_entries : CANVAS_GLYPH_CACHE_FALLBACK
 			if len(color_glyph_cache) >= limit { canvas_color_glyphs_clear() }
 			cg, ok := font.color_glyph_rgba(page_render.fonts.state, font.Font_Id(face), gid, size, srgb)
 			e := new(Color_Glyph_Entry)

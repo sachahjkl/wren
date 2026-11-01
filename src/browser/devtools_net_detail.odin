@@ -963,7 +963,7 @@ detail_messages :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 				for k in lst.first ..< lst.last {
 					ld := ui.frame_new(Pane_Line)
 					ln := lines[k]
-					if len(ln) > 2000 { ln = ln[:2000] }
+					if len(ln) > DEVTOOLS_PREVIEW_LINE_MAX { ln = ln[:DEVTOOLS_PREVIEW_LINE_MAX] }
 					ld.text, ld.lang = dt_frame_str(ln), lang
 					ui.next({width = ui.fill(), height = ui.px(dtm.row), cursor = .Text})
 					lb := ui.build_box({}, fmt.tprintf("###nmp%d", k))
