@@ -2,6 +2,9 @@
 // navigation entry pages read responseStart from, resource entries made by the loader's observers, paint and event
 // timing, PerformanceObserver for them.
 
+const UNTIL_LOOK_MS = 10;
+const until = async cond => { while (!cond()) await sleep(UNTIL_LOOK_MS); };
+
 test("the navigation entry", () => {
   const list = performance.getEntriesByType("navigation");
   eq(list.length, 1, "one navigation entry");
@@ -114,7 +117,7 @@ test("long tasks", async () => {
   const o = new PerformanceObserver(list => { for (const e of list.getEntries()) seen.push(e); });
   o.observe({ type: "longtask" });
   await new Promise(r => setTimeout(() => { const t = performance.now(); while (performance.now() - t < 60) {} r(); }, 0));
-  await sleep(50);
+  await until(() => seen.length >= 1);   // (the entry is delivered when the observer's task comes: a section with none fails on its limit)
   ok(seen.length >= 1, "a task of 60 ms is a long task: " + seen.length);
   const e = seen[0];
   ok(e instanceof PerformanceLongTaskTiming && e instanceof PerformanceEntry, "a PerformanceLongTaskTiming");
