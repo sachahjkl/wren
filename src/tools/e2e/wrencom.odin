@@ -24,6 +24,8 @@ import "wb:remote/api"
 @(private = "file") HELP_WORDS :: "drives a running Wren"
 @(private = "file") UNKNOWN_WORDS :: "unknown command"
 @(private = "file") NOT_THE_LAUNCHER :: "somebody else's program"
+// What the system may take over a process killed with its graphics device (10 to 22 s measured with every processor busy); only ends a failing run.
+@(private = "file") LEAVES_THE_SYSTEM_MS :: 60_000
 
 // wren.exe and wren.com side by side, as Setup leaves them; the environment of a program there.
 @(private = "file")
@@ -159,5 +161,6 @@ the_launcher_dies_with_its_child :: proc(t: ^testing.T) {
 	defer api.process_release(&wren)
 	api.process_kill(&launcher.process)
 	e2e.wait_for(t, &wren, proc(p: ^api.Process) -> bool { return api.process_ended(p) }, "the Wren it started to be killed")
-	// (the system may take seconds more over a process killed with its graphics device: the folder of its profile goes with this test, whatever that takes)
+	// (its program is a copy in this test's folder, which goes only when the system has done with the process: seconds more under load)
+	testing.expect(t, api.process_wait(&wren, LEAVES_THE_SYSTEM_MS), "it leaves the system")
 }
