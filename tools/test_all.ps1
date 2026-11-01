@@ -11,11 +11,11 @@
 # it is taken; 8765 with -CI), the tools find it through WREN_TEST_BASE_PORT, and TEMP is build\tmp. Scripts that use
 # the real desktop or measure performance take desktop.lock / bench.lock themselves, around that part only (a step
 # that runs one of them waits there, not the whole run). S:\wb_wt\shared.lock is not used any more.
-# -Jobs n (default: a quarter of the processors, at most 4; 1 with -CI): steps run n at a time, each in its own
+# -Jobs n (default: three quarters of the processors, at most 12; 2 with -CI): steps run n at a time, each in its own
 # process, longest first (the durations of the last run, build\test_all_times.txt); each step that needs the test
 # server starts its own (a block of ports and counters of its own). A step's result is printed whole when it ends.
 # Steps that mostly wait (the HTTP cache, network policy, content blocker, WebSocket and image tests: seconds of wall clock for a fraction of a second of CPU)
-# are marked -Light: they do not use one of the -Jobs slots, up to -LightJobs (2) of them run beside the others.
+# are marked -Light: they do not use one of the -Jobs slots, up to -LightJobs (4; 2 with -CI) of them run beside the others.
 # -Jobs 1: one step after the other, one server for all, as before.
 # What to run (docs/testing.md):
 #   -Only <regex>  the steps whose name matches, with the steps that build what they use
@@ -26,7 +26,7 @@
 # Result cache (tools\test_cache.ps1): with -Quick on a developer's machine a step whose inputs (by content: sources, tools, flags, Odin's version) have passed already says CACHED and does not
 # run again. -NoCache (or WREN_TEST_CACHE=0) runs everything, and turns off the shared code cache of the test processes too. -Cache: on for this run as well (the CI's branches). Never with -Perf,
 # and never on a full run unless asked. A run ends with what failed, its log and how to run it again (also build\test_report.txt; every step's result: build\test_steps.tsv).
-param([switch]$Quick, [switch]$CI, [int]$StepTimeoutSec = 900, [int]$Jobs = 0, [int]$BasePort = 0, [int]$LightJobs = 2, [switch]$NoAsan, [switch]$Perf, [switch]$Ui,
+param([switch]$Quick, [switch]$CI, [int]$StepTimeoutSec = 900, [int]$Jobs = 0, [int]$BasePort = 0, [int]$LightJobs = 0, [switch]$NoAsan, [switch]$Perf, [switch]$Ui,
       [switch]$NoCache, [switch]$Cache, [string]$Only = '', [Alias('Failed')][switch]$RerunFailed, [switch]$Changed, [string]$Base = '', [switch]$List, [switch]$Profile)
 if ($Profile) {
     # (the same run, under the profiler; a CI step or a person reads the tables it ends with)
@@ -56,11 +56,14 @@ $slow = if ($CI) { 3 } else { 1 }
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
 . (Join-Path $PSScriptRoot 'test_env.ps1')
-# -Jobs 0 (the default): one step per core on a machine of ours (at most 8: each step may compile or start browsers of its own), two on the CI.
+# -Jobs 0 (the default): three steps per four processors on a machine of ours (at most 12: each step may compile or start browsers of its own), two on the CI.
 # Measured on the CI runner (4 vCPU) with the same steps: -Jobs 2: 514 s; -Jobs 3: 539 s and three checks failed under the load; -Jobs 4: 765 s
 # (the sum of the steps' durations went from 1 280 s to 2 580 s): the steps are not waiting, they compile and test, and four of them on four
 # cores slow each other down. More jobs only help where there are more cores than the steps use.
-if ($Jobs -le 0) { $Jobs = if ($CI) { 2 } else { [Math]::Max(1, [Math]::Min(8, [Environment]::ProcessorCount)) } }
+# On 16 threads, with the same steps and other runs on the machine: -Jobs 8 -LightJobs 2: 200 s, the steps use 7.3 processors; -Jobs 12 -LightJobs 4: 168 s, 8.8 processors, no check failed: most steps wait.
+$JobsPerProcessor = 0.75; $JobsMost = 12; $LightJobsDeveloper = 4; $LightJobsCI = 2
+if ($Jobs -le 0) { $Jobs = if ($CI) { 2 } else { [Math]::Max(1, [Math]::Min($JobsMost, [int]($JobsPerProcessor * [Environment]::ProcessorCount))) } }
+if ($LightJobs -le 0) { $LightJobs = if ($CI) { $LightJobsCI } else { $LightJobsDeveloper } }
 if ($BasePort -le 0) { $BasePort = if ($CI) { 8765 } else { Get-WrenPreferredBasePort $root } }
 if ($List) { $Jobs = 2 }   # (nothing starts, no server for all)
 $failed = 0
