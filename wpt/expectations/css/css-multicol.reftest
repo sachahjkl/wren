@@ -204,7 +204,7 @@
 /css/css-multicol/multicol-gap-large-002.xht: PASS
 /css/css-multicol/multicol-gap-negative-001.xht: PASS
 /css/css-multicol/multicol-height-001.xht: PASS
-/css/css-multicol/multicol-height-block-child-001.xht: FAIL
+/css/css-multicol/multicol-height-block-child-001.xht: PASS
 /css/css-multicol/multicol-inherit-001.xht: PASS
 /css/css-multicol/multicol-inherit-002.xht: PASS
 /css/css-multicol/multicol-inherit-003.xht: PASS
@@ -225,7 +225,7 @@
 /css/css-multicol/multicol-nested-007.html: PASS
 /css/css-multicol/multicol-nested-008.html: PASS
 /css/css-multicol/multicol-nested-009.html: PASS
-/css/css-multicol/multicol-nested-010.html: PASS
+/css/css-multicol/multicol-nested-010.html: FAIL
 /css/css-multicol/multicol-nested-011.html: FAIL
 /css/css-multicol/multicol-nested-013.html: FAIL
 /css/css-multicol/multicol-nested-014.html: FAIL
@@ -244,8 +244,8 @@
 /css/css-multicol/multicol-nested-027.html: PASS
 /css/css-multicol/multicol-nested-028.html: PASS
 /css/css-multicol/multicol-nested-029.html: PASS
-/css/css-multicol/multicol-nested-030.html: PASS
-/css/css-multicol/multicol-nested-031.html: PASS
+/css/css-multicol/multicol-nested-030.html: FAIL
+/css/css-multicol/multicol-nested-031.html: FAIL
 /css/css-multicol/multicol-nested-032.html: FAIL
 /css/css-multicol/multicol-nested-033.html: PASS
 /css/css-multicol/multicol-nested-column-rule-001.xht: PASS

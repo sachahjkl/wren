@@ -54,6 +54,7 @@ Ctx :: struct {
 	// multi-column layout and writing modes (multicol.odin, frames.odin)
 	mc_full_w: f32,                          // the width of the multi-column container being laid out: what spanners take
 	mc_rows:  map[i32]Mc_Rows,               // nested containers, in rows for the columns around them
+	mc_whole: map[i32]bool,                  // ... or kept whole for lack of room where they start
 	mc_nest_tries: int,
 	flow_clips: map[[2]i32]i32,              // display list: a clip in the flow, for a fragment -> its copy
 	frame_cs: map[Frame_Cs_Key]^style.Computed,

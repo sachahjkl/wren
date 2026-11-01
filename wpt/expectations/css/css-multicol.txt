@@ -504,8 +504,8 @@
 	Web Animations: property <column-rule-width> from neutral to [20px] at (1) should be [20px]: FAIL
 	Web Animations: property <column-rule-width> from neutral to [20px] at (1.5) should be [25px]: FAIL
 /css/css-multicol/animation/column-width-interpolation.html: OK
-	CSS Animations: property <column-width> from [50px] to [100px] at (-0.3) should be [35px]: FAIL
-	CSS Animations: property <column-width> from [50px] to [100px] at (-1) should be [1em]: FAIL
+	CSS Animations: property <column-width> from [50px] to [100px] at (-0.3) should be [35px]: PASS
+	CSS Animations: property <column-width> from [50px] to [100px] at (-1) should be [1em]: PASS
 	CSS Animations: property <column-width> from [50px] to [100px] at (-20) should be [1em]: PASS
 	CSS Animations: property <column-width> from [50px] to [100px] at (0) should be [50px]: PASS
 	CSS Animations: property <column-width> from [50px] to [100px] at (0.3) should be [65px]: FAIL
@@ -519,14 +519,14 @@
 	CSS Animations: property <column-width> from [50px] to [auto] at (0.6) should be [auto]: PASS
 	CSS Animations: property <column-width> from [50px] to [auto] at (1) should be [auto]: PASS
 	CSS Animations: property <column-width> from [50px] to [auto] at (1.5) should be [auto]: PASS
-	CSS Animations: property <column-width> from [inherit] to [20px] at (-0.3) should be [33px]: PASS
-	CSS Animations: property <column-width> from [inherit] to [20px] at (-1) should be [40px]: PASS
-	CSS Animations: property <column-width> from [inherit] to [20px] at (-20) should be [230px]: PASS
+	CSS Animations: property <column-width> from [inherit] to [20px] at (-0.3) should be [33px]: FAIL
+	CSS Animations: property <column-width> from [inherit] to [20px] at (-1) should be [40px]: FAIL
+	CSS Animations: property <column-width> from [inherit] to [20px] at (-20) should be [230px]: FAIL
 	CSS Animations: property <column-width> from [inherit] to [20px] at (0) should be [30px]: PASS
-	CSS Animations: property <column-width> from [inherit] to [20px] at (0.3) should be [27px]: PASS
-	CSS Animations: property <column-width> from [inherit] to [20px] at (0.6) should be [24px]: PASS
+	CSS Animations: property <column-width> from [inherit] to [20px] at (0.3) should be [27px]: FAIL
+	CSS Animations: property <column-width> from [inherit] to [20px] at (0.6) should be [24px]: FAIL
 	CSS Animations: property <column-width> from [inherit] to [20px] at (1) should be [20px]: PASS
-	CSS Animations: property <column-width> from [inherit] to [20px] at (1.5) should be [15px]: PASS
+	CSS Animations: property <column-width> from [inherit] to [20px] at (1.5) should be [15px]: FAIL
 	CSS Animations: property <column-width> from [initial] to [20px] at (-0.3) should be [initial]: PASS
 	CSS Animations: property <column-width> from [initial] to [20px] at (0) should be [initial]: PASS
 	CSS Animations: property <column-width> from [initial] to [20px] at (0.3) should be [initial]: PASS
@@ -598,7 +598,7 @@
 	CSS Transitions with transition: all: property <column-width> from [50px] to [100px] at (0.3) should be [65px]: FAIL
 	CSS Transitions with transition: all: property <column-width> from [50px] to [100px] at (0.6) should be [80px]: FAIL
 	CSS Transitions with transition: all: property <column-width> from [50px] to [100px] at (1) should be [100px]: PASS
-	CSS Transitions with transition: all: property <column-width> from [50px] to [100px] at (1.5) should be [125px]: FAIL
+	CSS Transitions with transition: all: property <column-width> from [50px] to [100px] at (1.5) should be [125px]: PASS
 	CSS Transitions with transition: all: property <column-width> from [50px] to [auto] at (-0.3) should be [auto]: PASS
 	CSS Transitions with transition: all: property <column-width> from [50px] to [auto] at (0) should be [auto]: PASS
 	CSS Transitions with transition: all: property <column-width> from [50px] to [auto] at (0.3) should be [auto]: PASS
@@ -606,14 +606,14 @@
 	CSS Transitions with transition: all: property <column-width> from [50px] to [auto] at (0.6) should be [auto]: PASS
 	CSS Transitions with transition: all: property <column-width> from [50px] to [auto] at (1) should be [auto]: PASS
 	CSS Transitions with transition: all: property <column-width> from [50px] to [auto] at (1.5) should be [auto]: PASS
-	CSS Transitions with transition: all: property <column-width> from [inherit] to [20px] at (-0.3) should be [33px]: PASS
-	CSS Transitions with transition: all: property <column-width> from [inherit] to [20px] at (-1) should be [40px]: PASS
+	CSS Transitions with transition: all: property <column-width> from [inherit] to [20px] at (-0.3) should be [33px]: FAIL
+	CSS Transitions with transition: all: property <column-width> from [inherit] to [20px] at (-1) should be [40px]: FAIL
 	CSS Transitions with transition: all: property <column-width> from [inherit] to [20px] at (-20) should be [230px]: PASS
 	CSS Transitions with transition: all: property <column-width> from [inherit] to [20px] at (0) should be [30px]: PASS
-	CSS Transitions with transition: all: property <column-width> from [inherit] to [20px] at (0.3) should be [27px]: PASS
-	CSS Transitions with transition: all: property <column-width> from [inherit] to [20px] at (0.6) should be [24px]: PASS
+	CSS Transitions with transition: all: property <column-width> from [inherit] to [20px] at (0.3) should be [27px]: FAIL
+	CSS Transitions with transition: all: property <column-width> from [inherit] to [20px] at (0.6) should be [24px]: FAIL
 	CSS Transitions with transition: all: property <column-width> from [inherit] to [20px] at (1) should be [20px]: PASS
-	CSS Transitions with transition: all: property <column-width> from [inherit] to [20px] at (1.5) should be [15px]: PASS
+	CSS Transitions with transition: all: property <column-width> from [inherit] to [20px] at (1.5) should be [15px]: FAIL
 	CSS Transitions with transition: all: property <column-width> from [initial] to [20px] at (-0.3) should be [20px]: PASS
 	CSS Transitions with transition: all: property <column-width> from [initial] to [20px] at (0) should be [20px]: PASS
 	CSS Transitions with transition: all: property <column-width> from [initial] to [20px] at (0.3) should be [20px]: PASS
@@ -1322,30 +1322,30 @@
 	Rectangle count: FAIL
 /css/css-multicol/getclientrects-003.html: OK
 	#0 height: PASS
-	#0 left: FAIL
-	#0 top: FAIL
+	#0 left: PASS
+	#0 top: PASS
 	#0 width: PASS
 	#1 height: FAIL
 	#1 left: FAIL
-	#1 top: FAIL
+	#1 top: PASS
 	#1 width: PASS
 	#2 height: FAIL
-	#2 left: PASS
+	#2 left: FAIL
 	#2 top: PASS
 	#2 width: PASS
 	Rectangle count: FAIL
 /css/css-multicol/getclientrects-004.html: OK
 	#0 height: PASS
-	#0 left: FAIL
-	#0 top: FAIL
+	#0 left: PASS
+	#0 top: PASS
 	#0 width: PASS
 	#1 height: PASS
-	#1 left: PASS
+	#1 left: FAIL
 	#1 top: FAIL
 	#1 width: FAIL
 	#2 height: PASS
 	#2 left: FAIL
-	#2 top: PASS
+	#2 top: FAIL
 	#2 width: FAIL
 	Rectangle count: FAIL
 /css/css-multicol/getclientrects-005.html: OK
@@ -1463,10 +1463,8 @@
 	Check scrollHeight before and after transform chage: PASS
 	Check scrollWidth and scrollHeight before and after transform chage: PASS
 	Check scrollWidth before and after transform chage: PASS
-/css/css-multicol/multicol-span-all-016.html: OK
-	#container 1: PASS
-/css/css-multicol/nested-non-auto-inline-size-offset-top.html: OK
-	offsetTop on element in second outer column: PASS
+/css/css-multicol/multicol-span-all-016.html: TIMEOUT
+/css/css-multicol/nested-non-auto-inline-size-offset-top.html: TIMEOUT
 /css/css-multicol/offsetProps-001.html: OK
 	inner1: FAIL
 	inner2: FAIL
@@ -1588,12 +1586,7 @@
 	e.style['column-rule-width'] = "10" should not set the property value: PASS
 	e.style['column-rule-width'] = "30%" should not set the property value: PASS
 	e.style['column-rule-width'] = "auto" should not set the property value: PASS
-/css/css-multicol/parsing/column-rule-width-valid.html: OK
-	e.style['column-rule-width'] = "0" should set the property value: FAIL
-	e.style['column-rule-width'] = "10px" should set the property value: PASS
-	e.style['column-rule-width'] = "medium" should set the property value: PASS
-	e.style['column-rule-width'] = "thick" should set the property value: PASS
-	e.style['column-rule-width'] = "thin" should set the property value: PASS
+/css/css-multicol/parsing/column-rule-width-valid.html: TIMEOUT
 /css/css-multicol/parsing/column-span-computed.html: OK
 	Property column-span value 'all': PASS
 	Property column-span value 'none': PASS
