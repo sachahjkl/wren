@@ -1,7 +1,7 @@
 // WebGL 1 and 2 (https://registry.khronos.org/webgl/specs/latest/) over the natives of web_webgl.odin, run the first time a script
 // of a window asks for a context or reads one of the interfaces. Here: the objects, Web IDL's conversions and overloads, and a
 // command buffer; calls are written to it and sent at the end of the task, or when something has to wait for an answer.
-// OpenGL ES's rules and the errors of getError are on the device's side (native/webgl: a thread per context); what is
+// OpenGL ES's rules and the errors of getError are on the device's side (native/webgl: a thread per context in the GPU process); what is
 // checked here is what only the realm can know: which object is whose. What it uses of the realm is taken here, so what the
 // page replaces later does not reach it.
 (function (native, global) {
@@ -14,6 +14,9 @@
   const canvasGetWidth = Object.getOwnPropertyDescriptor(HTMLCanvas.prototype, "width").get;
   const utf8 = new TD();
   const S = Symbol("webgl"), TOKEN = {};
+
+  // How long between tries to get a lost context back, and how many: a hung GPU process is ended after some 30 s (webgl.gpu_hang_ms).
+  const RESTORE_WAIT_MS = 1000, RESTORE_TRIES = 120;
 
   // ---- what ops.rs says ----
   // (which target a query goes by: a context has one of each active)
@@ -835,10 +838,21 @@
     s.preventedRestore = e.defaultPrevented;
   };
 
+  // Lost by anything but the page itself: a page that said it can (preventDefault) gets its context back when a device can be had.
+  // The GPU process may be gone, or be going, or over its limit on restarts: this tries again for a while.
   const contextLost = s => {
     if (s.lost) return;
     markLost(s);
     fireLost(s);
+    if (s.preventedRestore) restoreSoon(s, RESTORE_TRIES);
+  };
+
+  const restoreSoon = (s, tries) => {
+    setTimeoutFn(() => {
+      if (!s.lost) return;
+      restore(s);
+      if (s.lost && tries > 1) restoreSoon(s, tries - 1);
+    }, RESTORE_WAIT_MS);
   };
 
   // A context lost while the page was running: seen at the next call that waits.
