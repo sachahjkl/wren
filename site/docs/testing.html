@@ -259,8 +259,8 @@ FAIL unit tests: httpcache
 checks: compare two of them to see that a change lost nothing), <code>test_failed.txt</code> (what <code>-Failed</code> reads),
 <code>test_logs\</code> (the whole output of each step that did not pass), <code>test_all_times.txt</code> (durations, the order of the next run).</p>
 <h2 id="what-runs-in-what-order"><a class="anchor" href="#what-runs-in-what-order" aria-hidden="true">#</a>What runs, in what order</h2>
-<p>Every step is a process of its own; <code>-Jobs</code> of them run at a time (one per processor, at most 8; two with <code>-CI</code>), longest
-first by the durations of the last run. A step marked <code>-Light</code> mostly waits and takes no slot, up to <code>-LightJobs</code> of them.
+<p>Every step is a process of its own; <code>-Jobs</code> of them run at a time (three per four processors, at most 12; two with <code>-CI</code>), longest
+first by the durations of the last run. A step marked <code>-Light</code> mostly waits and takes no slot, up to <code>-LightJobs</code> of them (4; 2 with <code>-CI</code>).
 Each step that talks to the test server has a server of its own on a block of ports of its own, so several worktrees test
 side by side. What a step builds comes first (the steps named <code>build *</code>). <code>-Perf</code> and <code>-Ui</code> add the steps that depend on
 the machine's speed or on a desktop (<a href="https://github.com/sachahjkl/wren/blob/master/CONTRIBUTING.md">CONTRIBUTING</a>); a full run adds the check build, the
