@@ -42,8 +42,11 @@ threads_running :: proc(allocator := context.allocator) -> []string {
 	return out[:]
 }
 
-// Scheduling priority relative to the process. Background work below the UI thread keeps the window responsive when
-// every core is busy.
+// Scheduling priority. Below_Normal: below the interface thread, which keeps the window responsive when the browser's own work keeps every
+// core busy, and level with other programs. On Windows that is the system's normal priority under an interface thread raised above it
+// (thread_raise_interface), not the system's below normal: a thread there gets nothing while other programs keep every core busy, except a
+// slice every few seconds for having starved. A worker took 5 s to start, an image 14 s to decode, the disk cache's index longer than its
+// tests would wait; each looked like a hang of its own. Lowest: behind other programs, when asked for by name (workers.thread_priority).
 Thread_Priority :: enum i32 { Lowest = -2, Below_Normal = -1, Normal = 0 }
 
 // Starts `fn(data)` on a new thread with `stack_bytes` of reserved stack (0 = the executable's default). Nil on failure.

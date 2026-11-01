@@ -5,6 +5,8 @@
 const near = (got, want, tolerance, what) => ok(Math.abs(got - want) <= tolerance, what + " (got " + got + ", want " + want + ")");
 const RATE = 48000;
 const ANSWER_WAIT_MS = 10000;   // how long a loaded machine may take to run the blocks a test waits for
+const CLOCK_RUNS_SECONDS = 0.1;   // how far a running context's clock has to go
+const CLOCK_LOOK_MS = 10;         // how often it is looked at
 
 test("the interfaces", () => {
   for (const name of ["AudioContext", "OfflineAudioContext", "BaseAudioContext", "AudioNode", "AudioParam", "AudioBuffer", "GainNode", "OscillatorNode",
@@ -276,9 +278,10 @@ test("a running AudioContext, heard by an analyser", async () => {
   o.connect(a).connect(c.destination);
   o.start();
   const t0 = c.currentTime;
-  await sleep(300);
+  // (a clock that stands still is this test never ending; a fixed 300 ms was a statement about the machine: the render thread had not begun)
+  while (c.currentTime <= t0 + CLOCK_RUNS_SECONDS) await sleep(CLOCK_LOOK_MS);
   const t1 = c.currentTime;
-  ok(t1 > t0 + 0.1, "the clock runs: " + t0 + " -> " + t1);
+  ok(t1 > t0 + CLOCK_RUNS_SECONDS, "the clock runs: " + t0 + " -> " + t1);
   const freq = new Float32Array(a.frequencyBinCount);
   a.getFloatFrequencyData(freq);
   let best = 0;
