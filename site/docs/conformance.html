@@ -54,6 +54,7 @@
 <ul class="doc-links">
 <li><a href="../docs/architecture.html">How Wren fits together</a></li>
 <li><a href="../docs/shared-memory.html">SharedArrayBuffer between realms</a></li>
+<li><a href="../docs/frames.html">The DOM of a same-origin frame</a></li>
 <li><a href="../docs/crash-recovery.html">Crash recovery</a></li>
 <li><a href="../docs/crash-reports.html">Crash reports and symbols</a></li>
 </ul>
@@ -283,11 +284,11 @@ folder; it says nothing about the subtests Wren does not run yet.</p>
 <tr><td><code>css/css-transforms</code></td><td style="text-align:right">257</td><td style="text-align:right">685</td><td style="text-align:right">38%</td></tr>
 <tr><td><code>css/css-ui</code></td><td style="text-align:right">208</td><td style="text-align:right">309</td><td style="text-align:right">67%</td></tr>
 <tr><td><code>css/cssom</code></td><td style="text-align:right">2,454</td><td style="text-align:right">4,374</td><td style="text-align:right">56%</td></tr>
-<tr><td><code>custom-elements</code></td><td style="text-align:right">2,443</td><td style="text-align:right">3,690</td><td style="text-align:right">66%</td></tr>
+<tr><td><code>custom-elements</code></td><td style="text-align:right">2,566</td><td style="text-align:right">3,816</td><td style="text-align:right">67%</td></tr>
 <tr><td><code>dom/collections</code></td><td style="text-align:right">55</td><td style="text-align:right">60</td><td style="text-align:right">92%</td></tr>
 <tr><td><code>dom/events</code></td><td style="text-align:right">504</td><td style="text-align:right">918</td><td style="text-align:right">55%</td></tr>
 <tr><td><code>dom/lists</code></td><td style="text-align:right">187</td><td style="text-align:right">189</td><td style="text-align:right">99%</td></tr>
-<tr><td><code>dom/nodes</code></td><td style="text-align:right">4,044</td><td style="text-align:right">6,341</td><td style="text-align:right">64%</td></tr>
+<tr><td><code>dom/nodes</code></td><td style="text-align:right">7,644</td><td style="text-align:right">9,662</td><td style="text-align:right">79%</td></tr>
 <tr><td><code>domparsing</code></td><td style="text-align:right">364</td><td style="text-align:right">2,101</td><td style="text-align:right">17%</td></tr>
 <tr><td><code>element-timing</code></td><td style="text-align:right">10</td><td style="text-align:right">55</td><td style="text-align:right">18%</td></tr>
 <tr><td><code>encoding</code></td><td style="text-align:right">18,757</td><td style="text-align:right">791,318</td><td style="text-align:right">2%</td></tr>
@@ -299,15 +300,15 @@ folder; it says nothing about the subtests Wren does not run yet.</p>
 <tr><td><code>fetch/http-cache</code></td><td style="text-align:right">238</td><td style="text-align:right">280</td><td style="text-align:right">85%</td></tr>
 <tr><td><code>hr-time</code></td><td style="text-align:right">78</td><td style="text-align:right">88</td><td style="text-align:right">89%</td></tr>
 <tr><td><code>html/browsers/history</code></td><td style="text-align:right">59</td><td style="text-align:right">143</td><td style="text-align:right">41%</td></tr>
-<tr><td><code>html/browsers/sandboxing</code></td><td style="text-align:right">5</td><td style="text-align:right">31</td><td style="text-align:right">16%</td></tr>
-<tr><td><code>html/browsers/windows</code></td><td style="text-align:right">8</td><td style="text-align:right">81</td><td style="text-align:right">10%</td></tr>
+<tr><td><code>html/browsers/sandboxing</code></td><td style="text-align:right">14</td><td style="text-align:right">31</td><td style="text-align:right">45%</td></tr>
+<tr><td><code>html/browsers/windows</code></td><td style="text-align:right">11</td><td style="text-align:right">81</td><td style="text-align:right">14%</td></tr>
 <tr><td><code>html/cross-origin-embedder-policy</code></td><td style="text-align:right">64</td><td style="text-align:right">376</td><td style="text-align:right">17%</td></tr>
 <tr><td><code>html/cross-origin-opener-policy</code></td><td style="text-align:right">8</td><td style="text-align:right">442</td><td style="text-align:right">2%</td></tr>
 <tr><td><code>html/dom</code></td><td style="text-align:right">69,017</td><td style="text-align:right">72,271</td><td style="text-align:right">95%</td></tr>
 <tr><td><code>html/infrastructure/safe-passing-of-structured-data/shared-array-buffers</code></td><td style="text-align:right">29</td><td style="text-align:right">66</td><td style="text-align:right">44%</td></tr>
 <tr><td><code>html/semantics/document-metadata/the-link-element</code></td><td style="text-align:right">70</td><td style="text-align:right">147</td><td style="text-align:right">48%</td></tr>
 <tr><td><code>html/semantics/embedded-content/media-elements</code></td><td style="text-align:right">457</td><td style="text-align:right">741</td><td style="text-align:right">62%</td></tr>
-<tr><td><code>html/semantics/embedded-content/the-iframe-element</code></td><td style="text-align:right">70</td><td style="text-align:right">229</td><td style="text-align:right">31%</td></tr>
+<tr><td><code>html/semantics/embedded-content/the-iframe-element</code></td><td style="text-align:right">105</td><td style="text-align:right">229</td><td style="text-align:right">46%</td></tr>
 <tr><td><code>html/semantics/interactive-elements/the-dialog-element</code></td><td style="text-align:right">174</td><td style="text-align:right">438</td><td style="text-align:right">40%</td></tr>
 <tr><td><code>html/semantics/scripting-1</code></td><td style="text-align:right">2,268</td><td style="text-align:right">3,614</td><td style="text-align:right">63%</td></tr>
 <tr><td><code>html/webappapis/microtask-queuing</code></td><td style="text-align:right">14</td><td style="text-align:right">14</td><td style="text-align:right">100%</td></tr>
@@ -319,7 +320,7 @@ folder; it says nothing about the subtests Wren does not run yet.</p>
 <tr><td><code>paint-timing</code></td><td style="text-align:right">17</td><td style="text-align:right">77</td><td style="text-align:right">22%</td></tr>
 <tr><td><code>performance-timeline</code></td><td style="text-align:right">189</td><td style="text-align:right">226</td><td style="text-align:right">84%</td></tr>
 <tr><td><code>scheduler</code></td><td style="text-align:right">93</td><td style="text-align:right">155</td><td style="text-align:right">60%</td></tr>
-<tr><td><code>shadow-dom</code></td><td style="text-align:right">9,269</td><td style="text-align:right">9,851</td><td style="text-align:right">94%</td></tr>
+<tr><td><code>shadow-dom</code></td><td style="text-align:right">9,314</td><td style="text-align:right">9,850</td><td style="text-align:right">95%</td></tr>
 <tr><td><code>streams</code></td><td style="text-align:right">1,762</td><td style="text-align:right">2,065</td><td style="text-align:right">85%</td></tr>
 <tr><td><code>url</code></td><td style="text-align:right">10,946</td><td style="text-align:right">12,323</td><td style="text-align:right">89%</td></tr>
 <tr><td><code>urlpattern</code></td><td style="text-align:right">1,257</td><td style="text-align:right">1,636</td><td style="text-align:right">77%</td></tr>
@@ -334,7 +335,7 @@ folder; it says nothing about the subtests Wren does not run yet.</p>
 <tr><td><code>webstorage</code></td><td style="text-align:right">1,227</td><td style="text-align:right">1,284</td><td style="text-align:right">96%</td></tr>
 <tr><td><code>workers</code></td><td style="text-align:right">1,068</td><td style="text-align:right">1,323</td><td style="text-align:right">81%</td></tr>
 <tr><td><code>xhr</code></td><td style="text-align:right">878</td><td style="text-align:right">2,014</td><td style="text-align:right">44%</td></tr>
-<tr><td><strong>All measured folders</strong></td><td style="text-align:right"><strong>209,722</strong></td><td style="text-align:right"><strong>1,026,127</strong></td><td style="text-align:right"><strong>20%</strong></td></tr>
+<tr><td><strong>All measured folders</strong></td><td style="text-align:right"><strong>213,537</strong></td><td style="text-align:right"><strong>1,029,573</strong></td><td style="text-align:right"><strong>21%</strong></td></tr>
 </tbody>
 </table></div>
 <p>The <code>/workers/</code> folder has its own page, <a href="../docs/wpt-workers.html">WPT /workers/</a>, with what still fails and why.</p>

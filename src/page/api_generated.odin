@@ -34258,6 +34258,8 @@ _t_webaudio_WebAudio_workletStart :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r := WebAudio_workletStart(&c, _p0)
 	api_end(&c)
@@ -34273,6 +34275,8 @@ _t_webaudio_WebAudio_workletStop :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	WebAudio_workletStop(&c, _p0)
 	api_end(&c)
@@ -34286,10 +34290,12 @@ _t_webaudio_WebAudio_workletNode :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n5 := wasm.addr(&f, a[6])
 	_s5, _k5 := wasm.span(&f, wasm.addr(&f, a[5]), _n5)
 	if !_k5 { return wasm.trap_bounds(&f, "webaudio.WebAudio_workletNode", "output_channels") }
 	_p5 := _s5[:_n5]
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
 	_p2 := a[2].i32
@@ -34309,6 +34315,8 @@ _t_webaudio_WebAudio_workletParam :: proc "c" (env: rawptr, caller: wasm.Caller,
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
 	_p2 := a[2].i32
@@ -34328,6 +34336,7 @@ _t_webaudio_AudioWorkletRealm_sampleRate :: proc "c" (env: rawptr, caller: wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := AudioWorkletRealm_sampleRate(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -34342,6 +34351,7 @@ _t_webaudio_AudioWorkletRealm_frame :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := AudioWorkletRealm_frame(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
@@ -34356,6 +34366,7 @@ _t_webaudio_AudioWorkletRealm_layout :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "webaudio.AudioWorkletRealm_layout", "layout") }
@@ -34374,6 +34385,7 @@ _t_webaudio_AudioWorkletRealm_read :: proc "c" (env: rawptr, caller: wasm.Caller
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "webaudio.AudioWorkletRealm_read", "values") }
@@ -34391,6 +34403,7 @@ _t_webaudio_AudioWorkletRealm_write :: proc "c" (env: rawptr, caller: wasm.Calle
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_n1 := wasm.addr(&f, a[2])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "webaudio.AudioWorkletRealm_write", "values") }
@@ -34408,6 +34421,7 @@ _t_webaudio_AudioWorkletRealm_finish :: proc "c" (env: rawptr, caller: wasm.Call
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_p0 := a[0].i32
 	AudioWorkletRealm_finish(&c, _p0)
 	api_end(&c)
@@ -34421,6 +34435,7 @@ _t_webaudio_AudioWorkletRealm_dropped :: proc "c" (env: rawptr, caller: wasm.Cal
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_r := AudioWorkletRealm_dropped(&c)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
