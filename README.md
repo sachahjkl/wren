@@ -209,6 +209,8 @@ On Linux, download `wren-<version>-linux-x64.tar.gz`, unpack it and run `./wren`
 distribution (glibc 2.39 or later, libopus, libasound, libfontconfig; for a window, libwayland-client and libxkbcommon or libxcb, and a
 Vulkan or OpenGL driver).
 
+With Nix: `nix run github:sachahjkl/wren` runs the latest Linux release; `nix develop` gives what `build.sh` needs.
+
 The download is the program and nothing else. The demo and test pages (`examples\site`), the examples and the small test server
 (`tools\testserver`, Go) belong to the repository: clone it to get them (`tools\package.ps1 -Extras` also packs them as a zip to
 extract beside `wren.exe`).
