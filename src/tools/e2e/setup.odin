@@ -121,7 +121,8 @@ install_uninstall_standalone :: proc(t: ^testing.T) {
 	testing.expect(t, !os.exists(manifest) || os.exists(fmt.tprintf("%s.old", installed)), "the running copy is out of the way (renamed), the rest is gone")
 	testing.expect_value(t, e2e.quit(p), 0)
 	e2e.wait_gone(t, scratch.install)
-	testing.expect_value(t, len(e2e.files_with_prefix(base_temp(), fmt.tprintf("wren_cleanup_%d", p.wren.pid))), 0)
+	// (the helper batch file deletes itself last)
+	e2e.wait_gone(t, fmt.tprintf("%s/wren_cleanup_%d.cmd", base_temp(), p.wren.pid))
 
 	// C: "Use standalone"
 	options.exe = ""
