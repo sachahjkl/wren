@@ -19,7 +19,14 @@ Null_Audio :: struct {
 	played:   i64,      // of them, the frames the clock has gone through
 	frac:     f64,      // the part of a frame the clock has gone through
 	started:  bool,
-	at:       i64,      // mono_ns of the last update
+	at:       i64,      // the clock at the last update
+	test_clock: ^i64,   // a test's time (ns), read instead of mono_ns: what plays then does not depend on the machine
+}
+
+@(private = "file")
+null_audio_now :: proc(n: ^Null_Audio) -> i64 {
+	if n.test_clock != nil { return sync.atomic_load(n.test_clock) }
+	return mono_ns()
 }
 
 // WREN_AUDIO_OUTPUT=null: never the device, whatever the preference. Every test script sets it (tools\test_env.ps1): a test hears nothing.
@@ -40,7 +47,7 @@ null_audio_open :: proc(rate: int) -> ^Audio_Output {
 // The clock goes on by the time since the last update, over what was written and not played yet (with the lock).
 @(private = "file")
 null_audio_advance :: proc(n: ^Null_Audio) {
-	now := mono_ns()
+	now := null_audio_now(n)
 	if n.started {
 		due := f64(now - n.at) * f64(n.out.rate) / 1e9 + n.frac
 		whole := i64(due)
@@ -112,7 +119,7 @@ null_audio_flush :: proc(o: ^Audio_Output) {
 	n := (^Null_Audio)(o.impl)
 	sync.mutex_lock(&n.mu)
 	defer sync.mutex_unlock(&n.mu)
-	n.written, n.played, n.frac, n.at = 0, 0, 0, mono_ns()
+	n.written, n.played, n.frac, n.at = 0, 0, 0, null_audio_now(n)
 }
 
 @(private = "file")

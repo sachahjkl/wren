@@ -4,7 +4,6 @@ import "core:fmt"
 import "core:math"
 import "core:os"
 import "core:strings"
-import "core:time"
 import "toolkit:draw"
 import "toolkit:ui"
 import "wb:base"
@@ -37,9 +36,9 @@ Paint_Hold :: struct {
 	layout:    Layout,        // its last layout (painted as is); reused as the tab's next layout memory
 	scroll:    f32,
 	canvas:    css.Color,     // the old page's canvas
-	commit:    time.Tick,     // when the new document arrived
+	commit:    i64,           // when the new document arrived (the loop's clock, ns: shell_elapsed_ms)
 	committed: bool,          // ... it has (for this navigation)
-	started:   time.Tick,     // when the navigation started (held or not: time to first paint)
+	started:   i64,           // (the same) when the navigation started (held or not: time to first paint)
 	// the held page goes into the back/forward cache when the hold ends (bfcache.odin), with what the tab had of it
 	bf_entry:  u64,
 	zoom:      f32,
@@ -116,10 +115,18 @@ holdable :: proc(t: ^Tab, target: string) -> bool {
 	return true
 }
 
+// Milliseconds on the loop's clock since `at` (host.now_ns of it): what falls due through the loop reads that clock.
+shell_elapsed_ms :: proc(at: i64) -> f64 { return f64(shell_now_ns() - at) / NS_PER_MS_F }
+
+NS_PER_MS_F :: 1e6
+
+// The loop's clock. (A unit test's App is not the_app: there none, and time stands still.)
+shell_now_ns :: proc() -> i64 { return the_app != nil ? host.now_ns(&the_app.loop) : 0 }
+
 // Navigation of `t` to `target` starts: its page is held (or closed), and the tab is ready for a new navigation scope.
 // Closes the previous navigation scope in every case but the held one.
 hold_begin :: proc(app: ^App, t: ^Tab, target: string) {
-	t.hold.started = time.tick_now()
+	t.hold.started = host.now_ns(&app.loop)
 	t.hold.committed = false
 	if holdable(t, target) {
 		hold_release(t)   // a page already held goes: the current one painted after it
@@ -164,7 +171,7 @@ hold_destroy :: proc(t: ^Tab) {
 // `fallback` as the canvas. Returns true when the held frame was painted.
 hold_paint :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, r: draw.Rect, fallback: css.Color) -> bool {
 	h := &t.hold
-	if h.active && h.committed && f64(time.duration_milliseconds(time.tick_since(h.commit))) >= scheme_ui.timeout_ms {
+	if h.active && h.committed && shell_elapsed_ms(h.commit) >= scheme_ui.timeout_ms {
 		hold_release(t)
 	}
 	if !h.active || h.page == nil || !h.layout.valid || h.layout.mutations != h.page.doc.mutations {
@@ -188,7 +195,7 @@ hold_commit :: proc(t: ^Tab) {
 	h := &t.hold
 	if h.committed { return }
 	h.committed = true
-	h.commit = time.tick_now()
+	h.commit = shell_now_ns()
 	if h.active && !scheme_ui.cross_origin && t.page != nil && h.page != nil && !url.same_origin(t.page.env.origin, h.page.env.origin) { hold_release(t) }
 }
 
@@ -208,7 +215,7 @@ layout_contentful :: proc(l: ^Layout) -> bool {
 hold_wait_ms :: proc(t: ^Tab) -> f64 {
 	h := &t.hold
 	if !h.active || !h.committed { return -1 }
-	return max(scheme_ui.timeout_ms - f64(time.duration_milliseconds(time.tick_since(h.commit))), 0)
+	return max(scheme_ui.timeout_ms - shell_elapsed_ms(h.commit), 0)
 }
 
 // The first paint of the tab's new page happened now: the profile build records how long it took (WREN_PROF set:
@@ -217,8 +224,8 @@ hold_wait_ms :: proc(t: ^Tab) -> f64 {
 prof_first_paint :: proc(t: ^Tab) {
 	when PROFILE {
 		if !prof.on { return }
-		since_nav := time.duration_milliseconds(time.tick_since(t.hold.started))
-		since_doc := t.hold.committed ? time.duration_milliseconds(time.tick_since(t.hold.commit)) : -1
+		since_nav := shell_elapsed_ms(t.hold.started)
+		since_doc := t.hold.committed ? shell_elapsed_ms(t.hold.commit) : -1
 		path := strings.concatenate({prof.out, ".firstpaint.txt"}, context.temp_allocator)
 		f, err := os.open(path, {.Write, .Create, .Append}, os.Permissions_Default_File)
 		if err != nil { return }
@@ -255,7 +262,7 @@ loading_bar :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, r: draw.Rect) {
 	h := max(2 * scale, 1)
 	w := r.max.x - r.min.x
 	// indeterminate: a segment sweeping across, eased in time since the navigation started
-	ms := time.duration_milliseconds(time.tick_since(t.hold.started))
+	ms := shell_elapsed_ms(t.hold.started)
 	k := f32(math.mod(ms, 1400) / 1400)
 	seg := w * 0.3
 	x := r.min.x - seg + (w + seg) * k

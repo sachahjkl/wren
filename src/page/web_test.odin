@@ -2,7 +2,6 @@ package page
 
 import "core:strings"
 import "core:testing"
-import "core:time"
 import "wb:base"
 import "wb:dom"
 import "wb:host"
@@ -201,9 +200,8 @@ storage_quota_order_events_persistence :: proc(t: ^testing.T) {
 	// (the events arrive as tasks of the pages: a test running beside this one can hold them up for a moment)
 	pump_until :: proc(f: ^$F, before, want: u64) {
 		for _ in 0 ..< 2000 {
-			host.run_ready(&f.loop)
+			host.loop_wait(&f.loop, 1)   // (a task posted to the loop ends the wait)
 			if storage_events_delivered - before >= want { break }
-			time.sleep(time.Millisecond)
 		}
 		for _ in 0 ..< 3 { host.run_ready(&f.loop) }
 	}

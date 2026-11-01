@@ -12,7 +12,6 @@ package browser
 // (memory_trim_tick), and again only after it has drawn something. The next frame after a trim makes its layer targets
 // again, so the price is one slower first frame.
 
-import "core:time"
 import "toolkit:render"
 import "wb:config"
 
@@ -26,7 +25,7 @@ register_memory_prefs :: proc(p: ^config.Prefs) { config.register(p, MEMORY_PREF
 @(private = "file")
 Trim_State :: struct {
 	idle_ms: int,
-	active:  time.Tick,   // the last turn of the loop that had something to draw
+	active:  i64,         // (the loop's clock, ns) the last turn of the loop that had something to draw
 	done:    bool,        // trimmed since then
 	count:   int,
 }
@@ -36,28 +35,28 @@ trim_state: Trim_State
 
 memory_trim_settings :: proc(p: ^config.Prefs) {
 	trim_state.idle_ms = int(config.int_of(p, "browser.memory.trim_idle_ms"))
-	trim_state.active = time.tick_now()
+	trim_state.active = shell_now_ns()
 }
 
 // The longest the loop may sleep: it wakes when a trim is due.
 memory_trim_wake :: proc(timeout: int) -> int {
 	t := &trim_state
 	if t.idle_ms <= 0 || t.done { return timeout }
-	left := max(t.idle_ms - int(time.duration_milliseconds(time.tick_since(t.active))), 1)
+	left := max(t.idle_ms - int(shell_elapsed_ms(t.active)), 1)
 	return timeout <= 0 ? left : min(timeout, left)
 }
 
 // A frame that did something (input, a task, a page change, an animation) is under way: the idle time starts again.
 // (A wake that brought nothing does not come here: frame() returns before.)
 memory_trim_active :: proc() {
-	trim_state.active, trim_state.done = time.tick_now(), false
+	trim_state.active, trim_state.done = shell_now_ns(), false
 }
 
 // After every turn of the loop.
 memory_trim_tick :: proc(app: ^App) {
 	t := &trim_state
 	if t.idle_ms <= 0 || t.done { return }
-	if int(time.duration_milliseconds(time.tick_since(t.active))) >= t.idle_ms {
+	if int(shell_elapsed_ms(t.active)) >= t.idle_ms {
 		t.done = true
 		memory_trim(app)
 	}

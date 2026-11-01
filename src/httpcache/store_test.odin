@@ -5,11 +5,9 @@ import "core:os"
 import "core:strings"
 import "core:testing"
 import "core:time"
+import "wb:base"
 import "wb:host"
 import "wb:http"
-
-@(private = "file")
-EVICTED_FILES_SETTLE :: 50 * time.Millisecond   // for the writer thread to delete the files of evicted entries
 
 @(private = "file")
 test_settings :: proc() -> Settings {
@@ -231,9 +229,40 @@ test_disk_eviction :: proc(t: ^testing.T) {
 	testing.expect(t, find(c, "k9") != nil && find(c, "k0") == nil)
 	testing.expect(t, c.stats.evicted > 0)
 	// files of evicted entries are deleted
-	pump_until(&l, proc(d: rawptr) -> bool { return true }, nil)
-	time.sleep(EVICTED_FILES_SETTLE)
-	n := 0
-	for f in list_dir(dir) { if strings.has_suffix(f.name, ".wce") { n += 1 } }
-	testing.expect_value(t, n, len(c.entries))
+	Evicted :: struct { c: ^Cache, dir: string }
+	evicted := Evicted{c, dir}
+	count :: proc(dir: string) -> (n: int) {
+		for f in list_dir(dir) { if strings.has_suffix(f.name, ".wce") { n += 1 } }
+		return
+	}
+	pump_until(&l, proc(d: rawptr) -> bool { e := (^Evicted)(d); return count(e.dir) == len(e.c.entries) }, &evicted)
+	testing.expect_value(t, count(dir), len(c.entries))
+}
+
+// The index is written by a timer of the loop: on a virtual clock, when that time has gone by and not before, with no waiting.
+@(test)
+test_index_flush_falls_due_on_the_loops_clock :: proc(t: ^testing.T) {
+	FLUSH_MS :: 3_600_000
+	l: host.Loop
+	host.loop_init(&l)
+	defer host.loop_destroy(&l)
+	clock: host.Virtual_Clock
+	host.clock_virtual(&l, &clock)
+	dir := temp_dir("flush_clock")
+	defer wipe(dir)
+	s := test_settings()
+	defer settings_destroy(&s)
+	s.index_flush_ms = FLUSH_MS
+	c := create(&l, s, dir)
+	defer destroy(c)
+	testing.expect(t, pump_until(&l, is_ready_proc, c))
+	put(c, "k", "Cache-Control: max-age=60\r\n", "body")
+	testing.expect(t, pump_until(&l, writes_done, c))
+	testing.expect(t, c.index_dirty, "something to write")
+	testing.expect(t, c.flush_timer != base.NIL_HANDLE, "the timer is armed")
+	host.clock_advance(&l, (FLUSH_MS - 1) * time.Millisecond)
+	testing.expect(t, c.index_dirty, "not before its time")
+	host.clock_advance(&l, time.Millisecond)
+	testing.expect(t, !c.index_dirty, "written when it falls due")
+	testing.expect(t, c.flush_timer == base.NIL_HANDLE)
 }

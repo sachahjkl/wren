@@ -4,19 +4,16 @@ import "core:fmt"
 import "core:os"
 import "core:slice"
 import "core:sync"
-import "core:time"
 import "core:testing"
 import "wb:base"
 import "wb:host"
 
+@(private = "file") DECODER_TEST_IDLE_MS :: 3_600_000   // no thread ends by itself while the test runs...
+@(private = "file") DECODER_TEST_SHORT_IDLE_MS :: 1     // ...until it asks for that
+
 // The files come from `testserver -gen-images examples/site/images` (tools/testserver/images.go); run from the
 // repository root.
 
-// How many looks, and how long apart, the decoder threads get to end.
-@(private = "file")
-DECODERS_END_TRIES :: 300
-@(private = "file")
-DECODERS_END_POLL :: 10 * time.Millisecond
 
 @(private = "file")
 read :: proc(t: ^testing.T, name: string) -> []byte {
@@ -248,7 +245,7 @@ decoding_threads :: proc(t: ^testing.T) {
 	loop: host.Loop
 	host.loop_init(&loop)
 	defer host.loop_destroy(&loop)
-	decoder_start(1, idle_ms = 150)   // (idle threads end: checked at the end)
+	decoder_start(1, idle_ms = DECODER_TEST_IDLE_MS)   // (idle threads end: checked at the end)
 	defer decoder_stop()
 	st: Pool_Test
 	defer { for j in st.done { job_free(j) }; delete(st.done); delete(st.order) }
@@ -282,7 +279,14 @@ decoding_threads :: proc(t: ^testing.T) {
 	testing.expect(t, submit(port, job_make(.Probe, blob, opts())) == 0, "submitting to a closed port fails (and frees the job)")
 
 	// an idle thread ends (its stack goes back to the system); the next job starts one again
-	for i := 0; i < DECODERS_END_TRIES && decoder_threads() > 0; i += 1 { time.sleep(DECODERS_END_POLL) }
+	// (the idle time shortened now: what ran above must not have seen its thread end. The waiting thread looks again when woken.)
+	sync.mutex_lock(&dec.mu)
+	dec.idle_ms = DECODER_TEST_SHORT_IDLE_MS
+	sync.cond_broadcast(&dec.cond)
+	sync.mutex_unlock(&dec.mu)
+	Nothing :: struct {}
+	nothing: Nothing
+	testing.expect(t, base.await(&nothing, proc(_: ^Nothing) -> bool { return decoder_threads() == 0 }), "the idle thread ended")
 	testing.expect_value(t, decoder_threads(), 0)
 	port2 := port_open(&loop, proc(user: rawptr, j: ^Job) { append(&(^Pool_Test)(user).done, j) }, &st)
 	before := len(st.done)
@@ -298,13 +302,25 @@ decoding_threads :: proc(t: ^testing.T) {
 @(private = "file")
 wait_idle :: proc() {
 	// the decoding threads have finished what they ran and found nothing: running is empty and the queue too
-	for _ in 0 ..< 2000 {
+	Nothing :: struct {}
+	nothing: Nothing
+	base.await(&nothing, proc(_: ^Nothing) -> bool {
 		sync.mutex_lock(&dec.mu)
-		n := len(dec.running) + len(dec.queue)
-		sync.mutex_unlock(&dec.mu)
-		if n == 0 { return }
-		time.sleep(5 * time.Millisecond)
-	}
+		defer sync.mutex_unlock(&dec.mu)
+		return len(dec.running) + len(dec.queue) == 0
+	})
+}
+
+// A thread has taken a job, or there is none left to take.
+@(private = "file")
+wait_some_started :: proc() {
+	Nothing :: struct {}
+	nothing: Nothing
+	base.await(&nothing, proc(_: ^Nothing) -> bool {
+		sync.mutex_lock(&dec.mu)
+		defer sync.mutex_unlock(&dec.mu)
+		return len(dec.running) > 0 || len(dec.queue) == 0
+	})
 }
 
 // Queued when its port closes: the port freed it. The cache's cancel of it afterwards must not touch it.
@@ -436,7 +452,7 @@ jobs_cancelled_at_random_moments :: proc(t: ^testing.T) {
 		}
 		switch next(&rng) % 4 {
 		case 0: host.run_ready(&loop)                        // deliver what has finished
-		case 1: time.sleep(time.Duration(next(&rng) % 4) * time.Millisecond)   // let some start
+		case 1: wait_some_started()
 		case 2: for id in held { job_set_priority(id, 9) }
 		case: 
 		}

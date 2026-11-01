@@ -41,6 +41,8 @@ Shutdown :: struct {
 	warn_ms:    int,
 	force_ms:   int,
 	watchdog:   ^Thread,
+	tick:       time.Duration,
+	reports:    int,      // atomic: what the watchdog has written so far
 	done:       [160]Step_Time,   // the steps that ended, in order (the slowest are named when the teardown was slow)
 	done_count: int,
 }
@@ -66,7 +68,7 @@ fixed_copy :: proc(dst: []u8, s: string) -> int {
 }
 
 // `log_path` "" = stderr only. force_ms 0 = never force the exit. Call from the thread that tears down.
-shutdown_begin :: proc(log_path: string, warn_ms := SHUTDOWN_WARN_MS, force_ms := SHUTDOWN_FORCE_MS) {
+shutdown_begin :: proc(log_path: string, warn_ms := SHUTDOWN_WARN_MS, force_ms := SHUTDOWN_FORCE_MS, tick := SHUTDOWN_WATCHDOG_TICK) {
 	if sd.active { return }
 	sd.active, sd.stop = true, false
 	sd.start = time.tick_now()
@@ -74,7 +76,7 @@ shutdown_begin :: proc(log_path: string, warn_ms := SHUTDOWN_WARN_MS, force_ms :
 	sd.step_len, sd.joining_len = 0, 0
 	sd.log_path = strings.clone(log_path)
 	sd.log = strings.builder_make()
-	sd.warn_ms, sd.force_ms = warn_ms, force_ms
+	sd.warn_ms, sd.force_ms, sd.tick = warn_ms, force_ms, tick
 	// The process is ending and wants to be gone: it runs above normal priority from here on, so that every thread it has to wake
 	// (the ones it joins, the pipe's, the decoders', the compositor's helpers) is not made to queue behind other programs' busy
 	// loops. With every core saturated, each hand-over of the teardown cost up to several seconds (measured: 4 to 8 s in one step,
@@ -134,6 +136,9 @@ shutdown_end :: proc() {
 	sd = {}
 }
 
+// What the watchdog has reported of this teardown (a test waits for it).
+shutdown_reports :: proc() -> int { return sync.atomic_load(&sd.reports) }
+
 // thread_join is waiting for `name` ("" when it is done).
 @(private)
 shutdown_joining :: proc(name: string) {
@@ -156,7 +161,7 @@ shutdown_line :: proc(line: string) {
 shutdown_watchdog :: proc(_: rawptr) {
 	next_report := time.Duration(sd.warn_ms) * time.Millisecond
 	for !sync.atomic_load(&sd.stop) {
-		time.sleep(SHUTDOWN_WATCHDOG_TICK)
+		time.sleep(sd.tick)   // (the real clock on purpose: it watches a process whose loop may be what is stuck)
 		elapsed := time.tick_since(sd.start)
 		if elapsed < next_report || sync.atomic_load(&sd.stop) { continue }
 		next_report = elapsed + time.Second
@@ -171,6 +176,7 @@ shutdown_watchdog :: proc(_: rawptr) {
 		fmt.sbprint(&b, "; threads still running:")
 		for name in threads_running(context.temp_allocator) { fmt.sbprintf(&b, " %s", name) }
 		shutdown_line(strings.to_string(b))
+		sync.atomic_add(&sd.reports, 1)
 		if sd.force_ms > 0 && int(time.duration_milliseconds(elapsed)) >= sd.force_ms {
 			shutdown_line(fmt.tprintf("shutdown: still in step %q after %d ms: ending the process (the profile was saved before the teardown)", step, sd.force_ms))
 			shutdown_force_exit()

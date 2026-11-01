@@ -7,12 +7,11 @@ import "core:sync"
 import "core:testing"
 import "core:thread"
 import "core:time"
+import "wb:base"
 import "wb:config"
 import "wb:url"
 
-// A waiting operation is cancelled after this head start, and must have returned within the deadline.
-@(private="file")
-CANCEL_HEAD_START :: 50 * time.Millisecond
+// A waiting operation, once cancelled, must have returned within the deadline.
 @(private="file")
 CANCEL_DEADLINE_S :: 10
 
@@ -356,7 +355,9 @@ virtual_cancellation :: proc(t: ^testing.T) {
 	Job :: struct { c: ^Ceremony, pl: ^Platform }
 	job := Job{c, pl}
 	th := thread.create_and_start_with_data(&job, proc(data: rawptr) { j := (^Job)(data); run(j.c, j.pl) })
-	time.sleep(CANCEL_HEAD_START)
+	Nothing :: struct {}
+	nothing: Nothing
+	testing.expect(t, base.await(&nothing, proc(_: ^Nothing) -> bool { return virtual_delay_waiting() > 0 }), "the operation waits for its user")
 	start := time.tick_now()
 	cancel(pl, &c.cancel, .Abort)
 	thread.join(th)

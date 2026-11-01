@@ -30,9 +30,9 @@ Restore :: struct {
 	kind:      Restore_Kind,
 	entry:     u64,             // the entry being restored (its id in the tab's tree)
 	page:      rawptr,          // the document it is restored into
-	started:   time.Tick,
+	started:   i64,   // (the loop's clock, ns)
 	load_seen: bool,
-	load_at:   time.Tick,
+	load_at:   i64,
 	applied:   f32,             // the document's offset as last set here: anything else means someone else scrolled
 	applied_x: f32,
 	doc_done:  bool,
@@ -126,7 +126,7 @@ restore_begin :: proc(app: ^App, t: ^Tab, e: ^page.History_Entry, kind: Restore_
 	restore_stop(app, t)
 	if e == nil || !hcfg.restore || !e.persisted.saved { return }
 	r := &t.nav_state.restore
-	r.active, r.kind, r.entry, r.started = true, kind, e.id, time.tick_now()
+	r.active, r.kind, r.entry, r.started = true, kind, e.id, host.now_ns(&app.loop)
 	r.page = kind == .Same_Document ? rawptr(t.page) : nil
 	r.applied, r.applied_x = t.scroll, t.layout.doc_scroll_x
 	r.doc_done = e.scroll_manual
@@ -163,9 +163,9 @@ page_loaded :: proc(p: ^page.Page) -> bool {
 }
 
 // Whether the restoration ran out of time: the scrollers then go as far as they can.
-restore_expired :: proc(started, load_at: time.Tick, load_seen: bool, max_ms, after_ms: f64) -> bool {
-	if f64(time.duration_milliseconds(time.tick_since(started))) >= max_ms { return true }
-	return load_seen && f64(time.duration_milliseconds(time.tick_since(load_at))) >= after_ms
+restore_expired :: proc(now, started, load_at: i64, load_seen: bool, max_ms, after_ms: f64) -> bool {
+	if f64(now - started) / NS_PER_MS_F >= max_ms { return true }
+	return load_seen && f64(now - load_at) / NS_PER_MS_F >= after_ms
 }
 
 // A scroller that needs `want` and can go up to `limit` now: where to put it, and whether that is the end of it.
@@ -194,10 +194,10 @@ restore_tick :: proc(app: ^App, t: ^Tab, viewport: [2]f32) {
 		page.persisted_restore_controls(p, ps)
 	}
 	if !r.load_seen && page_loaded(p) {
-		r.load_seen, r.load_at = true, time.tick_now()
+		r.load_seen, r.load_at = true, host.now_ns(&app.loop)
 		restore_arm(app, t, hcfg.restore_after_ms)
 	}
-	expired := restore_expired(r.started, r.load_at, r.load_seen, hcfg.restore_max_ms, hcfg.restore_after_ms)
+	expired := restore_expired(host.now_ns(&app.loop), r.started, r.load_at, r.load_seen, hcfg.restore_max_ms, hcfg.restore_after_ms)
 	scale := t.layout.scale > 0 ? t.layout.scale : 1
 	if !r.doc_done {
 		// (an offset below 0 goes as far as the document reaches on that side)

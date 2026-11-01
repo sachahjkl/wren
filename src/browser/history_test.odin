@@ -2,7 +2,6 @@ package browser
 
 import "core:strings"
 import "core:testing"
-import "core:time"
 import "wb:page"
 
 // A scroller waits for enough room, unless the time is up: then it goes as far as it can.
@@ -16,11 +15,11 @@ restore_waits_for_height :: proc(t: ^testing.T) {
 	testing.expect(t, done && pos == 300)
 	pos, done = restore_step(0, 0, false)
 	testing.expect(t, done && pos == 0)
-	start := time.tick_now()
-	testing.expect(t, !restore_expired(start, {}, false, 10_000, 1000))
-	testing.expect(t, restore_expired(start, {}, false, 0, 1000))   // max_wait 0: at once
-	testing.expect(t, restore_expired(start, start, true, 10_000, 0))   // loaded, no grace
-	testing.expect(t, !restore_expired(start, time.tick_now(), true, 10_000, 5000))
+	start := i64(1)
+	testing.expect(t, !restore_expired(start, start, 0, false, 10_000, 1000))
+	testing.expect(t, restore_expired(start, start, 0, false, 0, 1000))   // max_wait 0: at once
+	testing.expect(t, restore_expired(start, start, start, true, 10_000, 0))   // loaded, no grace
+	testing.expect(t, !restore_expired(start, start, start, true, 10_000, 5000))
 }
 
 @(test)

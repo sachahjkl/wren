@@ -17,7 +17,6 @@ package browser
 
 import "core:fmt"
 import "core:strings"
-import "core:time"
 import "wb:base"
 import "wb:host"
 import "wb:page"
@@ -36,7 +35,7 @@ Bf_Entry :: struct {
 	image_sizes: u64,
 	web_fonts: int,
 	no_store: bool,
-	stored:   time.Tick,
+	stored:   i64,   // (the loop's clock, ns)
 	bytes:    int,              // its estimated memory
 }
 
@@ -129,7 +128,7 @@ bfcache_take :: proc(app: ^App, t: ^Tab) -> bool {
 	e := new(Bf_Entry)
 	e^ = Bf_Entry{tab = t.id, entry = id, nav = t.nav, page = t.page, layout = t.layout, scroll = t.scroll, zoom = t.zoom,
 		url = strings.clone(t.url), title = strings.clone(t.title), fragment_seen = strings.clone(t.fragment_seen),
-		image_sizes = t.image_sizes, web_fonts = t.web_fonts, no_store = t.nav_state.no_store, stored = time.tick_now()}
+		image_sizes = t.image_sizes, web_fonts = t.web_fonts, no_store = t.nav_state.no_store, stored = host.now_ns(&app.loop)}
 	page_fonts_transfer(&page_render.fonts, t, e)   // its web faces stay with its layout
 	t.layout = {}
 	t.web_font_page, t.web_fonts = nil, 0
@@ -149,7 +148,7 @@ bfcache_take_held :: proc(app: ^App, t: ^Tab) -> bool {
 	e := new(Bf_Entry)
 	e^ = Bf_Entry{tab = t.id, entry = id, nav = h.nav, page = h.page, layout = h.layout, scroll = h.scroll, zoom = h.zoom,
 		url = strings.clone(h.page.env.location.href), title = default_tab_title(h.page.env.location.href, context.allocator), fragment_seen = strings.clone(h.page.env.location.href),
-		image_sizes = h.image_sizes, web_fonts = h.web_fonts, stored = time.tick_now()}
+		image_sizes = h.image_sizes, web_fonts = h.web_fonts, stored = host.now_ns(&app.loop)}
 	page_fonts_transfer(&page_render.fonts, h, e)
 	if t.web_font_page == rawptr(h.page) {   // the next page has not taken the tab's faces over yet: they are this one's
 		page_fonts_transfer(&page_render.fonts, t, e)
@@ -185,13 +184,13 @@ bf_estimate :: proc(e: ^Bf_Entry) -> int {
 // Applies the limits: expired pages, pages of entries no longer in their tab's tree, then the oldest past the count
 // and the memory. Arms the timer of the next expiry.
 bfcache_evict :: proc(app: ^App) {
-	now := time.tick_now()
+	now := host.now_ns(&app.loop)
 	total := 0
 	for i := len(bf.entries) - 1; i >= 0; i -= 1 {
 		e := bf.entries[i]
 		t := tab_by_id(app, e.tab)
 		gone := t == nil || page.session_find(&t.session, e.entry) == nil || e.page.closed
-		expired := f64(time.duration_milliseconds(time.tick_diff(e.stored, now))) >= hcfg.bf_timeout_ms
+		expired := f64(now - e.stored) / NS_PER_MS_F >= hcfg.bf_timeout_ms
 		if gone || expired || !hcfg.bf_enabled {
 			ordered_remove(&bf.entries, i)
 			bf_entry_free(e, close = t != nil)
@@ -209,7 +208,7 @@ bfcache_evict :: proc(app: ^App) {
 	}
 	if bf.timer != base.NIL_HANDLE { host.clear_timer(&app.loop, bf.timer); bf.timer = base.NIL_HANDLE }
 	if len(bf.entries) > 0 {
-		left := hcfg.bf_timeout_ms - f64(time.duration_milliseconds(time.tick_diff(bf.entries[0].stored, now)))
+		left := hcfg.bf_timeout_ms - f64(now - bf.entries[0].stored) / NS_PER_MS_F
 		bf.timer = host.set_timer(&app.loop, max(left, 1) + 1, 0, proc(data: rawptr) {
 			bf.timer = base.NIL_HANDLE
 			bfcache_evict((^App)(data))

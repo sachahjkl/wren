@@ -7,17 +7,18 @@ import "core:sync"
 import "core:testing"
 import "core:thread"
 import "core:time"
+import "wb:base"
 
 @(private = "file") FAKE_GAIN :: f32(0.5)
 @(private = "file") STALL_LIMIT :: 200 * time.Millisecond
 // What a render that must not wait for a hung realm stays under, whatever the machine.
 @(private = "file") GENEROUS_LIMIT :: 30 * time.Second
-@(private = "file") FAKE_POLL :: 200 * time.Microsecond
 
 @(private = "file")
 Fake_Realm :: struct {
 	w:        ^Worklet,
 	stop:     bool,   // atomic
+	released: sync.Sema,   // a hung realm stays until this
 	hang:     bool,   // atomic: takes a request and never answers until stopped
 	throw_at: int,    // the call that fails (0: none)
 	calls:    int,
@@ -34,12 +35,12 @@ fake_realm_main :: proc(th: ^thread.Thread) {
 	for !sync.atomic_load(&r.stop) {
 		for worklet_take_dropped(r.w) >= 0 { r.dropped += 1 }
 		if !worklet_take(r.w) {
-			time.sleep(FAKE_POLL)
+			thread.yield()
 			continue
 		}
 		r.calls += 1
 		if sync.atomic_load(&r.hang) {
-			for !sync.atomic_load(&r.stop) { time.sleep(FAKE_POLL) }
+			sync.sema_wait(&r.released)
 			break
 		}
 		n := worklet_layout(r.w, values[:])
@@ -82,6 +83,7 @@ fake_start :: proc(r: ^Fake_Realm, g: ^Graph, limit := GENEROUS_LIMIT) -> ^threa
 @(private = "file")
 fake_stop :: proc(r: ^Fake_Realm, th: ^thread.Thread) {
 	sync.atomic_store(&r.stop, true)
+	sync.sema_post(&r.released)
 	thread.join(th)
 	thread.destroy(th)
 	worklet_realm_gone(r.w)
@@ -217,7 +219,7 @@ stopping_a_context_does_not_wait_for_a_hung_realm :: proc(t: ^testing.T) {
 	sync.unlock(&g.mu)
 	constant_into_worklet(g)
 	testing.expect(t, offline_start(g, RENDER_QUANTUM * 100), "it starts")
-	for sync.atomic_load(&r.calls) == 0 { time.sleep(FAKE_POLL) }
+	base.await(&r, proc(r: ^Fake_Realm) -> bool { return sync.atomic_load(&r.calls) != 0 })
 	start := time.tick_now()
 	graph_destroy(g)
 	took := time.tick_since(start)
