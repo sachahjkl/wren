@@ -480,7 +480,7 @@ Step 'a tab dragged onto another window''s tabs (src\tools\e2e\tab_drag_windows.
 } -Weight 10 -NoCI
 Step 'windows on monitors of different scales (src\tools\e2e\window_dpi.odin: the scale of one window of two changes: its scale alone, no scroll jump, devicePixelRatio and resolution queries; a tab moved between scales; no window at all)' {
     Invoke-WrenE2E 'build\e2e_test.exe' 'window_dpi'
-} -UiOnly   # (the mark of the script it was: the size the system suggested depended on the window's frame. Headless it has no frame, and could leave -UiOnly)
+}
 Step 'the docked developer tools while their splitter is dragged (src\tools\e2e\devtools_split.odin: for each panel and side, the first frame at a new width is the settled one; no window at all)' {
     Invoke-WrenE2E 'build\e2e_test.exe' 'devtools_split'
 } -NoCI
@@ -510,7 +510,7 @@ Step 'history end to end (src\tools\e2e\history.odin: a long page scrolled and f
 } -Weight 5 -NoCI
 Step 'downloads end to end on both network stacks (src\tools\e2e\download.odin: an attachment, a binary named by its URL, a slow body; no window shown)' {
     Invoke-WrenE2E 'build\e2e_test.exe' 'download'
-} -UiOnly   # (two of its three big files did not end in 30 s on the CI runner, on both stacks: it depends on the machine; run with -Ui)
+} -NoCI
 Step 'shared workers and module workers end to end (src\tools\e2e\workers.odin: two tabs share one worker, connect, ports, lifetime, close(), module imports; no window shown)' {
     Invoke-WrenE2E 'build\e2e_test.exe' 'workers'
 } -Weight 10 -NoCI
