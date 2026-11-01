@@ -16,6 +16,8 @@ import "wb:e2e"
 // A session of the check build takes minutes under load: this is what ends one that hangs.
 @(private = "file") SESSION_LIMIT :: 5 * time.Minute
 
+@(private = "file") CLEAN_REPORT :: " 0 leaked block(s), 0 byte(s); 0 bad free(s)"
+
 // {o}: the test server's origin.
 @(private = "file") SESSION :: `load
 open {o}/site/js.html
@@ -85,5 +87,6 @@ the_check_build_exits_a_scripted_session_with_nothing_allocated :: proc(t: ^test
 	p := e2e.program(t, {exe, "--profile", profile, "--pref", "blocker.update.enabled=false", "--pref", "blocker.welcome_toast=false", e2e.url(server, "/site/index.html")},
 		{env = {fmt.tprintf("WREN_MEMCHECK_SCRIPT=%s", script), "WREN_MEMTRACK_FAIL=1"}})
 	code := e2e.program_wait(p, SESSION_LIMIT)
-	testing.expectf(t, code == 0, "the check build exits clean: code %d (3: allocations left at exit)\n%s", code, e2e.read_text(fmt.tprintf("%s/memtrack.txt", profile)))
+	report := e2e.read_text(fmt.tprintf("%s/memtrack.txt", profile))
+	testing.expectf(t, code == 0 && strings.contains(report, CLEAN_REPORT), "the check build exits clean: code %d (3: allocations left at exit)\n%s", code, report)
 }
