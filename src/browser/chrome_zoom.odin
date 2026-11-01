@@ -10,7 +10,6 @@ import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:ui"
 import "wb:config"
-import "wb:i18n"
 
 CHROME_ZOOM_DEFAULT :: 1.0
 CHROME_ZOOM_MIN :: 0.5
@@ -29,7 +28,6 @@ chrome_zoom_step :: proc(app: ^App, dir: int) {
 	next := dir == 0 ? CHROME_ZOOM_DEFAULT : clamp(now + f32(dir) * CHROME_ZOOM_STEP, CHROME_ZOOM_MIN, CHROME_ZOOM_MAX)
 	if next == now { return }
 	dev_set_pref(app, "browser.ui.zoom", fmt.tprintf("%g", next))
-	ui.toast(.Good, i18n.tr("Interface %d %%"), int(next * 100 + 0.5))
 	request_frames(app, CHROME_ZOOM_FRAMES)
 }
 

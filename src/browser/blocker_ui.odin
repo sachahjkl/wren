@@ -79,6 +79,7 @@ shield_look :: proc(d: ^Shield_Draw, app: ^App, state: Shield_State, count: int)
 // two curves that meet in a sharp tip. Symmetric; 58 points, clockwise on the screen. Built from cubic curves in a unit box
 // (u across -1..1, v down 0..1).
 SHIELD_MAX :: 64
+@(private = "file") SHIELD_QUARTER :: 4   // a quarter of the way round the outline: the middle of a side
 
 @(private = "file")
 shield_points :: proc(pts: ^[SHIELD_MAX]draw.Vec2, c: draw.Vec2, w, h: f32) -> int {
@@ -104,10 +105,12 @@ shield_points :: proc(pts: ^[SHIELD_MAX]draw.Vec2, c: draw.Vec2, w, h: f32) -> i
 	return m
 }
 
-// The same shape pulled in by `d` all round (the inner edge of the outline).
+// The same shape pulled in by `d` all round (the inner edge of the outline); how many points it kept. Where the curve is tighter than
+// `d` the offset points would run backwards and fold over themselves, which an even-odd fill shows as specks: those are dropped.
 @(private = "file")
-shield_inset :: proc(out, pts: []draw.Vec2, d: f32) {
+shield_inset :: proc(out, pts: []draw.Vec2, d: f32) -> int {
 	n := len(pts)
+	moved: [SHIELD_MAX]draw.Vec2
 	for i in 0 ..< n {
 		p, a, b := pts[i], pts[(i + n - 1) % n], pts[(i + 1) % n]
 		e0, e1 := p - a, b - p
@@ -117,8 +120,31 @@ shield_inset :: proc(out, pts: []draw.Vec2, d: f32) {
 		ls := max(math.sqrt(s.x * s.x + s.y * s.y), 1e-4)
 		s /= ls
 		k := d / max(s.x * n0.x + s.y * n0.y, 0.4)
-		out[i] = p + s * k
+		moved[i] = p + s * k
 	}
+	m := 0
+	for i in 0 ..< n {
+		next := (i + 1) % n
+		along := pts[next] - pts[i]
+		step := moved[next] - moved[i]
+		if along.x * step.x + along.y * step.y > 0 { out[m] = moved[i]; m += 1 }
+	}
+	return m
+}
+
+// The outline as one even-odd polygon: the outer contour from point `from`, across to the inner one and back. The polygon clip
+// antialiases along every edge, so those two coinciding bridge edges show wherever they are drawn: shield_draw keeps them out of sight.
+@(private = "file")
+shield_ring :: proc(out: []draw.Vec2, outer, inner: []draw.Vec2, from: int) -> int {
+	nearest, best := 0, max(f32)
+	for p, i in inner {
+		e := p - outer[from]
+		if d := e.x * e.x + e.y * e.y; d < best { nearest, best = i, d }
+	}
+	k := 0
+	for i in 0 ..= len(outer) { out[k] = outer[(from + i) % len(outer)]; k += 1 }
+	for i in 0 ..= len(inner) { out[k] = inner[(nearest + len(inner) - i) % len(inner)]; k += 1 }
+	return k
 }
 
 // A stroke of `thick` between two points with round ends.
@@ -155,16 +181,20 @@ shield_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	} else {
 		ring: [2 * SHIELD_MAX + 4]draw.Vec2
 		inner: [SHIELD_MAX]draw.Vec2
-		shield_inset(inner[:n], pts[:n], thick)
-		k := 0
-		for i in 0 ..< n { ring[k] = pts[i]; k += 1 }
-		ring[k] = pts[0]; k += 1
-		ring[k] = inner[0]; k += 1
-		for i := n - 1; i >= 1; i -= 1 { ring[k] = inner[i]; k += 1 }
-		ring[k] = inner[0]; k += 1
-		draw.push_clip_polygon(dc, ring[:k], true)
-		draw.rect(dc, bounds, col)
-		draw.pop_clip(dc)
+		inner_n := shield_inset(inner[:], pts[:n], thick)
+		// Two halves split on a pixel, so that they neither overlap nor leave a gap, each with its bridge in the half it doesn't draw.
+		// The outline starts at the crest and goes clockwise: the first half of its points is the right side, the other the left.
+		split := math.round(c.x)
+		left := draw.Rect{bounds.min, {split, bounds.max.y}}
+		right := draw.Rect{{split, bounds.min.y}, bounds.max}
+		for half, i in ([2]draw.Rect{left, right}) {
+			k := shield_ring(ring[:], pts[:n], inner[:inner_n], i == 0 ? n / SHIELD_QUARTER : n - n / SHIELD_QUARTER)
+			draw.push_clip(dc, half)
+			draw.push_clip_polygon(dc, ring[:k], true)
+			draw.rect(dc, half, col)
+			draw.pop_clip(dc)
+			draw.pop_clip(dc)
+		}
 	}
 
 	// the glyph inside says the state
