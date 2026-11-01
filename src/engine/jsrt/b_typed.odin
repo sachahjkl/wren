@@ -1259,7 +1259,20 @@ ta_set :: proc(ctx: ^Context, this: Value, args: []Value, magic: i32) -> Value {
 		defer host_unpin_view(ctx, so, false)
 		if dab.host != nil {host_pin(rt, dab, dta.offset + int(off) * es, dta.offset + (int(off) + slen) * es)}
 		defer host_unpin_view(ctx, o, true)
+		// the same elements: their bytes, overlapping or not (a large array's values would not fit in the scratch memory)
+		if se == e {
+			if slen > 0 {intrinsics.mem_copy(elem_ptr(o, int(off)), elem_ptr(so, 0), slen * es)}
+			return UNDEFINED
+		}
+		if sab != dab {
+			for i in 0 ..< slen {
+				ev, _ := to_elem_val(ctx, e, read_elem(ctx, se, elem_ptr(so, i)))
+				write_elem(e, elem_ptr(o, int(off) + i), ev)
+			}
+			return UNDEFINED
+		}
 		vals := make([]Value, slen, tmp(rt))
+		if len(vals) < slen {return throw_range_error(ctx, "Array buffer allocation failed")}
 		for i in 0 ..< slen {vals[i] = read_elem(ctx, se, elem_ptr(so, i))}
 		for v, i in vals {
 			ev, _ := to_elem_val(ctx, e, v)
