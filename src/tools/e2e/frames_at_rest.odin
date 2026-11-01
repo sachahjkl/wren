@@ -72,11 +72,16 @@ a_timer_that_changes_nothing_draws_nothing_at_rest :: proc(t: ^testing.T) {
 // A focused field: the caret's toggle at its own period, one frame each, drawing only the caret's pixels, to the byte what a whole frame would be; a frame that is no
 // activity: no sample of the status bar. (`render.damage.verify` draws each frame both ways.)
 @(test)
-a_caret_draws_its_own_pixels_and_nothing_else :: proc(t: ^testing.T) { caret_draws_its_own_pixels(t, hidden = false) }
+a_caret_draws_its_own_pixels_and_nothing_else :: proc(t: ^testing.T) { caret_draws_its_own_pixels(t) }
+
+// The same where drawing takes long enough to show in the status bar's graph: the time of the last whole frame lands in it while the caret blinks. (0.1 ms on a GPU, 15 to 22 ms
+// here: on a GPU it is thinner than the thinnest part of a bar the graph draws, and this test would see nothing.)
+@(test)
+a_caret_draws_its_own_pixels_on_the_software_rasterizer :: proc(t: ^testing.T) { caret_draws_its_own_pixels(t, software = true) }
 
 // (`hidden`: on a real window's swap chain, real_window.odin.)
-caret_draws_its_own_pixels :: proc(t: ^testing.T, hidden: bool) {
-	s := e2e.start(t, {url = e2e.file_page(e2e.temp_folder(t), "field.html", FIELD_PAGE), prefs = {STATUS_WINDOW_PREF, CARET_PREF}, hidden = hidden})
+caret_draws_its_own_pixels :: proc(t: ^testing.T, hidden := false, software := false) {
+	s := e2e.start(t, {url = e2e.file_page(e2e.temp_folder(t), "field.html", FIELD_PAGE), prefs = {STATUS_WINDOW_PREF, CARET_PREF}, hidden = hidden, software = software})
 	e2e.wait_idle(s)
 	e2e.click(s, "#f")
 	e2e.wait_at_rest(s, moving_ok = true)

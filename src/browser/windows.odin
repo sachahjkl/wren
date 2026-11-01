@@ -77,6 +77,7 @@ Browser_Window :: struct {
 Window_Own :: struct {
 	security_chip_width: f32,                 // chrome.odin: the security chip's width in the address bar (measured while building)
 	status_left_width:   f32,                 // status_bar.odin: the left part's width in the frame before
+	status_drawn:        u64,                 // hud.changes when this window last drew
 	fullscreen:          Window_Fullscreen,   // fullscreen_shell.odin: a page's element full screen
 	full:                Window_Full,         // window_chrome.odin: the bars shown over the page in the window's full screen
 	cursor:              Page_Cursor_View,    // page_cursor.odin: the window's cursors made from page images, what it shows

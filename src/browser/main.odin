@@ -1317,11 +1317,13 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	dnd_paint(app, &app.dc)   // dnd_image.odin: the picture of a drag from the page, over everything
 	autoscroll_paint(app, &app.dc)   // page_autoscroll.odin: the autoscroll anchor marker, over everything
 	prof_end(.UI_Draw)
-	// nothing asked for more since (window_request cleared it), and the caret is where it was: only its pixels are drawn again
-	if caret := forms_view(app).caret_painted; wnd.errand == .Caret && caret.exact {
+	// nothing asked for more since (window_request cleared it), the caret is where it was, and the status bar is what this window last drew: only the caret's pixels are drawn
+	// again. (A frame's GPU time lands frames later, and another window's frames make samples too. Such a frame is whole, and no sample: it brings no more of them.)
+	if caret := forms_view(app).caret_painted; wnd.errand == .Caret && caret.exact && own.status_drawn == hud.changes {
 		draw.damage_begin(&app.dc)
 		draw.damage(&app.dc, caret.at)
 	}
+	own.status_drawn = hud.changes
 	prof_begin(.Submit)
 	draw.end_frame(&app.dc)   // GPU time: the renderer's timestamp queries around its submit (hud.odin, prof.odin)
 	prof_end(.Submit)
@@ -1374,6 +1376,10 @@ main :: proc() {
 
 // One browser in this process, on this thread: what its command line says, up to the first frame. nil: it could not start (said on the
 // console). The program's main and the end-to-end tests (src/e2e) come through here; a browser needs app_turn to go on and app_stop to end.
+// A headless window draws on the system's software rasterizer, whatever GPU the machine has: set by a program in this process before app_start, for a test
+// (e2e.Options.software) of what shows only there, where a frame's GPU time is many times longer.
+headless_software: bool
+
 app_start :: proc(args: []string) -> ^App {
 	app := new(App)
 	the_app = app
@@ -1520,7 +1526,7 @@ app_start :: proc(args: []string) -> ^App {
 	if headless_mode {
 		// no window: the renderer draws into an offscreen target of the window's size. Captures read it (render.capture_*,
 		// on both backends). It resizes with the window (window_resize_offscreen).
-		if !render.init_offscreen(&app.r, active_window(app).win.size) { fonts_preload_finish(app, preload); fmt.eprintln("offscreen renderer init failed"); return nil }
+		if !render.init_offscreen(&app.r, active_window(app).win.size, warp = headless_software) { fonts_preload_finish(app, preload); fmt.eprintln("offscreen renderer init failed"); return nil }
 	} else {
 		if !render.init_window(&app.r, active_window(app).win, active_window(app).win.size, transparent = fixed_surface) { fonts_preload_finish(app, preload); fmt.eprintln("renderer init failed"); return nil }
 	}

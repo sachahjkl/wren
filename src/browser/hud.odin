@@ -248,6 +248,7 @@ Hud :: struct {
 	cur:          Frame_Detail,        // the frame being measured
 	gpu_seen:     int,                 // renderer's timed-submit counter at the previous frame's end
 	gpu_applied:  int,
+	changes:      u64,                 // what the status bar shows changed: a sample, a late GPU time, the numbers (main.odin: a frame that draws less than all looks at it)
 	wasm_ns, wasm_calls: i64,
 	style_page:   rawptr,
 	style_pass, style_serial: u64,
@@ -403,6 +404,7 @@ hud_sample :: proc(app: ^App, now: f64) {
 		h.serial += 1
 		d.serial = h.serial
 		s := ui.history_push(&h.history, now, h.serial)
+		h.changes += 1
 		s.v[Hud_Series.Tasks] = f32(a[.Events] + a[.Loop] + a[.Input] + a[.Animation])
 		s.v[Hud_Series.Styles] = f32(a[.Styles])
 		s.v[Hud_Series.Layout] = f32(a[.Layout])
@@ -421,6 +423,7 @@ hud_sample :: proc(app: ^App, now: f64) {
 			s := ui.history_at(&h.history, ui.history_len(&h.history) - 1 - k)
 			if hd := &h.details[s.tag % u64(len(h.details))]; hd.serial == s.tag && hd.gpu_index == index {
 				s.v[Hud_Series.GPU] = ms
+				h.changes += 1
 				break
 			}
 		}
@@ -458,6 +461,7 @@ hud_refresh :: proc(app: ^App, now: f64) {
 	h := &hud
 	n := &h.nums
 	n^ = {at_ms = now}
+	h.changes += 1
 	since := now - h.cfg.window_ms
 	budget := hud_budget(app)
 	n.budget = budget
