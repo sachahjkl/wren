@@ -450,7 +450,7 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 	place_children(&c, plans[:], is_root)
 	if len(roots) > 0 || len(plans) > 0 {
 		group_items(&c, start_items)
-		l.doc_scroll_y = true
+		l.doc_scroll_y, l.doc_scrollable_x = true, true
 		propagate_overflow(&c)
 		mark_bfc_floats(&c, i32(start_boxes))   // a rebuilt root's ancestors keep theirs: at worst they cache less
 	}

@@ -440,12 +440,16 @@ Layout :: struct {
 	band_items:   [dynamic]u32,
 	node_box:     [dynamic]i32,            // handle index -> box
 	height:       f32,                     // document scroll height
-	doc_width:    f32,
+	doc_width:    f32,                     // right end of the document's horizontal scroll range
+	doc_min_x:    f32,                     // left end of it, <= 0: below 0 only with its origin at the end (doc_scroll_origin_end)
 	doc_scroll_y: bool,                    // false: the root element's overflow forbids scrolling the page
+	doc_scrollable_x: bool,                // likewise, across
+	doc_origin_end: bool,                  // doc_scroll_origin_end at the last pass
 	settings:     Settings,
 	stats:        [5]f32,                  // ms of the last run: box tree, layout, finishing, display list, spatial index
 	// persistent across layouts
 	scroll:       map[base.Handle]Vec2,    // scroll offset of each scroll container
+	doc_scroll_x: f32,                     // the page's horizontal scroll offset (device px): set_doc_scroll_x; views read it
 	arena:        virtual.Arena,           // strings made up by layout (transformed text, markers, generated content)
 	arena_ready:  bool,
 	scratch:      [dynamic]u32,

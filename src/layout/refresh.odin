@@ -191,6 +191,6 @@ refresh_overflow :: proc(l: ^Layout, vp: Vec2) -> bool {
 		if off, ok := l.scroll[b.node]; ok { l.scroll[b.node] = {clamp(off.x, 0, ms.x), clamp(off.y, 0, ms.y)} }
 	}
 	l.height = l.doc_scroll_y ? max(doc.max.y, vp.y) : vp.y
-	l.doc_width = max(doc.max.x, vp.x)
+	note_doc_extent_x(l, doc, vp)
 	return true
 }

@@ -298,7 +298,7 @@ build_tree :: proc(c: ^Ctx) {
 
 	// the root element or body passes its overflow to the viewport (CSS Overflow §3.3)
 	c.root_el, c.body_el = canvas_elements(d)
-	c.l.doc_scroll_y = true
+	c.l.doc_scroll_y, c.l.doc_scrollable_x = true, true
 
 	stack := make([dynamic]Frame, 0, 256, context.temp_allocator)
 	top := Frame{kind = .Visit, parent = root, mode = .Block, cb = root, fcb = root, depth = 0, ifc = NONE, deco_box = NONE}
@@ -349,6 +349,7 @@ propagate_overflow :: proc(c: ^Ctx) {
 	if pick == base.NIL_HANDLE { return }
 	cs := style.style_of(c.st, pick)
 	c.l.doc_scroll_y = cs.overflow_y != .Hidden && cs.overflow_y != .Clip
+	c.l.doc_scrollable_x = cs.overflow_x != .Hidden && cs.overflow_x != .Clip
 	if bi := box_index(c.l, pick); bi != NONE {
 		b := &c.l.boxes[bi]
 		b.flags -= {.Clips, .Scroll}

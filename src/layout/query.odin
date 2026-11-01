@@ -15,6 +15,9 @@ BAND_ENTRIES_PER_ITEM :: 15
 BAND_ENTRIES_FLOOR :: 4096
 // The shortest band, in CSS pixels, whatever the input asks.
 BAND_MIN_H :: 16
+// How far (device px) the document must go past the viewport for its scroll bar on that axis to show.
+@(private)
+DOC_BAR_MIN_OVERFLOW :: 0.5
 
 @(private)
 build_bands :: proc(l: ^Layout, band_h: f32) {
@@ -91,6 +94,7 @@ View :: struct {
 	visible:  []u32,
 	viewport: Vec2,
 	doc_scroll: f32,
+	doc_scroll_x: f32,    // doc_scroll_x_snapped when the view was made
 	transformed: bool,    // some space is under a transform
 }
 
@@ -158,7 +162,8 @@ sticky_offset :: proc(l: ^Layout, sp: ^Space, viewport: Vec2, doc_scroll: f32) -
 	} else if sp.frame == FIXED_SPACE {
 		view = Rect{{0, 0}, viewport}
 	} else {
-		view = Rect{{0, doc_scroll}, {viewport.x, doc_scroll + viewport.y}}
+		sx := doc_scroll_x_snapped(l)
+		view = Rect{{sx, doc_scroll}, {sx + viewport.x, doc_scroll + viewport.y}}
 	}
 	r, lim := sp.port, sp.limit
 	d: Vec2
@@ -182,10 +187,26 @@ sticky_offset :: proc(l: ^Layout, sp: ^Space, viewport: Vec2, doc_scroll: f32) -
 	return d
 }
 
-// `viewport`: device px; `doc_scroll`: the page's vertical scroll offset (device px). With `cull`, `visible` lists the
-// items intersecting the viewport.
+// The page's horizontal scroll offset, as views apply it: on the device pixel grid, as paint puts the vertical one (text
+// stays on the grid, a retained picture lands where direct drawing would).
+doc_scroll_x_snapped :: #force_inline proc(l: ^Layout) -> f32 { return math.round(l.doc_scroll_x) }
+
+// Moves the page horizontally (device px). The caller has clamped it to doc_scroll_x_range.
+set_doc_scroll_x :: proc(l: ^Layout, x: f32) {
+	if x == l.doc_scroll_x { return }
+	l.doc_scroll_x = x
+	if l.anchor_scroll { l.anchor_stale = true }
+}
+
+// The range of the page's horizontal scroll offset in a viewport `width` wide.
+doc_scroll_x_range :: #force_inline proc(l: ^Layout, width: f32) -> (lo, hi: f32) {
+	return l.doc_min_x, max(l.doc_width - width, 0)
+}
+
+// `viewport`: device px; `doc_scroll`: the page's vertical scroll offset (device px); the horizontal one is the layout's
+// (doc_scroll_x). With `cull`, `visible` lists the items intersecting the viewport.
 view_make :: proc(l: ^Layout, viewport: Vec2, doc_scroll: f32, cull := true, allocator := context.temp_allocator) -> View {
-	v := View{viewport = viewport, doc_scroll = doc_scroll}
+	v := View{viewport = viewport, doc_scroll = doc_scroll, doc_scroll_x = doc_scroll_x_snapped(l)}
 	ns := len(l.spaces)
 	v.offsets = make([]Vec2, ns, allocator)
 	v.mats = make([]Matrix, ns, allocator)
@@ -195,7 +216,7 @@ view_make :: proc(l: ^Layout, viewport: Vec2, doc_scroll: f32, cull := true, all
 	for i in 0 ..< ns {
 		sp := &l.spaces[i]
 		switch sp.kind {
-		case .Document: v.offsets[i] = {0, -doc_scroll}
+		case .Document: v.offsets[i] = {-v.doc_scroll_x, -doc_scroll}
 		case .Fixed: v.offsets[i] = {0, 0}
 		case .Scroll: v.offsets[i] = v.offsets[sp.parent] - scroll_offset_of(l, sp)
 		case .Sticky: v.offsets[i] = v.offsets[sp.parent] + sticky_offset(l, sp, viewport, doc_scroll)
@@ -488,8 +509,8 @@ box_of_view :: proc(l: ^Layout, v: ^View, node: base.Handle) -> (Box_Rects, bool
 	bi := box_index(l, node)
 	if bi == NONE || !l.valid { return {}, false }
 	b := &l.boxes[bi]
-	doc_scroll := v.doc_scroll
-	off := v.offsets[b.space] + {0, doc_scroll}
+	ds := Vec2{v.doc_scroll_x, v.doc_scroll}
+	off := v.offsets[b.space] + ds
 	r: Box_Rects
 	r.border = rect_shift(border_rect(b), off)
 	if b.kind == .Inline {
@@ -520,7 +541,6 @@ box_of_view :: proc(l: ^Layout, v: ^View, node: base.Handle) -> (Box_Rects, bool
 		// in a 3D plane: the corners go through the plane's projection (perspective divide included); `transform` is the
 		// affine map that fits the first three corners (a stand-in for callers that want a 2D matrix; `unproject` is the exact
 		// way back, see box_point_to_local), `bounds` the box of the quad (CSS Transforms 2: getBoundingClientRect)
-		ds := Vec2{0, doc_scroll}
 		corners := [4]Vec2{q.min, {q.max.x, q.min.y}, q.max, {q.min.x, q.max.y}}
 		r.transformed = true
 		first := true
@@ -546,12 +566,11 @@ box_of_view :: proc(l: ^Layout, v: ^View, node: base.Handle) -> (Box_Rects, bool
 		}
 		// the exact map: a document point -> viewport -> the plane's frame (perspective divide) -> the box's space
 		if !v.singular[b.space] {
-			fwd := h3_mul(h3_from_matrix(Matrix{1, 0, 0, 1, 0, ds.y}), h3_mul(plane_chain_h3(l, v, pl), h3_mul(h3_from_matrix(v.mats[b.space]), h3_from_matrix(Matrix{1, 0, 0, 1, 0, -ds.y}))))
+			fwd := h3_mul(h3_from_matrix(Matrix{1, 0, 0, 1, ds.x, ds.y}), h3_mul(plane_chain_h3(l, v, pl), h3_mul(h3_from_matrix(v.mats[b.space]), h3_from_matrix(Matrix{1, 0, 0, 1, -ds.x, -ds.y}))))
 			if inv, ok := h3_inverse(fwd); ok { r.projective, r.unproject = true, inv }
 		}
 	} else if !space_plain(l, b.space) {
 		// the view's matrix works on viewport coordinates; these rects are in document coordinates
-		ds := Vec2{0, doc_scroll}
 		m := v.singular[b.space] ? Matrix{} : mat_shifted(v.mats[b.space], ds)
 		r.transformed = true
 		r.transform = m
@@ -568,7 +587,7 @@ box_client_rects :: proc(l: ^Layout, v: ^View, node: base.Handle, out: ^[dynamic
 	bi := box_index(l, node)
 	if bi == NONE || !l.valid { return false }
 	b := &l.boxes[bi]
-	off := v.offsets[b.space] + {0, v.doc_scroll}
+	off := v.offsets[b.space] + Vec2{doc_scroll_x_snapped(l), v.doc_scroll}
 	own := make([dynamic]Rect, 0, 4, context.temp_allocator)
 	if b.kind == .Inline && b.ifc_root != NONE {
 		root := &l.boxes[b.ifc_root]
@@ -590,10 +609,10 @@ box_client_rects :: proc(l: ^Layout, v: ^View, node: base.Handle, out: ^[dynamic
 	return true
 }
 
-// The page's own scroll bar (viewport coordinates), when the page is taller than the viewport.
-doc_scrollbar :: proc(l: ^Layout, viewport: Vec2, doc_scroll: f32) -> (track, thumb: Rect, ok: bool) {
-	if !l.valid || !l.settings.document_scrollbar || l.height <= viewport.y + 0.5 { return }
-	// the viewport's bar follows the root element's scrollbar-width
+// How thick the page's own scroll bars are, and whether it has any: they follow the root element's scrollbar-width.
+@(private = "file")
+doc_scrollbar_width :: proc(l: ^Layout) -> (w: f32, ok: bool) {
+	if !l.valid || !l.settings.document_scrollbar { return }
 	thin := false
 	if len(l.boxes) > 0 {
 		if r := l.boxes[0].first; r != NONE && l.boxes[r].cs != nil {
@@ -603,16 +622,42 @@ doc_scrollbar :: proc(l: ^Layout, viewport: Vec2, doc_scroll: f32) -> (track, th
 			}
 		}
 	}
+	return l.settings.scrollbar_width * l.scale * (thin ? 0.5 : 1), true
+}
+
+// The page's own vertical scroll bar (viewport coordinates), when the page is taller than the viewport. With the
+// horizontal one too, each stops short of the corner.
+doc_scrollbar :: proc(l: ^Layout, viewport: Vec2, doc_scroll: f32) -> (track, thumb: Rect, ok: bool) {
+	w, shown := doc_scrollbar_width(l)
+	if !shown || l.height <= viewport.y + DOC_BAR_MIN_OVERFLOW { return }
 	s := l.scale
-	w := l.settings.scrollbar_width * s * (thin ? 0.5 : 1)
 	m := l.settings.scrollbar_margin * s
 	track = Rect{{viewport.x - w - m, m}, {viewport.x - m, viewport.y - m}}
+	if l.doc_width - l.doc_min_x > viewport.x + DOC_BAR_MIN_OVERFLOW { track.max.y -= w + m }
 	th := max((track.max.y - track.min.y) * viewport.y / l.height, l.settings.scrollbar_min_thumb * s)
 	th = min(th, track.max.y - track.min.y)
 	range := l.height - viewport.y
 	t := range > 0 ? clamp(doc_scroll / range, 0, 1) : 0
 	y := track.min.y + (track.max.y - track.min.y - th) * t
 	thumb = Rect{{track.min.x, y}, {track.max.x, y + th}}
+	return track, thumb, true
+}
+
+// The page's own horizontal scroll bar (viewport coordinates), when the page is wider than the viewport.
+doc_scrollbar_x :: proc(l: ^Layout, viewport: Vec2) -> (track, thumb: Rect, ok: bool) {
+	w, shown := doc_scrollbar_width(l)
+	extent := l.doc_width - l.doc_min_x
+	if !shown || extent <= viewport.x + DOC_BAR_MIN_OVERFLOW { return }
+	s := l.scale
+	m := l.settings.scrollbar_margin * s
+	track = Rect{{m, viewport.y - w - m}, {viewport.x - m, viewport.y - m}}
+	if l.height > viewport.y + DOC_BAR_MIN_OVERFLOW { track.max.x -= w + m }
+	th := max((track.max.x - track.min.x) * viewport.x / extent, l.settings.scrollbar_min_thumb * s)
+	th = min(th, track.max.x - track.min.x)
+	lo, hi := doc_scroll_x_range(l, viewport.x)
+	t := hi > lo ? clamp((doc_scroll_x_snapped(l) - lo) / (hi - lo), 0, 1) : 0
+	x := track.min.x + (track.max.x - track.min.x - th) * t
+	thumb = Rect{{x, track.min.y}, {x + th, track.max.y}}
 	return track, thumb, true
 }
 
