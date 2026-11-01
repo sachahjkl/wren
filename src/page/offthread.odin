@@ -143,6 +143,7 @@ Html_Job :: struct {
 	charset:    string,           // owned
 	default_encoding: string,     // owned
 	max_nodes:  int,
+	tag:        u32,              // of the page: its document keeps the handles of the one it replaces naming the same page
 	style_min:  int,
 	css_opt:    css.Parse_Options,
 	max_sheet:  int,
@@ -164,6 +165,7 @@ html_job_make :: proc(p: ^Page, data: []byte, decode: bool, header_charset: stri
 	j.charset = strings.clone(header_charset)
 	j.default_encoding = strings.clone(p.settings.html.default_encoding)
 	j.max_nodes = p.settings.html.max_nodes
+	j.tag = p.tag
 	j.style_min = p.settings.threads.inline_style_min_bytes
 	j.scripting = p.worker == nil && js_enabled(p)
 	if p.engine != nil {
@@ -186,7 +188,7 @@ html_work :: proc(data: rawptr) {
 	}
 	defer if j.decode { delete(text) }
 	j.out.decoded = true
-	doc := dom.document_create(nil)
+	doc := dom.document_create(nil, j.tag)
 	j.out.doc = doc
 	if j.xhtml {
 		// HTML "load an XML document": an XML document whose elements of the XHTML namespace are HTML elements; one

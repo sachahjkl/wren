@@ -2,13 +2,13 @@
 // Ported from native/js/runtime/frames.c; same wjr_* and wj_* symbols.
 //
 // Each document runs in its own engine instance: a window of another document cannot be an object of this realm. It is
-// a WindowProxy exotic object (Class_Exotic_Methods), named by the navigable's id, that reaches only what HTML lets a
+// a WindowProxy exotic object (Class_Exotic_Methods), named by the navigable's id, that reaches what HTML lets a
 // cross-origin window reach (postMessage, location as a setter, closed, frames, length, top, parent, opener, window,
-// self, close, focus, blur, indexed and named child frames), whatever the origins: two documents never share objects. A
-// same-origin frame also yields this realm's own ECMAScript built-ins and the platform's interface objects / functions
-// (for a pristine copy), never the frame's state. Here: those exotic objects and their cache, the Window and
-// HTMLIFrameElement members that return windows, and the delivery of messages posted by other documents
-// (wj_frames_message).
+// self, close, focus, blur, indexed and named child frames). A same-origin frame also yields its `document`, a Document
+// wrapper of this realm whose calls go to the frame's document (src/page/frames_access.odin), this realm's own
+// ECMAScript built-ins and the platform's interface objects / functions (for a pristine copy). Here: those exotic objects and
+// their cache, the Window and HTMLIFrameElement members that return windows, and the delivery of messages posted by other
+// documents (wj_frames_message).
 //
 // The calls into the browser are the declarations of api_decl/frames.odin, through jsb.host.
 package odin_glue
@@ -34,7 +34,6 @@ Window_State :: struct {
 	id:       Navigable,
 	location: wj.JSValue,   // the cross-origin Location (counted)
 	history:  wj.JSValue,   // an object with History.prototype and no brand (counted)
-	document: wj.JSValue,   // what a blank same-origin frame's `document` reads as (blank_frame_document; counted)
 }
 
 // The state of the cross-origin Location.
@@ -350,7 +349,6 @@ wp_finalizer :: proc "c" (rt: ^wj.Runtime, val: wj.JSValue) {
 	if w == nil { return }
 	wj.JS_FreeValueRT(rt, w.location)
 	wj.JS_FreeValueRT(rt, w.history)
-	wj.JS_FreeValueRT(rt, w.document)
 	wj.libc_free(w)
 }
 
@@ -360,7 +358,6 @@ wp_mark :: proc "c" (rt: ^wj.Runtime, val: wj.JSValue, mark: wj.Mark_Func) {
 	if w == nil { return }
 	wj.JS_MarkValue(rt, w.location, mark)
 	wj.JS_MarkValue(rt, w.history, mark)
-	wj.JS_MarkValue(rt, w.document, mark)
 }
 
 @(private = "file")
@@ -452,26 +449,22 @@ wp_builtin :: proc "contextless" (ctx: ^wj.Context, id: Navigable, c: cstring, p
 	return global_prop(ctx, c)
 }
 
-// A blank same-origin frame's document cannot be reached (it is another realm's), and a page often makes such a frame to measure,
-// sanitize or try things in. It gets an inert document of this realm instead, the same each time: what is written there works
-// for the script and shows nowhere. A frame with an address of its own stays out of reach (UNINITIALIZED: a SecurityError).
+// The Document of a frame the calling document may reach, a wrapper of this realm (the browser routes its calls to that document,
+// src/page/frames_access.odin); UNINITIALIZED when it may not (another origin, a sandbox: a SecurityError).
 @(private = "file")
-blank_frame_document :: proc "contextless" (ctx: ^wj.Context, w: ^Window_State) -> wj.JSValue {
+frame_document :: proc "contextless" (ctx: ^wj.Context, id: Navigable) -> wj.JSValue {
 	context = m4_context()
-	blank: bool
-	jsb.host(&blank, api_decl.Frame_isBlank, wj.wr_Frame_isBlank, w.id)
-	if !blank { return wj.UNINITIALIZED }
-	if wj.is_object(w.document) { return wj.JS_DupValue(ctx, w.document) }
-	doc := global_prop(ctx, "document")
-	defer wj.JS_FreeValue(ctx, doc)
-	impl := wj.JS_GetPropertyStr(ctx, doc, "implementation")
-	defer wj.JS_FreeValue(ctx, impl)
-	title := [1]wj.JSValue{wj.new_string(ctx, "")}
-	defer wj.JS_FreeValue(ctx, title[0])
-	made := wj.invoke(ctx, impl, "createHTMLDocument", title[:])
-	if wj.is_exception(made) { wj.drop_exception(ctx); return wj.UNINITIALIZED }
-	w.document = wj.JS_DupValue(ctx, made)
-	return made
+	doc: api_decl.Node
+	jsb.host(&doc, api_decl.Frame_documentOf, wj.wr_Frame_documentOf, id)
+	return doc != 0 ? wj.wj_wrap_node(ctx, u64(doc)) : wj.UNINITIALIZED
+}
+
+// The window of the document holding a node of another document (document.defaultView): null when it is gone.
+frames_window_of_node :: proc "contextless" (ctx: ^wj.Context, node: u64) -> wj.JSValue {
+	context = m4_context()
+	id: Navigable
+	jsb.host(&id, api_decl.Frame_ofDocument, wj.wr_Frame_ofDocument, api_decl.Node(node))
+	return window_of(ctx, id)
 }
 
 // Objects a same-origin frame's own would answer the same for: this realm's are given (a page takes a clean `navigator` or `crypto`
@@ -495,7 +488,12 @@ wp_pristine :: proc "contextless" (ctx: ^wj.Context, w: ^Window_State, c: cstrin
 		}
 		return wj.JS_DupValue(ctx, w.history)
 	case p == "document":
-		return blank_frame_document(ctx, w)
+		return frame_document(ctx, w.id)
+	case p == "frameElement":
+		context = m4_context()
+		el: api_decl.Node
+		jsb.host(&el, api_decl.Frame_elementOf, wj.wr_Frame_elementOf, w.id)
+		return wj.wj_wrap_node(ctx, u64(el))
 	case in_list(WP_SHARED[:], p):
 		return global_prop(ctx, c)
 	case in_list(WP_FUNCTIONS[:], p):
@@ -728,7 +726,7 @@ wp_new :: proc "contextless" (ctx: ^wj.Context, id: Navigable) -> wj.JSValue {
 	if wj.is_exception(obj) { return obj }
 	w := (^Window_State)(wj.libc_calloc(1, size_of(Window_State)))
 	if w == nil { wj.JS_FreeValue(ctx, obj); return wj.JS_ThrowOutOfMemory(ctx) }
-	w^ = {id = id, location = wj.UNDEFINED, history = wj.UNDEFINED, document = wj.UNDEFINED}
+	w^ = {id = id, location = wj.UNDEFINED, history = wj.UNDEFINED}
 	wj.JS_SetOpaque(obj, w)
 	wj.JS_SetPrototype(ctx, obj, wj.NULL)
 	return obj
@@ -823,9 +821,16 @@ wjr_Window_get_length :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj
 	return wj.new_uint32(ctx, self != 0 ? frame_length(self) : 0)
 }
 
-// A window of another document is never reachable as an element of this one: null (as a cross-origin parent gives).
+// The element holding this window's document, when this document may reach it: null across origins.
 @(export, link_name = "wjr_Window_get_frameElement")
-wjr_Window_get_frameElement :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj.NULL }
+wjr_Window_get_frameElement :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
+	context = m4_context()
+	self := self_id()
+	if self == 0 { return wj.NULL }
+	el: api_decl.Node
+	jsb.host(&el, api_decl.Frame_elementOf, wj.wr_Frame_elementOf, self)
+	return wj.wj_wrap_node(ctx, u64(el))
+}
 
 @(export, link_name = "wjr_Window_get_closed")
 wjr_Window_get_closed :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj.FALSE }
@@ -875,8 +880,7 @@ wjr_HTMLFrameElement_get_contentWindow :: proc "c" (ctx: ^wj.Context, this_val: 
 	return content_window(ctx, this_val, ifc("HTMLFrameElement"))
 }
 
-// The nested document is another realm's: not reachable as a Document of this one (null, as across origins), but for a blank
-// frame (blank_frame_document).
+// The nested document, when this document may reach it: null across origins.
 @(private = "file")
 content_document :: proc "contextless" (ctx: ^wj.Context, this_val: wj.JSValue, iface: i32) -> wj.JSValue {
 	win := content_window(ctx, this_val, iface)
@@ -884,10 +888,7 @@ content_document :: proc "contextless" (ctx: ^wj.Context, this_val: wj.JSValue, 
 	defer wj.JS_FreeValue(ctx, win)
 	w := wj.is_object(win) ? state_of(win) : nil
 	if w == nil { return wj.NULL }
-	context = m4_context()
-	same := frame_same_origin(w.id)
-	if !same { return wj.NULL }
-	d := blank_frame_document(ctx, w)
+	d := frame_document(ctx, w.id)
 	return wj.is_uninitialized(d) ? wj.NULL : d
 }
 @(export, link_name = "wjr_HTMLIFrameElement_get_contentDocument")

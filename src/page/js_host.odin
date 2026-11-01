@@ -36,12 +36,12 @@ Engine_reportException :: proc(c: ^Call, message: string, stack: string, source:
 // page (QuickJS does not verify bytecode it reads back), nor pin or unpin the nodes of the engine's wrappers.
 @(private)
 from_engine :: #force_inline proc(c: ^Call) -> bool {
-	r := c.page.js
+	r := c.caller.js
 	return r != nil && r.inst != nil && c.inst == r.inst
 }
 
 Engine_storeBytecode :: proc(c: ^Call, code: []u8) {
-	r := c.page.js
+	r := c.caller.js
 	if !from_engine(c) || !r.has_pending_key { return }
 	js.store(r.pending_key, code)
 	r.has_pending_key = false
@@ -83,7 +83,7 @@ Node_unpin :: proc(c: ^Call, node: u64) {
 }
 
 Node_treeRoots :: proc(c: ^Call, nodes: []u64, roots: []u8) {
-	d := call_doc(c)
+	own := call_doc(c)
 	n := min(len(nodes), len(roots) / 8)
 	out := ([^]u64le)(raw_data(roots))
 	// each walk stops at the first ancestor whose root is known already: linear in the size of the trees
@@ -91,6 +91,13 @@ Node_treeRoots :: proc(c: ^Call, nodes: []u64, roots: []u8) {
 	path := make([dynamic]base.Handle, context.temp_allocator)
 	for i in 0 ..< n {
 		root: u64
+		d := own
+		if t := base.handle_tag(nodes[i]); d != nil && t != c.tag {
+			// the wrapper of a node of another document: a realm that reached it holds it like one of its own (its
+			// listeners and properties last as long as the tree they are in); nothing once that document is gone
+			other := frames_reach_tag(c.caller, t)
+			d = other != nil ? other.doc : nil
+		}
 		if d != nil {
 			clear(&path)
 			cur := H(nodes[i])

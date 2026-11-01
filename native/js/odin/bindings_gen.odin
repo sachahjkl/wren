@@ -1929,6 +1929,7 @@ wjg_Document_elementFromPoint :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 	if !wj.wj_to_double(ctx, wj.arg(argc, argv, 0), &a0, true) { return wj.EXCEPTION }
 	a1: f64 = 0
 	if !wj.wj_to_double(ctx, wj.arg(argc, argv, 1), &a1, true) { return wj.EXCEPTION }
+	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
 	r := wj.wr_Document_elementFromPoint(auto_cast a0, auto_cast a1)
 	return wj.wj_wrap_node(ctx, r)
 }
@@ -1938,6 +1939,7 @@ wjg_Document_get_scrollingElement :: proc "c" (ctx: ^wj.Context, this_val: wj.JS
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
 	_ = self
+	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
 	r := wj.wr_Document_scrollingElement()
 	return wj.wj_wrap_node(ctx, r)
 }
@@ -1947,6 +1949,7 @@ wjg_Document_get_URL :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
 	_ = self
+	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
 	n := i32(wj.wr_Document_URL(wj.wj_scratch.data, wj.wj_scratch.cap))
 	if n > 0 && u32(n) > wj.wj_scratch.cap {
 		if wj.wj_scratch_grow(u32(n)) { n = i32(wj.wr_Document_URL(wj.wj_scratch.data, wj.wj_scratch.cap)) } else { n = -13 }
@@ -1960,6 +1963,7 @@ wjg_Document_get_documentURI :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
 	_ = self
+	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
 	n := i32(wj.wr_Document_documentURI(wj.wj_scratch.data, wj.wj_scratch.cap))
 	if n > 0 && u32(n) > wj.wj_scratch.cap {
 		if wj.wj_scratch_grow(u32(n)) { n = i32(wj.wr_Document_documentURI(wj.wj_scratch.data, wj.wj_scratch.cap)) } else { n = -13 }
@@ -1973,6 +1977,7 @@ wjg_Document_get_compatMode :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue)
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
 	_ = self
+	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
 	n := i32(wj.wr_Document_compatMode(wj.wj_scratch.data, wj.wj_scratch.cap))
 	if n > 0 && u32(n) > wj.wj_scratch.cap {
 		if wj.wj_scratch_grow(u32(n)) { n = i32(wj.wr_Document_compatMode(wj.wj_scratch.data, wj.wj_scratch.cap)) } else { n = -13 }
@@ -1986,6 +1991,7 @@ wjg_Document_get_characterSet :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
 	_ = self
+	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
 	n := i32(wj.wr_Document_characterSet(wj.wj_scratch.data, wj.wj_scratch.cap))
 	if n > 0 && u32(n) > wj.wj_scratch.cap {
 		if wj.wj_scratch_grow(u32(n)) { n = i32(wj.wr_Document_characterSet(wj.wj_scratch.data, wj.wj_scratch.cap)) } else { n = -13 }
@@ -1999,6 +2005,7 @@ wjg_Document_get_charset :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) ->
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
 	_ = self
+	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
 	n := i32(wj.wr_Document_charset(wj.wj_scratch.data, wj.wj_scratch.cap))
 	if n > 0 && u32(n) > wj.wj_scratch.cap {
 		if wj.wj_scratch_grow(u32(n)) { n = i32(wj.wr_Document_charset(wj.wj_scratch.data, wj.wj_scratch.cap)) } else { n = -13 }
@@ -2012,6 +2019,7 @@ wjg_Document_get_inputEncoding :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVal
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
 	_ = self
+	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
 	n := i32(wj.wr_Document_inputEncoding(wj.wj_scratch.data, wj.wj_scratch.cap))
 	if n > 0 && u32(n) > wj.wj_scratch.cap {
 		if wj.wj_scratch_grow(u32(n)) { n = i32(wj.wr_Document_inputEncoding(wj.wj_scratch.data, wj.wj_scratch.cap)) } else { n = -13 }
@@ -2025,6 +2033,7 @@ wjg_Document_createDocumentFragment :: proc "c" (ctx: ^wj.Context, this_val: wj.
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
 	_ = self
+	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
 	r: u64
 	st := wj.wr_Document_createDocumentFragment(&r)
 	if st < 0 { return wj.wj_throw_status(ctx, i32(st), "Document.createDocumentFragment") }
@@ -2039,6 +2048,7 @@ wjg_Document_createTextNode :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue,
 	if argc < 1 { return wj.wj_throw_arity(ctx, "Document.createTextNode", 1, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, 0, "") { return wj.EXCEPTION }
+	if !wj.wj_doc_target(self.handle) { wj.wj_str_free(ctx, &a0); return wj.wj_throw_gone(ctx) }
 	r: u64
 	st := wj.wr_Document_createTextNode((a0.ptr if a0.ptr != nil else wj.empty_ptr()), u32(a0.len), &r)
 	wj.wj_str_free(ctx, &a0)
@@ -2054,6 +2064,7 @@ wjg_Document_createCDATASection :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVa
 	if argc < 1 { return wj.wj_throw_arity(ctx, "Document.createCDATASection", 1, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, 0, "") { return wj.EXCEPTION }
+	if !wj.wj_doc_target(self.handle) { wj.wj_str_free(ctx, &a0); return wj.wj_throw_gone(ctx) }
 	r: u64
 	st := wj.wr_Document_createCDATASection((a0.ptr if a0.ptr != nil else wj.empty_ptr()), u32(a0.len), &r)
 	wj.wj_str_free(ctx, &a0)
@@ -2069,6 +2080,7 @@ wjg_Document_createComment :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, 
 	if argc < 1 { return wj.wj_throw_arity(ctx, "Document.createComment", 1, argc) }
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &a0, 0, "") { return wj.EXCEPTION }
+	if !wj.wj_doc_target(self.handle) { wj.wj_str_free(ctx, &a0); return wj.wj_throw_gone(ctx) }
 	r: u64
 	st := wj.wr_Document_createComment((a0.ptr if a0.ptr != nil else wj.empty_ptr()), u32(a0.len), &r)
 	wj.wj_str_free(ctx, &a0)
@@ -2084,6 +2096,7 @@ wjg_Document_adoptNode :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc
 	if argc < 1 { return wj.wj_throw_arity(ctx, "Document.adoptNode", 1, argc) }
 	a0: u64
 	if !wj.wj_to_handle(ctx, wj.arg(argc, argv, 0), 245, false, &a0, "Document.adoptNode: argument 1 is not of type 'Node'") { return wj.EXCEPTION }
+	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
 	r: u64
 	st := wj.wr_Document_adoptNode(a0, &r)
 	if st < 0 { return wj.wj_throw_status(ctx, i32(st), "Document.adoptNode") }
@@ -2095,6 +2108,7 @@ wjg_Document_get_fullscreenEnabled :: proc "c" (ctx: ^wj.Context, this_val: wj.J
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
 	_ = self
+	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
 	r := wj.wr_Document_fullscreenEnabled()
 	return wj.JS_NewBool(ctx, r != 0)
 }
@@ -2104,6 +2118,7 @@ wjg_Document_get_fullscreen :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue)
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
 	_ = self
+	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
 	r := wj.wr_Document_fullscreen()
 	return wj.JS_NewBool(ctx, r != 0)
 }
@@ -2113,6 +2128,7 @@ wjg_Document_exitFullscreen_body :: proc "c" (ctx: ^wj.Context, this_val: wj.JSV
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
 	_ = self
+	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
 	r := wj.wr_Document_exitFullscreen()
 	return wj.wj_promise_from_host(ctx, r, wj.HOST_UNDEFINED, nil, wj.UNDEFINED)
 }
@@ -2131,6 +2147,7 @@ wjg_Document_get_domain :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> 
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
 	_ = self
+	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
 	n := i32(wj.wr_Document_domain(wj.wj_scratch.data, wj.wj_scratch.cap))
 	if n > 0 && u32(n) > wj.wj_scratch.cap {
 		if wj.wj_scratch_grow(u32(n)) { n = i32(wj.wr_Document_domain(wj.wj_scratch.data, wj.wj_scratch.cap)) } else { n = -13 }
@@ -2144,6 +2161,7 @@ wjg_Document_get_referrer :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
 	_ = self
+	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
 	n := i32(wj.wr_Document_referrer(wj.wj_scratch.data, wj.wj_scratch.cap))
 	if n > 0 && u32(n) > wj.wj_scratch.cap {
 		if wj.wj_scratch_grow(u32(n)) { n = i32(wj.wr_Document_referrer(wj.wj_scratch.data, wj.wj_scratch.cap)) } else { n = -13 }
@@ -2157,6 +2175,7 @@ wjg_Document_get_cookie :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> 
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
 	_ = self
+	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
 	n := i32(wj.wr_Document_cookie_get(wj.wj_scratch.data, wj.wj_scratch.cap))
 	if n > 0 && u32(n) > wj.wj_scratch.cap {
 		if wj.wj_scratch_grow(u32(n)) { n = i32(wj.wr_Document_cookie_get(wj.wj_scratch.data, wj.wj_scratch.cap)) } else { n = -13 }
@@ -2172,6 +2191,7 @@ wjg_Document_set_cookie :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: 
 	_ = self
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, v, &a0, 0, "") { return wj.EXCEPTION }
+	if !wj.wj_doc_target(self.handle) { wj.wj_str_free(ctx, &a0); return wj.wj_throw_gone(ctx) }
 	r: i32
 	st := wj.wr_Document_cookie_set((a0.ptr if a0.ptr != nil else wj.empty_ptr()), u32(a0.len), &r)
 	wj.wj_str_free(ctx, &a0)
@@ -2184,6 +2204,7 @@ wjg_Document_get_lastModified :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
 	_ = self
+	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
 	n := i32(wj.wr_Document_lastModified(wj.wj_scratch.data, wj.wj_scratch.cap))
 	if n > 0 && u32(n) > wj.wj_scratch.cap {
 		if wj.wj_scratch_grow(u32(n)) { n = i32(wj.wr_Document_lastModified(wj.wj_scratch.data, wj.wj_scratch.cap)) } else { n = -13 }
@@ -2197,6 +2218,7 @@ wjg_Document_get_readyState :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue)
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
 	_ = self
+	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
 	n := i32(wj.wr_Document_readyState(wj.wj_scratch.data, wj.wj_scratch.cap))
 	if n > 0 && u32(n) > wj.wj_scratch.cap {
 		if wj.wj_scratch_grow(u32(n)) { n = i32(wj.wr_Document_readyState(wj.wj_scratch.data, wj.wj_scratch.cap)) } else { n = -13 }
@@ -2210,6 +2232,7 @@ wjg_Document_get_title :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> w
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
 	_ = self
+	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
 	n := i32(wj.wr_Document_title(wj.wj_scratch.data, wj.wj_scratch.cap))
 	if n > 0 && u32(n) > wj.wj_scratch.cap {
 		if wj.wj_scratch_grow(u32(n)) { n = i32(wj.wr_Document_title(wj.wj_scratch.data, wj.wj_scratch.cap)) } else { n = -13 }
@@ -2225,6 +2248,7 @@ wjg_Document_set_title :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: w
 	_ = self
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, v, &a0, 0, "") { return wj.EXCEPTION }
+	if !wj.wj_doc_target(self.handle) { wj.wj_str_free(ctx, &a0); return wj.wj_throw_gone(ctx) }
 	wj.wr_Document_set_title((a0.ptr if a0.ptr != nil else wj.empty_ptr()), u32(a0.len))
 	wj.wj_str_free(ctx, &a0)
 	return wj.UNDEFINED
@@ -2235,6 +2259,7 @@ wjg_Document_get_dir :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
 	_ = self
+	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
 	n := i32(wj.wr_Document_dir(wj.wj_scratch.data, wj.wj_scratch.cap))
 	if n > 0 && u32(n) > wj.wj_scratch.cap {
 		if wj.wj_scratch_grow(u32(n)) { n = i32(wj.wr_Document_dir(wj.wj_scratch.data, wj.wj_scratch.cap)) } else { n = -13 }
@@ -2250,6 +2275,7 @@ wjg_Document_set_dir :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.
 	_ = self
 	a0: wj.Str
 	if !wj.wj_to_str(ctx, v, &a0, 0, "") { return wj.EXCEPTION }
+	if !wj.wj_doc_target(self.handle) { wj.wj_str_free(ctx, &a0); return wj.wj_throw_gone(ctx) }
 	wj.wr_Document_set_dir((a0.ptr if a0.ptr != nil else wj.empty_ptr()), u32(a0.len))
 	wj.wj_str_free(ctx, &a0)
 	return wj.UNDEFINED
@@ -2260,6 +2286,7 @@ wjg_Document_get_currentScript :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVal
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
 	_ = self
+	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
 	r := wj.wr_Document_currentScript()
 	return wj.wj_wrap_node(ctx, r)
 }
@@ -2269,6 +2296,7 @@ wjg_Document_hasFocus :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc:
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
 	_ = self
+	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
 	r := wj.wr_Document_hasFocus()
 	return wj.JS_NewBool(ctx, r != 0)
 }
@@ -2286,6 +2314,7 @@ wjg_Document_hasStorageAccess_body :: proc "c" (ctx: ^wj.Context, this_val: wj.J
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
 	_ = self
+	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
 	r := wj.wr_Document_hasStorageAccess()
 	return wj.wj_promise_from_host(ctx, r, wj.HOST_BOOL, nil, wj.UNDEFINED)
 }
@@ -2300,6 +2329,7 @@ wjg_Document_requestStorageAccess_body :: proc "c" (ctx: ^wj.Context, this_val: 
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
 	_ = self
+	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
 	r := wj.wr_Document_requestStorageAccess()
 	return wj.wj_promise_from_host(ctx, r, wj.HOST_UNDEFINED, nil, wj.UNDEFINED)
 }
@@ -2314,6 +2344,7 @@ wjg_Document_get_fullscreenElement :: proc "c" (ctx: ^wj.Context, this_val: wj.J
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
 	_ = self
+	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
 	r := wj.wr_Document_fullscreenElement()
 	return wj.wj_wrap_node(ctx, r)
 }
@@ -2323,6 +2354,7 @@ wjg_Document_get_activeElement :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVal
 	self := wj.wj_this(ctx, this_val, 252)
 	if self == nil { return wj.EXCEPTION }
 	_ = self
+	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
 	r := wj.wr_Document_activeElement()
 	return wj.wj_wrap_node(ctx, r)
 }

@@ -4,6 +4,7 @@ package page
 // (frames.odin). The engine's side is native/js/runtime/frames.c and prelude/frames.js.
 
 import "core:strings"
+import "wb:base"
 import "wb:dom"
 import "wb:js"
 import "wb:url"
@@ -79,10 +80,37 @@ Frame_sameOrigin :: proc(c: ^Call, navigable: u64) -> bool {
 	return url.same_origin(c.page.env.origin, n.page.env.origin)
 }
 
-Frame_isBlank :: proc(c: ^Call, navigable: u64) -> bool {
+Frame_documentOf :: proc(c: ^Call, navigable: u64) -> u64 {
 	n := navigable_by_id(navigable)
-	if n == nil || n.page == nil || !url.same_origin(c.page.env.origin, n.page.env.origin) { return false }
-	return n.page.env.location.scheme == "about"
+	if n == nil || n.page == nil || !frames_may_reach(c.caller, n.page) { return 0 }
+	frames_make_live(n.page)
+	return u64(n.page.doc.root)
+}
+
+Frame_elementOf :: proc(c: ^Call, navigable: u64) -> u64 {
+	n := navigable_by_id(navigable)
+	if n == nil || n.parent == nil || !frames_may_reach(c.caller, n.parent) { return 0 }
+	frames_make_live(n.parent)
+	return u64(n.element)
+}
+
+// (the call was routed to the document of `node`: api_route)
+Frame_ofDocument :: proc(c: ^Call, node: u64) -> u64 {
+	if base.handle_tag(node) != c.tag { return 0 }
+	n := page_navigable(c.page)
+	return n != nil ? n.id : 0
+}
+
+Frame_target :: proc(c: ^Call, node: u64) -> bool {
+	if base.handle_tag(node) != c.tag { return false }
+	if c.routed { c.caller.route_next = c.tag }
+	return true
+}
+
+Frame_adoptNode :: proc(c: ^Call, node: u64, into: u64) -> ([]u8, Api_Error) {
+	out, ok := frames_adopt(c, H(node), base.handle_tag(into))
+	if !ok { return nil, fail(c, .Security, "SecurityError: the node cannot be moved between these documents.") }
+	return out, .None
 }
 
 Frame_postMessage :: proc(c: ^Call, navigable: u64, data: []u8, target_origin: string) -> Api_Error {

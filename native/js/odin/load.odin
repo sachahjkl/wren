@@ -59,6 +59,7 @@ write_markup :: proc "contextless" (ctx: ^wj.Context, this_val: wj.JSValue, argc
 		wj.JS_FreeCString(ctx, s)
 	}
 	if newline { buf[total] = '\n'; total += 1 }
+	if !wj.wj_doc_target(wj.obj_of(this_val).handle) { wj.libc_free(buf); return wj.wj_throw_gone(ctx) }
 	st := wj.wr_Document_writeMarkup(buf, u32(total))
 	wj.libc_free(buf)
 	if st < 0 {
@@ -89,6 +90,7 @@ wjr_Document_open :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32
 		wj.JS_FreeValue(ctx, wo)
 		return r
 	}
+	if !wj.wj_doc_target(wj.obj_of(this_val).handle) { return wj.wj_throw_gone(ctx) }
 	st := wj.wr_Document_openStream()
 	if st < 0 {
 		if st == i32(wj.wr_Error.Invalid_State) { return wj.wj_throw_dom(ctx, "InvalidStateError", "Failed to execute 'open' on 'Document': the document cannot be opened now.") }
@@ -118,6 +120,7 @@ wj_document_opening :: proc "c" () {
 @(export, link_name = "wjr_Document_close")
 wjr_Document_close :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	if wj.wj_this(ctx, this_val, if_document()) == nil { return wj.EXCEPTION }
+	if !wj.wj_doc_target(wj.obj_of(this_val).handle) { return wj.wj_throw_gone(ctx) }
 	st := wj.wr_Document_closeStream()
 	if st < 0 {
 		if st == i32(wj.wr_Error.Invalid_State) { return wj.wj_throw_dom(ctx, "InvalidStateError", "Failed to execute 'close' on 'Document': the document cannot be closed now.") }

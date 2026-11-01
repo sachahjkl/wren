@@ -67,6 +67,12 @@ Timer :: struct {
 
 Page :: struct {
 	scope:     ^base.Scope,
+	tag:       u32,            // in the handles of its nodes, events and host objects (base.pool_insert_tagged)
+	route_next:     u32,       // the tag the realm's next import acts on (Frame_target, frames_access.odin)
+	route_busy:     int,       // import calls of other realms acting on this document now
+	close_pending:  bool,      // closed while in use: closes once nothing runs in it (frames_access.odin)
+	frames_pending_parent: ^Page,   // the document it was a frame of, while it waits
+	foreign_owners: [dynamic]Foreign_Owner,   // realms of other documents with listeners or callbacks here
 	loop:      ^host.Loop,
 	loader:    ^fetch.Loader,
 	settings:  ^Settings,     // shared, owned by the shell; follows preference changes
@@ -128,6 +134,7 @@ Page :: struct {
 page_create :: proc(loop: ^host.Loop, loader: ^fetch.Loader, settings: ^Settings, parent: ^base.Scope, document_url: string, console: Console_Proc = nil, console_user: rawptr = nil) -> ^Page {
 	p := new(Page)
 	p.scope = base.scope_make("page", parent)
+	p.tag = base.tag_new()
 	p.loop = loop
 	p.loader = loader
 	p.settings = settings
@@ -144,8 +151,9 @@ page_create :: proc(loop: ^host.Loop, loader: ^fetch.Loader, settings: ^Settings
 	web_init(p)
 	timeline_attach(p)   // its requests become Resource Timing entries (timeline.odin)
 
-	p.doc = dom.document_create(p.scope)
+	p.doc = dom.document_create(p.scope, p.tag)
 	shadow_doc_attached(p)
+	p.dp.tag = p.tag
 	p.dp.invoke = invoke_listener
 	p.dp.user = p
 	p.dp.window = window_phase   // js_dom_events.odin: the Window after the document in the propagation path
@@ -158,6 +166,7 @@ page_create :: proc(loop: ^host.Loop, loader: ^fetch.Loader, settings: ^Settings
 // Closes the page and everything it owns. The pointer is dead afterwards.
 page_close :: proc(p: ^Page) {
 	if p == nil || p.closed { return }
+	if frames_close_later(p) { return }
 	base.scope_close(p.scope)
 }
 
@@ -165,6 +174,7 @@ page_close :: proc(p: ^Page) {
 page_cleanup :: proc(data: rawptr) {
 	p := (^Page)(data)
 	p.closed = true
+	frames_closed(p)
 	// requests first: their callbacks reference the page
 	it: u32
 	for _, f in base.pool_next(&p.fetches, &it) {
@@ -187,6 +197,7 @@ page_cleanup :: proc(data: rawptr) {
 	if p.engine != nil { styles_destroy(p) }
 	dom.dispatcher_destroy(&p.dp)
 	delete(p.instances)
+	delete(p.foreign_owners)
 	fetch.document_end(p.loader, &p.env)
 	fetch.environment_destroy(&p.env)
 	free(p)
@@ -394,6 +405,7 @@ instantiate :: proc(p: ^Page, image: []byte, name: string, opt: wasm.Options, fi
 
 @(private)
 instance_by_index :: proc(p: ^Page, i: u32) -> ^wasm.Instance {
+	if i & FOREIGN_OWNER != 0 { return foreign_owner_instance(p, i) }
 	if int(i) >= len(p.instances) { return nil }
 	inst := p.instances[i]
 	if inst == nil || inst.dead { return nil }

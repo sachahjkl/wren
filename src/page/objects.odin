@@ -74,7 +74,7 @@ objects_destroy :: proc(p: ^Page) {
 is_object :: #force_inline proc "contextless" (h: u64) -> bool { return h & OBJECT_TAG != 0 }
 
 object_create :: proc(p: ^Page, vt: ^Object_VTable, data: rawptr, owner: u32) -> u64 {
-	h, o := base.pool_insert(&p.objects.pool, Object{vt = vt, data = data, owner = owner})
+	h, o := base.pool_insert_tagged(&p.objects.pool, p.tag, Object{vt = vt, data = data, owner = owner})
 	o.self = h
 	return u64(h) | OBJECT_TAG
 }
@@ -93,7 +93,7 @@ object_data :: proc(p: ^Page, h: u64, vt: ^Object_VTable) -> rawptr {
 
 object_release :: proc(p: ^Page, h: u64) -> bool {
 	if !is_object(h) { return false }
-	o, ok := base.pool_remove(&p.objects.pool, base.Handle(h &~ OBJECT_TAG))
+	o, ok := base.pool_remove_tagged(&p.objects.pool, base.Handle(h &~ OBJECT_TAG))
 	if !ok { return false }
 	if o.vt != nil && o.vt.destroy != nil { o.vt.destroy(p, o.data) }
 	for l in o.listeners { delete(l.type) }
@@ -155,10 +155,10 @@ object_dispatch :: proc(p: ^Page, h: u64, proto: dom.Event) -> bool {
 	ev.target = base.Handle(h)
 	ev.current_target = base.Handle(h)
 	ev.phase = .At_Target
-	eh, _ := base.pool_insert(&p.dp.events, ev)
+	eh, _ := base.pool_insert_tagged(&p.dp.events, p.tag, ev)
 	defer {
 		if e := base.pool_get(&p.dp.events, eh); e != nil { delete(e.type); delete(e.data); delete(e.text) }
-		base.pool_remove(&p.dp.events, eh)
+		base.pool_remove_tagged(&p.dp.events, eh)
 	}
 	snapshot := make([dynamic]dom.Listener, context.temp_allocator)
 	for l in o.listeners { if !l.removed && l.type == proto.type { append(&snapshot, l) } }
@@ -191,7 +191,10 @@ object_dispatch :: proc(p: ^Page, h: u64, proto: dom.Event) -> bool {
 // Calling guests, microtasks
 
 // Every host -> guest call of the page goes through here. Returns false when the call trapped (already logged).
-call_guest :: proc(p: ^Page, inst: ^wasm.Instance, table_index: u32, argv: []u32) -> bool {
+call_guest :: proc(p_in: ^Page, inst: ^wasm.Instance, table_index: u32, argv: []u32) -> bool {
+	// a callback of another document's realm (a listener it added to a node here): its tasks, its checkpoint
+	p := p_in
+	if inst != nil && inst.user != p { if owner := (^Page)(inst.user); owner != nil { p = owner } }
 	if inst == nil || inst.dead || p.closed || realm_halted(p) { return false }
 	task := p.objects.depth == 0 ? timeline_task_begin(p) : 0   // a task of the page: long ones are Long Tasks (timeline.odin)
 	opened := p.objects.depth == 0 ? loaf_frame_begin(p) : false   // Long Animation Frames (timeline_loaf.odin)

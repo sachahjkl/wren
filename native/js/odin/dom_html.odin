@@ -173,6 +173,7 @@ action_get :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, iface: i32, attr
 	if o == nil { return wj.EXCEPTION }
 	if v, present := attr_read(o.handle, string(attr)); !present || len(v) == 0 {
 		s: string
+		if !wj.wj_doc_target(o.handle) { return wj.wj_throw_gone(ctx) }
 		jsb.host(&s, api_decl.Document_URL, wj.wr_Document_URL)
 		return wj.new_string_len(ctx, s)
 	}

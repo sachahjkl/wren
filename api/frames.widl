@@ -1,8 +1,9 @@
-/// Nested browsing contexts for JavaScript (src/page/frames.odin, frames_scripts.odin; native/js/runtime/frames.c and
-/// prelude/frames.js). A window of another document is named by its navigable's id: each document runs in its own
-/// engine instance, so another window is a WindowProxy of the calling realm that only reaches what HTML lets a
-/// cross-origin window reach (postMessage, location as a setter, closed, frames, length, top, parent, opener, window,
-/// self, close, focus, blur); documents never share objects, same origin or not.
+/// Nested browsing contexts for JavaScript (src/page/frames.odin, frames_scripts.odin, frames_access.odin;
+/// native/js/odin/frames.odin). A window of another document is named by its navigable's id: each document runs in its
+/// own engine instance, so another window is a WindowProxy of the calling realm. Across origins it reaches what HTML lets
+/// a cross-origin window reach (postMessage, location as a setter, closed, frames, length, top, parent, opener, window,
+/// self, close, focus, blur). Between documents of one origin, nodes are reached directly: every node handle names its
+/// document (base.pool_insert_tagged), the browser routes the call to it and checks the origin on each call.
 [Exposed=Window]
 module frames {
   /// The navigable of the calling document.
@@ -26,8 +27,22 @@ module frames {
   bool Frame_closed(u64 navigable);
   /// Whether its document is same origin with the calling one.
   bool Frame_sameOrigin(u64 navigable);
-  /// Whether its document is same origin and has no address of its own (about:blank, srcdoc).
-  bool Frame_isBlank(u64 navigable);
+  /// Its document's Document node, when the calling document may reach it (same origin); 0 otherwise.
+  /// iframe.contentDocument, otherWindow.document.
+  u64 Frame_documentOf(u64 navigable);
+  /// The frame element holding this navigable's document, when the calling document may reach it; 0 otherwise
+  /// (window.frameElement).
+  u64 Frame_elementOf(u64 navigable);
+  /// The navigable whose document holds `node`, a node the calling document may reach; 0 otherwise
+  /// (document.defaultView of another document).
+  u64 Frame_ofDocument(u64 node);
+  /// The next import of the calling realm that names no node acts on the document holding `node`
+  /// (document.createTextNode of another document). False when that document cannot be reached (gone, another origin).
+  bool Frame_target(u64 node);
+  /// Moves `node`, of another document, to the document holding `into` (DOM "adopt"), as lone nodes: the handles of the
+  /// nodes moved, each old one (u64) followed by its new one (the first pair is `node`'s). Security when one of the two
+  /// cannot be reached.
+  bytes Frame_adoptNode(u64 node, u64 into) raises;
   /// otherWindow.postMessage(message, targetOrigin): `data` is the message's structured serialization
   /// (runtime/clone.c); `target_origin` is "*", "/" or a URL. The message is delivered from a task of the target's,
   /// if its document's origin then matches. Syntax for an invalid target origin, Data_Clone for a message over

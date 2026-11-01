@@ -44,7 +44,7 @@ Emit :: enum { C, Odin, Glue }
 emit_mode: Emit = .Glue
 
 PAGE_HOST :: idl.Host_Config{
-	package_name = "page", wasm_import = "wb:wasm", call_type = "Call", begin = "api_begin", raise = "api_raise",
+	package_name = "page", wasm_import = "wb:wasm", call_type = "Call", begin = "api_begin", route = "api_route", unroute = "api_unroute", raise = "api_raise",
 	scrub = "utf8_scrub", invoke = "call_guest", call_export = "call_export", invoke_ctx = "^Page", collection = "wb:",
 }
 

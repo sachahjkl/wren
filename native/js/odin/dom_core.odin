@@ -211,6 +211,24 @@ wjr_Node_get_childNodes :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> 
 
 // getRootNode({composed}): shadow.c
 
+// A node given to an insertion into a node of another document moves there first (DOM "adopt"): `node` is then its new handle,
+// and its wrapper here has followed.
+@(private = "file")
+adopt_for :: proc(ctx: ^wj.Context, into: u64, node: ^u64) -> bool {
+	if wj.wj_same_doc(into, node^) { return true }
+	pairs: abi.Bytes
+	st := jsb.host(&pairs, api_decl.Frame_adoptNode, wj.wr_Frame_adoptNode, api_decl.Node(node^), api_decl.Node(into))
+	if st != .None { wj.wj_throw_status(ctx, i32(st), "adoptNode"); return false }
+	list := ([]u8)(pairs)
+	if len(list) < 16 { wj.wj_throw_dom(ctx, "HierarchyRequestError", "The node cannot be moved to this document."); return false }
+	first := (^u64)(&list[8])^
+	for i := 0; i + 16 <= len(list); i += 16 {
+		wj.wj_node_rekey((^u64)(&list[i])^, (^u64)(&list[i + 8])^)
+	}
+	node^ = first
+	return true
+}
+
 @(private = "file")
 Mutation :: enum { Append, Insert_Before, Replace, Remove }
 
@@ -228,18 +246,21 @@ mutate :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]
 		if argc < 1 { return wj.wj_throw_arity(ctx, "Node.appendChild", 1, argc) }
 		if parent == 0 { return wj.wj_throw_dom(ctx, "HierarchyRequestError", "This node type does not support this method.") }
 		if !wj.dom_node_arg(ctx, argv[0], &node, false, "appendChild") { return wj.EXCEPTION }
+		if !adopt_for(ctx, u64(parent), &node) { return wj.EXCEPTION }
 		st = jsb.host(&nothing, api_decl.Node_preInsert, wj.wr_Node_preInsert, parent, api_decl.Node(node), api_decl.Node(0))
 		if st != .None { return wj.wj_throw_status(ctx, i32(st), "Node.appendChild") }
 	case .Insert_Before:
 		if argc < 2 { return wj.wj_throw_arity(ctx, "Node.insertBefore", 2, argc) }
 		if !wj.dom_node_arg(ctx, argv[0], &node, false, "insertBefore") { return wj.EXCEPTION }
 		if !wj.dom_node_arg(ctx, argv[1], &child, true, "insertBefore") { return wj.EXCEPTION }
+		if !adopt_for(ctx, u64(parent), &node) { return wj.EXCEPTION }
 		st = jsb.host(&nothing, api_decl.Node_preInsert, wj.wr_Node_preInsert, parent, api_decl.Node(node), api_decl.Node(child))
 		if st != .None { return wj.wj_throw_status(ctx, i32(st), "Node.insertBefore") }
 	case .Replace:
 		if argc < 2 { return wj.wj_throw_arity(ctx, "Node.replaceChild", 2, argc) }
 		if !wj.dom_node_arg(ctx, argv[0], &node, false, "replaceChild") { return wj.EXCEPTION }
 		if !wj.dom_node_arg(ctx, argv[1], &child, false, "replaceChild") { return wj.EXCEPTION }
+		if !adopt_for(ctx, u64(parent), &node) { return wj.EXCEPTION }
 		st = jsb.host(&nothing, api_decl.Node_replaceChildChecked, wj.wr_Node_replaceChildChecked, parent, api_decl.Node(node), api_decl.Node(child))
 		if st != .None { return wj.wj_throw_status(ctx, i32(st), "Node.replaceChild") }
 		return wj.JS_DupValue(ctx, argv[1])
@@ -272,7 +293,9 @@ insert_items :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, arg
 	defer pack_free(&b)
 	for i in 0 ..< argc {
 		if n := wj.wj_unwrap(argv[i], ifc("Node")); n != nil && n.handle != 0 {
-			if !pack_u8(&b, 0) || !pack_le(&b, n.handle, 8) { return wj.JS_ThrowOutOfMemory(ctx) }
+			h := n.handle
+			if !adopt_for(ctx, o.handle, &h) { return wj.EXCEPTION }
+			if !pack_u8(&b, 0) || !pack_le(&b, h, 8) { return wj.JS_ThrowOutOfMemory(ctx) }
 			continue
 		}
 		s: wj.Str
@@ -424,6 +447,20 @@ page_document :: proc() -> api_decl.Document {
 	return d
 }
 
+// Is `doc` a page's document (the realm's, or one of another document it reaches), not a document of its own (createHTMLDocument's,
+// DOMParser's)? For another page's, the next import acts on it (wj_doc_target): this comes right before it.
+@(private = "file")
+is_page_document :: proc(doc: api_decl.Document) -> bool {
+	if doc == page_document() { return true }
+	if !wj.wj_is_foreign(u64(doc)) { return false }
+	nav: api_decl.Navigable
+	root: api_decl.Node
+	jsb.host(&nav, api_decl.Frame_ofDocument, wj.wr_Frame_ofDocument, api_decl.Node(doc))
+	if nav != 0 { jsb.host(&root, api_decl.Frame_documentOf, wj.wr_Frame_documentOf, nav) }
+	if u64(root) != u64(doc) { return false }
+	return wj.wj_doc_target(u64(doc))
+}
+
 @(export, link_name = "wjr_Document_createElement")
 wjr_Document_createElement :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	context = jsb.glue_context()
@@ -436,12 +473,15 @@ wjr_Document_createElement :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, 
 	if doc == 0 { return wj.EXCEPTION }
 	el: api_decl.Element
 	st: abi.Api_Error
-	if doc == page_document() {
+	if is_page_document(doc) {
 		st = jsb.host(&el, api_decl.Document_createElementChecked, wj.wr_Document_createElementChecked, str_view(name))
 	} else {
 		// an XML document's element keeps its name's case; Not_Found: an HTML document of its own
 		st = jsb.host(&el, api_decl.Document_createXMLElement, wj.wr_Document_createXMLElement, doc, Maybe(string)(nil), str_view(name), false)
-		if st == .Not_Found { st = jsb.host(&el, api_decl.Document_createElementInert, wj.wr_Document_createElementInert, str_view(name)) }
+		if st == .Not_Found {
+			if !wj.wj_doc_target(u64(doc)) { return wj.wj_throw_gone(ctx) }
+			st = jsb.host(&el, api_decl.Document_createElementInert, wj.wr_Document_createElementInert, str_view(name))
+		}
 	}
 	return node_or_throw(ctx, el, st, "Document.createElement")
 }
@@ -458,7 +498,7 @@ wjr_Document_getElementById :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue,
 	if !to_str(ctx, argv[0], &id) { return wj.EXCEPTION }
 	defer wj.wj_str_free(ctx, &id)
 	el: api_decl.Element
-	if doc == page_document() {
+	if is_page_document(doc) {
 		jsb.host(&el, api_decl.Document_getElementById, wj.wr_Document_getElementById, str_view(id))
 	} else {
 		jsb.host(&el, api_decl.NonElementParentNode_getElementById, wj.wr_NonElementParentNode_getElementById, api_decl.Node(doc), str_view(id))
@@ -490,6 +530,7 @@ wjr_Document_createElementNS :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue
 		st = jsb.host(&el, api_decl.Document_createXMLElement, wj.wr_Document_createXMLElement, doc, namespace_of(ns), str_view(name), true)
 	}
 	if st == .Not_Found {
+		if !wj.wj_doc_target(u64(doc)) { return wj.wj_throw_gone(ctx) }
 		st = jsb.host(&el, api_decl.Document_createElementNSChecked, wj.wr_Document_createElementNSChecked, namespace_of(ns), str_view(name))
 	}
 	return node_or_throw(ctx, el, st, "Document.createElementNS")
@@ -711,7 +752,10 @@ wjr_XMLSerializer_serializeToString :: proc "c" (ctx: ^wj.Context, this_val: wj.
 
 @(export, link_name = "wjr_Document_get_defaultView")
 wjr_Document_get_defaultView :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
-	if wj.wj_this(ctx, this_val, ifc("Document")) == nil { return wj.EXCEPTION }
+	context = jsb.glue_context()
+	o := wj.wj_this(ctx, this_val, ifc("Document"))
+	if o == nil { return wj.EXCEPTION }
+	if wj.wj_is_foreign(o.handle) { return frames_window_of_node(ctx, o.handle) }
 	return wj.JS_DupValue(ctx, wj.realm_global())
 }
 
@@ -720,6 +764,11 @@ wjr_Document_get_location :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -
 	context = jsb.glue_context()
 	o := wj.wj_this(ctx, this_val, ifc("Document"))
 	if o == nil { return wj.EXCEPTION }
+	if wj.wj_is_foreign(o.handle) {
+		win := frames_window_of_node(ctx, o.handle)
+		defer wj.JS_FreeValue(ctx, win)
+		return wj.is_object(win) ? wj.JS_GetPropertyStr(ctx, win, "location") : wj.NULL
+	}
 	// null for a document without a browsing context (createHTMLDocument's, DOMParser's)
 	if o.handle != 0 && api_decl.Document(o.handle) != page_document() { return wj.NULL }
 	return wj.JS_GetPropertyStr(ctx, wj.realm_global(), "location")

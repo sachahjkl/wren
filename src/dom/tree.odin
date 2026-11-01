@@ -160,7 +160,7 @@ clone_one :: proc(d: ^Document, h: base.Handle, work: ^[dynamic]Clone_Work, root
 		c.attrs = make([dynamic]Attr, 0, len(n.attrs))
 		for a in n.attrs { append(&c.attrs, Attr{heap_str(a.name), heap_str(a.value)}) }
 	}
-	nh, _ := base.pool_insert(&d.nodes, c)
+	nh, _ := base.pool_insert_tagged(&d.nodes, d.tag, c)
 	if c.kind == .Element {
 		if x, ok := d.ns_extra[h]; ok { d.ns_extra[nh] = Ns_Extra{uri = heap_str(x.uri), prefix = heap_str(x.prefix)} }
 		if d.ids.on { for a in c.attrs { if a.name == "id" { ids_add(d, nh, a.value); break } } }
@@ -184,6 +184,70 @@ clone_one :: proc(d: ^Document, h: base.Handle, work: ^[dynamic]Clone_Work, root
 	}
 	return nh
 }
+// One node of `src` as a lone new node of `dst` (DOM "adopt" between two documents; the caller copies the children and
+// the listeners): its name, namespace, attributes and text, a <template>'s contents. NIL for a document. A shadow root
+// does not follow its host: an element moved between documents loses its shadow tree.
+copy_across :: proc(src, dst: ^Document, h: base.Handle) -> base.Handle {
+	n := get(src, h)
+	if n == nil { return base.NIL_HANDLE }
+	c: base.Handle
+	switch n.kind {
+	case .Element:
+		extra := src.ns_extra[h]
+		c = create_element_ns(dst, n.name, n.ns, extra.uri, extra.prefix)
+		for a in n.attrs { set_attribute(dst, c, a.name, a.value) }
+		if content, ok := src.templates[h]; ok && get(src, content) != nil {
+			dup := create_fragment(dst)
+			get(dst, dup).held = true
+			dst.templates[c] = dup
+			copy_children_across(src, dst, content, dup)
+		}
+	case .Text: c = create_text(dst, n.text)
+	case .Comment: c = create_comment(dst, n.text)
+	case .Fragment: c = create_fragment(dst)
+	case .Doctype:
+		public_id, system_id: string
+		for a in n.attrs {
+			if a.name == "publicId" { public_id = a.value } else if a.name == "systemId" { system_id = a.value }
+		}
+		c = create_doctype(dst, n.name, public_id, system_id)
+	case .Document: return base.NIL_HANDLE
+	}
+	get(dst, c).xml = n.xml
+	return c
+}
+
+// The contents of a <template> (no script ever sees their old handles here: nothing is pinned).
+@(private = "file")
+copy_children_across :: proc(src, dst: ^Document, from, to: base.Handle) {
+	Copy :: struct { from, parent: base.Handle }
+	stack := make([dynamic]Copy, context.temp_allocator)
+	kids := make([dynamic]base.Handle, context.temp_allocator)
+	for ch := get(src, from).first_child; ch != base.NIL_HANDLE; ch = get(src, ch).next { append(&kids, ch) }
+	#reverse for k in kids { append(&stack, Copy{k, to}) }
+	for len(stack) > 0 {
+		cur := pop(&stack)
+		c := copy_across(src, dst, cur.from)
+		if c == base.NIL_HANDLE { continue }
+		raw_append(dst, cur.parent, c)
+		clear(&kids)
+		for ch := get(src, cur.from).first_child; ch != base.NIL_HANDLE; ch = get(src, ch).next { append(&kids, ch) }
+		#reverse for k in kids { append(&stack, Copy{k, c}) }
+	}
+}
+
+// A listener of a node moved to this document, under the owner it has here.
+listener_copy :: proc(d: ^Document, h: base.Handle, l: Listener, owner: u32) {
+	n := get(d, h)
+	if n == nil { return }
+	c := l
+	c.type = strings.clone(l.type)
+	c.owner = owner
+	append(&n.listeners, c)
+	if c.id >= d.next_listener { d.next_listener = c.id + 1 }
+	d.listener_changes += 1
+}
+
 // Appends `child` (fresh, detached, unpinned) under a detached parent without journaling: building a copy that nobody
 // observes yet.
 @(private = "file")

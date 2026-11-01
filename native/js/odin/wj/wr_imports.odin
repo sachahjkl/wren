@@ -2583,8 +2583,22 @@ foreign _wr_wj_frames {
 	@(link_name = "Frame_closed") wr_Frame_closed :: proc(navigable: u64) -> i32 ---
 	// Whether its document is same origin with the calling one.
 	@(link_name = "Frame_sameOrigin") wr_Frame_sameOrigin :: proc(navigable: u64) -> i32 ---
-	// Whether its document is same origin and has no address of its own (about:blank, srcdoc).
-	@(link_name = "Frame_isBlank") wr_Frame_isBlank :: proc(navigable: u64) -> i32 ---
+	// Its document's Document node, when the calling document may reach it (same origin); 0 otherwise.
+	// iframe.contentDocument, otherWindow.document.
+	@(link_name = "Frame_documentOf") wr_Frame_documentOf :: proc(navigable: u64) -> u64 ---
+	// The frame element holding this navigable's document, when the calling document may reach it; 0 otherwise
+	// (window.frameElement).
+	@(link_name = "Frame_elementOf") wr_Frame_elementOf :: proc(navigable: u64) -> u64 ---
+	// The navigable whose document holds `node`, a node the calling document may reach; 0 otherwise
+	// (document.defaultView of another document).
+	@(link_name = "Frame_ofDocument") wr_Frame_ofDocument :: proc(node: u64) -> u64 ---
+	// The next import of the calling realm that names no node acts on the document holding `node`
+	// (document.createTextNode of another document). False when that document cannot be reached (gone, another origin).
+	@(link_name = "Frame_target") wr_Frame_target :: proc(node: u64) -> i32 ---
+	// Moves `node`, of another document, to the document holding `into` (DOM "adopt"), as lone nodes: the handles of the
+	// nodes moved, each old one (u64) followed by its new one (the first pair is `node`'s). Security when one of the two
+	// cannot be reached.
+	@(link_name = "Frame_adoptNode") wr_Frame_adoptNode :: proc(node: u64, into: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 	// otherWindow.postMessage(message, targetOrigin): `data` is the message's structured serialization
 	// (runtime/clone.c); `target_origin` is "*", "/" or a URL. The message is delivered from a task of the target's,
 	// if its document's origin then matches. Syntax for an invalid target origin, Data_Clone for a message over
