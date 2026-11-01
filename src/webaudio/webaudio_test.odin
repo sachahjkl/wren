@@ -7,7 +7,6 @@ import "wb:media"
 
 RATE :: 48000.0
 TEST_MAX_BYTES :: 1 << 30
-CLOCK_MOVED_S :: 0.1          // a running context's time is past this soon after it starts
 RESUME_DEADLINE_MS :: 5000   // how long a resumed context's clock may take to move
 
 @(private = "file")
