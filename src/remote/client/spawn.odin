@@ -174,7 +174,8 @@ state_file :: proc(name: string) -> string { return strings.concatenate({state_d
 
 cmd_start :: proc(ctx: ^Context, args: []string) -> int {
 	name := opt(&ctx.o, "name")
-	if name == "" { name = fmt.tprintf("s%d", time.now()._nsec / 1_000_000 % 10_000_000) }
+	// (no clock alone: two starts of the same millisecond, tests in parallel, took one name and drove each other's window)
+	if name == "" { name = fmt.tprintf("s%s", base.unique_name(context.temp_allocator)) }
 	if !remote.valid_name(name) { return usage("start", "--name: letters, digits, '-', '_' and '.'") }
 	l, ok := launch(ctx, name, opt(&ctx.o, "profile"), !flag(&ctx.o, "visible"), nil)
 	if !ok { return EXIT_FAILED }
