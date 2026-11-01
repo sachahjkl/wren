@@ -512,7 +512,9 @@ storage_broadcast :: proc(src: ^Page, a: ^Storage_Area, key, old_value, new_valu
 @(private)
 storage_page_closed :: proc(p: ^Page) {
 	m := p.web.embedder.storage
-	if m == nil || !m.ready || p.env.origin.opaque { return }
+	// (a worker has no localStorage, closes on its own thread, and the manager belongs to the pages' thread: two closes at once freed
+	// one area twice)
+	if p.worker != nil || m == nil || !m.ready || p.env.origin.opaque { return }
 	origin := storage_origin_key(p)
 	a, ok := m.areas[origin]
 	if !ok || a.dirty || a.state != .Loaded || m.pending > 0 { return }   // a write in flight: the file may be older than memory
