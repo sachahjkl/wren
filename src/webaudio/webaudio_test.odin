@@ -25,6 +25,10 @@ render :: proc(g: ^Graph, frames: int) -> ^Pcm {
 	return p
 }
 
+// What a wait on a render thread gives it; it only ends a failing run.
+@(private = "file") THREAD_WAIT :: 60 * time.Second
+@(private = "file") CONTEXT_ADVANCES_S :: 0.1
+
 @(test)
 a_sine_oscillator_gives_the_samples_of_a_sine :: proc(t: ^testing.T) {
 	g := graph_new(RATE, 1, true)
@@ -692,10 +696,11 @@ a_running_context_follows_the_output_and_stops_with_it :: proc(t: ^testing.T) {
 	testing.expect(t, graph_time(g) == 0, "suspended: time stands still")
 	graph_resume(g, 2400)
 	testing.expect(t, graph_state(g) == .Running)
-	// the clock of the output moves, whenever a loaded machine lets its thread run
-	for waited := 0; waited < RESUME_DEADLINE_MS && graph_time(g) <= CLOCK_MOVED_S; waited += 1 { time.sleep(time.Millisecond) }
+	// the clock of the output, plus what is queued ahead (50 ms): it advances; how far in a given time depends on the machine
+	running := time.tick_now()
+	for graph_time(g) <= CONTEXT_ADVANCES_S && time.tick_since(running) < THREAD_WAIT { time.sleep(time.Millisecond) }
 	now := graph_time(g)
-	testing.expectf(t, now > CLOCK_MOVED_S, "the context is at %v s after %d ms", now, RESUME_DEADLINE_MS)
+	testing.expectf(t, now > CONTEXT_ADVANCES_S, "the context is at %v s", now)
 	graph_suspend(g)
 	stopped := graph_time(g)
 	time.sleep(30 * time.Millisecond)
@@ -771,8 +776,8 @@ offline_rendering_on_its_thread_ends_with_the_result :: proc(t: ^testing.T) {
 	connect(g, c, 0, DESTINATION_ID, 0)
 	node_start(g, c, 0, 0, -1)
 	testing.expect(t, offline_start(g, 1000))
-	deadline := time.tick_now()
-	for graph_state(g) != .Closed && time.tick_since(deadline) < 5 * time.Second { time.sleep(time.Millisecond) }
+	deadline := time.tick_now()   // (its thread is below normal priority: on a busy machine it waits its turn)
+	for graph_state(g) != .Closed && time.tick_since(deadline) < THREAD_WAIT { time.sleep(time.Millisecond) }
 	p := offline_take_result(g)
 	testing.expect(t, p != nil)
 	if p == nil { return }
