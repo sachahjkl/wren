@@ -36,6 +36,16 @@
   needs a desktop and a machine of known speed; a shared runner failed them at random. Mark it `-UiOnly` in `test_all.ps1`: it runs
   with `powershell -NoProfile -File tools\test_all.ps1 -Ui` (or `WREN_UI_TESTS=1`), never on the CI (`-CI` or the `CI` variable win),
   and says `ui: skipped, run with -Ui` otherwise. The logic such a step checks keeps its unit tests, which the CI runs.
+- Tests that fail at random: `-Flaky` in `test_all.ps1` prints FLAKY and fails nothing, but it hides a real bug as well, so a step
+  gets it only when the cause is known and outside our reach, with the reason in a comment on the step. No step has one now. To find
+  the cause: run the program in a loop with CPU load beside it and several copies at once, each with a test server of its own, then
+  read what the failure says (a `-Flaky` step prints its failing checks; a test program's whole output is in the step's log). What the
+  marks of 2026-10 hid, as a guide to what to look for: a key or a file name several tests share (a scratch parent key deleted when it
+  looked empty, a fixed folder under `TEMP` that the unit tests and their AddressSanitizer run both wrote), a handle closed twice under
+  two names (the second close takes another thread's file), a wall clock against a machine's speed (a dialog's delay, a value read
+  between two `wren ctl` calls, a timer of the system coarser than the time the test gives it), and in the product a limit that only
+  shows under load (the engine looked at the slow-script flag every 10 000 calls, however long they took). Timing is to be measured
+  within one step of the program, or not at all; a wait is on a condition, with a bound that only ends a failing run.
 - A new web API starts in `api/<module>.widl`; `build.bat` regenerates the bindings, the SDK and the docs, and
   `test_all.ps1` fails when a generated file is out of date.
 - A new preference is a `config.Def` in the package's `settings.odin`, registered with the others
