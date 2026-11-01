@@ -1,6 +1,6 @@
 # web-platform-tests expectations of Wren for css/css-anchor-position, written by tools\wpt.ps1 -Update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
-/css/css-anchor-position/anchor-animation-dynamic-default.html: TIMEOUT
+/css/css-anchor-position/anchor-animation-dynamic-default.html: OK
 	Animation with anchor() responds to position-anchor change: PASS
 /css/css-anchor-position/anchor-animation-dynamic-name.html: OK
 	Animation with anchor() responds to anchor-name change: PASS
@@ -120,7 +120,7 @@
 /css/css-anchor-position/anchor-in-anchor-positioned.html: OK
 	.target 1: PASS
 	.target 2: PASS
-/css/css-anchor-position/anchor-in-popover.html: TIMEOUT
+/css/css-anchor-position/anchor-in-popover.html: OK
 	.target 1: FAIL
 	.target 2: FAIL
 /css/css-anchor-position/anchor-in-scroller-with-left-side-scrollbar.html: OK
@@ -2737,7 +2737,7 @@
 	.target 3: PASS
 	.target 4: PASS
 	.target 5: PASS
-/css/css-anchor-position/anchor-position-004.html: TIMEOUT
+/css/css-anchor-position/anchor-position-004.html: OK
 	.target 1: PASS
 	.target 10: PASS
 	.target 11: PASS
@@ -4225,7 +4225,7 @@
 	anchor-scope:all on common ancestor: PASS
 	anchor-scope:all on sibling: PASS
 	anchor-scope:all scopes multiple names: PASS
-/css/css-anchor-position/anchor-scope-display-contents.tentative.html: TIMEOUT
+/css/css-anchor-position/anchor-scope-display-contents.tentative.html: OK
 	Can anchor to a name both defined and scoped by the same element: FAIL
 	Sibling can not anchor into anchor-scope, even when anchor-name present: PASS
 	anchor-scope:--a on common ancestor: PASS
@@ -4323,7 +4323,7 @@
 	Should use the last position option initially: FAIL
 	Should use the second position option with enough space below (and not enough above): FAIL
 	Should use the third position option with enough space left: PASS
-/css/css-anchor-position/anchor-scroll-position-try-008.html: TIMEOUT
+/css/css-anchor-position/anchor-scroll-position-try-008.html: OK
 	Should use the first fallback position with enough space left and above: PASS
 	Should use the last fallback position initially: FAIL
 	Should use the second fallback position with enough space above: FAIL
@@ -4345,7 +4345,7 @@
 	Should use the third fallback position with enough space above: FAIL
 /css/css-anchor-position/anchor-scroll-position-try-013.html: OK
 	anchor-scroll-position-try-013: PASS
-	anchor-scroll-position-try-013 1: FAIL
+	anchor-scroll-position-try-013 1: PASS
 	anchor-scroll-position-try-013 2: PASS
 /css/css-anchor-position/anchor-scroll-position-try-014.html: OK
 	anchor-scroll-position-try-014: PASS
@@ -4354,7 +4354,7 @@
 /css/css-anchor-position/anchor-scroll-position-try-016.html: OK
 	Initially, anchored is at top left position: PASS
 	Scroll back to top of page, anchored should be at top left position: PASS
-	Scroll to end of page, anchored should be at bottom left position: FAIL
+	Scroll to end of page, anchored should be at bottom left position: PASS
 /css/css-anchor-position/anchor-scroll-single-axis-default-anchor.html: OK
 	inner scrollable in both axes: both scroll containers are compensated: PASS
 	inner scrollable in x only: #outer's y scroll is still compensated: PASS
@@ -8793,6 +8793,7 @@
 	Transition when the result of anchor() changes: FAIL
 	Transition when the result of anchor-size() changes: FAIL
 /css/css-anchor-position/anchor-transition-focus.html: TIMEOUT
+	Transition insets with focus()/blur() and unused position-anchor: TIMEOUT
 /css/css-anchor-position/anchor-transition-name.html: OK
 	Transition when the dereferenced anchor name changes: FAIL
 /css/css-anchor-position/anchor-typed-om.html: OK
@@ -9162,7 +9163,7 @@
 /css/css-anchor-position/base-style-invalidation.html: OK
 	The chosen position fallbacks changes when the base style differs: PASS
 /css/css-anchor-position/chained-anchor-scrolled.html: OK
-	#b top should be at #a bottom: FAIL
+	#b top should be at #a bottom: PASS
 /css/css-anchor-position/chrome-443261872.html: OK
 	Changing inline style color does not change tree-scope for anchor-name: PASS
 /css/css-anchor-position/container-queries/anchored-child-transition.html: OK
@@ -9204,7 +9205,7 @@
 	Query condition should be valid: anchored(fallback: any): FAIL
 	Query condition should be valid: anchored(fallback: center any): FAIL
 	Query condition should be valid: anchored(fallback: inline-end any): FAIL
-/css/css-anchor-position/container-queries/at-container-anchored-parsing.html: TIMEOUT
+/css/css-anchor-position/container-queries/at-container-anchored-parsing.html: OK
 	Query condition should be valid but unknown: anchored((fallback = none)): PASS
 	Query condition should be valid but unknown: anchored(fallback < none): PASS
 	Query condition should be valid but unknown: anchored(fallback: 0): PASS
@@ -9570,7 +9571,7 @@
 	Property position-visibility value 'no-overflow anchor-visible anchor-valid': PASS
 	Property position-visibility value 'no-overflow anchor-visible': PASS
 	Property position-visibility value 'no-overflow': PASS
-/css/css-anchor-position/parsing/position-visibility-parsing.html: TIMEOUT
+/css/css-anchor-position/parsing/position-visibility-parsing.html: OK
 	e.style['position-visibility'] = "always anchor-valid anchor-visible no-overflow" should not set the property value: PASS
 	e.style['position-visibility'] = "always anchor-valid no-overflow" should not set the property value: PASS
 	e.style['position-visibility'] = "always anchor-valid" should not set the property value: PASS
@@ -12839,12 +12840,12 @@
 	Left position set to right edge of anchor with @position-try: PASS
 /css/css-anchor-position/position-try-fallbacks-003.html: OK
 	initial position: PASS
-	redisplay at 100: FAIL
-	scroll back to 0: FAIL
-	scroll back to 100: FAIL
-	scroll to 100: FAIL
-	scroll to 101: FAIL
-	scroll to 200: FAIL
+	redisplay at 100: PASS
+	scroll back to 0: PASS
+	scroll back to 100: PASS
+	scroll to 100: PASS
+	scroll to 101: PASS
+	scroll to 200: PASS
 	scroll to 300: FAIL
 /css/css-anchor-position/position-try-fallbacks-limit.html: OK
 	Must support At least five try fallbacks: PASS
