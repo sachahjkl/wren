@@ -1,5 +1,5 @@
 #+build windows
-package client
+package api
 
 // The client end of the pipe: overlapped I/O so that every wait has a limit, one request at a time.
 
@@ -56,7 +56,7 @@ disconnect :: proc(c: ^Conn) {
 }
 
 @(private)
-write_line :: proc(c: ^Conn, line: string, timeout_ms: int) -> Call_Error {
+write_line :: proc(c: ^Conn, line: string, timeout_ms: int) -> Error {
 	data := transmute([]byte)strings.concatenate({line, "\n"}, context.temp_allocator)
 	for len(data) > 0 {
 		win.ResetEvent(c.write_ev)
@@ -77,7 +77,7 @@ write_line :: proc(c: ^Conn, line: string, timeout_ms: int) -> Call_Error {
 
 // The next line (without its newline), waiting at most until `deadline`.
 @(private)
-read_line :: proc(c: ^Conn, deadline: time.Tick) -> (line: string, err: Call_Error) {
+read_line :: proc(c: ^Conn, deadline: time.Tick) -> (line: string, err: Error) {
 	buf: [64 << 10]byte
 	for {
 		if l, ok := take_line(&c.pending); ok { return l, .None }

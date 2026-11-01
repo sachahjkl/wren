@@ -230,7 +230,7 @@
 </ol></nav>
 <h1 id="how-the-tests-run-and-how-to-go-fast"><a class="anchor" href="#how-the-tests-run-and-how-to-go-fast" aria-hidden="true">#</a>How the tests run, and how to go fast</h1>
 <p><code>tools\test_all.ps1</code> runs every test of the project, step by step. This page says what it does with your time, how to
-ask for less of it while you work, and which tools tell you where the time goes.</p>
+ask for less of it while you work, which tools tell you where the time goes, and how to write an end-to-end test.</p>
 <h2 id="the-commands-of-a-working-day"><a class="anchor" href="#the-commands-of-a-working-day" aria-hidden="true">#</a>The commands of a working day</h2>
 <div class="table-box"><table>
 <thead><tr><th>What you want</th><th>Command</th></tr></thead>
@@ -317,9 +317,43 @@ engine's limit on one script out of the way, and what still fails alone. Only a 
 <p>So a shorter limit can cost a rerun, not hide a regression. What it does not see is a test that has <strong>begun</strong> to pass: a
 whole run without it does, and <code>-Update</code> (which refuses the cap) records it. <code>-Only</code> keeps the whole limits too: someone is
 looking at that test. <code>-NoFastTimeouts</code> turns it off under <code>-Quick</code>.</p>
+<h2 id="writing-an-end-to-end-test"><a class="anchor" href="#writing-an-end-to-end-test" aria-hidden="true">#</a>Writing an end-to-end test</h2>
+<p>An end-to-end test is an Odin <code>@(test)</code> procedure of <code>src/tools/e2e</code>, on Odin's own test runner. It calls the browser directly: the program
+links package <code>browser</code>, the browser runs in the test's thread and process, and a barrier runs its loop, turn by turn, until what it waits for
+holds. There is no window of the system, no channel, no JSON, no other thread to wait for: the frames are the real renderer's, offscreen, made as
+fast as they are asked for, and nothing can take the focus, the mouse or the keyboard of whoever is at the machine.</p>
+<div class="code"><div class="file">Odin</div><pre><code><span class="k">package</span> e2e_scenarios
+
+<span class="k">import</span> <span class="s">"core:testing"</span>
+<span class="k">import</span> <span class="s">"wb:e2e"</span>
+
+@(test)
+the_title_shows :: <span class="k">proc</span>(t: ^testing.T) {
+	server := e2e.<span class="f">test_server</span>(t)
+	s := e2e.<span class="f">start</span>(t, {size = {<span class="t">1280</span>, <span class="t">800</span>}})
+	e2e.<span class="f">navigate</span>(s, e2e.<span class="f">url</span>(server, <span class="s">"/site/about.html"</span>))   <span class="c">// returns once loaded</span>
+	testing.<span class="f">expect_value</span>(t, e2e.<span class="f">eval</span>(s, <span class="s">"document.title"</span>), <span class="s">"About"</span>)
+	e2e.<span class="f">key</span>(s, <span class="s">"Ctrl+L"</span>)
+	e2e.<span class="f">type_text</span>(s, <span class="s">"hello"</span>)
+	e2e.<span class="f">wait_js</span>(s, <span class="s">"document.readyState == 'complete'"</span>)
+	c := e2e.<span class="f">pixel</span>(e2e.<span class="f">capture</span>(s, {target = .<span class="t">Page</span>}), <span class="t">10</span>, <span class="t">10</span>)   <span class="c">// the next frame's pixels</span>
+	testing.<span class="f">expect</span>(t, c.a == <span class="t">255</span>)
+}</code></pre></div>
+<p>The rules:</p>
+<ul>
+<li><strong>One file per subject</strong>, <code>src/tools/e2e/&lt;name&gt;.odin</code>, with its checks kept as they mean. A file's tests are one step of <code>test_all</code>: <code>Step '...' { Invoke-WrenE2E 'build\e2e_test.exe' '&lt;name&gt;' }</code>, with its marks (<code>-UiOnly</code>, <code>-NoCI</code>, <code>-Weight</code>). <code>Invoke-WrenE2E</code> finds the tests in the file.</li>
+<li><strong>An action that fails ends the test there</strong>, saying where it was called from, what failed and the folder of what it left (<code>build/e2e/&lt;test&gt;/</code>: <code>failure.png</code>, <code>failure_console.txt</code>, the test's own <code>e2e.shot</code>s, kept only when it failed). So a scenario checks no return. Checks are <code>testing.expect*</code>: they go on.</li>
+<li><strong>Barriers, never sleeps.</strong> <code>wait_load</code>, <code>wait_frames(s, n)</code>, <code>wait_selector</code>, <code>wait_js(s, condition)</code>, <code>wait_until(s, ready_proc, "what")</code> and <code>wait_until(s, data, ready_proc, "what")</code>. Each has <code>deadline := DEFAULT_DEADLINE</code>, which only ends a failing run. Wait for the state itself, not for a number of frames: <code>wait_frames</code> is for what is done within a frame or two by construction.</li>
+<li><strong>The browser's animations go by frames</strong> (<code>control_begin</code>: each frame is one of the usual length for them, however fast it is made), so a 500 ms animation is 30 frames. What a page does on a real timer is still real time: the preference that shortens it (<code>forms.caret.blink_ms</code>) rather than a wait for it.</li>
+<li><strong>Something the browser does not let you see or do</strong>: add it to the browser, not to the test. A typed procedure in <code>src/browser/control.odin</code>, which the remote method (<code>remote_methods.odin</code>, only the JSON's decoding there) calls too; a field of <code>api.Stats</code>, filled by <code>control_stats</code>. Then the wrapper in <code>src/e2e/e2e.odin</code>.</li>
+<li><strong>One browser at a time in a process</strong> (the browser's state is the process's), and <code>e2e.start</code> ends with the test, as do its profile (<code>e2e.temp_profile(t)</code> for one that <code>e2e.restart</code> must find again), <code>e2e.temp_folder(t)</code> and <code>e2e.test_server(t)</code>. The tests of one run go one after the other (<code>ODIN_TEST_THREADS=1</code>); <code>test_all</code> runs one process per file, side by side.</li>
+<li><strong>Only what is about a process starts one</strong>: a launch, an exit code, a crash, a second start, the console launcher. <code>e2e.launch(t, {...})</code> gives a Wren of its own, over the channel, with the typed client <code>wb:remote/api</code> (<code>api.navigate(p.s, url)</code>), and <code>e2e.quit(p)</code> its exit code. <code>e2e.launch</code> is headless too unless <code>hidden = true</code>.</li>
+</ul>
+<p>Running them by hand: <code>build\e2e_test.exe -tests:the_title_shows</code> (no window opens, no other desktop is needed), or <code>test_all -Quick -NoCache -Only 'src.tools.e2e'</code>. <code>WREN_E2E_TRACE=1</code> prints every call with its time, <code>WREN_PHASES=1</code> the phases of a start and an end of the browser (a real <code>wren.exe</code> says them too).</p>
+<p>Two things <code>core:testing</code> does not give: a test stopped by a signal (<code>testing.fail_now</code>, a panic) can happen once per run on Windows, the runner lets go of a lock it does not hold, and the next signal waits for ever; <code>e2e</code> stops its tests through a limit of 0 instead (hence the "Test timed out" after a failure's message). And checks that pass say nothing: <code>test_all</code> counts tests here, not checks.</p>
 <h2 id="writing-a-test-that-is-quick"><a class="anchor" href="#writing-a-test-that-is-quick" aria-hidden="true">#</a>Writing a test that is quick</h2>
-<p>The rules are in <a href="https://github.com/sachahjkl/wren/blob/master/CONTRIBUTING.md">CONTRIBUTING</a>: wait for a condition, with a limit that only ends a failing run (<code>wren
-ctl wait</code>, <code>Invoke-WrenBuildIfStale</code>, <code>Ensure-WrenBuild</code>), one shared Wren between scenarios. And check what a wait returns:
+<p>The rules are in <a href="https://github.com/sachahjkl/wren/blob/master/CONTRIBUTING.md">CONTRIBUTING</a>: wait for a condition, with a limit that only ends a failing run (the barriers above, <code>wren
+ctl wait</code> for a script, <code>Invoke-WrenBuildIfStale</code>, <code>Ensure-WrenBuild</code>), one shared Wren between scenarios. And check what a wait returns:
 a tool that waited for a line nobody logs (<code>jsloadtest</code>) spent its 120 s limit in every run, and passed.</p>
 <h2 id="virtual-time"><a class="anchor" href="#virtual-time" aria-hidden="true">#</a>Virtual time</h2>
 <p><code>host.Loop</code> reads its time through <code>host.now_ns</code>. A test gives the loop a <code>host.Virtual_Clock</code> (<code>clock_virtual</code>) and moves it:
@@ -369,6 +403,7 @@ seconds when other runs share the machine: they barely move, the wall clock does
 <li><a href="#the-result-cache">The result cache</a></li>
 <li><a href="#the-shared-code-of-test-processes">The shared code of test processes</a></li>
 <li><a href="#wpt">WPT</a></li>
+<li><a href="#writing-an-end-to-end-test">Writing an end-to-end test</a></li>
 <li><a href="#writing-a-test-that-is-quick">Writing a test that is quick</a></li>
 <li><a href="#virtual-time">Virtual time</a></li>
 <li><a href="#the-test-programs-and-their-pages">The test programs and their pages</a></li>

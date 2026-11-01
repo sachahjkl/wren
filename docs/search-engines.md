@@ -65,4 +65,4 @@ profile's preferences although no longer registered: `config.user_text`); that l
 * `src/browser/search_engines_ui.odin`: the about:config row and its form, the badges.
 * `src/browser/context_menu.odin`: `address_target` (what the address bar opens, and the search it is).
 * `src/browser/urlbar.odin`: the search rows, Ctrl+Up / Down, the row of engines.
-* Tests: `src/browser/search_engines_test.odin`; end to end: `tools/search_e2e.ps1`.
+* Tests: `src/browser/search_engines_test.odin`; end to end: `src/tools/e2e/search.odin`.

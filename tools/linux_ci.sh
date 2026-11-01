@@ -18,11 +18,11 @@ COLL=(-collection:wb=src -collection:toolkit=ext/gui_toolkit)
 # vendor package; it is skipped below when the library is absent so the rest of the check still runs)
 CHECK=(base host config css http i18n xml adblock canvas2d license dom url html cookies csp forms style layout
        webfont wasm js idb httpcache images webauthn desktop remote tools/testenv
-       net fetch media page blocker remote/client tools/crashtrace tools/wpt/reftest tools/wpt browser)
+       net fetch media page blocker remote/api remote/client tools/crashtrace tools/wpt/reftest tools/wpt browser e2e tools/e2e)
 # (name, extra flags): wasm, remote and remote/client run on one thread, as on Windows (one channel per process)
 TESTS=(base host css http xml adblock canvas2d dom url html cookies csp forms style layout webfont js
        httpcache webauthn desktop "wasm:-define:ODIN_TEST_THREADS=1" "remote:-define:ODIN_TEST_THREADS=1"
-       net fetch media blocker page "remote/client:-define:ODIN_TEST_THREADS=1" tools/crashtrace tools/wpt/reftest)
+       net fetch media blocker page "remote/api:-define:ODIN_TEST_THREADS=1" "remote/client:-define:ODIN_TEST_THREADS=1" tools/crashtrace tools/wpt/reftest)
 wanted() {
   [ ${#ONLY[@]} -eq 0 ] && return 0
   for o in "${ONLY[@]}"; do [ "$o" = "$1" ] && return 0; done
@@ -46,7 +46,7 @@ if ls "$("$ODIN" root 2>/dev/null)"/vendor/wgpu/lib/wgpu-linux-*/lib/libwgpu_nat
 fail=0
 for p in "${CHECK[@]}"; do
   wanted "$p" || continue
-  if [ "$p" = browser ] && [ $WGPU_LIB -eq 0 ]; then echo "check skip src/browser (needs libwgpu_native.a for toolkit:render)"; continue; fi
+  if { [ "$p" = browser ] || [ "$p" = e2e ] || [ "$p" = tools/e2e ]; } && [ $WGPU_LIB -eq 0 ]; then echo "check skip src/$p (needs libwgpu_native.a for toolkit:render)"; continue; fi
   if out=$("$ODIN" check "src/$p" -target:linux_amd64 -no-entry-point -vet "${COLL[@]}" 2>&1); then
     echo "check ok   src/$p"
   else

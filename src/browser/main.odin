@@ -168,6 +168,7 @@ App :: struct {
 	pass_first: bool,                     // the next frame of this pass of the loop is the first: it runs the tasks of the loop
 	headless:   bool,                     // no window at all (`--headless`)
 	hidden:     bool,                     // windows that are made and never shown (--hidden)
+	frames_at_once: bool,                 // a program in this process drives the browser: a headless window's frames wait for nothing (control.odin)
 	quitting:   bool,                     // the browser ends (a remote Browser.close): every window goes, none is closed on its own first
 }
 
@@ -1262,7 +1263,8 @@ frame :: proc(app: ^App, idled := false) {
 
 	render.resize(&app.r, active_window(app).win.size)
 	size := draw.Vec2{f32(active_window(app).win.size.x), f32(active_window(app).win.size.y)}
-	dt := wnd.pacer.dt
+	// (a program in this process makes frames as fast as it asks for them: the interface's animations go by frames of the usual length, so that what a barrier waits for ends in a few of them, the same way each time)
+	dt := app.frames_at_once ? f32(wnd.pacer.period_ms / 1000) : wnd.pacer.dt
 
 	base_style := chrome_frame_style(app)
 	window_chrome_frame(app)   // window_chrome.odin
@@ -1335,18 +1337,29 @@ main :: proc() {
 	context = base.process_context()   // the tracker of the check build (memcheck.odin)
 	host.main_stack_ensure()   // (Linux: main_stack_linux.odin)
 	prof_mark(.Main)
+	// (UTF-8 from the UTF-16 command line: os.args is the C runtime's ANSI)
+	app := app_start(desktop.command_line_args(base.permanent_allocator()))
+	if app == nil { return }
+	for app_turn(app) {}
+	app_stop(app, process_ends = true)
+	host.process_end(remote_exit_code)   // (at once: unloading the system's libraries takes longer than the whole teardown, and leaves nothing done)
+}
+
+// One browser in this process, on this thread: what its command line says, up to the first frame. nil: it could not start (said on the
+// console). The program's main and the end-to-end tests (src/e2e) come through here; a browser needs app_turn to go on and app_stop to end.
+app_start :: proc(args: []string) -> ^App {
 	app := new(App)
 	the_app = app
 	frame_gate_init()   // windows.odin: the frames of this thread, one state machine
 	platform.dragdrop_thread_init()   // OLE on this thread before any decoder joins it to the multithreaded apartment (dnd_shell.odin)
 
 	// --- configuration: defaults < profile file < command line < policy file ---
-	args := desktop.command_line_args(base.permanent_allocator())   // (UTF-8 from the UTF-16 command line: os.args is the C runtime's ANSI)
 	// `wren ctl ...`: the remote control client, before anything else is set up (no profile opened, no window, no GPU, no
 	// script engine): only as the first argument (a file or host named ctl is written ./ctl)
 	if len(args) > 0 && args[0] == "ctl" { os.exit(ctl_main(args[1:])) }
 	// `wren --version`, `wren version`, `wren --help`, `wren help` (cli_usage.odin): said on the console, nothing else is set up
 	if info := cli_info_of(args); info != .None { desktop.console_write(cli_info_text(info)); os.exit(0) }
+	host.phase("arguments and preferences")
 	profile_override, a1 := extract_flag(args, "--profile")
 	policy_file, a2 := extract_flag(a1[:], "--policy")
 	purge_requested, a2b := extract_switch(a2[:], "--purge")   // with --uninstall: also delete the profile (desktop_shell.odin)
@@ -1383,6 +1396,7 @@ main :: proc() {
 		os.exit(2)
 	}
 	if cli_mode != .None { os.exit(desktop_cli(app, cli_mode, purge_requested)) }   // no window: a script's call
+	host.phase("instance_early")
 	instance_early(app, rest[:], setup_requested, new_window || no_single || remote_asked || headless_mode || hidden_mode || cdp_have_port)   // (a driven window is its own: it never hands its addresses to the user's Wren)   // instance_shell.odin: a second start hands over to the first and ends here
 	desktop_early_init()   // the windows' AppUserModelID, before the first one exists
 	recovery_start(app)   // crash_recovery.odin: how the last run ended, and this run's marker
@@ -1390,10 +1404,12 @@ main :: proc() {
 	// Start-up order: the renderer's start-up (device, shader compilation) is by far the longest step and needs only the
 	// window. Before it: fonts on a thread of their own (fonts_preload_start), then the network, the page machinery and
 	// the first navigation, whose loads run on their own threads while the renderer starts.
+	host.phase("fonts started")
 	font.init(&app.fonts, font_settings_from_prefs(&app.prefs))
 	preload := fonts_preload_start(app)   // the font state is the preload thread's until fonts_preload_finish
 	app.headless = headless_mode
 	app.hidden = hidden_mode
+	host.phase("window")
 	first_window: ^platform.Window
 	if headless_mode {
 		// a real headless window: no HWND at all, so it works with no desktop session (a service, SSH, CI). It renders to an
@@ -1406,23 +1422,25 @@ main :: proc() {
 	} else {
 		first_window = platform.open_window(APP_NAME, {1280, 800}, transparent = config.bool_of(&app.prefs, "browser.window.fixed_surface"), integrated_title = config.bool_of(&app.prefs, "browser.window.integrated_titlebar"))
 	}
-	if first_window == nil { fmt.eprintln("cannot open the window"); return }
+	if first_window == nil { fmt.eprintln("cannot open the window"); return nil }
 	window_adopt_primary(app, first_window)   // windows.odin: the window the App's per-window fields are about
 	prof_mark(.Window)
 
+	host.phase("loop, network, cache, blocker")
 	host.loop_init(&app.loop, wake_window, nil)
 	instance_begin(app)   // instance_shell.odin: the window that takes the second starts' addresses
 	crashtrace.begin_session()   // (a session that ended without a report: crashes\unclean exit <date>.txt at this start)
 	app.loop.timer_slice_ns = i64(app.cfg.timer_slice_ms * 1e6)
 	appearance_init(app)   // before any settings are derived: `system` colors, auto color scheme
 	ns := net.settings_from_prefs(&app.prefs)
-	if !net.client_init(&app.client, &app.loop, ns) { fmt.eprintln("network init failed"); return }
+	if !net.client_init(&app.client, &app.loop, ns) { fmt.eprintln("network init failed"); return nil }
 	net.settings_destroy(&ns)
 	host.blocking_init(&app.blocking, &app.loop, app.cfg.blocking_threads)
 	app.profile = fetch.profile_make(fetch.settings_from_prefs(&app.prefs), cookies.settings_from_prefs(&app.prefs))
 	http_cache_start(app)   // http_cache_ui.odin: the profile's HTTP cache (its index loads on a thread meanwhile)
 	fetch.loader_init(&app.loader, &app.loop, &app.client, &app.blocking, &app.profile)
 	blocker_start(app)   // blocker_shell.odin: the content blocker listens to the loader from here on
+	host.phase("storage")
 	page.storage_manager_init(&app.storage, &app.loop, &app.blocking, app.cfg.persist_profile ? app.profile_dir : "")
 	app.page_settings = page.settings_from_prefs(&app.prefs)
 	app.page_settings.internal_address = is_builtin_href
@@ -1431,7 +1449,8 @@ main :: proc() {
 		wasm.configure(rs)
 		wasm.runtime_settings_destroy(&rs)
 	}
-	if !page.register_imports() { fmt.eprintln("wasm runtime init failed"); return }
+	host.phase("script runtime")
+	if !page.register_imports() { fmt.eprintln("wasm runtime init failed"); return nil }
 	page.js_startup(&app.prefs, app.cfg.persist_profile ? app.profile_dir : "")
 	app.process = base.scope_make("process")
 	app.config_view.rows = make(map[string]^Row_State)
@@ -1439,12 +1458,14 @@ main :: proc() {
 	global_history_init(app)
 	app.show_console = app.cfg.show_console
 
+	host.phase("profile_load")
 	profile_load(app)
 	config.watch(&app.prefs, "", on_pref_change, app)
 	arm_autosave(app)
 
 	// the first tab: the address given on the command line, else the homepage
 	prof_mark(.Shell)
+	host.phase("first tab")
 	address := len(rest) > 0 ? command_line_address(rest[0]) : ""   // (a relative path of a file or folder: local_paths.odin)
 	prof_mark(.Navigation)
 	if !recovery_open(app, rest[:]) {   // crash_recovery.odin: the tabs of a session that ended abnormally (the command line's addresses follow them)
@@ -1459,20 +1480,22 @@ main :: proc() {
 		}
 	}
 	for e in arg_errors { tab_log(current_tab(app), .Warn, e) }
+	host.phase("remote, desktop watch, setup, update")
 	remote_start(app, remote_asked, remote_name)   // remote_shell.odin: the pipe, when asked for   // (tab_log keeps its copy)
 	cdp_start(app, cdp_port, cdp_have_port, cdp_address)   // cdp.odin: the CDP / WebDriver BiDi WebSocket, when asked for
 	desktop_watch_begin(app, profile_override != "")   // desktop_shell.odin: the system tells when the integration changes (the box in about:config and the Setup dialog follow it)
 	setup_startup(app, profile_override != "", setup_requested)   // setup.odin: a copy that is not the installed one is offered Setup; --setup opens it
 	update_startup(app, profile_override != "")   // update_check.odin: the daily check, when it is on and due
 
+	host.phase("renderer")
 	app.r.swap_buffers = int(config.int_of(&app.prefs, "browser.frame.swap_buffers"))   // pacing.odin
 	fixed_surface := config.bool_of(&app.prefs, "browser.window.fixed_surface")
 	if headless_mode {
 		// no window: the renderer draws into an offscreen target of the window's size. Captures read it (render.capture_*,
 		// on both backends). It resizes with the window (window_resize_offscreen).
-		if !render.init_offscreen(&app.r, active_window(app).win.size) { fonts_preload_finish(app, preload); fmt.eprintln("offscreen renderer init failed"); return }
+		if !render.init_offscreen(&app.r, active_window(app).win.size) { fonts_preload_finish(app, preload); fmt.eprintln("offscreen renderer init failed"); return nil }
 	} else {
-		if !render.init_window(&app.r, active_window(app).win, active_window(app).win.size, transparent = fixed_surface) { fonts_preload_finish(app, preload); fmt.eprintln("renderer init failed"); return }
+		if !render.init_window(&app.r, active_window(app).win, active_window(app).win.size, transparent = fixed_surface) { fonts_preload_finish(app, preload); fmt.eprintln("renderer init failed"); return nil }
 	}
 	fixed_size: [2]int
 	if !headless_mode { fixed_size = fixed_surface_size(app, active_window(app).win) }
@@ -1483,8 +1506,10 @@ main :: proc() {
 	}
 	render.set_teardown_wait(&app.r, int(config.int_of(&app.prefs, "browser.shell.shutdown_surface_wait_ms")))   // (see the preference: the compositor may be slow to let go of the surface)
 	prof_mark(.Renderer)
-	if !fonts_preload_finish(app, preload) { fmt.eprintln("cannot load the UI or icon font"); return }
+	host.phase("fonts finish")
+	if !fonts_preload_finish(app, preload) { fmt.eprintln("cannot load the UI or icon font"); return nil }
 	prof_mark(.UI_Fonts)
+	host.phase("draw, ui, page render, shells")
 	draw.init(&app.dc, &app.r, &app.fonts)
 	ui.init(active_window(app).ui, &app.fonts, &app.theme)
 	chrome_a11y_init()   // (what screen readers call the caption buttons: a11y_chrome.odin)
@@ -1501,6 +1526,7 @@ main :: proc() {
 	page_render.bare = forms_bare_control
 	frames_shell_init(app)   // frames_shell.odin: nested documents laid out, painted and given input
 
+	host.phase("pacer and shells")
 	prof_init(app)
 	pacer_init(app)
 	shell_frames_init(app)   // shell_frames.odin: chrome frames while a page holds the thread
@@ -1524,19 +1550,32 @@ main :: proc() {
 	hud_init(app)
 	devtools_init(app)   // devtools.odin
 	urlbar_init(app)   // urlbar.odin: the address bar's suggestions
+	host.phase("first windows")
 	app.last_tick = time.tick_now()
 	active_window(app).frames_requested = 4
 	active_window(app).win.on_frame = window_on_frame   // (shell_frames.odin: a chrome frame when the page holds the thread)
 	if windows_shown(app) { window_show(app.active) }
 	session_open_other_windows(app)   // session.odin: the other windows of a restored session
 	prof_mark(.Loop)
+	host.phase("loop")
+	return app
+}
 
-	for windows_pass(app) {   // windows.odin: a frame for each window that has a cause (devtools_window_tick for the front one)
-		memcheck_drive(app)   // memcheck.odin: the check build's script, if any
-		memory_trim_tick(app)   // memory_trim.odin
-		remote_after_frame(app)   // remote_shell.odin: the waits of remote commands
-	}
+// One turn of the browser's loop: the frames of the windows that have a cause (it sleeps until one has, or a task or timer is due).
+// false: it has been told to end (app_stop next).
+app_turn :: proc(app: ^App) -> bool {
+	if !windows_pass(app) { return false }   // windows.odin: a frame for each window that has a cause (devtools_window_tick for the front one)
+	memcheck_drive(app)   // memcheck.odin: the check build's script, if any
+	memory_trim_tick(app)   // memory_trim.odin
+	remote_after_frame(app)   // remote_shell.odin: the waits of remote commands
+	return true
+}
 
+// The browser ends: what it keeps is written, everything it holds is let go. `process_ends`: the process ends right after this, so what is
+// only memory and handles is left to that (the renderer's device alone takes 20 to 30 ms to let go of), unless the check build is here to
+// prove that the teardown frees everything.
+app_stop :: proc(app: ^App, process_ends := false) {
+	profile_dir := strings.clone(app.profile_dir, context.temp_allocator)
 	// closed means gone from the screen at once, whatever the teardown below takes. Hiding the window first is a Win32
 	// detail (the compositor removes a destroyed window at once elsewhere); a headless window has no surface anyway.
 	when ODIN_OS == .Windows {
@@ -1547,7 +1586,7 @@ main :: proc() {
 	host.shutdown_step("remote_stop")
 	cdp_stop(app)      // cdp.odin: the CDP / BiDi WebSocket server and its clients
 	remote_stop(app)   // remote_shell.odin: the pipe and its clients
-	if remote_fast_exit { recovery_end(app); crashtrace.end_session(); os.exit(remote_exit_code) }   // Browser.close {fast}: a throwaway profile; the teardown below is a quarter of a second
+	if remote_fast_exit && process_ends { recovery_end(app); crashtrace.end_session(); host.process_end(remote_exit_code) }   // Browser.close {fast}: a throwaway profile; the teardown below is a quarter of a second
 	host.shutdown_step("instance_end")
 	instance_end()   // instance_shell.odin: later starts are told to wait, then the profile is free
 	host.shutdown_step("prof_report")
@@ -1665,6 +1704,7 @@ main :: proc() {
 	page.fs_store_shutdown()   // file system roots, open writables and sync handles, locks
 	host.shutdown_step("wasm.runtime_destroy")
 	wasm.runtime_destroy()
+	if !process_ends || base.TRACK_MEMORY {
 	host.shutdown_step("measure_destroy")
 	measure_destroy(&app.measure)
 	host.shutdown_step("forms_shell_destroy")
@@ -1702,15 +1742,16 @@ main :: proc() {
 	delete(app.cfg.homepage)
 	delete(app.cfg.ui_theme)
 	config.prefs_destroy(&app.prefs)
-	profile_dir := strings.clone(app.profile_dir, context.temp_allocator)
 	delete(app.profile_dir)
 	delete(app.bare.tabs)
 	free(app)
 	the_app = nil
+	}
 	host.shutdown_step("instance_release")
 	instance_release()   // instance_shell.odin: the profile is written and free: a start that waited becomes the owner (before the watchdog's stop, which can wait for its next tick)
+	host.shutdown_step("shutdown_end")
 	host.shutdown_end()
 	crashtrace.end_session()   // a clean end (a watchdog's exit or a kill leaves the file: the next start reports it)
 	memcheck_exit(profile_dir)   // memcheck.odin: the leak report of the check build
-	if remote_exit_code != 0 { os.exit(remote_exit_code) }   // Browser.close {exitCode}
+	host.phase("exit")
 }

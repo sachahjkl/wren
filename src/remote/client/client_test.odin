@@ -1,6 +1,7 @@
 package client
 
 import "core:testing"
+import "wb:remote/api"
 
 @(test)
 options_split_into_flags_values_and_words :: proc(t: ^testing.T) {
@@ -48,14 +49,14 @@ sizes_and_points_parse :: proc(t: ^testing.T) {
 diff_counts_pixels_over_the_tolerance :: proc(t: ^testing.T) {
 	a := []u8{0, 0, 0, 255, 10, 10, 10, 255, 200, 0, 0, 255, 5, 5, 5, 255}
 	b := []u8{0, 0, 0, 255, 12, 10, 10, 255, 100, 0, 0, 255, 5, 5, 5, 255}
-	n, worst, out := diff_pictures(a, b, 2, 2, 0)
+	n, worst, out := api.diff_pictures(a, b, 2, 2, 0)
 	testing.expect_value(t, n, 2)
 	testing.expect_value(t, worst, 100)
 	testing.expect_value(t, out[8], 255)   // a differing pixel is red
 	testing.expect_value(t, out[9], 0)
-	n, _, _ = diff_pictures(a, b, 2, 2, 5)   // 2 is within the tolerance, 100 is not
+	n, _, _ = api.diff_pictures(a, b, 2, 2, 5)   // 2 is within the tolerance, 100 is not
 	testing.expect_value(t, n, 1)
-	n, _, _ = diff_pictures(a, a, 2, 2, 0)
+	n, _, _ = api.diff_pictures(a, a, 2, 2, 0)
 	testing.expect_value(t, n, 0)
 }
 

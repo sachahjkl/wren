@@ -632,12 +632,12 @@ fs_close :: proc(id: u64, commit: bool, max_bytes: i64) -> Fs_Error {
 // Process end: open entries are dropped (writables' temporary files removed).
 fs_store_shutdown :: proc() {
 	sync.mutex_lock(&fs_store.mu)
-	defer sync.mutex_unlock(&fs_store.mu)
 	for _, o in fs_store.opens { fs_open_free(o) }
 	delete(fs_store.opens)
 	for k in fs_store.locks { delete(k) }
 	delete(fs_store.locks)
 	for _, r in fs_store.roots { delete(r.key); delete(r.dir); free(r) }
 	delete(fs_store.roots)
-	fs_store = {}
+	fs_store.opens, fs_store.locks, fs_store.roots = nil, nil, nil   // (not the whole struct: a mutex wiped while held stays locked, and the next start waits for it for ever)
+	sync.mutex_unlock(&fs_store.mu)
 }

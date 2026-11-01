@@ -1,4 +1,4 @@
-package client
+package api
 
 // One request at a time over the channel: the line is written, then lines are read until the answer to its id (events
 // that arrive meanwhile are dropped). The transport is the system's (conn_<os>.odin: Conn, connect, disconnect,
@@ -10,7 +10,8 @@ import "core:strings"
 import "core:time"
 import "wb:remote"
 
-Call_Error :: enum u8 { None, No_Server, Timeout, Closed, Server }
+// What a call of this package ended in (why: last_failure). Server: the browser answered with an error; Script: a script threw.
+Error :: enum u8 { None, No_Server, Timeout, Closed, Server, Script, Bad_Answer }
 
 Reply :: struct {
 	result:  string,   // JSON text of the result
@@ -34,7 +35,7 @@ take_line :: proc(pending: ^[dynamic]byte) -> (string, bool) {
 
 // Sends a request and waits for its answer. `params` is JSON text ("" = none). The wait is `timeout_ms` (the server's own
 // wait limits are shorter or equal: its timeout error comes first).
-call :: proc(c: ^Conn, method, params: string, timeout_ms: int) -> (Reply, Call_Error) {
+call :: proc(c: ^Conn, method, params: string, timeout_ms: int) -> (Reply, Error) {
 	c.next_id += 1
 	id := c.next_id
 	req := fmt.tprintf(`{{"id":%d,"method":%s,"params":%s}}`, id, remote.quote(method), params == "" ? "{}" : params)

@@ -226,6 +226,7 @@ shutdown :: proc(b: ^Blocker, loader: ^fetch.Loader) {
 	resources_destroy()
 	delete(b.dir)
 	the_blocker = nil
+	b^ = {}   // (another start finds nothing of this one)
 }
 
 // Tells the shell that something it shows changed.

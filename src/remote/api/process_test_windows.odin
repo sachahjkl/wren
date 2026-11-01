@@ -1,5 +1,5 @@
 #+build windows
-package client
+package api
 
 import "core:testing"
 import win "core:sys/windows"

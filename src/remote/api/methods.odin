@@ -1,0 +1,1086 @@
+package api
+
+// Every call of the channel, one typed procedure each (docs/remote.md says what the browser does with them). Names of methods and
+// JSON stop here.
+
+import "base:runtime"
+import "core:encoding/json"
+import "core:fmt"
+import "core:strconv"
+import "core:strings"
+import "core:time"
+import "wb:remote"
+
+////////////////////////////////
+// The request
+
+Failure :: struct {
+	message: string,
+	data:    string,   // an error's data (JSON text)
+	code:    int,
+}
+
+@(private, thread_local) failure_now: Failure
+
+// Why the last call of this thread failed.
+last_failure :: proc() -> Failure { return failure_now }
+
+@(private)
+set_failure :: proc(message: string, data := "", code := 0) { failure_now = {message = message, data = data, code = code} }
+
+// A call has failed: what the session's owner asked to happen then (a test ends there: src/e2e).
+@(private)
+call_failed :: proc(s: ^Session, e: Error, what: string, loc: runtime.Source_Code_Location) {
+	if s.on_failure != nil { s.on_failure(s, e, what, loc) }
+}
+
+// A request's parameters on their way.
+@(private)
+Params :: struct {
+	b:          strings.Builder,
+	timeout_ms: int,   // this call's limit, when it has one of its own
+	loc:        runtime.Source_Code_Location,   // who called
+}
+
+@(private)
+params :: proc(loc: runtime.Source_Code_Location) -> Params {
+	p := Params{loc = loc}
+	p.b = strings.builder_make(context.temp_allocator)
+	strings.write_byte(&p.b, '{')
+	return p
+}
+
+@(private)
+p_key :: proc(p: ^Params, name: string) {
+	if strings.builder_len(p.b) > 1 { strings.write_byte(&p.b, ',') }
+	remote.write_json_string(&p.b, name)
+	strings.write_byte(&p.b, ':')
+}
+@(private) p_str :: proc(p: ^Params, name, v: string) { p_key(p, name); remote.write_json_string(&p.b, v) }
+@(private) p_int :: proc(p: ^Params, name: string, v: int) { p_key(p, name); fmt.sbprintf(&p.b, "%d", v) }
+@(private) p_num :: proc(p: ^Params, name: string, v: f64) { p_key(p, name); fmt.sbprintf(&p.b, "%v", v) }
+@(private) p_bool :: proc(p: ^Params, name: string, v: bool) { p_key(p, name); strings.write_string(&p.b, v ? "true" : "false") }
+@(private) p_raw :: proc(p: ^Params, name, v: string) { p_key(p, name); strings.write_string(&p.b, v) }
+@(private) p_tab :: proc(p: ^Params, s: ^Session) { if s.tab != 0 { p_int(p, "tabId", s.tab) } }
+@(private) p_limit :: proc(p: ^Params, limit: time.Duration) {
+	if limit > 0 {
+		p.timeout_ms = int(time.duration_milliseconds(limit))
+		p_int(p, "timeout", p.timeout_ms)
+	}
+}
+
+// Sends the request (connecting first when the session has not yet), and gives its answer parsed.
+@(private)
+request :: proc(s: ^Session, method: string, p: ^Params) -> (json.Object, Error) {
+	limit := p.timeout_ms
+	if limit == 0 && s.timeout_ms > 0 {
+		limit = s.timeout_ms
+		p_int(p, "timeout", limit)
+	}
+	if s.window != 0 { p_int(p, "windowId", s.window) }
+	if s.idle_ms != 0 { p_int(p, "idleMs", s.idle_ms) }
+	strings.write_byte(&p.b, '}')
+	o, e := call_raw(s, method, strings.to_string(p.b), limit)
+	if e != .None { call_failed(s, e, method, p.loc) }
+	return o, e
+}
+
+// A request whose parameters are JSON text, for what has no procedure here (`wren ctl raw`, an adapter): a test uses the others.
+call_raw :: proc(s: ^Session, method, params_json: string, limit_ms := 0) -> (json.Object, Error) {
+	s.result = ""
+	if !s.connected {
+		if s.name == "" || !connect(&s.conn, s.name, s.connect_wait_ms) {
+			set_failure(fmt.tprintf("no Wren answers on %s", remote.pipe_path(s.name)))
+			return {}, .No_Server
+		}
+		s.connected = true
+	}
+	r, e := call(&s.conn, method, params_json, limit_ms > 0 ? limit_ms + CALL_MARGIN_MS : CALL_WAIT_MS)
+	switch e {
+	case .None:
+	case .Server:
+		set_failure(r.message, r.data, r.code)
+		return {}, r.code == remote.ERR_TIMEOUT ? .Timeout : .Server
+	case .Timeout:
+		set_failure(fmt.tprintf("%s: no answer in time", method))
+		return {}, .Timeout
+	case .Closed, .No_Server, .Script, .Bad_Answer:
+		set_failure(fmt.tprintf("%s: the connection to Wren ended", method))
+		return {}, .Closed
+	}
+	s.result = r.result
+	v, perr := json.parse(transmute([]byte)r.result, json.Specification.JSON, true, context.temp_allocator)
+	o, is_object := v.(json.Object)
+	if perr != .None || !is_object { return {}, .None }   // (an answer that is not an object: `result` has it)
+	return o, .None
+}
+
+// The fields of an answer.
+@(private) s_of :: proc(o: json.Object, name: string) -> string { v, _ := remote.param_string(o, name); return v }
+@(private) i_of :: proc(o: json.Object, name: string) -> int { v, _ := remote.param_int(o, name); return v }
+@(private) f_of :: proc(o: json.Object, name: string) -> f64 { v, _ := remote.param_float(o, name); return v }
+@(private) b_of :: proc(o: json.Object, name: string) -> bool { v, _ := remote.param_bool(o, name); return v }
+
+// A rectangle of an answer: [x, y, w, h], window pixels.
+Rect :: struct { x, y, w, h: f64 }
+Point :: [2]f64
+
+// Its middle.
+center :: proc(r: Rect) -> Point { return {f64(int(r.x + r.w / 2)), f64(int(r.y + r.h / 2))} }
+
+@(private)
+rect_of :: proc(o: json.Object, name: string) -> (r: Rect, ok: bool) {
+	a, has := remote.param_array(o, name)
+	if !has || len(a) != 4 { return }
+	num :: proc(v: json.Value) -> f64 {
+		#partial switch x in v {
+		case json.Integer: return f64(x)
+		case json.Float:   return f64(x)
+		}
+		return 0
+	}
+	return {num(a[0]), num(a[1]), num(a[2]), num(a[3])}, true
+}
+
+// A field of the last answer, for a client that prints it.
+answer_string :: proc(s: ^Session, name: string, loc := #caller_location) -> (string, bool) {
+	v, perr := json.parse(transmute([]byte)s.result, json.Specification.JSON, true, context.temp_allocator)
+	o, is_object := v.(json.Object)
+	if perr != .None || !is_object { return "", false }
+	return remote.param_string(o, name)
+}
+
+////////////////////////////////
+// The browser
+
+Ping :: struct { protocol: int, version: string, pid: int }
+
+ping :: proc(s: ^Session, loc := #caller_location) -> (r: Ping, e: Error) {
+	p := params(loc)
+	o := request(s, "Remote.ping", &p) or_return
+	return {i_of(o, "protocol"), s_of(o, "version"), i_of(o, "pid")}, .None
+}
+
+Version :: struct { product, revision, toolkit, build: string, protocol: int }
+
+version :: proc(s: ^Session, loc := #caller_location) -> (r: Version, e: Error) {
+	p := params(loc)
+	o := request(s, "Browser.getVersion", &p) or_return
+	return {s_of(o, "product"), s_of(o, "revision"), s_of(o, "toolkit"), s_of(o, "build"), i_of(o, "protocol")}, .None
+}
+
+// Asks the browser to close (the answer comes before it does). `fast`: nothing of the profile is kept (a throwaway one).
+browser_close :: proc(s: ^Session, exit_code := 0, fast := false, loc := #caller_location) -> Error {
+	p := params(loc)
+	p_int(&p, "exitCode", exit_code)
+	if fast { p_bool(&p, "fast", true) }
+	_, e := request(s, "Browser.close", &p)
+	return e
+}
+
+// The browser closes; waits for its process to end, within `limit`. The process's exit code.
+quit :: proc(s: ^Session, exit_code := 0, limit := time.Duration(QUIT_WAIT_MS * time.Millisecond), loc := #caller_location) -> (code: int, e: Error) {
+	who := ping(s, loc) or_return
+	browser_close(s, exit_code, false, loc) or_return
+	close_session(s)
+	c, ended := wait_process_exit(who.pid, int(time.duration_milliseconds(limit)))
+	if !ended {
+		set_failure(fmt.tprintf("Wren did not end within %v", limit))
+		call_failed(s, .Timeout, "quit", loc)
+		return 0, .Timeout
+	}
+	return c, .None
+}
+// How long `quit` waits for a Wren to end (ms).
+QUIT_WAIT_MS :: 20_000
+
+////////////////////////////////
+// Navigation and waiting
+
+// How long a barrier may take before the run is said to have failed.
+DEFAULT_DEADLINE :: 60 * time.Second
+
+// What a call that loads something waits for before it answers.
+Wait :: enum u8 { None, Load, Idle, Stable, Quiet }
+
+WAIT_NAMES := [Wait]string{.None = "none", .Load = "load", .Idle = "idle", .Stable = "stable", .Quiet = "quiet"}
+
+wait_by_name :: proc(name: string) -> (Wait, bool) {
+	for n, w in WAIT_NAMES { if n == name { return w, true } }
+	return .None, false
+}
+
+@(private)
+navigation :: proc(s: ^Session, method: string, p: ^Params, wait: Wait, deadline: time.Duration, loc := #caller_location) -> Error {
+	p_tab(p, s)
+	p_str(p, "wait", WAIT_NAMES[wait])
+	p_limit(p, deadline)
+	_, e := request(s, method, p)
+	return e
+}
+
+navigate :: proc(s: ^Session, url: string, wait := Wait.Load, deadline := DEFAULT_DEADLINE, loc := #caller_location) -> Error {
+	p := params(loc)
+	p_str(&p, "url", url)
+	return navigation(s, "Page.navigate", &p, wait, deadline)
+}
+
+reload :: proc(s: ^Session, wait := Wait.Load, ignore_cache := false, deadline := DEFAULT_DEADLINE, loc := #caller_location) -> Error {
+	p := params(loc)
+	if ignore_cache { p_bool(&p, "ignoreCache", true) }
+	return navigation(s, "Page.reload", &p, wait, deadline)
+}
+
+go_back :: proc(s: ^Session, wait := Wait.Load, deadline := DEFAULT_DEADLINE, loc := #caller_location) -> Error {
+	p := params(loc)
+	return navigation(s, "Page.goBack", &p, wait, deadline)
+}
+
+go_forward :: proc(s: ^Session, wait := Wait.Load, deadline := DEFAULT_DEADLINE, loc := #caller_location) -> Error {
+	p := params(loc)
+	return navigation(s, "Page.goForward", &p, wait, deadline)
+}
+
+stop_loading :: proc(s: ^Session, loc := #caller_location) -> Error {
+	p := params(loc)
+	p_tab(&p, s)
+	_, e := request(s, "Page.stopLoading", &p)
+	return e
+}
+
+@(private)
+wait_for :: proc(s: ^Session, what: string, p: ^Params, deadline: time.Duration, loc := #caller_location) -> Error {
+	p_tab(p, s)
+	p_str(p, "for", what)
+	p_limit(p, deadline)
+	_, e := request(s, "Wren.wait", p)
+	return e
+}
+
+// The barriers. A deadline only ends a failing run (nothing waits for it to pass): what ran out comes back as .Timeout. 0: the browser's own limit.
+
+// The page has loaded.
+wait_load :: proc(s: ^Session, deadline := DEFAULT_DEADLINE, loc := #caller_location) -> Error { p := params(loc); return wait_for(s, "load", &p, deadline) }
+// It has loaded and the network has been quiet (Session.idle_ms).
+wait_idle :: proc(s: ^Session, deadline := DEFAULT_DEADLINE, loc := #caller_location) -> Error { p := params(loc); return wait_for(s, "idle", &p, deadline) }
+// It has loaded and nothing moves any more.
+wait_stable :: proc(s: ^Session, deadline := DEFAULT_DEADLINE, loc := #caller_location) -> Error { p := params(loc); return wait_for(s, "stable", &p, deadline) }
+
+// The process has been quiet: `quiet_ms` (0: the default) using at most `max_cpu_ms` (0: the default) of the processor.
+wait_quiet :: proc(s: ^Session, quiet_ms := 0, max_cpu_ms := 0.0, deadline := DEFAULT_DEADLINE, loc := #caller_location) -> Error {
+	p := params(loc)
+	if quiet_ms > 0 { p_int(&p, "quietMs", quiet_ms) }
+	if max_cpu_ms > 0 { p_num(&p, "maxCpuMs", max_cpu_ms) }
+	return wait_for(s, "quiet", &p, deadline)
+}
+
+// An element matches (and with `visible`, shows).
+wait_selector :: proc(s: ^Session, selector: string, visible := false, deadline := DEFAULT_DEADLINE, loc := #caller_location) -> Error {
+	p := params(loc)
+	p_str(&p, "selector", selector)
+	p_bool(&p, "visible", visible)
+	return wait_for(s, "selector", &p, deadline)
+}
+
+// A script's expression, in the page, holds.
+wait_js :: proc(s: ^Session, expression: string, deadline := DEFAULT_DEADLINE, loc := #caller_location) -> Error {
+	p := params(loc)
+	p_str(&p, "expression", expression)
+	return wait_for(s, "function", &p, deadline)
+}
+
+// `n` more frames have been made (a headless Wren makes them as fast as they are asked for).
+wait_frames :: proc(s: ^Session, n := 2, deadline := DEFAULT_DEADLINE, loc := #caller_location) -> Error {
+	p := params(loc)
+	p_int(&p, "frames", n)
+	return wait_for(s, "frames", &p, deadline)
+}
+
+////////////////////////////////
+// Script and the document
+
+// What a script gave: `kind` is JavaScript's type name; `text` a string's value, else its JSON.
+Script_Value :: struct { kind, text: string }
+
+eval_value :: proc(s: ^Session, expression: string, await := false, deadline := DEFAULT_DEADLINE, loc := #caller_location) -> (v: Script_Value, e: Error) {
+	p := params(loc)
+	p_tab(&p, s)
+	p_str(&p, "expression", expression)
+	p_bool(&p, "awaitPromise", await)
+	p_limit(&p, deadline)
+	o := request(s, "Runtime.evaluate", &p) or_return
+	if ex, has := remote.param_object(o, "exceptionDetails"); has {
+		ob, _ := remote.param_object(ex, "exception")
+		d := s_of(ob, "description")
+		set_failure(d != "" ? d : s_of(ex, "text"))
+		call_failed(s, .Script, expression, loc)
+		return {}, .Script
+	}
+	res, _ := remote.param_object(o, "result")
+	v.kind = s_of(res, "type")
+	switch v.kind {
+	case "undefined":
+	case "string": v.text = s_of(res, "value")
+	case:
+		t, _ := json.marshal(res["value"], {}, context.temp_allocator)
+		v.text = string(t)
+	}
+	return v, .None
+}
+
+// The value of a script's expression, as text.
+eval :: proc(s: ^Session, expression: string, await := false, deadline := DEFAULT_DEADLINE, loc := #caller_location) -> (string, Error) {
+	v, e := eval_value(s, expression, await, deadline, loc)
+	return v.text, e
+}
+
+// ... as a number (.Bad_Answer: it is not one).
+eval_f64 :: proc(s: ^Session, expression: string, loc := #caller_location) -> (f64, Error) {
+	t, e := eval(s, expression, loc = loc)
+	if e != .None { return 0, e }
+	f, ok := strconv.parse_f64(t)
+	if !ok { set_failure(fmt.tprintf("%s gave %q, not a number", expression, t))
+		call_failed(s, .Bad_Answer, expression, loc)
+		return 0, .Bad_Answer }
+	return f, .None
+}
+
+outer_html :: proc(s: ^Session, selector := "", loc := #caller_location) -> (html: string, e: Error) {
+	p := params(loc)
+	p_tab(&p, s)
+	if selector != "" { p_str(&p, "selector", selector) } else { p_raw(&p, "selector", "null") }
+	o := request(s, "DOM.getOuterHTML", &p) or_return
+	return s_of(o, "outerHTML"), .None
+}
+
+// The elements that match (`Session.result` has what the browser says of them).
+query_all :: proc(s: ^Session, selector: string, limit := 0, loc := #caller_location) -> Error {
+	p := params(loc)
+	p_tab(&p, s)
+	p_str(&p, "selector", selector)
+	p_int(&p, "limit", limit)
+	_, e := request(s, "DOM.querySelectorAll", &p)
+	return e
+}
+
+// An element's boxes (`Session.result`).
+box_model :: proc(s: ^Session, selector: string, loc := #caller_location) -> Error {
+	p := params(loc)
+	p_tab(&p, s)
+	p_str(&p, "selector", selector)
+	_, e := request(s, "DOM.getBoxModel", &p)
+	return e
+}
+
+// An element's computed style (`Session.result`): `properties` nil: all of it.
+computed_style :: proc(s: ^Session, selector: string, properties: []string = nil, loc := #caller_location) -> Error {
+	p := params(loc)
+	p_tab(&p, s)
+	p_str(&p, "selector", selector)
+	if properties == nil {
+		p_raw(&p, "properties", "null")
+	} else {
+		p_key(&p, "properties")
+		strings.write_byte(&p.b, '[')
+		for name, i in properties { if i > 0 { strings.write_byte(&p.b, ',') }; remote.write_json_string(&p.b, name) }
+		strings.write_byte(&p.b, ']')
+	}
+	_, e := request(s, "CSS.getComputedStyleForNode", &p)
+	return e
+}
+
+////////////////////////////////
+// Input: Wren's own path (platform.inject_event), never the machine's mouse or keyboard
+
+Button :: enum u8 { Left, Right, Middle }
+BUTTON_NAMES := [Button]string{.Left = "left", .Right = "right", .Middle = "middle"}
+
+// What a point is measured from: the page's corner in CSS pixels, or the window's in its pixels.
+Space :: enum u8 { Page, Window }
+@(private) SPACE_NAMES := [Space]string{.Page = "page", .Window = "window"}
+
+// Each answers once the frames that take the input are made.
+
+click_at :: proc(s: ^Session, at: Point, space := Space.Page, button := Button.Left, count := 1, loc := #caller_location) -> Error {
+	p := params(loc)
+	p_tab(&p, s)
+	p_str(&p, "button", BUTTON_NAMES[button])
+	p_int(&p, "count", count)
+	p_num(&p, "x", at.x)
+	p_num(&p, "y", at.y)
+	if space == .Window { p_str(&p, "space", "window") }
+	_, e := request(s, "Wren.click", &p)
+	return e
+}
+
+click :: proc(s: ^Session, selector: string, button := Button.Left, count := 1, loc := #caller_location) -> Error {
+	p := params(loc)
+	p_tab(&p, s)
+	p_str(&p, "button", BUTTON_NAMES[button])
+	p_int(&p, "count", count)
+	p_str(&p, "selector", selector)
+	_, e := request(s, "Wren.click", &p)
+	return e
+}
+
+hover :: proc(s: ^Session, at: Point, space := Space.Page, loc := #caller_location) -> Error {
+	p := params(loc)
+	p_str(&p, "type", "mouseMoved")
+	p_num(&p, "x", at.x)
+	p_num(&p, "y", at.y)
+	p_str(&p, "space", SPACE_NAMES[space])
+	_, e := request(s, "Input.dispatchMouseEvent", &p)
+	return e
+}
+
+// The wheel, at a point of the page: `notches` positive goes down (one is 100 px).
+scroll :: proc(s: ^Session, notches: f64, at := Point{SCROLL_X, SCROLL_Y}, loc := #caller_location) -> Error {
+	p := params(loc)
+	p_str(&p, "type", "mouseWheel")
+	p_num(&p, "x", at.x)
+	p_num(&p, "y", at.y)
+	p_num(&p, "notches", notches)
+	p_str(&p, "space", "page")
+	_, e := request(s, "Input.dispatchMouseEvent", &p)
+	return e
+}
+// Where the wheel turns when no point is given.
+SCROLL_X :: 200.0
+SCROLL_Y :: 200.0
+
+Drag_Options :: struct {
+	via:    []Point,   // points passed through (window points may be outside the window: it leaves and comes back)
+	steps:  int,       // moves per segment, one per frame (0: DRAG_STEPS)
+	space:  Space,
+	hold:   bool,      // the button stays down at the end
+	resume: bool,      // a drag held before goes on from here
+}
+DRAG_STEPS :: 8
+
+// A press, moves (one per frame), a release.
+drag :: proc(s: ^Session, from, to: Point, o := Drag_Options{}, loc := #caller_location) -> Error {
+	p := params(loc)
+	p_num(&p, "x", from.x)
+	p_num(&p, "y", from.y)
+	p_num(&p, "toX", to.x)
+	p_num(&p, "toY", to.y)
+	p_key(&p, "via")
+	strings.write_byte(&p.b, '[')
+	for v, i in o.via {
+		if i > 0 { strings.write_byte(&p.b, ',') }
+		fmt.sbprintf(&p.b, "[%v,%v]", v.x, v.y)
+	}
+	strings.write_byte(&p.b, ']')
+	p_int(&p, "steps", o.steps > 0 ? o.steps : DRAG_STEPS)
+	p_str(&p, "space", SPACE_NAMES[o.space])
+	p_bool(&p, "hold", o.hold)
+	p_bool(&p, "resume", o.resume)
+	_, e := request(s, "Wren.drag", &p)
+	return e
+}
+
+// What another application's drag carries.
+Drop_Data :: struct {
+	files: []string,   // absolute paths
+	text, url, html: string,
+}
+
+// Another application's drag over the window: enter, over, then the drop (with `leave`, it leaves instead).
+drop :: proc(s: ^Session, at: Point, data: Drop_Data, space := Space.Page, leave := false, loc := #caller_location) -> Error {
+	p := params(loc)
+	p_num(&p, "x", at.x)
+	p_num(&p, "y", at.y)
+	p_str(&p, "space", SPACE_NAMES[space])
+	p_key(&p, "files")
+	strings.write_byte(&p.b, '[')
+	for f, i in data.files { if i > 0 { strings.write_byte(&p.b, ',') }; remote.write_json_string(&p.b, f) }
+	strings.write_byte(&p.b, ']')
+	p_str(&p, "text", data.text)
+	p_str(&p, "url", data.url)
+	p_str(&p, "html", data.html)
+	p_bool(&p, "leave", leave)
+	_, e := request(s, "Wren.drop", &p)
+	return e
+}
+
+// Text, as the keyboard's text input.
+type_text :: proc(s: ^Session, text: string, loc := #caller_location) -> Error {
+	p := params(loc)
+	p_str(&p, "text", text)
+	_, e := request(s, "Wren.type", &p)
+	return e
+}
+
+// Keys: "Ctrl+L", "Enter", "Shift+Tab", several separated by spaces.
+key :: proc(s: ^Session, keys: string, repeat := 1, loc := #caller_location) -> Error {
+	p := params(loc)
+	p_str(&p, "keys", keys)
+	p_int(&p, "repeat", repeat)
+	_, e := request(s, "Wren.key", &p)
+	return e
+}
+
+////////////////////////////////
+// Captures
+
+Shot_Target :: enum u8 { Window, Page, Rect, Selector }
+
+Shot_Options :: struct {
+	target:     Shot_Target,
+	rect:       Rect,          // of .Rect: window pixels
+	selector:   string,        // of .Selector
+	scale:      f64,           // 0: 1
+	settle:     int,           // frames first (0 with has_settle unset: the browser's default)
+	has_settle: bool,
+}
+
+Shot :: struct { path: string, width, height: int }
+
+@(private)
+p_shot :: proc(p: ^Params, o: Shot_Options) {
+	switch o.target {
+	case .Window:
+	case .Page: p_str(p, "target", "page")
+	case .Rect:
+		p_str(p, "target", "rect")
+		p_key(p, "clip")
+		fmt.sbprintf(&p.b, `{{"x":%v,"y":%v,"width":%v,"height":%v}}`, o.rect.x, o.rect.y, o.rect.w, o.rect.h)
+	case .Selector:
+		p_str(p, "target", "selector")
+		p_str(p, "selector", o.selector)
+	}
+	if o.scale > 0 { p_num(p, "scale", o.scale) }
+	if o.has_settle { p_int(p, "settle", o.settle) }
+}
+
+// The frame's pixels to a PNG file (`path` absolute): covered, hidden or headless, it is the renderer's real picture.
+screenshot :: proc(s: ^Session, path: string, o := Shot_Options{}, loc := #caller_location) -> (r: Shot, e: Error) {
+	p := params(loc)
+	p_tab(&p, s)
+	p_str(&p, "path", path)
+	p_shot(&p, o)
+	a := request(s, "Page.captureScreenshot", &p) or_return
+	return {s_of(a, "path"), i_of(a, "width"), i_of(a, "height")}, .None
+}
+
+// A snapshot: `prefix`.png, .html and .json (`path` absolute). `page`: of the page, not the window.
+snapshot :: proc(s: ^Session, prefix: string, page := false, loc := #caller_location) -> Error {
+	p := params(loc)
+	p_tab(&p, s)
+	p_str(&p, "path", prefix)
+	p_str(&p, "target", page ? "page" : "window")
+	_, e := request(s, "Wren.snapshot", &p)
+	return e
+}
+
+////////////////////////////////
+// What the page said, and what it fetched
+
+Console_Line :: struct { level, text: string }
+
+console :: proc(s: ^Session, since := 0, clear := false, loc := #caller_location) -> (lines: []Console_Line, e: Error) {
+	p := params(loc)
+	p_tab(&p, s)
+	p_int(&p, "since", since)
+	p_bool(&p, "clear", clear)
+	o := request(s, "Wren.console", &p) or_return
+	a, _ := remote.param_array(o, "lines")
+	lines = make([]Console_Line, len(a), context.temp_allocator)
+	for item, i in a {
+		l, _ := item.(json.Object)
+		lines[i] = {s_of(l, "level"), s_of(l, "text")}
+	}
+	return lines, .None
+}
+
+Net_Request :: struct {
+	url, method, mime, error: string,
+	status, bytes: int,
+	ms:     f64,
+	has_ms: bool,
+	failed: bool,
+}
+
+network :: proc(s: ^Session, clear := false, loc := #caller_location) -> (reqs: []Net_Request, e: Error) {
+	p := params(loc)
+	p_tab(&p, s)
+	p_bool(&p, "clear", clear)
+	o := request(s, "Wren.network", &p) or_return
+	a, _ := remote.param_array(o, "requests")
+	reqs = make([]Net_Request, len(a), context.temp_allocator)
+	for item, i in a {
+		r, _ := item.(json.Object)
+		ms, has_ms := remote.param_float(r, "ms")
+		reqs[i] = {url = s_of(r, "url"), method = s_of(r, "method"), mime = s_of(r, "mime"), error = s_of(r, "error"), status = i_of(r, "status"), bytes = i_of(r, "bytes"), ms = ms, has_ms = has_ms, failed = b_of(r, "failed")}
+	}
+	return reqs, .None
+}
+
+////////////////////////////////
+// The numbers of a window
+
+Frame_Gate :: struct { begun, nested, deferred, violations: int, last_violation: string }
+
+// What tests read (`Session.result` has them all; a number a test needs goes here).
+Stats :: struct {
+	pid:                 int,
+	fps:                 f64,
+	frames_drawn:        int,
+	frames_presented:    int,
+	pending_ops:         int,
+	input_events:        int,
+	requests_in_flight:  int,
+	tabs:                int,
+	nodes:               int,
+	working_set_bytes:   int,
+	private_bytes:       int,
+	uptime_ms:           f64,
+	frame_period_ms:     f64,
+	frame_gate:          Frame_Gate,
+	menu_open:           bool,
+	devtools:            bool,
+	devtools_windows:    int,      // windows of their own the developer tools have, every window's
+	front_window:        bool,
+	caret_blinking:      bool,
+	caret_shown:         bool,
+	drop_target:         bool,
+	chrome_animating:   bool,      // the interface has an animation under way
+	group_name_focused: bool,      // a tab group's name is being edited, its field has the keyboard
+	backend:             string,
+	drag_image:          string,
+	drag_picture:        string,
+	prefs_net_applied:   int,
+}
+
+stats :: proc(s: ^Session, reset_latency := false, reset_frames := false, loc := #caller_location) -> (r: Stats, e: Error) {
+	p := params(loc)
+	p_bool(&p, "resetLatency", reset_latency)
+	p_bool(&p, "resetFrames", reset_frames)
+	o := request(s, "Wren.stats", &p) or_return
+	g, _ := remote.param_object(o, "frameGate")
+	return {
+		pid = i_of(o, "pid"), fps = f_of(o, "fps"), frames_drawn = i_of(o, "framesDrawn"), frames_presented = i_of(o, "framesPresented"),
+		pending_ops = i_of(o, "pendingOps"), input_events = i_of(o, "inputEvents"), requests_in_flight = i_of(o, "requestsInFlight"),
+		tabs = i_of(o, "tabs"), nodes = i_of(o, "nodes"), working_set_bytes = i_of(o, "workingSetBytes"), private_bytes = i_of(o, "privateBytes"),
+		uptime_ms = f_of(o, "uptimeMs"), frame_period_ms = f_of(o, "framePeriodMs"),
+		frame_gate = {i_of(g, "begun"), i_of(g, "nested"), i_of(g, "deferred"), i_of(g, "violations"), s_of(g, "lastViolation")},
+		menu_open = b_of(o, "menuOpen"), devtools = b_of(o, "devtools"), front_window = b_of(o, "frontWindow"),
+		caret_blinking = b_of(o, "caretBlinking"), caret_shown = b_of(o, "caretShown"), drop_target = b_of(o, "dropTarget"),
+		chrome_animating = b_of(o, "chromeAnimating"), group_name_focused = b_of(o, "groupNameFocused"), backend = s_of(o, "backend"), drag_image = s_of(o, "dragImage"), drag_picture = s_of(o, "dragPicture"),
+		prefs_net_applied = i_of(o, "prefsNetApplied"),
+	}, .None
+}
+
+////////////////////////////////
+// Preferences
+
+// Each gives the preference's value as text.
+
+pref_get :: proc(s: ^Session, name: string, loc := #caller_location) -> (text: string, e: Error) {
+	p := params(loc)
+	p_str(&p, "name", name)
+	o := request(s, "Wren.getPref", &p) or_return
+	return s_of(o, "text"), .None
+}
+
+// As the user sets it. `override`: above what the user sets, as the command line's --pref.
+pref_set :: proc(s: ^Session, name, value: string, override := false, loc := #caller_location) -> (text: string, e: Error) {
+	p := params(loc)
+	p_str(&p, "name", name)
+	p_str(&p, "value", value)
+	p_bool(&p, "override", override)
+	o := request(s, "Wren.setPref", &p) or_return
+	return s_of(o, "text"), .None
+}
+
+pref_reset :: proc(s: ^Session, name: string, loc := #caller_location) -> (text: string, e: Error) {
+	p := params(loc)
+	p_str(&p, "name", name)
+	o := request(s, "Wren.resetPref", &p) or_return
+	return s_of(o, "text"), .None
+}
+
+// Every preference back; how many were.
+pref_reset_all :: proc(s: ^Session, loc := #caller_location) -> (restored: int, e: Error) {
+	p := params(loc)
+	p_bool(&p, "all", true)
+	o := request(s, "Wren.resetPref", &p) or_return
+	return i_of(o, "restored"), .None
+}
+
+Pref :: struct { name, text: string }
+
+pref_list :: proc(s: ^Session, prefix := "", loc := #caller_location) -> (prefs: []Pref, e: Error) {
+	p := params(loc)
+	p_str(&p, "prefix", prefix)
+	o := request(s, "Wren.listPrefs", &p) or_return
+	a, _ := remote.param_array(o, "prefs")
+	prefs = make([]Pref, len(a), context.temp_allocator)
+	for item, i in a {
+		x, _ := item.(json.Object)
+		prefs[i] = {s_of(x, "name"), s_of(x, "text")}
+	}
+	return prefs, .None
+}
+
+////////////////////////////////
+// Tabs
+
+Tab :: struct {
+	id, window, group: int,
+	title, url:        string,
+	active, loading, pinned, playing, audible, muted: bool,
+	group_name, group_color: string,
+	group_collapsed:   bool,
+	rect:              Rect,   // where the last frame drew it in the tab bar
+	has_rect:          bool,
+}
+
+Tab_Group :: struct {
+	id, window: int,
+	name, color: string,
+	collapsed:  bool,
+	rect:       Rect,
+	has_rect:   bool,
+}
+
+Targets :: struct { tabs: []Tab, groups: []Tab_Group }
+
+// Every window's tabs and tab groups.
+targets :: proc(s: ^Session, loc := #caller_location) -> (r: Targets, e: Error) {
+	p := params(loc)
+	o := request(s, "Target.getTargets", &p) or_return
+	infos, _ := remote.param_array(o, "targetInfos")
+	r.tabs = make([]Tab, len(infos), context.temp_allocator)
+	for item, i in infos {
+		x, _ := item.(json.Object)
+		rect, has_rect := rect_of(x, "rect")
+		r.tabs[i] = {
+			id = i_of(x, "targetId"), window = i_of(x, "windowId"), group = i_of(x, "group"), title = s_of(x, "title"), url = s_of(x, "url"),
+			active = b_of(x, "active"), loading = b_of(x, "loading"), pinned = b_of(x, "pinned"), playing = b_of(x, "playing"), audible = b_of(x, "audible"), muted = b_of(x, "muted"),
+			group_name = s_of(x, "groupName"), group_color = s_of(x, "groupColor"), group_collapsed = b_of(x, "groupCollapsed"), rect = rect, has_rect = has_rect,
+		}
+	}
+	groups, _ := remote.param_array(o, "tabGroups")
+	r.groups = make([]Tab_Group, len(groups), context.temp_allocator)
+	for item, i in groups {
+		x, _ := item.(json.Object)
+		rect, has_rect := rect_of(x, "rect")
+		r.groups[i] = {id = i_of(x, "id"), window = i_of(x, "windowId"), name = s_of(x, "name"), color = s_of(x, "color"), collapsed = b_of(x, "collapsed"), rect = rect, has_rect = has_rect}
+	}
+	return r, .None
+}
+
+// A new tab; its id. The window's current tab unless `background`.
+new_tab :: proc(s: ^Session, url := "", wait := Wait.None, background := false, deadline := DEFAULT_DEADLINE, loc := #caller_location) -> (id: int, e: Error) {
+	p := params(loc)
+	p_str(&p, "url", url)
+	p_str(&p, "wait", WAIT_NAMES[wait])
+	if background { p_bool(&p, "background", true) }
+	p_limit(&p, deadline)
+	o := request(s, "Target.createTarget", &p) or_return
+	return i_of(o, "targetId"), .None
+}
+
+activate_tab :: proc(s: ^Session, id: int, loc := #caller_location) -> Error {
+	p := params(loc)
+	p_int(&p, "targetId", id)
+	_, e := request(s, "Target.activateTarget", &p)
+	return e
+}
+
+close_tab :: proc(s: ^Session, id: int, loc := #caller_location) -> Error {
+	p := params(loc)
+	p_int(&p, "targetId", id)
+	_, e := request(s, "Target.closeTarget", &p)
+	return e
+}
+
+// The tab goes to window `to` (at `index`, -1: the end) with its page as it is; the window it is in then.
+move_tab :: proc(s: ^Session, id, to: int, index := -1, loc := #caller_location) -> (window: int, e: Error) {
+	p := params(loc)
+	p_int(&p, "targetId", id)
+	p_int(&p, "to", to)
+	p_int(&p, "index", index)
+	o := request(s, "Target.moveTarget", &p) or_return
+	return i_of(o, "windowId"), .None
+}
+
+// The tab goes to a new window of its own; that window's id.
+move_tab_to_new_window :: proc(s: ^Session, id: int, index := -1, loc := #caller_location) -> (window: int, e: Error) {
+	p := params(loc)
+	p_int(&p, "targetId", id)
+	p_str(&p, "to", "new")
+	p_int(&p, "index", index)
+	o := request(s, "Target.moveTarget", &p) or_return
+	return i_of(o, "windowId"), .None
+}
+
+////////////////////////////////
+// Windows
+
+// The developer tools of a window.
+Devtools_State :: struct {
+	visible, detached: bool,
+	has_window:        bool,   // they have a window of their own right now (a headless Wren's has no window of the system: hwnd 0)
+	hwnd:              int,
+	dock, panel, title: string,
+}
+
+Window :: struct {
+	id, tabs, current_tab: int,
+	front, headless:   bool,
+	hwnd:              int,      // 0 where there is no window of the system
+	left, top, width, height: int,
+	client_left, client_top:  int,
+	state:             string,   // normal, minimized, maximized, fullscreen
+	dpi_scale:         f64,
+	devtools:          Devtools_State,
+	dropping:          bool,     // a tab is carried over its tabs
+	drop_index, drop_group: int,
+	drop_pinned:       bool,
+	drop_mark:         f64,
+}
+
+windows :: proc(s: ^Session, loc := #caller_location) -> (r: []Window, e: Error) {
+	p := params(loc)
+	o := request(s, "Browser.getWindows", &p) or_return
+	a, _ := remote.param_array(o, "windows")
+	r = make([]Window, len(a), context.temp_allocator)
+	for item, i in a {
+		x, _ := item.(json.Object)
+		d, _ := remote.param_object(x, "devtools")
+		_, own := d["hwnd"]
+		drop, dropping := remote.param_object(x, "drop")
+		r[i] = {
+			id = i_of(x, "windowId"), tabs = i_of(x, "tabs"), current_tab = i_of(x, "currentTabId"), front = b_of(x, "front"), headless = b_of(x, "headless"), hwnd = i_of(x, "hwnd"),
+			left = i_of(x, "left"), top = i_of(x, "top"), width = i_of(x, "width"), height = i_of(x, "height"), client_left = i_of(x, "clientLeft"), client_top = i_of(x, "clientTop"),
+			state = s_of(x, "windowState"), dpi_scale = f_of(x, "dpiScale"),
+			devtools = {visible = b_of(d, "visible"), detached = b_of(d, "detached"), has_window = own, hwnd = i_of(d, "hwnd"), dock = s_of(d, "dock"), panel = s_of(d, "panel"), title = s_of(d, "title")},
+			dropping = dropping, drop_index = i_of(drop, "index"), drop_group = i_of(drop, "group"), drop_pinned = b_of(drop, "pinned"), drop_mark = f_of(drop, "mark"),
+		}
+	}
+	return r, .None
+}
+
+// The one with this id, from a list `windows` gave.
+window_with_id :: proc(list: []Window, id: int) -> (Window, bool) {
+	for w in list { if w.id == id { return w, true } }
+	return {}, false
+}
+
+Bounds :: struct {
+	window:                   int,
+	left, top, width, height: int,      // width and height: the client area, in pixels
+	outer_width, outer_height: int,
+	state:                    string,
+	dpi_scale, ui_scale, page_scale: f64,
+	headless, visible:        bool,
+	page_rect:                Rect,     // the page's area in the last frame
+}
+
+@(private)
+bounds_of :: proc(o: json.Object) -> Bounds {
+	pr, _ := rect_of(o, "pageRect")
+	return {
+		window = i_of(o, "windowId"), left = i_of(o, "left"), top = i_of(o, "top"), width = i_of(o, "width"), height = i_of(o, "height"),
+		outer_width = i_of(o, "outerWidth"), outer_height = i_of(o, "outerHeight"), state = s_of(o, "windowState"),
+		dpi_scale = f_of(o, "dpiScale"), ui_scale = f_of(o, "uiScale"), page_scale = f_of(o, "pageScale"), headless = b_of(o, "headless"), visible = b_of(o, "visible"), page_rect = pr,
+	}
+}
+
+window_bounds :: proc(s: ^Session, loc := #caller_location) -> (b: Bounds, e: Error) {
+	p := params(loc)
+	o := request(s, "Browser.getWindowBounds", &p) or_return
+	return bounds_of(o), .None
+}
+
+// What to change of a window (Maybe: what is left out stays).
+Window_Change :: struct {
+	size:  Maybe([2]int),   // the client area, in pixels
+	pos:   Maybe([2]int),
+	state: string,          // normal, minimized, maximized, fullscreen; "": unchanged
+	dpi:   int,             // as if moved to a monitor of that scale (96 = 100 %); 0: unchanged
+}
+
+set_window :: proc(s: ^Session, c: Window_Change, loc := #caller_location) -> (b: Bounds, e: Error) {
+	p := params(loc)
+	if size, ok := c.size.?; ok { p_int(&p, "width", size.x); p_int(&p, "height", size.y) }
+	if pos, ok := c.pos.?; ok { p_int(&p, "left", pos.x); p_int(&p, "top", pos.y) }
+	if c.state != "" { p_str(&p, "windowState", c.state) }
+	if c.dpi != 0 { p_int(&p, "dpi", c.dpi) }
+	o := request(s, "Browser.setWindowBounds", &p) or_return
+	return bounds_of(o), .None
+}
+
+// The window becomes the front one (never the machine's: nothing takes the system's focus).
+bring_to_front :: proc(s: ^Session, loc := #caller_location) -> Error {
+	p := params(loc)
+	_, e := request(s, "Browser.activateWindow", &p)
+	return e
+}
+
+close_window :: proc(s: ^Session, loc := #caller_location) -> Error {
+	p := params(loc)
+	_, e := request(s, "Browser.closeWindow", &p)
+	return e
+}
+
+////////////////////////////////
+// State: reset, checkpoints
+
+Reset_Report :: struct {
+	closed_tabs, cookies, sites, cache_entries, history_visits, prefs_restored, cancelled_ops: int,
+	window_restored: bool,
+}
+
+@(private)
+reset_of :: proc(o: json.Object) -> Reset_Report {
+	return {i_of(o, "closedTabs"), i_of(o, "cookies"), i_of(o, "sites"), i_of(o, "cacheEntries"), i_of(o, "historyVisits"), i_of(o, "prefsRestored"), i_of(o, "cancelledOps"), b_of(o, "windowRestored")}
+}
+
+// Back to the state of the start. `keep`: "tabs,data,prefs,window,history", what stays.
+reset :: proc(s: ^Session, keep := "", url := "", wait := Wait.Load, loc := #caller_location) -> (r: Reset_Report, e: Error) {
+	p := params(loc)
+	p_str(&p, "wait", WAIT_NAMES[wait])
+	if keep != "" { p_str(&p, "keep", keep) }
+	if url != "" { p_str(&p, "url", url) }
+	o := request(s, "Wren.reset", &p) or_return
+	return reset_of(o), .None
+}
+
+Checkpoint :: struct { name: string, tabs, cookies, storage_origins: int }
+
+checkpoint_save :: proc(s: ^Session, name: string, loc := #caller_location) -> (r: Checkpoint, e: Error) {
+	p := params(loc)
+	p_str(&p, "action", "save")
+	p_str(&p, "name", name)
+	o := request(s, "Wren.checkpoint", &p) or_return
+	return {name, i_of(o, "tabs"), i_of(o, "cookies"), i_of(o, "storageOrigins")}, .None
+}
+
+checkpoint_restore :: proc(s: ^Session, name: string, wait := Wait.Load, loc := #caller_location) -> (r: Reset_Report, e: Error) {
+	p := params(loc)
+	p_str(&p, "action", "restore")
+	p_str(&p, "name", name)
+	p_str(&p, "wait", WAIT_NAMES[wait])
+	o := request(s, "Wren.checkpoint", &p) or_return
+	return reset_of(o), .None
+}
+
+checkpoint_delete :: proc(s: ^Session, name: string, loc := #caller_location) -> Error {
+	p := params(loc)
+	p_str(&p, "action", "delete")
+	p_str(&p, "name", name)
+	_, e := request(s, "Wren.checkpoint", &p)
+	return e
+}
+
+checkpoint_list :: proc(s: ^Session, loc := #caller_location) -> (r: []Checkpoint, e: Error) {
+	p := params(loc)
+	p_str(&p, "action", "list")
+	o := request(s, "Wren.checkpoint", &p) or_return
+	a, _ := remote.param_array(o, "checkpoints")
+	r = make([]Checkpoint, len(a), context.temp_allocator)
+	for item, i in a {
+		x, _ := item.(json.Object)
+		r[i] = {s_of(x, "name"), i_of(x, "tabs"), i_of(x, "cookies"), i_of(x, "storageOrigins")}
+	}
+	return r, .None
+}
+
+////////////////////////////////
+// Commands of the interface
+
+Command :: struct { name, title, shortcut: string, enabled: bool }
+
+commands :: proc(s: ^Session, loc := #caller_location) -> (r: []Command, e: Error) {
+	p := params(loc)
+	o := request(s, "Wren.listCommands", &p) or_return
+	a, _ := remote.param_array(o, "commands")
+	r = make([]Command, len(a), context.temp_allocator)
+	for item, i in a {
+		x, _ := item.(json.Object)
+		r[i] = {s_of(x, "name"), s_of(x, "title"), s_of(x, "shortcut"), b_of(x, "enabled")}
+	}
+	return r, .None
+}
+
+// A command of the interface, by name (tab.pin, window.new...).
+run_command :: proc(s: ^Session, name: string, loc := #caller_location) -> Error {
+	p := params(loc)
+	p_str(&p, "name", name)
+	_, e := request(s, "Wren.runCommand", &p)
+	return e
+}
+
+// The developer tools: `panel` console, elements, network, none; `dock` "": as they are, window: a window of their own.
+open_devtools :: proc(s: ^Session, panel := "console", dock := "", loc := #caller_location) -> Error {
+	p := params(loc)
+	p_str(&p, "panel", panel)
+	p_str(&p, "dock", dock)
+	_, e := request(s, "Wren.openDevTools", &p)
+	return e
+}
+
+open_setup :: proc(s: ^Session, loc := #caller_location) -> Error {
+	p := params(loc)
+	_, e := request(s, "Wren.openSetup", &p)
+	return e
+}
+
+////////////////////////////////
+// Recording and the timeline (their answers are files: `Session.result`)
+
+record_start :: proc(s: ^Session, loc := #caller_location) -> Error {
+	p := params(loc)
+	p_str(&p, "action", "start")
+	_, e := request(s, "Wren.recordInput", &p)
+	return e
+}
+
+// The recording, as the text a file keeps; how many events.
+record_stop :: proc(s: ^Session, loc := #caller_location) -> (text: string, count: int, e: Error) {
+	p := params(loc)
+	p_str(&p, "action", "stop")
+	o := request(s, "Wren.recordInput", &p) or_return
+	return s.result, i_of(o, "count"), .None
+}
+
+// `events`: the "events" of a recording, as its JSON text.
+replay :: proc(s: ^Session, events_json: string, speed := 1.0, loc := #caller_location) -> Error {
+	p := params(loc)
+	p_raw(&p, "events", events_json)
+	p_num(&p, "speed", speed)
+	_, e := request(s, "Wren.replayInput", &p)
+	return e
+}
+
+timeline_start :: proc(s: ^Session, scale: f64, count: int, page := false, loc := #caller_location) -> Error {
+	p := params(loc)
+	p_str(&p, "action", "start")
+	p_num(&p, "scale", scale)
+	p_int(&p, "max", count)
+	p_str(&p, "target", page ? "page" : "window")
+	_, e := request(s, "Wren.timeline", &p)
+	return e
+}
+
+Timeline :: struct { count, chrome, aba: int, sheet: string }
+
+timeline_stop :: proc(s: ^Session, folder: string, cols: int, all := false, loc := #caller_location) -> (r: Timeline, e: Error) {
+	p := params(loc)
+	p_str(&p, "action", "stop")
+	p_str(&p, "dir", folder)
+	p_int(&p, "cols", cols)
+	p_bool(&p, "all", all)
+	o := request(s, "Wren.timeline", &p) or_return
+	return {i_of(o, "count"), i_of(o, "chrome"), i_of(o, "aba"), s_of(o, "sheet")}, .None
+}
+
+timeline_status :: proc(s: ^Session, loc := #caller_location) -> Error {
+	p := params(loc)
+	p_str(&p, "action", "status")
+	_, e := request(s, "Wren.timeline", &p)
+	return e
+}

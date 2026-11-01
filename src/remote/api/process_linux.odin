@@ -1,6 +1,6 @@
-package client
+package api
 
-// The processes of spawn.odin on Linux: a child of ours (posix_spawn, waitpid) or, for `stop`, a pid told again by
+// The processes of session.odin on Linux: a child of ours (posix_spawn, waitpid) or, for `stop`, a pid told again by
 // /proc/<pid>/stat's start time and /proc/<pid>/exe. A child is reaped by the wait that sees it end (its pid is not given
 // to another process before that); a process that is not our child is watched through /proc and signalled.
 
@@ -124,3 +124,9 @@ process_release :: proc(p: ^Process) {
 
 // Lets the process go on alone (a session `wren ctl stop` ends later): when this one exits, init adopts and reaps it.
 process_detach :: proc(p: ^Process) { p^ = {} }
+
+// The exit code of a process that has ended (process_wait said so): that of a child of ours; -1 when a signal ended it, or it is not our child.
+process_exit_code :: proc(p: ^Process) -> int {
+	if !p.child || !p.ended || !posix.WIFEXITED(p.status) { return -1 }
+	return int(posix.WEXITSTATUS(p.status))
+}

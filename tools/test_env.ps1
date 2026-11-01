@@ -176,7 +176,7 @@ function Test-WrenBuildFresh([string]$Variant = 'wren') {
         $d = Join-Path $root $dir
         if (-not (Test-Path $d)) { continue }
         foreach ($p in [IO.Directory]::EnumerateFiles($d, '*', [IO.SearchOption]::AllDirectories)) {
-            if ($p.EndsWith('_test.odin') -or $p.Contains('\tests\') -or $p.Contains('\.git\') -or $p.EndsWith('.md')) { continue }
+            if ($p.EndsWith('_test.odin') -or $p.Contains('\tests\') -or $p.Contains('\.git\') -or $p.EndsWith('.md') -or $p.Contains('\src\tools\e2e\') -or $p.Contains('\src\e2e\')) { continue }
             if ([IO.File]::GetLastWriteTimeUtc($p) -gt $built) { return $false }
         }
     }
@@ -242,6 +242,19 @@ function Invoke-WrenBuildIfStale([string]$Output, [string]$Flags, [scriptblock]$
     if ($LASTEXITCODE -ne 0) { return $false }
     [IO.File]::WriteAllText($stamp, $Flags)
     return $true
+}
+
+# Runs the end-to-end scenarios of one file of src\tools\e2e (docs\testing.md): the tests that file declares, in this program built by test_all's 'build e2e scenarios', in a process of their own.
+#   Invoke-WrenE2E 'build\e2e_test.exe' 'search'
+function Invoke-WrenE2E([string]$Exe, [string]$Scenario) {
+    $root = Get-WrenRepoRoot
+    $source = [IO.File]::ReadAllText((Join-Path $root "src\tools\e2e\$Scenario.odin"))
+    $names = @([regex]::Matches($source, '(?m)^@\(test\)\s*\r?\n([A-Za-z0-9_]+)\s*::') | ForEach-Object { $_.Groups[1].Value })
+    if ($names.Count -eq 0) { "no @(test) in src\tools\e2e\$Scenario.odin"; $global:LASTEXITCODE = 1; return }
+    $o = & (Join-Path $root $Exe) "-tests:$($names -join ',')" 2>&1 | Out-String
+    $code = $LASTEXITCODE
+    $o
+    $global:LASTEXITCODE = $code
 }
 
 # Where the time of a script goes, section by section (the tests are slow when nobody can see which part is):
