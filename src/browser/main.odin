@@ -1263,6 +1263,7 @@ frame :: proc(app: ^App, idled := false) {
 	base_style := chrome_frame_style(app)
 	window_chrome_frame(app)   // window_chrome.odin
 	prof_begin(.Build_UI)
+	chrome_ui_apply(app, active_window(app).ui)
 	ui.begin_build(active_window(app).ui, {
 		window_size = size, events = events, dt = dt, animations = os_animations_enabled(app),
 		dpi_scale = ui_scale_of(app), base = base_style, clipboard_get = clip_get, clipboard_set = clip_set,

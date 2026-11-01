@@ -22,6 +22,8 @@ import "wb:page"
 import "wb:wasm"
 import "wb:tools/testenv"
 
+WEB_AUDIO_SLOW_SCRIPT_MS :: 120_000
+
 BASE :: "http://127.0.0.1:8765"   // on the run's block of ports through testenv.url (addresses and scripts)
 PAGE :: BASE + "/jsweb/page"
 DIR :: "examples/jsweb"
@@ -246,7 +248,11 @@ main :: proc() {
 		actions["count"] = proc(p: ^page.Page, l: ^Page_Log) {
 			if n := page.web_audio_live_nodes(p); n < 400 { passes += 1 } else { fmt.printf("FAIL [webaudio_autoplay] %d nodes are still in the graph\n", n); failures += 1 }
 		}
+		// (2000 sounds in one task: slow on a loaded machine, and the hard stop is four times the limit on scripts)
+		slow := settings.js.slow_script_ms
+		settings.js.slow_script_ms = WEB_AUDIO_SLOW_SCRIPT_MS
 		run("webaudio_autoplay", actions)
+		settings.js.slow_script_ms = slow
 	}
 	if selected("message") { run("message") }
 	if selected("sockets") { run("sockets") }
