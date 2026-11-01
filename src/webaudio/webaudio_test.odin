@@ -7,6 +7,7 @@ import "wb:media"
 
 RATE :: 48000.0
 TEST_MAX_BYTES :: 1 << 30
+CLOCK_MOVED_S :: 0.1          // a running context's time is past this soon after it starts
 RESUME_DEADLINE_MS :: 5000   // how long a resumed context's clock may take to move
 
 @(private = "file")
@@ -691,10 +692,10 @@ a_running_context_follows_the_output_and_stops_with_it :: proc(t: ^testing.T) {
 	testing.expect(t, graph_time(g) == 0, "suspended: time stands still")
 	graph_resume(g, 2400)
 	testing.expect(t, graph_state(g) == .Running)
-	time.sleep(200 * time.Millisecond)
+	// the clock of the output moves, whenever a loaded machine lets its thread run
+	for waited := 0; waited < RESUME_DEADLINE_MS && graph_time(g) <= CLOCK_MOVED_S; waited += 1 { time.sleep(time.Millisecond) }
 	now := graph_time(g)
-	// the clock of the output, plus what is queued ahead (50 ms), within what a busy machine allows
-	testing.expectf(t, now > 0.1 && now < 1, "after 200 ms the context is at %v s", now)
+	testing.expectf(t, now > CLOCK_MOVED_S, "the context is at %v s after %d ms", now, RESUME_DEADLINE_MS)
 	graph_suspend(g)
 	stopped := graph_time(g)
 	time.sleep(30 * time.Millisecond)

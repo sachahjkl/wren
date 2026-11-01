@@ -355,6 +355,7 @@ shell_chrome_frame :: proc(app: ^App) {
 	size := draw.Vec2{f32(wnd.win.size.x), f32(wnd.win.size.y)}
 	base_style := chrome_frame_style(app)
 	window_chrome_frame(app)
+	chrome_ui_apply(app, wnd.ui)
 	ui.begin_build(wnd.ui, {
 		window_size = size, events = chrome, dt = wnd.pacer.dt, animations = os_animations_enabled(app),
 		dpi_scale = ui_scale_of(app), base = base_style, clipboard_get = clip_get, clipboard_set = clip_set,

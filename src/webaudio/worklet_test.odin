@@ -118,6 +118,7 @@ a_processors_output_comes_back_into_the_graph :: proc(t: ^testing.T) {
 	r := Fake_Realm{status = .Keep_Alive}
 	th := fake_start(&r, g)
 	defer fake_stop(&r, th)
+	r.w.stall_limit = GENEROUS_LIMIT   // (this test is about the answers: a loaded machine may be late with its thread)
 	constant_into_worklet(g)
 	p := fake_render(g, RENDER_QUANTUM * 4)
 	defer pcm_release(p)
@@ -148,6 +149,7 @@ a_throw_in_process_is_silence_and_no_more_calls :: proc(t: ^testing.T) {
 	r := Fake_Realm{status = .Keep_Alive, throw_at = 2}
 	th := fake_start(&r, g)
 	defer fake_stop(&r, th)
+	r.w.stall_limit = GENEROUS_LIMIT
 	constant_into_worklet(g)
 	p := fake_render(g, RENDER_QUANTUM * 4)
 	defer pcm_release(p)

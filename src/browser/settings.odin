@@ -60,6 +60,8 @@ PREFS := [?]config.Def{
 		description = "Palette of the browser's own interface (tabs, address bar, menus, status bar). Pages keep their own colors."},
 	{name = "browser.ui.font_size", kind = .Float, default = {f = 15}, bounded = true, min = 8, max = 48, unit = "px", restart = false,
 		description = "Font size of the browser's own interface (tabs, address bar, console)."},
+	{name = "browser.ui.scrollbar_autohide", kind = .Bool, default = {b = true},
+		description = "The scroll bars of the browser's own interface (the tab sidebar, the developer tools, the settings) show only while the pointer is over their box or one is held. Off: they always show. The scroll bars of pages don't change."},
 	{name = "browser.ui.zoom", kind = .Float, default = {f = CHROME_ZOOM_DEFAULT}, bounded = true, min = CHROME_ZOOM_MIN, max = CHROME_ZOOM_MAX,
 		description = "Zoom of the browser's own interface, independent of the zoom of pages. Ctrl+wheel with the pointer over the interface, Ctrl+Plus, Minus and 0 while it has the keyboard."},
 	{name = "browser.ui.scale", kind = .Float, default = {f = 0}, bounded = true, min = 0, max = 4,
@@ -119,6 +121,13 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 
 // The interface's scale: browser.ui.scale, else the display's of the window (`of`; the active one by default: window_chrome.odin,
 // main.odin's build). Each window has its own: two windows on monitors of different DPI are drawn each at its monitor's.
+// Before a build of a window's interface: what its toolkit state follows of the preferences.
+chrome_ui_apply :: proc(app: ^App, s: ^ui.State) {
+	if "browser.ui.scrollbar_autohide" in app.prefs.index {
+		ui.set_scrollbar_autohide(s, config.bool_of(&app.prefs, "browser.ui.scrollbar_autohide"))
+	}
+}
+
 // The scale of the display: what a page's layout starts from.
 display_scale_of :: proc(app: ^App, of: ^platform.Window = nil) -> f32 {
 	if app.cfg.ui_scale > 0 { return app.cfg.ui_scale }
