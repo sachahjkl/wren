@@ -22,7 +22,8 @@ import "wb:page"
 // scroll included).
 page_client_xy :: proc(t: ^Tab, local: [2]f32, scale: f32) -> (f64, f64) {
 	s := max(scale, 0.01)
-	return f64(local.x / s), f64((local.y - t.scroll) / s)
+	client := local - doc_scroll_vec(t)
+	return f64(client.x / s), f64(client.y / s)
 }
 
 // MouseEvent.buttons of the toolkit's held buttons: 1 primary, 2 secondary, 4 auxiliary.
@@ -137,7 +138,7 @@ route_device_pointer :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 	}
 	touch := ev.pointer.kind == .Touch
 	tp := page.Touch_Point{id = id, target = hit, x = cx, y = cy, radius = {f64(pd.size.x) / 2, f64(pd.size.y) / 2}, force = f64(ev.pointer.pressure)}
-	scroll := [2]f64{0, f64(t.scroll / max(scale, 0.01))}
+	scroll := [2]f64{f64(t.layout.doc_scroll_x / max(scale, 0.01)), f64(t.scroll / max(scale, 0.01))}
 	#partial switch ev.kind {
 	case .Pointer_Down:
 		if !inside { return false }

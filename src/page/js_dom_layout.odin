@@ -8,7 +8,7 @@ package page
 // pseudo-classes), the viewport. Repeated readings with nothing changed in between cost a few comparisons
 // (js_layout_now's fast path), so a script that reads offsetWidth in a loop does not lay the page out each time.
 //
-// Coordinates: the layout works in device pixels with the page's vertical scroll offset; CSSOM gives CSS pixels, in
+// Coordinates: the layout works in device pixels with the page's scroll offsets; CSSOM gives CSS pixels, in
 // viewport coordinates (getBoundingClientRect) or document coordinates (offsetTop...).
 
 import "core:math"
@@ -23,7 +23,7 @@ import "wb:style"
 Viewport :: struct {
 	width, height:      f64,   // CSS px
 	scale:              f64,   // device px per CSS px (devicePixelRatio)
-	scroll_x, scroll_y: f64,   // the document's scroll offsets, CSS px
+	scroll_x, scroll_y: f64,   // the document's scroll offsets, CSS px (scroll_x as views apply it: lay.doc_scroll_x_snapped)
 }
 
 Layout_Embedder :: struct {
@@ -321,9 +321,9 @@ Element_scrollWidth :: proc(c: ^Call, element: Api_Element) -> i32 {
 	p := c.page
 	h := H(element.handle)
 	if is_scrolling_element(p, h) {
-		// the document scrolls vertically only (the layout keeps no horizontal overflow of the page)
-		_, vp := js_layout_now(p)
-		return i32(vp.width)
+		l, vp := js_layout_now(p)
+		if l == nil { return i32(vp.width) }
+		return i32(math.max(vp.width, f64(l.doc_width - l.doc_min_x) / vp.scale))
 	}
 	g, l, vp := element_geometry(p, h)
 	if !g.ok || is_inline_box(g) { return 0 }
@@ -378,7 +378,7 @@ Element_scrollIntoViewAt :: proc(c: ^Call, element: Api_Element, block: i32, inl
 	y := pick(f64(g.border.min.y), f64(g.border.max.y), vp.height, vp.scroll_y, block)
 	x := pick(f64(g.border.min.x), f64(g.border.max.x), vp.width, vp.scroll_x, inline_pos)
 	jl := &js_dom_state(p).layout
-	if jl.has && jl.embedder.scroll_to != nil { scroll_events_mark(p); jl.embedder.scroll_to(jl.embedder.user, p, math.max(x, 0), math.max(y, 0), false) }
+	if jl.has && jl.embedder.scroll_to != nil { scroll_events_mark(p); jl.embedder.scroll_to(jl.embedder.user, p, x, math.max(y, 0), false) }
 }
 
 // offsetParent: the nearest ancestor that is positioned, or a td / th / table when the element is not positioned,
@@ -515,7 +515,7 @@ Window_scrollToXY :: proc(c: ^Call, x: f64, y: f64, relative: bool, smooth: bool
 	if p.worker != nil { return }
 	s := js_dom_state(p)
 	if !s.layout.has || s.layout.embedder.scroll_to == nil { return }
-	vp := viewport_now(c)
+	_, vp := js_layout_now(p)   // (what the script changed counts: the range it scrolls in is that of the document as it is now)
 	nx := math.is_nan(x) ? vp.scroll_x : (relative ? vp.scroll_x + x : x)
 	ny := math.is_nan(y) ? vp.scroll_y : (relative ? vp.scroll_y + y : y)
 	scroll_events_mark(p)

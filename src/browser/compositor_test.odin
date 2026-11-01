@@ -310,6 +310,11 @@ composited_pages :: proc(t: ^testing.T) {
 	f.l.scroll[sc] = {0, 23}
 	moved := cx_same(t, f, "container scrolled")
 	testing.expectf(t, moved == 0, "scrolling a container records nothing (%d)", moved)
+	// the document scrolls across: as down, only the replay matrix changes
+	lay.set_doc_scroll_x(&f.l, 11)
+	across := cx_same(t, f, "scrolled across", 30)
+	testing.expectf(t, across == 0, "scrolling across records nothing (%d)", across)
+	lay.set_doc_scroll_x(&f.l, 0)
 }
 
 TRANSFORM_PAGE :: `<!doctype html><html><head><style>

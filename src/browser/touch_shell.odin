@@ -201,7 +201,7 @@ touch_apply :: proc(app: ^App, t: ^Tab, ge: platform.Touch_Gesture_Event) {
 		request_frames(app, 3)
 	case .Long_Press:
 		if tsh.cancelled { return }
-		local := ge.pos - wnd.page_rect.min + {0, t.scroll}
+		local := ge.pos - wnd.page_rect.min + doc_scroll_vec(t)
 		page_context_press(app, t, ge.pos)
 		if t.page == p { page_context_menu(app, t, tsh.hit, ge.pos, local, false) }
 	case .End:

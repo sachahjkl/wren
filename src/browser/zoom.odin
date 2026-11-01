@@ -6,6 +6,7 @@ package browser
 // (chrome_zoom.odin).
 
 import "toolkit:ui"
+import lay "wb:layout"
 
 // Device pixels per CSS pixel of the current tab's page: the window's scale (its monitor's: ui_scale_of, at once when the window
 // changes monitor, not the scale of the last build) times the tab's zoom. Without a window (a test's App), the toolkit's.
@@ -25,6 +26,7 @@ tab_scale_follow :: proc(app: ^App, t: ^Tab) {
 	if t.scroll_dpi > 0 && abs(now - t.scroll_dpi) > 1e-4 {
 		k := now / t.scroll_dpi
 		t.scroll *= k
+		lay.set_doc_scroll_x(&t.layout, t.layout.doc_scroll_x * k)
 		clear(&t.smooth.anims)   // (an animation's ends were in the old pixels)
 		t.smooth.drag.active = false
 		request_frames(app, 2)
@@ -53,6 +55,7 @@ zoom_set :: proc(app: ^App, t: ^Tab, z: f32) {
 	// keep the same part of the document at the top
 	old := t.zoom > 0 ? t.zoom : 1
 	t.scroll *= nz / old
+	lay.set_doc_scroll_x(&t.layout, t.layout.doc_scroll_x * nz / old)
 	t.zoom = nz
 	request_frames(app, 3)
 }

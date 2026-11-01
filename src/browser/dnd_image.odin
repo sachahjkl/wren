@@ -116,7 +116,7 @@ element_paint_bounds :: proc(app: ^App, t: ^Tab, el: base.Handle) -> (draw.Rect,
 	if t.page == nil || !t.layout.valid { return {}, false }
 	r, found := lay.box_of(&t.layout, el, draw.rect_size(active_window(app).page_rect), t.scroll)
 	if !found || r.bounds.max.x <= r.bounds.min.x || r.bounds.max.y <= r.bounds.min.y { return {}, false }
-	return draw.Rect{{r.bounds.min.x, r.bounds.min.y - t.scroll}, {r.bounds.max.x, r.bounds.max.y - t.scroll}}, true
+	return draw.rect_shift(draw.Rect{r.bounds.min, r.bounds.max}, -doc_scroll_vec(t)), true
 }
 
 // The bounds of the selected text (page area px of the viewport): each text item's selected part.

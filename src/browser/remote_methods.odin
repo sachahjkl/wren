@@ -177,8 +177,18 @@ element_window_rect :: proc(app: ^App, t: ^Tab, h: base.Handle) -> (rect: [4]f32
 	if !found { return {}, false }
 	b := r.bounds   // where the border box is drawn (its transforms applied)
 	// document coordinates, a position: fixed box's too (box_of adds the scroll to the fixed space's)
-	x, y := wnd.page_rect.min.x + b.min.x, wnd.page_rect.min.y + b.min.y - t.scroll
-	return {x, y, b.max.x - b.min.x, b.max.y - b.min.y}, true
+	p := wnd.page_rect.min + b.min - doc_scroll_vec(t)
+	return {p.x, p.y, b.max.x - b.min.x, b.max.y - b.min.y}, true
+}
+
+// The document's horizontal offset that has the window rectangle `er` (element_window_rect) in the middle of the page area
+// `pr`, or starting at its left for one wider than it; in the document's range.
+@(private = "file")
+document_x_centering :: proc(t: ^Tab, er: [4]f32, pr: draw.Rect) -> f32 {
+	doc_left := er[0] - pr.min.x + doc_scroll_vec(t).x
+	view := pr.max.x - pr.min.x
+	lo, hi := lay.doc_scroll_x_range(&t.layout, view)
+	return clamp(er[2] > view ? doc_left : doc_left + er[2] / 2 - view / 2, lo, hi)
 }
 
 // An element with a box that shows at least in part in the page's area.
@@ -790,12 +800,12 @@ capture_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 			if h == base.NIL_HANDLE { finish(app, op, fail(remote.ERR_FAILED, fmt.tprintf("no element matches %q", op.arg))); return }
 			er, ok := element_window_rect(app, t, h)
 			if !ok { finish(app, op, fail(remote.ERR_FAILED, "the element has no box")); return }
-			if !op.scrolled && (er[1] < pr.min.y || er[1] + er[3] > pr.max.y) {
+			if !op.scrolled && (er[1] < pr.min.y || er[1] + er[3] > pr.max.y || er[0] < pr.min.x || er[0] + er[2] > pr.max.x) {
 				// not all of it in view: scrolled to (its top for an element taller than the view, else its middle), then looked at again
 				op.scrolled = true
 				doc_top := er[1] - pr.min.y + t.scroll
 				view := pr.max.y - pr.min.y
-				scroll_document_to(app, t, max(er[3] > view ? doc_top : doc_top + er[3] / 2 - view / 2, 0), false)
+				scroll_document_to(app, t, {document_x_centering(t, er, pr), max(er[3] > view ? doc_top : doc_top + er[3] / 2 - view / 2, 0)}, false)
 				op.until = r.frame_no + 2
 				return
 			}
@@ -1005,10 +1015,11 @@ click_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 	case 1:
 		pr := wnd.page_rect
 		center_y := er[1] + er[3] / 2
-		if center_y < pr.min.y || center_y > pr.max.y {
+		center_x := er[0] + er[2] / 2
+		if center_y < pr.min.y || center_y > pr.max.y || center_x < pr.min.x || center_x > pr.max.x {
 			// document coordinates of the element's middle, to the middle of the view
 			doc_y := er[1] - wnd.page_rect.min.y + t.scroll
-			scroll_document_to(app, t, max(doc_y + er[3] / 2 - (pr.max.y - pr.min.y) / 2, 0), false)
+			scroll_document_to(app, t, {document_x_centering(t, er, pr), max(doc_y + er[3] / 2 - (pr.max.y - pr.min.y) / 2, 0)}, false)
 			op.until = r.frame_no + 2
 		}
 		op.stage = 2

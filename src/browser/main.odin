@@ -776,11 +776,15 @@ scroll_to_fragment :: proc(t: ^Tab, viewport: draw.Vec2) {
 	if !loc.has_fragment { return }
 	frag := loc.fragment
 	frag = percent_decode_bytes(frag)   // HTML: the decoded fragment is tried as an id
-	if frag == "" || strings.equal_fold(frag, "top") { scroll_document_to(the_app, t, 0, smooth); return }
+	if frag == "" || strings.equal_fold(frag, "top") { scroll_document_to(the_app, t, {t.layout.doc_scroll_x, 0}, smooth); return }
 	target := dom.find_by_id(t.page.doc, frag)
 	if target == base.NIL_HANDLE { target = find_named_anchor(t.page.doc, frag) }
 	if target == base.NIL_HANDLE { return }
-	if r, ok := lay.box_of(&t.layout, target, viewport, t.scroll); ok && !r.fixed { scroll_document_to(the_app, t, max(r.border.min.y, 0), smooth) }
+	if r, ok := lay.box_of(&t.layout, target, viewport, t.scroll); ok && !r.fixed {
+		lo, hi := lay.doc_scroll_x_range(&t.layout, viewport.x)
+		x := clamp(scroll_nearest(r.border.min.x, r.border.max.x, viewport.x, t.layout.doc_scroll_x), lo, hi)
+		scroll_document_to(the_app, t, {x, max(r.border.min.y, 0)}, smooth)
+	}
 }
 
 @(private = "file")
@@ -995,7 +999,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 				// Ctrl+wheel zooms the page (wheel up = delta.y < 0 = bigger)
 				if ev.delta.y != 0 { zoom_step(app, t, ev.delta.y < 0 ? 1 : -1) }
 			} else if inside {
-				d := ev.delta * wheel_step(app, (wnd.page_rect.max - wnd.page_rect.min) / max(scale, 0.01)) * scale   // platform convention: +y = towards the end of the content
+				d := wheel_axes(ev) * wheel_step(app, (wnd.page_rect.max - wnd.page_rect.min) / max(scale, 0.01)) * scale   // platform convention: +y = towards the end of the content
 				smooth_wheel(app, t, ev.pos - wnd.page_rect.min, d, wheel_is_precise(ev.delta))   // smooth_scroll.odin
 			}
 		case .Mouse_Press:
@@ -1003,7 +1007,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 			if autoscroll_page_click(app) { continue }
 			if !inside || !t.layout.valid { continue }
 			if ui.ctx_menu_any_open() { continue }   // the press closes the menu (the toolkit's)
-			local := ev.pos - wnd.page_rect.min + {0, t.scroll}
+			local := ev.pos - wnd.page_rect.min + doc_scroll_vec(t)
 			pressed := hit_test(&t.layout, ev.pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll)
 			t.scroll_target = pressed
 			allowed := forms_pointer_down(app, t, ev, pressed, local)
@@ -1019,7 +1023,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 			if ev.button == .Left { page_set_active(t.page, base.NIL_HANDLE) }
 			dragged := selection_pointer_up(app, t, ev)   // before anything that may skip the release: a gesture left open selects text under a button that is no longer held
 			if !t.layout.valid { continue }
-			local := ev.pos - wnd.page_rect.min + {0, t.scroll}
+			local := ev.pos - wnd.page_rect.min + doc_scroll_vec(t)
 			released := inside ? hit_test(&t.layout, ev.pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll) : base.NIL_HANDLE
 			target, clicked := forms_pointer_up(app, t, ev, released, local)
 			if t.page == nil { return }

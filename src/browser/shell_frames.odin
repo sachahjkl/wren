@@ -92,11 +92,14 @@ Page_Snapshot :: struct {
 	page:   ^page.Page,      // the document it shows
 	image:  draw.Backdrop,   // kept texture; image.origin: the screen pixel of texel 0 when captured
 	rect:   draw.Rect,       // page area when captured (screen)
-	scroll: f32,             // the document's scroll then (device px)
-	limit:  f32,             // the document's scroll range then
-	bar:    bool,            // the document had a scroll bar: not in the pixels (it would move with them), drawn again by shell_paint_page
+	scroll: draw.Vec2,       // the document's scroll then (device px)
+	lo, limit: draw.Vec2,    // the document's scroll range then
+	bar:    bool,            // the document had a vertical scroll bar: not in the pixels (it would move with them), drawn again by shell_paint_page
 	bar_track: draw.Rect,    // its track (relative to the page area's corner) and the thumb's length, colors
 	bar_thumb: f32,
+	bar_x:  bool,            // likewise, the horizontal one
+	bar_x_track: draw.Rect,
+	bar_x_thumb: f32,
 	bar_thumb_c, bar_track_c: draw.Color,
 	stuck:  [SNAPSHOT_STUCK_MAX]draw.Rect,   // the fixed and sticky boxes (window pixels): they stay where they were drawn when the rest scrolls
 	n_stuck: int,
@@ -134,7 +137,7 @@ Shell_Frames :: struct {
 	outer_busy_input: bool,      // phase Page: the full frame's input has presses or keys the chrome has not seen yet
 	deferred:   [dynamic]platform.Event,   // input for the page (or held back), for the next full frame, in order
 	actions:    [dynamic]Shell_Action,
-	pending_scroll: f32,         // wheel taken by chrome frames for the current tab's document (device px)
+	pending_scroll: draw.Vec2,   // wheel taken by chrome frames for the current tab's document (device px)
 	pending_tab: u64,
 	press_to_page: [8]bool,      // per mouse button: its press went to the page (its release follows)
 	page_keyboard: bool,         // chrome frames: whether the page has the keyboard (followed through presses)
@@ -241,12 +244,15 @@ shell_page_phase_end :: proc(app: ^App, events: []platform.Event) -> []platform.
 	if chrome_frames.phase == .Anim && chrome_frames.outer_taken { out = nil }
 	chrome_frames.phase = .None
 	clear(&chrome_frames.outer)
-	if chrome_frames.pending_scroll != 0 {
+	if chrome_frames.pending_scroll != {} {
 		for t in tabs_all(app) {
 			if t.id != chrome_frames.pending_tab || t.kind != .Web || t.page == nil { continue }
-			scroll_document_to(app, t, clamp(t.scroll + chrome_frames.pending_scroll, 0, max(t.layout.height - draw.rect_size(active_window(app).page_rect).y, 0)), false)
+			size := draw.rect_size(active_window(app).page_rect)
+			lo, hi := lay.doc_scroll_x_range(&t.layout, size.x)
+			to := [2]f32{t.layout.doc_scroll_x, t.scroll} + chrome_frames.pending_scroll
+			scroll_document_to(app, t, {clamp(to.x, lo, hi), clamp(to.y, 0, max(t.layout.height - size.y, 0))}, false)
 		}
-		chrome_frames.pending_scroll = 0
+		chrome_frames.pending_scroll = {}
 		request_frames(app, 2)
 	}
 	if len(chrome_frames.actions) > 0 {
@@ -438,7 +444,7 @@ shell_route :: proc(app: ^App, ev: platform.Event, chrome: ^[dynamic]platform.Ev
 		append(chrome, ev)
 	case .Scroll:
 		if over_page && .Ctrl not_in ev.mods && t.page != nil {
-			shell_async_scroll(app, t, ev.delta.y * wheel_step(app, (wnd.page_rect.max - wnd.page_rect.min) / max(page_scale(app), 0.01)).y * page_scale(app))
+			shell_async_scroll(app, t, wheel_axes(ev) * wheel_step(app, (wnd.page_rect.max - wnd.page_rect.min) / max(page_scale(app), 0.01)) * page_scale(app))
 			return
 		}
 		if over_page { append(&chrome_frames.deferred, ev); return }   // zoom: the page's layout
@@ -451,15 +457,26 @@ shell_route :: proc(app: ^App, ev: platform.Event, chrome: ^[dynamic]platform.Ev
 	}
 }
 
+// Where a chrome frame shows the tab's document: its offsets and the wheel taken meanwhile.
+shell_shown_scroll :: proc(t: ^Tab) -> draw.Vec2 {
+	if chrome_frames.pending_tab == t.id { return doc_scroll_vec(t) + chrome_frames.pending_scroll }
+	return doc_scroll_vec(t)
+}
+
 // The wheel over a busy page: its last frame moves at once; the document takes the position after the page phase.
 @(private = "file")
-shell_async_scroll :: proc(app: ^App, t: ^Tab, dy: f32) {
-	if chrome_frames.pending_tab != t.id { chrome_frames.pending_scroll, chrome_frames.pending_tab = 0, t.id }
-	limit: f32
-	if !chrome_frames.page_locked { limit = max(t.layout.height - draw.rect_size(active_window(app).page_rect).y, 0) }   // (page thread: not read)
-	if s := shell_snapshot_of(t.id); s != nil { limit = max(limit, s.limit) }
-	to := clamp(t.scroll + chrome_frames.pending_scroll + dy, 0, limit)
-	chrome_frames.pending_scroll = to - t.scroll
+shell_async_scroll :: proc(app: ^App, t: ^Tab, d: draw.Vec2) {
+	if chrome_frames.pending_tab != t.id { chrome_frames.pending_scroll, chrome_frames.pending_tab = {}, t.id }
+	lo, limit: draw.Vec2
+	if !chrome_frames.page_locked {   // (page thread: not read)
+		size := draw.rect_size(active_window(app).page_rect)
+		lo.x, limit.x = lay.doc_scroll_x_range(&t.layout, size.x)
+		limit.y = max(t.layout.height - size.y, 0)
+	}
+	if s := shell_snapshot_of(t.id); s != nil { lo, limit = {min(lo.x, s.lo.x), 0}, {max(limit.x, s.limit.x), max(limit.y, s.limit.y)} }
+	from := draw.Vec2{t.layout.doc_scroll_x, t.scroll}
+	to := from + chrome_frames.pending_scroll + d
+	chrome_frames.pending_scroll = draw.Vec2{clamp(to.x, lo.x, limit.x), clamp(to.y, lo.y, limit.y)} - from
 }
 
 ////////////////////////////////
@@ -526,8 +543,9 @@ shell_capture :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect, ca
 	} else if s.image.image.tex != 0 && s.gen == gen {
 		render.unkeep_target(dc.renderer, s.image.image.tex)
 	}
-	s.image, s.rect, s.scroll, s.canvas, s.gen, s.used, s.page = bd, rect, t.scroll, canvas, gen, chrome_frames.frame_no, t.page
-	s.limit = max(t.layout.height - draw.rect_size(rect).y, 0)
+	s.image, s.rect, s.scroll, s.canvas, s.gen, s.used, s.page = bd, rect, doc_scroll_vec(t), canvas, gen, chrome_frames.frame_no, t.page
+	s.lo.x, s.limit.x = lay.doc_scroll_x_range(&t.layout, draw.rect_size(rect).x)
+	s.limit.y = max(t.layout.height - draw.rect_size(rect).y, 0)
 	// (more than fit: the last one takes the rest, as their union)
 	s.n_stuck = 0
 	for r in composite_stuck() {
@@ -540,10 +558,13 @@ shell_capture :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect, ca
 		}
 	}
 	track, thumb, ok := lay.doc_scrollbar(&t.layout, draw.rect_size(rect), math.round(t.scroll))
-	s.bar = ok
-	if ok {
+	track_x, thumb_x, ok_x := lay.doc_scrollbar_x(&t.layout, draw.rect_size(rect))
+	s.bar, s.bar_x = ok, ok_x
+	if ok || ok_x {
 		tc, kc := doc_scrollbar_colors(&t.layout)
-		s.bar_track, s.bar_thumb, s.bar_thumb_c, s.bar_track_c = draw.Rect{track.min, track.max}, thumb.max.y - thumb.min.y, to_draw(tc), to_draw(kc)
+		s.bar_thumb_c, s.bar_track_c = to_draw(tc), to_draw(kc)
+		s.bar_track, s.bar_thumb = draw.Rect{track.min, track.max}, thumb.max.y - thumb.min.y
+		s.bar_x_track, s.bar_x_thumb = draw.Rect{track_x.min, track_x.max}, thumb_x.max.x - thumb_x.min.x
 	}
 }
 
@@ -559,9 +580,9 @@ shell_paint_page :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect)
 	}
 	s.used = chrome_frames.frame_no
 	draw.rect(dc, rect, s.canvas)
-	scroll := t.scroll + (chrome_frames.pending_tab == t.id ? chrome_frames.pending_scroll : 0)
+	scroll := shell_shown_scroll(t)
 	img := s.image
-	shift := (rect.min - s.rect.min) - draw.Vec2{0, scroll - s.scroll}
+	shift := (rect.min - s.rect.min) - (scroll - s.scroll)
 	img.image.origin += shift
 	covered := draw.rect_intersect(rect, draw.Rect{img.image.origin, img.image.origin + draw.Vec2{f32(img.image.size.x), f32(img.image.size.y)}})
 	if covered.max.x <= covered.min.x || covered.max.y <= covered.min.y { return true }
@@ -574,7 +595,7 @@ shell_paint_page :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect)
 		// the picture carried them with the page: where they now sit is a ghost of them, cleared (the next full frame paints what
 		// was under them) before they are drawn where they belong
 		for i in 0 ..< s.n_stuck {
-			g := draw.rect_intersect(draw.rect_shift(s.stuck[i], rect.min - s.rect.min - draw.Vec2{0, scroll - s.scroll}), rect)
+			g := draw.rect_intersect(draw.rect_shift(s.stuck[i], rect.min - s.rect.min - (scroll - s.scroll)), rect)
 			if g.max.x <= g.min.x || g.max.y <= g.min.y { continue }
 			draw.rect(dc, g, s.canvas)
 		}
@@ -589,10 +610,18 @@ shell_paint_page :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect)
 	if s.bar {
 		tr := draw.rect_shift(s.bar_track, rect.min)
 		room := (tr.max.y - tr.min.y) - s.bar_thumb
-		y := tr.min.y + room * (s.limit > 0 ? clamp(scroll / s.limit, 0, 1) : 0)
+		y := tr.min.y + room * (s.limit.y > 0 ? clamp(scroll.y / s.limit.y, 0, 1) : 0)
 		w := tr.max.x - tr.min.x
 		if s.bar_track_c.a > 0 { draw.rect(dc, tr, s.bar_track_c, w * 0.5) }
 		draw.rect(dc, draw.Rect{{tr.min.x, y}, {tr.max.x, y + s.bar_thumb}}, s.bar_thumb_c, w * 0.5)
+	}
+	if s.bar_x {
+		tr := draw.rect_shift(s.bar_x_track, rect.min)
+		room := (tr.max.x - tr.min.x) - s.bar_x_thumb
+		x := tr.min.x + room * (s.limit.x > s.lo.x ? clamp((scroll.x - s.lo.x) / (s.limit.x - s.lo.x), 0, 1) : 0)
+		h := tr.max.y - tr.min.y
+		if s.bar_track_c.a > 0 { draw.rect(dc, tr, s.bar_track_c, h * 0.5) }
+		draw.rect(dc, draw.Rect{{x, tr.min.y}, {x + s.bar_x_thumb, tr.max.y}}, s.bar_thumb_c, h * 0.5)
 	}
 	draw.pop_clip(dc)
 	return true

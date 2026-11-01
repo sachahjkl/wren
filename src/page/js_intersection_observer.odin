@@ -288,7 +288,7 @@ io_clipped :: proc(p: ^Page, f: ^Obs_Frame, io: ^Intersection_Observer, g: Eleme
 			if io.root_element && f.l.boxes[f.l.clips[ci].box].node == io.root { break }
 			b, ok := lay.clip_bounds(f.l, &f.view, ci)
 			if !ok { continue }
-			c := io_grow(Io_Rect{f64(b.min.x) / s - f.vp.scroll_x, f64(b.min.y) / s, f64(b.max.x) / s - f.vp.scroll_x, f64(b.max.y) / s}, io.scroll)
+			c := io_grow(Io_Rect{f64(b.min.x) / s, f64(b.min.y) / s, f64(b.max.x) / s, f64(b.max.y) / s}, io.scroll)
 			r = io_intersect(r, c)
 		}
 	}

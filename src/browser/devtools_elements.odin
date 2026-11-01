@@ -886,7 +886,11 @@ elements_menu_items :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 scroll_into_view :: proc(app: ^App, t: ^Tab, h: base.Handle) {
 	if t.page == nil || !t.layout.valid { return }
 	view := draw.rect_size(active_window(app).page_rect)
-	if r, ok := lay.box_of(&t.layout, h, view, 0); ok { t.scroll = max(r.border.min.y - view.y * 0.15, 0); request_frames(app, 3) }
+	if r, ok := lay.box_of(&t.layout, h, view, 0); ok {
+		t.scroll = max(r.border.min.y - view.y * 0.15, 0)
+		doc_scroll_x_set(t, scroll_nearest(r.border.min.x, r.border.max.x, view.x, t.layout.doc_scroll_x), view.x)
+		request_frames(app, 3)
+	}
 }
 
 // A CSS selector that finds `h` among its siblings and above: #id when there is one, else tag.class:nth-of-type chains.
@@ -1156,7 +1160,7 @@ elements_overlay :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, area: draw.Rect,
 	if n.kind != .Element { h = n.parent }
 	r, ok := lay.box_of(&t.layout, h, draw.rect_size(area), t.scroll)
 	if !ok || !r.visible { return }
-	shift := draw.Vec2{area.min.x, area.min.y - t.scroll}   // (box_of: document coordinates, position: fixed boxes included)
+	shift := area.min - doc_scroll_vec(t)   // (box_of: document coordinates, position: fixed boxes included)
 	at :: proc(q: lay.Rect, s: draw.Vec2) -> draw.Rect { return {q.min + s, q.max + s} }
 	draw.push_clip(dc, area)
 	defer draw.pop_clip(dc)

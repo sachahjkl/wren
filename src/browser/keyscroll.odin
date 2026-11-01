@@ -70,12 +70,17 @@ keyboard_scroll :: proc(app: ^App, t: ^Tab, start: base.Handle, k: Key_Scroll) -
 		}
 		n = node.parent
 	}
-	// the document scrolls vertically only (page_draw clamps the offset)
+	// the document (page_draw clamps the offsets)
+	cur := smooth_pending(app, t, base.NIL_HANDLE)
+	next := cur
 	if vertical {
-		cur := smooth_pending(app, t, base.NIL_HANDLE).y
 		limit := max(t.layout.height - viewport.y, 0)
-		smooth_scroll_to(app, t, base.NIL_HANDLE, {0, clamp(cur + amount(k, line, viewport.y, cur, limit, app.cfg.key_page_fraction), 0, limit)}, dur)
+		next.y = clamp(cur.y + amount(k, line, viewport.y, cur.y, limit, app.cfg.key_page_fraction), 0, limit)
+	} else {
+		lo, hi := lay.doc_scroll_x_range(&t.layout, viewport.x)
+		next.x = clamp(cur.x + amount(k, line, viewport.x, cur.x, hi, app.cfg.key_page_fraction), lo, hi)
 	}
+	smooth_scroll_to(app, t, base.NIL_HANDLE, next, dur)
 	return true
 }
 

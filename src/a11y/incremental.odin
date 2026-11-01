@@ -67,6 +67,7 @@ Live :: struct {
 	listeners:    u64,
 	geometry:     u64,
 	scroll:       f32,
+	scroll_x:     f32,
 	head:         u64,
 	fixed_count:  int,
 	iframes:      map[u64]bool,   // the frame elements' nodes (whether their document can be grafted changes by itself)
@@ -184,6 +185,7 @@ live_snapshot :: proc(l: ^Live, v: ^View) {
 	l.listeners = v.doc.listener_changes
 	l.geometry = geometry_key(v)
 	l.scroll = v.doc_scroll
+	l.scroll_x = v.doc_scroll_x
 	l.head = head_key(v)
 }
 
@@ -202,7 +204,7 @@ geometry_key :: proc(v: ^View) -> u64 {
 head_key :: proc(v: ^View) -> u64 {
 	h := mix_bytes(0xcbf29ce484222325, transmute([]u8)v.title)
 	h = mix_bytes(h, transmute([]u8)v.url)
-	g := [5]f32{v.viewport.x, v.viewport.y, v.origin.x, v.origin.y, v.doc_scroll}
+	g := [6]f32{v.viewport.x, v.viewport.y, v.origin.x, v.origin.y, v.doc_scroll, v.doc_scroll_x}
 	return mix_bytes(h, mem.ptr_to_bytes(&g))
 }
 
@@ -463,7 +465,7 @@ live_patch :: proc(l: ^Live, v: ^View, out: ^platform.A11y_Update) -> string {
 	}
 	out.root = u64(d.root)
 	defer if out.root != 0 { out.focus = focus_of(l, v) }
-	if len(entries) == 0 && len(style_entries) == 0 && geometry == l.geometry && v.doc_scroll == l.scroll && head == l.head && !forms_changed && !listeners_changed && len(frames_changed) == 0 {
+	if len(entries) == 0 && len(style_entries) == 0 && geometry == l.geometry && v.doc_scroll == l.scroll && v.doc_scroll_x == l.scroll_x && head == l.head && !forms_changed && !listeners_changed && len(frames_changed) == 0 {
 		live_snapshot(l, v)
 		return ""
 	}
@@ -545,7 +547,7 @@ live_patch :: proc(l: ^Live, v: ^View, out: ^platform.A11y_Update) -> string {
 		}
 	}
 	// geometry: bounds read again (only the boxes fixed to the viewport when only the scroll moved)
-	if geometry != l.geometry || (v.doc_scroll != l.scroll && l.fixed_count > 0) {
+	if geometry != l.geometry || ((v.doc_scroll != l.scroll || v.doc_scroll_x != l.scroll_x) && l.fixed_count > 0) {
 		only_fixed := geometry == l.geometry
 		for id, r in l.recs {
 			if only_fixed && !r.fixed { continue }

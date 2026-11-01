@@ -213,7 +213,7 @@ outline_node :: proc(dc: ^draw.Context, d: ^Pick_Draw, h: base.Handle, fill, lin
 	area := active_window(d.app).page_rect
 	r, ok := lay.box_of(&t.layout, h, draw.rect_size(area), t.scroll)
 	if !ok || !r.visible { return }
-	shift := draw.Vec2{area.min.x, area.min.y - t.scroll}   // (box_of: document coordinates, position: fixed boxes included)
+	shift := area.min - doc_scroll_vec(t)   // (box_of: document coordinates, position: fixed boxes included)
 	b := draw.Rect{r.bounds.min + shift, r.bounds.max + shift}
 	draw.push_clip(dc, area)
 	draw.rect(dc, b, fill)
