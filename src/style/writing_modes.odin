@@ -109,6 +109,80 @@ flow_sides :: proc "contextless" (w: Writing_Mode, rtl: bool) -> [Side]Side {
 	return {.Top = bs, .Right = ie, .Bottom = be, .Left = is_}
 }
 
+// Whether the start of a physical axis, for a writing mode and direction, is at its high end (rtl-like).
+axis_start_hi :: proc "contextless" (w: Writing_Mode, rtl, axis_x: bool) -> bool {
+	sides := flow_sides(w, rtl)
+	if is_vertical_mode(w) { return axis_x ? sides[.Top] == .Right : sides[.Left] == .Bottom }
+	return axis_x && sides[.Left] == .Right
+}
+
+// A try tactic named by flow, as physical tactics for a containing block in this writing mode.
+try_tactics_physical :: proc(t: Try_Tactic, w: Writing_Mode, out: ^[3]Try_Tactic) -> int {
+	if !is_vertical_mode(w) { out[0] = t; return 1 }
+	#partial switch t {
+	case .Flip_Block: out[0] = .Flip_X; return 1
+	case .Flip_Inline: out[0] = .Flip_Y; return 1
+	case .Flip_Start:
+		// the diagonal from the block-start inline-start corner: top left only in vertical-lr
+		out[0] = .Flip_Start
+		if w == .Vertical_Lr { return 1 }
+		out[1], out[2] = .Flip_X, .Flip_Y
+		return 3
+	}
+	out[0] = t
+	return 1
+}
+
+// area_tracks with writing modes: the keywords that name a flow-relative side go to the physical axis they mean.
+area_tracks_flow :: proc(area: Position_Area, cb_wm: Writing_Mode, cb_rtl: bool, self_wm: Writing_Mode, self_rtl: bool) -> (x, y: [2]i8) {
+	if !is_vertical_mode(cb_wm) && !is_vertical_mode(self_wm) { return area_tracks(area, cb_rtl, self_rtl) }
+	on_x :: proc(c: Area_Class, cbv, selfv: bool) -> bool {
+		#partial switch c {
+		case .Horizontal: return true
+		case .Inline: return !cbv
+		case .Block: return cbv
+		case .Self_Inline: return !selfv
+		case .Self_Block: return selfv
+		}
+		return false
+	}
+	on_y :: proc(c: Area_Class, cbv, selfv: bool) -> bool {
+		#partial switch c {
+		case .Vertical: return true
+		case .Inline: return cbv
+		case .Block: return !cbv
+		case .Self_Inline: return selfv
+		case .Self_Block: return !selfv
+		}
+		return false
+	}
+	cbv, selfv := is_vertical_mode(cb_wm), is_vertical_mode(self_wm)
+	single :: proc(k: Area_Keyword) -> bool { c := area_class(k); return c == .Logical || c == .Self_Logical || k == .Center || k == .Span_All }
+	ax, ay: Area_Keyword = .Span_All, .Span_All
+	ca, cb := area_class(area.a), area_class(area.b)
+	switch {
+	case area.b == .None && single(area.a): ax, ay = area.a, area.a
+	case on_x(ca, cbv, selfv) || on_y(cb, cbv, selfv):
+		ax = area.a
+		if area.b != .None { ay = area.b }
+	case on_y(ca, cbv, selfv) || on_x(cb, cbv, selfv):
+		ay = area.a
+		if area.b != .None { ax = area.b }
+	case:
+		// a logical pair: block, inline
+		if cbv {
+			ax = area.a
+			if area.b != .None { ay = area.b }
+		} else {
+			ay = area.a
+			if area.b != .None { ax = area.b }
+		}
+	}
+	x[0], x[1] = area_span(ax, axis_start_hi(cb_wm, cb_rtl, true), axis_start_hi(self_wm, self_rtl, true))
+	y[0], y[1] = area_span(ay, axis_start_hi(cb_wm, cb_rtl, false), axis_start_hi(self_wm, self_rtl, false))
+	return
+}
+
 @(private) flow_maps_once: sync.Once
 @(private) flow_maps: [len(Writing_Mode) * 2][Prop]Prop
 

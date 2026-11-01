@@ -57,6 +57,7 @@ Ctx :: struct {
 	frame_cs: map[Frame_Cs_Key]^style.Computed,
 	phys_cs:  []^style.Computed,             // during the block layout: per box, its style as the rest of the program sees it
 	vp_phys:  Vec2,
+	vp_logical: bool,                        // `vp` is in the logical coordinates of the root's frame
 	frame_entered, frame_intr: i32,          // the frame root whose content is being reached (layout_contents, intrinsic_compute)
 }
 

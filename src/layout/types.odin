@@ -183,6 +183,7 @@ Box_Fx_Flag :: enum u8 {
 	Spanner,      // column-span: all, in a multi-column container
 	In_Flow,      // inside the flow of a multi-column container
 	Frame_Root,   // laid out in its own writing mode, inside another's frame
+	Anchored,     // waits for its anchors: laid out in physical coordinates, after the rest (frames.odin, anchor.odin)
 }
 Box_Fx :: bit_set[Box_Fx_Flag; u8]
 

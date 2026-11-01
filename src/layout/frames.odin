@@ -1,6 +1,7 @@
 package layout
 
 import "core:math"
+import "core:slice"
 import "core:unicode/utf8"
 import "wb:base"
 import "wb:style"
@@ -87,6 +88,7 @@ frame_parent :: #force_inline proc(l: ^Layout, b: ^Box) -> i32 {
 // The writing mode of the frame of box `bi`.
 @(private)
 frame_of :: proc(l: ^Layout, bi: i32) -> style.Writing_Mode {
+	if .Anchored in l.boxes[bi].fx { return .Horizontal_Tb }
 	p := frame_parent(l, &l.boxes[bi])
 	return p == NONE ? .Horizontal_Tb : l.boxes[p].wm
 }
@@ -183,6 +185,8 @@ frames_to_logical :: proc(c: ^Ctx) {
 	for i in 1 ..< i32(len(l.boxes)) {
 		b := &l.boxes[i]
 		if .Dead in b.flags { continue }
+		b.fx -= {.Anchored}
+		if .Abs in b.flags && b.cs != nil && style.anchored_style(b.cs) { b.fx += {.Anchored} }
 		f := frame_of(l, i)
 		// no own content to turn: these take their frame's mode
 		if b.kind == .Inline || b.kind == .Replaced { b.wm = f }
@@ -196,13 +200,15 @@ frames_to_logical :: proc(c: ^Ctx) {
 		if is_vert(f) && b.cs != nil { b.cs = transposed(c, b.cs, f) }
 	}
 	c.vp_phys = c.vp
-	if is_vert(root_wm) { c.vp = {c.vp.y, c.vp.x} }
+	c.vp_logical = is_vert(root_wm)
+	if c.vp_logical { c.vp = {c.vp.y, c.vp.x} }
 }
 
 // Inline size available to an orthogonal box when its frame's block size is not known: the viewport's size in that axis
 // (CSS Writing Modes 4 §7.3).
 @(private)
 frame_fallback_inline :: proc(c: ^Ctx, pf: style.Writing_Mode) -> f32 {
+	if !c.vp_logical { return is_vert(pf) ? c.vp.x : c.vp.y }
 	return is_vert(pf) == is_vert(c.l.boxes[0].wm) ? c.vp.y : c.vp.x
 }
 
@@ -214,7 +220,8 @@ Frame_Entry :: struct { cs: ^style.Computed, border, padding: [4]f32 }
 frame_enter :: proc(c: ^Ctx, bi: i32, pf: style.Writing_Mode) -> Frame_Entry {
 	b := &c.l.boxes[bi]
 	e := Frame_Entry{b.cs, b.border, b.padding}
-	b.cs = transposed(c, c.phys_cs[bi], b.wm)
+	// (a frame in physical coordinates: the box's record is physical, and may be an anchored box's copy for an option)
+	b.cs = transposed(c, is_vert(pf) ? c.phys_cs[bi] : b.cs, b.wm)
 	b.border = rotate_sides(b.border, pf, b.wm)
 	b.padding = rotate_sides(b.padding, pf, b.wm)
 	return e
@@ -385,15 +392,48 @@ frag_to_physical :: proc(f: ^Frag, pw, ph: f32, wm: style.Writing_Mode) {
 @(private)
 frames_to_physical :: proc(c: ^Ctx) {
 	l := c.l
-	if is_vert(l.boxes[0].wm) { c.vp = c.vp_phys; l.boxes[0].size = c.vp }
+	if c.vp_logical { c.vp = c.vp_phys; l.boxes[0].size = c.vp; c.vp_logical = false }
 	order := preorder(l)
+	// what is inside a box that waits for its anchors stays logical until that box is laid out (anchored_pass)
+	waiting := make([]bool, len(l.boxes), context.temp_allocator)
 	for x in order {
 		if x == 0 { continue }
 		b := &l.boxes[x]
-		if c.phys_cs != nil && int(x) < len(c.phys_cs) && c.phys_cs[x] != nil { b.cs = c.phys_cs[x] }
+		if .Anchored in b.fx || (b.parent != NONE && waiting[b.parent]) {
+			waiting[x] = true
+			continue
+		}
+		frame_box_to_physical(c, x)
+	}
+}
+
+// The boxes inside anchored box `q` and itself, now that it is laid out: physical, but for other boxes that wait (each has its turn).
+@(private)
+frames_anchored_to_physical :: proc(c: ^Ctx, q: i32) {
+	l := c.l
+	frame_box_to_physical(c, q)
+	stack := make([dynamic]i32, 0, 16, context.temp_allocator)
+	for ch := l.boxes[q].first; ch != NONE; ch = l.boxes[ch].next { append(&stack, ch) }
+	slice.reverse(stack[:])
+	for len(stack) > 0 {
+		x := pop(&stack)
+		if .Anchored in l.boxes[x].fx { continue }
+		frame_box_to_physical(c, x)
+		n := len(stack)
+		for ch := l.boxes[x].first; ch != NONE; ch = l.boxes[ch].next { append(&stack, ch) }
+		slice.reverse(stack[n:])
+	}
+}
+
+@(private)
+frame_box_to_physical :: proc(c: ^Ctx, x: i32) {
+	l := c.l
+	{
+		b := &l.boxes[x]
+		if .Anchored not_in b.fx && c.phys_cs != nil && int(x) < len(c.phys_cs) && c.phys_cs[x] != nil { b.cs = c.phys_cs[x] }
 		f := frame_of(l, x)
 		own := b.wm
-		if !is_vert(f) && !is_vert(own) { continue }
+		if !is_vert(f) && !is_vert(own) { return }
 		if is_vert(f) || .List_Item in b.flags {
 			append(&l.frame_saved, Frame_Saved{x, b.pos, b.size, b.margin, b.border, b.padding, b.marker_pos})
 		}
@@ -412,7 +452,7 @@ frames_to_physical :: proc(c: ^Ctx) {
 			case .Sideways_Lr: b.pos = {log_pos.y, ref_h - (log_pos.x + log_size.x)}
 			}
 		}
-		if !is_vert(own) { continue }
+		if !is_vert(own) { return }
 		// the marker's (start, baseline): the baseline as x, the start as y
 		if .List_Item in b.flags && b.marker_w != 0 { b.marker_pos = logical_to_physical_point(b.marker_pos, b.size.x, b.size.y, own) }
 		if .Ifc in b.flags && b.lines[1] > b.lines[0] {
@@ -439,7 +479,6 @@ frames_to_physical :: proc(c: ^Ctx) {
 			append(&l.frame_ifcs, rec)
 		}
 	}
-	c.phys_cs = nil
 }
 
 ////////////////////////////////

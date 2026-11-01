@@ -323,6 +323,8 @@ pre_run :: proc(c: ^Ctx, walk: proc(c: ^Ctx)) {
 		frames_to_logical(c)
 		walk(c)
 		frames_to_physical(c)
+		if l.anchor_uses { anchored_pass(c) }
+		c.phys_cs = nil
 		return
 	}
 	pool, pre := pre_layout(c)
