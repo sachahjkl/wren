@@ -107,6 +107,29 @@ Frame_target :: proc(c: ^Call, node: u64) -> bool {
 	return true
 }
 
+Frame_windowTarget :: proc(c: ^Call, navigable: u64) -> u64 {
+	n := navigable_by_id(navigable)
+	if n == nil || n.page == nil || !frames_may_reach(c.caller, n.page) { return 0 }
+	return window_object(n.page)
+}
+
+Frame_realmSelf :: proc(c: ^Call) -> u64 { return page_id(c.caller) }
+
+Frame_realmOf :: proc(c: ^Call, navigable: u64) -> u64 {
+	n := navigable_by_id(navigable)
+	if n == nil || n.page == nil || !frames_may_reach(c.caller, n.page) || !js_enabled(n.page) { return 0 }
+	return page_id(n.page)
+}
+
+Frame_bridge :: proc(c: ^Call, realm: u64, request: []u8) -> u32 {
+	reply := frames_bridge_call(c.caller, realm, request)
+	delete(c.caller.bridge_reply)
+	c.caller.bridge_reply = reply
+	return u32(len(reply))
+}
+
+Frame_bridgeReply :: proc(c: ^Call) -> []u8 { return c.caller.bridge_reply }
+
 Frame_adoptNode :: proc(c: ^Call, node: u64, into: u64) -> ([]u8, Api_Error) {
 	out, ok := frames_adopt(c, H(node), base.handle_tag(into))
 	if !ok { return nil, fail(c, .Security, "SecurityError: the node cannot be moved between these documents.") }

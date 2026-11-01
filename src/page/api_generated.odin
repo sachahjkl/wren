@@ -12113,6 +12113,95 @@ _t_frames_Frame_target :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	return nil
 }
 
+// Frame_windowTarget :: proc(c: ^Call, navigable: u64) -> u64
+@(private = "file")
+_t_frames_Frame_windowTarget :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
+	_p0 := u64(a[0].i64)
+	_r := Frame_windowTarget(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Frame_realmSelf :: proc(c: ^Call) -> u64
+@(private = "file")
+_t_frames_Frame_realmSelf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_r := Frame_realmSelf(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Frame_realmOf :: proc(c: ^Call, navigable: u64) -> u64
+@(private = "file")
+_t_frames_Frame_realmOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
+	_p0 := u64(a[0].i64)
+	_r := Frame_realmOf(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Frame_bridge :: proc(c: ^Call, realm: u64, request: []u8) -> u32
+@(private = "file")
+_t_frames_Frame_bridge :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "frames.Frame_bridge", "request") }
+	_p1 := _s1[:_n1]
+	api_route(&c, u64(a[0].i64))
+	_p0 := u64(a[0].i64)
+	_r := Frame_bridge(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// Frame_bridgeReply :: proc(c: ^Call) -> []u8
+@(private = "file")
+_t_frames_Frame_bridgeReply :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_on := wasm.addr(&f, a[1])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "frames.Frame_bridgeReply", "result buffer") }
+	_r := Frame_bridgeReply(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
 // Frame_adoptNode :: proc(c: ^Call, node: u64, into: u64) -> ([]u8, Api_Error)
 @(private = "file")
 _t_frames_Frame_adoptNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -38100,6 +38189,11 @@ api_imports := [?]wasm.Import{
 	{module = "frames", name = "Frame_elementOf", fn = _t_frames_Frame_elementOf, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
 	{module = "frames", name = "Frame_ofDocument", fn = _t_frames_Frame_ofDocument, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
 	{module = "frames", name = "Frame_target", fn = _t_frames_Frame_target, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "frames", name = "Frame_windowTarget", fn = _t_frames_Frame_windowTarget, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "frames", name = "Frame_realmSelf", fn = _t_frames_Frame_realmSelf, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
+	{module = "frames", name = "Frame_realmOf", fn = _t_frames_Frame_realmOf, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "frames", name = "Frame_bridge", fn = _t_frames_Frame_bridge, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "frames", name = "Frame_bridgeReply", fn = _t_frames_Frame_bridgeReply, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "frames", name = "Frame_adoptNode", fn = _t_frames_Frame_adoptNode, realms = 1, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "frames", name = "Frame_postMessage", fn = _t_frames_Frame_postMessage, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "frames", name = "Frame_navigate", fn = _t_frames_Frame_navigate, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I32}, wide_results = []wasm.Val_Kind{.I32}},

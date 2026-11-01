@@ -2595,6 +2595,17 @@ foreign _wr_wj_frames {
 	// The next import of the calling realm that names no node acts on the document holding `node`
 	// (document.createTextNode of another document). False when that document cannot be reached (gone, another origin).
 	@(link_name = "Frame_target") wr_Frame_target :: proc(node: u64) -> i32 ---
+	// The browser's object for the window of this navigable (a target for events), when the calling document may reach it; 0 otherwise.
+	@(link_name = "Frame_windowTarget") wr_Frame_windowTarget :: proc(navigable: u64) -> u64 ---
+	// The realm of the calling document (a number for Frame_bridge).
+	@(link_name = "Frame_realmSelf") wr_Frame_realmSelf :: proc() -> u64 ---
+	// The realm of the document this navigable shows, when the calling document may reach it; 0 otherwise.
+	@(link_name = "Frame_realmOf") wr_Frame_realmOf :: proc(navigable: u64) -> u64 ---
+	// A request of the value bridge (native/js/odin/frames_bridge.odin) to another realm: the size of its reply, read
+	// with Frame_bridgeReply; 0 when that realm is gone or may not be reached.
+	@(link_name = "Frame_bridge") wr_Frame_bridge :: proc(realm: u64, request: [^]u8, request_len: u32) -> u32 ---
+	// The reply of the last Frame_bridge.
+	@(link_name = "Frame_bridgeReply") wr_Frame_bridgeReply :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
 	// Moves `node`, of another document, to the document holding `into` (DOM "adopt"), as lone nodes: the handles of the
 	// nodes moved, each old one (u64) followed by its new one (the first pair is `node`'s). Security when one of the two
 	// cannot be reached.

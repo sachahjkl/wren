@@ -19,6 +19,7 @@ import "../odin/jsb"
 import "../odin/wj"
 
 @(private = "file") Navigable :: api_decl.Navigable
+@(private = "file") PROP_GETSET :: 1 << 4   // an accessor, in a descriptor of the engine (JS_PROP_GETSET)
 
 @(private = "file") wp_class, xo_loc_class: wj.Class_ID    // the WindowProxy; the cross-origin Location
 @(private = "file") wp_exotic, xo_loc_exotic: wj.Class_Exotic_Methods
@@ -55,13 +56,13 @@ WP_FUNCTIONS := [?]string{"fetch", "setTimeout", "clearTimeout", "setInterval", 
 	"removeEventListener", "dispatchEvent"}
 
 @(private = "file")
-WP_BUILTINS := [?]string{"JSON", "Math", "Reflect", "Intl", "Object", "Function", "Array", "String", "Number", "Boolean",
+WP_BUILTINS := [?]string{"Math", "JSON", "Reflect", "Intl", "Object", "Function", "Array", "String", "Number", "Boolean",
 	"Symbol", "BigInt", "Date", "RegExp", "Error", "TypeError", "RangeError", "SyntaxError", "ReferenceError",
 	"EvalError", "URIError", "AggregateError", "Map", "Set", "WeakMap", "WeakSet", "WeakRef", "Promise", "Proxy",
 	"ArrayBuffer", "DataView", "Int8Array", "Uint8Array", "Uint8ClampedArray", "Int16Array", "Uint16Array",
 	"Int32Array", "Uint32Array", "Float32Array", "Float64Array", "BigInt64Array", "BigUint64Array", "parseInt",
 	"parseFloat", "isNaN", "isFinite", "encodeURI", "encodeURIComponent", "decodeURI", "decodeURIComponent", "escape",
-	"unescape", "NaN", "Infinity", "undefined", "eval"}
+	"unescape", "NaN", "Infinity", "undefined"}
 
 @(private = "file")
 in_list :: proc "contextless" (list: []string, s: string) -> bool {
@@ -416,6 +417,12 @@ wp_member :: proc "contextless" (ctx: ^wj.Context, self: wj.JSValue, w: ^Window_
 	case "window", "self", "frames":
 		return wj.JS_DupValue(ctx, self)
 	case "location":
+		// a document of this origin: its real Location (frames_bridge.odin)
+		if realm := frames_bridge_realm(id); realm != 0 {
+			key := wj.new_string(ctx, "location")
+			defer wj.JS_FreeValue(ctx, key)
+			return frames_bridge_get(ctx, realm, key)
+		}
 		if wj.is_undefined(w.location) { w.location = xo_loc_new(ctx, id) }
 		return wj.JS_DupValue(ctx, w.location)
 	case "closed":
@@ -467,6 +474,28 @@ frames_window_of_node :: proc "contextless" (ctx: ^wj.Context, node: u64) -> wj.
 	return window_of(ctx, id)
 }
 
+// otherWindow.dispatchEvent(event): an Event of this realm, at the other window. The bridge would pass it as a Proxy, which the
+// other realm's dispatchEvent refuses: this realm's dispatchEvent runs, on the browser's object for that window.
+@(private = "file")
+wp_dispatch_event_call :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, magic: i32, data: [^]wj.JSValue) -> wj.JSValue {
+	context = m4_context()
+	target: api_decl.EventTarget
+	jsb.host(&target, api_decl.Frame_windowTarget, wj.wr_Frame_windowTarget, Navigable(data_handle(data)))
+	if target == 0 { return wj.TRUE }   // gone: nothing to tell
+	wrapper := wj_wrap_target(ctx, u64(target))
+	if wj.is_exception(wrapper) { return wrapper }
+	defer wj.JS_FreeValue(ctx, wrapper)
+	return wjr_EventTarget_dispatchEvent(ctx, wrapper, argc, argv)
+}
+
+@(private = "file")
+wp_dispatch_event_fn :: proc "contextless" (ctx: ^wj.Context, id: Navigable) -> wj.JSValue {
+	data := handle_data(u64(id))
+	fn := wj.JS_NewCFunctionData(ctx, wp_dispatch_event_call, 1, 0, 2, &data[0])
+	name_function(ctx, fn, "dispatchEvent")
+	return fn
+}
+
 // Objects a same-origin frame's own would answer the same for: this realm's are given (a page takes a clean `navigator` or `crypto`
 // from a blank frame it made).
 @(private = "file", rodata) WP_SHARED := [?]string{"console", "navigator", "screen", "crypto"}
@@ -496,8 +525,11 @@ wp_pristine :: proc "contextless" (ctx: ^wj.Context, w: ^Window_State, c: cstrin
 		return wj.wj_wrap_node(ctx, u64(el))
 	case in_list(WP_SHARED[:], p):
 		return global_prop(ctx, c)
+	case p == "dispatchEvent" && frames_bridge_realm(w.id) != 0:
+		return wp_dispatch_event_fn(ctx, w.id)
 	case in_list(WP_FUNCTIONS[:], p):
-		return pristine_function(ctx, c)
+		// the frame's own (its timers, its listeners); without a realm (a sandbox without scripts), a copy of this realm's
+		return frames_bridge_realm(w.id) != 0 ? wj.UNINITIALIZED : pristine_function(ctx, c)
 	case len(p) > 0 && p[0] >= 'A' && p[0] <= 'Z':
 		// Object.getOwnPropertyDescriptor(globalThis, p) !== undefined && nativeFunction(v)
 		objc := global_prop(ctx, "Object")
@@ -531,19 +563,43 @@ wp_lookup :: proc "contextless" (ctx: ^wj.Context, self: wj.JSValue, w: ^Window_
 	return wj.UNINITIALIZED, false
 }
 
+// The value of a name of the frame's global object, when this document may reach it (frames_bridge.odin): anything a script of
+// the frame defined. found false across origins.
+@(private = "file")
+wp_bridged :: proc "contextless" (ctx: ^wj.Context, w: ^Window_State, prop: wj.Atom) -> (v: wj.JSValue, found: bool) {
+	if !frame_same_origin(w.id) { return wj.UNINITIALIZED, false }
+	realm := frames_bridge_realm(w.id)
+	if realm == 0 { return wj.UNDEFINED, true }
+	key := wj.JS_AtomToValue(ctx, prop)
+	defer wj.JS_FreeValue(ctx, key)
+	return frames_bridge_get(ctx, realm, key), true
+}
+
 @(private = "file")
 wp_get :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, prop: wj.Atom, receiver: wj.JSValue) -> wj.JSValue {
 	context = m4_context()
 	w := state_of(obj)
 	if w == nil { return wj.UNDEFINED }
 	if v, found := wp_lookup(ctx, obj, w, prop); found { return v }
+	if v, found := wp_bridged(ctx, w, prop); found { return v }
 	return throw_security(ctx, prop)
 }
 
 @(private = "file")
 wp_set :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, prop: wj.Atom, value, receiver: wj.JSValue, flags: i32) -> i32 {
 	context = m4_context()
-	if w := state_of(obj); w != nil && atom_is(ctx, prop, "location") { return navigate(ctx, w.id, value, false) ? 1 : -1 }
+	w := state_of(obj)
+	if w != nil && atom_is(ctx, prop, "location") { return navigate(ctx, w.id, value, false) ? 1 : -1 }
+	if w != nil {
+		if realm := frames_bridge_realm(w.id); realm != 0 {
+			key := wj.JS_AtomToValue(ctx, prop)
+			defer wj.JS_FreeValue(ctx, key)
+			r := frames_bridge_set(ctx, realm, key, value)
+			if wj.is_exception(r) { return -1 }
+			wj.JS_FreeValue(ctx, r)
+			return 1
+		}
+	}
 	throw_security(ctx, prop)
 	return -1
 }
@@ -561,6 +617,11 @@ wp_has :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, prop: wj.Atom) -> i32 {
 	if v := wp_child(ctx, w.id, p); !wj.is_uninitialized(v) { wj.JS_FreeValue(ctx, v); return 1 }
 	if v := wp_builtin(ctx, w.id, c, p); !wj.is_uninitialized(v) { wj.JS_FreeValue(ctx, v); return 1 }
 	if v := wp_pristine(ctx, w, c, p); !wj.is_uninitialized(v) { wj.JS_FreeValue(ctx, v); return 1 }
+	if realm := frames_bridge_realm(w.id); realm != 0 {
+		r := frames_bridge_has(ctx, realm, wj.JS_AtomToValue(ctx, prop))
+		defer wj.JS_FreeValue(ctx, r)
+		return wj.is_exception(r) ? -1 : (wj.JS_ToBool(ctx, r) != 0 ? 1 : 0)
+	}
 	return 0
 }
 
@@ -600,8 +661,37 @@ wp_get_own :: proc "c" (ctx: ^wj.Context, desc: ^wj.Property_Descriptor, obj: wj
 			return 1
 		}
 	}
+	if realm := frames_bridge_realm(w.id); realm != 0 { return wp_bridged_own(ctx, desc, realm, prop) }
+	if frame_same_origin(w.id) { return 0 }
 	throw_security(ctx, prop)
 	return -1
+}
+
+// A property of the frame's global object, as a descriptor of this realm (data or accessor; configurable, as the invariants of
+// an object that does not hold it want).
+@(private = "file")
+wp_bridged_own :: proc "contextless" (ctx: ^wj.Context, desc: ^wj.Property_Descriptor, realm: u64, prop: wj.Atom) -> i32 {
+	key := wj.JS_AtomToValue(ctx, prop)
+	defer wj.JS_FreeValue(ctx, key)
+	d := frames_bridge_descriptor(ctx, realm, key)
+	if wj.is_exception(d) { return -1 }
+	defer wj.JS_FreeValue(ctx, d)
+	if !wj.is_object(d) { return 0 }
+	if desc == nil { return 1 }
+	at :: proc "contextless" (ctx: ^wj.Context, d: wj.JSValue, i: u32) -> wj.JSValue { return wj.JS_GetPropertyUint32(ctx, d, i) }
+	flag :: proc "contextless" (ctx: ^wj.Context, d: wj.JSValue, i: u32, bit: i32) -> i32 {
+		x := at(ctx, d, i)
+		defer wj.JS_FreeValue(ctx, x)
+		return wj.JS_ToBool(ctx, x) != 0 ? bit : 0
+	}
+	get, set := at(ctx, d, 4), at(ctx, d, 5)
+	flags := wj.PROP_CONFIGURABLE | flag(ctx, d, 2, wj.PROP_ENUMERABLE)
+	if !wj.is_undefined(get) || !wj.is_undefined(set) {
+		desc^ = {flags = flags | PROP_GETSET, value = wj.UNDEFINED, getter = get, setter = set}
+		return 1
+	}
+	desc^ = {flags = flags | flag(ctx, d, 1, wj.PROP_WRITABLE), value = at(ctx, d, 0), getter = wj.UNDEFINED, setter = wj.UNDEFINED}
+	return 1
 }
 
 // Indices, then named children not already a member, then the members, then "then" and the three symbols.
@@ -656,12 +746,39 @@ wp_names :: proc "c" (ctx: ^wj.Context, ptab: ^[^]wj.Property_Enum, plen: ^u32, 
 
 @(private = "file")
 wp_define :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, prop: wj.Atom, val, getter, setter: wj.JSValue, flags: i32) -> i32 {
+	if w := state_of(obj); w != nil {
+		if realm := frames_bridge_realm(w.id); realm != 0 {
+			list := [10]wj.JSValue{wj.new_bool(flags & wj.PROP_HAS_VALUE != 0), wj.JS_DupValue(ctx, val),
+				wj.new_bool(flags & wj.PROP_WRITABLE != 0), wj.new_bool(flags & wj.PROP_ENUMERABLE != 0), wj.new_bool(flags & wj.PROP_CONFIGURABLE != 0),
+				flags & wj.PROP_HAS_GET != 0 ? wj.JS_DupValue(ctx, getter) : wj.UNDEFINED, flags & wj.PROP_HAS_SET != 0 ? wj.JS_DupValue(ctx, setter) : wj.UNDEFINED,
+				wj.new_bool(flags & wj.PROP_HAS_WRITABLE != 0), wj.new_bool(flags & wj.PROP_HAS_ENUMERABLE != 0), wj.new_bool(flags & wj.PROP_HAS_CONFIGURABLE != 0)}
+			arr := wj.JS_NewArray(ctx)
+			defer wj.JS_FreeValue(ctx, arr)
+			for x, i in list { wj.JS_SetPropertyUint32(ctx, arr, u32(i), x) }
+			key := wj.JS_AtomToValue(ctx, prop)
+			defer wj.JS_FreeValue(ctx, key)
+			r := frames_bridge_define(ctx, realm, key, arr)
+			if wj.is_exception(r) { return -1 }
+			wj.JS_FreeValue(ctx, r)
+			return 1
+		}
+	}
 	throw_security(ctx, prop)
 	return -1
 }
 
 @(private = "file")
 wp_delete :: proc "c" (ctx: ^wj.Context, obj: wj.JSValue, prop: wj.Atom) -> i32 {
+	if w := state_of(obj); w != nil {
+		if realm := frames_bridge_realm(w.id); realm != 0 {
+			key := wj.JS_AtomToValue(ctx, prop)
+			defer wj.JS_FreeValue(ctx, key)
+			r := frames_bridge_delete(ctx, realm, key)
+			if wj.is_exception(r) { return -1 }
+			defer wj.JS_FreeValue(ctx, r)
+			return wj.JS_ToBool(ctx, r) != 0 ? 1 : 0
+		}
+	}
 	throw_security(ctx, prop)
 	return -1
 }
@@ -761,6 +878,16 @@ window_of :: proc "contextless" (ctx: ^wj.Context, id: Navigable) -> wj.JSValue 
 	return w
 }
 
+// The navigable of a window value of this realm (the global or a WindowProxy), for the value bridge; 0 for anything else.
+frames_window_id :: proc "contextless" (v: wj.JSValue) -> Navigable {
+	if wj.is_object(v) && wj.same_ptr(v, wj.realm_global()) { return self_id() }
+	if wp_ready && wj.is_object(v) { if w := state_of(v); w != nil { return w.id } }
+	return 0
+}
+
+// The window of a navigable, for the value bridge: null when it is gone.
+frames_window_value :: proc "contextless" (ctx: ^wj.Context, id: Navigable) -> wj.JSValue { return window_of(ctx, id) }
+
 // Whether `v` is a WindowProxy of this realm (a message's source, MessageEvent's source member).
 @(export, link_name = "wj_frames_is_window")
 wj_frames_is_window :: proc "c" (ctx: ^wj.Context, v: wj.JSValue) -> bool {
@@ -798,6 +925,7 @@ wj_install_frames :: proc "c" (ctx: ^wj.Context) {
 	wp_def = {class_name = "Window", finalizer = wp_finalizer, gc_mark = wp_mark, exotic = &wp_exotic}
 	if wj.JS_NewClass(rt, wp_class, &wp_def) < 0 || wj.JS_NewClass(rt, xo_loc_class, &xo_loc_def) < 0 { return }
 	wp_ready = true
+	frames_bridge_install(ctx)
 }
 
 // ---- Window ----
