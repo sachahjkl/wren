@@ -99,7 +99,7 @@ The generated conventions, which a hand-written call follows:
    `proc "c"`, the `wj` types. Error messages matter: WPT and the test pages compare them.
 3. Interface indices by name, once: `wj.iface("Element")` cached in a file-private variable (or `ifaces.odin`).
 4. `odin check native/js/odin -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator`, then `build.bat`,
-   then the tests of the domain (jstest, jsdomtest, jswebtest, the WPT folders; see the end).
+   then the tests of the domain (the `js`, `jsdom`, `jsweb` web tests, the WPT folders; see the end).
 
 ## Pitfalls (each one was hit)
 
@@ -144,10 +144,8 @@ so a change of a mirrored struct stops the build.
 
 ## Testing a ported domain
 
-Build: `cmd /c build.bat`. Then, as relevant to the domain: `jstest` (no server), `jsdomtest`, `jswebtest`,
-`jsloadtest`, `workerstest`, `netapitest`, `mediatest` (each `odin build src/tools/<t> -use-separate-modules
--collection:wb=src -vet -out:build/<t>.exe -o:speed -extra-linker-flags:/STACK:33554432`, run with a test server from
-`tools/test_env.ps1`), `tools/test262.ps1 -NoNative -Quick`, and `tools/wpt.ps1 -Only /<folder>/ -TimeoutMs 30000`
+Build: `cmd /c build.bat`. Then, as relevant to the domain, the subjects of the web tests: `js`, `jsdom`, `jsweb`,
+`jsload`, `workers`, `netapi`, `media` (`build\web_test.exe`, [docs/testing.md](../testing.md#the-web-tests)), `tools/test262.ps1 -NoNative -Quick`, and `tools/wpt.ps1 -Only /<folder>/ -TimeoutMs 30000`
 for the WPT folders of the domain (the folders must be in `wpt/suites.txt`). A WPT "regression" is relative to
 `wpt/expectations`, which may be older than the code: compare with a build of the commit before the port before
 concluding (url's worker `exclude=` variants and webstorage's `storage_session_window_noopener` were already

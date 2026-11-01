@@ -152,6 +152,6 @@ zone.addEventListener("drop", (e) => {
     window.sub = new Promise((resolve) => dir.getDirectory("sub", {}, (d) => d.getFile("b.txt", {}, (f) => resolve(f.fullPath + " " + f.isFile), (err) => resolve(err.name)), (err) => resolve(err.name)));
   }
 });
-window.report = () => { console.log("EVENTS " + events.join(" ; ")); events = []; };
+window.report = () => { wrenTest.note("EVENTS " + events.join(" ; ")); events = []; };
 readBack.then(done, done);
 </script>

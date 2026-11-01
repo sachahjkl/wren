@@ -51,7 +51,7 @@ Demo :: struct {
 	path:   string,   // in the demo folder ("images/many.html"); server-only: an absolute path of the server ("/start")
 	about:  string,   // what it shows (HTML)
 	server: bool,     // needs the test server: linked there
-	tool:   string,   // an end-to-end test without a page: what runs it (path is then the page it loads, or "")
+	tool:   string,   // an end-to-end test without a page: its subject of the web tests (path is then the page it loads, or "")
 	perf:   bool,     // a page tools\perf.ps1 generates into build\perf (linked when it is there)
 }
 
@@ -172,7 +172,7 @@ DEMOS := [?]Demo{
 	{.Performance, "Content blocker: a page that keeps changing", "blocker/churn.html",
 		"Thousands of text nodes and more arriving every few milliseconds: what the blocker's DOM operations cost on a busy page (tools\\blocker_js.ps1).", true, "", false},
 	{.Performance, "Content blocker: cost of the API hooks", "blocker/hookbench.html",
-		"Per-call cost of a timer, JSON.parse and a defined property with the blocker's hooks (WREN_HOOKBENCH=1 with blockertest).", true, "", false},
+		"Per-call cost of a timer, JSON.parse and a defined property with the blocker's hooks (WREN_HOOKBENCH=1 with web_test blocker).", true, "", false},
 	{.Network, "Content blocker: a YouTube watch page", "blocker/ytwatch.html",
 		"The shape of a watch page: the player data in an inline literal and the answers of /youtubei/v1/player to XHR and fetch; the ad data in them (adPlacements, adSlots, playerAds) is removed before the page reads it.", true, "", false},
 	{.Network, "Content blocker: rewritten responses", "blocker/rewrite.html",
@@ -211,11 +211,11 @@ DEMOS := [?]Demo{
 		"The largest page of the profiler's scenarios, made by <code>tools\\perf.ps1</code> in <code>build\\perf\\</code>.", false, "", true},
 
 	{.E2e, "Page test", "counter.html",
-		"Loads the counter page headless and checks its DOM, its module and its timers.", true, "pagetest", false},
+		"Loads the counter page headless and checks its DOM, its module and its timers.", false, "web_test page", false},
 	{.E2e, "Style run-time test", "",
-		"Web fonts, transitions and animations, checked frame by frame.", true, "styletest", false},
+		"Web fonts, transitions and animations, checked frame by frame.", false, "web_test style", false},
 	{.E2e, "Forms test", "forms.html",
-		"Controls, validation, <code>FormData</code> and submission through the form page.", true, "formstest", false},
+		"Controls, validation, <code>FormData</code> and submission through the form page.", false, "web_test forms", false},
 	{.E2e, "Service worker test", "sw/index.html",
 		"Registers a service worker that caches files at install, claims the page, answers requests and a whole navigation itself and answers messages (<code>src\\tools\\e2e\\sw.odin</code> drives it).", true, "sw.odin", false},
 	{.E2e, "File System test", "fs/index.html",
@@ -223,25 +223,25 @@ DEMOS := [?]Demo{
 	{.E2e, "Shared and module workers test", "workers/index.html",
 		"Connects to a shared worker every tab of the origin shares (<code>connect</code>, ports both ways); <code>src\\tools\\e2e\\workers.odin</code> also starts module workers (imports, <code>import()</code>, <code>import.meta.url</code>).", true, "workers.odin", false},
 	{.E2e, "Images test", "images.html",
-		"Image events, <code>srcset</code>, <code>&lt;picture&gt;</code>, lazy loading, CSS images, the cache, cancellation, 200 images of 1 Mpx.", true, "imagestest", false},
+		"Image events, <code>srcset</code>, <code>&lt;picture&gt;</code>, lazy loading, CSS images, the cache, cancellation, 200 images of 1 Mpx.", false, "web_test images", false},
 	{.E2e, "Image formats test", "media.html",
-		"AVIF, WebP and SVG images and backgrounds, inline <code>&lt;svg&gt;</code>, <code>Accept</code>, <code>&lt;picture&gt;</code>.", true, "mediatest", false},
+		"AVIF, WebP and SVG images and backgrounds, inline <code>&lt;svg&gt;</code>, <code>Accept</code>, <code>&lt;picture&gt;</code>.", false, "web_test media", false},
 	{.E2e, "Network policy test", "",
-		"CORS, cookies, redirects, CSP, schemes and local files.", true, "policytest", false},
+		"CORS, cookies, redirects, CSP, schemes and local files.", false, "web_test policy", false},
 	{.E2e, "EventSource and WebSocket test", "",
-		"Server-sent events (reconnection, wrong types, statuses) and WebSockets (echo, drops, compression, handshakes).", true, "netapitest", false},
+		"Server-sent events (reconnection, wrong types, statuses) and WebSockets (echo, drops, compression, handshakes).", false, "web_test netapi", false},
 	{.E2e, "Web platform API test", "",
-		"Timers, <code>requestAnimationFrame</code>, abort signals, fetch streams, encoding, crypto, storage, URL and history.", true, "webapitest", false},
+		"Timers, <code>requestAnimationFrame</code>, abort signals, fetch streams, encoding, crypto, storage, URL and history.", false, "web_test webapi", false},
 	{.E2e, "Workers test", "",
-		"Dedicated workers: messages, transfers, fetch, termination, 16 in parallel.", true, "workerstest", false},
+		"Dedicated workers: messages, transfers, fetch, termination, 16 in parallel.", false, "web_test workers", false},
 	{.E2e, "JavaScript test", "js.html",
-		"Realms, scripts, the generated bindings, events, wrappers and node lifetime, the bytecode cache, interruption, and the cost of crossing into the browser.", false, "jstest", false},
+		"Realms, scripts, the generated bindings, events, wrappers and node lifetime, the bytecode cache, interruption, and the cost of crossing into the browser.", false, "web_test js", false},
 	{.E2e, "DOM for JavaScript test", "js-dom.html",
-		"Tree, elements, markup, selectors, CSSOM, geometry, UI events, <code>MutationObserver</code>, traversal, ranges, leaks and micro-benchmarks.", false, "jsdomtest", false},
+		"Tree, elements, markup, selectors, CSSOM, geometry, UI events, <code>MutationObserver</code>, traversal, ranges, leaks and micro-benchmarks.", false, "web_test jsdom", false},
 	{.E2e, "JavaScript loading test", "/jsload/files/demo.html",
-		"Script order, <code>document.write</code>, dynamic scripts, modules, handlers, CSP, <code>&lt;noscript&gt;</code>, timers, errors, workers.", true, "jsloadtest", false},
+		"Script order, <code>document.write</code>, dynamic scripts, modules, handlers, CSP, <code>&lt;noscript&gt;</code>, timers, errors, workers.", false, "web_test jsload", false},
 	{.E2e, "JavaScript web APIs test", "/jsweb/demo",
-		"fetch, XHR, streams, URL, encoding, abort, storage, history, navigator, crypto, sockets, messaging.", true, "jswebtest", false},
+		"fetch, XHR, streams, URL, encoding, abort, storage, history, navigator, crypto, sockets, messaging.", false, "web_test jsweb", false},
 }
 
 Demos_Source :: enum u8 { Preference, Package, Repository, Server }

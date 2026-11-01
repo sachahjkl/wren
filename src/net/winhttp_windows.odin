@@ -7,6 +7,7 @@ package net
 import win "core:sys/windows"
 
 foreign import winhttp "system:winhttp.lib"
+foreign import ws2_32 "system:ws2_32.lib"
 
 Status_Callback :: #type proc "system" (h: HINTERNET, ctx: win.DWORD_PTR, status: win.DWORD, info: rawptr, info_len: win.DWORD)
 
@@ -53,6 +54,13 @@ WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_2   :: 0x00000800
 WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_3   :: 0x00002000
 WINHTTP_OPTION_ENABLE_HTTP_PROTOCOL  :: 133
 WINHTTP_OPTION_HTTP_PROTOCOL_USED    :: 134
+WINHTTP_OPTION_CONNECTION_INFO       :: 93
+// WINHTTP_CONNECTION_INFO on x64: its size, then the local and the remote SOCKADDR_STORAGE, aligned on 8 bytes.
+WINHTTP_CONNECTION_INFO_BYTES        :: 264
+WINHTTP_CONNECTION_INFO_REMOTE       :: 136
+AF_INET6                             :: 23
+SOCKADDR_IN_ADDRESS                  :: 4
+SOCKADDR_IN6_ADDRESS                 :: 8
 
 WINHTTP_DISABLE_COOKIES              :: 0x00000001
 WINHTTP_DECOMPRESSION_FLAG_ALL       :: 0x00000003
@@ -63,6 +71,11 @@ WINHTTP_OPTION_REDIRECT_POLICY_DISALLOW_HTTPS_TO_HTTP :: 1
 WINHTTP_QUERY_RAW_HEADERS_CRLF :: 22
 WINHTTP_QUERY_STATUS_CODE      :: 19
 WINHTTP_QUERY_FLAG_NUMBER      :: 0x20000000
+
+@(default_calling_convention = "system")
+foreign ws2_32 {
+	inet_ntop :: proc(family: i32, address: rawptr, buffer: [^]u8, size: uint) -> cstring ---
+}
 
 @(default_calling_convention = "system")
 foreign winhttp {

@@ -1,4 +1,4 @@
-// The GPU process seen from a page: it dies while the page draws, it hangs, and the page and its contexts carry on (src/tools/jswebtest
+// The GPU process seen from a page: it dies while the page draws, it hangs, and the page and its contexts carry on (src/tools/webtests/jsweb.odin
 // kills it and asks it to hang: test hooks a browser has not; the channel itself is tested in native/webgl/src/ipc_tests.rs).
 "use strict";
 

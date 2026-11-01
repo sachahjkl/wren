@@ -1,2 +1,2 @@
 export const c = "c";
-console.log("module c evaluated");
+wrenTest.note("module c evaluated");

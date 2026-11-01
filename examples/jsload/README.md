@@ -1,1 +1,1 @@
-Files served by the test server under /jsload/files/ for src/tools/jsloadtest (modules, workers, importScripts).
+Files served by the test server under /jsload/files/ for src/tools/webtests/jsload.odin (modules, workers, importScripts), which they report to through `wrenTest`, and demo.html, the demo of about:demos, which uses mod/mapped.js.

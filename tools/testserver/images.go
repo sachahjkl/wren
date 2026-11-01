@@ -1,4 +1,4 @@
-// Images for the image tests (src/images unit tests, src/tools/imagestest, examples/site/images.html).
+// Images for the image tests (src/images unit tests, src/tools/webtests/images.odin, examples/site/images.html).
 //
 //	testserver -gen-images DIR   writes the test files into DIR and exits (they are committed under examples/site/images)
 //

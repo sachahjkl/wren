@@ -56,10 +56,10 @@ Before: master `4c37924` (slice 1 and the Rust network stack merged). After: `fe
 | remote/client | own 40 | ok | `conn_linux.odin` (Unix socket), `spawn_linux.odin` (posix_spawn, /proc) |
 | remote | ok (no server) | ok, server | `server_linux.odin` on a Unix socket |
 | tools/crashtrace | own 116 | ok | `crashtrace_linux.odin` |
-| tools/crashmodes, pagetest and most headless tools | deps | ok | (their packages) |
+| tools/crashmodes, the web tests and most headless tools | deps | ok | (their packages) |
 
 Linux end to end: `tools/crash_e2e.sh` (8 ways of dying, each with its report or an unclean-exit report). Windows after
-the slice: the unit tests of every package touched, `nettest` and `wsclosetest` on both stacks, the scenarios of the channel and of
+the slice: the unit tests of every package touched, the `net` and `wsclose` web tests on both stacks, the scenarios of the channel and of
 crash reports (`src\tools\e2e`), the dev build.
 
 ## Slice 3 (2026-10-27, night): what it adds
@@ -277,8 +277,8 @@ webfont, images (23 of 24: SVG text needs system fonts in the test distribution)
 1. **Done in slice 1**: the engine's core (threads, files, crypto, clocks, Wasm runtime, JavaScript time zone, storage, HTTP
    cache, images, Web Authentication's crypto, one instance per profile), Lexbor, Wasmtime and the Rust library built
    for Linux, `tools\portability.ps1`.
-2. **After the network branch lands** (net, fetch on Rust): `page`, `blocker` and every headless tool (`pagetest`,
-   `jstest`, `wpt`, `test262`...) follow; the 6 errors of `page` are screen metrics (needs the toolkit's display API)
+2. **After the network branch lands** (net, fetch on Rust): `page`, `blocker` and every headless tool (the web tests,
+   `wpt`, `test262`...) follow; the 6 errors of `page` are screen metrics (needs the toolkit's display API)
    and `images.odin`'s use of a Windows-only helper. One slice.
 3. **Media on Linux**: `backend_linux.odin` (the five procedures of `backend_windows.odin`): decoding with the Rust
    decoders already linked (rav1d for AV1, image-webp...) plus a Rust H.264 / AAC / Opus decoder, audio through

@@ -2,10 +2,10 @@
 # of ports of its own, and the machine-wide locks of what cannot be shared between runs.
 #
 # Test server (tools\testserver\ports.go): every origin of the tests is an offset from one base port (+0 http on
-# 127.0.0.1 and localhost, +1 https, +2 a second http origin, +3 / +4 the web-platform-tests origin). The demos and the
-# release package use 8765; the scripts take a block of their own so that several worktrees (or several steps of one
-# run) test side by side, and hand it to the tools through WREN_TEST_BASE_PORT (src/tools/testenv,
-# examples/testports). Start-WrenTestServer starts build\testserver.exe on the first free block from -BasePort
+# 127.0.0.1 and localhost, +1 https, +2 a second http origin, +3 / +4 the web-platform-tests origin). The Odin tests start
+# it in their own process (src/testserver, docs\testing.md); this is for scripts. The demos and the release package use
+# 8765; a script takes a block of its own so that several worktrees test side by side, and hands it to the tools through
+# WREN_TEST_BASE_PORT (src/tools/testenv, examples/testports). Start-WrenTestServer starts build\testserver.exe on the first free block from -BasePort
 # (-scan: base, base+10, ...), waits until it listens, and returns { Process; BasePort; Origin }. The server ends with
 # the PowerShell process that started it (-parent-pid), even when that one is killed.
 #
@@ -77,14 +77,14 @@ function Get-WrenPreferredBasePort([string]$Root = (Get-WrenRepoRoot)) {
     return 20000 + [int]($h % 900) * 10
 }
 
-# Builds build\testserver.exe when it is missing or older than a source of tools\testserver, one builder at a time (a named mutex: the steps
-# that run side by side wait for it and find it built). A server that runs holds its exe: the build then fails to replace it, and that
-# one stays (it is the build of a run that began before the sources changed).
-function Ensure-WrenTestServer([string]$root, [string]$Exe) {
+# Builds what is built from tools\testserver when it is missing or older than one of its sources, one builder at a time (a named mutex: the steps that run
+# side by side wait for it and find it built): `Output` is build\testserver.exe (the thin main for the scripts) or build\testserver.dll (the library the Odin
+# tests load). A program that runs holds its file: the build then fails to replace it, and that one stays (it is the build of a run that began before the sources changed).
+function Ensure-WrenTestServer([string]$root, [string]$Output) {
     $src = Join-Path $root 'tools\testserver'
     $stale = {
-        if (-not (Test-Path $Exe)) { return $true }
-        $built = [IO.File]::GetLastWriteTimeUtc($Exe)
+        if (-not (Test-Path $Output)) { return $true }
+        $built = [IO.File]::GetLastWriteTimeUtc($Output)
         foreach ($f in [IO.Directory]::EnumerateFiles($src, '*', [IO.SearchOption]::AllDirectories)) {
             if (($f.EndsWith('.go') -or $f.EndsWith('go.mod') -or $f.EndsWith('go.sum')) -and [IO.File]::GetLastWriteTimeUtc($f) -gt $built) { return $true }
         }
@@ -98,7 +98,15 @@ function Ensure-WrenTestServer([string]$root, [string]$Exe) {
         try { [void]$mutex.WaitOne() } catch [Threading.AbandonedMutexException] { }
         if (-not (& $stale)) { return }
         Push-Location $src
-        try { go build -o $Exe ./cmd/testserver 2>&1 | Out-Null } finally { Pop-Location }
+        try {
+            if ($Output.EndsWith('.dll')) {
+                $env:CGO_ENABLED = '1'   # (c-shared calls a C compiler; stripped, or the linker of an old MinGW makes a file Windows will not load)
+                go build -buildmode=c-shared -ldflags="-s -w" -o $Output ./cdll 2>&1 | Out-Null
+                Remove-Item ([IO.Path]::ChangeExtension($Output, '.h')) -ErrorAction SilentlyContinue
+            } else {
+                go build -o $Output ./cmd/testserver 2>&1 | Out-Null
+            }
+        } finally { Pop-Location }
     } finally { $mutex.ReleaseMutex(); $mutex.Dispose() }
 }
 
@@ -230,6 +238,7 @@ function Invoke-WrenE2E([string]$Exe, [string]$Scenario) {
     $source = [IO.File]::ReadAllText((Join-Path $root "src\tools\e2e\$Scenario.odin"))
     $names = @([regex]::Matches($source, '(?m)^@\(test\)\s*([A-Za-z0-9_]+)\s*::') | ForEach-Object { $_.Groups[1].Value })
     if ($names.Count -eq 0) { "no @(test) in src\tools\e2e\$Scenario.odin"; $global:LASTEXITCODE = 1; return }
+    Ensure-WrenTestServer $root (Join-Path $root 'build\testserver.dll')
     $o = & (Join-Path $root $Exe) "-tests:$($names -join ',')" 2>&1 | Out-String
     $code = $LASTEXITCODE
     $o
@@ -243,6 +252,7 @@ function Invoke-WrenWebTests([string]$Exe, [string]$Subject) {
     $source = [IO.File]::ReadAllText((Join-Path $root "src\tools\webtests\$Subject.odin"))
     $names = @([regex]::Matches($source, '(?m)^@\(test\)\s*([A-Za-z0-9_]+)\s*::') | ForEach-Object { $_.Groups[1].Value })
     if ($names.Count -eq 0) { "no @(test) in src\tools\webtests\$Subject.odin"; $global:LASTEXITCODE = 1; return }
+    Ensure-WrenTestServer $root (Join-Path $root 'build\testserver.dll')
     $o = & (Join-Path $root $Exe) "-tests:$($names -join ','),zz_the_process_ends_with_nothing_left" 2>&1 | Out-String
     $code = $LASTEXITCODE
     $o

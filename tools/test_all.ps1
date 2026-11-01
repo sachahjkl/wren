@@ -144,7 +144,7 @@ function Start-Watchdog {
 # -Flaky: a step known to fail at random: its failure is printed as FLAKY and fails nothing, on the CI either. A mark also hides a real
 # bug, so a step gets one only when the cause is known and outside our reach, with the reason in a comment on the step; none has one now.
 # A step that fails under load and passes alone is reproduced first: its program in a loop with CPU load beside it, several copies at once
-# (each with a test server of its own), and a stress build for the engine (-define:JSRT_GC_STRESS=65536 -define:JSRT_GC_POISON=true). See
+# and a stress build for the engine (-define:JSRT_GC_STRESS=65536 -define:JSRT_GC_POISON=true). See
 # "Tests that fail at random" in CONTRIBUTING.md for what the marks used to hide.
 $script:flaky = @{}
 # How many checks a step's output says it made (Odin's runner, the tools' "n passed", the PASS lines of a script, WPT's and test262's counts): a run can be compared with another (build\test_steps.tsv).
@@ -194,7 +194,7 @@ function Save-StepResult($s, $ok, $out, $secs) {
     Save-WrenCachedResult $s.Key $secs (Get-CheckCount "$out") $s.Body
 }
 
-# -Jobs 1: the step runs now. Otherwise it is queued (with whether it needs the test server) until Flush-Steps.
+# -Jobs 1: the step runs now. Otherwise it is queued until Flush-Steps.
 $script:queue = New-Object System.Collections.Generic.List[object]
 # -Light: a step that mostly waits (the cache and policy tests sleep for expiries, the network tests wait for servers: 0.1 to 4 CPU seconds in 5 to 20 s of wall
 # clock): it does not take one of the -Jobs slots, up to -LightJobs of them run beside the others.
@@ -568,7 +568,7 @@ Step 'who chose an address (src\tools\e2e\nav_trust.odin: a page asking by scrip
 Step 'about:config end to end (src\tools\e2e\config.odin: search, a switch, a number, a value out of range, a choice, reset, details, a category by type-ahead, all from the keyboard; no window at all)' {
     Invoke-WrenE2E 'build\e2e_test.exe' 'config'
 } -NoCI
-Step 'search engines end to end (src\tools\e2e\search.odin: a profile of before the list keeps its choice, the default, keywords, Ctrl+Down in the suggestions, an engine added in about:config and written to the profile; engines on the test server, build\testserver.exe, no window at all)' {
+Step 'search engines end to end (src\tools\e2e\search.odin: a profile of before the list keeps its choice, the default, keywords, Ctrl+Down in the suggestions, an engine added in about:config and written to the profile; engines on the test server, no window at all)' {
     Invoke-WrenE2E 'build\e2e_test.exe' 'search'
 } -NoCI
 
@@ -603,19 +603,31 @@ Step 'graphics toolkit window chrome tests (title bar hit test and regions, virt
 Step 'graphics toolkit cursor tests (CSS names, system or drawn, drawn shapes, custom cursors; a hidden window, never shown)' { odin test ext/gui_toolkit/tests/cursors -use-separate-modules $MemCheck -vet -define:ODIN_TEST_THREADS=1 -out:build/toolkit_cursors_test.exe 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
 Step 'graphics toolkit status tests (sample history, frame graph; no window)' { odin test ext/gui_toolkit/tests/status -use-separate-modules $MemCheck -vet -define:ODIN_TEST_THREADS=1 -out:build/toolkit_status_test.exe 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
 Step 'graphics toolkit interaction states tests (hover, press and selection at once, transitions on demand, palette cross-fade, state fills in both blend spaces; no window)' { odin test ext/gui_toolkit/tests/states -use-separate-modules $MemCheck -vet -define:ODIN_TEST_THREADS=1 -out:build/toolkit_states_test.exe 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
-Step 'build guest e2e.wasm' { odin build examples/e2e -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:build/e2e.wasm -o:size }
-Step 'build guest counter.wasm' { odin build examples/counter -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:examples/site/counter.wasm -o:size }
-Step 'build guest formstest.wasm' { odin build examples/formstest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:examples/site/formstest.wasm -o:size }
-Step 'build guest mutation.wasm' { odin build examples/mutation -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:examples/site/mutation.wasm -o:size }
-Step 'build guest mutation_class.wasm' { odin build examples/mutation_class -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:examples/site/mutation_class.wasm -o:size }
-Step 'build guest webapitest.wasm' { odin build examples/webapitest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:build/webapitest.wasm -o:size }
-Step 'build guest netapitest.wasm' { odin build examples/netapitest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:build/netapitest.wasm -o:size }
-Step 'build guest workerstest.wasm' { odin build examples/workerstest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:build/workerstest.wasm -o:size }
-Step 'build guest workerstest_worker.wasm' { odin build examples/workerstest_worker -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:examples/site/workerstest_worker.wasm -o:size }
-Step 'build guest imagestest.wasm' { odin build examples/imagestest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:build/imagestest.wasm -o:size }
 # The web tests (src\tools\webtests, docs\testing.md): one program of core:testing on one loop, with the test server in its process, built once; a step runs the tests of one subject of it, in a process of its own.
-Step 'build web tests (src\tools\webtests: fetch, the network, pages and their scripts, with no window)' { odin build src/tools/webtests -build-mode:test -define:ODIN_TEST_THREADS=1 -define:ODIN_TEST_FANCY=false -use-separate-modules -collection:wb=src -collection:toolkit=ext/gui_toolkit -vet $Track -out:build/web_test.exe $Stack }
-Step 'JavaScript in pages (jstest: realm, scripts, bindings, events, wrappers and node lifetime, bytecode cache, interruption)' { Invoke-WrenWebTests 'build\web_test.exe' 'js' } -Weight 48
+Step 'build web tests (src\tools\webtests: fetch, the network, pages and their scripts, with no window; the Wasm guests of the pages they load, built first)' {
+    odin build examples/e2e -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -o:size -out:build/e2e.wasm
+    if ($LASTEXITCODE) { return }
+    odin build examples/counter -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -o:size -out:examples/site/counter.wasm
+    if ($LASTEXITCODE) { return }
+    odin build examples/formstest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -o:size -out:examples/site/formstest.wasm
+    if ($LASTEXITCODE) { return }
+    odin build examples/mutation -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -o:size -out:examples/site/mutation.wasm
+    if ($LASTEXITCODE) { return }
+    odin build examples/mutation_class -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -o:size -out:examples/site/mutation_class.wasm
+    if ($LASTEXITCODE) { return }
+    odin build examples/webapitest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -o:size -out:build/webapitest.wasm
+    if ($LASTEXITCODE) { return }
+    odin build examples/netapitest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -o:size -out:build/netapitest.wasm
+    if ($LASTEXITCODE) { return }
+    odin build examples/workerstest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -o:size -out:build/workerstest.wasm
+    if ($LASTEXITCODE) { return }
+    odin build examples/workerstest_worker -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -o:size -out:examples/site/workerstest_worker.wasm
+    if ($LASTEXITCODE) { return }
+    odin build examples/imagestest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -o:size -out:build/imagestest.wasm
+    if ($LASTEXITCODE) { return }
+    odin build src/tools/webtests -build-mode:test -define:ODIN_TEST_THREADS=1 -define:ODIN_TEST_FANCY=false -use-separate-modules -collection:wb=src -collection:toolkit=ext/gui_toolkit -vet $Track -out:build/web_test.exe $Stack
+}
+Step 'JavaScript in pages (jstest: realm, scripts, bindings, events, wrappers and node lifetime, bytecode cache, interruption)' { Invoke-WrenWebTests 'build\web_test.exe' 'js' }
 Step 'build fetch' { odin build src/tools/fetch -use-separate-modules -collection:wb=src -vet -out:build/fetch.exe $Stack }
 Step 'licence tool (tools\license.ps1: a licence issued with the development pair verifies; an altered one and one of another key do not; keygen refuses a path inside the repository)' {
     odin build src/tools/license -use-separate-modules -collection:wb=src -vet -out:build/license.exe $Stack
@@ -659,7 +671,7 @@ Step 'unit tests: test host (what fails a section of jswebtest and jsdomtest: wh
 Step 'DOM for JavaScript end-to-end test (jsdomtest: tree, elements, markup, selectors, CSSOM, geometry, UI events, MutationObserver, traversal, ranges, leaks, micro-benchmarks; no server)' { Invoke-WrenWebTests 'build\web_test.exe' 'jsdom' }
 Step 'history end-to-end test (historytest: the tree as pages see it, scrollRestoration, pageshow / pagehide persisted, back/forward cache freezing, persisted form state; no server)' { Invoke-WrenWebTests 'build\web_test.exe' 'history' }
 Step 'Web Authentication end-to-end test (webauthntest: create then get from JavaScript on the virtual authenticator, signature checked; activation, RP ID, aborts, timer, mediation, JSON forms, secure context; no server)' { Invoke-WrenWebTests 'build\web_test.exe' 'webauthn' }
-Step 'build testserver (and its tests: /site/ index, listings, extensionless pages, types)' { Push-Location tools\testserver; go test . 2>&1; if ($LASTEXITCODE -eq 0) { go build -o ..\..\build\testserver.exe ./cmd/testserver }; if ($LASTEXITCODE -eq 0) { $env:CGO_ENABLED = '1'; go build -buildmode=c-shared -ldflags="-s -w" -o ..\..\build\testserver.dll ./cdll; Remove-Item ..\..\build\testserver.h -ErrorAction SilentlyContinue }; Pop-Location }
+Step 'build testserver (and its tests: /site/ index, listings, extensionless pages, types)' { Push-Location tools\testserver; go test . 2>&1; Pop-Location; if ($LASTEXITCODE -eq 0) { Ensure-WrenTestServer $root (Join-Path $root 'build\testserver.exe'); Ensure-WrenTestServer $root (Join-Path $root 'build\testserver.dll') } }
 # The end-to-end scenarios (src\tools\e2e, docs\testing.md): one program on Odin's test runner that links the browser, built once; a step runs the tests of one file of it, in a process of its own.
 Step 'build e2e scenarios (src\tools\e2e: the browser in the tests'' process, no window, the real renderer offscreen)' { odin build src/tools/e2e -build-mode:test -out:build/e2e_test.exe -o:speed -debug -use-separate-modules -vet -collection:toolkit=ext/gui_toolkit -collection:wb=src -define:FONT_BACKEND=native -define:FONT_NATIVE_LINK=false -define:A11Y_ACCESSKIT=true -define:A11Y_NATIVE_LINK=false -define:WREN_CHANNEL=dev -define:DEFAULT_TEMP_ALLOCATOR_BACKING_SIZE=1048576 -define:ODIN_TEST_THREADS=1 -define:ODIN_TEST_FANCY=false -extra-linker-flags:"/STACK:33554432 /NODEFAULTLIB:vcruntime.lib /DEFAULTLIB:libvcruntime.lib" 2>&1 | Out-String | Tee-Object -Variable b | Out-Null; if ($LASTEXITCODE) { $b } }
 if ($CI -or -not $Quick) { Step 'build e2e scenarios with every allocation tracked (src\tools\e2e with -define:WREN_TRACK_MEMORY=true: a test that leaves anything allocated fails)' { odin build src/tools/e2e -build-mode:test -out:build/e2e_test_check.exe $Track -o:speed -debug -use-separate-modules -vet -collection:toolkit=ext/gui_toolkit -collection:wb=src -define:FONT_BACKEND=native -define:FONT_NATIVE_LINK=false -define:A11Y_ACCESSKIT=true -define:A11Y_NATIVE_LINK=false -define:WREN_CHANNEL=dev -define:DEFAULT_TEMP_ALLOCATOR_BACKING_SIZE=1048576 -define:ODIN_TEST_THREADS=1 -define:ODIN_TEST_FANCY=false -extra-linker-flags:"/STACK:33554432 /NODEFAULTLIB:vcruntime.lib /DEFAULTLIB:libvcruntime.lib" 2>&1 | Out-String | Tee-Object -Variable b | Out-Null; if ($LASTEXITCODE) { $b } } -NoCI }
@@ -667,8 +679,8 @@ if ($CI -or -not $Quick) { Step 'build e2e scenarios with every allocation track
 # (longest first), instead of the steps below waiting for the slowest of them.
 if ($Jobs -gt 1) { Flush-Steps 'build *' }
 
-# The browser's check build (build.bat check: every allocation tracked): -CI and full runs. Two steps use it, each with a test server of its own
-# (they need none of this run's): they are queued here, not at the end, so that they run in the one batch below with the long steps (a step
+# The browser's check build (build.bat check: every allocation tracked): -CI and full runs. Two steps use it:
+# they are queued here, not at the end, so that they run in the one batch below with the long steps (a step
 # that is alone at the end of a run keeps the others' slots idle). Both get the program from Ensure-WrenBuild (test_env.ps1): the first to need it
 # builds it, the other waits for that build, nothing else does (two build.bat at once refuse each other's files).
 #  1. it drives itself through a session and through tabs opened and closed by the dozen (src\tools\e2e\memcheck.odin, tools\endurance.ps1): nothing

@@ -2,7 +2,7 @@
 <html><head><title>Leaks</title></head>
 <body><div id="root"></div>
 <script>
-// Makes garbage on both heaps and drops it; the tool collects and counts what is left (src/tools/jsdomtest).
+// Makes garbage on both heaps and drops it; the tool collects and counts what is left (src/tools/webtests/jsdom.odin).
 section("garbage", () => {
   const root = document.getElementById("root");
   for (let i = 0; i < 3000; i++) {

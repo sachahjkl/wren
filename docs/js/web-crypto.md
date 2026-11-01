@@ -13,7 +13,7 @@ Checked: amazon.com (its scripts call `importKey`; without it the page stayed em
 | the browser side | `src/page/bindings_crypto_subtle.odin` (keys, DER, computations), `src/page/bindings_crypto.odin` (random values, digest) |
 | the realm side | `native/js/odin/web_crypto.odin` (`CryptoKey`, the natives) and `web_crypto.js` (conversions, normalization, usages, error names, JWK) |
 | between realms | `native/js/odin/clone.odin` (`Crypto_Key`) |
-| the tests | `examples/jsweb/webcrypto.js` (`jswebtest webcrypto`), web-platform-tests `WebCryptoAPI` (`wpt/expectations`) |
+| the tests | `examples/jsweb/webcrypto.js` (`jsweb_webcrypto`), web-platform-tests `WebCryptoAPI` (`wpt/expectations`) |
 
 `web_crypto.js`, like `web_wasm.js`, is an exception to the rule of `native/js/odin/prelude.odin` (no JavaScript in the realm): it
 is not in the image, and its source is stripped.

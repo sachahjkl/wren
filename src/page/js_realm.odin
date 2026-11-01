@@ -96,7 +96,7 @@ js_realm :: proc(p: ^Page) -> ^Js_Realm {
 		opt.soft_call_ms = slow
 		// the hard stop comes after the engine had time to unwind (or never, when wasm.max_call_ms says so): the engine looks
 		// at the flag every few thousand calls, which on a slow or loaded machine can be as long as the slice itself, and a hard stop
-		// ends the page's scripts for good (the jstest's endless microtask chain met it once on the CI)
+		// ends the page's scripts for good (the endless microtask chain of the web test js_hostile_endless_microtasks met it once on the CI)
 		if opt.max_call_ms > 0 && opt.max_call_ms < slow * 4 { opt.max_call_ms = slow * 4 }
 	}
 	// (a worker terminated while it starts: nothing went wrong, a page may well do that at once)

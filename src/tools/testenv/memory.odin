@@ -8,7 +8,7 @@ package testenv
 //     main :: proc() {
 //         context = testenv.context_of_process()
 //         ... the tests, then every destroy / stop ...
-//         failures += testenv.mem_check("policytest")
+//         failures += testenv.mem_check("apiconformance")
 //         fmt.printf("%d failure(s)\n", failures)
 //     }
 

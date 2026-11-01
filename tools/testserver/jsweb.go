@@ -1,6 +1,6 @@
 package testserver
 
-// Endpoints for the JavaScript web API test (src/tools/jswebtest):
+// Endpoints for the JavaScript web API test (src/tools/webtests/jsweb.odin):
 //
 //	/jsweb/text?mb=N       N MB of ASCII text (text/plain; charset=utf-8)
 //	/jsweb/json            a small JSON document

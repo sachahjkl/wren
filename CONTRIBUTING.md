@@ -6,10 +6,9 @@
 - Run `powershell -NoProfile -File tools\test_all.ps1 -Quick`: every step must say PASS, or CACHED (it passed with exactly these
   inputs; `-NoCache` runs everything). CI runs the same suite with `-CI` on `windows-2025` ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
   While you work: `-Changed`, `-Only <pattern>`, `-Failed`. How the tests run and how to go fast: [docs/testing.md](docs/testing.md).
-- Several runs at once on one machine (worktrees) are fine: `test_all.ps1` takes no lock. Its test server listens on
-  a block of ports of the run (`-BasePort`, default derived from the worktree's path; `-CI`: 8765), the tools read it
-  from `WREN_TEST_BASE_PORT` (`src/tools/testenv`, guests: `examples/testports`), and steps run `-Jobs` at a time, each
-  server-backed step with a server of its own. Write test addresses with the default ports
+- Several runs at once on one machine (worktrees) are fine: `test_all.ps1` takes no lock. Each test program starts the test
+  server in its own process, on a block of ports of its own, derived from the worktree's path ([docs/testing.md](docs/testing.md#the-test-server)); scripts use
+  `Start-WrenTestServer` and pass its block through `WREN_TEST_BASE_PORT` (`src/tools/testenv`, guests: `examples/testports`), and steps run `-Jobs` at a time. Write test addresses with the default ports
   (`testenv.url("http://127.0.0.1:8765/x")`): they move with the block. Scripts that use the real desktop
   (`screenshot.ps1`) or measure performance (`perf.ps1`, `js_bench.ps1`, `cfg_bench.ps1`) take
   `desktop.lock` / `bench.lock` themselves, only for that part (`tools/test_env.ps1`, which also starts a test server

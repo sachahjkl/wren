@@ -1,4 +1,4 @@
-// HTTP cache tests (src/tools/cachetest):
+// HTTP cache tests (src/tools/webtests/cache.odin):
 //
 //	/cache/r/NAME?cc=...&etag=...&lm=SECONDS_AGO&expires=SECONDS&vary=FIELD&age=N&status=NNN&type=...&body=...&location=...&cookie=1
 //	        a response with the caching fields asked for; If-None-Match / If-Modified-Since against them give a 304.
@@ -6,7 +6,7 @@
 //	/cache/count?name=NAME   how many requests NAME got, and how many were answered 304: "N M" (no-store)
 //	/cache/last?name=NAME    the request fields of the last request for NAME, one per line (no-store)
 //	/cache/reset             forgets every count
-//	/cache/font.woff2?...    the font of examples/site/fonts (cachetest's web font), with the same parameters
+//	/cache/font.woff2?...    the font of examples/site/fonts (the cache tests' web font), with the same parameters
 package testserver
 
 import (

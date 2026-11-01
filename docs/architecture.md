@@ -171,7 +171,7 @@ one of two stacks (`network.backend`, overridden by the `WREN_NET_BACKEND` envir
   not get through.
 
 Errors keep WinHTTP's numbers (12002 timeout, 12007 name, 12029 connect, 12030 lost, 12152 invalid answer, 12175 /
-12037 / 12038 / 12045 certificates with WinHTTP's secure flags) whichever stack ran the request. `src/tools/nettest`
+12037 / 12038 / 12045 certificates with WinHTTP's secure flags) whichever stack ran the request. `src/tools/webtests/net.odin`
 runs the transport on both; `tools\net_parity.ps1 -Backend rust|winhttp` runs every network end-to-end tool on one.
 
 ## Security model
