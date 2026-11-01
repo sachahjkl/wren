@@ -25,6 +25,7 @@ Architecture
   frames.md           The DOM of a same-origin frame
   crash-recovery.md   Crash recovery
   crash-reports.md    Crash reports and symbols
+  testing.md          How the tests run
 
 Features
   blocker.md          The content blocker
