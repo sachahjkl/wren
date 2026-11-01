@@ -15,7 +15,6 @@ package browser
 //   * a page from the back/forward cache needs none of it (bfcache.odin): it is as it was.
 
 import "core:fmt"
-import "core:os"
 import "core:strings"
 import "core:time"
 import "wb:base"
@@ -42,12 +41,11 @@ Restore :: struct {
 	timer:     base.Handle,     // the deadline, so that the last attempt happens without other activity
 }
 
-// What a traversal measured (history.debug): from the user's request to the frame that shows the entry.
+// What a traversal measured: from the user's request to the frame that shows the entry.
 Traverse_Timing :: struct {
 	active: bool,
 	from_cache: bool,
 	started: time.Tick,
-	url:    string,   // owned
 }
 
 // The tab's part of this (one field of Tab).
@@ -63,7 +61,6 @@ Tab_Nav :: struct {
 tab_nav_destroy :: proc(app: ^App, t: ^Tab) {
 	restore_stop(app, t)
 	delete(t.nav_state.restore.done)
-	delete(t.nav_state.timing.url)
 	delete(t.nav_state.last_visit)
 	t.nav_state = {}
 }
@@ -233,13 +230,11 @@ restore_tick :: proc(app: ^App, t: ^Tab, viewport: [2]f32) {
 }
 
 ////////////////////////////////
-// Measuring traversals (history.debug: WREN_HISTORY_TIMING names a file the times are appended to)
+// Measuring traversals: the tab's console says the time of each
 
-timing_begin :: proc(t: ^Tab, from_cache: bool, address: string) {
+timing_begin :: proc(t: ^Tab, from_cache: bool) {
 	tm := &t.nav_state.timing
 	tm.active, tm.from_cache, tm.started = true, from_cache, time.tick_now()
-	delete(tm.url)
-	tm.url = strings.clone(address)
 }
 
 // After a frame painted the tab's document: the first one after a traversal ends its measure (a new document: once
@@ -252,10 +247,4 @@ timing_painted :: proc(t: ^Tab) {
 	ms := time.duration_milliseconds(time.tick_since(tm.started))
 	how := tm.from_cache ? "from the back/forward cache" : "loaded again"
 	tab_log(t, .Log, fmt.tprintf("history: entry shown in %.1f ms (%s)", ms, how))
-	if path := os.get_env("WREN_HISTORY_TIMING", context.temp_allocator); path != "" {
-		if f, err := os.open(path, {.Write, .Create, .Append}, os.Permissions_Default_File); err == nil {
-			os.write_string(f, fmt.tprintf("%s\t%.2f\t%s\n", tm.from_cache ? "bfcache" : "load", ms, tm.url))
-			os.close(f)
-		}
-	}
 }

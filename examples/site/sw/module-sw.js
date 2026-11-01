@@ -1,4 +1,4 @@
-// A module service worker of tools\sw_e2e.ps1 ({type: "module"}): a static import, importScripts refused, answered by
+// A module service worker of src\tools\e2e\sw.odin ({type: "module"}): a static import, importScripts refused, answered by
 // message.
 import { tag } from "./module-lib.js";
 let imports = "allowed";

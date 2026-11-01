@@ -11,7 +11,7 @@
 #
 # Locks: only around what really is shared by the whole machine.
 #   desktop  the real screen, keyboard, mouse and foreground window: a visible browser window that is captured or typed
-#            into (screenshot.ps1, history_e2e.ps1, shots.ps1, ...). Taken by those scripts themselves, for as long as
+#            into (screenshot.ps1, shots.ps1, ...). Taken by those scripts themselves, for as long as
 #            their window lives.
 #   bench    performance measurements, which other runs would skew (perf.ps1, js_bench.ps1, cfg_bench.ps1, ...).
 # Nothing headless takes a lock (tools\test_all.ps1 takes none: its server is on ports of its own and nothing in it

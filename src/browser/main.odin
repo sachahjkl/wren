@@ -337,7 +337,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	entry := page.session_current(&t.session)
 	restore_stop(app, t)
 	if restore && entry != nil && hcfg.restore_zoom && entry.persisted.zoom > 0 { t.zoom = entry.persisted.zoom }
-	if restore { timing_begin(t, false, target) }
+	if restore { timing_begin(t, false) }
 	defer if restore { restore_begin(app, t, entry, .New_Document) }
 	license_file := is_license_file_address(target) && verdict.acts   // license_shell.odin
 	if is_builtin_address(target) || license_file { hold_release(t); bfcache_take(app, t) }   // (show_* closes the tab's navigation scope)
@@ -1752,6 +1752,6 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	host.shutdown_step("shutdown_end")
 	host.shutdown_end()
 	crashtrace.end_session()   // a clean end (a watchdog's exit or a kill leaves the file: the next start reports it)
-	memcheck_exit(profile_dir)   // memcheck.odin: the leak report of the check build
+	if process_ends { memcheck_exit(profile_dir) }   // memcheck.odin: the leak report of the check build (a program that goes on after this reports once it has let go of its own: src/e2e)
 	host.phase("exit")
 }

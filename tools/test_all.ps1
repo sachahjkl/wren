@@ -493,28 +493,26 @@ Step 'the frame gate end to end (tools\frame_gate_e2e.ps1: the system''s drag of
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\frame_gate_e2e.ps1
 } -Weight 15 -NoCI
-Step 'service workers, Cache API, BroadcastChannel, OffscreenCanvas in a worker end to end (tools\sw_e2e.ps1: register, install / activate, claim, fetch intercepted and answered from the cache, a navigation answered by the worker, messages, versions and update, clients, idle stop, navigation preload, Vary; no window shown)' {
-    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
-    powershell -NoProfile -ExecutionPolicy Bypass -File tools\sw_e2e.ps1
+Step 'service workers, Cache API, BroadcastChannel, OffscreenCanvas in a worker end to end (src\tools\e2e\sw.odin: register, install / activate, claim, fetch intercepted and answered from the cache, a navigation answered by the worker, messages, versions and update, clients, idle stop, navigation preload, Vary; no window shown)' {
+    Invoke-WrenE2E 'build\e2e_test.exe' 'sw'
 } -Weight 20 -NoCI
-Step 'storage partitioning end to end (tools\partition_e2e.ps1: a third party embedded in another site has its own cookies, localStorage, sessionStorage, Cache API, BroadcastChannel and service workers there, Sec-Fetch-Storage-Access, document.requestStorageAccess() after a click; no window shown)' {
-    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
-    powershell -NoProfile -ExecutionPolicy Bypass -File tools\partition_e2e.ps1
+Step 'storage partitioning end to end (src\tools\e2e\partition.odin: a third party embedded in another site has its own cookies, localStorage, sessionStorage, Cache API, BroadcastChannel and service workers there, Sec-Fetch-Storage-Access, document.requestStorageAccess() after a click; no window shown)' {
+    Invoke-WrenE2E 'build\e2e_test.exe' 'partition'
 } -Weight 10 -NoCI
-Step 'origin private file system and File System Access end to end (tools\fs_e2e.ps1: handles, writables, a sync access handle in a worker, IndexedDB clones, quota, pickers on files of the disk through browser.dialogs.test_answer; no window shown)' {
-    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
-    powershell -NoProfile -ExecutionPolicy Bypass -File tools\fs_e2e.ps1
+Step 'origin private file system and File System Access end to end (src\tools\e2e\fs.odin: handles, writables, a sync access handle in a worker, IndexedDB clones, quota, pickers on files of the disk through browser.dialogs.test_answer; no window shown)' {
+    Invoke-WrenE2E 'build\e2e_test.exe' 'fs'
 } -Weight 10 -NoCI
-Step 'back/forward cache measured end to end (tools\bfcache_e2e.ps1: a hit, a page refused for its unload handler and its reason counted, a miss; wren ctl stats: bfcache)' {
-    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
-    powershell -NoProfile -ExecutionPolicy Bypass -File tools\bfcache_e2e.ps1
+Step 'back/forward cache measured end to end (src\tools\e2e\bfcache.odin: a hit, a page refused for its unload handler and its reason counted, a miss; wren ctl stats: bfcache)' {
+    Invoke-WrenE2E 'build\e2e_test.exe' 'bfcache'
 } -Weight 5 -NoCI
-Step 'downloads end to end on both network stacks (tools\download_e2e.ps1: an attachment, a binary named by its URL, a slow body; no window shown)' {
-    powershell -NoProfile -ExecutionPolicy Bypass -File tools\download_e2e.ps1
+Step 'history end to end (src\tools\e2e\history.odin: a long page scrolled and filled, left, Alt+Left through Wren''s own input: everything where it was, from the back/forward cache and loaded again; no window at all)' {
+    Invoke-WrenE2E 'build\e2e_test.exe' 'history'
+} -Weight 5 -NoCI
+Step 'downloads end to end on both network stacks (src\tools\e2e\download.odin: an attachment, a binary named by its URL, a slow body; no window shown)' {
+    Invoke-WrenE2E 'build\e2e_test.exe' 'download'
 } -UiOnly   # (two of its three big files did not end in 30 s on the CI runner, on both stacks: it depends on the machine; run with -Ui)
-Step 'shared workers and module workers end to end (tools\workers_e2e.ps1: two tabs share one worker, connect, ports, lifetime, close(), module imports; no window shown)' {
-    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
-    powershell -NoProfile -ExecutionPolicy Bypass -File tools\workers_e2e.ps1
+Step 'shared workers and module workers end to end (src\tools\e2e\workers.odin: two tabs share one worker, connect, ports, lifetime, close(), module imports; no window shown)' {
+    Invoke-WrenE2E 'build\e2e_test.exe' 'workers'
 } -Weight 10 -NoCI
 Step 'the policy file is read beside the executable, never from the working directory (tools\policy_file_e2e.ps1)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
@@ -528,9 +526,9 @@ Step 'a program of the working directory never runs in place of the system''s (t
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\planted_program_e2e.ps1
 } -NoCI
-Step 'what a page can do to the answers of wren ctl eval (tools\remote_page_e2e.ps1: it sees the line, so the line holds no secret; another tab''s forgery and a value with a line break change nothing)' {
+Step 'what a page can do to the answers of wren ctl eval (src\tools\e2e\remote_page.odin: it sees the line, so the line holds no secret; another tab''s forgery and a value with a line break change nothing)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
-    powershell -NoProfile -ExecutionPolicy Bypass -File tools\remote_page_e2e.ps1
+    Invoke-WrenE2E 'build\e2e_test.exe' 'remote_page'
 } -Weight 15 -NoCI
 Step 'wren ctl stop ends the Wren it started and nothing else (tools\ctl_stop_e2e.ps1: a session file whose pid is another program''s now, or that does not say who the process was, leaves that program alone)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
@@ -657,6 +655,7 @@ Step 'Web Authentication end-to-end test (webauthntest: create then get from Jav
 Step 'build testserver (and its tests: /site/ index, listings, extensionless pages, types)' { Push-Location tools\testserver; go test . 2>&1; if ($LASTEXITCODE -eq 0) { go build -o ..\..\build\testserver.exe . }; Pop-Location }
 # The end-to-end scenarios (src\tools\e2e, docs\testing.md): one program on Odin's test runner that links the browser, built once; a step runs the tests of one file of it, in a process of its own.
 Step 'build e2e scenarios (src\tools\e2e: the browser in the tests'' process, no window, the real renderer offscreen)' { odin build src/tools/e2e -build-mode:test -out:build/e2e_test.exe -o:speed -debug -use-separate-modules -vet -collection:toolkit=ext/gui_toolkit -collection:wb=src -define:FONT_BACKEND=native -define:FONT_NATIVE_LINK=false -define:A11Y_ACCESSKIT=true -define:A11Y_NATIVE_LINK=false -define:WREN_CHANNEL=dev -define:DEFAULT_TEMP_ALLOCATOR_BACKING_SIZE=1048576 -define:ODIN_TEST_THREADS=1 -define:ODIN_TEST_FANCY=false -extra-linker-flags:"/STACK:33554432 /NODEFAULTLIB:vcruntime.lib /DEFAULTLIB:libvcruntime.lib" 2>&1 | Out-String | Tee-Object -Variable b | Out-Null; if ($LASTEXITCODE) { $b } }
+if ($CI -or -not $Quick) { Step 'build e2e scenarios with every allocation tracked (src\tools\e2e with -define:WREN_TRACK_MEMORY=true: a test that leaves anything allocated fails)' { odin build src/tools/e2e -build-mode:test -out:build/e2e_test_check.exe $Track -o:speed -debug -use-separate-modules -vet -collection:toolkit=ext/gui_toolkit -collection:wb=src -define:FONT_BACKEND=native -define:FONT_NATIVE_LINK=false -define:A11Y_ACCESSKIT=true -define:A11Y_NATIVE_LINK=false -define:WREN_CHANNEL=dev -define:DEFAULT_TEMP_ALLOCATOR_BACKING_SIZE=1048576 -define:ODIN_TEST_THREADS=1 -define:ODIN_TEST_FANCY=false -extra-linker-flags:"/STACK:33554432 /NODEFAULTLIB:vcruntime.lib /DEFAULTLIB:libvcruntime.lib" 2>&1 | Out-String | Tee-Object -Variable b | Out-Null; if ($LASTEXITCODE) { $b } } -NoCI }
 # what the steps below use is built: the builds run now. The other queued steps stay queued and run with the steps below, in one batch
 # (longest first), instead of the steps below waiting for the slowest of them.
 if ($Jobs -gt 1) { Flush-Steps 'build *' }
@@ -680,9 +679,9 @@ if ($CI -or -not $Quick) {
     Step 'remote control on the check build: a driven session (navigate, script, input, capture, events, a client that vanishes, quit) leaves nothing allocated (tools\remote_e2e.ps1 -Check)' {
         powershell -NoProfile -ExecutionPolicy Bypass -File tools\remote_e2e.ps1 -Check
     } -Weight 30
-    Step 'service workers, workers, file systems, the back/forward cache and storage partitioning on the check build: each end-to-end session leaves nothing allocated (tools\sw_e2e.ps1, workers_e2e.ps1, fs_e2e.ps1, bfcache_e2e.ps1, partition_e2e.ps1 -Check)' {
+    Step 'service workers, workers, file systems, the back/forward cache and storage partitioning on the check build: each end-to-end session leaves nothing allocated (src\tools\e2e\sw.odin, workers.odin, fs.odin, bfcache.odin, partition.odin in build\e2e_test_check.exe)' {
         $bad = 0
-        foreach ($s in 'sw_e2e', 'workers_e2e', 'fs_e2e', 'bfcache_e2e', 'partition_e2e') { powershell -NoProfile -ExecutionPolicy Bypass -File "tools\$s.ps1" -Check; if ($LASTEXITCODE -ne 0) { $bad++ } }
+        foreach ($s in 'sw', 'workers', 'fs', 'bfcache', 'partition') { Invoke-WrenE2E 'build\e2e_test_check.exe' $s; if ($LASTEXITCODE -ne 0) { $bad++ } }
         "$bad of them failed"
         $global:LASTEXITCODE = [int]($bad -gt 0)
     } -Weight 30 -NoCI

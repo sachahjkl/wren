@@ -1,4 +1,4 @@
-// The service worker of tools\sw_e2e.ps1: caches data.txt at install, answers virtual.txt and virtual-page.html
+// The service worker of src\tools\e2e\sw.odin: caches data.txt at install, answers virtual.txt and virtual-page.html
 // itself, serves data.txt from its cache, and answers messages.
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open("v1")

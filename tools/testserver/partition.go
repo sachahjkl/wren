@@ -1,6 +1,6 @@
 package main
 
-// Storage partitioning (tools/partition_e2e.ps1):
+// Storage partitioning (src/tools/e2e/partition.odin):
 //
 //	/partition/hdr    text: the request's Sec-Fetch-Storage-Access header ("-" when absent), then its Cookie header
 

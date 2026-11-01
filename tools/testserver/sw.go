@@ -1,6 +1,6 @@
 package main
 
-// Endpoints for the service worker test (tools/sw_e2e.ps1), where a static file cannot do:
+// Endpoints for the service worker test (src/tools/e2e/sw.odin), where a static file cannot do:
 //
 //	/sw/ver.js        a service worker whose script changes when /sw/bump is fetched (update, waiting, skipWaiting)
 //	/sw/bump          the next /sw/ver.js is another version

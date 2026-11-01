@@ -89,7 +89,7 @@ ports_link_closed :: proc(l: ^Worker_Link) {
 	for k in dead { port_close_locked(k) }
 }
 
-// Process end (process_shutdown).
+// The browser ends (a next one in this process has a loop of its own: a wake posted to this one would be lost, or worse).
 ports_shutdown :: proc() {
 	sync.mutex_lock(&router.mu)
 	for len(router.ends) > 0 {
@@ -97,6 +97,7 @@ ports_shutdown :: proc() {
 	}
 	delete(router.ends)
 	router.ends = nil
+	router.ui_loop = nil
 	sync.mutex_unlock(&router.mu)
 }
 

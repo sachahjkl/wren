@@ -72,6 +72,7 @@ Window_Change :: api.Window_Change
 Urlbar :: api.Urlbar
 Urlbar_Row :: api.Urlbar_Row
 diff_pictures :: api.diff_pictures
+Download :: api.Download
 center :: api.center
 pixel :: api.pixel
 window_with_id :: api.window_with_id
@@ -210,6 +211,8 @@ end_of_test :: proc(s: ^Session) {
 	if testing.failed(s.t) { keep_failure(s) }
 	end_of_browser(s)
 	runtime.default_temp_allocator_destroy(&s.temp)
+	// (the test program built with every allocation tracked, test_all's build\e2e_test_check.exe: here nothing of the session may be left)
+	when base.TRACK_MEMORY { if !testing.failed(s.t) { testing.expectf(s.t, base.mem_report(s.name) == 0, "%s leaves nothing allocated: the report above", s.name) } }
 	if !testing.failed(s.t) { base.remove_tree(s.out) }
 	delete(s.name)
 	delete(s.out)
@@ -440,12 +443,7 @@ wait_chrome_still :: proc(s: ^Session, deadline: time.Duration = DEFAULT_DEADLIN
 
 // Goes there; returns once it has loaded.
 navigate :: proc(s: ^Session, url: string, deadline: time.Duration = DEFAULT_DEADLINE, loc := #caller_location) {
-	{
-		context = s.ctx
-		prev := enter(s, loc)
-		defer browser.control_leave(s.app, prev)
-		browser.control_navigate(s.app, tab_of(s, loc), url)
-	}
+	navigate_begin(s, url, loc)
 	wait_load(s, deadline, loc)
 }
 
@@ -473,6 +471,14 @@ go_history :: proc(s: ^Session, delta: int, deadline: time.Duration, loc: runtim
 		browser.control_history(s.app, tab_of(s, loc), delta)
 	}
 	wait_load(s, deadline, loc)
+}
+
+// Goes there; returns at once (what it leads to may be no page at all: a download).
+navigate_begin :: proc(s: ^Session, url: string, loc := #caller_location) {
+	context = s.ctx
+	prev := enter(s, loc)
+	defer browser.control_leave(s.app, prev)
+	browser.control_navigate(s.app, tab_of(s, loc), url)
 }
 
 // The address of the current tab.
@@ -525,6 +531,12 @@ eval :: proc(s: ^Session, expression: string, await := false, deadline: time.Dur
 	r := eval_result(s, expression, await, deadline, loc)
 	if r.thrown != "" { failed(s, fmt.tprintf("the script threw: %s\n  %s", r.thrown, expression), loc) }
 	return r.value
+}
+
+// A script's value (a promise is waited for) is `want`: `what` says what that means. The test goes on when it is not.
+expect_eval :: proc(s: ^Session, expression, want, what: string, loc := #caller_location) -> bool {
+	got := eval(s, expression, await = true, loc = loc)
+	return testing.expectf(s.t, got == want, "%s: got %q, want %q", what, got, want, loc = loc)
 }
 
 // ... as a number.
@@ -857,6 +869,14 @@ stats :: proc(s: ^Session, loc := #caller_location) -> Stats {
 	prev := enter(s, loc)
 	defer browser.control_leave(s.app, prev)
 	return browser.control_stats(s.app, back)
+}
+
+downloads :: proc(s: ^Session, loc := #caller_location) -> []Download {
+	back := s.test.temp_allocator
+	context = s.ctx
+	prev := enter(s, loc)
+	defer browser.control_leave(s.app, prev)
+	return browser.control_downloads(back)
 }
 
 console :: proc(s: ^Session, since := 0, clear := false, loc := #caller_location) -> []Console_Line {
