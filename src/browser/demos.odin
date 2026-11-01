@@ -72,6 +72,8 @@ DEMOS := [?]Demo{
 
 	{.JavaScript, "Frames: nested documents", "frames.html",
 		"&lt;iframe&gt;s with documents of their own (their origin, scripts and JavaScript engine instance): same-origin and cross-origin frames, <code>srcdoc</code>, <code>sandbox</code>, <code>postMessage</code>, a form and links aimed at a named frame.", false, "", false},
+	{.JavaScript, "Frames: the DOM of a same-origin frame", "frames_dom.html",
+		"The parent writes in blank frames (<code>contentDocument</code>, <code>document.write</code>), moves its elements there and listens to them; a frame reads <code>parent.document</code> and calls a function of the parent.", false, "", false},
 	{.E2e, "Frames: the child page", "frames_child.html",
 		"The document loaded in the frames of the frames demo.", false, "", false},
 	{.E2e, "History: a long page", "history/long.html",
