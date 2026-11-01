@@ -15,8 +15,13 @@ import "wb:base"
 import "wb:config"
 import "wb:css"
 import "wb:dom"
+import "wb:forms"
 import lay "wb:layout"
 import "wb:style"
+
+// A meter's track and fill: how far toward white from the text's colour.
+METER_TRACK_MIX :: 0.8
+METER_FILL_MIX :: 0.3
 
 Layout :: lay.Layout
 
@@ -824,6 +829,42 @@ default_control :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, it: ^la
 		a := max(arrow * 0.25, 2)
 		draw.rect(dc, {{cx - a, cy - a * 0.35}, {cx + a, cy + a * 0.35}}, col, a * 0.35)
 	case "meter", "progress":
-		draw.rect(dc, r, draw.mix(col, {1, 1, 1, col.a}, 0.8), (r.max.y - r.min.y) * 0.5)
+		w, h := r.max.x - r.min.x, r.max.y - r.min.y
+		radius := min(w, h) * 0.5
+		draw.rect(dc, r, draw.mix(col, {1, 1, 1, col.a}, METER_TRACK_MIX), radius)
+		part, shown := gauge_fraction(d, it.node, n.name)
+		if !shown || part <= 0 { break }
+		// from the start of its own lines: down or up in vertical text, by the direction
+		fill := r
+		if style.is_vertical_mode(cs.writing_mode) {
+			if style.axis_start_hi(cs.writing_mode, cs.direction == .Rtl, false) { fill.min.y = r.max.y - h * part } else { fill.max.y = r.min.y + h * part }
+		} else if cs.direction == .Rtl {
+			fill.min.x = r.max.x - w * part
+		} else {
+			fill.max.x = r.min.x + w * part
+		}
+		draw.rect(dc, fill, draw.mix(col, {1, 1, 1, col.a}, METER_FILL_MIX), radius)
 	}
+}
+
+// How far a <meter> or a <progress> is filled, 0 to 1; false: an indeterminate progress bar (HTML §4.10.13, §4.10.14).
+@(private = "file")
+gauge_fraction :: proc(d: ^dom.Document, h: base.Handle, name: string) -> (part: f32, shown: bool) {
+	number :: proc(d: ^dom.Document, h: base.Handle, attr: string, otherwise: f64) -> (f64, bool) {
+		s, has := dom.get_attribute(d, h, attr)
+		if !has { return otherwise, false }
+		v, ok := forms.parse_float_lenient(s)
+		return ok ? v : otherwise, ok
+	}
+	value, has_value := number(d, h, "value", 0)
+	if name == "progress" {
+		if !has_value { return 0, false }
+		top, _ := number(d, h, "max", 1)
+		if top <= 0 { top = 1 }
+		return f32(clamp(value / top, 0, 1)), true
+	}
+	low, _ := number(d, h, "min", 0)
+	top, _ := number(d, h, "max", 1)
+	if top <= low { return 0, true }
+	return f32(clamp((value - low) / (top - low), 0, 1)), true
 }
