@@ -504,3 +504,120 @@ strings_of :: proc(a, b: string) -> string {
 }
 
 _ :: base.NIL_HANDLE
+
+// A flow-relative declaration of @position-try means what it means for the element, as anywhere else.
+@(test)
+try_rule_flow_relative :: proc(t: ^testing.T) {
+	f := ax_load(`<!doctype html><style>
+		body { margin: 0 }
+		#cb { position: relative; width: 400px; height: 300px }
+		#a { anchor-name: --a; position: absolute; left: 100px; top: 50px; width: 40px; height: 20px }
+		.q { position: absolute; position-anchor: --a; width: 10px; height: 10px; left: 1000px; position-try-fallbacks: --pf }
+		@position-try --pf { inset: auto; inset-block-start: 10px; inset-inline-start: 20px }
+	</style><div id=cb><div id=a></div>
+		<div class=q id=h></div>
+		<div class=q id=vrl style="writing-mode: vertical-rl"></div>
+		<div class=q id=vlr style="writing-mode: vertical-lr"></div>
+		<div class=q id=vrr style="writing-mode: vertical-rl; direction: rtl"></div>
+		<div class=q id=rtl style="direction: rtl"></div>
+	</div>`)
+	defer ax_unload(f)
+	is(t, f, "h", 20, 10, 10, 10)
+	is(t, f, "vrl", 380, 20, 10, 10)
+	is(t, f, "vlr", 10, 20, 10, 10)
+	is(t, f, "vrr", 380, 270, 10, 10)
+	is(t, f, "rtl", 370, 10, 10, 10)
+}
+
+// The end margins of what is in a scroll container are scrollable where its axes end: left of vertical-rl and of right-to-left
+// lines, at the top of upward lines.
+@(test)
+end_margins_where_axes_end :: proc(t: ^testing.T) {
+	f := ax_load(`<!doctype html><style>
+		body { margin: 0 }
+		.s { overflow: scroll; width: 200px; height: 100px; scrollbar-width: none }
+		.c { width: 50px; height: 50px }
+	</style>
+		<div class=s id=vrl style="writing-mode: vertical-rl"><div class=c style="margin-left: 500px"></div></div>
+		<div class=s id=vlr style="writing-mode: vertical-lr"><div class=c style="margin-right: 500px"></div></div>
+		<div class=s id=vup style="writing-mode: vertical-lr; direction: rtl"><div class=c style="margin-top: 500px"></div></div>
+		<div class=s id=rtl style="direction: rtl"><div class=c style="margin-left: 500px"></div></div>
+		<div class=s id=ltr><div class=c style="margin-right: 500px; margin-bottom: 500px"></div></div>`)
+	defer ax_unload(f)
+	range :: proc(f: ^Ax, id: string) -> (lo, hi: Vec2) {
+		h := dom.find_by_id(f.doc, id)
+		hi, _ = scroll_max(&f.l, h)
+		return scroll_min(&f.l, h), hi
+	}
+	lo, hi := range(f, "vrl")
+	testing.expect_value(t, lo, Vec2{-350, 0})
+	testing.expect_value(t, hi, Vec2{0, 0})
+	lo, hi = range(f, "vlr")
+	testing.expect_value(t, lo, Vec2{0, 0})
+	testing.expect_value(t, hi, Vec2{350, 0})
+	lo, hi = range(f, "vup")
+	testing.expect_value(t, lo, Vec2{0, -450})
+	lo, hi = range(f, "rtl")
+	testing.expect_value(t, lo, Vec2{-350, 0})
+	lo, hi = range(f, "ltr")
+	testing.expect_value(t, hi, Vec2{350, 450})
+}
+
+// The page scrolls upwards when its lines do; the viewport has the principal direction, for anchor(start) and anchor(end) too.
+@(test)
+doc_scroll_origin_at_the_bottom :: proc(t: ^testing.T) {
+	f := ax_load(`<!doctype html><style>
+		html { writing-mode: vertical-rl; direction: rtl }
+		body { margin: 0; width: 1000px; height: 1000px }
+		#a { anchor-name: --a; width: 100px; height: 100px }
+		#q { position: fixed; position-anchor: --a; width: 10px; height: 10px; top: anchor(start); left: 0 }
+	</style><div id=a></div><div id=q></div>`)
+	defer ax_unload(f)
+	lo, hi := doc_scroll_y_range(&f.l, f.vp.y)
+	testing.expect_value(t, lo, f32(-400))
+	testing.expect_value(t, hi, f32(0))
+	is(t, f, "a", 700, 500, 100, 100)
+	testing.expect_value(t, rect(f, "q").min.y, 600)   // the start of the anchor, the low side being its end
+	_, thumb, shown := doc_scrollbar(&f.l, f.vp, 0)
+	testing.expect(t, shown)
+	_, top, _ := doc_scrollbar(&f.l, f.vp, -400)
+	testing.expect(t, top.min.y < thumb.min.y, "at the top of the range the thumb is at the top of the track")
+
+	g := ax_load(`<!doctype html><style>
+		html { writing-mode: vertical-lr }
+		body { margin: 0; width: 1000px; height: 1000px }
+	</style><div></div>`)
+	defer ax_unload(g)
+	lo, hi = doc_scroll_y_range(&g.l, g.vp.y)
+	testing.expect_value(t, lo, f32(0))
+	testing.expect_value(t, hi, f32(400))
+}
+
+// In a spanner: a box positioned there shows with its anchor; what lies between the spanner and its container contains neither.
+@(test)
+anchored_in_a_spanner :: proc(t: ^testing.T) {
+	f := ax_load(`<!doctype html><style>
+		body { margin: 0 }
+		.relpos { position: relative }
+		#mc { column-count: 2; column-gap: 10px; width: 210px; height: 100px }
+		#sp { column-span: all }
+		#a { anchor-name: --a; margin-left: 10px; width: 40px; height: 20px }
+		.t { position: absolute; position-anchor: --a; left: anchor(left); top: anchor(top); width: anchor-size(width); height: anchor-size(height) }
+	</style><div id=mc class=relpos>
+		<div style="height: 40px"></div>
+		<div class=relpos id=between>
+			<div id=sp>
+				<div class=relpos><div id=a></div><div class=t id=inner></div></div>
+				<div class=t id=contained></div>
+			</div>
+			<div class=t id=none></div>
+		</div>
+	</div>`)
+	defer ax_unload(f)
+	is(t, f, "a", 10, 20, 40, 20)
+	is(t, f, "inner", 10, 20, 40, 20)
+	is(t, f, "contained", 10, 20, 40, 20)
+	testing.expect_value(t, rect(f, "none").max.x - rect(f, "none").min.x, 0)   // the anchor is not for what is contained by #between
+	bi := box_index(&f.l, dom.find_by_id(f.doc, "contained"))
+	testing.expect_value(t, f.l.boxes[bi].cb, box_index(&f.l, dom.find_by_id(f.doc, "mc")))
+}

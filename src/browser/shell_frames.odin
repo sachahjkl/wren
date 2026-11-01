@@ -250,7 +250,8 @@ shell_page_phase_end :: proc(app: ^App, events: []platform.Event) -> []platform.
 			size := draw.rect_size(active_window(app).page_rect)
 			lo, hi := lay.doc_scroll_x_range(&t.layout, size.x)
 			to := [2]f32{t.layout.doc_scroll_x, t.scroll} + chrome_frames.pending_scroll
-			scroll_document_to(app, t, {clamp(to.x, lo, hi), clamp(to.y, 0, max(t.layout.height - size.y, 0))}, false)
+			lo_y, hi_y := lay.doc_scroll_y_range(&t.layout, size.y)
+			scroll_document_to(app, t, {clamp(to.x, lo, hi), clamp(to.y, lo_y, hi_y)}, false)
 		}
 		chrome_frames.pending_scroll = {}
 		request_frames(app, 2)
@@ -471,9 +472,9 @@ shell_async_scroll :: proc(app: ^App, t: ^Tab, d: draw.Vec2) {
 	if !chrome_frames.page_locked {   // (page thread: not read)
 		size := draw.rect_size(active_window(app).page_rect)
 		lo.x, limit.x = lay.doc_scroll_x_range(&t.layout, size.x)
-		limit.y = max(t.layout.height - size.y, 0)
+		lo.y, limit.y = lay.doc_scroll_y_range(&t.layout, size.y)
 	}
-	if s := shell_snapshot_of(t.id); s != nil { lo, limit = {min(lo.x, s.lo.x), 0}, {max(limit.x, s.limit.x), max(limit.y, s.limit.y)} }
+	if s := shell_snapshot_of(t.id); s != nil { lo, limit = {min(lo.x, s.lo.x), min(lo.y, s.lo.y)}, {max(limit.x, s.limit.x), max(limit.y, s.limit.y)} }
 	from := draw.Vec2{t.layout.doc_scroll_x, t.scroll}
 	to := from + chrome_frames.pending_scroll + d
 	chrome_frames.pending_scroll = draw.Vec2{clamp(to.x, lo.x, limit.x), clamp(to.y, lo.y, limit.y)} - from
@@ -545,7 +546,7 @@ shell_capture :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect, ca
 	}
 	s.image, s.rect, s.scroll, s.canvas, s.gen, s.used, s.page = bd, rect, doc_scroll_vec(t), canvas, gen, chrome_frames.frame_no, t.page
 	s.lo.x, s.limit.x = lay.doc_scroll_x_range(&t.layout, draw.rect_size(rect).x)
-	s.limit.y = max(t.layout.height - draw.rect_size(rect).y, 0)
+	s.lo.y, s.limit.y = lay.doc_scroll_y_range(&t.layout, draw.rect_size(rect).y)
 	// (more than fit: the last one takes the rest, as their union)
 	s.n_stuck = 0
 	for r in composite_stuck() {

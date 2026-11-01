@@ -338,7 +338,7 @@ Element_scrollHeight :: proc(c: ^Call, element: Api_Element) -> i32 {
 	if is_scrolling_element(p, h) {
 		l, vp := js_layout_now(p)
 		if l == nil { return 0 }
-		return i32(math.max(vp.height, f64(l.height) / vp.scale))
+		return i32(math.max(vp.height, f64(l.height - l.doc_min_y) / vp.scale))
 	}
 	g, l, vp := element_geometry(p, h)
 	if !g.ok || is_inline_box(g) { return 0 }
@@ -398,12 +398,24 @@ offset_parent :: proc(p: ^Page, h: base.Handle) -> base.Handle {
 	fixed := cs.position == .Fixed
 	self_static := cs.position == .Static
 	shadows := dom.has_shadow_trees(d)
+	// what lies between a spanner and its multi-column container does not contain the spanner (CSS Multicol 1 §6)
+	past_spanner := base.NIL_HANDLE
+	spanner_of :: proc(p: ^Page, h: base.Handle, cs: ^style.Computed) -> base.Handle {
+		if cs == nil || cs.column_span != .All { return base.NIL_HANDLE }
+		l, _ := js_layout_now(p)
+		return l != nil ? lay.spanner_container_of(l, h) : base.NIL_HANDLE
+	}
+	past_spanner = spanner_of(p, h, cs)
 	// the flat-tree ancestors (slots included), but not those of a shadow tree hidden from the element (CSSOM View §7,
 	// as engines do for open trees too); past a fixed box (the element, or a hidden ancestor), only the box that
 	// contains fixed boxes goes on the chain of containing blocks, none: null
 	for cur := dom.flat_parent(d, h); cur != base.NIL_HANDLE; cur = dom.flat_parent(d, cur) {
 		n := dom.get(d, cur)
 		if n.kind != .Element { break }
+		if past_spanner != base.NIL_HANDLE {
+			if cur != past_spanner { continue }
+			past_spanner = base.NIL_HANDLE
+		}
 		acs := style.style_of(st, cur)
 		if shadows && dom.retarget(d, cur, h) != cur {
 			if acs == nil { continue }
@@ -418,6 +430,7 @@ offset_parent :: proc(p: ^Page, h: base.Handle) -> base.Handle {
 		if acs == nil { continue }
 		if acs.position != .Static || len(acs.transform) > 0 { return cur }
 		if self_static && n.ns == .HTML && (n.name == "td" || n.name == "th" || n.name == "table") { return cur }
+		past_spanner = spanner_of(p, cur, acs)
 	}
 	return fixed ? base.NIL_HANDLE : body
 }

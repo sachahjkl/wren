@@ -162,6 +162,7 @@ reset :: proc(l: ^Layout, keep_scroll := false) {
 	l.styled = nil
 	l.height = 0
 	l.doc_width, l.doc_min_x = 0, 0
+	l.doc_min_y = 0
 }
 
 destroy :: proc(l: ^Layout) {

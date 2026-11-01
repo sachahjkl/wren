@@ -185,7 +185,8 @@ frame_prepare :: proc(app: ^App, fv: ^Frame_View, size: draw.Vec2, scale: f32) {
 	styled = settle_container_queries(app, t, styled, size, scale, fonts_gen)
 	images_after_layout(t, size, scale)
 	if !p.render.painted { page.first_paint_done(p) }
-	t.scroll = clamp(t.scroll, 0, max(0, t.layout.height - size.y))
+	lo_y, hi_y := lay.doc_scroll_y_range(&t.layout, size.y)
+	t.scroll = clamp(t.scroll, lo_y, hi_y)
 	doc_scroll_x_set(t, t.layout.doc_scroll_x, size.x)
 	fv.ready = true
 	// Performance Timeline entries that depend on the real paint (timeline_lcp.odin): the largest contentful element and
@@ -217,8 +218,8 @@ frame_js_viewport :: proc(user: rawptr, p: ^page.Page) -> page.Viewport {
 frame_js_scroll :: proc(user: rawptr, p: ^page.Page, x, y: f64, smooth: bool) {
 	fv := (^Frame_View)(user)
 	if fv.tab.page != p { return }
-	limit := max(0, f64(fv.tab.layout.height) - f64(fv.size.y))
-	fv.tab.scroll = f32(clamp(y * f64(fv.scale), 0, limit))
+	lo_y, hi_y := lay.doc_scroll_y_range(&fv.tab.layout, fv.size.y)
+	fv.tab.scroll = f32(clamp(y * f64(fv.scale), f64(lo_y), f64(hi_y)))
 	doc_scroll_x_set(&fv.tab, f32(x * f64(fv.scale)), fv.size.x)
 	request_frames(the_app, 2)
 }
@@ -381,7 +382,8 @@ frame_pointer_event :: proc(app: ^App, fv: ^Frame_View, ev: platform.Event, inde
 			request_frames(app, 2)
 			return true
 		}
-		next := clamp(t.scroll + d.y, 0, max(0, t.layout.height - size.y))
+		lo_y, hi_y := lay.doc_scroll_y_range(&t.layout, size.y)
+		next := clamp(t.scroll + d.y, lo_y, hi_y)
 		lo, hi := lay.doc_scroll_x_range(&t.layout, size.x)
 		next_x := clamp(t.layout.doc_scroll_x + d.x, lo, hi)
 		if next == t.scroll && next_x == t.layout.doc_scroll_x { return false }

@@ -200,13 +200,15 @@ restore_tick :: proc(app: ^App, t: ^Tab, viewport: [2]f32) {
 	expired := restore_expired(r.started, r.load_at, r.load_seen, hcfg.restore_max_ms, hcfg.restore_after_ms)
 	scale := t.layout.scale > 0 ? t.layout.scale : 1
 	if !r.doc_done {
-		pos, done := restore_step(ps.scroll.y * scale, max(t.layout.height - viewport.y, 0), expired)
+		// (an offset below 0 goes as far as the document reaches on that side)
+		lo_y, hi_y := lay.doc_scroll_y_range(&t.layout, viewport.y)
+		want_y := ps.scroll.y * scale
+		pos, done := restore_step(abs(want_y), want_y < 0 ? -lo_y : hi_y, expired)
 		lo, hi := lay.doc_scroll_x_range(&t.layout, viewport.x)
-		// (across, an offset below 0 goes as far as the document reaches on that side)
 		want_x := ps.scroll.x * scale
 		pos_x, done_x := restore_step(abs(want_x), want_x < 0 ? -lo : hi, expired)
 		if done && done_x {
-			scroll_document_to(app, t, {want_x < 0 ? -pos_x : pos_x, pos}, false)
+			scroll_document_to(app, t, {want_x < 0 ? -pos_x : pos_x, want_y < 0 ? -pos : pos}, false)
 			r.doc_done = true
 		}
 	}

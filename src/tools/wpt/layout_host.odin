@@ -154,7 +154,8 @@ host_viewport :: proc(user: rawptr, p: ^page.Page) -> page.Viewport {
 host_scroll :: proc(user: rawptr, p: ^page.Page, x, y: f64, smooth: bool) {
 	h := (^Layout_Host)(user)
 	lo, hi := lay.doc_scroll_x_range(&h.l, f32(h.view[0]))
-	h.scroll = {clamp(x, f64(lo), f64(hi)), clamp(y, 0, max(f64(h.l.height) - f64(h.view[1]), 0))}
+	lo_y, hi_y := lay.doc_scroll_y_range(&h.l, f32(h.view[1]))
+	h.scroll = {clamp(x, f64(lo), f64(hi)), clamp(y, f64(lo_y), f64(hi_y))}
 	lay.set_doc_scroll_x(&h.l, f32(h.scroll[0]))
 }
 

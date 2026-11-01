@@ -351,7 +351,7 @@ page_a11y_request :: proc(app: ^App, t: ^Tab, p: ^page.Page, r: platform.A11y_Re
 	case .Scroll_Down, .Scroll_Up:
 		page_h := t.frame != nil ? t.frame.size.y : wnd.page_rect.max.y - wnd.page_rect.min.y
 		amount := (r.data == .Scroll_Unit && r.num == 1) ? page_h * 0.9 : 60
-		t.scroll = max(t.scroll + (r.action == .Scroll_Down ? amount : -amount), 0)
+		t.scroll = max(t.scroll + (r.action == .Scroll_Down ? amount : -amount), t.layout.doc_min_y)
 	case .Scroll_Left, .Scroll_Right:
 		page_w := t.frame != nil ? t.frame.size.x : wnd.page_rect.max.x - wnd.page_rect.min.x
 		amount := (r.data == .Scroll_Unit && r.num == 1) ? page_w * 0.9 : 60

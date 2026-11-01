@@ -2831,7 +2831,7 @@
 	.target 3: PASS
 	.target 4: PASS
 /css/css-anchor-position/anchor-position-multicol-colspan-001.html: OK
-	.target 1: FAIL
+	.target 1: PASS
 	.target 2: PASS
 	.target 3: FAIL
 	.target 4: PASS
@@ -4306,7 +4306,7 @@
 /css/css-anchor-position/anchor-scroll-position-try-004.html: OK
 	Should use the first fallback position at the initial scroll offsets: PASS
 	Should use the second fallback position after scrolling viewport down: PASS
-	Should use the third fallback position after scrolling the vrl scroller left: FAIL
+	Should use the third fallback position after scrolling the vrl scroller left: PASS
 /css/css-anchor-position/anchor-scroll-position-try-005.html: OK
 	Should use the first fallback position at the initial scroll offset: PASS
 	Should use the second fallback position after scrolling left: PASS
@@ -4318,26 +4318,26 @@
 	Should use the second position option with enough space right: PASS
 	Should use the third position option with enough space below, and not enough above: PASS
 /css/css-anchor-position/anchor-scroll-position-try-007.html: OK
-	Should stay at initial position, since it still fits: FAIL
+	Should stay at initial position, since it still fits: PASS
 	Should use the first position option with enough space left and below: PASS
-	Should use the last position option initially: FAIL
-	Should use the second position option with enough space below (and not enough above): FAIL
-	Should use the third position option with enough space left: FAIL
+	Should use the last position option initially: PASS
+	Should use the second position option with enough space below (and not enough above): PASS
+	Should use the third position option with enough space left: PASS
 /css/css-anchor-position/anchor-scroll-position-try-008.html: OK
-	Should use the first fallback position with enough space left and above: FAIL
-	Should use the last fallback position initially: FAIL
-	Should use the second fallback position with enough space above: FAIL
-	Should use the third fallback position with enough space left: FAIL
+	Should use the first fallback position with enough space left and above: PASS
+	Should use the last fallback position initially: PASS
+	Should use the second fallback position with enough space above: PASS
+	Should use the third fallback position with enough space left: PASS
 /css/css-anchor-position/anchor-scroll-position-try-009.html: OK
 	Should use the first fallback position with enough space right and below: PASS
 	Should use the last fallback position initially: PASS
 	Should use the second fallback position with enough space below: PASS
 	Should use the third fallback position with enough space right: PASS
 /css/css-anchor-position/anchor-scroll-position-try-010.html: OK
-	Should use the first fallback position with enough space right and above: FAIL
+	Should use the first fallback position with enough space right and above: PASS
 	Should use the last fallback position initially: PASS
-	Should use the second fallback position with enough space above: FAIL
-	Should use the third fallback position with enough space right: FAIL
+	Should use the second fallback position with enough space above: PASS
+	Should use the third fallback position with enough space right: PASS
 /css/css-anchor-position/anchor-scroll-position-try-011.html: OK
 	Should use the first fallback position with enough space above and right: FAIL
 	Should use the last fallback position initially: PASS

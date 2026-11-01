@@ -177,7 +177,7 @@ hold_paint :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, r: draw.Rect, fallback
 	images_before_layout(&held_tab)
 	draw.push_clip(dc, r)
 	images_paint_begin_frame(app)
-	paint(&h.layout, dc, h.page.doc, r.min, size, clamp(h.scroll, 0, max(0, h.layout.height - size.y)), r)
+	paint(&h.layout, dc, h.page.doc, r.min, size, clamp(h.scroll, h.layout.doc_min_y, max(0, h.layout.height - size.y)), r)
 	images_after_paint(app)
 	draw.pop_clip(dc)
 	return true

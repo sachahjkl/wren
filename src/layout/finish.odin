@@ -43,6 +43,33 @@ fixed_boxes :: proc(l: ^Layout, order: []i32) -> []bool {
 	return in_fixed
 }
 
+// The border box `r` of an in-flow child with its margins on the sides where the axes of its scroll container end: on the left of
+// right-to-left lines and of vertical-rl, at the top of upward lines. In the block axis the used margin; in the inline axis as
+// specified: the used one gives way when the block is over-constrained.
+@(private = "file")
+with_end_margins :: proc(l: ^Layout, b: ^Box, r, port: Rect, owner: ^style.Computed) -> Rect {
+	out := r
+	wm, rtl := owner.writing_mode, is_rtl(owner)
+	if is_vert(wm) {
+		if style.axis_start_hi(wm, rtl, true) { out.min.x -= max(b.margin[3], 0) } else { out.max.x += max(b.margin[1], 0) }
+		base := (port.max.y - port.min.y) / l.scale
+		if style.axis_start_hi(wm, rtl, false) {
+			out.min.y -= max(style.resolve(b.cs.margin[.Top], base) * l.scale, 0)
+		} else {
+			out.max.y += max(style.resolve(b.cs.margin[.Bottom], base) * l.scale, 0)
+		}
+		return out
+	}
+	base := (port.max.x - port.min.x) / l.scale
+	if rtl {
+		out.min.x -= max(style.resolve(b.cs.margin[.Left], base) * l.scale, 0)
+	} else {
+		out.max.x += max(style.resolve(b.cs.margin[.Right], base) * l.scale, 0)
+	}
+	out.max.y += max(b.margin[2], 0)
+	return out
+}
+
 // Scrollable overflow (CSS Overflow 3 §2.2) of every scroll container, and the extent of the document: the border boxes
 // and text of what they contain, through the transforms between each box and its scroll container (bounding boxes of
 // the transformed rects). Returns the document extent.
@@ -86,12 +113,10 @@ compute_overflow :: proc(l: ^Layout, order: []i32, in_fixed: []bool, vp: Vec2) -
 		}
 		inner[x], has[x] = m, hm
 		box_r := border_rect(b)
-		// the end margins of the in-flow children of a scroll container are scrollable too (CSS Overflow 3 §2.2). As specified:
-		// the used right margin of a block gives way when its width is over-constrained
+		// the end margins of the in-flow children of a scroll container are scrollable too (CSS Overflow 3 §2.2)
 		if b.clip_owner == b.parent && b.clip_owner != NONE && .Scroll in l.boxes[b.clip_owner].flags && b.flags & {.Abs, .Float} == {} && b.kind != .Inline && b.cs != nil {
-			port := padding_rect(&l.boxes[b.clip_owner])
-			box_r.max.x += max(style.resolve(b.cs.margin[.Right], (port.max.x - port.min.x) / l.scale) * l.scale, 0)
-			box_r.max.y += max(b.margin[2], 0)
+			owner := &l.boxes[b.clip_owner]
+			box_r = with_end_margins(l, b, box_r, padding_rect(owner), owner.cs)
 		}
 		if mc != NONE { box_r = flow_bounds(l, mc, box_r) }
 		add(l, b.clip_owner, hm ? mat_bounds(m, box_r) : box_r, in_fixed[x], &doc)
@@ -128,6 +153,15 @@ doc_scroll_origin_end :: proc(c: ^Ctx) -> bool {
 	return !is_vert(cs.writing_mode) && is_rtl(cs)
 }
 
+// Likewise for the document's vertical scroll: at the bottom when lines run upwards.
+@(private)
+doc_scroll_origin_bottom :: proc(c: ^Ctx) -> bool {
+	cs := style.style_of(c.st, c.l.canvas_els[1])
+	if cs == nil { cs = style.style_of(c.st, c.l.canvas_els[0]) }
+	if cs == nil { return false }
+	return style.axis_start_hi(cs.writing_mode, is_rtl(cs), false)
+}
+
 // How far a scroll container scrolls either way. Offsets run from its scroll origin (CSS Overflow 3 §2.2): where the axis starts at
 // the high end (lines right to left, right-to-left text in horizontal lines, vertical text upwards), they go negative, and
 // overflow on the other side of the origin cannot be reached.
@@ -145,6 +179,14 @@ scroll_limits :: proc(b: ^Box, port: Rect) -> (lo, hi: Vec2) {
 	if b.cs.overflow_x != .Scroll && b.cs.overflow_x != .Auto { lo.x, hi.x = 0, 0 }
 	if b.cs.overflow_y != .Scroll && b.cs.overflow_y != .Auto { lo.y, hi.y = 0, 0 }
 	return
+}
+
+// The vertical scroll range the document's extent gives.
+@(private)
+note_doc_extent_y :: proc(l: ^Layout, doc: Rect, vp: Vec2) {
+	l.height, l.doc_min_y = vp.y, 0
+	if !l.doc_scroll_y { return }
+	if l.doc_origin_bottom { l.doc_min_y = min(doc.min.y, 0) } else { l.height = max(doc.max.y, vp.y) }
 }
 
 // The horizontal scroll range the document's extent gives.
@@ -239,8 +281,8 @@ finish :: proc(c: ^Ctx) {
 	in_fixed := fixed_boxes(l, order)
 	doc := compute_overflow(l, order, in_fixed, c.vp)
 	l.inc.doc_extent = doc
-	l.height = c.l.doc_scroll_y ? max(doc.max.y, c.vp.y) : c.vp.y
-	l.doc_origin_end = doc_scroll_origin_end(c)
+	l.doc_origin_end, l.doc_origin_bottom = doc_scroll_origin_end(c), doc_scroll_origin_bottom(c)
+	note_doc_extent_y(l, doc, c.vp)
 	note_doc_extent_x(l, doc, c.vp)
 
 	// spaces, clips, groups

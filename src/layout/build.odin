@@ -254,7 +254,12 @@ child_frame :: proc(c: ^Ctx, bi: i32, f: Frame, has_block: bool, sum: ^Style_Sum
 	g := f
 	g.parent = bi
 	g.depth = b.depth
-	if .Positioned in b.flags { g.cb = bi }
+	if .Positioned in b.flags {
+		g.cb = bi
+	} else if c.l.frames_on && b.cs.column_span == .All {
+		// (the containing block of a spanner is its multi-column container, whatever is between them)
+		if mc := spanner_container(c.l, bi); mc != NONE { g.cb = mc }
+	}
 	if b.kind != .Inline && (sum != nil ? .Contains_Fixed in sum.bits : contains_fixed(b.cs)) { g.cb, g.fcb = bi, bi }
 	if .Atomic in b.flags || .Float in b.flags || .Abs in b.flags || b.kind == .Flex || b.kind == .Grid || b.kind == .Table {
 		g.deco = {}   // decorations do not propagate into atomic inlines, floats and absolutely positioned boxes

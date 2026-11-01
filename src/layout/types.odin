@@ -443,9 +443,11 @@ Layout :: struct {
 	height:       f32,                     // document scroll height
 	doc_width:    f32,                     // right end of the document's horizontal scroll range
 	doc_min_x:    f32,                     // left end of it, <= 0: below 0 only with its origin at the end (doc_scroll_origin_end)
+	doc_min_y:    f32,                     // top end of the vertical range, <= 0: below 0 only with its origin at the bottom (doc_scroll_origin_bottom)
 	doc_scroll_y: bool,                    // false: the root element's overflow forbids scrolling the page
 	doc_scrollable_x: bool,                // likewise, across
 	doc_origin_end: bool,                  // doc_scroll_origin_end at the last pass
+	doc_origin_bottom: bool,               // doc_scroll_origin_bottom at the last pass
 	settings:     Settings,
 	stats:        [5]f32,                  // ms of the last run: box tree, layout, finishing, display list, spatial index
 	// persistent across layouts

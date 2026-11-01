@@ -887,7 +887,7 @@ scroll_into_view :: proc(app: ^App, t: ^Tab, h: base.Handle) {
 	if t.page == nil || !t.layout.valid { return }
 	view := draw.rect_size(active_window(app).page_rect)
 	if r, ok := lay.box_of(&t.layout, h, view, 0); ok {
-		t.scroll = max(r.border.min.y - view.y * 0.15, 0)
+		t.scroll = max(r.border.min.y - view.y * 0.15, t.layout.doc_min_y)
 		doc_scroll_x_set(t, scroll_nearest(r.border.min.x, r.border.max.x, view.x, t.layout.doc_scroll_x), view.x)
 		request_frames(app, 3)
 	}

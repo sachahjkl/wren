@@ -218,9 +218,9 @@ scroller_state :: proc(app: ^App, t: ^Tab, node: base.Handle) -> (cur, limit: [2
 	return c, m, true
 }
 
-// Its smallest offset: 0, but across a document whose scroll origin is at the end of the line (lay.doc_min_x).
+// Its smallest offset: 0, but in an axis of a document whose scroll origin is at the end (lay.doc_min_x, lay.doc_min_y).
 scroller_low :: #force_inline proc(t: ^Tab, node: base.Handle) -> [2]f32 {
-	if node == base.NIL_HANDLE { return {t.layout.doc_min_x, 0} }
+	if node == base.NIL_HANDLE { return {t.layout.doc_min_x, t.layout.doc_min_y} }
 	return lay.scroll_min(&t.layout, node)
 }
 
@@ -451,7 +451,7 @@ css_smooth :: proc(app: ^App, t: ^Tab) -> bool {
 scroll_document_to :: proc(app: ^App, t: ^Tab, to: [2]f32, smooth: bool) {
 	if smooth && smooth_scroll_to(app, t, base.NIL_HANDLE, to, smooth_cfg.page_ms) { return }
 	if a := find_anim(smooth_of(t), base.NIL_HANDLE); a != nil { a.axis = {} }
-	t.scroll = max(to.y, 0)
+	t.scroll = max(to.y, t.layout.doc_min_y)
 	lay.set_doc_scroll_x(&t.layout, max(to.x, t.layout.doc_min_x))
 }
 

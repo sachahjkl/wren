@@ -295,7 +295,7 @@ scroll_into_view :: proc(app: ^App, t: ^Tab, h: base.Handle) {
 	r, ok := layout_rect(t, h)
 	if !ok { return }
 	view_h := wnd.page_rect.max.y - wnd.page_rect.min.y
-	if r.min.y < t.scroll { t.scroll = max(r.min.y - 16, 0) } else if r.max.y > t.scroll + view_h { t.scroll = r.max.y - view_h + 16 }
+	if r.min.y < t.scroll { t.scroll = max(r.min.y - 16, t.layout.doc_min_y) } else if r.max.y > t.scroll + view_h { t.scroll = r.max.y - view_h + 16 }
 	view_w := wnd.page_rect.max.x - wnd.page_rect.min.x
 	doc_scroll_x_set(t, scroll_nearest(r.min.x, r.max.x, view_w, t.layout.doc_scroll_x), view_w)
 }

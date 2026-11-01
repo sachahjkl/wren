@@ -141,7 +141,7 @@ compare_layouts :: proc(a, b: ^Layout, allocator := context.temp_allocator) -> (
 	}
 	if !m.bad {
 		switch {
-		case !feq(a.height, b.height) || !feq(a.doc_width, b.doc_width) || !feq(a.doc_min_x, b.doc_min_x) || a.doc_scroll_y != b.doc_scroll_y || a.doc_scrollable_x != b.doc_scrollable_x:
+		case !feq(a.height, b.height) || !feq(a.doc_width, b.doc_width) || !feq(a.doc_min_x, b.doc_min_x) || !feq(a.doc_min_y, b.doc_min_y) || a.doc_scroll_y != b.doc_scroll_y || a.doc_scrollable_x != b.doc_scrollable_x:
 			fail(&m, "document extent %v..%v x %v / %v..%v x %v", a.doc_min_x, a.doc_width, a.height, b.doc_min_x, b.doc_width, b.height)
 		case len(a.spaces) != len(b.spaces) || len(a.clips) != len(b.clips) || len(a.groups) != len(b.groups):
 			fail(&m, "spaces / clips / groups: %d %d %d / %d %d %d", len(a.spaces), len(a.clips), len(a.groups), len(b.spaces), len(b.clips), len(b.groups))

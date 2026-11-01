@@ -2,6 +2,7 @@ package layout
 
 import "core:math"
 import "core:slice"
+import "wb:base"
 import "wb:style"
 
 // Multi-column layout (CSS Multicol 1, CSS Fragmentation 3).
@@ -149,6 +150,7 @@ is_monolithic :: proc(l: ^Layout, k: ^Box) -> bool {
 	if .Clips in k.flags && .Propagated not_in k.flags { return true }
 	if .Multicol in k.fx || .Spanner in k.fx { return true }
 	if .Frame_Root in k.fx { return true }
+	if .Size in k.cs.contain { return true }   // (CSS Contain 2 §3.1)
 	if k.parent != NONE {
 		pk := l.boxes[k.parent].kind
 		if pk == .Flex || pk == .Grid { return true }
@@ -323,17 +325,17 @@ place_units :: proc(units: []Unit, s0, s1, start, h: f32, base_shift: f32, out: 
 			}
 		} else {
 			for y0 >= col_end { col_start, col_end = col_end, col_end + h; col += 1 }
-			// a nested container is not pushed: where it crosses a column it goes in rows (layout_multicol)
-			if u.nested != NONE {
-				prev_end = max(prev_end, u.y1 + shift)
-				i += 1
-				continue
-			}
 			// the margins above what starts a column are gone (CSS Fragmentation 3 §5.2)
 			if col > 0 && u.trunc > 0 && y0 > col_start && y0 - u.trunc <= col_start + 0.001 && prev_end <= col_start + 0.001 {
 				shift -= y0 - col_start
 				note(out, u.y0, shift)
 				y0 = col_start
+			}
+			// a nested container is not pushed: where it crosses a column it goes in rows (layout_multicol)
+			if u.nested != NONE {
+				prev_end = max(prev_end, u.y1 + shift)
+				i += 1
+				continue
 			}
 			// what stays together (the chain of units that avoid a break before them), when it can
 			e := i
@@ -423,7 +425,7 @@ mc_column_height :: proc(units: []Unit, s0, s1, flow_start, flow_shift: f32, n: 
 
 // The fragments, and the rules between them, of `cols` columns of height `h` from `flow_start`, showing from `visual_y`.
 @(private)
-mc_add_columns :: proc(c: ^Ctx, rec: ^Mc_Record, cs: ^style.Computed, cols: int, h, flow_start, visual_y, cw, colw, gap, cx: f32) {
+mc_add_columns :: proc(c: ^Ctx, rec: ^Mc_Record, cs: ^style.Computed, cols: int, h, flow_start, visual_y, cw, colw, gap, cx: f32, rule_h: f32 = -1) {
 	rtl := is_rtl(cs)
 	for i in 0 ..< cols {
 		x := rtl ? cw - colw - f32(i) * (colw + gap) : f32(i) * (colw + gap)
@@ -434,13 +436,40 @@ mc_add_columns :: proc(c: ^Ctx, rec: ^Mc_Record, cs: ^style.Computed, cols: int,
 		if i > 0 && cs.column_rule_width > 0 {
 			rx := rtl ? x + colw + gap * 0.5 : x - gap * 0.5
 			w := cs.column_rule_width * c.scale
-			append(&rec.rules, Rect{{cx + rx - w * 0.5, visual_y}, {cx + rx + w * 0.5, visual_y + h}})
+			append(&rec.rules, Rect{{cx + rx - w * 0.5, visual_y}, {cx + rx + w * 0.5, visual_y + (rule_h >= 0 ? rule_h : h)}})
 		}
 	}
 }
 
 ////////////////////////////////
 // The layout
+
+// Whether a box of this style takes part in `column-span: all`: an in-flow block.
+@(private)
+can_span :: #force_inline proc(k: ^Box) -> bool {
+	return k.kind != .Inline && k.cs != nil && k.cs.column_span == .All && k.flags & {.Abs, .Float, .Atomic, .Block_In_Inline} == {}
+}
+
+// The multi-column container whose spanner box `bi` is, by the block path up to it (CSS Multicol 1 §6: `column-span` has no effect
+// otherwise); NONE: it is none. Known when boxes are made, for what is contained in it, as mark_flow knows it for layout.
+@(private)
+spanner_container :: proc(l: ^Layout, bi: i32) -> i32 {
+	if !can_span(&l.boxes[bi]) { return NONE }
+	for p := l.boxes[bi].parent; p != NONE; p = l.boxes[p].parent {
+		k := &l.boxes[p]
+		if .Multicol in k.fx { return p }
+		if k.kind != .Block || .Bfc in k.flags { return NONE }
+	}
+	return NONE
+}
+
+// The element of the container `node` is a spanner of (NIL: it is not one).
+spanner_container_of :: proc(l: ^Layout, node: base.Handle) -> base.Handle {
+	bi := box_index(l, node)
+	if bi == NONE { return base.NIL_HANDLE }
+	if mc := spanner_container(l, bi); mc != NONE { return l.boxes[mc].node }
+	return base.NIL_HANDLE
+}
 
 // Boxes in the flow: marked, their caches dropped (what lies in the strip is moved by apply_shifts: a cached box would be moved
 // again), and which are spanners.
@@ -457,7 +486,7 @@ mark_flow :: proc(c: ^Ctx, container, x: i32, block_path: bool) {
 		k.fx += {.In_Flow}
 		k.cache_ok = false
 		k.fx -= {.Spanner}
-		if block_path && k.kind != .Inline && k.cs != nil && k.cs.column_span == .All && k.flags & {.Abs, .Float, .Atomic, .Block_In_Inline} == {} {
+		if block_path && can_span(k) {
 			k.fx += {.Spanner}
 			k.flags += {.Bfc}
 		}
@@ -569,9 +598,9 @@ layout_multicol :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx) -> f32
 		limit = max(mx - pb_h(b), 0)
 	}
 	// (columns balanced around a nested container stay around it whole: only a given height cuts it)
-	if limit < 0 { for &u in g.units { u.nested = NONE } }
 	rec.first_chain = 0
-	if len(g.units) > 0 {
+	// (a first unit lower than the start: what is above it, an empty box, can be cut, and starts the container anywhere)
+	if len(g.units) > 0 && g.units[0].y0 <= cy + 0.001 {
 		e := 0
 		for e + 1 < len(g.units) && g.units[e + 1].avoid && !g.units[e + 1].forced { e += 1 }
 		rec.first_chain = g.units[e].y1 - g.units[0].y0
@@ -608,9 +637,10 @@ layout_multicol :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx) -> f32
 				fill := cs.column_fill == .Auto && limit >= 0 && !has_spanner
 				h := mc_column_height(us, s, set_end, fs, sh, n, room, fill)
 				p := place_units(us, s, set_end, fs, h, sh, nil)
-				if p.columns <= n || room >= rows.h && limit < 0 && p.columns <= 1 {
+				if p.columns <= n && (p.too_tall <= 0 || room >= rows.h) || room >= rows.h && limit < 0 && p.columns <= 1 {
 					last := place_units(us, s, set_end, fs, h, sh, &shifts)
-					mc_add_columns(c, rec, cs, last.columns, h, fs, visual_y, cw, colw, gap, cx)
+					// (rules reach the content edge of a container with a height of its own, or the end of this outer column)
+					mc_add_columns(c, rec, cs, last.columns, h, fs, visual_y, cw, colw, gap, cx, limit >= 0 && !has_spanner ? max(room, h) : h)
 					flow_shift = fs + f32(last.columns) * h - set_end
 					visual_y += h
 					row_room -= h
@@ -622,7 +652,16 @@ layout_multicol :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx) -> f32
 				place_units(us, s, set_end, fs, room, sh, &t)
 				end := fs + f32(n) * room
 				k := 0
-				for k < len(us) && us[k].y0 + shift_at(t[:], us[k].y0) < end { k += 1 }
+				for k < len(us) && us[k].y0 + shift_at(t[:], us[k].y0) < end {
+					// what must stay whole, too tall for this row and not for a full outer column, waits for the next
+					if room < rows.h {
+						e := k
+						for e + 1 < len(us) && us[e + 1].avoid && !us[e + 1].forced { e += 1 }
+						chain := us[e].y1 - us[k].y0
+						if chain > room + 0.001 && chain <= rows.h + 0.001 { break }
+					}
+					k += 1
+				}
 				next_s := k < len(us) ? us[k].y0 : end - t[len(t) - 1].by
 				for e in t { if e.y < next_s { append(&shifts, e) } }
 				mc_add_columns(c, rec, cs, n, room, fs, visual_y, cw, colw, gap, cx)
@@ -643,7 +682,8 @@ layout_multicol :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx) -> f32
 			// (forced breaks may ask for more columns than there are, height or not: they overflow, as the rest)
 			p := place_units(set_units, set_start, set_end, flow_start, h, flow_shift, &shifts)
 			cols := p.columns
-			mc_add_columns(c, rec, cs, cols, h, flow_start, visual_y, cw, colw, gap, cx)
+			// (rules reach the content edge of a container with a height of its own, however low the columns are balanced)
+			mc_add_columns(c, rec, cs, cols, h, flow_start, visual_y, cw, colw, gap, cx, limit >= 0 && !has_spanner ? max(last_limit, h) : h)
 			total_used += cols
 			// what follows starts after the last column's band, whatever is left of it
 			flow_shift = flow_start + f32(cols) * h - set_end
@@ -692,7 +732,8 @@ layout_multicol :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx) -> f32
 					c.mc_whole[u.nested] = true
 				} else {
 					if c.mc_rows == nil { c.mc_rows = make(map[i32]Mc_Rows, 8, context.temp_allocator) }
-					c.mc_rows[u.nested] = Mc_Rows{room, f.flow_max - f.flow_min}
+					// (the first column's band starts without bound: its height is from the content box)
+					c.mc_rows[u.nested] = Mc_Rows{room, f.flow_max - max(f.flow_min, cy)}
 				}
 				again = true
 				break

@@ -477,3 +477,74 @@ multicol_flex_item_style_set_later :: proc(t: ^testing.T) {
 
 _ :: base.NIL_HANDLE
 _ :: fmt.tprintf
+
+// Rows of a nested container with a height of its own: every row as high as an outer column, wherever the container starts; the
+// rules of the last row go on in that outer column; what must stay whole waits for a row it fits in.
+@(test)
+multicol_nested_rows_height :: proc(t: ^testing.T) {
+	f := mf_load(`<!doctype html><style>body{margin:0}
+		#o{column-count:3;column-fill:auto;column-gap:0;width:300px;height:100px}
+		#n{column-count:2;column-gap:0;column-rule:2px solid red;height:300px}
+		#n div{height:20px}</style>
+		<div id=o><div id=n><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div id=x></div></div></div>`)
+	defer mf_unload(f)
+	mf_expect(t, f, "x", 150, 50, 200, 70)   // the last of 17: ten in the first row; the rest shared out, cut at 70, in the second
+	bi := box_index(&f.l, dom.find_by_id(f.doc, "n"))
+	last: Rect
+	for &it in f.l.items { if it.kind == .Column_Rule && it.box == bi { last = it.rect } }
+	testing.expect_value(t, last.max.y - last.min.y, 100)
+
+	g := mf_load(`<!doctype html><style>body{margin:0}
+		#o{column-count:2;column-fill:auto;column-gap:0;width:100px;height:100px}
+		#n{column-count:2;column-gap:0}</style>
+		<div id=o><div style="height:50px"></div><div id=n><div style="height:50px"></div><div id=w style="height:100px;break-inside:avoid"></div></div></div>`)
+	defer mf_unload(g)
+	mf_expect(t, g, "w", 50, 0, 75, 100)
+
+	h := mf_load(`<!doctype html><style>body{margin:0}
+		#o{column-count:2;column-fill:auto;column-gap:0;width:100px;height:120px}
+		#n{column-count:2;column-fill:auto;column-gap:0;height:100px}</style>
+		<div id=o><div style="height:100px"></div><div id=n><div id=s style="contain:size;height:100px"></div></div></div>`)
+	defer mf_unload(h)
+	mf_expect(t, h, "s", 50, 0, 75, 100)   // size containment makes it monolithic: all of the container in the next outer column
+}
+
+// A balanced outer container cuts a nested one that crosses its columns, with the margin above it gone at the head of a column;
+// rules reach the content edge of a container with a height of its own.
+@(test)
+multicol_nested_in_balanced :: proc(t: ^testing.T) {
+	f := mf_load(`<!doctype html><style>body{margin:0}
+		#o{column-count:2;column-gap:0;width:200px}
+		#n{column-count:2;column-gap:0}
+		#n div{height:50px}</style>
+		<div id=o><div style="height:100px"></div><div id=n><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div id=x></div></div></div>`)
+	defer mf_unload(f)
+	testing.expectf(t, f.l.boxes[box_index(&f.l, dom.find_by_id(f.doc, "o"))].size.y == 150, "the outer columns stay balanced: %v", mf_rect(f, "o"))
+	mf_expect(t, f, "x", 150, 100, 200, 150)   // the row of the first outer column holds 100 of the 400; 150 per column in the next
+
+	g := mf_load(`<!doctype html><style>body{margin:0}
+		#m{column-count:2;column-gap:0;column-rule:2px solid red;width:200px;height:100px}
+		#m div{height:60px}</style><div id=m><div></div></div>`)
+	defer mf_unload(g)
+	bi := box_index(&g.l, dom.find_by_id(g.doc, "m"))
+	found := false
+	for &it in g.l.items {
+		if it.kind == .Column_Rule && it.box == bi { found = true; testing.expect_value(t, it.rect.max.y - it.rect.min.y, 100) }
+	}
+	testing.expect(t, found)
+}
+
+// A meter and a progress bar lie along their own lines, in any frame.
+@(test)
+gauges_along_their_lines :: proc(t: ^testing.T) {
+	f := mf_load(`<!doctype html><style>body{margin:0;font:20px/30px x} meter,progress{display:block;margin:0;padding:0;border:0}</style>
+		<meter id=hh></meter><meter id=hv style="writing-mode:vertical-rl"></meter><progress id=pv style="writing-mode:vertical-lr"></progress>
+		<div style="writing-mode:vertical-rl"><meter id=vv></meter><meter id=vh style="writing-mode:horizontal-tb"></meter></div>`)
+	defer mf_unload(f)
+	size :: proc(f: ^Mf, id: string) -> Vec2 { r := mf_rect(f, id); return r.max - r.min }
+	testing.expect_value(t, size(f, "hh"), Vec2{80, 20})
+	testing.expect_value(t, size(f, "hv"), Vec2{20, 80})
+	testing.expect_value(t, size(f, "pv"), Vec2{20, 160})
+	testing.expect_value(t, size(f, "vv"), Vec2{20, 80})
+	testing.expect_value(t, size(f, "vh"), Vec2{80, 20})
+}
