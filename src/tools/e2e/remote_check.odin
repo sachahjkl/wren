@@ -3,6 +3,7 @@ package e2e_scenarios
 // The channel on the browser's check build (build.bat check: every allocation tracked): a session that touches every part of it, then a normal exit, must end with nothing allocated.
 // (The scenarios about pages run the same way in build\e2e_test_check.exe: what is checked here is what only the channel holds.)
 
+import "core:encoding/json"
 import "core:fmt"
 import "core:strings"
 import "core:testing"
@@ -63,8 +64,14 @@ a_driven_session_on_the_check_build_leaves_nothing_allocated :: proc(t: ^testing
 	api.snapshot(s, fmt.tprintf("%s/snap", dir))
 	api.record_start(s)
 	api.click_at(s, DRAG_TO)
-	_, count, _ := api.record_stop(s)
+	recording, count, _ := api.record_stop(s)
 	testing.expect(t, count > 0, "the recording has the click")
+	parsed, _ := json.parse(transmute([]byte)recording, json.Specification.JSON, true, context.temp_allocator)
+	events, _ := json.marshal(parsed.(json.Object)["events"], {}, context.temp_allocator)
+	api.replay(s, string(events))
+	api.outer_html(s, "#box")
+	api.computed_style(s, "#box", {"width"})
+	api.query_all(s, "div")
 	api.new_tab(s, "about:blank")
 	api.open_devtools(s, "elements")
 	api.console(s)
@@ -72,9 +79,6 @@ a_driven_session_on_the_check_build_leaves_nothing_allocated :: proc(t: ^testing
 	api.stats(s)
 	api.commands(s)
 	api.pref_set(s, "browser.scroll.key_line_px", "45")
-	api.outer_html(s, "#box")
-	api.computed_style(s, "#box", {"width"})
-	api.query_all(s, "div")
 	api.set_window(s, {size = SMALLER_WINDOW})
 
 	// a client that vanishes in the middle of a wait
