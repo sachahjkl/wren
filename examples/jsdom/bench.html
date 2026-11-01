@@ -2,14 +2,14 @@
 <html><head><title>Bench</title><style>body { margin: 0 } .box { width: 50px; height: 10px; }</style></head>
 <body><div id="root"></div><div id="list"></div>
 <script>
-// Micro-benchmarks of the DOM bindings: "BENCH name ns" per operation (src/tools/jsdomtest prints them).
+// Micro-benchmarks of the DOM bindings: the ns per operation of each go to the test program (src/tools/jsdomtest logs them).
 const now = (() => { try { if (typeof performance.now === "function") { return () => performance.now(); } } catch (e) {} return () => Date.now(); })();
 function bench(name, n, fn) {
   fn(Math.min(n, 100));   // warm up
   const t0 = now();
   const r = fn(n);
   const ns = (now() - t0) * 1e6 / n;
-  console.log("BENCH " + name.padEnd(48) + ns.toFixed(1).padStart(10) + " ns   (" + n + " x)");
+  wrenTest.measure(name + " (" + n + " x), ns", ns);
   return r;
 }
 section("benchmarks", () => {

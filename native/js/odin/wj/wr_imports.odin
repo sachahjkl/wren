@@ -621,6 +621,13 @@ wr_StorageEventField :: enum i32 {
 	Url = 3,
 }
 
+// module testhost: types
+// Why something a test needs cannot run on this machine. The test host decides whether that is true.
+wr_TestSkipReason :: enum i32 {
+	WebglAdapter = 0,
+	Av1Decoder = 1,
+}
+
 // module timers: types
 // A pending timeout or interval.
 wr_Timer :: distinct u64
@@ -3524,6 +3531,28 @@ foreign _wr_wj_storage {
 	@(link_name = "StorageEvent_get") wr_StorageEvent_get :: proc(event: u64, field: i32, _buf: [^]u8, _cap: u32) -> i32 ---
 	// StorageEvent.storageArea
 	@(link_name = "StorageEvent_storageArea") wr_StorageEvent_storageArea :: proc(event: u64, _ret: ^i32) -> i32 ---
+}
+
+// module testhost
+foreign import _wr_wj_testhost "testhost"
+@(default_calling_convention = "contextless")
+foreign _wr_wj_testhost {
+	// A test of the section begins.
+	@(link_name = "TestHost_testBegin") wr_TestHost_testBegin :: proc(name: [^]u8, name_len: u32) ---
+	// The test ends.
+	@(link_name = "TestHost_testEnd") wr_TestHost_testEnd :: proc(name: [^]u8, name_len: u32) ---
+	// One check and its result.
+	@(link_name = "TestHost_check") wr_TestHost_check :: proc(passed: i32, what: [^]u8, what_len: u32) ---
+	// A value the section measured.
+	@(link_name = "TestHost_measure") wr_TestHost_measure :: proc(name: [^]u8, name_len: u32, value: f64) ---
+	// Something the program may wait for or read ("LISTENING").
+	@(link_name = "TestHost_note") wr_TestHost_note :: proc(text: [^]u8, text_len: u32) ---
+	// The script asks the program to act on the page, and waits (the program resumes it).
+	@(link_name = "TestHost_signal") wr_TestHost_signal :: proc(name: [^]u8, name_len: u32) ---
+	// The current test, or with no test open the whole section, does not run on this machine.
+	@(link_name = "TestHost_skip") wr_TestHost_skip :: proc(reason: i32, why: [^]u8, why_len: u32) ---
+	// The section is over.
+	@(link_name = "TestHost_done") wr_TestHost_done :: proc() ---
 }
 
 // module timers

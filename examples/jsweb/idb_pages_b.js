@@ -4,7 +4,7 @@ test("B: a higher version is blocked until the other page closes", async () => {
   let blocked = null;
   const db = await new Promise((resolve, reject) => {
     const r = indexedDB.open("shared_pages", 2);
-    r.onblocked = (e) => { blocked = e; console.log("BLOCKED"); };
+    r.onblocked = (e) => { blocked = e; note("BLOCKED"); };
     r.onupgradeneeded = (e) => {
       ok(blocked !== null, "blocked came before the upgrade");
       eq(e.oldVersion, 1, "upgrade from 1");

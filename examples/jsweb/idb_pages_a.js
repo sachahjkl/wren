@@ -10,13 +10,13 @@ test("A: a connection that hears the version change of another page", async () =
   });
   const changed = new Promise((resolve) => { db.onversionchange = (e) => resolve(e); });
   const closed = new Promise((resolve) => { globalThis.__closeA = () => { db.close(); resolve(); }; });
-  console.log("LISTENING");
+  note("LISTENING");
   const e = await changed;
   ok(e instanceof IDBVersionChangeEvent, "versionchange is an IDBVersionChangeEvent");
   eq(e.oldVersion, 1, "oldVersion");
   eq(e.newVersion, 2, "newVersion");
   ok(e.target === db, "on the connection");
-  console.log("HEARD");
+  note("HEARD");
   await closed;
   throws(() => db.transaction("s"), "InvalidStateError", "a closed connection has no transactions");
 });

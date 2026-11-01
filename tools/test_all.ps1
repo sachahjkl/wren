@@ -169,7 +169,7 @@ function Report($name, $ok, $out, $secs, $port = 0) {
         try { [IO.File]::WriteAllText($log, "$name`n$out") } catch { }
     }
     $status = if ($ok) { 'PASS' } elseif ($script:flaky.ContainsKey($name)) { 'FLAKY' } else { 'FAIL' }
-    $script:results.Add([pscustomobject]@{ Name = $name; Status = $status; Secs = $secs; Checks = (Get-CheckCount "$out"); Log = $log; Out = $(if ($ok) { '' } else { "$out" }) })
+    $script:results.Add([pscustomobject]@{ Name = $name; Status = $status; Secs = $secs; Checks = (Get-CheckCount "$out"); Log = $log; Out = $(if ($ok) { '' } else { "$out" }); Skips = @([regex]::Matches("$out", '(?m)^SKIP \[.*$') | ForEach-Object { $_.Value.TrimEnd() }) })
     if ($status -eq 'FLAKY') {
         "FLAKY {0} (known to fail at random: not counted)" -f $name
         # which checks failed, wherever they are in its output: a step marked flaky must still say what went wrong
@@ -371,7 +371,8 @@ function Show-RunReport {
     }
     $counts = ($script:results | Group-Object Status | Sort-Object Name | ForEach-Object { "$($_.Count) $($_.Name)" }) -join ', '
     $checks = ($script:results | Measure-Object Checks -Sum).Sum
-    $lines = @("steps: $counts; $checks checks counted")
+    $skips = @($script:results | ForEach-Object { $_.Skips } | Where-Object { $_ })
+    $lines = @("steps: $counts; $checks checks counted; $($skips.Count) explicit skip(s)") + $skips
     $cached = @($script:results | Where-Object Status -EQ 'CACHED').Count
     if ($cached) { $lines += "$cached step(s) did not run: they passed with exactly these inputs (tools\test_cache.ps1). -NoCache runs them." }
     if ($script:useCache) { $lines += "the inputs of the steps were read in $([Math]::Round($script:keyMs / 1000.0, 1)) s; this run began $([Math]::Round(($script:firstStep - $runStart).TotalSeconds, 1)) s after its start" }
@@ -635,11 +636,12 @@ Step 'file: folders end-to-end test (index file, listing, redirect to /, errors,
     $o = .\build\filetest.exe | Out-String; $o
     $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
 }
+Step 'unit tests: test host (what fails a section of jswebtest and jsdomtest: what it declared did not run, a skip the machine does not confirm)' { odin test src/tools/testhost -use-separate-modules $MemCheck -collection:wb=src -vet -out:build/testhost_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
 Step 'DOM for JavaScript end-to-end test (jsdomtest: tree, elements, markup, selectors, CSSOM, geometry, UI events, MutationObserver, traversal, ranges, leaks, micro-benchmarks; no server)' {
-    odin build src/tools/jsdomtest -use-separate-modules -collection:wb=src -vet $Track -out:build/jsdomtest.exe -o:speed $Stack
+    odin build src/tools/jsdomtest -build-mode:test -define:ODIN_TEST_THREADS=1 -define:ODIN_TEST_FANCY=false -use-separate-modules -collection:wb=src -vet $Track -out:build/jsdomtest.exe -o:speed $Stack
     if ($LASTEXITCODE -ne 0) { return }
-    $o = .\build\jsdomtest.exe | Out-String; $o
-    $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
+    $o = .\build\jsdomtest.exe 2>&1 | Out-String; $o
+    $global:LASTEXITCODE = if ($o -match 'All tests were successful') { 0 } else { 1 }
 }
 Step 'history end-to-end test (historytest: the tree as pages see it, scrollRestoration, pageshow / pagehide persisted, back/forward cache freezing, persisted form state; no server)' {
     odin build src/tools/historytest -use-separate-modules -collection:wb=src -vet $Track -out:build/historytest.exe $Stack
@@ -802,12 +804,12 @@ try {
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
     }
     Step 'JavaScript web APIs end-to-end test (fetch, XHR, streams, URL, encoding, abort, storage, history, navigator, crypto, sockets, messaging; jswebtest)' {
-        odin build src/tools/jswebtest -use-separate-modules -collection:wb=src -vet $Track -out:build/jswebtest.exe $Stack
+        odin build src/tools/jswebtest -build-mode:test -define:ODIN_TEST_THREADS=1 -define:ODIN_TEST_FANCY=false -use-separate-modules -collection:wb=src -vet $Track -out:build/jswebtest.exe $Stack
         if ($LASTEXITCODE -ne 0) { return }
-        $p = Start-Process .\build\jswebtest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\jswt.txt
-        if (-not $p.WaitForExit(300000 * $slow)) { $p.Kill(); Get-Content build\jswt.txt; $global:LASTEXITCODE = 1; return }
-        $o = Get-Content build\jswt.txt | Out-String; $o
-        $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
+        $p = Start-Process .\build\jswebtest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\jswt.txt -RedirectStandardError build\jswt.err.txt
+        if (-not $p.WaitForExit(300000 * $slow)) { $p.Kill(); Get-Content build\jswt.txt, build\jswt.err.txt; $global:LASTEXITCODE = 1; return }
+        $o = Get-Content build\jswt.txt, build\jswt.err.txt | Out-String; $o
+        $global:LASTEXITCODE = if ($o -match 'All tests were successful') { 0 } else { 1 }
     }
     Step 'style run-time test (web fonts, transitions, animations)' {
         odin build src/tools/styletest -use-separate-modules -collection:wb=src -vet $Track -out:build/styletest.exe $Stack 2>&1 | Out-String

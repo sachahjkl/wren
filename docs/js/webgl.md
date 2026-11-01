@@ -199,7 +199,7 @@ FXC compiles every pipeline, a page that asks right after a burst of new program
   on a real GPU too. A machine with no adapter skips them.
   `src/ipc_tests.rs`: the channel on its own; a real child killed while drawing, hung, stalled, made hostile in each way the browser checks for, fed malformed commands and broken streams; its
   parent killed; the limit on restarts. A test binary is its own child (`gpu_child_entry`); a hook is accepted only by a child started with hooks, which a browser never asks for.
-- `jswebtest webgl` (`examples/jsweb/webgl.js`, `webgl_process.js`): the interfaces and their rules on the software adapter; contexts in workers and `transferControlToOffscreen`; the process killed and
+- `jswebtest` sections `webgl_api` and `webgl_process` (`examples/jsweb/webgl.js`, `webgl_process.js`): the interfaces and their rules on the software adapter; contexts in workers and `transferControlToOffscreen`; the process killed and
   hung under a page and a worker (only this tool calls `wg_test_enable_hooks`). A machine with no adapter checks that `getContext` gives null.
 - `tools/webgl_process_e2e.ps1` (`test_all -Ui`): the process's life in the real browser, on the machine's GPU. `tools/linux_smoke.sh` does the same under xvfb on Linux.
 - `tools/webgl_bench.ps1`: what WebGL costs on this machine (opt-in, not a test).

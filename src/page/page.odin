@@ -88,6 +88,7 @@ Page :: struct {
 	held:      int,            // bytes retained by fetch records
 	console:   Console_Proc,
 	console_user: rawptr,
+	test_host:    ^Test_Host,   // a test program's (test_host.odin); a browser has none
 	closed:    bool,
 	body:      base.Handle,
 	head:      base.Handle,

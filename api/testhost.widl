@@ -1,0 +1,25 @@
+/// What a page of a test program tells that program: its tests, their checks, what it measures, what it wants done to it.
+/// For test programs only (src/tools/testhost): the global `wrenTest` that calls these exists only in a page that has been
+/// given a test host (page.set_test_host), and without one they do nothing. A browser never gives one.
+[Exposed=Window]
+module testhost {
+  /// Why something a test needs cannot run on this machine. The test host decides whether that is true.
+  enum TestSkipReason : i32 { WebglAdapter, Av1Decoder }
+
+  /// A test of the section begins.
+  void TestHost_testBegin(usvstring name);
+  /// The test ends.
+  void TestHost_testEnd(usvstring name);
+  /// One check and its result.
+  void TestHost_check(bool passed, usvstring what);
+  /// A value the section measured.
+  void TestHost_measure(usvstring name, f64 value);
+  /// Something the program may wait for or read ("LISTENING").
+  void TestHost_note(usvstring text);
+  /// The script asks the program to act on the page, and waits (the program resumes it).
+  void TestHost_signal(usvstring name);
+  /// The current test, or with no test open the whole section, does not run on this machine.
+  void TestHost_skip(TestSkipReason reason, usvstring why);
+  /// The section is over.
+  void TestHost_done();
+}

@@ -27,7 +27,7 @@ $tools = @(
     @{ n = 'workerstest'; g = @(@('examples/workerstest', 'build/workerstest.wasm'), @('examples/workerstest_worker', 'examples/site/workerstest_worker.wasm')); a = @('build\workerstest.wasm', 'examples\site\workerstest_worker.wasm'); t = 180 },
     @{ n = 'jsloadtest';  g = @(); a = @(); t = 180 },
     @{ n = 'framestest';  g = @(); a = @(); t = 180 },
-    @{ n = 'jswebtest';   g = @(); a = @(); t = 300 }
+    @{ n = 'jswebtest';   g = @(); a = @(); t = 300; b = @('-build-mode:test', '-define:ODIN_TEST_THREADS=1', '-define:ODIN_TEST_FANCY=false') }
 )
 if ($Only) {
     $names = @($Only | ForEach-Object { $_ -split ',' } | Where-Object { $_ })   # (powershell -File passes "a,b" as one string)
@@ -41,7 +41,8 @@ if (-not $NoBuild) {
             & odin build $g[0] @guest "-out:$($g[1])"
             if ($LASTEXITCODE -ne 0) { "BUILD FAILED: guest $($g[0])"; $failed++ }
         }
-        & odin build "src/tools/$($t.n)" -use-separate-modules -collection:wb=src -vet $Track "-out:build/$($t.n).exe" $Stack
+        $testBuild = @($t.b | Where-Object { $_ })   # (a test program of core:testing)
+        & odin build "src/tools/$($t.n)" @testBuild -use-separate-modules -collection:wb=src -vet $Track "-out:build/$($t.n).exe" $Stack
         if ($LASTEXITCODE -ne 0) { "BUILD FAILED: $($t.n)"; $failed++ }
     }
     if ($failed -gt 0) { exit $failed }
@@ -59,8 +60,8 @@ try {
         $p = Start-Process @sp
         $ok = $p.WaitForExit($t.t * 1000)
         if (-not $ok) { $p.Kill() }
-        $text = (Get-Content $out -Raw -ErrorAction SilentlyContinue) + ''
-        $pass = $ok -and ($text -match '(?m)\b0 failure\(s\)')
+        $text = (Get-Content $out -Raw -ErrorAction SilentlyContinue) + (Get-Content "$out.err" -Raw -ErrorAction SilentlyContinue) + ''
+        $pass = $ok -and ($text -match '(?m)\b0 failure\(s\)|All tests were successful') -and ($text -notmatch '\d+ tests? failed')
         if (-not $pass) { $failed++ }
         '{0,-12} {1,-5} {2,6:n1} s  {3}' -f $t.n, $(if ($pass) { 'ok' } elseif (-not $ok) { 'TIME' } else { 'FAIL' }), ((Get-Date) - $t0).TotalSeconds, $out
     }

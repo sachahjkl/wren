@@ -123,6 +123,7 @@ js_realm :: proc(p: ^Page) -> ^Js_Realm {
 		expose_unimplemented = p.settings.js.expose_unimplemented, unimplemented_throw = p.settings.js.unimplemented_throw,
 		no_touch_handlers = kind == .Window && !p.settings.js.touch_handlers,
 		frames = true,
+		test_host = kind == .Window && p.test_host != nil,
 	}
 	if g := p.worker; g != nil {
 		if g.sw.reg != 0 { start.worker_scope = .Service } else if g.shared { start.worker_scope = .Shared }

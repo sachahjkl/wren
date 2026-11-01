@@ -2,7 +2,7 @@
 
 test("navigator", async () => {
   ok(navigator === navigator && navigator === window.clientInformation, "one Navigator");
-  console.log("UA " + navigator.userAgent);
+  note("UA " + navigator.userAgent);
   eq(navigator.appCodeName, "Mozilla", "appCodeName");
   eq(navigator.appName, "Netscape", "appName");
   eq(navigator.product, "Gecko", "product");

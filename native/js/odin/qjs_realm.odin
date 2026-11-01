@@ -272,6 +272,7 @@ wj_preinit :: proc "c" () -> i32 {
 @(private = "file") START_SHARED_WORKER        :: 8    // (a worker realm of that kind)
 @(private = "file") START_SERVICE_WORKER       :: 16
 @(private = "file") START_FRAMES               :: 32
+@(private = "file") START_TEST_HOST            :: 64   // (a test program's page: native/js/odin/test_host.odin)
 
 // browser.touch.expose off (or auto without a touch screen): the ontouch* event handler attributes and the Touch,
 // TouchEvent and TouchList interfaces are not exposed, as in Firefox on such a computer; pages test 'ontouchstart' in
@@ -322,6 +323,7 @@ wj_realm_start :: proc "c" (kind: i32, seed: i64, memory_limit: f64, gc_threshol
 	// the global's interfaces for its scope, then what the runtime adds (given window or worker)
 	if wj.wj_platform_start(ctx, scope) != 0 || wj_runtime_start(ctx, scope == wj.EXPOSE_WINDOW ? wj.EXPOSE_WINDOW : wj.EXPOSE_WORKER) != 0 { return -2 }
 	if flags & START_NO_TOUCH_HANDLERS != 0 { remove_touch_handlers(ctx) }
+	if flags & START_TEST_HOST != 0 { wj_install_test_host(ctx) }
 	wj.wj_the_realm.started = true
 	return 0
 }
