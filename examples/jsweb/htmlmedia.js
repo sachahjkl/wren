@@ -10,7 +10,7 @@ async function until(cond, what, ms = 20000) {
     if (cond()) return true;
     await sleep(20);
   }
-  console.log("FAIL timeout waiting for " + what);
+  ok(false, "timeout waiting for " + what);
   return false;
 }
 
@@ -139,10 +139,10 @@ test("<source> children: the first that can play", async () => {
 const AV1 = document.createElement("video").canPlayType('video/webm; codecs="av01.0.05M.08, opus"') !== "";
 
 test("WebM (AV1 + Opus)", async () => {
-  if (!AV1) { console.log("ok no AV1 decoder here"); return; }
+  if (!AV1) { skip("av1-decoder", "the type is not supported"); return; }
   const { v } = video("/video/f/clip.webm");
   ok(await until(() => v.readyState >= 1 || v.error, "metadata or an error"), "answered");
-  if (v.error) { console.log("ok no AV1 decoder here: error " + v.error.code); v.remove(); return; }
+  if (v.error) { skip("av1-decoder", "the element's error " + v.error.code); v.remove(); return; }
   ok(Math.abs(v.duration - 4) < 0.2, "duration " + v.duration);
   eq(v.videoWidth, 320, "videoWidth");
   v.remove();
@@ -190,10 +190,10 @@ test("what is offered: honest about the decoders of this machine", () => {
 });
 
 test("WebM (AV1 + Opus) plays to the end", async () => {
-  if (!AV1) { console.log("ok no AV1 decoder here"); return; }
+  if (!AV1) { skip("av1-decoder", "the type is not supported"); return; }
   const { v } = video("/video/f/clip.webm");
   if (!await until(() => v.readyState >= 3 || v.error, "canplay")) return;
-  if (v.error) { console.log("ok no AV1 decoder here: error " + v.error.code); v.remove(); return; }
+  if (v.error) { skip("av1-decoder", "the element's error " + v.error.code); v.remove(); return; }
   await v.play();
   ok(await until(() => v.currentTime > 0.3, "the position moves"), "WebM plays: " + v.currentTime);
   v.currentTime = 3.2;
@@ -204,7 +204,7 @@ test("WebM (AV1 + Opus) plays to the end", async () => {
 });
 
 test("a live WebM (unknown sizes)", async () => {
-  if (!AV1) { console.log("ok no AV1 decoder here"); return; }
+  if (!AV1) { skip("av1-decoder", "the type is not supported"); return; }
   const { v } = video("/video/f/clip_live.webm");
   ok(await until(() => v.readyState >= 1 || v.error, "metadata or an error"), "answered");
   if (!v.error) ok(v.videoWidth === 320, "videoWidth " + v.videoWidth);

@@ -1,5 +1,8 @@
-// The harness of src/tools/jswebtest: tests run one after the other; results go to the console, which the tool reads.
+// The harness of src/tools/jswebtest: tests run one after the other, and what happens goes to the test program through the
+// functions of `wrenTest`, which only a page of a test program has (api/testhost.widl: typed on both sides, and not in a browser).
+// The program declares how many tests each script runs (jswebtest_test.odin) and fails the section when another number ran.
 "use strict";
+const __host = globalThis.wrenTest;
 const __tests = [];
 globalThis.test = (name, fn) => { __tests.push([name, fn]); };
 globalThis.show = v => {
@@ -9,30 +12,46 @@ globalThis.show = v => {
     return String(v);
   } catch (e) { return "?"; }
 };
-globalThis.ok = (cond, what) => { console.log((cond ? "ok " : "FAIL ") + what); };
+globalThis.ok = (cond, what) => { __host.check(!!cond, String(what)); };
 globalThis.eq = (got, want, what) => {
   const same = Object.is(got, want);
-  console.log((same ? "ok " : "FAIL ") + what + (same ? "" : " (got " + show(got) + ", want " + show(want) + ")"));
+  __host.check(same, what + (same ? "" : " (got " + show(got) + ", want " + show(want) + ")"));
 };
 globalThis.throws = (fn, name, what) => {
-  try { fn(); console.log("FAIL " + what + " (no exception)"); }
+  try { fn(); __host.check(false, what + " (no exception)"); }
   catch (e) { eq(e && e.name, name, what); }
 };
 globalThis.rejects = async (p, name, what) => {
-  try { await p; console.log("FAIL " + what + " (fulfilled)"); }
+  try { await p; __host.check(false, what + " (fulfilled)"); }
   catch (e) { eq(e && e.name, name, what); }
 };
-globalThis.measure = (name, value) => { console.log("MEASURE " + name + " " + value); };
+globalThis.measure = (name, value) => { __host.measure(name, Number(value)); };
+// says something the program waits for or reads
+globalThis.note = text => { __host.note(text); };
+// the test, or with no test running the whole script, cannot run on this machine ("webgl-adapter", "av1-decoder"). The
+// program looks for itself, and a skip that is not true of the machine fails.
+globalThis.skip = (reason, why) => { __host.skip(reason, why || ""); };
 // a delay without timers (timers are not part of these APIs): a timeout signal
 globalThis.sleep = ms => new Promise(resolve => { AbortSignal.timeout(ms).onabort = () => resolve(); });
 // asks the test tool to act on the page, resumes when it did
 const __waits = {};
-globalThis.signal = name => new Promise(resolve => { __waits[name] = resolve; console.log("SIGNAL " + name); });
+globalThis.signal = name => new Promise(resolve => { __waits[name] = resolve; __host.signal(name); });
 globalThis.__resume = (name, v) => { const r = __waits[name]; delete __waits[name]; if (r) r(v); };
 globalThis.__run = async () => {
   for (const [name, fn] of __tests) {
+    __host.testBegin(name);
     try { await fn(); }
-    catch (e) { console.log("FAIL " + name + ": threw " + (e && e.name) + ": " + (e && e.message)); }
+    catch (e) { __host.check(false, name + ": threw " + (e && e.name) + ": " + (e && e.message)); }
+    __host.testEnd(name);
   }
-  console.log("DONE");
+  __host.done();
+};
+// nothing of this script runs on this machine (see skip)
+globalThis.__skipAll = (reason, why) => { skip(reason, why); __host.done(); };
+// why a context cannot be had, in the words of the browser
+globalThis.webglContextError = () => {
+  let why = "";
+  const c = document.createElement("canvas");
+  c.addEventListener("webglcontextcreationerror", e => { why = e.statusMessage; });
+  return c.getContext("webgl") ? null : why || "getContext returned null";
 };

@@ -11,6 +11,9 @@ import "core:time"
 import "wb:dom"
 import "wb:host"
 import "wb:page"
+import "wb:tools/testhost"
+
+@(private = "file") PHASE_WAIT_MS :: 20000.0
 
 @(private = "file")
 Window_Record :: struct {
@@ -41,11 +44,11 @@ fullscreen_test_setup :: proc() {
 }
 
 @(private = "file")
-wait_for_log :: proc(from: int, what: string, ms: f64 = 20000) -> bool {
+wait_for_log :: proc(from: int, what: string, ms: f64 = PHASE_WAIT_MS) -> bool {
 	start := time.tick_now()
 	for time.duration_milliseconds(time.tick_since(start)) < ms {
 		for l in logs[from:] { if l == what { return true } }
-		host.loop_wait(&loop, 2)
+		host.loop_wait(&loop, LOOP_LOOK_MS)
 	}
 	return false
 }
@@ -56,23 +59,23 @@ logged_from :: proc(from: int, prefix: string) -> bool {
 	return false
 }
 
-// Runs `phase` of the page (an async function) and counts the verdicts it logs.
+// Runs `phase` of the page (an async function); its checks go to the section.
 @(private = "file")
 run_phase :: proc(p: ^page.Page, phase: string) {
 	from := len(logs)
-	code := strings.concatenate({`(async () => { await window.`, phase, `(); console.log("PHASE_DONE"); })().catch((e) => console.log("FAIL `, phase,
-		` threw " + (e && e.name) + ": " + (e && e.message) + " " + (e && e.stack)))`}, context.temp_allocator)
+	before := len(sect.notes)
+	code := strings.concatenate({`(async () => { await window.`, phase, `(); wrenTest.note("PHASE_DONE"); })().catch((e) => { wrenTest.check(false, "`, phase,
+		` threw " + (e && e.name) + ": " + (e && e.message) + " " + (e && e.stack)); wrenTest.note("PHASE_DONE"); })`}, context.temp_allocator)
 	page.js_run(p, transmute([]byte)code, "probe.js")
-	finished := wait_for_log(from, "PHASE_DONE")
-	pass, fail := 0, 0
-	for l in logs[from:] {
-		if strings.has_prefix(l, "PASS ") { pass += 1 }
-		if strings.has_prefix(l, "FAIL ") || strings.has_prefix(l, "Uncaught") { fail += 1; fmt.printf("FAIL %s: %s\n", phase, l) }
+	start := time.tick_now()
+	finished := false
+	for !finished && time.duration_milliseconds(time.tick_since(start)) < PHASE_WAIT_MS {
+		finished = len(sect.notes) > before
+		if !finished { host.loop_wait(&loop, LOOP_LOOK_MS) }
 	}
-	passes += pass
-	failures += fail
-	if !finished { fmt.printf("FAIL %s did not finish\n", phase); failures += 1 }
-	fmt.printf("  %s: %d checks passed, %d failed\n", phase, pass, fail)
+	uncaught_since(from, phase)
+	check(finished, fmt.tprintf("%s finished", phase))
+	testhost.flush(&sect, current)
 }
 
 // A click of the user in a document: it gets transient activation.

@@ -9,7 +9,7 @@ async function until(cond, what, ms = 20000) {
     if (cond()) return true;
     await sleep(20);
   }
-  console.log("FAIL timeout waiting for " + what);
+  ok(false, "timeout waiting for " + what);
   return false;
 }
 
@@ -317,7 +317,7 @@ function clusterAt(d) {
 }
 
 test("WebM: initialization segment, then media segments", async () => {
-  if (!AV1) { console.log("ok no AV1 decoder here"); return; }
+  if (!AV1) { skip("av1-decoder", "the type is not supported"); return; }
   const data = await bytes("clip.webm");
   const cut = clusterAt(data);
   ok(cut > 0, "a Cluster in the file");
@@ -325,7 +325,7 @@ test("WebM: initialization segment, then media segments", async () => {
   const sb = ms.addSourceBuffer(WEBM_VA);
   await append(sb, data.subarray(0, cut));
   ok(await until(() => v.readyState >= 1 || v.error, "metadata"), "the element has its metadata after the initialization segment alone");
-  if (v.error) { console.log("ok no AV1 decoder here"); v.remove(); return; }
+  if (v.error) { skip("av1-decoder", "the type is not supported"); v.remove(); return; }
   eq(v.videoWidth, 320, "videoWidth");
   eq(sb.buffered.length, 0, "nothing buffered before a media segment");
   const mid = cut + ((data.length - cut) >> 1);
@@ -343,7 +343,7 @@ test("WebM: initialization segment, then media segments", async () => {
 });
 
 test("WebM: a video source buffer and an Opus one, as an adaptive player appends them", async () => {
-  if (!AV1) { console.log("ok no AV1 decoder here"); return; }
+  if (!AV1) { skip("av1-decoder", "the type is not supported"); return; }
   const video = await bytes("clip_av1_video.webm");
   const audio = await bytes("tone_opus.webm");
   const { v, ms } = await attach();
@@ -352,7 +352,7 @@ test("WebM: a video source buffer and an Opus one, as an adaptive player appends
   eq(ms.sourceBuffers.length, 2, "two source buffers");
   await Promise.all([append(sbv, video), append(sba, audio)]);
   ok(await until(() => v.readyState >= 1 || v.error, "metadata"), "metadata once both had an initialization segment");
-  if (v.error) { console.log("ok no AV1 decoder here"); v.remove(); return; }
+  if (v.error) { skip("av1-decoder", "the type is not supported"); v.remove(); return; }
   ok(sbv.buffered.length === 1 && Math.abs(sbv.buffered.end(0) - 4) < 0.1, "video buffered: " + sbv.buffered.end(0));
   ok(sba.buffered.length === 1 && Math.abs(sba.buffered.end(0) - 4) < 0.1, "audio buffered: " + sba.buffered.end(0));
   ms.endOfStream();
@@ -362,7 +362,7 @@ test("WebM: a video source buffer and an Opus one, as an adaptive player appends
 });
 
 test("WebM: the type decides which tracks a buffer keeps", async () => {
-  if (!AV1) { console.log("ok no AV1 decoder here"); return; }
+  if (!AV1) { skip("av1-decoder", "the type is not supported"); return; }
   const data = await bytes("clip.webm");
   {
     const { v, ms } = await attach();
@@ -386,7 +386,7 @@ test("WebM: the type decides which tracks a buffer keeps", async () => {
 });
 
 test("WebM: a live stream and Opus laced or not, appended in small pieces", async () => {
-  if (!AV1) { console.log("ok no AV1 decoder here"); return; }
+  if (!AV1) { skip("av1-decoder", "the type is not supported"); return; }
   const data = await bytes("clip_live.webm");
   const { v, ms } = await attach();
   const sb = ms.addSourceBuffer(WEBM_VA);
@@ -401,7 +401,7 @@ test("types: what MediaSource refuses", () => {
   eq(MediaSource.isTypeSupported('video/webm; codecs="vp8, vorbis"'), false, "VP8 and Vorbis");
   eq(MediaSource.isTypeSupported('audio/webm; codecs="vorbis"'), false, "Vorbis");
   eq(MediaSource.isTypeSupported(WEBM_A), true, "Opus");
-  if (AV1) eq(MediaSource.isTypeSupported(WEBM_VA), true, "AV1 with Opus"); else console.log("ok no AV1 decoder here");
+  if (AV1) eq(MediaSource.isTypeSupported(WEBM_VA), true, "AV1 with Opus"); else skip("av1-decoder", "the type is not supported");
   eq(MediaSource.isTypeSupported('audio/mp4; codecs="mp4a.40.2"'), true, "AAC");
   eq(MediaSource.isTypeSupported('video/mp4; codecs="avc1.4d401e"'), true, "H.264");
 });

@@ -737,6 +737,12 @@ Api_StorageEventField :: enum i32 {
 	Url = 3,
 }
 
+// Why something a test needs cannot run on this machine. The test host decides whether that is true.
+Api_TestSkipReason :: enum i32 {
+	WebglAdapter = 0,
+	Av1Decoder = 1,
+}
+
 // A pending timeout or interval.
 // A live Timer: its handle and what lookup_Timer found.
 Api_Timer :: struct {
@@ -1052,6 +1058,9 @@ _valid_StorageArea :: #force_inline proc "contextless" (v: i32) -> bool { switch
 
 @(private = "file")
 _valid_StorageEventField :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3: return true }; return false }
+
+@(private = "file")
+_valid_TestSkipReason :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1: return true }; return false }
 
 @(private = "file")
 _valid_VisibilityState :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1: return true }; return false }
@@ -31163,6 +31172,146 @@ _t_storage_StorageEvent_storageArea :: proc "c" (env: rawptr, caller: wasm.Calle
 	return nil
 }
 
+// TestHost_testBegin :: proc(c: ^Call, name: string)
+@(private = "file")
+_t_testhost_TestHost_testBegin :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "testhost.TestHost_testBegin", "name") }
+	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
+	TestHost_testBegin(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// TestHost_testEnd :: proc(c: ^Call, name: string)
+@(private = "file")
+_t_testhost_TestHost_testEnd :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "testhost.TestHost_testEnd", "name") }
+	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
+	TestHost_testEnd(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// TestHost_check :: proc(c: ^Call, passed: bool, what: string)
+@(private = "file")
+_t_testhost_TestHost_check :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "testhost.TestHost_check", "what") }
+	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
+	_p0 := a[0].i32 != 0
+	TestHost_check(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// TestHost_measure :: proc(c: ^Call, name: string, value: f64)
+@(private = "file")
+_t_testhost_TestHost_measure :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "testhost.TestHost_measure", "name") }
+	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
+	_p1 := a[2].f64
+	TestHost_measure(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// TestHost_note :: proc(c: ^Call, text: string)
+@(private = "file")
+_t_testhost_TestHost_note :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "testhost.TestHost_note", "text") }
+	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
+	TestHost_note(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// TestHost_signal :: proc(c: ^Call, name: string)
+@(private = "file")
+_t_testhost_TestHost_signal :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "testhost.TestHost_signal", "name") }
+	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
+	TestHost_signal(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// TestHost_skip :: proc(c: ^Call, reason: Api_TestSkipReason, why: string)
+@(private = "file")
+_t_testhost_TestHost_skip :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "testhost.TestHost_skip", "why") }
+	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
+	_e0 := i32(a[0].i32)
+	if !_valid_TestSkipReason(_e0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Argument, "testhost.TestHost_skip: argument reason is not a TestSkipReason") }
+		return wasm.trap_new("testhost.TestHost_skip: argument reason is not a TestSkipReason")
+	}
+	_p0 := Api_TestSkipReason(_e0)
+	TestHost_skip(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// TestHost_done :: proc(c: ^Call)
+@(private = "file")
+_t_testhost_TestHost_done :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	TestHost_done(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
 // Timers_setTimeout :: proc(c: ^Call, callback: u32, user: i32, delay_ms: f64) -> u64
 @(private = "file")
 _t_timers_Timers_setTimeout :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -39060,6 +39209,14 @@ api_imports := [?]wasm.Import{
 	{module = "storage", name = "Storage_clear", fn = _t_storage_Storage_clear, realms = 1, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{.I32}},
 	{module = "storage", name = "StorageEvent_get", fn = _t_storage_StorageEvent_get, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "storage", name = "StorageEvent_storageArea", fn = _t_storage_StorageEvent_storageArea, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "testhost", name = "TestHost_testBegin", fn = _t_testhost_TestHost_testBegin, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "testhost", name = "TestHost_testEnd", fn = _t_testhost_TestHost_testEnd, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "testhost", name = "TestHost_check", fn = _t_testhost_TestHost_check, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "testhost", name = "TestHost_measure", fn = _t_testhost_TestHost_measure, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .F64}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .F64}, wide_results = []wasm.Val_Kind{}},
+	{module = "testhost", name = "TestHost_note", fn = _t_testhost_TestHost_note, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "testhost", name = "TestHost_signal", fn = _t_testhost_TestHost_signal, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "testhost", name = "TestHost_skip", fn = _t_testhost_TestHost_skip, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "testhost", name = "TestHost_done", fn = _t_testhost_TestHost_done, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{}},
 	{module = "timers", name = "Timers_setTimeout", fn = _t_timers_Timers_setTimeout, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .F64}, results = []wasm.Val_Kind{.I64}},
 	{module = "timers", name = "Timers_setInterval", fn = _t_timers_Timers_setInterval, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .F64}, results = []wasm.Val_Kind{.I64}},
 	{module = "timers", name = "Timers_setTimeout64", fn = _t_timers_Timers_setTimeout64, realms = 3, params = []wasm.Val_Kind{.I32, .I64, .F64}, results = []wasm.Val_Kind{.I64}},

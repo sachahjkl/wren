@@ -113,6 +113,32 @@ The rules are in [CONTRIBUTING](../CONTRIBUTING.md): wait for a condition, with 
 ctl wait`, `Invoke-WrenBuildIfStale`, `Ensure-WrenBuild`), one shared Wren between scenarios. And check what a wait returns:
 a tool that waited for a line nobody logs (`jsloadtest`) spent its 120 s limit in every run, and passed.
 
+## Virtual time
+
+`host.Loop` reads its time through `host.now_ns`. A test gives the loop a `host.Virtual_Clock` (`clock_virtual`) and moves it:
+`clock_advance(&loop, d)` runs at once what falls due on the way, each timer at its own deadline; `clock_move` only moves it, as a
+stalled machine would. `loop_wait` on such a clock does not wait for a timer. Production pays one test of a pointer.
+
+A test does not sleep to wait for another thread: it waits on the state (a semaphore, a completion posted to the loop,
+`base.await` when the code under test has no signal). The few real sleeps left in unit tests measure the real clock, and say so.
+
+## The test programs and their pages
+
+`jswebtest` and `jsdomtest` are test programs of `core:testing`: one `@(test)` per section (`build\jswebtest.exe -tests:core,webgl_process`, or
+`tools\jsweb_run.ps1 core webgl_process` with a test server). They run one test at a time (`-define:ODIN_TEST_THREADS=1`) and share one loop: what the
+process keeps (image cache, stores) binds to the first loop it sees. A last test, `zz_the_process_ends_with_nothing_left`, undoes it all and checks the leaks.
+
+A page's script talks to its program through the functions of `wrenTest` (`api/testhost.widl`, `native/js/odin/test_host.odin`,
+`src/page/test_host.odin`, `src/tools/testhost`), which exists only in a page given a test host: `testBegin`, `testEnd`, `check`, `measure`, `note`,
+`signal`, `skip`, `done`. The console is no protocol any more. `testhost.finish` fails:
+
+- a section that ran another number of tests than the one its `@(test)` declares (`tests = 8`), or none, or fewer checks than it declares (`min_checks`);
+- a section whose script never said `done()`, a test that checked nothing;
+- a `skip("webgl-adapter" | "av1-decoder", why)` that the program does not find true of the machine: it makes a context of its own for the first (only
+  "no graphics adapter" from the GPU process counts as none), asks the media backend for the second.
+
+A true skip prints `SKIP [section] ...`, is counted, and `test_all` lists it at the end of a run.
+
 ## Debugging the tests' time
 
 - `tools\test_profile.ps1 -Out build\prof\x -Run "<command>"` (or `test_all -Profile`): every process of the tree, by program,

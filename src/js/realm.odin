@@ -62,6 +62,7 @@ Start_Options :: struct {
 	unimplemented_throw:  bool,   // unimplemented members exist and throw NotSupportedError (else absent)
 	no_touch_handlers:    bool,   // the ontouch* attributes and the Touch* interfaces are removed (browser.touch.expose)
 	frames:               bool,   // a page's realm: the frames.* imports exist (not for the engine run alone)
+	test_host:            bool,   // a test program's page: the global wrenTest (native/js/odin/test_host.odin). Never in a browser.
 	worker_scope:         Worker_Scope,   // a Worker realm: which kind of worker (what its global exposes)
 }
 
@@ -75,6 +76,7 @@ realm_start :: proc(inst: ^wasm.Instance, o: Start_Options) -> bool {
 	if o.expose_unimplemented { flags |= 1 }
 	if o.no_touch_handlers { flags |= 4 }
 	if o.frames { flags |= 32 }
+	if o.test_host { flags |= 64 }
 	if o.unimplemented_throw { flags |= 2 }
 	if o.kind == .Worker && o.worker_scope == .Shared { flags |= 8 }
 	if o.kind == .Worker && o.worker_scope == .Service { flags |= 16 }

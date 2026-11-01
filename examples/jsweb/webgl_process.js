@@ -6,7 +6,7 @@ const EVENT_WAIT_MS = 60000;
 const until = async (what, f) => {
   const start = performance.now();
   while (!f()) {
-    if (performance.now() - start > EVENT_WAIT_MS) { console.log("FAIL waited too long for " + what); return false; }
+    if (performance.now() - start > EVENT_WAIT_MS) { ok(false, "waited too long for " + what); return false; }
     await sleep(20);
   }
   return true;
@@ -30,7 +30,7 @@ const green = gl => {
   return p.join();
 };
 
-const info = async () => { await signal("gpu_info"); return globalThis.gpuInfo; };
+const info = () => signal("gpu_info");
 
 // Something of the page's other than WebGL: it still runs.
 const pageWorks = () => {
@@ -144,6 +144,6 @@ test("a worker's context is lost and restored with the others", async () => {
   w.terminate();
 });
 
-// (a machine with no adapter has no process to look at)
-if (document.createElement("canvas").getContext("webgl")) __run();
-else { ok(true, "no adapter: nothing to show"); console.log("DONE"); }
+// (a machine with no adapter has no process to look at; the program checks that this one has none, and says why otherwise)
+const noContext = webglContextError();
+if (noContext === null) __run(); else __skipAll("webgl-adapter", noContext);

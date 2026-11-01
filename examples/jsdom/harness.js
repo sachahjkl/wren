@@ -1,6 +1,6 @@
-// Test harness of the pages of examples/jsdom (src/tools/jsdomtest runs it before each page): checks report through
-// the console, "PASS name" or "FAIL name: why", and a page says "DONE" when it is over (done(), after its asynchronous
-// checks).
+// Test harness of the pages of examples/jsdom (src/tools/jsdomtest runs it before each page): checks go to the test program
+// through `wrenTest` (api/testhost.widl: typed on both sides, and not in a browser), and a page says when it is over (done(),
+// after its asynchronous checks). The program declares how many checks a page makes at least, and fails one that ends before.
 (function () {
   function show(v) {
     if (typeof v === "string") { return JSON.stringify(v); }
@@ -8,7 +8,7 @@
     try { return Object.prototype.toString.call(v) + " " + JSON.stringify(v); } catch (e) { return Object.prototype.toString.call(v); }
   }
   globalThis.t = function (name, cond, detail) {
-    console.log((cond ? "PASS " : "FAIL ") + name + (cond || detail === undefined ? "" : ": " + detail));
+    wrenTest.check(!!cond, String(name) + (cond || detail === undefined ? "" : ": " + detail));
   };
   globalThis.eq = function (name, got, want) {
     t(name, Object.is(got, want), "got " + show(got) + ", want " + show(want));
@@ -21,7 +21,7 @@
   globalThis.section = function (name, fn) {
     try { fn(); } catch (e) { t(name + " (section)", false, "exception " + (e && e.name) + ": " + (e && e.message) + "\n" + (e && e.stack)); }
   };
-  globalThis.done = function () { console.log("DONE"); };
+  globalThis.done = function () { wrenTest.done(); };
   // a few turns of the microtask queue (MutationObserver notifications, promise reactions)
   globalThis.later = function (n) {
     let p = Promise.resolve();

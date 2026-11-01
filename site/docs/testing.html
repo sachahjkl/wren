@@ -132,6 +132,7 @@
 <li><a href="../docs/api/serviceworker.html">Module serviceworker</a></li>
 <li><a href="../docs/api/storage.html">Module storage</a></li>
 <li><a href="../docs/api/storageaccess.html">Module storageaccess</a></li>
+<li><a href="../docs/api/testhost.html">Module testhost</a></li>
 <li><a href="../docs/api/timers.html">Module timers</a></li>
 <li><a href="../docs/api/url.html">Module url</a></li>
 <li><a href="../docs/api/web.html">Module web</a></li>
@@ -320,6 +321,26 @@ looking at that test. <code>-NoFastTimeouts</code> turns it off under <code>-Qui
 <p>The rules are in <a href="https://github.com/sachahjkl/wren/blob/master/CONTRIBUTING.md">CONTRIBUTING</a>: wait for a condition, with a limit that only ends a failing run (<code>wren
 ctl wait</code>, <code>Invoke-WrenBuildIfStale</code>, <code>Ensure-WrenBuild</code>), one shared Wren between scenarios. And check what a wait returns:
 a tool that waited for a line nobody logs (<code>jsloadtest</code>) spent its 120 s limit in every run, and passed.</p>
+<h2 id="virtual-time"><a class="anchor" href="#virtual-time" aria-hidden="true">#</a>Virtual time</h2>
+<p><code>host.Loop</code> reads its time through <code>host.now_ns</code>. A test gives the loop a <code>host.Virtual_Clock</code> (<code>clock_virtual</code>) and moves it:
+<code>clock_advance(&amp;loop, d)</code> runs at once what falls due on the way, each timer at its own deadline; <code>clock_move</code> only moves it, as a
+stalled machine would. <code>loop_wait</code> on such a clock does not wait for a timer. Production pays one test of a pointer.</p>
+<p>A test does not sleep to wait for another thread: it waits on the state (a semaphore, a completion posted to the loop,
+<code>base.await</code> when the code under test has no signal). The few real sleeps left in unit tests measure the real clock, and say so.</p>
+<h2 id="the-test-programs-and-their-pages"><a class="anchor" href="#the-test-programs-and-their-pages" aria-hidden="true">#</a>The test programs and their pages</h2>
+<p><code>jswebtest</code> and <code>jsdomtest</code> are test programs of <code>core:testing</code>: one <code>@(test)</code> per section (<code>build\jswebtest.exe -tests:core,webgl_process</code>, or
+<code>tools\jsweb_run.ps1 core webgl_process</code> with a test server). They run one test at a time (<code>-define:ODIN_TEST_THREADS=1</code>) and share one loop: what the
+process keeps (image cache, stores) binds to the first loop it sees. A last test, <code>zz_the_process_ends_with_nothing_left</code>, undoes it all and checks the leaks.</p>
+<p>A page's script talks to its program through the functions of <code>wrenTest</code> (<code>api/testhost.widl</code>, <code>native/js/odin/test_host.odin</code>,
+<code>src/page/test_host.odin</code>, <code>src/tools/testhost</code>), which exists only in a page given a test host: <code>testBegin</code>, <code>testEnd</code>, <code>check</code>, <code>measure</code>, <code>note</code>,
+<code>signal</code>, <code>skip</code>, <code>done</code>. The console is no protocol any more. <code>testhost.finish</code> fails:</p>
+<ul>
+<li>a section that ran another number of tests than the one its <code>@(test)</code> declares (<code>tests = 8</code>), or none, or fewer checks than it declares (<code>min_checks</code>);</li>
+<li>a section whose script never said <code>done()</code>, a test that checked nothing;</li>
+<li>a <code>skip("webgl-adapter" | "av1-decoder", why)</code> that the program does not find true of the machine: it makes a context of its own for the first (only
+"no graphics adapter" from the GPU process counts as none), asks the media backend for the second.</li>
+</ul>
+<p>A true skip prints <code>SKIP [section] ...</code>, is counted, and <code>test_all</code> lists it at the end of a run.</p>
 <h2 id="debugging-the-tests-time"><a class="anchor" href="#debugging-the-tests-time" aria-hidden="true">#</a>Debugging the tests' time</h2>
 <ul>
 <li><code>tools\test_profile.ps1 -Out build\prof\x -Run "&lt;command&gt;"</code> (or <code>test_all -Profile</code>): every process of the tree, by program,
@@ -349,6 +370,8 @@ seconds when other runs share the machine: they barely move, the wall clock does
 <li><a href="#the-shared-code-of-test-processes">The shared code of test processes</a></li>
 <li><a href="#wpt">WPT</a></li>
 <li><a href="#writing-a-test-that-is-quick">Writing a test that is quick</a></li>
+<li><a href="#virtual-time">Virtual time</a></li>
+<li><a href="#the-test-programs-and-their-pages">The test programs and their pages</a></li>
 <li><a href="#debugging-the-tests-time">Debugging the tests' time</a></li>
 </ul>
 </nav>

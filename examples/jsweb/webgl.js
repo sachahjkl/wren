@@ -72,7 +72,7 @@ test("feature detection", () => {
 });
 
 test("a canvas has one kind of context", () => {
-  if (!available) { ok(true, "no adapter here"); return; }
+  if (!available) { skip("webgl-adapter", "no context at the start of the script"); return; }
   const [c, gl] = mk();
   ok(gl instanceof WebGLRenderingContext, "a WebGLRenderingContext");
   eq(Object.prototype.toString.call(gl), "[object WebGLRenderingContext]", "toStringTag");
@@ -738,7 +738,7 @@ test("hostile programs", () => {
 
 test("WebGL 2", () => {
   const [, gl] = mk("webgl2");
-  if (gl === null) { ok(true, "no adapter here"); return; }
+  if (gl === null) { skip("webgl-adapter", "getContext returned null"); return; }
   ok(gl.getParameter(gl.VERSION).startsWith("WebGL 2.0"), "VERSION");
   ok(gl.getParameter(gl.SHADING_LANGUAGE_VERSION).includes("3.00"), "SHADING_LANGUAGE_VERSION");
   const vs = `#version 300 es
@@ -898,7 +898,7 @@ const laterTask = () => new Promise(r => setTimeout(r, 0));
 
 test("transform feedback: interleaved, separate, pause, the rules", () => {
   const [, gl] = mk("webgl2");
-  if (gl === null) { ok(true, "no adapter here"); return; }
+  if (gl === null) { skip("webgl-adapter", "getContext returned null"); return; }
   const most = gl.getParameter(gl.MAX_TRANSFORM_FEEDBACK_SEPARATE_ATTRIBS);
   if (most === 0) {
     eq(gl.getParameter(gl.MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS), 0, "this adapter cannot, and says so");
@@ -1008,7 +1008,7 @@ test("transform feedback: drawing what it wrote, and it still draws", async () =
 
 test("queries: results on a later task, samples passed or not, primitives written", async () => {
   const [, gl] = mk("webgl2");
-  if (gl === null) { ok(true, "no adapter here"); return; }
+  if (gl === null) { skip("webgl-adapter", "getContext returned null"); return; }
   const prog = program(gl, "#version 300 es\nin vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }", "#version 300 es\nprecision mediump float; out vec4 o; void main(){ o = vec4(1.0); }");
   gl.useProgram(prog);
   pointsBuffer(gl, [-1, -1, 3, -1, -1, 3]);
@@ -1064,7 +1064,7 @@ test("queries: results on a later task, samples passed or not, primitives writte
 
 test("a vertex attribute divisor above 1", () => {
   const [, gl] = mk("webgl2", undefined, 4, 4);
-  if (gl === null) { ok(true, "no adapter here"); return; }
+  if (gl === null) { skip("webgl-adapter", "getContext returned null"); return; }
   const prog = program(gl, "#version 300 es\nlayout(location = 0) in vec2 p; layout(location = 1) in float k; out float v; void main(){ v = k; gl_Position = vec4(p.x * 0.5 + float(gl_InstanceID) - 1.5, p.y, 0.0, 1.0); }",
     "#version 300 es\nprecision mediump float; in float v; out vec4 o; void main(){ o = vec4(v, 0.0, 0.0, 1.0); }");
   gl.useProgram(prog);
@@ -1089,7 +1089,7 @@ test("what a page sets on the canvas does not need a shell", () => {
   const c = document.createElement("canvas");
   c.width = 0; c.height = 0;
   const gl = c.getContext("webgl");
-  if (gl === null) { ok(true, "no adapter here"); return; }
+  if (gl === null) { skip("webgl-adapter", "getContext returned null"); return; }
   eq(gl.drawingBufferWidth, 0, "a canvas of no size");
   gl.clear(gl.COLOR_BUFFER_BIT);
   eq(gl.getError(), 0, "drawing on it does nothing");
@@ -1183,7 +1183,7 @@ const frameUntil = async (f, what) => {
     await signal("frame");
     await sleep(20);
   }
-  console.log("FAIL waited too long for " + what);
+  ok(false, "waited too long for " + what);
   return false;
 };
 
