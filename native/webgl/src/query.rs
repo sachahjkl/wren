@@ -359,8 +359,46 @@ impl Ctx {
                     }
                 }
             }
+            ops::Q_TF_VARYING => {
+                let (id, i) = (r.u()?, r.u()?);
+                let Some(l) = self.programs.get(&id).and_then(|p| p.linked.as_ref()) else {
+                    self.set_error(INVALID_OPERATION);
+                    return Some(Reply::null());
+                };
+                match l.tf.vars.get(i as usize) {
+                    Some(v) => active_info(v.size, v.ty.gl, &v.name),
+                    None => {
+                        self.set_error(INVALID_VALUE);
+                        Reply::null()
+                    }
+                }
+            }
+            ops::Q_QUERY => {
+                let (id, pname) = (r.u()?, r.u()?);
+                if pname != crate::capture::QUERY_RESULT && pname != crate::capture::QUERY_RESULT_AVAILABLE {
+                    self.set_error(INVALID_ENUM);
+                    return Some(Reply::null());
+                }
+                let Some((available, value)) = self.query_answer(id, pname == crate::capture::QUERY_RESULT) else {
+                    self.set_error(INVALID_OPERATION);
+                    return Some(Reply::null());
+                };
+                if pname == crate::capture::QUERY_RESULT_AVAILABLE { Reply::boolean(available) } else { Reply::uint(value) }
+            }
             ops::Q_INDEXED => {
                 let (t, i) = (r.u()?, r.u()?);
+                if matches!(t, 0x8C8F | 0x8C84 | 0x8C85) {
+                    let bound = self.st.tf_bound;
+                    let Some(e) = self.tf_objects.entry(bound).or_default().binds.get(i as usize).copied() else {
+                        self.set_error(INVALID_VALUE);
+                        return Some(Reply::null());
+                    };
+                    return Some(match t {
+                        0x8C8F => Reply::object(ops::OBJ_BUFFER, e.0),
+                        0x8C84 => Reply::int(e.1 as i32),
+                        _ => Reply::int(if e.2 == u32::MAX as u64 { 0 } else { e.2 as i32 }),
+                    });
+                }
                 if t != UNIFORM_BUFFER_BINDING && t != 0x8C84 && t != 0x8A29 && t != 0x8A2A {
                     self.set_error(INVALID_ENUM);
                     return Some(Reply::null());
@@ -382,6 +420,7 @@ impl Ctx {
                     self.set_error(INVALID_ENUM);
                     return Some(Reply::empty());
                 };
+                self.buffer_sync(id);
                 let Some(b) = self.buffers.get(&id) else {
                     self.set_error(INVALID_OPERATION);
                     return Some(Reply::empty());
@@ -476,8 +515,8 @@ impl Ctx {
             0x8B89 => Reply::int(l.map_or(0, |l| l.attributes.iter().filter(|a| a.4).count()) as i32),
             0x8B86 => Reply::int(l.map_or(0, |l| l.uniforms.len()) as i32),
             0x8A36 if self.is_webgl2() => Reply::int(l.map_or(0, |l| l.blocks.len()) as i32),
-            0x8C7F if self.is_webgl2() => Reply::uint(0x8C8D),
-            0x8C83 if self.is_webgl2() => Reply::int(0),
+            0x8C7F if self.is_webgl2() => Reply::uint(if prog.linked.as_ref().is_some_and(|l| l.tf.separate) { crate::capture::SEPARATE_ATTRIBS } else { crate::capture::INTERLEAVED_ATTRIBS }),
+            0x8C83 if self.is_webgl2() => Reply::int(prog.linked.as_ref().map_or(0, |l| l.tf.vars.len() as i32)),
             _ => {
                 self.set_error(INVALID_ENUM);
                 Reply::null()
@@ -1041,7 +1080,19 @@ impl Ctx {
                 MAX_SAMPLES => Some(self.limits.max_samples as i32),
                 MAX_SERVER_WAIT_TIMEOUT => Some(0),
                 MAX_TEXTURE_LOD_BIAS => return Reply::float(2.0),
-                MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS | MAX_TRANSFORM_FEEDBACK_SEPARATE_ATTRIBS | MAX_TRANSFORM_FEEDBACK_SEPARATE_COMPONENTS => Some(0),
+                // (0 on a device that cannot capture: capture.rs)
+                MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS => Some(if self.tf_available() { crate::capture::MAX_TF_INTERLEAVED_COMPONENTS as i32 } else { 0 }),
+                MAX_TRANSFORM_FEEDBACK_SEPARATE_ATTRIBS => Some(if self.tf_available() { crate::capture::MAX_TF_BUFFERS as i32 } else { 0 }),
+                MAX_TRANSFORM_FEEDBACK_SEPARATE_COMPONENTS => Some(if self.tf_available() { crate::capture::MAX_TF_SEPARATE_COMPONENTS as i32 } else { 0 }),
+                0x8E23 => {
+                    let t = self.st.tf_bound;
+                    return Reply::boolean(self.tf_objects.get(&t).is_some_and(|o| o.active && o.paused));
+                }
+                0x8E24 => {
+                    let t = self.st.tf_bound;
+                    return Reply::boolean(self.tf_objects.get(&t).is_some_and(|o| o.active));
+                }
+                0x8E25 => return Reply::object(ops::OBJ_TF, self.st.tf_bound),
                 MAX_UNIFORM_BLOCK_SIZE => Some(m),
                 MAX_UNIFORM_BUFFER_BINDINGS_P => Some(MAX_UNIFORM_BUFFER_BINDINGS as i32),
                 UNIFORM_BUFFER_OFFSET_ALIGNMENT => Some(self.limits.ubo_align as i32),

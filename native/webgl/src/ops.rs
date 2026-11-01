@@ -85,6 +85,16 @@ pub const SAMPLER_PARAMETER_I: u32 = 84;
 pub const SAMPLER_PARAMETER_F: u32 = 85;
 pub const ENABLE_EXTENSION: u32 = 86;
 pub const COPY_TEX_SUB_IMAGE_3D: u32 = 87;
+pub const TF_VARYINGS: u32 = 100;
+pub const BIND_TF: u32 = 101;
+pub const BEGIN_TF: u32 = 102;
+pub const END_TF: u32 = 103;
+pub const PAUSE_TF: u32 = 104;
+pub const RESUME_TF: u32 = 105;
+pub const DELETE_TF: u32 = 106;
+pub const BEGIN_QUERY: u32 = 107;
+pub const END_QUERY: u32 = 108;
+pub const DELETE_QUERY: u32 = 109;
 
 // Queries: the first word of a query; they answer with bytes.
 pub const Q_ERROR: u32 = 1;
@@ -116,6 +126,8 @@ pub const Q_SNAPSHOT: u32 = 26;
 pub const Q_VALIDATE: u32 = 27;
 pub const Q_FORMAT_SAMPLES: u32 = 28;
 pub const Q_FRAG_DATA_LOCATION: u32 = 29;
+pub const Q_TF_VARYING: u32 = 30;
+pub const Q_QUERY: u32 = 31;
 
 // How a value travels in the answer of a query.
 pub const TAG_NULL: u32 = 0;
@@ -139,6 +151,7 @@ pub const OBJ_PROGRAM: u32 = 5;
 pub const OBJ_VAO: u32 = 6;
 pub const OBJ_SAMPLER: u32 = 7;
 pub const OBJ_SHADER: u32 = 8;
+pub const OBJ_TF: u32 = 9;
 
 /// What an operation is called in the console.
 pub fn name(op: u32) -> &'static str {

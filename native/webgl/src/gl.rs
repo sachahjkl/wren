@@ -277,6 +277,10 @@ pub struct Buf {
     pub max_index: HashMap<(u32, u32, u32), u32>,
     /// Vertex streams converted to what wgpu reads, by what describes them.
     pub converted: HashMap<(u32, u32, bool, u32, u32), (wgpu::Buffer, wgpu::VertexFormat, u32)>,
+    /// Vertex attributes with a divisor above 1, written out per instance: by (offset, stride, size, divisor, instances).
+    pub expanded: HashMap<(u32, u32, u32, u32, u32), (wgpu::Buffer, u32)>,
+    /// Transform feedback wrote to the GPU's copy: the shadow is behind it (capture.rs, buffer_sync).
+    pub gpu_newer: bool,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -470,6 +474,7 @@ pub struct Linked {
     pub block_groups: HashMap<Vec<u64>, wgpu::BindGroup>,
     pub outputs: u32,
     pub int_outputs: u32,
+    pub tf: crate::capture::TfProgram,
 }
 
 pub struct Program {
@@ -483,6 +488,9 @@ pub struct Program {
     pub deleted: bool,
     pub use_count: u32,
     pub generation: u32,
+    /// transformFeedbackVaryings: what the next link captures.
+    pub tf_names: Vec<String>,
+    pub tf_mode: u32,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -515,6 +523,9 @@ pub struct State {
     pub pixel_pack: u32,
     pub pixel_unpack: u32,
     pub tf_buffer: u32,
+    pub tf_bound: u32,
+    pub occlusion_query: u32,
+    pub tf_query: u32,
     pub uniform_buffer: u32,
     pub ubo_ranges: [(u32, u64, u64); MAX_UNIFORM_BUFFER_BINDINGS],
     pub vao: u32,
@@ -669,6 +680,10 @@ pub struct Ctx {
     pub frames_free: Vec<wgpu::Buffer>,
     pub fallback_group: Option<(wgpu::BindGroupLayout, wgpu::BindGroup)>,
     pub errors_told: u32,
+    pub tf_objects: HashMap<u32, crate::capture::TfObject>,
+    pub queries: HashMap<u32, crate::capture::QueryObj>,
+    pub occlusion: crate::capture::Occlusion,
+    pub capture_target: Option<wgpu::TextureView>,
 }
 
 fn error_name(code: u32) -> &'static str {
@@ -742,6 +757,9 @@ impl Ctx {
             pixel_pack: 0,
             pixel_unpack: 0,
             tf_buffer: 0,
+            tf_bound: 0,
+            occlusion_query: 0,
+            tf_query: 0,
             uniform_buffer: 0,
             ubo_ranges: [(0, 0, 0); MAX_UNIFORM_BUFFER_BINDINGS],
             vao: 0,
@@ -835,6 +853,10 @@ impl Ctx {
             bytes: 0,
             frames_free: Vec::new(),
             fallback_group: None,
+            tf_objects: HashMap::new(),
+            queries: HashMap::new(),
+            occlusion: Default::default(),
+            capture_target: None,
             errors_told: 0,
         };
         if ctx.attrs.webgl2 {
@@ -1391,6 +1413,38 @@ impl Ctx {
                 let (t, index, id, off, size) = (r.u()?, r.u()?, r.u()?, r.u()?, r.u()?);
                 self.bind_buffer_range(t, index, id, off as u64, size as u64);
             }
+            ops::TF_VARYINGS => {
+                let (p, mode) = (r.u()?, r.u()?);
+                let names = r.bytes()?;
+                self.tf_varyings(p, mode, names);
+            }
+            ops::BIND_TF => {
+                let (t, id) = (r.u()?, r.u()?);
+                self.bind_tf(t, id);
+            }
+            ops::BEGIN_TF => {
+                let mode = r.u()?;
+                self.begin_tf(mode);
+            }
+            ops::END_TF => self.end_tf(),
+            ops::PAUSE_TF => self.pause_tf(),
+            ops::RESUME_TF => self.resume_tf(),
+            ops::DELETE_TF => {
+                let id = r.u()?;
+                self.delete_tf(id);
+            }
+            ops::BEGIN_QUERY => {
+                let (t, id) = (r.u()?, r.u()?);
+                self.begin_query(t, id);
+            }
+            ops::END_QUERY => {
+                let t = r.u()?;
+                self.end_query(t);
+            }
+            ops::DELETE_QUERY => {
+                let id = r.u()?;
+                self.delete_query(id);
+            }
             ops::UNIFORM_BLOCK_BINDING => {
                 let (p, index, binding) = (r.u()?, r.u()?, r.u()?);
                 self.uniform_block_binding(p, index, binding);
@@ -1594,6 +1648,7 @@ impl Ctx {
         b.version += 1;
         b.max_index.clear();
         b.converted.clear();
+        b.expanded.clear();
         // a new buffer: what the open encoder uses keeps the old one (and its contents)
         let mut shadow = Vec::new();
         if shadow.try_reserve_exact(size).is_err() {
@@ -1625,6 +1680,7 @@ impl Ctx {
         if id == 0 {
             return self.set_error(INVALID_OPERATION);
         }
+        self.buffer_sync(id);
         let Some(b) = self.buffers.get_mut(&id) else { return self.set_error(INVALID_OPERATION) };
         let Some(end) = off.checked_add(data.len()) else { return self.set_error(INVALID_VALUE) };
         if end > b.shadow.len() {
@@ -1637,6 +1693,7 @@ impl Ctx {
         b.version += 1;
         b.max_index.clear();
         b.converted.clear();
+        b.expanded.clear();
         self.write_buffer_range(id, off, end);
     }
 
@@ -1675,6 +1732,8 @@ impl Ctx {
         if a == 0 || b == 0 {
             return self.set_error(INVALID_OPERATION);
         }
+        self.buffer_sync(a);
+        self.buffer_sync(b);
         let la = self.buffers.get(&a).map_or(0, |x| x.shadow.len());
         let lb = self.buffers.get(&b).map_or(0, |x| x.shadow.len());
         if ro.saturating_add(size) > la || wo.saturating_add(size) > lb {
@@ -1692,6 +1751,7 @@ impl Ctx {
         t.version += 1;
         t.max_index.clear();
         t.converted.clear();
+        t.expanded.clear();
         self.write_buffer_range(b, wo, wo + size);
     }
 
@@ -1724,10 +1784,10 @@ impl Ctx {
     }
 
     fn bind_buffer_range(&mut self, target: u32, index: u32, id: u32, off: u64, size: u64) {
+        if target == TRANSFORM_FEEDBACK_BUFFER {
+            return self.bind_tf_buffer(index, id, off, size);
+        }
         if target != UNIFORM_BUFFER {
-            if target == TRANSFORM_FEEDBACK_BUFFER {
-                return self.set_error(INVALID_OPERATION);
-            }
             return self.set_error(INVALID_ENUM);
         }
         if index as usize >= MAX_UNIFORM_BUFFER_BINDINGS {
@@ -2023,6 +2083,7 @@ impl Ctx {
         };
         if from_pbo {
             let id = self.st.pixel_unpack;
+            self.buffer_sync(id);
             let Some(b) = self.buffers.get(&id) else {
                 self.set_error(INVALID_OPERATION);
                 return Err(());
@@ -2837,6 +2898,9 @@ impl Ctx {
     }
 
     fn use_program(&mut self, id: u32) {
+        if self.tf_capturing() {
+            return self.set_error(INVALID_OPERATION);
+        }
         if id != 0 {
             let Some(p) = self.programs.get(&id) else { return self.set_error(INVALID_OPERATION) };
             if !p.link_status {
@@ -2852,6 +2916,10 @@ impl Ctx {
 
     fn link_program(&mut self, id: u32) {
         self.end_pass();
+        // (the program a feedback is active with stays linked: OpenGL ES 3.0)
+        if self.tf_capturing() && self.st.program == id {
+            return self.set_error(INVALID_OPERATION);
+        }
         let caps = self.caps.clone();
         let prog = self.programs.entry(id).or_insert_with(new_program);
         prog.link_status = false;
@@ -2954,6 +3022,15 @@ impl Ctx {
                 } else {
                     fs.es1_outputs()
                 };
+                let (tf_names, tf_mode) = self.programs.get(&id).map(|p| (p.tf_names.clone(), p.tf_mode)).unwrap_or_default();
+                let tf_program = match translate::capture_layout(&vs, &tf_names, tf_mode == crate::capture::SEPARATE_ATTRIBS) {
+                    Ok((vars, stride_words)) => crate::capture::TfProgram { vars, stride_words, separate: tf_mode == crate::capture::SEPARATE_ATTRIBS, ..Default::default() },
+                    Err(e) => {
+                        let prog = self.programs.get_mut(&id).unwrap();
+                        prog.log = e;
+                        return;
+                    }
+                };
                 let (mut vs_image, mut fs_image) = (vec![0u8; l.vs_size as usize], vec![0u8; l.fs_size as usize]);
                 vs_image.resize(l.vs_size.max(16) as usize, 0);
                 fs_image.resize(l.fs_size as usize, 0);
@@ -2988,6 +3065,7 @@ impl Ctx {
                     pipelines: HashMap::new(),
                     tex_groups: HashMap::new(),
                     block_groups: HashMap::new(),
+                    tf: tf_program,
                     outputs,
                     int_outputs: outs,
                 };
@@ -3120,6 +3198,7 @@ impl Ctx {
     }
 
     pub fn end_pass(&mut self) {
+        self.occlusion_close();
         self.pass = None;
         self.pass_fb = None;
     }
@@ -3134,8 +3213,12 @@ impl Ctx {
             self.ring_epoch += 1;
         }
         self.belt.finish();
+        let occlusion = self.occlusion_resolve();
         if let Some(enc) = self.encoder.take() {
             self.queue.submit(Some(enc.finish()));
+        }
+        if let Some((staging, slots)) = occlusion {
+            self.occlusion_submitted(staging, slots);
         }
         self.belt.recall();
         self.enc_gen += 1;
@@ -3264,11 +3347,11 @@ pub fn compare_fn(f: u32) -> wgpu::CompareFunction {
 }
 
 pub fn buffer_usages() -> wgpu::BufferUsages {
-    wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::INDEX | wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC
+    wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::INDEX | wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::STORAGE
 }
 
 pub fn new_buf() -> Buf {
-    Buf { gpu: None, shadow: Vec::new(), used_gen: 0, version: 0, kind: 0, usage: 0x88E4, deleted: false, max_index: HashMap::new(), converted: HashMap::new() }
+    Buf { gpu: None, shadow: Vec::new(), used_gen: 0, version: 0, kind: 0, usage: 0x88E4, deleted: false, max_index: HashMap::new(), converted: HashMap::new(), expanded: HashMap::new(), gpu_newer: false }
 }
 
 pub fn new_tex(target: u32) -> Tex {
@@ -3284,7 +3367,7 @@ pub fn new_rb() -> Rb {
 }
 
 pub fn new_program() -> Program {
-    Program { vs: 0, fs: 0, bound: HashMap::new(), linked: None, log: String::new(), link_status: false, validate_status: false, deleted: false, use_count: 0, generation: 0 }
+    Program { vs: 0, fs: 0, bound: HashMap::new(), linked: None, log: String::new(), link_status: false, validate_status: false, deleted: false, use_count: 0, generation: 0, tf_names: Vec::new(), tf_mode: crate::capture::INTERLEAVED_ATTRIBS, }
 }
 
 pub fn texel_size(fmt: Fmt) -> u32 {

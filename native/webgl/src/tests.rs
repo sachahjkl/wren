@@ -628,3 +628,257 @@ fn shader_precision_and_es1_samples() {
     assert_eq!(px[1], 255);
     assert!((px[2] as i32 - 191).abs() <= 2, "{px:?}");
 }
+
+// ---- transform feedback and queries (capture.rs) ----
+
+const VS_TF: &str = "#version 300 es\nin vec2 p; out vec3 v; out float s; void main(){ v = vec3(p, p.x + p.y); s = p.x * 2.0; gl_Position = vec4(p, 0.0, 1.0); }";
+const FS_TF: &str = "#version 300 es\nprecision mediump float; in vec3 v; out vec4 o; void main(){ o = vec4(v, 1.0); }";
+const TF_BUFFER: u32 = 0x8C8E;
+const INTERLEAVED: u32 = 0x8C8C;
+const SEPARATE: u32 = 0x8C8D;
+const RASTERIZER_DISCARD: u32 = 0x8C89;
+
+fn tf_context() -> Option<Gl> {
+    let gl = context(attrs(true, 8, 8))?;
+    let mut q = C::default();
+    q.u(ops::Q_PARAMETER).u(0x8C8B);
+    let r = gl.q(&q, 16);
+    if i32::from_ne_bytes([r[4], r[5], r[6], r[7]]) == 0 {
+        eprintln!("this adapter cannot capture: MAX_TRANSFORM_FEEDBACK_* are 0");
+        return None;
+    }
+    Some(gl)
+}
+
+fn tf_program(gl: &Gl, id: u32, names: &str, mode: u32) {
+    let mut c = C::default();
+    c.u(ops::TF_VARYINGS).u(id).u(mode).s(names);
+    gl.send(&c);
+    assert!(gl.program(id, VS_TF, FS_TF));
+}
+
+fn buffer_words(gl: &Gl, target: u32, words: usize) -> Vec<f32> {
+    let mut q = C::default();
+    q.u(ops::Q_BUFFER_SUB_DATA).u(target).u(0).u((words * 4) as u32);
+    let r = gl.q(&q, words * 4 + 16);
+    let bytes = &r[r.len() - words * 4..];
+    bytes.chunks_exact(4).map(|c| f32::from_ne_bytes([c[0], c[1], c[2], c[3]])).collect()
+}
+
+/// Vertices in buffer 1, a buffer of `bytes` to capture to in buffer 2 bound at 0.
+fn tf_setup(gl: &Gl, id: u32, verts: &[f32], bytes: u32) {
+    let mut c = C::default();
+    c.u(ops::USE_PROGRAM).u(id);
+    c.u(ops::BIND_BUFFER).u(ARRAY_BUFFER).u(1);
+    c.u(ops::BUFFER_DATA).u(ARRAY_BUFFER).u(0x88E4).u(0).u(1).b(&floats(verts));
+    c.u(ops::ENABLE_ATTRIB).u(0);
+    c.u(ops::VERTEX_ATTRIB_POINTER).u(0).u(2).u(formats::FLOAT).u(0).u(0).u(0).u(0);
+    c.u(ops::BIND_BUFFER).u(TF_BUFFER).u(2);
+    c.u(ops::BUFFER_DATA).u(TF_BUFFER).u(0x88E4).u(0).u(1).b(&vec![0u8; bytes as usize]);
+    c.u(ops::BIND_BUFFER_RANGE).u(TF_BUFFER).u(0).u(2).u(0).u(u32::MAX);
+    gl.send(&c);
+}
+
+#[test]
+fn feedback_captures_varyings_interleaved() {
+    let Some(gl) = tf_context() else { return };
+    tf_program(&gl, 10, "v\ns", INTERLEAVED);
+    tf_setup(&gl, 10, &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0], 4 * 4 * 3);
+    let mut c = C::default();
+    c.u(ops::ENABLE).u(RASTERIZER_DISCARD);
+    c.u(ops::BEGIN_TF).u(0);
+    c.u(ops::DRAW_ARRAYS).u(0).u(0).u(3).u(1);
+    c.u(ops::END_TF);
+    gl.send(&c);
+    assert_eq!(gl.error(), 0);
+    let got = buffer_words(&gl, TF_BUFFER, 12);
+    assert_eq!(got, [1.0, 2.0, 3.0, 2.0, 3.0, 4.0, 7.0, 6.0, 5.0, 6.0, 11.0, 10.0]);
+}
+
+#[test]
+fn feedback_goes_to_separate_buffers_and_gl_position() {
+    let Some(gl) = tf_context() else { return };
+    tf_program(&gl, 10, "gl_Position\ns", SEPARATE);
+    tf_setup(&gl, 10, &[1.0, 2.0, 3.0, 4.0], 4 * 4 * 2);
+    let mut c = C::default();
+    c.u(ops::BIND_BUFFER).u(TF_BUFFER).u(3);
+    c.u(ops::BUFFER_DATA).u(TF_BUFFER).u(0x88E4).u(0).u(1).b(&vec![0u8; 8]);
+    c.u(ops::BIND_BUFFER_RANGE).u(TF_BUFFER).u(1).u(3).u(0).u(u32::MAX);
+    c.u(ops::ENABLE).u(RASTERIZER_DISCARD);
+    c.u(ops::BEGIN_TF).u(0);
+    c.u(ops::DRAW_ARRAYS).u(0).u(0).u(2).u(1);
+    c.u(ops::END_TF);
+    c.u(ops::BIND_BUFFER).u(TF_BUFFER).u(2);
+    gl.send(&c);
+    assert_eq!(gl.error(), 0);
+    // (before the vertex stage's flip of y and its depth range)
+    assert_eq!(buffer_words(&gl, TF_BUFFER, 8), [1.0, 2.0, 0.0, 1.0, 3.0, 4.0, 0.0, 1.0]);
+    let mut c = C::default();
+    c.u(ops::BIND_BUFFER).u(TF_BUFFER).u(3);
+    gl.send(&c);
+    assert_eq!(buffer_words(&gl, TF_BUFFER, 2), [2.0, 6.0]);
+}
+
+#[test]
+fn feedback_writes_strips_as_triangles_and_counts_primitives() {
+    let Some(gl) = tf_context() else { return };
+    tf_program(&gl, 10, "s", INTERLEAVED);
+    // s = 2x: vertices 1, 2, 3, 4 give 2, 4, 6, 8
+    tf_setup(&gl, 10, &[1.0, 0.0, 2.0, 0.0, 3.0, 0.0, 4.0, 0.0], 4 * 6);
+    let mut c = C::default();
+    c.u(ops::ENABLE).u(RASTERIZER_DISCARD);
+    c.u(ops::BEGIN_QUERY).u(0x8C88).u(20);
+    c.u(ops::BEGIN_TF).u(4);
+    c.u(ops::DRAW_ARRAYS).u(5).u(0).u(4).u(1);
+    c.u(ops::END_TF);
+    c.u(ops::END_QUERY).u(0x8C88);
+    gl.send(&c);
+    assert_eq!(gl.error(), 0);
+    assert_eq!(buffer_words(&gl, TF_BUFFER, 6), [2.0, 4.0, 6.0, 6.0, 4.0, 8.0]);
+    let mut q = C::default();
+    q.u(ops::Q_QUERY).u(20).u(0x8866);
+    let r = gl.q(&q, 16);
+    assert_eq!(u32::from_ne_bytes([r[4], r[5], r[6], r[7]]), 2);
+}
+
+#[test]
+fn feedback_appends_over_draws_and_pause_stops_it() {
+    let Some(gl) = tf_context() else { return };
+    tf_program(&gl, 10, "s", INTERLEAVED);
+    tf_setup(&gl, 10, &[1.0, 0.0, 2.0, 0.0, 3.0, 0.0], 4 * 3);
+    let mut c = C::default();
+    c.u(ops::ENABLE).u(RASTERIZER_DISCARD);
+    c.u(ops::BEGIN_TF).u(0);
+    c.u(ops::DRAW_ARRAYS).u(0).u(0).u(1).u(1);
+    c.u(ops::PAUSE_TF);
+    c.u(ops::DRAW_ARRAYS).u(0).u(1).u(1).u(1);
+    c.u(ops::RESUME_TF);
+    c.u(ops::DRAW_ARRAYS).u(0).u(2).u(1).u(1);
+    gl.send(&c);
+    assert_eq!(gl.error(), 0);
+    // no more room for two points, and nothing written of them: an error
+    let mut c = C::default();
+    c.u(ops::DRAW_ARRAYS).u(0).u(0).u(2).u(1);
+    gl.send(&c);
+    assert_eq!(gl.error(), INVALID_OPERATION);
+    let mut c = C::default();
+    c.u(ops::END_TF);
+    gl.send(&c);
+    assert_eq!(gl.error(), 0);
+    let got = buffer_words(&gl, TF_BUFFER, 3);
+    assert_eq!(got, [2.0, 6.0, 0.0]);
+}
+
+#[test]
+fn feedback_follows_the_rules() {
+    let Some(gl) = tf_context() else { return };
+    tf_program(&gl, 10, "s", INTERLEAVED);
+    tf_setup(&gl, 10, &[1.0, 0.0, 2.0, 0.0, 3.0, 0.0], 4 * 3);
+    // the wrong primitive
+    let mut c = C::default();
+    c.u(ops::BEGIN_TF).u(0);
+    c.u(ops::DRAW_ARRAYS).u(4).u(0).u(3).u(1);
+    gl.send(&c);
+    assert_eq!(gl.error(), INVALID_OPERATION);
+    // elements, another program, begin twice
+    let mut c = C::default();
+    c.u(ops::BEGIN_TF).u(0);
+    gl.send(&c);
+    assert_eq!(gl.error(), INVALID_OPERATION);
+    let mut c = C::default();
+    c.u(ops::USE_PROGRAM).u(0);
+    gl.send(&c);
+    assert_eq!(gl.error(), INVALID_OPERATION);
+    // its buffer cannot be read as an attribute while it is written
+    let mut c = C::default();
+    c.u(ops::BIND_BUFFER).u(ARRAY_BUFFER).u(2);
+    c.u(ops::VERTEX_ATTRIB_POINTER).u(0).u(2).u(formats::FLOAT).u(0).u(0).u(0).u(0);
+    c.u(ops::DRAW_ARRAYS).u(0).u(0).u(1).u(1);
+    gl.send(&c);
+    assert_eq!(gl.error(), INVALID_OPERATION);
+    let mut c = C::default();
+    c.u(ops::END_TF);
+    c.u(ops::END_TF);
+    gl.send(&c);
+    assert_eq!(gl.error(), INVALID_OPERATION);
+}
+
+#[test]
+fn a_varying_that_does_not_exist_fails_the_link() {
+    let Some(gl) = tf_context() else { return };
+    let mut c = C::default();
+    c.u(ops::TF_VARYINGS).u(10).u(INTERLEAVED).s("nope");
+    gl.send(&c);
+    assert!(!gl.program(10, VS_TF, FS_TF));
+}
+
+#[test]
+fn occlusion_queries_say_whether_samples_passed() {
+    let Some(gl) = context(attrs(true, 8, 8)) else { return };
+    full_triangle(&gl, 10, FS_COLOR);
+    let mut c = C::default();
+    // drawn: samples
+    c.u(ops::BEGIN_QUERY).u(0x8C2F).u(20);
+    c.u(ops::DRAW_ARRAYS).u(4).u(0).u(3).u(1);
+    c.u(ops::END_QUERY).u(0x8C2F);
+    // scissored away: none
+    c.u(ops::ENABLE).u(0x0C11).u(ops::SCISSOR).u(0).u(0).u(1).u(1);
+    c.u(ops::BEGIN_QUERY).u(0x8D6A).u(21);
+    c.u(ops::DRAW_ARRAYS).u(4).u(0).u(0).u(1);
+    c.u(ops::END_QUERY).u(0x8D6A);
+    gl.send(&c);
+    assert_eq!(gl.error(), 0);
+    let result = |id: u32| {
+        let mut q = C::default();
+        q.u(ops::Q_QUERY).u(id).u(0x8866);
+        let r = gl.q(&q, 16);
+        u32::from_ne_bytes([r[4], r[5], r[6], r[7]])
+    };
+    assert_eq!(result(20), 1, "the triangle's samples passed");
+    assert_eq!(result(21), 0, "nothing was drawn");
+    let mut q = C::default();
+    q.u(ops::Q_QUERY).u(20).u(0x8867);
+    let r = gl.q(&q, 16);
+    assert_eq!(u32::from_ne_bytes([r[4], r[5], r[6], r[7]]), 1, "available");
+    // the rules
+    let mut c = C::default();
+    c.u(ops::BEGIN_QUERY).u(0x8C2F).u(22);
+    c.u(ops::BEGIN_QUERY).u(0x8C2F).u(23);
+    gl.send(&c);
+    assert_eq!(gl.error(), INVALID_OPERATION);
+    let mut c = C::default();
+    c.u(ops::END_QUERY).u(0x8C2F);
+    c.u(ops::END_QUERY).u(0x8C2F);
+    gl.send(&c);
+    assert_eq!(gl.error(), INVALID_OPERATION);
+}
+
+#[test]
+fn a_divisor_above_one_steps_every_so_many_instances() {
+    let Some(gl) = context(attrs(true, 4, 4)) else { return };
+    let vs = "#version 300 es\nin vec2 p; in float k; out float v; void main(){ v = k; gl_Position = vec4(p.x * 0.5 + float(gl_InstanceID) - 1.5, p.y, 0.0, 1.0); }";
+    let fs = "#version 300 es\nprecision mediump float; in float v; out vec4 o; void main(){ o = vec4(v, 0.0, 0.0, 1.0); }";
+    assert!(gl.program(10, vs, fs));
+    let mut q = C::default();
+    q.u(ops::Q_ATTRIB_LOCATION).u(10).s("k");
+    let r = gl.q(&q, 16);
+    let k = u32::from_ne_bytes([r[4], r[5], r[6], r[7]]);
+    let p = 1 - k;
+    let mut c = C::default();
+    c.u(ops::USE_PROGRAM).u(10);
+    c.u(ops::BIND_BUFFER).u(ARRAY_BUFFER).u(1);
+    c.u(ops::BUFFER_DATA).u(ARRAY_BUFFER).u(0x88E4).u(0).u(1).b(&floats(&[-1.0, -1.0, 1.0, -1.0, -1.0, 3.0, 1.0, -1.0, 1.0, 3.0, -1.0, 3.0]));
+    c.u(ops::ENABLE_ATTRIB).u(p);
+    c.u(ops::VERTEX_ATTRIB_POINTER).u(p).u(2).u(formats::FLOAT).u(0).u(0).u(0).u(0);
+    c.u(ops::BIND_BUFFER).u(ARRAY_BUFFER).u(2);
+    c.u(ops::BUFFER_DATA).u(ARRAY_BUFFER).u(0x88E4).u(0).u(1).b(&floats(&[1.0, 0.0]));
+    c.u(ops::ENABLE_ATTRIB).u(k);
+    c.u(ops::VERTEX_ATTRIB_POINTER).u(k).u(1).u(formats::FLOAT).u(0).u(0).u(0).u(0);
+    c.u(ops::VERTEX_ATTRIB_DIVISOR).u(k).u(2);
+    c.u(ops::DRAW_ARRAYS).u(4).u(0).u(6).u(4);
+    gl.send(&c);
+    assert_eq!(gl.error(), 0);
+    let row = gl.pixels(0, 1, 4, 1);
+    let reds: Vec<u8> = row.chunks_exact(4).map(|p| p[0]).collect();
+    assert_eq!(reds, [255, 255, 0, 0], "two instances with the first value, two with the second");
+}

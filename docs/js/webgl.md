@@ -16,7 +16,7 @@ web-platform-tests is in `wpt/suites.txt`.
 |---|---|---|
 | the interfaces | `native/js/odin/web_webgl.js`, `web_webgl.odin` | Web IDL: objects, overloads, conversions; which object is whose. Calls become words in a command buffer. |
 | the crossing | `api/webgl.widl`, `src/page/bindings_webgl.odin`, `src/webgl` | A context on its canvas's backing; command buffers, questions, frames. |
-| the device | `native/webgl`: `gl.rs`, `draw.rs`, `query.rs`, `formats.rs`, `ops.rs` | A thread with a wgpu device per context: OpenGL ES's state machine, all its rules and its errors. |
+| the device | `native/webgl`: `gl.rs`, `draw.rs`, `capture.rs`, `query.rs`, `formats.rs`, `ops.rs` | A thread with a wgpu device per context: OpenGL ES's state machine, all its rules and its errors. |
 | the shaders | `native/webgl/src/translate.rs` | GLSL ES to what naga reads, and what WebGL must know of a shader. |
 
 Calls are written to a buffer and sent at the end of the task, when the buffer is full, or when the page has to wait for something
@@ -54,6 +54,9 @@ available. So:
 | RGB, luminance, alpha, 16-bit packed textures | expanded to RGBA on upload |
 | incomplete textures | a fallback texture of opaque black |
 | `generateMipmap`, scaled blits, clears with a mask or scissor | drawn |
+| transform feedback | a variant of the vertex stage stores its varyings in storage buffers, in a pass of its own (`capture.rs`) |
+| occlusion queries of GL, which last across passes | an occlusion slot per pass they cross, resolved at each submit; the result is any of them |
+| a vertex attribute divisor above 1 | the values written out per instance |
 
 ### Shaders
 
@@ -73,12 +76,14 @@ implicit conversions from `int` to `float` compile, and the loop restrictions of
 
 ## Limits
 
-- **Transform feedback**: the objects exist, `MAX_TRANSFORM_FEEDBACK_*` are 0, `beginTransformFeedback` is `INVALID_OPERATION`.
-- **Queries**: `getQueryParameter` says at once that everything passed. No timers (`EXT_disjoint_timer_query`).
+- **Transform feedback**: needs vertex shaders that write to storage (`VERTEX_WRITABLE_STORAGE`, everywhere Direct3D 12 and Vulkan have it). An adapter
+  without it says `MAX_TRANSFORM_FEEDBACK_*` are 0, and `beginTransformFeedback` is `INVALID_OPERATION`. A vertex of the capture runs in a pass of its own: a program's
+  vertex stage runs twice when it is also drawn. Strips, fans and loops copy their primitives vertex by vertex, which is slow for many.
+- **Queries**: no timers (`EXT_disjoint_timer_query`). `ANY_SAMPLES_PASSED_CONSERVATIVE` is `ANY_SAMPLES_PASSED`.
 - **Compressed textures**: S3TC only (`WEBGL_compressed_texture_s3tc`), 2D, where the adapter has BC formats. No ETC, ASTC, RGTC, BPTC.
-- **Rendering**: lines are 1 pixel wide. A vertex attribute divisor above 1 is drawn as 1. Points cannot be instanced. `SAMPLE_COVERAGE` is ignored.
+- **Rendering**: lines are 1 pixel wide. A vertex attribute divisor above 1 is written out, per instance, on each draw count. Points cannot be instanced. `SAMPLE_COVERAGE` is ignored.
   A framebuffer's depth and stencil must be one attachment. Depth blits are whole copies of the same size and samples.
-- **Workers**: `getContext("webgl")` on an `OffscreenCanvas` works in a window; in a worker it gives null.
+- **Workers**: `getContext("webgl")` on an `OffscreenCanvas` works in a window; in a worker it gives null (the module is `[Exposed=Window]`, and frames and their notices go through a document's canvas: not a small change).
 - **Videos** are textures when their picture is on the CPU (software decoding); a picture only on the GPU uploads nothing.
 - **`gl.getError` from a Wasm module of a page**: as JavaScript's; a malformed stream loses the context.
 - **Objects collected**: buffers, textures and programs a page drops without deleting stay until the page or the context goes.

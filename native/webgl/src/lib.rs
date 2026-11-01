@@ -8,6 +8,7 @@
 //! once per frame into the canvas's bitmap. It is a copy through the CPU, the same path a 2D canvas takes: the toolkit
 //! draws with Direct3D 11 on Windows and shares no textures with this device (docs/js/webgl.md).
 
+pub mod capture;
 pub mod draw;
 pub mod formats;
 pub mod gl;
@@ -213,7 +214,7 @@ fn make_device(a: &WgAttrs, take_turn: bool) -> Init {
     if software && a.fail_if_major_performance_caveat != 0 {
         return Init { result: Err("failIfMajorPerformanceCaveat: the only adapter is a software one".to_string()) };
     }
-    let wanted = wgpu::Features::TEXTURE_COMPRESSION_BC | wgpu::Features::FLOAT32_FILTERABLE | wgpu::Features::FLOAT32_BLENDABLE | wgpu::Features::RG11B10UFLOAT_RENDERABLE | wgpu::Features::DEPTH32FLOAT_STENCIL8 | wgpu::Features::ADDRESS_MODE_CLAMP_TO_ZERO;
+    let wanted = wgpu::Features::TEXTURE_COMPRESSION_BC | wgpu::Features::FLOAT32_FILTERABLE | wgpu::Features::FLOAT32_BLENDABLE | wgpu::Features::RG11B10UFLOAT_RENDERABLE | wgpu::Features::DEPTH32FLOAT_STENCIL8 | wgpu::Features::ADDRESS_MODE_CLAMP_TO_ZERO | wgpu::Features::VERTEX_WRITABLE_STORAGE;
     let features = adapter.features() & wanted;
     let mut limits = adapter.limits();
     // what is asked is what the adapter has, except what GL does not need more of
