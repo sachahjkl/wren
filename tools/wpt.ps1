@@ -137,6 +137,7 @@ if ($Quick -or $FastTimeouts) { $SecondChanceMax = 600 }
 # ... and how many times its time limit a test gets alone (the other steps of test_all still run beside it).
 $SecondChanceTimeFactor = 4
 $SecondChanceJobs = 2
+$SecondChanceScriptMs = 60000
 $checkout = if ($WptRoot) { (Resolve-Path $WptRoot).Path } else { $wpt }
 $runArgs = @('-server', "http://127.0.0.1:PORT", '-root', $checkout, '-suites', $(if ($Suites) { (Resolve-Path $Suites).Path } else { $suitesFile }), '-expect', (Join-Path $root 'wpt\expectations'), '-timeout', $TimeoutMs,
              '-md', (Join-Path $out 'report.md'), '-results', (Join-Path $out 'results.txt'))
@@ -265,7 +266,8 @@ try {
                     $kept = @(); for ($ai = 0; $ai -lt $runArgs.Count; $ai++) { if ($runArgs[$ai] -in '-timeout-cap', '-idle') { $ai++ } elseif ($runArgs[$ai] -ne '-quick') { $kept += $runArgs[$ai] } }
                     $againList = Join-Path $out 'again_list.txt'
                     [IO.File]::WriteAllText($againList, ($paths -join "`n") + "`n")
-                    $again = $kept + @('-only-file', $againList, '-jobs', $SecondChanceJobs, '-timeout', ($SecondChanceTimeFactor * $TimeoutMs), '-results', (Join-Path $out 'again.txt'), '-md', (Join-Path $out 'again.md'))
+                    # (its time limit, and the engine's for one script: "Uncaught InternalError: interrupted" of a 5 s script on a loaded machine is no regression)
+                    $again = $kept + @('--pref', "javascript.slow_script_ms=$SecondChanceScriptMs", '-only-file', $againList, '-jobs', $SecondChanceJobs, '-timeout', ($SecondChanceTimeFactor * $TimeoutMs), '-results', (Join-Path $out 'again.txt'), '-md', (Join-Path $out 'again.md'))
                     $res = & $exe @again 2>$null
                     $status = $LASTEXITCODE
                     $still = @($res | ForEach-Object { if ($_ -match '^REGRESSION (\S+?)(?:: | \| )') { $Matches[1] } } | Select-Object -Unique)
