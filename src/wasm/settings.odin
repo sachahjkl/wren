@@ -1,5 +1,6 @@
 package wasm
 
+import "core:os"
 import "core:path/filepath"
 import "core:strings"
 import "wb:config"
@@ -8,6 +9,9 @@ import "wb:config"
 //   * Options: per instance (a page's modules, a worker's module), read for every new page (page.Settings.wasm).
 //   * Runtime_Settings: the engine itself (compiler, proposals, caches). Wasmtime compiles with one
 //     configuration per process, so these take effect at the next start (`restart`).
+
+@(private) TEST_CACHE_ENV :: "WREN_TEST_WASM_CACHE"
+@(private) TEST_CACHE_ALLOWED :: #config(WREN_CHANNEL, "dev") != "release"
 
 PREFS := [?]config.Def{
 	{name = "wasm.instruction_budget", kind = .Int, default = {i = 50_000_000}, bounded = true, min = -1, max = 1 << 40, unit = "instructions",
@@ -153,6 +157,16 @@ runtime_settings_from_prefs :: proc(p: ^config.Prefs, profile_dir: string) -> Ru
 	if profile_dir != "" && config.bool_of(p, "wasm.cache.disk") {
 		dir, err := filepath.join({profile_dir, "wasm-cache"})
 		if err == nil { rs.cache_dir = dir }
+	}
+	// A test run's processes share one disk cache (tools\test_env.ps1): the JavaScript engine's image compiles in 5 s of CPU, and a run starts
+	// hundreds of them, each on a throwaway profile or on none. Never in a release: an address in the environment is not where machine code comes from.
+	when TEST_CACHE_ALLOWED {
+		if config.bool_of(p, "wasm.cache.disk") {
+			if shared := os.get_env(TEST_CACHE_ENV, context.temp_allocator); shared != "" {
+				delete(rs.cache_dir)
+				rs.cache_dir = strings.clone(shared)
+			}
+		}
 	}
 	return rs
 }
