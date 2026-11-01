@@ -15,6 +15,10 @@ import "core:mem"
 
 // Back edges and calls between two polls of the interrupt hook.
 INTERRUPT_POLL_EVERY :: 10_000
+// What a call of a native function counts for in those: it may take a thousand times a back edge (a document.write parses
+// markup and builds nodes). Counted as one, a loop of document.write looked at the interrupt only after seconds on a loaded
+// machine, the slow script's flag went unseen until the hard stop (wasm.max_call_ms), and the page lost its engine.
+NATIVE_CALL_POLL_WEIGHT :: 100
 // Interpreter call depth when the host does not choose one (Host_Config.max_stack_depth).
 DEFAULT_MAX_STACK_DEPTH :: 10_000
 // Host stack the engine may use when the host does not choose (Host_Config.max_stack_bytes): fits a 1 MiB thread stack.

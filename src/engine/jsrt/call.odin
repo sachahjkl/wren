@@ -413,6 +413,7 @@ call_native :: proc(ctx: ^Context, o: ^Object, nd: ^Native_Data, this: Value, ar
 	rt.stack_depth -= 1
 	rt.native_self = saved
 	temp_reset(rt, m)
+	rt.interrupt_counter += NATIVE_CALL_POLL_WEIGHT
 	return r
 }
 

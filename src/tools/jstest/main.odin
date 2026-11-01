@@ -364,14 +364,18 @@ try { "x".repeat(1 << 30); } catch (e) { console.log("huge string", e.name) }
 		}
 
 		p, ms = timed(process, `<!doctype html><body><script>
-function m() { Promise.resolve().then(m); }
+globalThis.links = 0;
+function m() { links++; Promise.resolve().then(m); }
 m();
 </script><script>console.log("after microtasks")</script></body>`)
 		check(logged("after microtasks"), "an endless microtask chain is stopped, the next script runs")
 		usable(p, "microtask chain")
-		restarted := false
-		for l in logs { if strings.contains(l, "slow_script_ms") { restarted = true } }
-		check(!restarted, "the stopped microtask chain does not start again at the next checkpoint")
+		// (its count, not the slow script's message: on a loaded machine the probe's own checkpoint may pass the limit)
+		logs_clear()
+		page.js_run(p, transmute([]byte)string(`console.log("links " + globalThis.links); globalThis.seen = links;`), "probe.js")
+		settle()
+		page.js_run(p, transmute([]byte)string(`console.log("again " + (links === seen))`), "probe.js")
+		check(logged("again true"), "the stopped microtask chain does not start again at the next checkpoint")
 		page.page_close(p)
 
 		p, ms = timed(process, `<!doctype html><body><script>
