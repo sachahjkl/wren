@@ -148,9 +148,10 @@ try_options_resolve :: proc(cx: ^Cx, env: ^Var_Env, e: ^Engine, doc: ^dom.Docume
 	opts := make([]Try_Option, len(c.position_try_fallbacks), cx.alloc)
 	copy(opts, c.position_try_fallbacks)
 	c.position_try_fallbacks = opts
-	for &o in opts {
+	for &o, i in opts {
 		o.rule, o.missing = nil, false
 		if o.name == "" { continue }
+		if i >= TRY_OPTIONS_MAX { o.missing = true; continue }   // (layout tries no more)
 		rule := try_rule_of(e, doc, h, o.name)
 		if rule == nil { o.missing = true; continue }
 		tmp := new(Computed, context.temp_allocator)
