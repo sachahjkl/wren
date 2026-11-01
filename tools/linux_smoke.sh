@@ -26,6 +26,9 @@ check "script runs" "Wren 4" "$(ctl eval "document.getElementById('a').textConte
 check "layout" "true" "$(ctl eval "document.getElementById('a').getBoundingClientRect().height > 10")"
 # deep recursion on the main thread: the same limits as on Windows, without a ulimit from the caller
 check "deep recursion" "RangeError" "$(ctl eval "(function(){ function f(){ return f() + 1 } try { f() } catch (e) { return e.name } })()")"
+# WebGL, on the machine's Vulkan (Mesa's lavapipe on a runner): a clear read back (null: no adapter, which is said, not failed)
+webgl="$(ctl eval "(function(){ var c=document.createElement('canvas'), g=c.getContext('webgl'); if(!g) return 'no adapter'; g.clearColor(0,1,0,1); g.clear(g.COLOR_BUFFER_BIT); var p=new Uint8Array(4); g.readPixels(0,0,1,1,g.RGBA,g.UNSIGNED_BYTE,p); return 'pixel '+p.join(); })()")"
+check "WebGL" "pixel 0,255,0,255" "$webgl"
 ctl shot "$OUT/shot.png" | tail -1
 size=$(stat -c %s "$OUT/shot.png" 2>/dev/null || echo 0)
 if [ "$size" -gt 1000 ]; then echo "PASS a capture ($size bytes)"; else echo "FAIL a capture ($size bytes)"; fail=$((fail + 1)); fi
