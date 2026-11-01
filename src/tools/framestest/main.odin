@@ -442,6 +442,47 @@ log("still sync");
 
 }
 
+// document.open / write / close on a frame's document, from the parent.
+document_write :: proc() {
+	fmt.println("-- document.open, write and close of a frame")
+	{
+		p := load(`<body><iframe id=f></iframe><script>
+addEventListener("message", e => log(e.data));
+const f = document.getElementById("f");
+let loads = 0;
+f.addEventListener("load", () => log("frame load " + (++loads)));
+const d = f.contentDocument;
+const same = d.open();
+log("open " + (same === d));
+d.write("<!doctype html><html><head><title>written</title></head><body><p id=w>written</p>");
+d.write("<script>parent.postMessage('written script ran ' + document.getElementById('w').textContent, '*');</" + "script>");
+d.writeln("<p id=second>second</p></body></html>");
+d.close();
+log("read " + d.title + " " + d.getElementById("w").textContent + " " + d.getElementById("second").textContent + " " + (document.getElementById("w") === null) + " " + (d.body.tagName));
+log("mode " + d.compatMode);
+</script></body>`)
+		check(wait_for("open true"), "document.open of a frame gives that document")
+		check(wait_for("written script ran written"), "a written script runs in the frame's realm, with what was written before it")
+		check(wait_for("read written written second true BODY"), "what was written is the frame's document, and not the parent's")
+		check(wait_for("mode CSS1Compat"), "its doctype counts")
+		page.page_close(p)
+	}
+	{
+		p := load(`<body><iframe id=f></iframe><script>
+const f = document.getElementById("f");
+const d1 = f.contentWindow.document;
+d1.write("<body>one</body>");
+d1.close();
+log("first " + f.contentDocument.body.textContent);
+f.contentDocument.write("<body>two</body>");
+f.contentDocument.close();
+log("second " + f.contentDocument.body.textContent);
+</script></body>`)
+		check(wait_for("first one") && wait_for("second two"), "write without open opens it; a second one replaces what is there")
+		page.page_close(p)
+	}
+}
+
 // What another origin, or a sandbox, must not reach: every route (src/page/frames_access.odin).
 cross_origin_boundary :: proc() {
 	fmt.println("-- the boundary: a cross-origin frame stays out of reach by every route")
@@ -837,6 +878,7 @@ addEventListener("message", e => log("nav " + e.data));
 
 	same_origin_dom()
 	events_and_scripts()
+	document_write()
 	cross_origin_boundary()
 
 	fmt.println("-- Permissions Policy: the allow attribute delegates features")
