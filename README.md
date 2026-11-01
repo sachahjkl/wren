@@ -314,7 +314,7 @@ tool fails when anything is still allocated once it has shut down (`src/tools/te
 Odin context of its own starts from `base.process_context()`; what is kept for the life of the process on purpose
 comes from `base.permanent_allocator()` and is never reported. `build.bat check` builds the browser the same way,
 with a script driver (`WREN_MEMCHECK_SCRIPT`, `src/browser/memcheck.odin`) that runs whole sessions without the
-desktop's input: [`tools\memcheck_e2e.ps1`](tools/memcheck_e2e.ps1) (tabs, scripts, images, forms, the
+desktop's input: [`src\tools\e2e\memcheck.odin`](src/tools/e2e/memcheck.odin) (tabs, scripts, images, forms, the
 back/forward cache, the palette, history, then a normal exit with nothing left) and
 [`tools\endurance.ps1`](tools/endurance.ps1) (400 tabs and 2,000 navigations: the tracked bytes, the private bytes
 and the kernel, GDI and USER handles must stop growing). [`tools\asan.ps1`](tools/asan.ps1) builds the unit tests

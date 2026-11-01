@@ -108,7 +108,6 @@ Remote :: struct {
 	stash_id:   int,        // an answer that came while its command was still starting
 	stash_text: string,
 	exit_code:  int,
-	fast_exit:  bool,
 	inputs:     int,        // events injected (macro and statistics)
 	rec:        Remote_Recording,
 	queued:     [dynamic]Remote_Queued,   // requests that came while a page held the thread (a chrome frame ran): taken after the frame
@@ -214,7 +213,6 @@ remote_stop :: proc(app: ^App) {
 	remote_recording_destroy(&r.rec)
 	remote_state_free()
 	remote_exit_code = r.exit_code
-	remote_fast_exit = r.fast_exit
 	r^ = {}
 }
 

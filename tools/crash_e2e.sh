@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The crash reports of Linux (src/tools/crashtrace/crashtrace_linux.odin), end to end: src/tools/crashmodes dies in each
 # way a Wren has died, and each death must leave its report (the stack, the build) or, for a death no handler sees, an
-# "unclean exit" report at the next start. What tools\crash_e2e.ps1 checks on Windows.
+# "unclean exit" report at the next start. What src\tools\e2e\crash_reports.odin checks on Windows.
 #   tools/crash_e2e.sh [odin]
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

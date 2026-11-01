@@ -14,7 +14,7 @@
 # their own heaps), virtual memory arenas (base.Scope, vmem.Arena: VirtualAlloc, no redzones), Wasm linear memories
 # (Wasmtime's guard pages already trap there).
 # The browser's ASan build: build\asan\wren_asan.exe (debug, 32 MiB stack, the check build's tracker and script
-# driver); run it through tools\memcheck_e2e.ps1 -Exe build\asan\wren_asan.exe -NoBuild (with ASAN_OPTIONS set).
+# driver); run it through the scenario of src\tools\e2e\memcheck.odin with WREN_MEMCHECK_EXE=build\asan\wren_asan.exe (and ASAN_OPTIONS set).
 param([string[]]$Packages = @(), [switch]$Browser, [string]$Program = '', [string]$Names = '', [switch]$Console, [string]$Out = '', [int]$Jobs = 1)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
@@ -110,7 +110,7 @@ $ErrorActionPreference = $prevEap2
 $env:ASAN_OPTIONS = 'windows_hook_rtl_allocators=true:handle_segv=0:detect_stack_use_after_return=false'
 $failed = 0
 if ($Browser) {
-    # (with the tracker of the check build: its script driver runs the sessions of memcheck_e2e.ps1 / endurance.ps1)
+    # (with the tracker of the check build: its script driver runs the sessions of src\tools\e2e\memcheck.odin and endurance.ps1)
     $exe = Build-Asan 'build' 'src/browser' 'browser_asan' @('-define:WREN_CHANNEL=dev', '-resource:src/browser/wren_dev.rc', '-define:WREN_TRACK_MEMORY=true') $(if ($Console) { 'CONSOLE' } else { 'WINDOWS' })
     "built $exe (ASAN_OPTIONS=$env:ASAN_OPTIONS when you run it)"
 }

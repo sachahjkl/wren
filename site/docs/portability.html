@@ -286,8 +286,8 @@ the two share. The Windows archive links as shipped.</p>
 </tbody>
 </table></div>
 <p>Linux end to end: <code>tools/crash_e2e.sh</code> (8 ways of dying, each with its report or an unclean-exit report). Windows after
-the slice: the unit tests of every package touched, <code>nettest</code> and <code>wsclosetest</code> on both stacks, <code>remote_e2e</code>,
-<code>crash_e2e</code>, the dev build.</p>
+the slice: the unit tests of every package touched, <code>nettest</code> and <code>wsclosetest</code> on both stacks, the scenarios of the channel and of
+crash reports (<code>src\tools\e2e</code>), the dev build.</p>
 <h2 id="slice-3-2026-10-27-night-what-it-adds"><a class="anchor" href="#slice-3-2026-10-27-night-what-it-adds" aria-hidden="true">#</a>Slice 3 (2026-10-27, night): what it adds</h2>
 <p>The counts do not move (78 / 153; the engine 35 / 37): no package that was blocked passes now — the blocked ones are
 <code>browser</code> and the toolkit's <code>platform</code> / <code>render</code>, the shell and the window, a later chantier. Slice 3 fills the

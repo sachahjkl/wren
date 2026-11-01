@@ -23,21 +23,6 @@
 
 function Get-WrenRepoRoot { Split-Path $PSScriptRoot -Parent }
 
-# Performance tests: what asserts on a duration, a CPU time, a throughput, a latency or a count of frames in a window of time depends on the
-# machine, and the CI runners are of unknown speed. Those checks are opt-in (test_all.ps1 -Perf, or WREN_PERF=1) and never run when the CI
-# variable is set. This is the one place that decides for the scripts (src\base\perf.odin does the same for the Odin tests).
-#   Test-WrenPerf       are the performance tests on?
-#   Skip-WrenPerf       says that one is skipped ("perf: skipped, run with -Perf: <what>")
-#   Check-Perf          Check (the calling script's own) when they are on, a skip line otherwise; put the measure in the name or the detail
-function Test-WrenPerf { return (-not $env:CI) -and ($env:WREN_PERF -eq '1' -or $env:WREN_PERF -eq 'true') }
-function Skip-WrenPerf([string]$What) {
-    if ($env:CI) { "perf: skipped on the CI (the CI variable is set): $What" } else { "perf: skipped, run with -Perf (test_all.ps1 -Perf, or WREN_PERF=1): $What" }
-}
-function Check-Perf([string]$Name, [bool]$Ok, [string]$Detail = '') {
-    if (-not (Test-WrenPerf)) { Skip-WrenPerf $Name; return }
-    Check "perf: $Name" $Ok $Detail
-}
-
 function Get-WrenLockDir {
     if ($env:WREN_LOCK_DIR) { $d = $env:WREN_LOCK_DIR }
     elseif (Test-Path 'S:\wb_wt' -PathType Container) { $d = 'S:\wb_wt' }
@@ -251,39 +236,6 @@ function Invoke-WrenE2E([string]$Exe, [string]$Scenario) {
     $global:LASTEXITCODE = $code
 }
 
-# Where the time of a script goes, section by section (the tests are slow when nobody can see which part is):
-#   Section 'name'      ends the section in progress and starts a new one (a section is a stretch of the script, from one call to the next)
-#   Show-WrenSections   ends the last one and prints "seconds  section" for the script, longest first, with the total and (when
-#                       wrenctl.ps1 is loaded) how many `wren ctl` processes were started and for how long
-# When $env:WREN_TIMINGS_FILE names a file (tools\test_all.ps1 sets it), every section is appended to it as "script<TAB>section<TAB>seconds"
-# and test_all prints the longest ones at the end of the run (and in the job summary of a GitHub run): the table is there in a CI log too.
-$global:WrenSections = New-Object Collections.Generic.List[object]
-$global:WrenSectionName = $null
-$global:WrenSectionClock = [Diagnostics.Stopwatch]::StartNew()
-$global:WrenSectionScript = if ($MyInvocation.PSCommandPath) { [IO.Path]::GetFileNameWithoutExtension($MyInvocation.PSCommandPath) } else { 'script' }
-function Close-WrenSection {
-    if ($null -eq $global:WrenSectionName) { return }
-    $global:WrenSections.Add([pscustomobject]@{ Section = $global:WrenSectionName; Seconds = [Math]::Round($global:WrenSectionClock.Elapsed.TotalSeconds, 2) })
-    $global:WrenSectionName = $null
-}
-function Section([string]$Name) {
-    Close-WrenSection
-    $global:WrenSectionName = $Name
-    $global:WrenSectionClock.Restart()
-}
-function Show-WrenSections([string]$Title = '') {
-    Close-WrenSection
-    if ($global:WrenSections.Count -eq 0) { return }
-    $scr = if ($Title) { $Title } else { $global:WrenSectionScript }
-    $total = ($global:WrenSections | Measure-Object Seconds -Sum).Sum
-    "sections of ${scr}: $([Math]::Round($total, 1)) s in $($global:WrenSections.Count) sections" + $(if ($null -ne $global:WrenCtlCalls) { "; $($global:WrenCtlCalls) wren ctl processes started, $([Math]::Round($global:WrenCtlMs / 1000.0, 1)) s in them" } else { '' })
-    foreach ($s in ($global:WrenSections | Sort-Object Seconds -Descending)) { '  {0,7:N2} s  {1}' -f $s.Seconds, $s.Section }
-    if ($env:WREN_TIMINGS_FILE) {
-        try { [IO.File]::AppendAllText($env:WREN_TIMINGS_FILE, (($global:WrenSections | ForEach-Object { "$scr`t$($_.Section)`t$($_.Seconds)" }) -join "`n") + "`n") } catch { }
-    }
-    $global:WrenSections.Clear()
-}
-
 # How long the scripts sleep, by script (test_all.ps1 sets WREN_SLEEPS_FILE and prints the table at its end): a fixed wait is time lost on a fast machine and a failure on a slow one; a wait for a condition has neither.
 if ($env:WREN_SLEEPS_FILE) {
     function global:Start-Sleep {
@@ -301,7 +253,7 @@ $env:WREN_DESKTOP_INTEGRATION = 'off'
 # ... and none makes a sound: the media player's audio goes by in silence at the pace of the clock (src/media/audio_null.odin), what it does on a machine with no device.
 $env:WREN_AUDIO_OUTPUT = 'null'
 # ... and none lets itself be taken for the user's Wren, or for another run's: a second start with the same profile hands its addresses to the first and ends
-# (src/browser/instance_shell.odin). WREN_SINGLE_INSTANCE=on, set by the one script that checks it (instance_e2e.ps1), turns it back on.
+# (src/browser/instance_shell.odin). WREN_SINGLE_INSTANCE=on, set by the one scenario that checks it (src\tools\e2e\instance.odin), turns it back on.
 $env:WREN_SINGLE_INSTANCE = 'off'
 # ... and all share the code the JavaScript engine's image compiled to (build\wasm_cache, keyed by the image and the engine's configuration, src/wasm/module_cache.odin): 5 s of CPU per
 # process otherwise, with hundreds of processes in a run. WREN_NO_TEST_CACHE=1 (test_all.ps1 -NoCache) turns it off.

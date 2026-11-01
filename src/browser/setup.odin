@@ -23,10 +23,12 @@ package browser
 import "core:fmt"
 import "core:os"
 import "core:strings"
+import "toolkit:draw"
 import "toolkit:ui"
 import "wb:config"
 import "wb:desktop"
 import "wb:host"
+import "wb:remote"
 
 // What is installed beside wren.exe: nothing. The release is the program alone (its licenses, its version and the C runtime
 // are in it), so Setup copies the executable and writes the manifest. The names of other files can be listed here again
@@ -94,6 +96,7 @@ Setup_Dialog :: struct {
 	mid_h:      f32,                    // the height of what scrolls, as laid out last frame
 	fit_h:      f32,                    // the dialog's height as drawn last (it is placed higher in a short window)
 	seen_changes: int,                  // desktop_changes() when the disk was last read (the system watcher moves it)
+	at_primary, at_uninstall, at_secondary: draw.Rect,   // where the last frame put its buttons (setup_state_json)
 }
 
 @(private) stp: Setup_Dialog
@@ -116,6 +119,13 @@ setup_destroy :: proc() {
 }
 
 setup_is_open :: proc() -> bool { return stp.open }
+
+// What a client of the channel reads of the dialog (Wren.setupState), its buttons as the last frame placed them.
+setup_state_json :: proc() -> string {
+	box :: proc(r: draw.Rect) -> string { return fmt.tprintf("[%v,%v,%v,%v]", r.min.x, r.min.y, r.max.x - r.min.x, r.max.y - r.min.y) }
+	return fmt.tprintf(`{{"open":%v,"known":%v,"confirmUninstall":%v,"busy":%d,"note":%s,"primary":%s,"uninstall":%s,"secondary":%s}}`,
+		stp.open, stp.known, stp.confirm_uninstall, stp.busy, remote.quote(stp.note), box(stp.at_primary), box(stp.at_uninstall), box(stp.at_secondary))
+}
 
 // While it is open the dialog takes every press and wheel turn: the page under it gets none.
 setup_captures :: proc() -> bool { return stp.open }

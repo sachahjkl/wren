@@ -276,7 +276,7 @@ with the same flags:</p>
   #06 ... browser.frame+0x7D12
   #07 ... browser.main+0x15575</code></pre></div>
 <h2 id="tests"><a class="anchor" href="#tests" aria-hidden="true">#</a>Tests</h2>
-<p><code>tools\crash_e2e.ps1</code> (with <code>-Ui</code> in <code>test_all</code>: it needs a desktop session) builds <code>src/tools/crashmodes</code> as a release is
+<p><code>src\tools\e2e\crash_reports.odin</code> (in <code>test_all</code>) makes <code>src/tools/crashmodes</code> die in each way and looks at what is left. <code>tools\crash_symbolize_test.ps1</code> builds it as a release is
 built (no PDB, a map), makes it index out of range, and checks that the report has the <code>build</code> line and module offsets,
 that <code>crash_symbolize.ps1</code> names <code>crashmodes.index_out_of_range</code> under <code>main</code>, and that a report without the <code>build</code>
 line is named through its minidump. <code>src/tools/crashtrace</code> has a unit test of the fingerprint (read in memory and from

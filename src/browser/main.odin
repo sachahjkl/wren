@@ -1399,7 +1399,7 @@ app_start :: proc(args: []string) -> ^App {
 	}
 	if cli_mode != .None { os.exit(desktop_cli(app, cli_mode, purge_requested)) }   // no window: a script's call
 	host.phase("instance_early")
-	instance_early(app, rest[:], setup_requested, new_window || no_single || remote_asked || headless_mode || hidden_mode || cdp_have_port)   // (a driven window is its own: it never hands its addresses to the user's Wren)   // instance_shell.odin: a second start hands over to the first and ends here
+	instance_early(app, rest[:], setup_requested, new_window || no_single, remote_asked || headless_mode || hidden_mode || cdp_have_port)   // (a driven window is its own: it never hands its addresses to the user's Wren)   // instance_shell.odin: a second start hands over to the first and ends here
 	desktop_early_init()   // the windows' AppUserModelID, before the first one exists
 	recovery_start(app)   // crash_recovery.odin: how the last run ended, and this run's marker
 
@@ -1589,7 +1589,6 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	host.shutdown_step("remote_stop")
 	cdp_stop(app)      // cdp.odin: the CDP / BiDi WebSocket server and its clients
 	remote_stop(app)   // remote_shell.odin: the pipe and its clients
-	if remote_fast_exit && process_ends { recovery_end(app); crashtrace.end_session(); host.process_end(remote_exit_code) }   // Browser.close {fast}: a throwaway profile; the teardown below is a quarter of a second
 	host.shutdown_step("instance_end")
 	instance_end()   // instance_shell.odin: later starts are told to wait, then the profile is free
 	host.shutdown_step("prof_report")

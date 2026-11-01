@@ -6,7 +6,7 @@ package browser
 // WREN_MEMTRACK_FAIL=1 the process then exits with code 3 when there are any.
 //
 // The check build can also drive itself, without the desktop's keyboard or mouse: WREN_MEMCHECK_SCRIPT names a file of
-// commands run one after the other on the UI thread, between frames (tools\memcheck_e2e.ps1, tools\endurance.ps1):
+// commands run one after the other on the UI thread, between frames (src\tools\e2e\memcheck.odin, tools\endurance.ps1):
 //
 //     open <url>          a new tab showing <url>            go <url>       the current tab navigates
 //     command <name>      a command of the registry (commands.odin: tab.close, nav.back, browser.command_palette...)

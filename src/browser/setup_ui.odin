@@ -256,7 +256,9 @@ setup_body :: proc(app: ^App, width, inner, pad, win_h: f32) {
 		ui.next({width = ui.text_size(em * 2.2), height = ui.pct(1)})
 		if ui.disabled(!can_remove) {
 			if ui.tags(stp.confirm_uninstall ? "danger_button" : "button") {
-				if ui.button(fmt.aprintf("%s###setup_uninstall", stp.confirm_uninstall ? "Confirm uninstall" : "Uninstall", allocator = ui.frame_allocator())).clicked {
+				ub := ui.button(fmt.aprintf("%s###setup_uninstall", stp.confirm_uninstall ? "Confirm uninstall" : "Uninstall", allocator = ui.frame_allocator()))
+				if ub.box != nil { stp.at_uninstall = ub.box.rect }
+				if ub.clicked {
 					if stp.confirm_uninstall { setup_uninstall(app) } else { stp.confirm_uninstall = true; request_frames(app, 3) }
 				}
 			}
@@ -268,6 +270,7 @@ setup_body :: proc(app: ^App, width, inner, pad, win_h: f32) {
 		if ui.disabled(!primary_ok) {
 			if ui.tags("accent_button") {
 				pb := ui.button(fmt.aprintf("%s###setup_primary", primary_label(f, known), allocator = ui.frame_allocator()))
+				if pb.box != nil { stp.at_primary = pb.box.rect }
 				if stp.focus_primary && pb.box != nil && known { stp.focus_primary = false; ui.set_focus(pb.box.key) }
 				if pb.clicked { setup_primary(app) }
 			}
@@ -275,7 +278,9 @@ setup_body :: proc(app: ^App, width, inner, pad, win_h: f32) {
 		ui.spacer(ui.px(em * 0.6))
 		ui.next({width = ui.text_size(em * 2.2), height = ui.pct(1)})
 		if ui.disabled(busy) {
-			if ui.button(fmt.aprintf("%s###setup_secondary", secondary_label(kind), allocator = ui.frame_allocator())).clicked {
+			sb := ui.button(fmt.aprintf("%s###setup_secondary", secondary_label(kind), allocator = ui.frame_allocator()))
+			if sb.box != nil { stp.at_secondary = sb.box.rect }
+			if sb.clicked {
 				if kind == .Running_Installed || kind == .Repair { setup_dismiss(app) } else { setup_use_standalone(app) }
 			}
 		}

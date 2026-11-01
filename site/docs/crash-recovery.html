@@ -281,8 +281,8 @@ when there is none: the process was ended from outside). The x dismisses the bar
 <h2 id="tests"><a class="anchor" href="#tests" aria-hidden="true">#</a>Tests</h2>
 <p><code>odin test src/browser</code> (<code>crash_recovery_test.odin</code>): marker format and every truncation, the start decision (clean, crashed, live,
 twice), the snapshot round trip, a truncated and a hostile file, the plan over a scratch profile (crash, restore, crash again,
-backup, blank page), live instance, backup pruning, report lookup, the preferences. <code>tools\crash_recovery_e2e.ps1</code> (in <code>test_all</code>):
-real processes ended by their own id.</p>
+backup, blank page), live instance, backup pruning, report lookup, the preferences. <code>src\tools\e2e\crash_recovery.odin</code> (in <code>test_all</code>):
+real processes that are killed.</p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../docs/frames.html"><span>Previous</span><strong>The DOM of a same-origin frame</strong></a>
 <a class="doc-next" href="../docs/crash-reports.html"><span>Next</span><strong>Crash reports and the symbols of a build</strong></a>
