@@ -59,5 +59,4 @@ wasm/webapi
 html/semantics/interactive-elements/the-dialog-element
 WebCryptoAPI
 webaudio
-||||||| parent of 767adaa8 (wpt: css/css-anchor-position, run with a layout)
 css/css-anchor-position
