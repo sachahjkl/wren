@@ -850,6 +850,7 @@
     s.lost = false;
     s.lostError = false;
     s.program = null;
+    s.queries[0] = s.queries[1] = null;
     fire(s.canvas, "webglcontextrestored", "", false);
   };
 
