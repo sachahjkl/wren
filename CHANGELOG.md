@@ -10,6 +10,12 @@ Semantic Versioning, since a patch version can add or remove features.
 
 ## [Unreleased]
 
+## [0.6.24] - 2026-11-01
+
+### Added
+- **WebGL 1 and 2**: `canvas.getContext("webgl")` and `("webgl2")`, on a thread and a wgpu device per context (Vulkan or Direct3D 12 on Windows, Vulkan on Linux, the system's software rasterizer without a GPU), GLSL ES through a rewrite in front of naga. Three.js examples and MapLibre GL JS work. No transform feedback; see `docs/js/webgl.md` for the limits, and the `webgl.*` preferences.
+- CSS anchor positioning: `anchor-name`, `anchor-scope`, `position-anchor`, `anchor()` and `anchor-size()`, `position-area`, `anchor-center`, `position-try-fallbacks`, `position-try-order`, `@position-try`, `position-visibility`, the implicit anchor of a popover. Tooltips follow an anchor that scrolls, flip when they no longer fit, and pages no longer load the `@oddbird/css-anchor-positioning` polyfill (it ran past the script limit on chatgpt.com).
+
 ## [0.6.23] - 2026-11-01
 
 ### Added
@@ -791,7 +797,8 @@ Pages name their Wasm modules with `<script type="application/wasm">`; the web A
 - **The browser**: tabs, history, find in page, selection, zoom, view-source, `about:config`, frame pacing and
   statistics.
 
-[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.6.23...HEAD
+[Unreleased]: https://github.com/sachahjkl/wren/compare/v0.6.24...HEAD
+[0.6.24]: https://github.com/sachahjkl/wren/compare/v0.6.23...v0.6.24
 [0.6.23]: https://github.com/sachahjkl/wren/compare/v0.6.22...v0.6.23
 [0.6.22]: https://github.com/sachahjkl/wren/compare/v0.6.21...v0.6.22
 [0.6.21]: https://github.com/sachahjkl/wren/compare/v0.6.20...v0.6.21
