@@ -206,11 +206,7 @@ address_bar :: proc(app: ^App, t: ^Tab) {
 		ui.a11y({name = i18n.tr("Address and search bar"), shortcut = "Ctrl+L"})
 		res = ui.line_edit("###address", &wnd.address, i18n.tr("Search or enter an address"))
 		field_radius := res.box != nil ? res.box.radius : em * 0.5
-		if classic_on() {
-			security_chip(app, t, inset, h - 2 * inset, max(field_radius - inset, 0))
-		} else {
-			security_chip(app, t, inset, h - 2 * inset, field_radius, res.box)
-		}
+		security_chip(app, t, inset, h - 2 * inset, field_radius, res.box)
 		zoom_overlay(app, t, res.box, h)
 	}
 	if bw := active_window(app); bw.focus_address {
@@ -341,7 +337,7 @@ Chip_Segment :: struct {
 	color, divider, under: draw.Color,
 	radius:                f32,
 	state:                 string,
-	// the bar's own frame, drawn again over the fill (empty: a classic bar, whose frame is outside the chip)
+	// the bar's own frame, drawn again over the fill
 	border, ring:          draw.Color,
 	border_w, ring_w:      f32,
 	bar_right:             f32,
@@ -407,7 +403,8 @@ security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0, radi
 		}
 		if field != nil {
 			// to the bar's edge, under its frame (chip_segment_draw)
-			chip_segment.border, chip_segment.border_w = field.border, inset
+			// (a classic field has no border of its own: the bar draws its frame, field_frame_draw)
+			chip_segment.border, chip_segment.border_w = classic_on() ? classic_colors_frame(app).field_edge : field.border, inset
 			chip_segment.bar_right = field.rect.max.x
 			if field.focus_t > CHIP_RING_SHOWN {
 				chip_segment.ring = ui.color("focus border")
