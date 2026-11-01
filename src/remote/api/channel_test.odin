@@ -1,4 +1,4 @@
-package client
+package api
 
 import "core:fmt"
 import "core:sync"
@@ -25,8 +25,8 @@ Exchange :: struct {
 	done:   bool,   // atomic
 	ok:     bool,
 	echoed: bool,
-	err:    Call_Error,
-	missing: Call_Error,
+	err:    Error,
+	missing: Error,
 }
 
 // What `wren ctl` does, end to end in one process: the client connects to the channel (a pipe on Windows, a Unix socket
@@ -68,8 +68,8 @@ a_call_goes_through_the_channel_and_back :: proc(t: ^testing.T) {
 	host.thread_join(worker)
 	testing.expect(t, ex.ok, "the answer came")
 	testing.expect(t, ex.echoed, "the answer is the handler's, byte for byte")
-	testing.expect_value(t, ex.err, Call_Error.Server)
-	testing.expect_value(t, ex.missing, Call_Error.No_Server)
+	testing.expect_value(t, ex.err, Error.Server)
+	testing.expect_value(t, ex.missing, Error.No_Server)
 	remote.stop()
 	host.loop_drain(&loop)
 }

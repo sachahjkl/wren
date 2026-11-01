@@ -9,6 +9,7 @@ import "core:encoding/json"
 import "core:fmt"
 import "core:math"
 import "core:os"
+import "core:slice"
 import "core:strings"
 import "toolkit:draw"
 import "toolkit:platform"
@@ -18,12 +19,12 @@ import "wb:base"
 import "wb:config"
 import "wb:cookies"
 import "wb:fetch"
-import "wb:host"
 import "wb:httpcache"
 import "wb:images"
 import lay "wb:layout"
 import "wb:page"
 import "wb:remote"
+import "wb:remote/api"
 
 // How many matches a queryAll call returns when it gives no `limit`.
 REMOTE_QUERY_ALL_DEFAULT_LIMIT :: 100
@@ -199,7 +200,6 @@ element_visible :: proc(app: ^App, t: ^Tab, h: base.Handle) -> bool {
 	return r[0] < pr.max.x && r[0] + r[2] > pr.min.x && r[1] < pr.max.y && r[1] + r[3] > pr.min.y
 }
 
-@(private = "file")
 frames_op :: proc(app: ^App, c: ^Call, t: ^Tab, n: int, result := "") -> Reply {
 	op := op_new(app, c, .Frames, 10_000, "frames")
 	op.tab = t != nil ? t.id : 0
@@ -253,20 +253,17 @@ window_state :: proc(app: ^App) -> string {
 @(private = "file")
 m_window_get :: proc(app: ^App) -> Reply {
 	wnd := active_window(app)
-	// a headless window has no HWND: its outer rectangle and visibility are emulated (platform.outer_rect / is_offscreen)
-	outer := platform.outer_rect(wnd.win)
-	visible := false
-	if !platform.is_offscreen(wnd.win) { visible = platform.is_window_visible(wnd.win) }
+	x := control_bounds(app)
 	b := builder()
 	j_begin(&b)
-	j_int(&b, "windowId", i64(app.active.id))
-	j_int(&b, "left", i64(outer[0])); j_int(&b, "top", i64(outer[1]))
-	j_int(&b, "outerWidth", i64(outer[2])); j_int(&b, "outerHeight", i64(outer[3]))
-	j_int(&b, "width", i64(wnd.win.size.x)); j_int(&b, "height", i64(wnd.win.size.y))   // the client area, in pixels
-	j_str(&b, "windowState", window_state(app))
-	j_num(&b, "dpiScale", f64(wnd.win.dpi_scale)); j_num(&b, "uiScale", f64(ui_scale_of(app))); j_num(&b, "pageScale", f64(page_scale(app)))
-	j_bool(&b, "headless", platform.is_offscreen(wnd.win))
-	j_bool(&b, "visible", visible)
+	j_int(&b, "windowId", i64(x.window))
+	j_int(&b, "left", i64(x.left)); j_int(&b, "top", i64(x.top))
+	j_int(&b, "outerWidth", i64(x.outer_width)); j_int(&b, "outerHeight", i64(x.outer_height))
+	j_int(&b, "width", i64(x.width)); j_int(&b, "height", i64(x.height))   // the client area, in pixels
+	j_str(&b, "windowState", x.state)
+	j_num(&b, "dpiScale", x.dpi_scale); j_num(&b, "uiScale", x.ui_scale); j_num(&b, "pageScale", x.page_scale)
+	j_bool(&b, "headless", x.headless)
+	j_bool(&b, "visible", x.visible)
 	// the page area of its last frame and what was prepared for it (page_frame.odin)
 	j_rect(&b, "pageRect", wnd.page_rect)
 	PREP_NAMES := [Page_Prep_State]string{.None = "none", .Hold = "hold", .Ready = "ready"}
@@ -360,38 +357,31 @@ window_apply :: proc(app: ^App, state: string, has_state: bool, w, h, left, top:
 
 @(private = "file")
 m_targets :: proc(app: ^App) -> Reply {
+	x := control_tabs(app)
+	rect :: proc(b: ^strings.Builder, r: api.Rect) { j_raw(b, "rect", fmt.tprintf("[%d,%d,%d,%d]", int(r.x), int(r.y), int(r.w), int(r.h))) }
 	b := builder()
 	j_begin(&b)
 	j_key(&b, "targetInfos"); j_begin(&b, '[')
-	for w in app.windows {
-		for t, i in window_tabs(app, w)^ {
-			if t.frame != nil { continue }
-			j_key(&b, ""); j_begin(&b)
-			j_int(&b, "targetId", i64(t.id)); j_str(&b, "type", "page"); j_str(&b, "title", t.title); j_str(&b, "url", t.url)
-			j_int(&b, "windowId", i64(w.id))
-			j_bool(&b, "active", i == window_current(app, w)^); j_bool(&b, "loading", !tab_loaded(app, t)); j_bool(&b, "attached", true)
-			// the sidebar's state of the tab (tab_groups.odin), and where the last frame drew it in the tab bar
-			j_bool(&b, "pinned", t.pinned); j_int(&b, "group", i64(t.group))
-			j_bool(&b, "playing", t.sound.playing); j_bool(&b, "audible", tab_speaker(app, t) == .Sound); j_bool(&b, "muted", t.muted)   // tab_sound.odin
-			if gi := group_index(w.groups[:], t.group); gi >= 0 {
-				g := w.groups[gi]
-				j_str(&b, "groupName", g.name); j_str(&b, "groupColor", GROUP_COLOR_NAMES[g.color]); j_bool(&b, "groupCollapsed", g.collapsed)
-			}
-			id := fmt.tprintf("###tab_%d", t.id)
-			if r, ok := chrome_box_rect(w, t.pinned && favs.cfg.position != .Top ? w.own.sidebar.pins_key : w.own.strip.area_key, id); ok { j_rect(&b, "rect", r) }
-			j_end(&b)
-		}
+	for t in x.tabs {
+		j_key(&b, ""); j_begin(&b)
+		j_int(&b, "targetId", i64(t.id)); j_str(&b, "type", "page"); j_str(&b, "title", t.title); j_str(&b, "url", t.url)
+		j_int(&b, "windowId", i64(t.window))
+		j_bool(&b, "active", t.active); j_bool(&b, "loading", t.loading); j_bool(&b, "attached", true)
+		// the sidebar's state of the tab (tab_groups.odin), and where the last frame drew it in the tab bar
+		j_bool(&b, "pinned", t.pinned); j_int(&b, "group", i64(t.group))
+		j_bool(&b, "playing", t.playing); j_bool(&b, "audible", t.audible); j_bool(&b, "muted", t.muted)   // tab_sound.odin
+		if t.group_color != "" { j_str(&b, "groupName", t.group_name); j_str(&b, "groupColor", t.group_color); j_bool(&b, "groupCollapsed", t.group_collapsed) }
+		if t.has_rect { rect(&b, t.rect) }
+		j_end(&b)
 	}
 	j_end(&b, ']')
 	j_key(&b, "tabGroups"); j_begin(&b, '[')
-	for w in app.windows {
-		for g in w.groups {
-			j_key(&b, ""); j_begin(&b)
-			j_int(&b, "windowId", i64(w.id)); j_int(&b, "id", i64(g.id)); j_str(&b, "name", g.name)
-			j_str(&b, "color", GROUP_COLOR_NAMES[g.color]); j_bool(&b, "collapsed", g.collapsed)
-			if r, ok := chrome_box_rect(w, w.own.strip.area_key, fmt.tprintf("###grp_%d", g.id)); ok { j_rect(&b, "rect", r) }
-			j_end(&b)
-		}
+	for g in x.groups {
+		j_key(&b, ""); j_begin(&b)
+		j_int(&b, "windowId", i64(g.window)); j_int(&b, "id", i64(g.id)); j_str(&b, "name", g.name)
+		j_str(&b, "color", g.color); j_bool(&b, "collapsed", g.collapsed)
+		if g.has_rect { rect(&b, g.rect) }
+		j_end(&b)
 	}
 	j_end(&b, ']'); j_end(&b)
 	return done(strings.to_string(b))
@@ -399,15 +389,9 @@ m_targets :: proc(app: ^App) -> Reply {
 
 @(private = "file")
 m_target_create :: proc(app: ^App, c: ^Call) -> Reply {
-	wnd := active_window(app)
 	address, _ := remote.param_string(c.params, "url")
 	background, _ := remote.param_bool(c.params, "background")
-	was := wnd.current
-	t := tab_open(app, address, origin = .User)
-	if background && was >= 0 && was < len(wnd.tabs) - 1 {
-		wnd.current = was
-		if cur := current_tab(app); cur != nil { ui.field_set(&wnd.address, cur.url) }
-	}
+	t := control_new_tab(app, address, background)
 	if wait, ok := remote.param_string(c.params, "wait"); ok && wait != "none" && wait != "" { return start_wait(app, c, t, wait, fmt.tprintf(`{{"targetId":%d}}`, t.id)) }
 	return done(fmt.tprintf(`{{"targetId":%d}}`, t.id))
 }
@@ -418,35 +402,31 @@ m_windows :: proc(app: ^App) -> Reply {
 	b := builder()
 	j_begin(&b)
 	j_key(&b, "windows"); j_begin(&b, '[')
-	for w in app.windows {
-		outer := platform.outer_rect(w.win)   // emulated for a headless window (no HWND)
+	for w in control_windows(app) {
 		j_key(&b, ""); j_begin(&b)
-		j_int(&b, "windowId", i64(w.id)); j_bool(&b, "front", w == window_front(app)); j_int(&b, "tabs", i64(len(window_tabs(app, w))))
-		j_int(&b, "hwnd", i64(window_native_handle(w.win)))   // (a UI Automation client reads one window: tools\a11y_e2e.ps1; 0 where there is no HWND)
-		j_bool(&b, "headless", platform.is_offscreen(w.win))
-		cur := window_current_tab(app, w)
-		j_int(&b, "currentTabId", cur != nil ? i64(cur.id) : 0)
-		j_int(&b, "left", i64(outer[0])); j_int(&b, "top", i64(outer[1])); j_int(&b, "width", i64(w.win.size.x)); j_int(&b, "height", i64(w.win.size.y))
-		j_str(&b, "windowState", platform.is_fullscreen(w.win) ? "fullscreen" : platform.is_minimized(w.win) ? "minimized" : platform.is_maximized(w.win) ? "maximized" : "normal")
-		j_num(&b, "dpiScale", f64(w.win.dpi_scale))
-		co := platform.client_origin(w.win)
-		j_int(&b, "clientLeft", i64(co[0])); j_int(&b, "clientTop", i64(co[1]))   // (where its client area is on the screen)
+		j_int(&b, "windowId", i64(w.id)); j_bool(&b, "front", w.front); j_int(&b, "tabs", i64(w.tabs))
+		j_int(&b, "hwnd", i64(w.hwnd))   // (a UI Automation client reads one window: tools\a11y_e2e.ps1; 0 where there is no HWND)
+		j_bool(&b, "headless", w.headless)
+		j_int(&b, "currentTabId", i64(w.current_tab))
+		j_int(&b, "left", i64(w.left)); j_int(&b, "top", i64(w.top)); j_int(&b, "width", i64(w.width)); j_int(&b, "height", i64(w.height))
+		j_str(&b, "windowState", w.state)
+		j_num(&b, "dpiScale", w.dpi_scale)
+		j_int(&b, "clientLeft", i64(w.client_left)); j_int(&b, "clientTop", i64(w.client_top))   // (where its client area is on the screen)
 		// a tab carried over its tabs (tab_drag.odin): where it would go and where the mark is (client pixels, along the tabs)
 		if w.dropping {
-			z := w.zone
 			j_key(&b, "drop"); j_begin(&b)
-			j_int(&b, "index", i64(w.drop.index)); j_int(&b, "group", i64(w.drop.group)); j_bool(&b, "pinned", w.drop.pinned)
-			j_num(&b, "mark", f64((z.vertical ? z.rect.min.y : z.rect.min.x) + w.drop.mark - z.offset))
+			j_int(&b, "index", i64(w.drop_index)); j_int(&b, "group", i64(w.drop_group)); j_bool(&b, "pinned", w.drop_pinned)
+			j_num(&b, "mark", w.drop_mark)
 			j_end(&b)
 		}
 		// its developer tools (devtools.odin: each window has its own)
-		d := &w.own.devtools
+		d := w.devtools
 		j_key(&b, "devtools"); j_begin(&b)
-		j_bool(&b, "visible", d.visible); j_str(&b, "dock", DEV_DOCK_NAMES[d.dock]); j_str(&b, "panel", DEV_PANEL_NAMES[d.panel])
-		j_bool(&b, "detached", d.win != nil || d.want_win)
-		if d.win != nil {
-			j_int(&b, "hwnd", i64(window_native_handle(d.win.win))); j_str(&b, "title", d.win.title)
-			j_num(&b, "dpiScale", f64(d.win.win.dpi_scale))
+		j_bool(&b, "visible", d.visible); j_str(&b, "dock", d.dock); j_str(&b, "panel", d.panel)
+		j_bool(&b, "detached", d.detached)
+		if d.has_window {
+			j_int(&b, "hwnd", i64(d.hwnd)); j_str(&b, "title", d.title)
+			j_bool(&b, "window", true)
 		}
 		j_end(&b)
 		j_end(&b)
@@ -458,12 +438,7 @@ m_windows :: proc(app: ^App) -> Reply {
 // The window becomes the front one: what the calls without a window act on.
 @(private = "file")
 m_window_activate :: proc(app: ^App) -> Reply {
-	window_focus(app, app.active)
-	// above the others (without taking the system's focus, shown or not): a drag across windows finds it on top. A
-	// headless window has no z-order.
-	if !platform.is_offscreen(app.active.win) {
-		window_native_raise_top(app.active.win)   // remote_window_<os>.odin: above the others without taking focus
-	}
+	control_bring_to_front(app)   // (above the others, without the system's focus, shown or not: a drag across windows finds it on top)
 	return done()
 }
 
@@ -480,44 +455,34 @@ m_window_close :: proc(app: ^App) -> Reply {
 m_target_move :: proc(app: ^App, c: ^Call) -> Reply {
 	id, ok := remote.param_int(c.params, "targetId")
 	if !ok { return fail(remote.ERR_PARAMS, "parameter \"targetId\" is missing") }
-	t := tab_by_id(app, u64(id))
-	if t == nil { return fail(remote.ERR_PARAMS, fmt.tprintf("no tab %d", id)) }
 	at := -1
 	if v, has := remote.param_int(c.params, "index"); has { at = v }
-	dest: ^Browser_Window
-	if to, is_str := remote.param_string(c.params, "to"); is_str {
-		if to != "new" { return fail(remote.ERR_PARAMS, "\"to\" is \"new\" or a window id") }
-		dest = tab_detach(app, t)
-		if dest == nil { return fail(remote.ERR_FAILED, "the tab is alone in its window (or the window could not be made)") }
+	to := -1
+	if word, is_str := remote.param_string(c.params, "to"); is_str {
+		if word != "new" { return fail(remote.ERR_PARAMS, "\"to\" is \"new\" or a window id") }
 	} else if wid, is_int := remote.param_int(c.params, "to"); is_int {
-		dest = window_by_id(app, wid)
-		if dest == nil { return fail(remote.ERR_PARAMS, fmt.tprintf("no window %d", wid)) }
-		tab_move(app, t, dest, at)
+		to = wid
 	} else {
 		return fail(remote.ERR_PARAMS, "parameter \"to\" is missing")
 	}
-	windows_spill(app, 3)
-	return done(fmt.tprintf(`{{"targetId":%d,"windowId":%d}}`, t.id, dest.id))
+	dest, why := control_move_tab(app, id, to, at)
+	if dest == nil { return fail(to < 0 ? remote.ERR_FAILED : remote.ERR_PARAMS, why) }
+	return done(fmt.tprintf(`{{"targetId":%d,"windowId":%d}}`, id, dest.id))
 }
 
 @(private = "file")
 m_target_activate :: proc(app: ^App, c: ^Call) -> Reply {
 	id, ok := remote.param_int(c.params, "targetId")
 	if !ok { return fail(remote.ERR_PARAMS, "parameter \"targetId\" is missing") }
-	if t := tab_by_id(app, u64(id)); t != nil {
-		tab_reveal(app, t)
-		windows_spill(app, 3)
-		request_frames(app, 3)
-		return done()
-	}
-	return fail(remote.ERR_PARAMS, fmt.tprintf("no tab %d", id))
+	if !control_activate_tab(app, id) { return fail(remote.ERR_PARAMS, fmt.tprintf("no tab %d", id)) }
+	return done()
 }
 
 @(private = "file")
 m_target_close :: proc(app: ^App, c: ^Call) -> Reply {
 	id, ok := remote.param_int(c.params, "targetId")
 	if !ok { return fail(remote.ERR_PARAMS, "parameter \"targetId\" is missing") }
-	if t := tab_by_id(app, u64(id)); t != nil { tab_close_tab(app, t); return done(`{"success":true}`) }
+	if control_close_tab(app, id) { return done(`{"success":true}`) }
 	return fail(remote.ERR_PARAMS, fmt.tprintf("no tab %d", id))
 }
 
@@ -526,27 +491,13 @@ m_target_close :: proc(app: ^App, c: ^Call) -> Reply {
 
 // A wait of kind `what` ("load", "idle", "stable") on `t`, answered with `result` (JSON) when it holds.
 start_wait :: proc(app: ^App, c: ^Call, t: ^Tab, what: string, result := "") -> Reply {
-	kind: Remote_Wait
-	switch what {
-	case "load":   kind = .Load
-	case "idle":   kind = .Idle
-	case "stable": kind = .Stable
-	case "quiet":  kind = .Quiet
-	case "none", "": return done(result == "" ? "{}" : result)
-	case: return fail(remote.ERR_PARAMS, "wait: none, load, idle, stable or quiet")
-	}
-	op := op_new(app, c, .Wait, timeout_of(c), what)
-	op.tab, op.wait = t.id, kind
-	op.idle_ms, _ = remote.param_int(c.params, "idleMs")   // 0: browser.remote.idle_ms
-	if kind == .Quiet {
-		// (the window starts at the first look: a wait that begins in the middle of work does not count the work)
-		op.quiet_ms, _ = remote.param_int(c.params, "quietMs", the_remote.cfg.quiet_ms)
-		op.max_cpu, _ = remote.param_float(c.params, "maxCpuMs", f64(the_remote.cfg.quiet_cpu_ms))
-		op.t0 = host.now_ns(&app.loop)
-		op.cpu0, _, _ = process_cpu_ms()
-	}
-	op.result = strings.clone(result)
-	return Reply{deferred = true}
+	kind, ok := api.wait_by_name(what == "" ? "none" : what)
+	if !ok { return fail(remote.ERR_PARAMS, "wait: none, load, idle, stable or quiet") }
+	l := Wait_Limits{timeout_ms = timeout_of(c)}
+	l.idle_ms, _ = remote.param_int(c.params, "idleMs")
+	l.quiet_ms, _ = remote.param_int(c.params, "quietMs")
+	l.max_cpu, _ = remote.param_float(c.params, "maxCpuMs")
+	return control_wait(app, c, t, kind, l, result)
 }
 
 @(private = "file")
@@ -555,8 +506,7 @@ m_navigate :: proc(app: ^App, c: ^Call) -> Reply {
 	if bad.code != 0 { return bad }
 	t, e := tab_of(app, c)
 	if t == nil { return e }
-	navigate(app, t, address, origin = .User)
-	request_frames(app, 3)
+	control_navigate(app, t, address)
 	what, _ := remote.param_string(c.params, "wait")
 	return start_wait(app, c, t, what, fmt.tprintf(`{{"tabId":%d,"url":%s}}`, t.id, remote.quote(t.url)))
 }
@@ -598,16 +548,12 @@ m_wait :: proc(app: ^App, c: ^Call) -> Reply {
 	case "selector":
 		sel, bad := need_string(c, "selector")
 		if bad.code != 0 { return bad }
-		op := op_new(app, c, .Wait, timeout_of(c), fmt.tprintf("an element matching %s", sel))
-		op.tab, op.wait, op.arg = t.id, .Selector, strings.clone(sel)
-		op.visible, _ = remote.param_bool(c.params, "visible")
-		return Reply{deferred = true}
+		visible, _ := remote.param_bool(c.params, "visible")
+		return control_wait_selector(app, c, t, sel, visible, timeout_of(c))
 	case "function":
 		expr, bad := need_string(c, "expression")
 		if bad.code != 0 { return bad }
-		op := op_new(app, c, .Wait, timeout_of(c), "the script condition to hold")
-		op.tab, op.wait, op.arg = t.id, .Function, strings.clone(expr)
-		return Reply{deferred = true}
+		return control_wait_js(app, c, t, expr, timeout_of(c))
 	case "frames":
 		n, _ := remote.param_int(c.params, "frames", 2)
 		return frames_op(app, c, t, n)
@@ -626,18 +572,7 @@ m_evaluate :: proc(app: ^App, c: ^Call) -> Reply {
 	t, e := tab_of(app, c)
 	if t == nil { return e }
 	await, _ := remote.param_bool(c.params, "awaitPromise")
-	r := &the_remote
-	delete(r.stash_text); r.stash_text, r.stash_id = "", 0
-	id, ran := eval_start(t, expr, await)
-	if !ran { return fail(remote.ERR_FAILED, "the tab has no page, or JavaScript is off for it (javascript.* preferences)") }
-	if r.stash_id == id {
-		rep := eval_reply_text(r.stash_text)
-		delete(r.stash_text); r.stash_text, r.stash_id = "", 0
-		return rep
-	}
-	op := op_new(app, c, .Eval, timeout_of(c), "script")
-	op.eval_id, op.tab = id, t.id   // (its answer counts from this tab only)
-	return Reply{deferred = true}
+	return control_eval(app, c, t, expr, await, timeout_of(c))
 }
 
 @(private = "file")
@@ -733,36 +668,53 @@ m_computed_style :: proc(app: ^App, c: ^Call) -> Reply {
 m_capture :: proc(app: ^App, c: ^Call) -> Reply {
 	t, e := tab_of(app, c)
 	if t == nil { return e }
-	op := op_new(app, c, .Capture, timeout_of(c), "the capture")
-	op.tab = t.id
-	op.scale = 1
-	if s, ok := remote.param_float(c.params, "scale"); ok && s > 0 { op.scale = f32(clamp(s, 0.01, 16)) }
-	if p, ok := remote.param_string(c.params, "path"); ok { op.path = strings.clone(p) }
-	op.bytes, _ = remote.param_bool(c.params, "bytes")
-	if op.path == "" { op.bytes = true }
+	q := Capture_Request{timeout_ms = timeout_of(c), settle = the_remote.cfg.settle_frames}
+	if s, ok := remote.param_float(c.params, "scale"); ok && s > 0 { q.scale = f32(s) }
+	q.path, _ = remote.param_string(c.params, "path")
+	q.bytes, _ = remote.param_bool(c.params, "bytes")
 	tgt, _ := remote.param_string(c.params, "target", "window")
 	switch tgt {
-	case "window": op.target = .Window
-	case "page":   op.target = .Page
+	case "window": q.target = .Window
+	case "page":   q.target = .Page
 	case "rect":
-		op.target = .Rect
+		q.target = .Rect
 		clip, ok := remote.param_object(c.params, "clip")
-		if !ok { op_finish(op, fail(remote.ERR_PARAMS, "target rect needs \"clip\": {x, y, width, height}")); return Reply{deferred = true} }
+		if !ok { return fail(remote.ERR_PARAMS, "target rect needs \"clip\": {x, y, width, height}") }
 		x, _ := remote.param_float(clip, "x"); y, _ := remote.param_float(clip, "y")
 		w, _ := remote.param_float(clip, "width"); h, _ := remote.param_float(clip, "height")
-		op.rect = {f32(x), f32(y), f32(w), f32(h)}
+		q.rect = {f32(x), f32(y), f32(w), f32(h)}
 	case "selector":
-		op.target = .Selector
+		q.target = .Selector
 		sel, bad := need_string(c, "selector")
-		if bad.code != 0 { op_finish(op, bad); return Reply{deferred = true} }
-		op.arg = strings.clone(sel)
+		if bad.code != 0 { return bad }
+		q.selector = sel
 	case:
-		op_finish(op, fail(remote.ERR_PARAMS, "target: window, page, rect or selector"))
-		return Reply{deferred = true}
+		return fail(remote.ERR_PARAMS, "target: window, page, rect or selector")
 	}
-	settle, has := remote.param_int(c.params, "settle")
-	if !has { settle = the_remote.cfg.settle_frames }
-	op.until = the_remote.frame_no + u64(max(settle, 0)) + 1
+	if settle, has := remote.param_int(c.params, "settle"); has { q.settle = settle }
+	return control_capture(app, c, t, q)
+}
+
+// A frame of the window read back: to a file, in the answer, or (a call of this process) as pixels. See capture_step.
+Capture_Request :: struct {
+	target:     Capture_Target,
+	rect:       [4]f32,    // Rect: x, y, w, h (window pixels)
+	selector:   string,
+	scale:      f32,       // 0: 1
+	path:       string,
+	bytes:      bool,
+	settle:     int,       // frames first
+	timeout_ms: int,
+}
+
+control_capture :: proc(app: ^App, c: ^Call, t: ^Tab, q: Capture_Request) -> Reply {
+	op := op_new(app, c, .Capture, q.timeout_ms, "the capture")
+	op.tab, op.target, op.rect = t.id, q.target, q.rect
+	op.scale = q.scale > 0 ? clamp(q.scale, CAPTURE_SCALE_LEAST, CAPTURE_SCALE_MOST) : 1
+	if q.path != "" { op.path = strings.clone(q.path) }
+	if q.selector != "" { op.arg = strings.clone(q.selector) }
+	op.bytes = q.bytes || (q.path == "" && c.local == nil)
+	op.until = the_remote.frame_no + u64(max(q.settle, 0)) + 1
 	// a real window on the taskbar draws nothing: it comes back without taking the focus, and goes back after. A headless
 	// window renders whatever its emulated state, so nothing to do there.
 	if !platform.is_offscreen(active_window(app).win) && platform.is_minimized(active_window(app).win) {
@@ -772,6 +724,8 @@ m_capture :: proc(app: ^App, c: ^Call) -> Reply {
 	request_frames(app, 3)
 	return Reply{deferred = true}
 }
+@(private = "file") CAPTURE_SCALE_LEAST :: 0.01
+@(private = "file") CAPTURE_SCALE_MOST :: 16
 
 capture_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 	r := &the_remote
@@ -832,6 +786,14 @@ capture_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 	case .Failed: finish(app, op, fail(remote.ERR_FAILED, "the frame could not be read back (device lost, or an empty area)"))
 	case .Ready:
 		defer delete(pixels)
+		if op.local != nil && op.path == "" {
+			op.local.done, op.local.size = true, size
+			op.local.rgba = slice.clone(pixels)
+			op.local = nil
+			if op.asked { the_remote.capture_window = 0 }
+			op_finish_silent(op)
+			return
+		}
 		rep := capture_reply(op, pixels, size)
 		if rep.code == 0 && op.snapshot != "" { if msg := snapshot_files(app, t, op.snapshot); msg != "" { rep = fail(remote.ERR_FAILED, msg) } }
 		finish(app, op, rep)
@@ -893,10 +855,8 @@ scale_rgba :: proc(src: []u8, w, h: int, scale: f32) -> (out: []u8, nw, nh: int)
 // Input: the events go to the window's queue and take the path of a real device's
 
 // the buttons held, as a real device's events carry them (e.buttons, a drag that needs the left button held)
-@(private = "file")
 inject_held: platform.Mouse_Buttons
 
-@(private = "file")
 inject :: proc(app: ^App, ev: platform.Event) {
 	ev := ev
 	#partial switch ev.kind {
@@ -950,14 +910,14 @@ m_mouse_event :: proc(app: ^App, c: ^Call) -> Reply {
 	if !ok { return fail(remote.ERR_PARAMS, "x and y are missing") }
 	mods := mods_of(c)
 	switch kind {
-	case "mouseMoved":    inject(app, {kind = .Mouse_Move, pos = pos, mods = mods})
+	case "mouseMoved":    return control_hover(app, c, pos, mods)
 	case "mousePressed":  inject(app, {kind = .Mouse_Press, pos = pos, button = button_of(c), mods = mods})
 	case "mouseReleased": inject(app, {kind = .Mouse_Release, pos = pos, button = button_of(c), mods = mods})
 	case "mouseWheel":
 		dx, _ := remote.param_float(c.params, "deltaX")
 		dy, _ := remote.param_float(c.params, "deltaY")
 		if n, has := remote.param_float(c.params, "notches"); has { dy = n * 100 }
-		inject(app, {kind = .Scroll, pos = pos, delta = {f32(dx) / 100, f32(dy) / 100}, mods = mods})
+		return control_wheel(app, c, pos, {dx, dy}, mods)
 	case: return fail(remote.ERR_PARAMS, "type: mouseMoved, mousePressed, mouseReleased or mouseWheel")
 	}
 	return frames_op(app, c, nil, the_remote.cfg.settle_frames)
@@ -969,20 +929,12 @@ m_click :: proc(app: ^App, c: ^Call) -> Reply {
 	t, e := tab_of(app, c)
 	if t == nil { return e }
 	count, _ := remote.param_int(c.params, "count", 1)
-	if sel, ok := remote.param_string(c.params, "selector"); ok {
-		op := op_new(app, c, .Click, timeout_of(c), fmt.tprintf("the element %s", sel))
-		op.tab, op.arg, op.button, op.count = t.id, strings.clone(sel), button_of(c), max(count, 1)
-		op.until = the_remote.frame_no
-		request_frames(app, 3)
-		return Reply{deferred = true}
-	}
+	if sel, ok := remote.param_string(c.params, "selector"); ok { return control_click(app, c, t, sel, button_of(c), count, timeout_of(c)) }
 	pos, ok := point_of(app, c, "x", "y")
 	if !ok { return fail(remote.ERR_PARAMS, "give x and y, or a selector") }
-	click_at(app, pos, button_of(c), max(count, 1), mods_of(c))
-	return frames_op(app, c, t, the_remote.cfg.settle_frames, fmt.tprintf(`{{"x":%.1f,"y":%.1f}}`, pos.x, pos.y))
+	return control_click_at(app, c, t, pos, button_of(c), count, mods_of(c))
 }
 
-@(private = "file")
 click_at :: proc(app: ^App, pos: [2]f32, button: platform.Mouse_Button, count: int, mods: platform.Modifiers) {
 	inject(app, {kind = .Mouse_Move, pos = pos, mods = mods})
 	for _ in 0 ..< count {
@@ -1039,7 +991,6 @@ click_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 // instead). The reply says what the window answered (the effect the app set).
 @(private = "file")
 m_drop :: proc(app: ^App, c: ^Call) -> Reply {
-	wnd := active_window(app)
 	pos, ok := point_of(app, c, "x", "y")
 	if !ok { return fail(remote.ERR_PARAMS, "x and y are missing") }
 	d: platform.Drag_Data
@@ -1050,15 +1001,8 @@ m_drop :: proc(app: ^App, c: ^Call) -> Reply {
 	d.text, _ = remote.param_string(c.params, "text")
 	d.url, _ = remote.param_string(c.params, "url")
 	d.html, _ = remote.param_string(c.params, "html")
-	if platform.drag_data_empty(d) { return fail(remote.ERR_PARAMS, "give files, text, url or html") }
 	leave, _ := remote.param_bool(c.params, "leave")
-	mods := mods_of(c)
-	if !platform.drop_inject(wnd.win, .Drop_Enter, pos, &d, mods = mods) { return fail(remote.ERR_PARAMS, "this system has no drag and drop") }
-	platform.drop_inject(wnd.win, .Drop_Over, pos, mods = mods)
-	platform.drop_inject(wnd.win, leave ? .Drop_Leave : .Drop, pos, mods = mods)
-	the_remote.inputs += 1
-	request_frames(app, 4)
-	return frames_op(app, c, nil, the_remote.cfg.settle_frames)
+	return control_drop(app, c, pos, &d, leave, mods_of(c))
 }
 
 // Wren.drag {x, y, toX, toY, steps, button}
@@ -1070,11 +1014,11 @@ m_drag :: proc(app: ^App, c: ^Call) -> Reply {
 	from, ok1 := point_of(app, c, "x", "y")
 	to, ok2 := point_of(app, c, "toX", "toY")
 	if !ok1 || !ok2 { return fail(remote.ERR_PARAMS, "x, y, toX and toY are needed") }
-	steps, _ := remote.param_int(c.params, "steps", 8)
-	op := op_new(app, c, .Drag, timeout_of(c), "drag")
-	op.pos, op.to, op.count, op.button = from, to, clamp(steps, 1, 1000), button_of(c)
+	r := Drag_Request{from = from, to = to, button = button_of(c), timeout_ms = timeout_of(c)}
+	r.steps, _ = remote.param_int(c.params, "steps", 8)
 	// "via": points passed through on the way (window points may be outside the window: the drag leaves it and comes
 	// back, through the window's own drop target, never the real mouse)
+	via := make([dynamic][2]f32, context.temp_allocator)
 	if arr, has := remote.param_array(c.params, "via"); has {
 		space, _ := remote.param_string(c.params, "space")
 		s := page_scale(app)
@@ -1092,19 +1036,15 @@ m_drag :: proc(app: ^App, c: ^Call) -> Reply {
 			y, yok := num(pt[1])
 			if !xok || !yok { continue }
 			p := [2]f32{x, y}
-			append(&op.via, space == "window" ? p : active_window(app).page_rect.min + p * s)
+			append(&via, space == "window" ? p : active_window(app).page_rect.min + p * s)
 		}
 	}
+	r.via = via[:]
 	// "hold": the button stays down at the end (a picture of the drag on its way: a tab carried over another window's bar);
 	// "resume": a drag held before goes on from here (no press), and ends as asked
-	op.hold, _ = remote.param_bool(c.params, "hold")
-	if resume, _ := remote.param_bool(c.params, "resume"); resume {
-		if op.button not_in inject_held { op_finish(op, fail(remote.ERR_FAILED, "no drag is held (drag --hold first)")); return Reply{deferred = true} }
-		op.stage, op.idx = 1, 0
-	}
-	op.until = the_remote.frame_no
-	request_frames(app, 3)
-	return Reply{deferred = true}
+	r.hold, _ = remote.param_bool(c.params, "hold")
+	r.resume, _ = remote.param_bool(c.params, "resume")
+	return control_drag(app, c, r)
 }
 
 // The drag's path: its start, the points it passes through, its end (temporary).
@@ -1175,14 +1115,7 @@ drag_step :: proc(app: ^App, op: ^Remote_Op) {
 m_type :: proc(app: ^App, c: ^Call) -> Reply {
 	text, bad := need_string(c, "text")
 	if bad.code != 0 { return bad }
-	for ch in text {
-		switch ch {
-		case '\n', '\r': emit_key(app, .Return, {}, 0)
-		case '\t':       emit_key(app, .Tab, {}, 0)
-		case:            inject(app, {kind = .Text, text = ch})
-		}
-	}
-	return frames_op(app, c, nil, the_remote.cfg.settle_frames)
+	return control_type(app, c, text)
 }
 
 // Wren.key {keys: "Ctrl+L"}: the modifiers go down, the key goes down and up, the modifiers go up
@@ -1191,13 +1124,7 @@ m_key :: proc(app: ^App, c: ^Call) -> Reply {
 	combo, bad := need_string(c, "keys")
 	if bad.code != 0 { return bad }
 	repeat, _ := remote.param_int(c.params, "repeat", 1)
-	for part in strings.split(combo, " ", context.temp_allocator) {
-		if part == "" { continue }
-		key, mods, ok := parse_combo(part)
-		if !ok { return fail(remote.ERR_PARAMS, fmt.tprintf("unknown key %q (examples: Enter, Ctrl+L, Shift+Tab, F5, a)", part)) }
-		for _ in 0 ..< clamp(repeat, 1, 1000) { emit_key(app, key, mods, key_text(key, mods)) }
-	}
-	return frames_op(app, c, nil, the_remote.cfg.settle_frames)
+	return control_key(app, c, combo, repeat)
 }
 
 // Input.dispatchKeyEvent {type: keyDown|keyUp|rawKeyDown|char, key, text, modifiers}
@@ -1221,7 +1148,6 @@ m_key_event :: proc(app: ^App, c: ^Call) -> Reply {
 	return frames_op(app, c, nil, the_remote.cfg.settle_frames)
 }
 
-@(private = "file")
 emit_key :: proc(app: ^App, key: platform.Key, mods: platform.Modifiers, text: rune) {
 	held: platform.Modifiers
 	down :: proc(app: ^App, held: ^platform.Modifiers, m: platform.Modifier, k: platform.Key, mods: platform.Modifiers) {
@@ -1427,6 +1353,8 @@ m_stats :: proc(app: ^App, c: ^Call) -> Reply {
 	// how often the subsystems were configured again by preference writes (prefs_apply.odin)
 	j_int(&b, "prefsNetApplied", i64(prefs_apply_counts[.Net])); j_int(&b, "prefsCacheApplied", i64(prefs_apply_counts[.Http_Cache])); j_int(&b, "prefsDownloadsApplied", i64(prefs_apply_counts[.Downloads]))
 	if t := current_tab(app); t != nil && t.page != nil { j_int(&b, "nodes", i64(t.page.doc.nodes.count)); j_int(&b, "layoutItems", i64(len(t.layout.items))) }
+	j_bool(&b, "chromeAnimating", ui.needs_frame(wnd.ui))   // the interface has an animation under way (a sidebar opening...)
+	j_bool(&b, "groupNameFocused", window_own(app).sidebar.rename_focused)   // a tab group's name is being edited (tab_sidebar_list.odin)
 	j_str(&b, "backend", render.backend_name())
 	// the process and the state a reset empties (so that a test can see both the cost of what it did and that a reset worked)
 	cpu, cpu_user, cpu_kernel := process_cpu_ms()
@@ -1463,31 +1391,20 @@ m_console :: proc(app: ^App, c: ^Call) -> Reply {
 	if t == nil { return e }
 	since, _ := remote.param_int(c.params, "since", 0)
 	first := int(t.console_added) - len(t.console)   // the number of console[0]
+	total := t.console_added
+	clear_after, _ := remote.param_bool(c.params, "clear")
 	b := builder()
 	j_begin(&b)
-	j_int(&b, "total", i64(t.console_added))
+	j_int(&b, "total", i64(total))
 	j_key(&b, "lines"); j_begin(&b, '[')
-	for l, i in t.console {
-		if first + i < since { continue }
-		level, text := "log", l
-		switch {
-		case strings.has_prefix(l, "error: "): level, text = "error", l[7:]
-		case strings.has_prefix(l, "warn: "):  level, text = "warn", l[6:]
-		}
+	for l, i in control_console(t, since, clear_after) {
 		j_key(&b, ""); j_begin(&b)
-		j_int(&b, "n", i64(first + i)); j_str(&b, "level", level); j_str(&b, "text", text)
+		j_int(&b, "n", i64(max(first, since) + i)); j_str(&b, "level", l.level); j_str(&b, "text", l.text)
 		j_end(&b)
 	}
 	j_end(&b, ']'); j_end(&b)
-	if clear, _ := remote.param_bool(c.params, "clear"); clear {
-		for l in t.console { delete(l) }
-		clear_dynamic(&t.console)
-	}
 	return done(strings.to_string(b))
 }
-
-@(private = "file")
-clear_dynamic :: proc(a: ^[dynamic]string) { clear(a) }
 
 @(private = "file")
 m_network :: proc(app: ^App, c: ^Call) -> Reply {
@@ -1560,11 +1477,7 @@ m_pref_set :: proc(app: ^App, c: ^Call) -> Reply {
 	}
 	// override: the command line's layer, which a value given with --pref (at the start of this run) has taken: it is changed, not refused
 	override, _ := remote.param_bool(c.params, "override")
-	if err := config.set_from_string(&app.prefs, name, text, override ? .Command_Line : .User); err != .None {
-		return fail(remote.ERR_FAILED, fmt.tprintf("%s: %s", name, config.set_error_text(err)))
-	}
-	remote_reload_settings(app)
-	request_frames(app, 3)
+	if why := control_pref_set(app, name, text, override); why != "" { return fail(remote.ERR_FAILED, why) }
 	s, _ := pref_json(app, name)
 	return done(s)
 }
@@ -1604,30 +1517,15 @@ m_commands :: proc(app: ^App) -> Reply {
 m_command :: proc(app: ^App, c: ^Call) -> Reply {
 	name, bad := need_string(c, "name")
 	if bad.code != 0 { return bad }
-	cmd := command(name)
-	if cmd == nil { return fail(remote.ERR_PARAMS, fmt.tprintf("no command %q (Wren.listCommands lists them)", name)) }
 	t := current_tab(app)
-	if !command_enabled(app, t, cmd) { return fail(remote.ERR_FAILED, fmt.tprintf("the command %s is not available now", name)) }
-	command_run(app, t, cmd)
+	if why := control_command(app, t, name); why != "" { return fail(strings.has_prefix(why, "no command") ? remote.ERR_PARAMS : remote.ERR_FAILED, why) }
 	return frames_op(app, c, t, the_remote.cfg.settle_frames)
 }
 
 @(private = "file")
 m_devtools :: proc(app: ^App, c: ^Call) -> Reply {
 	panel, _ := remote.param_string(c.params, "panel", "console")
-	switch panel {
-	case "console":  devtools_open(app, .Console)
-	case "elements": devtools_open(app, .Elements)
-	case "network":  devtools_open(app, .Network)
-	case "none", "close": if dev().visible { devtools_toggle(app) }
-	case: return fail(remote.ERR_PARAMS, "panel: console, elements, network or none")
-	}
-	if dock, ok := remote.param_string(c.params, "dock"); ok && dock != "" {
-		if dock == "window" {   // a window of their own (devtools_window.odin)
-			devtools_detach(app)
-		} else {
-			for d in Dev_Dock { if DEV_DOCK_NAMES[d] == dock { if devtools_detached() { devtools_attach(app) }; devtools_set_dock(app, d) } }
-		}
-	}
+	dock, _ := remote.param_string(c.params, "dock")
+	if why := control_devtools(app, panel, dock); why != "" { return fail(remote.ERR_PARAMS, why) }
 	return frames_op(app, c, nil, the_remote.cfg.settle_frames + 1)
 }

@@ -44,6 +44,9 @@ devtools_detach :: proc(app: ^App) {
 	request_frames(app, 2)
 }
 
+@(private = "file") DEVTOOLS_WINDOW_W :: 1100
+@(private = "file") DEVTOOLS_WINDOW_H :: 760
+
 @(private = "file")
 devtools_window_make :: proc(app: ^App) {
 	d := dev()
@@ -55,7 +58,9 @@ devtools_window_make :: proc(app: ^App) {
 	fixed := config.bool_of(&app.prefs, "browser.window.fixed_surface")
 	// (on_frame's user is the browser window's id: the panel's window is closed before its browser window is freed, but an id
 	// cannot dangle)
-	w := platform.open_window("Wren Developer Tools", {1100, 760}, user = rawptr(uintptr(owner.id)), on_frame = proc(user: rawptr) { devtools_window_loop_frame(the_app, int(uintptr(user))) }, transparent = fixed)
+	// (a headless browser has no window of the system: the panel's is drawn all the same, in the one offscreen target, as its second window's is)
+	on_frame := proc(user: rawptr) { devtools_window_loop_frame(the_app, int(uintptr(user))) }
+	w := app.headless ? platform.open_window_offscreen("Wren Developer Tools", {DEVTOOLS_WINDOW_W, DEVTOOLS_WINDOW_H}, user = rawptr(uintptr(owner.id)), on_frame = on_frame) : platform.open_window("Wren Developer Tools", {DEVTOOLS_WINDOW_W, DEVTOOLS_WINDOW_H}, user = rawptr(uintptr(owner.id)), on_frame = on_frame, transparent = fixed)
 	if w == nil { ui.toast(.Warn, "The window could not be opened"); return }
 	// where it was when it last closed (physical screen pixels), fitted to a monitor that is there now (set_placement), before it
 	// is shown: a size of 0 means it was never saved, and the system places it at its default size next to the browser window
@@ -81,7 +86,7 @@ devtools_window_make :: proc(app: ^App) {
 	}
 	// made where it lives, not returned by value (see render.surface_create: a Surface in a local is a compile-time trap)
 	dw := new(Dev_Window)
-	ok := render.surface_init(&app.r, &dw.surf, platform.native_surface_handles(w), w.size, transparent = fixed, fixed_size = fixed_surface_size(app, w))   // (window_chrome.odin)
+	ok := app.headless || render.surface_init(&app.r, &dw.surf, platform.native_surface_handles(w), w.size, transparent = fixed, fixed_size = fixed_surface_size(app, w))   // (window_chrome.odin)
 	if !ok {
 		free(dw)
 		platform.destroy_window(w)
@@ -116,7 +121,7 @@ devtools_attach :: proc(app: ^App) {
 	d.win = nil
 	ui.destroy(&dw.ui)
 	ui.use(active_window(app).ui)
-	render.surface_destroy(&app.r, &dw.surf)
+	if !platform.is_offscreen(dw.win) { render.surface_destroy(&app.r, &dw.surf) }
 	platform.destroy_window(dw.win)
 	delete(dw.title)
 	free(dw)
@@ -268,8 +273,8 @@ devtools_window_frame :: proc(app: ^App) {
 
 	frame_start := qpc()
 	size := draw.Vec2{f32(w.size.x), f32(w.size.y)}
-	render.surface_use(&app.r, &dw.surf)
-	defer render.surface_use(&app.r, &dw.surf)
+	if !platform.is_offscreen(w) { render.surface_use(&app.r, &dw.surf) }
+	defer if !platform.is_offscreen(w) { render.surface_use(&app.r, &dw.surf) }
 	render.resize(&app.r, w.size)
 	base_style := chrome_frame_style(app)
 	platform.frame_gate_stage(gate, .Building)

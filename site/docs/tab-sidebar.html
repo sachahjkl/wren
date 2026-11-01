@@ -394,7 +394,7 @@ the hit test of each part, the drag areas and the top resize band), <code>sideba
 <p><code>src/browser/tab_groups_test.odin</code>: the order rule, groups without tabs going, the rows of the list with groups (headers,
 collapsed groups, the binary search, 1000 tabs in 50 groups), where a dragged tab goes and in which group, the pinned tabs'
 grid, pins and groups through a session file.</p>
-<p><code>tools/sidebar_tabs_e2e.ps1</code> (no window shown, <code>wren ctl</code>; in <code>test_all</code>): the opening and closing animation seen by the
+<p><code>src/tools/e2e/sidebar_tabs.odin</code> (no window at all; in <code>test_all</code>): the opening and closing animation seen by the
 page's resize events; pinning, reordering pinned tabs, pinning and unpinning by dragging; a group made, joined by dragging,
 renamed in its header, coloured, collapsed and expanded by a click, left by dragging, gone with its last tab; the pinned
 tabs back after a restart without the session, the group with it. <code>-ShotDir</code> writes a picture of each state.</p>

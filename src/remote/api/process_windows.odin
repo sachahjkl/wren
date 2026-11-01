@@ -1,7 +1,7 @@
 #+build windows
-package client
+package api
 
-// The processes of spawn.odin on Windows: a process handle (CreateProcessW, OpenProcess), told again by its creation time
+// The processes of session.odin on Windows: a process handle (CreateProcessW, OpenProcess), told again by its creation time
 // and image path.
 
 import "core:fmt"
@@ -96,3 +96,10 @@ process_release :: proc(p: ^Process) {
 
 // Lets the process go on alone (a session `wren ctl stop` ends later).
 process_detach :: proc(p: ^Process) { process_release(p) }
+
+// The exit code of a process that has ended (process_wait said so).
+process_exit_code :: proc(p: ^Process) -> int {
+	c: win.DWORD
+	if !win.GetExitCodeProcess(p.handle, &c) { return -1 }
+	return int(c)
+}

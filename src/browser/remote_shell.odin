@@ -83,6 +83,7 @@ Remote_Op :: struct {
 	asked:    bool,       // Capture: the frame to copy was asked for (Remote.capture_window)
 	hold:     bool,       // Drag: the button stays down at the end (a later drag with "resume" goes on)
 	snapshot: string,     // Capture: also write <snapshot>.html and .json (owned)
+	local:    ^Control_Outcome,   // the call came from this process: its answer goes there, no line is written (control.odin)
 }
 
 Remote :: struct {
@@ -116,6 +117,7 @@ Remote :: struct {
 	capture_window: int,                  // a capture waits for this window's next frame (0: none): remote_capture_arm
 	capture_rect:   [4]int,
 	tl:         Timeline,                 // the frames being recorded (remote_timeline.odin)
+	call_ns:    i64,                      // when the last request came (loop clock)
 }
 
 // Before a frame of the active window ends (main.odin frame, shell_frames.odin): the capture a remote call waits for is asked of
@@ -216,7 +218,7 @@ remote_stop :: proc(app: ^App) {
 	r^ = {}
 }
 
-remote_indicator :: proc() -> bool { return the_remote.active && the_remote.cfg.indicator }
+remote_indicator :: proc() -> bool { return the_remote.started && the_remote.cfg.indicator }
 
 remote_indicator_text :: proc() -> string { return i18n.tr("remote") }
 
@@ -241,6 +243,7 @@ Call :: struct {
 	id:     string,
 	method: string,
 	params: json.Object,
+	local:  ^Control_Outcome,   // a call from this process (control.odin): nil for a client of the channel
 }
 
 Reply :: struct {
@@ -269,6 +272,7 @@ remote_handle :: proc(user: rawptr, conn: u64, line: []byte) {
 // that changes something asks for its frames here, one that only reads asks for none.
 @(private = "file")
 remote_run_line :: proc(app: ^App, conn: u64, line: []byte) {
+	the_remote.call_ns = host.now_ns(&app.loop)
 	req, code, message := remote.parse_request(line)
 	if code != 0 { remote_send(conn, remote.response_error(req.id, code, message)); return }
 	c := Call{conn = conn, id = req.id, method = req.method, params = req.params}
@@ -309,6 +313,7 @@ op_new :: proc(app: ^App, c: ^Call, kind: Remote_Op_Kind, timeout_ms: int, what:
 	op := new(Remote_Op)
 	op.kind = kind
 	op.conn = c.conn
+	op.local = c.local
 	op.id = strings.clone(c.id)
 	op.what = strings.clone(what)
 	op.window = active_window(app).id
@@ -325,7 +330,17 @@ op_free :: proc(op: ^Remote_Op) {
 
 // Ends `op` with its answer.
 op_finish :: proc(op: ^Remote_Op, rep: Reply) {
-	remote_answer(op.conn, op.id, rep)
+	if op.local != nil {
+		op.local.done, op.local.code = true, rep.code
+		if rep.code != 0 { op.local.message = strings.clone(rep.message) }
+	} else {
+		remote_answer(op.conn, op.id, rep)
+	}
+	op_finish_silent(op)
+}
+
+// Ends `op`, its answer given.
+op_finish_silent :: proc(op: ^Remote_Op) {
 	for o, i in the_remote.ops { if o == op { unordered_remove(&the_remote.ops, i); break } }
 	op_free(op)
 }
@@ -449,7 +464,7 @@ remote_take_console :: proc(message: string, tab: u64) -> bool {
 	}
 	for op in r.ops {
 		if op.kind == .Eval && op.eval_id == id && op.tab == tab {
-			op_finish(op, eval_reply(obj))
+			op_finish_eval(op, obj)
 			return true
 		}
 	}
@@ -644,4 +659,19 @@ op_step :: proc(app: ^App, op: ^Remote_Op, now: i64) {
 	case .Click:   click_step(app, op, t, timed_out)
 	case .Drag:    drag_step(app, op)
 	}
+}
+
+// Is a client waiting on this window's frames: a call waits for them, or came within this frame's length (the next one is on its way)? A
+// window nobody sees then waits for no one; a page that animates by itself, with nobody asking, goes back to the usual rate.
+remote_driving :: proc(app: ^App, period_ms: f64) -> bool {
+	r := &the_remote
+	if !r.active { return false }
+	if f64(host.now_ns(&app.loop) - r.call_ns) < period_ms * NS_PER_MS { return true }
+	for op in r.ops {
+		switch op.kind {
+		case .Frames, .Click, .Drag, .Capture: return true
+		case .Wait, .Eval, .Replay:
+		}
+	}
+	return false
 }

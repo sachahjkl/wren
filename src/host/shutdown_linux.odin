@@ -12,3 +12,8 @@ shutdown_raise_priority :: proc() {}
 shutdown_force_exit :: proc() -> ! {
 	linux.exit_group(0)
 }
+
+// The process ends now, with this code: every thread and every library left as they are. Whatever must reach a disk has been written before this.
+process_end :: proc(code: int) -> ! {
+	linux.exit_group(i32(code))
+}

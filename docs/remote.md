@@ -119,6 +119,7 @@ The channel is **off by default**; a Wren that was not asked for it has no pipe,
   `blocker.update.enabled=false` (a Wren that lives 15 s would download the content blocker's lists, 24 MB, from the internet),
   unless `--pref blocker.update.enabled=...` says otherwise.
 - `--hidden`: a window that exists and is never shown: what `wren ctl run` / `start` use by default, for what needs a handle (UI Automation, the system's drag and hit test). It needs a desktop session.
+- `--headless`: frames are made as soon as a client waits for them, not at a monitor's refresh; a second window and the developer tools' window of their own have no HWND either.
 - `--headless`: a window with **no HWND at all**, not a hidden one, so it runs where there is no desktop session (a
   service in session 0, an SSH login, a CI runner). It renders to an offscreen target the capture reads; its size,
   place, state and DPI are emulated and resize the target (`window --size WxH --dpi n`); input comes through the same

@@ -327,6 +327,7 @@ and a throwaway profile (removed afterwards; a profile given by <code>--profile<
 <code>blocker.update.enabled=false</code> (a Wren that lives 15 s would download the content blocker's lists, 24 MB, from the internet),
 unless <code>--pref blocker.update.enabled=...</code> says otherwise.</li>
 <li><code>--hidden</code>: a window that exists and is never shown: what <code>wren ctl run</code> / <code>start</code> use by default, for what needs a handle (UI Automation, the system's drag and hit test). It needs a desktop session.</li>
+<li><code>--headless</code>: frames are made as soon as a client waits for them, not at a monitor's refresh; a second window and the developer tools' window of their own have no HWND either.</li>
 <li><code>--headless</code>: a window with <strong>no HWND at all</strong>, not a hidden one, so it runs where there is no desktop session (a
 service in session 0, an SSH login, a CI runner). It renders to an offscreen target the capture reads; its size,
 place, state and DPI are emulated and resize the target (<code>window --size WxH --dpi n</code>); input comes through the same

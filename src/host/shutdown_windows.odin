@@ -19,3 +19,10 @@ shutdown_raise_priority :: proc() { SetPriorityClass(win.GetCurrentProcess(), AB
 shutdown_force_exit :: proc() -> ! {
 	win.ExitProcess(0)
 }
+
+// The process ends now, with this code: every thread and every library left as they are (no library is told to unload: Direct3D's driver takes
+// 100 to 200 ms over that, for nothing). Whatever must reach a disk has been written before this.
+process_end :: proc(code: int) -> ! {
+	win.TerminateProcess(win.GetCurrentProcess(), win.UINT(code))
+	win.ExitProcess(win.UINT(code))
+}

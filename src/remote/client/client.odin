@@ -14,6 +14,7 @@ import "core:strconv"
 import "core:strings"
 import "wb:desktop"
 import "wb:remote"
+import "wb:remote/api"
 
 EXIT_OK      :: 0
 EXIT_FAILED  :: 1
@@ -30,12 +31,14 @@ Options :: struct {
 
 Context :: struct {
 	o:               Options,
-	conn:            Conn,
+	s:               api.Session,
 	default_profile: string,   // the profile folder a Wren without --profile uses
 	exe:             string,   // this executable
-	connected:       bool,
-	timeout_ms:      int,
 }
+
+// How long a command tries to reach a Wren that runs (ms): by default, and at most with --timeout.
+CONNECT_WAIT_MS :: 300
+CONNECT_WAIT_MOST_MS :: 5000
 
 // Options that take a value; every other `--name` must be in BOOL_OPTIONS.
 @(private) VALUE_OPTIONS := [?]string{"remote", "profile", "timeout", "tab-id", "wait", "selector", "rect", "scale", "settle", "size", "dpi",
@@ -112,8 +115,14 @@ run :: proc(argv: []string, default_profile, exe: string) -> int {
 		if cmd == "help" { return help_main(args) }
 		return help_main({cmd})
 	}
-	ctx := Context{o = o, default_profile = default_profile, exe = exe, timeout_ms = opt_int(&o, "timeout", 0)}
-	defer if ctx.connected { disconnect(&ctx.conn) }
+	ctx := Context{o = o, default_profile = default_profile, exe = exe}
+	ctx.s.timeout_ms = opt_int(&o, "timeout", 0)
+	ctx.s.idle_ms = opt_int(&o, "idle-ms", 0)
+	ctx.s.window = opt_int(&o, "win-id", 0)
+	ctx.s.tab = opt_int(&o, "tab-id", 0)
+	ctx.s.name = resolve_name(&ctx)
+	ctx.s.connect_wait_ms = ctx.s.timeout_ms > 0 ? min(ctx.s.timeout_ms, CONNECT_WAIT_MOST_MS) : CONNECT_WAIT_MS
+	defer api.close_session(&ctx.s)
 	return dispatch(&ctx, cmd, args)
 }
 
@@ -125,59 +134,35 @@ resolve_name :: proc(ctx: ^Context) -> string {
 	return remote.profile_name(ctx.default_profile)
 }
 
-// Connects once (the commands that need the server call it): false after saying why.
-need_server :: proc(ctx: ^Context) -> bool {
-	if ctx.connected { return true }
-	name := resolve_name(ctx)
-	wait := opt_int(&ctx.o, "timeout", 0) > 0 ? min(opt_int(&ctx.o, "timeout", 0), 5000) : 300
-	if !connect(&ctx.conn, name, wait) {
-		errln(fmt.tprintf("wren ctl: no Wren answers on %s. Start one with `wren ctl start` (or `wren --remote`), or name it with --remote <name>.", remote.pipe_path(name)))
-		return false
-	}
-	ctx.connected = true
-	return true
-}
-
-// How long this call may wait for its answer: the command's own limit plus a margin for the server's timeout to come first.
-call_timeout :: proc(ctx: ^Context) -> int {
-	if ctx.timeout_ms > 0 { return ctx.timeout_ms + 5000 }
-	return 60_000
-}
-
-// One request. On failure the message is printed and `code` is the exit code (0: it worked and `rep.result` is its answer).
-request :: proc(ctx: ^Context, method, params: string) -> (rep: Reply, code: int) {
-	if !need_server(ctx) { return {}, EXIT_NO_SERVER }
-	p := params
-	if ctx.timeout_ms > 0 && !strings.contains(p, `"timeout"`) {
-		p = p == "" || p == "{}" ? fmt.tprintf(`{{"timeout":%d}}`, ctx.timeout_ms) : strings.concatenate({p[:len(p) - 1], fmt.tprintf(`,"timeout":%d}}`, ctx.timeout_ms)}, context.temp_allocator)
-	}
-	// --win-id: the window the command is about (the front one otherwise)
-	if id := opt(&ctx.o, "win-id"); id != "" && !strings.contains(p, `"windowId"`) {
-		p = p == "" || p == "{}" ? fmt.tprintf(`{{"windowId":%s}}`, id) : strings.concatenate({p[:len(p) - 1], fmt.tprintf(`,"windowId":%s}}`, id)}, context.temp_allocator)
-	}
-	// --idle-ms: how long the network must stay quiet for a wait for idle, for this command (browser.remote.idle_ms otherwise)
-	if ms := opt(&ctx.o, "idle-ms"); ms != "" && !strings.contains(p, `"idleMs"`) {
-		p = p == "" || p == "{}" ? fmt.tprintf(`{{"idleMs":%s}}`, ms) : strings.concatenate({p[:len(p) - 1], fmt.tprintf(`,"idleMs":%s}}`, ms)}, context.temp_allocator)
-	}
-	r, e := call(&ctx.conn, method, p, call_timeout(ctx))
+// A call that failed: said, and the exit code it is.
+failed :: proc(ctx: ^Context, e: api.Error) -> int {
+	f := api.last_failure()
 	switch e {
-	case .None: return r, 0
-	case .Server:
-		errln(fmt.tprintf("error: %s", r.message))
-		if r.data != "" { errln(r.data) }
-		return r, r.code == remote.ERR_TIMEOUT ? EXIT_TIMEOUT : (r.code == remote.ERR_METHOD || r.code == remote.ERR_PARAMS) ? EXIT_FAILED : EXIT_FAILED
-	case .Timeout: errln("error: no answer in time"); return {}, EXIT_TIMEOUT
-	case .Closed, .No_Server: errln("error: the connection to Wren ended"); return {}, EXIT_NO_SERVER
+	case .None: return 0
+	case .No_Server:
+		errln(fmt.tprintf("wren ctl: no Wren answers on %s. Start one with `wren ctl start` (or `wren --remote`), or name it with --remote <name>.", remote.pipe_path(ctx.s.name)))
+		return EXIT_NO_SERVER
+	case .Timeout:
+		errln(fmt.tprintf("error: %s", f.message))
+		if f.data != "" { errln(f.data) }
+		return EXIT_TIMEOUT
+	case .Closed:
+		errln("error: the connection to Wren ended")
+		return EXIT_NO_SERVER
+	case .Server, .Script, .Bad_Answer:
+		errln(fmt.tprintf("error: %s", f.message))
+		if f.data != "" { errln(f.data) }
+		return EXIT_FAILED
 	}
-	return {}, EXIT_FAILED
+	return EXIT_FAILED
 }
 
-// Parses an answer for a command that prints parts of it.
-parse_result :: proc(rep: Reply) -> json.Object {
-	v, _ := json.parse(transmute([]byte)rep.result, json.Specification.JSON, true, context.temp_allocator)
+// An answer as JSON, for a command that prints parts of it.
+parse_result :: proc(result: string) -> json.Object {
+	v, _ := json.parse(transmute([]byte)result, json.Specification.JSON, true, context.temp_allocator)
 	o, _ := v.(json.Object)
 	return o
 }
 
-// Prints `rep.result` as it is (--json, or a command with no friendlier form).
-print_json :: proc(rep: Reply) { outln(rep.result) }
+// Prints the last answer as it is (--json, or a command with no friendlier form).
+print_answer :: proc(ctx: ^Context) { outln(ctx.s.result) }

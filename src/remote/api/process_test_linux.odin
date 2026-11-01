@@ -1,4 +1,4 @@
-package client
+package api
 
 import "core:sys/posix"
 import "core:testing"

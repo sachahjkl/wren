@@ -444,7 +444,8 @@ foreach ($pkg in 'base', 'host', 'dom', 'html', 'url', 'http', 'cookies', 'csp',
 
 # the pipe server is one per process, so its tests run one at a time; the client's tests link the image encoder
 Step 'unit tests: remote (protocol, pipe server: requests, answers, limits, vanishing clients, stopping with clients connected)' { odin test src/remote -use-separate-modules $MemCheck -define:ODIN_TEST_THREADS=1 -collection:wb=src -vet -out:build/remote_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
-Step 'unit tests: remote client (wren ctl: options, help, picture diff, a call through the channel and back)' { odin test src/remote/client -use-separate-modules $MemCheck -define:ODIN_TEST_THREADS=1 -collection:wb=src -vet -out:build/remote_client_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
+Step 'unit tests: remote api (the channel and the processes of wb:remote/api: a call through the channel and back, a process told again by its creation time)' { odin test src/remote/api -use-separate-modules $MemCheck -define:ODIN_TEST_THREADS=1 -collection:wb=src -vet -out:build/remote_api_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
+Step 'unit tests: remote client (wren ctl: options, help, picture diff)' { odin test src/remote/client -use-separate-modules $MemCheck -define:ODIN_TEST_THREADS=1 -collection:wb=src -vet -out:build/remote_client_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
 Step 'developer tools docked: the page area follows the size of the panel, at the bottom and at the side (tools\devtools_resize_e2e.ps1 -NoDesktop: no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\devtools_resize_e2e.ps1 -NoDesktop
@@ -462,9 +463,8 @@ Step 'accessibility end to end (tools\a11y_e2e.ps1: a Wren with no window shown 
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\a11y_e2e.ps1
 } -NoCI
-Step 'drag and drop end to end (tools\dnd_e2e.ps1: a file dropped on a drop zone and elsewhere, a drag between elements, pointer events and coordinates in a scrolled page; no window shown)' {
-    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
-    powershell -NoProfile -ExecutionPolicy Bypass -File tools\dnd_e2e.ps1
+Step 'drag and drop end to end (src\tools\e2e\dnd.odin: a file dropped on a drop zone and elsewhere, a drag between elements, pointer events and coordinates in a scrolled page; no window at all)' {
+    Invoke-WrenE2E 'build\e2e_test.exe' 'dnd'
 } -Weight 20 -NoCI
 Step 'the interface''s own zoom end to end (tools\chrome_zoom_e2e.ps1: Ctrl+wheel over the chrome and the keys while it has the keyboard zoom it and leave the page''s scale alone; over the page they zoom the page; no window shown)' {
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\chrome_zoom_e2e.ps1
@@ -473,9 +473,8 @@ Step 'middle-click autoscroll end to end (tools\autoscroll_e2e.ps1: a middle pre
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\autoscroll_e2e.ps1
 } -Weight 20 -NoCI
-Step 'a window''s own state of the chrome end to end (tools\window_state_e2e.ps1: a page''s full screen in one window of two, left with Escape, the scroll given back; each window''s developer tools; the caret blinking in the front window only; no window shown)' {
-    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
-    powershell -NoProfile -ExecutionPolicy Bypass -File tools\window_state_e2e.ps1
+Step 'a window''s own state of the chrome end to end (src\tools\e2e\window_state.odin: a page''s full screen in one window of two, left with Escape, the scroll given back; each window''s developer tools; the caret blinking in the front window only; no window at all)' {
+    Invoke-WrenE2E 'build\e2e_test.exe' 'window_state'
 } -Weight 10 -NoCI
 Step 'a tab dragged onto another window''s tabs (tools\tab_drag_windows_e2e.ps1: the insertion mark among pinned tabs and groups, in a row and in the sidebar, where the release puts the tab; injected pointer, no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
@@ -546,9 +545,8 @@ Step 'about:config end to end (tools\config_e2e.ps1: search, a switch, a number,
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\config_e2e.ps1
 } -NoCI
-Step 'search engines end to end (tools\search_e2e.ps1: a profile of before the list keeps its choice, the default, keywords, Ctrl+Down in the suggestions, an engine added in about:config and written to the profile; engines on the test server, no window shown)' {
-    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
-    powershell -NoProfile -ExecutionPolicy Bypass -File tools\search_e2e.ps1
+Step 'search engines end to end (src\tools\e2e\search.odin: a profile of before the list keeps its choice, the default, keywords, Ctrl+Down in the suggestions, an engine added in about:config and written to the profile; engines on the test server, build\testserver.exe, no window at all)' {
+    Invoke-WrenE2E 'build\e2e_test.exe' 'search'
 } -NoCI
 
 Step 'unit tests: wasm' { odin test src/wasm -use-separate-modules $MemCheck -collection:wb=src -vet -define:ODIN_TEST_THREADS=1 -out:build/wasm_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
@@ -656,6 +654,8 @@ Step 'Web Authentication end-to-end test (webauthntest: create then get from Jav
     $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
 }
 Step 'build testserver (and its tests: /site/ index, listings, extensionless pages, types)' { Push-Location tools\testserver; go test . 2>&1; if ($LASTEXITCODE -eq 0) { go build -o ..\..\build\testserver.exe . }; Pop-Location }
+# The end-to-end scenarios (src\tools\e2e, docs\testing.md): one program on Odin's test runner that links the browser, built once; a step runs the tests of one file of it, in a process of its own.
+Step 'build e2e scenarios (src\tools\e2e: the browser in the tests'' process, no window, the real renderer offscreen)' { odin build src/tools/e2e -build-mode:test -out:build/e2e_test.exe -o:speed -debug -use-separate-modules -vet -collection:toolkit=ext/gui_toolkit -collection:wb=src -define:FONT_BACKEND=native -define:FONT_NATIVE_LINK=false -define:A11Y_ACCESSKIT=true -define:A11Y_NATIVE_LINK=false -define:WREN_CHANNEL=dev -define:DEFAULT_TEMP_ALLOCATOR_BACKING_SIZE=1048576 -define:ODIN_TEST_THREADS=1 -define:ODIN_TEST_FANCY=false -extra-linker-flags:"/STACK:33554432 /NODEFAULTLIB:vcruntime.lib /DEFAULTLIB:libvcruntime.lib" 2>&1 | Out-String | Tee-Object -Variable b | Out-Null; if ($LASTEXITCODE) { $b } }
 # what the steps below use is built: the builds run now. The other queued steps stay queued and run with the steps below, in one batch
 # (longest first), instead of the steps below waiting for the slowest of them.
 if ($Jobs -gt 1) { Flush-Steps 'build *' }
@@ -864,9 +864,8 @@ Step 'tab sidebar resized by its handle: the edge where the pointer is in every 
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\sidebar_resize_e2e.ps1
 } -UiOnly
-Step 'tab sidebar features (tools\sidebar_tabs_e2e.ps1, no window shown: opening and closing go through the widths between; pinned tabs, groups, the sound of a tab, through wren ctl)' {
-    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
-    powershell -NoProfile -ExecutionPolicy Bypass -File tools\sidebar_tabs_e2e.ps1
+Step 'tab sidebar features (src\tools\e2e\sidebar_tabs.odin, no window at all: opening and closing go through the widths between; pinned tabs, groups, the sound of a tab)' {
+    Invoke-WrenE2E 'build\e2e_test.exe' 'sidebar_tabs'
 } -NoCI
 Step 'splitters dragged at 1 kHz (tools\splitter_cadence.ps1, no window shown: the developer tools docked right and bottom, the tab sidebar''s handle; their frames are drags of the cadence model and, on a variable refresh screen, presented at once; the rates are printed, never checked)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }

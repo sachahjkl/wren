@@ -179,7 +179,7 @@ the hit test of each part, the drag areas and the top resize band), `sidebar_ope
 collapsed groups, the binary search, 1000 tabs in 50 groups), where a dragged tab goes and in which group, the pinned tabs'
 grid, pins and groups through a session file.
 
-`tools/sidebar_tabs_e2e.ps1` (no window shown, `wren ctl`; in `test_all`): the opening and closing animation seen by the
+`src/tools/e2e/sidebar_tabs.odin` (no window at all; in `test_all`): the opening and closing animation seen by the
 page's resize events; pinning, reordering pinned tabs, pinning and unpinning by dragging; a group made, joined by dragging,
 renamed in its header, coloured, collapsed and expanded by a click, left by dragging, gone with its last tab; the pinned
 tabs back after a restart without the session, the group with it. `-ShotDir` writes a picture of each state.

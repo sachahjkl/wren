@@ -43,8 +43,13 @@ Shutdown :: struct {
 	watchdog:   ^Thread,
 	tick:       time.Duration,
 	reports:    int,      // atomic: what the watchdog has written so far
+	wake:       sync.Sema,   // the teardown is over: the watchdog stops at once
 	done:       [160]Step_Time,   // the steps that ended, in order (the slowest are named when the teardown was slow)
 	done_count: int,
+	// phase(): the phases of a start and an end on stderr, with WREN_PHASES
+	phases_on, phases_looked: bool,
+	phase_name: string,
+	phase_at, phases_since: time.Tick,
 }
 
 @(private = "file")
@@ -86,6 +91,7 @@ shutdown_begin :: proc(log_path: string, warn_ms := SHUTDOWN_WARN_MS, force_ms :
 }
 
 shutdown_step :: proc(name: string) {
+	phase(name)
 	if !sd.active { return }
 	sync.mutex_lock(&sd.mu)
 	step_finished()
@@ -108,6 +114,7 @@ step_finished :: proc() {
 shutdown_end :: proc() {
 	if !sd.active { return }
 	sync.atomic_store(&sd.stop, true)
+	sync.sema_post(&sd.wake)   // (it sleeps until its next look otherwise: every browser that closed waited up to 200 ms for this, 100 on average)
 	thread_join(sd.watchdog)
 	elapsed := time.duration_milliseconds(time.tick_since(sd.start))
 	sync.mutex_lock(&sd.mu)
@@ -161,7 +168,7 @@ shutdown_line :: proc(line: string) {
 shutdown_watchdog :: proc(_: rawptr) {
 	next_report := time.Duration(sd.warn_ms) * time.Millisecond
 	for !sync.atomic_load(&sd.stop) {
-		time.sleep(sd.tick)   // (the real clock on purpose: it watches a process whose loop may be what is stuck)
+		if sync.sema_wait_with_timeout(&sd.wake, sd.tick) { break }   // (the real clock on purpose: it watches a process whose loop may be what is stuck)
 		elapsed := time.tick_since(sd.start)
 		if elapsed < next_report || sync.atomic_load(&sd.stop) { continue }
 		next_report = elapsed + time.Second
@@ -183,4 +190,18 @@ shutdown_watchdog :: proc(_: rawptr) {
 		}
 		free_all(context.temp_allocator)
 	}
+}
+
+// The phases of a start and of an end of the browser, on stderr when WREN_PHASES is set: each with what it took. Off, a phase is one
+// comparison. (`phase` names what begins; what ended is said then.)
+phase :: proc(name: string) {
+	if !sd.phases_looked {
+		sd.phases_looked = true
+		_, sd.phases_on = os.lookup_env("WREN_PHASES", context.temp_allocator)
+		sd.phases_since = time.tick_now()
+	}
+	if !sd.phases_on { return }
+	now := time.tick_now()
+	if sd.phase_name != "" { fmt.eprintf("phase %8.1f ms  %-34s (at %.1f ms)\n", time.duration_milliseconds(time.tick_diff(sd.phase_at, now)), sd.phase_name, time.duration_milliseconds(time.tick_diff(sd.phases_since, now))) }
+	sd.phase_name, sd.phase_at = name, now
 }

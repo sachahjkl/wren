@@ -207,6 +207,7 @@ Resize_Frame_Cause :: enum u8 { Step, Events, Tasks, Page, Ui_Animation, Ui_Time
 resize_echo_frame :: proc(app: ^App, events: []platform.Event, ran: int, page_wants: bool) -> bool {
 	wnd := active_window(app)
 	pacer := &wnd.pacer
+	if platform.is_offscreen(wnd.win) { return false }   // (nothing is presented: no copy to spare, and whoever asked for a frame waits for it)
 	// (a repaint the system asks for after a step is not a reason: the step's frame was drawn at the new size and the swap
 	// chain keeps it on screen)
 	cause := Resize_Frame_Cause.Page
@@ -292,7 +293,8 @@ pacer_wait :: proc(app: ^App, idled: bool) {
 	})
 	pacer.decision = d
 	pacer_latency(app, &pacer.latency, d.latency == 2)
-	if d.wait_ns > 0 && timer != nil {
+	// a window nobody sees waits for no one when a client waits for its frames: they are made as fast as they are asked for
+	if d.wait_ns > 0 && timer != nil && !(platform.is_offscreen(wnd.win) && (app.frames_at_once || remote_driving(app, pacer.period_ms))) {
 		// arm the timer for d.wait_ns from now and wait on it while the window keeps taking input; on Linux there is no
 		// such timer, so pacer_timer_wait sleeps the thread instead (the FIFO vblank does the fine pacing there).
 		pacer_timer_wait(wnd.win, timer, d.wait_ns)

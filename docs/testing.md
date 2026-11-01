@@ -1,7 +1,7 @@
 # How the tests run, and how to go fast
 
 `tools\test_all.ps1` runs every test of the project, step by step. This page says what it does with your time, how to
-ask for less of it while you work, and which tools tell you where the time goes.
+ask for less of it while you work, which tools tell you where the time goes, and how to write an end-to-end test.
 
 ## The commands of a working day
 
@@ -107,10 +107,51 @@ So a shorter limit can cost a rerun, not hide a regression. What it does not see
 whole run without it does, and `-Update` (which refuses the cap) records it. `-Only` keeps the whole limits too: someone is
 looking at that test. `-NoFastTimeouts` turns it off under `-Quick`.
 
+## Writing an end-to-end test
+
+An end-to-end test is an Odin `@(test)` procedure of `src/tools/e2e`, on Odin's own test runner. It calls the browser directly: the program
+links package `browser`, the browser runs in the test's thread and process, and a barrier runs its loop, turn by turn, until what it waits for
+holds. There is no window of the system, no channel, no JSON, no other thread to wait for: the frames are the real renderer's, offscreen, made as
+fast as they are asked for, and nothing can take the focus, the mouse or the keyboard of whoever is at the machine.
+
+```odin
+package e2e_scenarios
+
+import "core:testing"
+import "wb:e2e"
+
+@(test)
+the_title_shows :: proc(t: ^testing.T) {
+	server := e2e.test_server(t)
+	s := e2e.start(t, {size = {1280, 800}})
+	e2e.navigate(s, e2e.url(server, "/site/about.html"))   // returns once loaded
+	testing.expect_value(t, e2e.eval(s, "document.title"), "About")
+	e2e.key(s, "Ctrl+L")
+	e2e.type_text(s, "hello")
+	e2e.wait_js(s, "document.readyState == 'complete'")
+	c := e2e.pixel(e2e.capture(s, {target = .Page}), 10, 10)   // the next frame's pixels
+	testing.expect(t, c.a == 255)
+}
+```
+
+The rules:
+
+- **One file per subject**, `src/tools/e2e/<name>.odin`, with its checks kept as they mean. A file's tests are one step of `test_all`: `Step '...' { Invoke-WrenE2E 'build\e2e_test.exe' '<name>' }`, with its marks (`-UiOnly`, `-NoCI`, `-Weight`). `Invoke-WrenE2E` finds the tests in the file.
+- **An action that fails ends the test there**, saying where it was called from, what failed and the folder of what it left (`build/e2e/<test>/`: `failure.png`, `failure_console.txt`, the test's own `e2e.shot`s, kept only when it failed). So a scenario checks no return. Checks are `testing.expect*`: they go on.
+- **Barriers, never sleeps.** `wait_load`, `wait_frames(s, n)`, `wait_selector`, `wait_js(s, condition)`, `wait_until(s, ready_proc, "what")` and `wait_until(s, data, ready_proc, "what")`. Each has `deadline := DEFAULT_DEADLINE`, which only ends a failing run. Wait for the state itself, not for a number of frames: `wait_frames` is for what is done within a frame or two by construction.
+- **The browser's animations go by frames** (`control_begin`: each frame is one of the usual length for them, however fast it is made), so a 500 ms animation is 30 frames. What a page does on a real timer is still real time: the preference that shortens it (`forms.caret.blink_ms`) rather than a wait for it.
+- **Something the browser does not let you see or do**: add it to the browser, not to the test. A typed procedure in `src/browser/control.odin`, which the remote method (`remote_methods.odin`, only the JSON's decoding there) calls too; a field of `api.Stats`, filled by `control_stats`. Then the wrapper in `src/e2e/e2e.odin`.
+- **One browser at a time in a process** (the browser's state is the process's), and `e2e.start` ends with the test, as do its profile (`e2e.temp_profile(t)` for one that `e2e.restart` must find again), `e2e.temp_folder(t)` and `e2e.test_server(t)`. The tests of one run go one after the other (`ODIN_TEST_THREADS=1`); `test_all` runs one process per file, side by side.
+- **Only what is about a process starts one**: a launch, an exit code, a crash, a second start, the console launcher. `e2e.launch(t, {...})` gives a Wren of its own, over the channel, with the typed client `wb:remote/api` (`api.navigate(p.s, url)`), and `e2e.quit(p)` its exit code. `e2e.launch` is headless too unless `hidden = true`.
+
+Running them by hand: `build\e2e_test.exe -tests:the_title_shows` (no window opens, no other desktop is needed), or `test_all -Quick -NoCache -Only 'src.tools.e2e'`. `WREN_E2E_TRACE=1` prints every call with its time, `WREN_PHASES=1` the phases of a start and an end of the browser (a real `wren.exe` says them too).
+
+Two things `core:testing` does not give: a test stopped by a signal (`testing.fail_now`, a panic) can happen once per run on Windows, the runner lets go of a lock it does not hold, and the next signal waits for ever; `e2e` stops its tests through a limit of 0 instead (hence the "Test timed out" after a failure's message). And checks that pass say nothing: `test_all` counts tests here, not checks.
+
 ## Writing a test that is quick
 
-The rules are in [CONTRIBUTING](../CONTRIBUTING.md): wait for a condition, with a limit that only ends a failing run (`wren
-ctl wait`, `Invoke-WrenBuildIfStale`, `Ensure-WrenBuild`), one shared Wren between scenarios. And check what a wait returns:
+The rules are in [CONTRIBUTING](../CONTRIBUTING.md): wait for a condition, with a limit that only ends a failing run (the barriers above, `wren
+ctl wait` for a script, `Invoke-WrenBuildIfStale`, `Ensure-WrenBuild`), one shared Wren between scenarios. And check what a wait returns:
 a tool that waited for a line nobody logs (`jsloadtest`) spent its 120 s limit in every run, and passed.
 
 ## Virtual time

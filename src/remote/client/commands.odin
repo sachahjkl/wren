@@ -1,5 +1,7 @@
 package client
 
+// The commands: arguments in, one call of the typed API (wb:remote/api), what it says out. No request is written here.
+
 import "core:encoding/json"
 import "core:fmt"
 import "core:os"
@@ -8,15 +10,17 @@ import "core:strconv"
 import "core:strings"
 import "core:time"
 import "wb:remote"
+import "wb:remote/api"
 
-q :: remote.quote
-
-// {"tabId": n} when --tab-id was given.
-@(private)
-tab_param :: proc(ctx: ^Context) -> string {
-	if id := opt(&ctx.o, "tab-id"); id != "" { return fmt.tprintf(`"tabId":%s,`, id) }
-	return ""
-}
+// What `--steps`, `--count` and the like are when not given.
+DEFAULT_DRAG_STEPS :: api.DRAG_STEPS
+DEFAULT_QUERY_LIMIT :: 20
+DEFAULT_TIMELINE_SCALE :: 0.3
+DEFAULT_TIMELINE_COUNT :: 240
+DEFAULT_TIMELINE_COLS :: 6
+MAX_SHOT_COUNT :: 10_000
+// No limit of the API's own: the browser's, or --timeout.
+NO_DEADLINE :: time.Duration(0)
 
 @(private)
 abs_path :: proc(p: string) -> string {
@@ -43,28 +47,42 @@ usage :: proc(cmd, text: string) -> int {
 	return EXIT_USAGE
 }
 
+@(private)
+wait_option :: proc(ctx: ^Context, default: string) -> (api.Wait, bool) {
+	w, ok := api.wait_by_name(opt(&ctx.o, "wait", default))
+	if !ok { errln("wren ctl: --wait is none, load, idle, stable or quiet") }
+	return w, ok
+}
+
+@(private)
+space_option :: proc(ctx: ^Context) -> api.Space { return flag(&ctx.o, "window") ? .Window : .Page }
+
+@(private)
+button_option :: proc(ctx: ^Context) -> api.Button { return flag(&ctx.o, "right") ? .Right : flag(&ctx.o, "middle") ? .Middle : .Left }
+
 dispatch :: proc(ctx: ^Context, cmd: string, args: []string) -> int {
+	s := &ctx.s
 	switch cmd {
 	case "run":      return cmd_run(ctx, args)
 	case "start":    return cmd_start(ctx, args)
 	case "stop":     return cmd_stop(ctx, args)
 	case "diff":     return cmd_diff(ctx, args)
-	case "ping":     return simple(ctx, "Remote.ping", "{}")
-	case "version":  return simple(ctx, "Browser.getVersion", "{}")
+	case "ping":     _, e := api.ping(s); return simple(ctx, e)
+	case "version":  _, e := api.version(s); return simple(ctx, e)
 	case "nav", "navigate", "open":
 		if len(args) != 1 { return usage(cmd, "usage: nav <url> [--wait load|idle|stable|none]") }
-		rep, code := request(ctx, "Page.navigate", fmt.tprintf(`{{%s"url":%s,"wait":%s}}`, tab_param(ctx), q(args[0]), q(opt(&ctx.o, "wait", "load"))))
-		if code != 0 { return code }
-		return show(ctx, rep, "url")
+		w, ok := wait_option(ctx, "load")
+		if !ok { return EXIT_USAGE }
+		return show(ctx, api.navigate(s, args[0], w, NO_DEADLINE), "url")
 	case "reload":
-		rep, code := request(ctx, "Page.reload", fmt.tprintf(`{{%s"wait":%s}}`, tab_param(ctx), q(opt(&ctx.o, "wait", "load"))))
-		if code != 0 { return code }
-		return show(ctx, rep, "")
+		w, ok := wait_option(ctx, "load")
+		if !ok { return EXIT_USAGE }
+		return show(ctx, api.reload(s, w, false, NO_DEADLINE), "")
 	case "back", "forward":
-		rep, code := request(ctx, cmd == "back" ? "Page.goBack" : "Page.goForward", fmt.tprintf(`{{%s"wait":%s}}`, tab_param(ctx), q(opt(&ctx.o, "wait", "load"))))
-		if code != 0 { return code }
-		return show(ctx, rep, "")
-	case "cancel":   return simple(ctx, "Page.stopLoading", fmt.tprintf(`{{%s"x":0}}`, tab_param(ctx)))
+		w, ok := wait_option(ctx, "load")
+		if !ok { return EXIT_USAGE }
+		return show(ctx, cmd == "back" ? api.go_back(s, w, NO_DEADLINE) : api.go_forward(s, w, NO_DEADLINE), "")
+	case "cancel":   return simple(ctx, api.stop_loading(s))
 	case "shot", "screenshot": return cmd_shot(ctx, args)
 	case "eval":     return cmd_eval(ctx, args)
 	case "click":    return cmd_click(ctx, args)
@@ -74,14 +92,14 @@ dispatch :: proc(ctx: ^Context, cmd: string, args: []string) -> int {
 		if len(args) != 1 { return usage(cmd, "usage: hover x,y [--window]") }
 		v, ok := parse_numbers(args[0], 2)
 		if !ok { return usage(cmd, "usage: hover x,y [--window]") }
-		return simple(ctx, "Input.dispatchMouseEvent", fmt.tprintf(`{{"type":"mouseMoved","x":%v,"y":%v,"space":%s}}`, v[0], v[1], q(flag(&ctx.o, "window") ? "window" : "page")))
+		return simple(ctx, api.hover(s, {v[0], v[1]}, space_option(ctx)))
 	case "scroll":   return cmd_scroll(ctx, args)
 	case "type":
 		if len(args) == 0 { return usage(cmd, "usage: type <text>") }
-		return simple(ctx, "Wren.type", fmt.tprintf(`{{"text":%s}}`, q(strings.join(args, " ", context.temp_allocator))))
+		return simple(ctx, api.type_text(s, strings.join(args, " ", context.temp_allocator)))
 	case "key":
 		if len(args) == 0 { return usage(cmd, "usage: key <combo>... (Enter, Ctrl+L, Shift+Tab, F5, a)") }
-		return simple(ctx, "Wren.key", fmt.tprintf(`{{"keys":%s,"repeat":%d}}`, q(strings.join(args, " ", context.temp_allocator)), opt_int(&ctx.o, "repeat", 1)))
+		return simple(ctx, api.key(s, strings.join(args, " ", context.temp_allocator), opt_int(&ctx.o, "repeat", 1)))
 	case "wait":     return cmd_wait(ctx, args)
 	case "console":  return cmd_console(ctx)
 	case "network":  return cmd_network(ctx)
@@ -96,37 +114,28 @@ dispatch :: proc(ctx: ^Context, cmd: string, args: []string) -> int {
 	case "cmds":     return cmd_cmds(ctx, args)
 	case "cmd":
 		if len(args) != 1 { return usage(cmd, "usage: cmd <name>   (wren ctl cmds lists the names)") }
-		return simple(ctx, "Wren.runCommand", fmt.tprintf(`{{"name":%s}}`, q(args[0])))
+		return simple(ctx, api.run_command(s, args[0]))
 	case "devtools":
-		return simple(ctx, "Wren.openDevTools", fmt.tprintf(`{{"panel":%s,"dock":%s}}`, q(len(args) > 0 ? args[0] : "console"), q(opt(&ctx.o, "dock", ""))))
-	case "setup":    return simple(ctx, "Wren.openSetup", "{}")
+		return simple(ctx, api.open_devtools(s, len(args) > 0 ? args[0] : "console", opt(&ctx.o, "dock", "")))
+	case "setup":    return simple(ctx, api.open_setup(s))
 	case "html":
-		rep, code := request(ctx, "DOM.getOuterHTML", fmt.tprintf(`{{%s"selector":%s}}`, tab_param(ctx), len(args) > 0 ? q(args[0]) : "null"))
-		if code != 0 { return code }
-		if flag(&ctx.o, "json") { print_json(rep); return 0 }
-		s, _ := remote.param_string(parse_result(rep), "outerHTML")
-		outln(s)
+		text, e := api.outer_html(s, len(args) > 0 ? args[0] : "")
+		if e != .None { return failed(ctx, e) }
+		if flag(&ctx.o, "json") { print_answer(ctx); return 0 }
+		outln(text)
 		return 0
 	case "query":
 		if len(args) != 1 { return usage(cmd, "usage: query <selector>") }
-		return simple(ctx, "DOM.querySelectorAll", fmt.tprintf(`{{%s"selector":%s,"limit":%d}}`, tab_param(ctx), q(args[0]), opt_int(&ctx.o, "limit", 20)))
+		return simple(ctx, api.query_all(s, args[0], opt_int(&ctx.o, "limit", DEFAULT_QUERY_LIMIT)))
 	case "box":
 		if len(args) != 1 { return usage(cmd, "usage: box <selector>") }
-		return simple(ctx, "DOM.getBoxModel", fmt.tprintf(`{{%s"selector":%s}}`, tab_param(ctx), q(args[0])))
+		return simple(ctx, api.box_model(s, args[0]))
 	case "style":
 		if len(args) < 1 { return usage(cmd, "usage: style <selector> [property...]") }
-		props := "null"
-		if len(args) > 1 {
-			b := strings.builder_make(context.temp_allocator)
-			strings.write_byte(&b, '[')
-			for p, i in args[1:] { if i > 0 { strings.write_byte(&b, ',') }; remote.write_json_string(&b, p) }
-			strings.write_byte(&b, ']')
-			props = strings.to_string(b)
-		}
-		return simple(ctx, "CSS.getComputedStyleForNode", fmt.tprintf(`{{%s"selector":%s,"properties":%s}}`, tab_param(ctx), q(args[0]), props))
+		return simple(ctx, api.computed_style(s, args[0], len(args) > 1 ? args[1:] : nil))
 	case "snapshot":
 		if len(args) != 1 { return usage(cmd, "usage: snapshot <path-prefix>   (writes <prefix>.png, .html and .json)") }
-		return simple(ctx, "Wren.snapshot", fmt.tprintf(`{{%s"path":%s,"target":%s}}`, tab_param(ctx), q(abs_path(args[0])), q(flag(&ctx.o, "tab") ? "page" : "window")))
+		return simple(ctx, api.snapshot(s, abs_path(args[0]), flag(&ctx.o, "tab")))
 	case "record":   return cmd_record(ctx, args)
 	case "timeline": return cmd_timeline(ctx, args)
 	case "replay":   return cmd_replay(ctx, args)
@@ -138,30 +147,29 @@ dispatch :: proc(ctx: ^Context, cmd: string, args: []string) -> int {
 		method, has := remote.param_string(obj, "method")
 		if err != .None || !ok || !has { return usage(cmd, "the argument is a JSON object with a \"method\"") }
 		params := "{}"
-		if p, has_p := obj["params"]; has_p { if s, e := json.marshal(p, {}, context.temp_allocator); e == nil { params = string(s) } }
-		rep, code := request(ctx, method, params)
-		if code != 0 { return code }
-		print_json(rep)
+		if p, has_p := obj["params"]; has_p { if t, e := json.marshal(p, {}, context.temp_allocator); e == nil { params = string(t) } }
+		if _, e := api.call_raw(s, method, params, ctx.s.timeout_ms); e != .None { return failed(ctx, e) }
+		print_answer(ctx)
 		return 0
 	}
 	errln(fmt.tprintf("wren ctl: unknown command %q (wren ctl help)", cmd))
 	return EXIT_USAGE
 }
 
-// A command whose answer is shown as JSON.
+// What a call ended in, for a command whose answer is shown as JSON.
 @(private)
-simple :: proc(ctx: ^Context, method, params: string) -> int {
-	rep, code := request(ctx, method, params)
-	if code != 0 { return code }
-	if !flag(&ctx.o, "quiet") { print_json(rep) }
+simple :: proc(ctx: ^Context, e: api.Error) -> int {
+	if e != .None { return failed(ctx, e) }
+	if !flag(&ctx.o, "quiet") { print_answer(ctx) }
 	return 0
 }
 
-// An answer shown as the text of one of its fields (or its JSON with --json, or nothing).
+// ... for one whose answer is the text of one of its fields (or its JSON with --json, or nothing).
 @(private)
-show :: proc(ctx: ^Context, rep: Reply, field: string) -> int {
-	if flag(&ctx.o, "json") { print_json(rep); return 0 }
-	if field != "" { if s, ok := remote.param_string(parse_result(rep), field); ok { outln(s) } }
+show :: proc(ctx: ^Context, e: api.Error, field: string) -> int {
+	if e != .None { return failed(ctx, e) }
+	if flag(&ctx.o, "json") { print_answer(ctx); return 0 }
+	if field != "" { if t, ok := api.answer_string(&ctx.s, field); ok { outln(t) } }
 	return 0
 }
 
@@ -171,7 +179,7 @@ show :: proc(ctx: ^Context, rep: Reply, field: string) -> int {
 cmd_shot :: proc(ctx: ^Context, args: []string) -> int {
 	if len(args) != 1 { return usage("shot", "usage: shot <file.png> [--tab|--window|--rect x,y,w,h|--selector css] [--scale n] [--settle frames] [--count n [--interval ms]]") }
 	count := opt_int(&ctx.o, "count", 1)
-	if count < 1 || count > 10_000 { return usage("shot", "--count is 1 to 10000") }
+	if count < 1 || count > MAX_SHOT_COUNT { return usage("shot", "--count is 1 to 10000") }
 	if count == 1 { return shot_one(ctx, args[0]) }
 	interval := time.Duration(opt_int(&ctx.o, "interval", 0)) * time.Millisecond
 	for i in 0 ..< count {
@@ -196,71 +204,49 @@ numbered_name :: proc(name: string, i, count: int) -> string {
 
 @(private)
 shot_one :: proc(ctx: ^Context, file: string) -> int {
-	b := strings.builder_make(context.temp_allocator)
-	fmt.sbprintf(&b, `{{%s"path":%s`, tab_param(ctx), q(abs_path(file)))
+	o: api.Shot_Options
 	switch {
-	case opt(&ctx.o, "selector") != "": fmt.sbprintf(&b, `,"target":"selector","selector":%s`, q(opt(&ctx.o, "selector")))
+	case opt(&ctx.o, "selector") != "":
+		o.target, o.selector = .Selector, opt(&ctx.o, "selector")
 	case opt(&ctx.o, "rect") != "":
 		r, ok := parse_numbers(opt(&ctx.o, "rect"), 4)
 		if !ok { return usage("shot", "--rect x,y,w,h (window pixels)") }
-		fmt.sbprintf(&b, `,"target":"rect","clip":{{"x":%v,"y":%v,"width":%v,"height":%v}}`, r[0], r[1], r[2], r[3])
-	case flag(&ctx.o, "tab"): strings.write_string(&b, `,"target":"page"`)
+		o.target, o.rect = .Rect, {r[0], r[1], r[2], r[3]}
+	case flag(&ctx.o, "tab"): o.target = .Page
 	}
-	if s := opt(&ctx.o, "scale"); s != "" { fmt.sbprintf(&b, `,"scale":%s`, s) }
-	if s := opt(&ctx.o, "settle"); s != "" { fmt.sbprintf(&b, `,"settle":%s`, s) }
-	strings.write_byte(&b, '}')
-	rep, code := request(ctx, "Page.captureScreenshot", strings.to_string(b))
-	if code != 0 { return code }
-	if flag(&ctx.o, "json") { print_json(rep); return 0 }
-	r := parse_result(rep)
-	p, _ := remote.param_string(r, "path")
-	w, _ := remote.param_int(r, "width"); h, _ := remote.param_int(r, "height")
-	outln(fmt.tprintf("%s %dx%d", p, w, h))
+	if t := opt(&ctx.o, "scale"); t != "" { o.scale, _ = strconv.parse_f64(t) }
+	if t := opt(&ctx.o, "settle"); t != "" { o.settle = opt_int(&ctx.o, "settle", 0); o.has_settle = true }
+	r, e := api.screenshot(&ctx.s, abs_path(file), o)
+	if e != .None { return failed(ctx, e) }
+	if flag(&ctx.o, "json") { print_answer(ctx); return 0 }
+	outln(fmt.tprintf("%s %dx%d", r.path, r.width, r.height))
 	return 0
 }
 
 @(private)
 cmd_eval :: proc(ctx: ^Context, args: []string) -> int {
 	if len(args) == 0 { return usage("eval", "usage: eval <javascript> [--await]") }
-	rep, code := request(ctx, "Runtime.evaluate", fmt.tprintf(`{{%s"expression":%s,"awaitPromise":%v}}`, tab_param(ctx), q(strings.join(args, " ", context.temp_allocator)), flag(&ctx.o, "await")))
-	if code != 0 { return code }
-	if flag(&ctx.o, "json") { print_json(rep); return 0 }
-	r := parse_result(rep)
-	if ex, has := remote.param_object(r, "exceptionDetails"); has {
-		e, _ := remote.param_object(ex, "exception")
-		d, _ := remote.param_string(e, "description")
-		t, _ := remote.param_string(ex, "text")
-		errln(d != "" ? d : t)
+	v, e := api.eval_value(&ctx.s, strings.join(args, " ", context.temp_allocator), flag(&ctx.o, "await"), NO_DEADLINE)
+	if e == .Script {
+		// (with --json the whole answer, as it came)
+		if flag(&ctx.o, "json") { print_answer(ctx); return 0 }
+		errln(api.last_failure().message)
 		return EXIT_FAILED
 	}
-	res, _ := remote.param_object(r, "result")
-	t, _ := remote.param_string(res, "type")
-	switch t {
-	case "undefined": return 0
-	case "string": s, _ := remote.param_string(res, "value"); outln(s)
-	case:
-		s, _ := json.marshal(res["value"], {}, context.temp_allocator)
-		outln(string(s))
-	}
+	if e != .None { return failed(ctx, e) }
+	if flag(&ctx.o, "json") { print_answer(ctx); return 0 }
+	if v.kind != "undefined" { outln(v.text) }
 	return 0
 }
 
 @(private)
 cmd_click :: proc(ctx: ^Context, args: []string) -> int {
-	b := strings.builder_make(context.temp_allocator)
-	fmt.sbprintf(&b, `{{%s"button":%s,"count":%d`, tab_param(ctx), q(flag(&ctx.o, "right") ? "right" : flag(&ctx.o, "middle") ? "middle" : "left"), flag(&ctx.o, "double") ? 2 : 1)
-	if sel := opt(&ctx.o, "selector"); sel != "" {
-		fmt.sbprintf(&b, `,"selector":%s`, q(sel))
-	} else if len(args) == 1 {
-		v, ok := parse_numbers(args[0], 2)
-		if !ok { return usage("click", "usage: click x,y | click --selector css") }
-		fmt.sbprintf(&b, `,"x":%v,"y":%v`, v[0], v[1])
-		if flag(&ctx.o, "window") { strings.write_string(&b, `,"space":"window"`) }
-	} else {
-		return usage("click", "usage: click x,y (page pixels; --window for window pixels) | click --selector css")
-	}
-	strings.write_byte(&b, '}')
-	return simple(ctx, "Wren.click", strings.to_string(b))
+	button, count := button_option(ctx), flag(&ctx.o, "double") ? 2 : 1
+	if sel := opt(&ctx.o, "selector"); sel != "" { return simple(ctx, api.click(&ctx.s, sel, button, count)) }
+	if len(args) != 1 { return usage("click", "usage: click x,y (page pixels; --window for window pixels) | click --selector css") }
+	v, ok := parse_numbers(args[0], 2)
+	if !ok { return usage("click", "usage: click x,y | click --selector css") }
+	return simple(ctx, api.click_at(&ctx.s, {v[0], v[1]}, space_option(ctx), button, count))
 }
 
 // drop [files...] --at x,y [--text t] [--url u] [--html h] [--leave]: another application's drag dropped on the window
@@ -269,17 +255,13 @@ cmd_click :: proc(ctx: ^Context, args: []string) -> int {
 cmd_drop :: proc(ctx: ^Context, args: []string) -> int {
 	at, ok := parse_numbers(opt(&ctx.o, "at", "200,200"), 2)
 	if !ok { return usage("drop", "usage: drop [files...] --at x,y [--text t] [--url u] [--html h] [--leave]") }
-	sb := strings.builder_make(context.temp_allocator)
-	fmt.sbprintf(&sb, `{{"x":%v,"y":%v,"space":%s,"files":[`, at[0], at[1], q(flag(&ctx.o, "window") ? "window" : "page"))
+	if len(args) == 0 && opt(&ctx.o, "text") == "" && opt(&ctx.o, "url") == "" && opt(&ctx.o, "html") == "" { return usage("drop", "give files, --text, --url or --html") }
+	files := make([]string, len(args), context.temp_allocator)
 	for f, i in args {
 		full, err := filepath.abs(f, context.temp_allocator)
-		if err != nil { full = f }
-		if i > 0 { strings.write_byte(&sb, ',') }
-		strings.write_string(&sb, q(full))
+		files[i] = err != nil ? f : full
 	}
-	fmt.sbprintf(&sb, `],"text":%s,"url":%s,"html":%s,"leave":%v}}`, q(opt(&ctx.o, "text")), q(opt(&ctx.o, "url")), q(opt(&ctx.o, "html")), flag(&ctx.o, "leave"))
-	if len(args) == 0 && opt(&ctx.o, "text") == "" && opt(&ctx.o, "url") == "" && opt(&ctx.o, "html") == "" { return usage("drop", "give files, --text, --url or --html") }
-	return simple(ctx, "Wren.drop", strings.to_string(sb))
+	return simple(ctx, api.drop(&ctx.s, {at[0], at[1]}, {files = files, text = opt(&ctx.o, "text"), url = opt(&ctx.o, "url"), html = opt(&ctx.o, "html")}, space_option(ctx), flag(&ctx.o, "leave")))
 }
 
 @(private)
@@ -288,14 +270,13 @@ cmd_drag :: proc(ctx: ^Context, args: []string) -> int {
 	a, ok1 := parse_numbers(args[0], 2)
 	z, ok2 := parse_numbers(args[len(args) - 1], 2)
 	if !ok1 || !ok2 { return usage("drag", "usage: drag x,y [via-x,via-y ...] x2,y2") }
-	via := strings.builder_make(context.temp_allocator)
+	via := make([dynamic]api.Point, context.temp_allocator)
 	for mid in args[1:len(args) - 1] {
 		v, ok := parse_numbers(mid, 2)
 		if !ok { return usage("drag", "every point is x,y") }
-		if strings.builder_len(via) > 0 { strings.write_byte(&via, ',') }
-		fmt.sbprintf(&via, "[%v,%v]", v[0], v[1])
+		append(&via, api.Point{v[0], v[1]})
 	}
-	return simple(ctx, "Wren.drag", fmt.tprintf(`{{"x":%v,"y":%v,"toX":%v,"toY":%v,"via":[%s],"steps":%d,"space":%s,"hold":%v,"resume":%v}}`, a[0], a[1], z[0], z[1], strings.to_string(via), opt_int(&ctx.o, "steps", 8), q(flag(&ctx.o, "window") ? "window" : "page"), flag(&ctx.o, "hold"), flag(&ctx.o, "resume")))
+	return simple(ctx, api.drag(&ctx.s, {a[0], a[1]}, {z[0], z[1]}, {via = via[:], steps = opt_int(&ctx.o, "steps", DEFAULT_DRAG_STEPS), space = space_option(ctx), hold = flag(&ctx.o, "hold"), resume = flag(&ctx.o, "resume")}))
 }
 
 // scroll <notches> [x,y]: the wheel; positive goes down. Without a point, the middle of the page area.
@@ -304,82 +285,70 @@ cmd_scroll :: proc(ctx: ^Context, args: []string) -> int {
 	if len(args) < 1 { return usage("scroll", "usage: scroll <notches> [x,y]   (one notch is 100 px; negative goes up)") }
 	n, ok := strconv.parse_f64(args[0])
 	if !ok { return usage("scroll", "usage: scroll <notches> [x,y]") }
-	x, y := 200.0, 200.0
-	space := "page"
+	at := api.Point{api.SCROLL_X, api.SCROLL_Y}
 	if len(args) > 1 {
 		v, good := parse_numbers(args[1], 2)
 		if !good { return usage("scroll", "the point is x,y") }
-		x, y = v[0], v[1]
+		at = {v[0], v[1]}
 	}
-	return simple(ctx, "Input.dispatchMouseEvent", fmt.tprintf(`{{"type":"mouseWheel","x":%v,"y":%v,"notches":%v,"space":%s}}`, x, y, n, q(space)))
+	return simple(ctx, api.scroll(&ctx.s, n, at))
 }
 
 @(private)
 cmd_wait :: proc(ctx: ^Context, args: []string) -> int {
 	if len(args) < 1 { return usage("wait", "usage: wait load|idle|stable|quiet | wait selector <css> [--visible] | wait function <js> | wait frames [n]") }
-	what := args[0]
-	b := strings.builder_make(context.temp_allocator)
-	fmt.sbprintf(&b, `{{%s"for":%s`, tab_param(ctx), q(what))
-	switch what {
-	case "selector": if len(args) != 2 { return usage("wait", "wait selector <css>") }; fmt.sbprintf(&b, `,"selector":%s,"visible":%v`, q(args[1]), flag(&ctx.o, "visible"))
-	case "function": if len(args) < 2 { return usage("wait", "wait function <js>") }; fmt.sbprintf(&b, `,"expression":%s`, q(strings.join(args[1:], " ", context.temp_allocator)))
-	case "frames":   if len(args) > 1 { fmt.sbprintf(&b, `,"frames":%s`, args[1]) }
-	case "load", "idle", "stable":
+	s := &ctx.s
+	switch args[0] {
+	case "selector":
+		if len(args) != 2 { return usage("wait", "wait selector <css>") }
+		return simple(ctx, api.wait_selector(s, args[1], flag(&ctx.o, "visible"), NO_DEADLINE))
+	case "function":
+		if len(args) < 2 { return usage("wait", "wait function <js>") }
+		return simple(ctx, api.wait_js(s, strings.join(args[1:], " ", context.temp_allocator), NO_DEADLINE))
+	case "frames":
+		n := 2
+		if len(args) > 1 { n, _ = strconv.parse_int(args[1]) }
+		return simple(ctx, api.wait_frames(s, n, NO_DEADLINE))
+	case "load":   return simple(ctx, api.wait_load(s, NO_DEADLINE))
+	case "idle":   return simple(ctx, api.wait_idle(s, NO_DEADLINE))
+	case "stable": return simple(ctx, api.wait_stable(s, NO_DEADLINE))
 	case "quiet":
-		if s := opt(&ctx.o, "quiet-ms"); s != "" { fmt.sbprintf(&b, `,"quietMs":%s`, s) }
-		if s := opt(&ctx.o, "max-cpu"); s != "" { fmt.sbprintf(&b, `,"maxCpuMs":%s`, s) }
-	case: return usage("wait", "wait load|idle|stable|quiet|selector|function|frames")
+		cpu := 0.0
+		if t := opt(&ctx.o, "max-cpu"); t != "" { cpu, _ = strconv.parse_f64(t) }
+		return simple(ctx, api.wait_quiet(s, opt_int(&ctx.o, "quiet-ms", 0), cpu, NO_DEADLINE))
 	}
-	strings.write_byte(&b, '}')
-	return simple(ctx, "Wren.wait", strings.to_string(b))
+	return usage("wait", "wait load|idle|stable|quiet|selector|function|frames")
 }
 
 @(private)
 cmd_console :: proc(ctx: ^Context) -> int {
-	rep, code := request(ctx, "Wren.console", fmt.tprintf(`{{%s"since":%d,"clear":%v}}`, tab_param(ctx), opt_int(&ctx.o, "since", 0), flag(&ctx.o, "clear")))
-	if code != 0 { return code }
-	if flag(&ctx.o, "json") { print_json(rep); return 0 }
-	lines, _ := remote.param_array(parse_result(rep), "lines")
-	for l in lines {
-		o, _ := l.(json.Object)
-		level, _ := remote.param_string(o, "level")
-		text, _ := remote.param_string(o, "text")
-		outln(level == "log" ? text : fmt.tprintf("%s: %s", level, text))
-	}
+	lines, e := api.console(&ctx.s, opt_int(&ctx.o, "since", 0), flag(&ctx.o, "clear"))
+	if e != .None { return failed(ctx, e) }
+	if flag(&ctx.o, "json") { print_answer(ctx); return 0 }
+	for l in lines { outln(l.level == "log" ? l.text : fmt.tprintf("%s: %s", l.level, l.text)) }
 	return 0
 }
 
 @(private)
 cmd_network :: proc(ctx: ^Context) -> int {
-	rep, code := request(ctx, "Wren.network", fmt.tprintf(`{{%s"clear":%v}}`, tab_param(ctx), flag(&ctx.o, "clear")))
-	if code != 0 { return code }
-	if flag(&ctx.o, "json") { print_json(rep); return 0 }
-	reqs, _ := remote.param_array(parse_result(rep), "requests")
+	reqs, e := api.network(&ctx.s, flag(&ctx.o, "clear"))
+	if e != .None { return failed(ctx, e) }
+	if flag(&ctx.o, "json") { print_answer(ctx); return 0 }
 	for r in reqs {
-		o, _ := r.(json.Object)
-		status, _ := remote.param_int(o, "status")
-		method, _ := remote.param_string(o, "method")
-		url, _ := remote.param_string(o, "url")
-		mime, _ := remote.param_string(o, "mime")
-		n, _ := remote.param_int(o, "bytes")
-		ms, has_ms := remote.param_float(o, "ms")
-		failed, _ := remote.param_bool(o, "failed")
-		msg, _ := remote.param_string(o, "error")
-		st := failed ? "FAIL" : status == 0 ? "..." : fmt.tprintf("%d", status)
-		outln(fmt.tprintf("%-4s %-6s %-9s %8d B %7s  %s%s", st, method, mime == "" ? "-" : mime, n, has_ms ? fmt.tprintf("%.0f ms", ms) : "-", url, failed ? fmt.tprintf("  (%s)", msg) : ""))
+		st := r.failed ? "FAIL" : r.status == 0 ? "..." : fmt.tprintf("%d", r.status)
+		outln(fmt.tprintf("%-4s %-6s %-9s %8d B %7s  %s%s", st, r.method, r.mime == "" ? "-" : r.mime, r.bytes, r.has_ms ? fmt.tprintf("%.0f ms", r.ms) : "-", r.url, r.failed ? fmt.tprintf("  (%s)", r.error) : ""))
 	}
 	return 0
 }
 
 @(private)
 cmd_stats :: proc(ctx: ^Context) -> int {
-	params := fmt.tprintf(`{{"resetLatency":%v,"resetFrames":%v}}`, flag(&ctx.o, "reset-latency"), flag(&ctx.o, "reset-frames"))
-	rep, code := request(ctx, "Wren.stats", params)
-	if code != 0 { return code }
-	if flag(&ctx.o, "json") { print_json(rep); return 0 }
-	for k, v in parse_result(rep) {
-		s, _ := json.marshal(v, {}, context.temp_allocator)
-		outln(fmt.tprintf("%s: %s", k, string(s)))
+	_, e := api.stats(&ctx.s, flag(&ctx.o, "reset-latency"), flag(&ctx.o, "reset-frames"))
+	if e != .None { return failed(ctx, e) }
+	if flag(&ctx.o, "json") { print_answer(ctx); return 0 }
+	for k, v in parse_result(ctx.s.result) {
+		t, _ := json.marshal(v, {}, context.temp_allocator)
+		outln(fmt.tprintf("%s: %s", k, string(t)))
 	}
 	return 0
 }
@@ -387,138 +356,124 @@ cmd_stats :: proc(ctx: ^Context) -> int {
 @(private)
 cmd_pref :: proc(ctx: ^Context, args: []string) -> int {
 	if len(args) == 0 { return usage("pref", "usage: pref get <name> | pref set <name> <value> [--override] | pref reset <name> | pref reset --all | pref list [prefix]") }
+	s := &ctx.s
+	text_answer :: proc(ctx: ^Context, text: string, e: api.Error) -> int {
+		if e != .None { return failed(ctx, e) }
+		if flag(&ctx.o, "json") { print_answer(ctx); return 0 }
+		outln(text)
+		return 0
+	}
 	switch args[0] {
 	case "get":
 		if len(args) != 2 { return usage("pref", "usage: pref get <name>") }
-		rep, code := request(ctx, "Wren.getPref", fmt.tprintf(`{{"name":%s}}`, q(args[1])))
-		if code != 0 { return code }
-		if flag(&ctx.o, "json") { print_json(rep); return 0 }
-		s, _ := remote.param_string(parse_result(rep), "text")
-		outln(s)
+		t, e := api.pref_get(s, args[1])
+		return text_answer(ctx, t, e)
 	case "set":
 		if len(args) != 3 { return usage("pref", "usage: pref set <name> <value>") }
-		rep, code := request(ctx, "Wren.setPref", fmt.tprintf(`{{"name":%s,"value":%s,"override":%v}}`, q(args[1]), q(args[2]), flag(&ctx.o, "override")))
-		if code != 0 { return code }
-		if flag(&ctx.o, "json") { print_json(rep); return 0 }
-		s, _ := remote.param_string(parse_result(rep), "text")
-		outln(s)
+		t, e := api.pref_set(s, args[1], args[2], flag(&ctx.o, "override"))
+		return text_answer(ctx, t, e)
 	case "reset":
 		if flag(&ctx.o, "all") {
 			if len(args) != 1 { return usage("pref", "usage: pref reset <name> | pref reset --all") }
-			rep, code := request(ctx, "Wren.resetPref", `{"all":true}`)
-			if code != 0 { return code }
-			if flag(&ctx.o, "json") { print_json(rep); return 0 }
-			n, _ := remote.param_int(parse_result(rep), "restored")
-			outln(fmt.tprintf("%d preference(s) put back", n))
-			return 0
+			n, e := api.pref_reset_all(s)
+			return text_answer(ctx, fmt.tprintf("%d preference(s) put back", n), e)
 		}
 		if len(args) != 2 { return usage("pref", "usage: pref reset <name> | pref reset --all") }
-		rep, code := request(ctx, "Wren.resetPref", fmt.tprintf(`{{"name":%s}}`, q(args[1])))
-		if code != 0 { return code }
-		if flag(&ctx.o, "json") { print_json(rep); return 0 }
-		s, _ := remote.param_string(parse_result(rep), "text")
-		outln(s)
+		t, e := api.pref_reset(s, args[1])
+		return text_answer(ctx, t, e)
 	case "list":
-		rep, code := request(ctx, "Wren.listPrefs", fmt.tprintf(`{{"prefix":%s}}`, q(len(args) > 1 ? args[1] : "")))
-		if code != 0 { return code }
-		if flag(&ctx.o, "json") { print_json(rep); return 0 }
-		prefs, _ := remote.param_array(parse_result(rep), "prefs")
-		for p in prefs {
-			o, _ := p.(json.Object)
-			n, _ := remote.param_string(o, "name"); t, _ := remote.param_string(o, "text")
-			outln(fmt.tprintf("%s = %s", n, t))
-		}
-	case: return usage("pref", "get, set, reset or list")
+		prefs, e := api.pref_list(s, len(args) > 1 ? args[1] : "")
+		if e != .None { return failed(ctx, e) }
+		if flag(&ctx.o, "json") { print_answer(ctx); return 0 }
+		for p in prefs { outln(fmt.tprintf("%s = %s", p.name, p.text)) }
+		return 0
 	}
-	return 0
+	return usage("pref", "get, set, reset or list")
 }
 
 @(private)
 cmd_tabs :: proc(ctx: ^Context) -> int {
-	rep, code := request(ctx, "Target.getTargets", "{}")
-	if code != 0 { return code }
-	if flag(&ctx.o, "json") { print_json(rep); return 0 }
-	infos, _ := remote.param_array(parse_result(rep), "targetInfos")
-	for i in infos {
-		o, _ := i.(json.Object)
-		id, _ := remote.param_int(o, "targetId"); active, _ := remote.param_bool(o, "active"); loading, _ := remote.param_bool(o, "loading")
-		title, _ := remote.param_string(o, "title"); url, _ := remote.param_string(o, "url")
-		wid, _ := remote.param_int(o, "windowId")
-		outln(fmt.tprintf("%d%s w%d %s%s  %s", id, active ? "*" : " ", wid, loading ? "[loading] " : "", title, url))
-	}
+	r, e := api.targets(&ctx.s)
+	if e != .None { return failed(ctx, e) }
+	if flag(&ctx.o, "json") { print_answer(ctx); return 0 }
+	for t in r.tabs { outln(fmt.tprintf("%d%s w%d %s%s  %s", t.id, t.active ? "*" : " ", t.window, t.loading ? "[loading] " : "", t.title, t.url)) }
 	return 0
 }
 
 // windows: one line per window (id, * for the front one, tabs, the current tab, size).
 @(private)
 cmd_windows :: proc(ctx: ^Context) -> int {
-	rep, code := request(ctx, "Browser.getWindows", "{}")
-	if code != 0 { return code }
-	if flag(&ctx.o, "json") { print_json(rep); return 0 }
-	infos, _ := remote.param_array(parse_result(rep), "windows")
-	for i in infos {
-		o, _ := i.(json.Object)
-		id, _ := remote.param_int(o, "windowId"); front, _ := remote.param_bool(o, "front"); n, _ := remote.param_int(o, "tabs")
-		cur, _ := remote.param_int(o, "currentTabId"); w, _ := remote.param_int(o, "width"); h, _ := remote.param_int(o, "height")
-		state, _ := remote.param_string(o, "windowState")
-		outln(fmt.tprintf("%d%s %d tab(s), current %d, %dx%d %s", id, front ? "*" : " ", n, cur, w, h, state))
-	}
+	list, e := api.windows(&ctx.s)
+	if e != .None { return failed(ctx, e) }
+	if flag(&ctx.o, "json") { print_answer(ctx); return 0 }
+	for w in list { outln(fmt.tprintf("%d%s %d tab(s), current %d, %dx%d %s", w.id, w.front ? "*" : " ", w.tabs, w.current_tab, w.width, w.height, w.state)) }
 	return 0
 }
 
 @(private)
 cmd_tab :: proc(ctx: ^Context, args: []string) -> int {
 	if len(args) == 0 { return usage("tab", "usage: tab new [url] | tab activate <id> | tab close <id> | tab move <id> --to new|<window id> [--index n]") }
+	s := &ctx.s
 	switch args[0] {
 	case "new":
-		rep, code := request(ctx, "Target.createTarget", fmt.tprintf(`{{"url":%s,"wait":%s}}`, q(len(args) > 1 ? args[1] : ""), q(opt(&ctx.o, "wait", "none"))))
-		if code != 0 { return code }
-		id, _ := remote.param_int(parse_result(rep), "targetId")
+		w, ok := wait_option(ctx, "none")
+		if !ok { return EXIT_USAGE }
+		id, e := api.new_tab(s, len(args) > 1 ? args[1] : "", w, false, NO_DEADLINE)
+		if e != .None { return failed(ctx, e) }
 		outln(fmt.tprintf("%d", id))
+		return 0
 	case "activate", "close":
 		if len(args) != 2 { return usage("tab", "tab activate|close <id>") }
-		return simple(ctx, args[0] == "activate" ? "Target.activateTarget" : "Target.closeTarget", fmt.tprintf(`{{"targetId":%s}}`, args[1]))
+		id, _ := strconv.parse_int(args[1])
+		return simple(ctx, args[0] == "activate" ? api.activate_tab(s, id) : api.close_tab(s, id))
 	case "move":
 		if len(args) != 2 || opt(&ctx.o, "to") == "" { return usage("tab", "tab move <id> --to new|<window id> [--index n]") }
+		id, _ := strconv.parse_int(args[1])
 		to := opt(&ctx.o, "to")
-		dest := to == "new" ? `"new"` : to
-		rep, code := request(ctx, "Target.moveTarget", fmt.tprintf(`{{"targetId":%s,"to":%s,"index":%d}}`, args[1], dest, opt_int(&ctx.o, "index", -1)))
-		if code != 0 { return code }
-		if flag(&ctx.o, "json") { print_json(rep); return 0 }
-		wid, _ := remote.param_int(parse_result(rep), "windowId")
+		index := opt_int(&ctx.o, "index", -1)
+		wid: int
+		e: api.Error
+		if to == "new" {
+			wid, e = api.move_tab_to_new_window(s, id, index)
+		} else {
+			dest, _ := strconv.parse_int(to)
+			wid, e = api.move_tab(s, id, dest, index)
+		}
+		if e != .None { return failed(ctx, e) }
+		if flag(&ctx.o, "json") { print_answer(ctx); return 0 }
 		outln(fmt.tprintf("%d", wid))
-	case: return usage("tab", "new, activate, close or move")
+		return 0
 	}
-	return 0
+	return usage("tab", "new, activate, close or move")
 }
 
 @(private)
 cmd_window :: proc(ctx: ^Context) -> int {
 	// (the window: --win-id, else the front one)
-	if flag(&ctx.o, "front") { return simple(ctx, "Browser.activateWindow", "{}") }
-	if flag(&ctx.o, "close") { return simple(ctx, "Browser.closeWindow", "{}") }
-	b := strings.builder_make(context.temp_allocator)
-	strings.write_byte(&b, '{')
-	sep := ""
-	if s := opt(&ctx.o, "size"); s != "" {
-		w, h, ok := parse_size(s)
+	s := &ctx.s
+	if flag(&ctx.o, "front") { return simple(ctx, api.bring_to_front(s)) }
+	if flag(&ctx.o, "close") { return simple(ctx, api.close_window(s)) }
+	c: api.Window_Change
+	asked := false
+	if t := opt(&ctx.o, "size"); t != "" {
+		w, h, ok := parse_size(t)
 		if !ok { return usage("window", "--size WxH") }
-		fmt.sbprintf(&b, `"width":%d,"height":%d`, w, h); sep = ","
+		c.size, asked = [2]int{w, h}, true
 	}
-	if s := opt(&ctx.o, "pos"); s != "" {
-		v, ok := parse_numbers(s, 2)
+	if t := opt(&ctx.o, "pos"); t != "" {
+		v, ok := parse_numbers(t, 2)
 		if !ok { return usage("window", "--pos x,y") }
-		fmt.sbprintf(&b, `%s"left":%d,"top":%d`, sep, int(v[0]), int(v[1])); sep = ","
+		c.pos, asked = [2]int{int(v[0]), int(v[1])}, true
 	}
-	if s := opt(&ctx.o, "state"); s != "" { fmt.sbprintf(&b, `%s"windowState":%s`, sep, q(s)); sep = "," }
-	if s := opt(&ctx.o, "dpi"); s != "" {   // (the window as if moved to a monitor of that scale: WM_DPICHANGED)
-		v, ok := parse_float(s)
+	if t := opt(&ctx.o, "state"); t != "" { c.state, asked = t, true }
+	if t := opt(&ctx.o, "dpi"); t != "" {   // (the window as if moved to a monitor of that scale: WM_DPICHANGED)
+		v, ok := parse_float(t)
 		if !ok || v <= 0 { return usage("window", "--dpi n (96 = 100 %, 144 = 150 %)") }
-		fmt.sbprintf(&b, `%s"dpi":%d`, sep, int(v + 0.5)); sep = ","
+		c.dpi, asked = int(v + 0.5), true
 	}
-	strings.write_byte(&b, '}')
-	method := sep == "" ? "Browser.getWindowBounds" : "Browser.setWindowBounds"
-	return simple(ctx, method, strings.to_string(b))
+	if !asked { _, e := api.window_bounds(s); return simple(ctx, e) }
+	_, e := api.set_window(s, c)
+	return simple(ctx, e)
 }
 
 parse_size :: proc(s: string) -> (w, h: int, ok: bool) {
@@ -532,16 +487,12 @@ parse_size :: proc(s: string) -> (w, h: int, ok: bool) {
 
 @(private)
 cmd_cmds :: proc(ctx: ^Context, args: []string) -> int {
-	rep, code := request(ctx, "Wren.listCommands", "{}")
-	if code != 0 { return code }
-	if flag(&ctx.o, "json") { print_json(rep); return 0 }
+	list, e := api.commands(&ctx.s)
+	if e != .None { return failed(ctx, e) }
+	if flag(&ctx.o, "json") { print_answer(ctx); return 0 }
 	filter := len(args) > 0 ? strings.to_lower(args[0], context.temp_allocator) : ""
-	cmds, _ := remote.param_array(parse_result(rep), "commands")
-	for c in cmds {
-		o, _ := c.(json.Object)
-		name, _ := remote.param_string(o, "name"); title, _ := remote.param_string(o, "title"); key, _ := remote.param_string(o, "shortcut")
-		en, _ := remote.param_bool(o, "enabled")
-		line := fmt.tprintf("%-34s %s%s%s", name, title, key != "" ? fmt.tprintf("  [%s]", key) : "", en ? "" : "  (not now)")
+	for c in list {
+		line := fmt.tprintf("%-34s %s%s%s", c.name, c.title, c.shortcut != "" ? fmt.tprintf("  [%s]", c.shortcut) : "", c.enabled ? "" : "  (not now)")
 		if filter == "" || strings.contains(strings.to_lower(line, context.temp_allocator), filter) { outln(line) }
 	}
 	return 0
@@ -551,39 +502,38 @@ cmd_cmds :: proc(ctx: ^Context, args: []string) -> int {
 cmd_record :: proc(ctx: ^Context, args: []string) -> int {
 	if len(args) == 0 { return usage("record", "usage: record start | record stop <file.json>") }
 	switch args[0] {
-	case "start": return simple(ctx, "Wren.recordInput", `{"action":"start"}`)
+	case "start": return simple(ctx, api.record_start(&ctx.s))
 	case "stop":
 		if len(args) != 2 { return usage("record", "usage: record stop <file.json>") }
-		rep, code := request(ctx, "Wren.recordInput", `{"action":"stop"}`)
-		if code != 0 { return code }
-		if err := os.write_entire_file(abs_path(args[1]), transmute([]byte)rep.result); err != nil { errln("cannot write the file"); return EXIT_FAILED }
-		n, _ := remote.param_int(parse_result(rep), "count")
+		text, n, e := api.record_stop(&ctx.s)
+		if e != .None { return failed(ctx, e) }
+		if err := os.write_entire_file(abs_path(args[1]), transmute([]byte)text); err != nil { errln("cannot write the file"); return EXIT_FAILED }
 		outln(fmt.tprintf("%d events -> %s", n, abs_path(args[1])))
-	case: return usage("record", "start or stop")
+		return 0
 	}
-	return 0
+	return usage("record", "start or stop")
 }
 
 @(private)
 cmd_timeline :: proc(ctx: ^Context, args: []string) -> int {
 	if len(args) == 0 { return usage("timeline", "usage: timeline start [--scale s] [--count n] [--tab] | timeline stop <folder> [--cols n] [--all]") }
+	s := &ctx.s
 	switch args[0] {
 	case "start":
-		return simple(ctx, "Wren.timeline", fmt.tprintf(`{{"action":"start","scale":%s,"max":%s,"target":%s}}`, opt(&ctx.o, "scale", "0.3"), opt(&ctx.o, "count", "240"), q(flag(&ctx.o, "tab") ? "page" : "window")))
+		scale := DEFAULT_TIMELINE_SCALE
+		if t := opt(&ctx.o, "scale"); t != "" { scale, _ = strconv.parse_f64(t) }
+		return simple(ctx, api.timeline_start(s, scale, opt_int(&ctx.o, "count", DEFAULT_TIMELINE_COUNT), flag(&ctx.o, "tab")))
 	case "stop":
 		if len(args) != 2 { return usage("timeline", "usage: timeline stop <folder> [--cols n] [--all]") }
-		rep, code := request(ctx, "Wren.timeline", fmt.tprintf(`{{"action":"stop","dir":%s,"cols":%s,"all":%v}}`, q(abs_path(args[1])), opt(&ctx.o, "cols", "6"), flag(&ctx.o, "all")))
-		if code != 0 { return code }
-		if flag(&ctx.o, "json") { outln(rep.result); return 0 }
-		res := parse_result(rep)
-		n, _ := remote.param_int(res, "count"); chrome, _ := remote.param_int(res, "chrome"); aba, _ := remote.param_int(res, "aba")
-		sheet, _ := remote.param_string(res, "sheet")
-		outln(fmt.tprintf("%d frames (%d of the chrome's, %d A-B-A: a frame unlike both its neighbours, which are alike) -> %s", n, chrome, aba, args[1]))
-		outln(fmt.tprintf("contact sheet: %s   (red frame: A-B-A, orange: a chrome frame; the folder has every frame and timeline.json)", sheet))
-	case "status": return simple(ctx, "Wren.timeline", `{"action":"status"}`)
-	case: return usage("timeline", "start, stop or status")
+		r, e := api.timeline_stop(s, abs_path(args[1]), opt_int(&ctx.o, "cols", DEFAULT_TIMELINE_COLS), flag(&ctx.o, "all"))
+		if e != .None { return failed(ctx, e) }
+		if flag(&ctx.o, "json") { print_answer(ctx); return 0 }
+		outln(fmt.tprintf("%d frames (%d of the chrome's, %d A-B-A: a frame unlike both its neighbours, which are alike) -> %s", r.count, r.chrome, r.aba, args[1]))
+		outln(fmt.tprintf("contact sheet: %s   (red frame: A-B-A, orange: a chrome frame; the folder has every frame and timeline.json)", r.sheet))
+		return 0
+	case "status": return simple(ctx, api.timeline_status(s))
 	}
-	return 0
+	return usage("timeline", "start, stop or status")
 }
 
 @(private)
@@ -595,18 +545,15 @@ cmd_replay :: proc(ctx: ^Context, args: []string) -> int {
 	obj, ok := v.(json.Object)
 	if perr != .None || !ok { errln("the file is not a recording"); return EXIT_FAILED }
 	evs, _ := json.marshal(obj["events"], {}, context.temp_allocator)
-	return simple(ctx, "Wren.replayInput", fmt.tprintf(`{{"events":%s,"speed":%s}}`, string(evs), opt(&ctx.o, "speed", "1")))
+	speed := 1.0
+	if t := opt(&ctx.o, "speed"); t != "" { speed, _ = strconv.parse_f64(t) }
+	return simple(ctx, api.replay(&ctx.s, string(evs), speed))
 }
 
 @(private)
 cmd_quit :: proc(ctx: ^Context) -> int {
-	if !need_server(ctx) { return EXIT_NO_SERVER }
-	pid := 0
-	if rep, code := request(ctx, "Remote.ping", "{}"); code == 0 { pid, _ = remote.param_int(parse_result(rep), "pid") }
-	_, code := request(ctx, "Browser.close", fmt.tprintf(`{{"exitCode":%d}}`, opt_int(&ctx.o, "code", 0)))
-	if code != 0 { return code }
-	exit, ended := wait_process_exit(pid, 20_000)
-	if !ended { errln("error: Wren did not end within 20 s"); return EXIT_TIMEOUT }
+	exit, e := api.quit(&ctx.s, opt_int(&ctx.o, "code", 0))
+	if e != .None { return failed(ctx, e) }
 	if !flag(&ctx.o, "quiet") { outln(fmt.tprintf("exit code %d", exit)) }
 	return 0
 }
@@ -615,25 +562,19 @@ cmd_quit :: proc(ctx: ^Context) -> int {
 @(private)
 cmd_reset :: proc(ctx: ^Context, args: []string) -> int {
 	if len(args) != 0 { return usage("reset", "usage: reset [--keep tabs,data,prefs,window,history] [--url address] [--wait load|idle|stable|quiet|none]") }
-	b := strings.builder_make(context.temp_allocator)
-	fmt.sbprintf(&b, `{{"wait":%s`, q(opt(&ctx.o, "wait", "load")))
-	if keep := opt(&ctx.o, "keep"); keep != "" { fmt.sbprintf(&b, `,"keep":%s`, q(keep)) }
-	if u := opt(&ctx.o, "url"); u != "" { fmt.sbprintf(&b, `,"url":%s`, q(u)) }
-	strings.write_byte(&b, '}')
-	rep, code := request(ctx, "Wren.reset", strings.to_string(b))
-	if code != 0 { return code }
-	return show_reset(ctx, rep)
+	w, ok := wait_option(ctx, "load")
+	if !ok { return EXIT_USAGE }
+	r, e := api.reset(&ctx.s, opt(&ctx.o, "keep"), opt(&ctx.o, "url"), w)
+	if e != .None { return failed(ctx, e) }
+	return show_reset(ctx, r)
 }
 
 @(private)
-show_reset :: proc(ctx: ^Context, rep: Reply) -> int {
-	if flag(&ctx.o, "json") { print_json(rep); return 0 }
+show_reset :: proc(ctx: ^Context, r: api.Reset_Report) -> int {
+	if flag(&ctx.o, "json") { print_answer(ctx); return 0 }
 	if flag(&ctx.o, "quiet") { return 0 }
-	r := parse_result(rep)
-	n :: proc(r: json.Object, key: string) -> int { v, _ := remote.param_int(r, key); return v }
-	win_back, _ := remote.param_bool(r, "windowRestored")
 	outln(fmt.tprintf("%d tab(s) closed, %d cookie(s), %d site(s) of storage, %d cached response(s), %d visit(s) of history, %d preference(s) put back%s, %d command(s) cancelled",
-		n(r, "closedTabs"), n(r, "cookies"), n(r, "sites"), n(r, "cacheEntries"), n(r, "historyVisits"), n(r, "prefsRestored"), win_back ? ", the window put back" : "", n(r, "cancelledOps")))
+		r.closed_tabs, r.cookies, r.sites, r.cache_entries, r.history_visits, r.prefs_restored, r.window_restored ? ", the window put back" : "", r.cancelled_ops))
 	return 0
 }
 
@@ -643,32 +584,31 @@ cmd_checkpoint :: proc(ctx: ^Context, args: []string) -> int {
 	if len(args) == 0 || (args[0] == "list" && len(args) != 1) || (args[0] != "list" && len(args) != 2) {
 		return usage("checkpoint", "usage: checkpoint save <name> | checkpoint restore <name> [--wait ...] | checkpoint delete <name> | checkpoint list")
 	}
+	s := &ctx.s
 	switch args[0] {
-	case "save", "delete":
-		rep, code := request(ctx, "Wren.checkpoint", fmt.tprintf(`{{"action":%s,"name":%s}}`, q(args[0]), q(args[1])))
-		if code != 0 { return code }
-		if flag(&ctx.o, "json") { print_json(rep); return 0 }
-		if args[0] == "save" {
-			r := parse_result(rep)
-			tabs, _ := remote.param_int(r, "tabs"); ck, _ := remote.param_int(r, "cookies"); st, _ := remote.param_int(r, "storageOrigins")
-			outln(fmt.tprintf("%s: %d tab(s), %d cookie(s), localStorage of %d origin(s)", args[1], tabs, ck, st))
-		}
+	case "save":
+		r, e := api.checkpoint_save(s, args[1])
+		if e != .None { return failed(ctx, e) }
+		if flag(&ctx.o, "json") { print_answer(ctx); return 0 }
+		outln(fmt.tprintf("%s: %d tab(s), %d cookie(s), localStorage of %d origin(s)", args[1], r.tabs, r.cookies, r.storage_origins))
+		return 0
+	case "delete":
+		e := api.checkpoint_delete(s, args[1])
+		if e != .None { return failed(ctx, e) }
+		if flag(&ctx.o, "json") { print_answer(ctx) }
+		return 0
 	case "restore":
-		rep, code := request(ctx, "Wren.checkpoint", fmt.tprintf(`{{"action":"restore","name":%s,"wait":%s}}`, q(args[1]), q(opt(&ctx.o, "wait", "load"))))
-		if code != 0 { return code }
-		return show_reset(ctx, rep)
+		w, ok := wait_option(ctx, "load")
+		if !ok { return EXIT_USAGE }
+		r, e := api.checkpoint_restore(s, args[1], w)
+		if e != .None { return failed(ctx, e) }
+		return show_reset(ctx, r)
 	case "list":
-		rep, code := request(ctx, "Wren.checkpoint", `{"action":"list"}`)
-		if code != 0 { return code }
-		if flag(&ctx.o, "json") { print_json(rep); return 0 }
-		list, _ := remote.param_array(parse_result(rep), "checkpoints")
-		for item in list {
-			o, _ := item.(json.Object)
-			name, _ := remote.param_string(o, "name")
-			tabs, _ := remote.param_int(o, "tabs"); ck, _ := remote.param_int(o, "cookies"); st, _ := remote.param_int(o, "storageOrigins")
-			outln(fmt.tprintf("%-20s %d tab(s), %d cookie(s), localStorage of %d origin(s)", name, tabs, ck, st))
-		}
-	case: return usage("checkpoint", "save, restore, delete or list")
+		list, e := api.checkpoint_list(s)
+		if e != .None { return failed(ctx, e) }
+		if flag(&ctx.o, "json") { print_answer(ctx); return 0 }
+		for c in list { outln(fmt.tprintf("%-20s %d tab(s), %d cookie(s), localStorage of %d origin(s)", c.name, c.tabs, c.cookies, c.storage_origins)) }
+		return 0
 	}
-	return 0
+	return usage("checkpoint", "save, restore, delete or list")
 }
