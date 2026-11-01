@@ -300,13 +300,13 @@ fn index_bytes(ty: u32, elem_uint: bool) -> Option<u32> {
     }
 }
 
-const POINTS: u32 = 0;
-const LINES: u32 = 1;
-const LINE_LOOP: u32 = 2;
-const LINE_STRIP: u32 = 3;
-const TRIANGLES: u32 = 4;
-const TRIANGLE_STRIP: u32 = 5;
-const TRIANGLE_FAN: u32 = 6;
+pub const POINTS: u32 = 0;
+pub const LINES: u32 = 1;
+pub const LINE_LOOP: u32 = 2;
+pub const LINE_STRIP: u32 = 3;
+pub const TRIANGLES: u32 = 4;
+pub const TRIANGLE_STRIP: u32 = 5;
+pub const TRIANGLE_FAN: u32 = 6;
 
 impl Ctx {
     /// The attachments of a framebuffer; None: it is incomplete or there is nothing to draw on.
@@ -449,12 +449,13 @@ impl Ctx {
                 stencil_ops: if format.has_stencil_aspect() { Some(wgpu::Operations { load: sload, store: wgpu::StoreOp::Store }) } else { None },
             }
         });
+        let occlusion = self.occlusion_set_for_pass();
         let pass = self.encoder.as_mut()?.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: None,
             color_attachments: &colors,
             depth_stencil_attachment: ds,
             timestamp_writes: None,
-            occlusion_query_set: None,
+            occlusion_query_set: occlusion.as_ref(),
             multiview_mask: None,
         });
         self.pass = Some(pass.forget_lifetime());
@@ -691,10 +692,15 @@ impl Ctx {
         if offset as u64 % bytes as u64 != 0 {
             return self.set_error(INVALID_OPERATION);
         }
+        // (OpenGL ES 3.0: feedback goes with drawArrays only)
+        if self.tf_capturing() {
+            return self.set_error(INVALID_OPERATION);
+        }
         let eid = self.current_vao().element;
         if eid == 0 {
             return self.set_error(INVALID_OPERATION);
         }
+        self.buffer_sync(eid);
         let webgl2 = self.is_webgl2();
         let Some(b) = self.buffers.get_mut(&eid) else { return self.set_error(INVALID_OPERATION) };
         let end = offset as u64 + count as u64 * bytes as u64;
@@ -795,22 +801,22 @@ impl Ctx {
         if self.st.blend && ((is_const(f[0]) || is_const(f[1])) && (is_alpha_const(f[0]) || is_alpha_const(f[1]))) {
             return Err(INVALID_OPERATION);
         }
+        let capturing = self.tf_capturing();
+        if capturing {
+            self.tf_check_reads(l, &vao)?;
+        }
         if count_of == 0 || instances == 0 {
             return Ok(());
         }
-        if self.st.rasterizer_discard {
-            return Ok(());
-        }
         let triangles = matches!(mode, TRIANGLES | TRIANGLE_STRIP | TRIANGLE_FAN);
-        if self.st.cull && self.st.cull_face == FRONT_AND_BACK && triangles {
-            return Ok(());
-        }
-        if self.st.viewport[2] == 0 || self.st.viewport[3] == 0 {
-            return Ok(());
-        }
+        // (what is not rasterized is still captured)
+        let mut raster = !self.st.rasterizer_discard && !(self.st.cull && self.st.cull_face == FRONT_AND_BACK && triangles) && self.st.viewport[2] != 0 && self.st.viewport[3] != 0;
         let Some(t) = self.target_of(fb) else { return Err(INVALID_FRAMEBUFFER_OPERATION) };
         let rect = self.scissor_rect(t.w, t.h);
         if rect == Some([0, 0, 0, 0]) {
+            raster = false;
+        }
+        if !raster && !capturing {
             return Ok(());
         }
 
@@ -914,81 +920,7 @@ impl Ctx {
         self.ring_room(gen_len + l.vs_image.len() + l.fs_image.len() + 2048);
 
         // vertex streams
-        let mut slots: Vec<SlotLayout> = Vec::new();
-        let mut slot_buffers: Vec<(wgpu::Buffer, u64)> = Vec::new();
-        let mut slot_keys: Vec<(u32, u32, bool, u64)> = Vec::new();
-        for (_, ty, arr, loc, _) in &l.attributes {
-            let n = ty.cols * (*arr).max(1);
-            let scalar = ty.scalar();
-            for k in 0..n {
-                let index = (*loc + k) as usize;
-                if index >= MAX_ATTRIBS {
-                    continue;
-                }
-                let a = vao.attrs[index];
-                if !a.enabled {
-                    // a constant for all vertices: from the ring, stride 0
-                    let words = self.st.generic[index];
-                    let mut bytes = [0u8; 16];
-                    for (j, w) in words.iter().enumerate() {
-                        bytes[j * 4..j * 4 + 4].copy_from_slice(&w.to_ne_bytes());
-                    }
-                    let at = self.ring_alloc(&bytes, 16).map_err(|_| OUT_OF_MEMORY)?;
-                    let format = match scalar {
-                        translate::Scalar::Int => wgpu::VertexFormat::Sint32x4,
-                        translate::Scalar::Uint => wgpu::VertexFormat::Uint32x4,
-                        _ => wgpu::VertexFormat::Float32x4,
-                    };
-                    slots.push(SlotLayout { stride: 0, instance: true, attrs: vec![(format, 0, index as u32)] });
-                    slot_buffers.push((self.ring.clone(), at as u64));
-                    slot_keys.push((u32::MAX, 0, true, at as u64));
-                    continue;
-                }
-                let size = attr_bytes(&a);
-                let stride = if a.stride == 0 { size } else { a.stride };
-                let fmt = vertex_format(&a);
-                let instance = a.divisor != 0 || points;
-                if a.divisor > 1 && self.console.len() < 8 {
-                    self.warn("WebGL: a vertex attribute divisor above 1 is drawn as 1".to_string());
-                }
-                let native = fmt.filter(|f| {
-                    let align = f.size().min(4);
-                    stride % 4 == 0 && (a.offset as u64) % align == 0 && (f.size() as u32) <= stride
-                });
-                let (buffer, format, off, stride) = match native {
-                    Some(f) => {
-                        let b = self.buffers.get_mut(&a.buffer).unwrap();
-                        b.used_gen = self.enc_gen;
-                        (b.gpu.clone().ok_or(INVALID_OPERATION)?, f, a.offset as u64, stride)
-                    }
-                    None => {
-                        let (buf, f, st) = self.converted_stream(a.buffer, &a).ok_or(OUT_OF_MEMORY)?;
-                        (buf, f, 0, st)
-                    }
-                };
-                // a slot of the same buffer, stride and stepping, if the attribute fits in it
-                let base = off & !3;
-                let mut placed = false;
-                let buf_key = token_of(&buffer);
-                for (si, s) in slots.iter_mut().enumerate() {
-                    let (kb, ks, ki, kbase) = slot_keys[si];
-                    if kb == buf_key && ks == stride && ki == instance && off >= kbase && (off - kbase) + format.size() <= stride as u64 {
-                        s.attrs.push((format, (off - kbase) as u32, index as u32));
-                        placed = true;
-                        break;
-                    }
-                }
-                if !placed {
-                    slots.push(SlotLayout { stride, instance, attrs: vec![(format, (off - base) as u32, index as u32)] });
-                    slot_buffers.push((buffer, base));
-                    slot_keys.push((buf_key, stride, instance, base));
-                }
-            }
-        }
-        if slots.len() > self.limits.max_vertex_buffers as usize {
-            self.warn(format!("WebGL: this draw needs {} vertex buffers, the device has {}", slots.len(), self.limits.max_vertex_buffers));
-            return Err(INVALID_OPERATION);
-        }
+        let (slots, slot_buffers) = self.vertex_streams(l, &vao, points, instances)?;
 
         // the pipeline
         let strip_index = match (mode, &kind, &generated) {
@@ -1088,7 +1020,18 @@ impl Ctx {
         };
         let block_group = if !l.blocks.is_empty() { Some(self.block_group(l)?) } else { None };
 
+        // transform feedback: a pass of its own first (capture.rs)
+        if capturing {
+            let DrawKind::Arrays { first, count } = kind else { return Err(INVALID_OPERATION) };
+            let (capture_slots, capture_buffers) = if points { self.vertex_streams(l, &vao, false, instances)? } else { (slots.clone(), slot_buffers.clone()) };
+            self.tf_capture(l, mode, first, count, instances, &capture_slots, &capture_buffers, &binds, tex_group.as_ref(), block_group.as_ref())?;
+            if !raster {
+                return Ok(());
+            }
+        }
+
         // the pass
+        self.occlusion_room();
         let scissor = rect.unwrap_or([0, 0, t.w, t.h]);
         if self.ensure_pass(None).is_none() {
             return Err(INVALID_FRAMEBUFFER_OPERATION);
@@ -1110,6 +1053,7 @@ impl Ctx {
         let enc_gen = self.enc_gen;
         let empty_group = if tex_group.is_none() { Some(self.utility_empty_group()) } else { None };
         let max_side = self.device.limits().max_texture_dimension_2d;
+        self.occlusion_open_for_draw();
         let pass = self.pass.as_mut().ok_or(0u32)?;
         pass.set_pipeline(&pipeline);
         if stale_vp {
@@ -1194,6 +1138,116 @@ impl Ctx {
         Ok(())
     }
 
+    /// The streams of a draw: their layouts and their buffers. `points`: each vertex is an instance of a quad.
+    fn vertex_streams(&mut self, l: &Linked, vao: &Vao, points: bool, instances: u32) -> Result<(Vec<SlotLayout>, Vec<(wgpu::Buffer, u64)>), u32> {
+        let mut slots: Vec<SlotLayout> = Vec::new();
+        let mut slot_buffers: Vec<(wgpu::Buffer, u64)> = Vec::new();
+        let mut slot_keys: Vec<(u32, u32, bool, u64)> = Vec::new();
+        for (_, ty, arr, loc, _) in &l.attributes {
+            let n = ty.cols * (*arr).max(1);
+            let scalar = ty.scalar();
+            for k in 0..n {
+                let index = (*loc + k) as usize;
+                if index >= MAX_ATTRIBS {
+                    continue;
+                }
+                let a = vao.attrs[index];
+                if !a.enabled {
+                    // a constant for all vertices: from the ring, stride 0
+                    let words = self.st.generic[index];
+                    let mut bytes = [0u8; 16];
+                    for (j, w) in words.iter().enumerate() {
+                        bytes[j * 4..j * 4 + 4].copy_from_slice(&w.to_ne_bytes());
+                    }
+                    let at = self.ring_alloc(&bytes, 16).map_err(|_| OUT_OF_MEMORY)?;
+                    let format = match scalar {
+                        translate::Scalar::Int => wgpu::VertexFormat::Sint32x4,
+                        translate::Scalar::Uint => wgpu::VertexFormat::Uint32x4,
+                        _ => wgpu::VertexFormat::Float32x4,
+                    };
+                    slots.push(SlotLayout { stride: 0, instance: true, attrs: vec![(format, 0, index as u32)] });
+                    slot_buffers.push((self.ring.clone(), at as u64));
+                    slot_keys.push((u32::MAX, 0, true, at as u64));
+                    continue;
+                }
+                let size = attr_bytes(&a);
+                let stride = if a.stride == 0 { size } else { a.stride };
+                let fmt = vertex_format(&a);
+                let instance = a.divisor != 0 || points;
+                // (wgpu steps once per instance: a larger divisor is written out, once per what it needs)
+                let divided = if a.divisor > 1 && !points { fmt.and_then(|f| self.divided_stream(a.buffer, &a, f, instances)) } else { None };
+                let native = fmt.filter(|f| {
+                    let align = f.size().min(4);
+                    stride % 4 == 0 && (a.offset as u64) % align == 0 && (f.size() as u32) <= stride
+                });
+                let (buffer, format, off, stride) = if let Some((buf, f, st)) = divided {
+                    (buf, f, 0, st)
+                } else {
+                    match native {
+                    Some(f) => {
+                        let b = self.buffers.get_mut(&a.buffer).unwrap();
+                        b.used_gen = self.enc_gen;
+                        (b.gpu.clone().ok_or(INVALID_OPERATION)?, f, a.offset as u64, stride)
+                    }
+                    None => {
+                        let (buf, f, st) = self.converted_stream(a.buffer, &a).ok_or(OUT_OF_MEMORY)?;
+                        (buf, f, 0, st)
+                    }
+                }
+                };
+                // a slot of the same buffer, stride and stepping, if the attribute fits in it
+                let base = off & !3;
+                let mut placed = false;
+                let buf_key = token_of(&buffer);
+                for (si, s) in slots.iter_mut().enumerate() {
+                    let (kb, ks, ki, kbase) = slot_keys[si];
+                    if kb == buf_key && ks == stride && ki == instance && off >= kbase && (off - kbase) + format.size() <= stride as u64 {
+                        s.attrs.push((format, (off - kbase) as u32, index as u32));
+                        placed = true;
+                        break;
+                    }
+                }
+                if !placed {
+                    slots.push(SlotLayout { stride, instance, attrs: vec![(format, (off - base) as u32, index as u32)] });
+                    slot_buffers.push((buffer, base));
+                    slot_keys.push((buf_key, stride, instance, base));
+                }
+            }
+        }
+        if slots.len() > self.limits.max_vertex_buffers as usize {
+            self.warn(format!("WebGL: this draw needs {} vertex buffers, the device has {}", slots.len(), self.limits.max_vertex_buffers));
+            return Err(INVALID_OPERATION);
+        }
+        Ok((slots, slot_buffers))
+    }
+
+    /// An attribute with a divisor above 1, one value per instance (capture.rs).
+    fn divided_stream(&mut self, id: u32, a: &Attr, format: wgpu::VertexFormat, instances: u32) -> Option<(wgpu::Buffer, wgpu::VertexFormat, u32)> {
+        self.buffer_sync(id);
+        let size = attr_bytes(a);
+        let stride = if a.stride == 0 { size } else { a.stride };
+        let key = (a.offset, stride, size, a.divisor, instances);
+        let device = self.device.clone();
+        let queue = self.queue.clone();
+        let b = self.buffers.get_mut(&id)?;
+        if let Some((buf, st)) = b.expanded.get(&key) {
+            return Some((buf.clone(), format, *st));
+        }
+        let (data, out_stride) = crate::capture::expand_divided(&b.shadow, a.offset as usize, stride as usize, size as usize, a.divisor, instances)?;
+        let buf = device.create_buffer(&wgpu::BufferDescriptor { label: None, size: data.len().max(4) as u64, usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
+        queue.write_buffer(&buf, 0, &data);
+        b.expanded.insert(key, (buf.clone(), out_stride));
+        Some((buf, format, out_stride))
+    }
+
+    pub fn ring_alloc_public(&mut self, bytes: &[u8], align: u32) -> Result<u32, ()> {
+        self.ring_alloc(bytes, align)
+    }
+
+    pub fn utility_empty_group_public(&mut self) -> wgpu::BindGroup {
+        self.utility_empty_group()
+    }
+
     /// The group bound at 1 when a program has no samplers.
     fn utility_empty_group(&mut self) -> wgpu::BindGroup {
         if let Some((_, bg)) = self.fallback_group.as_ref() {
@@ -1207,6 +1261,7 @@ impl Ctx {
 
     /// A vertex stream converted to floats (or 32-bit integers), kept while the buffer does not change.
     fn converted_stream(&mut self, id: u32, a: &Attr) -> Option<(wgpu::Buffer, wgpu::VertexFormat, u32)> {
+        self.buffer_sync(id);
         let key = (a.ty, a.size, a.normalized, a.stride, a.offset);
         let device = self.device.clone();
         let queue = self.queue.clone();

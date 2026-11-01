@@ -871,12 +871,217 @@ test("WebGL 2", () => {
   const out = new Uint8Array(4);
   gl.getBufferSubData(gl.COPY_WRITE_BUFFER, 0, out);
   eq(Array.from(out).join(), "2,3,0,0", "copyBufferSubData and getBufferSubData");
-  eq(gl.getParameter(gl.MAX_TRANSFORM_FEEDBACK_SEPARATE_ATTRIBS), 0, "no transform feedback, and it says so");
-  gl.beginTransformFeedback(gl.POINTS);
-  eq(gl.getError(), gl.INVALID_OPERATION, "starting it is an error");
   const sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
   eq(gl.clientWaitSync(sync, 0, 0), gl.ALREADY_SIGNALED, "a fence");
   eq(gl.getError(), 0, "no error");
+});
+
+const VS_TF = "#version 300 es\nin vec2 p; out vec3 v; out float s; void main(){ v = vec3(p, p.x + p.y); s = p.x * 2.0; gl_Position = vec4(p, 0.0, 1.0); }";
+const FS_TF = "#version 300 es\nprecision mediump float; in vec3 v; out vec4 o; void main(){ o = vec4(v, 1.0); }";
+const tfProgram = (gl, names, mode) => {
+  const p = gl.createProgram();
+  gl.attachShader(p, shader(gl, gl.VERTEX_SHADER, VS_TF));
+  gl.attachShader(p, shader(gl, gl.FRAGMENT_SHADER, FS_TF));
+  gl.transformFeedbackVaryings(p, names, mode);
+  gl.linkProgram(p);
+  return p;
+};
+const pointsBuffer = (gl, data) => {
+  const b = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, b);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+  return b;
+};
+const laterTask = () => new Promise(r => setTimeout(r, 0));
+
+test("transform feedback: interleaved, separate, pause, the rules", () => {
+  const [, gl] = mk("webgl2");
+  if (gl === null) { ok(true, "no adapter here"); return; }
+  const most = gl.getParameter(gl.MAX_TRANSFORM_FEEDBACK_SEPARATE_ATTRIBS);
+  if (most === 0) {
+    eq(gl.getParameter(gl.MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS), 0, "this adapter cannot, and says so");
+    gl.beginTransformFeedback(gl.POINTS);
+    eq(gl.getError(), gl.INVALID_OPERATION, "starting it is an error");
+    return;
+  }
+  eq(most, 4, "the minimum of OpenGL ES 3.0");
+  eq(gl.getParameter(gl.MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS), 64, "the minimum of OpenGL ES 3.0");
+  eq(gl.getParameter(gl.MAX_TRANSFORM_FEEDBACK_SEPARATE_COMPONENTS), 4, "the minimum of OpenGL ES 3.0");
+  const p = tfProgram(gl, ["v", "s"], gl.INTERLEAVED_ATTRIBS);
+  ok(gl.getProgramParameter(p, gl.LINK_STATUS), gl.getProgramInfoLog(p));
+  eq(gl.getProgramParameter(p, gl.TRANSFORM_FEEDBACK_VARYINGS), 2, "two varyings");
+  eq(gl.getProgramParameter(p, gl.TRANSFORM_FEEDBACK_BUFFER_MODE), gl.INTERLEAVED_ATTRIBS, "the mode");
+  const info = gl.getTransformFeedbackVarying(p, 0);
+  eq(info.name, "v", "its name");
+  eq(info.type, gl.FLOAT_VEC3, "its type");
+  eq(info.size, 1, "its size");
+  gl.getTransformFeedbackVarying(p, 2);
+  eq(gl.getError(), gl.INVALID_VALUE, "no third one");
+  gl.useProgram(p);
+  pointsBuffer(gl, [1, 2, 3, 4, 5, 6]);
+  const tf = gl.createTransformFeedback();
+  eq(gl.isTransformFeedback(tf), false, "not bound yet");
+  gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, tf);
+  eq(gl.isTransformFeedback(tf), true, "bound");
+  eq(gl.getParameter(gl.TRANSFORM_FEEDBACK_BINDING), tf, "the binding");
+  const out = gl.createBuffer();
+  gl.bindBuffer(gl.TRANSFORM_FEEDBACK_BUFFER, out);
+  gl.bufferData(gl.TRANSFORM_FEEDBACK_BUFFER, 48, gl.STATIC_READ);
+  gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, out);
+  eq(gl.getIndexedParameter(gl.TRANSFORM_FEEDBACK_BUFFER_BINDING, 0), out, "bound at 0");
+  gl.enable(gl.RASTERIZER_DISCARD);
+  gl.beginTransformFeedback(gl.POINTS);
+  eq(gl.getParameter(gl.TRANSFORM_FEEDBACK_ACTIVE), true, "active");
+  eq(gl.getError(), 0, "it starts");
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  eq(gl.getError(), gl.INVALID_OPERATION, "not the primitive it began with");
+  gl.drawElements(gl.POINTS, 1, gl.UNSIGNED_SHORT, 0);
+  eq(gl.getError(), gl.INVALID_OPERATION, "no elements");
+  gl.drawArrays(gl.POINTS, 0, 1);
+  gl.pauseTransformFeedback();
+  eq(gl.getParameter(gl.TRANSFORM_FEEDBACK_PAUSED), true, "paused");
+  gl.drawArrays(gl.POINTS, 1, 1);
+  gl.resumeTransformFeedback();
+  gl.drawArrays(gl.POINTS, 2, 1);
+  gl.endTransformFeedback();
+  eq(gl.getError(), 0, "no error");
+  gl.disable(gl.RASTERIZER_DISCARD);
+  const got = new Float32Array(12);
+  gl.getBufferSubData(gl.TRANSFORM_FEEDBACK_BUFFER, 0, got);
+  eq(Array.from(got).join(), "1,2,3,2,5,6,11,10,0,0,0,0", "what was captured, in order, none of what was paused");
+  gl.endTransformFeedback();
+  eq(gl.getError(), gl.INVALID_OPERATION, "not active");
+  // into separate buffers, an array of them from gl_Position
+  const q = tfProgram(gl, ["gl_Position", "s"], gl.SEPARATE_ATTRIBS);
+  ok(gl.getProgramParameter(q, gl.LINK_STATUS), gl.getProgramInfoLog(q));
+  gl.useProgram(q);
+  const a = gl.createBuffer(), b = gl.createBuffer();
+  gl.bindBuffer(gl.TRANSFORM_FEEDBACK_BUFFER, a);
+  gl.bufferData(gl.TRANSFORM_FEEDBACK_BUFFER, 16, gl.STATIC_READ);
+  gl.bindBuffer(gl.TRANSFORM_FEEDBACK_BUFFER, b);
+  gl.bufferData(gl.TRANSFORM_FEEDBACK_BUFFER, 8, gl.STATIC_READ);
+  gl.bindBufferRange(gl.TRANSFORM_FEEDBACK_BUFFER, 0, a, 0, 16);
+  gl.bindBufferRange(gl.TRANSFORM_FEEDBACK_BUFFER, 1, b, 4, 4);
+  gl.beginTransformFeedback(gl.POINTS);
+  gl.drawArrays(gl.POINTS, 2, 1);
+  gl.endTransformFeedback();
+  eq(gl.getError(), 0, "no error");
+  const pos = new Float32Array(4), size = new Float32Array(2);
+  gl.bindBuffer(gl.TRANSFORM_FEEDBACK_BUFFER, a);
+  gl.getBufferSubData(gl.TRANSFORM_FEEDBACK_BUFFER, 0, pos);
+  gl.bindBuffer(gl.TRANSFORM_FEEDBACK_BUFFER, b);
+  gl.getBufferSubData(gl.TRANSFORM_FEEDBACK_BUFFER, 0, size);
+  eq(Array.from(pos).join(), "5,6,0,1", "gl_Position in the first");
+  eq(Array.from(size).join(), "0,10", "the other at its offset");
+  // a varying that does not exist
+  const bad = tfProgram(gl, ["nope"], gl.INTERLEAVED_ATTRIBS);
+  eq(gl.getProgramParameter(bad, gl.LINK_STATUS), false, "the link fails");
+});
+
+test("transform feedback: drawing what it wrote, and it still draws", async () => {
+  const [, gl] = mk("webgl2");
+  if (gl === null || gl.getParameter(gl.MAX_TRANSFORM_FEEDBACK_SEPARATE_ATTRIBS) === 0) { ok(true, "not here"); return; }
+  const p = tfProgram(gl, ["gl_Position"], gl.INTERLEAVED_ATTRIBS);
+  gl.useProgram(p);
+  pointsBuffer(gl, [-1, -1, 3, -1, -1, 3]);
+  const out = gl.createBuffer();
+  gl.bindBuffer(gl.TRANSFORM_FEEDBACK_BUFFER, out);
+  gl.bufferData(gl.TRANSFORM_FEEDBACK_BUFFER, 48, gl.DYNAMIC_COPY);
+  gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, out);
+  gl.clearColor(0, 0, 0, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.beginTransformFeedback(gl.TRIANGLES);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.endTransformFeedback();
+  eq(gl.getError(), 0, "no error");
+  ok(px(gl, 14, 14) !== "0,0,0,255", "it rasterized too: " + px(gl, 14, 14));
+  // the captured vertices as an attribute, in the next draw
+  gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, null);
+  gl.bindBuffer(gl.ARRAY_BUFFER, out);
+  gl.vertexAttribPointer(0, 4, gl.FLOAT, false, 0, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  eq(gl.getError(), 0, "no error");
+});
+
+test("queries: results on a later task, samples passed or not, primitives written", async () => {
+  const [, gl] = mk("webgl2");
+  if (gl === null) { ok(true, "no adapter here"); return; }
+  const prog = program(gl, "#version 300 es\nin vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }", "#version 300 es\nprecision mediump float; out vec4 o; void main(){ o = vec4(1.0); }");
+  gl.useProgram(prog);
+  pointsBuffer(gl, [-1, -1, 3, -1, -1, 3]);
+  const hit = gl.createQuery(), miss = gl.createQuery();
+  eq(gl.isQuery(hit), false, "not begun");
+  gl.beginQuery(gl.ANY_SAMPLES_PASSED, hit);
+  eq(gl.getQuery(gl.ANY_SAMPLES_PASSED, gl.CURRENT_QUERY), hit, "the current one");
+  eq(gl.isQuery(hit), true, "begun");
+  gl.beginQuery(gl.ANY_SAMPLES_PASSED_CONSERVATIVE, miss);
+  eq(gl.getError(), gl.INVALID_OPERATION, "one of samples at a time");
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.endQuery(gl.ANY_SAMPLES_PASSED);
+  eq(gl.getQueryParameter(hit, gl.QUERY_RESULT_AVAILABLE), false, "never in the task that ended it");
+  gl.beginQuery(gl.ANY_SAMPLES_PASSED_CONSERVATIVE, miss);
+  gl.enable(gl.SCISSOR_TEST);
+  gl.scissor(0, 0, 0, 0);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.endQuery(gl.ANY_SAMPLES_PASSED_CONSERVATIVE);
+  gl.disable(gl.SCISSOR_TEST);
+  const stillThere = gl.getQueryParameter(hit, gl.QUERY_RESULT_AVAILABLE);
+  eq(stillThere, false, "nor later in that task");
+  let available = false;
+  for (let i = 0; i < 200 && !available; i++) {
+    await laterTask();
+    available = gl.getQueryParameter(hit, gl.QUERY_RESULT_AVAILABLE) && gl.getQueryParameter(miss, gl.QUERY_RESULT_AVAILABLE);
+    if (!available) await sleep(5);
+  }
+  ok(available, "available on a later task");
+  eq(gl.getQueryParameter(hit, gl.QUERY_RESULT), 1, "samples passed");
+  eq(gl.getQueryParameter(miss, gl.QUERY_RESULT), 0, "none passed the scissor");
+  gl.deleteQuery(hit);
+  eq(gl.isQuery(hit), false, "deleted");
+  eq(gl.getError(), 0, "no error");
+  if (gl.getParameter(gl.MAX_TRANSFORM_FEEDBACK_SEPARATE_ATTRIBS) === 0) return;
+  const p = tfProgram(gl, ["s"], gl.INTERLEAVED_ATTRIBS);
+  gl.useProgram(p);
+  const out = gl.createBuffer();
+  gl.bindBuffer(gl.TRANSFORM_FEEDBACK_BUFFER, out);
+  gl.bufferData(gl.TRANSFORM_FEEDBACK_BUFFER, 24, gl.STATIC_READ);
+  gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, out);
+  const written = gl.createQuery();
+  gl.enable(gl.RASTERIZER_DISCARD);
+  gl.beginQuery(gl.TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN, written);
+  gl.beginTransformFeedback(gl.TRIANGLES);
+  gl.drawArrays(gl.TRIANGLE_FAN, 0, 3);
+  gl.endTransformFeedback();
+  gl.endQuery(gl.TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN);
+  gl.disable(gl.RASTERIZER_DISCARD);
+  await laterTask();
+  await sleep(1);
+  eq(gl.getQueryParameter(written, gl.QUERY_RESULT), 1, "one triangle");
+});
+
+test("a vertex attribute divisor above 1", () => {
+  const [, gl] = mk("webgl2", undefined, 4, 4);
+  if (gl === null) { ok(true, "no adapter here"); return; }
+  const prog = program(gl, "#version 300 es\nlayout(location = 0) in vec2 p; layout(location = 1) in float k; out float v; void main(){ v = k; gl_Position = vec4(p.x * 0.5 + float(gl_InstanceID) - 1.5, p.y, 0.0, 1.0); }",
+    "#version 300 es\nprecision mediump float; in float v; out vec4 o; void main(){ o = vec4(v, 0.0, 0.0, 1.0); }");
+  gl.useProgram(prog);
+  pointsBuffer(gl, [-1, -1, 1, -1, -1, 3, 1, -1, 1, 3, -1, 3]);
+  const values = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, values);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([1, 0]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(1);
+  gl.vertexAttribPointer(1, 1, gl.FLOAT, false, 0, 0);
+  gl.vertexAttribDivisor(1, 2);
+  gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, 4);
+  eq(gl.getError(), 0, "no error");
+  const row = new Uint8Array(16);
+  gl.readPixels(0, 1, 4, 1, gl.RGBA, gl.UNSIGNED_BYTE, row);
+  eq([row[0], row[4], row[8], row[12]].join(), "255,255,0,0", "two instances of each value");
+  gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, 5);
+  eq(gl.getError(), gl.INVALID_OPERATION, "a fifth instance reads past the buffer");
 });
 
 test("what a page sets on the canvas does not need a shell", () => {

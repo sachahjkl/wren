@@ -477,7 +477,27 @@ pub struct LinkMap {
     pub point_coord: u32,
     /// The vertex stage: draw each vertex as the quad of a point.
     pub points: bool,
+    /// The vertex stage: store these varyings (capture_variant).
+    pub capture: Option<(Vec<CaptureVar>, Vec<u32>)>,
 }
+
+/// A varying transform feedback captures: where it goes and what it holds.
+#[derive(Clone, Debug)]
+pub struct CaptureVar {
+    pub name: String,
+    pub ty: BasicType,
+    /// transformFeedbackVaryings' size: elements of an array.
+    pub size: u32,
+    pub buffer: u32,
+    /// In words, in a vertex of its buffer.
+    pub offset: u32,
+    source: String,
+}
+
+/// Where the capture's parameters are (group GROUP_CAPTURE): uvec4 (first vertex, vertices per instance), uvec4 (where each buffer starts, in words).
+pub const CAPTURE_PARAMS_BINDING: u32 = 4;
+pub const CAPTURE_PARAMS_BYTES: u64 = 32;
+const GROUP_CAPTURE: u32 = 3;
 
 /// A shader read and rewritten, ready to be translated for a link. Immutable.
 #[derive(Clone, Debug)]
@@ -1988,6 +2008,12 @@ impl Shader {
             }
             out.raw(&format!("layout(location = {loc}) {q}{dir} {} {}{};\n", v.type_name, self.word(&v.name), arr));
         }
+        if let Some((_, strides)) = &map.capture {
+            for i in 0..strides.len() {
+                out.raw(&format!("layout(std430, set = {GROUP_CAPTURE}, binding = {i}) buffer _wr_TfOut{i} {{ uint _wr_tf{i}[]; }};\n"));
+            }
+            out.raw(&format!("layout(std140, set = {GROUP_CAPTURE}, binding = {CAPTURE_PARAMS_BINDING}) uniform _wr_TfParams {{ uvec4 _wr_tfp[2]; }};\n"));
+        }
         // what the stage writes or reads that GL has and this GLSL does not
         match self.stage {
             Stage::Vertex => {
@@ -2043,6 +2069,9 @@ impl Shader {
         out.raw(&column_copies_in);
         out.raw("_wr_main();\n");
         out.raw(&column_copies_out);
+        if let Some((vars, strides)) = &map.capture {
+            out.raw(&self.capture_code(vars, strides));
+        }
         if self.stage == Stage::Vertex {
             if map.points {
                 out.raw(&format!(
@@ -2058,6 +2087,39 @@ impl Shader {
         }
         out.raw("}\n");
         Ok(out.text)
+    }
+
+    /// The stores of a capture, at the end of the vertex stage. The vertex then goes out of the clip volume: this pass draws nothing.
+    fn capture_code(&self, vars: &[CaptureVar], strides: &[u32]) -> String {
+        let mut code = String::from("uint _wr_v = uint(gl_VertexIndex) - _wr_tfp[0].x + uint(gl_InstanceIndex) * _wr_tfp[0].y;\n");
+        for v in vars {
+            let stride = strides[v.buffer as usize];
+            let plain = v.source.split('\u{1}').next().unwrap_or("");
+            let (buffer, name) = (v.buffer, if plain.starts_with("gl_") || plain.starts_with("_wr_") { plain.to_string() } else { self.word(plain).to_string() });
+            let mut word = v.offset;
+            let element = |e: u32| if v.size > 1 { format!("[{e}]") } else { v.array_index().map_or(String::new(), |i| format!("[{i}]")) };
+            for e in 0..v.size {
+                for c in 0..v.ty.cols {
+                    for r in 0..v.ty.rows {
+                        let mut access = format!("{name}{}", element(e));
+                        if v.ty.cols > 1 {
+                            let _ = write!(access, "[{c}]");
+                        }
+                        if v.ty.rows > 1 {
+                            let _ = write!(access, "[{r}]");
+                        }
+                        let value = match v.ty.scalar() {
+                            Scalar::Float => format!("floatBitsToUint({access})"),
+                            _ => format!("uint({access})"),
+                        };
+                        let _ = writeln!(code, "_wr_tf{buffer}[_wr_tfp[1][{buffer}] + _wr_v * {stride}u + {word}u] = {value};");
+                        word += 1;
+                    }
+                }
+            }
+        }
+        code.push_str("gl_Position = vec4(2.0, 2.0, 2.0, 1.0);\n");
+        code
     }
 
     /// Code between declarations: statement by statement, functions with their headers.
@@ -2473,6 +2535,76 @@ pub fn link(vs: &Shader, fs: &Shader, bound: &HashMap<String, u32>, caps: &Caps)
     }
     let _ = names;
     Ok(Linked { vertex, fragment, attributes, varying_slots: loc, map, vs_size: vs.block_size, fs_size: fs.block_size, warnings })
+}
+
+/// What `names` capture: (varyings, words per vertex of each buffer). Empty when nothing is asked. Err: the program's log.
+pub fn capture_layout(vs: &Shader, names: &[String], separate: bool) -> Result<(Vec<CaptureVar>, Vec<u32>), String> {
+    use crate::capture::{MAX_TF_BUFFERS, MAX_TF_INTERLEAVED_COMPONENTS, MAX_TF_SEPARATE_COMPONENTS};
+    let mut vars = Vec::with_capacity(names.len());
+    let mut strides: Vec<u32> = Vec::new();
+    for (i, name) in names.iter().enumerate() {
+        if names[..i].contains(name) {
+            return Err(format!("ERROR: transform feedback: {name} is asked for twice\n"));
+        }
+        let (base, element) = match name.strip_suffix(']').and_then(|n| n.split_once('[')) {
+            Some((b, e)) => (b, Some(e.parse::<u32>().map_err(|_| format!("ERROR: transform feedback: {name} is not a varying\n"))?)),
+            None => (name.as_str(), None),
+        };
+        const FLOAT: u32 = 0x1406;
+        const VEC4: u32 = 0x8B52;
+        let (ty, size, source) = match base {
+            "gl_Position" => (BasicType { gl: VEC4, cols: 1, rows: 4 }, 1, "gl_Position".to_string()),
+            "gl_PointSize" => (BasicType { gl: FLOAT, cols: 1, rows: 1 }, 1, "_wr_PointSize".to_string()),
+            _ => {
+                let Some(v) = vs.outputs.iter().find(|v| v.name == base) else {
+                    return Err(format!("ERROR: transform feedback: {name} is not a varying of the vertex shader\n"));
+                };
+                if let Some(e) = element {
+                    if e >= v.array {
+                        return Err(format!("ERROR: transform feedback: {name} is out of its array\n"));
+                    }
+                }
+                let source = match element {
+                    Some(e) => format!("{}\u{1}{e}", v.name),
+                    None => v.name.clone(),
+                };
+                (v.ty, if element.is_some() { 1 } else { v.array.max(1) }, source)
+            }
+        };
+        let words = ty.cols * ty.rows * size;
+        let buffer = if separate { i as u32 } else { 0 };
+        if strides.len() <= buffer as usize {
+            strides.push(0);
+        }
+        let offset = strides[buffer as usize];
+        strides[buffer as usize] += words;
+        if separate && words > MAX_TF_SEPARATE_COMPONENTS {
+            return Err(format!("ERROR: transform feedback: {name} has too many components for separate attributes\n"));
+        }
+        vars.push(CaptureVar { name: name.clone(), ty, size, buffer, offset, source });
+    }
+    if separate && strides.len() > MAX_TF_BUFFERS {
+        return Err("ERROR: transform feedback: too many separate attributes\n".to_string());
+    }
+    if !separate && strides.first().is_some_and(|s| *s > MAX_TF_INTERLEAVED_COMPONENTS) {
+        return Err("ERROR: transform feedback: too many interleaved components\n".to_string());
+    }
+    Ok((vars, strides))
+}
+
+impl CaptureVar {
+    /// `v[2]` asked as an element.
+    fn array_index(&self) -> Option<u32> {
+        self.source.split_once('\u{1}').and_then(|(_, e)| e.parse().ok())
+    }
+}
+
+/// The vertex stage of a linked program storing what `vars` capture. Made on the first draw with feedback.
+pub fn capture_variant(vs: &Shader, map: &LinkMap, caps: &Caps, vars: &[CaptureVar], strides: &[u32]) -> Result<naga::Module, String> {
+    let mut m = map.clone();
+    m.capture = Some((vars.to_vec(), strides.to_vec()));
+    let text = vs.emit(&m, caps)?;
+    parse_glsl(Stage::Vertex, &text)
 }
 
 /// The vertex stage of a linked program as the quads of points.

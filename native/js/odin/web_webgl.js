@@ -16,7 +16,9 @@
   const S = Symbol("webgl"), TOKEN = {};
 
   // ---- what ops.rs says ----
-  const OP = { ACTIVE_TEXTURE: 1, ATTACH_SHADER: 2, DETACH_SHADER: 3, BIND_ATTRIB_LOCATION: 4, BIND_BUFFER: 5, BIND_FRAMEBUFFER: 6, BIND_RENDERBUFFER: 7, BIND_TEXTURE: 8,
+  // (which target a query goes by: a context has one of each active)
+  const QUERY_SLOT = { 0x8C2F: 0, 0x8D6A: 0, 0x8C88: 1 };
+  const OP = { TF_VARYINGS: 100, BIND_TF: 101, BEGIN_TF: 102, END_TF: 103, PAUSE_TF: 104, RESUME_TF: 105, DELETE_TF: 106, BEGIN_QUERY: 107, END_QUERY: 108, DELETE_QUERY: 109, ACTIVE_TEXTURE: 1, ATTACH_SHADER: 2, DETACH_SHADER: 3, BIND_ATTRIB_LOCATION: 4, BIND_BUFFER: 5, BIND_FRAMEBUFFER: 6, BIND_RENDERBUFFER: 7, BIND_TEXTURE: 8,
     BLEND_COLOR: 9, BLEND_EQUATION: 10, BLEND_FUNC: 11, BUFFER_DATA: 12, BUFFER_SUB_DATA: 13, CLEAR: 14, CLEAR_COLOR: 15, CLEAR_DEPTH: 16, CLEAR_STENCIL: 17, COLOR_MASK: 18,
     COMPILE_SHADER: 19, SHADER_SOURCE: 20, COMPRESSED_TEX_IMAGE: 21, COMPRESSED_TEX_SUB_IMAGE: 22, COPY_TEX_IMAGE: 23, COPY_TEX_SUB_IMAGE: 24, DELETE_BUFFER: 25, DELETE_FRAMEBUFFER: 26,
     DELETE_PROGRAM: 27, DELETE_RENDERBUFFER: 28, DELETE_SHADER: 29, DELETE_TEXTURE: 30, CULL_FACE: 31, DEPTH_FUNC: 32, DEPTH_MASK: 33, DEPTH_RANGE: 34, DISABLE: 35, ENABLE: 36,
@@ -28,7 +30,7 @@
     SAMPLER_PARAMETER_F: 85, ENABLE_EXTENSION: 86, COPY_TEX_SUB_IMAGE_3D: 87 };
   const Q = { ERROR: 1, PARAMETER: 2, SHADER: 3, SHADER_LOG: 4, PROGRAM: 5, PROGRAM_LOG: 6, ACTIVE_ATTRIB: 7, ACTIVE_UNIFORM: 8, ATTRIB_LOCATION: 9, UNIFORM_LOCATION: 10, UNIFORM: 11,
     FRAMEBUFFER_STATUS: 12, READ_PIXELS: 13, TEX_PARAMETER: 14, BUFFER_PARAMETER: 15, RENDERBUFFER_PARAMETER: 16, ATTACHMENT_PARAMETER: 17, VERTEX_ATTRIB: 18, SAMPLER_PARAMETER: 19,
-    INDEXED: 20, BUFFER_SUB_DATA: 21, BLOCK: 22, UNIFORM_INDICES: 23, ACTIVE_UNIFORMS: 24, FINISH: 25, SNAPSHOT: 26, VALIDATE: 27, FORMAT_SAMPLES: 28, FRAG_DATA_LOCATION: 29 };
+    INDEXED: 20, BUFFER_SUB_DATA: 21, BLOCK: 22, UNIFORM_INDICES: 23, ACTIVE_UNIFORMS: 24, FINISH: 25, SNAPSHOT: 26, VALIDATE: 27, FORMAT_SAMPLES: 28, FRAG_DATA_LOCATION: 29, TF_VARYING: 30, QUERY: 31 };
   const TAG = { NULL: 0, INT: 1, FLOAT: 2, BOOL: 3, INTS: 4, FLOATS: 5, BOOLS: 6, STRING: 7, OBJECT: 8, UINT: 9, UINTS: 10 };
   const OBJ_BUFFER = 1, OBJ_FRAMEBUFFER = 2, OBJ_RENDERBUFFER = 3, OBJ_TEXTURE = 4, OBJ_PROGRAM = 5, OBJ_VAO = 6, OBJ_SAMPLER = 7, OBJ_SHADER = 8;
   // The extensions the device side is told of.
@@ -263,6 +265,7 @@
       this.generation = 1;
       this.nextId = 1;
       this.objects = new MapC();
+      this.queries = [null, null];   // the active queries: of samples, of primitives
       this.exts = new MapC();
       this.program = null;
       this.programLink = 0;
@@ -1339,17 +1342,69 @@
 
   // ---- WebGL 2 ----
   const commands2 = () => ({
-    beginQuery(t, q) { const s = this[S]; required(q, WebGLQuery); if (!s.lost) { q[S].target = t; q[S].bound = true; s.query = q; } },
-    endQuery(t) { const s = this[S]; if (!s.lost) s.query = null; },
-    getQuery(t, p) { return the(this).query || null; },
+    beginQuery(t, q) {
+      const s = this[S]; required(q, WebGLQuery);
+      if (s.lost) return;
+      const id = idOf(s, q, WebGLQuery);
+      if (id === undefined) return;
+      const slot = QUERY_SLOT[t];
+      if (slot === undefined) return fail(s, INVALID_ENUM);
+      if (s.queries[slot] || (q[S].target !== undefined && q[S].target !== t)) return fail(s, INVALID_OPERATION);
+      q[S].target = t; q[S].bound = true; q[S].later = false;
+      s.queries[slot] = q;
+      const w = s.w, n = s.n;
+      w[n] = OP.BEGIN_QUERY; w[n + 1] = t; w[n + 2] = id;
+      s.n = n + 3;
+      if (s.n >= s.limit) later(s);
+    },
+    endQuery(t) {
+      const s = this[S];
+      if (s.lost) return;
+      const slot = QUERY_SLOT[t];
+      if (slot === undefined) return fail(s, INVALID_ENUM);
+      const q = s.queries[slot];
+      if (!q || q[S].target !== t) return fail(s, INVALID_OPERATION);
+      s.queries[slot] = null;
+      // (WebGL 2: a result shows on a later task, never in the one that ended the query)
+      setTimeoutFn(() => { q[S].later = true; }, 0);
+      const w = s.w, n = s.n;
+      w[n] = OP.END_QUERY; w[n + 1] = t;
+      s.n = n + 2;
+      if (s.n >= s.limit) later(s);
+    },
+    getQuery(t, p) {
+      const s = the(this);
+      const slot = QUERY_SLOT[t];
+      if (slot === undefined || p !== 0x8865) { if (!s.lost) fail(s, INVALID_ENUM); return null; }
+      const q = s.queries[slot];
+      return q && q[S].target === t ? q : null;
+    },
     getQueryParameter(q, p) {
       const s = this[S]; required(q, WebGLQuery);
       if (s.lost) return null;
-      // (no occlusion or timer data on this path: what is asked is available at once, and everything passes)
-      return p === 0x8867 ? true : (p === 0x8866 ? 1 : null);
+      const id = idOf(s, q, WebGLQuery);
+      if (id === undefined) return null;
+      if (p !== 0x8866 && p !== 0x8867) { fail(s, INVALID_ENUM); return null; }
+      if (q[S].target === undefined || s.queries[QUERY_SLOT[q[S].target]] === q) { fail(s, INVALID_OPERATION); return null; }
+      if (!q[S].later) return p === 0x8867 ? false : 0;
+      return ifAlive(s, [Q.QUERY, id, p], undefined, null);
     },
     createQuery: creator(WebGLQuery),
-    deleteQuery(q) { if (q !== null && q !== undefined) { q[S].deleted = true; the(this).objects.delete(q[S].id); } },
+    deleteQuery(q) {
+      if (q === null || q === undefined) return;
+      const s = this[S]; required(q, WebGLQuery);
+      if (s.lost) return;
+      const id = idOf(s, q, WebGLQuery);
+      if (id === undefined) return;
+      const slot = QUERY_SLOT[q[S].target];
+      if (slot !== undefined && s.queries[slot] === q) s.queries[slot] = null;
+      q[S].deleted = true;
+      s.objects.delete(id);
+      const w = s.w, n = s.n;
+      w[n] = OP.DELETE_QUERY; w[n + 1] = id;
+      s.n = n + 2;
+      if (s.n >= s.limit) later(s);
+    },
     isQuery: isObject(WebGLQuery),
     createSampler() {
       const s = this[S];
@@ -1429,15 +1484,50 @@
     },
     // Transform feedback is not there: the objects exist, starting it is an error.
     createTransformFeedback: creator(WebGLTransformFeedback),
-    deleteTransformFeedback(o) { if (o !== null && o !== undefined) o[S].deleted = true; },
+    deleteTransformFeedback(o) {
+      if (o === null || o === undefined) return;
+      const s = this[S]; required(o, WebGLTransformFeedback);
+      if (s.lost) return;
+      const id = idOf(s, o, WebGLTransformFeedback);
+      if (id === undefined) return;
+      o[S].deleted = true;
+      const w = s.w, n = s.n;
+      w[n] = OP.DELETE_TF; w[n + 1] = id;
+      s.n = n + 2;
+      if (s.n >= s.limit) later(s);
+    },
     isTransformFeedback: isObject(WebGLTransformFeedback),
-    bindTransformFeedback(t, o) { const s = this[S]; if (!s.lost && o !== null && o !== undefined) o[S].bound = true; },
-    beginTransformFeedback(mode) { const s = this[S]; if (!s.lost) fail(s, INVALID_OPERATION); },
-    endTransformFeedback() { const s = this[S]; if (!s.lost) fail(s, INVALID_OPERATION); },
-    pauseTransformFeedback() { const s = this[S]; if (!s.lost) fail(s, INVALID_OPERATION); },
-    resumeTransformFeedback() { const s = this[S]; if (!s.lost) fail(s, INVALID_OPERATION); },
-    transformFeedbackVaryings(p, names, mode) { const s = this[S]; required(p, WebGLProgram); if (s.lost) return; p[S].tf = names; },
-    getTransformFeedbackVarying(p, i) { const s = this[S]; required(p, WebGLProgram); if (!s.lost) fail(s, INVALID_VALUE); return null; },
+    bindTransformFeedback(t, o) {
+      const s = this[S];
+      if (s.lost) return;
+      const id = idOf(s, o, WebGLTransformFeedback);
+      if (id === undefined) return;
+      if (id !== 0) o[S].bound = true;
+      const w = s.w, n = s.n;
+      w[n] = OP.BIND_TF; w[n + 1] = t; w[n + 2] = id;
+      s.n = n + 3;
+      if (s.n >= s.limit) later(s);
+    },
+    beginTransformFeedback: op1(OP.BEGIN_TF),
+    endTransformFeedback: op0("endTransformFeedback", OP.END_TF),
+    pauseTransformFeedback: op0("pauseTransformFeedback", OP.PAUSE_TF),
+    resumeTransformFeedback: op0("resumeTransformFeedback", OP.RESUME_TF),
+    transformFeedbackVaryings(p, names, mode) {
+      const s = this[S]; required(p, WebGLProgram);
+      if (s.lost) return;
+      const id = idOf(s, p, WebGLProgram);
+      if (id === undefined) return;
+      const list = [];
+      for (const name of names) list.push(String(name));
+      flush(s);
+      const w = s.w;
+      w[0] = OP.TF_VARYINGS; w[1] = id; w[2] = mode;
+      s.n = 3;
+      withText(s, list.join("\n"));
+      p[S].tf = list;
+      p[S].tfMode = mode;
+    },
+    getTransformFeedbackVarying(p, i) { return activeInfo(the(this), p, i, Q.TF_VARYING); },
     createVertexArray() {
       const s = this[S];
       return s.lost ? null : newObject(s, WebGLVertexArrayObject);
