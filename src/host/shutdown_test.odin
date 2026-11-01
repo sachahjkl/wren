@@ -5,26 +5,26 @@ import "core:strings"
 import "core:sync"
 import "core:testing"
 import "core:time"
+import "wb:base"
 
-@(private = "file") STUCK_THREAD_POLL :: 5 * time.Millisecond   // the stuck thread looks at its flag this often
-@(private = "file") WATCHDOG_WARN_MS :: 300
-@(private = "file") WATCHDOG_WAIT :: 900 * time.Millisecond     // long enough for the watchdog to have written the log
+@(private = "file") WATCHDOG_WARN_MS :: 1
+@(private = "file") WATCHDOG_TICK :: time.Millisecond
 
 @(test)
 shutdown_watchdog_names_what_waits :: proc(t: ^testing.T) {
 	path := "build/shutdown_test.log"
 	_ = os.make_directory_all("build")
 	_ = os.remove(path)
-	stop: b32
-	th := thread_start(proc(data: rawptr) {
-		for !sync.atomic_load((^b32)(data)) { time.sleep(STUCK_THREAD_POLL) }
-	}, &stop, name = "test-stuck-thread")
+	stop: sync.Sema
+	th := thread_start(proc(data: rawptr) { sync.sema_wait((^sync.Sema)(data)) }, &stop, name = "test-stuck-thread")
 	testing.expect(t, th != nil)
 
-	shutdown_begin(path, warn_ms = WATCHDOG_WARN_MS, force_ms = 0)
+	shutdown_begin(path, warn_ms = WATCHDOG_WARN_MS, force_ms = 0, tick = WATCHDOG_TICK)
 	shutdown_step("test step")
-	time.sleep(WATCHDOG_WAIT)
-	sync.atomic_store(&stop, true)
+	Nothing :: struct {}
+	nothing: Nothing
+	testing.expect(t, base.await(&nothing, proc(_: ^Nothing) -> bool { return shutdown_reports() > 0 }), "the watchdog reported")
+	sync.sema_post(&stop)
 	thread_join(th)
 	shutdown_end()
 

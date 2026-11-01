@@ -2,16 +2,15 @@ package layout
 
 import "core:fmt"
 import "core:strings"
+import "core:sync"
 import "core:testing"
-import "core:time"
 import "wb:base"
 import "wb:dom"
 import "wb:html"
 import "wb:style"
 
-// A threaded pass is tried this many times, this far apart, while another layout holds the threads.
+// A threaded pass is tried this many times while another layout holds the threads.
 @(private = "file") PT_TAKE_TRIES :: 200
-@(private = "file") PT_TAKE_RETRY :: 5 * time.Millisecond
 
 // Full passes with inline formatting contexts laid out ahead on the layout threads against the same passes on one
 // thread (compare_layouts: every box, line, fragment, display item, space, clip, group, band), then incremental passes
@@ -68,7 +67,9 @@ pt_check :: proc(t: ^testing.T, f: ^Pt, l: ^Layout, vp: Vec2, what: string, want
 		l.valid = false
 		run(l, pt_input(f, &par, vp))
 		if l.pre_counts[0] > 0 || tries == PT_TAKE_TRIES - 1 || !want_taken { break }
-		time.sleep(PT_TAKE_RETRY)
+		// another layout has the threads: until it lets go
+		sync.mutex_lock(&par_mu)
+		sync.mutex_unlock(&par_mu)
 	}
 	if want_taken {
 		testing.expectf(t, l.pre_counts[1] > 0, "%s: no context laid out ahead was taken (%v)", what, l.pre_counts, loc = loc)

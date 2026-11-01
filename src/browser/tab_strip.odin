@@ -14,7 +14,6 @@ package browser
 import "core:fmt"
 import "core:math"
 import "core:strings"
-import "core:time"
 import "toolkit:draw"
 import "toolkit:font"
 import "toolkit:render"
@@ -72,7 +71,7 @@ tab_busy :: proc(t: ^Tab) -> bool {
 // The loading indicator still turns (browser.tabs.spinner_max_s after the navigation started, it stands still).
 spinner_turning :: proc(t: ^Tab) -> bool {
 	if favs.cfg.spinner_max_ms <= 0 { return true }
-	return f64(time.duration_milliseconds(time.tick_since(t.hold.started))) < favs.cfg.spinner_max_ms
+	return shell_elapsed_ms(t.hold.started) < favs.cfg.spinner_max_ms
 }
 
 ////////////////////////////////
@@ -443,7 +442,7 @@ tab_icon_of :: proc(app: ^App, t: ^Tab, size: f32) -> ^Tab_Icon_Draw {
 		waiting := t.page == nil
 		d.kind = waiting ? .Waiting : .Spinner
 		if !waiting { d.color = ui.color("accent") }
-		ms := time.duration_milliseconds(time.tick_since(t.hold.started))
+		ms := shell_elapsed_ms(t.hold.started)
 		period: f64 = waiting ? 1600 : 900
 		d.phase = spinner_turning(t) ? f32(math.mod(ms, period) / period) : 0
 		return d

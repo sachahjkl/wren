@@ -7,10 +7,9 @@ package wasm
 
 import "core:sync"
 import "core:testing"
+import "wb:base"
 import "core:thread"
-import "core:time"
 
-@(private = "file") WAITER_HEAD_START :: 50 * time.Millisecond   // for the waiting side to be blocked before the other stores
 
 @(private = "file")
 SHARED_WAT :: `(module
@@ -18,8 +17,12 @@ SHARED_WAT :: `(module
   (func (export "store") (param i32) (result i32)
     (i32.atomic.store (i32.const 0) (local.get 0))
     (memory.atomic.notify (i32.const 0) (i32.const 1)))
+  (func (export "poke") (param i32) (result i32)
+    (memory.atomic.notify (i32.const 0) (i32.const 1)))
   (func (export "wait") (param i32) (result i32)
-    (drop (memory.atomic.wait32 (i32.const 0) (local.get 0) (i64.const 5000000000)))
+    (loop $again
+      (drop (memory.atomic.wait32 (i32.const 0) (local.get 0) (i64.const 5000000000)))
+      (br_if $again (i32.eq (i32.atomic.load (i32.const 0)) (local.get 0))))
     (i32.atomic.load (i32.const 0))))`
 
 @(private = "file")
@@ -90,12 +93,16 @@ two_stores_share_a_memory_and_wait_for_each_other :: proc(t: ^testing.T) {
 	storer := Side{engine = engine, module = module, memory = mem, export = "store", arg = 42}
 	th := thread.create_and_start_with_poly_data(&waiter, run_side)
 	sync.sema_wait(&ready)
-	time.sleep(WAITER_HEAD_START)
+	// The barrier on "it is blocked": a notify says how many it woke, and the waiter goes back to waiting while the value is
+	// the same. One that wakes it is what proves the wake crosses the stores; the store then comes while it waits or just
+	// before it looks again: it sees the value either way.
+	poker := Side{engine = engine, module = module, memory = mem, export = "poke"}
+	base.await(&poker, proc(p: ^Side) -> bool { run_side(p); return p.ok && p.result == 1 })
 	run_side(&storer)
 	thread.join(th)
 	thread.destroy(th)
 	testing.expect(t, storer.ok && waiter.ok)
 	testing.expect_value(t, waiter.result, i32(42))     // woken, and it sees the other store's write
-	testing.expect_value(t, storer.result, i32(1))      // notify woke one waiter
+	testing.expect_value(t, poker.result, i32(1))       // notify woke one waiter
 	testing.expect_value(t, wasmtime_sharedmemory_data(mem)[0], u8(42))   // and the host sees the same bytes
 }

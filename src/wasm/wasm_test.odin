@@ -25,7 +25,7 @@ import "wb:tools/testenv"
 // interruption: the deadline and how much before it a stop still counts as the deadline's; when the flag is set.
 @(private = "file") INTERRUPT_CALL_MS :: 100
 @(private = "file") INTERRUPT_MIN_ELAPSED_MS :: 90
-@(private = "file") STOP_FLAG_AFTER :: 80 * time.Millisecond
+@(private = "file") STOP_FLAG_TICK_MS :: 1
 
 @(private = "file")
 wat :: proc(t: ^testing.T, text: string) -> []byte {
@@ -344,6 +344,8 @@ preemption :: proc(t: ^testing.T) {
 		p.calls += 1
 		_, res := call_i32(p.inst, "add", 1, 2)   // a guest call from the hook: refused
 		if res != .Ok { p.refused = true }
+		// Stays a real sleep: what is checked is that the deadline of a guest call, on the real clock of the engine's ticker, is
+		// moved by the real time the hook took. No other clock runs there.
 		if p.calls <= PREEMPT_SLEEPING_CALLS { time.sleep(PREEMPT_HOOK_SLEEP_MS * time.Millisecond); p.slept_ms += PREEMPT_HOOK_SLEEP_MS }   // the hook's time is not the call's
 	}, &probe, tick_ms = PREEMPT_TICK_MS)
 	defer set_preempt_hook(nil, nil)
@@ -381,17 +383,21 @@ interruption :: proc(t: ^testing.T) {
 		destroy(inst)
 	}
 
-	// the stop flag, set from another thread, interrupts a call without deadline
+	// the stop flag, set from another thread, interrupts a call without deadline; that thread waits until the call runs
+	// (the preempt hook only runs inside one)
 	@(static) stop: b32
+	@(static) running: sync.Sema
 	sync.atomic_store(&stop, false)
 	o.max_call_ms = -1
 	o.stop = &stop
 	inst = make_instance(t, wat(t, MODULE), o)
 	if inst != nil {
-		th := thread.create_and_start(proc() { time.sleep(STOP_FLAG_AFTER); sync.atomic_store(&stop, true) })
+		set_preempt_hook(proc(_: rawptr) { sync.sema_post(&running) }, nil, tick_ms = STOP_FLAG_TICK_MS)
+		th := thread.create_and_start(proc() { sync.sema_wait(&running); sync.atomic_store(&stop, true) })
 		t0 := time.tick_now()
 		_, res := call_i32(inst, "spin")
 		dt := time.duration_milliseconds(time.tick_since(t0))
+		set_preempt_hook(nil, nil)
 		thread.join(th)
 		thread.destroy(th)
 		testing.expectf(t, res == .Trapped, "stop flag interrupts a running call (%.0f ms)", dt)

@@ -55,9 +55,10 @@ Loop :: struct {
 	// shell can draw and read input between them even when a page floods the loop with timers. browser.loop.timer_slice_ms
 	timer_slice_ns: i64,
 	stale:      int,   // queue entries of timers cleared before their deadline (dropped when they pile up: compact_timers)
-	// When set, the loop's clock (ns since origin) is read here instead of the monotonic clock: tests move time
-	// explicitly (atomically, any thread) instead of sleeping, so what they check does not depend on the machine's speed.
-	manual_ns: ^i64,
+	// When set, the loop's time is read here instead of the monotonic clock: a test moves it (clock_advance, clock_move)
+	// instead of sleeping. Everything that decides on elapsed time through this loop reads now_ns. Production leaves it nil,
+	// and pays one predictable test of a pointer on the way to the system's clock.
+	virtual:   ^Virtual_Clock,
 	// Callbacks of the last run_ready that made nothing show by themselves (a media player's notice that its decoders
 	// advanced): quiet_take hands the count to the shell, which does not draw a frame for them. Loop thread only.
 	quiet:     int,
@@ -84,6 +85,11 @@ MAX_TIMER_MS :: 1e12
 // Default of Loop.timer_slice_ns (the browser sets it from browser.loop.timer_slice_ms).
 DEFAULT_TIMER_SLICE_NS :: 8_000_000
 
+@(private) NS_PER_MS :: 1_000_000
+
+// The turns one clock_advance takes at most at one instant.
+CLOCK_ADVANCE_MAX_TURNS :: 100_000
+
 // `wake` may be nil: the loop then wakes `loop_wait` only.
 loop_init :: proc(l: ^Loop, wake: proc(user: rawptr) = nil, wake_user: rawptr = nil) {
 	l.origin = time.tick_now()
@@ -104,8 +110,53 @@ loop_destroy :: proc(l: ^Loop) {
 }
 
 now_ns :: proc(l: ^Loop) -> i64 {
-	if l.manual_ns != nil { return sync.atomic_load(l.manual_ns) }
+	if l.virtual != nil { return sync.atomic_load(&l.virtual.now_ns) }
 	return i64(time.tick_diff(l.origin, time.tick_now()))
+}
+
+// A test's time source: it stands still until the test moves it. It starts at 0, the loop's origin. Give it to the loop
+// (clock_virtual) before the first timer: deadlines made on the other clock mean nothing on this one.
+Virtual_Clock :: struct {
+	now_ns: i64,   // atomic
+}
+
+// Test programs. From now on `l` reads `c`, and a wait of the loop does not count on time passing (loop_wait).
+clock_virtual :: proc(l: ^Loop, c: ^Virtual_Clock) { l.virtual = c }
+
+// Moves the clock without running anything, as a stalled machine would: what is due runs at the next turn, all at that
+// late time. Any thread; the loop's wait wakes.
+clock_move :: proc(l: ^Loop, d: time.Duration) {
+	sync.atomic_add(&l.virtual.now_ns, i64(d))
+	signal(l)
+}
+
+// Loop thread. Moves the clock by `d` and runs at once what falls due on the way, each timer at its own deadline, in
+// order, the tasks and timers they make included, as the same time would have gone by on a loop with nothing else to do
+// (a repeating timer ticks at each of its periods). Waits for nothing. Returns how many callbacks ran. Only a test whose
+// timers remake themselves for ever at the same instant stops at CLOCK_ADVANCE_MAX_TURNS: the caller's checks then fail.
+clock_advance :: proc(l: ^Loop, d: time.Duration) -> (ran: int) {
+	target := sync.atomic_load(&l.virtual.now_ns) + i64(d)
+	for turn := 0; turn < CLOCK_ADVANCE_MAX_TURNS; turn += 1 {
+		if next_timeout_ms(l) == 0 { ran += run_ready(l); continue }   // what is due at this instant first
+		deadline, ok := next_deadline(l)
+		if !ok || deadline > target { break }
+		sync.atomic_store(&l.virtual.now_ns, deadline)
+	}
+	sync.atomic_store(&l.virtual.now_ns, target)
+	for turn := 0; turn < CLOCK_ADVANCE_MAX_TURNS && next_timeout_ms(l) == 0; turn += 1 { ran += run_ready(l) }
+	return
+}
+
+// The deadline of the next live timer (the stale entries in front of it go).
+@(private)
+next_deadline :: proc(l: ^Loop) -> (deadline: i64, ok: bool) {
+	for priority_queue.len(l.queue) > 0 {
+		e := priority_queue.peek(l.queue)
+		t := base.pool_get(&l.timers, e.handle)
+		if t == nil || t.deadline != e.deadline { priority_queue.pop(&l.queue); continue }
+		return e.deadline, true
+	}
+	return 0, false
 }
 
 // Takes out of the posted queue the tasks of `fn` that did not run and hands each one's data to `discard` (what a loop being
@@ -213,15 +264,11 @@ release_scope_hook :: proc(t: Timer) {
 // Milliseconds until the next timer, 0 if a wake is already pending or a timer is due, -1 for "no timer".
 next_timeout_ms :: proc(l: ^Loop) -> int {
 	if sync.atomic_load(&l.pending) { return 0 }
-	for priority_queue.len(l.queue) > 0 {
-		e := priority_queue.peek(l.queue)
-		t := base.pool_get(&l.timers, e.handle)
-		if t == nil || t.deadline != e.deadline { priority_queue.pop(&l.queue); continue }   // stale entry
-		d := e.deadline - now_ns(l)
-		if d <= 0 { return 0 }
-		return int((d + 999_999) / 1_000_000)
-	}
-	return -1
+	deadline, ok := next_deadline(l)
+	if !ok { return -1 }
+	d := deadline - now_ns(l)
+	if d <= 0 { return 0 }
+	return int((d + NS_PER_MS - 1) / NS_PER_MS)
 }
 
 // Loop thread, from inside a callback: this one does not need a frame by itself (what it changes on screen it asks for:
@@ -294,6 +341,8 @@ loop_drain :: proc(l: ^Loop, max_turns := 1000) -> (ran: int) {
 // Headless embedding: blocks until a post/signal or the next timer (or `max_ms` when >= 0), then runs what is ready.
 loop_wait :: proc(l: ^Loop, max_ms: int = -1) -> int {
 	timeout := next_timeout_ms(l)
+	// on a virtual clock a timer is no reason to wait for any time at all: it falls due when the test says, and that wakes this wait
+	if l.virtual != nil && timeout > 0 { timeout = -1 }
 	if max_ms >= 0 && (timeout < 0 || max_ms < timeout) { timeout = max_ms }
 	if timeout != 0 {
 		if timeout < 0 { sync.sema_wait(&l.sema) } else { sync.sema_wait_with_timeout(&l.sema, time.Duration(timeout) * time.Millisecond) }

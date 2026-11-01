@@ -58,6 +58,10 @@ virtual_platform :: proc(s: ^Settings) -> ^Platform {
 // How many dialogs of the Stuck mode are up.
 virtual_stuck_waiting :: proc() -> int { return sync.atomic_load(&stuck_waiting) }
 
+// The operations in the user's time to answer now (a test cancels one that is really waiting).
+@(private="file") delay_waiting: int
+virtual_delay_waiting :: proc() -> int { return sync.atomic_load(&delay_waiting) }
+
 // The dialogs of the Stuck mode that wait now end at once: a test decides when, whatever the machine's speed.
 virtual_release_stuck :: proc() { sync.atomic_add(&stuck_released, 1) }
 
@@ -109,10 +113,12 @@ v_wait :: proc(token: ^Cancel_Token, delay_ms: int, stuck := false) -> bool {
 	} else if delay_ms > 0 {
 		deadline := time.tick_add(time.tick_now(), time.Duration(delay_ms) * time.Millisecond)
 		sync.mutex_lock(&token.mu)
+		sync.atomic_add(&delay_waiting, 1)
 		for !token.cancelled {
 			left := time.tick_diff(time.tick_now(), deadline)
 			if left <= 0 || !sync.cond_wait_with_timeout(&token.wake, &token.mu, left) { break }
 		}
+		sync.atomic_sub(&delay_waiting, 1)
 		sync.mutex_unlock(&token.mu)
 	}
 	sync.mutex_lock(&token.mu)

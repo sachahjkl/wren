@@ -99,7 +99,7 @@ bench_load :: proc(t: ^testing.T) {
 			axis := os.get_env("WREN_LOADBENCH_RESIZE_AXIS", context.allocator)   // (the temp allocator is emptied every step)
 			defer delete(axis)
 			for k in 0 ..< resize_steps {
-				if gap > 0 { time.sleep(time.Duration(gap) * time.Millisecond) }
+				if gap > 0 { time.sleep(time.Duration(gap) * time.Millisecond) }   // (stays: a benchmark asked for this real pause, what the threads do when idle is what it measures)
 				ri := in_
 				if axis != "h" { ri.viewport.x = resize_width(k) }
 				if axis == "h" || axis == "wh" { ri.viewport.y = resize_width(k) - 600 }

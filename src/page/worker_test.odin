@@ -194,11 +194,26 @@ env_destroy :: proc(e: ^Env) {
 	sync.mutex_unlock(&worker_tests)
 }
 
+// The same, after a line of the console: (memory (export "memory") 1) (func (export "wb_main") (call $console_log (i32.const 0) (i32.const 0)) (loop (br 0)))
 @(private = "file")
-spin_url :: proc() -> string {
-	enc, _ := base64.encode(SPIN_MODULE[:], allocator = context.temp_allocator)
+LOGGING_SPIN_MODULE := [?]u8{
+	0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+	0x01, 0x09, 0x02, 0x60, 0x00, 0x00, 0x60, 0x02, 0x7f, 0x7f, 0x00,
+	0x02, 0x17, 0x01, 0x07, 'c', 'o', 'n', 's', 'o', 'l', 'e', 0x0b, 'c', 'o', 'n', 's', 'o', 'l', 'e', '_', 'l', 'o', 'g', 0x00, 0x01,
+	0x03, 0x02, 0x01, 0x00,
+	0x05, 0x03, 0x01, 0x00, 0x01,
+	0x07, 0x14, 0x02, 0x07, 'w', 'b', '_', 'm', 'a', 'i', 'n', 0x00, 0x01, 0x06, 'm', 'e', 'm', 'o', 'r', 'y', 0x02, 0x00,
+	0x0a, 0x0f, 0x01, 0x0d, 0x00, 0x41, 0x00, 0x41, 0x00, 0x10, 0x00, 0x03, 0x40, 0x0c, 0x00, 0x0b, 0x0b,
+}
+
+@(private = "file")
+enc_url :: proc(module: []u8) -> string {
+	enc, _ := base64.encode(module, allocator = context.temp_allocator)
 	return strings.concatenate({"data:application/wasm;base64,", enc}, context.temp_allocator)
 }
+
+@(private = "file")
+spin_url :: proc() -> string { return enc_url(SPIN_MODULE[:]) }
 
 @(private = "file")
 wait_running :: proc(e: ^Env, p: ^Page, n: int) -> bool {
@@ -214,21 +229,31 @@ wait_running :: proc(e: ^Env, p: ^Page, n: int) -> bool {
 
 @(test)
 terminate_stops_a_worker_busy_in_a_long_computation :: proc(t: ^testing.T) {
+	// (the line of the console a worker sends is made in the process heap of an import, and freed here: this test's own tracker
+	// would not know it)
+	context.allocator = base.process_allocator()
 	e: Env
 	env_init(&e)
 	defer env_destroy(&e)
-	p := test_page(&e.loop, &e.loader, &e.settings, e.scope)
-	w := worker_create(p, spin_url(), "busy", 0)
+	@(static) spin_logged: bool
+	spin_logged = false
+	p := page_create(&e.loop, &e.loader, &e.settings, e.scope, "http://127.0.0.1:8765/t.html", proc(_: rawptr, _: Log_Level, _: string) { spin_logged = true })
+	w := worker_create(p, enc_url(LOGGING_SPIN_MODULE[:]), "busy", 0)
 	testing.expect(t, w != 0)
 	testing.expect(t, wait_running(&e, p, 1), "the worker thread started")
-	time.sleep(10 * time.Millisecond)   // most likely inside wb_main's endless loop by now (either way it must stop)
+	// the log line comes from inside wb_main, one instruction from its endless loop
+	start := time.tick_now()
+	for !spin_logged && time.duration_seconds(time.tick_since(start)) < WORKER_STOP_DEADLINE_S { host.loop_wait(&e.loop, 1) }
+	testing.expect(t, spin_logged, "the worker runs its module")
 	testing.expect_value(t, worker_terminate_object(p, w), dom.Error.None)
 	object_release(p, w)
-	start := time.tick_now()
+	start = time.tick_now()
 	for len(p.workers.hosts) > 0 && time.duration_seconds(time.tick_since(start)) < WORKER_STOP_DEADLINE_S { host.loop_wait(&e.loop, 1) }
 	testing.expect_value(t, len(p.workers.hosts), 0)
 	// (the count falls as the thread ends, a moment after its host went: longer under AddressSanitizer)
-	for workers_running() > 0 && time.duration_seconds(time.tick_since(start)) < WORKER_STOP_DEADLINE_S { time.sleep(time.Millisecond) }
+	Nothing :: struct {}
+	nothing: Nothing
+	base.await(&nothing, proc(_: ^Nothing) -> bool { return workers_running() == 0 })
 	testing.expect_value(t, workers_running(), 0)
 }
 

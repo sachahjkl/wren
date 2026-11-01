@@ -5,7 +5,8 @@ import "core:testing"
 import "core:time"
 import "wb:base"
 
-@(private = "file") WAIT_HOOK_ITEM_TIME :: 2 * time.Millisecond   // what an item of parallel_for_wait_hook takes
+@(private = "file") WAIT_HOOK_ITEM_TIME :: 2 * time.Millisecond   // what an item of parallel_for_wait_hook takes, in a performance run
+@(private = "file") WAIT_HOOK_EVERY_NS :: 200_000
 
 @(private = "file")
 Probe :: struct { depth: int, temp_ok: bool }
@@ -115,14 +116,23 @@ parallel_for_rounds_back_to_back :: proc(t: ^testing.T) {
 parallel_for_wait_hook :: proc(t: ^testing.T) {
 	pool := thread_pool_make(2)
 	defer thread_pool_destroy(pool)
-	Job :: struct { done: [64]int, hooks: int }
-	job: Job
-	set_parallel_wait_hook(proc(user: rawptr) { (^Job)(user).hooks += 1 }, &job, 200_000)
+	Job :: struct { done: [64]int, hooks, helpers: int, caller: int, measuring: bool }
+	job := Job{caller = sync.current_thread_id(), measuring = base.perf_enabled()}
+	set_parallel_wait_hook(proc(user: rawptr) { sync.atomic_add(&(^Job)(user).hooks, 1) }, &job, WAIT_HOOK_EVERY_NS)
 	defer set_parallel_wait_hook(nil, nil, 0)
 	parallel_for(pool, len(job.done), proc(data: rawptr, i: int) {
 		j := (^Job)(data)
 		sync.atomic_add(&j.done[i], 1)
-		time.sleep(WAIT_HOOK_ITEM_TIME)
+		// (a performance run looks at how often the hook runs in real time: there an item truly takes that time)
+		if j.measuring { time.sleep(WAIT_HOOK_ITEM_TIME); return }
+		// The barrier: an item of a helper ends once the hook has run, which only the calling thread does; an item of the
+		// calling thread once a helper is inside one, so that it cannot take them all before anyone waits.
+		if sync.current_thread_id() == j.caller {
+			base.await(j, proc(j: ^Job) -> bool { return sync.atomic_load(&j.helpers) > 0 })
+		} else {
+			sync.atomic_add(&j.helpers, 1)
+			base.await(j, proc(j: ^Job) -> bool { return sync.atomic_load(&j.hooks) > 0 })
+		}
 	}, &job)
 	for d, i in job.done { testing.expectf(t, d == 1, "item %d ran %d times", i, d) }
 	testing.expectf(t, job.hooks >= 1, "the hook ran while the items did (%d times)", job.hooks)

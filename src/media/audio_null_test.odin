@@ -3,29 +3,28 @@ package media
 
 import "core:testing"
 import "core:time"
-import "wb:base"
 
-@(private = "file") PART_PLAYED_WAIT :: 40 * time.Millisecond    // into 100 ms of audio: some of it is played, not all
-@(private = "file") ALL_PLAYED_WAIT :: 150 * time.Millisecond    // from there: all of it is
+@(private = "file") PART_PLAYED :: 40 * time.Millisecond    // into 100 ms of audio: some of it is played, not all
+@(private = "file") ALL_PLAYED :: 150 * time.Millisecond    // from there: all of it is
 
 @(test)
 the_silent_output_plays_what_it_is_given_at_the_pace_of_the_clock :: proc(t: ^testing.T) {
 	RATE :: 48000
+	PART_FRAMES :: i64(RATE) * i64(PART_PLAYED) / i64(time.Second)
 	o := null_audio_open(RATE)
 	defer o.destroy(o)
+	clock: i64
+	(^Null_Audio)(o.impl).test_clock = &clock
 	frames := make([]f32, 4800 * 2, context.temp_allocator)   // 100 ms
 	testing.expect_value(t, o.write(o, frames), 4800)
 	f, _ := o.position(o)
 	testing.expect_value(t, f, i64(0))   // not started: nothing is played
 	o.start(o)
-	time.sleep(PART_PLAYED_WAIT)
+	f, _ = o.position(o)   // (the clock starts going for it at its first look after start)
+	clock += i64(PART_PLAYED)
 	f, _ = o.position(o)
-	testing.expectf(t, f > 1000, "40 ms into 100 ms of audio: %d frames played (it plays, 21 ms at least went by)", f)
-	// not all of it yet: a window of time (a loaded machine oversleeps), so a performance test
-	if !base.perf_skip("audio_null: 40 ms into 100 ms of audio is not all played yet") {
-		testing.expectf(t, f < 4800, "40 ms into 100 ms of audio: %d frames played (not all)", f)
-	}
-	time.sleep(ALL_PLAYED_WAIT)
+	testing.expect_value(t, f, PART_FRAMES)
+	clock += i64(ALL_PLAYED)
 	f, _ = o.position(o)
 	testing.expect_value(t, f, i64(4800))   // what was written, no more: silence the device plays does not count
 	testing.expect_value(t, o.queued(o), 0)

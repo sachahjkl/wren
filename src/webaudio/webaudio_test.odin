@@ -2,12 +2,11 @@ package webaudio
 
 import "core:math"
 import "core:testing"
-import "core:time"
+import "wb:base"
 import "wb:media"
 
 RATE :: 48000.0
 TEST_MAX_BYTES :: 1 << 30
-RESUME_DEADLINE_MS :: 5000   // how long a resumed context's clock may take to move
 
 @(private = "file")
 near :: proc(t: ^testing.T, got, want: f32, tolerance: f32, what: string, frame: int, loc := #caller_location) -> bool {
@@ -25,7 +24,7 @@ render :: proc(g: ^Graph, frames: int) -> ^Pcm {
 }
 
 // What a wait on a render thread gives it; it only ends a failing run.
-@(private = "file") THREAD_WAIT :: 60 * time.Second
+
 @(private = "file") CONTEXT_ADVANCES_S :: 0.1
 
 @(test)
@@ -696,17 +695,18 @@ a_running_context_follows_the_output_and_stops_with_it :: proc(t: ^testing.T) {
 	graph_resume(g, 2400)
 	testing.expect(t, graph_state(g) == .Running)
 	// the clock of the output, plus what is queued ahead (50 ms): it advances; how far in a given time depends on the machine
-	running := time.tick_now()
-	for graph_time(g) <= CONTEXT_ADVANCES_S && time.tick_since(running) < THREAD_WAIT { time.sleep(time.Millisecond) }
+	base.await(g, proc(g: ^Graph) -> bool { return graph_time(g) > CONTEXT_ADVANCES_S })
 	now := graph_time(g)
 	testing.expectf(t, now > CONTEXT_ADVANCES_S, "the context is at %v s", now)
 	graph_suspend(g)
 	stopped := graph_time(g)
-	time.sleep(30 * time.Millisecond)
+	// (graph_suspend has joined the thread that moves the time: no waiting shows anything more)
+	testing.expect(t, g.thread.th == nil, "suspended: no thread renders")
 	testing.expect(t, graph_time(g) == stopped, "suspended: time stands still")
 	graph_resume(g, 2400)
-	// (the thread takes its time on a busy machine)
-	for waited := 0; waited < RESUME_DEADLINE_MS && graph_time(g) <= stopped; waited += 1 { time.sleep(time.Millisecond) }
+	Resumed :: struct { g: ^Graph, stopped: f64 }
+	resumed := Resumed{g, stopped}
+	base.await(&resumed, proc(r: ^Resumed) -> bool { return graph_time(r.g) > r.stopped })
 	testing.expect(t, graph_time(g) > stopped, "resumed: on it goes")
 	graph_close(g)
 	testing.expect(t, graph_state(g) == .Closed)
@@ -720,7 +720,7 @@ closing_a_page_with_a_context_running_leaves_no_thread :: proc(t: ^testing.T) {
 	g := graph_new(RATE, 2, false)
 	g.thread.open = media.null_audio_open
 	graph_resume(g, 2400)
-	time.sleep(10 * time.Millisecond)
+	base.await(g, proc(g: ^Graph) -> bool { return graph_time(g) > 0 })   // (it renders)
 	graph_destroy(g)    // (joins the thread; a leak or a hang shows here)
 }
 
@@ -775,8 +775,8 @@ offline_rendering_on_its_thread_ends_with_the_result :: proc(t: ^testing.T) {
 	connect(g, c, 0, DESTINATION_ID, 0)
 	node_start(g, c, 0, 0, -1)
 	testing.expect(t, offline_start(g, 1000))
-	deadline := time.tick_now()   // (its thread is below normal priority: on a busy machine it waits its turn)
-	for graph_state(g) != .Closed && time.tick_since(deadline) < THREAD_WAIT { time.sleep(time.Millisecond) }
+	// (its thread is below normal priority: on a busy machine it waits its turn)
+	base.await(g, proc(g: ^Graph) -> bool { return graph_state(g) == .Closed })
 	p := offline_take_result(g)
 	testing.expect(t, p != nil)
 	if p == nil { return }
