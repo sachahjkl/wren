@@ -19,6 +19,7 @@
 # -Jobs 1: one step after the other, one server for all, as before.
 # What to run (docs/testing.md):
 #   -Only <regex>  the steps whose name matches, with the steps that build what they use
+#   -Except <regex> not the steps whose name matches (the CI runs test262 as a job of its own)
 #   -Failed        the steps that failed (or were FLAKY) in the last run, from build\test_failed.txt
 #   -Changed       the steps with an input changed since -Base (default: where this branch left master), the working tree's changes included. Never instead of the CI's run: it says how many it left out.
 #   -List          the steps of this configuration (with -Changed or -Only: those chosen) and their number of inputs; nothing runs
@@ -27,7 +28,7 @@
 # run again. -NoCache (or WREN_TEST_CACHE=0) runs everything, and turns off the shared code cache of the test processes too. -Cache: on for this run as well (the CI's branches). Never with -Perf,
 # and never on a full run unless asked. A run ends with what failed, its log and how to run it again (also build\test_report.txt; every step's result: build\test_steps.tsv).
 param([switch]$Quick, [switch]$CI, [int]$StepTimeoutSec = 900, [int]$Jobs = 0, [int]$BasePort = 0, [int]$LightJobs = 0, [switch]$NoAsan, [switch]$Perf, [switch]$Ui,
-      [switch]$NoCache, [switch]$Cache, [string]$Only = '', [Alias('Failed')][switch]$RerunFailed, [switch]$Changed, [string]$Base = '', [switch]$List, [switch]$Profile)
+      [switch]$NoCache, [switch]$Cache, [string]$Only = '', [string]$Except = '', [Alias('Failed')][switch]$RerunFailed, [switch]$Changed, [string]$Base = '', [switch]$List, [switch]$Profile)
 if ($Profile) {
     # (the same run, under the profiler; a CI step or a person reads the tables it ends with)
     $again = @($PSBoundParameters.GetEnumerator() | Where-Object { $_.Key -ne 'Profile' } | ForEach-Object { if ($_.Value -is [switch]) { if ($_.Value) { "-$($_.Key)" } } else { "-$($_.Key)"; "`"$($_.Value)`"" } }) -join ' '
@@ -72,7 +73,7 @@ if (-not $List) { & powershell -NoProfile -File (Join-Path $PSScriptRoot 'fetch_
 $runStart = Get-Date
 # The result cache (tools\test_cache.ps1), the choice of steps. (Decided here: the keys need the flags above, the steps below read these.)
 $script:useCache = (-not $NoCache) -and (-not $Perf) -and ($Cache -or ($Quick -and -not $CI))
-$script:selecting = [bool]($Only -or $RerunFailed -or $Changed)
+$script:selecting = [bool]($Only -or $Except -or $RerunFailed -or $Changed)
 if ($script:useCache -or $Changed -or $List) {
     . (Join-Path $PSScriptRoot 'test_cache.ps1')
     Initialize-WrenCache $root "Quick=$([bool]$Quick) CI=$([bool]$CI) Ui=$([bool]$Ui) slow=$slow NoAsan=$([bool]$NoAsan) Jobs1=$($Jobs -le 1) WrenNoTestCache=$env:WREN_NO_TEST_CACHE"
@@ -99,6 +100,7 @@ function Test-StepChosen($item) {
     if ($item.Name -like 'JavaScript engine*') { return $true }   # what the builds embed (nothing to do when up to date)
     if ($item.Name -like 'console launcher*' -and -not (Test-Path (Join-Path $root 'build\wren.com'))) { return $true }
     if ($Only -and $item.Name -notmatch $Only) { return $false }
+    if ($Except -and $item.Name -match $Except) { return $false }
     if ($RerunFailed -and -not $script:failedBefore.ContainsKey($item.Name)) { return $false }
     if ($Changed) {
         $inputs = New-Object 'System.Collections.Generic.HashSet[string]' ([string[]](Get-WrenStepInputs $item.Name $item.Body $item.Vars), [StringComparer]::OrdinalIgnoreCase)
@@ -362,7 +364,7 @@ function Show-RunReport {
     $cached = @($script:results | Where-Object Status -EQ 'CACHED').Count
     if ($cached) { $lines += "$cached step(s) did not run: they passed with exactly these inputs (tools\test_cache.ps1). -NoCache runs them." }
     if ($script:useCache) { $lines += "the inputs of the steps were read in $([Math]::Round($script:keyMs / 1000.0, 1)) s; this run began $([Math]::Round(($script:firstStep - $runStart).TotalSeconds, 1)) s after its start" }
-    if ($script:selecting) { $lines += "$($script:leftOut) step(s) left out by -Only / -Failed / -Changed: this is not what the CI runs." }
+    if ($script:selecting) { $lines += "$($script:leftOut) step(s) left out by -Only / -Except / -Failed / -Changed." }
     foreach ($r in @($script:results | Where-Object { $_.Status -in 'FAIL', 'FLAKY' })) {
         $lines += "$($r.Status) $($r.Name)"
         $lines += "  log: $($r.Log)"
