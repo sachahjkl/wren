@@ -365,7 +365,7 @@ function Show-TestTimes {
 function Show-RunReport {
     # what a step that failed left running (started by this run, from this worktree's build\): it would hold its program against the next build
     # (by name first: reading the path of every process of the machine takes 10 s under load)
-    foreach ($p in @(Get-Process -Name 'wren*', '*test', '*_test', 'uia_probe' -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -ne 'testserver' -and $_.Path -and $_.Path.StartsWith($buildDir, [StringComparison]::OrdinalIgnoreCase) -and $_.StartTime -gt $runStart })) {
+    foreach ($p in @(Get-Process -Name 'wren*', '*test', '*_test' -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -ne 'testserver' -and $_.Path -and $_.Path.StartsWith($buildDir, [StringComparison]::OrdinalIgnoreCase) -and $_.StartTime -gt $runStart })) {
         "left running by a step: $($p.ProcessName) (pid $($p.Id)): stopped"
         Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
     }
@@ -446,22 +446,23 @@ foreach ($pkg in 'base', 'host', 'dom', 'html', 'url', 'http', 'cookies', 'csp',
 Step 'unit tests: remote (protocol, pipe server: requests, answers, limits, vanishing clients, stopping with clients connected)' { odin test src/remote -use-separate-modules $MemCheck -define:ODIN_TEST_THREADS=1 -collection:wb=src -vet -out:build/remote_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
 Step 'unit tests: remote api (the channel and the processes of wb:remote/api: a call through the channel and back, a process told again by its creation time)' { odin test src/remote/api -use-separate-modules $MemCheck -define:ODIN_TEST_THREADS=1 -collection:wb=src -vet -out:build/remote_api_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
 Step 'unit tests: remote client (wren ctl: options, help, picture diff)' { odin test src/remote/client -use-separate-modules $MemCheck -define:ODIN_TEST_THREADS=1 -collection:wb=src -vet -out:build/remote_client_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
-Step 'developer tools docked: the page area follows the size of the panel, at the bottom and at the side (tools\devtools_resize_e2e.ps1 -NoDesktop: no window shown)' {
-    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
-    powershell -NoProfile -ExecutionPolicy Bypass -File tools\devtools_resize_e2e.ps1 -NoDesktop
+Step 'the developer tools resized (src\tools\e2e\devtools_resize.odin: the docked panel has the size the preference gives it, at the side and at the bottom; a real window, never shown, and the panel''s own keep their surface while they resize, 1:1 and clipped)' {
+    Invoke-WrenE2E 'build\e2e_test.exe' 'devtools_resize'
 } -NoCI
-Step 'an open menu over the top resize band is the browser''s (tools\menu_edge_e2e.ps1: the system''s hit test sent to a window shown fully transparent and click-through, no real mouse)' {
-    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
-    powershell -NoProfile -ExecutionPolicy Bypass -File tools\menu_edge_e2e.ps1
+Step 'an open menu over the top resize band is the browser''s (src\tools\e2e\menu_edge.odin: the hit test behind WM_NCHITTEST; no window at all)' {
+    Invoke-WrenE2E 'build\e2e_test.exe' 'menu_edge'
 } -NoCI
 Step 'remote control end to end (tools\remote_e2e.ps1: wren ctl drives a Wren with no window shown: navigate, evaluate, click, type, capture from the render target and compare pixels, window off the screen, vanishing and oversized clients, quit; off and idle at no cost when not asked for)' {
     # (the browser is built unless it is newer than its sources: build.bat takes 40 s even with nothing to do, and the CI built it a step ago)
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\remote_e2e.ps1
 } -Weight 60
-Step 'accessibility end to end (tools\a11y_e2e.ps1: a Wren with no window shown read and driven through UI Automation as a screen reader does: the chrome''s roles, names and states, invoke, set value, select, expand)' {
+Step 'accessibility end to end (src\tools\e2e\a11y.odin: what a window tells a screen reader, the chrome''s and a page''s, and what a reader''s requests do; no window at all)' {
+    Invoke-WrenE2E 'build\e2e_test.exe' 'a11y'
+} -NoCI
+Step 'what a screen reader reads (src\tools\e2e\a11y_uia.odin: a Wren with a real window, never shown, read and driven through the system''s UI Automation)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
-    powershell -NoProfile -ExecutionPolicy Bypass -File tools\a11y_e2e.ps1
+    Invoke-WrenE2E 'build\e2e_test.exe' 'a11y_uia'
 } -NoCI
 Step 'drag and drop end to end (src\tools\e2e\dnd.odin: a file dropped on a drop zone and elsewhere, a drag between elements, pointer events and coordinates in a scrolled page; no window at all)' {
     Invoke-WrenE2E 'build\e2e_test.exe' 'dnd'
@@ -489,10 +490,22 @@ Step 'the address bar''s suggestions end to end (src\tools\e2e\urlbar.odin: the 
 } -NoCI
 Step 'the result cache of this script (tools\test_cache_test.ps1: what a step depends on, against the compiler''s import graph; a change of an input and of nothing else changes a key; a result needs the program it built)' -Light { powershell -NoProfile -ExecutionPolicy Bypass -File tools\test_cache_test.ps1 }
 Step 'the globals of src\browser against their list (tools\lint_globals.ps1: a new global of a window or a tab goes into Browser_Window or Tab)' -Light { powershell -NoProfile -ExecutionPolicy Bypass -File tools\lint_globals.ps1 }
-Step 'the frame gate end to end (tools\frame_gate_e2e.ps1: the system''s drag of a page drag, a long script preempted by chrome frames, the page''s context menu; no frame begun inside another''s build, no violation of the state machine; a window shown fully transparent and click-through)' {
+Step 'the frame gate end to end (src\tools\e2e\frame_gate.odin, a real window that nobody sees: the system''s drag of a page drag, the page''s context menu, a long script preempted by chrome frames; under them a loop of the system paints: a chrome frame, never a full one, deferred where no frame may begin)' {
+    Invoke-WrenE2E 'build\e2e_test.exe' 'frame_gate'
+} -NoCI
+Step 'tab sidebar resized by its handle (src\tools\e2e\sidebar_resize.odin: the edge where the pointer is in every frame, the page at its area''s width, the width written on release; an injected pointer, no window at all)' {
+Invoke-WrenE2E 'build\e2e_test.exe' 'sidebar_resize'
+} -NoCI
+Step 'the page''s cursors (src\tools\e2e\cursor.odin: what the page asks for over each element, images and their hotspots, a press held; no window at all)' {
+    Invoke-WrenE2E 'build\e2e_test.exe' 'cursor'
+} -NoCI
+Step 'the GPU process in the real browser (src\tools\e2e\webgl_process.odin: none without WebGL, one for the first context, killed and restored, hung and killed by the watcher, it ends with a killed browser)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
-    powershell -NoProfile -ExecutionPolicy Bypass -File tools\frame_gate_e2e.ps1
-} -Weight 15 -NoCI
+    Invoke-WrenE2E 'build\e2e_test.exe' 'webgl_process'
+} -NoCI
+Step 'the small core on a real window (src\tools\e2e\real_window.odin, never shown: WM_DPICHANGED, WM_NCHITTEST and WM_SETCURSOR through the window procedure, the system''s z-order for a drop, the swap chain)' {
+    Invoke-WrenE2E 'build\e2e_test.exe' 'real_window'
+} -NoCI
 Step 'service workers, Cache API, BroadcastChannel, OffscreenCanvas in a worker end to end (src\tools\e2e\sw.odin: register, install / activate, claim, fetch intercepted and answered from the cache, a navigation answered by the worker, messages, versions and update, clients, idle stop, navigation preload, Vary; no window shown)' {
     Invoke-WrenE2E 'build\e2e_test.exe' 'sw'
 } -Weight 20 -NoCI
@@ -857,13 +870,6 @@ if ($CI -or -not $Quick) {
     Step 'crash reports (tools\crash_e2e.ps1: src/tools/crashmodes dies by an access violation, an assertion, a stack overflow, a corrupted heap, a fail-fast: each leaves a report with a stack and a minidump, or the session file the next start turns into an unclean-exit report)' {
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\crash_e2e.ps1
 } -UiOnly
-Step 'developer tools resized (tools\devtools_resize_e2e.ps1: the docked panel has the size the preference gives it; neither the browser window nor the window of the panel is shown stretched while it is resized, read from the screen after each step; the real mouse drags the corner of each window, panel detached)' {
-powershell -NoProfile -ExecutionPolicy Bypass -File tools\devtools_resize_e2e.ps1
-} -UiOnly
-Step 'tab sidebar resized by its handle: the edge where the pointer is in every frame, the page at its area''s width, the width written on release (tools\sidebar_resize_e2e.ps1: the pointer posted to the window as WM_MOUSEMOVE, frame by frame; it failed on the CI runner, where frames come late: the lag it measures depends on the machine)' {
-    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
-    powershell -NoProfile -ExecutionPolicy Bypass -File tools\sidebar_resize_e2e.ps1
-} -UiOnly
 Step 'tab sidebar features (src\tools\e2e\sidebar_tabs.odin, no window at all: opening and closing go through the widths between; pinned tabs, groups, the sound of a tab)' {
     Invoke-WrenE2E 'build\e2e_test.exe' 'sidebar_tabs'
 } -NoCI
@@ -884,9 +890,6 @@ if (($CI -or -not $Quick) -and -not $NoAsan) {
 }
 if (-not $Quick) {
     Step 'network stress' { powershell -NoProfile -File tools\net_stress.ps1 -SizeMB 100 }
-    Step 'the GPU process in the real browser (tools\webgl_process_e2e.ps1: none without WebGL, one for the first context, killed and restored, it ends with a killed browser)' {
-        powershell -NoProfile -File tools\webgl_process_e2e.ps1 2>&1 | Out-String
-    } -UiOnly
     Step 'WebGL device tests (native\webgl: the GLSL ES translator, formats, hostile shaders, a context on the software adapter, the GPU process killed, hung and hostile)' {
         cargo test --profile quick --locked --manifest-path native\Cargo.toml --target-dir build\native\target -p wren_webgl 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o | Select-String 'test result|FAILED|panicked' | Out-String
     }

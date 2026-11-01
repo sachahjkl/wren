@@ -40,11 +40,6 @@ DEFAULT_SECTION_SECONDS :: 30.0
 LOOP_LOOK_MS :: 5          // the most the loop waits before a section looks again: anything that happens ends the wait sooner
 DRAIN_MAX_TURNS :: 1000
 LAST_LINES_ON_TIMEOUT :: 6
-// The probe of an adapter when a script says there is none (verify_skip).
-ADAPTER_PROBE_WAIT_MS :: 60_000
-ADAPTER_PROBE_SIZE :: 8
-ADAPTER_PROBE_MESSAGE_BYTES :: 512
-NO_ADAPTER_MESSAGE :: "no graphics adapter"   // what the GPU process says, and only then (native/webgl/src/host.rs)
 
 // A section's world: made and destroyed around each @(test) on the runner's one thread.
 loop:     host.Loop
@@ -228,28 +223,15 @@ verify_skip :: proc(reason: page.Test_Skip_Reason) -> (testhost.Skip_Verdict, st
 	return .Unknown, "an unknown reason"
 }
 
-// A context made on its own, away from the page that could not have one, with all the time it takes. A context: the machine has
-// an adapter, and what the page saw was something else (a slow device, a process that went). "No adapter" from the GPU process:
-// it has none. Anything else says nothing about the machine.
+// What the machine says, for a script's skip: webgl.adapter_probe.
 adapter_probe :: proc() -> (testhost.Skip_Verdict, string) {
-	s := &settings.webgl
-	attrs := webgl.Attrs{
-		alpha = 1, depth = 1,
-		width = ADAPTER_PROBE_SIZE, height = ADAPTER_PROBE_SIZE, max_dimension = ADAPTER_PROBE_SIZE,
-		allow_software = 1, backend = s.backend, max_bytes = s.max_bytes, wait_ms = ADAPTER_PROBE_WAIT_MS,
-		hang_ms = s.gpu_hang_ms, max_restarts = s.gpu_max_restarts, restart_window_ms = s.gpu_restart_window_ms, idle_exit_ms = s.gpu_idle_exit_ms,
+	verdict, why := webgl.adapter_probe(settings.webgl)
+	switch verdict {
+	case .Absent:  return .Absent, why
+	case .Present: return .Present, why
+	case .Unknown: return .Unknown, why
 	}
-	inf: webgl.Info
-	err: [ADAPTER_PROBE_MESSAGE_BYTES]u8
-	err_len: uint
-	h := webgl.wg_create(&attrs, &inf, &err[0], len(err), &err_len)
-	if h != nil {
-		webgl.wg_destroy(h)
-		return .Present, "a context made just now has an adapter"
-	}
-	said := strings.clone(string(err[:err_len]), context.temp_allocator)
-	if strings.contains(said, NO_ADAPTER_MESSAGE) { return .Absent, said }
-	return .Unknown, said
+	return .Unknown, why
 }
 
 // A last test, by the order of names: what the process keeps goes, and with -define:WREN_TRACK_MEMORY=true whatever the sections

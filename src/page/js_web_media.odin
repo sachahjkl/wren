@@ -70,12 +70,27 @@ media_page :: proc(p: ^Page) -> ^Media_Page {
 	return mp
 }
 
-// The environment media queries are evaluated in: the page's last style computation, or a default before it had one.
+// The environment a page is styled and its media queries are answered in, for a viewport of this size and scale.
+page_media_env :: proc(e: ^style.Engine, viewport_w, viewport_h, dppx: f64) -> css.Media_Env {
+	env := style.media_env_from(&e.settings, viewport_w, viewport_h, dppx, style.os_appearance().dark)
+	env.scripting = e.settings.scripting   // (scripting: enabled) / (scripting: none)
+	return env
+}
+
+// The environment media queries are evaluated in: the page's last style computation; before it had one (a script while the page loads), the viewport
+// the embedder shows it in, what that computation will find: an answer given for another scale or size would change at the first style computation, and
+// the list would report a change nothing made.
 @(private)
 media_env :: proc(p: ^Page) -> css.Media_Env {
 	if mp, ok := media_pages[p]; ok && mp.has_env { return mp.env }
-	if p.engine != nil && p.engine.env.width > 0 { return p.engine.env }
-	return style.media_env_from(&p.engine.settings, 0, 0, 1, style.os_appearance().dark) if p.engine != nil else css.Media_Env{type = .Screen, dppx = 1, color_bits = 24}
+	if p.engine == nil { return css.Media_Env{type = .Screen, dppx = 1, color_bits = 24} }
+	if p.styled == nil && p.worker == nil {
+		if s := js_dom_state(p); s.layout.has {
+			vp := s.layout.embedder.viewport(s.layout.embedder.user, p)
+			if vp.width > 0 { return page_media_env(p.engine, vp.width, vp.height, vp.scale > 0 ? vp.scale : 1) }
+		}
+	}
+	return p.engine.env
 }
 
 @(private)

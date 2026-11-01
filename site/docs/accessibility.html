@@ -335,21 +335,23 @@ direct children, AccessKit panics on a position that is not a run).</li>
 <li><code>src/a11y</code> unit tests (in <code>test_all</code>): the tree of <code>examples/a11y/page.html</code> (a form, a list, a table, a dialog,
 live regions, ARIA tabs, hidden parts) against the expected roles, names and states, and the name computation's
 precedence.</li>
-<li><code>tools\a11y_e2e.ps1</code> (in <code>test_all</code>): a Wren started by <code>wren ctl</code> with no window shown is read through UI Automation
-by the toolkit's <code>uia_probe</code> (built into <code>build\uia_probe.exe</code> when stale): the chrome's roles, names and states, then
-invoke New tab, set the address bar's value, select a tab, expand and collapse the menu; then
-<code>examples/a11y/page.html</code>: its document, controls, states, what is left out, and setting a field, toggling a check
-box, focusing a field and invoking a button act on the page (checked with <code>wren ctl eval</code>); then
-<code>examples/a11y/dynamic.html</code> with <code>accessibility.page.verify</code> on: nodes the page inserts, renames, adds and removes
-are read, as patches (no whole tree) equal to whole trees; nothing is built or sent at rest; a text's bounds are its
-line's; the frame's button is read and invoked in the frame; a field's text and selection are read and set through
-the text pattern (<code>uia_probe text</code>, <code>select-text</code>); a second window reads its own page (<code>uia_probe --hwnd</code>, the
-<code>hwnd</code> of <code>Browser.getWindows</code>), no update refused or different in either.</li>
+<li><code>src/tools/e2e/a11y.odin</code> (in <code>test_all</code>, no window at all): what a window tells a screen reader, read as it is handed
+to the adapter (<code>control_a11y_tree</code>) and acted on as a reader's requests are (<code>control_a11y_act</code>): the chrome's roles,
+names and states, New tab, the address bar's value, selecting a tab, expanding and collapsing the menu;
+<code>examples/a11y/page.html</code>: its document, controls, states, what is left out, and setting a field, toggling a check box
+and focusing a field act on the page; <code>examples/a11y/dynamic.html</code>: nodes the page inserts, renames, adds and removes;
+a text's bounds are its line's; a frame's button acts in the frame; a selection made by the reader; a second window has
+its own page.</li>
+<li><code>src/tools/e2e/a11y_uia.odin</code> (in <code>test_all</code>): a Wren with a real window, never shown, read and driven through the
+system's UI Automation, as a screen reader does (<code>toolkit:tools/uia</code>): the chrome's elements and the patterns that act;
+<code>examples/a11y/dynamic.html</code> with <code>accessibility.page.verify</code> on: changes go as patches equal to whole trees, nothing is
+built or sent at rest, no update refused; a frame's button is invoked in the frame; a field's text and selection through
+the text pattern; a second window reads its own page.</li>
 <li><code>src/a11y</code> incremental tests: every patch applied as an adapter would (refusing a node no parent reaches, a missing
 child, a node twice) and compared with a whole tree, for scripted changes (text, attributes, list items, a wrapper
 at the top, <code>aria-hidden</code>, roles, <code>aria-labelledby</code> targets, <code>&lt;label for&gt;</code>, a table row, title, focus, a listener)
 and 60 pseudo-random ones.</li>
-<li>By hand: <code>build\uia_probe.exe dump --pid &lt;pid of wren.exe&gt;</code> prints every element as a screen reader sees it.</li>
+<li>By hand: <code>odin build ext\gui_toolkit\tools\uia_probe -out:build\uia_probe.exe</code>, then <code>build\uia_probe.exe dump --pid &lt;pid of wren.exe&gt;</code> prints every element as a screen reader sees it.</li>
 <li>With a person: NVDA and Narrator (what they say, browse and focus modes): see the session note of 2026-10-26.</li>
 </ul>
 <nav class="doc-seq" aria-label="Previous and next page">

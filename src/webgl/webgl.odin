@@ -4,6 +4,7 @@ package webgl
 // the GPU process, one thread and one wgpu device per context) and its preferences. Everything of the page is in
 // src/page/bindings_webgl.odin.
 
+import "core:strings"
 import "wb:config"
 
 when ODIN_OS == .Windows {
@@ -40,6 +41,41 @@ MS_PER_S :: 1000
 // all it costs the others.
 @(init)
 gpu_process_role :: proc "contextless" () { wg_process_role() }
+
+// The GPU process now (0: none), and how many this browser has started.
+gpu_process_id :: proc() -> int { return int(wg_test_process_id()) }
+gpu_process_starts :: proc() -> int { return int(wg_test_process_starts()) }
+
+// What a machine says when a page got no context: asked on its own, away from the page, with all the time it takes.
+Adapter_Verdict :: enum {
+	Absent,    // "no graphics adapter" from the GPU process: the machine has none
+	Present,   // a context was made: what the page saw was something else
+	Unknown,   // anything else says nothing about the machine
+}
+@(private = "file") ADAPTER_PROBE_WAIT_MS :: 60_000
+@(private = "file") ADAPTER_PROBE_SIZE :: 8
+@(private = "file") ADAPTER_PROBE_MESSAGE_BYTES :: 512
+@(private = "file") NO_ADAPTER_MESSAGE :: "no graphics adapter"   // what the GPU process says, and only then (native/webgl/src/host.rs)
+
+adapter_probe :: proc(s: Settings) -> (Adapter_Verdict, string) {
+	attrs := Attrs{
+		alpha = 1, depth = 1,
+		width = ADAPTER_PROBE_SIZE, height = ADAPTER_PROBE_SIZE, max_dimension = ADAPTER_PROBE_SIZE,
+		allow_software = 1, backend = s.backend, max_bytes = s.max_bytes, wait_ms = ADAPTER_PROBE_WAIT_MS,
+		hang_ms = s.gpu_hang_ms, max_restarts = s.gpu_max_restarts, restart_window_ms = s.gpu_restart_window_ms, idle_exit_ms = s.gpu_idle_exit_ms,
+	}
+	inf: Info
+	err: [ADAPTER_PROBE_MESSAGE_BYTES]u8
+	err_len: uint
+	h := wg_create(&attrs, &inf, &err[0], len(err), &err_len)
+	if h != nil {
+		wg_destroy(h)
+		return .Present, "a context made just now has an adapter"
+	}
+	said := strings.clone(string(err[:err_len]), context.temp_allocator)
+	if strings.contains(said, NO_ADAPTER_MESSAGE) { return .Absent, said }
+	return .Unknown, said
+}
 
 Handle :: distinct rawptr
 

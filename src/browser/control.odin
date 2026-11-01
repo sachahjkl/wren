@@ -593,6 +593,7 @@ control_stats :: proc(app: ^App, allocator := context.temp_allocator) -> api.Sta
 	st.devtools_room_checks, st.devtools_room_wrong = dev().room_checks, dev().room_wrong
 	if t := current_tab(app); t != nil && t.page != nil { st.nodes = int(t.page.doc.nodes.count) }
 	for w in app.windows { if w.own.devtools.win != nil { st.devtools_windows += 1 } }
+	control_stats_window(app, &st, allocator)
 	return st
 }
 

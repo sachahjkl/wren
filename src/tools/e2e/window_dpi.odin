@@ -3,7 +3,7 @@ package e2e_scenarios
 // Two windows at different scales: a window that "moves" to a monitor of another DPI changes its scale at once and alone: its chrome, its page
 // (devicePixelRatio, resolution media queries, the layout), its size in proportion; the document stays where it was scrolled to (no jump); the other
 // window keeps its own scale; a tab moved between the two takes the scale of the window it goes to, at the same place of its document. Headless, the
-// change is the emulated one (platform.set_offscreen_dpi): the system's WM_DPICHANGED and the rectangle it suggests are not gone through.
+// change is the emulated one (platform.set_offscreen_dpi): the system's WM_DPICHANGED and the rectangle it suggests are real_window.odin's.
 
 import "core:fmt"
 import "core:math"
@@ -17,6 +17,8 @@ import "wb:e2e"
 @(private = "file") MOVED_TAB_SCROLLED_TOP :: 2000
 @(private = "file") HEADLESS_SCALE :: 1.0          // a window with no monitor
 @(private = "file") OTHER_MONITOR :: 1.5           // relative to where it is
+@(private = "file") ABOVE_THE_THRESHOLD :: 1.75     // of the page's query, 1.4 dppx
+@(private = "file") ALSO_ABOVE_THE_THRESHOLD :: 2.625
 @(private = "file") SCALE_WITHIN :: 0.02
 @(private = "file") SIZE_WITHIN :: 0.03            // of the proportion
 @(private = "file") CSS_WIDTH_WITHIN :: 0.01       // of the page's CSS width
@@ -29,7 +31,7 @@ dpi_page :: proc() -> string {
 	b := strings.builder_make(context.temp_allocator)
 	strings.write_string(&b, "<!doctype html><title>dpi</title><style>body{margin:0} #m{position:fixed;right:10px;top:10px;width:60px;height:30px;background:red} @media (min-resolution: 1.4dppx){#m{background:green}}</style><div id=m></div>")
 	for i in 1 ..= PARAGRAPHS { fmt.sbprintf(&b, "<p id=p%d style='margin:0;height:40px;font:16px sans-serif'>paragraph %d</p>", i, i) }
-	strings.write_string(&b, "<script>window.changes=0;window.mq=matchMedia('(min-resolution: 1.4dppx)');mq.addEventListener('change',()=>window.changes++)</script>")
+	strings.write_string(&b, "<script>window.changes=0;window.mq=matchMedia('(min-resolution: 1.4dppx)');window.firstAnswer=mq.matches;window.firstWidth=matchMedia('(min-width: '+innerWidth+'px)').matches&&matchMedia('(max-width: '+innerWidth+'px)').matches?innerWidth:0;mq.addEventListener('change',()=>window.changes++)</script>")
 	return strings.to_string(b)
 }
 
@@ -50,6 +52,28 @@ to_scale :: proc(s: ^e2e.Session, scale: f64) {
 	e2e.set_window(s, {dpi = int(math.round(e2e.DPI_ONE * scale))})
 	e2e.wait_js(s, fmt.tprintf("Math.abs(devicePixelRatio - %v) < %v", scale, SCALE_WITHIN))
 	e2e.wait_frames(s, LATE_EVENTS_FRAMES)
+}
+
+// A resolution media query is answered for the window's scale from the first script of a page on, and reports only what it crosses. At a scale above
+// the threshold, a script's list said "no" until the page's first style computation, which then reported a change nothing had made.
+@(test)
+media_query_scale_from_the_first_script :: proc(t: ^testing.T) {
+	page := e2e.file_page(e2e.temp_folder(t), "dpi.html", dpi_page())
+	s := e2e.start(t, {size = DPI_SIZE})
+	e2e.set_window(s, {dpi = int(math.round(e2e.DPI_ONE * ABOVE_THE_THRESHOLD))})
+	e2e.navigate(s, page)
+	e2e.wait_js(s, "getComputedStyle(m).backgroundColor != ''")
+	e2e.wait_frames(s, LATE_EVENTS_FRAMES)
+	testing.expect_value(t, e2e.eval(s, "String(firstAnswer)"), "true")   // the script that made the list had the window's scale
+	testing.expect_value(t, e2e.eval(s, "String(firstWidth > 0 && firstWidth == innerWidth)"), "true")   // and its width
+	testing.expect_value(t, e2e.eval(s, "String(changes)"), "0")          // nothing crossed the threshold
+	testing.expect_value(t, e2e.eval(s, "getComputedStyle(m).backgroundColor"), MEDIA_QUERY_MATCHES)
+
+	// another monitor, still above it: both match, no event; below it: one
+	to_scale(s, ALSO_ABOVE_THE_THRESHOLD)
+	testing.expect_value(t, e2e.eval(s, "String(changes)"), "0")
+	to_scale(s, HEADLESS_SCALE)
+	testing.expect_value(t, e2e.eval(s, "String(changes)"), "1")
 }
 
 @(test)

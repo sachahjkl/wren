@@ -84,6 +84,7 @@ Options :: struct {
 	prefs:      []string,   // "name=value", as the command line's --pref
 	url:        string,     // the first address, loaded before start returns ("": about:blank)
 	no_address: bool,       // no address at all: the session of the profile comes back
+	hidden:     bool,       // a real window of the system, never shown, and its swap chain: for what is about them (window.odin). It needs a desktop session
 }
 
 Session :: struct {
@@ -160,7 +161,7 @@ start :: proc(t: ^testing.T, o := Options{}, loc := #caller_location) -> ^Sessio
 	testing.cleanup(t, proc(p: rawptr) { end_of_test((^Session)(p)) }, s)
 
 	args := make([dynamic]string, context.temp_allocator)
-	append(&args, "--headless", "--no-single-instance", "--profile", profile)
+	append(&args, o.hidden ? "--hidden" : "--headless", "--no-single-instance", "--profile", profile)
 	if o.dpi > 0 { append(&args, "--pref", fmt.tprintf("browser.ui.scale=%.4f", o.dpi / DPI_ONE)) }
 	// (nothing of the machine's or the internet's in a test: the content blocker's lists stay where they are)
 	append(&args, "--pref", "blocker.update.enabled=false", "--pref", "blocker.welcome_toast=false")
@@ -390,6 +391,7 @@ wait_selector :: proc(s: ^Session, selector: string, visible := false, deadline:
 
 // A script's condition holds in the page.
 wait_js :: proc(s: ^Session, condition: string, deadline: time.Duration = DEFAULT_DEADLINE, loc := #caller_location) {
+	_ = eval_result(s, condition, loc = loc)   // (the wait asks a page's script engine and starts none: a page with no script of its own has none yet)
 	context = s.ctx
 	prev := enter(s, loc)
 	defer browser.control_leave(s.app, prev)

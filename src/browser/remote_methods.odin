@@ -18,7 +18,6 @@ import "toolkit:ui"
 import "wb:base"
 import "wb:config"
 import "wb:cookies"
-import "wb:fetch"
 import "wb:httpcache"
 import "wb:images"
 import lay "wb:layout"
@@ -405,7 +404,7 @@ m_windows :: proc(app: ^App) -> Reply {
 	for w in control_windows(app) {
 		j_key(&b, ""); j_begin(&b)
 		j_int(&b, "windowId", i64(w.id)); j_bool(&b, "front", w.front); j_int(&b, "tabs", i64(w.tabs))
-		j_int(&b, "hwnd", i64(w.hwnd))   // (a UI Automation client reads one window: tools\a11y_e2e.ps1; 0 where there is no HWND)
+		j_int(&b, "hwnd", i64(w.hwnd))   // (a UI Automation client reads one window: src\tools\e2e\a11y_uia.odin; 0 where there is no HWND)
 		j_bool(&b, "headless", w.headless)
 		j_int(&b, "currentTabId", i64(w.current_tab))
 		j_int(&b, "left", i64(w.left)); j_int(&b, "top", i64(w.top)); j_int(&b, "width", i64(w.width)); j_int(&b, "height", i64(w.height))
@@ -579,15 +578,9 @@ m_evaluate :: proc(app: ^App, c: ^Call) -> Reply {
 m_outer_html :: proc(app: ^App, c: ^Call) -> Reply {
 	t, e := tab_of(app, c)
 	if t == nil { return e }
-	if t.page == nil { return fail(remote.ERR_FAILED, "the tab has no document") }
-	h := t.page.doc.root
-	if sel, ok := remote.param_string(c.params, "selector"); ok {
-		found, valid := page.query_first(t.page, sel)
-		if !valid { return fail(remote.ERR_PARAMS, fmt.tprintf("invalid selector %q", sel)) }
-		if found == base.NIL_HANDLE { return fail(remote.ERR_FAILED, fmt.tprintf("no element matches %q", sel)) }
-		h = found
-	}
-	html := page.serialize_html(t.page.doc, h, true)
+	sel, _ := remote.param_string(c.params, "selector")
+	html, code, why := control_outer_html(t, sel)
+	if code != 0 { return fail(code, why) }
 	return done(fmt.tprintf(`{{"outerHTML":%s}}`, remote.quote(html)))
 }
 
@@ -629,11 +622,8 @@ m_box_model :: proc(app: ^App, c: ^Call) -> Reply {
 	if bad.code != 0 { return bad }
 	t, e := tab_of(app, c)
 	if t == nil { return e }
-	h, valid := page.query_first(t.page, sel)
-	if !valid { return fail(remote.ERR_PARAMS, fmt.tprintf("invalid selector %q", sel)) }
-	if h == base.NIL_HANDLE { return fail(remote.ERR_FAILED, fmt.tprintf("no element matches %q", sel)) }
-	r, ok := element_window_rect(app, t, h)
-	if !ok { return fail(remote.ERR_FAILED, "the element has no box (display: none, or the layout is not made yet)") }
+	r, h, code, why := control_element_box(app, t, sel)
+	if code != 0 { return fail(code, why) }
 	s := f64(page_scale(app))
 	return done(fmt.tprintf(`{{"found":true,"visible":%v,"x":%.2f,"y":%.2f,"width":%.2f,"height":%.2f,"window":{{"x":%.1f,"y":%.1f,"width":%.1f,"height":%.1f}}}}`,
 		element_visible(app, t, h), f64(r[0] - wnd.page_rect.min.x) / s, f64(r[1] - wnd.page_rect.min.y) / s, f64(r[2]) / s, f64(r[3]) / s, r[0], r[1], r[2], r[3]))
@@ -1275,6 +1265,7 @@ m_stats :: proc(app: ^App, c: ^Call) -> Reply {
 	latency_on := render.latency_probe_on(&app.r)
 	if reset_latency { render.latency_reset(&app.r) }
 	j_begin(&b)
+	stats_json(&b, control_stats(app))   // what a test reads, in one place; the rest is for a person, or for the scripts that measure
 	if latency_on {
 		j_key(&b, "latency"); j_begin(&b)
 		j_bool(&b, "tearingSupported", render.tearing_supported(&app.r)); j_bool(&b, "tearing", render.present_mode(&app.r) == .Tearing)
@@ -1288,59 +1279,28 @@ m_stats :: proc(app: ^App, c: ^Call) -> Reply {
 		}
 		j_end(&b)
 	}
-	j_num(&b, "fps", f64(n.fps)); j_int(&b, "frames", i64(n.frames))
+	j_int(&b, "frames", i64(n.frames))
 	j_num(&b, "cpuMs", f64(n.cpu_mean)); j_num(&b, "cpuP95Ms", f64(n.cpu_p95)); j_num(&b, "cpuP99Ms", f64(n.cpu_p99)); j_num(&b, "cpuMaxMs", f64(n.cpu_max))
 	j_num(&b, "gpuMs", f64(n.gpu_mean)); j_bool(&b, "gpuMeasured", n.gpu_n > 0)
-	j_int(&b, "workingSetBytes", i64(n.working_set)); j_int(&b, "privateBytes", i64(n.private_bytes))
-	j_int(&b, "framesDrawn", i64(hud.serial)); j_int(&b, "framesRequested", i64(wnd.frames_requested))
+	j_int(&b, "framesRequested", i64(wnd.frames_requested))
 	// the presents since resetFrames, the gaps between them, and how the window's frames were asked for (platform.Pump_Stats)
 	// (framesAtOnce: of them, presented without waiting for a refresh: a resize, an answer to input, a drag on a variable screen)
-	j_int(&b, "framesPresented", i64(frame_log.presented)); j_int(&b, "framesAtOnce", i64(frame_log.at_once)); j_int(&b, "frameGaps", i64(gaps.count))
+	j_int(&b, "framesAtOnce", i64(frame_log.at_once)); j_int(&b, "frameGaps", i64(gaps.count))
 	j_num(&b, "frameGapP50Ms", gaps.p50); j_num(&b, "frameGapP95Ms", gaps.p95); j_num(&b, "frameGapP99Ms", gaps.p99); j_num(&b, "frameGapMaxMs", gaps.max)
-	j_int(&b, "paintFrames", i64(loops.paint_frames)); j_int(&b, "modalLoops", i64(loops.modal_loops)); j_int(&b, "ignoredSizeMoves", i64(loops.ignored_size_moves))
-	// the frames of the thread through the frame gate (windows.odin): admitted, of which inside another, asked for where none
-	// may begin (a repaint later), and the moves the state machine does not have (0, or a bug)
-	{
-		g := platform.frame_gate()
-		j_key(&b, "frameGate"); j_begin(&b)
-		j_int(&b, "begun", i64(g.begun)); j_int(&b, "nested", i64(g.nested)); j_int(&b, "deferred", i64(g.deferred))
-		j_int(&b, "violations", i64(g.violations)); j_str(&b, "lastViolation", g.last_violation)
-		j_end(&b)
-	}
-	j_bool(&b, "menuOpen", ui.ctx_menu_any_open())   // a menu of the chrome is open (the page's context menu, the tab menu...)
+	j_int(&b, "ignoredSizeMoves", i64(loops.ignored_size_moves))
 	pacer := &wnd.pacer   // (the window's pacing; the preferences are the process's)
 	if app.pacing.cfg.drag_probe { j_key(&b, "dragSamples"); drag_probe_json(&b) }
-	j_int(&b, "requestsInFlight", i64(fetch.in_flight(&app.loader))); j_int(&b, "tabs", i64(len(wnd.tabs)))
-	// the back/forward cache since start-up (bfcache.odin): its coverage (traversals served from it) and what kept
-	// pages out of it, by reason
-	bc := control_bfcache()
-	j_key(&b, "bfcache"); j_begin(&b)
-	j_int(&b, "cached", i64(bc.cached)); j_int(&b, "stores", i64(bc.stores)); j_int(&b, "restores", i64(bc.restores))
-	j_int(&b, "evictions", i64(bc.evictions)); j_int(&b, "refusals", i64(bc.refusals))
-	j_int(&b, "traversals", i64(bc.traversals)); j_int(&b, "misses", i64(bc.misses))
-	j_num(&b, "hitRate", bc.traversals > 0 ? f64(bc.traversals - bc.misses) / f64(bc.traversals) : 0)
-	j_key(&b, "reasons"); j_begin(&b)
-	for r in bc.reasons { j_int(&b, r.reason, i64(r.count)) }
-	j_end(&b)
-	j_end(&b)
-	j_int(&b, "workersRunning", i64(page.workers_running())); j_int(&b, "sharedWorkers", i64(page.shared_workers_live())); j_bool(&b, "historyRestoring", control_history_restoring(app))
-	j_int(&b, "inputEvents", i64(the_remote.inputs)); j_num(&b, "hz", f64(pacer.hz))
+	j_num(&b, "hz", f64(pacer.hz))
 	// the screen: what the system reports (hzReported), its top mode (hzMax), the highest rate the compositor reported during the current
 	// or last run of frames (hzNow; primary monitor only), the swap chain's (hzSwapChain), and whether frames aim for the top one (variableRefresh)
 	j_num(&b, "hzReported", pacer.display.hz); j_num(&b, "hzMax", pacer.display.max_hz); j_num(&b, "hzNow", pacer.live_hz)
 	j_num(&b, "hzSwapChain", render.measured_refresh_hz(&app.r)); j_bool(&b, "variableRefresh", pacer.variable)
-	j_bool(&b, "frameCapStrict", pacer.cadence.slots.strict || pacer.cadence.slots.escalated); j_num(&b, "framePeriodMs", pacer.period_ms)
+	j_bool(&b, "frameCapStrict", pacer.cadence.slots.strict || pacer.cadence.slots.escalated)
 	{
 		// the frames by state of the cadence model (toolkit platform/pacing.odin) since start-up, and the last one's
 		sb := strings.builder_make(context.temp_allocator)
 		for n, s in pacer.cadence.counts { if n > 0 { fmt.sbprintf(&sb, "%v=%d ", s, n) } }
 		j_str(&b, "frameStates", strings.trim_space(strings.to_string(sb))); j_str(&b, "frameState", fmt.tprint(pacer.cadence.state))
-	}
-	// the picture of the last drag that went to the system (dnd_image.odin), as the system holds it: "WxH@x,y", "" for none
-	j_bool(&b, "dropTarget", platform.drop_target_enabled(wnd.win))
-	{
-		lp := dnd_last_picture
-		j_str(&b, "dragPicture", lp.size.x > 0 ? fmt.tprintf("%dx%d@%d,%d rgba=%d,%d,%d,%d", lp.size.x, lp.size.y, lp.hot.x, lp.hot.y, lp.middle[0], lp.middle[1], lp.middle[2], lp.middle[3]) : "")
 	}
 	j_int(&b, "resizeEchoesSkipped", i64(pacer.echoes_skipped))
 	{
@@ -1350,40 +1310,80 @@ m_stats :: proc(app: ^App, c: ^Call) -> Reply {
 		for n, k in pacer.resize_event_kinds { if n > 0 { fmt.sbprintf(&sb, "ev.%v=%d ", k, n) } }
 		j_str(&b, "resizeFrameCauses", strings.trim_space(strings.to_string(sb)))
 	}
-	if sz, hot, held := platform.drag_image_held(wnd.win); held { j_str(&b, "dragImage", fmt.tprintf("%dx%d@%d,%d", sz.x, sz.y, hot.x, hot.y)) } else { j_str(&b, "dragImage", "") }
 	// how often the subsystems were configured again by preference writes (prefs_apply.odin)
-	j_int(&b, "prefsNetApplied", i64(prefs_apply_counts[.Net])); j_int(&b, "prefsCacheApplied", i64(prefs_apply_counts[.Http_Cache])); j_int(&b, "prefsDownloadsApplied", i64(prefs_apply_counts[.Downloads]))
-	if t := current_tab(app); t != nil && t.page != nil { j_int(&b, "nodes", i64(t.page.doc.nodes.count)); j_int(&b, "layoutItems", i64(len(t.layout.items))) }
-	j_bool(&b, "chromeAnimating", ui.needs_frame(wnd.ui))   // the interface has an animation under way (a sidebar opening...)
-	j_bool(&b, "groupNameFocused", window_own(app).sidebar.rename_focused)   // a tab group's name is being edited (tab_sidebar_list.odin)
-	j_str(&b, "backend", render.backend_name())
+	j_int(&b, "prefsCacheApplied", i64(prefs_apply_counts[.Http_Cache])); j_int(&b, "prefsDownloadsApplied", i64(prefs_apply_counts[.Downloads]))
+	if t := current_tab(app); t != nil && t.page != nil { j_int(&b, "layoutItems", i64(len(t.layout.items))) }
 	// the process and the state a reset empties (so that a test can see both the cost of what it did and that a reset worked)
 	cpu, cpu_user, cpu_kernel := process_cpu_ms()
 	pc := process_counters()
-	j_int(&b, "pid", i64(current_pid())); j_num(&b, "uptimeMs", process_uptime_ms())
-	// accessibility (a11y_chrome.odin): updates sent to the screen readers' adapter, refused by it, nodes of the last one
-	if wnd.ui != nil {
-		au, ar, an := ui.a11y_stats(wnd.ui)
-		j_int(&b, "a11yUpdates", i64(au)); j_int(&b, "a11yRefused", i64(ar)); j_int(&b, "a11yLastNodes", i64(an))
-		j_int(&b, "a11yNodes", i64(len(ui.a11y_tree(wnd.ui).nodes)))
-		ps := page_a11y_stats(wnd)
-		j_int(&b, "a11yPageBuilds", i64(ps.builds)); j_int(&b, "a11yPagePatches", i64(ps.patches)); j_int(&b, "a11yPageSends", i64(ps.sends))
-		j_int(&b, "a11yPageRefused", i64(ps.refused)); j_int(&b, "a11yPageNodes", i64(ps.nodes)); j_int(&b, "a11yPageWritten", i64(ps.written))
-		j_int(&b, "a11yPageFrames", i64(ps.frames)); j_int(&b, "a11yPageVerifyFailed", i64(ps.verify_failed)); j_str(&b, "a11yPageFallback", ps.fallback); j_str(&b, "a11yPageVerifyDiff", ps.verify_diff)
-	}
-	// the caret of a focused field of the page in this window: blinking (a timer of its own), and shown in this frame
-	fv := forms_view(app)
-	j_bool(&b, "caretBlinking", fv.blink_timer != base.NIL_HANDLE); j_bool(&b, "caretShown", fv.blink_on); j_bool(&b, "frontWindow", window_is_front(app))
 	j_num(&b, "cpuTimeMs", cpu); j_num(&b, "cpuUserMs", cpu_user); j_num(&b, "cpuKernelMs", cpu_kernel)
 	j_int(&b, "threads", i64(process_thread_count())); j_int(&b, "handles", pc.handles); j_int(&b, "gdiObjects", pc.gdi); j_int(&b, "userObjects", pc.user)
 	j_int(&b, "cookies", i64(cookies.count(&app.profile.jar))); j_int(&b, "storageSites", i64(len(page.storage_sites(&app.storage))))
 	j_int(&b, "cacheEntries", app.profile.cache != nil ? i64(httpcache.summary(app.profile.cache).entries) : 0)
 	j_int(&b, "historyVisits", i64(len(ghist.visits))); j_int(&b, "closedTabs", i64(len(closed_tabs))); j_int(&b, "downloadsActive", i64(downloads_active()))
-	j_int(&b, "checkpoints", i64(len(the_remote.checkpoints))); j_bool(&b, "devtools", dev().visible)
-	j_int(&b, "pendingOps", i64(len(the_remote.ops)))   // the commands that wait (a wait, a navigation's load): a test sees one is registered before it acts on it
-	j_int(&b, "devtoolsRoomChecks", i64(dev().room_checks)); j_int(&b, "devtoolsRoomWrong", i64(dev().room_wrong))   // devtools.odin: dev_width
+	j_int(&b, "checkpoints", i64(len(the_remote.checkpoints)))
 	j_end(&b)
 	return done(strings.to_string(b))
+}
+
+// control_stats as the channel gives it.
+@(private = "file")
+stats_json :: proc(b: ^strings.Builder, s: api.Stats) {
+	size :: proc(b: ^strings.Builder, key: string, v: [2]int) { j_raw(b, key, fmt.tprintf("[%d,%d]", v.x, v.y)) }
+	surface :: proc(b: ^strings.Builder, key: string, x: api.Surface) {
+		j_key(b, key); j_begin(b)
+		j_bool(b, "fixed", x.fixed); size(b, "size", x.size); size(b, "buffers", x.buffers); size(b, "source", x.source)
+		j_end(b)
+	}
+	j_int(b, "pid", i64(s.pid)); j_num(b, "uptimeMs", s.uptime_ms); j_num(b, "fps", s.fps)
+	j_int(b, "workingSetBytes", i64(s.working_set_bytes)); j_int(b, "privateBytes", i64(s.private_bytes))
+	j_int(b, "framesDrawn", i64(s.frames_drawn)); j_int(b, "framesPresented", i64(s.frames_presented)); j_num(b, "framePeriodMs", s.frame_period_ms)
+	j_int(b, "chromeFrames", i64(s.chrome_frames)); j_int(b, "fullFrames", i64(s.full_frames))
+	j_int(b, "paintFrames", i64(s.paint_frames)); j_int(b, "modalLoops", i64(s.modal_loops))
+	// the frames of the thread through the frame gate (windows.odin): admitted, of which inside another, asked for where none
+	// may begin (a repaint later), and the moves the state machine does not have (0, or a bug)
+	j_key(b, "frameGate"); j_begin(b)
+	j_int(b, "begun", i64(s.frame_gate.begun)); j_int(b, "nested", i64(s.frame_gate.nested)); j_int(b, "deferred", i64(s.frame_gate.deferred))
+	j_int(b, "violations", i64(s.frame_gate.violations)); j_str(b, "lastViolation", s.frame_gate.last_violation)
+	j_end(b)
+	j_bool(b, "menuOpen", s.menu_open)   // a menu of the chrome is open (the page's context menu, the tab menu...)
+	j_int(b, "requestsInFlight", i64(s.requests_in_flight)); j_int(b, "tabs", i64(s.tabs)); j_int(b, "nodes", i64(s.nodes))
+	j_int(b, "pendingOps", i64(s.pending_ops))   // the commands that wait (a wait, a navigation's load): a test sees one is registered before it acts on it
+	j_int(b, "inputEvents", i64(s.input_events))
+	// the back/forward cache since start-up (bfcache.odin): its coverage (traversals served from it) and what kept
+	// pages out of it, by reason
+	bc := s.bfcache
+	j_key(b, "bfcache"); j_begin(b)
+	j_int(b, "cached", i64(bc.cached)); j_int(b, "stores", i64(bc.stores)); j_int(b, "restores", i64(bc.restores))
+	j_int(b, "evictions", i64(bc.evictions)); j_int(b, "refusals", i64(bc.refusals))
+	j_int(b, "traversals", i64(bc.traversals)); j_int(b, "misses", i64(bc.misses))
+	j_num(b, "hitRate", bc.traversals > 0 ? f64(bc.traversals - bc.misses) / f64(bc.traversals) : 0)
+	j_key(b, "reasons"); j_begin(b)
+	for r in bc.reasons { j_int(b, r.reason, i64(r.count)) }
+	j_end(b)
+	j_end(b)
+	j_int(b, "workersRunning", i64(s.workers_running)); j_int(b, "sharedWorkers", i64(s.shared_workers)); j_bool(b, "historyRestoring", s.history_restoring)
+	// the picture of the last drag that went to the system (dnd_image.odin), as the system holds it: "WxH@x,y", "" for none
+	j_bool(b, "dropTarget", s.drop_target); j_str(b, "dragPicture", s.drag_picture); j_str(b, "dragImage", s.drag_image)
+	j_int(b, "prefsNetApplied", i64(s.prefs_net_applied))
+	j_bool(b, "chromeAnimating", s.chrome_animating)   // the interface has an animation under way (a sidebar opening...)
+	j_bool(b, "groupNameFocused", s.group_name_focused)   // a tab group's name is being edited (tab_sidebar_list.odin)
+	j_str(b, "backend", s.backend)
+	// accessibility (a11y_chrome.odin): updates sent to the screen readers' adapter, refused by it, nodes of the last one
+	a := s.a11y
+	j_int(b, "a11yUpdates", i64(a.updates)); j_int(b, "a11yRefused", i64(a.refused)); j_int(b, "a11yLastNodes", i64(a.last_nodes)); j_int(b, "a11yNodes", i64(a.nodes))
+	j_int(b, "a11yPageBuilds", i64(a.page_builds)); j_int(b, "a11yPagePatches", i64(a.page_patches)); j_int(b, "a11yPageSends", i64(a.page_sends))
+	j_int(b, "a11yPageRefused", i64(a.page_refused)); j_int(b, "a11yPageNodes", i64(a.page_nodes)); j_int(b, "a11yPageWritten", i64(a.page_written))
+	j_int(b, "a11yPageFrames", i64(a.page_frames)); j_int(b, "a11yPageVerifyFailed", i64(a.page_verify_failed)); j_str(b, "a11yPageFallback", a.page_fallback); j_str(b, "a11yPageVerifyDiff", a.page_verify_diff)
+	// the caret of a focused field of the page in this window: blinking (a timer of its own), and shown in this frame
+	j_bool(b, "caretBlinking", s.caret_blinking); j_bool(b, "caretShown", s.caret_shown); j_bool(b, "frontWindow", s.front_window)
+	j_bool(b, "devtools", s.devtools); j_int(b, "devtoolsWindows", i64(s.devtools_windows))
+	j_int(b, "devtoolsRoomChecks", i64(s.devtools_room_checks)); j_int(b, "devtoolsRoomWrong", i64(s.devtools_room_wrong))   // devtools.odin: dev_width
+	j_int(b, "gpuProcessId", i64(s.gpu_process_id)); j_int(b, "gpuProcessStarts", i64(s.gpu_process_starts))
+	j_key(b, "cursor"); j_begin(b)
+	j_str(b, "name", s.cursor.name); j_bool(b, "custom", s.cursor.custom); j_str(b, "source", s.cursor.source); size(b, "size", s.cursor.size); size(b, "hotspot", s.cursor.hotspot)
+	j_end(b)
+	surface(b, "surface", s.surface); surface(b, "panelSurface", s.panel_surface)
 }
 
 @(private = "file")

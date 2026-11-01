@@ -385,8 +385,7 @@ styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Style
 	e := p.engine
 	t0 := time.tick_now()
 	if embedder.before_styles != nil && p.worker == nil { embedder.before_styles(embedder.user, p) }   // (embedder.odin)
-	env := style.media_env_from(&e.settings, f64(viewport_w), f64(viewport_h), dppx, style.os_appearance().dark)
-	env.scripting = e.settings.scripting   // (scripting: enabled) / (scripting: none)
+	env := page_media_env(e, f64(viewport_w), f64(viewport_h), dppx)
 	style.engine_set_environment(e, env)
 	media_queries_update(p, env)   // matchMedia lists (js_web_media.odin)
 
