@@ -103,6 +103,9 @@ Shaders and draws come from any page.
 
 Microsoft's software rasterizer (WARP) crashes when several devices of a process work at once (seen here): software contexts take turns.
 
+A page's thread that waits for an answer is still running its script: `javascript.slow_script_ms` counts the wait. On a software adapter, where
+FXC compiles every pipeline, a page that asks right after a burst of new programs can reach that limit under load.
+
 ## Preferences
 
 `webgl.enabled`, `webgl.webgl2`, `webgl.allow_software`, `webgl.force_software`, `webgl.backend` (`auto`, `dx12`, `vulkan`),

@@ -257,7 +257,7 @@ main :: proc() {
 		settings.webgl.force_software = true
 		// (a test is one task that waits for the software rasterizer, and FXC compiles for it: slow on a loaded machine)
 		slow := settings.js.slow_script_ms
-		settings.js.slow_script_ms = -1
+		settings.js.slow_script_ms = 120_000   // (not -1: the hard stop of wasm.max_call_ms, one second, would be the limit)
 		actions := make(map[string]Action, context.temp_allocator)
 		actions["frame"] = proc(p: ^page.Page, l: ^Page_Log) { page.images_sync(p); page.canvas_frame(p) }
 		run("webgl", actions, seconds = 300)
