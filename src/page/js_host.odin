@@ -77,6 +77,7 @@ Node_wrap :: proc(c: ^Call, node: Api_Node) -> u32 {
 }
 
 Node_unpin :: proc(c: ^Call, node: u64) {
+	c.hold_reactions = true
 	d := call_doc(c)
 	if d == nil || !from_engine(c) { return }
 	dom.unpin(d, H(node))

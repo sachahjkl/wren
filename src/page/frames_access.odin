@@ -89,6 +89,7 @@ call_move_to :: proc(c: ^Call, t: ^Page) {
 	c.tag = t.tag
 	c.routed = true
 	c.owner = foreign_owner_of(t, c.caller, c.inst.index)
+	c.caller_ce_mark = c.ce_mark
 	c.ce_mark = t.jsdom != nil ? len(t.jsdom.ce.queue) : 0
 	t.route_busy += 1
 }
@@ -107,13 +108,22 @@ api_take_target :: proc "contextless" (c: ^Call) {
 	if t := frames_reach_tag(c.caller, tag); t != nil { call_move_to(c, t) }
 }
 
+// Nothing runs here unless the call itself caused it: a call that only reads must not run a script in the middle of the
+// caller's work, and one made by the caller's garbage collector (Node_unpin) must not run a script at all.
 api_unroute :: proc(c: ^Call) {
 	t := c.page
 	t.route_busy -= 1
+	if c.hold_reactions { return }
 	// what the call made a custom element moved to that document do, in the caller's realm ([CEReactions])
-	if q := c.caller.jsdom; q != nil && len(q.ce.queue) > 0 && !c.hold_reactions { custom_elements_flush(c.caller) }
-	// its realm's microtasks waited for the call that ran script there to end
-	if t.route_busy == 0 && t.objects.depth == 0 && !t.closed { microtask_checkpoint(t) }
+	if q := c.caller.jsdom; q != nil && len(q.ce.queue) > c.caller_ce_mark { custom_elements_flush(c.caller) }
+	frames_pay_checkpoint(t)
+}
+
+// The microtask checkpoint a call of another realm into this one held back (call_guest, call_export, queue_microtask).
+frames_pay_checkpoint :: proc(t: ^Page) {
+	if !t.checkpoint_owed || t.route_busy > 0 || t.objects.depth > 0 || t.closed { return }
+	t.checkpoint_owed = false
+	microtask_checkpoint(t)
 }
 
 // The number standing for `caller`'s instance `index` in `t` (a listener's or an object's owner).
@@ -267,7 +277,7 @@ frames_bridge_call :: proc(from: ^Page, realm: u64, request: []u8) -> []u8 {
 	t.route_busy += 1
 	defer {
 		t.route_busy -= 1
-		if t.route_busy == 0 && t.objects.depth == 0 && !t.closed { microtask_checkpoint(t) }
+		frames_pay_checkpoint(t)
 	}
 	argv := [2]u32{d, u32(len(request))}
 	if js_call(t, r.inst, "wj_bridge_dispatch", argv[:]) != .Ok { return nil }
