@@ -4,7 +4,7 @@
 	HTML Test: Newly-Created browsing context Window and `this`: TIMEOUT
 /html/browsers/windows/browsing-context.html: OK
 	Check that browsing context has new, ready HTML document: FAIL
-	Check that new document nodes extant, empty: FAIL
+	Check that new document nodes extant, empty: PASS
 	Check the document properties corresponding to the creator browsing context: FAIL
 /html/browsers/windows/clear-window-name.https.html: OK
 	Window.name is not reset at the first navigation away from initial about:blank with noopener: FAIL
@@ -29,7 +29,7 @@
 /html/browsers/windows/document-domain-nested-navigate.window.html: OK
 	Navigated frame to about:blank and document.domain: FAIL
 /html/browsers/windows/document-domain-nested-set.window.html: OK
-	Initial about:blank frame and document.domain in the frame: FAIL
+	Initial about:blank frame and document.domain in the frame: PASS
 /html/browsers/windows/document-domain-nested.window.html: OK
 	Initial about:blank frame and document.domain: FAIL
 /html/browsers/windows/document-domain-removed-iframe.html: OK
@@ -45,13 +45,13 @@
 /html/browsers/windows/embedded-opener.html: OK
 	opener and embedded documents; using window.open(): FAIL
 /html/browsers/windows/nested-browsing-contexts/frameElement-siblings.sub.html: OK
-	it must give a "SecurityError" DOMException if the pages are different-origin domain: PASS
+	it must give a "SecurityError" DOMException if the pages are different-origin domain: FAIL
 	it must return the iframe element if the pages are same-origin domain: FAIL
 /html/browsers/windows/nested-browsing-contexts/frameElement.sub.html: OK
-	The SecurityError must be thrown if the window accesses to frameElement attribute of a Window which does not have the same effective script origin: PASS
+	The SecurityError must be thrown if the window accesses to frameElement attribute of a Window which does not have the same effective script origin: FAIL
 	The window's frameElement attribute must return its container element if it is a nested browsing context: FAIL
 	The window's frameElement attribute must return null if it is not a nested browsing context: PASS
-	The window's frameElement attribute must return null if the container's document does not have the same effective script origin: PASS
+	The window's frameElement attribute must return null if the container's document does not have the same effective script origin: FAIL
 /html/browsers/windows/nested-browsing-contexts/iframe-referrer.html: ERROR
 	iframe document's referrer should be the fetching page: TIMEOUT
 /html/browsers/windows/nested-browsing-contexts/name-attribute.window.html: TIMEOUT
@@ -79,20 +79,20 @@
 	same-origin <object name=>: TIMEOUT
 	same-origin <object name=initialvalue>: TIMEOUT
 	same-origin <object>: TIMEOUT
-/html/browsers/windows/nested-browsing-contexts/window-parent-null.html: ERROR
+/html/browsers/windows/nested-browsing-contexts/window-parent-null.html: OK
 	`window.parent` is null when browsing context container element removed: FAIL
-	`window.parent` null when parent browsing context container removed: TIMEOUT
-/html/browsers/windows/nested-browsing-contexts/window-parent.html: ERROR
-	`window.parent` for multiple nested browsing contexts: TIMEOUT
+	`window.parent` null when parent browsing context container removed: FAIL
+/html/browsers/windows/nested-browsing-contexts/window-parent.html: OK
+	`window.parent` for multiple nested browsing contexts: PASS
 	`window.parent` for top-level browsing context: PASS
 	`window.parent` on single nested browsing context: PASS
-/html/browsers/windows/nested-browsing-contexts/window-top-null.html: ERROR
+/html/browsers/windows/nested-browsing-contexts/window-top-null.html: OK
 	`window.top` is null when browsing context container element removed: PASS
-	`window.top`null when any ancestor browsing context container removed: TIMEOUT
-/html/browsers/windows/nested-browsing-contexts/window-top.html: OK|TIMEOUT
-	One nested iframe: FAIL
+	`window.top`null when any ancestor browsing context container removed: PASS
+/html/browsers/windows/nested-browsing-contexts/window-top.html: OK
+	One nested iframe: PASS
 	Top level browsing context: PASS
-	Two nested iframes: FAIL
+	Two nested iframes: PASS
 /html/browsers/windows/noreferrer-null-opener.html: TIMEOUT
 	rel=noreferrer nullifies window.opener: TIMEOUT
 /html/browsers/windows/noreferrer-window-name.html: TIMEOUT

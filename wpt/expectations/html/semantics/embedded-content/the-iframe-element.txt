@@ -1,14 +1,14 @@
 # web-platform-tests expectations of Wren for html/semantics/embedded-content/the-iframe-element, written by tools\wpt.ps1 -Update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
 /html/semantics/embedded-content/the-iframe-element/bad-src-means-about-blank.html: OK
-	Testing location href of iframe with input src: : FAIL
-	Testing location href of iframe with input src: about:blank: FAIL
-	Testing location href of iframe with input src: http://:80/invalid-url: FAIL
-	Testing location href of iframe with input src: null: FAIL
-/html/semantics/embedded-content/the-iframe-element/change_parentage.html: TIMEOUT
-	Change the frame heriarchy: TIMEOUT
+	Testing location href of iframe with input src: : PASS
+	Testing location href of iframe with input src: about:blank: PASS
+	Testing location href of iframe with input src: http://:80/invalid-url: PASS
+	Testing location href of iframe with input src: null: PASS
+/html/semantics/embedded-content/the-iframe-element/change_parentage.html: OK
+	Change the frame heriarchy: PASS
 /html/semantics/embedded-content/the-iframe-element/content_document_changes_only_after_load_matures.html: OK
-	contentDocument should only change after a load matures.: FAIL
+	contentDocument should only change after a load matures.: PASS
 /html/semantics/embedded-content/the-iframe-element/cross-origin-to-whom-part-2.window.html: OK
 	Test embed/frame/iframe/object nested document APIs for same origin-domain and cross origin-domain embedder document: FAIL
 /html/semantics/embedded-content/the-iframe-element/cross-origin-to-whom.window.html: OK
@@ -46,16 +46,16 @@
 	iframe-cross-origin-allow: FAIL
 /html/semantics/embedded-content/the-iframe-element/iframe-allowfullscreen.html: OK
 	iframe-cross-origin-allowfullscreen: PASS
-	iframe-noload-allowfullscreen: FAIL
-	iframe-noload-noallowfullscreen: FAIL
-	iframe-same-origin-allowfullscreen: FAIL
+	iframe-noload-allowfullscreen: PASS
+	iframe-noload-noallowfullscreen: PASS
+	iframe-same-origin-allowfullscreen: PASS
 /html/semantics/embedded-content/the-iframe-element/iframe-append-to-child-document.html: OK
 	Append iframe element to its own child document: FAIL
 /html/semantics/embedded-content/the-iframe-element/iframe-display-none-with-object.html: OK
 	Load event triggered on window: PASS
 /html/semantics/embedded-content/the-iframe-element/iframe-error-status-fires-load.html: OK
-	iframe should fire load event for 404 response and display error page: FAIL
-	iframe should fire load event for 503 response and display error page: FAIL
+	iframe should fire load event for 404 response and display error page: PASS
+	iframe should fire load event for 503 response and display error page: PASS
 /html/semantics/embedded-content/the-iframe-element/iframe-first-load-canceled-second-load-blank.html: OK
 	about:blank navigation is asynchronous, even if the initial one is canceled.: PASS
 /html/semantics/embedded-content/the-iframe-element/iframe-load-event.html: OK
@@ -73,7 +73,7 @@
 /html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-history-replaceState.html: OK
 	History state change for iframe loading='lazy' before it is loaded: history.replaceState: FAIL
 /html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-in-script-disabled-iframe.html: OK
-	Iframes with loading='lazy' in script disabled iframe are not handled\n       as 'lazy': FAIL
+	Iframes with loading='lazy' in script disabled iframe are not handled\n       as 'lazy': PASS
 /html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-in-scroller-far.html: OK
 	Test that lazy-loaded iframes do not load when far from viewport.: FAIL
 /html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-in-scroller-horizontal-far.html: ERROR
@@ -106,19 +106,19 @@
 /html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-nav-link-click.html: OK
 	Navigating iframe loading='lazy' before it is loaded: link click: FAIL
 /html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-nav-location-assign.html: OK
-	Navigating iframe loading='lazy' before it is loaded: location.assign: FAIL
+	Navigating iframe loading='lazy' before it is loaded: location.assign: PASS
 /html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-nav-location-replace-cross-origin.html: OK
-	Navigating to a cross-origin for iframe loading='lazy' before it is loaded: location.replace: PASS
+	Navigating to a cross-origin for iframe loading='lazy' before it is loaded: location.replace: FAIL
 /html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-nav-location-replace-set-src.html: OK
-	Navigating iframe loading='lazy' and then setting src: location.replace: FAIL
+	Navigating iframe loading='lazy' and then setting src: location.replace: PASS
 /html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-nav-location-replace.html: OK
-	Navigating iframe loading='lazy' before it is loaded: location.replace: FAIL
+	Navigating iframe loading='lazy' before it is loaded: location.replace: PASS
 /html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-nav-meta-refresh.optional.html: OK
 	Navigating iframe loading='lazy' before it is loaded: meta refresh: FAIL
 /html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-nav-navigation-navigate.html: OK
 	Navigating iframe loading='lazy' before it is loaded: navigation.navigate: FAIL
 /html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-nav-window-open.html: OK
-	Navigating iframe loading='lazy' before it is loaded: location.replace: FAIL
+	Navigating iframe loading='lazy' before it is loaded: location.replace: PASS
 /html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-referrerpolicy-change.sub.html: ERROR
 /html/semantics/embedded-content/the-iframe-element/iframe-loading-lazy-reload-location-reload.html: OK
 	Reloading iframe loading='lazy' before it is loaded: location.reload: FAIL
@@ -147,7 +147,7 @@
 /html/semantics/embedded-content/the-iframe-element/iframe-synchronously-discard.html: OK
 	IFrame discards are processed synchronously: FAIL
 /html/semantics/embedded-content/the-iframe-element/iframe_javascript_url_01.htm: OK
-	javascript: URL creating a document in an about:blank iframe: FAIL
+	javascript: URL creating a document in an about:blank iframe: PASS
 /html/semantics/embedded-content/the-iframe-element/iframe_javascript_url_form_submission.html: OK
 	javascript: URL in form submission, initial src is not about:blank: FAIL
 /html/semantics/embedded-content/the-iframe-element/iframe_javascript_url_in_src.htm: TIMEOUT
@@ -156,7 +156,7 @@
 	TypeError: javascript:new TypeError("foo"): TIMEOUT
 	array: javascript:["foo"]: TIMEOUT
 	boolean: javascript:true: TIMEOUT
-	empty string: javascript:"": FAIL
+	empty string: javascript:"": PASS
 	function: javascript:(() => { return function() {}; })(): TIMEOUT
 	global: javascript:window: TIMEOUT
 	host object: javascript:document: TIMEOUT
@@ -164,26 +164,26 @@
 	number: javascript:1: TIMEOUT
 	object: javascript:{"foo": "bar"}: TIMEOUT
 	regexp: javascript:/foo/: TIMEOUT
-	string: javascript:"foo": FAIL
+	string: javascript:"foo": PASS
 	undefined: javascript:void(0): TIMEOUT
 /html/semantics/embedded-content/the-iframe-element/iframe_javascript_url_initial_insertion.html: OK
 	javascript: URL in iframe src, initial insertion check: FAIL
 /html/semantics/embedded-content/the-iframe-element/iframe_javascript_url_loading_lazy.htm: OK
-	javascript: URL in iframe src and loading="lazy": FAIL
+	javascript: URL in iframe src and loading="lazy": PASS
 /html/semantics/embedded-content/the-iframe-element/iframe_javascript_url_not_about_blank.html: OK
-	javascript: URL in iframe src, initial src is not about:blank: FAIL
+	javascript: URL in iframe src, initial src is not about:blank: PASS
 /html/semantics/embedded-content/the-iframe-element/iframe_javascript_url_remove_srcdoc.html: OK
-	javascript: URL in iframe src, removing srcdoc: FAIL
+	javascript: URL in iframe src, removing srcdoc: PASS
 /html/semantics/embedded-content/the-iframe-element/iframe_javascript_url_xhr.html: OK|TIMEOUT
-	Image load should not trigger load event for non-initial javascript URL load: FAIL
-	Load event for initial javascript URL load should be fired after script execution: FAIL
+	Image load should not trigger load event for non-initial javascript URL load: TIMEOUT
+	Load event for initial javascript URL load should be fired after script execution: NOTRUN
 /html/semantics/embedded-content/the-iframe-element/iframe_navigate_ancestor-1.sub.html: TIMEOUT
 	A => B => B: B should be able to navigate B.: TIMEOUT
 /html/semantics/embedded-content/the-iframe-element/iframe_navigate_javascript_url.htm: OK
 	location.href = 'javascript:"foo"' should fire a load event: PASS
 	location.href = 'javascript:1' should not fire a load event: PASS
 /html/semantics/embedded-content/the-iframe-element/iframe_remove_src.html: OK
-	Test that removing the src attribute of an iframe loads about:blank\n  instead of whatever was loaded previously.: FAIL
+	Test that removing the src attribute of an iframe loads about:blank\n  instead of whatever was loaded previously.: PASS
 /html/semantics/embedded-content/the-iframe-element/iframe_sandbox_allow_script.html: ERROR
 	iframe_sandbox_allow_scripts: NOTRUN
 /html/semantics/embedded-content/the-iframe-element/iframe_sandbox_allow_top_navigation-1.html: TIMEOUT
@@ -196,13 +196,13 @@
 	iframe_sandbox_allow_top_navigation_by_user_activation_with_user_gesture: FAIL
 /html/semantics/embedded-content/the-iframe-element/iframe_sandbox_allow_top_navigation_by_user_activation_without_user_gesture.html: OK
 	iframe_sandbox_allow_top_navigation_by_user_activation_without_user_gesture: FAIL
-/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_anchor_download_allow_downloads.tentative.html: OK
-	<a  > triggered download in sandbox is allowed by allow-downloads.: FAIL
-	<a  download> triggered download in sandbox is allowed by allow-downloads.: FAIL
-	<a target="_blank" > triggered download in sandbox is allowed by allow-downloads.: FAIL
-	<a target="_blank" download> triggered download in sandbox is allowed by allow-downloads.: FAIL
-	<a target="_blank" rel="noopener" > triggered download in sandbox is allowed by allow-downloads.: FAIL
-	<a target="_blank" rel="noopener" download> triggered download in sandbox is allowed by allow-downloads.: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_anchor_download_allow_downloads.tentative.html: TIMEOUT
+	<a  > triggered download in sandbox is allowed by allow-downloads.: TIMEOUT
+	<a  download> triggered download in sandbox is allowed by allow-downloads.: TIMEOUT
+	<a target="_blank" > triggered download in sandbox is allowed by allow-downloads.: TIMEOUT
+	<a target="_blank" download> triggered download in sandbox is allowed by allow-downloads.: TIMEOUT
+	<a target="_blank" rel="noopener" > triggered download in sandbox is allowed by allow-downloads.: TIMEOUT
+	<a target="_blank" rel="noopener" download> triggered download in sandbox is allowed by allow-downloads.: TIMEOUT
 /html/semantics/embedded-content/the-iframe-element/iframe_sandbox_anchor_download_block_downloads.tentative.html: OK
 	<a > triggered download in sandbox is blocked.: FAIL
 	<a download> triggered download in sandbox is blocked before a request is made.: FAIL
@@ -264,13 +264,13 @@
 /html/semantics/embedded-content/the-iframe-element/move-node-local-root.html: OK
 	Event handler-bearing node moved across local roots in the same tab/page: FAIL
 /html/semantics/embedded-content/the-iframe-element/move_iframe_in_dom_01.html: OK
-	moving modified IFRAME in document (original page about:blank, DOM modification): FAIL
-/html/semantics/embedded-content/the-iframe-element/move_iframe_in_dom_02.html: OK|TIMEOUT
-	moving modified IFRAME in document (original page about:blank, document.write modification): FAIL
+	moving modified IFRAME in document (original page about:blank, DOM modification): PASS
+/html/semantics/embedded-content/the-iframe-element/move_iframe_in_dom_02.html: OK
+	moving modified IFRAME in document (original page about:blank, document.write modification): PASS
 /html/semantics/embedded-content/the-iframe-element/move_iframe_in_dom_03.html: OK
-	moving modified IFRAME in document (original page from server, DOM modification): FAIL
+	moving modified IFRAME in document (original page from server, DOM modification): PASS
 /html/semantics/embedded-content/the-iframe-element/move_iframe_in_dom_04.html: OK
-	moving modified IFRAME in document (original page from server, document.write modification): FAIL
+	moving modified IFRAME in document (original page from server, document.write modification): PASS
 /html/semantics/embedded-content/the-iframe-element/same-origin-contextual-fragment.html: OK
 	\n      HTML5 Sandbox: an iframe with same-origin and no allow-scripts does not\n      run scripts from a contextual fragment.\n    : FAIL
 /html/semantics/embedded-content/the-iframe-element/same_origin_parentage.html: OK
@@ -316,7 +316,7 @@
 /html/semantics/embedded-content/the-iframe-element/sandbox_002.htm: TIMEOUT
 	Allow autoplay for HTML5 Video inside iframe with sandbox attribute if sandbox='allow-scripts'.: TIMEOUT
 /html/semantics/embedded-content/the-iframe-element/sandbox_004.htm: OK
-	Fallback content is always displayed for sandboxed PDFs: FAIL
+	Fallback content is always displayed for sandboxed PDFs: PASS
 /html/semantics/embedded-content/the-iframe-element/sandbox_005.htm: OK
 	Block script execution inside iframe with sandbox attribute.: PASS
 /html/semantics/embedded-content/the-iframe-element/sandbox_011.htm: OK
@@ -345,11 +345,11 @@
 /html/semantics/embedded-content/the-iframe-element/sandbox_019.htm: OK
 	value of sandbox attribute must be an unordered set of unique space-separated tokens.: PASS
 /html/semantics/embedded-content/the-iframe-element/sandbox_023.htm: OK
-	Allow sandbox iframe to access other content from the same origin if sandbox='allow-same-origin': FAIL
+	Allow sandbox iframe to access other content from the same origin if sandbox='allow-same-origin': PASS
 /html/semantics/embedded-content/the-iframe-element/sandbox_024.htm: OK
 	document.cookie access is allowed inside iframe with sandbox='allow-same-origin'.: PASS
 /html/semantics/embedded-content/the-iframe-element/sandbox_025.htm: OK
-	Allow parent content to access sandbox child iframe content when sandbox='allow-same-origin': FAIL
+	Allow parent content to access sandbox child iframe content when sandbox='allow-same-origin': PASS
 /html/semantics/embedded-content/the-iframe-element/sandbox_026.htm: OK
 	Allow localStorage and sessionStorage access inside iframe with sandbox='allow-same-origin allow-scripts': PASS
 /html/semantics/embedded-content/the-iframe-element/sandbox_027.htm: OK
@@ -370,15 +370,15 @@
 	same path name, no document fragement (intermediary browsing context): NOTRUN
 	same path name, no document fragment: NOTRUN
 /html/semantics/embedded-content/the-iframe-element/srcdoc-anchor.html: OK
-	Verify srcdoc content loads when src is about:srcdoc#foo.: FAIL
+	Verify srcdoc content loads when src is about:srcdoc#foo.: PASS
 /html/semantics/embedded-content/the-iframe-element/srcdoc-attribute-reset.html: OK
-	Verify that the frame reloads with empty body after we remove srcdoc.: FAIL
+	Verify that the frame reloads with empty body after we remove srcdoc.: PASS
 /html/semantics/embedded-content/the-iframe-element/srcdoc-lifecycle-crash-crbug-1472607.https.html: OK
 	common setup: FAIL
-	requestStorageAccess() from about:blank Document before it gets replaced with a srcdoc resource does not crash the host process: FAIL
+	requestStorageAccess() from about:blank Document before it gets replaced with a srcdoc resource does not crash the host process: PASS
 /html/semantics/embedded-content/the-iframe-element/srcdoc_change_hash.html: OK
 	same-document navigation inside an srcdoc iframe using location.hash: FAIL
 /html/semantics/embedded-content/the-iframe-element/srcdoc_process_attributes.html: OK
-	Adding `srcdoc` attribute triggers attributes processing: FAIL
-	Removing `srcdoc` attribute triggers attributes processing: FAIL
-	Setting `srcdoc` (via property) triggers attributes processing: FAIL
+	Adding `srcdoc` attribute triggers attributes processing: PASS
+	Removing `srcdoc` attribute triggers attributes processing: PASS
+	Setting `srcdoc` (via property) triggers attributes processing: PASS
