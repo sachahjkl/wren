@@ -241,7 +241,7 @@ exported or cloned. It costs nothing until a script calls an operation (<code>na
 <tr><td>the browser side</td><td><code>src/page/bindings_crypto_subtle.odin</code> (keys, DER, computations), <code>src/page/bindings_crypto.odin</code> (random values, digest)</td></tr>
 <tr><td>the realm side</td><td><code>native/js/odin/web_crypto.odin</code> (<code>CryptoKey</code>, the natives) and <code>web_crypto.js</code> (conversions, normalization, usages, error names, JWK)</td></tr>
 <tr><td>between realms</td><td><code>native/js/odin/clone.odin</code> (<code>Crypto_Key</code>)</td></tr>
-<tr><td>the tests</td><td><code>examples/jsweb/webcrypto.js</code> (<code>jswebtest webcrypto</code>), web-platform-tests <code>WebCryptoAPI</code> (<code>wpt/expectations</code>)</td></tr>
+<tr><td>the tests</td><td><code>examples/jsweb/webcrypto.js</code> (<code>jsweb_webcrypto</code>), web-platform-tests <code>WebCryptoAPI</code> (<code>wpt/expectations</code>)</td></tr>
 </tbody>
 </table></div>
 <p><code>web_crypto.js</code>, like <code>web_wasm.js</code>, is an exception to the rule of <code>native/js/odin/prelude.odin</code> (no JavaScript in the realm): it

@@ -243,7 +243,7 @@ web-platform-tests <code>wasm/jsapi</code> (<code>wpt/expectations</code>).</p>
 <tr><td>the browser side</td><td><code>src/page/webassembly.odin</code> (calls) over <code>src/wasm/user_module.odin</code> and <code>user_store.odin</code> (Wasmtime)</td></tr>
 <tr><td>the realm side</td><td><code>native/js/odin/web_wasm.odin</code> (the natives, the conversions of values) and <code>web_wasm.js</code> (the objects)</td></tr>
 <tr><td>the bytes of a memory</td><td><code>Buffer_Host</code> in <code>src/engine/jsrt</code> (<code>b_typed.odin</code>, <code>object.odin</code>), <code>JS_NewArrayBufferHost</code> in <code>jscapi</code></td></tr>
-<tr><td>the tests</td><td><code>examples/jsweb/webassembly.js</code> (<code>jswebtest webassembly</code>), <code>src/wasm/wasm_test.odin</code>, <code>src/csp/csp_test.odin</code>, <code>jsloadtest</code> (the policy)</td></tr>
+<tr><td>the tests</td><td><code>examples/jsweb/webassembly.js</code> (<code>jsweb_webassembly</code>), <code>src/wasm/wasm_test.odin</code>, <code>src/csp/csp_test.odin</code>, <code>src/tools/webtests/jsload.odin</code> (the policy)</td></tr>
 </tbody>
 </table></div>
 <p><code>web_wasm.js</code> is the one exception to the rule of <code>native/js/odin/prelude.odin</code> (no JavaScript in the realm): it is not in
