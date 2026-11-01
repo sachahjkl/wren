@@ -148,9 +148,11 @@ cmd_stop :: proc(ctx: ^Context, args: []string) -> int {
 	image, _ := remote.param_string(st, "image")
 	profile, _ := remote.param_string(st, "profile")
 	temp, _ := remote.param_bool(st, "temp")
-	if api.connect(&ctx.s.conn, name, STOP_CONNECT_MS) {
+	// A throwaway profile holds nothing to keep: the process is ended at once, below, whatever its thread is doing. Another is
+	// asked to close, since it saves what it keeps.
+	if !temp && api.connect(&ctx.s.conn, name, STOP_CONNECT_MS) {
 		ctx.s.connected = true
-		_ = api.browser_close(&ctx.s, 0, temp)
+		_ = api.browser_close(&ctx.s, 0, false)
 		api.close_session(&ctx.s)
 	}
 	code := 0
@@ -162,6 +164,9 @@ cmd_stop :: proc(ctx: ^Context, args: []string) -> int {
 		now, readable := api.identity_of(&p)
 		if !readable || !api.same_process({created = u64(created), image = image}, now) {
 			errln(fmt.tprintf("wren ctl: process %d is not the Wren that %q started (it ended, and the number is another program's now): left alone", pid, name))
+		} else if temp {
+			api.process_kill(&p)
+			api.process_wait(&p, api.KILL_WAIT_MS)
 		} else if !api.process_wait(&p, api.CLOSE_WAIT_MS) {
 			errln("wren ctl: Wren did not close in time: ending it")
 			api.process_kill(&p)
