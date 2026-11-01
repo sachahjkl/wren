@@ -734,7 +734,7 @@ try {
         }
         Remove-Item Env:\WREN_NET_BACKEND
         $global:LASTEXITCODE = $bad
-    } -Flaky -Light
+    } -Light
     Step 'WebSocket closing handshake test (wsclosetest: close right after a message or the upgrade, late, missing and crossing close frames, server cutting TCP; repeated)' {
         odin build src/tools/wsclosetest -use-separate-modules -collection:wb=src -vet $Track -out:build/wsclosetest.exe
         if ($LASTEXITCODE -ne 0) { return }
