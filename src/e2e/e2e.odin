@@ -89,6 +89,7 @@ Options :: struct {
 	url:        string,     // the first address, loaded before start returns ("": about:blank)
 	no_address: bool,       // no address at all: the session of the profile comes back
 	hidden:     bool,       // a real window of the system, never shown, and its swap chain: for what is about them (window.odin). It needs a desktop session
+	software:   bool,       // no window of the system, drawn on the system's software rasterizer (Windows: WARP) whatever GPU the machine has, as on a runner without one
 }
 
 Session :: struct {
@@ -173,7 +174,9 @@ start :: proc(t: ^testing.T, o := Options{}, loc := #caller_location) -> ^Sessio
 	if !o.no_address { append(&args, "about:blank") }
 	{
 		context = s.ctx
+		browser.headless_software = o.software
 		s.app = browser.app_start(args[:])
+		browser.headless_software = false
 		if s.app != nil { browser.control_begin(s.app) }
 	}
 	if s.app == nil { failed(s, "the browser could not start", loc) }
