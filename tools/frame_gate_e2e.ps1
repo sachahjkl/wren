@@ -9,7 +9,7 @@
 #     phase, counted as nested), and the window repainted meanwhile;
 #   * the page's context menu (a menu of the chrome): opened by a right click, frames drawn while it is open, closed by Escape.
 # The system menu (a loop of the system from the frame's end) is tools\system_menu_e2e.ps1 (it needs the desktop), a live
-# resize begun inside a chrome frame tools\resize_e2e.ps1.
+# resize begun inside a chrome frame is not played here.
 #   powershell -NoProfile -File tools\frame_gate_e2e.ps1 [-Exe build\wren.exe]
 param([string]$Exe = '')
 $ErrorActionPreference = 'Stop'

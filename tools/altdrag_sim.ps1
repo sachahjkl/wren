@@ -1,7 +1,7 @@
 # What AltSnap (Alt + right button drag) does to a window, without a mouse and without AltSnap: from another thread, a run of
 # SetWindowPos calls that change the size every few ms, between a WM_ENTERSIZEMOVE and a WM_EXITSIZEMOVE that AltSnap
 # POSTS to the window (hooks.c, NotifySizeMoveStaEnd: PostMessage). Before each step it also SendMessageTimeout's WM_SIZING
-# (LetWindowKickBack), as AltSnap does. Not a real system size loop: that one needs the mouse (resize_e2e.ps1).
+# (LetWindowKickBack), as AltSnap does. Not a real system size loop: that one needs the mouse.
 #   powershell -NoProfile -File tools\altdrag_sim.ps1 [-Exe build\wren.exe] [-Secs 3] [-StepMs 6] [-Variants altsnap,plain] [-Page about:wren]
 # Variants: `altsnap` = the posted messages around the steps and the WM_SIZING before each; `enterexit` = only the posted
 # messages; `sizing` = only the WM_SIZING; `null` = a WM_NULL sent before each step (any cross-process send); `plain` = the
