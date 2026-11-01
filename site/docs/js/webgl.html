@@ -229,8 +229,8 @@
 <p><code>canvas.getContext("webgl")</code> and <code>("webgl2")</code>: OpenGL ES 2 and 3 for pages, drawn on the GPU through
 <a href="https://github.com/gfx-rs/wgpu" rel="noopener">wgpu</a>, with shaders translated by a rewrite of GLSL ES in front of
 <a href="https://github.com/gfx-rs/wgpu/tree/trunk/naga" rel="noopener">naga</a>. A page that never asks pays nothing but the size of the code: the script is
-evaluated at the first <code>getContext</code> or the first read of an interface, the device is made at the first context, and the
-program does not link <code>d3d12.dll</code> (wgpu loads it when it is asked to).</p>
+evaluated at the first <code>getContext</code> or the first read of an interface, the GPU process is started by the first context of the browser, and
+the program does not link <code>d3d12.dll</code> (wgpu loads it when it is asked to, in that process).</p>
 <p>Checked: the Three.js examples (a crate, Littlest Tokyo, a Ferrari, shadow maps, particles, bloom, instancing), MapLibre GL JS on
 its own site, and a conformance set of ours (<code>examples/jsweb/webgl.js</code>, <code>native/webgl/src/tests.rs</code>). The <code>webgl</code> folder of
 web-platform-tests is in <code>wpt/suites.txt</code>.</p>
@@ -240,14 +240,15 @@ web-platform-tests is in <code>wpt/suites.txt</code>.</p>
 <tbody>
 <tr><td>the interfaces</td><td><code>native/js/odin/web_webgl.js</code>, <code>web_webgl.odin</code></td><td>Web IDL: objects, overloads, conversions; which object is whose. Calls become words in a command buffer.</td></tr>
 <tr><td>the crossing</td><td><code>api/webgl.widl</code>, <code>src/page/bindings_webgl.odin</code>, <code>src/webgl</code></td><td>A context on its canvas's backing; command buffers, questions, frames.</td></tr>
-<tr><td>the device</td><td><code>native/webgl</code>: <code>gl.rs</code>, <code>draw.rs</code>, <code>capture.rs</code>, <code>query.rs</code>, <code>formats.rs</code>, <code>ops.rs</code></td><td>A thread with a wgpu device per context: OpenGL ES's state machine, all its rules and its errors.</td></tr>
+<tr><td>the process</td><td><code>native/webgl</code>: <code>parent.rs</code> (browser), <code>child.rs</code> (GPU process), <code>ipc/</code></td><td>Starts, watches and ends the GPU process; what crosses, checked on both sides.</td></tr>
+<tr><td>the device</td><td><code>native/webgl</code>: <code>host.rs</code>, <code>gl.rs</code>, <code>draw.rs</code>, <code>capture.rs</code>, <code>query.rs</code>, <code>formats.rs</code>, <code>ops.rs</code></td><td>In the GPU process, a thread with a wgpu device per context: OpenGL ES's state machine, all its rules and its errors.</td></tr>
 <tr><td>the shaders</td><td><code>native/webgl/src/translate.rs</code></td><td>GLSL ES to what naga reads, and what WebGL must know of a shader.</td></tr>
 </tbody>
 </table></div>
 <p>Calls are written to a buffer and sent at the end of the task, when the buffer is full, or when the page has to wait for something
 (<code>getError</code>, <code>readPixels</code>, <code>getShaderParameter</code>, <code>getParameter</code>). What the realm answers by itself (<code>isContextLost</code>,
 <code>getContextAttributes</code>, <code>getShaderPrecisionFormat</code>) crosses nothing. So a frame of a thousand draws is one host call; a
-<code>getError</code> per draw is a thread's round trip per draw, as in other browsers.</p>
+<code>getError</code> per draw is a round trip to another process per draw, as in other browsers.</p>
 <p>The numbers of operations and the layout of the stream are in <code>native/webgl/src/ops.rs</code>, the same as in <code>web_webgl.js</code>.</p>
 <h2 id="why-this-design"><a class="anchor" href="#why-this-design" aria-hidden="true">#</a>Why this design</h2>
 <p>The toolkit draws with Direct3D 11 on Windows and wgpu-native on Linux, and neither can run a page's shaders. ANGLE is not
@@ -255,11 +256,12 @@ available. So:</p>
 <ul>
 <li><strong>One backend for both systems: wgpu</strong>, on a device of its own (Vulkan on a real GPU and Direct3D 12 otherwise on Windows, Vulkan
 on Linux, software adapters where there is no GPU). Only Rust crates are added, built with the one Rust library of <code>wren.exe</code>.</li>
-<li><strong>Own thread per context.</strong> The page's thread never compiles anything and never waits for the GPU except when a page asks for an
-answer, and then with a deadline. A panic, a device lost or a shader that takes for ever to compile loses a context.</li>
-<li><strong>Frames by the CPU.</strong> A frame is copied to a staging buffer, then into the canvas's bitmap, then to the toolkit's texture: the path
-of a 2D canvas, slow in principle (about 2 ms a frame for 2 megapixels here) and free of any sharing of textures between two
-devices. A shared texture is the way to save that copy, later.</li>
+<li><strong>A process of its own, a thread per context in it.</strong> The page's thread never compiles anything and never waits for the GPU except when a
+page asks for an answer, and then with a deadline. A panic, a device lost or a shader that takes for ever to compile loses a context; a
+crash in a driver or FXC, or a thread that cannot come back, loses every context and nothing else (<a href="#the-gpu-process">the GPU process</a>).</li>
+<li><strong>Frames by the CPU.</strong> A frame is copied to a staging buffer, then into the shared section of its canvas, then into the canvas's bitmap,
+then to the toolkit's texture: the path of a 2D canvas, slow in principle (about 2 ms a frame for 2 megapixels here) and free of any
+sharing of textures between two devices. A shared texture is the way to save that copy, later.</li>
 </ul>
 <h3 id="what-wgpu-has-not-and-what-stands-for-it"><a class="anchor" href="#what-wgpu-has-not-and-what-stands-for-it" aria-hidden="true">#</a>What wgpu has not, and what stands for it</h3>
 <div class="table-box"><table>
@@ -295,6 +297,74 @@ starts; matrices as attributes and varyings become their columns;</li>
 </ul>
 <p><code>getActiveUniform</code> and friends come from what was declared; offsets from naga's module. What naga does not check is not checked:
 implicit conversions from <code>int</code> to <code>float</code> compile, and the loop restrictions of GLSL ES 1.00 are not enforced.</p>
+<h2 id="the-gpu-process"><a class="anchor" href="#the-gpu-process" aria-hidden="true">#</a>The GPU process</h2>
+<p>One per browser: the same executable, started with <code>--wren-gpu-process=&lt;handles&gt;</code> by the first context of any page or worker. (A package
+initializer of <code>src/webgl</code> looks at the arguments before <code>main</code>, so any program that links the browser can be one. It costs that look; a page
+without WebGL starts nothing. Tests: <code>tools/webgl_process_e2e.ps1</code>.) A process with no context left goes after <code>webgl.gpu_idle_exit_s</code>.</p>
+<div class="table-box"><table>
+<thead><tr><th>What crosses</th><th>How</th></tr></thead>
+<tbody>
+<tr><td>commands, questions, answers</td><td>two byte rings (16 MiB each way) in one section of shared memory; a message longer than a ring goes through in pieces as the reader takes them. A reader spins a little, then sleeps; a doorbell wakes it</td></tr>
+<tr><td>frames</td><td>a section per canvas with three pictures: the child fills one and swaps it with the one published, the browser swaps that with the one it holds. Neither ever waits for the other, and the bitmap's copy is the same as before the process existed</td></tr>
+<tr><td>the end of the other side</td><td>the doorbell: on Windows an event and the other process's handle, on Linux a socket pair, whose end is the end of the stream</td></tr>
+<tr><td>sections</td><td>made by the browser. Windows: a handle duplicated into the child, with rights to map it only. Linux: a sealed memfd (a child that could shrink it would make the browser fault on a copy), its descriptor passed over a second socket</td></tr>
+</tbody>
+</table></div>
+<p><strong>When it goes wrong.</strong> A process that ends, a process that breaks the protocol, a context with work to do that does nothing for
+<code>webgl.gpu_hang_ms</code> (twice that on a software adapter: FXC is slow there, and one hung context costs them all) or a ring nobody takes from: the
+process is killed, every context of the browser gets <code>webglcontextlost</code>, and a page that prevented its default gets <code>webglcontextrestored</code> once
+a new process has given it a device. A question keeps its deadline (<code>webgl.wait_ms</code>): the context that does not answer is lost at once, and the
+watcher kills the process if its thread does not come back; no thread is left behind. More than <code>webgl.gpu_max_restarts</code> bad ends within
+<code>webgl.gpu_restart_window_s</code>: <code>getContext</code> gives null and contexts stay lost, until that time has passed. A crash there writes no crash report of
+Wren's (the handler is installed by the browser's <code>main</code>, which the process never reaches): the page's console says how it ended, with the exit code.</p>
+<p><strong>It ends with its parent, even a killed one.</strong> Windows: a Job object with <code>KILL_ON_JOB_CLOSE</code> named at the process's creation
+(<code>PROC_THREAD_ATTRIBUTE_JOB_LIST</code>, so that no moment exists when a child is outside it; started suspended and assigned afterwards, a parent killed
+in between left suspended orphans), and the child watches the parent's handle too. Linux: <code>PR_SET_PDEATHSIG</code> set by a thread that lives as long
+as the child (the signal follows the thread, not the process), and the socket's end.</p>
+<p><strong>What the child gives up</strong>, before any driver is loaded (<code>webgl.gpu_keep_rights</code> keeps it all, for a driver that needs it):</p>
+<div class="table-box"><table>
+<thead><tr><th></th><th>Done</th><th>Not done, and why</th></tr></thead>
+<tbody>
+<tr><td>Windows</td><td>Low integrity (no writing to what the user's programs own, no opening their processes; a driver's shader cache under the user's profile is not written); every privilege removed; a job that allows no other process, no clipboard, no desktops, no display settings, no global atoms, no handles of other processes' windows; no extension points (AppInit DLLs, hooks); no images from the network or of Low label; no DLL search in the working directory, which is the program's own folder; only the handles it needs are inherited; no error dialogs</td><td>An AppContainer or a restricted token (a driver opens registry keys, files and kernel objects no list here could name); Win32k lockdown and no dynamic code (drivers need GDI, and compile shaders to machine code); the network</td></tr>
+<tr><td>Linux</td><td><code>PR_SET_NO_NEW_PRIVS</code>; no core dumps; every descriptor closed but its own</td><td>seccomp, namespaces, Landlock (drivers open <code>/dev/dri</code> and <code>/sys</code>, read caches, call ioctls no list here could name); the network. The environment stays, for what drivers read from it</td></tr>
+</tbody>
+</table></div>
+<p><strong>Nothing that crosses is believed.</strong> The child ends on an unknown kind, a length past its kind's limit or an index that cannot be true; refuses attributes
+that cannot be; ignores contexts it does not know; the commands themselves are checked word by word (<code>Ctx::exec</code>). The browser kills it for the same, for a
+context or a question that was never asked, a count of finished work that does not add up, rows of pixels that do not fit or overflow, a frame larger than its
+section or a slot that does not exist; an answer larger than the asker's buffer is not kept, so that a length costs the browser no memory the page did not offer. Everything in
+shared memory is copied out before it is looked at.</p>
+<p><strong>The cost</strong>, measured on <code>examples/site/webgl.html</code> and <code>examples/site/webgl-stress.html</code> with <code>tools/webgl_bench.ps1</code> (the same pages, before and after, alternating, the best of the runs):</p>
+<div class="table-box"><table>
+<thead><tr><th></th><th>before</th><th>after</th></tr></thead>
+<tbody>
+<tr><td><code>webgl.html</code>, frames a second</td><td>60</td><td>60</td></tr>
+<tr><td>stress page (5000 draws a frame, 1920 x 1080), frames a second</td><td>17.5</td><td>17.9</td></tr>
+<tr><td>its script's time per frame</td><td>40 ms</td><td>36 ms</td></tr>
+<tr><td>the browser's first context (the process starts with it)</td><td>249 ms</td><td>264 ms</td></tr>
+<tr><td>a later context</td><td>133 ms</td><td>112 ms</td></tr>
+<tr><td><code>getError</code> (a round trip)</td><td>23 us</td><td>21 us</td></tr>
+<tr><td><code>readPixels</code>, one pixel</td><td>0.16 ms</td><td>0.18 ms</td></tr>
+<tr><td><code>readPixels</code>, 8 MB</td><td>8.2 ms</td><td>9.8 ms</td></tr>
+<tr><td><code>texImage2D</code>, 4096 x 4096 (64 MB), with <code>finish</code></td><td>54 ms</td><td>48 ms</td></tr>
+<tr><td><code>bufferData</code>, 64 MB, with <code>finish</code></td><td>41 ms</td><td>47 ms</td></tr>
+<tr><td>working set on <code>webgl.html</code> (browser + process)</td><td>465 MB</td><td>187 + 334 MB</td></tr>
+<tr><td>on the stress page</td><td>727 MB</td><td>407 + 482 MB</td></tr>
+<tr><td>a page without WebGL</td><td>no process</td><td>no process</td></tr>
+</tbody>
+</table></div>
+<p>On a machine (RTX 4070 SUPER, 16 logical processors) that other jobs were using: differences of a few percent mean nothing here. What can be told: frames cost the same, since a frame takes the same copies; large messages pay one copy more through a ring; the memory grows by what a second process has (its copy of the runtime's data and of the drivers' loaded state, its rings, a canvas's three pictures: about 55 MB on <code>webgl.html</code>, 160 MB on the stress page, of which the shared memory is counted on both sides).</p>
+<h2 id="workers"><a class="anchor" href="#workers" aria-hidden="true">#</a>Workers</h2>
+<p><code>OffscreenCanvas.getContext("webgl")</code> and <code>("webgl2")</code> work in a worker as in a window, their interfaces evaluated when first read there. What a page has with a
+context, a worker has: questions, shaders, lost and restored. <code>requestAnimationFrame</code> is the worker's 60 Hz clock.</p>
+<ul>
+<li><code>transferToImageBitmap()</code> asks for the drawing buffer (it waits, as <code>readPixels</code> does) and the frame ends: the buffer starts again as after a present.</li>
+<li>An OffscreenCanvas no element shows makes no frames by itself: its pixels are fetched when it is read (<code>convertToBlob</code>, <code>transferToImageBitmap</code>, <code>drawImage</code>).</li>
+<li><code>canvas.transferControlToOffscreen()</code> makes the element a placeholder, and the OffscreenCanvas transferable in a message (<code>Canvas_Placeholder</code>, <code>src/page/canvas_offscreen.odin</code>).
+What it draws, WebGL or 2D, is copied at the end of each turn of its thread's loop into the placeholder, and from there into the element's bitmap by the page's thread: from a section to the
+worker's bitmap, then the placeholder, then the element's bitmap. Two copies more than a canvas of the page, one of them on the worker's thread (below 2 ms each for 2 megapixels).</li>
+<li>Not done: the layout of a placeholder keeps following its <code>width</code> and <code>height</code> attributes, not the size the worker chooses (the picture is scaled to fit), and setting those on a placeholder does not throw. <code>ImageBitmap</code> is still not transferable in a message.</li>
+</ul>
 <h2 id="limits"><a class="anchor" href="#limits" aria-hidden="true">#</a>Limits</h2>
 <ul>
 <li><strong>Transform feedback</strong>: needs vertex shaders that write to storage (<code>VERTEX_WRITABLE_STORAGE</code>, everywhere Direct3D 12 and Vulkan have it). An adapter
@@ -304,7 +374,8 @@ vertex stage runs twice when it is also drawn. Strips, fans and loops copy their
 <li><strong>Compressed textures</strong>: S3TC only (<code>WEBGL_compressed_texture_s3tc</code>), 2D, where the adapter has BC formats. No ETC, ASTC, RGTC, BPTC.</li>
 <li><strong>Rendering</strong>: lines are 1 pixel wide. A vertex attribute divisor above 1 is written out, per instance, on each draw count. Points cannot be instanced. <code>SAMPLE_COVERAGE</code> is ignored.
 A framebuffer's depth and stencil must be one attachment. Depth blits are whole copies of the same size and samples.</li>
-<li><strong>Workers</strong>: <code>getContext("webgl")</code> on an <code>OffscreenCanvas</code> works in a window; in a worker it gives null (the module is <code>[Exposed=Window]</code>, and frames and their notices go through a document's canvas: not a small change).</li>
+</ul>
+<ul>
 <li><strong>Videos</strong> are textures when their picture is on the CPU (software decoding); a picture only on the GPU uploads nothing.</li>
 <li><strong><code>gl.getError</code> from a Wasm module of a page</strong>: as JavaScript's; a malformed stream loses the context.</li>
 <li><strong>Objects collected</strong>: buffers, textures and programs a page drops without deleting stay until the page or the context goes.</li>
@@ -321,24 +392,32 @@ textures on creation.</li>
 <li>The translator bounds the source (2 MiB), the tokens after macro expansion, nesting, operators per statement, <code>else</code> per function and the
 size of types: naga recurses, and its thread has a stack of 256 MiB. Each of these limits has a hostile test
 (<code>a_hostile_shader_is_an_error_in_the_log</code>). A panic in naga or wgpu loses the context; a question that gets no answer in
-<code>webgl.wait_ms</code> (10 s) loses it too, and the thread frees everything when it finally returns.</li>
-<li>What is not bounded: a driver's own bugs and a crash inside a driver or FXC take the browser down: this is in the browser's process, there
-is no GPU process. Windows' TDR turns a shader that hangs the GPU into a device lost. Software adapters have no such thing: their contexts
-lose out at the deadline, and their thread stays until the shader ends.</li>
+<code>webgl.wait_ms</code> (10 s) loses it too.</li>
+<li>A driver's own bugs, a crash inside a driver or FXC: they end the GPU process, and every context of the browser is lost
+(<a href="#the-gpu-process">the GPU process</a>). A page that can crash a driver can do so again, and costs other pages their contexts each time, up to
+<code>webgl.gpu_max_restarts</code>. Windows' TDR turns a shader that hangs the GPU into a device lost. Software adapters have no such thing: their contexts lose out at the
+deadline, and the process is killed when the thread has not come back at twice <code>webgl.gpu_hang_ms</code>.</li>
+<li>What the GPU process can reach if a driver is compromised through a shader is what the table above leaves it: on both systems it can read what the user can and
+use the network.</li>
 </ul>
-<p>Microsoft's software rasterizer (WARP) crashes when several devices of a process work at once (seen here): software contexts take turns.</p>
+<p>Microsoft's software rasterizer (WARP) crashes when several devices of a process work at once (seen here): software contexts take turns, in the GPU process.</p>
 <p>A page's thread that waits for an answer is still running its script: <code>javascript.slow_script_ms</code> counts the wait. On a software adapter, where
 FXC compiles every pipeline, a page that asks right after a burst of new programs can reach that limit under load.</p>
 <h2 id="preferences"><a class="anchor" href="#preferences" aria-hidden="true">#</a>Preferences</h2>
 <p><code>webgl.enabled</code>, <code>webgl.webgl2</code>, <code>webgl.allow_software</code>, <code>webgl.force_software</code>, <code>webgl.backend</code> (<code>auto</code>, <code>dx12</code>, <code>vulkan</code>),
-<code>webgl.max_contexts</code>, <code>webgl.max_mb</code>, <code>webgl.wait_ms</code>.</p>
+<code>webgl.max_contexts</code>, <code>webgl.max_mb</code>, <code>webgl.wait_ms</code>, <code>webgl.gpu_hang_ms</code>, <code>webgl.gpu_max_restarts</code>, <code>webgl.gpu_restart_window_s</code>,
+<code>webgl.gpu_idle_exit_s</code>, <code>webgl.gpu_keep_rights</code>.</p>
 <h2 id="tests"><a class="anchor" href="#tests" aria-hidden="true">#</a>Tests</h2>
 <ul>
 <li><code>cargo test -p wren_webgl</code>: the translator, formats, and a context through the C ABI on the software adapter. They pass with <code>WREN_WEBGL_TEST_GPU=1</code>
-on a real GPU too. A machine with no adapter skips them.</li>
-<li><code>jswebtest webgl</code> (<code>examples/jsweb/webgl.js</code>): the interfaces and their rules on the software adapter; a machine with no adapter checks that
-<code>getContext</code> gives null.</li>
-<li>A demo: <code>examples/site/webgl.html</code>, in <code>about:demos</code>.</li>
+on a real GPU too. A machine with no adapter skips them.
+<code>src/ipc_tests.rs</code>: the channel on its own; a real child killed while drawing, hung, stalled, made hostile in each way the browser checks for, fed malformed commands and broken streams; its
+parent killed; the limit on restarts. A test binary is its own child (<code>gpu_child_entry</code>); a hook is accepted only by a child started with hooks, which a browser never asks for.</li>
+<li><code>jswebtest webgl</code> (<code>examples/jsweb/webgl.js</code>, <code>webgl_process.js</code>): the interfaces and their rules on the software adapter; contexts in workers and <code>transferControlToOffscreen</code>; the process killed and
+hung under a page and a worker (only this tool calls <code>wg_test_enable_hooks</code>). A machine with no adapter checks that <code>getContext</code> gives null.</li>
+<li><code>tools/webgl_process_e2e.ps1</code> (<code>test_all -Ui</code>): the process's life in the real browser, on the machine's GPU. <code>tools/linux_smoke.sh</code> does the same under xvfb on Linux.</li>
+<li><code>tools/webgl_bench.ps1</code>: what WebGL costs on this machine (opt-in, not a test).</li>
+<li>Demos: <code>examples/site/webgl.html</code> and <code>webgl-stress.html</code>, in <code>about:demos</code>.</li>
 </ul>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../docs/anchor-positioning.html"><span>Previous</span><strong>CSS anchor positioning</strong></a>
@@ -353,6 +432,8 @@ on a real GPU too. A machine with no adapter skips them.</li>
 <li><a href="#why-this-design">Why this design</a></li>
 <li class="lvl3"><a href="#what-wgpu-has-not-and-what-stands-for-it">What wgpu has not, and what stands for it</a></li>
 <li class="lvl3"><a href="#shaders">Shaders</a></li>
+<li><a href="#the-gpu-process">The GPU process</a></li>
+<li><a href="#workers">Workers</a></li>
 <li><a href="#limits">Limits</a></li>
 <li><a href="#security">Security</a></li>
 <li><a href="#preferences">Preferences</a></li>

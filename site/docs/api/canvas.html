@@ -723,10 +723,26 @@ their relative forms) appended when not empty (an invalid string leaves what par
 <div class="code"><pre><code>void Path2D_addPath(Path2D target, Path2D path, f64 m11, f64 m12, f64 m21, f64 m22, f64 m41, f64 m42)</code></pre></div>
 <p>addPath(path, matrix).</p>
 <p>Host: <code>Path2D_addPath :: proc(c: ^Call, target: Api_Path2D, path: Api_Path2D, m11: f64, m12: f64, m21: f64, m22: f64, m41: f64, m42: f64)</code></p>
+<h3 id="htmlcanvaselement-transfercontrol"><a class="anchor" href="#htmlcanvaselement-transfercontrol" aria-hidden="true">#</a><code>HTMLCanvasElement_transferControl</code></h3>
+<div class="code"><pre><code>OffscreenCanvas HTMLCanvasElement_transferControl(HTMLCanvasElement canvas) raises</code></pre></div>
+<p>/////////////////////////////
+canvas.transferControlToOffscreen(): an OffscreenCanvas (in this realm, for now) whose frames this element shows. Invalid_State:
+it has a context or was transferred before.</p>
+<p>Raises: returns an <code>Error</code> (see <a href="../../docs/api/web.html">web</a>).</p>
+<p>Host: <code>HTMLCanvasElement_transferControl :: proc(c: ^Call, canvas: Api_HTMLCanvasElement) -&gt; (u64, Api_Error)</code></p>
+<h3 id="offscreencanvas-takefortransfer"><a class="anchor" href="#offscreencanvas-takefortransfer" aria-hidden="true">#</a><code>OffscreenCanvas_takeForTransfer</code></h3>
+<div class="code"><pre><code>u64 OffscreenCanvas_takeForTransfer(OffscreenCanvas canvas) raises</code></pre></div>
+<p>Transferring an OffscreenCanvas in a message: a token the receiving realm adopts; the object is left detached. Invalid_State: it
+has a context. Data_Clone: it was transferred before.</p>
+<p>Raises: returns an <code>Error</code> (see <a href="../../docs/api/web.html">web</a>).</p>
+<p>Host: <code>OffscreenCanvas_takeForTransfer :: proc(c: ^Call, canvas: Api_OffscreenCanvas) -&gt; (u64, Api_Error)</code></p>
+<h3 id="offscreencanvas-adopttransfer"><a class="anchor" href="#offscreencanvas-adopttransfer" aria-hidden="true">#</a><code>OffscreenCanvas_adoptTransfer</code></h3>
+<div class="code"><pre><code>OffscreenCanvas OffscreenCanvas_adoptTransfer(u64 token) raises</code></pre></div>
+<p>Raises: returns an <code>Error</code> (see <a href="../../docs/api/web.html">web</a>).</p>
+<p>Host: <code>OffscreenCanvas_adoptTransfer :: proc(c: ^Call, token: u64) -&gt; (u64, Api_Error)</code></p>
 <h3 id="offscreencanvas-create"><a class="anchor" href="#offscreencanvas-create" aria-hidden="true">#</a><code>OffscreenCanvas_create</code></h3>
 <div class="code"><pre><code>OffscreenCanvas OffscreenCanvas_create(u64 width, u64 height) raises</code></pre></div>
-<p>/////////////////////////////
-new OffscreenCanvas(width, height): Quota over the limits.</p>
+<p>new OffscreenCanvas(width, height): Quota over the limits.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../docs/api/web.html">web</a>).</p>
 <p>Host: <code>OffscreenCanvas_create :: proc(c: ^Call, width: u64, height: u64) -&gt; (u64, Api_Error)</code></p>
 <h3 id="offscreencanvas-width"><a class="anchor" href="#offscreencanvas-width" aria-hidden="true">#</a><code>OffscreenCanvas_width</code></h3>
@@ -949,6 +965,9 @@ holds the canvas (the kinds cannot be mixed).</p>
 <li class="lvl3"><a href="#canvaspath-ellipse">CanvasPath_ellipse</a></li>
 <li class="lvl3"><a href="#path2d-create">Path2D_create</a></li>
 <li class="lvl3"><a href="#path2d-addpath">Path2D_addPath</a></li>
+<li class="lvl3"><a href="#htmlcanvaselement-transfercontrol">HTMLCanvasElement_transferControl</a></li>
+<li class="lvl3"><a href="#offscreencanvas-takefortransfer">OffscreenCanvas_takeForTransfer</a></li>
+<li class="lvl3"><a href="#offscreencanvas-adopttransfer">OffscreenCanvas_adoptTransfer</a></li>
 <li class="lvl3"><a href="#offscreencanvas-create">OffscreenCanvas_create</a></li>
 <li class="lvl3"><a href="#offscreencanvas-width">OffscreenCanvas_width</a></li>
 <li class="lvl3"><a href="#offscreencanvas-height">OffscreenCanvas_height</a></li>
