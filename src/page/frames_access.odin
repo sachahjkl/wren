@@ -170,6 +170,9 @@ frames_adopt :: proc(c: ^Call, node: base.Handle, into_tag: u32) -> (out: []u8, 
 	if dst == nil || dst == src || dst.worker != nil { return nil, false }
 	n := dom.get(src.doc, node)
 	if n == nil || n.kind == .Document || n.is_shadow { return nil, false }
+	// (an iframe going into its own document: leaving its tree ends that document, which is still written to below. In use, it is closed after the call.)
+	dst.route_busy += 1
+	defer dst.route_busy -= 1
 	if n.parent != base.NIL_HANDLE { dom.detach(src.doc, node) }
 	pairs := make([dynamic]u8, 0, 64, context.temp_allocator)
 	put :: proc(b: ^[dynamic]u8, v: u64) {
