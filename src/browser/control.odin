@@ -576,7 +576,7 @@ control_stats :: proc(app: ^App, allocator := context.temp_allocator) -> api.Sta
 	fv := forms_view(app)
 	lp := dnd_last_picture
 	st := api.Stats{
-		pid = int(current_pid()), frames_drawn = int(hud.serial), pending_ops = len(the_remote.ops), input_events = the_remote.inputs,
+		pid = int(current_pid()), frames_drawn = app.rates.frames, loop = loop_rates_stats(&app.rates, allocator), pending_ops = len(the_remote.ops), input_events = the_remote.inputs,
 		requests_in_flight = int(fetch.in_flight(&app.loader)), tabs = len(wnd.tabs), uptime_ms = process_uptime_ms(), frame_period_ms = wnd.pacer.period_ms,
 		frame_gate = {int(g.begun), int(g.nested), int(g.deferred), int(g.violations), strings.clone(g.last_violation, allocator)},
 		menu_open = ui.ctx_menu_any_open(), devtools = dev().visible, front_window = window_is_front(app),

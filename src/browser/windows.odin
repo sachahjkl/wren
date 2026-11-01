@@ -21,6 +21,7 @@ package browser
 //     frames goes to every window that shows (windows_spill);
 //   * a closed window closes its tabs; the last one ends the browser.
 
+import "base:runtime"
 import "core:slice"
 import "core:strings"
 import "core:sync"
@@ -45,6 +46,8 @@ Window_Ctx :: struct {
 	focus_address:    bool,           // Ctrl+L: focus the address field in the next build
 	page_rect:        draw.Rect,      // where the page was painted last frame (physical pixels)
 	frames_requested: int,            // frames asked for (request_frames, window_request): the loop counts one off per frame
+	asked_by:   runtime.Source_Code_Location,   // the last who asked for frames (loop_rates.odin)
+	errand:     Frame_Errand,         // what the frames asked for are for, when that is all they are for
 	presented:        bool,           // a frame went to the swap chain: from then on each frame waits for it to take the next
 }
 
@@ -195,12 +198,29 @@ window_current_tab :: proc(app: ^App, w: ^Browser_Window) -> ^Tab {
 }
 
 // Asks for frames of one window, active or not.
-window_request :: proc(app: ^App, w: ^Browser_Window, n: int) {
+window_request :: proc(app: ^App, w: ^Browser_Window, n: int, loc := #caller_location) {
 	w.frames_requested = max(w.frames_requested, n)
+	w.asked_by = loc   // (the last to ask: what the frame's reason names, loop_rates.odin)
+	w.errand = .None
+}
+
+// What a frame is for, when it is for one small thing and the browser is otherwise at rest: it is no sample of the status bar, no
+// activity for memory_trim, and a caret's draws its own pixels alone (frame()). Any other request makes it a frame like any other.
+Frame_Errand :: enum u8 {
+	None,
+	Caret,        // a caret's toggle
+	Status_Bar,   // the status bar's numbers falling to rest, and its layout following them
+	Reader,       // the page's accessibility trees, what their rate held back
+}
+
+window_request_errand :: proc(app: ^App, w: ^Browser_Window, errand: Frame_Errand, n := 1, loc := #caller_location) {
+	alone := w.frames_requested == 0
+	window_request(app, w, n, loc)
+	if alone { w.errand = errand }
 }
 
 // Asks for frames of the active window (the frame being made, or the front one between frames).
-request_frames :: proc(app: ^App, n := 2) { window_request(app, active_window(app), n) }
+request_frames :: proc(app: ^App, n := 2, loc := #caller_location) { window_request(app, active_window(app), n, loc) }
 
 // The window that holds the tab, and its place there.
 window_of_tab :: proc(app: ^App, t: ^Tab) -> (^Browser_Window, int) {
@@ -453,16 +473,19 @@ window_close :: proc(app: ^App, w: ^Browser_Window) {
 // Whether the window has something to draw: input waiting for it, frames it asked for, an animation or a wake of its toolkit, a
 // repaint the system asked for. (The page's own changes are seen by the frame, once the tasks have run.)
 @(private = "file")
-window_has_cause :: proc(app: ^App, w: ^Browser_Window) -> bool {
-	if w.minimized || len(window_tabs(app, w)) == 0 { return false }
-	events_waiting := len(w.win.events) > w.win.returned || len(w.win.injected) > 0
-	paint := platform.take_paint_request(w.win)
-	return w.frames_requested != 0 || ui.needs_frame(w.ui) || ui.wake_due(w.ui) || paint || events_waiting
+window_causes :: proc(app: ^App, w: ^Browser_Window) -> (causes: Frame_Causes) {
+	if w.minimized || len(window_tabs(app, w)) == 0 { return }
+	if len(w.win.events) > w.win.returned || len(w.win.injected) > 0 { causes += {.Input} }
+	if w.frames_requested != 0 { causes += {.Asked} }
+	if ui.needs_frame(w.ui) { causes += {.Interface_Animation} }
+	if ui.wake_due(w.ui) { causes += {.Interface_Wake} }
+	if w.win.paint_requested { causes += {.Repaint} }   // (frame() takes it)
+	return
 }
 
 
 @(private = "file") pass_order: [dynamic]^Browser_Window
-@(private = "file") pass_causes: [dynamic]bool
+@(private = "file") pass_causes: [dynamic]Frame_Causes
 
 // One pass of the loop: sleep when no window has a cause, then one frame for each window (the front one first, which runs the
 // tasks of the loop). false: the last window was closed.
@@ -472,18 +495,19 @@ windows_pass :: proc(app: ^App) -> bool {
 	clear(&pass_order); clear(&pass_causes)
 	if front != nil { append(&pass_order, front) }
 	for w in app.windows { if w != front { append(&pass_order, w) } }
-	for _ in pass_order { append(&pass_causes, false) }
+	for _ in pass_order { append(&pass_causes, Frame_Causes{}) }
 	order, causes := pass_order[:], pass_causes[:]
 	any_cause := devtools_windows_busy(app)
 	wake := 0
 	for w, i in order {
 		window_activate(app, w)
 		w.minimized = len(app.windows) > 1 && platform.is_minimized(w.win)
-		causes[i] = window_has_cause(app, w)
-		any_cause ||= causes[i]
+		causes[i] = window_causes(app, w)
+		any_cause ||= causes[i] != {}
 		if ms := ui.wake_in_ms(w.ui); ms > 0 && !w.minimized && (wake == 0 || ms < wake) { wake = ms }
 	}
 	idled := false
+	app.rates.turns += 1
 	if !any_cause {
 		timeout := devtools_windows_timeout(app, wake)
 		if t := host.next_timeout_ms(&app.loop); t >= 0 && (timeout <= 0 || t < timeout) { timeout = max(t, 1) }
@@ -491,7 +515,10 @@ windows_pass :: proc(app: ^App) -> bool {
 		platform.wait_event(order[0].win, memcheck_wake(memory_trim_wake(timeout)))
 		prof_end(.Idle)
 		idled = true
+		app.rates.sleeps += 1
 	}
+	frames_before := app.rates.frames
+	defer if idled && app.rates.frames == frames_before && the_app == app { loop_rates_barren(&app.rates, app.loop.last_quiet, loop_ms(app, time.tick_now())) }
 	app.pass_first = true
 	for w, i in order {
 		if w.minimized {
@@ -502,10 +529,11 @@ windows_pass :: proc(app: ^App) -> bool {
 			continue
 		}
 		window_activate(app, w)
-		frame(app, idled || !causes[i])
+		frame(app, idled || causes[i] == {}, causes[i])
 		window_activate(app, w)
 		devtools_window_tick(app)   // devtools_window.odin: this window's developer tools' window
 		if w.frames_requested > 0 { w.frames_requested -= 1 }
+		if w.frames_requested == 0 { w.errand = .None }
 	}
 	app.pass_first = false
 	if app.quitting { return false }

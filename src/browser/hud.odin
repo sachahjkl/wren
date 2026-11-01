@@ -440,13 +440,16 @@ hud_arm_settle :: proc() {
 hud_settle_timer :: proc(data: rawptr) {
 	hud.settle = base.NIL_HANDLE
 	app := (^App)(data)
+	// (this timer is no work of the page's: counted as a task it drew two frames, which were samples, which put the settling off and armed
+	// it again: four or five frames a second, forever, at rest)
+	host.quiet_note(&app.loop)
 	now := ui.now_ms()
 	if idle := now - hud.last_frame_ms; idle < hud.cfg.window_ms {
 		hud.settle = host.set_timer(&app.loop, hud.cfg.window_ms - idle + HUD_SETTLE_EXTRA_MS, 0, hud_settle_timer, app)
 		return
 	}
 	hud.settle_skip = true   // the frame this wakes is no sample
-	request_frames(app, 1)   // (a wake without anything to do draws no frame)
+	window_request_errand(app, active_window(app), .Status_Bar)   // (a wake without anything to do draws no frame)
 	if phase_clock.on { hud_refresh(app, now) }
 }
 

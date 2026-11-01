@@ -1343,6 +1343,7 @@ stats_json :: proc(b: ^strings.Builder, s: api.Stats) {
 	}
 	j_int(b, "pid", i64(s.pid)); j_num(b, "uptimeMs", s.uptime_ms); j_num(b, "fps", s.fps)
 	j_int(b, "workingSetBytes", i64(s.working_set_bytes)); j_int(b, "privateBytes", i64(s.private_bytes))
+	loop_rates_json(b, s.loop)
 	j_int(b, "framesDrawn", i64(s.frames_drawn)); j_int(b, "framesPresented", i64(s.frames_presented)); j_num(b, "framePeriodMs", s.frame_period_ms)
 	j_int(b, "chromeFrames", i64(s.chrome_frames)); j_int(b, "fullFrames", i64(s.full_frames))
 	j_int(b, "paintFrames", i64(s.paint_frames)); j_int(b, "modalLoops", i64(s.modal_loops))

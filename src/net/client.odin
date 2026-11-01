@@ -89,6 +89,7 @@ Request_Desc :: struct {
 	method:   string,       // default "GET"
 	headers:  string,       // "Name: value\r\nName: value" (no trailing CRLF needed)
 	body:     []byte,       // copied
+	background: bool,     // nobody looks at it: what arrives for it draws nothing (rust_drain)
 	on_event: Event_Proc,
 	user:     rawptr,
 	scope:    ^base.Scope,  // closing it cancels the request silently
@@ -126,6 +127,7 @@ Job :: struct {
 
 Request :: struct {
 	job:      ^Job,
+	background: bool,    // Request_Desc
 	hconnect: HINTERNET,
 	hrequest: HINTERNET,
 	rid:      u64,         // the Rust stack's request (0: none)
@@ -230,7 +232,7 @@ client_destroy :: proc(c: ^Client) {
 
 // Queues a request. Never calls back synchronously: failures arrive as a Failed event. Returns the request handle.
 fetch :: proc(c: ^Client, d: Request_Desc) -> base.Handle {
-	r := Request{on_event = d.on_event, user = d.user, scope = d.scope, collect = d.collect, priority = d.priority}
+	r := Request{on_event = d.on_event, user = d.user, scope = d.scope, collect = d.collect, priority = d.priority, background = d.background}
 	if link_active(d.link) { r.link = d.link }
 	h, rp := base.pool_insert(&c.requests, r)
 	if d.scope != nil {

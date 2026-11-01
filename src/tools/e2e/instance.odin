@@ -11,6 +11,7 @@ import "core:strings"
 import win "core:sys/windows"
 import "core:testing"
 import "core:time"
+import "wb:base"
 import "wb:e2e"
 import "wb:remote/api"
 
@@ -27,6 +28,8 @@ foreign ntdll {
 @(private = "file") RESTORE_PREF :: "browser.session.restore=true"
 // How long a start waits for a first one that does not answer (instance_shell.odin, INSTANCE_ACQUIRE_WAIT_MS: 3 s); a little less, the clock's grain.
 @(private = "file") UNANSWERED_AT_LEAST_MS :: 2500
+// ... and its whole time up to its own window: that wait, and a start that makes a window early on (-Perf only: it depends on the machine).
+@(private = "file") UNANSWERED_AT_MOST_MS :: 9000
 
 // The first Wren of a profile: it answers on its channel once it owns the window a second start talks to.
 @(private = "file")
@@ -129,6 +132,9 @@ a_first_wren_that_does_not_answer_does_not_hold_the_second :: proc(t: ^testing.T
 	NtResumeProcess(a.wren.process.handle)
 	testing.expect(t, api.process_alive(&b.process), "a process of its own")
 	testing.expectf(t, waited >= UNANSWERED_AT_LEAST_MS, "after about the 3 s it waits, not at once: %.0f ms", waited)
+	if !base.perf_skip("how long a start waits for a first one that does not answer") {
+		testing.expectf(t, waited < UNANSWERED_AT_MOST_MS, "the 3 s it waits and a start up to its window, no more: %.0f ms", waited)
+	}
 	e2e.quit(a)
 }
 

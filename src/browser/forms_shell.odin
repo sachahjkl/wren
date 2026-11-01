@@ -106,6 +106,7 @@ Forms_View :: struct {
 	caret_epoch:  time.Tick,
 	blink_on:     bool,
 	blink_timer:  base.Handle,   // wakes this window at the caret's next toggle (each window blinks in its own phase)
+	caret_painted: Caret_Painted,
 	report_timer: base.Handle,   // ... while the validation bubble is shown
 	last_serial:  u64,
 	autofocus_page: u64,
@@ -190,7 +191,8 @@ forms_shell_frame :: proc(app: ^App) {
 	// caret blinking: wake this window at the next toggle while a text field has the focus. Only in the window the user is in (as
 	// other browsers: a window in the back shows no caret); each window's timer is its own, in its own phase (its caret_epoch)
 	wid := rawptr(uintptr(active_window(app).id))   // (the timers name the window: it may close before they fire)
-	if fv.page_focus && forms.is_text_field(f, f.focus) && window_is_front(app) {
+	caret_a, caret_b, _ := forms.selection(f, f.focus)
+	if fv.page_focus && forms.is_text_field(f, f.focus) && window_is_front(app) && caret_a == caret_b && forms.is_mutable(f, f.focus) {   // (a selection or a read-only field shows no caret: nothing to blink)
 		period := blink_ms(app)
 		if period > 0 {
 			elapsed := time.duration_milliseconds(time.tick_since(fv.caret_epoch))
@@ -198,7 +200,9 @@ forms_shell_frame :: proc(app: ^App) {
 			if fv.blink_timer == base.NIL_HANDLE {
 				next := f64(period) - math.mod(elapsed, f64(period))
 				fv.blink_timer = host.set_timer(&app.loop, max(next, 1), 0, proc(data: rawptr) {
-					if w := forms_timer_window(data); w != nil { w.own.forms.blink_timer = base.NIL_HANDLE; window_request(the_app, w, 1) }
+					// (one frame per toggle: counted as a task as well, it asked for two)
+					if the_app != nil { host.quiet_note(&the_app.loop) }
+					if w := forms_timer_window(data); w != nil { w.own.forms.blink_timer = base.NIL_HANDLE; window_request_errand(the_app, w, .Caret) }
 				}, wid)
 			}
 		} else {
@@ -212,6 +216,12 @@ forms_shell_frame :: proc(app: ^App) {
 			if w := forms_timer_window(data); w != nil { w.own.forms.report_timer = base.NIL_HANDLE; window_request(the_app, w, 1) }
 		}, wid)
 	}
+}
+
+// Where the focused field's caret went in this frame's picture (paint_control): `exact`: its toggle changes these pixels only.
+Caret_Painted :: struct {
+	at:    draw.Rect,
+	exact: bool,
 }
 
 // The window a timer of the form controls was set for (nil: it closed). An App with no window (a test's) has its bare one.
@@ -803,11 +813,14 @@ paint_text_field :: proc(app: ^App, dc: ^draw.Context, fonts: ^font.State, fid: 
 		if y > content.max.y || y + ft.line_h < content.min.y { continue }
 		draw.text(dc, fid, size, {origin.x, y + (ft.line_h - (m.ascent + m.descent)) * 0.5 + m.ascent}, fg, ft.display[l.start:l.end])
 	}
-	if focused && fv.blink_on && a == b && forms.is_mutable(f, node) {
+	if focused && a == b && forms.is_mutable(f, node) {
 		x := math.round(origin.x + cxy.x)
 		y := origin.y + cxy.y
 		cw := max(page_scale(the_app), 1)
-		draw.rect(dc, {{x, y + ft.line_h * 0.1}, {x + cw, y + ft.line_h * 0.9}}, fg)
+		caret := draw.Rect{{x, y + ft.line_h * 0.1}, {x + cw, y + ft.line_h * 0.9}}
+		// (whether it shows or not: what its toggle changes on screen. In a layer or a 3D plane the picture goes through more than a transform: no region.)
+		fv.caret_painted = {at = draw.affine_bounds(draw.current_transform(dc), caret), exact = draw.layer_depth(dc) == 0 && !ctl_plane.ok}
+		if fv.blink_on { draw.rect(dc, caret, fg) }
 	}
 	// text dragged over the field: where it would be dropped (dnd_shell.odin), steady, focused or not
 	if at, ok := dnd_field_caret(node); ok {

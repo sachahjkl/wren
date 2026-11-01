@@ -666,11 +666,39 @@ A11y_Stats :: struct {
 	page_fallback, page_verify_diff: string,
 }
 
+// Why a frame was made (src/browser/loop_rates.odin). A frame counts once, under the first of its causes in this order.
+Frame_Cause :: enum u8 {
+	Input,                // events of the window
+	Task,                 // a task or a timer of the loop ran and did not say it was quiet
+	Page,                 // the document changed, a requestAnimationFrame, a running animation
+	Asked,                // frames asked for by name (request_frames)
+	Interface_Animation,  // the toolkit has an animation under way, or work left for the next build
+	Interface_Wake,       // the timed wake the toolkit asked for is due: a tooltip's delay, a scrollbar fading out, a caret's blink
+	Repaint,              // the system asked (uncovered, a loop of the system)
+}
+
+Loop_Reason :: struct {
+	at_ms:  f64,
+	causes: string,
+	by:     string,   // the place in the sources of who asked
+}
+
+// The loop's own account since it started: what at rest stays still.
+Loop_Stats :: struct {
+	turns:   int,      // passes of the loop
+	sleeps:  int,      // of them, the loop slept first: a wake
+	barren:  int,      // wakes after which no window drew
+	frames:  int,      // frames made, of every window
+	causes:  [Frame_Cause]int,
+	reasons: []Loop_Reason,   // the last frames, oldest first
+}
+
 // What tests read (`Session.result` has them all; a number a test needs goes here).
 Stats :: struct {
 	pid:                 int,
 	fps:                 f64,
 	frames_drawn:        int,
+	loop:                Loop_Stats,
 	frames_presented:    int,
 	pending_ops:         int,
 	input_events:        int,
@@ -728,6 +756,18 @@ stats :: proc(s: ^Session, reset_latency := false, reset_frames := false, loc :=
 	reasons := make([dynamic]Bfcache_Reason, 0, len(why), context.temp_allocator)
 	for k in why { append(&reasons, Bfcache_Reason{k, i_of(why, k)}) }
 	cur, _ := remote.param_object(o, "cursor")
+	lo, _ := remote.param_object(o, "loop")
+	lc, _ := remote.param_object(lo, "causes")
+	loop := Loop_Stats{turns = i_of(lo, "turns"), sleeps = i_of(lo, "sleeps"), barren = i_of(lo, "barren"), frames = i_of(lo, "frames")}
+	for c in Frame_Cause { loop.causes[c] = i_of(lc, fmt.tprint(c)) }
+	if kept, ok := remote.param_array(lo, "reasons"); ok {
+		list := make([]Loop_Reason, len(kept), context.temp_allocator)
+		for k, i in kept {
+			e, _ := k.(json.Object)
+			list[i] = {at_ms = f_of(e, "atMs"), causes = s_of(e, "causes"), by = s_of(e, "by")}
+		}
+		loop.reasons = list
+	}
 	size_in :: proc(o: json.Object, name: string) -> (v: [2]int) {
 		if a, ok := remote.param_array(o, name); ok && len(a) == 2 {
 			x, _ := a[0].(json.Integer)
@@ -741,7 +781,7 @@ stats :: proc(s: ^Session, reset_latency := false, reset_frames := false, loc :=
 		return {fixed = b_of(x, "fixed"), size = size_in(x, "size"), buffers = size_in(x, "buffers"), source = size_in(x, "source")}
 	}
 	return {
-		pid = i_of(o, "pid"), fps = f_of(o, "fps"), frames_drawn = i_of(o, "framesDrawn"), frames_presented = i_of(o, "framesPresented"),
+		pid = i_of(o, "pid"), fps = f_of(o, "fps"), frames_drawn = i_of(o, "framesDrawn"), loop = loop, frames_presented = i_of(o, "framesPresented"),
 		pending_ops = i_of(o, "pendingOps"), input_events = i_of(o, "inputEvents"), requests_in_flight = i_of(o, "requestsInFlight"),
 		tabs = i_of(o, "tabs"), nodes = i_of(o, "nodes"), working_set_bytes = i_of(o, "workingSetBytes"), private_bytes = i_of(o, "privateBytes"),
 		uptime_ms = f_of(o, "uptimeMs"), frame_period_ms = f_of(o, "framePeriodMs"),

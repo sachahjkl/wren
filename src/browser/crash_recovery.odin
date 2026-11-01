@@ -345,6 +345,7 @@ recovery_open :: proc(app: ^App, rest: []string) -> bool {
 @(private = "file")
 recovery_stable :: proc(data: rawptr) {
 	recovery.stable_timer = base.NIL_HANDLE
+	host.quiet_note(&(^App)(data).loop)   // (the disk, not the screen)
 	if !recovery.active || recovery.closing || !recovery.self.restoring { return }
 	recovery.self.restoring = false
 	recovery_mark(recovery.dir, recovery.self)
@@ -369,6 +370,7 @@ Snapshot_Job :: struct {
 recovery_fire :: proc(data: rawptr) {
 	app := (^App)(data)
 	recovery.snap_timer = base.NIL_HANDLE
+	host.quiet_note(&app.loop)   // (the disk, not the screen)
 	if !recovery.active || recovery.closing || !recovery.dirty { return }
 	if recovery.inflight {   // (the write before this one is not done: the changes wait for it)
 		recovery.snap_timer = host.set_timer(&app.loop, f64(config.int_of(&app.prefs, "browser.session.crash_snapshot_ms")), 0, recovery_fire, app)
@@ -393,6 +395,7 @@ snapshot_work :: proc(data: rawptr) {
 @(private = "file")
 snapshot_done :: proc(data: rawptr) {
 	j := (^Snapshot_Job)(data)
+	if the_app != nil { host.quiet_note(&the_app.loop) }
 	recovery.inflight = false
 	if j.ok {
 		delete(recovery.last)

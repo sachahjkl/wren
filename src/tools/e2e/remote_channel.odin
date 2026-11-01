@@ -34,11 +34,13 @@ foreign advapi32 {
 // Quiet: a second, using less than this of the processors (a Wren with no channel to ask, watched from outside).
 @(private = "file") QUIET_WINDOW :: 1 * time.Second
 @(private = "file") QUIET_CPU_MS :: 25.0
-// What an idle Wren must not do is loop: that takes all of a processor for the time measured, and a frame every 16 ms, 180 of them (-Perf only: it depends on the machine).
-// (It does draw about 4 frames a second at rest, on master as well, from something not identified yet: the limit tells a loop from that, not that from none.)
+// What an idle Wren costs once settled (-Perf only: it depends on the machine; that it draws no frame is checked everywhere, frames_at_rest.odin): nothing of its own, what is left
+// is a driver's thread that ticks on its own. The clock of a process's time goes by 15.6 ms; twice that over the period.
 @(private = "file") IDLE_MEASURE :: 3 * time.Second
-@(private = "file") IDLE_CPU_MS :: 60.0
-@(private = "file") IDLE_FRAMES :: 30
+@(private = "file") IDLE_CPU_MS :: 31.3
+@(private = "file") IDLE_FRAMES :: 0
+// What settling takes: the status bar's numbers after the last frame, and it stops the wait when no frame has come for this long.
+@(private = "file") IDLE_SETTLED :: 2 * time.Second
 // More than browser.remote.max_message_bytes, by default 8 MiB.
 @(private = "file") GIANT_REQUEST_BYTES :: 9 << 20
 // Clients that connect and go at once: the first such ended the accept thread for good, once.
@@ -85,7 +87,14 @@ without_the_flag_there_is_no_channel_and_no_cost :: proc(t: ^testing.T) {
 	if base.perf_skip("idle Wren: CPU time and frames drawn") { return }
 	p := e2e.launch(t, {hidden = true})
 	api.wait_quiet(p.s)
+	// settled: no frame for a while, whatever a first second still had to do
 	before, _ := api.stats(p.s)
+	for settled := time.tick_now(); time.tick_since(settled) < IDLE_SETTLED; {
+		time.sleep(SHORT_WAIT)
+		st, _ := api.stats(p.s)
+		if st.frames_drawn != before.frames_drawn { before, settled = st, time.tick_now() }
+	}
+	before, _ = api.stats(p.s)
 	plain0, driven0 := api.process_cpu_ms(&plain.process), api.process_cpu_ms(&p.wren.process)
 	time.sleep(IDLE_MEASURE)
 	plain1, driven1 := api.process_cpu_ms(&plain.process), api.process_cpu_ms(&p.wren.process)

@@ -133,6 +133,7 @@ Session_History :: page.Session_History   // (a field named `page` hides the pac
 // active_window(app): .win, .ui (its toolkit state), .tabs, .current, .address, .page_rect, .frames_requested
 // (request_frames), .presented; window_own(app) for the chrome's state.
 App :: struct {
+	rates:    Loop_Rates,   // loop_rates.odin: turns, sleeps, frames and why
 	r:        render.Renderer,
 	fonts:    font.State,
 	dc:       draw.Context,
@@ -1085,7 +1086,11 @@ profile_save :: proc(app: ^App, force := false) {
 	if force || app.profile.hsts.dirty { fetch.hsts_save(&app.profile.hsts, h, fetch.now_ms()) }
 }
 
-autosave :: proc(data: rawptr) { profile_save((^App)(data)) }
+autosave :: proc(data: rawptr) {
+	app := (^App)(data)
+	host.quiet_note(&app.loop)   // (what is on the disk: nothing to draw)
+	profile_save(app)
+}
 
 // (Re)arms the autosave timer from the current preference.
 arm_autosave :: proc(app: ^App) {
@@ -1148,7 +1153,9 @@ chrome_frame_style :: proc(app: ^App) -> ui.Style {
 	}
 }
 
-frame :: proc(app: ^App, idled := false) {
+// `causes`: what the loop knew of when it decided on this frame (windows_pass; the system's loop: its repaint); `idled`: it slept before
+// it, or this window had no cause. What the turn's tasks and events add is looked at here: nothing at all, and no frame is made.
+frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	// (windows.odin: the frame gate. A frame made by a loop of the system inside another frame's poll puts back that one's
 	// stage. The callers ask the gate first: a refusal here would be a frame asked for where none may begin.)
 	gate := platform.frame_gate()
@@ -1211,12 +1218,25 @@ frame :: proc(app: ^App, idled := false) {
 	if t := current_tab(app); t != nil && t.page != nil {
 		page_wants_frame = t.layout.mutations != t.page.doc.mutations || page.wants_animation_frame(t.page) || page.animations_active(t.page)
 	}
-	if (idled && len(events) == 0 && ran == 0 && !page_wants_frame && wnd.frames_requested == 0 && !ui.needs_frame(active_window(app).ui) && !ui.wake_due(active_window(app).ui) && !active_window(app).win.paint_requested) || resize_echo_frame(app, events, ran, page_wants_frame) {   // (pacing.odin: a copy of a resize step's picture is not presented)
+	why := causes
+	if len(events) > 0 { why += {.Input} }
+	if ran > 0 { why += {.Task} }
+	if page_wants_frame { why += {.Page} }
+	if wnd.frames_requested != 0 { why += {.Asked} }
+	if ui.needs_frame(wnd.ui) { why += {.Interface_Animation} }
+	if ui.wake_due(wnd.ui) { why += {.Interface_Wake} }
+	if platform.take_paint_request(wnd.win) { why += {.Repaint} }
+	if (idled && why == {}) || resize_echo_frame(app, events, ran, page_wants_frame) {   // (pacing.odin: a copy of a resize step's picture is not presented)
 		shell_page_phase_end(app, nil)
 		free_all(context.temp_allocator)
 		return
 	}
-	memory_trim_active()   // memory_trim.odin
+	loop_rates_frame(&app.rates, why, .Task in why ? app.loop.last_ran : wnd.asked_by, loop_ms(app, time.tick_now()))
+	// a frame on an errand, or for a timed wake of the toolkit (a caret of the interface, a tooltip), is no activity: the browser stays at rest
+	// (the memory given back, the status bar's numbers at 0)
+	if why != {.Asked} { wnd.errand = .None }
+	if wnd.errand == .None && why != {.Interface_Wake} { memory_trim_active() } else { hud.settle_skip = true }   // memory_trim.odin; hud.odin: no sample
+	forms_view(app).caret_painted = {}
 	prof_begin(.Input)
 	page_cursor_events(app, events)   // page_cursor.odin: a press on the page keeps its cursor
 	dnd_events(app, events)           // dnd_shell.odin: drags of other applications over the window
@@ -1297,6 +1317,11 @@ frame :: proc(app: ^App, idled := false) {
 	dnd_paint(app, &app.dc)   // dnd_image.odin: the picture of a drag from the page, over everything
 	autoscroll_paint(app, &app.dc)   // page_autoscroll.odin: the autoscroll anchor marker, over everything
 	prof_end(.UI_Draw)
+	// nothing asked for more since (window_request cleared it), and the caret is where it was: only its pixels are drawn again
+	if caret := forms_view(app).caret_painted; wnd.errand == .Caret && caret.exact {
+		draw.damage_begin(&app.dc)
+		draw.damage(&app.dc, caret.at)
+	}
 	prof_begin(.Submit)
 	draw.end_frame(&app.dc)   // GPU time: the renderer's timestamp queries around its submit (hud.odin, prof.odin)
 	prof_end(.Submit)
@@ -1513,6 +1538,7 @@ app_start :: proc(args: []string) -> ^App {
 	prof_mark(.UI_Fonts)
 	host.phase("draw, ui, page render, shells")
 	draw.init(&app.dc, &app.r, &app.fonts)
+	draw.set_partial_redraw(&app.dc, true)   // a frame that marks a region draws only that (a caret's toggle: frame()); others are whole
 	ui.init(active_window(app).ui, &app.fonts, &app.theme)
 	chrome_a11y_init()   // (what screen readers call the caption buttons: a11y_chrome.odin)
 	active_window(app).ui.icon_font = app.icons

@@ -11,6 +11,7 @@
 // programs and tests.
 package host
 
+import "base:runtime"
 import "core:container/priority_queue"
 import "core:sync"
 import "core:time"
@@ -21,11 +22,13 @@ Task_Proc :: #type proc(data: rawptr)
 Task :: struct {
 	fn:   Task_Proc,
 	data: rawptr,
+	by:   runtime.Source_Code_Location,   // who posted it (Loop.last_ran)
 }
 
 Timer :: struct {
 	fn:          Task_Proc,
 	data:        rawptr,
+	by:          runtime.Source_Code_Location,   // who set it (Loop.last_ran)
 	deadline:    i64,   // ns since loop origin
 	interval:    i64,   // 0 = one-shot
 	scope:       ^base.Scope,
@@ -62,6 +65,9 @@ Loop :: struct {
 	// Callbacks of the last run_ready that made nothing show by themselves (a media player's notice that its decoders
 	// advanced): quiet_take hands the count to the shell, which does not draw a frame for them. Loop thread only.
 	quiet:     int,
+	// Who posted or set the last callback that ran and was not quiet: what a frame made for it names (the browser's loop_rates.odin).
+	last_ran:  runtime.Source_Code_Location,
+	last_quiet: runtime.Source_Code_Location,   // ... and the last that was (what a wake with no frame names)
 	// Debug builds: the thread that runs the loop (the first one to touch its timers or run it); everything but post and
 	// signal asserts it is that one (loop_owned). 0: none yet.
 	owner:     int,
@@ -174,9 +180,9 @@ discard_posted :: proc(l: ^Loop, fn: Task_Proc, discard: proc(data: rawptr)) {
 }
 
 // Any thread.
-post :: proc(l: ^Loop, fn: Task_Proc, data: rawptr) {
+post :: proc(l: ^Loop, fn: Task_Proc, data: rawptr, by := #caller_location) {
 	sync.mutex_lock(&l.mu)
-	append(&l.posted, Task{fn, data})
+	append(&l.posted, Task{fn, data, by})
 	sync.mutex_unlock(&l.mu)
 	signal(l)
 }
@@ -190,10 +196,10 @@ signal :: proc(l: ^Loop) {
 }
 
 // Loop thread. Registers a timer; with a scope the timer dies with it. Returns NIL_HANDLE never.
-set_timer :: proc(l: ^Loop, delay_ms: f64, interval_ms: f64, fn: Task_Proc, data: rawptr, scope: ^base.Scope = nil) -> base.Handle {
+set_timer :: proc(l: ^Loop, delay_ms: f64, interval_ms: f64, fn: Task_Proc, data: rawptr, scope: ^base.Scope = nil, by := #caller_location) -> base.Handle {
 	loop_owned(l, "host.set_timer off the loop's thread")
 	t := Timer{
-		fn = fn, data = data,
+		fn = fn, data = data, by = by,
 		deadline = now_ns(l) + timer_ns(delay_ms),
 		interval = timer_ns(interval_ms),
 		scope = scope,
@@ -282,6 +288,13 @@ quiet_take :: proc(l: ^Loop) -> int {
 	return n
 }
 
+@(private = "file")
+run_one :: proc(l: ^Loop, fn: Task_Proc, data: rawptr, by: runtime.Source_Code_Location) {
+	quiet := l.quiet
+	fn(data)
+	if l.quiet == quiet { l.last_ran = by } else { l.last_quiet = by }
+}
+
 // Loop thread. Runs the posted tasks, then the timers due at this instant. Returns how many callbacks ran.
 run_ready :: proc(l: ^Loop) -> int {
 	loop_owned(l, "host.run_ready off the loop's thread")
@@ -291,7 +304,7 @@ run_ready :: proc(l: ^Loop) -> int {
 	sync.mutex_lock(&l.mu)
 	l.posted, l.scratch = l.scratch, l.posted
 	sync.mutex_unlock(&l.mu)
-	for task in l.scratch { task.fn(task.data); ran += 1 }
+	for task in l.scratch { run_one(l, task.fn, task.data, task.by); ran += 1 }
 	clear(&l.scratch)
 
 	cutoff := now_ns(l)
@@ -305,7 +318,7 @@ run_ready :: proc(l: ^Loop) -> int {
 		priority_queue.pop(&l.queue)
 		t := base.pool_get(&l.timers, e.handle)
 		if t == nil || t.deadline != e.deadline { continue }
-		fn, data := t.fn, t.data
+		fn, data, by := t.fn, t.data, t.by
 		if t.interval > 0 {
 			// next tick counted from now, not from the missed deadline: a stalled loop must not replay a burst
 			t.deadline = max(e.deadline + t.interval, cutoff + 1)
@@ -315,7 +328,7 @@ run_ready :: proc(l: ^Loop) -> int {
 			done, _ := base.pool_remove(&l.timers, e.handle)
 			if done.scope != nil { release_scope_hook(done) }
 		}
-		fn(data)
+		run_one(l, fn, data, by)
 		ran += 1
 		timers_ran += 1
 	}

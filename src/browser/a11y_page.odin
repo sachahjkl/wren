@@ -10,6 +10,7 @@ import "wb:a11y"
 import "wb:base"
 import "wb:dom"
 import "wb:forms"
+import "wb:host"
 import lay "wb:layout"
 import "wb:page"
 
@@ -47,6 +48,7 @@ Page_A11y :: struct {
 	grafted:  u64,       // the tab whose tree the chrome's build grafted (0: none this build)
 	round:    u64,
 	sent_at:  time.Tick, // when the trees were last brought up to date
+	wake:     base.Handle,   // the timer of the frame that sends what the wait held back
 	cost:     time.Duration,   // what that took
 	// statistics (wren ctl stats)
 	builds, patches, sends, refused, verify_failed: int,
@@ -110,6 +112,7 @@ page_a11y_frame :: proc(app: ^App) {
 		return
 	}
 	if t.page == nil || t.kind != .Web || t.page.formctl == nil { return }
+	if wnd.errand == .Caret || wnd.errand == .Status_Bar { return }   // (nothing a reader is told about changed)
 	set := a11y.settings_from_prefs(&app.prefs)
 	if pa.tab_id != t.id {
 		// another page under the graft: its trees are new to the adapter
@@ -137,8 +140,17 @@ page_a11y_frame :: proc(app: ^App) {
 	// Ten updates a second are plenty for a reader, and any program that once asked UI Automation (a screenshot tool, PowerToys) keeps the
 	// tree alive: on a page that changes every frame the updates were up to a quarter of the CPU time. A costly update (a whole tree of a page
 	// that changes too much to patch) waits longer (PAGE_A11Y_COST_FACTOR). A request above goes through at once.
-	if pa.top.sent && len(ui.a11y_requests()) == 0 && time.tick_since(pa.sent_at) < max(time.Duration(set.interval_ms) * time.Millisecond, PAGE_A11Y_COST_FACTOR * pa.cost) {
-		request_frames(app, 1)   // (the page may stop changing: a later frame sends what is left)
+	wait := max(time.Duration(set.interval_ms) * time.Millisecond, PAGE_A11Y_COST_FACTOR * pa.cost)
+	if since := time.tick_since(pa.sent_at); pa.top.sent && len(ui.a11y_requests()) == 0 && since < wait {
+		// (the page may stop changing: one later frame sends what is left. A frame asked for at each frame drew the whole wait at the
+		// screen's rate, on a page at rest as well.)
+		if pa.wake == base.NIL_HANDLE {
+			pa.wake = host.set_timer(&app.loop, max(time.duration_milliseconds(wait - since), 1), 0, proc(data: rawptr) {
+				if the_app == nil { return }
+				host.quiet_note(&the_app.loop)
+				if w := window_by_id(the_app, int(uintptr(data))); w != nil { w.own.a11y.wake = base.NIL_HANDLE; window_request_errand(the_app, w, .Reader) }
+			}, rawptr(uintptr(wnd.id)))
+		}
 		return
 	}
 	pa.sent_at = time.tick_now()

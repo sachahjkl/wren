@@ -61,6 +61,10 @@ to_scale :: proc(s: ^e2e.Session, scale: f64, loc := #caller_location) {
 	e2e.wait_frames(s, LATE_EVENTS_FRAMES, loc = loc)
 }
 
+// A caret's toggle on a swap chain: frames_at_rest.odin.
+@(test)
+real_window_caret_draws_its_own_pixels :: proc(t: ^testing.T) { caret_draws_its_own_pixels(t, hidden = true) }
+
 // WM_DPICHANGED through the window procedure, with the rectangle the system suggests: the scale, the real window's size, the swap chain's picture, the page and its media query.
 @(test)
 real_window_changes_monitor :: proc(t: ^testing.T) {

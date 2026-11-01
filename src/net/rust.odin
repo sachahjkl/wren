@@ -218,14 +218,20 @@ rust_begin :: proc(c: ^Client, h: base.Handle, r: ^Request) -> u32 {
 rust_drain :: proc(data: rawptr) {
 	c := (^Client)(data)
 	we: Wn_Event
+	// (a drain that only carried a background download, the content blocker's lists, is no reason to draw: each of its chunks drew two
+	// frames, 8 a second for as long as it lasted)
+	shows := false
+	defer if !shows { host.quiet_note(c.loop) }
 	for c.rs != nil && wn_net_poll(c.rs, &we) != 0 {
 		if we.kind >= WN_WS_FIRST {
+			shows = true
 			rust_ws_event(c, &we)
 			continue
 		}
 		h := base.Handle(we.tag)
 		r := base.pool_get(&c.requests, h)
 		if r == nil || r.job == nil { continue }   // cancelled: its bytes stay the library's
+		if !r.background { shows = true }
 		ev := Event{req = h, status = int(we.status), error = we.error, secure_flags = we.secure_flags, protocol = u8(we.protocol)}
 		switch we.kind {
 		case WN_HEADERS:
