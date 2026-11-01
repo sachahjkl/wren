@@ -146,8 +146,8 @@ attach_start :: proc(inst: ^Instance, code: []byte, threads: int, max_functions 
 	sync.mutex_lock(&attach_pool.lock)
 	defer sync.mutex_unlock(&attach_pool.lock)
 	for len(attach_pool.threads) < max(1, threads) {
-		// (low priority: compiling is background work the page's own thread must never wait behind)
-		t := thread.create_and_start(attach_worker, priority = .Low)
+		// (below the interface thread, level with other programs: host.Thread_Priority)
+		t := thread.create_and_start(attach_worker)
 		if t == nil { break }
 		append(&attach_pool.threads, t)
 	}
@@ -232,7 +232,6 @@ attach_stop :: proc() -> bool {
 	attach_pool.stopping = true
 	sync.cond_broadcast(&attach_pool.cond)
 	sync.mutex_unlock(&attach_pool.lock)
-	for t in attach_pool.threads { boost_for_join(t) }
 	when !base.TRACK_MEMORY {
 		deadline := time.tick_add(time.tick_now(), ATTACH_STOP_WAIT)
 		for t in attach_pool.threads {

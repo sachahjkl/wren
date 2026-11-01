@@ -36,7 +36,7 @@ WORKER_PREFS := [?]config.Def{
 	{name = "workers.thread_stack_bytes", kind = .Int, default = {i = 32 << 20}, bounded = true, min = 256 << 10, max = 256 << 20, bytes = true, unit = "bytes",
 		description = "Native stack reserved for each worker thread and each thread compiling JavaScript off the interface thread. Bounds how deep calls between the module and the browser may nest; must exceed wasm.wasmtime.max_stack_bytes."},
 	{name = "workers.thread_priority", kind = .String, default = {s = "below_normal"}, choices = {"normal", "below_normal", "lowest"},
-		description = "Scheduling priority of worker threads. Below the interface thread, the window stays responsive even when workers keep every core busy."},
+		description = "Scheduling priority of worker threads. below_normal: below the interface thread, so that the window stays responsive even when workers keep every core busy, and level with other programs. lowest: behind other programs too, which gives a worker almost nothing while they keep every core busy."},
 	{name = "workers.max_memory_pages", kind = .Int, default = {i = 16384}, bounded = true, min = 1, max = 65536, unit = "pages of 64 KiB",
 		description = "Most linear memory a worker's module may grow to (16384 = 1 GiB). A smaller maximum declared by the module itself still applies."},
 	{name = "workers.instruction_budget", kind = .Int, default = {i = 50_000_000}, bounded = true, min = -1, max = 1 << 40, unit = "instructions",

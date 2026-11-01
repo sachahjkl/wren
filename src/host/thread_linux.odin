@@ -18,6 +18,9 @@ Native_Thread :: struct {
 
 // Linux has no thread priority classes: a thread's nice value (higher is lower priority) is its own. The steps are
 // those of Windows' THREAD_PRIORITY_BELOW_NORMAL / LOWEST relative to their process: a clear but bounded yield.
+// (the scheduler here does not starve a higher nice value: nothing to raise the interface thread above)
+thread_raise_interface :: proc() {}
+
 @(private)
 nice_of :: proc(p: Thread_Priority) -> i32 {
 	switch p {
