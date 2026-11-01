@@ -82,8 +82,8 @@
 	SVG in an iframe does not trigger FCP in the main frame: TIMEOUT
 /paint-timing/first-contentful-bg-image.html: TIMEOUT
 	First contentful paint fires due to background image render.: TIMEOUT
-/paint-timing/first-contentful-canvas-webgl2.html: OK|TIMEOUT
-	First contentful paint fires due to webgl2 canvas render.: PRECONDITION_FAILED
+/paint-timing/first-contentful-canvas-webgl2.html: TIMEOUT
+	First contentful paint fires due to webgl2 canvas render.: TIMEOUT
 /paint-timing/first-contentful-canvas.html: TIMEOUT
 	First contentful paint fires due to canvas render.: TIMEOUT
 /paint-timing/first-contentful-image.html: TIMEOUT
