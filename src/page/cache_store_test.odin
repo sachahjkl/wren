@@ -52,8 +52,8 @@ cache_matching_and_quota :: proc(t: ^testing.T) {
 	testing.expect(t, !cache_entry_matches(&star, "https://a.example/v", "GET", {}))
 	testing.expect(t, cache_entry_matches(&star, "https://a.example/v", "GET", {ignore_vary = true}))
 
-	dir := "build/tmp/cache_store_test"
-	_ = base.remove_tree(dir)
+	dir := strings.concatenate({"build/tmp/cache_store_test_", base.unique_name(context.temp_allocator)}, context.temp_allocator)
+	defer base.remove_tree(dir)
 	origin := "https://q.example"
 	cache_open(dir, origin, "c")
 	testing.expect_value(t, cache_put(dir, origin, "c", Cached_Response{url = "https://q.example/a", status = 200}, transmute([]byte)string("hello"), 100), Cache_Put_Error.None)
