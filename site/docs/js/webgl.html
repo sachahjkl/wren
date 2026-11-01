@@ -239,7 +239,7 @@ web-platform-tests is in <code>wpt/suites.txt</code>.</p>
 <tbody>
 <tr><td>the interfaces</td><td><code>native/js/odin/web_webgl.js</code>, <code>web_webgl.odin</code></td><td>Web IDL: objects, overloads, conversions; which object is whose. Calls become words in a command buffer.</td></tr>
 <tr><td>the crossing</td><td><code>api/webgl.widl</code>, <code>src/page/bindings_webgl.odin</code>, <code>src/webgl</code></td><td>A context on its canvas's backing; command buffers, questions, frames.</td></tr>
-<tr><td>the device</td><td><code>native/webgl</code>: <code>gl.rs</code>, <code>draw.rs</code>, <code>query.rs</code>, <code>formats.rs</code>, <code>ops.rs</code></td><td>A thread with a wgpu device per context: OpenGL ES's state machine, all its rules and its errors.</td></tr>
+<tr><td>the device</td><td><code>native/webgl</code>: <code>gl.rs</code>, <code>draw.rs</code>, <code>capture.rs</code>, <code>query.rs</code>, <code>formats.rs</code>, <code>ops.rs</code></td><td>A thread with a wgpu device per context: OpenGL ES's state machine, all its rules and its errors.</td></tr>
 <tr><td>the shaders</td><td><code>native/webgl/src/translate.rs</code></td><td>GLSL ES to what naga reads, and what WebGL must know of a shader.</td></tr>
 </tbody>
 </table></div>
@@ -275,6 +275,9 @@ devices. A shared texture is the way to save that copy, later.</li>
 <tr><td>RGB, luminance, alpha, 16-bit packed textures</td><td>expanded to RGBA on upload</td></tr>
 <tr><td>incomplete textures</td><td>a fallback texture of opaque black</td></tr>
 <tr><td><code>generateMipmap</code>, scaled blits, clears with a mask or scissor</td><td>drawn</td></tr>
+<tr><td>transform feedback</td><td>a variant of the vertex stage stores its varyings in storage buffers, in a pass of its own (<code>capture.rs</code>)</td></tr>
+<tr><td>occlusion queries of GL, which last across passes</td><td>an occlusion slot per pass they cross, resolved at each submit; the result is any of them</td></tr>
+<tr><td>a vertex attribute divisor above 1</td><td>the values written out per instance</td></tr>
 </tbody>
 </table></div>
 <h3 id="shaders"><a class="anchor" href="#shaders" aria-hidden="true">#</a>Shaders</h3>
@@ -293,12 +296,14 @@ starts; matrices as attributes and varyings become their columns;</li>
 implicit conversions from <code>int</code> to <code>float</code> compile, and the loop restrictions of GLSL ES 1.00 are not enforced.</p>
 <h2 id="limits"><a class="anchor" href="#limits" aria-hidden="true">#</a>Limits</h2>
 <ul>
-<li><strong>Transform feedback</strong>: the objects exist, <code>MAX_TRANSFORM_FEEDBACK_*</code> are 0, <code>beginTransformFeedback</code> is <code>INVALID_OPERATION</code>.</li>
-<li><strong>Queries</strong>: <code>getQueryParameter</code> says at once that everything passed. No timers (<code>EXT_disjoint_timer_query</code>).</li>
+<li><strong>Transform feedback</strong>: needs vertex shaders that write to storage (<code>VERTEX_WRITABLE_STORAGE</code>, everywhere Direct3D 12 and Vulkan have it). An adapter
+without it says <code>MAX_TRANSFORM_FEEDBACK_*</code> are 0, and <code>beginTransformFeedback</code> is <code>INVALID_OPERATION</code>. A vertex of the capture runs in a pass of its own: a program's
+vertex stage runs twice when it is also drawn. Strips, fans and loops copy their primitives vertex by vertex, which is slow for many.</li>
+<li><strong>Queries</strong>: no timers (<code>EXT_disjoint_timer_query</code>). <code>ANY_SAMPLES_PASSED_CONSERVATIVE</code> is <code>ANY_SAMPLES_PASSED</code>.</li>
 <li><strong>Compressed textures</strong>: S3TC only (<code>WEBGL_compressed_texture_s3tc</code>), 2D, where the adapter has BC formats. No ETC, ASTC, RGTC, BPTC.</li>
-<li><strong>Rendering</strong>: lines are 1 pixel wide. A vertex attribute divisor above 1 is drawn as 1. Points cannot be instanced. <code>SAMPLE_COVERAGE</code> is ignored.
+<li><strong>Rendering</strong>: lines are 1 pixel wide. A vertex attribute divisor above 1 is written out, per instance, on each draw count. Points cannot be instanced. <code>SAMPLE_COVERAGE</code> is ignored.
 A framebuffer's depth and stencil must be one attachment. Depth blits are whole copies of the same size and samples.</li>
-<li><strong>Workers</strong>: <code>getContext("webgl")</code> on an <code>OffscreenCanvas</code> works in a window; in a worker it gives null.</li>
+<li><strong>Workers</strong>: <code>getContext("webgl")</code> on an <code>OffscreenCanvas</code> works in a window; in a worker it gives null (the module is <code>[Exposed=Window]</code>, and frames and their notices go through a document's canvas: not a small change).</li>
 <li><strong>Videos</strong> are textures when their picture is on the CPU (software decoding); a picture only on the GPU uploads nothing.</li>
 <li><strong><code>gl.getError</code> from a Wasm module of a page</strong>: as JavaScript's; a malformed stream loses the context.</li>
 <li><strong>Objects collected</strong>: buffers, textures and programs a page drops without deleting stay until the page or the context goes.</li>

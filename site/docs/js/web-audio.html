@@ -284,13 +284,40 @@ Linux. Vorbis has no decoder on Windows. The argument is detached at the call, a
 <tr><td><code>AnalyserNode</code></td><td>all four reads, smoothing, Blackman window</td></tr>
 <tr><td><code>ConvolverNode</code></td><td>uniform partitioned convolution with no latency, 1, 2 and 4 channels. A very long impulse response (over about 10 s) may be more than a quantum's time</td></tr>
 <tr><td><code>ScriptProcessorNode</code></td><td>blocks to the page and back through rings, two blocks of delay; an offline rendering waits for the page's answer</td></tr>
+<tr><td><code>AudioWorkletNode</code></td><td>see below: <code>process()</code> in a realm of its own, <code>parameters</code>, <code>port</code>, <code>processorerror</code>, realtime and offline</td></tr>
 <tr><td><code>MediaElementAudioSourceNode</code></td><td>the player sends what it plays to the node, with the element's volume, and the speakers get silence. The media clock goes on</td></tr>
 </tbody>
 </table></div>
+<h2 id="audioworklet"><a class="anchor" href="#audioworklet" aria-hidden="true">#</a>AudioWorklet</h2>
+<p><code>context.audioWorklet.addModule(url)</code> starts the context's realm the first time: a JavaScript worker of the document, its own Wasm
+instance on a thread of its own (<code>worker.odin</code>, counted in <code>workers.max_per_page</code> and <code>workers.max_total</code>), with a worklet's scope
+(<code>native/js/odin/web_audio_worklet.js</code>): <code>AudioWorkletGlobalScope</code>, <code>registerProcessor</code>, <code>currentFrame</code>, <code>currentTime</code>, <code>sampleRate</code>,
+<code>AudioWorkletProcessor</code>, and of what a worker has only what is exposed to worklets. Modules are <code>import()</code>ed there, by requests
+relayed to the page's thread under the document's policies. <code>AudioWorkletNode</code>, its <code>port</code> and <code>parameters</code> are in <code>web_audio.js</code>;
+the page and the realm talk with the worker's messages, so <code>processorOptions</code> and ports are structured clones.</p>
+<p>A node's quantum is a request to that thread (<code>src/webaudio/worklet.odin</code>), since the render thread cannot read a Wasm instance's memory:</p>
+<ul>
+<li>the input channels and the param values are copied to the context's one exchange buffer, the realm's thread is woken, and the render
+thread waits, <code>Graph.mu</code> let go, so the page never waits for a processor;</li>
+<li>the realm reads them into <code>Float32Array</code>s it keeps per processor (new ones when the channels change or the script transferred a
+buffer), calls <code>process()</code>, and the output comes back the same way. Nothing allocates on the render thread once the buffer has its
+size, and the realm allocates only what its script does;</li>
+<li>a realtime quantum waits half of what is queued ahead of the device, between 5 and 100 ms, an offline one <code>webaudio.worklet_stall_ms</code>.
+Past that the quantum is silence and the next ones do not wait until the realm has caught up: what it was running is dropped. The
+microtasks of the realm run once per quantum, after all its processors;</li>
+<li>a throw in <code>process()</code> or in a constructor is <code>processorerror</code>, with the message, on that node, which then gives silence. A realm that
+stops (a trap, out of memory), or stays busy past <code>webaudio.worklet_stall_ms</code> and is then stopped by the page, is <code>processorerror</code> on
+every node. <code>process()</code> that never returns costs that silence and that delay, never a hung render thread: closing a page or a context
+interrupts the wait and joins the render thread first.</li>
+</ul>
+<p>A node is kept while its processor is at work (<code>process()</code> returned true). A context collected or closed stops its realm.</p>
+<p>Each context with a worklet has its realm: an instance and a thread (about what a worker costs). One realm serves one context, where the
+specification has one global scope per context as well.</p>
 <h2 id="what-there-is-not"><a class="anchor" href="#what-there-is-not" aria-hidden="true">#</a>What there is not</h2>
 <ul>
-<li><strong><code>AudioWorklet</code></strong> (<code>AudioWorkletNode</code>): absent, so that a page can test for it. It needs a realm on a render thread of its own, or a
-Wasm instance answering in time; <code>ScriptProcessorNode</code> is the old way that works today.</li>
+<li><strong><code>AudioWorklet</code>'s corners</strong>: <code>import()</code> also works inside a worklet's modules (the specification rejects it); an error thrown that is
+not an <code>Error</code> (<code>throw "text"</code>) has no line and no file in its event; <code>AudioParamMap</code>'s values are real params, but a getter a script
+puts on <code>Object.prototype</code> for a param's name is not read (<code>audioworkletprocessor-param-getter-overridden</code>).</li>
 <li><strong><code>MediaStreamAudioSourceNode</code>, <code>MediaStreamAudioDestinationNode</code>, <code>createMediaStreamTrackSource</code></strong>: Wren has no <code>MediaStream</code>.</li>
 <li><strong>HRTF</strong> panning; <strong><code>setSinkId</code></strong> (<code>sinkId</code> reads <code>""</code>, the default device); <strong><code>playbackStats</code></strong>, <code>AudioRenderCapacity</code>.</li>
 <li><strong>Other render quantum sizes</strong>: <code>renderSizeHint</code> is ignored, <code>renderQuantumSize</code> is 128.</li>
@@ -298,7 +325,7 @@ Wasm instance answering in time; <code>ScriptProcessorNode</code> is the old way
 </ul>
 <h2 id="preferences"><a class="anchor" href="#preferences" aria-hidden="true">#</a>Preferences</h2>
 <p><code>webaudio.enabled</code>, <code>webaudio.latency_ms</code> (<code>latencyHint</code> "interactive"; "balanced" is twice that, "playback" four times),
-<code>webaudio.sample_rate</code>, <code>webaudio.max_buffer_mb</code>, <code>webaudio.max_contexts</code>.</p>
+<code>webaudio.sample_rate</code>, <code>webaudio.max_buffer_mb</code>, <code>webaudio.max_contexts</code>, <code>webaudio.worklet_stall_ms</code>.</p>
 <h2 id="tests"><a class="anchor" href="#tests" aria-hidden="true">#</a>Tests</h2>
 <p><code>odin test src/webaudio</code> (known values: a sine's samples, ramps, a biquad against the cookbook's formulas, convolution, WAV decoding, the
 thread on the null output); <code>examples/jsweb/webaudio.js</code> and <code>webaudio_autoplay.js</code> (<code>jswebtest</code>); <code>tools\wpt.ps1 -Only /webaudio</code>;
@@ -317,6 +344,7 @@ thread on the null output); <code>examples/jsweb/webaudio.js</code> and <code>we
 <li><a href="#autoplay">Autoplay</a></li>
 <li><a href="#decodeaudiodata">decodeAudioData</a></li>
 <li><a href="#what-each-node-does">What each node does</a></li>
+<li><a href="#audioworklet">AudioWorklet</a></li>
 <li><a href="#what-there-is-not">What there is not</a></li>
 <li><a href="#preferences">Preferences</a></li>
 <li><a href="#tests">Tests</a></li>
