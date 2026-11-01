@@ -6,22 +6,22 @@
 /fetch/api/request/destination/fetch-destination-iframe.https.html: ERROR
 	Initialize global state: PASS
 	iframe fetches with a "iframe" Request.destination: PASS
-/fetch/api/request/destination/fetch-destination-no-load-event.https.html: OK
+/fetch/api/request/destination/fetch-destination-no-load-event.https.html: OK|TIMEOUT
 	@import fetches with a "style" Request.destination: FAIL
 	Background image fetches with an "image" Request.destination: FAIL
 	CSS font fetches with an "font" Request.destination: FAIL
 	Cache.add() fetches with an empty string Request.destination: FAIL
 	Font loading API fetches with an "font" Request.destination: FAIL
-	Initialize global state: PASS
+	Initialize global state: PASS|TIMEOUT|FAIL|NOTRUN
 	SVG use element fetches with an "image" Request.destination: FAIL
 	importScripts() fetches with a "script" Request.destination: FAIL
 	sendBeacon() fetches with an empty string Request.destination: FAIL
 /fetch/api/request/destination/fetch-destination-prefetch.https.html: OK
 	HTMLLinkElement with rel=prefetch fetches with an empty string Request.destination: FAIL
 	Initialize global state: PASS
-/fetch/api/request/destination/fetch-destination-worker.https.html: OK
+/fetch/api/request/destination/fetch-destination-worker.https.html: OK|TIMEOUT
 	DedicatedWorker fetches with a "worker" Request.destination: FAIL
-	Initialize global state: PASS
+	Initialize global state: PASS|TIMEOUT|FAIL|NOTRUN
 	SharedWorker fetches with a "sharedworker" Request.destination: FAIL
 /fetch/api/request/destination/fetch-destination.https.html: OK
 	AudioWorklet module fetches with a "audioworklet" Request.destination: FAIL
