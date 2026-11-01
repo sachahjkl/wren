@@ -6,6 +6,7 @@ package page
 // What watches the GPU process never touches the page: when something happens it posts to the page's loop, with ids, or wakes the
 // worker's, whose loop looks at its contexts each time round (canvas_worker_tick).
 
+import "core:sync"
 import "core:strings"
 import "wb:base"
 import "wb:canvas2d"
@@ -63,7 +64,10 @@ gl_notify :: proc "c" (user: rawptr) {
 		host.signal(tok.loop)
 		return
 	}
-	t := new_clone(tok^, base.process_allocator())
+	// (before getContext has its object there is nothing to look at yet: it looks itself, once it has)
+	self := sync.atomic_load(&tok.self)
+	if self == 0 { return }
+	t := new_clone(WebGL_Token{tok.loop, tok.page_id, self, false}, base.process_allocator())
 	host.post(t.loop, gl_pump, t)
 }
 
@@ -188,7 +192,8 @@ webgl_make :: proc(c: ^Call, b: ^Canvas_Backing, flags, notify: u32, user: i32, 
 		allow_software = s.allow_software ? 1 : 0, force_software = s.force_software ? 1 : 0, backend = s.backend, max_bytes = s.max_bytes, wait_ms = s.wait_ms,
 		hang_ms = s.gpu_hang_ms, max_restarts = s.gpu_max_restarts, restart_window_ms = s.gpu_restart_window_ms, idle_exit_ms = s.gpu_idle_exit_ms, keep_rights = s.gpu_keep_rights ? 1 : 0,
 	}
-	token := new(WebGL_Token, base.process_allocator())
+	// (whole before wg_create: the device's thread may call from then on, a GPU process dying while this context is made; only its object comes later)
+	token := new_clone(WebGL_Token{p.loop, page_id(p), 0, p.worker != nil}, base.process_allocator())
 	attrs.notify, attrs.notify_user = gl_notify, token
 	inf: webgl.Info
 	err: [WEBGL_MESSAGE_BYTES]u8
@@ -208,9 +213,13 @@ webgl_make :: proc(c: ^Call, b: ^Canvas_Backing, flags, notify: u32, user: i32, 
 	gl := new(WebGL_State)
 	gl.handle, gl.callback, gl.user, gl.owner, gl.token = h, notify, u32(user), c.owner, token
 	gl.dirty = true   // (what is shown before anything is drawn: the cleared buffer)
-	token^ = WebGL_Token{p.loop, page_id(p), handle, p.worker != nil}
 	o.gl = gl
 	b.ctx_obj, b.ctx_handle = o, handle
+	sync.atomic_store(&token.self, handle)
+	if p.worker == nil {
+		first_look := new_clone(token^, base.process_allocator())   // (what a call found no object for)
+		host.post(p.loop, gl_pump, first_look)
+	}
 	if len(info) >= 8 * size_of(i32) {
 		out := ([^]i32)(raw_data(info))
 		out[0] = inf.software
