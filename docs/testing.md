@@ -41,8 +41,8 @@ checks: compare two of them to see that a change lost nothing), `test_failed.txt
 
 ## What runs, in what order
 
-Every step is a process of its own; `-Jobs` of them run at a time (one per processor, at most 8; two with `-CI`), longest
-first by the durations of the last run. A step marked `-Light` mostly waits and takes no slot, up to `-LightJobs` of them.
+Every step is a process of its own; `-Jobs` of them run at a time (three per four processors, at most 12; two with `-CI`), longest
+first by the durations of the last run. A step marked `-Light` mostly waits and takes no slot, up to `-LightJobs` of them (4; 2 with `-CI`).
 Each step that talks to the test server has a server of its own on a block of ports of its own, so several worktrees test
 side by side. What a step builds comes first (the steps named `build *`). `-Perf` and `-Ui` add the steps that depend on
 the machine's speed or on a desktop ([CONTRIBUTING](../CONTRIBUTING.md)); a full run adds the check build, the
