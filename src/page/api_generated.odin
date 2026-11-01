@@ -1370,6 +1370,7 @@ _t_abort_AbortSignal_reason :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -1978,6 +1979,7 @@ _t_animations_Animation_takeOps :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -2071,6 +2073,7 @@ _t_animations_Animation_relevant :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -2125,6 +2128,7 @@ _t_animations_Animation_cssName :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -2348,6 +2352,7 @@ _t_async_Promise_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -2416,6 +2421,7 @@ _t_async_Object_kind :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -2742,6 +2748,7 @@ _t_caches_CacheStorage_names :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -2794,6 +2801,7 @@ _t_caches_Cache_matchIds :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -2824,6 +2832,7 @@ _t_caches_Cache_entryRequestHeaders :: proc "c" (env: rawptr, caller: wasm.Calle
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -2854,6 +2863,7 @@ _t_caches_Cache_entryHead :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -2884,6 +2894,7 @@ _t_caches_Cache_entryBody :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -3545,6 +3556,7 @@ _t_canvas_CanvasCompositing_globalCompositeOperation :: proc "c" (env: rawptr, c
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -3641,6 +3653,7 @@ _t_canvas_CanvasImageSmoothing_imageSmoothingQuality :: proc "c" (env: rawptr, c
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -3718,6 +3731,7 @@ _t_canvas_CanvasStyle_color :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -4127,6 +4141,7 @@ _t_canvas_CanvasShadowStyles_shadowColor :: proc "c" (env: rawptr, caller: wasm.
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -4180,6 +4195,7 @@ _t_canvas_CanvasFilters_filter :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -4982,6 +4998,7 @@ _t_canvas_CanvasPathDrawingStyles_lineCap :: proc "c" (env: rawptr, caller: wasm
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -5035,6 +5052,7 @@ _t_canvas_CanvasPathDrawingStyles_lineJoin :: proc "c" (env: rawptr, caller: was
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -5243,6 +5261,7 @@ _t_canvas_CanvasTextDrawingStyles_lang :: proc "c" (env: rawptr, caller: wasm.Ca
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -5296,6 +5315,7 @@ _t_canvas_CanvasTextDrawingStyles_font :: proc "c" (env: rawptr, caller: wasm.Ca
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -5349,6 +5369,7 @@ _t_canvas_CanvasTextDrawingStyles_textAlign :: proc "c" (env: rawptr, caller: wa
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -5402,6 +5423,7 @@ _t_canvas_CanvasTextDrawingStyles_textBaseline :: proc "c" (env: rawptr, caller:
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -5455,6 +5477,7 @@ _t_canvas_CanvasTextDrawingStyles_direction :: proc "c" (env: rawptr, caller: wa
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -5508,6 +5531,7 @@ _t_canvas_CanvasTextDrawingStyles_letterSpacing :: proc "c" (env: rawptr, caller
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -5561,6 +5585,7 @@ _t_canvas_CanvasTextDrawingStyles_wordSpacing :: proc "c" (env: rawptr, caller: 
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -5614,6 +5639,7 @@ _t_canvas_CanvasTextDrawingStyles_fontKerning :: proc "c" (env: rawptr, caller: 
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -5667,6 +5693,7 @@ _t_canvas_CanvasTextDrawingStyles_fontStretch :: proc "c" (env: rawptr, caller: 
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -5720,6 +5747,7 @@ _t_canvas_CanvasTextDrawingStyles_fontVariantCaps :: proc "c" (env: rawptr, call
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -5773,6 +5801,7 @@ _t_canvas_CanvasTextDrawingStyles_textRendering :: proc "c" (env: rawptr, caller
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -6591,6 +6620,7 @@ _t_compression_Compression_push :: proc "c" (env: rawptr, caller: wasm.Caller, a
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -6618,6 +6648,7 @@ _t_compression_Compression_finish :: proc "c" (env: rawptr, caller: wasm.Caller,
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -6643,6 +6674,7 @@ _t_compression_Compression_output :: proc "c" (env: rawptr, caller: wasm.Caller,
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -6913,6 +6945,7 @@ _t_credentials_PublicKeyCredential_id :: proc "c" (env: rawptr, caller: wasm.Cal
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -6972,6 +7005,7 @@ _t_credentials_PublicKeyCredential_authenticatorAttachment :: proc "c" (env: raw
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -6997,6 +7031,7 @@ _t_credentials_PublicKeyCredential_transports :: proc "c" (env: rawptr, caller: 
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -7044,6 +7079,7 @@ _t_credentials_PublicKeyCredential_clientExtensionResults :: proc "c" (env: rawp
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -7069,6 +7105,7 @@ _t_credentials_PublicKeyCredential_toJSON :: proc "c" (env: rawptr, caller: wasm
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -7112,6 +7149,7 @@ _t_crypto_Crypto_randomUUID :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -7360,6 +7398,7 @@ _t_crypto_CryptoKey_export :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -7407,6 +7446,7 @@ _t_crypto_CryptoKey_serialize :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -7716,6 +7756,7 @@ _t_document_Document_URL :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -7734,6 +7775,7 @@ _t_document_Window_origin :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -7770,6 +7812,7 @@ _t_document_Document_cookie_get :: proc "c" (env: rawptr, caller: wasm.Caller, a
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -8230,6 +8273,7 @@ _t_dom_Node_getTextContent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -8255,6 +8299,7 @@ _t_dom_Element_tagName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -8327,6 +8372,7 @@ _t_dom_Element_getAttribute :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -8466,6 +8512,7 @@ _t_encoding_TextDecoder_encoding :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -8520,6 +8567,7 @@ _t_encoding_TextDecoder_decode :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -8554,6 +8602,7 @@ _t_encoding_TextDecoder_decodeBuffer :: proc "c" (env: rawptr, caller: wasm.Call
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -8579,6 +8628,7 @@ _t_encoding_TextDecoder_output :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -8801,6 +8851,7 @@ _t_events_Event_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -8848,6 +8899,7 @@ _t_events_Event_data :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -8873,6 +8925,7 @@ _t_events_Event_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -9081,6 +9134,7 @@ _t_eventsource_EventSource_url :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -9148,6 +9202,7 @@ _t_eventsource_MessageEvent_origin :: proc "c" (env: rawptr, caller: wasm.Caller
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -9173,6 +9228,7 @@ _t_eventsource_MessageEvent_lastEventId :: proc "c" (env: rawptr, caller: wasm.C
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -9626,6 +9682,7 @@ _t_forms_forms_value :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -9682,6 +9739,7 @@ _t_forms_forms_defaultValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -9871,6 +9929,7 @@ _t_forms_forms_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -9896,6 +9955,7 @@ _t_forms_forms_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -10116,6 +10176,7 @@ _t_forms_forms_validationMessage :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -10283,6 +10344,7 @@ _t_forms_forms_selectionDirection :: proc "c" (env: rawptr, caller: wasm.Caller,
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -10590,6 +10652,7 @@ _t_forms_forms_fileName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -10641,6 +10704,7 @@ _t_forms_forms_fileType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -10919,6 +10983,7 @@ _t_forms_HTMLOptionElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -10944,6 +11009,7 @@ _t_forms_HTMLOptionElement_label :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -11223,6 +11289,7 @@ _t_forms_HTMLDialogElement_returnValue :: proc "c" (env: rawptr, caller: wasm.Ca
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -11515,6 +11582,7 @@ _t_forms_FormData_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -11550,6 +11618,7 @@ _t_forms_FormData_getAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -11600,6 +11669,7 @@ _t_forms_FormData_nameAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -11628,6 +11698,7 @@ _t_forms_FormData_valueAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -11707,6 +11778,7 @@ _t_forms_FormData_fileTypeAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -11934,6 +12006,7 @@ _t_frames_Frame_childNames :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -12061,6 +12134,7 @@ _t_frames_Frame_adoptNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -12196,6 +12270,7 @@ _t_frames_Window_get_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -12242,6 +12317,7 @@ _t_dom_HTMLIFrameElement_srcdoc :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -12337,6 +12413,7 @@ _t_fs_Fs_getEntry :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -12402,6 +12479,7 @@ _t_fs_Fs_list :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: 
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -12441,6 +12519,7 @@ _t_fs_Fs_resolve :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, 
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -12824,6 +12903,7 @@ _t_fs_Fs_describe :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -13016,6 +13096,7 @@ _t_history_Location_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -13145,6 +13226,7 @@ _t_history_History_state :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -13299,6 +13381,7 @@ _t_idb_Idb_call :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -13390,6 +13473,7 @@ _t_images_HTMLImageElement_currentSrc :: proc "c" (env: rawptr, caller: wasm.Cal
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -13535,6 +13619,7 @@ _t_js_Engine_timeZone :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -13553,6 +13638,7 @@ _t_js_Engine_locale :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -13767,6 +13853,7 @@ _t_dom_CSSStyleSheet_hrefOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -13787,6 +13874,7 @@ _t_dom_CSSStyleSheet_titleOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -13876,6 +13964,7 @@ _t_dom_CustomElements_take :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -13982,6 +14071,7 @@ _t_dnd_DataTransfer_get_dropEffect :: proc "c" (env: rawptr, caller: wasm.Caller
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -14035,6 +14125,7 @@ _t_dnd_DataTransfer_get_effectAllowed :: proc "c" (env: rawptr, caller: wasm.Cal
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -14096,6 +14187,7 @@ _t_dnd_DataTransfer_getData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -14218,6 +14310,7 @@ _t_dnd_DataTransfer_typeList :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -14296,6 +14389,7 @@ _t_dnd_DataTransfer_itemType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -14324,6 +14418,7 @@ _t_dnd_DataTransfer_itemString :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -14609,6 +14704,7 @@ _t_dnd_LocalFile_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -14634,6 +14730,7 @@ _t_dnd_LocalFile_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -14718,6 +14815,7 @@ _t_dnd_DataTransfer_itemFsHandle :: proc "c" (env: rawptr, caller: wasm.Caller, 
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -14838,6 +14936,7 @@ _t_dom_Document_readyState :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -14896,6 +14995,7 @@ _t_dom_Document_resolveURL :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -14921,6 +15021,7 @@ _t_dom_Element_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -14977,6 +15078,7 @@ _t_dom_Element_className :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -15123,6 +15225,7 @@ _t_dom_Collection_names :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -15157,6 +15260,7 @@ _t_dom_ParentNode_querySelectorAllPacked :: proc "c" (env: rawptr, caller: wasm.
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -15286,6 +15390,7 @@ _t_dom_TokenList_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -15565,6 +15670,7 @@ _t_dom_Dataset_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -15658,6 +15764,7 @@ _t_dom_Dataset_names :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -15685,6 +15792,7 @@ _t_dom_Element_namespaceURI :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -15712,6 +15820,7 @@ _t_dom_Element_prefix :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -15737,6 +15846,7 @@ _t_dom_Element_localName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -15762,6 +15872,7 @@ _t_dom_Element_qualifiedTagName :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -15787,6 +15898,7 @@ _t_dom_Element_slot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -15865,6 +15977,7 @@ _t_dom_Element_attributeNames :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -15915,6 +16028,7 @@ _t_dom_Element_attributeNameAt :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -15960,6 +16074,7 @@ _t_dom_Element_getAttributeNS :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -16437,6 +16552,7 @@ _t_dom_Element_innerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -16493,6 +16609,7 @@ _t_dom_Element_outerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -16593,6 +16710,7 @@ _t_dom_HTMLElement_dir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -16790,6 +16908,7 @@ _t_dom_HTMLElement_innerText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -16846,6 +16965,7 @@ _t_dom_HTMLElement_outerText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -16902,6 +17022,7 @@ _t_dom_HTMLElement_accessKeyLabel :: proc "c" (env: rawptr, caller: wasm.Caller,
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -16974,6 +17095,7 @@ _t_dom_HTMLOrSVGOrMathMLElement_nonce :: proc "c" (env: rawptr, caller: wasm.Cal
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -17030,6 +17152,7 @@ _t_dom_ElementContentEditable_contentEditable :: proc "c" (env: rawptr, caller: 
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -17108,6 +17231,7 @@ _t_dom_HTMLHyperlinkElementUtils_href :: proc "c" (env: rawptr, caller: wasm.Cal
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -17164,6 +17288,7 @@ _t_dom_HyperlinkElementUtils_origin :: proc "c" (env: rawptr, caller: wasm.Calle
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -17189,6 +17314,7 @@ _t_dom_HyperlinkElementUtils_protocol :: proc "c" (env: rawptr, caller: wasm.Cal
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -17245,6 +17371,7 @@ _t_dom_HyperlinkElementUtils_username :: proc "c" (env: rawptr, caller: wasm.Cal
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -17301,6 +17428,7 @@ _t_dom_HyperlinkElementUtils_password :: proc "c" (env: rawptr, caller: wasm.Cal
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -17357,6 +17485,7 @@ _t_dom_HyperlinkElementUtils_host :: proc "c" (env: rawptr, caller: wasm.Caller,
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -17413,6 +17542,7 @@ _t_dom_HyperlinkElementUtils_hostname :: proc "c" (env: rawptr, caller: wasm.Cal
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -17469,6 +17599,7 @@ _t_dom_HyperlinkElementUtils_port :: proc "c" (env: rawptr, caller: wasm.Caller,
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -17525,6 +17656,7 @@ _t_dom_HyperlinkElementUtils_pathname :: proc "c" (env: rawptr, caller: wasm.Cal
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -17581,6 +17713,7 @@ _t_dom_HyperlinkElementUtils_search :: proc "c" (env: rawptr, caller: wasm.Calle
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -17637,6 +17770,7 @@ _t_dom_HyperlinkElementUtils_hash :: proc "c" (env: rawptr, caller: wasm.Caller,
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -17693,6 +17827,7 @@ _t_dom_HTMLAnchorElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -17968,6 +18103,7 @@ _t_events_UiEvent_key :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -17993,6 +18129,7 @@ _t_events_UiEvent_code :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -18709,6 +18846,7 @@ _t_dom_HTMLTitleElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -18765,6 +18903,7 @@ _t_dom_HTMLScriptElement_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -18981,6 +19120,7 @@ _t_dom_Element_clientRectsPacked :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -19652,6 +19792,7 @@ _t_dom_Range_clientRectsPacked :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -19738,6 +19879,7 @@ _t_dom_MutationObserver_takeRecords :: proc "c" (env: rawptr, caller: wasm.Calle
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -19835,6 +19977,7 @@ _t_dom_Range_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw,
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -19988,6 +20131,7 @@ _t_dom_Selection_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -20021,6 +20165,7 @@ _t_dom_InlineStyle_getProperty :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -20054,6 +20199,7 @@ _t_dom_InlineStyle_priority :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -20133,6 +20279,7 @@ _t_dom_InlineStyle_removeProperty :: proc "c" (env: rawptr, caller: wasm.Caller,
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -20158,6 +20305,7 @@ _t_dom_InlineStyle_cssText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -20237,6 +20385,7 @@ _t_dom_InlineStyle_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -20278,6 +20427,7 @@ _t_dom_ComputedStyle_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -20312,6 +20462,7 @@ _t_dom_ComputedStyle_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -20391,6 +20542,7 @@ _t_dom_Node_nodeName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -20416,6 +20568,7 @@ _t_dom_Node_baseURI :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -20531,6 +20684,7 @@ _t_dom_Node_nodeValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -20589,6 +20743,7 @@ _t_dom_Node_textContent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -20850,6 +21005,7 @@ _t_dom_Node_lookupPrefix :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -20888,6 +21044,7 @@ _t_dom_Node_lookupNamespaceURI :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -21316,6 +21473,7 @@ _t_dom_CharacterData_data :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -21395,6 +21553,7 @@ _t_dom_CharacterData_substringData :: proc "c" (env: rawptr, caller: wasm.Caller
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -21567,6 +21726,7 @@ _t_dom_Text_wholeText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -21592,6 +21752,7 @@ _t_dom_DocumentType_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -21617,6 +21778,7 @@ _t_dom_DocumentType_publicId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -21642,6 +21804,7 @@ _t_dom_DocumentType_systemId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -21859,6 +22022,7 @@ _t_dom_Document_documentURI :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -21877,6 +22041,7 @@ _t_dom_Document_compatMode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -21895,6 +22060,7 @@ _t_dom_Document_characterSet :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -21913,6 +22079,7 @@ _t_dom_Document_charset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -21931,6 +22098,7 @@ _t_dom_Document_inputEncoding :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -21949,6 +22117,7 @@ _t_dom_Document_contentType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -21982,6 +22151,7 @@ _t_dom_Document_title :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -22021,6 +22191,7 @@ _t_dom_Document_dir :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -22075,6 +22246,7 @@ _t_dom_Document_referrer :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -22093,6 +22265,7 @@ _t_dom_Document_lastModified :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -22111,6 +22284,7 @@ _t_dom_Document_domain :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -22270,6 +22444,7 @@ _t_dom_ProcessingInstruction_target :: proc "c" (env: rawptr, caller: wasm.Calle
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -22297,6 +22472,7 @@ _t_dom_Document_xmlContentType :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -22529,6 +22705,7 @@ _t_entries_FsEntry_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -22554,6 +22731,7 @@ _t_entries_FsEntry_fullPath :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -22579,6 +22757,7 @@ _t_entries_FsEntry_filesystemName :: proc "c" (env: rawptr, caller: wasm.Caller,
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -23182,6 +23361,7 @@ _t_scripts_Script_baseName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -23211,6 +23391,7 @@ _t_scripts_Module_resolve :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -23236,6 +23417,7 @@ _t_scripts_Module_source :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -23417,6 +23599,7 @@ _t_scripts_WorkerGlobalScope_importScript :: proc "c" (env: rawptr, caller: wasm
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -23523,6 +23706,7 @@ _t_scripts_Worker_pendingError :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -23712,6 +23896,7 @@ _t_dom_ResizeObserver_takeEntries :: proc "c" (env: rawptr, caller: wasm.Caller,
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -23775,6 +23960,7 @@ _t_dom_IntersectionObserver_rootMargin :: proc "c" (env: rawptr, caller: wasm.Ca
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -23795,6 +23981,7 @@ _t_dom_IntersectionObserver_scrollMargin :: proc "c" (env: rawptr, caller: wasm.
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -23895,6 +24082,7 @@ _t_dom_IntersectionObserver_takeRecords :: proc "c" (env: rawptr, caller: wasm.C
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -24003,6 +24191,7 @@ _t_dom_ShadowRoot_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -24094,6 +24283,7 @@ _t_dom_ShadowRoot_slotAssignment :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -24141,6 +24331,7 @@ _t_dom_ShadowRoot_innerHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -24224,6 +24415,7 @@ _t_dom_Node_getHTML :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -24355,6 +24547,7 @@ _t_dom_HTMLSlotElement_assignedPacked :: proc "c" (env: rawptr, caller: wasm.Cal
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -24409,6 +24602,7 @@ _t_dom_Document_shadowIncludingByName :: proc "c" (env: rawptr, caller: wasm.Cal
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -24436,6 +24630,7 @@ _t_dom_DocumentOrShadowRoot_elementsFromPointPacked :: proc "c" (env: rawptr, ca
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -24491,6 +24686,7 @@ _t_dom_Node_shadowIncludingElements :: proc "c" (env: rawptr, caller: wasm.Calle
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -24516,6 +24712,7 @@ _t_events_Event_composedPathPacked :: proc "c" (env: rawptr, caller: wasm.Caller
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -24769,6 +24966,7 @@ _t_dom_CustomStates_list :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -24869,6 +25067,7 @@ _t_dom_CSSStyleSheet_ruleText :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -24974,6 +25173,7 @@ _t_dom_CSSStyleSheet_mediaText :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -25096,6 +25296,7 @@ _t_navigator_Navigator_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -25308,6 +25509,7 @@ _t_media_MediaQueryList_media :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -25485,6 +25687,7 @@ _t_dom_XMLSerializer_serialize :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -25574,6 +25777,7 @@ _t_locks_LockManager_queryName :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -25597,6 +25801,7 @@ _t_locks_LockManager_queryMode :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -25620,6 +25825,7 @@ _t_locks_LockManager_queryClient :: proc "c" (env: rawptr, caller: wasm.Caller, 
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -25645,6 +25851,7 @@ _t_htmlmedia_HTMLMediaElement_currentSrc :: proc "c" (env: rawptr, caller: wasm.
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -26065,6 +26272,7 @@ _t_htmlmedia_HTMLMediaElement_ranges :: proc "c" (env: rawptr, caller: wasm.Call
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -26138,6 +26346,7 @@ _t_htmlmedia_HTMLMediaElement_errorMessage :: proc "c" (env: rawptr, caller: was
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -26233,6 +26442,7 @@ _t_htmlmedia_HTMLMediaElement_canPlayType :: proc "c" (env: rawptr, caller: wasm
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -26302,6 +26512,7 @@ _t_htmlmedia_HTMLVideoElement_playbackQuality :: proc "c" (env: rawptr, caller: 
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -26375,6 +26586,7 @@ _t_htmlmedia_HTMLVideoElement_videoFrameMetadata :: proc "c" (env: rawptr, calle
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -26774,6 +26986,7 @@ _t_mse_MediaSource_readyState :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -27041,6 +27254,7 @@ _t_mse_SourceBuffer_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -27121,6 +27335,7 @@ _t_mse_SourceBuffer_ranges :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -27658,6 +27873,7 @@ _t_mediatracks_AudioTrack_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -27683,6 +27899,7 @@ _t_mediatracks_AudioTrack_kind :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -27708,6 +27925,7 @@ _t_mediatracks_AudioTrack_label :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -27733,6 +27951,7 @@ _t_mediatracks_AudioTrack_language :: proc "c" (env: rawptr, caller: wasm.Caller
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -27801,6 +28020,7 @@ _t_mediatracks_VideoTrack_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -27826,6 +28046,7 @@ _t_mediatracks_VideoTrack_kind :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -27851,6 +28072,7 @@ _t_mediatracks_VideoTrack_label :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -27876,6 +28098,7 @@ _t_mediatracks_VideoTrack_language :: proc "c" (env: rawptr, caller: wasm.Caller
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -27944,6 +28167,7 @@ _t_mediatracks_TextTrack_kind :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -27969,6 +28193,7 @@ _t_mediatracks_TextTrack_label :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -27994,6 +28219,7 @@ _t_mediatracks_TextTrack_language :: proc "c" (env: rawptr, caller: wasm.Caller,
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -28019,6 +28245,7 @@ _t_mediatracks_TextTrack_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -28044,6 +28271,7 @@ _t_mediatracks_TextTrack_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -28201,6 +28429,7 @@ _t_mediatracks_TextTrackCue_id :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -28435,6 +28664,7 @@ _t_mediatracks_VTTCue_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -28605,6 +28835,7 @@ _t_navigation_Navigation_entries :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -28643,6 +28874,7 @@ _t_navigation_Navigation_getState :: proc "c" (env: rawptr, caller: wasm.Caller,
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -28774,6 +29006,7 @@ _t_navigation_Navigation_pending :: proc "c" (env: rawptr, caller: wasm.Caller, 
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -28795,6 +29028,7 @@ _t_navigation_Navigation_pendingState :: proc "c" (env: rawptr, caller: wasm.Cal
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -28831,6 +29065,7 @@ _t_navigation_Navigation_activation :: proc "c" (env: rawptr, caller: wasm.Calle
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -29017,6 +29252,7 @@ _t_net_Fetch_headers :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -29042,6 +29278,7 @@ _t_net_Fetch_url :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, 
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -29067,6 +29304,7 @@ _t_net_Fetch_error :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -29408,6 +29646,7 @@ _t_performance_Performance_entryName :: proc "c" (env: rawptr, caller: wasm.Call
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -29510,6 +29749,7 @@ _t_performance_Performance_timeline :: proc "c" (env: rawptr, caller: wasm.Calle
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -29978,6 +30218,7 @@ _t_ports_MessageEvent_portEnds :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -30166,6 +30407,7 @@ _t_serviceworker_ServiceWorker_registrationIds :: proc "c" (env: rawptr, caller:
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -30201,6 +30443,7 @@ _t_serviceworker_ServiceWorkerRegistration_info :: proc "c" (env: rawptr, caller
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -30221,6 +30464,7 @@ _t_serviceworker_ServiceWorker_info :: proc "c" (env: rawptr, caller: wasm.Calle
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -30292,6 +30536,7 @@ _t_serviceworker_ServiceWorkerRegistration_preload :: proc "c" (env: rawptr, cal
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -30337,6 +30582,7 @@ _t_serviceworker_ServiceWorker_takeMessage :: proc "c" (env: rawptr, caller: was
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -30385,6 +30631,7 @@ _t_serviceworker_ServiceWorkerGlobalScope_scope :: proc "c" (env: rawptr, caller
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -30403,6 +30650,7 @@ _t_serviceworker_ServiceWorkerGlobalScope_scriptURL :: proc "c" (env: rawptr, ca
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -30443,6 +30691,7 @@ _t_serviceworker_SwEvent_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -30461,6 +30710,7 @@ _t_serviceworker_SwEvent_body :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -30564,6 +30814,7 @@ _t_storage_Storage_key :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -30597,6 +30848,7 @@ _t_storage_Storage_getItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -30713,6 +30965,7 @@ _t_storage_StorageEvent_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -31046,6 +31299,7 @@ _t_url_URL_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _:
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -31256,6 +31510,7 @@ _t_url_URLSearchParams_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -31321,6 +31576,7 @@ _t_url_URLSearchParams_getNth :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -31436,6 +31692,7 @@ _t_url_URLSearchParams_toString :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -31464,6 +31721,7 @@ _t_url_URLSearchParams_nameAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -31492,6 +31750,7 @@ _t_url_URLSearchParams_valueAt :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -31654,6 +31913,7 @@ _t_url_URLPattern_component :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -31859,6 +32119,7 @@ _t_url_URLPattern_resultInput :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -31890,6 +32151,7 @@ _t_url_URLPattern_componentInput :: proc "c" (env: rawptr, caller: wasm.Caller, 
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -31951,6 +32213,7 @@ _t_url_URLPattern_groupName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -31984,6 +32247,7 @@ _t_url_URLPattern_groupValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -32017,6 +32281,7 @@ _t_web_Exception_message :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -32120,6 +32385,7 @@ _t_webassembly_WebAssembly_Module_imports :: proc "c" (env: rawptr, caller: wasm
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -32145,6 +32411,7 @@ _t_webassembly_WebAssembly_Module_exports :: proc "c" (env: rawptr, caller: wasm
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -32209,6 +32476,7 @@ _t_webassembly_WebAssembly_Module_customSection :: proc "c" (env: rawptr, caller
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -32234,6 +32502,7 @@ _t_webassembly_WebAssembly_Module_linkInfo :: proc "c" (env: rawptr, caller: was
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -32252,6 +32521,7 @@ _t_webassembly_WebAssembly_lastError :: proc "c" (env: rawptr, caller: wasm.Call
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -32619,6 +32889,7 @@ _t_webassembly_WebAssembly_Table_element :: proc "c" (env: rawptr, caller: wasm.
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -32736,6 +33007,7 @@ _t_webassembly_WebAssembly_Global_type :: proc "c" (env: rawptr, caller: wasm.Ca
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -32812,6 +33084,7 @@ _t_webassembly_WebAssembly_Func_sig :: proc "c" (env: rawptr, caller: wasm.Calle
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -32850,6 +33123,7 @@ _t_webassembly_WebAssembly_Func_results :: proc "c" (env: rawptr, caller: wasm.C
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -32868,6 +33142,7 @@ _t_webassembly_WebAssembly_import_args :: proc "c" (env: rawptr, caller: wasm.Ca
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -32948,6 +33223,7 @@ _t_webassembly_WebAssembly_Tag_sig :: proc "c" (env: rawptr, caller: wasm.Caller
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -33048,6 +33324,7 @@ _t_webassembly_WebAssembly_Instance_exports :: proc "c" (env: rawptr, caller: wa
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -35896,6 +36173,7 @@ _t_webcodecs_image_ImageDecoder_type :: proc "c" (env: rawptr, caller: wasm.Call
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -36507,6 +36785,7 @@ _t_webgl_WebGL_createError :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -36794,6 +37073,7 @@ _t_websocket_WebSocket_url :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -36819,6 +37099,7 @@ _t_websocket_WebSocket_protocol :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -36844,6 +37125,7 @@ _t_websocket_WebSocket_extensions :: proc "c" (env: rawptr, caller: wasm.Caller,
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -37202,6 +37484,7 @@ _t_workers_DedicatedWorkerGlobalScope_name :: proc "c" (env: rawptr, caller: was
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -37241,6 +37524,7 @@ _t_workers_SharedWorkerGlobalScope_name :: proc "c" (env: rawptr, caller: wasm.C
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
@@ -37262,6 +37546,7 @@ _t_workers_WorkerGlobalScope_location :: proc "c" (env: rawptr, caller: wasm.Cal
 		return _fail_size(&c, &f, a, _err, c.message)
 	}
 	copy(_os[:_on], transmute([]u8)_r)
+	if c.routed && u64(len(_r)) > u64(_on) { c.caller.route_next = c.tag }
 	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }

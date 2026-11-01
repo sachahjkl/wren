@@ -597,6 +597,8 @@ emit_trampoline :: proc(cfg: Host_Config, o: ^Out, d: ^Decl) {
 	case d.abi.out_string:
 		// a bytes result is a []u8 already
 		if d.result.kind == .Bytes { wl(o, "\tcopy(_os[:_on], _r)") } else { wl(o, "\tcopy(_os[:_on], transmute([]u8)_r)") }
+		// too small: the guest grows its buffer and calls again, and that call acts on the same document
+		if cfg.route != "" { wl(o, "\tif c.routed && u64(len(_r)) > u64(_on) {{ c.caller.route_next = c.tag }}") }
 		wl(o, "\twasm.put_size(&f, a, i64(len(_r)))")
 	case d.abi.ret_ptr:
 		if d.result.kind == .Struct {
