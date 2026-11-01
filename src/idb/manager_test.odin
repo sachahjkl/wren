@@ -1,10 +1,35 @@
 package idb
 
+import "base:runtime"
 import "core:fmt"
 import "core:os"
 import "core:strings"
 import "core:testing"
+import "core:time"
 import "wb:base"
+
+// The files of this run of the tests. Not a fixed name under the temporary folder: the unit tests and their run under
+// AddressSanitizer, which test_all and the CI run side by side with one TEMP, then wrote over each other's journals.
+@(private)
+test_root: string
+
+@(private = "file") TEST_ROOT_PREFIX :: "wren_idb_test_"
+@(private = "file") TEST_ROOT_STALE :: time.Hour
+
+// Odin's test runner ends the process without running fini procedures: what earlier runs left goes when a run starts.
+@(private, init)
+test_root_make :: proc "contextless" () {
+	context = runtime.default_context()
+	tmp := base.temp_dir(context.temp_allocator)
+	if entries, err := os.read_directory_by_path(tmp, -1, context.temp_allocator); err == nil {
+		for e in entries {
+			if e.type == .Directory && strings.has_prefix(e.name, TEST_ROOT_PREFIX) && time.since(e.modification_time) > TEST_ROOT_STALE { base.remove_tree(e.fullpath) }
+		}
+	}
+	test_root = fmt.aprintf("%s/%s%s", tmp, TEST_ROOT_PREFIX, base.unique_name(context.temp_allocator))
+	_ = os.make_directory_all(test_root)
+	free_all(context.temp_allocator)
+}
 
 // A manager whose disk work is queued and run on demand, to see the order things happen in.
 Job :: struct { work, done: proc(rawptr), data: rawptr }
@@ -52,7 +77,7 @@ Harness :: struct {
 
 @(private)
 harness_init :: proc(h: ^Harness, name: string, async := false, settings: Maybe(Settings) = nil, fresh := true) {
-	h.dir = fmt.aprintf("%s/wren_idb_test/%s", base.temp_dir(context.temp_allocator), name)
+	h.dir = fmt.aprintf("%s/%s", test_root, name)
 	if fresh {
 		base.remove_tree(fmt.tprintf("%s/idb", h.dir))
 	}
@@ -428,8 +453,10 @@ a_failed_write_rolls_the_transaction_back :: proc(t: ^testing.T) {
 	// make the file unwritable: the journal is closed and its path becomes a directory
 	path := fmt.tprintf("%s.widb", origin_stem(&h.m, "http://a.test"))
 	o := h.m.origins["http://a.test"]
-	file_close(&o.jfile)
-	file_close(&o.vsrc.files[0])
+	// (one handle under two names, as origin_shutdown does it: closed twice, the second close took the handle of whatever another
+	// test thread had opened in between, and that test found its file gone, or crashed)
+	file_close(&o.vsrc.files[o.jgen & 1])
+	o.jfile = {}
 	os.remove(path)
 	os.make_directory(path)
 	defer os.remove(path)

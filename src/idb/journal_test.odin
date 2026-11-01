@@ -3,13 +3,10 @@ package idb
 import "core:fmt"
 import "core:os"
 import "core:testing"
-import "wb:base"
 
 @(private)
 temp_path :: proc(name: string) -> string {
-	dir := fmt.tprintf("%s/wren_idb_test", base.temp_dir(context.temp_allocator))
-	os.make_directory_all(dir)
-	return fmt.tprintf("%s/%s", dir, name)
+	return fmt.tprintf("%s/%s", test_root, name)
 }
 
 // A Fixture with a store and `n` records, its changes as one journal record (the redo stream of its transaction).
@@ -139,7 +136,8 @@ a_flipped_byte_ends_the_journal_there :: proc(t: ^testing.T) {
 		bad := make([]byte, len(out), context.temp_allocator)
 		copy(bad, out[:])
 		bad[pos] ~= 0x40
-		_ = os.write_entire_file(path, bad)
+		werr := os.write_entire_file(path, bad)
+		testing.expectf(t, werr == nil, "write: %v", werr)
 		res := load_file(path, context.allocator)
 		testing.expectf(t, res.records == 1 && res.damaged, "flip at %d: %d records", pos, res.records)
 		data_destroy(&res.data)
