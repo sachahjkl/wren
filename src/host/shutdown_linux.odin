@@ -7,6 +7,10 @@ import "core:sys/linux"
 @(private)
 shutdown_raise_priority :: proc() {}
 
+// (`ctl stacks` is written for Windows only.)
+@(private)
+shutdown_read_stacks :: proc(program, path: string, wait_ms: int) {}
+
 // exit_group, not exit(3): no atexit handler or stdio flush may wait for the thread that hangs.
 @(private)
 shutdown_force_exit :: proc() -> ! {

@@ -75,6 +75,9 @@ wait_process_exit :: proc(pid: int, ms: int) -> (code: int, ended: bool) {
 	return 0, true
 }
 
+// (Windows only for now: gdb -p does it here.)
+process_stacks :: proc(pid: int, minidump := "") -> (text: string, ok: bool) { return "reading another process's stacks is not written for this system", false }
+
 // Starts `args` (args[0] the program, a path) with this process's environment. err "": started.
 process_start :: proc(args: []string) -> (p: Process, pid: int, err: string) {
 	argv := make([]cstring, len(args) + 1, context.temp_allocator)

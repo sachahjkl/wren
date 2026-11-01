@@ -24,6 +24,14 @@ import "core:time"
 SHUTDOWN_WARN_MS :: 2000
 SHUTDOWN_FORCE_MS :: 10_000
 SHUTDOWN_WATCHDOG_TICK :: 200 * time.Millisecond
+// How long the watchdog gives the program that reads the stuck threads (shutdown_stacks_program) before it ends the process anyway, and the
+// file those stacks go in, beside the log.
+SHUTDOWN_STACKS_WAIT_MS :: 4000
+SHUTDOWN_STACKS_SUFFIX :: ".stacks.txt"
+
+// The program whose `ctl stacks` reads this process's threads from outside (it cannot be done from inside: a suspended thread may hold the
+// lock the reader needs). "": none (the tests' programs, which have no such command).
+shutdown_stacks_program: string
 
 @(private = "file")
 Shutdown :: struct {
@@ -185,6 +193,11 @@ shutdown_watchdog :: proc(_: rawptr) {
 		shutdown_line(strings.to_string(b))
 		sync.atomic_add(&sd.reports, 1)
 		if sd.force_ms > 0 && int(time.duration_milliseconds(elapsed)) >= sd.force_ms {
+			if shutdown_stacks_program != "" && sd.log_path != "" {
+				stacks_path := strings.concatenate({sd.log_path, SHUTDOWN_STACKS_SUFFIX}, context.temp_allocator)
+				shutdown_line(fmt.tprintf("shutdown: what the threads are doing: %s", stacks_path))
+				shutdown_read_stacks(shutdown_stacks_program, stacks_path, SHUTDOWN_STACKS_WAIT_MS)
+			}
 			shutdown_line(fmt.tprintf("shutdown: still in step %q after %d ms: ending the process (the profile was saved before the teardown)", step, sd.force_ms))
 			shutdown_force_exit()
 		}

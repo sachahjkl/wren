@@ -48,7 +48,13 @@ window [--size WxH] [--pos x,y] [--state normal|minimized|maximized|fullscreen] 
 devtools [console|elements|network|none] [--dock ...]   setup   html [sel]   query sel   box sel   style sel [props]
 snapshot <prefix>   record start|stop <file>   replay <file> [--speed n]   diff a.png b.png [--tolerance n] [--out d.png] [--max-percent p]
 quit [--code n]     raw '<json request>'     ping     version
+stacks <process id> [--out file.txt] [--dump file.dmp]
 ```
+
+`stacks` needs no Wren and reads any process of this user (a test tool too): what each thread is doing, named with the program's PDB, read from
+outside, for what hangs and leaves nothing behind. A thread that says "cannot suspend" under "ending with code n" belongs to a process that has
+already been told to end, and that the system is still taking down. `quit` prints the same when the Wren does not end, and the shutdown
+watchdog leaves it in `shutdown.log.stacks.txt` before it ends a browser whose teardown is stuck.
 
 Options of every command: `--remote <name>` (or `WREN_REMOTE`), `--profile <dir>` (finds the Wren by its profile folder),
 `--timeout <ms>`, `--tab-id <id>`, `--json` (the raw answer), `--quiet`. Exit codes: **0** done, **1** failed (an error
