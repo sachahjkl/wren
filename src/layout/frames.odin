@@ -143,6 +143,14 @@ principal_mode :: proc(c: ^Ctx) -> style.Writing_Mode {
 	return .Horizontal_Tb
 }
 
+// The direction of the viewport, taken with its mode.
+@(private)
+principal_rtl :: proc(c: ^Ctx) -> bool {
+	cs := style.style_of(c.st, c.body_el)
+	if cs == nil { cs = style.style_of(c.st, c.root_el) }
+	return cs != nil && is_rtl(cs)
+}
+
 // Every box back in the logical coordinates of its frame (exactly what the last pass left: see frames_to_physical), and the style
 // records of the frame.
 @(private)

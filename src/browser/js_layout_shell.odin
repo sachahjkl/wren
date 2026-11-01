@@ -5,7 +5,6 @@ package browser
 // takes (page.styles, then layout_document when stale: incremental, only what changed). Reading in a loop costs
 // nothing more once they are up to date (the page checks first, js_dom_layout.odin).
 
-import "core:math"
 import draw "toolkit:draw"
 import lay "wb:layout"
 import "wb:page"
@@ -68,9 +67,9 @@ js_layout_scroll :: proc(user: rawptr, p: ^page.Page, x, y: f64, smooth: bool) {
 	if t.page != p { return }
 	scale := f64(page_scale(app))
 	size := page_area(app)
-	limit := math.max(0, f64(t.layout.height) - f64(size.y))
 	lo, hi := lay.doc_scroll_x_range(&t.layout, size.x)
-	scroll_document_to(app, t, {clamp(f32(x * scale), lo, hi), f32(clamp(y * scale, 0, limit))}, smooth)
+	lo_y, hi_y := lay.doc_scroll_y_range(&t.layout, size.y)
+	scroll_document_to(app, t, {clamp(f32(x * scale), lo, hi), clamp(f32(y * scale), lo_y, hi_y)}, smooth)
 	request_frames(app, 2)
 }
 

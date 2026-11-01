@@ -203,6 +203,11 @@ doc_scroll_x_range :: #force_inline proc(l: ^Layout, width: f32) -> (lo, hi: f32
 	return l.doc_min_x, max(l.doc_width - width, 0)
 }
 
+// The range of the page's vertical scroll offset in a viewport `height` high.
+doc_scroll_y_range :: #force_inline proc(l: ^Layout, height: f32) -> (lo, hi: f32) {
+	return l.doc_min_y, max(l.height - height, 0)
+}
+
 // `viewport`: device px; `doc_scroll`: the page's vertical scroll offset (device px); the horizontal one is the layout's
 // (doc_scroll_x). With `cull`, `visible` lists the items intersecting the viewport.
 view_make :: proc(l: ^Layout, viewport: Vec2, doc_scroll: f32, cull := true, allocator := context.temp_allocator) -> View {
@@ -636,15 +641,16 @@ doc_scrollbar_width :: proc(l: ^Layout) -> (w: f32, ok: bool) {
 // horizontal one too, each stops short of the corner.
 doc_scrollbar :: proc(l: ^Layout, viewport: Vec2, doc_scroll: f32) -> (track, thumb: Rect, ok: bool) {
 	w, shown := doc_scrollbar_width(l)
-	if !shown || l.height <= viewport.y + DOC_BAR_MIN_OVERFLOW { return }
+	extent := l.height - l.doc_min_y
+	if !shown || extent <= viewport.y + DOC_BAR_MIN_OVERFLOW { return }
 	s := l.scale
 	m := l.settings.scrollbar_margin * s
 	track = Rect{{viewport.x - w - m, m}, {viewport.x - m, viewport.y - m}}
 	if l.doc_width - l.doc_min_x > viewport.x + DOC_BAR_MIN_OVERFLOW { track.max.y -= w + m }
-	th := max((track.max.y - track.min.y) * viewport.y / l.height, l.settings.scrollbar_min_thumb * s)
+	th := max((track.max.y - track.min.y) * viewport.y / extent, l.settings.scrollbar_min_thumb * s)
 	th = min(th, track.max.y - track.min.y)
-	range := l.height - viewport.y
-	t := range > 0 ? clamp(doc_scroll / range, 0, 1) : 0
+	lo, hi := doc_scroll_y_range(l, viewport.y)
+	t := hi > lo ? clamp((doc_scroll - lo) / (hi - lo), 0, 1) : 0
 	y := track.min.y + (track.max.y - track.min.y - th) * t
 	thumb = Rect{{track.min.x, y}, {track.max.x, y + th}}
 	return track, thumb, true
@@ -658,7 +664,7 @@ doc_scrollbar_x :: proc(l: ^Layout, viewport: Vec2) -> (track, thumb: Rect, ok: 
 	s := l.scale
 	m := l.settings.scrollbar_margin * s
 	track = Rect{{m, viewport.y - w - m}, {viewport.x - m, viewport.y - m}}
-	if l.height > viewport.y + DOC_BAR_MIN_OVERFLOW { track.max.x -= w + m }
+	if l.height - l.doc_min_y > viewport.y + DOC_BAR_MIN_OVERFLOW { track.max.x -= w + m }
 	th := max((track.max.x - track.min.x) * viewport.x / extent, l.settings.scrollbar_min_thumb * s)
 	th = min(th, track.max.x - track.min.x)
 	lo, hi := doc_scroll_x_range(l, viewport.x)

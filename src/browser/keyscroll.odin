@@ -75,8 +75,8 @@ keyboard_scroll :: proc(app: ^App, t: ^Tab, start: base.Handle, k: Key_Scroll) -
 	cur := smooth_pending(app, t, base.NIL_HANDLE)
 	next := cur
 	if vertical {
-		limit := max(t.layout.height - viewport.y, 0)
-		next.y = clamp(cur.y + amount(k, line, viewport.y, cur.y, limit, app.cfg.key_page_fraction), 0, limit)
+		lo, hi := lay.doc_scroll_y_range(&t.layout, viewport.y)
+		next.y = clamp(cur.y + amount(k, line, viewport.y, cur.y, hi, app.cfg.key_page_fraction), lo, hi)
 	} else {
 		lo, hi := lay.doc_scroll_x_range(&t.layout, viewport.x)
 		next.x = clamp(cur.x + amount(k, line, viewport.x, cur.x, hi, app.cfg.key_page_fraction), lo, hi)

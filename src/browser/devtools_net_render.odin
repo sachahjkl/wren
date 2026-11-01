@@ -141,8 +141,8 @@ preview_html_rendered :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 			lay.set_doc_scroll_x(&pr.layout, pr.layout.doc_scroll_x - sig.scrolled.x)
 			request_frames(app, 2)
 		}
-		limit := max(pr.layout.height - size.y, 0)
-		pr.scroll = clamp(pr.scroll, 0, limit)
+		lo_y, hi_y := lay.doc_scroll_y_range(&pr.layout, size.y)
+		pr.scroll = clamp(pr.scroll, lo_y, hi_y)
 		lo, hi := lay.doc_scroll_x_range(&pr.layout, size.x)
 		lay.set_doc_scroll_x(&pr.layout, clamp(pr.layout.doc_scroll_x, lo, hi))
 	}

@@ -158,7 +158,11 @@ try_options_resolve :: proc(cx: ^Cx, env: ^Var_Env, e: ^Engine, doc: ^dom.Docume
 		tmp^ = c^
 		sub := cx^
 		sub.c = tmp
+		// (flow-relative declarations mean what they mean for this element, as in the cascade)
+		flow := flow_map_for(c.writing_mode, c.direction == .Rtl)
 		for &d in rule.decls {
+			prop := d.prop
+			if d.logical && flow != nil { prop = flow[prop] }
 			vals := d.value
 			if d.has_var {
 				v, ok := substitute(env, vals, 0)
@@ -172,10 +176,10 @@ try_options_resolve :: proc(cx: ^Cx, env: ^Var_Env, e: ^Engine, doc: ^dom.Docume
 				}
 			}
 			switch css_wide_keyword(vals) {
-			case "inherit": copy_prop(tmp, cx.parent != nil ? cx.parent : cx.initial, d.prop)
-			case "initial", "unset": copy_prop(tmp, cx.initial, d.prop)
+			case "inherit": copy_prop(tmp, cx.parent != nil ? cx.parent : cx.initial, prop)
+			case "initial", "unset": copy_prop(tmp, cx.initial, prop)
 			case "revert", "revert-layer":
-			case: apply_prop(&sub, d.prop, vals)
+			case: apply_prop(&sub, prop, vals)
 			}
 		}
 		s := new(Try_Style, cx.alloc)

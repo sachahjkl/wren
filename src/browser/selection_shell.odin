@@ -290,7 +290,8 @@ selection_shell_frame :: proc(app: ^App) {
 	}
 	if !moved && step != {} {
 		before := [2]f32{t.layout.doc_scroll_x, t.scroll}
-		t.scroll = clamp(t.scroll + step.y, 0, max(t.layout.height - page_viewport(app).y, 0))
+		lo_y, hi_y := lay.doc_scroll_y_range(&t.layout, page_viewport(app).y)
+		t.scroll = clamp(t.scroll + step.y, lo_y, hi_y)
 		doc_scroll_x_set(t, t.layout.doc_scroll_x + step.x, page_viewport(app).x)
 		moved = before != {t.layout.doc_scroll_x, t.scroll}
 	}

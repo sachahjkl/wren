@@ -25,7 +25,8 @@ import "wb:style"
 // scroll. Only when what was chosen depends on scrolling (fallbacks, position-visibility) does a change of offset ask for
 // a pass (Layout.anchor_stale).
 //
-// Writing modes are not supported by this engine: block is y, inline is x.
+// Writing modes: everything here is physical (anchored_pass comes after frames_to_physical); the flow-relative keywords take the
+// axis they mean for the containing block's mode, or the box's.
 
 // Overflow below this (device px) is rounding: the option fits.
 ANCHOR_FIT_EPSILON :: f32(0.01)
@@ -106,6 +107,8 @@ Len_Use :: struct { side: style.Side, inset: bool, axis_x: bool }
 containing_or_parent :: #force_inline proc(l: ^Layout, x: i32) -> i32 {
 	b := &l.boxes[x]
 	if .Root in b.flags { return NONE }
+	// (the containing block of a spanner is its multi-column container, whatever is between them: CSS Multicol 1 §6)
+	if .Spanner in b.fx { return flow_container(l, x) }
 	return containing_parent(b)
 }
 
@@ -244,6 +247,14 @@ scroll_apart :: proc(l: ^Layout, a, q: i32) -> bool {
 	return scroll_box_of(l, a) != scroll_box_of(l, q) || (.Fixed in l.boxes[a].flags) != (.Fixed in l.boxes[q].flags)
 }
 
+// The direction of the containing block of box `q`: the viewport has the principal one (CSS Writing Modes 4 §8).
+@(private = "file")
+cb_is_rtl :: proc(c: ^Ctx, q: i32) -> bool {
+	cb := &c.l.boxes[c.l.boxes[q].cb]
+	if .Root in cb.flags { return principal_rtl(c) }
+	return cb.cs != nil && is_rtl(cb.cs)
+}
+
 // The border box of an anchor, where it shows: through its columns when it is in a multi-column flow.
 @(private = "file")
 anchor_rect :: proc(l: ^Layout, x, q: i32) -> Rect {
@@ -269,8 +280,7 @@ anchor_position :: proc(ac: ^A, q: i32, p: ^Prep, n: ^css.Calc, use: Len_Use) ->
 	lo, hi := r.min[axis] - refabs[axis], r.max[axis] - refabs[axis]
 	start_side := use.side == .Left || use.side == .Top
 	// (where this axis starts follows the writing modes of the containing block and of the box)
-	cbb := &l.boxes[l.boxes[q].cb]
-	rtl := style.axis_start_hi(cbb.wm, cbb.cs != nil && is_rtl(cbb.cs), use.axis_x)
+	rtl := style.axis_start_hi(l.boxes[l.boxes[q].cb].wm, cb_is_rtl(ac.c, q), use.axis_x)
 	self_rtl := style.axis_start_hi(l.boxes[q].wm, is_rtl(p.cs), use.axis_x)
 	at: f32
 	#partial switch n.anchor.side {
@@ -400,8 +410,7 @@ prepare :: proc(ac: ^A, q: i32, base: ^style.Computed, opt: i32, ref: i32, cb: R
 	}
 	p := Prep{cs = v, ref = ref, cb = cb, imcb = cb}
 	p.anchor = default_anchor(ac, q, v)
-	cbcs := l.boxes[l.boxes[q].cb].cs
-	cb_rtl := cbcs != nil && is_rtl(cbcs)
+	cb_rtl := cb_is_rtl(ac.c, q)
 	self_rtl := is_rtl(v)
 	cb_wm := l.boxes[l.boxes[q].cb].wm
 	// the axes justify-self and align-self mean, and where they start
@@ -808,6 +817,19 @@ anchored_space :: proc(l: ^Layout, x: i32, t: []^Anchored) {
 	e := t[x]
 	if e == nil || e.anchor == NONE || (!e.follow[0] && !e.follow[1]) { return }
 	b := &l.boxes[x]
+	// in the flow of a multi-column container: with an anchor that scrolls with it there is nothing to follow, and the box is
+	// content of the flow as any other, cut by its columns; else it hangs from the column it starts in (flow_fix_box)
+	if l.spaces[b.space].kind == .Flow {
+		if !scroll_apart(l, e.anchor, x) { return }
+		sp := l.spaces[b.space]
+		at := &l.flow_frags[sp.flow[0]]
+		for fi in sp.flow[0] ..< sp.flow[1] {
+			fr := &l.flow_frags[fi]
+			if frag_overlaps(fr, Rect{b.abs, b.abs}) { at = fr; break }
+		}
+		b.space = at.space
+		b.clip = l.clips[at.clip].parent
+	}
 	pb := &l.spaces[b.space]
 	append(&l.spaces, Space{kind = .Anchored, parent = b.space, box = x, frame = NONE, clip = b.clip, xform = pb.xform, plane = pb.plane, persp_from = NONE, ctx = NONE, dest = NONE, anchor = e.anchor, follow = e.follow})
 	b.space = i32(len(l.spaces) - 1)
