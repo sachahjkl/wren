@@ -3,7 +3,7 @@
 // of the requests); the server answers the n-th request it sees for a uuid with the n-th configuration (response
 // headers with "magic" relative dates and locations, status, body), answers 304 when a "validated" request carries the
 // validator of the first response, and keeps what it saw for dispatch=state.
-package main
+package testserver
 
 import (
 	"encoding/base64"

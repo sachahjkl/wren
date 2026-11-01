@@ -1,8 +1,8 @@
-// Local server for exercising the network stack (Go's standard library, plus quic-go for HTTP/3: transport.go).
+// Local server for exercising the network stack (Go's standard library, plus quic-go for HTTP/3: transport.go), as a
+// library: Start listens and serves on goroutines of the process that calls it. What calls it:
 //
-//	go run ./tools/testserver            # http on :8765, https (self-signed) on :8766, http on :8767, WPT on :8768
-//	testserver -base-port N [-scan] [-port-file F] [-parent-pid P]   # another block of ports (ports.go), ending with
-//	                                     # process P (tools\test_env.ps1 Start-WrenTestServer starts it that way)
+//	cdll/            build\testserver.dll, what the Odin tests load and start in their own process (src/testserver)
+//	cmd/testserver/  build\testserver.exe, a thin main for what is not Odin: the scripts, the demos, the release package
 //
 //	/                hello
 //	/big?mb=N        N MB of incompressible bytes, streamed
@@ -11,7 +11,7 @@
 //	/status/NNN      replies NNN
 //	/slow            one byte every 100 ms for 10 s
 //	/echo            POST: replies with the request body length and the X-Test header
-package main
+package testserver
 
 import (
 	"compress/gzip"
@@ -26,9 +26,11 @@ import (
 	"log"
 	"math/big"
 	mrand "math/rand"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -47,11 +49,26 @@ func selfSigned() tls.Certificate {
 	return tls.Certificate{Certificate: [][]byte{der}, PrivateKey: key}
 }
 
-func main() {
-	watchParent()
-	if wptOnly() {
-		serveWPTOnly()
-		return
+// How a server starts.
+type Options struct {
+	BasePort int    // the first block tried (0: 8765)
+	Scan     bool   // a busy block is not an error: the next free one is taken
+	WPTOnly  bool   // the WPT origin alone, from WPTPort (or BasePort)
+	WPTPort  int    // fixes the WPT origin's first port (0: it moves with the block)
+	SiteDir  string // the folder of /site/ ("": examples/site from the working directory, else demos beside the program)
+}
+
+// Binds everything, or nothing, then serves on goroutines and returns the base port of the block it took (the WPT origin's
+// first port with WPTOnly). One server per process: the origins and what the handlers count are the package's.
+func Start(o Options) (int, error) {
+	if o.BasePort > 0 {
+		basePort = o.BasePort
+	}
+	siteDir = findSiteDir(o.SiteDir)
+	wptRoot = findWPTFile("WREN_WPT_ROOT", "build", "wpt", "wpt")
+	wptReport = findWPTFile("WREN_WPT_REPORT", "wpt", "testharnessreport.js")
+	if o.WPTOnly {
+		return startWPTOnly(o)
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -130,13 +147,55 @@ func main() {
 	registerTransportHandlers(mux)
 
 	// every listener bound before anything is served or announced (ports.go)
-	l := bindPorts(selfSigned())
+	l, err := bindPorts(selfSigned(), o)
+	if err != nil {
+		return 0, err
+	}
 	serveWPTOn(l.wpt, l.wptTLS)
 	serveTransport(l, mux)
-	go func() { log.Fatal(http.Serve(l.other, mux)) }()
-	go func() { log.Fatal(http.Serve(l.https, mux)) }()
-	writePortFile()
+	serve(l.other, mux)
+	serve(l.https, mux)
+	serve(l.http, mux)
 	log.Printf("http://127.0.0.1:%d  https://127.0.0.1:%d (self-signed)  http://127.0.0.1:%d  web-platform-tests http://127.0.0.1:%d, checkout %s",
 		basePort, basePort+1, basePort+2, wptHTTPPort, wptRoot)
-	log.Fatal(http.Serve(l.http, mux))
+	return basePort, nil
+}
+
+// Serves a listener for as long as the process lives.
+func serve(l net.Listener, h http.Handler) {
+	go func() { log.Print(http.Serve(l, h)) }()
+}
+
+// What the handlers have counted and kept goes, as for a new server: a test that starts one finds nothing of the last test's.
+func Reset() {
+	cacheCounts.Lock()
+	cacheCounts.hits, cacheCounts.nm, cacheCounts.last = map[string]int{}, map[string]int{}, map[string]string{}
+	cacheCounts.Unlock()
+	imageCounts.Lock()
+	imageCounts.m = map[string]int{}
+	imageCounts.Unlock()
+	jsloadHits.Lock()
+	jsloadHits.m = map[string]int{}
+	jsloadHits.Unlock()
+	beacon.Lock()
+	beacon.count, beacon.body, beacon.ctype = 0, "", ""
+	beacon.Unlock()
+	mediaAccept.Lock()
+	mediaAccept.m = map[string]string{}
+	mediaAccept.Unlock()
+	atomic.StoreInt64(&preflights, 0)
+	sseMu.Lock()
+	sseHits = map[string]int{}
+	sseMu.Unlock()
+	swVersion.Store(1)
+	proxyTunnels.Store(0)
+	proxyForwards.Store(0)
+	videoCounts.Lock()
+	videoCounts.n, videoCounts.rng = map[string]int{}, map[string]string{}
+	videoCounts.Unlock()
+	atomic.StoreInt64(&wsHandshakes, 0)
+	wsLastClose.Clear()
+	httpCacheStash.Lock()
+	httpCacheStash.m = map[string][]map[string]any{}
+	httpCacheStash.Unlock()
 }

@@ -1,4 +1,4 @@
-package main
+package testserver
 
 // Endpoints for the service worker test (src/tools/e2e/sw.odin), where a static file cannot do:
 //

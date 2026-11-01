@@ -1,4 +1,4 @@
-package main
+package testserver
 
 // Endpoints for the web platform API test (src/tools/webapitest):
 //

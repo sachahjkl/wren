@@ -10,7 +10,7 @@
 // The test authority is made at start; /testca.pem gives it (a client trusts it through network.tls.extra_ca_file).
 // Handlers on every origin: /stall (headers after 3 s), /cut (a body cut short), /garbage (not HTTP),
 // /proxystats (what the proxy carried).
-package main
+package testserver
 
 import (
 	"crypto/ecdsa"
@@ -197,14 +197,14 @@ func serveTransport(l *portListeners, mux http.Handler) {
 
 	serveTLS := func(ln net.Listener, cfg *tls.Config, h http.Handler) {
 		srv := &http.Server{Handler: h, TLSConfig: cfg, ErrorLog: log.New(io.Discard, "", 0)}
-		go func() { log.Fatal(srv.ServeTLS(ln, "", "")) }()
+		go func() { log.Print(srv.ServeTLS(ln, "", "")) }()
 	}
 	serveTLS(l.h2, &tls.Config{Certificates: []tls.Certificate{good}}, withAltSvc(mux, basePort+5))
 	serveTLS(l.tls13, &tls.Config{Certificates: []tls.Certificate{good}, MinVersion: tls.VersionTLS13}, withAltSvc(mux, basePort+6))
 	serveTLS(l.expired, &tls.Config{Certificates: []tls.Certificate{expired}}, mux)
 	serveTLS(l.wrongName, &tls.Config{Certificates: []tls.Certificate{wrong}}, mux)
-	go func() { log.Fatal(http.Serve(l.proxy, http.HandlerFunc(proxyHandler))) }()
+	serve(l.proxy, http.HandlerFunc(proxyHandler))
 
 	h3 := &http3.Server{Handler: withAltSvc(mux, basePort+5), TLSConfig: http3.ConfigureTLSConfig(&tls.Config{Certificates: []tls.Certificate{good}})}
-	go func() { log.Fatal(h3.Serve(l.h3)) }()
+	go func() { log.Print(h3.Serve(l.h3)) }()
 }

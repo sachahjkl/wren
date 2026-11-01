@@ -1,6 +1,6 @@
 // Small Python handlers of web-platform-tests, in Go (wptserve's Python handlers do not run here): redirects, scripts
 // that echo a request header or a cookie, a script served with a MIME type of the query. Each mirrors its .py file.
-package main
+package testserver
 
 import (
 	"fmt"

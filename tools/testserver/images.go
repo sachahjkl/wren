@@ -9,7 +9,7 @@
 //	/images/gen?w=W&h=H&seed=N   a W x H JPEG made on the fly (performance test), cached per parameters
 //	/images/count?path=P         requests seen for P (the path without query); /images/count?path=slow-aborted for cuts
 //	/images/reset                forgets the counts
-package main
+package testserver
 
 import (
 	"bytes"
@@ -42,18 +42,6 @@ func countImage(key string) {
 	imageCounts.Lock()
 	imageCounts.m[key]++
 	imageCounts.Unlock()
-}
-
-func init() {
-	for i, a := range os.Args {
-		if a == "-gen-images" && i+1 < len(os.Args) {
-			if err := generateImages(os.Args[i+1]); err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(1)
-			}
-			os.Exit(0)
-		}
-	}
 }
 
 func imageType(name string) string {
@@ -392,7 +380,7 @@ func tiffRGB(w, h int, c color.RGBA) []byte {
 	return b.Bytes()
 }
 
-func generateImages(dir string) error {
+func GenerateImages(dir string) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}

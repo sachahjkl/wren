@@ -5,7 +5,7 @@
 //	/media/accept?name=N   the Accept header the last request for N carried
 //	/media/neg             content negotiation on Accept: quad8a.avif if image/avif is accepted, else quad-lossy.webp if
 //	                       image/webp is, else ../images/red.png (Vary: Accept)
-package main
+package testserver
 
 import (
 	"net/http"

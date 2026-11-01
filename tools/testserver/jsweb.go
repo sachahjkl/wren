@@ -1,4 +1,4 @@
-package main
+package testserver
 
 // Endpoints for the JavaScript web API test (src/tools/jswebtest):
 //

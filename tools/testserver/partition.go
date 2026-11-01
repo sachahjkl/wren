@@ -1,4 +1,4 @@
-package main
+package testserver
 
 // Storage partitioning (src/tools/e2e/partition.odin):
 //

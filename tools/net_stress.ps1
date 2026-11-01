@@ -1,7 +1,7 @@
 # Network stress / correctness checks: build\fetch.exe against build\testserver.exe (tools\testserver, Go).
 #   powershell -File tools\net_stress.ps1 [-SizeMB 400]
 # Build first:  odin build src/tools/fetch -collection:wb=src -out:build/fetch.exe
-#               cd tools\testserver; go build -o ..\..\build\testserver.exe .
+#               cd tools\testserver; go build -o ..\..\build\testserver.exe ./cmd/testserver
 param([int]$SizeMB = 400)
 $root = Split-Path $PSScriptRoot -Parent
 $exe = Join-Path $root 'build\fetch.exe'

@@ -1,4 +1,4 @@
-package main
+package testserver
 
 // Endpoints for the nested documents test (src/tools/framestest) and the frames demo (examples/site/frames/):
 //

@@ -20,7 +20,7 @@
 // server serves nothing else (tools\wpt.ps1 runs the whole suite that way, on ports no other test uses).
 // The checkout: WREN_WPT_ROOT, else build/wpt/wpt (from the repository root, as the tests run), else next to the
 // executable (build\testserver.exe -> build\wpt\wpt). No checkout: the listener answers 503 with how to get one.
-package main
+package testserver
 
 import (
 	"crypto/rand"
@@ -41,35 +41,25 @@ import (
 
 const wptWWWHost = "localhost"
 
-// -wpt-port N: the WPT origin is 127.0.0.1:N (https: N+1); by default the fourth and fifth ports of the block
-// (ports.go: 8768 / 8769 on the default block). -wpt-only: nothing else is served (tools\wpt.ps1 runs the full suite
-// on ports of its own); there -scan takes the next free pair (N+10...) and -port-file F receives the http port.
+// The WPT origin is 127.0.0.1:N (https: N+1): by default the fourth and fifth ports of the block (ports.go: 8768 / 8769 on the
+// default block), or Options.WPTPort. Options.WPTOnly: nothing else is served (tools\wpt.ps1 runs the full suite on ports of
+// its own); there Options.Scan takes the next free pair (N+10...).
 var (
-	wptHTTPPort  = argInt("-wpt-port", basePort+3)
+	wptHTTPPort  = defaultBasePort + 3
 	wptHTTPSPort = wptHTTPPort + 1
 )
 
-func argInt(name string, def int) int {
-	for i, a := range os.Args {
-		if a == name && i+1 < len(os.Args) {
-			if n, err := strconv.Atoi(os.Args[i+1]); err == nil {
-				return n
-			}
-		}
-	}
-	return def
-}
-
-func wptOnly() bool { return hasArg("-wpt-only") }
-
-// The WPT origin alone (-wpt-only).
-func serveWPTOnly() {
+// The WPT origin alone: returns its first port.
+func startWPTOnly(o Options) (int, error) {
 	cert := selfSigned()
 	tries := 1
-	if hasArg("-scan") {
+	if o.Scan {
 		tries = scanTries
 	}
-	first := wptHTTPPort
+	first := o.WPTPort
+	if first == 0 {
+		first = basePort + 3
+	}
 	var plain, secure net.Listener
 	var err error
 	for i := 0; i < tries; i++ {
@@ -85,15 +75,11 @@ func serveWPTOnly() {
 		break
 	}
 	if err != nil {
-		log.Fatalf("testserver: no free pair of ports for web-platform-tests from %d: %v", first, err)
-	}
-	if f := argString("-port-file"); f != "" {
-		os.WriteFile(f+".tmp", []byte(strconv.Itoa(wptHTTPPort)), 0o644)
-		os.Rename(f+".tmp", f)
+		return 0, fmt.Errorf("no free pair of ports for web-platform-tests from %d: %w", first, err)
 	}
 	log.Printf("web-platform-tests: http://127.0.0.1:%d  https://127.0.0.1:%d (self-signed), checkout %s", wptHTTPPort, wptHTTPSPort, wptRoot)
 	serveWPTOn(plain, tls.NewListener(secure, &tls.Config{Certificates: []tls.Certificate{cert}}))
-	select {}
+	return wptHTTPPort, nil
 }
 
 func findWPTFile(env string, rel ...string) string {
@@ -121,8 +107,8 @@ var (
 // The WPT origin on its two listeners (the TLS one already wrapped), each served from its own goroutine.
 func serveWPTOn(plain, secure net.Listener) {
 	h := http.HandlerFunc(serveWPT)
-	go func() { log.Fatal(http.Serve(plain, h)) }()
-	go func() { log.Fatal(http.Serve(secure, h)) }()
+	serve(plain, h)
+	serve(secure, h)
 }
 
 var wptTypes = map[string]string{

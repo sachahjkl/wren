@@ -91,7 +91,7 @@ if ($Extras) {
         }
     }
     Push-Location tools\testserver
-    try { go build -trimpath -o ..\..\build\testserver.exe .; if ($LASTEXITCODE -ne 0) { throw 'go build of the test server failed' } } finally { Pop-Location }
+    try { go build -trimpath -o ..\..\build\testserver.exe ./cmd/testserver; if ($LASTEXITCODE -ne 0) { throw 'go build of the test server failed' } } finally { Pop-Location }
     Copy-Item build\testserver.exe "$extrasDir\testserver.exe"
     $toSign += "$extrasDir\testserver.exe"
 

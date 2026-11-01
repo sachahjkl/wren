@@ -224,11 +224,11 @@ function Get-WrenStepPackages([string]$Body, $Vars) {
         }
         foreach ($m in [regex]::Matches($b, '-out:"?([^\s"]+)"?')) { $outs[($m.Groups[1].Value.Replace('\', '/'))] = $true }
     }
-    # a tool an earlier step built (build\policytest.exe from src\tools\policytest) and a guest (build\e2e.wasm from examples\e2e)
+    # a tool an earlier step built (build\fetch.exe from src\tools\fetch, build\web_test.exe from src\tools\webtests) and a guest (build\e2e.wasm from examples\e2e)
     foreach ($b in $bodies) {
         foreach ($m in [regex]::Matches($b, 'build[\\/]([A-Za-z0-9_]+)\.exe')) {
             if ($outs.ContainsKey("build/$($m.Groups[1].Value).exe")) { continue }
-            $d = "src/tools/$($m.Groups[1].Value)"
+            $d = if ($m.Groups[1].Value -eq 'web_test') { 'src/tools/webtests' } else { "src/tools/$($m.Groups[1].Value)" }
             if (Test-Path -LiteralPath (Join-Path $script:CacheRoot $d)) { $pkgs.Add($d) } else { return $null }
         }
     }

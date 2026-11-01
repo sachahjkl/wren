@@ -8,13 +8,28 @@
 // port; this file is a thin wrapper so the tools keep writing testenv.url / testenv.port unchanged.
 package testenv
 
+import "core:sync"
+import "core:testing"
 import tk "../../../ext/gui_toolkit/testkit"
+import "wb:testserver"
 
 DEFAULT_BASE_PORT :: 8765
 BLOCK_PORTS :: 5
 
 @(private)
 PORTS := tk.Ports{base_env = "WREN_TEST_BASE_PORT", default_base = DEFAULT_BASE_PORT, span = BLOCK_PORTS}
+
+// The test server in this process (src/testserver): listening when this returns, what it counted forgotten, and url() and port() are on
+// its block from now on.
+serve :: proc(t: ^testing.T, loc := #caller_location) {
+	base, why := testserver.start()
+	testing.expect(t, base != 0, why, loc = loc)
+	sync.guard(&PORTS.lock)
+	if PORTS.cached != base {
+		PORTS.cached = base
+		clear(&PORTS.interned)
+	}
+}
 
 // The base port of this run: WREN_TEST_BASE_PORT, else 8765.
 base_port :: proc() -> int { return tk.base_port(&PORTS) }

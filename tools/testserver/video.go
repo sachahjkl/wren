@@ -6,7 +6,7 @@
 //	?rate=BYTES                   send BYTES per second (a slow download: buffering, waiting events)
 //	?status=CODE                  answer with this status and no body
 //	/video/count?name=N           how many requests the file N had, and the Range header of the last one
-package main
+package testserver
 
 import (
 	"fmt"
