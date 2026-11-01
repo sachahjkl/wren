@@ -1412,6 +1412,8 @@ wjr_Selection_addRange :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, 
 	if !ok { return wj.EXCEPTION }
 	if argc < 1 { return wj.wj_throw_arity(ctx, "Selection.addRange", 1, argc) }
 	ro := wj.wj_unwrap(argv[0], ifc("Range"))
+	// a Range of another document's realm: its root is not this selection's document, nothing happens (HTML)
+	if ro == nil && frames_bridge_is_remote(ctx, argv[0]) { return wj.UNDEFINED }
 	if ro == nil || ro.impl == nil { return wj.JS_ThrowTypeError(ctx, "parameter 1 is not of type 'Range'.") }
 	if s.kind != 0 { return wj.UNDEFINED }
 	d := (^wj.Dom_Impl)(ro.impl)

@@ -2096,7 +2096,10 @@ wjg_Document_adoptNode :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc
 	if argc < 1 { return wj.wj_throw_arity(ctx, "Document.adoptNode", 1, argc) }
 	a0: u64
 	if !wj.wj_to_handle(ctx, wj.arg(argc, argv, 0), 245, false, &a0, "Document.adoptNode: argument 1 is not of type 'Node'") { return wj.EXCEPTION }
-	if !wj.wj_doc_target(self.handle) { return wj.wj_throw_gone(ctx) }
+	if !wj.wj_same_doc(self.handle, a0) {
+		if !adopt_for(ctx, self.handle, &a0) { return wj.EXCEPTION }
+		return wj.wj_wrap_node(ctx, a0)
+	}
 	r: u64
 	st := wj.wr_Document_adoptNode(a0, &r)
 	if st < 0 { return wj.wj_throw_status(ctx, i32(st), "Document.adoptNode") }

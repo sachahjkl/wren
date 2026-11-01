@@ -213,8 +213,9 @@ wjr_Node_get_childNodes :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> 
 
 // A node given to an insertion into a node of another document moves there first (DOM "adopt"): `node` is then its new handle,
 // and its wrapper here has followed.
-adopt_for :: proc(ctx: ^wj.Context, into: u64, node: ^u64) -> bool {
+adopt_for :: proc "contextless" (ctx: ^wj.Context, into: u64, node: ^u64) -> bool {
 	if wj.wj_same_doc(into, node^) { return true }
+	context = jsb.glue_context()
 	pairs: abi.Bytes
 	st := jsb.host(&pairs, api_decl.Frame_adoptNode, wj.wr_Frame_adoptNode, api_decl.Node(node^), api_decl.Node(into))
 	if st != .None { wj.wj_throw_status(ctx, i32(st), "adoptNode"); return false }
@@ -552,7 +553,8 @@ wjr_Document_createElementNS :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue
 @(export, link_name = "wjr_Document_importNode")
 wjr_Document_importNode :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	context = jsb.glue_context()
-	if wj.wj_this(ctx, this_val, ifc("Document")) == nil { return wj.EXCEPTION }
+	self := wj.wj_this(ctx, this_val, ifc("Document"))
+	if self == nil { return wj.EXCEPTION }
 	if argc < 1 { return wj.wj_throw_arity(ctx, "Document.importNode", 1, argc) }
 	node: u64
 	if !wj.dom_node_arg(ctx, argv[0], &node, false, "importNode") { return wj.EXCEPTION }
@@ -569,6 +571,12 @@ wjr_Document_importNode :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, arg
 	}
 	h: api_decl.Node
 	st := jsb.host(&h, api_decl.Document_importNodeCopy, wj.wr_Document_importNodeCopy, api_decl.Node(node), deep)
+	// of another document than `this`: the copy, made where its original is, moves here
+	if st == .None && h != 0 && !wj.wj_same_doc(self.handle, u64(h)) {
+		moved := u64(h)
+		if !adopt_for(ctx, self.handle, &moved) { return wj.EXCEPTION }
+		h = api_decl.Node(moved)
+	}
 	return node_or_throw(ctx, h, st, "Document.importNode")
 }
 

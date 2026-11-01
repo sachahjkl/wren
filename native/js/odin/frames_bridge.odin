@@ -33,7 +33,7 @@ import "../odin/wj"
 @(private = "file") Tag :: enum u8 { Undefined, Null, False, True, Number, String, Bigint, Node, Window, Object, Symbol, List, Error }
 
 @(private = "file") bridge: wj.JSValue   // what web_bridge.js returned (in the image: counted for good)
-@(private = "file") dispatch_fn, import_ref_fn, export_ref_fn, symbol_name_fn, symbol_of_fn, bigint_fn, describe_error_fn, make_error_fn: wj.JSValue
+@(private = "file") dispatch_fn, import_ref_fn, export_ref_fn, symbol_name_fn, symbol_of_fn, bigint_fn, describe_error_fn, make_error_fn, is_remote_fn: wj.JSValue
 @(private = "file") self_realm: f64      // this realm's number (its document's), once asked
 
 @(private = "file")
@@ -256,7 +256,8 @@ wj_bridge_dispatch :: proc "c" (data, data_len: u32) -> u32 {
 	pack_u8(&reply, thrown ? 1 : 0)
 	lists := op == OP_KEYS || op == OP_GOPD
 	ok: bool
-	described := thrown ? wj.JS_Call(ctx, describe_error_fn, wj.UNDEFINED, 1, &v) : wj.UNDEFINED
+	describe_args := [2]wj.JSValue{v, wj.new_float64(ctx, realm_self())}
+	described := thrown ? wj.JS_Call(ctx, describe_error_fn, wj.UNDEFINED, 2, &describe_args[0]) : wj.UNDEFINED
 	defer wj.JS_FreeValue(ctx, described)
 	if wj.is_object(described) {
 		ok = pack_u8(&reply, u8(Tag.Error)) && put_list(ctx, &reply, described)
@@ -304,6 +305,14 @@ frames_bridge_define :: proc "contextless" (ctx: ^wj.Context, realm: u64, key, d
 	return frames_bridge_send(ctx, realm, OP_DEFINE, GLOBAL_NUMBER, key, desc, list_b = true)
 }
 
+// Whether a value is this realm's proxy of an object of another.
+frames_bridge_is_remote :: proc "contextless" (ctx: ^wj.Context, v: wj.JSValue) -> bool {
+	arg := v
+	r := wj.JS_Call(ctx, is_remote_fn, wj.UNDEFINED, 1, &arg)
+	defer wj.JS_FreeValue(ctx, r)
+	return wj.JS_ToBool(ctx, r) > 0
+}
+
 // document.<method>() of a document of another realm, run in that realm: what comes back is its object (a Range its Selection takes).
 frames_bridge_document_call :: proc "contextless" (ctx: ^wj.Context, this_val: wj.JSValue, doc: u64, method: cstring) -> wj.JSValue {
 	context = jsb.glue_context()
@@ -345,4 +354,5 @@ frames_bridge_install :: proc "contextless" (ctx: ^wj.Context) {
 	bigint_fn = wj.JS_GetPropertyStr(ctx, bridge, "bigint")
 	describe_error_fn = wj.JS_GetPropertyStr(ctx, bridge, "describeError")
 	make_error_fn = wj.JS_GetPropertyStr(ctx, bridge, "makeError")
+	is_remote_fn = wj.JS_GetPropertyStr(ctx, bridge, "isRemote")
 }

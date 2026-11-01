@@ -56,7 +56,7 @@ WP_FUNCTIONS := [?]string{"fetch", "setTimeout", "clearTimeout", "setInterval", 
 	"removeEventListener", "dispatchEvent"}
 
 @(private = "file")
-WP_BUILTINS := [?]string{"Math", "JSON", "Reflect", "Intl", "Object", "Function", "Array", "String", "Number", "Boolean",
+WP_BUILTINS := [?]string{"JSON", "Math", "Reflect", "Intl", "Object", "Function", "Array", "String", "Number", "Boolean",
 	"Symbol", "BigInt", "Date", "RegExp", "Error", "TypeError", "RangeError", "SyntaxError", "ReferenceError",
 	"EvalError", "URIError", "AggregateError", "Map", "Set", "WeakMap", "WeakSet", "WeakRef", "Promise", "Proxy",
 	"ArrayBuffer", "DataView", "Int8Array", "Uint8Array", "Uint8ClampedArray", "Int16Array", "Uint16Array",

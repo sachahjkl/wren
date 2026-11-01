@@ -55,6 +55,8 @@ Nav_Task :: struct {
 	delta: int,
 	nav_state: string,
 	has_nav_state: bool,
+	nav:   ^Navigable,   // a frame's: a later navigation of it (src set meanwhile) supersedes this one
+	gen:   u64,
 }
 
 // Hands a navigation to the embedder from a task of its own (`nav_state`: the Navigation API state of its entry).
@@ -62,10 +64,12 @@ Nav_Task :: struct {
 request_navigation :: proc(p: ^Page, kind: Navigate_Kind, href: string, delta := 0, nav_state := "", has_nav_state := false) {
 	t := new(Nav_Task)
 	t^ = Nav_Task{kind = kind, url = strings.clone(href), delta = delta, nav_state = strings.clone(nav_state), has_nav_state = has_nav_state}
+	if p.frames != nil && p.frames.nav != nil { t.nav, t.gen = p.frames.nav, p.frames.nav.navigations }
 	post_page_task(p, proc(pg: ^Page, data: rawptr) {
 		t := (^Nav_Task)(data)
 		defer { delete(t.url); delete(t.nav_state); free(t) }
 		if pg == nil { return }
+		if t.nav != nil && pg.frames != nil && pg.frames.nav == t.nav && t.nav.navigations != t.gen { return }
 		if t.kind == .Traverse {
 			switch history_traverse(pg, t.delta) {
 			case .None, .Canceled: return
