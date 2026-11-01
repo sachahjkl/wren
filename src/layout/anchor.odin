@@ -244,6 +244,16 @@ scroll_apart :: proc(l: ^Layout, a, q: i32) -> bool {
 	return scroll_box_of(l, a) != scroll_box_of(l, q) || (.Fixed in l.boxes[a].flags) != (.Fixed in l.boxes[q].flags)
 }
 
+// The border box of an anchor, where it shows: through its columns when it is in a multi-column flow.
+@(private = "file")
+anchor_rect :: proc(l: ^Layout, x: i32) -> Rect {
+	r := border_rect(&l.boxes[x])
+	if .In_Flow in l.boxes[x].fx {
+		if mc := flow_container(l, x); mc != NONE { return flow_bounds(l, mc, r) }
+	}
+	return r
+}
+
 // The value of anchor(): as an inset of the side it is in, in CSS px.
 @(private = "file")
 anchor_position :: proc(ac: ^A, q: i32, p: ^Prep, n: ^css.Calc, use: Len_Use) -> (f32, bool) {
@@ -251,13 +261,15 @@ anchor_position :: proc(ac: ^A, q: i32, p: ^Prep, n: ^css.Calc, use: Len_Use) ->
 	if !use.inset { return 0, false }
 	target := n.anchor.name != "" ? named_anchor(ac, q, n.anchor.name) : p.anchor
 	if target == NONE { return 0, false }
-	r := border_rect(&l.boxes[target])
+	r := anchor_rect(l, target)
 	refabs := l.boxes[p.ref].abs
 	axis := use.axis_x ? 0 : 1
 	lo, hi := r.min[axis] - refabs[axis], r.max[axis] - refabs[axis]
 	start_side := use.side == .Left || use.side == .Top
-	rtl := use.axis_x && l.boxes[l.boxes[q].cb].cs != nil && is_rtl(l.boxes[l.boxes[q].cb].cs)
-	self_rtl := use.axis_x && is_rtl(p.cs)
+	// (where this axis starts follows the writing modes of the containing block and of the box)
+	cbb := &l.boxes[l.boxes[q].cb]
+	rtl := style.axis_start_hi(cbb.wm, cbb.cs != nil && is_rtl(cbb.cs), use.axis_x)
+	self_rtl := style.axis_start_hi(l.boxes[q].wm, is_rtl(p.cs), use.axis_x)
 	at: f32
 	#partial switch n.anchor.side {
 	case .Left: if !use.axis_x { return 0, false }; at = lo
@@ -287,11 +299,16 @@ anchor_dimension :: proc(ac: ^A, q: i32, p: ^Prep, n: ^css.Calc, use: Len_Use) -
 	l := ac.l
 	target := n.anchor.name != "" ? named_anchor(ac, q, n.anchor.name) : p.anchor
 	if target == NONE { return 0, false }
-	r := border_rect(&l.boxes[target])
+	r := anchor_rect(l, target)
 	x := use.axis_x
+	cbv, selfv := is_vert(l.boxes[l.boxes[q].cb].wm), is_vert(l.boxes[q].wm)
 	#partial switch n.anchor.side {
-	case .Width, .Inline, .Self_Inline: x = true
-	case .Height, .Block, .Self_Block: x = false
+	case .Width: x = true
+	case .Height: x = false
+	case .Inline: x = !cbv
+	case .Block: x = cbv
+	case .Self_Inline: x = !selfv
+	case .Self_Block: x = selfv
 	}
 	return (x ? r.max.x - r.min.x : r.max.y - r.min.y) / ac.c.scale, true
 }
@@ -364,6 +381,14 @@ prepare :: proc(ac: ^A, q: i32, base: ^style.Computed, opt: i32, ref: i32, cb: R
 		if o.rule != nil { style.try_style_apply(v, o.rule^) }
 		if o.area.a != .None { v.position_area = o.area }
 		tactics = o.tactics[:o.n_tactics]
+		// (named by flow: physical ones for the containing block's writing mode)
+		list := make([dynamic]style.Try_Tactic, 0, 6, context.temp_allocator)
+		for t in tactics {
+			buf: [3]style.Try_Tactic
+			n := style.try_tactics_physical(t, l.boxes[l.boxes[q].cb].wm, &buf)
+			for k in 0 ..< n { append(&list, buf[k]) }
+		}
+		tactics = list[:]
 		for t in tactics { style.try_tactic_apply(v, t, context.temp_allocator) }
 	}
 	p := Prep{cs = v, ref = ref, cb = cb, imcb = cb}
@@ -371,6 +396,11 @@ prepare :: proc(ac: ^A, q: i32, base: ^style.Computed, opt: i32, ref: i32, cb: R
 	cbcs := l.boxes[l.boxes[q].cb].cs
 	cb_rtl := cbcs != nil && is_rtl(cbcs)
 	self_rtl := is_rtl(v)
+	cb_wm := l.boxes[l.boxes[q].cb].wm
+	// the axes justify-self and align-self mean, and where they start
+	x_self, y_self := v.justify_self, v.align_self
+	if is_vert(cb_wm) { x_self, y_self = v.align_self, v.justify_self }
+	x_hi, y_hi := style.axis_start_hi(cb_wm, cb_rtl, true), style.axis_start_hi(cb_wm, cb_rtl, false)
 
 	// position-area: the rectangle of the grid the anchor makes in the containing block
 	refabs := l.boxes[ref].abs
@@ -378,7 +408,7 @@ prepare :: proc(ac: ^A, q: i32, base: ^style.Computed, opt: i32, ref: i32, cb: R
 	centered_track: [2]bool   // position-area in an axis takes all three tracks, and `normal`: as anchor-center
 	if v.position_area.a != .None && p.anchor != NONE {
 		p.area = true
-		x, y := style.area_tracks(v.position_area, cb_rtl, self_rtl)
+		x, y := style.area_tracks_flow(v.position_area, cb_wm, cb_rtl, l.boxes[q].wm, self_rtl)
 		for t in tactics {
 			switch t {
 			case .Flip_Block, .Flip_Y: y = {2 - y[1], 2 - y[0]}
@@ -386,7 +416,7 @@ prepare :: proc(ac: ^A, q: i32, base: ^style.Computed, opt: i32, ref: i32, cb: R
 			case .Flip_Start: x, y = y, x
 			}
 		}
-		r := border_rect(&l.boxes[p.anchor])
+		r := anchor_rect(l, p.anchor)
 		for axis in 0 ..< 2 {
 			tr := axis == 0 ? x : y
 			lo, hi := r.min[axis] - refabs[axis], r.max[axis] - refabs[axis]
@@ -401,18 +431,18 @@ prepare :: proc(ac: ^A, q: i32, base: ^style.Computed, opt: i32, ref: i32, cb: R
 		}
 		// insets left auto are the edges of that rectangle; explicit alignment wins over the one the tracks give
 		for s in style.Side { if v.inset[s].kind == .Auto { v.inset[s] = style.px(0) } }
-		if a := explicit_align(v.justify_self, cb_rtl); a != .None { p.align[0] = a; centered_track[0] = false } else if v.justify_self == .Stretch { p.align[0] = .None; centered_track[0] = false }
-		if a := explicit_align(v.align_self, false); a != .None { p.align[1] = a; centered_track[1] = false } else if v.align_self == .Stretch { p.align[1] = .None; centered_track[1] = false }
-		if v.justify_self == .Anchor_Center { centered_track[0] = true }
-		if v.align_self == .Anchor_Center { centered_track[1] = true }
+		if a := explicit_align(x_self, x_hi); a != .None { p.align[0] = a; centered_track[0] = false } else if x_self == .Stretch { p.align[0] = .None; centered_track[0] = false }
+		if a := explicit_align(y_self, y_hi); a != .None { p.align[1] = a; centered_track[1] = false } else if y_self == .Stretch { p.align[1] = .None; centered_track[1] = false }
+		if x_self == .Anchor_Center { centered_track[0] = true }
+		if y_self == .Anchor_Center { centered_track[1] = true }
 		if p.align[0] != .None && v.width.kind == .Auto { v.width = box_h }
 		if p.align[1] != .None && v.height.kind == .Auto { v.height = box_h }
 	}
 
 	// anchor-center: the middle of the anchor, as far as the rectangle allows (the box is sized in all of it)
 	if p.anchor != NONE {
-		r := border_rect(&l.boxes[p.anchor])
-		if centered_track[0] || v.justify_self == .Anchor_Center {
+		r := anchor_rect(l, p.anchor)
+		if centered_track[0] || x_self == .Anchor_Center {
 			p.align[0] = .Anchor
 			p.follow[0] = true
 			p.mid[0] = (r.min.x + r.max.x) / 2 - refabs.x
@@ -422,7 +452,7 @@ prepare :: proc(ac: ^A, q: i32, base: ^style.Computed, opt: i32, ref: i32, cb: R
 			if v.margin[.Right].kind == .Auto { v.margin[.Right] = style.px(0) }
 			if v.width.kind == .Auto { v.width = box_h }
 		}
-		if centered_track[1] || v.align_self == .Anchor_Center {
+		if centered_track[1] || y_self == .Anchor_Center {
 			p.align[1] = .Anchor
 			p.follow[1] = true
 			p.mid[1] = (r.min.y + r.max.y) / 2 - refabs.y
@@ -436,10 +466,10 @@ prepare :: proc(ac: ^A, q: i32, base: ^style.Computed, opt: i32, ref: i32, cb: R
 	if !p.area {
 		// other self-alignment: within the insets, when both are given
 		if p.align[0] == .None && v.inset[.Left].kind != .Auto && v.inset[.Right].kind != .Auto {
-			if p.align[0] = explicit_align(v.justify_self, cb_rtl); p.align[0] != .None && v.width.kind == .Auto { v.width = box_h }
+			if p.align[0] = explicit_align(x_self, x_hi); p.align[0] != .None && v.width.kind == .Auto { v.width = box_h }
 		}
 		if p.align[1] == .None && v.inset[.Top].kind != .Auto && v.inset[.Bottom].kind != .Auto {
-			if p.align[1] = explicit_align(v.align_self, false); p.align[1] != .None && v.height.kind == .Auto { v.height = box_h }
+			if p.align[1] = explicit_align(y_self, y_hi); p.align[1] != .None && v.height.kind == .Auto { v.height = box_h }
 		}
 	}
 
@@ -647,7 +677,8 @@ lay_anchored :: proc(ac: ^A, q: i32) {
 	if base.position_try_order != .Normal && len(opts) > 1 {
 		Order :: struct { i: int, size: f32 }
 		list := make([]Order, len(opts), context.temp_allocator)
-		x := base.position_try_order == .Most_Width || base.position_try_order == .Most_Inline_Size
+		cbv := is_vert(l.boxes[l.boxes[q].cb].wm)
+		x := base.position_try_order == .Most_Width || (base.position_try_order == .Most_Inline_Size && !cbv) || (base.position_try_order == .Most_Block_Size && cbv)
 		for &p, i in preps {
 			list[i] = Order{i, x ? p.inner.max.x - p.inner.min.x : p.inner.max.y - p.inner.min.y}
 		}
@@ -727,6 +758,10 @@ anchored_pass :: proc(c: ^Ctx) {
 	clear(&l.anchor_chosen)
 	l.anchor_scroll, l.anchor_stale = false, false
 	order := preorder(l)
+	if l.frames_on {
+		for x in order { place_box(c, x) }
+		flows_finish(l, order)
+	}
 	ac := A{c = c, l = l, pos = make([]i32, len(l.boxes), context.temp_allocator), entry = make([]i32, len(l.boxes), context.temp_allocator)}
 	ac.names = make(map[string][dynamic]i32, 16, context.temp_allocator)
 	for i in 0 ..< len(l.boxes) { ac.pos[i], ac.entry[i] = -1, NONE }
@@ -744,6 +779,7 @@ anchored_pass :: proc(c: ^Ctx) {
 		b := &l.boxes[x]
 		if .Abs not_in b.flags || .Dead in b.flags || !style.anchored_style(b.cs) { continue }
 		lay_anchored(&ac, x)
+		if l.frames_on { frames_anchored_to_physical(c, x) }
 		// its content moved with it (its own abs, then what is inside)
 		place_box(c, x)
 		for j := i + 1; j < len(order) && inside(l, order[j], x); j += 1 { place_box(c, order[j]) }

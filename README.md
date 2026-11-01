@@ -146,7 +146,7 @@ Everything below exists in the code today and is covered by the tests of [`tools
   and restyled incrementally (invalidation sets, Bloom filter).
 - Layout: block and inline (bidi, line breaking, text placed vertically as Chromium places it: font metrics,
   half-leading, `vertical-align`), floats, positioning (absolute, fixed, sticky), **flexbox**, **grid** (with
-  subgrid), **tables**, replaced elements, scroll containers. Incremental relayout from DOM and style journals (checked
+  subgrid), **tables**, **multi-column layout**, **vertical writing modes** (`docs/multicol-writing-modes.md`), replaced elements, scroll containers. Incremental relayout from DOM and style journals (checked
   against a full pass), paragraphs pre-laid out on several threads on page load.
 - HTML forms: every control, constraint validation, `FormData`, submission in its three encodings.
 
@@ -453,7 +453,7 @@ replace one. Known limits:
 - **Linux is newer than Windows**: releases for Linux x86-64 need glibc 2.39 or later (Ubuntu 24.04, Debian 13, Fedora 40); what is checked and what is not is in
   [`docs/portability.md`](docs/portability.md).
 - No HTTP authentication; CSP violations are reported to the console only.
-- No IME composition, no vertical writing modes, no multi-column layout; no `captureStream`, Encrypted Media Extensions (DRM), Ogg, MP3 or WAV files in
+- No IME composition; no `captureStream`, Encrypted Media Extensions (DRM), Ogg, MP3 or WAV files in
   `<audio>`.
 - The Wasm GC proposal is off by default. A page has WebAssembly threads and `SharedArrayBuffer` under cross-origin isolation (`docs/shared-memory.md`).
 - Response bodies are bounded (`max_body` and a per-page ceiling).

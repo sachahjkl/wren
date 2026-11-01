@@ -28,6 +28,7 @@ Architecture
 
 Features
   blocker.md          The content blocker
+  multicol-writing-modes.md  Multi-column layout and writing modes
   media.md            Media elements
   webcodecs.md        WebCodecs
   js/web-audio.md     Web Audio

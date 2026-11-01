@@ -404,5 +404,38 @@ vertical_incremental :: proc(t: ^testing.T) {
 	mf_frame(t, g)
 }
 
+@(test)
+vertical_anchor_positioning :: proc(t: ^testing.T) {
+	// physical sides are physical; in vertical-rl block-end is on the left, inline-start on top
+	f := mf_load(`<!doctype html><style>body{margin:0}
+	#cb{writing-mode:vertical-rl;position:relative;width:400px;height:300px}
+	#a{anchor-name:--a;margin-block-start:100px;margin-inline-start:50px;inline-size:40px;block-size:20px}
+	.q{position:absolute;position-anchor:--a;width:10px;height:10px}
+	#p{left:anchor(right);top:anchor(bottom)}
+	#s{left:anchor(end);top:anchor(start)}
+	#r{position-area:block-end inline-end}
+	#d{width:anchor-size(block);height:anchor-size(inline)}
+	</style><div id=cb><div id=a></div><div class=q id=p></div><div class=q id=s></div><div class=q id=r></div><div class=q id=d style="left:0;top:0"></div></div>`)
+	defer mf_unload(f)
+	// the anchor: 100 from the right, 20 wide, 50 down, 40 high
+	mf_expect(t, f, "a", 280, 50, 300, 90)
+	mf_expect(t, f, "p", 300, 90, 310, 100)
+	// x's end is the block-end: the anchor's left; y's start: its top
+	mf_expect(t, f, "s", 280, 50, 290, 60)
+	// block-end: left of the anchor, inline-end: under it; against those edges
+	mf_expect(t, f, "r", 270, 90, 280, 100)
+	// sizes: block is x here
+	mf_expect(t, f, "d", 0, 0, 20, 40)
+}
+
+@(test)
+multicol_anchor_and_static_position :: proc(t: ^testing.T) {
+	// an anchor in the second column; a box positioned against the container is not in the flow; a static position shows where its place shows
+	f := mf_load(`<!doctype html><style>body{margin:0;font:20px/20px x} #m{column-count:2;column-gap:0;width:200px;position:relative} #q{position:absolute;position-anchor:--a;left:anchor(left);top:anchor(top);width:5px;height:5px} #d{anchor-name:--a} #abs{position:absolute;right:0;top:0;width:7px;height:7px} #st{position:absolute;width:3px;height:3px}</style><div id=m><div id=a>a</div><div id=b>b</div><div id=c>c</div><div id=d>d<span id=st></span></div></div><div id=q></div><style>#m{}</style>`)
+	defer mf_unload(f)
+	mf_expect(t, f, "d", 100, 20, 200, 40)
+	mf_expect(t, f, "q", 100, 20, 105, 25)
+}
+
 _ :: base.NIL_HANDLE
 _ :: fmt.tprintf

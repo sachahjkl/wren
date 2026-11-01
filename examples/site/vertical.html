@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vertical writing modes</title>
+<style>
+  body { font: 15px/1.45 system-ui, sans-serif; margin: 24px; color: #222; background: #fafafa; }
+  h2 { margin: 28px 0 8px; font-size: 18px; }
+  code { background: #eee; padding: 0 3px; border-radius: 3px; }
+  .note { max-width: 62ch; }
+  .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+  .v { background: #fff; border: 1px solid #ccc; padding: 10px; height: 200px; }
+  .fig { font-size: 12px; color: #666; margin-bottom: 4px; }
+  .ja { font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif CJK JP", "MS Mincho", serif; font-size: 18px; line-height: 1.6; }
+
+  .rl { writing-mode: vertical-rl; }
+  .lr { writing-mode: vertical-lr; }
+  .srl { writing-mode: sideways-rl; }
+  .slr { writing-mode: sideways-lr; }
+  .up { text-orientation: upright; }
+  .side { text-orientation: sideways; }
+  .tcu { text-combine-upright: all; }
+  .logic { margin-block-start: 12px; padding-inline-start: 24px; border-block-end: 4px solid #2a6fdb; background: #ffe7a8; }
+  .flex { display: flex; gap: 8px; }
+  .flex div { background: #2a6fdb; color: #fff; padding: 6px; }
+  .grid { display: grid; grid-template-columns: 60px 1fr; grid-template-rows: 60px 80px; gap: 6px; }
+  .grid div { background: #e0584f; color: #fff; padding: 4px; }
+  table { border-collapse: collapse; }
+  td { border: 1px solid #999; padding: 4px 8px; }
+  .cols { column-count: 2; column-gap: 16px; column-rule: 1px solid #bbb; }
+  .scroll { overflow: auto; width: 240px; }
+  .scroll p { block-size: 60px; }
+  .ortho { writing-mode: horizontal-tb; background: #eef; padding: 6px; }
+  .side-label { writing-mode: vertical-rl; background: #333; color: #fff; padding: 6px 4px; }
+</style>
+</head>
+<body>
+<h1>Vertical writing modes</h1>
+<p class="note">CSS Writing Modes: <code>writing-mode</code>, <code>text-orientation</code>, <code>text-combine-upright</code>, logical properties, orthogonal flows, and flex, grid, tables and columns in vertical text.</p>
+
+<h2><code>writing-mode: vertical-rl</code></h2>
+<div class="row">
+<div class="v rl ja">吾輩は猫である。名前はまだ無い。<br>どこで生れたかとんと見当がつかぬ。何でも薄暗いじめじめした所でニャーニャー泣いていた事だけは記憶している。「吾輩」はここで始めて人間というものを見た。</div>
+<div class="v rl" style="width:220px">Latin text set sideways in the mixed orientation, with 日本語 in between, upright. The lines go from right to left.</div>
+</div>
+
+<h2><code>vertical-lr</code>, <code>sideways-rl</code>, <code>sideways-lr</code></h2>
+<div class="row">
+<div class="v lr">vertical-lr: lines from left to right. 漢字 upright.</div>
+<div class="v srl">sideways-rl: all text turned a quarter clockwise. 漢字.</div>
+<div class="v slr">sideways-lr: read from the bottom up. 漢字.</div>
+</div>
+
+<h2><code>text-orientation</code>, <code>text-combine-upright</code></h2>
+<div class="row">
+<div class="v rl up">upright: LATIN LETTERS ONE BY ONE</div>
+<div class="v rl side">sideways: 漢字も横に倒れる text</div>
+<div class="v rl ja">平成<span class="tcu">20</span>年<span class="tcu">12</span>月<span class="tcu">25</span>日の出来事。</div>
+</div>
+
+<h2>Logical properties</h2>
+<div class="row">
+<div class="v rl"><div class="logic">margin-block-start, padding-inline-start, border-block-end</div></div>
+<div class="v" style="width:220px"><div class="logic">the same in horizontal text</div></div>
+</div>
+
+<h2>Flex, grid, table and columns in vertical text</h2>
+<div class="row">
+<div class="v rl flex"><div>flex</div><div>row</div><div>is the inline axis</div></div>
+<div class="v rl grid"><div>a</div><div>b</div><div>c</div><div>d</div></div>
+<div class="v rl"><table><tr><td>one</td><td>two</td></tr><tr><td>three</td><td>four</td></tr></table></div>
+<div class="v rl cols ja">二つの段組みに分かれた縦書きの文章。文章は上の段から下の段へ流れます。吾輩は猫である。名前はまだ無い。どこで生れたかとんと見当がつかぬ。</div>
+</div>
+
+<h2>Orthogonal flows and scrolling</h2>
+<div class="row">
+<div class="side-label">A vertical label</div>
+<div class="v rl"><div class="ortho">a horizontal block in a vertical parent</div> text after it</div>
+<div class="v rl scroll"><p>This box scrolls to the left, where its next lines are.</p><p>Second block.</p><p>Third block.</p><p>Fourth block.</p><p>Fifth block.</p><p>Sixth block.</p></div>
+</div>
+</body>
+</html>

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Multi-column layout</title>
+<style>
+  body { font: 15px/1.45 system-ui, sans-serif; margin: 24px; color: #222; background: #fafafa; }
+  h2 { margin: 28px 0 8px; font-size: 18px; }
+  p { margin: 0 0 8px; }
+  code { background: #eee; padding: 0 3px; border-radius: 3px; }
+  .note { max-width: 62ch; }
+  .box { background: #fff; border: 1px solid #ccc; padding: 12px; max-width: 860px; margin: 8px 0 16px; }
+
+  #count { column-count: 3; column-gap: 24px; column-rule: 1px solid #bbb; }
+  #width { column-width: 180px; column-gap: 16px; column-rule: 2px dashed #d9b45c; }
+  #span { columns: 3; column-gap: 20px; }
+  #span h3 { column-span: all; text-align: center; margin: 8px 0; padding: 6px; background: #2a6fdb; color: #fff; }
+  #breaks { columns: 3; column-gap: 16px; }
+  #breaks .chapter { break-before: column; }
+  #breaks .card { break-inside: avoid; background: #ffe7a8; border: 1px solid #d9b45c; padding: 8px; margin-bottom: 8px; }
+  #auto { columns: 3; column-gap: 12px; column-fill: auto; height: 110px; }
+  #overflow { columns: 2; column-gap: 12px; column-fill: auto; height: 60px; width: 400px; overflow-x: auto; }
+  #nested { columns: 2; column-gap: 24px; column-rule: 1px solid #ccc; }
+  #nested .inner { columns: 2; column-gap: 8px; column-rule: 1px dotted #999; background: #eef; padding: 4px; }
+  #tall { columns: 3; column-gap: 8px; }
+  #tall div { height: 240px; background: linear-gradient(#2a6fdb, #e0584f); }
+  #pos { columns: 2; column-gap: 20px; position: relative; }
+  #pos .abs { position: absolute; right: 0; top: 0; background: #333; color: #fff; padding: 2px 6px; font-size: 12px; }
+  #pos .rel { position: relative; left: 10px; color: #a33; }
+</style>
+</head>
+<body>
+<h1>Multi-column layout</h1>
+<p class="note">CSS Multicol: <code>columns</code>, <code>column-count</code>, <code>column-width</code>, <code>column-gap</code>, <code>column-rule</code>, <code>column-span</code>, <code>column-fill</code>, the break properties, cut boxes and overflow columns. Click in any column: hit testing and selection work per column.</p>
+
+<h2><code>column-count</code>, with a rule</h2>
+<div class="box" id="count">
+<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+<p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+<p>Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.</p>
+</div>
+
+<h2><code>column-width</code>: as many as fit</h2>
+<div class="box" id="width">
+<p>Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet.</p>
+<p>Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur. Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae.</p>
+</div>
+
+<h2><code>column-span: all</code></h2>
+<div class="box" id="span">
+<p>Above the heading: balanced on their own. At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati.</p>
+<h3>A heading across all columns</h3>
+<p>Below it: another set of columns. Et harum quidem rerum facilis est et expedita distinctio. Nam libero tempore, cum soluta nobis est eligendi optio cumque nihil impedit quo minus id quod maxime placeat facere possimus.</p>
+</div>
+
+<h2><code>break-before: column</code>, <code>break-inside: avoid</code></h2>
+<div class="box" id="breaks">
+<div class="card">A card that stays whole. Temporibus autem quibusdam et aut officiis debitis aut rerum necessitatibus saepe eveniet.</div>
+<div class="card">Another card. Itaque earum rerum hic tenetur a sapiente delectus.</div>
+<div class="card chapter">This one starts a column, whatever the room above. Ut aut reiciendis voluptatibus maiores alias consequatur.</div>
+<div class="card">And a last one, aut perferendis doloribus asperiores repellat.</div>
+</div>
+
+<h2><code>column-fill: auto</code>, in a given height</h2>
+<div class="box" id="auto">
+<p>Fills the first column before the next. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.</p>
+</div>
+
+<h2>Overflow columns, in a scroll container</h2>
+<div class="box" id="overflow">
+<p>More columns than fit go on sideways, and the box scrolls. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>
+</div>
+
+<h2>Nested columns</h2>
+<div class="box" id="nested">
+<p>The outer container has two columns. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+<div class="inner">The inner one two more. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse.</div>
+<p>And text after it. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+</div>
+
+<h2>A box cut across columns</h2>
+<div class="box" id="tall"><div></div></div>
+
+<h2>Positioned boxes</h2>
+<div class="box" id="pos">
+<span class="abs">against the container</span>
+<p>Absolutely positioned against the container, relative in a column. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+<p class="rel">Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat, moved 10 px to the right.</p>
+</div>
+</body>
+</html>

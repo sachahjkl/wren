@@ -110,7 +110,8 @@ layout_root :: proc(c: ^Ctx) {
 	root.size = c.vp
 	layout_contents(c, 0, c.vp.x, c.vp.y, -1, nil)
 	l.boxes[0].size = c.vp
-	if l.anchor_uses { anchored_pass(c) }
+	// (with frames: once boxes are physical, parallel.odin)
+	if l.anchor_uses && !l.frames_on { anchored_pass(c) }
 }
 
 @(private)

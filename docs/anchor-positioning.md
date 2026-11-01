@@ -36,6 +36,8 @@ itself, nothing inside the box, nothing out of an `anchor-scope`.
 
 ## How it works
 
+With writing modes (`docs/multicol-writing-modes.md`), an anchored box is laid out once everything else is physical: `start`, `end`, the flow-relative keywords of `position-area`, `flip-block`, `flip-inline`, `flip-start`, `most-block-size`, `justify-self` and `align-self` take the axis and the direction they mean for the writing mode of the containing block, and the box's own for `self-*`; the box itself, if vertical, is an orthogonal frame root.
+
 Style (`src/style/anchor.odin`): a length with `anchor()` or `anchor-size()` keeps its tree (`Length_Kind.Anchor`), and only
 on an absolutely positioned box; on another one it becomes its fallback when computed. The rules of `@position-try` are
 applied when the element's style is computed, for each option in `position-try-fallbacks`: they may use `var()` and `em`.
@@ -57,7 +59,7 @@ the layout stale (`Layout.anchor_stale`), and the next frame or reading lays out
 
 ## What is missing
 
-- **Writing modes**, which this engine does not have: block is y and inline is x. **Multi-column**: same.
+- In a **multi-column** flow an anchor is read where it shows, as the union of its fragments, not fragment by fragment.
 - `anchor-scope` and names across shadow trees, by the rules of tree-scoped names: a name only matches in the tree of its
   element (`::part()` and `::slotted()` rules that set it are told apart from no other).
 - The size of a scrollable containing block is its padding box, not its scrollable overflow.
