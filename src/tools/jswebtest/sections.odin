@@ -28,7 +28,6 @@ CANVAS_BYTES_AFTER_MAX :: 8_000_000     // what stays: the canvas kept (500 x 50
 VIEW_WIDE :: 1200
 VIEW_NARROW :: 400
 VIEW_H :: 800
-NAVIGATIONS_ASKED :: 3
 WEBGL_PROCESS_TESTS :: 5
 SKIP_TEST_SECONDS :: 30.0
 
@@ -231,24 +230,35 @@ storage_event :: proc(t: ^testing.T) {
 }
 
 // Location and history.
+// The embedder has been asked for this navigation.
+navigation_asked :: proc(r: ^Running, kind, path: string) -> string {
+	@(static) wanted: string
+	wanted = fmt.tprintf("%s %s", kind, path == "" ? "" : fmt.tprintf("%s%s", testenv.url(BASE), path))
+	asked := proc() -> bool {
+		for n in navigations { if strings.has_prefix(n, wanted) { return true } }
+		return false
+	}
+	wait_until(asked, "the embedder's navigation")
+	testhost.expect(&r.section, current, asked(), fmt.tprintf("the embedder was asked to navigate: %s (got %v)", wanted, navigations))
+	return ""
+}
+
 @(test)
 history :: proc(t: ^testing.T) {
 	context.allocator = base.process_allocator()
 	section_begin(t)
 	defer section_end()
 	actions := make(map[string]Action, context.temp_allocator)
-	actions["navigations"] = proc(r: ^Running) -> string {
-		want := []string{fmt.tprintf("Assign %s/jsweb/other", testenv.url(BASE)), fmt.tprintf("Replace %s/jsweb/replaced", testenv.url(BASE)), "Reload"}
-		wait_until(proc() -> bool {
-			n := 0
-			for w in ([]string{"Assign ", "Replace ", "Reload"}) { for x in navigations { if strings.has_prefix(x, w) { n += 1; break } } }
-			return n == NAVIGATIONS_ASKED
-		}, "the three navigations")
-		for w in want {
-			found := false
-			for n in navigations { if strings.has_prefix(n, w) { found = true } }
-			testhost.expect(&r.section, current, found, fmt.tprintf("the embedder was asked to navigate: %s (got %v)", w, navigations[:]))
-		}
+	actions["asked_assign"] = proc(r: ^Running) -> string { return navigation_asked(r, "Assign", "/jsweb/other") }
+	actions["asked_replace"] = proc(r: ^Running) -> string { return navigation_asked(r, "Replace", "/jsweb/replaced") }
+	actions["asked_reload"] = proc(r: ^Running) -> string { return navigation_asked(r, "Reload", "") }
+	// (two in one task: the later one takes the place of the earlier, as in the browsers)
+	actions["asked_last_only"] = proc(r: ^Running) -> string {
+		_ = navigation_asked(r, "Replace", "/jsweb/last")
+		first := fmt.tprintf("Assign %s/jsweb/first", testenv.url(BASE))
+		found := false
+		for n in navigations { if strings.has_prefix(n, first) { found = true } }
+		testhost.expect(&r.section, current, !found, "the earlier navigation of the task never reached the embedder")
 		return ""
 	}
 	run("history", tests = 5, actions = actions, address = BASE + "/jsweb/page?x=1")

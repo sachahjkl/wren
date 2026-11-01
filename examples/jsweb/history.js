@@ -75,10 +75,15 @@ test("fragments: hashchange", async () => {
 
 test("navigations go to the embedder", async () => {
   location.assign("/jsweb/other");
+  await signal("asked_assign");
   location.replace("/jsweb/replaced");
+  await signal("asked_replace");
   location.reload();
+  await signal("asked_reload");
   throws(() => location.assign("http://[bad"), "SyntaxError", "invalid URL");
-  await signal("navigations");
+  location.assign("/jsweb/first");
+  location.replace("/jsweb/last");
+  await signal("asked_last_only");
   ok(true, "the tool checked the navigations");
 });
 
