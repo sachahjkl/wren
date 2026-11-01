@@ -28,7 +28,7 @@ $features = @('a11y')
 if ($text) { $features = @('text') + $features }
 
 # what the library is made of: change any of it and it is built again
-$crates = @((Join-Path $ws 'media'), (Join-Path $ws 'net'), (Join-Path $ws 'wren_native'), (Join-Path $root 'ext\gui_toolkit\native\a11y'))
+$crates = @((Join-Path $ws 'media'), (Join-Path $ws 'net'), (Join-Path $ws 'webgl'), (Join-Path $ws 'wren_native'), (Join-Path $root 'ext\gui_toolkit\native\a11y'))
 if ($text) { $crates += Join-Path $root 'ext\gui_toolkit\native\text' }
 $inputs = @(Get-Item (Join-Path $ws 'Cargo.toml'), (Join-Path $ws 'Cargo.lock'), $PSCommandPath)
 foreach ($c in $crates) { $inputs += @(Get-ChildItem (Join-Path $c 'src') -Recurse -File) + @(Get-Item (Join-Path $c 'Cargo.toml')) }
