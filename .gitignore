@@ -32,3 +32,4 @@ secrets/*.plain.env
 
 # big media made by tools\gen_perf_media.ps1 (the yt_* scenarios of tools\perf.ps1)
 examples/site/media/video/perf_*
+examples/site/mutation_class.wasm
