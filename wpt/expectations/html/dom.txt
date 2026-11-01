@@ -7311,7 +7311,7 @@
 	HTMLCanvasElement interface: document.createElement("canvas") must inherit property "height" with the proper type: PASS
 	HTMLCanvasElement interface: document.createElement("canvas") must inherit property "toBlob(BlobCallback, optional DOMString, optional any)" with the proper type: PASS
 	HTMLCanvasElement interface: document.createElement("canvas") must inherit property "toDataURL(optional DOMString, optional any)" with the proper type: PASS
-	HTMLCanvasElement interface: document.createElement("canvas") must inherit property "transferControlToOffscreen()" with the proper type: FAIL
+	HTMLCanvasElement interface: document.createElement("canvas") must inherit property "transferControlToOffscreen()" with the proper type: PASS
 	HTMLCanvasElement interface: document.createElement("canvas") must inherit property "width" with the proper type: PASS
 	HTMLCanvasElement interface: existence and properties of interface object: FAIL
 	HTMLCanvasElement interface: existence and properties of interface prototype object: PASS
@@ -7320,7 +7320,7 @@
 	HTMLCanvasElement interface: operation getContext(DOMString, optional any): PASS
 	HTMLCanvasElement interface: operation toBlob(BlobCallback, optional DOMString, optional any): PASS
 	HTMLCanvasElement interface: operation toDataURL(optional DOMString, optional any): PASS
-	HTMLCanvasElement interface: operation transferControlToOffscreen(): FAIL
+	HTMLCanvasElement interface: operation transferControlToOffscreen(): PASS
 	HTMLCanvasElement must be primary interface of document.createElement("canvas"): PASS
 	HTMLDListElement interface object length: PASS
 	HTMLDListElement interface object name: PASS
