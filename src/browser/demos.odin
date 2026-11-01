@@ -89,6 +89,10 @@ DEMOS := [?]Demo{
 		"Named areas, <code>repeat(auto-fill, minmax())</code> galleries, dense packing, alignment, nested grids with positioned boxes, and subgrid rows shared by cards.", false, "", false},
 	{.Layout, "CSS anchor positioning", "anchor.html",
 		"<code>anchor()</code>, <code>anchor-size()</code>, <code>position-area</code>, tooltips that flip with <code>position-try-fallbacks</code>, that follow a scrolling anchor and go away with it, a popover under its invoker.", false, "", false},
+	{.Layout, "Multi-column layout", "multicol.html",
+		"<code>columns</code>, rules, <code>column-span: all</code>, forced and avoided breaks, <code>column-fill</code>, overflow columns, nested columns, a box cut across columns.", false, "", false},
+	{.Layout, "Vertical writing modes", "vertical.html",
+		"Japanese in <code>vertical-rl</code>, <code>sideways-*</code>, <code>text-orientation</code>, <code>text-combine-upright</code>, logical properties, flex, grid, tables and columns in vertical text, orthogonal flows.", false, "", false},
 	{.Layout, "Presentational HTML", "legacy-html.html",
 		"Old attributes mapped to CSS as the HTML Standard says: <code>&lt;center&gt;</code> and <code>align</code> moving narrower blocks, tables with <code>cellpadding</code>, <code>border</code>, <code>bgcolor</code>, <code>valign</code>, <code>&lt;font&gt;</code>, list types, <code>&lt;hr size noshade&gt;</code>, floated images with <code>hspace</code>, and an image whose square <code>width</code> / <code>height</code> attributes give way to its own ratio under <code>height: auto</code>.", false, "", false},
 
