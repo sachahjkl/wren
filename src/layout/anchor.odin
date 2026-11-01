@@ -246,10 +246,12 @@ scroll_apart :: proc(l: ^Layout, a, q: i32) -> bool {
 
 // The border box of an anchor, where it shows: through its columns when it is in a multi-column flow.
 @(private = "file")
-anchor_rect :: proc(l: ^Layout, x: i32) -> Rect {
+anchor_rect :: proc(l: ^Layout, x, q: i32) -> Rect {
 	r := border_rect(&l.boxes[x])
 	if .In_Flow in l.boxes[x].fx {
-		if mc := flow_container(l, x); mc != NONE { return flow_bounds(l, mc, r) }
+		mc := flow_container(l, x)
+		// (a box in the same flow is positioned in it: as if the columns were one)
+		if mc != NONE && !(.In_Flow in l.boxes[q].fx && flow_container(l, q) == mc) { return flow_bounds(l, mc, r) }
 	}
 	return r
 }
@@ -261,7 +263,7 @@ anchor_position :: proc(ac: ^A, q: i32, p: ^Prep, n: ^css.Calc, use: Len_Use) ->
 	if !use.inset { return 0, false }
 	target := n.anchor.name != "" ? named_anchor(ac, q, n.anchor.name) : p.anchor
 	if target == NONE { return 0, false }
-	r := anchor_rect(l, target)
+	r := anchor_rect(l, target, q)
 	refabs := l.boxes[p.ref].abs
 	axis := use.axis_x ? 0 : 1
 	lo, hi := r.min[axis] - refabs[axis], r.max[axis] - refabs[axis]
@@ -299,7 +301,7 @@ anchor_dimension :: proc(ac: ^A, q: i32, p: ^Prep, n: ^css.Calc, use: Len_Use) -
 	l := ac.l
 	target := n.anchor.name != "" ? named_anchor(ac, q, n.anchor.name) : p.anchor
 	if target == NONE { return 0, false }
-	r := anchor_rect(l, target)
+	r := anchor_rect(l, target, q)
 	x := use.axis_x
 	cbv, selfv := is_vert(l.boxes[l.boxes[q].cb].wm), is_vert(l.boxes[q].wm)
 	#partial switch n.anchor.side {
@@ -388,8 +390,13 @@ prepare :: proc(ac: ^A, q: i32, base: ^style.Computed, opt: i32, ref: i32, cb: R
 			n := style.try_tactics_physical(t, l.boxes[l.boxes[q].cb].wm, &buf)
 			for k in 0 ..< n { append(&list, buf[k]) }
 		}
+		// (self-alignment values are named by flow or side already: they move by the tactics as written)
+		named: style.Computed
+		named.justify_self, named.align_self = v.justify_self, v.align_self
+		for t in tactics { style.try_tactic_alignment(&named, t) }
 		tactics = list[:]
 		for t in tactics { style.try_tactic_apply(v, t, context.temp_allocator) }
+		v.justify_self, v.align_self = named.justify_self, named.align_self
 	}
 	p := Prep{cs = v, ref = ref, cb = cb, imcb = cb}
 	p.anchor = default_anchor(ac, q, v)
@@ -416,7 +423,7 @@ prepare :: proc(ac: ^A, q: i32, base: ^style.Computed, opt: i32, ref: i32, cb: R
 			case .Flip_Start: x, y = y, x
 			}
 		}
-		r := anchor_rect(l, p.anchor)
+		r := anchor_rect(l, p.anchor, q)
 		for axis in 0 ..< 2 {
 			tr := axis == 0 ? x : y
 			lo, hi := r.min[axis] - refabs[axis], r.max[axis] - refabs[axis]
@@ -441,7 +448,7 @@ prepare :: proc(ac: ^A, q: i32, base: ^style.Computed, opt: i32, ref: i32, cb: R
 
 	// anchor-center: the middle of the anchor, as far as the rectangle allows (the box is sized in all of it)
 	if p.anchor != NONE {
-		r := anchor_rect(l, p.anchor)
+		r := anchor_rect(l, p.anchor, q)
 		if centered_track[0] || x_self == .Anchor_Center {
 			p.align[0] = .Anchor
 			p.follow[0] = true

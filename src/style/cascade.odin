@@ -529,6 +529,7 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 		line_height = f64(used_line_height(c, s.line_height_normal)), root_line_height = f64(s.root_line_height),
 	}
 	container_units(&cx.lc, parent != nil ? parent.containers : nil)
+	cx.lc.vertical = is_vertical_mode(c.writing_mode)
 
 	// custom properties (the maps exist only for elements that declare some)
 	// one budget for every substitution of the element (custom properties and declarations): what var() may cost one
@@ -635,6 +636,7 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 			}
 			break
 		}
+		if pr == .Writing_Mode { cx.lc.vertical = is_vertical_mode(c.writing_mode) }
 		if pr == .Color_Scheme || pr == .Color { scheme_settle(&cx, s.page_scheme, e.env.prefers_dark) }
 		if pr == .Font_Family {
 			generic_family_adjust(&cx)

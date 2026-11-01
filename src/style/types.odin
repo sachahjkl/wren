@@ -371,7 +371,7 @@ Font_Size_Src :: struct {
 }
 
 Prop :: enum u8 {
-	Color_Scheme, Font_Size, Color,
+	Color_Scheme, Writing_Mode, Font_Size, Color,
 	Font_Family, Font_Weight, Font_Style, Font_Stretch, Font_Variant_Caps, Line_Height, Letter_Spacing, Word_Spacing, Text_Align,
 	Text_Decoration_Line, Text_Decoration_Color, Text_Decoration_Style, Text_Decoration_Thickness, Text_Underline_Offset,
 	Text_Transform, Text_Indent, Text_Overflow, White_Space_Collapse, Text_Wrap_Mode, Text_Wrap_Style, Word_Break,
@@ -403,7 +403,7 @@ Prop :: enum u8 {
 	Will_Change, Contain, Content_Visibility, Scroll_Behavior, Overscroll_Behavior_X, Overscroll_Behavior_Y, Touch_Action,
 	Caret_Color, Accent_Color, Appearance, Resize, Column_Count, Column_Width,
 	Column_Span, Column_Fill, Column_Rule_Width, Column_Rule_Style, Column_Rule_Color, Break_Before, Break_After, Break_Inside,
-	Orphans, Widows, Writing_Mode, Text_Orientation, Text_Combine_Upright,
+	Orphans, Widows, Text_Orientation, Text_Combine_Upright,
 	Grid_Template_Columns, Grid_Template_Rows, Grid_Template_Areas, Grid_Auto_Columns, Grid_Auto_Rows, Grid_Auto_Flow,
 	Grid_Row_Start, Grid_Row_End, Grid_Column_Start, Grid_Column_End, Justify_Items, Justify_Self,
 	Container_Type, Container_Name, Scrollbar_Width, Scrollbar_Color, Scrollbar_Gutter,

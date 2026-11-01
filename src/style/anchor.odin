@@ -574,7 +574,17 @@ align_mirror :: proc(x: Content_Align) -> Content_Align {
 	return x
 }
 
-// Applies a <try-tactic> to the properties it moves (§try-tactic). Horizontal text only: block is y, inline is x.
+// What a <try-tactic> does to self-alignment: values are named by flow, or by a side.
+try_tactic_alignment :: proc(c: ^Computed, t: Try_Tactic) {
+	switch t {
+	case .Flip_Block, .Flip_Y: c.align_self = align_mirror(c.align_self)
+	case .Flip_Inline, .Flip_X: c.justify_self = align_mirror(c.justify_self)
+	case .Flip_Start: c.align_self, c.justify_self = c.justify_self, c.align_self
+	}
+}
+
+// Applies a <try-tactic> to the properties it moves (§try-tactic), physical once the writing mode of the containing block is
+// taken into account (try_tactics_physical): block is y, inline is x here.
 try_tactic_apply :: proc(c: ^Computed, t: Try_Tactic, a := context.allocator) {
 	for s in Side {
 		x := s == .Left || s == .Right
