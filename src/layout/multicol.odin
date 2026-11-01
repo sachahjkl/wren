@@ -690,7 +690,7 @@ flow_spaces :: proc(l: ^Layout, x: i32) {
 		fr.space = i32(len(l.spaces))
 		append(&l.clips, Clip{parent = outer, space = fr.space, box = NONE, rect = fr.region})
 		fr.clip = i32(len(l.clips) - 1)
-		append(&l.spaces, Space{kind = .Column, parent = parent, box = x, frame = NONE, clip = fr.clip, xform = xform, plane = plane, persp_from = NONE, ctx = NONE, dest = NONE, shift = fr.shift})
+		append(&l.spaces, Space{kind = .Column, parent = parent, box = x, frame = NONE, clip = fr.clip, xform = xform, plane = plane, persp_from = NONE, ctx = NONE, dest = NONE, shift = fr.shift, flow = {fi - rec.phys[0], 0}})
 	}
 	b.content_space = base
 }

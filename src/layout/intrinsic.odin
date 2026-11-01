@@ -192,7 +192,12 @@ natural_size :: proc(c: ^Ctx, bi: i32) -> (w, h: f32, has_w, has_h: bool) {
 	inf := &c.l.inc.info[bi]
 	inf.natural, inf.natural_has, inf.natural_ok = {w, h}, {has_w, has_h}, true
 	// in the frame's axes
-	if c.l.frames_on && is_vert(frame_of(c.l, bi)) { w, h, has_w, has_h = h, w, has_h, has_w }
+	// (an image's natural size is physical; a form control's, a meter's, are along the line and across it)
+	if c.l.frames_on && is_vert(frame_of(c.l, bi)) && .Control not_in c.l.boxes[bi].flags {
+		if n := dom.get(c.d, c.l.boxes[bi].node); n != nil && n.name != "meter" && n.name != "progress" {
+			w, h, has_w, has_h = h, w, has_h, has_w
+		}
+	}
 	return
 }
 
