@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -36,7 +37,8 @@ import (
 //	/ws/forbidden       answers 403 instead of 101
 //	/ws/slow-handshake  waits 3 s before answering
 //	/ws/hits            handshakes accepted so far
-//	/ws/last-close      the payload of the last close frame a client sent to /ws/echo ("empty", "<code>[:<reason>]")
+//	/ws/last-close?tag=x  the payload of the last close frame a client sent to /ws/echo?tag=x ("empty", "<code>[:<reason>]"):
+//	                    by tag, as two runs of a test may share a server
 const wsGUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 const wsMaxFrame = 64 << 20
 
@@ -193,7 +195,7 @@ func wsSendMessage(bw *bufio.Writer, op byte, data []byte, frag int) error {
 }
 
 // The last close frame a client sent to /ws/echo: "empty", "<code>" or "<code>:<reason>", "bad:<n bytes>".
-var wsLastClose atomic.Value
+var wsLastClose sync.Map // tag -> description of the close frame
 
 func closeDescription(p []byte) string {
 	switch {
@@ -255,7 +257,7 @@ func wsEcho(conn net.Conn, brw *bufio.ReadWriter, r *http.Request, frag int) {
 			continue
 		case opClose:
 			// echo the code (an empty close is answered with an empty close), then end the TCP connection
-			wsLastClose.Store(closeDescription(f.payload))
+			wsLastClose.Store(r.URL.Query().Get("tag"), closeDescription(f.payload))
 			if d := r.URL.Query().Get("closedelay"); d != "" {
 				ms, _ := strconv.Atoi(d)
 				if ms < 0 {
@@ -385,7 +387,8 @@ func registerWebSocketHandlers(mux *http.ServeMux) {
 		fmt.Fprintf(w, "%d", atomic.LoadInt64(&wsHandshakes))
 	})
 	mux.HandleFunc("/ws/last-close", func(w http.ResponseWriter, r *http.Request) {
-		s, _ := wsLastClose.Load().(string)
-		fmt.Fprint(w, s)
+		if s, ok := wsLastClose.Load(r.URL.Query().Get("tag")); ok {
+			fmt.Fprint(w, s)
+		}
 	})
 }
