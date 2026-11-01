@@ -5,6 +5,7 @@ package media
 // out of place calls the wrong method, so every vtable below is the header's list) and the entry points. Methods the
 // code does not call are kept as `rawptr` slots.
 
+import "core:sync"
 import win "core:sys/windows"
 
 foreign import mfplat "system:mfplat.lib"
@@ -366,14 +367,16 @@ pack2 :: #force_inline proc "contextless" (hi, lo: u32) -> u64 { return u64(hi) 
 
 // Media Foundation is started once for the process (every decoder thread needs it; COM in the multithreaded apartment).
 @(private) mf_started: bool
+@(private) mf_once: sync.Once
 
+// Any thread may be the first (a worker asking what MediaSource supports), and the others wait for the answer: while one thread
+// was still in MFStartup, the others were told Media Foundation had failed, and every codec of a worker's isTypeSupported was refused.
 mf_startup :: proc() -> bool {
-	@(static) tried: bool
-	if tried { return mf_started }
-	tried = true
-	// the interface thread may be in a single-threaded apartment already: Media Foundation works in either
-	_ = win.CoInitializeEx(nil, .MULTITHREADED)
-	mf_started = hr_ok(MFStartup(MF_VERSION, MFSTARTUP_FULL))
+	sync.once_do(&mf_once, proc() {
+		// the interface thread may be in a single-threaded apartment already: Media Foundation works in either
+		_ = win.CoInitializeEx(nil, .MULTITHREADED)
+		mf_started = hr_ok(MFStartup(MF_VERSION, MFSTARTUP_FULL))
+	})
 	return mf_started
 }
 

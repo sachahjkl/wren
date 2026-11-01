@@ -41,6 +41,7 @@ audio_subtype :: proc(codec: Codec) -> (GUID, bool) {
 mf_audio_supported :: proc(codec: Codec) -> Decoder_Support {
 	sub, ok := audio_subtype(codec)
 	if !ok || !mf_startup() { return {} }
+	com_thread_init()   // (see enum_transforms)
 	acts, n := enum_transforms(MFT_CATEGORY_AUDIO_DECODER, MFMediaType_Audio, sub)
 	defer free_activates(acts, n)
 	for i in 0 ..< int(n) {

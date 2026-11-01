@@ -77,36 +77,36 @@
 	URL.createObjectURL(mediaSource) in DedicatedWorker does not throw exception: PASS
 	URL.revokeObjectURL(mediaSource) in DedicatedWorker with two url for same MediaSource: PASS
 /media-source/dedicated-worker/mediasource-worker-play-terminate-worker.html: OK
-	Test worker MediaSource termination after at least 0 main thread setTimeouts, starting counting after first ended event: PASS|FAIL|NOTRUN|TIMEOUT
-	Test worker MediaSource termination after at least 0 main thread setTimeouts, starting counting after setting srcObject: PASS|FAIL|NOTRUN|TIMEOUT
-	Test worker MediaSource termination after at least 0 main thread setTimeouts, starting counting before setting srcObject: PASS|FAIL|NOTRUN|TIMEOUT
-	Test worker MediaSource termination after at least 1 main thread setTimeouts, starting counting after first ended event: PASS|FAIL|NOTRUN|TIMEOUT
-	Test worker MediaSource termination after at least 1 main thread setTimeouts, starting counting after setting srcObject: PASS|FAIL|NOTRUN|TIMEOUT
-	Test worker MediaSource termination after at least 1 main thread setTimeouts, starting counting before setting srcObject: PASS|FAIL|NOTRUN|TIMEOUT
-	Test worker MediaSource termination after at least 2 main thread setTimeouts, starting counting after first ended event: PASS|FAIL|NOTRUN|TIMEOUT
-	Test worker MediaSource termination after at least 2 main thread setTimeouts, starting counting after setting srcObject: FAIL
-	Test worker MediaSource termination after at least 2 main thread setTimeouts, starting counting before setting srcObject: PASS|FAIL|NOTRUN|TIMEOUT
-	Test worker MediaSource termination after at least 3 main thread setTimeouts, starting counting after first ended event: PASS|FAIL|NOTRUN|TIMEOUT
-	Test worker MediaSource termination after at least 3 main thread setTimeouts, starting counting after setting srcObject: PASS|FAIL|NOTRUN|TIMEOUT
-	Test worker MediaSource termination after at least 3 main thread setTimeouts, starting counting before setting srcObject: PASS|FAIL|NOTRUN|TIMEOUT
-	Test worker MediaSource termination after at least 4 main thread setTimeouts, starting counting after first ended event: PASS|FAIL|NOTRUN|TIMEOUT
-	Test worker MediaSource termination after at least 4 main thread setTimeouts, starting counting after setting srcObject: PASS|FAIL|NOTRUN|TIMEOUT
-	Test worker MediaSource termination after at least 4 main thread setTimeouts, starting counting before setting srcObject: PASS|FAIL|NOTRUN|TIMEOUT
-	Test worker MediaSource termination after at least 5 main thread setTimeouts, starting counting after first ended event: PASS|FAIL|NOTRUN|TIMEOUT
-	Test worker MediaSource termination after at least 5 main thread setTimeouts, starting counting after setting srcObject: PASS|FAIL|NOTRUN|TIMEOUT
-	Test worker MediaSource termination after at least 5 main thread setTimeouts, starting counting before setting srcObject: PASS|FAIL|NOTRUN|TIMEOUT
-	Test worker MediaSource termination after at least 6 main thread setTimeouts, starting counting after first ended event: PASS|FAIL|NOTRUN|TIMEOUT
-	Test worker MediaSource termination after at least 6 main thread setTimeouts, starting counting after setting srcObject: PASS|FAIL|NOTRUN|TIMEOUT
-	Test worker MediaSource termination after at least 6 main thread setTimeouts, starting counting before setting srcObject: PASS|FAIL|NOTRUN|TIMEOUT
-	Test worker MediaSource termination after at least 7 main thread setTimeouts, starting counting after first ended event: PASS|FAIL|NOTRUN|TIMEOUT
-	Test worker MediaSource termination after at least 7 main thread setTimeouts, starting counting after setting srcObject: PASS|FAIL|NOTRUN|TIMEOUT
-	Test worker MediaSource termination after at least 7 main thread setTimeouts, starting counting before setting srcObject: PASS|FAIL|NOTRUN|TIMEOUT
-	Test worker MediaSource termination after at least 8 main thread setTimeouts, starting counting after first ended event: PASS|FAIL|NOTRUN|TIMEOUT
-	Test worker MediaSource termination after at least 8 main thread setTimeouts, starting counting after setting srcObject: PASS|FAIL|NOTRUN|TIMEOUT
-	Test worker MediaSource termination after at least 8 main thread setTimeouts, starting counting before setting srcObject: PASS|FAIL|NOTRUN|TIMEOUT
-	Test worker MediaSource termination after at least 9 main thread setTimeouts, starting counting after first ended event: PASS|FAIL|NOTRUN|TIMEOUT
-	Test worker MediaSource termination after at least 9 main thread setTimeouts, starting counting after setting srcObject: PASS|FAIL|NOTRUN|TIMEOUT
-	Test worker MediaSource termination after at least 9 main thread setTimeouts, starting counting before setting srcObject: PASS|FAIL|NOTRUN|TIMEOUT
+	Test worker MediaSource termination after at least 0 main thread setTimeouts, starting counting after first ended event: PASS
+	Test worker MediaSource termination after at least 0 main thread setTimeouts, starting counting after setting srcObject: PASS
+	Test worker MediaSource termination after at least 0 main thread setTimeouts, starting counting before setting srcObject: PASS
+	Test worker MediaSource termination after at least 1 main thread setTimeouts, starting counting after first ended event: PASS
+	Test worker MediaSource termination after at least 1 main thread setTimeouts, starting counting after setting srcObject: PASS
+	Test worker MediaSource termination after at least 1 main thread setTimeouts, starting counting before setting srcObject: PASS
+	Test worker MediaSource termination after at least 2 main thread setTimeouts, starting counting after first ended event: PASS
+	Test worker MediaSource termination after at least 2 main thread setTimeouts, starting counting after setting srcObject: PASS
+	Test worker MediaSource termination after at least 2 main thread setTimeouts, starting counting before setting srcObject: PASS
+	Test worker MediaSource termination after at least 3 main thread setTimeouts, starting counting after first ended event: PASS
+	Test worker MediaSource termination after at least 3 main thread setTimeouts, starting counting after setting srcObject: PASS
+	Test worker MediaSource termination after at least 3 main thread setTimeouts, starting counting before setting srcObject: PASS
+	Test worker MediaSource termination after at least 4 main thread setTimeouts, starting counting after first ended event: PASS
+	Test worker MediaSource termination after at least 4 main thread setTimeouts, starting counting after setting srcObject: PASS
+	Test worker MediaSource termination after at least 4 main thread setTimeouts, starting counting before setting srcObject: PASS
+	Test worker MediaSource termination after at least 5 main thread setTimeouts, starting counting after first ended event: PASS
+	Test worker MediaSource termination after at least 5 main thread setTimeouts, starting counting after setting srcObject: PASS
+	Test worker MediaSource termination after at least 5 main thread setTimeouts, starting counting before setting srcObject: PASS
+	Test worker MediaSource termination after at least 6 main thread setTimeouts, starting counting after first ended event: PASS
+	Test worker MediaSource termination after at least 6 main thread setTimeouts, starting counting after setting srcObject: PASS
+	Test worker MediaSource termination after at least 6 main thread setTimeouts, starting counting before setting srcObject: PASS
+	Test worker MediaSource termination after at least 7 main thread setTimeouts, starting counting after first ended event: PASS
+	Test worker MediaSource termination after at least 7 main thread setTimeouts, starting counting after setting srcObject: PASS
+	Test worker MediaSource termination after at least 7 main thread setTimeouts, starting counting before setting srcObject: PASS
+	Test worker MediaSource termination after at least 8 main thread setTimeouts, starting counting after first ended event: PASS
+	Test worker MediaSource termination after at least 8 main thread setTimeouts, starting counting after setting srcObject: PASS
+	Test worker MediaSource termination after at least 8 main thread setTimeouts, starting counting before setting srcObject: PASS
+	Test worker MediaSource termination after at least 9 main thread setTimeouts, starting counting after first ended event: PASS
+	Test worker MediaSource termination after at least 9 main thread setTimeouts, starting counting after setting srcObject: PASS
+	Test worker MediaSource termination after at least 9 main thread setTimeouts, starting counting before setting srcObject: PASS
 /media-source/dedicated-worker/mediasource-worker-play.html: OK
 	Test worker MediaSource construction, attachment, buffering and basic playback: PASS
 /media-source/idlharness.any.html: OK

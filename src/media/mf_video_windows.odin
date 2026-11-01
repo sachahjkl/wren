@@ -73,6 +73,7 @@ MF_Frame :: struct {
 mf_video_supported :: proc(codec: Codec) -> Decoder_Support {
 	sub, ok := video_subtype(codec)
 	if !ok || !mf_startup() { return {} }
+	com_thread_init()   // (canPlayType, isTypeSupported: any thread, a worker's too; see enum_transforms)
 	acts, n := enum_transforms(MFT_CATEGORY_VIDEO_DECODER, MFMediaType_Video, sub)
 	defer free_activates(acts, n)
 	for i in 0 ..< int(n) {
@@ -93,6 +94,8 @@ video_subtype :: proc(codec: Codec) -> (GUID, bool) {
 	return {}, false
 }
 
+// The calling thread needs COM. Without it the call only works while another thread of the process holds the multithreaded
+// apartment: on a worker's thread, a codec was supported or not depending on what the other threads were doing.
 @(private)
 enum_transforms :: proc(category, major, sub: GUID) -> ([^]^IMFActivate, u32) {
 	input := MFT_REGISTER_TYPE_INFO{major, sub}
