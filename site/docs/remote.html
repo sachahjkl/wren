@@ -319,7 +319,10 @@ loading in any tab, and at most <code>browser.remote.quiet_cpu_ms</code> (20) of
 (400); <code>--quiet-ms</code> and <code>--max-cpu</code> for one call. It answers with how long it waited and the CPU it saw. (<code>wait idle</code> is about
 the network of a page; <code>--idle-ms n</code> shortens or lengthens its quiet time for one call.) To measure an idle process, read <code>stats</code>
 twice: <code>cpuTimeMs</code> is the process's CPU time (the system adds it up in ticks of about 15.6 ms); <code>threads</code>, <code>handles</code>,
-<code>gdiObjects</code>, <code>userObjects</code>, <code>uptimeMs</code> and <code>pid</code> are there too.</p>
+<code>gdiObjects</code>, <code>userObjects</code>, <code>uptimeMs</code> and <code>pid</code> are there too. <code>loop</code> is the loop's own account: <code>turns</code>, <code>sleeps</code>, <code>barren</code> (wakes
+that drew nothing), <code>frames</code>, <code>causes</code> (each frame under the first of <code>Input</code>, <code>Task</code>, <code>Page</code>, <code>Asked</code>, <code>Interface_Animation</code>,
+<code>Interface_Wake</code>, <code>Repaint</code>) and <code>reasons</code>, the last 32 frames and barren wakes with who asked, a place in the sources: a browser at rest
+draws nothing, and what does draw says why (<code>tools\idle_measure.ps1</code> measures it from outside, with the wakes of each thread).</p>
 <p><code>shot &lt;file&gt; --count n [--interval ms]</code> takes n pictures over the one connection (a <code>%d</code> in the name takes the number, else
 <code>-&lt;n&gt;</code> goes before the extension) instead of a process, and its 100 ms of start, for each.</p>
 <h2 id="starting-a-wren-that-listens"><a class="anchor" href="#starting-a-wren-that-listens" aria-hidden="true">#</a>Starting a Wren that listens</h2>
