@@ -2,9 +2,6 @@
 // navigation entry pages read responseStart from, resource entries made by the loader's observers, paint and event
 // timing, PerformanceObserver for them.
 
-const UNTIL_LOOK_MS = 10;
-const until = async cond => { while (!cond()) await sleep(UNTIL_LOOK_MS); };
-
 test("the navigation entry", () => {
   const list = performance.getEntriesByType("navigation");
   eq(list.length, 1, "one navigation entry");
@@ -79,18 +76,22 @@ test("PerformanceObserver: resource, buffered, navigation, paint", async () => {
   o.observe({ type: "resource" });
   const r = await fetch("/jsweb/json?obs=1");
   await r.text();
-  await sleep(50);
+  await until(() => seen.length >= 1, "the entry of the request");
   eq(seen.join(), "resource:json?obs=1", "an observer of resource hears of the new request, not of the earlier ones");
   o.disconnect();
+  let heard = 0;   // (who still observes: when it has heard of it, so would the other have)
+  const listening = new PerformanceObserver(list => { heard += list.getEntries().length; });
+  listening.observe({ type: "resource" });
   const r2 = await fetch("/jsweb/json?obs=2");
   await r2.text();
-  await sleep(50);
+  await until(() => heard >= 1, "the entry of the second request");
+  listening.disconnect();
   eq(seen.length, 1, "disconnected: nothing more");
 
   const buffered = [];
   const o2 = new PerformanceObserver(list => { for (const e of list.getEntries()) buffered.push(e.entryType); });
   o2.observe({ type: "navigation", buffered: true });
-  await sleep(50);
+  await until(() => buffered.length >= 1, "the buffered entry");
   eq(buffered.join(), "navigation", "buffered: the navigation entry that was already there");
   o2.disconnect();
 
@@ -100,7 +101,7 @@ test("PerformanceObserver: resource, buffered, navigation, paint", async () => {
   performance.mark("obs-mark");
   const r3 = await fetch("/jsweb/json?obs=3");
   await r3.text();
-  await sleep(50);
+  await until(() => multi.includes("mark") && multi.includes("resource"), "the mark and the resource");
   ok(multi.includes("mark") && multi.includes("resource"), "entryTypes: marks and resources " + multi.join());
   o3.disconnect();
 
@@ -143,7 +144,7 @@ test("event timing: a slow input event", async () => {
   f.observe({ type: "first-input" });
   document.addEventListener("click", () => { const t = performance.now(); while (performance.now() - t < 40) {} });
   await signal("click");
-  await sleep(50);
+  await until(() => slow.length >= 1 && first.length >= 1, "the entries of the click");
   eq(slow.length, 1, "one slow event");
   const e = slow[0];
   ok(e instanceof PerformanceEventTiming && e instanceof PerformanceEntry, "a PerformanceEventTiming");
@@ -160,8 +161,12 @@ test("event timing: a slow input event", async () => {
   const none = [];
   const o2 = new PerformanceObserver(list => { for (const x of list.getEntries()) none.push(x); });
   o2.observe({ type: "event", durationThreshold: 1000 });
+  let heard = 0;   // (with a shorter threshold: when it has heard of it, so would the other have)
+  const short = new PerformanceObserver(list => { heard += list.getEntries().length; });
+  short.observe({ type: "event", durationThreshold: 16 });
   await signal("click");
-  await sleep(50);
+  await until(() => heard >= 1, "the entry of the second click");
+  short.disconnect();
   eq(none.length, 0, "durationThreshold 1000: the 40 ms click is not heard");
   o2.disconnect();
 });

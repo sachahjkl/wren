@@ -2,6 +2,7 @@
 // HTTP cache, the real network) and the cost of the load is measured: time until the DOM is interactive and until the
 // page is complete, requests made, bytes received, DOM nodes, process CPU time and memory.
 //   blockerpages.exe -profile <dir with blocker\cache and blocker\lists> [-runs 3] [-timeout 40] [-md out.md] url...
+//   blockerpages.exe -hooks: what a hooked API costs per call (hooks.odin)
 package blockerpages
 
 import "core:fmt"
@@ -127,6 +128,7 @@ main :: proc() {
 		case "-timeout": i += 1; timeout = parse(args[i])
 		case "-settle": i += 1; settle = parse(args[i])
 		case "-md": i += 1; md = args[i]
+		case "-hooks": if !hooks_cost() { os.exit(1) }; return
 		case: append(&urls, args[i])
 		}
 	}

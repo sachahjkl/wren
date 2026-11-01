@@ -67,7 +67,10 @@ test("FileReader", async () => {
   r5.readAsText(new Blob(["x"]));
   r5.abort();
   await aborted;
-  await sleep(20);
+  const later = new FileReader();
+  const laterLoaded = new Promise(res => later.onload = res);
+  later.readAsText(new Blob(["y"]));
+  await laterLoaded;   // (a read begun after it has ended: its load would have come by now)
   eq(loaded, false, "abort() stops the read");
   eq(r5.result, null, "no result after abort");
 });

@@ -5,15 +5,17 @@
 
 const SIZE = 16;
 const CROSS_ORIGIN_IMAGE = "/site/images/alpha.png";   // of the test server, reached by another of its names
-// what the shell does each frame, twice: the canvas is shown, the frame comes back from the device
-const frame = async () => { await signal("frame"); await sleep(100); await signal("frame"); };
+// what the shell does each frame: the canvas is shown (what the page asks of the context after it comes after it, in the order it was asked)
+const frame = () => signal("frame");
+// until f() holds, a frame of the shell at each look
+const frameUntil = (f, what) => until(async () => { if (f()) return true; await signal("frame"); return f(); }, what);
 const loadImage = async url => {
   const img = new Image();
   let failed = false;
   img.onerror = () => { failed = true; };
   img.src = url;
-  for (let i = 0; i < 200 && !img.complete && !failed; i++) { await signal("frame"); await sleep(20); }
-  return failed || !img.complete ? null : img;
+  await frameUntil(() => img.complete || failed, "the image");
+  return failed ? null : img;
 };
 const mk = (kind = "webgl", attrs, w = SIZE, h = SIZE) => {
   const c = document.createElement("canvas");
@@ -692,7 +694,7 @@ test("context loss", async () => {
   ext.loseContext();
   eq(gl.isContextLost(), true, "lost");
   eq(events.join(), "", "the event comes later");
-  await sleep(50);
+  await until(() => events.length >= 1, "the lost event");
   eq(events.join(), "lost", "the event");
   eq(gl.getError(), gl.CONTEXT_LOST_WEBGL, "CONTEXT_LOST_WEBGL");
   eq(gl.getError(), 0, "once");
@@ -704,7 +706,7 @@ test("context loss", async () => {
   eq(gl.isBuffer(b), false, "no objects");
   eq(gl.getProgramParameter === undefined, false, "the methods are there");
   ext.restoreContext();
-  await sleep(200);
+  await until(() => events.length >= 2, "the restored event");
   eq(events.join(), "lost,restored", "the restored event");
   eq(gl.isContextLost(), false, "back");
   eq(gl.getError(), 0, "no error");
@@ -1030,13 +1032,8 @@ test("queries: results on a later task, samples passed or not, primitives writte
   gl.disable(gl.SCISSOR_TEST);
   const stillThere = gl.getQueryParameter(hit, gl.QUERY_RESULT_AVAILABLE);
   eq(stillThere, false, "nor later in that task");
-  let available = false;
-  for (let i = 0; i < 200 && !available; i++) {
-    await laterTask();
-    available = gl.getQueryParameter(hit, gl.QUERY_RESULT_AVAILABLE) && gl.getQueryParameter(miss, gl.QUERY_RESULT_AVAILABLE);
-    if (!available) await sleep(5);
-  }
-  ok(available, "available on a later task");
+  await laterTask();
+  await until(() => gl.getQueryParameter(hit, gl.QUERY_RESULT_AVAILABLE) && gl.getQueryParameter(miss, gl.QUERY_RESULT_AVAILABLE), "the results, on a later task");
   eq(gl.getQueryParameter(hit, gl.QUERY_RESULT), 1, "samples passed");
   eq(gl.getQueryParameter(miss, gl.QUERY_RESULT), 0, "none passed the scissor");
   gl.deleteQuery(hit);
@@ -1058,7 +1055,7 @@ test("queries: results on a later task, samples passed or not, primitives writte
   gl.endQuery(gl.TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN);
   gl.disable(gl.RASTERIZER_DISCARD);
   await laterTask();
-  await sleep(1);
+  await until(() => gl.getQueryParameter(written, gl.QUERY_RESULT_AVAILABLE), "the result");
   eq(gl.getQueryParameter(written, gl.QUERY_RESULT), 1, "one triangle");
 });
 
@@ -1173,18 +1170,6 @@ const shown = canvas => {
   const g = r.getContext("2d");
   g.drawImage(canvas, 0, 0);
   return g.getImageData(1, 1, 1, 1).data.join();
-};
-
-const FRAME_WAIT_MS = 60000;   // (what a worker's frames may take on a loaded machine: a count of turns was 6 s)
-const frameUntil = async (f, what) => {
-  const start = performance.now();
-  while (performance.now() - start < FRAME_WAIT_MS) {
-    if (f()) return true;
-    await signal("frame");
-    await sleep(20);
-  }
-  ok(false, "waited too long for " + what);
-  return false;
 };
 
 test("transferControlToOffscreen: a worker's frames reach the page's canvas", async () => {

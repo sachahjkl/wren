@@ -4,15 +4,6 @@
 
 const MP4 = 'video/mp4; codecs="avc1.64001f, mp4a.40.2"';
 
-async function until(cond, what, ms = 20000) {
-  for (let t = 0; t < ms; t += 20) {
-    if (cond()) return true;
-    await sleep(20);
-  }
-  ok(false, "timeout waiting for " + what);
-  return false;
-}
-
 const once = (target, type) => new Promise(resolve => target.addEventListener(type, resolve, { once: true }));
 
 let fragment;   // clip_frag.mp4: an initialization segment, then one fragment per second (H.264 + AAC, 4 s)
@@ -102,7 +93,7 @@ test("attach, append, end of stream", async () => {
   eq(added.length, 1, "addsourcebuffer fired once");
   eq(ms.activeSourceBuffers.length, 1, "active once it had an initialization segment");
   ok(ms.activeSourceBuffers[0] === sb, "the active list holds it");
-  ok(await until(() => v.readyState >= 1, "metadata"), "the element has its metadata");
+  await until(() => v.readyState >= 1, "metadata");
   eq(v.videoWidth, 320, "videoWidth");
   eq(v.videoHeight, 180, "videoHeight");
   ok(sb.buffered.length >= 1 && sb.buffered.start(0) < 0.1, "buffered starts near 0: " + sb.buffered.start(0));
@@ -114,17 +105,17 @@ test("attach, append, end of stream", async () => {
   ms.endOfStream();
   eq(ms.readyState, "ended", "ended");
   ok(Math.abs(ms.duration - 4) < 0.1, "duration is the end of what was buffered: " + ms.duration);
-  ok(await until(() => v.duration === ms.duration, "durationchange"), "the element follows");
+  await until(() => v.duration === ms.duration, "durationchange");
   throws(() => ms.endOfStream(), "InvalidStateError", "endOfStream on an ended source");
-  ok(await until(() => v.readyState >= 4, "canplaythrough"), "enough data");
+  await until(() => v.readyState >= 4, "canplaythrough");
   eq(v.seekable.length, 1, "seekable");
 
   // playing it
   await v.play();
-  ok(await until(() => v.currentTime > 0.3, "the position moves"), "currentTime " + v.currentTime);
+  await until(() => v.currentTime > 0.3, "the position moves");
   v.currentTime = 3.3;
   await until(() => !v.seeking, "the seek");
-  ok(await until(() => v.ended, "ended"), "ended");
+  await until(() => v.ended, "ended");
   v.remove();
 });
 
@@ -153,7 +144,7 @@ test("remove, abort, an append makes the source open again", async () => {
   sb.appendBuffer(data);
   sb.abort();
   eq(sb.updating, false, "abort() stops the operation");
-  await sleep(100);
+  await until(() => seen.includes("updateend"), "the updateend of the abort");
   eq(seen.join(","), "abort,updateend", "abort then updateend, no update");
   sb.remove(0, Infinity);
   await once(sb, "updateend");
@@ -210,7 +201,7 @@ test("a quality switch: the initialization segment again", async () => {
   ok(Math.abs(sb.buffered.end(0) - 4) < 0.1, "still 4 s: " + sb.buffered.end(0));
   ms.endOfStream();
   await v.play();
-  ok(await until(() => v.currentTime > 0.3, "playback"), "plays after the second initialization segment");
+  await until(() => v.currentTime > 0.3, "playback");
   v.remove();
 });
 
@@ -226,7 +217,7 @@ test("errors: garbage appended", async () => {
   eq(seen.join(","), "error,updateend", "error then updateend");
   await ended;
   eq(ms.readyState, "ended", "a decode error ends the stream");
-  ok(await until(() => v.error !== null, "element error"), "the element has an error");
+  await until(() => v.error !== null, "element error");
   eq(v.error.code, MediaError.MEDIA_ERR_DECODE, "MEDIA_ERR_DECODE");
   v.remove();
 });
@@ -267,7 +258,7 @@ test("removeSourceBuffer, detaching, a revoked URL", async () => {
       sb = ms.addSourceBuffer(MP4);
     }
     await append(sb, data);
-    ok(await until(() => v.readyState >= 1, "metadata"), "the element plays a source nothing refers to");
+    await until(() => v.readyState >= 1, "metadata");
     v.remove();
   }
   {
@@ -277,7 +268,7 @@ test("removeSourceBuffer, detaching, a revoked URL", async () => {
     const v = document.createElement("video");
     document.body.appendChild(v);
     v.src = url;
-    ok(await until(() => v.error !== null, "the error"), "a revoked URL does not play");
+    await until(() => v.error !== null, "the error");
     eq(ms.readyState, "closed", "the source was not attached");
     v.remove();
   }
@@ -295,7 +286,7 @@ test("duration", async () => {
   await once(sb, "updateend");
   ms.duration = 2;
   eq(ms.duration, 2, "duration set");
-  ok(await until(() => v.duration === 2, "durationchange"), "the element follows");
+  await until(() => v.duration === 2, "durationchange");
   ok(sb.buffered.end(sb.buffered.length - 1) <= 2.2, "what lay past it is removed: " + sb.buffered.end(sb.buffered.length - 1));
   ms.setLiveSeekableRange(0, 1);
   eq(v.seekable.end(0), 1, "live seekable range");
@@ -324,7 +315,7 @@ test("WebM: initialization segment, then media segments", async () => {
   const { v, ms } = await attach();
   const sb = ms.addSourceBuffer(WEBM_VA);
   await append(sb, data.subarray(0, cut));
-  ok(await until(() => v.readyState >= 1 || v.error, "metadata"), "the element has its metadata after the initialization segment alone");
+  await until(() => v.readyState >= 1 || v.error, "metadata");
   if (v.error) { skip("av1-decoder", "the type is not supported"); v.remove(); return; }
   eq(v.videoWidth, 320, "videoWidth");
   eq(sb.buffered.length, 0, "nothing buffered before a media segment");
@@ -335,10 +326,10 @@ test("WebM: initialization segment, then media segments", async () => {
   ms.endOfStream();
   ok(Math.abs(ms.duration - 4) < 0.1, "duration " + ms.duration);
   await v.play();
-  ok(await until(() => v.currentTime > 0.3, "playback"), "plays");
+  await until(() => v.currentTime > 0.3, "playback");
   v.currentTime = 3.3;
   await until(() => !v.seeking, "seek");
-  ok(await until(() => v.ended, "ended"), "ended");
+  await until(() => v.ended, "ended");
   v.remove();
 });
 
@@ -351,13 +342,13 @@ test("WebM: a video source buffer and an Opus one, as an adaptive player appends
   const sba = ms.addSourceBuffer(WEBM_A);
   eq(ms.sourceBuffers.length, 2, "two source buffers");
   await Promise.all([append(sbv, video), append(sba, audio)]);
-  ok(await until(() => v.readyState >= 1 || v.error, "metadata"), "metadata once both had an initialization segment");
+  await until(() => v.readyState >= 1 || v.error, "metadata");
   if (v.error) { skip("av1-decoder", "the type is not supported"); v.remove(); return; }
   ok(sbv.buffered.length === 1 && Math.abs(sbv.buffered.end(0) - 4) < 0.1, "video buffered: " + sbv.buffered.end(0));
   ok(sba.buffered.length === 1 && Math.abs(sba.buffered.end(0) - 4) < 0.1, "audio buffered: " + sba.buffered.end(0));
   ms.endOfStream();
   await v.play();
-  ok(await until(() => v.currentTime > 0.5, "playback"), "plays with the two buffers");
+  await until(() => v.currentTime > 0.5, "playback");
   v.remove();
 });
 
@@ -369,7 +360,7 @@ test("WebM: the type decides which tracks a buffer keeps", async () => {
     const sb = ms.addSourceBuffer(WEBM_A);   // audio only, given a muxed file
     await append(sb, data);
     ok(sb.buffered.length === 1 && Math.abs(sb.buffered.end(0) - 4) < 0.15, "the audio of a muxed file: " + sb.buffered.end(0));
-    ok(await until(() => v.readyState >= 1, "metadata"), "metadata");
+    await until(() => v.readyState >= 1, "metadata");
     eq(v.videoWidth, 0, "no picture from an audio buffer");
     v.remove();
   }

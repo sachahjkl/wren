@@ -34,11 +34,10 @@ test("sendBeacon", async () => {
   const before = (await (await fetch("/jsweb/beacon-log")).text()).split("|")[0] | 0;
   eq(navigator.sendBeacon("/jsweb/beacon", "beacon data"), true, "queued");
   let log = "";
-  for (let i = 0; i < 1000; i++) {   // until the server has it: the bound only ends a failing run
+  await until(async () => {
     log = await (await fetch("/jsweb/beacon-log")).text();
-    if ((log.split("|")[0] | 0) > before) break;
-    await sleep(20);
-  }
+    return (log.split("|")[0] | 0) > before;
+  }, "the beacon on the server");
   const [count, body, type] = log.split("|");
   eq(count | 0, before + 1, "the server got it");
   eq(body, "beacon data", "its body");

@@ -1,5 +1,8 @@
 // MessageChannel, MessagePort, window.postMessage.
 
+// A message posted now has come: one posted before it, on any channel, would have too (they go through one queue of tasks).
+const messageTurn = () => new Promise(r => { const c = new MessageChannel(); c.port1.onmessage = r; c.port2.postMessage(0); });
+
 test("MessageChannel", async () => {
   const ch = new MessageChannel();
   ok(ch.port1 instanceof MessagePort && ch.port1 === ch.port1, "ports");
@@ -22,10 +25,10 @@ test("MessageChannel", async () => {
 test("start() and queued messages", async () => {
   const ch = new MessageChannel();
   ch.port1.postMessage("early");
-  await sleep(10);
+  await messageTurn();
   let e2 = null;
   ch.port2.addEventListener("message", e => { e2 = e; });
-  await sleep(10);
+  await messageTurn();
   eq(e2, null, "addEventListener does not start the port");
   const p = new Promise(r => ch.port2.addEventListener("message", r));
   ch.port2.start();
@@ -47,7 +50,7 @@ test("transfer and close", async () => {
   ch.port2.onmessage = () => { late = true; };
   ch.port1.close();
   ch.port1.postMessage("lost");
-  await sleep(20);
+  await messageTurn();
   eq(late, false, "nothing after close()");
 });
 
@@ -59,9 +62,8 @@ test("window.postMessage", async () => {
   eq(e.origin, "http://127.0.0.1:8765", "origin");
   ok(e.source === window, "source");
   let wrong = false;
-  window.onmessage = () => { wrong = true; };
   window.postMessage("x", "http://example.com");
-  await sleep(20);
+  await new Promise(r => { window.onmessage = e => { if (e.data === "after") r(); else wrong = true; }; window.postMessage("after", "*"); });
   eq(wrong, false, "another targetOrigin: not delivered");
   const p2 = new Promise(r => { window.onmessage = r; });
   window.postMessage("y", { targetOrigin: "/" });

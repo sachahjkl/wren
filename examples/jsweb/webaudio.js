@@ -4,11 +4,9 @@
 
 const near = (got, want, tolerance, what) => ok(Math.abs(got - want) <= tolerance, what + " (got " + got + ", want " + want + ")");
 const RATE = 48000;
-const ANSWER_WAIT_MS = 10000;   // how long a loaded machine may take to run the blocks a test waits for
 const CLOCK_RUNS_SECONDS = 0.1;   // how far a running context's clock has to go
-const CLOCK_LOOK_MS = 10;         // how often it is looked at
-// What a test waits for from the render thread, which owes it no time: what never comes is the test that never ends (the section says so).
-const until = async cond => { while (!cond()) await sleep(CLOCK_LOOK_MS); };
+// A real duration: nothing says a suspended clock will not move. It has had this long.
+const CLOCK_STANDS_MS = 50;
 
 test("the interfaces", () => {
   for (const name of ["AudioContext", "OfflineAudioContext", "BaseAudioContext", "AudioNode", "AudioParam", "AudioBuffer", "GainNode", "OscillatorNode",
@@ -299,7 +297,7 @@ test("a running AudioContext, heard by an analyser", async () => {
   await c.suspend();
   eq(c.state, "suspended", "suspend");
   const t2 = c.currentTime;
-  await sleep(50);
+  await sleep(CLOCK_STANDS_MS);
   eq(c.currentTime, t2, "suspended: the clock stands still");
   await c.resume();
   eq(c.state, "running", "resume");
@@ -337,11 +335,7 @@ test("ScriptProcessorNode", async () => {
   eq(seen, 1, "the input");
   const wave = new Float32Array(a.fftSize);
   // (the blocks above have run; what they answered reaches the analyser when the output's thread next gets a turn)
-  const asked = performance.now();
-  do {
-    await sleep(10);
-    a.getFloatTimeDomainData(wave);
-  } while (Math.max(...wave) < 0.5 - 1e-6 && performance.now() - asked < ANSWER_WAIT_MS);
+  await until(() => { a.getFloatTimeDomainData(wave); return Math.max(...wave) >= 0.5 - 1e-6; }, "the answer of the page");
   near(Math.max(...wave), 0.5, 1e-6, "the page's answer plays");
   await c.close();
 });
@@ -480,11 +474,7 @@ test("AudioWorklet: a running context hears process()", async () => {
   k.start();
   const wave = new Float32Array(a.fftSize);
   let best = 0;
-  for (let i = 0; i < 100 && best < 0.4; i++) {
-    await sleep(20);
-    a.getFloatTimeDomainData(wave);
-    best = Math.max(best, ...wave);
-  }
+  await until(() => { a.getFloatTimeDomainData(wave); best = Math.max(best, ...wave); return best >= 0.4; }, "the output of the processor");
   near(best, 0.5, 1e-6, "the processor's output");
   await c.close();
 });

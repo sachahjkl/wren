@@ -627,7 +627,7 @@ Step 'build web tests (src\tools\webtests: fetch, the network, pages and their s
     if ($LASTEXITCODE) { return }
     odin build src/tools/webtests -build-mode:test -define:ODIN_TEST_THREADS=1 -define:ODIN_TEST_FANCY=false -use-separate-modules -collection:wb=src -collection:toolkit=ext/gui_toolkit -vet $Track -out:build/web_test.exe $Stack
 }
-Step 'JavaScript in pages (jstest: realm, scripts, bindings, events, wrappers and node lifetime, bytecode cache, interruption)' { Invoke-WrenWebTests 'build\web_test.exe' 'js' }
+Step 'JavaScript in pages (src\tools\webtests\js.odin: realm, scripts, bindings, events, wrappers and node lifetime, bytecode cache, interruption)' { Invoke-WrenWebTests 'build\web_test.exe' 'js' }
 Step 'build fetch' { odin build src/tools/fetch -use-separate-modules -collection:wb=src -vet -out:build/fetch.exe $Stack }
 Step 'licence tool (tools\license.ps1: a licence issued with the development pair verifies; an altered one and one of another key do not; keygen refuses a path inside the repository)' {
     odin build src/tools/license -use-separate-modules -collection:wb=src -vet -out:build/license.exe $Stack
@@ -667,10 +667,10 @@ Step 'licence Worker (licence\worker, no network: Paddle-Signature checks, trans
     } finally { Pop-Location }
 }
 Step 'file: folders end-to-end test (index file, listing, redirect to /, errors, who may open what; no server)' { Invoke-WrenWebTests 'build\web_test.exe' 'file' }
-Step 'unit tests: test host (what fails a section of jswebtest and jsdomtest: what it declared did not run, a skip the machine does not confirm)' { odin test src/tools/testhost -use-separate-modules $MemCheck -collection:wb=src -vet -out:build/testhost_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
-Step 'DOM for JavaScript end-to-end test (jsdomtest: tree, elements, markup, selectors, CSSOM, geometry, UI events, MutationObserver, traversal, ranges, leaks, micro-benchmarks; no server)' { Invoke-WrenWebTests 'build\web_test.exe' 'jsdom' }
-Step 'history end-to-end test (historytest: the tree as pages see it, scrollRestoration, pageshow / pagehide persisted, back/forward cache freezing, persisted form state; no server)' { Invoke-WrenWebTests 'build\web_test.exe' 'history' }
-Step 'Web Authentication end-to-end test (webauthntest: create then get from JavaScript on the virtual authenticator, signature checked; activation, RP ID, aborts, timer, mediation, JSON forms, secure context; no server)' { Invoke-WrenWebTests 'build\web_test.exe' 'webauthn' }
+Step 'unit tests: test host (what fails a section of the web tests: what it declared did not run, a skip the machine does not confirm)' { odin test src/tools/testhost -use-separate-modules $MemCheck -collection:wb=src -vet -out:build/testhost_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
+Step 'DOM for JavaScript end-to-end test (src\tools\webtests\jsdom.odin: tree, elements, markup, selectors, CSSOM, geometry, UI events, MutationObserver, traversal, ranges, leaks, micro-benchmarks; no server)' { Invoke-WrenWebTests 'build\web_test.exe' 'jsdom' }
+Step 'history end-to-end test (src\tools\webtests\history.odin: the tree as pages see it, scrollRestoration, pageshow / pagehide persisted, back/forward cache freezing, persisted form state; no server)' { Invoke-WrenWebTests 'build\web_test.exe' 'history' }
+Step 'Web Authentication end-to-end test (src\tools\webtests\webauthn.odin: create then get from JavaScript on the virtual authenticator, signature checked; activation, RP ID, aborts, timer, mediation, JSON forms, secure context; no server)' { Invoke-WrenWebTests 'build\web_test.exe' 'webauthn' }
 Step 'build testserver (and its tests: /site/ index, listings, extensionless pages, types)' { Push-Location tools\testserver; go test . 2>&1; Pop-Location; if ($LASTEXITCODE -eq 0) { Ensure-WrenTestServer $root (Join-Path $root 'build\testserver.exe'); Ensure-WrenTestServer $root (Join-Path $root 'build\testserver.dll') } }
 # The end-to-end scenarios (src\tools\e2e, docs\testing.md): one program on Odin's test runner that links the browser, built once; a step runs the tests of one file of it, in a process of its own.
 Step 'build e2e scenarios (src\tools\e2e: the browser in the tests'' process, no window, the real renderer offscreen)' { odin build src/tools/e2e -build-mode:test -out:build/e2e_test.exe -o:speed -debug -use-separate-modules -vet -collection:toolkit=ext/gui_toolkit -collection:wb=src -define:FONT_BACKEND=native -define:FONT_NATIVE_LINK=false -define:A11Y_ACCESSKIT=true -define:A11Y_NATIVE_LINK=false -define:WREN_CHANNEL=dev -define:DEFAULT_TEMP_ALLOCATOR_BACKING_SIZE=1048576 -define:ODIN_TEST_THREADS=1 -define:ODIN_TEST_FANCY=false -extra-linker-flags:"/STACK:33554432 /NODEFAULTLIB:vcruntime.lib /DEFAULTLIB:libvcruntime.lib" 2>&1 | Out-String | Tee-Object -Variable b | Out-Null; if ($LASTEXITCODE) { $b } }
@@ -711,11 +711,11 @@ if ($CI -or -not $Quick) {
 # What is not a build, in one batch.
 try {
     Step 'network policy test (CORS, cookies, redirects, CSP, schemes)' { Invoke-WrenWebTests 'build\web_test.exe' 'policy' } -Light
-    Step 'content blocker end-to-end test (blockertest: blocked script / frame / fetch, element hiding before the first style, scriptlet, whitelist, dynamic rules, journal, counters)' { Invoke-WrenWebTests 'build\web_test.exe' 'blocker' } -Light
-    Step 'HTTP cache end-to-end test (cachetest: freshness, revalidation, Vary, cache modes, partitions, invalidation, stale-while-revalidate, disk cache across a restart)' { Invoke-WrenWebTests 'build\web_test.exe' 'cache' } -Light
+    Step 'content blocker end-to-end test (src\tools\webtests\blocker.odin: blocked script / frame / fetch, element hiding before the first style, scriptlet, whitelist, dynamic rules, journal, counters)' { Invoke-WrenWebTests 'build\web_test.exe' 'blocker' } -Light
+    Step 'HTTP cache end-to-end test (src\tools\webtests\cache.odin: freshness, revalidation, Vary, cache modes, partitions, invalidation, stale-while-revalidate, disk cache across a restart)' { Invoke-WrenWebTests 'build\web_test.exe' 'cache' } -Light
     Step 'end-to-end page test' { Invoke-WrenWebTests 'build\web_test.exe' 'page' }
-    Step 'EventSource / WebSocket end-to-end test (netapitest)' { Invoke-WrenWebTests 'build\web_test.exe' 'netapi' } -Light
-    Step 'network transport test on both stacks (nettest: heads, bodies, gzip, caps, cancel, timeouts, refused / unresolved / cut / garbage answers, certificates; built-in stack: HTTP/2, HTTP/3 from Alt-Svc and the fall back to TCP when QUIC is blocked, TLS 1.3 only, expired and misnamed certificates, wss, the proxy)' {
+    Step 'EventSource / WebSocket end-to-end test (src\tools\webtests\netapi.odin)' { Invoke-WrenWebTests 'build\web_test.exe' 'netapi' } -Light
+    Step 'network transport test on both stacks (src\tools\webtests\net.odin: heads, bodies, gzip, caps, cancel, timeouts, refused / unresolved / cut / garbage answers, certificates; built-in stack: HTTP/2, HTTP/3 from Alt-Svc and the fall back to TCP when QUIC is blocked, TLS 1.3 only, expired and misnamed certificates, wss, the proxy)' {
         $bad = 0
         foreach ($b in 'winhttp', 'rust') {
             $env:WREN_NET_BACKEND = $b
@@ -725,14 +725,14 @@ try {
         Remove-Item Env:\WREN_NET_BACKEND
         $global:LASTEXITCODE = $bad
     } -Light
-    Step 'WebSocket closing handshake test (wsclosetest: close right after a message or the upgrade, late, missing and crossing close frames, server cutting TCP; repeated)' { Invoke-WrenWebTests 'build\web_test.exe' 'wsclose' } -Light
+    Step 'WebSocket closing handshake test (src\tools\webtests\wsclose.odin: close right after a message or the upgrade, late, missing and crossing close frames, server cutting TCP; repeated)' { Invoke-WrenWebTests 'build\web_test.exe' 'wsclose' } -Light
     Step 'web platform API test (timers, rAF, abort, fetch streams, encoding, crypto, storage, URL, history)' { Invoke-WrenWebTests 'build\web_test.exe' 'webapi' } -NoCI
     Step 'forms end-to-end test (controls, validation, FormData, submission)' { Invoke-WrenWebTests 'build\web_test.exe' 'forms' } -NoCI
     Step 'workers end-to-end test (messages, transfer, fetch, terminate, 16 in parallel)' { Invoke-WrenWebTests 'build\web_test.exe' 'workers' }
     Step 'JavaScript loading end-to-end test (script order, document.write, dynamic scripts, modules, handlers, CSP, noscript, timers, errors, workers, cloning)' { Invoke-WrenWebTests 'build\web_test.exe' 'jsload' }
-    Step 'nested documents end-to-end test (framestest: iframes, srcdoc, load events, postMessage across origins, cross-origin WindowProxy, sandbox, X-Frame-Options, frame-ancestors, frame-src, navigation, Permissions Policy)' { Invoke-WrenWebTests 'build\web_test.exe' 'frames' }
-    Step 'site compatibility end-to-end test (sitecompattest: reduced fixtures of real sites: stylesheet load events, media swap, scroll events)' { Invoke-WrenWebTests 'build\web_test.exe' 'sitecompat' }
-    Step 'JavaScript web APIs end-to-end test (fetch, XHR, streams, URL, encoding, abort, storage, history, navigator, crypto, sockets, messaging; jswebtest)' { Invoke-WrenWebTests 'build\web_test.exe' 'jsweb' }
+    Step 'nested documents end-to-end test (src\tools\webtests\frames.odin: iframes, srcdoc, load events, postMessage across origins, cross-origin WindowProxy, sandbox, X-Frame-Options, frame-ancestors, frame-src, navigation, Permissions Policy)' { Invoke-WrenWebTests 'build\web_test.exe' 'frames' }
+    Step 'site compatibility end-to-end test (src\tools\webtests\sitecompat.odin: reduced fixtures of real sites: stylesheet load events, media swap, scroll events)' { Invoke-WrenWebTests 'build\web_test.exe' 'sitecompat' }
+    Step 'JavaScript web APIs end-to-end test (fetch, XHR, streams, URL, encoding, abort, storage, history, navigator, crypto, sockets, messaging; src\tools\webtests\jsweb.odin)' { Invoke-WrenWebTests 'build\web_test.exe' 'jsweb' }
     Step 'style run-time test (web fonts, transitions, animations)' { Invoke-WrenWebTests 'build\web_test.exe' 'style' }
     Step 'image formats end-to-end test (AVIF, WebP, SVG images and backgrounds, inline <svg>, Accept, <picture>)' { Invoke-WrenWebTests 'build\web_test.exe' 'media' } -UiOnly
     Step 'images end-to-end test (events, srcset, picture, lazy, CSS images, cache, cancellation, 200 x 1 Mpx)' { Invoke-WrenWebTests 'build\web_test.exe' 'images' } -Light

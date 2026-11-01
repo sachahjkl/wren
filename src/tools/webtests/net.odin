@@ -4,7 +4,7 @@
 // redirects left to the caller, cancelling, timeouts, refused and unresolved hosts, bodies cut short, answers that are not HTTP, an
 // untrusted certificate. On the built-in stack (rust), with the test authority trusted through network.tls.extra_ca_file: HTTP/2, TLS 1.3
 // only, expired and misnamed certificates, HTTP/3 learnt from Alt-Svc, the fall back to TCP when QUIC never gets through (the odin-lang.org
-// case), WebSockets over TLS, and the system proxy (from the environment); those tests have nothing to do on WinHTTP, and say so.
+// case), WebSockets over TLS, and the system proxy (from the environment); on WinHTTP's turn those tests are skips (`on_builtin_stack`).
 package webtests
 
 import "core:fmt"
@@ -14,6 +14,7 @@ import "core:testing"
 import "wb:base"
 import "wb:net"
 import "wb:tools/testenv"
+import "wb:tools/testhost"
 
 // The server's origins, from its base port (tools/testserver/ports.go, transport.go).
 HTTP :: 0
@@ -263,10 +264,11 @@ net_an_answer_slower_than_the_receive_timeout :: proc(t: ^testing.T) {
 	testing.expectf(t, ok && r.failed && r.error == ERROR_TIMED_OUT, "an answer slower than the receive timeout: 12002 (%d)", r.error)
 }
 
-// The built-in stack's tests: on WinHTTP they have nothing to do.
-on_builtin_stack :: proc() -> bool {
+// The built-in stack's tests. On WinHTTP's turn they check nothing, and say it as a skip, counted apart from what held: their checks are on the built-in stack's turn.
+on_builtin_stack :: proc(loc := #caller_location) -> bool {
 	if client.settings.backend == .Rust { return true }
-	fmt.println("(built-in stack only: nothing to do on this backend)")
+	fmt.printfln("SKIP [net] %s: the built-in stack's test, on the turn of %v", loc.procedure, client.settings.backend)
+	testhost.totals.skips += 1
 	return false
 }
 

@@ -2,15 +2,8 @@
 // kills it and asks it to hang: test hooks a browser has not; the channel itself is tested in native/webgl/src/ipc_tests.rs).
 "use strict";
 
-const EVENT_WAIT_MS = 60000;
-const until = async (what, f) => {
-  const start = performance.now();
-  while (!f()) {
-    if (performance.now() - start > EVENT_WAIT_MS) { ok(false, "waited too long for " + what); return false; }
-    await sleep(20);
-  }
-  return true;
-};
+// A real duration: far above the deadline of a question (WEBGL_TEST_HANG_MS, jsweb.odin), on the slowest machine. It says the question does not wait for ever.
+const HUNG_ANSWER_WITHIN_MS = 60000;
 
 const context = () => {
   const c = document.createElement("canvas");
@@ -60,10 +53,10 @@ test("killed while the page draws: every context lost, restored by a new process
   for (let i = 0; i < 100; i++) { a.gl.clear(a.gl.COLOR_BUFFER_BIT); a.gl.flush(); }
   await signal("gpu_kill");
   for (let i = 0; i < 100; i++) { a.gl.clear(a.gl.COLOR_BUFFER_BIT); a.gl.flush(); }
-  await until("the lost events", () => a.lost === 1 && b.lost === 1);
+  await until(() => a.lost === 1 && b.lost === 1, "the lost events");
   eq(a.gl.getError(), a.gl.CONTEXT_LOST_WEBGL, "getError says so");
   ok(pageWorks(), "the page goes on");
-  await until("the restored events", () => a.restored === 1 && b.restored === 1);
+  await until(() => a.restored === 1 && b.restored === 1, "the restored events");
   eq(a.gl.isContextLost(), false, "a is back");
   eq(b.gl.isContextLost(), false, "b is back");
   eq(green(a.gl), "0,255,0,255", "a draws in the new process");
@@ -88,9 +81,10 @@ test("a page that does not ask for its context back does not get it", async () =
   c.addEventListener("webglcontextlost", () => { lost++; });
   c.addEventListener("webglcontextrestored", () => { restored++; });
   green(gl);
+  const asks = context();   // (when this one has its context back, the other would have)
   await signal("gpu_kill");
-  await until("the lost event", () => lost === 1);
-  await sleep(1500);
+  await until(() => lost === 1, "the lost event");
+  await until(() => asks.restored === 1, "the context of the one that asks");
   eq(restored, 0, "no restored event");
   eq(gl.isContextLost(), true, "still lost");
 });
@@ -104,10 +98,10 @@ test("hung: the question is let go at its deadline, the process killed, the page
   const e = a.gl.getError();
   const took = performance.now() - t;
   eq(e, a.gl.CONTEXT_LOST_WEBGL, "the question's answer");
-  ok(took < EVENT_WAIT_MS, "within its deadline: " + Math.round(took) + " ms");
+  ok(took < HUNG_ANSWER_WITHIN_MS, "within its deadline: " + Math.round(took) + " ms");
   ok(pageWorks(), "the page goes on");
-  await until("the other context's lost event", () => b.lost === 1);
-  await until("the restored events", () => a.restored === 1 && b.restored === 1);
+  await until(() => b.lost === 1, "the other context's lost event");
+  await until(() => a.restored === 1 && b.restored === 1, "the restored events");
   eq(green(a.gl), "0,255,0,255", "draws in the new process");
   const now = await info();
   ok(now.pid !== first.pid && now.pid !== 0, "the hung process is gone");
@@ -135,10 +129,10 @@ test("a worker's context is lost and restored with the others", async () => {
   const w = new Worker("data:text/javascript," + encodeURIComponent(source));
   w.onmessage = e => said.push(e.data);
   w.onerror = e => said.push("error " + e.message);
-  await until("the worker", () => said.length > 0);
+  await until(() => said.length > 0, "the worker");
   eq(said[0], "ready 0", "it has a context");
   await signal("gpu_kill");
-  await until("lost and restored", () => said.length >= 3);
+  await until(() => said.length >= 3, "lost and restored");
   eq(said[1], "lost", "the lost event in the worker");
   eq(said[2], "restored 0,255,0,255", "the restored event, and it draws");
   w.terminate();
