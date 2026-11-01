@@ -18,7 +18,7 @@ import "wb:tools/testhost"
 WEB_AUDIO_SLOW_SCRIPT_MS :: 120_000
 // The GPU process's limits while it is hung on purpose: the time after which it is killed (twice that on the software adapter of these
 // tests), restarts that are not counted against anything.
-WEBGL_TEST_HANG_MS :: 3000
+WEBGL_TEST_HANG_MS :: 10_000
 WEBGL_TEST_RESTARTS :: 1000
 IDB_QUOTA_TEST_BYTES :: 1 << 20
 AUTOPLAY_MAX_LIVE_NODES :: 400
