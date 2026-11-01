@@ -366,7 +366,7 @@ integration; <code>uninstall</code> takes away the installed copy. <code>--insta
 <code>browser.update.url</code>.</p>
 <h2 id="tests"><a class="anchor" href="#tests" aria-hidden="true">#</a>Tests</h2>
 <p><code>odin test src/desktop</code> runs the backend and the installed copy on scratch folders and a scratch registry key
-(<code>HKCU\Software\WrenTest\&lt;id&gt;</code>, deleted afterwards), and, on Linux, on scratch directories. <code>odin test src/browser</code> has the
+(<code>HKCU\Software\WrenTest_&lt;id&gt;</code>, deleted afterwards), and, on Linux, on scratch directories. <code>odin test src/browser</code> has the
 states of the dialog and install -&gt; every state -&gt; uninstall on scratch roots. A run can be pointed at scratch roots by the
 environment too: <code>WREN_DESKTOP_MENU_DIR</code>, <code>WREN_DESKTOP_DESKTOP_DIR</code>, <code>WREN_DESKTOP_REGISTRY_ROOT</code>,
 <code>WREN_DESKTOP_ENVIRONMENT_ROOT</code> (the key that stands for <code>HKCU\Environment</code>), <code>WREN_DESKTOP_INSTALL_DIR</code> (Windows),
