@@ -41,6 +41,9 @@ checks: compare two of them to see that a change lost nothing), `test_failed.txt
 
 ## What runs, in what order
 
+The run happens on a Windows desktop of its own (`tools/test_desktop.ps1`): no step can take the focus, the mouse or the keyboard of the
+person at the machine, and their clicks reach no step. `-Ui` stays on the real desktop, its steps need the real input.
+
 Every step is a process of its own; `-Jobs` of them run at a time (three per four processors, at most 12; two with `-CI`), longest
 first by the durations of the last run. A step marked `-Light` mostly waits and takes no slot, up to `-LightJobs` of them (4; 2 with `-CI`).
 Each step that talks to the test server has a server of its own on a block of ports of its own, so several worktrees test

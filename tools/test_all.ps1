@@ -29,6 +29,13 @@
 # and never on a full run unless asked. A run ends with what failed, its log and how to run it again (also build\test_report.txt; every step's result: build\test_steps.tsv).
 param([switch]$Quick, [switch]$CI, [int]$StepTimeoutSec = 900, [int]$Jobs = 0, [int]$BasePort = 0, [int]$LightJobs = 0, [switch]$NoAsan, [switch]$Perf, [switch]$Ui,
       [switch]$NoCache, [switch]$Cache, [string]$Only = '', [string]$Except = '', [Alias('Failed')][switch]$RerunFailed, [switch]$Changed, [string]$Base = '', [switch]$List, [switch]$Profile)
+# On a desktop of its own (test_desktop.ps1): no step takes the focus, the mouse or the keyboard of the person at the machine, and
+# their clicks reach no step. -Ui stays here, its steps need the real input; a CI runner has nobody to disturb.
+if (-not $Ui -and -not $env:CI -and -not $env:WREN_ON_TEST_DESKTOP -and -not $List) {
+    $again = @($PSBoundParameters.GetEnumerator() | ForEach-Object { if ($_.Value -is [switch]) { if ($_.Value) { "-$($_.Key)" } } else { "-$($_.Key) `"$($_.Value)`"" } })
+    & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'test_desktop.ps1') -Command "powershell -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" $($again -join ' ')"
+    exit $LASTEXITCODE
+}
 if ($Profile) {
     # (the same run, under the profiler; a CI step or a person reads the tables it ends with)
     $again = @($PSBoundParameters.GetEnumerator() | Where-Object { $_.Key -ne 'Profile' } | ForEach-Object { if ($_.Value -is [switch]) { if ($_.Value) { "-$($_.Key)" } } else { "-$($_.Key)"; "`"$($_.Value)`"" } }) -join ' '
