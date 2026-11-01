@@ -429,7 +429,7 @@ COMPUTED_PROPERTIES :: [?]string{
 	"padding-left", "padding-right", "padding-top", "pointer-events", "position", "position-anchor", "position-area", "position-try-fallbacks",
 	"position-try-order", "position-visibility", "right", "row-gap", "table-layout", "text-align",
 	"text-combine-upright", "text-decoration-color", "text-decoration-line", "text-decoration-style", "text-indent", "text-orientation", "text-overflow", "text-shadow",
-	"text-transform", "top", "transform", "transform-origin", "user-select", "vertical-align", "visibility",
+	"text-transform", "top", "transform", "transform-origin", "unicode-bidi", "user-select", "vertical-align", "visibility",
 	"white-space", "widows", "width", "word-break", "word-spacing", "writing-mode", "z-index",
 }
 
@@ -651,7 +651,16 @@ computed_value :: proc(cs: ^style.Computed, name_in: string, used: Used_Box) -> 
 	case "widows": return fmt.tprintf("%d", cs.widows)
 	case "writing-mode": return kw(cs.writing_mode)
 	case "text-orientation": return kw(cs.text_orientation)
-	case "text-combine-upright": return kw(cs.text_combine_upright)
+	case "text-combine-upright":
+		switch cs.text_combine_upright {
+		case .None: return "none"
+		case .All: return "all"
+		case .Digits_2: return "digits 2"
+		case .Digits_3: return "digits 3"
+		case .Digits_4: return "digits 4"
+		}
+		return "none"
+	case "unicode-bidi": return kw(cs.unicode_bidi)
 	case "color": return css_color(cs.color)
 	case "font-family": return css_font_family(cs.font_family)
 	case "font-size": return css_px(cs.font_size)
@@ -890,8 +899,9 @@ ComputedStyle_get :: proc(c: ^Call, element: Api_Element, pseudo: string, name: 
 	n := strings.has_prefix(name, "--") ? name : strings.to_lower(name, context.temp_allocator)
 	if !strings.has_prefix(n, "--") {
 		if _, _, known := style.lookup_property(n); known {
-			// aliases (-webkit-*) and logical names read their standard property
-			if canon, ok := property_canonical(n); ok { n = canon }
+			// aliases (-webkit-*) read their standard property; a logical name what it means on this element
+			physical := style.physical_property_name(cs, n)
+			if physical != n { n = physical } else if canon, ok := property_canonical(n); ok { n = canon }
 		}
 	}
 	return computed_value(cs, n, used)

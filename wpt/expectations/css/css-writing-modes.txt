@@ -1,0 +1,487 @@
+# web-platform-tests expectations of Wren for css/css-writing-modes, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/css/css-writing-modes/bidi-inline-fragment-crash.html: OK
+	CSS Writing Modes Test: many levels of bidi inline fragmentations does not crash: PASS
+/css/css-writing-modes/bidi-line-break-001.html: OK
+	\n    <bdi dir="ltr">00</bdi> <bdi dir="ltr">00</bdi>\n  : PASS
+	\n    <bdo dir="ltr">00</bdo> <bdo dir="ltr">00</bdo>\n  : PASS
+	\n    <span class="embed" dir="ltr">00 </span><span class="embed" dir="ltr">00</span>\n  : PASS
+	\n    <span class="embed" dir="ltr">00</span> <span class="embed" dir="ltr">00</span>\n  : PASS
+	\n    <span class="embed" dir="ltr">aa-</span><span class="embed" dir="ltr">bb</span>\n  : FAIL
+	\n    <span class="embed" dir="ltr">aa</span>-<span class="embed" dir="ltr">bb</span>\n  : FAIL
+	\n    <span class="isolate" dir="ltr">00 </span><span class="isolate" dir="ltr">00</span>\n  : PASS
+	\n    <span class="isolate" dir="ltr">00</span> <span class="isolate" dir="ltr">00</span>\n  : PASS
+	\n    <span class="isolate" dir="ltr">aa-</span><span class="isolate" dir="ltr">bb</span>\n  : FAIL
+	\n    <span class="isolate" dir="ltr">aa</span>-<span class="isolate" dir="ltr">bb</span>\n  : FAIL
+	\n    <span dir="ltr">00</span> <span dir="ltr">00</span>\n  : PASS
+/css/css-writing-modes/forms/button-appearance-native-computed-style.html: OK
+	horizontal-button block size should match height and inline size should match width: PASS
+	horizontal-button's height is less than its multi-line counterpart, but width is identical.: PASS
+	horizontal-button-multiline block size should match height and inline size should match width: PASS
+	horizontal-input block size should match height and inline size should match width: PASS
+	horizontal-input's height is less than its multi-line counterpart, but width is identical.: FAIL
+	horizontal-input-multiline block size should match height and inline size should match width: PASS
+	vertical-lr-button block size should match width and inline size should match height: PASS
+	vertical-lr-button's width is less than its multi-line counterpart, but height is identical.: PASS
+	vertical-lr-button-multiline block size should match width and inline size should match height: PASS
+	vertical-lr-input block size should match width and inline size should match height: FAIL
+	vertical-lr-input's width is less than its multi-line counterpart, but height is identical.: FAIL
+	vertical-lr-input-multiline block size should match width and inline size should match height: FAIL
+	vertical-rl-button block size should match width and inline size should match height: PASS
+	vertical-rl-button's width is less than its multi-line counterpart, but height is identical.: PASS
+	vertical-rl-button-multiline block size should match width and inline size should match height: PASS
+	vertical-rl-input block size should match width and inline size should match height: FAIL
+	vertical-rl-input's width is less than its multi-line counterpart, but height is identical.: FAIL
+	vertical-rl-input-multiline block size should match width and inline size should match height: FAIL
+/css/css-writing-modes/forms/checkbox-switch-input-computed-style.tentative.html: OK
+	horizontal-input block size should match height and inline size should match width: FAIL
+	vertical-lr-input block size should match width and inline size should match height: FAIL
+	vertical-rl-input block size should match width and inline size should match height: FAIL
+/css/css-writing-modes/forms/color-input-appearance-native-computed-style.html: OK
+	input[type="color"][style="writing-mode: horizontal-tb"] block size should match height and inline size should match width: PASS
+	input[type="color"][style="writing-mode: vertical-lr"] block size should match width and inline size should match height: FAIL
+	input[type="color"][style="writing-mode: vertical-rl"] block size should match width and inline size should match height: FAIL
+/css/css-writing-modes/forms/date-input-appearance-native-computed-style.html: OK
+	horizontal-empty block size should match height and inline size should match width: PASS
+	horizontal-with-value block size should match height and inline size should match width: PASS
+	vertical-lr-empty block size should match width and inline size should match height: FAIL
+	vertical-lr-with-value block size should match width and inline size should match height: FAIL
+	vertical-rl-empty block size should match width and inline size should match height: FAIL
+	vertical-rl-with-value block size should match width and inline size should match height: FAIL
+/css/css-writing-modes/forms/file-input-computed-style.html: OK
+	horizontal-input block size should match height and inline size should match width: PASS
+	sideways-lr-input block size should match width and inline size should match height: FAIL
+	sideways-rl-input block size should match width and inline size should match height: FAIL
+	vertical-lr-input block size should match width and inline size should match height: FAIL
+	vertical-rl-input block size should match width and inline size should match height: FAIL
+/css/css-writing-modes/forms/input-range-block-size.html: OK
+	writing-mode: horizontal-tb: PASS
+	writing-mode: sideways-lr: FAIL
+	writing-mode: sideways-rl: FAIL
+	writing-mode: vertical-lr: FAIL
+	writing-mode: vertical-rl: FAIL
+/css/css-writing-modes/forms/input-range-inline-size.html: OK
+	writing-mode: horizontal-tb: PASS
+	writing-mode: sideways-lr: FAIL
+	writing-mode: sideways-rl: FAIL
+	writing-mode: vertical-lr: FAIL
+	writing-mode: vertical-rl: FAIL
+/css/css-writing-modes/forms/meter-appearance-native-computed-style.optional.html: OK
+	meter[style="writing-mode: horizontal-tb"] block size should match height and inline size should match width: PASS
+	meter[style="writing-mode: vertical-lr"] block size should match width and inline size should match height: FAIL
+	meter[style="writing-mode: vertical-rl"] block size should match width and inline size should match height: FAIL
+/css/css-writing-modes/forms/progress-appearance-native-computed-style.optional.html: OK
+	progress[style="writing-mode: horizontal-tb"] block size should match height and inline size should match width: PASS
+	progress[style="writing-mode: vertical-lr"] block size should match width and inline size should match height: FAIL
+	progress[style="writing-mode: vertical-rl"] block size should match width and inline size should match height: FAIL
+/css/css-writing-modes/forms/select-appearance-native-computed-style.html: OK
+	select[style="writing-mode: horizontal-tb"] block size should match height and inline size should match width: PASS
+	select[style="writing-mode: vertical-lr"] block size should match width and inline size should match height: FAIL
+	select[style="writing-mode: vertical-rl"] block size should match width and inline size should match height: FAIL
+/css/css-writing-modes/forms/select-multiple-keyboard-selection.optional.html: TIMEOUT
+	select[multiple][style="writing-mode: horizontal-tb"] supports keyboard navigation: TIMEOUT
+	select[multiple][style="writing-mode: sideways-lr"] supports keyboard navigation: NOTRUN
+	select[multiple][style="writing-mode: sideways-rl"] supports keyboard navigation: NOTRUN
+	select[multiple][style="writing-mode: vertical-lr"] supports keyboard navigation: NOTRUN
+	select[multiple][style="writing-mode: vertical-rl"] supports keyboard navigation: NOTRUN
+/css/css-writing-modes/forms/select-multiple-options-visual-order.html: OK
+	select[multiple][style="writing-mode: horizontal-tb"] has visually correct option order: FAIL
+	select[multiple][style="writing-mode: sideways-lr"] has visually correct option order: FAIL
+	select[multiple][style="writing-mode: sideways-rl"] has visually correct option order: FAIL
+	select[multiple][style="writing-mode: vertical-lr"] has visually correct option order: FAIL
+	select[multiple][style="writing-mode: vertical-rl"] has visually correct option order: FAIL
+/css/css-writing-modes/forms/select-multiple-scrolling.optional.html: OK
+	select[multiple][style="writing-mode: horizontal-tb"] scrolls correctly: FAIL
+	select[multiple][style="writing-mode: sideways-lr"] scrolls correctly: FAIL
+	select[multiple][style="writing-mode: sideways-rl"] scrolls correctly: FAIL
+	select[multiple][style="writing-mode: vertical-lr"] scrolls correctly: FAIL
+	select[multiple][style="writing-mode: vertical-rl"] scrolls correctly: FAIL
+/css/css-writing-modes/forms/select-size-scrolling-and-sizing.optional.html: OK
+	select[size][style="writing-mode: horizontal-tb"] scrolls correctly: FAIL
+	select[size][style="writing-mode: horizontal-tb"] sizing works correctly: PASS
+	select[size][style="writing-mode: sideways-lr"] scrolls correctly: FAIL
+	select[size][style="writing-mode: sideways-lr"] sizing works correctly: FAIL
+	select[size][style="writing-mode: sideways-rl"] scrolls correctly: FAIL
+	select[size][style="writing-mode: sideways-rl"] sizing works correctly: FAIL
+	select[size][style="writing-mode: vertical-lr"] scrolls correctly: FAIL
+	select[size][style="writing-mode: vertical-lr"] sizing works correctly: FAIL
+	select[size][style="writing-mode: vertical-rl"] scrolls correctly: FAIL
+	select[size][style="writing-mode: vertical-rl"] sizing works correctly: FAIL
+/css/css-writing-modes/forms/text-input-baseline.html: OK
+	input[type=email] in horizontal-tb: typing characters in input should not change location of elements within container.: PASS
+	input[type=email] in vertical-lr: typing characters in input should not change location of elements within container.: PASS
+	input[type=email] in vertical-rl: typing characters in input should not change location of elements within container.: PASS
+	input[type=number] in horizontal-tb: typing characters in input should not change location of elements within container.: PASS
+	input[type=number] in vertical-lr: typing characters in input should not change location of elements within container.: PASS
+	input[type=number] in vertical-rl: typing characters in input should not change location of elements within container.: PASS
+	input[type=password] in horizontal-tb: typing characters in input should not change location of elements within container.: PASS
+	input[type=password] in vertical-lr: typing characters in input should not change location of elements within container.: PASS
+	input[type=password] in vertical-rl: typing characters in input should not change location of elements within container.: PASS
+	input[type=search] in horizontal-tb: typing characters in input should not change location of elements within container.: PASS
+	input[type=search] in vertical-lr: typing characters in input should not change location of elements within container.: PASS
+	input[type=search] in vertical-rl: typing characters in input should not change location of elements within container.: PASS
+	input[type=tel] in horizontal-tb: typing characters in input should not change location of elements within container.: PASS
+	input[type=tel] in vertical-lr: typing characters in input should not change location of elements within container.: PASS
+	input[type=tel] in vertical-rl: typing characters in input should not change location of elements within container.: PASS
+	input[type=text] in horizontal-tb: typing characters in input should not change location of elements within container.: PASS
+	input[type=text] in vertical-lr: typing characters in input should not change location of elements within container.: PASS
+	input[type=text] in vertical-rl: typing characters in input should not change location of elements within container.: PASS
+	input[type=url] in horizontal-tb: typing characters in input should not change location of elements within container.: PASS
+	input[type=url] in vertical-lr: typing characters in input should not change location of elements within container.: PASS
+	input[type=url] in vertical-rl: typing characters in input should not change location of elements within container.: PASS
+/css/css-writing-modes/forms/text-input-block-size.optional.html: OK
+	Test input[type=email] block-size in writing-mode: sideways-lr: FAIL
+	Test input[type=email] block-size in writing-mode: sideways-rl: FAIL
+	Test input[type=email] block-size in writing-mode: vertical-lr: FAIL
+	Test input[type=email] block-size in writing-mode: vertical-rl: FAIL
+	Test input[type=number] block-size in writing-mode: sideways-lr: FAIL
+	Test input[type=number] block-size in writing-mode: sideways-rl: FAIL
+	Test input[type=number] block-size in writing-mode: vertical-lr: FAIL
+	Test input[type=number] block-size in writing-mode: vertical-rl: FAIL
+	Test input[type=password] block-size in writing-mode: sideways-lr: FAIL
+	Test input[type=password] block-size in writing-mode: sideways-rl: FAIL
+	Test input[type=password] block-size in writing-mode: vertical-lr: FAIL
+	Test input[type=password] block-size in writing-mode: vertical-rl: FAIL
+	Test input[type=search] block-size in writing-mode: sideways-lr: FAIL
+	Test input[type=search] block-size in writing-mode: sideways-rl: FAIL
+	Test input[type=search] block-size in writing-mode: vertical-lr: FAIL
+	Test input[type=search] block-size in writing-mode: vertical-rl: FAIL
+	Test input[type=tel] block-size in writing-mode: sideways-lr: FAIL
+	Test input[type=tel] block-size in writing-mode: sideways-rl: FAIL
+	Test input[type=tel] block-size in writing-mode: vertical-lr: FAIL
+	Test input[type=tel] block-size in writing-mode: vertical-rl: FAIL
+	Test input[type=text] block-size in writing-mode: sideways-lr: FAIL
+	Test input[type=text] block-size in writing-mode: sideways-rl: FAIL
+	Test input[type=text] block-size in writing-mode: vertical-lr: FAIL
+	Test input[type=text] block-size in writing-mode: vertical-rl: FAIL
+	Test input[type=url] block-size in writing-mode: sideways-lr: FAIL
+	Test input[type=url] block-size in writing-mode: sideways-rl: FAIL
+	Test input[type=url] block-size in writing-mode: vertical-lr: FAIL
+	Test input[type=url] block-size in writing-mode: vertical-rl: FAIL
+/css/css-writing-modes/forms/text-input-vertical-overflow-no-scroll.html: TIMEOUT
+	input[type=number] in sideways-lr: typing characters in input should not cause the page to scroll: NOTRUN
+	input[type=number] in sideways-rl: typing characters in input should not cause the page to scroll: NOTRUN
+	input[type=number] in vertical-lr: typing characters in input should not cause the page to scroll: NOTRUN
+	input[type=number] in vertical-rl: typing characters in input should not cause the page to scroll: NOTRUN
+	input[type=password] in sideways-lr: typing characters in input should not cause the page to scroll: NOTRUN
+	input[type=password] in sideways-rl: typing characters in input should not cause the page to scroll: NOTRUN
+	input[type=password] in vertical-lr: typing characters in input should not cause the page to scroll: NOTRUN
+	input[type=password] in vertical-rl: typing characters in input should not cause the page to scroll: NOTRUN
+	input[type=search] in sideways-lr: typing characters in input should not cause the page to scroll: NOTRUN
+	input[type=search] in sideways-rl: typing characters in input should not cause the page to scroll: NOTRUN
+	input[type=search] in vertical-lr: typing characters in input should not cause the page to scroll: NOTRUN
+	input[type=search] in vertical-rl: typing characters in input should not cause the page to scroll: NOTRUN
+	input[type=text] in sideways-lr: typing characters in input should not cause the page to scroll: NOTRUN
+	input[type=text] in sideways-rl: typing characters in input should not cause the page to scroll: NOTRUN
+	input[type=text] in vertical-lr: typing characters in input should not cause the page to scroll: TIMEOUT
+	input[type=text] in vertical-rl: typing characters in input should not cause the page to scroll: NOTRUN
+/css/css-writing-modes/forms/textarea-rows-cols-sizing.html: OK
+	textarea[style="writing-mode: horizontal-tb"] cols attribute changes the size correctly: PASS
+	textarea[style="writing-mode: horizontal-tb"] rows attribute changes the size correctly: PASS
+	textarea[style="writing-mode: sideways-lr"] cols attribute changes the size correctly: FAIL
+	textarea[style="writing-mode: sideways-lr"] rows attribute changes the size correctly: FAIL
+	textarea[style="writing-mode: sideways-rl"] cols attribute changes the size correctly: FAIL
+	textarea[style="writing-mode: sideways-rl"] rows attribute changes the size correctly: FAIL
+	textarea[style="writing-mode: vertical-lr"] cols attribute changes the size correctly: FAIL
+	textarea[style="writing-mode: vertical-lr"] rows attribute changes the size correctly: FAIL
+	textarea[style="writing-mode: vertical-rl"] cols attribute changes the size correctly: FAIL
+	textarea[style="writing-mode: vertical-rl"] rows attribute changes the size correctly: FAIL
+/css/css-writing-modes/inheritance.html: OK
+	Property direction has initial value ltr: PASS
+	Property direction inherits: PASS
+	Property text-combine-upright has initial value none: PASS
+	Property text-combine-upright inherits: FAIL
+	Property text-orientation has initial value mixed: PASS
+	Property text-orientation inherits: PASS
+	Property unicode-bidi does not inherit: PASS
+	Property unicode-bidi has initial value normal: PASS
+	Property writing-mode has initial value horizontal-tb: PASS
+	Property writing-mode inherits: PASS
+/css/css-writing-modes/orthogonal-parent-shrink-to-fit-001.html: OK
+	10: Shrink-to-fit float with a child of orthogonal inline: PASS
+	11: Shrink-to-fit float with a child of orthogonal block with borders: PASS
+	12: Shrink-to-fit float with a child of orthogonal inline with borders: PASS
+	13: Shrink-to-fit float with a child of orthogonal block in inline-block: PASS
+	14: Shrink-to-fit float with a child of orthogonal inline in inline-block: PASS
+	15: Shrink-to-fit float with a child of orthogonal block with borders in inline-block: PASS
+	16: Shrink-to-fit float with a child of orthogonal inline with borders in inline-block: PASS
+	17: Shrink-to-fit table-cell with a child of orthogonal block: PASS
+	18: Shrink-to-fit table-cell with a child of orthogonal inline: PASS
+	19: Shrink-to-fit table-cell with a child of orthogonal block with borders: PASS
+	1: Shrink-to-fit inline-block with a child of orthogonal block: PASS
+	20: Shrink-to-fit table-cell with a child of orthogonal inline with borders: PASS
+	21: Shrink-to-fit table-cell with a child of orthogonal block in inline-block: PASS
+	22: Shrink-to-fit table-cell with a child of orthogonal inline in inline-block: PASS
+	23: Shrink-to-fit table-cell with a child of orthogonal block with borders in inline-block: PASS
+	24: Shrink-to-fit table-cell with a child of orthogonal inline with borders in inline-block: PASS
+	2: Shrink-to-fit inline-block with a child of orthogonal inline: PASS
+	3: Shrink-to-fit inline-block with a child of orthogonal block with borders: PASS
+	4: Shrink-to-fit inline-block with a child of orthogonal inline with borders: PASS
+	5: Shrink-to-fit inline-block with a child of orthogonal block in inline-block: PASS
+	6: Shrink-to-fit inline-block with a child of orthogonal inline in inline-block: PASS
+	7: Shrink-to-fit inline-block with a child of orthogonal block with borders in inline-block: PASS
+	8: Shrink-to-fit inline-block with a child of orthogonal inline with borders in inline-block: PASS
+	9: Shrink-to-fit float with a child of orthogonal block: PASS
+/css/css-writing-modes/orthogonal-parent-shrink-to-fit-001a.html: OK
+	1: Shrink-to-fit inline-block with a child of orthogonal block: PASS
+/css/css-writing-modes/orthogonal-parent-shrink-to-fit-001b.html: OK
+	2: Shrink-to-fit inline-block with a child of orthogonal inline: PASS
+/css/css-writing-modes/orthogonal-parent-shrink-to-fit-001c.html: OK
+	3: Shrink-to-fit inline-block with a child of orthogonal block with borders: PASS
+/css/css-writing-modes/orthogonal-parent-shrink-to-fit-001d.html: OK
+	4: Shrink-to-fit inline-block with a child of orthogonal inline with borders: PASS
+/css/css-writing-modes/orthogonal-parent-shrink-to-fit-001e.html: OK
+	5: Shrink-to-fit inline-block with a child of orthogonal block in inline-block: PASS
+/css/css-writing-modes/orthogonal-parent-shrink-to-fit-001f.html: OK
+	6: Shrink-to-fit inline-block with a child of orthogonal inline in inline-block: PASS
+/css/css-writing-modes/orthogonal-parent-shrink-to-fit-001g.html: OK
+	7: Shrink-to-fit inline-block with a child of orthogonal block with borders in inline-block: PASS
+/css/css-writing-modes/orthogonal-parent-shrink-to-fit-001h.html: OK
+	8: Shrink-to-fit inline-block with a child of orthogonal inline with borders in inline-block: PASS
+/css/css-writing-modes/orthogonal-parent-shrink-to-fit-001i.html: OK
+	9: Shrink-to-fit float with a child of orthogonal block: PASS
+/css/css-writing-modes/orthogonal-parent-shrink-to-fit-001j.html: OK
+	10: Shrink-to-fit float with a child of orthogonal inline: PASS
+/css/css-writing-modes/orthogonal-parent-shrink-to-fit-001k.html: OK
+	11: Shrink-to-fit float with a child of orthogonal block with borders: PASS
+/css/css-writing-modes/orthogonal-parent-shrink-to-fit-001l.html: OK
+	12: Shrink-to-fit float with a child of orthogonal inline with borders: PASS
+/css/css-writing-modes/orthogonal-parent-shrink-to-fit-001m.html: OK
+	13: Shrink-to-fit float with a child of orthogonal block in inline-block: PASS
+/css/css-writing-modes/orthogonal-parent-shrink-to-fit-001n.html: OK
+	14: Shrink-to-fit float with a child of orthogonal inline in inline-block: PASS
+/css/css-writing-modes/orthogonal-parent-shrink-to-fit-001o.html: OK
+	15: Shrink-to-fit float with a child of orthogonal block with borders in inline-block: PASS
+/css/css-writing-modes/orthogonal-parent-shrink-to-fit-001p.html: OK
+	16: Shrink-to-fit float with a child of orthogonal inline with borders in inline-block: PASS
+/css/css-writing-modes/orthogonal-parent-shrink-to-fit-001q.html: OK
+	17: Shrink-to-fit table-cell with a child of orthogonal block: PASS
+/css/css-writing-modes/orthogonal-parent-shrink-to-fit-001r.html: OK
+	18: Shrink-to-fit table-cell with a child of orthogonal inline: PASS
+/css/css-writing-modes/orthogonal-parent-shrink-to-fit-001s.html: OK
+	19: Shrink-to-fit table-cell with a child of orthogonal block with borders: PASS
+/css/css-writing-modes/orthogonal-parent-shrink-to-fit-001t.html: OK
+	20: Shrink-to-fit table-cell with a child of orthogonal inline with borders: PASS
+/css/css-writing-modes/orthogonal-parent-shrink-to-fit-001u.html: OK
+	21: Shrink-to-fit table-cell with a child of orthogonal block in inline-block: PASS
+/css/css-writing-modes/orthogonal-parent-shrink-to-fit-001v.html: OK
+	22: Shrink-to-fit table-cell with a child of orthogonal inline in inline-block: PASS
+/css/css-writing-modes/orthogonal-parent-shrink-to-fit-001w.html: OK
+	23: Shrink-to-fit table-cell with a child of orthogonal block with borders in inline-block: PASS
+/css/css-writing-modes/orthogonal-parent-shrink-to-fit-001x.html: OK
+	24: Shrink-to-fit table-cell with a child of orthogonal inline with borders in inline-block: PASS
+/css/css-writing-modes/orthogonal-parent-shrink-to-fit-002.html: OK
+	10: Shrink-to-fit table-cell with a child of orthogonal atomic inline with borders: PASS
+	11: Shrink-to-fit table-cell with a child of orthogonal atomic inline in inline-block: PASS
+	12: Shrink-to-fit table-cell with a child of orthogonal atomic inline with borders in inline-block: PASS
+	1: Shrink-to-fit inline-block with a child of orthogonal atomic inline: PASS
+	2: Shrink-to-fit inline-block with a child of orthogonal atomic inline with borders: PASS
+	3: Shrink-to-fit inline-block with a child of orthogonal atomic inline in inline-block: PASS
+	4: Shrink-to-fit inline-block with a child of orthogonal atomic inline with borders in inline-block: PASS
+	5: Shrink-to-fit float with a child of orthogonal atomic inline: PASS
+	6: Shrink-to-fit float with a child of orthogonal atomic inline with borders: PASS
+	7: Shrink-to-fit float with a child of orthogonal atomic inline in inline-block: PASS
+	8: Shrink-to-fit float with a child of orthogonal atomic inline with borders in inline-block: PASS
+	9: Shrink-to-fit table-cell with a child of orthogonal atomic inline: PASS
+/css/css-writing-modes/padding-percent-orthogonal-dynamic.html: OK
+	200px minus 100px padding based on #child height: PASS
+	400px minus 100px padding based on #child height: PASS
+/css/css-writing-modes/parsing/direction-computed.html: OK
+	Property direction value 'ltr': PASS
+	Property direction value 'rtl': PASS
+/css/css-writing-modes/parsing/direction-invalid.html: OK
+	e.style['direction'] = "auto" should not set the property value: PASS
+	e.style['direction'] = "ltr rtl" should not set the property value: PASS
+/css/css-writing-modes/parsing/direction-valid.html: OK
+	e.style['direction'] = "ltr" should set the property value: PASS
+	e.style['direction'] = "rtl" should set the property value: PASS
+/css/css-writing-modes/parsing/text-combine-upright-computed.html: OK
+	Property text-combine-upright value 'all': FAIL
+	Property text-combine-upright value 'none': PASS
+/css/css-writing-modes/parsing/text-combine-upright-invalid.html: OK
+	e.style['text-combine-upright'] = "auto" should not set the property value: PASS
+	e.style['text-combine-upright'] = "none all" should not set the property value: PASS
+/css/css-writing-modes/parsing/text-combine-upright-valid.html: OK
+	e.style['text-combine-upright'] = "all" should set the property value: PASS
+	e.style['text-combine-upright'] = "none" should set the property value: PASS
+/css/css-writing-modes/parsing/text-orientation-computed.html: OK
+	Property text-orientation value 'mixed': PASS
+	Property text-orientation value 'sideways': PASS
+	Property text-orientation value 'upright': PASS
+/css/css-writing-modes/parsing/text-orientation-invalid.html: OK
+	e.style['text-orientation'] = "auto" should not set the property value: PASS
+	e.style['text-orientation'] = "mixed upright" should not set the property value: PASS
+/css/css-writing-modes/parsing/text-orientation-valid.html: OK
+	e.style['text-orientation'] = "mixed" should set the property value: PASS
+	e.style['text-orientation'] = "sideways" should set the property value: PASS
+	e.style['text-orientation'] = "upright" should set the property value: PASS
+/css/css-writing-modes/parsing/unicode-bidi-computed.html: OK
+	Property unicode-bidi value 'bidi-override': PASS
+	Property unicode-bidi value 'embed': PASS
+	Property unicode-bidi value 'isolate': PASS
+	Property unicode-bidi value 'isolate-override': PASS
+	Property unicode-bidi value 'normal': PASS
+	Property unicode-bidi value 'plaintext': PASS
+/css/css-writing-modes/parsing/unicode-bidi-invalid.html: OK
+	e.style['unicode-bidi'] = "auto" should not set the property value: PASS
+	e.style['unicode-bidi'] = "isolate plaintext" should not set the property value: PASS
+/css/css-writing-modes/parsing/unicode-bidi-valid.html: OK
+	e.style['unicode-bidi'] = "bidi-override" should set the property value: PASS
+	e.style['unicode-bidi'] = "embed" should set the property value: PASS
+	e.style['unicode-bidi'] = "isolate" should set the property value: PASS
+	e.style['unicode-bidi'] = "isolate-override" should set the property value: PASS
+	e.style['unicode-bidi'] = "normal" should set the property value: PASS
+	e.style['unicode-bidi'] = "plaintext" should set the property value: PASS
+/css/css-writing-modes/parsing/writing-mode-computed.html: OK
+	Property writing-mode value 'horizontal-tb': PASS
+	Property writing-mode value 'vertical-lr': PASS
+	Property writing-mode value 'vertical-rl': PASS
+/css/css-writing-modes/parsing/writing-mode-invalid.html: OK
+	e.style['writing-mode'] = "auto" should not set the property value: PASS
+	e.style['writing-mode'] = "horizontal-tb vertical-rl" should not set the property value: PASS
+/css/css-writing-modes/parsing/writing-mode-valid.html: OK
+	e.style['writing-mode'] = "horizontal-tb" should set the property value: PASS
+	e.style['writing-mode'] = "vertical-lr" should set the property value: PASS
+	e.style['writing-mode'] = "vertical-rl" should set the property value: PASS
+/css/css-writing-modes/text-combine-upright-parsing-digits-001.html: OK
+	Computed value for `text-combine-upright: digits +2` is `digits 2`: FAIL
+	Computed value for `text-combine-upright: digits 2` is `digits 2`: FAIL
+	Computed value for `text-combine-upright: digits 3` is `digits 3`: FAIL
+	Computed value for `text-combine-upright: digits 4` is `digits 4`: FAIL
+	Computed value for `text-combine-upright: digits [TAB]3` is `digits 3`: FAIL
+	Computed value for `text-combine-upright: digits+3` is `digits 3`: FAIL
+	Computed value for `text-combine-upright: digits[LF]2` is `digits 2`: FAIL
+	Computed value for `text-combine-upright: digits[TAB]4` is `digits 4`: FAIL
+	Computed value for `text-combine-upright: digits[TAB][LF]4` is `digits 4`: FAIL
+	Computed value for `text-combine-upright: digits` is `digits 2`: FAIL
+/css/css-writing-modes/text-combine-upright-parsing-digits-002.html: OK
+	Computed value for `text-combine-upright: digits calc(1 + 1 + 1)` is `digits 3`: FAIL
+	Computed value for `text-combine-upright: digits calc(1 + 1)` is `digits 2`: FAIL
+	Computed value for `text-combine-upright: digits calc(2 * 1)` is `digits 2`: FAIL
+	Computed value for `text-combine-upright: digits calc(2 * 2 * 1)` is `digits 4`: FAIL
+	Computed value for `text-combine-upright: digits calc(2 + 2)` is `digits 4`: FAIL
+	Computed value for `text-combine-upright: digits calc(24 / 3 / 2)` is `digits 4`: FAIL
+	Computed value for `text-combine-upright: digits calc(3 * 1)` is `digits 3`: FAIL
+	Computed value for `text-combine-upright: digits calc(4 - 2)` is `digits 2`: FAIL
+	Computed value for `text-combine-upright: digits calc(4 / 2)` is `digits 2`: FAIL
+	Computed value for `text-combine-upright: digits calc(6 - 3)` is `digits 3`: FAIL
+	Computed value for `text-combine-upright: digits calc(6 / 2)` is `digits 3`: FAIL
+	Computed value for `text-combine-upright: digits calc(7 - 1 - 2)` is `digits 4`: FAIL
+/css/css-writing-modes/text-combine-upright-parsing-invalid-001.html: OK
+	Computed value for `text-combine-upright: all none` is `none`: PASS
+	Computed value for `text-combine-upright: digits +2e0` is not `digits 2` but `none`: PASS
+	Computed value for `text-combine-upright: digits +4e+0` is not `digits 4` but `none`: PASS
+	Computed value for `text-combine-upright: digits +4e-0` is not `digits 4` but `none`: PASS
+	Computed value for `text-combine-upright: digits +5` is `none`: PASS
+	Computed value for `text-combine-upright: digits 1` is `none`: PASS
+	Computed value for `text-combine-upright: digits 2.00` is `none`: PASS
+	Computed value for `text-combine-upright: digits 2e0` is not `digits 2` but `none`: PASS
+	Computed value for `text-combine-upright: digits 3e+0` is not `digits 3` but `none`: PASS
+	Computed value for `text-combine-upright: digits 3e-0` is not `digits 3` but `none`: PASS
+	Computed value for `text-combine-upright: digits 4 none` is `none`: PASS
+	Computed value for `text-combine-upright: digits bar` is `none`: PASS
+	Computed value for `text-combine-upright: digits2` is `none`: PASS
+	Computed value for `text-combine-upright: foo` is `none`: PASS
+	Computed value for `text-combine-upright: none digits` is `none`: PASS
+/css/css-writing-modes/text-combine-upright-parsing-invalid-002.html: OK
+	Computed value for `text-combine-upright: digits calc(0 + 1)` is `none`: PASS
+	Computed value for `text-combine-upright: digits calc(10 - 3)` is `none`: PASS
+	Computed value for `text-combine-upright: digits calc(2 + 3)` is `none`: PASS
+	Computed value for `text-combine-upright: digits calc(2 / 1.0)` is `none`: PASS
+	Computed value for `text-combine-upright: digits calc(2.0 * 2)` is `none`: PASS
+	Computed value for `text-combine-upright: digits calc(2e0 * 2e+0)` is `none`: PASS
+	Computed value for `text-combine-upright: digits calc(2e2 * 2e-2)` is `none`: PASS
+	Computed value for `text-combine-upright: digits calc(3 * 1.0)` is `none`: PASS
+	Computed value for `text-combine-upright: digits calc(4 - 3)` is `none`: PASS
+	Computed value for `text-combine-upright: digits calc(4.0 / 2)` is `none`: PASS
+	Computed value for `text-combine-upright: digits calc(4e+2 / +2e2)` is `none`: PASS
+/css/css-writing-modes/text-combine-upright-parsing-valid-001.html: OK
+	Computed value for `text-combine-upright: all` is `all`: FAIL
+	Computed value for `text-combine-upright: inherit` is `all` which is inherited from the parent element: FAIL
+	Computed value for `text-combine-upright: initial` is `none`: PASS
+	Computed value for `text-combine-upright: none` is `none`: PASS
+	Computed value for `text-combine-upright: unset` is `all` which is inherited from the parent element: FAIL
+/css/css-writing-modes/text-orientation-parsing-001.html: OK
+	text-orientation initial value: PASS
+	text-orientation should inherit: PASS
+	text-orientation: foo: PASS
+	text-orientation: inherit: PASS
+	text-orientation: initial: PASS
+	text-orientation: mixed: PASS
+	text-orientation: sideways: PASS
+	text-orientation: upright: PASS
+/css/css-writing-modes/text-orientation-parsing-sideways-right-001.html: OK
+	text-orientation: sideways-right: PASS
+/css/css-writing-modes/unicode-bidi-parsing-001.html: OK
+	Initial value of unicode-bidi: PASS
+	unicode-bidi should not inherit: PASS
+	unicode-bidi: bidi-override: PASS
+	unicode-bidi: embed: PASS
+	unicode-bidi: embed; unicode-bidi: normal: PASS
+/css/css-writing-modes/unicode-bidi-parsing-002.html: OK
+	unicode-bidi: isolate: PASS
+	unicode-bidi: isolate-override: PASS
+	unicode-bidi: plaintext: PASS
+/css/css-writing-modes/wm-propagation-body-computed-direction-001.html: OK
+	First test on computed value of 'direction' of root element.: PASS
+/css/css-writing-modes/wm-propagation-body-computed-direction-002.html: OK
+	Second test on computed value of 'direction' of root element.: PASS
+/css/css-writing-modes/wm-propagation-body-computed-root.html: OK
+	Check computed writing-mode for body element when style no longer applies.: PASS
+	Check computed writing-mode for body element.: PASS
+	Check computed writing-mode for html root element.: PASS
+/css/css-writing-modes/wm-propagation-body-computed-writing-mode.html: OK
+	Computed style is as specified with horizontal-tb on body & horizontal-tb on html: PASS
+	Computed style is as specified with horizontal-tb on body & sideways-lr on html: PASS
+	Computed style is as specified with horizontal-tb on body & sideways-rl on html: PASS
+	Computed style is as specified with horizontal-tb on body & vertical-lr on html: PASS
+	Computed style is as specified with horizontal-tb on body & vertical-rl on html: PASS
+	Computed style is as specified with sideways-lr on body & horizontal-tb on html: PASS
+	Computed style is as specified with sideways-lr on body & sideways-lr on html: PASS
+	Computed style is as specified with sideways-lr on body & sideways-rl on html: PASS
+	Computed style is as specified with sideways-lr on body & vertical-lr on html: PASS
+	Computed style is as specified with sideways-lr on body & vertical-rl on html: PASS
+	Computed style is as specified with sideways-rl on body & horizontal-tb on html: PASS
+	Computed style is as specified with sideways-rl on body & sideways-lr on html: PASS
+	Computed style is as specified with sideways-rl on body & sideways-rl on html: PASS
+	Computed style is as specified with sideways-rl on body & vertical-lr on html: PASS
+	Computed style is as specified with sideways-rl on body & vertical-rl on html: PASS
+	Computed style is as specified with vertical-lr on body & horizontal-tb on html: PASS
+	Computed style is as specified with vertical-lr on body & sideways-lr on html: PASS
+	Computed style is as specified with vertical-lr on body & sideways-rl on html: PASS
+	Computed style is as specified with vertical-lr on body & vertical-lr on html: PASS
+	Computed style is as specified with vertical-lr on body & vertical-rl on html: PASS
+	Computed style is as specified with vertical-rl on body & horizontal-tb on html: PASS
+	Computed style is as specified with vertical-rl on body & sideways-lr on html: PASS
+	Computed style is as specified with vertical-rl on body & sideways-rl on html: PASS
+	Computed style is as specified with vertical-rl on body & vertical-lr on html: PASS
+	Computed style is as specified with vertical-rl on body & vertical-rl on html: PASS
+/css/css-writing-modes/wm-propagation-body-scroll-offset-vertical-lr.html: OK
+	Check initial scroll position of viewport.: PASS
+	Scroll to scrollLeft = -1000 should not be possible.: PASS
+	Scroll to scrollLeft = 1000 should be possible.: PASS
+/css/css-writing-modes/wm-propagation-body-scroll-offset-vertical-rl.html: OK
+	Check initial scroll position of viewport.: PASS
+	Scroll to scrollLeft = -1000 should be possible.: PASS
+	Scroll to scrollLeft = 1000 should not be possible.: PASS
+/css/css-writing-modes/writing-mode-parsing-001.html: OK
+	writing-mode initial value: PASS
+	writing-mode should inherit: PASS
+	writing-mode: foo: PASS
+	writing-mode: horizontal-tb: PASS
+	writing-mode: horizontal-tb; writing-mode: inherit: PASS
+	writing-mode: inherit: PASS
+	writing-mode: initial: PASS
+	writing-mode: vertical-lr: PASS
+	writing-mode: vertical-rl: PASS
+/css/css-writing-modes/writing-mode-parsing-sideways-lr-001.html: OK
+	writing-mode: sideways-lr: PASS
+/css/css-writing-modes/writing-mode-parsing-sideways-rl-001.html: OK
+	writing-mode: sideways-rl: PASS
+/css/css-writing-modes/writing-mode-parsing-svg1-001.html: OK
+	writing-mode: lr: PASS
+	writing-mode: lr-tb: PASS
+	writing-mode: rl: PASS
+	writing-mode: rl-tb: PASS
+	writing-mode: tb: PASS
+	writing-mode: tb-rl: PASS

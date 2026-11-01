@@ -634,7 +634,8 @@ finish_line :: proc(lb: ^Line_Builder, forced, last: bool) {
 		for &p in lb.pending_abs {
 			k := &c.l.boxes[p.box]
 			k.static_ref = lb.bi
-			k.static_pos = {lb.cx + lb.left + p.x, lb.cy + lb.y}
+			// (right to left: from the end of the line: the box's end edge goes there, layout_abs)
+			k.static_pos = {is_rtl(lb.cs) ? lb.cx + lb.right - p.x : lb.cx + lb.left + p.x, lb.cy + lb.y}
 		}
 		clear(&lb.pending_abs)
 		place_pending_floats(lb)
@@ -769,6 +770,8 @@ finish_line :: proc(lb: ^Line_Builder, forced, last: bool) {
 	line_top := lb.cy + lb.y
 	baseline := line_top + base_y
 	ox := lb.cx + lb.left + shift
+	// right to left, a first line's indent is at its right end: it is in `used`, but the fragments start after it
+	if rtl && lb.first { ox -= px_of(c, lb.cs.text_indent, lb.cw) }
 	for &f in lb.frags {
 		sp := f32(f.spaces) * extra
 		switch f.kind {
@@ -817,7 +820,7 @@ finish_line :: proc(lb: ^Line_Builder, forced, last: bool) {
 	for &p in lb.pending_abs {
 		k := &c.l.boxes[p.box]
 		k.static_ref = lb.bi
-		k.static_pos = {ox + p.x, line_top}
+		k.static_pos = {rtl ? ox + used - p.x : ox + p.x, line_top}
 	}
 	clear(&lb.pending_abs)
 	lb.y += line_h
@@ -1099,9 +1102,9 @@ ifc_build_at :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx, ch: f32, trim: f3
 		case .Float:
 			line_float(&lb, c.l.inline_items[s.item].box)
 		case .Abs:
-			pw: f32
-			for &u in lb.unit { pw += u.w }
-			append(&lb.pending_abs, Pending_Abs{c.l.inline_items[s.item].box, lb.pen + pw})
+			// (what comes before it is on the line first: a word that wraps takes the static position with it)
+			commit_unit(&lb, false)
+			append(&lb.pending_abs, Pending_Abs{c.l.inline_items[s.item].box, lb.pen})
 		case .Break:
 			commit_unit(&lb, false)
 			lb.content = true

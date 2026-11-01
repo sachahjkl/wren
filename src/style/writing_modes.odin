@@ -23,7 +23,8 @@ Break_Value :: enum u8 { Auto, Avoid, Avoid_Column, Avoid_Page, Column, Page, Le
 Break_Inside :: enum u8 { Auto, Avoid, Avoid_Column, Avoid_Page }
 Writing_Mode :: enum u8 { Horizontal_Tb, Vertical_Rl, Vertical_Lr, Sideways_Rl, Sideways_Lr }
 Text_Orientation :: enum u8 { Mixed, Upright, Sideways }
-Text_Combine_Upright :: enum u8 { None, All }
+// (Digits_n: `digits <n>` is kept as a value; no layout combines digits, as Blink)
+Text_Combine_Upright :: enum u8 { None, All, Digits_2, Digits_3, Digits_4 }
 
 // The block axis is horizontal: the inline axis, what lines follow, is vertical.
 is_vertical_mode :: #force_inline proc "contextless" (w: Writing_Mode) -> bool { return w != .Horizontal_Tb }
@@ -107,6 +108,22 @@ flow_sides :: proc "contextless" (w: Writing_Mode, rtl: bool) -> [Side]Side {
 	}
 	if rtl { is_, ie = ie, is_ }
 	return {.Top = bs, .Right = ie, .Bottom = be, .Left = is_}
+}
+
+@(private)
+parse_text_combine :: proc(vs: []css.Value) -> (Text_Combine_Upright, bool) {
+	if v, ok := parse_enum(vs, Text_Combine_Upright); ok && v < .Digits_2 { return v, true }
+	items := css.trim_values(vs)
+	first: css.Value
+	rest: []css.Value
+	n := 0
+	for it in items {
+		if it.kind == .Token && it.tok.kind == .Whitespace { continue }
+		if n == 0 { first = it } else if n == 1 { one := [1]css.Value{it}; rest = one[:]; d, ok := css.parse_integer(rest); if !ok || !is_ident(first, "digits") || d < 2 || d > 4 { return {}, false }; return d == 2 ? .Digits_2 : (d == 3 ? .Digits_3 : .Digits_4), true }
+		n += 1
+	}
+	if n == 1 && is_ident(first, "digits") { return .Digits_2, true }
+	return {}, false
 }
 
 // Whether the start of a physical axis, for a writing mode and direction, is at its high end (rtl-like).
@@ -267,19 +284,15 @@ physical_property_name :: proc(cs: ^Computed, name: string) -> string {
 ////////////////////////////////
 // What a writing mode does to the rest of the style
 
-// A table's row groups and rows take the writing mode of their table (CSS Writing Modes 4 §2.1: writing-mode does not apply
-// to them); an inline box in another writing mode than its parent becomes an inline-block, as in other browsers.
+// An inline box in another writing mode than its parent becomes an inline-block, as in other browsers. (A table's row groups and
+// rows keep their computed value, which their cells inherit, but layout gives them their table's: writing-mode does not apply to them.)
 @(private)
 writing_mode_fixup :: proc(cx: ^Cx) {
 	c := cx.c
 	if c.text_combine_upright != .None && !is_vertical_mode(c.writing_mode) { c.text_combine_upright = .None }
 	parent := cx.parent
 	if parent != nil && parent.writing_mode != c.writing_mode {
-		#partial switch c.display {
-		case .Inline: c.display = .Inline_Block
-		case .Table_Row_Group, .Table_Header_Group, .Table_Footer_Group, .Table_Row, .Table_Column, .Table_Column_Group:
-			c.writing_mode = parent.writing_mode
-		}
+		if c.display == .Inline { c.display = .Inline_Block }
 	}
 	c.frames = c.writing_mode != .Horizontal_Tb || c.column_count != 0 || c.column_width.kind != .Auto || c.column_span != .None
 }

@@ -433,6 +433,7 @@ paint_item :: proc(rc: ^Raster, it: ^lay.Display_Item) {
 	case .Marker: paint_marker(rc, it)
 	case .Replaced, .Control: paint_content(rc, it)
 	case .Outline: paint_outline(rc, it)
+	case .Column_Rule: paint_column_rule(rc, it)
 	case .Scrollbar: paint_scrollbar(rc, it)
 	case:   // a kind this painter does not know yet draws nothing
 	}

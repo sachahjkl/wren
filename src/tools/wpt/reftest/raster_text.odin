@@ -105,10 +105,15 @@ is_word_space :: #force_inline proc(r: rune) -> bool { return r == ' ' || r == N
 // The advance of a glyph of the font, as layout_host.odin measures it.
 font_advance :: #force_inline proc(f: lay.Font, size: f32) -> f32 { return (f == AHEM_FONT ? 1 : OTHER_ADVANCE_EM) * size }
 
+// Bidi controls and the like: nothing shows, nothing advances (as in every font).
+is_invisible_format :: proc(r: rune) -> bool {
+	return (r >= 0x200B && r <= 0x200F) || (r >= 0x202A && r <= 0x202E) || (r >= 0x2060 && r <= 0x2069) || r == 0xFEFF
+}
+
 // How a character's cell maps to the page: `Upright`: as written; `Rotated_Cw`: a quarter turn clockwise (what is at the
 // glyph's top is at the right, its writing direction goes down).
 @(private)
-Cell_Frame :: enum u8 { Upright, Rotated_Cw }
+Cell_Frame :: enum u8 { Upright, Rotated_Cw, Rotated_Ccw }
 
 @(private)
 Cell :: struct {
@@ -125,6 +130,9 @@ cell_part :: proc(c: Cell, u0, v0, u1, v1: f32) -> lay.Rect {
 		return snap_rect(lay.Rect{{c.rect.min.x + u0 * w, c.rect.min.y + v0 * h}, {c.rect.min.x + u1 * w, c.rect.min.y + v1 * h}})
 	case .Rotated_Cw:
 		return snap_rect(lay.Rect{{c.rect.max.x - v1 * w, c.rect.min.y + u0 * h}, {c.rect.max.x - v0 * w, c.rect.min.y + u1 * h}})
+	case .Rotated_Ccw:
+		// (the top of the character to the left, read upwards: sideways-lr)
+		return snap_rect(lay.Rect{{c.rect.min.x + v0 * w, c.rect.max.y - u1 * h}, {c.rect.min.x + v1 * w, c.rect.max.y - u0 * h}})
 	}
 	return {}
 }
@@ -185,6 +193,7 @@ draw_run_horizontal :: proc(rc: ^Raster, it: ^lay.Display_Item, cs: ^style.Compu
 	share := height > 0 ? fi.ascent / height : ASCENT_EM
 	adv := font_advance(fi.font, fi.size)
 	for r in it.text {
+		if is_invisible_format(r) { continue }
 		x0 := rtl ? pen - adv : pen
 		draw_glyph(rc, Cell{lay.Rect{{x0, top}, {x0 + adv, bottom}}, .Upright}, fi, r, share, color)
 		step := adv + spacing_after(rc, cs, it, r)
@@ -196,7 +205,13 @@ draw_run_horizontal :: proc(rc: ^Raster, it: ^lay.Display_Item, cs: ^style.Compu
 // style has text-orientation: `sideways` is always false here, `upright` always true, and `mixed` follows Unicode's
 // Vertical_Orientation (UTR #50): the caller adapts this procedure when cs.text_orientation exists.
 text_upright :: proc(cs: ^style.Computed, r: rune) -> bool {
-	return false
+	if cs.writing_mode == .Sideways_Rl || cs.writing_mode == .Sideways_Lr { return false }
+	switch cs.text_orientation {
+	case .Upright: return true
+	case .Sideways: return false
+	case .Mixed:
+	}
+	return lay.vertical_upright(r)
 }
 
 // A text item with Item_Flag.Vertical: the run goes from top to bottom (bottom to top when it.level is odd); `it.rect` is
@@ -205,25 +220,59 @@ text_upright :: proc(cs: ^style.Computed, r: rune) -> bool {
 // written and centred on the baseline's x.
 @(private)
 draw_run_vertical :: proc(rc: ^Raster, it: ^lay.Display_Item, cs: ^style.Computed, fi: ^lay.Font_Info, color: css_.Color, shift: lay.Vec2) {
-	reversed := it.level & 1 == 1
+	ccw := cs.writing_mode == .Sideways_Lr
+	// a right-to-left run comes in visual order from its far end, as on a horizontal line
+	reversed := ccw != (it.level & 1 == 1)
 	pen := (reversed ? it.rect.max.y : it.rect.min.y) + shift.y
 	base := snap(it.baseline + shift.x)
-	height := fi.ascent + fi.descent
-	share := height > 0 ? fi.ascent / height : ASCENT_EM
+	raw_a, raw_d := fi.raw_ascent, fi.raw_descent
+	height := raw_a + raw_d
+	share := height > 0 ? raw_a / height : ASCENT_EM
 	adv := font_advance(fi.font, fi.size)
+	if cs.text_combine_upright == .All {
+		// an em along the line, what it holds squeezed into it
+		n := f32(max(rune_count(it.text), 1))
+		w := min(adv * n, fi.size)
+		i: f32
+		for r in it.text {
+			x0 := base - w * HALF + i * (w / n)
+			y0 := pen + (fi.size - height) * HALF
+			draw_glyph(rc, Cell{lay.Rect{{x0, y0}, {x0 + w / n, y0 + height}}, .Upright}, fi, r, share, color)
+			i += 1
+		}
+		return
+	}
+	// sideways glyphs on a central baseline: the middle of their box on it (as render.odin draws them)
+	turned := fi.vmode == .Central ? base - (raw_a - raw_d) * HALF : base
 	for r in it.text {
-		y0 := reversed ? pen - adv : pen
+		if is_invisible_format(r) { continue }
 		cell: Cell
+		step: f32
 		if text_upright(cs, r) {
+			step = lay.upright_advance(r, fi.size, height)
+			y0 := reversed ? pen - step : pen
 			half := adv * HALF
-			cell = Cell{lay.Rect{{base - half, y0}, {base + half, y0 + adv}}, .Upright}
+			cell = Cell{lay.Rect{{base - half, y0}, {base + half, y0 + step}}, .Upright}
 		} else {
-			cell = Cell{lay.Rect{{base - fi.descent, y0}, {base + fi.ascent, y0 + adv}}, .Rotated_Cw}
+			step = adv
+			y0 := reversed ? pen - step : pen
+			if ccw {
+				cell = Cell{lay.Rect{{turned - raw_a, y0}, {turned + raw_d, y0 + step}}, .Rotated_Ccw}
+			} else {
+				cell = Cell{lay.Rect{{turned - raw_d, y0}, {turned + raw_a, y0 + step}}, .Rotated_Cw}
+			}
 		}
 		draw_glyph(rc, cell, fi, r, share, color)
-		step := adv + spacing_after(rc, cs, it, r)
+		step += spacing_after(rc, cs, it, r)
 		pen += reversed ? -step : step
 	}
+}
+
+@(private = "file")
+rune_count :: proc(s: string) -> int {
+	n := 0
+	for _ in s { n += 1 }
+	return n
 }
 
 @(private = "file")
@@ -281,6 +330,13 @@ paint_marker :: proc(rc: ^Raster, it: ^lay.Display_Item) {
 	if cs == nil || fi == nil { return }
 	if it.text != "" {
 		draw_run(rc, it, cs, fi, cs.color)
+		return
+	}
+	if .Vertical in it.flags {
+		// a bullet: on the line's middle
+		h := it.rect.max.y - it.rect.min.y
+		sq := snap_rect(lay.Rect{{it.baseline - h * HALF, it.rect.min.y}, {it.baseline + h * HALF, it.rect.max.y}})
+		fill_rect(rc, sq, cs.color)
 		return
 	}
 	s := it.rect.max.x - it.rect.min.x

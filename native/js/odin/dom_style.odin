@@ -63,6 +63,8 @@ import "../odin/wj"
 	"transition-timing-function", "translate", "unicode-bidi", "user-select", "vertical-align", "visibility",
 	"white-space", "white-space-collapse", "width", "will-change", "word-break", "word-spacing", "word-wrap",
 	"writing-mode", "z-index", "zoom",
+	"column-rule-width", "column-rule-style", "column-rule-color", "column-span", "column-fill", "orphans", "widows",
+	"text-orientation", "text-combine-upright",
 	"-webkit-align-items", "-webkit-animation", "-webkit-appearance", "-webkit-backface-visibility",
 	"-webkit-background-clip", "-webkit-border-radius", "-webkit-box-shadow", "-webkit-box-sizing", "-webkit-filter",
 	"-webkit-flex", "-webkit-flex-direction", "-webkit-justify-content", "-webkit-line-clamp", "-webkit-mask",

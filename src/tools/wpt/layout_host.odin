@@ -72,7 +72,9 @@ host_font :: proc(user: rawptr, families: []string, weight: u16, italic: bool) -
 
 @(private)
 host_width :: proc(user: rawptr, f: lay.Font, size: f32, text: string) -> f32 {
-	return reftest.font_advance(f, size) * f32(strings.rune_count(text))
+	n := 0
+	for r in text { if !reftest.is_invisible_format(r) { n += 1 } }
+	return reftest.font_advance(f, size) * f32(n)
 }
 
 @(private)
@@ -132,7 +134,7 @@ host_update :: proc(user: rawptr, p: ^page.Page) -> ^lay.Layout {
 	vw, vh := f32(h.view[0]), f32(h.view[1])
 	st := page.styles(p, vw, vh, 1)
 	lay.note_doc_scroll(&h.l, f32(h.scroll[1]))
-	input := lay.Input{doc = p.doc, styled = st, settings = &h.set, text = {font = host_font, width = host_width, metrics = host_metrics},
+	input := lay.Input{doc = p.doc, styled = st, settings = &h.set, text = {font = host_font, width = host_width, metrics = host_metrics, bidi = host_bidi},
 		viewport = {vw, vh}, scale = 1, band_h = LAYOUT_BAND_H}
 	if h.images {
 		input.replaced = lay.Replaced_Api{user = h, intrinsic = host_intrinsic, ratio = host_ratio}

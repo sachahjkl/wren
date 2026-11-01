@@ -1205,7 +1205,9 @@ apply_prop_more :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		}
 		return set_enum(vs, &c.text_orientation)
 	case .Text_Combine_Upright:
-		return set_enum(vs, &c.text_combine_upright)
+		v, ok := parse_text_combine(vs)
+		if !ok { return false }
+		c.text_combine_upright = v
 	case .Grid_Template_Columns, .Grid_Template_Rows:
 		tpl, ok := parse_grid_template(cx, vs)
 		if !ok { return false }

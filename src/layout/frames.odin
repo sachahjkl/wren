@@ -189,7 +189,7 @@ frames_to_logical :: proc(c: ^Ctx) {
 		if .Abs in b.flags && b.cs != nil && style.anchored_style(b.cs) { b.fx += {.Anchored} }
 		f := frame_of(l, i)
 		// no own content to turn: these take their frame's mode
-		if b.kind == .Inline || b.kind == .Replaced { b.wm = f }
+		if b.kind == .Inline || b.kind == .Replaced || b.kind == .Row_Group || b.kind == .Row { b.wm = f }
 		if f != b.wm {
 			b.fx += {.Frame_Root}
 			b.flags += {.Bfc}
@@ -284,6 +284,8 @@ frame_layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h, forced_h: f32) -> Resul
 	if orth {
 		b.size = {w, own_w}
 		b.baseline, b.last_baseline = -1, -1
+		// (a table's vertical-align moves a cell's content across its frame's block axis: here that is its own inline axis)
+		if b.kind == .Cell { b.tmp = own_w }
 		return Result{h = own_w}
 	}
 	b.size = {w, r.h}

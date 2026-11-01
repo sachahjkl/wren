@@ -614,10 +614,19 @@ paint_inline_box :: proc(rc: ^Raster, it: ^lay.Display_Item) {
 	r := snap_rect(it.rect)
 	radii := box_radii(cs, r.max.x - r.min.x, r.max.y - r.min.y, l.scale)
 	left, right := .Left_Edge in it.flags, .Right_Edge in it.flags
-	if !left { radii[0], radii[3] = {}, {} }
-	if !right { radii[1], radii[2] = {}, {} }
-	widths := [4]f32{b.border[TOP], right ? b.border[RIGHT] : 0, b.border[BOTTOM], left ? b.border[LEFT] : 0}
-	pad := [4]f32{b.padding[TOP], right ? b.padding[RIGHT] : 0, b.padding[BOTTOM], left ? b.padding[LEFT] : 0}
+	widths, pad: [4]f32
+	if .Vertical in it.flags {
+		// in a vertical line the start and the end are its top and bottom
+		if !left { radii[0], radii[1] = {}, {} }
+		if !right { radii[2], radii[3] = {}, {} }
+		widths = {left ? b.border[TOP] : 0, b.border[RIGHT], right ? b.border[BOTTOM] : 0, b.border[LEFT]}
+		pad = {left ? b.padding[TOP] : 0, b.padding[RIGHT], right ? b.padding[BOTTOM] : 0, b.padding[LEFT]}
+	} else {
+		if !left { radii[0], radii[3] = {}, {} }
+		if !right { radii[1], radii[2] = {}, {} }
+		widths = {b.border[TOP], right ? b.border[RIGHT] : 0, b.border[BOTTOM], left ? b.border[LEFT] : 0}
+		pad = {b.padding[TOP], right ? b.padding[RIGHT] : 0, b.padding[BOTTOM], left ? b.padding[LEFT] : 0}
+	}
 	boxes := box_rects(r, radii, widths, pad)
 	if len(cs.box_shadow) > 0 { paint_box_shadows(rc, cs, &boxes, false) }
 	paint_backgrounds(rc, cs, &boxes)
@@ -706,4 +715,16 @@ paint_content :: proc(rc: ^Raster, it: ^lay.Display_Item) {
 		p := Paint{kind = .Image, tile = Tile{origin = dst.min, size = dst.max - dst.min}, content = &c}
 		fill(rc, &shape, &p)
 	}
+}
+
+// A rule between columns: a border that has only one side, across its rect.
+@(private)
+paint_column_rule :: proc(rc: ^Raster, it: ^lay.Display_Item) {
+	cs := it.cs
+	if cs == nil { return }
+	st, c := cs.column_rule_style, cs.column_rule_color
+	r := snap_rect(it.rect)
+	w: [4]f32
+	if .Vertical in it.flags { w[TOP] = r.max.y - r.min.y } else { w[LEFT] = r.max.x - r.min.x }
+	paint_borders(rc, r, w, {st, st, st, st}, {c, c, c, c}, {})
 }
