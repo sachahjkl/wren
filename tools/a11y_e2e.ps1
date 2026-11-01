@@ -46,6 +46,15 @@ function Probe {
     return $out.Result.TrimEnd()
 }
 
+$BoundsTries = 50; $BoundsPauseMs = 100   # how long the elements of a rebuilt tree may take to be back
+function Wait-Bounds {
+    for ($i = 0; $i -lt $BoundsTries; $i++) {
+        $script:lb = (Probe bounds --pid $wpid --type listitem --index 0) -split ' '
+        $script:tb = (Probe bounds --pid $wpid --type text --name 'One') -split ' '
+        if ($script:lb.Count -eq 4 -and $script:tb.Count -eq 4) { return }
+        Start-Sleep -Milliseconds $BoundsPauseMs
+    }
+}
 $name = Start-Wren -Size 1100x760 -Url 'about:blank'
 try {
     $wpid = (Wren-Ctl stats --json | ConvertFrom-Json).pid
@@ -159,8 +168,8 @@ try {
     $null = Probe wait --pid $wpid --type listitem --index 2 --timeout 5000
     Check 'a list item the page adds is read' ($script:ProbeExit -eq 0)
     # static text has the bounds of its own lines, not its block's
-    $lb = (Probe bounds --pid $wpid --type listitem --index 0) -split ' '
-    $tb = (Probe bounds --pid $wpid --type text --name 'One') -split ' '
+    # (the tree is rebuilt after the additions above: an element may be away for a moment, and a bounds probe does not wait)
+    $null = Wait-Bounds
     Check 'a text''s bounds are its own line''s' ($lb.Count -eq 4 -and $tb.Count -eq 4 -and [int]$tb[2] -gt 0 -and [int]$tb[2] -lt [int]$lb[2] / 2) "item $($lb -join ','), text $($tb -join ',')"
     $null = Wren-Eval "document.getElementById('later').remove(); 'ok'"
     $gone = $false
