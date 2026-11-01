@@ -1,4 +1,4 @@
-package main
+package testserver
 
 // Endpoints for the script loading test (src/tools/jsloadtest):
 //

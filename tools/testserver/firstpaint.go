@@ -1,7 +1,7 @@
 // First paint tests (color schemes, render-blocking stylesheets, paint holding; examples/site/firstpaint*.html):
 //
 //	/firstpaint/f/NAME?delay=MS   a file of examples/site/firstpaint, after MS milliseconds (a slow stylesheet or font)
-package main
+package testserver
 
 import (
 	"mime"

@@ -7,7 +7,7 @@
 //	/cache/last?name=NAME    the request fields of the last request for NAME, one per line (no-store)
 //	/cache/reset             forgets every count
 //	/cache/font.woff2?...    the font of examples/site/fonts (cachetest's web font), with the same parameters
-package main
+package testserver
 
 import (
 	"fmt"

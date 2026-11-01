@@ -288,7 +288,7 @@ What `build.bat` does, each step skipped when it is already up to date:
 Run it with `build\wren.exe [URL]`. For the demo pages that need a server, build and start the test server first:
 
 ```bat
-cd tools\testserver && go build -o ..\..\build\testserver.exe . && cd ..\..
+cd tools\testserver && go build -o ..\..\build\testserver.exe ./cmd/testserver && cd ..\..
 build\testserver.exe
 ```
 

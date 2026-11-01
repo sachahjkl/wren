@@ -1,22 +1,20 @@
 # Runs every test of the project: unit tests, the end-to-end page test, the network stress script.
-#   powershell -File tools\test_all.ps1 [-Quick] [-CI] [-Jobs n] [-LightJobs n] [-BasePort n] [-NoAsan] [-Perf]
+#   powershell -File tools\test_all.ps1 [-Quick] [-CI] [-Jobs n] [-LightJobs n] [-NoAsan] [-Perf]
 #   (-Quick skips the long network stress; -CI, for continuous integration runners: -Quick, end-to-end timeouts x3 for
-#   slow shared machines, the whole output of a failed step instead of its last lines, one step at a time on the
-#   default ports. Nothing here reaches the internet, and with -Quick nothing opens a window: the end-to-end tests use
-#   the local test server on 127.0.0.1, the pixel tests WARP; only the pinned test suites, test262 and
+#   slow shared machines, the whole output of a failed step instead of its last lines, two steps at a time.
+#   Nothing here reaches the internet, and with -Quick nothing opens a window: the end-to-end tests use
+#   the local test server on 127.0.0.1, in their own process, the pixel tests WARP; only the pinned test suites, test262 and
 #   web-platform-tests, are fetched once into build\. -CI and full runs also run the browser's check build, in a
 #   window of its own that takes no input of the desktop.)
-# Several runs at once (worktrees of several agents): nothing here takes a lock. The test server listens on a block of
-# ports of this run (tools\test_env.ps1: -BasePort, default derived from the worktree's path, the next free block when
-# it is taken; 8765 with -CI), the tools find it through WREN_TEST_BASE_PORT, and TEMP is build\tmp. Scripts that use
+# Several runs at once (worktrees of several agents): nothing here takes a lock. Each process that tests starts the test server in itself
+# on a block of ports of its own (src\testserver: from the worktree's path, the next free block when it is taken), and TEMP is build\tmp. Scripts that use
 # the real desktop or measure performance take desktop.lock / bench.lock themselves, around that part only (a step
 # that runs one of them waits there, not the whole run). S:\wb_wt\shared.lock is not used any more.
 # -Jobs n (default: three quarters of the processors, at most 12; 2 with -CI): steps run n at a time, each in its own
-# process, longest first (the durations of the last run, build\test_all_times.txt); each step that needs the test
-# server starts its own (a block of ports and counters of its own). A step's result is printed whole when it ends.
+# process, longest first (the durations of the last run, build\test_all_times.txt). A step's result is printed whole when it ends.
 # Steps that mostly wait (the HTTP cache, network policy, content blocker, WebSocket and image tests: seconds of wall clock for a fraction of a second of CPU)
 # are marked -Light: they do not use one of the -Jobs slots, up to -LightJobs (4; 2 with -CI) of them run beside the others.
-# -Jobs 1: one step after the other, one server for all, as before.
+# -Jobs 1: one step after the other.
 # What to run (docs/testing.md):
 #   -Only <regex>  the steps whose name matches, with the steps that build what they use
 #   -Except <regex> not the steps whose name matches (the CI runs test262 as a job of its own)
@@ -27,7 +25,7 @@
 # Result cache (tools\test_cache.ps1): with -Quick on a developer's machine a step whose inputs (by content: sources, tools, flags, Odin's version) have passed already says CACHED and does not
 # run again. -NoCache (or WREN_TEST_CACHE=0) runs everything, and turns off the shared code cache of the test processes too. -Cache: on for this run as well (the CI's branches). Never with -Perf,
 # and never on a full run unless asked. A run ends with what failed, its log and how to run it again (also build\test_report.txt; every step's result: build\test_steps.tsv).
-param([switch]$Quick, [switch]$CI, [int]$StepTimeoutSec = 900, [int]$Jobs = 0, [int]$BasePort = 0, [int]$LightJobs = 0, [switch]$NoAsan, [switch]$Perf, [switch]$Ui,
+param([switch]$Quick, [switch]$CI, [int]$StepTimeoutSec = 900, [int]$Jobs = 0, [int]$LightJobs = 0, [switch]$NoAsan, [switch]$Perf, [switch]$Ui,
       [switch]$NoCache, [switch]$Cache, [string]$Only = '', [string]$Except = '', [Alias('Failed')][switch]$RerunFailed, [switch]$Changed, [string]$Base = '', [switch]$List, [switch]$Profile)
 # On a desktop of its own (test_desktop.ps1): no step takes the focus, the mouse or the keyboard of the person at the machine, and
 # their clicks reach no step. -Ui stays here, its steps need the real input; a CI runner has nobody to disturb.
@@ -72,8 +70,7 @@ Set-Location $root
 $JobsPerProcessor = 0.75; $JobsMost = 12; $LightJobsDeveloper = 4; $LightJobsCI = 2
 if ($Jobs -le 0) { $Jobs = if ($CI) { 2 } else { [Math]::Max(1, [Math]::Min($JobsMost, [int]($JobsPerProcessor * [Environment]::ProcessorCount))) } }
 if ($LightJobs -le 0) { $LightJobs = if ($CI) { $LightJobsCI } else { $LightJobsDeveloper } }
-if ($BasePort -le 0) { $BasePort = if ($CI) { 8765 } else { Get-WrenPreferredBasePort $root } }
-if ($List) { $Jobs = 2 }   # (nothing starts, no server for all)
+if ($List) { $Jobs = 2 }   # (nothing starts)
 $failed = 0
 # the emoji font and Unicode's emoji data (the toolkit's tests/colr skip without them): fetched before the steps start, so none races it
 if (-not $List) { & powershell -NoProfile -File (Join-Path $PSScriptRoot 'fetch_emoji.ps1') -Unicode | Out-Null }
@@ -159,7 +156,7 @@ function Get-CheckCount([string]$out) {
     $n += [regex]::Matches($out, '(?m)^\s*(?:PASS|ok)\b').Count
     return $n
 }
-function Report($name, $ok, $out, $secs, $port = 0) {
+function Report($name, $ok, $out, $secs) {
     # the whole output of what did not pass, where the end of the run says it is
     $log = ''
     if (-not $ok) {
@@ -176,7 +173,7 @@ function Report($name, $ok, $out, $secs, $port = 0) {
         ($out -split "`n" | Where-Object { $_ -match '^\s*FAIL|^REGRESSION|^\[ERROR\]|failed' } | Select-Object -First 15) -join "`n"
         return
     }
-    "{0} {1}{2}" -f $status, $name, $(if ($CI -or $Jobs -gt 1) { " ($secs s$(if ($port) { ", server on $port" }))" } else { '' })
+    "{0} {1}{2}" -f $status, $name, $(if ($CI -or $Jobs -gt 1) { " ($secs s)" } else { '' })
     if (-not $ok) { $script:failed++; if ($CI) { $out } else { ($out -split "`n" | Select-Object -Last 15) -join "`n" } }
 }
 # A step that passed with these inputs already: the line to print, nothing otherwise (with its key in $s.Key when the cache is on, to save its result when it has run).
@@ -199,7 +196,6 @@ function Save-StepResult($s, $ok, $out, $secs) {
 
 # -Jobs 1: the step runs now. Otherwise it is queued (with whether it needs the test server) until Flush-Steps.
 $script:queue = New-Object System.Collections.Generic.List[object]
-$script:serverSteps = $false
 # -Light: a step that mostly waits (the cache and policy tests sleep for expiries, the network tests wait for servers: 0.1 to 4 CPU seconds in 5 to 20 s of wall
 # clock): it does not take one of the -Jobs slots, up to -LightJobs of them run beside the others.
 # -Weight s: about how many seconds the step takes on a CI runner, for the order of a run that has no durations of a last run (a fresh checkout
@@ -220,12 +216,12 @@ function Step($name, [scriptblock]$body, [switch]$Light, [switch]$UiOnly, [switc
     $vars = @{}
     foreach ($v in $body.Ast.FindAll({ $args[0] -is [Management.Automation.Language.VariableExpressionAst] }, $true)) {
         $n = $v.VariablePath.UserPath
-        if ($vars.ContainsKey($n) -or $n -in 'Stack', 'slow', 'Quick', 'CI', 'root', 'BasePort', '_', 'args', 'true', 'false', 'null', 'LASTEXITCODE') { continue }
+        if ($vars.ContainsKey($n) -or $n -in 'Stack', 'slow', 'Quick', 'CI', 'root', '_', 'args', 'true', 'false', 'null', 'LASTEXITCODE') { continue }
         $val = Get-Variable -Name $n -Scope 1 -ValueOnly -ErrorAction SilentlyContinue
         if ($val -is [string] -or $val -is [int] -or $val -is [bool]) { $vars[$n] = $val }
         elseif ($val -is [array] -and @($val | Where-Object { $_ -isnot [string] }).Count -eq 0) { $vars[$n] = [string[]]$val }
     }
-    $item = [pscustomobject]@{ Name = $name; Body = $body.ToString(); Script = $body; Server = $script:serverSteps; Vars = $vars; Light = [bool]$Light; Weight = $Weight }
+    $item = [pscustomobject]@{ Name = $name; Body = $body.ToString(); Script = $body; Vars = $vars; Light = [bool]$Light; Weight = $Weight }
     if ($script:selecting) {
         if (-not (Test-StepChosen $item)) {
             $script:leftOut++
@@ -260,26 +256,21 @@ function Invoke-StepNow($item) {
     Save-StepResult $item $ok $out $secs
 }
 
-# What a queued step runs in its own process: the variables the steps use, its own test server if it needs one.
+# What a queued step runs in its own process: the variables the steps use.
 $stepJob = {
-    param($name, $bodyText, $server, $root, $Stack, $slow, $Quick, $CI, $BasePort, $vars)
+    param($name, $bodyText, $root, $Stack, $slow, $Quick, $CI, $vars)
     Set-Location $root
     foreach ($k in $vars.Keys) { Set-Variable -Name $k -Value $vars[$k] }
     . (Join-Path $root 'tools\test_env.ps1')
     $t0 = Get-Date
-    $srv = $null
     $out = ''
     $code = 1
     try {
-        if ($server) {
-            $srv = Start-WrenTestServer -BasePort $BasePort
-            $env:WREN_TEST_BASE_PORT = "$($srv.BasePort)"
-        }
         $global:LASTEXITCODE = 0
         $out = & ([scriptblock]::Create($bodyText)) 2>&1 | Out-String
         $code = $LASTEXITCODE
-    } catch { $out += "`n$_" } finally { Stop-WrenTestServer $srv }
-    [pscustomobject]@{ Name = $name; Ok = ($code -eq 0 -or $out -match 'All tests were successful'); Out = $out; Secs = [int]((Get-Date) - $t0).TotalSeconds; Port = $(if ($srv) { $srv.BasePort } else { 0 }) }
+    } catch { $out += "`n$_" }
+    [pscustomobject]@{ Name = $name; Ok = ($code -eq 0 -or $out -match 'All tests were successful'); Out = $out; Secs = [int]((Get-Date) - $t0).TotalSeconds }
 }
 
 # Runs the queued steps, -Jobs at a time, the longest (last time) first; prints each result as it comes.
@@ -311,7 +302,7 @@ function Flush-Steps([string]$NameLike = '*', $Items = $null) {
             }
             if ($k -lt 0) { break }
             $s = $pending[$k]; $pending.RemoveAt($k)
-            $j = Start-Job -ScriptBlock $stepJob -ArgumentList $s.Name, $s.Body, $s.Server, $root, $Stack, $slow, [bool]$Quick, [bool]$CI, $BasePort, $s.Vars
+            $j = Start-Job -ScriptBlock $stepJob -ArgumentList $s.Name, $s.Body, $root, $Stack, $slow, [bool]$Quick, [bool]$CI, $s.Vars
             $running[$j.Id] = $j
             $names[$j.Id] = $s.Name
             $light[$j.Id] = $s.Light
@@ -326,7 +317,7 @@ function Flush-Steps([string]$NameLike = '*', $Items = $null) {
             Remove-Job $j -Force; $running.Remove($jid)
             if (-not $r) { Report "$($names[$jid]) (ended without a result: job $jid, $($j.State))" $false $why 0; continue }
             $script:times[$r.Name] = $r.Secs
-            Report $r.Name $r.Ok $r.Out $r.Secs $r.Port
+            Report $r.Name $r.Ok $r.Out $r.Secs
             Save-StepResult $stepOf[$jid] $r.Ok $r.Out $r.Secs
         }
         $killed = Receive-Job $script:watchdog -ErrorAction SilentlyContinue
@@ -357,7 +348,7 @@ function Show-TestTimes {
 function Show-RunReport {
     # what a step that failed left running (started by this run, from this worktree's build\): it would hold its program against the next build
     # (by name first: reading the path of every process of the machine takes 10 s under load)
-    foreach ($p in @(Get-Process -Name 'wren*', '*test', '*_test' -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -ne 'testserver' -and $_.Path -and $_.Path.StartsWith($buildDir, [StringComparison]::OrdinalIgnoreCase) -and $_.StartTime -gt $runStart })) {
+    foreach ($p in @(Get-Process -Name 'wren*', '*test', '*_test' -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path.StartsWith($buildDir, [StringComparison]::OrdinalIgnoreCase) -and $_.StartTime -gt $runStart })) {
         "left running by a step: $($p.ProcessName) (pid $($p.Id)): stopped"
         Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
     }
@@ -418,7 +409,7 @@ $MemCheck = '-define:ODIN_TEST_FAIL_ON_BAD_MEMORY=true'
 # anything is left once they have shut down (src\tools\testenv\memory.odin); never in the builds of the browser
 $Track = '-define:WREN_TRACK_MEMORY=true'
 $script:watchdog = Start-Watchdog
-"test_all: $root, -Jobs $Jobs, test server ports from $BasePort, started $(Get-Date -Format 'HH:mm:ss')"
+"test_all: $root, -Jobs $Jobs, started $(Get-Date -Format 'HH:mm:ss')"
 Step 'CHANGELOG fragments (tools\changelog.ps1 -Check: changelog.d well formed, nothing already released) and the script''s tests' -Light { powershell -NoProfile -ExecutionPolicy Bypass -File tools\changelog.ps1 -Check; if ($LASTEXITCODE) { return }; powershell -NoProfile -ExecutionPolicy Bypass -File tools\changelog_test.ps1 } -NoCI   # (the CI's workflow runs exactly this as its first step, and fails at once: 91 s of its time here, twice)
 # the documentation site is generated from docs\*.md (src\tools\docsite): site\docs must be up to date (deterministic, like changelog.ps1 -Check) and every internal link and anchor must resolve
 Step 'documentation site up to date and links intact (tools\docs_site.ps1 -Check: site\docs matches docs\*.md, zero dead internal links or anchors)' { powershell -NoProfile -ExecutionPolicy Bypass -File tools\docs_site.ps1 -Check }
@@ -617,11 +608,14 @@ Step 'build guest counter.wasm' { odin build examples/counter -target:freestandi
 Step 'build guest formstest.wasm' { odin build examples/formstest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:examples/site/formstest.wasm -o:size }
 Step 'build guest mutation.wasm' { odin build examples/mutation -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:examples/site/mutation.wasm -o:size }
 Step 'build guest mutation_class.wasm' { odin build examples/mutation_class -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:examples/site/mutation_class.wasm -o:size }
-Step 'build formstest' { odin build src/tools/formstest -use-separate-modules -collection:wb=src -vet $Track -out:build/formstest.exe $Stack }
-Step 'build pagetest' { odin build src/tools/pagetest -use-separate-modules -collection:wb=src -vet $Track -out:build/pagetest.exe $Stack }
-Step 'JavaScript in pages (jstest: realm, scripts, bindings, events, wrappers and node lifetime, bytecode cache, interruption)' { odin build src/tools/jstest -use-separate-modules -collection:wb=src -vet $Track -out:build/jstest.exe -o:speed $Stack; if ($LASTEXITCODE -eq 0) { .\build\jstest.exe } } -Weight 48
-Step 'build policytest' { odin build src/tools/policytest -use-separate-modules -collection:wb=src -vet $Track -out:build/policytest.exe $Stack }
-Step 'build web API test (guest + tool)' { odin build examples/webapitest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:build/webapitest.wasm -o:size; if ($LASTEXITCODE -eq 0) { odin build src/tools/webapitest -use-separate-modules -collection:wb=src -vet $Track -out:build/webapitest.exe $Stack } }
+Step 'build guest webapitest.wasm' { odin build examples/webapitest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:build/webapitest.wasm -o:size }
+Step 'build guest netapitest.wasm' { odin build examples/netapitest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:build/netapitest.wasm -o:size }
+Step 'build guest workerstest.wasm' { odin build examples/workerstest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:build/workerstest.wasm -o:size }
+Step 'build guest workerstest_worker.wasm' { odin build examples/workerstest_worker -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:examples/site/workerstest_worker.wasm -o:size }
+Step 'build guest imagestest.wasm' { odin build examples/imagestest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:build/imagestest.wasm -o:size }
+# The web tests (src\tools\webtests, docs\testing.md): one program of core:testing on one loop, with the test server in its process, built once; a step runs the tests of one subject of it, in a process of its own.
+Step 'build web tests (src\tools\webtests: fetch, the network, pages and their scripts, with no window)' { odin build src/tools/webtests -build-mode:test -define:ODIN_TEST_THREADS=1 -define:ODIN_TEST_FANCY=false -use-separate-modules -collection:wb=src -collection:toolkit=ext/gui_toolkit -vet $Track -out:build/web_test.exe $Stack }
+Step 'JavaScript in pages (jstest: realm, scripts, bindings, events, wrappers and node lifetime, bytecode cache, interruption)' { Invoke-WrenWebTests 'build\web_test.exe' 'js' } -Weight 48
 Step 'build fetch' { odin build src/tools/fetch -use-separate-modules -collection:wb=src -vet -out:build/fetch.exe $Stack }
 Step 'licence tool (tools\license.ps1: a licence issued with the development pair verifies; an altered one and one of another key do not; keygen refuses a path inside the repository)' {
     odin build src/tools/license -use-separate-modules -collection:wb=src -vet -out:build/license.exe $Stack
@@ -660,32 +654,12 @@ Step 'licence Worker (licence\worker, no network: Paddle-Signature checks, trans
         if ($LASTEXITCODE -eq 0) { 'All tests were successful.' }
     } finally { Pop-Location }
 }
-Step 'file: folders end-to-end test (index file, listing, redirect to /, errors, who may open what; no server)' {
-    odin build src/tools/filetest -use-separate-modules -collection:wb=src -vet $Track -out:build/filetest.exe $Stack
-    if ($LASTEXITCODE -ne 0) { return }
-    $o = .\build\filetest.exe | Out-String; $o
-    $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
-}
+Step 'file: folders end-to-end test (index file, listing, redirect to /, errors, who may open what; no server)' { Invoke-WrenWebTests 'build\web_test.exe' 'file' }
 Step 'unit tests: test host (what fails a section of jswebtest and jsdomtest: what it declared did not run, a skip the machine does not confirm)' { odin test src/tools/testhost -use-separate-modules $MemCheck -collection:wb=src -vet -out:build/testhost_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
-Step 'DOM for JavaScript end-to-end test (jsdomtest: tree, elements, markup, selectors, CSSOM, geometry, UI events, MutationObserver, traversal, ranges, leaks, micro-benchmarks; no server)' {
-    odin build src/tools/jsdomtest -build-mode:test -define:ODIN_TEST_THREADS=1 -define:ODIN_TEST_FANCY=false -use-separate-modules -collection:wb=src -vet $Track -out:build/jsdomtest.exe -o:speed $Stack
-    if ($LASTEXITCODE -ne 0) { return }
-    $o = .\build\jsdomtest.exe 2>&1 | Out-String; $o
-    $global:LASTEXITCODE = if ($o -match 'All tests were successful') { 0 } else { 1 }
-}
-Step 'history end-to-end test (historytest: the tree as pages see it, scrollRestoration, pageshow / pagehide persisted, back/forward cache freezing, persisted form state; no server)' {
-    odin build src/tools/historytest -use-separate-modules -collection:wb=src -vet $Track -out:build/historytest.exe $Stack
-    if ($LASTEXITCODE -ne 0) { return }
-    $o = .\build\historytest.exe | Out-String; $o
-    $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
-}
-Step 'Web Authentication end-to-end test (webauthntest: create then get from JavaScript on the virtual authenticator, signature checked; activation, RP ID, aborts, timer, mediation, JSON forms, secure context; no server)' {
-    odin build src/tools/webauthntest -use-separate-modules -collection:wb=src -vet $Track -out:build/webauthntest.exe $Stack
-    if ($LASTEXITCODE -ne 0) { return }
-    $o = .\build\webauthntest.exe | Out-String; $o
-    $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
-}
-Step 'build testserver (and its tests: /site/ index, listings, extensionless pages, types)' { Push-Location tools\testserver; go test . 2>&1; if ($LASTEXITCODE -eq 0) { go build -o ..\..\build\testserver.exe . }; Pop-Location }
+Step 'DOM for JavaScript end-to-end test (jsdomtest: tree, elements, markup, selectors, CSSOM, geometry, UI events, MutationObserver, traversal, ranges, leaks, micro-benchmarks; no server)' { Invoke-WrenWebTests 'build\web_test.exe' 'jsdom' }
+Step 'history end-to-end test (historytest: the tree as pages see it, scrollRestoration, pageshow / pagehide persisted, back/forward cache freezing, persisted form state; no server)' { Invoke-WrenWebTests 'build\web_test.exe' 'history' }
+Step 'Web Authentication end-to-end test (webauthntest: create then get from JavaScript on the virtual authenticator, signature checked; activation, RP ID, aborts, timer, mediation, JSON forms, secure context; no server)' { Invoke-WrenWebTests 'build\web_test.exe' 'webauthn' }
+Step 'build testserver (and its tests: /site/ index, listings, extensionless pages, types)' { Push-Location tools\testserver; go test . 2>&1; if ($LASTEXITCODE -eq 0) { go build -o ..\..\build\testserver.exe ./cmd/testserver }; if ($LASTEXITCODE -eq 0) { $env:CGO_ENABLED = '1'; go build -buildmode=c-shared -ldflags="-s -w" -o ..\..\build\testserver.dll ./cdll; Remove-Item ..\..\build\testserver.h -ErrorAction SilentlyContinue }; Pop-Location }
 # The end-to-end scenarios (src\tools\e2e, docs\testing.md): one program on Odin's test runner that links the browser, built once; a step runs the tests of one file of it, in a process of its own.
 Step 'build e2e scenarios (src\tools\e2e: the browser in the tests'' process, no window, the real renderer offscreen)' { odin build src/tools/e2e -build-mode:test -out:build/e2e_test.exe -o:speed -debug -use-separate-modules -vet -collection:toolkit=ext/gui_toolkit -collection:wb=src -define:FONT_BACKEND=native -define:FONT_NATIVE_LINK=false -define:A11Y_ACCESSKIT=true -define:A11Y_NATIVE_LINK=false -define:WREN_CHANNEL=dev -define:DEFAULT_TEMP_ALLOCATOR_BACKING_SIZE=1048576 -define:ODIN_TEST_THREADS=1 -define:ODIN_TEST_FANCY=false -extra-linker-flags:"/STACK:33554432 /NODEFAULTLIB:vcruntime.lib /DEFAULTLIB:libvcruntime.lib" 2>&1 | Out-String | Tee-Object -Variable b | Out-Null; if ($LASTEXITCODE) { $b } }
 if ($CI -or -not $Quick) { Step 'build e2e scenarios with every allocation tracked (src\tools\e2e with -define:WREN_TRACK_MEMORY=true: a test that leaves anything allocated fails)' { odin build src/tools/e2e -build-mode:test -out:build/e2e_test_check.exe $Track -o:speed -debug -use-separate-modules -vet -collection:toolkit=ext/gui_toolkit -collection:wb=src -define:FONT_BACKEND=native -define:FONT_NATIVE_LINK=false -define:A11Y_ACCESSKIT=true -define:A11Y_NATIVE_LINK=false -define:WREN_CHANNEL=dev -define:DEFAULT_TEMP_ALLOCATOR_BACKING_SIZE=1048576 -define:ODIN_TEST_THREADS=1 -define:ODIN_TEST_FANCY=false -extra-linker-flags:"/STACK:33554432 /NODEFAULTLIB:vcruntime.lib /DEFAULTLIB:libvcruntime.lib" 2>&1 | Out-String | Tee-Object -Variable b | Out-Null; if ($LASTEXITCODE) { $b } } -NoCI }
@@ -722,168 +696,42 @@ if ($CI -or -not $Quick) {
     } -Weight 30 -NoCI
 }
 
-# The steps below talk to the test server: -Jobs 1, one server for all, on this run's block of ports (ready once it
-# listens on all of them, not after a fixed delay: a slow runner may take longer to start it); otherwise each step
-# starts its own when it runs.
-$srv = $null
-if ($Jobs -le 1) {
-    try { $srv = Start-WrenTestServer -BasePort $BasePort; $env:WREN_TEST_BASE_PORT = "$($srv.BasePort)" } catch { Report 'test server' $false "$_" 0 }
-}
-$script:serverSteps = $true
+# What is not a build, in one batch.
 try {
-    Step 'network policy test (CORS, cookies, redirects, CSP, schemes)' {
-        $p = Start-Process .\build\policytest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\pol.txt
-        if (-not $p.WaitForExit(120000 * $slow)) { $p.Kill(); Get-Content build\pol.txt; $global:LASTEXITCODE = 1; return }
-        $o = Get-Content build\pol.txt | Out-String; $o
-        $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
-    } -Light
-    Step 'content blocker end-to-end test (blockertest: blocked script / frame / fetch, element hiding before the first style, scriptlet, whitelist, dynamic rules, journal, counters)' {
-        odin build src/tools/blockertest -use-separate-modules -collection:wb=src -collection:toolkit=ext/gui_toolkit -vet $Track -out:build/blockertest.exe $Stack
-        if ($LASTEXITCODE -ne 0) { return }
-        $o = .\build\blockertest.exe | Out-String; $o
-        $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
-    } -Light
-    Step 'HTTP cache end-to-end test (cachetest: freshness, revalidation, Vary, cache modes, partitions, invalidation, stale-while-revalidate, disk cache across a restart)' {
-        odin build src/tools/cachetest -use-separate-modules -collection:wb=src -vet $Track -out:build/cachetest.exe $Stack
-        if ($LASTEXITCODE -ne 0) { return }
-        $p = Start-Process .\build\cachetest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\cat.txt
-        if (-not $p.WaitForExit(120000 * $slow)) { $p.Kill(); Get-Content build\cat.txt; $global:LASTEXITCODE = 1; return }
-        $o = Get-Content build\cat.txt | Out-String; $o
-        $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
-    } -Light
-    Step 'end-to-end page test' {
-        $p = Start-Process .\build\pagetest.exe -ArgumentList 'build\e2e.wasm','examples\site\counter.html','examples\site\counter.wasm' -NoNewWindow -PassThru -RedirectStandardOutput build\pt.txt
-        if (-not $p.WaitForExit(90000 * $slow)) { $p.Kill(); Get-Content build\pt.txt; $global:LASTEXITCODE = 1; return }
-        $o = Get-Content build\pt.txt | Out-String; $o
-        $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
-    }
-    Step 'EventSource / WebSocket end-to-end test (netapitest)' {
-        odin build examples/netapitest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:build/netapitest.wasm -o:size
-        if ($LASTEXITCODE -ne 0) { return }
-        odin build src/tools/netapitest -use-separate-modules -collection:wb=src -vet $Track -out:build/netapitest.exe $Stack
-        if ($LASTEXITCODE -ne 0) { return }
-        $p = Start-Process .\build\netapitest.exe -ArgumentList 'build\netapitest.wasm' -NoNewWindow -PassThru -RedirectStandardOutput build\nat.txt
-        if (-not $p.WaitForExit(180000 * $slow)) { $p.Kill(); Get-Content build\nat.txt; $global:LASTEXITCODE = 1; return }
-        $o = Get-Content build\nat.txt | Out-String; $o
-        $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
-    } -Light
+    Step 'network policy test (CORS, cookies, redirects, CSP, schemes)' { Invoke-WrenWebTests 'build\web_test.exe' 'policy' } -Light
+    Step 'content blocker end-to-end test (blockertest: blocked script / frame / fetch, element hiding before the first style, scriptlet, whitelist, dynamic rules, journal, counters)' { Invoke-WrenWebTests 'build\web_test.exe' 'blocker' } -Light
+    Step 'HTTP cache end-to-end test (cachetest: freshness, revalidation, Vary, cache modes, partitions, invalidation, stale-while-revalidate, disk cache across a restart)' { Invoke-WrenWebTests 'build\web_test.exe' 'cache' } -Light
+    Step 'end-to-end page test' { Invoke-WrenWebTests 'build\web_test.exe' 'page' }
+    Step 'EventSource / WebSocket end-to-end test (netapitest)' { Invoke-WrenWebTests 'build\web_test.exe' 'netapi' } -Light
     Step 'network transport test on both stacks (nettest: heads, bodies, gzip, caps, cancel, timeouts, refused / unresolved / cut / garbage answers, certificates; built-in stack: HTTP/2, HTTP/3 from Alt-Svc and the fall back to TCP when QUIC is blocked, TLS 1.3 only, expired and misnamed certificates, wss, the proxy)' {
-        odin build src/tools/nettest -use-separate-modules -collection:wb=src -vet $Track -out:build/nettest.exe $Stack
-        if ($LASTEXITCODE -ne 0) { return }
         $bad = 0
         foreach ($b in 'winhttp', 'rust') {
             $env:WREN_NET_BACKEND = $b
-            $p = Start-Process .\build\nettest.exe -NoNewWindow -PassThru -RedirectStandardOutput "build\nt_$b.txt"
-            $ok = $p.WaitForExit(180000 * $slow)
-            if (-not $ok) { $p.Kill() }
-            $o = Get-Content "build\nt_$b.txt" | Out-String; $o
-            if (-not $ok -or $o -notmatch '(?m)^0 failure\(s\)') { $bad++ }
+            Invoke-WrenWebTests 'build\web_test.exe' 'net'
+            if ($LASTEXITCODE) { $bad++ }
         }
         Remove-Item Env:\WREN_NET_BACKEND
         $global:LASTEXITCODE = $bad
     } -Light
-    Step 'WebSocket closing handshake test (wsclosetest: close right after a message or the upgrade, late, missing and crossing close frames, server cutting TCP; repeated)' {
-        odin build src/tools/wsclosetest -use-separate-modules -collection:wb=src -vet $Track -out:build/wsclosetest.exe
-        if ($LASTEXITCODE -ne 0) { return }
-        $p = Start-Process .\build\wsclosetest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\wct.txt
-        if (-not $p.WaitForExit(180000 * $slow)) { $p.Kill(); Get-Content build\wct.txt; $global:LASTEXITCODE = 1; return }
-        $o = Get-Content build\wct.txt | Out-String; $o
-        $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
-    } -Light
-    Step 'web platform API test (timers, rAF, abort, fetch streams, encoding, crypto, storage, URL, history)' {
-        $p = Start-Process .\build\webapitest.exe -ArgumentList 'build\webapitest.wasm' -NoNewWindow -PassThru -RedirectStandardOutput build\wt.txt
-        if (-not $p.WaitForExit(90000 * $slow)) { $p.Kill(); Get-Content build\wt.txt; $global:LASTEXITCODE = 1; return }
-        $o = Get-Content build\wt.txt | Out-String; $o
-        $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
-    } -NoCI
-    Step 'forms end-to-end test (controls, validation, FormData, submission)' {
-        $p = Start-Process .\build\formstest.exe -ArgumentList 'examples\site\forms.html','examples\site\formstest.wasm' -NoNewWindow -PassThru -RedirectStandardOutput build\ft.txt
-        if (-not $p.WaitForExit(90000 * $slow)) { $p.Kill(); Get-Content build\ft.txt; $global:LASTEXITCODE = 1; return }
-        $o = Get-Content build\ft.txt | Out-String; $o
-        $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
-    } -NoCI
-    Step 'workers end-to-end test (messages, transfer, fetch, terminate, 16 in parallel)' {
-        odin build examples/workerstest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:build/workerstest.wasm -o:size
-        if ($LASTEXITCODE -ne 0) { return }
-        odin build examples/workerstest_worker -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:examples/site/workerstest_worker.wasm -o:size
-        if ($LASTEXITCODE -ne 0) { return }
-        odin build src/tools/workerstest -use-separate-modules -collection:wb=src -vet $Track -out:build/workerstest.exe $Stack
-        if ($LASTEXITCODE -ne 0) { return }
-        $p = Start-Process .\build\workerstest.exe -ArgumentList 'build\workerstest.wasm','examples\site\workerstest_worker.wasm' -NoNewWindow -PassThru -RedirectStandardOutput build\wkt.txt
-        if (-not $p.WaitForExit(180000 * $slow)) { $p.Kill(); Get-Content build\wkt.txt; $global:LASTEXITCODE = 1; return }
-        $o = Get-Content build\wkt.txt | Out-String; $o
-        $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
-    }
-    Step 'JavaScript loading end-to-end test (script order, document.write, dynamic scripts, modules, handlers, CSP, noscript, timers, errors, workers, cloning)' {
-        odin build src/tools/jsloadtest -use-separate-modules -collection:wb=src -vet $Track -out:build/jsloadtest.exe $Stack
-        if ($LASTEXITCODE -ne 0) { return }
-        $p = Start-Process .\build\jsloadtest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\jlt.txt
-        if (-not $p.WaitForExit(180000 * $slow)) { $p.Kill(); Get-Content build\jlt.txt; $global:LASTEXITCODE = 1; return }
-        $o = Get-Content build\jlt.txt | Out-String; $o
-        $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
-    }
-    Step 'nested documents end-to-end test (framestest: iframes, srcdoc, load events, postMessage across origins, cross-origin WindowProxy, sandbox, X-Frame-Options, frame-ancestors, frame-src, navigation, Permissions Policy)' {
-        odin build src/tools/framestest -use-separate-modules -collection:wb=src -vet -out:build/framestest.exe $Stack
-        if ($LASTEXITCODE -ne 0) { return }
-        $p = Start-Process .\build\framestest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\frt.txt
-        if (-not $p.WaitForExit(180000 * $slow)) { $p.Kill(); Get-Content build\frt.txt; $global:LASTEXITCODE = 1; return }
-        $o = Get-Content build\frt.txt | Out-String; $o
-        $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
-    }
-    Step 'site compatibility end-to-end test (sitecompattest: reduced fixtures of real sites: stylesheet load events, media swap, scroll events)' {
-        odin build src/tools/sitecompattest -use-separate-modules -collection:wb=src -vet $Track -out:build/sitecompattest.exe $Stack
-        if ($LASTEXITCODE -ne 0) { return }
-        $p = Start-Process .\build\sitecompattest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\sct.txt
-        if (-not $p.WaitForExit(120000 * $slow)) { $p.Kill(); Get-Content build\sct.txt; $global:LASTEXITCODE = 1; return }
-        $o = Get-Content build\sct.txt | Out-String; $o
-        $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
-    }
-    Step 'JavaScript web APIs end-to-end test (fetch, XHR, streams, URL, encoding, abort, storage, history, navigator, crypto, sockets, messaging; jswebtest)' {
-        odin build src/tools/jswebtest -build-mode:test -define:ODIN_TEST_THREADS=1 -define:ODIN_TEST_FANCY=false -use-separate-modules -collection:wb=src -vet $Track -out:build/jswebtest.exe $Stack
-        if ($LASTEXITCODE -ne 0) { return }
-        $p = Start-Process .\build\jswebtest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\jswt.txt -RedirectStandardError build\jswt.err.txt
-        if (-not $p.WaitForExit(300000 * $slow)) { $p.Kill(); Get-Content build\jswt.txt, build\jswt.err.txt; $global:LASTEXITCODE = 1; return }
-        $o = Get-Content build\jswt.txt, build\jswt.err.txt | Out-String; $o
-        $global:LASTEXITCODE = if ($o -match 'All tests were successful') { 0 } else { 1 }
-    }
-    Step 'style run-time test (web fonts, transitions, animations)' {
-        odin build src/tools/styletest -use-separate-modules -collection:wb=src -vet $Track -out:build/styletest.exe $Stack 2>&1 | Out-String
-        if ($LASTEXITCODE -ne 0) { return }
-        $p = Start-Process .\build\styletest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\stt.txt
-        if (-not $p.WaitForExit(60000 * $slow)) { $p.Kill(); Get-Content build\stt.txt; $global:LASTEXITCODE = 1; return }
-        $o = Get-Content build\stt.txt | Out-String; $o
-        $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
-    }
-    Step 'image formats end-to-end test (AVIF, WebP, SVG images and backgrounds, inline <svg>, Accept, <picture>)' {
-        odin build src/tools/mediatest -use-separate-modules -collection:wb=src -vet $Track -out:build/mediatest.exe $Stack
-        if ($LASTEXITCODE -ne 0) { return }
-        $p = Start-Process .\build\mediatest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\mdt.txt
-        if (-not $p.WaitForExit(90000 * $slow)) { $p.Kill(); Get-Content build\mdt.txt; $global:LASTEXITCODE = 1; return }
-        $o = Get-Content build\mdt.txt | Out-String; $o
-        $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
-    } -UiOnly
-    Step 'images end-to-end test (events, srcset, picture, lazy, CSS images, cache, cancellation, 200 x 1 Mpx)' {
-        odin build examples/imagestest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:build/imagestest.wasm -o:size
-        if ($LASTEXITCODE -ne 0) { return }
-        odin build src/tools/imagestest -use-separate-modules -collection:wb=src -vet $Track -out:build/imagestest.exe $Stack
-        if ($LASTEXITCODE -ne 0) { return }
-        $p = Start-Process .\build\imagestest.exe -ArgumentList 'build\imagestest.wasm' -NoNewWindow -PassThru -RedirectStandardOutput build\imt.txt
-        if (-not $p.WaitForExit(180000 * $slow)) { $p.Kill(); Get-Content build\imt.txt; $global:LASTEXITCODE = 1; return }
-        $o = Get-Content build\imt.txt | Out-String; $o
-        $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
-    } -Light
+    Step 'WebSocket closing handshake test (wsclosetest: close right after a message or the upgrade, late, missing and crossing close frames, server cutting TCP; repeated)' { Invoke-WrenWebTests 'build\web_test.exe' 'wsclose' } -Light
+    Step 'web platform API test (timers, rAF, abort, fetch streams, encoding, crypto, storage, URL, history)' { Invoke-WrenWebTests 'build\web_test.exe' 'webapi' } -NoCI
+    Step 'forms end-to-end test (controls, validation, FormData, submission)' { Invoke-WrenWebTests 'build\web_test.exe' 'forms' } -NoCI
+    Step 'workers end-to-end test (messages, transfer, fetch, terminate, 16 in parallel)' { Invoke-WrenWebTests 'build\web_test.exe' 'workers' }
+    Step 'JavaScript loading end-to-end test (script order, document.write, dynamic scripts, modules, handlers, CSP, noscript, timers, errors, workers, cloning)' { Invoke-WrenWebTests 'build\web_test.exe' 'jsload' }
+    Step 'nested documents end-to-end test (framestest: iframes, srcdoc, load events, postMessage across origins, cross-origin WindowProxy, sandbox, X-Frame-Options, frame-ancestors, frame-src, navigation, Permissions Policy)' { Invoke-WrenWebTests 'build\web_test.exe' 'frames' }
+    Step 'site compatibility end-to-end test (sitecompattest: reduced fixtures of real sites: stylesheet load events, media swap, scroll events)' { Invoke-WrenWebTests 'build\web_test.exe' 'sitecompat' }
+    Step 'JavaScript web APIs end-to-end test (fetch, XHR, streams, URL, encoding, abort, storage, history, navigator, crypto, sockets, messaging; jswebtest)' { Invoke-WrenWebTests 'build\web_test.exe' 'jsweb' }
+    Step 'style run-time test (web fonts, transitions, animations)' { Invoke-WrenWebTests 'build\web_test.exe' 'style' }
+    Step 'image formats end-to-end test (AVIF, WebP, SVG images and backgrounds, inline <svg>, Accept, <picture>)' { Invoke-WrenWebTests 'build\web_test.exe' 'media' } -UiOnly
+    Step 'images end-to-end test (events, srcset, picture, lazy, CSS images, cache, cancellation, 200 x 1 Mpx)' { Invoke-WrenWebTests 'build\web_test.exe' 'images' } -Light
     Step 'web-platform-tests (wpt\suites.txt, pinned; -Quick: a sample; fails on a regression against wpt\expectations)' {
-        # the WPT origin of the step's server: the fourth port of its block
-        $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'tools\wpt.ps1', '-NoServer', '-Port', ([int]$env:WREN_TEST_BASE_PORT + 3), '-TimeoutMs', (10000 * $slow))
+        $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'tools\wpt.ps1', '-TimeoutMs', (10000 * $slow))
         if ($Quick) { $a += '-Quick' }
         powershell @a
     } -Weight 50
     if ($Jobs -gt 1) { Flush-Steps }
 } finally {
-    Stop-WrenTestServer $srv
-    $script:serverSteps = $false
-    Remove-Item Env:\WREN_TEST_BASE_PORT -ErrorAction SilentlyContinue
-    # (interrupted: the steps still running end, and their servers with them)
+    # (interrupted: the steps still running end)
     Get-Job | Where-Object { $_.Id -ne $script:watchdog.Id } | Remove-Job -Force -ErrorAction SilentlyContinue
 }
 

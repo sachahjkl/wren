@@ -9,23 +9,20 @@
 //	base+5 .. base+9  the network stack's transport origins (transport.go): HTTP/2 + HTTP/3, TLS 1.3 only, bad
 //	        certificates, a proxy
 //
-// The base: -base-port N, else WREN_TEST_BASE_PORT, else 8765 (the demos, demo.bat and the release package use the
-// default; tools\test_all.ps1 gives each run a block of its own so that several worktrees test side by side).
-// -scan: a busy block is not an error, the next free one (base+10, base+20...) is taken. -port-file F: once every
-// listener is bound, the base actually used is written to F (what the caller waits for, instead of probing ports).
+// The base: Options.BasePort, else 8765 (the demos, demo.bat and the release package use the default; the tests take a block
+// of their own so that several worktrees test side by side). Options.Scan: a busy block is not an error, the next free one
+// (base+10, base+20...) is taken.
 //
 // The pages and scripts of the repository write the default ports (http://127.0.0.1:8765/...); on another block the
 // text files of /site/ are served with those ports moved (portsRewrite), as the test tools move theirs
 // (src/tools/testenv).
-package main
+package testserver
 
 import (
 	"crypto/tls"
 	"fmt"
 	"net"
-	"os"
 	"regexp"
-	"strconv"
 )
 
 const defaultBasePort = 8765
@@ -37,32 +34,7 @@ const (
 	scanTries = 200
 )
 
-var basePort = argInt("-base-port", envInt("WREN_TEST_BASE_PORT", defaultBasePort))
-
-func envInt(name string, def int) int {
-	if n, err := strconv.Atoi(os.Getenv(name)); err == nil && n > 0 {
-		return n
-	}
-	return def
-}
-
-func hasArg(name string) bool {
-	for _, a := range os.Args {
-		if a == name {
-			return true
-		}
-	}
-	return false
-}
-
-func argString(name string) string {
-	for i, a := range os.Args {
-		if a == name && i+1 < len(os.Args) {
-			return os.Args[i+1]
-		}
-	}
-	return ""
-}
+var basePort = defaultBasePort
 
 // ":8765" .. ":8769" after a host name or address (not "U+8766", not a longer number).
 var defaultPortRe = regexp.MustCompile(`([A-Za-z0-9\]]):876([5-9])\b`)
@@ -134,13 +106,14 @@ func listenBlock(base int, withWPT bool, cert tls.Certificate) (*portListeners, 
 	return l, nil
 }
 
-// Binds the block (the next free one with -scan), moving the WPT ports along unless -wpt-port fixed them.
-func bindPorts(cert tls.Certificate) *portListeners {
-	scan := hasArg("-scan")
-	fixedWPT := argString("-wpt-port") != ""
+// Binds the block (the next free one with Options.Scan), moving the WPT ports along unless Options.WPTPort fixed them.
+func bindPorts(cert tls.Certificate, o Options) (*portListeners, error) {
 	tries := 1
-	if scan {
+	if o.Scan {
 		tries = scanTries
+	}
+	if o.WPTPort != 0 {
+		wptHTTPPort, wptHTTPSPort = o.WPTPort, o.WPTPort+1
 	}
 	var lastErr error
 	for i := 0; i < tries; i++ {
@@ -148,29 +121,15 @@ func bindPorts(cert tls.Certificate) *portListeners {
 		if base+portBlock > 65535 {
 			break
 		}
-		if !fixedWPT {
+		if o.WPTPort == 0 {
 			wptHTTPPort, wptHTTPSPort = base+3, base+4
 		}
 		l, err := listenBlock(base, true, cert)
 		if err == nil {
 			basePort = base
-			return l
+			return l, nil
 		}
 		lastErr = err
 	}
-	fmt.Fprintf(os.Stderr, "testserver: no free block of ports from %d: %v\n", basePort, lastErr)
-	os.Exit(1)
-	return nil
-}
-
-// -port-file F: the base port, written once everything listens (written then renamed: a reader never sees half of it).
-func writePortFile() {
-	f := argString("-port-file")
-	if f == "" {
-		return
-	}
-	tmp := f + ".tmp"
-	if err := os.WriteFile(tmp, []byte(strconv.Itoa(basePort)), 0o644); err == nil {
-		os.Rename(tmp, f)
-	}
+	return nil, fmt.Errorf("no free block of ports from %d: %w", basePort, lastErr)
 }

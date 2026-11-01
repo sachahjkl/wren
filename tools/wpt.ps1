@@ -125,7 +125,7 @@ try {
     if (-not $ok) { throw 'building src\tools\wpt failed' }
     if (-not $NoServer) {
         Push-Location tools\testserver
-        try { & go build -o ..\..\build\testserver.exe . ; if ($LASTEXITCODE -ne 0) { throw 'building the test server failed' } } finally { Pop-Location }
+        try { & go build -o ..\..\build\testserver.exe ./cmd/testserver ; if ($LASTEXITCODE -ne 0) { throw 'building the test server failed' } } finally { Pop-Location }
     }
 } finally { Pop-Location }
 

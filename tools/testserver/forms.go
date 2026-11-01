@@ -1,4 +1,4 @@
-package main
+package testserver
 
 // Form submission endpoint for the forms end-to-end test: replies with what it received, in a line format the test
 // checks (method, Content-Type, query, the raw body, and the body as Go's parsers understand it).

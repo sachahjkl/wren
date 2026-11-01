@@ -5,7 +5,7 @@
 // without an extension that names no file serves the .html page of that name (/site/grid -> grid.html); a folder
 // without its final '/' is redirected to it; the Content-Type comes from a fixed table of the types the pages use, not
 // from the Windows registry (which may say text/plain for .js, or nothing for .wasm and .avif).
-package main
+package testserver
 
 import (
 	"bytes"
@@ -21,18 +21,16 @@ import (
 	"strings"
 )
 
-var siteDir = findSiteDir()
+var siteDir = findSiteDir("")
 
 func isDir(p string) bool {
 	st, err := os.Stat(p)
 	return err == nil && st.IsDir()
 }
 
-func findSiteDir() string {
-	for i, a := range os.Args {
-		if a == "-site" && i+1 < len(os.Args) {
-			return os.Args[i+1]
-		}
+func findSiteDir(asked string) string {
+	if asked != "" {
+		return asked
 	}
 	if isDir("examples/site") {
 		return "examples/site"

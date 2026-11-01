@@ -98,7 +98,7 @@ function Ensure-WrenTestServer([string]$root, [string]$Exe) {
         try { [void]$mutex.WaitOne() } catch [Threading.AbandonedMutexException] { }
         if (-not (& $stale)) { return }
         Push-Location $src
-        try { go build -o $Exe . 2>&1 | Out-Null } finally { Pop-Location }
+        try { go build -o $Exe ./cmd/testserver 2>&1 | Out-Null } finally { Pop-Location }
     } finally { $mutex.ReleaseMutex(); $mutex.Dispose() }
 }
 
@@ -231,6 +231,19 @@ function Invoke-WrenE2E([string]$Exe, [string]$Scenario) {
     $names = @([regex]::Matches($source, '(?m)^@\(test\)\s*([A-Za-z0-9_]+)\s*::') | ForEach-Object { $_.Groups[1].Value })
     if ($names.Count -eq 0) { "no @(test) in src\tools\e2e\$Scenario.odin"; $global:LASTEXITCODE = 1; return }
     $o = & (Join-Path $root $Exe) "-tests:$($names -join ',')" 2>&1 | Out-String
+    $code = $LASTEXITCODE
+    $o
+    $global:LASTEXITCODE = $code
+}
+
+# Runs the tests of one subject of the web tests (src\tools\webtests\<subject>.odin, docs\testing.md) in this program, built by test_all's 'build web tests', in a process of their own; the test that ends the process with its leak check goes with them.
+#   Invoke-WrenWebTests 'build\web_test.exe' 'cache'
+function Invoke-WrenWebTests([string]$Exe, [string]$Subject) {
+    $root = Get-WrenRepoRoot
+    $source = [IO.File]::ReadAllText((Join-Path $root "src\tools\webtests\$Subject.odin"))
+    $names = @([regex]::Matches($source, '(?m)^@\(test\)\s*([A-Za-z0-9_]+)\s*::') | ForEach-Object { $_.Groups[1].Value })
+    if ($names.Count -eq 0) { "no @(test) in src\tools\webtests\$Subject.odin"; $global:LASTEXITCODE = 1; return }
+    $o = & (Join-Path $root $Exe) "-tests:$($names -join ','),zz_the_process_ends_with_nothing_left" 2>&1 | Out-String
     $code = $LASTEXITCODE
     $o
     $global:LASTEXITCODE = $code

@@ -8,8 +8,7 @@ import (
 
 // -parent-pid N: the server ends with the process that started it (a test script stopped by force, a job killed),
 // instead of keeping its ports and serving the files of a worktree to the next run.
-func watchParent() {
-	pid := argInt("-parent-pid", 0)
+func watchParent(pid int) {
 	if pid <= 0 {
 		return
 	}
