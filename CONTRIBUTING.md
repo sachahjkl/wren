@@ -3,8 +3,9 @@
 ## Before a pull request
 
 - Build with `build.bat` (it builds with `-vet`), and `build.bat profile` for the profiling build.
-- Run `powershell -NoProfile -File tools\test_all.ps1 -Quick`: every step must say PASS. CI runs the same suite with
-  `-CI` on `windows-2025` ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
+- Run `powershell -NoProfile -File tools\test_all.ps1 -Quick`: every step must say PASS, or CACHED (it passed with exactly these
+  inputs; `-NoCache` runs everything). CI runs the same suite with `-CI` on `windows-2025` ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
+  While you work: `-Changed`, `-Only <pattern>`, `-Failed`. How the tests run and how to go fast: [docs/testing.md](docs/testing.md).
 - Several runs at once on one machine (worktrees) are fine: `test_all.ps1` takes no lock. Its test server listens on
   a block of ports of the run (`-BasePort`, default derived from the worktree's path; `-CI`: 8765), the tools read it
   from `WREN_TEST_BASE_PORT` (`src/tools/testenv`, guests: `examples/testports`), and steps run `-Jobs` at a time, each
