@@ -21,7 +21,7 @@
 #   -Only <regex>  the steps whose name matches, with the steps that build what they use
 #   -Failed        the steps that failed (or were FLAKY) in the last run, from build\test_failed.txt
 #   -Changed       the steps with an input changed since -Base (default: where this branch left master), the working tree's changes included. Never instead of the CI's run: it says how many it left out.
-#   -List          the steps of this configuration and their number of inputs; nothing runs
+#   -List          the steps of this configuration (with -Changed or -Only: those chosen) and their number of inputs; nothing runs
 #   -Profile       the run under tools\test_profile.ps1: every process, its CPU, the use of the processors (build\prof\<time>.*)
 # Result cache (tools\test_cache.ps1): with -Quick on a developer's machine a step whose inputs (by content: sources, tools, flags, Odin's version) have passed already says CACHED and does not
 # run again. -NoCache (or WREN_TEST_CACHE=0) runs everything, and turns off the shared code cache of the test processes too. -Cache: on for this run as well (the CI's branches). Never with -Perf,
@@ -213,13 +213,13 @@ function Step($name, [scriptblock]$body, [switch]$Light, [switch]$UiOnly, [switc
         elseif ($val -is [array] -and @($val | Where-Object { $_ -isnot [string] }).Count -eq 0) { $vars[$n] = [string[]]$val }
     }
     $item = [pscustomobject]@{ Name = $name; Body = $body.ToString(); Script = $body; Server = $script:serverSteps; Vars = $vars; Light = [bool]$Light; Weight = $Weight }
-    if ($List) { "{0,5} inputs  {1}" -f ([string[]](Get-WrenStepInputs $item.Name $item.Body $item.Vars)).Count, $name; return }
     if ($script:selecting) {
         if (-not (Test-StepChosen $item)) {
             $script:leftOut++
             foreach ($o in (Get-StepOuts $item.Body)) { $script:builders[$o] = $item }
             return
         }
+        if ($List) { "{0,5} inputs  {1}" -f ([string[]](Get-WrenStepInputs $item.Name $item.Body $item.Vars)).Count, $name; return }
         # what it uses, from a step left out: built now (they run before the steps that use them in a run of everything)
         $first = New-Object System.Collections.Generic.List[object]
         foreach ($need in (Get-StepNeeds $item.Body)) {
@@ -227,6 +227,7 @@ function Step($name, [scriptblock]$body, [switch]$Light, [switch]$UiOnly, [switc
         }
         foreach ($b in $first) { Invoke-StepNow $b }
     }
+    if ($List) { "{0,5} inputs  {1}" -f ([string[]](Get-WrenStepInputs $item.Name $item.Body $item.Vars)).Count, $name; return }
     if ($Jobs -gt 1) { $script:queue.Add($item); return }
     Invoke-StepNow $item
 }
@@ -414,7 +415,7 @@ $MemCheck = '-define:ODIN_TEST_FAIL_ON_BAD_MEMORY=true'
 $Track = '-define:WREN_TRACK_MEMORY=true'
 $script:watchdog = Start-Watchdog
 "test_all: $root, -Jobs $Jobs, test server ports from $BasePort, started $(Get-Date -Format 'HH:mm:ss')"
-Step 'CHANGELOG fragments (tools\changelog.ps1 -Check: changelog.d well formed, nothing already released) and the script''s tests' -Light { powershell -NoProfile -ExecutionPolicy Bypass -File tools\changelog.ps1 -Check; if ($LASTEXITCODE) { return }; powershell -NoProfile -ExecutionPolicy Bypass -File tools\changelog_test.ps1 }
+Step 'CHANGELOG fragments (tools\changelog.ps1 -Check: changelog.d well formed, nothing already released) and the script''s tests' -Light { powershell -NoProfile -ExecutionPolicy Bypass -File tools\changelog.ps1 -Check; if ($LASTEXITCODE) { return }; powershell -NoProfile -ExecutionPolicy Bypass -File tools\changelog_test.ps1 } -NoCI   # (the CI's workflow runs exactly this as its first step, and fails at once: 91 s of its time here, twice)
 # the documentation site is generated from docs\*.md (src\tools\docsite): site\docs must be up to date (deterministic, like changelog.ps1 -Check) and every internal link and anchor must resolve
 Step 'documentation site up to date and links intact (tools\docs_site.ps1 -Check: site\docs matches docs\*.md, zero dead internal links or anchors)' { powershell -NoProfile -ExecutionPolicy Bypass -File tools\docs_site.ps1 -Check }
 # the JavaScript engine every build below embeds (nothing to do when build\js is up to date)
