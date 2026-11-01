@@ -109,7 +109,10 @@ loading in any tab, and at most `browser.remote.quiet_cpu_ms` (20) of CPU time, 
 (400); `--quiet-ms` and `--max-cpu` for one call. It answers with how long it waited and the CPU it saw. (`wait idle` is about
 the network of a page; `--idle-ms n` shortens or lengthens its quiet time for one call.) To measure an idle process, read `stats`
 twice: `cpuTimeMs` is the process's CPU time (the system adds it up in ticks of about 15.6 ms); `threads`, `handles`,
-`gdiObjects`, `userObjects`, `uptimeMs` and `pid` are there too.
+`gdiObjects`, `userObjects`, `uptimeMs` and `pid` are there too. `loop` is the loop's own account: `turns`, `sleeps`, `barren` (wakes
+that drew nothing), `frames`, `causes` (each frame under the first of `Input`, `Task`, `Page`, `Asked`, `Interface_Animation`,
+`Interface_Wake`, `Repaint`) and `reasons`, the last 32 frames and barren wakes with who asked, a place in the sources: a browser at rest
+draws nothing, and what does draw says why (`tools\idle_measure.ps1` measures it from outside, with the wakes of each thread).
 
 `shot <file> --count n [--interval ms]` takes n pictures over the one connection (a `%d` in the name takes the number, else
 `-<n>` goes before the extension) instead of a process, and its 100 ms of start, for each.

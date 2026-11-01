@@ -83,6 +83,7 @@ updater_stop :: proc(b: ^Blocker) {
 updater_tick :: proc(data: rawptr) {
 	b := (^Blocker)(data)
 	b.upd.timer = base.NIL_HANDLE
+	host.quiet_note(b.loop)   // (what a round changes that shows, it asks for)
 	if b.cfg.update && b.cfg.enabled && !b.upd.running { updater_round(b, false) }
 	updater_schedule(b, 3600)
 }
@@ -132,7 +133,7 @@ updater_next :: proc(b: ^Blocker) {
 		b.upd.current_ctx = c
 		b.upd.current = net.fetch(b.client, {
 			url = l.url, method = "GET", headers = strings.to_string(sb), on_event = list_event, user = c,
-			collect = true, max_body = b.cfg.max_list_bytes, priority = .Low,
+			collect = true, max_body = b.cfg.max_list_bytes, priority = .Low, background = true,
 		})
 		touch(b)
 		return

@@ -30,6 +30,7 @@ import "core:sync"
 import "core:testing"
 import "core:time"
 import "wb:base"
+import "wb:host"
 import "toolkit:platform"
 import "wb:browser"
 import "wb:remote/api"
@@ -47,6 +48,9 @@ OUT_DIR :: "e2e"
 // What a test keeps when it fails: the window and the page's console.
 FAILURE_CAPTURE :: "failure.png"
 FAILURE_CONSOLE :: "failure_console.txt"
+// rest_turns: how often what wakes the loop wakes it. wait_at_rest: how long without a frame counts as settled (scenarios keep the status bar's window far below it).
+REST_WAKE_MS :: 1
+REST_QUIET :: 500 * time.Millisecond
 // The stack the script engine's calls need (what /STACK:33554432 gives on Windows).
 STACK_BYTES :: 32 * 1024 * 1024
 
@@ -420,6 +424,36 @@ turn :: proc(s: ^Session, loc: runtime.Source_Code_Location) {
 	context = s.ctx
 	browser.request_frames(s.app, 1)
 	if !browser.app_turn(s.app) { failed(s, "the browser ended", loc) }
+}
+
+// Turns of the browser's loop with nothing asking for a frame, each after a sleep: what it does when it is left alone. A timer that draws
+// nothing wakes it each time.
+rest_turns :: proc(s: ^Session, n: int, loc := #caller_location) {
+	context = s.ctx
+	l := &s.app.loop
+	wake := host.set_timer(l, REST_WAKE_MS, REST_WAKE_MS, proc(data: rawptr) { host.quiet_note((^host.Loop)(data)) }, l)
+	defer host.clear_timer(l, wake)
+	for _ in 0 ..< n { if !browser.app_turn(s.app) { failed(s, "the browser ended", loc) } }
+}
+
+// The browser left alone until it has drawn `frames` in all.
+rest_until_frames :: proc(s: ^Session, frames: int, deadline: time.Duration = DEFAULT_DEADLINE, loc := #caller_location) {
+	end := time.tick_add(time.tick_now(), deadline)
+	for s.app.rates.frames < frames {
+		if time.tick_diff(time.tick_now(), end) <= 0 { failed(s, fmt.tprintf("%v passed waiting for %d frames, at %d", deadline, frames, s.app.rates.frames), loc) }
+		rest_turns(s, 1, loc)
+	}
+}
+
+// The browser left alone until it stops drawing by itself: no frame for REST_QUIET. (`moving_ok`: something of it keeps moving, a caret: until it has had the time to settle.)
+wait_at_rest :: proc(s: ^Session, moving_ok := false, deadline: time.Duration = DEFAULT_DEADLINE, loc := #caller_location) {
+	end := time.tick_add(time.tick_now(), deadline)
+	frames, since := s.app.rates.frames, time.tick_now()
+	for time.tick_since(since) < REST_QUIET {
+		if time.tick_diff(time.tick_now(), end) <= 0 { failed(s, fmt.tprintf("%v passed and the browser still draws, %d frames", deadline, s.app.rates.frames), loc) }
+		rest_turns(s, 1, loc)
+		if !moving_ok && s.app.rates.frames != frames { frames, since = s.app.rates.frames, time.tick_now() }
+	}
 }
 
 // Any condition: `ready(s)` is looked at after each turn of the browser's loop, under the test's context. What it needs comes

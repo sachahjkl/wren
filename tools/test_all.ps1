@@ -458,6 +458,9 @@ Step 'a playing video is a plane of the paint order (src\tools\e2e\video_layers.
 Step 'web APIs in the browser (src\tools\e2e\page_apis.odin: a layout read by a first script, a timer that changes nothing, Web Animations, popovers, the Navigation API, XHTML; no window at all)' {
     Invoke-WrenE2E 'build\e2e_test.exe' 'page_apis'
 } -NoCI
+Step 'a browser at rest draws nothing (src\tools\e2e\frames_at_rest.odin: frames over turns of the loop that nothing asked for: none on a static page, on about:blank, under a timer that changes nothing; a caret draws its own pixels at its own flips; an animation does draw; no window at all)' {
+    Invoke-WrenE2E 'build\e2e_test.exe' 'frames_at_rest'
+}
 Step 'accessibility end to end (src\tools\e2e\a11y.odin: what a window tells a screen reader, the chrome''s and a page''s, and what a reader''s requests do; no window at all)' {
     Invoke-WrenE2E 'build\e2e_test.exe' 'a11y'
 } -NoCI

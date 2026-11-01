@@ -37,24 +37,12 @@ a_layout_read_by_a_script_uses_this_pages_images :: proc(t: ^testing.T) {
 	testing.expectf(t, first != "" && first[0] >= '0' && first[0] <= '9' && !strings.has_prefix(first, "77:"), "the image's width is this page's, not the page before's 77: %q", first)
 }
 
-// A script ticks every 20 ms and touches nothing: the frames drawn meanwhile are counted against the ticks (a ratio, not a time: it holds on a slow machine too); a timer that
-// turns the box blue then reaches the screen. In a test's browser frames are made as soon as they are asked for, so a frame per tick would show.
-@(private = "file") TICKS :: 100
-// (the shell redraws by itself a few times a second, its status bar: far under one frame for two ticks of 20 ms; a frame per tick is what it was)
-@(private = "file") TICKS_PER_FRAME_AT_LEAST :: 2
-
+// A script ticks every 20 ms and touches nothing, which draws no frame (frames_at_rest.odin); a timer that turns the box blue then reaches the screen.
 @(test)
-a_timer_that_changes_nothing_draws_no_frame :: proc(t: ^testing.T) {
+a_timer_that_changes_the_page_reaches_the_screen :: proc(t: ^testing.T) {
 	s := e2e.start(t, {dpi = e2e.DPI_ONE, url = e2e.url(e2e.test_server(t), "/site/remote/idle-timer.htm")})
 	e2e.wait_idle(s)
 	e2e.wait_stable(s)
-	t0 := e2e.eval_f64(s, "window.ticks")
-	f0 := e2e.stats(s).frames_drawn
-	e2e.wait_js(s, fmt.tprintf("window.ticks >= %v", t0 + TICKS))
-	ticks := e2e.eval_f64(s, "window.ticks") - t0
-	frames := e2e.stats(s).frames_drawn - f0
-	testing.expectf(t, frames * TICKS_PER_FRAME_AT_LEAST <= int(ticks), "%v ticks drew %d frames", ticks, frames)
-
 	e2e.eval(s, "window.paint(); 1")
 	e2e.wait_js(s, `getComputedStyle(document.getElementById("box")).backgroundColor === "rgb(0, 0, 255)"`)
 	e2e.wait_stable(s)

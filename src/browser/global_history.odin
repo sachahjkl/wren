@@ -246,6 +246,7 @@ global_history_changed :: proc(app: ^App) {
 	if ghist.saving { ghist.again = true; return }
 	ghist.timer = host.set_timer(&app.loop, max(hcfg.save_delay_ms, 1), 0, proc(data: rawptr) {
 		ghist.timer = base.NIL_HANDLE
+		host.quiet_note(&(^App)(data).loop)   // (the disk, not the screen)
 		global_history_save((^App)(data))
 	}, app)
 }
@@ -275,6 +276,7 @@ global_history_save :: proc(app: ^App) {
 		free_all(context.temp_allocator)
 	}, proc(data: rawptr) {
 		j := (^Save_Job)(data)
+		if ghist.app != nil { host.quiet_note(&ghist.app.loop) }
 		ghist.saving = false
 		if !j.ok { ghist.dirty = true }
 		delete(j.path); delete(j.text); free(j)
