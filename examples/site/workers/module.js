@@ -1,4 +1,4 @@
-// A module worker of tools\workers_e2e.ps1: static and dynamic imports, import.meta.url, importScripts refused.
+// A module worker of src\tools\e2e\workers.odin: static and dynamic imports, import.meta.url, importScripts refused.
 import { twice } from "./lib/math.js";
 import { label } from "/site/workers/lib/label.js";
 

@@ -18,6 +18,7 @@ import "wb:base"
 import "wb:config"
 import "wb:fetch"
 import "wb:host"
+import "wb:page"
 import "wb:remote"
 import "wb:remote/api"
 
@@ -552,6 +553,22 @@ control_console :: proc(t: ^Tab, since := 0, clear_after := false, allocator := 
 	return lines[:]
 }
 
+// The back/forward cache's numbers (bfcache.odin).
+control_bfcache :: proc(allocator := context.temp_allocator) -> api.Bfcache_Stats {
+	reasons := make([dynamic]api.Bfcache_Reason, 0, len(bf.reasons), allocator)
+	for k, v in bf.reasons { append(&reasons, api.Bfcache_Reason{strings.clone(k, allocator), v}) }
+	return {
+		cached = len(bf.entries), stores = bf.stores, restores = bf.restores, evictions = bf.evictions,
+		refusals = bf.refusals, traversals = bf.traversals, misses = bf.misses, reasons = reasons[:],
+	}
+}
+
+// The current tab is still putting back what its history entry showed.
+control_history_restoring :: proc(app: ^App) -> bool {
+	t := current_tab(app)
+	return t != nil && t.nav_state.restore.active
+}
+
 // What a window's numbers say to a test (Wren.stats says more).
 control_stats :: proc(app: ^App, allocator := context.temp_allocator) -> api.Stats {
 	wnd := active_window(app)
@@ -565,7 +582,8 @@ control_stats :: proc(app: ^App, allocator := context.temp_allocator) -> api.Sta
 		menu_open = ui.ctx_menu_any_open(), devtools = dev().visible, front_window = window_is_front(app),
 		caret_blinking = fv.blink_timer != base.NIL_HANDLE, caret_shown = fv.blink_on, drop_target = platform.drop_target_enabled(wnd.win),
 		chrome_animating = ui.needs_frame(wnd.ui), backend = strings.clone(render.backend_name(), allocator),
-		prefs_net_applied = int(prefs_apply_counts[.Net]),
+		prefs_net_applied = int(prefs_apply_counts[.Net]), bfcache = control_bfcache(allocator),
+		workers_running = page.workers_running(), shared_workers = page.shared_workers_live(), history_restoring = control_history_restoring(app),
 	}
 	if lp.size.x > 0 {
 		st.drag_picture = fmt.aprintf("%dx%d@%d,%d rgba=%d,%d,%d,%d", lp.size.x, lp.size.y, lp.hot.x, lp.hot.y, lp.middle[0], lp.middle[1], lp.middle[2], lp.middle[3], allocator = allocator)
@@ -581,6 +599,15 @@ control_stats :: proc(app: ^App, allocator := context.temp_allocator) -> api.Sta
 // The next press starts a click of its own, whatever the system's double-click time and the time gone by: a program in this process
 // clicks twice in a row far sooner than a person does.
 control_forget_clicks :: proc(app: ^App) { active_window(app).ui.last_click_key = 0 }
+
+// The browser's list of downloads.
+control_downloads :: proc(allocator := context.temp_allocator) -> []api.Download {
+	list := make([]api.Download, len(dls.list), allocator)
+	for d, i in dls.list {
+		list[i] = {name = strings.clone(d.name, allocator), error = strings.clone(d.error, allocator), finished = download_finished(d) && !d.moving, saved = d.state == .Done}
+	}
+	return list
+}
 
 // Goes there (nothing waits for it: control_wait).
 control_navigate :: proc(app: ^App, t: ^Tab, address: string) {

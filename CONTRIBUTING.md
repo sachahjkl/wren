@@ -11,7 +11,7 @@
   from `WREN_TEST_BASE_PORT` (`src/tools/testenv`, guests: `examples/testports`), and steps run `-Jobs` at a time, each
   server-backed step with a server of its own. Write test addresses with the default ports
   (`testenv.url("http://127.0.0.1:8765/x")`): they move with the block. Scripts that use the real desktop
-  (`screenshot.ps1`, `history_e2e.ps1`) or measure performance (`perf.ps1`, `js_bench.ps1`, `cfg_bench.ps1`) take
+  (`screenshot.ps1`) or measure performance (`perf.ps1`, `js_bench.ps1`, `cfg_bench.ps1`) take
   `desktop.lock` / `bench.lock` themselves, only for that part (`tools/test_env.ps1`, which also starts a test server
   on a free block: `Start-WrenTestServer`). A step that needs either goes through those scripts or `Use-WrenLock`.
 - Tests are meant to be quick: a run prints, at its end, the slowest steps and (for the scripts that time themselves with `Section`

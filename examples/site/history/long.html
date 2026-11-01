@@ -38,28 +38,8 @@
   }
   rows(0, 20);
   setTimeout(() => rows(20, 150), 400);
-  // the automated run (tools/history_e2e.ps1): the first visit scrolls and types by script, then leaves
-  const auto = location.search.includes('auto');
-  const first = !sessionStorage.getItem('visited');
-  addEventListener('load', () => {
-    if (!first || !auto) return;
-    sessionStorage.setItem('visited', '1');
-    setTimeout(() => {
-      who.value = 'typed';
-      agree.checked = true;
-      box.scrollTop = 300;
-      scrollTo(0, 2500);
-      document.title = 'ready';
-      setTimeout(() => { location.href = 'next.html'; }, 400);
-    }, 700);
-  });
-  addEventListener('pageshow', e => {
-    if (!auto || (first && !e.persisted)) return;
-    const p = e.persisted;
-    setTimeout(() => {
-      document.title = 'back persisted=' + p + ' y=' + Math.round(scrollY) + ' box=' + box.scrollTop + ' who=' + who.value + ' agree=' + agree.checked;
-    }, 1500);
-  });
+  // whether the page came from the back/forward cache, for src/tools/e2e/history.odin
+  addEventListener('pageshow', e => { window.lastShow = e.persisted; });
 </script>
 </body>
 </html>

@@ -1,13 +1,13 @@
 <!doctype html>
 <meta charset="utf-8">
 <title>File System test</title>
-<p>The origin private file system and File System Access (tools\fs_e2e.ps1 drives this page).</p>
+<p>The origin private file system and File System Access (src\tools\e2e\fs.odin drives this page).</p>
 <button id="open">Open a file</button>
 <button id="dir">Choose a folder</button>
 <button id="save">Save a file</button>
 <pre id="out"></pre>
 <script>
-// Helpers the test calls with wren ctl eval.
+// Helpers the test calls.
 window.text = async (h) => (await h.getFile()).text();
 window.put = async (h, data, opts) => { const w = await h.createWritable(opts); await w.write(data); await w.close(); };
 window.names = async (d) => { const out = []; for await (const [n, h] of d) out.push(n + ":" + h.kind[0]); return out.sort().join(","); };

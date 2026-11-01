@@ -4,7 +4,7 @@ import "core:testing"
 import "wb:fetch"
 import "wb:url"
 
-// Two pages of different sites embedding the same third party (tools/partition_e2e.ps1 has two host names only):
+// Two pages of different sites embedding the same third party (src/tools/e2e/partition.odin has two host names only):
 // the third party's storage keys under each, first-party, with storage access, and with partitioning off.
 @(test)
 storage_keys_partition_a_third_party_per_top_level_site :: proc(t: ^testing.T) {

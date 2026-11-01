@@ -1,4 +1,4 @@
-// tools\fs_e2e.ps1: a sync access handle in a dedicated worker (read, write, truncate, getSize, flush, close, the
+// src\tools\e2e\fs.odin: a sync access handle in a dedicated worker (read, write, truncate, getSize, flush, close, the
 // exclusive lock), and a handle received in a message.
 self.onmessage = async (e) => {
   const out = [];

@@ -621,6 +621,20 @@ network :: proc(s: ^Session, clear := false, loc := #caller_location) -> (reqs: 
 
 Frame_Gate :: struct { begun, nested, deferred, violations: int, last_violation: string }
 
+// The back/forward cache since start-up: what it kept and gave back, and why pages stayed out of it.
+Bfcache_Reason :: struct { reason: string, count: int }
+Bfcache_Stats :: struct {
+	cached, stores, restores, evictions, refusals, traversals, misses: int,
+	reasons: []Bfcache_Reason,
+}
+
+// A download of the browser's list (src/browser/download.odin).
+Download :: struct {
+	name, error: string,
+	finished:    bool,      // it has ended, whichever way, and its file is where it will stay
+	saved:       bool,      // ... whole
+}
+
 // What tests read (`Session.result` has them all; a number a test needs goes here).
 Stats :: struct {
 	pid:                 int,
@@ -652,6 +666,10 @@ Stats :: struct {
 	prefs_net_applied:   int,
 	devtools_room_checks: int,     // frames whose panel width, as taken for its content, was compared with its layout's
 	devtools_room_wrong:  int,     // ... and differed
+	bfcache:             Bfcache_Stats,
+	workers_running:     int,      // the process's: dedicated, shared and service workers holding a thread
+	shared_workers:      int,      // shared workers alive in the process
+	history_restoring:   bool,     // the current tab is still putting back what its history entry showed (history_restore.odin)
 }
 
 stats :: proc(s: ^Session, reset_latency := false, reset_frames := false, loc := #caller_location) -> (r: Stats, e: Error) {
@@ -660,6 +678,10 @@ stats :: proc(s: ^Session, reset_latency := false, reset_frames := false, loc :=
 	p_bool(&p, "resetFrames", reset_frames)
 	o := request(s, "Wren.stats", &p) or_return
 	g, _ := remote.param_object(o, "frameGate")
+	bf, _ := remote.param_object(o, "bfcache")
+	why, _ := remote.param_object(bf, "reasons")
+	reasons := make([dynamic]Bfcache_Reason, 0, len(why), context.temp_allocator)
+	for k in why { append(&reasons, Bfcache_Reason{k, i_of(why, k)}) }
 	return {
 		pid = i_of(o, "pid"), fps = f_of(o, "fps"), frames_drawn = i_of(o, "framesDrawn"), frames_presented = i_of(o, "framesPresented"),
 		pending_ops = i_of(o, "pendingOps"), input_events = i_of(o, "inputEvents"), requests_in_flight = i_of(o, "requestsInFlight"),
@@ -670,6 +692,11 @@ stats :: proc(s: ^Session, reset_latency := false, reset_frames := false, loc :=
 		caret_blinking = b_of(o, "caretBlinking"), caret_shown = b_of(o, "caretShown"), drop_target = b_of(o, "dropTarget"),
 		chrome_animating = b_of(o, "chromeAnimating"), group_name_focused = b_of(o, "groupNameFocused"), backend = s_of(o, "backend"), drag_image = s_of(o, "dragImage"), drag_picture = s_of(o, "dragPicture"),
 		prefs_net_applied = i_of(o, "prefsNetApplied"), devtools_room_checks = i_of(o, "devtoolsRoomChecks"), devtools_room_wrong = i_of(o, "devtoolsRoomWrong"),
+		bfcache = {
+			cached = i_of(bf, "cached"), stores = i_of(bf, "stores"), restores = i_of(bf, "restores"), evictions = i_of(bf, "evictions"),
+			refusals = i_of(bf, "refusals"), traversals = i_of(bf, "traversals"), misses = i_of(bf, "misses"), reasons = reasons[:],
+		},
+		workers_running = i_of(o, "workersRunning"), shared_workers = i_of(o, "sharedWorkers"), history_restoring = b_of(o, "historyRestoring"),
 	}, .None
 }
 

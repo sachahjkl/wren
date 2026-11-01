@@ -1,4 +1,4 @@
-// A worker that starts workers of its own (tools/workers_e2e.ps1): messages go down and up a chain, a child's error,
+// A worker that starts workers of its own (src/tools/e2e/workers.odin): messages go down and up a chain, a child's error,
 // buffers and ports travel between a worker and its child, a child ends with its parent.
 let child = null;
 const blobWorker = (src) => new Worker(URL.createObjectURL(new Blob([src], {type: "text/javascript"})));

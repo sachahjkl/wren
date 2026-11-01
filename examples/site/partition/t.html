@@ -4,7 +4,7 @@
 <body style="margin:0">
 <button id="b" style="width:400px;height:200px">storage access</button>
 <script>
-// A third party (tools/partition_e2e.ps1): embedded in pages of two other sites, and opened as a tab of its own. It
+// A third party (src/tools/e2e/partition.odin): embedded in pages of two other sites, and opened as a tab of its own. It
 // answers its parent's questions about what it stores; a click asks for storage access.
 const say = (x) => parent.postMessage(x, "*");
 const cookie = () => { const m = /(?:^|; )v=([^;]*)/.exec(document.cookie); return m ? m[1] : "none"; };

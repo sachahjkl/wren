@@ -1,4 +1,4 @@
-// A dedicated worker that feeds a video to the page through Media Source Extensions (tools/workers_e2e.ps1): its
+// A dedicated worker that feeds a video to the page through Media Source Extensions (src/tools/e2e/workers.odin): its
 // MediaSource's handle goes to the page, which sets it as a video's srcObject; the worker appends clip_frag.mp4 and
 // ends the stream, and says what it saw.
 const log = [];

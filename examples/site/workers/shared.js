@@ -1,4 +1,4 @@
-// The shared worker of tools\workers_e2e.ps1: counts its connections, answers on each port, tells every port when a
+// The shared worker of src\tools\e2e\workers.odin: counts its connections, answers on each port, tells every port when a
 // new one connects, and closes itself when asked.
 let count = 0;
 const ports = [];
