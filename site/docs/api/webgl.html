@@ -251,44 +251,44 @@ WebGL_createError says why (nothing when the canvas already has a context of ano
 <div class="code"><pre><code>string WebGL_createError()</code></pre></div>
 <p>Host: <code>WebGL_createError :: proc(c: ^Call) -&gt; string</code></p>
 <h3 id="webgl-submit"><a class="anchor" href="#webgl-submit" aria-hidden="true">#</a><code>WebGL_submit</code></h3>
-<div class="code"><pre><code>void WebGL_submit(u64 context, bytes commands, bytes data, bool drew)</code></pre></div>
+<div class="code"><pre><code>void WebGL_submit(u64 gl, bytes commands, bytes data, bool drew)</code></pre></div>
 <p>Commands; <code>data</code> is the bytes of the last one. <code>drew</code>: the canvas changed.</p>
-<p>Host: <code>WebGL_submit :: proc(c: ^Call, context: u64, commands: []u8, data: []u8, drew: bool)</code></p>
+<p>Host: <code>WebGL_submit :: proc(c: ^Call, gl: u64, commands: []u8, data: []u8, drew: bool)</code></p>
 <h3 id="webgl-query"><a class="anchor" href="#webgl-query" aria-hidden="true">#</a><code>WebGL_query</code></h3>
-<div class="code"><pre><code>f64 WebGL_query(u64 context, bytes request, out bytes reply)</code></pre></div>
+<div class="code"><pre><code>f64 WebGL_query(u64 gl, bytes request, out bytes reply)</code></pre></div>
 <p>A question: waits for the answer (its bytes in <code>reply</code>). Its length, or the length it needs when it does not fit; -1: the
 context did not answer in time or is gone.</p>
-<p>Host: <code>WebGL_query :: proc(c: ^Call, context: u64, request: []u8, reply: []u8) -&gt; f64</code></p>
+<p>Host: <code>WebGL_query :: proc(c: ^Call, gl: u64, request: []u8, reply: []u8) -&gt; f64</code></p>
 <h3 id="webgl-querytext"><a class="anchor" href="#webgl-querytext" aria-hidden="true">#</a><code>WebGL_queryText</code></h3>
-<div class="code"><pre><code>f64 WebGL_queryText(u64 context, bytes request, bytes text, out bytes reply)</code></pre></div>
+<div class="code"><pre><code>f64 WebGL_queryText(u64 gl, bytes request, bytes text, out bytes reply)</code></pre></div>
 <p>As WebGL_query, with bytes after the request (a name).</p>
-<p>Host: <code>WebGL_queryText :: proc(c: ^Call, context: u64, request: []u8, text: []u8, reply: []u8) -&gt; f64</code></p>
+<p>Host: <code>WebGL_queryText :: proc(c: ^Call, gl: u64, request: []u8, text: []u8, reply: []u8) -&gt; f64</code></p>
 <h3 id="webgl-upload"><a class="anchor" href="#webgl-upload" aria-hidden="true">#</a><code>WebGL_upload</code></h3>
-<div class="code"><pre><code>i32 WebGL_upload(u64 context, bytes command, u64 source) raises</code></pre></div>
+<div class="code"><pre><code>i32 WebGL_upload(u64 gl, bytes command, u64 source) raises</code></pre></div>
 <p>texImage2D of an element or an ImageBitmap: the command with the source's pixels and size. Raises Security for what the
 page may not read. 1: nothing to read yet (an image still loading), the page gets INVALID_VALUE.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../docs/api/web.html">web</a>).</p>
-<p>Host: <code>WebGL_upload :: proc(c: ^Call, context: u64, command: []u8, source: u64) -&gt; (i32, Api_Error)</code></p>
+<p>Host: <code>WebGL_upload :: proc(c: ^Call, gl: u64, command: []u8, source: u64) -&gt; (i32, Api_Error)</code></p>
 <h3 id="webgl-width"><a class="anchor" href="#webgl-width" aria-hidden="true">#</a><code>WebGL_width</code></h3>
-<div class="code"><pre><code>u32 WebGL_width(u64 context)</code></pre></div>
+<div class="code"><pre><code>u32 WebGL_width(u64 gl)</code></pre></div>
 <p>The drawing buffer's size.</p>
-<p>Host: <code>WebGL_width :: proc(c: ^Call, context: u64) -&gt; u32</code></p>
+<p>Host: <code>WebGL_width :: proc(c: ^Call, gl: u64) -&gt; u32</code></p>
 <h3 id="webgl-height"><a class="anchor" href="#webgl-height" aria-hidden="true">#</a><code>WebGL_height</code></h3>
-<div class="code"><pre><code>u32 WebGL_height(u64 context)</code></pre></div>
-<p>Host: <code>WebGL_height :: proc(c: ^Call, context: u64) -&gt; u32</code></p>
+<div class="code"><pre><code>u32 WebGL_height(u64 gl)</code></pre></div>
+<p>Host: <code>WebGL_height :: proc(c: ^Call, gl: u64) -&gt; u32</code></p>
 <h3 id="webgl-snapshot"><a class="anchor" href="#webgl-snapshot" aria-hidden="true">#</a><code>WebGL_snapshot</code></h3>
-<div class="code"><pre><code>void WebGL_snapshot(u64 context)</code></pre></div>
+<div class="code"><pre><code>void WebGL_snapshot(u64 gl)</code></pre></div>
 <p>What was drawn so far into the canvas's bitmap, now (toDataURL, drawImage).</p>
-<p>Host: <code>WebGL_snapshot :: proc(c: ^Call, context: u64)</code></p>
+<p>Host: <code>WebGL_snapshot :: proc(c: ^Call, gl: u64)</code></p>
 <h3 id="webgl-islost"><a class="anchor" href="#webgl-islost" aria-hidden="true">#</a><code>WebGL_isLost</code></h3>
-<div class="code"><pre><code>bool WebGL_isLost(u64 context)</code></pre></div>
-<p>Host: <code>WebGL_isLost :: proc(c: ^Call, context: u64) -&gt; bool</code></p>
+<div class="code"><pre><code>bool WebGL_isLost(u64 gl)</code></pre></div>
+<p>Host: <code>WebGL_isLost :: proc(c: ^Call, gl: u64) -&gt; bool</code></p>
 <h3 id="webgl-lose"><a class="anchor" href="#webgl-lose" aria-hidden="true">#</a><code>WebGL_lose</code></h3>
-<div class="code"><pre><code>void WebGL_lose(u64 context)</code></pre></div>
-<p>Host: <code>WebGL_lose :: proc(c: ^Call, context: u64)</code></p>
+<div class="code"><pre><code>void WebGL_lose(u64 gl)</code></pre></div>
+<p>Host: <code>WebGL_lose :: proc(c: ^Call, gl: u64)</code></p>
 <h3 id="webgl-restore"><a class="anchor" href="#webgl-restore" aria-hidden="true">#</a><code>WebGL_restore</code></h3>
-<div class="code"><pre><code>bool WebGL_restore(u64 context)</code></pre></div>
-<p>Host: <code>WebGL_restore :: proc(c: ^Call, context: u64) -&gt; bool</code></p>
+<div class="code"><pre><code>bool WebGL_restore(u64 gl)</code></pre></div>
+<p>Host: <code>WebGL_restore :: proc(c: ^Call, gl: u64) -&gt; bool</code></p>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../docs/api/webcodecs_video_decoder.html"><span>Previous</span><strong>Module webcodecsvideodecoder</strong></a>
 <a class="doc-next" href="../../docs/api/websocket.html"><span>Next</span><strong>Module websocket</strong></a>

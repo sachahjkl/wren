@@ -18,16 +18,16 @@ foreign _m_webgl {
 	@(link_name = "WebGL_create") _WebGL_create :: proc(canvas: HTMLCanvasElement, flags: u32, notify: WebGLNotify, user: i32, info: [^]u8, info_len: u32) -> u64 ---
 	@(link_name = "WebGL_createOffscreen") _WebGL_createOffscreen :: proc(canvas: OffscreenCanvas, flags: u32, notify: WebGLNotify, user: i32, info: [^]u8, info_len: u32) -> u64 ---
 	@(link_name = "WebGL_createError") _WebGL_createError :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
-	@(link_name = "WebGL_submit") _WebGL_submit :: proc(context: u64, commands: [^]u8, commands_len: u32, data: [^]u8, data_len: u32, drew: i32) ---
-	@(link_name = "WebGL_query") _WebGL_query :: proc(context: u64, request: [^]u8, request_len: u32, reply: [^]u8, reply_len: u32) -> f64 ---
-	@(link_name = "WebGL_queryText") _WebGL_queryText :: proc(context: u64, request: [^]u8, request_len: u32, text: [^]u8, text_len: u32, reply: [^]u8, reply_len: u32) -> f64 ---
-	@(link_name = "WebGL_upload") _WebGL_upload :: proc(context: u64, command: [^]u8, command_len: u32, source: u64, _ret: ^i32) -> Error ---
-	@(link_name = "WebGL_width") _WebGL_width :: proc(context: u64) -> u32 ---
-	@(link_name = "WebGL_height") _WebGL_height :: proc(context: u64) -> u32 ---
-	@(link_name = "WebGL_snapshot") _WebGL_snapshot :: proc(context: u64) ---
-	@(link_name = "WebGL_isLost") _WebGL_isLost :: proc(context: u64) -> i32 ---
-	@(link_name = "WebGL_lose") _WebGL_lose :: proc(context: u64) ---
-	@(link_name = "WebGL_restore") _WebGL_restore :: proc(context: u64) -> i32 ---
+	@(link_name = "WebGL_submit") _WebGL_submit :: proc(gl: u64, commands: [^]u8, commands_len: u32, data: [^]u8, data_len: u32, drew: i32) ---
+	@(link_name = "WebGL_query") _WebGL_query :: proc(gl: u64, request: [^]u8, request_len: u32, reply: [^]u8, reply_len: u32) -> f64 ---
+	@(link_name = "WebGL_queryText") _WebGL_queryText :: proc(gl: u64, request: [^]u8, request_len: u32, text: [^]u8, text_len: u32, reply: [^]u8, reply_len: u32) -> f64 ---
+	@(link_name = "WebGL_upload") _WebGL_upload :: proc(gl: u64, command: [^]u8, command_len: u32, source: u64, _ret: ^i32) -> Error ---
+	@(link_name = "WebGL_width") _WebGL_width :: proc(gl: u64) -> u32 ---
+	@(link_name = "WebGL_height") _WebGL_height :: proc(gl: u64) -> u32 ---
+	@(link_name = "WebGL_snapshot") _WebGL_snapshot :: proc(gl: u64) ---
+	@(link_name = "WebGL_isLost") _WebGL_isLost :: proc(gl: u64) -> i32 ---
+	@(link_name = "WebGL_lose") _WebGL_lose :: proc(gl: u64) ---
+	@(link_name = "WebGL_restore") _WebGL_restore :: proc(gl: u64) -> i32 ---
 }
 
 // The preference webgl.enabled, and webgl.webgl2 for `version` 2.
@@ -75,51 +75,51 @@ WebGL_createError_alloc :: proc(allocator: runtime.Allocator) -> (string, Error)
 }
 
 // Commands; `data` is the bytes of the last one. `drew`: the canvas changed.
-WebGL_submit :: proc "contextless" (context: u64, commands: []u8, data: []u8, drew: bool) {
-	_WebGL_submit(context, raw_data(commands), u32(len(commands)), raw_data(data), u32(len(data)), i32(1 if drew else 0))
+WebGL_submit :: proc "contextless" (gl: u64, commands: []u8, data: []u8, drew: bool) {
+	_WebGL_submit(gl, raw_data(commands), u32(len(commands)), raw_data(data), u32(len(data)), i32(1 if drew else 0))
 }
 
 // A question: waits for the answer (its bytes in `reply`). Its length, or the length it needs when it does not fit; -1: the
 // context did not answer in time or is gone.
-WebGL_query :: proc "contextless" (context: u64, request: []u8, reply: []u8) -> f64 {
-	return _WebGL_query(context, raw_data(request), u32(len(request)), raw_data(reply), u32(len(reply)))
+WebGL_query :: proc "contextless" (gl: u64, request: []u8, reply: []u8) -> f64 {
+	return _WebGL_query(gl, raw_data(request), u32(len(request)), raw_data(reply), u32(len(reply)))
 }
 
 // As WebGL_query, with bytes after the request (a name).
-WebGL_queryText :: proc "contextless" (context: u64, request: []u8, text: []u8, reply: []u8) -> f64 {
-	return _WebGL_queryText(context, raw_data(request), u32(len(request)), raw_data(text), u32(len(text)), raw_data(reply), u32(len(reply)))
+WebGL_queryText :: proc "contextless" (gl: u64, request: []u8, text: []u8, reply: []u8) -> f64 {
+	return _WebGL_queryText(gl, raw_data(request), u32(len(request)), raw_data(text), u32(len(text)), raw_data(reply), u32(len(reply)))
 }
 
 // texImage2D of an element or an ImageBitmap: the command with the source's pixels and size. Raises Security for what the
 // page may not read. 1: nothing to read yet (an image still loading), the page gets INVALID_VALUE.
-WebGL_upload :: proc "contextless" (context: u64, command: []u8, source: u64) -> (result: i32, err: Error) {
-	err = _WebGL_upload(context, raw_data(command), u32(len(command)), source, &result)
+WebGL_upload :: proc "contextless" (gl: u64, command: []u8, source: u64) -> (result: i32, err: Error) {
+	err = _WebGL_upload(gl, raw_data(command), u32(len(command)), source, &result)
 	return
 }
 
 // The drawing buffer's size.
-WebGL_width :: proc "contextless" (context: u64) -> u32 {
-	return _WebGL_width(context)
+WebGL_width :: proc "contextless" (gl: u64) -> u32 {
+	return _WebGL_width(gl)
 }
 
-WebGL_height :: proc "contextless" (context: u64) -> u32 {
-	return _WebGL_height(context)
+WebGL_height :: proc "contextless" (gl: u64) -> u32 {
+	return _WebGL_height(gl)
 }
 
 // What was drawn so far into the canvas's bitmap, now (toDataURL, drawImage).
-WebGL_snapshot :: proc "contextless" (context: u64) {
-	_WebGL_snapshot(context)
+WebGL_snapshot :: proc "contextless" (gl: u64) {
+	_WebGL_snapshot(gl)
 }
 
-WebGL_isLost :: proc "contextless" (context: u64) -> bool {
-	return _WebGL_isLost(context) != 0
+WebGL_isLost :: proc "contextless" (gl: u64) -> bool {
+	return _WebGL_isLost(gl) != 0
 }
 
-WebGL_lose :: proc "contextless" (context: u64) {
-	_WebGL_lose(context)
+WebGL_lose :: proc "contextless" (gl: u64) {
+	_WebGL_lose(gl)
 }
 
-WebGL_restore :: proc "contextless" (context: u64) -> bool {
-	return _WebGL_restore(context) != 0
+WebGL_restore :: proc "contextless" (gl: u64) -> bool {
+	return _WebGL_restore(gl) != 0
 }
 

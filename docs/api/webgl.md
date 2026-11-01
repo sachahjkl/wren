@@ -62,38 +62,38 @@ Host: `WebGL_createError :: proc(c: ^Call) -> string`
 ### `WebGL_submit`
 
 ```
-void WebGL_submit(u64 context, bytes commands, bytes data, bool drew)
+void WebGL_submit(u64 gl, bytes commands, bytes data, bool drew)
 ```
 
 Commands; `data` is the bytes of the last one. `drew`: the canvas changed.
 
-Host: `WebGL_submit :: proc(c: ^Call, context: u64, commands: []u8, data: []u8, drew: bool)`
+Host: `WebGL_submit :: proc(c: ^Call, gl: u64, commands: []u8, data: []u8, drew: bool)`
 
 ### `WebGL_query`
 
 ```
-f64 WebGL_query(u64 context, bytes request, out bytes reply)
+f64 WebGL_query(u64 gl, bytes request, out bytes reply)
 ```
 
 A question: waits for the answer (its bytes in `reply`). Its length, or the length it needs when it does not fit; -1: the
 context did not answer in time or is gone.
 
-Host: `WebGL_query :: proc(c: ^Call, context: u64, request: []u8, reply: []u8) -> f64`
+Host: `WebGL_query :: proc(c: ^Call, gl: u64, request: []u8, reply: []u8) -> f64`
 
 ### `WebGL_queryText`
 
 ```
-f64 WebGL_queryText(u64 context, bytes request, bytes text, out bytes reply)
+f64 WebGL_queryText(u64 gl, bytes request, bytes text, out bytes reply)
 ```
 
 As WebGL_query, with bytes after the request (a name).
 
-Host: `WebGL_queryText :: proc(c: ^Call, context: u64, request: []u8, text: []u8, reply: []u8) -> f64`
+Host: `WebGL_queryText :: proc(c: ^Call, gl: u64, request: []u8, text: []u8, reply: []u8) -> f64`
 
 ### `WebGL_upload`
 
 ```
-i32 WebGL_upload(u64 context, bytes command, u64 source) raises
+i32 WebGL_upload(u64 gl, bytes command, u64 source) raises
 ```
 
 texImage2D of an element or an ImageBitmap: the command with the source's pixels and size. Raises Security for what the
@@ -101,57 +101,57 @@ page may not read. 1: nothing to read yet (an image still loading), the page get
 
 Raises: returns an `Error` (see [web](web.md)).
 
-Host: `WebGL_upload :: proc(c: ^Call, context: u64, command: []u8, source: u64) -> (i32, Api_Error)`
+Host: `WebGL_upload :: proc(c: ^Call, gl: u64, command: []u8, source: u64) -> (i32, Api_Error)`
 
 ### `WebGL_width`
 
 ```
-u32 WebGL_width(u64 context)
+u32 WebGL_width(u64 gl)
 ```
 
 The drawing buffer's size.
 
-Host: `WebGL_width :: proc(c: ^Call, context: u64) -> u32`
+Host: `WebGL_width :: proc(c: ^Call, gl: u64) -> u32`
 
 ### `WebGL_height`
 
 ```
-u32 WebGL_height(u64 context)
+u32 WebGL_height(u64 gl)
 ```
 
-Host: `WebGL_height :: proc(c: ^Call, context: u64) -> u32`
+Host: `WebGL_height :: proc(c: ^Call, gl: u64) -> u32`
 
 ### `WebGL_snapshot`
 
 ```
-void WebGL_snapshot(u64 context)
+void WebGL_snapshot(u64 gl)
 ```
 
 What was drawn so far into the canvas's bitmap, now (toDataURL, drawImage).
 
-Host: `WebGL_snapshot :: proc(c: ^Call, context: u64)`
+Host: `WebGL_snapshot :: proc(c: ^Call, gl: u64)`
 
 ### `WebGL_isLost`
 
 ```
-bool WebGL_isLost(u64 context)
+bool WebGL_isLost(u64 gl)
 ```
 
-Host: `WebGL_isLost :: proc(c: ^Call, context: u64) -> bool`
+Host: `WebGL_isLost :: proc(c: ^Call, gl: u64) -> bool`
 
 ### `WebGL_lose`
 
 ```
-void WebGL_lose(u64 context)
+void WebGL_lose(u64 gl)
 ```
 
-Host: `WebGL_lose :: proc(c: ^Call, context: u64)`
+Host: `WebGL_lose :: proc(c: ^Call, gl: u64)`
 
 ### `WebGL_restore`
 
 ```
-bool WebGL_restore(u64 context)
+bool WebGL_restore(u64 gl)
 ```
 
-Host: `WebGL_restore :: proc(c: ^Call, context: u64) -> bool`
+Host: `WebGL_restore :: proc(c: ^Call, gl: u64) -> bool`
 

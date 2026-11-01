@@ -33710,7 +33710,7 @@ _t_webgl_WebGL_createError :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	return nil
 }
 
-// WebGL_submit :: proc(c: ^Call, context: u64, commands: []u8, data: []u8, drew: bool)
+// WebGL_submit :: proc(c: ^Call, gl: u64, commands: []u8, data: []u8, drew: bool)
 @(private = "file")
 _t_webgl_WebGL_submit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
@@ -33732,7 +33732,7 @@ _t_webgl_WebGL_submit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	return nil
 }
 
-// WebGL_query :: proc(c: ^Call, context: u64, request: []u8, reply: []u8) -> f64
+// WebGL_query :: proc(c: ^Call, gl: u64, request: []u8, reply: []u8) -> f64
 @(private = "file")
 _t_webgl_WebGL_query :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
@@ -33755,7 +33755,7 @@ _t_webgl_WebGL_query :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	return nil
 }
 
-// WebGL_queryText :: proc(c: ^Call, context: u64, request: []u8, text: []u8, reply: []u8) -> f64
+// WebGL_queryText :: proc(c: ^Call, gl: u64, request: []u8, text: []u8, reply: []u8) -> f64
 @(private = "file")
 _t_webgl_WebGL_queryText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
@@ -33782,7 +33782,7 @@ _t_webgl_WebGL_queryText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	return nil
 }
 
-// WebGL_upload :: proc(c: ^Call, context: u64, command: []u8, source: u64) -> (i32, Api_Error)
+// WebGL_upload :: proc(c: ^Call, gl: u64, command: []u8, source: u64) -> (i32, Api_Error)
 @(private = "file")
 _t_webgl_WebGL_upload :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
@@ -33808,7 +33808,7 @@ _t_webgl_WebGL_upload :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	return nil
 }
 
-// WebGL_width :: proc(c: ^Call, context: u64) -> u32
+// WebGL_width :: proc(c: ^Call, gl: u64) -> u32
 @(private = "file")
 _t_webgl_WebGL_width :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
@@ -33823,7 +33823,7 @@ _t_webgl_WebGL_width :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	return nil
 }
 
-// WebGL_height :: proc(c: ^Call, context: u64) -> u32
+// WebGL_height :: proc(c: ^Call, gl: u64) -> u32
 @(private = "file")
 _t_webgl_WebGL_height :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
@@ -33838,7 +33838,7 @@ _t_webgl_WebGL_height :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	return nil
 }
 
-// WebGL_snapshot :: proc(c: ^Call, context: u64)
+// WebGL_snapshot :: proc(c: ^Call, gl: u64)
 @(private = "file")
 _t_webgl_WebGL_snapshot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
@@ -33851,7 +33851,7 @@ _t_webgl_WebGL_snapshot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	return nil
 }
 
-// WebGL_isLost :: proc(c: ^Call, context: u64) -> bool
+// WebGL_isLost :: proc(c: ^Call, gl: u64) -> bool
 @(private = "file")
 _t_webgl_WebGL_isLost :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
@@ -33866,7 +33866,7 @@ _t_webgl_WebGL_isLost :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	return nil
 }
 
-// WebGL_lose :: proc(c: ^Call, context: u64)
+// WebGL_lose :: proc(c: ^Call, gl: u64)
 @(private = "file")
 _t_webgl_WebGL_lose :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
@@ -33879,7 +33879,7 @@ _t_webgl_WebGL_lose :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Ra
 	return nil
 }
 
-// WebGL_restore :: proc(c: ^Call, context: u64) -> bool
+// WebGL_restore :: proc(c: ^Call, gl: u64) -> bool
 @(private = "file")
 _t_webgl_WebGL_restore :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
