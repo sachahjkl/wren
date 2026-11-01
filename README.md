@@ -440,6 +440,10 @@ replace one. Known limits:
 
 - **JavaScript is interpreted** (a bytecode interpreter in Wasm, with a JIT for numeric loops only): far slower than Edge
   on script-heavy benchmarks, and a DOM call crosses the Wasm boundary. Pages that run a lot of script are slow.
+- **Each document has its own heap.** The DOM of a same-origin frame and its globals are reachable (`contentDocument`,
+  `parent.foo()`), through handles and a bridge of proxies, not one heap: a native function refuses another realm's typed
+  array or `Blob`, built-ins read from another window are the caller's, and a node moved between documents loses its shadow
+  tree and a form control's typed value ([details](docs/frames.md)).
 - **Part of the web platform is missing**: about 72 % of the members of the specifications' Web IDL are implemented
   ([`docs/js/coverage.md`](docs/js/coverage.md)). Among what pages notice: no WebGPU or WebRTC, no
   video or audio encoder in WebCodecs; Canvas 2D is software-drawn; `Intl` follows English conventions whatever the

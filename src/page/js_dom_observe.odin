@@ -128,7 +128,7 @@ mo_clear :: proc(p: ^Page, mo: ^Mutation_Observer) {
 @(private)
 mo_hook_update :: proc(p: ^Page) {
 	if p.doc == nil || p.jsdom == nil { return }
-	on := len(p.jsdom.observers.on_node) > 0 || len(p.jsdom.ce.defined) > 0
+	on := len(p.jsdom.observers.on_node) > 0 || len(p.jsdom.ce.defined) > 0 || len(p.jsdom.ce.moved_in) > 0
 	p.doc.observer = on ? page_mutation_hook : nil
 	p.doc.observer_user = on ? p : nil
 }
@@ -138,7 +138,7 @@ page_mutation_hook :: proc(user: rawptr, d: ^dom.Document, e: ^dom.Journal_Entry
 	p := (^Page)(user)
 	if p.closed || p.jsdom == nil { return }
 	if len(p.jsdom.observers.on_node) > 0 { mutation_hook(user, d, e) }
-	if len(p.jsdom.ce.defined) > 0 { ce_mutation(p, d, e) }
+	if len(p.jsdom.ce.defined) > 0 || len(p.jsdom.ce.moved_in) > 0 { ce_mutation(p, d, e) }
 }
 
 @(private)

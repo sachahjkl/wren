@@ -147,8 +147,35 @@
     return undefined;
   };
 
+  // An exception of a built-in type crosses as its kind: built-ins read from another window are the reader's own, and a test of
+  // `e instanceof otherWindow.TypeError` or a DOMException's name has to hold. Any other value thrown crosses as a value.
+  const errorTypes = [Error, TypeError, RangeError, SyntaxError, ReferenceError, EvalError, URIError];
+  const errorNames = ["Error", "TypeError", "RangeError", "SyntaxError", "ReferenceError", "EvalError", "URIError"];
+  const describeError = e => {
+    if (typeof e !== "object" || e === null) return undefined;
+    const proto = rGetProto(e);
+    if (proto === rGet(rGet(global, "DOMException"), "prototype")) return ["DOMException", e.message, e.name];
+    for (let i = 0; i < errorTypes.length; i++) {
+      if (proto === errorTypes[i].prototype) return [errorNames[i], e.message, e.stack];
+    }
+    return undefined;
+  };
+  const makeError = d => {
+    if (d[0] === "DOMException") return rConstruct(rGet(global, "DOMException"), [d[1], d[2]]);
+    for (let i = 0; i < errorTypes.length; i++) {
+      if (errorNames[i] === d[0]) {
+        const e = new errorTypes[i](d[1]);
+        if (d[2] !== undefined) rDefine(e, "stack", { __proto__: null, value: d[2], writable: true, configurable: true });
+        return e;
+      }
+    }
+    return undefined;
+  };
+
   return {
     __proto__: null,
+    describeError,
+    makeError,
     dispatch,
     importRef,
     exportRef,

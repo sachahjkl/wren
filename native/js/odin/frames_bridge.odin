@@ -30,10 +30,10 @@ import "../odin/wj"
 @(private = "file") OP_CONSTRUCT :: 11
 @(private = "file") GLOBAL_NUMBER :: 0
 
-@(private = "file") Tag :: enum u8 { Undefined, Null, False, True, Number, String, Bigint, Node, Window, Object, Symbol, List }
+@(private = "file") Tag :: enum u8 { Undefined, Null, False, True, Number, String, Bigint, Node, Window, Object, Symbol, List, Error }
 
 @(private = "file") bridge: wj.JSValue   // what web_bridge.js returned (in the image: counted for good)
-@(private = "file") dispatch_fn, import_ref_fn, export_ref_fn, symbol_name_fn, symbol_of_fn, bigint_fn: wj.JSValue
+@(private = "file") dispatch_fn, import_ref_fn, export_ref_fn, symbol_name_fn, symbol_of_fn, bigint_fn, describe_error_fn, make_error_fn: wj.JSValue
 @(private = "file") self_realm: f64      // this realm's number (its document's), once asked
 
 @(private = "file")
@@ -175,6 +175,11 @@ take_value :: proc "contextless" (ctx: ^wj.Context, r: ^Reader) -> wj.JSValue {
 		kind := read_le(r, 1)
 		args := [4]wj.JSValue{wj.new_float64(ctx, realm_self()), wj.new_float64(ctx, f64(realm)), wj.new_float64(ctx, f64(number)), wj.new_float64(ctx, f64(kind))}
 		return wj.JS_Call(ctx, import_ref_fn, wj.UNDEFINED, 4, &args[0])
+	case .Error:
+		list := take_value(ctx, r)
+		defer wj.JS_FreeValue(ctx, list)
+		arg := list
+		return wj.is_exception(list) ? list : wj.JS_Call(ctx, make_error_fn, wj.UNDEFINED, 1, &arg)
 	case .List:
 		n := read_le(r, 4)
 		arr := wj.JS_NewArray(ctx)
@@ -250,7 +255,14 @@ wj_bridge_dispatch :: proc "c" (data, data_len: u32) -> u32 {
 	pack_le(&reply, 0, 4)
 	pack_u8(&reply, thrown ? 1 : 0)
 	lists := op == OP_KEYS || op == OP_GOPD
-	ok := lists && wj.is_object(v) ? put_list(ctx, &reply, v) : put_value(ctx, &reply, v)
+	ok: bool
+	described := thrown ? wj.JS_Call(ctx, describe_error_fn, wj.UNDEFINED, 1, &v) : wj.UNDEFINED
+	defer wj.JS_FreeValue(ctx, described)
+	if wj.is_object(described) {
+		ok = pack_u8(&reply, u8(Tag.Error)) && put_list(ctx, &reply, described)
+	} else {
+		ok = lists && wj.is_object(v) ? put_list(ctx, &reply, v) : put_value(ctx, &reply, v)
+	}
 	if !ok {
 		wj.JS_FreeValue(ctx, wj.JS_GetException(ctx))   // what cannot be carried answers undefined
 		reply.n = 5
@@ -292,6 +304,27 @@ frames_bridge_define :: proc "contextless" (ctx: ^wj.Context, realm: u64, key, d
 	return frames_bridge_send(ctx, realm, OP_DEFINE, GLOBAL_NUMBER, key, desc, list_b = true)
 }
 
+// document.<method>() of a document of another realm, run in that realm: what comes back is its object (a Range its Selection takes).
+frames_bridge_document_call :: proc "contextless" (ctx: ^wj.Context, this_val: wj.JSValue, doc: u64, method: cstring) -> wj.JSValue {
+	context = jsb.glue_context()
+	id: api_decl.Navigable
+	jsb.host(&id, api_decl.Frame_ofDocument, wj.wr_Frame_ofDocument, api_decl.Node(doc))
+	realm := id != 0 ? frames_bridge_realm(id) : 0
+	if realm == 0 { return wj.wj_throw_gone(ctx) }
+	key := wj.new_string(ctx, "Document")
+	defer wj.JS_FreeValue(ctx, key)
+	ctor := frames_bridge_get(ctx, realm, key)
+	if wj.is_exception(ctor) { return ctor }
+	defer wj.JS_FreeValue(ctx, ctor)
+	proto := wj.JS_GetPropertyStr(ctx, ctor, "prototype")
+	if wj.is_exception(proto) { return proto }
+	defer wj.JS_FreeValue(ctx, proto)
+	fn := wj.JS_GetPropertyStr(ctx, proto, method)
+	if wj.is_exception(fn) { return fn }
+	defer wj.JS_FreeValue(ctx, fn)
+	return wj.JS_Call(ctx, fn, this_val, 0, nil)
+}
+
 // At pre-initialization: the bridge's JavaScript, so that it holds this realm's pristine built-ins.
 frames_bridge_install :: proc "contextless" (ctx: ^wj.Context) {
 	fn := eval_prelude(ctx, "web_bridge.js", #load("web_bridge.js"))
@@ -310,4 +343,6 @@ frames_bridge_install :: proc "contextless" (ctx: ^wj.Context) {
 	symbol_name_fn = wj.JS_GetPropertyStr(ctx, bridge, "symbolName")
 	symbol_of_fn = wj.JS_GetPropertyStr(ctx, bridge, "symbolOf")
 	bigint_fn = wj.JS_GetPropertyStr(ctx, bridge, "bigint")
+	describe_error_fn = wj.JS_GetPropertyStr(ctx, bridge, "describeError")
+	make_error_fn = wj.JS_GetPropertyStr(ctx, bridge, "makeError")
 }

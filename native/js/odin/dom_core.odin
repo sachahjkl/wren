@@ -213,7 +213,6 @@ wjr_Node_get_childNodes :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> 
 
 // A node given to an insertion into a node of another document moves there first (DOM "adopt"): `node` is then its new handle,
 // and its wrapper here has followed.
-@(private = "file")
 adopt_for :: proc(ctx: ^wj.Context, into: u64, node: ^u64) -> bool {
 	if wj.wj_same_doc(into, node^) { return true }
 	pairs: abi.Bytes
@@ -222,11 +221,21 @@ adopt_for :: proc(ctx: ^wj.Context, into: u64, node: ^u64) -> bool {
 	list := ([]u8)(pairs)
 	if len(list) < 16 { wj.wj_throw_dom(ctx, "HierarchyRequestError", "The node cannot be moved to this document."); return false }
 	first := (^u64)(&list[8])^
-	for i := 0; i + 16 <= len(list); i += 16 {
-		wj.wj_node_rekey((^u64)(&list[i])^, (^u64)(&list[i + 8])^)
-	}
+	// (the host calls below may overwrite the scratch buffer the list is in)
+	copied := make([]u8, len(list), wj.libc_allocator())
+	if copied == nil { wj.JS_ThrowOutOfMemory(ctx); return false }
+	defer delete(copied, wj.libc_allocator())
+	copy(copied, list)
+	for i := 0; i + 16 <= len(copied); i += 16 { wj.wj_node_rekey((^u64)(&copied[i])^, (^u64)(&copied[i + 8])^) }
+	for i := 0; i + 16 <= len(copied); i += 16 { wj.wj_node_rekey_pins((^u64)(&copied[i])^, (^u64)(&copied[i + 8])^) }
 	node^ = first
 	return true
+}
+
+// A reference child of another document is not a child of this node.
+@(private = "file")
+not_a_child :: proc "contextless" (ctx: ^wj.Context) -> wj.JSValue {
+	return wj.wj_throw_dom(ctx, "NotFoundError", "The node is not a child of this node.")
 }
 
 @(private = "file")
@@ -253,6 +262,7 @@ mutate :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]
 		if argc < 2 { return wj.wj_throw_arity(ctx, "Node.insertBefore", 2, argc) }
 		if !wj.dom_node_arg(ctx, argv[0], &node, false, "insertBefore") { return wj.EXCEPTION }
 		if !wj.dom_node_arg(ctx, argv[1], &child, true, "insertBefore") { return wj.EXCEPTION }
+		if child != 0 && !wj.wj_same_doc(u64(parent), child) { return not_a_child(ctx) }
 		if !adopt_for(ctx, u64(parent), &node) { return wj.EXCEPTION }
 		st = jsb.host(&nothing, api_decl.Node_preInsert, wj.wr_Node_preInsert, parent, api_decl.Node(node), api_decl.Node(child))
 		if st != .None { return wj.wj_throw_status(ctx, i32(st), "Node.insertBefore") }
@@ -260,6 +270,7 @@ mutate :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]
 		if argc < 2 { return wj.wj_throw_arity(ctx, "Node.replaceChild", 2, argc) }
 		if !wj.dom_node_arg(ctx, argv[0], &node, false, "replaceChild") { return wj.EXCEPTION }
 		if !wj.dom_node_arg(ctx, argv[1], &child, false, "replaceChild") { return wj.EXCEPTION }
+		if !wj.wj_same_doc(u64(parent), child) { return not_a_child(ctx) }
 		if !adopt_for(ctx, u64(parent), &node) { return wj.EXCEPTION }
 		st = jsb.host(&nothing, api_decl.Node_replaceChildChecked, wj.wr_Node_replaceChildChecked, parent, api_decl.Node(node), api_decl.Node(child))
 		if st != .None { return wj.wj_throw_status(ctx, i32(st), "Node.replaceChild") }
@@ -267,6 +278,7 @@ mutate :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]
 	case .Remove:
 		if argc < 1 { return wj.wj_throw_arity(ctx, "Node.removeChild", 1, argc) }
 		if !wj.dom_node_arg(ctx, argv[0], &child, false, "removeChild") { return wj.EXCEPTION }
+		if !wj.wj_same_doc(u64(parent), child) { return not_a_child(ctx) }
 		st = jsb.host(&nothing, api_decl.Node_preRemove, wj.wr_Node_preRemove, parent, api_decl.Node(child))
 		if st != .None { return wj.wj_throw_status(ctx, i32(st), "Node.removeChild") }
 	}

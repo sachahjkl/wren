@@ -22,6 +22,7 @@ Getting started
 Architecture
   architecture.md     How Wren fits together
   shared-memory.md    SharedArrayBuffer between realms
+  frames.md           The DOM of a same-origin frame
   crash-recovery.md   Crash recovery
   crash-reports.md    Crash reports and symbols
 

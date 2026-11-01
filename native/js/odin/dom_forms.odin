@@ -179,7 +179,7 @@ wjr_HTMLOptionsCollection_set_length :: proc "c" (ctx: ^wj.Context, this_val: wj
 	for cur := wj.wr_Collection_length(d.coll); cur > n; cur -= 1 { wj.wr_ChildNode_remove(wj.wr_Collection_item(d.coll, cur - 1)) }
 	for cur := wj.wr_Collection_length(d.coll); cur < n; cur += 1 {
 		opt := u64(0)
-		if wj.wr_Document_createElementChecked(wj.raw_bytes("option"), 6, &opt) < 0 { break }
+		if !wj.wj_doc_target(d.node) || wj.wr_Document_createElementChecked(wj.raw_bytes("option"), 6, &opt) < 0 { break }
 		wj.wr_Node_preInsert(d.node, opt, 0)
 	}
 	return wj.UNDEFINED

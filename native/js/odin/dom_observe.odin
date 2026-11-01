@@ -71,9 +71,28 @@ handle_of :: #force_inline proc "contextless" (v: wj.JSValue) -> Node { return N
 @(private = "file")
 Observer :: struct {
 	host:     api_decl.MutationObserver,
+	others:   [OBSERVED_DOCUMENTS_MAX]api_decl.MutationObserver,   // its browser objects in other documents it observes (0: none)
 	callback: wj.JSValue,   // counted
 	self:     wj.JSValue,   // not counted
 	slot:     i32,
+}
+
+// How many other documents one MutationObserver follows (a browser object per document: it lives with that document's nodes).
+@(private = "file") OBSERVED_DOCUMENTS_MAX :: 8
+
+// The browser's observer for nodes of the document of `target`.
+@(private = "file")
+observer_host_for :: proc(ctx: ^wj.Context, m: ^Observer, target: u64) -> (host: api_decl.MutationObserver, ok: bool) {
+	if wj.wj_same_doc(u64(m.host), target) { return m.host, true }
+	for h in m.others { if h != 0 && wj.wj_same_doc(u64(h), target) { return h, true } }
+	for &h in m.others {
+		if h != 0 { continue }
+		if !wj.wj_doc_target(target) { wj.wj_throw_gone(ctx); return 0, false }
+		jsb.host(&h, api_decl.MutationObserver_create, wj.wr_MutationObserver_create, wj.table_index(rawptr(wj_cb_mutation)), m.slot)
+		return h, true
+	}
+	wj.wj_throw_dom(ctx, "NotSupportedError", "This MutationObserver follows too many documents.")
+	return 0, false
 }
 
 // The observers by slot (the notification's `user`; slot 0 is none), not counted.
@@ -118,6 +137,7 @@ observer_free :: proc "c" (p: rawptr) {
 	rt := wj.JS_GetRuntime(wj.realm_ctx())
 	if m.slot > 0 && int(m.slot) < len(observers) { observers[m.slot] = wj.UNDEFINED }
 	if m.host != 0 { jsb.host(&none, api_decl.Object_release, wj.wr_Object_release, abi.Handle(m.host)) }
+	for h in m.others { if h != 0 { jsb.host(&none, api_decl.Object_release, wj.wr_Object_release, abi.Handle(h)) } }
 	wj.JS_FreeValueRT(rt, m.callback)
 	wj.libc_free(m)
 }
@@ -211,7 +231,9 @@ wjr_MutationObserver_observe :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue
 	if .Character_Data_Old_Value in options && cdata_given && .Character_Data not_in options {
 		return wj.JS_ThrowTypeError(ctx, "The options object may only set 'characterDataOldValue' when 'characterData' is true or not present.")
 	}
-	if st := jsb.host(&none, api_decl.MutationObserver_observe, wj.wr_MutationObserver_observe, m.host, Node(target), transmute(u32)options, abi.Bytes(names[:])); st != .None {
+	host, have := observer_host_for(ctx, m, target)
+	if !have { return wj.EXCEPTION }
+	if st := jsb.host(&none, api_decl.MutationObserver_observe, wj.wr_MutationObserver_observe, host, Node(target), transmute(u32)options, abi.Bytes(names[:])); st != .None {
 		return wj.wj_throw_status(ctx, i32(st), "MutationObserver.observe")
 	}
 	return observer_attach(ctx, argv[0], this_val) ? wj.UNDEFINED : wj.EXCEPTION
@@ -223,6 +245,7 @@ wjr_MutationObserver_disconnect :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVa
 	m := observer_of(ctx, this_val)
 	if m == nil { return wj.EXCEPTION }
 	jsb.host(&none, api_decl.MutationObserver_disconnect, wj.wr_MutationObserver_disconnect, m.host)
+	for h in m.others { if h != 0 { jsb.host(&none, api_decl.MutationObserver_disconnect, wj.wr_MutationObserver_disconnect, h) } }
 	return wj.UNDEFINED
 }
 
@@ -263,18 +286,30 @@ reader_u64 :: proc "contextless" (r: ^Reader) -> u64 {
 // nodes, name length u32 and name, old-value flag u8, old-value length u32 and old value.
 @(private = "file")
 take_records :: proc(ctx: ^wj.Context, m: ^Observer) -> wj.JSValue {
-	defer jsb.host(&none, api_decl.MutationObserver_release, wj.wr_MutationObserver_release, m.host)
-	packed: abi.Bytes
-	jsb.host(&packed, api_decl.MutationObserver_takeRecords, wj.wr_MutationObserver_takeRecords, m.host)
 	arr := wj.JS_NewArray(ctx)
-	if len(packed) == 0 { return arr }
+	k: u32
+	if !take_records_of(ctx, m.host, arr, &k) { wj.JS_FreeValue(ctx, arr); return wj.JS_ThrowOutOfMemory(ctx) }
+	for h in m.others {
+		if h != 0 && !take_records_of(ctx, h, arr, &k) { wj.JS_FreeValue(ctx, arr); return wj.JS_ThrowOutOfMemory(ctx) }
+	}
+	return arr
+}
+
+// The records of one of its browser objects, added to `arr`; false when out of memory.
+@(private = "file")
+take_records_of :: proc(ctx: ^wj.Context, host: api_decl.MutationObserver, arr: wj.JSValue, count: ^u32) -> bool {
+	defer jsb.host(&none, api_decl.MutationObserver_release, wj.wr_MutationObserver_release, host)
+	packed: abi.Bytes
+	jsb.host(&packed, api_decl.MutationObserver_takeRecords, wj.wr_MutationObserver_takeRecords, host)
+	if len(packed) == 0 { return true }
 	data := make([]u8, len(packed), wj.libc_allocator())   // the scratch buffer is reused by every host call below
-	if data == nil { wj.JS_FreeValue(ctx, arr); return wj.JS_ThrowOutOfMemory(ctx) }
+	if data == nil { return false }
 	defer delete(data, wj.libc_allocator())
 	copy(data, ([]u8)(packed))
 	TYPES := [3]cstring{"attributes", "characterData", "childList"}
 	r := Reader{data = data}
-	k: u32
+	k := count^
+	defer count^ = k
 	for r.at + 33 <= len(data) {
 		kind := reader_take(&r, 1)[0]
 		target, prev, next := reader_u64(&r), reader_u64(&r), reader_u64(&r)
@@ -309,7 +344,7 @@ take_records :: proc(ctx: ^wj.Context, m: ^Observer) -> wj.JSValue {
 		wj.array_set(ctx, arr, k, rec)
 		k += 1
 	}
-	return arr
+	return true
 }
 
 // A static NodeList of `count` of the handles at hs[first:] (an empty one when the handles could not be read).
@@ -771,7 +806,10 @@ wjr_Range_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, arg
 
 @(export, link_name = "wjr_Document_createRange")
 wjr_Document_createRange :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
-	if wj.wj_this(ctx, this_val, ifc("Document")) == nil { return wj.EXCEPTION }
+	o := wj.wj_this(ctx, this_val, ifc("Document"))
+	if o == nil { return wj.EXCEPTION }
+	// of another document: that realm's Range, which its Selection takes
+	if wj.wj_is_foreign(o.handle) { return frames_bridge_document_call(ctx, this_val, o.handle, "createRange") }
 	return range_make(ctx, wj.UNDEFINED, wj.JS_DupValue(ctx, this_val), 0, wj.JS_DupValue(ctx, this_val), 0, ifc("Range"))
 }
 
@@ -1130,7 +1168,9 @@ range_insert :: proc(ctx: ^wj.Context, d: ^wj.Dom_Impl, node_v: wj.JSValue) -> w
 	add := node_type(node) == 11 ? node_length(node) : 1
 	if parent_of(node) != 0 { jsb.host(&none, api_decl.ChildNode_remove, wj.wr_ChildNode_remove, node) }
 	new_off := ref != 0 ? index_in_parent(ref) : node_length(parent)
-	if st := jsb.host(&none, api_decl.Node_preInsert, wj.wr_Node_preInsert, parent, node, ref); st != .None {
+	adopted := u64(node)
+	if !adopt_for(ctx, u64(parent), &adopted) { return wj.EXCEPTION }
+	if st := jsb.host(&none, api_decl.Node_preInsert, wj.wr_Node_preInsert, parent, Node(adopted), ref); st != .None {
 		return wj.wj_throw_status(ctx, i32(st), "Range.insertNode")
 	}
 	if collapsed {
@@ -1163,6 +1203,7 @@ wjr_Range_surroundContents :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i
 	}
 	frag := range_contents(ctx, t, .Extract)
 	if wj.is_exception(frag) { return frag }
+	if !adopt_for(ctx, u64(rs(d)), &np) { wj.JS_FreeValue(ctx, frag); return wj.EXCEPTION }
 	jsb.host(&none, api_decl.Node_set_textContent, wj.wr_Node_set_textContent, Node(np), "")
 	st := jsb.host(&none, api_decl.Node_preInsert, wj.wr_Node_preInsert, Node(np), handle_of(frag), Node(0))
 	wj.JS_FreeValue(ctx, frag)
@@ -1261,7 +1302,10 @@ selection_object :: proc "contextless" (ctx: ^wj.Context) -> wj.JSValue {
 wjr_Window_getSelection :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue { return selection_object(ctx) }
 @(export, link_name = "wjr_Document_getSelection")
 wjr_Document_getSelection :: proc "c" (ctx: ^wj.Context, t: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
-	return wj.wj_this(ctx, t, ifc("Document")) != nil ? selection_object(ctx) : wj.EXCEPTION
+	o := wj.wj_this(ctx, t, ifc("Document"))
+	if o == nil { return wj.EXCEPTION }
+	if wj.wj_is_foreign(o.handle) { return frames_bridge_document_call(ctx, t, o.handle, "getSelection") }
+	return selection_object(ctx)
 }
 
 // The browser's selection state (kind 0 none, 1 caret, 2 range), for `this` a Selection.
