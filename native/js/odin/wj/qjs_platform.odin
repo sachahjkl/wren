@@ -784,6 +784,19 @@ wj_wrap_host :: proc "c" (ctx: ^Context, handle: u64, iface_in: i32) -> JSValue 
 	return obj
 }
 
+// A strong reference to the wrapper of a host object, for as long as the browser holds the object whatever the script
+// keeps (a MediaSource: its object URL, the element it is attached to): the token for wj_host_unpin, 0 when it has no
+// wrapper. (The browser's side of web_pin, which goes with the engine's objects.)
+@(export, link_name = "wj_host_pin")
+wj_host_pin :: proc "c" (handle_lo, handle_hi: u32) -> u32 {
+	v := map_get(&hosts, u64(handle_hi) << 32 | u64(handle_lo))
+	return is_undefined(v) ? 0 : web_pin(realm_ctx(), v)
+}
+
+// (from a task of its own: what is being dispatched on the object still runs)
+@(export, link_name = "wj_host_unpin")
+wj_host_unpin :: proc "c" (token: u32) { web_unpin_later(realm_ctx(), token) }
+
 // The prototype a constructor called with `new_target` makes its object with (undefined: the interface's own).
 @(private = "file")
 proto_of_target :: proc "contextless" (ctx: ^Context, new_target: JSValue) -> JSValue {

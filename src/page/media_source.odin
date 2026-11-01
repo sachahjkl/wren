@@ -12,10 +12,13 @@ package page
 // HAVE_METADATA once every source buffer has had one; end of stream; the coded frame removal and eviction when a
 // buffer is full. Limits are preferences: media.mse.*.
 //
-// Lifetime: the script engine releases a MediaSource with its wrapper, but a source that is attached keeps playing
-// (specification: the media element holds it). Its data then outlives the object handle ("orphan") and goes with the
-// element's detach. SourceBuffers are released with their MediaSource; one that was removed keeps a husk (its parser and
-// stores are gone) so that a script still holding it gets InvalidStateError.
+// Lifetime: the blob URL store and the media element hold a MediaSource (File API, MSE), so the wrapper with the script's
+// listeners lives while its object URL is not revoked, while an element's src names it and while it is attached, whether
+// the script keeps a reference or not (ms_keep_sync); else a collection before the load's task lost "sourceopen". The
+// script engine releases a MediaSource with its wrapper after that. A source attached when its realm is going keeps playing:
+// its data then outlives the object handle ("orphan") and goes with the element's detach. SourceBuffers are released with
+// their MediaSource; one that was removed keeps a husk (its parser and stores are gone) so that a script still holding it
+// gets InvalidStateError.
 
 import "core:fmt"
 import "core:math"
@@ -24,6 +27,7 @@ import "core:strings"
 import "wb:base"
 import "wb:dom"
 import "wb:media"
+import "wb:wasm"
 
 MS_State :: enum u8 { Closed, Open, Ended }
 Append_Mode :: enum u8 { Segments, Sequence }
@@ -43,6 +47,8 @@ Media_Source_Object :: struct {
 	live:      [2]f64,
 	has_live:  bool,
 	orphan:    bool,               // its handle was released while attached: freed when the element lets go
+	named:     int,                // media elements whose src attribute names it (Media_Element.blob_ms)
+	pin:       u32,                // the realm's strong reference to its wrapper (ms_keep_sync), 0: none
 	// a dedicated worker's MediaSource (mse_worker.odin): the worker's object mirrors the one the element plays in
 	// the page (`remote_ui`); both are tied by the channel
 	remote:    ^Mse_Channel,
@@ -227,7 +233,43 @@ MediaSource_registerObjectURL :: proc(c: ^Call, source: Api_MediaSource, url: st
 	if ms.url != "" { delete_key(&pm.urls, ms.url); delete(ms.url) }
 	ms.url = strings.clone(url)
 	pm.urls[ms.url] = ms.self
+	ms_keep_sync(ms)
 	return .None
+}
+
+// Whether the realm must hold the wrapper of `ms` follows what holds it in the browser: the URL store, an element's src,
+// the attachment. (The realm's own JavaScript only: a MediaSource of a Wasm module has no wrapper to hold.)
+@(private)
+ms_keep_sync :: proc(ms: ^Media_Source_Object) {
+	p := ms.page
+	if p.closed || ms.self == 0 || ms.remote_ui { return }   // (the page's side of a worker's has no script and no wrapper)
+	r := p.js
+	if r == nil || r.failed || r.inst == nil || r.inst.dead || ms.owner != r.inst.index { return }
+	wanted := ms.url != "" || ms.named > 0 || ms.el_node != base.NIL_HANDLE
+	if wanted == (ms.pin != 0) { return }
+	p.objects.depth += 1
+	defer p.objects.depth -= 1
+	res: wasm.Call_Result
+	if wanted {
+		argv := [2]u32{u32(ms.self), u32(ms.self >> 32)}
+		res = wasm.call_raw(r.inst, "wj_host_pin", argv[:], 1)
+		if res == .Ok { ms.pin = argv[0] }
+	} else {
+		argv := [1]u32{ms.pin}
+		ms.pin = 0
+		res = wasm.call_raw(r.inst, "wj_host_unpin", argv[:])
+	}
+	if res != .Ok { guest_failed(p, r.inst) }
+}
+
+// An element's src attribute starts (+1) or stops (-1) naming the MediaSource `h`, which may be gone by then.
+@(private)
+ms_named_change :: proc(p: ^Page, h: u64, delta: int) {
+	if h == 0 { return }
+	if ms := (^Media_Source_Object)(object_data(p, h, &media_source_vt)); ms != nil {
+		ms.named += delta
+		ms_keep_sync(ms)
+	}
 }
 
 MediaSource_revokeObjectURL :: proc(c: ^Call, url: string) {
@@ -240,6 +282,7 @@ MediaSource_revokeObjectURL :: proc(c: ^Call, url: string) {
 		delete_key(&pm.urls, ms.url)
 		delete(ms.url)
 		ms.url = ""
+		ms_keep_sync(ms)
 	}
 }
 
@@ -542,6 +585,7 @@ ms_attach :: proc(el: ^Media_Element, ms: ^Media_Source_Object) {
 	ms.el_node, ms.el_serial = el.node, el.serial
 	ms.state = .Open
 	el.network_state = NETWORK_LOADING
+	ms_keep_sync(ms)
 	mse_fire(p, ms.self, "sourceopen")
 }
 
@@ -570,7 +614,8 @@ media_source_detach :: proc(el: ^Media_Element) {
 		if !el.page.closed { object_release(el.page, ms.self) }
 		return
 	}
-	if ms.orphan { ms_free(ms, !el.page.closed) }
+	if ms.orphan { ms_free(ms, !el.page.closed); return }
+	ms_keep_sync(ms)
 }
 
 @(private)

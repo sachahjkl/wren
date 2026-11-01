@@ -310,6 +310,49 @@ p2.disconnect();
 		check(warned, "an unsupported entry type is ignored with a warning")
 		page.page_close(p)
 	}
+	fmt.println("-- a MediaSource nothing in the script holds: its URL and the element do")
+	{
+		p := load(process, `<!doctype html><body><script>console.log("loaded")</script></body>`)
+		logs_clear()
+		page.js_run(p, transmute([]byte)string(`
+globalThis.weak = [];
+globalThis.elements = [];
+globalThis.urls = [];
+const source = (revoke, what) => {
+	const v = document.createElement("video");
+	document.body.appendChild(v);
+	const ms = new MediaSource();
+	weak.push(new WeakRef(ms));
+	elements.push(v);
+	ms.addEventListener("sourceopen", () => console.log("sourceopen " + what));
+	ms.addEventListener("sourceclose", () => console.log("sourceclose " + what));
+	const u = URL.createObjectURL(ms);
+	v.src = u;
+	if (revoke) URL.revokeObjectURL(u); else urls.push(u);
+};
+source(true, "element");
+source(false, "url");
+source(false, "kept");
+`), "mediasource.js")
+		js.collect(p.js.inst)   // (before the load's tasks: what used to lose the event)
+		settle()
+		check(logged("sourceopen url"), "a MediaSource held by its object URL gets sourceopen after a collection")
+		check(logged("sourceopen element"), "and one whose revoked URL is still named by the src attribute")
+		js.collect(p.js.inst)
+		logs_clear()
+		page.js_run(p, transmute([]byte)string(`URL.revokeObjectURL(urls[0]); for (const v of elements.slice(0, 2)) { v.removeAttribute("src"); v.load(); }`), "mediasource.js")
+		settle()
+		check(logged("sourceclose url") && logged("sourceclose element"), "attached, it stays alive until the element lets go: sourceclose")
+		// (the engine lets go of the last event dispatched, and of its target, at the next one)
+		page.js_run(p, transmute([]byte)string(`{ const t = document.createElement("div"); t.addEventListener("x", () => {}); t.dispatchEvent(new Event("x")); }`), "mediasource.js")
+		settle()
+		js.collect(p.js.inst)
+		settle()
+		logs_clear()
+		page.js_run(p, transmute([]byte)string(`console.log("released " + weak.slice(0, 2).every((w) => w.deref() === undefined) + " " + (weak[2].deref() !== undefined))`), "mediasource.js")
+		check(logged("released true true"), "and then nothing holds it: its wrapper is collected (the one still attached stays)")
+		page.page_close(p)
+	}
 	fmt.println("-- hostile scripts: the page survives, the browser stays responsive")
 	{
 		saved := settings
