@@ -7,6 +7,8 @@ const RATE = 48000;
 const ANSWER_WAIT_MS = 10000;   // how long a loaded machine may take to run the blocks a test waits for
 const CLOCK_RUNS_SECONDS = 0.1;   // how far a running context's clock has to go
 const CLOCK_LOOK_MS = 10;         // how often it is looked at
+// What a test waits for from the render thread, which owes it no time: what never comes is the test that never ends (the section says so).
+const until = async cond => { while (!cond()) await sleep(CLOCK_LOOK_MS); };
 
 test("the interfaces", () => {
   for (const name of ["AudioContext", "OfflineAudioContext", "BaseAudioContext", "AudioNode", "AudioParam", "AudioBuffer", "GainNode", "OscillatorNode",
@@ -154,7 +156,7 @@ test("a buffer: what start() acquires, loops, ended", async () => {
   const d = r.getChannelData(0);
   eq(d[50], 0.25, "the content when it started");
   eq(d[200], 0, "over after its length");
-  await sleep(50);
+  await until(() => ended);
   ok(ended, "ended fired");
   throws(() => { s.buffer = b; }, "InvalidStateError", "only one buffer");
 });
@@ -279,7 +281,7 @@ test("a running AudioContext, heard by an analyser", async () => {
   o.start();
   const t0 = c.currentTime;
   // (a clock that stands still is this test never ending; a fixed 300 ms was a statement about the machine: the render thread had not begun)
-  while (c.currentTime <= t0 + CLOCK_RUNS_SECONDS) await sleep(CLOCK_LOOK_MS);
+  await until(() => c.currentTime > t0 + CLOCK_RUNS_SECONDS);
   const t1 = c.currentTime;
   ok(t1 > t0 + CLOCK_RUNS_SECONDS, "the clock runs: " + t0 + " -> " + t1);
   const freq = new Float32Array(a.frequencyBinCount);
@@ -304,11 +306,11 @@ test("a running AudioContext, heard by an analyser", async () => {
   let ended = false;
   o.onended = () => { ended = true; };
   o.stop();
-  await sleep(100);
+  await until(() => ended);
   ok(ended, "ended after stop");
   await c.close();
   eq(c.state, "closed", "close");
-  await sleep(10);
+  await until(() => seen.join().endsWith("closed"));
   ok(seen.join().endsWith("closed"), "statechange " + seen.join());
   await rejects(c.resume(), "InvalidStateError", "closed");
   await rejects(c.close(), "InvalidStateError", "closed twice");
@@ -329,7 +331,7 @@ test("ScriptProcessorNode", async () => {
   };
   k.connect(sp).connect(a).connect(c.destination);
   k.start();
-  await sleep(200);
+  await until(() => blocks > 2);
   ok(blocks > 2, "blocks: " + blocks);
   eq(size, 256, "block size");
   eq(seen, 1, "the input");
@@ -521,7 +523,7 @@ test("AudioWorklet: a process() that never returns is silence, then processorerr
   const e = await new Promise(r => { n.onprocessorerror = r; });
   ok(e instanceof ErrorEvent, "an ErrorEvent");
   const t = c.currentTime;
-  await sleep(100);
+  await until(() => c.currentTime > t);
   ok(c.currentTime > t, "the render thread goes on");
   await c.close();
 });
