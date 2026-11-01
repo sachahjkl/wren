@@ -318,6 +318,13 @@ pre_run :: proc(c: ^Ctx, walk: proc(c: ^Ctx)) {
 	l := c.l
 	l.pre_counts = {}
 	defer c.pre_boxes, c.plain = nil, nil   // found for this block layout only
+	if l.frames_on {
+		// content widths do not follow from the viewport's down the tree, the boxes change coordinates: no threads
+		frames_to_logical(c)
+		walk(c)
+		frames_to_physical(c)
+		return
+	}
 	pool, pre := pre_layout(c)
 	if pre == nil { walk(c); return }
 	defer par_release()

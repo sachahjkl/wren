@@ -187,9 +187,21 @@ Element_boundingRect :: proc(c: ^Call, element: Api_Element) -> Api_DomRect {
 }
 
 Element_clientRectsPacked :: proc(c: ^Call, element: Api_Element) -> []u8 {
-	g, _, _ := element_geometry(c.page, H(element.handle))
+	g, l, vp := element_geometry(c.page, H(element.handle))
 	if !g.ok { return nil }
-	return pack_rects({g.client})
+	// transformed: the bounds of the box, drawn where it is (no fragment is told apart)
+	s := f32(vp.scale)
+	view := lay.view_make(l, {f32(vp.width) * s, f32(vp.height) * s}, f32(vp.scroll_y) * s, cull = false)
+	bi := lay.box_index(l, H(element.handle))
+	if bi == lay.NONE || !lay.space_plain(l, l.boxes[bi].space) { return pack_rects({g.client}) }
+	rects := make([dynamic]lay.Rect, 0, 4, context.temp_allocator)
+	if !lay.box_client_rects(l, &view, H(element.handle), &rects) || len(rects) <= 1 { return pack_rects({g.client}) }
+	dom_rects := make([]Api_DomRect, min(len(rects), c.page.settings.dom.max_rects), context.temp_allocator)
+	for &d, i in dom_rects {
+		r := rects[i]
+		d = Api_DomRect{x = f64(r.min.x / s) - vp.scroll_x, y = f64(r.min.y / s) - vp.scroll_y, width = f64((r.max.x - r.min.x) / s), height = f64((r.max.y - r.min.y) / s)}
+	}
+	return pack_rects(dom_rects)
 }
 
 @(private)

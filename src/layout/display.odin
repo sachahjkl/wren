@@ -30,6 +30,7 @@ hit_node :: proc(c: ^Ctx, bi: i32) -> base.Handle {
 
 @(private)
 push_item :: proc(c: ^Ctx, it: Display_Item) {
+	if c.l.frames_on && c.l.spaces[it.space].kind == .Flow { push_flow_item(c, it); return }
 	if c.dl_out != nil { append(c.dl_out, it) } else { append(&c.l.items, it) }
 }
 
@@ -67,6 +68,7 @@ emit_box :: proc(p: ^Paint_Ctx, bi: i32) {
 		kind := .Control in b.flags ? Item_Kind.Control : Item_Kind.Replaced
 		push_item(c, item_for_box(c, kind, bi, content_rect(b)))
 	}
+	if .Multicol in b.fx { emit_column_rules(c, bi) }
 	if cs.outline_width > 0 { append(p.outlines, bi) }
 	if b.scroll_space != NONE { append(p.scrollers, bi) }
 }
@@ -81,6 +83,12 @@ emit_marker :: proc(p: ^Paint_Ctx, bi: i32) {
 	it := item_for_box(c, .Marker, bi, Rect{{base.x, base.y - fi.ascent}, {base.x + b.marker_w, base.y + fi.descent}})
 	it.text = b.marker
 	it.baseline = base.y
+	if is_vert(b.wm) {
+		// (marker_pos: the baseline as x, the start as y)
+		it.rect = Rect{{base.x - fi.descent, base.y}, {base.x + fi.ascent, base.y + b.marker_w}}
+		it.baseline = base.x
+		it.flags += {.Vertical}
+	}
 	it.space, it.clip = b.content_space, b.content_clip
 	push_item(c, it)
 }
@@ -104,6 +112,10 @@ emit_lines :: proc(p: ^Paint_Ctx, ri: i32, owner: i32) {
 				base := sb.abs
 				it := Display_Item{kind = .Text, box = src, rect = Rect{base + {f.x, f.y}, base + {f.x + f.w, f.y + f.h}}, text = f.text, fi = f.fi,
 					baseline = base.y + f.baseline, extra = f.extra, space = sb.space, clip = sb.clip, group = sb.group, item = NONE, level = f.level}
+				if .Vertical in f.flags {
+					it.baseline = base.x + f.baseline
+					it.flags += {.Vertical}
+				}
 				if f.box == NONE { it.space, it.clip = r.content_space, r.content_clip }
 				if f.kind == .Text {
 					item := &c.l.inline_items[f.item]
@@ -126,6 +138,7 @@ emit_lines :: proc(p: ^Paint_Ctx, ri: i32, owner: i32) {
 				it := item_for_box(c, .Inline_Box, f.box, Rect{base + {f.x, f.y}, base + {f.x + f.w, f.y + f.h}})
 				if .Left_Edge in f.flags { it.flags += {.Left_Edge} }
 				if .Right_Edge in f.flags { it.flags += {.Right_Edge} }
+				if .Vertical in f.flags { it.flags += {.Vertical} }
 				push_item(c, it)
 				if ib.cs.outline_width > 0 && .Left_Edge in f.flags { append(p.outlines, f.box) }
 			case .Atomic:
@@ -318,7 +331,7 @@ dl_walks_destroy :: proc(w: ^Dl_Walks) {
 build_display_list :: proc(c: ^Ctx) {
 	clear(&c.l.items)
 	c.l.inc.dl_gen += 1
-	c.dl_par = par_threads(c.l.settings.threads) > 0 && len(c.l.boxes) >= max(c.l.settings.threads_min_boxes, 1)
+	c.dl_par = !c.l.frames_on && par_threads(c.l.settings.threads) > 0 && len(c.l.boxes) >= max(c.l.settings.threads_min_boxes, 1)
 	defer c.dl_par = false
 	p := Paint_Ctx{c = c}
 	paint_stacking(&p, 0)

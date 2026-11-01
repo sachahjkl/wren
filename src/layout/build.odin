@@ -107,6 +107,7 @@ new_box :: proc(c: ^Ctx, kind: Box_Kind, cs: ^style.Computed, node: base.Handle,
 		p := &c.l.boxes[parent]
 		if p.last == NONE { p.first = idx } else { c.l.boxes[p.last].next = idx }
 		p.last = idx
+		if c.l.frames_on { c.l.boxes[idx].wm = p.wm }   // anonymous boxes keep their parent's (an element's is set from its style)
 	}
 	return idx
 }
@@ -145,6 +146,16 @@ box_flags_from_style :: proc(c: ^Ctx, bi: i32, cb, fcb: i32, sum: ^Style_Sum = n
 	sm := sum
 	if sm == nil { s = style_sum_of(b.cs); sm = &s }
 	b.flags += sm.flags
+	if .Frames in sm.bits {
+		c.l.frames_on = true
+		b.wm = b.cs.writing_mode
+		if (b.cs.column_count != 0 || b.cs.column_width.kind != .Auto) && (b.kind == .Block || b.kind == .Cell || b.kind == .Caption) {
+			b.fx += {.Multicol}
+			b.flags += {.Bfc}
+		}
+	} else if c.l.frames_on {
+		b.wm = .Horizontal_Tb
+	}
 	// under a transformed ancestor a fixed box is positioned in it and moves with it (CSS Transforms 1 §3)
 	if sm.position == .Fixed && fcb == 0 { b.flags += {.Fixed} }
 	if b.kind != .Inline && .Transform in sm.bits { b.flags += {.Transformed, .Stacking} }

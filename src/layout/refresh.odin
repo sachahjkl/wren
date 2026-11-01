@@ -167,7 +167,7 @@ refresh_paint_values :: proc(l: ^Layout, input: Input) -> bool {
 			sp.preserve = used_preserve_3d(l.boxes[sp.box].cs)
 		}
 	}
-	for &cl in l.clips { cl.radii = clip_radii(l, &l.boxes[cl.box]) }
+	for &cl in l.clips { if cl.box != NONE { cl.radii = clip_radii(l, &l.boxes[cl.box]) } }   // (NONE: a column's)
 	if transforms && !refresh_overflow(l, input.viewport) { return false }
 	return true
 }

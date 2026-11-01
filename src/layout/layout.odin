@@ -68,6 +68,7 @@ run_full :: proc(l: ^Layout, input: Input) {
 	clear(&l.node_box)
 	inc_reset(l)
 	anchor_reset(l)
+	frames_reset(l)
 	note_inputs(l, input)
 	l.last_pass = .Full
 	l.passes[.Full] += 1
@@ -149,6 +150,7 @@ reset :: proc(l: ^Layout, keep_scroll := false) {
 	clear(&l.deco_items)
 	inc_reset(l)
 	anchor_reset(l)
+	frames_reset(l)
 	clear(&l.anchor_last)
 	pre_destroy(l)
 	dl_walks_destroy(&l.dl_walks)
@@ -170,6 +172,7 @@ destroy :: proc(l: ^Layout) {
 	delete(l.anchor_grid_areas)
 	delete(l.anchor_last)
 	delete(l.anchor_chosen)
+	frames_destroy(l)
 	inc_destroy(l)
 	pre_destroy(l)
 	dl_walks_destroy(&l.dl_walks)

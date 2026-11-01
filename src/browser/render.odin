@@ -8,6 +8,7 @@ package browser
 
 import "core:math"
 import "core:strings"
+import "core:unicode/utf8"
 import "toolkit:draw"
 import "toolkit:font"
 import "wb:base"
@@ -235,6 +236,7 @@ paint_item :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, v: ^lay.View
 	case .Marker: paint_marker(l, dc, it, r, off)
 	case .Replaced, .Control: paint_content(l, dc, d, it, r, off)
 	case .Outline: paint_outline(l, dc, it, r)
+	case .Column_Rule: paint_column_rule(dc, it, r)
 	case .Scrollbar:
 		track := r
 		thumb_c, track_c := scrollbar_colors(it.cs != nil ? it.cs.used_scheme : .Light, page_render.settings.scrollbar_thumb, page_render.settings.scrollbar_track)
@@ -311,10 +313,19 @@ paint_inline_box :: proc(l: ^Layout, dc: ^draw.Context, v: ^lay.View, it: ^lay.D
 	b := &l.boxes[it.box]
 	radii := corner_radii(cs, r, l.scale)
 	// a box split over lines keeps its rounded corners only where it starts and ends
-	if .Left_Edge not_in it.flags { radii[0], radii[1] = 0, 0 }
-	if .Right_Edge not_in it.flags { radii[2], radii[3] = 0, 0 }
-	widths := [4]f32{b.border[0], .Right_Edge in it.flags ? b.border[1] : 0, b.border[2], .Left_Edge in it.flags ? b.border[3] : 0}
-	pad := [4]f32{b.padding[0], .Right_Edge in it.flags ? b.padding[1] : 0, b.padding[2], .Left_Edge in it.flags ? b.padding[3] : 0}
+	widths, pad: [4]f32
+	if .Vertical in it.flags {
+		// (in a vertical line it starts at the top, and ends at the bottom: draw order of the radii is tl bl tr br)
+		if .Left_Edge not_in it.flags { radii[0], radii[2] = 0, 0 }
+		if .Right_Edge not_in it.flags { radii[1], radii[3] = 0, 0 }
+		widths = {.Left_Edge in it.flags ? b.border[0] : 0, b.border[1], .Right_Edge in it.flags ? b.border[2] : 0, b.border[3]}
+		pad = {.Left_Edge in it.flags ? b.padding[0] : 0, b.padding[1], .Right_Edge in it.flags ? b.padding[2] : 0, b.padding[3]}
+	} else {
+		if .Left_Edge not_in it.flags { radii[0], radii[1] = 0, 0 }
+		if .Right_Edge not_in it.flags { radii[2], radii[3] = 0, 0 }
+		widths = {b.border[0], .Right_Edge in it.flags ? b.border[1] : 0, b.border[2], .Left_Edge in it.flags ? b.border[3] : 0}
+		pad = {b.padding[0], .Right_Edge in it.flags ? b.padding[1] : 0, b.padding[2], .Left_Edge in it.flags ? b.padding[3] : 0}
+	}
 	boxes := bg_boxes(r, radii, widths, pad)
 	if len(cs.box_shadow) > 0 { paint_box_shadows(dc, cs, r, radii, boxes.padding, boxes.padding_radii, l.scale, false) }
 	if background_clips_text(cs) { paint_backgrounds_text(l, dc, v, it, &boxes, origin) } else { paint_backgrounds(dc, cs, &boxes, l.scale) }
@@ -505,6 +516,7 @@ paint_text :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw
 	fi := lay.item_font(l, it)
 	if cs == nil || fi == nil || it.text == "" { return }
 	if web_text_invisible(l, cs) { return }   // its web font is loading, in its block period (web_font_faces.odin)
+	if .Vertical in it.flags { paint_text_vertical(l, dc, it, r, off); return }
 	fid := font.Font_Id(fi.font)
 	baseline := it.baseline + off.y
 	opts := text_shape_options(l, cs, it.level, it.extra)
@@ -548,12 +560,130 @@ paint_text :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw
 	}
 }
 
+// A rule between columns: a border that has only one side.
+@(private = "file")
+paint_column_rule :: proc(dc: ^draw.Context, it: ^lay.Display_Item, r: draw.Rect) {
+	cs := it.cs
+	if cs == nil { return }
+	st := cs.column_rule_style
+	c := cs.column_rule_color
+	styles := [style.Side]style.Border_Style{.Top = st, .Right = st, .Bottom = st, .Left = st}
+	colors := [style.Side]css.Color{.Top = c, .Right = c, .Bottom = c, .Left = c}
+	w := [4]f32{}
+	if .Vertical in it.flags { w[0] = r.max.y - r.min.y } else { w[3] = r.max.x - r.min.x }
+	paint_borders(dc, r, w, styles, colors, {})
+}
+
+// One run of a vertical line along the y axis: glyphs turned a quarter turn (Sideways_Lr: the other way, read upwards), with
+// their baseline at x = `bx`, from `py`.
+@(private = "file")
+draw_run_turned :: proc(dc: ^draw.Context, sh: font.Shaped, size: f32, bx, py: f32, col: draw.Color, ccw: bool) {
+	m := ccw ? draw.Affine{a = 0, b = -1, c = 1, d = 0, e = bx, f = py} : draw.Affine{a = 0, b = 1, c = -1, d = 0, e = bx, f = py}
+	draw.push_transform(dc, m)
+	draw.glyph_run(dc, size, {}, col, sh.glyphs)
+	draw.pop_transform(dc)
+}
+
+// A line of vertical text: upright characters one by one, centered on the line's baseline, others in runs turned sideways
+// (the toolkit's shaper has no vertical direction: `vert` turns punctuation, advances come from layout: lay.upright_advance).
+draw_vertical_text :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, fi: ^lay.Font_Info, bx, top, bottom: f32, col: draw.Color, opts_in: font.Shape_Options) {
+	cs := it.cs
+	fid := font.Font_Id(fi.font)
+	size := fi.size
+	ccw := cs.writing_mode == .Sideways_Lr
+	orient := cs.text_orientation
+	if cs.writing_mode == .Sideways_Rl || cs.writing_mode == .Sideways_Lr { orient = .Sideways }
+	opts := opts_in
+	opts.one_run = true
+	height := fi.raw_ascent + fi.raw_descent
+	// the middle of the em box of glyphs turned sideways sits on a central baseline
+	turned_x := fi.vmode == .Central ? bx - (fi.raw_ascent - fi.raw_descent) * 0.5 : bx
+	if cs.text_combine_upright == .All {
+		// one upright character an em high: squeezed into an em
+		sh := font.shape(dc.fonts, fid, size, it.text, opts, context.temp_allocator)
+		s := sh.width > size && sh.width > 0 ? size / sh.width : 1
+		w := sh.width * s
+		m := draw.Affine{a = s, d = 1, e = bx - w * 0.5, f = top + (size - height) * 0.5 + fi.raw_ascent}
+		draw.push_transform(dc, m)
+		draw.glyph_run(dc, size, {}, col, sh.glyphs)
+		draw.pop_transform(dc)
+		return
+	}
+	pen := ccw ? bottom : top
+	pos := 0
+	for {
+		run, ok := lay.next_vertical_run(it.text, pos, orient)
+		if !ok { break }
+		piece := it.text[run.start:run.end]
+		pos = run.end
+		if run.upright {
+			rn, _ := utf8.decode_rune_in_string(piece)
+			adv := lay.upright_advance(rn, size, height)
+			sh := font.shape(dc.fonts, fid, size, piece, opts, context.temp_allocator)
+			y := pen + (adv - height) * 0.5 + fi.raw_ascent
+			draw.glyph_run(dc, size, {bx - sh.width * 0.5, y}, col, sh.glyphs)
+			pen += adv + cs.letter_spacing * l.scale
+			continue
+		}
+		sh := font.shape(dc.fonts, fid, size, piece, opts, context.temp_allocator)
+		draw_run_turned(dc, sh, size, turned_x, pen, col, ccw)
+		pen += ccw ? -sh.width : sh.width
+	}
+}
+
+@(private = "file")
+paint_text_vertical :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw.Rect, off: draw.Vec2) {
+	cs := it.cs
+	fi := lay.item_font(l, it)
+	bx := it.baseline + off.x
+	opts := text_shape_options(l, cs, it.level, it.extra)
+	for i := len(cs.text_shadow) - 1; i >= 0; i -= 1 {
+		s := cs.text_shadow[i]
+		if s.color.a <= 0 { continue }
+		col := to_draw(s.color)
+		if s.blur > 0 { col.a *= 0.6 }
+		draw_vertical_text(l, dc, it, fi, bx + s.x * l.scale, r.min.y + s.y * l.scale, r.max.y + s.y * l.scale, col, opts)
+	}
+	fill := to_draw(style.text_fill(cs))
+	if fill.a > 0 { draw_vertical_text(l, dc, it, fi, bx, r.min.y, r.max.y, fill, opts) }
+	if it.deco != {} {
+		dcol := to_draw(it.deco_color)
+		if it.deco_color.a == 0 { dcol = to_draw(cs.color) }
+		t := max(1, math.round(fi.size / 15))
+		// over and under are on the sides of the line's ascent and descent: to the right and left, turned the other way when read upwards
+		ccw := cs.writing_mode == .Sideways_Lr
+		under := ccw ? r.max.x - t : r.min.x
+		over := ccw ? r.min.x : r.max.x - t
+		if .Underline in it.deco { draw.rect(dc, {{under, r.min.y}, {under + t, r.max.y}}, dcol) }
+		if .Overline in it.deco { draw.rect(dc, {{over, r.min.y}, {over + t, r.max.y}}, dcol) }
+		if .Line_Through in it.deco {
+			x := (r.min.x + r.max.x) * 0.5 - t * 0.5
+			draw.rect(dc, {{x, r.min.y}, {x + t, r.max.y}}, dcol)
+		}
+	}
+}
+
 @(private = "file")
 paint_marker :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw.Rect, off: draw.Vec2) {
 	cs := it.cs
 	fi := lay.item_font(l, it)
 	if cs == nil || fi == nil { return }
 	col := to_draw(cs.color)
+	if .Vertical in it.flags {
+		bx := it.baseline + off.x
+		if it.text != "" {
+			draw_vertical_text(l, dc, it, fi, bx, r.min.y, r.max.y, col, {})
+			return
+		}
+		s := r.max.y - r.min.y
+		sq := draw.Rect{{bx - s * 0.5, r.min.y}, {bx + s * 0.5, r.max.y}}
+		#partial switch cs.list_style_type {
+		case .Disc: draw.rect(dc, sq, col, s * 0.5)
+		case .Circle: draw.rect(dc, sq, col, s * 0.5, max(1, s * 0.18))
+		case .Square: draw.rect(dc, sq, col)
+		}
+		return
+	}
 	baseline := it.baseline + off.y
 	if it.text != "" {
 		draw.text(dc, font.Font_Id(fi.font), fi.size, {r.min.x, baseline}, col, it.text)

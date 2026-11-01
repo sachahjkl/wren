@@ -144,6 +144,11 @@ block_width :: proc(c: ^Ctx, bi: i32, cb_w, avail: f32) {
 		case .Max_Content: w = intrinsic(c, bi)[1]
 		case .Fit_Content: w = shrink_to_fit(c, bi, avail - (b.auto_l ? 0 : b.margin[3]) - (b.auto_r ? 0 : b.margin[1]))
 		case:
+			if .Frame_Root in b.fx && frame_orthogonal(c.l, bi) {
+				// its width is its block size: what its content takes
+				w = intrinsic(c, bi)[1]
+				break
+			}
 			if .Control in b.flags && cs.width.kind == .Auto {
 				// HTML §15.5.x: a <button> whose width is auto is as wide as its content, also as a block or a flex container
 				w = shrink_to_fit(c, bi, avail - (b.auto_l ? 0 : b.margin[3]) - (b.auto_r ? 0 : b.margin[1]))
@@ -269,6 +274,10 @@ quirks_percent_base :: proc(c: ^Ctx, bi: i32) -> f32 {
 layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h_in, forced_h: f32, fc_in: ^Flow_Ctx) -> Result {
 	if c.pre != nil { pre_wait_box(c, bi) }
 	b := &c.l.boxes[bi]
+	if .Frame_Root in b.fx {
+		if c.frame_entered != bi { return frame_layout_contents(c, bi, w, cb_h_in, forced_h) }
+		c.frame_entered = NONE
+	}
 	b.size.x = w
 	fc := fc_in
 	independent := fc == nil
@@ -340,7 +349,9 @@ layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h_in, forced_h: f32, fc_in: ^Flo
 		cbm := collapses_bottom(c, b) && !independent && .Bfc not_in b.flags
 		if !ct { cfc.open = nil }
 		through := false
-		if .Ifc in b.flags {
+		if .Multicol in b.fx {
+			content_h = layout_multicol(c, bi, cw, ch_def, &cfc)
+		} else if .Ifc in b.flags {
 			h, empty, trail := layout_ifc(c, bi, cw, &cfc, ch_def)
 			content_h = h
 			through = empty
@@ -353,7 +364,7 @@ layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h_in, forced_h: f32, fc_in: ^Flo
 			through = thr
 		}
 		b = &c.l.boxes[bi]
-		if independent || .Bfc in b.flags {
+		if (independent || .Bfc in b.flags) && .Multicol not_in b.fx {
 			// a formatting context root grows to contain its floats (§10.6.7)
 			if len(own.floats) > 0 { content_h = max(content_h, bfc_bottom(&own)) }
 		}
@@ -464,7 +475,9 @@ flow_children :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx, collapse
 			place_float(c, ch, bi, cw, fc, ctop + y + (open ? 0 : strut_value(local)))
 			continue
 		}
-		if !pre_model(c, ch, k) { resolve_box_model(c, k, cw) }
+		k_cw := cw
+		if .Spanner in k.fx { k_cw = c.mc_full_w }
+		if !pre_model(c, ch, k) { resolve_box_model(c, k, k_cw) }
 		k = &c.l.boxes[ch]
 		mt := k.margin[0]
 		if k.auto_t { mt = 0; k.margin[0] = 0 }
@@ -491,7 +504,7 @@ flow_children :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx, collapse
 
 		avoid := .Bfc in k.flags && fc.bfc != nil && len(fc.bfc.floats) > 0
 		ml0, mr0 := k.auto_l ? 0 : k.margin[3], k.auto_r ? 0 : k.margin[1]
-		block_width(c, ch, cw, cw)
+		block_width(c, ch, k_cw, k_cw)
 		k = &c.l.boxes[ch]
 		w := k.size.x
 		res: Result

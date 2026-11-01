@@ -780,7 +780,8 @@ anchored_shift :: proc(l: ^Layout, sp: ^Space, viewport: Vec2, doc_scroll: f32, 
 			q := &l.spaces[i]
 			switch q.kind {
 			case .Document: off.y -= doc_scroll
-			case .Fixed, .Transform:
+			case .Fixed, .Transform, .Flow:
+			case .Column: off += q.shift
 			case .Scroll: off -= scroll_offset_of(l, q)
 			case .Sticky: off += sticky_offset(l, q, viewport, doc_scroll)
 			case .Anchored: off += anchored_shift(l, q, viewport, doc_scroll, depth + 1)

@@ -261,6 +261,7 @@ item_prefix_width :: proc(l: ^Layout, it: ^Display_Item, n: int, api: Text_Api) 
 	fi := item_font(l, it)
 	if fi == nil || it.cs == nil { return 0 }
 	s := it.text[:clamp(n, 0, len(it.text))]
+	if .Vertical in it.flags { return vertical_item_length(l, it, fi, s, api) }
 	w := api.width(api.user, fi.font, fi.size, s)
 	ls := it.cs.letter_spacing * l.scale
 	ws := it.cs.word_spacing * l.scale + it.extra
@@ -282,6 +283,11 @@ item_caret_x :: proc(l: ^Layout, it: ^Display_Item, n: int, api: Text_Api) -> f3
 	fi := item_font(l, it)
 	if fi == nil || it.cs == nil { return 0 }
 	k := clamp(n, 0, len(it.text))
+	if .Vertical in it.flags {
+		// from the top; a line read upwards starts at the bottom
+		w := item_prefix_width(l, it, k, api)
+		return it.cs.writing_mode == .Sideways_Lr ? (it.rect.max.y - it.rect.min.y) - w : w
+	}
 	if api.caret_x != nil { return api.caret_x(api.user, fi.font, fi.size, it.text, item_run(l, it), k) }
 	w := item_prefix_width(l, it, k, api)
 	if it.level & 1 == 1 { return item_prefix_width(l, it, len(it.text), api) - w }
@@ -291,6 +297,9 @@ item_caret_x :: proc(l: ^Layout, it: ^Display_Item, n: int, api: Text_Api) -> f3
 // The character boundary of a text item nearest to `x` (relative to the item's left edge).
 item_offset_at :: proc(l: ^Layout, it: ^Display_Item, x: f32, api: Text_Api) -> int {
 	if it.text == "" { return 0 }
+	if .Vertical in it.flags {
+		return item_offset_from_start(l, it, it.cs != nil && it.cs.writing_mode == .Sideways_Lr ? (it.rect.max.y - it.rect.min.y) - x : x, api)
+	}
 	if api.hit_index != nil {
 		if fi := item_font(l, it); fi != nil && it.cs != nil {
 			return clamp(api.hit_index(api.user, fi.font, fi.size, it.text, item_run(l, it), x), 0, len(it.text))
@@ -353,7 +362,7 @@ position_at :: proc(l: ^Layout, d: ^dom.Document, st: ^style.Styled, p: Vec2, vi
 		r := it.rect
 		dx := q.x < r.min.x ? r.min.x - q.x : (q.x > r.max.x ? q.x - r.max.x : 0)
 		dy := q.y < r.min.y ? r.min.y - q.y : (q.y > r.max.y ? q.y - r.max.y : 0)
-		score := dy * 64 + dx   // the line first, then along it
+		score := .Vertical in it.flags ? dx * 64 + dy : dy * 64 + dx   // the line first, then along it
 		if scope != NONE && !within(l, it.box, scope) { score += 1e7 }
 		if score >= best_score { continue }
 		if select_mode(d, st, ii.node, &modes) == .None { continue }
@@ -365,7 +374,7 @@ position_at :: proc(l: ^Layout, d: ^dom.Document, st: ^style.Styled, p: Vec2, vi
 	if !sok { return }
 	ii := &l.inline_items[it.item]
 	n := dom.get(d, node)
-	off := item_offset_at(l, it, best_q.x - it.rect.min.x, api)
+	off := item_offset_at(l, it, .Vertical in it.flags ? best_q.y - it.rect.min.y : best_q.x - it.rect.min.x, api)
 	base_off := int(uintptr(raw_data(it.text)) - uintptr(raw_data(ii.text)))
 	src := item_to_source(ii.text, n.text, base_off + off)
 	return Text_Pos{node, src}, true
