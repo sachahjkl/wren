@@ -22,6 +22,7 @@
         vulkan-loader
         wayland
         libxcb
+        libxcb-cursor
         libglvnd
       ];
 
