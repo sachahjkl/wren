@@ -14,7 +14,7 @@ BIQUAD_GAIN_MAX :: f32(1541.273681640625)
 
 Node_Data :: union {
 	^Source_Data, ^Osc_Data, ^Biquad_Data, ^Delay_Data, ^Panner_Data, ^Compressor_Data, ^Shaper_Data, ^Analyser_Data,
-	^Convolver_Data, ^Script_Data, ^Element_Data, ^IIR_Data,
+	^Convolver_Data, ^Script_Data, ^Element_Data, ^IIR_Data, ^Worklet_Data,
 }
 
 // Audio of a buffer, shared between the page's objects and the graphs that play it: it never changes once made.
@@ -185,6 +185,7 @@ node_data_destroy :: proc(n: ^Node) {
 	case ^Script_Data: script_destroy(d)
 	case ^Element_Data: element_destroy(d)
 	case ^IIR_Data: iir_destroy(d)
+	case ^Worklet_Data: worklet_data_destroy(n.g, d)
 	}
 }
 
@@ -192,6 +193,7 @@ node_data_destroy :: proc(n: ^Node) {
 node_source_alive :: proc(n: ^Node) -> bool {
 	#partial switch n.kind {
 	case .Buffer_Source, .Oscillator, .Constant: return n.sched.started && !n.sched.finished
+	case .Worklet: return worklet_alive(n.data.(^Worklet_Data))
 	}
 	return false
 }
@@ -359,6 +361,7 @@ node_run :: proc(g: ^Graph, n: ^Node) {
 	case .Script_Processor: script_run(g, n)
 	case .Element_Source:   element_run(n)
 	case .IIR:           iir_run(n)
+	case .Worklet:       worklet_run(g, n)
 	}
 }
 
@@ -751,7 +754,7 @@ finite :: #force_inline proc "contextless" (x: f64) -> bool { return x == x && a
 node_args_valid :: proc(kind: Kind, a, b: f64) -> bool {
 	if !finite(a) || !finite(b) { return false }
 	#partial switch kind {
-	case .Destination, .Listener:
+	case .Destination, .Listener, .Worklet:   // (a worklet's node: worklet_node_create)
 		return false
 	case .Splitter, .Merger:
 		return a >= 1 && a <= MAX_CHANNELS

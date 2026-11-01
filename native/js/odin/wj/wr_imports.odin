@@ -3777,6 +3777,29 @@ foreign _wr_wj_webaudio {
 	@(link_name = "WebAudio_pcmInfo") wr_WebAudio_pcmInfo :: proc(pcm: u64, which: i32) -> f64 ---
 	// decodeAudioData: a promise of a buffer (a u64 object handle), on a blocking thread; rejected when it is not audio.
 	@(link_name = "WebAudio_decode") wr_WebAudio_decode :: proc(data: [^]u8, data_len: u32, rate: f64) -> u64 ---
+	// The realm of a context's AudioWorklet: a Worker object on its own thread, started once. 0: refused (workers disabled, too many).
+	@(link_name = "WebAudio_workletStart") wr_WebAudio_workletStart :: proc(graph: u64) -> u64 ---
+	// Stops the realm (a context closed, or its realm stalled); the nodes then give silence and fire processorerror.
+	@(link_name = "WebAudio_workletStop") wr_WebAudio_workletStop :: proc(graph: u64) ---
+	// An AudioWorkletNode's node: processor is the number the realm knows it by, output_channels the counts asked for (i32 each, or none). -1: refused.
+	@(link_name = "WebAudio_workletNode") wr_WebAudio_workletNode :: proc(graph: u64, inputs: i32, outputs: i32, params: i32, processor: i32, output_channels: [^]u8, output_channels_len: u32) -> i32 ---
+	// What a registered parameter is (AudioParamDescriptor).
+	@(link_name = "WebAudio_workletParam") wr_WebAudio_workletParam :: proc(graph: u64, node: i32, index: i32, default_value: f64, min_value: f64, max_value: f64, a_rate: i32) ---
+	// In an AudioWorklet's realm: its context's sample rate (0 in any other realm).
+	@(link_name = "AudioWorkletRealm_sampleRate") wr_AudioWorkletRealm_sampleRate :: proc() -> f64 ---
+	// The request taken (AudioWorkletRealm_layout): its first frame.
+	@(link_name = "AudioWorkletRealm_frame") wr_AudioWorkletRealm_frame :: proc() -> f64 ---
+	// Takes the waiting request and writes what it is into `layout` (i32 each: processor, inputs, outputs, params, then
+	// channels per input, values per param, channels per output). The number of values there are: 0 no request, more than
+	// fits (nothing written) the array is too small and the request stays taken.
+	@(link_name = "AudioWorkletRealm_layout") wr_AudioWorkletRealm_layout :: proc(layout: [^]u8, layout_cap: u32) -> i32 ---
+	// Samples of the request taken, from a position in samples (inputs, then params, then outputs).
+	@(link_name = "AudioWorkletRealm_read") wr_AudioWorkletRealm_read :: proc(at: i32, values: [^]u8, values_cap: u32) ---
+	@(link_name = "AudioWorkletRealm_write") wr_AudioWorkletRealm_write :: proc(at: i32, values: [^]u8, values_len: u32) ---
+	// The answer: 0 process() returned true, 1 false, 2 it threw, 3 no processor yet.
+	@(link_name = "AudioWorkletRealm_finish") wr_AudioWorkletRealm_finish :: proc(status: i32) ---
+	// A processor whose node left the graph, -1 when none is left to tell.
+	@(link_name = "AudioWorkletRealm_dropped") wr_AudioWorkletRealm_dropped :: proc() -> i32 ---
 }
 
 // module webcodecs

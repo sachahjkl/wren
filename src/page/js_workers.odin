@@ -16,6 +16,7 @@ import "wb:base"
 import "wb:host"
 import "wb:http"
 import "wb:url"
+import "wb:webaudio"
 
 // A worker blocked on a synchronous fetch looks at its messages and its stop flag at least this often.
 WORKER_SYNC_WAIT_POLL :: 50 * time.Millisecond
@@ -56,6 +57,13 @@ js_worker_start :: proc(p: ^Page, g: ^Worker_Global) -> bool {
 	if r == nil {
 		if !realm_halted(p) { worker_send_error(g, "Worker: JavaScript could not start in the worker") }
 		return false
+	}
+	if g.worklet != nil {
+		// an AudioWorklet's realm: no script of its own, its global scope made here; the render thread may ask from now on
+		link := g.link
+		webaudio.worklet_realm_attach(g.worklet, proc(user: rawptr) { host.signal(&(^Worker_Link)(user).loop) }, link)
+		js_call(p, r.inst, "wj_worklet_boot", nil)
+		return true
 	}
 	if g.module {
 		g.waiting = true

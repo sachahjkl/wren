@@ -21,12 +21,12 @@
 
   // The numbers of src/webaudio/graph.odin
   const K = { Destination: 0, Listener: 1, BufferSource: 2, Oscillator: 3, Gain: 4, Constant: 5, Biquad: 6, Delay: 7, StereoPanner: 8, Panner: 9,
-    Splitter: 10, Merger: 11, Compressor: 12, WaveShaper: 13, Analyser: 14, Convolver: 15, Script: 16, Element: 17, IIR: 18 };
+    Splitter: 10, Merger: 11, Compressor: 12, WaveShaper: 13, Analyser: 14, Convolver: 15, Script: 16, Element: 17, IIR: 18, Worklet: 19 };
   const F = { ChannelCount: 0, ChannelMode: 1, ChannelInterp: 2, Loop: 3, LoopStart: 4, LoopEnd: 5, OscillatorType: 6, FilterType: 7, Oversample: 8,
     FftSize: 9, MinDb: 10, MaxDb: 11, Smoothing: 12, Normalize: 13, PanningModel: 14, DistanceModel: 15, RefDistance: 16, MaxDistance: 17, Rolloff: 18,
     ConeInner: 19, ConeOuter: 20, ConeOuterGain: 21, Reduction: 22 };
   const STATE_NAMES = ["suspended", "running", "closed"];
-  const EV_STATE = 1, EV_ENDED = 2, EV_SCRIPT = 3, EV_OFFLINE_SUSPENDED = 4;
+  const EV_STATE = 1, EV_ENDED = 2, EV_SCRIPT = 3, EV_OFFLINE_SUSPENDED = 4, EV_WORKLET_ERROR = 5, EV_WORKLET_INACTIVE = 6, EV_WORKLET_STALLED = 7;
   const QUANTUM = 128, MAX_CHANNELS = 32, MIN_RATE = 3000, MAX_RATE = 768000;
   const FLOAT_MAX = 3.4028234663852886e38, DETUNE_MAX = 153600, BIQUAD_GAIN_MAX = 1541.273681640625;
   const FFT_MIN = 32, FFT_MAX = 32768, DELAY_MAX_LIMIT = 180, DELAY_DEFAULT = 1, IIR_MAX = 20;
@@ -129,6 +129,9 @@
   // The contexts the browser can still talk to, by the number it knows them by.
   const contexts = new MapC();
   let nextContext = 1;
+
+  // (set in static blocks, of classes that use each other)
+  let ctxState, isContext, makeWorklet, makeParamMap;
 
   // ---- AudioParam ----
   let makeParam;
@@ -323,7 +326,8 @@
       super();
       const [, ctxObject, kind, inputs, outputs, a, b, mode, count, interp] = arguments;
       const ctx = ctxState(ctxObject);
-      let id = kind === K.Destination ? 0 : kind === K.Listener ? 1 : native.nodeCreate(ctx.graph, kind, a ?? 0, b ?? 0);
+      // (an AudioWorkletNode's node is made with what only it has: its `a` is the id)
+      let id = kind === K.Destination ? 0 : kind === K.Listener ? 1 : kind === K.Worklet ? a : native.nodeCreate(ctx.graph, kind, a ?? 0, b ?? 0);
       if (id < 0) throw dom("NotSupportedError", "The node could not be made.");
       this.#s = {
         ctxObject, ctx, id, kind, inputs, outputs,
@@ -1135,8 +1139,221 @@
   }
   const captured = new WeakSet();
 
+  // ---- AudioWorklet ----
+  // The realm is a worker of this document with a worklet's scope (web_audio_worklet.js), started by the first addModule. Its
+  // Worker object stays alive while it runs and its listeners with it, so they hold this state, not the context: a context a
+  // page has let go of is collected, which stops the realm (bindings_webaudio.odin).
+  const NativeWorker = global.Worker, MC = global.MessageChannel, Url = global.URL, ErrorEv = global.ErrorEvent, doc = global.document;
+  const workerPost = NativeWorker?.prototype.postMessage;
+  const WeakRefC = WeakRef;
+  const WORKLET_MAX_PORTS = 256, WORKLET_MAX_PARAMS = 1024;   // (src/webaudio/worklet.odin)
+
+  const workletEvent = (node, info) => {
+    const s = nodeState(node);
+    s.ctx.scripts.delete(s.id);   // (it gives nothing any more: the page may let it go)
+    if (s.errored) return;
+    s.errored = true;
+    apply(dispatch, node, [new ErrorEv("processorerror", { message: info?.message ?? "The AudioWorklet's realm has stopped.", filename: info?.filename ?? "", lineno: info?.lineno ?? 0, colno: info?.colno ?? 0 })]);
+  };
+
+  const workletState = port2 => ({
+    worker: null, port2, stopped: false,
+    names: new MapC(),     // what registerProcessor said: name -> parameter descriptors
+    modules: new MapC(),   // addModule() in progress
+    nextModule: 1, nextProcessor: 1,
+    nodes: new MapC(),     // id in the graph -> {processor, ref (weak)}: what the realm's news is about
+  });
+
+  const workletMessage = (ws, m) => {
+    switch (m.t) {
+      case "registered":
+        ws.names.set(m.name, m.descriptors);
+        break;
+      case "module": {
+        const pending = ws.modules.get(m.id);
+        ws.modules.delete(m.id);
+        if (!pending) break;
+        if (m.ok) pending.resolve();
+        else if (m.fetch) pending.reject(dom("AbortError", `addModule: the module could not be loaded: ${m.message}`));
+        else pending.reject(m.name === "SyntaxError" ? new SyntaxError(m.message) : dom("AbortError", `addModule: the module failed: ${m.message}`));
+        break;
+      }
+      case "processorerror":
+        for (const entry of ws.nodes.values()) {
+          if (entry.processor !== m.processor) continue;
+          const node = entry.ref.deref();
+          if (node !== undefined) workletEvent(node, m);
+          break;
+        }
+        break;
+    }
+  };
+
+  const workletRealm = s => {
+    const ws = s.worklet;
+    if (ws.worker !== null) return true;
+    if (ws.stopped) return false;
+    const worker = native.workletStart(s.graph);
+    if (worker === null) return false;
+    ws.worker = worker;
+    apply(addListener, worker, ["message", e => workletMessage(ws, e.data)]);
+    // (an uncaught exception of the realm stays there: the document's onerror is not told, the console is)
+    apply(addListener, worker, ["error", e => {
+      e.preventDefault();
+      global.console.error(`[AudioWorklet] ${e.message}`);
+      for (const pending of ws.modules.values()) pending.reject(dom("AbortError", "addModule: the AudioWorklet's realm has failed."));
+      ws.modules.clear();
+    }]);
+    apply(workerPost, worker, [{ t: "port", port: ws.port2 }, [ws.port2]]);
+    ws.port2 = null;
+    return true;
+  };
+
+  class Worklet {
+    constructor() { if (arguments[0] !== TOKEN) illegal("Worklet"); }
+  }
+  class AudioWorklet extends Worklet {
+    #s;
+    #port;
+    static {
+      makeWorklet = s => {
+        const a = new AudioWorklet(TOKEN);
+        const channel = new MC();
+        a.#s = s;
+        a.#port = channel.port1;
+        s.worklet = workletState(channel.port2);
+        return a;
+      };
+    }
+    constructor() { if (arguments[0] !== TOKEN) illegal("AudioWorklet"); super(TOKEN); }
+    get port() { return this.#port; }
+    addModule(moduleURL, options = undefined) {
+      return new P((resolve, reject) => {
+        const s = this.#s;
+        if (arguments.length < 1) throw new TE("addModule: 1 argument required.");
+        let target;
+        const text = S(moduleURL);
+        const o = dict(options, "addModule");
+        if (o.credentials !== undefined) inEnum(o.credentials, ["omit", "same-origin", "include"], "addModule");
+        try { target = new Url(text, doc.baseURI).href; } catch { reject(dom("SyntaxError", `addModule: '${text}' is not a valid URL.`)); return; }
+        if (s.state === "closed" && !s.offline) { reject(dom("InvalidStateError", "addModule: the context is closed.")); return; }
+        if (!workletRealm(s)) { reject(dom("AbortError", "addModule: the AudioWorklet could not start (workers are disabled, or too many run).")); return; }
+        const ws = s.worklet, id = ws.nextModule++;
+        ws.modules.set(id, { resolve, reject });
+        apply(workerPost, ws.worker, [{ t: "module", id, url: target, frame: Math.floor(native.time(s.graph) * s.rate) }]);
+      });
+    }
+  }
+
+  class AudioParamMap {
+    #map;
+    static {
+      makeParamMap = map => {
+        const m = new AudioParamMap(TOKEN);
+        m.#map = map;
+        return m;
+      };
+    }
+    constructor() { if (arguments[0] !== TOKEN) illegal("AudioParamMap"); }
+    get size() { return this.#map.size; }
+    get(name) { return this.#map.get(S(name)); }
+    has(name) { return this.#map.has(S(name)); }
+    keys() { return this.#map.keys(); }
+    values() { return this.#map.values(); }
+    entries() { return this.#map.entries(); }
+    forEach(callback, thisArg = undefined) {
+      if (typeof callback !== "function") throw new TE("forEach: the callback is not a function.");
+      for (const [key, value] of this.#map) apply(callback, thisArg, [value, key, this]);
+    }
+  }
+  defineProperty(AudioParamMap.prototype, Symbol.iterator, { value: AudioParamMap.prototype.entries, writable: true, enumerable: false, configurable: true });
+
+  class AudioWorkletNode extends AudioNode {
+    #port;
+    #parameters;
+    constructor(context, name, options = undefined) {
+      if (arguments.length < 2) throw new TE("AudioWorkletNode: 2 arguments required.");
+      contextArg(context, "AudioWorkletNode");
+      const nodeName = S(name);
+      const o = dict(options, "AudioWorkletNode");
+      const inputs = o.numberOfInputs === undefined ? 1 : uint32(o.numberOfInputs);
+      const outputs = o.numberOfOutputs === undefined ? 1 : uint32(o.numberOfOutputs);
+      let outputChannels;
+      if (o.outputChannelCount !== undefined) {
+        if (o.outputChannelCount === null || typeof o.outputChannelCount !== "object" || o.outputChannelCount[Symbol.iterator] === undefined) throw new TE("AudioWorkletNode: outputChannelCount is not a sequence.");
+        outputChannels = [];
+        for (const c of o.outputChannelCount) outputChannels.push(uint32(c));
+      }
+      let parameterData;
+      if (o.parameterData !== undefined) {
+        const d = o.parameterData;
+        if (d === null || (typeof d !== "object" && typeof d !== "function")) throw new TE("AudioWorkletNode: parameterData is not a record.");
+        parameterData = { __proto__: null };
+        for (const k of ownKeys(d)) {
+          if (typeof k !== "string") continue;
+          const desc = getOwnPropertyDescriptor(d, k);
+          if (desc?.enumerable) parameterData[k] = float(d[k], "AudioWorkletNode.parameterData");
+        }
+      }
+      if (o.processorOptions !== undefined && o.processorOptions !== null && typeof o.processorOptions !== "object" && typeof o.processorOptions !== "function") throw new TE("AudioWorkletNode: processorOptions is not an object.");
+      const channelCount = o.channelCount === undefined ? undefined : uint32(o.channelCount);
+      const channelMode = o.channelCountMode === undefined ? undefined : inEnum(o.channelCountMode, CHANNEL_MODES, "channelCountMode");
+      const channelInterp = o.channelInterpretation === undefined ? undefined : inEnum(o.channelInterpretation, INTERPS, "channelInterpretation");
+      if (inputs === 0 && outputs === 0) throw dom("NotSupportedError", "AudioWorkletNode: it has neither inputs nor outputs.");
+      if (inputs > WORKLET_MAX_PORTS || outputs > WORKLET_MAX_PORTS) throw dom("NotSupportedError", "AudioWorkletNode: too many inputs or outputs.");
+      if (outputChannels !== undefined) {
+        if (outputChannels.length !== outputs) throw dom("IndexSizeError", "AudioWorkletNode: outputChannelCount does not have one count per output.");
+        for (const c of outputChannels) if (c < 1 || c > MAX_CHANNELS) throw dom("NotSupportedError", `AudioWorkletNode: ${c} channels is not between 1 and ${MAX_CHANNELS}.`);
+      }
+      if (channelCount !== undefined && (channelCount < 1 || channelCount > MAX_CHANNELS)) throw dom("NotSupportedError", `channelCount: ${channelCount} is not between 1 and ${MAX_CHANNELS}.`);
+      const cs = ctxState(context);
+      if (cs.worklet === undefined) { apply(getWorklet, context, []); }
+      const ws = cs.worklet;
+      const descriptors = ws.names.get(nodeName);
+      if (descriptors === undefined) throw dom("InvalidStateError", `AudioWorkletNode: no processor is registered as '${nodeName}'.`);
+      if (descriptors.length > WORKLET_MAX_PARAMS) throw dom("NotSupportedError", "AudioWorkletNode: too many parameters.");
+      if (ws.worker === null || ws.stopped) throw dom("InvalidStateError", "AudioWorkletNode: the AudioWorklet's realm has stopped.");
+      // the realm first: what cannot be serialized fails here, with nothing made
+      const channel = new MC();
+      const processor = ws.nextProcessor++;
+      const nodeOptions = { numberOfInputs: inputs, numberOfOutputs: outputs };
+      if (channelCount !== undefined) nodeOptions.channelCount = channelCount;
+      if (channelMode !== undefined) nodeOptions.channelCountMode = channelMode;
+      if (channelInterp !== undefined) nodeOptions.channelInterpretation = channelInterp;
+      if (outputChannels !== undefined) nodeOptions.outputChannelCount = outputChannels;
+      if (parameterData !== undefined) nodeOptions.parameterData = { ...parameterData };
+      if (o.processorOptions !== undefined) nodeOptions.processorOptions = o.processorOptions;
+      apply(workerPost, ws.worker, [{
+        t: "create", processor, name: nodeName, names: descriptors.map(d => d.name), options: nodeOptions, port: channel.port2,
+        frame: Math.floor(native.time(cs.graph) * cs.rate),   // (a suspended context's frame, as currentTime * sampleRate reads)
+      }, [channel.port2]]);
+      const id = native.workletNode(cs.graph, inputs, outputs, descriptors.length, processor, new Int32Array(outputChannels ?? []));
+      if (id < 0) throw dom("NotSupportedError", "AudioWorkletNode: the node could not be made.");
+      super(TOKEN, context, K.Worklet, inputs, outputs, id);
+      const s = nodeState(this);
+      this.#port = channel.port1;
+      const params = new MapC();
+      descriptors.forEach((d, i) => {
+        native.workletParam(cs.graph, id, i, d.defaultValue, d.minValue, d.maxValue, d.automationRate === "a-rate");
+        const p = makeParam(cs, id, i, d.defaultValue, d.minValue, d.maxValue, d.automationRate);
+        if (parameterData !== undefined && d.name in parameterData) p.value = parameterData[d.name];
+        params.set(d.name, p);
+      });
+      this.#parameters = makeParamMap(params);
+      if (channelCount !== undefined) this.channelCount = channelCount;
+      if (channelMode !== undefined) this.channelCountMode = channelMode;
+      if (channelInterp !== undefined) this.channelInterpretation = channelInterp;
+      s.processor = processor;
+      // (alive while its processor is at work: the page may hold nothing of it and still hear it)
+      cs.scripts.set(id, this);
+      ws.nodes.set(id, { processor, ref: new WeakRefC(this) });
+    }
+    get parameters() { return this.#parameters; }
+    get port() { return this.#port; }
+  }
+  handlerAttr(AudioWorkletNode.prototype, "processorerror", nodeState);
+
   // ---- BaseAudioContext ----
-  let ctxState, isContext;
   class BaseAudioContext extends ET {
     #s;
     static {
@@ -1167,6 +1384,10 @@
     get listener() { return this.#s.listener; }
     get state() { return this.#s.state; }
     get renderQuantumSize() { this.#s; return QUANTUM; }
+    get audioWorklet() {
+      const s = this.#s;
+      return s.audioWorklet ?? (s.audioWorklet = makeWorklet(s));
+    }
     createIIRFilter(feedforward, feedback) {
       if (arguments.length < 2) throw new TE("createIIRFilter: 2 arguments required.");
       return new IIRFilterNode(this, { feedforward, feedback });
@@ -1236,6 +1457,7 @@
   }
   const reportError = e => { if (global.reportError) global.reportError(e); };
   handlerAttr(BaseAudioContext.prototype, "statechange", c => ctxState(c));
+  const getWorklet = getOwnPropertyDescriptor(BaseAudioContext.prototype, "audioWorklet").get;
 
   // What the render thread has to say
   const settleAll = (list, how, v) => {
@@ -1282,6 +1504,10 @@
       contexts.delete(s.user);
       s.active.clear();
       s.scripts.clear();
+      if (s.worklet) {
+        s.worklet.stopped = true;
+        native.workletStop(s.graph);
+      }
       setState(s, name, () => {
         settleAll(s.pendingClose, "resolve", undefined);
         settleAll(s.pendingResume, "reject", dom("InvalidStateError", "The context was closed."));
@@ -1316,6 +1542,20 @@
         setState(s, "suspended", () => { if (p) p.resolve(); });
         break;
       }
+      case EV_WORKLET_ERROR: {
+        const n = s.worklet?.nodes.get(node)?.ref.deref();
+        if (n !== undefined) workletEvent(n, null);
+        break;
+      }
+      case EV_WORKLET_INACTIVE:
+        s.scripts.delete(node);
+        break;
+      case EV_WORKLET_STALLED:
+        if (s.worklet) {
+          s.worklet.stopped = true;
+          native.workletStop(s.graph);
+        }
+        break;
     }
   };
 
@@ -1469,7 +1709,16 @@
     AudioListener, AudioBufferSourceNode, OscillatorNode, PeriodicWave, GainNode, ConstantSourceNode, BiquadFilterNode, DelayNode,
     StereoPannerNode, PannerNode, ChannelSplitterNode, ChannelMergerNode, DynamicsCompressorNode, WaveShaperNode, AnalyserNode, ConvolverNode,
     ScriptProcessorNode, AudioProcessingEvent, OfflineAudioCompletionEvent, MediaElementAudioSourceNode, IIRFilterNode,
+    Worklet, AudioWorklet, AudioWorkletNode, AudioParamMap,
   };
+  // [SecureContext]: elsewhere there is no worklet at all, what a script tests for
+  if (!global.isSecureContext) {
+    delete classes.Worklet;
+    delete classes.AudioWorklet;
+    delete classes.AudioWorkletNode;
+    delete classes.AudioParamMap;
+    delete BaseAudioContext.prototype.audioWorklet;
+  }
   for (const name of ownKeys(classes)) {
     const proto = classes[name].prototype;
     for (const key of ownKeys(proto)) {

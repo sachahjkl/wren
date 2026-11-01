@@ -7,6 +7,7 @@
 //   wave.odin        the band-limited tables of oscillators (PeriodicWave); fft.odin the FFT they and others use
 //   render.odin      the threads: a running AudioContext writes to a media.Audio_Output, an offline one fills a buffer
 //   decode.odin      decodeAudioData: containers and decoders of src/media, then the context's sample rate
+//   worklet.odin     AudioWorkletNode: each quantum a request to the realm's thread, with a deadline
 //
 // src/page/bindings_webaudio.odin wires a page to this; native/js/odin/web_audio.js is what a script sees. A graph is
 // used by the page's thread and its render thread: everything goes through Graph.mu, held for at most a quantum.
@@ -29,6 +30,7 @@ Settings :: struct {
 	default_rate:     f64,    // sampleRate of a context that does not ask for one
 	max_buffer_bytes: int,    // the samples of one AudioBuffer or OfflineAudioContext
 	max_contexts:     int,    // running AudioContexts of a page
+	worklet_stall_ms: int,    // how long an AudioWorklet's realm may stay without answering before it is stopped
 }
 
 WEBAUDIO_PREFS := [?]config.Def{
@@ -42,6 +44,8 @@ WEBAUDIO_PREFS := [?]config.Def{
 		description = "Largest AudioBuffer or OfflineAudioContext rendering (all channels). Past it, creation fails with NotSupportedError."},
 	{name = "webaudio.max_contexts", kind = .Int, default = {i = 64}, bounded = true, min = 1, max = 4096,
 		description = "Most AudioContexts a page may have open at once (each running one has a thread and an audio stream). Past it, new AudioContext() fails with NotSupportedError."},
+	{name = "webaudio.worklet_stall_ms", kind = .Int, default = {i = 5000}, bounded = true, min = 100, max = 600000, unit = "ms",
+		description = "How long an AudioWorklet's realm may leave the render thread without an answer (a process() that never returns) before it is stopped and its nodes fire processorerror. A quantum it misses meanwhile is silence."},
 }
 
 register_prefs :: proc(p: ^config.Prefs) { config.register(p, WEBAUDIO_PREFS[:]) }
@@ -53,5 +57,6 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		default_rate     = config.float_of(p, "webaudio.sample_rate"),
 		max_buffer_bytes = int(config.int_of(p, "webaudio.max_buffer_mb")) << 20,
 		max_contexts     = int(config.int_of(p, "webaudio.max_contexts")),
+		worklet_stall_ms = int(config.int_of(p, "webaudio.worklet_stall_ms")),
 	}
 }

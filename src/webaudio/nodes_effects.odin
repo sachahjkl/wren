@@ -483,6 +483,7 @@ Convolver_Data :: struct {
 	paths:     [2]Conv_Path,
 	work_re, work_im: []f64,
 	sum_re, sum_im: []f64,
+	quiet_quanta: int,     // quanta of silent input in a row
 }
 
 @(private = "file")
@@ -594,6 +595,16 @@ convolver_run :: proc(n: ^Node) {
 	if d.channels == 0 {
 		bus_clear(o, 1)
 		return
+	}
+	// the tail of what came in is over: not actively processing, one channel of silence (the specification)
+	if in_mix.silent {
+		d.quiet_quanta += 1
+		if d.quiet_quanta > d.partitions + 1 {
+			bus_clear(o, 1)
+			return
+		}
+	} else {
+		d.quiet_quanta = 0
 	}
 	// mono only for a mono input and a mono impulse (Web Audio API, "Channel Configurations for Input, Impulse Response and Output")
 	stereo := in_mix.channels > 1 || d.channels > 1

@@ -10,7 +10,7 @@ import "wb:base"
 
 Kind :: enum i32 {
 	Destination, Listener, Buffer_Source, Oscillator, Gain, Constant, Biquad, Delay, Stereo_Panner, Panner,
-	Splitter, Merger, Compressor, Wave_Shaper, Analyser, Convolver, Script_Processor, Element_Source, IIR,
+	Splitter, Merger, Compressor, Wave_Shaper, Analyser, Convolver, Script_Processor, Element_Source, IIR, Worklet,
 }
 
 // The ids of the two nodes every graph has from the start.
@@ -70,7 +70,7 @@ Schedule :: struct {
 
 Graph_State :: enum i32 { Suspended, Running, Closed }
 
-Event_Type :: enum i32 { State_Changed = 1, Ended = 2, Script_Block = 3, Offline_Suspended = 4 }
+Event_Type :: enum i32 { State_Changed = 1, Ended = 2, Script_Block = 3, Offline_Suspended = 4, Worklet_Error = 5, Worklet_Inactive = 6, Worklet_Stalled = 7 }
 
 Event :: struct { type: Event_Type, node, value: i32 }
 
@@ -96,6 +96,7 @@ Graph :: struct {
 	listener:  ^Node,
 	// the thread (render.odin)
 	thread:    Render_Thread,
+	worklet:   ^Worklet,           // the realm of its AudioWorklet (worklet.odin), once it has one
 }
 
 alloc :: #force_inline proc "contextless" () -> runtime.Allocator { return base.process_allocator() }
@@ -125,6 +126,7 @@ graph_destroy :: proc(g: ^Graph) {
 	delete(g.events)
 	for w in g.basic { wave_release(w) }
 	bus_destroy(&g.output)
+	worklet_graph_gone(g)
 	free(g)
 }
 
@@ -400,6 +402,7 @@ render_quantum :: proc(g: ^Graph) {
 	if g.order_dirty { order_graph(g) }
 	for n in g.order { node_process(g, n) }
 	for n in g.delayed { delay_write(n) }
+	if g.worklet != nil { worklet_quantum_end(g.worklet) }
 	dst := g.nodes[DESTINATION_ID]
 	bus_copy(&g.output, &dst.inputs[0].mix)
 	g.frame += RENDER_QUANTUM

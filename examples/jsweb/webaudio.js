@@ -18,7 +18,9 @@ test("the interfaces", () => {
   eq(Object.getPrototypeOf(AudioNode), EventTarget, "AudioNode extends EventTarget");
   eq(Object.getPrototypeOf(AudioContext), BaseAudioContext, "AudioContext extends BaseAudioContext");
   eq(Object.getPrototypeOf(OscillatorNode), AudioScheduledSourceNode, "OscillatorNode is a scheduled source");
-  eq(typeof AudioWorkletNode, "undefined", "no AudioWorklet");
+  for (const name of ["AudioWorklet", "AudioWorkletNode", "AudioParamMap", "Worklet"]) eq(typeof globalThis[name], "function", name + " exists");
+  eq(typeof AudioWorkletProcessor, "undefined", "AudioWorkletProcessor is the realm's");
+  eq(typeof registerProcessor, "undefined", "so is registerProcessor");
 });
 
 test("AudioBuffer", () => {
@@ -332,4 +334,197 @@ test("ScriptProcessorNode", async () => {
   near(Math.max(...wave), 0.5, 1e-6, "the page's answer plays");
   await c.close();
 });
+
+// ---- AudioWorklet: a realm of its own ----
+const workletModule = source => URL.createObjectURL(new Blob([source], { type: "text/javascript" }));
+const GAIN_PROCESSOR = `
+  class Gain extends AudioWorkletProcessor {
+    static get parameterDescriptors() { return [{ name: "gain", defaultValue: 0.5, minValue: 0, maxValue: 1, automationRate: "k-rate" }]; }
+    constructor(options) {
+      super();
+      this.seen = options.processorOptions?.tag;
+      this.port.onmessage = e => this.port.postMessage({ echo: e.data, tag: this.seen, frame: currentFrame, rate: sampleRate });
+    }
+    process(inputs, outputs, parameters) {
+      const input = inputs[0], output = outputs[0], gain = parameters.gain;
+      for (let c = 0; c < output.length; c++) {
+        for (let i = 0; i < output[c].length; i++) output[c][i] = (input[c] ? input[c][i] : 0) * gain[0];
+      }
+      return true;
+    }
+  }
+  registerProcessor("gain", Gain);
+  registerProcessor("thrower", class extends AudioWorkletProcessor { process() { throw new RangeError("from process"); } });
+  registerProcessor("thrower-in-constructor", class extends AudioWorkletProcessor { constructor() { super(); throw new RangeError("from the constructor"); } process() { return true; } });
+  registerProcessor("hang", class extends AudioWorkletProcessor { process() { for (;;) {} } });
+  registerProcessor("once", class extends AudioWorkletProcessor { process(i, o) { o[0][0].fill(0.25); return false; } });
+  registerProcessor("scope", class extends AudioWorkletProcessor {
+    constructor() {
+      super();
+      const names = ["fetch", "setTimeout", "postMessage", "importScripts", "self", "location", "navigator", "indexedDB", "XMLHttpRequest", "Worker"];
+      this.port.postMessage({
+        missing: names.filter(n => n in globalThis), scope: Object.prototype.toString.call(globalThis),
+        isScope: globalThis instanceof AudioWorkletGlobalScope,
+        register: typeof registerProcessor, frame: typeof currentFrame, time: typeof currentTime, rate: typeof sampleRate,
+      });
+    }
+    process() { return false; }
+  });
+`;
+
+test("AudioWorklet: addModule, registerProcessor, a node's rules", async () => {
+  const c = new OfflineAudioContext(1, 256, RATE);
+  eq(c.audioWorklet, c.audioWorklet, "the same object");
+  ok(c.audioWorklet instanceof AudioWorklet, "an AudioWorklet");
+  ok(c.audioWorklet.port instanceof MessagePort, "it has a port");
+  throws(() => new AudioWorkletNode(c, "gain"), "InvalidStateError", "nothing registered");
+  await c.audioWorklet.addModule(workletModule(GAIN_PROCESSOR));
+  let failed = "";
+  try { await c.audioWorklet.addModule("http://[bad"); } catch (e) { failed = e.name; }
+  eq(failed, "SyntaxError", "not a URL");
+  throws(() => new AudioWorkletNode(c, "nobody"), "InvalidStateError", "that name is not registered");
+  throws(() => new AudioWorkletNode(c, "gain", { numberOfInputs: 0, numberOfOutputs: 0 }), "NotSupportedError", "neither inputs nor outputs");
+  throws(() => new AudioWorkletNode(c, "gain", { numberOfOutputs: 2, outputChannelCount: [1] }), "IndexSizeError", "a count per output");
+  throws(() => new AudioWorkletNode(c, "gain", { outputChannelCount: [0] }), "NotSupportedError", "at least one channel");
+  throws(() => new AudioWorkletNode(c, "gain", { channelCount: 33 }), "NotSupportedError", "too many channels");
+  throws(() => new AudioWorkletNode(c, "gain", { processorOptions: { f: () => {} } }), "DataCloneError", "what cannot be cloned");
+  const n = new AudioWorkletNode(c, "gain", { parameterData: { gain: 0.25 } });
+  ok(n instanceof AudioNode, "a node");
+  ok(n.port instanceof MessagePort, "its port");
+  ok(n.parameters instanceof AudioParamMap, "its params");
+  eq(n.parameters.size, 1, "one");
+  const g = n.parameters.get("gain");
+  ok(g instanceof AudioParam, "an AudioParam");
+  eq(g.value, 0.25, "parameterData");
+  eq(g.defaultValue, 0.5, "default");
+  eq(g.minValue, 0, "min");
+  eq(g.maxValue, 1, "max");
+  eq(g.automationRate, "k-rate", "rate");
+  eq([...n.parameters.keys()].join(), "gain", "keys");
+});
+
+test("AudioWorklet: the scope has what a worklet has, and nothing of a worker's", async () => {
+  const c = new AudioContext();
+  await c.audioWorklet.addModule(workletModule(GAIN_PROCESSOR));
+  const n = new AudioWorkletNode(c, "scope");
+  const m = await new Promise(r => { n.port.onmessage = e => r(e.data); });
+  eq(m.missing.join(), "", "not exposed to worklets");
+  eq(m.scope, "[object AudioWorkletGlobalScope]", "its class");
+  ok(m.isScope, "its prototype");
+  eq(m.register + m.frame + m.time + m.rate, "functionnumbernumbernumber", "what it has");
+  await c.close();
+});
+
+test("AudioWorklet: offline, the output of process() is what renders", async () => {
+  const c = new OfflineAudioContext(2, RATE / 100, RATE);
+  await c.audioWorklet.addModule(workletModule(GAIN_PROCESSOR));
+  const k = new ConstantSourceNode(c, { offset: 1 });
+  const merger = new ChannelMergerNode(c, { numberOfInputs: 2 });
+  k.connect(merger, 0, 0);
+  k.connect(merger, 0, 1);
+  const n = new AudioWorkletNode(c, "gain", { parameterData: { gain: 0.25 } });
+  merger.connect(n).connect(c.destination);
+  k.start();
+  const out = await c.startRendering();
+  for (let ch = 0; ch < 2; ch++) {
+    const data = out.getChannelData(ch);
+    near(Math.min(...data), 0.25, 1e-6, "lowest of channel " + ch);
+    near(Math.max(...data), 0.25, 1e-6, "highest of channel " + ch);
+  }
+});
+
+test("AudioWorklet: k-rate automation arrives at process()", async () => {
+  const c = new OfflineAudioContext(1, 128 * 8, RATE);
+  await c.audioWorklet.addModule(workletModule(GAIN_PROCESSOR));
+  const k = new ConstantSourceNode(c);
+  const n = new AudioWorkletNode(c, "gain");
+  k.connect(n).connect(c.destination);
+  k.start();
+  n.parameters.get("gain").setValueAtTime(1, 128 * 4 / RATE);
+  const data = (await c.startRendering()).getChannelData(0);
+  near(data[0], 0.5, 1e-6, "before the event");
+  near(data[128 * 5], 1, 1e-6, "after it");
+});
+
+test("AudioWorklet: a port both ways, in a running context", async () => {
+  const c = new AudioContext();
+  await c.audioWorklet.addModule(workletModule(GAIN_PROCESSOR));
+  const n = new AudioWorkletNode(c, "gain", { processorOptions: { tag: "the tag" } });
+  const reply = await new Promise(r => { n.port.onmessage = e => r(e.data); n.port.postMessage("hello"); });
+  eq(reply.echo, "hello", "the message");
+  eq(reply.tag, "the tag", "processorOptions");
+  eq(reply.rate, c.sampleRate, "sampleRate");
+  ok(reply.frame >= 0, "currentFrame");
+  await c.close();
+});
+
+test("AudioWorklet: a running context hears process()", async () => {
+  const c = new AudioContext();
+  await c.resume();
+  await c.audioWorklet.addModule(workletModule(GAIN_PROCESSOR));
+  const k = new ConstantSourceNode(c);
+  const n = new AudioWorkletNode(c, "gain");
+  const a = new AnalyserNode(c, { fftSize: 256 });
+  k.connect(n).connect(a).connect(c.destination);
+  k.start();
+  const wave = new Float32Array(a.fftSize);
+  let best = 0;
+  for (let i = 0; i < 100 && best < 0.4; i++) {
+    await sleep(20);
+    a.getFloatTimeDomainData(wave);
+    best = Math.max(best, ...wave);
+  }
+  near(best, 0.5, 1e-6, "the processor's output");
+  await c.close();
+});
+
+test("AudioWorklet: process() that returns false is not called again", async () => {
+  const c = new OfflineAudioContext(1, 128 * 4, RATE);
+  await c.audioWorklet.addModule(workletModule(GAIN_PROCESSOR));
+  new AudioWorkletNode(c, "once").connect(c.destination);
+  const data = (await c.startRendering()).getChannelData(0);
+  near(data[0], 0.25, 1e-6, "the first quantum");
+  eq(data[128], 0, "silence after");
+});
+
+test("AudioWorklet: a throw becomes processorerror", async () => {
+  for (const name of ["thrower", "thrower-in-constructor"]) {
+    const c = new OfflineAudioContext(1, 256, RATE);
+    await c.audioWorklet.addModule(workletModule(GAIN_PROCESSOR));
+    const n = new AudioWorkletNode(c, name);
+    n.connect(c.destination);
+    const event = new Promise(r => { n.onprocessorerror = r; });
+    const rendered = c.startRendering();
+    const e = await event;
+    ok(e instanceof ErrorEvent, name + ": an ErrorEvent");
+    ok(e.message.includes("RangeError"), name + ": what was thrown: " + e.message);
+    const data = (await rendered).getChannelData(0);
+    eq(Math.max(...data), 0, name + ": silence");
+  }
+});
+
+test("AudioWorklet: a process() that never returns is silence, then processorerror (webaudio.worklet_stall_ms)", async () => {
+  const c = new AudioContext();
+  await c.resume();
+  await c.audioWorklet.addModule(workletModule(GAIN_PROCESSOR));
+  const n = new AudioWorkletNode(c, "hang");
+  n.connect(c.destination);
+  const e = await new Promise(r => { n.onprocessorerror = r; });
+  ok(e instanceof ErrorEvent, "an ErrorEvent");
+  const t = c.currentTime;
+  await sleep(100);
+  ok(c.currentTime > t, "the render thread goes on");
+  await c.close();
+});
+
+test("AudioWorklet: a context closed stops its realm; contexts come and go", async () => {
+  for (let i = 0; i < 40; i++) {
+    const c = new AudioContext();
+    await c.audioWorklet.addModule(workletModule(GAIN_PROCESSOR));
+    new AudioWorkletNode(c, "gain").connect(c.destination);
+    await c.close();
+  }
+  ok(true, "no worker slot left behind (workers.max_per_page: 32)");
+});
+
 __run();

@@ -77,4 +77,29 @@ module webaudio {
 
   /// decodeAudioData: a promise of a buffer (a u64 object handle), on a blocking thread; rejected when it is not audio.
   u64 WebAudio_decode(bytes data, f64 rate);
+
+  /// The realm of a context's AudioWorklet: a Worker object on its own thread, started once. 0: refused (workers disabled, too many).
+  u64 WebAudio_workletStart(u64 graph);
+  /// Stops the realm (a context closed, or its realm stalled); the nodes then give silence and fire processorerror.
+  void WebAudio_workletStop(u64 graph);
+  /// An AudioWorkletNode's node: processor is the number the realm knows it by, output_channels the counts asked for (i32 each, or none). -1: refused.
+  i32 WebAudio_workletNode(u64 graph, i32 inputs, i32 outputs, i32 params, i32 processor, bytes output_channels);
+  /// What a registered parameter is (AudioParamDescriptor).
+  void WebAudio_workletParam(u64 graph, i32 node, i32 index, f64 default_value, f64 min_value, f64 max_value, bool a_rate);
+
+  /// In an AudioWorklet's realm: its context's sample rate (0 in any other realm).
+  [Exposed=Worker] f64 AudioWorkletRealm_sampleRate();
+  /// The request taken (AudioWorkletRealm_layout): its first frame.
+  [Exposed=Worker] f64 AudioWorkletRealm_frame();
+  /// Takes the waiting request and writes what it is into `layout` (i32 each: processor, inputs, outputs, params, then
+  /// channels per input, values per param, channels per output). The number of values there are: 0 no request, more than
+  /// fits (nothing written) the array is too small and the request stays taken.
+  [Exposed=Worker] i32 AudioWorkletRealm_layout(out bytes layout);
+  /// Samples of the request taken, from a position in samples (inputs, then params, then outputs).
+  [Exposed=Worker] void AudioWorkletRealm_read(i32 at, out bytes values);
+  [Exposed=Worker] void AudioWorkletRealm_write(i32 at, bytes values);
+  /// The answer: 0 process() returned true, 1 false, 2 it threw, 3 no processor yet.
+  [Exposed=Worker] void AudioWorkletRealm_finish(i32 status);
+  /// A processor whose node left the graph, -1 when none is left to tell.
+  [Exposed=Worker] i32 AudioWorkletRealm_dropped();
 }

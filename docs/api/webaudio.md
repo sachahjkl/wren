@@ -407,3 +407,127 @@ decodeAudioData: a promise of a buffer (a u64 object handle), on a blocking thre
 
 Host: `WebAudio_decode :: proc(c: ^Call, data: []u8, rate: f64) -> u64`
 
+### `WebAudio_workletStart`
+
+```
+u64 WebAudio_workletStart(u64 graph)
+```
+
+The realm of a context's AudioWorklet: a Worker object on its own thread, started once. 0: refused (workers disabled, too many).
+
+Host: `WebAudio_workletStart :: proc(c: ^Call, graph: u64) -> u64`
+
+### `WebAudio_workletStop`
+
+```
+void WebAudio_workletStop(u64 graph)
+```
+
+Stops the realm (a context closed, or its realm stalled); the nodes then give silence and fire processorerror.
+
+Host: `WebAudio_workletStop :: proc(c: ^Call, graph: u64)`
+
+### `WebAudio_workletNode`
+
+```
+i32 WebAudio_workletNode(u64 graph, i32 inputs, i32 outputs, i32 params, i32 processor, bytes output_channels)
+```
+
+An AudioWorkletNode's node: processor is the number the realm knows it by, output_channels the counts asked for (i32 each, or none). -1: refused.
+
+Host: `WebAudio_workletNode :: proc(c: ^Call, graph: u64, inputs: i32, outputs: i32, params: i32, processor: i32, output_channels: []u8) -> i32`
+
+### `WebAudio_workletParam`
+
+```
+void WebAudio_workletParam(u64 graph, i32 node, i32 index, f64 default_value, f64 min_value, f64 max_value, bool a_rate)
+```
+
+What a registered parameter is (AudioParamDescriptor).
+
+Host: `WebAudio_workletParam :: proc(c: ^Call, graph: u64, node: i32, index: i32, default_value: f64, min_value: f64, max_value: f64, a_rate: bool)`
+
+### `AudioWorkletRealm_sampleRate`
+
+```
+f64 AudioWorkletRealm_sampleRate()
+```
+
+In an AudioWorklet's realm: its context's sample rate (0 in any other realm).
+
+Exposed to: Worker.
+
+Host: `AudioWorkletRealm_sampleRate :: proc(c: ^Call) -> f64`
+
+### `AudioWorkletRealm_frame`
+
+```
+f64 AudioWorkletRealm_frame()
+```
+
+The request taken (AudioWorkletRealm_layout): its first frame.
+
+Exposed to: Worker.
+
+Host: `AudioWorkletRealm_frame :: proc(c: ^Call) -> f64`
+
+### `AudioWorkletRealm_layout`
+
+```
+i32 AudioWorkletRealm_layout(out bytes layout)
+```
+
+Takes the waiting request and writes what it is into `layout` (i32 each: processor, inputs, outputs, params, then
+channels per input, values per param, channels per output). The number of values there are: 0 no request, more than
+fits (nothing written) the array is too small and the request stays taken.
+
+Exposed to: Worker.
+
+Host: `AudioWorkletRealm_layout :: proc(c: ^Call, layout: []u8) -> i32`
+
+### `AudioWorkletRealm_read`
+
+```
+void AudioWorkletRealm_read(i32 at, out bytes values)
+```
+
+Samples of the request taken, from a position in samples (inputs, then params, then outputs).
+
+Exposed to: Worker.
+
+Host: `AudioWorkletRealm_read :: proc(c: ^Call, at: i32, values: []u8)`
+
+### `AudioWorkletRealm_write`
+
+```
+void AudioWorkletRealm_write(i32 at, bytes values)
+```
+
+Exposed to: Worker.
+
+Host: `AudioWorkletRealm_write :: proc(c: ^Call, at: i32, values: []u8)`
+
+### `AudioWorkletRealm_finish`
+
+```
+void AudioWorkletRealm_finish(i32 status)
+```
+
+The answer: 0 process() returned true, 1 false, 2 it threw, 3 no processor yet.
+
+Exposed to: Worker.
+
+Host: `AudioWorkletRealm_finish :: proc(c: ^Call, status: i32)`
+
+### `AudioWorkletRealm_dropped`
+
+```
+i32 AudioWorkletRealm_dropped()
+```
+
+A processor whose node left the graph, -1 when none is left to tell.
+
+Exposed to: Worker.
+
+Host: `AudioWorkletRealm_dropped :: proc(c: ^Call) -> i32`
+

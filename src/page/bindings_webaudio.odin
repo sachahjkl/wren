@@ -4,6 +4,8 @@ package page
 // page's thread. A graph is a host object: it goes (its thread joined) with its realm's reference, or with the page.
 
 import "core:mem"
+import "core:sync"
+import "core:time"
 import "wb:base"
 import "wb:host"
 import "wb:media"
@@ -18,6 +20,7 @@ Web_Audio_Graph :: struct {
 	offline:  bool,
 	wants_run: bool,      // resume() was called, or the context started on its own: it runs as soon as it may
 	token:    Web_Audio_Token,
+	worklet_realm: u64,   // the Worker object of its AudioWorklet's realm (the engine's wrapper owns it), 0 when none
 }
 
 // What the render thread posts to the page's thread: ids, never pointers that may have gone.
@@ -37,6 +40,8 @@ graph_vt := Object_VTable{
 	name = "AudioGraph",
 	destroy = proc(p: ^Page, data: rawptr) {
 		a := (^Web_Audio_Graph)(data)
+		// (its Worker object lives on until the thread reports its exit; a page closing stops them all: workers_destroy)
+		if !p.closed { worklet_realm_stop(p, a) }
 		if p.media != nil {
 			for o, i in p.media.audio_graphs {
 				if o == a { unordered_remove(&p.media.audio_graphs, i); break }
@@ -475,6 +480,112 @@ web_audio_capture :: proc(el: ^Media_Element, a: ^Web_Audio_Graph, node: i32) {
 @(private)
 media_capture_apply :: proc(el: ^Media_Element) {
 	if el.player != nil && el.capture != nil { media.player_set_capture(el.player, capture_sink, el.capture) }
+}
+
+// ---- AudioWorklet: the page's side of a realm that is a JavaScript worker (js_workers.odin) with its own global scope (the
+// engine's web_audio_worklet.js), and of the requests of each quantum (src/webaudio/worklet.odin) ----
+
+@(private = "file")
+worklet_realm_stop :: proc(p: ^Page, a: ^Web_Audio_Graph) {
+	if a.worklet_realm == 0 { return }
+	if h := (^Worker_Host)(object_data(p, a.worklet_realm, &worker_vt)); h != nil { worker_terminate(h) }
+	a.worklet_realm = 0
+}
+
+@(private = "file")
+WORKLET_SCRIPT := []byte{' '}   // (what makes worker_create start at once: web_audio_worklet.js sets the realm up, modules come by messages)
+
+WebAudio_workletStart :: proc(c: ^Call, graph: u64) -> u64 {
+	p := c.page
+	a := (^Web_Audio_Graph)(object_data(p, graph, &graph_vt))
+	if a == nil || a.worklet_realm != 0 { return 0 }
+	w := webaudio.worklet_attach(a.g, time.Duration(p.settings.webaudio.worklet_stall_ms) * time.Millisecond)
+	if w == nil { return 0 }
+	defer webaudio.worklet_release(w)   // (the realm has one of its own)
+	a.worklet_realm = worker_create(p, p.env.location.href, "audioworklet", c.owner, javascript = true, image = WORKLET_SCRIPT, worklet = w)
+	return a.worklet_realm
+}
+
+WebAudio_workletStop :: proc(c: ^Call, graph: u64) {
+	a := (^Web_Audio_Graph)(object_data(c.page, graph, &graph_vt))
+	if a != nil { worklet_realm_stop(c.page, a) }
+}
+
+WebAudio_workletNode :: proc(c: ^Call, graph: u64, inputs, outputs, params, processor: i32, output_channels: []u8) -> i32 {
+	g := graph_of(c, graph)
+	if g == nil { return -1 }
+	return webaudio.worklet_node_create(g, int(inputs), int(outputs), int(params), processor, mem.slice_data_cast([]i32, output_channels))
+}
+
+WebAudio_workletParam :: proc(c: ^Call, graph: u64, node, index: i32, default_value, min_value, max_value: f64, a_rate: bool) {
+	if g := graph_of(c, graph); g != nil { webaudio.worklet_param_init(g, node, int(index), f32(default_value), f32(min_value), f32(max_value), a_rate) }
+}
+
+@(private = "file")
+realm_worklet :: proc(c: ^Call) -> ^webaudio.Worklet {
+	g := c.page.worker
+	return g != nil ? g.worklet : nil
+}
+
+AudioWorkletRealm_sampleRate :: proc(c: ^Call) -> f64 {
+	w := realm_worklet(c)
+	return w != nil ? w.rate : 0
+}
+
+AudioWorkletRealm_frame :: proc(c: ^Call) -> f64 {
+	w := realm_worklet(c)
+	return w != nil ? f64(webaudio.worklet_frame(w)) : 0
+}
+
+AudioWorkletRealm_layout :: proc(c: ^Call, layout: []u8) -> i32 {
+	w := realm_worklet(c)
+	if w == nil { return 0 }
+	return i32(webaudio.worklet_layout(w, mem.slice_data_cast([]i32, layout)))
+}
+
+AudioWorkletRealm_read :: proc(c: ^Call, at: i32, values: []u8) {
+	if w := realm_worklet(c); w != nil { webaudio.worklet_read(w, int(at), floats(values)) }
+}
+
+AudioWorkletRealm_write :: proc(c: ^Call, at: i32, values: []u8) {
+	if w := realm_worklet(c); w != nil { webaudio.worklet_write(w, int(at), floats(values)) }
+}
+
+AudioWorkletRealm_finish :: proc(c: ^Call, status: i32) {
+	if w := realm_worklet(c); w != nil && status >= 0 && status < i32(webaudio.Worklet_Status.None) { webaudio.worklet_finish(w, webaudio.Worklet_Status(status)) }
+}
+
+AudioWorkletRealm_dropped :: proc(c: ^Call) -> i32 {
+	w := realm_worklet(c)
+	return w != nil ? webaudio.worklet_take_dropped(w) : -1
+}
+
+// The realm's thread: what the render thread asked for, between its other tasks. A quantum goes into the realm's JavaScript
+// (wj_worklet_quantum), which calls back for the samples. A trap there ends the realm: its nodes hear of it from the render thread.
+worklet_realm_poll :: proc(p: ^Page, g: ^Worker_Global) {
+	w := g.worklet
+	r := p.js
+	if r == nil || r.failed || r.inst == nil || r.inst.dead {
+		sync.atomic_store(&g.link.stop, true)
+		return
+	}
+	for {
+		// (the specification: the realm's microtasks run once all its processors of a quantum have, before the next quantum)
+		if webaudio.worklet_take_checkpoint(w) { microtask_checkpoint(p) }
+		if !webaudio.worklet_has_work(w) { return }
+		if realm_halted(p) { return }
+		webaudio.worklet_take(w)
+		// (draining: the checkpoint at the end of this call waits for the end of the quantum)
+		p.objects.draining = true
+		res := js_call(p, r.inst, "wj_worklet_quantum", nil)
+		p.objects.draining = false
+		webaudio.worklet_finish(w, .Failed)   // (no answer from JavaScript: it did not get that far)
+		if res != .Ok {
+			sync.atomic_store(&g.link.stop, true)
+			return
+		}
+		free_all(context.temp_allocator)
+	}
 }
 
 WebAudio_setIir :: proc(c: ^Call, graph: u64, node: i32, feedforward, feedback: []u8) {
