@@ -70,6 +70,7 @@ Page :: struct {
 	tag:       u32,            // in the handles of its nodes, events and host objects (base.pool_insert_tagged)
 	route_next:     u32,       // the tag the realm's next import acts on (Frame_target, frames_access.odin)
 	route_busy:     int,       // import calls of other realms acting on this document now
+	checkpoint_owed: bool,     // a microtask checkpoint waits for those calls to end (frames_pay_checkpoint)
 	close_pending:  bool,      // closed while in use: closes once nothing runs in it (frames_access.odin)
 	frames_pending_parent: ^Page,   // the document it was a frame of, while it waits
 	foreign_owners: [dynamic]Foreign_Owner,   // realms of other documents with listeners or callbacks here

@@ -229,6 +229,7 @@ adopt_for :: proc(ctx: ^wj.Context, into: u64, node: ^u64) -> bool {
 	for i := 0; i + 16 <= len(copied); i += 16 { wj.wj_node_rekey((^u64)(&copied[i])^, (^u64)(&copied[i + 8])^) }
 	for i := 0; i + 16 <= len(copied); i += 16 { wj.wj_node_rekey_pins((^u64)(&copied[i])^, (^u64)(&copied[i + 8])^) }
 	node^ = first
+	wj_ce_process()   // (the reactions of the move, held until its wrappers had followed: disconnected, adopted)
 	return true
 }
 

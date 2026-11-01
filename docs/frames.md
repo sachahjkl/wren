@@ -31,8 +31,14 @@ What keeps a frame of another origin out:
 
 An insertion of a node of another document moves it first (DOM "adopt", `Frame_adoptNode`): a node has its handle in its
 document's pool, so this makes new nodes, with their listeners, and the wrappers of the realm that asked follow them. A
+custom element keeps its definition: its reactions run in the realm that defined it, `adoptedCallback` included. A
 wrapper another realm holds on the old node goes dead; a shadow root does not follow its host; a form control's typed
-value and the state of a media element stay behind.
+value and the state of a media element stay behind. `document.adoptNode` and `importNode` across documents leave the node where
+it is until it is inserted, so `ownerDocument` tells the old document until then.
+
+A wrapper belongs to a realm: the same element has one wrapper per realm that reached it, and a property set on one is
+not on the other. A method of a custom element of the frame's registry is not visible on the parent's wrapper of it. A
+`MutationObserver` follows other documents with a browser object in each.
 
 Listeners may come from both realms. A listener added from another realm records a `Foreign_Owner` (its page, its instance), and
 runs in the realm that added it, a nested instance call. A script inserted in a frame runs in the frame's realm, wherever its
@@ -76,7 +82,11 @@ What it is not is one heap:
   `contentDocument.body instanceof HTMLElement` is true, where a browser says false. `history`, `navigator`, `screen`, `crypto`
   and `console` of another window are the caller's as well.
 
-A custom element class of one realm defined in the registry of another is not supported.
+A custom element class of one realm defined in the registry of another (`frame.contentWindow.customElements.define(name, class extends
+HTMLElement {})`) is not supported: its constructor would run in one realm for an element of another.
+
+Rich-text editors reach their frame, but Wren has no editing of its own in `contenteditable` or `designMode` (typing, caret, `execCommand`):
+that limit is not about frames.
 
 ## Cost
 
