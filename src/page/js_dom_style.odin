@@ -420,17 +420,17 @@ COMPUTED_PROPERTIES :: [?]string{
 	"border-bottom-color", "border-bottom-left-radius", "border-bottom-right-radius", "border-bottom-style", "border-bottom-width",
 	"border-collapse", "border-left-color", "border-left-style", "border-left-width", "border-right-color", "border-right-style",
 	"border-right-width", "border-spacing", "border-top-color", "border-top-left-radius", "border-top-right-radius",
-	"border-top-style", "border-top-width", "bottom", "box-shadow", "box-sizing", "clear", "color", "column-gap", "content",
+	"border-top-style", "border-top-width", "bottom", "box-shadow", "box-sizing", "break-after", "break-before", "break-inside", "clear", "color", "column-count", "column-fill", "column-gap", "column-rule-color", "column-rule-style", "column-rule-width", "column-span", "column-width", "content",
 	"cursor", "direction", "display", "flex-basis", "flex-direction", "flex-grow", "flex-shrink", "flex-wrap", "float",
 	"font-family", "font-size", "font-stretch", "font-style", "font-weight", "height", "justify-content", "left",
 	"letter-spacing", "line-height", "list-style-position", "list-style-type", "margin-bottom", "margin-left", "margin-right",
-	"margin-top", "max-height", "max-width", "min-height", "min-width", "object-fit", "opacity", "order", "outline-color",
+	"margin-top", "max-height", "max-width", "min-height", "min-width", "object-fit", "opacity", "order", "orphans", "outline-color",
 	"outline-offset", "outline-style", "outline-width", "overflow-wrap", "overflow-x", "overflow-y", "padding-bottom",
 	"padding-left", "padding-right", "padding-top", "pointer-events", "position", "position-anchor", "position-area", "position-try-fallbacks",
 	"position-try-order", "position-visibility", "right", "row-gap", "table-layout", "text-align",
-	"text-decoration-color", "text-decoration-line", "text-decoration-style", "text-indent", "text-overflow", "text-shadow",
+	"text-combine-upright", "text-decoration-color", "text-decoration-line", "text-decoration-style", "text-indent", "text-orientation", "text-overflow", "text-shadow",
 	"text-transform", "top", "transform", "transform-origin", "user-select", "vertical-align", "visibility",
-	"white-space", "width", "word-break", "word-spacing", "z-index",
+	"white-space", "widows", "width", "word-break", "word-spacing", "writing-mode", "z-index",
 }
 
 ComputedStyle_count :: proc(c: ^Call) -> u32 { return len(COMPUTED_PROPERTIES) }
@@ -551,7 +551,9 @@ Used_Box :: struct {
 }
 
 // The resolved value of property `name` for computed style `cs` (CSSOM §9 "resolved value"), "" when not known.
-computed_value :: proc(cs: ^style.Computed, name: string, used: Used_Box) -> string {
+computed_value :: proc(cs: ^style.Computed, name_in: string, used: Used_Box) -> string {
+	// a flow-relative name asks for what it means on this element
+	name := style.physical_property_name(cs, name_in)
 	side :: proc(name: string) -> int {
 		switch {
 		case strings.contains(name, "top"): return 0
@@ -635,6 +637,21 @@ computed_value :: proc(cs: ^style.Computed, name: string, used: Used_Box) -> str
 	case "order": return fmt.tprintf("%d", cs.order)
 	case "row-gap": return css_length(cs.row_gap)
 	case "column-gap": return css_length(cs.column_gap)
+	case "column-count": return cs.column_count == 0 ? "auto" : fmt.tprintf("%d", cs.column_count)
+	case "column-width": return css_length(cs.column_width)
+	case "column-span": return kw(cs.column_span)
+	case "column-fill": return kw(cs.column_fill)
+	case "column-rule-width": return css_px(cs.column_rule_width)
+	case "column-rule-style": return kw(cs.column_rule_style)
+	case "column-rule-color": return css_color(cs.column_rule_color)
+	case "break-before": return kw(cs.break_before)
+	case "break-after": return kw(cs.break_after)
+	case "break-inside": return kw(cs.break_inside)
+	case "orphans": return fmt.tprintf("%d", cs.orphans)
+	case "widows": return fmt.tprintf("%d", cs.widows)
+	case "writing-mode": return kw(cs.writing_mode)
+	case "text-orientation": return kw(cs.text_orientation)
+	case "text-combine-upright": return kw(cs.text_combine_upright)
 	case "color": return css_color(cs.color)
 	case "font-family": return css_font_family(cs.font_family)
 	case "font-size": return css_px(cs.font_size)

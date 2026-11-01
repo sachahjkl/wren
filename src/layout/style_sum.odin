@@ -16,7 +16,7 @@ PREFETCH_STYLES_AHEAD :: 4
 // box_flags_from_style derives from the style alone; both paths go through style_sum_of.
 
 @(private)
-Sum_Bit :: enum u8 { Transform, Contains_Fixed, Before, After }
+Sum_Bit :: enum u8 { Transform, Contains_Fixed, Before, After, Frames }
 
 @(private)
 Style_Sum :: struct {
@@ -55,6 +55,7 @@ style_sum_of :: proc(cs: ^style.Computed) -> (s: Style_Sum) {
 	if contains_fixed(cs) { s.bits += {.Contains_Fixed} }
 	if cs.before != nil { s.bits += {.Before} }
 	if cs.after != nil { s.bits += {.After} }
+	if cs.frames { s.bits += {.Frames} }
 	return
 }
 

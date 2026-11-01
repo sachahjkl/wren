@@ -177,12 +177,23 @@ Box_Flag :: enum u8 {
 }
 Box_Flags :: bit_set[Box_Flag; u32]
 
+// More of what a box is, only ever set when Layout.frames_on: multi-column and writing modes (multicol.odin, frames.odin).
+Box_Fx_Flag :: enum u8 {
+	Multicol,     // a multi-column container
+	Spanner,      // column-span: all, in a multi-column container
+	In_Flow,      // inside the flow of a multi-column container
+	Frame_Root,   // laid out in its own writing mode, inside another's frame
+}
+Box_Fx :: bit_set[Box_Fx_Flag; u8]
+
 NONE :: i32(-1)
 
 Box :: struct {
 	node:      base.Handle,         // element (or the document for the root); NIL for anonymous boxes
 	cs:        ^style.Computed,
 	kind:      Box_Kind,
+	wm:        style.Writing_Mode,  // the writing mode of its content (only when Layout.frames_on)
+	fx:        Box_Fx,
 	flags:     Box_Flags,
 	parent, first, last, next: i32,
 	pos_ref:   i32,                 // `pos` is relative to this box's border-box origin
@@ -270,6 +281,8 @@ Font_Info :: struct {
 	features: []Font_Feature,
 	variations: []Font_Variation,
 	language: string,
+	vmode:    Font_Vmode,           // how vertical lines use it (frames.odin)
+	raw_ascent, raw_descent: f32,   // the face's, when vmode changed `ascent` and `descent`
 }
 
 Line :: struct {
@@ -279,7 +292,9 @@ Line :: struct {
 }
 
 Frag_Kind :: enum u8 { Text, Box, Atomic, Ellipsis }
-Frag_Flag :: enum u8 { Left_Edge, Right_Edge }
+// Vertical: in a vertical line: `x`, `y`, `w`, `h` are physical (tall), `baseline` is an x; Left_Edge and Right_Edge then say that the
+// fragment starts and ends the box at its top and bottom. Flip: and it reads from bottom to top (sideways-lr).
+Frag_Flag :: enum u8 { Left_Edge, Right_Edge, Vertical, Flip }
 
 Frag :: struct {
 	kind:     Frag_Kind,
@@ -308,6 +323,7 @@ Item_Kind :: enum u8 {
 	Control,      // content area of a form control: painted by the control hook
 	Outline,
 	Scrollbar,    // rect = track, thumb = the thumb
+	Column_Rule,  // a rule between columns of a multi-column container: rect = the rule, in its style (Vertical: it lies across)
 }
 
 Item_Flag :: enum u8 { Hit, Left_Edge, Right_Edge, No_Background, Vertical }
@@ -324,7 +340,7 @@ Display_Item :: struct {
 	rect:     Rect,                 // layout coordinates
 	text:     string,
 	fi:       i32,
-	baseline: f32,
+	baseline: f32,                  // Text, Marker: y of the baseline (Vertical: x)
 	extra:    f32,
 	thumb:    Rect,
 	deco:     style.Decorations,    // Text: underline / overline / line-through to draw
@@ -333,7 +349,7 @@ Display_Item :: struct {
 	item:     i32,                  // Text from a fragment: its inline item (whose style it shows), else NONE
 }
 
-Space_Kind :: enum u8 { Document, Fixed, Scroll, Sticky, Transform, Anchored }
+Space_Kind :: enum u8 { Document, Fixed, Scroll, Sticky, Transform, Anchored, Flow, Column }
 
 // A coordinate space items are drawn in: the document (shifted by the page scroll), the viewport (fixed boxes), the
 // content of a scroll container (shifted by its scroll offset), a sticky box (shifted by its constraint), a transformed
@@ -366,6 +382,8 @@ Space :: struct {
 	back_hidden: bool,              // plane: backface-visibility: hidden
 	ctx:      i32,                  // plane: the plane that roots its 3D rendering context (itself when it is the root)
 	dest:     i32,                  // plane: the plane its context is drawn into (NONE: the page)
+	flow:     [2]i32,               // Flow: the flow of a multi-column container (no item is left in it): its range of Layout.flow_frags
+	shift:    Vec2,                 // Column: from the flow to where the column shows
 	band0:    f32,                  // spatial index: layout y of the first band
 	band_h:   f32,
 	band_first, band_count: i32,    // its bands: [band_first, band_first + band_count) of Layout.band_start
@@ -446,6 +464,14 @@ Layout :: struct {
 	anchor_grid_areas: map[i32]Rect,       // anchored box whose containing block is a grid -> its grid area
 	anchor_last:  map[Anchor_Key]Anchor_Last,   // the option each box fitted with at the last frame: it stays while it fits
 	anchor_chosen: map[Anchor_Key]Anchor_Last,  // what the last pass found (anchored_commit)
+	// multi-column layout and writing modes (multicol.odin, frames.odin)
+	frames_on:    bool,                    // some box has a vertical writing mode or columns (until the next full pass)
+	frame_saved:  [dynamic]Frame_Saved,    // boxes in logical coordinates, as the last block layout left them
+	frame_ifcs:   [dynamic]Frame_Saved_Ifc,
+	frame_lines:  [dynamic]f32,
+	frame_frags:  [dynamic]Frame_Saved_Frag,
+	mc_records:   map[i32]Mc_Record,       // what each multi-column container found at its last layout
+	flow_frags:   [dynamic]Flow_Frag,      // the columns of them all, in layout coordinates
 }
 
 // What building the display list of the page's stacking context finds by walking the whole box tree: its layers, and

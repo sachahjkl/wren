@@ -87,6 +87,7 @@ rune_count :: proc(s: string) -> int {
 // characters, CSS Text 3 §8.1; the spaces between words are segments of their own).
 @(private)
 text_width :: proc(c: ^Ctx, fi: i32, cs: ^style.Computed, s: string) -> f32 {
+	if c.l.frames_on && c.l.fonts[fi].vmode == .Central { return vertical_text_width(c, fi, cs, s) }
 	w: f32
 	if cs.letter_spacing != 0 && c.text.width_spaced != nil {
 		// letter-spacing turns optional ligatures off: measured as it is drawn
@@ -113,6 +114,14 @@ next_seg :: proc(it: ^Seg_Iter) -> (Seg, bool) {
 			text := item.text
 			if it.pos >= len(text) { it.idx += 1; it.pos = 0; continue }
 			cs := item.cs
+			if cs.text_combine_upright == .All {
+				// text-combine-upright (CSS Writing Modes 4 §9.1): one upright character, an em high
+				s := it.pos
+				it.pos = len(text)
+				it.prev_space = false
+				f := &c.l.fonts[item.fi]
+				return Seg{kind = .Text, item = idx, start = i32(s), end = i32(len(text)), w = f.size, brk = wraps(cs.white_space)}, true
+			}
 			ws := cs.white_space
 			collapse := ws == .Normal || ws == .Nowrap || ws == .Pre_Line
 			wrap := wraps(ws)

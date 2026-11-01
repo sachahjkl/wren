@@ -203,7 +203,7 @@ item_sig_at :: proc(e: ^Effects, x: ^Fx_Cache, c: ^Comp, idx: i32, anchor: draw.
 				}
 			}
 		}
-	case .Text, .Marker, .Outline:
+	case .Text, .Marker, .Outline, .Column_Rule:
 	}
 	return h, true
 }

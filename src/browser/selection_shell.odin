@@ -451,6 +451,7 @@ span_rect :: proc(l: ^Layout, it: ^lay.Display_Item, r: draw.Rect, a, b: int) ->
 	// caret positions through the shaped clusters: a right-to-left item has the start of the range on the right
 	ca, cb := lay.item_caret_x(l, it, a, spaint.api), lay.item_caret_x(l, it, b, spaint.api)
 	x0, x1 := min(ca, cb), max(ca, cb)
+	if .Vertical in it.flags { return {{r.min.x, math.floor(r.min.y + x0)}, {r.max.x, math.ceil(r.min.y + x1)}} }
 	return {{math.floor(r.min.x + x0), r.min.y}, {math.ceil(r.min.x + x1), r.max.y}}
 }
 
@@ -464,9 +465,15 @@ selection_paint_under :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_It
 		if node, lo, hi, ok := lay.item_source(l, spaint.doc, idx); ok && node == spaint.drop.node && spaint.drop.offset >= lo && spaint.drop.offset <= hi {
 			if n := dom.get(spaint.doc, node); n != nil && hi <= len(n.text) {
 				k := lay.source_to_item(it.text, n.text[lo:hi], spaint.drop.offset - lo)
-				x := math.round(r.min.x + lay.item_caret_x(l, it, k, spaint.api))
-				w := max(math.round((r.max.y - r.min.y) / 16), 1)
-				draw.rect(dc, {{x, r.min.y}, {x + w, r.max.y}}, spaint.drop_color)
+				if .Vertical in it.flags {
+					y := math.round(r.min.y + lay.item_caret_x(l, it, k, spaint.api))
+					w := max(math.round((r.max.x - r.min.x) / 16), 1)
+					draw.rect(dc, {{r.min.x, y}, {r.max.x, y + w}}, spaint.drop_color)
+				} else {
+					x := math.round(r.min.x + lay.item_caret_x(l, it, k, spaint.api))
+					w := max(math.round((r.max.y - r.min.y) / 16), 1)
+					draw.rect(dc, {{x, r.min.y}, {x + w, r.max.y}}, spaint.drop_color)
+				}
 			}
 		}
 	}
@@ -483,7 +490,9 @@ selection_paint_under :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_It
 		if node, _, hi, sok := lay.item_source(l, spaint.doc, idx); sok && lay.pos_compare(spaint.doc, {node, hi}, spaint.end) < 0 {
 			if fi := lay.item_font(l, it); fi != nil {
 				// after the logical end: on the left of a right-to-left item
-				if it.level & 1 == 1 { rect.min.x -= math.ceil(fi.space) } else { rect.max.x += math.ceil(fi.space) }
+				if .Vertical in it.flags {
+					rect.max.y += math.ceil(fi.space)
+				} else if it.level & 1 == 1 { rect.min.x -= math.ceil(fi.space) } else { rect.max.x += math.ceil(fi.space) }
 			}
 		}
 	}
@@ -504,8 +513,12 @@ selection_paint_over :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Ite
 		fi := lay.item_font(l, it)
 		if fi == nil || it.cs == nil { return }
 		draw.push_clip(dc, span_rect(l, it, r, a, b))
-		baseline := it.baseline + (r.min.y - it.rect.min.y)
-		sel_draw_run(dc, font.Font_Id(fi.font), fi.size, {r.min.x, baseline}, fg, it.text, text_shape_options(l, it.cs, it.level, it.extra))
+		if .Vertical in it.flags {
+			draw_vertical_text(l, dc, it, fi, it.baseline + (r.min.x - it.rect.min.x), r.min.y, r.max.y, fg, text_shape_options(l, it.cs, it.level, it.extra))
+		} else {
+			baseline := it.baseline + (r.min.y - it.rect.min.y)
+			sel_draw_run(dc, font.Font_Id(fi.font), fi.size, {r.min.x, baseline}, fg, it.text, text_shape_options(l, it.cs, it.level, it.extra))
+		}
 		draw.pop_clip(dc)
 	case .Replaced, .Control:
 		if it.node == base.NIL_HANDLE || !lay.node_in_range(spaint.doc, it.node, spaint.start, spaint.end) { return }

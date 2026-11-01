@@ -259,6 +259,11 @@ raster_hash :: proc(cs: ^style.Computed, cache: ^map[^style.Computed]u64) -> u64
 	h = hash_of(h, cs.text_decoration)
 	h = hash_of(h, cs.text_decoration_color)
 	h = hash_of(h, cs.text_decoration_style)
+	h = hash_of(h, cs.column_rule_color)
+	h = hash_of(h, cs.column_rule_style)
+	h = hash_of(h, cs.writing_mode)
+	h = hash_of(h, cs.text_orientation)
+	h = hash_of(h, cs.text_combine_upright)
 	h = hash_length(h, cs.text_decoration_thickness)
 	h = mix(h, u64(transmute(u32)cs.letter_spacing) | u64(transmute(u32)cs.word_spacing) << 32)
 	h = hash_of(h, cs.border_color)
@@ -352,7 +357,7 @@ immediate_item :: proc(user: rawptr, l: ^Layout, it: ^lay.Display_Item) -> bool 
 		if it.cs != nil && effects_settings.exact_shadows {
 			for s in it.cs.text_shadow { if s.blur > 0 && s.color.a > 0 { return true } }
 		}
-	case .Marker, .Outline:
+	case .Marker, .Outline, .Column_Rule:
 	}
 	return false
 }

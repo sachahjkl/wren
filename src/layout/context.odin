@@ -51,6 +51,13 @@ Ctx :: struct {
 	// per box, found on the layout threads (parallel.odin): its sizes are all auto (width, height, their minimums and
 	// maximums, no aspect ratio), so the block layout needs not read them from the style. nil: not known
 	plain:    []bool,
+	// multi-column layout and writing modes (multicol.odin, frames.odin)
+	mc_full_w: f32,                          // the width of the multi-column container being laid out: what spanners take
+	flow_clips: map[[2]i32]i32,              // display list: a clip in the flow, for a fragment -> its copy
+	frame_cs: map[Frame_Cs_Key]^style.Computed,
+	phys_cs:  []^style.Computed,             // during the block layout: per box, its style as the rest of the program sees it
+	vp_phys:  Vec2,
+	frame_entered, frame_intr: i32,          // the frame root whose content is being reached (layout_contents, intrinsic_compute)
 }
 
 // The box's width and height properties are all auto (Ctx.plain).
@@ -69,6 +76,7 @@ Font_Key :: struct {
 	lh_kind:  style.Line_Height_Kind,
 	lh:       f32,
 	style:    style.Font_Style,
+	vmode:    Font_Vmode,
 	stretch:  f32,
 	feat:     Font_Sig,
 }
@@ -218,6 +226,7 @@ font_info :: proc(c: ^Ctx, cs: ^style.Computed) -> i32 {
 		families = raw_data(cs.font_family), n = len(cs.font_family), weight = cs.font_weight,
 		italic = cs.font_style != .Normal, size = cs.font_size, lh_kind = cs.line_height.kind, lh = cs.line_height.v,
 		style = cs.font_style, stretch = cs.font_stretch, feat = font_sig(cs),
+		vmode = c.l.frames_on ? font_vmode(cs) : .None,
 	}
 	if c.last_fi >= 0 && key == c.last_key { c.last_cs = cs; return c.last_fi }
 	if fi, ok := c.font_cache[key]; ok { c.last_key, c.last_fi, c.last_cs = key, fi, cs; return fi }
@@ -240,6 +249,14 @@ font_info :: proc(c: ^Ctx, cs: ^style.Computed) -> i32 {
 	info.families = make([]string, len(cs.font_family), c.sa)
 	for f, i in cs.font_family { info.families[i] = strings.clone(f, c.sa) }
 	info.features, info.variations = font_features(cs, info.size, c.sa)
+	info.vmode = key.vmode
+	if info.vmode == .Central {
+		// vertical forms of punctuation and the like
+		more := make([]Font_Feature, len(info.features) + len(VERTICAL_FEATURES), c.sa)
+		copy(more, info.features)
+		copy(more[len(info.features):], VERTICAL_FEATURES[:])
+		info.features = more
+	}
 	if cs.content_language != "" { info.language = strings.clone(cs.content_language, c.sa) }
 	switch cs.line_height.kind {
 	case .Normal: info.lh_normal = true   // (font_resolve: from the face)
@@ -289,6 +306,7 @@ font_resolve :: proc(c: ^Ctx, info: ^Font_Info) {
 	info.ascent, info.descent, info.x_height = m.ascent, m.descent, m.x_height
 	if info.x_height <= 0 { info.x_height = info.size * 0.5 }
 	normal := m.line_height
+	defer font_vmode_metrics(c, info)
 	if c.set.round_metrics {
 		// Blink (SimpleFontData::PlatformInit, FontMetrics::AscentDescentWithHacks): ascent, descent and line gap are
 		// each rounded to whole device pixels, and line-height: normal is their sum (Arial at 56 px: 51 + 12 + 2 = 65,
@@ -307,6 +325,9 @@ font_resolve :: proc(c: ^Ctx, info: ^Font_Info) {
 	}
 	info.space = c.text.width(c.text.user, info.font, info.size, " ")
 }
+
+@(private)
+VERTICAL_FEATURES := [?]Font_Feature{{tag = {'v', 'e', 'r', 't'}, value = 1}, {tag = {'v', 'r', 't', '2'}, value = 1}}
 
 @(private)
 measure :: #force_inline proc(c: ^Ctx, fi: i32, s: string) -> f32 {

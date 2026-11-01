@@ -201,6 +201,8 @@ view_make :: proc(l: ^Layout, viewport: Vec2, doc_scroll: f32, cull := true, all
 		case .Sticky: v.offsets[i] = v.offsets[sp.parent] + sticky_offset(l, sp, viewport, doc_scroll)
 		case .Transform: v.offsets[i] = v.offsets[sp.parent]
 		case .Anchored: v.offsets[i] = v.offsets[sp.parent] + anchored_shift(l, sp, viewport, doc_scroll)
+		case .Flow: v.offsets[i] = v.offsets[sp.parent]
+		case .Column: v.offsets[i] = v.offsets[sp.parent] + sp.shift
 		}
 		v.mats[i], v.invs[i] = IDENTITY, IDENTITY
 		if sp.kind == .Transform && sp.proj {
@@ -497,6 +499,15 @@ box_of_view :: proc(l: ^Layout, v: ^View, node: base.Handle) -> (Box_Rects, bool
 		r.padding = rect_shift(padding_rect(b), off)
 		r.content = rect_shift(content_rect(b), off)
 	}
+	// in the flow of a multi-column container: where it shows, the union of its fragments
+	if l.frames_on && l.spaces[b.space].kind == .Flow {
+		mc := l.spaces[b.space].box
+		pad, con := r.padding.min - r.border.min, r.border.max - r.padding.max
+		con2, con3 := r.content.min - r.padding.min, r.padding.max - r.content.max
+		r.border = rect_shift(flow_bounds(l, mc, border_rect(b)), off)
+		r.padding = Rect{r.border.min + pad, r.border.max - con}
+		r.content = Rect{r.padding.min + con2, r.padding.max - con3}
+	}
 	sp := b.space
 	for sp > FIXED_SPACE { sp = l.spaces[sp].parent }
 	r.fixed = sp == FIXED_SPACE
@@ -549,6 +560,34 @@ box_of_view :: proc(l: ^Layout, v: ^View, node: base.Handle) -> (Box_Rects, bool
 		r.bounds = mat_bounds(m, q)
 	}
 	return r, true
+}
+
+// What getClientRects returns of an element, in document coordinates like box_of: a border box per fragment: a line for an
+// inline box, a column in a multi-column flow.
+box_client_rects :: proc(l: ^Layout, v: ^View, node: base.Handle, out: ^[dynamic]Rect) -> bool {
+	bi := box_index(l, node)
+	if bi == NONE || !l.valid { return false }
+	b := &l.boxes[bi]
+	off := v.offsets[b.space] + {0, v.doc_scroll}
+	own := make([dynamic]Rect, 0, 4, context.temp_allocator)
+	if b.kind == .Inline && b.ifc_root != NONE {
+		root := &l.boxes[b.ifc_root]
+		for li in root.lines[0] ..< root.lines[1] {
+			ln := &l.lines[li]
+			for fi in ln.frags[0] ..< ln.frags[1] {
+				f := &l.frags[fi]
+				if f.kind != .Box || f.box != bi { continue }
+				append(&own, Rect{b.abs + {f.x, f.y}, b.abs + {f.x + f.w, f.y + f.h}})
+			}
+		}
+	}
+	if len(own) == 0 { append(&own, border_rect(b)) }
+	flow := l.frames_on && l.spaces[b.space].kind == .Flow
+	for r in own {
+		if flow { flow_rects(l, l.spaces[b.space].box, r, out) } else { append(out, r) }
+	}
+	for &r in out { r = rect_shift(r, off) }
+	return true
 }
 
 // The page's own scroll bar (viewport coordinates), when the page is taller than the viewport.

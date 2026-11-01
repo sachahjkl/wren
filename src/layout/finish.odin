@@ -74,6 +74,9 @@ compute_overflow :: proc(l: ^Layout, order: []i32, in_fixed: []bool, vp: Vec2) -
 		b := &l.boxes[x]
 		if .Root in b.flags { continue }
 		cp := containing_parent(b)
+		// inside the flow of a multi-column container: seen where its columns show, from outside of it
+		mc := NONE
+		if .In_Flow in b.fx && (b.clip_owner == NONE || .In_Flow not_in l.boxes[b.clip_owner].fx) { mc = flow_container(l, x) }
 		m, hm := IDENTITY, false
 		if b.clip_owner != cp && has[cp] { m, hm = inner[cp], true }
 		if .Transformed in b.flags {
@@ -90,6 +93,7 @@ compute_overflow :: proc(l: ^Layout, order: []i32, in_fixed: []bool, vp: Vec2) -
 			box_r.max.x += max(style.resolve(b.cs.margin[.Right], (port.max.x - port.min.x) / l.scale) * l.scale, 0)
 			box_r.max.y += max(b.margin[2], 0)
 		}
+		if mc != NONE { box_r = flow_bounds(l, mc, box_r) }
 		add(l, b.clip_owner, hm ? mat_bounds(m, box_r) : box_r, in_fixed[x], &doc)
 		if .Ifc in b.flags && b.lines[1] > b.lines[0] {
 			clips := .Clips in b.flags && .Propagated not_in b.flags
@@ -102,6 +106,7 @@ compute_overflow :: proc(l: ^Layout, order: []i32, in_fixed: []bool, vp: Vec2) -
 					if f.kind != .Text && f.kind != .Ellipsis { continue }
 					base := f.box != NONE ? l.boxes[f.box].abs : b.abs
 					r := Rect{base + {f.x, f.y}, base + {f.x + f.w, f.y + f.h}}
+					if mc != NONE && !clips { r = flow_bounds(l, mc, r) }
 					add(l, owner, lhm ? mat_bounds(lm, r) : r, in_fixed[x], &doc)
 				}
 			}
@@ -181,6 +186,7 @@ finish :: proc(c: ^Ctx) {
 
 	// coordinates
 	for x in order { place_box(c, x) }
+	if l.frames_on { flows_finish(l, order) }
 
 	// clip owners, scrollable overflow, document extent
 	for x in order {
@@ -215,6 +221,7 @@ finish :: proc(c: ^Ctx) {
 			b.space, b.clip = FIXED_SPACE, NONE
 		} else {
 			b.space, b.clip = pb.content_space, pb.content_clip
+			if l.frames_on { flow_fix_box(l, x) }
 		}
 		if anchored != nil { anchored_space(l, x, anchored) }
 		tp := &l.boxes[b.parent]
@@ -275,6 +282,7 @@ finish :: proc(c: ^Ctx) {
 				if off, ok := l.scroll[b.node]; ok { l.scroll[b.node] = {clamp(off.x, 0, ms.x), clamp(off.y, 0, ms.y)} }
 			}
 		}
+		if .Multicol in b.fx { flow_spaces(l, x); b = &l.boxes[x] }
 		// fragments of positioned inline boxes are painted with them, not with their line
 		if b.kind == .Inline {
 			if .Positioned in b.flags || .Stacking in b.flags { b.layer = x } else if tp.kind == .Inline { b.layer = tp.layer } else { b.layer = NONE }

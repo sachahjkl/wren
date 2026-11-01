@@ -62,7 +62,10 @@ layout_abs :: proc(c: ^Ctx, ai, ref: i32, cbr: Rect) {
 	cs := k.cs
 	sp := cbr.min
 	if k.static_ref != NONE {
-		if off, ok := offset_between(c, k.static_ref, ref); ok { sp = off + k.static_pos }
+		if c.l.frames_on {
+			// across multi-column containers and frames, the point itself goes up
+			if p, ok := frame_point_between(c, k.static_ref, ref, k.static_pos); ok { sp = p }
+		} else if off, ok := offset_between(c, k.static_ref, ref); ok { sp = off + k.static_pos }
 	}
 	il, il_ok := definite(c, cs.inset[.Left], cbw)
 	ir, ir_ok := definite(c, cs.inset[.Right], cbw)

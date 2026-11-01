@@ -75,6 +75,9 @@ intrinsic_compute :: proc(c: ^Ctx, bi: i32, ignore_width: bool) -> [2]f32 {
 		w := cs.box_sizing == .Border_Box ? max(v, pb) : v + pb
 		res = {w, w}
 		if b.kind == .Replaced && compressible_replaced(cs) { res[0] = min(pb, w) }
+	} else if .Frame_Root in b.fx && c.frame_intr != bi && frame_orthogonal(c.l, bi) {
+		res = frame_intrinsic(c, bi)
+		b = &c.l.boxes[bi]
 	} else {
 		switch b.kind {
 		case .Replaced:
@@ -112,6 +115,7 @@ intrinsic_compute :: proc(c: ^Ctx, bi: i32, ignore_width: bool) -> [2]f32 {
 				res = {mn + pb, max(mx, mn) + pb}
 			}
 			b = &c.l.boxes[bi]
+			if .Multicol in b.fx { res = multicol_intrinsic(c, b, res, pb) }
 			if b.kind == .Cell && cs.width.kind == .Px {
 				v := cs.width.v * c.scale
 				w := cs.box_sizing == .Border_Box ? max(v, pb) : v + pb
@@ -187,6 +191,8 @@ natural_size :: proc(c: ^Ctx, bi: i32) -> (w, h: f32, has_w, has_h: bool) {
 	w, h, has_w, has_h = natural_size_of(c, bi)
 	inf := &c.l.inc.info[bi]
 	inf.natural, inf.natural_has, inf.natural_ok = {w, h}, {has_w, has_h}, true
+	// in the frame's axes
+	if c.l.frames_on && is_vert(frame_of(c.l, bi)) { w, h, has_w, has_h = h, w, has_h, has_w }
 	return
 }
 

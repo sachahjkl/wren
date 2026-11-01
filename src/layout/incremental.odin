@@ -483,7 +483,7 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 	t2 := time.tick_now()
 	t3, t4: time.Tick
 	l.inc.last_spliced = false
-	if pass.snapping && !l.anchor_uses && try_splice(&c, roots[:], cand, input) {
+	if pass.snapping && !l.anchor_uses && !l.frames_on && try_splice(&c, roots[:], cand, input) {
 		l.inc.last_spliced = true
 		t3 = time.tick_now()
 		t4 = t3
@@ -811,6 +811,8 @@ mark_box_flow_flags :: proc(l: ^Layout, i: i32) {
 	flags: Box_Flags
 	if .Float in b.flags { flags += {.Bfc_Floats} }
 	if b.cs != nil && (negative(b.cs.margin[.Top]) || negative(b.cs.margin[.Bottom])) { flags += {.Neg_Margins} }
+	// (the block axis of a frame may be the other one)
+	if l.frames_on && b.cs != nil && (negative(b.cs.margin[.Left]) || negative(b.cs.margin[.Right])) { flags += {.Neg_Margins} }
 	if flags == {} { return }
 	for p := b.parent; p != NONE; p = l.boxes[p].parent {
 		pb := &l.boxes[p]
