@@ -147,6 +147,7 @@ setup :: proc(t: ^testing.T, cache_dir := "", tweak: proc(rs: ^Runtime_Settings)
 	runtime_destroy()
 	rs := runtime_settings_default()
 	rs.cache_dir = cache_dir
+	rs.test_shared_cache = false   // (these tests count what their own cache holds)
 	rs.features.memory64 = true
 	if tweak != nil { tweak(&rs) }
 	configure(rs)
