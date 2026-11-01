@@ -147,6 +147,8 @@ pub const MAX_CONVERTED_STREAM_BYTES: usize = 256 << 20;
 pub const MAX_ERRORS_TOLD: u32 = 32;
 /// How many staging buffers of canvas size are kept for showing the canvas.
 pub const FRAME_POOL: usize = 4;
+/// The most samples any adapter is said to have; more from a GPU process is not believed.
+pub const MAX_REPORTED_SAMPLES: u32 = 64;
 
 /// What getContext was given.
 #[derive(Clone, Copy, Debug)]
@@ -169,6 +171,9 @@ pub struct Attrs {
 /// Set from other threads: the device is gone or an error got out.
 #[derive(Default)]
 pub struct Flags {
+    /// Operations done so far, and whether the context's thread is inside a message: how the browser tells work from a hang.
+    pub ops: std::sync::atomic::AtomicU64,
+    pub busy: AtomicBool,
     pub device_lost: AtomicBool,
     pub validation_failed: AtomicBool,
     pub out_of_memory: AtomicBool,
@@ -964,6 +969,7 @@ impl Ctx {
         let mut r = Reader::new(data);
         while !r.done() {
             let op = r.u().ok_or("truncated")?;
+            self.flags.ops.fetch_add(1, Ordering::Relaxed);
             let before = (self.error, self.errors_pending.len());
             self.step(op, &mut r).ok_or_else(|| format!("malformed command {op}"))?;
             if (self.error, self.errors_pending.len()) != before && self.errors_told < MAX_ERRORS_TOLD && op != ops::ERROR {

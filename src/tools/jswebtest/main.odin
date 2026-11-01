@@ -20,12 +20,17 @@ import "wb:js"
 import "wb:net"
 import "wb:page"
 import "wb:wasm"
+import "wb:webgl"
 import "wb:tools/testenv"
 
 WEB_AUDIO_SLOW_SCRIPT_MS :: 120_000
 
 BASE :: "http://127.0.0.1:8765"   // on the run's block of ports through testenv.url (addresses and scripts)
 PAGE :: BASE + "/jsweb/page"
+// The GPU process's limits while it is hung on purpose: the time after which it is killed (twice that on the software adapter of these
+// tests), restarts that are not counted against anything.
+WEBGL_TEST_HANG_MS :: 3000
+WEBGL_TEST_RESTARTS :: 1000
 DIR :: "examples/jsweb"
 PROFILE_DIR :: "build/jswebtest_profile"
 
@@ -267,6 +272,20 @@ main :: proc() {
 		actions := make(map[string]Action, context.temp_allocator)
 		actions["frame"] = proc(p: ^page.Page, l: ^Page_Log) { page.images_sync(p); page.canvas_frame(p) }
 		run("webgl", actions, seconds = 300)
+		// The GPU process killed and hung (test hooks): quick limits, and no limit on restarts for what is killed on purpose.
+		webgl.wg_test_enable_hooks()
+		hang_ms, restarts := settings.webgl.gpu_hang_ms, settings.webgl.gpu_max_restarts
+		settings.webgl.gpu_hang_ms, settings.webgl.gpu_max_restarts = WEBGL_TEST_HANG_MS, WEBGL_TEST_RESTARTS
+		// (the process of the run above has no hooks: this one ends it, and the next has them)
+		webgl.wg_test_kill_process()
+		actions["gpu_kill"] = proc(p: ^page.Page, l: ^Page_Log) { webgl.wg_test_kill_process() }
+		actions["gpu_hang"] = proc(p: ^page.Page, l: ^Page_Log) { page.webgl_test_hang(p) }
+		actions["gpu_info"] = proc(p: ^page.Page, l: ^Page_Log) {
+			script := fmt.tprintf("globalThis.gpuInfo = {{ pid: %d, starts: %d }}", webgl.wg_test_process_id(), webgl.wg_test_process_starts())
+			page.js_run(p, transmute([]byte)script, "jswebtest.js")
+		}
+		run("webgl_process", actions, seconds = 300)
+		settings.webgl.gpu_hang_ms, settings.webgl.gpu_max_restarts = hang_ms, restarts
 		settings.js.slow_script_ms = slow
 		settings.webgl.force_software = software
 	}

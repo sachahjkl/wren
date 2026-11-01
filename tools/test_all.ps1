@@ -684,7 +684,10 @@ if (($CI -or -not $Quick) -and -not $NoAsan) {
 }
 if (-not $Quick) {
     Step 'network stress' { powershell -NoProfile -File tools\net_stress.ps1 -SizeMB 100 }
-    Step 'WebGL device tests (native\webgl: the GLSL ES translator, formats, hostile shaders, a context on the software adapter)' {
+    Step 'the GPU process in the real browser (tools\webgl_process_e2e.ps1: none without WebGL, one for the first context, killed and restored, it ends with a killed browser)' {
+        powershell -NoProfile -File tools\webgl_process_e2e.ps1 2>&1 | Out-String
+    } -UiOnly
+    Step 'WebGL device tests (native\webgl: the GLSL ES translator, formats, hostile shaders, a context on the software adapter, the GPU process killed, hung and hostile)' {
         cargo test --profile quick --locked --manifest-path native\Cargo.toml --target-dir build\native\target -p wren_webgl 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o | Select-String 'test result|FAILED|panicked' | Out-String
     }
     Step 'native WOFF2 decoder tests (real Google Fonts against their TrueType, collections, corruptions) and cssaudit' {

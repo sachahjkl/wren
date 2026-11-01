@@ -1,9 +1,10 @@
 package page
 
-// WebGL for a page (api/webgl.widl): the browser's side of a context. The context is a Canvas_Obj of kind .WebGL on its canvas's
-// backing, so that it goes with the canvas or the page. Its pixels reach the screen the way a 2D canvas's do: copied into the
+// WebGL for a page or a worker (api/webgl.widl): the browser's side of a context. The context is a Canvas_Obj of kind .WebGL on its
+// canvas's backing, so that it goes with the canvas or the realm. Its pixels reach the screen the way a 2D canvas's do: copied into the
 // backing's bitmap (premultiplied, top row first) when a frame is ready; the toolkit shows that bitmap as a texture.
-// The device's thread never touches the page: when something happens it posts to the page's loop, with ids.
+// What watches the GPU process never touches the page: when something happens it posts to the page's loop, with ids, or wakes the
+// worker's, whose loop looks at its contexts each time round (canvas_worker_tick).
 
 import "core:strings"
 import "wb:base"
@@ -24,6 +25,7 @@ WebGL_Token :: struct {
 	loop:    ^host.Loop,
 	page_id: u64,
 	self:    u64,
+	worker:  bool,
 }
 
 WebGL_State :: struct {
@@ -35,8 +37,8 @@ WebGL_State :: struct {
 	token:    ^WebGL_Token,
 }
 
-// Why the last getContext gave nothing (read at once by the realm's script).
-@(private = "file") create_error: string
+// Why the last getContext gave nothing (read at once by the realm's script, on its thread).
+@(private = "file", thread_local) create_error: string
 
 @(private = "file")
 set_create_error :: proc(text: string) {
@@ -56,6 +58,10 @@ state_of :: proc(c: ^Call, h: u64) -> ^WebGL_State {
 gl_notify :: proc "c" (user: rawptr) {
 	context = base.process_context()
 	tok := (^WebGL_Token)(user)
+	if tok.worker {
+		host.signal(tok.loop)
+		return
+	}
 	t := new_clone(tok^, base.process_allocator())
 	host.post(t.loop, gl_pump, t)
 }
@@ -176,6 +182,7 @@ webgl_make :: proc(c: ^Call, b: ^Canvas_Backing, flags, notify: u32, user: i32, 
 		premultiplied = flag(flags, 32), preserve = flag(flags, 64), fail_if_major_performance_caveat = flag(flags, 128),
 		width = u32(max(b.width, 0)), height = u32(max(b.height, 0)), max_dimension = u32(p.settings.canvas.max_dimension),
 		allow_software = s.allow_software ? 1 : 0, force_software = s.force_software ? 1 : 0, backend = s.backend, max_bytes = s.max_bytes, wait_ms = s.wait_ms,
+		hang_ms = s.gpu_hang_ms, max_restarts = s.gpu_max_restarts, restart_window_ms = s.gpu_restart_window_ms, idle_exit_ms = s.gpu_idle_exit_ms, keep_rights = s.gpu_keep_rights ? 1 : 0,
 	}
 	token := new(WebGL_Token, base.process_allocator())
 	attrs.notify, attrs.notify_user = gl_notify, token
@@ -197,7 +204,7 @@ webgl_make :: proc(c: ^Call, b: ^Canvas_Backing, flags, notify: u32, user: i32, 
 	gl := new(WebGL_State)
 	gl.handle, gl.callback, gl.user, gl.owner, gl.token = h, notify, u32(user), c.owner, token
 	gl.dirty = true   // (what is shown before anything is drawn: the cleared buffer)
-	token^ = WebGL_Token{p.loop, page_id(p), handle}
+	token^ = WebGL_Token{p.loop, page_id(p), handle, p.worker != nil}
 	o.gl = gl
 	b.ctx_obj, b.ctx_handle = o, handle
 	if len(info) >= 8 * size_of(i32) {
@@ -212,6 +219,19 @@ webgl_make :: proc(c: ^Call, b: ^Canvas_Backing, flags, notify: u32, user: i32, 
 		out[7] = i32(inf.height)
 	}
 	return handle
+}
+
+// Test programs: asks the GPU process to hang the page's first context. (A process started without the hooks takes this for a
+// broken stream; a browser never asks.)
+webgl_test_hang :: proc(p: ^Page) {
+	if p.canvases == nil { return }
+	for b in p.canvases.all {
+		o := b.ctx_obj
+		if o != nil && o.kind == .WebGL && o.gl != nil && webgl.wg_is_lost(o.gl.handle) == 0 {
+			webgl.wg_test_misbehave(o.gl.handle, webgl.TEST_HANG_CONTEXT)
+			return
+		}
+	}
 }
 
 WebGL_enabled :: proc(c: ^Call, version: i32) -> bool {

@@ -4,6 +4,18 @@
 use super::*;
 use crate::gl::*;
 use crate::ops;
+use std::time::{Duration, Instant};
+
+/// A child of the test binary: how it recognizes its role in what libtest lets through (parent.rs: program()).
+pub const TEST_ROLE_PREFIX: &str = "wren-gpu-process=";
+
+/// In a normal run, nothing. Started by a test's Gpu, this is the GPU process: the test binary has no role argument of its own.
+#[test]
+fn gpu_child_entry() {
+    if let Some(role) = std::env::args().find_map(|a| a.strip_prefix(TEST_ROLE_PREFIX).map(str::to_string)) {
+        ipc::sys::exit_now(child::main(&role));
+    }
+}
 
 /// The command stream, as web_webgl.js writes it.
 #[derive(Default)]
@@ -60,6 +72,11 @@ fn attrs(webgl2: bool, w: u32, h: u32) -> WgAttrs {
         backend: BACKEND_AUTO,
         max_bytes: 1 << 30,
         wait_ms: 60_000,
+        hang_ms: 120_000,
+        max_restarts: 3,
+        restart_window_ms: 60_000,
+        idle_exit_ms: 0,
+        keep_rights: 0,
         notify: None,
         notify_user: std::ptr::null_mut(),
     }
