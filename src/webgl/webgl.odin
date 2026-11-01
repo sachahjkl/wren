@@ -17,15 +17,6 @@ when ODIN_OS == .Windows {
 		"system:msvcrt.lib",
 		"system:ucrt.lib",
 		"system:libvcruntime.lib",
-		"system:d3d12.lib",
-		"system:dxgi.lib",
-		"system:d3dcompiler.lib",
-		"system:ole32.lib",
-		"system:oleaut32.lib",
-		"system:user32.lib",
-		"system:gdi32.lib",
-		"system:shell32.lib",
-		"system:dxguid.lib",
 	}
 } else {
 	foreign import wren_native { "../../build/native-" + ODIN_OS_STRING + "/libwren_native.a", "system:dl", "system:pthread", "system:m" }
@@ -35,6 +26,11 @@ when ODIN_OS == .Windows {
 DEFAULT_WAIT_MS :: 10_000
 
 Handle :: distinct rawptr
+
+// What wg_take_frame says.
+FRAME_NONE :: 0
+FRAME_NEW :: 1
+FRAME_OPAQUE :: 2   // new, and every alpha is 1
 
 BACKEND_AUTO :: 0
 BACKEND_DX12 :: 1

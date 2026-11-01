@@ -60,3 +60,4 @@ html/semantics/interactive-elements/the-dialog-element
 WebCryptoAPI
 webaudio
 css/css-anchor-position
+webgl

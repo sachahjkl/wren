@@ -681,6 +681,9 @@ if (($CI -or -not $Quick) -and -not $NoAsan) {
 }
 if (-not $Quick) {
     Step 'network stress' { powershell -NoProfile -File tools\net_stress.ps1 -SizeMB 100 }
+    Step 'WebGL device tests (native\webgl: the GLSL ES translator, formats, hostile shaders, a context on the software adapter)' {
+        cargo test --profile quick --locked --manifest-path native\Cargo.toml --target-dir build\native\target -p wren_webgl 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o | Select-String 'test result|FAILED|panicked' | Out-String
+    }
     Step 'native WOFF2 decoder tests (real Google Fonts against their TrueType, collections, corruptions) and cssaudit' {
         $env:PATH = "$root\build\tools\nasm-2.16.03;$env:PATH"
         cargo test --profile quick --locked --manifest-path native\Cargo.toml --target-dir build\native\target -p wren_media woff2 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o

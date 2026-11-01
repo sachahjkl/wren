@@ -36,11 +36,14 @@
     blend_minmax: 9, depth_texture: 10, anisotropic: 11, frag_depth: 12, shader_texture_lod: 13, srgb: 14, color_buffer_float: 15, color_buffer_half_float: 16, draw_buffers: 17, s3tc: 18 };
 
   const INVALID_ENUM = 0x500, INVALID_VALUE = 0x501, INVALID_OPERATION = 0x502, OUT_OF_MEMORY = 0x505, CONTEXT_LOST = 0x9242;
+  // The commands of what runs thousands of times a frame, as locals of this function (a property read costs here).
+  const OP_UNIFORM = OP.UNIFORM, OP_DRAW_ARRAYS = OP.DRAW_ARRAYS, OP_DRAW_ELEMENTS = OP.DRAW_ELEMENTS;
   const COMMAND_WORDS = 1 << 16;   // the command buffer of a context (flushed when it is nearly full)
   const FLUSH_AT = COMMAND_WORDS - 256;   // room left for the largest fixed command
   const REPLY_BYTES = 1 << 20;
   const INFO_WORDS = 8;
   const WHOLE_BUFFER = -1;   // BIND_BUFFER_RANGE: no size (u32::MAX on the wire)
+  const DRAWING_BUFFER_FORMAT = 0x8058;   // RGBA8
   const SOURCE_COMMAND_WORDS = 13;   // TEX_IMAGE_SOURCE before its bytes (the browser fills in the source's size)
   const MAX_BUFFER_BYTES = 2 ** 31 - 1;   // larger than any buffer a context can hold
 
@@ -153,6 +156,42 @@
     MAX_ELEMENT_INDEX: 0x8D6B, TEXTURE_IMMUTABLE_LEVELS: 0x82DF, TIMEOUT_IGNORED: -1, MAX_CLIENT_WAIT_TIMEOUT_WEBGL: 0x9247, 
   };
 
+  // The `length` of each operation of the IDL.
+  const LENGTHS = {
+    activeTexture: 1, attachShader: 2, beginQuery: 2, beginTransformFeedback: 1, bindAttribLocation: 3, bindBuffer: 2, bindBufferBase: 3,
+    bindBufferRange: 5, bindFramebuffer: 2, bindRenderbuffer: 2, bindSampler: 2, bindTexture: 2, bindTransformFeedback: 2, bindVertexArray: 1,
+    blendColor: 4, blendEquation: 1, blendEquationSeparate: 2, blendFunc: 2, blendFuncSeparate: 4, blitFramebuffer: 10, bufferData: 3, bufferSubData: 3,
+    checkFramebufferStatus: 1, clear: 1, clearBufferfi: 4, clearBufferfv: 3, clearBufferiv: 3, clearBufferuiv: 3, clearColor: 4, clearDepth: 1,
+    clearStencil: 1, clientWaitSync: 3, colorMask: 4, compileShader: 1, compressedTexImage2D: 7, compressedTexImage3D: 8, compressedTexSubImage2D: 8,
+    compressedTexSubImage3D: 10, copyBufferSubData: 5, copyTexImage2D: 8, copyTexSubImage2D: 8, copyTexSubImage3D: 9, createBuffer: 0,
+    createFramebuffer: 0, createProgram: 0, createQuery: 0, createRenderbuffer: 0, createSampler: 0, createShader: 1, createTexture: 0,
+    createTransformFeedback: 0, createVertexArray: 0, cullFace: 1, deleteBuffer: 1, deleteFramebuffer: 1, deleteProgram: 1, deleteQuery: 1,
+    deleteRenderbuffer: 1, deleteSampler: 1, deleteShader: 1, deleteSync: 1, deleteTexture: 1, deleteTransformFeedback: 1, deleteVertexArray: 1,
+    depthFunc: 1, depthMask: 1, depthRange: 2, detachShader: 2, disable: 1, disableVertexAttribArray: 1, drawArrays: 3, drawArraysInstanced: 4,
+    drawBuffers: 1, drawElements: 4, drawElementsInstanced: 5, drawRangeElements: 6, drawingBufferStorage: 3, enable: 1, enableVertexAttribArray: 1,
+    endQuery: 1, endTransformFeedback: 0, fenceSync: 2, finish: 0, flush: 0, framebufferRenderbuffer: 4, framebufferTexture2D: 5,
+    framebufferTextureLayer: 5, frontFace: 1, generateMipmap: 1, getActiveAttrib: 2, getActiveUniform: 2, getActiveUniformBlockName: 2,
+    getActiveUniformBlockParameter: 3, getActiveUniforms: 3, getAttachedShaders: 1, getAttribLocation: 2, getBufferParameter: 2, getBufferSubData: 3,
+    getContextAttributes: 0, getError: 0, getExtension: 1, getFragDataLocation: 2, getFramebufferAttachmentParameter: 3, getIndexedParameter: 2,
+    getInternalformatParameter: 3, getParameter: 1, getProgramInfoLog: 1, getProgramParameter: 2, getQuery: 2, getQueryParameter: 2,
+    getRenderbufferParameter: 2, getSamplerParameter: 2, getShaderInfoLog: 1, getShaderParameter: 2, getShaderPrecisionFormat: 2, getShaderSource: 1,
+    getSupportedExtensions: 0, getSyncParameter: 2, getTexParameter: 2, getTransformFeedbackVarying: 2, getUniform: 2, getUniformBlockIndex: 2,
+    getUniformIndices: 2, getUniformLocation: 2, getVertexAttrib: 2, getVertexAttribOffset: 2, hint: 2, invalidateFramebuffer: 2,
+    invalidateSubFramebuffer: 6, isBuffer: 1, isContextLost: 0, isEnabled: 1, isFramebuffer: 1, isProgram: 1, isQuery: 1, isRenderbuffer: 1, isSampler: 1,
+    isShader: 1, isSync: 1, isTexture: 1, isTransformFeedback: 1, isVertexArray: 1, lineWidth: 1, linkProgram: 1, pauseTransformFeedback: 0,
+    pixelStorei: 2, polygonOffset: 2, readBuffer: 1, readPixels: 7, renderbufferStorage: 4, renderbufferStorageMultisample: 5, resumeTransformFeedback: 0,
+    sampleCoverage: 2, samplerParameterf: 3, samplerParameteri: 3, scissor: 4, shaderSource: 2, stencilFunc: 3, stencilFuncSeparate: 4, stencilMask: 1,
+    stencilMaskSeparate: 2, stencilOp: 3, stencilOpSeparate: 4, texImage2D: 6, texImage3D: 10, texParameterf: 3, texParameteri: 3, texStorage2D: 5,
+    texStorage3D: 6, texSubImage2D: 7, texSubImage3D: 11, transformFeedbackVaryings: 3, uniform1f: 2, uniform1fv: 2, uniform1i: 2, uniform1iv: 2,
+    uniform1ui: 2, uniform1uiv: 2, uniform2f: 3, uniform2fv: 2, uniform2i: 3, uniform2iv: 2, uniform2ui: 3, uniform2uiv: 2, uniform3f: 4, uniform3fv: 2,
+    uniform3i: 4, uniform3iv: 2, uniform3ui: 4, uniform3uiv: 2, uniform4f: 5, uniform4fv: 2, uniform4i: 5, uniform4iv: 2, uniform4ui: 5, uniform4uiv: 2,
+    uniformBlockBinding: 3, uniformMatrix2fv: 3, uniformMatrix2x3fv: 3, uniformMatrix2x4fv: 3, uniformMatrix3fv: 3, uniformMatrix3x2fv: 3,
+    uniformMatrix3x4fv: 3, uniformMatrix4fv: 3, uniformMatrix4x2fv: 3, uniformMatrix4x3fv: 3, useProgram: 1, validateProgram: 1, vertexAttrib1f: 2,
+    vertexAttrib1fv: 2, vertexAttrib2f: 3, vertexAttrib2fv: 2, vertexAttrib3f: 4, vertexAttrib3fv: 2, vertexAttrib4f: 5, vertexAttrib4fv: 2,
+    vertexAttribDivisor: 2, vertexAttribI4i: 5, vertexAttribI4iv: 2, vertexAttribI4ui: 5, vertexAttribI4uiv: 2, vertexAttribIPointer: 5,
+    vertexAttribPointer: 6, viewport: 4, waitSync: 3
+  };
+
   const OBJECT_NAMES = ["WebGLBuffer", "WebGLFramebuffer", "WebGLProgram", "WebGLRenderbuffer", "WebGLShader", "WebGLTexture"];
   const OBJECT2_NAMES = ["WebGLQuery", "WebGLSampler", "WebGLSync", "WebGLTransformFeedback", "WebGLVertexArrayObject"];
 
@@ -163,18 +202,20 @@
     defineProperty(cls, "name", { value: name, configurable: true });
     return cls;
   };
-  const WebGLObject = tagged(class { constructor(k) { if (k !== TOKEN) illegal(); } }, "WebGLObject");
+  const WebGLObject = tagged(class { constructor() { if (arguments[0] !== TOKEN) illegal(); } }, "WebGLObject");
   const classes = { WebGLObject };
   const makeClass = name => {
-    const c = tagged(class extends WebGLObject { constructor(k) { super(k); } }, name);
+    const c = tagged(class extends WebGLObject { constructor() { super(arguments[0]); } }, name);
     classes[name] = c;
     global[name] = c;
     return c;
   };
   const makeIface = (name, members) => {
-    const c = tagged(class { constructor(k) { if (k !== TOKEN) illegal(); } }, name);
+    const c = tagged(class { constructor() { if (arguments[0] !== TOKEN) illegal(); } }, name);
     for (const m of members) {
-      defineProperty(c.prototype, m, { get() { const v = this[S]; if (v === undefined) throw new TE("Illegal invocation"); return v[m]; }, enumerable: true, configurable: true });
+      const get = function () { const v = this[S]; if (v === undefined) throw new TE("Illegal invocation"); return v[m]; };
+      defineProperty(get, "name", { value: "get " + m, configurable: true });
+      defineProperty(c.prototype, m, { get, enumerable: true, configurable: true });
     }
     classes[name] = c;
     return c;
@@ -224,8 +265,10 @@
       this.objects = new MapC();
       this.exts = new MapC();
       this.program = null;
+      this.programLink = 0;
       this.preventedRestore = false;
-      this.flushNow = () => { this.scheduled = false; flush(this); };
+      this.limit = 0;
+      this.flushNow = () => { this.scheduled = false; this.limit = 0; flush(this); };
     }
   }
 
@@ -238,9 +281,11 @@
   };
 
   // Commands wait for the end of the task (or the next thing that must wait for the device).
+  // (each call looks at s.limit alone: 0 until something is scheduled, then the point where the buffer is flushed)
   const later = s => {
     if (!s.scheduled) {
       s.scheduled = true;
+      s.limit = FLUSH_AT;
       microtask(s.flushNow);
     }
     if (s.n >= FLUSH_AT) flush(s);
@@ -266,16 +311,16 @@
     s.w[s.n] = OP.ERROR;
     s.w[s.n + 1] = code;
     s.n += 2;
-    later(s);
+    if (s.n >= s.limit) later(s);
   };
 
-  const op0 = (name, op) => function () { const s = the(this); if (s.lost) return; s.w[s.n] = op; s.n += 1; later(s); };
-  const op1 = op => function (a) { const s = the(this); if (s.lost) return; const w = s.w, n = s.n; w[n] = op; w[n + 1] = a; s.n = n + 2; later(s); };
-  const op2 = op => function (a, b) { const s = the(this); if (s.lost) return; const w = s.w, n = s.n; w[n] = op; w[n + 1] = a; w[n + 2] = b; s.n = n + 3; later(s); };
-  const op4 = op => function (a, b, c, d) { const s = the(this); if (s.lost) return; const w = s.w, n = s.n; w[n] = op; w[n + 1] = a; w[n + 2] = b; w[n + 3] = c; w[n + 4] = d; s.n = n + 5; later(s); };
-  const opf1 = op => function (a) { const s = the(this); if (s.lost) return; const n = s.n; s.w[n] = op; s.f[n + 1] = a; s.n = n + 2; later(s); };
-  const opf2 = op => function (a, b) { const s = the(this); if (s.lost) return; const n = s.n, f = s.f; s.w[n] = op; f[n + 1] = a; f[n + 2] = b; s.n = n + 3; later(s); };
-  const opf4 = op => function (a, b, c, d) { const s = the(this); if (s.lost) return; const n = s.n, f = s.f; s.w[n] = op; f[n + 1] = a; f[n + 2] = b; f[n + 3] = c; f[n + 4] = d; s.n = n + 5; later(s); };
+  const op0 = (name, op) => function () { const s = this[S]; if (s.lost) return; s.w[s.n] = op; s.n += 1; if (s.n >= s.limit) later(s); };
+  const op1 = op => function (a) { const s = this[S]; if (s.lost) return; const w = s.w, n = s.n; w[n] = op; w[n + 1] = a; s.n = n + 2; if (s.n >= s.limit) later(s); };
+  const op2 = op => function (a, b) { const s = this[S]; if (s.lost) return; const w = s.w, n = s.n; w[n] = op; w[n + 1] = a; w[n + 2] = b; s.n = n + 3; if (s.n >= s.limit) later(s); };
+  const op4 = op => function (a, b, c, d) { const s = this[S]; if (s.lost) return; const w = s.w, n = s.n; w[n] = op; w[n + 1] = a; w[n + 2] = b; w[n + 3] = c; w[n + 4] = d; s.n = n + 5; if (s.n >= s.limit) later(s); };
+  const opf1 = op => function (a) { const s = this[S]; if (s.lost) return; const n = s.n; s.w[n] = op; s.f[n + 1] = a; s.n = n + 2; if (s.n >= s.limit) later(s); };
+  const opf2 = op => function (a, b) { const s = this[S]; if (s.lost) return; const n = s.n, f = s.f; s.w[n] = op; f[n + 1] = a; f[n + 2] = b; s.n = n + 3; if (s.n >= s.limit) later(s); };
+  const opf4 = op => function (a, b, c, d) { const s = this[S]; if (s.lost) return; const n = s.n, f = s.f; s.w[n] = op; f[n + 1] = a; f[n + 2] = b; f[n + 3] = c; f[n + 4] = d; s.n = n + 5; if (s.n >= s.limit) later(s); };
 
   // What is asked and waited for. Words first; a string or nothing after. The answer lies in s.reply.
   const ask = (s, words, text) => {
@@ -352,7 +397,7 @@
   };
 
   const deleter = (cls, op) => function (o) {
-    const s = the(this);
+    const s = this[S];
     if (s.lost || o === null || o === undefined) return;
     if (!(o instanceof cls)) throw new TE("The argument is not a " + cls.name);
     const m = o[S];
@@ -364,11 +409,11 @@
     w[n] = op;
     w[n + 1] = m.id;
     s.n = n + 2;
-    later(s);
+    if (s.n >= s.limit) later(s);
   };
 
   const isObject = cls => function (o) {
-    const s = the(this);
+    const s = this[S];
     if (s.lost || o === null || o === undefined) return false;
     if (!(o instanceof cls)) throw new TE("The argument is not a " + cls.name);
     const m = o[S];
@@ -376,13 +421,13 @@
   };
 
   const creator = cls => function () {
-    const s = the(this);
+    const s = this[S];
     if (s.lost) return null;
     return newObject(s, cls);
   };
 
   const binder = (cls, op) => function (target, o) {
-    const s = the(this);
+    const s = this[S];
     if (s.lost) return;
     const id = idOf(s, o, cls);
     if (id === undefined) return;
@@ -392,7 +437,7 @@
     w[n + 1] = target;
     w[n + 2] = id;
     s.n = n + 3;
-    later(s);
+    if (s.n >= s.limit) later(s);
   };
 
   // ---- data ----
@@ -411,7 +456,7 @@
   const sendWith = (s, data) => { native.submitData(s.ref, s.buffer, s.n, data); s.n = 0; };
 
   const bufferData = function (target, data, usage, srcOffset, length) {
-    const s = the(this);
+    const s = this[S];
     if (s.lost) return;
     flush(s);
     const w = s.w;
@@ -439,7 +484,7 @@
   };
 
   const bufferSubData = function (target, offset, data, srcOffset, length) {
-    const s = the(this);
+    const s = this[S];
     if (s.lost) return;
     if (data === null || data === undefined) return fail(s, INVALID_VALUE);
     let bytes;
@@ -464,20 +509,21 @@
   const tryUniform = (s, loc) => {
     // the location of a program in use, for its last link
     const m = loc[S];
-    const p = s.program;
-    if (p === null || m.program !== p || m.link !== p[S].link || m.generation !== s.generation) { fail(s, INVALID_OPERATION); return false; }
+    if (m.program !== s.program || m.link !== s.programLink) { fail(s, INVALID_OPERATION); return false; }
     return true;
   };
 
   // uniform1f and friends. kind: components, with (1 << 4) int, (2 << 4) uint.
   const uf = (count, base) => function (loc, a, b, c, d) {
-    const s = the(this);
+    const s = this[S];
     if (s.lost || loc === null || loc === undefined) return;
-    if (!(loc instanceof Location)) throw new TE("The argument is not a WebGLUniformLocation");
-    if (!tryUniform(s, loc)) return;
+    // (one object looked at once: this runs thousands of times a frame)
+    const m = loc[S];
+    if (m === undefined || m.value === undefined) throw new TE("The argument is not a WebGLUniformLocation");
+    if (m.program !== s.program || m.link !== s.programLink) return fail(s, INVALID_OPERATION);
     const w = s.w, n = s.n;
-    w[n] = OP.UNIFORM;
-    w[n + 1] = loc[S].value;
+    w[n] = OP_UNIFORM;
+    w[n + 1] = m.value;
     w[n + 2] = count | (base << 4);
     w[n + 3] = 1;
     w[n + 4] = count * 4;
@@ -494,7 +540,7 @@
       if (count > 3) w[n + 8] = d;
     }
     s.n = n + 5 + count;
-    later(s);
+    if (s.n >= s.limit) later(s);
   };
 
   const isSequence = v => isView(v) || isArray(v) || (v !== null && typeof v === "object" && typeof v[Symbol.iterator] === "function");
@@ -512,7 +558,7 @@
   };
 
   const uv = (count, base, Type) => function (loc, v, srcOffset, srcLength) {
-    const s = the(this);
+    const s = this[S];
     if (s.lost) return;
     if (loc === null || loc === undefined) return;
     if (!(loc instanceof Location)) throw new TE("The argument is not a WebGLUniformLocation");
@@ -534,11 +580,11 @@
     w[n + 4] = len * 4;
     put(s, n + 5, data, Type);
     s.n = n + 5 + len;
-    later(s);
+    if (s.n >= s.limit) later(s);
   };
 
   const um = (cols, rows) => function (loc, transpose, v, srcOffset, srcLength) {
-    const s = the(this);
+    const s = this[S];
     if (s.lost) return;
     if (loc === null || loc === undefined) return;
     if (!(loc instanceof Location)) throw new TE("The argument is not a WebGLUniformLocation");
@@ -568,12 +614,12 @@
       s.f.set(data, n + 5);
     }
     s.n = n + 5 + len;
-    later(s);
+    if (s.n >= s.limit) later(s);
   };
 
   // vertexAttrib1f and friends.
   const vaf = count => function (i, a, b, c, d) {
-    const s = the(this);
+    const s = this[S];
     if (s.lost) return;
     const n = s.n, w = s.w, f = s.f;
     w[n] = OP.VERTEX_ATTRIB; w[n + 1] = i; w[n + 2] = 0;
@@ -582,11 +628,11 @@
     f[n + 5] = count > 2 ? c : 0;
     f[n + 6] = count > 3 ? d : 1;
     s.n = n + 7;
-    later(s);
+    if (s.n >= s.limit) later(s);
   };
   const vav = count => function (i, v) {
     const data = numbers(v, F32);
-    const s = the(this);
+    const s = this[S];
     if (s.lost) return;
     if (data.length < count) return fail(s, INVALID_VALUE);
     const n = s.n, w = s.w, f = s.f;
@@ -596,7 +642,7 @@
     f[n + 5] = count > 2 ? data[2] : 0;
     f[n + 6] = count > 3 ? data[3] : 1;
     s.n = n + 7;
-    later(s);
+    if (s.n >= s.limit) later(s);
   };
 
   // ---- textures ----
@@ -672,7 +718,7 @@
   };
 
   const texImage2D = function (target, level, internal, a, b, c, d, e, f, g) {
-    const s = the(this);
+    const s = this[S];
     if (s.lost) return;
     const n = arguments.length;
     if (n === 6) {
@@ -695,7 +741,7 @@
   };
 
   const texSubImage2D = function (target, level, x, y, a, b, c, d, e, f) {
-    const s = the(this);
+    const s = this[S];
     if (s.lost) return;
     const n = arguments.length;
     if (n === 7) {
@@ -820,27 +866,27 @@
     const m = {
       activeTexture: op1(OP.ACTIVE_TEXTURE),
       attachShader(p, o) {
-        const s = the(this); required(p, WebGLProgram); required(o, WebGLShader);
+        const s = this[S]; required(p, WebGLProgram); required(o, WebGLShader);
         if (s.lost) return;
         const a = idOf(s, p, WebGLProgram), b = idOf(s, o, WebGLShader);
         if (a === undefined || b === undefined) return;
         const w = s.w, n = s.n;
         w[n] = OP.ATTACH_SHADER; w[n + 1] = a; w[n + 2] = b;
         s.n = n + 3;
-        later(s);
+        if (s.n >= s.limit) later(s);
       },
       detachShader(p, o) {
-        const s = the(this); required(p, WebGLProgram); required(o, WebGLShader);
+        const s = this[S]; required(p, WebGLProgram); required(o, WebGLShader);
         if (s.lost) return;
         const a = idOf(s, p, WebGLProgram), b = idOf(s, o, WebGLShader);
         if (a === undefined || b === undefined) return;
         const w = s.w, n = s.n;
         w[n] = OP.DETACH_SHADER; w[n + 1] = a; w[n + 2] = b;
         s.n = n + 3;
-        later(s);
+        if (s.n >= s.limit) later(s);
       },
       bindAttribLocation(p, index, name) {
-        const s = the(this); required(p, WebGLProgram);
+        const s = this[S]; required(p, WebGLProgram);
         if (s.lost) return;
         const a = idOf(s, p, WebGLProgram);
         if (a === undefined) return;
@@ -855,30 +901,30 @@
       bindRenderbuffer: binder(WebGLRenderbuffer, OP.BIND_RENDERBUFFER),
       bindTexture: binder(WebGLTexture, OP.BIND_TEXTURE),
       blendColor: opf4(OP.BLEND_COLOR),
-      blendEquation(mode) { const s = the(this); if (s.lost) return; const w = s.w, n = s.n; w[n] = OP.BLEND_EQUATION; w[n + 1] = mode; w[n + 2] = mode; s.n = n + 3; later(s); },
+      blendEquation(mode) { const s = this[S]; if (s.lost) return; const w = s.w, n = s.n; w[n] = OP.BLEND_EQUATION; w[n + 1] = mode; w[n + 2] = mode; s.n = n + 3; if (s.n >= s.limit) later(s); },
       blendEquationSeparate: op2(OP.BLEND_EQUATION),
-      blendFunc(a, b) { const s = the(this); if (s.lost) return; const w = s.w, n = s.n; w[n] = OP.BLEND_FUNC; w[n + 1] = a; w[n + 2] = b; w[n + 3] = a; w[n + 4] = b; s.n = n + 5; later(s); },
+      blendFunc(a, b) { const s = this[S]; if (s.lost) return; const w = s.w, n = s.n; w[n] = OP.BLEND_FUNC; w[n + 1] = a; w[n + 2] = b; w[n + 3] = a; w[n + 4] = b; s.n = n + 5; if (s.n >= s.limit) later(s); },
       blendFuncSeparate: op4(OP.BLEND_FUNC),
       bufferData,
       bufferSubData,
       checkFramebufferStatus(t) { return ifAlive(the(this), [Q.FRAMEBUFFER_STATUS, t], undefined, 0x8CDD); },
-      clear(mask) { const s = the(this); if (s.lost) return; const w = s.w, n = s.n; w[n] = OP.CLEAR; w[n + 1] = mask; s.n = n + 2; s.drew = true; later(s); },
+      clear(mask) { const s = this[S]; if (s.lost) return; const w = s.w, n = s.n; w[n] = OP.CLEAR; w[n + 1] = mask; s.n = n + 2; s.drew = true; if (s.n >= s.limit) later(s); },
       clearColor: opf4(OP.CLEAR_COLOR),
       clearDepth: opf1(OP.CLEAR_DEPTH),
       clearStencil: op1(OP.CLEAR_STENCIL),
-      colorMask(a, b, c, d) { const s = the(this); if (s.lost) return; const w = s.w, n = s.n; w[n] = OP.COLOR_MASK; w[n + 1] = a ? 1 : 0; w[n + 2] = b ? 1 : 0; w[n + 3] = c ? 1 : 0; w[n + 4] = d ? 1 : 0; s.n = n + 5; later(s); },
+      colorMask(a, b, c, d) { const s = this[S]; if (s.lost) return; const w = s.w, n = s.n; w[n] = OP.COLOR_MASK; w[n + 1] = a ? 1 : 0; w[n + 2] = b ? 1 : 0; w[n + 3] = c ? 1 : 0; w[n + 4] = d ? 1 : 0; s.n = n + 5; if (s.n >= s.limit) later(s); },
       compileShader(o) {
-        const s = the(this); required(o, WebGLShader);
+        const s = this[S]; required(o, WebGLShader);
         if (s.lost) return;
         const id = idOf(s, o, WebGLShader);
         if (id === undefined) return;
         const w = s.w, n = s.n;
         w[n] = OP.COMPILE_SHADER; w[n + 1] = id;
         s.n = n + 2;
-        later(s);
+        if (s.n >= s.limit) later(s);
       },
       compressedTexImage2D(target, level, internal, width, height, border, data, srcOffset, srcLength) {
-        const s = the(this);
+        const s = this[S];
         if (s.lost) return;
         flush(s);
         const c = s.w;
@@ -890,7 +936,7 @@
         sendWith(s, bytes);
       },
       compressedTexSubImage2D(target, level, x, y, width, height, format, data, srcOffset, srcLength) {
-        const s = the(this);
+        const s = this[S];
         if (s.lost) return;
         flush(s);
         const c = s.w;
@@ -902,25 +948,25 @@
         sendWith(s, bytes);
       },
       copyTexImage2D(target, level, internal, x, y, width, height, border) {
-        const s = the(this);
+        const s = this[S];
         if (s.lost) return;
         const c = s.w, n = s.n;
         c[n] = OP.COPY_TEX_IMAGE; c[n + 1] = target; c[n + 2] = level; c[n + 3] = internal; c[n + 4] = x; c[n + 5] = y; c[n + 6] = width; c[n + 7] = height; c[n + 8] = border;
         s.n = n + 9;
-        later(s);
+        if (s.n >= s.limit) later(s);
       },
       copyTexSubImage2D(target, level, xo, yo, x, y, width, height) {
-        const s = the(this);
+        const s = this[S];
         if (s.lost) return;
         const c = s.w, n = s.n;
         c[n] = OP.COPY_TEX_SUB_IMAGE; c[n + 1] = target; c[n + 2] = level; c[n + 3] = xo; c[n + 4] = yo; c[n + 5] = x; c[n + 6] = y; c[n + 7] = width; c[n + 8] = height;
         s.n = n + 9;
-        later(s);
+        if (s.n >= s.limit) later(s);
       },
       createBuffer: creator(WebGLBuffer),
       createFramebuffer: creator(WebGLFramebuffer),
       createProgram() {
-        const s = the(this);
+        const s = this[S];
         if (s.lost) return null;
         const o = newObject(s, WebGLProgram);
         o[S].bound = true;
@@ -930,7 +976,7 @@
       },
       createRenderbuffer: creator(WebGLRenderbuffer),
       createShader(type) {
-        const s = the(this);
+        const s = this[S];
         if (s.lost) return null;
         if (type !== this.VERTEX_SHADER && type !== this.FRAGMENT_SHADER) { fail(s, INVALID_ENUM); return null; }
         const o = newObject(s, WebGLShader);
@@ -948,74 +994,74 @@
       deleteShader: deleter(WebGLShader, OP.DELETE_SHADER),
       deleteTexture: deleter(WebGLTexture, OP.DELETE_TEXTURE),
       depthFunc: op1(OP.DEPTH_FUNC),
-      depthMask(v) { const s = the(this); if (s.lost) return; const w = s.w, n = s.n; w[n] = OP.DEPTH_MASK; w[n + 1] = v ? 1 : 0; s.n = n + 2; later(s); },
+      depthMask(v) { const s = this[S]; if (s.lost) return; const w = s.w, n = s.n; w[n] = OP.DEPTH_MASK; w[n + 1] = v ? 1 : 0; s.n = n + 2; if (s.n >= s.limit) later(s); },
       depthRange: opf2(OP.DEPTH_RANGE),
       disable: op1(OP.DISABLE),
       disableVertexAttribArray: op1(OP.DISABLE_ATTRIB),
       drawArrays(mode, first, count) {
-        const s = the(this);
+        const s = this[S];
         if (s.lost) return;
         const w = s.w, n = s.n;
-        w[n] = OP.DRAW_ARRAYS; w[n + 1] = mode; w[n + 2] = first; w[n + 3] = count; w[n + 4] = 1;
+        w[n] = OP_DRAW_ARRAYS; w[n + 1] = mode; w[n + 2] = first; w[n + 3] = count; w[n + 4] = 1;
         s.n = n + 5;
         s.drew = true;
-        later(s);
+        if (s.n >= s.limit) later(s);
       },
       drawElements(mode, count, type, offset) {
-        const s = the(this);
+        const s = this[S];
         if (s.lost) return;
         const w = s.w, n = s.n;
-        w[n] = OP.DRAW_ELEMENTS; w[n + 1] = mode; w[n + 2] = count; w[n + 3] = type; w[n + 4] = offset; w[n + 5] = 1;
+        w[n] = OP_DRAW_ELEMENTS; w[n + 1] = mode; w[n + 2] = count; w[n + 3] = type; w[n + 4] = offset; w[n + 5] = 1;
         s.n = n + 6;
         s.drew = true;
-        later(s);
+        if (s.n >= s.limit) later(s);
       },
       enable: op1(OP.ENABLE),
       enableVertexAttribArray: op1(OP.ENABLE_ATTRIB),
-      finish() { const s = the(this); if (!s.lost) ask(s, [Q.FINISH]); },
-      flush() { const s = the(this); if (!s.lost) flush(s); },
+      finish() { const s = this[S]; if (!s.lost) ask(s, [Q.FINISH]); },
+      flush() { const s = this[S]; if (!s.lost) flush(s); },
       framebufferRenderbuffer(t, a, rt, o) {
-        const s = the(this);
+        const s = this[S];
         if (s.lost) return;
         const id = idOf(s, o, WebGLRenderbuffer);
         if (id === undefined) return;
         const w = s.w, n = s.n;
         w[n] = OP.FRAMEBUFFER_RENDERBUFFER; w[n + 1] = t; w[n + 2] = a; w[n + 3] = rt; w[n + 4] = id;
         s.n = n + 5;
-        later(s);
+        if (s.n >= s.limit) later(s);
       },
       framebufferTexture2D(t, a, tt, o, level) {
-        const s = the(this);
+        const s = this[S];
         if (s.lost) return;
         const id = idOf(s, o, WebGLTexture);
         if (id === undefined) return;
         const w = s.w, n = s.n;
         w[n] = OP.FRAMEBUFFER_TEXTURE; w[n + 1] = t; w[n + 2] = a; w[n + 3] = tt; w[n + 4] = id; w[n + 5] = level;
         s.n = n + 6;
-        later(s);
+        if (s.n >= s.limit) later(s);
       },
       frontFace: op1(OP.FRONT_FACE),
       generateMipmap: op1(OP.GENERATE_MIPMAP),
       getActiveAttrib(p, index) { return activeInfo(the(this), p, index, Q.ACTIVE_ATTRIB); },
       getActiveUniform(p, index) { return activeInfo(the(this), p, index, Q.ACTIVE_UNIFORM); },
       getAttachedShaders(p) {
-        const s = the(this); required(p, WebGLProgram);
+        const s = this[S]; required(p, WebGLProgram);
         if (s.lost) return null;
         const id = idOf(s, p, WebGLProgram);
         if (id === undefined) return null;
         return p[S].shaders.filter(x => !x[S].deleted || x[S].attached);
       },
       getAttribLocation(p, name) {
-        const s = the(this); required(p, WebGLProgram);
+        const s = this[S]; required(p, WebGLProgram);
         if (s.lost) return -1;
         const id = idOf(s, p, WebGLProgram);
         if (id === undefined) return -1;
         return ifAlive(s, [Q.ATTRIB_LOCATION, id], String(name), -1);
       },
       getBufferParameter(t, p) { return ifAlive(the(this), [Q.BUFFER_PARAMETER, t, p], undefined, null); },
-      getContextAttributes() { const s = the(this); return s.lost ? null : Object.assign({}, s.attrs); },
+      getContextAttributes() { const s = this[S]; return s.lost ? null : Object.assign({}, s.attrs); },
       getError() {
-        const s = the(this);
+        const s = this[S];
         if (s.lost) {
           if (s.lostError) { s.lostError = false; return CONTEXT_LOST; }
           return 0;
@@ -1025,25 +1071,25 @@
         return value(s);
       },
       getExtension(name) {
-        const s = the(this);
+        const s = this[S];
         if (s.lost) return null;
         return extension(s, String(name));
       },
       getFramebufferAttachmentParameter(t, a, p) { return ifAlive(the(this), [Q.ATTACHMENT_PARAMETER, t, a, p], undefined, null); },
       getParameter(p) {
-        const s = the(this);
+        const s = this[S];
         if (s.lost) return null;
         return ifAlive(s, [Q.PARAMETER, p], undefined, null);
       },
       getProgramInfoLog(p) {
-        const s = the(this); required(p, WebGLProgram);
+        const s = this[S]; required(p, WebGLProgram);
         if (s.lost) return null;
         const id = idOf(s, p, WebGLProgram);
         if (id === undefined) return null;
         return ifAlive(s, [Q.PROGRAM_LOG, id], undefined, null);
       },
       getProgramParameter(p, pname) {
-        const s = the(this); required(p, WebGLProgram);
+        const s = this[S]; required(p, WebGLProgram);
         if (s.lost) return pname === 0x8B82 ? false : null;
         const id = idOf(s, p, WebGLProgram);
         if (id === undefined) return null;
@@ -1052,14 +1098,14 @@
       },
       getRenderbufferParameter(t, p) { return ifAlive(the(this), [Q.RENDERBUFFER_PARAMETER, t, p], undefined, null); },
       getShaderInfoLog(o) {
-        const s = the(this); required(o, WebGLShader);
+        const s = this[S]; required(o, WebGLShader);
         if (s.lost) return null;
         const id = idOf(s, o, WebGLShader);
         if (id === undefined) return null;
         return ifAlive(s, [Q.SHADER_LOG, id], undefined, null);
       },
       getShaderParameter(o, pname) {
-        const s = the(this); required(o, WebGLShader);
+        const s = this[S]; required(o, WebGLShader);
         if (s.lost) return pname === 0x8B81 ? false : null;
         const id = idOf(s, o, WebGLShader);
         if (id === undefined) return null;
@@ -1067,7 +1113,7 @@
         return ifAlive(s, [Q.SHADER, id, pname], undefined, null);
       },
       getShaderPrecisionFormat(stage, precision) {
-        const s = the(this);
+        const s = this[S];
         if (s.lost) return null;
         if (stage !== 0x8B31 && stage !== 0x8B30) { fail(s, INVALID_ENUM); return null; }
         const f = new PrecisionFormat(TOKEN);
@@ -1081,20 +1127,20 @@
         return f;
       },
       getShaderSource(o) {
-        const s = the(this); required(o, WebGLShader);
+        const s = this[S]; required(o, WebGLShader);
         if (s.lost) return null;
         const id = idOf(s, o, WebGLShader);
         if (id === undefined) return null;
         return o[S].source;
       },
       getSupportedExtensions() {
-        const s = the(this);
+        const s = this[S];
         if (s.lost) return null;
         return supported(s).slice();
       },
       getTexParameter(t, p) { return ifAlive(the(this), [Q.TEX_PARAMETER, t, p], undefined, null); },
       getUniform(p, loc) {
-        const s = the(this); required(p, WebGLProgram); required(loc, Location);
+        const s = this[S]; required(p, WebGLProgram); required(loc, Location);
         if (s.lost) return null;
         const id = idOf(s, p, WebGLProgram);
         if (id === undefined) return null;
@@ -1102,7 +1148,7 @@
         return ifAlive(s, [Q.UNIFORM, id, loc[S].value], undefined, null);
       },
       getUniformLocation(p, name) {
-        const s = the(this); required(p, WebGLProgram);
+        const s = this[S]; required(p, WebGLProgram);
         if (s.lost) return null;
         const id = idOf(s, p, WebGLProgram);
         if (id === undefined) return null;
@@ -1115,12 +1161,12 @@
         return l;
       },
       getVertexAttrib(i, p) {
-        const s = the(this);
+        const s = this[S];
         if (s.lost) return null;
         return ifAlive(s, [Q.VERTEX_ATTRIB, i, p], undefined, null);
       },
       getVertexAttribOffset(i, p) {
-        const s = the(this);
+        const s = this[S];
         if (s.lost) return 0;
         const v = ifAlive(s, [Q.VERTEX_ATTRIB, i, p], undefined, 0);
         return v === null ? 0 : v;
@@ -1128,7 +1174,7 @@
       hint: op2(OP.HINT),
       isBuffer: isObject(WebGLBuffer),
       isContextLost() { return the(this).lost; },
-      isEnabled(cap) { const s = the(this); if (s.lost) return false; const v = ifAlive(s, [Q.PARAMETER, cap], undefined, false); return v === null ? false : v; },
+      isEnabled(cap) { const s = this[S]; if (s.lost) return false; const v = ifAlive(s, [Q.PARAMETER, cap], undefined, false); return v === null ? false : v; },
       isFramebuffer: isObject(WebGLFramebuffer),
       isProgram: isObject(WebGLProgram),
       isRenderbuffer: isObject(WebGLRenderbuffer),
@@ -1136,27 +1182,28 @@
       isTexture: isObject(WebGLTexture),
       lineWidth: opf1(OP.LINE_WIDTH),
       linkProgram(p) {
-        const s = the(this); required(p, WebGLProgram);
+        const s = this[S]; required(p, WebGLProgram);
         if (s.lost) return;
         const id = idOf(s, p, WebGLProgram);
         if (id === undefined) return;
         p[S].link++;
+        if (s.program === p) s.programLink = p[S].link;
         const w = s.w, n = s.n;
         w[n] = OP.LINK_PROGRAM; w[n + 1] = id;
         s.n = n + 2;
-        later(s);
+        if (s.n >= s.limit) later(s);
       },
       pixelStorei(p, v) {
-        const s = the(this);
+        const s = this[S];
         if (s.lost) return;
         const w = s.w, n = s.n;
         w[n] = OP.PIXEL_STOREI; w[n + 1] = p; w[n + 2] = typeof v === "boolean" ? (v ? 1 : 0) : v;
         s.n = n + 3;
-        later(s);
+        if (s.n >= s.limit) later(s);
       },
       polygonOffset: opf2(OP.POLYGON_OFFSET),
       readPixels(x, y, width, height, format, type, dst, dstOffset) {
-        const s = the(this);
+        const s = this[S];
         if (s.lost) return;
         let pbo = 0, out = null;
         if (typeof dst === "number" && s.webgl2) {
@@ -1176,17 +1223,17 @@
         if (r < 0) checkLost(s);
       },
       renderbufferStorage(t, internal, width, height) {
-        const s = the(this);
+        const s = this[S];
         if (s.lost) return;
         const w = s.w, n = s.n;
         w[n] = OP.RENDERBUFFER_STORAGE; w[n + 1] = t; w[n + 2] = internal; w[n + 3] = width; w[n + 4] = height; w[n + 5] = 0;
         s.n = n + 6;
-        later(s);
+        if (s.n >= s.limit) later(s);
       },
-      sampleCoverage(v, inv) { const s = the(this); if (s.lost) return; const n = s.n; s.w[n] = OP.SAMPLE_COVERAGE; s.f[n + 1] = v; s.w[n + 2] = inv ? 1 : 0; s.n = n + 3; later(s); },
+      sampleCoverage(v, inv) { const s = this[S]; if (s.lost) return; const n = s.n; s.w[n] = OP.SAMPLE_COVERAGE; s.f[n + 1] = v; s.w[n + 2] = inv ? 1 : 0; s.n = n + 3; if (s.n >= s.limit) later(s); },
       scissor: op4(OP.SCISSOR),
       shaderSource(o, text) {
-        const s = the(this); required(o, WebGLShader);
+        const s = this[S]; required(o, WebGLShader);
         if (s.lost) return;
         const id = idOf(s, o, WebGLShader);
         if (id === undefined) return;
@@ -1198,15 +1245,15 @@
         s.n = 3;
         withText(s, source);
       },
-      stencilFunc(f, ref, mask) { const s = the(this); if (s.lost) return; const w = s.w, n = s.n; w[n] = OP.STENCIL_FUNC; w[n + 1] = 0x408; w[n + 2] = f; w[n + 3] = ref; w[n + 4] = mask; s.n = n + 5; later(s); },
+      stencilFunc(f, ref, mask) { const s = this[S]; if (s.lost) return; const w = s.w, n = s.n; w[n] = OP.STENCIL_FUNC; w[n + 1] = 0x408; w[n + 2] = f; w[n + 3] = ref; w[n + 4] = mask; s.n = n + 5; if (s.n >= s.limit) later(s); },
       stencilFuncSeparate: op4(OP.STENCIL_FUNC),
-      stencilMask(mask) { const s = the(this); if (s.lost) return; const w = s.w, n = s.n; w[n] = OP.STENCIL_MASK; w[n + 1] = 0x408; w[n + 2] = mask; s.n = n + 3; later(s); },
+      stencilMask(mask) { const s = this[S]; if (s.lost) return; const w = s.w, n = s.n; w[n] = OP.STENCIL_MASK; w[n + 1] = 0x408; w[n + 2] = mask; s.n = n + 3; if (s.n >= s.limit) later(s); },
       stencilMaskSeparate: op2(OP.STENCIL_MASK),
-      stencilOp(a, b, c) { const s = the(this); if (s.lost) return; const w = s.w, n = s.n; w[n] = OP.STENCIL_OP; w[n + 1] = 0x408; w[n + 2] = a; w[n + 3] = b; w[n + 4] = c; s.n = n + 5; later(s); },
+      stencilOp(a, b, c) { const s = this[S]; if (s.lost) return; const w = s.w, n = s.n; w[n] = OP.STENCIL_OP; w[n + 1] = 0x408; w[n + 2] = a; w[n + 3] = b; w[n + 4] = c; s.n = n + 5; if (s.n >= s.limit) later(s); },
       stencilOpSeparate: op4(OP.STENCIL_OP),
       texImage2D,
-      texParameterf(t, p, v) { const s = the(this); if (s.lost) return; const n = s.n; s.w[n] = OP.TEX_PARAMETER_F; s.w[n + 1] = t; s.w[n + 2] = p; s.f[n + 3] = v; s.n = n + 4; later(s); },
-      texParameteri(t, p, v) { const s = the(this); if (s.lost) return; const w = s.w, n = s.n; w[n] = OP.TEX_PARAMETER_I; w[n + 1] = t; w[n + 2] = p; w[n + 3] = v; s.n = n + 4; later(s); },
+      texParameterf(t, p, v) { const s = this[S]; if (s.lost) return; const n = s.n; s.w[n] = OP.TEX_PARAMETER_F; s.w[n + 1] = t; s.w[n + 2] = p; s.f[n + 3] = v; s.n = n + 4; if (s.n >= s.limit) later(s); },
+      texParameteri(t, p, v) { const s = this[S]; if (s.lost) return; const w = s.w, n = s.n; w[n] = OP.TEX_PARAMETER_I; w[n + 1] = t; w[n + 2] = p; w[n + 3] = v; s.n = n + 4; if (s.n >= s.limit) later(s); },
       texSubImage2D,
       uniform1f: uf(1, 0), uniform2f: uf(2, 0), uniform3f: uf(3, 0), uniform4f: uf(4, 0),
       uniform1i: uf(1, 1), uniform2i: uf(2, 1), uniform3i: uf(3, 1), uniform4i: uf(4, 1),
@@ -1214,18 +1261,19 @@
       uniform1iv: uv(1, 1, I32), uniform2iv: uv(2, 1, I32), uniform3iv: uv(3, 1, I32), uniform4iv: uv(4, 1, I32),
       uniformMatrix2fv: um(2, 2), uniformMatrix3fv: um(3, 3), uniformMatrix4fv: um(4, 4),
       useProgram(p) {
-        const s = the(this);
+        const s = this[S];
         if (s.lost) return;
         const id = idOf(s, p, WebGLProgram);
         if (id === undefined) return;
         s.program = p === undefined ? null : p;
+        s.programLink = s.program === null ? 0 : s.program[S].link;
         const w = s.w, n = s.n;
         w[n] = OP.USE_PROGRAM; w[n + 1] = id;
         s.n = n + 2;
-        later(s);
+        if (s.n >= s.limit) later(s);
       },
       validateProgram(p) {
-        const s = the(this); required(p, WebGLProgram);
+        const s = this[S]; required(p, WebGLProgram);
         if (s.lost) return;
         const id = idOf(s, p, WebGLProgram);
         if (id !== undefined) ask(s, [Q.VALIDATE, id]);
@@ -1233,13 +1281,13 @@
       vertexAttrib1f: vaf(1), vertexAttrib2f: vaf(2), vertexAttrib3f: vaf(3), vertexAttrib4f: vaf(4),
       vertexAttrib1fv: vav(1), vertexAttrib2fv: vav(2), vertexAttrib3fv: vav(3), vertexAttrib4fv: vav(4),
       vertexAttribPointer(i, size, type, normalized, stride, offset) {
-        const s = the(this);
+        const s = this[S];
         if (s.lost) return;
         if (offset < 0) return fail(s, INVALID_VALUE);
         const w = s.w, n = s.n;
         w[n] = OP.VERTEX_ATTRIB_POINTER; w[n + 1] = i; w[n + 2] = size; w[n + 3] = type; w[n + 4] = normalized ? 1 : 0; w[n + 5] = stride; w[n + 6] = offset; w[n + 7] = 0;
         s.n = n + 8;
-        later(s);
+        if (s.n >= s.limit) later(s);
       },
       viewport: op4(OP.VIEWPORT),
     };
@@ -1247,12 +1295,17 @@
     for (const name of Object.keys(m)) {
       defineProperty(proto, name, { value: m[name], writable: true, enumerable: true, configurable: true });
       defineProperty(m[name], "name", { value: name, configurable: true });
+      if (LENGTHS[name] !== undefined) defineProperty(m[name], "length", { value: LENGTHS[name], configurable: true });
     }
-    const getter = (name, fn) => defineProperty(proto, name, { get: fn, enumerable: true, configurable: true });
+    const getter = (name, fn) => {
+      defineProperty(fn, "name", { value: "get " + name, configurable: true });
+      defineProperty(proto, name, { get: fn, enumerable: true, configurable: true });
+    };
     getter("canvas", function () { return the(this).canvas; });
-    getter("drawingBufferWidth", function () { const s = the(this); return s.lost ? 0 : native.width(s.ref); });
-    getter("drawingBufferHeight", function () { const s = the(this); return s.lost ? 0 : native.height(s.ref); });
+    getter("drawingBufferWidth", function () { const s = this[S]; return s.lost ? 0 : native.width(s.ref); });
+    getter("drawingBufferHeight", function () { const s = this[S]; return s.lost ? 0 : native.height(s.ref); });
     getter("drawingBufferColorSpace", function () { the(this); return "srgb"; });
+    getter("drawingBufferFormat", function () { the(this); return DRAWING_BUFFER_FORMAT; });
     getter("unpackColorSpace", function () { the(this); return "srgb"; });
   };
 
@@ -1286,11 +1339,11 @@
 
   // ---- WebGL 2 ----
   const commands2 = () => ({
-    beginQuery(t, q) { const s = the(this); required(q, WebGLQuery); if (!s.lost) { q[S].target = t; q[S].bound = true; s.query = q; } },
-    endQuery(t) { const s = the(this); if (!s.lost) s.query = null; },
+    beginQuery(t, q) { const s = this[S]; required(q, WebGLQuery); if (!s.lost) { q[S].target = t; q[S].bound = true; s.query = q; } },
+    endQuery(t) { const s = this[S]; if (!s.lost) s.query = null; },
     getQuery(t, p) { return the(this).query || null; },
     getQueryParameter(q, p) {
-      const s = the(this); required(q, WebGLQuery);
+      const s = this[S]; required(q, WebGLQuery);
       if (s.lost) return null;
       // (no occlusion or timer data on this path: what is asked is available at once, and everything passes)
       return p === 0x8867 ? true : (p === 0x8866 ? 1 : null);
@@ -1299,7 +1352,7 @@
     deleteQuery(q) { if (q !== null && q !== undefined) { q[S].deleted = true; the(this).objects.delete(q[S].id); } },
     isQuery: isObject(WebGLQuery),
     createSampler() {
-      const s = the(this);
+      const s = this[S];
       if (s.lost) return null;
       const o = newObject(s, WebGLSampler);
       o[S].bound = true;
@@ -1308,44 +1361,44 @@
     deleteSampler: deleter(WebGLSampler, OP.DELETE_SAMPLER),
     isSampler: isObject(WebGLSampler),
     bindSampler(unit, o) {
-      const s = the(this);
+      const s = this[S];
       if (s.lost) return;
       const id = idOf(s, o, WebGLSampler);
       if (id === undefined) return;
       const w = s.w, n = s.n;
       w[n] = OP.BIND_SAMPLER; w[n + 1] = unit; w[n + 2] = id;
       s.n = n + 3;
-      later(s);
+      if (s.n >= s.limit) later(s);
     },
     samplerParameteri(o, p, v) {
-      const s = the(this); required(o, WebGLSampler);
+      const s = this[S]; required(o, WebGLSampler);
       if (s.lost) return;
       const id = idOf(s, o, WebGLSampler);
       if (id === undefined) return;
       const w = s.w, n = s.n;
       w[n] = OP.SAMPLER_PARAMETER_I; w[n + 1] = id; w[n + 2] = p; w[n + 3] = v;
       s.n = n + 4;
-      later(s);
+      if (s.n >= s.limit) later(s);
     },
     samplerParameterf(o, p, v) {
-      const s = the(this); required(o, WebGLSampler);
+      const s = this[S]; required(o, WebGLSampler);
       if (s.lost) return;
       const id = idOf(s, o, WebGLSampler);
       if (id === undefined) return;
       const n = s.n;
       s.w[n] = OP.SAMPLER_PARAMETER_F; s.w[n + 1] = id; s.w[n + 2] = p; s.f[n + 3] = v;
       s.n = n + 4;
-      later(s);
+      if (s.n >= s.limit) later(s);
     },
     getSamplerParameter(o, p) {
-      const s = the(this); required(o, WebGLSampler);
+      const s = this[S]; required(o, WebGLSampler);
       if (s.lost) return null;
       const id = idOf(s, o, WebGLSampler);
       if (id === undefined) return null;
       return ifAlive(s, [Q.SAMPLER_PARAMETER, id, p], undefined, null);
     },
     fenceSync(c, f) {
-      const s = the(this);
+      const s = this[S];
       if (s.lost) return null;
       if (c !== 0x9117 || f !== 0) { fail(s, c !== 0x9117 ? INVALID_ENUM : INVALID_VALUE); return null; }
       const o = new WebGLSync(TOKEN);
@@ -1356,14 +1409,14 @@
     isSync(o) { return o instanceof WebGLSync && !o[S].deleted; },
     deleteSync(o) { if (o !== null && o !== undefined) o[S].deleted = true; },
     clientWaitSync(o, f, t) {
-      const s = the(this); required(o, WebGLSync);
+      const s = this[S]; required(o, WebGLSync);
       if (s.lost) return 0x911D;
       ask(s, [Q.FINISH]);
       return 0x911A;   // ALREADY_SIGNALED: finished on this call
     },
     waitSync(o, f, t) { the(this); required(o, WebGLSync); },
     getSyncParameter(o, p) {
-      const s = the(this); required(o, WebGLSync);
+      const s = this[S]; required(o, WebGLSync);
       if (s.lost) return null;
       switch (p) {
         case 0x9112: return 0x9116;
@@ -1378,21 +1431,21 @@
     createTransformFeedback: creator(WebGLTransformFeedback),
     deleteTransformFeedback(o) { if (o !== null && o !== undefined) o[S].deleted = true; },
     isTransformFeedback: isObject(WebGLTransformFeedback),
-    bindTransformFeedback(t, o) { const s = the(this); if (!s.lost && o !== null && o !== undefined) o[S].bound = true; },
-    beginTransformFeedback(mode) { const s = the(this); if (!s.lost) fail(s, INVALID_OPERATION); },
-    endTransformFeedback() { const s = the(this); if (!s.lost) fail(s, INVALID_OPERATION); },
-    pauseTransformFeedback() { const s = the(this); if (!s.lost) fail(s, INVALID_OPERATION); },
-    resumeTransformFeedback() { const s = the(this); if (!s.lost) fail(s, INVALID_OPERATION); },
-    transformFeedbackVaryings(p, names, mode) { const s = the(this); required(p, WebGLProgram); if (s.lost) return; p[S].tf = names; },
-    getTransformFeedbackVarying(p, i) { const s = the(this); required(p, WebGLProgram); if (!s.lost) fail(s, INVALID_VALUE); return null; },
+    bindTransformFeedback(t, o) { const s = this[S]; if (!s.lost && o !== null && o !== undefined) o[S].bound = true; },
+    beginTransformFeedback(mode) { const s = this[S]; if (!s.lost) fail(s, INVALID_OPERATION); },
+    endTransformFeedback() { const s = this[S]; if (!s.lost) fail(s, INVALID_OPERATION); },
+    pauseTransformFeedback() { const s = this[S]; if (!s.lost) fail(s, INVALID_OPERATION); },
+    resumeTransformFeedback() { const s = this[S]; if (!s.lost) fail(s, INVALID_OPERATION); },
+    transformFeedbackVaryings(p, names, mode) { const s = this[S]; required(p, WebGLProgram); if (s.lost) return; p[S].tf = names; },
+    getTransformFeedbackVarying(p, i) { const s = this[S]; required(p, WebGLProgram); if (!s.lost) fail(s, INVALID_VALUE); return null; },
     createVertexArray() {
-      const s = the(this);
+      const s = this[S];
       return s.lost ? null : newObject(s, WebGLVertexArrayObject);
     },
     deleteVertexArray: deleter(WebGLVertexArrayObject, OP.DELETE_VAO),
     isVertexArray: isObject(WebGLVertexArrayObject),
     bindVertexArray(o) {
-      const s = the(this);
+      const s = this[S];
       if (s.lost) return;
       const id = idOf(s, o, WebGLVertexArrayObject);
       if (id === undefined) return;
@@ -1400,71 +1453,71 @@
       const w = s.w, n = s.n;
       w[n] = OP.BIND_VAO; w[n + 1] = id;
       s.n = n + 2;
-      later(s);
+      if (s.n >= s.limit) later(s);
     },
     drawArraysInstanced(mode, first, count, instances) {
-      const s = the(this);
+      const s = this[S];
       if (s.lost) return;
       const w = s.w, n = s.n;
-      w[n] = OP.DRAW_ARRAYS; w[n + 1] = mode; w[n + 2] = first; w[n + 3] = count; w[n + 4] = instances;
+      w[n] = OP_DRAW_ARRAYS; w[n + 1] = mode; w[n + 2] = first; w[n + 3] = count; w[n + 4] = instances;
       s.n = n + 5;
       s.drew = true;
-      later(s);
+      if (s.n >= s.limit) later(s);
     },
     drawElementsInstanced(mode, count, type, offset, instances) {
-      const s = the(this);
+      const s = this[S];
       if (s.lost) return;
       const w = s.w, n = s.n;
-      w[n] = OP.DRAW_ELEMENTS; w[n + 1] = mode; w[n + 2] = count; w[n + 3] = type; w[n + 4] = offset; w[n + 5] = instances;
+      w[n] = OP_DRAW_ELEMENTS; w[n + 1] = mode; w[n + 2] = count; w[n + 3] = type; w[n + 4] = offset; w[n + 5] = instances;
       s.n = n + 6;
       s.drew = true;
-      later(s);
+      if (s.n >= s.limit) later(s);
     },
     drawRangeElements(mode, start, end, count, type, offset) {
-      const s = the(this);
+      const s = this[S];
       if (s.lost) return;
       if (end < start) return fail(s, INVALID_VALUE);
       const w = s.w, n = s.n;
-      w[n] = OP.DRAW_ELEMENTS; w[n + 1] = mode; w[n + 2] = count; w[n + 3] = type; w[n + 4] = offset; w[n + 5] = 1;
+      w[n] = OP_DRAW_ELEMENTS; w[n + 1] = mode; w[n + 2] = count; w[n + 3] = type; w[n + 4] = offset; w[n + 5] = 1;
       s.n = n + 6;
       s.drew = true;
-      later(s);
+      if (s.n >= s.limit) later(s);
     },
     vertexAttribDivisor: op2(OP.VERTEX_ATTRIB_DIVISOR),
     vertexAttribIPointer(i, size, type, stride, offset) {
-      const s = the(this);
+      const s = this[S];
       if (s.lost) return;
       if (offset < 0) return fail(s, INVALID_VALUE);
       const w = s.w, n = s.n;
       w[n] = OP.VERTEX_ATTRIB_POINTER; w[n + 1] = i; w[n + 2] = size; w[n + 3] = type; w[n + 4] = 0; w[n + 5] = stride; w[n + 6] = offset; w[n + 7] = 1;
       s.n = n + 8;
-      later(s);
+      if (s.n >= s.limit) later(s);
     },
-    vertexAttribI4i(i, a, b, c, d) { const s = the(this); if (s.lost) return; const w = s.w, n = s.n; w[n] = OP.VERTEX_ATTRIB; w[n + 1] = i; w[n + 2] = 1; w[n + 3] = a; w[n + 4] = b; w[n + 5] = c; w[n + 6] = d; s.n = n + 7; later(s); },
-    vertexAttribI4ui(i, a, b, c, d) { const s = the(this); if (s.lost) return; const w = s.w, n = s.n; w[n] = OP.VERTEX_ATTRIB; w[n + 1] = i; w[n + 2] = 2; w[n + 3] = a; w[n + 4] = b; w[n + 5] = c; w[n + 6] = d; s.n = n + 7; later(s); },
-    vertexAttribI4iv(i, v) { const s = the(this); const d = numbers(v, I32); if (s.lost) return; const w = s.w, n = s.n; w[n] = OP.VERTEX_ATTRIB; w[n + 1] = i; w[n + 2] = 1; w[n + 3] = d[0]; w[n + 4] = d[1]; w[n + 5] = d[2]; w[n + 6] = d[3]; s.n = n + 7; later(s); },
-    vertexAttribI4uiv(i, v) { const s = the(this); const d = numbers(v, U32); if (s.lost) return; const w = s.w, n = s.n; w[n] = OP.VERTEX_ATTRIB; w[n + 1] = i; w[n + 2] = 2; w[n + 3] = d[0]; w[n + 4] = d[1]; w[n + 5] = d[2]; w[n + 6] = d[3]; s.n = n + 7; later(s); },
+    vertexAttribI4i(i, a, b, c, d) { const s = this[S]; if (s.lost) return; const w = s.w, n = s.n; w[n] = OP.VERTEX_ATTRIB; w[n + 1] = i; w[n + 2] = 1; w[n + 3] = a; w[n + 4] = b; w[n + 5] = c; w[n + 6] = d; s.n = n + 7; if (s.n >= s.limit) later(s); },
+    vertexAttribI4ui(i, a, b, c, d) { const s = this[S]; if (s.lost) return; const w = s.w, n = s.n; w[n] = OP.VERTEX_ATTRIB; w[n + 1] = i; w[n + 2] = 2; w[n + 3] = a; w[n + 4] = b; w[n + 5] = c; w[n + 6] = d; s.n = n + 7; if (s.n >= s.limit) later(s); },
+    vertexAttribI4iv(i, v) { const s = this[S]; const d = numbers(v, I32); if (s.lost) return; const w = s.w, n = s.n; w[n] = OP.VERTEX_ATTRIB; w[n + 1] = i; w[n + 2] = 1; w[n + 3] = d[0]; w[n + 4] = d[1]; w[n + 5] = d[2]; w[n + 6] = d[3]; s.n = n + 7; if (s.n >= s.limit) later(s); },
+    vertexAttribI4uiv(i, v) { const s = this[S]; const d = numbers(v, U32); if (s.lost) return; const w = s.w, n = s.n; w[n] = OP.VERTEX_ATTRIB; w[n + 1] = i; w[n + 2] = 2; w[n + 3] = d[0]; w[n + 4] = d[1]; w[n + 5] = d[2]; w[n + 6] = d[3]; s.n = n + 7; if (s.n >= s.limit) later(s); },
     uniform1ui: uf(1, 2), uniform2ui: uf(2, 2), uniform3ui: uf(3, 2), uniform4ui: uf(4, 2),
     uniform1uiv: uv(1, 2, U32), uniform2uiv: uv(2, 2, U32), uniform3uiv: uv(3, 2, U32), uniform4uiv: uv(4, 2, U32),
     uniformMatrix2x3fv: um(2, 3), uniformMatrix2x4fv: um(2, 4), uniformMatrix3x2fv: um(3, 2), uniformMatrix3x4fv: um(3, 4), uniformMatrix4x2fv: um(4, 2), uniformMatrix4x3fv: um(4, 3),
     blitFramebuffer(a, b, c, d, e, f, g, h, mask, filter) {
-      const s = the(this);
+      const s = this[S];
       if (s.lost) return;
       const w = s.w, n = s.n;
       w[n] = OP.BLIT_FRAMEBUFFER; w[n + 1] = a; w[n + 2] = b; w[n + 3] = c; w[n + 4] = d; w[n + 5] = e; w[n + 6] = f; w[n + 7] = g; w[n + 8] = h; w[n + 9] = mask; w[n + 10] = filter;
       s.n = n + 11;
       s.drew = true;
-      later(s);
+      if (s.n >= s.limit) later(s);
     },
     framebufferTextureLayer(t, a, o, level, layer) {
-      const s = the(this);
+      const s = this[S];
       if (s.lost) return;
       const id = idOf(s, o, WebGLTexture);
       if (id === undefined) return;
       const w = s.w, n = s.n;
       w[n] = OP.FRAMEBUFFER_TEXTURE_LAYER; w[n + 1] = t; w[n + 2] = a; w[n + 3] = id; w[n + 4] = level; w[n + 5] = layer;
       s.n = n + 6;
-      later(s);
+      if (s.n >= s.limit) later(s);
     },
     invalidateFramebuffer(t, list) { the(this); },
     invalidateSubFramebuffer(t, list, x, y, w, h) { the(this); },
@@ -1474,16 +1527,16 @@
     clearBufferiv(buffer, index, v, off) { clearBuffer(the(this), buffer, index, 1, numbers(v, I32), off); },
     clearBufferuiv(buffer, index, v, off) { clearBuffer(the(this), buffer, index, 2, numbers(v, U32), off); },
     clearBufferfi(buffer, index, depth, stencil) {
-      const s = the(this);
+      const s = this[S];
       if (s.lost) return;
       const n = s.n, w = s.w;
       w[n] = OP.CLEAR_BUFFER; w[n + 1] = buffer; w[n + 2] = index; w[n + 3] = 3; s.f[n + 4] = depth; w[n + 5] = stencil; w[n + 6] = 0; w[n + 7] = 0;
       s.n = n + 8;
       s.drew = true;
-      later(s);
+      if (s.n >= s.limit) later(s);
     },
     bindBufferBase(t, index, o) {
-      const s = the(this);
+      const s = this[S];
       if (s.lost) return;
       const id = idOf(s, o, WebGLBuffer);
       if (id === undefined) return;
@@ -1491,10 +1544,10 @@
       const w = s.w, n = s.n;
       w[n] = OP.BIND_BUFFER_RANGE; w[n + 1] = t; w[n + 2] = index; w[n + 3] = id; w[n + 4] = 0; w[n + 5] = WHOLE_BUFFER;
       s.n = n + 6;
-      later(s);
+      if (s.n >= s.limit) later(s);
     },
     bindBufferRange(t, index, o, offset, size) {
-      const s = the(this);
+      const s = this[S];
       if (s.lost) return;
       const id = idOf(s, o, WebGLBuffer);
       if (id === undefined) return;
@@ -1503,19 +1556,19 @@
       const w = s.w, n = s.n;
       w[n] = OP.BIND_BUFFER_RANGE; w[n + 1] = t; w[n + 2] = index; w[n + 3] = id; w[n + 4] = offset; w[n + 5] = size;
       s.n = n + 6;
-      later(s);
+      if (s.n >= s.limit) later(s);
     },
     copyBufferSubData(rt, wt, ro, wo, size) {
-      const s = the(this);
+      const s = this[S];
       if (s.lost) return;
       if (ro < 0 || wo < 0 || size < 0) return fail(s, INVALID_VALUE);
       const w = s.w, n = s.n;
       w[n] = OP.COPY_BUFFER_SUB_DATA; w[n + 1] = rt; w[n + 2] = wt; w[n + 3] = ro; w[n + 4] = wo; w[n + 5] = size;
       s.n = n + 6;
-      later(s);
+      if (s.n >= s.limit) later(s);
     },
     getBufferSubData(t, offset, dst, dstOffset, length) {
-      const s = the(this);
+      const s = this[S];
       if (s.lost) return;
       if (!isView(dst)) throw new TE("getBufferSubData: not a view");
       const size = dst.BYTES_PER_ELEMENT || 1;
@@ -1533,7 +1586,7 @@
     },
     getIndexedParameter(t, i) { return ifAlive(the(this), [Q.INDEXED, t, i], undefined, null); },
     getFragDataLocation(p, name) {
-      const s = the(this); required(p, WebGLProgram);
+      const s = this[S]; required(p, WebGLProgram);
       if (s.lost) return -1;
       const id = idOf(s, p, WebGLProgram);
       if (id === undefined) return -1;
@@ -1541,7 +1594,7 @@
       return v === null ? -1 : v;
     },
     getInternalformatParameter(t, internal, p) {
-      const s = the(this);
+      const s = this[S];
       if (s.lost) return null;
       if (p !== 0x80A9) { fail(s, INVALID_ENUM); return null; }
       return ifAlive(s, [Q.FORMAT_SAMPLES, t, internal], undefined, null);
@@ -1550,30 +1603,30 @@
     getActiveUniformBlockName(p, i) { return blockQuery(the(this), p, 1, i, 0, "", null); },
     getActiveUniformBlockParameter(p, i, q) { return blockQuery(the(this), p, 2, i, q, "", null); },
     uniformBlockBinding(p, index, binding) {
-      const s = the(this); required(p, WebGLProgram);
+      const s = this[S]; required(p, WebGLProgram);
       if (s.lost) return;
       const id = idOf(s, p, WebGLProgram);
       if (id === undefined) return;
       const w = s.w, n = s.n;
       w[n] = OP.UNIFORM_BLOCK_BINDING; w[n + 1] = id; w[n + 2] = index; w[n + 3] = binding;
       s.n = n + 4;
-      later(s);
+      if (s.n >= s.limit) later(s);
     },
     getUniformIndices(p, names) {
-      const s = the(this); required(p, WebGLProgram);
+      const s = this[S]; required(p, WebGLProgram);
       if (s.lost) return null;
       const id = idOf(s, p, WebGLProgram);
       if (id === undefined) return null;
       const out = [];
       // (asked one by one: names are few and this is not called per frame)
       for (const name of names) {
-        const v = ifAlive(s, [Q.UNIFORM_LOCATION, id], String(name), null);
-        out.push(v === null || s.rw[1] < 0 ? 0xFFFFFFFF : s.rw[1]);
+        const v = ifAlive(s, [Q.UNIFORM_INDICES, id, 1], String(name), null);
+        out.push(v === null ? 0xFFFFFFFF : v[0]);
       }
       return out;
     },
     getActiveUniforms(p, indices, what) {
-      const s = the(this); required(p, WebGLProgram);
+      const s = this[S]; required(p, WebGLProgram);
       if (s.lost) return null;
       const id = idOf(s, p, WebGLProgram);
       if (id === undefined) return null;
@@ -1582,50 +1635,50 @@
       return v === null ? null : Array.from(v);
     },
     texStorage2D(t, levels, internal, width, height) {
-      const s = the(this);
+      const s = this[S];
       if (s.lost) return;
       const w = s.w, n = s.n;
       w[n] = OP.TEX_STORAGE; w[n + 1] = t; w[n + 2] = levels; w[n + 3] = internal; w[n + 4] = width; w[n + 5] = height; w[n + 6] = 1; w[n + 7] = 0;
       s.n = n + 8;
-      later(s);
+      if (s.n >= s.limit) later(s);
     },
     texStorage3D(t, levels, internal, width, height, depth) {
-      const s = the(this);
+      const s = this[S];
       if (s.lost) return;
       const w = s.w, n = s.n;
       w[n] = OP.TEX_STORAGE; w[n + 1] = t; w[n + 2] = levels; w[n + 3] = internal; w[n + 4] = width; w[n + 5] = height; w[n + 6] = depth; w[n + 7] = 1;
       s.n = n + 8;
-      later(s);
+      if (s.n >= s.limit) later(s);
     },
     texImage3D(target, level, internal, width, height, depth, border, format, type, data, srcOffset) {
-      const s = the(this);
+      const s = this[S];
       if (s.lost) return;
       if (isTexSource(data)) { fail(s, INVALID_OPERATION); return; }
       texImage(s, target, level, internal, width, height, depth, border, format, type, data, true, srcOffset || 0);
     },
     texSubImage3D(target, level, x, y, z, width, height, depth, format, type, data, srcOffset) {
-      const s = the(this);
+      const s = this[S];
       if (s.lost) return;
       if (isTexSource(data)) { fail(s, INVALID_OPERATION); return; }
       texSubImage(s, target, level, x, y, z, width, height, depth, format, type, data, true, srcOffset || 0);
     },
     copyTexSubImage3D(target, level, xo, yo, zo, x, y, width, height) {
-      const s = the(this);
+      const s = this[S];
       if (s.lost) return;
       const c = s.w, n = s.n;
       c[n] = OP.COPY_TEX_SUB_IMAGE_3D; c[n + 1] = target; c[n + 2] = level; c[n + 3] = xo; c[n + 4] = yo; c[n + 5] = zo; c[n + 6] = x; c[n + 7] = y; c[n + 8] = width; c[n + 9] = height;
       s.n = n + 10;
-      later(s);
+      if (s.n >= s.limit) later(s);
     },
-    compressedTexImage3D() { const s = the(this); if (!s.lost) fail(s, INVALID_ENUM); },
-    compressedTexSubImage3D() { const s = the(this); if (!s.lost) fail(s, INVALID_ENUM); },
+    compressedTexImage3D() { const s = this[S]; if (!s.lost) fail(s, INVALID_ENUM); },
+    compressedTexSubImage3D() { const s = this[S]; if (!s.lost) fail(s, INVALID_ENUM); },
     renderbufferStorageMultisample(t, samples, internal, width, height) {
-      const s = the(this);
+      const s = this[S];
       if (s.lost) return;
       const w = s.w, n = s.n;
       w[n] = OP.RENDERBUFFER_STORAGE; w[n + 1] = t; w[n + 2] = internal; w[n + 3] = width; w[n + 4] = height; w[n + 5] = samples;
       s.n = n + 6;
-      later(s);
+      if (s.n >= s.limit) later(s);
     },
   });
 
@@ -1651,7 +1704,7 @@
     }
     s.n = n + 8;
     s.drew = true;
-    later(s);
+    if (s.n >= s.limit) later(s);
   };
 
   const drawBuffersOf = (s, list) => {
@@ -1662,7 +1715,7 @@
     w[n] = OP.DRAW_BUFFERS; w[n + 1] = a.length;
     for (let i = 0; i < a.length; i++) w[n + 2 + i] = a[i];
     s.n = n + 2 + a.length;
-    later(s);
+    if (s.n >= s.limit) later(s);
   };
 
   // ---- extensions ----
@@ -1687,11 +1740,11 @@
     s.w[n] = OP.ENABLE_EXTENSION;
     s.w[n + 1] = e;
     s.n = n + 2;
-    later(s);
+    if (s.n >= s.limit) later(s);
   };
 
   const iface = (name, proto, values) => {
-    const c = tagged(class { constructor(k) { if (k !== TOKEN) illegal(); } }, name);
+    const c = tagged(class { constructor() { if (arguments[0] !== TOKEN) illegal(); } }, name);
     for (const k of Object.keys(values)) defineProperty(c.prototype, k, { value: values[k], enumerable: true });
     for (const k of Object.keys(proto)) {
       defineProperty(c.prototype, k, { value: proto[k], writable: true, enumerable: true, configurable: true });
@@ -1789,8 +1842,8 @@
     }
   };
 
-  const WebGLRenderingContext = tagged(class { constructor(k) { if (k !== TOKEN) illegal(); } }, "WebGLRenderingContext");
-  const WebGL2RenderingContext = tagged(class { constructor(k) { if (k !== TOKEN) illegal(); } }, "WebGL2RenderingContext");
+  const WebGLRenderingContext = tagged(class { constructor() { if (arguments[0] !== TOKEN) illegal(); } }, "WebGLRenderingContext");
+  const WebGL2RenderingContext = tagged(class { constructor() { if (arguments[0] !== TOKEN) illegal(); } }, "WebGL2RenderingContext");
   defineConstants(WebGLRenderingContext, CONSTANTS1);
   defineConstants(WebGL2RenderingContext, CONSTANTS1);
   defineConstants(WebGL2RenderingContext, CONSTANTS2);
@@ -1809,7 +1862,10 @@
   };
   before(HTMLCanvas.prototype, "toDataURL");
   before(HTMLCanvas.prototype, "toBlob");
-  if (Offscreen !== undefined) before(Offscreen.prototype, "convertToBlob");
+  if (Offscreen !== undefined) {
+    before(Offscreen.prototype, "convertToBlob");
+    before(Offscreen.prototype, "transferToImageBitmap");
+  }
   if (global.CanvasRenderingContext2D !== undefined) {
     before(global.CanvasRenderingContext2D.prototype, "drawImage");
     before(global.CanvasRenderingContext2D.prototype, "createPattern");

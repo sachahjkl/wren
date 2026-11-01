@@ -31,6 +31,7 @@ Features
   webcodecs.md        WebCodecs
   js/web-audio.md     Web Audio
   anchor-positioning.md   CSS anchor positioning
+  js/webgl.md         WebGL
   accessibility.md    Accessibility
   shaders.md          Shaders in the chrome
   downloads.md        Downloads

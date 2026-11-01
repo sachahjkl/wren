@@ -493,9 +493,14 @@ canvas_texture_for :: proc(v: page.Canvas_View) -> (Image_Texture, bool) {
 		x0, y0, x1, y1 := 0, 0, bmp.w, bmp.h
 		if !fresh && canvas2d.bitmap_has_dirty(bmp) { x0, y0, x1, y1 = bmp.dirty_min.x, bmp.dirty_min.y, bmp.dirty_max.x, bmp.dirty_max.y }
 		w, h := x1 - x0, y1 - y0
-		scratch := make([]u8, w * h * 4, context.temp_allocator)
-		canvas2d.bitmap_read_straight(bmp, x0, y0, w, h, scratch)
-		shell.api.update(shell.api.user, st.tex, x0, y0, w, h, scratch, w * 4)
+		if bmp.all_opaque {
+			// (premultiplied and straight are the same bytes: a WebGL frame of a whole screen costs no conversion)
+			shell.api.update(shell.api.user, st.tex, x0, y0, w, h, bmp.pix[(y0 * bmp.w + x0) * 4:], bmp.w * 4)
+		} else {
+			scratch := make([]u8, w * h * 4, context.temp_allocator)
+			canvas2d.bitmap_read_straight(bmp, x0, y0, w, h, scratch)
+			shell.api.update(shell.api.user, st.tex, x0, y0, w, h, scratch, w * 4)
+		}
 		canvas2d.bitmap_clean(bmp)
 		st.generation = bmp.version
 	}

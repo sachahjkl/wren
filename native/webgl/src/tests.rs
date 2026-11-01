@@ -231,6 +231,36 @@ fn counter_clockwise_is_the_front() {
 }
 
 #[test]
+fn a_shader_with_no_output_writes_only_depth() {
+    let Some(gl) = context(attrs(false, 4, 4)) else { return };
+    full_triangle(&gl, 10, "precision mediump float; void main(){}");
+    let mut c = C::default();
+    c.u(ops::CLEAR_COLOR).f(0.0).f(1.0).f(0.0).f(1.0).u(ops::CLEAR).u(COLOR_BUFFER_BIT);
+    c.u(ops::ENABLE).u(DEPTH_TEST);
+    gl.send(&c);
+    gl.send(&draw3());
+    assert_eq!(gl.error(), 0);
+    assert_eq!(unsafe { wg_is_lost(gl.h) }, 0);
+    assert_eq!(gl.pixels(1, 1, 1, 1), [0, 255, 0, 255]);
+}
+
+#[test]
+fn viewports_and_offsets_past_all_limits() {
+    let Some(gl) = context(attrs(false, 4, 4)) else { return };
+    full_triangle(&gl, 10, FS_COLOR);
+    let mut c = C::default();
+    c.u(ops::VIEWPORT).u(2_000_000_000).u(2_000_000_000).u(1 << 30).u(1 << 30);
+    c.u(ops::DRAW_ARRAYS).u(4).u(0).u(3).u(1);
+    c.u(ops::VIEWPORT).u(-2_000_000_000i32 as u32).u(-2_000_000_000i32 as u32).u(16).u(16);
+    c.u(ops::ENABLE).u(POLYGON_OFFSET_FILL).u(ops::POLYGON_OFFSET).f(1e30).f(-1e30);
+    c.u(ops::DRAW_ARRAYS).u(4).u(0).u(3).u(1);
+    c.u(ops::DRAW_ARRAYS).u(1).u(0).u(3).u(1);
+    gl.send(&c);
+    assert_eq!(gl.error(), 0);
+    assert_eq!(unsafe { wg_is_lost(gl.h) }, 0, "a page's numbers do not lose the context");
+}
+
+#[test]
 fn out_of_range_draws_are_refused() {
     let Some(gl) = context(attrs(false, 8, 8)) else { return };
     full_triangle(&gl, 10, FS_COLOR);
@@ -472,7 +502,7 @@ fn a_frame_reaches_the_bitmap_with_its_top_row_first() {
     let mut px = [0u8; 16];
     let t0 = Instant::now();
     loop {
-        if unsafe { wg_take_frame(gl.h, px.as_mut_ptr(), 2, 2, 8) } == 1 {
+        if unsafe { wg_take_frame(gl.h, px.as_mut_ptr(), 2, 2, 8) } != FRAME_NONE {
             break;
         }
         assert!(t0.elapsed() < Duration::from_secs(30));
@@ -541,6 +571,26 @@ fn a_hostile_shader_is_an_error_in_the_log() {
     let Some(gl) = context(attrs(false, 4, 4)) else { return };
     let deep = format!("void main(){{ gl_Position = vec4({}0.0{}); }}", "(".repeat(50_000), ")".repeat(50_000));
     assert!(!gl.program(10, &deep, FS_COLOR));
+    // the deepest nesting and the longest statement the translator lets through must not overflow anything behind it, on this
+    // thread's stack: compiling them may fail, the context lives
+    let deepest = format!("void main(){{ gl_Position = vec4({}1.0{}); }}", "(".repeat(translate::MAX_NESTING - 8), ")".repeat(translate::MAX_NESTING - 8));
+    let _ = gl.program(20, &deepest, FS_COLOR);
+    let longest = format!("uniform float a; void main(){{ gl_Position = vec4(a{}); }}", "+a".repeat(translate::MAX_STATEMENT_OPERATORS - 16));
+    let _ = gl.program(30, &longest, FS_COLOR);
+    let unary = format!("uniform float a; void main(){{ gl_Position = vec4({}a); }}", "- ".repeat(translate::MAX_STATEMENT_OPERATORS - 16));
+    let _ = gl.program(50, &unary, FS_COLOR);
+    let members = format!("uniform vec4 a; void main(){{ gl_Position = a{}; }}", ".xyzw".repeat(translate::MAX_STATEMENT_OPERATORS - 16));
+    let _ = gl.program(60, &members, FS_COLOR);
+    let ifs = format!("uniform float a; void main(){{ {}gl_Position = vec4(a); }}", "if (a > 0.0) ".repeat(translate::MAX_CONTROL_CHAIN / 2));
+    let _ = gl.program(70, &ifs, FS_COLOR);
+    let elses = format!("uniform float a; void main(){{ if (a > 0.0) gl_Position = vec4(a); {} }}", "else if (a > 1.0) gl_Position = vec4(a); ".repeat(translate::MAX_ELSES - 16));
+    let _ = gl.program(80, &elses, FS_COLOR);
+    let flat = format!("const float x[{}] = float[]({}); void main(){{ gl_Position = vec4(x[0]); }}", translate::MAX_STATEMENT_TOKENS / 3, vec!["1.0"; translate::MAX_STATEMENT_TOKENS / 3].join(","));
+    let _ = gl.program(90, &flat, FS_COLOR);
+    let nested_calls = format!("void main(){{ gl_Position = vec4({}1.0{}); }}", "abs(".repeat(translate::MAX_NESTING - 8), ")".repeat(translate::MAX_NESTING - 8));
+    let _ = gl.program(40, &nested_calls, FS_COLOR);
+    assert_eq!(unsafe { wg_is_lost(gl.h) }, 0, "the context lives");
+    assert_eq!(gl.error(), 0);
 }
 
 #[test]
