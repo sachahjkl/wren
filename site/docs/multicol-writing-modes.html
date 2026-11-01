@@ -266,6 +266,7 @@ shared out, growing by what the break that hurts lacked. No second layout of the
 <li><code>apply_shifts</code> moves the boxes for the height found. The strip is now the "flow": each column is a band of it, and a box with
 nothing that must stay whole in it may lie across bands (a tall empty box, a background).</li>
 </ol>
+<p>A container inside the flow of another stays whole in the outer column where it starts when it fits; when it would cross it, the outer one lays its content out again with that container in rows of columns (<code>Mc_Rows</code>): all of what the outer column leaves, then the next outer column. Its columns are spaces under the outer column they show in.</p>
 <p>A column is a fragment: a band of the flow and the translation to where it shows (<code>Mc_Frag</code>). Finishing makes a space per column
 (<code>Space_Kind.Column</code>) under a space of the flow (<code>Space_Kind.Flow</code>), which the boxes inside point to; <code>push_item</code> makes of every display
 item in the flow space one copy per column it lies in, clipped to the band. Hit testing, culling, the compositor and painting then know nothing of
@@ -295,7 +296,8 @@ in <code>layout_contents</code>, <code>flow_children</code> and <code>compute_ov
 <h2 id="what-is-missing"><a class="anchor" href="#what-is-missing" aria-hidden="true">#</a>What is missing</h2>
 <p>Columns:</p>
 <ul>
-<li>Nested containers are not fragmented by the outer one: an inner container stays whole in the outer column where it starts, unless it is taller, when it overflows.</li>
+<li>Nested containers: a balanced outer container grows around a nested one rather than cutting it; in rows, a nested container with a definite height keeps what its content takes, not as other engines balance it; of the nested and <code>multicol-breaking</code> reference tests, part pass.</li>
+<li><code>column-height</code> and <code>column-wrap</code> (CSS Multicol 2, about 30 reference tests) are not there.</li>
 <li><code>flex</code>, <code>grid</code> and table cells are cut between their lines and rows, not inside items; a float is not cut, and lines beside a float that moves to the next column move with it.</li>
 <li>A float that is taller than a column, and monolithic content taller than one, are cut at the band rather than overflowing as some engines do.</li>
 <li><code>box-decoration-break</code> is not there: a box cut across columns is sliced.</li>
@@ -307,7 +309,8 @@ in <code>layout_contents</code>, <code>flow_children</code> and <code>compute_ov
 <ul>
 <li>The toolkit's text backend (<code>ext/gui_toolkit</code>, a separate repository) has no vertical shaping. It lacks: vertical metrics (<code>vhea</code>, <code>vmtx</code>, <code>VORG</code>: the advance and origin of each glyph), a <code>TTB</code> direction for HarfRust; so upright glyphs advance by an em or the face's height and are centered by their horizontal width. Fonts with proportional vertical metrics (<code>palt</code>, <code>vpal</code>) are not honoured. The rest is reached through rotated runs.</li>
 <li><code>text-orientation: mixed</code> follows a table of ranges, not the whole of UTR #50's classes (Tr and Tu: upright, with what <code>vert</code> gives).</li>
-<li><code>text-combine-upright: digits</code> is gone from the specification; <code>all</code> applies to a text of an element as one unit, and scales horizontally only.</li>
+<li><code>text-combine-upright: digits &lt;n&gt;</code> is kept as a value and combines nothing (as Blink); <code>all</code> applies to a text of an element as one unit, and scales horizontally only.</li>
+<li><code>clip</code> (the CSS 2 property) does not exist in this engine, in any writing mode: about 16 reference tests.</li>
 <li><code>ruby</code> has no layout in this engine. <code>text-emphasis</code>, <code>text-underline-position</code> are not there (underlines are on the left of a vertical line).</li>
 <li><code>caret</code> in vertical editable text: <code>&lt;input&gt;</code> and <code>&lt;textarea&gt;</code> stay horizontal controls.</li>
 <li>Baselines across frames: an orthogonal box has none (it is aligned by its margin edge); <code>dominant-baseline</code> is not there.</li>
