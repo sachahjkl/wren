@@ -234,7 +234,7 @@ scrolled :: proc(ac: ^A, x: i32) -> Vec2 {
 		}
 		cur = containing_or_parent(l, cur)
 	}
-	off.y -= l.anchor_doc_scroll
+	off -= Vec2{doc_scroll_x_snapped(l), l.anchor_doc_scroll}
 	return off
 }
 
@@ -815,7 +815,7 @@ anchored_shift :: proc(l: ^Layout, sp: ^Space, viewport: Vec2, doc_scroll: f32, 
 		for i := s; i != NONE; i = l.spaces[i].parent {
 			q := &l.spaces[i]
 			switch q.kind {
-			case .Document: off.y -= doc_scroll
+			case .Document: off -= Vec2{doc_scroll_x_snapped(l), doc_scroll}
 			case .Fixed, .Transform, .Flow:
 			case .Column: off += q.shift
 			case .Scroll: off -= scroll_offset_of(l, q)

@@ -141,8 +141,8 @@ compare_layouts :: proc(a, b: ^Layout, allocator := context.temp_allocator) -> (
 	}
 	if !m.bad {
 		switch {
-		case !feq(a.height, b.height) || !feq(a.doc_width, b.doc_width) || a.doc_scroll_y != b.doc_scroll_y:
-			fail(&m, "document extent %v x %v / %v x %v", a.doc_width, a.height, b.doc_width, b.height)
+		case !feq(a.height, b.height) || !feq(a.doc_width, b.doc_width) || !feq(a.doc_min_x, b.doc_min_x) || a.doc_scroll_y != b.doc_scroll_y || a.doc_scrollable_x != b.doc_scrollable_x:
+			fail(&m, "document extent %v..%v x %v / %v..%v x %v", a.doc_min_x, a.doc_width, a.height, b.doc_min_x, b.doc_width, b.height)
 		case len(a.spaces) != len(b.spaces) || len(a.clips) != len(b.clips) || len(a.groups) != len(b.groups):
 			fail(&m, "spaces / clips / groups: %d %d %d / %d %d %d", len(a.spaces), len(a.clips), len(a.groups), len(b.spaces), len(b.clips), len(b.groups))
 		case len(a.items) != len(b.items): fail(&m, "display list: %d / %d items", len(a.items), len(b.items))
@@ -204,6 +204,7 @@ verify_against_full :: proc(l: ^Layout, input: Input) {
 	for k, v in l.scroll { ref.scroll[k] = v }
 	for k, v in l.anchor_last { ref.anchor_last[k] = v }
 	ref.anchor_doc_scroll = l.anchor_doc_scroll
+	ref.doc_scroll_x = l.doc_scroll_x
 	run_full(&ref, input)
 	ok, report := compare_layouts(l, &ref, context.allocator)
 	if ok { return }

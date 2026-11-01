@@ -147,7 +147,7 @@ reserve_lines :: proc(l: ^Layout) {
 reset :: proc(l: ^Layout, keep_scroll := false) {
 	clear(&l.boxes); clear(&l.inline_items); clear(&l.lines); clear(&l.frags); clear(&l.fonts); clear(&l.items); clear(&l.font_lookup)
 	clear(&l.spaces); clear(&l.clips); clear(&l.groups); clear(&l.band_start); clear(&l.band_items); clear(&l.node_box)
-	if !keep_scroll { clear(&l.scroll) }
+	if !keep_scroll { clear(&l.scroll); l.doc_scroll_x = 0 }
 	clear(&l.deco_items)
 	inc_reset(l)
 	anchor_reset(l)
@@ -161,6 +161,7 @@ reset :: proc(l: ^Layout, keep_scroll := false) {
 	l.last_pass = .None
 	l.styled = nil
 	l.height = 0
+	l.doc_width, l.doc_min_x = 0, 0
 }
 
 destroy :: proc(l: ^Layout) {

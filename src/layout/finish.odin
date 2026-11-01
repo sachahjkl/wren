@@ -115,6 +115,25 @@ compute_overflow :: proc(l: ^Layout, order: []i32, in_fixed: []bool, vp: Vec2) -
 	return doc
 }
 
+// Where the document's horizontal scroll has its origin: at the end of the line when true, so that what overflows goes to the
+// left of 0 and is reached with negative offsets, and what lies right of the viewport's edge is not reachable (CSS Overflow 3
+// §2.2: the unreachable side). The principal writing mode: the body's values, else the root element's (CSS Writing Modes 4 §8).
+@(private)
+doc_scroll_origin_end :: proc(c: ^Ctx) -> bool {
+	cs := style.style_of(c.st, c.l.canvas_els[1])
+	if cs == nil { cs = style.style_of(c.st, c.l.canvas_els[0]) }
+	if cs == nil { return false }
+	return is_rtl(cs)   // (writing-mode vertical-rl and sideways-rl: here)
+}
+
+// The horizontal scroll range the document's extent gives.
+@(private)
+note_doc_extent_x :: proc(l: ^Layout, doc: Rect, vp: Vec2) {
+	l.doc_width, l.doc_min_x = vp.x, 0
+	if !l.doc_scrollable_x { return }
+	if l.doc_origin_end { l.doc_min_x = min(doc.min.x, 0) } else { l.doc_width = max(doc.max.x, vp.x) }
+}
+
 @(private)
 padding_rect :: proc(b: ^Box) -> Rect {
 	return Rect{b.abs + {b.border[3], b.border[0]}, b.abs + b.size - {b.border[1], b.border[2]}}
@@ -200,7 +219,8 @@ finish :: proc(c: ^Ctx) {
 	doc := compute_overflow(l, order, in_fixed, c.vp)
 	l.inc.doc_extent = doc
 	l.height = c.l.doc_scroll_y ? max(doc.max.y, c.vp.y) : c.vp.y
-	l.doc_width = max(doc.max.x, c.vp.x)
+	l.doc_origin_end = doc_scroll_origin_end(c)
+	note_doc_extent_x(l, doc, c.vp)
 
 	// spaces, clips, groups
 	clear(&l.spaces); clear(&l.clips); clear(&l.groups)
