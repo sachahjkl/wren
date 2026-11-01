@@ -45,6 +45,9 @@ Shared_Conn :: struct {
 }
 
 @(private) shared_workers: [dynamic]^Shared_Worker
+
+// Shared workers running in this process (for what waits on a page: one may still answer it).
+shared_workers_live :: proc() -> int { return len(shared_workers) }
 @(private) shared_next: u64
 @(private) shared_scope: ^base.Scope   // the host pages' parent
 

@@ -39,6 +39,7 @@ import "core:strings"
 import "core:time"
 import "wb:config"
 import "wb:desktop"
+import "wb:fetch"
 import "wb:host"
 import "wb:js"
 import "wb:page"
@@ -594,6 +595,12 @@ parent_main :: proc() -> int {
 	children := make([]Child, opts.jobs)
 	next_index := 0
 	t0 := time.tick_now()
+	// A first child with no test: it compiles the engine and writes the disk cache (and its key) alone, the others read it.
+	if opts.jobs > 1 {
+		warm: Child
+		if child_start(&warm, next_index, nil) { _, _ = os.process_wait(warm.process) }
+		next_index += 1
+	}
 	hang_ms := f64(opts.timeout_ms) * LONG_TIMEOUT_FACTOR + CHILD_HANG_MARGIN_MS   // longer than any one test may take
 	done_tests := 0
 	for {
@@ -905,14 +912,18 @@ child_on_console :: proc(d: ^headless.Doc, level: page.Log_Level, text: string) 
 
 got_result :: proc(d: ^headless.Doc) -> bool { return (^Child_State)(d.user).got }
 
+PUMP_SLICE_MS :: 20
+PUMP_BUSY_MS :: 200
+
 FORCE_TIMEOUT :: `(function () { try { if (typeof timeout === "function") { timeout(); } } catch (e) {} console.log("WPTFORCED"); })();`
 
-// Whether the page can still do anything by itself: false once loaded with no timer, request, frame, worker, background
+// Whether the page can still do anything by itself: false once loaded with no timer, request (any load of the page's: a module or
+// a stylesheet that takes more than the idle time is no idle page), frame, worker, background
 // job or media playing / loading.
 page_busy :: proc(p: ^page.Page) -> bool {
 	if p == nil || p.closed { return false }
 	if p.scripts != nil && p.scripts.ready_state != .Complete { return true }
-	return p.timers.count > 0 || p.fetches.count > 0 || page.wants_animation_frame(p) || len(p.workers.hosts) > 0 || len(p.offthread.jobs) > 0 || p.crypto_jobs > 0 || page.media_busy(p) || page.idb_busy(p)
+	return p.timers.count > 0 || p.fetches.count > 0 || fetch.in_flight(p.loader) > 0 || page.wants_animation_frame(p) || len(p.workers.hosts) > 0 || page.shared_workers_live() > 0 || len(p.offthread.jobs) > 0 || p.crypto_jobs > 0 || page.media_busy(p) || page.idb_busy(p)
 }
 
 HARNESS_STATUS := [?]string{"OK", "ERROR", "TIMEOUT", "PRECONDITION_FAILED"}
@@ -933,16 +944,31 @@ json_str :: proc(v: json.Value) -> string {
 	return ""
 }
 
+// The JavaScript engine compiled and started once before the first test's time limit starts: measured in a full run, the first test
+// of a child took 5.9 s (median; p90 13 s, past the 10 s limit) and the others 58 ms, so a child's first test timed out under load
+// whatever it tested.
+warm_up :: proc(env: ^headless.Env) {
+	p := page.page_create(&env.loop, &env.loader, &env.settings, env.process, "about:blank", proc(user: rawptr, level: page.Log_Level, message: string) {})
+	page.js_run(p, nil, "wpt-warm-up.js")
+	page.page_close(p)
+}
+
 child_main :: proc(list_path, out_path: string) -> int {
 	prefs := config.prefs_make()
 	page.register_prefs(&prefs)
 	rest, errs := config.apply_args(&prefs, opts.prefs_args[:])
 	for e in errs { fmt.eprintln("wpt:", e) }
 	_ = rest
-	wasm.configure_from_args(opts.prefs_args[:])
+	// The engine's compiled code on disk, shared by the children of a run (and the next run): compiling it takes a child 6 s, 13 s
+	// under load, a good part of a full run with 350 children.
+	wasm.configure_from_args(opts.prefs_args[:], filepath.dir(out_path))
 	env: headless.Env
 	if !headless.init(&env, &prefs, fmt.tprintf("%s.profile", out_path)) { fmt.eprintln("wpt: the page stack could not start"); return 2 }
+	// A script gets the time its test gets: wpt.ps1's second chance gives more of it, and a harness running one long task (idlharness)
+	// was stopped at 10 s whatever the limit, and regressed twice.
+	env.settings.js.slow_script_ms = i64(opts.timeout_ms)
 	js.cache_start({memory_bytes = 64 << 20, min_source_bytes = 0})
+	warm_up(&env)
 	data, err := os.read_entire_file(list_path, context.allocator)
 	if err != nil { return 2 }
 	out, oerr := os.open(out_path, {.Write, .Append, .Create})
@@ -966,10 +992,15 @@ child_main :: proc(list_path, out_path: string) -> int {
 		idle_since: time.Tick
 		idle := false
 		for !cs.got {
-			headless.pump(d, 20, got_result)
+			slice_start := time.tick_now()
+			headless.pump(d, PUMP_SLICE_MS, got_result)
 			if cs.got || d.failed != "" { break }
 			ms := time.duration_milliseconds(time.tick_since(t0))
 			if ms >= limit { break }
+			// a slice that took far longer than asked ran something, however idle the page looks now: a long chain of microtasks
+			// (dynamic-import/microtasks/basic.any.html, 1e6 of them) leaves no timer nor request, and the module it awaits had
+			// not been asked for yet: it was taken for an idle page and stopped as soon as its chain ended
+			if time.duration_milliseconds(time.tick_since(slice_start)) > PUMP_BUSY_MS { idle = false; continue }
 			if opts.idle_ms > 0 && headless.loaded(d) && !page_busy(d.page) {
 				if !idle { idle = true; idle_since = time.tick_now() }
 				if time.duration_milliseconds(time.tick_since(idle_since)) >= f64(opts.idle_ms) { break }
@@ -1024,5 +1055,6 @@ child_main :: proc(list_path, out_path: string) -> int {
 	os.close(out)
 	headless.destroy(&env)
 	js.cache_stop()
+	wasm.runtime_destroy()   // (waits for the disk cache's writer)
 	return 0
 }
