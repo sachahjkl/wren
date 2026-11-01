@@ -121,13 +121,6 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 
 // The interface's scale: browser.ui.scale, else the display's of the window (`of`; the active one by default: window_chrome.odin,
 // main.odin's build). Each window has its own: two windows on monitors of different DPI are drawn each at its monitor's.
-// Before a build of a window's interface: what its toolkit state follows of the preferences.
-chrome_ui_apply :: proc(app: ^App, s: ^ui.State) {
-	if "browser.ui.scrollbar_autohide" in app.prefs.index {
-		ui.set_scrollbar_autohide(s, config.bool_of(&app.prefs, "browser.ui.scrollbar_autohide"))
-	}
-}
-
 // The scale of the display: what a page's layout starts from.
 display_scale_of :: proc(app: ^App, of: ^platform.Window = nil) -> f32 {
 	if app.cfg.ui_scale > 0 { return app.cfg.ui_scale }

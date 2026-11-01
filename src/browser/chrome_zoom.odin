@@ -17,6 +17,13 @@ CHROME_ZOOM_MAX :: 3.0
 @(private = "file") CHROME_ZOOM_STEP :: 0.1
 @(private = "file") CHROME_ZOOM_FRAMES :: 3   // a change of scale settles in a few frames (layout, then what follows its size)
 
+// Before a build of a window's interface: what its toolkit state follows of the preferences.
+chrome_ui_apply :: proc(app: ^App, s: ^ui.State) {
+	if "browser.ui.scrollbar_autohide" in app.prefs.index {
+		ui.set_scrollbar_autohide(s, config.bool_of(&app.prefs, "browser.ui.scrollbar_autohide"))
+	}
+}
+
 chrome_zoom_of :: proc(app: ^App) -> f32 {
 	if "browser.ui.zoom" not_in app.prefs.index { return CHROME_ZOOM_DEFAULT }   // (an App of a test, without preferences)
 	return f32(config.float_of(&app.prefs, "browser.ui.zoom"))
