@@ -244,7 +244,12 @@ Location_get :: proc(c: ^Call, component: Api_URLComponent) -> string {
 location_assign :: proc(c: ^Call, s: string, replace: bool) -> Api_Error {
 	p := c.page
 	if len(s) > p.settings.web.url_max_length { return fail(c, .Type, "TypeError: the URL is too long (url.max_length)") }
-	target, ok := url.parse(s, &p.env.location, context.temp_allocator)
+	// (a blank frame has no address of its own to resolve against: its parent's, what the script that asks usually has)
+	against := p.env.location
+	if b := frame_fallback_base(p); b != "" {
+		if u, bok := url.parse(b, nil, context.temp_allocator); bok { against = u }
+	}
+	target, ok := url.parse(s, &against, context.temp_allocator)
 	if !ok { return fail(c, .Syntax, "SyntaxError: invalid URL") }
 	location_navigate(p, target, replace)
 	return .None

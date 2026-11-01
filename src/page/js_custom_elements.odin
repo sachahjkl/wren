@@ -20,6 +20,7 @@ CE_UPGRADE      :: u8(1)
 CE_CONNECTED    :: u8(2)
 CE_DISCONNECTED :: u8(3)
 CE_ATTRIBUTE    :: u8(4)
+CE_ADOPTED      :: u8(5)
 
 // Element states (HTML "custom element state"): no entry = "undefined" (or not a custom element at all).
 CE_STATE_CUSTOM :: u8(1)
@@ -32,6 +33,7 @@ Custom_Elements :: struct {
 	state:   map[base.Handle]u8,
 	queue:   [dynamic]Ce_Reaction,
 	depth:   int,                       // nested drains: a reaction's own DOM calls run what they queue before they return
+	moved_in: map[base.Handle]u64,      // custom elements moved here from another document: the page whose realm defined them
 }
 
 @(private)
@@ -40,6 +42,23 @@ Ce_Reaction :: struct {
 	element:          base.Handle,   // pinned while queued
 	name, old, value: string,        // attribute changes: owned
 	has_old, has_new: bool,
+	old_doc, new_doc: base.Handle,   // adoption (frames_access.odin)
+}
+
+// The document of a reaction's element: a queue may hold an element moved to another document (its definition stays in this realm).
+@(private)
+ce_doc_of :: proc(p: ^Page, h: base.Handle) -> ^dom.Document {
+	if p.closed { return nil }
+	if base.handle_tag(u64(h)) == p.tag { return p.doc }
+	t := frames_reach_tag(p, base.handle_tag(u64(h)))
+	return t != nil ? t.doc : nil
+}
+
+// The page whose realm reacts for an element of `p`: `p`, or the one that defined it, when it was moved here.
+@(private)
+ce_reacting_page :: proc(p: ^Page, ce: ^Custom_Elements, h: base.Handle) -> ^Page {
+	if owner, moved := ce.moved_in[h]; moved { return frames_page_by_id(p, owner) }
+	return p
 }
 
 @(private)
@@ -50,6 +69,7 @@ ce_destroy :: proc(p: ^Page, ce: ^Custom_Elements) {
 	for k in ce.defined { delete(k) }
 	delete(ce.defined)
 	delete(ce.state)
+	delete(ce.moved_in)
 	for &r in ce.queue { ce_reaction_free(p, &r) }
 	delete(ce.queue)
 	ce^ = {}
@@ -57,13 +77,22 @@ ce_destroy :: proc(p: ^Page, ce: ^Custom_Elements) {
 
 @(private)
 ce_reaction_free :: proc(p: ^Page, r: ^Ce_Reaction) {
-	if !p.closed && p.doc != nil { dom.unpin(p.doc, r.element) }
+	if d := ce_doc_of(p, r.element); d != nil { dom.unpin(d, r.element) }
 	delete(r.name); delete(r.old); delete(r.value)
 }
 
 @(private)
 ce_queue :: proc(p: ^Page, ce: ^Custom_Elements, r: Ce_Reaction) {
-	if !dom.pin(p.doc, r.element) { return }
+	if _, moved := ce.moved_in[r.element]; moved {
+		// an element moved here reacts in the realm that defined it: its queue, its next checkpoint if it is not running
+		owner := ce_reacting_page(p, ce, r.element)
+		if owner == nil || owner.jsdom == nil || !dom.pin(p.doc, r.element) { return }
+		append(&owner.jsdom.ce.queue, r)
+		if owner.objects.depth == 0 { host_post_checkpoint(owner) }
+		return
+	}
+	d := ce_doc_of(p, r.element)
+	if d == nil || !dom.pin(d, r.element) { return }
 	append(&ce.queue, r)
 }
 
@@ -73,7 +102,8 @@ ce_walk :: proc(p: ^Page, ce: ^Custom_Elements, d: ^dom.Document, root: base.Han
 	// shadow-including: the custom elements of shadow trees enter and leave the document with their hosts
 	for h := root; h != base.NIL_HANDLE; h = dom.next_shadow_including(d, h, root) {
 		n := dom.get(d, h)
-		if n == nil || n.kind != .Element || !(n.name in ce.defined) { continue }
+		if n == nil || n.kind != .Element { continue }
+		if _, moved := ce.moved_in[h]; !moved && !(n.name in ce.defined) { continue }
 		st := ce.state[h]
 		switch {
 		case inserted && st == 0: if upgrade { ce_queue(p, ce, Ce_Reaction{kind = CE_UPGRADE, element = h}) }
@@ -87,7 +117,7 @@ ce_walk :: proc(p: ^Page, ce: ^Custom_Elements, d: ^dom.Document, root: base.Han
 @(private)
 ce_mutation :: proc(p: ^Page, d: ^dom.Document, e: ^dom.Journal_Entry) {
 	ce := ce_of(p)
-	if ce == nil || len(ce.defined) == 0 { return }
+	if ce == nil || (len(ce.defined) == 0 && len(ce.moved_in) == 0) { return }
 	#partial switch e.kind {
 	case .Insert:
 		root := dom.shadow_including_root(d, e.node)
@@ -142,7 +172,7 @@ custom_elements_flush :: proc(p: ^Page) {
 // Only those of this call: a call made while the engine cannot run script (its garbage collector unpinning nodes) never
 // queues any, and reactions queued outside script (the parser, the user) wait for the microtask checkpoint.
 api_end :: #force_inline proc(c: ^Call) {
-	if c.page != nil && c.page.jsdom != nil && len(c.page.jsdom.ce.queue) > c.ce_mark { custom_elements_flush(c.page) }
+	if c.page != nil && c.page.jsdom != nil && len(c.page.jsdom.ce.queue) > c.ce_mark && !c.hold_reactions { custom_elements_flush(c.page) }
 }
 
 CustomElements_define :: proc(c: ^Call, name: string) {
@@ -156,12 +186,13 @@ CustomElements_pending :: proc(c: ^Call) -> u32 {
 	ce := ce_of(c.page)
 	if ce == nil { return 0 }
 	n := 0
-	for r in ce.queue { n += 9 + (r.kind == CE_ATTRIBUTE ? 13 + len(r.name) + len(r.old) + len(r.value) : 0) }
+	for r in ce.queue { n += 9 + (r.kind == CE_ATTRIBUTE ? 13 + len(r.name) + len(r.old) + len(r.value) : 0) + (r.kind == CE_ADOPTED ? 16 : 0) }
 	return u32(n)
 }
 
 // The queued reactions, taken: per reaction u8 kind, u64 element, then for an attribute change u32 + bytes for the
-// name, the old value and the new one, and a u8 of flags (1: there was an old value, 2: there is a new one).
+// name, the old value and the new one, and a u8 of flags (1: there was an old value, 2: there is a new one); for an
+// adoption the two Document nodes.
 CustomElements_take :: proc(c: ^Call) -> []u8 {
 	ce := ce_of(c.page)
 	if ce == nil || len(ce.queue) == 0 { return nil }
@@ -182,8 +213,12 @@ CustomElements_take :: proc(c: ^Call) -> []u8 {
 			put_str(&b, r.name); put_str(&b, r.old); put_str(&b, r.value)
 			put_u8(&b, (r.has_old ? 1 : 0) | (r.has_new ? 2 : 0))
 		}
+		if r.kind == CE_ADOPTED {
+			put_u64(&b, u64(r.old_doc))
+			put_u64(&b, u64(r.new_doc))
+		}
 		// the engine wraps the element before anything can free it: its wrapper pins it from then on
-		dom.pin(c.page.doc, r.element)
+		if ed := ce_doc_of(c.page, r.element); ed != nil { dom.pin(ed, r.element) }
 		ce_reaction_free(c.page, &r)
 	}
 	clear(&ce.queue)
@@ -192,9 +227,8 @@ CustomElements_take :: proc(c: ^Call) -> []u8 {
 
 // The engine wrapped the elements of the last take: the pins the take added for that time go.
 CustomElements_release :: proc(c: ^Call, elements: []u64) {
-	d := call_doc(c)
-	if d == nil { return }
-	for h in elements { dom.unpin(d, H(h)) }
+	if call_doc(c) == nil { return }
+	for h in elements { if d := ce_doc_of(c.page, H(h)); d != nil { dom.unpin(d, H(h)) } }
 }
 
 // A new element of a defined name made by a constructor (new MyElement()): already custom, no upgrade queued.

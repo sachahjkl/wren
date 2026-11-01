@@ -74,9 +74,10 @@ frames_reach_tag :: proc(from: ^Page, tag: u32) -> ^Page {
 // realm. One that is still loading gets it when its parser is done (scripts_start).
 frames_make_live :: proc(p: ^Page) {
 	if p == nil || p.closed || p.worker != nil { return }
+	if p.frames == nil || !p.frames.complete { return }
+	if !p.render.adopted { render_begin(p) }   // (it is shown from now on: nothing else would say its document is there)
 	s := scripts_of(p)
 	if s.started { return }
-	if p.frames == nil || !p.frames.complete { return }
 	s.started = true
 	s.ready_state = .Complete
 	scripts_install_hooks(p)
@@ -109,6 +110,8 @@ api_take_target :: proc "contextless" (c: ^Call) {
 api_unroute :: proc(c: ^Call) {
 	t := c.page
 	t.route_busy -= 1
+	// what the call made a custom element moved to that document do, in the caller's realm ([CEReactions])
+	if q := c.caller.jsdom; q != nil && len(q.ce.queue) > 0 && !c.hold_reactions { custom_elements_flush(c.caller) }
 	// its realm's microtasks waited for the call that ran script there to end
 	if t.route_busy == 0 && t.objects.depth == 0 && !t.closed { microtask_checkpoint(t) }
 }
@@ -151,6 +154,7 @@ foreign_owner_instance :: proc(p: ^Page, owner: u32) -> ^wasm.Instance {
 // realm holds on the old node goes dead.
 frames_adopt :: proc(c: ^Call, node: base.Handle, into_tag: u32) -> (out: []u8, ok: bool) {
 	src := c.page
+	c.hold_reactions = true   // the realm moves its wrappers when this returns: a reaction must find them moved
 	if base.handle_tag(u64(node)) != c.tag { return nil, false }
 	dst := into_tag == c.caller.tag ? c.caller : frames_reach_tag(c.caller, into_tag)
 	if dst == nil || dst == src || dst.worker != nil { return nil, false }
@@ -165,6 +169,7 @@ frames_adopt :: proc(c: ^Call, node: base.Handle, into_tag: u32) -> (out: []u8, 
 	}
 	Copy :: struct { from, parent: base.Handle }
 	stack := make([dynamic]Copy, context.temp_allocator)
+	moved := make([dynamic]Copy, context.temp_allocator)
 	append(&stack, Copy{node, base.NIL_HANDLE})
 	sd, dd := src.doc, dst.doc
 	for len(stack) > 0 {
@@ -176,6 +181,7 @@ frames_adopt :: proc(c: ^Call, node: base.Handle, into_tag: u32) -> (out: []u8, 
 		put(&pairs, u64(cur.from))
 		put(&pairs, u64(h))
 		move_listeners(src, dst, cur.from, h)
+		append(&moved, Copy{cur.from, h})
 		if ss := src.scripts; ss != nil && is_script_element(s) && .Already_Started in ss.flags[cur.from] {
 			ds := scripts_of(dst)
 			ds.flags[h] += {.Already_Started}
@@ -185,8 +191,41 @@ frames_adopt :: proc(c: ^Call, node: base.Handle, into_tag: u32) -> (out: []u8, 
 		for ch := s.first_child; ch != base.NIL_HANDLE; ch = dom.get(sd, ch).next { append(&kids, ch) }
 		#reverse for k in kids { append(&stack, Copy{k, h}) }
 	}
+	for m in moved { move_custom_element(src, dst, m.from, m.parent) }
 	dom.destroy_unpinned(sd, node)   // (wrappers pin what they hold: the realm's moves release it, wj_node_rekey)
 	return pairs[:], true
+}
+
+// A custom element moved keeps its definition, which is its realm's: its reactions go on there, adoptedCallback first.
+@(private = "file")
+move_custom_element :: proc(src, dst: ^Page, from, to: base.Handle) {
+	sc := ce_of(src)
+	if sc == nil || sc.state[from] != CE_STATE_CUSTOM { return }
+	owner := page_id(src)
+	if id, moved := sc.moved_in[from]; moved { owner = id }
+	// (what is queued for it, a disconnection, follows it)
+	if op := frames_page_by_id(src, owner); op != nil && op.jsdom != nil {
+		for &r in op.jsdom.ce.queue {
+			if r.element == from && dom.pin(dst.doc, to) {
+				r.element = to
+				dom.unpin(src.doc, from)
+			}
+		}
+	}
+	delete_key(&sc.state, from)
+	delete_key(&sc.moved_in, from)
+	dc := &js_dom_state(dst).ce
+	dc.state[to] = CE_STATE_CUSTOM
+	if owner != page_id(dst) { dc.moved_in[to] = owner }
+	dst.doc.ce_custom[to] = true
+	mo_hook_update(dst)
+	ce_queue(dst, dc, Ce_Reaction{kind = CE_ADOPTED, element = to, old_doc = src.doc.root, new_doc = dst.doc.root})
+}
+
+// The page numbered `id` in the tab of `p`, when `p` may reach it.
+frames_page_by_id :: proc(p: ^Page, id: u64) -> ^Page {
+	q := find_by_id(page_top(p), id)
+	return q != nil && frames_may_reach(p, q) ? q : nil
 }
 
 // The listeners of a moved node keep calling the realm that added them: their owners, said in the new page's terms.

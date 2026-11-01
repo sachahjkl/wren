@@ -406,6 +406,90 @@ addEventListener("message", e => {
 		page.page_close(p)
 	}
 
+	fmt.println("-- a parent's observers and ranges on a frame's nodes")
+	{
+		p := load(`<body><iframe id=f></iframe><script>
+const d = document.getElementById("f").contentDocument, w = document.getElementById("f").contentWindow;
+d.body.innerHTML = "<p id=a>one two three</p>";
+const seen = [];
+const mo = new MutationObserver(list => { for (const r of list) seen.push(r.type + " " + r.target.nodeName + " " + (r.target === d.body)); log("observed " + seen.join()); });
+mo.observe(d.body, {childList: true});
+const own = new MutationObserver(() => log("own document observed"));
+own.observe(document.body, {attributes: true});
+d.body.appendChild(d.createElement("div"));
+document.body.setAttribute("data-x", "1");
+const r = d.createRange();
+const text = d.getElementById("a").firstChild;
+r.setStart(text, 4); r.setEnd(text, 7);
+log("range " + r.toString() + " " + (r.startContainer === text) + " " + (r.commonAncestorContainer === text));
+const sel = w.getSelection();
+sel.removeAllRanges();
+sel.addRange(r);
+log("selection " + sel.toString() + " " + sel.rangeCount + " " + (sel.anchorNode === text) + " " + (d.getSelection() === sel));
+const b = d.createElement("b");
+r.surroundContents(b);
+log("surround " + d.getElementById("a").innerHTML);
+const r2 = d.createRange();
+r2.selectNodeContents(d.getElementById("a"));
+r2.insertNode(document.createTextNode("made in the parent "));
+log("insert " + d.getElementById("a").textContent);
+log("own selection " + (window.getSelection().rangeCount));
+</script></body>`)
+		check(wait_for("observed childList BODY true"), "a parent's MutationObserver sees a frame's mutations, with its own wrappers")
+		check(wait_for("own document observed"), "the same realm's observer of its own document still works")
+		check(wait_for("range two true true"), "createRange of a frame's document")
+		check(wait_for("selection two 1 true true"), "the frame's Selection takes that range; document.getSelection is the same object")
+		check(wait_for("surround one <b>two</b> three"), "surroundContents with an element of the frame")
+		check(wait_for("insert made in the parent one two three"), "insertNode with a node of the parent moves it")
+		check(wait_for("own selection 0"), "the parent's selection is its own")
+		page.page_close(p)
+	}
+
+	fmt.println("-- custom elements and frames")
+	{
+		p := load(`<body><iframe id=f srcdoc="<script>customElements.define('in-frame', class extends HTMLElement { connectedCallback() { parent.postMessage('frame element connected ' + (this.ownerDocument === document), '*'); } });</script>"></iframe><script>
+addEventListener("message", e => log(e.data));
+const seen = [];
+customElements.define("my-el", class extends HTMLElement {
+  connectedCallback() { seen.push("connected " + (this.ownerDocument === document ? "here" : "there")); }
+  disconnectedCallback() { seen.push("disconnected"); }
+  adoptedCallback(a, b) { seen.push("adopted " + (a === document) + " " + (b === document)); }
+  attributeChangedCallback(n, o, v) { seen.push("attribute " + n + " " + v); }
+  static get observedAttributes() { return ["a"]; }
+  hello() { return "hello from my class"; }
+});
+addEventListener("load", () => {
+  const d = document.getElementById("f").contentDocument;
+  const el = document.createElement("my-el");
+  document.body.appendChild(el);
+  d.body.appendChild(el);
+  log("after move " + seen.join(", "));
+  seen.length = 0;
+  el.setAttribute("a", "1");
+  log("attribute there " + seen.join(", ") + " " + el.hello() + " " + (el.ownerDocument === d));
+  seen.length = 0;
+  el.remove();
+  log("removed there " + seen.join(", "));
+  seen.length = 0;
+  d.body.appendChild(el);
+  document.body.appendChild(el);
+  log("home " + seen.join(", ") + " " + (el.ownerDocument === document));
+  d.body.appendChild(d.createElement("in-frame"));
+  try { document.getElementById("f").contentWindow.customElements.define("no good", class extends HTMLElement {}); log("no throw"); }
+  catch (e) { log("define threw " + e.name + " " + (e instanceof DOMException)); }
+  try { document.getElementById("f").contentWindow.eval("null.x"); } catch (e) { log("eval threw " + (e instanceof TypeError)); }
+});
+</script></body>`)
+		check(wait_for("after move connected here, disconnected, adopted true false, connected there"), "a custom element moved to a frame keeps its class: disconnected, adopted, connected, in order")
+		check(wait_for("attribute there attribute a 1 hello from my class true"), "its reactions and methods are still its realm's")
+		check(wait_for("removed there disconnected"), "removal from the frame's document")
+		check(wait_for("home connected there, disconnected, adopted false true, connected here true"), "and back home, where it has no foreign owner")
+		check(wait_for("frame element connected true"), "an element of the frame's registry made from the parent reacts in the frame")
+		check(wait_for("define threw SyntaxError true"), "a DOMException of the frame is one of this realm to its catcher")
+		check(wait_for("eval threw true"), "and so is a TypeError")
+		page.page_close(p)
+	}
+
 	fmt.println("-- scripts inserted in a frame run in its realm")
 	{
 		p := load(fill(`<body><iframe id=f></iframe><script>

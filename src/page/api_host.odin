@@ -18,6 +18,7 @@ Call :: struct {
 	tag:     u32,      // of `page`: what a handle of `page` carries (base.pool_insert_tagged)
 	own:     bool,     // a handle argument named `page` already: another document's handle does not move the call
 	routed:  bool,     // page != caller
+	hold_reactions: bool,   // the custom element reactions it queued wait for the next call (Frame_adoptNode)
 	inst:    ^wasm.Instance,
 	owner:   u32,      // the instance's index in the page: owner of what the call creates, target of its callbacks
 	message: string,   // detail of the error an implementation returns (optional; must outlive the return)

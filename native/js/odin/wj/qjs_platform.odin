@@ -728,19 +728,24 @@ wj_throw_gone :: proc "c" (ctx: ^Context) -> JSValue {
 }
 
 // The node's handle changed (moved to another document: Frame_adoptNode): its wrapper in this realm follows, with the
-// objects it keeps (classList, attributes...).
+// objects it keeps (classList, attributes...). Two steps: the wrappers of a whole subtree first, without a call to the
+// browser (a call may run a custom element reaction, which must find them moved), then the pins.
 wj_node_rekey :: proc "contextless" (old, new: u64) {
 	v := map_get(&nodes, old)
 	if is_undefined(v) { return }
 	o := obj_of(v)
 	if o == nil { return }
-	wr_Node_wrap(new)   // pins the new node
 	map_del(&nodes, old)
 	o.handle = new
 	map_put(&nodes, new, v)
 	for i: u16 = 0; i < o.n_same; i += 1 {
 		if d := dom_impl_any(o.same[i]); d != nil && d.node == old { d.node = new }
 	}
+}
+
+wj_node_rekey_pins :: proc "contextless" (old, new: u64) {
+	if is_undefined(map_get(&nodes, new)) { return }
+	wr_Node_wrap(new)   // pins the new node
 	wr_Node_unpin(old)
 }
 

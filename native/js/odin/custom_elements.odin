@@ -12,6 +12,7 @@ CE_UPGRADE :: 1
 CE_CONNECTED :: 2
 CE_DISCONNECTED :: 3
 CE_ATTRIBUTE :: 4
+CE_ADOPTED :: 5
 CE_STATE_CUSTOM :: 1
 CE_STATE_FAILED :: 2
 
@@ -182,6 +183,11 @@ ce_take_records :: proc "c" (ctx: ^wj.Context) -> wj.JSValue {
 			wj.array_set(ctx, rec, 2, wj.JS_NewStringLen(ctx, s[0] != nil ? s[0] : wj.raw_bytes(""), uint(l[0])))
 			wj.array_set(ctx, rec, 3, (flags & 1) != 0 ? wj.JS_NewStringLen(ctx, s[1], uint(l[1])) : wj.NULL)
 			wj.array_set(ctx, rec, 4, (flags & 2) != 0 ? wj.JS_NewStringLen(ctx, s[2], uint(l[2])) : wj.NULL)
+		}
+		if kind == CE_ADOPTED && i + 16 <= uint(n) {
+			wj.array_set(ctx, rec, 2, wj.wj_wrap_node(ctx, rd_u64(b[i:])))
+			wj.array_set(ctx, rec, 3, wj.wj_wrap_node(ctx, rd_u64(b[i + 8:])))
+			i += 16
 		}
 		wj.array_set(ctx, out, k, rec); k += 1
 	}
@@ -574,6 +580,14 @@ ce_process :: proc "c" (ctx: ^wj.Context) {
 						wj.JS_FreeValue(ctx, oldv); wj.JS_FreeValue(ctx, newv)
 					}
 					wj.JS_FreeValue(ctx, observed); wj.JS_FreeValue(ctx, aname)
+				}
+				wj.JS_FreeValue(ctx, d)
+			} else if kind == CE_ADOPTED {
+				d := map_get(ctx, ce_defs, el)
+				if !wj.is_undefined(d) {
+					args := [2]wj.JSValue{wj.JS_GetPropertyInt64(ctx, r, 2), wj.JS_GetPropertyInt64(ctx, r, 3)}
+					react(ctx, d, el, "adoptedCallback", 2, &args[0])
+					wj.JS_FreeValue(ctx, args[0]); wj.JS_FreeValue(ctx, args[1])
 				}
 				wj.JS_FreeValue(ctx, d)
 			}
