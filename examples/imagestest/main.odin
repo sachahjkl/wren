@@ -1,4 +1,4 @@
-// Guest of the images end-to-end test (src/tools/imagestest), loaded into examples/site/images.html. It records the
+// Guest of the images end-to-end tests (src/tools/webtests/images.odin), loaded into examples/site/images.html. It records the
 // load / error events of every image (attribute data-events of #r, in the order they arrive), answers questions about
 // HTMLImageElement state, and exercises decode() and Image_decode.
 package imagestest

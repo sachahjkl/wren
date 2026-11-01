@@ -1,4 +1,4 @@
-// Worker side of the workers end-to-end test (src/tools/workerstest): answers the page's commands.
+// Worker side of the workers end-to-end test (src/tools/webtests/workers.odin): answers the page's commands.
 package workerstest_worker
 
 import "base:intrinsics"
@@ -42,8 +42,13 @@ work :: proc "contextless" (iterations: i64) {
 
 CHUNK :: 400_000   // iterations per task: far below the instruction budget
 
+SPIN_TURNS_BEFORE_SAYING :: 8   // the page knows the worker's loop has gone round
+spin_turns: int
+
 spin_tick :: proc "contextless" (user: i32) {
 	work(CHUNK)
+	spin_turns += 1
+	if spin_turns == SPIN_TURNS_BEFORE_SAYING { reply("spinning") }
 	web.Timers_setTimeout(spin_tick, 0, 0)
 }
 
@@ -120,7 +125,6 @@ on_message :: proc "contextless" (user: i32, ev: web.Event) {
 	case text == "trap":
 		intrinsics.trap()
 	case text == "spin":
-		reply("spinning")
 		spin_tick(0)
 	case text == "spin_hard":
 		reply("spinning")

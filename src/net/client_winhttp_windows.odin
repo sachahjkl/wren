@@ -141,6 +141,19 @@ remember_address :: proc(m: ^Marks, info: rawptr, info_len: win.DWORD) {
 	m.ip_len = u8(n)
 }
 
+// A connection WinHTTP reuses (it shares them between the sessions of a process) tells no address on the way: the request knows it.
+@(private)
+remember_connected_address :: proc(m: ^Marks, h: HINTERNET) {
+	info: [WINHTTP_CONNECTION_INFO_BYTES]u8
+	(^u32le)(&info[0])^ = WINHTTP_CONNECTION_INFO_BYTES
+	size := win.DWORD(len(info))
+	if !WinHttpQueryOption(h, WINHTTP_OPTION_CONNECTION_INFO, &info[0], &size) { return }
+	remote := info[WINHTTP_CONNECTION_INFO_REMOTE:]
+	family := i32(remote[0]) | i32(remote[1]) << 8
+	address := family == AF_INET6 ? &remote[SOCKADDR_IN6_ADDRESS] : &remote[SOCKADDR_IN_ADDRESS]
+	if text := inet_ntop(family, address, &m.ip[0], len(m.ip)); text != nil { m.ip_len = u8(len(text)) }
+}
+
 @(private)
 query_wide :: proc(h: HINTERNET, level: win.DWORD) -> string {
 	size: win.DWORD
@@ -187,6 +200,7 @@ status_callback :: proc "system" (h: HINTERNET, ctx: win.DWORD_PTR, status: win.
 		if WinHttpQueryOption(h, WINHTTP_OPTION_HTTP_PROTOCOL_USED, &used, &usize_p) {
 			ev.protocol = used & WINHTTP_PROTOCOL_FLAG_HTTP3 != 0 ? 2 : (used & WINHTTP_PROTOCOL_FLAG_HTTP2 != 0 ? 1 : 0)
 		}
+		if m.ip_len == 0 { remember_connected_address(m, h) }
 		if m.ip_len > 0 {
 			ev.remote = m.ip
 			ev.remote_len = m.ip_len

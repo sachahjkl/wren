@@ -160,8 +160,8 @@ Stand-ins for `$redirect`: `noop.js`, `noop.css`, `noop.html` / `noopframe`, `no
   blocked, bytes, DOM nodes, CPU time, memory). `WREN_BLOCKER_TRACE=<file>` logs what the page hooks cost.
 - `src/tools/blockerpages`: the same in the headless stack.
 - `tools\blocker_js.ps1`: how much JavaScript the interpreter runs for a page (`WREN_JS_PROFILE` samples summed over the tab's pages, and those of the blocker's own scripts), two executables side by side and the page without the blocker.
-- `WREN_HOOKBENCH=1 build\blockertest.exe`: what a hooked API costs per call (ns), without the blocker, with the native hooks, with the JavaScript versions.
-- Unit tests: `odin test src/adblock`, `odin test src/blocker`; end to end: `blockertest` (`tools\test_all.ps1`).
+- `WREN_HOOKBENCH=1 build\web_test.exe -tests:blocker_hook_cost`: what a hooked API costs per call (ns), without the blocker, with the native hooks, with the JavaScript versions.
+- Unit tests: `odin test src/adblock`, `odin test src/blocker`; end to end: `src/tools/webtests/blocker.odin` (`tools\test_all.ps1`).
 
 ## Results
 

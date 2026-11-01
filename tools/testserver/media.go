@@ -1,4 +1,4 @@
-// Image formats of the built-in decoders (src/tools/mediatest, examples/site/media.html).
+// Image formats of the built-in decoders (src/tools/webtests/media.odin, examples/site/media.html).
 //
 //	/media/f/NAME          a file of examples/site/media with its type (image/avif, image/webp, image/svg+xml...);
 //	                       the request's Accept header is remembered for NAME

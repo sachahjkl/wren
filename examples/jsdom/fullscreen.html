@@ -32,7 +32,7 @@ const nextEvent = (type) => new Promise((res) => document.addEventListener(type,
 const messages = [];
 addEventListener("message", (e) => {
   messages.push(e.data);
-  if (messages.filter((m) => m === "child:ready").length === 2 && !window.readyLogged) { window.readyLogged = true; console.log("READY2"); }
+  if (messages.filter((m) => m === "child:ready").length === 2 && !window.readyLogged) { window.readyLogged = true; wrenTest.note("READY2"); }
 });
 
 section("interface", () => {
@@ -159,7 +159,7 @@ window.phase2 = async () => {
 // two frames: the document of the first goes fullscreen; the second one's permissions policy refuses
 window.phase3 = async () => {
   const fa = document.getElementById("fa");
-  for (let i = 0; i < 400 && messages.length < 4; i++) await new Promise((r) => setTimeout(r, 5));
+  while (messages.length < 4) await new Promise((r) => setTimeout(r, 5));
   eq("the frame allowed by the policy went fullscreen, its document sees it", messages.includes("child:ok:true:true"), true);
   eq("the frame with allow=\"fullscreen 'none'\" was refused, and says it cannot", messages.includes("child:err:TypeError:false"), true);
   eq("the parent's fullscreen element is the frame's container", [document.fullscreenElement === fa, fa.matches(":fullscreen")].join(), "true,true");
@@ -169,7 +169,6 @@ window.phase3 = async () => {
 
 // the shell refuses (no window for this tab)
 window.phase4 = async () => {
-  await new Promise((r) => setTimeout(r, 30));   // (the events of the tool's earlier exit)
   events.length = 0;
   const e = await rejectionOf(b.requestFullscreen());
   t("a window that cannot go fullscreen: TypeError", e instanceof TypeError && /cannot go to full screen/.test(e.message), String(e && e.message));

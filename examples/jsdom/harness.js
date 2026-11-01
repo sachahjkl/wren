@@ -1,4 +1,4 @@
-// Test harness of the pages of examples/jsdom (src/tools/jsdomtest runs it before each page): checks go to the test program
+// Test harness of the pages of examples/jsdom (src/tools/webtests/jsdom.odin runs it before each page): checks go to the test program
 // through `wrenTest` (api/testhost.widl: typed on both sides, and not in a browser), and a page says when it is over (done(),
 // after its asynchronous checks). The program declares how many checks a page makes at least, and fails one that ends before.
 (function () {

@@ -1,6 +1,6 @@
 // Guest of the forms end-to-end test (examples/site/forms.html): reads, fills, validates and submits the form through
 // the "forms" imports, sends FormData with fetch in the three encodings, and records what the browser tells it in
-// data-* attributes of #status that the harness (src/tools/formstest) checks.
+// data-* attributes of #status that its test (src/tools/webtests/forms.odin) checks.
 package formstest
 
 import "web:web"

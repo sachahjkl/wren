@@ -1,6 +1,6 @@
-// The harness of src/tools/jswebtest: tests run one after the other, and what happens goes to the test program through the
+// The harness of src/tools/webtests/jsweb.odin: tests run one after the other, and what happens goes to the test program through the
 // functions of `wrenTest`, which only a page of a test program has (api/testhost.widl: typed on both sides, and not in a browser).
-// The program declares how many tests each script runs (jswebtest_test.odin) and fails the section when another number ran.
+// The program declares how many tests each script runs (jsweb.odin) and fails the section when another number ran.
 "use strict";
 const __host = globalThis.wrenTest;
 const __tests = [];

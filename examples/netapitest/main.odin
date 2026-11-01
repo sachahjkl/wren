@@ -1,4 +1,4 @@
-// Guest of src/tools/netapitest: EventSource and WebSocket scenarios. Each scenario writes a log and publishes it as the
+// Guest of src/tools/webtests/netapi.odin: EventSource and WebSocket scenarios. Each scenario writes a log and publishes it as the
 // attribute "s<id>" of #r once it is over; the host compares the logs.
 package netapitest
 

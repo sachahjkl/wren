@@ -262,7 +262,7 @@ pub unsafe extern "C" fn wg_console(h: *const Handle, out: *mut u8, cap: usize) 
 
 // ---- for test programs: a program that never calls wg_test_enable_hooks has a child that takes the hooks for a broken stream ----
 
-/// Children started from now on accept the test hooks. Test programs only (src/tools/jswebtest); no page can reach this.
+/// Children started from now on accept the test hooks. Test programs only (src/tools/webtests/jsweb.odin); no page can reach this.
 #[no_mangle]
 pub extern "C" fn wg_test_enable_hooks() {
     BROWSER_GPU.enable_hooks();

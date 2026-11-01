@@ -1,5 +1,5 @@
-// Page side of the workers end-to-end test (src/tools/workerstest). The harness writes commands into `cmd` and calls the
-// exports; everything the page sees comes back as console lines ("msg:<slot>:<text>", "error:<slot>:<message>"...).
+// Page side of the workers end-to-end test (src/tools/webtests/workers.odin). The test writes commands into `cmd` and calls the
+// exports; everything the page sees goes to it through the test host ("msg:<slot>:<text>", "error:<slot>:<message>"...).
 package workerstest
 
 import "web:web"
@@ -49,7 +49,7 @@ on_message :: proc "contextless" (slot: i32, ev: web.Event) {
 		put(&o, one[0] == 0xEE && two[0] == u8(1_000_003 & 255) ? ":ok" : ":bad")
 		web.Object_release(b)
 	}
-	web.console_log(text_of(&o))
+	web.TestHost_note(text_of(&o))
 }
 
 on_error :: proc "contextless" (slot: i32, ev: web.Event) {
@@ -60,7 +60,7 @@ on_error :: proc "contextless" (slot: i32, ev: web.Event) {
 	put_int(&o, i64(slot))
 	put(&o, ":")
 	put(&o, text)
-	web.console_log(text_of(&o))
+	web.TestHost_note(text_of(&o))
 	web.Event_preventDefault(ev)
 }
 
@@ -68,7 +68,7 @@ on_messageerror :: proc "contextless" (slot: i32, ev: web.Event) {
 	o: Out
 	put(&o, "messageerror:")
 	put_int(&o, i64(slot))
-	web.console_log(text_of(&o))
+	web.TestHost_note(text_of(&o))
 }
 
 // Starts a worker in `slot` from the URL in `cmd`. 1 when the browser accepted it.
@@ -93,7 +93,7 @@ send :: proc "contextless" (slot: i32, n: i32) -> i32 {
 
 pattern: [65536]u8
 
-// Sends a buffer of `mb` MiB (byte k = k & 255) with "buf", transferring it; logs its length right after (0: detached).
+// Sends a buffer of `mb` MiB (byte k = k & 255) with "buf", transferring it; notes its length right after (0: detached).
 @(export)
 send_buffer :: proc "contextless" (slot: i32, mb: i32) -> i32 {
 	for i in 0 ..< len(pattern) { pattern[i] = u8(i & 255) }
@@ -106,12 +106,12 @@ send_buffer :: proc "contextless" (slot: i32, mb: i32) -> i32 {
 	o: Out
 	put(&o, "detached:page:")
 	put_int(&o, web.Buffer_length(b))
-	web.console_log(text_of(&o))
+	web.TestHost_note(text_of(&o))
 	again := web.Worker_postMessage(workers[slot], "buf", list[:])   // a detached buffer cannot be transferred again
 	o2: Out
 	put(&o2, "retransfer:")
 	put_int(&o2, i64(again))
-	web.console_log(text_of(&o2))
+	web.TestHost_note(text_of(&o2))
 	web.Object_release(b)
 	return i32(err)
 }
@@ -144,7 +144,3 @@ self_probe :: proc "contextless" () -> i32 {
 	return i32(web.DedicatedWorkerGlobalScope_postMessage("x", nil))
 }
 
-@(export)
-wb_main :: proc "contextless" () {
-	web.console_log("page ready")
-}

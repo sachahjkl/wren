@@ -18,7 +18,7 @@ ask for less of it while you work, which tools tell you where the time goes, and
 | The full run | `tools\test_all.ps1` |
 
 Run them with `powershell -NoProfile -File`. A step that `-Only`, `-Failed` or `-Changed` chooses brings with it the
-steps that build what it uses (`build\policytest.exe`, `build\e2e.wasm`). They all say at the end how many steps they
+steps that build what it uses (`build\web_test.exe`, `build\e2e.wasm`). They all say at the end how many steps they
 left out: they are for your loop, never instead of the CI's run.
 
 ## The end of a run
@@ -46,7 +46,7 @@ person at the machine, and their clicks reach no step. `-Ui` stays on the real d
 
 Every step is a process of its own; `-Jobs` of them run at a time (three per four processors, at most 12; two with `-CI`), longest
 first by the durations of the last run. A step marked `-Light` mostly waits and takes no slot, up to `-LightJobs` of them (4; 2 with `-CI`).
-Each step that talks to the test server has a server of its own on a block of ports of its own, so several worktrees test
+A test that talks to the test server starts it in its own process, on a block of ports of its own ([below](#the-test-server)), so several worktrees test
 side by side. What a step builds comes first (the steps named `build *`). `-Perf` and `-Ui` add the steps that depend on
 the machine's speed or on a desktop ([CONTRIBUTING](../CONTRIBUTING.md)); a full run adds the check build, the
 AddressSanitizer unit tests, the whole of WPT and test262, the network stress.
@@ -157,7 +157,7 @@ Two things `core:testing` does not give: a test stopped by a signal (`testing.fa
 
 The rules are in [CONTRIBUTING](../CONTRIBUTING.md): wait for a condition, with a limit that only ends a failing run (the barriers above, `wren
 ctl wait` for a script, `Invoke-WrenBuildIfStale`, `Ensure-WrenBuild`), one shared Wren between scenarios. And check what a wait returns:
-a tool that waited for a line nobody logs (`jsloadtest`) spent its 120 s limit in every run, and passed.
+a tool that waited for a line nobody logs spent its 120 s limit in every run, and passed.
 
 ## Virtual time
 
@@ -168,22 +168,46 @@ stalled machine would. `loop_wait` on such a clock does not wait for a timer. Pr
 A test does not sleep to wait for another thread: it waits on the state (a semaphore, a completion posted to the loop,
 `base.await` when the code under test has no signal). The few real sleeps left in unit tests measure the real clock, and say so.
 
-## The test programs and their pages
+## The web tests
 
-`jswebtest` and `jsdomtest` are test programs of `core:testing`: one `@(test)` per section (`build\jswebtest.exe -tests:core,webgl_process`, or
-`tools\jsweb_run.ps1 core webgl_process` with a test server). They run one test at a time (`-define:ODIN_TEST_THREADS=1`) and share one loop: what the
-process keeps (image cache, stores) binds to the first loop it sees. A last test, `zz_the_process_ends_with_nothing_left`, undoes it all and checks the leaks.
+Everything under the browser's window (fetch, the network stacks, the HTTP cache, the content blocker, pages and their scripts, Wasm guests, workers, images, forms, frames: no shell, no frame) is tested by one program of `core:testing`, `src/tools/webtests`, built once as `build\web_test.exe` with every allocation tracked. One file per subject (`cache.odin`, `frames.odin`, `jsweb.odin`...), `#+private file` with its own helpers, its tests named after it (`cache_freshness`); what they share is `harness.odin`.
 
-A page's script talks to its program through the functions of `wrenTest` (`api/testhost.widl`, `native/js/odin/test_host.odin`,
-`src/page/test_host.odin`, `src/tools/testhost`), which exists only in a page given a test host: `testBegin`, `testEnd`, `check`, `measure`, `note`,
-`signal`, `skip`, `done`. The console is no protocol any more. `testhost.finish` fails:
+```odin
+#+private file
+package webtests
 
-- a section that ran another number of tests than the one its `@(test)` declares (`tests = 8`), or none, or fewer checks than it declares (`min_checks`);
-- a section whose script never said `done()`, a test that checked nothing;
-- a `skip("webgl-adapter" | "av1-decoder", why)` that the program does not find true of the machine: it makes a context of its own for the first (only
-  "no graphics adapter" from the GPU process counts as none), asks the media backend for the second.
+import "core:testing"
+import "wb:base"
 
-A true skip prints `SKIP [section] ...`, is counted, and `test_all` lists it at the end of a run.
+@(test)
+history_scroll_restoration :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()   // (what the Wasm imports make and free)
+	begin(t)                                       // the world, as far as .Net or .Pages
+	defer end()
+	serve(t)                                       // only when it talks to the test server
+	pr := open_page(t, "scroll", PAGE, "http://127.0.0.1:8765/a.html")
+	wait_note(pr, "loaded")                        // the page said wrenTest.note('loaded')
+	run(pr, `wrenTest.check(history.scrollRestoration === 'auto', 'it starts auto')`)
+	close_page(pr, min_checks = 1)                 // fewer checks than this fails the test
+}
+```
+
+The rules, besides those of the [end-to-end tests](#writing-an-end-to-end-test):
+
+- **One world, one test at a time** (`-define:ODIN_TEST_THREADS=1`): what the process keeps (the image cache, the stores, the timeline) binds to the first loop it sees, so a loop per test would leave it on a dead one. `begin` makes the world as far as the test asks; the last test, `zz_the_process_ends_with_nothing_left`, undoes it all and fails on anything still allocated.
+- **A step of `test_all` is a subject in a process of its own**: `Step '...' { Invoke-WrenWebTests 'build\web_test.exe' 'cache' }`, with its marks. By hand: `build\web_test.exe -tests:cache_freshness,zz_the_process_ends_with_nothing_left`, on a desktop nobody uses (`tools\test_desktop.ps1 -Command "..."`). The program with no name runs every subject in one process.
+- **No result is read from the console.** A page's script talks to its test through the functions of `wrenTest` (`api/testhost.widl`, `native/js/odin/test_host.odin`, `src/page/test_host.odin`, `src/tools/testhost`), which exists only in a page given a test host: `testBegin`, `testEnd`, `check`, `measure`, `note`, `signal`, `skip`, `done`. What is uncaught fails the page unless the test expects it (`pr.expect_uncaught`).
+- **A page declares what it runs.** `close_page` (`testhost.finish`) fails a section that ran another number of tests than it declares (`tests = 8`), or none, or fewer checks than it declares (`min_checks`), a section whose script never said `done()` when it is the one to end, a test that checked nothing, and a `skip("webgl-adapter" | "av1-decoder", why)` that the program does not find true of the machine: it makes a context of its own for the first (only "no graphics adapter" from the GPU process counts as none), asks the media backend for the second. A true skip prints `SKIP [section] ...`, is counted, and `test_all` lists it at the end of a run.
+- **Barriers, not time.** `wait_until(t, what, data, ready)`, `wait_note`, `wait_done` run the loop until a state holds. What a loop's timer does or must not do yet goes by `virtual_clock(t)` and `host.clock_advance` (a page's `setTimeout` follows it). Only what a real clock on the other side decides (the `Date` of an HTTP answer) waits for that exact condition in real time.
+
+## The test server
+
+`tools/testserver` is a Go package (Go's HTTP/2, quic-go's HTTP/3, TLS). It is a library first:
+
+- `build\testserver.dll` (`go build -buildmode=c-shared` of `tools/testserver/cdll`, which needs a C compiler for Go's cgo), loaded by `src/testserver`. An Odin test calls `e2e.test_server(t)`, or `serve(t)` in the web tests: it listens when that returns, with its base port, on the threads of Go's runtime in the test's own process. No process to start or to stop, no file to read: it goes with the process. One per process; each call forgets what the handlers counted, as a new server would.
+- `build\testserver.exe` (`tools/testserver/cmd/testserver`), a thin main over the same package, for what is not Odin: `tools\test_env.ps1` `Start-WrenTestServer` for the scripts (`wpt.ps1`, which runs it as `wptserver.exe`, `perf.ps1`, `endurance.ps1`, `net_stress.ps1`, `remote_bench.ps1`...; it writes its base port to `-port-file` once it listens), `demo.bat` and the release's extras.
+
+Every origin is an offset from the base port (`tools/testserver/ports.go`): +0 http on 127.0.0.1 and localhost, +1 https, +2 a second http origin, +3 and +4 the web-platform-tests origin, +5 to +9 the transports. A block is free or taken as a whole; a test takes the next free one from a port derived from the worktree's path. A test writes the default ports (`testenv.url("http://127.0.0.1:8765/x")`) and they move with the block, in the text files of `/site/` too.
 
 ## Debugging the tests' time
 

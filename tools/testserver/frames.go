@@ -1,6 +1,6 @@
 package testserver
 
-// Endpoints for the nested documents test (src/tools/framestest) and the frames demo (examples/site/frames/):
+// Endpoints for the nested documents test (src/tools/webtests/frames.odin) and the frames demo (examples/site/frames/):
 //
 //	/frames/doc?body=HTML&h=Name:%20value&h=...   an HTML page made of `body`, with each `h` as a response header
 //	                                              (X-Frame-Options, Content-Security-Policy, Permissions-Policy...)

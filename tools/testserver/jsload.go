@@ -1,6 +1,6 @@
 package testserver
 
-// Endpoints for the script loading test (src/tools/jsloadtest):
+// Endpoints for the script loading test (src/tools/webtests/jsload.odin):
 //
 //	/jsload/gen?code=JS&ms=N&type=T&nosniff=1&status=S   the code (URL-decoded) as a script, after N ms, with Content-Type
 //	                                                      T (text/javascript by default), X-Content-Type-Options:

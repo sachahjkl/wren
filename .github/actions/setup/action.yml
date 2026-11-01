@@ -49,6 +49,10 @@ runs:
         go-version-file: tools/testserver/go.mod
         cache: false
 
+    # (the test server's library: go build -buildmode=c-shared calls a C compiler; the runner's MinGW)
+    - shell: powershell
+      run: if (-not (Get-Command gcc -ErrorAction SilentlyContinue)) { 'C:\mingw64\bin' | Add-Content $env:GITHUB_PATH }
+
     - uses: ilammy/msvc-dev-cmd@v1
       with:
         arch: x64

@@ -1,4 +1,4 @@
-// Transport origins for the network stack's own tests (src/tools/nettest), on the upper half of the block (ports.go):
+// Transport origins for the network stack's own tests (src/tools/webtests/net.odin), on the upper half of the block (ports.go):
 //
 //	base+5  https, HTTP/2 and HTTP/1.1, certificate of the test authority; HTTP/3 on UDP base+5, announced by Alt-Svc
 //	base+6  https, TLS 1.3 only; announces HTTP/3 on UDP base+6 where nothing listens (QUIC never gets through: the

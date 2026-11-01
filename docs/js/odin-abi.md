@@ -144,7 +144,7 @@ The example is `web_url` (commit `bdd9a031`): 327 lines with every host call typ
    with the same signature; nothing changes in `native/js/gen`.
 8. **Build and check:** `odin check native/js/odin -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -vet`,
    then `cmd /c build.bat`.
-9. **Test what the domain touches:** jstest, the e2e tool of the domain (jswebtest for url), `tools\wpt.ps1 -Only
+9. **Test what the domain touches:** the web tests of the domain (`js`, `jsweb` for url: `src/tools/webtests`), `tools\wpt.ps1 -Only
    /<folder>/ -TimeoutMs 30000`. The judge is "the same subtests pass as before", against a build of the commit
    before the migration when `wpt/expectations` is older than the code.
 10. **Measure the hot members** (a page timing 200 000 calls, `wren ctl run --eval`), report the before/after, commit.

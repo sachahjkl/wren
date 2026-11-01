@@ -1,4 +1,4 @@
-// Guest of the web platform API test (src/tools/webapitest): every probe exercises one area and reports through
+// Guest of the web platform API test (src/tools/webtests/webapi.odin): every probe exercises one area and reports through
 // attributes of #r (asynchronous results) or its return value (synchronous checks: 1 = pass, a negative step number
 // otherwise).
 package webapitest
@@ -434,7 +434,7 @@ storage_listen :: proc "contextless" () {
 	web.EventTarget_addEventListener(web.Window_self(), "storage", on_storage)
 }
 
-// mode 0: write; 1: read k (returns its length, -1 missing); 2: quota check; 3: security check (opaque origin)
+// mode 0: write; 1: read k (returns its length, -1 missing); 2: quota check; 3: security check (opaque origin); 4: clear
 @(export)
 storage_probe :: proc "contextless" (mode: i32) -> i32 {
 	buf: [256]u8
@@ -459,6 +459,9 @@ storage_probe :: proc "contextless" (mode: i32) -> i32 {
 		return i32(rc)
 	case 3:
 		return i32(web.Storage_setItem(.Local, "k", "v"))
+	case 4:
+		if web.Storage_clear(.Local) != .None { return -1 }
+		return 1
 	}
 	return 0
 }
