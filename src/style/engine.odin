@@ -564,7 +564,7 @@ uses_viewport_units :: proc(vs: []css.Value) -> bool {
 		switch v.kind {
 		case .Token:
 			if v.tok.kind == .Dimension {
-				if u, ok := css.relative_unit(v.tok.text); ok && (u == .Vw || u == .Vh || u == .Vmin || u == .Vmax) { return true }
+				if u, ok := css.relative_unit(v.tok.text); ok && (u == .Vw || u == .Vh || u == .Vi || u == .Vb || u == .Vmin || u == .Vmax) { return true }
 			}
 		case .Function, .Block:
 			if uses_viewport_units(v.children) { return true }

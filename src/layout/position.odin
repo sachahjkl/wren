@@ -132,7 +132,10 @@ layout_abs :: proc(c: ^Ctx, ai, ref: i32, cbr: Rect) {
 	k.margin[3], k.margin[1] = mL, mR
 
 	// vertical (§10.6.4)
-	res := layout_contents(c, ai, w, cbh, -1, nil)
+	// (an orthogonal box takes its inline size from this height: what the insets leave)
+	res_cb := cbh
+	if .Frame_Root in k.fx { res_cb = cbh - (it_ok ? it : 0) - (ib_ok ? ib : 0) }
+	res := layout_contents(c, ai, w, res_cb, -1, nil)
 	k = &c.l.boxes[ai]
 	h := res.h
 	_, has_h := to_border_h(c, k, cs.height, cbh)

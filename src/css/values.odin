@@ -281,7 +281,7 @@ parse_color_function :: proc(f: Value, env: ^Color_Env) -> (cv: Color_Value, ok:
 ////////////////////////////////
 // Lengths, numbers and calc()
 
-Unit :: enum u8 { Px, Em, Rem, Ex, Ch, Lh, Vw, Vh, Vmin, Vmax, Percent, Ms, Deg, Rlh, Cap, Ic, Rex, Rch, Ric, Rcap, Cqw, Cqh, Cqmin, Cqmax }   // Ms, Deg: canonical time and angle
+Unit :: enum u8 { Px, Em, Rem, Ex, Ch, Lh, Vw, Vh, Vmin, Vmax, Percent, Ms, Deg, Rlh, Cap, Ic, Rex, Rch, Ric, Rcap, Cqw, Cqh, Cqmin, Cqmax, Vi, Vb }   // Ms, Deg: canonical time and angle
 
 // <time> in milliseconds and <angle> in degrees, from a unit as written.
 time_unit_to_ms :: proc(n: f64, unit: string) -> (f64, bool) {
@@ -331,8 +331,10 @@ relative_unit :: proc(unit: string) -> (Unit, bool) {
 	case "ric": return .Ric, true
 	case "rcap": return .Rcap, true
 	// the viewport never has collapsing browser bars here: small, large and dynamic viewports are the same
-	case "vw", "svw", "lvw", "dvw", "vi", "svi", "lvi", "dvi": return .Vw, true
-	case "vh", "svh", "lvh", "dvh", "vb", "svb", "lvb", "dvb": return .Vh, true
+	case "vw", "svw", "lvw", "dvw": return .Vw, true
+	case "vh", "svh", "lvh", "dvh": return .Vh, true
+	case "vi", "svi", "lvi", "dvi": return .Vi, true
+	case "vb", "svb", "lvb", "dvb": return .Vb, true
 	case "vmin", "svmin", "lvmin", "dvmin": return .Vmin, true
 	case "vmax", "svmax", "lvmax", "dvmax": return .Vmax, true
 	// container query units (horizontal writing: inline = width)
@@ -353,6 +355,7 @@ Length_Context :: struct {
 	line_height: f64,
 	root_line_height: f64,   // rlh
 	vw, vh:      f64,    // viewport size in px
+	vertical:    bool,   // the element's writing mode is vertical: vi is vh, vb is vw
 	percent_base: f64,   // what 100% means here
 	// the query container's content box for cq units (CSS Contain 3 §6.1); without one, the small viewport
 	cq_w, cq_h:  f64,
@@ -386,6 +389,8 @@ resolve_unit :: proc(n: f64, u: Unit, c: Length_Context) -> f64 {
 	case .Cqmax: return n * max(c.has_cq_w ? c.cq_w : c.vw, c.has_cq_h ? c.cq_h : c.vh) / 100
 	case .Vw: return n * c.vw / 100
 	case .Vh: return n * c.vh / 100
+	case .Vi: return n * (c.vertical ? c.vh : c.vw) / 100
+	case .Vb: return n * (c.vertical ? c.vw : c.vh) / 100
 	case .Vmin: return n * min(c.vw, c.vh) / 100
 	case .Vmax: return n * max(c.vw, c.vh) / 100
 	case .Percent: return n * c.percent_base / 100

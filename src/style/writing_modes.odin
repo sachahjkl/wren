@@ -187,7 +187,7 @@ area_tracks_flow :: proc(area: Position_Area, cb_wm: Writing_Mode, cb_rtl: bool,
 		if area.b != .None { ax = area.b }
 	case:
 		// a logical pair: block, inline
-		if cbv {
+		if (ca == .Self_Logical ? selfv : cbv) {
 			ax = area.a
 			if area.b != .None { ay = area.b }
 		} else {
