@@ -82,12 +82,6 @@ function Exit-WrenLock($Lock) {
     $env:WREN_HELD_LOCKS = (@($env:WREN_HELD_LOCKS -split ',' | Where-Object { $_ -and $_ -ne $Lock.Name })) -join ','
 }
 
-# Runs $Body under the lock `Name` (taken and given back here, also on an error).
-function Use-WrenLock([string]$Name, [scriptblock]$Body, [string]$What = '', [int]$TimeoutSec = 900) {
-    $l = Enter-WrenLock $Name $What $TimeoutSec
-    try { & $Body } finally { Exit-WrenLock $l }
-}
-
 # The first base port this worktree tries: derived from its path, so that two worktrees rarely try the same block
 # (20000-28990 in steps of 10: below the dynamic ports of Windows, 49152+, and away from the default 8765).
 function Get-WrenPreferredBasePort([string]$Root = (Get-WrenRepoRoot)) {

@@ -253,6 +253,8 @@ doc_tree_update :: proc(app: ^App, pa: ^Page_A11y, d: ^Doc_Tree, t: ^Tab, viewpo
 		d.sent = false
 		platform.a11y_diff_reset(&d.diff)
 		a11y.live_reset(&d.live)
+		// (no adapter, and the tree is made for a program in this process: control_a11y_tree. Its frames' trees are wanted all the same)
+		return active_window(app).ui.a11y.capture
 	}
 	return false
 }

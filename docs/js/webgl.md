@@ -80,7 +80,7 @@ implicit conversions from `int` to `float` compile, and the loop restrictions of
 
 One per browser: the same executable, started with `--wren-gpu-process=<handles>` by the first context of any page or worker. (A package
 initializer of `src/webgl` looks at the arguments before `main`, so any program that links the browser can be one. It costs that look; a page
-without WebGL starts nothing. Tests: `tools/webgl_process_e2e.ps1`.) A process with no context left goes after `webgl.gpu_idle_exit_s`.
+without WebGL starts nothing. Tests: `src/tools/e2e/webgl_process.odin`.) A process with no context left goes after `webgl.gpu_idle_exit_s`.
 
 | What crosses | How |
 |---|---|
@@ -201,6 +201,6 @@ FXC compiles every pipeline, a page that asks right after a burst of new program
   parent killed; the limit on restarts. A test binary is its own child (`gpu_child_entry`); a hook is accepted only by a child started with hooks, which a browser never asks for.
 - `jswebtest` sections `webgl_api` and `webgl_process` (`examples/jsweb/webgl.js`, `webgl_process.js`): the interfaces and their rules on the software adapter; contexts in workers and `transferControlToOffscreen`; the process killed and
   hung under a page and a worker (only this tool calls `wg_test_enable_hooks`). A machine with no adapter checks that `getContext` gives null.
-- `tools/webgl_process_e2e.ps1` (`test_all -Ui`): the process's life in the real browser, on the machine's GPU. `tools/linux_smoke.sh` does the same under xvfb on Linux.
+- `src/tools/e2e/webgl_process.odin` (in `test_all`): the process's life in the real browser, on the machine's GPU: its id is a number of `api.Stats`, and it is killed and suspended from outside. `tools/linux_smoke.sh` does the same under xvfb on Linux.
 - `tools/webgl_bench.ps1`: what WebGL costs on this machine (opt-in, not a test).
 - Demos: `examples/site/webgl.html` and `webgl-stress.html`, in `about:demos`.

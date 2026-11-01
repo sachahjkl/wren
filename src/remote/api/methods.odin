@@ -637,6 +637,36 @@ Download :: struct {
 	saved:       bool,      // ... whole
 }
 
+// The cursor a window shows (control_cursor): a CSS keyword, and what the system is given for it: its own cursor, one drawn in its style, none.
+Cursor_Shown :: struct {
+	name:    string,      // the keyword: the page's fallback when `custom`
+	custom:  bool,        // an image of the page
+	source:  string,      // "system", "drawn", "hidden"
+	size:    [2]int,      // its bitmap, device pixels
+	hotspot: [2]int,
+}
+
+// What a window shows on the screen is cut from (browser.window.fixed_surface: buffers that keep their size while the window resizes: 1:1, clipped by the window).
+Surface :: struct {
+	fixed:   bool,
+	size:    [2]int,      // the window's client area
+	buffers: [2]int,      // the swap chain's: 0 for a window with none
+	source:  [2]int,      // the region of them the compositor takes
+}
+
+// A frame of a drag held: where it drew the edge against the pointer it was built from, and the page's width against its area's (window pixels).
+Drag_Sample :: struct {
+	pointer, edge, page_width, area_width: f64,
+}
+
+// What a window's screen readers are told, and how (a11y_chrome.odin, a11y_page.odin).
+A11y_Stats :: struct {
+	updates, refused, last_nodes, nodes: int,                                                     // the chrome's tree
+	page_builds, page_patches, page_sends, page_refused, page_nodes, page_written, page_frames: int,   // the page's
+	page_verify_failed: int,                                                                     // accessibility.page.verify
+	page_fallback, page_verify_diff: string,
+}
+
 // What tests read (`Session.result` has them all; a number a test needs goes here).
 Stats :: struct {
 	pid:                 int,
@@ -672,6 +702,16 @@ Stats :: struct {
 	workers_running:     int,      // the process's: dedicated, shared and service workers holding a thread
 	shared_workers:      int,      // shared workers alive in the process
 	history_restoring:   bool,     // the current tab is still putting back what its history entry showed (history_restore.odin)
+	gpu_process_id:      int,      // the process of the pages' WebGL (0: none)
+	gpu_process_starts:  int,      // ... how many this browser has started
+	chrome_frames:       int,      // frames of the chrome alone, made while a page holds the thread (shell_frames.odin)
+	full_frames:         int,      // full frames begun
+	paint_frames:        int,      // frames asked for by the window procedure (a loop of the system)
+	modal_loops:         int,      // loops of the system the window has been in
+	cursor:              Cursor_Shown,
+	surface:             Surface,
+	panel_surface:       Surface,  // of the developer tools' window
+	a11y:                A11y_Stats,
 }
 
 stats :: proc(s: ^Session, reset_latency := false, reset_frames := false, loc := #caller_location) -> (r: Stats, e: Error) {
@@ -684,6 +724,19 @@ stats :: proc(s: ^Session, reset_latency := false, reset_frames := false, loc :=
 	why, _ := remote.param_object(bf, "reasons")
 	reasons := make([dynamic]Bfcache_Reason, 0, len(why), context.temp_allocator)
 	for k in why { append(&reasons, Bfcache_Reason{k, i_of(why, k)}) }
+	cur, _ := remote.param_object(o, "cursor")
+	size_in :: proc(o: json.Object, name: string) -> (v: [2]int) {
+		if a, ok := remote.param_array(o, name); ok && len(a) == 2 {
+			x, _ := a[0].(json.Integer)
+			y, _ := a[1].(json.Integer)
+			v = {int(x), int(y)}
+		}
+		return
+	}
+	surface_of :: proc(o: json.Object, name: string) -> Surface {
+		x, _ := remote.param_object(o, name)
+		return {fixed = b_of(x, "fixed"), size = size_in(x, "size"), buffers = size_in(x, "buffers"), source = size_in(x, "source")}
+	}
 	return {
 		pid = i_of(o, "pid"), fps = f_of(o, "fps"), frames_drawn = i_of(o, "framesDrawn"), frames_presented = i_of(o, "framesPresented"),
 		pending_ops = i_of(o, "pendingOps"), input_events = i_of(o, "inputEvents"), requests_in_flight = i_of(o, "requestsInFlight"),
@@ -699,6 +752,16 @@ stats :: proc(s: ^Session, reset_latency := false, reset_frames := false, loc :=
 			refusals = i_of(bf, "refusals"), traversals = i_of(bf, "traversals"), misses = i_of(bf, "misses"), reasons = reasons[:],
 		},
 		workers_running = i_of(o, "workersRunning"), shared_workers = i_of(o, "sharedWorkers"), history_restoring = b_of(o, "historyRestoring"),
+		gpu_process_id = i_of(o, "gpuProcessId"), gpu_process_starts = i_of(o, "gpuProcessStarts"), chrome_frames = i_of(o, "chromeFrames"), full_frames = i_of(o, "fullFrames"),
+		paint_frames = i_of(o, "paintFrames"), modal_loops = i_of(o, "modalLoops"),
+		cursor = {name = s_of(cur, "name"), custom = b_of(cur, "custom"), source = s_of(cur, "source"), size = size_in(cur, "size"), hotspot = size_in(cur, "hotspot")},
+		surface = surface_of(o, "surface"), panel_surface = surface_of(o, "panelSurface"), devtools_windows = i_of(o, "devtoolsWindows"),
+		a11y = {
+			updates = i_of(o, "a11yUpdates"), refused = i_of(o, "a11yRefused"), last_nodes = i_of(o, "a11yLastNodes"), nodes = i_of(o, "a11yNodes"),
+			page_builds = i_of(o, "a11yPageBuilds"), page_patches = i_of(o, "a11yPagePatches"), page_sends = i_of(o, "a11yPageSends"), page_refused = i_of(o, "a11yPageRefused"),
+			page_nodes = i_of(o, "a11yPageNodes"), page_written = i_of(o, "a11yPageWritten"), page_frames = i_of(o, "a11yPageFrames"), page_verify_failed = i_of(o, "a11yPageVerifyFailed"),
+			page_fallback = s_of(o, "a11yPageFallback"), page_verify_diff = s_of(o, "a11yPageVerifyDiff"),
+		},
 	}, .None
 }
 

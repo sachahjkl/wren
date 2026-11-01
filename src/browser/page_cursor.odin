@@ -15,11 +15,8 @@ package browser
 //   * While the tab loads, the arrow is the progress cursor (the arrow with the busy sign), as in Chromium.
 //   * A drag that starts on the page (a selection, a press held) keeps the cursor of where it started until the
 //     button is released.
-// WREN_CURSOR_LOG=path appends a line each time the window's cursor changes (e2e tests: cursor_e2e.ps1).
 
-import "core:fmt"
 import "core:hash"
-import "core:os"
 import "core:strings"
 import "toolkit:draw"
 import "toolkit:platform"
@@ -76,8 +73,6 @@ Window_Cursor :: struct {
 	keyword: platform.Cursor,
 	custom:  platform.Custom_Cursor,
 	scale:   f32,   // device pixels per CSS pixel the custom cursor is shown at
-	node:    base.Handle,   // the page's element it comes from (NIL: the chrome's, or none)
-	at:      [2]f32,        // where the page was asked (CSS pixels of the page area; the log's)
 }
 
 @(private = "file")
@@ -90,13 +85,11 @@ Page_Cursor_View :: struct {
 	dragging: bool,            // a press on the page is held: `frozen` shows until it is released
 	frozen:   Window_Cursor,
 	shown:    Window_Cursor,
-	shown_ok: bool,
 }
 
 @(private = "file")
 Page_Cursor_State :: struct {
 	watch:    int,
-	log_path: string,
 }
 
 @(private = "file") pcs: Page_Cursor_State
@@ -107,7 +100,6 @@ page_cursor_init :: proc(app: ^App) {
 		ccfg = cursor_settings_from_prefs(p)
 		request_frames((^App)(user), 2)
 	}, app)
-	pcs.log_path = strings.clone(os.get_env("WREN_CURSOR_LOG", context.temp_allocator))
 }
 
 // A window's view goes with it (its cursors go with the native window).
@@ -122,7 +114,6 @@ page_cursor_shutdown :: proc(app: ^App) {
 	v := &window_own(app).cursor
 	for e in v.cache { platform.custom_cursor_release(active_window(app).win, e.cc) }
 	page_cursor_view_destroy(v)
-	delete(pcs.log_path)
 	pcs = {}
 }
 
@@ -351,12 +342,11 @@ page_window_cursor :: proc(app: ^App, t: ^Tab, pos: [2]f32) -> Window_Cursor {
 	if _, on_bar := scrollbar_at(app, t, p); on_bar { return {keyword = .Arrow} }
 	// over a frame, the cursor is its document's (its CSS, its layout): a jQuery UI handle in its iframe says "resize"
 	ct, origin, area := t, wnd.page_rect.min, draw.rect_size(wnd.page_rect)
-	in_frame := false
 	if fv := frame_under(app, t, pos, wnd.page_rect); fv != nil && fv.tab.page != nil && fv.tab.page.styled != nil && fv.tab.layout.valid {
-		ct, origin, area, in_frame = &fv.tab, fv.rect.min, draw.rect_size(fv.rect), true
+		ct, origin, area = &fv.tab, fv.rect.min, draw.rect_size(fv.rect)
 	}
 	pc := page_cursor_at(&ct.layout, ct.page.doc, ct.page.styled, pos - origin, area, ct.scroll, ccfg.page_css)
-	wc := Window_Cursor{keyword = pc.keyword, scale = scale, node = in_frame ? base.NIL_HANDLE : pc.node, at = (pos - origin) / scale}
+	wc := Window_Cursor{keyword = pc.keyword, scale = scale}
 	wc.custom = cursor_image(app, ct, pc.images, pos, scale)
 	// while the tab loads, the arrow is the arrow with the "working in background" sign (as Chromium does)
 	if ccfg.progress_loading && wc.keyword == .Arrow && wc.custom == 0 && tab_loading(t) { wc.keyword = .Progress }
@@ -412,25 +402,5 @@ window_cursor_apply :: proc(app: ^App) {
 	} else {
 		platform.set_cursor(active_window(app).win, wc.keyword)
 	}
-	if !v.shown_ok || wc.keyword != v.shown.keyword || wc.custom != v.shown.custom || wc.node != v.shown.node {
-		if pcs.log_path != "" { cursor_log(app, wc) }
-	}
-	v.shown, v.shown_ok = wc, true
-}
-
-// A line per change: cursor=<css name> custom=<true|false> node=<tag>#<id> at=<x>,<y> (the page's point in CSS
-// pixels; node=- for the chrome's cursor).
-@(private = "file")
-cursor_log :: proc(app: ^App, wc: Window_Cursor) {
-	f, err := os.open(pcs.log_path, {.Write, .Create, .Append}, os.Permissions_Default_File)
-	if err != nil { return }
-	defer os.close(f)
-	node := "-"
-	if t := current_tab(app); t != nil && t.page != nil && wc.node != base.NIL_HANDLE {
-		if n := dom.get(t.page.doc, wc.node); n != nil {
-			id, _ := dom.get_attribute(t.page.doc, wc.node, "id")
-			node = fmt.tprintf("%s#%s", n.name, id)
-		}
-	}
-	os.write_string(f, fmt.tprintf("cursor=%s custom=%v node=%s at=%.0f,%.0f\n", platform.cursor_css_name(wc.keyword), wc.custom != 0, node, wc.at.x, wc.at.y))
+	v.shown = wc
 }
