@@ -33,8 +33,14 @@ const MAX_QUEUED_BYTES: usize = 512 << 20;
 const BACKPRESSURE_WAIT: Duration = Duration::from_millis(1000);
 /// Frames on their way to the CPU before a present waits (a page drawing faster than the GPU).
 const MAX_FRAMES_IN_FLIGHT: usize = 3;
+/// How often a waiting page's thread looks whether the context was lost.
+const LOST_POLL: Duration = Duration::from_millis(50);
 /// How often the thread looks at frames being mapped while it has nothing else to do.
 const MAP_POLL: Duration = Duration::from_millis(1);
+
+pub const FRAME_NONE: i32 = 0;
+pub const FRAME_NEW: i32 = 1;
+pub const FRAME_OPAQUE: i32 = 2;
 
 pub const BACKEND_AUTO: i32 = 0;
 pub const BACKEND_DX12: i32 = 1;
@@ -106,17 +112,18 @@ impl Slot {
         }
         self.ready.notify_all();
     }
-    fn wait(&self, deadline: Instant) -> Option<Reply> {
+    /// The answer; None at the deadline, or soon after the context is lost (a panic answers nothing).
+    fn wait(&self, deadline: Instant, lost: &AtomicBool) -> Option<Reply> {
         let mut g = self.reply.lock().ok()?;
         loop {
             if let Some(r) = g.take() {
                 return Some(r);
             }
             let now = Instant::now();
-            if now >= deadline {
+            if now >= deadline || lost.load(Ordering::SeqCst) {
                 return None;
             }
-            g = self.ready.wait_timeout(g, deadline - now).ok()?.0;
+            g = self.ready.wait_timeout(g, (deadline - now).min(LOST_POLL)).ok()?.0;
         }
     }
 }
@@ -128,6 +135,7 @@ struct Frame {
     w: u32,
     h: u32,
     generation: u64,
+    opaque: bool,
 }
 
 struct Shared {
@@ -568,6 +576,7 @@ fn finish_reads(reading: &mut VecDeque<(FrameRead, u64)>, shared: &Shared, attrs
                         }
                     }
                 }
+                f.opaque = !attrs.alpha || f.pixels.chunks_exact(4).all(|p| p[3] == 255);
                 f.generation += 1;
             }
         }
@@ -744,7 +753,7 @@ pub unsafe extern "C" fn wg_query(h: *const Handle, req: *const u8, n: usize, ou
         if h.tx.send(Msg::Query(slice(req, n).to_vec(), slot.clone())).is_err() {
             return -1;
         }
-        let Some(reply) = slot.wait(Instant::now() + h.wait) else {
+        let Some(reply) = slot.wait(Instant::now() + h.wait, &h.shared.lost) else {
             h.shared.lost.store(true, Ordering::SeqCst);
             note(&h.shared, "WebGL: the context did not answer in time and was lost".to_string());
             let _ = h.tx.send(Msg::Lose);
@@ -810,12 +819,12 @@ pub unsafe extern "C" fn wg_snapshot(h: *const Handle) -> i32 {
         if h.tx.send(Msg::Present { snapshot: true, done: Some(slot.clone()) }).is_err() {
             return 0;
         }
-        slot.wait(Instant::now() + h.wait).is_some() as i32
+        slot.wait(Instant::now() + h.wait, &h.shared.lost).is_some() as i32
     })
 }
 
 /// Copies the latest frame into a bitmap of this size (premultiplied RGBA8, top row first) if a new one came since the last
-/// call. 1: it did.
+/// call: FRAME_NONE, FRAME_NEW or FRAME_OPAQUE.
 #[no_mangle]
 pub unsafe extern "C" fn wg_take_frame(h: *const Handle, dst: *mut u8, w: u32, height: u32, stride: u32) -> i32 {
     let Some(h) = h.as_ref() else { return 0 };
@@ -829,7 +838,11 @@ pub unsafe extern "C" fn wg_take_frame(h: *const Handle, dst: *mut u8, w: u32, h
         for y in 0..height as usize {
             std::ptr::copy_nonoverlapping(f.pixels[y * row..].as_ptr(), dst.add(y * stride as usize), row);
         }
-        1
+        if f.opaque {
+            FRAME_OPAQUE
+        } else {
+            FRAME_NEW
+        }
     })
 }
 
@@ -873,7 +886,7 @@ pub unsafe extern "C" fn wg_restore(h: *const Handle) -> i32 {
     let _ = h.tx.send(Msg::Restore);
     let slot = Arc::new(Slot::default());
     let _ = h.tx.send(Msg::Query(vec![], slot.clone()));
-    let _ = slot.wait(Instant::now() + h.wait);
+    let _ = slot.wait(Instant::now() + h.wait, &AtomicBool::new(false));
     (!h.shared.lost.load(Ordering::SeqCst)) as i32
 }
 

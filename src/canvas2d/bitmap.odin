@@ -17,6 +17,7 @@ Bitmap :: struct {
 	dirty_min: [2]int,
 	dirty_max: [2]int,
 	opaque:    bool,   // getContext("2d", { alpha: false }): alpha is always 1, the canvas is composited over black
+	all_opaque: bool,  // every alpha is 1 as of the last version (said by who wrote the pixels: a WebGL frame): reading it needs no conversion
 	allocator: runtime.Allocator,
 	uid:       u64,    // names the bitmap for the GPU's cache of uploaded sources (0: not a bitmap made by bitmap_create)
 	accounted: int,    // bytes the owner charged to a budget for it (a GPU canvas charges what its pixels would take)
@@ -112,6 +113,10 @@ bitmap_read_straight :: proc(b: ^Bitmap, x, y, w, h: int, out: []u8) {
 		dst := out[row * w * 4:][:w * 4]
 		if sy < 0 || sy >= b.h {
 			for i in 0 ..< len(dst) { dst[i] = 0 }
+			continue
+		}
+		if b.all_opaque && x >= 0 && x + w <= b.w {
+			copy(dst, b.pix[(sy * b.w + x) * 4:][:w * 4])
 			continue
 		}
 		for col in 0 ..< w {

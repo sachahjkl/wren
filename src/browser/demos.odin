@@ -121,6 +121,8 @@ DEMOS := [?]Demo{
 	{.Images, "External link icons", "media/dark-links.html",
 		"An SVG icon in the <code>::after</code> background of external links, and <code>filter: invert()</code> to show it on a dark page.", true, "", false},
 
+	{.JavaScript, "WebGL", "webgl.html",
+		"A spinning cube with a depth buffer, and a quad textured by a 2D canvas: shaders, buffers, a mipmapped texture, frames back to the page.", false, "", false},
 	{.JavaScript, "Web Audio", "webaudio.html",
 		"A note through a filter, a delay with feedback and an analyser that draws the wave: <code>AudioContext</code> waits for the click on Play (<code>media.autoplay.policy</code>), the tab shows its speaker.", false, "", false},
 	{.Wasm, "A page with no JavaScript", "counter.html",

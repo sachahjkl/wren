@@ -847,10 +847,10 @@ impl Ctx {
             out.push(match p {
                 0x8A37 => u.ty.gl as i32,
                 0x8A38 => u.count.max(1) as i32,
-                0x8A3A => -1,
-                0x8A3B => -1,
-                0x8A3C => -1,
-                0x8A3D => -1,
+                0x8A3A => u.block.map_or(-1, |b| b.0 as i32),
+                0x8A3B => u.block.map_or(-1, |b| b.1 as i32),
+                0x8A3C => u.block.map_or(-1, |b| b.2 as i32),
+                0x8A3D => u.block.map_or(-1, |b| b.3 as i32),
                 0x8A3E => 0,
                 _ => {
                     self.set_error(INVALID_ENUM);

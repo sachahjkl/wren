@@ -32,8 +32,16 @@ pub const MAX_SOURCE_BYTES: usize = 2 * 1024 * 1024;
 pub const MAX_TOKENS: usize = 2_000_000;
 /// The deepest nesting of parentheses, brackets and braces (naga's parser and lowering recurse).
 pub const MAX_NESTING: usize = 128;
-/// The longest statement in tokens (`a+a+a+...` builds an expression as deep as it is long, recursion again).
+/// The longest statement in tokens.
 pub const MAX_STATEMENT_TOKENS: usize = 60_000;
+/// The most operators in one statement (`a+a+a+...`, `- - - a`, `a.x.x.x`, `a[0][0][0]` build an expression as deep as it is
+/// long, and naga lowers it by recursion). The thread's stack holds this with room to spare, in a debug build too.
+pub const MAX_STATEMENT_OPERATORS: usize = 4096;
+/// The most `else`, in a function, and of `if`, `for`, `while` following each other without a block: naga parses them by recursion.
+pub const MAX_ELSES: usize = 2048;
+pub const MAX_CONTROL_CHAIN: usize = 256;
+/// The largest type a shader may declare, in bytes.
+pub const MAX_TYPE_BYTES: u64 = 16 << 20;
 /// The most members a block of default uniforms may flatten to.
 pub const MAX_UNIFORM_LEAVES: usize = 16 * 1024;
 /// The longest identifier (WebGL: 256 for GLSL ES 1.00, 1024 for GLSL ES 3.00).
@@ -804,6 +812,21 @@ pub fn compile(stage: Stage, src: &str, caps: &Caps) -> Result<Shader, String> {
     let map = default_link_map(&s);
     let text = s.emit(&map, caps)?;
     let module = parse_glsl(stage, &text)?;
+    // a type as large as the page likes is the driver's memory: refused here (a local array, an array of structures of arrays)
+    let gctx = module.to_ctx();
+    let mut sizes: HashMap<naga::Handle<naga::Type>, u64> = HashMap::new();
+    for (h, ty) in module.types.iter() {
+        // (a type comes after those it is made of; naga's own sizes are 32 bits and wrap)
+        let bytes = match &ty.inner {
+            TypeInner::Array { base, size: naga::ArraySize::Constant(n), .. } => sizes.get(base).copied().unwrap_or(0).saturating_mul(n.get() as u64),
+            TypeInner::Struct { members, .. } => members.iter().fold(0u64, |t, m| t.saturating_add(sizes.get(&m.ty).copied().unwrap_or(0))),
+            other => other.size(gctx) as u64,
+        };
+        if bytes > MAX_TYPE_BYTES {
+            return Err(log_line(0, "a type of this shader is too large"));
+        }
+        sizes.insert(h, bytes);
+    }
     s.reflect(&module)?;
     check_limits(&s, caps)?;
     Ok(s)
@@ -909,10 +932,27 @@ fn read_declarations(stage: Stage, es3: bool, toks: Vec<Tok>, warnings: Vec<Stri
     let max_ident = if es3 { MAX_IDENT_ES3 } else { MAX_IDENT_ES1 };
     let mut depth = 0usize;
     let mut statement = 0usize;
+    let mut operators = 0usize;
+    let mut elses = 0usize;
+    let mut chain = 0usize;
     for t in &toks {
         statement += 1;
         match &t.t {
             T::Id(name) => {
+                match name.as_str() {
+                    "else" => {
+                        elses += 1;
+                        chain += 1;
+                        if elses > MAX_ELSES {
+                            return Err(log_line(t.line, "too many else in a function"));
+                        }
+                    }
+                    "if" | "for" | "while" | "do" | "switch" => chain += 1,
+                    _ => {}
+                }
+                if chain > MAX_CONTROL_CHAIN {
+                    return Err(log_line(t.line, "too many statements inside one another"));
+                }
                 if name.len() > max_ident {
                     return Err(log_line(t.line, "identifier too long"));
                 }
@@ -953,21 +993,41 @@ fn read_declarations(stage: Stage, es3: bool, toks: Vec<Tok>, warnings: Vec<Stri
                     if depth > MAX_NESTING {
                         return Err(log_line(t.line, "nested too deep"));
                     }
+                    if *p == Punct::LeftBrace {
+                        chain = 0;
+                    }
+                    if *p == Punct::LeftBracket {
+                        operators += 1;
+                    }
                 }
                 Punct::RightBrace | Punct::RightParen | Punct::RightBracket => {
                     if depth == 0 {
                         return Err(log_line(t.line, "unbalanced brackets"));
                     }
                     depth -= 1;
-                    statement = 0;
+                    if *p == Punct::RightBrace {
+                        statement = 0;
+                        operators = 0;
+                        if depth == 0 {
+                            elses = 0;
+                        }
+                    }
                 }
-                Punct::Semicolon => statement = 0,
-                _ => {}
+                Punct::Semicolon => {
+                    statement = 0;
+                    operators = 0;
+                    chain = 0;
+                }
+                Punct::Comma => {}
+                _ => operators += 1,
             },
             _ => {}
         }
         if statement > MAX_STATEMENT_TOKENS {
             return Err(log_line(t.line, "statement too long"));
+        }
+        if operators > MAX_STATEMENT_OPERATORS {
+            return Err(log_line(t.line, "too many operators in one statement"));
         }
     }
     if depth != 0 {
@@ -1625,6 +1685,12 @@ impl Shader {
         Ok(())
     }
 
+    /// The locations a fragment shader of GLSL ES 1.00 writes: gl_FragColor, gl_FragData[n] (a bit each).
+    pub fn es1_outputs(&self) -> u32 {
+        let color = self.toks.iter().any(|t| matches!(&t.t, T::Id(n) if n == "gl_FragColor"));
+        self.frag_data_used.iter().fold(color as u32, |m, i| m | 1 << i)
+    }
+
     /// The tokens of an array's size, written.
     fn array_text(&self, array: &[Tok]) -> String {
         let mut s = String::new();
@@ -2087,7 +2153,7 @@ impl Shader {
     #[allow(clippy::too_many_arguments)]
     fn walk(&self, module: &naga::Module, ty: naga::Handle<naga::Type>, decl: &TypeRef, name: &str, is_array: bool, offset: u32, out: &mut Vec<UniformLeaf>) -> Result<(), String> {
         if out.len() > MAX_UNIFORM_LEAVES {
-            return Ok(());
+            return Err(log_line(0, "too many uniforms"));
         }
         match decl {
             TypeRef::Basic(b, _) => {
@@ -2150,6 +2216,9 @@ fn block_leaves(module: &naga::Module, ty: naga::Handle<naga::Type>, name: &str,
             let inner = &module.types[*base].inner;
             if matches!(inner, TypeInner::Struct { .. }) {
                 for i in 0..n.get() {
+                    if out.len() > MAX_UNIFORM_LEAVES {
+                        break;
+                    }
                     block_leaves(module, *base, &format!("{}[{}]", name, i), offset + i * stride, out);
                 }
             } else {
@@ -2231,7 +2300,10 @@ pub fn parse_glsl(stage: Stage, text: &str) -> Result<naga::Module, String> {
         Stage::Fragment => ShaderStage::Fragment,
     };
     let mut fe = Frontend::default();
-    fe.parse(&Options::from(st), text).map_err(|errors| {
+    // (a panic of the front end on what a page wrote is a shader that does not compile)
+    let parsed = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| fe.parse(&Options::from(st), text)));
+    let Ok(parsed) = parsed else { return Err(log_line(0, "the shader could not be compiled: it broke the compiler")) };
+    parsed.map_err(|errors| {
         let mut log = String::new();
         let lines: Vec<&str> = text.split('\n').collect();
         for e in &errors.errors {
@@ -2515,6 +2587,10 @@ mod tests {
         assert!(compile(Stage::Vertex, &deep, &caps()).is_err());
         let long = format!("void main(){{ float a = 1.0{}; }}", "+1.0".repeat(100_000));
         assert!(compile(Stage::Vertex, &long, &caps()).is_err());
+        // an array as large as the driver's memory, in a local variable or by nesting structures
+        assert!(compile(Stage::Vertex, "void main(){ float a[1000000000]; gl_Position = vec4(a[0]); }", &caps()).is_err());
+        let nest = "struct A { float x[1000]; }; struct B { A a[1000]; }; struct C { B b[1000]; }; struct D { C c[1000]; }; uniform D d[1000]; void main(){ gl_Position = vec4(d[0].c[0].b[0].a[0].x[0]); }";
+        assert!(compile(Stage::Vertex, nest, &caps()).is_err());
         let mut bomb = String::from("#define A0 x x\n");
         for i in 1..40 {
             bomb.push_str(&format!("#define A{i} A{p} A{p}\n", p = i - 1));

@@ -418,6 +418,8 @@ pub struct UniformInfo {
     pub fs: Option<(u32, u32)>,
     /// A sampler: the first binding index (`count` of them, or 1).
     pub sampler: Option<u32>,
+    /// A member of a block of uniforms (no location): (the block's index, offset, array stride, matrix stride).
+    pub block: Option<(u32, u32, u32, u32)>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -2055,6 +2057,11 @@ impl Ctx {
             self.set_error(if !known_format || !known_type { INVALID_ENUM } else if internal == format { INVALID_OPERATION } else { INVALID_OPERATION });
             return None;
         };
+        // each version has its own number for half floats
+        if (w2 && ty == formats::HALF_FLOAT_OES) || (!w2 && ty == formats::HALF_FLOAT) {
+            self.set_error(INVALID_ENUM);
+            return None;
+        }
         // what the extensions of WebGL 1 hold back
         if !w2 {
             let allowed = match ty {
@@ -2873,13 +2880,13 @@ impl Ctx {
                 };
                 let mut uniforms: Vec<UniformInfo> = Vec::new();
                 for leaf in &vs.leaves {
-                    uniforms.push(UniformInfo { name: leaf.name.clone(), ty: leaf.ty, count: leaf.count, vs: Some((leaf.offset, leaf.stride)), fs: None, sampler: None });
+                    uniforms.push(UniformInfo { name: leaf.name.clone(), ty: leaf.ty, count: leaf.count, vs: Some((leaf.offset, leaf.stride)), fs: None, sampler: None, block: None });
                 }
                 for leaf in &fs.leaves {
                     if let Some(u) = uniforms.iter_mut().find(|u| u.name == leaf.name) {
                         u.fs = Some((leaf.offset, leaf.stride));
                     } else {
-                        uniforms.push(UniformInfo { name: leaf.name.clone(), ty: leaf.ty, count: leaf.count, vs: None, fs: Some((leaf.offset, leaf.stride)), sampler: None });
+                        uniforms.push(UniformInfo { name: leaf.name.clone(), ty: leaf.ty, count: leaf.count, vs: None, fs: Some((leaf.offset, leaf.stride)), sampler: None, block: None });
                     }
                 }
                 let mut seen = Vec::new();
@@ -2895,12 +2902,15 @@ impl Ctx {
                     }
                     seen.push(d.name.clone());
                     let name = if d.count == 0 { d.name.clone() } else { format!("{}[0]", d.name) };
-                    uniforms.push(UniformInfo { name, ty: translate::BasicType { gl: d.kind.gl, cols: 1, rows: 1 }, count: d.count, vs: None, fs: None, sampler: Some(first) });
+                    uniforms.push(UniformInfo { name, ty: translate::BasicType { gl: d.kind.gl, cols: 1, rows: 1 }, count: d.count, vs: None, fs: None, sampler: Some(first), block: None });
                 }
                 let mut locations = Vec::new();
                 let mut names = HashMap::new();
                 for (ui, u) in uniforms.iter().enumerate() {
                     let n = u.count.max(1);
+                    if u.block.is_some() {
+                        continue;
+                    }
                     let base = u.name.strip_suffix("[0]").unwrap_or(&u.name).to_string();
                     for e in 0..n {
                         let loc = locations.len() as u32;
@@ -2923,6 +2933,12 @@ impl Ctx {
                         blocks.push(b.clone());
                     }
                 }
+                // (after the locations were given: the members of blocks are active, and have none)
+                for (bi, b) in blocks.iter().enumerate() {
+                    for m in &b.members {
+                        uniforms.push(UniformInfo { name: m.name.clone(), ty: m.ty, count: m.count, vs: None, fs: None, sampler: None, block: Some((bi as u32, m.offset, m.array_stride, m.matrix_stride)) });
+                    }
+                }
                 let outs = fs.outputs.iter().filter(|o| o.ty.scalar() != translate::Scalar::Float).fold(0u32, |m, o| m | 1 << o.location.unwrap_or(0));
                 let outputs = if fs.es3 {
                     let mut m = 0u32;
@@ -2936,8 +2952,7 @@ impl Ctx {
                     }
                     m
                 } else {
-                    // gl_FragColor or gl_FragData: every target gets what location 0 says, or its own
-                    u32::MAX
+                    fs.es1_outputs()
                 };
                 let (mut vs_image, mut fs_image) = (vec![0u8; l.vs_size as usize], vec![0u8; l.fs_size as usize]);
                 vs_image.resize(l.vs_size.max(16) as usize, 0);

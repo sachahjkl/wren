@@ -39,6 +39,7 @@ pub struct PipelineKey {
 #[derive(Default)]
 pub struct PassState {
     pub viewport: Option<[i32; 4]>,
+    pub fb_gen: u64,
     pub depth_range: [u32; 2],
     pub scissor: Option<[u32; 4]>,
     pub blend_constant: Option<[u32; 4]>,
@@ -404,7 +405,7 @@ impl Ctx {
         let fb = self.st.draw_fb;
         let t = self.target_of(fb)?;
         let clearing_default = fb == 0 && self.needs_clear;
-        if self.pass.is_some() && self.pass_fb == Some(fb) && self.cur.depth_range[0] == self.fb_gen as u32 && clear.is_none() && !clearing_default {
+        if self.pass.is_some() && self.pass_fb == Some(fb) && self.cur.fb_gen == self.fb_gen && clear.is_none() && !clearing_default {
             return Some(t);
         }
         self.end_pass();
@@ -463,7 +464,7 @@ impl Ctx {
             self.drew_since_present = true;
         }
         self.cur = PassState::default();
-        self.cur.depth_range = [self.fb_gen as u32, 0];
+        self.cur.fb_gen = self.fb_gen;
         Some(t)
     }
 
@@ -585,7 +586,7 @@ impl Ctx {
         pass.set_viewport(0.0, 0.0, t.w as f32, t.h as f32, 0.0, 1.0);
         pass.set_scissor_rect(r[0], r[1], r[2], r[3]);
         pass.draw(0..3, 0..1);
-        self.cur = PassState { depth_range: self.cur.depth_range, ..PassState::default() };
+        self.cur = PassState { fb_gen: self.cur.fb_gen, ..PassState::default() };
         self.draws_in_submit += 1;
     }
 
@@ -1017,7 +1018,7 @@ impl Ctx {
             },
             cull: if st.cull && triangles { st.cull_face } else { 0 },
             front: st.front_face,
-            offset: if st.polygon_offset { Some((st.polygon_factor.to_bits(), st.polygon_units.to_bits())) } else { None },
+            offset: if st.polygon_offset && triangles { Some((st.polygon_factor.to_bits(), st.polygon_units.to_bits())) } else { None },
             alpha_to_coverage: st.alpha_to_coverage && t.samples > 1,
             samples: t.samples,
             colors: t.colors.iter().map(|c| c.as_ref().map(|c| c.2)).collect(),
@@ -1101,22 +1102,26 @@ impl Ctx {
         let sref = (self.st.stencil_front.reference & 0xFF) as u32;
         let has_points_tex = points;
         let _ = has_points_tex;
-        let stale_vp = self.cur.viewport != Some(vp) || self.cur.depth_range[1] != dr[1].to_bits();
+        let stale_vp = self.cur.viewport != Some(vp) || self.cur.depth_range != [dr[0].to_bits(), dr[1].to_bits()];
         let stale_scissor = self.cur.scissor != Some(scissor);
         let bc_bits = [blend_c[0].to_bits(), blend_c[1].to_bits(), blend_c[2].to_bits(), blend_c[3].to_bits()];
         let stale_bc = self.cur.blend_constant != Some(bc_bits);
         let stale_ref = self.cur.stencil_ref != Some(sref);
         let enc_gen = self.enc_gen;
         let empty_group = if tex_group.is_none() { Some(self.utility_empty_group()) } else { None };
+        let max_side = self.device.limits().max_texture_dimension_2d;
         let pass = self.pass.as_mut().ok_or(0u32)?;
         pass.set_pipeline(&pipeline);
         if stale_vp {
-            let m = t.w.max(t.h) as f32 * 2.0;
-            let (x, y, w, h) = (vp[0] as f32, vp[1] as f32, (vp[2] as f32).min(32767.0), (vp[3] as f32).min(32767.0));
-            let _ = m;
+            // (what GL calls a clamp, MAX_VIEWPORT_DIMS, and wgpu an error)
+            let size = max_side as f32;
+            let (w, h) = ((vp[2] as f32).min(size), (vp[3] as f32).min(size));
+            let far = size * 2.0 - 1.0;
+            let x = (vp[0] as f32).clamp(-size * 2.0, far - w);
+            let y = (vp[1] as f32).clamp(-size * 2.0, far - h);
             pass.set_viewport(x, y, w, h, dr[0], dr[1]);
             self.cur.viewport = Some(vp);
-            self.cur.depth_range[1] = dr[1].to_bits();
+            self.cur.depth_range = [dr[0].to_bits(), dr[1].to_bits()];
         }
         if stale_scissor {
             pass.set_scissor_rect(scissor[0], scissor[1], scissor[2], scissor[3]);

@@ -78,8 +78,10 @@ gl_pump :: proc(data: rawptr) {
 webgl_take_frame :: proc(p: ^Page, o: ^Canvas_Obj) {
 	b := o.backing
 	if b == nil || len(b.bmp.pix) == 0 { return }
-	if webgl.wg_take_frame(o.gl.handle, raw_data(b.bmp.pix), u32(b.bmp.w), u32(b.bmp.h), u32(b.bmp.w) * WORD) == 1 {
+	taken := webgl.wg_take_frame(o.gl.handle, raw_data(b.bmp.pix), u32(b.bmp.w), u32(b.bmp.h), u32(b.bmp.w) * WORD)
+	if taken != webgl.FRAME_NONE {
 		canvas2d.bitmap_touch_all(&b.bmp)
+		b.bmp.all_opaque = taken == webgl.FRAME_OPAQUE
 		o.gl.version += 1
 	}
 }
@@ -366,5 +368,8 @@ WebGL_restore :: proc(c: ^Call, ctx: u64) -> bool {
 	if webgl.wg_restore(gl.handle) == 0 { return false }
 	gl.lost_said = false
 	gl.dirty = true
+	// (the canvas may have another size by now)
+	o := canvas_obj_of(c.page, ctx)
+	if o != nil && o.backing != nil { webgl_resized(o, o.backing.width, o.backing.height) }
 	return true
 }
