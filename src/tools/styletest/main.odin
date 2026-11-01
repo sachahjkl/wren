@@ -103,6 +103,10 @@ main :: proc() {
 	fmt.println("-- transitions and animations")
 	t := dom.find_by_id(p.doc, "t")
 	d := dom.find_by_id(p.doc, "d")
+	// A frame first, as the shell makes when the timer wakes it: the timer armed by the styles above is a real one of 500 ms, and the
+	// wait for the fonts may be longer than that on a loaded machine. It then fired, and nothing has armed it since.
+	page.set_frame_time(p, 0)
+	page.styles(p, 800, 600, 1)
 	check(!page.animations_active(p), "the delayed animation needs no frame yet")
 	next := page.animations_next_ms(p)
 	check(next > 400 && next <= 500, fmt.tprintf("its start is the next deadline (%v ms)", next))
