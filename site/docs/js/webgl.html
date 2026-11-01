@@ -319,6 +319,8 @@ is no GPU process. Windows' TDR turns a shader that hangs the GPU into a device 
 lose out at the deadline, and their thread stays until the shader ends.</li>
 </ul>
 <p>Microsoft's software rasterizer (WARP) crashes when several devices of a process work at once (seen here): software contexts take turns.</p>
+<p>A page's thread that waits for an answer is still running its script: <code>javascript.slow_script_ms</code> counts the wait. On a software adapter, where
+FXC compiles every pipeline, a page that asks right after a burst of new programs can reach that limit under load.</p>
 <h2 id="preferences"><a class="anchor" href="#preferences" aria-hidden="true">#</a>Preferences</h2>
 <p><code>webgl.enabled</code>, <code>webgl.webgl2</code>, <code>webgl.allow_software</code>, <code>webgl.force_software</code>, <code>webgl.backend</code> (<code>auto</code>, <code>dx12</code>, <code>vulkan</code>),
 <code>webgl.max_contexts</code>, <code>webgl.max_mb</code>, <code>webgl.wait_ms</code>.</p>
