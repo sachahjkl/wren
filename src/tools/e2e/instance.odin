@@ -156,24 +156,12 @@ a_start_while_the_first_one_closes_loses_nothing :: proc(t: ^testing.T) {
 	// (told to close, not waited for: the second start comes right behind)
 	api.browser_close(a.s)
 	api.close_session(a.s)
-	b := later(t, e2e.wren_exe(), profile, SINGLE_ON, "about:wren")
-	// it took the profile over, or handed its address over and ended: then the first keeps it, and writes it in the session
+	// (with a channel of its own, to close it if it keeps a process: it takes the profile over, or hands its address over and ends)
+	b := e2e.launch_begin(t, {hidden = true, profile = profile, single_instance = true, prefs = {RESTORE_PREF}, no_address = true, extra = {"about:wren"}, start = {env = SINGLE_ON}})
+	api.connect_launched(b.s, &b.wren, api.START_WAIT_MS)
 	testing.expect(t, api.process_wait(&a.wren.process, api.QUIT_WAIT_MS), "the first one has closed")
 	a.ended = true
-	session := fmt.tprintf("%s/session.txt", profile)
-	if api.process_wait(&b.process, 0) {
-		testing.expect_value(t, api.process_exit_code(&b.process), 0)
-		testing.expectf(t, strings.contains(e2e.read_text(session), "about:wren"), "the first one kept the address: %q", e2e.read_text(session))
-	} else {
-		// (the second keeps it: it runs on the profile, with that tab; closing it writes the same file)
-		e2e.wait_file(t, fmt.tprintf("%s/running.txt", profile), fmt.tprintf("pid %d", b.pid))
-		win.EnumWindows(proc "system" (h: win.HWND, l: win.LPARAM) -> win.BOOL {
-			owner: win.DWORD
-			win.GetWindowThreadProcessId(h, &owner)
-			if owner == win.DWORD(l) { win.PostMessageW(h, win.WM_CLOSE, 0, 0) }
-			return true
-		}, win.LPARAM(b.pid))
-		testing.expect_value(t, e2e.program_wait(b), 0)
-		testing.expectf(t, strings.contains(e2e.read_text(session), "about:wren"), "the second one kept the address: %q", e2e.read_text(session))
-	}
+	testing.expect_value(t, e2e.quit(b), 0)
+	session := e2e.read_text(fmt.tprintf("%s/session.txt", profile))
+	testing.expectf(t, strings.contains(session, "about:wren"), "the address arrived, whichever kept it: %q", session)
 }
