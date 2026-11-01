@@ -223,7 +223,7 @@ dnd_press :: proc(app: ^App, t: ^Tab, ev: platform.Event, pressed: base.Handle) 
 	}
 	if kind == .None { return false }
 	dnd.candidate, dnd.cand_page, dnd.cand_source, dnd.cand_kind = true, p, source, kind
-	dnd.cand_pos, dnd.cand_local = ev.pos, ev.pos - active_window(app).page_rect.min + {0, t.scroll}
+	dnd.cand_pos, dnd.cand_local = ev.pos, ev.pos - active_window(app).page_rect.min + doc_scroll_vec(t)
 	dnd.cand_text = strings.clone(text)
 	return true
 }

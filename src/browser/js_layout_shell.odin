@@ -58,7 +58,7 @@ js_layout_viewport :: proc(user: rawptr, p: ^page.Page) -> page.Viewport {
 	scale := f64(page_scale(app))
 	if scale <= 0 { scale = 1 }
 	size := page_area(app)
-	return page.Viewport{width = f64(size.x) / scale, height = f64(size.y) / scale, scale = scale, scroll_y = f64(t.scroll) / scale}
+	return page.Viewport{width = f64(size.x) / scale, height = f64(size.y) / scale, scale = scale, scroll_x = f64(doc_scroll_vec(t).x) / scale, scroll_y = f64(t.scroll) / scale}
 }
 
 @(private = "file")
@@ -69,7 +69,8 @@ js_layout_scroll :: proc(user: rawptr, p: ^page.Page, x, y: f64, smooth: bool) {
 	scale := f64(page_scale(app))
 	size := page_area(app)
 	limit := math.max(0, f64(t.layout.height) - f64(size.y))
-	scroll_document_to(app, t, f32(clamp(y * scale, 0, limit)), smooth)
+	lo, hi := lay.doc_scroll_x_range(&t.layout, size.x)
+	scroll_document_to(app, t, {clamp(f32(x * scale), lo, hi), f32(clamp(y * scale, 0, limit))}, smooth)
 	request_frames(app, 2)
 }
 

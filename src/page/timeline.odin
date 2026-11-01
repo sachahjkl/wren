@@ -274,7 +274,7 @@ Page_Timeline :: struct {
 	// The document mutation count and viewport at the last Largest Contentful Paint / Element Timing scan: an unchanged
 	// layout and viewport cannot change the largest element, so the scan is skipped (it walks every box).
 	lcp_scan_mutations: u64,
-	lcp_scan_w, lcp_scan_h, lcp_scan_scroll: f64,
+	lcp_scan_w, lcp_scan_h, lcp_scan_scroll, lcp_scan_scroll_x: f64,
 	lcp_scanned: bool,
 	// The same gate for the layout-shift check: a shift can only happen when the layout changed (a mutation or a new
 	// viewport, not a scroll — scrolling is expected movement and never a layout shift).

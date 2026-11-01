@@ -78,7 +78,9 @@ host_viewport :: proc(user: rawptr, p: ^page.Page) -> page.Viewport {
 @(private)
 host_scroll :: proc(user: rawptr, p: ^page.Page, x, y: f64, smooth: bool) {
 	h := (^Layout_Host)(user)
-	h.scroll = {0, clamp(y, 0, max(f64(h.l.height) - LAYOUT_VIEW_H, 0))}
+	lo, hi := lay.doc_scroll_x_range(&h.l, LAYOUT_VIEW_W)
+	h.scroll = {clamp(x, f64(lo), f64(hi)), clamp(y, 0, max(f64(h.l.height) - LAYOUT_VIEW_H, 0))}
+	lay.set_doc_scroll_x(&h.l, f32(h.scroll[0]))
 }
 
 // A document of a test that reads geometry was adopted: it is laid out from now on, as its scripts ask.

@@ -41,7 +41,7 @@ Video_Fast_Record :: struct {
 	tex:      render.Texture,
 	dst:      draw.Rect,    // the video's rectangle in screen pixels, as painted this frame
 	page_rect: draw.Rect,   // the page area when it was recorded (to shift like the snapshot)
-	scroll:   f32,
+	scroll:   draw.Vec2,      // the document's offsets then
 	frame:    u64,          // chrome_frames.frame_no it was recorded in (a record older than the snapshot is dropped)
 	eligible: bool,
 }
@@ -94,7 +94,7 @@ video_fast_path_record :: proc(app: ^App, p: ^page.Page, node: base.Handle, tex:
 	wnd := active_window(app)
 	append(&vfast.records, Video_Fast_Record{
 		tab = t.id, page = page.page_id(p), node = node, tex = tex, dst = dst,
-		page_rect = wnd.page_rect, scroll = t.scroll, frame = chrome_frames.frame_no, eligible = eligible,
+		page_rect = wnd.page_rect, scroll = doc_scroll_vec(t), frame = chrome_frames.frame_no, eligible = eligible,
 	})
 }
 
@@ -107,14 +107,14 @@ video_fast_path_overlay :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: dra
 	if s == nil { return 0 }   // no page frame to overlay onto
 	drawn := 0
 	// the snapshot's shift this chrome frame (same as shell_paint_page): the page area moved and the wheel scrolled it
-	scroll := t.scroll + (chrome_frames.pending_tab == t.id ? chrome_frames.pending_scroll : 0)
+	scroll := shell_shown_scroll(t)
 	for &r in vfast.records {
 		if r.tab != t.id || !r.eligible || r.tex == 0 { continue }
 		// the newest picture the player has now (its decode threads kept running under the script)
 		tex, size, ok := video_fast_live_texture(app, r.page, r.node)
 		if !ok || tex == 0 { tex = r.tex }   // nothing newer: the last one, still moving the box with the snapshot
 		_ = size
-		shift := (rect.min - r.page_rect.min) - draw.Vec2{0, scroll - r.scroll}
+		shift := (rect.min - r.page_rect.min) - (scroll - r.scroll)
 		dst := draw.Rect{r.dst.min + shift, r.dst.max + shift}
 		covered := draw.rect_intersect(rect, dst)
 		if covered.max.x <= covered.min.x || covered.max.y <= covered.min.y { continue }

@@ -34,6 +34,7 @@ Restore :: struct {
 	load_seen: bool,
 	load_at:   time.Tick,
 	applied:   f32,             // the document's offset as last set here: anything else means someone else scrolled
+	applied_x: f32,
 	doc_done:  bool,
 	controls_done: bool,
 	done:      [dynamic]bool,   // per container of the entry
@@ -76,7 +77,7 @@ entry_capture :: proc(app: ^App, t: ^Tab, e: ^page.History_Entry) {
 	if e.doc != page.page_id(t.page) { return }
 	r := &t.nav_state.restore
 	// still being restored and not touched since: what it should show is still what was saved
-	if r.active && r.entry == e.id && r.page == rawptr(t.page) && abs(t.scroll - r.applied) <= 0.5 { return }
+	if r.active && r.entry == e.id && r.page == rawptr(t.page) && abs(t.scroll - r.applied) <= 0.5 && abs(t.layout.doc_scroll_x - r.applied_x) <= 0.5 { return }
 	ps := &e.persisted
 	page.persisted_clear(ps)
 	ps.saved = true
@@ -84,7 +85,7 @@ entry_capture :: proc(app: ^App, t: ^Tab, e: ^page.History_Entry) {
 	scale := t.layout.valid && t.layout.scale > 0 ? t.layout.scale : page_scale(app)
 	if scale <= 0 { scale = 1 }
 	if t.layout.valid {
-		ps.scroll = {0, smooth_pending(app, t, base.NIL_HANDLE).y / scale}
+		ps.scroll = smooth_pending(app, t, base.NIL_HANDLE) / scale
 		for node, off in t.layout.scroll {
 			if off == {} { continue }
 			pos := smooth_pending(app, t, node)
@@ -92,7 +93,7 @@ entry_capture :: proc(app: ^App, t: ^Tab, e: ^page.History_Entry) {
 			if path != "" { page.persisted_add_container(ps, path, pos / scale) }
 		}
 	} else {
-		ps.scroll = {0, t.scroll / scale}
+		ps.scroll = {t.layout.doc_scroll_x, t.scroll} / scale
 	}
 	if hcfg.restore_forms { page.persisted_capture_controls(t.page, ps) }
 }
@@ -127,7 +128,7 @@ restore_begin :: proc(app: ^App, t: ^Tab, e: ^page.History_Entry, kind: Restore_
 	r := &t.nav_state.restore
 	r.active, r.kind, r.entry, r.started = true, kind, e.id, time.tick_now()
 	r.page = kind == .Same_Document ? rawptr(t.page) : nil
-	r.applied = t.scroll
+	r.applied, r.applied_x = t.scroll, t.layout.doc_scroll_x
 	r.doc_done = e.scroll_manual
 	r.controls_done = kind == .Same_Document || !hcfg.restore_forms
 	r.load_seen = false
@@ -178,10 +179,10 @@ restore_step :: proc(want, limit: f32, expired: bool) -> (pos: f32, done: bool) 
 restore_tick :: proc(app: ^App, t: ^Tab, viewport: [2]f32) {
 	r := &t.nav_state.restore
 	if !r.active || t.page == nil || !t.layout.valid { return }
-	if r.page == nil { r.page, r.applied = t.page, t.scroll }   // the new document's first layout
+	if r.page == nil { r.page, r.applied, r.applied_x = t.page, t.scroll, t.layout.doc_scroll_x }   // the new document's first layout
 	e := page.session_current(&t.session)
 	if r.page != rawptr(t.page) || e == nil || e.id != r.entry || !e.persisted.saved { restore_stop(app, t); return }
-	if abs(t.scroll - r.applied) > 0.5 { restore_stop(app, t); return }   // scrolled by the user or a script: theirs
+	if abs(t.scroll - r.applied) > 0.5 || abs(t.layout.doc_scroll_x - r.applied_x) > 0.5 { restore_stop(app, t); return }   // scrolled by the user or a script: theirs
 	p := t.page
 	ps := &e.persisted
 	if r.fragment {
@@ -200,12 +201,16 @@ restore_tick :: proc(app: ^App, t: ^Tab, viewport: [2]f32) {
 	scale := t.layout.scale > 0 ? t.layout.scale : 1
 	if !r.doc_done {
 		pos, done := restore_step(ps.scroll.y * scale, max(t.layout.height - viewport.y, 0), expired)
-		if done {
-			scroll_document_to(app, t, pos, false)
+		lo, hi := lay.doc_scroll_x_range(&t.layout, viewport.x)
+		// (across, an offset below 0 goes as far as the document reaches on that side)
+		want_x := ps.scroll.x * scale
+		pos_x, done_x := restore_step(abs(want_x), want_x < 0 ? -lo : hi, expired)
+		if done && done_x {
+			scroll_document_to(app, t, {want_x < 0 ? -pos_x : pos_x, pos}, false)
 			r.doc_done = true
 		}
 	}
-	r.applied = t.scroll
+	r.applied, r.applied_x = t.scroll, t.layout.doc_scroll_x
 	all := r.doc_done
 	for &c, i in ps.containers {
 		if i >= len(r.done) || r.done[i] { continue }

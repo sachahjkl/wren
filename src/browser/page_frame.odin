@@ -103,9 +103,10 @@ page_prepare :: proc(app: ^App, t: ^Tab, size: draw.Vec2) {
 	scroll_to_fragment(t, size)
 	layout_commit_anchors(&t.layout)
 	t.scroll = clamp(t.scroll, 0, max(0, t.layout.height - size.y))
+	doc_scroll_x_set(t, t.layout.doc_scroll_x, size.x)
 	// Performance Timeline entries that depend on the paint (page/timeline_lcp.odin): the largest contentful paint and the
 	// element-timing entries from the layout just settled, and the layout shifts against the previous frame
-	vp := page.Viewport{width = f64(size.x) / f64(scale), height = f64(size.y) / f64(scale), scale = f64(scale), scroll_y = f64(t.scroll) / f64(scale)}
+	vp := page.Viewport{width = f64(size.x) / f64(scale), height = f64(size.y) / f64(scale), scale = f64(scale), scroll_x = f64(doc_scroll_vec(t).x) / f64(scale), scroll_y = f64(t.scroll) / f64(scale)}
 	page.timeline_present(t.page, &t.layout, vp)
 	page.timeline_loaf_render(t.page, loaf_style_ms, loaf_layout_ms)
 	page.timeline_layout_shift_check(t.page, &t.layout, vp)

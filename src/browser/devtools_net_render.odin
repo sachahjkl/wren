@@ -19,6 +19,7 @@ import "toolkit:draw"
 import "toolkit:ui"
 import "wb:dom"
 import "wb:html"
+import lay "wb:layout"
 import "wb:style"
 
 // Everything one HTML preview render owns. Built once per chosen request (preview_render_ensure) and kept while that
@@ -134,13 +135,16 @@ preview_html_rendered :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 	scale := dtm.sc
 	if size.x > 0 && size.y > 0 {
 		preview_render_layout(app, pr, size, scale)
-		// the wheel scrolls it; the scroll is clamped to the document's height (what layout found) minus the pane
-		if sig.scrolled.y != 0 {
+		// the wheel scrolls it; the scroll is clamped to the document's extent (what layout found) minus the pane
+		if sig.scrolled != {} {
 			pr.scroll -= sig.scrolled.y
+			lay.set_doc_scroll_x(&pr.layout, pr.layout.doc_scroll_x - sig.scrolled.x)
 			request_frames(app, 2)
 		}
 		limit := max(pr.layout.height - size.y, 0)
 		pr.scroll = clamp(pr.scroll, 0, limit)
+		lo, hi := lay.doc_scroll_x_range(&pr.layout, size.x)
+		lay.set_doc_scroll_x(&pr.layout, clamp(pr.layout.doc_scroll_x, lo, hi))
 	}
 	pd := ui.frame_new(Pr_Draw)
 	pd.pr, pd.doc, pd.layout, pd.scroll = pr, pr.doc, &pr.layout, pr.scroll

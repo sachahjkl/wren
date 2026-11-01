@@ -638,7 +638,8 @@ try {
     Check 'capture has the window size' ($w -eq 1000 -and $h -eq 700) "${w}x$h"
     $cx = [int]($box.window.x + $box.window.width / 2); $cy = [int]($box.window.y + $box.window.height / 2)
     Check 'capture pixel inside the red box' (Near (Pixel $shot $cx $cy) @(255, 0, 0)) ((Pixel $shot $cx $cy) -join ',')
-    Check 'capture pixel outside the box is white' (Near (Pixel $shot ([int]$box.window.x + 400) ([int]$box.window.y + 400)) @(255, 255, 255))
+    # (not at the bottom of the page area: at some scales the fixture is wider than the viewport, and the horizontal scroll bar is there)
+    Check 'capture pixel outside the box is white' (Near (Pixel $shot ([int]$box.window.x + 400) ([int]$box.window.y + 200)) @(255, 255, 255))
     $el = Join-Path $tmp 'box.png'
     $null = Wren-Shot $el -Selector '#box'
     $img = New-Object Drawing.Bitmap($el)

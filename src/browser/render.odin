@@ -86,6 +86,16 @@ layout_document :: proc(l: ^Layout, d: ^dom.Document, styled: ^style.Styled, mea
 // The page's scroll offset: anchored boxes whose fallbacks or visibility follow it make the layout stale.
 layout_note_doc_scroll :: proc(l: ^Layout, scroll: f32) { lay.note_doc_scroll(l, scroll) }
 
+// The tab's document scroll offsets as its views apply them (device px): viewport point + this = document point. The
+// vertical one is the tab's, the horizontal one its layout's (lay.set_doc_scroll_x).
+doc_scroll_vec :: #force_inline proc(t: ^Tab) -> draw.Vec2 { return {lay.doc_scroll_x_snapped(&t.layout), t.scroll} }
+
+// The tab's document moved across to `x` (device px), kept in its range for a viewport `width` wide.
+doc_scroll_x_set :: proc(t: ^Tab, x, width: f32) {
+	lo, hi := lay.doc_scroll_x_range(&t.layout, width)
+	lay.set_doc_scroll_x(&t.layout, clamp(x, lo, hi))
+}
+
 // A frame was laid out: anchored boxes keep what it chose while that fits.
 layout_commit_anchors :: proc(l: ^Layout) { lay.anchored_commit(l) }
 
@@ -169,10 +179,17 @@ paint_doc_scrollbar :: proc(l: ^Layout, dc: ^draw.Context, page_origin, size: dr
 	if !l.valid { return }
 	origin := draw.Vec2{math.round(page_origin.x), math.round(page_origin.y)}
 	track, thumb, ok := lay.doc_scrollbar(l, size, math.round(page_scroll))
-	if !ok { return }
+	track_x, thumb_x, ok_x := lay.doc_scrollbar_x(l, size)
+	if !ok && !ok_x { return }
 	thumb_c, track_c := doc_scrollbar_colors(l)
-	if track_c.a > 0 { draw.rect(dc, draw.rect_shift(dr(track), origin), to_draw(track_c), (track.max.x - track.min.x) * 0.5) }
-	draw.rect(dc, draw.rect_shift(dr(thumb), origin), to_draw(thumb_c), (thumb.max.x - thumb.min.x) * 0.5)
+	if ok {
+		if track_c.a > 0 { draw.rect(dc, draw.rect_shift(dr(track), origin), to_draw(track_c), (track.max.x - track.min.x) * 0.5) }
+		draw.rect(dc, draw.rect_shift(dr(thumb), origin), to_draw(thumb_c), (thumb.max.x - thumb.min.x) * 0.5)
+	}
+	if ok_x {
+		if track_c.a > 0 { draw.rect(dc, draw.rect_shift(dr(track_x), origin), to_draw(track_c), (track_x.max.y - track_x.min.y) * 0.5) }
+		draw.rect(dc, draw.rect_shift(dr(thumb_x), origin), to_draw(thumb_c), (thumb_x.max.y - thumb_x.min.y) * 0.5)
+	}
 }
 
 // The box whose background is the canvas's (CSS Backgrounds §2.11.2): the root element's, or the body's when the root

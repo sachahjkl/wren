@@ -270,7 +270,7 @@ selection_shell_frame :: proc(app: ^App) {
 	port := wnd.page_rect
 	if ss.scroller != base.NIL_HANDLE {
 		if r, ok := lay.box_of(&t.layout, ss.scroller, page_viewport(app), t.scroll); ok {
-			off := wnd.page_rect.min - {0, t.scroll}   // (document coordinates, position: fixed boxes included)
+			off := wnd.page_rect.min - doc_scroll_vec(t)   // (document coordinates, position: fixed boxes included)
 			port = draw.Rect{r.padding.min + off, r.padding.max + off}
 			port = {{max(port.min.x, wnd.page_rect.min.x), max(port.min.y, wnd.page_rect.min.y)}, {min(port.max.x, wnd.page_rect.max.x), min(port.max.y, wnd.page_rect.max.y)}}
 		}
@@ -288,10 +288,11 @@ selection_shell_frame :: proc(app: ^App) {
 			moved = got != cur
 		}
 	}
-	if !moved && step.y != 0 {
-		before := t.scroll
+	if !moved && step != {} {
+		before := [2]f32{t.layout.doc_scroll_x, t.scroll}
 		t.scroll = clamp(t.scroll + step.y, 0, max(t.layout.height - page_viewport(app).y, 0))
-		moved = t.scroll != before
+		doc_scroll_x_set(t, t.layout.doc_scroll_x + step.x, page_viewport(app).x)
+		moved = before != {t.layout.doc_scroll_x, t.scroll}
 	}
 	// keep selecting under the pointer, clamped into the view (what is scrolled in gets selected)
 	inside := [2]f32{clamp(m.x, port.min.x + 1, port.max.x - 1), clamp(m.y, port.min.y + 1, port.max.y - 1)}

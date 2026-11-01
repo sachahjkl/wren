@@ -20,6 +20,7 @@ View :: struct {
 	layout:     ^lay.Layout,   // nil: no bounds
 	viewport:   [2]f32,        // the page area's size (layout pixels)
 	doc_scroll: f32,           // the document's scroll
+	doc_scroll_x: f32,         // across, as views apply it
 	origin:     [2]f32,        // window pixels of the document's top-left corner at scroll 0
 	focus:      base.Handle,   // the focused element (NIL: none)
 	title, url: string,
@@ -69,7 +70,7 @@ text_bounds :: proc(w: ^Walk, h: base.Handle) -> (r: [4]f32, ok: bool) {
 	items, found := w.text_items[h]
 	if !found { return }
 	for i in items {
-		b := lay.item_rect(l, &w.lview, &l.items[i])
+		b := lay.rect_shift(lay.item_rect(l, &w.lview, &l.items[i]), {w.lview.doc_scroll_x, 0})   // (lview: at no vertical scroll; document coordinates)
 		if b.max.x <= b.min.x && b.max.y <= b.min.y { continue }
 		if !ok { r = {b.min.x, b.min.y, b.max.x, b.max.y}; ok = true; continue }
 		r = {min(r[0], b.min.x), min(r[1], b.min.y), max(r[2], b.max.x), max(r[3], b.max.y)}
@@ -155,12 +156,12 @@ build_walk :: proc(w: ^Walk) -> int {
 emit_root :: proc(w: ^Walk, kids: []u64) {
 	v, u := w.v, w.u
 	index := platform.a11y_node(u, u64(v.doc.root), .Document, {}, {.Scroll_Into_View})
-	platform.a11y_bounds(u, 0, f64(v.doc_scroll), f64(v.viewport.x), f64(v.doc_scroll + v.viewport.y))
+	platform.a11y_bounds(u, f64(v.doc_scroll_x), f64(v.doc_scroll), f64(v.doc_scroll_x + v.viewport.x), f64(v.doc_scroll + v.viewport.y))
 	platform.a11y_children(u, kids)
 	platform.a11y_str(u, .Label, v.title)
 	platform.a11y_str(u, .Url, v.url)
 	// document coordinates -> the window: the scroll and the page area's place (one node changes when the page scrolls)
-	platform.a11y_floats(u, .Transform, {1, 0, 0, 1, v.origin.x, v.origin.y - v.doc_scroll})
+	platform.a11y_floats(u, .Transform, {1, 0, 0, 1, v.origin.x - v.doc_scroll_x, v.origin.y - v.doc_scroll})
 	if w.live != nil { live_record(w, u64(v.doc.root), Rec{el = v.doc.root, kind = .Root}, kids, index) }
 }
 
@@ -179,7 +180,8 @@ bounds_of :: proc(w: ^Walk, h: base.Handle) -> (r: [4]f32, ok: bool, fixed: bool
 	br, found := lay.box_of_view(w.v.layout, &w.lview, h)
 	if !found { return }
 	b := br.bounds
-	if br.fixed { b.min.y += w.v.doc_scroll; b.max.y += w.v.doc_scroll }   // (fixed boxes move with the viewport)
+	// (fixed boxes move with the viewport; lview is made at no vertical scroll, and box_of_view put back the horizontal one)
+	if br.fixed { b.min.y += w.v.doc_scroll; b.max.y += w.v.doc_scroll }
 	return {b.min.x, b.min.y, b.max.x, b.max.y}, true, br.fixed
 }
 

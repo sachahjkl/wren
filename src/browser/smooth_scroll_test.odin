@@ -1,6 +1,7 @@
 package browser
 
 import "core:testing"
+import "toolkit:platform"
 
 // The smooth scrolling curve (smooth_scroll.odin): ends exactly on the target, never goes past it nor past the ends
 // of the scroller, notches add up without a stop, the speed carries over.
@@ -147,4 +148,25 @@ smooth_wheel_precision :: proc(t: ^testing.T) {
 	testing.expect(t, !wheel_is_precise({0, -3}))
 	testing.expect(t, wheel_is_precise({0, 40.0 / 120}))   // a high-resolution wheel's third of a notch
 	testing.expect(t, wheel_is_precise({0.2, 0}))          // a touchpad
+}
+
+// Shift makes a vertical wheel horizontal; a wheel that turns across stays as it is, Shift or not.
+@(test)
+wheel_axes_with_shift :: proc(t: ^testing.T) {
+	testing.expect_value(t, wheel_axes(platform.Event{delta = {0, 3}}), [2]f32{0, 3})
+	testing.expect_value(t, wheel_axes(platform.Event{delta = {2, 0}}), [2]f32{2, 0})
+	testing.expect_value(t, wheel_axes(platform.Event{delta = {0, 3}, mods = {.Shift}}), [2]f32{3, 0})
+	testing.expect_value(t, wheel_axes(platform.Event{delta = {0, -1}, mods = {.Shift}}), [2]f32{-1, 0})
+	testing.expect_value(t, wheel_axes(platform.Event{delta = {2, 1}, mods = {.Shift}}), [2]f32{2, 1})
+}
+
+// Nearest edge first; where it is when that shows already; the start of what does not fit.
+@(test)
+scroll_nearest_edges :: proc(t: ^testing.T) {
+	PORT :: 100
+	testing.expect_value(t, scroll_nearest(20, 50, PORT, 0), 0)        // in view
+	testing.expect_value(t, scroll_nearest(150, 180, PORT, 0), 80)     // past the end: its end at the view's
+	testing.expect_value(t, scroll_nearest(10, 40, PORT, 50), 10)      // before the start: its start at the view's
+	testing.expect_value(t, scroll_nearest(10, 500, PORT, 50), 10)     // wider than the view
+	testing.expect_value(t, scroll_nearest(-300, -280, PORT, 0), -300) // left of an origin at the end
 }

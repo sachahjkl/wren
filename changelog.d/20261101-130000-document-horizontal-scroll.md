@@ -1,0 +1,3 @@
+type: Added
+
+**The document scrolls horizontally**: a page wider than the viewport has a horizontal scroll bar at the bottom and moves with a horizontal wheel, Shift+wheel, the left and right arrows, a pan, autoscroll and a selection dragged past an edge, smoothly as vertically. `window.scrollX`, `scrollTo`, `scrollBy`, `scrollLeft`, `scrollWidth` and `scrollIntoView` work on that axis, rectangles are relative to the viewport on it, `position: sticky` sticks to its edges, and the position comes back with the history. `overflow-x: hidden` or `clip` on the root forbids it; with `direction: rtl` on the root the offsets go below 0, to reach what overflows to the left.

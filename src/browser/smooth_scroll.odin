@@ -150,7 +150,7 @@ Scrollbar_Drag :: struct {
 	vertical: bool,
 	grab:     f32,            // pointer to thumb start, along the bar
 	track_min, travel: f32,   // where the thumb can go (viewport px)
-	limit:    f32,            // the scroller's largest offset
+	lo, limit: f32,           // the scroller's offsets, smallest and largest
 }
 
 Smooth_Scroll :: struct {
@@ -158,6 +158,9 @@ Smooth_Scroll :: struct {
 	anims: [dynamic]Scroller_Anim,
 	drag:  Scrollbar_Drag,
 }
+
+// How long (device px) a document's range must be for a middle press to start an autoscroll it cannot use yet.
+AUTOSCROLL_MIN_RANGE :: 0.5
 
 smooth_cfg: Smooth_Settings
 @(private = "file") smooth_watch: int
@@ -201,12 +204,13 @@ find_anim :: proc(s: ^Smooth_Scroll, node: base.Handle) -> ^Scroller_Anim {
 	return nil
 }
 
-// Current offset and largest offset of a scroller (NIL: the document, vertical only).
+// Current offset and largest offset of a scroller (NIL: the document).
 scroller_state :: proc(app: ^App, t: ^Tab, node: base.Handle) -> (cur, limit: [2]f32, ok: bool) {
 	wnd := active_window(app)
 	if node == base.NIL_HANDLE {
-		h := wnd.page_rect.max.y - wnd.page_rect.min.y
-		return {0, t.scroll}, {0, max(t.layout.height - h, 0)}, t.layout.valid
+		size := draw.rect_size(wnd.page_rect)
+		_, hi := lay.doc_scroll_x_range(&t.layout, size.x)
+		return {t.layout.doc_scroll_x, t.scroll}, {hi, max(t.layout.height - size.y, 0)}, t.layout.valid
 	}
 	m, mok := lay.scroll_max(&t.layout, node)
 	if !mok { return }
@@ -214,9 +218,19 @@ scroller_state :: proc(app: ^App, t: ^Tab, node: base.Handle) -> (cur, limit: [2
 	return c, m, true
 }
 
+// Its smallest offset: 0, but across a document whose scroll origin is at the end of the line (lay.doc_min_x).
+scroller_low :: #force_inline proc(t: ^Tab, node: base.Handle) -> [2]f32 {
+	if node == base.NIL_HANDLE { return {t.layout.doc_min_x, 0} }
+	return {}
+}
+
 @(private = "file")
 scroller_set :: proc(t: ^Tab, node: base.Handle, v: [2]f32) -> [2]f32 {
-	if node == base.NIL_HANDLE { t.scroll = v.y; return {0, v.y} }
+	if node == base.NIL_HANDLE {
+		t.scroll = v.y
+		lay.set_doc_scroll_x(&t.layout, v.x)
+		return v
+	}
 	got, _ := lay.set_scroll(&t.layout, node, v)
 	return got
 }
@@ -235,7 +249,8 @@ smooth_pending :: proc(app: ^App, t: ^Tab, node: base.Handle) -> [2]f32 {
 smooth_scroll_to :: proc(app: ^App, t: ^Tab, node: base.Handle, target: [2]f32, dur_ms: f64) -> bool {
 	cur, limit, ok := scroller_state(app, t, node)
 	if !ok { return false }
-	to := [2]f32{clamp(target.x, 0, limit.x), clamp(target.y, 0, limit.y)}
+	lo := scroller_low(t, node)
+	to := [2]f32{clamp(target.x, lo.x, limit.x), clamp(target.y, lo.y, limit.y)}
 	s := smooth_of(t)
 	a := find_anim(s, node)
 	request_frames(app, 2)
@@ -297,15 +312,16 @@ smooth_tick :: proc(app: ^App, t: ^Tab) -> bool {
 			continue
 		}
 		when PACING_DEBUG { fmt.eprintln("smooth: tick", now, cur, a.axis[1]) }
+		lo := scroller_low(t, a.node)
 		next := cur
 		busy := false
 		for k in 0 ..< 2 {
 			ax := &a.axis[k]
 			if !ax.active { continue }
 			// the range may have shrunk (a layout pass): the end follows
-			if ax.to > f64(limit[k]) { ax.to = f64(limit[k]) }
+			ax.to = clamp(ax.to, f64(lo[k]), f64(limit[k]))
 			p, _, done := axis_sample(ax, now)
-			next[k] = clamp(f32(p), 0, limit[k])
+			next[k] = clamp(f32(p), lo[k], limit[k])
 			if done { ax.active = false } else { busy = true }
 		}
 		a.applied = scroller_set(t, a.node, next)
@@ -324,8 +340,13 @@ smooth_wheel :: proc(app: ^App, t: ^Tab, p, d: draw.Vec2, precise: bool) {
 	node := wheel_scroller(app, t, p, d)
 	dur := smooth_cfg.wheel_ms
 	if precise && !smooth_cfg.precise_wheel { dur = 0 }
-	delta := [2]f32{node == base.NIL_HANDLE ? 0 : d.x, d.y}
-	smooth_scroll_by(app, t, node, delta, dur)
+	smooth_scroll_by(app, t, node, d, dur)
+}
+
+// A wheel's turn in notches, per axis. Shift turns a vertical wheel into a horizontal one, as in other browsers.
+wheel_axes :: proc(ev: platform.Event) -> draw.Vec2 {
+	if .Shift in ev.mods && ev.delta.x == 0 { return {ev.delta.y, 0} }
+	return ev.delta
 }
 
 // A finger's pan over the page (touch_shell.odin): at once (the content follows the finger), the scroller under `p`
@@ -333,7 +354,7 @@ smooth_wheel :: proc(app: ^App, t: ^Tab, p, d: draw.Vec2, precise: bool) {
 touch_scroll :: proc(app: ^App, t: ^Tab, p, d: draw.Vec2) -> base.Handle {
 	if !t.layout.valid { return base.NIL_HANDLE }
 	node := wheel_scroller(app, t, p, d)
-	smooth_scroll_by(app, t, node, {node == base.NIL_HANDLE ? 0 : d.x, d.y}, 0)
+	smooth_scroll_by(app, t, node, d, 0)
 	return node
 }
 
@@ -351,7 +372,8 @@ scroller_axes_under :: proc(app: ^App, t: ^Tab, p: draw.Vec2) -> (node: base.Han
 		_, limit, ok := scroller_state(app, t, node)
 		if !ok { return false }
 		pend := smooth_pending(app, t, node)
-		nx, ny := clamp(pend.x + d.x, 0, limit.x), clamp(pend.y + d.y, 0, limit.y)
+		lo := scroller_low(t, node)
+		nx, ny := clamp(pend.x + d.x, lo.x, limit.x), clamp(pend.y + d.y, lo.y, limit.y)
 		return abs(nx - pend.x) >= 0.01 || abs(ny - pend.y) >= 0.01
 	}
 	l := &t.layout
@@ -372,13 +394,13 @@ scroller_axes_under :: proc(app: ^App, t: ^Tab, p: draw.Vec2) -> (node: base.Han
 			if x, y, any := consider(app, t, sn); any { return sn, x, y, false, true }
 		}
 	}
-	// the document: Y only
+	// the document
 	if x, y, any := consider(app, t, base.NIL_HANDLE); any || y {
 		return base.NIL_HANDLE, x, y, true, (x || y)
 	}
 	// nothing moves yet, but allow a document Y session when the page can grow taller than the view
 	_, limit, ok := scroller_state(app, t, base.NIL_HANDLE)
-	if ok && limit.y > 0.5 { return base.NIL_HANDLE, false, true, true, true }
+	if ok && limit.y > AUTOSCROLL_MIN_RANGE { return base.NIL_HANDLE, false, true, true, true }
 	return base.NIL_HANDLE, false, false, true, false
 }
 
@@ -391,7 +413,8 @@ wheel_scroller :: proc(app: ^App, t: ^Tab, p, d: draw.Vec2) -> base.Handle {
 		_, limit, ok := scroller_state(app, t, node)
 		if !ok { return false }
 		pend := smooth_pending(app, t, node)
-		nx, ny := clamp(pend.x + d.x, 0, limit.x), clamp(pend.y + d.y, 0, limit.y)
+		lo := scroller_low(t, node)
+		nx, ny := clamp(pend.x + d.x, lo.x, limit.x), clamp(pend.y + d.y, lo.y, limit.y)
 		return abs(nx - pend.x) >= 0.01 || abs(ny - pend.y) >= 0.01
 	}
 	if b := &l.boxes[h.box]; b.scroll_space != lay.NONE && can(app, t, b.node, d) { return b.node }
@@ -424,11 +447,20 @@ css_smooth :: proc(app: ^App, t: ^Tab) -> bool {
 	return false
 }
 
-// The document to `y` for a fragment: animated when the page asks for it, else at once (stopping any animation).
-scroll_document_to :: proc(app: ^App, t: ^Tab, y: f32, smooth: bool) {
-	if smooth && smooth_scroll_to(app, t, base.NIL_HANDLE, {0, y}, smooth_cfg.page_ms) { return }
+// The document to `to` for a fragment or a script: animated when the page asks for it, else at once (stopping any animation).
+scroll_document_to :: proc(app: ^App, t: ^Tab, to: [2]f32, smooth: bool) {
+	if smooth && smooth_scroll_to(app, t, base.NIL_HANDLE, to, smooth_cfg.page_ms) { return }
 	if a := find_anim(smooth_of(t), base.NIL_HANDLE); a != nil { a.axis = {} }
-	t.scroll = max(y, 0)
+	t.scroll = max(to.y, 0)
+	lay.set_doc_scroll_x(&t.layout, max(to.x, t.layout.doc_min_x))
+}
+
+// Where a scroller at `cur` showing `port` px of an axis goes to have `lo`..`hi` in view, nearest edge first; where it is
+// when that shows already (scrollIntoView's "nearest"; a fragment's inline axis).
+scroll_nearest :: proc(lo, hi, port, cur: f32) -> f32 {
+	if lo >= cur && hi <= cur + port { return cur }
+	if hi - lo > port || lo < cur { return lo }
+	return hi - port
 }
 
 ////////////////////////////////
@@ -438,7 +470,7 @@ Bar_Hit :: struct {
 	node:       base.Handle,   // NIL: the document's bar
 	vertical:   bool,
 	track, thumb: lay.Rect,    // viewport px (relative to the page area)
-	limit:      f32,
+	lo, limit:  f32,           // the scroller's offsets on that axis, smallest and largest
 	port:       f32,           // visible length along the bar's axis
 }
 
@@ -453,6 +485,10 @@ scrollbar_at :: proc(app: ^App, t: ^Tab, p: draw.Vec2) -> (hit: Bar_Hit, ok: boo
 	inside :: proc(r: lay.Rect, p: draw.Vec2) -> bool { return p.x >= r.min.x && p.x < r.max.x && p.y >= r.min.y && p.y < r.max.y }
 	if track, thumb, dok := lay.doc_scrollbar(l, size, t.scroll); dok && inside(grow(track, slop), p) {
 		return Bar_Hit{vertical = true, track = track, thumb = thumb, limit = max(l.height - size.y, 0), port = size.y}, true
+	}
+	if track, thumb, dok := lay.doc_scrollbar_x(l, size); dok && inside(grow(track, slop), p) {
+		lo, hi := lay.doc_scroll_x_range(l, size.x)
+		return Bar_Hit{track = track, thumb = thumb, lo = lo, limit = hi, port = size.x}, true
 	}
 	v := lay.view_make(l, size, t.scroll, cull = false)
 	for i := len(l.items) - 1; i >= 0; i -= 1 {
@@ -484,12 +520,12 @@ scrollbar_event :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 		if ev.button != .Left || !draw.rect_contains(wnd.page_rect, ev.pos) { return false }
 		hit, ok := scrollbar_at(app, t, p)
 		when PACING_DEBUG { fmt.eprintln("scrollbar press", p, ok, hit) }
-		if !ok || hit.limit <= 0 { return false }
+		if !ok || hit.limit <= hit.lo { return false }
 		ax := hit.vertical ? 1 : 0
 		if p[ax] >= hit.thumb.min[ax] && p[ax] < hit.thumb.max[ax] {
 			// the thumb follows the pointer from where it was grabbed
 			s.drag = Scrollbar_Drag{active = true, node = hit.node, vertical = hit.vertical, grab = p[ax] - hit.thumb.min[ax],
-				track_min = hit.track.min[ax], travel = (hit.track.max[ax] - hit.track.min[ax]) - (hit.thumb.max[ax] - hit.thumb.min[ax]), limit = hit.limit}
+				track_min = hit.track.min[ax], travel = (hit.track.max[ax] - hit.track.min[ax]) - (hit.thumb.max[ax] - hit.thumb.min[ax]), lo = hit.lo, limit = hit.limit}
 			if a := find_anim(s, hit.node); a != nil { a.axis = {} }
 		} else {
 			// a page toward the pointer
@@ -506,7 +542,7 @@ scrollbar_event :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 		f := dr.travel > 0 ? clamp((p[ax] - dr.grab - dr.track_min) / dr.travel, 0, 1) : 0
 		cur, _, ok := scroller_state(app, t, dr.node)
 		if !ok { s.drag = {}; return false }
-		cur[ax] = f * dr.limit
+		cur[ax] = dr.lo + f * (dr.limit - dr.lo)
 		scroller_set(t, dr.node, cur)
 		when PACING_DEBUG { fmt.eprintln("scrollbar drag", p, f, cur) }
 		request_frames(app, 2)

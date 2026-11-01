@@ -219,7 +219,7 @@ snapshot_files :: proc(app: ^App, t: ^Tab, prefix: string) -> string {
 		id, _ := dom.get_attribute(t.page.doc, h, "id")
 		if !first { strings.write_byte(&b, ',') }
 		first = false
-		fmt.sbprintf(&b, `{{"tag":%s,"id":%s,"x":%.1f,"y":%.1f,"w":%.1f,"h":%.1f}}`, remote.quote(n.name), remote.quote(id), f64(r[0] - wnd.page_rect.min.x) / s, f64(r[1] - wnd.page_rect.min.y + t.scroll) / s, f64(r[2]) / s, f64(r[3]) / s)
+		fmt.sbprintf(&b, `{{"tag":%s,"id":%s,"x":%.1f,"y":%.1f,"w":%.1f,"h":%.1f}}`, remote.quote(n.name), remote.quote(id), f64(r[0] - wnd.page_rect.min.x + doc_scroll_vec(t).x) / s, f64(r[1] - wnd.page_rect.min.y + t.scroll) / s, f64(r[2]) / s, f64(r[3]) / s)
 	}
 	strings.write_string(&b, "]}\n")
 	if err := os.write_entire_file(strings.concatenate({prefix, ".json"}, context.temp_allocator), transmute([]byte)strings.to_string(b)); err != nil { return "cannot write the .json" }

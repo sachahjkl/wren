@@ -157,7 +157,7 @@ page_context_menu_keyboard :: proc(app: ^App, t: ^Tab) {
 			target = f.focus
 			if r, ok := lay.box_of(&t.layout, f.focus, view, t.scroll); ok {
 				// (box_of's rects are document coordinates for every box, position: fixed ones included)
-				pos = wnd.page_rect.min + {r.bounds.min.x, r.bounds.max.y - t.scroll}
+				pos = wnd.page_rect.min + {r.bounds.min.x, r.bounds.max.y} - doc_scroll_vec(t)
 			}
 		}
 	}
@@ -167,11 +167,11 @@ page_context_menu_keyboard :: proc(app: ^App, t: ^Tab) {
 		if n != nil {
 			el := n.kind == .Text ? n.parent : a.node
 			target = el
-			if r, ok := lay.box_of(&t.layout, el, view, t.scroll); ok { pos = wnd.page_rect.min + {r.bounds.min.x, r.bounds.max.y - t.scroll} }
+			if r, ok := lay.box_of(&t.layout, el, view, t.scroll); ok { pos = wnd.page_rect.min + {r.bounds.min.x, r.bounds.max.y} - doc_scroll_vec(t) }
 		}
 	}
 	pos = {clamp(pos.x, wnd.page_rect.min.x, wnd.page_rect.max.x), clamp(pos.y, wnd.page_rect.min.y, wnd.page_rect.max.y)}
-	page_context_menu(app, t, target, pos, pos - wnd.page_rect.min + {0, t.scroll}, false, keyboard = true)
+	page_context_menu(app, t, target, pos, pos - wnd.page_rect.min + doc_scroll_vec(t), false, keyboard = true)
 }
 
 tab_context_menu :: proc(app: ^App, index: int, pos: [2]f32, keyboard := false) {

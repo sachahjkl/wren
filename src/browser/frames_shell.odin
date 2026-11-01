@@ -142,7 +142,7 @@ frames_prepare :: proc(app: ^App, t: ^Tab, viewport: draw.Vec2, scale: f32) {
 			continue
 		}
 		// distance to the viewport (CSS px), for loading=lazy
-		vr := lay.Rect{r.bounds.min - {0, t.scroll}, r.bounds.max - {0, t.scroll}}
+		vr := lay.rect_shift(r.bounds, -doc_scroll_vec(t))
 		dx := max(0, vr.min.x - viewport.x, -vr.max.x)
 		dy := max(0, vr.min.y - viewport.y, -vr.max.y)
 		page.frames_set_distance(p, n.element, max(dx, dy) / max(scale, 0.01))
@@ -150,7 +150,10 @@ frames_prepare :: proc(app: ^App, t: ^Tab, viewport: draw.Vec2, scale: f32) {
 		fv.transformed = r.transformed
 		sc, _ := dom.get_attribute(p.doc, n.element, "scrolling")
 		fv.no_scroll = strings.equal_fold(strings.trim_space(sc), "no")
-		if fv.no_scroll { fv.tab.scroll = 0 }
+		if fv.no_scroll {
+			fv.tab.scroll = 0
+			lay.set_doc_scroll_x(&fv.tab.layout, 0)
+		}
 		if size.x <= 0 || size.y <= 0 { fv.ready = false; continue }
 		frame_prepare(app, fv, size, scale)
 	}
@@ -183,10 +186,11 @@ frame_prepare :: proc(app: ^App, fv: ^Frame_View, size: draw.Vec2, scale: f32) {
 	images_after_layout(t, size, scale)
 	if !p.render.painted { page.first_paint_done(p) }
 	t.scroll = clamp(t.scroll, 0, max(0, t.layout.height - size.y))
+	doc_scroll_x_set(t, t.layout.doc_scroll_x, size.x)
 	fv.ready = true
 	// Performance Timeline entries that depend on the real paint (timeline_lcp.odin): the largest contentful element and
 	// the element-timing entries from the layout just settled, and the layout shifts against the previous frame.
-	vp := page.Viewport{width = f64(size.x) / f64(scale), height = f64(size.y) / f64(scale), scale = f64(scale), scroll_y = f64(t.scroll) / f64(scale)}
+	vp := page.Viewport{width = f64(size.x) / f64(scale), height = f64(size.y) / f64(scale), scale = f64(scale), scroll_x = f64(doc_scroll_vec(t).x) / f64(scale), scroll_y = f64(t.scroll) / f64(scale)}
 	page.timeline_present(p, &t.layout, vp)
 	page.timeline_layout_shift_check(p, &t.layout, vp)
 	frames_prepare(app, t, size, scale)
@@ -206,7 +210,7 @@ frame_js_layout :: proc(user: rawptr, p: ^page.Page) -> ^lay.Layout {
 frame_js_viewport :: proc(user: rawptr, p: ^page.Page) -> page.Viewport {
 	fv := (^Frame_View)(user)
 	s := f64(fv.scale > 0 ? fv.scale : 1)
-	return page.Viewport{width = f64(fv.size.x) / s, height = f64(fv.size.y) / s, scale = s, scroll_y = f64(fv.tab.scroll) / s}
+	return page.Viewport{width = f64(fv.size.x) / s, height = f64(fv.size.y) / s, scale = s, scroll_x = f64(doc_scroll_vec(&fv.tab).x) / s, scroll_y = f64(fv.tab.scroll) / s}
 }
 
 @(private = "file")
@@ -215,6 +219,7 @@ frame_js_scroll :: proc(user: rawptr, p: ^page.Page, x, y: f64, smooth: bool) {
 	if fv.tab.page != p { return }
 	limit := max(0, f64(fv.tab.layout.height) - f64(fv.size.y))
 	fv.tab.scroll = f32(clamp(y * f64(fv.scale), 0, limit))
+	doc_scroll_x_set(&fv.tab, f32(x * f64(fv.scale)), fv.size.x)
 	request_frames(the_app, 2)
 }
 
@@ -291,7 +296,7 @@ frame_under :: proc(app: ^App, t: ^Tab, pos: draw.Vec2, rect: draw.Rect) -> ^Fra
 	if r.transformed || fv.transformed { return nil }
 	// document coordinates -> window px: the page scroll is taken off and the page area's origin added (box_of's rects
 	// are document coordinates for every box; see blocker_picker.odin, context_menu.odin)
-	shift := draw.Vec2{rect.min.x, rect.min.y - t.scroll}
+	shift := rect.min - doc_scroll_vec(t)
 	screen := draw.Rect{{r.content.min.x + shift.x, r.content.min.y + shift.y}, {r.content.max.x + shift.x, r.content.max.y + shift.y}}
 	if !draw.rect_contains(screen, pos) { return nil }
 	// routing uses this box as the frame's page area: keep it current even when the frame was not painted this frame
@@ -371,17 +376,20 @@ frame_pointer_event :: proc(app: ^App, fv: ^Frame_View, ev: platform.Event, inde
 	#partial switch ev.kind {
 	case .Scroll:
 		if .Ctrl in ev.mods { return false }   // zoom is the tab's
-		d := ev.delta * app.cfg.scroll_step * page_scale(app)
+		d := wheel_axes(ev) * wheel_step(app) * page_scale(app)
 		if page_wheel(&t.layout, ev.pos - rect.min, d, size, t.scroll) {
 			request_frames(app, 2)
 			return true
 		}
 		next := clamp(t.scroll + d.y, 0, max(0, t.layout.height - size.y))
-		if next == t.scroll { return false }
+		lo, hi := lay.doc_scroll_x_range(&t.layout, size.x)
+		next_x := clamp(t.layout.doc_scroll_x + d.x, lo, hi)
+		if next == t.scroll && next_x == t.layout.doc_scroll_x { return false }
 		t.scroll = next
+		lay.set_doc_scroll_x(&t.layout, next_x)
 		request_frames(app, 2)
 	case .Mouse_Press:
-		local := ev.pos - rect.min + {0, t.scroll}
+		local := ev.pos - rect.min + doc_scroll_vec(t)
 		pressed := hit_test(&t.layout, ev.pos - rect.min, size, t.scroll)
 		t.scroll_target = pressed
 		forms_pointer_down(app, t, ev, pressed, local)
@@ -389,7 +397,7 @@ frame_pointer_event :: proc(app: ^App, fv: ^Frame_View, ev: platform.Event, inde
 		if ev.button == .Left { page_set_active(t.page, pressed) }
 	case .Mouse_Release:
 		if ev.button == .Left { page_set_active(t.page, base.NIL_HANDLE) }
-		local := ev.pos - rect.min + {0, t.scroll}
+		local := ev.pos - rect.min + doc_scroll_vec(t)
 		released := draw.rect_contains(rect, ev.pos) ? hit_test(&t.layout, ev.pos - rect.min, size, t.scroll) : base.NIL_HANDLE
 		target, clicked := forms_pointer_up(app, t, ev, released, local)
 		if !clicked || t.page == nil { return true }

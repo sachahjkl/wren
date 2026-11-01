@@ -61,10 +61,10 @@ timeline_present :: proc(p: ^Page, l: ^lay.Layout, vp: Viewport) {
 	want_et := s.element_entries > 0
 	if !want_lcp && !want_et { return }
 	// nothing new to find when the document and the viewport are as they were at the last scan (the scan walks every box)
-	if t.lcp_scanned && t.lcp_scan_mutations == p.doc.mutations && t.lcp_scan_w == vp.width && t.lcp_scan_h == vp.height && t.lcp_scan_scroll == vp.scroll_y { return }
+	if t.lcp_scanned && t.lcp_scan_mutations == p.doc.mutations && t.lcp_scan_w == vp.width && t.lcp_scan_h == vp.height && t.lcp_scan_scroll == vp.scroll_y && t.lcp_scan_scroll_x == vp.scroll_x { return }
 	t.lcp_scanned = true
 	t.lcp_scan_mutations = p.doc.mutations
-	t.lcp_scan_w, t.lcp_scan_h, t.lcp_scan_scroll = vp.width, vp.height, vp.scroll_y
+	t.lcp_scan_w, t.lcp_scan_h, t.lcp_scan_scroll, t.lcp_scan_scroll_x = vp.width, vp.height, vp.scroll_y, vp.scroll_x
 	now_ms := page_now_ms(p)
 	scale := f32(vp.scale)
 	view := lay.view_make(l, {f32(vp.width) * scale, f32(vp.height) * scale}, f32(vp.scroll_y) * scale, cull = false)

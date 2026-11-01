@@ -220,7 +220,7 @@ doc_tree_update :: proc(app: ^App, pa: ^Page_A11y, d: ^Doc_Tree, t: ^Tab, viewpo
 	if t.frame != nil { title = document_title(p.doc) }
 	v := a11y.View{
 		src = {doc = p.doc, styled = p.styled, forms = f},
-		layout = &t.layout, viewport = viewport, doc_scroll = t.scroll, origin = origin,
+		layout = &t.layout, viewport = viewport, doc_scroll = t.scroll, doc_scroll_x = lay.doc_scroll_x_snapped(&t.layout), origin = origin,
 		focus = focus, title = title, url = t.frame != nil ? p.env.location.href : t.url,
 		max_nodes = set.max_nodes,
 	}
@@ -352,6 +352,10 @@ page_a11y_request :: proc(app: ^App, t: ^Tab, p: ^page.Page, r: platform.A11y_Re
 		page_h := t.frame != nil ? t.frame.size.y : wnd.page_rect.max.y - wnd.page_rect.min.y
 		amount := (r.data == .Scroll_Unit && r.num == 1) ? page_h * 0.9 : 60
 		t.scroll = max(t.scroll + (r.action == .Scroll_Down ? amount : -amount), 0)
+	case .Scroll_Left, .Scroll_Right:
+		page_w := t.frame != nil ? t.frame.size.x : wnd.page_rect.max.x - wnd.page_rect.min.x
+		amount := (r.data == .Scroll_Unit && r.num == 1) ? page_w * 0.9 : 60
+		doc_scroll_x_set(t, t.layout.doc_scroll_x + (r.action == .Scroll_Right ? amount : -amount), page_w)
 	}
 	request_frames(app, 2)
 }

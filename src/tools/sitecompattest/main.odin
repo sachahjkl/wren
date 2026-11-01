@@ -111,6 +111,7 @@ main :: proc() {
 	test_link_events()
 	test_print_media_swap()
 	test_scroll_events()
+	test_doc_hscroll()
 
 	base.scope_close(process)
 	host.blocking_settle(&blocking)
@@ -239,7 +240,9 @@ layout_viewport :: proc(user: rawptr, p: ^page.Page) -> page.Viewport {
 
 layout_scroll :: proc(user: rawptr, p: ^page.Page, x, y: f64, smooth: bool) {
 	lh := (^Layout_Host)(user)
-	lh.scroll = {0, clamp(y, 0, max(0, f64(lh.l.height) - VIEW_H))}
+	lo, hi := lay.doc_scroll_x_range(&lh.l, VIEW_W)
+	lh.scroll = {clamp(x, f64(lo), f64(hi)), clamp(y, 0, max(0, f64(lh.l.height) - VIEW_H))}
+	lay.set_doc_scroll_x(&lh.l, f32(lh.scroll[0]))
 }
 
 // One rendering update, as the shell runs one for each frame it paints.
@@ -299,5 +302,58 @@ log("ready");
 	lh.scroll = {0, 900}
 	frame(p)
 	check(logged("window scroll 900"), "the user scrolling the page fires it")
+	page.page_close(p)
+}
+
+// The document's horizontal scroll, for scripts: window.scrollX and its relatives, the scrolling element, viewport-relative
+// rectangles, scrollIntoView, the scroll event; a fixed box stays.
+test_doc_hscroll :: proc() {
+	fmt.println("-- the document's horizontal scroll: script, rectangles, scrollIntoView, the event")
+	lh := new(Layout_Host)
+	defer { lay.destroy(&lh.l); free(lh) }
+	lh.set = lay.settings_default()
+	logs_clear()
+	p := page.page_create(&loop, &loader, &settings, process, testenv.url(BASE), console)
+	page.set_page_visible(p, true)
+	page.set_layout_embedder(p, {user = lh, update = layout_update, viewport = layout_viewport, scroll_to = layout_scroll})
+	page.load_html(p, transmute([]byte)string(`<!doctype html><body style="margin:0"><script>function log(s) { console.log(String(s)) }</script>
+<div id=wide style="width:3000px;height:3000px;position:relative"><div id=box style="position:absolute;left:1000px;top:0;width:100px;height:100px"></div></div>
+<div id=fix style="position:fixed;left:10px;top:10px;width:50px;height:50px"></div>
+<script>
+window.addEventListener("scroll", () => log("window scroll " + scrollX));
+const se = document.scrollingElement, de = document.documentElement, box = document.getElementById("box"), fix = document.getElementById("fix");
+function at(what) { log(what + " " + scrollX + " " + pageXOffset + " " + se.scrollLeft + " " + de.scrollLeft + " " + box.getBoundingClientRect().left + " " + fix.getBoundingClientRect().left + " " + box.getClientRects()[0].left + " " + box.offsetLeft) }
+log("sw " + se.scrollWidth + " " + de.clientWidth);
+log("ready");
+</script></body>`))
+	page.scripts_start(p)
+	wait_for("ready")
+	frame(p)
+	check(logged("sw 3000 800"), "scrollWidth is the document's, clientWidth the viewport's")
+
+	page.js_run(p, transmute([]byte)string(`scrollTo(300, 0); at("to")`), "probe.js")
+	check(logged("to 300 300 300 300 700 10 700 1000"), "window.scrollTo moves across: offsets, rectangles (a fixed box stays), offsetLeft does not")
+	frame(p)
+	check(logged("window scroll 300"), "the scroll event")
+
+	page.js_run(p, transmute([]byte)string(`scrollBy(100, 0); at("by")`), "probe.js")
+	check(logged("by 400 400 400 400 600 10 600 1000"), "window.scrollBy")
+	page.js_run(p, transmute([]byte)string(`scroll({left: 50}); at("dict")`), "probe.js")
+	check(logged("dict 50 50 50 50 950 10 950 1000"), "window.scroll with left only")
+	page.js_run(p, transmute([]byte)string(`se.scrollLeft = 123; at("sl")`), "probe.js")
+	check(logged("sl 123 123 123 123 877 10 877 1000"), "scrollingElement.scrollLeft")
+	page.js_run(p, transmute([]byte)string(`scrollTo(100000, 0); at("end")`), "probe.js")
+	check(logged("end 2200 2200 2200 2200 -1200 10 -1200 1000"), "clamped at the right end")
+	page.js_run(p, transmute([]byte)string(`scrollTo(-5, 0); at("start")`), "probe.js")
+	check(logged("start 0 0 0 0 1000 10 1000 1000"), "clamped at 0")
+
+	page.js_run(p, transmute([]byte)string(`box.scrollIntoView({inline: "start", block: "nearest"}); at("siv")`), "probe.js")
+	check(logged("siv 1000 1000 1000 1000 0 10 0 1000"), "scrollIntoView, inline start")
+	page.js_run(p, transmute([]byte)string(`scrollTo(0, 0); box.scrollIntoView({inline: "center", block: "nearest"}); at("sivc")`), "probe.js")
+	check(logged("sivc 650 650 650 650 350 10 350 1000"), "scrollIntoView, inline center")
+	page.js_run(p, transmute([]byte)string(`scrollTo(0, 0); box.scrollIntoView({inline: "nearest", block: "nearest"}); at("sivn")`), "probe.js")
+	check(logged("sivn 300 300 300 300 700 10 700 1000"), "scrollIntoView, inline nearest")
+	page.js_run(p, transmute([]byte)string(`log("efp " + document.elementFromPoint(box.getBoundingClientRect().left + 5, 5).id)`), "probe.js")
+	check(logged("efp box"), "elementFromPoint after the scroll")
 	page.page_close(p)
 }

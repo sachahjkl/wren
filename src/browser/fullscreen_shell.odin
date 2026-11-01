@@ -10,6 +10,7 @@ import draw "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:render"
 import "toolkit:ui"
+import lay "wb:layout"
 import "wb:page"
 
 Fullscreen_Shell :: struct {
@@ -17,6 +18,7 @@ Fullscreen_Shell :: struct {
 	tab_id:     u64,
 	window_was: bool,   // the window was in full screen (F11) when the page asked
 	scroll:     f32,    // the tab's scroll offset then
+	scroll_x:   f32,
 }
 
 // While an element covers the page, the page below is laid out at the window's size and its offset is clamped to that
@@ -27,6 +29,7 @@ Scroll_Back :: struct {
 	tab_id:  u64,
 	page_id: u64,
 	scroll:  f32,
+	scroll_x: f32,
 	w, h:    int,    // the window's size when leaving
 	resized: bool,   // the window changes size (it was not in full screen before)
 	laid_out: bool,  // the frame after the window got its size has been laid out
@@ -103,7 +106,7 @@ fullscreen_set :: proc(top: ^page.Page, on: bool, navigation: page.Api_Fullscree
 			fs.shell.window_was = platform.is_fullscreen(active_window(app).win)
 			if wchrome.cfg.fullscreen_hint { ui.toast(.Info, "Press Esc to exit full screen") }
 		}
-		if fs.shell.page_id == 0 { fs.shell.scroll = t.scroll }
+		if fs.shell.page_id == 0 { fs.shell.scroll, fs.shell.scroll_x = t.scroll, t.layout.doc_scroll_x }
 		fs.shell.page_id, fs.shell.tab_id = id, t.id
 		fullscreen_settle_arm(app, fs, top, t.id, !platform.is_fullscreen(active_window(app).win))
 		window_fullscreen(app, true)
@@ -121,7 +124,7 @@ fullscreen_set :: proc(top: ^page.Page, on: bool, navigation: page.Api_Fullscree
 
 @(private = "file")
 fullscreen_scroll_arm :: proc(app: ^App, fs: ^Window_Fullscreen) {
-	fs.back = {active = true, tab_id = fs.shell.tab_id, page_id = fs.shell.page_id, scroll = fs.shell.scroll, w = int(active_window(app).win.size.x), h = int(active_window(app).win.size.y), resized = !fs.shell.window_was}
+	fs.back = {active = true, tab_id = fs.shell.tab_id, page_id = fs.shell.page_id, scroll = fs.shell.scroll, scroll_x = fs.shell.scroll_x, w = int(active_window(app).win.size.x), h = int(active_window(app).win.size.y), resized = !fs.shell.window_was}
 }
 
 @(private = "file")
@@ -139,6 +142,7 @@ fullscreen_scroll_tick :: proc(app: ^App, fs: ^Window_Fullscreen) {
 	}
 	smooth_stop(tab_of)
 	tab_of.scroll = sback.scroll
+	lay.set_doc_scroll_x(&tab_of.layout, sback.scroll_x)
 	sback.active = false
 	request_frames(app, 2)
 }
