@@ -51,6 +51,16 @@ virtual_platform :: proc(s: ^Settings) -> ^Platform {
 	return &vstate.platform
 }
 
+@(private="file") STUCK_POLL :: 2 * time.Millisecond
+@(private="file") stuck_released: int
+@(private="file") stuck_waiting: int
+
+// How many dialogs of the Stuck mode are up.
+virtual_stuck_waiting :: proc() -> int { return sync.atomic_load(&stuck_waiting) }
+
+// The dialogs of the Stuck mode that wait now end at once: a test decides when, whatever the machine's speed.
+virtual_release_stuck :: proc() { sync.atomic_add(&stuck_released, 1) }
+
 // Forgets every credential (tests; the browser at exit).
 virtual_reset :: proc() {
 	sync.mutex_lock(&vstate.mu)
@@ -90,7 +100,12 @@ v_cancel :: proc(pl: ^Platform, token: ^Cancel_Token) {
 @(private="file")
 v_wait :: proc(token: ^Cancel_Token, delay_ms: int, stuck := false) -> bool {
 	if stuck {
-		time.sleep(time.Duration(delay_ms) * time.Millisecond)
+		// ignores the cancellation: until the delay is over, or a test lets it go
+		deadline := time.tick_add(time.tick_now(), time.Duration(delay_ms) * time.Millisecond)
+		released := sync.atomic_load(&stuck_released)
+		sync.atomic_add(&stuck_waiting, 1)
+		for sync.atomic_load(&stuck_released) == released && time.tick_diff(time.tick_now(), deadline) > 0 { time.sleep(STUCK_POLL) }
+		sync.atomic_sub(&stuck_waiting, 1)
 	} else if delay_ms > 0 {
 		deadline := time.tick_add(time.tick_now(), time.Duration(delay_ms) * time.Millisecond)
 		sync.mutex_lock(&token.mu)

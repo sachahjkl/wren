@@ -23,6 +23,12 @@ import "wb:wasm"
 import "wb:webauthn"
 import "wb:tools/testenv"
 
+// What the waits below check depends on no machine's speed: a user who never answers (the longest
+// security.webauthn.testing.virtual_delay_ms) leaves only the abort, the timer or the close to end a ceremony, and the bound
+// only ends a failing run.
+USER_NEVER_ANSWERS_MS :: 600_000
+WAIT_BOUND_MS :: 60_000.0
+
 failures: int
 passes: int
 logs: [dynamic]string
@@ -61,11 +67,16 @@ pump :: proc(ms: f64, until := "") {
 	}
 }
 
+in_flight_ended :: proc() {
+	start := time.tick_now()
+	for page.webauthn_in_flight() > 0 && time.duration_milliseconds(time.tick_since(start)) < WAIT_BOUND_MS { host.loop_wait(&loop, 5) }
+}
+
 open :: proc(process: ^base.Scope, address: string, source := PAGE) -> ^page.Page {
 	p := page.page_create(&loop, &loader, &settings, process, address, console)
 	page.load_html(p, transmute([]byte)source)
 	page.scripts_start(p)
-	pump(5000, "loaded")
+	pump(WAIT_BOUND_MS, "loaded")
 	return p
 }
 
@@ -77,7 +88,7 @@ click :: proc(p: ^page.Page) {
 }
 
 // Runs `src` (which must end by logging `prefix ...`) and waits for it.
-ask :: proc(p: ^page.Page, prefix, src: string, ms := 5000.0) -> string {
+ask :: proc(p: ^page.Page, prefix, src: string, ms := WAIT_BOUND_MS) -> string {
 	run(p, src)
 	pump(ms, prefix)
 	return logged_prefix(prefix)
@@ -206,9 +217,9 @@ main :: proc() {
 	// aborts
 	s = ask(p, "pre ", `navigator.credentials.get({ signal: AbortSignal.abort('stop'), publicKey: { challenge: bytes('x') } }).then(() => console.log('pre ok'), (e) => console.log('pre ' + e))`)
 	check(s == "pre stop", fmt.tprintf("an aborted signal: the reason (%s)", s))
-	settings.authn.virtual_delay_ms = 3000
+	settings.authn.virtual_delay_ms = USER_NEVER_ANSWERS_MS
 	click(p)
-	run(p, `window.ac = new AbortController(); window.t0 = performance.now(); navigator.credentials.get({ signal: ac.signal, publicKey: { challenge: bytes('x'), rpId: 'example.com' } }).then(() => console.log('abort resolved'), (e) => console.log('abort ' + (e === 'gone') + ' ' + (performance.now() - t0 < 2500)))`)
+	run(p, `window.ac = new AbortController(); navigator.credentials.get({ signal: ac.signal, publicKey: { challenge: bytes('x'), rpId: 'example.com' } }).then(() => console.log('abort resolved'), (e) => console.log('abort ' + (e === 'gone')))`)
 	pump(100)
 	busy, _, rp_id := page.webauthn_pending(p)
 	check(busy && rp_id == "example.com", "the shell sees the pending request and its RP ID")
@@ -217,15 +228,15 @@ main :: proc() {
 	s = ask(p, "second ", `navigator.credentials.get({ publicKey: { challenge: bytes('y'), rpId: 'example.com' } }).then(...show('second'))`)
 	check(strings.has_prefix(s, "second err NotAllowedError"), fmt.tprintf("a second ceremony while one runs: NotAllowedError (%s)", s))
 	s = ask(p, "abort ", `ac.abort('gone')`)
-	check(s == "abort true true", fmt.tprintf("abort() during the ceremony: the reason, at once (%s)", s))
+	check(s == "abort true", fmt.tprintf("abort() during the ceremony: the reason, the user never answering (%s)", s))
 	busy, _, _ = page.webauthn_pending(p)
 	check(!busy, "nothing pending afterwards")
 
 	// the lifetime timer
 	settings.authn.timeout_min_ms = 300
 	click(p)
-	s = ask(p, "timer ", `window.t1 = performance.now(); navigator.credentials.get({ publicKey: { challenge: bytes('x'), rpId: 'example.com', timeout: 1 } }).then(() => console.log('timer ok'), (e) => console.log('timer err ' + e.name + ' ' + (performance.now() - t1 < 2500)))`)
-	check(s == "timer err NotAllowedError true", fmt.tprintf("the lifetime timer (raised to security.webauthn.timeout.min_ms): NotAllowedError (%s)", s))
+	s = ask(p, "timer ", `navigator.credentials.get({ publicKey: { challenge: bytes('x'), rpId: 'example.com', timeout: 1 } }).then(() => console.log('timer ok'), (e) => console.log('timer err ' + e.name))`)
+	check(s == "timer err NotAllowedError", fmt.tprintf("the lifetime timer (raised to security.webauthn.timeout.min_ms), the user never answering: NotAllowedError (%s)", s))
 	settings.authn.virtual_delay_ms = 0
 	settings.authn.timeout_min_ms = 300_000
 
@@ -260,27 +271,31 @@ main :: proc() {
 	check(s == "illegal TypeError Credential", fmt.tprintf("PublicKeyCredential has no constructor and inherits from Credential (%s)", s))
 
 	// a system dialog that ignores the cancellation: the page is answered after security.webauthn.cancel_grace_ms
-	settings.authn.virtual_mode, settings.authn.virtual_delay_ms, settings.authn.cancel_grace_ms = .Stuck, 2500, 300
+	in_flight_ended()   // (the threads of the ceremonies above, answered but maybe not joined yet: the count below is this one's)
+	settings.authn.virtual_mode, settings.authn.virtual_delay_ms, settings.authn.cancel_grace_ms = .Stuck, USER_NEVER_ANSWERS_MS, 300
 	click(p)
-	s = ask(p, "stuck ", `window.ac2 = new AbortController(); window.t2 = performance.now(); navigator.credentials.get({ signal: ac2.signal, publicKey: { challenge: bytes('x'), rpId: 'example.com' } }).then(() => console.log('stuck ok'), (e) => console.log('stuck ' + e + ' ' + (performance.now() - t2 < 2000))); setTimeout(() => ac2.abort('late'), 50)`)
-	check(s == "stuck late true", fmt.tprintf("an abort the platform ignores: the reason after the grace period, not after the dialog (%s)", s))
+	run(p, `window.ac2 = new AbortController(); navigator.credentials.get({ signal: ac2.signal, publicKey: { challenge: bytes('x'), rpId: 'example.com' } }).then(() => console.log('stuck ok'), (e) => console.log('stuck ' + e))`)
+	// (the abort comes once the dialog is up: earlier, the ceremony's thread would stop before showing it)
+	stuck_start := time.tick_now()
+	for webauthn.virtual_stuck_waiting() == 0 && time.duration_milliseconds(time.tick_since(stuck_start)) < WAIT_BOUND_MS { host.loop_wait(&loop, 1) }
+	s = ask(p, "stuck ", `ac2.abort('late')`)
+	check(s == "stuck late", fmt.tprintf("an abort the platform ignores: the reason after the grace period, not after the dialog (%s)", s))
 	busy, _, _ = page.webauthn_pending(p)
 	check(!busy && page.webauthn_in_flight() == 1, "the page may start another request; the platform call is left to finish")
-	start0 := time.tick_now()
-	for page.webauthn_in_flight() > 0 && time.duration_milliseconds(time.tick_since(start0)) < 5000 { host.loop_wait(&loop, 5) }
+	webauthn.virtual_release_stuck()
+	in_flight_ended()
 	check(page.webauthn_in_flight() == 0, "... and its thread is joined when it does")
 	settings.authn.virtual_mode, settings.authn.virtual_delay_ms, settings.authn.cancel_grace_ms = .Accept, 0, 3000
 
 	// the page closes with a ceremony pending: cancelled, nothing leaks
-	settings.authn.virtual_delay_ms = 3000
+	settings.authn.virtual_delay_ms = USER_NEVER_ANSWERS_MS
 	click(p)
 	run(p, `navigator.credentials.get({ publicKey: { challenge: bytes('x'), rpId: 'example.com' } })`)
 	pump(50)
 	page.page_close(p)
 	check(page.webauthn_in_flight() == 1, "the ceremony's thread still runs right after the page closed")
-	start := time.tick_now()
-	for page.webauthn_in_flight() > 0 && time.duration_milliseconds(time.tick_since(start)) < 2500 { host.loop_wait(&loop, 5) }
-	check(page.webauthn_in_flight() == 0, fmt.tprintf("closing the page cancels its ceremony: the thread is done in %.0f ms, not after the user's 3 s", time.duration_milliseconds(time.tick_since(start))))
+	in_flight_ended()
+	check(page.webauthn_in_flight() == 0, "closing the page cancels its ceremony: the thread is done, the user never answering")
 	settings.authn.virtual_delay_ms = 0
 
 	// insecure context: absent
