@@ -255,9 +255,13 @@ main :: proc() {
 		// (the software adapter: the same pixels everywhere, and what the CI has)
 		software := settings.webgl.force_software
 		settings.webgl.force_software = true
+		// (a test is one task that waits for the software rasterizer, and FXC compiles for it: slow on a loaded machine)
+		slow := settings.js.slow_script_ms
+		settings.js.slow_script_ms = -1
 		actions := make(map[string]Action, context.temp_allocator)
 		actions["frame"] = proc(p: ^page.Page, l: ^Page_Log) { page.images_sync(p); page.canvas_frame(p) }
-		run("webgl", actions, seconds = 120)
+		run("webgl", actions, seconds = 300)
+		settings.js.slow_script_ms = slow
 		settings.webgl.force_software = software
 	}
 	if selected("geometry") { run("geometry") }
