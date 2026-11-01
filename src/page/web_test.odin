@@ -157,7 +157,7 @@ storage_quota_order_events_persistence :: proc(t: ^testing.T) {
 	f: Fixture
 	fixture_init(&f)
 	defer fixture_destroy(&f)
-	dir := "build/test_storage_profile"
+	dir := strings.concatenate({"build/test_storage_profile_", base.unique_name(context.temp_allocator)}, context.temp_allocator)   // (its run under AddressSanitizer may be going on beside it)
 	testenv.remove_tree(dir)
 	defer testenv.remove_tree(dir)
 

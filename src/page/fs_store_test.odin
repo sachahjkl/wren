@@ -30,8 +30,7 @@ fs_names_are_checked_and_encoded :: proc(t: ^testing.T) {
 
 @(test)
 fs_entries_writables_locks_and_quota :: proc(t: ^testing.T) {
-	dir := "build/tmp/fs_store_test"
-	_ = base.remove_tree(dir)
+	dir := strings.concatenate({"build/tmp/fs_store_test_", base.unique_name(context.temp_allocator)}, context.temp_allocator)
 	defer { fs_store_shutdown(); _ = base.remove_tree(dir) }
 	root, e := fs_opfs_root(dir, "https://a.example")
 	testing.expect_value(t, e, Fs_Error.None)

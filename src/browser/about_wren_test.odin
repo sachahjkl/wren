@@ -4,6 +4,7 @@ import "core:os"
 import "core:strings"
 import "core:testing"
 import "toolkit:ui"
+import "wb:base"
 import "wb:config"
 import "wb:license"
 import "wb:url"
@@ -11,6 +12,12 @@ import "wb:wasm"
 
 ////////////////////////////////
 // The third-party list
+
+// A file of this run: the unit tests and their run under AddressSanitizer may be going on side by side.
+@(private = "file")
+about_scratch :: proc(name: string) -> string {
+	return strings.concatenate({"build/tmp/", name, "_", base.unique_name(context.temp_allocator), ".wrenlicense"}, context.temp_allocator)
+}
 
 @(test)
 third_party_table_is_parsed :: proc(t: ^testing.T) {
@@ -286,8 +293,8 @@ dev_license :: proc(name: string, seed: [32]byte = license.DEV_SEED) -> string {
 @(test)
 the_licence_a_build_is_handed_out_with_is_put_in_once :: proc(t: ^testing.T) {
 	_ = os.make_directory_all("build/tmp")
-	path := "build/tmp/about_seed_test.wrenlicense"
-	marker := "build/tmp/about_seed_test.wrenlicense.seeded"
+	path := about_scratch("about_seed_test")
+	marker := strings.concatenate({path, ".seeded"}, context.temp_allocator)
 	_ = os.remove(path); _ = os.remove(marker)
 	defer { _ = os.remove(path); _ = os.remove(marker) }
 	app := license_app(path, true)
@@ -326,7 +333,7 @@ the_licence_a_build_is_handed_out_with_is_put_in_once :: proc(t: ^testing.T) {
 @(test)
 license_is_kept_checked_and_removed :: proc(t: ^testing.T) {
 	_ = os.make_directory_all("build/tmp")
-	path := "build/tmp/about_license_test.wrenlicense"
+	path := about_scratch("about_license_test")
 	_ = os.remove(path)
 	defer os.remove(path)
 	app := license_app(path, true)
@@ -385,8 +392,8 @@ license_without_a_profile_stays_in_memory :: proc(t: ^testing.T) {
 @(test)
 license_file_open_and_form :: proc(t: ^testing.T) {
 	_ = os.make_directory_all("build/tmp")
-	store := "build/tmp/about_license_store.wrenlicense"
-	src := "build/tmp/about_license_src.wrenlicense"
+	store := about_scratch("about_license_store")
+	src := about_scratch("about_license_src")
 	_ = os.remove(store)
 	defer os.remove(store)
 	defer os.remove(src)
