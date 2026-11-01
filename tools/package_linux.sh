@@ -24,7 +24,7 @@ It needs, from your distribution:
                   Debian, Ubuntu: apt install libopus0 libasound2 libfontconfig1
                   Fedora: dnf install opus alsa-lib fontconfig
                   Arch: pacman -S opus alsa-lib fontconfig
-  for a window  libwayland-client and libxkbcommon, or libxcb and libxkbcommon-x11
+  for a window  libwayland-client and libxkbcommon, or libxcb and libxkbcommon-x11; for the theme's cursors, libwayland-cursor or libxcb-cursor (optional)
                 a Vulkan or OpenGL driver (Mesa's is enough)
   for H.264     Cisco's openh264; AV1 and VP9 are built in
   for dialogs   zenity or kdialog
