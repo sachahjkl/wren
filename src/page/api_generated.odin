@@ -6153,6 +6153,77 @@ _t_canvas_Path2D_addPath :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	return nil
 }
 
+// HTMLCanvasElement_transferControl :: proc(c: ^Call, canvas: Api_HTMLCanvasElement) -> (u64, Api_Error)
+@(private = "file")
+_t_canvas_HTMLCanvasElement_transferControl :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "canvas.HTMLCanvasElement_transferControl", "result pointer") }
+	_p0 := Api_HTMLCanvasElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLCanvasElement(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "canvas.HTMLCanvasElement_transferControl: argument canvas is not a live HTMLCanvasElement")
+	}
+	_r, _err := HTMLCanvasElement_transferControl(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// OffscreenCanvas_takeForTransfer :: proc(c: ^Call, canvas: Api_OffscreenCanvas) -> (u64, Api_Error)
+@(private = "file")
+_t_canvas_OffscreenCanvas_takeForTransfer :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "canvas.OffscreenCanvas_takeForTransfer", "result pointer") }
+	_p0 := Api_OffscreenCanvas{handle = u64(a[0].i64)}
+	_p0.data = lookup_OffscreenCanvas(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "canvas.OffscreenCanvas_takeForTransfer: argument canvas is not a live OffscreenCanvas")
+	}
+	_r, _err := OffscreenCanvas_takeForTransfer(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), _r)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// OffscreenCanvas_adoptTransfer :: proc(c: ^Call, token: u64) -> (u64, Api_Error)
+@(private = "file")
+_t_canvas_OffscreenCanvas_adoptTransfer :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "canvas.OffscreenCanvas_adoptTransfer", "result pointer") }
+	_p0 := u64(a[0].i64)
+	_r, _err := OffscreenCanvas_adoptTransfer(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
 // OffscreenCanvas_create :: proc(c: ^Call, width: u64, height: u64) -> (u64, Api_Error)
 @(private = "file")
 _t_canvas_OffscreenCanvas_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -37050,6 +37121,19 @@ _t_webgl_WebGL_snapshot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]was
 	return nil
 }
 
+// WebGL_commit :: proc(c: ^Call, gl: u64)
+@(private = "file")
+_t_webgl_WebGL_commit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	WebGL_commit(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
 // WebGL_isLost :: proc(c: ^Call, gl: u64) -> bool
 @(private = "file")
 _t_webgl_WebGL_isLost :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -37875,6 +37959,9 @@ api_imports := [?]wasm.Import{
 	{module = "canvas", name = "CanvasPath_ellipse", fn = _t_canvas_CanvasPath_ellipse, realms = 3, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .F64, .F64, .F64, .I32}, results = []wasm.Val_Kind{.I32}},
 	{module = "canvas", name = "Path2D_create", fn = _t_canvas_Path2D_create, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "canvas", name = "Path2D_addPath", fn = _t_canvas_Path2D_addPath, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .F64, .F64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "HTMLCanvasElement_transferControl", fn = _t_canvas_HTMLCanvasElement_transferControl, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "OffscreenCanvas_takeForTransfer", fn = _t_canvas_OffscreenCanvas_takeForTransfer, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "OffscreenCanvas_adoptTransfer", fn = _t_canvas_OffscreenCanvas_adoptTransfer, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "canvas", name = "OffscreenCanvas_create", fn = _t_canvas_OffscreenCanvas_create, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "canvas", name = "OffscreenCanvas_width", fn = _t_canvas_OffscreenCanvas_width, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
 	{module = "canvas", name = "OffscreenCanvas_height", fn = _t_canvas_OffscreenCanvas_height, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
@@ -39209,20 +39296,21 @@ api_imports := [?]wasm.Import{
 	{module = "webcodecs_video_decoder", name = "VideoDecoder_close", fn = _t_webcodecs_video_decoder_VideoDecoder_close, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
 	{module = "webcodecs_video_decoder", name = "VideoDecoder_decodeQueueSize", fn = _t_webcodecs_video_decoder_VideoDecoder_decodeQueueSize, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "webcodecs_video_decoder", name = "VideoDecoder_state", fn = _t_webcodecs_video_decoder_VideoDecoder_state, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
-	{module = "webgl", name = "WebGL_enabled", fn = _t_webgl_WebGL_enabled, realms = 1, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{.I32}},
-	{module = "webgl", name = "WebGL_create", fn = _t_webgl_WebGL_create, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "webgl", name = "WebGL_createOffscreen", fn = _t_webgl_WebGL_createOffscreen, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "webgl", name = "WebGL_createError", fn = _t_webgl_WebGL_createError, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "webgl", name = "WebGL_submit", fn = _t_webgl_WebGL_submit, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I32}, wide_results = []wasm.Val_Kind{}},
-	{module = "webgl", name = "WebGL_query", fn = _t_webgl_WebGL_query, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.F64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.F64}},
-	{module = "webgl", name = "WebGL_queryText", fn = _t_webgl_WebGL_queryText, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.F64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.F64}},
-	{module = "webgl", name = "WebGL_upload", fn = _t_webgl_WebGL_upload, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "webgl", name = "WebGL_width", fn = _t_webgl_WebGL_width, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
-	{module = "webgl", name = "WebGL_height", fn = _t_webgl_WebGL_height, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
-	{module = "webgl", name = "WebGL_snapshot", fn = _t_webgl_WebGL_snapshot, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
-	{module = "webgl", name = "WebGL_isLost", fn = _t_webgl_WebGL_isLost, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
-	{module = "webgl", name = "WebGL_lose", fn = _t_webgl_WebGL_lose, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
-	{module = "webgl", name = "WebGL_restore", fn = _t_webgl_WebGL_restore, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webgl", name = "WebGL_enabled", fn = _t_webgl_WebGL_enabled, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "webgl", name = "WebGL_create", fn = _t_webgl_WebGL_create, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "webgl", name = "WebGL_createOffscreen", fn = _t_webgl_WebGL_createOffscreen, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "webgl", name = "WebGL_createError", fn = _t_webgl_WebGL_createError, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "webgl", name = "WebGL_submit", fn = _t_webgl_WebGL_submit, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I32}, wide_results = []wasm.Val_Kind{}},
+	{module = "webgl", name = "WebGL_query", fn = _t_webgl_WebGL_query, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.F64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.F64}},
+	{module = "webgl", name = "WebGL_queryText", fn = _t_webgl_WebGL_queryText, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.F64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.F64}},
+	{module = "webgl", name = "WebGL_upload", fn = _t_webgl_WebGL_upload, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webgl", name = "WebGL_width", fn = _t_webgl_WebGL_width, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webgl", name = "WebGL_height", fn = _t_webgl_WebGL_height, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webgl", name = "WebGL_snapshot", fn = _t_webgl_WebGL_snapshot, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "webgl", name = "WebGL_commit", fn = _t_webgl_WebGL_commit, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "webgl", name = "WebGL_isLost", fn = _t_webgl_WebGL_isLost, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webgl", name = "WebGL_lose", fn = _t_webgl_WebGL_lose, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "webgl", name = "WebGL_restore", fn = _t_webgl_WebGL_restore, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "websocket", name = "WebSocket_create", fn = _t_websocket_WebSocket_create, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "websocket", name = "WebSocket_readyState", fn = _t_websocket_WebSocket_readyState, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "websocket", name = "WebSocket_url", fn = _t_websocket_WebSocket_url, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},

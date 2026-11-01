@@ -1,8 +1,8 @@
-/// WebGL 1 and 2 for native/js/odin/web_webgl.js: a context is a host object over a device of its own (native/webgl, a thread); the
-/// script sends it command buffers and waits only for what it has to know. A context that is gone (its canvas freed, its
-/// device lost) does nothing and answers -1 or false: these calls also come from a Wasm module of the page with any numbers, and
-/// the command stream is checked on the device's side.
-[Exposed=Window]
+/// WebGL 1 and 2 for native/js/odin/web_webgl.js: a context is a host object over a device of its own (native/webgl: a thread in the GPU
+/// process); the script sends it command buffers and waits only for what it has to know. A context that is gone (its canvas freed, its
+/// device lost, the process dead) does nothing and answers -1 or false: these calls also come from a Wasm module of the page with any
+/// numbers, and the command stream is checked on the device's side. In a worker a context is on an OffscreenCanvas.
+[Exposed=(Window,Worker)]
 module webgl {
   /// What a context has to say: kind 1 it was lost.
   callback WebGLNotify(i32 user, i32 kind);
@@ -30,6 +30,8 @@ module webgl {
   u32 WebGL_height(u64 gl);
   /// What was drawn so far into the canvas's bitmap, now (toDataURL, drawImage).
   void WebGL_snapshot(u64 gl);
+  /// The same, and the frame ends: the drawing buffer starts again as after a present (transferToImageBitmap).
+  void WebGL_commit(u64 gl);
   bool WebGL_isLost(u64 gl);
   void WebGL_lose(u64 gl);
   bool WebGL_restore(u64 gl);

@@ -73,6 +73,7 @@ storage_manager_destroy :: proc(m: ^Storage_Manager) {
 	sw_registry_shutdown()   // service_worker.odin: the workers' host pages use this manager
 	storage_access_reset()   // storage_access.odin: the session's grants
 	mse_tokens_shutdown()    // mse_worker.odin: MediaSourceHandles of messages never received
+	offscreen_tokens_shutdown()   // canvas_offscreen.odin: OffscreenCanvases of messages never received
 	// a background write still queued may never run (the blocking pool drops what it has not started when it stops):
 	// every area it could be writing is written again here, the commit gate keeps the newest
 	storage_flush(m, sync_write = true, all = m.pending > 0)

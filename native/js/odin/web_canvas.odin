@@ -99,6 +99,13 @@ get_context :: proc(ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]
 	canvas, ok := jsb.this(ctx, this_val, C)
 	if !ok { return wj.EXCEPTION }
 	if argc < 1 { return wj.wj_throw_arity(ctx, what, 1, argc) }
+	when C == api_decl.HTMLCanvasElement {
+		// (marked by transferControlToOffscreen: HTML wants the exception for every kind of context, and no context is looked for)
+		mark := wj.web_extra_get(ctx, this_val, TRANSFERRED_MARK)
+		transferred := !wj.is_undefined(mark) && wj.JS_ToBool(ctx, mark) != 0
+		wj.JS_FreeValue(ctx, mark)
+		if transferred { return wj.wj_throw_dom(ctx, "InvalidStateError", "The canvas has transferred its control to an OffscreenCanvas.") }
+	}
 	bad: bool
 	two_d := str_is(ctx, argv[0], "2d", &bad)
 	if bad { return wj.EXCEPTION }
@@ -137,6 +144,21 @@ get_context :: proc(ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]
 	}
 	if st != .None { return wj.wj_throw_status(ctx, i32(st), what) }
 	return context_wrap(ctx, u64(h), jsb.iface_of(type_of(h)), this_val)
+}
+
+@(private = "file") TRANSFERRED_MARK: cstring = "transferredToOffscreen"
+
+@(export, link_name = "wjr_HTMLCanvasElement_transferControlToOffscreen")
+wjr_HTMLCanvasElement_transferControlToOffscreen :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	context = jsb.glue_context()
+	canvas, ok := jsb.this(ctx, this_val, api_decl.HTMLCanvasElement)
+	if !ok { return wj.EXCEPTION }
+	c: abi.Owned(api_decl.OffscreenCanvas)
+	if st := jsb.host(&c, api_decl.HTMLCanvasElement_transferControl, wj.wr_HTMLCanvasElement_transferControl, canvas); st != .None {
+		return wj.wj_throw_status(ctx, i32(st), "transferControlToOffscreen")
+	}
+	wj.web_extra_set(ctx, this_val, TRANSFERRED_MARK, wj.TRUE)
+	return wj.wj_wrap_owned(ctx, u64(c.handle), jsb.iface_of(api_decl.OffscreenCanvas), wj.UNDEFINED)
 }
 
 @(export, link_name = "wjr_HTMLCanvasElement_getContext")

@@ -27515,7 +27515,7 @@ wj_install_bindings :: proc "c" () {
 	m_HTMLCanvasElement[2] = wj.Member{name = "getContext", kind = wj.M_METHOD, flags = 0, length = 1, fn = wjr_HTMLCanvasElement_getContext}
 	m_HTMLCanvasElement[3] = wj.Member{name = "toDataURL", kind = wj.M_METHOD, flags = 0, length = 0, fn = wjr_HTMLCanvasElement_toDataURL}
 	m_HTMLCanvasElement[4] = wj.Member{name = "toBlob", kind = wj.M_METHOD, flags = 0, length = 1, fn = wjr_HTMLCanvasElement_toBlob}
-	m_HTMLCanvasElement[5] = wj.Member{name = "transferControlToOffscreen", kind = wj.M_METHOD, flags = 0, length = 0, fn = nil}
+	m_HTMLCanvasElement[5] = wj.Member{name = "transferControlToOffscreen", kind = wj.M_METHOD, flags = 0, length = 0, fn = wjr_HTMLCanvasElement_transferControlToOffscreen}
 	m_HTMLDListElement[0] = wj.Member{name = "compact", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLDListElement_get_compact, set = wjg_HTMLDListElement_set_compact}
 	m_HTMLDataElement[0] = wj.Member{name = "value", kind = wj.M_ATTRIBUTE, flags = 0, length = 0, get = wjg_HTMLDataElement_get_value, set = wjg_HTMLDataElement_set_value}
 	m_HTMLDataListElement[0] = wj.Member{name = "options", kind = wj.M_ATTRIBUTE, flags = wj.F_SAME_OBJECT, length = 71, get = wjr_HTMLDataListElement_get_options, set = nil}

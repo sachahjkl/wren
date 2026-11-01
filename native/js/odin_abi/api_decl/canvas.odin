@@ -28,6 +28,9 @@ HTMLCanvasElement_bitmapRenderer :: #type proc(canvas: HTMLCanvasElement, alpha:
 OffscreenCanvas_context2d        :: #type proc(canvas: OffscreenCanvas, alpha: bool, will_read_frequently: bool) -> (OffscreenCanvasRenderingContext2D, abi.Api_Error)
 OffscreenCanvas_bitmapRenderer   :: #type proc(canvas: OffscreenCanvas, alpha: bool) -> (ImageBitmapRenderingContext, abi.Api_Error)
 OffscreenCanvas_create           :: #type proc(width: u64, height: u64) -> (abi.Owned(OffscreenCanvas), abi.Api_Error)
+OffscreenCanvas_takeForTransfer  :: #type proc(canvas: OffscreenCanvas) -> (u64, abi.Api_Error)
+OffscreenCanvas_adoptTransfer    :: #type proc(token: u64) -> (abi.Owned(OffscreenCanvas), abi.Api_Error)
+HTMLCanvasElement_transferControl :: #type proc(canvas: HTMLCanvasElement) -> (abi.Owned(OffscreenCanvas), abi.Api_Error)
 CanvasSettings_alpha              :: #type proc(ctx: CanvasRenderingContext2D) -> bool
 CanvasSettings_willReadFrequently :: #type proc(ctx: CanvasRenderingContext2D) -> bool
 ImageBitmapRenderingContext_transferFromImageBitmap :: #type proc(ctx: ImageBitmapRenderingContext, bitmap: u64, has_bitmap: bool) -> abi.Api_Error

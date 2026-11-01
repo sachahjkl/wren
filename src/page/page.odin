@@ -76,6 +76,7 @@ Page :: struct {
 	foreign_owners: [dynamic]Foreign_Owner,   // realms of other documents with listeners or callbacks here
 	bridge_reply:   []u8,      // owned: the last reply of the value bridge (Frame_bridge)
 	loop:      ^host.Loop,
+	canvases:  ^Canvas_Page,   // its canvases, once one was asked for (canvas.odin); a worker's are its own thread's
 	loader:    ^fetch.Loader,
 	settings:  ^Settings,     // shared, owned by the shell; follows preference changes
 	env:       fetch.Environment,

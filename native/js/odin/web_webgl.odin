@@ -1,4 +1,4 @@
-// web_webgl.odin: WebGL for a window (web_webgl.js, over the natives here), made the first time a script asks for a context or reads
+// web_webgl.odin: WebGL for a window or a worker (web_webgl.js, over the natives here), made the first time a script asks for a context or reads
 // one of the interfaces. The rules a script sees are in the JavaScript and on the device's side (native/webgl); here, what carries
 // the command buffers across. A page that never asks pays nothing.
 package odin_glue
@@ -200,6 +200,12 @@ native_snapshot :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, 
 }
 
 @(private = "file")
+native_commit :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	wj.wr_WebGL_commit(ref_of(wj.arg(argc, argv, 0)))
+	return wj.UNDEFINED
+}
+
+@(private = "file")
 native_is_lost :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	return wj.new_bool(wj.wr_WebGL_isLost(ref_of(wj.arg(argc, argv, 0))) != 0)
 }
@@ -233,7 +239,7 @@ gl_ops_get :: proc "contextless" (ctx: ^wj.Context) -> wj.JSValue {
 	entries := [?]Entry{
 		{"create", native_create, 12}, {"createError", native_create_error, 0}, {"submit", native_submit, 4}, {"submitData", native_submit_data, 4},
 		{"submitText", native_submit_text, 4}, {"query", native_query, 4}, {"queryText", native_query_text, 5}, {"queryInto", native_query_into, 4},
-		{"upload", native_upload, 4}, {"width", native_width, 1}, {"height", native_height, 1}, {"snapshot", native_snapshot, 1},
+		{"upload", native_upload, 4}, {"width", native_width, 1}, {"height", native_height, 1}, {"snapshot", native_snapshot, 1}, {"commit", native_commit, 1},
 		{"isLost", native_is_lost, 1}, {"lose", native_lose, 1}, {"restore", native_restore, 1},
 	}
 	for &e in entries {
@@ -248,7 +254,7 @@ gl_ops_get :: proc "contextless" (ctx: ^wj.Context) -> wj.JSValue {
 
 // getContext("webgl" | "experimental-webgl" | "webgl2", options) of a canvas (web_canvas.odin).
 webgl_get_context :: proc "contextless" (ctx: ^wj.Context, canvas: wj.JSValue, kind: wj.JSValue, options: wj.JSValue) -> wj.JSValue {
-	if !wj.is_window() || wj.wr_WebGL_enabled(1) == 0 { return wj.NULL }
+	if wj.wr_WebGL_enabled(1) == 0 { return wj.NULL }
 	ops := gl_ops_get(ctx)
 	if wj.is_exception(ops) { return ops }
 	fn := wj.JS_GetPropertyStr(ctx, ops, "getContext")
@@ -277,7 +283,6 @@ GL_NAMES := [?]cstring{
 web_webgl_start :: proc "c" (ctx: ^wj.Context, kind: i32) -> i32 {
 	// (test262's image has only what ECMAScript needs of the browser)
 	when WREN_TEST262 { return 0 }
-	if !wj.is_window() { return 0 }
 	for name in GL_NAMES {
 		a := wj.JS_NewAtom(ctx, name)
 		defer wj.JS_FreeAtom(ctx, a)

@@ -120,7 +120,10 @@ webgl_frame :: proc(p: ^Page, o: ^Canvas_Obj) {
 	gl := o.gl
 	if gl == nil { return }
 	webgl_take_frame(p, o)
-	if gl.dirty {
+	// (an OffscreenCanvas no element shows has its frames when it is read: nothing would look at these)
+	b := o.backing
+	shown := b != nil && (b.node != base.NIL_HANDLE || b.placeholder != nil)
+	if gl.dirty && shown {
 		gl.dirty = false
 		webgl.wg_present(gl.handle)
 	}
@@ -242,7 +245,7 @@ WebGL_enabled :: proc(c: ^Call, version: i32) -> bool {
 WebGL_create :: proc(c: ^Call, canvas: Api_HTMLCanvasElement, flags: u32, notify: u32, user: i32, info: []u8) -> u64 {
 	if !c.page.settings.canvas.enabled || c.page.worker != nil { return 0 }
 	b := canvas_element_backing(c.page, base.Handle(canvas.handle), true)
-	if b == nil { return 0 }
+	if b == nil || b.placeholder != nil { return 0 }
 	canvas_sync(b)
 	return webgl_make(c, b, flags, notify, user, info)
 }
@@ -368,6 +371,15 @@ WebGL_snapshot :: proc(c: ^Call, ctx: u64) {
 	if o == nil || o.kind != .WebGL || o.gl == nil { return }
 	if o.backing != nil { canvas_sync(o.backing) }
 	if webgl.wg_snapshot(o.gl.handle) != 0 { webgl_take_frame(c.page, o) }
+}
+
+WebGL_commit :: proc(c: ^Call, ctx: u64) {
+	o := canvas_obj_of(c.page, ctx)
+	if o == nil || o.kind != .WebGL || o.gl == nil { return }
+	if webgl.wg_commit(o.gl.handle) != 0 {
+		o.gl.dirty = false
+		webgl_take_frame(c.page, o)
+	}
 }
 
 WebGL_isLost :: proc(c: ^Call, ctx: u64) -> bool {

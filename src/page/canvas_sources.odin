@@ -181,8 +181,8 @@ canvas_cached_image :: proc(p: ^Page, px: Canvas_Pixels) -> ^Cached_Image {
 // in progress stays.
 @(private)
 canvas_image_cache_trim :: proc(p: ^Page, limit: int) {
-	cp, ok := canvas_pages[p]
-	if !ok { return }
+	cp := p.canvases
+	if cp == nil { return }
 	for cp.image_bytes > limit {
 		oldest: u64 = 0
 		best := max(u64)

@@ -45,6 +45,7 @@ HTMLCanvasElement_context2d :: proc(c: ^Call, canvas: Api_HTMLCanvasElement, alp
 	if !c.page.settings.canvas.enabled || c.page.worker != nil { return 0, .None }
 	b := canvas_element_backing(c.page, base.Handle(canvas.handle), true)
 	if b == nil { return 0, .None }
+	if b.placeholder != nil { return 0, fail(c, .Invalid_State, "The canvas has transferred its control to an OffscreenCanvas.") }
 	canvas_sync(b)
 	return canvas_make_context(c, b, alpha, will_read_frequently), .None
 }

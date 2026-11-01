@@ -15,7 +15,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | interfaces, namespaces in the table | 605 |
 | exposed by default | 375 |
 | members | 5310 |
-| members implemented | 3820 (71.9 %) |
+| members implemented | 3821 (72.0 %) |
 
 ## By specification
 
@@ -52,7 +52,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `gamepad.idl` | 4 (0) | 0 / 17 |
 | `geometry.idl` | 8 (8) | 126 / 126 |
 | `hr-time.idl` | 1 (1) | 15 / 17 |
-| `html.idl` | 161 (136) | 1575 / 1829 |
+| `html.idl` | 161 (136) | 1576 / 1829 |
 | `intersection-observer.idl` | 2 (2) | 20 / 20 |
 | `is-input-pending.idl` | 1 (1) | 1 / 1 |
 | `largest-contentful-paint.idl` | 1 (1) | 9 / 9 |
@@ -2587,7 +2587,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLCanvasElement : HTMLElement
 
-5 / 7 members.
+6 / 7 members.
 
 - `constructor()`: not supported
 - `width`: import `canvas.HTMLCanvasElement_width`
@@ -2595,7 +2595,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `getContext()`: C `wjr_HTMLCanvasElement_getContext`
 - `toDataURL()`: C `wjr_HTMLCanvasElement_toDataURL`
 - `toBlob()`: C `wjr_HTMLCanvasElement_toBlob`
-- `transferControlToOffscreen()`: not supported
+- `transferControlToOffscreen()`: C `wjr_HTMLCanvasElement_transferControlToOffscreen`
 
 ### HTMLDListElement : HTMLElement
 

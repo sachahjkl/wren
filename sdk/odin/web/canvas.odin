@@ -174,6 +174,9 @@ foreign _m_canvas {
 	@(link_name = "CanvasPath_ellipse") _CanvasPath_ellipse :: proc(p: CanvasPathTarget, x: f64, y: f64, radius_x: f64, radius_y: f64, rotation: f64, start_angle: f64, end_angle: f64, counterclockwise: i32) -> Error ---
 	@(link_name = "Path2D_create") _Path2D_create :: proc(from: u64, svg: [^]u8, svg_len: u32) -> Path2D ---
 	@(link_name = "Path2D_addPath") _Path2D_addPath :: proc(target: Path2D, path: Path2D, m11: f64, m12: f64, m21: f64, m22: f64, m41: f64, m42: f64) ---
+	@(link_name = "HTMLCanvasElement_transferControl") _HTMLCanvasElement_transferControl :: proc(canvas: HTMLCanvasElement, _ret: ^OffscreenCanvas) -> Error ---
+	@(link_name = "OffscreenCanvas_takeForTransfer") _OffscreenCanvas_takeForTransfer :: proc(canvas: OffscreenCanvas, _ret: ^u64) -> Error ---
+	@(link_name = "OffscreenCanvas_adoptTransfer") _OffscreenCanvas_adoptTransfer :: proc(token: u64, _ret: ^OffscreenCanvas) -> Error ---
 	@(link_name = "OffscreenCanvas_create") _OffscreenCanvas_create :: proc(width: u64, height: u64, _ret: ^OffscreenCanvas) -> Error ---
 	@(link_name = "OffscreenCanvas_width") _OffscreenCanvas_width :: proc(canvas: OffscreenCanvas) -> u64 ---
 	@(link_name = "OffscreenCanvas_height") _OffscreenCanvas_height :: proc(canvas: OffscreenCanvas) -> u64 ---
@@ -1189,6 +1192,25 @@ Path2D_addPath :: proc "contextless" (target: Path2D, path: Path2D, m11: f64, m1
 }
 
 // /////////////////////////////
+// canvas.transferControlToOffscreen(): an OffscreenCanvas (in this realm, for now) whose frames this element shows. Invalid_State:
+// it has a context or was transferred before.
+HTMLCanvasElement_transferControl :: proc "contextless" (canvas: HTMLCanvasElement) -> (result: OffscreenCanvas, err: Error) {
+	err = _HTMLCanvasElement_transferControl(canvas, &result)
+	return
+}
+
+// Transferring an OffscreenCanvas in a message: a token the receiving realm adopts; the object is left detached. Invalid_State: it
+// has a context. Data_Clone: it was transferred before.
+OffscreenCanvas_takeForTransfer :: proc "contextless" (canvas: OffscreenCanvas) -> (result: u64, err: Error) {
+	err = _OffscreenCanvas_takeForTransfer(canvas, &result)
+	return
+}
+
+OffscreenCanvas_adoptTransfer :: proc "contextless" (token: u64) -> (result: OffscreenCanvas, err: Error) {
+	err = _OffscreenCanvas_adoptTransfer(token, &result)
+	return
+}
+
 // new OffscreenCanvas(width, height): Quota over the limits.
 OffscreenCanvas_create :: proc "contextless" (width: u64, height: u64) -> (result: OffscreenCanvas, err: Error) {
 	err = _OffscreenCanvas_create(width, height, &result)
