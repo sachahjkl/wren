@@ -82,7 +82,7 @@ test("worker: a terminated worker's connection closes", async () => {
     r.onsuccess = () => resolve("deleted");
     r.onerror = () => resolve("error");
   });
-  await sleep(100);
+  await until(() => blocked, "the blocked event");
   worker.terminate();
   eq(await del, "deleted", "the deletion goes through once the worker is gone");
   ok(blocked, "it was blocked by the worker's connection until then");

@@ -4,16 +4,6 @@
 
 const MP4 = 'video/mp4; codecs="avc1.64001f, mp4a.40.2"';
 
-// waits (without timers: an abort signal's) until cond() holds
-async function until(cond, what, ms = 20000) {
-  for (let t = 0; t < ms; t += 20) {
-    if (cond()) return true;
-    await sleep(20);
-  }
-  ok(false, "timeout waiting for " + what);
-  return false;
-}
-
 function track(v) {
   const events = [];
   for (const n of ["loadstart", "durationchange", "loadedmetadata", "loadeddata", "canplay", "canplaythrough", "play", "playing", "pause", "seeking", "seeked", "ended", "emptied", "error", "waiting", "resize"]) {
@@ -47,12 +37,12 @@ test("a progressive MP4: metadata, events, ranges", async () => {
   const { v, events } = video("/video/f/clip.mp4");
   ok(v instanceof HTMLVideoElement && v instanceof HTMLMediaElement, "interfaces");
   eq(v.readyState, 0, "readyState before the load");
-  ok(await until(() => v.readyState >= 1, "loadedmetadata"), "metadata arrived");
+  await until(() => v.readyState >= 1, "loadedmetadata");
   ok(Math.abs(v.duration - 4) < 0.1, "duration " + v.duration);
   eq(v.videoWidth, 320, "videoWidth");
   eq(v.videoHeight, 180, "videoHeight");
   ok(v.currentSrc.endsWith("/video/f/clip.mp4"), "currentSrc " + v.currentSrc);
-  ok(await until(() => v.readyState >= 4, "enough data"), "enough data");
+  await until(() => v.readyState >= 4, "enough data");
   await until(() => events.includes("canplaythrough"), "the canplaythrough event");
   ok(events.indexOf("loadstart") < events.indexOf("loadedmetadata") && events.indexOf("loadedmetadata") < events.indexOf("loadeddata") &&
      events.indexOf("loadeddata") < events.indexOf("canplay"), "event order " + events.join(","));
@@ -77,27 +67,25 @@ test("a progressive MP4: metadata, events, ranges", async () => {
 
 test("play, seek and the end", async () => {
   const { v, events } = video("/video/f/clip.mp4");
-  ok(await until(() => v.readyState >= 3, "canplay"), "can play");
+  await until(() => v.readyState >= 3, "canplay");
   await v.play();
   eq(v.paused, false, "play() resolved, not paused");
-  ok(await until(() => events.includes("play") && events.includes("playing"), "play and playing"), "play and playing " + events.join(","));
-  ok(await until(() => v.currentTime > 0.3, "the position moves"), "currentTime " + v.currentTime);
+  await until(() => events.includes("play") && events.includes("playing"), "play and playing");
+  await until(() => v.currentTime > 0.3, "the position moves");
   v.pause();
   eq(v.paused, true, "pause()");
-  ok(await until(() => events.includes("pause"), "pause"), "pause event");
+  await until(() => events.includes("pause"), "pause");
   ok(v.played.length >= 1 && v.played.end(0) > 0.2, "played");
   v.currentTime = 2;
   eq(v.seeking, true, "seeking");
-  ok(await until(() => events.includes("seeked"), "seeked"), "seeked");
+  await until(() => events.includes("seeked"), "seeked");
   eq(v.seeking, false, "not seeking any more");
   ok(Math.abs(v.currentTime - 2) < 0.3, "currentTime after the seek " + v.currentTime);
   v.currentTime = 3.4;
   await until(() => !v.seeking, "second seek");
   await v.play();
-  const at_end = await until(() => v.ended, "ended");
-  if (!at_end) console.log("state: t=" + v.currentTime + " ready=" + v.readyState + " paused=" + v.paused + " seeking=" + v.seeking + " net=" + v.networkState + " events=" + events.join(","));
-  ok(at_end, "ended");
-  ok(await until(() => events.includes("ended"), "ended event"), "ended event");
+  await until(() => v.ended, "ended");
+  await until(() => events.includes("ended"), "ended event");
   eq(v.paused, true, "paused at the end");
   ok(Math.abs(v.currentTime - v.duration) < 0.1, "currentTime at the end " + v.currentTime);
   v.volume = 0.5;
@@ -110,7 +98,7 @@ test("play, seek and the end", async () => {
 
 test("an error: a missing file", async () => {
   const { v, events } = video("/video/f/nothing.mp4");
-  ok(await until(() => v.error !== null, "the error"), "error set");
+  await until(() => v.error !== null, "the error");
   ok(v.error instanceof MediaError, "a MediaError");
   eq(v.error.code, MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED, "code");
   eq(typeof v.error.message, "string", "message");
@@ -130,7 +118,7 @@ test("<source> children: the first that can play", async () => {
   const events = track(v);
   v.innerHTML = '<source src="/video/f/clip_vp9.webm" type="video/ogg; codecs=theora"><source src="/video/f/nothing.mp4" type="video/mp4"><source src="/video/f/clip.mp4" type="video/mp4">';
   document.body.appendChild(v);
-  ok(await until(() => v.readyState >= 1, "a source that plays"), "metadata");
+  await until(() => v.readyState >= 1, "a source that plays");
   ok(v.currentSrc.endsWith("/video/f/clip.mp4"), "currentSrc is the third " + v.currentSrc);
   v.remove();
 });
@@ -141,7 +129,7 @@ const AV1 = document.createElement("video").canPlayType('video/webm; codecs="av0
 test("WebM (AV1 + Opus)", async () => {
   if (!AV1) { skip("av1-decoder", "the type is not supported"); return; }
   const { v } = video("/video/f/clip.webm");
-  ok(await until(() => v.readyState >= 1 || v.error, "metadata or an error"), "answered");
+  await until(() => v.readyState >= 1 || v.error, "metadata or an error");
   if (v.error) { skip("av1-decoder", "the element's error " + v.error.code); v.remove(); return; }
   ok(Math.abs(v.duration - 4) < 0.2, "duration " + v.duration);
   eq(v.videoWidth, 320, "videoWidth");
@@ -153,7 +141,7 @@ test("audio", async () => {
   const events = track(a);
   a.src = "/video/f/tone.m4a";
   document.body.appendChild(a);
-  ok(await until(() => a.readyState >= 1, "metadata"), "metadata");
+  await until(() => a.readyState >= 1, "metadata");
   ok(Math.abs(a.duration - 2) < 0.2, "duration " + a.duration);
   ok(a instanceof HTMLAudioElement, "HTMLAudioElement");
   a.remove();
@@ -161,10 +149,10 @@ test("audio", async () => {
 
 test("load() restarts, removing src empties", async () => {
   const { v, events } = video("/video/f/clip.mp4");
-  ok(await until(() => v.readyState >= 1, "metadata"), "metadata");
+  await until(() => v.readyState >= 1, "metadata");
   v.removeAttribute("src");
   v.load();
-  ok(await until(() => events.includes("emptied"), "emptied"), "emptied");
+  await until(() => events.includes("emptied"), "emptied");
   eq(v.readyState, 0, "readyState back to 0");
   ok(Number.isNaN(v.duration), "duration NaN");
   eq(v.buffered.length, 0, "nothing buffered");
@@ -192,32 +180,32 @@ test("what is offered: honest about the decoders of this machine", () => {
 test("WebM (AV1 + Opus) plays to the end", async () => {
   if (!AV1) { skip("av1-decoder", "the type is not supported"); return; }
   const { v } = video("/video/f/clip.webm");
-  if (!await until(() => v.readyState >= 3 || v.error, "canplay")) return;
+  await until(() => v.readyState >= 3 || v.error, "canplay");
   if (v.error) { skip("av1-decoder", "the element's error " + v.error.code); v.remove(); return; }
   await v.play();
-  ok(await until(() => v.currentTime > 0.3, "the position moves"), "WebM plays: " + v.currentTime);
+  await until(() => v.currentTime > 0.3, "the position moves");
   v.currentTime = 3.2;
   await until(() => !v.seeking, "seek in WebM");
   ok(Math.abs(v.currentTime - 3.2) < 0.4, "seeked to a keyframe and on: " + v.currentTime);
-  ok(await until(() => v.ended, "ended"), "WebM reaches its end");
+  await until(() => v.ended, "ended");
   v.remove();
 });
 
 test("a live WebM (unknown sizes)", async () => {
   if (!AV1) { skip("av1-decoder", "the type is not supported"); return; }
   const { v } = video("/video/f/clip_live.webm");
-  ok(await until(() => v.readyState >= 1 || v.error, "metadata or an error"), "answered");
+  await until(() => v.readyState >= 1 || v.error, "metadata or an error");
   if (!v.error) ok(v.videoWidth === 320, "videoWidth " + v.videoWidth);
   v.remove();
 });
 
 test("playback keeps time: the position follows the wall clock, no stall", async () => {
   const { v, events } = video("/video/f/clip.mp4");
-  ok(await until(() => v.readyState >= 4, "enough data"), "ready");
+  await until(() => v.readyState >= 4, "enough data");
   const t0 = performance.now();
   await v.play();
   const start = v.currentTime;
-  ok(await until(() => v.currentTime > 1.5, "1.5 s of playback"), "plays");
+  await until(() => v.currentTime > 1.5, "1.5 s of playback");
   const wall = (performance.now() - t0) / 1000;
   const media = v.currentTime - start;
   // the audio clock and the wall clock agree within a few percent (a start-up of the audio device is before `start`)

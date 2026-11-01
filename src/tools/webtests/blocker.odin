@@ -27,7 +27,6 @@ WATCH :: "http://127.0.0.1:8765/site/blocker/ytwatch.html"
 LOAD_LIMIT :: 20.0
 BLOCKED_ON_THE_ADS_PAGE :: 3       // script, frame, fetch (no image is asked for without a layout)
 MIN_JOURNAL_ENTRIES :: 4
-HOOKBENCH_VARIABLE :: "WREN_HOOKBENCH"
 CONF_HEAD :: "version\t1\n[lists]\n[sites]\n[rules]\n[my-filters]\n"
 MY_FILTERS :: "||localhost^$third-party\n##.ad-banner\n127.0.0.1##+js(set-constant, adblockDetected, false)\n127.0.0.1##+js(replace-node-text, script, AAA-MARKER, BBB-MARKER)\n127.0.0.1##+js(remove-node-text, script, CCC-MARKER)\n127.0.0.1##+js(remove-attr, data-ad, #ra1)\n127.0.0.1##+js(remove-attr, data-late, #ra2, stay)\n127.0.0.1##+js(remove-class, adclass, #rc1)\n127.0.0.1##+js(set-attr, #sa, data-set, yes)\n127.0.0.1##+js(rmnt, p, /^SECRET/)\n127.0.0.1##+js(rpnt, p, /(\\d+) EUR/g, $1 USD)\n127.0.0.1##+js(rpnt, script, FLAG_ON, FLAG_OFF)\n127.0.0.1##+js(href-sanitizer, #lnk)\n127.0.0.1##+js(trusted-click-element, #clickme)\n127.0.0.1##+js(set-cookie, wb_test, 1)\n127.0.0.1##+js(set-local-storage-item, wb_ls, true)\n127.0.0.1##+js(json-prune-fetch-response, ads, , data.json)\n127.0.0.1##+js(json-prune-xhr-response, ads, , data.json)\n127.0.0.1##+js(trusted-replace-fetch-response, /\"price\":\\s*100/, '\"price\":101', url:data.json)\n127.0.0.1##+js(set-constant, ytInitialPlayerResponse.adPlacements, undefined)\n127.0.0.1##+js(set-constant, hookConst, 42)\n127.0.0.1##+js(set-constant, hookObj.flag, yes)\n127.0.0.1##+js(aopr, hookAopr)\n127.0.0.1##+js(aopw, hookAopw)\n127.0.0.1##+js(nostif, BLOCKME)\n127.0.0.1##+js(aeld, wbcustom, DEFUSEME)\n127.0.0.1##+js(jp, adsX)\n127.0.0.1##+js(nofetch, hookblock)\n127.0.0.1##+js(noxhr, hookblock)\n127.0.0.1##+js(noeval)\n127.0.0.1##+js(nowoif, popup.example)\n127.0.0.1##+js(nostif, NEVERMATCH-bench)\n127.0.0.1##+js(jp, neverKey)\n127.0.0.1##+js(set-constant, benchConst, 7)\n127.0.0.1##+js(set-constant, ytInitialPlayerResponse.adSlots, undefined)\n127.0.0.1##+js(set-constant, ytInitialPlayerResponse.playerAds, undefined)\n127.0.0.1##+js(trusted-replace-xhr-response, /\"adPlacements.*?([A-Z]\"\\}|\"\\}{2\\,4})\\}\\]\\,/, , /playlist\\?list=|\\/player(?:\\?.+)?$|watch\\?[tv]=/)\n127.0.0.1##+js(trusted-replace-xhr-response, /\"adPlacements.*?(\"adSlots\"|\"adBreakHeartbeatParams\")/gms, $1, /\\/player(?:\\?.+)?$/)\n127.0.0.1##+js(trusted-rpfr, '\"adPlacements\"', '\"no_ads\"', player?)\n||127.0.0.1/site/blocker/youtubei/v1/player?$xhr,1p,replace=/\"adPlacements\"/\"no_ads\"/\n*data2.json$replace=/\"w\":\"a+\"/\"w\":\"b\"/\n*replacedoc.html$replace=/RAWTEXT/REPLACED/\n"
 
@@ -331,27 +330,6 @@ blocker_javascript_scriptlets_change_an_api :: proc(t: ^testing.T) {
 	begin(t)
 	defer end()
 	api_hooks(t, "false", "JavaScript fallback")
-}
-
-// A measure, not a check, and only when asked (WREN_HOOKBENCH=1): what a hooked API costs per call (ns), without the blocker, with the
-// native hooks, with the JavaScript versions.
-@(test)
-blocker_hook_cost :: proc(t: ^testing.T) {
-	if os.get_env(HOOKBENCH_VARIABLE, context.temp_allocator) == "" { return }
-	context.allocator = base.process_allocator()
-	begin(t)
-	defer end()
-	w: Setup
-	setup(t, &w)
-	defer shut(&w)
-	index_ready(&w)
-	for mode in ([]string{"off", "native", "javascript"}) {
-		config.set_from_string(&w.prefs, "blocker.enabled", mode == "off" ? "false" : "true", .User)
-		config.set_from_string(&w.prefs, "blocker.hooks.native", mode == "javascript" ? "false" : "true", .User)
-		d := load(&w, "http://127.0.0.1:8765/site/blocker/hookbench.html")
-		fmt.printf("hook cost, %s: %s\n", mode, log_text(d))
-		close_doc(d)
-	}
 }
 
 // The site is on the whitelist: nothing is blocked or hidden.

@@ -31,8 +31,16 @@ globalThis.note = text => { __host.note(text); };
 // the test, or with no test running the whole script, cannot run on this machine ("webgl-adapter", "av1-decoder"). The
 // program looks for itself, and a skip that is not true of the machine fails.
 globalThis.skip = (reason, why) => { __host.skip(reason, why || ""); };
-// a delay without timers (timers are not part of these APIs): a timeout signal
+// a delay without timers (timers are not part of these APIs): a timeout signal. For a real duration only, and the place says which: what a test waits for has `until`
 globalThis.sleep = ms => new Promise(resolve => { AbortSignal.timeout(ms).onabort = () => resolve(); });
+const UNTIL_LOOK_MS = 5;
+// waits until cond() holds (it may be async), and says what for: what never comes ends on the limit of the section, whose last lines are this.
+globalThis.until = async (cond, what) => {
+  if (await cond()) return true;
+  if (what) console.log("waiting for " + what);
+  while (!await cond()) await sleep(UNTIL_LOOK_MS);
+  return true;
+};
 // asks the test tool to act on the page, resumes when it did
 const __waits = {};
 globalThis.signal = name => new Promise(resolve => { __waits[name] = resolve; __host.signal(name); });
