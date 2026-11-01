@@ -107,7 +107,7 @@ a_damaged_checkpoint_is_ignored_and_a_damaged_section_rebuilt :: proc(t: ^testin
 			if p := generation_name(stem, g, ".widx", context.temp_allocator); os.exists(p) { ck = p; break }
 		}
 		data, err := os.read_entire_file(ck, context.temp_allocator)
-		testing.expect(t, err == nil && len(data) > CK_HEADER, "a checkpoint was written")
+		testing.expectf(t, err == nil && len(data) > CK_HEADER, "a checkpoint was written: %v, %d bytes of %s", err, len(data), ck)
 		harness_destroy(&h2)
 		// damage 0: a byte of the directory; 1: a byte of the last section
 		at := CK_HEADER + 4 if damage == 0 else len(data) - 20

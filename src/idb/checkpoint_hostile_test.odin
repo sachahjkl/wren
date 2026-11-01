@@ -29,8 +29,7 @@ hostile_checkpoint :: proc(journal_len: u64, section: [4]u64) -> []byte {
 
 @(private = "file")
 reads_as :: proc(t: ^testing.T, name: string, data: []byte, journal_size: i64) -> bool {
-	_ = os.make_directory_all("build/tmp")
-	path := "build/tmp/idb_hostile.widx"
+	path := temp_path("hostile.widx")
 	defer os.remove(path)
 	testing.expect(t, os.write_entire_file(path, data) == nil)
 	f, ok := file_open(path, false, false)
@@ -69,8 +68,7 @@ a_section_inside_the_file_is_kept :: proc(t: ^testing.T) {
 	// a directory of one section that lies in the file after it: 4 bytes, 2 records
 	data := hostile_checkpoint(8, {0, 4, 2, 4})
 	data = append_bytes(data, {1, 2, 3, 4})
-	_ = os.make_directory_all("build/tmp")
-	path := "build/tmp/idb_hostile_ok.widx"
+	path := temp_path("hostile_ok.widx")
 	defer os.remove(path)
 	testing.expect(t, os.write_entire_file(path, data) == nil)
 	f, ok := file_open(path, false, false)
