@@ -102,7 +102,8 @@ function not exposed to workers is not instantiated.
 | [`webcodecs_encoders`](webcodecs_encoders.md) | 18 | Window, Worker | WebCodecs VideoEncoder / AudioEncoder (src/page/bindings_encoders.odin, native/js/runtime/web_webcodecs_encoders.c). |
 | [`webcodecs_image`](webcodecs_image.md) | 16 | Window, Worker | WebCodecs ImageDecoder (src/page/bindings_image_decoder.odin, native/js/runtime/web_webcodecs_image.c). The decode |
 | [`webcodecs_video_decoder`](webcodecs_video_decoder.md) | 9 | Window, Worker | WebCodecs VideoDecoder (src/page/bindings_video_decoder.odin, native/js/runtime/web_webcodecs_video_decoder.c). |
+| [`webgl`](webgl.md) | 14 | Window | WebGL 1 and 2 for native/js/odin/web_webgl.js: a context is a host object over a device of its own (native/webgl, a thread); the |
 | [`websocket`](websocket.md) | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | 11 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-1532 imports in 1433 functions.
+1546 imports in 1447 functions.

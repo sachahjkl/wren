@@ -103,7 +103,18 @@ get_context :: proc(ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]
 	two_d := str_is(ctx, argv[0], "2d", &bad)
 	if bad { return wj.EXCEPTION }
 	if !two_d {
-		if !str_is(ctx, argv[0], "bitmaprenderer") { return wj.NULL }   // webgl, webgl2, webgpu: none here
+		// WebGL (web_webgl.odin; its script keeps the context of a canvas)
+		if str_is(ctx, argv[0], "webgl") || str_is(ctx, argv[0], "experimental-webgl") {
+			kind := wj.new_string(ctx, "webgl")
+			defer wj.JS_FreeValue(ctx, kind)
+			return webgl_get_context(ctx, this_val, kind, wj.arg(argc, argv, 1))
+		}
+		if str_is(ctx, argv[0], "webgl2") {
+			kind := wj.new_string(ctx, "webgl2")
+			defer wj.JS_FreeValue(ctx, kind)
+			return webgl_get_context(ctx, this_val, kind, wj.arg(argc, argv, 1))
+		}
+		if !str_is(ctx, argv[0], "bitmaprenderer") { return wj.NULL }   // webgpu: none here
 		alpha := bitmaprenderer_alpha(ctx, wj.arg(argc, argv, 1))
 		h: api_decl.ImageBitmapRenderingContext
 		st: abi.Api_Error
