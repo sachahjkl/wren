@@ -1,6 +1,6 @@
 # web-platform-tests expectations of Wren for html/semantics/embedded-content/media-elements, written by tools\wpt.ps1 -Update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
-/html/semantics/embedded-content/media-elements/audio_loop_base.html: OK|ERROR
+/html/semantics/embedded-content/media-elements/audio_loop_base.html: ERROR
 	Check if audio.loop is set to true that expecting the seeking event is fired more than once: FAIL
 /html/semantics/embedded-content/media-elements/audio_loop_seek_to_eos.html: OK
 	seeking to the end of looping audio: FAIL
@@ -845,7 +845,7 @@
 /html/semantics/embedded-content/media-elements/preload_reflects_none_autoplay.html: OK
 	audio.preload - reflection test: PASS
 	video.preload - reflection test: PASS
-/html/semantics/embedded-content/media-elements/preserves-pitch.html: OK|ERROR
+/html/semantics/embedded-content/media-elements/preserves-pitch.html: ERROR
 	Setup Audio element and AudioContext: FAIL
 	Slow-downs should change the pitch when preservesPitch=false: FAIL
 	Slow-downs should not change the pitch when preservesPitch=true: FAIL
