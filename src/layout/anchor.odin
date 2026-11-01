@@ -31,6 +31,8 @@ import "wb:style"
 ANCHOR_FIT_EPSILON :: f32(0.01)
 // Anchored boxes shifted by the scrolling of a chain of anchors: bound on that chain.
 ANCHOR_CHAIN_MAX :: 64
+// Boxes of one name looked at for one reference: thousands of unacceptable ones cost no more than this per reference.
+ANCHOR_LOOKUP_MAX_TRIES :: 1024
 
 Anchor_Key :: struct { node: base.Handle, pseudo: u8 }
 
@@ -62,9 +64,9 @@ anchor_reset :: proc(l: ^Layout) {
 
 // The page's scroll offset (device px), for a box whose choice depends on it.
 note_doc_scroll :: proc(l: ^Layout, doc_scroll: f32) {
-	if !l.anchor_scroll || doc_scroll == l.anchor_doc_scroll { return }
+	if doc_scroll == l.anchor_doc_scroll { return }
 	l.anchor_doc_scroll = doc_scroll
-	l.anchor_stale = true
+	if l.anchor_scroll { l.anchor_stale = true }
 }
 
 @(private = "file")
@@ -166,7 +168,12 @@ acceptable :: proc(ac: ^A, a, q: i32, name: string) -> bool {
 named_anchor :: proc(ac: ^A, q: i32, name: string) -> i32 {
 	list, ok := ac.names[name]
 	if !ok { return NONE }
-	#reverse for a in list { if acceptable(ac, a, q, name) { return a } }
+	tries := 0
+	#reverse for a in list {
+		if acceptable(ac, a, q, name) { return a }
+		tries += 1
+		if tries >= ANCHOR_LOOKUP_MAX_TRIES { break }
+	}
 	return NONE
 }
 
@@ -466,8 +473,10 @@ prepare :: proc(ac: ^A, q: i32, base: ^style.Computed, opt: i32, ref: i32, cb: R
 
 // Aligns a box layout_abs placed in its rectangle. Under position-area, a box too large for it stays in the containing block.
 @(private = "file")
-align_box :: proc(c: ^Ctx, q: i32, p: ^Prep) {
+align_box :: proc(ac: ^A, q: i32, p: ^Prep) {
+	c := ac.c
 	k := &c.l.boxes[q]
+	shift := shift_of(ac, q, p)
 	for axis in 0 ..< 2 {
 		mode := p.align[axis]
 		if mode == .None { continue }
@@ -490,8 +499,10 @@ align_box :: proc(c: ^Ctx, q: i32, p: ^Prep) {
 			if start < lo { start = lo }
 		}
 		if free < 0 && p.area {
-			if start + size > p.cb.max[axis] { start = p.cb.max[axis] - size }
-			if start < p.cb.min[axis] { start = p.cb.min[axis] }
+			// (where the containing block is once the box is scrolled with its anchor: a fixed popover on a scrolled page)
+			cb_lo, cb_hi := p.cb.min[axis] - shift[axis], p.cb.max[axis] - shift[axis]
+			if start + size > cb_hi { start = cb_hi - size }
+			if start < cb_lo { start = cb_lo }
 		}
 		pre := axis == 1 ? k.pre_h : 0
 		k.pos[axis] = start + ms + pre
@@ -508,7 +519,7 @@ try_layout :: proc(ac: ^A, q: i32, base: ^style.Computed, p: ^Prep) {
 	k.inc += {.Dirty}
 	k.intr_ok = false
 	layout_abs(c, q, p.ref, p.imcb)
-	align_box(c, q, p)
+	align_box(ac, q, p)
 	c.l.boxes[q].cs = base
 }
 
@@ -698,7 +709,7 @@ lay_anchored :: proc(ac: ^A, q: i32) {
 	vis := base.position_visibility
 	e.hidden = (.No_Overflow in vis && !fit) || (.Anchor_Valid in vis && p.invalid) ||
 		(.Anchor_Visible in vis && p.anchor != NONE && anchor_clipped(ac, p.anchor, q))
-	if len(opts) > 1 || (vis & {.No_Overflow, .Anchor_Visible}) != {} {
+	if len(opts) > 1 || p.area || (vis & {.No_Overflow, .Anchor_Visible}) != {} {
 		if p.anchor != NONE && scroll_apart(l, p.anchor, q) { l.anchor_scroll = true }
 	}
 	ac.entry[q] = i32(len(l.anchored))

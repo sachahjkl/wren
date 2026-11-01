@@ -76,7 +76,7 @@ js_layout_now :: proc(p: ^Page) -> (^lay.Layout, Viewport) {
 	if !jl.has { return nil, Viewport{scale = 1} }
 	vp := jl.embedder.viewport(jl.embedder.user, p)
 	if vp.scale <= 0 { vp.scale = 1 }
-	if jl.result != nil && jl.result.anchor_scroll { lay.note_doc_scroll(jl.result, f32(vp.scroll_y * vp.scale)) }
+	if jl.result != nil && jl.result.anchor_uses { lay.note_doc_scroll(jl.result, f32(vp.scroll_y * vp.scale)) }
 	if jl.result != nil && jl.result.valid && !jl.result.anchor_stale && jl.mutations == p.doc.mutations && styles_clean(p) && jl.serial == p.styled.serial &&
 	   jl.vp.width == vp.width && jl.vp.height == vp.height && jl.vp.scale == vp.scale {
 		jl.vp = vp   // scrolling moves nothing in the layout

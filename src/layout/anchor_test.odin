@@ -349,6 +349,27 @@ fixed_anchored_box :: proc(t: ^testing.T) {
 	testing.expect_value(t, v.offsets[f.l.boxes[bi].space].y, -60)
 }
 
+// A fixed box under position-area stays in the viewport as it is when the page is scrolled: the anchor is far down the
+// document, near the top of the viewport.
+@(test)
+fixed_area_on_scrolled_page :: proc(t: ^testing.T) {
+	f := ax_load(`<!doctype html><style>
+		body { margin: 0 }
+		#a { anchor-name: --a; margin-top: 1000px; width: 30px; height: 30px }
+		#q { position: fixed; position-anchor: --a; position-area: bottom; position-visibility: always; width: 10px; height: 40px }
+		#tail { height: 2000px }
+	</style><div id=a></div><div id=tail></div><div id=q></div>`, 800, 300)
+	defer ax_unload(f)
+	layout_doc_scroll :: 900
+	note_doc_scroll(&f.l, layout_doc_scroll)
+	ax_frame(t, f)
+	v := view_make(&f.l, f.vp, layout_doc_scroll, cull = false)
+	q := box_index(&f.l, dom.find_by_id(f.doc, "q"))
+	b := &f.l.boxes[q]
+	// the anchor shows at 100 .. 130 of the viewport: the box right under it, in the page's coordinates plus its shift
+	testing.expect_value(t, b.abs.y + v.offsets[b.space].y, 130)
+}
+
 @(test)
 box_follows_scrolling_anchor :: proc(t: ^testing.T) {
 	f := ax_load(`<!doctype html><style>
