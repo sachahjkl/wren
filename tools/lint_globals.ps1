@@ -29,7 +29,8 @@ foreach ($f in Get-ChildItem (Join-Path $root 'src\browser') -Filter *.odin | So
             }
         }
         $code = $l -replace '//.*$', '' -replace '"([^"\\]|\\.)*"', '""' -replace "'([^'\\]|\\.)*'", "''" -replace '`[^`]*`', ''
-        $depth += ($code.ToCharArray() | Where-Object { $_ -eq '{' }).Count - ($code.ToCharArray() | Where-Object { $_ -eq '}' }).Count
+        # (Split, not a pipeline over the characters: that one took 60 s of CPU for the 40 000 lines of src\browser)
+        $depth += $code.Split('{').Length - $code.Split('}').Length
         if ($depth -lt 0) { $depth = 0 }
     }
 }

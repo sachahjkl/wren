@@ -143,12 +143,14 @@ function Start-WrenTestServer([int]$BasePort = 0, [string]$Exe = '', [switch]$Wp
     if ($Log) { $sp.RedirectStandardError = $Log }
     $p = Start-Process @sp
     $deadline = (Get-Date).AddSeconds($TimeoutSec)
-    while (-not (Test-Path $portFile)) {
+    # (the file is there before the server has finished writing it and let go of it: under load the read failed with a sharing violation, and the step with it)
+    $base = 0
+    while ($base -le 0) {
         if ($p.HasExited) { throw "the test server stopped at once (exit $($p.ExitCode)): no free block of ports from $BasePort?" }
         if ((Get-Date) -gt $deadline) { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue; throw "the test server did not listen within $TimeoutSec s" }
-        Start-Sleep -Milliseconds 50
+        try { [void][int]::TryParse([IO.File]::ReadAllText($portFile), [ref]$base) } catch { }
+        if ($base -le 0) { Start-Sleep -Milliseconds 20 }
     }
-    $base = [int](Get-Content $portFile -Raw)
     Remove-Item $portFile -ErrorAction SilentlyContinue
     return [pscustomobject]@{ Process = $p; BasePort = $base; Origin = "http://127.0.0.1:$base" }
 }
