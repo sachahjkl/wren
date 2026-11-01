@@ -303,13 +303,14 @@ emit_scrollbars :: proc(c: ^Ctx, bi: i32) {
 	w := c.set.scrollbar_width * c.scale * (b.cs != nil && b.cs.scrollbar_width == .Thin ? 0.5 : 1)
 	m := c.set.scrollbar_margin * c.scale
 	port := sp.port
-	if sp.max_scroll.y > 0 {
-		it := item_for_box(c, .Scrollbar, bi, Rect{{port.max.x - w - m, port.min.y + m}, {port.max.x - m, port.max.y - m - (sp.max_scroll.x > 0 ? w + m : 0)}})
+	bar_x, bar_y := sp.max_scroll.x > 0 || sp.min_scroll.x < 0, sp.max_scroll.y > 0 || sp.min_scroll.y < 0
+	if bar_y {
+		it := item_for_box(c, .Scrollbar, bi, Rect{{port.max.x - w - m, port.min.y + m}, {port.max.x - m, port.max.y - m - (bar_x ? w + m : 0)}})
 		it.flags = {.Vertical}
 		push_item(c, it)
 	}
-	if sp.max_scroll.x > 0 {
-		it := item_for_box(c, .Scrollbar, bi, Rect{{port.min.x + m, port.max.y - w - m}, {port.max.x - m - (sp.max_scroll.y > 0 ? w + m : 0), port.max.y - m}})
+	if bar_x {
+		it := item_for_box(c, .Scrollbar, bi, Rect{{port.min.x + m, port.max.y - w - m}, {port.max.x - m - (bar_y ? w + m : 0), port.max.y - m}})
 		it.flags = {}
 		push_item(c, it)
 	}

@@ -123,7 +123,28 @@ doc_scroll_origin_end :: proc(c: ^Ctx) -> bool {
 	cs := style.style_of(c.st, c.l.canvas_els[1])
 	if cs == nil { cs = style.style_of(c.st, c.l.canvas_els[0]) }
 	if cs == nil { return false }
-	return is_rtl(cs)   // (writing-mode vertical-rl and sideways-rl: here)
+	// the x axis: lines go right to left in these writing modes; else, in horizontal text, by the direction
+	if cs.writing_mode == .Vertical_Rl || cs.writing_mode == .Sideways_Rl { return true }
+	return !is_vert(cs.writing_mode) && is_rtl(cs)
+}
+
+// How far a scroll container scrolls either way. Offsets run from its scroll origin (CSS Overflow 3 §2.2): where the axis starts at
+// the high end (lines right to left, right-to-left text in horizontal lines, vertical text upwards), they go negative, and
+// overflow on the other side of the origin cannot be reached.
+@(private)
+scroll_limits :: proc(b: ^Box, port: Rect) -> (lo, hi: Vec2) {
+	hi = {max(b.overflow.max.x - port.max.x, 0), max(b.overflow.max.y - port.max.y, 0)}
+	rtl := is_rtl(b.cs)
+	wm := b.cs.writing_mode
+	if style.axis_start_hi(wm, rtl, true) {
+		lo.x, hi.x = min(b.overflow.min.x - port.min.x, 0), 0
+	}
+	if style.axis_start_hi(wm, rtl, false) {
+		lo.y, hi.y = min(b.overflow.min.y - port.min.y, 0), 0
+	}
+	if b.cs.overflow_x != .Scroll && b.cs.overflow_x != .Auto { lo.x, hi.x = 0, 0 }
+	if b.cs.overflow_y != .Scroll && b.cs.overflow_y != .Auto { lo.y, hi.y = 0, 0 }
+	return
 }
 
 // The horizontal scroll range the document's extent gives.
@@ -292,14 +313,12 @@ finish :: proc(c: ^Ctx) {
 		b.scroll_space = NONE
 		if .Scroll in b.flags && .Propagated not_in b.flags && b.kind != .Inline {
 			port := padding_rect(b)
-			ms := Vec2{max(b.overflow.max.x - port.max.x, 0), max(b.overflow.max.y - port.max.y, 0)}
-			if b.cs.overflow_x != .Scroll && b.cs.overflow_x != .Auto { ms.x = 0 }
-			if b.cs.overflow_y != .Scroll && b.cs.overflow_y != .Auto { ms.y = 0 }
-			if ms.x > 0.5 || ms.y > 0.5 {
-				append(&l.spaces, Space{kind = .Scroll, parent = b.space, box = x, frame = NONE, clip = b.content_clip, xform = l.spaces[b.space].xform, plane = l.spaces[b.space].plane, persp_from = NONE, ctx = NONE, dest = NONE, port = port, max_scroll = ms})
+			mn, ms := scroll_limits(b, port)
+			if ms.x > 0.5 || ms.y > 0.5 || mn.x < -0.5 || mn.y < -0.5 {
+				append(&l.spaces, Space{kind = .Scroll, parent = b.space, box = x, frame = NONE, clip = b.content_clip, xform = l.spaces[b.space].xform, plane = l.spaces[b.space].plane, persp_from = NONE, ctx = NONE, dest = NONE, port = port, max_scroll = ms, min_scroll = mn})
 				b.content_space = i32(len(l.spaces) - 1)
 				b.scroll_space = b.content_space
-				if off, ok := l.scroll[b.node]; ok { l.scroll[b.node] = {clamp(off.x, 0, ms.x), clamp(off.y, 0, ms.y)} }
+				if off, ok := l.scroll[b.node]; ok { l.scroll[b.node] = {clamp(off.x, mn.x, ms.x), clamp(off.y, mn.y, ms.y)} }
 			}
 		}
 		if .Multicol in b.fx { flow_spaces(l, x); b = &l.boxes[x] }

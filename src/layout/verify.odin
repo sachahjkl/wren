@@ -152,7 +152,7 @@ compare_layouts :: proc(a, b: ^Layout, allocator := context.temp_allocator) -> (
 		if m.bad { break }
 		p, q := a.spaces[i], b.spaces[i]
 		if p.kind != q.kind || p.parent != q.parent || !beq(&m, p.box, q.box) || p.frame != q.frame || p.clip != q.clip || p.xform != q.xform ||
-		   !req(p.port, q.port) || !req(p.limit, q.limit) || !veq(p.max_scroll, q.max_scroll) || !veq(p.inset, q.inset) || p.mat != q.mat ||
+		   !req(p.port, q.port) || !req(p.limit, q.limit) || !veq(p.max_scroll, q.max_scroll) || !veq(p.min_scroll, q.min_scroll) || !veq(p.inset, q.inset) || p.mat != q.mat ||
 		   p.follow != q.follow || (p.kind == .Anchored && !beq(&m, p.anchor, q.anchor)) ||
 		   !feq(p.band0, q.band0) || !feq(p.band_h, q.band_h) || p.band_first != q.band_first || p.band_count != q.band_count {
 			fail(&m, "space %d (%v)", i, p.kind)

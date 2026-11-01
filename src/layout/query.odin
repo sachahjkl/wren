@@ -149,7 +149,7 @@ clip_contains :: proc(l: ^Layout, v: ^View, ci: i32, p: Vec2) -> bool {
 scroll_offset_of :: proc(l: ^Layout, sp: ^Space) -> Vec2 {
 	b := &l.boxes[sp.box]
 	off, _ := l.scroll[b.node]
-	return {clamp(off.x, 0, sp.max_scroll.x), clamp(off.y, 0, sp.max_scroll.y)}
+	return {clamp(off.x, sp.min_scroll.x, sp.max_scroll.x), clamp(off.y, sp.min_scroll.y, sp.max_scroll.y)}
 }
 
 @(private)
@@ -380,7 +380,7 @@ scroll_wheel :: proc(l: ^Layout, p: Vec2, delta: Vec2, viewport: Vec2, doc_scrol
 		sp := &l.spaces[s]
 		node := l.boxes[sp.box].node
 		cur := scroll_offset_of(l, sp)
-		next := Vec2{clamp(cur.x + delta.x, 0, sp.max_scroll.x), clamp(cur.y + delta.y, 0, sp.max_scroll.y)}
+		next := Vec2{clamp(cur.x + delta.x, sp.min_scroll.x, sp.max_scroll.x), clamp(cur.y + delta.y, sp.min_scroll.y, sp.max_scroll.y)}
 		if math.abs(next.x - cur.x) < 0.01 && math.abs(next.y - cur.y) < 0.01 { return false }
 		l.scroll[node] = next
 		if l.anchor_scroll { l.anchor_stale = true }
@@ -416,7 +416,7 @@ set_scroll :: proc(l: ^Layout, node: base.Handle, off: Vec2) -> (Vec2, bool) {
 	bi := box_index(l, node)
 	if bi == NONE || l.boxes[bi].scroll_space == NONE { return {}, false }
 	sp := &l.spaces[l.boxes[bi].scroll_space]
-	v := Vec2{clamp(off.x, 0, sp.max_scroll.x), clamp(off.y, 0, sp.max_scroll.y)}
+	v := Vec2{clamp(off.x, sp.min_scroll.x, sp.max_scroll.x), clamp(off.y, sp.min_scroll.y, sp.max_scroll.y)}
 	if l.anchor_scroll && l.scroll[node] != v { l.anchor_stale = true }
 	l.scroll[node] = v
 	return v, true
@@ -460,6 +460,13 @@ scroll_max :: proc(l: ^Layout, node: base.Handle) -> (Vec2, bool) {
 	bi := box_index(l, node)
 	if bi == NONE || l.boxes[bi].scroll_space == NONE { return {}, false }
 	return l.spaces[l.boxes[bi].scroll_space].max_scroll, true
+}
+
+// Smallest scroll offset of a scroll container: 0, or negative where its scroll origin is at the high end of the axis.
+scroll_min :: proc(l: ^Layout, node: base.Handle) -> Vec2 {
+	bi := box_index(l, node)
+	if bi == NONE || l.boxes[bi].scroll_space == NONE { return {} }
+	return l.spaces[l.boxes[bi].scroll_space].min_scroll
 }
 
 box_index :: proc(l: ^Layout, node: base.Handle) -> i32 {
@@ -672,14 +679,16 @@ scrollbar_thumb :: proc(l: ^Layout, v: ^View, it: ^Display_Item) -> Rect {
 	min_t := l.settings.scrollbar_min_thumb * l.scale
 	if .Vertical in it.flags {
 		len_ := track.max.y - track.min.y
-		th := min(max(len_ * port.y / (port.y + sp.max_scroll.y), min_t), len_)
-		t := sp.max_scroll.y > 0 ? so.y / sp.max_scroll.y : 0
+		range := sp.max_scroll.y - sp.min_scroll.y
+		th := min(max(len_ * port.y / (port.y + range), min_t), len_)
+		t := range > 0 ? (so.y - sp.min_scroll.y) / range : 0
 		y := track.min.y + (len_ - th) * t
 		return Rect{{track.min.x, y}, {track.max.x, y + th}}
 	}
 	len_ := track.max.x - track.min.x
-	th := min(max(len_ * port.x / (port.x + sp.max_scroll.x), min_t), len_)
-	t := sp.max_scroll.x > 0 ? so.x / sp.max_scroll.x : 0
+	range := sp.max_scroll.x - sp.min_scroll.x
+	th := min(max(len_ * port.x / (port.x + range), min_t), len_)
+	t := range > 0 ? (so.x - sp.min_scroll.x) / range : 0
 	x := track.min.x + (len_ - th) * t
 	return Rect{{x, track.min.y}, {x + th, track.max.y}}
 }

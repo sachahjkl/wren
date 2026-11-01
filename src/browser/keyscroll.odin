@@ -62,7 +62,8 @@ keyboard_scroll :: proc(app: ^App, t: ^Tab, start: base.Handle, k: Key_Scroll) -
 				port = vertical ? r.padding.max.y - r.padding.min.y : r.padding.max.x - r.padding.min.x
 			}
 			next := cur
-			if vertical { next.y = clamp(cur.y + amount(k, line, port, cur.y, limit.y, app.cfg.key_page_fraction), 0, limit.y) } else { next.x = clamp(cur.x + amount(k, line, port, cur.x, limit.x, app.cfg.key_page_fraction), 0, limit.x) }
+			low := lay.scroll_min(&t.layout, n)
+			if vertical { next.y = clamp(cur.y + amount(k, line, port, cur.y, limit.y, app.cfg.key_page_fraction), low.y, limit.y) } else { next.x = clamp(cur.x + amount(k, line, port, cur.x, limit.x, app.cfg.key_page_fraction), low.x, limit.x) }
 			if abs(next.x - cur.x) >= 0.5 || abs(next.y - cur.y) >= 0.5 {
 				smooth_scroll_to(app, t, n, next, dur)
 				return true
