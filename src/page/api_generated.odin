@@ -1225,6 +1225,13 @@ invoke_VideoDecoderError :: proc(ctx: ^Page, inst: ^wasm.Instance, fn: u32, user
 	return call_guest(ctx, inst, fn, argv[:2])
 }
 
+// What a context has to say: kind 1 it was lost.
+// Calls a guest's WebGLNotify (a function of its table) as a task of the realm; false when it trapped.
+invoke_WebGLNotify :: proc(ctx: ^Page, inst: ^wasm.Instance, fn: u32, user: i32, kind: i32) -> bool {
+	argv := [2]u32{u32(user), u32(kind)}
+	return call_guest(ctx, inst, fn, argv[:2])
+}
+
 // Called once the module is instantiated in a page (after the document is parsed), if the module exports it.
 // Calls the guest's export wb_main as a task of the realm.
 export_wb_main :: proc(ctx: ^Page, inst: ^wasm.Instance) -> wasm.Call_Result {
@@ -33617,6 +33624,276 @@ _t_webcodecs_video_decoder_VideoDecoder_state :: proc "c" (env: rawptr, caller: 
 	return nil
 }
 
+// WebGL_enabled :: proc(c: ^Call, version: i32) -> bool
+@(private = "file")
+_t_webgl_WebGL_enabled :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := a[0].i32
+	_r := WebGL_enabled(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// WebGL_create :: proc(c: ^Call, canvas: Api_HTMLCanvasElement, flags: u32, notify: u32, user: i32, info: []u8) -> u64
+@(private = "file")
+_t_webgl_WebGL_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n4 := wasm.addr(&f, a[5])
+	_s4, _k4 := wasm.span(&f, wasm.addr(&f, a[4]), _n4)
+	if !_k4 { return wasm.trap_bounds(&f, "webgl.WebGL_create", "info") }
+	_p4 := _s4[:_n4]
+	_p0 := Api_HTMLCanvasElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLCanvasElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webgl.WebGL_create: argument canvas is not a live HTMLCanvasElement") }
+		return wasm.trap_new("webgl.WebGL_create: argument canvas is not a live HTMLCanvasElement")
+	}
+	_p1 := u32(a[1].i32)
+	_p2 := u32(a[2].i32)
+	_p3 := a[3].i32
+	_r := WebGL_create(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// WebGL_createOffscreen :: proc(c: ^Call, canvas: Api_OffscreenCanvas, flags: u32, notify: u32, user: i32, info: []u8) -> u64
+@(private = "file")
+_t_webgl_WebGL_createOffscreen :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n4 := wasm.addr(&f, a[5])
+	_s4, _k4 := wasm.span(&f, wasm.addr(&f, a[4]), _n4)
+	if !_k4 { return wasm.trap_bounds(&f, "webgl.WebGL_createOffscreen", "info") }
+	_p4 := _s4[:_n4]
+	_p0 := Api_OffscreenCanvas{handle = u64(a[0].i64)}
+	_p0.data = lookup_OffscreenCanvas(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "webgl.WebGL_createOffscreen: argument canvas is not a live OffscreenCanvas") }
+		return wasm.trap_new("webgl.WebGL_createOffscreen: argument canvas is not a live OffscreenCanvas")
+	}
+	_p1 := u32(a[1].i32)
+	_p2 := u32(a[2].i32)
+	_p3 := a[3].i32
+	_r := WebGL_createOffscreen(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// WebGL_createError :: proc(c: ^Call) -> string
+@(private = "file")
+_t_webgl_WebGL_createError :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[1])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "webgl.WebGL_createError", "result buffer") }
+	_r := WebGL_createError(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// WebGL_submit :: proc(c: ^Call, context: u64, commands: []u8, data: []u8, drew: bool)
+@(private = "file")
+_t_webgl_WebGL_submit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "webgl.WebGL_submit", "commands") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "webgl.WebGL_submit", "data") }
+	_p1 := _s1[:_n1]
+	_p2 := _s2[:_n2]
+	_p0 := u64(a[0].i64)
+	_p3 := a[5].i32 != 0
+	WebGL_submit(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// WebGL_query :: proc(c: ^Call, context: u64, request: []u8, reply: []u8) -> f64
+@(private = "file")
+_t_webgl_WebGL_query :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "webgl.WebGL_query", "request") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "webgl.WebGL_query", "reply") }
+	_p1 := _s1[:_n1]
+	_p2 := _s2[:_n2]
+	_p0 := u64(a[0].i64)
+	_r := WebGL_query(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// WebGL_queryText :: proc(c: ^Call, context: u64, request: []u8, text: []u8, reply: []u8) -> f64
+@(private = "file")
+_t_webgl_WebGL_queryText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "webgl.WebGL_queryText", "request") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "webgl.WebGL_queryText", "text") }
+	_n3 := wasm.addr(&f, a[6])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[5]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "webgl.WebGL_queryText", "reply") }
+	_p1 := _s1[:_n1]
+	_p2 := _s2[:_n2]
+	_p3 := _s3[:_n3]
+	_p0 := u64(a[0].i64)
+	_r := WebGL_queryText(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// WebGL_upload :: proc(c: ^Call, context: u64, command: []u8, source: u64) -> (i32, Api_Error)
+@(private = "file")
+_t_webgl_WebGL_upload :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "webgl.WebGL_upload", "command") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 4)
+	if !_rk { return wasm.trap_bounds(&f, "webgl.WebGL_upload", "result pointer") }
+	_p1 := _s1[:_n1]
+	_p0 := u64(a[0].i64)
+	_p2 := u64(a[3].i64)
+	_r, _err := WebGL_upload(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^i32)(_rs), _r)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// WebGL_width :: proc(c: ^Call, context: u64) -> u32
+@(private = "file")
+_t_webgl_WebGL_width :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_r := WebGL_width(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// WebGL_height :: proc(c: ^Call, context: u64) -> u32
+@(private = "file")
+_t_webgl_WebGL_height :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_r := WebGL_height(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// WebGL_snapshot :: proc(c: ^Call, context: u64)
+@(private = "file")
+_t_webgl_WebGL_snapshot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	WebGL_snapshot(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// WebGL_isLost :: proc(c: ^Call, context: u64) -> bool
+@(private = "file")
+_t_webgl_WebGL_isLost :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_r := WebGL_isLost(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// WebGL_lose :: proc(c: ^Call, context: u64)
+@(private = "file")
+_t_webgl_WebGL_lose :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	WebGL_lose(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// WebGL_restore :: proc(c: ^Call, context: u64) -> bool
+@(private = "file")
+_t_webgl_WebGL_restore :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_r := WebGL_restore(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
 // WebSocket_create :: proc(c: ^Call, url: string, protocols: string) -> (u64, Api_Error)
 @(private = "file")
 _t_websocket_WebSocket_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -35663,6 +35940,20 @@ api_imports := [?]wasm.Import{
 	{module = "webcodecs_video_decoder", name = "VideoDecoder_close", fn = _t_webcodecs_video_decoder_VideoDecoder_close, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
 	{module = "webcodecs_video_decoder", name = "VideoDecoder_decodeQueueSize", fn = _t_webcodecs_video_decoder_VideoDecoder_decodeQueueSize, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "webcodecs_video_decoder", name = "VideoDecoder_state", fn = _t_webcodecs_video_decoder_VideoDecoder_state, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webgl", name = "WebGL_enabled", fn = _t_webgl_WebGL_enabled, realms = 1, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "webgl", name = "WebGL_create", fn = _t_webgl_WebGL_create, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "webgl", name = "WebGL_createOffscreen", fn = _t_webgl_WebGL_createOffscreen, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "webgl", name = "WebGL_createError", fn = _t_webgl_WebGL_createError, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "webgl", name = "WebGL_submit", fn = _t_webgl_WebGL_submit, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I32}, wide_results = []wasm.Val_Kind{}},
+	{module = "webgl", name = "WebGL_query", fn = _t_webgl_WebGL_query, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.F64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.F64}},
+	{module = "webgl", name = "WebGL_queryText", fn = _t_webgl_WebGL_queryText, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.F64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.F64}},
+	{module = "webgl", name = "WebGL_upload", fn = _t_webgl_WebGL_upload, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "webgl", name = "WebGL_width", fn = _t_webgl_WebGL_width, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webgl", name = "WebGL_height", fn = _t_webgl_WebGL_height, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webgl", name = "WebGL_snapshot", fn = _t_webgl_WebGL_snapshot, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "webgl", name = "WebGL_isLost", fn = _t_webgl_WebGL_isLost, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "webgl", name = "WebGL_lose", fn = _t_webgl_WebGL_lose, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "webgl", name = "WebGL_restore", fn = _t_webgl_WebGL_restore, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "websocket", name = "WebSocket_create", fn = _t_websocket_WebSocket_create, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "websocket", name = "WebSocket_readyState", fn = _t_websocket_WebSocket_readyState, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "websocket", name = "WebSocket_url", fn = _t_websocket_WebSocket_url, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},

@@ -30,7 +30,7 @@ CANVAS_DEFAULT_FONT_PX :: 10
 // Textures of canvases are keyed in the shell by their backing's id with this bit, apart from the image cache's ids.
 CANVAS_TEXTURE_BIT :: u64(1) << 62
 
-Canvas_Kind :: enum u8 { Context, Gradient, Pattern, Path, Metrics, Offscreen, Bitmap, Bitmap_Renderer }
+Canvas_Kind :: enum u8 { Context, Gradient, Pattern, Path, Metrics, Offscreen, Bitmap, Bitmap_Renderer, WebGL }
 
 Canvas_Obj :: struct {
 	kind:      Canvas_Kind,
@@ -48,6 +48,7 @@ Canvas_Obj :: struct {
 	stroke_obj: u64,
 	alpha:     bool,                      // Context: getContext's alpha
 	read_freq: bool,
+	gl:        ^WebGL_State,              // WebGL (bindings_webgl.odin)
 }
 
 Canvas_Backing :: struct {
@@ -122,6 +123,9 @@ canvas_vt := Object_VTable{
 		case .Bitmap_Renderer:
 			// an ImageBitmapRenderingContext: it owns its backing (a bare <canvas>/OffscreenCanvas presentation) the
 			// same way a 2D context does, so release it when the canvas is gone.
+			if o.backing != nil && o.backing.ctx_obj == o { o.backing.ctx_obj, o.backing.ctx_handle = nil, 0 }
+		case .WebGL:
+			webgl_destroy(o)
 			if o.backing != nil && o.backing.ctx_obj == o { o.backing.ctx_obj, o.backing.ctx_handle = nil, 0 }
 		}
 		free(o)
@@ -359,7 +363,10 @@ canvas_backing_resize :: proc(b: ^Canvas_Backing, w, h: int) {
 	b.width, b.height = w, h
 	canvas_bitmap_free(b.page, &b.bmp)
 	b.warned = false
-	if b.ctx_obj != nil {
+	if b.ctx_obj != nil && b.ctx_obj.kind == .WebGL {
+		canvas_backing_alloc(b)
+		webgl_resized(b.ctx_obj, w, h)
+	} else if b.ctx_obj != nil {
 		k := &b.ctx_obj.ctx
 		had := k.gpu != nil
 		canvas_backing_alloc(b)
@@ -414,7 +421,7 @@ canvas_new_object :: proc(p: ^Page, owner: u32, kind: Canvas_Kind) -> (^Canvas_O
 // The 2D context object of a backing, made on first use.
 @(private)
 canvas_make_context :: proc(c: ^Call, b: ^Canvas_Backing, alpha, read_freq: bool) -> u64 {
-	if b.ctx_handle != 0 { return b.ctx_handle }
+	if b.ctx_handle != 0 { return b.ctx_obj != nil && b.ctx_obj.kind == .Context ? b.ctx_handle : 0 }
 	p := c.page
 	b.opaque = !alpha
 	b.read_freq = read_freq
@@ -456,7 +463,11 @@ canvas_view :: proc(p: ^Page, node: base.Handle) -> Canvas_View {
 // Once per frame: backings of elements the document freed go (their textures with them).
 canvas_frame :: proc(p: ^Page) {
 	cp, has := canvas_pages[p]
-	if !has || len(cp.backings) == 0 || p.doc == nil { return }
+	if !has { return }
+	for b in cp.all {
+		if b.ctx_obj != nil && b.ctx_obj.kind == .WebGL { webgl_frame(p, b.ctx_obj) }
+	}
+	if len(cp.backings) == 0 || p.doc == nil { return }
 	gone: [dynamic]^Canvas_Backing
 	gone.allocator = context.temp_allocator
 	for node, b in cp.backings { if dom.get(p.doc, node) == nil { append(&gone, b) } }
@@ -472,6 +483,7 @@ canvas_generation :: proc(p: ^Page) -> u64 {
 	for b in cp.all {
 		g += b.bmp.version
 		if b.ctx_obj != nil && b.ctx_obj.ctx.gpu != nil { g += b.ctx_obj.ctx.gpu.version }
+		if b.ctx_obj != nil && b.ctx_obj.gl != nil { g += b.ctx_obj.gl.version }
 	}
 	return g
 }

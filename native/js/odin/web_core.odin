@@ -28,7 +28,7 @@ wj_web_preinit :: proc "c" (ctx: ^wj.Context) -> i32 {
 wj_web_start :: proc "c" (ctx: ^wj.Context, kind: i32) -> i32 {
 	if kind == 0 { return 0 }   // ECMAScript only (test262, the engine benchmark): no web interfaces to set up
 	parts := [?]Part_Start{
-		web_crypto_start, web_credentials_start, web_clipboard_start, web_compat_start, web_idb_start, web_wasm_start, web_fontface_start, web_audio_start,
+		web_crypto_start, web_credentials_start, web_clipboard_start, web_compat_start, web_idb_start, web_wasm_start, web_fontface_start, web_audio_start, web_webgl_start,
 	}
 	for p in parts { if p(ctx, kind) < 0 { return -1 } }
 	// (test262's image keeps its own: it measures ECMAScript, where the global is always there and its agents are not realms)

@@ -794,6 +794,10 @@ wr_VideoDecoder :: distinct u64
 wr_VideoDecoderOutput :: #type proc "contextless" (user: i32, frame: u64)
 wr_VideoDecoderError :: #type proc "contextless" (user: i32, code: i32)
 
+// module webgl: types
+// What a context has to say: kind 1 it was lost.
+wr_WebGLNotify :: #type proc "contextless" (user: i32, kind: i32)
+
 // module websocket: types
 wr_WebSocket :: distinct u64
 // WebSocket.readyState
@@ -3970,6 +3974,38 @@ foreign _wr_wj_webcodecs_video_decoder {
 	@(link_name = "VideoDecoder_decodeQueueSize") wr_VideoDecoder_decodeQueueSize :: proc(decoder: u64) -> u32 ---
 	// 0 unconfigured, 1 configured, 2 closed.
 	@(link_name = "VideoDecoder_state") wr_VideoDecoder_state :: proc(decoder: u64) -> i32 ---
+}
+
+// module webgl
+foreign import _wr_wj_webgl "webgl"
+@(default_calling_convention = "contextless")
+foreign _wr_wj_webgl {
+	// The preference webgl.enabled, and webgl.webgl2 for `version` 2.
+	@(link_name = "WebGL_enabled") wr_WebGL_enabled :: proc(version: i32) -> i32 ---
+	// A context on a canvas (an element or an OffscreenCanvas). flags: 1 WebGL 2, 2 alpha, 4 depth, 8 stencil, 16 antialias,
+	// 32 premultipliedAlpha, 64 preserveDrawingBuffer, 128 failIfMajorPerformanceCaveat. `info`: 8 i32, for the script. 0: refused,
+	// WebGL_createError says why (nothing when the canvas already has a context of another kind).
+	@(link_name = "WebGL_create") wr_WebGL_create :: proc(canvas: u64, flags: u32, notify: i32, user: i32, info: [^]u8, info_cap: u32) -> u64 ---
+	@(link_name = "WebGL_createOffscreen") wr_WebGL_createOffscreen :: proc(canvas: u64, flags: u32, notify: i32, user: i32, info: [^]u8, info_cap: u32) -> u64 ---
+	@(link_name = "WebGL_createError") wr_WebGL_createError :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	// Commands; `data` is the bytes of the last one. `drew`: the canvas changed.
+	@(link_name = "WebGL_submit") wr_WebGL_submit :: proc(context_: u64, commands: [^]u8, commands_len: u32, data: [^]u8, data_len: u32, drew: i32) ---
+	// A question: waits for the answer (its bytes in `reply`). Its length, or the length it needs when it does not fit; -1: the
+	// context did not answer in time or is gone.
+	@(link_name = "WebGL_query") wr_WebGL_query :: proc(context_: u64, request: [^]u8, request_len: u32, reply: [^]u8, reply_cap: u32) -> f64 ---
+	// As WebGL_query, with bytes after the request (a name).
+	@(link_name = "WebGL_queryText") wr_WebGL_queryText :: proc(context_: u64, request: [^]u8, request_len: u32, text: [^]u8, text_len: u32, reply: [^]u8, reply_cap: u32) -> f64 ---
+	// texImage2D of an element or an ImageBitmap: the command with the source's pixels and size. Raises Security for what the
+	// page may not read. 1: nothing to read yet (an image still loading), the page gets INVALID_VALUE.
+	@(link_name = "WebGL_upload") wr_WebGL_upload :: proc(context_: u64, command: [^]u8, command_len: u32, source: u64, _ret: ^i32) -> i32 ---
+	// The drawing buffer's size.
+	@(link_name = "WebGL_width") wr_WebGL_width :: proc(context_: u64) -> u32 ---
+	@(link_name = "WebGL_height") wr_WebGL_height :: proc(context_: u64) -> u32 ---
+	// What was drawn so far into the canvas's bitmap, now (toDataURL, drawImage).
+	@(link_name = "WebGL_snapshot") wr_WebGL_snapshot :: proc(context_: u64) ---
+	@(link_name = "WebGL_isLost") wr_WebGL_isLost :: proc(context_: u64) -> i32 ---
+	@(link_name = "WebGL_lose") wr_WebGL_lose :: proc(context_: u64) ---
+	@(link_name = "WebGL_restore") wr_WebGL_restore :: proc(context_: u64) -> i32 ---
 }
 
 // module websocket

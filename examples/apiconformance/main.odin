@@ -1689,6 +1689,25 @@ foreign _m_webcodecs_video_decoder {
 	@(link_name = "VideoDecoder_state") c_VideoDecoder_state :: proc(a0: i64) -> i32 ---
 }
 
+foreign import _m_webgl "webgl"
+@(default_calling_convention = "contextless")
+foreign _m_webgl {
+	@(link_name = "WebGL_enabled") c_WebGL_enabled :: proc(a0: i32) -> i32 ---
+	@(link_name = "WebGL_create") c_WebGL_create :: proc(a0: i64, a1: i32, a2: i32, a3: i32, a4: i32, a5: i32) -> i64 ---
+	@(link_name = "WebGL_createOffscreen") c_WebGL_createOffscreen :: proc(a0: i64, a1: i32, a2: i32, a3: i32, a4: i32, a5: i32) -> i64 ---
+	@(link_name = "WebGL_createError") c_WebGL_createError :: proc(a0: i32, a1: i32) -> i32 ---
+	@(link_name = "WebGL_submit") c_WebGL_submit :: proc(a0: i64, a1: i32, a2: i32, a3: i32, a4: i32, a5: i32) ---
+	@(link_name = "WebGL_query") c_WebGL_query :: proc(a0: i64, a1: i32, a2: i32, a3: i32, a4: i32) -> f64 ---
+	@(link_name = "WebGL_queryText") c_WebGL_queryText :: proc(a0: i64, a1: i32, a2: i32, a3: i32, a4: i32, a5: i32, a6: i32) -> f64 ---
+	@(link_name = "WebGL_upload") c_WebGL_upload :: proc(a0: i64, a1: i32, a2: i32, a3: i64, a4: i32) -> i32 ---
+	@(link_name = "WebGL_width") c_WebGL_width :: proc(a0: i64) -> i32 ---
+	@(link_name = "WebGL_height") c_WebGL_height :: proc(a0: i64) -> i32 ---
+	@(link_name = "WebGL_snapshot") c_WebGL_snapshot :: proc(a0: i64) ---
+	@(link_name = "WebGL_isLost") c_WebGL_isLost :: proc(a0: i64) -> i32 ---
+	@(link_name = "WebGL_lose") c_WebGL_lose :: proc(a0: i64) ---
+	@(link_name = "WebGL_restore") c_WebGL_restore :: proc(a0: i64) -> i32 ---
+}
+
 foreign import _m_websocket "websocket"
 @(default_calling_convention = "contextless")
 foreign _m_websocket {
@@ -9382,99 +9401,140 @@ foreign _m_workers {
 	return i64(c_VideoDecoder_state(0x7ABC_0000_0000_0001))
 }
 @(export) case_2186 :: proc "contextless" () -> i64 {
-	return i64(c_WebSocket_create(i32(-16), 64, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0])))
+	return i64(c_WebGL_create(0, 0, 0, 0, i32(-16), 64))
 }
 @(export) case_2187 :: proc "contextless" () -> i64 {
-	return i64(c_WebSocket_create(p(&BAD), 4, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0])))
+	return i64(c_WebGL_create(0x7ABC_0000_0000_0001, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
 @(export) case_2188 :: proc "contextless" () -> i64 {
-	return i64(c_WebSocket_create(p(&GOOD), 1, p(&BAD), 4, p(cast(^[4]u8)&SCRATCH[0])))
+	return i64(c_WebGL_createOffscreen(0, 0, 0, 0, i32(-16), 64))
 }
 @(export) case_2189 :: proc "contextless" () -> i64 {
-	return i64(c_WebSocket_readyState(0x7ABC_0000_0000_0001))
+	return i64(c_WebGL_createOffscreen(0x7ABC_0000_0000_0001, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
 @(export) case_2190 :: proc "contextless" () -> i64 {
-	return i64(c_WebSocket_url(0, i32(-16), 64))
+	return i64(c_WebGL_createError(i32(-16), 64))
 }
 @(export) case_2191 :: proc "contextless" () -> i64 {
-	return i64(c_WebSocket_url(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
+	buf := i32(uintptr(&OUT[0]))
+	n := i64(c_WebGL_createError(buf, 0))
+	if n < 0 { return 1 }   // an error: nothing to measure
+	if n > i64(len(OUT)) - 16 { return 2 }
+	for &b in OUT { b = 0xAA }
+	half := i32(n / 2)
+	if i64(c_WebGL_createError(buf, half)) != n { return -1 }   // the full length, whatever the capacity
+	for i in int(half) ..< int(half) + 16 { if OUT[i] != 0xAA { return -2 } }   // nothing past the capacity
+	if i64(c_WebGL_createError(buf, i32(n))) != n { return -3 }
+	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
+	return 0
 }
 @(export) case_2192 :: proc "contextless" () -> i64 {
-	return i64(c_WebSocket_protocol(0, i32(-16), 64))
+	c_WebGL_submit(0, i32(-16), 64, p(&GOOD), 1, 0)
+	return 0
 }
 @(export) case_2193 :: proc "contextless" () -> i64 {
-	return i64(c_WebSocket_protocol(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
+	return i64(c_WebGL_query(0, i32(-16), 64, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
 @(export) case_2194 :: proc "contextless" () -> i64 {
-	return i64(c_WebSocket_extensions(0, i32(-16), 64))
+	return i64(c_WebGL_queryText(0, i32(-16), 64, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
 @(export) case_2195 :: proc "contextless" () -> i64 {
-	return i64(c_WebSocket_extensions(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
+	return i64(c_WebGL_upload(0, i32(-16), 64, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
 @(export) case_2196 :: proc "contextless" () -> i64 {
-	return i64(c_WebSocket_bufferedAmount(0x7ABC_0000_0000_0001))
+	return i64(c_WebSocket_create(i32(-16), 64, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0])))
 }
 @(export) case_2197 :: proc "contextless" () -> i64 {
-	return i64(c_WebSocket_binaryType(0x7ABC_0000_0000_0001))
+	return i64(c_WebSocket_create(p(&BAD), 4, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0])))
 }
 @(export) case_2198 :: proc "contextless" () -> i64 {
-	return i64(c_WebSocket_setBinaryType(0x7ABC_0000_0000_0001, 0))
+	return i64(c_WebSocket_create(p(&GOOD), 1, p(&BAD), 4, p(cast(^[4]u8)&SCRATCH[0])))
 }
 @(export) case_2199 :: proc "contextless" () -> i64 {
-	return i64(c_WebSocket_send(0, i32(-16), 64))
+	return i64(c_WebSocket_readyState(0x7ABC_0000_0000_0001))
 }
 @(export) case_2200 :: proc "contextless" () -> i64 {
-	return i64(c_WebSocket_send(0x7ABC_0000_0000_0001, p(&GOOD), 1))
+	return i64(c_WebSocket_url(0, i32(-16), 64))
 }
 @(export) case_2201 :: proc "contextless" () -> i64 {
-	return i64(c_WebSocket_sendBuffer(0x7ABC_0000_0000_0001, 0))
+	return i64(c_WebSocket_url(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
 @(export) case_2202 :: proc "contextless" () -> i64 {
-	return i64(c_WebSocket_sendBuffer(0, 0x7ABC_0000_0000_0001))
+	return i64(c_WebSocket_protocol(0, i32(-16), 64))
 }
 @(export) case_2203 :: proc "contextless" () -> i64 {
-	return i64(c_WebSocket_close(0, 0, i32(-16), 64))
+	return i64(c_WebSocket_protocol(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
 @(export) case_2204 :: proc "contextless" () -> i64 {
-	return i64(c_WebSocket_close(0x7ABC_0000_0000_0001, 0, p(&GOOD), 1))
+	return i64(c_WebSocket_extensions(0, i32(-16), 64))
 }
 @(export) case_2205 :: proc "contextless" () -> i64 {
-	return i64(c_WebSocket_close(0, 0, p(&BAD), 4))
+	return i64(c_WebSocket_extensions(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
 @(export) case_2206 :: proc "contextless" () -> i64 {
-	return i64(c_CloseEvent_wasClean(0x7ABC_0000_0000_0001))
+	return i64(c_WebSocket_bufferedAmount(0x7ABC_0000_0000_0001))
 }
 @(export) case_2207 :: proc "contextless" () -> i64 {
-	return i64(c_Worker_create(i32(-16), 64, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0])))
+	return i64(c_WebSocket_binaryType(0x7ABC_0000_0000_0001))
 }
 @(export) case_2208 :: proc "contextless" () -> i64 {
-	return i64(c_Worker_create(p(&BAD), 4, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0])))
+	return i64(c_WebSocket_setBinaryType(0x7ABC_0000_0000_0001, 0))
 }
 @(export) case_2209 :: proc "contextless" () -> i64 {
-	return i64(c_Worker_create(p(&GOOD), 1, p(&BAD), 4, p(cast(^[4]u8)&SCRATCH[0])))
+	return i64(c_WebSocket_send(0, i32(-16), 64))
 }
 @(export) case_2210 :: proc "contextless" () -> i64 {
-	return i64(c_Worker_postMessage(0, i32(-16), 64, p(cast(^[4]u8)&SCRATCH[0]), 0))
+	return i64(c_WebSocket_send(0x7ABC_0000_0000_0001, p(&GOOD), 1))
 }
 @(export) case_2211 :: proc "contextless" () -> i64 {
-	return i64(c_Worker_postMessage(0x7ABC_0000_0000_0001, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0]), 0))
+	return i64(c_WebSocket_sendBuffer(0x7ABC_0000_0000_0001, 0))
 }
 @(export) case_2212 :: proc "contextless" () -> i64 {
-	return i64(c_Worker_postMessage(0, p(&BAD), 4, p(cast(^[4]u8)&SCRATCH[0]), 0))
+	return i64(c_WebSocket_sendBuffer(0, 0x7ABC_0000_0000_0001))
 }
 @(export) case_2213 :: proc "contextless" () -> i64 {
-	return i64(c_Worker_terminate(0x7ABC_0000_0000_0001))
+	return i64(c_WebSocket_close(0, 0, i32(-16), 64))
 }
 @(export) case_2214 :: proc "contextless" () -> i64 {
-	return i64(c_DedicatedWorkerGlobalScope_postMessage(i32(-16), 64, p(cast(^[4]u8)&SCRATCH[0]), 0))
+	return i64(c_WebSocket_close(0x7ABC_0000_0000_0001, 0, p(&GOOD), 1))
 }
 @(export) case_2215 :: proc "contextless" () -> i64 {
-	return i64(c_DedicatedWorkerGlobalScope_postMessage(p(&BAD), 4, p(cast(^[4]u8)&SCRATCH[0]), 0))
+	return i64(c_WebSocket_close(0, 0, p(&BAD), 4))
 }
 @(export) case_2216 :: proc "contextless" () -> i64 {
-	return i64(c_DedicatedWorkerGlobalScope_name(i32(-16), 64))
+	return i64(c_CloseEvent_wasClean(0x7ABC_0000_0000_0001))
 }
 @(export) case_2217 :: proc "contextless" () -> i64 {
+	return i64(c_Worker_create(i32(-16), 64, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0])))
+}
+@(export) case_2218 :: proc "contextless" () -> i64 {
+	return i64(c_Worker_create(p(&BAD), 4, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0])))
+}
+@(export) case_2219 :: proc "contextless" () -> i64 {
+	return i64(c_Worker_create(p(&GOOD), 1, p(&BAD), 4, p(cast(^[4]u8)&SCRATCH[0])))
+}
+@(export) case_2220 :: proc "contextless" () -> i64 {
+	return i64(c_Worker_postMessage(0, i32(-16), 64, p(cast(^[4]u8)&SCRATCH[0]), 0))
+}
+@(export) case_2221 :: proc "contextless" () -> i64 {
+	return i64(c_Worker_postMessage(0x7ABC_0000_0000_0001, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0]), 0))
+}
+@(export) case_2222 :: proc "contextless" () -> i64 {
+	return i64(c_Worker_postMessage(0, p(&BAD), 4, p(cast(^[4]u8)&SCRATCH[0]), 0))
+}
+@(export) case_2223 :: proc "contextless" () -> i64 {
+	return i64(c_Worker_terminate(0x7ABC_0000_0000_0001))
+}
+@(export) case_2224 :: proc "contextless" () -> i64 {
+	return i64(c_DedicatedWorkerGlobalScope_postMessage(i32(-16), 64, p(cast(^[4]u8)&SCRATCH[0]), 0))
+}
+@(export) case_2225 :: proc "contextless" () -> i64 {
+	return i64(c_DedicatedWorkerGlobalScope_postMessage(p(&BAD), 4, p(cast(^[4]u8)&SCRATCH[0]), 0))
+}
+@(export) case_2226 :: proc "contextless" () -> i64 {
+	return i64(c_DedicatedWorkerGlobalScope_name(i32(-16), 64))
+}
+@(export) case_2227 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_DedicatedWorkerGlobalScope_name(buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -9487,10 +9547,10 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_2218 :: proc "contextless" () -> i64 {
+@(export) case_2228 :: proc "contextless" () -> i64 {
 	return i64(c_SharedWorkerGlobalScope_name(i32(-16), 64))
 }
-@(export) case_2219 :: proc "contextless" () -> i64 {
+@(export) case_2229 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_SharedWorkerGlobalScope_name(buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -9503,10 +9563,10 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_2220 :: proc "contextless" () -> i64 {
+@(export) case_2230 :: proc "contextless" () -> i64 {
 	return i64(c_WorkerGlobalScope_location(i32(-16), 64))
 }
-@(export) case_2221 :: proc "contextless" () -> i64 {
+@(export) case_2231 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_WorkerGlobalScope_location(buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -9519,8 +9579,8 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_2222 :: proc "contextless" () -> i64 {
+@(export) case_2232 :: proc "contextless" () -> i64 {
 	return i64(c_MessageEvent_transfer(0x7ABC_0000_0000_0001, 0))
 }
 
-@(export) case_count :: proc "contextless" () -> i32 { return 2223 }
+@(export) case_count :: proc "contextless" () -> i32 { return 2233 }

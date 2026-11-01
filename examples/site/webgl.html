@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>WebGL</title>
+<style>
+  body { font: 15px/1.5 system-ui, sans-serif; margin: 24px; background: #15171c; color: #dde; }
+  canvas { background: #000; display: inline-block; margin: 0 16px 16px 0; border-radius: 6px; }
+  code { color: #9cf; }
+  #log { white-space: pre-wrap; color: #9a9; }
+</style>
+</head>
+<body>
+<h1>WebGL</h1>
+<p>A spinning cube with a depth buffer and an element array, and a textured quad whose texture is drawn by a 2D canvas.</p>
+<canvas id="cube" width="400" height="400"></canvas>
+<canvas id="quad" width="400" height="400"></canvas>
+<p id="log"></p>
+<script>
+"use strict";
+const log = document.getElementById("log");
+const say = text => { log.textContent += text + "\n"; };
+
+function program(gl, vs, fs) {
+  const make = (type, source) => {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, source);
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) say(gl.getShaderInfoLog(s));
+    return s;
+  };
+  const p = gl.createProgram();
+  gl.attachShader(p, make(gl.VERTEX_SHADER, vs));
+  gl.attachShader(p, make(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) say(gl.getProgramInfoLog(p));
+  return p;
+}
+
+// column-major matrices
+const perspective = (fov, aspect, near, far) => {
+  const f = 1 / Math.tan(fov / 2), nf = 1 / (near - far);
+  return [f / aspect, 0, 0, 0, 0, f, 0, 0, 0, 0, (far + near) * nf, -1, 0, 0, 2 * far * near * nf, 0];
+};
+const multiply = (a, b) => {
+  const r = new Array(16).fill(0);
+  for (let c = 0; c < 4; c++) for (let row = 0; row < 4; row++) for (let k = 0; k < 4; k++) r[c * 4 + row] += a[k * 4 + row] * b[c * 4 + k];
+  return r;
+};
+const rotation = (x, y) => {
+  const [cx, sx, cy, sy] = [Math.cos(x), Math.sin(x), Math.cos(y), Math.sin(y)];
+  return [cy, sx * sy, -cx * sy, 0, 0, cx, sx, 0, sy, -sx * cy, cx * cy, 0, 0, 0, -4, 1];
+};
+
+function cube() {
+  const gl = document.getElementById("cube").getContext("webgl");
+  if (!gl) { say("no WebGL on this machine"); return null; }
+  say(gl.getParameter(gl.VERSION));
+  const p = program(gl, `
+    attribute vec3 position; attribute vec3 color; uniform mat4 mvp; varying vec3 v_color;
+    void main() { v_color = color; gl_Position = mvp * vec4(position, 1.0); }`, `
+    precision mediump float; varying vec3 v_color;
+    void main() { gl_FragColor = vec4(v_color, 1.0); }`);
+  const corner = [[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]];
+  const faces = [[0,3,2,1],[4,5,6,7],[0,1,5,4],[2,3,7,6],[1,2,6,5],[3,0,4,7]];
+  const colors = [[1,.3,.3],[.3,1,.3],[.3,.5,1],[1,1,.3],[1,.3,1],[.3,1,1]];
+  const vertices = [], indices = [];
+  faces.forEach((f, i) => {
+    const base = vertices.length / 6;
+    for (const c of f) vertices.push(...corner[c], ...colors[i]);
+    indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+  });
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+  const position = gl.getAttribLocation(p, "position"), color = gl.getAttribLocation(p, "color");
+  gl.enableVertexAttribArray(position);
+  gl.vertexAttribPointer(position, 3, gl.FLOAT, false, 24, 0);
+  gl.enableVertexAttribArray(color);
+  gl.vertexAttribPointer(color, 3, gl.FLOAT, false, 24, 12);
+  gl.useProgram(p);
+  gl.enable(gl.DEPTH_TEST);
+  gl.enable(gl.CULL_FACE);
+  gl.clearColor(0.08, 0.09, 0.12, 1);
+  const mvp = gl.getUniformLocation(p, "mvp");
+  const proj = perspective(Math.PI / 4, 1, 0.1, 100);
+  return t => {
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.uniformMatrix4fv(mvp, false, multiply(proj, rotation(t * 0.0007, t * 0.001)));
+    gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
+  };
+}
+
+function quad() {
+  const gl = document.getElementById("quad").getContext("webgl");
+  if (!gl) return null;
+  const p = program(gl, `
+    attribute vec2 position; uniform float angle; varying vec2 v_uv;
+    void main() {
+      v_uv = position * 0.5 + 0.5;
+      float c = cos(angle), s = sin(angle);
+      gl_Position = vec4(mat2(c, s, -s, c) * position * 0.7, 0.0, 1.0);
+    }`, `
+    precision mediump float; uniform sampler2D map; varying vec2 v_uv;
+    void main() { gl_FragColor = texture2D(map, vec2(v_uv.x, 1.0 - v_uv.y)); }`);
+  const paint = document.createElement("canvas");
+  paint.width = paint.height = 256;
+  const c = paint.getContext("2d");
+  const g = c.createLinearGradient(0, 0, 256, 256);
+  g.addColorStop(0, "#f73");
+  g.addColorStop(1, "#37f");
+  c.fillStyle = g;
+  c.fillRect(0, 0, 256, 256);
+  c.fillStyle = "#fff";
+  c.font = "bold 72px sans-serif";
+  c.textAlign = "center";
+  c.fillText("Wren", 128, 148);
+  gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, paint);
+  gl.generateMipmap(gl.TEXTURE_2D);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(gl.getAttribLocation(p, "position"));
+  gl.vertexAttribPointer(gl.getAttribLocation(p, "position"), 2, gl.FLOAT, false, 0, 0);
+  gl.useProgram(p);
+  gl.clearColor(0.12, 0.09, 0.08, 1);
+  const angle = gl.getUniformLocation(p, "angle");
+  return t => {
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.uniform1f(angle, t * 0.0005);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  };
+}
+
+const parts = [cube(), quad()].filter(Boolean);
+let frames = 0, since = performance.now();
+const frame = t => {
+  for (const draw of parts) draw(t);
+  frames++;
+  const now = performance.now();
+  if (now - since >= 1000) {
+    document.title = "WebGL " + Math.round(frames * 1000 / (now - since)) + " fps";
+    frames = 0;
+    since = now;
+  }
+  requestAnimationFrame(frame);
+};
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
