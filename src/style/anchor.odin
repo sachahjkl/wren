@@ -467,10 +467,15 @@ area_span :: proc(k: Area_Keyword, rtl, self_rtl: bool) -> (lo, hi: i8) {
 	case .Self_X_End, .Self_Inline_End, .Self_End: return flip(2, 2, self_rtl)
 	case .Span_Self_X_Start, .Span_Self_Inline_Start, .Span_Self_Start: return flip(0, 1, self_rtl)
 	case .Span_Self_X_End, .Span_Self_Inline_End, .Span_Self_End: return flip(1, 2, self_rtl)
-	case .Y_Start, .Block_Start, .Self_Y_Start, .Self_Block_Start: return 0, 0
-	case .Y_End, .Block_End, .Self_Y_End, .Self_Block_End: return 2, 2
-	case .Span_Y_Start, .Span_Block_Start, .Span_Self_Y_Start, .Span_Self_Block_Start: return 0, 1
-	case .Span_Y_End, .Span_Block_End, .Span_Self_Y_End, .Span_Self_Block_End: return 1, 2
+	// (`rtl` here is whether this axis starts at its high end: area_tracks_flow)
+	case .Y_Start, .Block_Start: return flip(0, 0, rtl)
+	case .Y_End, .Block_End: return flip(2, 2, rtl)
+	case .Span_Y_Start, .Span_Block_Start: return flip(0, 1, rtl)
+	case .Span_Y_End, .Span_Block_End: return flip(1, 2, rtl)
+	case .Self_Y_Start, .Self_Block_Start: return flip(0, 0, self_rtl)
+	case .Self_Y_End, .Self_Block_End: return flip(2, 2, self_rtl)
+	case .Span_Self_Y_Start, .Span_Self_Block_Start: return flip(0, 1, self_rtl)
+	case .Span_Self_Y_End, .Span_Self_Block_End: return flip(1, 2, self_rtl)
 	}
 	return 0, 2
 }

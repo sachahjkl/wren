@@ -328,7 +328,7 @@ Element_scrollWidth :: proc(c: ^Call, element: Api_Element) -> i32 {
 	g, l, vp := element_geometry(p, h)
 	if !g.ok || is_inline_box(g) { return 0 }
 	w := f64(g.padding.max.x - g.padding.min.x)
-	if mx, ok := lay.scroll_max(l, h); ok { w += f64(mx.x) / vp.scale }
+	if mx, ok := lay.scroll_max(l, h); ok { w += f64(mx.x - lay.scroll_min(l, h).x) / vp.scale }
 	return i32(math.round(w))
 }
 
@@ -343,7 +343,7 @@ Element_scrollHeight :: proc(c: ^Call, element: Api_Element) -> i32 {
 	g, l, vp := element_geometry(p, h)
 	if !g.ok || is_inline_box(g) { return 0 }
 	hgt := f64(g.padding.max.y - g.padding.min.y)
-	if mx, ok := lay.scroll_max(l, h); ok { hgt += f64(mx.y) / vp.scale }
+	if mx, ok := lay.scroll_max(l, h); ok { hgt += f64(mx.y - lay.scroll_min(l, h).y) / vp.scale }
 	return i32(math.round(hgt))
 }
 

@@ -369,6 +369,7 @@ Space :: struct {
 	port:     Rect,                 // Scroll: the container's padding box; Sticky: the box's normal border box
 	limit:    Rect,                 // Sticky: the containing block's content box
 	max_scroll: Vec2,               // Scroll
+	min_scroll: Vec2,               // Scroll: negative where offsets run from the high end of an axis (scroll_limits)
 	anchor:   i32,                  // Anchored: the box's default anchor, whose scrolling it follows (anchor.odin)...
 	follow:   [2]bool,              // ... in these axes
 	inset:    [4]f32,               // Sticky: top right bottom left, NaN = auto

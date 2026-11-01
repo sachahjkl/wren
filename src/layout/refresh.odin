@@ -181,14 +181,13 @@ refresh_overflow :: proc(l: ^Layout, vp: Vec2) -> bool {
 	for &b in l.boxes {
 		if .Scroll not_in b.flags || .Propagated in b.flags || b.kind == .Inline || .Dead in b.flags { continue }
 		port := padding_rect(&b)
-		ms := Vec2{max(b.overflow.max.x - port.max.x, 0), max(b.overflow.max.y - port.max.y, 0)}
-		if b.cs.overflow_x != .Scroll && b.cs.overflow_x != .Auto { ms.x = 0 }
-		if b.cs.overflow_y != .Scroll && b.cs.overflow_y != .Auto { ms.y = 0 }
-		scrolls := ms.x > 0.5 || ms.y > 0.5
+		mn, ms := scroll_limits(&b, port)
+		scrolls := ms.x > 0.5 || ms.y > 0.5 || mn.x < -0.5 || mn.y < -0.5
 		if scrolls != (b.scroll_space != NONE) { return false }
 		if !scrolls { continue }
 		l.spaces[b.scroll_space].max_scroll = ms
-		if off, ok := l.scroll[b.node]; ok { l.scroll[b.node] = {clamp(off.x, 0, ms.x), clamp(off.y, 0, ms.y)} }
+		l.spaces[b.scroll_space].min_scroll = mn
+		if off, ok := l.scroll[b.node]; ok { l.scroll[b.node] = {clamp(off.x, mn.x, ms.x), clamp(off.y, mn.y, ms.y)} }
 	}
 	l.height = l.doc_scroll_y ? max(doc.max.y, vp.y) : vp.y
 	note_doc_extent_x(l, doc, vp)

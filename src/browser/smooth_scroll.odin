@@ -221,7 +221,7 @@ scroller_state :: proc(app: ^App, t: ^Tab, node: base.Handle) -> (cur, limit: [2
 // Its smallest offset: 0, but across a document whose scroll origin is at the end of the line (lay.doc_min_x).
 scroller_low :: #force_inline proc(t: ^Tab, node: base.Handle) -> [2]f32 {
 	if node == base.NIL_HANDLE { return {t.layout.doc_min_x, 0} }
-	return {}
+	return lay.scroll_min(&t.layout, node)
 }
 
 @(private = "file")
@@ -503,7 +503,7 @@ scrollbar_at :: proc(app: ^App, t: ^Tab, p: draw.Vec2) -> (hit: Bar_Hit, ok: boo
 		vertical := .Vertical in it.flags
 		ax := vertical ? 1 : 0
 		port := sp.port.max - sp.port.min
-		return Bar_Hit{node = b.node, vertical = vertical, track = track, thumb = lay.scrollbar_thumb(l, &v, it), limit = sp.max_scroll[ax], port = port[ax]}, true
+		return Bar_Hit{node = b.node, vertical = vertical, track = track, thumb = lay.scrollbar_thumb(l, &v, it), lo = sp.min_scroll[ax], limit = sp.max_scroll[ax], port = port[ax]}, true
 	}
 	return
 }
