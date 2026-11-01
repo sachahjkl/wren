@@ -18,6 +18,8 @@ import "wb:host"
 import "wb:net"
 import "wb:tools/testenv"
 
+RECEIVE_TIMEOUT_SERVER_WAIT_MS :: 25_000
+
 loop:     host.Loop
 failures: int
 
@@ -178,11 +180,13 @@ common :: proc(c: ^net.Client) {
 		// (the certificate is also for "localhost", not 127.0.0.1: WinHTTP names that problem first)
 		check(r5.failed && strings.has_prefix(net.error_text(r5.error, r5.flags), "secure connection failed"), fmt.tprintf("a self-signed certificate: %s", net.error_text(r5.error, r5.flags)))
 	}
-	// (a time-out of half a second against a server that waits three: on a loaded CI runner the answer came whole after 3 s, so it is a local check)
-	if os.get_env("CI", context.temp_allocator) == "" {
+	// WinHTTP looks at its receive timeouts on a timer of its own, every 4 s or so (measured: a time-out of half a second fires
+	// between 1.2 and 4 s after the request, whatever the machine's load): a server that waits three seconds often answered
+	// before that. So the server waits far longer than that timer's period.
+	{
 		t: net.Client
 		ok := client_with(&t, proc(s: ^net.Settings, _: rawptr) { s.timeout_receive_ms = 500; s.timeout_send_ms = 500 })
-		r, ms := get(&t, strings.concatenate({origin("http", 0), "/stall"}, context.temp_allocator))
+		r, ms := get(&t, fmt.tprintf("%s/stall?ms=%d", origin("http", 0), RECEIVE_TIMEOUT_SERVER_WAIT_MS))
 		check(ok && r.failed && r.error == 12002, fmt.tprintf("an answer slower than the receive timeout: 12002 (%d, %.0f ms)", r.error, ms))
 		result_destroy(&r)
 		net.client_destroy(&t)

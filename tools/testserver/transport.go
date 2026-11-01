@@ -26,6 +26,7 @@ import (
 	"math/big"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -89,10 +90,14 @@ func registerTransportHandlers(mux *http.ServeMux) {
 		w.Write(testCA.pem)
 	})
 	mux.HandleFunc("/stall", func(w http.ResponseWriter, r *http.Request) {
+		wait := 3 * time.Second
+		if ms, err := strconv.Atoi(r.URL.Query().Get("ms")); err == nil {
+			wait = time.Duration(ms) * time.Millisecond
+		}
 		select {
 		case <-r.Context().Done():
 			return
-		case <-time.After(3 * time.Second):
+		case <-time.After(wait):
 		}
 		io.WriteString(w, "late")
 	})
