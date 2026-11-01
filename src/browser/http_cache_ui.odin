@@ -160,9 +160,9 @@ size_text :: proc(n: i64) -> string {
 @(private = "file")
 duration_text :: proc(s: i64) -> string {
 	switch {
-	case s >= 2 * 86400: return fmt.tprintf("%d days", s / 86400)
-	case s >= 2 * 3600: return fmt.tprintf("%d h", s / 3600)
-	case s >= 120: return fmt.tprintf("%d min", s / 60)
+	case s >= 2 * SECONDS_PER_DAY: return fmt.tprintf("%d days", s / SECONDS_PER_DAY)
+	case s >= 2 * SECONDS_PER_HOUR: return fmt.tprintf("%d h", s / SECONDS_PER_HOUR)
+	case s >= 120: return fmt.tprintf("%d min", s / SECONDS_PER_MINUTE)
 	}
 	return fmt.tprintf("%d s", s)
 }

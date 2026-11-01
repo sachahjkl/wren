@@ -8,12 +8,17 @@ package regexp
 
 import "wb:config"
 
+// What the preferences of the limits may be set to.
+LIMIT_PREF_MIN :: 1000
+MAX_STEPS_PREF_MAX :: 1 << 40
+MAX_STACK_PREF_MAX :: 1 << 32
+
 PREFS := [?]config.Def{
 	{name = "regexp.exec.max_steps", kind = .Int, default = {i = DEFAULT_MAX_STEPS}, bounded = true,
-		min = 1000, max = 1 << 40,
+		min = LIMIT_PREF_MIN, max = MAX_STEPS_PREF_MAX,
 		description = "Largest number of bytecode steps one regexp match may take before it fails with a timeout. Guards against catastrophic backtracking from a hostile pattern or input. The matcher reports the limit was hit rather than hanging."},
 	{name = "regexp.exec.max_stack", kind = .Int, default = {i = DEFAULT_MAX_STACK}, bounded = true,
-		min = 1000, max = 1 << 32,
+		min = LIMIT_PREF_MIN, max = MAX_STACK_PREF_MAX,
 		description = "Largest backtrack stack (saved choice points) one regexp match may hold. The interpreter uses an explicit stack, not native recursion, so this caps memory and depth without risking a C-stack overflow."},
 }
 

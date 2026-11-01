@@ -154,7 +154,7 @@ fmt_bytes :: proc(n: int) -> string {
 @(private = "file")
 fmt_date :: proc(unix_s: i64) -> string {
 	if unix_s == 0 { return i18n.tr("never") }
-	lt := local_time(unix_s * 1000)
+	lt := local_time(unix_s * MS_PER_SECOND)
 	return fmt.tprintf("%04d-%02d-%02d %02d:%02d", lt.year, lt.month, lt.day, lt.hour, lt.minute)
 }
 

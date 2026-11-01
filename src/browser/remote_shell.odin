@@ -313,7 +313,7 @@ op_new :: proc(app: ^App, c: ^Call, kind: Remote_Op_Kind, timeout_ms: int, what:
 	op.what = strings.clone(what)
 	op.window = active_window(app).id
 	ms := timeout_ms > 0 ? timeout_ms : the_remote.cfg.timeout_ms
-	op.deadline = host.now_ns(&app.loop) + i64(ms) * 1_000_000
+	op.deadline = host.now_ns(&app.loop) + i64(ms) * NS_PER_MS
 	append(&the_remote.ops, op)
 	return op
 }
@@ -395,7 +395,7 @@ remote_timer :: proc(_: rawptr) {
 op_poll_ns :: proc(op: ^Remote_Op) -> i64 {
 	ms := the_remote.cfg.poll_ms
 	if op.kind == .Wait && op.wait == .Quiet { ms = max(ms, 20) }
-	return i64(ms) * 1_000_000
+	return i64(ms) * NS_PER_MS
 }
 
 // Does the op need to be looked at on a timer (nothing else tells when its condition becomes true)?
@@ -612,7 +612,7 @@ op_step :: proc(app: ^App, op: ^Remote_Op, now: i64) {
 		case .Idle, .Stable:
 			good := op.wait == .Idle ? tab_idle(app, t) : tab_stable(app, t)
 			if !good { op.quiet_at = 0 } else if op.quiet_at == 0 { op.quiet_at = now }
-			ok = good && now - op.quiet_at >= i64(op.idle_ms > 0 ? op.idle_ms : r.cfg.idle_ms) * 1_000_000
+			ok = good && now - op.quiet_at >= i64(op.idle_ms > 0 ? op.idle_ms : r.cfg.idle_ms) * NS_PER_MS
 		case .Quiet:
 			cpu, _, _ := process_cpu_ms()
 			ok = quiet_look(&op.quiet, remote_busy(app), now, cpu, op.quiet_ms, op.max_cpu)

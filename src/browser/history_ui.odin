@@ -230,7 +230,7 @@ Local_Time :: struct { year, month, day, hour, minute, second, weekday: int }
 // portable and without a system calendar call.
 local_time :: proc(unix_ms: i64) -> Local_Time {
 	off_min := i64(js.timezone_offset(f64(unix_ms)))   // JS getTimezoneOffset: minutes to add to local to get UTC
-	local_ms := unix_ms - off_min * 60_000
+	local_ms := unix_ms - off_min * MS_PER_MINUTE
 	// floor division into whole days and the time of day within the day (local_ms may be negative before 1970)
 	day := local_ms / 86_400_000
 	tod := local_ms % 86_400_000
@@ -239,7 +239,7 @@ local_time :: proc(unix_ms: i64) -> Local_Time {
 	secs := tod / 1000
 	// day of week: 1970-01-01 (day 0) was a Thursday (4); Sunday = 0 as the Windows wDayOfWeek was
 	weekday := int(((day % 7) + 7 + 4) % 7)
-	return {y, m, d, int(secs / 3600), int((secs / 60) % 60), int(secs % 60), weekday}
+	return {y, m, d, int(secs / SECONDS_PER_HOUR), int((secs / SECONDS_PER_MINUTE) % MINUTES_PER_HOUR), int(secs % SECONDS_PER_MINUTE), weekday}
 }
 
 // Civil date (year, month 1-12, day 1-31) from a count of days since 1970-01-01 (Howard Hinnant's algorithm).
@@ -260,7 +260,7 @@ civil_from_days :: proc(z_in: i64) -> (year, month, day: int) {
 // Unix ms of the local midnight that starts the day of `unix_ms`.
 local_midnight :: proc(unix_ms: i64) -> i64 {
 	lt := local_time(unix_ms)
-	return unix_ms - i64(lt.hour * 3600 + lt.minute * 60 + lt.second) * 1000 - unix_ms % 1000
+	return unix_ms - i64(lt.hour * SECONDS_PER_HOUR + lt.minute * SECONDS_PER_MINUTE + lt.second) * MS_PER_SECOND - unix_ms % MS_PER_SECOND
 }
 
 @(private = "file") WEEKDAYS := [7]string{"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"}

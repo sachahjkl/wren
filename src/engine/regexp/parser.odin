@@ -13,6 +13,9 @@ package regexp
 import "core:strings"
 import "core:unicode/utf8"
 
+// The largest count of a quantifier that is told apart from a larger one: {n} past it counts this much.
+QUANTIFIER_COUNT_CAP :: 1 << 30
+
 Node_Kind :: enum u8 {
 	Empty,
 	Char,        // single code point

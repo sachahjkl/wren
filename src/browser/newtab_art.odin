@@ -98,7 +98,7 @@ art_settings_from_prefs :: proc(p: ^config.Prefs) -> Art_Settings {
 		offline_fallback = config.bool_of(p, "browser.newtab.art.offline_fallback"),
 		min_width_px = int(config.int_of(p, "browser.newtab.art.min_width_px")),
 		max_image_bytes = int(config.int_of(p, "browser.newtab.art.max_image_bytes")),
-		idle_ms = config.float_of(p, "browser.newtab.art.idle_minutes") * 60_000,
+		idle_ms = config.float_of(p, "browser.newtab.art.idle_minutes") * MS_PER_MINUTE,
 		backoff_base_ms = config.int_of(p, "browser.newtab.art.backoff_base_ms"),
 		backoff_max_ms = config.int_of(p, "browser.newtab.art.backoff_max_ms"),
 	}
