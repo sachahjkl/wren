@@ -44,6 +44,8 @@ cut:
 3. `apply_shifts` moves the boxes for the height found. The strip is now the "flow": each column is a band of it, and a box with
    nothing that must stay whole in it may lie across bands (a tall empty box, a background).
 
+A container inside the flow of another stays whole in the outer column where it starts when it fits; when it would cross it, the outer one lays its content out again with that container in rows of columns (`Mc_Rows`): all of what the outer column leaves, then the next outer column. Its columns are spaces under the outer column they show in.
+
 A column is a fragment: a band of the flow and the translation to where it shows (`Mc_Frag`). Finishing makes a space per column
 (`Space_Kind.Column`) under a space of the flow (`Space_Kind.Flow`), which the boxes inside point to; `push_item` makes of every display
 item in the flow space one copy per column it lies in, clipped to the band. Hit testing, culling, the compositor and painting then know nothing of
@@ -78,7 +80,8 @@ in `layout_contents`, `flow_children` and `compute_overflow`, one flag in `push_
 
 Columns:
 
-- Nested containers are not fragmented by the outer one: an inner container stays whole in the outer column where it starts, unless it is taller, when it overflows.
+- Nested containers: a balanced outer container grows around a nested one rather than cutting it; in rows, a nested container with a definite height keeps what its content takes, not as other engines balance it; of the nested and `multicol-breaking` reference tests, part pass.
+- `column-height` and `column-wrap` (CSS Multicol 2, about 30 reference tests) are not there.
 - `flex`, `grid` and table cells are cut between their lines and rows, not inside items; a float is not cut, and lines beside a float that moves to the next column move with it.
 - A float that is taller than a column, and monolithic content taller than one, are cut at the band rather than overflowing as some engines do.
 - `box-decoration-break` is not there: a box cut across columns is sliced.
@@ -90,7 +93,8 @@ Writing modes:
 
 - The toolkit's text backend (`ext/gui_toolkit`, a separate repository) has no vertical shaping. It lacks: vertical metrics (`vhea`, `vmtx`, `VORG`: the advance and origin of each glyph), a `TTB` direction for HarfRust; so upright glyphs advance by an em or the face's height and are centered by their horizontal width. Fonts with proportional vertical metrics (`palt`, `vpal`) are not honoured. The rest is reached through rotated runs.
 - `text-orientation: mixed` follows a table of ranges, not the whole of UTR #50's classes (Tr and Tu: upright, with what `vert` gives).
-- `text-combine-upright: digits` is gone from the specification; `all` applies to a text of an element as one unit, and scales horizontally only.
+- `text-combine-upright: digits <n>` is kept as a value and combines nothing (as Blink); `all` applies to a text of an element as one unit, and scales horizontally only.
+- `clip` (the CSS 2 property) does not exist in this engine, in any writing mode: about 16 reference tests.
 - `ruby` has no layout in this engine. `text-emphasis`, `text-underline-position` are not there (underlines are on the left of a vertical line).
 - `caret` in vertical editable text: `<input>` and `<textarea>` stay horizontal controls.
 - Baselines across frames: an orthogonal box has none (it is aligned by its margin edge); `dominant-baseline` is not there.

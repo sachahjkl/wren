@@ -465,7 +465,8 @@ flow_children :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx, collapse
 		if ch == skip { continue }
 		if .Abs in k.flags {
 			k.static_ref = bi
-			k.static_pos = {cx, cy + y + (open ? 0 : strut_value(local))}
+			// (right to left: where the end edge of the box goes, layout_abs)
+			k.static_pos = {is_rtl(b.cs) ? cx + cw : cx, cy + y + (open ? 0 : strut_value(local))}
 			continue
 		}
 		if k.kind == .Inline { continue }
@@ -675,7 +676,8 @@ place_marker :: proc(c: ^Ctx, bi: i32) {
 		mw = measure(c, b.fi, b.marker)
 	}
 	b = &c.l.boxes[bi]
-	gap := c.set.marker_gap * fi.size
+	// (a marker written as a string has no space of its own: list-style-type: "X")
+	gap := b.cs.list_style.style == .String ? 0 : c.set.marker_gap * fi.size
 	base, ok := first_baseline_in(c, bi)
 	if !ok {
 		ht, _ := half_leading(c, fi)

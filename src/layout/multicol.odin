@@ -14,6 +14,9 @@ import "wb:style"
 // shared out, growing by what the first break that hurts lacked. `apply_shifts` then moves the boxes for that height: the
 // strip is now the "flow", in which each column is a band of the column's height, and a box may lie across bands (what does not have to be whole does get cut).
 //
+// A container inside another's flow that would cross a column of the outer one is laid out again in rows: as many columns as it has in
+// what is left of the outer column, then again in the next (Mc_Rows). Its columns hang from the outer column they show in.
+//
 // A column is a fragment (Mc_Frag): a band of the flow, and the translation that takes it where the column shows. Finishing makes one
 // space per fragment (Space_Kind.Column) under a space of the flow (Space_Kind.Flow), which boxes inside point to; every display item
 // in the flow space becomes one copy per fragment it lies in, clipped to the band (push_item). Hit testing and painting then have
@@ -28,6 +31,14 @@ MC_MIN_COLUMN_H :: 1
 MC_BALANCE_MAX_TRIES :: 256
 // What "unbounded" is for a band of the flow in the axes it does not cut (device px): more than any page, within what f32 sums hold.
 FLOW_UNBOUNDED :: f32(1e7)
+// How many rows of columns one container takes in the columns of those around it; how many times a container lays out what is inside
+// again for the rows of containers inside it.
+MC_ROWS_MAX :: 1024
+MC_NEST_TRIES :: 8
+
+// What the columns of the outer container leave a nested one: this much at first, then this much per outer column.
+@(private)
+Mc_Rows :: struct { first, h: f32 }
 
 @(private)
 Mc_Frag :: struct {
@@ -52,6 +63,7 @@ Flow_Frag :: struct {
 	space:  i32,
 	clip:   i32,
 	spanner: bool,
+	show:   Vec2,   // where its start shows
 }
 
 ////////////////////////////////
@@ -115,6 +127,7 @@ Unit :: struct {
 	forced: bool,       // a break comes before it
 	avoid:  bool,       // no break before it, if it can be helped
 	spanner: i32,       // a spanner (NONE: none)
+	nested: i32,        // a nested container, whole (NONE: none)
 	trunc:  f32,        // margins above it: what a break there takes away
 }
 
@@ -144,7 +157,7 @@ is_monolithic :: proc(l: ^Layout, k: ^Box) -> bool {
 
 @(private)
 unit_add :: proc(g: ^Gather, y0, y1: f32, spanner: i32 = NONE) {
-	u := Unit{y0 = min(y0, g.top_ext), y1 = y1, forced = g.force_next, avoid = g.avoid_next, spanner = spanner, trunc = g.trunc_next}
+	u := Unit{y0 = min(y0, g.top_ext), y1 = y1, forced = g.force_next, avoid = g.avoid_next, spanner = spanner, nested = NONE, trunc = g.trunc_next}
 	append(&g.units, u)
 	g.force_next, g.avoid_next = false, false
 	g.top_ext = math.F32_MAX
@@ -221,10 +234,15 @@ gather_child :: proc(g: ^Gather, ch, bi: i32, top: f32) {
 		g.avoid_next = true
 	}
 	if .Spanner in k.fx {
+		g.top_ext = math.F32_MAX   // (the border and padding of its parent stay in the columns above)
 		unit_add(g, ktop - k.margin[0], ktop + k.size.y + k.margin[2], ch)
+	} else if .Multicol in k.fx && ch in g.c.mc_rows {
+		// in rows made for the columns around it: it lies across them as it is
+		g.last_end = max(g.last_end, ktop + k.size.y)
 	} else if is_monolithic(l, k) {
 		g.trunc_next = max(g.trunc_next, ktop - g.last_end)
 		unit_add(g, ktop, ktop + k.size.y)
+		if .Multicol in k.fx { g.units[len(g.units) - 1].nested = ch }
 	} else {
 		g.trunc_next = max(g.trunc_next, ktop - g.last_end)
 		// border and padding do not leave their first line: at the head of a column they go with it
@@ -273,6 +291,7 @@ shift_before :: proc(shifts: []Shift, y: f32) -> f32 {
 Placed :: struct {
 	columns:  int,    // columns the set takes
 	shortage: f32,    // the least more height that would have avoided a break that was not forced (0: none)
+	too_tall: f32,    // the most something that must stay whole is taller than a column by
 	end:      f32,    // where the set ends in the flow
 }
 
@@ -285,6 +304,7 @@ place_units :: proc(units: []Unit, s0, s1, start, h: f32, base_shift: f32, out: 
 	col_end := start + h
 	col := 0
 	shortage: f32 = 0
+	too_tall: f32 = 0
 	prev_end := start
 	note :: proc(out: ^[dynamic]Shift, y, by: f32) { if out != nil { append(out, Shift{y, by}) } }
 	i := 0
@@ -326,6 +346,7 @@ place_units :: proc(units: []Unit, s0, s1, start, h: f32, base_shift: f32, out: 
 				// taller than the column
 				lack := y1 - col_end
 				if shortage == 0 || lack < shortage { shortage = lack }
+				too_tall = max(too_tall, lack)
 			}
 			// (the chain's units are placed one by one: no break comes inside it while it fits)
 			if last > i {
@@ -344,7 +365,71 @@ place_units :: proc(units: []Unit, s0, s1, start, h: f32, base_shift: f32, out: 
 	if prev_end > flow_end { flow_end = prev_end }
 	cols := col + 1
 	if flow_end > start { cols = max(cols, int(math.ceil((flow_end - start - 0.001) / h))) }
-	return Placed{columns = max(cols, 1), shortage = shortage, end = flow_end}
+	return Placed{columns = max(cols, 1), shortage = shortage, too_tall = too_tall, end = flow_end}
+}
+
+// How many parts forced breaks make of a set of columns, and the height of the highest in the strip.
+@(private)
+forced_parts :: proc(units: []Unit, s0, s1: f32) -> (parts: int, highest: f32) {
+	parts = 1
+	start := s0
+	for &u in units {
+		if !u.forced || u.y0 <= start + 0.001 { continue }
+		highest = max(highest, u.y0 - start)
+		start = u.y0
+		parts += 1
+	}
+	return parts, max(highest, s1 - start)
+}
+
+// The height columns take: the balancing of a set of columns (or `room`, all of it, when they fill it).
+@(private)
+mc_column_height :: proc(units: []Unit, s0, s1, flow_start, flow_shift: f32, n: int, room: f32, fill: bool) -> f32 {
+	if fill { return max(room, MC_MIN_COLUMN_H) }
+	h := max(math.ceil((s1 - s0) / f32(n)), MC_MIN_COLUMN_H)
+	// forced breaks that use up the columns: as high as the highest of what lies between them, and the rest overflows
+	parts, highest := forced_parts(units, s0, s1)
+	forced_out := parts >= n
+	if forced_out { h = max(highest, MC_MIN_COLUMN_H) }
+	if room >= 0 && h > room { h = max(room, MC_MIN_COLUMN_H) }
+	for _ in 0 ..< MC_BALANCE_MAX_TRIES {
+		p := place_units(units, s0, s1, flow_start, h, flow_shift, nil)
+		if p.columns <= n && p.too_tall <= 0 { break }
+		if room >= 0 && h >= room { break }
+		if p.columns <= n {
+			// fits, but what must stay whole is cut
+			h += max(p.too_tall, 0.01)
+			if room >= 0 && h > room { h = room }
+			continue
+		}
+		if forced_out && p.shortage <= 0 { break }
+		grow := p.shortage
+		// nothing lacks (a forced break too many, or cut content): what is left over, shared out
+		over := p.end - (flow_start + h * f32(n))
+		if over > 0 { grow = grow > 0 ? min(grow, max(over / f32(n), 1)) : max(over / f32(n), 1) }
+		if grow <= 0 { break }
+		h += max(grow, 0.01)
+		if room >= 0 && h > room { h = room }
+	}
+	return h
+}
+
+// The fragments, and the rules between them, of `cols` columns of height `h` from `flow_start`, showing from `visual_y`.
+@(private)
+mc_add_columns :: proc(c: ^Ctx, rec: ^Mc_Record, cs: ^style.Computed, cols: int, h, flow_start, visual_y, cw, colw, gap, cx: f32) {
+	rtl := is_rtl(cs)
+	for i in 0 ..< cols {
+		x := rtl ? cw - colw - f32(i) * (colw + gap) : f32(i) * (colw + gap)
+		fmin := flow_start + f32(i) * h
+		f := Mc_Frag{flow_min = fmin, flow_max = fmin + h, dx = x, dy = visual_y - fmin}
+		if len(rec.frags) == 0 { f.flow_min = -FLOW_UNBOUNDED }
+		append(&rec.frags, f)
+		if i > 0 && cs.column_rule_width > 0 {
+			rx := rtl ? x + colw + gap * 0.5 : x - gap * 0.5
+			w := cs.column_rule_width * c.scale
+			append(&rec.rules, Rect{{cx + rx - w * 0.5, visual_y}, {cx + rx + w * 0.5, visual_y + h}})
+		}
+	}
 }
 
 ////////////////////////////////
@@ -484,6 +569,9 @@ layout_multicol :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx) -> f32
 	flow_shift: f32 = 0    // what the strip has moved so far in the flow
 	total_used: int = 0
 	u0 := 0
+	// inside another container, in what its columns leave
+	rows, has_rows := c.mc_rows[bi]
+	row_room := rows.first
 	for {
 		// the units of this set, up to the next spanner
 		u1 := u0
@@ -494,49 +582,53 @@ layout_multicol :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx) -> f32
 		// (a set with no content and nothing but its spanners makes no column)
 		content := set_end - set_start
 		empty_set := len(set_units) == 0 && content <= 0.001
-		if !empty_set {
+		if !empty_set && has_rows {
+			// rows of columns: all of what the outer column leaves, as long as there is more
+			us := set_units
+			s, fs, sh := set_start, set_start + flow_shift, flow_shift
+			for _ in 0 ..< MC_ROWS_MAX {
+				if row_room <= 0.01 { row_room = rows.h }
+				room := row_room
+				if limit >= 0 { room = min(room, max(limit - (visual_y - cy), MC_MIN_COLUMN_H)) }
+				fill := cs.column_fill == .Auto && limit >= 0 && !has_spanner
+				h := mc_column_height(us, s, set_end, fs, sh, n, room, fill)
+				p := place_units(us, s, set_end, fs, h, sh, nil)
+				if p.columns <= n || room >= rows.h && limit < 0 && p.columns <= 1 {
+					last := place_units(us, s, set_end, fs, h, sh, &shifts)
+					mc_add_columns(c, rec, cs, last.columns, h, fs, visual_y, cw, colw, gap, cx)
+					flow_shift = fs + f32(last.columns) * h - set_end
+					visual_y += h
+					row_room -= h
+					break
+				}
+				// this row is full: where the next starts
+				t := make([dynamic]Shift, 0, 16, context.temp_allocator)
+				append(&t, Shift{s, sh})
+				place_units(us, s, set_end, fs, room, sh, &t)
+				end := fs + f32(n) * room
+				k := 0
+				for k < len(us) && us[k].y0 + shift_at(t[:], us[k].y0) < end { k += 1 }
+				next_s := k < len(us) ? us[k].y0 : end - t[len(t) - 1].by
+				for e in t { if e.y < next_s { append(&shifts, e) } }
+				mc_add_columns(c, rec, cs, n, room, fs, visual_y, cw, colw, gap, cx)
+				visual_y += room
+				sh = end - next_s
+				append(&shifts, Shift{next_s, sh})
+				s, fs = next_s, end
+				us = us[k:]
+				row_room = rows.h
+				flow_shift = sh
+			}
+		} else if !empty_set {
 			flow_start := set_start + flow_shift
 			last_limit := limit
 			if limit >= 0 { last_limit = max(limit - (visual_y - cy), 0) }
-			h: f32
 			fill_auto := cs.column_fill == .Auto && limit >= 0 && !has_spanner
-			if fill_auto {
-				h = max(last_limit, MC_MIN_COLUMN_H)
-			} else {
-				h = max(math.ceil(content / f32(n)), MC_MIN_COLUMN_H)
-				if last_limit >= 0 && h > last_limit { h = max(last_limit, MC_MIN_COLUMN_H) }
-				for _ in 0 ..< MC_BALANCE_MAX_TRIES {
-					p := place_units(set_units, set_start, set_end, flow_start, h, flow_shift, nil)
-					if p.columns <= n { break }
-					if last_limit >= 0 && h >= last_limit { break }
-					grow := p.shortage
-					// nothing lacks (a forced break too many, or cut content): what is left over, shared out
-					over := p.end - (flow_start + h * f32(n))
-					if over > 0 { grow = grow > 0 ? min(grow, max(over / f32(n), 1)) : max(over / f32(n), 1) }
-					if grow <= 0 { break }
-					h += max(grow, 0.01)
-					if last_limit >= 0 && h > last_limit { h = last_limit }
-				}
-			}
+			h := mc_column_height(set_units, set_start, set_end, flow_start, flow_shift, n, last_limit, fill_auto)
+			// (forced breaks may ask for more columns than there are, height or not: they overflow, as the rest)
 			p := place_units(set_units, set_start, set_end, flow_start, h, flow_shift, &shifts)
 			cols := p.columns
-			if cols > n && !fill_auto && limit < 0 {
-				// forced breaks ask for more columns than there are, height or not: they overflow, as the rest
-			}
-			// fragments
-			rtl := is_rtl(cs)
-			for i in 0 ..< cols {
-				x := rtl ? cw - colw - f32(i) * (colw + gap) : f32(i) * (colw + gap)
-				fmin := flow_start + f32(i) * h
-				f := Mc_Frag{flow_min = fmin, flow_max = fmin + h, dx = x, dy = visual_y - fmin}
-				if len(rec.frags) == 0 { f.flow_min = -FLOW_UNBOUNDED }
-				append(&rec.frags, f)
-				if i > 0 && gap >= 0 && cs.column_rule_width > 0 {
-					rx := rtl ? x + colw + gap * 0.5 : x - gap * 0.5
-					w := cs.column_rule_width * c.scale
-					append(&rec.rules, Rect{{cx + rx - w * 0.5, visual_y}, {cx + rx + w * 0.5, visual_y + h}})
-				}
-			}
+			mc_add_columns(c, rec, cs, cols, h, flow_start, visual_y, cw, colw, gap, cx)
 			total_used += cols
 			// what follows starts after the last column's band, whatever is left of it
 			flow_shift = flow_start + f32(cols) * h - set_end
@@ -553,6 +645,7 @@ layout_multicol :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx) -> f32
 		if len(rec.frags) == 0 { f.flow_min = -FLOW_UNBOUNDED }
 		append(&rec.frags, f)
 		visual_y += su.y1 - su.y0
+		if has_rows { row_room -= su.y1 - su.y0 }
 		set_start = su.y1
 		u0 = u1 + 1
 		if u0 >= len(g.units) && set_start >= strip_end - 0.001 { break }
@@ -564,6 +657,32 @@ layout_multicol :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx) -> f32
 	}
 	rec.frags[len(rec.frags) - 1].flow_max = FLOW_UNBOUNDED
 	if limit >= 0 && visual_y < cy + limit { visual_y = cy + limit }
+
+	// a nested container that crosses a column of this one: in rows, and everything again
+	if c.mc_nest_tries < MC_NEST_TRIES {
+		slice.stable_sort_by(shifts[:], proc(a, b: Shift) -> bool { return a.y < b.y })
+		again := false
+		for &u in g.units {
+			if u.nested == NONE { continue }
+			top := u.y0 + shift_at(shifts[:], u.y0)
+			bottom := top + (u.y1 - u.y0)
+			for &f in rec.frags {
+				if f.spanner || top < f.flow_min || top >= f.flow_max { continue }
+				if f.flow_max == FLOW_UNBOUNDED || bottom <= f.flow_max + 0.5 { break }
+				if c.mc_rows == nil { c.mc_rows = make(map[i32]Mc_Rows, 8, context.temp_allocator) }
+				ib := &l.boxes[u.nested]
+				c.mc_rows[u.nested] = Mc_Rows{f.flow_max - top - content_y(ib), f.flow_max - f.flow_min}
+				again = true
+				break
+			}
+		}
+		if again {
+			c.mc_nest_tries += 1
+			defer c.mc_nest_tries -= 1
+			if fc.bfc != nil { fc.bfc^ = bfc_make() }
+			return layout_multicol(c, bi, cw, ch_def, fc)
+		}
+	}
 
 	// the boxes, for that height
 	slice.stable_sort_by(shifts[:], proc(a, b: Shift) -> bool { return a.y < b.y })
@@ -622,6 +741,8 @@ flows_finish :: proc(l: ^Layout, order: []i32) {
 			case .Sideways_Lr: off = {f.dy, -f.dx}
 			}
 			fr := Flow_Frag{region = rect_shift(r, b.abs), shift = off, space = NONE, clip = NONE, spanner = f.spanner}
+			start := logical_to_physical_point({0, max(f.flow_min, 0)}, b.size.x, b.size.y, wm)
+			fr.show = b.abs + start + off
 			append(&l.flow_frags, fr)
 		}
 		rec.phys = {first, i32(len(l.flow_frags))}
@@ -659,6 +780,15 @@ flow_rects :: proc(l: ^Layout, container: i32, r: Rect, out: ^[dynamic]Rect) {
 		append(out, rect_shift(cut, fr.shift))
 	}
 	if len(out) == n0 { append(out, r) }
+	// a container inside another: then through that one's
+	if .In_Flow in l.boxes[container].fx {
+		if outer := flow_container(l, container); outer != NONE {
+			mine := make([dynamic]Rect, 0, len(out) - n0, context.temp_allocator)
+			append(&mine, ..out[n0:])
+			resize(out, n0)
+			for q in mine { flow_rects(l, outer, q, out) }
+		}
+	}
 }
 
 flow_bounds :: proc(l: ^Layout, container: i32, r: Rect) -> Rect {
@@ -679,7 +809,7 @@ flow_spaces :: proc(l: ^Layout, x: i32) {
 	rec, ok := &l.mc_records[x]
 	if !ok { return }
 	rec.outer_space, rec.outer_clip = b.content_space, b.content_clip
-	ps := &l.spaces[b.content_space]
+	ps := l.spaces[b.content_space]
 	parent := b.content_space
 	xform, plane := ps.xform, ps.plane
 	outer := b.content_clip
@@ -688,9 +818,21 @@ flow_spaces :: proc(l: ^Layout, x: i32) {
 	for fi in rec.phys[0] ..< rec.phys[1] {
 		fr := &l.flow_frags[fi]
 		fr.space = i32(len(l.spaces))
-		append(&l.clips, Clip{parent = outer, space = fr.space, box = NONE, rect = fr.region})
+		// (a spanner is whole: what it paints around itself, an outline, a shadow, is not cut)
+		cut := fr.spanner ? Rect{{-FLOW_UNBOUNDED, -FLOW_UNBOUNDED}, {FLOW_UNBOUNDED, FLOW_UNBOUNDED}} : fr.region
+		// inside a column of an outer container: the one it shows in
+		col_parent, clip_parent := parent, outer
+		if ps.kind == .Flow {
+			at := l.flow_frags[ps.flow[0]]
+			for oi in ps.flow[0] ..< ps.flow[1] {
+				of := l.flow_frags[oi]
+				if frag_overlaps(&of, Rect{fr.show, fr.show}) { at = of; break }
+			}
+			col_parent, clip_parent = at.space, at.clip
+		}
+		append(&l.clips, Clip{parent = clip_parent, space = fr.space, box = NONE, rect = cut})
 		fr.clip = i32(len(l.clips) - 1)
-		append(&l.spaces, Space{kind = .Column, parent = parent, box = x, frame = NONE, clip = fr.clip, xform = xform, plane = plane, persp_from = NONE, ctx = NONE, dest = NONE, shift = fr.shift, flow = {fi - rec.phys[0], 0}})
+		append(&l.spaces, Space{kind = .Column, parent = col_parent, box = x, frame = NONE, clip = fr.clip, xform = xform, plane = plane, persp_from = NONE, ctx = NONE, dest = NONE, shift = fr.shift, flow = {fi - rec.phys[0], 0}})
 	}
 	b.content_space = base
 }
@@ -705,7 +847,7 @@ flow_fix_box :: proc(l: ^Layout, x: i32) {
 		return
 	}
 	if l.spaces[b.space].kind != .Flow { return }
-	if b.flags & {.Transformed, .Sticky, .Scroll} == {} && .Multicol not_in b.fx { return }
+	if b.flags & {.Transformed, .Sticky, .Scroll} == {} { return }
 	sp := l.spaces[b.space]
 	at := &l.flow_frags[sp.flow[0]]
 	for fi in sp.flow[0] ..< sp.flow[1] {

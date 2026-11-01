@@ -438,6 +438,24 @@ multicol_anchor_and_static_position :: proc(t: ^testing.T) {
 }
 
 @(test)
+multicol_nested_in_rows :: proc(t: ^testing.T) {
+	// the outer container's columns are 100 high; the inner one starts 60 down: a row of two columns 40 high, then a row in the next outer column
+	f := mf_load(`<!doctype html><style>body{margin:0;font:20px/20px x} #o{columns:2;column-gap:0;column-fill:auto;width:400px;height:100px;orphans:1;widows:1} #i{columns:2;column-gap:0;orphans:1;widows:1}</style><div id=o><div style="height:60px"></div><div id=i><div id=a>a</div><div id=b>b</div><div id=c>c</div><div id=d>d</div><div id=e>e</div><div id=f>f</div></div></div>`)
+	defer mf_unload(f)
+	mf_expect(t, f, "a", 0, 60, 100, 80)
+	mf_expect(t, f, "b", 0, 80, 100, 100)
+	mf_expect(t, f, "c", 100, 60, 200, 80)
+	mf_expect(t, f, "d", 100, 80, 200, 100)
+	// the rest in the next outer column, balanced
+	mf_expect(t, f, "e", 200, 0, 300, 20)
+	mf_expect(t, f, "f", 300, 0, 400, 20)
+	el := dom.find_by_id(f.doc, "b")
+	dom.set_attribute(f.doc, el, "class", "changed")
+	mf_frame(t, f)
+	mf_expect(t, f, "f", 300, 0, 400, 20)
+}
+
+@(test)
 multicol_flex_item_style_set_later :: proc(t: ^testing.T) {
 	// a paragraph as a flex item, centered, that a script gives columns (MDN's examples)
 	f := mf_load(`<!doctype html><style>body{margin:0;font:20px/20px x} section{display:flex;align-items:center;justify-content:center;height:300px;width:300px} p{margin:0}</style><section><p id=p>aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa</p></section>`)

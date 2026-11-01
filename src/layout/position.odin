@@ -106,7 +106,7 @@ layout_abs :: proc(c: ^Ctx, ai, ref: i32, cbr: Rect) {
 			if rtl && !k.auto_l && !k.auto_r { left = cbw - ir - w - mL - mR }
 		case il_ok: left = il
 		case ir_ok: left = cbw - ir - w - mL - mR
-		case: left = static_left
+		case: left = rtl ? static_left - w - mL - mR : static_left
 		}
 	} else {
 		switch {
@@ -119,6 +119,10 @@ layout_abs :: proc(c: ^Ctx, ai, ref: i32, cbr: Rect) {
 		case ir_ok:
 			w = clamp_w(c, k, shrink_to_fit(c, ai, cbw - ir - mL - mR), cbw)
 			left = cbw - ir - w - mL - mR
+		case rtl:
+			// the static position is the end edge: what is left of it
+			w = clamp_w(c, k, shrink_to_fit(c, ai, static_left - mL - mR), cbw)
+			left = static_left - w - mL - mR
 		case:
 			left = static_left
 			w = clamp_w(c, k, shrink_to_fit(c, ai, cbw - left - mL - mR), cbw)

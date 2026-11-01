@@ -47,6 +47,7 @@ Parser :: struct {
 	err:      string,
 	err_at:   int,
 	entities: map[string]string,
+	xhtml_dtd: bool,                // the doctype names an XHTML DTD: its entities are known
 	scopes:   [dynamic][2]string,   // prefix ("" default), uri in scope
 	marks:    [dynamic]int,
 	open:     [dynamic]string,      // qualified names of the open elements
@@ -138,6 +139,13 @@ decode :: proc(p: ^Parser, s: string, base: int, attribute: bool) -> (string, bo
 				case "apos": strings.write_byte(&b, '\'')
 				case:
 					v, ok := p.entities[ref]
+					if !ok && p.xhtml_dtd {
+						if r, known := xhtml_entity(ref); known {
+							strings.write_rune(&b, r)
+							i += end + 1
+							continue
+						}
+					}
 					if !ok { return "", fail(p, strings.concatenate({"the entity '", ref, "' is not defined"}, context.temp_allocator)) }
 					if attribute && strings.index_byte(v, '<') >= 0 { return "", fail(p, "an entity holding '<' in an attribute value") }
 					strings.write_string(&b, v)
@@ -278,7 +286,7 @@ doctype :: proc(p: ^Parser) -> bool {
 		return s, true
 	}
 	pub, sys := "", ""
-	if at(p, "PUBLIC") { p.pos += 6; pub = literal(p) or_return; sys = literal(p) or_return }
+	if at(p, "PUBLIC") { p.pos += 6; pub = literal(p) or_return; sys = literal(p) or_return; p.xhtml_dtd = is_xhtml_public_id(pub) }
 	else if at(p, "SYSTEM") { p.pos += 6; sys = literal(p) or_return }
 	skip_space(p)
 	if p.pos < len(p.src) && p.src[p.pos] == '[' {

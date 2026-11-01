@@ -36,6 +36,17 @@ xml_well_formed :: proc(t: ^testing.T) {
 }
 
 @(test)
+xml_xhtml_entities :: proc(t: ^testing.T) {
+	// the entities of the XHTML DTDs are known when the doctype names one; not otherwise
+	_, r := trace(`<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html>a&nbsp;b&mdash;&Omega;</html>`)
+	testing.expect(t, r.ok)
+	_, r = trace(`<!DOCTYPE html><html>a&nbsp;b</html>`)
+	testing.expect(t, !r.ok)
+	_, r = trace(`<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "x"><html>&nosuch;</html>`)
+	testing.expect(t, !r.ok)
+}
+
+@(test)
 xml_errors :: proc(t: ^testing.T) {
 	cases := [][2]string{
 		{"<a><b></a>", "does not match"},

@@ -1,0 +1,1712 @@
+# web-platform-tests expectations of Wren for css/css-multicol, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/css/css-multicol/abspos-in-multicol-with-spanner-crash.html: OK
+	No crash: PASS
+/css/css-multicol/animation/column-count-interpolation.html: OK
+	CSS Animations: property <column-count> from [10] to [1] at (-0.5) should be [15]: FAIL
+	CSS Animations: property <column-count> from [10] to [1] at (0) should be [10]: PASS
+	CSS Animations: property <column-count> from [10] to [1] at (0.3) should be [7]: PASS
+	CSS Animations: property <column-count> from [10] to [1] at (0.7) should be [4]: PASS
+	CSS Animations: property <column-count> from [10] to [1] at (1) should be [1]: PASS
+	CSS Animations: property <column-count> from [10] to [1] at (1.5) should be [1]: PASS
+	CSS Animations: property <column-count> from [auto] to [20] at (-0.3) should be [auto]: PASS
+	CSS Animations: property <column-count> from [auto] to [20] at (0) should be [auto]: PASS
+	CSS Animations: property <column-count> from [auto] to [20] at (0.3) should be [auto]: PASS
+	CSS Animations: property <column-count> from [auto] to [20] at (0.5) should be [20]: PASS
+	CSS Animations: property <column-count> from [auto] to [20] at (0.6) should be [20]: PASS
+	CSS Animations: property <column-count> from [auto] to [20] at (1) should be [20]: PASS
+	CSS Animations: property <column-count> from [auto] to [20] at (1.5) should be [20]: PASS
+	CSS Animations: property <column-count> from [inherit] to [20] at (-0.5) should be [35]: PASS
+	CSS Animations: property <column-count> from [inherit] to [20] at (0) should be [30]: PASS
+	CSS Animations: property <column-count> from [inherit] to [20] at (0.3) should be [27]: PASS
+	CSS Animations: property <column-count> from [inherit] to [20] at (0.7) should be [23]: PASS
+	CSS Animations: property <column-count> from [inherit] to [20] at (1) should be [20]: PASS
+	CSS Animations: property <column-count> from [inherit] to [20] at (1.5) should be [15]: PASS
+	CSS Animations: property <column-count> from [initial] to [5] at (-0.3) should be [initial]: PASS
+	CSS Animations: property <column-count> from [initial] to [5] at (0) should be [initial]: PASS
+	CSS Animations: property <column-count> from [initial] to [5] at (0.3) should be [initial]: PASS
+	CSS Animations: property <column-count> from [initial] to [5] at (0.5) should be [5]: PASS
+	CSS Animations: property <column-count> from [initial] to [5] at (0.6) should be [5]: PASS
+	CSS Animations: property <column-count> from [initial] to [5] at (1) should be [5]: PASS
+	CSS Animations: property <column-count> from [initial] to [5] at (1.5) should be [5]: PASS
+	CSS Animations: property <column-count> from [unset] to [5] at (-0.3) should be [unset]: PASS
+	CSS Animations: property <column-count> from [unset] to [5] at (0) should be [unset]: PASS
+	CSS Animations: property <column-count> from [unset] to [5] at (0.3) should be [unset]: PASS
+	CSS Animations: property <column-count> from [unset] to [5] at (0.5) should be [5]: PASS
+	CSS Animations: property <column-count> from [unset] to [5] at (0.6) should be [5]: PASS
+	CSS Animations: property <column-count> from [unset] to [5] at (1) should be [5]: PASS
+	CSS Animations: property <column-count> from [unset] to [5] at (1.5) should be [5]: PASS
+	CSS Animations: property <column-count> from neutral to [20] at (-0.5) should be [5]: PASS
+	CSS Animations: property <column-count> from neutral to [20] at (0) should be [10]: PASS
+	CSS Animations: property <column-count> from neutral to [20] at (0.3) should be [13]: PASS
+	CSS Animations: property <column-count> from neutral to [20] at (0.7) should be [17]: PASS
+	CSS Animations: property <column-count> from neutral to [20] at (1) should be [20]: PASS
+	CSS Animations: property <column-count> from neutral to [20] at (1.5) should be [25]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-count> from [auto] to [20] at (-0.3) should be [auto]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-count> from [auto] to [20] at (0) should be [auto]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-count> from [auto] to [20] at (0.3) should be [auto]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-count> from [auto] to [20] at (0.5) should be [20]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-count> from [auto] to [20] at (0.6) should be [20]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-count> from [auto] to [20] at (1) should be [20]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-count> from [auto] to [20] at (1.5) should be [20]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-count> from [initial] to [5] at (-0.3) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-count> from [initial] to [5] at (0) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-count> from [initial] to [5] at (0.3) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-count> from [initial] to [5] at (0.5) should be [5]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-count> from [initial] to [5] at (0.6) should be [5]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-count> from [initial] to [5] at (1) should be [5]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-count> from [initial] to [5] at (1.5) should be [5]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-count> from [unset] to [5] at (-0.3) should be [unset]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-count> from [unset] to [5] at (0) should be [unset]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-count> from [unset] to [5] at (0.3) should be [unset]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-count> from [unset] to [5] at (0.5) should be [5]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-count> from [unset] to [5] at (0.6) should be [5]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-count> from [unset] to [5] at (1) should be [5]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-count> from [unset] to [5] at (1.5) should be [5]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-count> from [auto] to [20] at (-0.3) should be [auto]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-count> from [auto] to [20] at (0) should be [auto]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-count> from [auto] to [20] at (0.3) should be [auto]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-count> from [auto] to [20] at (0.5) should be [20]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-count> from [auto] to [20] at (0.6) should be [20]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-count> from [auto] to [20] at (1) should be [20]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-count> from [auto] to [20] at (1.5) should be [20]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-count> from [initial] to [5] at (-0.3) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-count> from [initial] to [5] at (0) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-count> from [initial] to [5] at (0.3) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-count> from [initial] to [5] at (0.5) should be [5]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-count> from [initial] to [5] at (0.6) should be [5]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-count> from [initial] to [5] at (1) should be [5]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-count> from [initial] to [5] at (1.5) should be [5]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-count> from [unset] to [5] at (-0.3) should be [unset]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-count> from [unset] to [5] at (0) should be [unset]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-count> from [unset] to [5] at (0.3) should be [unset]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-count> from [unset] to [5] at (0.5) should be [5]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-count> from [unset] to [5] at (0.6) should be [5]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-count> from [unset] to [5] at (1) should be [5]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-count> from [unset] to [5] at (1.5) should be [5]: PASS
+	CSS Transitions with transition: all: property <column-count> from [10] to [1] at (-0.5) should be [15]: FAIL
+	CSS Transitions with transition: all: property <column-count> from [10] to [1] at (0) should be [10]: PASS
+	CSS Transitions with transition: all: property <column-count> from [10] to [1] at (0.3) should be [7]: PASS
+	CSS Transitions with transition: all: property <column-count> from [10] to [1] at (0.7) should be [4]: PASS
+	CSS Transitions with transition: all: property <column-count> from [10] to [1] at (1) should be [1]: PASS
+	CSS Transitions with transition: all: property <column-count> from [10] to [1] at (1.5) should be [1]: PASS
+	CSS Transitions with transition: all: property <column-count> from [auto] to [20] at (-0.3) should be [20]: PASS
+	CSS Transitions with transition: all: property <column-count> from [auto] to [20] at (0) should be [20]: PASS
+	CSS Transitions with transition: all: property <column-count> from [auto] to [20] at (0.3) should be [20]: PASS
+	CSS Transitions with transition: all: property <column-count> from [auto] to [20] at (0.5) should be [20]: PASS
+	CSS Transitions with transition: all: property <column-count> from [auto] to [20] at (0.6) should be [20]: PASS
+	CSS Transitions with transition: all: property <column-count> from [auto] to [20] at (1) should be [20]: PASS
+	CSS Transitions with transition: all: property <column-count> from [auto] to [20] at (1.5) should be [20]: PASS
+	CSS Transitions with transition: all: property <column-count> from [inherit] to [20] at (-0.5) should be [35]: PASS
+	CSS Transitions with transition: all: property <column-count> from [inherit] to [20] at (0) should be [30]: PASS
+	CSS Transitions with transition: all: property <column-count> from [inherit] to [20] at (0.3) should be [27]: PASS
+	CSS Transitions with transition: all: property <column-count> from [inherit] to [20] at (0.7) should be [23]: PASS
+	CSS Transitions with transition: all: property <column-count> from [inherit] to [20] at (1) should be [20]: PASS
+	CSS Transitions with transition: all: property <column-count> from [inherit] to [20] at (1.5) should be [15]: PASS
+	CSS Transitions with transition: all: property <column-count> from [initial] to [5] at (-0.3) should be [5]: PASS
+	CSS Transitions with transition: all: property <column-count> from [initial] to [5] at (0) should be [5]: PASS
+	CSS Transitions with transition: all: property <column-count> from [initial] to [5] at (0.3) should be [5]: PASS
+	CSS Transitions with transition: all: property <column-count> from [initial] to [5] at (0.5) should be [5]: PASS
+	CSS Transitions with transition: all: property <column-count> from [initial] to [5] at (0.6) should be [5]: PASS
+	CSS Transitions with transition: all: property <column-count> from [initial] to [5] at (1) should be [5]: PASS
+	CSS Transitions with transition: all: property <column-count> from [initial] to [5] at (1.5) should be [5]: PASS
+	CSS Transitions with transition: all: property <column-count> from [unset] to [5] at (-0.3) should be [5]: PASS
+	CSS Transitions with transition: all: property <column-count> from [unset] to [5] at (0) should be [5]: PASS
+	CSS Transitions with transition: all: property <column-count> from [unset] to [5] at (0.3) should be [5]: PASS
+	CSS Transitions with transition: all: property <column-count> from [unset] to [5] at (0.5) should be [5]: PASS
+	CSS Transitions with transition: all: property <column-count> from [unset] to [5] at (0.6) should be [5]: PASS
+	CSS Transitions with transition: all: property <column-count> from [unset] to [5] at (1) should be [5]: PASS
+	CSS Transitions with transition: all: property <column-count> from [unset] to [5] at (1.5) should be [5]: PASS
+	CSS Transitions with transition: all: property <column-count> from neutral to [20] at (-0.5) should be [5]: PASS
+	CSS Transitions with transition: all: property <column-count> from neutral to [20] at (0) should be [10]: PASS
+	CSS Transitions with transition: all: property <column-count> from neutral to [20] at (0.3) should be [13]: PASS
+	CSS Transitions with transition: all: property <column-count> from neutral to [20] at (0.7) should be [17]: PASS
+	CSS Transitions with transition: all: property <column-count> from neutral to [20] at (1) should be [20]: PASS
+	CSS Transitions with transition: all: property <column-count> from neutral to [20] at (1.5) should be [25]: PASS
+	CSS Transitions: property <column-count> from [10] to [1] at (-0.5) should be [15]: FAIL
+	CSS Transitions: property <column-count> from [10] to [1] at (0) should be [10]: PASS
+	CSS Transitions: property <column-count> from [10] to [1] at (0.3) should be [7]: PASS
+	CSS Transitions: property <column-count> from [10] to [1] at (0.7) should be [4]: PASS
+	CSS Transitions: property <column-count> from [10] to [1] at (1) should be [1]: PASS
+	CSS Transitions: property <column-count> from [10] to [1] at (1.5) should be [1]: PASS
+	CSS Transitions: property <column-count> from [auto] to [20] at (-0.3) should be [20]: PASS
+	CSS Transitions: property <column-count> from [auto] to [20] at (0) should be [20]: PASS
+	CSS Transitions: property <column-count> from [auto] to [20] at (0.3) should be [20]: PASS
+	CSS Transitions: property <column-count> from [auto] to [20] at (0.5) should be [20]: PASS
+	CSS Transitions: property <column-count> from [auto] to [20] at (0.6) should be [20]: PASS
+	CSS Transitions: property <column-count> from [auto] to [20] at (1) should be [20]: PASS
+	CSS Transitions: property <column-count> from [auto] to [20] at (1.5) should be [20]: PASS
+	CSS Transitions: property <column-count> from [inherit] to [20] at (-0.5) should be [35]: PASS
+	CSS Transitions: property <column-count> from [inherit] to [20] at (0) should be [30]: PASS
+	CSS Transitions: property <column-count> from [inherit] to [20] at (0.3) should be [27]: PASS
+	CSS Transitions: property <column-count> from [inherit] to [20] at (0.7) should be [23]: PASS
+	CSS Transitions: property <column-count> from [inherit] to [20] at (1) should be [20]: PASS
+	CSS Transitions: property <column-count> from [inherit] to [20] at (1.5) should be [15]: PASS
+	CSS Transitions: property <column-count> from [initial] to [5] at (-0.3) should be [5]: PASS
+	CSS Transitions: property <column-count> from [initial] to [5] at (0) should be [5]: PASS
+	CSS Transitions: property <column-count> from [initial] to [5] at (0.3) should be [5]: PASS
+	CSS Transitions: property <column-count> from [initial] to [5] at (0.5) should be [5]: PASS
+	CSS Transitions: property <column-count> from [initial] to [5] at (0.6) should be [5]: PASS
+	CSS Transitions: property <column-count> from [initial] to [5] at (1) should be [5]: PASS
+	CSS Transitions: property <column-count> from [initial] to [5] at (1.5) should be [5]: PASS
+	CSS Transitions: property <column-count> from [unset] to [5] at (-0.3) should be [5]: PASS
+	CSS Transitions: property <column-count> from [unset] to [5] at (0) should be [5]: PASS
+	CSS Transitions: property <column-count> from [unset] to [5] at (0.3) should be [5]: PASS
+	CSS Transitions: property <column-count> from [unset] to [5] at (0.5) should be [5]: PASS
+	CSS Transitions: property <column-count> from [unset] to [5] at (0.6) should be [5]: PASS
+	CSS Transitions: property <column-count> from [unset] to [5] at (1) should be [5]: PASS
+	CSS Transitions: property <column-count> from [unset] to [5] at (1.5) should be [5]: PASS
+	CSS Transitions: property <column-count> from neutral to [20] at (-0.5) should be [5]: PASS
+	CSS Transitions: property <column-count> from neutral to [20] at (0) should be [10]: PASS
+	CSS Transitions: property <column-count> from neutral to [20] at (0.3) should be [13]: PASS
+	CSS Transitions: property <column-count> from neutral to [20] at (0.7) should be [17]: PASS
+	CSS Transitions: property <column-count> from neutral to [20] at (1) should be [20]: PASS
+	CSS Transitions: property <column-count> from neutral to [20] at (1.5) should be [25]: PASS
+	Web Animations: property <column-count> from [10] to [1] at (-0.5) should be [15]: FAIL
+	Web Animations: property <column-count> from [10] to [1] at (0) should be [10]: PASS
+	Web Animations: property <column-count> from [10] to [1] at (0.3) should be [7]: PASS
+	Web Animations: property <column-count> from [10] to [1] at (0.7) should be [4]: PASS
+	Web Animations: property <column-count> from [10] to [1] at (1) should be [1]: PASS
+	Web Animations: property <column-count> from [10] to [1] at (1.5) should be [1]: PASS
+	Web Animations: property <column-count> from [auto] to [20] at (-0.3) should be [auto]: PASS
+	Web Animations: property <column-count> from [auto] to [20] at (0) should be [auto]: PASS
+	Web Animations: property <column-count> from [auto] to [20] at (0.3) should be [auto]: PASS
+	Web Animations: property <column-count> from [auto] to [20] at (0.5) should be [20]: PASS
+	Web Animations: property <column-count> from [auto] to [20] at (0.6) should be [20]: PASS
+	Web Animations: property <column-count> from [auto] to [20] at (1) should be [20]: PASS
+	Web Animations: property <column-count> from [auto] to [20] at (1.5) should be [20]: PASS
+	Web Animations: property <column-count> from [inherit] to [20] at (-0.5) should be [35]: PASS
+	Web Animations: property <column-count> from [inherit] to [20] at (0) should be [30]: PASS
+	Web Animations: property <column-count> from [inherit] to [20] at (0.3) should be [27]: PASS
+	Web Animations: property <column-count> from [inherit] to [20] at (0.7) should be [23]: PASS
+	Web Animations: property <column-count> from [inherit] to [20] at (1) should be [20]: PASS
+	Web Animations: property <column-count> from [inherit] to [20] at (1.5) should be [15]: PASS
+	Web Animations: property <column-count> from [initial] to [5] at (-0.3) should be [initial]: PASS
+	Web Animations: property <column-count> from [initial] to [5] at (0) should be [initial]: PASS
+	Web Animations: property <column-count> from [initial] to [5] at (0.3) should be [initial]: PASS
+	Web Animations: property <column-count> from [initial] to [5] at (0.5) should be [5]: PASS
+	Web Animations: property <column-count> from [initial] to [5] at (0.6) should be [5]: PASS
+	Web Animations: property <column-count> from [initial] to [5] at (1) should be [5]: PASS
+	Web Animations: property <column-count> from [initial] to [5] at (1.5) should be [5]: PASS
+	Web Animations: property <column-count> from [unset] to [5] at (-0.3) should be [unset]: PASS
+	Web Animations: property <column-count> from [unset] to [5] at (0) should be [unset]: PASS
+	Web Animations: property <column-count> from [unset] to [5] at (0.3) should be [unset]: PASS
+	Web Animations: property <column-count> from [unset] to [5] at (0.5) should be [5]: PASS
+	Web Animations: property <column-count> from [unset] to [5] at (0.6) should be [5]: PASS
+	Web Animations: property <column-count> from [unset] to [5] at (1) should be [5]: PASS
+	Web Animations: property <column-count> from [unset] to [5] at (1.5) should be [5]: PASS
+	Web Animations: property <column-count> from neutral to [20] at (-0.5) should be [5]: PASS
+	Web Animations: property <column-count> from neutral to [20] at (0) should be [10]: PASS
+	Web Animations: property <column-count> from neutral to [20] at (0.3) should be [13]: PASS
+	Web Animations: property <column-count> from neutral to [20] at (0.7) should be [17]: PASS
+	Web Animations: property <column-count> from neutral to [20] at (1) should be [20]: PASS
+	Web Animations: property <column-count> from neutral to [20] at (1.5) should be [25]: PASS
+/css/css-multicol/animation/column-rule-color-interpolation.html: OK
+	CSS Animations: property <column-rule-color> from [currentcolor] to [rgb(170, 70, 70)] at (-0.5) should be [rgb(20, 220, 70)]: PASS
+	CSS Animations: property <column-rule-color> from [currentcolor] to [rgb(170, 70, 70)] at (0) should be [rgb(70, 170, 70)]: PASS
+	CSS Animations: property <column-rule-color> from [currentcolor] to [rgb(170, 70, 70)] at (0.3) should be [rgb(100, 140, 70)]: PASS
+	CSS Animations: property <column-rule-color> from [currentcolor] to [rgb(170, 70, 70)] at (0.6) should be [rgb(130, 110, 70)]: PASS
+	CSS Animations: property <column-rule-color> from [currentcolor] to [rgb(170, 70, 70)] at (1) should be [rgb(170, 70, 70)]: PASS
+	CSS Animations: property <column-rule-color> from [currentcolor] to [rgb(170, 70, 70)] at (1.5) should be [rgb(220, 20, 70)]: PASS
+	CSS Animations: property <column-rule-color> from [inherit] to [rgb(70, 170, 70)] at (-0.5) should be [rgb(70, 20, 220)]: PASS
+	CSS Animations: property <column-rule-color> from [inherit] to [rgb(70, 170, 70)] at (0) should be [rgb(70, 70, 170)]: PASS
+	CSS Animations: property <column-rule-color> from [inherit] to [rgb(70, 170, 70)] at (0.3) should be [rgb(70, 100, 140)]: PASS
+	CSS Animations: property <column-rule-color> from [inherit] to [rgb(70, 170, 70)] at (0.6) should be [rgb(70, 130, 110)]: PASS
+	CSS Animations: property <column-rule-color> from [inherit] to [rgb(70, 170, 70)] at (1) should be [rgb(70, 170, 70)]: PASS
+	CSS Animations: property <column-rule-color> from [inherit] to [rgb(70, 170, 70)] at (1.5) should be [rgb(70, 220, 20)]: PASS
+	CSS Animations: property <column-rule-color> from [initial] to [rgb(70, 70, 170)] at (-0.5) should be [rgb(70, 220, 20)]: FAIL
+	CSS Animations: property <column-rule-color> from [initial] to [rgb(70, 70, 170)] at (0) should be [rgb(70, 170, 70)]: FAIL
+	CSS Animations: property <column-rule-color> from [initial] to [rgb(70, 70, 170)] at (0.3) should be [rgb(70, 140, 100)]: FAIL
+	CSS Animations: property <column-rule-color> from [initial] to [rgb(70, 70, 170)] at (0.6) should be [rgb(70, 110, 130)]: FAIL
+	CSS Animations: property <column-rule-color> from [initial] to [rgb(70, 70, 170)] at (1) should be [rgb(70, 70, 170)]: PASS
+	CSS Animations: property <column-rule-color> from [initial] to [rgb(70, 70, 170)] at (1.5) should be [rgb(70, 20, 220)]: FAIL
+	CSS Animations: property <column-rule-color> from [orange] to [blue] at (-0.4) should be [#ffe700]: PASS
+	CSS Animations: property <column-rule-color> from [orange] to [blue] at (-5) should be [#ffff00]: PASS
+	CSS Animations: property <column-rule-color> from [orange] to [blue] at (0) should be [orange]: PASS
+	CSS Animations: property <column-rule-color> from [orange] to [blue] at (0.2) should be [#cc8433]: PASS
+	CSS Animations: property <column-rule-color> from [orange] to [blue] at (0.6) should be [#664299]: PASS
+	CSS Animations: property <column-rule-color> from [orange] to [blue] at (1) should be [blue]: PASS
+	CSS Animations: property <column-rule-color> from [orange] to [blue] at (1.5) should be [blue]: PASS
+	CSS Animations: property <column-rule-color> from [unset] to [rgb(0, 255, 0)] at (-0.4) should be [rgb(98, 136, 98)]: FAIL
+	CSS Animations: property <column-rule-color> from [unset] to [rgb(0, 255, 0)] at (-5) should be [rgb(255, 0, 255)]: FAIL
+	CSS Animations: property <column-rule-color> from [unset] to [rgb(0, 255, 0)] at (0) should be [rgb(70, 170, 70)]: FAIL
+	CSS Animations: property <column-rule-color> from [unset] to [rgb(0, 255, 0)] at (0.2) should be [rgb(56, 187, 56)]: FAIL
+	CSS Animations: property <column-rule-color> from [unset] to [rgb(0, 255, 0)] at (0.6) should be [rgb(28, 221, 28)]: FAIL
+	CSS Animations: property <column-rule-color> from [unset] to [rgb(0, 255, 0)] at (1) should be [rgb(0, 255, 0)]: PASS
+	CSS Animations: property <column-rule-color> from [unset] to [rgb(0, 255, 0)] at (1.5) should be [rgb(0, 255, 0)]: PASS
+	CSS Animations: property <column-rule-color> from neutral to [rgb(70, 170, 70)] at (-0.5) should be [rgb(220, 20, 70)]: PASS
+	CSS Animations: property <column-rule-color> from neutral to [rgb(70, 170, 70)] at (0) should be [rgb(170, 70, 70)]: PASS
+	CSS Animations: property <column-rule-color> from neutral to [rgb(70, 170, 70)] at (0.3) should be [rgb(140, 100, 70)]: PASS
+	CSS Animations: property <column-rule-color> from neutral to [rgb(70, 170, 70)] at (0.6) should be [rgb(110, 130, 70)]: PASS
+	CSS Animations: property <column-rule-color> from neutral to [rgb(70, 170, 70)] at (1) should be [rgb(70, 170, 70)]: PASS
+	CSS Animations: property <column-rule-color> from neutral to [rgb(70, 170, 70)] at (1.5) should be [rgb(20, 220, 70)]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [currentcolor] to [rgb(170, 70, 70)] at (-0.5) should be [rgb(20, 220, 70)]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [currentcolor] to [rgb(170, 70, 70)] at (0) should be [rgb(70, 170, 70)]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [currentcolor] to [rgb(170, 70, 70)] at (0.3) should be [rgb(100, 140, 70)]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [currentcolor] to [rgb(170, 70, 70)] at (0.6) should be [rgb(130, 110, 70)]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [currentcolor] to [rgb(170, 70, 70)] at (1) should be [rgb(170, 70, 70)]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [currentcolor] to [rgb(170, 70, 70)] at (1.5) should be [rgb(220, 20, 70)]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [inherit] to [rgb(70, 170, 70)] at (-0.5) should be [rgb(70, 20, 220)]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [inherit] to [rgb(70, 170, 70)] at (0) should be [rgb(70, 70, 170)]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [inherit] to [rgb(70, 170, 70)] at (0.3) should be [rgb(70, 100, 140)]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [inherit] to [rgb(70, 170, 70)] at (0.6) should be [rgb(70, 130, 110)]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [inherit] to [rgb(70, 170, 70)] at (1) should be [rgb(70, 170, 70)]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [inherit] to [rgb(70, 170, 70)] at (1.5) should be [rgb(70, 220, 20)]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [initial] to [rgb(70, 70, 170)] at (-0.5) should be [rgb(70, 220, 20)]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [initial] to [rgb(70, 70, 170)] at (0) should be [rgb(70, 170, 70)]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [initial] to [rgb(70, 70, 170)] at (0.3) should be [rgb(70, 140, 100)]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [initial] to [rgb(70, 70, 170)] at (0.6) should be [rgb(70, 110, 130)]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [initial] to [rgb(70, 70, 170)] at (1) should be [rgb(70, 70, 170)]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [initial] to [rgb(70, 70, 170)] at (1.5) should be [rgb(70, 20, 220)]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [orange] to [blue] at (-0.4) should be [#ffe700]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [orange] to [blue] at (-5) should be [#ffff00]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [orange] to [blue] at (0) should be [orange]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [orange] to [blue] at (0.2) should be [#cc8433]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [orange] to [blue] at (0.6) should be [#664299]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [orange] to [blue] at (1) should be [blue]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [orange] to [blue] at (1.5) should be [blue]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [unset] to [rgb(0, 255, 0)] at (-0.4) should be [rgb(98, 136, 98)]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [unset] to [rgb(0, 255, 0)] at (-5) should be [rgb(255, 0, 255)]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [unset] to [rgb(0, 255, 0)] at (0) should be [rgb(70, 170, 70)]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [unset] to [rgb(0, 255, 0)] at (0.2) should be [rgb(56, 187, 56)]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [unset] to [rgb(0, 255, 0)] at (0.6) should be [rgb(28, 221, 28)]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [unset] to [rgb(0, 255, 0)] at (1) should be [rgb(0, 255, 0)]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from [unset] to [rgb(0, 255, 0)] at (1.5) should be [rgb(0, 255, 0)]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from neutral to [rgb(70, 170, 70)] at (-0.5) should be [rgb(220, 20, 70)]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from neutral to [rgb(70, 170, 70)] at (0) should be [rgb(170, 70, 70)]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from neutral to [rgb(70, 170, 70)] at (0.3) should be [rgb(140, 100, 70)]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from neutral to [rgb(70, 170, 70)] at (0.6) should be [rgb(110, 130, 70)]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from neutral to [rgb(70, 170, 70)] at (1) should be [rgb(70, 170, 70)]: PASS
+	CSS Transitions with transition: all: property <column-rule-color> from neutral to [rgb(70, 170, 70)] at (1.5) should be [rgb(20, 220, 70)]: PASS
+	CSS Transitions: property <column-rule-color> from [currentcolor] to [rgb(170, 70, 70)] at (-0.5) should be [rgb(20, 220, 70)]: PASS
+	CSS Transitions: property <column-rule-color> from [currentcolor] to [rgb(170, 70, 70)] at (0) should be [rgb(70, 170, 70)]: PASS
+	CSS Transitions: property <column-rule-color> from [currentcolor] to [rgb(170, 70, 70)] at (0.3) should be [rgb(100, 140, 70)]: PASS
+	CSS Transitions: property <column-rule-color> from [currentcolor] to [rgb(170, 70, 70)] at (0.6) should be [rgb(130, 110, 70)]: PASS
+	CSS Transitions: property <column-rule-color> from [currentcolor] to [rgb(170, 70, 70)] at (1) should be [rgb(170, 70, 70)]: PASS
+	CSS Transitions: property <column-rule-color> from [currentcolor] to [rgb(170, 70, 70)] at (1.5) should be [rgb(220, 20, 70)]: PASS
+	CSS Transitions: property <column-rule-color> from [inherit] to [rgb(70, 170, 70)] at (-0.5) should be [rgb(70, 20, 220)]: PASS
+	CSS Transitions: property <column-rule-color> from [inherit] to [rgb(70, 170, 70)] at (0) should be [rgb(70, 70, 170)]: PASS
+	CSS Transitions: property <column-rule-color> from [inherit] to [rgb(70, 170, 70)] at (0.3) should be [rgb(70, 100, 140)]: PASS
+	CSS Transitions: property <column-rule-color> from [inherit] to [rgb(70, 170, 70)] at (0.6) should be [rgb(70, 130, 110)]: PASS
+	CSS Transitions: property <column-rule-color> from [inherit] to [rgb(70, 170, 70)] at (1) should be [rgb(70, 170, 70)]: PASS
+	CSS Transitions: property <column-rule-color> from [inherit] to [rgb(70, 170, 70)] at (1.5) should be [rgb(70, 220, 20)]: PASS
+	CSS Transitions: property <column-rule-color> from [initial] to [rgb(70, 70, 170)] at (-0.5) should be [rgb(70, 220, 20)]: PASS
+	CSS Transitions: property <column-rule-color> from [initial] to [rgb(70, 70, 170)] at (0) should be [rgb(70, 170, 70)]: PASS
+	CSS Transitions: property <column-rule-color> from [initial] to [rgb(70, 70, 170)] at (0.3) should be [rgb(70, 140, 100)]: PASS
+	CSS Transitions: property <column-rule-color> from [initial] to [rgb(70, 70, 170)] at (0.6) should be [rgb(70, 110, 130)]: PASS
+	CSS Transitions: property <column-rule-color> from [initial] to [rgb(70, 70, 170)] at (1) should be [rgb(70, 70, 170)]: PASS
+	CSS Transitions: property <column-rule-color> from [initial] to [rgb(70, 70, 170)] at (1.5) should be [rgb(70, 20, 220)]: PASS
+	CSS Transitions: property <column-rule-color> from [orange] to [blue] at (-0.4) should be [#ffe700]: PASS
+	CSS Transitions: property <column-rule-color> from [orange] to [blue] at (-5) should be [#ffff00]: PASS
+	CSS Transitions: property <column-rule-color> from [orange] to [blue] at (0) should be [orange]: PASS
+	CSS Transitions: property <column-rule-color> from [orange] to [blue] at (0.2) should be [#cc8433]: PASS
+	CSS Transitions: property <column-rule-color> from [orange] to [blue] at (0.6) should be [#664299]: PASS
+	CSS Transitions: property <column-rule-color> from [orange] to [blue] at (1) should be [blue]: PASS
+	CSS Transitions: property <column-rule-color> from [orange] to [blue] at (1.5) should be [blue]: PASS
+	CSS Transitions: property <column-rule-color> from [unset] to [rgb(0, 255, 0)] at (-0.4) should be [rgb(98, 136, 98)]: PASS
+	CSS Transitions: property <column-rule-color> from [unset] to [rgb(0, 255, 0)] at (-5) should be [rgb(255, 0, 255)]: PASS
+	CSS Transitions: property <column-rule-color> from [unset] to [rgb(0, 255, 0)] at (0) should be [rgb(70, 170, 70)]: PASS
+	CSS Transitions: property <column-rule-color> from [unset] to [rgb(0, 255, 0)] at (0.2) should be [rgb(56, 187, 56)]: PASS
+	CSS Transitions: property <column-rule-color> from [unset] to [rgb(0, 255, 0)] at (0.6) should be [rgb(28, 221, 28)]: PASS
+	CSS Transitions: property <column-rule-color> from [unset] to [rgb(0, 255, 0)] at (1) should be [rgb(0, 255, 0)]: PASS
+	CSS Transitions: property <column-rule-color> from [unset] to [rgb(0, 255, 0)] at (1.5) should be [rgb(0, 255, 0)]: PASS
+	CSS Transitions: property <column-rule-color> from neutral to [rgb(70, 170, 70)] at (-0.5) should be [rgb(220, 20, 70)]: PASS
+	CSS Transitions: property <column-rule-color> from neutral to [rgb(70, 170, 70)] at (0) should be [rgb(170, 70, 70)]: PASS
+	CSS Transitions: property <column-rule-color> from neutral to [rgb(70, 170, 70)] at (0.3) should be [rgb(140, 100, 70)]: PASS
+	CSS Transitions: property <column-rule-color> from neutral to [rgb(70, 170, 70)] at (0.6) should be [rgb(110, 130, 70)]: PASS
+	CSS Transitions: property <column-rule-color> from neutral to [rgb(70, 170, 70)] at (1) should be [rgb(70, 170, 70)]: PASS
+	CSS Transitions: property <column-rule-color> from neutral to [rgb(70, 170, 70)] at (1.5) should be [rgb(20, 220, 70)]: PASS
+	Web Animations: property <column-rule-color> from [currentcolor] to [rgb(170, 70, 70)] at (-0.5) should be [rgb(20, 220, 70)]: PASS
+	Web Animations: property <column-rule-color> from [currentcolor] to [rgb(170, 70, 70)] at (0) should be [rgb(70, 170, 70)]: PASS
+	Web Animations: property <column-rule-color> from [currentcolor] to [rgb(170, 70, 70)] at (0.3) should be [rgb(100, 140, 70)]: PASS
+	Web Animations: property <column-rule-color> from [currentcolor] to [rgb(170, 70, 70)] at (0.6) should be [rgb(130, 110, 70)]: PASS
+	Web Animations: property <column-rule-color> from [currentcolor] to [rgb(170, 70, 70)] at (1) should be [rgb(170, 70, 70)]: PASS
+	Web Animations: property <column-rule-color> from [currentcolor] to [rgb(170, 70, 70)] at (1.5) should be [rgb(220, 20, 70)]: PASS
+	Web Animations: property <column-rule-color> from [inherit] to [rgb(70, 170, 70)] at (-0.5) should be [rgb(70, 20, 220)]: PASS
+	Web Animations: property <column-rule-color> from [inherit] to [rgb(70, 170, 70)] at (0) should be [rgb(70, 70, 170)]: PASS
+	Web Animations: property <column-rule-color> from [inherit] to [rgb(70, 170, 70)] at (0.3) should be [rgb(70, 100, 140)]: PASS
+	Web Animations: property <column-rule-color> from [inherit] to [rgb(70, 170, 70)] at (0.6) should be [rgb(70, 130, 110)]: PASS
+	Web Animations: property <column-rule-color> from [inherit] to [rgb(70, 170, 70)] at (1) should be [rgb(70, 170, 70)]: PASS
+	Web Animations: property <column-rule-color> from [inherit] to [rgb(70, 170, 70)] at (1.5) should be [rgb(70, 220, 20)]: PASS
+	Web Animations: property <column-rule-color> from [initial] to [rgb(70, 70, 170)] at (-0.5) should be [rgb(70, 220, 20)]: FAIL
+	Web Animations: property <column-rule-color> from [initial] to [rgb(70, 70, 170)] at (0) should be [rgb(70, 170, 70)]: FAIL
+	Web Animations: property <column-rule-color> from [initial] to [rgb(70, 70, 170)] at (0.3) should be [rgb(70, 140, 100)]: FAIL
+	Web Animations: property <column-rule-color> from [initial] to [rgb(70, 70, 170)] at (0.6) should be [rgb(70, 110, 130)]: FAIL
+	Web Animations: property <column-rule-color> from [initial] to [rgb(70, 70, 170)] at (1) should be [rgb(70, 70, 170)]: PASS
+	Web Animations: property <column-rule-color> from [initial] to [rgb(70, 70, 170)] at (1.5) should be [rgb(70, 20, 220)]: FAIL
+	Web Animations: property <column-rule-color> from [orange] to [blue] at (-0.4) should be [#ffe700]: PASS
+	Web Animations: property <column-rule-color> from [orange] to [blue] at (-5) should be [#ffff00]: PASS
+	Web Animations: property <column-rule-color> from [orange] to [blue] at (0) should be [orange]: PASS
+	Web Animations: property <column-rule-color> from [orange] to [blue] at (0.2) should be [#cc8433]: PASS
+	Web Animations: property <column-rule-color> from [orange] to [blue] at (0.6) should be [#664299]: PASS
+	Web Animations: property <column-rule-color> from [orange] to [blue] at (1) should be [blue]: PASS
+	Web Animations: property <column-rule-color> from [orange] to [blue] at (1.5) should be [blue]: PASS
+	Web Animations: property <column-rule-color> from [unset] to [rgb(0, 255, 0)] at (-0.4) should be [rgb(98, 136, 98)]: FAIL
+	Web Animations: property <column-rule-color> from [unset] to [rgb(0, 255, 0)] at (-5) should be [rgb(255, 0, 255)]: FAIL
+	Web Animations: property <column-rule-color> from [unset] to [rgb(0, 255, 0)] at (0) should be [rgb(70, 170, 70)]: FAIL
+	Web Animations: property <column-rule-color> from [unset] to [rgb(0, 255, 0)] at (0.2) should be [rgb(56, 187, 56)]: FAIL
+	Web Animations: property <column-rule-color> from [unset] to [rgb(0, 255, 0)] at (0.6) should be [rgb(28, 221, 28)]: FAIL
+	Web Animations: property <column-rule-color> from [unset] to [rgb(0, 255, 0)] at (1) should be [rgb(0, 255, 0)]: PASS
+	Web Animations: property <column-rule-color> from [unset] to [rgb(0, 255, 0)] at (1.5) should be [rgb(0, 255, 0)]: PASS
+	Web Animations: property <column-rule-color> from neutral to [rgb(70, 170, 70)] at (-0.5) should be [rgb(220, 20, 70)]: PASS
+	Web Animations: property <column-rule-color> from neutral to [rgb(70, 170, 70)] at (0) should be [rgb(170, 70, 70)]: PASS
+	Web Animations: property <column-rule-color> from neutral to [rgb(70, 170, 70)] at (0.3) should be [rgb(140, 100, 70)]: PASS
+	Web Animations: property <column-rule-color> from neutral to [rgb(70, 170, 70)] at (0.6) should be [rgb(110, 130, 70)]: PASS
+	Web Animations: property <column-rule-color> from neutral to [rgb(70, 170, 70)] at (1) should be [rgb(70, 170, 70)]: PASS
+	Web Animations: property <column-rule-color> from neutral to [rgb(70, 170, 70)] at (1.5) should be [rgb(20, 220, 70)]: PASS
+/css/css-multicol/animation/column-rule-width-interpolation.html: OK
+	CSS Animations: property <column-rule-width> from [0px] to [10px] at (-0.3) should be [0px]: FAIL
+	CSS Animations: property <column-rule-width> from [0px] to [10px] at (0) should be [0px]: PASS
+	CSS Animations: property <column-rule-width> from [0px] to [10px] at (0.3) should be [3px]: FAIL
+	CSS Animations: property <column-rule-width> from [0px] to [10px] at (0.6) should be [6px]: FAIL
+	CSS Animations: property <column-rule-width> from [0px] to [10px] at (1) should be [10px]: FAIL
+	CSS Animations: property <column-rule-width> from [0px] to [10px] at (1.5) should be [15px]: FAIL
+	CSS Animations: property <column-rule-width> from [15px] to [thick] at (-0.3) should be [18px]: FAIL
+	CSS Animations: property <column-rule-width> from [15px] to [thick] at (-2) should be [35px]: FAIL
+	CSS Animations: property <column-rule-width> from [15px] to [thick] at (0) should be [15px]: FAIL
+	CSS Animations: property <column-rule-width> from [15px] to [thick] at (0.3) should be [12px]: FAIL
+	CSS Animations: property <column-rule-width> from [15px] to [thick] at (0.6) should be [9px]: FAIL
+	CSS Animations: property <column-rule-width> from [15px] to [thick] at (1) should be [5px]: FAIL
+	CSS Animations: property <column-rule-width> from [15px] to [thick] at (1.5) should be [0px]: PASS
+	CSS Animations: property <column-rule-width> from [inherit] to [20px] at (-0.3) should be [33px]: FAIL
+	CSS Animations: property <column-rule-width> from [inherit] to [20px] at (0) should be [30px]: PASS
+	CSS Animations: property <column-rule-width> from [inherit] to [20px] at (0.3) should be [27px]: FAIL
+	CSS Animations: property <column-rule-width> from [inherit] to [20px] at (0.6) should be [24px]: FAIL
+	CSS Animations: property <column-rule-width> from [inherit] to [20px] at (1) should be [20px]: FAIL
+	CSS Animations: property <column-rule-width> from [inherit] to [20px] at (1.5) should be [15px]: FAIL
+	CSS Animations: property <column-rule-width> from [initial] to [20px] at (-0.3) should be [0px]: FAIL
+	CSS Animations: property <column-rule-width> from [initial] to [20px] at (0) should be [3px]: FAIL
+	CSS Animations: property <column-rule-width> from [initial] to [20px] at (0.3) should be [8.1px]: FAIL
+	CSS Animations: property <column-rule-width> from [initial] to [20px] at (0.6) should be [13.2px]: FAIL
+	CSS Animations: property <column-rule-width> from [initial] to [20px] at (1) should be [20px]: FAIL
+	CSS Animations: property <column-rule-width> from [initial] to [20px] at (1.5) should be [28.5px]: FAIL
+	CSS Animations: property <column-rule-width> from [unset] to [20px] at (-0.3) should be [0px]: FAIL
+	CSS Animations: property <column-rule-width> from [unset] to [20px] at (0) should be [3px]: FAIL
+	CSS Animations: property <column-rule-width> from [unset] to [20px] at (0.3) should be [8.1px]: FAIL
+	CSS Animations: property <column-rule-width> from [unset] to [20px] at (0.6) should be [13.2px]: FAIL
+	CSS Animations: property <column-rule-width> from [unset] to [20px] at (1) should be [20px]: FAIL
+	CSS Animations: property <column-rule-width> from [unset] to [20px] at (1.5) should be [28.5px]: FAIL
+	CSS Animations: property <column-rule-width> from neutral to [20px] at (-0.3) should be [7px]: FAIL
+	CSS Animations: property <column-rule-width> from neutral to [20px] at (0) should be [10px]: PASS
+	CSS Animations: property <column-rule-width> from neutral to [20px] at (0.3) should be [13px]: FAIL
+	CSS Animations: property <column-rule-width> from neutral to [20px] at (0.6) should be [16px]: FAIL
+	CSS Animations: property <column-rule-width> from neutral to [20px] at (1) should be [20px]: FAIL
+	CSS Animations: property <column-rule-width> from neutral to [20px] at (1.5) should be [25px]: FAIL
+	CSS Transitions with transition: all: property <column-rule-width> from [0px] to [10px] at (-0.3) should be [0px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from [0px] to [10px] at (0) should be [0px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from [0px] to [10px] at (0.3) should be [3px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from [0px] to [10px] at (0.6) should be [6px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from [0px] to [10px] at (1) should be [10px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from [0px] to [10px] at (1.5) should be [15px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from [15px] to [thick] at (-0.3) should be [18px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from [15px] to [thick] at (-2) should be [35px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from [15px] to [thick] at (0) should be [15px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from [15px] to [thick] at (0.3) should be [12px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from [15px] to [thick] at (0.6) should be [9px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from [15px] to [thick] at (1) should be [5px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from [15px] to [thick] at (1.5) should be [0px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from [inherit] to [20px] at (-0.3) should be [33px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from [inherit] to [20px] at (0) should be [30px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from [inherit] to [20px] at (0.3) should be [27px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from [inherit] to [20px] at (0.6) should be [24px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from [inherit] to [20px] at (1) should be [20px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from [inherit] to [20px] at (1.5) should be [15px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from [initial] to [20px] at (-0.3) should be [0px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from [initial] to [20px] at (0) should be [3px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from [initial] to [20px] at (0.3) should be [8.1px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from [initial] to [20px] at (0.6) should be [13.2px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from [initial] to [20px] at (1) should be [20px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from [initial] to [20px] at (1.5) should be [28.5px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from [unset] to [20px] at (-0.3) should be [0px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from [unset] to [20px] at (0) should be [3px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from [unset] to [20px] at (0.3) should be [8.1px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from [unset] to [20px] at (0.6) should be [13.2px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from [unset] to [20px] at (1) should be [20px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from [unset] to [20px] at (1.5) should be [28.5px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from neutral to [20px] at (-0.3) should be [7px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from neutral to [20px] at (0) should be [10px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from neutral to [20px] at (0.3) should be [13px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from neutral to [20px] at (0.6) should be [16px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from neutral to [20px] at (1) should be [20px]: PASS
+	CSS Transitions with transition: all: property <column-rule-width> from neutral to [20px] at (1.5) should be [25px]: PASS
+	CSS Transitions: property <column-rule-width> from [0px] to [10px] at (-0.3) should be [0px]: PASS
+	CSS Transitions: property <column-rule-width> from [0px] to [10px] at (0) should be [0px]: PASS
+	CSS Transitions: property <column-rule-width> from [0px] to [10px] at (0.3) should be [3px]: PASS
+	CSS Transitions: property <column-rule-width> from [0px] to [10px] at (0.6) should be [6px]: PASS
+	CSS Transitions: property <column-rule-width> from [0px] to [10px] at (1) should be [10px]: PASS
+	CSS Transitions: property <column-rule-width> from [0px] to [10px] at (1.5) should be [15px]: PASS
+	CSS Transitions: property <column-rule-width> from [15px] to [thick] at (-0.3) should be [18px]: PASS
+	CSS Transitions: property <column-rule-width> from [15px] to [thick] at (-2) should be [35px]: PASS
+	CSS Transitions: property <column-rule-width> from [15px] to [thick] at (0) should be [15px]: PASS
+	CSS Transitions: property <column-rule-width> from [15px] to [thick] at (0.3) should be [12px]: PASS
+	CSS Transitions: property <column-rule-width> from [15px] to [thick] at (0.6) should be [9px]: PASS
+	CSS Transitions: property <column-rule-width> from [15px] to [thick] at (1) should be [5px]: PASS
+	CSS Transitions: property <column-rule-width> from [15px] to [thick] at (1.5) should be [0px]: PASS
+	CSS Transitions: property <column-rule-width> from [inherit] to [20px] at (-0.3) should be [33px]: PASS
+	CSS Transitions: property <column-rule-width> from [inherit] to [20px] at (0) should be [30px]: PASS
+	CSS Transitions: property <column-rule-width> from [inherit] to [20px] at (0.3) should be [27px]: PASS
+	CSS Transitions: property <column-rule-width> from [inherit] to [20px] at (0.6) should be [24px]: PASS
+	CSS Transitions: property <column-rule-width> from [inherit] to [20px] at (1) should be [20px]: PASS
+	CSS Transitions: property <column-rule-width> from [inherit] to [20px] at (1.5) should be [15px]: PASS
+	CSS Transitions: property <column-rule-width> from [initial] to [20px] at (-0.3) should be [0px]: PASS
+	CSS Transitions: property <column-rule-width> from [initial] to [20px] at (0) should be [3px]: PASS
+	CSS Transitions: property <column-rule-width> from [initial] to [20px] at (0.3) should be [8.1px]: PASS
+	CSS Transitions: property <column-rule-width> from [initial] to [20px] at (0.6) should be [13.2px]: PASS
+	CSS Transitions: property <column-rule-width> from [initial] to [20px] at (1) should be [20px]: PASS
+	CSS Transitions: property <column-rule-width> from [initial] to [20px] at (1.5) should be [28.5px]: PASS
+	CSS Transitions: property <column-rule-width> from [unset] to [20px] at (-0.3) should be [0px]: PASS
+	CSS Transitions: property <column-rule-width> from [unset] to [20px] at (0) should be [3px]: PASS
+	CSS Transitions: property <column-rule-width> from [unset] to [20px] at (0.3) should be [8.1px]: PASS
+	CSS Transitions: property <column-rule-width> from [unset] to [20px] at (0.6) should be [13.2px]: PASS
+	CSS Transitions: property <column-rule-width> from [unset] to [20px] at (1) should be [20px]: PASS
+	CSS Transitions: property <column-rule-width> from [unset] to [20px] at (1.5) should be [28.5px]: PASS
+	CSS Transitions: property <column-rule-width> from neutral to [20px] at (-0.3) should be [7px]: PASS
+	CSS Transitions: property <column-rule-width> from neutral to [20px] at (0) should be [10px]: PASS
+	CSS Transitions: property <column-rule-width> from neutral to [20px] at (0.3) should be [13px]: PASS
+	CSS Transitions: property <column-rule-width> from neutral to [20px] at (0.6) should be [16px]: PASS
+	CSS Transitions: property <column-rule-width> from neutral to [20px] at (1) should be [20px]: PASS
+	CSS Transitions: property <column-rule-width> from neutral to [20px] at (1.5) should be [25px]: PASS
+	Web Animations: property <column-rule-width> from [0px] to [10px] at (-0.3) should be [0px]: FAIL
+	Web Animations: property <column-rule-width> from [0px] to [10px] at (0) should be [0px]: PASS
+	Web Animations: property <column-rule-width> from [0px] to [10px] at (0.3) should be [3px]: FAIL
+	Web Animations: property <column-rule-width> from [0px] to [10px] at (0.6) should be [6px]: FAIL
+	Web Animations: property <column-rule-width> from [0px] to [10px] at (1) should be [10px]: FAIL
+	Web Animations: property <column-rule-width> from [0px] to [10px] at (1.5) should be [15px]: FAIL
+	Web Animations: property <column-rule-width> from [15px] to [thick] at (-0.3) should be [18px]: FAIL
+	Web Animations: property <column-rule-width> from [15px] to [thick] at (-2) should be [35px]: FAIL
+	Web Animations: property <column-rule-width> from [15px] to [thick] at (0) should be [15px]: FAIL
+	Web Animations: property <column-rule-width> from [15px] to [thick] at (0.3) should be [12px]: FAIL
+	Web Animations: property <column-rule-width> from [15px] to [thick] at (0.6) should be [9px]: FAIL
+	Web Animations: property <column-rule-width> from [15px] to [thick] at (1) should be [5px]: FAIL
+	Web Animations: property <column-rule-width> from [15px] to [thick] at (1.5) should be [0px]: FAIL
+	Web Animations: property <column-rule-width> from [inherit] to [20px] at (-0.3) should be [33px]: FAIL
+	Web Animations: property <column-rule-width> from [inherit] to [20px] at (0) should be [30px]: PASS
+	Web Animations: property <column-rule-width> from [inherit] to [20px] at (0.3) should be [27px]: FAIL
+	Web Animations: property <column-rule-width> from [inherit] to [20px] at (0.6) should be [24px]: FAIL
+	Web Animations: property <column-rule-width> from [inherit] to [20px] at (1) should be [20px]: FAIL
+	Web Animations: property <column-rule-width> from [inherit] to [20px] at (1.5) should be [15px]: FAIL
+	Web Animations: property <column-rule-width> from [initial] to [20px] at (-0.3) should be [0px]: FAIL
+	Web Animations: property <column-rule-width> from [initial] to [20px] at (0) should be [3px]: FAIL
+	Web Animations: property <column-rule-width> from [initial] to [20px] at (0.3) should be [8.1px]: FAIL
+	Web Animations: property <column-rule-width> from [initial] to [20px] at (0.6) should be [13.2px]: FAIL
+	Web Animations: property <column-rule-width> from [initial] to [20px] at (1) should be [20px]: FAIL
+	Web Animations: property <column-rule-width> from [initial] to [20px] at (1.5) should be [28.5px]: FAIL
+	Web Animations: property <column-rule-width> from [unset] to [20px] at (-0.3) should be [0px]: FAIL
+	Web Animations: property <column-rule-width> from [unset] to [20px] at (0) should be [3px]: FAIL
+	Web Animations: property <column-rule-width> from [unset] to [20px] at (0.3) should be [8.1px]: FAIL
+	Web Animations: property <column-rule-width> from [unset] to [20px] at (0.6) should be [13.2px]: FAIL
+	Web Animations: property <column-rule-width> from [unset] to [20px] at (1) should be [20px]: FAIL
+	Web Animations: property <column-rule-width> from [unset] to [20px] at (1.5) should be [28.5px]: FAIL
+	Web Animations: property <column-rule-width> from neutral to [20px] at (-0.3) should be [7px]: FAIL
+	Web Animations: property <column-rule-width> from neutral to [20px] at (0) should be [10px]: PASS
+	Web Animations: property <column-rule-width> from neutral to [20px] at (0.3) should be [13px]: FAIL
+	Web Animations: property <column-rule-width> from neutral to [20px] at (0.6) should be [16px]: FAIL
+	Web Animations: property <column-rule-width> from neutral to [20px] at (1) should be [20px]: FAIL
+	Web Animations: property <column-rule-width> from neutral to [20px] at (1.5) should be [25px]: FAIL
+/css/css-multicol/animation/column-width-interpolation.html: OK
+	CSS Animations: property <column-width> from [50px] to [100px] at (-0.3) should be [35px]: FAIL
+	CSS Animations: property <column-width> from [50px] to [100px] at (-1) should be [1em]: FAIL
+	CSS Animations: property <column-width> from [50px] to [100px] at (-20) should be [1em]: PASS
+	CSS Animations: property <column-width> from [50px] to [100px] at (0) should be [50px]: PASS
+	CSS Animations: property <column-width> from [50px] to [100px] at (0.3) should be [65px]: FAIL
+	CSS Animations: property <column-width> from [50px] to [100px] at (0.6) should be [80px]: FAIL
+	CSS Animations: property <column-width> from [50px] to [100px] at (1) should be [100px]: PASS
+	CSS Animations: property <column-width> from [50px] to [100px] at (1.5) should be [125px]: FAIL
+	CSS Animations: property <column-width> from [50px] to [auto] at (-0.3) should be [50px]: PASS
+	CSS Animations: property <column-width> from [50px] to [auto] at (0) should be [50px]: PASS
+	CSS Animations: property <column-width> from [50px] to [auto] at (0.3) should be [50px]: PASS
+	CSS Animations: property <column-width> from [50px] to [auto] at (0.5) should be [auto]: PASS
+	CSS Animations: property <column-width> from [50px] to [auto] at (0.6) should be [auto]: PASS
+	CSS Animations: property <column-width> from [50px] to [auto] at (1) should be [auto]: PASS
+	CSS Animations: property <column-width> from [50px] to [auto] at (1.5) should be [auto]: PASS
+	CSS Animations: property <column-width> from [inherit] to [20px] at (-0.3) should be [33px]: PASS
+	CSS Animations: property <column-width> from [inherit] to [20px] at (-1) should be [40px]: PASS
+	CSS Animations: property <column-width> from [inherit] to [20px] at (-20) should be [230px]: PASS
+	CSS Animations: property <column-width> from [inherit] to [20px] at (0) should be [30px]: PASS
+	CSS Animations: property <column-width> from [inherit] to [20px] at (0.3) should be [27px]: PASS
+	CSS Animations: property <column-width> from [inherit] to [20px] at (0.6) should be [24px]: PASS
+	CSS Animations: property <column-width> from [inherit] to [20px] at (1) should be [20px]: PASS
+	CSS Animations: property <column-width> from [inherit] to [20px] at (1.5) should be [15px]: PASS
+	CSS Animations: property <column-width> from [initial] to [20px] at (-0.3) should be [initial]: PASS
+	CSS Animations: property <column-width> from [initial] to [20px] at (0) should be [initial]: PASS
+	CSS Animations: property <column-width> from [initial] to [20px] at (0.3) should be [initial]: PASS
+	CSS Animations: property <column-width> from [initial] to [20px] at (0.5) should be [20px]: PASS
+	CSS Animations: property <column-width> from [initial] to [20px] at (0.6) should be [20px]: PASS
+	CSS Animations: property <column-width> from [initial] to [20px] at (1) should be [20px]: PASS
+	CSS Animations: property <column-width> from [initial] to [20px] at (1.5) should be [20px]: PASS
+	CSS Animations: property <column-width> from [unset] to [20px] at (-0.3) should be [unset]: PASS
+	CSS Animations: property <column-width> from [unset] to [20px] at (0) should be [unset]: PASS
+	CSS Animations: property <column-width> from [unset] to [20px] at (0.3) should be [unset]: PASS
+	CSS Animations: property <column-width> from [unset] to [20px] at (0.5) should be [20px]: PASS
+	CSS Animations: property <column-width> from [unset] to [20px] at (0.6) should be [20px]: PASS
+	CSS Animations: property <column-width> from [unset] to [20px] at (1) should be [20px]: PASS
+	CSS Animations: property <column-width> from [unset] to [20px] at (1.5) should be [20px]: PASS
+	CSS Animations: property <column-width> from neutral to [20px] at (-0.3) should be [7px]: PASS
+	CSS Animations: property <column-width> from neutral to [20px] at (-1) should be [1em]: PASS
+	CSS Animations: property <column-width> from neutral to [20px] at (-20) should be [1em]: PASS
+	CSS Animations: property <column-width> from neutral to [20px] at (0) should be [10px]: PASS
+	CSS Animations: property <column-width> from neutral to [20px] at (0.3) should be [13px]: PASS
+	CSS Animations: property <column-width> from neutral to [20px] at (0.6) should be [16px]: PASS
+	CSS Animations: property <column-width> from neutral to [20px] at (1) should be [20px]: PASS
+	CSS Animations: property <column-width> from neutral to [20px] at (1.5) should be [25px]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-width> from [50px] to [auto] at (-0.3) should be [50px]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-width> from [50px] to [auto] at (0) should be [50px]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-width> from [50px] to [auto] at (0.3) should be [50px]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-width> from [50px] to [auto] at (0.5) should be [auto]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-width> from [50px] to [auto] at (0.6) should be [auto]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-width> from [50px] to [auto] at (1) should be [auto]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-width> from [50px] to [auto] at (1.5) should be [auto]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-width> from [initial] to [20px] at (-0.3) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-width> from [initial] to [20px] at (0) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-width> from [initial] to [20px] at (0.3) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-width> from [initial] to [20px] at (0.5) should be [20px]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-width> from [initial] to [20px] at (0.6) should be [20px]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-width> from [initial] to [20px] at (1) should be [20px]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-width> from [initial] to [20px] at (1.5) should be [20px]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-width> from [unset] to [20px] at (-0.3) should be [unset]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-width> from [unset] to [20px] at (0) should be [unset]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-width> from [unset] to [20px] at (0.3) should be [unset]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-width> from [unset] to [20px] at (0.5) should be [20px]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-width> from [unset] to [20px] at (0.6) should be [20px]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-width> from [unset] to [20px] at (1) should be [20px]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-width> from [unset] to [20px] at (1.5) should be [20px]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-width> from [50px] to [auto] at (-0.3) should be [50px]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-width> from [50px] to [auto] at (0) should be [50px]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-width> from [50px] to [auto] at (0.3) should be [50px]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-width> from [50px] to [auto] at (0.5) should be [auto]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-width> from [50px] to [auto] at (0.6) should be [auto]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-width> from [50px] to [auto] at (1) should be [auto]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-width> from [50px] to [auto] at (1.5) should be [auto]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-width> from [initial] to [20px] at (-0.3) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-width> from [initial] to [20px] at (0) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-width> from [initial] to [20px] at (0.3) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-width> from [initial] to [20px] at (0.5) should be [20px]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-width> from [initial] to [20px] at (0.6) should be [20px]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-width> from [initial] to [20px] at (1) should be [20px]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-width> from [initial] to [20px] at (1.5) should be [20px]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-width> from [unset] to [20px] at (-0.3) should be [unset]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-width> from [unset] to [20px] at (0) should be [unset]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-width> from [unset] to [20px] at (0.3) should be [unset]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-width> from [unset] to [20px] at (0.5) should be [20px]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-width> from [unset] to [20px] at (0.6) should be [20px]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-width> from [unset] to [20px] at (1) should be [20px]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-width> from [unset] to [20px] at (1.5) should be [20px]: PASS
+	CSS Transitions with transition: all: property <column-width> from [50px] to [100px] at (-0.3) should be [35px]: FAIL
+	CSS Transitions with transition: all: property <column-width> from [50px] to [100px] at (-1) should be [1em]: FAIL
+	CSS Transitions with transition: all: property <column-width> from [50px] to [100px] at (-20) should be [1em]: PASS
+	CSS Transitions with transition: all: property <column-width> from [50px] to [100px] at (0) should be [50px]: PASS
+	CSS Transitions with transition: all: property <column-width> from [50px] to [100px] at (0.3) should be [65px]: FAIL
+	CSS Transitions with transition: all: property <column-width> from [50px] to [100px] at (0.6) should be [80px]: FAIL
+	CSS Transitions with transition: all: property <column-width> from [50px] to [100px] at (1) should be [100px]: PASS
+	CSS Transitions with transition: all: property <column-width> from [50px] to [100px] at (1.5) should be [125px]: FAIL
+	CSS Transitions with transition: all: property <column-width> from [50px] to [auto] at (-0.3) should be [auto]: PASS
+	CSS Transitions with transition: all: property <column-width> from [50px] to [auto] at (0) should be [auto]: PASS
+	CSS Transitions with transition: all: property <column-width> from [50px] to [auto] at (0.3) should be [auto]: PASS
+	CSS Transitions with transition: all: property <column-width> from [50px] to [auto] at (0.5) should be [auto]: PASS
+	CSS Transitions with transition: all: property <column-width> from [50px] to [auto] at (0.6) should be [auto]: PASS
+	CSS Transitions with transition: all: property <column-width> from [50px] to [auto] at (1) should be [auto]: PASS
+	CSS Transitions with transition: all: property <column-width> from [50px] to [auto] at (1.5) should be [auto]: PASS
+	CSS Transitions with transition: all: property <column-width> from [inherit] to [20px] at (-0.3) should be [33px]: PASS
+	CSS Transitions with transition: all: property <column-width> from [inherit] to [20px] at (-1) should be [40px]: PASS
+	CSS Transitions with transition: all: property <column-width> from [inherit] to [20px] at (-20) should be [230px]: PASS
+	CSS Transitions with transition: all: property <column-width> from [inherit] to [20px] at (0) should be [30px]: PASS
+	CSS Transitions with transition: all: property <column-width> from [inherit] to [20px] at (0.3) should be [27px]: PASS
+	CSS Transitions with transition: all: property <column-width> from [inherit] to [20px] at (0.6) should be [24px]: PASS
+	CSS Transitions with transition: all: property <column-width> from [inherit] to [20px] at (1) should be [20px]: PASS
+	CSS Transitions with transition: all: property <column-width> from [inherit] to [20px] at (1.5) should be [15px]: PASS
+	CSS Transitions with transition: all: property <column-width> from [initial] to [20px] at (-0.3) should be [20px]: PASS
+	CSS Transitions with transition: all: property <column-width> from [initial] to [20px] at (0) should be [20px]: PASS
+	CSS Transitions with transition: all: property <column-width> from [initial] to [20px] at (0.3) should be [20px]: PASS
+	CSS Transitions with transition: all: property <column-width> from [initial] to [20px] at (0.5) should be [20px]: PASS
+	CSS Transitions with transition: all: property <column-width> from [initial] to [20px] at (0.6) should be [20px]: PASS
+	CSS Transitions with transition: all: property <column-width> from [initial] to [20px] at (1) should be [20px]: PASS
+	CSS Transitions with transition: all: property <column-width> from [initial] to [20px] at (1.5) should be [20px]: PASS
+	CSS Transitions with transition: all: property <column-width> from [unset] to [20px] at (-0.3) should be [20px]: PASS
+	CSS Transitions with transition: all: property <column-width> from [unset] to [20px] at (0) should be [20px]: PASS
+	CSS Transitions with transition: all: property <column-width> from [unset] to [20px] at (0.3) should be [20px]: PASS
+	CSS Transitions with transition: all: property <column-width> from [unset] to [20px] at (0.5) should be [20px]: PASS
+	CSS Transitions with transition: all: property <column-width> from [unset] to [20px] at (0.6) should be [20px]: PASS
+	CSS Transitions with transition: all: property <column-width> from [unset] to [20px] at (1) should be [20px]: PASS
+	CSS Transitions with transition: all: property <column-width> from [unset] to [20px] at (1.5) should be [20px]: PASS
+	CSS Transitions with transition: all: property <column-width> from neutral to [20px] at (-0.3) should be [7px]: PASS
+	CSS Transitions with transition: all: property <column-width> from neutral to [20px] at (-1) should be [1em]: PASS
+	CSS Transitions with transition: all: property <column-width> from neutral to [20px] at (-20) should be [1em]: PASS
+	CSS Transitions with transition: all: property <column-width> from neutral to [20px] at (0) should be [10px]: PASS
+	CSS Transitions with transition: all: property <column-width> from neutral to [20px] at (0.3) should be [13px]: PASS
+	CSS Transitions with transition: all: property <column-width> from neutral to [20px] at (0.6) should be [16px]: PASS
+	CSS Transitions with transition: all: property <column-width> from neutral to [20px] at (1) should be [20px]: PASS
+	CSS Transitions with transition: all: property <column-width> from neutral to [20px] at (1.5) should be [25px]: PASS
+	CSS Transitions: property <column-width> from [50px] to [100px] at (-0.3) should be [35px]: FAIL
+	CSS Transitions: property <column-width> from [50px] to [100px] at (-1) should be [1em]: FAIL
+	CSS Transitions: property <column-width> from [50px] to [100px] at (-20) should be [1em]: PASS
+	CSS Transitions: property <column-width> from [50px] to [100px] at (0) should be [50px]: PASS
+	CSS Transitions: property <column-width> from [50px] to [100px] at (0.3) should be [65px]: FAIL
+	CSS Transitions: property <column-width> from [50px] to [100px] at (0.6) should be [80px]: FAIL
+	CSS Transitions: property <column-width> from [50px] to [100px] at (1) should be [100px]: PASS
+	CSS Transitions: property <column-width> from [50px] to [100px] at (1.5) should be [125px]: FAIL
+	CSS Transitions: property <column-width> from [50px] to [auto] at (-0.3) should be [auto]: PASS
+	CSS Transitions: property <column-width> from [50px] to [auto] at (0) should be [auto]: PASS
+	CSS Transitions: property <column-width> from [50px] to [auto] at (0.3) should be [auto]: PASS
+	CSS Transitions: property <column-width> from [50px] to [auto] at (0.5) should be [auto]: PASS
+	CSS Transitions: property <column-width> from [50px] to [auto] at (0.6) should be [auto]: PASS
+	CSS Transitions: property <column-width> from [50px] to [auto] at (1) should be [auto]: PASS
+	CSS Transitions: property <column-width> from [50px] to [auto] at (1.5) should be [auto]: PASS
+	CSS Transitions: property <column-width> from [inherit] to [20px] at (-0.3) should be [33px]: PASS
+	CSS Transitions: property <column-width> from [inherit] to [20px] at (-1) should be [40px]: PASS
+	CSS Transitions: property <column-width> from [inherit] to [20px] at (-20) should be [230px]: PASS
+	CSS Transitions: property <column-width> from [inherit] to [20px] at (0) should be [30px]: PASS
+	CSS Transitions: property <column-width> from [inherit] to [20px] at (0.3) should be [27px]: PASS
+	CSS Transitions: property <column-width> from [inherit] to [20px] at (0.6) should be [24px]: PASS
+	CSS Transitions: property <column-width> from [inherit] to [20px] at (1) should be [20px]: PASS
+	CSS Transitions: property <column-width> from [inherit] to [20px] at (1.5) should be [15px]: PASS
+	CSS Transitions: property <column-width> from [initial] to [20px] at (-0.3) should be [20px]: PASS
+	CSS Transitions: property <column-width> from [initial] to [20px] at (0) should be [20px]: PASS
+	CSS Transitions: property <column-width> from [initial] to [20px] at (0.3) should be [20px]: PASS
+	CSS Transitions: property <column-width> from [initial] to [20px] at (0.5) should be [20px]: PASS
+	CSS Transitions: property <column-width> from [initial] to [20px] at (0.6) should be [20px]: PASS
+	CSS Transitions: property <column-width> from [initial] to [20px] at (1) should be [20px]: PASS
+	CSS Transitions: property <column-width> from [initial] to [20px] at (1.5) should be [20px]: PASS
+	CSS Transitions: property <column-width> from [unset] to [20px] at (-0.3) should be [20px]: PASS
+	CSS Transitions: property <column-width> from [unset] to [20px] at (0) should be [20px]: PASS
+	CSS Transitions: property <column-width> from [unset] to [20px] at (0.3) should be [20px]: PASS
+	CSS Transitions: property <column-width> from [unset] to [20px] at (0.5) should be [20px]: PASS
+	CSS Transitions: property <column-width> from [unset] to [20px] at (0.6) should be [20px]: PASS
+	CSS Transitions: property <column-width> from [unset] to [20px] at (1) should be [20px]: PASS
+	CSS Transitions: property <column-width> from [unset] to [20px] at (1.5) should be [20px]: PASS
+	CSS Transitions: property <column-width> from neutral to [20px] at (-0.3) should be [7px]: PASS
+	CSS Transitions: property <column-width> from neutral to [20px] at (-1) should be [1em]: PASS
+	CSS Transitions: property <column-width> from neutral to [20px] at (-20) should be [1em]: PASS
+	CSS Transitions: property <column-width> from neutral to [20px] at (0) should be [10px]: PASS
+	CSS Transitions: property <column-width> from neutral to [20px] at (0.3) should be [13px]: PASS
+	CSS Transitions: property <column-width> from neutral to [20px] at (0.6) should be [16px]: PASS
+	CSS Transitions: property <column-width> from neutral to [20px] at (1) should be [20px]: PASS
+	CSS Transitions: property <column-width> from neutral to [20px] at (1.5) should be [25px]: PASS
+	Web Animations: property <column-width> from [50px] to [100px] at (-0.3) should be [35px]: PASS
+	Web Animations: property <column-width> from [50px] to [100px] at (-1) should be [1em]: PASS
+	Web Animations: property <column-width> from [50px] to [100px] at (-20) should be [1em]: PASS
+	Web Animations: property <column-width> from [50px] to [100px] at (0) should be [50px]: PASS
+	Web Animations: property <column-width> from [50px] to [100px] at (0.3) should be [65px]: PASS
+	Web Animations: property <column-width> from [50px] to [100px] at (0.6) should be [80px]: PASS
+	Web Animations: property <column-width> from [50px] to [100px] at (1) should be [100px]: PASS
+	Web Animations: property <column-width> from [50px] to [100px] at (1.5) should be [125px]: PASS
+	Web Animations: property <column-width> from [50px] to [auto] at (-0.3) should be [50px]: PASS
+	Web Animations: property <column-width> from [50px] to [auto] at (0) should be [50px]: PASS
+	Web Animations: property <column-width> from [50px] to [auto] at (0.3) should be [50px]: PASS
+	Web Animations: property <column-width> from [50px] to [auto] at (0.5) should be [auto]: PASS
+	Web Animations: property <column-width> from [50px] to [auto] at (0.6) should be [auto]: PASS
+	Web Animations: property <column-width> from [50px] to [auto] at (1) should be [auto]: PASS
+	Web Animations: property <column-width> from [50px] to [auto] at (1.5) should be [auto]: PASS
+	Web Animations: property <column-width> from [inherit] to [20px] at (-0.3) should be [33px]: PASS
+	Web Animations: property <column-width> from [inherit] to [20px] at (-1) should be [40px]: PASS
+	Web Animations: property <column-width> from [inherit] to [20px] at (-20) should be [230px]: PASS
+	Web Animations: property <column-width> from [inherit] to [20px] at (0) should be [30px]: PASS
+	Web Animations: property <column-width> from [inherit] to [20px] at (0.3) should be [27px]: PASS
+	Web Animations: property <column-width> from [inherit] to [20px] at (0.6) should be [24px]: PASS
+	Web Animations: property <column-width> from [inherit] to [20px] at (1) should be [20px]: PASS
+	Web Animations: property <column-width> from [inherit] to [20px] at (1.5) should be [15px]: PASS
+	Web Animations: property <column-width> from [initial] to [20px] at (-0.3) should be [initial]: PASS
+	Web Animations: property <column-width> from [initial] to [20px] at (0) should be [initial]: PASS
+	Web Animations: property <column-width> from [initial] to [20px] at (0.3) should be [initial]: PASS
+	Web Animations: property <column-width> from [initial] to [20px] at (0.5) should be [20px]: PASS
+	Web Animations: property <column-width> from [initial] to [20px] at (0.6) should be [20px]: PASS
+	Web Animations: property <column-width> from [initial] to [20px] at (1) should be [20px]: PASS
+	Web Animations: property <column-width> from [initial] to [20px] at (1.5) should be [20px]: PASS
+	Web Animations: property <column-width> from [unset] to [20px] at (-0.3) should be [unset]: PASS
+	Web Animations: property <column-width> from [unset] to [20px] at (0) should be [unset]: PASS
+	Web Animations: property <column-width> from [unset] to [20px] at (0.3) should be [unset]: PASS
+	Web Animations: property <column-width> from [unset] to [20px] at (0.5) should be [20px]: PASS
+	Web Animations: property <column-width> from [unset] to [20px] at (0.6) should be [20px]: PASS
+	Web Animations: property <column-width> from [unset] to [20px] at (1) should be [20px]: PASS
+	Web Animations: property <column-width> from [unset] to [20px] at (1.5) should be [20px]: PASS
+	Web Animations: property <column-width> from neutral to [20px] at (-0.3) should be [7px]: PASS
+	Web Animations: property <column-width> from neutral to [20px] at (-1) should be [1em]: PASS
+	Web Animations: property <column-width> from neutral to [20px] at (-20) should be [1em]: PASS
+	Web Animations: property <column-width> from neutral to [20px] at (0) should be [10px]: PASS
+	Web Animations: property <column-width> from neutral to [20px] at (0.3) should be [13px]: PASS
+	Web Animations: property <column-width> from neutral to [20px] at (0.6) should be [16px]: PASS
+	Web Animations: property <column-width> from neutral to [20px] at (1) should be [20px]: PASS
+	Web Animations: property <column-width> from neutral to [20px] at (1.5) should be [25px]: PASS
+/css/css-multicol/animation/column-wrap-reset-interpolation.html: OK
+	Animate and reset column-wrap: FAIL
+/css/css-multicol/animation/columns-interpolation.html: OK
+	CSS Animations: property <columns> from [10 / 100px] to [20 / 200px] at (-0.5) should be [5 / 50px]: FAIL
+	CSS Animations: property <columns> from [10 / 100px] to [20 / 200px] at (0) should be [10 / 100px]: FAIL
+	CSS Animations: property <columns> from [10 / 100px] to [20 / 200px] at (0.5) should be [15 / 150px]: FAIL
+	CSS Animations: property <columns> from [10 / 100px] to [20 / 200px] at (1) should be [20 / 200px]: FAIL
+	CSS Animations: property <columns> from [10 100px / auto] to [20 200px / auto] at (-0.5) should be [5 50px]: FAIL
+	CSS Animations: property <columns> from [10 100px / auto] to [20 200px / auto] at (0) should be [10 100px]: FAIL
+	CSS Animations: property <columns> from [10 100px / auto] to [20 200px / auto] at (0.5) should be [15 150px]: FAIL
+	CSS Animations: property <columns> from [10 100px / auto] to [20 200px / auto] at (1) should be [20 200px]: FAIL
+	CSS Animations: property <columns> from [10 100px] to [20 200px] at (-0.5) should be [5 50px]: PASS
+	CSS Animations: property <columns> from [10 100px] to [20 200px] at (0) should be [10 100px]: PASS
+	CSS Animations: property <columns> from [10 100px] to [20 200px] at (0.5) should be [15 150px]: PASS
+	CSS Animations: property <columns> from [10 100px] to [20 200px] at (1) should be [20 200px]: PASS
+	CSS Animations: property <columns> from [1000px / 500px] to [100px / 200px] at (-0.5) should be [1450px / 650px]: FAIL
+	CSS Animations: property <columns> from [1000px / 500px] to [100px / 200px] at (-1) should be [1900px / 800px]: FAIL
+	CSS Animations: property <columns> from [1000px / 500px] to [100px / 200px] at (0) should be [1000px / 500px]: FAIL
+	CSS Animations: property <columns> from [1000px / 500px] to [100px / 200px] at (0.5) should be [550px / 350px]: FAIL
+	CSS Animations: property <columns> from [1000px / 500px] to [100px / 200px] at (1) should be [100px / 200px]: FAIL
+	CSS Animations: property <columns> from [100px / 200px] to [auto] at (-0.3) should be [100px / 200px]: FAIL
+	CSS Animations: property <columns> from [100px / 200px] to [auto] at (0) should be [100px / 200px]: FAIL
+	CSS Animations: property <columns> from [100px / 200px] to [auto] at (0.3) should be [100px / 200px]: FAIL
+	CSS Animations: property <columns> from [100px / 200px] to [auto] at (0.5) should be [auto]: FAIL
+	CSS Animations: property <columns> from [100px / 200px] to [auto] at (0.6) should be [auto]: FAIL
+	CSS Animations: property <columns> from [100px / 200px] to [auto] at (1) should be [auto]: FAIL
+	CSS Animations: property <columns> from [100px / 200px] to [auto] at (1.5) should be [auto]: FAIL
+	CSS Animations: property <columns> from [200px 10] to [100px 20] at (-0.5) should be [250px 5]: PASS
+	CSS Animations: property <columns> from [200px 10] to [100px 20] at (-1) should be [300px 1]: PASS
+	CSS Animations: property <columns> from [200px 10] to [100px 20] at (0) should be [200px 10]: PASS
+	CSS Animations: property <columns> from [200px 10] to [100px 20] at (0.5) should be [150px 15]: PASS
+	CSS Animations: property <columns> from [200px 10] to [100px 20] at (1) should be [100px 20]: PASS
+	CSS Animations: property <columns> from [auto] to [100px / 200px] at (-0.3) should be [auto]: FAIL
+	CSS Animations: property <columns> from [auto] to [100px / 200px] at (0) should be [auto]: FAIL
+	CSS Animations: property <columns> from [auto] to [100px / 200px] at (0.3) should be [auto]: FAIL
+	CSS Animations: property <columns> from [auto] to [100px / 200px] at (0.5) should be [100px / 200px]: FAIL
+	CSS Animations: property <columns> from [auto] to [100px / 200px] at (0.6) should be [100px / 200px]: FAIL
+	CSS Animations: property <columns> from [auto] to [100px / 200px] at (1) should be [100px / 200px]: FAIL
+	CSS Animations: property <columns> from [auto] to [100px / 200px] at (1.5) should be [100px / 200px]: FAIL
+	CSS Animations: property <columns> from [inherit] to [200px / 900px] at (-0.1) should be [35px / 20px]: FAIL
+	CSS Animations: property <columns> from [inherit] to [200px / 900px] at (-0.2) should be [20px / 0px]: FAIL
+	CSS Animations: property <columns> from [inherit] to [200px / 900px] at (-0.5) should be [0px / 0px]: FAIL
+	CSS Animations: property <columns> from [inherit] to [200px / 900px] at (0) should be [50px / 100px]: FAIL
+	CSS Animations: property <columns> from [inherit] to [200px / 900px] at (0.5) should be [125px / 500px]: FAIL
+	CSS Animations: property <columns> from [inherit] to [200px / 900px] at (1) should be [200px / 900px]: FAIL
+	CSS Animations: property <columns> from [inherit] to [auto] at (-0.3) should be [inherit]: PASS
+	CSS Animations: property <columns> from [inherit] to [auto] at (0) should be [inherit]: PASS
+	CSS Animations: property <columns> from [inherit] to [auto] at (0.3) should be [inherit]: PASS
+	CSS Animations: property <columns> from [inherit] to [auto] at (0.5) should be [auto]: PASS
+	CSS Animations: property <columns> from [inherit] to [auto] at (0.6) should be [auto]: PASS
+	CSS Animations: property <columns> from [inherit] to [auto] at (1) should be [auto]: PASS
+	CSS Animations: property <columns> from [inherit] to [auto] at (1.5) should be [auto]: PASS
+	CSS Animations: property <columns> from [initial] to [100px / 200px] at (-0.3) should be [initial]: FAIL
+	CSS Animations: property <columns> from [initial] to [100px / 200px] at (0) should be [initial]: FAIL
+	CSS Animations: property <columns> from [initial] to [100px / 200px] at (0.3) should be [initial]: FAIL
+	CSS Animations: property <columns> from [initial] to [100px / 200px] at (0.5) should be [100px / 200px]: FAIL
+	CSS Animations: property <columns> from [initial] to [100px / 200px] at (0.6) should be [100px / 200px]: FAIL
+	CSS Animations: property <columns> from [initial] to [100px / 200px] at (1) should be [100px / 200px]: FAIL
+	CSS Animations: property <columns> from [initial] to [100px / 200px] at (1.5) should be [100px / 200px]: FAIL
+	CSS Animations: property <columns> from [initial] to [100px] at (-0.3) should be [initial]: PASS
+	CSS Animations: property <columns> from [initial] to [100px] at (0) should be [initial]: PASS
+	CSS Animations: property <columns> from [initial] to [100px] at (0.3) should be [initial]: PASS
+	CSS Animations: property <columns> from [initial] to [100px] at (0.5) should be [100px]: PASS
+	CSS Animations: property <columns> from [initial] to [100px] at (0.6) should be [100px]: PASS
+	CSS Animations: property <columns> from [initial] to [100px] at (1) should be [100px]: PASS
+	CSS Animations: property <columns> from [initial] to [100px] at (1.5) should be [100px]: PASS
+	CSS Animations: property <columns> from [initial] to [10] at (-0.3) should be [initial]: PASS
+	CSS Animations: property <columns> from [initial] to [10] at (0) should be [initial]: PASS
+	CSS Animations: property <columns> from [initial] to [10] at (0.3) should be [initial]: PASS
+	CSS Animations: property <columns> from [initial] to [10] at (0.5) should be [10]: PASS
+	CSS Animations: property <columns> from [initial] to [10] at (0.6) should be [10]: PASS
+	CSS Animations: property <columns> from [initial] to [10] at (1) should be [10]: PASS
+	CSS Animations: property <columns> from [initial] to [10] at (1.5) should be [10]: PASS
+	CSS Animations: property <columns> from neutral to [100px / 200px] at (-0.5) should be [250px / 50px]: FAIL
+	CSS Animations: property <columns> from neutral to [100px / 200px] at (-1) should be [300px / 0px]: FAIL
+	CSS Animations: property <columns> from neutral to [100px / 200px] at (0) should be [200px / 100px]: FAIL
+	CSS Animations: property <columns> from neutral to [100px / 200px] at (0.5) should be [150px / 150px]: FAIL
+	CSS Animations: property <columns> from neutral to [100px / 200px] at (1) should be [100px / 200px]: FAIL
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [100px / 200px] to [auto] at (-0.3) should be [100px / 200px]: FAIL
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [100px / 200px] to [auto] at (0) should be [100px / 200px]: FAIL
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [100px / 200px] to [auto] at (0.3) should be [100px / 200px]: FAIL
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [100px / 200px] to [auto] at (0.5) should be [auto]: FAIL
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [100px / 200px] to [auto] at (0.6) should be [auto]: FAIL
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [100px / 200px] to [auto] at (1) should be [auto]: FAIL
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [100px / 200px] to [auto] at (1.5) should be [auto]: FAIL
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [auto] to [100px / 200px] at (-0.3) should be [auto]: FAIL
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [auto] to [100px / 200px] at (0) should be [auto]: FAIL
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [auto] to [100px / 200px] at (0.3) should be [auto]: FAIL
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [auto] to [100px / 200px] at (0.5) should be [100px / 200px]: FAIL
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [auto] to [100px / 200px] at (0.6) should be [100px / 200px]: FAIL
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [auto] to [100px / 200px] at (1) should be [100px / 200px]: FAIL
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [auto] to [100px / 200px] at (1.5) should be [100px / 200px]: FAIL
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [inherit] to [auto] at (-0.3) should be [inherit]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [inherit] to [auto] at (0) should be [inherit]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [inherit] to [auto] at (0.3) should be [inherit]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [inherit] to [auto] at (0.5) should be [auto]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [inherit] to [auto] at (0.6) should be [auto]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [inherit] to [auto] at (1) should be [auto]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [inherit] to [auto] at (1.5) should be [auto]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [initial] to [100px / 200px] at (-0.3) should be [initial]: FAIL
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [initial] to [100px / 200px] at (0) should be [initial]: FAIL
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [initial] to [100px / 200px] at (0.3) should be [initial]: FAIL
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [initial] to [100px / 200px] at (0.5) should be [100px / 200px]: FAIL
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [initial] to [100px / 200px] at (0.6) should be [100px / 200px]: FAIL
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [initial] to [100px / 200px] at (1) should be [100px / 200px]: FAIL
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [initial] to [100px / 200px] at (1.5) should be [100px / 200px]: FAIL
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [initial] to [100px] at (-0.3) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [initial] to [100px] at (0) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [initial] to [100px] at (0.3) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [initial] to [100px] at (0.5) should be [100px]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [initial] to [100px] at (0.6) should be [100px]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [initial] to [100px] at (1) should be [100px]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [initial] to [100px] at (1.5) should be [100px]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [initial] to [10] at (-0.3) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [initial] to [10] at (0) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [initial] to [10] at (0.3) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [initial] to [10] at (0.5) should be [10]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [initial] to [10] at (0.6) should be [10]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [initial] to [10] at (1) should be [10]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <columns> from [initial] to [10] at (1.5) should be [10]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [100px / 200px] to [auto] at (-0.3) should be [100px / 200px]: FAIL
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [100px / 200px] to [auto] at (0) should be [100px / 200px]: FAIL
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [100px / 200px] to [auto] at (0.3) should be [100px / 200px]: FAIL
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [100px / 200px] to [auto] at (0.5) should be [auto]: FAIL
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [100px / 200px] to [auto] at (0.6) should be [auto]: FAIL
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [100px / 200px] to [auto] at (1) should be [auto]: FAIL
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [100px / 200px] to [auto] at (1.5) should be [auto]: FAIL
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [auto] to [100px / 200px] at (-0.3) should be [auto]: FAIL
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [auto] to [100px / 200px] at (0) should be [auto]: FAIL
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [auto] to [100px / 200px] at (0.3) should be [auto]: FAIL
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [auto] to [100px / 200px] at (0.5) should be [100px / 200px]: FAIL
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [auto] to [100px / 200px] at (0.6) should be [100px / 200px]: FAIL
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [auto] to [100px / 200px] at (1) should be [100px / 200px]: FAIL
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [auto] to [100px / 200px] at (1.5) should be [100px / 200px]: FAIL
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [inherit] to [auto] at (-0.3) should be [inherit]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [inherit] to [auto] at (0) should be [inherit]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [inherit] to [auto] at (0.3) should be [inherit]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [inherit] to [auto] at (0.5) should be [auto]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [inherit] to [auto] at (0.6) should be [auto]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [inherit] to [auto] at (1) should be [auto]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [inherit] to [auto] at (1.5) should be [auto]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [initial] to [100px / 200px] at (-0.3) should be [initial]: FAIL
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [initial] to [100px / 200px] at (0) should be [initial]: FAIL
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [initial] to [100px / 200px] at (0.3) should be [initial]: FAIL
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [initial] to [100px / 200px] at (0.5) should be [100px / 200px]: FAIL
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [initial] to [100px / 200px] at (0.6) should be [100px / 200px]: FAIL
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [initial] to [100px / 200px] at (1) should be [100px / 200px]: FAIL
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [initial] to [100px / 200px] at (1.5) should be [100px / 200px]: FAIL
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [initial] to [100px] at (-0.3) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [initial] to [100px] at (0) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [initial] to [100px] at (0.3) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [initial] to [100px] at (0.5) should be [100px]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [initial] to [100px] at (0.6) should be [100px]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [initial] to [100px] at (1) should be [100px]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [initial] to [100px] at (1.5) should be [100px]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [initial] to [10] at (-0.3) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [initial] to [10] at (0) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [initial] to [10] at (0.3) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [initial] to [10] at (0.5) should be [10]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [initial] to [10] at (0.6) should be [10]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [initial] to [10] at (1) should be [10]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <columns> from [initial] to [10] at (1.5) should be [10]: PASS
+	CSS Transitions with transition: all: property <columns> from [10 / 100px] to [20 / 200px] at (-0.5) should be [5 / 50px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [10 / 100px] to [20 / 200px] at (0) should be [10 / 100px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [10 / 100px] to [20 / 200px] at (0.5) should be [15 / 150px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [10 / 100px] to [20 / 200px] at (1) should be [20 / 200px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [10 100px / auto] to [20 200px / auto] at (-0.5) should be [5 50px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [10 100px / auto] to [20 200px / auto] at (0) should be [10 100px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [10 100px / auto] to [20 200px / auto] at (0.5) should be [15 150px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [10 100px / auto] to [20 200px / auto] at (1) should be [20 200px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [10 100px] to [20 200px] at (-0.5) should be [5 50px]: PASS
+	CSS Transitions with transition: all: property <columns> from [10 100px] to [20 200px] at (0) should be [10 100px]: PASS
+	CSS Transitions with transition: all: property <columns> from [10 100px] to [20 200px] at (0.5) should be [15 150px]: PASS
+	CSS Transitions with transition: all: property <columns> from [10 100px] to [20 200px] at (1) should be [20 200px]: PASS
+	CSS Transitions with transition: all: property <columns> from [1000px / 500px] to [100px / 200px] at (-0.5) should be [1450px / 650px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [1000px / 500px] to [100px / 200px] at (-1) should be [1900px / 800px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [1000px / 500px] to [100px / 200px] at (0) should be [1000px / 500px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [1000px / 500px] to [100px / 200px] at (0.5) should be [550px / 350px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [1000px / 500px] to [100px / 200px] at (1) should be [100px / 200px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [100px / 200px] to [auto] at (-0.3) should be [auto]: FAIL
+	CSS Transitions with transition: all: property <columns> from [100px / 200px] to [auto] at (0) should be [auto]: FAIL
+	CSS Transitions with transition: all: property <columns> from [100px / 200px] to [auto] at (0.3) should be [auto]: FAIL
+	CSS Transitions with transition: all: property <columns> from [100px / 200px] to [auto] at (0.5) should be [auto]: FAIL
+	CSS Transitions with transition: all: property <columns> from [100px / 200px] to [auto] at (0.6) should be [auto]: FAIL
+	CSS Transitions with transition: all: property <columns> from [100px / 200px] to [auto] at (1) should be [auto]: FAIL
+	CSS Transitions with transition: all: property <columns> from [100px / 200px] to [auto] at (1.5) should be [auto]: FAIL
+	CSS Transitions with transition: all: property <columns> from [200px 10] to [100px 20] at (-0.5) should be [250px 5]: PASS
+	CSS Transitions with transition: all: property <columns> from [200px 10] to [100px 20] at (-1) should be [300px 1]: PASS
+	CSS Transitions with transition: all: property <columns> from [200px 10] to [100px 20] at (0) should be [200px 10]: PASS
+	CSS Transitions with transition: all: property <columns> from [200px 10] to [100px 20] at (0.5) should be [150px 15]: PASS
+	CSS Transitions with transition: all: property <columns> from [200px 10] to [100px 20] at (1) should be [100px 20]: PASS
+	CSS Transitions with transition: all: property <columns> from [auto] to [100px / 200px] at (-0.3) should be [100px / 200px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [auto] to [100px / 200px] at (0) should be [100px / 200px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [auto] to [100px / 200px] at (0.3) should be [100px / 200px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [auto] to [100px / 200px] at (0.5) should be [100px / 200px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [auto] to [100px / 200px] at (0.6) should be [100px / 200px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [auto] to [100px / 200px] at (1) should be [100px / 200px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [auto] to [100px / 200px] at (1.5) should be [100px / 200px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [inherit] to [200px / 900px] at (-0.1) should be [35px / 20px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [inherit] to [200px / 900px] at (-0.2) should be [20px / 0px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [inherit] to [200px / 900px] at (-0.5) should be [0px / 0px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [inherit] to [200px / 900px] at (0) should be [50px / 100px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [inherit] to [200px / 900px] at (0.5) should be [125px / 500px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [inherit] to [200px / 900px] at (1) should be [200px / 900px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [inherit] to [auto] at (-0.3) should be [auto]: PASS
+	CSS Transitions with transition: all: property <columns> from [inherit] to [auto] at (0) should be [auto]: PASS
+	CSS Transitions with transition: all: property <columns> from [inherit] to [auto] at (0.3) should be [auto]: PASS
+	CSS Transitions with transition: all: property <columns> from [inherit] to [auto] at (0.5) should be [auto]: PASS
+	CSS Transitions with transition: all: property <columns> from [inherit] to [auto] at (0.6) should be [auto]: PASS
+	CSS Transitions with transition: all: property <columns> from [inherit] to [auto] at (1) should be [auto]: PASS
+	CSS Transitions with transition: all: property <columns> from [inherit] to [auto] at (1.5) should be [auto]: PASS
+	CSS Transitions with transition: all: property <columns> from [initial] to [100px / 200px] at (-0.3) should be [100px / 200px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [initial] to [100px / 200px] at (0) should be [100px / 200px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [initial] to [100px / 200px] at (0.3) should be [100px / 200px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [initial] to [100px / 200px] at (0.5) should be [100px / 200px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [initial] to [100px / 200px] at (0.6) should be [100px / 200px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [initial] to [100px / 200px] at (1) should be [100px / 200px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [initial] to [100px / 200px] at (1.5) should be [100px / 200px]: FAIL
+	CSS Transitions with transition: all: property <columns> from [initial] to [100px] at (-0.3) should be [100px]: PASS
+	CSS Transitions with transition: all: property <columns> from [initial] to [100px] at (0) should be [100px]: PASS
+	CSS Transitions with transition: all: property <columns> from [initial] to [100px] at (0.3) should be [100px]: PASS
+	CSS Transitions with transition: all: property <columns> from [initial] to [100px] at (0.5) should be [100px]: PASS
+	CSS Transitions with transition: all: property <columns> from [initial] to [100px] at (0.6) should be [100px]: PASS
+	CSS Transitions with transition: all: property <columns> from [initial] to [100px] at (1) should be [100px]: PASS
+	CSS Transitions with transition: all: property <columns> from [initial] to [100px] at (1.5) should be [100px]: PASS
+	CSS Transitions with transition: all: property <columns> from [initial] to [10] at (-0.3) should be [10]: PASS
+	CSS Transitions with transition: all: property <columns> from [initial] to [10] at (0) should be [10]: PASS
+	CSS Transitions with transition: all: property <columns> from [initial] to [10] at (0.3) should be [10]: PASS
+	CSS Transitions with transition: all: property <columns> from [initial] to [10] at (0.5) should be [10]: PASS
+	CSS Transitions with transition: all: property <columns> from [initial] to [10] at (0.6) should be [10]: PASS
+	CSS Transitions with transition: all: property <columns> from [initial] to [10] at (1) should be [10]: PASS
+	CSS Transitions with transition: all: property <columns> from [initial] to [10] at (1.5) should be [10]: PASS
+	CSS Transitions with transition: all: property <columns> from neutral to [100px / 200px] at (-0.5) should be [250px / 50px]: FAIL
+	CSS Transitions with transition: all: property <columns> from neutral to [100px / 200px] at (-1) should be [300px / 0px]: FAIL
+	CSS Transitions with transition: all: property <columns> from neutral to [100px / 200px] at (0) should be [200px / 100px]: FAIL
+	CSS Transitions with transition: all: property <columns> from neutral to [100px / 200px] at (0.5) should be [150px / 150px]: FAIL
+	CSS Transitions with transition: all: property <columns> from neutral to [100px / 200px] at (1) should be [100px / 200px]: FAIL
+	CSS Transitions: property <columns> from [10 / 100px] to [20 / 200px] at (-0.5) should be [5 / 50px]: FAIL
+	CSS Transitions: property <columns> from [10 / 100px] to [20 / 200px] at (0) should be [10 / 100px]: FAIL
+	CSS Transitions: property <columns> from [10 / 100px] to [20 / 200px] at (0.5) should be [15 / 150px]: FAIL
+	CSS Transitions: property <columns> from [10 / 100px] to [20 / 200px] at (1) should be [20 / 200px]: FAIL
+	CSS Transitions: property <columns> from [10 100px / auto] to [20 200px / auto] at (-0.5) should be [5 50px]: FAIL
+	CSS Transitions: property <columns> from [10 100px / auto] to [20 200px / auto] at (0) should be [10 100px]: FAIL
+	CSS Transitions: property <columns> from [10 100px / auto] to [20 200px / auto] at (0.5) should be [15 150px]: FAIL
+	CSS Transitions: property <columns> from [10 100px / auto] to [20 200px / auto] at (1) should be [20 200px]: FAIL
+	CSS Transitions: property <columns> from [10 100px] to [20 200px] at (-0.5) should be [5 50px]: PASS
+	CSS Transitions: property <columns> from [10 100px] to [20 200px] at (0) should be [10 100px]: PASS
+	CSS Transitions: property <columns> from [10 100px] to [20 200px] at (0.5) should be [15 150px]: PASS
+	CSS Transitions: property <columns> from [10 100px] to [20 200px] at (1) should be [20 200px]: PASS
+	CSS Transitions: property <columns> from [1000px / 500px] to [100px / 200px] at (-0.5) should be [1450px / 650px]: FAIL
+	CSS Transitions: property <columns> from [1000px / 500px] to [100px / 200px] at (-1) should be [1900px / 800px]: FAIL
+	CSS Transitions: property <columns> from [1000px / 500px] to [100px / 200px] at (0) should be [1000px / 500px]: FAIL
+	CSS Transitions: property <columns> from [1000px / 500px] to [100px / 200px] at (0.5) should be [550px / 350px]: FAIL
+	CSS Transitions: property <columns> from [1000px / 500px] to [100px / 200px] at (1) should be [100px / 200px]: FAIL
+	CSS Transitions: property <columns> from [100px / 200px] to [auto] at (-0.3) should be [auto]: FAIL
+	CSS Transitions: property <columns> from [100px / 200px] to [auto] at (0) should be [auto]: FAIL
+	CSS Transitions: property <columns> from [100px / 200px] to [auto] at (0.3) should be [auto]: FAIL
+	CSS Transitions: property <columns> from [100px / 200px] to [auto] at (0.5) should be [auto]: FAIL
+	CSS Transitions: property <columns> from [100px / 200px] to [auto] at (0.6) should be [auto]: FAIL
+	CSS Transitions: property <columns> from [100px / 200px] to [auto] at (1) should be [auto]: FAIL
+	CSS Transitions: property <columns> from [100px / 200px] to [auto] at (1.5) should be [auto]: FAIL
+	CSS Transitions: property <columns> from [200px 10] to [100px 20] at (-0.5) should be [250px 5]: PASS
+	CSS Transitions: property <columns> from [200px 10] to [100px 20] at (-1) should be [300px 1]: PASS
+	CSS Transitions: property <columns> from [200px 10] to [100px 20] at (0) should be [200px 10]: PASS
+	CSS Transitions: property <columns> from [200px 10] to [100px 20] at (0.5) should be [150px 15]: PASS
+	CSS Transitions: property <columns> from [200px 10] to [100px 20] at (1) should be [100px 20]: PASS
+	CSS Transitions: property <columns> from [auto] to [100px / 200px] at (-0.3) should be [100px / 200px]: FAIL
+	CSS Transitions: property <columns> from [auto] to [100px / 200px] at (0) should be [100px / 200px]: FAIL
+	CSS Transitions: property <columns> from [auto] to [100px / 200px] at (0.3) should be [100px / 200px]: FAIL
+	CSS Transitions: property <columns> from [auto] to [100px / 200px] at (0.5) should be [100px / 200px]: FAIL
+	CSS Transitions: property <columns> from [auto] to [100px / 200px] at (0.6) should be [100px / 200px]: FAIL
+	CSS Transitions: property <columns> from [auto] to [100px / 200px] at (1) should be [100px / 200px]: FAIL
+	CSS Transitions: property <columns> from [auto] to [100px / 200px] at (1.5) should be [100px / 200px]: FAIL
+	CSS Transitions: property <columns> from [inherit] to [200px / 900px] at (-0.1) should be [35px / 20px]: FAIL
+	CSS Transitions: property <columns> from [inherit] to [200px / 900px] at (-0.2) should be [20px / 0px]: FAIL
+	CSS Transitions: property <columns> from [inherit] to [200px / 900px] at (-0.5) should be [0px / 0px]: FAIL
+	CSS Transitions: property <columns> from [inherit] to [200px / 900px] at (0) should be [50px / 100px]: FAIL
+	CSS Transitions: property <columns> from [inherit] to [200px / 900px] at (0.5) should be [125px / 500px]: FAIL
+	CSS Transitions: property <columns> from [inherit] to [200px / 900px] at (1) should be [200px / 900px]: FAIL
+	CSS Transitions: property <columns> from [inherit] to [auto] at (-0.3) should be [auto]: PASS
+	CSS Transitions: property <columns> from [inherit] to [auto] at (0) should be [auto]: PASS
+	CSS Transitions: property <columns> from [inherit] to [auto] at (0.3) should be [auto]: PASS
+	CSS Transitions: property <columns> from [inherit] to [auto] at (0.5) should be [auto]: PASS
+	CSS Transitions: property <columns> from [inherit] to [auto] at (0.6) should be [auto]: PASS
+	CSS Transitions: property <columns> from [inherit] to [auto] at (1) should be [auto]: PASS
+	CSS Transitions: property <columns> from [inherit] to [auto] at (1.5) should be [auto]: PASS
+	CSS Transitions: property <columns> from [initial] to [100px / 200px] at (-0.3) should be [100px / 200px]: FAIL
+	CSS Transitions: property <columns> from [initial] to [100px / 200px] at (0) should be [100px / 200px]: FAIL
+	CSS Transitions: property <columns> from [initial] to [100px / 200px] at (0.3) should be [100px / 200px]: FAIL
+	CSS Transitions: property <columns> from [initial] to [100px / 200px] at (0.5) should be [100px / 200px]: FAIL
+	CSS Transitions: property <columns> from [initial] to [100px / 200px] at (0.6) should be [100px / 200px]: FAIL
+	CSS Transitions: property <columns> from [initial] to [100px / 200px] at (1) should be [100px / 200px]: FAIL
+	CSS Transitions: property <columns> from [initial] to [100px / 200px] at (1.5) should be [100px / 200px]: FAIL
+	CSS Transitions: property <columns> from [initial] to [100px] at (-0.3) should be [100px]: PASS
+	CSS Transitions: property <columns> from [initial] to [100px] at (0) should be [100px]: PASS
+	CSS Transitions: property <columns> from [initial] to [100px] at (0.3) should be [100px]: PASS
+	CSS Transitions: property <columns> from [initial] to [100px] at (0.5) should be [100px]: PASS
+	CSS Transitions: property <columns> from [initial] to [100px] at (0.6) should be [100px]: PASS
+	CSS Transitions: property <columns> from [initial] to [100px] at (1) should be [100px]: PASS
+	CSS Transitions: property <columns> from [initial] to [100px] at (1.5) should be [100px]: PASS
+	CSS Transitions: property <columns> from [initial] to [10] at (-0.3) should be [10]: PASS
+	CSS Transitions: property <columns> from [initial] to [10] at (0) should be [10]: PASS
+	CSS Transitions: property <columns> from [initial] to [10] at (0.3) should be [10]: PASS
+	CSS Transitions: property <columns> from [initial] to [10] at (0.5) should be [10]: PASS
+	CSS Transitions: property <columns> from [initial] to [10] at (0.6) should be [10]: PASS
+	CSS Transitions: property <columns> from [initial] to [10] at (1) should be [10]: PASS
+	CSS Transitions: property <columns> from [initial] to [10] at (1.5) should be [10]: PASS
+	CSS Transitions: property <columns> from neutral to [100px / 200px] at (-0.5) should be [250px / 50px]: FAIL
+	CSS Transitions: property <columns> from neutral to [100px / 200px] at (-1) should be [300px / 0px]: FAIL
+	CSS Transitions: property <columns> from neutral to [100px / 200px] at (0) should be [200px / 100px]: FAIL
+	CSS Transitions: property <columns> from neutral to [100px / 200px] at (0.5) should be [150px / 150px]: FAIL
+	CSS Transitions: property <columns> from neutral to [100px / 200px] at (1) should be [100px / 200px]: FAIL
+	Web Animations: property <columns> from [10 / 100px] to [20 / 200px] at (-0.5) should be [5 / 50px]: FAIL
+	Web Animations: property <columns> from [10 / 100px] to [20 / 200px] at (0) should be [10 / 100px]: FAIL
+	Web Animations: property <columns> from [10 / 100px] to [20 / 200px] at (0.5) should be [15 / 150px]: FAIL
+	Web Animations: property <columns> from [10 / 100px] to [20 / 200px] at (1) should be [20 / 200px]: FAIL
+	Web Animations: property <columns> from [10 100px / auto] to [20 200px / auto] at (-0.5) should be [5 50px]: FAIL
+	Web Animations: property <columns> from [10 100px / auto] to [20 200px / auto] at (0) should be [10 100px]: FAIL
+	Web Animations: property <columns> from [10 100px / auto] to [20 200px / auto] at (0.5) should be [15 150px]: FAIL
+	Web Animations: property <columns> from [10 100px / auto] to [20 200px / auto] at (1) should be [20 200px]: FAIL
+	Web Animations: property <columns> from [10 100px] to [20 200px] at (-0.5) should be [5 50px]: PASS
+	Web Animations: property <columns> from [10 100px] to [20 200px] at (0) should be [10 100px]: PASS
+	Web Animations: property <columns> from [10 100px] to [20 200px] at (0.5) should be [15 150px]: PASS
+	Web Animations: property <columns> from [10 100px] to [20 200px] at (1) should be [20 200px]: PASS
+	Web Animations: property <columns> from [1000px / 500px] to [100px / 200px] at (-0.5) should be [1450px / 650px]: FAIL
+	Web Animations: property <columns> from [1000px / 500px] to [100px / 200px] at (-1) should be [1900px / 800px]: FAIL
+	Web Animations: property <columns> from [1000px / 500px] to [100px / 200px] at (0) should be [1000px / 500px]: FAIL
+	Web Animations: property <columns> from [1000px / 500px] to [100px / 200px] at (0.5) should be [550px / 350px]: FAIL
+	Web Animations: property <columns> from [1000px / 500px] to [100px / 200px] at (1) should be [100px / 200px]: FAIL
+	Web Animations: property <columns> from [100px / 200px] to [auto] at (-0.3) should be [100px / 200px]: FAIL
+	Web Animations: property <columns> from [100px / 200px] to [auto] at (0) should be [100px / 200px]: FAIL
+	Web Animations: property <columns> from [100px / 200px] to [auto] at (0.3) should be [100px / 200px]: FAIL
+	Web Animations: property <columns> from [100px / 200px] to [auto] at (0.5) should be [auto]: FAIL
+	Web Animations: property <columns> from [100px / 200px] to [auto] at (0.6) should be [auto]: FAIL
+	Web Animations: property <columns> from [100px / 200px] to [auto] at (1) should be [auto]: FAIL
+	Web Animations: property <columns> from [100px / 200px] to [auto] at (1.5) should be [auto]: FAIL
+	Web Animations: property <columns> from [200px 10] to [100px 20] at (-0.5) should be [250px 5]: PASS
+	Web Animations: property <columns> from [200px 10] to [100px 20] at (-1) should be [300px 1]: PASS
+	Web Animations: property <columns> from [200px 10] to [100px 20] at (0) should be [200px 10]: PASS
+	Web Animations: property <columns> from [200px 10] to [100px 20] at (0.5) should be [150px 15]: PASS
+	Web Animations: property <columns> from [200px 10] to [100px 20] at (1) should be [100px 20]: PASS
+	Web Animations: property <columns> from [auto] to [100px / 200px] at (-0.3) should be [auto]: FAIL
+	Web Animations: property <columns> from [auto] to [100px / 200px] at (0) should be [auto]: FAIL
+	Web Animations: property <columns> from [auto] to [100px / 200px] at (0.3) should be [auto]: FAIL
+	Web Animations: property <columns> from [auto] to [100px / 200px] at (0.5) should be [100px / 200px]: FAIL
+	Web Animations: property <columns> from [auto] to [100px / 200px] at (0.6) should be [100px / 200px]: FAIL
+	Web Animations: property <columns> from [auto] to [100px / 200px] at (1) should be [100px / 200px]: FAIL
+	Web Animations: property <columns> from [auto] to [100px / 200px] at (1.5) should be [100px / 200px]: FAIL
+	Web Animations: property <columns> from [inherit] to [200px / 900px] at (-0.1) should be [35px / 20px]: FAIL
+	Web Animations: property <columns> from [inherit] to [200px / 900px] at (-0.2) should be [20px / 0px]: FAIL
+	Web Animations: property <columns> from [inherit] to [200px / 900px] at (-0.5) should be [0px / 0px]: FAIL
+	Web Animations: property <columns> from [inherit] to [200px / 900px] at (0) should be [50px / 100px]: FAIL
+	Web Animations: property <columns> from [inherit] to [200px / 900px] at (0.5) should be [125px / 500px]: FAIL
+	Web Animations: property <columns> from [inherit] to [200px / 900px] at (1) should be [200px / 900px]: FAIL
+	Web Animations: property <columns> from [inherit] to [auto] at (-0.3) should be [inherit]: PASS
+	Web Animations: property <columns> from [inherit] to [auto] at (0) should be [inherit]: PASS
+	Web Animations: property <columns> from [inherit] to [auto] at (0.3) should be [inherit]: PASS
+	Web Animations: property <columns> from [inherit] to [auto] at (0.5) should be [auto]: PASS
+	Web Animations: property <columns> from [inherit] to [auto] at (0.6) should be [auto]: PASS
+	Web Animations: property <columns> from [inherit] to [auto] at (1) should be [auto]: PASS
+	Web Animations: property <columns> from [inherit] to [auto] at (1.5) should be [auto]: PASS
+	Web Animations: property <columns> from [initial] to [100px / 200px] at (-0.3) should be [initial]: FAIL
+	Web Animations: property <columns> from [initial] to [100px / 200px] at (0) should be [initial]: FAIL
+	Web Animations: property <columns> from [initial] to [100px / 200px] at (0.3) should be [initial]: FAIL
+	Web Animations: property <columns> from [initial] to [100px / 200px] at (0.5) should be [100px / 200px]: FAIL
+	Web Animations: property <columns> from [initial] to [100px / 200px] at (0.6) should be [100px / 200px]: FAIL
+	Web Animations: property <columns> from [initial] to [100px / 200px] at (1) should be [100px / 200px]: FAIL
+	Web Animations: property <columns> from [initial] to [100px / 200px] at (1.5) should be [100px / 200px]: FAIL
+	Web Animations: property <columns> from [initial] to [100px] at (-0.3) should be [initial]: PASS
+	Web Animations: property <columns> from [initial] to [100px] at (0) should be [initial]: PASS
+	Web Animations: property <columns> from [initial] to [100px] at (0.3) should be [initial]: PASS
+	Web Animations: property <columns> from [initial] to [100px] at (0.5) should be [100px]: PASS
+	Web Animations: property <columns> from [initial] to [100px] at (0.6) should be [100px]: PASS
+	Web Animations: property <columns> from [initial] to [100px] at (1) should be [100px]: PASS
+	Web Animations: property <columns> from [initial] to [100px] at (1.5) should be [100px]: PASS
+	Web Animations: property <columns> from [initial] to [10] at (-0.3) should be [initial]: PASS
+	Web Animations: property <columns> from [initial] to [10] at (0) should be [initial]: PASS
+	Web Animations: property <columns> from [initial] to [10] at (0.3) should be [initial]: PASS
+	Web Animations: property <columns> from [initial] to [10] at (0.5) should be [10]: PASS
+	Web Animations: property <columns> from [initial] to [10] at (0.6) should be [10]: PASS
+	Web Animations: property <columns> from [initial] to [10] at (1) should be [10]: PASS
+	Web Animations: property <columns> from [initial] to [10] at (1.5) should be [10]: PASS
+	Web Animations: property <columns> from neutral to [100px / 200px] at (-0.5) should be [250px / 50px]: FAIL
+	Web Animations: property <columns> from neutral to [100px / 200px] at (-1) should be [300px / 0px]: FAIL
+	Web Animations: property <columns> from neutral to [100px / 200px] at (0) should be [200px / 100px]: FAIL
+	Web Animations: property <columns> from neutral to [100px / 200px] at (0.5) should be [150px / 150px]: FAIL
+	Web Animations: property <columns> from neutral to [100px / 200px] at (1) should be [100px / 200px]: FAIL
+/css/css-multicol/animation/discrete-no-interpolation.html: OK
+	CSS Animations: property <column-fill> from [initial] to [auto] at (-0.3) should be [initial]: PASS
+	CSS Animations: property <column-fill> from [initial] to [auto] at (0) should be [initial]: PASS
+	CSS Animations: property <column-fill> from [initial] to [auto] at (0.3) should be [initial]: PASS
+	CSS Animations: property <column-fill> from [initial] to [auto] at (0.5) should be [auto]: PASS
+	CSS Animations: property <column-fill> from [initial] to [auto] at (0.6) should be [auto]: PASS
+	CSS Animations: property <column-fill> from [initial] to [auto] at (1) should be [auto]: PASS
+	CSS Animations: property <column-fill> from [initial] to [auto] at (1.5) should be [auto]: PASS
+	CSS Animations: property <column-rule-style> from [initial] to [dashed] at (-0.3) should be [initial]: PASS
+	CSS Animations: property <column-rule-style> from [initial] to [dashed] at (0) should be [initial]: PASS
+	CSS Animations: property <column-rule-style> from [initial] to [dashed] at (0.3) should be [initial]: PASS
+	CSS Animations: property <column-rule-style> from [initial] to [dashed] at (0.5) should be [dashed]: PASS
+	CSS Animations: property <column-rule-style> from [initial] to [dashed] at (0.6) should be [dashed]: PASS
+	CSS Animations: property <column-rule-style> from [initial] to [dashed] at (1) should be [dashed]: PASS
+	CSS Animations: property <column-rule-style> from [initial] to [dashed] at (1.5) should be [dashed]: PASS
+	CSS Animations: property <column-span> from [initial] to [all] at (-0.3) should be [initial]: PASS
+	CSS Animations: property <column-span> from [initial] to [all] at (0) should be [initial]: PASS
+	CSS Animations: property <column-span> from [initial] to [all] at (0.3) should be [initial]: PASS
+	CSS Animations: property <column-span> from [initial] to [all] at (0.5) should be [all]: PASS
+	CSS Animations: property <column-span> from [initial] to [all] at (0.6) should be [all]: PASS
+	CSS Animations: property <column-span> from [initial] to [all] at (1) should be [all]: PASS
+	CSS Animations: property <column-span> from [initial] to [all] at (1.5) should be [all]: PASS
+	CSS Animations: property <column-wrap> from [wrap] to [nowrap] at (-0.3) should be [wrap]: FAIL
+	CSS Animations: property <column-wrap> from [wrap] to [nowrap] at (0) should be [wrap]: FAIL
+	CSS Animations: property <column-wrap> from [wrap] to [nowrap] at (0.3) should be [wrap]: FAIL
+	CSS Animations: property <column-wrap> from [wrap] to [nowrap] at (0.5) should be [nowrap]: FAIL
+	CSS Animations: property <column-wrap> from [wrap] to [nowrap] at (0.6) should be [nowrap]: FAIL
+	CSS Animations: property <column-wrap> from [wrap] to [nowrap] at (1) should be [nowrap]: FAIL
+	CSS Animations: property <column-wrap> from [wrap] to [nowrap] at (1.5) should be [nowrap]: FAIL
+	CSS Transitions with transition-behavior:allow-discrete: property <column-fill> from [initial] to [auto] at (-0.3) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-fill> from [initial] to [auto] at (0) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-fill> from [initial] to [auto] at (0.3) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-fill> from [initial] to [auto] at (0.5) should be [auto]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-fill> from [initial] to [auto] at (0.6) should be [auto]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-fill> from [initial] to [auto] at (1) should be [auto]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-fill> from [initial] to [auto] at (1.5) should be [auto]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-rule-style> from [initial] to [dashed] at (-0.3) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-rule-style> from [initial] to [dashed] at (0) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-rule-style> from [initial] to [dashed] at (0.3) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-rule-style> from [initial] to [dashed] at (0.5) should be [dashed]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-rule-style> from [initial] to [dashed] at (0.6) should be [dashed]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-rule-style> from [initial] to [dashed] at (1) should be [dashed]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-rule-style> from [initial] to [dashed] at (1.5) should be [dashed]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-span> from [initial] to [all] at (-0.3) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-span> from [initial] to [all] at (0) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-span> from [initial] to [all] at (0.3) should be [initial]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-span> from [initial] to [all] at (0.5) should be [all]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-span> from [initial] to [all] at (0.6) should be [all]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-span> from [initial] to [all] at (1) should be [all]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-span> from [initial] to [all] at (1.5) should be [all]: PASS
+	CSS Transitions with transition-behavior:allow-discrete: property <column-wrap> from [wrap] to [nowrap] at (-0.3) should be [wrap]: FAIL
+	CSS Transitions with transition-behavior:allow-discrete: property <column-wrap> from [wrap] to [nowrap] at (0) should be [wrap]: FAIL
+	CSS Transitions with transition-behavior:allow-discrete: property <column-wrap> from [wrap] to [nowrap] at (0.3) should be [wrap]: FAIL
+	CSS Transitions with transition-behavior:allow-discrete: property <column-wrap> from [wrap] to [nowrap] at (0.5) should be [nowrap]: FAIL
+	CSS Transitions with transition-behavior:allow-discrete: property <column-wrap> from [wrap] to [nowrap] at (0.6) should be [nowrap]: FAIL
+	CSS Transitions with transition-behavior:allow-discrete: property <column-wrap> from [wrap] to [nowrap] at (1) should be [nowrap]: FAIL
+	CSS Transitions with transition-behavior:allow-discrete: property <column-wrap> from [wrap] to [nowrap] at (1.5) should be [nowrap]: FAIL
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-fill> from [initial] to [auto] at (-0.3) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-fill> from [initial] to [auto] at (0) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-fill> from [initial] to [auto] at (0.3) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-fill> from [initial] to [auto] at (0.5) should be [auto]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-fill> from [initial] to [auto] at (0.6) should be [auto]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-fill> from [initial] to [auto] at (1) should be [auto]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-fill> from [initial] to [auto] at (1.5) should be [auto]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-rule-style> from [initial] to [dashed] at (-0.3) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-rule-style> from [initial] to [dashed] at (0) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-rule-style> from [initial] to [dashed] at (0.3) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-rule-style> from [initial] to [dashed] at (0.5) should be [dashed]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-rule-style> from [initial] to [dashed] at (0.6) should be [dashed]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-rule-style> from [initial] to [dashed] at (1) should be [dashed]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-rule-style> from [initial] to [dashed] at (1.5) should be [dashed]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-span> from [initial] to [all] at (-0.3) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-span> from [initial] to [all] at (0) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-span> from [initial] to [all] at (0.3) should be [initial]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-span> from [initial] to [all] at (0.5) should be [all]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-span> from [initial] to [all] at (0.6) should be [all]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-span> from [initial] to [all] at (1) should be [all]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-span> from [initial] to [all] at (1.5) should be [all]: PASS
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-wrap> from [wrap] to [nowrap] at (-0.3) should be [wrap]: FAIL
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-wrap> from [wrap] to [nowrap] at (0) should be [wrap]: FAIL
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-wrap> from [wrap] to [nowrap] at (0.3) should be [wrap]: FAIL
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-wrap> from [wrap] to [nowrap] at (0.5) should be [nowrap]: FAIL
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-wrap> from [wrap] to [nowrap] at (0.6) should be [nowrap]: FAIL
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-wrap> from [wrap] to [nowrap] at (1) should be [nowrap]: FAIL
+	CSS Transitions with transition-property:all and transition-behavor:allow-discrete: property <column-wrap> from [wrap] to [nowrap] at (1.5) should be [nowrap]: FAIL
+	CSS Transitions with transition: all: property <column-fill> from [initial] to [auto] at (-0.3) should be [auto]: PASS
+	CSS Transitions with transition: all: property <column-fill> from [initial] to [auto] at (0) should be [auto]: PASS
+	CSS Transitions with transition: all: property <column-fill> from [initial] to [auto] at (0.3) should be [auto]: PASS
+	CSS Transitions with transition: all: property <column-fill> from [initial] to [auto] at (0.5) should be [auto]: PASS
+	CSS Transitions with transition: all: property <column-fill> from [initial] to [auto] at (0.6) should be [auto]: PASS
+	CSS Transitions with transition: all: property <column-fill> from [initial] to [auto] at (1) should be [auto]: PASS
+	CSS Transitions with transition: all: property <column-fill> from [initial] to [auto] at (1.5) should be [auto]: PASS
+	CSS Transitions with transition: all: property <column-rule-style> from [initial] to [dashed] at (-0.3) should be [dashed]: PASS
+	CSS Transitions with transition: all: property <column-rule-style> from [initial] to [dashed] at (0) should be [dashed]: PASS
+	CSS Transitions with transition: all: property <column-rule-style> from [initial] to [dashed] at (0.3) should be [dashed]: PASS
+	CSS Transitions with transition: all: property <column-rule-style> from [initial] to [dashed] at (0.5) should be [dashed]: PASS
+	CSS Transitions with transition: all: property <column-rule-style> from [initial] to [dashed] at (0.6) should be [dashed]: PASS
+	CSS Transitions with transition: all: property <column-rule-style> from [initial] to [dashed] at (1) should be [dashed]: PASS
+	CSS Transitions with transition: all: property <column-rule-style> from [initial] to [dashed] at (1.5) should be [dashed]: PASS
+	CSS Transitions with transition: all: property <column-span> from [initial] to [all] at (-0.3) should be [all]: PASS
+	CSS Transitions with transition: all: property <column-span> from [initial] to [all] at (0) should be [all]: PASS
+	CSS Transitions with transition: all: property <column-span> from [initial] to [all] at (0.3) should be [all]: PASS
+	CSS Transitions with transition: all: property <column-span> from [initial] to [all] at (0.5) should be [all]: PASS
+	CSS Transitions with transition: all: property <column-span> from [initial] to [all] at (0.6) should be [all]: PASS
+	CSS Transitions with transition: all: property <column-span> from [initial] to [all] at (1) should be [all]: PASS
+	CSS Transitions with transition: all: property <column-span> from [initial] to [all] at (1.5) should be [all]: PASS
+	CSS Transitions with transition: all: property <column-wrap> from [wrap] to [nowrap] at (-0.3) should be [nowrap]: FAIL
+	CSS Transitions with transition: all: property <column-wrap> from [wrap] to [nowrap] at (0) should be [nowrap]: FAIL
+	CSS Transitions with transition: all: property <column-wrap> from [wrap] to [nowrap] at (0.3) should be [nowrap]: FAIL
+	CSS Transitions with transition: all: property <column-wrap> from [wrap] to [nowrap] at (0.5) should be [nowrap]: FAIL
+	CSS Transitions with transition: all: property <column-wrap> from [wrap] to [nowrap] at (0.6) should be [nowrap]: FAIL
+	CSS Transitions with transition: all: property <column-wrap> from [wrap] to [nowrap] at (1) should be [nowrap]: FAIL
+	CSS Transitions with transition: all: property <column-wrap> from [wrap] to [nowrap] at (1.5) should be [nowrap]: FAIL
+	CSS Transitions: property <column-fill> from [initial] to [auto] at (-0.3) should be [auto]: PASS
+	CSS Transitions: property <column-fill> from [initial] to [auto] at (0) should be [auto]: PASS
+	CSS Transitions: property <column-fill> from [initial] to [auto] at (0.3) should be [auto]: PASS
+	CSS Transitions: property <column-fill> from [initial] to [auto] at (0.5) should be [auto]: PASS
+	CSS Transitions: property <column-fill> from [initial] to [auto] at (0.6) should be [auto]: PASS
+	CSS Transitions: property <column-fill> from [initial] to [auto] at (1) should be [auto]: PASS
+	CSS Transitions: property <column-fill> from [initial] to [auto] at (1.5) should be [auto]: PASS
+	CSS Transitions: property <column-rule-style> from [initial] to [dashed] at (-0.3) should be [dashed]: PASS
+	CSS Transitions: property <column-rule-style> from [initial] to [dashed] at (0) should be [dashed]: PASS
+	CSS Transitions: property <column-rule-style> from [initial] to [dashed] at (0.3) should be [dashed]: PASS
+	CSS Transitions: property <column-rule-style> from [initial] to [dashed] at (0.5) should be [dashed]: PASS
+	CSS Transitions: property <column-rule-style> from [initial] to [dashed] at (0.6) should be [dashed]: PASS
+	CSS Transitions: property <column-rule-style> from [initial] to [dashed] at (1) should be [dashed]: PASS
+	CSS Transitions: property <column-rule-style> from [initial] to [dashed] at (1.5) should be [dashed]: PASS
+	CSS Transitions: property <column-span> from [initial] to [all] at (-0.3) should be [all]: PASS
+	CSS Transitions: property <column-span> from [initial] to [all] at (0) should be [all]: PASS
+	CSS Transitions: property <column-span> from [initial] to [all] at (0.3) should be [all]: PASS
+	CSS Transitions: property <column-span> from [initial] to [all] at (0.5) should be [all]: PASS
+	CSS Transitions: property <column-span> from [initial] to [all] at (0.6) should be [all]: PASS
+	CSS Transitions: property <column-span> from [initial] to [all] at (1) should be [all]: PASS
+	CSS Transitions: property <column-span> from [initial] to [all] at (1.5) should be [all]: PASS
+	CSS Transitions: property <column-wrap> from [wrap] to [nowrap] at (-0.3) should be [nowrap]: FAIL
+	CSS Transitions: property <column-wrap> from [wrap] to [nowrap] at (0) should be [nowrap]: FAIL
+	CSS Transitions: property <column-wrap> from [wrap] to [nowrap] at (0.3) should be [nowrap]: FAIL
+	CSS Transitions: property <column-wrap> from [wrap] to [nowrap] at (0.5) should be [nowrap]: FAIL
+	CSS Transitions: property <column-wrap> from [wrap] to [nowrap] at (0.6) should be [nowrap]: FAIL
+	CSS Transitions: property <column-wrap> from [wrap] to [nowrap] at (1) should be [nowrap]: FAIL
+	CSS Transitions: property <column-wrap> from [wrap] to [nowrap] at (1.5) should be [nowrap]: FAIL
+	Web Animations: property <column-fill> from [initial] to [auto] at (-0.3) should be [initial]: PASS
+	Web Animations: property <column-fill> from [initial] to [auto] at (0) should be [initial]: PASS
+	Web Animations: property <column-fill> from [initial] to [auto] at (0.3) should be [initial]: PASS
+	Web Animations: property <column-fill> from [initial] to [auto] at (0.5) should be [auto]: PASS
+	Web Animations: property <column-fill> from [initial] to [auto] at (0.6) should be [auto]: PASS
+	Web Animations: property <column-fill> from [initial] to [auto] at (1) should be [auto]: PASS
+	Web Animations: property <column-fill> from [initial] to [auto] at (1.5) should be [auto]: PASS
+	Web Animations: property <column-rule-style> from [initial] to [dashed] at (-0.3) should be [initial]: PASS
+	Web Animations: property <column-rule-style> from [initial] to [dashed] at (0) should be [initial]: PASS
+	Web Animations: property <column-rule-style> from [initial] to [dashed] at (0.3) should be [initial]: PASS
+	Web Animations: property <column-rule-style> from [initial] to [dashed] at (0.5) should be [dashed]: PASS
+	Web Animations: property <column-rule-style> from [initial] to [dashed] at (0.6) should be [dashed]: PASS
+	Web Animations: property <column-rule-style> from [initial] to [dashed] at (1) should be [dashed]: PASS
+	Web Animations: property <column-rule-style> from [initial] to [dashed] at (1.5) should be [dashed]: PASS
+	Web Animations: property <column-span> from [initial] to [all] at (-0.3) should be [initial]: PASS
+	Web Animations: property <column-span> from [initial] to [all] at (0) should be [initial]: PASS
+	Web Animations: property <column-span> from [initial] to [all] at (0.3) should be [initial]: PASS
+	Web Animations: property <column-span> from [initial] to [all] at (0.5) should be [all]: PASS
+	Web Animations: property <column-span> from [initial] to [all] at (0.6) should be [all]: PASS
+	Web Animations: property <column-span> from [initial] to [all] at (1) should be [all]: PASS
+	Web Animations: property <column-span> from [initial] to [all] at (1.5) should be [all]: PASS
+	Web Animations: property <column-wrap> from [wrap] to [nowrap] at (-0.3) should be [wrap]: FAIL
+	Web Animations: property <column-wrap> from [wrap] to [nowrap] at (0) should be [wrap]: FAIL
+	Web Animations: property <column-wrap> from [wrap] to [nowrap] at (0.3) should be [wrap]: FAIL
+	Web Animations: property <column-wrap> from [wrap] to [nowrap] at (0.5) should be [nowrap]: FAIL
+	Web Animations: property <column-wrap> from [wrap] to [nowrap] at (0.6) should be [nowrap]: FAIL
+	Web Animations: property <column-wrap> from [wrap] to [nowrap] at (1) should be [nowrap]: FAIL
+	Web Animations: property <column-wrap> from [wrap] to [nowrap] at (1.5) should be [nowrap]: FAIL
+/css/css-multicol/balance-grid-001.html: OK
+	#container 1: PASS
+/css/css-multicol/columns-shorthand-reset-wrap.html: OK
+	multicol1: FAIL
+	multicol2: FAIL
+	multicol3: FAIL
+/css/css-multicol/extremely-tall-multicol-with-extremely-tall-child-crash.html: OK
+	No crash or assertion failure.: PASS
+/css/css-multicol/filter-with-abspos.html: OK
+	Making a container filtered, and then removing an abspos child: PASS
+/css/css-multicol/getclientrects-000.html: OK
+	horizontal-tb ltr: PASS
+	horizontal-tb rtl: PASS
+	vertical-lr ltr: PASS
+	vertical-lr rtl: PASS
+	vertical-rl ltr: FAIL
+	vertical-rl rtl: FAIL
+/css/css-multicol/getclientrects-001.html: OK
+	horizontal-tb ltr: PASS
+	horizontal-tb rtl: PASS
+	sideways-lr ltr: FAIL
+	sideways-lr rtl: FAIL
+	sideways-rl ltr: FAIL
+	sideways-rl rtl: FAIL
+	vertical-lr ltr: PASS
+	vertical-lr rtl: PASS
+	vertical-rl ltr: FAIL
+	vertical-rl rtl: FAIL
+/css/css-multicol/getclientrects-002.html: OK
+	#0 height: FAIL
+	#0 left: PASS
+	#0 top: PASS
+	#0 width: PASS
+	#1 height: FAIL
+	#1 left: FAIL
+	#1 top: FAIL
+	#1 width: FAIL
+	Rectangle count: FAIL
+/css/css-multicol/getclientrects-003.html: OK
+	#0 height: PASS
+	#0 left: FAIL
+	#0 top: FAIL
+	#0 width: PASS
+	#1 height: FAIL
+	#1 left: FAIL
+	#1 top: FAIL
+	#1 width: PASS
+	#2 height: FAIL
+	#2 left: PASS
+	#2 top: PASS
+	#2 width: PASS
+	Rectangle count: FAIL
+/css/css-multicol/getclientrects-004.html: OK
+	#0 height: PASS
+	#0 left: FAIL
+	#0 top: FAIL
+	#0 width: PASS
+	#1 height: PASS
+	#1 left: PASS
+	#1 top: FAIL
+	#1 width: FAIL
+	#2 height: PASS
+	#2 left: FAIL
+	#2 top: PASS
+	#2 width: FAIL
+	Rectangle count: FAIL
+/css/css-multicol/getclientrects-005.html: OK
+	#col1: FAIL
+	#col2: FAIL
+	#col3: FAIL
+	#col4: FAIL
+	#group: FAIL
+/css/css-multicol/getclientrects-006.html: OK
+	#col1: FAIL
+	#col2: FAIL
+	#col3: FAIL
+	#col4: FAIL
+	#group: FAIL
+/css/css-multicol/getclientrects-007.html: OK
+	#col1: FAIL
+	#col2: FAIL
+	#col3: FAIL
+	#col4: FAIL
+	#group: FAIL
+/css/css-multicol/getclientrects-008.html: OK
+	#container: FAIL
+	#monolith1: FAIL
+	#monolith2: FAIL
+	#monolith3: FAIL
+/css/css-multicol/going-out-of-flow-after-spanner.html: OK
+	Going out of flow and still fragmented: FAIL
+/css/css-multicol/hit-test-child-under-perspective.html: OK
+	test: FAIL
+/css/css-multicol/hit-test-in-vertical-rl.html: OK
+	Hit-testing in vertical-rl writing-mode: FAIL
+/css/css-multicol/hit-test-transformed-child.html: OK
+	inside: PASS
+	outside: PASS
+/css/css-multicol/inheritance.html: OK
+	Property column-count does not inherit: PASS
+	Property column-count has initial value auto: PASS
+	Property column-fill does not inherit: PASS
+	Property column-fill has initial value balance: PASS
+	Property column-rule-color does not inherit: PASS
+	Property column-rule-color has initial value rgba(42, 53, 64, 0.75): PASS
+	Property column-rule-style does not inherit: PASS
+	Property column-rule-style has initial value none: PASS
+	Property column-rule-width does not inherit: PASS
+	Property column-rule-width has initial value 3px: PASS
+	Property column-span does not inherit: PASS
+	Property column-span has initial value none: PASS
+	Property column-width does not inherit: PASS
+	Property column-width has initial value auto: PASS
+/css/css-multicol/multicol-fill-balance-007.html: OK
+	#container 1: FAIL
+/css/css-multicol/multicol-fill-balance-008.html: OK
+	#container 1: FAIL
+/css/css-multicol/multicol-fill-balance-009.html: OK
+	#container 1: FAIL
+/css/css-multicol/multicol-fill-balance-010.html: OK
+	#container 1: FAIL
+/css/css-multicol/multicol-fill-balance-011.html: OK
+	#container 1: FAIL
+/css/css-multicol/multicol-fill-balance-012.html: OK
+	#container 1: FAIL
+/css/css-multicol/multicol-fill-balance-013.html: OK
+	#container 1: FAIL
+/css/css-multicol/multicol-fill-balance-014.html: OK
+	multicol-fill-balance-014: FAIL
+/css/css-multicol/multicol-fill-balance-015.html: OK
+	multicol-fill-balance-015: FAIL
+/css/css-multicol/multicol-fill-balance-016.html: OK
+	multicol-fill-balance-016: FAIL
+/css/css-multicol/multicol-fill-balance-019.html: OK
+	Breakable block inside inline: PASS
+/css/css-multicol/multicol-fill-balance-020.html: OK
+	Nested balanced multicol with very tall content: FAIL
+/css/css-multicol/multicol-fill-balance-021.html: OK
+	Ruby text should affect column height: FAIL
+/css/css-multicol/multicol-fill-balance-022.html: OK
+	Nested balancing inner height: FAIL
+	Nested balancing outer height: FAIL
+/css/css-multicol/multicol-fill-balance-023.html: OK
+	Spanner in overflowed parent with forced breaks: FAIL
+/css/css-multicol/multicol-fill-balance-025.html: OK
+	Clearance after float with forced break inside: FAIL
+/css/css-multicol/multicol-fill-balance-027.html: OK
+	Make room for the float in the first column: PASS
+/css/css-multicol/multicol-fill-balance-028.html: OK
+	Make room for the float in the first column: PASS
+/css/css-multicol/multicol-gap-animation-001.html: OK
+	column-gap property is animatable: PASS
+/css/css-multicol/multicol-gap-animation-002.html: OK
+	column-gap: normal is not interpolable: PASS
+/css/css-multicol/multicol-gap-animation-003.html: OK
+	Default column-gap is not interpolable: PASS
+/css/css-multicol/multicol-gap-percentage-001.html: OK
+	.multicol 1: PASS
+	.multicol 10: PASS
+	.multicol 11: PASS
+	.multicol 12: PASS
+	.multicol 2: PASS
+	.multicol 3: PASS
+	.multicol 4: PASS
+	.multicol 5: PASS
+	.multicol 6: PASS
+	.multicol 7: PASS
+	.multicol 8: PASS
+	.multicol 9: PASS
+/css/css-multicol/multicol-nested-006.html: OK
+	Check that orphans and widows don't make a multicol container taller than necessary: PASS
+/css/css-multicol/multicol-nested-012.html: OK
+	.outer 1: FAIL
+/css/css-multicol/multicol-overflow-positioned-transform-001.html: OK
+	Check scrollHeight before and after transform chage: PASS
+	Check scrollWidth and scrollHeight before and after transform chage: PASS
+	Check scrollWidth before and after transform chage: PASS
+/css/css-multicol/multicol-overflow-transform-001.html: OK
+	Check scrollHeight before and after transform chage: PASS
+	Check scrollWidth and scrollHeight before and after transform chage: PASS
+	Check scrollWidth before and after transform chage: PASS
+/css/css-multicol/multicol-span-all-016.html: OK
+	#container 1: PASS
+/css/css-multicol/nested-non-auto-inline-size-offset-top.html: OK
+	offsetTop on element in second outer column: PASS
+/css/css-multicol/offsetProps-001.html: OK
+	inner1: FAIL
+	inner2: FAIL
+	middle: FAIL
+	outer: FAIL
+/css/css-multicol/offsetProps-002.html: OK
+	offsetTop: PASS
+/css/css-multicol/parsing/column-count-computed.html: OK
+	Property column-count value '1': PASS
+	Property column-count value '234': PASS
+	Property column-count value 'auto': PASS
+	Property column-count value 'calc(1 + 234)': PASS
+/css/css-multicol/parsing/column-count-invalid.html: OK
+	e.style['column-count'] = "-1" should not set the property value: PASS
+	e.style['column-count'] = "0" should not set the property value: PASS
+	e.style['column-count'] = "1 234" should not set the property value: PASS
+	e.style['column-count'] = "2.5" should not set the property value: PASS
+	e.style['column-count'] = "auto 1" should not set the property value: PASS
+	e.style['column-count'] = "none" should not set the property value: PASS
+/css/css-multicol/parsing/column-count-valid.html: OK
+	e.style['column-count'] = "1" should set the property value: PASS
+	e.style['column-count'] = "234" should set the property value: PASS
+	e.style['column-count'] = "auto" should set the property value: PASS
+/css/css-multicol/parsing/column-fill-computed.html: OK
+	Property column-fill value 'auto': PASS
+	Property column-fill value 'balance': PASS
+	Property column-fill value 'balance-all': FAIL
+/css/css-multicol/parsing/column-fill-invalid.html: OK
+	e.style['column-fill'] = "auto balance" should not set the property value: PASS
+	e.style['column-fill'] = "none" should not set the property value: PASS
+/css/css-multicol/parsing/column-fill-valid.html: OK
+	e.style['column-fill'] = "auto" should set the property value: PASS
+	e.style['column-fill'] = "balance" should set the property value: PASS
+	e.style['column-fill'] = "balance-all" should set the property value: PASS
+/css/css-multicol/parsing/column-pseudo-computed.html: OK
+	::column font-size applied: FAIL
+	::column scroll-snap-align: FAIL
+	::column scroll-snap-margin: FAIL
+	::column scroll-snap-stop: FAIL
+/css/css-multicol/parsing/column-pseudo-invalid.html: OK
+	"::column::before" should be an invalid selector: PASS
+	"::column::first-letter" should be an invalid selector: PASS
+	"::column::first-line" should be an invalid selector: PASS
+	"::column::slotted(*)" should be an invalid selector: PASS
+	"::column:hover" should be an invalid selector: FAIL
+	"::first-letter::column" should be an invalid selector: PASS
+/css/css-multicol/parsing/column-pseudo-valid.html: OK
+	"::before::column" should be a valid selector: FAIL
+	"::before::column::scroll-marker" should be a valid selector: FAIL
+	"::column" should be a valid selector: PASS
+	"::column::scroll-marker" should be a valid selector: FAIL
+/css/css-multicol/parsing/column-rule-color-computed.html: OK
+	Property column-rule-color value 'currentcolor': PASS
+	Property column-rule-color value 'red': PASS
+/css/css-multicol/parsing/column-rule-color-invalid.html: OK
+	e.style['column-rule-color'] = "auto" should not set the property value: PASS
+	e.style['column-rule-color'] = "green blue" should not set the property value: PASS
+/css/css-multicol/parsing/column-rule-color-valid.html: OK
+	e.style['column-rule-color'] = "currentcolor" should set the property value: PASS
+	e.style['column-rule-color'] = "red" should set the property value: PASS
+/css/css-multicol/parsing/column-rule-computed.html: OK
+	Property column-rule value '0px none rgb(255, 0, 255)': FAIL
+	Property column-rule value '10px dotted rgb(255, 0, 255)': FAIL
+	Property column-rule value '10px': FAIL
+	Property column-rule value 'dotted': FAIL
+	Property column-rule value 'medium hidden currentcolor': FAIL
+	Property column-rule value 'medium solid currentcolor': FAIL
+/css/css-multicol/parsing/column-rule-invalid.html: OK
+	e.style['column-rule'] = "10" should not set the property value: PASS
+	e.style['column-rule'] = "red medium green" should not set the property value: PASS
+	e.style['column-rule'] = "reverse" should not set the property value: PASS
+/css/css-multicol/parsing/column-rule-shorthand.html: OK
+	e.style['column-rule'] = "100px" should not set unrelated longhands: PASS
+	e.style['column-rule'] = "100px" should set column-rule-color: FAIL
+	e.style['column-rule'] = "100px" should set column-rule-style: FAIL
+	e.style['column-rule'] = "100px" should set column-rule-width: PASS
+	e.style['column-rule'] = "blue" should not set unrelated longhands: PASS
+	e.style['column-rule'] = "blue" should set column-rule-color: PASS
+	e.style['column-rule'] = "blue" should set column-rule-style: FAIL
+	e.style['column-rule'] = "blue" should set column-rule-width: FAIL
+	e.style['column-rule'] = "medium dotted green" should not set unrelated longhands: PASS
+	e.style['column-rule'] = "medium dotted green" should set column-rule-color: PASS
+	e.style['column-rule'] = "medium dotted green" should set column-rule-style: PASS
+	e.style['column-rule'] = "medium dotted green" should set column-rule-width: PASS
+/css/css-multicol/parsing/column-rule-style-computed.html: OK
+	Property column-rule-style value 'dashed': PASS
+	Property column-rule-style value 'dotted': PASS
+	Property column-rule-style value 'double': PASS
+	Property column-rule-style value 'groove': PASS
+	Property column-rule-style value 'hidden': PASS
+	Property column-rule-style value 'inset': PASS
+	Property column-rule-style value 'none': PASS
+	Property column-rule-style value 'ridge': PASS
+	Property column-rule-style value 'solid': PASS
+/css/css-multicol/parsing/column-rule-style-invalid.html: OK
+	e.style['column-rule-style'] = "auto" should not set the property value: PASS
+/css/css-multicol/parsing/column-rule-style-valid.html: OK
+	e.style['column-rule-style'] = "dashed" should set the property value: PASS
+	e.style['column-rule-style'] = "dotted" should set the property value: PASS
+	e.style['column-rule-style'] = "double" should set the property value: PASS
+	e.style['column-rule-style'] = "groove" should set the property value: PASS
+	e.style['column-rule-style'] = "hidden" should set the property value: PASS
+	e.style['column-rule-style'] = "inset" should set the property value: PASS
+	e.style['column-rule-style'] = "none" should set the property value: PASS
+	e.style['column-rule-style'] = "ridge" should set the property value: PASS
+	e.style['column-rule-style'] = "solid" should set the property value: PASS
+/css/css-multicol/parsing/column-rule-valid.html: OK
+	e.style['column-rule'] = "10px" should set the property value: FAIL
+	e.style['column-rule'] = "currentcolor hidden medium" should set the property value: FAIL
+	e.style['column-rule'] = "currentcolor none medium" should set the property value: FAIL
+	e.style['column-rule'] = "dotted" should set the property value: FAIL
+	e.style['column-rule'] = "red" should set the property value: FAIL
+/css/css-multicol/parsing/column-rule-width-computed.html: OK
+	Property column-rule-width value 'calc(10px + 0.5em)': PASS
+	Property column-rule-width value 'calc(10px - 0.5em)': PASS
+	column-rule-width is as specified when column-rule-style is none or hidden: FAIL
+/css/css-multicol/parsing/column-rule-width-invalid.html: OK
+	e.style['column-rule-width'] = "-20px" should not set the property value: PASS
+	e.style['column-rule-width'] = "10" should not set the property value: PASS
+	e.style['column-rule-width'] = "30%" should not set the property value: PASS
+	e.style['column-rule-width'] = "auto" should not set the property value: PASS
+/css/css-multicol/parsing/column-rule-width-valid.html: OK
+	e.style['column-rule-width'] = "0" should set the property value: FAIL
+	e.style['column-rule-width'] = "10px" should set the property value: PASS
+	e.style['column-rule-width'] = "medium" should set the property value: PASS
+	e.style['column-rule-width'] = "thick" should set the property value: PASS
+	e.style['column-rule-width'] = "thin" should set the property value: PASS
+/css/css-multicol/parsing/column-span-computed.html: OK
+	Property column-span value 'all': PASS
+	Property column-span value 'none': PASS
+/css/css-multicol/parsing/column-span-invalid.html: OK
+	e.style['column-span'] = "auto" should not set the property value: PASS
+	e.style['column-span'] = "none all" should not set the property value: PASS
+/css/css-multicol/parsing/column-span-valid.html: OK
+	e.style['column-span'] = "all" should set the property value: PASS
+	e.style['column-span'] = "none" should set the property value: PASS
+/css/css-multicol/parsing/column-width-computed.html: OK
+	Property column-width value 'auto': PASS
+	Property column-width value 'calc(10px + 0.5em)': PASS
+	Property column-width value 'calc(10px - 0.5em)': PASS
+/css/css-multicol/parsing/column-width-invalid.html: OK
+	e.style['column-width'] = "-20px" should not set the property value: PASS
+	e.style['column-width'] = "10" should not set the property value: PASS
+	e.style['column-width'] = "30%" should not set the property value: PASS
+	e.style['column-width'] = "auto 40px" should not set the property value: PASS
+	e.style['column-width'] = "none" should not set the property value: PASS
+/css/css-multicol/parsing/column-width-valid.html: OK
+	e.style['column-width'] = "0" should set the property value: FAIL
+	e.style['column-width'] = "10px" should set the property value: PASS
+	e.style['column-width'] = "auto" should set the property value: PASS
+/css/css-multicol/parsing/columns-computed.html: OK
+	Property columns value '0.25em / 2.5em': FAIL
+	Property columns value '0.25em / auto': FAIL
+	Property columns value '0.25em 2 / 2.5em': FAIL
+	Property columns value '0.25em 2 / auto': FAIL
+	Property columns value '0.25em 2': FAIL
+	Property columns value '0.25em auto / 2.5em': FAIL
+	Property columns value '0.25em auto / auto': FAIL
+	Property columns value '0.25em auto': FAIL
+	Property columns value '0.25em': FAIL
+	Property columns value '2 / 2.5em': FAIL
+	Property columns value '2 / auto': FAIL
+	Property columns value '2 0.25em / 2.5em': FAIL
+	Property columns value '2 0.25em / auto': FAIL
+	Property columns value '2 0.25em': FAIL
+	Property columns value '2 auto / 2.5em': FAIL
+	Property columns value '2 auto / auto': FAIL
+	Property columns value '2 auto': FAIL
+	Property columns value '2': FAIL
+	Property columns value 'auto / 2.5em': FAIL
+	Property columns value 'auto / auto': FAIL
+	Property columns value 'auto 0.25em / 2.5em': FAIL
+	Property columns value 'auto 0.25em / auto': FAIL
+	Property columns value 'auto 0.25em': FAIL
+	Property columns value 'auto 2 / 2.5em': FAIL
+	Property columns value 'auto 2 / auto': FAIL
+	Property columns value 'auto 2': FAIL
+	Property columns value 'auto': FAIL
+/css/css-multicol/parsing/columns-invalid.html: OK
+	e.style['columns'] = "/ 100px" should not set the property value: PASS
+	e.style['columns'] = "/ auto" should not set the property value: PASS
+	e.style['columns'] = "/" should not set the property value: PASS
+	e.style['columns'] = "0 0" should not set the property value: PASS
+	e.style['columns'] = "0 7px" should not set the property value: PASS
+	e.style['columns'] = "10 20" should not set the property value: PASS
+	e.style['columns'] = "100px /" should not set the property value: PASS
+	e.style['columns'] = "100px 2 /" should not set the property value: PASS
+	e.style['columns'] = "10em auto auto" should not set the property value: PASS
+	e.style['columns'] = "10px 20px" should not set the property value: PASS
+	e.style['columns'] = "2 /" should not set the property value: PASS
+	e.style['columns'] = "2 100px /" should not set the property value: PASS
+	e.style['columns'] = "auto /" should not set the property value: PASS
+	e.style['columns'] = "auto auto auto" should not set the property value: PASS
+	e.style['columns'] = "inherit inherit" should not set the property value: PASS
+	e.style['columns'] = "initial initial" should not set the property value: PASS
+	e.style['columns'] = "none" should not set the property value: PASS
+/css/css-multicol/parsing/columns-valid.html: OK
+	e.style['columns'] = "0 1" should set the property value: FAIL
+	e.style['columns'] = "0px 1" should set the property value: PASS
+	e.style['columns'] = "1 0" should set the property value: FAIL
+	e.style['columns'] = "10em auto" should set the property value: FAIL
+	e.style['columns'] = "10px / 100px" should set the property value: FAIL
+	e.style['columns'] = "10px / auto" should set the property value: FAIL
+	e.style['columns'] = "10px 2 / 100px" should set the property value: FAIL
+	e.style['columns'] = "10px 2 / auto" should set the property value: FAIL
+	e.style['columns'] = "10px 2" should set the property value: PASS
+	e.style['columns'] = "2 / auto" should set the property value: FAIL
+	e.style['columns'] = "2 10px / 100px" should set the property value: FAIL
+	e.style['columns'] = "2 10px / auto" should set the property value: FAIL
+	e.style['columns'] = "2 10px" should set the property value: PASS
+	e.style['columns'] = "3 auto" should set the property value: FAIL
+	e.style['columns'] = "7" should set the property value: FAIL
+	e.style['columns'] = "7em" should set the property value: FAIL
+	e.style['columns'] = "auto / 100px" should set the property value: FAIL
+	e.style['columns'] = "auto / auto" should set the property value: FAIL
+	e.style['columns'] = "auto 10em" should set the property value: FAIL
+	e.style['columns'] = "auto 3" should set the property value: FAIL
+	e.style['columns'] = "auto auto" should set the property value: FAIL
+	e.style['columns'] = "auto" should set the property value: FAIL
+	e.style['columns'] = "inherit" should set the property value: FAIL
+	e.style['columns'] = "initial" should set the property value: FAIL
+/css/css-multicol/resize-multicol-with-fixed-size-children-003.html: OK
+	Resize multicol with fixed-width child: PASS
+/css/css-multicol/scroll-width-height.tentative.html: OK
+	.child, .grandchild 1: FAIL
+	.child, .grandchild 2: FAIL
+	.child, .grandchild 3: FAIL
+	.child, .grandchild 4: FAIL
+	.child, .grandchild 5: FAIL
+	.child, .grandchild 6: FAIL
+/css/css-multicol/subpixel-column-progression.html: OK
+	Fractional column gaps and widths: FAIL
+	No space for columns, only gaps: PASS
+	Should be exactly to the right of the multicol container: PASS
+	Should equal to two multicol container widths: PASS
+/css/css-multicol/table/balance-table-with-border-spacing.html: OK
+	Balanced multicol with table with border spacing: FAIL
+/css/css-multicol/table/balance-table-with-fractional-height-row.html: OK
+	If we have room for the line, we have room for all we need: FAIL
+/css/css-multicol/with-custom-layout-on-same-element-crash.https.html: OK
+	No crash: PASS
+/css/css-multicol/zero-column-width-computed-style.html: OK
+	column-width:0 is a valid CSS declaration: FAIL
