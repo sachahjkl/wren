@@ -53,7 +53,7 @@ function not exposed to workers is not instantiated.
 | [`async`](async.md) | 17 | Window, Worker | Promises, microtasks, buffers and host objects: the asynchronous core every other module builds on. |
 | [`bloburl`](bloburl.md) | 2 | Window, Worker | The blob URL store (src/fetch/blob_urls.odin): what `URL.createObjectURL` makes, for everything that loads a URL outside the |
 | [`caches`](caches.md) | 11 | Window, Worker | The Cache API (Service Workers §5: CacheStorage, Cache) on the browser's storage (src/page/cache_store.odin): named |
-| [`canvas`](canvas.md) | 141 | Window, Worker | Canvas 2D (HTML §4.12.5): the 2D rendering context of <canvas> and OffscreenCanvas, drawn by a software rasterizer |
+| [`canvas`](canvas.md) | 144 | Window, Worker | Canvas 2D (HTML §4.12.5): the 2D rendering context of <canvas> and OffscreenCanvas, drawn by a software rasterizer |
 | [`compression`](compression.md) | 4 | Window, Worker | CompressionStream and DecompressionStream (Compression Standard; src/page/compression.odin, the streams themselves: |
 | [`console`](console.md) | 3 | Window, Worker | The console of the page (or of the worker): messages appear in the browser's console. Invalid UTF-8 is shown as |
 | [`credentials`](credentials.md) | 16 | Window | Web Authentication Level 3 (passkeys, security keys) and the Credential Management container it hangs off |
@@ -102,8 +102,8 @@ function not exposed to workers is not instantiated.
 | [`webcodecs_encoders`](webcodecs_encoders.md) | 18 | Window, Worker | WebCodecs VideoEncoder / AudioEncoder (src/page/bindings_encoders.odin, native/js/runtime/web_webcodecs_encoders.c). |
 | [`webcodecs_image`](webcodecs_image.md) | 16 | Window, Worker | WebCodecs ImageDecoder (src/page/bindings_image_decoder.odin, native/js/runtime/web_webcodecs_image.c). The decode |
 | [`webcodecs_video_decoder`](webcodecs_video_decoder.md) | 9 | Window, Worker | WebCodecs VideoDecoder (src/page/bindings_video_decoder.odin, native/js/runtime/web_webcodecs_video_decoder.c). |
-| [`webgl`](webgl.md) | 14 | Window | WebGL 1 and 2 for native/js/odin/web_webgl.js: a context is a host object over a device of its own (native/webgl, a thread); the |
+| [`webgl`](webgl.md) | 15 | Window, Worker | WebGL 1 and 2 for native/js/odin/web_webgl.js: a context is a host object over a device of its own (native/webgl: a thread in the GPU |
 | [`websocket`](websocket.md) | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | 11 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-1566 imports in 1467 functions.
+1570 imports in 1471 functions.

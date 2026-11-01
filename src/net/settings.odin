@@ -67,7 +67,7 @@ PREFS := [?]config.Def{
 	{name = "network.proxy.mode", kind = .String, default = {s = "system"}, choices = {"system", "none"}, restart = true,
 		description = "system: the operating system's proxy settings (auto-detection included). none: connect directly."},
 	{name = "network.user_agent", kind = .String, default = {s = ""}, restart = true,
-		description = "The User-Agent header (and navigator.userAgent). Empty: Mozilla/5.0 (<platform>) Wren/<version>."},
+		description = "The User-Agent header (and navigator.userAgent). Empty: Mozilla/5.0 (<platform>) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/<n> Safari/537.36 Wren/<version>, as Edge and Opera write theirs."},
 	{name = "network.max_response_bytes", kind = .Int, default = {i = 256 << 20}, bounded = true, min = 0, max = 1 << 40, bytes = true, unit = "bytes",
 		description = "Default largest response body; a request exceeding it fails. 0 = unlimited."},
 	{name = "network.read_chunk_bytes", kind = .Int, default = {i = 64 << 10}, bounded = true, min = 1024, max = 16 << 20, bytes = true, unit = "bytes",
@@ -84,8 +84,10 @@ register_prefs :: proc(p: ^config.Prefs) { config.register(p, PREFS[:]) }
 // preferences; tools keep this one.
 user_agent_product := "Wren"
 
-// The form sites expect (Mozilla/5.0, then the platform as browsers write it), without claiming an engine Wren is not:
-// a "Chrome/" token would get pages features it lacks. Windows 11 still says "Windows NT 10.0", as every browser does.
+// The form sites expect, as Edge and Opera write it: the platform, the tokens of the Chromium family, then the browser's own. Sites refuse or
+// break on anything else (Google Sign-In answers 403, CKEditor refuses to start), and Wren now has what those tokens promise for most
+// pages. The preference network.user_agent replaces the whole. The version only has to look current.
+@(private = "file") CHROMIUM_TOKENS :: "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
 user_agent_default :: proc(allocator := context.allocator) -> string {
 	when ODIN_OS == .Windows {
 		platform :: "Windows NT 10.0; Win64; x64"
@@ -94,7 +96,7 @@ user_agent_default :: proc(allocator := context.allocator) -> string {
 	} else {
 		platform :: "X11; Linux x86_64"
 	}
-	return strings.concatenate({"Mozilla/5.0 (", platform, ") ", user_agent_product}, allocator)
+	return strings.concatenate({"Mozilla/5.0 (", platform, ") ", CHROMIUM_TOKENS, " ", user_agent_product}, allocator)
 }
 
 settings_from_prefs :: proc(p: ^config.Prefs, allocator := context.allocator) -> Settings {

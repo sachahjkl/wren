@@ -6159,8 +6159,10 @@ _t_canvas_HTMLCanvasElement_transferControl :: proc "c" (env: rawptr, caller: wa
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "canvas.HTMLCanvasElement_transferControl", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_HTMLCanvasElement{handle = u64(a[0].i64)}
 	_p0.data = lookup_HTMLCanvasElement(&c, _p0.handle)
 	if _p0.data == nil {
@@ -6184,8 +6186,10 @@ _t_canvas_OffscreenCanvas_takeForTransfer :: proc "c" (env: rawptr, caller: wasm
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "canvas.OffscreenCanvas_takeForTransfer", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := Api_OffscreenCanvas{handle = u64(a[0].i64)}
 	_p0.data = lookup_OffscreenCanvas(&c, _p0.handle)
 	if _p0.data == nil {
@@ -6209,8 +6213,10 @@ _t_canvas_OffscreenCanvas_adoptTransfer :: proc "c" (env: rawptr, caller: wasm.C
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
 	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "canvas.OffscreenCanvas_adoptTransfer", "result pointer") }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	_r, _err := OffscreenCanvas_adoptTransfer(&c, _p0)
 	api_end(&c)
@@ -37127,6 +37133,8 @@ _t_webgl_WebGL_commit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
+	defer if c.routed { api_unroute(&c) }
+	api_route(&c, u64(a[0].i64))
 	_p0 := u64(a[0].i64)
 	WebGL_commit(&c, _p0)
 	api_end(&c)
