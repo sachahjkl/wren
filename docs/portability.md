@@ -1,7 +1,7 @@
 # Portability: Linux (Wayland, X11), then macOS
 
 Where Wren depends on Windows, what is portable already, and the order of the work left. Measured with
-`tools\portability.ps1` (`odin check <package> -target:linux_amd64 -no-entry-point` for every package of `src\` and of
+`wrentool portability` (`odin check <package> -target:linux_amd64 -no-entry-point` for every package of `src\` and of
 the toolkit, the errors counted in the package's own files), and with the unit tests run on Linux (NixOS in WSL, Odin
 dev-2026-10, the same flags as `src\tools\test_all`).
 
@@ -26,13 +26,13 @@ Shared building blocks, use them rather than a new copy:
 | Temporary directory | `base.temp_dir` (TEMP, else the system's) |
 | Hashes, HMAC, random bytes, ECDSA P-256, RSA verification | `core:crypto` (no BCrypt) |
 | Path separator in built paths | `filepath.SEPARATOR_STRING` |
-| Native libraries | `build/<lib>-<os>/...`: `./build.sh deps` (`tools/fetch_wasmtime.sh`, `tools/build_lexbor.sh`, `tools/build_native.sh`) |
+| Native libraries | `build/<lib>-<os>/...`: `./build.sh deps` (`wrentool fetch wasmtime`, `wrentool build lexbor`, `wrentool build native`) |
 | A file: path from a URL, its separator, the tree check | `fetch.file_path_from_url`, `fetch.FILE_SEP_STR`, `fetch.path_within` (POSIX paths off Windows) |
 | A Unix socket of this user's only | `remote.socket_dir`, `remote.unix_connect` |
 | Starting, telling again and ending a child process | `remote/client`: `process_start`, `identity_of`, `same_process`, `process_wait`, `process_kill` |
-| Crash reports | `crashtrace` (`crashtrace_linux.odin`: signals, backtrace, build id; `tools/crash_symbolize.sh`) |
+| Crash reports | `crashtrace` (`crashtrace_linux.odin`: signals, backtrace, build id; `wrentool crash-symbolize`) |
 
-The Wasmtime archive for Linux is sealed by `tools/fetch_wasmtime.sh` (one relocatable object, only the C API's symbols
+The Wasmtime archive for Linux is sealed by `wrentool fetch wasmtime` (one relocatable object, only the C API's symbols
 global): it carries its own copy of Rust's standard library, as `libwren_native.a` does, and GNU ld stops on the symbols
 the two share. The Windows archive links as shipped.
 
@@ -58,7 +58,7 @@ Before: master `4c37924` (slice 1 and the Rust network stack merged). After: `fe
 | tools/crashtrace | own 116 | ok | `crashtrace_linux.odin` |
 | tools/crashmodes, the web tests and most headless tools | deps | ok | (their packages) |
 
-Linux end to end: `tools/crash_e2e.sh` (8 ways of dying, each with its report or an unclean-exit report). Windows after
+Linux end to end: `wrentool crash-e2e` (8 ways of dying, each with its report or an unclean-exit report). Windows after
 the slice: the unit tests of every package touched, the `net` and `wsclose` web tests on both stacks, the scenarios of the channel and of
 crash reports (`src\tools\e2e`), the dev build.
 
@@ -74,7 +74,7 @@ behaviour behind packages that already passed `odin check` for Linux:
   `Audio_Output`; `backend_linux.odin` picks cpal or the null output by `media.audio.backend`. The new crates are
   target-gated to non-Windows (Opus' C and cpal's ALSA stay out of the Windows build).
 - **H.264** (`media`): `h264_linux.odin` decodes through Cisco's **openh264**, `dlopen`ed at run time (never built from
-  source: the patent licence covers only Cisco's binaries, `tools/fetch_openh264.sh`), behind `Video_Decoder`.
+  source: the patent licence covers only Cisco's binaries, `wrentool fetch openh264`), behind `Video_Decoder`.
   `vaapi_linux.odin` probes the GPU's VA-API H.264 support (libva / libva-drm by `dlopen`, a DRM render node) and is
   preferred when `media.h264.backend` allows; the VA-API decode path itself (slice-level) is not written, so it falls
   back to openh264 — the first thing to try under WSL is openh264.
@@ -91,7 +91,7 @@ behaviour behind packages that already passed `odin check` for Linux:
 To try under WSL (NixOS): `cargo build` once (new crates: Symphonia, opus, cpal, libc — `native/Cargo.lock` and
 `native/rust-crates.txt` regenerate; symphonia is MPL-2.0, cpal Apache-2.0, libopus BSD-3-Clause); then the unit tests
 of `media`, `desktop` and `webauthn` for Linux, a page with `<audio>` / `<video>` (H.264 after
-`tools/fetch_openh264.sh`), and a security key for `navigator.credentials`.
+`wrentool fetch openh264`), and a security key for `navigator.credentials`.
 
 ## Slice 4 (2026-10-28): the toolkit's Linux window
 
@@ -194,9 +194,9 @@ audio formats the built-in player cannot demux (MP3, WAV, …; MCI is Windows-on
 software Vulkan of Mesa, lavapipe): the window, the start page, `wren ctl` (start, nav, shot, eval, console), example.com
 and GitHub's repository page load and draw. What it took:
 
-- `tools/fetch_wgpu.sh`: wgpu-native (the release Odin's `vendor:wgpu` names), SHA-256 checked and sealed like Wasmtime
+- `wrentool fetch wgpu`: wgpu-native (the release Odin's `vendor:wgpu` names), SHA-256 checked and sealed like Wasmtime
   (one object, only `wgpu*` kept), put where Odin looks for it. Two Rust libraries in one link otherwise stop on
-  `rust_eh_personality`. `tools/fetch_wasmtime.sh` also fetches the licence text the browser bundles.
+  `rust_eh_personality`. `wrentool fetch wasmtime` also fetches the licence text the browser bundles.
 - Four imports of `core:sys/windows` / `wb:desktop` that only Windows used (an unused import is an error under `-vet`).
 - The system's `libopus`, `libasound` and `libfontconfig` to link; `libwayland-client`, `libxkbcommon` (or `libxcb`) and
   a Vulkan or GL driver at run time. On NixOS: `nix shell` with clang, lld, nasm, pkg-config, rustup (1.99.1), and
@@ -210,7 +210,7 @@ glibc did not: GitHub's web-vitals code threw `JSON.parse: bad escape` and its p
 
 Not checked: whether the light / dark appearance follows the system (the start page came up light), drag and drop, the
 system file dialogs through zenity, a real GPU in WSL (lavapipe was used), keyboard and pointer input in the window (only
-`wren ctl`'s synthetic input was used), `crash_e2e.sh` with this binary.
+`wren ctl`'s synthetic input was used), `wrentool crash-e2e` with this binary.
 
 ## Media on Linux: decisions
 
@@ -276,7 +276,7 @@ webfont, images (23 of 24: SVG text needs system fonts in the test distribution)
    library stays optional); the accessibility of Wren's side (`src/a11y`, blocked by the toolkit's platform).
 1. **Done in slice 1**: the engine's core (threads, files, crypto, clocks, Wasm runtime, JavaScript time zone, storage, HTTP
    cache, images, Web Authentication's crypto, one instance per profile), Lexbor, Wasmtime and the Rust library built
-   for Linux, `tools\portability.ps1`.
+   for Linux, `wrentool portability`.
 2. **After the network branch lands** (net, fetch on Rust): `page`, `blocker` and every headless tool (the web tests,
    `wpt`, `test262`...) follow; the 6 errors of `page` are screen metrics (needs the toolkit's display API)
    and `images.odin`'s use of a Windows-only helper. One slice.
@@ -301,7 +301,7 @@ thread priorities and `instance` have a Linux-only file to extend.
 ## Risks
 
 - `cargo check -p wren_media --profile quick` without NASM on PATH leaves rav1d's build script output without its
-  assembly; the next quick build links but misses `dav1d_*_avx2` symbols. Rebuild with `tools\build_native.ps1
+  assembly; the next quick build links but misses `dav1d_*_avx2` symbols. Rebuild with `wrentool build native
   -Profile quick -Force` (after `cargo clean -p rav1d --profile quick`).
 - Linux's thread priorities are nice values: lowering one again (the boost on join) needs CAP_SYS_NICE, so it is best
   effort there.
@@ -309,7 +309,7 @@ thread priorities and `instance` have a Linux-only file to extend.
 - `src/tools/test_all` as a whole takes more than 8 minutes in WSL on a Windows drive (/mnt/s): run it by package
   (`build/test_all -Only "(net|fetch)"`) there; the CI runner (native ext4) is well inside its 45 minutes.
 - An executable linked without `--build-id` gives crash reports without a build line's id (`build.sh` and
-  `tools/crash_e2e.sh` ask for it; the browser's Linux link must too).
+  `wrentool crash-e2e` ask for it; the browser's Linux link must too).
 - core:sys/linux's `getsockopt` passes the size of the pointer, not of the value: `remote.same_user` calls the system
   call itself.
 - The Wasm unit tests must run on one thread on every system (`-define:ODIN_TEST_THREADS=1`), as `test_all` does: the
@@ -317,4 +317,4 @@ thread priorities and `instance` have a Linux-only file to extend.
 
 ## Slice 8 (2026-10-31): a Linux package
 
-`./build.sh release` then `tools/package_linux.sh` make `build/dist/wren-<version>-linux-x64.tar.gz`; the workflow `linux-package.yml` builds it on ubuntu-24.04 (so glibc 2.39 or later), unpacks it and runs `tools/linux_smoke.sh` under xvfb before the release adds it. The engine image comes from a Windows job. Two things it took: the sealed Rust archives need `ld -r --force-group-allocation` (otherwise the linker discards their `DW.ref.rust_eh_personality`); the main thread raises its own stack limit (`host.main_stack_ensure`).
+`./build.sh release` then `wrentool package` make `build/dist/wren-<version>-linux-x64.tar.gz`; the workflow `linux-package.yml` builds it on ubuntu-24.04 (so glibc 2.39 or later), unpacks it and runs `wrentool smoke` under xvfb before the release adds it. The engine image comes from a Windows job. Two things it took: the sealed Rust archives need `ld -r --force-group-allocation` (otherwise the linker discards their `DW.ref.rust_eh_personality`); the main thread raises its own stack limit (`host.main_stack_ensure`).

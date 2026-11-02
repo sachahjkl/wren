@@ -43,7 +43,7 @@ export default defineConfig(({ mode }) => {
 				// to fill in (Paddle > Catalog > Prices: pri_...)
 				PRICE_SUPPORTER: bindings.text(""),
 				PRICE_PATRON: bindings.text(""),
-				// the public key of src/license/public_key.odin (the line printed by tools\license.ps1 pubkey)
+				// the public key of src/license/public_key.odin (the line printed by wrentool license pubkey)
 				LICENSE_PUBLIC_KEY: bindings.text(""),
 				// "Wren <licences@your-domain>", an address of a domain onboarded in Email Service > Email Sending
 				MAIL_FROM: bindings.text("Wren <licences@froment.software>"),

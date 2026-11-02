@@ -3,7 +3,7 @@ package wasm
 // WREN_HOST_PROFILE=<file>: the time each host function (an import of the engine: a DOM call, a style or layout read, a timer...)
 // takes, for the measuring tools. The callbacks of the imports defined while it is set go through one that reads the clock; the
 // table is written to <file> when the runtime ends: calls, time with and without what the function itself caused below it (a host
-// function that calls into Wasm again, which calls others), the longest call. tools\wasm_profile.ps1 says where the guest spent its
+// function that calls into Wasm again, which calls others), the longest call. The Firefox Profiler (WREN_WASM_PROFILE) says where the guest spent its
 // time; this says what the host spent on the guest's behalf. Off, an import costs nothing more than before.
 
 import "base:intrinsics"

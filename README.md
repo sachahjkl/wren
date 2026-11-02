@@ -74,7 +74,7 @@ Media Foundation, WASAPI, UI Automation and BCrypt.
 | The **Daylight** palette of the interface (`browser.ui.theme`) | |
 
 The demo pages are in [`examples/site`](examples/site); `about:demos` lists them all (see [Try it](#try-it)).
-Screenshots show the whole window and are all taken in one pass by `tools\shots.ps1` (README and site). These are of
+Screenshots show the whole window and are all taken in one pass by `wrentool shots` (README and site). These are of
 Wren 0.6.1: later versions changed some of what they show, the start page above all (0.6.10 and 0.6.11).
 
 ## Features
@@ -212,7 +212,7 @@ Vulkan or OpenGL driver).
 With Nix: `nix run github:sachahjkl/wren` runs the latest Linux release; `nix develop` gives what `build.sh` needs.
 
 The download is the program and nothing else. The demo and test pages (`examples\site`), the examples and the small test server
-(`tools\testserver`, Go) belong to the repository: clone it to get them (`tools\package.ps1 -Extras` also packs them as a zip to
+(`tools\testserver`, Go) belong to the repository: clone it to get them (`wrentool package -Extras` also packs them as a zip to
 extract beside `wren.exe`).
 
 The start page links to `about:demos`, the index of every demo and test page. They are in `demos\` next
@@ -267,11 +267,11 @@ taskbar, tab strip), and "development build" with the commit on the start page a
 
 What `build.bat` does, each step skipped when it is already up to date:
 
-1. `tools\fetch_wasmtime.ps1` downloads the official **Wasmtime 49.0.3** C API release (SHA-256 pinned) into
+1. `wrentool fetch wasmtime` downloads the official **Wasmtime 49.0.3** C API release (SHA-256 pinned) into
    `build\wasmtime`; its static `wasmtime.lib` is linked into the exe.
-2. `tools\build_lexbor.ps1` compiles **Lexbor v3.0.1** (`ext/lexbor`) and the C shims of `src/shim` with MSVC into
+2. `wrentool build lexbor` compiles **Lexbor v3.0.1** (`ext/lexbor`) and the C shims of `src/shim` with MSVC into
    `build\lexbor\lexbor.lib`.
-3. `tools\build_native.ps1` builds the Cargo workspace `native/` with Cargo (`--locked`, every crate pinned by version
+3. `wrentool build native` builds the Cargo workspace `native/` with Cargo (`--locked`, every crate pinned by version
    and hash), downloads **NASM 2.16.03** (SHA-256 pinned) for rav1d's assembly, adds the `llvm-tools` rustup component
    on first use, and produces `build\native\wren_native.lib`, the one Rust library of `wren.exe`: the image and font
    decoders (`native/media`), the network stack (`native/net`) and the toolkit's text backend and accessibility adapter (about 1 minute the first time;
@@ -468,13 +468,13 @@ Binaries are built by [GitHub Actions](.github/workflows/release.yml) from a ver
 each version. To make one (see [CONTRIBUTING.md](CONTRIBUTING.md)):
 
 ```bat
-powershell -File tools\changelog.ps1 -Assemble -Version X.Y.Z
+build\wrentool changelog -Assemble -Version X.Y.Z
 git commit -am "Wren X.Y.Z" && git push
 git tag -a vX.Y.Z -m "Wren X.Y.Z"
 git push origin vX.Y.Z
 ```
 
-(`changelog.ps1 -Assemble` turns the fragments of [changelog.d/](changelog.d/README.md) into the version's section and
+(`wrentool changelog -Assemble` turns the fragments of [changelog.d/](changelog.d/README.md) into the version's section and
 writes `APP_VERSION`.)
 
 ## License and credits

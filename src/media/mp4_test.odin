@@ -4,7 +4,7 @@ import "core:fmt"
 import "core:os"
 import "core:testing"
 
-// Files: examples/site/media/video (tools/gen_video_fixtures.ps1).
+// Files: examples/site/media/video (wrentool gen video-fixtures).
 @(private)
 fixture :: proc(name: string) -> []u8 {
 	data, err := os.read_entire_file(fmt.tprintf("examples/site/media/video/%s", name), context.allocator)

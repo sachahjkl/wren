@@ -1,6 +1,6 @@
 // jspage: one page in Wren without a window (src/tools/headless): the document loaded as the browser loads it, its
-// scripts run, its console on stdout. For the measuring scripts: the DOM micro-benchmarks (tools\js_bench.ps1 -Mode dom),
-// the JavaScript errors of real sites (tools\compat_sweep.ps1), start-up and memory of a page (-stats).
+// scripts run, its console on stdout. For the measuring scripts: the DOM micro-benchmarks (wrentool bench js -Mode dom),
+// the JavaScript errors of real sites (wrentool compare), start-up and memory of a page (-stats).
 //   jspage [-wait ms] [-until text] [-stats [-allocs]] [-pages n] [-init code] [-eval code] [-viewport WxH] [-image engine.wasm] [-profile out.json] [--pref name=value]... <url>
 // Console lines: a log as it is, "warn: " / "error: " before the others. -until stops at the first console message that
 // starts with `text` (else at -wait, 10 s by default). The exit status is 0 when the page loaded (and -until was seen),
@@ -39,7 +39,7 @@ until_text: string
 wasm_cache_dir: string
 hang_ms: int
 hang_thread: win.HANDLE
-profile_path: string        // -profile: a sampling profile of the page's engine (tools\wasm_profile.ps1)
+profile_path: string        // -profile: a sampling profile of the page's engine (Firefox Profiler format)
 profiled: ^wasm.Instance
 seen_until: bool
 allocs: bool

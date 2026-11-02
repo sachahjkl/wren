@@ -1,4 +1,4 @@
-// Page script of examples/site/mutation.html (and of the `mutation` scenario of tools\perf.ps1): builds a large
+// Page script of examples/site/mutation.html (and of the `mutation` scenario of wrentool bench perf): builds a large
 // document (323 sections of articles: 10 000 elements, about 17 000 nodes, like the generated p10k page), then changes the text of
 // one element in the middle of it every 16 ms. What the browser should do each time is local: one paragraph laid out
 // again, a few display items replaced.

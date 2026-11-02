@@ -5,7 +5,7 @@ package e2e_scenarios
 // frame gate. It used to be opened during the build: its loop (TrackPopupMenu) painted the window from WM_PAINT, that frame was built inside the one being
 // built, and the outer build went on with an empty parent stack (the crash of the 2026-10-26 experimental build). Now the menu opens after the frame
 // (windows.odin). TrackPopupMenu is the system's own loop: a window that exists and is never shown, the click through Wren's own input, the menu's end
-// a message posted to it, nothing of the machine's mouse or keyboard. A desktop of its own (test_all's, or tools\test_desktop.ps1): the menu is a real window.
+// a message posted to it, nothing of the machine's mouse or keyboard. A desktop of its own (test_all's, or wrentool desktop): the menu is a real window.
 
 import "core:fmt"
 import win "core:sys/windows"

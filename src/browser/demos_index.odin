@@ -139,7 +139,7 @@ demos_index_html :: proc(allocator := context.temp_allocator) -> string {
 				index_escape(&sb, d.path)
 				strings.write_string(&sb, "</a></p>")
 			case d.perf:
-				strings.write_string(&sb, "<p class=\"where\">made by <code>tools\\perf.ps1</code> in <code>build\\perf\\</code> of the repository; about:demos links to it once it is there</p>")
+				strings.write_string(&sb, "<p class=\"where\">made by <code>tools\\wrentool bench perf</code> in <code>build\\perf\\</code> of the repository; about:demos links to it once it is there</p>")
 			}
 			strings.write_string(&sb, "</div>\n")
 		}

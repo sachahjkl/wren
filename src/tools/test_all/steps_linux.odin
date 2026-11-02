@@ -5,7 +5,7 @@ import "core:fmt"
 import "core:strings"
 
 // What is portable already (docs/portability.md): odin check for Linux of every package that is, then the unit tests of those that have tests, with the flags of the Windows steps (-vet, the memory
-// check; RLIMIT_STACK instead of /STACK). Needs build/wasmtime-linux (tools/fetch_wasmtime.sh), build/lexbor-linux (tools/build_lexbor.sh) and build/native-linux (tools/build_native.sh).
+// check; RLIMIT_STACK instead of /STACK). Needs build/wasmtime-linux (wrentool fetch wasmtime), build/lexbor-linux (wrentool build lexbor) and build/native-linux (wrentool build native).
 // Packages move from "not yet" to these lists as they are ported; tests that measure time stay out.
 linux_table :: proc(cfg: ^Config) -> []Step {
 	t: [dynamic]Step

@@ -6,7 +6,7 @@ package desktop
 //
 // What an installation is:
 //   * the executable and what the release package ships next to it (the shell passes that list: `Install_Plan.payload`,
-//     the names of tools\package.ps1; a name that is not there is skipped, so a development build installs just wren.exe),
+//     the names of wrentool package; a name that is not there is skipped, so a development build installs just wren.exe),
 //     copied into the install folder (default: %LOCALAPPDATA%\Programs\Wren, "Wren Dev" for the development channel);
 //   * a manifest, `wren_install.txt`, in that folder: the version, the channel and every file placed. Uninstalling
 //     removes exactly those files (and the folders that become empty), never anything a user put there;

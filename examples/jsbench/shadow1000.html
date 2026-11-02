@@ -1,7 +1,7 @@
 <!doctype html>
 <meta charset="utf-8">
 <title>1000 custom elements with shadow roots</title>
-<!-- tools\perf.ps1 scenario js_shadow1000: 1000 custom elements, each with an open shadow root (an adopted constructed
+<!-- wrentool bench perf scenario js_shadow1000: 1000 custom elements, each with an open shadow root (an adopted constructed
      stylesheet shared by all, a <style> of its own, :host / ::slotted() / ::part() rules, a named slot and the default
      one). Every animation frame toggles a state on 50 hosts (:host(.on), :state(), an attribute their slotted content
      and their parts depend on) and changes the slotted text of 20 others: the restyle and layout of shadow trees. -->

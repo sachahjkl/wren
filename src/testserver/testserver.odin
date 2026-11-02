@@ -13,8 +13,7 @@ import "core:path/filepath"
 import "core:strings"
 import "core:sync"
 
-// Where the search for a free block starts: 20000 to 28990 in steps of 10 by the repository's path (as Get-WrenPreferredBasePort in
-// tools\test_env.ps1), so that two worktrees rarely try the same one.
+// Where the search for a free block starts: 20000 to 28990 in steps of 10 by the repository's path, so that two worktrees rarely try the same one.
 PORT_BLOCK_FIRST :: 20000
 PORT_BLOCKS :: 900
 PORT_BLOCK_STEP :: 10

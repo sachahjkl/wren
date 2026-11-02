@@ -40,7 +40,7 @@ foreign kernel32 {
 // The fingerprint of a build: the link time stamp and the image size of its PE header, "%08X%X" (what a symbol server keys
 // an executable with). Every link writes a new time stamp, so it names one build; build.bat names the build's symbol file
 // (the linker's map, "<exe>-<fingerprint>.map") with it, and a crash report gives it with the module's base, so that
-// tools\crash_symbolize.ps1 finds the right symbols and turns the frames' addresses into functions.
+// wrentool crash-symbolize finds the right symbols and turns the frames' addresses into functions.
 build_fingerprint :: proc(buf: []u8, base: uintptr = 0) -> string {
 	stamp, size, ok := pe_stamp_and_size(base != 0 ? base : uintptr(win.GetModuleHandleW(nil)))
 	if !ok { return "" }
@@ -264,7 +264,7 @@ write_report :: proc(info: ^win.EXCEPTION_POINTERS, tid: win.DWORD) {
 }
 
 // "build <exe> <fingerprint>, base 0x..., size 0x...": which build crashed and where it was loaded. A release has no PDB:
-// its frames are named offline from the build's map (tools\crash_symbolize.ps1), with the module offsets below.
+// its frames are named offline from the build's map (wrentool crash-symbolize), with the module offsets below.
 @(private = "file")
 build_line :: proc(buf: []u8) -> string {
 	base := uintptr(win.GetModuleHandleW(nil))

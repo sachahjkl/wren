@@ -52,7 +52,7 @@ Demo :: struct {
 	about:  string,   // what it shows (HTML)
 	server: bool,     // needs the test server: linked there
 	tool:   string,   // an end-to-end test without a page: its subject of the web tests (path is then the page it loads, or "")
-	perf:   bool,     // a page tools\perf.ps1 generates into build\perf (linked when it is there)
+	perf:   bool,     // a page wrentool bench perf generates into build\perf (linked when it is there)
 }
 
 // Every page of examples\site (and the server-only pages of tools\testserver), by theme.
@@ -132,7 +132,7 @@ DEMOS := [?]Demo{
 	{.JavaScript, "WebGL in a worker", "webgl-worker.html",
 		"A worker draws on the canvas it was given with <code>transferControlToOffscreen()</code>: the page's own thread does nothing for it.", false, "", false},
 	{.JavaScript, "WebGL stress", "webgl-stress.html",
-		"Thousands of draws a frame on a large canvas, and what a page has to wait for: questions, pixels, uploads. <code>tools\\webgl_bench.ps1</code> measures it.", false, "", false},
+		"Thousands of draws a frame on a large canvas, and what a page has to wait for: questions, pixels, uploads. <code>tools\\wrentool bench webgl</code> measures it.", false, "", false},
 	{.JavaScript, "Web Audio", "webaudio.html",
 		"A note through a filter, a delay with feedback and an analyser that draws the wave: <code>AudioContext</code> waits for the click on Play (<code>media.autoplay.policy</code>), the tab shows its speaker.", false, "", false},
 	{.Wasm, "A page with no JavaScript", "counter.html",
@@ -170,7 +170,7 @@ DEMOS := [?]Demo{
 	{.Network, "Content blocker: $replace on a document", "blocker/replacedoc.html",
 		"A page whose own text a `$replace= filter rewrites before the parser reads it.", true, "", false},
 	{.Performance, "Content blocker: a page that keeps changing", "blocker/churn.html",
-		"Thousands of text nodes and more arriving every few milliseconds: what the blocker's DOM operations cost on a busy page (tools\\blocker_js.ps1).", true, "", false},
+		"Thousands of text nodes and more arriving every few milliseconds: what the blocker's DOM operations cost on a busy page.", true, "", false},
 	{.Performance, "Content blocker: cost of the API hooks", "blocker/hookbench.html",
 		"Per-call cost of a timer, JSON.parse and a defined property with the blocker's hooks (blockerpages -hooks).", true, "", false},
 	{.Network, "Content blocker: a YouTube watch page", "blocker/ytwatch.html",
@@ -194,21 +194,21 @@ DEMOS := [?]Demo{
 	{.Images, "Fullscreen API", "fullscreen.html",
 		"<code>requestFullscreen()</code> on a video, a styled card (<code>:fullscreen</code>) and two frames (one refused by <code>allow=\"fullscreen 'none'\"</code>): the window fills the screen without tabs, address bar or status bar; Esc or F11 leave; <code>fullscreenchange</code> and <code>fullscreenerror</code> are logged. A click is needed, as in other browsers.", true, "", false},
 	{.Performance, "Video benchmark", "video-bench.html",
-		"The page of the profiler's video scenarios (<code>tools\\perf.ps1 -Only video_idle,video_play,video_mse</code>): <code>?mode=idle</code> a paused video, <code>play</code> a looping one, <code>mse</code> the same through Media Source Extensions, <code>none</code> the page alone. A paused video draws no frame; a playing one one per picture.", true, "", false},
+		"The page of the profiler's video scenarios (<code>tools\\wrentool bench perf -Only video_idle,video_play,video_mse</code>): <code>?mode=idle</code> a paused video, <code>play</code> a looping one, <code>mse</code> the same through Media Source Extensions, <code>none</code> the page alone. A paused video draws no frame; a playing one one per picture.", true, "", false},
 	{.Performance, "Player simulator", "yt-sim.html",
-		"What a YouTube watch page costs, without the network (<code>tools\\perf.ps1 -Only yt_h264_1080p60,yt_av1_1080p30,yt_short</code>): a player with the state classes and bare <code>:has()</code> rules the real one toggles, a progress bar moved on every animation frame, MSE with separate audio and video buffers and ~4 000 elements around it. Needs the 1080p files of <code>tools\\gen_perf_media.ps1</code>.", true, "", false},
+		"What a YouTube watch page costs, without the network (<code>tools\\wrentool bench perf -Only yt_h264_1080p60,yt_av1_1080p30,yt_short</code>): a player with the state classes and bare <code>:has()</code> rules the real one toggles, a progress bar moved on every animation frame, MSE with separate audio and video buffers and ~4 000 elements around it. Needs the 1080p files of <code>tools\\wrentool gen perf-media</code>.", true, "", false},
 	{.Performance, "Start-up of a heavy page", "yt-boot.html",
-		"What the main thread does while a single-page app starts, without the network (<code>tools\\perf.ps1 -Only yt_boot</code>): component styles added as <style> elements while the page is built in batches of custom-element cards, layout read between the batches, <code>:has()</code> anchors on a tag, a class and a chain, form controls, toggling attributes. The profile report says how many style passes were full and why. <code>?batches=14&amp;cards=50</code> sizes it.", true, "", false},
+		"What the main thread does while a single-page app starts, without the network (<code>tools\\wrentool bench perf -Only yt_boot</code>): component styles added as <style> elements while the page is built in batches of custom-element cards, layout read between the batches, <code>:has()</code> anchors on a tag, a class and a chain, form controls, toggling attributes. The profile report says how many style passes were full and why. <code>?batches=14&amp;cards=50</code> sizes it.", true, "", false},
 	{.Network, "Developer tools: sockets, streams, workers, media", "devtools/dt4.html",
-		"The page the developer tools' Network tab is shown with (<code>tools\\perf.ps1 -Only dt_network_idle</code>): a WebSocket echo with a subprotocol, a Server-Sent Events stream, a worker that fetches, images, a web font, a video and fetches. Open the panel (F12) on Network and choose a request: Messages, Preview, the speed profiles.", true, "", false},
+		"The page the developer tools' Network tab is shown with (<code>tools\\wrentool bench perf -Only dt_network_idle</code>): a WebSocket echo with a subprotocol, a Server-Sent Events stream, a worker that fetches, images, a web font, a video and fetches. Open the panel (F12) on Network and choose a request: Messages, Preview, the speed profiles.", true, "", false},
 	{.Performance, "200 large images", "images/many.html",
 		"200 images of 1000 x 1000 pixels made by the server, shown at 80 px: decoding never runs on the interface thread.", true, "", false},
 	{.Performance, "Slow stylesheet", "firstpaint-slow.html",
 		"A stylesheet that takes 1.5 s: the previous page stays on screen until the new one can paint styled (paint holding); a print stylesheet blocks nothing.", true, "", false},
 	{.Performance, "10 000 elements", "p10k.html",
-		"The large page of the profiler's scenarios (load, scroll, hover, resize): made by <code>tools\\perf.ps1</code> in <code>build\\perf\\</code>.", false, "", true},
+		"The large page of the profiler's scenarios (load, scroll, hover, resize): made by <code>tools\\wrentool bench perf</code> in <code>build\\perf\\</code>.", false, "", true},
 	{.Performance, "50 000 elements", "p50k.html",
-		"The largest page of the profiler's scenarios, made by <code>tools\\perf.ps1</code> in <code>build\\perf\\</code>.", false, "", true},
+		"The largest page of the profiler's scenarios, made by <code>tools\\wrentool bench perf</code> in <code>build\\perf\\</code>.", false, "", true},
 
 	{.E2e, "Page test", "counter.html",
 		"Loads the counter page headless and checks its DOM, its module and its timers.", false, "e2e_test page", false},
@@ -431,7 +431,7 @@ demos_html :: proc(app: ^App) -> string {
 				html_escape(&sb, d.path)
 				strings.write_string(&sb, "</a></p>")
 			case d.perf && href == "":
-				strings.write_string(&sb, "<p class=\"where\">not generated yet: run <code>tools\\perf.ps1</code> from the repository</p>")
+				strings.write_string(&sb, "<p class=\"where\">not generated yet: run <code>tools\\wrentool bench perf</code> from the repository</p>")
 			case href != "":
 				strings.write_string(&sb, "<p class=\"where\">")
 				html_escape(&sb, href)

@@ -5,7 +5,7 @@ package e2e_scenarios
 // died and the report folder is looked at. An access violation, an Odin assertion, a stack overflow (main thread and another one: the handler writes
 // the report from a thread of its own, with stack guaranteed), a corrupted heap (the system ends the process without calling the filter: the vectored
 // handler does) leave "crash <date>.txt" and a minidump; a fail-fast (nothing runs in the process) leaves a session file that the next start turns into
-// "unclean exit <date>.txt", with Windows' own record of the end. (test_all builds build\crashmodes.exe; the names of a release's frames: tools\crash_symbolize_test.ps1.)
+// "unclean exit <date>.txt", with Windows' own record of the end. (test_all builds build\crashmodes.exe; the names of a release's frames: src/tools/wrentool/deps/symbols_test.odin.)
 
 import "core:fmt"
 import "core:os"

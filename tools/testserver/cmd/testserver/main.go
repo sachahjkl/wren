@@ -1,4 +1,4 @@
-// The test server as a program, for what is not Odin: the scripts (tools\test_env.ps1 Start-WrenTestServer), the demos and the
+// The test server as a program, for what is not Odin: the scripts (tools\an external caller), the demos and the
 // release package. The Odin tests load the same server in their own process (src/testserver).
 //
 //	testserver                           # http on :8765, https (self-signed) on :8766, http on :8767, WPT on :8768

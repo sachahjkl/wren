@@ -71,19 +71,17 @@ d'entrée, comme `js_check_stack_overflow`. Toutes les récursions (expressions,
 « stack overflow » au lieu de planter. Sur wasm32, cette variable vit dans la pile fantôme (celle qui
 déborderait). `max_nesting` (défaut 6000) reste une seconde borne en nombre d'appels.
 
-## Outils de parité (`judge/`, `tools/e1_*.ps1`)
+## Outils de parité (`judge/`)
 
 - `build\e1j.exe emit|emit-module <f.js> <out.bin>` : le flux `JS_WriteObject`.
 - `build\e1j.exe batch <manifest> <dir>` puis `diff-batch <manifest> <refdir> <ourdir>` : tableau par dossier
   (fichiers compilés des deux côtés, identiques, erreurs d'un seul côté, différences de taille ou de compteurs).
-- `build\e1j.exe decode <bin>` : désassemblage lisible ; `tools\e1_diff.ps1 <f.js>` compare un fichier.
+- `build\e1j.exe decode <bin>` : désassemblage lisible .
 - `build\e1j.exe speed <f.js> [iters]` : MB/s de compilation ; `prof <f.js> [iters]` : profileur par
   échantillonnage (Windows).
 - `build\e1j.exe fuzz <fichiers | @manifest>` : mutations (octets, collages, troncatures, duplications) et
   entrées pathologiques (imbrications profondes) ; rapporte la compilation la plus lente et le ratio mémoire max.
-- `tools\e1_run.ps1` : reconstruit le juge, compare le corpus positif `test262/test/language` et les verdicts du
-  corpus négatif (syntaxe) contre l'oracle C `bc_dump.exe` (QuickJS-ng 0.17 compilé avec zig, avec un chargeur
-  de modules vide pour que les `import` se résolvent sans exécuter).
+- Les scripts qui comparaient le corpus positif 	est262/test/language et les verdicts du corpus négatif (syntaxe) à l'oracle C c_dump.exe (QuickJS-ng 0.17 compilé avec zig, avec un chargeur de modules vide) sont retirés : ils dépendaient d'un dossier privé. uild\e1j.exe decode|diff-batch|batch se lance directement.
 
 ## Résultats (test262, 2026-10-28)
 

@@ -108,7 +108,7 @@ async function makeSigner(privateKey: string, publicKey: string): Promise<Signer
 	return signer;
 }
 
-// The key wrapped at 76 columns under a header of comments: the .wrenlicense file tools\license.ps1 writes.
+// The key wrapped at 76 columns under a header of comments: the .wrenlicense file wrentool license writes.
 export function licenceFile(key: string, f: Fields): string {
 	const lines = key.match(/.{1,76}/g) ?? [];
 	return `# Wren licence (${editionTitle(f.edition)}) for ${f.name}\n# Order ${f.order}, ${f.date}. Open this file with Wren, or paste the key in about:wren.\n${lines.join("\n")}\n`;

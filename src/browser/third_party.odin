@@ -7,7 +7,7 @@ import "wb:wasm"
 ////////////////////////////////
 // The third-party software Wren is built from, for about:wren and about:licenses. The list is THIRD_PARTY.md itself
 // (embedded: one table to keep up to date, and the release package carries the same file); the license texts are the
-// files the release puts in licenses\ (tools\package.ps1), embedded as well, so they are readable offline and cannot
+// files the release puts in licenses\ (wrentool package), embedded as well, so they are readable offline and cannot
 // drift from what ships. third_party_test.odin checks that every file of native\js\licenses is listed here.
 
 THIRD_PARTY_MD :: #load("../../THIRD_PARTY.md", string)

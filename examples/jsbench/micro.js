@@ -1,5 +1,5 @@
 // JavaScript engine micro-benchmarks (no DOM): the shapes of code an interpreter or a compiler handles differently.
-//   build\jsengine.exe run examples\jsbench\micro.js        (Wren's engine; tools\js_bench.ps1 -Mode micro)
+//   build\jsengine.exe run examples\jsbench\micro.js        (Wren's engine; wrentool bench js -Mode micro)
 //   qjs examples\jsbench\micro.js, node, d8...               (any shell with console.log)
 // One line per case: "MICRO<TAB>name<TAB>ns per iteration"; each case runs long enough to be timed (doubling its count
 // until it lasts CALIBRATE_MS), then MEASURE_RUNS times, the best run counting. A checksum line ends the output: an engine

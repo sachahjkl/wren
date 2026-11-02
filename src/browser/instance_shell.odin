@@ -13,7 +13,7 @@ package browser
 //   * A first one that does not answer within three seconds (a page keeps it busy, it is hung) does not hold the second one: that
 //     one opens its own window and says so (the console of its first tab, and a notice).
 //   * `--new-window` (or `--no-single-instance`) on the command line, browser.single_instance off, WREN_SINGLE_INSTANCE=off in
-//     the environment (tools\test_env.ps1 sets it for every script that starts the browser), and a profile that is not kept
+//     the environment (src/e2e sets it for every test that starts the browser), and a profile that is not kept
 //     (browser.profile.persist off: it shares its folder with the user's) all skip it. WREN_SINGLE_INSTANCE=on turns it on
 //     for a run of a script that checks it.
 //

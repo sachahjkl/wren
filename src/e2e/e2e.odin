@@ -120,7 +120,7 @@ Session :: struct {
 @(private) current: ^Session
 @(private) broken:  string     // why no browser can start any more: a test was stopped in the middle of its calls
 
-// The environment of every test (what tools\test_env.ps1 gives a script): a driven Wren does not touch the machine's desktop, makes no
+// The environment of every test (WREN_DESKTOP_INTEGRATION=off, WREN_AUDIO_OUTPUT=null, WREN_SINGLE_INSTANCE=off): a driven Wren does not touch the machine's desktop, makes no
 // sound, and is nobody's single instance; the engine's compiled code is shared on the disk.
 @(init)
 set_environment :: proc "contextless" () {

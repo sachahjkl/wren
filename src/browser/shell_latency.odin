@@ -2,7 +2,7 @@
 package browser
 
 // Latency of the shell under load (profile build, WREN_PROF set): every frame's input poll and present on the QPC
-// time line, so that tools\shell_latency.ps1, which posts input to the window and notes the QPC of each post, can
+// time line, so that wrentool bench shell, which posts input to the window and notes the QPC of each post, can
 // tell for every input how long it took until a frame that had read it was presented. The UI thread being busy with a
 // page (a long script, a layout) shows up as frames polled late: the input waited in the window's queue meanwhile.
 // Written as <prefix>.latency.txt: freq on the first line, then one row per frame.

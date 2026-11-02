@@ -115,7 +115,7 @@ context or a question that was never asked, a count of finished work that does n
 section or a slot that does not exist; an answer larger than the asker's buffer is not kept, so that a length costs the browser no memory the page did not offer. Everything in
 shared memory is copied out before it is looked at.
 
-**The cost**, measured on `examples/site/webgl.html` and `examples/site/webgl-stress.html` with `tools/webgl_bench.ps1` (the same pages, before and after, alternating, the best of the runs):
+**The cost**, measured on `examples/site/webgl.html` and `examples/site/webgl-stress.html` with `wrentool bench webgl` (the same pages, before and after, alternating, the best of the runs):
 
 | | before | after |
 |---|---|---|
@@ -200,6 +200,6 @@ FXC compiles every pipeline, a page that asks right after a burst of new program
   `src/ipc_tests.rs`: the channel on its own; a real child killed while drawing, hung, stalled, made hostile in each way the browser checks for, fed malformed commands and broken streams; its
   parent killed; the limit on restarts. A test binary is its own child (`gpu_child_entry`); a hook is accepted only by a child started with hooks, which a browser never asks for.
 - the web test `jsweb_webgl_api` (`examples/jsweb/webgl.js`): the interfaces and their rules on the software adapter; contexts in workers and `transferControlToOffscreen`. A machine with no adapter checks that `getContext` gives null.
-- `src/tools/e2e/webgl_process.odin` (in `test_all`): the process's life in the real browser, on the machine's GPU: its id is a number of `api.Stats`, and it is killed and suspended from outside under a page, its contexts and a worker's. `tools/linux_smoke.sh` does the same under xvfb on Linux.
-- `tools/webgl_bench.ps1`: what WebGL costs on this machine (opt-in, not a test).
+- `src/tools/e2e/webgl_process.odin` (in `test_all`): the process's life in the real browser, on the machine's GPU: its id is a number of `api.Stats`, and it is killed and suspended from outside under a page, its contexts and a worker's. `wrentool smoke` does the same under xvfb on Linux.
+- `wrentool bench webgl`: what WebGL costs on this machine (opt-in, not a test).
 - Demos: `examples/site/webgl.html` and `webgl-stress.html`, in `about:demos`.

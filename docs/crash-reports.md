@@ -27,26 +27,26 @@ Wren 0.4.0 (g6933902 2026-10-26)
 ## The symbols of a build
 
 `build.bat` links every variant with `/MAP` (it changes nothing in the exe: the sections are byte for byte the same) and
-`tools\symbols.ps1 -Publish` renames the map `build\<exe>-<fingerprint>.map`; a release's is also kept in
+`wrentool symbols -Publish` renames the map `build\<exe>-<fingerprint>.map`; a release's is also kept in
 `build\symbols` (the 20 latest). The map lists every function with its address: Odin names a procedure `pkg::proc`, and a
 private one `pkg::[file.odin]::proc`, so a frame gets its function and, often, its file; there are no line numbers
 (those need the debug information of `-debug`).
 
-The map is never in what a user gets: `tools\package.ps1` puts it in `build\dist\symbols\<package>-<fingerprint>.map`,
+The map is never in what a user gets: `wrentool package` puts it in `build\dist\symbols\<package>-<fingerprint>.map`,
 the CI keeps it as an artifact (`wren-symbols-<commit>`; `wren-<version>-symbols` for a release, 90 days), and
-`tools\experimental.ps1` leaves it beside the zip (and zipped in the `-Vault` folder).
+`wrentool experimental` leaves it beside the zip (and zipped in the `-Vault` folder).
 
 ## Naming the frames of a report
 
 ```
-powershell -File tools\crash_symbolize.ps1 "<profile>\crashes\crash 2026-10-26 15-47-09.txt" [-Symbols <folder or .map>] [-Exe <exe with its PDB>]
+build\wrentool crash-symbolize "<profile>\crashes\crash 2026-10-26 15-47-09.txt" [-Symbols <folder or .map>] [-Exe <exe with its PDB>]
 ```
 
 It reads the `build` line, finds `*-<fingerprint>.map` (in `-Symbols`, the report's folder, `build\`, `build\symbols`) and
 rewrites each frame inside the program as `function+0xoffset (file.odin)  [exe+0xoffset]`. A report from before the
 `build` line has only addresses: the minidump beside it gives the base and the fingerprint (its module list). Given a
 `.dmp` alone it names the exception's address. `-Symbols <file.map>` takes a map of another link, for instance the same
-commit rebuilt with the same flags: the script warns that the time stamps differ, and the Odin frames are right as long
+commit rebuilt with the same flags: the tool warns that the time stamps differ, and the Odin frames are right as long
 as the code is the same. `-Exe` uses an exe and its PDB through DbgHelp instead (files and lines; a development build).
 
 The crash of 26/10 (an experimental build without the `build` line), named from its minidump and a rebuild of `6933902`
@@ -64,8 +64,8 @@ with the same flags:
 
 ## Tests
 
-`src\tools\e2e\crash_reports.odin` (in `test_all`) makes `src/tools/crashmodes` die in each way and looks at what is left. `tools\crash_symbolize_test.ps1` builds it as a release is
+`src\tools\e2e\crash_reports.odin` (in `test_all`) makes `src/tools/crashmodes` die in each way and looks at what is left. The `@(test)` of `src/tools/wrentool/deps/symbols_test.odin` builds it as a release is
 built (no PDB, a map), makes it index out of range, and checks that the report has the `build` line and module offsets,
-that `crash_symbolize.ps1` names `crashmodes.index_out_of_range` under `main`, and that a report without the `build`
+that `wrentool crash-symbolize` names `crashmodes.index_out_of_range` under `main`, and that a report without the `build`
 line is named through its minidump. `src/tools/crashtrace` has a unit test of the fingerprint (read in memory and from
 the file).

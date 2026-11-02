@@ -1,7 +1,7 @@
 <!doctype html>
 <meta charset="utf-8">
 <title>10 000 nodes made and removed per frame</title>
-<!-- tools\perf.ps1 scenario js_nodes10k: every frame builds 10 000 nodes (a list of 2 500 items: li, span, text, b)
+<!-- wrentool bench perf scenario js_nodes10k: every frame builds 10 000 nodes (a list of 2 500 items: li, span, text, b)
      in a connected container, then the next frame removes them and builds them again (DOM creation, insertion,
      removal, and the restyle and layout of the new subtree). Falls back to setTimeout without rAF. -->
 <style>

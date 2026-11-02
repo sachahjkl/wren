@@ -9,7 +9,7 @@ There is **no Microsoft Store** package (the Store needs an MSIX and a developer
 
 ## What the release is
 
-Every release publishes one file, `wren-<version>-windows-x64.exe` (see `tools\package.ps1` and
+Every release publishes one file, `wren-<version>-windows-x64.exe` (see `wrentool package` and
 `.github\workflows\release.yml`), plus `SHA256SUMS.txt` with its SHA-256. It is not an installer: it is the program
 itself, which carries its licences, its version and the Visual C++ runtime it needs, and integrates into the desktop from
 within (Setup). So the winget installer type is **`portable`**: winget downloads the `.exe`, keeps it, and adds a link
@@ -20,7 +20,7 @@ named `wren` to its own links folder (on the `PATH`), so `wren` launches it from
 After the release `vX.Y.Z` is published on GitHub:
 
 ```powershell
-powershell -NoProfile -File tools\winget_manifest.ps1 -Version X.Y.Z
+build\wrentool winget -Version X.Y.Z
 ```
 
 With only `-Version`, the script reads the published release of that version from GitHub
@@ -28,7 +28,7 @@ With only `-Version`, the script reads the published release of that version fro
 `SHA256SUMS.txt`. Pass `-Url` and `-Sha256` to override them (an offline run, a mirror, a release not public yet):
 
 ```powershell
-powershell -NoProfile -File tools\winget_manifest.ps1 -Version X.Y.Z -Url https://.../wren-X.Y.Z-windows-x64.exe -Sha256 <hash>
+build\wrentool winget -Version X.Y.Z -Url https://.../wren-X.Y.Z-windows-x64.exe -Sha256 <hash>
 ```
 
 It writes three YAML files under `build\winget\X.Y.Z\` (schema 1.6.0):

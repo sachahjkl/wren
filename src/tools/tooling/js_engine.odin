@@ -12,8 +12,8 @@ import "core:strings"
 // wren_js.wasm, the pre-initialized module the browser embeds (src/js/engine.odin). The linker is the wasm-ld that ships with Odin. Nothing happens when <out>/STAMP matches the hash of
 // every input (the glue, the engine and the host package that pre-initializes it).
 
-// Not used to build anything: test262's configuration, and the reference js_bench.ps1 measures against, are QuickJS-ng's release source (src/browser/about_wren_test.odin and
-// tools/js_bench.ps1 read these two lines).
+// Not used to build anything: test262's configuration, and the reference wrentool bench js measures against, are QuickJS-ng's release source (src/browser/about_wren_test.odin and
+// wrentool bench js read these two lines).
 QJS_VERSION :: "0.17.0"
 QJS_SHA256 :: "559bc4c420475e55c7ab4510adbc562f55d7524d75e8e89d79ce4bb02f5687d9"
 

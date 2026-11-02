@@ -5,7 +5,7 @@ package media
 // Windows. Two decoders, chosen by media.h264.backend and what is present:
 //
 //   openh264   Cisco's decoder, loaded at run time by dlopen of libopenh264.so (never built from source: the patent
-//              licence Cisco pays covers only the binaries it ships, which tools/fetch_openh264.sh downloads with its
+//              licence Cisco pays covers only the binaries it ships, which wrentool fetch openh264 downloads with its
 //              SHA-256 pinned). Software, always available once the library is on disk. Output: I420 in memory.
 //   VA-API     the GPU's decoder (vaapi_linux.odin), the Linux counterpart of DXVA; tried first when the preference
 //              allows hardware and a device opens. Output: I420 in memory (planes mapped from the surface).
@@ -156,7 +156,7 @@ openh264_once: sync.Once
 @(private)
 openh264_ok: bool
 
-// The names tried in order: a Wren-managed copy (tools/fetch_openh264.sh), then the system's by soname (newest first).
+// The names tried in order: a Wren-managed copy (wrentool fetch openh264), then the system's by soname (newest first).
 // media.h264.openh264_path overrides the list with one path.
 @(private)
 OPENH264_SONAMES :: [?]string{
@@ -178,7 +178,7 @@ openh264_load :: proc() {
 		h = try_open(p, flags)
 	}
 	if h == nil {
-		// The system's library, by its soname (tools/fetch_openh264.sh can place Cisco's binary where ldconfig finds it,
+		// The system's library, by its soname (wrentool fetch openh264 can place Cisco's binary where ldconfig finds it,
 		// or a preference can name it directly: media.h264.openh264_path).
 		for name in OPENH264_SONAMES {
 			h = try_open(name, flags)

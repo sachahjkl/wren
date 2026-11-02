@@ -3,7 +3,7 @@ package wasm
 // Sampling profiler of guest code (Wasmtime's GuestProfiler), for the measuring tools (jsengine profile). While a
 // profile runs on an instance, every epoch tick (wasm.wasmtime.epoch_tick_ms, the ticker runs while a call is in
 // progress) records the instance's Wasm call stack. `profile_finish` writes the samples in the Firefox Profiler's format
-// (profiler.firefox.com opens it; tools\wasm_profile.ps1 sums it up). Function names come from the module's name
+// (open it with the Firefox Profiler, profiler.firefox.com). Function names come from the module's name
 // section: build the engine with src\tools\buildjs -names for a readable profile.
 
 import "core:os"

@@ -61,12 +61,12 @@ pinned_versions_match_the_scripts :: proc(t: ^testing.T) {
 	data, err := os.read_entire_file("src/tools/tooling/js_engine.odin", context.temp_allocator)
 	testing.expect_value(t, err, nil)
 	testing.expectf(t, strings.contains(string(data), "QJS_VERSION :: \"" + QUICKJS_VERSION + "\""), "QUICKJS_VERSION (%s) is the version src\\tools\\tooling\\js_engine.odin pins", QUICKJS_VERSION)
-	data, err = os.read_entire_file("tools/fetch_wasmtime.ps1", context.temp_allocator)
+	data, err = os.read_entire_file("wrentool fetch wasmtime", context.temp_allocator)
 	testing.expect_value(t, err, nil)
-	testing.expectf(t, strings.contains(string(data), "$Version = '" + wasm.WASMTIME_VERSION + "'"), "WASMTIME_VERSION (%s) is the version tools\\fetch_wasmtime.ps1 fetches", wasm.WASMTIME_VERSION)
+	testing.expectf(t, strings.contains(string(data), "$Version = '" + wasm.WASMTIME_VERSION + "'"), "WASMTIME_VERSION (%s) is the version tools\\wrentool fetch wasmtime fetches", wasm.WASMTIME_VERSION)
 }
 
-// A license text added to native\js\licenses is shown by about:licenses (and shipped in licenses\ by tools\package.ps1).
+// A license text added to native\js\licenses is shown by about:licenses (and shipped in licenses\ by wrentool package).
 @(test)
 every_shipped_license_text_is_shown :: proc(t: ^testing.T) {
 	shipped := make(map[string]bool, context.temp_allocator)
@@ -448,7 +448,7 @@ support_link_is_a_web_page :: proc(t: ^testing.T) {
 	testing.expect_value(t, config.set_from_string(&app.prefs, "browser.license.support_url", "file:///C:/x", .User), config.Set_Error.None)
 	testing.expect_value(t, license_support_url(app), SUPPORT_URL)
 	// the production key is empty until it is made: a release reads no licence; a development build still accepts the
-	// development pair's (tools\license.ps1 issue -dev), never another pair's
+	// development pair's (wrentool license issue -dev), never another pair's
 	testing.expect_value(t, config.set_from_string(&app.prefs, "browser.license.public_key", "", .User), config.Set_Error.None)
 	testing.expect_value(t, license_public_key(app), license.PRODUCTION_PUBLIC_KEY)
 	if license.PRODUCTION_PUBLIC_KEY == "" {

@@ -18,8 +18,8 @@ type: Added
 - One change, one fragment. Two fragments may share a subject (the time keeps them apart). A change of the toolkit
   names what it uses (`ui.rich_paragraph`), not a toolkit version: the toolkit's version is written when it is published.
 
-`powershell -File tools\changelog.ps1 -New -Type Added -Subject tab-sidebar -Text "**...**: ..."` writes one (or write
+`build\wrentool changelog -New -Type Added -Subject tab-sidebar -Text "**...**: ..."` writes one (or write
 the file with an editor); `-Check` (CI, `test_all`) says whether they are all well formed and none was already
-released; `-Assemble` prints what the next version brings (the notes of `tools\experimental.ps1` come from it).
-`tools\changelog.ps1 -Assemble -Version X.Y.Z` makes the version's section and its link references, writes `APP_VERSION` and deletes them
+released; `-Assemble` prints what the next version brings (the notes of `wrentool experimental` come from it).
+`wrentool changelog -Assemble -Version X.Y.Z` makes the version's section and its link references, writes `APP_VERSION` and deletes them
 (CONTRIBUTING.md, "Making a release").

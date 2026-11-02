@@ -15,7 +15,7 @@ when ODIN_OS == .Windows {
 		"system:legacy_stdio_definitions.lib",
 	}
 } else {
-	foreign import lexbor_api { "../../build/lexbor-" + ODIN_OS_STRING + "/liblexbor.a" }   // tools/build_lexbor.sh
+	foreign import lexbor_api { "../../build/lexbor-" + ODIN_OS_STRING + "/liblexbor.a" }   // wrentool build lexbor
 }
 
 @(default_calling_convention = "c")

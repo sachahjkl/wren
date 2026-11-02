@@ -105,7 +105,7 @@ that has the keyboard. What still runs over every tab each frame is cheap and co
 once for a tab without a page or whose document did not change, the sound state reads a page's media elements only when it
 has some, and an icon not drawn is only marked as still used in the cache.
 
-`tools/sidebar_perf.ps1` (a measure, not in the CI; `-Perf` asserts the 180 Hz budget) restores a session of N tabs (in
+`wrentool bench sidebar` (a measure, not in the CI; `-Perf` asserts the 180 Hz budget) restores a session of N tabs (in
 groups of ten every other ten) and reads the CPU time of a frame from `wren ctl stats`. On the development machine
 (2026-10-27, dev build, 240 frames):
 

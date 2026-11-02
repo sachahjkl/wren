@@ -8,7 +8,7 @@ import "core:strings"
 import "core:time"
 import "wb:license"
 
-// tools\license.ps1: makes the key pair that signs Wren licences and issues licences. Offline: nothing here uses the
+// wrentool license: makes the key pair that signs Wren licences and issues licences. Offline: nothing here uses the
 // network. See docs/licence.md.
 //
 //   keygen [-private FILE] [-force]

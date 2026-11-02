@@ -28,7 +28,7 @@ import "core:time"
 import js "wb:engine/jsrt"
 import jsdate "wb:engine/datetime"
 
-// The judge is linked with a 64 MiB main-thread stack (/STACK, see tools/jsrt_test262.ps1); the engine may use 48 MiB of it.
+// The judge is linked with a 64 MiB main-thread stack (/STACK, see wrentool engine test262); the engine may use 48 MiB of it.
 JUDGE_STACK_BYTES :: 48 << 20
 // How long a test may run, and an agent thread of one; the interrupt hook ends it past this.
 TEST_DEADLINE :: 20 * time.Second

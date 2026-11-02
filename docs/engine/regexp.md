@@ -69,7 +69,7 @@ octal/identity escapes).
 
 ## Judged against the C reference
 
-`tools/rx_diff.ps1` builds a native library from QuickJS-ng 0.17's `libregexp.c` + `libunicode.c` and runs this
+`wrentool engine rx-diff` builds a native library from QuickJS-ng 0.17's `libregexp.c` + `libunicode.c` and runs this
 engine and the C side over a literal corpus, tens of thousands of random fuzz patterns, and a speed benchmark,
 reporting every divergence.
 
@@ -90,6 +90,6 @@ Latest run (Unicode 16.0.0, seed 12345, 30,000 fuzz patterns):
 Run it:
 
 ```powershell
-powershell -NoProfile -File tools\rx_diff.ps1 -Seed 12345 -Fuzz 30000      # differential + speed
-powershell -NoProfile -File tools\rx_diff.ps1 -NoC -Fuzz 200000            # Odin-only soundness fuzz
+build\wrentool engine rx-diff -Seed 12345 -Fuzz 30000      # differential + speed
+build\wrentool engine rx-diff -NoC -Fuzz 200000            # Odin-only soundness fuzz
 ```

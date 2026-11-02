@@ -1,7 +1,7 @@
 package crashmodes
 
 // Makes the process die in one of the ways a Wren has died, to see which leave a crash report (crashtrace): the report goes to the folder
-// given as the second argument. Run by src\tools\e2e\crash_reports.odin and tools\crash_symbolize_test.ps1 (Windows), tools/crash_e2e.sh (Linux).
+// given as the second argument. Run by src\tools\e2e\crash_reports.odin and the @(test) of src/tools/wrentool/deps/symbols_test.odin (Windows), wrentool crash-e2e (Linux).
 //   crashmodes <mode> <dir>     modes: access, assert, bounds, overflow, overflow_thread, heap (a double free), failfast, clean, exit
 
 import "base:intrinsics"
@@ -16,7 +16,7 @@ recurse :: proc(n: int) -> int {
 }
 
 // An index out of range in a procedure of a known name, kept out of line: what the crash of 26/10 was (an Odin bounds check,
-// 0xC000008C). tools\crash_symbolize_test.ps1 builds this tool as a release is built (no PDB, a map) and names the frame from the map.
+// 0xC000008C). symbols_test.odin (wrentool) builds this tool as a release is built (no PDB, a map) and names the frame from the map.
 index_out_of_range :: #force_no_inline proc(s: []int, i: int) -> int {
 	return s[i]
 }

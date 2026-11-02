@@ -53,7 +53,7 @@
         '';
       };
 
-      # The latest Linux release, as published (tools/package_linux.sh). The tag and hash come from its SHA256SUMS-linux.txt.
+      # The latest Linux release, as published (wrentool package). The tag and hash come from its SHA256SUMS-linux.txt.
       wrenVersion = "0.6.24";
       wren = pkgs.stdenv.mkDerivation {
         pname = "wren";
@@ -118,7 +118,7 @@
         LIBRARY_PATH = lib.makeLibraryPath runtimeLibs;
         LD_LIBRARY_PATH = lib.makeLibraryPath (runtimeLibs ++ [ pkgs.mesa ]);
         RUSTUP_TOOLCHAIN = "1.99.1";
-        # tools/fetch_wgpu.sh puts its library in Odin's vendor/: a writable copy, the store's is read-only
+        # wrentool fetch wgpu puts its library in Odin's vendor/: a writable copy, the store's is read-only
         shellHook = ''
           if [ ! -d build/odin-nix ]; then
             mkdir -p build

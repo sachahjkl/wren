@@ -11,7 +11,7 @@ import lay "wb:layout"
 import "wb:style"
 
 // Layout of a large page with the real text stack, timed: full passes (word cache warm after the first) and the first
-// pass (cold cache). Runs only with -define:BENCH_TEXT=true, on build/perf/p50k.html (tools/perf.ps1 makes it).
+// pass (cold cache). Runs only with -define:BENCH_TEXT=true, on build/perf/p50k.html (wrentool bench perf makes it).
 //   odin test src/browser -collection:wb=src -collection:toolkit=ext/gui_toolkit -o:speed -define:BENCH_TEXT=true -define:ODIN_TEST_NAMES=browser.bench_text_layout
 
 @(private = "file") BENCH_TEXT :: #config(BENCH_TEXT, false)

@@ -4,7 +4,7 @@ import "core:slice"
 import "core:time"
 
 // The times at which frames were presented, for `wren ctl stats` (frameIntervals, framesPresented): what a script reads to
-// tell how evenly the window was redrawn while something else moved it (tools\altdrag_sim.ps1). A ring: the latest frames.
+// tell how evenly the window was redrawn while something else moved it. A ring: the latest frames.
 FRAME_LOG_CAP :: 8192
 
 Frame_Log :: struct {

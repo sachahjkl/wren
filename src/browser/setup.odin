@@ -459,7 +459,7 @@ setup_startup :: proc(app: ^App, profile_explicit: bool, force: bool) {
 	// an installed copy removes what a replacement left beside it (the `.old` files), whatever else is decided below
 	if os.exists(strings.concatenate({desktop.parent_dir(desktop.executable_path(context.temp_allocator)), desktop.PATH_SEP, desktop.MANIFEST_NAME}, context.temp_allocator)) { setup_job_start(app, .Clean, .Startup) }
 	if force { setup_open(app, .Cli); return }
-	if v, ok := os.lookup_env("WREN_DESKTOP_INTEGRATION", context.temp_allocator); ok && v == "off" { return }   // tools\test_env.ps1: every script's runs
+	if v, ok := os.lookup_env("WREN_DESKTOP_INTEGRATION", context.temp_allocator); ok && v == "off" { return }   // src/e2e sets it for every test
 	if desktop_profile_is_disposable(app, profile_explicit) { return }
 	if app.portable { return }
 	if !config.bool_of(&app.prefs, "browser.desktop_integration.on_first_run") { return }

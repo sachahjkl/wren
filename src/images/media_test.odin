@@ -5,7 +5,7 @@ import "core:os"
 import "core:strings"
 import "core:testing"
 
-// The built-in decoders (native.odin). Files: examples/site/media (tools/gen_media_fixtures.ps1 for AVIF / WebP / ICC;
+// The built-in decoders (native.odin). Files: examples/site/media (wrentool gen media-fixtures for AVIF / WebP / ICC;
 // the expected pixels of the oriented AVIF files are what libheif shows); run from the repository root.
 
 @(private = "file")

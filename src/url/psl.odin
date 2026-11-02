@@ -4,7 +4,7 @@ import "core:strings"
 import "core:sync"
 import "wb:base"
 
-// The Public Suffix List (https://publicsuffix.org, MPL-2.0), embedded. Refresh: tools\update_psl.ps1.
+// The Public Suffix List (https://publicsuffix.org, MPL-2.0), embedded. Refresh: wrentool gen psl.
 @(private)
 PSL_DATA :: #load("public_suffix_list.dat", string)
 

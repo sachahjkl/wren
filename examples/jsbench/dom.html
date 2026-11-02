@@ -3,7 +3,7 @@
 <title>DOM and binding micro-benchmarks</title>
 <!--
   Micro-benchmarks of the DOM from JavaScript and of the cost of one call across the JavaScript <-> browser boundary
-  (tools\js_bench.ps1 -Mode dom runs this page in Wren without a window, build\jspage.exe, and in Edge headless).
+  (wrentool bench js -Mode dom runs this page in Wren without a window, build\jspage.exe, and in Edge headless).
   Each case reports the time of one operation in nanoseconds: its loop runs long enough to be timed (doubling the count
   until it lasts CALIBRATE_MS), then MEASURE_RUNS times; the best run counts (the least disturbed one). The clock is
   performance.now() when the page has it, Date.now() otherwise (the run lengths keep the error below 1 %).

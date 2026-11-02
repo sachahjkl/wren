@@ -18,7 +18,7 @@ Divergences are deliberate and listed at the end.
 
 ## Conformance (test262)
 
-`tools/jsrt_test262.ps1` builds the judge (`src/engine/jsrt/judge`) and runs the suite pinned by
+`wrentool engine test262` builds the judge (`src/engine/jsrt/judge`) and runs the suite pinned by
 `src/tools/test262` in worker processes (a crash or hang costs one test), with the rules of QuickJS‑ng's
 `test262.conf`. The harness files and the `includes` / `flags` of each test's front matter are honoured
 (`onlyStrict`, `raw`, `async`, `module`, `CanBlockIsFalse`); `$262` provides `createRealm`, `evalScript`,
@@ -193,10 +193,8 @@ exported under their QuickJS names with `-define:JSCAPI_EXPORT=true`) over `jsrt
 | peak working set, 300 k objects + 100 k Map entries (`examples/jsbench/cases/memory.js`) | 188 MiB (was 244) | 135 MiB |
 | freestanding wasm32 module, runtime + compiler (`-o:size`) | 1.63 MB (`-o:speed`: 1.99 MB) | `wren_js.wasm` (QuickJS + glue + bindings) 4.26 MB |
 
-`tools/jsrt_ab.ps1` compares several builds (and QuickJS)
-interleaved, best of N, on `micro.js` or `macro.js`; `tools/jsrt_prof.ps1` is a sampling profiler (hot
-functions and source lines; `JSRT_PROF=1` on `judge eval`); `tools/jsrt_mem.ps1` measures the peak working
-set. `JSRT_MEMPROF=1` on `judge eval` prints a census of the heap by kind of cell (count, cell bytes, bytes owned
+`JSRT_PROF=1 judge eval` is a sampling profiler (hot
+functions and source lines; build the judge with `-debug`). `JSRT_MEMPROF=1` on `judge eval` prints a census of the heap by kind of cell (count, cell bytes, bytes owned
 out of line, slack; `memprof.odin`), `jsengine mem [-image m.wasm] file.js` does the same inside the wasm32 image
 (sizes of the cells on wasm32, linear memory of the module, which only grows), and `WREN_JS_MEMPROF=1` makes
 the `jsdom` web tests print it for each page. `examples/jsbench/page_gen.js` generates a 650 KB framework-like bundle for
