@@ -139,7 +139,18 @@ forms_navigation_soon :: proc(p: ^Page) {
 			pf.pending, pf.pending_announced = s, true
 		}
 		// (a frame of the tab: neither the tab's concern nor its embedder's)
-		if n := frames_find_target(p, strings.trim_space(s.target)); n != nil && n.parent != nil && !s.mailto {
+		target := strings.trim_space(s.target)
+		rel, _ := dom.get_attribute(p.doc, s.form, "rel")
+		feat := link_open_features(rel, target)
+		n := frames_find_target(p, target, feat.noopener)
+		// a GET to a new window (_blank, a name nothing has) opens it as a link would (auxiliary.odin); a POST is the shell's
+		if n == nil && s.method != .Post && !s.mailto {
+			pf.pending, pf.pending_announced = nil, false
+			auxiliary_open(p, s.url, target, feat)
+			forms.submission_destroy(s)
+			return
+		}
+		if n != nil && n.parent != nil && !s.mailto {
 			replace := pf.pending_replace
 			pf.pending, pf.pending_announced = nil, false
 			forms_navigate_frame(p, n, s, replace)

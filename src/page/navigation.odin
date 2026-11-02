@@ -219,7 +219,8 @@ navigation_link :: proc(p: ^Page, target: url.URL) -> bool {
 
 // A link a script clicked (element.click(), forms' activation behaviour of <a> / <area>): followed in the browsing context it
 // targets, as a link the user follows is by the shell, after the navigate event of that context's document. A link with
-// `download` only fires it (the shell's downloads take a user's click), and one to a new window is left alone.
+// `download` only fires it (the shell's downloads take a user's click), and one to a new window opens it as window.open does
+// (auxiliary.odin), with no opener for _blank unless rel=opener.
 navigation_follow_script_link :: proc(p: ^Page, link: base.Handle) {
 	if p == nil || p.closed || p.web == nil { return }
 	href, ok := dom.get_attribute(p.doc, link, "href")
@@ -239,8 +240,14 @@ navigation_follow_script_link :: proc(p: ^Page, link: base.Handle) {
 		return
 	}
 	if target, has := dom.get_attribute(p.doc, link, "target"); has && target != "" && !strings.equal_fold(target, "_self") {
-		n := frames_find_target(p, strings.trim_space(strings.clone(target, context.temp_allocator)))
-		if n == nil { return }
+		name := strings.trim_space(strings.clone(target, context.temp_allocator))
+		rel, _ := dom.get_attribute(p.doc, link, "rel")
+		feat := link_open_features(rel, name)
+		n := frames_find_target(p, name, feat.noopener)
+		if n == nil {
+			auxiliary_open(p, u.href, name, feat)   // _blank, or a name nothing has: a new window (auxiliary.odin)
+			return
+		}
 		if why := frames_navigate_from(p, n, u.href, false, source = link); why != "" { log(p, .Warn, why) }
 		return
 	}

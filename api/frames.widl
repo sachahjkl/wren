@@ -2,7 +2,8 @@
 /// native/js/odin/frames.odin). A window of another document is named by its navigable's id: each document runs in its
 /// own engine instance, so another window is a WindowProxy of the calling realm. Across origins it reaches what HTML lets
 /// a cross-origin window reach (postMessage, location as a setter, closed, frames, length, top, parent, opener, window,
-/// self, close, focus, blur). Between documents of one origin, nodes are reached directly: every node handle names its
+/// self, close, focus, blur). The windows a script opens (window.open, links to _blank) are top-level navigables of the same
+/// kind (src/page/auxiliary.odin). Between documents of one origin, nodes are reached directly: every node handle names its
 /// document (base.pool_insert_tagged), the browser routes the call to it and checks the origin on each call.
 [Exposed=Window]
 module frames {
@@ -62,10 +63,19 @@ module frames {
   /// otherWindow.location = url, location.href = url, location.replace(url): Security when the calling document may
   /// not navigate it (HTML "allowed to navigate", the sandbox; the console says why), Syntax for an invalid URL.
   void Frame_navigate(u64 navigable, usvstring url, bool replace) raises;
-  /// window.open(url, target): a frame's name, _self, _parent or _top is navigated and its navigable returned; any
-  /// other target opens a new tab (when the embedder can) and gives 0 (no opener relationship, as noopener).
-  /// Not_Allowed in a sandboxed document without allow-popups, Syntax for an invalid URL.
-  u64 Frame_open(usvstring url, string target) raises;
+  /// window.open(url, target, features): _self, _parent, _top, or the name of a frame or of a window of the calling
+  /// document's browsing context group is navigated and its navigable returned; _blank or a name nothing has opens a new
+  /// window (when the embedder can: src/page/auxiliary.odin) whose opener is the calling document, and gives its
+  /// navigable. 0 when nothing was opened, and under the features noopener / noreferrer. Syntax for an invalid URL.
+  u64 Frame_open(usvstring url, string target, string features) raises;
+  /// window.opener: the navigable whose document opened this top-level one; 0 for a frame, a window opened with
+  /// noopener, one whose opener relationship ended (Cross-Origin-Opener-Policy, opener = null), or once the opener is gone.
+  u64 Frame_opener(u64 navigable);
+  /// window.close(): a window a script opened is closed (closed is true at once; its embedder closes it in a task). Any
+  /// other window stays open (the console says why).
+  void Frame_close(u64 navigable);
+  /// window.opener = null: the calling document's window has no opener any more.
+  void Frame_disown();
 
   /// otherWindow.postMessage(message, targetOrigin, [ports]): the same, with the MessagePorts of the transfer list
   /// shipped as port ends (Port_ship / Port_entangle): the receiver's MessageEvent.ports are bound to them.

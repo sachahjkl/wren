@@ -85,6 +85,14 @@ frame_nav :: proc "contextless" ($D: typeid, imp: $R, id: Navigable) -> (r: Navi
 frame_top :: proc "contextless" (id: Navigable) -> Navigable { return frame_nav(api_decl.Frame_top, wj.wr_Frame_top, id) }
 @(private = "file")
 frame_parent :: proc "contextless" (id: Navigable) -> Navigable { return frame_nav(api_decl.Frame_parent, wj.wr_Frame_parent, id) }
+@(private = "file")
+frame_opener :: proc "contextless" (id: Navigable) -> Navigable { return frame_nav(api_decl.Frame_opener, wj.wr_Frame_opener, id) }
+
+@(private = "file")
+frame_close :: proc "contextless" (id: Navigable) {
+	context = m4_context()
+	jsb.host(&none, api_decl.Frame_close, wj.wr_Frame_close, id)
+}
 
 @(private = "file")
 frame_length :: proc "contextless" (id: Navigable) -> (n: u32) {
@@ -427,14 +435,20 @@ wp_member :: proc "contextless" (ctx: ^wj.Context, self: wj.JSValue, w: ^Window_
 		q := frame_parent(id)
 		return q != 0 ? window_of(ctx, q) : wj.JS_DupValue(ctx, self)
 	case "opener":
-		return wj.NULL
+		o := frame_opener(id)
+		return o != 0 ? window_of(ctx, o) : wj.NULL
 	case "postMessage":
 		return wp_postmessage_fn(ctx, id)
-	case "close", "focus", "blur":
-		// an empty function (the old fns.close/focus/blur)
+	case "close":
+		data := handle_data(u64(id))
+		fn := wj.JS_NewCFunctionData(ctx, wp_close_call, 0, 0, 2, &data[0])
+		name_function(ctx, fn, "close")
+		return fn
+	case "focus", "blur":
+		// an empty function (the old fns.focus/blur)
 		empty := "(function(){})"
 		f := wj.JS_Eval(ctx, raw_data(empty), uint(len(empty)), "<frames>", wj.EVAL_TYPE_GLOBAL)
-		name_function(ctx, f, p == "close" ? "close" : p == "focus" ? "focus" : "blur")
+		name_function(ctx, f, p == "focus" ? "focus" : "blur")
 		return f
 	}
 	return wj.UNINITIALIZED
@@ -812,6 +826,13 @@ wp_postmessage_call :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i
 	return wj.UNDEFINED
 }
 
+// otherWindow.close(), bound to id.
+@(private = "file")
+wp_close_call :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue, magic: i32, data: [^]wj.JSValue) -> wj.JSValue {
+	frame_close(Navigable(data_handle(data)))
+	return wj.UNDEFINED
+}
+
 @(private = "file")
 wp_postmessage_fn :: proc "contextless" (ctx: ^wj.Context, id: Navigable) -> wj.JSValue {
 	data := handle_data(u64(id))
@@ -945,27 +966,56 @@ wjr_Window_get_frameElement :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue)
 }
 
 @(export, link_name = "wjr_Window_get_closed")
-wjr_Window_get_closed :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue { return wj.FALSE }
+wjr_Window_get_closed :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
+	self := self_id()
+	return wj.new_bool(self != 0 && frame_closed(self))
+}
 
-// A tab's window is not script-closable (not opened by a script); focus and blur concern the browser's windows.
+// The window that opened this one (null: none, noopener, severed, gone).
+@(export, link_name = "wjr_Window_get_opener")
+wjr_Window_get_opener :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue) -> wj.JSValue {
+	self := self_id()
+	o := self != 0 ? frame_opener(self) : 0
+	return o != 0 ? window_of(ctx, o) : wj.NULL
+}
+
+// window.opener = null ends the relationship; any other value replaces the attribute by a data property of the global.
+@(export, link_name = "wjr_Window_set_opener")
+wjr_Window_set_opener :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, v: wj.JSValue) -> wj.JSValue {
+	if wj.is_null(v) {
+		if self_id() != 0 {
+			context = m4_context()
+			jsb.host(&none, api_decl.Frame_disown, wj.wr_Frame_disown)
+		}
+		return wj.UNDEFINED
+	}
+	return wj.wj_replaceable_setter(ctx, this_val, v)
+}
+
+// Only a window a script opened closes (the browser says why not otherwise); focus and blur concern the browser's windows.
 @(export, link_name = "wjr_Window_close")
-wjr_Window_close :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue { return wj.UNDEFINED }
+wjr_Window_close :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
+	if self := self_id(); self != 0 { frame_close(self) }
+	return wj.UNDEFINED
+}
 @(export, link_name = "wjr_Window_focus")
 wjr_Window_focus :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue { return wj.UNDEFINED }
 @(export, link_name = "wjr_Window_blur")
 wjr_Window_blur :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue { return wj.UNDEFINED }
 
-// window.open(url, target, features): a frame of this tab, or a new tab (null: no opener relationship).
+// window.open(url, target, features): a frame or a window of this one's group, or a new window (null: none, or noopener).
 @(export, link_name = "wjr_Window_open")
 wjr_Window_open :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
 	context = m4_context()
-	u, target: wj.Str
+	u, target, features: wj.Str
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 0), &u, wj.STR_USV, "") { return wj.EXCEPTION }
 	defer wj.wj_str_free(ctx, &u)
 	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 1), &target, 0, "_blank") { return wj.EXCEPTION }
 	defer wj.wj_str_free(ctx, &target)
+	if !wj.wj_to_str(ctx, wj.arg(argc, argv, 2), &features, 0, "") { return wj.EXCEPTION }
+	defer wj.wj_str_free(ctx, &features)
 	id: Navigable
-	if st := jsb.host(&id, api_decl.Frame_open, wj.wr_Frame_open, str_view(u), str_view(target)); st != .None {
+	if st := jsb.host(&id, api_decl.Frame_open, wj.wr_Frame_open, str_view(u), str_view(target), str_view(features)); st != .None {
 		return wj.wj_throw_status(ctx, i32(st), "open")
 	}
 	return window_of(ctx, id)

@@ -94,6 +94,7 @@ Tab :: struct {
 	kind:     Tab_Kind,      // a web page, or the about:config view
 	scope:    ^base.Scope,   // lives as long as the tab
 	nav:      ^base.Scope,   // lives as long as the current navigation: the page and everything it started
+	top:      ^Navigable,    // its window for scripts, across its documents (window.open, opener, name; page/auxiliary.odin)
 	page:     ^page.Page,
 	load:     ^Doc_Load,
 	url:      string,
@@ -128,6 +129,7 @@ Tab :: struct {
 }
 
 Session_History :: page.Session_History   // (a field named `page` hides the package in the struct above)
+Navigable :: page.Navigable
 
 // The browser has several windows (windows.odin). What is a window's is read in the window itself, the active one being
 // active_window(app): .win, .ui (its toolkit state), .tabs, .current, .address, .page_rect, .frames_requested
@@ -214,6 +216,7 @@ tab_new :: proc(app: ^App) -> ^Tab {
 	t.hist = -1
 	t.zoom = 1
 	t.scope = base.scope_make("tab", app.process)
+	t.top = page.navigable_top_new()
 	t.title = strings.clone("New tab")
 	append(&active_window(app).tabs, t)
 	tab_history_limits(app, t)
@@ -256,6 +259,7 @@ tab_free :: proc(app: ^App, t: ^Tab) {
 	bfcache_drop_tab(t)
 	tab_nav_destroy(app, t)
 	base.scope_close(t.scope)   // page, instances, DOM, requests, timers: all gone (a held page too)
+	page.navigable_top_free(t.top)   // (the windows holding it see it closed)
 	hold_destroy(t)
 	page_fonts_drop(&page_render.fonts, t)   // its web fonts (fonts.odin)
 	page.session_destroy(&t.session)
@@ -484,9 +488,41 @@ page_navigate :: proc(user: rawptr, p: ^page.Page, req: page.Navigate_Request) {
 	request_frames(app, 2)
 }
 
-// Connects a document to its tab: navigation hook, session history, storage.
+// window.open, a link to a new window (page/auxiliary.odin): a tab at the end of the strip, shown, whose window starts on the
+// initial about:blank document the page package makes, then loads the address as a link from the source would.
+page_open_window :: proc(user: rawptr, p: ^page.Page, req: page.Open_Request) -> ^page.Navigable {
+	app := the_app
+	wnd := active_window(app)
+	t := tab_new(app)
+	wnd.current = len(wnd.tabs) - 1
+	t.kind = .Web
+	t.nav = base.scope_make("navigation", t.scope)
+	t.page = page.auxiliary_document(t.top, req, t.nav, console_sink, t)
+	attach_page(app, t, t.page)
+	page.render_begin(t.page)
+	if req.url == "about:blank" {
+		delete(t.url)
+		t.url = strings.clone(req.url)
+		address_set(app, t, t.url)
+	} else {
+		navigate(app, t, req.url, req.source)   // (a noreferrer window still sends the Referer: the shell's navigations have no such option)
+	}
+	request_frames(app, 2)
+	return t.top
+}
+
+// window.close() of a tab a script opened (page/auxiliary.odin), from a task of its own.
+page_close_window :: proc(user: rawptr, p: ^page.Page) {
+	t := (^Tab)(user)
+	if t.page != p { return }
+	tab_close_tab(the_app, t)
+}
+
+// Connects a document to its tab: its window (the tab's navigable), navigation hook, session history, storage, new windows.
 attach_page :: proc(app: ^App, t: ^Tab, p: ^page.Page) {
-	page.set_embedder(p, {navigate = page_navigate, user = t, session = &t.session, tab_key = tab_key(t), storage = &app.storage, print = page_print, leaving = page_entry_leaving, entered = page_entry_entered})
+	page.navigable_attach(t.top, p)
+	page.set_embedder(p, {navigate = page_navigate, user = t, session = &t.session, tab_key = tab_key(t), storage = &app.storage, print = page_print, leaving = page_entry_leaving, entered = page_entry_entered,
+		open = page_open_window, close = page_close_window})
 	if cur := page.session_current(&t.session); cur != nil { bfcache_forget(t, cur.id) }   // a new document for the entry: an older one cached for it is stale
 	attach_js_layout(app, t, p)   // geometry for scripts (js_layout_shell.odin)
 }
