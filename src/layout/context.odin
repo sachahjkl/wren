@@ -23,10 +23,8 @@ Ctx :: struct {
 	scale:    f32,
 	vp:       Vec2,
 	sa:       runtime.Allocator,          // the layout's arena: strings that live as long as the layout
-	font_cache: map[Font_Key]i32,
-	last_key: Font_Key,
-	last_fi:  i32,
-	last_cs:  ^style.Computed,           // the style last_fi was found for (same style: same font)
+	font_keys: [dynamic]Font_Key,        // by font: the key this pass found it for (FONT_KEY_NONE: not found yet)
+	font_order: [dynamic]i32,            // the fonts this pass found, in that order
 	anon_cs:  map[Anon_Key]^style.Computed,
 	counters: map[base.Handle]List_Counter,
 	quote_depth: int,
@@ -223,17 +221,25 @@ b_index :: proc(c: ^Ctx, b: ^Box) -> i32 {
 ////////////////////////////////
 // Fonts
 
+// What makes the font of a style; `frames`: with how a vertical frame would use it.
 @(private)
-font_info :: proc(c: ^Ctx, cs: ^style.Computed) -> i32 {
-	if cs == c.last_cs && c.last_fi >= 0 { return c.last_fi }
-	key := Font_Key{
+font_key_of :: proc(cs: ^style.Computed, frames: bool) -> Font_Key {
+	return Font_Key{
 		families = raw_data(cs.font_family), n = len(cs.font_family), weight = cs.font_weight,
 		italic = cs.font_style != .Normal, size = cs.font_size, lh_kind = cs.line_height.kind, lh = cs.line_height.v,
-		style = cs.font_style, stretch = cs.font_stretch, feat = font_sig(cs),
-		vmode = c.l.frames_on ? font_vmode(cs) : .None,
+		style = cs.font_style, stretch = cs.font_stretch, feat = font_sig(cs), vmode = frames ? font_vmode(cs) : .None,
 	}
-	if c.last_fi >= 0 && key == c.last_key { c.last_cs = cs; return c.last_fi }
-	if fi, ok := c.font_cache[key]; ok { c.last_key, c.last_fi, c.last_cs = key, fi, cs; return fi }
+}
+
+// The font of a style: `near`, the font of the box it is closest to in the tree (its parent's: font properties are
+// inherited), when the style asks for the same; else one of the fonts this pass found, the latest first; else the font an
+// earlier pass made from the same values; else a new one. Fonts are few (a size, a weight, a family each): the pass's are
+// a short flat list compared whole, which costs less than a table hashing the whole key did.
+@(private)
+font_info :: proc(c: ^Ctx, cs: ^style.Computed, near: i32 = NONE) -> i32 {
+	key := font_key_of(cs, c.l.frames_on)
+	if near >= 0 && int(near) < len(c.font_keys) && c.font_keys[near] == key { return near }
+	#reverse for fi in c.font_order { if c.font_keys[fi] == key { return fi } }
 	// the same font made by an earlier pass over these boxes: a partial restyle gives the elements it restyles new
 	// family lists (the key above is by identity), and partial passes must not add a font per restyled element (each
 	// is resolved again, and the table grows until a full pass)
@@ -242,8 +248,7 @@ font_info :: proc(c: ^Ctx, cs: ^style.Computed) -> i32 {
 	ck.families = rawptr(uintptr(families_hash(cs.font_family)))
 	lasting := key.feat.feat == nil && key.feat.vars == nil
 	if fi, ok := c.l.font_lookup[ck]; lasting && ok && int(fi) < len(c.l.fonts) && same_families(c.l.fonts[fi].families, cs.font_family) {
-		c.font_cache[key] = fi
-		c.last_key, c.last_fi, c.last_cs = key, fi, cs
+		font_note(c, fi, key)
 		return fi
 	}
 	info: Font_Info
@@ -271,11 +276,23 @@ font_info :: proc(c: ^Ctx, cs: ^style.Computed) -> i32 {
 	if c.pre != nil { pre_drain(c) }   // the layout threads read the fonts: no growth while they run
 	fi := i32(len(c.l.fonts))
 	append(&c.l.fonts, info)
-	c.font_cache[key] = fi
 	if lasting { c.l.font_lookup[ck] = fi }
-	c.last_key, c.last_fi, c.last_cs = key, fi, cs
+	font_note(c, fi, key)
 	return fi
 }
+
+// Font `fi` found for `key` in this pass. (Keys hold addresses of the styles' lists: only those of this pass are compared,
+// an earlier pass's may name lists freed since.)
+@(private)
+font_note :: proc(c: ^Ctx, fi: i32, key: Font_Key) {
+	for len(c.font_keys) <= int(fi) { append(&c.font_keys, FONT_KEY_NONE) }
+	c.font_keys[fi] = key
+	append(&c.font_order, fi)
+}
+
+// No font's key (a family count no list has).
+@(private)
+FONT_KEY_NONE :: Font_Key{n = -1}
 
 @(private)
 families_hash :: proc(fams: []string) -> u64 {
@@ -360,3 +377,4 @@ anon_style :: proc(c: ^Ctx, parent: ^style.Computed, display: style.Display) -> 
 	c.anon_cs[key] = s
 	return s
 }
+

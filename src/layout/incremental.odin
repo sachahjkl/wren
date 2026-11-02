@@ -241,7 +241,11 @@ add_target :: proc(c: ^Ctx, h: base.Handle, roots, dirty: ^[dynamic]i32) -> bool
 			if bi := live_box(l, cur); bi != NONE {
 				b := &l.boxes[bi]
 				if b.kind == .Replaced { append(dirty, bi); return true }
-				if b.kind != .Inline && .Root not_in b.flags && .Pseudo not_in b.flags { append(roots, bi); return true }
+				if b.kind != .Inline && .Root not_in b.flags && .Pseudo not_in b.flags {
+					// (the same container again, for each of its children that changed: once)
+					if len(roots) == 0 || roots[len(roots) - 1] != bi { append(roots, bi) }
+					return true
+				}
 			} else if cs := style.style_of(c.st, cur); cs != nil && cs.display == .None {
 				return true   // inside display: none: nothing to lay out
 			}
@@ -794,25 +798,37 @@ compact_lines :: proc(l: ^Layout) {
 // margin: content inside their ancestors may rise above where those start, next to floats placed before.
 @(private)
 mark_bfc_floats :: proc(c: ^Ctx, from: i32) {
-	for i in from ..< i32(len(c.l.boxes)) { mark_box_flow_flags(c.l, i) }
+	for i in from ..< i32(len(c.l.boxes)) {
+		b := &c.l.boxes[i]
+		// (an element's box has its element's style; a pseudo-element's, an anonymous box's, their own)
+		sum := c.sums != nil && b.node != base.NIL_HANDLE && .Pseudo not_in b.flags ? sum_of(c, b.node) : nil
+		mark_box_flow_flags(c.l, i, sum)
+	}
+}
+
+// A margin below 0, or that may be (calc()).
+@(private)
+negative_margin :: proc(m: style.Length) -> bool {
+	#partial switch m.kind {
+	case .Px, .Percent: return m.v < 0
+	case .Calc: return true
+	}
+	return false
 }
 
 @(private)
-mark_box_flow_flags :: proc(l: ^Layout, i: i32) {
-	negative :: proc(m: style.Length) -> bool {
-		#partial switch m.kind {
-		case .Px, .Percent: return m.v < 0
-		case .Calc: return true
-		}
-		return false
-	}
+mark_box_flow_flags :: proc(l: ^Layout, i: i32, sum: ^Style_Sum = nil) {
 	b := &l.boxes[i]
 	if .Dead in b.flags { return }
 	flags: Box_Flags
 	if .Float in b.flags { flags += {.Bfc_Floats} }
-	if b.cs != nil && (negative(b.cs.margin[.Top]) || negative(b.cs.margin[.Bottom])) { flags += {.Neg_Margins} }
 	// (the block axis of a frame may be the other one)
-	if l.frames_on && b.cs != nil && (negative(b.cs.margin[.Left]) || negative(b.cs.margin[.Right])) { flags += {.Neg_Margins} }
+	if sum != nil {
+		if .Neg_Block in sum.bits || (l.frames_on && .Neg_Inline in sum.bits) { flags += {.Neg_Margins} }
+	} else if b.cs != nil {
+		if negative_margin(b.cs.margin[.Top]) || negative_margin(b.cs.margin[.Bottom]) { flags += {.Neg_Margins} }
+		if l.frames_on && (negative_margin(b.cs.margin[.Left]) || negative_margin(b.cs.margin[.Right])) { flags += {.Neg_Margins} }
+	}
 	if flags == {} { return }
 	for p := b.parent; p != NONE; p = l.boxes[p].parent {
 		pb := &l.boxes[p]

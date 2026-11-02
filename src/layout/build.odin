@@ -35,6 +35,8 @@ Frame :: struct {
 	depth:  i32,
 	deco:   style.Decorations, // text decorations propagated from ancestors
 	deco_box: i32,             // the box whose text-decoration-color draws them (NONE: none)
+	font_el: base.Handle,      // the element whose children these are (NIL: none, or not an element's box), and its font
+	fi:     i32,
 }
 
 @(private)
@@ -256,7 +258,7 @@ child_frame :: proc(c: ^Ctx, bi: i32, f: Frame, has_block: bool, sum: ^Style_Sum
 	g.depth = b.depth
 	if .Positioned in b.flags {
 		g.cb = bi
-	} else if c.l.frames_on && b.cs.column_span == .All {
+	} else if c.l.frames_on && (sum != nil ? .Spans in sum.bits : b.cs.column_span == .All) {
 		// (the containing block of a spanner is its multi-column container, whatever is between them)
 		if mc := spanner_container(c.l, bi); mc != NONE { g.cb = mc }
 	}
@@ -264,8 +266,10 @@ child_frame :: proc(c: ^Ctx, bi: i32, f: Frame, has_block: bool, sum: ^Style_Sum
 	if .Atomic in b.flags || .Float in b.flags || .Abs in b.flags || b.kind == .Flex || b.kind == .Grid || b.kind == .Table {
 		g.deco = {}   // decorations do not propagate into atomic inlines, floats and absolutely positioned boxes
 	}
-	g.deco += b.cs.text_decoration
-	if b.cs.text_decoration != {} { g.deco_box = bi }
+	deco := sum != nil ? sum.deco : b.cs.text_decoration
+	g.deco += deco
+	if deco != {} { g.deco_box = bi }
+	g.font_el, g.fi = .Pseudo in b.flags ? base.NIL_HANDLE : b.node, b.fi
 	switch b.kind {
 	case .Inline: g.mode = .Inline
 	case .Block, .Cell, .Caption:
@@ -306,7 +310,7 @@ build_tree :: proc(c: ^Ctx) {
 	c.l.doc_scroll_y, c.l.doc_scrollable_x = true, true
 
 	stack := make([dynamic]Frame, 0, 256, context.temp_allocator)
-	top := Frame{kind = .Visit, parent = root, mode = .Block, cb = root, fcb = root, depth = 0, ifc = NONE, deco_box = NONE}
+	top := Frame{kind = .Visit, parent = root, mode = .Block, cb = root, fcb = root, depth = 0, ifc = NONE, deco_box = NONE, fi = NONE}
 	{
 		g := top
 		rn := dom.get(d, d.root)
@@ -650,7 +654,9 @@ place_element :: proc(c: ^Ctx, stack: ^[dynamic]Frame, f: Frame, h: base.Handle,
 	b = &c.l.boxes[bi]
 	if g.mode == .Flex || g.mode == .Table || g.mode == .Row_Group || g.mode == .Row { b.flags -= {.Float} }
 	if !pseudo { register_node(c, h, bi) }
-	b.fi = font_info(c, cs)
+	// (an element whose font is its parent's: none of its font properties is read)
+	parent_font := sum != nil && .Parent_Font in sum.bits && f.fi >= 0 && f.font_el == (c.flat ? up(c, h) : n.parent)
+	b.fi = parent_font ? f.fi : font_info(c, cs, f.fi)
 	b = &c.l.boxes[bi]
 
 	if g.mode == .Inline {
@@ -772,7 +778,7 @@ visit_text :: proc(c: ^Ctx, f: Frame, n: ^dom.Node) {
 	text := text_transform(c, n.text, cs.text_transform, &prev)
 	ib := c.l.boxes[g.parent].kind == .Inline ? g.parent : NONE
 	src := owner == base.NIL_HANDLE ? Item_Src.Initial : Item_Src.Element
-	add_item(c, Inline_Item{kind = .Text, src = src, box = ib, ifc = g.ifc, fi = font_info(c, cs), text = text, cs = cs, node = owner, source = f.node, deco = g.deco, deco_box = g.deco_box})
+	add_item(c, Inline_Item{kind = .Text, src = src, box = ib, ifc = g.ifc, fi = owner == f.font_el && f.fi >= 0 ? f.fi : font_info(c, cs, f.fi), text = text, cs = cs, node = owner, source = f.node, deco = g.deco, deco_box = g.deco_box})
 }
 
 @(private)
@@ -800,7 +806,7 @@ emit_generated :: proc(c: ^Ctx, owner: base.Handle, cs: ^style.Computed, f: Fram
 	prev := false
 	text = text_transform(c, text, cs.text_transform, &prev)
 	ib := c.l.boxes[f.parent].kind == .Inline ? f.parent : NONE
-	add_item(c, Inline_Item{kind = .Text, src = src, box = ib, ifc = f.ifc, fi = font_info(c, cs), text = text, cs = cs, node = owner, deco = f.deco, deco_box = f.deco_box})
+	add_item(c, Inline_Item{kind = .Text, src = src, box = ib, ifc = f.ifc, fi = font_info(c, cs, f.fi), text = text, cs = cs, node = owner, deco = f.deco, deco_box = f.deco_box})
 }
 
 ////////////////////////////////
@@ -831,12 +837,11 @@ make_marker :: proc(c: ^Ctx, bi: i32, h: base.Handle, cf: Frame) {
 		} else {
 			s = strings.concatenate({s, " "}, c.sa)
 		}
-		add_item(c, Inline_Item{kind = .Text, box = NONE, ifc = cf.ifc, fi = font_info(c, cs), text = s, cs = cs, node = h})
+		add_item(c, Inline_Item{kind = .Text, box = NONE, ifc = cf.ifc, fi = b.fi, text = s, cs = cs, node = h})
 		return
 	}
 	b = &c.l.boxes[bi]
 	b.marker = text
-	b.fi = font_info(c, cs)
 	b.marker_w = -1   // has a marker (text empty: a bullet shape)
 }
 

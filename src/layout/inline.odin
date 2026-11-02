@@ -1054,7 +1054,7 @@ ifc_build_at :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx, ch: f32, trim: f3
 		bufs.frags, bufs.lines, bufs.out, bufs.open, bufs.unit = lb.frags, lb.lines, lb.out, lb.open, lb.unit
 		bufs.pending_floats, bufs.pending_abs, bufs.groups = lb.pending_floats, lb.pending_abs, lb.groups
 	}
-	if lb.root_fi < 0 { lb.root_fi = font_info(c, b.cs); c.l.boxes[bi].fi = lb.root_fi }
+	if lb.root_fi < 0 { lb.root_fi = font_info(c, b.cs, b.parent != NONE ? c.l.boxes[b.parent].fi : NONE); c.l.boxes[bi].fi = lb.root_fi }
 	lb.strut_h = c.l.fonts[lb.root_fi].line_h
 	lb.bidi = bidi_paragraph(c, bi)
 	start_line(&lb)

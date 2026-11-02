@@ -278,6 +278,81 @@ parallel_incremental_untouched :: proc(t: ^testing.T) {
 	testing.expectf(t, l.inc.last_laid < 10, "%d boxes laid out again", l.inc.last_laid)
 }
 
+// Multi-column containers on the layout threads: the paragraphs in the columns are laid out ahead at the width of a
+// column (a spanner at the container's) and taken, columns balanced, a forced break and a spanner where they are on one
+// thread (pt_check compares every box). A vertical writing mode keeps the threads out.
+@(test)
+parallel_multicol :: proc(t: ^testing.T) {
+	defer shutdown_threads()
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, `<style>body{margin:0;font-size:10px;line-height:10px} p{margin:0} h2{margin:0;font-size:10px;column-span:all}
+.mc{columns:3;column-gap:0} .brk{break-before:column}</style><body><div class=mc>`)
+	for i in 0 ..< 9 { fmt.sbprintf(&sb, "<p id=b%d>balanced %d</p>", i, i) }
+	strings.write_string(&sb, `</div><div class=mc><p id=f0>one</p><p id=f1 class=brk>forced</p><p id=f2>after</p></div><div class=mc>`)
+	for i in 0 ..< 6 { fmt.sbprintf(&sb, "<p id=s%d>above %d</p>", i, i) }
+	strings.write_string(&sb, `<h2 id=sh>the spanner</h2><p id=s6>below</p></div></body>`)
+	f := pt_load(strings.to_string(sb))
+	defer pt_unload(&f)
+	l: Layout
+	defer destroy(&l)
+	vp := Vec2{300, 600}   // (scale 1.25: a column is 100 device px wide, a line 12.5 high)
+	pt_check(t, &f, &l, vp, "columns")
+	testing.expectf(t, l.pre_counts[0] > 0 && l.pre_counts[1] == l.pre_counts[0], "contexts laid out ahead and taken: %v", l.pre_counts)
+	at :: proc(f: ^Pt, l: ^Layout, vp: Vec2, id: string) -> Vec2 {
+		r, _ := box_of(l, dom.find_by_id(f.doc, id), vp, 0)
+		return r.border.min
+	}
+	// nine lines in three columns: three each
+	b0 := at(&f, &l, vp, "b0")
+	testing.expect_value(t, at(&f, &l, vp, "b3"), b0 + {100, 0})
+	testing.expect_value(t, at(&f, &l, vp, "b8"), b0 + {200, 25})
+	// a forced break: the next column, at its top
+	f0 := at(&f, &l, vp, "f0")
+	testing.expect_value(t, at(&f, &l, vp, "f1"), f0 + {100, 0})
+	// six lines balanced above the spanner (two a column), the spanner across the container, the rest below it
+	s0 := at(&f, &l, vp, "s0")
+	testing.expect_value(t, at(&f, &l, vp, "s2"), s0 + {100, 0})
+	testing.expect_value(t, at(&f, &l, vp, "sh"), s0 + {0, 25})
+	testing.expect_value(t, at(&f, &l, vp, "s6"), s0 + {0, 37.5})
+	sh, _ := box_of(&l, dom.find_by_id(f.doc, "sh"), vp, 0)
+	testing.expect_value(t, sh.border.max.x - sh.border.min.x, 300)
+
+	v := pt_load(`<body style="writing-mode:vertical-rl"><div style="columns:2"><p>one</p><p>two</p><p>three</p></div></body>`)
+	defer pt_unload(&v)
+	lv: Layout
+	defer destroy(&lv)
+	pt_check(t, &v, &lv, vp, "vertical", want_taken = false)
+	testing.expect_value(t, lv.pre_counts, [2]int{})
+}
+
+// The fonts of a page made once each, whichever element asks first, the elements that inherit their parent's font told
+// on the layout threads: one font per size, weight and slant, each text and box with its element's.
+@(test)
+parallel_fonts_once :: proc(t: ^testing.T) {
+	defer shutdown_threads()
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, `<style>body{font-size:10px} .big{font-size:20px}</style><body><ul>`)
+	for i in 0 ..< 200 { fmt.sbprintf(&sb, "<li><span>item %d </span><b>bold</b></li>", i) }
+	strings.write_string(&sb, `</ul><p class=big>big <i>slanted</i> big again <b>and bold</b></p></body>`)
+	f := pt_load(strings.to_string(sb))
+	defer pt_unload(&f)
+	l: Layout
+	defer destroy(&l)
+	pt_check(t, &f, &l, {600, 400}, "fonts")
+	// the root element's 16 px, 10 px and 20 px each regular and bold, 20 px italic
+	testing.expect_value(t, len(l.fonts), 6)
+	check :: proc(t: ^testing.T, f: ^Pt, l: ^Layout, fi: i32, node: base.Handle) {
+		fo := &l.fonts[fi]
+		el := dom.get(f.doc, node)
+		testing.expectf(t, (fo.weight >= 700) == (el.name == "b"), "%s: weight %d", el.name, fo.weight)
+		testing.expectf(t, fo.italic == (el.name == "i"), "%s: italic %v", el.name, fo.italic)
+		testing.expectf(t, fo.size == (el.name == "p" || el.name == "i" || dom.get(f.doc, el.parent).name == "p" ? 25 : el.name == "html" ? 20 : 12.5), "%s: size %v", el.name, fo.size)
+	}
+	for &it in l.inline_items { if it.kind == .Text && it.node != base.NIL_HANDLE { check(t, &f, &l, it.fi, it.node) } }
+	// the boxes of the elements, those whose font is their parent's included
+	for &b in l.boxes { if b.node != base.NIL_HANDLE && b.fi >= 0 && .Pseudo not_in b.flags && .Anonymous not_in b.flags { check(t, &f, &l, b.fi, b.node) } }
+}
+
 // A page with no paragraph laid out ahead (every context has an atomic inline or sits in a flex container).
 @(test)
 parallel_nothing_ahead :: proc(t: ^testing.T) {

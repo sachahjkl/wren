@@ -125,7 +125,9 @@ page_thread_main :: proc(data: rawptr) {
 	p := (^Page_Thread)(data)
 	sync.atomic_store(&p.thread_id, sync.current_thread_id())
 	temp: runtime.Arena
-	if runtime.arena_init(&temp, PAGE_TEMP_FIRST, base.process_allocator()) == nil { context.temp_allocator = runtime.arena_allocator(&temp) }
+	// (set in this scope: an assignment to the context inside a block lasts only as long as the block)
+	own := runtime.arena_init(&temp, PAGE_TEMP_FIRST, base.process_allocator()) == nil
+	context.temp_allocator = own ? runtime.arena_allocator(&temp) : context.temp_allocator
 	defer runtime.arena_destroy(&temp)
 	for {
 		sync.sema_wait(&p.go)

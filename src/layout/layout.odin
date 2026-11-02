@@ -6,6 +6,9 @@ import "wb:base"
 import "wb:dom"
 import "wb:style"
 
+// Fonts a pass is ready to find without growing its lists (a page uses a few).
+FONTS_RESERVE :: 32
+
 // Entry points. A pass is one of:
 //   * refresh (refresh.odin): only paint-only values changed; boxes and display list stay, values are re-read;
 //   * incremental (incremental.odin): from the journals of what changed (document mutations, style changes, viewport,
@@ -25,11 +28,12 @@ run :: proc(l: ^Layout, input: Input) {
 ctx_make :: proc(l: ^Layout, input: Input, marker: ^u8) -> Ctx {
 	c := Ctx{
 		l = l, d = input.doc, st = input.styled, set = &l.settings, text = input.text, replaced = input.replaced,
-		scale = input.scale, vp = input.viewport, sa = virtual.arena_allocator(&l.arena), last_fi = -1,
+		scale = input.scale, vp = input.viewport, sa = virtual.arena_allocator(&l.arena),
 		stack_base = uintptr(marker), stack_limit = l.settings.max_stack_bytes, rebuilding = NONE,
 	}
 	c.flat = dom.has_shadow_trees(input.doc)
-	c.font_cache = make(map[Font_Key]i32, 64, context.temp_allocator)
+	c.font_keys = make([dynamic]Font_Key, 0, max(len(l.fonts), FONTS_RESERVE), context.temp_allocator)
+	c.font_order = make([dynamic]i32, 0, FONTS_RESERVE, context.temp_allocator)
 	c.anon_cs = make(map[Anon_Key]^style.Computed, 16, context.temp_allocator)
 	c.counters = make(map[base.Handle]List_Counter, 16, context.temp_allocator)
 	c.lb_bufs = make([dynamic]^LB_Buffers, 0, 8, context.temp_allocator)
@@ -82,9 +86,9 @@ run_full :: proc(l: ^Layout, input: Input) {
 	style_sums(&c)
 	l.tree_order = true
 	build_tree(&c)
-	c.sums = nil
 	l.canvas_els = {c.root_el, c.body_el}
 	mark_bfc_floats(&c, 0)
+	c.sums = nil
 	reserve_lines(l)
 	t1 := time.tick_now()
 	pre_run(&c, layout_root)
