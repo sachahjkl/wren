@@ -48,7 +48,10 @@ expect_cursor :: proc(t: ^testing.T, s: ^e2e.Session, id, name: string, source :
 
 @(private = "file")
 expect_image :: proc(t: ^testing.T, s: ^e2e.Session, id: string, hotspot: [2]f64, loc := #caller_location) {
-	c := over(s, id, loc = loc)
+	over(s, id, loc = loc)
+	// (a first look at an image at this size starts its decoding, on another thread: the frame after that one has it, or the window's cursor is the fallback until then)
+	e2e.wait_until(s, proc(s: ^e2e.Session) -> bool { return e2e.stats(s).cursor.custom }, "the image to be the cursor", loc = loc)
+	c := e2e.stats(s, loc).cursor
 	px := int(math.round(IMAGE_CSS_PX * CURSOR_SCALE))
 	testing.expectf(t, c.custom && c.size == {px, px}, "over #%s: the image at the window's scale (%d px), got %v", id, px, c, loc = loc)
 	if hotspot != {} {

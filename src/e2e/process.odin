@@ -163,7 +163,11 @@ program_wait :: proc(p: ^Program, deadline: time.Duration = DEFAULT_DEADLINE, lo
 	end := time.tick_add(time.tick_now(), deadline)
 	for !api.process_wait(&p.process, ms_of(OTHER_PROCESS_POLL)) {
 		program_output(p)
-		if time.tick_diff(time.tick_now(), end) <= 0 { stop_test(p.t, fmt.tprintf("the program did not end within %v", deadline), loc) }
+		if time.tick_diff(time.tick_now(), end) <= 0 {
+			out, err := program_output(p)
+			stacks, _ := api.process_stacks(p.pid)
+			stop_test(p.t, fmt.tprintf("the program did not end within %v; it printed:\n%s\n%s\n%s", deadline, out, err, stacks), loc)
+		}
 	}
 	program_output(p)
 	return api.process_exit_code(&p.process)

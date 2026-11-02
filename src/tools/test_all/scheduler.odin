@@ -335,7 +335,7 @@ admit :: proc(s: ^Scheduler) {
 		}
 		if .Alone in r.step.marks {
 			others := 0
-			for &o in s.runs { if &o != r && o.state != .Done { others += 1 } }
+			for &o in s.runs { if &o != r && o.state != .Done && (.Alone not_in o.step.marks || o.state == .Running) { others += 1 } }   // (of two, one goes first)
 			if others > 0 { continue }
 		}
 		slot := slot_of(r.step)

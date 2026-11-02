@@ -7,7 +7,15 @@ foreign import kernel32 "system:Kernel32.lib"
 @(default_calling_convention = "system")
 foreign kernel32 {
 	RaiseFailFastException :: proc(rec: rawptr, ctx: rawptr, flags: u32) ---
+	SetErrorMode :: proc(mode: u32) -> u32 ---
 }
+
+@(private = "file") SEM_NOGPFAULTERRORBOX :: 0x0002
+
+// No Windows Error Reporting for what dies here: what is looked at is our report, written by then, and the system holds the process frozen for as long as WerFault.exe takes. On a machine with
+// every core busy that was 25 to 50 s, five at a time, against the minute of a test that waits for their end.
+@(init)
+no_system_report :: proc "contextless" () { SetErrorMode(SEM_NOGPFAULTERRORBOX) }
 
 die_system :: proc(mode: string) {
 	switch mode {

@@ -62,9 +62,24 @@ setup_ready :: proc(s: ^api.Session) -> api.Setup_State {
 	}, "the Setup dialog")
 	// (the frame after the facts: the main button takes the keyboard there)
 	api.wait_frames(s)
+	return setup_still(s)
+}
+
+// The buttons are where they stay. What the dialog says takes frames to reach them: a box's rectangle is the last frame's layout, the height of the middle the frame's before (setup_ui.odin), so
+// that a click on what two frames later still said was in the old place: nothing there, and an uninstall that never began.
+@(private = "file")
+setup_still :: proc(s: ^api.Session) -> api.Setup_State {
 	st, _ := api.setup_state(s)
+	for same := 0; same < SETUP_STILL_FRAMES; same += 1 {
+		api.wait_frames(s, 1)
+		now, _ := api.setup_state(s)
+		if now.uninstall != st.uninstall || now.primary != st.primary || now.secondary != st.secondary { same = -1 }
+		st = now
+	}
 	return st
 }
+// More than the frames between a change and its place (three).
+@(private = "file") SETUP_STILL_FRAMES :: 5
 
 @(private = "file")
 click_button :: proc(s: ^api.Session, r: api.Rect) { api.click_at(s, api.center(r), .Window) }
@@ -110,8 +125,7 @@ install_uninstall_standalone :: proc(t: ^testing.T) {
 	st = setup_ready(p.s)
 	click_button(p.s, st.uninstall)
 	// (what it asks takes more lines: the button goes down)
-	api.wait_frames(p.s)
-	st, _ = api.setup_state(p.s)
+	st = setup_still(p.s)
 	testing.expect(t, st.confirm_uninstall && os.exists(installed), "the first click only asks")
 	click_button(p.s, st.uninstall)
 	e2e.wait_gone(t, shortcut)
