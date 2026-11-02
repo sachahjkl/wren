@@ -270,7 +270,7 @@ posted_tasks_that_will_not_run_are_discarded :: proc(t: ^testing.T) {
 	delete(ran.order)
 }
 
-// Several threads post at once, across many of the queue's blocks, while the loop runs them and before each turn
+// Several threads post at once, many thousands of tasks, while the loop runs them and before each turn
 // discards the tasks of one function: each producer's tasks run in its order, every task either runs or is discarded,
 // once, and a discarded one never runs.
 @(test)

@@ -1,5 +1,6 @@
 package host
 
+import "core:log"
 import "core:sync"
 import "core:testing"
 import "core:time"
@@ -140,4 +141,22 @@ parallel_for_wait_hook :: proc(t: ^testing.T) {
 	if !base.perf_skip("parallel_for_wait_hook: the hook runs at least 5 times in the items' ~40 ms") {
 		testing.expectf(t, job.hooks >= 5, "the hook ran every 0.2 ms while the items did (%d times)", job.hooks)
 	}
+}
+// What a round of parallel_for costs when its items cost nothing: the hand-over to the pool's threads and back. Numbers
+// for docs/performance.md, not a check.
+@(test)
+parallel_for_round_cost :: proc(t: ^testing.T) {
+	ROUND_BENCH_THREADS :: 4
+	ROUND_BENCH_ROUNDS :: 20_000
+	if base.perf_skip("parallel_for: the cost of a round of empty items") { return }
+	pool := thread_pool_make(ROUND_BENCH_THREADS)
+	defer thread_pool_destroy(pool)
+	hits: [ROUND_BENCH_THREADS + 1]int
+	t0 := time.tick_now()
+	for _ in 0 ..< ROUND_BENCH_ROUNDS {
+		parallel_for(pool, len(hits), proc(data: rawptr, i: int) { sync.atomic_add(&(^[ROUND_BENCH_THREADS + 1]int)(data)[i], 1) }, &hits)
+	}
+	us := time.duration_microseconds(time.tick_since(t0)) / ROUND_BENCH_ROUNDS
+	testing.expect_value(t, hits[0], ROUND_BENCH_ROUNDS)
+	log.infof("parallel_for: %.2f us a round of %d empty items on %d threads", us, len(hits), ROUND_BENCH_THREADS)
 }

@@ -72,7 +72,7 @@ inbox_drains_in_order_and_refuses_after_close :: proc(t: ^testing.T) {
 @(test)
 mpsc_keeps_each_producers_order_across_blocks :: proc(t: ^testing.T) {
 	QUEUE_THREADS :: 5
-	QUEUE_PER_THREAD :: 50 * MPSC_BLOCK_SLOTS + 7   // many blocks, the last one partly filled
+	QUEUE_PER_THREAD :: 50 * (MPSC_BLOCK_BYTES / size_of(Mpsc_Slot([2]int))) + 7   // many blocks, the last one partly filled
 	Q :: struct { q: Mpsc([2]int) }
 	Start :: struct { q: ^Q, producer: int }
 	q: Q

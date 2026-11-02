@@ -2,14 +2,17 @@ package host
 
 // What other threads hand to one consumer without a lock.
 //
-// `Mpsc(T)` is an unbounded multi-producer single-consumer queue of values, in blocks of MPSC_BLOCK_SLOTS (the scheme of
-// crossbeam's SegQueue, with one consumer). A producer claims the next position with a compare-and-swap on one
-// counter, writes its slot and stamps it with its position: one contended atomic per push, and values side by side as in an
-// array. The consumer takes slots in position order, each once it bears its stamp, so order is kept per producer, and a slot
-// still being written ends the take until its producer, done, asks for another turn (a wake, a posted drain): nothing
-// is lost and nobody waits for the consumer. The producer that claims a block's last slot links the next block first;
-// a block the consumer emptied is kept as a spare the next ones are made of (no allocation once running). A
-// producer holding a stale block pointer never touches it: its claim fails first (positions only grow).
+// `Mpsc(T)` is an unbounded multi-producer single-consumer queue of values in blocks (about MPSC_BLOCK_BYTES each,
+// numbered from 0 and linked). A producer claims the next position with one fetch-and-add on the tail (wait-free: no
+// retry, however many producers), finds the block of that position (the last one linked, almost always; it links the
+// next one when nobody has), writes its slot and stamps it with its position. The consumer walks the slots in position
+// order in place, each once it bears its stamp: order is kept per producer, and a slot still being written ends the walk
+// until its producer, done, asks for another turn (a wake, a posted drain): nothing is lost and nobody waits.
+//
+// A block the consumer has left is retired with the tail's position at that moment: every producer that may still
+// hold a pointer to it claimed its position before (it claims first, then looks for its block), so once the consumer
+// has taken every position before that mark, nobody can touch the block, and it becomes a spare (or goes back to the
+// heap). Spares are what new blocks are made of: a running queue allocates nothing.
 //
 // `Inbox(T)` is that queue between threads that produce and the loop that consumes in one posted drain per burst (the
 // network's events): pushes after inbox_close are refused (the caller keeps the value), so a late completion never
@@ -19,15 +22,12 @@ import "core:sync"
 import "core:thread"
 import "wb:base"
 
-// Values per block: a block is a little more than this many values, allocated once per as many pushes at most.
-MPSC_BLOCK_SLOTS :: 63
+// Bytes of a block's slots: a block holds as many values as fit (one at least), allocated once per as many pushes at most.
+MPSC_BLOCK_BYTES :: 16 * 1024
 
 // Emptied blocks a queue keeps for its next ones: a producer as far ahead of the consumer as this many blocks allocates
 // none (more go back to the heap).
 MPSC_SPARES :: 4
-
-// Positions per block: its slots, then one that no push takes (the next block is being linked while the tail is on it).
-@(private) MPSC_LAP :: MPSC_BLOCK_SLOTS + 1
 
 // Bytes between the producers' fields and the consumer's: each its own cache line.
 @(private) CACHE_LINE :: 64
@@ -37,81 +37,141 @@ Mpsc_Slot :: struct($T: typeid) {
 	written: int,   // atomic: the position the value was pushed at, + 1 (a block used again holds older ones: no reset)
 }
 
-Mpsc_Block :: struct($T: typeid) {
-	next:  ^Mpsc_Block(T),   // atomic: linked by the producer of the last slot, before it writes that slot
-	slots: [MPSC_BLOCK_SLOTS]Mpsc_Slot(T),
+
+Mpsc_Block :: struct($T: typeid) #align(CACHE_LINE) {
+	next:   ^Mpsc_Block(T),   // atomic: linked by the first producer that needs it
+	number: int,              // atomic: positions [number * slots, (number + 1) * slots) are here
+	_:      [CACHE_LINE - 2 * size_of(int)]u8,   // the slots start on a line of their own
+	slots:  [max(MPSC_BLOCK_BYTES / size_of(Mpsc_Slot(T)), 1)]Mpsc_Slot(T),
+}
+
+@(private)
+Mpsc_Retired :: struct($T: typeid) {
+	block: ^Mpsc_Block(T),
+	mark:  int,   // the tail when it was retired: free once the consumer took every position before
 }
 
 Mpsc :: struct($T: typeid) {
+	_:          [CACHE_LINE]u8,   // (off the line of whatever precedes it)
 	// producers
-	tail:       int,               // atomic: the next position to claim
-	tail_block: ^Mpsc_Block(T),    // atomic: the block of `tail`
-	spares:     [MPSC_SPARES]^Mpsc_Block(T),   // atomic, each taken by an exchange: emptied blocks for the next ones
+	tail:       int,                           // atomic: the next position to claim
+	tail_block: ^Mpsc_Block(T),                // atomic: a hint, the last block linked (or one before it)
+	head_block: ^Mpsc_Block(T),                // atomic: the consumer's block, where a producer whose hint ran ahead starts
+	spares:     [MPSC_SPARES]^Mpsc_Block(T),   // atomic, each taken by an exchange
 	_:          [CACHE_LINE]u8,
 	// the consumer
 	head:       int,
-	head_block: ^Mpsc_Block(T),
+	retired:    [dynamic]Mpsc_Retired(T),
+	_:          [CACHE_LINE]u8,   // (off the line of whatever follows it)
 }
 
-// Blocks come from the process's heap: producers are any thread.
 mpsc_init :: proc(q: ^Mpsc($T)) {
 	b := new(Mpsc_Block(T), base.process_allocator())
 	q^ = {tail_block = b, head_block = b}
+	q.retired = make([dynamic]Mpsc_Retired(T), base.process_allocator())
 }
 
-// The consumer, once no producer is left. What is still queued is dropped (pop it first to free what it owns).
+// The consumer, once no producer is left. What is still queued is dropped (take it first to free what it owns).
 mpsc_destroy :: proc(q: ^Mpsc($T)) {
 	a := base.process_allocator()
-	free(q.head_block, a)
+	for b := q.head_block; b != nil; {
+		next := b.next
+		free(b, a)
+		b = next
+	}
+	for r in q.retired { free(r.block, a) }
+	delete(q.retired)
 	for s in q.spares { free(s, a) }
 	q^ = {}
 }
 
 // Any thread.
 mpsc_push :: proc(q: ^Mpsc($T), v: T) {
-	fresh: ^Mpsc_Block(T)   // the next block, made before claiming a block's last slot
-	for {
-		tail := sync.atomic_load(&q.tail)
-		block := sync.atomic_load(&q.tail_block)
-		offset := tail % MPSC_LAP
-		if offset == MPSC_BLOCK_SLOTS { thread.yield(); continue }   // the claimer of the last slot is linking the next block
-		last := offset + 1 == MPSC_BLOCK_SLOTS
-		if last && fresh == nil { fresh = spare_take(q) }
-		if _, ok := sync.atomic_compare_exchange_weak(&q.tail, tail, tail + 1); !ok { continue }
-		if last {
-			sync.atomic_store(&q.tail_block, fresh)
-			sync.atomic_store(&q.tail, tail + 2)   // past the position no push takes
-			sync.atomic_store(&block.next, fresh)
-			fresh = nil
+	SLOTS :: max(MPSC_BLOCK_BYTES / size_of(Mpsc_Slot(T)), 1)
+	pos := sync.atomic_add(&q.tail, 1)
+	want := pos / SLOTS
+	b := sync.atomic_load(&q.tail_block)
+	if sync.atomic_load(&b.number) > want { b = sync.atomic_load(&q.head_block) }   // the hint ran past this position's block
+	for sync.atomic_load(&b.number) < want {
+		next := sync.atomic_load(&b.next)
+		if next == nil {
+			fresh := spare_take(q)
+			fresh.number = b.number + 1
+			if prev, linked := sync.atomic_compare_exchange_strong(&b.next, nil, fresh); linked { next = fresh } else { spare_put(q, fresh); next = prev }
 		}
-		slot := &block.slots[offset]
-		slot.value = v
-		sync.atomic_store(&slot.written, tail + 1)
-		if fresh != nil { spare_put(q, fresh) }   // made for a last slot another producer claimed
-		return
+		b = next
 	}
+	for {   // the hint goes forward only
+		hint := sync.atomic_load(&q.tail_block)
+		if sync.atomic_load(&hint.number) >= want { break }
+		if _, ok := sync.atomic_compare_exchange_weak(&q.tail_block, hint, b); ok { break }
+	}
+	slot := &b.slots[pos - want * SLOTS]
+	slot.value = v
+	sync.atomic_store(&slot.written, pos + 1)
 }
 
-// Any thread. Where the next push goes: mpsc_pop(q, before = this) takes only what was pushed until now.
+// Any thread. Where the next push goes: mpsc_next(q, before = this) takes only what was pushed until now.
 mpsc_mark :: proc(q: ^Mpsc($T)) -> int { return sync.atomic_load(&q.tail) }
 
-// The consumer. The oldest value; not ok when the queue is empty, that value is still being written, or it was pushed
-// at or after the mark `before`.
-mpsc_pop :: proc(q: ^Mpsc($T), before := max(int)) -> (v: T, ok: bool) {
-	block := q.head_block
-	if q.head >= before || block == nil { return }   // (nil: destroyed, and a drain posted before still runs)
-	offset := q.head % MPSC_LAP   // (never the position no push takes: the head skips it with the block)
-	slot := &block.slots[offset]
-	if sync.atomic_load(&slot.written) != q.head + 1 { return }
-	v = slot.value
-	q.head += 1
-	if offset + 1 == MPSC_BLOCK_SLOTS {
-		q.head_block = sync.atomic_load(&block.next)   // linked before this last slot was written
-		q.head += 1
-		block.next = nil
-		spare_put(q, block)
+// The consumer. The oldest value, in place (valid until the next call); nil when there is none before the mark
+// `before`, or it is still being written.
+mpsc_next :: #force_inline proc(q: ^Mpsc($T), before := max(int)) -> ^T {
+	SLOTS :: max(MPSC_BLOCK_BYTES / size_of(Mpsc_Slot(T)), 1)
+	b := q.head_block
+	if q.head >= before || b == nil { return nil }   // (nil: destroyed, and a drain posted before still runs)
+	if len(q.retired) > 0 && q.head >= q.retired[0].mark { release_retired(q) }
+	offset := q.head - b.number * SLOTS
+	if offset == SLOTS {   // the block is done: on to the next, when its first producer has linked it
+		next := sync.atomic_load(&b.next)
+		if next == nil { return nil }
+		sync.atomic_store(&q.head_block, next)
+		// a producer that holds `b` (or may still find it as the hint) claimed before this mark
+		for {
+			hint := sync.atomic_load(&q.tail_block)
+			if hint != b { break }
+			if _, ok := sync.atomic_compare_exchange_weak(&q.tail_block, b, next); ok { break }
+		}
+		append(&q.retired, Mpsc_Retired(T){b, sync.atomic_load(&q.tail)})
+		b, offset = next, 0
 	}
-	return v, true
+	slot := &b.slots[offset]
+	if sync.atomic_load(&slot.written) != q.head + 1 { return nil }
+	q.head += 1
+	return &slot.value
+}
+
+// The consumer. Whether the next value is written (mpsc_next would return it, the mark aside).
+mpsc_ready :: proc(q: ^Mpsc($T)) -> bool {
+	SLOTS :: max(MPSC_BLOCK_BYTES / size_of(Mpsc_Slot(T)), 1)
+	b := q.head_block
+	if b == nil { return false }
+	offset := q.head - b.number * SLOTS
+	if offset == SLOTS {
+		b = sync.atomic_load(&b.next)
+		if b == nil { return false }
+		offset = 0
+	}
+	return sync.atomic_load(&b.slots[offset].written) == q.head + 1
+}
+
+// The consumer. A copy of the oldest value (mpsc_next).
+mpsc_pop :: proc(q: ^Mpsc($T), before := max(int)) -> (v: T, ok: bool) {
+	p := mpsc_next(q, before)
+	if p == nil { return }
+	return p^, true
+}
+
+@(private)
+release_retired :: proc(q: ^Mpsc($T)) {
+	n := 0
+	for n < len(q.retired) && q.head >= q.retired[n].mark {
+		b := q.retired[n].block
+		b.next = nil
+		spare_put(q, b)
+		n += 1
+	}
+	remove_range(&q.retired, 0, n)
 }
 
 @(private)
@@ -122,7 +182,7 @@ spare_take :: proc(q: ^Mpsc($T)) -> ^Mpsc_Block(T) {
 	return new(Mpsc_Block(T), base.process_allocator())
 }
 
-// An emptied block (next nil) becomes a spare, or goes when there are enough.
+// A block nobody holds (next nil) becomes a spare, or goes when there are enough.
 @(private)
 spare_put :: proc(q: ^Mpsc($T), b: ^Mpsc_Block(T)) {
 	for &s in q.spares {
@@ -143,7 +203,7 @@ Inbox :: struct($T: typeid) {
 
 inbox_init :: proc(b: ^Inbox($T)) { mpsc_init(&b.queue) }
 
-// Loop thread, once closed. What is still queued is dropped (pop it first).
+// Loop thread, once closed. What is still queued is dropped (take it first).
 inbox_destroy :: proc(b: ^Inbox($T)) { mpsc_destroy(&b.queue) }
 
 // Any thread. Pushes `v` and posts `drain(data)` to the loop unless a drain is already posted. False when the inbox is
@@ -152,6 +212,7 @@ inbox_push :: proc(l: ^Loop, b: ^Inbox($T), v: T, drain: Task_Proc, data: rawptr
 	defer sync.atomic_sub(&b.gate, INBOX_PRODUCER)
 	if sync.atomic_add(&b.gate, INBOX_PRODUCER) & INBOX_CLOSED != 0 { return false }
 	mpsc_push(&b.queue, v)
+	if sync.atomic_load(&b.posted) { return true }   // (read first: no write to a line every push reads)
 	if _, first := sync.atomic_compare_exchange_strong(&b.posted, false, true); first { post(l, drain, data, by) }
 	return true
 }
@@ -159,8 +220,9 @@ inbox_push :: proc(l: ^Loop, b: ^Inbox($T), v: T, drain: Task_Proc, data: rawptr
 // Loop thread, first thing in the drain: a push from now on posts a drain of its own (this one finds it, or the next).
 inbox_begin :: proc(b: ^Inbox($T)) { sync.atomic_store(&b.posted, false) }
 
-// Loop thread (mpsc_mark, mpsc_pop).
+// Loop thread (mpsc_mark, mpsc_next, mpsc_pop).
 inbox_mark :: proc(b: ^Inbox($T)) -> int { return mpsc_mark(&b.queue) }
+inbox_next :: proc(b: ^Inbox($T), before := max(int)) -> ^T { return mpsc_next(&b.queue, before) }
 inbox_pop :: proc(b: ^Inbox($T), before := max(int)) -> (v: T, ok: bool) { return mpsc_pop(&b.queue, before) }
 
 // Loop thread. Once it returns, no push succeeds and none is under way (it waits for those inside, a few instructions
