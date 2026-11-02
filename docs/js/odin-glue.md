@@ -136,7 +136,7 @@ so a change of a mirrored struct stops the build.
 
 ## Building
 
-* `tools/build_js.ps1` compiles `native/js/odin` (the glue, with the engine of `src/engine`) to one wasm32 object (`odin
+* `src/tools/buildjs` compiles `native/js/odin` (the glue, with the engine of `src/engine`) to one wasm32 object (`odin
   build -build-mode:obj -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -o:size`) and links it with
   the `wasm-ld` of Odin's `bin` folder (`--no-entry --gc-sections`). There is no C library: `wj/libc.odin` has`malloc`/`free` (base:runtime's emmalloc over `memory.grow`), the string functions, `strtod`, an Odin `snprintf` over `any` values and `ldexp`;
   `sin`, `cos` and `pow` are imports of the host (module `libm`, `src/wasm/wasi.odin`); `exp` is fdlibm's, in `src/engine/jsrt/b_number.odin`. A symbol that is declared `foreign` and not defined is silently an import `env.*` of the module: check the imports of `wren_js_raw.wasm` after a change (only `wasi_snapshot_preview1.{clock_time_get,random_get}`, `libm.*` and the `wr_*` modules are legitimate).
@@ -145,7 +145,7 @@ so a change of a mirrored struct stops the build.
 ## Testing a ported domain
 
 Build: `cmd /c build.bat`. Then, as relevant to the domain, the subjects of the web tests: `js`, `jsdom`, `jsweb`,
-`jsload`, `workers`, `netapi`, `media` (`build\web_test.exe`, [docs/testing.md](../testing.md#the-web-tests)), `tools/test262.ps1 -NoNative -Quick`, and `tools/wpt.ps1 -Only /<folder>/ -TimeoutMs 30000`
+`jsload`, `workers`, `netapi`, `media` (`build\web_test.exe`, [docs/testing.md](../testing.md#the-web-tests)), `build/test262 -quick`, and `src/tools/wpt -Only /<folder>/ -TimeoutMs 30000`
 for the WPT folders of the domain (the folders must be in `wpt/suites.txt`). A WPT "regression" is relative to
 `wpt/expectations`, which may be older than the code: compare with a build of the commit before the port before
 concluding (url's worker `exclude=` variants and webstorage's `storage_session_window_noopener` were already

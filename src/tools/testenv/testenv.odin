@@ -1,6 +1,6 @@
 // The test server's block of ports for the end-to-end tools (tools/testserver/ports.go): every origin the tests use is
 // a fixed offset from one base port, 127.0.0.1:8765 by default (+1 https, +2 a second http origin, +3/+4 the
-// web-platform-tests origin). tools\test_all.ps1 gives each run its own block through WREN_TEST_BASE_PORT so that
+// web-platform-tests origin). src\tools\test_all gives each run its own block through WREN_TEST_BASE_PORT so that
 // several worktrees test side by side; the tools keep writing the default ports and pass every address through url(),
 // which moves them to the current block (and changes nothing on the default one).
 //

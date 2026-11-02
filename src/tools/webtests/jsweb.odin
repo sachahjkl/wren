@@ -187,7 +187,7 @@ jsweb_idb :: proc(t: ^testing.T) {
 	close(pr, tests = 11)
 }
 
-// (the two benchmarks only measure: performance runs, tools\test_all.ps1 -Perf)
+// (the two benchmarks only measure: performance runs, test_all -Perf)
 @(test)
 jsweb_idb_bench :: proc(t: ^testing.T) {
 	if base.perf_skip("web_test jsweb_idb_bench: IndexedDB micro-benchmarks") { return }

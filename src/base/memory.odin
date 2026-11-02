@@ -13,7 +13,7 @@ package base
 //
 // What the tracker does not see: the temporary allocators (per-thread arenas, freed in bulk), the virtual memory
 // arenas (base.Scope, vmem.Arena: VirtualAlloc), native libraries (Wasmtime, Lexbor, the image decoders, DirectWrite,
-// Direct3D) and memory a foreign context allocates on the heap directly. tools\endurance.ps1 watches the process's
+// Direct3D) and memory a foreign context allocates on the heap directly. src\tools\endurance watches the process's
 // private bytes and handles for those.
 
 import "base:runtime"
@@ -126,7 +126,7 @@ mem_report :: proc(title: string, file := "") -> (problems: int) {
 }
 
 // Writes the live blocks (permanent ones excluded) grouped by place of allocation to `file`: "blocks<TAB>bytes<TAB>place"
-// per line. Two snapshots of a running program, compared, show what grows (tools\endurance.ps1 -Snapshots). Nothing in
+// per line. Two snapshots of a running program, compared, show what grows (src\tools\endurance). Nothing in
 // a normal build.
 mem_snapshot :: proc(file: string) {
 	when TRACK_MEMORY {

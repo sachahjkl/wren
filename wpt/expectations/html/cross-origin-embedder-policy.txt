@@ -1,4 +1,4 @@
-# web-platform-tests expectations of Wren for html/cross-origin-embedder-policy, written by tools\wpt.ps1 -Update
+# web-platform-tests expectations of Wren for html/cross-origin-embedder-policy, written by build/wpt -update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
 /html/cross-origin-embedder-policy/about-blank-popup.https.html: ERROR
 	Cross-Origin-Embedder-Policy is inherited by about:blank popup.: FAIL

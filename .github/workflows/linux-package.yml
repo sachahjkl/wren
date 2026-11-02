@@ -25,7 +25,7 @@ jobs:
       - uses: ./.github/actions/setup
       - name: The JavaScript engine's image
         run: |
-          ./tools/build_js.ps1
+          odin run src/tools/buildjs -collection:wb=src -out:build/buildjs.exe
           if ($LASTEXITCODE) { exit 1 }
       - uses: actions/upload-artifact@v4
         with:

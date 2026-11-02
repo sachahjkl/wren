@@ -18,7 +18,7 @@ package odin_glue
 import "base:runtime"
 import "../odin/wj"
 
-// tools/build_js.ps1 -Allocator mimalloc: the engine's heap through mimalloc, the C library's own through dlmalloc
+// src/tools/buildjs -Allocator mimalloc: the engine's heap through mimalloc, the C library's own through dlmalloc
 WJ_MIMALLOC :: #config(WJ_MIMALLOC, false)
 
 // The name a script is compiled under (its address, NUL-terminated; wj_script_base_name): a longer one is cut.
@@ -245,7 +245,7 @@ wj_preinit :: proc "c" () -> i32 {
 	wj.error_event_hook = wj_fire_error_event
 	rt := new_runtime()
 	if rt == nil { return -1 }
-	// well below the C stack the module reserves (build_js.ps1: -z stack-size, 1 MiB): 256 KiB stay for what runs past
+	// well below the C stack the module reserves (src/tools/buildjs: -z stack-size, 1 MiB): 256 KiB stay for what runs past
 	// the bound before the engine unwinds (an uncaught RangeError's report, deep in a recursion through the browser)
 	wj.JS_SetMaxStackSize(rt, wj.STACK_BUDGET)
 	wj.JS_SetInterruptHandler(rt, wj.interrupt_handler, nil)

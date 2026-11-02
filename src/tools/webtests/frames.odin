@@ -1173,7 +1173,7 @@ frames_permissions_policy :: proc(t: ^testing.T) {
 	close_page(pr, min_checks = 6)
 }
 
-// Numbers, not checks: the time a frame takes to have a running document, and the memory it holds. A performance run (tools\test_all.ps1 -Perf).
+// Numbers, not checks: the time a frame takes to have a running document, and the memory it holds. A performance run (test_all -Perf).
 @(test)
 frames_measurements :: proc(t: ^testing.T) {
 	context.allocator = base.process_allocator()

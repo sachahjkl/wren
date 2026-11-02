@@ -1,5 +1,5 @@
-# Shared by the test and measurement scripts (dot-source it: . "$PSScriptRoot\test_env.ps1"): a test server on a block
-# of ports of its own, and the machine-wide locks of what cannot be shared between runs.
+# Shared by the measurement scripts (dot-source it: . "$PSScriptRoot\test_env.ps1"): a test server on a block of ports of its
+# own, and the machine-wide locks of what cannot be shared between runs. (The tests are src\tools\test_all, in Odin.)
 #
 # Test server (tools\testserver\ports.go): every origin of the tests is an offset from one base port (+0 http on
 # 127.0.0.1 and localhost, +1 https, +2 a second http origin, +3 / +4 the web-platform-tests origin). The Odin tests start
@@ -14,8 +14,8 @@
 #            into (screenshot.ps1, shots.ps1, ...). Taken by those scripts themselves, for as long as
 #            their window lives.
 #   bench    performance measurements, which other runs would skew (perf.ps1, js_bench.ps1, cfg_bench.ps1, ...).
-# Nothing headless takes a lock (tools\test_all.ps1 takes none: its server is on ports of its own and nothing in it
-# opens a window). S:\wb_wt\shared.lock, the former lock of everything, is no longer used by these scripts.
+# Nothing headless takes a lock (test_all takes none: its server is on ports of its own and its windows are on its desktop).
+# S:\wb_wt\shared.lock, the former lock of everything, is no longer used by these scripts.
 # The files: $env:WREN_LOCK_DIR, else S:\wb_wt when it exists (the agents' worktrees), else %TEMP%\wren_locks. A lock is
 # the file opened without sharing: the system lets go of it when the process ends, even killed. The holder writes who
 # it is in <name>.lock.owner, which a waiting script prints. A script that already holds a lock (it, or a script that
@@ -146,106 +146,7 @@ function Stop-WrenTestServer($Server) {
     if ($Server -and $Server.Process) { Stop-Process -Id $Server.Process.Id -Force -ErrorAction SilentlyContinue; $Server.Process.WaitForExit(5000) | Out-Null }
 }
 
-# Is build\<variant>.exe (default wren) newer than everything it is built from? A test that needs the browser built (the CI built it one step
-# before; a developer built it a minute ago) skips the 40 s that `build.bat` takes even when nothing changed: Odin compiles the whole program every time.
-# The inputs: the sources of the browser and of the toolkit (not their tests), the libraries and the script engine's image build.bat links or
-# embeds, build.bat and odin.version themselves.
-function Test-WrenBuildFresh([string]$Variant = 'wren') {
-    $root = Get-WrenRepoRoot
-    $exe = Join-Path $root "build\$Variant.exe"
-    if (-not (Test-Path $exe)) { return $false }
-    $built = [IO.File]::GetLastWriteTimeUtc($exe)
-    foreach ($f in 'build.bat', 'odin.version', 'build\js\wren_js.wasm', 'build\lexbor\lexbor.lib', 'build\native\wren_native.lib') {
-        $p = Join-Path $root $f
-        if (-not (Test-Path $p) -or [IO.File]::GetLastWriteTimeUtc($p) -gt $built) { return $false }
-    }
-    foreach ($dir in 'src', 'ext\gui_toolkit', 'api', 'sdk') {
-        $d = Join-Path $root $dir
-        if (-not (Test-Path $d)) { continue }
-        foreach ($p in [IO.Directory]::EnumerateFiles($d, '*', [IO.SearchOption]::AllDirectories)) {
-            if ($p.EndsWith('_test.odin') -or $p.Contains('\tests\') -or $p.Contains('\.git\') -or $p.EndsWith('.md') -or $p.Contains('\src\tools\e2e\') -or $p.Contains('\src\e2e\')) { continue }
-            if ([IO.File]::GetLastWriteTimeUtc($p) -gt $built) { return $false }
-        }
-    }
-    return $true
-}
-
-# Builds the browser (Variant 'dev': build\wren.exe, 'check': build\wren_check.exe) unless Test-WrenBuildFresh says it is newer than its sources, and
-# never two builds of this worktree at once: build.bat writes build\bindgen.exe, build\wren.com and the version resource, which Windows refuses to
-# a second writer (Error(013)), so the steps that run side by side (test_all -Jobs n) wait on a named mutex and then find the program built.
-# Returns $true when the program is there; otherwise $false with the build's output in $global:WrenBuildOutput and LASTEXITCODE set.
-$global:WrenBuildOutput = ''
-function Ensure-WrenBuild([string]$Variant = 'dev') {
-    $name = if ($Variant -eq 'check') { 'wren_check' } else { 'wren' }
-    if (Test-WrenBuildFresh $name) { return $true }
-    # (a build that failed in this run fails for the next step too, after its 40 s: said once and for all. test_all.ps1 sets the file; a run where a Wren of an earlier one held build\wren.exe spent 1700 s on this.)
-    $failedFile = $env:WREN_BUILD_FAILED_FILE
-    $root = Get-WrenRepoRoot
-    $sha = [Security.Cryptography.SHA1]::Create()
-    $key = ([BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($root.ToLowerInvariant().TrimEnd('\')))) -replace '-', '').Substring(0, 16)
-    $mutex = New-Object Threading.Mutex($false, "wren_build_$key")
-    try {
-        try { [void]$mutex.WaitOne() } catch [Threading.AbandonedMutexException] { }
-        if (Test-WrenBuildFresh $name) { return $true }
-        if ($failedFile -and (Test-Path -LiteralPath "$failedFile.$Variant")) {
-            $global:WrenBuildOutput = "not tried again: the build of '$Variant' failed for an earlier step of this run:`n" + [IO.File]::ReadAllText("$failedFile.$Variant")
-            $global:LASTEXITCODE = 1
-            return $false
-        }
-        Push-Location $root
-        try { $global:WrenBuildOutput = (cmd /c ".\build.bat $Variant 2>&1" | Out-String) } finally { Pop-Location }
-        if ($LASTEXITCODE -ne 0) {
-            if ($failedFile) { try { [IO.File]::WriteAllText("$failedFile.$Variant", $global:WrenBuildOutput) } catch { } }
-            return $false
-        }
-        return $true
-    } finally { $mutex.ReleaseMutex(); $mutex.Dispose() }
-}
-
-# Odin compiles a whole program every time (no incremental build): a tool that a run builds twice (test262.ps1 is called twice by test_all)
-# or that is already built does not need it again. Builds `Output` with `Build` (a script block), unless Output is newer than every source of the
-# repository's src and ext\gui_toolkit (tests aside) and was built with the same `Flags` (written beside it, Output.flags).
-function Invoke-WrenBuildIfStale([string]$Output, [string]$Flags, [scriptblock]$Build) {
-    $root = Get-WrenRepoRoot
-    $stamp = "$Output.flags"
-    $fresh = (Test-Path $Output) -and (Test-Path $stamp) -and ([IO.File]::ReadAllText($stamp) -eq $Flags)
-    if ($fresh) {
-        $built = [IO.File]::GetLastWriteTimeUtc($Output)
-        foreach ($dir in 'src', 'ext\gui_toolkit') {
-            $d = Join-Path $root $dir
-            if (-not (Test-Path $d)) { continue }
-            foreach ($p in [IO.Directory]::EnumerateFiles($d, '*', [IO.SearchOption]::AllDirectories)) {
-                if ($p.EndsWith('_test.odin') -or $p.Contains('\tests\') -or $p.Contains('\.git\') -or $p.EndsWith('.md')) { continue }
-                if ([IO.File]::GetLastWriteTimeUtc($p) -gt $built) { $fresh = $false; break }
-            }
-            if (-not $fresh) { break }
-        }
-        # the JavaScript engine's image is compiled into the programs (src\js\image: #load)
-        $image = Join-Path $root 'build\js\wren_js.wasm'
-        if ($fresh -and (Test-Path $image) -and [IO.File]::GetLastWriteTimeUtc($image) -gt $built) { $fresh = $false }
-    }
-    if ($fresh) { return $true }
-    & $Build
-    if ($LASTEXITCODE -ne 0) { return $false }
-    [IO.File]::WriteAllText($stamp, $Flags)
-    return $true
-}
-
-# Runs the end-to-end scenarios of one file of src\tools\e2e (docs\testing.md): the tests that file declares, in this program built by test_all's 'build e2e scenarios', in a process of their own.
-#   Invoke-WrenE2E 'build\e2e_test.exe' 'search'
-function Invoke-WrenE2E([string]$Exe, [string]$Scenario) {
-    $root = Get-WrenRepoRoot
-    $source = [IO.File]::ReadAllText((Join-Path $root "src\tools\e2e\$Scenario.odin"))
-    $names = @([regex]::Matches($source, '(?m)^@\(test\)\s*([A-Za-z0-9_]+)\s*::') | ForEach-Object { $_.Groups[1].Value })
-    if ($names.Count -eq 0) { "no @(test) in src\tools\e2e\$Scenario.odin"; $global:LASTEXITCODE = 1; return }
-    Ensure-WrenTestServer $root (Join-Path $root 'build\testserver.dll')
-    $o = & (Join-Path $root $Exe) "-tests:$($names -join ',')" 2>&1 | Out-String
-    $code = $LASTEXITCODE
-    $o
-    $global:LASTEXITCODE = $code
-}
-
-# Runs the tests of one subject of the web tests (src\tools\webtests\<subject>.odin, docs\testing.md) in this program, built by test_all's 'build web tests', in a process of their own; the test that ends the process with its leak check goes with them.
+# Runs the tests of one subject of the web tests (src\tools\webtests\<subject>.odin, docs\testing.md) in this program, built by test_all's 'build web tests', in a process of their own; the test that ends the process with its leak check goes with them. (tools\net_parity.ps1.)
 #   Invoke-WrenWebTests 'build\web_test.exe' 'cache'
 function Invoke-WrenWebTests([string]$Exe, [string]$Subject) {
     $root = Get-WrenRepoRoot
@@ -259,17 +160,6 @@ function Invoke-WrenWebTests([string]$Exe, [string]$Subject) {
     $global:LASTEXITCODE = $code
 }
 
-# How long the scripts sleep, by script (test_all.ps1 sets WREN_SLEEPS_FILE and prints the table at its end): a fixed wait is time lost on a fast machine and a failure on a slow one; a wait for a condition has neither.
-if ($env:WREN_SLEEPS_FILE) {
-    function global:Start-Sleep {
-        param([Parameter(Position = 0)][double]$Seconds = 0, [double]$Milliseconds = 0)
-        $ms = [int]($Seconds * 1000 + $Milliseconds)
-        [Threading.Thread]::Sleep($ms)
-        $top = Get-PSCallStack | Where-Object { $_.ScriptName } | Select-Object -Last 1
-        try { [IO.File]::AppendAllText($env:WREN_SLEEPS_FILE, "$(if ($top) { [IO.Path]::GetFileNameWithoutExtension($top.ScriptName) } else { 'script' })`t$ms`n") } catch { }
-    }
-}
-
 # No script that sources this file (tests, captures, measurements, the agents' runs) lets a Wren integrate itself with the machine's desktop:
 # Setup's offer at the start (setup.odin), the system watcher of the integration (desktop_shell.odin) and the update check (update_check.odin) read this variable. (--desktop-integration=... on the command line still works.)
 $env:WREN_DESKTOP_INTEGRATION = 'off'
@@ -279,5 +169,5 @@ $env:WREN_AUDIO_OUTPUT = 'null'
 # (src/browser/instance_shell.odin). WREN_SINGLE_INSTANCE=on, set by the one scenario that checks it (src\tools\e2e\instance.odin), turns it back on.
 $env:WREN_SINGLE_INSTANCE = 'off'
 # ... and all share the code the JavaScript engine's image compiled to (build\wasm_cache, keyed by the image and the engine's configuration, src/wasm/module_cache.odin): 5 s of CPU per
-# process otherwise, with hundreds of processes in a run. WREN_NO_TEST_CACHE=1 (test_all.ps1 -NoCache) turns it off.
+# process otherwise, with hundreds of processes in a run. WREN_NO_TEST_CACHE=1 (test_all -NoCache) turns it off.
 if ($env:WREN_NO_TEST_CACHE -eq '1') { $env:WREN_TEST_WASM_CACHE = $null } elseif (-not $env:WREN_TEST_WASM_CACHE) { $env:WREN_TEST_WASM_CACHE = Join-Path (Get-WrenRepoRoot) 'build\wasm_cache' }

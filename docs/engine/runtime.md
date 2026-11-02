@@ -19,7 +19,7 @@ Divergences are deliberate and listed at the end.
 ## Conformance (test262)
 
 `tools/jsrt_test262.ps1` builds the judge (`src/engine/jsrt/judge`) and runs the suite pinned by
-`tools/test262.ps1` in worker processes (a crash or hang costs one test), with the rules of QuickJS‑ng's
+`src/tools/test262` in worker processes (a crash or hang costs one test), with the rules of QuickJS‑ng's
 `test262.conf`. The harness files and the `includes` / `flags` of each test's front matter are honoured
 (`onlyStrict`, `raw`, `async`, `module`, `CanBlockIsFalse`); `$262` provides `createRealm`, `evalScript`,
 `detachArrayBuffer`, `gc`, `IsHTMLDDA` and real `agent`s (threads with their own runtime, sharing

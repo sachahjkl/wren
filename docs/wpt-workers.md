@@ -1,7 +1,7 @@
 # WPT `/workers/`: what still fails, and why
 
-`tools\wpt.ps1` runs the whole `/workers/` folder (its sub-folders included). Expectations: `wpt\expectations\workers.txt`
-(written by `tools\wpt.ps1 -Update -Suites <a file listing workers>`). State on 2026-10-26 (tranche 5): 295 tests,
+`src\tools\wpt` runs the whole `/workers/` folder (its sub-folders included). Expectations: `wpt\expectations\workers.txt`
+(written by `build\wpt.exe -update -suites <a file listing workers>`). State on 2026-10-26 (tranche 5): 295 tests,
 271 OK, 1021 of 1323 subtests pass (77.2 %).
 
 The 23 tests that still end in TIMEOUT (some only under the load of 8 tests at once), by cause:

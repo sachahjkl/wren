@@ -4,7 +4,7 @@ package wasm
 // multi-memory), unknown imports, the import filter, limits, interruption, and the disk cache of compiled code (hit,
 // configuration change, corrupted or forged entries). The host functions here are written against the raw interface
 // (host.odin) the way the generated trampolines are.
-// The runtime is process-wide: run with -define:ODIN_TEST_THREADS=1 (tools\test_all.ps1 does).
+// The runtime is process-wide: run with -define:ODIN_TEST_THREADS=1 (src\tools\test_all does).
 
 import "core:fmt"
 import "core:os"

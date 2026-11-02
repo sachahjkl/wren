@@ -1,4 +1,4 @@
-# web-platform-tests expectations of Wren for fetch/http-cache, written by tools\wpt.ps1 -Update
+# web-platform-tests expectations of Wren for fetch/http-cache, written by build/wpt -update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
 /fetch/http-cache/304-update.any.html: OK
 	Content-* header: PASS

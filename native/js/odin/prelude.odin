@@ -2,7 +2,7 @@
 // native/js/runtime/prelude.c): the native exotic objects and registries that replaced the old prelude JavaScript, then
 // the .js files of native/js/prelude if there are any (there are none since shadow.js went native: the folder is empty
 // and gone, and the principle is that it stays so), embedded at compile time (#load_directory) in place of the C
-// strings tools/build_js.ps1 used to generate. Each runs once, so its functions are in the image every realm starts
+// strings src/tools/buildjs used to generate. Each runs once, so its functions are in the image every realm starts
 // from.
 package odin_glue
 

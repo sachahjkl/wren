@@ -553,7 +553,7 @@ absent: licences are not mailed, the thank-you page still shows them).</p>
 <h3 id="tests"><a class="anchor" href="#tests" aria-hidden="true">#</a>Tests</h3>
 <div class="code"><div class="file">PowerShell</div><pre><code>cd licence\worker
 node --test <span class="s">"test/*.test.ts"</span>      <span class="c"># Node 22.18+ (or: bun test test/); no network, no dependency</span></code></pre></div>
-<p><code>tools\test_all.ps1</code> runs them (SKIP when neither node nor bun is installed). The tests drive the Durable Object through
+<p><code>src\tools\test_all</code> runs them (SKIP when neither node nor bun is installed). The tests drive the Durable Object through
 a fake <code>ORDERS</code> namespace (one in-memory <code>LicenseOrder</code> per id, with a fake storage and a manually-fired alarm). They
 cover the webhook signature (valid, altered, wrong secret, too old, malformed, rotation), a <code>transaction.completed</code> in
 Paddle Billing's format (<code>licence/worker/test/fixtures</code>), idempotency (a double webhook issues and mails once), the mail

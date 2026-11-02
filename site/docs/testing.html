@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>How the tests run, and how to go fast · Wren docs</title>
-<meta name="description" content="How the tests run, and how to go fast tools\test_all.ps1 runs every test of the project, step by step.">
+<meta name="description" content="How the tests run, and how to go fast src/tools/test_all runs every test of the project, step by step.">
 <link rel="icon" type="image/png" sizes="32x32" href="../img/logo-32.png">
 <link rel="stylesheet" href="../style.css">
 <link rel="stylesheet" href="../docs/docs.css">
@@ -229,69 +229,65 @@
 <li aria-current="page">How the tests run, and how to go fast</li>
 </ol></nav>
 <h1 id="how-the-tests-run-and-how-to-go-fast"><a class="anchor" href="#how-the-tests-run-and-how-to-go-fast" aria-hidden="true">#</a>How the tests run, and how to go fast</h1>
-<p><code>tools\test_all.ps1</code> runs every test of the project, step by step. This page says what it does with your time, how to
+<p><code>src/tools/test_all</code> runs every test of the project, step by step. It is an Odin program: the steps are a typed table (<code>steps.odin</code>), a run is one small state machine (<code>scheduler.odin</code>). This page says what it does with your time, how to
 ask for less of it while you work, which tools tell you where the time goes, and how to write an end-to-end test.</p>
+<p>Its first run on a checkout, and whenever you want it built again:</p>
+<div class="code"><pre><code>odin run src/tools/test_all -collection:wb=src -keep-executable -out:build/test_all.exe -- -Quick</code></pre></div>
+<p>After that <code>build\test_all.exe</code> (<code>build/test_all</code> on Linux) is the program: a compile less, and no second process waiting for it.</p>
 <h2 id="the-commands-of-a-working-day"><a class="anchor" href="#the-commands-of-a-working-day" aria-hidden="true">#</a>The commands of a working day</h2>
 <div class="table-box"><table>
 <thead><tr><th>What you want</th><th>Command</th></tr></thead>
 <tbody>
-<tr><td>Everything a commit should pass (nothing runs twice: see below)</td><td><code>tools\test_all.ps1 -Quick</code></td></tr>
-<tr><td>The same, every step really run</td><td><code>tools\test_all.ps1 -Quick -NoCache</code></td></tr>
-<tr><td>Only what depends on what you changed since master</td><td><code>tools\test_all.ps1 -Quick -Changed</code></td></tr>
-<tr><td>One step, or a family of them</td><td><code>tools\test_all.ps1 -Quick -Only 'unit tests: (url|http)$'</code></td></tr>
-<tr><td>What failed in the last run</td><td><code>tools\test_all.ps1 -Quick -Failed</code></td></tr>
-<tr><td>The names of the steps, and how many files each depends on</td><td><code>tools\test_all.ps1 -Quick -List</code></td></tr>
-<tr><td>Where the time of a run goes</td><td><code>tools\test_all.ps1 -Quick -Profile</code></td></tr>
-<tr><td>What the CI runs (with test262 as a job of its own, and <code>tools\asan.ps1</code>)</td><td><code>tools\test_all.ps1 -CI -NoAsan</code></td></tr>
-<tr><td>The full run</td><td><code>tools\test_all.ps1</code></td></tr>
+<tr><td>Everything a commit should pass (nothing runs twice: see below)</td><td><code>build\test_all.exe -Quick</code></td></tr>
+<tr><td>The same, every step really run</td><td><code>build\test_all.exe -Quick -NoCache</code></td></tr>
+<tr><td>Only what depends on what you changed since master</td><td><code>build\test_all.exe -Quick -Changed</code></td></tr>
+<tr><td>One step, or a family of them</td><td><code>build\test_all.exe -Quick -Only "unit tests: (url|http)$"</code></td></tr>
+<tr><td>What failed in the last run</td><td><code>build\test_all.exe -Quick -Failed</code></td></tr>
+<tr><td>The names of the steps, and how many files each depends on</td><td><code>build\test_all.exe -Quick -List</code></td></tr>
+<tr><td>Where the time of a run goes</td><td><code>build\test_all.exe -Quick -Profile</code></td></tr>
+<tr><td>What the CI runs (with test262 and the sanitizer as jobs of their own)</td><td><code>build\test_all.exe -CI -NoAsan</code></td></tr>
+<tr><td>The full run</td><td><code>build\test_all.exe</code></td></tr>
 </tbody>
 </table></div>
-<p>Run them with <code>powershell -NoProfile -File</code>. A step that <code>-Only</code>, <code>-Failed</code> or <code>-Changed</code> chooses brings with it the
-steps that build what it uses (<code>build\web_test.exe</code>, <code>build\e2e.wasm</code>). They all say at the end how many steps they
-left out: they are for your loop, never instead of the CI's run.</p>
+<p>A step that <code>-Only</code>, <code>-Failed</code> or <code>-Changed</code> chooses brings with it the steps that make what it needs (<code>build\web_test.exe</code>, the browser, the test server: <code>Step.needs</code> in the table). They all say at the end how many
+steps they left out: they are for your loop, never instead of the CI's run.</p>
 <h2 id="the-end-of-a-run"><a class="anchor" href="#the-end-of-a-run" aria-hidden="true">#</a>The end of a run</h2>
-<p>A run ends with the slowest steps, how many Wren processes the scripts started, how long they spent in
-fixed waits (<code>Start-Sleep</code>, by script), and then what matters:</p>
-<div class="code"><pre><code>steps: 2 FAIL, 1 FLAKY, 89 PASS, 20 CACHED; 5967 checks counted
+<p>A run ends with the slowest steps (wall clock and CPU), then what matters:</p>
+<div class="code"><pre><code>steps: 2 FAIL, 1 FLAKY, 89 PASS, 20 CACHED; 5967 checks counted; 3 explicit skip(s); skipped by their marks: 0 for the CI, 2 without -Ui
+where the time goes: 214 s of wall clock, 1650 s of steps (they overlap), 1890 s of CPU in 402 processes, 8.8 processors on average; of the 12 -Jobs slots, 61 % busy, 11 % free while a step waited for what it needs, 28 % free with nothing left to start
 FAIL unit tests: httpcache
   log: S:\...\build\test_logs\unit_tests_httpcache.log
-  again: powershell -NoProfile -File tools\test_all.ps1 -Quick -NoCache -Only 'unit\ tests:\ httpcache'
+  again: build\test_all.exe -Quick -NoCache -Only "unit tests: httpcache"
   only the failed tests: add -define:ODIN_TEST_NAMES=httpcache.test_disk_damage to its odin test
   - httpcache.test_disk_damage   expected ...</code></pre></div>
-<p>The same is left in <code>build\</code>: <code>test_report.txt</code> (that text), <code>test_steps.tsv</code> (every step's status, seconds and number of
-checks: compare two of them to see that a change lost nothing), <code>test_failed.txt</code> (what <code>-Failed</code> reads),
-<code>test_logs\</code> (the whole output of each step that did not pass), <code>test_all_times.txt</code> (durations, the order of the next run).</p>
+<p>The same is left in <code>build\</code>: <code>test_report.txt</code> (that text), <code>test_steps.tsv</code> (every step's status, seconds, CPU seconds, processes and number of checks: compare two of them to see that a change lost nothing), <code>test_failed.txt</code>
+(what <code>-Failed</code> reads), <code>test_logs\</code> (the whole output of each step, passed or not: a process writes straight into its log), <code>test_all_times.txt</code> (durations, the order of the next run).</p>
 <h2 id="what-runs-in-what-order"><a class="anchor" href="#what-runs-in-what-order" aria-hidden="true">#</a>What runs, in what order</h2>
-<p>The run happens on a Windows desktop of its own (<code>tools/test_desktop.ps1</code>): no step can take the focus, the mouse or the keyboard of the
-person at the machine, and their clicks reach no step. <code>-Ui</code> stays on the real desktop, its steps need the real input.</p>
-<p>Every step is a process of its own; <code>-Jobs</code> of them run at a time (three per four processors, at most 12; two with <code>-CI</code>), longest
-first by the durations of the last run. A step marked <code>-Light</code> mostly waits and takes no slot, up to <code>-LightJobs</code> of them (4; 2 with <code>-CI</code>).
-A test that talks to the test server starts it in its own process, on a block of ports of its own (<a href="#the-test-server">below</a>), so several worktrees test
-side by side. What a step builds comes first (the steps named <code>build *</code>). <code>-Perf</code> and <code>-Ui</code> add the steps that depend on
-the machine's speed or on a desktop (<a href="https://github.com/sachahjkl/wren/blob/master/CONTRIBUTING.md">CONTRIBUTING</a>); a full run adds the check build, the
-AddressSanitizer unit tests, the whole of WPT and test262, the network stress.</p>
+<p>The run happens on a Windows desktop of its own (<code>desktop_windows.odin</code>: the program runs itself again there): no step can take the focus, the mouse or the keyboard of the person at the machine, and their clicks reach no step. <code>-Ui</code>
+stays on the real desktop, its steps need the real input.</p>
+<p>Every step goes Blocked (what it needs is not made yet), Ready, Running (its actions one after the other), Done. One thread decides: at each tick, what has ended, what that unblocks, what may start; a step's processes write into its log, nothing reads
+them, so nothing waits on a pipe. <code>-Jobs</code> steps run at a time (three per four processors, at most 12; two with <code>-CI</code>), the longest path first: a step's duration in the last run, or its <code>weight</code>, plus the longest chain of steps that wait for it. A step marked <code>.Light</code> mostly
+waits and takes no slot, up to <code>-LightJobs</code> of them (4; 2 with <code>-CI</code>). A step whose maker failed says <code>NOT RUN</code> and takes no time. A test program's step gets <code>-tests:</code> from what its source file declares, read by <code>core:odin/parser</code>: one process, the test program itself. A step
+that compiles and runs a package is that compile and that run; a check on files (<code>lint_globals.odin</code>, the process allocators, the JavaScript engine's stamp) runs on a thread of <code>test_all</code> and costs no process at all.</p>
+<p>A step has a limit (<code>-StepTimeoutSec</code>, 900 s; hours for what is legitimately long). Past it, what its threads are doing goes to its log (the code of <code>wren ctl stacks</code>), its whole process tree is killed (on Windows a step is a job object, on Linux a process group) and the report says <code>stuck</code>. Nothing
+of a step outlives it. A test that talks to the test server starts it in its own process, on a block of ports of its own (<a href="#the-test-server">below</a>), so several worktrees test side by side. <code>-Perf</code> and <code>-Ui</code> add the steps that depend on the machine's speed or on a desktop
+(<a href="https://github.com/sachahjkl/wren/blob/master/CONTRIBUTING.md">CONTRIBUTING</a>); a full run adds the check build, the AddressSanitizer unit tests (one step per package, three at a time), the whole of WPT and test262, the network stress.</p>
+<p>On Linux <code>build/test_all</code> (<code>./build.sh check</code>) runs <code>odin check</code> for every portable package and their unit tests (<code>steps_linux.odin</code>, <a href="../docs/portability.html">portability</a>).</p>
 <h2 id="the-result-cache"><a class="anchor" href="#the-result-cache" aria-hidden="true">#</a>The result cache</h2>
-<p>With <code>-Quick</code> on a developer's machine, a step that has passed with exactly the same inputs says <code>CACHED</code> and does not
-run again (<code>tools\test_cache.ps1</code>, results in <code>build\test_cache\</code>). That is what makes the second run of the day short:
+<p>With <code>-Quick</code> on a developer's machine, a step that has passed with exactly the same inputs says <code>CACHED</code> and does not run again (<code>src\tools\test_all\cache.odin</code>, results in <code>build\test_cache\</code>). That is what makes the second run of the day short:
 a change in <code>src/url</code> reruns the packages that import <code>url</code>, and the steps that use the browser.</p>
-<p><strong>A result is found by content, never by time.</strong> Its key is the SHA-256 of:</p>
+<p><strong>A result is found by content, never by time.</strong> Its key is the hash of:</p>
 <ul>
-<li>the version Odin says it is, the run's flags (<code>-Quick</code>, <code>-CI</code>, <code>-Ui</code>, the time factor), the step's name and text, and the
-values of its variables (flags of the compile included);</li>
-<li>for a step that compiles and runs Odin packages: every file of those packages and of everything they import (<code>wb:</code>,
-<code>toolkit:</code>, <code>web:</code>, relative imports, parsed from the sources, for every build tag), what they <code>#load</code>, the libraries they
-link, the paths written in their strings (<code>"tools/build_js.ps1"</code>, <code>"examples/site/images/%s"</code>: what a test reads while it
-runs), <code>examples\</code>, <code>assets\</code>, <code>api\</code>, <code>sdk\</code>, the test server, the native libraries;</li>
-<li>for a step that runs a script or the browser: the whole tree (<code>src</code>, <code>ext\gui_toolkit</code>, <code>tools</code>, <code>wpt</code>, <code>native</code>, <code>api</code>,
-<code>sdk</code>, <code>examples</code>, <code>assets</code>, <code>build.bat</code>, <code>odin.version</code>, the libraries), tests of packages aside;</li>
-<li>for what is about the documentation or the changelog, what generates files (<code>odin run</code>), the licence Worker: all of that and
-<code>docs</code>, <code>site</code>, <code>changelog.d</code>, <code>licence</code>.</li>
+<li>the version Odin says it is, the run's flags (<code>-Quick</code>, <code>-CI</code>, <code>-Ui</code>, the time factor), the step's name, its commands with their flags;</li>
+<li>for a step that compiles and runs Odin packages (<code>Input_Kind.Packages</code>): every file of those packages and of everything they import (<code>wb:</code>, <code>toolkit:</code>, <code>web:</code>, relative imports, parsed from the sources, for every build tag), what they <code>#load</code>, the libraries they
+link, the paths written in their strings (<code>"examples/site/images/%s"</code>: what a test reads while it runs), <code>examples\</code>, <code>assets\</code>, <code>api\</code>, <code>sdk\</code>, the test server, the native libraries, and what every step inherits (<code>src\tools\test_all\env.odin</code>);</li>
+<li>for a step that runs a script or the browser (<code>.Tree</code>): the whole tree (<code>src</code>, <code>ext\gui_toolkit</code>, <code>tools</code>, <code>wpt</code>, <code>native</code>, <code>api</code>, <code>sdk</code>, <code>examples</code>, <code>assets</code>, <code>build.bat</code>, <code>odin.version</code>, the libraries), tests of packages aside;</li>
+<li>for what is about the documentation or the changelog, what generates files, the licence Worker (<code>.Everything</code>): all of that and <code>docs</code>, <code>site</code>, <code>changelog.d</code>, <code>licence</code>.</li>
 </ul>
-<p>What cannot be resolved (a path with a variable in it, an unknown collection) takes the whole tree: an input too many
-costs a rerun, one too few could hide a failure. <code>tools\test_cache_test.ps1</code>, itself a step, compares the packages found
-with the compiler's own import graph (<code>-show-import-graph</code>) and checks that a change of each kind of input changes a key,
-and that a change of something else does not.</p>
-<p>Only a pass is kept, and only if the key computed when the step has ended is the one it started with: a file edited during
+<p>What cannot be resolved (an unknown collection, an import that names no folder) takes the whole tree: an input too many costs a rerun, one too few could hide a failure. The tests of <code>src/tools/test_all</code>, themselves a step, compare the packages found with the compiler's
+own import graph (<code>-show-import-graph</code>) and check that a change of each kind of input changes a key, and that a change of something else does not.</p>
+<p>A file is read once in a run, unless its stamp moves (one walk of the tree between two steps, whatever the number of keys); a full cache costs a second.
+Only a pass is kept, and only if the key computed when the step has ended is the one it started with: a file edited during
 the step leaves no result. A result of a step that built a program stands only while that program is on the disk as the step
 left it. A result lasts 7 days: what no file says (a certificate that expires, a date) gets its chance.</p>
 <p>What a cache cannot see: a test that passes one time in two has passed. That is the price, and why:</p>
@@ -301,22 +297,23 @@ left it. A result lasts 7 days: what no file says (a certificate that expires, a
 </ul>
 <h2 id="the-shared-code-of-test-processes"><a class="anchor" href="#the-shared-code-of-test-processes" aria-hidden="true">#</a>The shared code of test processes</h2>
 <p>The JavaScript engine's image compiles in 5 s of CPU, once in each process, and a run starts hundreds of them, each
-without a profile or with a throwaway one. <code>tools\test_env.ps1</code> sets <code>WREN_TEST_WASM_CACHE</code> to <code>build\wasm_cache</code>: all
+without a profile or with a throwaway one. <code>src\tools\test_all\env.odin</code> sets <code>WREN_TEST_WASM_CACHE</code> to <code>build\wasm_cache</code> (<code>tools\test_env.ps1</code> for a script): all
 the test processes then read the disk cache of the engine (<code>src/wasm/module_cache.odin</code>: keyed by the image and the
 engine's configuration, authenticated), 0.2 s of CPU instead of 5. The tests of that cache itself (<code>wasm.disk_cache</code>) keep
 their own. A release ignores the variable. <code>-NoCache</code> turns this off too.</p>
 <h2 id="wpt"><a class="anchor" href="#wpt" aria-hidden="true">#</a>WPT</h2>
 <p>A run of WPT spent 58 % of its time on tests that time out (1300 of 8800, 50 of them for 60 s): a test expected to time out
 waits for what will not come, and the page of a test that can do nothing more is given a second to prove it.</p>
-<p>With <code>-Quick</code>, and <code>tools\wpt.ps1 -FastTimeouts</code> for a whole run:</p>
+<p><code>src/tools/wpt</code> is the whole of a run: it fetches the pinned checkout and verifies it, starts the test server in its own process, runs the tests, compares them with <code>wpt\expectations</code>, gives what regressed its second chance. <code>build\wpt.exe -quick</code>, <code>-only &lt;prefix&gt;</code>, <code>-update</code>, <code>-reftests</code>, <code>-fetch</code>, <code>-update-manifest</code> (top of <code>src/tools/wpt/main.odin</code>). test_all's step builds it; by hand <code>odin build src/tools/wpt -collection:wb=src -vet -o:speed -use-separate-modules -out:build/wpt.exe -extra-linker-flags:/STACK:33554432</code>. <code>src/tools/test262</code> is the same for test262: <code>build\test262.exe [-quick] [-update] [-jit ...]</code>.</p>
+<p>With <code>-quick</code>, and <code>-fast-timeouts</code> for a whole run:</p>
 <ul>
 <li>a test the expectations say times out gets 3 s (<code>-timeout-cap</code>), a page that can do nothing more 300 ms (<code>-idle</code>);</li>
 <li>all that fails then goes through the second chance: run again together, without either, with 4 times the limit and the
 engine's limit on one script out of the way, and what still fails alone. Only a test that regresses there counts.</li>
 </ul>
 <p>So a shorter limit can cost a rerun, not hide a regression. What it does not see is a test that has <strong>begun</strong> to pass: a
-whole run without it does, and <code>-Update</code> (which refuses the cap) records it. <code>-Only</code> keeps the whole limits too: someone is
-looking at that test. <code>-NoFastTimeouts</code> turns it off under <code>-Quick</code>.</p>
+whole run without it does, and <code>-update</code> (which refuses the cap) records it. <code>-only</code> keeps the whole limits too: someone is
+looking at that test. <code>-no-fast-timeouts</code> turns it off under <code>-quick</code>.</p>
 <h2 id="writing-an-end-to-end-test"><a class="anchor" href="#writing-an-end-to-end-test" aria-hidden="true">#</a>Writing an end-to-end test</h2>
 <p>An end-to-end test is an Odin <code>@(test)</code> procedure of <code>src/tools/e2e</code>, on Odin's own test runner. It calls the browser directly: the program
 links package <code>browser</code>, the browser runs in the test's thread and process, and a barrier runs its loop, turn by turn, until what it waits for
@@ -341,7 +338,7 @@ the_title_shows :: <span class="k">proc</span>(t: ^testing.T) {
 }</code></pre></div>
 <p>The rules:</p>
 <ul>
-<li><strong>One file per subject</strong>, <code>src/tools/e2e/&lt;name&gt;.odin</code>, with its checks kept as they mean. A file's tests are one step of <code>test_all</code>: <code>Step '...' { Invoke-WrenE2E 'build\e2e_test.exe' '&lt;name&gt;' }</code>, with its marks (<code>-UiOnly</code>, <code>-NoCI</code>, <code>-Weight</code>). <code>Invoke-WrenE2E</code> finds the tests in the file.</li>
+<li><strong>One file per subject</strong>, <code>src/tools/e2e/&lt;name&gt;.odin</code>, with its checks kept as they mean. A file's tests are one step of <code>test_all</code>: <code>e2e_step(&amp;t, "...", "&lt;name&gt;", {.No_CI}, weight = 10)</code> in <code>src/tools/test_all/steps.odin</code>, with its marks (<code>.Ui_Only</code>, <code>.No_CI</code>, <code>.Light</code>, <code>browser = true</code>). The step runs the tests the file declares.</li>
 <li><strong>An action that fails ends the test there</strong>, saying where it was called from, what failed and the folder of what it left (<code>build/e2e/&lt;test&gt;/</code>: <code>failure.png</code>, <code>failure_console.txt</code>, the test's own <code>e2e.shot</code>s, kept only when it failed). So a scenario checks no return. Checks are <code>testing.expect*</code>: they go on.</li>
 <li><strong>Barriers, never sleeps.</strong> <code>wait_load</code>, <code>wait_frames(s, n)</code>, <code>wait_selector</code>, <code>wait_js(s, condition)</code>, <code>wait_chrome_still</code> (the interface's animations have ended), <code>wait_until(s, ready_proc, "what")</code> and <code>wait_until(s, data, ready_proc, "what")</code>. Each has <code>deadline := DEFAULT_DEADLINE</code>, which only ends a failing run. Wait for the state itself, not for a number of frames: <code>wait_frames</code> is for what is done within a frame or two by construction.</li>
 <li><strong>The browser's animations go by frames</strong> (<code>control_begin</code>: each frame is one of the usual length for them, however fast it is made), so a 500 ms animation is 30 frames. What a page does on a real timer is still real time: the preference that shortens it (<code>forms.caret.blink_ms</code>) rather than a wait for it.</li>
@@ -357,11 +354,11 @@ the_title_shows :: <span class="k">proc</span>(t: ^testing.T) {
 <ul>
 <li><strong>Nothing left allocated</strong>: <code>build\e2e_test_check.exe</code> is the same program built with <code>-define:WREN_TRACK_MEMORY=true</code> (full runs: every allocation of the process goes through the tracker of <code>base</code>). When a test's browser has ended and the test has let go of what it holds, whatever is still allocated, or was freed twice, is listed and fails the test (<code>end_of_test</code>). Only scenarios about what a session holds (workers, service workers, file systems, the back/forward cache, partitions) run there: a step of <code>test_all</code> says which.</li>
 </ul>
-<p>Running them by hand: <code>build\e2e_test.exe -tests:the_title_shows</code> (no window opens, no other desktop is needed, except for a scenario with <code>hidden = true</code>), or <code>test_all -Quick -NoCache -Only 'src.tools.e2e'</code>. <code>WREN_E2E_TRACE=1</code> prints every call with its time, <code>WREN_PHASES=1</code> the phases of a start and an end of the browser (a real <code>wren.exe</code> says them too).</p>
+<p>Running them by hand: <code>build\e2e_test.exe -tests:the_title_shows</code> (no window opens, no other desktop is needed, except for a scenario with <code>hidden = true</code>), or <code>build\test_all.exe -Quick -NoCache -Only "src.tools.e2e"</code>. <code>WREN_E2E_TRACE=1</code> prints every call with its time, <code>WREN_PHASES=1</code> the phases of a start and an end of the browser (a real <code>wren.exe</code> says them too).</p>
 <p>Two things <code>core:testing</code> does not give: a test stopped by a signal (<code>testing.fail_now</code>, a panic) can happen once per run on Windows, the runner lets go of a lock it does not hold, and the next signal waits for ever; <code>e2e</code> stops its tests through a limit of 0 instead (hence the "Test timed out" after a failure's message). And checks that pass say nothing: <code>test_all</code> counts tests here, not checks.</p>
 <h2 id="writing-a-test-that-is-quick"><a class="anchor" href="#writing-a-test-that-is-quick" aria-hidden="true">#</a>Writing a test that is quick</h2>
 <p>The rules are in <a href="https://github.com/sachahjkl/wren/blob/master/CONTRIBUTING.md">CONTRIBUTING</a>: wait for a condition, with a limit that only ends a failing run (the barriers above, <code>wren
-ctl wait</code> for a script, <code>Invoke-WrenBuildIfStale</code>, <code>Ensure-WrenBuild</code>), one shared Wren between scenarios. And check what a wait returns:
+ctl wait</code> for a script), one shared Wren between scenarios. And check what a wait returns:
 a tool that waited for a line nobody logs spent its 120 s limit in every run, and passed.</p>
 <h2 id="virtual-time"><a class="anchor" href="#virtual-time" aria-hidden="true">#</a>Virtual time</h2>
 <p><code>host.Loop</code> reads its time through <code>host.now_ns</code>. A test gives the loop a <code>host.Virtual_Clock</code> (<code>clock_virtual</code>) and moves it:
@@ -391,7 +388,7 @@ history_scroll_restoration :: <span class="k">proc</span>(t: ^testing.T) {
 <p>The rules, besides those of the <a href="#writing-an-end-to-end-test">end-to-end tests</a>:</p>
 <ul>
 <li><strong>One world, one test at a time</strong> (<code>-define:ODIN_TEST_THREADS=1</code>): what the process keeps (the image cache, the stores, the timeline) binds to the first loop it sees, so a loop per test would leave it on a dead one. <code>begin</code> makes the world as far as the test asks; the last test, <code>zz_the_process_ends_with_nothing_left</code>, undoes it all and fails on anything still allocated.</li>
-<li><strong>A step of <code>test_all</code> is a subject in a process of its own</strong>: <code>Step '...' { Invoke-WrenWebTests 'build\web_test.exe' 'cache' }</code>, with its marks. By hand: <code>build\web_test.exe -tests:cache_freshness,zz_the_process_ends_with_nothing_left</code>, on a desktop nobody uses (<code>tools\test_desktop.ps1 -Command "..."</code>). The program with no name runs every subject in one process.</li>
+<li><strong>A step of <code>test_all</code> is a subject in a process of its own</strong>: <code>web_step(&amp;t, "...", "cache", {.Light})</code> in <code>src/tools/test_all/steps.odin</code>, with its marks. By hand: <code>build\web_test.exe -tests:cache_freshness,zz_the_process_ends_with_nothing_left</code>, on a desktop nobody uses (<code>tools\test_desktop.ps1 -Command "..."</code>). The program with no name runs every subject in one process.</li>
 <li><strong>No result is read from the console.</strong> A page's script talks to its test through the functions of <code>wrenTest</code> (<code>api/testhost.widl</code>, <code>native/js/odin/test_host.odin</code>, <code>src/page/test_host.odin</code>, <code>src/tools/testhost</code>), which exists only in a page given a test host: <code>testBegin</code>, <code>testEnd</code>, <code>check</code>, <code>measure</code>, <code>note</code>, <code>signal</code>, <code>skip</code>, <code>done</code>. What is uncaught fails the page unless the test expects it (<code>pr.expect_uncaught</code>).</li>
 <li><strong>A page declares what it runs.</strong> <code>close_page</code> (<code>testhost.finish</code>) fails a section that ran another number of tests than it declares (<code>tests = 8</code>), or none, or fewer checks than it declares (<code>min_checks</code>), a section whose script never said <code>done()</code> when it is the one to end, a test that checked nothing, and a <code>skip("webgl-adapter" | "av1-decoder", why)</code> that the program does not find true of the machine: it makes a context of its own for the first (only "no graphics adapter" from the GPU process counts as none), asks the media backend for the second. A true skip prints <code>SKIP [section] ...</code>, is counted, and <code>test_all</code> lists it at the end of a run.</li>
 <li><strong>Barriers, not time.</strong> <code>wait_until(t, what, data, ready)</code>, <code>wait_note</code>, <code>wait_done</code> run the loop until a state holds. What a loop's timer does or must not do yet goes by <code>virtual_clock(t)</code> and <code>host.clock_advance</code> (a page's <code>setTimeout</code> follows it). Only what a real clock on the other side decides (the <code>Date</code> of an HTTP answer) waits for that exact condition in real time.</li>
@@ -400,20 +397,17 @@ history_scroll_restoration :: <span class="k">proc</span>(t: ^testing.T) {
 <p><code>tools/testserver</code> is a Go package (Go's HTTP/2, quic-go's HTTP/3, TLS). It is a library first:</p>
 <ul>
 <li><code>build\testserver.dll</code> (<code>go build -buildmode=c-shared</code> of <code>tools/testserver/cdll</code>, which needs a C compiler for Go's cgo), loaded by <code>src/testserver</code>. An Odin test calls <code>e2e.test_server(t)</code>, or <code>serve(t)</code> in the web tests: it listens when that returns, with its base port, on the threads of Go's runtime in the test's own process. No process to start or to stop, no file to read: it goes with the process. One per process; each call forgets what the handlers counted, as a new server would.</li>
-<li><code>build\testserver.exe</code> (<code>tools/testserver/cmd/testserver</code>), a thin main over the same package, for what is not Odin: <code>tools\test_env.ps1</code> <code>Start-WrenTestServer</code> for the scripts (<code>wpt.ps1</code>, which runs it as <code>wptserver.exe</code>, <code>perf.ps1</code>, <code>endurance.ps1</code>, <code>net_stress.ps1</code>, <code>remote_bench.ps1</code>...; it writes its base port to <code>-port-file</code> once it listens), <code>demo.bat</code> and the release's extras.</li>
+<li><code>build\testserver.exe</code> (<code>tools/testserver/cmd/testserver</code>), a thin main over the same package, for what is not Odin: <code>tools\test_env.ps1</code> <code>Start-WrenTestServer</code> for the scripts (<code>perf.ps1</code>, <code>remote_bench.ps1</code>...; it writes its base port to <code>-port-file</code> once it listens), <code>test_all</code>'s network stress, <code>demo.bat</code> and the release's extras. <code>src/tools/wpt</code> and <code>src/tools/endurance</code> use the library, in their own process.</li>
 </ul>
 <p>Every origin is an offset from the base port (<code>tools/testserver/ports.go</code>): +0 http on 127.0.0.1 and localhost, +1 https, +2 a second http origin, +3 and +4 the web-platform-tests origin, +5 to +9 the transports. A block is free or taken as a whole; a test takes the next free one from a port derived from the worktree's path. A test writes the default ports (<code>testenv.url("http://127.0.0.1:8765/x")</code>) and they move with the block, in the text files of <code>/site/</code> too.</p>
 <h2 id="debugging-the-tests-time"><a class="anchor" href="#debugging-the-tests-time" aria-hidden="true">#</a>Debugging the tests' time</h2>
 <ul>
-<li><code>tools\test_profile.ps1 -Out build\prof\x -Run "&lt;command&gt;"</code> (or <code>test_all -Profile</code>): every process of the tree, by program,
-count, wall and CPU seconds; the use of the processors second by second, the tree's and the rest of the machine's.
-<code>-Compare a -With b</code> compares two runs; <code>build\prof\x.processes.tsv</code> has each process and its command line. Read the CPU
-seconds when other runs share the machine: they barely move, the wall clock does.</li>
-<li><code>WREN_SLEEPS_FILE</code>, set by <code>test_all</code>: the fixed waits of the scripts, by script.</li>
-<li><code>WREN_STARTS_FILE</code>, set by <code>test_all</code>: the Wren processes they start.</li>
+<li><code>build\test_all.exe -Quick -Profile</code>: every process of a run, by program, count, wall and CPU seconds, told by the job objects of the steps with nothing sampled; the use of the processors second by second, the run's and the rest of the machine's.
+<code>-ProfileCompare a b</code> compares two runs, <code>-ProfileReport a</code> says one again; <code>build\prof\&lt;time&gt;.processes.tsv</code> has each process and its command line. Read the CPU seconds when other runs share the machine: they barely move, the wall clock does.</li>
+<li><code>build\test_steps.tsv</code> and the <code>where the time goes</code> line of any run: each step's CPU and processes; the slots busy, free for a step that waits, free for lack of work.</li>
 <li><code>wren ctl wait load|idle|stable|quiet|selector|function|frames</code>, <code>wren ctl stats</code>, <code>wren ctl reset</code>, <code>wren ctl checkpoint</code>:
 <a href="../docs/remote.html">Remote control</a>.</li>
-<li>A step that fails under load and passes alone is marked <code>-Flaky</code>: it says what failed, and fails nothing.</li>
+<li>A step that fails under load and passes alone is marked <code>.Flaky</code>: it says what failed, and fails nothing.</li>
 </ul>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../docs/crash-reports.html"><span>Previous</span><strong>Crash reports and the symbols of a build</strong></a>

@@ -116,7 +116,7 @@
 <div class="demo"><h3><span class="off">10 000 elements</span></h3><p>The large page of the profiler's scenarios (load, scroll, hover, resize): made by <code>tools\perf.ps1</code> in <code>build\perf\</code>.</p><p class="where">made by <code>tools\perf.ps1</code> in <code>build\perf\</code> of the repository; about:demos links to it once it is there</p></div>
 <div class="demo"><h3><span class="off">50 000 elements</span></h3><p>The largest page of the profiler's scenarios, made by <code>tools\perf.ps1</code> in <code>build\perf\</code>.</p><p class="where">made by <code>tools\perf.ps1</code> in <code>build\perf\</code> of the repository; about:demos links to it once it is there</p></div>
 <h2 id="tests">End-to-end tests</h2>
-<p class="intro">Run without a window by <code>tools\test_all.ps1</code> (from the repository, with the test server it starts itself).</p>
+<p class="intro">Run without a window by <code>src\tools\test_all</code> (from the repository, with the test server it starts itself).</p>
 <div class="demo"><h3><a href="frames_child.html">Frames: the child page</a></h3><p>The document loaded in the frames of the frames demo.</p></div>
 <div class="demo"><h3><a href="history/long.html">History: a long page</a></h3><p>Scroll the page and its box, fill the form, follow the link, come back: from the back/forward cache at once, or loaded again and restored once tall enough (its second part arrives late). <code>src\tools\e2e\history.odin</code> does it and times both.</p></div>
 <div class="demo"><h3><a href="history/next.html">History: the next page</a></h3><p>The page the long one links to: the back button's menu (right click) lists the way back.</p></div>

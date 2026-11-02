@@ -1,4 +1,4 @@
-# web-platform-tests expectations of Wren for wasm/serialization/module, written by tools\wpt.ps1 -Update
+# web-platform-tests expectations of Wren for wasm/serialization/module, written by build/wpt -update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
 /wasm/serialization/module/broadcastchannel-success-and-failure.html: TIMEOUT
 	WebAssembly.Module cannot cross agent clusters, BroadcastChannel edition: TIMEOUT

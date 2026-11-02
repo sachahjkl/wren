@@ -2,7 +2,7 @@
 // native/js/runtime/web_strategy.c as the first proof that Wren's JavaScript glue can be written in Odin (see
 // docs/js/odin-glue.md and native/js/odin_spike for the link proof). Behaviour and the wjr_* symbol names are identical
 // to the C version, so the generated binding table (native/js/gen/bindings.c) resolves to these without any change; the
-// C file is dropped from the build (tools/build_js.ps1).
+// C file is dropped from the build (src/tools/buildjs).
 //
 // A strategy is a platform object whose engine-owned data is a highWaterMark. The size function of a kind is the same
 // object for every strategy of that kind in a realm, kept on the global's hidden state (web_extra), so scripts get an

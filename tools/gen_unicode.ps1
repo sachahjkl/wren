@@ -1,5 +1,5 @@
 # Fetch the pinned Unicode Character Database files, verify their SHA-256, then run the Odin generator that writes
-# src/engine/unicode/tables_generated.odin. Same idiom as tools/build_js.ps1 (pinned URL + SHA, cached download).
+# src/engine/unicode/tables_generated.odin. Same idiom as src/tools/buildjs (pinned URL + SHA, cached download).
 #
 # The Unicode version and every file's SHA-256 are pinned below. A download whose hash does not match is deleted
 # and the script fails: the generated tables are reproducible from the authoritative source, never copied from

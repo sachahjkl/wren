@@ -368,7 +368,7 @@ urlbar_thread_build :: proc(t: ^testing.T) {
 
 // 50 000 visits of 12 000 addresses: a query per letter typed stays under 2 ms (an optimized build; the test build is
 // not: it checks a looser bound). The index's contents are always checked; the times are a performance test (base.perf_skip:
-// tools\test_all.ps1 -Perf), printed when they run.
+// test_all -Perf), printed when they run.
 @(test)
 urlbar_speed :: proc(t: ^testing.T) {
 	context.allocator = runtime.heap_allocator()   // the browser's (not the test runner's tracking allocator)

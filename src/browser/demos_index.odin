@@ -105,7 +105,7 @@ demos_index_html :: proc(allocator := context.temp_allocator) -> string {
 		index_escape(&sb, DEMO_THEME_TITLES[theme])
 		strings.write_string(&sb, "</h2>\n")
 		if theme == .E2e {
-			strings.write_string(&sb, "<p class=\"intro\">Run without a window by <code>tools\\test_all.ps1</code> (from the repository, with the test server it starts itself).</p>\n")
+			strings.write_string(&sb, "<p class=\"intro\">Run without a window by <code>src\\tools\\test_all</code> (from the repository, with the test server it starts itself).</p>\n")
 		}
 		for d in DEMOS {
 			if d.theme != theme { continue }

@@ -1,4 +1,4 @@
-# web-platform-tests expectations of Wren for css/css-shadow, written by tools\wpt.ps1 -Update
+# web-platform-tests expectations of Wren for css/css-shadow, written by build/wpt -update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
 /css/css-shadow/css-scoping-shadow-dynamic-remove-style-detached.html: OK
 	Invalidation of style data while ShadowRoot is disconnected.: PASS

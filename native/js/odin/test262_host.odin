@@ -1,8 +1,8 @@
 // test262_host.odin: the host side of test262 inside the engine module, for src/tools/test262 only (ported from
 // native/js/runtime/test262_host.c, same exports).
 //
-// Compiled to nothing unless WREN_TEST262 is set: tools/test262.ps1 builds a separate image of the engine
-// (tools/build_js.ps1 -Out build\js-test262 -ExtraFlags -DWREN_TEST262=1, which build_js.ps1 hands to the Odin glue as
+// Compiled to nothing unless WREN_TEST262 is set: src/tools/test262 builds a separate image of the engine
+// (src/tools/buildjs -Out build\js-test262 -ExtraFlags -DWREN_TEST262=1, which src/tools/buildjs hands to the Odin glue as
 // -define:WREN_TEST262=true), identical to the shipped one plus this file, so that the conformance measured is the
 // shipped engine's. The browser's image never contains it.
 //

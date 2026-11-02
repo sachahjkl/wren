@@ -1,4 +1,4 @@
-# web-platform-tests expectations of Wren for html/browsers/history, written by tools\wpt.ps1 -Update
+# web-platform-tests expectations of Wren for html/browsers/history, written by build/wpt -update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
 /html/browsers/history/joint-session-history/joint-session-history-iframe-state.html: OK
 	Joint session history should not override parent's state.: PASS

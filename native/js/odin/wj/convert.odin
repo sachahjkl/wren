@@ -1,6 +1,6 @@
 // convert.odin: Web IDL's ECMAScript conversions (https://webidl.spec.whatwg.org/#es-type-mapping) on QuickJS-ng,
 // and the generic members every interface may have, ported from native/js/engine/qjs_convert.c (dropped from the build,
-// tools/build_js.ps1 $odinified). They are exported under their C names (wj.h declares them extern, not inline): the
+// src/tools/buildjs $odinified). They are exported under their C names (wj.h declares them extern, not inline): the
 // generated bindings and the runtime C call them by name, and a ported domain calls them as wj.wj_to_str and so on, like
 // any other helper of this package.
 //

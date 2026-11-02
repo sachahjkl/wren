@@ -1,4 +1,4 @@
-# web-platform-tests expectations of Wren for html/cross-origin-opener-policy, written by tools\wpt.ps1 -Update
+# web-platform-tests expectations of Wren for html/cross-origin-opener-policy, written by build/wpt -update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
 /html/cross-origin-opener-policy/blob-popup.https.html: ERROR
 	Cross-Origin-Opener-Policy and a blob URL popup: FAIL

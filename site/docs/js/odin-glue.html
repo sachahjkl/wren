@@ -349,7 +349,7 @@ are gone with the C, and <code>engine.odin</code> still asserts the layout on th
 so a change of a mirrored struct stops the build.</p>
 <h2 id="building"><a class="anchor" href="#building" aria-hidden="true">#</a>Building</h2>
 <ul>
-<li><code>tools/build_js.ps1</code> compiles <code>native/js/odin</code> (the glue, with the engine of <code>src/engine</code>) to one wasm32 object (<code>odin
+<li><code>src/tools/buildjs</code> compiles <code>native/js/odin</code> (the glue, with the engine of <code>src/engine</code>) to one wasm32 object (<code>odin
 build -build-mode:obj -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -o:size</code>) and links it with
 the <code>wasm-ld</code> of Odin's <code>bin</code> folder (<code>--no-entry --gc-sections</code>). There is no C library: <code>wj/libc.odin</code> has<code>malloc</code>/<code>free</code> (base:runtime's emmalloc over <code>memory.grow</code>), the string functions, <code>strtod</code>, an Odin <code>snprintf</code> over <code>any</code> values and <code>ldexp</code>;
 <code>sin</code>, <code>cos</code> and <code>pow</code> are imports of the host (module <code>libm</code>, <code>src/wasm/wasi.odin</code>); <code>exp</code> is fdlibm's, in <code>src/engine/jsrt/b_number.odin</code>. A symbol that is declared <code>foreign</code> and not defined is silently an import <code>env.*</code> of the module: check the imports of <code>wren_js_raw.wasm</code> after a change (only <code>wasi_snapshot_preview1.{clock_time_get,random_get}</code>, <code>libm.*</code> and the <code>wr_*</code> modules are legitimate).</li>
@@ -357,7 +357,7 @@ the <code>wasm-ld</code> of Odin's <code>bin</code> folder (<code>--no-entry --g
 </ul>
 <h2 id="testing-a-ported-domain"><a class="anchor" href="#testing-a-ported-domain" aria-hidden="true">#</a>Testing a ported domain</h2>
 <p>Build: <code>cmd /c build.bat</code>. Then, as relevant to the domain, the subjects of the web tests: <code>js</code>, <code>jsdom</code>, <code>jsweb</code>,
-<code>jsload</code>, <code>workers</code>, <code>netapi</code>, <code>media</code> (<code>build\web_test.exe</code>, <a href="../../docs/testing.html#the-web-tests">docs/testing.md</a>), <code>tools/test262.ps1 -NoNative -Quick</code>, and <code>tools/wpt.ps1 -Only /&lt;folder&gt;/ -TimeoutMs 30000</code>
+<code>jsload</code>, <code>workers</code>, <code>netapi</code>, <code>media</code> (<code>build\web_test.exe</code>, <a href="../../docs/testing.html#the-web-tests">docs/testing.md</a>), <code>build/test262 -quick</code>, and <code>src/tools/wpt -Only /&lt;folder&gt;/ -TimeoutMs 30000</code>
 for the WPT folders of the domain (the folders must be in <code>wpt/suites.txt</code>). A WPT "regression" is relative to
 <code>wpt/expectations</code>, which may be older than the code: compare with a build of the commit before the port before
 concluding (url's worker <code>exclude=</code> variants and webstorage's <code>storage_session_window_noopener</code> were already

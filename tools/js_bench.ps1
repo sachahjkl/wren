@@ -4,7 +4,7 @@
 #   powershell -NoProfile -File tools\js_bench.ps1 [-Mode octane|dom|startup|all] [-Runs 3] [-Benchmarks a,b]
 #       [-Engines wasm,native,edge] [-OutDir build\bench]
 # Pinned inputs: Octane at commit $OctaneCommit of github.com/chromium/octane (every file by SHA-256 below), qjs.exe of
-# the QuickJS-ng release the engine is built from (version from tools\build_js.ps1, SHA-256 below). Edge is the installed
+# the QuickJS-ng release the engine is built from (version from src\tools\buildjs, SHA-256 below). Edge is the installed
 # one (its version is printed). Each figure is the median of -Runs runs (a fresh realm or process each); Octane scores
 # are Octane's own (higher is better, geometric mean of each benchmark's runs).
 # Outputs in -OutDir: octane.md, dom.md, startup.md (Markdown tables) and the raw lines of every run (*.log).
@@ -157,8 +157,8 @@ function Run-Octane {
         }
     }
     if ($Engines -contains 'native') {
-        $buildJs = Get-Content (Join-Path $PSScriptRoot 'build_js.ps1') -Raw
-        $qv = [regex]::Match($buildJs, "\`$QjsVersion = '([^']+)'").Groups[1].Value
+        $buildJs = Get-Content (Join-Path $PSScriptRoot '..\src\tools\tooling\js_engine.odin') -Raw
+        $qv = [regex]::Match($buildJs, 'QJS_VERSION :: "([^"]+)"').Groups[1].Value
         $qjs = Join-Path $root "build\tools\qjs-$qv-windows-x86_64.exe"
         Get-Pinned "https://github.com/quickjs-ng/quickjs/releases/download/v$qv/qjs-windows-x86_64.exe" $qjs $QjsExeSha256
         foreach ($n in $names) {

@@ -1,4 +1,4 @@
-# web-platform-tests expectations of Wren for fetch/api/response, written by tools\wpt.ps1 -Update
+# web-platform-tests expectations of Wren for fetch/api/response, written by build/wpt -update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
 /fetch/api/response/json.any.html: OK
 	Ensure UTF-16 results in an error: PASS

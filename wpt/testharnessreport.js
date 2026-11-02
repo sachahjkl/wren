@@ -26,7 +26,7 @@
     }
     var text = JSON.stringify(out);
     log("WPTRESULT " + text);
-    // the same in the document, for a browser whose console the runner cannot read (tools\wpt.ps1 -Edge reads it
+    // the same in the document, for a browser whose console the runner cannot read (build\wpt.exe -edge reads it
     // with Edge's --dump-dom)
     try {
       if (typeof document !== "undefined" && document.documentElement) {

@@ -13,7 +13,7 @@ import "wb:wasm"
 THIRD_PARTY_MD :: #load("../../THIRD_PARTY.md", string)
 
 // Versions the build info shows that no Odin constant holds (the others: ui.VERSION, wasm.WASMTIME_VERSION).
-// third_party_test.odin checks it against tools\build_js.ps1.
+// third_party_test.odin checks it against src\tools\buildjs.
 QUICKJS_VERSION :: "0.17.0"
 ODIN_VERSION_FILE :: #load("../../odin.version", string)
 

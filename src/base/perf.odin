@@ -5,7 +5,7 @@ import "core:os"
 
 // The one place that decides whether the tests that measure time run. A test that asserts on a duration, a CPU time, a throughput,
 // a latency or a count of frames in a window of time depends on the machine, and the CI runners are of unknown speed: those tests
-// are opt-in (tools\test_all.ps1 -Perf, or WREN_PERF=1 in the environment) and never run when the CI variable is set, whatever
+// are opt-in (test_all -Perf, or WREN_PERF=1 in the environment) and never run when the CI variable is set, whatever
 // WREN_PERF says. A test that waits for something that must come, with a generous time limit that only ends a failing run, is not
 // a performance test and does not ask.
 //
@@ -27,7 +27,7 @@ perf_skip :: proc(what: string) -> bool {
 	if os.get_env("CI", context.temp_allocator) != "" {
 		fmt.printfln("perf: skipped on the CI (the CI variable is set): %s", what)
 	} else {
-		fmt.printfln("perf: skipped, run with -Perf (tools\\test_all.ps1 -Perf, or WREN_PERF=1): %s", what)
+		fmt.printfln("perf: skipped, run with -Perf (src\\tools\\test_all -Perf, or WREN_PERF=1): %s", what)
 	}
 	return true
 }

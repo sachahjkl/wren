@@ -1,4 +1,4 @@
-# web-platform-tests expectations of Wren for encoding, written by tools\wpt.ps1 -Update
+# web-platform-tests expectations of Wren for encoding, written by build/wpt -update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
 /encoding/api-basics.any.html: OK
 	Decode sample: utf-16: PASS

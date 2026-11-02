@@ -73,7 +73,7 @@ Browser_Window :: struct {
 
 // What the chrome keeps of one window from frame to frame. It lives in the window: the procedures that read it are given
 // the window (or read window_own(app), the active window's, at the frame's entry points). No global of the chrome is a
-// window's (tools\lint_globals.ps1: a new one fails); a window starts with this zeroed.
+// window's (src\tools\test_all\lint_globals.odin: a new one fails); a window starts with this zeroed.
 Window_Own :: struct {
 	security_chip_width: f32,                 // chrome.odin: the security chip's width in the address bar (measured while building)
 	status_left_width:   f32,                 // status_bar.odin: the left part's width in the frame before

@@ -1,4 +1,4 @@
-# web-platform-tests expectations of Wren for html/infrastructure/safe-passing-of-structured-data/shared-array-buffers, written by tools\wpt.ps1 -Update
+# web-platform-tests expectations of Wren for html/infrastructure/safe-passing-of-structured-data/shared-array-buffers, written by build/wpt -update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
 /html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/blob-data.https.html: TIMEOUT
 	blob worker: postMessaging to a dedicated HTTP sub-worker allows them to see each others' modifications: FAIL

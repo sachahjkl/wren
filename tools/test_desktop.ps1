@@ -1,8 +1,8 @@
-# Runs a command on a Windows desktop of its own, that nobody looks at: what it opens cannot take the focus, the mouse or the
+# Runs a command by hand on a Windows desktop of its own, that nobody looks at (src\tools\test_all goes on one by itself, desktop_windows.odin): what it opens cannot take the focus, the mouse or the
 # keyboard of the person at the machine, whatever it does, and their clicks cannot reach it. Everything it starts stays there.
-#   powershell -File tools\test_desktop.ps1 -Command "powershell -NoProfile -File tools\test_all.ps1 -Quick"
+#   powershell -File tools\test_desktop.ps1 -Command "build\e2e_test.exe -tests:name"
 # Prints what the command prints, and ends with its exit code. WREN_ON_TEST_DESKTOP is 1 in it.
-# (A real input of the machine, SendInput, SetCursorPos, goes nowhere there: what needs one is `test_all.ps1 -Ui`.)
+# (A real input of the machine, SendInput, SetCursorPos, goes nowhere there: what needs one is `test_all -Ui`.)
 param([Parameter(Mandatory)][string]$Command, [string]$DesktopName = "WrenTests-$PID")
 
 $PollMs = 200          # how often what the command printed is passed on

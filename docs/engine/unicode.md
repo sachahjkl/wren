@@ -21,7 +21,7 @@ The tables are **generated** from the authoritative Unicode Character Database, 
 `libunicode-table.h`:
 
 - `tools/gen_unicode.ps1` downloads the pinned UCD files for a fixed Unicode release (17.0.0, the version QuickJS-ng 0.17 ships), verifies each
-  file's SHA-256 (the same idiom as `tools/build_js.ps1`), then runs the generator.
+  file's SHA-256 (the same idiom as `src/tools/buildjs`), then runs the generator.
 - `src/engine/unicode/gen/` (an Odin program) parses the UCD text and writes `tables_generated.odin`: sorted
   half-open interval runs for every property / category / script, simple and full case/fold tables, and the
   decomposition / combining-class / composition tables for normalization.

@@ -1,11 +1,13 @@
-# The globals of src\browser and their class (tools\lint_globals.ps1 fails on one that is not here). "<file> <name> <class>  # why".
+# The globals of src\browser and their class (src\tools\test_all\lint_globals.odin fails on one that is not here). "<file> <name> <class>  # why".
 # process: the process's; window: one window's (to move into Browser_Window); page: one page's or tab's (to move into Page / Tab);
 # test: a test's. Inventory of 2026-10-27 (refactor T4); see windows.odin.
+about_card_engrave.odin engr_cache process  # a cache of the process
 about_card_relief.odin GLYPHS process  # a table
 about_card_seal.odin SEAL_TICK process  # a table
 about_pages.odin ABOUT_PAGES process  # a table
 app_commands.odin APP_COMMAND_PREFS process  # a table
 app_commands_windows.odin cmd_hwnd process
+appearance_other.odin watch_app process  # the colour-scheme watcher (the platform's bus connection)
 appearance_windows.odin LOOK_KEYS process  # a table
 appearance_windows.odin look_watch process  # preferences read once and on change
 bfcache.odin bf process
@@ -28,6 +30,9 @@ canvas_gpu_test.odin op_global test
 canvas_gpu_test.odin test_glyph_a test
 canvas_gpu_test.odin test_glyph_o test
 canvas_shell.odin outline_cache page  # cached outlines of a page's canvas text
+canvas_shell.odin color_glyph_cache process  # the cache of the colour glyph bitmaps of the canvas text (cleared with the canvases)
+canvas_shell.odin color_glyph_next_uid process  # the next name of a cached colour glyph bitmap
+cdp.odin the_cdp process  # the DevTools-protocol server of the process (the debugging port)
 chrome_style.odin CHROME_PREFS process  # a table
 chrome_style.odin chrome_cfg process  # preferences read once and on change
 chrome_style.odin chrome_watch process  # preferences read once and on change
@@ -46,7 +51,10 @@ console_eval.odin MEMBERS process  # a table
 context_menu.odin closed_tabs process
 crash_recovery.odin CRASH_PREFS process  # a table
 crash_recovery.odin recovery process
+date_display_other.odin MONTHS_ABBR process  # a table
 demos.odin DEMOS_PREFS process  # a table
+demos.odin DEMO_THEME_TITLES process  # a table
+demos.odin DEMOS process  # a table
 desktop_shell.odin DESKTOP_PREFS process  # a table
 desktop_shell.odin dsk process
 devtools.odin DEV_DOCK_NAMES process  # a table
@@ -78,6 +86,7 @@ devtools_net_model.odin net_prefs process  # preferences read once and on change
 devtools_net_model.odin net_owner process
 devtools_net_model.odin NET_COL_NAMES process  # a table
 devtools_net_model.odin NET_COL_TITLES process  # a table
+devtools_net_preview.odin FONT_FORMAT_NAMES process  # a table of the names of the font formats
 devtools_net_preview.odin HEADING_SCALE process  # a table
 devtools_net_throttle.odin NET_BUILTIN process  # a table
 devtools_net_throttle.odin net_custom process
@@ -93,8 +102,8 @@ dnd_image.odin dnd_last_picture page  # the picture of the page's drag
 dnd_shell.odin DND_PREFS process  # a table
 dnd_shell.odin dnd page  # the drag of a page (one at a time in the process)
 download.odin DOWNLOAD_PREFS process  # a table
-download.odin dl_picking process  # the folder dialog of the downloads page is open
 download.odin dls process
+download.odin dl_picking process  # the folder dialog of the downloads page is open
 download_test.odin downloads_test_lock test
 downloads_ui.odin dview page  # about:downloads' view (a page of the browser) and the button's drop-down
 drag_probe.odin drag_probe process
@@ -143,6 +152,7 @@ hud.odin hud process
 hud.odin TITLE_FIELD_NAMES process  # a table
 images_shell.odin shell process
 instance_shell.odin INSTANCE_PREFS process  # a table
+instance_shell.odin inst process  # one single-instance channel per process
 interaction_settings.odin INTERACTION_PREFS process  # a table
 license_shell.odin LICENSE_PREFS process  # a table
 license_shell.odin memory_text process
@@ -152,16 +162,20 @@ local_paths.odin LOCAL_PATH_PREFS process  # a table
 local_paths_windows.odin drop_hwnd process
 main.odin the_app process
 main.odin tab_ids process
+main.odin headless_software process  # the renderer the next headless App is made on (browser.Options would take it: there is no such thing yet)
 measure_test.odin MEASURE_TEXTS test
 memcheck.odin driver process
 memory_trim.odin MEMORY_PREFS process  # a table
 memory_trim.odin trim_state process
 newtab_art.odin ART_PREFS process  # a table
-newtab_art.odin ART_COMMONS_CATEGORIES process  # a table
 newtab_art.odin art process  # the artistic new tab's cache, task and preferences
+newtab_art.odin ART_COMMONS_CATEGORIES process  # a table
 os_settings.odin OS_SETTINGS_PREFS process  # a table
 os_settings.odin os_anim process
 pacing.odin FRAME_PREFS process  # a table
+page_autoscroll.odin AUTOSCROLL_PREFS process  # a table
+page_autoscroll.odin autoscroll_cfg process  # preferences read once and on change
+page_autoscroll.odin autoscroll_watch process  # preferences read once and on change
 page_cursor.odin CURSOR_PREFS process  # a table
 page_cursor.odin ccfg process  # preferences read once and on change
 page_cursor.odin pcs process  # the preference watch and the log's path (a window's cursors: Window_Own.cursor)
@@ -198,6 +212,7 @@ render_settings.odin RENDER_PREFS process  # a table
 render_settings.odin render_settings process  # preferences read once and on change
 render_settings.odin render_watch process  # preferences read once and on change
 search_engines.odin BUILTIN_ENGINES process  # a table
+search_engines.odin sengines process  # the list of engines of the profile
 selection_shell.odin ix process
 selection_shell.odin ix_watch process  # preferences read once and on change
 selection_shell.odin spaint page  # the painted selection of a page
@@ -212,24 +227,22 @@ setup_test_windows.odin TEST_FILE_TYPES test
 shaders.odin CARD_FOIL_PASSES process  # a table
 shaders.odin CARD_FOIL_ARGS process  # a table
 shaders.odin SHADERS process  # a table
+shaders.odin shader_states process  # the shaders of the process
 shell_frames.odin SHELL_FRAME_PREFS process  # a table
 shell_frames.odin chrome_frames process
-page_autoscroll.odin AUTOSCROLL_PREFS process  # a table
-page_autoscroll.odin autoscroll_cfg process  # preferences read once and on change
-page_autoscroll.odin autoscroll_watch process  # preferences read once and on change
 smooth_scroll.odin SCROLL_PREFS process  # a table
 smooth_scroll.odin smooth_cfg process  # preferences read once and on change
 smooth_scroll.odin smooth_watch process  # preferences read once and on change
 smooth_scroll_test.odin CURVES test
 storage_access_shell.odin sa_queue page  # the pages' storage access prompts
 tab_drag.odin tab_drag process
-tab_sidebar.odin SIDEBAR_PREFS process  # a table
-tab_sidebar.odin TABS_POSITION_NAMES process  # a table
 tab_groups.odin TAB_GROUP_PREFS process  # a table
 tab_groups.odin GROUP_COLOR_NAMES process  # a table
 tab_groups.odin GROUP_COLOR_HEX process  # a table
-tab_sound.odin TAB_SOUND_PREFS process  # a table
+tab_sidebar.odin SIDEBAR_PREFS process  # a table
+tab_sidebar.odin TABS_POSITION_NAMES process  # a table
 tab_sidebar.odin TITLEBAR_SLOT_IDS process  # a table
+tab_sound.odin TAB_SOUND_PREFS process  # a table
 test_globals_test.odin page_render_test_mutex test
 third_party.odin LICENSE_TEXTS process  # a table
 touch_shell.odin TOUCH_PREFS process  # a table
@@ -238,6 +251,7 @@ update_check.odin upd process
 urlbar.odin URLBAR_PREFS process  # a table
 urlbar.odin ub process  # the history index, its build, the preferences (a window's suggestions: Window_Own.urlbar)
 urlbar_test.odin globals_lock test
+video_fast_path.odin vfast process  # the video fast path: what each video drew in the last page frame
 video_shell.odin vshell page  # the pages' video players
 web_font_faces.odin WEB_FACE_PREFS process  # a table
 web_font_faces.odin GENERIC_FAMILIES process  # a table
@@ -247,11 +261,3 @@ windows.odin wake_target process
 windows.odin window_ids process
 windows.odin pass_order process
 windows.odin pass_causes process
-devtools_net_preview.odin FONT_FORMAT_NAMES process  # a table of the names of the font formats
-canvas_shell.odin color_glyph_cache process  # the cache of the colour glyph bitmaps of the canvas text (cleared with the canvases)
-canvas_shell.odin color_glyph_next_uid process  # the next name of a cached colour glyph bitmap
-video_fast_path.odin vfast process  # the video fast path: what each video drew in the last page frame
-cdp.odin the_cdp process  # the DevTools-protocol server of the process (the debugging port)
-appearance_other.odin watch_app process  # the colour-scheme watcher (the platform's bus connection)
-date_display_other.odin MONTHS_ABBR process  # a table
-main.odin headless_software process  # the renderer the next headless App is made on (browser.Options would take it: there is no such thing yet)

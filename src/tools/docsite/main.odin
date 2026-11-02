@@ -1,6 +1,6 @@
 // docsite: turns the Markdown under docs/ into the static documentation site under site/docs/.
-//   docsite            writes what changed (tools\docs_site.ps1 runs it, then checks the links)
-//   docsite -check     writes nothing, fails if a generated file is missing or stale (CI, like changelog.ps1 -Check)
+//   docsite            writes what changed (tools\docs_site.ps1 runs it), then checks every internal link and anchor
+//   docsite -check     writes nothing, fails if a generated file is missing or stale or a link is dead (CI, like changelog.ps1 -Check)
 //   docsite -chart f.svg   writes only the WPT conformance chart (ports make_chart.js); used on its own to refresh it
 // Run from the repository root. The generation is deterministic: the same docs, _nav.txt and git history produce the
 // same bytes, so CI can verify site/docs is up to date.
@@ -60,6 +60,7 @@ main :: proc() {
 		os.exit(1)
 	}
 	if !check_only { fmt.printfln("docsite: %d file(s) written, site/docs is up to date", written) }
+	if !check_links() { os.exit(1) }
 }
 
 run :: proc() {

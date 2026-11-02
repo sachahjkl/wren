@@ -1,4 +1,4 @@
-# web-platform-tests expectations of Wren for performance-timeline, written by tools\wpt.ps1 -Update
+# web-platform-tests expectations of Wren for performance-timeline, written by build/wpt -update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
 /performance-timeline/back-forward-cache-restoration.tentative.html: OK
 	Performance API for the back forward cache restoration entry.: FAIL

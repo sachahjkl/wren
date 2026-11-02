@@ -57,7 +57,7 @@ from Wren, so they are not in the `i18n` catalogue.
   the quoting of the command line (read back by `CommandLineToArgvW`).
 - `odin test src/desktop`: Setup's side (written with the PATH option, replaced by a new version, removed with it, never
   over another program's file, removed with the install folder).
-- `src\tools\e2e\wrencom.odin` (a step of `test_all.ps1`): the launcher and `wren.exe` copied into a scratch folder; `ctl help`,
+- `src\tools\e2e\wrencom.odin` (a step of `test_all`): the launcher and `wren.exe` copied into a scratch folder; `ctl help`,
   an unknown command, what `> file`, `2>`, `2>&1` and `|` hand over to it, its exit code, `--desktop-integration=status`, the integration
   writing and removing `wren.com`, the refusals, an interface start that returns at once, `--cli`, and the death of the child
   with the launcher.

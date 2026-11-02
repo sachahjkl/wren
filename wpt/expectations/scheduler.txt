@@ -1,4 +1,4 @@
-# web-platform-tests expectations of Wren for scheduler, written by tools\wpt.ps1 -Update
+# web-platform-tests expectations of Wren for scheduler, written by build/wpt -update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
 /scheduler/post-task-abort-reason.any.html: OK
 	Aborting a TaskSignal rejects the promise of a scheduled task with the abort reason: PASS

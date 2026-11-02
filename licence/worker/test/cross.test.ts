@@ -12,7 +12,7 @@ import { loadSigner, normalize } from "../src/licence.ts";
 import type { Fields } from "../src/licence.ts";
 import { DEV_PUBLIC_KEY, DEV_SEED, OTHER_DEV_SEED, PRICE_PATRON, TXN, fakeNetwork, fixture, jsonResponse, makeEnv, publicKeyOf, repoRoot, waiter, webhookRequest } from "./helpers.ts";
 
-// build\license.exe, or the one WREN_LICENSE_EXE names (tools\test_all.ps1 builds its own), or one built now if Odin is there
+// build\license.exe, or the one WREN_LICENSE_EXE names (src\tools\test_all builds its own), or one built now if Odin is there
 function licenceTool(): string | null {
 	const named = process.env.WREN_LICENSE_EXE;
 	if (named) return existsSync(named) ? named : null;

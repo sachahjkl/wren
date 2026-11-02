@@ -31,7 +31,7 @@ The `/workers/` folder has its own page, [WPT /workers/](wpt-workers.md), with w
 
 ## How this is measured
 
-`tools\wpt.ps1 -Update` runs the tests and writes the expectations; `tools\wpt.ps1 -Only <folder>` runs one
+`build\wpt.exe -update` runs the tests and writes the expectations; `build\wpt.exe -only <folder>` runs one
 folder. The chart and the table on this page are generated from `wpt/expectations` (and `build\wpt\report.md`
 when a run has produced it) by `src/tools/docsite`, the same tool that builds this site. Nothing here is typed by
 hand, so it cannot drift from the recorded results.
@@ -44,11 +44,11 @@ never in the chart or the table above, in a table of their own in `build\wpt\rep
 the folders of `REFTEST_FOLDERS` (`src/tools/wpt/layout_host.odin`): `css/css-multicol` and `css/css-writing-modes`.
 
 ```
-tools\wpt.ps1 -Reftests                                  all of them
-tools\wpt.ps1 -Reftests -Only css/css-multicol           one folder's
-tools\wpt.ps1 -Reftests -Only css/css-multicol -Update   ...and rewrite that folder's expectations
-tools\wpt.ps1 -NoReftests                                testharness tests only
-tools\wpt.ps1 -Reftests -ReftestDump <directory>         the pictures of what fails
+build\wpt.exe -reftests all of them
+build\wpt.exe -reftests -only css/css-multicol one folder's
+build\wpt.exe -reftests -only css/css-multicol -update ...and rewrite that folder's expectations
+build\wpt.exe -no-reftests testharness tests only
+build\wpt.exe -reftests -dump <directory> the pictures of what fails
 ```
 
 **How a test is told.** As WPT's manifest does at the pinned commit: a page with `<link rel=match>` or `rel=mismatch`, not
@@ -87,5 +87,5 @@ the pinned commit); a reference's own links must hold in turn. With `-ReftestDum
 which the tool refuses inside a repository, with the display list of each page (`.test.items.txt`, `.ref.items.txt`: the
 quickest way to tell a layout's fault from the rasteriser's); `-ReftestDumpAll` adds what passes.
 
-`tools\wpt.ps1 -ReftestFolder css/css-flexbox -WptRoot <another checkout> -Reftests` looks at a folder that is not measured:
+`build\wpt.exe -reftest-folder css/css-flexbox -root <another checkout> -reftests` looks at a folder that is not measured:
 a check of the rasteriser on code that is known to work. It records nothing unless `-Update` is given.

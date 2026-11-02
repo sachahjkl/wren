@@ -32,7 +32,7 @@ window the user is in (the front one).
   toolkit's, its surface the renderer's, and adopts its pacing. An `App` with no window (the tests') has a bare one (`App.bare`).
   What the chrome keeps of a window (tab strip, sidebar, find bar, form controls, selection, cursors, address bar suggestions, full
   screen, context menu, frames' pointer, touch input, page preparation) is `Browser_Window.own` (`Window_Own`), read through
-  `window_own(app)`; `tools\lint_globals.ps1` fails on a new global of a window.
+  `window_own(app)`; `src\tools\test_all\lint_globals.odin` fails on a new global of a window.
 * Everything that meant "every tab" reads `tabs_all(app)` or `tab_by_id`; `tab_reveal`, `tab_close_tab`, `address_set` and
   `window_of_tab` find a tab's own window.
 * The loop (`windows_pass`) sleeps when no window has a cause, then makes a frame for each window (the front one first: it runs the

@@ -8,7 +8,7 @@
 #   -Callers <name>   the stacks (innermost 8 functions) that most often end in <name> when it is the running function
 #   -Under <name>     what runs below <name>: the functions that were running while <name> was on the stack, by self
 #   -Timeline <name>  milliseconds per second of the profile that had <name> on the stack (what the page did when)
-# For names, profile an engine built with tools\build_js.ps1 -Names (the browser: swap build\js\wren_js.wasm for the one it makes in
+# For names, profile an engine built with src\tools\buildjs -names (the browser: swap build\js\wren_js.wasm for the one it makes in
 # its -Out folder, build.bat profile; the jsengine tool: -Names -Out build\js-prof -NoSnapshot, then
 #   jsengine run -image build\js-prof\wren_js_raw.wasm -raw -profile out.json script.js).
 param([Parameter(Mandatory = $true)][string]$Path, [int]$Top = 30, [ValidateSet('self', 'total')][string]$Sort = 'self',
