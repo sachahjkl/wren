@@ -426,6 +426,7 @@ style/props.odin props_once const  # a table built once
 style/props.odin inherited_table const  # ... the table
 style/props.odin inherited_set const  # ... the table
 style/props.odin inherited_list const  # ... the table
+style/props.odin inherited_runs const  # ... the table (byte runs of the inherited properties, built once)
 style/props.odin computed_fields const  # ... the table
 style/props.odin prop_slots const  # ... the table
 style/restyle_dom.odin trace_roots process  # a trace for debugging (WREN_RESTYLE_TRACE), one thread at a time
