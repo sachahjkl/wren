@@ -6,7 +6,7 @@ package browser
 // app.r.ctx / app.r.device, and the driver manages its own pools then. memory_trim_other.odin is the Linux counterpart.
 
 import "core:sys/windows"
-import "vendor:directx/dxgi"
+@(require) import "vendor:directx/dxgi"   // (used only on the Direct3D backend: a wgpu build does not, and -vet stops on an unused import)
 import "toolkit:render"
 
 foreign import kernel32_trim "system:Kernel32.lib"
