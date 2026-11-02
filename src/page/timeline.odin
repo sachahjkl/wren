@@ -265,7 +265,7 @@ Page_Timeline :: struct {
 	ls_session_first_ms: f64,
 	ls_session_last_ms:  f64,
 	ls_max_session:      f64,   // the largest session window so far (informational: Cumulative Layout Shift)
-	ls_prev:             map[base.Handle]Ls_Prev,   // where each box was in the previous frame (timeline_lcp.odin)
+	ls_boxes:            Ls_Boxes,   // where each box was at the last scan (timeline_lcp.odin)
 	// Element Timing: the elements already reported (one entry per element, the first time it is painted).
 	et_seen: map[base.Handle]bool,
 	// Visibility: the last state reported, so only changes make an entry.
@@ -337,7 +337,7 @@ timeline_page_closing :: proc(data: rawptr) {
 	}
 	delete(t.nav.mime)
 	delete(t.et_seen)
-	delete(t.ls_prev)
+	ls_boxes_destroy(&t.ls_boxes)
 	loaf_frame_discard(&t.loaf)   // an animation frame left open when the page went: free its script strings
 	free(t)
 }

@@ -26,6 +26,7 @@ Architecture
   crash-recovery.md   Crash recovery
   crash-reports.md    Crash reports and symbols
   testing.md          How the tests run
+  performance.md      Performance: the pipelines measured
 
 Features
   blocker.md          The content blocker

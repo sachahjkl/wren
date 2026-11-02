@@ -593,6 +593,17 @@ box_of_view :: proc(l: ^Layout, v: ^View, node: base.Handle) -> (Box_Rects, bool
 	return r, true
 }
 
+// The border rect of box `bi` in document coordinates, as box_of_view gives it, without the rest of box_of_view's work: for
+// a reader of every box of a frame (the layout shifts). `transformed`: a transform or a 3D plane applies, the box is drawn
+// elsewhere; `fragmented`: it is in a multi-column flow, where box_of_view gives the union of its fragments instead.
+box_border :: proc(l: ^Layout, v: ^View, bi: i32) -> (border: Rect, transformed, fragmented: bool) {
+	b := &l.boxes[bi]
+	sp := &l.spaces[b.space]
+	if sp.plane != NONE || sp.xform != NONE { return {}, true, false }
+	if l.frames_on && sp.kind == .Flow { return {}, false, true }
+	return rect_shift(border_rect(b), v.offsets[b.space] + Vec2{v.doc_scroll_x, v.doc_scroll}), false, false
+}
+
 // What getClientRects returns of an element, in document coordinates like box_of: a border box per fragment: a line for an
 // inline box, a column in a multi-column flow.
 box_client_rects :: proc(l: ^Layout, v: ^View, node: base.Handle, out: ^[dynamic]Rect) -> bool {
