@@ -136,6 +136,13 @@ program_of :: proc(o: Options) -> string {
 }
 
 // The whole build of one variant: each step does nothing when its output is up to date, but the Odin compile (Odin has no incremental build).
+// The dependencies of a variant's build (step 2 of `browser`): nothing to do when their stamps say they are up to date. test_all
+// makes them a step of their own, which every step that links build\native waits for: no program links the library while it is
+// being replaced (a dev and a release build use different profiles of it).
+dependencies :: proc(o: Options) -> bool {
+	return deps.all({profile = VARIANTS[o.variant].native_release ? "release" : "quick", log = o.log})
+}
+
 browser :: proc(o: Options) -> bool {
 	when ODIN_OS != .Windows {
 		return say_fail(o, "wrentool build is Windows' build: on Linux, ./build.sh wren")
@@ -150,7 +157,7 @@ browser :: proc(o: Options) -> bool {
 
 	// 2. Dependencies: Wasmtime (C API, pinned release), Lexbor (+ the C shims of src\shim, MSVC), Noto Color Emoji (compiled into the exe), the one Rust library of native\ (image decoders, WOFF2,
 	// the network stack, the toolkit's text backend and accessibility adapter): package deps, each pinned and stamped
-	if !deps.all({profile = spec.native_release ? "release" : "quick"}) { return false }
+	if !dependencies(o) { return false }
 
 	// 3. Generated code: the web API from its description (api\*.widl: host bindings, guest SDK, docs, conformance tests; only what changed), the JavaScript engine (build\js\wren_js.wasm, embedded in
 	// wren.exe), the console launcher (build\wren.com, embedded in wren.exe)

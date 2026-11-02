@@ -47,6 +47,12 @@ task_browser :: proc(t: ^Task_Run) -> bool {
 	return builder.browser(o)
 }
 
+task_dependencies :: proc(t: ^Task_Run) -> bool {
+	o := builder.options_from_env(.Dev)
+	o.log = t.log
+	return builder.dependencies(o)
+}
+
 task_testserver :: proc(t: ^Task_Run) -> bool {
 	return tooling.ensure_testserver(t.log)
 }

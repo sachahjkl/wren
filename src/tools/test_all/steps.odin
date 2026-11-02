@@ -23,6 +23,7 @@ Marks :: bit_set[Mark]
 // What a step leaves that others use: a step that needs one runs after the step that makes it, which -Only and the like bring with them.
 Product :: enum {
 	JS_Engine,       // build/js/wren_js.wasm, which the programs embed
+	Native,          // the dependencies of the dev build (build/native/wren_native.lib, Lexbor, Wasmtime), which the programs link
 	Launcher,        // build/wren.com, which the browser embeds
 	Browser,         // build/wren.exe
 	Check_Browser,   // build/wren_check.exe
@@ -84,7 +85,7 @@ Step :: struct {
 	limit:    int,        // seconds (0: -StepTimeoutSec)
 }
 
-COMMON_NEEDS :: Products{.JS_Engine, .Launcher}
+COMMON_NEEDS :: Products{.JS_Engine, .Launcher, .Native}
 // Unit tests fail on a leak or a bad free (Odin's runner tracks each test's context.allocator but only warns by default).
 MEM_CHECK :: "-define:ODIN_TEST_FAIL_ON_BAD_MEMORY=true"
 // The end-to-end tools track every allocation of the process and fail when anything is left once they have shut down (src/tools/testenv/memory.odin); never in the builds of the browser.
@@ -217,6 +218,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	append(&t, Step{name = "documentation site up to date and links intact (src\\tools\\docsite -check: site\\docs matches docs\\*.md, zero dead internal links or anchors)",
 		actions = slice_of(odin_build("src/tools/docsite", exe("build/docsite"), {WB, "-vet"}), Command{argv = strs(exe("build/docsite"), "-check")}), inputs = .Everything})
 	// What every build below embeds (nothing to do when up to date).
+	append(&t, Step{name = "the dependencies of the dev build (wrentool build's step 2; nothing to do when up to date)", actions = slice_of(Task{"the dependencies", task_dependencies, ""}), marks = {.No_Result}, makes = {.Native}, limit = LONG_STEP_SECONDS})
 	append(&t, Step{name = "JavaScript engine (src\\tools\\tooling\\js_engine.odin; nothing to do when up to date)", actions = slice_of(Task{"the engine", task_js_engine, ""}), marks = {.No_Result}, makes = {.JS_Engine}})
 	// (the two parts apart: everything waits for the program, nothing for its tests)
 	append(&t, Step{name = "console launcher: build\\wren.com (src\\tools\\wrencom; the browser embeds it)", actions = slice_of(Task{"wren.com", task_launcher, ""}), marks = {.No_Result}, makes = {.Launcher}})
