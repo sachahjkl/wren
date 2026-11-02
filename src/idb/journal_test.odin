@@ -6,7 +6,7 @@ import "core:testing"
 
 @(private)
 temp_path :: proc(name: string) -> string {
-	return fmt.tprintf("%s/%s", test_root, name)
+	return fmt.tprintf("%s/%s", test_root(), name)
 }
 
 // A Fixture with a store and `n` records, its changes as one journal record (the redo stream of its transaction).

@@ -4,31 +4,37 @@ import "base:runtime"
 import "core:fmt"
 import "core:os"
 import "core:strings"
+import "core:sync"
 import "core:testing"
 import "core:time"
 import "wb:base"
 
 // The files of this run of the tests. Not a fixed name under the temporary folder: the unit tests and their run under
 // AddressSanitizer, which test_all and the CI run side by side with one TEMP, then wrote over each other's journals.
-@(private)
-test_root: string
+// Made by the first test that asks, never at the start of a process: every program that links this package (wren.exe,
+// the end-to-end tests) ran an init that read the whole temporary folder (0.8 s at each start with 23 000 entries there)
+// and left a folder in it.
+@(private = "file") test_root_dir: string
+@(private = "file") test_root_once: sync.Once
 
 @(private = "file") TEST_ROOT_PREFIX :: "wren_idb_test_"
 @(private = "file") TEST_ROOT_STALE :: time.Hour
 
-// Odin's test runner ends the process without running fini procedures: what earlier runs left goes when a run starts.
-@(private, init)
-test_root_make :: proc "contextless" () {
-	context = runtime.default_context()
-	tmp := base.temp_dir(context.temp_allocator)
-	if entries, err := os.read_directory_by_path(tmp, -1, context.temp_allocator); err == nil {
-		for e in entries {
-			if e.type == .Directory && strings.has_prefix(e.name, TEST_ROOT_PREFIX) && time.since(e.modification_time) > TEST_ROOT_STALE { base.remove_tree(e.fullpath) }
+// Odin's test runner ends the process without running fini procedures: what earlier runs left goes when the first test asks.
+@(private)
+test_root :: proc() -> string {
+	sync.once_do(&test_root_once, proc() {
+		context.allocator = runtime.heap_allocator()   // (kept for the whole run: no test's tracker sees it)
+		tmp := base.temp_dir(context.temp_allocator)
+		if entries, err := os.read_directory_by_path(tmp, -1, context.temp_allocator); err == nil {
+			for e in entries {
+				if e.type == .Directory && strings.has_prefix(e.name, TEST_ROOT_PREFIX) && time.since(e.modification_time) > TEST_ROOT_STALE { base.remove_tree(e.fullpath) }
+			}
 		}
-	}
-	test_root = fmt.aprintf("%s/%s%s", tmp, TEST_ROOT_PREFIX, base.unique_name(context.temp_allocator))
-	_ = os.make_directory_all(test_root)
-	free_all(context.temp_allocator)
+		test_root_dir = fmt.aprintf("%s/%s%s", tmp, TEST_ROOT_PREFIX, base.unique_name(context.temp_allocator))
+		_ = os.make_directory_all(test_root_dir)
+	})
+	return test_root_dir
 }
 
 // A manager whose disk work is queued and run on demand, to see the order things happen in.
@@ -77,7 +83,7 @@ Harness :: struct {
 
 @(private)
 harness_init :: proc(h: ^Harness, name: string, async := false, settings: Maybe(Settings) = nil, fresh := true) {
-	h.dir = fmt.aprintf("%s/%s", test_root, name)
+	h.dir = fmt.aprintf("%s/%s", test_root(), name)
 	if fresh {
 		base.remove_tree(fmt.tprintf("%s/idb", h.dir))
 	}
