@@ -174,7 +174,8 @@ web_split :: proc(t: ^[dynamic]Step, name, subject: string, groups: [][]string, 
 		run.only = tests
 		append(t, Step{name = fmt.aprintf("%s [%s]", name, label), actions = slice_of(run), marks = marks, needs = COMMON_NEEDS + {.Guests, .E2E, .Test_Server}, sources = web_sources(subject)})
 	}
-	for g in groups { add(t, name, subject, strings.join(g, ","), g, marks) }
+	// (the groups are a literal on the caller's stack: what the table keeps is cloned)
+	for g in groups { add(t, name, subject, strings.join(g, ","), slice.clone(g), marks) }
 	if len(rest) > 0 { add(t, name, subject, "the others", rest[:], marks) }
 }
 
