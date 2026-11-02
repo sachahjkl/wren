@@ -125,7 +125,7 @@ page_thread_main :: proc(data: rawptr) {
 	p := (^Page_Thread)(data)
 	sync.atomic_store(&p.thread_id, sync.current_thread_id())
 	temp: runtime.Arena
-	if runtime.arena_init(&temp, PAGE_TEMP_FIRST, runtime.heap_allocator()) == nil { context.temp_allocator = runtime.arena_allocator(&temp) }
+	if runtime.arena_init(&temp, PAGE_TEMP_FIRST, base.process_allocator()) == nil { context.temp_allocator = runtime.arena_allocator(&temp) }
 	defer runtime.arena_destroy(&temp)
 	for {
 		sync.sema_wait(&p.go)
@@ -138,7 +138,7 @@ page_thread_main :: proc(data: rawptr) {
 		if grew && temp.backing_allocator.procedure != nil {
 			size := used <= PAGE_TEMP_KEEP_MAX ? used * PAGE_TEMP_ROOM_NUM / PAGE_TEMP_ROOM_DEN : PAGE_TEMP_FIRST
 			runtime.arena_destroy(&temp)
-			_ = runtime.arena_init(&temp, size, runtime.heap_allocator())
+			_ = runtime.arena_init(&temp, size, base.process_allocator())
 		}
 		sync.sema_post(&p.done)
 	}
