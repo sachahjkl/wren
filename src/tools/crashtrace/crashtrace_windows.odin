@@ -380,6 +380,9 @@ begin_session :: proc() {
 		pid, started := parse_session(prev)
 		if pid != 0 && !process_is(pid, started) {
 			unclean_text = prev   // (before the thread starts: it reads it at once)
+			head := strings.builder_make(runtime.heap_allocator())   // (not the tracker: the thread keeps it)
+			unclean_report_begin(prev, &head)
+			unclean_report_head = strings.to_string(head)
 			h := win.CreateThread(nil, 1 << 20, unclean_thread, nil, 0, nil)   // (wevtutil takes a moment: not on the start-up path)
 			if h != nil { win.CloseHandle(h) } else { unclean_text = "" }
 		}
@@ -455,15 +458,40 @@ process_is :: proc(pid: u32, started: u64) -> bool {
 	return true
 }
 
+// Where the report of the session before this one goes.
+@(private = "file") unclean_report_head: string
+@(private = "file") unclean_path: [len(report_dir) + 80]u16
+
+// What is known without asking the system, on the start-up's thread: a program that ends at once still leaves its report.
+@(private = "file")
+unclean_report_begin :: proc(prev: string, out: ^strings.Builder) {
+	st: win.SYSTEMTIME
+	GetLocalTime(&st)
+	fmt.sbprintf(out, "%s\n\n*** a session ended without a crash report: no stack, the filter was not run (a fail-fast, the system or a watchdog ended the process).\nThe session file said (process id, start, program):\n%s\n", string(report_header[:report_header_len]), prev)
+	name: [64]u8
+	stem := fmt.bprintf(name[:], "\\unclean exit %04d-%02d-%02d %02d-%02d-%02d.txt", st.year, st.month, st.day, st.hour, st.minute, st.second)
+	n := 0
+	for report_dir[n] != 0 { unclean_path[n] = report_dir[n]; n += 1 }
+	for c in stem { unclean_path[n] = u16(c); n += 1 }
+	unclean_report_write(strings.to_string(out^))
+}
+
+@(private = "file")
+unclean_report_write :: proc(text: string) {
+	h := win.CreateFileW(cstring16(&unclean_path[0]), win.GENERIC_WRITE, win.FILE_SHARE_READ, nil, win.CREATE_ALWAYS, win.FILE_ATTRIBUTE_NORMAL, nil)
+	if h == win.INVALID_HANDLE_VALUE { return }
+	w: win.DWORD
+	win.WriteFile(h, raw_data(text), win.DWORD(len(text)), &w, nil)
+	win.CloseHandle(h)
+}
+
 @(private = "file")
 unclean_thread :: proc "system" (_: rawptr) -> win.DWORD {
 	context = runtime.default_context()   // memcheck: not the tracker (a thread of its own, started at the start-up)
 	prev := unclean_text
 	pid, _ := parse_session(prev)
-	st: win.SYSTEMTIME
-	GetLocalTime(&st)
 	out := strings.builder_make(context.allocator)
-	fmt.sbprintf(&out, "%s\n\n*** a session ended without a crash report: no stack, the filter was not run (a fail-fast, the system or a watchdog ended the process).\nThe session file said (process id, start, program):\n%s\n", string(report_header[:report_header_len]), prev)
+	strings.write_string(&out, unclean_report_head)
 	// Windows' own record: the Application Error event (id 1000) of that process id, which names the exception code and the offset
 	events := run_hidden("wevtutil.exe", "qe Application \"/q:*[System[(EventID=1000)]]\" /c:40 /rd:true /f:text")
 	hex := fmt.tprintf("0x%X", pid)
@@ -477,19 +505,7 @@ unclean_thread :: proc "system" (_: rawptr) -> win.DWORD {
 		}
 	}
 	if !found { fmt.sbprintf(&out, "\n(no Application Error event for process %d: it was closed or killed from outside, or by an exit of its own)\n", pid) }
-	name: [64]u8
-	stem := fmt.bprintf(name[:], "\\unclean exit %04d-%02d-%02d %02d-%02d-%02d.txt", st.year, st.month, st.day, st.hour, st.minute, st.second)
-	path: [len(report_dir) + 80]u16
-	n := 0
-	for report_dir[n] != 0 { path[n] = report_dir[n]; n += 1 }
-	for c in stem { path[n] = u16(c); n += 1 }
-	h := win.CreateFileW(cstring16(&path[0]), win.GENERIC_WRITE, win.FILE_SHARE_READ, nil, win.CREATE_ALWAYS, win.FILE_ATTRIBUTE_NORMAL, nil)
-	if h != win.INVALID_HANDLE_VALUE {
-		w: win.DWORD
-		text := strings.to_string(out)
-		win.WriteFile(h, raw_data(text), win.DWORD(len(text)), &w, nil)
-		win.CloseHandle(h)
-	}
+	unclean_report_write(strings.to_string(out))
 	return 0
 }
 
