@@ -1,7 +1,7 @@
 name: Set up the Wren toolchain
 description: >-
   Odin (pinned release, SHA-256 checked), Rust (pinned version) with llvm-tools, Go, the MSVC environment, and the caches of
-  what build.bat fetches or builds (Wasmtime, Lexbor, the Rust library of native/, NASM, the cargo registry, the
+  what wrentool build fetches or builds (Wasmtime, Lexbor, the Rust library of native/, NASM, the cargo registry, the
   QuickJS-ng source, the JavaScript engine) and of the pinned test suites src\tools\test262 and src\tools\wpt fetch (test262,
   web-platform-tests). Every download is pinned: by SHA-256 in the script that fetches it (Odin here, Wasmtime, NASM,
   QuickJS-ng, test262), by commit and a SHA-256 list of its files (web-platform-tests: wpt/MANIFEST.txt), by
@@ -10,8 +10,8 @@ description: >-
 inputs:
   native-profile:
     description: >-
-      The Cargo profile of the Rust library this job builds (wrentool build native -Profile): quick (build.bat, debug,
-      check) or release (build.bat release and profile). Its compiled crates are cached.
+      The Cargo profile of the Rust library this job builds (wrentool build native -Profile): quick (wrentool build: dev, debug,
+      check) or release (wrentool build release and profile). Its compiled crates are cached.
     default: quick
 
 runs:

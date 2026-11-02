@@ -109,10 +109,11 @@ fragments (`wrentool changelog -Assemble`).
 ## Tools
 
 Everything the project runs besides the compiler is one Odin program, `src/tools/wrentool`. A fresh checkout builds it with
-`odin build src/tools/wrentool -collection:wb=src -out:build/wrentool.exe` (`build.bat` builds its own); `build\wrentool help` lists the
+`odin build src/tools/wrentool -collection:wb=src -out:build/wrentool.exe` (`build.bat` builds its own and runs `wrentool build`); `build\wrentool help` lists the
 commands, by family:
 
-- deps: `deps`, `fetch wasmtime|wgpu|openh264|emoji`, `build lexbor|native`, `version-h`, `symbols`, `symbolize`, `crash-symbolize`;
+- build: `build [dev|debug|profile|check|release]`, the browser (`build help`: the variants and the environment);
+- deps: `deps`, `fetch wasmtime|wgpu|openh264|emoji`, `build lexbor|native`, `symbols`, `symbolize`, `crash-symbolize`;
 - bench: `bench perf|shell|js|idle|webgl|blocker|sidebar|startup|cadence` (`bench help`): opt-in measures, never in the CI;
 - capture, shots, compare: a page rendered headless to a PNG, the README's and the site's pictures, Wren against Edge;
 - gen: `gen psl|unicode|media-fixtures|video-fixtures|perf-media|rust-crates`;

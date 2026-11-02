@@ -10,10 +10,11 @@ import "wb:base"
 import "wb:remote/api"
 import "wb:tools/tooling"
 import "wb:tools/wrentool/bench"
+import "wb:tools/wrentool/builder"
 import "wb:tools/wrentool/changelog"
 import "wb:tools/wrentool/deps"
 
-// An experimental build of Wren, ready to hand out: a release build (the amber one) with a label, the development licence key accepted, a demonstration licence inside (build.bat: WREN_EMBEDDED_LICENSE)
+// An experimental build of Wren, ready to hand out: a release build (the amber one) with a label, the development licence key accepted, a demonstration licence inside (wrentool build: WREN_EMBEDDED_LICENSE)
 // unless -NoEmbed, notes made from what the next version brings (changelog.d), a zip, and the link of its upload to buzzheavier (anonymous: the link lives a few days) unless -NoUpload.
 // -NoBuild packs what build/wren.exe is. -Vault dir keeps the notes, the link and the symbols zipped in that folder; by default nothing is kept.
 
@@ -92,11 +93,11 @@ run_experimental :: proc(args: []string) -> int {
 	}
 
 	if !tooling.flag_has(f, "-NoBuild") {
-		env_build := make([dynamic]string, context.temp_allocator)
-		append(&env_build, fmt.tprintf("WREN_VERSION_LABEL=%s", label), "WREN_ACCEPT_DEV_LICENSE_KEY=1")
-		if embed { append(&env_build, fmt.tprintf("WREN_EMBEDDED_LICENSE=%s", key)) }
-		fmt.printfln("build.bat release (%s-%s)", version, label)
-		if tooling.run({command = {"cmd", "/c", ".\\build.bat", "release"}, env = env_build[:]}) != 0 { return fail("build.bat release failed") }
+		o := builder.options_from_env(.Release)
+		o.label, o.accept_dev_key = label, true
+		if embed { o.embedded_license = key }
+		fmt.printfln("wrentool build release (%s-%s)", version, label)
+		if !builder.browser(o) { return fail("wrentool build release failed") }
 		base.remove_tree(DIST)
 		os.set_env("WREN_VERSION_LABEL", label)
 		code := run_package({})

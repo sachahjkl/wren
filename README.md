@@ -265,7 +265,8 @@ build.bat release    &:: optimized build of the release channel (what the releas
 Every build but `build.bat release` is a development build: a blueprint icon instead of the amber one (exe, window,
 taskbar, tab strip), and "development build" with the commit on the start page and in the menu.
 
-What `build.bat` does, each step skipped when it is already up to date:
+`build.bat` only runs `wrentool build` (`src/tools/wrentool/builder`; `build\wrentool build help` lists the variants and the
+environment variables it reads). What it does, each step skipped when it is already up to date:
 
 1. `wrentool fetch wasmtime` downloads the official **Wasmtime 49.0.3** C API release (SHA-256 pinned) into
    `build\wasmtime`; its static `wasmtime.lib` is linked into the exe.

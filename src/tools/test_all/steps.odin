@@ -10,7 +10,7 @@ import "wb:tools/tooling"
 Mark :: enum {
 	Light,       // it mostly waits (expiries, servers: seconds of wall clock for a fraction of a second of CPU): it takes no -Jobs slot, up to -LightJobs of them run beside the others
 	Asan,        // one of the ASan builds, -sized slots of their own (ASAN_JOBS): their memory is what limits them
-	Build_Bat,   // build.bat: one at a time in a tree, two refuse each other's files (build/bindgen.exe, the version resource)
+	Browser_Build, // wrentool build: one at a time in a tree, two refuse each other's files (build/wren.com, the version resource, build/wren.channel)
 	Ui_Only,     // drives real windows, or decodes heavy images under a limit: run with -Ui; never on a CI machine
 	No_CI,       // not on the CI, for the reason its line gives: what the job's budget cannot pay for, what the workflow runs by itself
 	Flaky,       // known to fail at random: printed FLAKY, it fails nothing. A mark hides a real bug too: only when the cause is known and outside our reach, with the reason in a comment
@@ -222,8 +222,8 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	append(&t, Step{name = "console launcher: build\\wren.com (src\\tools\\wrencom; the browser embeds it)", actions = slice_of(Task{"wren.com", task_launcher, ""}), marks = {.No_Result}, makes = {.Launcher}})
 	unit(&t, "unit tests: console launcher (when to wait for wren.exe and when to let go, the command line it hands over)", "src/tools/wrencom", exe("build/wrencom_test"))
 	// The browser, as the steps that start one need it: built unless newer than its sources (a build takes a minute even when nothing changed).
-	append(&t, Step{name = "build the browser (build.bat; nothing to do when newer than its sources)", actions = slice_of(Task{"build.bat", task_browser, "dev"}), marks = {.No_Result, .Build_Bat}, needs = COMMON_NEEDS, makes = {.Browser}, limit = LONG_STEP_SECONDS})
-	if long_run { append(&t, Step{name = "build the check build of the browser (build.bat check; nothing to do when newer than its sources)", actions = slice_of(Task{"build.bat check", task_browser, "check"}), marks = {.No_Result, .Build_Bat}, needs = COMMON_NEEDS, makes = {.Check_Browser}, limit = LONG_STEP_SECONDS}) }
+	append(&t, Step{name = "build the browser (wrentool build; nothing to do when newer than its sources)", actions = slice_of(Task{"wrentool build", task_browser, "dev"}), marks = {.No_Result, .Browser_Build}, needs = COMMON_NEEDS, makes = {.Browser}, limit = LONG_STEP_SECONDS})
+	if long_run { append(&t, Step{name = "build the check build of the browser (wrentool build check; nothing to do when newer than its sources)", actions = slice_of(Task{"wrentool build check", task_browser, "check"}), marks = {.No_Result, .Browser_Build}, needs = COMMON_NEEDS, makes = {.Check_Browser}, limit = LONG_STEP_SECONDS}) }
 
 	PACKAGES := []string{"base", "host", "dom", "html", "url", "http", "cookies", "csp", "httpcache", "fetch", "css", "style", "webfont", "xml", "images", "media", "webaudio", "canvas2d", "idb", "layout", "forms", "js", "page", "webauthn", "license", "desktop", "adblock", "blocker", "a11y", "browser"}
 	for pkg in PACKAGES {
@@ -297,7 +297,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	unit(&t, "unit tests: bindgen (description language, determinism)", "src/tools/bindgen/idl", exe("build/bindgen_test"), {WB})
 	append(&t, Step{name = "process allocators: no runtime.default_context / heap_allocator / default_allocator outside src\\base\\memory.odin (base.process_context, process_allocator, permanent_allocator: what the check builds track; a line that must not use the tracker says why after // memcheck:)",
 		actions = slice_of(Task{"the allocators", task_process_allocators, ""}), inputs = .Tree})
-	// (its own exe: build.bat, which a parallel step may run, writes build/bindgen.exe)
+	// (its own exe: the browser's build, which a parallel step may run, runs bindgen too)
 	append(&t, Step{name = "generated web API up to date (bindgen -check)", actions = slice_of(Command{argv = join({"odin", "run", "src/tools/bindgen", WB, "-vet", out_flag(exe("build/bindgen_check"))}, tooling.STACK_FLAGS, {"--", "-check"}), pkg = "src/tools/bindgen"}), inputs = .Everything})
 	// test262 in three steps (their names begin with "test262": the CI runs them as a job of their own). What both runs read, made once: the suite, the test image of the engine (its own build of
 	// the glue, beside the browser's engine and not after it) and the runner. Then the interpreter's run and the JIT's side by side: each writes its own error file.
@@ -337,7 +337,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	append(&t, Step{name = "graphics toolkit interaction states tests (hover, press and selection at once, transitions on demand, palette cross-fade, state fills in both blend spaces; no window)", actions = slice_of(toolkit_suite("states", exe("build/toolkit_states_test"), toolkit_one))})
 
 	// The test program (src/tools/e2e, docs/testing.md): one program on Odin's test runner that links the browser, built once, every allocation tracked (what that costs a step does not show: 2 % of 500 s of CPU); a step runs the tests of one file of it, in a process of its own.
-	append(&t, Step{name = "build the test program (src\\tools\\e2e: the browser in the tests' process, no window, the real renderer offscreen, every allocation tracked: a test that leaves anything allocated fails)", actions = slice_of(odin_build("src/tools/e2e", exe("build/e2e_test"), join({TRACK}, E2E_BUILD_FLAGS))), needs = COMMON_NEEDS + {.Browser}, makes = {.E2E}})   // (it links build/native, which the browser's build.bat makes)
+	append(&t, Step{name = "build the test program (src\\tools\\e2e: the browser in the tests' process, no window, the real renderer offscreen, every allocation tracked: a test that leaves anything allocated fails)", actions = slice_of(odin_build("src/tools/e2e", exe("build/e2e_test"), join({TRACK}, E2E_BUILD_FLAGS))), needs = COMMON_NEEDS + {.Browser}, makes = {.E2E}})   // (it links build/native, which the browser's build makes)
 	append(&t, Step{name = "the Wasm guests of the pages of the web tests",
 		actions = slice_of(
 			guest("examples/e2e", "build/e2e.wasm"), guest("examples/counter", "examples/site/counter.wasm"), guest("examples/formstest", "examples/site/formstest.wasm"),
@@ -360,7 +360,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	append(&t, Step{name = "build testserver", actions = slice_of(Task{"the programs", task_testserver, ""}), marks = {.No_Result}, makes = {.Test_Server}})
 	append(&t, Step{name = "test server tests (go test: /site/ index, listings, extensionless pages, types)", actions = slice_of(Command{argv = strs("go", "test", "."), dir = "tools/testserver"}), marks = {.Light}, inputs = .Dirs, packages = strs("tools/testserver")})
 	if long_run {
-		// The browser's check build (build.bat check: every allocation tracked). 1. It drives itself through a session and through tabs opened and closed by the dozen (src/tools/e2e/memcheck.odin, src/tools/endurance): nothing may
+		// The browser's check build (wrentool build check: every allocation tracked). 1. It drives itself through a session and through tabs opened and closed by the dozen (src/tools/e2e/memcheck.odin, src/tools/endurance): nothing may
 		// be left allocated at exit, nor grow while it runs. It opens a window (no input of the desktop's); the endurance run is the long one in full runs (400 tabs, the native memory too).
 		endurance_args := join({exe("build/endurance"), "-timeout", fmt.aprint(ENDURANCE_LIMIT_SECONDS * cfg.slow)}, cfg.quick ? strs("-cycles", "8", "-warmup", "3", "-no-native") : nil)
 		append(&t, Step{name = "browser check build: a scripted session (tabs, JavaScript, images, forms, back/forward cache, palette, history) exits with nothing allocated; tabs opened and closed by the dozen leave nothing growing (tracked bytes, handles; the native memory too in full runs)",
@@ -394,7 +394,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	web_step(&t, "images end-to-end test (events, srcset, picture, lazy, CSS images, cache, cancellation, 200 x 1 Mpx)", "images", {.Light})
 	wpt_args := join({exe("build/wpt"), "-timeout", fmt.aprint(WPT_TIMEOUT_MS * cfg.slow)}, cfg.quick ? strs("-quick") : nil)
 	append(&t, Step{name = "web-platform-tests (wpt\\suites.txt, pinned; -Quick: a sample; fails on a regression against wpt\\expectations)",
-		actions = slice_of(Task{"the runner", task_runner, cfg.quick ? "wpt quick" : "wpt"}, Command{argv = wpt_args}), weight = 50, needs = COMMON_NEEDS + {.Test_Server, .Browser}, inputs = .Tree, limit = LONG_STEP_SECONDS})   // (.Browser: the runner links build/native, which the browser's build.bat makes; built before it, it had the old network stack)
+		actions = slice_of(Task{"the runner", task_runner, cfg.quick ? "wpt quick" : "wpt"}, Command{argv = wpt_args}), weight = 50, needs = COMMON_NEEDS + {.Test_Server, .Browser}, inputs = .Tree, limit = LONG_STEP_SECONDS})   // (.Browser: the runner links build/native, which the browser's build makes; built before it, it had the old network stack)
 
 	if long_run {
 		append(&t, Step{name = "the names of a release's crash frames (src\\tools\\wrentool\\deps\\symbols_test.odin: the report of a build with no PDB gives its fingerprint and offsets, wrentool crash-symbolize names them from the map, or through the minidump)",

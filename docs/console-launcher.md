@@ -39,7 +39,7 @@ from Wren, so they are not in the `i18n` catalogue.
 
 ## Where it comes from and who writes it
 
-- `build.bat` compiles it to `build\wren.com` (`-subsystem:console`, before the browser).
+- `wrentool build` (`build.bat`) compiles it to `build\wren.com` (`-subsystem:console`, before the browser).
 - `wren.exe` embeds it (`#load`, `src/browser/console_launcher.odin`): the release stays one file.
 - **Setup writes it** beside the installed `wren.exe` when "Add Wren to PATH" is ticked and **removes it** when it is
   unticked, when the integration is removed (`--desktop-integration=remove`) and when Wren is uninstalled or the installation is

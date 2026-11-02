@@ -1,13 +1,14 @@
 // wrentool: the project's scripts, one program. A table of subcommands; what drives a Wren does it through the typed API (src/remote/api), what needs another program calls it (cargo, magick, ffmpeg, signtool...).
 //   odin build src/tools/wrentool -collection:wb=src -out:build/wrentool.exe
 //   build\wrentool help
-// It compiles without any of the libraries it fetches (build.bat builds it first). What needs a desktop or real input is behind an explicit flag: it never runs by default.
+// It compiles without any of the libraries it fetches: `wrentool build` (build.bat runs it) fetches and builds them, then the browser. What needs a desktop or real input is behind an explicit flag: it never runs by default.
 package wrentool
 
 import "core:fmt"
 import "core:os"
 import "wb:tools/tooling"
 import "wb:tools/wrentool/bench"
+import "wb:tools/wrentool/builder"
 import "wb:tools/wrentool/capture"
 import "wb:tools/wrentool/changelog"
 import "wb:tools/wrentool/deps"
@@ -25,9 +26,7 @@ Command :: struct {
 COMMANDS := []Command{
 	{name = "deps", about = "what a build needs, each up to date: [-Profile quick|release] [-Force]", run = deps.run_all},
 	{name = "fetch", about = "wasmtime | wgpu | openh264 | emoji [-Force] [-Unicode] [-Dest dir]", run = deps.run_fetch},
-	{name = "build", about = "lexbor | native [-Force] [-Profile quick|release] [-Features a,b]", run = deps.run_build},
-	{name = "version-h", about = "build/wren_version.h from APP_VERSION", run = release.run_version_h},
-	{name = "stale", about = "<output> <folder>...: exit code 1 when a source is newer than the output", run = release.run_stale},
+	{name = "build", about = "[dev|debug|profile|check|release]: the browser (build help) | lexbor | native [-Force] [-Profile quick|release] [-Features a,b]", run = builder.run},
 	{name = "symbols", about = "-Publish exe [-Store] | -Fingerprint exe", run = deps.run_symbols},
 	{name = "crash-symbolize", about = "<report> [-Symbols folder or .map] [-Exe exe]: names the frames of a crash report", run = deps.run_crash_symbolize},
 	{name = "symbolize", about = "-Exe exe <offset>...: the function and line at an offset of a module", run = deps.run_symbolize},

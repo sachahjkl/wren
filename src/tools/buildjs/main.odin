@@ -1,4 +1,4 @@
-// buildjs: builds Wren's JavaScript engine (wb:tools/tooling, js_engine.odin says what it does); build.bat runs it, and nothing happens when it is up to date.
+// buildjs: builds Wren's JavaScript engine (wb:tools/tooling, js_engine.odin says what it does); wrentool build does the same in its own process; nothing happens when it is up to date.
 //   odin run src/tools/buildjs -collection:wb=src -out:build/buildjs.exe -- [-force] [-names] [-no-snapshot] [-test262] [-o size|speed|...] [-out <dir>]
 // -names keeps the function names in the module (a readable profile); WREN_ODIN_FLAGS (;-separated): more flags for the glue and the engine (-disable-assert -no-bounds-check ...).
 package buildjs
