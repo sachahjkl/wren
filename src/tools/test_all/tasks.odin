@@ -47,9 +47,12 @@ task_browser :: proc(t: ^Task_Run) -> bool {
 	return builder.browser(o)
 }
 
+// (nothing when the browser is newer than its sources, as the browser's step: a release build that the release workflow
+// tests must not get the dev profile of the native library under it, which would make the browser's step rebuild it as dev)
 task_dependencies :: proc(t: ^Task_Run) -> bool {
 	o := builder.options_from_env(.Dev)
 	o.log = t.log
+	if browser_fresh(builder.program_of(o)) { return true }
 	return builder.dependencies(o)
 }
 

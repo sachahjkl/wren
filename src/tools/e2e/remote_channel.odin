@@ -156,8 +156,10 @@ what_a_client_reads_over_the_channel :: proc(t: ^testing.T) {
 	testing.expect_value(t, api.wait_quiet(s), api.Error.None)
 
 	// what a process is doing, read from outside and named with its PDB: what `quit` prints for a Wren that does not end
+	// (a release has no PDB: its frames are offsets in wren.exe, which wrentool crash-symbolize names from the map)
 	stacks, read := api.process_stacks(who.pid)
-	testing.expectf(t, read && strings.contains(stacks, fmt.tprintf("process %d, running", who.pid)) && strings.contains(stacks, "browser::"), "the stacks name the frames of the browser: %q", stacks)
+	named := os.exists(fmt.tprintf("%s.pdb", strings.trim_suffix(e2e.wren_exe(), ".exe")))
+	testing.expectf(t, read && strings.contains(stacks, fmt.tprintf("process %d, running", who.pid)) && strings.contains(stacks, named ? "browser::" : "wren.exe+0x"), "the stacks name the frames of the browser (PDB beside it: %v): %q", named, stacks)
 	testing.expect_value(t, e2e.quit(p), 0)
 	testing.expect(t, !os.exists(fmt.tprintf("%s/remote.json", profile)), "remote.json goes with the channel")
 }

@@ -16,6 +16,7 @@ package builder
 import "core:fmt"
 import "core:math/rand"
 import "core:os"
+import "core:slice"
 import "core:strings"
 import "wb:tools/tooling"
 import "wb:tools/wrentool/deps"
@@ -182,6 +183,9 @@ browser :: proc(o: Options) -> bool {
 	append(&command, ..spec.flags)
 	if spec.separate_modules { append(&command, SEPARATE_MODULES) }
 	if tooling.run({command = command[:], log = o.log}) != 0 { return false }
+	// a variant without -debug has no PDB: one left beside it by an earlier build is another program's, and would name its
+	// frames wrong (crash reports, wren ctl stacks)
+	if !slice.contains(spec.flags, "-debug") { _ = os.remove(fmt.tprintf("%s.pdb", strings.trim_suffix(program, ".exe"))) }
 
 	// the linker's map becomes <exe>-<fingerprint>.map beside the exe (wrentool crash-symbolize reads them)
 	named, ok := deps.publish_symbols(program, spec.store_symbols)
