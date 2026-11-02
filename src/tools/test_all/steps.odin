@@ -297,7 +297,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	append(&t, Step{name = "graphics toolkit interaction states tests (hover, press and selection at once, transitions on demand, palette cross-fade, state fills in both blend spaces; no window)", actions = slice_of(toolkit_suite("states", exe("build/toolkit_states_test"), toolkit_one))})
 
 	// The test program (src/tools/e2e, docs/testing.md): one program on Odin's test runner that links the browser, built once, every allocation tracked (what that costs a step does not show: 2 % of 500 s of CPU); a step runs the tests of one file of it, in a process of its own.
-	append(&t, Step{name = "build the test program (src\\tools\\e2e: the browser in the tests' process, no window, the real renderer offscreen, every allocation tracked: a test that leaves anything allocated fails)", actions = slice_of(odin_build("src/tools/e2e", exe("build/e2e_test"), join({TRACK}, E2E_BUILD_FLAGS))), needs = COMMON_NEEDS, makes = {.E2E}})
+	append(&t, Step{name = "build the test program (src\\tools\\e2e: the browser in the tests' process, no window, the real renderer offscreen, every allocation tracked: a test that leaves anything allocated fails)", actions = slice_of(odin_build("src/tools/e2e", exe("build/e2e_test"), join({TRACK}, E2E_BUILD_FLAGS))), needs = COMMON_NEEDS + {.Browser}, makes = {.E2E}}   // (it links build/native, which the browser's build.bat makes))
 	append(&t, Step{name = "the Wasm guests of the pages of the web tests",
 		actions = slice_of(
 			guest("examples/e2e", "build/e2e.wasm"), guest("examples/counter", "examples/site/counter.wasm"), guest("examples/formstest", "examples/site/formstest.wasm"),
