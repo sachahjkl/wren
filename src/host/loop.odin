@@ -2,7 +2,8 @@
 // the loop calls them (the Node/libuv model, with Wasm instead of JS).
 //
 // Threading rules:
-//   * `post` and the wake callback are safe from any thread (network completions, file I/O, workers).
+//   * `post` and the wake callback are safe from any thread (network completions, file I/O, workers). A post takes no
+//     lock: the task goes in a lock-free queue (mpsc.odin) that the loop empties at each turn.
 //   * Everything else (timers, run_ready) runs on the loop's thread, which is the UI thread.
 //   * Wakes are coalesced: any number of posts cost at most one wake until the next `run_ready`.
 //
@@ -43,13 +44,14 @@ Timer_Entry :: struct {
 
 Loop :: struct {
 	origin:     time.Tick,
-	mu:         sync.Mutex,
-	posted:     [dynamic]Task,
-	scratch:    [dynamic]Task,
-	pending:    b32,   // atomic: a wake has been issued and no run_ready has started since
+	posted:     Mpsc(Task),      // any thread pushes, the loop pops
+	taken:      [dynamic]Task,   // loop thread: popped from `posted`, not run yet (in order)
+	scratch:    [dynamic]Task,   // loop thread: what a turn runs
+	// Atomic, 0 or 1: a wake has been issued and no run_ready has started since. loop_wait sleeps on it (a futex: one
+	// wake is one wake, however many posts made it, and a wait after the turn that took them does not return for them).
+	pending:    sync.Futex,
 	wake:       proc(user: rawptr),
 	wake_user:  rawptr,
-	sema:       sync.Sema,
 
 	timers:     base.Pool(Timer),
 	queue:      priority_queue.Priority_Queue(Timer_Entry),
@@ -99,9 +101,7 @@ CLOCK_ADVANCE_MAX_TURNS :: 100_000
 // `wake` may be nil: the loop then wakes `loop_wait` only.
 loop_init :: proc(l: ^Loop, wake: proc(user: rawptr) = nil, wake_user: rawptr = nil) {
 	l.origin = time.tick_now()
-	// `post` is called from foreign threads whose context allocator is the process heap: keep these arrays there.
-	l.posted = make([dynamic]Task, base.process_allocator())
-	l.scratch = make([dynamic]Task, base.process_allocator())
+	mpsc_init(&l.posted)
 	l.wake = wake
 	l.wake_user = wake_user
 	l.timer_slice_ns = DEFAULT_TIMER_SLICE_NS
@@ -109,7 +109,8 @@ loop_init :: proc(l: ^Loop, wake: proc(user: rawptr) = nil, wake_user: rawptr = 
 }
 
 loop_destroy :: proc(l: ^Loop) {
-	delete(l.posted)
+	mpsc_destroy(&l.posted)
+	delete(l.taken)
 	delete(l.scratch)
 	priority_queue.destroy(&l.queue)
 	base.pool_destroy(&l.timers)
@@ -165,34 +166,52 @@ next_deadline :: proc(l: ^Loop) -> (deadline: i64, ok: bool) {
 	return 0, false
 }
 
-// Takes out of the posted queue the tasks of `fn` that did not run and hands each one's data to `discard` (what a loop being
-// destroyed does with the tasks nobody will run: whoever allocated their data frees it). Any thread.
+// Loop thread. Takes out of the posted queue the tasks of `fn` that did not run and hands each one's data to `discard`
+// (what a loop being destroyed does with the tasks nobody will run: whoever allocated their data frees it). A task of
+// `fn` posted after it returns stays.
 discard_posted :: proc(l: ^Loop, fn: Task_Proc, discard: proc(data: rawptr)) {
-	sync.mutex_lock(&l.mu)
-	taken := make([dynamic]rawptr, context.temp_allocator)
+	loop_owned(l, "host.discard_posted off the loop's thread")
+	take_posted(l)
 	w := 0
-	for t in l.posted {
-		if t.fn == fn { append(&taken, t.data) } else { l.posted[w] = t; w += 1 }
+	for t in l.taken {
+		if t.fn == fn { discard(t.data) } else { l.taken[w] = t; w += 1 }
 	}
-	resize(&l.posted, w)
-	sync.mutex_unlock(&l.mu)
-	for d in taken { discard(d) }
+	resize(&l.taken, w)
 }
 
 // Any thread.
 post :: proc(l: ^Loop, fn: Task_Proc, data: rawptr, by := #caller_location) {
-	sync.mutex_lock(&l.mu)
-	append(&l.posted, Task{fn, data, by})
-	sync.mutex_unlock(&l.mu)
+	mpsc_push(&l.posted, Task{fn, data, by})
 	signal(l)
+}
+
+// Loop thread. What the queue holds goes to `taken`, in order.
+@(private)
+take_posted :: proc(l: ^Loop) {
+	for {
+		t := mpsc_pop(&l.posted) or_break
+		append(&l.taken, t)
+	}
 }
 
 // Any thread. Cheap when a wake is already pending.
 signal :: proc(l: ^Loop) {
-	if _, swapped := sync.atomic_compare_exchange_strong(&l.pending, false, true); swapped {
-		sync.sema_post(&l.sema)
+	// (read first: a pending wake costs a post no write to the line every other post reads; run_ready clears it before it
+	// takes, so a post seen before that is taken by that turn)
+	if sync.atomic_load(&l.pending) != 0 { return }
+	if _, swapped := sync.atomic_compare_exchange_strong(&l.pending, 0, 1); swapped {
+		sync.futex_signal(&l.pending)
 		if l.wake != nil { l.wake(l.wake_user) }
 	}
+}
+
+// Any thread that waits on a loop without running it (a worker's thread blocked in a synchronous call, a test that runs
+// the turns itself): takes the pending wake if there is one, else waits for one at most `d`. What woke it is the
+// caller's to look at once it returns (a post after it re-arms the wake).
+loop_sleep :: proc(l: ^Loop, d: time.Duration) {
+	if sync.atomic_exchange(&l.pending, 0) != 0 { return }
+	sync.futex_wait_with_timeout(&l.pending, 0, d)
+	sync.atomic_store(&l.pending, 0)
 }
 
 // Loop thread. Registers a timer; with a scope the timer dies with it. Returns NIL_HANDLE never.
@@ -269,7 +288,7 @@ release_scope_hook :: proc(t: Timer) {
 
 // Milliseconds until the next timer, 0 if a wake is already pending or a timer is due, -1 for "no timer".
 next_timeout_ms :: proc(l: ^Loop) -> int {
-	if sync.atomic_load(&l.pending) { return 0 }
+	if sync.atomic_load(&l.pending) != 0 { return 0 }
 	deadline, ok := next_deadline(l)
 	if !ok { return -1 }
 	d := deadline - now_ns(l)
@@ -298,14 +317,24 @@ run_one :: proc(l: ^Loop, fn: Task_Proc, data: rawptr, by: runtime.Source_Code_L
 // Loop thread. Runs the posted tasks, then the timers due at this instant. Returns how many callbacks ran.
 run_ready :: proc(l: ^Loop) -> int {
 	loop_owned(l, "host.run_ready off the loop's thread")
-	sync.atomic_store(&l.pending, false)   // before draining: a post racing with us re-arms the wake
+	sync.atomic_store(&l.pending, 0)   // before draining: a post racing with us re-arms the wake
 	ran := 0
 
-	sync.mutex_lock(&l.mu)
-	l.posted, l.scratch = l.scratch, l.posted
-	sync.mutex_unlock(&l.mu)
-	for task in l.scratch { run_one(l, task.fn, task.data, task.by); ran += 1 }
-	clear(&l.scratch)
+	// what discard_posted set aside is older than anything still queued: it runs first
+	if len(l.taken) > 0 {
+		l.taken, l.scratch = l.scratch, l.taken
+		for task in l.scratch { run_one(l, task.fn, task.data, task.by); ran += 1 }
+		clear(&l.scratch)
+	}
+	// then what was posted before this turn, straight from the queue (what these tasks post waits for the next turn); a task
+	// that sets the queue aside (discard_posted, loop_drain) ends it, and what it set aside runs first at the next
+	end := mpsc_mark(&l.posted)
+	for len(l.taken) == 0 {
+		task := mpsc_pop(&l.posted, end) or_break
+		run_one(l, task.fn, task.data, task.by)
+		ran += 1
+	}
+	if len(l.taken) > 0 { signal(l) }
 
 	cutoff := now_ns(l)
 	last_seq := l.timer_seq   // timers created by this turn's callbacks wait for the next turn, even when already due
@@ -340,11 +369,9 @@ run_ready :: proc(l: ^Loop) -> int {
 // runs (a page task whose page is gone only releases), so a loop destroyed with tasks still queued leaks them.
 loop_drain :: proc(l: ^Loop, max_turns := 1000) -> (ran: int) {
 	for _ in 0 ..< max_turns {
-		sync.mutex_lock(&l.mu)
-		empty := len(l.posted) == 0
-		l.posted, l.scratch = l.scratch, l.posted
-		sync.mutex_unlock(&l.mu)
-		if empty { break }
+		take_posted(l)
+		if len(l.taken) == 0 { break }
+		l.taken, l.scratch = l.scratch, l.taken
 		for task in l.scratch { task.fn(task.data); ran += 1 }
 		clear(&l.scratch)
 	}
@@ -358,7 +385,8 @@ loop_wait :: proc(l: ^Loop, max_ms: int = -1) -> int {
 	if l.virtual != nil && timeout > 0 { timeout = -1 }
 	if max_ms >= 0 && (timeout < 0 || max_ms < timeout) { timeout = max_ms }
 	if timeout != 0 {
-		if timeout < 0 { sync.sema_wait(&l.sema) } else { sync.sema_wait_with_timeout(&l.sema, time.Duration(timeout) * time.Millisecond) }
+		// (returns at once when a wake is pending by now; a spurious return only makes an empty turn)
+		if timeout < 0 { sync.futex_wait(&l.pending, 0) } else { sync.futex_wait_with_timeout(&l.pending, 0, time.Duration(timeout) * time.Millisecond) }
 	}
 	return run_ready(l)
 }

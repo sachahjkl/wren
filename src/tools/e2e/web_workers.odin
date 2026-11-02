@@ -10,7 +10,6 @@ import "core:encoding/base64"
 import "core:fmt"
 import "core:os"
 import "core:strings"
-import "core:sync"
 import win "core:sys/windows"
 import "core:testing"
 import "core:time"
@@ -463,7 +462,7 @@ workers_page_thread_stays_responsive_under_16 :: proc(t: ^testing.T) {
 	probe = {last = time.tick_now()}
 	worst_call, worst_turn: f64
 	for count_done(&tab) < PARALLEL && time.duration_seconds(time.tick_since(start)) < DEFAULT_WAIT {
-		if host.next_timeout_ms(&loop) != 0 { sync.sema_wait_with_timeout(&loop.sema, NEAR_NOW) }
+		if host.next_timeout_ms(&loop) != 0 { host.loop_sleep(&loop, NEAR_NOW) }
 		turn := time.tick_now()
 		host.run_ready(&loop)   // the page's thread's share of the work: relaying 16 workers' messages
 		worst_turn = max(worst_turn, time.duration_milliseconds(time.tick_since(turn)))

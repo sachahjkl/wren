@@ -4,8 +4,8 @@ package wren_net
 // handshake carries (Origin, Cookie, Sec-WebSocket-Protocol) and whether the server's answer is acceptable are decided
 // by package fetch (fetch/websocket.odin). Here:
 //
-//   * The same threading contract as the HTTP client: WinHTTP's threads run the I/O and push raw events into a mutex
-//     queue; `ws_drain` runs on the loop thread and is the only place that changes socket state or calls back.
+//   * The same threading contract as the HTTP client: WinHTTP's threads run the I/O and push raw events into a lock-free
+//     inbox; `ws_drain` runs on the loop thread and is the only place that changes socket state or calls back.
 //   * A socket is a generational handle. Aborting it, its terminal event, or closing its Scope removes it; late events
 //     for it are dropped. One Ws_Job is the WinHTTP context of both the handshake request and the WebSocket handle; it is
 //     reference counted by the handles that carry it and freed by the last HANDLE_CLOSING.
@@ -179,12 +179,10 @@ Ws_Manager :: struct {
 	sockets:       base.Pool(Socket),
 	waiting:       [dynamic]base.Handle,
 	connecting:    map[string]int,
-	shutting_down: bool,
-	orphaned:      bool,   // the client is gone; the drain still posted frees the manager
-	mu:            sync.Mutex,
-	events:        [dynamic]Raw,
-	scratch:       [dynamic]Raw,
-	drain_pending: bool,
+	orphaned:      bool,   // loop thread: the client is gone; the drain still posted frees the manager
+	// WinHTTP's threads push, the loop drains (closed by websockets_destroy: no new handshake, late callbacks dropped)
+	inbox:         host.Inbox(Raw),
+	scratch:       [dynamic]Raw,   // loop thread: what a drain handles
 	live_jobs:     int,   // atomic
 }
 
@@ -196,7 +194,7 @@ ws_manager :: proc(c: ^Client) -> ^Ws_Manager {
 	if c.ws == nil {
 		m := new(Ws_Manager, heap())
 		m.client = c
-		m.events = make([dynamic]Raw, heap())
+		host.inbox_init(&m.inbox)
 		m.scratch = make([dynamic]Raw, heap())
 		m.waiting = make([dynamic]base.Handle, heap())
 		m.connecting = make(map[string]int, heap())
@@ -213,28 +211,30 @@ websocket_count :: proc(c: ^Client) -> int { return c.ws == nil ? 0 : c.ws.socke
 websockets_destroy :: proc(c: ^Client) {
 	m := c.ws
 	if m == nil { return }
-	sync.mutex_lock(&m.mu)
-	m.shutting_down = true   // no new handshake starts, late callbacks are dropped
-	sync.mutex_unlock(&m.mu)
+	pending := host.inbox_close(&m.inbox)   // no new handshake starts, late callbacks are dropped
 	handles := make([dynamic]base.Handle, context.temp_allocator)
 	it: u32
 	for h, _ in base.pool_next(&m.sockets, &it) { append(&handles, h) }
 	for h in handles { ws_release(m, h) }
 	start := time.tick_now()
 	for sync.atomic_load(&m.live_jobs) > 0 && time.duration_seconds(time.tick_since(start)) < NET_STOP_DRAIN_S { time.sleep(time.Millisecond) }
-	sync.mutex_lock(&m.mu)
-	for &r in m.events { raw_free(&r) }
-	clear(&m.events)
-	pending := m.drain_pending
+	for {
+		r := host.inbox_pop(&m.inbox) or_break
+		raw_free(&r)
+	}
 	m.orphaned = pending
-	sync.mutex_unlock(&m.mu)
 	base.pool_destroy(&m.sockets)
 	for k in m.connecting { delete(k, heap()) }
 	delete(m.connecting)
 	delete(m.waiting)
 	c.ws = nil
 	if pending { return }   // a drain is still posted to the loop: it must find a live (empty) manager
-	delete(m.events)
+	ws_manager_free(m)
+}
+
+@(private)
+ws_manager_free :: proc(m: ^Ws_Manager) {
+	host.inbox_destroy(&m.inbox)
 	delete(m.scratch)
 	free(m, heap())
 }
@@ -367,7 +367,7 @@ ws_scope_closed :: proc(data: rawptr) {
 
 @(private)
 ws_pump :: proc(m: ^Ws_Manager) {
-	if m.shutting_down { return }
+	if host.inbox_closed(&m.inbox) { return }   // shutting down
 	w := 0
 	for i in 0 ..< len(m.waiting) {
 		h := m.waiting[i]
@@ -576,40 +576,28 @@ raw_free :: proc(r: ^Raw) {
 
 @(private)
 ws_push :: proc(m: ^Ws_Manager, r: Raw) {
-	r := r
-	sync.mutex_lock(&m.mu)
-	if m.shutting_down {
-		sync.mutex_unlock(&m.mu)
+	if !host.inbox_push(m.client.loop, &m.inbox, r, ws_drain, m) {   // websockets_destroy closed it
+		r := r
 		raw_free(&r)
-		return
 	}
-	append(&m.events, r)
-	post := !m.drain_pending
-	m.drain_pending = true
-	sync.mutex_unlock(&m.mu)
-	if post { host.post(m.client.loop, ws_drain, m) }
 }
 
 @(private)
 ws_drain :: proc(data: rawptr) {
 	m := (^Ws_Manager)(data)
-	sync.mutex_lock(&m.mu)
-	m.drain_pending = false
-	m.events, m.scratch = m.scratch, m.events
-	done := m.shutting_down
-	orphaned := m.orphaned
-	sync.mutex_unlock(&m.mu)
+	host.inbox_begin(&m.inbox)
+	done := host.inbox_closed(&m.inbox)
+	end := host.inbox_mark(&m.inbox)   // (what comes meanwhile, or from handling these, the next drain takes)
+	for {
+		r := host.inbox_pop(&m.inbox, end) or_break
+		append(&m.scratch, r)
+	}
 	for &r in m.scratch {
 		if !done { ws_handle(m, &r) }
 		raw_free(&r)
 	}
 	clear(&m.scratch)
-	if orphaned {
-		// the client was destroyed while this drain was posted
-		delete(m.events)
-		delete(m.scratch)
-		free(m, heap())
-	}
+	if m.orphaned { ws_manager_free(m) }   // the client was destroyed while this drain was posted
 }
 
 @(private)

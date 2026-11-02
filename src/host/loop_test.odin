@@ -2,6 +2,7 @@ package host
 
 import "core:container/priority_queue"
 import "core:log"
+import "core:slice"
 import "core:sync"
 import "core:testing"
 import "core:thread"
@@ -269,6 +270,81 @@ posted_tasks_that_will_not_run_are_discarded :: proc(t: ^testing.T) {
 	delete(ran.order)
 }
 
+// Several threads post at once, across many of the queue's blocks, while the loop runs them and before each turn
+// discards the tasks of one function: each producer's tasks run in its order, every task either runs or is discarded,
+// once, and a discarded one never runs.
+@(test)
+posts_keep_order_lose_nothing_and_discarded_never_run :: proc(t: ^testing.T) {
+	HAMMER_THREADS :: 6
+	HAMMER_PER_THREAD :: 20_000
+	HAMMER_WAIT :: 100 * time.Millisecond   // the longest a turn waits for a post (one comes far sooner while any is left)
+	HAMMER_GIVE_UP :: 10 * time.Second      // it takes milliseconds
+	Fate :: enum u8 { Queued, Ran, Discarded }
+	Hammer :: struct {
+		l:      ^Loop,
+		items:  []Item,
+		last:   [HAMMER_THREADS]int,   // the last kept task of each producer that ran
+		wrong:  int,                   // tasks run out of order, twice, or after their discard
+		done:   int,                   // ran or discarded
+		starts: [HAMMER_THREADS]Start,
+	}
+	Item :: struct { h: ^Hammer, producer, seq: int, fate: Fate }
+	Start :: struct { h: ^Hammer, producer: int }
+	kept :: proc(data: rawptr) {
+		it := (^Item)(data)
+		if it.fate != .Queued || it.seq <= it.h.last[it.producer] { it.h.wrong += 1 }
+		it.h.last[it.producer] = it.seq
+		it.fate = .Ran
+		it.h.done += 1
+	}
+	doomed :: proc(data: rawptr) {   // runs when the discards missed it: posted after the last one
+		it := (^Item)(data)
+		if it.fate != .Queued { it.h.wrong += 1 }
+		it.fate = .Ran
+		it.h.done += 1
+	}
+	discard :: proc(data: rawptr) {
+		it := (^Item)(data)
+		if it.fate != .Queued { it.h.wrong += 1 }
+		it.fate = .Discarded
+		it.h.done += 1
+	}
+	l: Loop
+	loop_init(&l)
+	defer loop_destroy(&l)
+	h := Hammer{l = &l, items = make([]Item, HAMMER_THREADS * HAMMER_PER_THREAD)}
+	defer delete(h.items)
+	for p in 0 ..< HAMMER_THREADS {
+		h.last[p] = -1
+		h.starts[p] = Start{&h, p}
+		for s in 0 ..< HAMMER_PER_THREAD { h.items[p * HAMMER_PER_THREAD + s] = Item{h = &h, producer = p, seq = s} }
+	}
+	threads: [HAMMER_THREADS]^thread.Thread
+	for p in 0 ..< HAMMER_THREADS {
+		threads[p] = thread.create_and_start_with_data(&h.starts[p], proc(data: rawptr) {
+			st := (^Start)(data)
+			for s in 0 ..< HAMMER_PER_THREAD {
+				it := &st.h.items[st.producer * HAMMER_PER_THREAD + s]
+				post(st.h.l, s % 2 == 0 ? kept : doomed, it)
+			}
+		})
+	}
+	start := time.tick_now()
+	for h.done < len(h.items) && time.tick_since(start) < HAMMER_GIVE_UP {   // (a lost post fails the checks below)
+		loop_sleep(&l, HAMMER_WAIT)   // something was posted: what of it is doomed goes before the turn runs the rest
+		discard_posted(&l, doomed, discard)
+		run_ready(&l)
+	}
+	for th in threads { thread.join(th); thread.destroy(th) }
+	discarded := 0
+	for it in h.items { if it.fate == .Discarded { discarded += 1 } }
+	testing.expect_value(t, h.wrong, 0)
+	testing.expect_value(t, h.done, len(h.items))
+	for p in 0 ..< HAMMER_THREADS { testing.expect_value(t, h.last[p], HAMMER_PER_THREAD - 2) }   // the last kept one ran last
+	testing.expectf(t, discarded > 0, "%d doomed tasks discarded before they ran", discarded)
+	testing.expect_value(t, run_ready(&l), 0)   // nothing left over
+}
+
 // The clock moved by a test: what falls due runs at once, each timer at its own time, and nothing else waits.
 @(test)
 clock_advance_fires_what_falls_due_without_waiting :: proc(t: ^testing.T) {
@@ -362,4 +438,71 @@ now_ns_costs_a_test_of_a_pointer :: proc(t: ^testing.T) {
 		best_loop = min(best_loop, f64(time.duration_nanoseconds(time.tick_since(t1))) / NOW_BENCH_CALLS)
 	}
 	log.infof("now_ns: %.2f ns per call, the system's clock alone %.2f ns (%d calls, best of %d; sum %d)", best_loop, best_direct, NOW_BENCH_CALLS, NOW_BENCH_ROUNDS, sink)
+}
+
+// Posts to the loop: how many a second from several threads at once, and how long one takes from post to run when the
+// loop waits for it (the wake included). Numbers for docs/performance.md, not a check.
+@(test)
+post_rate_and_latency :: proc(t: ^testing.T) {
+	POST_BENCH_POSTS :: 1_000_000
+	POST_BENCH_FEW_THREADS :: 1
+	POST_BENCH_MANY_THREADS :: 4
+	POST_BENCH_ROUND_TRIPS :: 2_000
+	if base.perf_skip("posts to the loop: rate from several threads, latency of one") { return }
+	l: Loop
+	loop_init(&l)
+	defer loop_destroy(&l)
+	// posts per second through the running loop from `threads` threads at once
+	through :: proc(l: ^Loop, threads: int) -> f64 {
+		Work :: struct { l: ^Loop, c: Counter, per: int }
+		w := Work{l = l, per = POST_BENCH_POSTS / threads}
+		started: [POST_BENCH_MANY_THREADS]^thread.Thread
+		t0 := time.tick_now()
+		for i in 0 ..< threads {
+			started[i] = thread.create_and_start_with_data(&w, proc(data: rawptr) {
+				w := (^Work)(data)
+				for _ in 0 ..< w.per { post(w.l, bump, &w.c) }
+			})
+		}
+		for w.c.n < w.per * threads { loop_wait(l) }
+		elapsed := time.duration_seconds(time.tick_since(t0))
+		for th in started[:threads] { thread.join(th); thread.destroy(th) }
+		return f64(w.per * threads) / elapsed / 1e6
+	}
+	few := through(&l, POST_BENCH_FEW_THREADS)
+	many := through(&l, POST_BENCH_MANY_THREADS)
+	// the same posts with the loop not running, then the loop taking them: each side alone
+	c: Counter
+	t1 := time.tick_now()
+	for _ in 0 ..< POST_BENCH_POSTS { post(&l, bump, &c) }
+	alone_post := time.duration_seconds(time.tick_since(t1))
+	t2 := time.tick_now()
+	run_ready(&l)
+	alone_run := time.duration_seconds(time.tick_since(t2))
+
+	// one post at a time, the next once the loop ran it: post to run, the wake of a waiting loop included
+	Ping :: struct { l: ^Loop, back: sync.Sema, sent: time.Tick, lat: [POST_BENCH_ROUND_TRIPS]i64, n: int }
+	ping: Ping
+	ping.l = &l
+	th := thread.create_and_start_with_data(&ping, proc(data: rawptr) {
+		p := (^Ping)(data)
+		for _ in 0 ..< POST_BENCH_ROUND_TRIPS {
+			p.sent = time.tick_now()
+			post(p.l, proc(data: rawptr) {
+				p := (^Ping)(data)
+				p.lat[p.n] = i64(time.tick_diff(p.sent, time.tick_now()))
+				p.n += 1
+				sync.sema_post(&p.back)
+			}, p)
+			sync.sema_wait(&p.back)
+		}
+	})
+	for ping.n < POST_BENCH_ROUND_TRIPS { loop_wait(&l) }
+	thread.join(th)
+	thread.destroy(th)
+	slice.sort(ping.lat[:])
+	log.infof("posts through the running loop: %.1f M/s from %d thread, %.1f M/s from %d at once; alone: one thread posts %.1f M/s, the loop takes and runs %.1f M/s; post to run on a waiting loop: median %.2f us, 99th %.2f us",
+		few, POST_BENCH_FEW_THREADS, many, POST_BENCH_MANY_THREADS,
+		POST_BENCH_POSTS / alone_post / 1e6, POST_BENCH_POSTS / alone_run / 1e6,
+		f64(ping.lat[POST_BENCH_ROUND_TRIPS / 2]) / 1e3, f64(ping.lat[POST_BENCH_ROUND_TRIPS * 99 / 100]) / 1e3)
 }
