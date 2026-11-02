@@ -47,11 +47,28 @@
     <p class="intro">Eight versions in twelve days: the first public build, JavaScript, a JIT, a text engine of its own, a browser that speaks to screen readers, then a JavaScript engine written in Odin.</p>
     <div class="timeline">
 <!-- releases:begin -->
-      <article class="release latest" id="v0-6-24">
+      <article class="release latest" id="v0-6-25">
+        <div class="rail"><span class="dot"></span></div>
+        <div class="release-body">
+          <p class="release-date"><time datetime="2026-11-02">November 2, 2026</time></p>
+          <div class="release-title"><h3>0.6.25</h3><span class="badge">Latest</span></div>
+          <ul class="release-list">
+            <li><strong>Same-origin frames</strong>: <code>contentDocument</code>, <code>contentWindow.document</code>, <code>parent.document</code>; each frame keeps its own</li>
+            <li><strong>Multi-column layout and vertical writing modes</strong>: <code>columns</code>, <code>column-span</code>, nested columns, <code>writing-mode</code>,</li>
+            <li><strong>A GPU process for WebGL</strong>, WebGL in workers and <code>transferControlToOffscreen</code>, WebGL 2 transform feedback and queries.</li>
+            <li><strong><code>AudioWorklet</code></strong>, and <strong>P-521</strong> in <code>crypto.subtle</code>.</li>
+            <li><strong>A browser at rest draws nothing</strong>: no frame and almost no wake on a page that changes nothing, and a caret that blinks</li>
+            <li><strong>Faster and safer closing</strong>: no wait on the shutdown watchdog, the graphics device let go before the end, <code>wren ctl</code></li>
+          </ul>
+          <p class="release-links"><a href="https://github.com/sachahjkl/wren/blob/master/docs/releases/v0.6.25.md">Release notes</a> ·
+            <a href="https://github.com/sachahjkl/wren/releases/tag/v0.6.25">Download</a></p>
+        </div>
+      </article>
+      <article class="release" id="v0-6-24">
         <div class="rail"><span class="dot"></span></div>
         <div class="release-body">
           <p class="release-date"><time datetime="2026-11-01">November 1, 2026</time></p>
-          <div class="release-title"><h3>0.6.24</h3><span class="badge">Latest</span></div>
+          <div class="release-title"><h3>0.6.24</h3></div>
           <ul class="release-list">
             <li><strong>WebGL and WebGL 2</strong>, through wgpu and naga, with a device and a thread for each context.</li>
             <li><strong>CSS anchor positioning</strong>: <code>anchor()</code>, <code>anchor-size()</code>, <code>position-area</code>, <code>position-try-fallbacks</code>, <code>@position-try</code>, <code>position-visibility</code>, implicit anchors of popovers.</li>

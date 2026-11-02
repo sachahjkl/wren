@@ -15,6 +15,7 @@ import "wb:tools/tooling"
 import "wb:tools/wrentool/bench"
 
 RAW_DIR :: "build/shots"
+SHOT_PREFS :: "browser.remote.indicator=false"
 SHOT_WIDTH :: 1600
 SHOT_HEIGHT :: 1000
 WEBP_QUALITY :: "82"
@@ -133,7 +134,11 @@ run_shots :: proc(args: []string) -> int {
 		if len(only) > 0 && !slice.contains(only, s.name) { continue }
 		png := fmt.tprintf("%s/%s.png", RAW_DIR, s.name)
 		w: bench.Wren
-		if !bench.start(&w, {exe = exe, size = size, prefs = s.prefs, url = address(s.url)}) { return 1 }
+		// (a picture of the browser as a person sees it: not the label of the remote channel that takes it)
+		prefs := make([dynamic]string, context.temp_allocator)
+		append(&prefs, SHOT_PREFS)
+		append(&prefs, ..s.prefs)
+		if !bench.start(&w, {exe = exe, size = size, prefs = prefs[:], url = address(s.url)}) { return 1 }
 		at_rest(&w.session)
 		good := run_actions(&w.session, s.actions) && take(&w.session, png)
 		bench.stop(&w)
