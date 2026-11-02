@@ -16,8 +16,11 @@
 // -list prints the tests (path, long timeout, folder) and stops; -reference adds the subtests of a reference run in
 // another browser to the table.
 //
-// Isolation: the tests run in child processes (`wpt -child list out`), a few dozen each, `-jobs` at a time; a child
-// that dies or stops answering loses only the test it was running (CRASH), the others go to a new child.
+// Isolation: the tests run in child processes (`wpt -child out`), `-jobs` at a time, at most `-chunk` tests each; a child
+// that dies or stops answering loses only the test it was running (CRASH), the others go to another child. The tests wait
+// in one queue, the costliest first (build/wpt/times.txt: each test's time in the last run; else its whole limit for a test
+// expected to time out), and a child takes the next one on its standard input as it finishes one (queue.odin): no child is
+// left alone with a folder of slow tests while the others have ended.
 // Time: a test has -timeout (x6 with <meta name=timeout content=long>), then the runner calls testharness.js's
 // timeout() and waits for the report a little longer; a page that can no longer do anything (loaded, no timer, no
 // request, no animation frame, no worker for -idle ms) is timed out at once.
@@ -41,7 +44,6 @@ import "core:os"
 import "core:path/filepath"
 import "core:slice"
 import "core:strings"
-import "core:terminal"
 import "core:time"
 import "wb:config"
 import "wb:desktop"
@@ -107,9 +109,9 @@ main :: proc() {
 	}
 	opts.dump = dump_dir_from_env()
 	args := desktop.command_line_args(context.allocator)   // (os.args is the C runtime's ANSI: a folder may have accents)
-	if len(args) >= 3 && args[0] == "-child" {
-		parse_options(args[3:])
-		os.exit(child_main(args[1], args[2]))
+	if len(args) >= 2 && args[0] == "-child" {
+		parse_options(args[2:])
+		os.exit(child_on_its_stack(args[1]))
 	}
 	root := tooling.repo_root()
 	if !strings.has_prefix(opts.self, root) { opts.self = abs_path(opts.self) }
@@ -435,17 +437,6 @@ reftest_results_file :: proc(path: string) -> string {
 ////////////////////////////////
 // Parent: children, aggregation, comparison
 
-Child :: struct {
-	process:  os.Process,
-	tests:    []Test,
-	list:     string,
-	out:      string,
-	started:  time.Tick,
-	last_size: i64,
-	last_grow: time.Tick,
-	alive:    bool,
-}
-
 // The ports the expectations were recorded on (on the default block of the WPT origin alone): subtest names that print a URL
 // ("Fetch http://127.0.0.1:8778/...") are compared under these ports whatever port this run's server has, so that
 // runs on per-worktree ports and on the shared server match the same expectations.
@@ -475,14 +466,12 @@ canonical_ports :: proc(name: string) -> string {
 	return strings.to_string(b)
 }
 
-parse_child_output :: proc(path: string, into: ^map[string]^Result) -> int {
-	data, err := os.read_entire_file(path, context.allocator)
-	if err != nil { return 0 }
-	finished := 0
+// The results of a child's output (whole records: "T" line, "S" lines, "E"), in order.
+parse_child_text :: proc(text: string, into: ^[dynamic]^Result) {
 	cur: ^Result
-	for raw in strings.split_lines(string(data)) {
+	for raw in strings.split_lines(text, context.temp_allocator) {
 		if raw == "" { continue }
-		parts := strings.split(raw, "\t")
+		parts := strings.split(raw, "\t", context.temp_allocator)
 		switch parts[0] {
 		case "T":
 			if len(parts) < 5 { continue }
@@ -495,38 +484,10 @@ parse_child_output :: proc(path: string, into: ^map[string]^Result) -> int {
 			if cur == nil || len(parts) < 4 { continue }
 			append(&cur.subs, Sub{canonical_ports(unescape(parts[1])), strings.clone(parts[2]), strings.clone(unescape(parts[3]))})
 		case "E":
-			if cur != nil { into[cur.path] = cur; finished += 1 }
+			if cur != nil { append(into, cur) }
 			cur = nil
 		}
 	}
-	return finished
-}
-
-child_start :: proc(c: ^Child, index: int, tests: []Test) -> bool {
-	c.tests = tests
-	logs := filepath.join({filepath.dir(opts.md != "" ? opts.md : "build/wpt/x"), "children"}, context.temp_allocator) or_else "children"
-	os.make_directory_all(logs)
-	c.list = fmt.aprintf("%s/list_%d.txt", logs, index)
-	c.out = fmt.aprintf("%s/out_%d.txt", logs, index)
-	b := strings.builder_make(context.temp_allocator)
-	for t in tests { fmt.sbprintfln(&b, "%s\t%d\t%d\t%d", t.path, t.long ? 1 : 0, t.is_reftest ? 1 : 0, t.cap_ms) }
-	_ = os.write_entire_file(c.list, strings.to_string(b))
-	_ = os.write_entire_file(c.out, "")
-	cmd := make([dynamic]string, context.temp_allocator)
-	append(&cmd, opts.self, "-child", c.list, c.out, "-server", opts.server, "-timeout", fmt.tprint(opts.timeout_ms), "-idle", fmt.tprint(opts.idle_ms), "-root", opts.root)
-	if opts.dump != "" { append(&cmd, "-dump", opts.dump) }
-	if opts.dump_all { append(&cmd, "-dump-all") }
-	append(&cmd, ..opts.prefs_args[:])
-	logf, _ := os.create(fmt.tprintf("%s/log_%d.txt", logs, index))
-	p, err := os.process_start({command = cmd[:], stdout = logf, stderr = logf})
-	if logf != nil { os.close(logf) }
-	if err != nil { fmt.eprintfln("wpt: cannot start a child: %v", err); return false }
-	c.process = p
-	c.started = time.tick_now()
-	c.last_grow = c.started
-	c.last_size = 0
-	c.alive = true
-	return true
 }
 
 parent_main :: proc() -> int {
@@ -613,84 +574,16 @@ parent_main :: proc() -> int {
 	if !opts.quiet { fmt.printfln("%d tests in %d folders, %d at a time", len(tests), len(suites), opts.jobs) }
 	if capped > 0 && !opts.quiet { fmt.printfln("%d of them expected to time out: at most %d ms each (-timeout-cap)", capped, opts.timeout_cap_ms) }
 
-	results := make(map[string]^Result)
-	queue := make([dynamic][]Test)
-	for i := 0; i < len(tests); i += opts.chunk { append(&queue, tests[i:min(i + opts.chunk, len(tests))]) }
-	children := make([]Child, opts.jobs)
-	next_index := 0
+	q: Run_Queue
+	queue_make(&q, tests[:], &expected)
 	t0 := time.tick_now()
-	// A first child with no test: it compiles the engine and writes the disk cache (and its key) alone, the others read it.
-	if opts.jobs > 1 && !opts.quiet {
-		warm: Child
-		if child_start(&warm, next_index, nil) { _, _ = os.process_wait(warm.process) }
-		next_index += 1
+	if why := queue_run(&q); why != "" {
+		fmt.eprintfln("wpt: %s", why)
+		return 2
 	}
-	hang_ms := f64(opts.timeout_ms) * LONG_TIMEOUT_FACTOR + CHILD_HANG_MARGIN_MS   // longer than any one test may take
-	done_tests := 0
-	show_progress := terminal.is_terminal(os.stderr)   // (a log has no use for a line per tick)
-	for {
-		running := 0
-		for &c in children {
-			if c.alive {
-				state, werr := os.process_wait(c.process, 0)
-				exited := werr == nil && state.exited
-				if !exited {
-					// a child hung (no result for longer than a test may take): killed, its test is a CRASH
-					size: i64
-					if fi, serr := os.stat(c.out, context.temp_allocator); serr == nil { size = fi.size }
-					if size != c.last_size { c.last_size = size; c.last_grow = time.tick_now() }
-					if time.duration_milliseconds(time.tick_since(c.last_grow)) > hang_ms {
-						_ = os.process_kill(c.process)
-						_, _ = os.process_wait(c.process)
-						exited = true
-					}
-				}
-				if exited {
-					c.alive = false
-					got := make(map[string]^Result, context.temp_allocator)
-					n := parse_child_output(c.out, &got)
-					for _, r in got { results[r.path] = r }
-					done_tests += n
-					rest := make([dynamic]Test)
-					lost := false
-					for t in c.tests {
-						if t.path in got { continue }
-						if !lost {
-							// the test the child was running when it died
-							lost = true
-							r := new(Result)
-							r.path = t.path
-							r.status = "CRASH"
-							r.message = fmt.aprintf("the test process ended (exit code %d) or stopped answering", state.exit_code)
-							results[t.path] = r
-							done_tests += 1
-							continue
-						}
-						append(&rest, t)
-					}
-					if len(rest) > 0 { append(&queue, rest[:]) }
-				}
-			}
-			if !c.alive && len(queue) > 0 {
-				work := pop_front(&queue)
-				if !child_start(&c, next_index, work) {
-					for t in work {
-						r := new(Result)
-						r.path, r.status, r.message = t.path, "CRASH", "the test process could not start"
-						results[t.path] = r
-					}
-					continue
-				}
-				next_index += 1
-			}
-			if c.alive { running += 1 }
-		}
-		if running == 0 && len(queue) == 0 { break }
-		if show_progress { fmt.eprintf("%d/%d\r", done_tests, len(tests)) }
-		time.sleep(50 * time.Millisecond)
-	}
+	if !opts.quiet { write_times(q.results) }
 	elapsed := time.duration_seconds(time.tick_since(t0))
-	return report(suites[:], tests[:], results, expected, elapsed)
+	return report(suites[:], tests[:], q.results, expected, elapsed)
 }
 
 Folder_Stats :: struct {
@@ -704,6 +597,31 @@ Folder_Stats :: struct {
 Reftest_Stats :: struct {
 	tests, pass, fail, timeout, error, crash: int,
 	regressions, improvements, new_tests: int,
+}
+
+// How many regressions a result has against its expectations (its status, its subtests expected to pass), and their lines in `lines` when given: the report's count and the progress of a run.
+regressions_of :: proc(t: Test, r: ^Result, e: Expect, lines: ^strings.Builder = nil) -> int {
+	if t.is_reftest {
+		if !status_ok(e.status, STATUS_PASS) || status_ok(e.status, r.status) { return 0 }
+		if lines != nil { fmt.sbprintfln(lines, "REGRESSION %s: %s (expected %s) %s", t.path, r.status, e.status, r.message) }
+		return 1
+	}
+	n := 0
+	if status_ok(e.status, "OK") && !status_ok(e.status, r.status) {
+		n += 1
+		if lines != nil { fmt.sbprintfln(lines, "REGRESSION %s: %s (expected %s) %s", t.path, r.status, e.status, r.message) }
+	}
+	seen := make(map[string]string, len(r.subs), context.temp_allocator)
+	for s in r.subs { if s.name not_in seen { seen[s.name] = s.status } }   // (duplicate names: the first)
+	for name, want in e.subs {
+		got, present := seen[name]
+		if !present { got = "MISSING" }
+		if status_ok(want, "PASS") && got != "PASS" && !status_ok(want, got) {
+			n += 1
+			if lines != nil { fmt.sbprintfln(lines, "REGRESSION %s | %s: %s (expected %s)", t.path, name, got, want) }
+		}
+	}
+	return n
 }
 
 note_regressed :: proc(path: string) {
@@ -733,9 +651,8 @@ report :: proc(suites: []Suite, tests: []Test, results: map[string]^Result, expe
 			case: rs.error += 1
 			}
 			if e, has := expected[t.path]; has {
-				if status_ok(e.status, STATUS_PASS) && !status_ok(e.status, r.status) {
-					rs.regressions += 1
-					fmt.sbprintfln(&regress, "REGRESSION %s: %s (expected %s) %s", t.path, r.status, e.status, r.message)
+				if n := regressions_of(t, r, e, &regress); n > 0 {
+					rs.regressions += n
 					note_regressed(t.path)
 				} else if r.status == STATUS_PASS && !status_ok(e.status, STATUS_PASS) {
 					rs.improvements += 1
@@ -775,22 +692,13 @@ report :: proc(suites: []Suite, tests: []Test, results: map[string]^Result, expe
 			}
 		}
 		if e, has := expected[t.path]; has {
-			if status_ok(e.status, "OK") && !status_ok(e.status, r.status) {
-				st.regressions += 1
-				fmt.sbprintfln(&regress, "REGRESSION %s: %s (expected %s) %s", t.path, r.status, e.status, r.message)
+			if n := regressions_of(t, r, e, &regress); n > 0 {
+				st.regressions += n
 				note_regressed(t.path)
-			} else if !status_ok(e.status, r.status) && r.status == "OK" {
+			}
+			if !status_ok(e.status, r.status) && r.status == "OK" {
 				st.improvements += 1
 				fmt.sbprintfln(&better, "better %s: %s (expected %s)", t.path, r.status, e.status)
-			}
-			for name, want in e.subs {
-				got, present := seen[name]
-				if !present { got = "MISSING" }
-				if status_ok(want, "PASS") && got != "PASS" && !status_ok(want, got) {
-					st.regressions += 1
-					fmt.sbprintfln(&regress, "REGRESSION %s | %s: %s (expected %s)", t.path, name, got, want)
-					note_regressed(t.path)
-				}
 			}
 			for name, got in seen {
 				want, known := e.subs[name]
@@ -980,13 +888,55 @@ json_str :: proc(v: json.Value) -> string {
 // The JavaScript engine compiled and started once before the first test's time limit starts: measured in a full run, the first test
 // of a child took 5.9 s (median; p90 13 s, past the 10 s limit) and the others 58 ms, so a child's first test timed out under load
 // whatever it tested.
-warm_up :: proc(env: ^headless.Env) {
-	p := page.page_create(&env.loop, &env.loader, &env.settings, env.process, "about:blank", proc(user: rawptr, level: page.Log_Level, message: string) {})
+// It also says whether JavaScript starts at all ("": it does): if not, every test of the run would wait out its limit for nothing.
+warm_up :: proc(env: ^headless.Env) -> (why: string) {
+	p := page.page_create(&env.loop, &env.loader, &env.settings, env.process, "about:blank", proc(user: rawptr, level: page.Log_Level, message: string) {
+		why := (^string)(user)
+		if level == .Error && why^ == "" { why^ = strings.clone(message) }
+	}, &why)
 	page.js_run(p, nil, "wpt-warm-up.js")
+	if page.js_realm(p) == nil && why == "" { why = "JavaScript could not start" }
 	page.page_close(p)
+	return why
 }
 
-child_main :: proc(list_path, out_path: string) -> int {
+// A child reads its tests on its standard input, one line each ("path \t long \t reftest \t cap ms"), as the parent hands them out; the end of the input is the end of its work.
+Line_Reader :: struct {
+	f:     ^os.File,
+	buf:   [dynamic]u8,
+	start: int,
+}
+
+LINE_READ_BYTES :: 4096
+
+// The next line, valid until the next call; false at the end of the input.
+read_line :: proc(r: ^Line_Reader) -> (line: string, ok: bool) {
+	for {
+		if i := strings.index_byte(string(r.buf[r.start:]), '\n'); i >= 0 {
+			line = strings.trim_right(string(r.buf[r.start:r.start + i]), "\r")
+			r.start += i + 1
+			return line, true
+		}
+		remove_range(&r.buf, 0, r.start)
+		r.start = 0
+		chunk: [LINE_READ_BYTES]u8
+		n, err := os.read(r.f, chunk[:])
+		if n <= 0 || err != nil { return "", false }
+		append(&r.buf, ..chunk[:n])
+	}
+}
+
+// The child's work on a thread of its own with the stack JavaScript needs (wasm.wasmtime.max_stack_bytes): whatever linked this program, as the browser's workers do.
+child_on_its_stack :: proc(out_path: string) -> int {
+	Run :: struct { out: string, code: int }
+	run := Run{out = out_path}
+	th := host.thread_start(proc(data: rawptr) { r := (^Run)(data); r.code = child_main(r.out) }, &run, tooling.JS_THREAD_STACK_BYTES, name = "wpt-child")
+	if th == nil { fmt.eprintln("wpt: cannot start the child's thread"); return 2 }
+	host.thread_join(th)
+	return run.code
+}
+
+child_main :: proc(out_path: string) -> int {
 	prefs := config.prefs_make()
 	page.register_prefs(&prefs)
 	rest, errs := config.apply_args(&prefs, opts.prefs_args[:])
@@ -1001,13 +951,17 @@ child_main :: proc(list_path, out_path: string) -> int {
 	// was stopped at 10 s whatever the limit, and regressed twice.
 	env.settings.js.slow_script_ms = i64(opts.timeout_ms)
 	js.cache_start({memory_bytes = 64 << 20, min_source_bytes = 0})
-	warm_up(&env)
-	data, err := os.read_entire_file(list_path, context.allocator)
-	if err != nil { return 2 }
+	if why := warm_up(&env); why != "" {
+		fmt.eprintfln("wpt: JavaScript does not start in a test process: %s", why)
+		return EXIT_NO_JAVASCRIPT
+	}
 	out, oerr := os.open(out_path, {.Write, .Append, .Create})
 	if oerr != nil { return 2 }
 	reftests_child_begin(&env)
-	for line in strings.split_lines(string(data)) {
+	input := Line_Reader{f = os.stdin}
+	for {
+		line, more := read_line(&input)
+		if !more { break }
 		if line == "" { continue }
 		parts := strings.split(line, "\t", context.temp_allocator)
 		path := parts[0]

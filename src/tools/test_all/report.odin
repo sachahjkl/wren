@@ -271,6 +271,9 @@ run_all :: proc(cfg: ^Config, table: []Step) -> int {
 	warn_programs_running()
 	fmt.printfln("test_all: %s, -Jobs %d, started %s", here("."), cfg.jobs, now_stamp())
 	s := scheduler_make(cfg, steps, &sum.durations, cache)
+	// while it runs the report file says what is running (progress_text), the end of the run replaces it with the report
+	s.progress_file = REPORT_FILE
+	_ = os.write_entire_file(REPORT_FILE, fmt.tprintfln("test_all: started %s, the report comes at the end; meanwhile, every %v:", now_stamp(), PROGRESS_INTERVAL))
 	if cfg.profile { s.profile = profile_begin() }
 	schedule(s)
 	if s.profile != nil { profile_end(s.profile) }

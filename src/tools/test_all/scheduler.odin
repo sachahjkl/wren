@@ -20,6 +20,8 @@ Slot :: enum { Heavy, Light, Asan, Build_Bat }
 
 // How often the loop looks: at most this much of a step's slot goes idle between two steps.
 TICK :: 10 * time.Millisecond
+// How often a run says which steps are running and for how long (console and REPORT_FILE): a long step never looks hung.
+PROGRESS_INTERVAL :: 60 * time.Second
 // A step with no duration of a last run and no weight is taken for this long, seconds.
 DEFAULT_DURATION :: 60
 // How long what a stuck step's threads are doing may take to read before it is killed anyway.
@@ -85,6 +87,8 @@ Scheduler :: struct {
 	last_tick: time.Tick,
 	profile:  ^Profile,
 	quiet:    bool,         // (a test of this file: nothing printed)
+	progress_file: string,  // where the progress lines go besides the console ("": the console only)
+	last_progress: time.Tick,
 }
 
 slot_of :: proc(s: ^Step) -> Slot {
@@ -270,6 +274,7 @@ scheduler_make :: proc(cfg: ^Config, steps: []^Step, durations: ^map[string]int,
 	s.left = len(steps)
 	s.began = time.tick_now()
 	s.last_tick = s.began
+	s.last_progress = s.began
 	s.cache_dirty = true
 	return s
 }
@@ -278,9 +283,29 @@ scheduler_make :: proc(cfg: ^Config, steps: []^Step, durations: ^map[string]int,
 schedule :: proc(s: ^Scheduler) {
 	for s.left > 0 {
 		schedule_turn(s)
+		if time.tick_since(s.last_progress) >= PROGRESS_INTERVAL {
+			s.last_progress = time.tick_now()
+			text := progress_text(s)
+			print_line(s, text)
+			if s.progress_file != "" && !s.quiet { tooling.append_text(s.progress_file, text) }
+		}
 		time.sleep(TICK)
 		free_all(context.temp_allocator)
 	}
+}
+
+// One line: how far the run is, and each running step with how long it has run, the longest first.
+progress_text :: proc(s: ^Scheduler) -> string {
+	running := make([dynamic]^Step_Run, context.temp_allocator)
+	for &r in s.runs { if r.state == .Running || r.state == .Dumping { append(&running, &r) } }
+	slice.sort_by(running[:], proc(a, b: ^Step_Run) -> bool { return time.tick_diff(a.began, b.began) > 0 })
+	b := strings.builder_make(context.temp_allocator)
+	fmt.sbprintf(&b, "running at %.0f s, %d of %d steps done:", time.duration_seconds(time.tick_since(s.began)), len(s.runs) - s.left, len(s.runs))
+	for r, i in running {
+		fmt.sbprintf(&b, "%s %s (%.0f s)", i > 0 ? "," : "", short_name(r.step.name), time.duration_seconds(time.tick_since(r.began)))
+	}
+	strings.write_byte(&b, '\n')
+	return strings.to_string(b)
 }
 
 schedule_turn :: proc(s: ^Scheduler) {

@@ -115,6 +115,21 @@ a_slot_limits_what_runs_at_a_time :: proc(t: ^testing.T) {
 }
 
 @(test)
+the_progress_line_names_the_running_steps :: proc(t: ^testing.T) {
+	context.allocator = runtime.heap_allocator()   // (what a run keeps until it ends)
+	table := []Step{fake("held one (a detail)", task = held_task), fake("held two", task = held_task), fake("held three", task = held_task)}
+	s := table_scheduler(table, 2, 2)
+	schedule_turn(s)
+	text := progress_text(s)
+	testing.expect(t, strings.contains(text, "0 of 3 steps done"), text)
+	testing.expect_value(t, strings.count(text, " held "), 2)   // the two running, not the one waiting for a slot
+	testing.expect_value(t, strings.count(text, " s)"), 2)
+	testing.expect(t, !strings.contains(text, "a detail"), text)
+	sync.atomic_store(&let_go, true)
+	schedule(s)
+}
+
+@(test)
 a_light_step_takes_no_slot_of_the_others :: proc(t: ^testing.T) {
 	context.allocator = runtime.heap_allocator()   // (what a run keeps until it ends)
 	table := make([]Step, 6)

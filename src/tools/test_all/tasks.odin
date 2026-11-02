@@ -52,13 +52,14 @@ task_testserver :: proc(t: ^Task_Run) -> bool {
 }
 
 // A runner of the suites, its compile kept while nothing changed (-Quick: one module per package, seconds instead of a minute; the whole-program build pays off on a full run). `arg`: its folder of src/tools, and "quick".
+// (No linker flag for the stack: a runner runs its scripts on threads it makes with the stack they need, tooling.JS_THREAD_STACK_BYTES.)
 task_runner :: proc(t: ^Task_Run) -> bool {
 	fields := strings.fields(t.arg, context.temp_allocator)
 	name := fields[0]
 	quick := len(fields) > 1
 	out := exe(fmt.tprintf("build/%s", name))
-	flags := fmt.tprintf("%s %v", name, quick)
-	cmd := join({tooling.odin_program(), "build", fmt.tprintf("src/tools/%s", name), WB, "-vet", "-o:speed", out_flag(out)}, quick ? []string{"-use-separate-modules"} : nil, tooling.STACK_FLAGS)
+	flags := fmt.tprintf("%s %v own-stack", name, quick)
+	cmd := join({tooling.odin_program(), "build", fmt.tprintf("src/tools/%s", name), WB, "-vet", "-o:speed", out_flag(out)}, quick ? []string{"-use-separate-modules"} : nil)
 	return tooling.build_if_stale(out, flags, cmd, t.log)
 }
 
