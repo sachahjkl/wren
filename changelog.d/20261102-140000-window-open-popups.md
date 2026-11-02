@@ -1,3 +1,0 @@
-type: Added
-
-**Windows that scripts open**: `window.open()` to `_blank` or to a new name, and a script's click on a link to one, open a tab whose window has an opener (`window.opener`), a name other windows find, `postMessage` both ways, `closed`, and `close()` by the script that opened it; `noopener` and `noreferrer` (features, or `rel`) cut the relationship and `window.open` then returns null. A `Cross-Origin-Opener-Policy` that does not match the opener's severs it as other browsers do: the popup's opener is null and the opener sees the popup closed. The WPT runner's pages open the same windows, without a shell.
