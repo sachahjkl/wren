@@ -97,7 +97,7 @@ if not exist build mkdir build
 set "BINDGEN=build\bindgen_%RANDOM%%RANDOM%.exe"
 odin run src/tools/bindgen -collection:wb=src -vet -use-separate-modules -out:%BINDGEN% || exit /b 1
 del "%BINDGEN%" 2>nul
-odin run src/tools/buildjs -collection:wb=src -out:build\buildjs.exe >nul || (echo building the JavaScript engine failed: run  odin run src/tools/buildjs -collection:wb=src -out:build\buildjs.exe & exit /b 1)
+odin run src/tools/buildjs -collection:wb=src -out:build\buildjs.exe || (echo building the JavaScript engine failed: run  odin run src/tools/buildjs -collection:wb=src -out:build\buildjs.exe & exit /b 1)
 
 :: the console launcher: build\wren.com, a small console program (src\tools\wrencom, core library only) that cmd and PowerShell
 :: prefer to wren.exe when `wren` is typed; wren.exe embeds it (src\browser\console_launcher.odin) and Setup writes it beside
