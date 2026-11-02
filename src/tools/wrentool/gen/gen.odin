@@ -500,7 +500,7 @@ run_portability :: proc(args: []string) -> int {
 			if paren > 0 && strings.has_suffix(filepath.dir(normal[:paren]), p) { own += 1 }
 		}
 		status := code == 0 ? "ok" : own > 0 ? "own" : total > 0 ? "deps" : "fail"
-		fmt.printfln("%-48s %-5s %5d %5d", p, status, own, total)
+		fmt.printfln("%-48s %-5s own %d, total %d", p, status, own, total)
 		fmt.sbprintfln(&csv, "%s,%s,%d,%d", p, status, own, total)
 		count += 1
 		if code == 0 { passed += 1 } else { failed += 1 }

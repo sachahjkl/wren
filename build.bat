@@ -51,10 +51,10 @@ if not exist ext\gui_toolkit\ui (
 
 :: the Odin compiler this tree is written for (odin.version; the CI installs that release, pinned by SHA-256 in
 :: .github\actions\setup\action.yml): another one may build differently or not at all. WREN_ANY_ODIN=1 skips this.
-set /p WREN_ODIN=<odin.version
+set /p WREN_ODIN_VERSION=<odin.version
 if not defined WREN_ANY_ODIN (
-    odin version 2>nul | findstr /C:"%WREN_ODIN%" >nul || (
-        echo This tree needs Odin %WREN_ODIN% ^(odin.version^); found:
+    odin version 2>nul | findstr /C:"%WREN_ODIN_VERSION%" >nul || (
+        echo This tree needs Odin %WREN_ODIN_VERSION% ^(odin.version^); found:
         odin version
         echo Install that release, or set WREN_ANY_ODIN=1 to build anyway.
         exit /b 1
