@@ -312,8 +312,9 @@ async fn deliver(inner: &Inner, _id: u64, st: &ReqState, s: &crate::Settings, da
         if *total > st.max_body.load(Ordering::Acquire) {
             return Err(NetError::new(error::ERROR_BODY_TOO_LARGE));
         }
-        inner.push(Ev { kind: EV_DATA, tag: st.tag, data: piece.to_vec(), ..Default::default() });
+        // counted before it is handed over: the host may consume it as soon as it is pushed, and what it consumed first would stay counted for ever
         let q = st.queued.fetch_add(piece.len(), Ordering::AcqRel) + piece.len();
+        inner.push(Ev { kind: EV_DATA, tag: st.tag, data: piece.to_vec(), ..Default::default() });
         if q >= s.high_water {
             loop {
                 let woken = st.wake.notified();

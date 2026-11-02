@@ -16,6 +16,7 @@ package browser
 // elevated OLE target.
 
 import "core:strings"
+import "core:time"
 import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:ui"
@@ -70,10 +71,18 @@ Dnd_Shell :: struct {
 	sync_over:   bool,
 	// the pointer left the window while the picture is still being read back
 	handoff_pending: bool,
-	handoff_frames:  int,
+	handoff_since:   time.Tick,   // when it began to wait ({}: it has not)
 }
 
-@(private = "file") HANDOFF_WAIT_FRAMES :: 4
+// How long the system's drag waits for the picture: a time, not a count of frames (on the system's software rasterizer the read comes back after more frames than on a GPU, and a drag without
+// a GPU went without its picture). Only a device that no longer answers comes to this.
+@(private = "file") HANDOFF_WAIT :: 5 * time.Second
+
+// The picture is still on its way, and it may still be waited for.
+@(private = "file")
+handoff_waits :: proc() -> bool {
+	return dnd_image_waiting() && (dnd.handoff_since == {} || time.tick_since(dnd.handoff_since) < HANDOFF_WAIT)
+}
 
 @(private = "file")
 dnd: Dnd_Shell
@@ -418,7 +427,7 @@ dnd_route :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 			if field != base.NIL_HANDLE { page.drag_set_source_field(p, field, fa, fb) }
 			if host != base.NIL_HANDLE { page.drag_set_source_range(p, host, hrange[0], hrange[1]) }
 			dnd.active, dnd.src_page = true, p
-			dnd.handoff_pending, dnd.handoff_frames = false, 0
+			dnd.handoff_pending, dnd.handoff_since = false, {}
 			page_set_active(p, base.NIL_HANDLE)
 			dnd_image_begin(app, t, p, press)   // dnd_image.odin: grabbed where the press was
 			return dnd_route(app, t, ev)
@@ -437,9 +446,9 @@ dnd_route :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 	case .Mouse_Move:
 		size := [2]f32{f32(wnd.win.size.x), f32(wnd.win.size.y)}
 		if ev.pos.x < 0 || ev.pos.y < 0 || ev.pos.x >= size.x || ev.pos.y >= size.y {
-			// the picture is read back from a frame or two after the drag started: the system's drag waits for it (a
-			// few frames at most: dnd_events)
-			if dnd_image_waiting() && dnd.handoff_frames < HANDOFF_WAIT_FRAMES {
+			// the picture is read back from a frame or two after the drag started: the system's drag waits for it (dnd_events)
+			if handoff_waits() {
+				if dnd.handoff_since == {} { dnd.handoff_since = time.tick_now() }
 				dnd.handoff_pending = true
 				request_frames(app, 2)
 				return true
@@ -503,10 +512,8 @@ dnd_route :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 dnd_events :: proc(app: ^App, events: []platform.Event) {
 	touch_frame(app)   // touch_shell.odin: a finger held still (the long press), every frame while one is down
 	if dnd.handoff_pending {
-		dnd.handoff_frames += 1
 		if t := current_tab(app); t != nil && dnd.active && t.page == dnd.src_page {
-			if !dnd_image_waiting() || dnd.handoff_frames >= HANDOFF_WAIT_FRAMES { dnd.handoff_pending = false; hand_off(app, t) }
-			else { request_frames(app, 2) }
+			if handoff_waits() { request_frames(app, 2) } else { dnd.handoff_pending = false; hand_off(app, t) }
 		} else {
 			dnd.handoff_pending = false
 		}

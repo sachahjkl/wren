@@ -68,11 +68,18 @@ drag_out_and_back :: proc(s: ^e2e.Session, from, outside: e2e.Point) {
 wait_drag_end :: proc(s: ^e2e.Session) { e2e.wait_js(s, "log.some(l => l.startsWith('dragend@'))") }
 
 @(test)
-dnd_end_to_end :: proc(t: ^testing.T) {
+dnd_end_to_end :: proc(t: ^testing.T) { dnd_whole(t) }
+
+// (a drag's picture read back on a software device comes after more frames: it was lost on the way to the system's drag)
+@(test)
+dnd_on_the_software_rasterizer :: proc(t: ^testing.T) { dnd_whole(t, software = true) }
+
+@(private = "file")
+dnd_whole :: proc(t: ^testing.T, software := false) {
 	dir := e2e.temp_folder(t)
 	file := fmt.tprintf("%s/%s", dir, DROP_NAME)
 	e2e.write_text(file, DROP_BYTES)
-	s := e2e.start(t, {size = DND_SIZE, url = e2e.file_url(fmt.tprintf("%s/%s", e2e.repo_root(), DND_PAGE))})
+	s := e2e.start(t, {size = DND_SIZE, url = e2e.file_url(fmt.tprintf("%s/%s", e2e.repo_root(), DND_PAGE)), software = software})
 
 	e2e.drop(s, ZONE, {files = {file}})
 	e2e.wait_js(s, "log.some(l => l.includes('read='))")
