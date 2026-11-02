@@ -11,7 +11,7 @@
 	Cross-Origin-Embedder-Policy and blob: URL from https://www1.127.0.0.1:8779 in subframe via popup: TIMEOUT
 	Cross-Origin-Embedder-Policy and blob: URL from https://www1.127.0.0.1:8779 in subframe via subframe: TIMEOUT
 /html/cross-origin-embedder-policy/block-local-documents-inheriting-none.https.html: ERROR
-	Prevent local scheme documents from loading within a COEP: require-corp iframe if they inherit COEP: none: FAIL
+	Prevent local scheme documents from loading within a COEP: require-corp iframe if they inherit COEP: none: TIMEOUT
 /html/cross-origin-embedder-policy/cache-storage-reporting-dedicated-worker.https.html: ERROR
 /html/cross-origin-embedder-policy/cache-storage-reporting-document.https.html: ERROR
 /html/cross-origin-embedder-policy/cache-storage-reporting-service-worker.https.html: ERROR

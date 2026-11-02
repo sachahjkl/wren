@@ -112,6 +112,8 @@ The tests wait in one queue, the costliest first (`build\wpt\times.txt`, each te
 
 The pages see wptserve's names: `web-platform.test` (`{{host}}`), `www1.web-platform.test`..., `not-web-platform.test`, all on this machine. The browser resolves them itself (`network.hosts`), never the system or a hosts file, trusts the test server's authority for its https origin (`network.tls.extra_ca_file`, `build\wpt\testca.pem`), loads a `.https.` test over https, and connects to nothing else (`network.loopback_only`).
 
+A test whose expectation is TIMEOUT is not run (`build\wpt\skipped_timeouts.txt`, counted in the report; `-timeouts` runs them, `-update` always does), and a long test (`<meta name=timeout content=long>`) gets 3 times `-timeout` at most (`LONG_TIMEOUT_FACTOR`): the time of a full run went to tests waiting for what never came.
+
 So a shorter limit can cost a rerun, not hide a regression. What it does not see is a test that has **begun** to pass: a
 whole run without it does, and `-update` (which refuses the cap) records it. `-only` keeps the whole limits too: someone is
 looking at that test. `-no-fast-timeouts` turns it off under `-quick`.
