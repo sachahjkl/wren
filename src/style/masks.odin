@@ -45,7 +45,6 @@ masks_initial :: proc(c: ^Computed) {
 	c.mask_origins = MASK_BOXES_INITIAL[:]
 	c.mask_clips = MASK_BOXES_INITIAL[:]
 	c.mask_composites = MASK_COMPOSITES_INITIAL[:]
-	c.text_fill_color = Auto_Color{auto = true}
 }
 
 // Whether an element is masked: one of its mask layers has an image.

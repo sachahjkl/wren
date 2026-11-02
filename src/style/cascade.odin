@@ -634,10 +634,10 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 			}
 			switch kw := css_wide_keyword(vals); kw {
 			case "inherit":
-				copy_prop(c, parent != nil ? parent : s.initial, pr)
+				cx_copy_prop(&cx, parent != nil ? parent : s.initial, pr)
 				ps_add(&cx.explicit, pr)
 				if parent != nil { ps_add(&c.inherits, pr) }
-			case "initial": copy_prop(c, s.initial, pr); ps_remove(&c.inherits, pr)
+			case "initial": cx_copy_prop(&cx, s.initial, pr); ps_remove(&c.inherits, pr)
 			case "unset": apply_unset(&cx, pr)
 			case "revert", "revert-layer":
 				if prev, found := revert_candidate(entries, inline_rule, pr, cand.key, kw == "revert", parent, p.own_depth); found {
@@ -675,7 +675,7 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 	}
 	if len(c.position_try_fallbacks) > 0 && (c.position == .Absolute || c.position == .Fixed) { try_options_resolve(&cx, &env, e, p.mc.doc, h) }
 	finish_style(&cx, h)
-	if len(p.fs_chain) > 0 { if _, above := p.fs_chain[h]; above { fullscreen_ancestor_reset(c) } }
+	if len(p.fs_chain) > 0 { if _, above := p.fs_chain[h]; above { fullscreen_ancestor_reset(&cx) } }
 	if e.container_dependent || c.container_type != .Normal || (parent != nil && parent.containers != nil) {
 		c.containers = container_chain(e, c, parent, a)
 	}
@@ -729,8 +729,8 @@ used_line_height :: proc(c: ^Computed, normal: f32) -> f32 {
 // `unset`: inherit when the property is inherited, otherwise its initial value.
 @(private)
 apply_unset :: proc(cx: ^Cx, pr: Prop) {
-	if is_inherited(pr) && cx.parent != nil { copy_prop(cx.c, cx.parent, pr); ps_add(&cx.c.inherits, pr); return }
-	copy_prop(cx.c, cx.initial, pr)
+	if is_inherited(pr) && cx.parent != nil { cx_copy_prop(cx, cx.parent, pr); ps_add(&cx.c.inherits, pr); return }
+	cx_copy_prop(cx, cx.initial, pr)
 	ps_remove(&cx.c.inherits, pr)
 }
 
@@ -779,8 +779,8 @@ finish_style :: proc(cx: ^Cx, h: base.Handle) {
 	// a query container has size containment in the axes it measures, layout and style containment (CSS Contain 3 §6.2)
 	switch c.container_type {
 	case .Normal:
-	case .Size: c.contain += {.Size, .Layout, .Style}
-	case .Inline_Size: c.contain += {.Inline_Size, .Layout, .Style}
+	case .Size: cx_take(cx, .Contain); c.contain += {.Size, .Layout, .Style}
+	case .Inline_Size: cx_take(cx, .Contain); c.contain += {.Inline_Size, .Layout, .Style}
 	}
 	if c.position == .Absolute || c.position == .Fixed || c.float != .None { c.display = blockify(c.display) }
 	// CSS Overflow 3 §3.1: visible / clip become auto / hidden only when the other axis is neither (overflow-x: clip
@@ -795,7 +795,9 @@ finish_style :: proc(cx: ^Cx, h: base.Handle) {
 // An ancestor of the fullscreen element, as the top layer would leave it for the element: no stacking context of its own,
 // and nothing that makes it the containing block of a fixed box.
 @(private)
-fullscreen_ancestor_reset :: proc(c: ^Computed) {
+fullscreen_ancestor_reset :: proc(cx: ^Cx) {
+	c := cx.c
+	cx_take(cx, .Transform); cx_take(cx, .Filter); cx_take(cx, .Mask_Image)
 	c.z_auto = true
 	c.transform, c.translate, c.rotate, c.scale = nil, {}, {}, {}
 	c.perspective = 0
@@ -1374,17 +1376,21 @@ inherited_equal :: proc(a, b: ^Computed) -> bool {
 }
 
 // Value equality: every field of the two styles, pointers followed (see deep_equal). Fields without pointers or
-// padding are compared as bytes. Calc trees are compared by structure.
+// padding are compared as bytes. Calc trees are compared by structure. A group the two share is equal.
 computed_equal :: proc(a, b: ^Computed) -> bool {
 	if a == b { return true }
 	if a == nil || b == nil { return false }
 	props_init()
-	for f in computed_fields {
-		pa, pb := rawptr(uintptr(a) + f.offset), rawptr(uintptr(b) + f.offset)
-		if f.plain {
-			if mem.compare_ptrs(pa, pb, f.size) != 0 { return false }
-		} else if !deep_equal(pa, pb, f.ti) {
-			return false
+	for g in Group {
+		ba, bb := group_base(a, g), group_base(b, g)
+		if g != .Main && ba == bb { continue }
+		for f in group_fields[g] {
+			pa, pb := rawptr(ba + f.offset), rawptr(bb + f.offset)
+			if f.plain {
+				if mem.compare_ptrs(pa, pb, f.size) != 0 { return false }
+			} else if !deep_equal(pa, pb, f.ti) {
+				return false
+			}
 		}
 	}
 	return true

@@ -179,7 +179,6 @@ Computed :: struct {
 	stroke_width: f32,
 	stroke_linecap: Stroke_Linecap,
 	stroke_linejoin: Stroke_Linejoin,
-	wren_shader:    Shader_Call,   // -wren-shader (wren_shader.odin): built-in pages only
 	font_family: []string,
 	font_size:  f32,
 	font_size_src: Font_Size_Src,   // where font_size came from (values.odin generic_family_adjust): part of font-size
@@ -200,12 +199,8 @@ Computed :: struct {
 	tab_spaces: bool,
 	direction:  Direction,
 	text_shadow: []Shadow,
-	// --- background ---
+	// --- background (the image layers: background_group) ---
 	background_color: css.Color,
-	background_image: Image,
-	background_repeat: [2]Repeat,
-	background_position: [2]Length,
-	background_size: Bg_Size,
 	box_shadow: []Shadow,
 	// --- misc ---
 	list_style_type: List_Style_Type,
@@ -244,66 +239,15 @@ Computed :: struct {
 	text_rendering:          Text_Rendering,          // optimizeSpeed turns off kerning and optional ligatures
 	content_language:        string,                  // `lang` / `xml:lang` of the element (inherited), for `locl`; "" none
 	unicode_bidi:            Unicode_Bidi,
-	// --- backgrounds: every layer (the singular fields above are the first layer). See `background_layers`. ---
-	background_images:      []Image,
-	background_repeats:     [][2]Repeat,
-	background_positions:   [][2]Length,
-	background_sizes:       []Bg_Size,
-	background_origins:     []Box_Area,
-	background_clips:       []Box_Area,
-	background_attachments: []Bg_Attachment,
-	// --- transforms (CSS Transforms 1 and 2; 3D is parsed and flattened) ---
-	transform:        []Transform_Op,       // nil = none
-	transform_origin: [2]Length,            // percentages of the reference box
-	transform_origin_z: f32,                // px (set with transform-origin; not interpolated)
-	transform_box:    Transform_Box,
-	transform_style:  Transform_Style,
-	translate:        Translate_Value,
-	rotate:           Rotate_Value,
-	scale:            Scale_Value,
-	perspective:      f32,                  // 0 = none
-	perspective_origin: [2]Length,
-	backface_visibility: Backface_Visibility,
-	// --- transitions and animations: the lists as specified, see `transition_at` / `animation_at` for repetition ---
-	transition_property: []Transition_Prop,
-	transition_duration: []f32,             // ms
-	transition_timing:   []Easing,
-	transition_delay:    []f32,             // ms
-	transition_behavior: []bool,            // allow-discrete
-	animation_name:      []string,          // "" = none
-	animation_duration:  []f32,             // ms
-	animation_timing:    []Easing,
-	animation_delay:     []f32,             // ms
-	animation_iterations: []f32,            // math.INF_F32 = infinite
-	animation_direction: []Anim_Direction,
-	animation_fill_mode: []Fill_Mode,
-	animation_play_state: []Play_State,
-	animation_composition: []Composition,
 	// --- generated content ---
-	counter_reset:     []Counter_Op,
-	counter_increment: []Counter_Op,
-	counter_set:       []Counter_Op,
 	quotes:            Quotes,
 	list_style:        List_Marker_Style,   // every counter style; `list_style_type` above is the nearest legacy value
 	marker_text:       string,              // display: list-item only: the resolved marker, suffix included ("3. ", "• ")
-	// --- effects ---
-	object_position:   [2]Length,
-	filter:            []Filter_Op,
-	backdrop_filter:   []Filter_Op,
-	clip_path:         ^Clip_Path,         // nil = none
-	isolation:         Isolation,
-	mix_blend_mode:    Blend_Mode,
 	// --- misc ---
-	will_change:       []string,
-	contain:           Contain,
-	content_visibility: Content_Visibility,
-	scroll_behavior:   Scroll_Behavior,
-	overscroll_x, overscroll_y: Overscroll,
 	touch_action:      Touch_Blocked,      // what fingers may not do here ({} = auto)
 	caret_color:       Auto_Color,
 	accent_color:      Auto_Color,
 	appearance:        Appearance,
-	resize:            Resize,
 	column_count:      i32,                 // 0 = auto
 	column_width:      Length,              // Auto or Px
 	column_span:       Column_Span,
@@ -318,38 +262,19 @@ Computed :: struct {
 	writing_mode:      Writing_Mode,
 	text_orientation:  Text_Orientation,
 	text_combine_upright: Text_Combine_Upright,
-	// --- grid (stored for the grid layout) ---
-	grid_template_columns, grid_template_rows: Grid_Template,
-	grid_template_areas: Grid_Areas,
-	grid_auto_columns, grid_auto_rows: []Grid_Track,
-	grid_auto_flow:    Grid_Auto_Flow,
-	grid_row_start, grid_row_end, grid_column_start, grid_column_end: Grid_Line,
 	justify_items, justify_self: Content_Align,
-	// --- container queries (container.odin) ---
-	container_type:    Container_Type,
-	container_name:    []string,
-	// --- scroll bars (container.odin; the bars are overlays: scrollbar-gutter is kept but reserves nothing) ---
-	scrollbar_width:   Scrollbar_Width,
 	scrollbar_color:   Scrollbar_Colors,
-	scrollbar_gutter:  Scrollbar_Gutter,
-	// --- masks (masks.odin; every layer, see `mask_layers`) and -webkit-text-fill-color ---
-	mask_images:       []Image,
-	mask_modes:        []Mask_Mode,
-	mask_repeats:      [][2]Repeat,
-	mask_positions:    [][2]Length,
-	mask_sizes:        []Bg_Size,
-	mask_origins:      []Mask_Box,
-	mask_clips:        []Mask_Box,
-	mask_composites:   []Mask_Composite,
-	text_fill_color:   Auto_Color,          // auto = currentcolor
-	// --- anchor positioning (anchor.odin) ---
-	anchor_name:       []string,            // nil: none
-	anchor_scope:      Anchor_Scope,
+	text_fill_color:   Auto_Color,          // -webkit-text-fill-color, auto = currentcolor
+	// --- anchor positioning (anchor.odin; the rest in rare_group) ---
 	position_anchor:   Position_Anchor,
 	position_area:     Position_Area,
-	position_try_fallbacks: []Try_Option,   // nil: none
-	position_try_order: Try_Order,
-	position_visibility: Position_Visibility,
+	// --- what most elements never set, by group (see Group) ---
+	using background_group: ^Background_Group,
+	using transform_group:  ^Transform_Group,
+	using motion_group:     ^Motion_Group,
+	using grid_group:       ^Grid_Group,
+	using mask_group:       ^Mask_Group,
+	using rare_group:       ^Rare_Group,
 	// --- bookkeeping ---
 	containers: ^Container_Ctx, // the query containers this element's children see (nearest first)
 	anim_vars:  []Pre_Decl,     // an animated element: its declarations that use var(), copied (registered custom properties animate through them)
@@ -358,6 +283,116 @@ Computed :: struct {
 	before, after: ^Computed,   // generated boxes (nil when `content` is none/normal)
 	selection:  ^Computed,      // ::selection rules of the element (nil: none; colors only are used)
 }
+
+// The properties of a Computed most elements never set, in groups behind a pointer each: a style shares the group of
+// the initial values (read-only memory, props.odin `initial_groups`) until it sets one of the group's properties, and
+// then has its own copy, made once (`cx_take` in the cascade, `prop_take` anywhere else). Reads go through the `using`
+// pointers unchanged (`c.transform`); a write into a group the style does not own changes every style sharing it. So
+// an element's style costs the groups it sets, not every property there is. None of them holds an inherited property.
+Group :: enum u8 { Main, Background, Transform, Motion, Grid, Mask, Rare }
+Groups :: bit_set[Group; u8]
+
+// background-* (the singular fields are the first layer, the lists every layer: see `background_layers`).
+Background_Group :: struct {
+	background_image:       Image,
+	background_repeat:      [2]Repeat,
+	background_position:    [2]Length,
+	background_size:        Bg_Size,
+	background_images:      []Image,
+	background_repeats:     [][2]Repeat,
+	background_positions:   [][2]Length,
+	background_sizes:       []Bg_Size,
+	background_origins:     []Box_Area,
+	background_clips:       []Box_Area,
+	background_attachments: []Bg_Attachment,
+}
+
+// CSS Transforms 1 and 2 (3D is parsed and flattened).
+Transform_Group :: struct {
+	transform:        []Transform_Op,       // nil = none
+	transform_origin: [2]Length,            // percentages of the reference box
+	transform_origin_z: f32,                // px (set with transform-origin; not interpolated)
+	transform_box:    Transform_Box,
+	transform_style:  Transform_Style,
+	translate:        Translate_Value,
+	rotate:           Rotate_Value,
+	scale:            Scale_Value,
+	perspective:      f32,                  // 0 = none
+	perspective_origin: [2]Length,
+	backface_visibility: Backface_Visibility,
+}
+
+// Transitions and animations: the lists as specified, see `transition_at` / `animation_at` for repetition.
+Motion_Group :: struct {
+	transition_property: []Transition_Prop,
+	transition_duration: []f32,             // ms
+	transition_timing:   []Easing,
+	transition_delay:    []f32,             // ms
+	transition_behavior: []bool,            // allow-discrete
+	animation_name:      []string,          // "" = none
+	animation_duration:  []f32,             // ms
+	animation_timing:    []Easing,
+	animation_delay:     []f32,             // ms
+	animation_iterations: []f32,            // math.INF_F32 = infinite
+	animation_direction: []Anim_Direction,
+	animation_fill_mode: []Fill_Mode,
+	animation_play_state: []Play_State,
+	animation_composition: []Composition,
+}
+
+// Grid placement and templates (stored for the grid layout).
+Grid_Group :: struct {
+	grid_template_columns, grid_template_rows: Grid_Template,
+	grid_template_areas: Grid_Areas,
+	grid_auto_columns, grid_auto_rows: []Grid_Track,
+	grid_auto_flow:    Grid_Auto_Flow,
+	grid_row_start, grid_row_end, grid_column_start, grid_column_end: Grid_Line,
+}
+
+// mask-* (masks.odin; every layer, see `mask_layers`).
+Mask_Group :: struct {
+	mask_images:       []Image,
+	mask_modes:        []Mask_Mode,
+	mask_repeats:      [][2]Repeat,
+	mask_positions:    [][2]Length,
+	mask_sizes:        []Bg_Size,
+	mask_origins:      []Mask_Box,
+	mask_clips:        []Mask_Box,
+	mask_composites:   []Mask_Composite,
+}
+
+// Effects, counters, containment, container queries, scrolling and anchors: properties few elements set.
+Rare_Group :: struct {
+	object_position:   [2]Length,
+	filter:            []Filter_Op,
+	backdrop_filter:   []Filter_Op,
+	clip_path:         ^Clip_Path,         // nil = none
+	isolation:         Isolation,
+	mix_blend_mode:    Blend_Mode,
+	will_change:       []string,
+	contain:           Contain,
+	content_visibility: Content_Visibility,
+	scroll_behavior:   Scroll_Behavior,
+	overscroll_x, overscroll_y: Overscroll,
+	resize:            Resize,
+	counter_reset:     []Counter_Op,
+	counter_increment: []Counter_Op,
+	counter_set:       []Counter_Op,
+	// container queries (container.odin)
+	container_type:    Container_Type,
+	container_name:    []string,
+	// scroll bars (container.odin; the bars are overlays: scrollbar-gutter is kept but reserves nothing)
+	scrollbar_width:   Scrollbar_Width,
+	scrollbar_gutter:  Scrollbar_Gutter,
+	wren_shader:       Shader_Call,        // -wren-shader (wren_shader.odin): built-in pages only
+	// anchor positioning (anchor.odin)
+	anchor_name:       []string,            // nil: none
+	anchor_scope:      Anchor_Scope,
+	position_try_fallbacks: []Try_Option,   // nil: none
+	position_try_order: Try_Order,
+	position_visibility: Position_Visibility,
+}
+
 
 // Longhand properties. Order matters: values that others depend on (color-scheme for every color, font-size for em,
 // color for currentcolor) come first.

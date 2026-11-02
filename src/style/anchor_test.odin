@@ -119,6 +119,7 @@ anchor_changes_are_layout_changes :: proc(t: ^testing.T) {
 	a, b := new(Computed), new(Computed)
 	defer { free(a); free(b) }
 	a^, b^ = at(d, "a")^, at(d, "a")^
+	prop_take(b, .Anchor_Name, context.temp_allocator)   // (a's group otherwise: the two would change together)
 	b.anchor_name = {"--z"}
 	testing.expect_value(t, change_level(a, b), Change_Level.Layout)
 	b^ = a^

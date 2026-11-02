@@ -196,8 +196,8 @@ compute_keyframe :: proc(e: ^Engine, block: ^Keyframe_Block, base, parent, initi
 			if !found { continue }
 		}
 		switch css_wide_keyword(vals) {
-		case "inherit": copy_prop(c, parent != nil ? parent : initial, d.prop)
-		case "initial": copy_prop(c, initial, d.prop)
+		case "inherit": cx_copy_prop(&cx, parent != nil ? parent : initial, d.prop)
+		case "initial": cx_copy_prop(&cx, initial, d.prop)
 		case "unset", "revert", "revert-layer": apply_unset(&cx, d.prop)
 		case: if !apply_prop(&cx, d.prop, vals) { continue }
 		}

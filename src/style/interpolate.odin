@@ -101,6 +101,7 @@ discrete_prop :: proc(dst, a, b: ^Computed, p: Prop, t: f64) {
 interpolable :: proc(a, b: ^Computed, p: Prop, ctx: ^Interp_Ctx) -> bool {
 	scratch := new(Computed, context.temp_allocator)
 	scratch^ = a^
+	prop_take(scratch, p, context.temp_allocator)
 	tmp := Interp_Ctx{alloc = context.temp_allocator, space = ctx.space}
 	return interpolate_prop(scratch, a, b, p, 0.5, &tmp)
 }

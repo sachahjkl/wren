@@ -35,8 +35,9 @@ LAYOUT_ONLY_PROPS :: [?]Prop{
 
 @(private) change_once: sync.Once
 @(private) layout_only_set: Prop_Set
-// Runs of layout fields (see paint_change.odin) that are contiguous in Computed: compared with one memcmp first.
-@(private) Field_Run :: struct { offset: uintptr, size: int, first, count: int }
+// Runs of layout fields (see paint_change.odin) that are contiguous in Computed or in one of its groups: compared with
+// one memcmp first.
+@(private) Field_Run :: struct { group: Group, offset: uintptr, size: int, first, count: int }
 @(private) layout_runs: [dynamic]Field_Run
 @(private) extra_fields: [dynamic]Field_Info   // layout fields no property owns (resolved values)
 
@@ -49,29 +50,30 @@ change_init :: proc() {
 		for f, i in layout_fields {
 			if n := len(layout_runs); n > 0 {
 				r := &layout_runs[n - 1]
-				if r.offset + uintptr(r.size) == f.offset && !is_pseudo_field(f.offset) && !is_pseudo_field(r.offset) {
+				first := layout_fields[r.first]
+				if r.group == f.group && r.offset + uintptr(r.size) == f.offset && !is_pseudo_field(f) && !is_pseudo_field(first) {
 					r.size += f.size
 					r.count += 1
 					continue
 				}
 			}
-			append(&layout_runs, Field_Run{offset = f.offset, size = f.size, first = i, count = 1})
+			append(&layout_runs, Field_Run{group = f.group, offset = f.offset, size = f.size, first = i, count = 1})
 		}
-		covered := make(map[uintptr]bool, 256, context.temp_allocator)
+		covered := make(map[Field_Key]bool, 256, context.temp_allocator)
 		for p in Prop {
 			sl := &prop_slots[p]
-			for k in 0 ..< 2 { if sl.size[k] > 0 { covered[sl.off[k]] = true } }
+			for k in 0 ..< 2 { if sl.size[k] > 0 { covered[{sl.group, sl.off[k]}] = true } }
 		}
 		extra_fields = make([dynamic]Field_Info, 0, 8, base.permanent_allocator())
 		for f in layout_fields {
-			if !covered[f.offset] && !is_pseudo_field(f.offset) { append(&extra_fields, f) }
+			if !covered[{f.group, f.offset}] && !is_pseudo_field(f) { append(&extra_fields, f) }
 		}
 	})
 }
 
 @(private)
-is_pseudo_field :: #force_inline proc(off: uintptr) -> bool {
-	return off == offset_of(Computed, before) || off == offset_of(Computed, after)
+is_pseudo_field :: #force_inline proc(f: Field_Info) -> bool {
+	return f.group == .Main && (f.offset == offset_of(Computed, before) || f.offset == offset_of(Computed, after))
 }
 
 // Properties a change of which keeps the box (see Change_Level).
@@ -88,12 +90,14 @@ layout_equal_fast :: proc(a, b: ^Computed) -> bool {
 	change_init()
 	if structure_sig(a) != structure_sig(b) { return false }
 	for &r in layout_runs {
-		pa, pb := rawptr(uintptr(a) + r.offset), rawptr(uintptr(b) + r.offset)
+		ba, bb := group_base(a, r.group), group_base(b, r.group)
+		if ba == bb && r.group != .Main { continue }   // a group the two share
+		pa, pb := rawptr(ba + r.offset), rawptr(bb + r.offset)
 		if mem.compare_ptrs(pa, pb, r.size) == 0 { continue }
 		for i in r.first ..< r.first + r.count {
 			f := layout_fields[i]
-			fa, fb := rawptr(uintptr(a) + f.offset), rawptr(uintptr(b) + f.offset)
-			if is_pseudo_field(f.offset) {
+			fa, fb := rawptr(ba + f.offset), rawptr(bb + f.offset)
+			if is_pseudo_field(f) {
 				if !layout_equal_fast((^^Computed)(fa)^, (^^Computed)(fb)^) { return false }
 				continue
 			}
@@ -127,7 +131,7 @@ layout_level :: proc(old, new: ^Computed) -> Change_Level {
 	if !pseudo_equal(old.before, new.before) || !pseudo_equal(old.after, new.after) { return .Box }
 	// fields that are not properties (resolved values such as the marker text) are read when building boxes
 	for &f in extra_fields {
-		fa, fb := rawptr(uintptr(old) + f.offset), rawptr(uintptr(new) + f.offset)
+		fa, fb := rawptr(group_base(old, f.group) + f.offset), rawptr(group_base(new, f.group) + f.offset)
 		if mem.compare_ptrs(fa, fb, f.size) != 0 && (f.plain || !deep_equal(fa, fb, f.ti)) { return .Box }
 	}
 	level := Change_Level.Paint

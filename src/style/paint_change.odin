@@ -55,19 +55,21 @@ tiers_init :: proc() {
 			tier_table[p] = .Paint
 			ps_add(&paint_set, p)
 		}
-		skip := make(map[uintptr]bool, 64, context.temp_allocator)
+		skip := make(map[Field_Key]bool, 64, context.temp_allocator)
 		for p in PAINT_PROPS {
 			sl := &prop_slots[p]
-			for k in 0 ..< 2 { if sl.size[k] > 0 { skip[sl.off[k]] = true } }
+			for k in 0 ..< 2 { if sl.size[k] > 0 { skip[{sl.group, sl.off[k]}] = true } }
 		}
-		probe: Computed
-		skip[uintptr(&probe.inherits) - uintptr(&probe)] = true
-		skip[uintptr(&probe.custom) - uintptr(&probe)] = true
-		skip[uintptr(&probe.node) - uintptr(&probe)] = true
+		skip[{.Main, offset_of(Computed, inherits)}] = true
+		skip[{.Main, offset_of(Computed, custom)}] = true
+		skip[{.Main, offset_of(Computed, node)}] = true
 		layout_fields = make([dynamic]Field_Info, 0, len(computed_fields), base.permanent_allocator())
-		for f in computed_fields { if !skip[f.offset] { append(&layout_fields, f) } }
+		for f in computed_fields { if !skip[{f.group, f.offset}] { append(&layout_fields, f) } }
 	})
 }
+
+// A field of a Computed, its group and offset (the tables built once above and in layout_change.odin).
+@(private) Field_Key :: struct { group: Group, offset: uintptr }
 
 prop_tier :: proc(p: Prop) -> Prop_Tier {
 	tiers_init()
@@ -110,8 +112,10 @@ layout_equal :: proc(a, b: ^Computed) -> bool {
 	tiers_init()
 	if structure_sig(a) != structure_sig(b) { return false }
 	for f in layout_fields {
-		pa, pb := rawptr(uintptr(a) + f.offset), rawptr(uintptr(b) + f.offset)
-		if f.offset == offset_of(Computed, before) || f.offset == offset_of(Computed, after) {
+		ba, bb := group_base(a, f.group), group_base(b, f.group)
+		if ba == bb && f.group != .Main { continue }   // a group the two share
+		pa, pb := rawptr(ba + f.offset), rawptr(bb + f.offset)
+		if is_pseudo_field(f) {
 			if !layout_equal((^^Computed)(pa)^, (^^Computed)(pb)^) { return false }
 			continue
 		}
