@@ -78,8 +78,17 @@ foreign kernel32 {
 @(private = "file")
 process_handle :: proc(pid: int) -> win.HANDLE { return win.OpenProcess(win.SYNCHRONIZE | win.PROCESS_TERMINATE | win.PROCESS_SUSPEND_RESUME | win.PROCESS_QUERY_LIMITED_INFORMATION, false, win.DWORD(pid)) }
 
+// Ended: the exit code the system gives a process it ends, at once. Not its handle signalled: a process killed with its graphics device is left to the system to tear down,
+// which took 60 s and more with every core busy (a whole test_all run) and seconds otherwise; a wait on that measured the system, not the browser.
 @(private = "file")
-ended :: proc(h: win.HANDLE) -> bool { return win.WaitForSingleObject(h, 0) == win.WAIT_OBJECT_0 }
+ended :: proc(h: win.HANDLE) -> bool {
+	code: win.DWORD
+	return bool(win.GetExitCodeProcess(h, &code)) && code != STILL_ACTIVE
+}
+@(private = "file") STILL_ACTIVE :: 259
+
+@(private = "file")
+signalled :: proc(h: win.HANDLE) -> bool { return win.WaitForSingleObject(h, 0) == win.WAIT_OBJECT_0 }
 
 // The program a process runs.
 @(private = "file")
@@ -245,13 +254,7 @@ a_killed_browser_takes_its_gpu_process_along :: proc(t: ^testing.T) {
 	testing.expect(t, gpu != nil && browser != nil, "both processes are there")
 	win.TerminateProcess(browser, 1)
 	killed := time.tick_now()
-	// Taken along is the exit code the system gives it when the browser's job closes (native/webgl ipc: KILL_ON_JOB_CLOSE), at once. Not the handle signalled: a process killed
-	// with its graphics device is left to the system to tear down, which took 60 s and more with every core busy (a whole test_all run), seconds otherwise.
-	e2e.wait_for(t, gpu, proc(h: win.HANDLE) -> bool {
-		code: win.DWORD
-		return win.GetExitCodeProcess(h, &code) && code != STILL_ACTIVE
-	}, "the GPU process to be ended with its browser")
-	fmt.printfln("webgl_process: the GPU process ended with its browser in %.0f ms; its handle signalled by then: %v", time.duration_milliseconds(time.tick_since(killed)), ended(gpu))
+	// (taken along: the system ends it when the browser's job closes, native/webgl ipc: KILL_ON_JOB_CLOSE)
+	e2e.wait_for(t, gpu, ended, "the GPU process to be ended with its browser")
+	fmt.printfln("webgl_process: the GPU process ended with its browser in %.0f ms; its handle signalled by then: %v", time.duration_milliseconds(time.tick_since(killed)), signalled(gpu))
 }
-
-@(private = "file") STILL_ACTIVE :: 259
