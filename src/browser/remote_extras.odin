@@ -114,26 +114,22 @@ event_from_json :: proc(o: json.Object) -> (re: Rec_Event, ok: bool) {
 // with their times); stop ends it and returns them.
 m_record :: proc(app: ^App, c: ^Call) -> Reply {
 	action, _ := remote.param_string(c.params, "action", "status")
-	r := &the_remote.rec
 	switch action {
 	case "start":
-		clear(&r.events)
-		r.on, r.t0 = true, host.now_ns(&app.loop)
+		control_record_start(app)
 		return done(`{"recording":true}`)
-	case "stop", "status":
-		was := r.on
-		if action == "stop" { r.on = false }
+	case "status":
+		on, n := control_record_state()
+		return done(fmt.tprintf(`{{"recording":%v,"count":%d}}`, on, n))
+	case "stop":
+		events := control_record_stop()
 		b := strings.builder_make(context.temp_allocator)
-		fmt.sbprintf(&b, `{{"recording":%v,"count":%d`, r.on, len(r.events))
-		if action == "stop" || was && action == "status" && false {
-			strings.write_string(&b, `,"events":[`)
-			for ev, i in r.events {
-				if i > 0 { strings.write_byte(&b, ',') }
-				event_json(&b, ev)
-			}
-			strings.write_byte(&b, ']')
+		fmt.sbprintf(&b, `{{"recording":false,"count":%d,"events":[`, len(events))
+		for ev, i in events {
+			if i > 0 { strings.write_byte(&b, ',') }
+			event_json(&b, ev)
 		}
-		strings.write_byte(&b, '}')
+		strings.write_string(&b, "]}")
 		return done(strings.to_string(b))
 	}
 	return fail(remote.ERR_PARAMS, "action: start, stop or status")
@@ -145,19 +141,13 @@ m_replay :: proc(app: ^App, c: ^Call) -> Reply {
 	arr, ok := remote.param_array(c.params, "events")
 	if !ok { return fail(remote.ERR_PARAMS, "\"events\": the array Wren.recordInput returned") }
 	speed, _ := remote.param_float(c.params, "speed", 1)
-	op := op_new(app, c, .Replay, timeout_of(c), "the replay")
-	op.speed = max(speed, 0.01)
-	op.t0 = host.now_ns(&app.loop)
-	// (the whole replay must fit in its time: the deadline is the last event's time, plus what the command allows)
-	last := 0.0
+	events := make([dynamic]Rec_Event, 0, len(arr), context.temp_allocator)
 	for v in arr {
 		o, is_o := v.(json.Object)
 		if !is_o { continue }
-		if re, good := event_from_json(o); good { append(&op.events, re); last = max(last, re.t_ms) }
+		if re, good := event_from_json(o); good { append(&events, re) }
 	}
-	op.deadline += i64(last / op.speed * 1e6)
-	request_frames(app, 3)
-	return Reply{deferred = true}
+	return control_replay(app, c, events[:], speed, timeout_of(c))
 }
 
 replay_step :: proc(app: ^App, op: ^Remote_Op, now: i64) {
@@ -177,27 +167,6 @@ inject_raw :: proc(app: ^App, ev: platform.Event) {
 	platform.inject_event(active_window(app).win, ev)
 	the_remote.inputs += 1
 	request_frames(app, 4)
-}
-
-// Wren.snapshot {path, target, selector, scale}: <path>.png (as Page.captureScreenshot), <path>.html (the document as serialized),
-// <path>.json (the page's url, title, size and the box of every element, in CSS pixels from the page's corner).
-m_snapshot :: proc(app: ^App, c: ^Call) -> Reply {
-	prefix, bad := need_string_extra(c, "path")
-	if bad.code != 0 { return bad }
-	c.params["path"] = json.String(strings.concatenate({prefix, ".png"}, context.temp_allocator))
-	rep := m_capture(app, c)
-	if rep.deferred && len(the_remote.ops) > 0 {
-		op := the_remote.ops[len(the_remote.ops) - 1]
-		if op.kind == .Capture { op.snapshot = strings.clone(prefix) }
-	}
-	return rep
-}
-
-@(private = "file")
-need_string_extra :: proc(c: ^Call, key: string) -> (string, Reply) {
-	s, ok := remote.param_string(c.params, key)
-	if !ok { return "", fail(remote.ERR_PARAMS, fmt.tprintf("parameter %q (a string) is missing", key)) }
-	return s, {}
 }
 
 // The HTML and the boxes next to a snapshot's picture.

@@ -16,8 +16,10 @@ import "toolkit:render"
 import "toolkit:ui"
 import "wb:base"
 import "wb:config"
+import "wb:cookies"
 import "wb:fetch"
 import "wb:host"
+import "wb:httpcache"
 import "wb:page"
 import "wb:remote"
 import "wb:remote/api"
@@ -427,13 +429,34 @@ control_bounds :: proc(app: ^App) -> api.Bounds {
 	// a headless window has no HWND: its outer rectangle and visibility are emulated (platform.outer_rect / is_offscreen)
 	outer := platform.outer_rect(wnd.win)
 	pr := wnd.page_rect
+	PREP_NAMES := [Page_Prep_State]string{.None = "none", .Hold = "hold", .Ready = "ready"}
 	return {
 		window = app.active.id, left = outer[0], top = outer[1], outer_width = outer[2], outer_height = outer[3],
 		width = wnd.win.size.x, height = wnd.win.size.y, state = window_state(app),
 		dpi_scale = f64(wnd.win.dpi_scale), ui_scale = f64(ui_scale_of(app)), page_scale = f64(page_scale(app)),
 		headless = platform.is_offscreen(wnd.win), visible = !platform.is_offscreen(wnd.win) && platform.is_window_visible(wnd.win),
-		page_rect = api_rect(pr),
+		page_rect = api_rect(pr), page_prep = PREP_NAMES[wnd.own.page_prep.state],
 	}
+}
+
+// The active window goes, with its tabs, at the end of the pass. "": it will, else why not (the last window ends the browser: control_close).
+control_close_window :: proc(app: ^App) -> string {
+	if len(app.windows) <= 1 { return "this is the only window: Browser.close ends the browser" }
+	app.active.closing, app.active.closing_force = true, true
+	return ""
+}
+
+// The browser ends, with this exit code.
+control_close :: proc(app: ^App, exit_code: int) {
+	the_remote.exit_code = exit_code
+	app.quitting = true
+	platform.request_close(active_window(app).win)
+}
+
+control_ping :: proc() -> api.Ping { return {remote.PROTOCOL_VERSION, APP_VERSION, int(current_pid())} }
+
+control_version :: proc() -> api.Version {
+	return {fmt.tprintf("Wren/%s", APP_VERSION), app_commit(), ui.VERSION, build_description(), remote.PROTOCOL_VERSION}
 }
 
 // The active window becomes the one the user is in; `raise`: above the others (a headless window has no z-order; nothing takes the system's focus).
@@ -484,7 +507,6 @@ control_urlbar :: proc(app: ^App, allocator := context.temp_allocator) -> api.Ur
 }
 
 // A rectangle of the interface as a call gives it: whole pixels.
-@(private = "file")
 api_rect :: proc(r: draw.Rect) -> api.Rect { return {f64(int(r.min.x)), f64(int(r.min.y)), f64(int(r.max.x - r.min.x)), f64(int(r.max.y - r.min.y))} }
 
 // A command of the interface by name. "": it ran, else why not.
@@ -531,6 +553,122 @@ control_pref_reset :: proc(app: ^App, name: string) -> string {
 	return fmt.tprintf("no preference %q", name)
 }
 
+// All of them as they were; how many were not. "": done, else why not.
+control_pref_reset_all :: proc(app: ^App) -> (restored: int, why: string) {
+	r := &the_remote
+	if r.baseline == nil { return 0, "no baseline" }
+	restored = config.restore(&app.prefs, r.baseline.prefs)
+	remote_reload_settings(app)
+	request_frames(app, 3)
+	return restored, ""
+}
+
+// A preference, all that is known of it; false: there is none of this name.
+control_pref :: proc(app: ^App, name: string, allocator := context.temp_allocator) -> (p: api.Pref, ok: bool) {
+	i, has := app.prefs.index[name]
+	if !has { return }
+	e := &app.prefs.entries[i]
+	p = {
+		name = strings.clone(e.def.name, allocator), text = strings.clone(config.value_string(&app.prefs, config.Ref(i)), allocator),
+		default_text = strings.clone(config.default_string(&app.prefs, config.Ref(i)), allocator),
+		source = strings.to_lower(fmt.tprintf("%v", e.source), allocator), locked = e.locked, restart = e.def.restart,
+	}
+	switch e.def.kind {
+	case .Bool:   p.value = e.value.b
+	case .Int:    p.value = e.value.i
+	case .Float:  p.value = e.value.f
+	case .String: p.value = strings.clone(e.value.s, allocator)
+	}
+	return p, true
+}
+
+// The preferences whose name begins so, by name.
+control_prefs :: proc(app: ^App, prefix := "", allocator := context.temp_allocator) -> []api.Pref {
+	list := make([dynamic]api.Pref, allocator)
+	for name in config.sorted_names(&app.prefs) {
+		if !strings.has_prefix(name, prefix) { continue }
+		p, _ := control_pref(app, name, allocator)
+		append(&list, p)
+	}
+	return list[:]
+}
+
+// The commands of the interface, and which can run now.
+control_commands :: proc(app: ^App, allocator := context.temp_allocator) -> []api.Command {
+	t := current_tab(app)
+	all := commands()
+	list := make([]api.Command, len(all), allocator)
+	for &cmd, i in all {
+		list[i] = {
+			name = strings.clone(cmd.name, allocator), title = strings.clone(cmd.title, allocator), category = strings.clone(cmd.category, allocator),
+			shortcut = strings.clone(command_shortcut_text(&cmd), allocator), enabled = command_enabled(app, t, &cmd),
+		}
+	}
+	return list
+}
+
+////////////////////////////////
+// The document
+
+// How many matches a query describes when it says no limit, and how much of the markup of each.
+QUERY_ALL_DEFAULT_LIMIT :: 100
+@(private = "file") QUERY_NODE_HTML_MOST :: 300
+
+// A rectangle of the window (element_window_rect) in CSS pixels from the page's corner.
+@(private = "file")
+page_box :: proc(app: ^App, r: [4]f32) -> api.Rect {
+	pr := active_window(app).page_rect
+	s := f64(page_scale(app))
+	return {f64(r[0] - pr.min.x) / s, f64(r[1] - pr.min.y) / s, f64(r[2]) / s, f64(r[3]) / s}
+}
+
+// The elements `selector` finds in the tab's document. `code`: 0, or what is wrong, said in `why`.
+control_query_all :: proc(app: ^App, t: ^Tab, selector: string, limit := QUERY_ALL_DEFAULT_LIMIT, allocator := context.temp_allocator) -> (r: api.Query_Result, code: int, why: string) {
+	if t.page == nil { return {}, remote.ERR_FAILED, "the tab has no document" }
+	first, valid := page.query_all(t.page, selector, limit)
+	if !valid { return {}, remote.ERR_PARAMS, fmt.tprintf("invalid selector %q", selector) }
+	all, _ := page.query_all(t.page, selector)
+	r.count = len(all)
+	r.nodes = make([]api.Query_Node, len(first), allocator)
+	for h, i in first {
+		html := page.serialize_html(t.page.doc, h, true)
+		r.nodes[i].outer_html = strings.clone(html[:min(len(html), QUERY_NODE_HTML_MOST)], allocator)
+		if box, ok := element_window_rect(app, t, h); ok { r.nodes[i].box, r.nodes[i].has_box = page_box(app, box), true }
+	}
+	return r, 0, ""
+}
+
+// The box of the element `selector` finds. `code`: 0, or what is wrong, said in `why`.
+control_box_model :: proc(app: ^App, t: ^Tab, selector: string) -> (r: api.Box_Model, code: int, why: string) {
+	box, h, c, w := control_element_box(app, t, selector)
+	if c != 0 { return {}, c, w }
+	return {element_visible(app, t, h), page_box(app, box), {f64(box[0]), f64(box[1]), f64(box[2]), f64(box[3])}}, 0, ""
+}
+
+// The computed style of the element `selector` finds, as a script of the page reads it (`properties` nil: all of it). "": fine, else what is wrong.
+control_computed_style :: proc(t: ^Tab, selector: string, properties: []string = nil, allocator := context.temp_allocator) -> (list: []api.Style_Property, why: string) {
+	names := "null"
+	if properties != nil {
+		b := strings.builder_make(context.temp_allocator)
+		strings.write_byte(&b, '[')
+		for name, i in properties { if i > 0 { strings.write_byte(&b, ',') }; remote.write_json_string(&b, name) }
+		strings.write_byte(&b, ']')
+		names = strings.to_string(b)
+	}
+	expr := fmt.tprintf(`(function(S,P){{var e=document.querySelector(S);if(!e)return null;var c=getComputedStyle(e),o=[];if(!P){{P=[];for(var i=0;i<c.length;i++)P.push(c[i])}}for(var i=0;i<P.length;i++)o.push([P[i],c.getPropertyValue(P[i])]);return o}})(%s,%s)`, remote.quote(selector), names)
+	text, _, err := eval_sync(t, expr)
+	if err != "" { return nil, err }
+	v, perr := json.parse(transmute([]byte)text, json.Specification.JSON, true, context.temp_allocator)
+	pairs, is_list := v.(json.Array)
+	if perr != .None || !is_list { return nil, fmt.tprintf("no element matches %q", selector) }
+	list = make([]api.Style_Property, len(pairs), allocator)
+	for x, i in pairs {
+		pair := x.(json.Array)
+		list[i] = {strings.clone(string(pair[0].(json.String)), allocator), strings.clone(string(pair[1].(json.String)), allocator)}
+	}
+	return list, ""
+}
+
 ////////////////////////////////
 // The numbers
 
@@ -544,13 +682,30 @@ control_console :: proc(t: ^Tab, since := 0, clear_after := false, allocator := 
 		case strings.has_prefix(l, "error: "): level, text = "error", l[7:]
 		case strings.has_prefix(l, "warn: "):  level, text = "warn", l[6:]
 		}
-		append(&lines, api.Console_Line{level, strings.clone(text, allocator)})
+		append(&lines, api.Console_Line{level, strings.clone(text, allocator), first + i})
 	}
 	if clear_after {
 		for l in t.console { delete(l) }
 		clear(&t.console)
 	}
 	return lines[:]
+}
+
+// How many lines the tab's page has said in all.
+control_console_total :: proc(t: ^Tab) -> int { return int(t.console_added) }
+
+// What the tab's page fetched (the Network tab's log). `clear_after`: the log is empty after this.
+control_network :: proc(t: ^Tab, clear_after := false, allocator := context.temp_allocator) -> api.Network {
+	r := api.Network{bytes = int(t.net.bytes), requests = make([]api.Net_Request, len(t.net.entries), allocator)}
+	for en, i in t.net.entries {
+		r.requests[i] = {
+			id = int(en.id), url = strings.clone(en.url, allocator), method = strings.clone(en.method, allocator), mime = strings.clone(en.mime, allocator), error = strings.clone(en.error, allocator),
+			destination = strings.to_lower(fmt.tprintf("%v", en.dest), allocator), cache = strings.to_lower(fmt.tprintf("%v", en.cache), allocator),
+			status = en.status, bytes = en.bytes, ms = f64(en.ms), has_ms = en.ms >= 0, failed = en.failed,
+		}
+	}
+	if clear_after { net_clear(&t.net) }
+	return r
 }
 
 // The back/forward cache's numbers (bfcache.odin).
@@ -569,7 +724,61 @@ control_history_restoring :: proc(app: ^App) -> bool {
 	return t != nil && t.nav_state.restore.active
 }
 
-// What a window's numbers say to a test (Wren.stats says more).
+// Every number of a window (Wren.stats): control_stats, and what takes a look at the process, a sort or a walk of a store.
+control_stats_all :: proc(app: ^App, allocator := context.temp_allocator) -> api.Stats {
+	st := control_stats(app, allocator)
+	wnd := active_window(app)
+	n := &hud.nums
+	gaps := frame_log_intervals()
+	pacer := &wnd.pacer   // (the window's pacing; the preferences are the process's)
+	st.frames, st.cpu_ms, st.cpu_p95_ms, st.cpu_p99_ms, st.cpu_max_ms = int(n.frames), f64(n.cpu_mean), f64(n.cpu_p95), f64(n.cpu_p99), f64(n.cpu_max)
+	st.gpu_ms, st.gpu_measured = f64(n.gpu_mean), n.gpu_n > 0
+	st.frames_requested, st.frames_at_once, st.frame_gaps = int(wnd.frames_requested), int(frame_log.at_once), int(gaps.count)
+	st.frame_gap_p50_ms, st.frame_gap_p95_ms, st.frame_gap_p99_ms, st.frame_gap_max_ms = gaps.p50, gaps.p95, gaps.p99, gaps.max
+	st.ignored_size_moves = int(platform.pump_stats(wnd.win).ignored_size_moves)
+	if app.pacing.cfg.drag_probe { st.drag_samples, st.has_drag_samples = control_drag_samples(allocator), true }
+	if render.latency_probe_on(&app.r) {
+		l := render.latency_summary(&app.r)
+		lat :: proc(x: render.Latency_Stat) -> api.Latency_Stat { return {f64(x.p50), f64(x.p95), f64(x.max), f64(x.mean)} }
+		st.has_latency = true
+		st.latency = {
+			tearing_supported = render.tearing_supported(&app.r), tearing = render.present_mode(&app.r) == .Tearing,
+			samples = int(l.samples), refresh_ms = f64(l.period_ms), frames_shown = int(l.frames), frames_shown_from_input = int(l.with_input), queue_mean = f64(l.queue_mean), queue_max = int(l.queue_max),
+			wait = lat(l.wait), work = lat(l.work), present = lat(l.present), scan = lat(l.scan), total = lat(l.total), total_refreshes = lat(l.refreshes),
+		}
+	}
+	st.hz, st.hz_reported, st.hz_max, st.hz_now, st.hz_swap_chain = f64(pacer.hz), pacer.display.hz, pacer.display.max_hz, pacer.live_hz, render.measured_refresh_hz(&app.r)
+	st.variable_refresh, st.frame_cap_strict = pacer.variable, pacer.cadence.slots.strict || pacer.cadence.slots.escalated
+	states := strings.builder_make(context.temp_allocator)
+	for count, state in pacer.cadence.counts { if count > 0 { fmt.sbprintf(&states, "%v=%d ", state, count) } }
+	st.frame_states, st.frame_state = strings.clone(strings.trim_space(strings.to_string(states)), allocator), fmt.aprint(pacer.cadence.state, allocator = allocator)
+	st.resize_echoes_skipped = int(pacer.echoes_skipped)
+	causes := strings.builder_make(context.temp_allocator)
+	for count, cause in pacer.resize_causes { if count > 0 { fmt.sbprintf(&causes, "%v=%d ", cause, count) } }
+	for count, kind in pacer.resize_event_kinds { if count > 0 { fmt.sbprintf(&causes, "ev.%v=%d ", kind, count) } }
+	st.resize_frame_causes = strings.clone(strings.trim_space(strings.to_string(causes)), allocator)
+	st.prefs_cache_applied, st.prefs_downloads_applied = int(prefs_apply_counts[.Http_Cache]), int(prefs_apply_counts[.Downloads])
+	if t := current_tab(app); t != nil && t.page != nil { st.layout_items = len(t.layout.items) }
+	st.cpu_time_ms, st.cpu_user_ms, st.cpu_kernel_ms = process_cpu_ms()
+	pc := process_counters()
+	st.threads, st.handles, st.gdi_objects, st.user_objects = process_thread_count(), int(pc.handles), int(pc.gdi), int(pc.user)
+	st.cookies, st.storage_sites = cookies.count(&app.profile.jar), len(page.storage_sites(&app.storage))
+	if app.profile.cache != nil { st.cache_entries = int(httpcache.summary(app.profile.cache).entries) }
+	st.history_visits, st.closed_tabs, st.downloads_active, st.checkpoints = len(ghist.visits), len(closed_tabs), downloads_active(), len(the_remote.checkpoints)
+	return st
+}
+
+// What the frames' numbers count from now on: `frames` the presents and a window's loops, `latency` the probe's.
+control_stats_reset :: proc(app: ^App, frames, latency: bool) {
+	if latency { render.latency_reset(&app.r) }
+	if frames {
+		frame_log_reset()
+		drag_probe_reset()
+		active_window(app).win.stats = {}
+	}
+}
+
+// What a window's numbers say to a test, cheap enough for a poll (control_stats_all says more).
 control_stats :: proc(app: ^App, allocator := context.temp_allocator) -> api.Stats {
 	wnd := active_window(app)
 	g := platform.frame_gate()
@@ -630,13 +839,114 @@ control_drop_data :: proc(d: api.Drop_Data) -> platform.Drag_Data {
 	return x
 }
 
-// The size, place, state and scale of the active window: what is left out stays.
-control_set_window :: proc(app: ^App, c: api.Window_Change) {
+// The size, place, state and scale of the active window: what is left out stays. "": done, else what is wrong with what was asked.
+control_set_window :: proc(app: ^App, c: api.Window_Change) -> string {
+	switch c.state {
+	case "", "normal", "minimized", "maximized", "fullscreen":
+	case: return "windowState: normal, minimized, maximized or fullscreen"
+	}
+	if c.dpi != 0 && (c.dpi < WINDOW_DPI_LEAST || c.dpi > WINDOW_DPI_MOST) { return "dpi: 48 to 960 (96 = 100 %)" }
 	size, has_size := c.size.?
 	pos, has_pos := c.pos.?
 	window_apply(app, c.state, c.state != "", size.x, size.y, pos.x, pos.y, has_size, has_size, has_pos, has_pos)
 	if c.dpi != 0 { window_simulate_dpi(app, active_window(app), c.dpi) }
+	return ""
 }
+@(private = "file") WINDOW_DPI_LEAST :: 48
+@(private = "file") WINDOW_DPI_MOST :: 960
+
+// A key's own events, one at a time (Input.dispatchKeyEvent), as against control_key's whole press and release.
+Key_Event_Kind :: enum u8 { Down, Up, Text }
+
+control_key_event :: proc(app: ^App, c: ^Call, kind: Key_Event_Kind, name, text: string, mods: platform.Modifiers) -> Reply {
+	key, kmods, ok := parse_combo(name)
+	all := mods + kmods
+	if kind == .Down && ok { inject(app, {kind = .Key_Press, key = key, mods = all}) }
+	if kind == .Up && ok { inject(app, {kind = .Key_Release, key = key, mods = all}) }
+	if kind != .Up { for ch in text { inject(app, {kind = .Text, text = ch, mods = all}) } }
+	return frames_op(app, c, nil, the_remote.cfg.settle_frames)
+}
+
+// The tab's page stops loading.
+control_stop_loading :: proc(app: ^App, t: ^Tab) { stop_loading(app, t) }
+
+// The events of Page.loadEventFired and Runtime.consoleAPICalled go to this client from now on, or not.
+control_subscribe :: proc(app: ^App, conn: u64, on: bool) {
+	r := &the_remote
+	for i := len(r.subs) - 1; i >= 0; i -= 1 { if r.subs[i] == conn { unordered_remove(&r.subs, i) } }
+	if on {
+		append(&r.subs, conn)
+		for t in tabs_all(app) { r.loaded[t.id] = tab_loaded(app, t) }
+	}
+}
+
+// The Setup dialog as the last frame showed it.
+control_setup_state :: proc(allocator := context.temp_allocator) -> api.Setup_State {
+	rect :: proc(r: draw.Rect) -> api.Rect { return {f64(r.min.x), f64(r.min.y), f64(r.max.x - r.min.x), f64(r.max.y - r.min.y)} }
+	return {
+		open = stp.open, known = stp.known, confirm_uninstall = stp.confirm_uninstall, busy = stp.busy, note = strings.clone(stp.note, allocator),
+		primary = rect(stp.at_primary), uninstall = rect(stp.at_uninstall), secondary = rect(stp.at_secondary),
+	}
+}
+
+// The daily update check has a request out (update_check.odin).
+control_update_checking :: proc() -> bool { return update_checking() }
+
+////////////////////////////////
+// Recording, playing back, the timeline
+
+// A recording begins: the events the window receives, from any source, with their times.
+control_record_start :: proc(app: ^App) {
+	r := &the_remote.rec
+	clear(&r.events)
+	r.on, r.t0 = true, host.now_ns(&app.loop)
+}
+
+// It ends; what it has (the browser's until the next one).
+control_record_stop :: proc() -> []Rec_Event {
+	the_remote.rec.on = false
+	return the_remote.rec.events[:]
+}
+
+control_record_state :: proc() -> (recording: bool, events: int) { return the_remote.rec.on, len(the_remote.rec.events) }
+
+// The events go in at their recorded times (divided by `speed`): answered when the last is in and its frames are drawn.
+control_replay :: proc(app: ^App, c: ^Call, events: []Rec_Event, speed := 1.0, timeout_ms := 0) -> Reply {
+	op := op_new(app, c, .Replay, timeout_ms, "the replay")
+	op.speed = max(speed, REPLAY_SPEED_LEAST)
+	op.t0 = host.now_ns(&app.loop)
+	last := 0.0
+	for e in events { append(&op.events, e); last = max(last, e.t_ms) }
+	// (the whole replay must fit in its time: the deadline is the last event's time, plus what the command allows)
+	op.deadline += i64(last / op.speed * NS_PER_MS)
+	request_frames(app, 3)
+	return Reply{deferred = true}
+}
+@(private = "file") REPLAY_SPEED_LEAST :: 0.01
+@(private = "file") NS_PER_MS :: 1e6
+
+// The timeline starts: a picture of each frame of the window, or of its page, at this scale, up to `most`.
+control_timeline_start :: proc(app: ^App, scale: f64, most: int, page_only := false) -> (kept_scale: f64, kept_most: int) {
+	rect: [4]int
+	if page_only {
+		pr := active_window(app).page_rect
+		rect = {int(pr.min.x), int(pr.min.y), int(pr.max.x - pr.min.x), int(pr.max.y - pr.min.y)}
+	}
+	timeline_begin(app, f32(scale), most, rect)
+	return f64(the_remote.tl.scale), the_remote.tl.max
+}
+
+control_timeline_state :: proc() -> (recording: bool, frames: int) { return the_remote.tl.on, len(the_remote.tl.frames) }
+
+// It ends: its pictures to `dir`. `document`: the timeline.json written there; `why`: what went wrong, or "".
+control_timeline_stop :: proc(app: ^App, dir: string, cols: int, all: bool) -> (document, why: string) {
+	tl := &the_remote.tl
+	timeline_end(app)
+	document, why = timeline_write(tl, dir, clamp(cols, 1, TIMELINE_COLS_MOST), all)
+	timeline_free(tl)
+	return
+}
+@(private = "file") TIMELINE_COLS_MOST :: 24
 
 // A capture as the API's options say it.
 control_shot :: proc(app: ^App, o: api.Shot_Options) -> Capture_Request {

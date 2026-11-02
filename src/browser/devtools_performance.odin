@@ -195,7 +195,7 @@ perf_export :: proc(app: ^App, p: ^Dev_Performance) {
 	dir := fmt.tprintf("%s/wren-timeline-%04d%02d%02d-%02d%02d%02d", download_dir(app), dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
 	if err := os.make_directory_all(dir); err != nil && !os.exists(dir) { ui.toast(.Bad, "Could not make %s", dir); return }
 	if len(tl.frames) > 0 {
-		if rep := timeline_write(tl, dir, 6, false); rep.code != 0 { ui.toast(.Bad, "The pictures could not be written to %s", dir); return }
+		if _, why := timeline_write(tl, dir, 6, false); why != "" { ui.toast(.Bad, "The pictures could not be written to %s", dir); return }
 	}
 	n := count_frames(p)
 	if n > 0 {

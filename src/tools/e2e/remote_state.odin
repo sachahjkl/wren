@@ -78,8 +78,8 @@ reset_puts_back_all_it_names :: proc(t: ^testing.T, p: ^e2e.Wren_Process, server
 	testing.expectf(t, abs(w1.page_scale - w1.ui_scale) < SAME_SCALE_WITHIN && abs(w1.ui_scale - w0.ui_scale) < SAME_SCALE_WITHIN, "the page zoom is back: page %v, interface %v, was %v", w1.page_scale, w1.ui_scale, w0.ui_scale)
 	lines, _ := api.console(s)
 	testing.expect_value(t, len(lines), 0)
-	reqs, _ := api.network(s)
-	for q in reqs { testing.expectf(t, !strings.contains(q.url, "fixture") && !strings.contains(q.url, "layout-sized"), "the network log holds nothing of the page before: %s", q.url) }
+	net, _ := api.network(s)
+	for q in net.requests { testing.expectf(t, !strings.contains(q.url, "fixture") && !strings.contains(q.url, "layout-sized"), "the network log holds nothing of the page before: %s", q.url) }
 	// what a page sees: the same origin as before holds nothing
 	api.navigate(s, url)
 	seen, _ := api.eval(s, `JSON.stringify([document.cookie, localStorage.getItem("reset_key"), sessionStorage.getItem("reset_session")])`)

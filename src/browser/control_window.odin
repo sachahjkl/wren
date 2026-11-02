@@ -28,7 +28,10 @@ control_drag_samples :: proc(allocator := context.temp_allocator) -> []api.Drag_
 	list := make([]api.Drag_Sample, kept, allocator)
 	for i in 0 ..< kept {
 		s := drag_probe.ring[(drag_probe.n - kept + i) % DRAG_PROBE_CAP]
-		list[i] = {pointer = f64(s.mouse_x), edge = f64(s.finger_x), page_width = f64(s.page_w), area_width = f64(s.area_w)}
+		list[i] = {
+			pointer = f64(s.mouse_x), edge = f64(s.finger_x), page_width = f64(s.page_w), area_width = f64(s.area_w),
+			read_us = i64(s.read / 1000), shown_us = i64(s.shown / 1000), done_us = i64(s.done / 1000), dt = f64(s.dt), waited_ms = f64(s.waited), moves = int(s.moves),
+		}
 	}
 	return list
 }

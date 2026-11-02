@@ -127,13 +127,16 @@ dispatch :: proc(ctx: ^Context, cmd: string, args: []string) -> int {
 		return 0
 	case "query":
 		if len(args) != 1 { return usage(cmd, "usage: query <selector>") }
-		return simple(ctx, api.query_all(s, args[0], opt_int(&ctx.o, "limit", DEFAULT_QUERY_LIMIT)))
+		_, e := api.query_all(s, args[0], opt_int(&ctx.o, "limit", DEFAULT_QUERY_LIMIT))
+		return simple(ctx, e)
 	case "box":
 		if len(args) != 1 { return usage(cmd, "usage: box <selector>") }
-		return simple(ctx, api.box_model(s, args[0]))
+		_, e := api.box_model(s, args[0])
+		return simple(ctx, e)
 	case "style":
 		if len(args) < 1 { return usage(cmd, "usage: style <selector> [property...]") }
-		return simple(ctx, api.computed_style(s, args[0], len(args) > 1 ? args[1:] : nil))
+		_, e := api.computed_style(s, args[0], len(args) > 1 ? args[1:] : nil)
+		return simple(ctx, e)
 	case "snapshot":
 		if len(args) != 1 { return usage(cmd, "usage: snapshot <path-prefix>   (writes <prefix>.png, .html and .json)") }
 		return simple(ctx, api.snapshot(s, abs_path(args[0]), flag(&ctx.o, "tab")))
@@ -332,10 +335,10 @@ cmd_console :: proc(ctx: ^Context) -> int {
 
 @(private)
 cmd_network :: proc(ctx: ^Context) -> int {
-	reqs, e := api.network(&ctx.s, flag(&ctx.o, "clear"))
+	net, e := api.network(&ctx.s, flag(&ctx.o, "clear"))
 	if e != .None { return failed(ctx, e) }
 	if flag(&ctx.o, "json") { print_answer(ctx); return 0 }
-	for r in reqs {
+	for r in net.requests {
 		st := r.failed ? "FAIL" : r.status == 0 ? "..." : fmt.tprintf("%d", r.status)
 		outln(fmt.tprintf("%-4s %-6s %-9s %8d B %7s  %s%s", st, r.method, r.mime == "" ? "-" : r.mime, r.bytes, r.has_ms ? fmt.tprintf("%.0f ms", r.ms) : "-", r.url, r.failed ? fmt.tprintf("  (%s)", r.error) : ""))
 	}

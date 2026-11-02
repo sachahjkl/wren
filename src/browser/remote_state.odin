@@ -16,6 +16,7 @@ package browser
 
 import "core:encoding/json"
 import "core:fmt"
+import "core:slice"
 import "core:strings"
 import "toolkit:platform"
 import "toolkit:ui"
@@ -26,6 +27,7 @@ import "wb:fetch"
 import "wb:httpcache"
 import "wb:page"
 import "wb:remote"
+import "wb:remote/api"
 
 Keep_Part :: enum u8 { Tabs, Data, Prefs, Window, History }
 Keep :: bit_set[Keep_Part]
@@ -196,10 +198,6 @@ remote_reload_settings :: proc(app: ^App) {
 ////////////////////////////////
 // Putting things back
 
-Reset_Summary :: struct {
-	ops, tabs, cookies, sites, cache, visits, prefs: int,
-	window:                                          bool,
-}
 
 // The pending commands of every client end with an error (a wait that was for a page that is going away).
 remote_cancel_ops :: proc(why: string) -> int {
@@ -244,17 +242,17 @@ tabs_reset :: proc(app: ^App, address: string, closed: ^int) -> ^Tab {
 }
 
 // Cookies, storage, caches and the security memories of the profile.
-data_wipe :: proc(app: ^App, sum: ^Reset_Summary) {
+data_wipe :: proc(app: ^App, sum: ^api.Reset_Report) {
 	sum.cookies = cookies.count(&app.profile.jar)
 	sum.sites = len(page.storage_sites(&app.storage))
-	if app.profile.cache != nil { sum.cache = httpcache.summary(app.profile.cache).entries }
+	if app.profile.cache != nil { sum.cache_entries = httpcache.summary(app.profile.cache).entries }
 	clear_site(app, "*", CLEAR_ALL)
 	fetch.hsts_clear(&app.profile.hsts)
 	fetch.preflight_cache_clear(&app.profile.preflights)
 }
 
-history_wipe :: proc(app: ^App, sum: ^Reset_Summary) {
-	sum.visits = len(ghist.visits)
+history_wipe :: proc(app: ^App, sum: ^api.Reset_Report) {
+	sum.history_visits = len(ghist.visits)
 	global_history_remove_range(app, 0, max(i64))
 }
 
@@ -265,9 +263,31 @@ window_restore :: proc(app: ^App, w: Window_State) -> bool {
 	return true
 }
 
-reset_summary_json :: proc(s: Reset_Summary, extra := "") -> string {
+// What a reset and a restore answer: what they did. `tail`: the rest of the object (what each adds).
+@(private = "file")
+reset_json :: proc(s: api.Reset_Report, tail: string) -> string {
 	return fmt.tprintf(`{{"cancelledOps":%d,"closedTabs":%d,"cookies":%d,"sites":%d,"cacheEntries":%d,"historyVisits":%d,"prefsRestored":%d,"windowRestored":%v%s}}`,
-		s.ops, s.tabs, s.cookies, s.sites, s.cache, s.visits, s.prefs, s.window, extra)
+		s.cancelled_ops, s.closed_tabs, s.cookies, s.sites, s.cache_entries, s.history_visits, s.prefs_restored, s.window_restored, tail)
+}
+
+// Back to the state of the start: what `keep` does not name goes. The tab it leaves (nil only when the tabs are kept and there is none).
+control_reset :: proc(app: ^App, keep: Keep, address := "") -> (tab: ^Tab, sum: api.Reset_Report) {
+	sum.cancelled_ops = remote_cancel_ops("cancelled by a reset")
+	chrome_reset(app)
+	if .Tabs in keep { tab = current_tab(app) } else { tab = tabs_reset(app, address, &sum.closed_tabs) }
+	if .Data not_in keep { data_wipe(app, &sum) }
+	if .History not_in keep { history_wipe(app, &sum) }
+	r := &the_remote
+	if .Prefs not_in keep && r.baseline != nil {
+		sum.prefs_restored = config.restore(&app.prefs, r.baseline.prefs)
+		remote_reload_settings(app)
+	}
+	if .Window not_in keep && r.baseline != nil { sum.window_restored = window_restore(app, r.baseline.window) }
+	clear(&r.loaded)
+	for t in tabs_all(app) { r.loaded[t.id] = tab_loaded(app, t) }
+	request_frames(app, 3)
+	if tab != nil { sum.tab = int(tab.id) }
+	return
 }
 
 // Wren.reset {keep: [tabs, data, prefs, window, history], url, wait, timeout}
@@ -279,31 +299,57 @@ m_reset :: proc(app: ^App, c: ^Call) -> Reply {
 		if bad != "" { return fail(remote.ERR_PARAMS, fmt.tprintf("keep: tabs, data, prefs, window, history (not %q)", bad)) }
 	}
 	address, _ := remote.param_string(c.params, "url")
-	sum: Reset_Summary
-	sum.ops = remote_cancel_ops("cancelled by a reset")
-	chrome_reset(app)
-	tab: ^Tab
-	if .Tabs in keep { tab = current_tab(app) } else { tab = tabs_reset(app, address, &sum.tabs) }
-	if .Data not_in keep { data_wipe(app, &sum) }
-	if .History not_in keep { history_wipe(app, &sum) }
-	r := &the_remote
-	if .Prefs not_in keep && r.baseline != nil {
-		sum.prefs = config.restore(&app.prefs, r.baseline.prefs)
-		remote_reload_settings(app)
-	}
-	if .Window not_in keep && r.baseline != nil { sum.window = window_restore(app, r.baseline.window) }
-	clear(&r.loaded)
-	for t in tabs_all(app) { r.loaded[t.id] = tab_loaded(app, t) }
-	request_frames(app, 3)
+	tab, sum := control_reset(app, keep, address)
 	what, _ := remote.param_string(c.params, "wait", "load")
-	return start_wait(app, c, tab, what, reset_summary_json(sum, tab != nil ? fmt.tprintf(`,"tabId":%d`, tab.id) : ""))
+	return start_wait(app, c, tab, what, reset_json(sum, tab != nil ? fmt.tprintf(`,"tabId":%d`, tab.id) : ""))
 }
 
 CHECKPOINT_NAME_OK :: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_."
+// The checkpoint that is always there: the state of the start.
+@(private = "file") CHECKPOINT_INITIAL :: "initial"
+
+// The state now, under this name (one of that name goes; "initial": the state of the start is this from now on). "": saved, else why not.
+control_checkpoint_save :: proc(app: ^App, name: string) -> (x: api.Checkpoint, why: string) {
+	r := &the_remote
+	if name == CHECKPOINT_INITIAL {
+		remote_take_baseline(app)
+		return {name = CHECKPOINT_INITIAL}, ""
+	}
+	if _, exists := r.checkpoints[name]; !exists && len(r.checkpoints) >= r.cfg.max_checkpoints {
+		return {}, fmt.tprintf("%d checkpoints exist already (browser.remote.max_checkpoints): delete one", len(r.checkpoints))
+	}
+	cp := checkpoint_take(app, name, true, true)
+	if r.checkpoints == nil { r.checkpoints = make(map[string]^Checkpoint) }
+	if old, exists := r.checkpoints[name]; exists {
+		delete_key(&r.checkpoints, name)   // (the key is the old checkpoint's own name)
+		checkpoint_free(old)
+	}
+	r.checkpoints[cp.name] = cp
+	return checkpoint_info(cp), ""
+}
+
+// All of them by name, the state of the start first.
+control_checkpoints :: proc(allocator := context.temp_allocator) -> []api.Checkpoint {
+	r := &the_remote
+	list := make([dynamic]api.Checkpoint, 0, len(r.checkpoints) + 1, allocator)
+	append(&list, api.Checkpoint{name = CHECKPOINT_INITIAL})
+	for _, cp in r.checkpoints { append(&list, checkpoint_info(cp)) }
+	slice.sort_by(list[1:], proc(a, b: api.Checkpoint) -> bool { return a.name < b.name })
+	return list[:]
+}
+
+// false: there is none of this name.
+control_checkpoint_delete :: proc(name: string) -> bool {
+	r := &the_remote
+	cp, exists := r.checkpoints[name]
+	if !exists { return false }
+	delete_key(&r.checkpoints, name)
+	checkpoint_free(cp)
+	return true
+}
 
 // Wren.checkpoint {action: save|restore|list|delete, name, wait, timeout}
 m_checkpoint :: proc(app: ^App, c: ^Call) -> Reply {
-	r := &the_remote
 	action, _ := remote.param_string(c.params, "action", "list")
 	name, _ := remote.param_string(c.params, "name")
 	if action != "list" {
@@ -311,74 +357,53 @@ m_checkpoint :: proc(app: ^App, c: ^Call) -> Reply {
 	}
 	switch action {
 	case "save":
-		if name == "initial" {
-			remote_take_baseline(app)
-			return done(`{"name":"initial","tabs":0,"cookies":0,"storageOrigins":0}`)
-		}
-		if _, exists := r.checkpoints[name]; !exists && len(r.checkpoints) >= r.cfg.max_checkpoints {
-			return fail(remote.ERR_FAILED, fmt.tprintf("%d checkpoints exist already (browser.remote.max_checkpoints): delete one", len(r.checkpoints)))
-		}
-		cp := checkpoint_take(app, name, true, true)
-		if r.checkpoints == nil { r.checkpoints = make(map[string]^Checkpoint) }
-		if old, exists := r.checkpoints[name]; exists {
-			delete_key(&r.checkpoints, name)   // (the key is the old checkpoint's own name)
-			checkpoint_free(old)
-		}
-		r.checkpoints[cp.name] = cp
-		return done(checkpoint_json(cp))
+		x, why := control_checkpoint_save(app, name)
+		if why != "" { return fail(remote.ERR_FAILED, why) }
+		return done(checkpoint_json(x))
 	case "list":
-		names := make([dynamic]string, context.temp_allocator)
-		for n in r.checkpoints { append(&names, n) }
-		sort_strings(names[:])
 		b := builder()
 		j_begin(&b)
 		j_key(&b, "checkpoints"); j_begin(&b, '[')
-		j_raw(&b, "", `{"name":"initial","tabs":0,"cookies":0,"storageOrigins":0}`)
-		for n in names { j_raw(&b, "", checkpoint_json(r.checkpoints[n])) }
+		for x in control_checkpoints() { j_raw(&b, "", checkpoint_json(x)) }
 		j_end(&b, ']'); j_end(&b)
 		return done(strings.to_string(b))
 	case "delete":
-		cp, exists := r.checkpoints[name]
-		if !exists { return fail(remote.ERR_PARAMS, fmt.tprintf("no checkpoint %q", name)) }
-		delete_key(&r.checkpoints, name)
-		checkpoint_free(cp)
+		if !control_checkpoint_delete(name) { return fail(remote.ERR_PARAMS, fmt.tprintf("no checkpoint %q", name)) }
 		return done()
 	case "restore":
-		if name == "initial" { return m_reset(app, c) }
-		cp, exists := r.checkpoints[name]
-		if !exists { return fail(remote.ERR_PARAMS, fmt.tprintf("no checkpoint %q", name)) }
-		return checkpoint_restore(app, c, cp)
+		if name == CHECKPOINT_INITIAL { return m_reset(app, c) }
+		tab, sum, ok := control_checkpoint_restore(app, name)
+		if !ok { return fail(remote.ERR_PARAMS, fmt.tprintf("no checkpoint %q", name)) }
+		what, _ := remote.param_string(c.params, "wait", "load")
+		return start_wait(app, c, tab, what, reset_json(sum, fmt.tprintf(`,"tabs":%d`, sum.tabs)))
 	}
 	return fail(remote.ERR_PARAMS, "action: save, restore, list or delete")
 }
 
 @(private = "file")
-checkpoint_json :: proc(cp: ^Checkpoint) -> string {
-	return fmt.tprintf(`{{"name":%s,"tabs":%d,"cookies":%d,"storageOrigins":%d}}`, remote.quote(cp.name), len(cp.tabs), len(cp.cookies), len(cp.storage))
-}
+checkpoint_info :: proc(cp: ^Checkpoint) -> api.Checkpoint { return {cp.name, len(cp.tabs), len(cp.cookies), len(cp.storage)} }
 
 @(private = "file")
-sort_strings :: proc(list: []string) {
-	for i in 1 ..< len(list) {
-		for j := i; j > 0 && list[j] < list[j - 1]; j -= 1 { list[j], list[j - 1] = list[j - 1], list[j] }
-	}
+checkpoint_json :: proc(x: api.Checkpoint) -> string {
+	return fmt.tprintf(`{{"name":%s,"tabs":%d,"cookies":%d,"storageOrigins":%d}}`, remote.quote(x.name), x.tabs, x.cookies, x.storage_origins)
 }
 
-@(private = "file")
-checkpoint_restore :: proc(app: ^App, c: ^Call, cp: ^Checkpoint) -> Reply {
+// The state a checkpoint kept. false: there is none of this name. The tab it leaves current.
+control_checkpoint_restore :: proc(app: ^App, name: string) -> (cur: ^Tab, sum: api.Reset_Report, ok: bool) {
+	cp, exists := the_remote.checkpoints[name]
+	if !exists { return }
 	wnd := active_window(app)
-	sum: Reset_Summary
-	sum.ops = remote_cancel_ops("cancelled by a restore")
+	sum.cancelled_ops = remote_cancel_ops("cancelled by a restore")
 	chrome_reset(app)
-	tabs_reset(app, "about:blank", &sum.tabs)   // (pages hold their storage: they go first)
+	tabs_reset(app, "about:blank", &sum.closed_tabs)   // (pages hold their storage: they go first)
 	cookies.replace_all(&app.profile.jar, cp.cookies)
 	sum.cookies = len(cp.cookies)
 	clear_site(app, "*", {.Session, .Indexed_Db, .Cache})
 	page.storage_restore_local(&app.storage, cp.storage)
 	sum.sites = len(cp.storage)
-	sum.prefs = config.restore(&app.prefs, cp.prefs)
+	sum.prefs_restored = config.restore(&app.prefs, cp.prefs)
 	remote_reload_settings(app)
-	sum.window = window_restore(app, cp.window)
+	sum.window_restored = window_restore(app, cp.window)
 	// the tabs again, then the blank one that held the place goes
 	blank := wnd.tabs[wnd.current]
 	for t in cp.tabs {
@@ -387,30 +412,28 @@ checkpoint_restore :: proc(app: ^App, c: ^Call, cp: ^Checkpoint) -> Reply {
 	}
 	for t, i in wnd.tabs { if t == blank { tab_close(app, i); break } }
 	wnd.current = clamp(cp.current, 0, len(wnd.tabs) - 1)
-	cur := current_tab(app)
+	cur = current_tab(app)
 	if cur != nil { ui.field_set(&wnd.address, cur.url) }
 	r := &the_remote
 	clear(&r.loaded)
 	for t in tabs_all(app) { r.loaded[t.id] = false }
 	request_frames(app, 3)
-	what, _ := remote.param_string(c.params, "wait", "load")
-	return start_wait(app, c, cur, what, reset_summary_json(sum, fmt.tprintf(`,"tabs":%d`, len(cp.tabs))))
+	sum.tabs = len(cp.tabs)
+	return cur, sum, true
 }
 
 // Wren.resetPref {name | all: true}: the preference(s) as they were when the channel started (command line, user and default
 // layers alike), where setPref {override: true} may have changed a value `--pref` fixed.
 m_pref_reset :: proc(app: ^App, c: ^Call) -> Reply {
-	r := &the_remote
-	if r.baseline == nil { return fail(remote.ERR_FAILED, "no baseline") }
 	if all, _ := remote.param_bool(c.params, "all"); all {
-		n := config.restore(&app.prefs, r.baseline.prefs)
-		remote_reload_settings(app)
-		request_frames(app, 3)
+		n, why := control_pref_reset_all(app)
+		if why != "" { return fail(remote.ERR_FAILED, why) }
 		return done(fmt.tprintf(`{{"restored":%d}}`, n))
 	}
 	name, bad := need_string(c, "name")
 	if bad.code != 0 { return bad }
 	if why := control_pref_reset(app, name); why != "" { return fail(remote.ERR_PARAMS, why) }
-	s, _ := pref_json(app, name)
-	return done(s)
+	p, _ := control_pref(app, name)
+	return done(pref_json(p))
 }
+

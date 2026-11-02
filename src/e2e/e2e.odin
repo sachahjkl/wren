@@ -77,6 +77,13 @@ Urlbar :: api.Urlbar
 Urlbar_Row :: api.Urlbar_Row
 diff_pictures :: api.diff_pictures
 Download :: api.Download
+Query_Result :: api.Query_Result
+Box_Model :: api.Box_Model
+Style_Property :: api.Style_Property
+Network :: api.Network
+Pref :: api.Pref
+Command :: api.Command
+style_of :: api.style_of
 center :: api.center
 pixel :: api.pixel
 window_with_id :: api.window_with_id
@@ -893,7 +900,7 @@ set_window :: proc(s: ^Session, c: Window_Change, loc := #caller_location) {
 	context = s.ctx
 	prev := enter(s, loc)
 	defer browser.control_leave(s.app, prev)
-	browser.control_set_window(s.app, c)
+	if why := browser.control_set_window(s.app, c); why != "" { failed(s, why, loc) }
 }
 
 // The window becomes the one the user is in (never the system's focus).
@@ -929,12 +936,89 @@ open_devtools :: proc(s: ^Session, panel := "console", dock := "", loc := #calle
 ////////////////////////////////
 // The numbers
 
+// What is cheap enough for a poll.
 stats :: proc(s: ^Session, loc := #caller_location) -> Stats {
 	back := s.test.temp_allocator
 	context = s.ctx
 	prev := enter(s, loc)
 	defer browser.control_leave(s.app, prev)
 	return browser.control_stats(s.app, back)
+}
+
+// All of them: the process's, the stores', the frames as a measure reads them.
+stats_all :: proc(s: ^Session, loc := #caller_location) -> Stats {
+	back := s.test.temp_allocator
+	context = s.ctx
+	prev := enter(s, loc)
+	defer browser.control_leave(s.app, prev)
+	return browser.control_stats_all(s.app, back)
+}
+
+// What the frames' numbers count from now on.
+stats_reset :: proc(s: ^Session, frames := true, latency := true, loc := #caller_location) {
+	context = s.ctx
+	prev := enter(s, loc)
+	defer browser.control_leave(s.app, prev)
+	browser.control_stats_reset(s.app, frames, latency)
+}
+
+// The elements that match, the first `limit` described.
+query_all :: proc(s: ^Session, selector: string, limit := browser.QUERY_ALL_DEFAULT_LIMIT, loc := #caller_location) -> Query_Result {
+	back := s.test.temp_allocator
+	context = s.ctx
+	prev := enter(s, loc)
+	defer browser.control_leave(s.app, prev)
+	r, code, why := browser.control_query_all(s.app, tab_of(s, loc), selector, limit, back)
+	if code != 0 { failed(s, why, loc) }
+	return r
+}
+
+// An element's box, in CSS pixels and in window pixels.
+box_model :: proc(s: ^Session, selector: string, loc := #caller_location) -> Box_Model {
+	context = s.ctx
+	prev := enter(s, loc)
+	defer browser.control_leave(s.app, prev)
+	r, code, why := browser.control_box_model(s.app, tab_of(s, loc), selector)
+	if code != 0 { failed(s, why, loc) }
+	return r
+}
+
+// An element's computed style: `properties` nil: all of it.
+computed_style :: proc(s: ^Session, selector: string, properties: []string = nil, loc := #caller_location) -> []Style_Property {
+	back := s.test.temp_allocator
+	context = s.ctx
+	prev := enter(s, loc)
+	defer browser.control_leave(s.app, prev)
+	r, why := browser.control_computed_style(tab_of(s, loc), selector, properties, back)
+	if why != "" { failed(s, why, loc) }
+	return r
+}
+
+// What the tab's page fetched.
+network :: proc(s: ^Session, clear := false, loc := #caller_location) -> Network {
+	back := s.test.temp_allocator
+	context = s.ctx
+	prev := enter(s, loc)
+	defer browser.control_leave(s.app, prev)
+	return browser.control_network(tab_of(s, loc), clear, back)
+}
+
+// The preferences whose name begins so.
+prefs :: proc(s: ^Session, prefix := "", loc := #caller_location) -> []Pref {
+	back := s.test.temp_allocator
+	context = s.ctx
+	prev := enter(s, loc)
+	defer browser.control_leave(s.app, prev)
+	return browser.control_prefs(s.app, prefix, back)
+}
+
+// The commands of the interface, and which can run now.
+commands :: proc(s: ^Session, loc := #caller_location) -> []Command {
+	back := s.test.temp_allocator
+	context = s.ctx
+	prev := enter(s, loc)
+	defer browser.control_leave(s.app, prev)
+	return browser.control_commands(s.app, back)
 }
 
 downloads :: proc(s: ^Session, loc := #caller_location) -> []Download {
