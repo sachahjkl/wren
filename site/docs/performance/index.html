@@ -357,6 +357,8 @@ third of it. Round 3 fixed that instead (below).</p>
 </table></div>
 <p>Sampled against the style stage, which did not change, the script stage is 4.0 to 4.15 times the style stage before and
 2.82 to 2.84 after (3 runs each): the collection 61 % less, the rest 10 % less.</p>
+<p>After round 4 (medians of 5 interleaved runs): the window thread waits 8.1 -&gt; 5.3 ms a frame on layout, a full pass
+5.9 -&gt; 3.5 ms (its paragraphs in columns now on the layout threads), 52.3 -&gt; 55.1 frames/s.</p>
 <p><strong>Bottleneck:</strong> the script stage (the interpreter and its native calls, making wrappers, the collection), then layout.</p>
 <h3 id="3-scrolling-a-long-page-p10k-3-wheel-notches-every-16-ms"><a class="anchor" href="#3-scrolling-a-long-page-p10k-3-wheel-notches-every-16-ms" aria-hidden="true">#</a>3. Scrolling a long page (p10k, 3 wheel notches every 16 ms)</h3>
 <p>167 to 177 frames/s (headless: one frame per input, the input's rate). CPU per frame 0.54 ms mean, 0.31 p50, 1.0 p95:
@@ -554,6 +556,65 @@ rune (2 % of the script stage). WPT dom/nodes: 27 subtests better (case.html, cr
 getElementsByTagName of non-ASCII names); one worse, case.html's <code>getElementsByTagName a:Ä</code>, which compares names the
 way the other <code>a:</code> cases of that file already got wrong.</li>
 </ol>
+<h2 id="what-changed-round-4-layout-of-dom-heavy-pages"><a class="anchor" href="#what-changed-round-4-layout-of-dom-heavy-pages" aria-hidden="true">#</a>What changed, round 4: layout of DOM-heavy pages</h2>
+<p>Item 3 of round 3's list. Measured as in round 3 (<code>wrentool bench perf</code>, the base and the new profile build in turn, 5
+runs each; the median, range in brackets) and with the profiler on the page thread (<code>WREN_SAMPLE_THREADS=1</code>).</p>
+<ol>
+<li><strong>Column balancing: measured, not changed.</strong> Counted on nodes10k (2 500 list items in six columns): a multi-column
+container lays its content out once per pass (<code>layout_multicol</code> already lays it out in one strip and cuts it:
+<code>gather_units</code>, <code>place_units</code>), and balancing tries 4 heights, each a walk of the 2 500 units in their flat array:
+0.05 ms of a 2.3 ms block layout. Laying the content out again is left to what forces it (a nested container that
+crosses a column, <code>MC_NEST_TRIES</code>). What the 36 % of the page thread in the multi-column layout was: the paragraphs in
+the columns laid out on the page thread alone. A page with columns turned <code>frames_on</code> on, and a pass with frames ran
+without the layout threads. Now a full pass whose frames are all horizontal (columns, no vertical writing mode) lays
+its simple paragraphs out ahead on the threads like any other page (<code>pre_run</code>, <code>parallel.odin</code>): the width
+prediction goes into the columns (<code>pre_widths</code>: a column's width, a spanner the container's), and the flows are
+marked before the threads start (<code>flows_mark</code>: <code>mark_flow</code> writes flags of the boxes the threads read). Incremental
+passes and vertical frames keep one thread. nodes10k: 2 501 of 2 501 paragraphs laid out ahead and taken; the block
+layout's step 2.64 -&gt; 1.19 ms.</li>
+<li><strong>The font of an element</strong> (<code>font_info</code>, <code>context.odin</code>; <code>Style_Sum</code>, <code>style_sum.odin</code>). The per-pass map from a 64
+byte key to a font (hashing the key cost about 380 cycles a lookup, half the elements of nodes10k looked one up) and
+its one-entry memo are gone: a pass's fonts are a short flat list compared whole, tried after the font of the
+parent (<code>near</code>). The summaries made on the layout threads say which elements have their parent's font
+(<code>Parent_Font</code>, the keys compared there): construction then reads none of their font properties, and a text whose
+style is its parent element's takes that element's font (<code>Frame.font_el</code>, <code>Frame.fi</code>). Not a cache: nothing is kept
+from one pass to the next, the list is the pass's fonts. The summaries also carry the decorations, <code>column-span</code> and
+negative margins, which construction and <code>mark_bfc_floats</code> read from each style before (each a cache miss on a style
+made on another thread). The tree step: 1.81 -&gt; 1.08 ms.</li>
+<li><strong>The page thread's temporary block, as round 3 meant it</strong> (<code>page_thread.odin</code>): the block was set as the context's
+temporary allocator inside an <code>if</code>, and an assignment to the context lasts as long as its block: every pass ran on
+the runtime's own temporary arena, mapping blocks past the first and giving them back (<code>NtFreeVirtualMemory</code> 3 to 5 %
+of the page thread once the threads made the pass use more). Set at the scope of the thread's procedure, the block
+grew once (to 6.6 MB, then 7.4 MB a pass) in 410 passes.</li>
+<li><strong>Smaller ones</strong>: the bounds of a box in a flow without a list on the heap (<code>flow_bounds</code>, once for every box and
+line of the flow in <code>compute_overflow</code>: the finish step 0.69 -&gt; 0.35 ms); the incremental attempt adds a container as
+a rebuild root once, not once per child that changed (<code>add_target</code>: 7 500 entries of the same <code>ul</code> on nodes10k).</li>
+<li><strong>Short text runs: measured, not changed.</strong> Before 1, measuring words was <code>word_find</code> (the toolkit's word cache), 3.6 %
+of the page thread; with the paragraphs on the layout threads it no longer shows on the page thread, and shaping
+proper (<code>shape_run</code>) shows only in the window thread's paint (5.7 % of <code>Paint_Items</code>, 1.4 ms a frame). An advance
+table for ASCII runs would save little here, and its exact fallback needs what the font's kerning and ligature
+tables do with those characters: not done.</li>
+</ol>
+<p>The private memory grows by the summaries' and the predictions' temporary arrays and the layout threads' own; p10k_load,
+p10k_scroll and mutation move within their noise (the load of p10k by the machine's other programs, a factor of 3), and
+multicol.html resized makes incremental passes, which keep one thread.</p>
+<div class="table-box"><table>
+<thead><tr><th></th><th>before</th><th>after</th></tr></thead>
+<tbody>
+<tr><td>nodes10k: the window thread waiting on layout, p50 a frame</td><td>8.14 ms (8.02-31.5)</td><td>5.27 ms (5.19-14.5)</td></tr>
+<tr><td>nodes10k: a full pass (p50 of each step)</td><td>5.94 ms</td><td>3.48 ms</td></tr>
+<tr><td>... tree</td><td>1.81 (1.75-6.45)</td><td>1.08 (1.06-3.75)</td></tr>
+<tr><td>... block layout</td><td>2.64 (2.61-11.3)</td><td>1.19 (1.16-2.90)</td></tr>
+<tr><td>... finish</td><td>0.69 (0.69-1.64)</td><td>0.35 (0.35-0.68)</td></tr>
+<tr><td>... display list, bands</td><td>0.70 + 0.15</td><td>0.73 + 0.13</td></tr>
+<tr><td>nodes10k: frames/s, CPU work per frame (mean)</td><td>52.3, 54.9 ms</td><td>55.1, 52.2 ms</td></tr>
+<tr><td>nodes10k: private memory</td><td>279 MB</td><td>288 MB</td></tr>
+<tr><td>p10k_load: load, first layout</td><td>742 ms (255-792), 1.94 ms (1.04-3.20)</td><td>789 ms (250-943), 1.80 ms (0.90-2.63)</td></tr>
+<tr><td>p10k_scroll: frames/s, CPU work per frame p50</td><td>167, 0.52 ms</td><td>165, 0.40 ms</td></tr>
+<tr><td>mutation: frames/s, CPU work per frame mean</td><td>73.1, 1.01 ms</td><td>73.5, 0.99 ms</td></tr>
+<tr><td>examples/site/multicol.html resized (incremental passes): layout p50</td><td>0.074 ms</td><td>0.074 ms</td></tr>
+</tbody>
+</table></div>
 <h2 id="inventory"><a class="anchor" href="#inventory" aria-hidden="true">#</a>Inventory</h2>
 <h3 id="internal-caches-remove-by-making-the-path-fast-product-caches-kept"><a class="anchor" href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept" aria-hidden="true">#</a>Internal caches (remove by making the path fast; product caches kept)</h3>
 <p>Kept, a product: the HTTP cache (<code>src/httpcache</code>), the back/forward cache (<code>browser/bfcache.odin</code>), compiled scripts on
@@ -568,7 +629,7 @@ the glyph atlas (<code>font/raster.odin:71</code>), Slug glyph data (<code>font/
 <tr><td><code>ext/gui_toolkit/font/shape.odin:383-611</code></td><td><code>Word_Cache</code>: 64 shards of shaped words, a mutex each, plus <code>l1_words</code> per thread</td><td>every word measured or painted</td></tr>
 <tr><td><code>style/inline_cache.odin:37</code>, <code>cascade.odin:114</code></td><td>compiled <code>style</code> attributes by text</td><td>every element with a style attribute</td></tr>
 <tr><td><code>style/match.odin:55-64</code></td><td><code>sibs</code>, <code>filled</code>, <code>has_memo</code>: maps by handle per pass (and <code>seen</code> at <code>:191</code> written, never read)</td><td>nth-child and <code>:has()</code></td></tr>
-<tr><td><code>layout/context.odin:26-29</code>, <code>layout/types.odin:435</code></td><td>style -&gt; font index maps, a one-entry memo</td><td>every box and inline item</td></tr>
+<tr><td><code>layout/types.odin:435</code></td><td><code>font_lookup</code>: fonts by content across partial passes (the per-pass map and its one-entry memo went in round 4)</td><td>a font a pass has not found yet</td></tr>
 <tr><td><code>layout/types.odin:220</code>, <code>block.odin:268-311</code></td><td><code>Box.cache_*</code>: a block's result for the same inputs</td><td>block layout</td></tr>
 <tr><td><code>browser/fonts.odin:343-379</code></td><td><code>Page_Fonts.resolved</code>: request string (built per lookup) -&gt; font</td><td>font resolution</td></tr>
 <tr><td><code>browser/paint_masks.odin:126-156</code></td><td>text items per box for <code>background-clip: text</code>, wiped every pass</td><td>that property</td></tr>
@@ -582,7 +643,7 @@ the glyph atlas (<code>font/raster.odin:71</code>), Slug glyph data (<code>font/
 <p><code>style/engine.odin:66-68</code> (<code>by_id</code>, <code>by_class</code>, <code>by_tag</code>, <code>by_attr</code>: string keys looked up per class, id, tag and attribute
 of every element, plus a concatenation per indexed attribute at <code>cascade.odin:443</code>); <code>style/match.odin:55-64</code>;
 <code>style/cascade.odin:345-361</code> (custom properties, contexts, <code>fs_chain</code> per element); <code>layout/context.odin:26-60</code>
-(<code>font_cache</code>, <code>anon_cs</code>, <code>frame_cs</code>); <code>layout/types.odin:454</code> (<code>scroll</code>, read per space); <code>browser/compositor.odin:115</code>
+(<code>anon_cs</code>, <code>frame_cs</code>; <code>font_cache</code> gone in round 4); <code>layout/types.odin:454</code> (<code>scroll</code>, read per space); <code>browser/compositor.odin:115</code>
 (<code>node_items</code>, a heap list per node) and <code>:421-556</code> (per rebuild); <code>page/images.odin</code> <code>css_images_sync</code> and
 <code>page/fonts.odin</code> <code>fonts_sync</code> (a <code>seen</code> table of shared lists, now only when something new may be used);
 <code>ext/gui_toolkit/font/raster.odin:74-79</code> (per glyph, under the atlas lock); <code>page/timeline_lcp.odin</code> <code>et_seen</code> (per
@@ -624,7 +685,7 @@ pool's are <code>src/host</code>'s). Gone in round 2: the style threads' arenas 
 the layout thread's growing arrays (none in its samples since round 2) and its temporary blocks mapped and freed every
 pass. Most of layout and paint already use the temporary allocator or an arena.</p>
 <h2 id="next-ranked-by-measured-cost-on-a-bottleneck"><a class="anchor" href="#next-ranked-by-measured-cost-on-a-bottleneck" aria-hidden="true">#</a>Next, ranked by measured cost on a bottleneck</h2>
-<p>After round 3. Round 2's items 2, 3 and 8 are done (item 3 measured: a partial restyle of nodes10k costs what a full
+<p>After round 4 (item 3 of round 3's list, in part). Round 2's items 2, 3 and 8 are done (item 3 measured: a partial restyle of nodes10k costs what a full
 pass does); what is left of them is folded in below. Round 3 also measured round 2's item 7 as it stood (the loop's and
 the network's locks) and kept the mutexes; item 7 is now the job queues, to be measured the same way before anything
 replaces them. Round 2's item 1 is done in part: the engine traces, it counts no reference a script holds, so a plain
@@ -643,14 +704,19 @@ with the parent until an element sets one (<code>inherit_all</code> copies about
 take care of are the derived values of the cascade, <code>scheme_settle</code>, <code>derive_fields</code>, the content language, and the
 copies of inherited values outside it: layout's refresh of anonymous boxes, the timeline's <code>push_inherited</code> and
 <code>pseudo_inherit</code>); an arena that need not be zeroed for the records the cascade overwrites whole.</li>
-<li><strong>Layout of DOM-heavy pages</strong> (nodes10k: 9 to 10 ms a frame, every pass full, "too much changed"): the page thread
-spends 36 % in the multi-column block layout and 20 % building the box tree (<code>font_info</code> 5 to 8 %: the style -&gt;
-font map per element), 6 to 10 % in its temporary allocator's allocations.</li>
+<li><strong>Layout of DOM-heavy pages, what round 4 left</strong> (nodes10k: the window thread waits 5.3 ms a frame on a pass
+of 3.5 ms; the page thread's samples after round 4): the display list of the flow (<code>emit_lines</code> and
+<code>push_flow_item</code>, 12 to 15 %: every text item is copied once per column it may lie in, and <code>emit_lines</code> reads two
+fields of each text's style for visibility and pointer-events, which the box's flags already hold); the incremental
+attempt that ends in "too much changed" (<code>add_target</code>, <code>touched_ancestor</code>, <code>subtree_size</code>, <code>plan_children</code> over the
+5 000 removed and inserted list items: 6 to 8 %, before the full pass starts; a bound from the journal's size would
+decide it first); building the box tree (place_element, push_children, list markers: 13 to 17 %); the zeroing of
+the page thread's temporary block at the end of each pass (<code>memset</code> in <code>free_all</code>, 2 to 5 %).</li>
 <li><strong>The layout's boxes as arrays of what the scans read</strong> (the LCP scan's remaining cost is <code>box_border</code> reading each
 box's struct, 57 % of it; the layout-shift scan reads the same): border rects and flags in flat arrays by box, or
 scans of the boxes the layout journal says changed.</li>
 <li><strong>The atlas lock per glyph and the word cache's 64 locks</strong> (toolkit): a per-thread front, misses to one owner
-(<code>word_find</code> is 4 % of the page thread on nodes10k).</li>
+(<code>word_find</code> was 4 % of the page thread on nodes10k before round 4 moved its paragraphs to the layout threads).</li>
 <li><strong>The style index's string tables</strong> (<code>style/engine.odin:66-68</code>): atoms (interned ids) and flat arrays by atom.</li>
 <li><strong>The job queues of the blocking pool, the image decoders, the script compiler and the caches</strong> (the table above):
 measured first (round 3: a lock-free queue lost to the loop's mutex); a worker's <code>ordered_remove(0)</code> is a cost of its own.</li>
@@ -679,6 +745,7 @@ block kept at the largest size used), where they outgrow their first block every
 <li><a href="#round-3-the-locks-of-the-loop-and-the-network-measured-against-lock-free-queues">Round 3: the locks of the loop and the network, measured against lock-free queues</a></li>
 <li><a href="#what-changed-round-3-style-and-layout">What changed, round 3: style and layout</a></li>
 <li><a href="#what-changed-round-3-the-script-stage">What changed, round 3: the script stage</a></li>
+<li><a href="#what-changed-round-4-layout-of-dom-heavy-pages">What changed, round 4: layout of DOM-heavy pages</a></li>
 <li><a href="#inventory">Inventory</a></li>
 <li class="lvl3"><a href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept">Internal caches (remove by making the path fast; product caches kept)</a></li>
 <li class="lvl3"><a href="#hash-tables-on-hot-paths">Hash tables on hot paths</a></li>
