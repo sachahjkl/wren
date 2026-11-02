@@ -17,7 +17,7 @@ import "wb:url"
 // when about:wren is built, so it costs nothing at start-up and nothing while browsing. It changes what about:wren
 // says and nothing else: no feature depends on it, nothing reminds of it. No network is used.
 
-SUPPORT_URL :: "https://sachahjkl.github.io/wren/support.html"
+SUPPORT_URL :: "https://sachahjkl.github.io/wren/pricing/"
 
 LICENSE_PREFS := [?]config.Def{
 	{name = "browser.license.path", kind = .String, default = {s = ""},

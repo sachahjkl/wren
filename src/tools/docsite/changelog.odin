@@ -1,4 +1,4 @@
-// The releases timeline of site/changelog.html, made from docs/releases/v*.md (the highlights written for each release) and the
+// The releases timeline of site/changelog/index.html, made from docs/releases/v*.md (the highlights written for each release) and the
 // dates of CHANGELOG.md: a release adds a file there and the page follows, nobody edits the page. The page holds the markers
 // <!-- releases:begin --> and <!-- releases:end -->; what is between them is this tool's.
 package docsite
@@ -9,7 +9,7 @@ import "core:slice"
 import "core:strconv"
 import "core:strings"
 
-CHANGELOG_PAGE :: "site/changelog.html"
+CHANGELOG_PAGE :: "site/changelog/index.html"
 MARK_BEGIN     :: "<!-- releases:begin -->"
 MARK_END       :: "<!-- releases:end -->"
 

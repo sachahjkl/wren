@@ -30,7 +30,7 @@ function json(status: number, body: unknown, headers: Record<string, string> = {
 	return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...headers } });
 }
 
-// CORS for the pages of the site (thanks.html calls GET /licence from another origin).
+// CORS for the pages of the site (thanks/ calls GET /licence from another origin).
 function cors(request: Request, env: Env): Record<string, string> {
 	const allowed = (env.ALLOWED_ORIGIN ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 	const origin = request.headers.get("Origin");

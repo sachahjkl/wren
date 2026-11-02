@@ -114,17 +114,17 @@ Use an order number that does not look like a Worker one (`GIFT-0001`).
 
 ## Selling with Paddle
 
-Nothing is for sale until the steps below are done: [the support page](../site/support.html) shows *Coming soon* while
+Nothing is for sale until the steps below are done: [the pricing page](../site/pricing/index.html) shows *Coming soon* while
 its settings are empty. Cost: Paddle's fee per sale, the free plans of Cloudflare Workers + KV, and, to mail licences to
 buyers you do not know, the Workers Paid plan (5 USD a month, 3000 mails a month included, then 0.35 USD per 1000: see
 "Mailing the licence" below).
 
 ```
-buyer ── Paddle checkout (overlay on support.html) ── pays
+buyer ── Paddle checkout (overlay on pricing/) ────── pays
                 │                                       │
                 │ checkout.completed (browser)          │ transaction.completed (signed webhook)
                 ▼                                       ▼
-        thanks.html?txn=txn_…                    Worker POST /paddle/webhook  verifies Paddle-Signature,
+        thanks/?txn=txn_…                        Worker POST /paddle/webhook  verifies Paddle-Signature,
                 │                                        │                     then hands the transaction to
                 │ GET /licence?txn=txn_…                 ▼                     the LicenseOrder Durable Object
                 │                                 LicenseOrder(txn)  ── reads the customer (Paddle API), signs,
@@ -144,7 +144,7 @@ globally-replicated copy the thank-you page reads, kept in step by the object.
 |---|---|
 | `POST /paddle/webhook` | Checks `Paddle-Signature` (`ts=…;h1=…`: HMAC-SHA256 of `ts:` + the raw body with the destination's secret, compared in constant time, `ts` within `WEBHOOK_TOLERANCE_SECONDS`, 300 by default; several `h1` are accepted during a secret rotation). Only `transaction.completed` acts. The transaction is handed to its `LicenseOrder` Durable Object: edition from the price ids, name and e-mail from the Paddle API (`GET /customers/{id}`), licence signed, stored under `txn:<id>`, mailed (or queued). Answers 200 when done **or queued**, **401** for a bad signature, **422** for a transaction that can never work (no customer e-mail: nothing to retry), **500** when the Paddle API is down (Paddle then delivers the webhook again). A mail that cannot go out now no longer makes the webhook fail: the object queues it and retries on its own alarm. A transaction with no Wren price is acknowledged and ignored. |
 | `POST /mail/bounce` | The mail provider's delivery webhook (a bounce or complaint). Protected by `MAIL_BOUNCE_SECRET` (the `X-Bounce-Secret` header or a bearer token), **closed** when that is unset. Body `{"txn"\|"order": …, "reason": …}`: marks that purchase's mail `failed` and dead-letters it. Cloudflare Email Service has no such webhook today, so this is deliberately provider-agnostic (use it by hand, or wire a provider that has one). |
-| `GET /licence?txn=txn_…` | For `thanks.html`. 200 with the licence, 202 (`Retry-After: 3`) while the webhook has not been processed. |
+| `GET /licence?txn=txn_…` | For `thanks/`. 200 with the licence, 202 (`Retry-After: 3`) while the webhook has not been processed. |
 | `GET /licence/txn_….wrenlicense` | The file, as a download. |
 | `POST /resend` `{"email": "…"}` | Mails the licences bought with that address again ("resend" as in "send again"; the settings keep that name). **Off** unless `RESEND_ENABLED` is `true` (and the `ADMIN_TOKEN` bearer when `RESEND_REQUIRE_TOKEN`). Same answer whether or not the address bought something; at most `RESEND_MAX_PER_HOUR` (3) mails per address and hour. Every mail goes back through the order's object (never sent straight from here). It ignores the mail state of the purchase, so it is also the way to get a licence whose first mail failed, was lost, or dead-lettered. |
 | `GET /admin/dead-letter` | The mails that gave up (`Authorization: Bearer ADMIN_TOKEN`). An order, a code, a count, a time: no name, no address. `POST /admin/dead-letter/retry {"txn":"txn_…"}` re-queues one. |
@@ -335,14 +335,14 @@ npx wrangler tail --env sandbox                         # live logs
    - `cloudflare.config.ts` (and `wrangler.jsonc`): `PRICE_SUPPORTER`, `PRICE_PATRON` (several ids may be separated by
      commas);
    - then `cf deploy --mode sandbox --secrets-file secrets.sandbox.env` again, and check `/health`.
-5. **Checkout → Checkout settings**: *Default payment link* = `https://sachahjkl.github.io/wren/support.html`.
-6. **The site** (`site/support.html`, the `<div id="buy">`): `data-environment="sandbox"`, `data-client-token`,
+5. **Checkout → Checkout settings**: *Default payment link* = `https://sachahjkl.github.io/wren/pricing/`.
+6. **The site** (`site/pricing/index.html`, the `<div id="buy">`): `data-environment="sandbox"`, `data-client-token`,
    `data-price-supporter`, `data-price-patron`, `data-worker` (the Worker's address, no trailing slash), and in
-   `site/thanks.html` `<main data-worker="…">` the same address. Publish `site/` (GitHub Pages), or serve the folder
-   locally for the test (`python -m http.server 8765 --directory site`: `http://localhost:8765/support.html`, which the
+   `site/thanks/index.html` `<main data-worker="…">` the same address. Publish `site/` (GitHub Pages), or serve the folder
+   locally for the test (`python -m http.server 8765 --directory site`: `http://localhost:8765/pricing/`, which the
    sandbox Worker lets call it).
 7. **Try it**: press *Supporter*, pay with the test card `4242 4242 4242 4242`, any future expiry, CVC `100`. The browser
-   goes to `thanks.html?txn=txn_…` and shows the key; the e-mail arrives with the file. Check the key:
+   goes to `thanks/?txn=txn_…` and shows the key; the e-mail arrives with the file. Check the key:
 
    ```powershell
    wrentool license verify -text "WREN1.…" -public <the public key>
@@ -367,9 +367,9 @@ copy secrets.example.env secrets.env      # live webhook secret, live API key, t
 cf deploy --secrets-file secrets.env
 ```
 
-Create the live destination with `https://wren-licence.<subdomain>.workers.dev/paddle/webhook`, and in `support.html` set
+Create the live destination with `https://wren-licence.<subdomain>.workers.dev/paddle/webhook`, and in `site/pricing/index.html` set
 `data-environment="production"`, the live `data-client-token` (`live_…`), the live price ids and `data-worker`; in
-`thanks.html` the same `data-worker`. A custom domain for the Worker (for example `licences.froment.software`) is a
+`site/thanks/index.html` the same `data-worker`. A custom domain for the Worker (for example `licences.froment.software`) is a
 `triggers.fetch` in `cloudflare.config.ts` (`routes` in `wrangler.jsonc`) once the zone is on Cloudflare.
 
 Make a real purchase of your own (and refund it from Paddle) before announcing anything.

@@ -1,11 +1,12 @@
 // Rewriting the relative links the docs use. A link from docs/<cur> to another doc is resolved against <cur>'s
 // directory and mapped to the site URL:
-//   web.md            (from api/dom.md)        -> /docs/api/web.html
-//   ../remote.md      (from api/dom.md)        -> /docs/remote.html
-//   releases/v0.5.0.md                          -> /docs/releases/v0.5.0.html
-// A fragment is carried through (#anchor). A link that leaves docs/ (../README.md, ../native/js/README.md) cannot be
-// a page of this site, so it becomes a GitHub blob link at the pinned branch. Absolute URLs, mailto, fragments-only
-// and anything that is not a .md are left untouched (rewrite returns "").
+//   web.md            (from api/dom.md)        -> /docs/api/web/
+//   ../remote.md      (from api/dom.md)        -> /docs/remote/
+//   releases/v0.5.0.md                          -> /docs/releases/v0.5.0/
+//   ../site/pricing/index.html                  -> /pricing/
+// A fragment is carried through (#anchor). Any other relative link (../README.md, ../licence/worker/, an image under
+// docs/) is not published with the site, so it becomes a GitHub link at the pinned branch. Absolute URLs, mailto and
+// fragments-only are left untouched (rewrite returns "").
 package docsite
 
 import "core:strings"
@@ -29,24 +30,28 @@ rewrite_link :: proc(href: string, user: rawptr) -> string {
 		frag = href[h:]
 	}
 
-	if !strings.has_suffix(path, ".md") {
-		return "" // an image or a non-doc relative file: leave it for the browser to resolve
-	}
-
 	// resolve `path` against the current doc's directory, as POSIX-style segments
 	dir := posix_dir(rc.cur)
 	joined := posix_join(dir, path)
 	normalized := posix_normalize(joined)
+	if strings.has_suffix(path, "/") && normalized != "" { normalized = strings.concatenate({normalized, "/"}, context.allocator) }
 
-	// does it stay under docs/ ? (a leading ".." means it climbed out)
-	if strings.has_prefix(normalized, "../") || normalized == ".." {
-		// a repo file above docs/: link to GitHub (strip the leading ../ that climbed past docs/)
-		rel := strings.trim_prefix(normalized, "../")
-		return strings.concatenate({REPO_URL, "/blob/", REPO_BRANCH, "/", rel, frag}, context.allocator)
+	if strings.has_suffix(normalized, ".md") && !strings.has_prefix(normalized, "../") {
+		return strings.concatenate({url_of(out_rel_of(normalized)), frag}, context.allocator)
 	}
 
-	out := strings.concatenate({"/docs/", normalized[:len(normalized) - len(".md")], ".html", frag}, context.allocator)
-	return out
+	// a page of the site (../site/pricing/index.html): its address on the site, as a folder
+	if strings.has_prefix(normalized, "../site/") {
+		site := strings.trim_suffix(normalized[len("../site"):], "index.html")
+		return strings.concatenate({site, frag}, context.allocator)
+	}
+
+	// any other file of the repository (above docs/, or a file under docs/ that is not a page): it is not published
+	// with the site, so the link goes to GitHub at the pinned branch, a folder to its tree
+	rel := strings.trim_prefix(normalized, "../")
+	if !strings.has_prefix(normalized, "../") { rel = strings.concatenate({"docs/", normalized}, context.allocator) }
+	kind := strings.has_suffix(rel, "/") ? "/tree/" : "/blob/"
+	return strings.concatenate({REPO_URL, kind, REPO_BRANCH, "/", strings.trim_suffix(rel, "/"), frag}, context.allocator)
 }
 
 posix_dir :: proc(p: string) -> string {
