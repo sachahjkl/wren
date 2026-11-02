@@ -346,7 +346,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 			guest("examples/netapitest", "build/netapitest.wasm"), guest("examples/workerstest", "build/workerstest.wasm"), guest("examples/workerstest_worker", "examples/site/workerstest_worker.wasm"),
 			guest("examples/imagestest", "build/imagestest.wasm"),
 		), needs = COMMON_NEEDS, makes = {.Guests}})
-	web_step(&t, "JavaScript in pages (src\\tools\\e2e\\web_js.odin: realm, scripts, bindings, events, wrappers and node lifetime, bytecode cache, interruption)", "js")
+	web_step(&t, "JavaScript in pages (src\\tools\\e2e\\web_realm.odin: realm, scripts, bindings, events, wrappers and node lifetime, bytecode cache, interruption)", "realm")
 	append(&t, Step{name = "build fetch", actions = slice_of(tool_build("src/tools/fetch", exe("build/fetch"))), needs = COMMON_NEEDS, makes = {.Fetch}})
 	append(&t, Step{name = "licence tool (a licence issued with the development pair verifies; an altered one and one of another key do not; keygen refuses a path inside the repository)",
 		actions = slice_of(tool_build("src/tools/license", exe("build/license")), Task{"its checks", task_license_tool, ""}), needs = COMMON_NEEDS})

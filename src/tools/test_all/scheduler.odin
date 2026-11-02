@@ -29,6 +29,8 @@ DUMP_LIMIT :: 60 * time.Second
 ASAN_JOBS :: 3
 SUCCESS_MANY :: "All tests were successful"
 SUCCESS_ONE :: "The test was successful"
+// What the test runner says of a name it was asked for and does not have (a file the compiler left out: a name ending in _js is for that target only)
+NOT_FOUND :: "No test found for the name"
 
 // A task's run on its thread. The loop only reads `done` and sets `kill`.
 Task_Run :: struct {
@@ -554,6 +556,7 @@ log_says_successful :: proc(log: string, offset: i64) -> bool {
 	data, err := os.read_entire_file(log, context.temp_allocator)
 	if err != nil || offset > i64(len(data)) { return false }
 	text := string(data[offset:])
+	if strings.contains(text, NOT_FOUND) { return false }
 	return strings.contains(text, SUCCESS_MANY) || strings.contains(text, SUCCESS_ONE)
 }
 
