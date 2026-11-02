@@ -60,6 +60,7 @@ Page_Fonts :: struct {
 	generation: u64,                     // changes when a face becomes ready
 	rebuilds:   u64,                     // the engine rebuild last looked at
 	styled:     u64,                     // the style serial last looked at
+	pass:       u64,                     // ... of the full style pass (style.Styled.pass_id)
 }
 
 @(private)
@@ -105,18 +106,27 @@ fonts_sync :: proc(p: ^Page) {
 	if !s.webfonts || p.styled == nil { return }
 	e := p.engine
 	if e.rebuilds == p.fonts.rebuilds && p.styled.serial == p.fonts.styled { return }
-	p.fonts.rebuilds, p.fonts.styled = e.rebuilds, p.styled.serial
+	// a face is loaded once some element uses its family: only the faces not loaded yet need the families in use, and after
+	// partial restyles of the same pass only the elements they restyled can have started to use one (the style journal)
+	since, rebuilt, pass := p.fonts.styled, e.rebuilds != p.fonts.rebuilds, p.fonts.pass
+	p.fonts.rebuilds, p.fonts.styled, p.fonts.pass = e.rebuilds, p.styled.serial, p.styled.pass_id
 	faces := style.engine_font_faces(e)
-	if len(faces) == 0 { return }
+	pending := false
+	for &ff in faces { if ff.key not_in p.fonts.faces { pending = true; break } }
+	if !pending { return }
 	used: map[string]bool
 	if !s.webfont_load_unused {
 		used = make(map[string]bool, context.temp_allocator)
 		seen := make(map[rawptr]bool, context.temp_allocator)   // font-family lists are shared by inheritance
-		for c in p.styled.by_node {
-			if c == nil || len(c.font_family) == 0 { continue }
-			if raw_data(c.font_family) in seen { continue }
+		note :: proc(c: ^style.Computed, used: ^map[string]bool, seen: ^map[rawptr]bool) {
+			if c == nil || len(c.font_family) == 0 || raw_data(c.font_family) in seen { return }
 			seen[raw_data(c.font_family)] = true
 			for fam in c.font_family { used[strings.to_lower(fam, context.temp_allocator)] = true }
+		}
+		if changes, ok := style.journal_since(p.styled, since); ok && !rebuilt && since != 0 && pass == p.styled.pass_id {
+			for ch in changes { note(style.style_of(p.styled, ch.node), &used, &seen) }
+		} else {
+			for c in p.styled.by_node { note(c, &used, &seen) }
 		}
 	}
 	for &ff in faces {
