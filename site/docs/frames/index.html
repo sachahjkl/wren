@@ -337,6 +337,27 @@ are objects of that page's pools), or loading the fetched document into the blan
 response beside <code>page_create</code> (headers, CSP, encoding, documents that are not HTML), with a new <code>Document</code> in an old page;</li>
 <li><strong><code>precommitHandler</code></strong> of <code>NavigateEvent.intercept()</code>.</li>
 </ul>
+<h2 id="windows-that-scripts-open"><a class="anchor" href="#windows-that-scripts-open" aria-hidden="true">#</a>Windows that scripts open</h2>
+<p><code>window.open()</code> to <code>_blank</code> or to a name nothing has, and a script's click on a link to one, open a window: a top-level navigable
+of the same kind (<code>src/page/auxiliary.odin</code>), whose embedder makes the window around it (the browser a tab, the WPT runner's
+headless host a window without a shell) and whose first document is the initial about:blank the page package makes (the
+opener's origin, or an opaque one under <code>noopener</code>). The window keeps its id across its documents, so the <code>WindowProxy</code> that
+<code>window.open</code> returned still names it after it navigated.</p>
+<ul>
+<li><strong>The opener.</strong> <code>window.opener</code>, a name the opener's group finds (<code>window.open(url, name)</code>, a link's target), <code>postMessage</code>
+both ways, the DOM of a same-origin popup (its handles are looked up among the documents of the caller's browsing context
+group: its tab and the windows related to it by openers). <code>noopener</code> / <code>noreferrer</code> (features, or <code>rel</code>; a link to <code>_blank</code>
+has no opener unless <code>rel=opener</code>) open a window of its own group, and <code>window.open</code> returns null. <code>window.opener = null</code> ends it.</li>
+<li><strong>Closing.</strong> <code>close()</code> closes a window a script opened: <code>closed</code> is true at once, the embedder closes it in a task. A tab the user
+opened stays open.</li>
+<li><strong>Cross-Origin-Opener-Policy.</strong> A top-level document's policy is matched with that of the document it replaces (an initial
+about:blank has its opener's, when the opener is same origin with its top-level document): a mismatch puts the window in a new
+browsing context group. It gets a new id, so the opener's <code>WindowProxy</code> sees it closed; its <code>opener</code> is null, its name cleared,
+and the windows it opened lose theirs. <code>same-origin-allow-popups</code> keeps the popups it opens that have no policy.</li>
+</ul>
+<p>Not there: a redirect's own policy (only the final response's counts), reports (<code>report-to</code>, <code>Report-Only</code>), sandboxed popups
+inheriting their opener's sandbox, the window features (sizes, <code>popup</code>), and the browser's <code>noreferrer</code> (its navigations send
+the Referer; the WPT runner's do not).</p>
 <h2 id="cost"><a class="anchor" href="#cost" aria-hidden="true">#</a>Cost</h2>
 <p>A page without frames pays two comparisons per handle argument of an import call, and one load per call. The tag replaces bits of
 the generation: <code>pool_get</code> compares what it compared. A slot reused 65536 times is retired rather than wrapped.</p>
@@ -353,6 +374,7 @@ the generation: <code>pool_get</code> compares what it compared. A slot reused 6
 <li><a href="#blank-frames">Blank frames</a></li>
 <li><a href="#globals-a-value-bridge">Globals: a value bridge</a></li>
 <li><a href="#navigating-a-frame">Navigating a frame</a></li>
+<li><a href="#windows-that-scripts-open">Windows that scripts open</a></li>
 <li><a href="#cost">Cost</a></li>
 </ul>
 </nav>

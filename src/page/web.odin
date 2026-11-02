@@ -252,13 +252,7 @@ post_page_task :: proc(p: ^Page, fn: Page_Task_Proc, data: rawptr) {
 		t := new(Realm_Task)
 		t^ = Realm_Task{page = p, fn = fn, data = data}
 		t.cleanup = base.on_close(p.scope, proc(d: rawptr) { (^Realm_Task)(d).dead = true }, t)
-		host.post(p.loop, proc(d: rawptr) {
-			t := (^Realm_Task)(d)
-			defer free(t)
-			if t.dead { t.fn(nil, t.data); return }
-			base.forget_cleanup(t.page.scope, t.cleanup)
-			t.fn(t.page, t.data)
-		}, t)
+		host.post(p.loop, run_realm_task, t)
 		return
 	}
 	t := new(Page_Task)
@@ -274,6 +268,22 @@ discard_page_tasks :: proc(l: ^host.Loop) {
 		t.fn(nil, t.data)
 		free(t)
 	})
+	// (a realm's task too: a page closed in the middle of what it does leaves them queued, and nothing ran them)
+	host.discard_posted(l, run_realm_task, proc(d: rawptr) {
+		t := (^Realm_Task)(d)
+		if !t.dead { base.forget_cleanup(t.page.scope, t.cleanup) }
+		t.fn(nil, t.data)
+		free(t)
+	})
+}
+
+@(private)
+run_realm_task :: proc(d: rawptr) {
+	t := (^Realm_Task)(d)
+	defer free(t)
+	if t.dead { t.fn(nil, t.data); return }
+	base.forget_cleanup(t.page.scope, t.cleanup)
+	t.fn(t.page, t.data)
 }
 
 @(private)

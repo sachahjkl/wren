@@ -235,7 +235,8 @@
 native/js/odin/frames.odin). A window of another document is named by its navigable's id: each document runs in its
 own engine instance, so another window is a WindowProxy of the calling realm. Across origins it reaches what HTML lets
 a cross-origin window reach (postMessage, location as a setter, closed, frames, length, top, parent, opener, window,
-self, close, focus, blur). Between documents of one origin, nodes are reached directly: every node handle names its
+self, close, focus, blur). The windows a script opens (window.open, links to _blank) are top-level navigables of the same
+kind (src/page/auxiliary.odin). Between documents of one origin, nodes are reached directly: every node handle names its
 document (base.pool_insert_tagged), the browser routes the call to it and checks the origin on each call.</p>
 <p>Exposed to: Window. Source: <code>api/frames.widl</code>.</p>
 <h2 id="functions"><a class="anchor" href="#functions" aria-hidden="true">#</a>Functions</h2>
@@ -343,12 +344,27 @@ not navigate it (HTML "allowed to navigate", the sandbox; the console says why),
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
 <p>Host: <code>Frame_navigate :: proc(c: ^Call, navigable: u64, url: string, replace: bool) -&gt; Api_Error</code></p>
 <h3 id="frame-open"><a class="anchor" href="#frame-open" aria-hidden="true">#</a><code>Frame_open</code></h3>
-<div class="code"><pre><code>u64 Frame_open(usvstring url, string target) raises</code></pre></div>
-<p>window.open(url, target): a frame's name, _self, _parent or _top is navigated and its navigable returned; any
-other target opens a new tab (when the embedder can) and gives 0 (no opener relationship, as noopener).
-Not_Allowed in a sandboxed document without allow-popups, Syntax for an invalid URL.</p>
+<div class="code"><pre><code>u64 Frame_open(usvstring url, string target, string features) raises</code></pre></div>
+<p>window.open(url, target, features): _self, _parent, _top, or the name of a frame or of a window of the calling
+document's browsing context group is navigated and its navigable returned; _blank or a name nothing has opens a new
+window (when the embedder can: src/page/auxiliary.odin) whose opener is the calling document, and gives its
+navigable. 0 when nothing was opened, and under the features noopener / noreferrer. Syntax for an invalid URL.</p>
 <p>Raises: returns an <code>Error</code> (see <a href="../../../docs/api/web/">web</a>).</p>
-<p>Host: <code>Frame_open :: proc(c: ^Call, url: string, target: string) -&gt; (u64, Api_Error)</code></p>
+<p>Host: <code>Frame_open :: proc(c: ^Call, url: string, target: string, features: string) -&gt; (u64, Api_Error)</code></p>
+<h3 id="frame-opener"><a class="anchor" href="#frame-opener" aria-hidden="true">#</a><code>Frame_opener</code></h3>
+<div class="code"><pre><code>u64 Frame_opener(u64 navigable)</code></pre></div>
+<p>window.opener: the navigable whose document opened this top-level one; 0 for a frame, a window opened with
+noopener, one whose opener relationship ended (Cross-Origin-Opener-Policy, opener = null), or once the opener is gone.</p>
+<p>Host: <code>Frame_opener :: proc(c: ^Call, navigable: u64) -&gt; u64</code></p>
+<h3 id="frame-close"><a class="anchor" href="#frame-close" aria-hidden="true">#</a><code>Frame_close</code></h3>
+<div class="code"><pre><code>void Frame_close(u64 navigable)</code></pre></div>
+<p>window.close(): a window a script opened is closed (closed is true at once; its embedder closes it in a task). Any
+other window stays open (the console says why).</p>
+<p>Host: <code>Frame_close :: proc(c: ^Call, navigable: u64)</code></p>
+<h3 id="frame-disown"><a class="anchor" href="#frame-disown" aria-hidden="true">#</a><code>Frame_disown</code></h3>
+<div class="code"><pre><code>void Frame_disown()</code></pre></div>
+<p>window.opener = null: the calling document's window has no opener any more.</p>
+<p>Host: <code>Frame_disown :: proc(c: ^Call)</code></p>
 <h3 id="frame-postmessageports"><a class="anchor" href="#frame-postmessageports" aria-hidden="true">#</a><code>Frame_postMessagePorts</code></h3>
 <div class="code"><pre><code>void Frame_postMessagePorts(u64 navigable, bytes data, usvstring target_origin, u64[] ports) raises</code></pre></div>
 <p>otherWindow.postMessage(message, targetOrigin, [ports]): the same, with the MessagePorts of the transfer list
@@ -396,6 +412,9 @@ shipped as port ends (Port_ship / Port_entangle): the receiver's MessageEvent.po
 <li class="lvl3"><a href="#frame-postmessage">Frame_postMessage</a></li>
 <li class="lvl3"><a href="#frame-navigate">Frame_navigate</a></li>
 <li class="lvl3"><a href="#frame-open">Frame_open</a></li>
+<li class="lvl3"><a href="#frame-opener">Frame_opener</a></li>
+<li class="lvl3"><a href="#frame-close">Frame_close</a></li>
+<li class="lvl3"><a href="#frame-disown">Frame_disown</a></li>
 <li class="lvl3"><a href="#frame-postmessageports">Frame_postMessagePorts</a></li>
 <li class="lvl3"><a href="#window-get-name">Window_get_name</a></li>
 <li class="lvl3"><a href="#window-set-name">Window_set_name</a></li>
