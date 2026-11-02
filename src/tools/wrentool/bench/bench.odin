@@ -34,7 +34,7 @@ Bench :: struct {
 }
 
 BENCHES := []Bench{
-	{"perf", "real pages with real input, by scenario: frames, CPU, memory; the profile build's report per scenario (build.bat profile). -Only a,b -Sample -GpuSteps n -Url u -Action a -Seconds n", bench_perf},
+	{"perf", "real pages with real input, by scenario: frames, CPU, memory; the profile build's report per scenario (build.bat profile). -Only a,b -Sample -GpuSteps n -Url u -Action a -Seconds n -Runs n (each scenario n times, then the medians)", bench_perf},
 	{"shell", "the latency of the shell while a page loads or keeps the browser busy (build.bat profile). -Only a,b", bench_shell},
 	{"js", "Octane in Wren's engine against QuickJS and Edge, DOM micro-benchmarks, realm start-up. -Mode octane|dom|startup|all -Runs n -Benchmarks a,b -Engines wasm,native,edge", bench_js},
 	{"idle", "what a Wren at rest costs: CPU, wakes, frames. -Modes headless,hidden,shown -Pages blank,static,field,anim,video -Seconds n -Threads", bench_idle},
