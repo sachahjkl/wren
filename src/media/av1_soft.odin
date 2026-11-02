@@ -65,17 +65,43 @@ set_software_fallbacks :: proc(vp9, av1: bool) {
 	sync.atomic_store(&software_av1, b32(av1))
 }
 
+// media.software.prefer_builtin: the built-in decoders of a codec come before the system's. What a machine without the system's
+// decoder runs, on any machine.
+@(private)
+software_preferred: b32
+
+set_software_preferred :: proc(on: bool) { sync.atomic_store(&software_preferred, b32(on)) }
+software_is_preferred :: proc() -> bool { return bool(sync.atomic_load(&software_preferred)) }
+
 software_vp9_enabled :: proc() -> bool { return bool(sync.atomic_load(&software_vp9)) }
 software_av1_enabled :: proc() -> bool { return bool(sync.atomic_load(&software_av1)) }
 
 @(private)
 AV1_MAX_PIXELS :: u64(8192 * 8192)   // the largest picture of AV1's level 6.3; the container's limits come first
+// What wm_av1_get answers (anything else: an error).
+@(private)
+AV1_GET_PICTURE :: 0
+@(private)
+AV1_GET_NOTHING :: 1
+
+// Asking rav1d for a picture again with nothing sent since is what tells it to drain: it hands out the frames in flight and moves its
+// queues on. In the middle of a stream, on a machine short of processors (two task threads, a CI runner), that leaves its workers
+// parked with a frame unfinished, and the next send or get waits for that frame for ever. So: one question per coded frame, as
+// long as more may come, and the questions that drain only at the end of the data.
+@(private)
+Av1_Output :: enum u8 {
+	May_Ask,       // a coded frame went in: one question
+	Asked,         // the question of that frame was put: nothing more until the next one
+	Drain_Start,   // no more data: the first question may still be an ordinary one, whose answer says nothing of the end
+	Draining,      // rav1d is draining: its answer "nothing" is the end
+}
 
 @(private)
 Av1_Soft :: struct {
 	ctx:      rawptr,
 	track:    Track,
 	refs:     int,      // atomic: the decoder itself and every picture handed out; the last one closes the context
+	output:   Av1_Output,
 }
 
 av1_soft_supported :: proc() -> Decoder_Support { return {supported = true} }
@@ -104,6 +130,7 @@ av1_soft_create :: proc(track: Track) -> ^Video_Decoder {
 av1_soft_push :: proc(d: ^Video_Decoder, s: ^Sample) -> bool {
 	a := (^Av1_Soft)(d.impl)
 	if len(s.data) == 0 { return true }
+	a.output = .May_Ask   // (refused too: rav1d stopped draining, and the picture it wants taken is the answer)
 	r := wm_av1_send(a.ctx, raw_data(s.data), uint(len(s.data)), i64(s.pts))
 	return r != 1   // 1: refused (pull first); an error drops the sample, the next keyframe recovers
 }
@@ -114,11 +141,21 @@ Av1_Frame_Owner :: struct { a: ^Av1_Soft, handle: rawptr }
 @(private)
 av1_soft_pull :: proc(d: ^Video_Decoder, out: ^Video_Frame) -> Pull_Result {
 	a := (^Av1_Soft)(d.impl)
+	if a.output == .Asked { return .Need_Input }
 	pic: Av1_Picture
-	switch wm_av1_get(a.ctx, &pic) {
-	case 0:
-	case 1: return .Need_Input
-	case:   return .Error
+	answer := wm_av1_get(a.ctx, &pic)
+	switch a.output {
+	case .May_Ask:     a.output = .Asked
+	case .Asked:
+	case .Draining:
+	case .Drain_Start:
+		a.output = .Draining
+		if answer == AV1_GET_NOTHING { answer = wm_av1_get(a.ctx, &pic) }
+	}
+	switch answer {
+	case AV1_GET_PICTURE:
+	case AV1_GET_NOTHING: return .Need_Input
+	case:                 return .Error
 	}
 	if pic.layout != 0 {
 		// 4:2:2, 4:4:4 and monochrome are not drawn yet: the picture is dropped (the stream plays on, without it)
@@ -171,11 +208,15 @@ color_of_cicp :: proc(primaries, transfer, coeffs: u16, full: bool) -> Color_Inf
 }
 
 @(private)
-av1_soft_flush :: proc(d: ^Video_Decoder) { wm_av1_flush((^Av1_Soft)(d.impl).ctx) }
+av1_soft_flush :: proc(d: ^Video_Decoder) {
+	a := (^Av1_Soft)(d.impl)
+	a.output = .May_Ask
+	wm_av1_flush(a.ctx)
+}
 
-// No more input: the pictures still held come out of pull (rav1d drains when asked with nothing to send).
+// No more input: the pictures still held come out of pull.
 @(private)
-av1_soft_drain :: proc(d: ^Video_Decoder) {}
+av1_soft_drain :: proc(d: ^Video_Decoder) { (^Av1_Soft)(d.impl).output = .Drain_Start }
 
 @(private)
 av1_soft_free :: proc(a: ^Av1_Soft) {

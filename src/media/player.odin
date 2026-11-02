@@ -554,12 +554,13 @@ video_thread :: proc(p: ^Player) {
 			}
 		}
 		// pictures out
+		decoder_empty := false
 		for {
 			f: Video_Frame
 			res := dec.pull(dec, &f)
 			if res == .Format_Changed { continue }
 			if res == .Error { set_error(p, .Decode_Failed); return }
-			if res == .Need_Input { break }
+			if res == .Need_Input { decoder_empty = true; break }
 			sync.mutex_lock(&p.mu)
 			p.stats.decoded += 1
 			if gen != p.seek_gen { sync.mutex_unlock(&p.mu); frame_release(&f); break }
@@ -593,8 +594,8 @@ video_thread :: proc(p: ^Player) {
 			sync.mutex_unlock(&p.mu)
 			if full { break }
 		}
-		if drained && !has_input {
-			// the decoder gave all it had: the end of the video (a held picture is the last one)
+		if drained && !has_input && decoder_empty {
+			// the decoder gave all it had (a full queue ended the pulling early: not yet): the end of the video (a held picture is the last one)
 			sync.mutex_lock(&p.mu)
 			if has_held { append(&p.queue, held); has_held = false }
 			if dropping { dropping = false }

@@ -91,6 +91,8 @@ MEDIA_PREFS := [?]config.Def{
 		description = "Decode VP9 in software (the built-in decoder) when the system has no VP9 decoder of its own (no Store extension). Off: VP9 then counts as unsupported and a page falls to another codec."},
 	{name = "media.software.av1_fallback", kind = .Bool, default = {b = true},
 		description = "Decode AV1 in software (the built-in decoder) when the system has no AV1 decoder of its own. Off: AV1 then counts as unsupported."},
+	{name = "media.software.prefer_builtin", kind = .Bool, default = {b = false},
+		description = "Decode VP9 and AV1 with the built-in decoders even when the system has its own: what a machine without the system's decoder plays, on this one. The two fallbacks above still decide whether a built-in decoder may be used."},
 	{name = "media.controls.enabled", kind = .Bool, default = {b = true},
 		description = "Draw the built-in controls (play, position, volume) of <video controls> and <audio controls>."},
 	{name = "media.controls.hide_ms", kind = .Float, default = {f = 2500}, bounded = true, min = 0, max = 60000, unit = "ms",
@@ -122,6 +124,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	apply_audio_backend_pref(config.string_of(p, "media.audio.backend"))
 	apply_h264_prefs(config.string_of(p, "media.h264.backend"), config.string_of(p, "media.h264.openh264_path"))
 	set_software_fallbacks(config.bool_of(p, "media.software.vp9_fallback"), config.bool_of(p, "media.software.av1_fallback"))
+	set_software_preferred(config.bool_of(p, "media.software.prefer_builtin"))
 	return Settings{
 		enabled = config.bool_of(p, "media.enabled"),
 		player = Player_Settings{
