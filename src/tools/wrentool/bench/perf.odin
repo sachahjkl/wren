@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:math"
 import "core:math/rand"
 import "core:os"
+import "core:slice"
 import "core:strings"
 import "core:time"
 import "wb:remote/api"
@@ -128,18 +129,41 @@ bench_perf :: proc(o: ^Options) -> int {
 		action := Action.Idle
 		wanted := tooling.flag(o.flags, "-Action", "idle")
 		for a in Action { if strings.equal_fold(fmt.tprint(a), wanted) { action = a } }
-		if !perf_scenario(o, &r, exe, {o.tag != "" ? strings.trim_prefix(o.tag, "_") : "url", own_url, action, nil}, measure) { return 1 }
+		if _, ok := perf_scenario(o, &r, exe, {o.tag != "" ? strings.trim_prefix(o.tag, "_") : "url", own_url, action, nil}, measure); !ok { return 1 }
 		report_end(&r, o)
 		return 0
 	}
 	if len(o.only) == 0 { fmt.eprintfln("the whole table is long: name scenarios with -Only (-List lists them)"); list_scenarios(); return EXIT_USAGE }
+	// -Runs n: each scenario n times (reports <scenario><tag>_<i>), then a row of the medians: the machine's other programs move one run by a factor of 2
+	runs := max(o.runs, 1)
+	tag := o.tag
 	for s in SCENARIOS {
 		if !chosen(o, s.name) { continue }
-		if !perf_scenario(o, &r, exe, s, measure) { return 1 }
+		rows := make([dynamic]Perf_Row, context.temp_allocator)
+		for i in 0 ..< runs {
+			if runs > 1 { o.tag = fmt.tprintf("%s_%d", tag, i) }
+			row, ok := perf_scenario(o, &r, exe, s, measure)
+			if !ok { return 1 }
+			append(&rows, row)
+		}
+		o.tag = tag
+		if runs > 1 {
+			m: Perf_Row
+			for k in 0 ..< len(m) {
+				col := make([]f64, runs, context.temp_allocator)
+				for row, i in rows { col[i] = row[k] }
+				slice.sort(col)
+				m[k] = col[runs / 2]
+			}
+			report_row(&r, fmt.tprintf("%s (median of %d)", s.name, runs), m[0], int(m[1]), m[2], m[3], int(m[4]), int(m[5]))
+		}
 	}
 	report_end(&r, o)
 	return 0
 }
+
+// What a run of a scenario measured: load ms, frames, frames/s, CPU ms, private and working set MB.
+Perf_Row :: [6]f64
 
 list_scenarios :: proc() { for s in SCENARIOS { fmt.printfln("  %-28s %s %v", s.name, s.page, s.action) } }
 
@@ -167,9 +191,11 @@ page_url :: proc(page: string) -> (url: string, ok: bool) {
 }
 
 @(private)
-perf_scenario :: proc(o: ^Options, r: ^Report, exe: string, s: Scenario, measure: time.Duration) -> bool {
-	url, ok := page_url(s.page)
-	if !ok { return false }
+perf_scenario :: proc(o: ^Options, r: ^Report, exe: string, s: Scenario, measure: time.Duration) -> (row: Perf_Row, ok: bool) {
+	url: string
+	url, ok = page_url(s.page)
+	if !ok { return }
+	ok = false
 	prefix := fmt.tprintf("%s/%s%s", PERF_DIR, s.name, o.tag)
 	cwd, _ := os.get_working_directory(context.temp_allocator)
 	env := []string{fmt.tprintf("WREN_PROF=%s/%s", cwd, prefix), fmt.tprintf("WREN_SAMPLE=%d", tooling.flag_has(o.flags, "-Sample") ? 1 : 0), fmt.tprintf("WREN_GPU_STEPS=%s", tooling.flag(o.flags, "-GpuSteps", "0"))}
@@ -178,10 +204,10 @@ perf_scenario :: proc(o: ^Options, r: ^Report, exe: string, s: Scenario, measure
 	append(&prefs, ..o.prefs)
 	w: Wren
 	began := time.tick_now()
-	if !start(&w, {exe = exe, window = o.window, prefs = prefs[:], env = env, url = url}) { return false }
+	if !start(&w, {exe = exe, window = o.window, prefs = prefs[:], env = env, url = url}) { return }
 	defer stop(&w)
 	ses := &w.session
-	if e := api.wait_load(ses); e != .None { fmt.eprintfln("%s: %s", s.name, api.last_failure().message); return false }
+	if e := api.wait_load(ses); e != .None { fmt.eprintfln("%s: %s", s.name, api.last_failure().message); return }
 	load_ms := time.duration_milliseconds(time.tick_since(began))
 	if s.action != .Load { settle(&w) }
 	_, _ = api.stats(ses, reset_frames = true)
@@ -189,9 +215,10 @@ perf_scenario :: proc(o: ^Options, r: ^Report, exe: string, s: Scenario, measure
 	perf_action(&w, s.action, measure)
 	took := time.duration_seconds(time.tick_since(before))
 	st, e := api.stats(ses)
-	if e != .None { fmt.eprintfln("%s: %s", s.name, api.last_failure().message); return false }
-	report_row(r, s.name, load_ms, st.frames_drawn, f64(st.frames_drawn) / max(took, 0.001), st.cpu_time_ms, st.private_bytes / tooling_mb, st.working_set_bytes / tooling_mb)
-	return true
+	if e != .None { fmt.eprintfln("%s: %s", s.name, api.last_failure().message); return }
+	row = {load_ms, f64(st.frames_drawn), f64(st.frames_drawn) / max(took, 0.001), st.cpu_time_ms, f64(st.private_bytes / tooling_mb), f64(st.working_set_bytes / tooling_mb)}
+	report_row(r, s.name, row[0], st.frames_drawn, row[2], row[3], st.private_bytes / tooling_mb, st.working_set_bytes / tooling_mb)
+	return row, true
 }
 
 @(private) tooling_mb :: 1024 * 1024
