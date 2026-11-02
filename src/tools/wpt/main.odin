@@ -4,7 +4,7 @@
 // (orchestrate.odin; tools/testserver/wpt.go).
 //
 //   odin build src/tools/wpt -collection:wb=src -vet -o:speed -use-separate-modules -out:build/wpt.exe   (test_all's step does)
-//   build/wpt [-quick] [-update] [-only prefix] [-jobs n] [-timeout ms] [-fast-timeouts | -no-fast-timeouts] [--pref name=value]... [-suites file]
+//   build/wpt [-quick] [-update] [-timeouts] [-only prefix] [-jobs n] [-timeout ms] [-fast-timeouts | -no-fast-timeouts] [--pref name=value]... [-suites file]
 //       [-reftests | -no-reftests] [-reftest-folder folder]... [-dump dir] [-dump-all]
 //       [-fetch] [-update-manifest] [-no-server -server http://web-platform.test:8768] [-root another_checkout] [-edge]
 //       [-expect wpt/expectations] [-timeout-cap ms] [-idle ms] [-md report.md] [-results results.txt] [-reference edge_results.txt] [-list]
@@ -57,8 +57,18 @@ import "wb:tools/testenv"
 import "wb:tools/tooling"
 import "wb:tools/wpt/reftest"
 
-// A test with <meta name=timeout content=long> has this many times the time limit.
-LONG_TIMEOUT_FACTOR :: 6
+// A test with <meta name=timeout content=long> has this many times the time limit: the cap of any one test (30 s at -timeout 10000). It was 6
+// (60 s): the tests that used it all were timeouts waiting for what never came (html/cross-origin-opener-policy: 25 of them, 20 minutes).
+LONG_TIMEOUT_FACTOR :: 3
+// The tests a run did not run as known timeouts.
+SKIPPED_FILE :: "build/wpt/skipped_timeouts.txt"
+
+// An expectation of TIMEOUT alone (CRASH|TIMEOUT too): the test is known to wait out its limit.
+known_timeout :: proc(status: string) -> bool {
+	if !strings.contains(status, "TIMEOUT") { return false }
+	for alt in strings.split(status, "|", context.temp_allocator) { if alt != "TIMEOUT" && alt != "CRASH" { return false } }
+	return true
+}
 // What a hung child gets on top of the longest time a test may take, ms.
 CHILD_HANG_MARGIN_MS :: 30_000
 // A page that can no longer do anything gets this much before it is timed out.
@@ -91,7 +101,8 @@ Suite :: struct {
 Options :: struct {
 	root, suites, expect, server, md, results, only, only_file, self, reference, dump: string,
 	timeout_ms, idle_ms, jobs, chunk, timeout_cap_ms: int,
-	quick, update, list, reftests_only, no_reftests, dump_all, quiet: bool,
+	quick, update, list, reftests_only, no_reftests, dump_all, quiet, timeouts: bool,
+	skipped_timeouts: int,   // tests of this pass not run as known timeouts
 	only_paths: map[string]bool,   // exactly these tests (the second chance, all at once: looking for the tests takes seconds, for each)
 	reftest_folders: [dynamic]string,
 	prefs_args: [dynamic]string,
@@ -121,7 +132,7 @@ main :: proc() {
 }
 
 usage :: proc() -> ! {
-	fmt.eprintln("usage: wpt [-quick] [-update] [-only prefix] [-jobs n] [-timeout ms] [-fast-timeouts | -no-fast-timeouts] [--pref name=value]... [-suites file] [-reftests | -no-reftests] [-reftest-folder folder]... [-dump dir] [-dump-all] [-fetch] [-update-manifest] [-no-server -server url] [-root checkout] [-edge] [-expect dir] [-timeout-cap ms] [-idle ms] [-md file] [-results file] [-reference file] [-list]")
+	fmt.eprintln("usage: wpt [-quick] [-update] [-timeouts] [-only prefix] [-jobs n] [-timeout ms] [-fast-timeouts | -no-fast-timeouts] [--pref name=value]... [-suites file] [-reftests | -no-reftests] [-reftest-folder folder]... [-dump dir] [-dump-all] [-fetch] [-update-manifest] [-no-server -server url] [-root checkout] [-edge] [-expect dir] [-timeout-cap ms] [-idle ms] [-md file] [-results file] [-reference file] [-list]")
 	os.exit(2)
 }
 
@@ -147,6 +158,7 @@ parse_options :: proc(args: []string) {
 		case "-jobs": opts.jobs = max(1, atoi(need(args, &i)))
 		case "-chunk": opts.chunk = max(1, atoi(need(args, &i)))
 		case "-quick": opts.quick = true
+		case "-timeouts": opts.timeouts = true
 		case "-update": opts.update = true
 		case "-md": opts.md = need(args, &i)
 		case "-results": opts.results = need(args, &i)
@@ -559,6 +571,23 @@ parent_main :: proc() -> int {
 	// 60 s each), and what its expectations check came early if it came: it gets -timeout-cap ms. A subtest expected to pass that it has not
 	// reached by then is a regression of this run, which run_main runs again with the whole limit: only a real regression counts. What
 	// this does not see is a test that has begun to pass: -update and a run without the cap do.
+	// A test whose expectation is TIMEOUT (no other status) waits out its whole limit for what does not come: 753 of 8975 tests and 40 % of the
+	// time of a full run of 2026-11-02. Not run unless -timeouts (and -update, which records what they do now): listed, counted in the report.
+	skipped := make([dynamic]string)
+	if !opts.timeouts && !opts.update {
+		kept := make([dynamic]Test, 0, len(tests))
+		for t in tests {
+			if e, found := expected[t.path]; found && known_timeout(e.status) { append(&skipped, t.path); continue }
+			append(&kept, t)
+		}
+		tests = kept
+		opts.skipped_timeouts = len(skipped)
+		if len(skipped) > 0 && !opts.quiet {
+			_ = os.write_entire_file(SKIPPED_FILE, strings.join(skipped[:], "\n", context.temp_allocator))
+			fmt.printfln("%d tests skipped as known timeouts (their expectation is TIMEOUT; -timeouts runs them): %s", len(skipped), SKIPPED_FILE)
+		}
+	}
+	if len(tests) == 0 { fmt.eprintln("wpt: no test"); return 2 }
 	capped := 0
 	if opts.timeout_cap_ms > 0 {
 		for &t in tests {
@@ -750,8 +779,8 @@ report :: proc(suites: []Suite, tests: []Test, results: map[string]^Result, expe
 	}
 	// (no testharness test ran, as with -reftests: its table says nothing)
 	if total.files == 0 { strings.builder_reset(&md) }
-	fmt.sbprintfln(&md, "\n%d testharness tests in %.0f s (%d at a time, -timeout %d ms); %d improvement(s) over the expectations, %d test(s) without expectations.",
-		total.files, elapsed, opts.jobs, opts.timeout_ms, total.improvements, total.new_tests)
+	fmt.sbprintfln(&md, "\n%d testharness tests in %.0f s (%d at a time, -timeout %d ms); %d improvement(s) over the expectations, %d test(s) without expectations; %d skipped as known timeouts (-timeouts runs them).",
+		total.files, elapsed, opts.jobs, opts.timeout_ms, total.improvements, total.new_tests, opts.skipped_timeouts)
 	ref_total: Reftest_Stats
 	for s in suites {
 		rs := ref_stats[s.folder]

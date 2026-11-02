@@ -6,16 +6,19 @@
 	Do only fully active documents count for session history?: TIMEOUT
 /html/browsers/history/joint-session-history/joint-session-history-remove-iframe.html: OK
 	Joint session history length does not include entries from a removed iframe.: PASS
-/html/browsers/history/the-history-interface/001.html: ERROR
+/html/browsers/history/the-history-interface/001.html: TIMEOUT
 	history.length should update when loading pages in an iframe: FAIL
-	history.pushState must exist within iframes: PASS
+	history.length should update when pushing a state: FAIL
+	history.length should update when setting location.hash: FAIL
 	history.pushState must exist: PASS
+	history.pushState must exist within iframes: PASS
 	history.state should update after a state is pushed: PASS
 	initial history.state should be null: PASS
-/html/browsers/history/the-history-interface/002.html: ERROR
+/html/browsers/history/the-history-interface/002.html: TIMEOUT
 	history.length should update when loading pages in an iframe: FAIL
-	history.replaceState must exist within iframes: PASS
+	history.length should update when setting location.hash: FAIL
 	history.replaceState must exist: PASS
+	history.replaceState must exist within iframes: PASS
 	initial history.state should be null: PASS
 /html/browsers/history/the-history-interface/004.html: OK
 	.go commands should be queued until the thread has ended: PASS
