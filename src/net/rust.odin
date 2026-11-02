@@ -1,4 +1,4 @@
-package net
+package wren_net
 
 // The built-in network stack (native/net, linked into build\native\wren_native.lib): the transport under the same queues,
 // limits, throttling, handles and events as WinHTTP's (network.backend = rust).

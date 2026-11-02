@@ -1,4 +1,4 @@
-package net
+package wren_net
 
 // WinHTTP's WebSocket API (Windows 8+): the handshake is an ordinary request upgraded with
 // WINHTTP_OPTION_UPGRADE_TO_WEB_SOCKET, then WinHttpWebSocketCompleteUpgrade turns it into a WebSocket handle. The OS does

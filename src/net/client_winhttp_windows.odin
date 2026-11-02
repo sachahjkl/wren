@@ -1,4 +1,4 @@
-package net
+package wren_net
 
 // The HTTP client's WinHTTP backend (network.backend = winhttp): the session, a request's handles and the status
 // callback that runs WinHTTP's state machine on its own threads. client.odin holds the queues, limits and events both

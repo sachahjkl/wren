@@ -1,3 +1,4 @@
+#+build windows
 #+private file
 // Web Authentication in pages, on the virtual authenticator (the system's needs a person): navigator.credentials.create() then get()
 // from JavaScript, the signature of the assertion verified here with the public key the page got from getPublicKey(); the client's

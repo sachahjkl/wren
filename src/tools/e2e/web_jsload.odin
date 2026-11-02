@@ -1,3 +1,4 @@
+#+build windows
 #+private file
 // Script loading and the event loop's JavaScript side (src/page/js_load*.odin, js_workers.odin, native/js/runtime: timers, modules,
 // handlers, load_errors, clone, workers): the order and the moment scripts run (blocking, defer, async, modules), document.write,

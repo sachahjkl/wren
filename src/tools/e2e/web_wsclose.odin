@@ -1,3 +1,4 @@
+#+build windows
 #+private file
 // The WebSocket closing handshake at the transport level (package net against the test server), each case repeated. A close issued from
 // the message handler meets the receive re-armed just after that message: when the close went through WinHttpWebSocketClose, its own read

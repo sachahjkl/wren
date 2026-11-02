@@ -1,3 +1,4 @@
+#+build windows
 #+private file
 // The HTTP cache (packages httpcache and fetch) against the test server: freshness (max-age, Expires, Age, heuristic), revalidation (ETag,
 // Last-Modified, 304), Vary, the Fetch cache modes, partitioning, invalidation by unsafe methods, what is never stored (no-store,

@@ -1,3 +1,4 @@
+#+build windows
 #+private file
 // EventSource and WebSocket through the whole stack (guest -> page -> fetch policy -> net/WinHTTP -> the test server), page teardown with
 // live connections and a 50-socket stress. What must NOT happen (a late delivery, a reconnection, a handshake given up early) comes on a

@@ -159,6 +159,24 @@ Running them by hand: `build\e2e_test.exe -tests:the_title_shows` (no window ope
 
 Two things `core:testing` does not give: a test stopped by a signal (`testing.fail_now`, a panic) can happen once per run on Windows, the runner lets go of a lock it does not hold, and the next signal waits for ever; `e2e` stops its tests through a limit of 0 instead (hence the "Test timed out" after a failure's message). And checks that pass say nothing: `test_all` counts tests here, not checks.
 
+## Testing the interface with no browser around it
+
+What a test of the interface (the tabs, the address bar's list, a menu, the zoom, a docked panel) needs of a browser is the chrome's own code: it starts none. `chrome_start` (`src/tools/e2e/chrome_world.odin`) makes an App of its preferences, its fonts, an offscreen window and tabs with no page, and each frame runs the real `build_ui` under the toolkit's session (`toolkit:testkit/session`), with no network, no script engine, no profile and no renderer unless the test asks for pixels. A test takes 7 to 40 ms, 1 s when it has pixels (the software rasterizer's start).
+
+```odin
+@(test)
+chrome_sidebar_pinned_tabs :: proc(t: ^testing.T) {
+	w := chrome_start(t, {tabs = {"Alpha", "Bravo"}, prefs = {"browser.tabs.position=left"}})
+	chrome_still(w)                                // nothing moves any more
+	chrome_select(w, "Bravo")
+	chrome_command(w, "tab.pin")                   // a command of the interface, by name
+	session.drag(w.s, from, to)                    // the session's input, barriers and pixels
+	testing.expect_value(t, w.wnd.tabs[0].title, "Bravo")
+}
+```
+
+What stays with `e2e.start`: what needs a page (a load, a script, what the page is told), a profile, a real window or a process. A subsystem the interface reads that the world has not made (`chrome_start`'s list of `*_init`) shows as a crash in the first frame that reads it: add it there, as the browser's start does.
+
 ## Writing a test that is quick
 
 The rules are in [CONTRIBUTING](../CONTRIBUTING.md): wait for a condition, with a limit that only ends a failing run (the barriers above, `wren

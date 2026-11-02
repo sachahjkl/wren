@@ -1,3 +1,4 @@
+#+build windows
 // The web tests: end-to-end tests of what lies under the browser's window (fetch, the network, pages and their scripts, with no shell
 // and no frame): a part of the test program, and none of them starts the browser it links. One file per subject (web_<subject>.odin), each
 // `#+private file` with its own helpers, its tests named after it (cache_freshness, in web_cache.odin). What they share is here.

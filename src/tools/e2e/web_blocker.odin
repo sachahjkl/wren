@@ -1,3 +1,4 @@
+#+build windows
 #+private file
 // The content blocker against the test server's page with simulated ads (examples/site/blocker): a blocked script, frame and fetch,
 // an element hidden before the first style computation, the scriptlets (on the document, on an API), responses rewritten, the shape of a

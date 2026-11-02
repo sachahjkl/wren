@@ -1,3 +1,4 @@
+#+build windows
 #+private file
 // file: folders through the policy layer (package fetch): the redirect to the URL with '/', the index file, the listing made by the
 // browser (links, order, hidden files, cap), errors, and who may open what. Everything is on the disk, in build\filetest_site.

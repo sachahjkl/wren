@@ -1,3 +1,4 @@
+#+build windows
 #+private file
 // The page stack with Wasm guests and no script: the DOM, events, timers, several modules per document, fetch through the policy layer,
 // microtasks and promises, buffers, cookies, origin, closing with work in flight, and the policies of response headers and <meta>.

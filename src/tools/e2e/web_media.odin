@@ -1,3 +1,4 @@
+#+build windows
 #+private file
 // The built-in image decoders in pages (examples/site/media.html): AVIF and WebP in <img> (natural sizes, orientation, animation),
 // <picture> choosing AVIF by its type, the Accept header of image requests and content negotiation on it, SVG as <img> (natural size,

@@ -1,3 +1,4 @@
+#+build windows
 #+private file
 // The web APIs of JavaScript (native/js/runtime/web*.c): each section is one test, which runs scripts of examples/jsweb/*.js in pages of
 // the test server's origin, after a small harness (examples/jsweb/harness.js). What a script finds comes back through `wrenTest`, and each

@@ -1,0 +1,189 @@
+package e2e_scenarios
+
+// The browser's interface on its own: the real build of the chrome (browser.build_ui) over an App that has its preferences, its fonts, an offscreen window and tabs with no page,
+// driven by the toolkit's session (toolkit:testkit/session): input through the window's queue, a barrier that makes frames until nothing moves, and a clock of its own. No start of the
+// browser, no network, no script engine, no profile: what a test of the tabs, the address bar, the menus or the zoom is about takes milliseconds, and there is no renderer unless the
+// test asks for pixels (`pixels`). What needs a page, a load or a process stays with e2e.start.
+
+import "core:fmt"
+import "core:strings"
+import "core:testing"
+import "core:time"
+import "toolkit:draw"
+import "toolkit:font"
+import "toolkit:platform"
+import "toolkit:render"
+import session "toolkit:testkit/session"
+import "toolkit:ui"
+import "wb:browser"
+import "wb:config"
+import "wb:host"
+import "wb:remote/api"
+
+@(private = "file") CHROME_SIZE :: [2]int{1100, 700}
+@(private = "file") PAGE_BOX :: "page_area"
+// One frame's time for the interface's animations, seconds: a screen of 60 Hz, as session.FRAME_MS.
+@(private = "file") FRAME_S :: f32(session.FRAME_MS / 1000)
+
+Chrome_Options :: struct {
+	size:   [2]int,     // the client area (0: CHROME_SIZE)
+	scale:  f32,        // dpi / 96 (0: 1)
+	prefs:  []string,   // "name=value", as the user sets them
+	tabs:   []string,   // their titles (none: one blank tab); their addresses are made from them
+	pixels: bool,       // an offscreen renderer: session.capture
+}
+
+Chrome_World :: struct {
+	s:   ^session.Session,
+	app: ^browser.App,
+	wnd: ^browser.Browser_Window,
+	pixels: bool,
+}
+
+// What each frame does of the browser's frame (main.odin `frame`), with no page phase before the build.
+@(private = "file")
+chrome_frame :: proc(user: rawptr) {
+	w := (^Chrome_World)(user)
+	app := w.app
+	wnd := w.wnd
+	events := platform.poll_events(wnd.win, false)
+	events = browser.chrome_zoom_events(app, events)
+	if len(events) > 0 { browser.request_frames(app, 2) }
+	size := draw.Vec2{f32(wnd.win.size.x), f32(wnd.win.size.y)}
+	style := browser.chrome_frame_style(app)
+	browser.window_chrome_frame(app)
+	browser.chrome_ui_apply(app, wnd.ui)
+	ui.begin_build(wnd.ui, {
+		window_size = size, events = events, dt = FRAME_S, animations = true, dpi_scale = browser.ui_scale_of(app), base = style, disable_zoom = true,
+		window = wnd.win, inactive = false,
+	})
+	browser.build_ui(app)
+	ui.end_build()
+	platform.set_cursor(wnd.win, ui.cursor(wnd.ui))
+	// (the page's area is known where it is drawn: page_draw, in a frame with a renderer)
+	if page := session.find(w.s, PAGE_BOX); page != nil { wnd.page_rect = page.rect }
+	if w.pixels {
+		render.resize(&app.r, wnd.win.size)
+		render.frame_begin(&app.r, {0, 0, 0, 1})
+		draw.begin_frame(&app.dc, size)
+		ui.draw_tree(wnd.ui, &app.dc)
+		draw.end_frame(&app.dc)
+		render.frame_end(&app.r, false)
+	}
+}
+
+// The interface, its first frame made. It ends with the test.
+chrome_start :: proc(t: ^testing.T, o := Chrome_Options{}, loc := #caller_location) -> ^Chrome_World {
+	w := new(Chrome_World)
+	w.pixels = o.pixels
+	app := new(browser.App)
+	w.app = app
+	browser.the_app = app
+	app.prefs = config.prefs_make()
+	browser.register_all_prefs(&app.prefs)
+	for p in o.prefs {
+		name, _, value := strings.partition(p, "=")
+		testing.expectf(t, config.set_from_string(&app.prefs, name, value, .User) == .None, "the preference %s", p, loc = loc)
+	}
+	app.cfg = browser.settings_from_prefs(&app.prefs)
+	host.loop_init(&app.loop)
+	browser.frame_gate_init()
+	win := platform.open_window_offscreen("chrome", o.size.x > 0 ? o.size : CHROME_SIZE, o.scale)
+	w.wnd = browser.window_adopt_primary(app, win)
+	font.init(&app.fonts, browser.font_settings_from_prefs(&app.prefs))
+	ok: bool
+	app.ui_font, ok = font.load_embedded(&app.fonts, font.FALLBACK_UI_DATA)
+	testing.expect(t, ok, "the interface's font", loc = loc)
+	app.icons, ok = font.load_embedded(&app.fonts, ui.ICON_FONT_DATA)
+	testing.expect(t, ok, "the icons' font", loc = loc)
+	ui.init(w.wnd.ui, &app.fonts, &app.theme)
+	w.wnd.ui.icon_font = app.icons
+	browser.chrome_style_init(app)
+	browser.window_chrome_init(app)
+	browser.favicons_init(app)
+	browser.urlbar_init(app)
+	browser.hud_init(app)
+	browser.devtools_init(app)
+	if o.pixels {
+		testing.expect(t, render.init_offscreen(&app.r, win.size, warp = true), "an offscreen renderer", loc = loc)
+		draw.init(&app.dc, &app.r, &app.fonts)
+	}
+	titles := o.tabs
+	if len(titles) == 0 { titles = {"blank"} }
+	for title, i in titles {
+		x := new(browser.Tab)
+		x.id, x.title = u64(i + 1), strings.clone(title)
+		x.url = fmt.aprintf("https://%s.test/", strings.to_lower(title, context.temp_allocator))
+		x.kind = .Web
+		append(&w.wnd.tabs, x)
+	}
+	ui.field_set(&w.wnd.address, w.wnd.tabs[0].url)
+	testing.cleanup(t, proc(p: rawptr) { chrome_end((^Chrome_World)(p)) }, w)
+	w.s = session.attach(t, {win = win, state = w.wnd.ui, renderer = o.pixels ? &app.r : nil, frame = chrome_frame, user = w}, loc)
+	session.frame(w.s)
+	return w
+}
+
+// (testing.cleanup, after the session's)
+@(private = "file")
+chrome_end :: proc(w: ^Chrome_World) {
+	app := w.app
+	for x in w.wnd.tabs { delete(x.title); delete(x.url); free(x) }
+	clear(&w.wnd.tabs)
+	browser.devtools_destroy(app)
+	browser.hud_destroy(app)
+	browser.urlbar_destroy(app)
+	browser.sidebar_destroy(&w.wnd.own.sidebar)
+	browser.favicons_destroy(app)
+	browser.window_chrome_destroy(app)
+	browser.chrome_style_destroy(app)
+	browser.commands_destroy(&browser.cmds)
+	delete(app.cfg.homepage)
+	delete(app.cfg.ui_theme)
+	if w.pixels {
+		draw.destroy(&app.dc)
+		render.destroy(&app.r)
+	}
+	browser.windows_destroy_ui(app)
+	browser.windows_destroy(app)
+	font.destroy(&app.fonts)
+	ui.theme_destroy(&app.theme)
+	host.loop_destroy(&app.loop)
+	config.prefs_destroy(&app.prefs)
+	browser.the_app = nil
+	free(app)
+	free(w)
+}
+
+// Nothing moves any more.
+chrome_still :: proc(w: ^Chrome_World, loc := #caller_location) { session.wait_idle(w.s, CHROME_STILL_LIMIT, loc) }
+@(private = "file") CHROME_STILL_LIMIT :: 60 * time.Second
+
+// A command of the interface by name, and its frames.
+chrome_command :: proc(w: ^Chrome_World, name: string, loc := #caller_location) {
+	why := browser.control_command(w.app, browser.current_tab(w.app), name)
+	testing.expectf(w.s.t, why == "", "the command %s: %s", name, why, loc = loc)
+	session.frames(w.s, 2)
+}
+
+// A preference, as the user sets it, and what follows it.
+chrome_pref :: proc(w: ^Chrome_World, name, value: string, loc := #caller_location) {
+	testing.expectf(w.s.t, config.set_from_string(&w.app.prefs, name, value, .User) == .None, "the preference %s=%s", name, value, loc = loc)
+	session.frames(w.s, 2)
+}
+
+// The tab with this title, as the last frame drew it.
+chrome_tab :: proc(w: ^Chrome_World, title: string, loc := #caller_location) -> api.Tab {
+	for x in browser.control_tabs(w.app, context.temp_allocator).tabs { if x.title == title { return x } }
+	testing.expectf(w.s.t, false, "no tab is titled %q", title, loc = loc)
+	return {}
+}
+
+// The tab groups, as the last frame drew them.
+chrome_groups :: proc(w: ^Chrome_World) -> []api.Tab_Group { return browser.control_tabs(w.app, context.temp_allocator).groups }
+
+// The tab shows, as a click on it would.
+chrome_select :: proc(w: ^Chrome_World, title: string, loc := #caller_location) {
+	testing.expect(w.s.t, browser.control_activate_tab(w.app, chrome_tab(w, title, loc).id), "it activates", loc = loc)
+	session.frames(w.s, 2)
+}

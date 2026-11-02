@@ -1,3 +1,4 @@
+#+build windows
 #+private file
 // The page's side of history: the session history tree as pages see it (history.length, pushState, back after a branch),
 // history.scrollRestoration, pagehide / pageshow and PageTransitionEvent.persisted, freezing and thawing for the back/forward cache

@@ -1,8 +1,7 @@
 package e2e_scenarios
 
-// The address bar's suggestions (urlbar.odin), with a profile of a known history: the inline completion of an address of the test server and
-// Enter (a visit of it is recorded), Shift+Delete on the completed row (gitlab.com leaves the history), a click on the cross of a row (git-scm.com
-// leaves it), Down and Escape. The profile's history.txt says what happened.
+// The address bar with a real history and a real page (urlbar.odin), a profile of a known history: the inline completion of an address of the test server and Enter (a visit of it is
+// recorded), what the profile's history.txt says. (The list's keys and the cross of a row, with no browser around it: chrome_address_bar.odin.)
 
 import "core:fmt"
 import "core:strings"
@@ -14,7 +13,6 @@ import "wb:e2e"
 @(private = "file") HISTORY_FILE :: "history.txt"
 @(private = "file") SITE_INDEX :: "/site/index.html"
 @(private = "file") GITLAB :: "gitlab.com"
-@(private = "file") GIT_SCM :: "git-scm.com"
 @(private = "file") ODIN_REPOSITORY :: "https://github.com/odin-lang/Odin"
 @(private = "file") SITE_VISITS :: 3
 @(private = "file") SITE_VISITS_AFTER :: SITE_VISITS + 1
@@ -64,13 +62,6 @@ type_until_completed :: proc(s: ^e2e.Session, text, part: string, loc := #caller
 	}, "the inline completion", loc = loc)
 }
 
-// The list has a row of this address, with its cross laid out.
-@(private = "file")
-row_with_cross :: proc(s: ^e2e.Session, part: string) -> (e2e.Urlbar_Row, bool) {
-	for r in e2e.urlbar(s).rows { if strings.contains(r.url, part) && r.has_cross { return r, true } }
-	return {}, false
-}
-
 @(test)
 urlbar_suggestions :: proc(t: ^testing.T) {
 	server := e2e.test_server(t)
@@ -94,28 +85,6 @@ urlbar_suggestions :: proc(t: ^testing.T) {
 	e2e.key(s, "Shift+Delete")
 	e2e.shot(s, "03 gitlab removed.png")
 
-	// the cross of a row: shown under the pointer, a click removes the row
-	e2e.key(s, "Backspace", repeat = 3)
-	e2e.wait_until(s, proc(s: ^e2e.Session) -> bool { _, ok := row_with_cross(s, GIT_SCM); return ok }, "the row of git-scm.com in the list")
-	row, _ := row_with_cross(s, GIT_SCM)
-	cross := e2e.center(row.cross)
-	e2e.hover(s, cross, .Window)
-	e2e.shot(s, "04 cross hovered.png")
-	e2e.forget_clicks(s)
-	e2e.click_at(s, cross, .Window)
-	e2e.wait_until(s, proc(s: ^e2e.Session) -> bool {
-		for r in e2e.urlbar(s).rows { if strings.contains(r.url, GIT_SCM) { return false } }
-		return true
-	}, "the row of git-scm.com to leave the list")
-	e2e.shot(s, "05 after the cross.png")
-
-	e2e.key(s, "Down")
-	e2e.shot(s, "06 down.png")
-	testing.expect(t, e2e.urlbar(s).open, "Down keeps the list open")
-	e2e.key(s, "Escape")
-	e2e.shot(s, "07 escape.png")
-	testing.expect(t, !e2e.urlbar(s).open, "Escape closes the list")
-
 	// (the browser ends here: what it keeps is written)
 	e2e.stop(s)
 	history := e2e.read_text(fmt.tprintf("%s/%s", profile, HISTORY_FILE))
@@ -126,6 +95,5 @@ urlbar_suggestions :: proc(t: ^testing.T) {
 	}
 	testing.expect_value(t, visits, SITE_VISITS_AFTER)   // Enter on the completed address of the test server opened it: one more visit
 	testing.expect(t, !strings.contains(history, GITLAB), "Shift+Delete removed every visit of gitlab.com from the profile")
-	testing.expect(t, !strings.contains(history, GIT_SCM), "the cross removed every visit of git-scm.com from the profile")
 	testing.expect(t, strings.contains(history, ODIN_REPOSITORY), "the other addresses stay")
 }

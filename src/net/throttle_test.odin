@@ -1,4 +1,4 @@
-﻿package net
+package wren_net
 
 import "core:testing"
 

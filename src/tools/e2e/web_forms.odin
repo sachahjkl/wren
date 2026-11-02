@@ -1,3 +1,4 @@
+#+build windows
 #+private file
 // Form controls in a real page: the forms model, a Wasm guest using the "forms" imports, user input through the forms API, FormData sent
 // with fetch in the three encodings, and form submissions (POST multipart with a file read from disk, GET) performed against the test

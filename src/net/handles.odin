@@ -1,4 +1,4 @@
-package net
+package wren_net
 
 // What both stacks share: the WinHTTP backend's handle type (nil on a system without it) and the WebSocket vocabulary
 // the Rust stack reports in too (its frame types, operations and error codes are WinHTTP's numbers, so fetch and page read

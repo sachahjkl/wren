@@ -1,3 +1,4 @@
+#+build windows
 #+private file
 // What real sites do that the unit tests of one package do not see, each a reduced fixture of a site that rendered wrong (the first:
 // clockin.sacha.house, an Angular + Tailwind application): stylesheet loading tricks (<link media=print onload="this.media='all'">),

@@ -1,4 +1,4 @@
-package net
+package wren_net
 
 // Network throttling (the developer tools' Network speed): a link a request (or a WebSocket) goes through, with a download
 // and an upload rate shared by everything that uses it, a latency added to each request, and a loss rate. Nothing here
