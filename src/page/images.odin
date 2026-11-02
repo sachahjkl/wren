@@ -1276,9 +1276,9 @@ css_images_sync :: proc(p: ^Page) {
 	pi.css_pass = s.pass_id
 	bit_array.clear(&pi.css_users)
 	pi.css_user_count = 0
-	for c in s.by_node {
+	for c, i in s.by_node {
 		if c == nil || c.display == .None { continue }
-		_ = css_user_set(pi, c.node, css_note_element(c, &used, &seen, dppx))
+		_ = css_user_set(pi, s.nodes[i], css_note_element(c, &used, &seen, dppx))
 	}
 	stale := make([dynamic]string, 0, 4, context.temp_allocator)
 	for k in pi.css_urls { if k not_in used { append(&stale, k) } }

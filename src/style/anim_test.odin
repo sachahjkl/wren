@@ -196,6 +196,7 @@ interpolating_values :: proc(t: ^testing.T) {
 	ctx := Interp_Ctx{alloc = context.temp_allocator}
 	out := new(Computed, context.temp_allocator)
 	out^ = a^
+	for g in Group { group_take(out, g, context.temp_allocator) }   // (interpolate_prop writes into the groups it is given: a's otherwise)
 	testing.expect(t, interpolate_prop(out, a, b, .Width, 0.25, &ctx) && out.width.kind == .Px && out.width.v == 15)
 	testing.expect(t, interpolate_prop(out, a, b, .Margin_Left, 0.5, &ctx) && out.margin[.Left].kind == .Calc)
 	testing.expect(t, math.abs(resolve(out.margin[.Left], 200) - (0.5 * 20 + 0.5 * 20)) < 1e-3, "10% of 200 and 20px meet halfway through calc()")

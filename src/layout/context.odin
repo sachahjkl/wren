@@ -367,7 +367,6 @@ anon_style :: proc(c: ^Ctx, parent: ^style.Computed, display: style.Display) -> 
 	s^ = parent^
 	style.reset_noninherited(s, c.st.initial)
 	s.display = display
-	s.node = base.NIL_HANDLE
 	s.before, s.after = nil, nil
 	// currentcolor of the initial border colors follows the inherited color
 	for side in style.Side { s.border_color[side] = s.color }

@@ -4,8 +4,8 @@ import "base:intrinsics"
 import "wb:base"
 import "wb:style"
 
-// A computed style is about 1.5 KB (and the groups it sets: style.Group) and every element has its own, made on the
-// style threads: a large document's styles are far bigger than the caches, and each step of layout reads a few fields
+// A computed style is about 1 KB (and the groups it sets: style.Group; the inherited properties are a group most
+// elements share with their parent, read through one pointer) and most elements have their own, made on the style threads: a large document's styles are far bigger than the caches, and each step of layout reads a few fields
 // of each style, scattered over a dozen cache lines. Read one after the other, those misses are most of the time a pass takes. Each step therefore starts
 // fetching the lines it will read of the styles of the boxes coming next, while it works on the current one.
 
@@ -14,15 +14,14 @@ import "wb:style"
 @(private)
 BUILD_FIELDS :: [?]uintptr{
 	offset_of(style.Computed, display), offset_of(style.Computed, z_auto), offset_of(style.Computed, opacity),
-	offset_of(style.Computed, font_family), offset_of(style.Computed, white_space), offset_of(style.Computed, pointer_events),
-	offset_of(style.Computed, transform_group), offset_of(style.Computed, rare_group),
+	offset_of(style.Computed, inherited_group), offset_of(style.Computed, transform_group), offset_of(style.Computed, rare_group),
 	offset_of(style.Computed, before),
 }
 
 // What box tree construction still reads when the styles are summed up (style_sum.odin): a font the element does not
 // inherit, white space and text-transform of text.
 @(private)
-FONT_FIELDS :: [?]uintptr{offset_of(style.Computed, font_family), offset_of(style.Computed, white_space)}
+FONT_FIELDS :: [?]uintptr{offset_of(style.Computed, inherited_group)}
 
 // What the key of a font reads (font_key_of), beyond the line of font_family.
 @(private)

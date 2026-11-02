@@ -111,9 +111,8 @@ diff_chunk :: proc(data: rawptr, index: int) {
 	for i in lo ..< hi {
 		c := job.new.by_node[i]
 		if c == nil { continue }
-		h := c.node
-		old := i < len(job.old.by_node) ? job.old.by_node[i] : nil
-		if old != nil && old.node != h { old = nil }
+		h := job.new.nodes[i]
+		old := style_of(job.old, h)
 		if old != nil && len(job.old.overlaid) > 0 { if b, ok := job.old.overlaid[h]; ok { old = b } }
 		level := layout_level(old, c)
 		if level >= .Layout {

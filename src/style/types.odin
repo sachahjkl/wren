@@ -1,6 +1,5 @@
 package style
 
-import "wb:base"
 import "wb:css"
 
 // Computed values: the contract between the style engine and layout / painting. Lengths that depend on the box they
@@ -134,8 +133,9 @@ Custom_Props :: struct {
 	total:   int,                 // names present, all layers counted
 }
 
+// A computed style is a value: elements whose inputs are the same share one record (share.odin), so a record does not
+// say whose style it is (Styled.nodes does).
 Computed :: struct {
-	node:   base.Handle,
 	// --- box ---
 	frames:     bool,     // a vertical writing mode, columns, or column-span (writing_mode_fixup): what building boxes looks at first
 	display:    Display,
@@ -143,7 +143,6 @@ Computed :: struct {
 	float:      Float,
 	clear:      Clear,
 	box_sizing: Box_Sizing,
-	visibility: Visibility,
 	overflow_x, overflow_y: Overflow,
 	inset:      [Side]Length,
 	z_auto:     bool,
@@ -168,85 +167,26 @@ Computed :: struct {
 	justify_content, align_items, align_self, align_content: Content_Align,
 	order:          i32,
 	row_gap, column_gap: Length,
-	// --- color schemes (color_scheme.odin) ---
-	color_scheme: Color_Scheme_Value,
-	used_scheme:  Scheme,         // light or dark: the system colors and light-dark() branch this element uses
-	color_pair:   Scheme_Color,   // `color` resolved in both schemes (children with another scheme pick the other)
 	// --- text ---
-	color:      css.Color,
-	// --- SVG paint (CSS Fill and Stroke 3 §7): `fill` and `stroke` of an element, inherited into its inline <svg> ---
-	svg_fill, svg_stroke: Svg_Paint,
-	stroke_width: f32,
-	stroke_linecap: Stroke_Linecap,
-	stroke_linejoin: Stroke_Linejoin,
-	font_family: []string,
-	font_size:  f32,
-	font_size_src: Font_Size_Src,   // where font_size came from (values.odin generic_family_adjust): part of font-size
-	font_weight: u16,
-	font_style: Font_Style,
-	line_height: Line_Height,
-	letter_spacing, word_spacing: f32,
-	text_align: Text_Align,
 	text_decoration: Decorations,
 	text_decoration_color: css.Color,
-	text_transform: Text_Transform,
-	text_indent: Length,
 	text_ellipsis: bool,
-	white_space: White_Space,
-	word_break: Word_Break,
-	overflow_wrap: Overflow_Wrap,
-	tab_size:   f32,            // tab_spaces: a number of spaces (initial 8), else px
-	tab_spaces: bool,
-	direction:  Direction,
-	text_shadow: []Shadow,
+	text_decoration_style: Text_Decoration_Style,
+	text_decoration_thickness: Length,      // Auto, Normal (= from-font) or Px
+	unicode_bidi:            Unicode_Bidi,
 	// --- background (the image layers: background_group) ---
 	background_color: css.Color,
 	box_shadow: []Shadow,
 	// --- misc ---
-	list_style_type: List_Style_Type,
-	list_style_position: List_Style_Position,
-	cursor:     Cursor,
-	cursor_images: []Cursor_Image,   // url() / image-set() before the keyword (cursor.odin), nil: none
-	pointer_events: bool,
 	user_select: User_Select,
 	content:    Content,
 	outline_width: f32,
 	outline_style: Border_Style,
 	outline_color: css.Color,
 	outline_offset: f32,
-	border_collapse: bool,
-	border_spacing: [2]f32,
 	table_layout: Table_Layout,
-	// --- text (CSS Text 4, Fonts 4, Text Decoration 4) ---
-	font_stretch:      f32,                 // percentage, 100 = normal
-	font_variant_caps: Font_Variant_Caps,
-	text_decoration_style: Text_Decoration_Style,
-	text_decoration_thickness: Length,      // Auto, Normal (= from-font) or Px
-	text_underline_offset: Length,          // Auto or Px
-	white_space_collapse: White_Space_Collapse,   // `white_space` above is derived from these two
-	text_wrap_mode:    Text_Wrap_Mode,
-	text_wrap_style:   Text_Wrap_Style,
-	hyphens:           Hyphens,
-	// --- fonts: OpenType features and variations (font_features.odin), bidi ---
-	font_feature_settings:   []Font_Feature_Setting,     // nil = normal
-	font_variation_settings: []Font_Variation_Setting,   // nil = normal
-	font_kerning:            Font_Kerning,
-	font_variant_ligatures:  Font_Variant_Ligatures,
-	font_variant_numeric:    Font_Variant_Numeric,
-	font_variant_east_asian: Font_Variant_East_Asian,
-	font_variant_position:   Font_Variant_Position,
-	font_optical_sizing:     Font_Optical_Sizing,     // `opsz` axis follows font-size (CSS Fonts 4 §11.5)
-	text_rendering:          Text_Rendering,          // optimizeSpeed turns off kerning and optional ligatures
-	content_language:        string,                  // `lang` / `xml:lang` of the element (inherited), for `locl`; "" none
-	unicode_bidi:            Unicode_Bidi,
-	// --- generated content ---
-	quotes:            Quotes,
-	list_style:        List_Marker_Style,   // every counter style; `list_style_type` above is the nearest legacy value
 	marker_text:       string,              // display: list-item only: the resolved marker, suffix included ("3. ", "• ")
-	// --- misc ---
 	touch_action:      Touch_Blocked,      // what fingers may not do here ({} = auto)
-	caret_color:       Auto_Color,
-	accent_color:      Auto_Color,
 	appearance:        Appearance,
 	column_count:      i32,                 // 0 = auto
 	column_width:      Length,              // Auto or Px
@@ -257,17 +197,12 @@ Computed :: struct {
 	column_rule_color: css.Color,
 	break_before, break_after: Break_Value,
 	break_inside:      Break_Inside,
-	orphans, widows:   i32,
-	// --- writing modes (writing_modes.odin) ---
-	writing_mode:      Writing_Mode,
-	text_orientation:  Text_Orientation,
-	text_combine_upright: Text_Combine_Upright,
 	justify_items, justify_self: Content_Align,
-	scrollbar_color:   Scrollbar_Colors,
-	text_fill_color:   Auto_Color,          // -webkit-text-fill-color, auto = currentcolor
 	// --- anchor positioning (anchor.odin; the rest in rare_group) ---
 	position_anchor:   Position_Anchor,
 	position_area:     Position_Area,
+	// --- what is inherited, shared with the parent until the element sets some of it (see Group) ---
+	using inherited_group: ^Inherited_Group,
 	// --- what most elements never set, by group (see Group) ---
 	using background_group: ^Background_Group,
 	using transform_group:  ^Transform_Group,
@@ -284,14 +219,88 @@ Computed :: struct {
 	selection:  ^Computed,      // ::selection rules of the element (nil: none; colors only are used)
 }
 
-// The properties of a Computed most elements never set, in groups behind a pointer each: a style shares the group of
-// the initial values (read-only memory, props.odin `initial_groups`) until it sets one of the group's properties, and
-// then has its own copy, made once (`cx_take` in the cascade, `prop_take` anywhere else). Reads go through the `using`
-// pointers unchanged (`c.transform`); a write into a group the style does not own changes every style sharing it. So
-// an element's style costs the groups it sets, not every property there is. None of them holds an inherited property.
-Group :: enum u8 { Main, Background, Transform, Motion, Grid, Mask, Rare }
+// Properties in groups behind a pointer each, a group shared until a style sets one of its properties: then the style
+// has its own copy, made once (`cx_take` in the cascade, `prop_take` anywhere else). Reads go through the `using`
+// pointers unchanged (`c.transform`); a write into a group the style does not own changes every style sharing it.
+// - Inherited: every inherited property (and what is derived from them: white_space, the content language). A style
+//   shares its parent's (the root, the initial values') until it sets one: an element that sets no inherited property
+//   inherits by sharing one pointer.
+// - The others: what most elements never set. A style shares the group of the initial values (read-only memory,
+//   props.odin `initial_groups`) until it sets one of the group's properties.
+// So an element's style costs the groups it sets, not every property there is.
+Group :: enum u8 { Main, Inherited, Background, Transform, Motion, Grid, Mask, Rare }
 Groups :: bit_set[Group; u8]
 
+// The inherited properties (CSS: "Inherited: yes", INHERITED_PROPS).
+Inherited_Group :: struct {
+	// --- color schemes (color_scheme.odin) ---
+	color_scheme: Color_Scheme_Value,
+	used_scheme:  Scheme,         // light or dark: the system colors and light-dark() branch this element uses
+	color_pair:   Scheme_Color,   // `color` resolved in both schemes (children with another scheme pick the other)
+	color:        css.Color,
+	// --- SVG paint (CSS Fill and Stroke 3 §7): `fill` and `stroke` of an element, inherited into its inline <svg> ---
+	svg_fill, svg_stroke: Svg_Paint,
+	stroke_width: f32,
+	stroke_linecap: Stroke_Linecap,
+	stroke_linejoin: Stroke_Linejoin,
+	// --- text ---
+	font_family: []string,
+	font_size:  f32,
+	font_size_src: Font_Size_Src,   // where font_size came from (values.odin generic_family_adjust): part of font-size
+	font_weight: u16,
+	font_style: Font_Style,
+	line_height: Line_Height,
+	letter_spacing, word_spacing: f32,
+	text_align: Text_Align,
+	text_transform: Text_Transform,
+	text_indent: Length,
+	white_space: White_Space,       // derived from white_space_collapse and text_wrap_mode (derive_fields)
+	word_break: Word_Break,
+	overflow_wrap: Overflow_Wrap,
+	tab_size:   f32,            // tab_spaces: a number of spaces (initial 8), else px
+	tab_spaces: bool,
+	direction:  Direction,
+	text_shadow: []Shadow,
+	visibility: Visibility,
+	font_stretch:      f32,                 // percentage, 100 = normal
+	font_variant_caps: Font_Variant_Caps,
+	text_underline_offset: Length,          // Auto or Px
+	white_space_collapse: White_Space_Collapse,   // `white_space` above is derived from these two
+	text_wrap_mode:    Text_Wrap_Mode,
+	text_wrap_style:   Text_Wrap_Style,
+	hyphens:           Hyphens,
+	// --- fonts: OpenType features and variations (font_features.odin) ---
+	font_feature_settings:   []Font_Feature_Setting,     // nil = normal
+	font_variation_settings: []Font_Variation_Setting,   // nil = normal
+	font_kerning:            Font_Kerning,
+	font_variant_ligatures:  Font_Variant_Ligatures,
+	font_variant_numeric:    Font_Variant_Numeric,
+	font_variant_east_asian: Font_Variant_East_Asian,
+	font_variant_position:   Font_Variant_Position,
+	font_optical_sizing:     Font_Optical_Sizing,     // `opsz` axis follows font-size (CSS Fonts 4 §11.5)
+	text_rendering:          Text_Rendering,          // optimizeSpeed turns off kerning and optional ligatures
+	content_language:        string,                  // `lang` / `xml:lang` of the element (inherited), for `locl`; "" none
+	// --- lists, generated content, tables ---
+	list_style_type: List_Style_Type,
+	list_style_position: List_Style_Position,
+	list_style:        List_Marker_Style,   // every counter style; `list_style_type` above is the nearest legacy value
+	quotes:            Quotes,
+	border_collapse: bool,
+	border_spacing: [2]f32,
+	orphans, widows:   i32,
+	// --- user interface ---
+	cursor:     Cursor,
+	cursor_images: []Cursor_Image,   // url() / image-set() before the keyword (cursor.odin), nil: none
+	pointer_events: bool,
+	caret_color:       Auto_Color,
+	accent_color:      Auto_Color,
+	scrollbar_color:   Scrollbar_Colors,
+	text_fill_color:   Auto_Color,          // -webkit-text-fill-color, auto = currentcolor
+	// --- writing modes (writing_modes.odin) ---
+	writing_mode:      Writing_Mode,
+	text_orientation:  Text_Orientation,
+	text_combine_upright: Text_Combine_Upright,
+}
 // background-* (the singular fields are the first layer, the lists every layer: see `background_layers`).
 Background_Group :: struct {
 	background_image:       Image,

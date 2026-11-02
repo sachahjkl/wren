@@ -121,7 +121,7 @@ engine_uses_container_queries :: proc(e: ^Engine) -> bool { return e.container_d
 // The query containers of a computed style pass: the elements whose container-type is not normal.
 styled_containers :: proc(s: ^Styled, allocator := context.temp_allocator) -> []base.Handle {
 	out := make([dynamic]base.Handle, allocator)
-	for c in s.by_node { if c != nil && c.container_type != .Normal && c.display != .None { append(&out, c.node) } }
+	for c, i in s.by_node { if c != nil && c.container_type != .Normal && c.display != .None { append(&out, s.nodes[i]) } }
 	return out[:]
 }
 
@@ -180,14 +180,14 @@ apply_container_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 	return true
 }
 
-// The context this element's children see: its own container (with the measured size) in front of its parent's.
+// The context the children of `h` (style `c`) see: its own container (with the measured size) in front of its parent's.
 @(private)
-container_chain :: proc(e: ^Engine, c: ^Computed, parent: ^Computed, a := context.allocator) -> ^Container_Ctx {
+container_chain :: proc(e: ^Engine, h: base.Handle, c: ^Computed, parent: ^Computed, a := context.allocator) -> ^Container_Ctx {
 	up := parent != nil ? parent.containers : nil
 	if c.container_type == .Normal || c.display == .None { return up }
 	ctx := new(Container_Ctx, a)
-	ctx^ = Container_Ctx{node = c.node, type = c.container_type, names = c.container_name, parent = up}
-	if s, ok := e.container_sizes[c.node]; ok {
+	ctx^ = Container_Ctx{node = h, type = c.container_type, names = c.container_name, parent = up}
+	if s, ok := e.container_sizes[h]; ok {
 		ctx.size.w, ctx.size.has_w = f64(s.x), true
 		if c.container_type == .Size { ctx.size.h, ctx.size.has_h = f64(s.y), true }
 	}

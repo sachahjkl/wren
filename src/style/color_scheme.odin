@@ -285,10 +285,16 @@ parse_color_scheme :: proc(vs: []css.Value) -> (Color_Scheme_Value, bool) {
 @(private)
 scheme_settle :: proc(cx: ^Cx, page_scheme: Color_Scheme_Value, prefer_dark: bool) {
 	c := cx.c
-	if cx.parent == nil && c.color_scheme == {} { c.color_scheme = page_scheme }
-	c.used_scheme = used_scheme(c.color_scheme, prefer_dark)
-	cx.cenv.dark = c.used_scheme == .Dark
-	c.color = scheme_pick(c.color_pair, c.used_scheme)
+	scheme := c.color_scheme
+	if cx.parent == nil && scheme == {} { scheme = page_scheme }
+	used := used_scheme(scheme, prefer_dark)
+	color := scheme_pick(c.color_pair, used)
+	cx.cenv.dark = used == .Dark
+	// (what the element inherits is settled already, unless it sets a scheme or a color: the group stays shared)
+	if scheme != c.color_scheme || used != c.used_scheme || color != c.color {
+		cx_own(cx, .Inherited)
+		c.color_scheme, c.used_scheme, c.color = scheme, used, color
+	}
 }
 
 // `color`: resolved for both schemes when the value can depend on it (system colors, light-dark()).

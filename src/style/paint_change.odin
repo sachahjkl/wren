@@ -43,8 +43,7 @@ PAINT_PROPS :: [?]Prop{
 @(private) tier_table: [Prop]Prop_Tier
 @(private) paint_set: Prop_Set
 // Fields of Computed compared by layout_equal: every field except those of paint-only properties and bookkeeping
-// that layout never reads (the inherited-from-parent set, custom properties: their effect is in the other values; the
-// node the style belongs to).
+// that layout never reads (the inherited-from-parent set, custom properties: their effect is in the other values).
 @(private) layout_fields: [dynamic]Field_Info
 
 @(private)
@@ -62,7 +61,6 @@ tiers_init :: proc() {
 		}
 		skip[{.Main, offset_of(Computed, inherits)}] = true
 		skip[{.Main, offset_of(Computed, custom)}] = true
-		skip[{.Main, offset_of(Computed, node)}] = true
 		layout_fields = make([dynamic]Field_Info, 0, len(computed_fields), base.permanent_allocator())
 		for f in computed_fields { if !skip[{f.group, f.offset}] { append(&layout_fields, f) } }
 	})

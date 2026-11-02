@@ -152,9 +152,10 @@ shader_texture_fill :: proc(r: ^render.Renderer, kind: Shader_Texture, tex: rend
 	}
 }
 
-// A box's `-wren-shader`, painted over its background in the rounded clip of the bottom background layer. `doc`: its document, for the
-// text a shader engraves (the box's data-engrave attribute) and to tell the page when the shader cannot be had.
-paint_wren_shader :: proc(dc: ^draw.Context, cs: ^style.Computed, area: draw.Rect, radii: [4]f32, scale: f32, doc: ^dom.Document = nil) {
+// A box's `-wren-shader`, painted over its background in the rounded clip of the bottom background layer. `doc` and `node`: its
+// document and element, for the text a shader engraves (the box's data-engrave attribute) and to tell the page when the shader
+// cannot be had.
+paint_wren_shader :: proc(dc: ^draw.Context, cs: ^style.Computed, area: draw.Rect, radii: [4]f32, scale: f32, doc: ^dom.Document = nil, node := base.NIL_HANDLE) {
 	sc := cs.wren_shader
 	if sc.name == "" || area.max.x <= area.min.x || area.max.y <= area.min.y { return }
 	idx := -1
@@ -162,7 +163,7 @@ paint_wren_shader :: proc(dc: ^draw.Context, cs: ^style.Computed, area: draw.Rec
 	if idx < 0 { return }
 	def := &SHADERS[idx]
 	st := shader_ready(dc.renderer, idx)
-	if st.failed || st.handle == 0 { shader_unavailable(doc, cs); return }
+	if st.failed || st.handle == 0 { shader_unavailable(doc, node); return }
 	// the engine's slots, the pass, then the arguments four to a slot
 	slots: [2 + (style.MAX_SHADER_ARGS + 3) / 4]draw.Vec4
 	reduced: f32 = the_app != nil && the_app.page_settings.style.reduced_motion ? 1 : 0
@@ -176,9 +177,9 @@ paint_wren_shader :: proc(dc: ^draw.Context, cs: ^style.Computed, area: draw.Rec
 	// the text the shader engraves: made when it changes, for a box that asks for it (the argument "engrave" is not 0)
 	for a, k in def.args {
 		if a != "engrave" || slots[2 + k / 4][k % 4] == 0 { continue }
-		if !engraving_ready(dc, st, def, doc, cs) {
+		if !engraving_ready(dc, st, def, doc, node) {
 			slots[2 + k / 4][k % 4] = 0
-			shader_unavailable(doc, cs)   // the page shows its own text
+			shader_unavailable(doc, node)   // the page shows its own text
 		}
 	}
 	used := 2 + (nargs + 3) / 4
@@ -191,9 +192,9 @@ paint_wren_shader :: proc(dc: ^draw.Context, cs: ^style.Computed, area: draw.Rec
 // The engraving texture holds the text of the box's data-engrave attribute (made again when it changed). False: it cannot be had (no
 // text on the box, no document, no font): the caller leaves the text to the page.
 @(private = "file")
-engraving_ready :: proc(dc: ^draw.Context, st: ^Shader_State, def: ^Shader_Def, doc: ^dom.Document, cs: ^style.Computed) -> bool {
-	if doc == nil || cs.node == base.NIL_HANDLE || dc.fonts == nil { return false }
-	text, found := dom.get_attribute(doc, cs.node, ENGRAVE_ATTR)
+engraving_ready :: proc(dc: ^draw.Context, st: ^Shader_State, def: ^Shader_Def, doc: ^dom.Document, node: base.Handle) -> bool {
+	if doc == nil || node == base.NIL_HANDLE || dc.fonts == nil { return false }
+	text, found := dom.get_attribute(doc, node, ENGRAVE_ATTR)
 	if !found || text == "" { return false }
 	h: u64 = 0xcbf29ce484222325
 	for b in transmute([]u8)text { h = (h ~ u64(b)) * 0x100000001b3 }
@@ -221,9 +222,9 @@ engraving_ready :: proc(dc: ^draw.Context, st: ^Shader_State, def: ^Shader_Def, 
 // A page that gives its text to a shader (the licence card) shows it itself when the shader cannot: it asks by an attribute its style reads
 // (.lic[data-shader=off] .face): on the parent of the box. Set once.
 @(private = "file")
-shader_unavailable :: proc(doc: ^dom.Document, cs: ^style.Computed) {
-	if doc == nil || cs.node == base.NIL_HANDLE { return }
-	n := dom.get(doc, cs.node)
+shader_unavailable :: proc(doc: ^dom.Document, node: base.Handle) {
+	if doc == nil || node == base.NIL_HANDLE { return }
+	n := dom.get(doc, node)
 	if n == nil || n.parent == base.NIL_HANDLE { return }
 	if v, ok := dom.get_attribute(doc, n.parent, "data-shader"); ok && v == "off" { return }
 	dom.set_attribute(doc, n.parent, "data-shader", "off")

@@ -289,7 +289,7 @@ physical_property_name :: proc(cs: ^Computed, name: string) -> string {
 @(private)
 writing_mode_fixup :: proc(cx: ^Cx) {
 	c := cx.c
-	if c.text_combine_upright != .None && !is_vertical_mode(c.writing_mode) { c.text_combine_upright = .None }
+	if c.text_combine_upright != .None && !is_vertical_mode(c.writing_mode) { cx_own(cx, .Inherited); c.text_combine_upright = .None }
 	parent := cx.parent
 	if parent != nil && parent.writing_mode != c.writing_mode {
 		if c.display == .Inline { c.display = .Inline_Block }

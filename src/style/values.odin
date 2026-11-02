@@ -160,10 +160,12 @@ parse_color :: proc(cx: ^Cx, vs: []css.Value) -> (css.Color, bool) {
 ////////////////////////////////
 // Initial values and copying
 
-initial_computed :: proc(s: ^Settings) -> Computed {
+// The initial values; `inh` holds the inherited ones (they follow the preferences: one group per configuration).
+initial_computed :: proc(s: ^Settings, inh: ^Inherited_Group) -> Computed {
 	c: Computed
 	mem.zero_item(&c)   // padding bytes included: computed styles are compared as raw memory
-	groups_initial(&c)
+	mem.zero_item(inh)
+	groups_initial(&c, inh)
 	c.display = .Inline
 	c.z_auto = true
 	c.max_width = Length{kind = .None}
@@ -343,6 +345,7 @@ generic_family_adjust :: proc(cx: ^Cx) {
 	if p == nil { return }
 	mono := is_generic_monospace(c.font_family)
 	if mono == is_generic_monospace(p.font_family) { return }
+	cx_own(cx, .Inherited)   // (a family other than the parent's was declared: owned already)
 	src := c.font_size_src
 	if src.keyword >= 0 && int(src.keyword) < len(ABSOLUTE_SIZES) {
 		c.font_size = keyword_font_size(s, int(src.keyword), mono)
