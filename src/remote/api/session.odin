@@ -122,7 +122,10 @@ launch :: proc(o: Launch_Options, allocator := context.temp_allocator) -> (l: La
 	l.name = strings.clone(name, allocator)
 	l.profile = strings.clone(profile, allocator)
 	args := make([dynamic]string, context.temp_allocator)
-	append(&args, o.exe, fmt.tprintf("--remote=%s", name))
+	// (a full path: the system does not start "build/wren.exe", a relative path with forward slashes)
+	exe := o.exe
+	if full, err := filepath.abs(exe, context.temp_allocator); err == nil { exe = full }
+	append(&args, exe, fmt.tprintf("--remote=%s", name))
 	if profile != "" {
 		_ = os.make_directory_all(profile)
 		append(&args, "--profile", profile)
