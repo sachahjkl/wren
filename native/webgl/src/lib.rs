@@ -260,39 +260,16 @@ pub unsafe extern "C" fn wg_console(h: *const Handle, out: *mut u8, cap: usize) 
     })
 }
 
-// ---- for test programs: a program that never calls wg_test_enable_hooks has a child that takes the hooks for a broken stream ----
-
-/// Children started from now on accept the test hooks. Test programs only; no page can reach this.
-#[no_mangle]
-pub extern "C" fn wg_test_enable_hooks() {
-    BROWSER_GPU.enable_hooks();
-}
-
 /// The GPU process's id, 0 when there is none.
 #[no_mangle]
-pub extern "C" fn wg_test_process_id() -> u64 {
+pub extern "C" fn wg_process_id() -> u64 {
     BROWSER_GPU.current().map_or(0, |p| p.pid() as u64)
 }
 
 /// How many GPU processes this browser has started.
 #[no_mangle]
-pub extern "C" fn wg_test_process_starts() -> u64 {
+pub extern "C" fn wg_process_starts() -> u64 {
     BROWSER_GPU.starts()
-}
-
-/// Kills the GPU process from outside, as a crash would.
-#[no_mangle]
-pub extern "C" fn wg_test_kill_process() {
-    if let Some(p) = BROWSER_GPU.current() {
-        p.kill_for_test();
-    }
-}
-
-/// Asks the GPU process of this context to misbehave (ipc::test_kind).
-#[no_mangle]
-pub unsafe extern "C" fn wg_test_misbehave(h: *const Handle, kind: u32) -> i32 {
-    let Some(h) = h.as_ref() else { return 0 };
-    guard(0, || parent::test_hook(h, kind) as i32)
 }
 
 #[cfg(test)]
