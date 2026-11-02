@@ -543,6 +543,7 @@ media_error :: proc(el: ^Media_Element, code: i32, message: string) {
 	for pr in el.pending_play { promise_reject(p, pr, i64(Api_Error.Not_Supported), fmt.tprintf("NotSupportedError: %s", message)) }
 	clear(&el.pending_play)
 	el.paused = true
+	el.seeking = false   // (nothing will finish it)
 	log(p, .Warn, fmt.tprintf("media: %s (%s)", message, el.current_src))
 	queue_element_event(p, el.node, "error", media_error = true)
 }
