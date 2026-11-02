@@ -112,8 +112,8 @@ impl Settings {
             h3_broken: Duration::from_millis(c.h3_broken_ms as u64),
             http2: c.http2 != 0,
             http3: c.http3 != 0,
-            // (on loopback only, no proxy: it would be the way out)
-            proxy_system: c.proxy_system != 0 && c.loopback_only == 0,
+            // (on loopback only, a proxy is checked as any address: one on this machine is used, another is refused, named)
+            proxy_system: c.proxy_system != 0,
             loopback_only: c.loopback_only != 0,
             hosts: parse_hosts(&String::from_utf8_lossy(bytes(c.hosts, c.hosts_len))),
         }

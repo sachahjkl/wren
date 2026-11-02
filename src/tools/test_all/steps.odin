@@ -350,7 +350,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	web_step(&t, "images end-to-end test (events, srcset, picture, lazy, CSS images, cache, cancellation, 200 x 1 Mpx)", "images", {.Light})
 	wpt_args := join({exe("build/wpt"), "-timeout", fmt.aprint(WPT_TIMEOUT_MS * cfg.slow)}, cfg.quick ? strs("-quick") : nil)
 	append(&t, Step{name = "web-platform-tests (wpt\\suites.txt, pinned; -Quick: a sample; fails on a regression against wpt\\expectations)",
-		actions = slice_of(Task{"the runner", task_runner, cfg.quick ? "wpt quick" : "wpt"}, Command{argv = wpt_args}), weight = 50, needs = COMMON_NEEDS + {.Test_Server}, inputs = .Tree, limit = LONG_STEP_SECONDS})
+		actions = slice_of(Task{"the runner", task_runner, cfg.quick ? "wpt quick" : "wpt"}, Command{argv = wpt_args}), weight = 50, needs = COMMON_NEEDS + {.Test_Server, .Browser}, inputs = .Tree, limit = LONG_STEP_SECONDS})   // (.Browser: the runner links build/native, which the browser's build.bat makes; built before it, it had the old network stack)
 
 	if long_run {
 		append(&t, Step{name = "the names of a release's crash frames (src\\tools\\wrentool\\deps\\symbols_test.odin: the report of a build with no PDB gives its fingerprint and offsets, wrentool crash-symbolize names them from the map, or through the minidump)",
