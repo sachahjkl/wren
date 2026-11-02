@@ -242,6 +242,11 @@ event and keep their own session history.</li>
 <code>text-orientation</code>, and documents that scroll horizontally or start from the bottom.</li>
 <li><strong>A GPU process for WebGL</strong>, WebGL in workers and <code>transferControlToOffscreen</code>, WebGL 2 transform feedback and queries.</li>
 <li><strong><code>AudioWorklet</code></strong>, and <strong>P-521</strong> in <code>crypto.subtle</code>.</li>
+<li><strong>Pages that build large documents run about three times faster</strong>: identical styles shared, columns laid out on the
+layout threads, wrappers of plain nodes freed without the cost of a full collection (a page that rebuilds 10 000 nodes every frame,
+measured on one machine: about 28 -&gt; 85 frames a second).</li>
+<li><strong>An image opened by itself is a viewer</strong>: zoom around the pointer (Ctrl+wheel, pinch, + and -), drag to pan, R to
+turn it, a click between fitted and 100 %.</li>
 <li><strong>A browser at rest draws nothing</strong>: no frame and almost no wake on a page that changes nothing, and a caret that blinks
 redraws only its own pixels.</li>
 <li><strong>Faster and safer closing</strong>: no wait on the shutdown watchdog, the graphics device let go before the end, <code>wren ctl

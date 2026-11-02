@@ -1,3 +1,0 @@
-type: Fixed
-
-**No code of a test runs in the programs**: the adblock tests installed their stand-in for the public suffix list from an init procedure, which every program linking the package ran at its start, `wren.exe` included (the browser then put the real one back); the tests that need it install it themselves. A step of `test_all` fails on any `@(init)`, `@(fini)` or package-level initialiser that calls something in a `*_test.odin` of `src` or the toolkit.
