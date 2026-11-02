@@ -299,7 +299,7 @@ paint_box :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, v: ^lay.View,
 	boxes := bg_boxes(r, radii, widths, b.padding)
 	if len(cs.box_shadow) > 0 { paint_box_shadows(dc, cs, r, radii, boxes.padding, boxes.padding_radii, l.scale, false) }
 	if .No_Background not_in it.flags && it.box != canvas_source_box(l) {
-		if background_clips_text(cs) { paint_backgrounds_text(l, dc, v, it, &boxes, origin) } else { paint_backgrounds(dc, cs, &boxes, l.scale, d) }
+		if background_clips_text(cs) { paint_backgrounds_text(l, dc, v, it, &boxes, origin) } else { paint_backgrounds(dc, cs, &boxes, l.scale, d, b.node) }
 	}
 	if len(cs.box_shadow) > 0 { paint_box_shadows(dc, cs, r, radii, boxes.padding, boxes.padding_radii, l.scale, true) }
 	if widths == {} { return }

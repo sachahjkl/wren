@@ -3,7 +3,6 @@ package style
 import "base:runtime"
 import "core:mem"
 import "core:mem/virtual"
-import "core:slice"
 import "core:sync"
 import "wb:base"
 
@@ -99,11 +98,11 @@ props_init :: proc() {
 			}
 		}
 		for p, i in INHERITED_PROPS {
-			assert(prop_slots[p].group == .Main, "an inherited property in a group")
 			inherited_table[p] = true
 			ps_add(&inherited_set, p)
 			inherited_list[i] = p
 		}
+		for p in Prop { assert((prop_slots[p].group == .Inherited) == inherited_table[p], "an inherited property outside the inherited group, or the reverse") }
 		computed_fields = make([dynamic]Field_Info, base.permanent_allocator())
 		starts: [Group]int
 		for g in Group {
@@ -116,18 +115,18 @@ props_init :: proc() {
 			}
 		}
 		for g in Group { group_fields[g] = computed_fields[starts[g]:g == max(Group) ? len(computed_fields) : starts[Group(int(g) + 1)]] }
-		inherited_runs_build()
 		initial_groups_build()
 	})
 }
 
 // The largest group (the probe's room for each).
-@(private) GROUP_MAX_BYTES :: 512
+@(private) GROUP_MAX_BYTES :: 1024
 
 @(private)
 group_type :: proc(g: Group) -> ^runtime.Type_Info {
 	switch g {
 	case .Main: return type_info_of(Computed)
+	case .Inherited: return type_info_of(Inherited_Group)
 	case .Background: return type_info_of(Background_Group)
 	case .Transform: return type_info_of(Transform_Group)
 	case .Motion: return type_info_of(Motion_Group)
@@ -141,7 +140,7 @@ group_type :: proc(g: Group) -> ^runtime.Type_Info {
 @(private)
 group_size :: #force_inline proc(g: Group) -> int { return group_type(g).size }
 
-#assert(size_of(Background_Group) <= GROUP_MAX_BYTES && size_of(Transform_Group) <= GROUP_MAX_BYTES && size_of(Motion_Group) <= GROUP_MAX_BYTES &&
+#assert(size_of(Inherited_Group) <= GROUP_MAX_BYTES && size_of(Background_Group) <= GROUP_MAX_BYTES && size_of(Transform_Group) <= GROUP_MAX_BYTES && size_of(Motion_Group) <= GROUP_MAX_BYTES &&
 	size_of(Grid_Group) <= GROUP_MAX_BYTES && size_of(Mask_Group) <= GROUP_MAX_BYTES && size_of(Rare_Group) <= GROUP_MAX_BYTES)
 
 // The pointer to group `g` in `c` (not Main).
@@ -149,6 +148,7 @@ group_size :: #force_inline proc(g: Group) -> int { return group_type(g).size }
 group_slot :: #force_inline proc "contextless" (c: ^Computed, g: Group) -> ^rawptr {
 	switch g {
 	case .Main:
+	case .Inherited: return (^rawptr)(&c.inherited_group)
 	case .Background: return (^rawptr)(&c.background_group)
 	case .Transform: return (^rawptr)(&c.transform_group)
 	case .Motion: return (^rawptr)(&c.motion_group)
@@ -171,41 +171,49 @@ group_take :: proc(c: ^Computed, g: Group, alloc: runtime.Allocator) {
 	if g == .Main { return }
 	slot := group_slot(c, g)
 	ti := group_type(g)
-	data, _ := mem.alloc(ti.size, ti.align, alloc)
-	if slot^ != nil { mem.copy(data, slot^, ti.size) }
-	slot^ = data
+	if slot^ == nil { slot^, _ = mem.alloc(ti.size, ti.align, alloc); return }
+	data, _ := mem.alloc_bytes_non_zeroed(ti.size, ti.align, alloc)   // (overwritten whole)
+	mem.copy(raw_data(data), slot^, ti.size)
+	slot^ = raw_data(data)
 }
 
 // `c` may write property `p` (group_take of its group).
 prop_take :: #force_inline proc(c: ^Computed, p: Prop, alloc: runtime.Allocator) { group_take(c, prop_slots[p].group, alloc) }
 
-// The cascade's element owns group `g` of the style it builds: copied from what it shared on the first write.
+// The cascade's element owns the group of property `p` of the style it builds: copied from what it shared on the first write.
 @(private)
-cx_take :: #force_inline proc(cx: ^Cx, p: Prop) {
-	g := prop_slots[p].group
+cx_take :: #force_inline proc(cx: ^Cx, p: Prop) { cx_own(cx, prop_slots[p].group) }
+
+// ... group `g`.
+@(private)
+cx_own :: #force_inline proc(cx: ^Cx, g: Group) {
 	if g == .Main || g in cx.owned { return }
 	group_take(cx.c, g, cx.alloc)
 	cx.owned += {g}
 }
 
-// copy_prop into the style the cascade builds.
+// copy_prop into the style the cascade builds (nothing to do while it shares the very group of `src`: an inherited value
+// taken from a parent whose group it shares).
 @(private)
 cx_copy_prop :: proc(cx: ^Cx, src: ^Computed, p: Prop) {
+	g := prop_slots[p].group
+	if g != .Main && group_base(cx.c, g) == group_base(src, g) { return }
 	cx_take(cx, p)
 	copy_prop(cx.c, src, p)
 }
 
-// The groups of the initial values, once (props_init): read-only from then on.
+// The groups of the initial values, once (props_init): read-only from then on. Not the inherited one, whose initial
+// values follow the preferences (initial_computed).
 @(private)
 initial_groups_build :: proc() {
 	total := 0
-	for g in Group { if g != .Main { total += mem.align_forward_int(group_size(g), GROUP_ALIGN) } }
+	for g in Group { if g != .Main && g != .Inherited { total += mem.align_forward_int(group_size(g), GROUP_ALIGN) } }
 	block, err := virtual.reserve_and_commit(uint(total))
 	assert(err == nil, "no memory for the initial values")
 	probe: Computed
 	at := 0
 	for g in Group {
-		if g == .Main { continue }
+		if g == .Main || g == .Inherited { continue }
 		initial_groups[g] = &block[at]
 		group_slot(&probe, g)^ = initial_groups[g]
 		at += mem.align_forward_int(group_size(g), GROUP_ALIGN)
@@ -217,60 +225,20 @@ initial_groups_build :: proc() {
 
 @(private) GROUP_ALIGN :: 16
 
-// A style whose groups are those of the initial values.
+// A style whose groups are those of the initial values (the inherited one aside: `inh`, filled by the caller).
 @(private)
-groups_initial :: proc(c: ^Computed) {
+groups_initial :: proc(c: ^Computed, inh: ^Inherited_Group) {
 	props_init()
-	for g in Group { if g != .Main { group_slot(c, g)^ = initial_groups[g] } }
+	for g in Group { if g != .Main && g != .Inherited { group_slot(c, g)^ = initial_groups[g] } }
+	c.inherited_group = inh
 }
 
 // The properties that are not inherited take their initial values (an anonymous box's style): `initial`'s groups,
-// and its values of the others.
+// and its values of the others; `dst` keeps its inherited group.
 reset_noninherited :: proc(dst, initial: ^Computed) {
 	props_init()
-	for g in Group { if g != .Main { group_slot(dst, g)^ = group_slot(initial, g)^ } }
-	for p in Prop {
-		if prop_slots[p].group == .Main && !inherited_table[p] { copy_prop(dst, initial, p) }
-	}
-}
-
-// The bytes of the inherited properties in a Computed as runs: the slots in offset order, two joined when only padding
-// lies between them. Inheriting is then a copy per run, not per property (a third of the copies of an element's style).
-@(private) inherited_runs: [dynamic]Byte_Run
-@(private) Byte_Run :: struct { off: uintptr, size: int }
-
-@(private)
-inherited_runs_build :: proc() {
-	runs := make([dynamic]Byte_Run, context.temp_allocator)
-	for p in inherited_list {
-		sl := &prop_slots[p]
-		for k in 0 ..< 2 { if sl.size[k] > 0 { append(&runs, Byte_Run{sl.off[k], sl.size[k]}) } }
-	}
-	slice.sort_by(runs[:], proc(a, b: Byte_Run) -> bool { return a.off < b.off })
-	// a byte belongs to a field unless it is padding: what lies between two runs may be joined only when no field is there
-	field_at :: proc(lo, hi: uintptr) -> bool {
-		st := runtime.type_info_base(type_info_of(Computed)).variant.(runtime.Type_Info_Struct)   // (the group pointers included)
-		for i in 0 ..< int(st.field_count) { if st.offsets[i] < hi && st.offsets[i] + uintptr(st.types[i].size) > lo { return true } }
-		return false
-	}
-	inherited_runs = make([dynamic]Byte_Run, base.permanent_allocator())
-	for r in runs {
-		if n := len(inherited_runs); n > 0 {
-			last := &inherited_runs[n - 1]
-			end := last.off + uintptr(last.size)
-			if r.off <= end || !field_at(end, r.off) {
-				last.size = max(int(r.off + uintptr(r.size) - last.off), last.size)
-				continue
-			}
-		}
-		append(&inherited_runs, r)
-	}
-}
-
-// What a child inherits from `parent`: every inherited property (copy_prop for each, by runs of bytes).
-@(private)
-inherit_all :: #force_inline proc(dst, parent: ^Computed) {
-	for r in inherited_runs { mem.copy(rawptr(uintptr(dst) + r.off), rawptr(uintptr(parent) + r.off), r.size) }
+	for g in Group { if g != .Main && g != .Inherited { group_slot(dst, g)^ = group_slot(initial, g)^ } }
+	for p in Prop { if prop_slots[p].group == .Main { copy_prop(dst, initial, p) } }
 }
 
 is_inherited :: #force_inline proc(p: Prop) -> bool { return inherited_table[p] }

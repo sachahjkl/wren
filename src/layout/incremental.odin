@@ -575,9 +575,7 @@ remap_styles :: proc(c: ^Ctx) -> bool {
 			if b.parent == NONE { continue }
 			p := &l.boxes[b.parent]
 			if changed[b.parent] || .Dirty in p.inc {
-				ncs := anon_style(c, p.cs, b.cs.display)
-				if b.kind == .Table { ncs.border_spacing = p.cs.border_spacing }
-				b.cs = ncs
+				b.cs = anon_style(c, p.cs, b.cs.display)
 			}
 		} else {
 			el := style.style_of(st, b.node)
@@ -622,9 +620,7 @@ remap_journaled :: proc(c: ^Ctx, changes: []style.Journal_Entry) -> bool {
 			k := &l.boxes[ch]
 			if .Dead in k.flags || .Anonymous not_in k.flags || k.cs == nil { continue }
 			p := &l.boxes[x]
-			ncs := anon_style(c, p.cs, k.cs.display)
-			if k.kind == .Table { ncs.border_spacing = p.cs.border_spacing }
-			l.boxes[ch].cs = ncs
+			l.boxes[ch].cs = anon_style(c, p.cs, k.cs.display)
 			if .Ifc in l.boxes[ch].flags { append(ifcs, ch) }
 			anon_below(c, ch, ifcs)
 		}

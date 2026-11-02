@@ -1003,7 +1003,7 @@ apply_overlays :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled) -> (layout
 			transition_value(tr, tl.now, &ov.c, &ctx)
 			ps_add(&animated, tr.prop)
 		}
-		derive_fields(&ov.c)
+		derive_fields(&ov.c, ctx.alloc)
 		props = ps_union(props, animated)
 		push := ps_intersect(animated, inherited_set)
 		if !ps_empty(push) {
@@ -1048,8 +1048,9 @@ pseudo_inherit :: proc(c: ^Computed, set: Prop_Set, alloc: runtime.Allocator) {
 		if ps_empty(take) { continue }
 		cp := new(Computed, alloc)
 		cp^ = pc^
+		group_take(cp, .Inherited, alloc)   // (shared with its element's cascaded style)
 		for p in Prop { if ps_has(take, p) { copy_prop(cp, c, p) } }
-		derive_fields(cp)
+		derive_fields(cp, alloc)
 		slot^ = cp
 	}
 }
@@ -1071,9 +1072,11 @@ push_inherited :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, h: base.Ha
 		take := ps_intersect(it.set, cb.inherits)
 		if ps_empty(take) { continue }
 		ov := overlay_for(tl, s, it.h)
+		oa := virtual.arena_allocator(&ov.arena)
+		group_take(&ov.c, .Inherited, oa)   // (shared with its cascaded style, or with the parent's)
 		for p in Prop { if ps_has(take, p) { copy_prop(&ov.c, it.src, p) } }
-		derive_fields(&ov.c)
-		pseudo_inherit(&ov.c, take, virtual.arena_allocator(&ov.arena))
+		derive_fields(&ov.c, oa)
+		pseudo_inherit(&ov.c, take, oa)
 		for ch := cn.last_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).prev { append(&stack, Item{ch, &ov.c, take}) }
 	}
 }

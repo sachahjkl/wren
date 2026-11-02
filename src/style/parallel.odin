@@ -42,7 +42,7 @@ Par_Job :: struct {
 
 @(private)
 style_document_parallel :: proc(e: ^Engine, s: ^Styled, doc: ^dom.Document, state: State, pool: ^host.Thread_Pool) {
-	resize(&s.by_node, int(doc.nodes.used))
+	styled_size(s, int(doc.nodes.used))
 	main := pass_make(e, s, doc, state)
 	defer pass_destroy(main)
 
@@ -101,7 +101,7 @@ style_document_parallel :: proc(e: ^Engine, s: ^Styled, doc: ^dom.Document, stat
 		p := pass_make(j.e, j.s, j.doc, j.state)
 		arena := j.arenas[i]
 		thread_arena_begin(arena)
-		p.alloc = virtual.arena_allocator(arena)
+		p.alloc = style_arena_allocator(arena)
 		r := j.ranges[i]
 		for f in j.frames[r[0]:r[1]] { style_subtree(p, f.h, f.parent, f.bloom, root_ctx = f.ctx) }
 		j.passes[i] = p
@@ -163,7 +163,7 @@ thread_arena_take :: proc(e: ^Engine) -> ^virtual.Arena {
 }
 
 // Keeps `a` for a later pass while the spares hold no more than style.recycle_bytes; frees it otherwise. It is emptied
-// (its used part zeroed) by the style thread that takes it next: thread_arena_begin.
+// by the style thread that takes it next: thread_arena_begin.
 @(private)
 thread_arena_give :: proc(e: ^Engine, a: ^virtual.Arena) {
 	if e == nil || a.curr_block == nil || a.curr_block.prev != nil || e.spare_arena_bytes + int(a.curr_block.committed) > e.settings.recycle_bytes { thread_arena_free(a); return }
@@ -171,10 +171,9 @@ thread_arena_give :: proc(e: ^Engine, a: ^virtual.Arena) {
 	append(&e.spare_arenas, a)
 }
 
-// On the style thread, before its task: what the arena held in an earlier pass goes (the zeroing shared out between the
-// threads, not on the caller's).
+// On the style thread, before its task: what the arena held in an earlier pass goes (not zeroed: style_arena_allocator).
 @(private)
-thread_arena_begin :: proc(a: ^virtual.Arena) { if a.total_used > 0 { virtual.arena_free_all(a) } }
+thread_arena_begin :: proc(a: ^virtual.Arena) { style_arena_empty(a) }
 
 @(private)
 thread_arena_free :: proc(a: ^virtual.Arena) {

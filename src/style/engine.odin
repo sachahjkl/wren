@@ -147,6 +147,7 @@ Engine :: struct {
 	journal_max:     int,              // > 0: passes keep a layout journal of at most this many entries (journal.odin)
 	last_restyle:    Restyle_Stats,    // diagnostics of the last restyle_dom
 	probe_base:      ^Computed,        // initial values for validating declarations (compile_declarations), made once per configuration
+	probe_inherited: ^Inherited_Group, // ... its inherited ones
 	compile_scratch: virtual.Arena,    // what validating declarations needs only while it runs (compile_declarations, owner thread)
 }
 
@@ -187,6 +188,7 @@ clone_settings :: proc(s: Settings) -> Settings {
 
 engine_destroy :: proc(e: ^Engine) {
 	free(e.probe_base, base.process_allocator())
+	free(e.probe_inherited, base.process_allocator())
 	for s in e.sheets { sheet_free(s) }
 	delete(e.sheets)
 	delete(e.forced_hidden)
@@ -241,7 +243,8 @@ engine_configure :: proc(e: ^Engine, settings: Settings) -> (changed: bool) {
 	settings_destroy(&e.settings)
 	e.settings = clone_settings(settings)
 	free(e.probe_base, base.process_allocator())
-	e.probe_base = nil
+	free(e.probe_inherited, base.process_allocator())
+	e.probe_base, e.probe_inherited = nil, nil
 	engine_reset_builtin_sheets(e)
 	e.dirty = true
 	return true
@@ -1088,7 +1091,8 @@ probe_context :: proc(e: ^Engine, a: runtime.Allocator) -> Cx {
 		// on the heap whoever calls (the caller's allocator may be a temporary one); kept until the next configuration
 		context.allocator = base.process_allocator()
 		e.probe_base = new(Computed)
-		e.probe_base^ = initial_computed(&e.settings)
+		e.probe_inherited = new(Inherited_Group)
+		e.probe_base^ = initial_computed(&e.settings, e.probe_inherited)
 	}
 	c := new(Computed, a)
 	c^ = e.probe_base^

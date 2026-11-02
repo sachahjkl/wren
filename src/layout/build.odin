@@ -450,8 +450,7 @@ anon_table_chain :: proc(c: ^Ctx, f: Frame, want: style.Display) -> Frame {
 		t := p.cur_anon
 		if t == NONE || c.l.boxes[t].kind != .Table {
 			inline := f.mode == .Inline
-			cs := anon_style(c, p.cs, inline ? .Inline_Table : .Table)
-			cs.border_spacing = p.cs.border_spacing
+			cs := anon_style(c, p.cs, inline ? .Inline_Table : .Table)   // (border-spacing inherited with the rest)
 			t = new_box(c, .Table, cs, base.NIL_HANDLE, f.parent, p.depth + 1)
 			c.l.boxes[t].flags += {.Anonymous, .Bfc}
 			if inline {

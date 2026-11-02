@@ -348,7 +348,6 @@ style/props.odin props_once const  # a table built once
 style/props.odin inherited_table const  # ... the table
 style/props.odin inherited_set const  # ... the table
 style/props.odin inherited_list const  # ... the table
-style/props.odin inherited_runs const  # ... the table (byte runs of the inherited properties, built once)
 style/props.odin computed_fields const  # ... the table
 style/props.odin prop_slots const  # ... the table
 style/props.odin group_fields const  # ... the table (the fields of each group of a computed style)

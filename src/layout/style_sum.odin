@@ -36,7 +36,7 @@ Style_Sum :: struct {
 
 @(private)
 style_sum_of :: proc(cs: ^style.Computed) -> (s: Style_Sum) {
-	s.node, s.display, s.position, s.float, s.visibility, s.deco = cs.node, cs.display, cs.position, cs.float, cs.visibility, cs.text_decoration
+	s.display, s.position, s.float, s.visibility, s.deco = cs.display, cs.position, cs.float, cs.visibility, cs.text_decoration
 	switch cs.position {
 	case .Static:
 	case .Relative: s.flags += {.Positioned, .Relative}
@@ -106,7 +106,8 @@ style_sums :: proc(c: ^Ctx) {
 			}
 			if cs := sp.st.by_node[i]; cs != nil {
 				sp.sums[i] = style_sum_of(cs)
-				if ps := style.style_of(sp.st, up(sp.c, cs.node)); ps != nil && font_key_of(ps, true) == font_key_of(cs, true) { sp.sums[i].bits += {.Parent_Font} }
+				sp.sums[i].node = sp.st.nodes[i]
+				if ps := style.style_of(sp.st, up(sp.c, sp.st.nodes[i])); ps != nil && font_key_of(ps, true) == font_key_of(cs, true) { sp.sums[i].bits += {.Parent_Font} }
 			} else {
 				sp.sums[i] = {}
 			}

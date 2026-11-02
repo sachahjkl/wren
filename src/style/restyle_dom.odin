@@ -1,6 +1,5 @@
 package style
 
-import "base:runtime"
 import "core:fmt"
 import "core:mem"
 import "core:mem/virtual"
@@ -953,6 +952,36 @@ trace_marks :: proc(m: ^Marker, work: int, entries: []dom.Journal_Entry) {
 		fmt.eprintfln("    %d elements under <%s id=%q class=%q>", r.size, n.name, id, cls[:min(len(cls), 60)])
 	}
 }
+// The elements of the inserted subtrees of `entries` that are in the document are more than `limit`. Each is marked
+// whole (mark_mutations), so `estimate` finds at least as many: the answer is the one the marking would give. (The
+// tree, not the flat tree: documents without shadow trees.)
+@(private = "file")
+inserted_exceed :: proc(doc: ^dom.Document, entries: []dom.Journal_Entry, limit: f64) -> bool {
+	fresh: map[base.Handle]struct{}
+	for &en in entries {
+		if en.kind != .Insert { continue }
+		if fresh == nil { fresh = make(map[base.Handle]struct{}, 16, context.temp_allocator) }
+		fresh[en.node] = {}
+	}
+	if fresh == nil { return false }
+	n := 0
+	stack := make([dynamic]base.Handle, 0, 32, context.temp_allocator)
+	for h in fresh {
+		if !is_element_node(doc, h) || !connected(doc, h) { continue }
+		covered := false   // inside another inserted subtree: counted with it
+		for p := dom.get(doc, h).parent; p != base.NIL_HANDLE; p = dom.get(doc, p).parent { if p in fresh { covered = true; break } }
+		if covered { continue }
+		append(&stack, h)
+		for len(stack) > 0 {
+			x := pop(&stack)
+			n += 1
+			if f64(n) > limit { return true }
+			for ch := dom.get(doc, x).first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next { if is_element_node(doc, ch) { append(&stack, ch) } }
+		}
+	}
+	return false
+}
+
 // Elements marked, counting whole subtrees (the work a restyle will do at least).
 @(private = "file")
 estimate :: proc(m: ^Marker) -> int {
@@ -986,9 +1015,7 @@ estimate :: proc(m: ^Marker) -> int {
 @(private = "file")
 settle :: proc(w: ^Walker, h: base.Handle, c: ^Computed) -> (cur: ^Computed, changed: bool, old_base: ^Computed) {
 	s := w.s
-	idx := int(base.handle_index(h))
-	old := idx < len(s.by_node) ? s.by_node[idx] : nil
-	if old != nil && old.node != h { old = nil }
+	old := style_of(s, h)
 	old_base = old
 	if old != nil && len(s.overlaid) > 0 { if b, ok := s.overlaid[h]; ok { old_base = b } }
 	if !counters_carry_over(s, w.doc, h, old_base, c, w.p.alloc, w.task) { w.rewalk = true }
@@ -1001,27 +1028,30 @@ settle :: proc(w: ^Walker, h: base.Handle, c: ^Computed) -> (cur: ^Computed, cha
 	w.changed += 1
 	if w.task {
 		append(&w.results, Result{h = h, old = old, new = c, level = level, shown = shown})
-		s.by_node[idx] = c   // this slot is written by this thread only; the rest is applied afterwards
+		styled_put(s, h, c)   // this slot is written by this thread only (the arrays sized beforehand); the rest is applied afterwards
 		return c, true, old_base
 	}
-	for len(s.by_node) <= idx { append(&s.by_node, nil) }
 	if s.track_changes { append(&s.changes, Style_Change{node = h, old = old, new = c}) }
 	journal_add(s, h, level)
 	delete_key(&s.overlaid, h)
-	s.by_node[idx] = c
+	styled_put(s, h, c)
 	if shown { append(&s.shown, h) }
 	return c, true, old_base
 }
 
 // Computes the style of one element and settles it. A style equal to the one in force is dropped with all it
-// allocated (nothing else points into that memory): restyles that change nothing leave nothing behind.
+// allocated (the share table, if it took it, gets the equal record in force instead): restyles that change nothing
+// leave nothing behind.
 @(private = "file")
 restyle_one :: proc(w: ^Walker, f: ^Frame, n: ^dom.Node) -> (cur: ^Computed, changed: bool, old_base: ^Computed) {
 	w.marked += 1
 	tmp := virtual.arena_temp_begin(w.arena)
-	c := compute_element(w.p, f.h, n, f.parent, &f.bloom, f.ctx)
+	made := w.p.share.count
+	c, _ := compute_element(w.p, f.h, n, f.parent, &f.bloom, f.ctx)
 	cur, changed, old_base = settle(w, f.h, c)
-	if changed { virtual.arena_temp_ignore(tmp) } else { virtual.arena_temp_end(tmp) }
+	if changed { virtual.arena_temp_ignore(tmp); return }
+	if w.p.share.count != made { share_replace_last(&w.p.share, cur) }
+	virtual.arena_temp_end(tmp)
 	return
 }
 
@@ -1121,7 +1151,7 @@ run_deferred :: proc(w: ^Walker, pool: ^host.Thread_Pool) {
 	append(&frontier, ..alone[:])
 	if len(frontier) == 0 { return }
 	// every slot a thread may write exists beforehand: the array does not move while they run
-	if len(s.by_node) < int(doc.nodes.used) { resize(&s.by_node, int(doc.nodes.used)) }
+	styled_size(s, int(doc.nodes.used))
 	count := min(len(frontier), threads * 4)
 	job := Par_Tasks{tasks = make([]Par_Task, count, context.temp_allocator)}
 	for i in 0 ..< count {
@@ -1135,7 +1165,7 @@ run_deferred :: proc(w: ^Walker, pool: ^host.Thread_Pool) {
 		t := &job.tasks[i]
 		thread_arena_begin(t.arena)
 		t.w.p = pass_make(t.w.e, t.w.s, t.w.doc, t.w.s.state)
-		t.w.p.alloc = virtual.arena_allocator(t.arena)
+		t.w.p.alloc = style_arena_allocator(t.arena)
 		t.w.arena = t.arena
 		t.w.results = make([dynamic]Result)
 		walk(&t.w, t.frames)
@@ -1179,6 +1209,10 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 	if int(s.arena.total_used) - int(s.base_used) + s.partial_bytes > e.settings.restyle_waste_bytes { return fail(e, "memory left by partial restyles") }
 	ix := inv_index(e)
 	if ix.give_up { return fail(e, "selectors nested too deep") }
+	// what was inserted alone is more than a partial restyle may take: a full pass, without the marking that would find it
+	// out (on a page that rebuilds a list of 2 500 items every frame, the marking cost twice the full pass)
+	limit := f64(e.settings.inc_max_ratio) * f64(max(doc.nodes.count, 1))
+	if !shadows && !trace_restyle() && inserted_exceed(doc, entries, limit) { return fail(e, "too much changed") }
 	exact := false   // the members of the exact :has() anchors are of the document before these mutations (watch_sync was made by a pass that came before)
 	if !shadows && ix.uses_has { exact = !watch_sync(ix, doc) }
 
@@ -1208,7 +1242,7 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 	mark_mutations(&m, entries)
 	if m.fail != "" { return fail(e, m.fail) }
 	work := estimate(&m)
-	if f64(work) > f64(e.settings.inc_max_ratio) * f64(max(doc.nodes.count, 1)) {
+	if f64(work) > limit {
 		if trace_restyle() { trace_marks(&m, work, entries) }
 		return fail(e, "too much changed")
 	}
@@ -1224,11 +1258,7 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 			x := pop(&stack)
 			n := dom.get(doc, x)
 			if n == nil || n.kind != .Element { continue }
-			idx := int(base.handle_index(x))
-			if idx < len(s.by_node) && s.by_node[idx] != nil && s.by_node[idx].node == x {
-				s.by_node[idx] = nil
-				delete_key(&s.overlaid, x)
-			}
+			if styled_drop(s, x) { delete_key(&s.overlaid, x) }
 			for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next { append(&stack, ch) }
 			if n.shadow != base.NIL_HANDLE { append(&stack, n.shadow) }
 		}
@@ -1257,9 +1287,7 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 			n := dom.get(doc, x)
 			if n == nil { continue }
 			if n.kind == .Element {
-				idx := int(base.handle_index(x))
-				if idx < len(s.by_node) && s.by_node[idx] != nil && s.by_node[idx].node == x {
-					s.by_node[idx] = nil
+				if styled_drop(s, x) {
 					delete_key(&s.overlaid, x)
 					w.changed += 1
 					w.layout_changed = true
@@ -1374,20 +1402,10 @@ counters_refresh :: proc(s: ^Styled, doc: ^dom.Document, max_listed: int) -> boo
 		if c.before != nil { c.before.content.items = sv.items[1] }
 		if c.after != nil { c.after.content.items = sv.items[2] }
 	}
-	items_equal :: proc(a, b: []Content_Item) -> bool {
-		if len(a) != len(b) { return false }
-		for i in 0 ..< len(a) { if a[i].kind != b[i].kind || a[i].text != b[i].text { return false } }
-		return true
-	}
-	clone_items :: proc(x: []Content_Item, alloc: runtime.Allocator) -> []Content_Item {
-		out := make([]Content_Item, len(x), alloc)
-		for it, i in x { out[i] = it; out[i].text = strings.clone(it.text, alloc) }
-		return out
-	}
 	// the record of `h` with the resolved values `now` (a copy when they differ from what it has)
 	apply_values :: proc(s: ^Styled, h: base.Handle, c: ^Computed, sv, now: Saved) -> bool {
 		same := sv.marker == now.marker
-		for k in 0 ..< 3 { if !items_equal(sv.items[k], now.items[k]) { same = false } }
+		for k in 0 ..< 3 { if !content_items_equal(sv.items[k], now.items[k]) { same = false } }
 		if same { return false }
 		a := s.alloc
 		nc := new(Computed, a)
@@ -1396,12 +1414,11 @@ counters_refresh :: proc(s: ^Styled, doc: ^dom.Document, max_listed: int) -> boo
 		nc.content.items = clone_items(now.items[0], a)
 		if c.before != nil { nb := new(Computed, a); nb^ = c.before^; nb.content.items = clone_items(now.items[1], a); nc.before = nb }
 		if c.after != nil { na := new(Computed, a); na^ = c.after^; na.content.items = clone_items(now.items[2], a); nc.after = na }
-		idx := int(base.handle_index(h))
-		old := s.by_node[idx]
+		old := s.by_node[int(base.handle_index(h))]
 		if s.track_changes { append(&s.changes, Style_Change{node = h, old = old, new = nc}) }
 		journal_add(s, h, .Box)
 		delete_key(&s.overlaid, h)
-		s.by_node[idx] = nc
+		styled_put(s, h, nc)
 		return true
 	}
 	counters := counter_state_make(max_listed)

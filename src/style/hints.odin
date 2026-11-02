@@ -28,19 +28,20 @@ LEGACY_FONT_SIZE_DIGITS_MAX :: 100
 @(private)
 hint_complex: css.Complex
 
-// Appends to `p.lists[0]` the entry holding the presentational hints of element `n`, if it has some.
+// Appends to `p.lists[0]` the entry holding the presentational hints of element `n`, if it has some (true).
 @(private)
-add_hint_entry :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node) {
-	if !p.e.settings.presentational_hints || !p.e.settings.author_stylesheets { return }
+add_hint_entry :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node) -> bool {
+	if !p.e.settings.presentational_hints || !p.e.settings.author_stylesheets { return false }
 	text := hint_text(p.mc.doc, h, n, p.e.settings.quirks_rules)
-	if text == "" { return }
+	if text == "" { return false }
 	decls := css.parse_declarations(text, p.opt, context.temp_allocator)
 	pre, customs := compile_declarations(p.e, decls, p.alloc, &p.stats, &p.scratch)
-	if len(pre) == 0 { return }
+	if len(pre) == 0 { return false }
 	own_custom_names(customs, p.alloc)
 	r := new(Rule, context.temp_allocator)
 	r^ = Rule{decls = pre, customs = customs, origin = .Author, layer = 0, order = 0, hint = true}
 	append(&p.lists[0], Entry{rule = r, complex = &hint_complex, ctx = p.own_depth})
+	return true
 }
 
 // Attributes that are presentational hints of some element; `subtree`: a change to it on this element also changes the

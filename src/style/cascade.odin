@@ -76,6 +76,7 @@ Styled :: struct {
 	arena:          virtual.Arena,
 	alloc:          runtime.Allocator,
 	by_node:        [dynamic]^Computed,
+	nodes:          [dynamic]base.Handle,   // whose style by_node[i] is (a record may be shared; a recycled index holds another node's)
 	initial:        ^Computed,
 	root_font_size: f32,
 	root_line_height: f32,   // px: what rlh means
@@ -137,6 +138,7 @@ styled_bytes :: proc(s: ^Styled) -> int {
 styled_destroy :: proc(s: ^Styled) {
 	if s == nil { return }
 	delete(s.by_node)
+	delete(s.nodes)
 	for a in s.thread_arenas { thread_arena_free(a) }
 	delete(s.thread_arenas)
 	delete(s.overlaid)
@@ -154,6 +156,45 @@ styled_destroy :: proc(s: ^Styled) {
 @(private)
 STYLED_RESERVE :: uint(1) << 33
 
+// The arenas of computed styles (the Styled's, the style threads') are emptied without being zeroed (style_arena_empty):
+// what is allocated from them is zeroed when it is handed out (style_arena_proc), except computed styles and their
+// groups, which the cascade overwrites whole (record_new, group_take). A virtual arena zeroes what it held when it is
+// emptied, so that every allocation finds zeroed memory: for computed styles that was zeroing them twice.
+style_arena_allocator :: proc(a: ^virtual.Arena) -> runtime.Allocator { return {procedure = style_arena_proc, data = a} }
+
+@(private)
+style_arena_proc :: proc(data: rawptr, mode: runtime.Allocator_Mode, size, alignment: int, old_memory: rawptr, old_size: int, loc := #caller_location) -> ([]byte, runtime.Allocator_Error) {
+	#partial switch mode {
+	case .Alloc:
+		b, err := virtual.arena_allocator_proc(data, .Alloc_Non_Zeroed, size, alignment, nil, 0, loc)
+		if err == nil { mem.zero_slice(b) }
+		return b, err
+	case .Resize:
+		b, err := virtual.arena_allocator_proc(data, .Resize_Non_Zeroed, size, alignment, old_memory, old_size, loc)
+		if err == nil && len(b) > old_size { mem.zero_slice(b[old_size:]) }
+		return b, err
+	case .Free_All:
+		style_arena_empty((^virtual.Arena)(data))
+		return nil, nil
+	}
+	return virtual.arena_allocator_proc(data, mode, size, alignment, old_memory, old_size, loc)
+}
+
+// Empties a style arena, keeping its pages and what they hold (see style_arena_allocator).
+style_arena_empty :: proc(a: ^virtual.Arena) {
+	if a.curr_block == nil || a.total_used == 0 { return }
+	if a.curr_block.prev != nil { virtual.arena_free_all(a); return }   // (blocks past the first: one reserved block, never)
+	a.curr_block.used = 0
+	a.total_used = 0
+}
+
+// A computed style that the caller overwrites whole: not zeroed first.
+@(private)
+record_new :: #force_inline proc(a: runtime.Allocator) -> ^Computed {
+	b, _ := mem.alloc_bytes_non_zeroed(size_of(Computed), align_of(Computed), a)
+	return (^Computed)(raw_data(b))
+}
+
 // Like styled_destroy, but the memory is kept for the next full pass of `e` when it is not too large
 // (style.recycle_bytes): a new pass then writes into pages already mapped instead of faulting fresh ones in.
 styled_recycle :: proc(e: ^Engine, s: ^Styled) {
@@ -168,6 +209,7 @@ styled_recycle :: proc(e: ^Engine, s: ^Styled) {
 		return
 	}
 	delete(s.by_node)
+	delete(s.nodes)
 	delete(s.overlaid)
 	delete(s.changes)
 	delete(s.shown)
@@ -175,7 +217,7 @@ styled_recycle :: proc(e: ^Engine, s: ^Styled) {
 	inline_cache_destroy(s)
 	journal_destroy(s)
 	delete(s.thread_arenas)
-	virtual.arena_free_all(&s.arena)
+	style_arena_empty(&s.arena)
 	e.spare = s.arena
 	e.has_spare = true
 	free(s)
@@ -199,9 +241,32 @@ style_of :: proc(s: ^Styled, h: base.Handle) -> ^Computed {
 	if s == nil { return nil }
 	i := int(base.handle_index(h))
 	if i < 0 || i >= len(s.by_node) { return nil }
-	c := s.by_node[i]
-	if c != nil && c.node != h { return nil }   // a recycled slot
-	return c
+	if s.nodes[i] != h { return nil }   // a recycled slot
+	return s.by_node[i]
+}
+
+// The slot of `h` holds `c` (the arrays grow to it; a parallel pass sizes them beforehand: styled_size).
+styled_put :: proc(s: ^Styled, h: base.Handle, c: ^Computed) {
+	idx := int(base.handle_index(h))
+	if idx >= len(s.by_node) { styled_size(s, idx + 1) }
+	s.by_node[idx] = c
+	s.nodes[idx] = h
+}
+
+// Room for `n` slots (never shrinks).
+styled_size :: proc(s: ^Styled, n: int) {
+	if n <= len(s.by_node) { return }
+	if n > cap(s.by_node) { reserve(&s.by_node, max(n, 2 * cap(s.by_node))); reserve(&s.nodes, max(n, 2 * cap(s.nodes))) }
+	resize(&s.by_node, n)
+	resize(&s.nodes, n)
+}
+
+// Empties the slot of `h` when it holds `h`'s style; returns whether it did.
+styled_drop :: proc(s: ^Styled, h: base.Handle) -> bool {
+	idx := int(base.handle_index(h))
+	if idx >= len(s.by_node) || s.by_node[idx] == nil || s.nodes[idx] != h { return false }
+	s.by_node[idx] = nil
+	return true
 }
 
 ////////////////////////////////
@@ -375,6 +440,7 @@ Pass :: struct {
 	fs_chain:  map[base.Handle]struct{},   // the ancestors of the fullscreen element (host-including), when there is one
 	made_with: runtime.Allocator,          // what allocated the Pass: a style thread's (the process heap), freed by the caller
 	image_records: int,                    // records made with background, mask or cursor images (added to Styled.image_records)
+	share:     Share_Table,                // the styles this pass made that elements with the same inputs share (share.odin)
 }
 
 @(private)
@@ -513,28 +579,28 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 		p.touched_set = {}
 	}
 
-	c := new(Computed, a)
+	c := record_new(a)
 	c^ = s.initial^
-	c.node = h
 	c.inherits = {}
 	if parent != nil {
-		inherit_all(c, parent)
+		c.inherited_group = parent.inherited_group   // shared until the element sets an inherited property (cx_take)
 		c.custom = parent.custom
 		c.inherits = inherited_set
-		c.content_language = parent.content_language   // `lang` inherits; overridden below by the element's own attribute
 	}
+	cx := Cx{settings = &e.settings, parent = parent, initial = s.initial, c = c, alloc = a}
 	// the content language (CSS `lang`, for a face's locale forms: the `locl` feature) comes from the element's `lang`
-	// or `xml:lang`, else the parent's. Only an element that declares one clones a string (a subtree then shares the
-	// parent's by copying its header), so this stays off the hot path of the ordinary element.
+	// or `xml:lang`, else the parent's (inherited). Only an element that declares another one clones a string.
 	if n := dom.get(p.mc.doc, h); n != nil && n.kind == .Element {
 		lv, has := attr(n, "lang")
 		if !has { lv, has = attr(n, "xml:lang") }
 		if has {
 			t := strings.trim_space(lv)
-			if t != c.content_language { c.content_language = t == "" ? "" : strings.clone(t, a) }
+			if t != c.content_language {
+				cx_own(&cx, .Inherited)
+				c.content_language = t == "" ? "" : strings.clone(t, a)
+			}
 		}
 	}
-	cx := Cx{settings = &e.settings, parent = parent, initial = s.initial, c = c, alloc = a}
 	cx.cenv = css.Color_Env{system = system_color, user = &e.settings}
 	scheme_settle(&cx, s.page_scheme, e.env.prefers_dark)
 	cx.lc = css.Length_Context{
@@ -677,7 +743,7 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 	finish_style(&cx, h)
 	if len(p.fs_chain) > 0 { if _, above := p.fs_chain[h]; above { fullscreen_ancestor_reset(&cx) } }
 	if e.container_dependent || c.container_type != .Normal || (parent != nil && parent.containers != nil) {
-		c.containers = container_chain(e, c, parent, a)
+		c.containers = container_chain(e, h, c, parent, a)
 	}
 	return c
 }
@@ -749,14 +815,24 @@ blockify :: proc(d: Display) -> Display {
 
 // Fields computed from others: the legacy `white_space` from white-space-collapse and text-wrap-mode. (Preserved
 // breaks without wrapping has no legacy value: Pre_Line, and text_wrap_mode says nowrap.)
-derive_fields :: proc(c: ^Computed) {
+derived_white_space :: proc(c: ^Computed) -> White_Space {
 	wrap := c.text_wrap_mode == .Wrap
 	switch c.white_space_collapse {
-	case .Collapse, .Discard: c.white_space = wrap ? .Normal : .Nowrap
-	case .Preserve, .Preserve_Spaces: c.white_space = wrap ? .Pre_Wrap : .Pre
-	case .Preserve_Breaks: c.white_space = .Pre_Line
-	case .Break_Spaces: c.white_space = .Break_Spaces
+	case .Collapse, .Discard: return wrap ? .Normal : .Nowrap
+	case .Preserve, .Preserve_Spaces: return wrap ? .Pre_Wrap : .Pre
+	case .Preserve_Breaks: return .Pre_Line
+	case .Break_Spaces: return .Break_Spaces
 	}
+	return .Normal
+}
+
+// The derived fields of a style outside the cascade (an animated copy): written when they differ, into its own copy of
+// the inherited group (in `alloc`).
+derive_fields :: proc(c: ^Computed, alloc: runtime.Allocator) {
+	ws := derived_white_space(c)
+	if ws == c.white_space { return }
+	group_take(c, .Inherited, alloc)
+	c.white_space = ws
 }
 
 @(private)
@@ -774,7 +850,8 @@ finish_style :: proc(cx: ^Cx, h: base.Handle) {
 	if !ps_has(cx.explicit, .Text_Decoration_Color) { c.text_decoration_color = c.color }
 	if !ps_has(cx.explicit, .Column_Rule_Color) { c.column_rule_color = c.color }
 	if c.column_rule_style == .None || c.column_rule_style == .Hidden { c.column_rule_width = 0 }
-	derive_fields(c)
+	// (the same as the parent's unless the element set what it is derived from: then its inherited group is its own)
+	if ws := derived_white_space(c); ws != c.white_space { cx_own(cx, .Inherited); c.white_space = ws }
 	writing_mode_fixup(cx)
 	// a query container has size containment in the axes it measures, layout and style containment (CSS Contain 3 §6.2)
 	switch c.container_type {
@@ -825,18 +902,29 @@ may_have_content :: proc(entries: []Entry) -> bool {
 }
 
 @(private)
-compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Computed, ancestors: ^Bloom, ctx: Elem_Ctx = {}) -> ^Computed {
+compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Computed, ancestors: ^Bloom, ctx: Elem_Ctx = {}) -> (c: ^Computed, shared: bool) {
 	collect_entries(p, h, n, ancestors, ctx)
-	add_hint_entry(p, h, n)
+	hinted := add_hint_entry(p, h, n)
 
+	inline_text: string
+	if text, ok := attr(n, "style"); ok && p.e.settings.author_stylesheets && text != "" { inline_text = text }
+	// an element with the inputs of a style this pass made gets that record (share.odin)
+	shareable := share_eligible(p, h, n, parent, hinted)
+	if shareable {
+		share_key(&p.share, parent, p.own_depth, &p.lists, inline_text)
+		if c = share_find(&p.share, inline_text); c != nil {
+			if has_image_layers(c) || has_image_layers(c.before) || has_image_layers(c.after) { p.image_records += 1 }
+			return c, true
+		}
+	}
 	inline_rule: ^Rule
-	if text, ok := attr(n, "style"); ok && p.e.settings.author_stylesheets && text != "" { inline_rule = inline_rule_of(p, text) }
+	if inline_text != "" { inline_rule = inline_rule_of(p, inline_text) }
 	// the element's own lists are consumed before ::before / ::after reuse the buffers
 	before_entries, after_entries, selection_entries: [dynamic]Entry
 	if len(p.lists[1]) > 0 { before_entries = make([dynamic]Entry, context.temp_allocator); append(&before_entries, ..p.lists[1][:]) }
 	if len(p.lists[2]) > 0 { after_entries = make([dynamic]Entry, context.temp_allocator); append(&after_entries, ..p.lists[2][:]) }
 	if len(p.lists[3]) > 0 { selection_entries = make([dynamic]Entry, context.temp_allocator); append(&selection_entries, ..p.lists[3][:]) }
-	c := build_style(p, h, parent, p.lists[0][:], inline_rule)
+	c = build_style(p, h, parent, p.lists[0][:], inline_rule)
 	if len(p.e.forced_hidden) > 0 { if h in p.e.forced_hidden { c.display = .None } }
 
 	for i in 1 ..< 3 {
@@ -852,7 +940,11 @@ compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Compute
 	// ::selection: only its colors are used (the painter looks for the nearest element that has one)
 	if len(selection_entries) > 0 { c.selection = build_style(p, h, c, selection_entries[:], nil) }
 	if has_image_layers(c) || has_image_layers(c.before) || has_image_layers(c.after) { p.image_records += 1 }
-	return c
+	if shareable && share_value_ok(c) {
+		resolve_static(p.mc.doc, h, c, p.alloc)   // (what the counter walks would resolve: the same for every element sharing it)
+		share_put(&p.share, inline_text, c)
+	}
+	return c, false
 }
 
 // The style has background, mask or cursor images of a URL (what the page's image loader looks for: Styled.image_records).
@@ -901,6 +993,7 @@ pass_destroy :: proc(p: ^Pass) {
 	delete(p.touched)
 	delete(p.cust_map); delete(p.res_map); delete(p.state_map)
 	for i in 0 ..< 4 { delete(p.lists[i]) }
+	share_destroy(&p.share)
 	virtual.arena_destroy(&p.scratch)
 	free(p, p.made_with)
 }
@@ -927,13 +1020,10 @@ style_subtree :: proc(p: ^Pass, root: base.Handle, parent: ^Computed, ancestors:
 		}
 		n := dom.get(doc, f.h)
 		if n == nil || n.kind != .Element { continue }
-		c := compute_element(p, f.h, n, f.parent, &f.bloom, f.ctx)
+		c, shared := compute_element(p, f.h, n, f.parent, &f.bloom, f.ctx)
 		hidden := f.hidden || c.display == .None
-		idx := int(base.handle_index(f.h))
-		for len(s.by_node) <= idx { append(&s.by_node, nil) }   // never in a parallel pass: sized beforehand
 		if p.compare {
-			old := s.by_node[idx]
-			if old != nil && old.node != f.h { old = nil }
+			old := style_of(s, f.h)
 			old_base := old
 			if old != nil && len(s.overlaid) > 0 { if b, ok := s.overlaid[f.h]; ok { old_base = b } }
 			if !counters_carry_over(s, doc, f.h, old_base, c, s.alloc) { p.unscoped = true }
@@ -946,11 +1036,12 @@ style_subtree :: proc(p: ^Pass, root: base.Handle, parent: ^Computed, ancestors:
 				journal_add(s, f.h, max(layout_level(old, c), Change_Level.Paint))   // a new record: readers re-point
 				delete_key(&s.overlaid, f.h)   // the animation layer is rebuilt on top of the new style
 				if old_base != nil && old_base.display == .None && c.display != .None { append(&s.shown, f.h) }
-				s.by_node[idx] = c
+				styled_put(s, f.h, c)
 			}
 		} else {
-			s.by_node[idx] = c
-			if p.counters != nil { counters_enter(p.counters, doc, f.h, n, c, hidden, p.alloc) } else { resolve_static(doc, f.h, c, p.alloc) }
+			styled_put(s, f.h, c)   // (a parallel pass sized the arrays beforehand)
+			// (a shared record has what resolve_static finds: compute_element)
+			if p.counters != nil { counters_enter(p.counters, doc, f.h, n, c, hidden, p.alloc) } else if !shared { resolve_static(doc, f.h, c, p.alloc) }
 		}
 		if f.parent == nil && s.root_font_size == 0 {
 			s.root_font_size = c.font_size
@@ -1044,9 +1135,9 @@ styled_make :: proc(e: ^Engine, doc: ^dom.Document, state: State) -> ^Styled {
 	} else {
 		_ = virtual.arena_init_growing(&s.arena, STYLED_RESERVE)
 	}
-	s.alloc = virtual.arena_allocator(&s.arena)
+	s.alloc = style_arena_allocator(&s.arena)
 	s.initial = new(Computed, s.alloc)
-	s.initial^ = initial_computed(&e.settings)
+	s.initial^ = initial_computed(&e.settings, new(Inherited_Group, s.alloc))
 	generic := e.settings.default_generic
 	s.initial.font_family = make([]string, 1, s.alloc)
 	s.initial.font_family[0] = strings.clone(generic, s.alloc)

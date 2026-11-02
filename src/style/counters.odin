@@ -141,7 +141,7 @@ counters_enter :: proc(st: ^Counter_State, doc: ^dom.Document, h: base.Handle, n
 	if c.display == .List_Item {
 		k := innermost(st, "list-item")
 		v := k >= 0 ? st.stack[k].value : 0
-		c.marker_text = marker_for(c.list_style, v, alloc)
+		set_marker(c, marker_for(c.list_style, v, context.temp_allocator), alloc)
 		if marker_needs_counter(c.list_style) { st.used = true }
 	}
 	resolve_content(st, doc, h, &c.content, c, alloc)
@@ -183,7 +183,7 @@ marker_needs_counter :: proc(s: List_Marker_Style) -> bool {
 // Resolves what needs no counter state (text, attr(), url): for boxes outside the counter walk.
 resolve_static :: proc(doc: ^dom.Document, h: base.Handle, c: ^Computed, alloc: runtime.Allocator) {
 	resolve_content(nil, doc, h, &c.content, c, alloc)
-	if c.display == .List_Item && !marker_needs_counter(c.list_style) { c.marker_text = marker_for(c.list_style, 0, alloc) }
+	if c.display == .List_Item && !marker_needs_counter(c.list_style) { set_marker(c, marker_for(c.list_style, 0, context.temp_allocator), alloc) }
 	if c.before != nil { resolve_content(nil, doc, h, &c.before.content, c.before, alloc) }
 	if c.after != nil { resolve_content(nil, doc, h, &c.after.content, c.after, alloc) }
 }
@@ -192,8 +192,9 @@ resolve_static :: proc(doc: ^dom.Document, h: base.Handle, c: ^Computed, alloc: 
 @(private)
 resolve_content :: proc(st: ^Counter_State, doc: ^dom.Document, h: base.Handle, ct: ^Content, owner: ^Computed, alloc: runtime.Allocator) {
 	if ct.kind != .Items || len(ct.parts) == 0 { return }
-	items := make([dynamic]Content_Item, alloc)
-	sb := strings.builder_make(context.temp_allocator)
+	tmp := context.temp_allocator   // (kept only when they differ from what the record has: set_items)
+	items := make([dynamic]Content_Item, tmp)
+	sb := strings.builder_make(tmp)
 	flush :: proc(sb: ^strings.Builder, items: ^[dynamic]Content_Item, alloc: runtime.Allocator) {
 		if strings.builder_len(sb^) == 0 { return }
 		append(items, Content_Item{kind = .Text, text = strings.clone(strings.to_string(sb^), alloc)})
@@ -206,8 +207,8 @@ resolve_content :: proc(st: ^Counter_State, doc: ^dom.Document, h: base.Handle, 
 			n := dom.get(doc, h)
 			if v, ok := attr(n, p.text); ok { strings.write_string(&sb, v) } else { strings.write_string(&sb, p.sep) }
 		case .Url:
-			flush(&sb, &items, alloc)
-			append(&items, Content_Item{kind = .Url, text = strings.clone(p.text, alloc)})
+			flush(&sb, &items, tmp)
+			append(&items, Content_Item{kind = .Url, text = p.text})
 		case .Counter, .Counters:
 			if st == nil { strings.write_string(&sb, format_counter(0, p.style, context.temp_allocator)); continue }
 			st.used = true
@@ -249,8 +250,33 @@ resolve_content :: proc(st: ^Counter_State, doc: ^dom.Document, h: base.Handle, 
 			if st != nil { st.quote_depth = depth }
 		}
 	}
-	flush(&sb, &items, alloc)
-	ct.items = items[:]
+	flush(&sb, &items, tmp)
+	set_items(ct, items[:], alloc)
+}
+
+// What generated content and markers resolve to is written only when it differs, copied into `alloc` then: a record
+// several elements share (share.odin) was resolved when it was made, and is never written again.
+@(private)
+set_marker :: proc(c: ^Computed, m: string, alloc: runtime.Allocator) { if c.marker_text != m { c.marker_text = strings.clone(m, alloc) } }
+
+@(private)
+set_items :: proc(ct: ^Content, items: []Content_Item, alloc: runtime.Allocator) {
+	if content_items_equal(ct.items, items) { return }
+	ct.items = clone_items(items, alloc)
+}
+
+@(private)
+clone_items :: proc(x: []Content_Item, alloc: runtime.Allocator) -> []Content_Item {
+	out := make([]Content_Item, len(x), alloc)
+	for it, i in x { out[i] = it; out[i].text = strings.clone(it.text, alloc) }
+	return out
+}
+
+@(private)
+content_items_equal :: proc(a, b: []Content_Item) -> bool {
+	if len(a) != len(b) { return false }
+	for i in 0 ..< len(a) { if a[i].kind != b[i].kind || a[i].text != b[i].text { return false } }
+	return true
 }
 
 ////////////////////////////////
@@ -513,9 +539,9 @@ counters_carry_over :: proc(s: ^Styled, doc: ^dom.Document, h: base.Handle, old,
 	if c.display == .List_Item {
 		if marker_needs_counter(c.list_style) {
 			if old.display != .List_Item || !deep_equal(&old.list_style, &c.list_style, type_info_of(List_Marker_Style)) { return false }
-			c.marker_text = old.marker_text
+			c.marker_text = old.marker_text   // (a numbered marker: never a shared record)
 		} else {
-			c.marker_text = marker_for(c.list_style, 0, alloc)
+			set_marker(c, marker_for(c.list_style, 0, context.temp_allocator), alloc)
 		}
 	}
 	if !carry_content(doc, h, &old.content, &c.content, old, c, alloc) { return false }
@@ -550,7 +576,7 @@ carry_content :: proc(doc: ^dom.Document, h: base.Handle, old, ct: ^Content, old
 	if !content_needs_state(ct.parts) { resolve_content(nil, doc, h, ct, owner, alloc); return true }
 	if old.kind != .Items || !deep_equal(&old.parts, &ct.parts, type_info_of(type_of(ct.parts))) { return false }
 	if !deep_equal(&old_owner.quotes, &owner.quotes, type_info_of(Quotes)) { return false }
-	ct.items = old.items
+	ct.items = old.items   // (content with counters or quotes: never a shared record)
 	return true
 }
 
