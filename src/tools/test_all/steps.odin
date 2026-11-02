@@ -138,10 +138,6 @@ web_run :: proc(subject: string, env: []string = nil) -> Action {
 	return Command{argv = strs(exe("build/e2e_test")), tests_of = fmt.aprintf("src/tools/e2e/web_%s.odin", subject), also = "zz_the_process_ends_with_nothing_left", env = slice.clone(env), rule = .Says_Successful}
 }
 
-powershell :: proc(script: string, args: ..string) -> Action {
-	return Command{argv = join({"powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script}, args)}
-}
-
 // A scenario of src/tools/e2e, as a step.
 e2e_step :: proc(t: ^[dynamic]Step, name, file: string, marks := Marks{}, weight := 0, browser := false) {
 	needs := COMMON_NEEDS + {.E2E, .Test_Server}
@@ -180,9 +176,9 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	t: [dynamic]Step
 	long_run := cfg.ci || !cfg.quick   // -CI and full runs: the check build, the sanitizer
 
-	append(&t, Step{name = "CHANGELOG fragments (tools\\changelog.ps1 -Check: changelog.d well formed, nothing already released) and the script's tests",
-		actions = slice_of(powershell("tools/changelog.ps1", "-Check"), powershell("tools/changelog_test.ps1")), marks = {.Light, .No_CI}, inputs = .Everything})   // (the CI's workflow runs exactly this as its first step, and fails at once)
-	// The documentation site is generated from docs/*.md (src/tools/docsite): site/docs must be up to date (deterministic, like changelog.ps1 -Check) and every internal link and anchor must resolve.
+	append(&t, Step{name = "CHANGELOG fragments (wrentool changelog -Check: changelog.d well formed, nothing already released) and the tool's tests",
+		actions = slice_of(tool_build("src/tools/wrentool", exe("build/wrentool_step")), Command{argv = strs(exe("build/wrentool_step"), "changelog", "-Check")}, odin_test("src/tools/wrentool/changelog", exe("build/changelog_test"), strs(WB), false)), marks = {.No_CI}, inputs = .Everything})   // (the CI's workflow runs exactly this as its first step, and fails at once)
+	// The documentation site is generated from docs/*.md (src/tools/docsite): site/docs must be up to date (deterministic, like wrentool changelog -Check) and every internal link and anchor must resolve.
 	append(&t, Step{name = "documentation site up to date and links intact (src\\tools\\docsite -check: site\\docs matches docs\\*.md, zero dead internal links or anchors)",
 		actions = slice_of(odin_build("src/tools/docsite", exe("build/docsite"), {WB, "-vet"}), Command{argv = strs(exe("build/docsite"), "-check")}), inputs = .Everything})
 	// What every build below embeds (nothing to do when up to date).
@@ -357,12 +353,12 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 		actions = slice_of(Task{"the runner", task_runner, cfg.quick ? "wpt quick" : "wpt"}, Command{argv = wpt_args}), weight = 50, needs = COMMON_NEEDS + {.Test_Server}, inputs = .Tree, limit = LONG_STEP_SECONDS})
 
 	if long_run {
-		append(&t, Step{name = "the names of a release's crash frames (tools\\crash_symbolize_test.ps1: the report of a build with no PDB gives its fingerprint and offsets, tools\\crash_symbolize.ps1 names them from the map, or through the minidump)",
-			actions = slice_of(powershell("tools/crash_symbolize_test.ps1")), inputs = .Tree})
+		append(&t, Step{name = "the names of a release's crash frames (src\\tools\\wrentool\\deps\\symbols_test.odin: the report of a build with no PDB gives its fingerprint and offsets, wrentool crash-symbolize names them from the map, or through the minidump)",
+			actions = slice_of(odin_test("src/tools/wrentool/deps", exe("build/wrentool_deps_test"), strs(WB), false)), inputs = .Tree})
 		e2e_step(&t, "tab sidebar features that need a page or a profile (src\\tools\\e2e\\sidebar_tabs.odin, no window at all: the sound of a tab, what comes back at the next start)", "sidebar_tabs")
 		// (frames counted against the screen's refresh: on a loaded CI runner one frame in two came late; a measure with a real pointer, not a test of a tool: run with -Ui)
-		append(&t, Step{name = "splitters dragged at 1 kHz (tools\\splitter_cadence.ps1, no window shown: the developer tools docked right and bottom, the tab sidebar's handle; their frames are drags of the cadence model and, on a variable refresh screen, presented at once; the rates are printed, never checked)",
-			actions = slice_of(powershell("tools/splitter_cadence.ps1")), marks = {.Ui_Only}, needs = COMMON_NEEDS + {.Browser}, inputs = .Tree})
+		append(&t, Step{name = "splitters dragged (wrentool bench cadence, no window shown: the developer tools docked right and bottom, the tab sidebar's handle; their frames are drags of the cadence model and, on a variable refresh screen, presented at once; the rates are printed, never checked)",
+			actions = slice_of(tool_build("src/tools/wrentool", exe("build/wrentool_step")), Command{argv = strs(exe("build/wrentool_step"), "bench", "cadence")}), marks = {.Ui_Only}, needs = COMMON_NEEDS + {.Browser}, inputs = .Tree})
 		if !cfg.no_asan { asan_steps(&t) }
 	}
 	if !cfg.quick {

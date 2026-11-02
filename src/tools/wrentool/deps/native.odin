@@ -126,6 +126,18 @@ msvc_environment :: proc() -> []string {
 	return env[:]
 }
 
+// A tool of MSVC: on that environment's PATH (a program is looked for on this process's, which does not have it).
+msvc_tool :: proc(env: []string, name: string) -> string {
+	for e in env {
+		if !strings.has_prefix(strings.to_upper(e, context.temp_allocator), "PATH=") { continue }
+		for dir in strings.split(e[len("PATH="):], ";", context.temp_allocator) {
+			candidate := fmt.tprintf("%s/%s", dir, name)
+			if os.exists(candidate) { return candidate }
+		}
+	}
+	return name
+}
+
 } else {
 
 build_native :: proc(o: Options) -> bool {

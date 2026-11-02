@@ -77,11 +77,17 @@ if not defined WREN_ANY_ODIN (
 set "NATIVE_PROFILE=quick"
 if /I "%VARIANT%"=="release" set "NATIVE_PROFILE=release"
 if /I "%VARIANT%"=="profile" set "NATIVE_PROFILE=release"
-call :step "fetching Wasmtime"            tools\fetch_wasmtime.ps1 || exit /b 1
-call :step "building Lexbor"              tools\build_lexbor.ps1   || exit /b 1
-call :step "building the Rust library"    tools\build_native.ps1 -Profile %NATIVE_PROFILE% || exit /b 1
-call :step "fetching the emoji font"      tools\fetch_emoji.ps1    || exit /b 1
+:: wrentool (src\tools\wrentool): a program of its own for this build, deleted at its end (two builds at once, test_all -Jobs n runs several, cannot share one exe). It needs nothing of what it fetches.
 if not exist build mkdir build
+set "WRENTOOL=build\wrentool_%RANDOM%%RANDOM%.exe"
+odin build src/tools/wrentool -collection:wb=src -use-separate-modules -out:%WRENTOOL% || exit /b 1
+call :build
+set "BUILD_CODE=%ERRORLEVEL%"
+del "%WRENTOOL%" "%WRENTOOL:.exe=.pdb%" 2>nul
+exit /b %BUILD_CODE%
+
+:build
+%WRENTOOL% deps -Profile %NATIVE_PROFILE% || exit /b 1
 
 
 :: ------------------------------------------------------------------------------------------------------------
@@ -105,7 +111,7 @@ odin run src/tools/buildjs -collection:wb=src -out:build\buildjs.exe || (echo bu
 :: same C runtime flags as wren.exe (below): nothing but the system's files.
 :: Built only when a source is newer than it: two builds that run at once (test_all -Jobs n) would otherwise both write it, and
 :: one of them is refused (Error(013)) when the other, or a test that runs it, holds the file.
-powershell -NoProfile -Command "$b = Get-Item build\wren.com -ErrorAction SilentlyContinue; if ($b -and -not (Get-ChildItem src\tools\wrencom -Filter *.odin | Where-Object { $_.LastWriteTimeUtc -gt $b.LastWriteTimeUtc })) { exit 0 } else { exit 1 }"
+%WRENTOOL% stale build\wren.com src\tools\wrencom
 if errorlevel 1 odin build src/tools/wrencom -vet -subsystem:console -o:size -out:build/wren.com -extra-linker-flags:"/NODEFAULTLIB:vcruntime.lib /DEFAULTLIB:libvcruntime.lib" || exit /b 1
 
 
@@ -122,7 +128,7 @@ if "%VARIANT%"=="release" (
 )
 
 :: the version resource of wren.exe (publisher, product, File version) takes its numbers from APP_VERSION
-powershell -NoProfile -ExecutionPolicy Bypass -File tools\make_version_h.ps1 || exit /b 1
+%WRENTOOL% version-h || exit /b 1
 
 :: collections: "toolkit:<package>" and "wb:<package>"
 set "FLAGS=-collection:toolkit=ext/gui_toolkit -collection:wb=src"
@@ -260,18 +266,10 @@ exit /b 0
 
 
 :: ------------------------------------------------------------------------------------------------------------
-::  :step "what" script.ps1 [arguments] : runs a build script quietly; on failure says which one to run by hand
-:: ------------------------------------------------------------------------------------------------------------
-:step
-powershell -NoProfile -ExecutionPolicy Bypass -File %2 %3 %4 >nul && exit /b 0
-echo %~1 failed: run  powershell -File %2 %3 %4
-exit /b 1
-
-:: ------------------------------------------------------------------------------------------------------------
 ::  :symbols exe [-Store] : the linker's map becomes <exe>-<fingerprint>.map beside the exe, and with -Store a copy goes to
 ::  build\symbols (tools\symbols.ps1 -Publish; tools\crash_symbolize.ps1 reads them)
 :: ------------------------------------------------------------------------------------------------------------
 :symbols
-powershell -NoProfile -ExecutionPolicy Bypass -File tools\symbols.ps1 -Publish %1 %2 && exit /b 0
-echo naming the symbols of %1 failed: run  powershell -File tools\symbols.ps1 -Publish %1
+%WRENTOOL% symbols -Publish %1 %2 && exit /b 0
+echo naming the symbols of %1 failed: run  wrentool symbols -Publish %1
 exit /b 1
