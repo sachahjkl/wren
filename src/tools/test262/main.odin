@@ -636,7 +636,7 @@ read_error_file :: proc(path: string) -> (m: map[Key]string, ok: bool) {
 }
 
 usage :: proc() -> ! {
-	fmt.eprintln("usage: test262 [-quick] [-update] [-jit...] [-c file.conf]... [-a] [-image m.wasm] [-threads n] [-stride k] [-timeout ms] [-errors out.txt] [-known failures.txt] [-native errors.txt] [-md table.md] [-v] [files...]")
+	fmt.eprintln("usage: test262 [-quick] [-update] [-prepare] [-jit...] [-c file.conf]... [-a] [-image m.wasm] [-threads n] [-stride k] [-timeout ms] [-errors out.txt] [-known failures.txt] [-native errors.txt] [-md table.md] [-v] [files...]")
 	os.exit(2)
 }
 
@@ -651,7 +651,7 @@ main :: proc() {
 	stride := 1
 	errors_out, known_path, native_path, md_out := "", "", "", ""
 	force_all := false
-	quick, update := false, false
+	quick, update, prepare_only := false, false, false
 	for i := 0; i < len(args); i += 1 {
 		a := args[i]
 		need :: proc(args: []string, i: ^int) -> string { i^ += 1; if i^ >= len(args) { usage() }; return args[i^] }
@@ -669,7 +669,8 @@ main :: proc() {
 		case "-v": verbose = true
 		case "-quick": quick = true
 		case "-update": update = true
-		case "-jit": jit.enabled = true
+		case "-prepare": prepare_only = true
+		case "-jit":jit.enabled = true
 		case "-jit-threshold": jit.call_threshold = max(1, parse_int(need(args, &i)))
 		case "-jit-step": jit.step_only = true
 		case "-jit-sync": jit.background_threads = 0
@@ -686,8 +687,9 @@ main :: proc() {
 		root := tooling.repo_root()
 		if os.set_working_directory(root) != nil { fmt.eprintfln("test262: cannot work in %s", root); os.exit(2) }
 		if !prepare() { os.exit(1) }
+		if prepare_only { os.exit(0) }
 		image_path = abs_of(TEST_IMAGE_DIR + "/wren_js.wasm")
-		errors_out = abs_of(OUT_DIR + "/" + ERRORS_FILE)
+		errors_out = abs_of(jit.enabled ? OUT_DIR + "/" + JIT_ERRORS_FILE : OUT_DIR + "/" + ERRORS_FILE)
 		if !update { known_path = abs_of(KNOWN_FAILURES) }
 		if update { stride = 1 } else if quick && stride == 1 { stride = QUICK_STRIDE }
 		append(&confs, "test262.conf")

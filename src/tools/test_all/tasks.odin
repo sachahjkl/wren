@@ -51,15 +51,18 @@ task_testserver :: proc(t: ^Task_Run) -> bool {
 	return tooling.ensure_testserver(t.log)
 }
 
-// A runner of the suites, its compile kept while nothing changed (-Quick: one module per package, seconds instead of a minute; the whole-program build pays off on a full run). `arg`: its folder of src/tools, and "quick".
-// (No linker flag for the stack: a runner runs its scripts on threads it makes with the stack they need, tooling.JS_THREAD_STACK_BYTES.)
+// A runner of the suites, its compile kept while nothing changed (-Quick: one module per package, seconds instead of a minute; the whole-program build pays off on a full run). `arg`: its folder of src/tools
+// (or folder=program, a program of another name in build), and "quick".
+// (No linker flag for the stack: a runner runs its scripts on threads it makes with the stack they need, tooling.JS_THREAD_STACK_BYTES. src/tools/jsengine is the exception: it calls Wasm on its main thread.)
 task_runner :: proc(t: ^Task_Run) -> bool {
 	fields := strings.fields(t.arg, context.temp_allocator)
-	name := fields[0]
+	name, program := fields[0], fields[0]
+	if k := strings.index_byte(name, '='); k >= 0 { name, program = fields[0][:k], fields[0][k + 1:] }
 	quick := len(fields) > 1
-	out := exe(fmt.tprintf("build/%s", name))
-	flags := fmt.tprintf("%s %v own-stack", name, quick)
-	cmd := join({tooling.odin_program(), "build", fmt.tprintf("src/tools/%s", name), WB, "-vet", "-o:speed", out_flag(out)}, quick ? []string{"-use-separate-modules"} : nil)
+	main_thread_wasm := name == "jsengine"
+	out := exe(fmt.tprintf("build/%s", program))
+	flags := fmt.tprintf("%s %v %s", name, quick, main_thread_wasm ? "main-stack" : "own-stack")
+	cmd := join({tooling.odin_program(), "build", fmt.tprintf("src/tools/%s", name), WB, "-vet", "-o:speed", out_flag(out)}, quick ? []string{"-use-separate-modules"} : nil, main_thread_wasm ? tooling.STACK_FLAGS : nil)
 	return tooling.build_if_stale(out, flags, cmd, t.log)
 }
 

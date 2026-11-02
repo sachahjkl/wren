@@ -30,6 +30,7 @@ Product :: enum {
 	Guests,          // the Wasm guests of the pages of the web tests
 	E2E,             // build/e2e_test.exe: the test program, every allocation tracked
 	Fetch,           // build/fetch.exe
+	Test262,         // build/test262.exe, the suite in build/test262 and the engine's test image build/js-test262
 }
 Products :: bit_set[Product]
 
@@ -263,16 +264,20 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 		actions = slice_of(Task{"the allocators", task_process_allocators, ""}), inputs = .Tree})
 	// (its own exe: build.bat, which a parallel step may run, writes build/bindgen.exe)
 	append(&t, Step{name = "generated web API up to date (bindgen -check)", actions = slice_of(Command{argv = join({"odin", "run", "src/tools/bindgen", WB, "-vet", out_flag(exe("build/bindgen_check"))}, tooling.STACK_FLAGS, {"--", "-check"}), pkg = "src/tools/bindgen"}), inputs = .Everything})
-	test262_quick := cfg.quick ? "-quick" : ""
-	append(&t, Step{name = "test262 in the Wasm engine (-Quick: every 25th test; fails on a failure src\\tools\\test262\\known_failures.txt does not list), then the JIT: examples\\jsbench\\jitcheck.js interpreted and compiled (every function and loop at once, synchronously and with the step path) and test262 the same way (one step: both runs build and write build\\test262)",
+	// test262 in three steps (their names begin with "test262": the CI runs them as a job of their own). What both runs read, made once: the suite, the test image of the engine (its own build of
+	// the glue, beside the browser's engine and not after it) and the runner. Then the interpreter's run and the JIT's side by side: each writes its own error file.
+	test262_quick := cfg.quick ? strs("-quick") : nil
+	append(&t, Step{name = "test262: the suite, the test image of the engine and the runner (src\\tools\\test262\\prepare.odin, build\\test262; nothing to do when up to date)",
+		actions = slice_of(Task{"the runner", task_runner, cfg.quick ? "test262 quick" : "test262"}, Command{argv = strs(exe("build/test262"), "-prepare")}), marks = {.No_Result}, makes = {.Test262}, limit = LONG_STEP_SECONDS})
+	append(&t, Step{name = "test262 in the Wasm engine (-Quick: every 25th test; fails on a failure src\\tools\\test262\\known_failures.txt does not list)",
+		actions = slice_of(Command{argv = join({exe("build/test262")}, test262_quick)}), weight = 40, needs = {.Test262}, inputs = .Tree, limit = LONG_STEP_SECONDS})
+	append(&t, Step{name = "test262 with the JIT: examples\\jsbench\\jitcheck.js interpreted and compiled (every function and loop at once, synchronously and with the step path), then test262 the same way",
 		actions = slice_of(
-			Task{"the runner", task_runner, cfg.quick ? "test262 quick" : "test262"},
-			Command{argv = join({exe("build/test262")}, cfg.quick ? strs(test262_quick) : nil)},
-			Command{argv = join({"odin", "build", "src/tools/jsengine", "-use-separate-modules", WB, "-vet", "-o:speed", out_flag(exe("build/jsengine_jit"))}, tooling.STACK_FLAGS), pkg = "src/tools/jsengine"},
+			Task{"the tool", task_runner, cfg.quick ? "jsengine=jsengine_jit quick" : "jsengine=jsengine_jit"},
 			Command{argv = strs(exe("build/jsengine_jit"), "verify", "-image", "build/js/wren_js.wasm", "-jit", "-jit-threshold", "1", "-jit-loop", "1", "-jit-sync", "examples/jsbench/jitcheck.js")},
 			Command{argv = strs(exe("build/jsengine_jit"), "verify", "-image", "build/js/wren_js.wasm", "-jit", "-jit-threshold", "1", "-jit-loop", "1", "-jit-sync", "-jit-step", "examples/jsbench/jitcheck.js")},
-			Command{argv = join({exe("build/test262"), "-jit", "-jit-sync", "-jit-threshold", "2", "-jit-loop", "1"}, cfg.quick ? strs(test262_quick) : nil)},
-		), weight = 114, needs = {.JS_Engine}, inputs = .Tree, limit = LONG_STEP_SECONDS})
+			Command{argv = join({exe("build/test262"), "-jit", "-jit-sync", "-jit-threshold", "2", "-jit-loop", "1"}, test262_quick)},
+		), weight = 70, needs = {.JS_Engine, .Test262}, inputs = .Tree, limit = LONG_STEP_SECONDS})
 	append(&t, Step{name = "web API conformance (generated cases: bounds, UTF-8, handles, enums, capacity)",
 		actions = slice_of(
 			odin_build("examples/apiconformance", "build/apiconformance.wasm", {"-target:freestanding_wasm32", "-no-entry-point", "-default-to-nil-allocator", "-o:size"}),
