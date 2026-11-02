@@ -112,7 +112,7 @@ when PROFILE {
 
 // The profiler's report: per step, frames profiled, mean count, mean / p95 / max milliseconds, written pixels and
 // estimated traffic.
-gpu_steps_report :: proc(sb: ^strings.Builder, frames: []Frame_Rec) {
+gpu_steps_report :: proc(app: ^App, sb: ^strings.Builder, frames: []Frame_Rec) {
 	if len(app.gpu_kept) > 0 {
 		k: [3]f64
 		for v in app.gpu_kept { k += {f64(v[0]), f64(v[1]), f64(v[2])} }
@@ -155,7 +155,7 @@ gpu_steps_report :: proc(sb: ^strings.Builder, frames: []Frame_Rec) {
 
 } else {
 
-gpu_steps_report :: proc(sb: ^strings.Builder, frames: []Frame_Rec) {}
+gpu_steps_report :: proc(app: ^App, sb: ^strings.Builder, frames: []Frame_Rec) {}
 
 }
 

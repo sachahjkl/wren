@@ -553,7 +553,7 @@ prof_report :: proc(app: ^App) {
 	for f in prof.frames { if f.gpu_ms > 0 { append(&gv, f64(f.gpu_ms)) } }
 	gs := stat_of(gv[:])
 	fmt.sbprintf(&sb, "%-12s %7d %8.3f %8.3f %8.3f %8.3f %9.3f\n", "GPU draw", gs.n, gs.mean, gs.p50, gs.p95, gs.p99, gs.max)
-	gpu_steps_report(&sb, prof.frames[:])
+	gpu_steps_report(app, &sb, prof.frames[:])
 	last: Frame_Rec
 	if len(prof.frames) > 0 { last = prof.frames[len(prof.frames) - 1] }
 	fmt.sbprintf(&sb, "\nlast frame: %d layout items, %d instances, %d batches, %d styled elements\n", last.items, last.insts, last.batches, last.elements)
