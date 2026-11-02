@@ -73,7 +73,7 @@ what_a_step_needs_runs_before_it :: proc(t: ^testing.T) {
 @(test)
 what_a_failed_maker_blocks_does_not_run :: proc(t: ^testing.T) {
 	context.allocator = runtime.heap_allocator()   // (what a run keeps until it ends)
-	table := []Step{fake("fail maker", makes = {.E2E}), fake("uses", needs = {.E2E}), fake("uses that", needs = {.Web_Tests}, makes = {}), fake("makes other", needs = {.E2E}, makes = {.Web_Tests}), fake("alone")}
+	table := []Step{fake("fail maker", makes = {.E2E}), fake("uses", needs = {.E2E}), fake("uses that", needs = {.Guests}, makes = {}), fake("makes other", needs = {.E2E}, makes = {.Guests}), fake("alone")}
 	s := run_table(table)
 	testing.expect_value(t, status_of(s, "fail maker"), Status.Fail)
 	testing.expect_value(t, status_of(s, "uses"), Status.Not_Run)

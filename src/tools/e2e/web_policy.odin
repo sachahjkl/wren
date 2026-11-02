@@ -1,7 +1,7 @@
 #+private file
 // The network policy layer (package fetch) against the test server: request headers, CORS and preflights, cookies, redirects, Content
 // Security Policy, mixed content, HSTS, schemes, MIME checks, local files, cancellation.
-package webtests
+package e2e_scenarios
 
 import "core:encoding/json"
 import "core:os"

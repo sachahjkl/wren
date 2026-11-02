@@ -5,7 +5,7 @@
 // untrusted certificate. On the built-in stack (rust), with the test authority trusted through network.tls.extra_ca_file: HTTP/2, TLS 1.3
 // only, expired and misnamed certificates, HTTP/3 learnt from Alt-Svc, the fall back to TCP when QUIC never gets through (the odin-lang.org
 // case), WebSockets over TLS, and the system proxy (from the environment); on WinHTTP's turn those tests are skips (`on_builtin_stack`).
-package webtests
+package e2e_scenarios
 
 import "core:fmt"
 import "core:os"

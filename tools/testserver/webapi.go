@@ -1,6 +1,6 @@
 package testserver
 
-// Endpoints for the web platform API test (src/tools/webtests/webapi.odin):
+// Endpoints for the web platform API test (src/tools/e2e/web_webapi.odin):
 //
 //	/webapi/slow?ms=N         headers and "start" at once, "end" after N ms (aborted requests stop it early)
 //	/webapi/chunks?n=N&ms=M   N lines "chunk-i\n", flushed M ms apart

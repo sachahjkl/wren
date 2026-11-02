@@ -3,7 +3,7 @@
 // the message handler meets the receive re-armed just after that message: when the close went through WinHttpWebSocketClose, its own read
 // and ours raced for the server's close frame and about half of these runs ended "error" + 1006 (WinHTTP's close timeout) instead of a
 // clean close, on any machine. The expected results depend on no timing; the repetitions only make a regression certain to show.
-package webtests
+package e2e_scenarios
 
 import "core:fmt"
 import "core:os"

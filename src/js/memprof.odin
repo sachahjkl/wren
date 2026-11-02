@@ -1,7 +1,7 @@
 package js
 
 // The census of the Odin engine's heap (src/engine/jsrt/memprof.odin) read from a realm: `wj_heap_profile`, a
-// development aid for memory work (jsengine mem; WREN_JS_MEMPROF=1 in web_test jsdom_*). Engines without it print nothing.
+// development aid for memory work (jsengine mem; WREN_JS_MEMPROF=1 in the web tests jsdom_*). Engines without it print nothing.
 
 import "core:fmt"
 import "core:os"

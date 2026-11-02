@@ -27,9 +27,9 @@ Product :: enum {
 	Browser,         // build/wren.exe
 	Check_Browser,   // build/wren_check.exe
 	Test_Server,     // build/testserver.exe and .dll
-	Web_Tests,       // build/web_test.exe and the guests of its pages
+	Guests,          // the Wasm guests of the pages of the web tests
 	E2E,             // build/e2e_test.exe
-	E2E_Check,       // build/e2e_test_check.exe
+	E2E_Check,       // build/e2e_test_check.exe: the same program with every allocation tracked
 	Fetch,           // build/fetch.exe
 }
 Products :: bit_set[Product]
@@ -77,6 +77,7 @@ Step :: struct {
 	makes:    Products,
 	inputs:   Input_Kind,
 	packages: []string,   // more packages (or the folders of .Dirs) than its commands compile
+	sources:  []string,   // files of a package it does not depend on as a whole: each counts as itself and what it imports (.Packages)
 	outs:     []string,   // what its tasks leave, as Command.out
 	limit:    int,        // seconds (0: -StepTimeoutSec)
 }
@@ -133,9 +134,9 @@ e2e_run :: proc(file: string, program := "build/e2e_test") -> Action {
 	return Command{argv = strs(exe(program)), tests_of = fmt.aprintf("src/tools/e2e/%s.odin", file), rule = .Says_Successful}
 }
 
-// Of one subject of the web tests (src/tools/webtests): the same, with the test that ends the process with its leak check.
+// Of one subject of the web tests (src/tools/e2e/web_<subject>.odin): the same, on the program that tracks every allocation, with the test that ends the process with its leak check.
 web_run :: proc(subject: string, env: []string = nil) -> Action {
-	return Command{argv = strs(exe("build/web_test")), tests_of = fmt.aprintf("src/tools/webtests/%s.odin", subject), also = "zz_the_process_ends_with_nothing_left", env = slice.clone(env), rule = .Says_Successful}
+	return Command{argv = strs(exe("build/e2e_test_check")), tests_of = fmt.aprintf("src/tools/e2e/web_%s.odin", subject), also = "zz_the_process_ends_with_nothing_left", env = slice.clone(env), rule = .Says_Successful}
 }
 
 powershell :: proc(script: string, args: ..string) -> Action {
@@ -149,9 +150,12 @@ e2e_step :: proc(t: ^[dynamic]Step, name, file: string, marks := Marks{}, weight
 	append(t, Step{name = name, actions = slice_of(e2e_run(file)), marks = marks, weight = weight, needs = needs, inputs = .Tree})
 }
 
-// A subject of src/tools/webtests, as a step.
+// What a subject of the web tests depends on: its file and the harness, and what they import. Not the browser the program also links: it does not run in a process of these.
+web_sources :: proc(subject: string) -> []string { return strs("src/tools/e2e/web_harness.odin", fmt.aprintf("src/tools/e2e/web_%s.odin", subject)) }
+
+// A subject of the web tests, as a step.
 web_step :: proc(t: ^[dynamic]Step, name, subject: string, marks := Marks{}) {
-	append(t, Step{name = name, actions = slice_of(web_run(subject)), marks = marks, needs = COMMON_NEEDS + {.Web_Tests, .Test_Server}, packages = strs("src/tools/webtests")})
+	append(t, Step{name = name, actions = slice_of(web_run(subject)), marks = marks, needs = COMMON_NEEDS + {.Guests, .E2E_Check, .Test_Server}, sources = web_sources(subject)})
 }
 
 slice_of :: proc(actions: ..Action) -> []Action {
@@ -295,16 +299,17 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	append(&t, Step{name = "graphics toolkit status tests (sample history, frame graph; no window)", actions = slice_of(toolkit_suite("status", exe("build/toolkit_status_test"), toolkit_one))})
 	append(&t, Step{name = "graphics toolkit interaction states tests (hover, press and selection at once, transitions on demand, palette cross-fade, state fills in both blend spaces; no window)", actions = slice_of(toolkit_suite("states", exe("build/toolkit_states_test"), toolkit_one))})
 
-	// The web tests (src/tools/webtests, docs/testing.md): one program of core:testing on one loop, with the test server in its process, built once; a step runs the tests of one subject of it, in a process of its own.
-	append(&t, Step{name = "build web tests (src\\tools\\webtests: fetch, the network, pages and their scripts, with no window; the Wasm guests of the pages they load, built first)",
+	// The test program (src/tools/e2e, docs/testing.md): one program on Odin's test runner that links the browser, built once, and once more with every allocation tracked; a step runs the tests of one file of it, in a process of its own.
+	append(&t, Step{name = "build e2e scenarios (src\\tools\\e2e: the browser in the tests' process, no window, the real renderer offscreen)", actions = slice_of(odin_build("src/tools/e2e", exe("build/e2e_test"), E2E_BUILD_FLAGS)), needs = COMMON_NEEDS, makes = {.E2E}})
+	append(&t, Step{name = "build e2e scenarios with every allocation tracked (src\\tools\\e2e with -define:WREN_TRACK_MEMORY=true: a test that leaves anything allocated fails; the web tests run here)", actions = slice_of(odin_build("src/tools/e2e", exe("build/e2e_test_check"), join({TRACK}, E2E_BUILD_FLAGS))), needs = COMMON_NEEDS, makes = {.E2E_Check}})
+	append(&t, Step{name = "the Wasm guests of the pages of the web tests",
 		actions = slice_of(
 			guest("examples/e2e", "build/e2e.wasm"), guest("examples/counter", "examples/site/counter.wasm"), guest("examples/formstest", "examples/site/formstest.wasm"),
 			guest("examples/mutation", "examples/site/mutation.wasm"), guest("examples/mutation_class", "examples/site/mutation_class.wasm"), guest("examples/webapitest", "build/webapitest.wasm"),
 			guest("examples/netapitest", "build/netapitest.wasm"), guest("examples/workerstest", "build/workerstest.wasm"), guest("examples/workerstest_worker", "examples/site/workerstest_worker.wasm"),
 			guest("examples/imagestest", "build/imagestest.wasm"),
-			odin_build("src/tools/webtests", exe("build/web_test"), join({"-build-mode:test", ONE_THREAD, "-define:ODIN_TEST_FANCY=false", "-use-separate-modules", WB, TOOLKIT, "-vet", TRACK}, tooling.STACK_FLAGS)),
-		), needs = COMMON_NEEDS, makes = {.Web_Tests}})
-	web_step(&t, "JavaScript in pages (src\\tools\\webtests\\js.odin: realm, scripts, bindings, events, wrappers and node lifetime, bytecode cache, interruption)", "js")
+		), needs = COMMON_NEEDS, makes = {.Guests}})
+	web_step(&t, "JavaScript in pages (src\\tools\\e2e\\web_js.odin: realm, scripts, bindings, events, wrappers and node lifetime, bytecode cache, interruption)", "js")
 	append(&t, Step{name = "build fetch", actions = slice_of(tool_build("src/tools/fetch", exe("build/fetch"))), needs = COMMON_NEEDS, makes = {.Fetch}})
 	append(&t, Step{name = "licence tool (a licence issued with the development pair verifies; an altered one and one of another key do not; keygen refuses a path inside the repository)",
 		actions = slice_of(tool_build("src/tools/license", exe("build/license")), Task{"its checks", task_license_tool, ""}), needs = COMMON_NEEDS})
@@ -312,17 +317,13 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 		actions = slice_of(tool_build("src/tools/license", exe("build/license_worker")), Task{"its tests", task_license_worker, ""}), needs = COMMON_NEEDS, inputs = .Everything})
 	web_step(&t, "file: folders end-to-end test (index file, listing, redirect to /, errors, who may open what; no server)", "file")
 	unit(&t, "unit tests: test host (what fails a section of the web tests: what it declared did not run, a skip the machine does not confirm)", "src/tools/testhost", exe("build/testhost_test"), {WB})
-	web_step(&t, "DOM for JavaScript end-to-end test (src\\tools\\webtests\\jsdom.odin: tree, elements, markup, selectors, CSSOM, geometry, UI events, MutationObserver, traversal, ranges, leaks, micro-benchmarks; no server)", "jsdom")
-	web_step(&t, "history end-to-end test (src\\tools\\webtests\\history.odin: the tree as pages see it, scrollRestoration, pageshow / pagehide persisted, back/forward cache freezing, persisted form state; no server)", "history")
-	web_step(&t, "Web Authentication end-to-end test (src\\tools\\webtests\\webauthn.odin: create then get from JavaScript on the virtual authenticator, signature checked; activation, RP ID, aborts, timer, mediation, JSON forms, secure context; no server)", "webauthn")
+	web_step(&t, "DOM for JavaScript end-to-end test (src\\tools\\e2e\\web_jsdom.odin: tree, elements, markup, selectors, CSSOM, geometry, UI events, MutationObserver, traversal, ranges, leaks, micro-benchmarks; no server)", "jsdom")
+	web_step(&t, "history end-to-end test (src\\tools\\e2e\\web_history.odin: the tree as pages see it, scrollRestoration, pageshow / pagehide persisted, back/forward cache freezing, persisted form state; no server)", "history")
+	web_step(&t, "Web Authentication end-to-end test (src\\tools\\e2e\\web_webauthn.odin: create then get from JavaScript on the virtual authenticator, signature checked; activation, RP ID, aborts, timer, mediation, JSON forms, secure context; no server)", "webauthn")
 	// (the two parts apart: what talks to the server waits for the programs, not for the 60 s of its tests' waits)
 	append(&t, Step{name = "build testserver", actions = slice_of(Task{"the programs", task_testserver, ""}), marks = {.No_Result}, makes = {.Test_Server}})
 	append(&t, Step{name = "test server tests (go test: /site/ index, listings, extensionless pages, types)", actions = slice_of(Command{argv = strs("go", "test", "."), dir = "tools/testserver"}), marks = {.Light}, inputs = .Dirs, packages = strs("tools/testserver")})
-	// The end-to-end scenarios (src/tools/e2e, docs/testing.md): one program on Odin's test runner that links the browser, built once; a step runs the tests of one file of it, in a process of its own.
-	append(&t, Step{name = "build e2e scenarios (src\\tools\\e2e: the browser in the tests' process, no window, the real renderer offscreen)", actions = slice_of(odin_build("src/tools/e2e", exe("build/e2e_test"), E2E_BUILD_FLAGS)), needs = COMMON_NEEDS, makes = {.E2E}})
 	if long_run {
-		// (Not on the CI, this build and the sessions on it below: 290 s of CPU more, for what the check build's session above mostly sees.)
-		append(&t, Step{name = "build e2e scenarios with every allocation tracked (src\\tools\\e2e with -define:WREN_TRACK_MEMORY=true: a test that leaves anything allocated fails)", actions = slice_of(odin_build("src/tools/e2e", exe("build/e2e_test_check"), join({TRACK}, E2E_BUILD_FLAGS))), marks = {.No_CI}, needs = COMMON_NEEDS, makes = {.E2E_Check}})
 		// The browser's check build (build.bat check: every allocation tracked). 1. It drives itself through a session and through tabs opened and closed by the dozen (src/tools/e2e/memcheck.odin, src/tools/endurance): nothing may
 		// be left allocated at exit, nor grow while it runs. It opens a window (no input of the desktop's); the endurance run is the long one in full runs (400 tabs, the native memory too).
 		endurance_args := join({exe("build/endurance"), "-timeout", fmt.aprint(ENDURANCE_LIMIT_SECONDS * cfg.slow)}, cfg.quick ? strs("-cycles", "8", "-warmup", "3", "-no-native") : nil)
@@ -338,20 +339,20 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	}
 
 	web_step(&t, "network policy test (CORS, cookies, redirects, CSP, schemes)", "policy", {.Light})
-	web_step(&t, "content blocker end-to-end test (src\\tools\\webtests\\blocker.odin: blocked script / frame / fetch, element hiding before the first style, scriptlet, whitelist, dynamic rules, journal, counters)", "blocker", {.Light})
-	web_step(&t, "HTTP cache end-to-end test (src\\tools\\webtests\\cache.odin: freshness, revalidation, Vary, cache modes, partitions, invalidation, stale-while-revalidate, disk cache across a restart)", "cache", {.Light})
+	web_step(&t, "content blocker end-to-end test (src\\tools\\e2e\\web_blocker.odin: blocked script / frame / fetch, element hiding before the first style, scriptlet, whitelist, dynamic rules, journal, counters)", "blocker", {.Light})
+	web_step(&t, "HTTP cache end-to-end test (src\\tools\\e2e\\web_cache.odin: freshness, revalidation, Vary, cache modes, partitions, invalidation, stale-while-revalidate, disk cache across a restart)", "cache", {.Light})
 	web_step(&t, "end-to-end page test", "page")
-	web_step(&t, "EventSource / WebSocket end-to-end test (src\\tools\\webtests\\netapi.odin)", "netapi", {.Light})
-	append(&t, Step{name = "network transport test on both stacks (src\\tools\\webtests\\net.odin: heads, bodies, gzip, caps, cancel, timeouts, refused / unresolved / cut / garbage answers, certificates; built-in stack: HTTP/2, HTTP/3 from Alt-Svc and the fall back to TCP when QUIC is blocked, TLS 1.3 only, expired and misnamed certificates, wss, the proxy)",
-		actions = slice_of(web_run("net", {"WREN_NET_BACKEND=winhttp"}), web_run("net", {"WREN_NET_BACKEND=rust"})), marks = {.Light, .Run_All}, needs = COMMON_NEEDS + {.Web_Tests, .Test_Server}, packages = strs("src/tools/webtests")})
-	web_step(&t, "WebSocket closing handshake test (src\\tools\\webtests\\wsclose.odin: close right after a message or the upgrade, late, missing and crossing close frames, server cutting TCP; repeated)", "wsclose", {.Light})
+	web_step(&t, "EventSource / WebSocket end-to-end test (src\\tools\\e2e\\web_netapi.odin)", "netapi", {.Light})
+	append(&t, Step{name = "network transport test on both stacks (src\\tools\\e2e\\web_net.odin: heads, bodies, gzip, caps, cancel, timeouts, refused / unresolved / cut / garbage answers, certificates; built-in stack: HTTP/2, HTTP/3 from Alt-Svc and the fall back to TCP when QUIC is blocked, TLS 1.3 only, expired and misnamed certificates, wss, the proxy)",
+		actions = slice_of(web_run("net", {"WREN_NET_BACKEND=winhttp"}), web_run("net", {"WREN_NET_BACKEND=rust"})), marks = {.Light, .Run_All}, needs = COMMON_NEEDS + {.Guests, .E2E_Check, .Test_Server}, sources = web_sources("net")})
+	web_step(&t, "WebSocket closing handshake test (src\\tools\\e2e\\web_wsclose.odin: close right after a message or the upgrade, late, missing and crossing close frames, server cutting TCP; repeated)", "wsclose", {.Light})
 	web_step(&t, "web platform API test (timers, rAF, abort, fetch streams, encoding, crypto, storage, URL, history)", "webapi")
 	web_step(&t, "forms end-to-end test (controls, validation, FormData, submission)", "forms")
 	web_step(&t, "workers end-to-end test (messages, transfer, fetch, terminate, 16 in parallel)", "workers")
 	web_step(&t, "JavaScript loading end-to-end test (script order, document.write, dynamic scripts, modules, handlers, CSP, noscript, timers, errors, workers, cloning)", "jsload")
-	web_step(&t, "nested documents end-to-end test (src\\tools\\webtests\\frames.odin: iframes, srcdoc, load events, postMessage across origins, cross-origin WindowProxy, sandbox, X-Frame-Options, frame-ancestors, frame-src, navigation, Permissions Policy)", "frames")
-	web_step(&t, "site compatibility end-to-end test (src\\tools\\webtests\\sitecompat.odin: reduced fixtures of real sites: stylesheet load events, media swap, scroll events)", "sitecompat")
-	web_step(&t, "JavaScript web APIs end-to-end test (fetch, XHR, streams, URL, encoding, abort, storage, history, navigator, crypto, sockets, messaging; src\\tools\\webtests\\jsweb.odin)", "jsweb")
+	web_step(&t, "nested documents end-to-end test (src\\tools\\e2e\\web_frames.odin: iframes, srcdoc, load events, postMessage across origins, cross-origin WindowProxy, sandbox, X-Frame-Options, frame-ancestors, frame-src, navigation, Permissions Policy)", "frames")
+	web_step(&t, "site compatibility end-to-end test (src\\tools\\e2e\\web_sitecompat.odin: reduced fixtures of real sites: stylesheet load events, media swap, scroll events)", "sitecompat")
+	web_step(&t, "JavaScript web APIs end-to-end test (fetch, XHR, streams, URL, encoding, abort, storage, history, navigator, crypto, sockets, messaging; src\\tools\\e2e\\web_jsweb.odin)", "jsweb")
 	web_step(&t, "style run-time test (web fonts, transitions, animations)", "style")
 	web_step(&t, "image formats end-to-end test (AVIF, WebP, SVG images and backgrounds, inline <svg>, Accept, <picture>)", "media", {.Ui_Only})
 	web_step(&t, "images end-to-end test (events, srcset, picture, lazy, CSS images, cache, cancellation, 200 x 1 Mpx)", "images", {.Light})

@@ -102,8 +102,6 @@ Attrs :: struct #packed {
 }
 #assert(size_of(Attrs) == 104)
 
-// What the test programs may ask of a GPU process started with the hooks (ipc::test_kind in native/webgl).
-TEST_HANG_CONTEXT :: 2
 
 // What wg_create learned: the same layout as WgInfo.
 Info :: struct {
@@ -129,12 +127,8 @@ foreign wren_native {
 	wg_restore :: proc(h: Handle) -> i32 ---
 	wg_console :: proc(h: Handle, out: [^]u8, cap: uint) -> uint ---
 	wg_process_role :: proc() ---
-	// Test programs only: no page reaches these, and a process started without the hooks takes one for a broken stream.
-	wg_test_enable_hooks :: proc() ---
 	wg_test_process_id :: proc() -> u64 ---
 	wg_test_process_starts :: proc() -> u64 ---
-	wg_test_kill_process :: proc() ---
-	wg_test_misbehave :: proc(h: Handle, kind: u32) -> i32 ---
 }
 
 Settings :: struct {

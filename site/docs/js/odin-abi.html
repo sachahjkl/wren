@@ -355,7 +355,7 @@ disappear. A string result lives in the scratch buffer until the next host call:
 with the same signature; nothing changes in <code>native/js/gen</code>.</li>
 <li><strong>Build and check:</strong> <code>odin check native/js/odin -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -vet</code>,
 then <code>cmd /c build.bat</code>.</li>
-<li><strong>Test what the domain touches:</strong> the web tests of the domain (<code>js</code>, <code>jsweb</code> for url: <code>src/tools/webtests</code>), <code>build\wpt.exe -only
+<li><strong>Test what the domain touches:</strong> the web tests of the domain (<code>js</code>, <code>jsweb</code> for url: <code>src/tools/e2e/web_*.odin</code>), <code>build\wpt.exe -only
 /&lt;folder&gt;/ -TimeoutMs 30000</code>. The judge is "the same subtests pass as before", against a build of the commit
 before the migration when <code>wpt/expectations</code> is older than the code.</li>
 <li><strong>Measure the hot members</strong> (a page timing 200 000 calls, <code>wren ctl run --eval</code>), report the before/after, commit.</li>

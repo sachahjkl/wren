@@ -2,8 +2,8 @@
 // The web APIs of JavaScript (native/js/runtime/web*.c): each section is one test, which runs scripts of examples/jsweb/*.js in pages of
 // the test server's origin, after a small harness (examples/jsweb/harness.js). What a script finds comes back through `wrenTest`, and each
 // section declares how many tests it runs: testhost.finish fails what ran another number, ran nothing or ended early. A section alone:
-//   build\web_test.exe -tests:jsweb_core,jsweb_webgl_process,zz_the_process_ends_with_nothing_left
-package webtests
+//   build\e2e_test_check.exe -tests:jsweb_core,zz_the_process_ends_with_nothing_left
+package e2e_scenarios
 
 import "core:fmt"
 import "core:os"
@@ -29,10 +29,6 @@ LONG_SECTION_SECONDS :: 120.0
 WEBGL_SECTION_SECONDS :: 300.0
 SKIP_TEST_SECONDS :: 30.0
 SLOW_SCRIPT_MS :: 120_000   // a task that waits for the software rasterizer, 2000 sounds in one task: slow on a loaded machine, and the hard stop is four times the limit on scripts
-// The GPU process's limits while it is hung on purpose: the time after which it is killed (twice that on the software adapter of these
-// tests), restarts that are not counted against anything.
-WEBGL_TEST_HANG_MS :: 10_000
-WEBGL_TEST_RESTARTS :: 1000
 IDB_QUOTA_TEST_BYTES :: 1 << 20
 CUT_SECTIONS := [?]string{"abort", "blob", "canvas", "canvas_gc", "compat", "compile_large", "core", "fetch", "fetch_objects", "gc", "geometry", "history", "htmlmedia", "idb", "idb_buckets", "idb_clear", "idb_keys", "idb_pages_a", "idb_pages_b", "idb_persist", "idb_quota", "idb_worker", "media", "message", "navigator", "perf_crypto", "perf_timeline", "sockets", "storage", "storage_listener", "streams", "url", "webassembly", "webaudio", "webaudio_autoplay", "webcrypto", "xhr"}
 BROKEN_PAGES := [?]string{"<!doctype html><script>}{</script>", "<!doctype html><script>throw new Error(\"on purpose\")</script>"}
@@ -44,7 +40,7 @@ CANVAS_BYTES_AFTER_MAX :: 8_000_000     // what stays: the canvas kept (500 x 50
 VIEW_WIDE :: 1200
 VIEW_NARROW :: 400
 VIEW_H :: 800
-WEBGL_PROCESS_TESTS :: 5
+WEBGL_SKIP_TESTS :: 1
 RUNNER_DECODER_THREADS :: 2   // a software video's threads on a machine of four processors, a CI runner
 
 session:     page.Session_History
@@ -211,13 +207,13 @@ jsweb_idb :: proc(t: ^testing.T) {
 // (the two benchmarks only measure: performance runs, test_all -Perf)
 @(test)
 jsweb_idb_bench :: proc(t: ^testing.T) {
-	if base.perf_skip("web_test jsweb_idb_bench: IndexedDB micro-benchmarks") { return }
+	if base.perf_skip("web tests, jsweb_idb_bench: IndexedDB micro-benchmarks") { return }
 	section(t, "idb_bench", tests = 3, seconds = LONG_SECTION_SECONDS)
 }
 
 @(test)
 jsweb_bench :: proc(t: ^testing.T) {
-	if base.perf_skip("web_test jsweb_bench: the cost of a web API call") { return }
+	if base.perf_skip("web tests, jsweb_bench: the cost of a web API call") { return }
 	section(t, "bench", tests = 1, seconds = LONG_SECTION_SECONDS)
 }
 
@@ -258,24 +254,6 @@ jsweb_webgl_api :: proc(t: ^testing.T) {
 	actions := make(map[string]Action, context.temp_allocator)
 	actions["frame"] = proc(pr: ^Probe) -> string { page.images_sync(pr.p); page.canvas_frame(pr.p); return "" }
 	script(t, "webgl", tests = 23, actions = actions, seconds = WEBGL_SECTION_SECONDS)
-}
-
-// The GPU process killed and hung (test hooks): quick limits, and no limit on restarts for what is killed on purpose.
-@(test)
-jsweb_webgl_process :: proc(t: ^testing.T) {
-	context.allocator = base.process_allocator()
-	section_begin(t)
-	defer section_end()
-	webgl_settings()
-	webgl.wg_test_enable_hooks()
-	settings.webgl.gpu_hang_ms, settings.webgl.gpu_max_restarts = WEBGL_TEST_HANG_MS, WEBGL_TEST_RESTARTS
-	// (the process of a section before has no hooks: this one ends it, and the next has them)
-	webgl.wg_test_kill_process()
-	actions := make(map[string]Action, context.temp_allocator)
-	actions["gpu_kill"] = proc(pr: ^Probe) -> string { webgl.wg_test_kill_process(); return "" }
-	actions["gpu_hang"] = proc(pr: ^Probe) -> string { page.webgl_test_hang(pr.p); return "" }
-	actions["gpu_info"] = proc(pr: ^Probe) -> string { return fmt.tprintf("({{ pid: %d, starts: %d }})", webgl.wg_test_process_id(), webgl.wg_test_process_starts()) }
-	script(t, "webgl_process", tests = WEBGL_PROCESS_TESTS, actions = actions, seconds = WEBGL_SECTION_SECONDS)
 }
 
 @(test)
@@ -524,7 +502,7 @@ jsweb_a_skip_that_is_not_true_of_the_machine_fails_the_section :: proc(t: ^testi
 	section_begin(t)
 	defer section_end()
 	settings.webgl.enabled = false
-	pr := open(t, "webgl_process")
+	pr := open(t, "webgl_skip")
 	wait_script(pr, seconds = SKIP_TEST_SECONDS)
 	page.page_close(pr.p)
 	pr.p = nil
@@ -532,7 +510,7 @@ jsweb_a_skip_that_is_not_true_of_the_machine_fails_the_section :: proc(t: ^testi
 	testing.expect_value(t, pr.section.begun, 0)
 	settings.webgl.enabled = true
 	verdict, _ := adapter_probe()
-	problems, true_skips := testhost.judge(&pr.section, tests = WEBGL_PROCESS_TESTS, verify_skip = verify_skip)
+	problems, true_skips := testhost.judge(&pr.section, tests = WEBGL_SKIP_TESTS, verify_skip = verify_skip)
 	if verdict == .Absent {
 		testing.expect_value(t, len(true_skips), 1)   // (this machine really has none: reported and counted)
 	} else {

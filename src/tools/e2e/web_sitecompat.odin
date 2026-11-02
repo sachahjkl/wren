@@ -3,7 +3,7 @@
 // clockin.sacha.house, an Angular + Tailwind application): stylesheet loading tricks (<link media=print onload="this.media='all'">),
 // load / error events of <link>, the scroll events a virtual list renders its rows from (clockin's history: Angular CDK), the
 // document's horizontal scroll as scripts see it. The fixtures say what they saw with wrenTest.note, through their log().
-package webtests
+package e2e_scenarios
 
 import "core:fmt"
 import "core:strings"

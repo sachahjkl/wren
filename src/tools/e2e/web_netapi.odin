@@ -2,7 +2,7 @@
 // EventSource and WebSocket through the whole stack (guest -> page -> fetch policy -> net/WinHTTP -> the test server), page teardown with
 // live connections and a 50-socket stress. What must NOT happen (a late delivery, a reconnection, a handshake given up early) comes on a
 // timer of the loop: those tests are on the test's clock.
-package webtests
+package e2e_scenarios
 
 import "core:encoding/json"
 import "core:fmt"

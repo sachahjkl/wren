@@ -359,6 +359,27 @@ closure_packages :: proc(c: ^Cache, packages: []string, allocator := context.tem
 	return list, true
 }
 
+// `sources` read one by one: `own`, themselves and what they load and read; the packages they import go into `pkgs`. false: an import that names no folder, or a file that cannot be read: the caller takes the whole tree.
+@(private = "file")
+source_inputs :: proc(c: ^Cache, sources: []string, pkgs: ^[dynamic]string) -> (own: []string, ok: bool) {
+	n := Package_Node{files = make([dynamic]string, context.temp_allocator)}
+	for rel in sources {
+		data, err := os.read_entire_file(full_path(c, rel), context.temp_allocator)
+		if err != nil { return }
+		dir := rel[:strings.last_index_byte(rel, '/')]
+		facts := scan_source(string(data))
+		add_path_or_dir(c, &n, rel)
+		for imp in facts.imports {
+			pkg, known := resolve_import(c, dir, imp)
+			if !known { return }
+			if pkg != "" { append(pkgs, pkg) }
+		}
+		for load in facts.loads { add_path_or_dir(c, &n, canon(strings.concatenate({dir, "/", load}, context.temp_allocator))) }
+		for path in facts.data { add_path_or_dir(c, &n, canon(path)) }
+	}
+	return n.files[:], true
+}
+
 // The files a step depends on (repository-relative, sorted).
 step_inputs :: proc(c: ^Cache, s: ^Step, allocator := context.temp_allocator) -> []string {
 	files: []string
@@ -373,12 +394,14 @@ step_inputs :: proc(c: ^Cache, s: ^Step, allocator := context.temp_allocator) ->
 		pkgs := make([dynamic]string, context.temp_allocator)
 		append(&pkgs, ..s.packages)
 		for a in s.actions { if cmd, is_command := a.(Command); is_command && cmd.pkg != "" { append(&pkgs, cmd.pkg) } }
+		own, read := source_inputs(c, s.sources, &pkgs)
 		code, resolved := closure(c, pkgs[:], allocator)
-		if len(pkgs) == 0 || !resolved {
+		if len(pkgs) == 0 || !resolved || !read {
 			files = tree_files(c, false, false, allocator)
 		} else {
-			both := make([dynamic]string, 0, len(code) + len(c.stamps) / 2, allocator)
+			both := make([dynamic]string, 0, len(code) + len(own) + len(c.stamps) / 2, allocator)
 			append(&both, ..code)
+			append(&both, ..own)
 			append(&both, ..data_files(c))
 			slice.sort(both[:])
 			files = slice.unique(both[:])

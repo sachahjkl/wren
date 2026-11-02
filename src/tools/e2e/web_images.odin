@@ -6,7 +6,7 @@
 // and, with -Perf, 200 images of a megapixel decoded without blocking the UI thread.
 //
 // The process's image cache would answer for what a test wants to see downloaded: each test starts and ends without it.
-package webtests
+package e2e_scenarios
 
 import "core:fmt"
 import "core:log"

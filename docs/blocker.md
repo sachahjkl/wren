@@ -161,7 +161,7 @@ Stand-ins for `$redirect`: `noop.js`, `noop.css`, `noop.html` / `noopframe`, `no
 - `src/tools/blockerpages`: the same in the headless stack.
 - `tools\blocker_js.ps1`: how much JavaScript the interpreter runs for a page (`WREN_JS_PROFILE` samples summed over the tab's pages, and those of the blocker's own scripts), two executables side by side and the page without the blocker.
 - `blockerpages -hooks`: what a hooked API costs per call (ns), without the blocker, with the native hooks, with the JavaScript versions. It starts the test server itself.
-- Unit tests: `odin test src/adblock`, `odin test src/blocker`; end to end: `src/tools/webtests/blocker.odin` (`src\tools\test_all`).
+- Unit tests: `odin test src/adblock`, `odin test src/blocker`; end to end: `src/tools/e2e/web_blocker.odin` (`src\tools\test_all`).
 
 ## Results
 

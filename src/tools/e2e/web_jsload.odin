@@ -7,7 +7,7 @@
 // compilation, setTimeout(0), animation frame latency). A page says what happened with `log`, a note to its test; only what the
 // console itself is about (an uncaught error, a violation) is read from the console. Its files are examples/jsload, its routes
 // tools/testserver/jsload.go.
-package webtests
+package e2e_scenarios
 
 import "core:fmt"
 import "core:log"

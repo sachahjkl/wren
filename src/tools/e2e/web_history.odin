@@ -2,7 +2,7 @@
 // The page's side of history: the session history tree as pages see it (history.length, pushState, back after a branch),
 // history.scrollRestoration, pagehide / pageshow and PageTransitionEvent.persisted, freezing and thawing for the back/forward cache
 // (timers and tasks held, then run), the reasons a page cannot be kept, and the persisted state of form controls. No server.
-package webtests
+package e2e_scenarios
 
 import "core:strings"
 import "core:testing"
