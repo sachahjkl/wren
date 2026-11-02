@@ -93,6 +93,9 @@ process_start :: proc(args: []string, o := Start_Options{}) -> (p: Process, pid:
 		if si.hStdError != nil && !o.merged { win.CloseHandle(si.hStdError) }
 	}
 	flags: win.DWORD
+	// (what it prints goes elsewhere: no console to show, and from a process with none, a test's, a console program would make one with a window: on a desktop of a run,
+	// where they run out of its heap, it ended there with STATUS_DLL_INIT_FAILED before its first instruction)
+	if redirected { flags |= win.CREATE_NO_WINDOW }
 	block: [^]u16
 	if o.env != nil { flags |= win.CREATE_UNICODE_ENVIRONMENT; block = environment_block(o.env) }
 	cwd: win.LPCWSTR = o.cwd != "" ? win.utf8_to_wstring(o.cwd, context.temp_allocator) : nil
