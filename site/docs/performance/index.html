@@ -252,8 +252,9 @@ profile build (<code>build.bat profile</code>, <code>-define:PROFILE=true</code>
 <code>domInteractive - responseEnd</code>), then the scenario's input, then <code>api.stats</code> (CPU, frames, the loop's meter:
 <code>loop.turns</code>, <code>sleeps</code>, <code>causes</code>).</li>
 <li><code>WREN_SAMPLE=1</code> (1 ms samples of the window's thread, by phase), <code>WREN_SAMPLE_STACK=1</code> (callers),
-<code>WREN_SAMPLE_THREADS=1</code> (the other threads in turn). The thread sampler visits about 90 threads one after the other: a
-worker gets about 13 samples a second, too few for its hot spots. Samples that land in a system call are biased: on the
+<code>WREN_SAMPLE_THREADS=1</code> (the other threads, in proportion to the CPU cycles each ran: every millisecond the one that
+ran the most since its last sample; per thread, its hottest call chains and the functions on its stack). Before round
+3 it visited the ninety threads in turn, about 13 samples a second each. Samples that land in a system call are biased: on the
 script-heavy page <code>NtUserGetQueueStatus</code> (the chrome's preemption checking for input) took 13 % of the samples, and turning
 preemption off (<code>browser.shell.preempt=false</code>) changed neither the frame rate nor the CPU.</li>
 </ul>
@@ -315,6 +316,12 @@ handle indices grow and every array indexed by them with them, and partial resty
 <p>Every style pass is now a full one ("too much changed": 10 000 changed of 20 000 live nodes) at 9.6 ms; before, 160 partial
 restyles of 13 to 16 ms and 43 full passes of 12 to 15 ms. The collections the DOM now asks for (below) are about a
 quarter of the window thread's samples: the cost of freeing the wrappers moved there from the engine's own collections.</p>
+<p>After round 3 (medians of 5 runs of each build, interleaved): styles made by a full pass 20.1 -&gt; 11.1 MB, the pass
+9.4 -&gt; 8.8 ms, private memory 302 -&gt; 275 MB, CPU work per frame 63.0 -&gt; 61.7 ms. On the page thread, where layout runs,
+the samples in <code>NtFreeVirtualMemory</code> (its temporary memory given back after every pass) went from 2.7 to 3.2 % to none.
+The style stage is a restyle of the 7 500 new elements whichever way it goes: with partial restyles allowed
+(<code>style.incremental.max_ratio=1</code>) each costs 8.9 ms against 8.3 ms for a full pass, and the style stage per frame is the
+same (8.1 against 8.3 ms).</p>
 <p><strong>Bottleneck:</strong> the script stage (JS interpreter, the DOM bindings, the collections that free the wrappers), then layout.</p>
 <h3 id="3-scrolling-a-long-page-p10k-3-wheel-notches-every-16-ms"><a class="anchor" href="#3-scrolling-a-long-page-p10k-3-wheel-notches-every-16-ms" aria-hidden="true">#</a>3. Scrolling a long page (p10k, 3 wheel notches every 16 ms)</h3>
 <p>167 to 177 frames/s (headless: one frame per input, the input's rate). CPU per frame 0.54 ms mean, 0.31 p50, 1.0 p95:
@@ -335,6 +342,9 @@ turns in 5 s, 165 of them after a sleep, 207 frames for a task and 184 asked.</p
 Contentful Paint scan 0.2 to 0.48 -&gt; 0.06 to 0.10 ms a frame (24 to 29 % -&gt; 11 to 18 % of the sampled work), the walks
 after a style pass 2.6 to 4.6 % -&gt; 0.2 to 0.6 %. The same page with a class toggled instead of a text
 (<code>mutation_class</code>): 2.84 -&gt; 1.73 ms mean.</p>
+<p>After round 3 (medians of 5 interleaved runs): a full style pass makes 13.5 -&gt; 7.7 MB of styles (both pages), private
+memory 234 -&gt; 222 MB (<code>mutation</code>) and 258 -&gt; 232 MB (<code>mutation_class</code>); a partial restyle 0.024 -&gt; 0.021 ms and
+0.243 -&gt; 0.230 ms; CPU work per frame 1.19 -&gt; 1.09 and 1.84 -&gt; 1.79 ms mean.</p>
 <h2 id="what-changed-round-1"><a class="anchor" href="#what-changed-round-1" aria-hidden="true">#</a>What changed, round 1</h2>
 <ol>
 <li><strong>The frame pacer books no slot for a frame it does not pace</strong> (<code>src/browser/pacing.odin</code>, <code>pacer_wait</code>). A headless
@@ -393,63 +403,43 @@ last user of a URL (<code>css_users</code>, a bit per node). <code>fonts_sync</c
 restyled elements. nodes10k: 0.6 -&gt; 0.02 to 0.035 ms a frame (1.2 -&gt; 0.2 % of the work); mutation page 2.6 to 4.6 %
 -&gt; 0.2 to 0.6 %.</li>
 </ol>
-<h2 id="round-3-the-locks-of-the-loop-and-the-network-measured-against-lock-free-queues"><a class="anchor" href="#round-3-the-locks-of-the-loop-and-the-network-measured-against-lock-free-queues" aria-hidden="true">#</a>Round 3: the locks of the loop and the network, measured against lock-free queues</h2>
-<p>Item 7 of round 2's list. The locks of <code>src/host</code>, <code>src/net</code> and <code>src/fetch</code>, and of what posts between them and the
-loop, as producers and consumers:</p>
-<div class="table-box"><table>
-<thead><tr><th>lock</th><th>produces</th><th>consumes</th><th>how often</th><th>held for</th></tr></thead>
-<tbody>
-<tr><td><code>host/loop.odin</code> <code>Loop.mu</code></td><td>any thread posts a task (network drains, blocking jobs' completions, image decoders, the page thread, workers' links)</td><td>the loop thread, once a turn</td><td>every post: thousands a second during a load</td><td>an append; the turn's swap of the arrays</td></tr>
-<tr><td><code>net/client.odin</code> <code>Client.mu</code></td><td>WinHTTP's threads (headers, each chunk of <code>read_chunk</code> bytes, done, failed)</td><td>the loop, one posted <code>drain</code> per burst</td><td>every network event</td><td>an append; the drain's swap</td></tr>
-<tr><td><code>net/websocket.odin</code> <code>Ws_Manager.mu</code></td><td>WinHTTP's threads (frames, writes done, close)</td><td>the loop, one <code>ws_drain</code> per burst</td><td>every WebSocket event</td><td>an append; the swap</td></tr>
-<tr><td><code>host/thread_pool.odin</code> <code>mu</code> + <code>cond</code></td><td><code>parallel_for</code> (style passes, a few a frame)</td><td>the pool's threads</td><td>every round</td><td>three stores; the helpers' wake-up</td></tr>
-<tr><td><code>host/blocking.odin</code> <code>Blocking_Pool.mu</code> + 2 conds</td><td>the loop (<code>run_blocking</code>)</td><td>4 workers</td><td>each blocking job (file reads, hashing): tens a second</td><td>an append; <code>ordered_remove(0)</code></td></tr>
-<tr><td><code>host/thread.odin</code> <code>live_mu</code></td><td>a thread starting or ending</td><td>the teardown's report</td><td>per thread</td><td>an append</td></tr>
-<tr><td><code>host/shutdown.odin</code> <code>sd.mu</code></td><td>the teardown's steps</td><td>its watchdog</td><td>per step of a teardown</td><td>a copy of a name</td></tr>
-<tr><td><code>fetch/blob_urls.odin</code> <code>blob_store.mu</code></td><td><code>URL.createObjectURL</code>, <code>revokeObjectURL</code> (any App's thread)</td><td>a load of a <code>blob:</code> URL</td><td>per blob URL</td><td>a map lookup</td></tr>
-</tbody>
-</table></div>
-<p>The built-in network stack (<code>network.backend = rust</code>) queues its events in the library (<code>native/</code>) and posts one
-<code>rust_drain</code> when its queue stops being empty: nothing of ours to lock.</p>
-<p><strong>Decision: the mutexes stay.</strong> Two lock-free designs of the loop's queue were built and measured against <code>Loop.mu</code>
-(the commits "The event loop and the network take no lock" and "The loop's queue, second design", kept in the history):
-neither moved as many posts a second through a running loop from one thread, and the consumer was not faster; the
-latency of a post was the same. The network's inboxes used the same queue (same verdict: they gain nothing at network
-rates and lose the same way in a burst from one thread), and <code>parallel_for</code>'s round handed over by one atomic word was
-slower than the mutex and condition (0.53 against 0.36 us a round). What was kept: the tests and the two benches.</p>
+<h2 id="what-changed-round-3"><a class="anchor" href="#what-changed-round-3" aria-hidden="true">#</a>What changed, round 3</h2>
+<p>Items 2 and 3 of round 2's list, and the profiler (item 8) to see the threads where the work now is. Measured as in
+round 2: 5 runs of each build interleaved (<code>wrentool bench perf</code>, one scenario after the other with each build in turn),
+and the shares of the samples.</p>
 <ol>
-<li>First design: blocks of slots claimed by a compare-and-swap on the tail, the consumer popping one slot at a time.
-Four producers fought for the tail (10 M/s against the mutex's 25), and the consumer ran a third as fast.</li>
-<li>Second design: a wait-free fetch-and-add claim; blocks found by number from a hint and linked by the first producer
-that needs one, retired with the tail's position when the consumer leaves them (a producer that may still hold one
-claimed before that mark: once the consumer has taken every position before it, the block is free to use again); the
-consumer walking the slots in place up to the position its turn began at; slots and the queue's fields on lines of
-their own; the wake left pending while work keeps coming, cleared only at the end of a turn that left nothing (so
-producers write nothing to it during a turn), and a call to the system only when the loop sleeps. Four producers now
-match the mutex. One producer does not: the loop, faster than the producer, catches up with it every 2 or 3 tasks
-(about 400 000 turns per million posts, against 11 000 to 17 000 with the mutex, which made the loop wait while the
-producer appended), and every catching-up moves the queue's lines between the two cores and slows the producer.
-Batching that away means making the loop wait for work it could run: a latency the mutex does not have.</li>
+<li><strong><code>Computed</code> split by group</strong> (<code>src/style/types.odin</code> <code>Group</code>, <code>src/style/props.odin</code>). What few elements set is in
+six groups behind a pointer each, with <code>using</code>, so every read is unchanged (<code>c.transform</code>): the background layers
+(240 bytes), transforms (184), transitions and animations (224), grid (256), masks (128), and the rest (effects,
+counters, containment, container queries, scrolling, anchors: 280). A style shares the groups of the initial values,
+built once in read-only pages, until it sets a property of one; the cascade then copies that group once for the
+element (<code>cx_take</code>, called by <code>apply_prop</code> and the <code>inherit</code> / <code>initial</code> / <code>unset</code> copies); code that writes into a
+style elsewhere (the timeline's overlays and transitions, keyframes, scratch styles of interpolation, layout's
+anchored boxes) takes its own copy first (<code>prop_take</code>). A write into a group that is not one's own changes every style
+that shares it: into the initial values it faults at once, which is how the tests found the two that did. The
+comparisons (<code>computed_equal</code>, <code>layout_equal</code>, the layout journal's runs) skip a group the two styles share. An
+element's style is 1 544 bytes instead of 2 808, plus the groups it sets. nodes10k: 20.1 -&gt; 11.1 MB of styles a full
+pass, the pass 9.4 -&gt; 8.8 ms, 302 -&gt; 275 MB; mutation pages 13.5 -&gt; 7.7 MB a pass, partial restyles 5 to 12 % faster;
+p10k loaded: 13.5 -&gt; 7.7 MB. The style threads zero the arena they take back (<code>arena_free_all</code>, 13 % of their samples
+on nodes10k): half the bytes now. No group holds an inherited property: inheriting still copies the inherited
+properties' bytes (about 500 of the 1 544, see Next).</li>
+<li><strong>The layout thread's heap growth</strong> (<code>src/browser/page_thread.odin</code>). With the profiler able to see it (below), the
+growing dynamic arrays of round 1 are gone from the page thread (round 2's node lifetime fixed them: the arrays
+indexed by node stay the document's size). What was left: its temporary memory. The runtime's temporary arena keeps
+only its first block (4 MB); a layout pass of nodes10k needs more, so every pass mapped more blocks and <code>free_all</code>
+gave them back (<code>NtFreeVirtualMemory</code>, 2.7 to 3.2 % of the thread, and fresh pages faulted in at the next pass). The
+page thread now keeps one block as large as its largest pass needed (times 5/4, up to 512 MB), emptied after each:
+<code>NtFreeVirtualMemory</code> 0 % of its samples.</li>
+<li><strong>Partial restyle on nodes10k: measured, not changed.</strong> Every frame inserts 7 500 new elements: a partial restyle
+restyles them all, as a full pass does, and leaves the old records in the arena (a full pass every sixth frame for
+"memory left by partial restyles"). Allowed (<code>style.incremental.max_ratio=1</code>), a partial restyle costs 8.9 ms against
+8.3 for a full pass, and the style stage per frame is the same; layout is a full pass either way. What a restyle of
+new elements costs is the cost of styling an element (matching, building the style), which item 1 lowered.</li>
+<li><strong>The profiler samples the threads that run</strong> (<code>src/browser/prof.odin</code>, <code>other_sampler_proc</code>): each millisecond the
+thread with the most CPU cycles since its last sample (<code>QueryThreadCycleTime</code>, handles kept open), so a thread is
+sampled in proportion to its CPU time; per thread, the functions anywhere on its stack. nodes10k: the page thread
+160 -&gt; 1 900 samples in 15 s; the main sampler, which it counted as the busiest thread, is left out.</li>
 </ol>
-<p><code>post_rate_and_latency</code> (<code>src/host/loop_test.odin</code>) and <code>parallel_for_round_cost</code> (<code>src/host/thread_test.odin</code>), <code>-Perf</code>,
-<code>-o:speed</code>, the mutex and the second design, 7 runs each alternated; the median, range in brackets:</p>
-<div class="table-box"><table>
-<thead><tr><th></th><th>mutex</th><th>lock-free (second design)</th></tr></thead>
-<tbody>
-<tr><td>1 million posts through the running loop, 1 thread</td><td>24.0 M/s (23.5-42.9)</td><td>14.6 M/s (13.4-17.4)</td></tr>
-<tr><td>the same, 4 threads at once</td><td>20.6 M/s (19.7-29.7)</td><td>21.4 M/s (20.9-36.5)</td></tr>
-<tr><td>one thread posting, the loop not running</td><td>38.4 M/s (36.2-42.1)</td><td>34.4 M/s (30.8-38.0)</td></tr>
-<tr><td>the loop running them alone</td><td>198 M/s (162-204)</td><td>172 M/s (137-213)</td></tr>
-<tr><td>post to run on a waiting loop, median / 99th</td><td>0.3 / 0.7 us</td><td>0.3 / 0.7 us</td></tr>
-<tr><td>a <code>parallel_for</code> round of 5 empty items on 4 threads</td><td>0.36 us (0.31-0.42)</td><td>0.53 us (0.43-0.63)</td></tr>
-</tbody>
-</table></div>
-<p>The browser (<code>wrentool bench perf</code>, profile builds of the mutex and of the first design, headless, 3 runs of each
-alternated; the median, range in brackets) could not tell them apart either: p10k_load 311 (257-411) against 255
-(251-740) ms to load; mutation 75.5 (71.6-86.2) against 73.5 (72.4-104.5) frames/s; js_nodes10k 47.2 (43.9-47.9)
-against 44.8 (44.4-47.0) frames/s. A post costs tens of nanoseconds either way, and a browser posts thousands a second.</p>
-<p>What would change the verdict: a measured stall of the loop behind a producer descheduled with the lock held (the
-frame timeline would show a turn that waited on <code>Loop.mu</code>); none has been seen.</p>
 <h2 id="inventory"><a class="anchor" href="#inventory" aria-hidden="true">#</a>Inventory</h2>
 <h3 id="internal-caches-remove-by-making-the-path-fast-product-caches-kept"><a class="anchor" href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept" aria-hidden="true">#</a>Internal caches (remove by making the path fast; product caches kept)</h3>
 <p>Kept, a product: the HTTP cache (<code>src/httpcache</code>), the back/forward cache (<code>browser/bfcache.odin</code>), compiled scripts on
@@ -490,14 +480,16 @@ element with <code>elementtiming</code> only). Gone in round 1: <code>page/timel
 <code>map[...]bool</code> used as sets: <code>style/match.odin:56,64</code>, <code>style/engine.odin:68</code>, <code>style/restyle_dom.odin:144-147</code>,
 <code>font/raster.odin:76-77</code> (per glyph); <code>draw/bsp.odin:241</code> (n x n per 3D sort).</p>
 <h3 id="mutexes-51-in-wren-17-in-the-toolkit-outside-tests"><a class="anchor" href="#mutexes-51-in-wren-17-in-the-toolkit-outside-tests" aria-hidden="true">#</a>Mutexes (51 in Wren, 17 in the toolkit, outside tests)</h3>
-<p>The ones on a per-frame or per-item path, and what fits instead (the loop's, the network's and <code>parallel_for</code>'s were
-measured against lock-free designs in round 3 and stay):</p>
+<p>The ones on a per-frame or per-item path, and what fits instead:</p>
 <div class="table-box"><table>
 <thead><tr><th>where</th><th>guards</th><th>threads</th><th>instead</th></tr></thead>
 <tbody>
 <tr><td><code>font/raster.odin:72</code> <code>Atlas.mu</code></td><td>glyph maps, atlas pages, Slug store; rasterizes under it</td><td>every drawing thread, the color-glyph thread</td><td>per-thread lookup front, misses to a raster owner over an MPSC queue</td></tr>
 <tr><td><code>font/shape.odin:398</code> <code>Word_Shard.mu</code> x 64</td><td>shaped words; glyphs copied out under it</td><td>layout threads, page, chrome paint</td><td>goes with the word cache</td></tr>
 <tr><td><code>style/invalidation.odin:454</code> <code>Key_Sets.mu</code></td><td>interned selector keys, process-wide</td><td>every page's style engine</td><td>per-engine tables</td></tr>
+<tr><td><code>host/loop.odin:46</code> <code>Loop.mu</code></td><td>posted tasks</td><td>any thread -&gt; the loop</td><td>MPSC queue</td></tr>
+<tr><td><code>host/thread_pool.odin:17</code></td><td><code>parallel_for</code>'s generation</td><td>caller and workers</td><td>atomic generation and a futex wake</td></tr>
+<tr><td><code>net/client.odin:165</code>, <code>net/websocket.odin:184</code></td><td>events to the loop</td><td>network threads -&gt; loop</td><td>MPSC queue</td></tr>
 <tr><td><code>webaudio/graph.odin:79</code></td><td>the audio graph</td><td>page vs the real-time render thread</td><td>SPSC command ring</td></tr>
 <tr><td><code>media/store.odin:57</code></td><td>coded frames</td><td>demux vs decoder</td><td>SPSC ring</td></tr>
 <tr><td><code>page/worker.odin:95</code></td><td>page &lt;-&gt; worker queues</td><td>two threads</td><td>two SPSC rings</td></tr>
@@ -514,34 +506,41 @@ shutdown, the clipboard, the shader compiler) and stay.</p>
 <h3 id="heap-lists-per-call-on-hot-paths"><a class="anchor" href="#heap-lists-per-call-on-hot-paths" aria-hidden="true">#</a>Heap lists per call on hot paths</h3>
 <p><code>style/timeline.odin:429-432,468</code> (an <code>Element_Anim</code> and three dynamic arrays for each element that declares a transition,
 on every full pass); <code>browser/compositor.odin:322</code> (<code>compute_floors</code>: one heap array per group per rebuild) and <code>:532</code>
-(<code>node_items_make</code>: one per node); the layout thread's growing arrays on the nodes10k page (<code>_reserve_dynamic_array</code>, a
-third of its samples). Gone in round 2: the style threads' arenas mapped and freed with every pass. Most of layout and
-paint already use the temporary allocator or an arena.</p>
+(<code>node_items_make</code>: one per node); the window thread's and the thread pool's temporary arenas, which give back what
+outgrew their first block after each frame or job (<code>NtFreeVirtualMemory</code>, 1 % of the window thread on nodes10k; the
+pool's are <code>src/host</code>'s). Gone in round 2: the style threads' arenas mapped and freed with every pass. Gone in round 3:
+the layout thread's growing arrays (none in its samples since round 2) and its temporary blocks mapped and freed every
+pass. Most of layout and paint already use the temporary allocator or an arena.</p>
 <h2 id="next-ranked-by-measured-cost-on-a-bottleneck"><a class="anchor" href="#next-ranked-by-measured-cost-on-a-bottleneck" aria-hidden="true">#</a>Next, ranked by measured cost on a bottleneck</h2>
-<p>After round 2. Round 1's items 1 (in part), 3, 4 and 5 are done; what is left of them is folded in below. Round 3 measured
-item 7 as it stood (the loop's and the network's locks) and kept the mutexes; item 7 is now the job queues, to be measured
-the same way before anything replaces them.</p>
+<p>After round 3. Round 2's items 2, 3 and 8 are done (item 3 measured: a partial restyle of nodes10k costs what a full
+pass does); what is left of them is folded in below.</p>
 <ol>
 <li><strong>Wrappers freed by reference counting</strong> (nodes10k: the collections the DOM asks for are about a quarter of the window
-thread's samples, the script stage 42 ms of a 67 ms frame). A wrapper that carries nothing of its own (no expando
-property, no listener, its interface's prototype, no weak reference to it) can go when its count reaches zero and be
-made again if a script reaches the node later; only the others need the groups of <code>native/js/odin/wj/qjs_platform.odin</code>
-and a collection. A removed node would then give its index back as soon as no script holds it, without a collection.</li>
-<li><strong>The layout thread's heap growth</strong> (round 1: a third of its samples on nodes10k; layout is now 10.9 ms there):
-inline-capacity lists or the layout arena for the per-box lists of inline segments.</li>
-<li><strong>Style on DOM-heavy pages: every pass full, and <code>Computed</code> copied whole</strong> (nodes10k: 9.6 ms a frame, "too much
-changed" now that the document is its true size): a restyle of the inserted subtrees alone is the work a full pass
-does for them, without the rest; split <code>Computed</code> (2 808 bytes, copied from the initial style for every element) into
-what layout and paint read every frame and the rest.</li>
+thread's samples, the script stage 36 to 42 ms of a 57 to 67 ms frame). A wrapper that carries nothing of its own (no
+expando property, no listener, its interface's prototype, no weak reference to it) can go when its count reaches zero
+and be made again if a script reaches the node later; only the others need the groups of
+<code>native/js/odin/wj/qjs_platform.odin</code> and a collection. A removed node would then give its index back as soon as no
+script holds it, without a collection.</li>
+<li><strong>The cost of styling one element</strong> (nodes10k: 8.3 ms a frame for 7 500 new elements, full pass or partial). On the
+style threads (round 3's profiler): matching (<code>collect_entries</code>, about a quarter), <code>build_style</code>, and zeroing the
+arena they take back (<code>arena_free_all</code>, 13 %). Next steps: the inherited properties in a group of their own, shared
+with the parent until an element sets one (<code>inherit_all</code> copies about 500 bytes for every element; the writes to
+take care of are the derived values of the cascade, <code>scheme_settle</code>, <code>derive_fields</code>, the content language, and the
+copies of inherited values outside it: layout's refresh of anonymous boxes, the timeline's <code>push_inherited</code> and
+<code>pseudo_inherit</code>); an arena that need not be zeroed for the records the cascade overwrites whole.</li>
+<li><strong>Layout of DOM-heavy pages</strong> (nodes10k: 9 to 10 ms a frame, every pass full, "too much changed"): the page thread
+spends 36 % in the multi-column block layout and 20 % building the box tree (<code>font_info</code> 5 to 8 %: the style -&gt;
+font map per element), 6 to 10 % in its temporary allocator's allocations.</li>
 <li><strong>The layout's boxes as arrays of what the scans read</strong> (the LCP scan's remaining cost is <code>box_border</code> reading each
 box's struct, 57 % of it; the layout-shift scan reads the same): border rects and flags in flat arrays by box, or
 scans of the boxes the layout journal says changed.</li>
-<li><strong>The atlas lock per glyph and the word cache's 64 locks</strong> (toolkit): a per-thread front, misses to one owner.</li>
+<li><strong>The atlas lock per glyph and the word cache's 64 locks</strong> (toolkit): a per-thread front, misses to one owner
+(<code>word_find</code> is 4 % of the page thread on nodes10k).</li>
 <li><strong>The style index's string tables</strong> (<code>style/engine.odin:66-68</code>): atoms (interned ids) and flat arrays by atom.</li>
-<li><strong>The job queues of the blocking pool, the image decoders, the script compiler and the caches</strong> (the table above):
-measured first (round 3: a lock-free queue lost to the loop's mutex); a worker's <code>ordered_remove(0)</code> is a cost of its own.</li>
-<li><strong>The profiler</strong>: sample the threads that ran (their cycle counters) rather than all ninety in turn, and correct the
-bias of samples taken in a system call; the style threads, where most of a style pass runs, are barely seen.</li>
+<li><strong><code>Loop.mu</code> and the network event mutexes</strong>: MPSC queues.</li>
+<li><strong>The temporary arenas of the window thread and of the thread pool</strong> (<code>src/host</code>): the same as the page thread's (a
+block kept at the largest size used), where they outgrow their first block every frame or job.</li>
+<li><strong>The profiler</strong>: correct the bias of samples taken in a system call.</li>
 </ol>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../docs/testing/"><span>Previous</span><strong>How the tests run, and how to go fast</strong></a>
@@ -561,7 +560,7 @@ bias of samples taken in a system call; the style threads, where most of a style
 <li class="lvl3"><a href="#5-script-dom-one-change-per-frame-on-a-large-page-examplessitemutationhtml-17-000-nodes-a-wasm-module-changes-one-text-every-16-ms">5. Script - DOM, one change per frame on a large page (examples/site/mutation.html, ~17 000 nodes, a Wasm module changes one text every 16 ms)</a></li>
 <li><a href="#what-changed-round-1">What changed, round 1</a></li>
 <li><a href="#what-changed-round-2">What changed, round 2</a></li>
-<li><a href="#round-3-the-locks-of-the-loop-and-the-network-measured-against-lock-free-queues">Round 3: the locks of the loop and the network, measured against lock-free queues</a></li>
+<li><a href="#what-changed-round-3">What changed, round 3</a></li>
 <li><a href="#inventory">Inventory</a></li>
 <li class="lvl3"><a href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept">Internal caches (remove by making the path fast; product caches kept)</a></li>
 <li class="lvl3"><a href="#hash-tables-on-hot-paths">Hash tables on hot paths</a></li>
