@@ -13,6 +13,7 @@ import "core:time"
 import "wb:base"
 import "wb:dom"
 import "wb:host"
+import "wb:idb"
 import "wb:js"
 import "wb:media"
 import "wb:page"
@@ -33,6 +34,7 @@ SLOW_SCRIPT_MS :: 120_000   // a task that waits for the software rasterizer, 20
 WEBGL_TEST_HANG_MS :: 10_000
 WEBGL_TEST_RESTARTS :: 1000
 IDB_QUOTA_TEST_BYTES :: 1 << 20
+OTHER_PROGRAM_TEST :: "webapi_closing_and_restart"   // (a test of a few milliseconds that empties a profile first)
 GC_MAX_HOST_OBJECTS :: 100
 CANVAS_BYTES_BEFORE_MIN :: 100_000_000
 CANVAS_BYTES_AFTER_MAX :: 8_000_000     // what stays: the canvas kept (500 x 500 x 4 = 1 MB) and the copies cached for drawing
@@ -298,6 +300,23 @@ jsweb_perf_timeline :: proc(t: ^testing.T) {
 	script(t, "perf_timeline", tests = 7, actions = actions)
 }
 
+// Test programs run side by side, and each starts by emptying its profile: what one has on disk is not another's to empty. With one
+// folder for all, the commit of an upgrade found no folder to write its journal in and the open failed with AbortError (in a whole run:
+// jsweb_webcrypto, when webapi started after the origin had left memory). Here another program starts and ends in between.
+@(test)
+jsweb_idb_beside_another_process :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	section_begin(t)
+	defer section_end()
+	settings.idb.idle_unload_ms = 0
+	script(t, "idb_beside_another_process", tests = 1)
+	// (what keeps a file open goes: the origin leaves memory)
+	wait_until(t, "the origin out of memory", storage_world(), proc(s: ^page.Storage_Manager) -> bool { return idb.manager_tick(&s.idb.m) == 0 })
+	state, _, _, err := os.process_exec({command = {os.args[0], "-tests:" + OTHER_PROGRAM_TEST + ",zz_the_process_ends_with_nothing_left"}}, context.temp_allocator)
+	testing.expectf(t, err == nil && state.exit_code == 0, "%s in another process: error %v, exit code %d", OTHER_PROGRAM_TEST, err, state.exit_code)
+	script(t, "idb_beside_another_process", tests = 1)
+}
+
 // IndexedDB across pages and across a restart of the data manager: versionchange / blocked between two pages, the journal
 // read again after the manager was destroyed and made anew, the quota, and "Clear site data".
 @(test)
@@ -320,7 +339,7 @@ jsweb_idb_pages :: proc(t: ^testing.T) {
 	host.blocking_settle(&blocking)
 	page.storage_manager_destroy(&storage)
 	host.blocking_settle(&blocking)
-	page.storage_manager_init(&storage, &loop, &blocking, STORAGE_DIR)
+	page.storage_manager_init(&storage, &loop, &blocking, storage_dir())
 	script(t, "idb_persist", tests = 1)
 
 	// quota: 1 MiB for the origin

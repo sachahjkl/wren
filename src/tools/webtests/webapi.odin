@@ -306,8 +306,8 @@ webapi_closing_and_restart :: proc(t: ^testing.T) {
 	close_page(pr, min_checks = 3)
 	testing.expect(t, wait_until(t, "the requests of the closed page", 0, proc(_: int) -> bool { return fetch.in_flight(&loader) == 0 }), "no request left")
 	page.storage_manager_destroy(storage)
-	testing.expect(t, os.exists(fmt.tprintf("%s/storage/http_3A_2F_2F127.0.0.1_3A%d.wls", STORAGE_DIR, testenv.port())), "localStorage was written to the profile")
-	page.storage_manager_init(storage, &loop, &blocking, STORAGE_DIR)
+	testing.expect(t, os.exists(fmt.tprintf("%s/storage/http_3A_2F_2F127.0.0.1_3A%d.wls", storage_dir(), testenv.port())), "localStorage was written to the profile")
+	page.storage_manager_init(storage, &loop, &blocking, storage_dir())
 	after, after_inst, after_ok := open(t, testenv.url(RESTART_ADDRESS), "tab-9", storage)
 	if !after_ok { return }
 	check(after, call(after, after_inst, "storage_probe", STORAGE_READ) == STORED_VALUE_BYTES, "localStorage survives a restart of the storage manager")
