@@ -25,7 +25,7 @@ After that `build\test_all.exe` (`build/test_all` on Linux) is the program: a co
 | What the CI runs (with test262 and the sanitizer as jobs of their own) | `build\test_all.exe -CI -NoAsan` |
 | The full run | `build\test_all.exe` |
 
-A step that `-Only`, `-Failed` or `-Changed` chooses brings with it the steps that make what it needs (`build\e2e_test_check.exe`, the browser, the test server: `Step.needs` in the table). They all say at the end how many
+A step that `-Only`, `-Failed` or `-Changed` chooses brings with it the steps that make what it needs (`build\e2e_test.exe`, the browser, the test server: `Step.needs` in the table). They all say at the end how many
 steps they left out: they are for your loop, never instead of the CI's run.
 ## The end of a run
 
@@ -112,7 +112,7 @@ looking at that test. `-no-fast-timeouts` turns it off under `-quick`.
 
 ## Writing an end-to-end test
 
-There is one test program, `src/tools/e2e`, built as `build\e2e_test.exe` and, with a define, as `build\e2e_test_check.exe` ([below](#the-web-tests)); a step of `test_all` runs the tests of one of its files, with `-tests:`, in a process of its own.
+There is one test program, `src/tools/e2e`, built once as `build\e2e_test.exe`, with every allocation tracked (`-define:WREN_TRACK_MEMORY=true`; what that costs a step does not show: 515 s of CPU against 499 for all the scenarios); a step of `test_all` runs the tests of one of its files, with `-tests:`, in a process of its own.
 
 An end-to-end test is an Odin `@(test)` procedure of it, on Odin's own test runner. It calls the browser directly: the program
 links package `browser`, the browser runs in the test's thread and process, and a barrier runs its loop, turn by turn, until what it waits for
@@ -153,7 +153,7 @@ The rules:
 
 - **What the browser does left alone**: a barrier and a poll ask for frames. `e2e.rest_turns(s, n)` turns the loop with nothing asking, a timer that draws nothing waking it each time; `e2e.wait_at_rest(s)` until it stops drawing by itself, `s.app.rates` and `e2e.stats(s).loop` count what it did and say who asked (`frames_at_rest.odin`: none on a static page).
 
-- **Nothing left allocated**: `build\e2e_test_check.exe` is the same program built with `-define:WREN_TRACK_MEMORY=true` (every allocation of the process goes through the tracker of `base`). When a test's browser has ended and the test has let go of what it holds, whatever is still allocated, or was freed twice, is listed and fails the test (`end_of_test`). Only scenarios about what a session holds (workers, service workers, file systems, the back/forward cache, partitions) run there: a step of `test_all` says which.
+- **Nothing left allocated**: every allocation of the process goes through the tracker of `base`. When a test's browser has ended and the test has let go of what it holds, whatever is still allocated, or was freed twice, is listed and fails the test (`end_of_test`).
 
 Running them by hand: `build\e2e_test.exe -tests:the_title_shows` (no window opens, no other desktop is needed, except for a scenario with `hidden = true`), or `build\test_all.exe -Quick -NoCache -Only "src.tools.e2e"`. `WREN_E2E_TRACE=1` prints every call with its time, `WREN_PHASES=1` the phases of a start and an end of the browser (a real `wren.exe` says them too). A teardown that hangs ends the process after 10 s (`host.shutdown_watchdog`); what its threads were doing is on its standard error first, so in the step's log: `build\e2e_test.exe` answers `ctl stacks <pid> --out <file>` as a `wren.exe` does.
 
@@ -176,7 +176,7 @@ A test does not sleep to wait for another thread: it waits on the state (a semap
 
 ## The web tests
 
-Everything under the browser's window (fetch, the network stacks, the HTTP cache, the content blocker, pages and their scripts, Wasm guests, workers, images, forms, frames: no shell, no frame) is tested by the same program: the files `src/tools/e2e/web_<subject>.odin`, which run on `build\e2e_test_check.exe`, every allocation tracked, and never start the browser the program links. One file per subject (`web_cache.odin`, `web_frames.odin`, `web_jsweb.odin`...), `#+private file` with its own helpers, its tests named after it (`cache_freshness`); what they share is `web_harness.odin`. A step's result depends on those two files and what they import, not on the browser (`Step.sources`).
+Everything under the browser's window (fetch, the network stacks, the HTTP cache, the content blocker, pages and their scripts, Wasm guests, workers, images, forms, frames: no shell, no frame) is tested by the same program: the files `src/tools/e2e/web_<subject>.odin`, which never start the browser the program links. One file per subject (`web_cache.odin`, `web_frames.odin`, `web_jsweb.odin`...), `#+private file` with its own helpers, its tests named after it (`cache_freshness`); what they share is `web_harness.odin`. A step's result depends on those two files and what they import, not on the browser (`Step.sources`).
 
 ```odin
 #+private file
@@ -201,7 +201,7 @@ history_scroll_restoration :: proc(t: ^testing.T) {
 The rules, besides those of the [end-to-end tests](#writing-an-end-to-end-test):
 
 - **One world, one test at a time** (`-define:ODIN_TEST_THREADS=1`): what the process keeps (the image cache, the stores, the timeline) binds to the first loop it sees, so a loop per test would leave it on a dead one. `begin` makes the world as far as the test asks; the last test, `zz_the_process_ends_with_nothing_left`, undoes it all and fails on anything still allocated.
-- **A step of `test_all` is a subject in a process of its own**: `web_step(&t, "...", "cache", {.Light})` in `src/tools/test_all/steps.odin`, with its marks. By hand: `build\e2e_test_check.exe -tests:cache_freshness,zz_the_process_ends_with_nothing_left`, on a desktop nobody uses (`tools\test_desktop.ps1 -Command "..."`). This world and a browser in the process do not go together: name what you run.
+- **A step of `test_all` is a subject in a process of its own**: `web_step(&t, "...", "cache", {.Light})` in `src/tools/test_all/steps.odin`, with its marks. By hand: `build\e2e_test.exe -tests:cache_freshness,zz_the_process_ends_with_nothing_left`, on a desktop nobody uses (`tools\test_desktop.ps1 -Command "..."`). This world and a browser in the process do not go together: name what you run.
 - **No result is read from the console.** A page's script talks to its test through the functions of `wrenTest` (`api/testhost.widl`, `native/js/odin/test_host.odin`, `src/page/test_host.odin`, `src/tools/testhost`), which exists only in a page given a test host: `testBegin`, `testEnd`, `check`, `measure`, `note`, `signal`, `skip`, `done`. What is uncaught fails the page unless the test expects it (`pr.expect_uncaught`).
 - **A page declares what it runs.** `close_page` (`testhost.finish`) fails a section that ran another number of tests than it declares (`tests = 8`), or none, or fewer checks than it declares (`min_checks`), a section whose script never said `done()` when it is the one to end, a test that checked nothing, and a `skip("webgl-adapter" | "av1-decoder", why)` that the program does not find true of the machine: it makes a context of its own for the first (only "no graphics adapter" from the GPU process counts as none), asks the media backend for the second. A true skip prints `SKIP [section] ...`, is counted, and `test_all` lists it at the end of a run.
 - **Barriers, not time.** `wait_until(t, what, data, ready)`, `wait_note`, `wait_done` run the loop until a state holds. What a loop's timer does or must not do yet goes by `virtual_clock(t)` and `host.clock_advance` (a page's `setTimeout` follows it). Only what a real clock on the other side decides (the `Date` of an HTTP answer) waits for that exact condition in real time.

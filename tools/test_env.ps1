@@ -147,7 +147,7 @@ function Stop-WrenTestServer($Server) {
 }
 
 # Runs the tests of one subject of the web tests (src\tools\e2e\web_<subject>.odin, docs\testing.md) in this program, built by test_all, in a process of their own; the test that ends the process with its leak check goes with them. (tools\net_parity.ps1.)
-#   Invoke-WrenWebTests 'build\e2e_test_check.exe' 'cache'
+#   Invoke-WrenWebTests 'build\e2e_test.exe' 'cache'
 function Invoke-WrenWebTests([string]$Exe, [string]$Subject) {
     $root = Get-WrenRepoRoot
     $source = [IO.File]::ReadAllText((Join-Path $root "src\tools\e2e\web_$Subject.odin"))

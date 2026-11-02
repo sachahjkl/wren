@@ -4,7 +4,7 @@
 // (page.set_layout_embedder) with fixed text metrics (every character 0.5 em wide), so geometry can be checked exactly. Then the checks
 // that need the browser's side: nodes freed after a collection, the cost of layout readings, what the shell does (drag and drop, full
 // screen, the light dismiss of popovers), and the micro-benchmarks (bench.html, measures). No server. A page alone:
-//   build\e2e_test_check.exe -tests:jsdom_tree,jsdom_layout_page,zz_the_process_ends_with_nothing_left
+//   build\e2e_test.exe -tests:jsdom_tree,jsdom_layout_page,zz_the_process_ends_with_nothing_left
 package e2e_scenarios
 
 import "core:fmt"

@@ -6,14 +6,11 @@ package e2e_scenarios
 // corners are rounded, the dialog and the bar are above the video, and what is not the video is the same pixel for pixel in every capture.
 
 import "core:testing"
-import "wb:base"
 import "wb:e2e"
 
 @(private = "file") PAGE :: "/site/remote/video-layers.htm"
 @(private = "file") WINDOW := [2]int{1000, 500}
 @(private = "file") CAPTURES :: 30
-// With every allocation tracked (build\e2e_test_check.exe) a frame is far longer: it looks for leaks, the layers are looked at in the other build.
-@(private = "file") CAPTURES_TRACKED :: 6
 // Each sampled, not every pixel: a third of each way.
 @(private = "file") SAMPLE_STEP :: 3
 // The places (x, y, w, h) that are not the video: the dialog, the bar, the corners.
@@ -43,7 +40,7 @@ a_playing_video_is_a_plane_of_the_pages_paint_order :: proc(t: ^testing.T) {
 	s := e2e.start(t, {size = WINDOW, dpi = e2e.DPI_ONE, url = e2e.url(e2e.test_server(t), PAGE)})
 	e2e.wait_idle(s)
 	e2e.wait_js(s, `document.getElementById("v1").currentTime > 1 && document.getElementById("v2").currentTime > 1`)
-	n := base.TRACK_MEMORY ? CAPTURES_TRACKED : CAPTURES
+	n := CAPTURES
 	shots := make([]e2e.Image, n, context.temp_allocator)
 	for i in 0 ..< n { shots[i] = e2e.capture(s, {target = .Page, has_settle = true, settle = 0}) }
 

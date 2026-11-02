@@ -286,6 +286,7 @@ global_history_save :: proc(app: ^App) {
 
 // At exit: what is not written yet is written now, on this thread.
 global_history_shutdown :: proc(app: ^App) {
+	if ghist.saving { host.blocking_settle(&app.blocking) }   // (a write on its way: its completion frees what it holds)
 	if ghist.timer != base.NIL_HANDLE { host.clear_timer(&app.loop, ghist.timer) }
 	if ghist.path != "" && ghist.dirty && !ghist.unreadable { _ = write_atomic(ghist.path, history_serialize(ghist.visits[:])) }
 	visits_destroy(&ghist.visits)

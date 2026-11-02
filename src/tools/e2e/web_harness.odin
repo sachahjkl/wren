@@ -5,8 +5,7 @@
 // Tests go one at a time (-define:ODIN_TEST_THREADS=1) on one world: what the process keeps (the Wasm runtime, the image cache, the
 // stores) binds to the first loop it sees, so a loop per test would leave it on a dead one. The world is made as far as a test asks
 // (`begin`), and undone by the last test, `zz_the_process_ends_with_nothing_left`, which finds the leaks (-define:WREN_TRACK_MEMORY=true).
-// They run on the program that tracks every allocation, one subject per process (src\tools\test_all\steps.odin web_run):
-// `build\e2e_test_check.exe -tests:cache_freshness,zz_the_process_ends_with_nothing_left`. This world and a browser in the process do not go together.
+// One subject per process (src\tools\test_all\steps.odin web_run): `build\e2e_test.exe -tests:cache_freshness,zz_the_process_ends_with_nothing_left`. This world and a browser in the process do not go together.
 //
 // The test server is in the process (`serve`). A page's script talks to its test through `wrenTest` (`open_page`: src/tools/testhost);
 // the console is the page's own and no result is read from it. Waits are for a state (`wait_until`, `wait_note`), and their limits only
