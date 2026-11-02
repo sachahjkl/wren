@@ -441,10 +441,9 @@ reftests_child_begin :: proc(env: ^headless.Env) {
 }
 
 // Writes the result of one reference test as the child writes results.
-reftest_one :: proc(out: ^os.File, path: string, long: bool) {
+reftest_one :: proc(out: ^os.File, path: string, limit_ms: f64) {
 	t0 := time.tick_now()
-	limit := f64(opts.timeout_ms) * (long ? LONG_TIMEOUT_FACTOR : 1)
-	status, message := run_reftest(path, limit)
+	status, message := run_reftest(path, limit_ms)
 	ms := int(time.duration_milliseconds(time.tick_since(t0)))
 	b := strings.builder_make(context.temp_allocator)
 	fmt.sbprintfln(&b, "T\t%s\t%s\t%d\t%s", escape(path), status, ms, escape(message))
