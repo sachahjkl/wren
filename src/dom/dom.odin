@@ -240,9 +240,14 @@ touch :: proc(d: ^Document) { d.mutations += 1 }
 ////////////////////////////////
 // Creation
 
+// The name in ASCII lower case (DOM createElement, the HTML parser: other letters keep their case).
 create_element :: proc(d: ^Document, tag: string) -> base.Handle {
-	name := strings.to_lower(tag)
-	h, _ := base.pool_insert_tagged(&d.nodes, d.tag, Node{kind = .Element, name = name})
+	name := make([]u8, len(tag))
+	for i in 0 ..< len(tag) {
+		c := tag[i]
+		name[i] = c >= 'A' && c <= 'Z' ? c + ('a' - 'A') : c
+	}
+	h, _ := base.pool_insert_tagged(&d.nodes, d.tag, Node{kind = .Element, name = string(name)})
 	return h
 }
 
@@ -462,11 +467,14 @@ set_attribute :: proc(d: ^Document, h: base.Handle, name, value: string) -> Erro
 	return .None
 }
 
-// `name` in lower case: itself when it has no upper-case ASCII letter (the common case: no allocation), else a copy
-// in the temp allocator.
+// `name` in ASCII lower case (as element names are kept, create_element): itself when it has no upper-case ASCII
+// letter (the common case: no allocation), else a copy in the temp allocator.
 lower_name :: proc(name: string) -> string {
 	for i in 0 ..< len(name) {
-		if name[i] >= 'A' && name[i] <= 'Z' { return strings.to_lower(name, context.temp_allocator) }
+		if name[i] < 'A' || name[i] > 'Z' { continue }
+		b := make([]u8, len(name), context.temp_allocator)
+		for j in 0 ..< len(name) { c := name[j]; b[j] = c >= 'A' && c <= 'Z' ? c + ('a' - 'A') : c }
+		return string(b)
 	}
 	return name
 }
