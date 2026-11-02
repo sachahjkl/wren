@@ -65,29 +65,38 @@ bytes the browser carries from an instance to another (`Frame_bridge`, which che
 | well-known symbols | by name; any other symbol is not carried |
 | a DOM node | that realm's wrapper of the node |
 | a window | that realm's `WindowProxy`, or its global |
-| a built-in, an interface, their prototypes | by name: that realm's own (what a window gives for them is the reader's) |
-| any other object, a function | a `Proxy` forwarding get, set, has, delete, keys, descriptors, prototype, call, construct |
+| an interface object, its prototype | by name: that realm's own (a node is that realm's wrapper, with its prototypes) |
+| any other object, a function, an ECMAScript built-in | a `Proxy` forwarding get, set, has, delete, keys, descriptors, prototype, call, construct |
 
 An object coming home is itself. A realm that is gone answers `undefined`. Proxies are collected with `FinalizationRegistry`, which
 releases the object in its realm.
 
+Each window keeps its ECMAScript built-ins, as in a browser: `w.Array !== Array`, `new w.Object` and `new w.Array` are objects of `w`
+with `w`'s prototypes, `x instanceof Array` is false for an array of `w` and `x instanceof w.Array` true, `Array.isArray` sees
+through (it is how pages tell an array of another frame), and what `w` throws is a `w.TypeError`, not a `TypeError`. A built-in
+reached through a window is a `Proxy` like any other object of it, so each use of it crosses: measured on a page calling into a
+frame 2000 times (`jspage`, a dev build, 2026-11-02), a call `w.add(i, 1)` costs 15 µs before and after and a read `w.obj.a` 11 µs;
+reading `w.Array` went from 1 µs (the reader's own) to 10 µs, `w.Array.isArray([])` from 1 to 99 µs (a new array goes to `w` as an
+object, which `w` releases later: 30 µs when `w` already holds it), `new w.Object` from 1 to 35 µs, `xOfW instanceof Array` from 6
+to 19 µs (each prototype is asked of `w`). A page that takes a built-in of a frame once and calls it in a loop pays a crossing per call.
+
 A listener or a handler that is a `Proxy` of another realm's function runs as a callback of that realm: what it throws is reported at
-that window's `error` event, and once that realm is gone it is not called.
+that window's `error` event, and once that realm is gone it is not called. A listener of another realm that cannot be called (no
+`handleEvent`, one that is not callable, a revoked `Proxy`) fails with a `TypeError` of that realm, reported there.
 
 What it is not is one heap:
 
-- since `w.Array` is the reader's `Array`, an object of another window reaches the reader's prototypes: `x instanceof w.Promise` and
-  `x.constructor === w.Object` hold, and so does `x instanceof Array`, where a browser says false;
-- an object made with `new w.Object` is the caller's, so a listener made that way is the caller's too: what it throws goes to the caller's
-  window (`dom/events/EventListener-handleEvent-cross-realm.html`);
+- the interface objects are the exception to the rule above: `w.HTMLElement === HTMLElement`, because a node of `w`'s document is the
+  reader's wrapper of it. `w.document.body instanceof w.HTMLElement` holds, and so does `instanceof HTMLElement`, where a browser
+  says false; `new w.Event("x")` makes an event of the reader;
 - a native function refuses a `Proxy` for one of its own objects: a typed array or a `Blob` of one realm passed to a native of
   another throws a `TypeError`. An `Event` to `otherWindow.dispatchEvent` is handled, and `frameDocument.createRange()` and
   `getSelection()` give the frame's own, which its `Selection` takes;
 - a cycle between two realms (a listener of one kept by the other) lives until one of them goes;
-- ECMAScript built-ins and interface objects read from another window are the caller's own: `frame.contentWindow.Array === Array`, and
-  `new frame.contentWindow.HTMLElement` makes one of the caller's. A DOM wrapper's prototype is its realm's too:
-  `contentDocument.body instanceof HTMLElement` is true, where a browser says false. `navigator`, `screen`, `crypto`
-  and `console` of another window are the caller's as well.
+- `navigator`, `screen`, `crypto` and `console` of another window are the caller's (a page takes a clean `crypto` from a blank frame
+  and hands it typed arrays of its own, which the frame's would refuse);
+- a frame without a realm (sandboxed without `allow-scripts`) gives the caller's native constructors for its upper-case names;
+- `w.Function.prototype.toString.call(f)` on a function of the caller says `[native code]`: the frame sees a `Proxy`.
 
 A custom element class of one realm defined in the registry of another (`frame.contentWindow.customElements.define(name, class extends
 HTMLElement {})`) is not supported: its constructor would run in one realm for an element of another.
@@ -109,7 +118,11 @@ What is not there:
   frame, and a push in a frame does not prune another's forward entries. The browser's back button leaves the tab's document;
 - **a Window kept from the initial about:blank.** HTML keeps the `Window` when a frame goes from its initial about:blank to a document
   of the same origin. Here every document has an instance of its own, so what a script put on a blank frame's window
-  (`frame.contentWindow.navigation.onnavigate = ...`, `window[0].foo = ...`) goes with that document;
+  (`frame.contentWindow.navigation.onnavigate = ...`, `window[0].foo = ...`) goes with that document. Keeping it means one of two
+  things, both larger than a fix: handing the blank document's realm to the next `Page` (the realm is numbered by its page, its
+  instance calls the browser as that page, and what the window holds, `navigation` and its handlers, the window's listeners, timers,
+  are objects of that page's pools), or loading the fetched document into the blank `Page` itself, a second way to load a
+  response beside `page_create` (headers, CSP, encoding, documents that are not HTML), with a new `Document` in an old page;
 - **`precommitHandler`** of `NavigateEvent.intercept()`.
 
 ## Cost

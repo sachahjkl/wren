@@ -17,7 +17,8 @@
   // (a construct trap: nothing of `f` is read, a getter of its `prototype` does not run)
   const probeHandler = { __proto__: null, construct() { return emptyFn; } };
   const isConstructor = f => { try { new (new P(f, probeHandler))(); return true; } catch (e) { return false; } };
-  const OP_GET = 1, OP_SET = 2, OP_HAS = 3, OP_DELETE = 4, OP_KEYS = 5, OP_GOPD = 6, OP_DEFINE = 7, OP_GET_PROTO = 8, OP_SET_PROTO = 9, OP_APPLY = 10, OP_CONSTRUCT = 11, OP_RELEASE = 12, OP_ALIVE = 13, OP_REPORT = 14, OP_DOCUMENT_METHOD = 15;
+  const OP_GET = 1, OP_SET = 2, OP_HAS = 3, OP_DELETE = 4, OP_KEYS = 5, OP_GOPD = 6, OP_DEFINE = 7, OP_GET_PROTO = 8, OP_SET_PROTO = 9, OP_APPLY = 10, OP_CONSTRUCT = 11, OP_RELEASE = 12, OP_ALIVE = 13, OP_REPORT = 14, OP_DOCUMENT_METHOD = 15, OP_TYPE_ERROR = 16;
+  const TypeErrorC = TypeError;
   const KIND_OBJECT = 0, KIND_FUNCTION = 1, KIND_ARRAY = 2, KIND_PLAIN_FUNCTION = 3;
   const emptyArrow = () => {};
   const startsWith = String.prototype.startsWith, ILLEGAL_INVOCATION = "Illegal invocation";
@@ -33,9 +34,10 @@
     if (s !== undefined) { apply(mapSet, symbolNames, [s, wellKnown[i]]); apply(mapSet, symbolsByName, [wellKnown[i], s]); }
   }
 
-  // The built-ins and interfaces of a realm cross as their names, as the well-known symbols do: what a window gives for `Array` or
-  // `Node` is the reader's own (frames.odin), so what is reached through an object of that window has to be too:
-  // x.constructor === w.Object, Object.getPrototypeOf(x) === w.Object.prototype, x instanceof w.Promise.
+  // The interface objects of a realm and their prototypes cross as their names, as the well-known symbols do: a DOM node is
+  // the reader's wrapper of it, with the reader's prototypes, so `w.Node` has to be the reader's `Node` for
+  // `w.document.body instanceof w.HTMLElement` to hold. The ECMAScript built-ins (Array, Object, Promise, Error...) are not
+  // named: they are objects of their realm like any other, so `w.Array !== Array` and an array of `w` is no `Array` here.
   const intrinsicNames = new WeakMapC(), intrinsicsByName = new MapC();
   const addIntrinsic = (name, v) => {
     if (typeof v !== "object" && typeof v !== "function" || v === null) return;
@@ -185,45 +187,14 @@
       case OP_ALIVE: return true;
       case OP_REPORT: report(a); return undefined;
       case OP_DOCUMENT_METHOD: return apply(rGet(rGet(rGet(global, "Document"), "prototype"), a), b, []);
+      // (a TypeError of this realm: what calling a callback of this realm fails with, wherever it was called from)
+      case OP_TYPE_ERROR: throw new TypeErrorC(a);
     }
     return undefined;
-  };
-
-  // An exception of a built-in type crosses as its kind: built-ins read from another window are the reader's own, and a test of
-  // `e instanceof otherWindow.TypeError` or a DOMException's name has to hold. Any other value thrown crosses as a value.
-  const errorTypes = [Error, TypeError, RangeError, SyntaxError, ReferenceError, EvalError, URIError];
-  const errorNames = ["Error", "TypeError", "RangeError", "SyntaxError", "ReferenceError", "EvalError", "URIError"];
-  // The copy remembers its original (d[3], d[4]): thrown back where it came from, it is the original (rethrowing keeps identity).
-  const describeError = (e, self) => {
-    if (typeof e !== "object" || e === null || apply(wmGet, info, [e]) !== undefined) return undefined;
-    const proto = rGetProto(e);
-    if (proto === rGet(rGet(global, "DOMException"), "prototype")) return ["DOMException", e.message, e.name, self, numberOf(e)];
-    for (let i = 0; i < errorTypes.length; i++) {
-      if (proto === errorTypes[i].prototype) return [errorNames[i], e.message, e.stack, self, numberOf(e)];
-    }
-    return undefined;
-  };
-  const makeError = d => {
-    let e;
-    if (d[0] === "DOMException") {
-      e = rConstruct(rGet(global, "DOMException"), [d[1], d[2]]);
-    } else {
-      for (let i = 0; i < errorTypes.length; i++) {
-        if (errorNames[i] === d[0]) {
-          e = new errorTypes[i](d[1]);
-          if (d[2] !== undefined) rDefine(e, "stack", { __proto__: null, value: d[2], writable: true, configurable: true });
-          break;
-        }
-      }
-    }
-    if (e !== undefined) apply(wmSet, info, [e, { realm: d[3], number: d[4], kind: KIND_OBJECT }]);
-    return e;
   };
 
   return {
     __proto__: null,
-    describeError,
-    makeError,
     dispatch,
     importRef,
     exportRef,
