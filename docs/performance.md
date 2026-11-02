@@ -76,7 +76,23 @@ report), before any code of ours: the loader and the antivirus on a freshly link
 handle indices grow and every array indexed by them with them, and partial restyles leave so much behind that 40 of the
 43 full passes are "memory left by partial restyles".
 
-**Bottleneck:** the script stage (JS interpreter and the DOM bindings), then layout.
+After round 2 (medians of 5 runs of each build, interleaved, `js_nodes10k` at 180 Hz, 8 s):
+
+| | before | after |
+|---|---|---|
+| frames/s | 28.3 | 42.9 |
+| CPU work per frame, mean | 103 ms | 67 ms |
+| script (Animation phase) | 54 ms | 42 ms |
+| style | 14.1 ms | 9.8 ms |
+| layout (waits on the layout thread) | 27.8 ms | 10.9 ms |
+| styled elements (entries of `by_node`) | 840 000 | 10 000 to 20 000 |
+| private memory | 1.27 GB | 305 MB |
+
+Every style pass is now a full one ("too much changed": 10 000 changed of 20 000 live nodes) at 9.6 ms; before, 160 partial
+restyles of 13 to 16 ms and 43 full passes of 12 to 15 ms. The collections the DOM now asks for (below) are about a
+quarter of the window thread's samples: the cost of freeing the wrappers moved there from the engine's own collections.
+
+**Bottleneck:** the script stage (JS interpreter, the DOM bindings, the collections that free the wrappers), then layout.
 
 ### 3. Scrolling a long page (p10k, 3 wheel notches every 16 ms)
 
@@ -101,7 +117,12 @@ the window thread's work, the Largest Contentful Paint scan (`timeline_present`)
 mutated frame. After the change below: 1.7 to 2.1 ms mean, 2.8 to 3.8 p95; the layout-shift scan 7.5 %. The loop: 350
 turns in 5 s, 165 of them after a sleep, 207 frames for a task and 184 asked.
 
-## What changed this round
+After round 2 (medians of 5 interleaved runs): CPU work per frame 1.70 -> 1.08 ms mean, 3.23 -> 1.72 p95; the Largest
+Contentful Paint scan 0.2 to 0.48 -> 0.06 to 0.10 ms a frame (24 to 29 % -> 11 to 18 % of the sampled work), the walks
+after a style pass 2.6 to 4.6 % -> 0.2 to 0.6 %. The same page with a class toggled instead of a text
+(`mutation_class`): 2.84 -> 1.73 ms mean.
+
+## What changed, round 1
 
 1. **The frame pacer books no slot for a frame it does not pace** (`src/browser/pacing.odin`, `pacer_wait`). A headless
    window that a client waits on makes its frames at once; each one moved the next slot of `platform.Frame_Slots` a period
@@ -115,6 +136,50 @@ turns in 5 s, 165 of them after a sleep, 207 frames for a task and 184 asked.
    one. Mutation page: 2.6 -> 2.1 ms CPU per frame (mean of means of 5 runs; p95 4.7 -> 3.8), its share of the work 29 % -> 7.5 %.
 3. Tried and reverted: the same fast path in the Largest Contentful Paint scan (`lcp_candidate_of`): no difference that
    five runs could tell from the noise.
+
+## What changed, round 2
+
+Items 1, 3, 4 and 5 of round 1's list. Each measured against the build before it, 3 to 5 runs each; the share of a
+function is from `WREN_SAMPLE=1 WREN_SAMPLE_STACK=1 WREN_SAMPLE_UNDER=<function>` (the samples with it on the stack),
+since frame times on this machine move by a factor of 2 with its other programs. `wrentool bench perf -Runs n` now runs a
+scenario n times and prints the medians.
+
+1. **Removed nodes go back when they double the document** (`src/page/js_realm.odin`, `js_after_task`). A node a script
+   made lives as long as its wrapper, and wrappers are freed only by a collection of the engine, which counts its own
+   heap and not the nodes. After a script task, when the document's live nodes are twice what they were after the last
+   collection the DOM asked for (`JS_GC_NODES_GROWTH`, from `JS_GC_NODES_FLOOR` nodes), the page asks for one: the
+   dropped wrappers unpin their nodes, the detached trees go, their handle indices are reused, and every array indexed
+   by node stays the document's size. nodes10k: 580 000 to 930 000 styled entries -> 10 000 to 20 000, 1.3 GB -> 307 MB,
+   layout 29 -> 13 ms, 27 -> 34 frames/s (5 runs of each build interleaved). A growth of 8 instead of 2 was worse (16.9
+   frames/s): fewer, longer collections, and arrays four times larger. This is not yet "as soon as no script holds the
+   node": that needs wrappers freed by reference counting (next, item 1).
+2. **Style: the threads' arenas kept, inheriting by runs** (`src/style/parallel.odin` `thread_arena_take` /
+   `thread_arena_give` / `thread_arena_begin`, `src/style/props.odin` `inherited_runs`). Each parallel task of a full
+   pass or of a partial restyle mapped a growing arena and the next full pass freed them all (`NtFreeVirtualMemory`, 10 %
+   of the style stage); now the engine keeps them (`Engine.spare_arenas`, at most `style.recycle_bytes` of them), one
+   reserved block each committed as it fills, and the thread that takes one empties it (the zeroing shared by the style
+   threads; emptying them on the window's thread first cost as much as the frees). A child inherits by copying the
+   inherited properties' bytes in runs joined across padding, not property by property. nodes10k: style 6.2 to 7.5 ->
+   4.5 ms a frame on the window's thread, a full pass 12 -> 6 ms; `build_style` on the window's thread 0.26-0.32 -> 0.19-0.25
+   ms a frame from the runs alone. Not done: splitting `Computed` (2 808 bytes, copied whole from the initial style for
+   every element).
+3. **Element Timing visits the elements that ask for it; the LCP scan skips what cannot win** (`src/page/timeline_lcp.odin`,
+   `Document.timed` in `src/dom/dom.odin`). The document lists the elements given an `elementtiming` attribute (set
+   and cloned attributes; the reader drops the stale ones), and Element Timing visits only them; it ran on every box of
+   every changed or scrolled frame. The Largest Contentful Paint scan settles a box from its border box clamped to the
+   viewport (`lay.box_border`, the layout's arrays) when that is no larger than the largest candidate so far, before the
+   candidate's checks. Mutation page: 0.2 to 0.48 -> 0.06 to 0.10 ms a frame; what remains is `box_border` itself (57 %
+   of the scan: a read of each box's struct). Scrolling p10k cost nothing measurable before or after: its scan stops at
+   the first input and the page has no `elementtiming`.
+4. **The walks after a style pass driven by what changed** (`src/page/images.odin` `images_sync`, `css_images_sync`;
+   `src/page/fonts.odin` `fonts_sync`; `Styled.image_records` in `src/style/cascade.odin`). `images_sync` finds image
+   elements in the subtrees the mutation journal says were inserted and in the elements whose attributes changed (the
+   whole document only when the journal does not cover the change). `css_images_sync` does nothing when no style made
+   since has a URL image and none was in use (the passes count the records they make with one); after partial restyles
+   it reads the records the style journal names, unless one of them, or a node that left the tree, may have been the
+   last user of a URL (`css_users`, a bit per node). `fonts_sync` looks only while a face is not loaded, then at the
+   restyled elements. nodes10k: 0.6 -> 0.02 to 0.035 ms a frame (1.2 -> 0.2 % of the work); mutation page 2.6 to 4.6 %
+   -> 0.2 to 0.6 %.
 
 ## Inventory
 
@@ -148,9 +213,10 @@ To remove:
 of every element, plus a concatenation per indexed attribute at `cascade.odin:443`); `style/match.odin:55-64`;
 `style/cascade.odin:345-361` (custom properties, contexts, `fs_chain` per element); `layout/context.odin:26-60`
 (`font_cache`, `anon_cs`, `frame_cs`); `layout/types.odin:454` (`scroll`, read per space); `browser/compositor.odin:115`
-(`node_items`, a heap list per node) and `:421-556` (per rebuild); `page/images.odin:1217` and `page/fonts.odin:111`
-(walk every computed style after each style pass); `ext/gui_toolkit/font/raster.odin:74-79` (per glyph, under the atlas
-lock). Gone this round: `page/timeline_lcp.odin` `ls_prev` (per box, per mutated frame).
+(`node_items`, a heap list per node) and `:421-556` (per rebuild); `page/images.odin` `css_images_sync` and
+`page/fonts.odin` `fonts_sync` (a `seen` table of shared lists, now only when something new may be used);
+`ext/gui_toolkit/font/raster.odin:74-79` (per glyph, under the atlas lock); `page/timeline_lcp.odin` `et_seen` (per
+element with `elementtiming` only). Gone in round 1: `page/timeline_lcp.odin` `ls_prev` (per box, per mutated frame).
 
 ### Arrays of bools
 
@@ -190,28 +256,29 @@ shutdown, the clipboard, the shader compiler) and stay.
 `style/timeline.odin:429-432,468` (an `Element_Anim` and three dynamic arrays for each element that declares a transition,
 on every full pass); `browser/compositor.odin:322` (`compute_floors`: one heap array per group per rebuild) and `:532`
 (`node_items_make`: one per node); the layout thread's growing arrays on the nodes10k page (`_reserve_dynamic_array`, a
-third of its samples); per-pass arena reservation and release in style (`NtFreeVirtualMemory` from `arena_destroy`, 11 %
-of the style stage on nodes10k: `style/cascade.odin:130,162,875`). Most of layout and paint already use the temporary
-allocator or an arena.
+third of its samples). Gone in round 2: the style threads' arenas mapped and freed with every pass. Most of layout and
+paint already use the temporary allocator or an arena.
 
 ## Next, ranked by measured cost on a bottleneck
 
-1. **Node lifetime and handle indices on DOM-heavy scripts** (nodes10k: 580 000 styled entries for 12 500 boxes, 40 full
-   restyles in 26 s, 1.1 GB): a removed node that no script holds should give its index back at once (generation in the
-   upper bits of the handle already says when an index is reused), so the by-node arrays of style and layout stay the
-   size of the document.
-2. **The layout thread's heap growth** (a third of its samples on nodes10k): inline-capacity lists or the layout arena for
-   the per-box lists of inline segments.
-3. **Style: the arena per pass and the copy per element** (`NtFreeVirtualMemory` 11 %, `build_style`'s `memcpy` the top
-   function of the style threads): keep the thread arenas from pass to pass; split `Computed` into what layout and paint
-   read every frame and the rest.
-4. **The Largest Contentful Paint and Element Timing scan** (`timeline_present`, 15 % of a mutated frame on a 16 000-box
-   page; it runs at every scrolled frame too while Element Timing is on): once LCP has stopped, visit only elements with an
-   `elementtiming` attribute (an index of them, kept by the DOM's attribute changes).
-5. **Whole-document walks after each style pass** (`page/images.odin:1217` `css_images_sync`, `images_sync`,
-   `page/fonts.odin:111`: 3 to 6 % of the window thread on both script pages): driven by the restyle journal instead.
-6. **The atlas lock per glyph and the word cache's 64 locks** (toolkit): a per-thread front, misses to one owner.
-7. **The style index's string tables** (`style/engine.odin:66-68`): atoms (interned ids) and flat arrays by atom.
-8. **`Loop.mu` and the network event mutexes**: MPSC queues.
-9. **The profiler**: sample the threads that ran (their cycle counters) rather than all ninety in turn, and correct the
-   bias of samples taken in a system call.
+After round 2. Round 1's items 1 (in part), 3, 4 and 5 are done; what is left of them is folded in below.
+
+1. **Wrappers freed by reference counting** (nodes10k: the collections the DOM asks for are about a quarter of the window
+   thread's samples, the script stage 42 ms of a 67 ms frame). A wrapper that carries nothing of its own (no expando
+   property, no listener, its interface's prototype, no weak reference to it) can go when its count reaches zero and be
+   made again if a script reaches the node later; only the others need the groups of `native/js/odin/wj/qjs_platform.odin`
+   and a collection. A removed node would then give its index back as soon as no script holds it, without a collection.
+2. **The layout thread's heap growth** (round 1: a third of its samples on nodes10k; layout is now 10.9 ms there):
+   inline-capacity lists or the layout arena for the per-box lists of inline segments.
+3. **Style on DOM-heavy pages: every pass full, and `Computed` copied whole** (nodes10k: 9.6 ms a frame, "too much
+   changed" now that the document is its true size): a restyle of the inserted subtrees alone is the work a full pass
+   does for them, without the rest; split `Computed` (2 808 bytes, copied from the initial style for every element) into
+   what layout and paint read every frame and the rest.
+4. **The layout's boxes as arrays of what the scans read** (the LCP scan's remaining cost is `box_border` reading each
+   box's struct, 57 % of it; the layout-shift scan reads the same): border rects and flags in flat arrays by box, or
+   scans of the boxes the layout journal says changed.
+5. **The atlas lock per glyph and the word cache's 64 locks** (toolkit): a per-thread front, misses to one owner.
+6. **The style index's string tables** (`style/engine.odin:66-68`): atoms (interned ids) and flat arrays by atom.
+7. **`Loop.mu` and the network event mutexes**: MPSC queues.
+8. **The profiler**: sample the threads that ran (their cycle counters) rather than all ninety in turn, and correct the
+   bias of samples taken in a system call; the style threads, where most of a style pass runs, are barely seen.

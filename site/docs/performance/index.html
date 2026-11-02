@@ -299,7 +299,23 @@ report), before any code of ours: the loader and the antivirus on a freshly link
 580 019 styled elements for 12 510 layout items: removed nodes live until the garbage collector frees their wrappers, so
 handle indices grow and every array indexed by them with them, and partial restyles leave so much behind that 40 of the
 43 full passes are "memory left by partial restyles".</p>
-<p><strong>Bottleneck:</strong> the script stage (JS interpreter and the DOM bindings), then layout.</p>
+<p>After round 2 (medians of 5 runs of each build, interleaved, <code>js_nodes10k</code> at 180 Hz, 8 s):</p>
+<div class="table-box"><table>
+<thead><tr><th></th><th>before</th><th>after</th></tr></thead>
+<tbody>
+<tr><td>frames/s</td><td>28.3</td><td>42.9</td></tr>
+<tr><td>CPU work per frame, mean</td><td>103 ms</td><td>67 ms</td></tr>
+<tr><td>script (Animation phase)</td><td>54 ms</td><td>42 ms</td></tr>
+<tr><td>style</td><td>14.1 ms</td><td>9.8 ms</td></tr>
+<tr><td>layout (waits on the layout thread)</td><td>27.8 ms</td><td>10.9 ms</td></tr>
+<tr><td>styled elements (entries of <code>by_node</code>)</td><td>840 000</td><td>10 000 to 20 000</td></tr>
+<tr><td>private memory</td><td>1.27 GB</td><td>305 MB</td></tr>
+</tbody>
+</table></div>
+<p>Every style pass is now a full one ("too much changed": 10 000 changed of 20 000 live nodes) at 9.6 ms; before, 160 partial
+restyles of 13 to 16 ms and 43 full passes of 12 to 15 ms. The collections the DOM now asks for (below) are about a
+quarter of the window thread's samples: the cost of freeing the wrappers moved there from the engine's own collections.</p>
+<p><strong>Bottleneck:</strong> the script stage (JS interpreter, the DOM bindings, the collections that free the wrappers), then layout.</p>
 <h3 id="3-scrolling-a-long-page-p10k-3-wheel-notches-every-16-ms"><a class="anchor" href="#3-scrolling-a-long-page-p10k-3-wheel-notches-every-16-ms" aria-hidden="true">#</a>3. Scrolling a long page (p10k, 3 wheel notches every 16 ms)</h3>
 <p>167 to 177 frames/s (headless: one frame per input, the input's rate). CPU per frame 0.54 ms mean, 0.31 p50, 1.0 p95:
 building the chrome 0.12, page paint 0.017, style 0.002, no layout. GPU draw 0.43 ms p50, 0.73 p95; present 0.06 ms.
@@ -315,7 +331,11 @@ meter: 302 turns in 5 s, none asleep, every frame caused by the page.</p>
 the window thread's work, the Largest Contentful Paint scan (<code>timeline_present</code>) 15 %, both walking all 16 000 boxes per
 mutated frame. After the change below: 1.7 to 2.1 ms mean, 2.8 to 3.8 p95; the layout-shift scan 7.5 %. The loop: 350
 turns in 5 s, 165 of them after a sleep, 207 frames for a task and 184 asked.</p>
-<h2 id="what-changed-this-round"><a class="anchor" href="#what-changed-this-round" aria-hidden="true">#</a>What changed this round</h2>
+<p>After round 2 (medians of 5 interleaved runs): CPU work per frame 1.70 -&gt; 1.08 ms mean, 3.23 -&gt; 1.72 p95; the Largest
+Contentful Paint scan 0.2 to 0.48 -&gt; 0.06 to 0.10 ms a frame (24 to 29 % -&gt; 11 to 18 % of the sampled work), the walks
+after a style pass 2.6 to 4.6 % -&gt; 0.2 to 0.6 %. The same page with a class toggled instead of a text
+(<code>mutation_class</code>): 2.84 -&gt; 1.73 ms mean.</p>
+<h2 id="what-changed-round-1"><a class="anchor" href="#what-changed-round-1" aria-hidden="true">#</a>What changed, round 1</h2>
 <ol>
 <li><strong>The frame pacer books no slot for a frame it does not pace</strong> (<code>src/browser/pacing.odin</code>, <code>pacer_wait</code>). A headless
 window that a client waits on makes its frames at once; each one moved the next slot of <code>platform.Frame_Slots</code> a period
@@ -329,6 +349,49 @@ arrays indexed by the node's handle index, swapped after each scan, an entry val
 one. Mutation page: 2.6 -&gt; 2.1 ms CPU per frame (mean of means of 5 runs; p95 4.7 -&gt; 3.8), its share of the work 29 % -&gt; 7.5 %.</li>
 <li>Tried and reverted: the same fast path in the Largest Contentful Paint scan (<code>lcp_candidate_of</code>): no difference that
 five runs could tell from the noise.</li>
+</ol>
+<h2 id="what-changed-round-2"><a class="anchor" href="#what-changed-round-2" aria-hidden="true">#</a>What changed, round 2</h2>
+<p>Items 1, 3, 4 and 5 of round 1's list. Each measured against the build before it, 3 to 5 runs each; the share of a
+function is from <code>WREN_SAMPLE=1 WREN_SAMPLE_STACK=1 WREN_SAMPLE_UNDER=&lt;function&gt;</code> (the samples with it on the stack),
+since frame times on this machine move by a factor of 2 with its other programs. <code>wrentool bench perf -Runs n</code> now runs a
+scenario n times and prints the medians.</p>
+<ol>
+<li><strong>Removed nodes go back when they double the document</strong> (<code>src/page/js_realm.odin</code>, <code>js_after_task</code>). A node a script
+made lives as long as its wrapper, and wrappers are freed only by a collection of the engine, which counts its own
+heap and not the nodes. After a script task, when the document's live nodes are twice what they were after the last
+collection the DOM asked for (<code>JS_GC_NODES_GROWTH</code>, from <code>JS_GC_NODES_FLOOR</code> nodes), the page asks for one: the
+dropped wrappers unpin their nodes, the detached trees go, their handle indices are reused, and every array indexed
+by node stays the document's size. nodes10k: 580 000 to 930 000 styled entries -&gt; 10 000 to 20 000, 1.3 GB -&gt; 307 MB,
+layout 29 -&gt; 13 ms, 27 -&gt; 34 frames/s (5 runs of each build interleaved). A growth of 8 instead of 2 was worse (16.9
+frames/s): fewer, longer collections, and arrays four times larger. This is not yet "as soon as no script holds the
+node": that needs wrappers freed by reference counting (next, item 1).</li>
+<li><strong>Style: the threads' arenas kept, inheriting by runs</strong> (<code>src/style/parallel.odin</code> <code>thread_arena_take</code> /
+<code>thread_arena_give</code> / <code>thread_arena_begin</code>, <code>src/style/props.odin</code> <code>inherited_runs</code>). Each parallel task of a full
+pass or of a partial restyle mapped a growing arena and the next full pass freed them all (<code>NtFreeVirtualMemory</code>, 10 %
+of the style stage); now the engine keeps them (<code>Engine.spare_arenas</code>, at most <code>style.recycle_bytes</code> of them), one
+reserved block each committed as it fills, and the thread that takes one empties it (the zeroing shared by the style
+threads; emptying them on the window's thread first cost as much as the frees). A child inherits by copying the
+inherited properties' bytes in runs joined across padding, not property by property. nodes10k: style 6.2 to 7.5 -&gt;
+4.5 ms a frame on the window's thread, a full pass 12 -&gt; 6 ms; <code>build_style</code> on the window's thread 0.26-0.32 -&gt; 0.19-0.25
+ms a frame from the runs alone. Not done: splitting <code>Computed</code> (2 808 bytes, copied whole from the initial style for
+every element).</li>
+<li><strong>Element Timing visits the elements that ask for it; the LCP scan skips what cannot win</strong> (<code>src/page/timeline_lcp.odin</code>,
+<code>Document.timed</code> in <code>src/dom/dom.odin</code>). The document lists the elements given an <code>elementtiming</code> attribute (set
+and cloned attributes; the reader drops the stale ones), and Element Timing visits only them; it ran on every box of
+every changed or scrolled frame. The Largest Contentful Paint scan settles a box from its border box clamped to the
+viewport (<code>lay.box_border</code>, the layout's arrays) when that is no larger than the largest candidate so far, before the
+candidate's checks. Mutation page: 0.2 to 0.48 -&gt; 0.06 to 0.10 ms a frame; what remains is <code>box_border</code> itself (57 %
+of the scan: a read of each box's struct). Scrolling p10k cost nothing measurable before or after: its scan stops at
+the first input and the page has no <code>elementtiming</code>.</li>
+<li><strong>The walks after a style pass driven by what changed</strong> (<code>src/page/images.odin</code> <code>images_sync</code>, <code>css_images_sync</code>;
+<code>src/page/fonts.odin</code> <code>fonts_sync</code>; <code>Styled.image_records</code> in <code>src/style/cascade.odin</code>). <code>images_sync</code> finds image
+elements in the subtrees the mutation journal says were inserted and in the elements whose attributes changed (the
+whole document only when the journal does not cover the change). <code>css_images_sync</code> does nothing when no style made
+since has a URL image and none was in use (the passes count the records they make with one); after partial restyles
+it reads the records the style journal names, unless one of them, or a node that left the tree, may have been the
+last user of a URL (<code>css_users</code>, a bit per node). <code>fonts_sync</code> looks only while a face is not loaded, then at the
+restyled elements. nodes10k: 0.6 -&gt; 0.02 to 0.035 ms a frame (1.2 -&gt; 0.2 % of the work); mutation page 2.6 to 4.6 %
+-&gt; 0.2 to 0.6 %.</li>
 </ol>
 <h2 id="inventory"><a class="anchor" href="#inventory" aria-hidden="true">#</a>Inventory</h2>
 <h3 id="internal-caches-remove-by-making-the-path-fast-product-caches-kept"><a class="anchor" href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept" aria-hidden="true">#</a>Internal caches (remove by making the path fast; product caches kept)</h3>
@@ -359,9 +422,10 @@ the glyph atlas (<code>font/raster.odin:71</code>), Slug glyph data (<code>font/
 of every element, plus a concatenation per indexed attribute at <code>cascade.odin:443</code>); <code>style/match.odin:55-64</code>;
 <code>style/cascade.odin:345-361</code> (custom properties, contexts, <code>fs_chain</code> per element); <code>layout/context.odin:26-60</code>
 (<code>font_cache</code>, <code>anon_cs</code>, <code>frame_cs</code>); <code>layout/types.odin:454</code> (<code>scroll</code>, read per space); <code>browser/compositor.odin:115</code>
-(<code>node_items</code>, a heap list per node) and <code>:421-556</code> (per rebuild); <code>page/images.odin:1217</code> and <code>page/fonts.odin:111</code>
-(walk every computed style after each style pass); <code>ext/gui_toolkit/font/raster.odin:74-79</code> (per glyph, under the atlas
-lock). Gone this round: <code>page/timeline_lcp.odin</code> <code>ls_prev</code> (per box, per mutated frame).</p>
+(<code>node_items</code>, a heap list per node) and <code>:421-556</code> (per rebuild); <code>page/images.odin</code> <code>css_images_sync</code> and
+<code>page/fonts.odin</code> <code>fonts_sync</code> (a <code>seen</code> table of shared lists, now only when something new may be used);
+<code>ext/gui_toolkit/font/raster.odin:74-79</code> (per glyph, under the atlas lock); <code>page/timeline_lcp.odin</code> <code>et_seen</code> (per
+element with <code>elementtiming</code> only). Gone in round 1: <code>page/timeline_lcp.odin</code> <code>ls_prev</code> (per box, per mutated frame).</p>
 <h3 id="arrays-of-bools"><a class="anchor" href="#arrays-of-bools" aria-hidden="true">#</a>Arrays of bools</h3>
 <p>Per box or element, per pass: <code>layout/context.odin:53</code> (<code>plain</code>), <code>layout/finish.odin:37,81</code>, <code>layout/effects.odin:45</code>,
 <code>layout/incremental.odin:563</code>, <code>layout/query.odin:91</code> (<code>View.singular</code>, per frame), <code>style/cascade.odin:349</code>
@@ -396,30 +460,30 @@ shutdown, the clipboard, the shader compiler) and stay.</p>
 <p><code>style/timeline.odin:429-432,468</code> (an <code>Element_Anim</code> and three dynamic arrays for each element that declares a transition,
 on every full pass); <code>browser/compositor.odin:322</code> (<code>compute_floors</code>: one heap array per group per rebuild) and <code>:532</code>
 (<code>node_items_make</code>: one per node); the layout thread's growing arrays on the nodes10k page (<code>_reserve_dynamic_array</code>, a
-third of its samples); per-pass arena reservation and release in style (<code>NtFreeVirtualMemory</code> from <code>arena_destroy</code>, 11 %
-of the style stage on nodes10k: <code>style/cascade.odin:130,162,875</code>). Most of layout and paint already use the temporary
-allocator or an arena.</p>
+third of its samples). Gone in round 2: the style threads' arenas mapped and freed with every pass. Most of layout and
+paint already use the temporary allocator or an arena.</p>
 <h2 id="next-ranked-by-measured-cost-on-a-bottleneck"><a class="anchor" href="#next-ranked-by-measured-cost-on-a-bottleneck" aria-hidden="true">#</a>Next, ranked by measured cost on a bottleneck</h2>
+<p>After round 2. Round 1's items 1 (in part), 3, 4 and 5 are done; what is left of them is folded in below.</p>
 <ol>
-<li><strong>Node lifetime and handle indices on DOM-heavy scripts</strong> (nodes10k: 580 000 styled entries for 12 500 boxes, 40 full
-restyles in 26 s, 1.1 GB): a removed node that no script holds should give its index back at once (generation in the
-upper bits of the handle already says when an index is reused), so the by-node arrays of style and layout stay the
-size of the document.</li>
-<li><strong>The layout thread's heap growth</strong> (a third of its samples on nodes10k): inline-capacity lists or the layout arena for
-the per-box lists of inline segments.</li>
-<li><strong>Style: the arena per pass and the copy per element</strong> (<code>NtFreeVirtualMemory</code> 11 %, <code>build_style</code>'s <code>memcpy</code> the top
-function of the style threads): keep the thread arenas from pass to pass; split <code>Computed</code> into what layout and paint
-read every frame and the rest.</li>
-<li><strong>The Largest Contentful Paint and Element Timing scan</strong> (<code>timeline_present</code>, 15 % of a mutated frame on a 16 000-box
-page; it runs at every scrolled frame too while Element Timing is on): once LCP has stopped, visit only elements with an
-<code>elementtiming</code> attribute (an index of them, kept by the DOM's attribute changes).</li>
-<li><strong>Whole-document walks after each style pass</strong> (<code>page/images.odin:1217</code> <code>css_images_sync</code>, <code>images_sync</code>,
-<code>page/fonts.odin:111</code>: 3 to 6 % of the window thread on both script pages): driven by the restyle journal instead.</li>
+<li><strong>Wrappers freed by reference counting</strong> (nodes10k: the collections the DOM asks for are about a quarter of the window
+thread's samples, the script stage 42 ms of a 67 ms frame). A wrapper that carries nothing of its own (no expando
+property, no listener, its interface's prototype, no weak reference to it) can go when its count reaches zero and be
+made again if a script reaches the node later; only the others need the groups of <code>native/js/odin/wj/qjs_platform.odin</code>
+and a collection. A removed node would then give its index back as soon as no script holds it, without a collection.</li>
+<li><strong>The layout thread's heap growth</strong> (round 1: a third of its samples on nodes10k; layout is now 10.9 ms there):
+inline-capacity lists or the layout arena for the per-box lists of inline segments.</li>
+<li><strong>Style on DOM-heavy pages: every pass full, and <code>Computed</code> copied whole</strong> (nodes10k: 9.6 ms a frame, "too much
+changed" now that the document is its true size): a restyle of the inserted subtrees alone is the work a full pass
+does for them, without the rest; split <code>Computed</code> (2 808 bytes, copied from the initial style for every element) into
+what layout and paint read every frame and the rest.</li>
+<li><strong>The layout's boxes as arrays of what the scans read</strong> (the LCP scan's remaining cost is <code>box_border</code> reading each
+box's struct, 57 % of it; the layout-shift scan reads the same): border rects and flags in flat arrays by box, or
+scans of the boxes the layout journal says changed.</li>
 <li><strong>The atlas lock per glyph and the word cache's 64 locks</strong> (toolkit): a per-thread front, misses to one owner.</li>
 <li><strong>The style index's string tables</strong> (<code>style/engine.odin:66-68</code>): atoms (interned ids) and flat arrays by atom.</li>
 <li><strong><code>Loop.mu</code> and the network event mutexes</strong>: MPSC queues.</li>
 <li><strong>The profiler</strong>: sample the threads that ran (their cycle counters) rather than all ninety in turn, and correct the
-bias of samples taken in a system call.</li>
+bias of samples taken in a system call; the style threads, where most of a style pass runs, are barely seen.</li>
 </ol>
 <nav class="doc-seq" aria-label="Previous and next page">
 <a class="doc-prev" href="../../docs/testing/"><span>Previous</span><strong>How the tests run, and how to go fast</strong></a>
@@ -437,7 +501,8 @@ bias of samples taken in a system call.</li>
 <li class="lvl3"><a href="#3-scrolling-a-long-page-p10k-3-wheel-notches-every-16-ms">3. Scrolling a long page (p10k, 3 wheel notches every 16 ms)</a></li>
 <li class="lvl3"><a href="#4-a-css-animation-examplessiteanimationshtml-123-elements">4. A CSS animation (examples/site/animations.html, 123 elements)</a></li>
 <li class="lvl3"><a href="#5-script-dom-one-change-per-frame-on-a-large-page-examplessitemutationhtml-17-000-nodes-a-wasm-module-changes-one-text-every-16-ms">5. Script - DOM, one change per frame on a large page (examples/site/mutation.html, ~17 000 nodes, a Wasm module changes one text every 16 ms)</a></li>
-<li><a href="#what-changed-this-round">What changed this round</a></li>
+<li><a href="#what-changed-round-1">What changed, round 1</a></li>
+<li><a href="#what-changed-round-2">What changed, round 2</a></li>
 <li><a href="#inventory">Inventory</a></li>
 <li class="lvl3"><a href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept">Internal caches (remove by making the path fast; product caches kept)</a></li>
 <li class="lvl3"><a href="#hash-tables-on-hot-paths">Hash tables on hot paths</a></li>
