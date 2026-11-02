@@ -78,6 +78,7 @@ service_worker_versions_clients_preload :: proc(t: ^testing.T) {
 	e2e.expect_eval(s, `navigator.serviceWorker.getRegistration().then((r) => new Promise((ok) => { r.onupdatefound = () => { const w = r.installing; w.onstatechange = () => { if (w.state === "installed") ok("waiting " + (r.waiting === w) + " " + (r.active !== w)); }; }; r.update(); setTimeout(() => ok("timeout"), 30000); }))`, "waiting true true", "update() of a changed script: updatefound, the new version installs and waits (the page uses the old one)")
 	e2e.expect_eval(s, `ask("who")`, "v1", "the waiting version does not control the page yet")
 	e2e.expect_eval(s, `new Promise((ok) => { navigator.serviceWorker.oncontrollerchange = () => ok("changed"); navigator.serviceWorker.getRegistration().then((r) => r.waiting.postMessage("skip")); setTimeout(() => ok("timeout"), 30000); })`, "changed", "skipWaiting() in the waiting version: it activates, controllerchange")
+	e2e.wait_js(s, `swMessages.includes("skipping")`)   // (what the old version said on its way out: it comes after the change, and `ask` takes the next line)
 	e2e.expect_eval(s, `ask("who")`, "v2", "the new version controls the page")
 	e2e.expect_eval(s, `fetch("v.txt").then((r) => r.text())`, "v2", "requests go to the new version")
 	e2e.expect_eval(s, `ask("state")`, "activated true", "the worker sees its own state and registration.active")
