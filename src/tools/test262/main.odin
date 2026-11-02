@@ -729,7 +729,7 @@ main :: proc() {
 	ths := make([dynamic]^host.Thread)
 	for i in 0 ..< threads {
 		// Wasm calls run on the thread's own stack: room for wasm.wasmtime.max_stack_bytes
-		th := host.thread_start(worker_main, &shared.results[i], 32 << 20)
+		th := host.thread_start(worker_main, &shared.results[i], tooling.JS_THREAD_STACK_BYTES)
 		if th == nil { fmt.eprintln("test262: cannot start a thread"); os.exit(1) }
 		append(&ths, th)
 	}

@@ -11,6 +11,8 @@ import "core:time"
 EXE_SUFFIX :: ".exe" when ODIN_OS == .Windows else ""
 // What programs that run Wasm are linked with: 32 MiB of thread stack (wasm.wasmtime.max_stack_bytes). On Linux, `ulimit -s` of test_all.
 STACK_FLAGS :: []string{"-extra-linker-flags:/STACK:33554432"} when ODIN_OS == .Windows else []string{}
+// The stack of a thread a tool makes to run JavaScript on (what the browser's workers get, workers.thread_stack_bytes): a tool that runs its scripts on such a thread works whatever linked it.
+JS_THREAD_STACK_BYTES :: 32 << 20
 SHA256_BYTES :: 32
 
 // The repository of the program that runs: its executable is in <repository>/build; WREN_REPO says otherwise.
