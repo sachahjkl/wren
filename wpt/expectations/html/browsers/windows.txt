@@ -1,7 +1,36 @@
 # web-platform-tests expectations of Wren for html/browsers/windows, written by build/wpt -update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
-/html/browsers/windows/browsing-context-window.html: TIMEOUT
-	HTML Test: Newly-Created browsing context Window and `this`: TIMEOUT
+/html/browsers/windows/auxiliary-browsing-contexts/named-lookup-noopener.html: OK
+	Two noopener window.open() calls create separate windows: FAIL
+	Two rel=noopener <a href> clicks create separate windows: FAIL
+/html/browsers/windows/auxiliary-browsing-contexts/named-lookup-scoped-to-browsing-context-group.html: OK
+	named lookup scoped to browsing context group: FAIL
+/html/browsers/windows/auxiliary-browsing-contexts/no-proactive-swap-when-other-contexts-in-group.html: OK
+	no proactive browsing context group change when other contexts in group: FAIL
+/html/browsers/windows/auxiliary-browsing-contexts/opener-closed.html: OK
+	An auxiliary browsing context should report `null` for `window.opener` when that browsing context is discarded: PASS
+/html/browsers/windows/auxiliary-browsing-contexts/opener-multiple.html: OK
+	An auxiliary browsing context should be able to open another auxiliary browsing context: PASS
+/html/browsers/windows/auxiliary-browsing-contexts/opener-noopener.html: OK
+	Auxiliary browsing context created via `window.open` setting `noopener` should report `window.opener` `null`: PASS
+/html/browsers/windows/auxiliary-browsing-contexts/opener-noreferrer.html: OK
+	Auxiliary browsing context created with `rel="noreferrer"` should report `window.opener` `null`: PASS
+/html/browsers/windows/auxiliary-browsing-contexts/opener-setter.html: TIMEOUT
+	Auxiliary browsing context created via `window.open` and setting `window.opener` to `null` should report `window.opener` `null`: PASS
+	Auxiliary browsing context created via `window.open` and setting `window.opener` to `test` should report `test`: TIMEOUT
+/html/browsers/windows/auxiliary-browsing-contexts/opener-setter.window.html: OK
+	Setting window.opener to : FAIL
+	Setting window.opener to 42: FAIL
+	Setting window.opener to Symbol(): FAIL
+	Setting window.opener to [object Object]: FAIL
+	Setting window.opener to function() { return "hi" }: FAIL
+	Setting window.opener to hi: FAIL
+	Setting window.opener to undefined: FAIL
+/html/browsers/windows/auxiliary-browsing-contexts/opener.html: OK
+	Browsing context created with `window.open` should report `window.opener`: PASS
+	Newly-created auxiliary browsing context should report `window.opener`: PASS
+/html/browsers/windows/browsing-context-window.html: OK
+	HTML Test: Newly-Created browsing context Window and `this`: PASS
 /html/browsers/windows/browsing-context.html: OK
 	Check that browsing context has new, ready HTML document: FAIL
 	Check that new document nodes extant, empty: PASS
@@ -39,31 +68,31 @@
 	Removal, no document.domain: FAIL
 /html/browsers/windows/embedded-opener-a-form.html: OK
 	opener and embedded documents; using a and form: PASS
-/html/browsers/windows/embedded-opener-remove-frame.html: OK
-	opener of discarded auxiliary browsing context: FAIL
+/html/browsers/windows/embedded-opener-remove-frame.html: TIMEOUT
+	opener of discarded auxiliary browsing context: TIMEOUT
 	opener of discarded nested browsing context: FAIL
 /html/browsers/windows/embedded-opener.html: OK
 	opener and embedded documents; using window.open(): FAIL
 /html/browsers/windows/nested-browsing-contexts/frameElement-siblings.sub.html: OK
-	it must give a "SecurityError" DOMException if the pages are different-origin domain: FAIL
+	it must give a "SecurityError" DOMException if the pages are different-origin domain: PASS
 	it must return the iframe element if the pages are same-origin domain: FAIL
 /html/browsers/windows/nested-browsing-contexts/frameElement.sub.html: OK
-	The SecurityError must be thrown if the window accesses to frameElement attribute of a Window which does not have the same effective script origin: FAIL
+	The SecurityError must be thrown if the window accesses to frameElement attribute of a Window which does not have the same effective script origin: PASS
 	The window's frameElement attribute must return its container element if it is a nested browsing context: FAIL
 	The window's frameElement attribute must return null if it is not a nested browsing context: PASS
-	The window's frameElement attribute must return null if the container's document does not have the same effective script origin: FAIL
+	The window's frameElement attribute must return null if the container's document does not have the same effective script origin: PASS
 /html/browsers/windows/nested-browsing-contexts/iframe-referrer.html: ERROR
 	iframe document's referrer should be the fetching page: TIMEOUT
 /html/browsers/windows/nested-browsing-contexts/name-attribute.window.html: TIMEOUT
 	cross-origin <embed name=>: TIMEOUT
 	cross-origin <embed name=initialvalue>: TIMEOUT
 	cross-origin <embed>: TIMEOUT
-	cross-origin <frame name=>: TIMEOUT
-	cross-origin <frame name=initialvalue>: TIMEOUT
-	cross-origin <frame>: TIMEOUT
-	cross-origin <iframe name=>: TIMEOUT
-	cross-origin <iframe name=initialvalue>: TIMEOUT
-	cross-origin <iframe>: TIMEOUT
+	cross-origin <frame name=>: FAIL
+	cross-origin <frame name=initialvalue>: FAIL
+	cross-origin <frame>: FAIL
+	cross-origin <iframe name=>: FAIL
+	cross-origin <iframe name=initialvalue>: FAIL
+	cross-origin <iframe>: FAIL
 	cross-origin <object name=>: TIMEOUT
 	cross-origin <object name=initialvalue>: TIMEOUT
 	cross-origin <object>: TIMEOUT
@@ -86,20 +115,18 @@
 	`window.parent` for multiple nested browsing contexts: PASS
 	`window.parent` for top-level browsing context: PASS
 	`window.parent` on single nested browsing context: PASS
-/html/browsers/windows/nested-browsing-contexts/window-top-null.html: OK
-	`window.top` is null when browsing context container element removed: PASS
-	`window.top`null when any ancestor browsing context container removed: PASS
+/html/browsers/windows/nested-browsing-contexts/window-top-null.html: CRASH
 /html/browsers/windows/nested-browsing-contexts/window-top.html: OK
 	One nested iframe: PASS
 	Top level browsing context: PASS
 	Two nested iframes: PASS
-/html/browsers/windows/noreferrer-null-opener.html: TIMEOUT
-	rel=noreferrer nullifies window.opener: TIMEOUT
+/html/browsers/windows/noreferrer-null-opener.html: OK
+	rel=noreferrer nullifies window.opener: PASS
 /html/browsers/windows/noreferrer-window-name.html: TIMEOUT
-	Following a noreferrer link with a named target should not cause creation of a window that can be targeted by another noreferrer link with the same named target: TIMEOUT
-	Targeting a rel=noreferrer link at an existing named subframe should work: PASS
-	Targeting a rel=noreferrer link at an existing named window should work: TIMEOUT
-/html/browsers/windows/opener-string.window.html: ERROR
+	Following a noreferrer link with a named target should not cause creation of a window that can be targeted by another noreferrer link with the same named target: PASS
+	Targeting a rel=noreferrer link at an existing named subframe should work: TIMEOUT
+	Targeting a rel=noreferrer link at an existing named window should work: FAIL
+/html/browsers/windows/opener-string.window.html: OK
 	Setting popup.opener to a string: FAIL
 /html/browsers/windows/targeting-cross-origin-nested-browsing-contexts.html: TIMEOUT
 	Targeting nested browsing contexts: TIMEOUT
