@@ -10,7 +10,7 @@ description: >-
 inputs:
   native-profile:
     description: >-
-      The Cargo profile of the Rust library this job builds (tools\build_native.ps1 -Profile): quick (build.bat, debug,
+      The Cargo profile of the Rust library this job builds (wrentool build native -Profile): quick (build.bat, debug,
       check) or release (build.bat release and profile). Its compiled crates are cached.
     default: quick
 
@@ -67,7 +67,7 @@ runs:
       uses: actions/cache@v4
       with:
         path: build/wasmtime
-        key: wasmtime-${{ hashFiles('tools/fetch_wasmtime.ps1') }}
+        key: wasmtime-${{ hashFiles('src/tools/wrentool/deps/fetch.odin') }}
 
     - name: Cache Lexbor
       uses: actions/cache@v4
@@ -75,9 +75,9 @@ runs:
         path: |
           build/lexbor/lexbor.lib
           build/lexbor/STAMP
-        key: lexbor-${{ steps.keys.outputs.lexbor }}-${{ hashFiles('src/shim/**', 'tools/build_lexbor.ps1') }}
+        key: lexbor-${{ steps.keys.outputs.lexbor }}-${{ hashFiles('src/shim/**', 'src/tools/wrentool/deps/lexbor.odin') }}
 
-    # The Rust library (tools\build_native.ps1), with the crates Cargo compiled for it (build/native/target/<profile>):
+    # The Rust library (wrentool build native), with the crates Cargo compiled for it (build/native/target/<profile>):
     # - the same sources (the key covers every input of the script's STAMP, the toolkit's crates included): the library
     #   is restored, nothing is compiled;
     # - other sources, same Cargo.lock: the latest entry of that Cargo.lock is restored (restore-keys) and Cargo compiles
@@ -98,7 +98,7 @@ runs:
           !build/native/target/${{ inputs.native-profile }}/deps/*.lib
           build/tools/nasm-*
           !build/tools/nasm-*.zip
-        key: native-${{ inputs.native-profile }}-rust1.99.1-${{ hashFiles('native/Cargo.lock') }}-${{ hashFiles('native/Cargo.toml', 'native/media/src/**', 'native/media/Cargo.toml', 'native/wren_native/**', 'ext/gui_toolkit/native/text/src/**', 'ext/gui_toolkit/native/text/Cargo.toml', 'ext/gui_toolkit/native/a11y/src/**', 'ext/gui_toolkit/native/a11y/Cargo.toml', 'tools/build_native.ps1') }}
+        key: native-${{ inputs.native-profile }}-rust1.99.1-${{ hashFiles('native/Cargo.lock') }}-${{ hashFiles('native/Cargo.toml', 'native/media/src/**', 'native/media/Cargo.toml', 'native/wren_native/**', 'ext/gui_toolkit/native/text/src/**', 'ext/gui_toolkit/native/text/Cargo.toml', 'ext/gui_toolkit/native/a11y/src/**', 'ext/gui_toolkit/native/a11y/Cargo.toml', 'src/tools/wrentool/deps/native.odin') }}
         restore-keys: native-${{ inputs.native-profile }}-rust1.99.1-${{ hashFiles('native/Cargo.lock') }}-
 
     # the QuickJS-ng release source (test262's configuration), pinned in src\tools\tooling\js_engine.odin; the engine itself links with Odin's wasm-ld

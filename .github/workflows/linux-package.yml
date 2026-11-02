@@ -1,6 +1,6 @@
 name: Linux package
 
-# The Linux release file (tools/package_linux.sh), built and started on a machine with nothing of Wren's on it. The release workflow calls
+# The Linux release file (wrentool package), built and started on a machine with nothing of Wren's on it. The release workflow calls
 # this; run it by hand (Actions, or gh workflow run linux-package.yml) to check a commit before tagging it. The engine's image (wren_js.wasm)
 # is portable and only the Windows toolchain builds it: the first job makes it for the second.
 on:
@@ -68,22 +68,24 @@ jobs:
 
       - name: Native libraries
         run: |
-          tools/fetch_wasmtime.sh
-          tools/fetch_wgpu.sh
-          CC=clang tools/build_lexbor.sh
+          mkdir -p build
+          odin build src/tools/wrentool -collection:wb=src -out:build/wrentool
+          build/wrentool fetch wasmtime
+          build/wrentool fetch wgpu
+          CC=clang build/wrentool build lexbor
 
       - name: Build (release)
         run: ./build.sh release
 
       - name: Package
-        run: tools/package_linux.sh ${{ inputs.version }}
+        run: build/wrentool package -Version ${{ inputs.version }}
 
-      - name: The packaged executable end to end (tools/linux_smoke.sh)
+      - name: The packaged executable end to end (wrentool smoke)
         run: |
           mkdir -p "$RUNNER_TEMP/unpacked"
           tar -xzf build/dist/wren-*-linux-x64.tar.gz -C "$RUNNER_TEMP/unpacked"
           ldd "$RUNNER_TEMP"/unpacked/*/wren | grep -v 'linux-vdso\|ld-linux'
-          xvfb-run -a tools/linux_smoke.sh "$RUNNER_TEMP"/unpacked/*/wren
+          xvfb-run -a build/wrentool smoke "$RUNNER_TEMP"/unpacked/*/wren
 
       - uses: actions/upload-artifact@v4
         with:
