@@ -28,8 +28,7 @@ Product :: enum {
 	Check_Browser,   // build/wren_check.exe
 	Test_Server,     // build/testserver.exe and .dll
 	Guests,          // the Wasm guests of the pages of the web tests
-	E2E,             // build/e2e_test.exe
-	E2E_Check,       // build/e2e_test_check.exe: the same program with every allocation tracked
+	E2E,             // build/e2e_test.exe: the test program, every allocation tracked
 	Fetch,           // build/fetch.exe
 }
 Products :: bit_set[Product]
@@ -130,13 +129,13 @@ tool_build :: proc(pkg, out: string) -> Command {
 guest :: proc(pkg, out: string) -> Action { return odin_build(pkg, out, GUEST_FLAGS) }
 
 // Of one file of the end-to-end scenarios (src/tools/e2e, docs/testing.md): the tests it declares, in the program built once, in a process of their own.
-e2e_run :: proc(file: string, program := "build/e2e_test") -> Action {
-	return Command{argv = strs(exe(program)), tests_of = fmt.aprintf("src/tools/e2e/%s.odin", file), rule = .Says_Successful}
+e2e_run :: proc(file: string) -> Action {
+	return Command{argv = strs(exe("build/e2e_test")), tests_of = fmt.aprintf("src/tools/e2e/%s.odin", file), rule = .Says_Successful}
 }
 
-// Of one subject of the web tests (src/tools/e2e/web_<subject>.odin): the same, on the program that tracks every allocation, with the test that ends the process with its leak check.
+// Of one subject of the web tests (src/tools/e2e/web_<subject>.odin): the same, with the test that ends the process with its leak check.
 web_run :: proc(subject: string, env: []string = nil) -> Action {
-	return Command{argv = strs(exe("build/e2e_test_check")), tests_of = fmt.aprintf("src/tools/e2e/web_%s.odin", subject), also = "zz_the_process_ends_with_nothing_left", env = slice.clone(env), rule = .Says_Successful}
+	return Command{argv = strs(exe("build/e2e_test")), tests_of = fmt.aprintf("src/tools/e2e/web_%s.odin", subject), also = "zz_the_process_ends_with_nothing_left", env = slice.clone(env), rule = .Says_Successful}
 }
 
 powershell :: proc(script: string, args: ..string) -> Action {
@@ -155,7 +154,7 @@ web_sources :: proc(subject: string) -> []string { return strs("src/tools/e2e/we
 
 // A subject of the web tests, as a step.
 web_step :: proc(t: ^[dynamic]Step, name, subject: string, marks := Marks{}) {
-	append(t, Step{name = name, actions = slice_of(web_run(subject)), marks = marks, needs = COMMON_NEEDS + {.Guests, .E2E_Check, .Test_Server}, sources = web_sources(subject)})
+	append(t, Step{name = name, actions = slice_of(web_run(subject)), marks = marks, needs = COMMON_NEEDS + {.Guests, .E2E, .Test_Server}, sources = web_sources(subject)})
 }
 
 slice_of :: proc(actions: ..Action) -> []Action {
@@ -299,9 +298,8 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	append(&t, Step{name = "graphics toolkit status tests (sample history, frame graph; no window)", actions = slice_of(toolkit_suite("status", exe("build/toolkit_status_test"), toolkit_one))})
 	append(&t, Step{name = "graphics toolkit interaction states tests (hover, press and selection at once, transitions on demand, palette cross-fade, state fills in both blend spaces; no window)", actions = slice_of(toolkit_suite("states", exe("build/toolkit_states_test"), toolkit_one))})
 
-	// The test program (src/tools/e2e, docs/testing.md): one program on Odin's test runner that links the browser, built once, and once more with every allocation tracked; a step runs the tests of one file of it, in a process of its own.
-	append(&t, Step{name = "build e2e scenarios (src\\tools\\e2e: the browser in the tests' process, no window, the real renderer offscreen)", actions = slice_of(odin_build("src/tools/e2e", exe("build/e2e_test"), E2E_BUILD_FLAGS)), needs = COMMON_NEEDS, makes = {.E2E}})
-	append(&t, Step{name = "build e2e scenarios with every allocation tracked (src\\tools\\e2e with -define:WREN_TRACK_MEMORY=true: a test that leaves anything allocated fails; the web tests run here)", actions = slice_of(odin_build("src/tools/e2e", exe("build/e2e_test_check"), join({TRACK}, E2E_BUILD_FLAGS))), needs = COMMON_NEEDS, makes = {.E2E_Check}})
+	// The test program (src/tools/e2e, docs/testing.md): one program on Odin's test runner that links the browser, built once, every allocation tracked (what that costs a step does not show: 2 % of 500 s of CPU); a step runs the tests of one file of it, in a process of its own.
+	append(&t, Step{name = "build the test program (src\\tools\\e2e: the browser in the tests' process, no window, the real renderer offscreen, every allocation tracked: a test that leaves anything allocated fails)", actions = slice_of(odin_build("src/tools/e2e", exe("build/e2e_test"), join({TRACK}, E2E_BUILD_FLAGS))), needs = COMMON_NEEDS, makes = {.E2E}})
 	append(&t, Step{name = "the Wasm guests of the pages of the web tests",
 		actions = slice_of(
 			guest("examples/e2e", "build/e2e.wasm"), guest("examples/counter", "examples/site/counter.wasm"), guest("examples/formstest", "examples/site/formstest.wasm"),
@@ -332,10 +330,6 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 		// 2. The remote control channel (every allocation tracked): a session that touches the whole channel exits with nothing allocated.
 		append(&t, Step{name = "remote control on the check build: a driven session (navigate, script, input, capture, events, a client that vanishes, reset, checkpoints, quit) leaves nothing allocated (src\\tools\\e2e\\remote_check.odin)",
 			actions = slice_of(e2e_run("remote_check")), weight = 30, needs = COMMON_NEEDS + {.Check_Browser, .E2E, .Test_Server}, inputs = .Tree})
-		check_sessions: [dynamic]Action
-		for s in ([]string{"sw", "workers", "fs", "bfcache", "partition", "video_layers", "page_apis"}) { append(&check_sessions, e2e_run(s, "build/e2e_test_check")) }
-		append(&t, Step{name = "service workers, workers, file systems, the back/forward cache and storage partitioning on the check build: each end-to-end session leaves nothing allocated (src\\tools\\e2e\\sw.odin, workers.odin, fs.odin, bfcache.odin, partition.odin, video_layers.odin, page_apis.odin in build\\e2e_test_check.exe)",
-			actions = check_sessions[:], marks = {.No_CI, .Run_All}, weight = 30, needs = COMMON_NEEDS + {.E2E_Check, .Test_Server}, inputs = .Tree})
 	}
 
 	web_step(&t, "network policy test (CORS, cookies, redirects, CSP, schemes)", "policy", {.Light})
@@ -344,7 +338,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	web_step(&t, "end-to-end page test", "page")
 	web_step(&t, "EventSource / WebSocket end-to-end test (src\\tools\\e2e\\web_netapi.odin)", "netapi", {.Light})
 	append(&t, Step{name = "network transport test on both stacks (src\\tools\\e2e\\web_net.odin: heads, bodies, gzip, caps, cancel, timeouts, refused / unresolved / cut / garbage answers, certificates; built-in stack: HTTP/2, HTTP/3 from Alt-Svc and the fall back to TCP when QUIC is blocked, TLS 1.3 only, expired and misnamed certificates, wss, the proxy)",
-		actions = slice_of(web_run("net", {"WREN_NET_BACKEND=winhttp"}), web_run("net", {"WREN_NET_BACKEND=rust"})), marks = {.Light, .Run_All}, needs = COMMON_NEEDS + {.Guests, .E2E_Check, .Test_Server}, sources = web_sources("net")})
+		actions = slice_of(web_run("net", {"WREN_NET_BACKEND=winhttp"}), web_run("net", {"WREN_NET_BACKEND=rust"})), marks = {.Light, .Run_All}, needs = COMMON_NEEDS + {.Guests, .E2E, .Test_Server}, sources = web_sources("net")})
 	web_step(&t, "WebSocket closing handshake test (src\\tools\\e2e\\web_wsclose.odin: close right after a message or the upgrade, late, missing and crossing close frames, server cutting TCP; repeated)", "wsclose", {.Light})
 	web_step(&t, "web platform API test (timers, rAF, abort, fetch streams, encoding, crypto, storage, URL, history)", "webapi")
 	web_step(&t, "forms end-to-end test (controls, validation, FormData, submission)", "forms")

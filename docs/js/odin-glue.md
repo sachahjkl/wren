@@ -145,7 +145,7 @@ so a change of a mirrored struct stops the build.
 ## Testing a ported domain
 
 Build: `cmd /c build.bat`. Then, as relevant to the domain, the subjects of the web tests: `js`, `jsdom`, `jsweb`,
-`jsload`, `workers`, `netapi`, `media` (`build\e2e_test_check.exe`, [docs/testing.md](../testing.md#the-web-tests)), `build/test262 -quick`, and `src/tools/wpt -Only /<folder>/ -TimeoutMs 30000`
+`jsload`, `workers`, `netapi`, `media` (`build\e2e_test.exe`, [docs/testing.md](../testing.md#the-web-tests)), `build/test262 -quick`, and `src/tools/wpt -Only /<folder>/ -TimeoutMs 30000`
 for the WPT folders of the domain (the folders must be in `wpt/suites.txt`). A WPT "regression" is relative to
 `wpt/expectations`, which may be older than the code: compare with a build of the commit before the port before
 concluding (url's worker `exclude=` variants and webstorage's `storage_session_window_noopener` were already

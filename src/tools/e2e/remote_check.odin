@@ -1,7 +1,7 @@
 package e2e_scenarios
 
 // The channel on the browser's check build (build.bat check: every allocation tracked): a session that touches every part of it, then a normal exit, must end with nothing allocated.
-// (The scenarios about pages run the same way in build\e2e_test_check.exe: what is checked here is what only the channel holds.)
+// (The scenarios about pages end with nothing left in the test program itself: what is checked here is what only the channel holds.)
 
 import "core:encoding/json"
 import "core:fmt"

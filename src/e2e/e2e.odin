@@ -227,6 +227,7 @@ restart :: proc(s: ^Session, o := Options{}, loc := #caller_location) -> ^Sessio
 @(private)
 end_of_browser :: proc(s: ^Session) {
 	stop(s)
+	runtime.default_temp_allocator_destroy(&s.temp)   // (`restart`: the session goes on, its browser's temporary memory does not)
 	if current == s { current = nil }
 }
 
@@ -240,8 +241,7 @@ end_of_test :: proc(s: ^Session) {
 	}
 	if testing.failed(s.t) { keep_failure(s) }
 	end_of_browser(s)
-	runtime.default_temp_allocator_destroy(&s.temp)
-	// (the test program built with every allocation tracked, test_all's build\e2e_test_check.exe: here nothing of the session may be left)
+	// (the test program is built with every allocation tracked: here nothing of the session may be left)
 	when base.TRACK_MEMORY { if !testing.failed(s.t) { testing.expectf(s.t, base.mem_report(s.name) == 0, "%s leaves nothing allocated: the report above", s.name) } }
 	if !testing.failed(s.t) { base.remove_tree(s.out) }
 	delete(s.name)

@@ -357,7 +357,7 @@ the <code>wasm-ld</code> of Odin's <code>bin</code> folder (<code>--no-entry --g
 </ul>
 <h2 id="testing-a-ported-domain"><a class="anchor" href="#testing-a-ported-domain" aria-hidden="true">#</a>Testing a ported domain</h2>
 <p>Build: <code>cmd /c build.bat</code>. Then, as relevant to the domain, the subjects of the web tests: <code>js</code>, <code>jsdom</code>, <code>jsweb</code>,
-<code>jsload</code>, <code>workers</code>, <code>netapi</code>, <code>media</code> (<code>build\e2e_test_check.exe</code>, <a href="../../docs/testing.html#the-web-tests">docs/testing.md</a>), <code>build/test262 -quick</code>, and <code>src/tools/wpt -Only /&lt;folder&gt;/ -TimeoutMs 30000</code>
+<code>jsload</code>, <code>workers</code>, <code>netapi</code>, <code>media</code> (<code>build\e2e_test.exe</code>, <a href="../../docs/testing.html#the-web-tests">docs/testing.md</a>), <code>build/test262 -quick</code>, and <code>src/tools/wpt -Only /&lt;folder&gt;/ -TimeoutMs 30000</code>
 for the WPT folders of the domain (the folders must be in <code>wpt/suites.txt</code>). A WPT "regression" is relative to
 <code>wpt/expectations</code>, which may be older than the code: compare with a build of the commit before the port before
 concluding (url's worker <code>exclude=</code> variants and webstorage's <code>storage_session_window_noopener</code> were already
