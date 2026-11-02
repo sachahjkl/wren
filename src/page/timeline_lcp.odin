@@ -35,6 +35,9 @@ LAYOUT_SHIFT_SESSION_GAP_MS :: 1000.0
 LAYOUT_SHIFT_SESSION_MAX_MS :: 5000.0
 // A background image covering this share of the viewport counts as the whole of it, and so is no LCP candidate.
 LCP_FULL_VIEWPORT_SHARE :: 0.99
+// The scan skips a box whose clamped border box is no larger than this share of the largest candidate so far: below 1, so a
+// rounding difference with the candidate's own geometry never skips a box that would win.
+LCP_PREFILTER_SLACK :: 0.999
 
 @(private)
 Lcp_Candidate :: struct {
@@ -58,7 +61,8 @@ timeline_present :: proc(p: ^Page, l: ^lay.Layout, vp: Viewport) {
 	if t == nil { return }
 	s := &p.settings.timeline
 	want_lcp := s.lcp_entries > 0 && !t.lcp_stopped
-	want_et := s.element_entries > 0
+	// Element Timing visits only the elements given an `elementtiming` attribute (the document lists them), not every box
+	want_et := s.element_entries > 0 && len(p.doc.timed) > 0
 	if !want_lcp && !want_et { return }
 	// nothing new to find when the document and the viewport are as they were at the last scan (the scan walks every box)
 	if t.lcp_scanned && t.lcp_scan_mutations == p.doc.mutations && t.lcp_scan_w == vp.width && t.lcp_scan_h == vp.height && t.lcp_scan_scroll == vp.scroll_y && t.lcp_scan_scroll_x == vp.scroll_x { return }
@@ -70,17 +74,39 @@ timeline_present :: proc(p: ^Page, l: ^lay.Layout, vp: Viewport) {
 	view := lay.view_make(l, {f32(vp.width) * scale, f32(vp.height) * scale}, f32(vp.scroll_y) * scale, cull = false)
 	vp_area := vp.width * vp.height
 
+	if want_et {
+		// an element reported, freed, or whose attribute went leaves the list
+		for i := 0; i < len(p.doc.timed); {
+			node := p.doc.timed[i]
+			_, has := dom.get_attribute(p.doc, node, dom.TIMED_ATTRIBUTE)
+			if !has || t.et_seen[node] { unordered_remove(&p.doc.timed, i); continue }
+			i += 1
+			bi := lay.box_index(l, node)
+			if bi == lay.NONE { continue }
+			if cand, ok := lcp_candidate_of(p, l, &view, vp, &l.boxes[bi], vp_area); ok { element_timing_consider(p, t, node, cand, now_ms) }
+		}
+	}
+	if !want_lcp { return }
+
 	best: Lcp_Candidate
-	for &b in l.boxes {
+	for &b, bi in l.boxes {
 		node := b.node
 		if node == base.NIL_HANDLE || .Anonymous in b.flags || .Dead in b.flags { continue }
+		// a box whose visible part is no larger than the largest candidate so far cannot be the next one: its border box
+		// clamped to the viewport, from the layout's arrays, settles most boxes before the candidate's checks
+		if border, transformed, fragmented := lay.box_border(l, &view, i32(bi)); !transformed && !fragmented {
+			x0 := max(f64(border.min.x / scale) - vp.scroll_x, 0)
+			y0 := max(f64(border.min.y / scale) - vp.scroll_y, 0)
+			x1 := min(f64(border.max.x / scale) - vp.scroll_x, vp.width)
+			y1 := min(f64(border.max.y / scale) - vp.scroll_y, vp.height)
+			if x1 <= x0 || y1 <= y0 || (x1 - x0) * (y1 - y0) <= max(t.lcp_largest, best.area) * LCP_PREFILTER_SLACK { continue }
+		}
 		cand, ok := lcp_candidate_of(p, l, &view, vp, &b, vp_area)
 		if !ok { continue }
-		if want_et { element_timing_consider(p, t, node, cand, now_ms) }
-		if want_lcp && cand.area > best.area { best = cand }
+		if cand.area > best.area { best = cand }
 	}
 
-	if want_lcp && best.node != base.NIL_HANDLE && best.area > t.lcp_largest {
+	if best.node != base.NIL_HANDLE && best.area > t.lcp_largest {
 		t.lcp_largest = best.area
 		lcp_add_entry(p, t, best, now_ms)
 	}
