@@ -147,6 +147,15 @@ a_step_marked_alone_runs_when_nothing_else_does :: proc(t: ^testing.T) {
 }
 
 @(test)
+two_steps_marked_alone_run_one_after_the_other :: proc(t: ^testing.T) {
+	context.allocator = runtime.heap_allocator()   // (what a run keeps until it ends)
+	table := []Step{fake("alone 1", marks = {.Alone}), fake("alone 2", marks = {.Alone}), fake("a")}
+	run_table(table)
+	testing.expect_value(t, len(order), 3)
+	testing.expect_value(t, order[0], "a")
+}
+
+@(test)
 every_action_runs_with_run_all :: proc(t: ^testing.T) {
 	context.allocator = runtime.heap_allocator()   // (what a run keeps until it ends)
 	both := Step{name = "both", actions = slice_of(Task{"x", fake_task, "fail first"}, Task{"y", fake_task, "second"}), marks = {.Run_All, .No_Result}}
