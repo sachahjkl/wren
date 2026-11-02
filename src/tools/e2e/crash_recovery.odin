@@ -77,12 +77,13 @@ a_crash_brings_the_tabs_back_and_two_in_a_row_do_not_loop :: proc(t: ^testing.T)
 	}
 	testing.expect(t, strings.contains(e2e.read_text(marker), "restoring 0"), "its marker does not say restoring")
 	api.run_command(third.s, "tab.restore_crashed")
-	want := fmt.tprintf("about:blank %s %s", TAB_A, TAB_B)
+	// (the file is the last snapshot of the start that crashed: with its own address or without, as it had the time to take one or not)
 	api.wait_until(third.s, proc(s: ^api.Session) -> bool {
 		targets, _ := api.targets(s)
-		return len(targets.tabs) == 3
+		return len(targets.tabs) >= 3
 	}, "the command to bring the tabs back")
-	testing.expect_value(t, tabs_of(third), want)
+	back := tabs_of(third)
+	testing.expectf(t, strings.contains(back, TAB_A) && strings.contains(back, TAB_B), "the tabs came back: %q", back)
 
 	// a normal end removes both files, and the next start restores nothing
 	testing.expect_value(t, e2e.quit(third), 0)
