@@ -81,7 +81,7 @@ shield_look :: proc(d: ^Shield_Draw, app: ^App, state: Shield_State, count: int)
 SHIELD_MAX :: 64
 @(private = "file") SHIELD_QUARTER :: 4   // a quarter of the way round the outline: the middle of a side
 
-@(private = "file")
+@(private)
 shield_points :: proc(pts: ^[SHIELD_MAX]draw.Vec2, c: draw.Vec2, w, h: f32) -> int {
 	half: [SHIELD_MAX / 2]draw.Vec2
 	n := 0
@@ -105,9 +105,26 @@ shield_points :: proc(pts: ^[SHIELD_MAX]draw.Vec2, c: draw.Vec2, w, h: f32) -> i
 	return m
 }
 
+// How far ahead along the inner edge a fold is looked for: the shoulder's few points.
+@(private = "file") SHIELD_FOLD_SPAN :: 8
+
+// Where segments a0-a1 and b0-b1 cross, if they do.
+@(private)
+segments_cross :: proc(a0, a1, b0, b1: draw.Vec2) -> (at: draw.Vec2, ok: bool) {
+	r, s := a1 - a0, b1 - b0
+	den := r.x * s.y - r.y * s.x
+	if abs(den) < 1e-6 { return }
+	q := b0 - a0
+	t := (q.x * s.y - q.y * s.x) / den
+	u := (q.x * r.y - q.y * r.x) / den
+	if t < 0 || t > 1 || u < 0 || u > 1 { return }
+	return a0 + r * t, true
+}
+
 // The same shape pulled in by `d` all round (the inner edge of the outline); how many points it kept. Where the curve is tighter than
-// `d` the offset points would run backwards and fold over themselves, which an even-odd fill shows as specks: those are dropped.
-@(private = "file")
+// `d` (the shoulders) the offset points run backwards and the edge crosses itself in a small loop, which an even-odd fill shows as a
+// dark notch: the loop is cut at the crossing.
+@(private)
 shield_inset :: proc(out, pts: []draw.Vec2, d: f32) -> int {
 	n := len(pts)
 	moved: [SHIELD_MAX]draw.Vec2
@@ -122,12 +139,20 @@ shield_inset :: proc(out, pts: []draw.Vec2, d: f32) -> int {
 		k := d / max(s.x * n0.x + s.y * n0.y, 0.4)
 		moved[i] = p + s * k
 	}
+	// from the middle of a straight side, where no loop is: the crest's point, where the outline starts, has one round it
+	from := n / SHIELD_QUARTER + 1
+	at :: proc(moved: []draw.Vec2, from, k: int) -> draw.Vec2 { return moved[(from + k) % len(moved)] }
 	m := 0
-	for i in 0 ..< n {
-		next := (i + 1) % n
-		along := pts[next] - pts[i]
-		step := moved[next] - moved[i]
-		if along.x * step.x + along.y * step.y > 0 { out[m] = moved[i]; m += 1 }
+	for i := 0; i < n; i += 1 {
+		out[m] = at(moved[:n], from, i); m += 1
+		// the farthest later segment this one crosses (not the next, which shares a point): the points between are the loop
+		for j := min(i + SHIELD_FOLD_SPAN, n - 1); j >= i + 2; j -= 1 {
+			if x, ok := segments_cross(at(moved[:n], from, i), at(moved[:n], from, i + 1), at(moved[:n], from, j), at(moved[:n], from, j + 1)); ok {
+				out[m] = x; m += 1
+				i = j
+				break
+			}
+		}
 	}
 	return m
 }
