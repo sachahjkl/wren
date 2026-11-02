@@ -102,8 +102,16 @@ short_name :: proc(name: string) -> string {
 	return name
 }
 
+// (a step of a scenario split by test or group, "<scenario> [<part>]": its part keeps its own file, past the scenario's slug)
 log_path_of :: proc(name: string) -> string {
 	SLUG_MOST :: 60
+	if strings.has_suffix(name, "]") {
+		if k := strings.last_index(name, " ["); k >= 0 {
+			whole := log_path_of(name[:k])
+			part := log_path_of(name[k + 2:len(name) - 1])
+			return fmt.aprintf("%s_%s", whole[:len(whole) - len(".log")], part[len(LOG_DIR) + 1:])
+		}
+	}
 	b := strings.builder_make()
 	gap := false
 	for c in transmute([]u8)name {
