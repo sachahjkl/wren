@@ -403,7 +403,64 @@ last user of a URL (<code>css_users</code>, a bit per node). <code>fonts_sync</c
 restyled elements. nodes10k: 0.6 -&gt; 0.02 to 0.035 ms a frame (1.2 -&gt; 0.2 % of the work); mutation page 2.6 to 4.6 %
 -&gt; 0.2 to 0.6 %.</li>
 </ol>
-<h2 id="what-changed-round-3"><a class="anchor" href="#what-changed-round-3" aria-hidden="true">#</a>What changed, round 3</h2>
+<h2 id="round-3-the-locks-of-the-loop-and-the-network-measured-against-lock-free-queues"><a class="anchor" href="#round-3-the-locks-of-the-loop-and-the-network-measured-against-lock-free-queues" aria-hidden="true">#</a>Round 3: the locks of the loop and the network, measured against lock-free queues</h2>
+<p>Item 7 of round 2's list. The locks of <code>src/host</code>, <code>src/net</code> and <code>src/fetch</code>, and of what posts between them and the
+loop, as producers and consumers:</p>
+<div class="table-box"><table>
+<thead><tr><th>lock</th><th>produces</th><th>consumes</th><th>how often</th><th>held for</th></tr></thead>
+<tbody>
+<tr><td><code>host/loop.odin</code> <code>Loop.mu</code></td><td>any thread posts a task (network drains, blocking jobs' completions, image decoders, the page thread, workers' links)</td><td>the loop thread, once a turn</td><td>every post: thousands a second during a load</td><td>an append; the turn's swap of the arrays</td></tr>
+<tr><td><code>net/client.odin</code> <code>Client.mu</code></td><td>WinHTTP's threads (headers, each chunk of <code>read_chunk</code> bytes, done, failed)</td><td>the loop, one posted <code>drain</code> per burst</td><td>every network event</td><td>an append; the drain's swap</td></tr>
+<tr><td><code>net/websocket.odin</code> <code>Ws_Manager.mu</code></td><td>WinHTTP's threads (frames, writes done, close)</td><td>the loop, one <code>ws_drain</code> per burst</td><td>every WebSocket event</td><td>an append; the swap</td></tr>
+<tr><td><code>host/thread_pool.odin</code> <code>mu</code> + <code>cond</code></td><td><code>parallel_for</code> (style passes, a few a frame)</td><td>the pool's threads</td><td>every round</td><td>three stores; the helpers' wake-up</td></tr>
+<tr><td><code>host/blocking.odin</code> <code>Blocking_Pool.mu</code> + 2 conds</td><td>the loop (<code>run_blocking</code>)</td><td>4 workers</td><td>each blocking job (file reads, hashing): tens a second</td><td>an append; <code>ordered_remove(0)</code></td></tr>
+<tr><td><code>host/thread.odin</code> <code>live_mu</code></td><td>a thread starting or ending</td><td>the teardown's report</td><td>per thread</td><td>an append</td></tr>
+<tr><td><code>host/shutdown.odin</code> <code>sd.mu</code></td><td>the teardown's steps</td><td>its watchdog</td><td>per step of a teardown</td><td>a copy of a name</td></tr>
+<tr><td><code>fetch/blob_urls.odin</code> <code>blob_store.mu</code></td><td><code>URL.createObjectURL</code>, <code>revokeObjectURL</code> (any App's thread)</td><td>a load of a <code>blob:</code> URL</td><td>per blob URL</td><td>a map lookup</td></tr>
+</tbody>
+</table></div>
+<p>The built-in network stack (<code>network.backend = rust</code>) queues its events in the library (<code>native/</code>) and posts one
+<code>rust_drain</code> when its queue stops being empty: nothing of ours to lock.</p>
+<p><strong>Decision: the mutexes stay.</strong> Two lock-free designs of the loop's queue were built and measured against <code>Loop.mu</code>
+(the commits "The event loop and the network take no lock" and "The loop's queue, second design", kept in the history):
+neither moved as many posts a second through a running loop from one thread, and the consumer was not faster; the
+latency of a post was the same. The network's inboxes used the same queue (same verdict: they gain nothing at network
+rates and lose the same way in a burst from one thread), and <code>parallel_for</code>'s round handed over by one atomic word was
+slower than the mutex and condition (0.53 against 0.36 us a round). What was kept: the tests and the two benches.</p>
+<ol>
+<li>First design: blocks of slots claimed by a compare-and-swap on the tail, the consumer popping one slot at a time.
+Four producers fought for the tail (10 M/s against the mutex's 25), and the consumer ran a third as fast.</li>
+<li>Second design: a wait-free fetch-and-add claim; blocks found by number from a hint and linked by the first producer
+that needs one, retired with the tail's position when the consumer leaves them (a producer that may still hold one
+claimed before that mark: once the consumer has taken every position before it, the block is free to use again); the
+consumer walking the slots in place up to the position its turn began at; slots and the queue's fields on lines of
+their own; the wake left pending while work keeps coming, cleared only at the end of a turn that left nothing (so
+producers write nothing to it during a turn), and a call to the system only when the loop sleeps. Four producers now
+match the mutex. One producer does not: the loop, faster than the producer, catches up with it every 2 or 3 tasks
+(about 400 000 turns per million posts, against 11 000 to 17 000 with the mutex, which made the loop wait while the
+producer appended), and every catching-up moves the queue's lines between the two cores and slows the producer.
+Batching that away means making the loop wait for work it could run: a latency the mutex does not have.</li>
+</ol>
+<p><code>post_rate_and_latency</code> (<code>src/host/loop_test.odin</code>) and <code>parallel_for_round_cost</code> (<code>src/host/thread_test.odin</code>), <code>-Perf</code>,
+<code>-o:speed</code>, the mutex and the second design, 7 runs each alternated; the median, range in brackets:</p>
+<div class="table-box"><table>
+<thead><tr><th></th><th>mutex</th><th>lock-free (second design)</th></tr></thead>
+<tbody>
+<tr><td>1 million posts through the running loop, 1 thread</td><td>24.0 M/s (23.5-42.9)</td><td>14.6 M/s (13.4-17.4)</td></tr>
+<tr><td>the same, 4 threads at once</td><td>20.6 M/s (19.7-29.7)</td><td>21.4 M/s (20.9-36.5)</td></tr>
+<tr><td>one thread posting, the loop not running</td><td>38.4 M/s (36.2-42.1)</td><td>34.4 M/s (30.8-38.0)</td></tr>
+<tr><td>the loop running them alone</td><td>198 M/s (162-204)</td><td>172 M/s (137-213)</td></tr>
+<tr><td>post to run on a waiting loop, median / 99th</td><td>0.3 / 0.7 us</td><td>0.3 / 0.7 us</td></tr>
+<tr><td>a <code>parallel_for</code> round of 5 empty items on 4 threads</td><td>0.36 us (0.31-0.42)</td><td>0.53 us (0.43-0.63)</td></tr>
+</tbody>
+</table></div>
+<p>The browser (<code>wrentool bench perf</code>, profile builds of the mutex and of the first design, headless, 3 runs of each
+alternated; the median, range in brackets) could not tell them apart either: p10k_load 311 (257-411) against 255
+(251-740) ms to load; mutation 75.5 (71.6-86.2) against 73.5 (72.4-104.5) frames/s; js_nodes10k 47.2 (43.9-47.9)
+against 44.8 (44.4-47.0) frames/s. A post costs tens of nanoseconds either way, and a browser posts thousands a second.</p>
+<p>What would change the verdict: a measured stall of the loop behind a producer descheduled with the lock held (the
+frame timeline would show a turn that waited on <code>Loop.mu</code>); none has been seen.</p>
+<h2 id="what-changed-round-3-style-and-layout"><a class="anchor" href="#what-changed-round-3-style-and-layout" aria-hidden="true">#</a>What changed, round 3: style and layout</h2>
 <p>Items 2 and 3 of round 2's list, and the profiler (item 8) to see the threads where the work now is. Measured as in
 round 2: 5 runs of each build interleaved (<code>wrentool bench perf</code>, one scenario after the other with each build in turn),
 and the shares of the samples.</p>
@@ -480,16 +537,14 @@ element with <code>elementtiming</code> only). Gone in round 1: <code>page/timel
 <code>map[...]bool</code> used as sets: <code>style/match.odin:56,64</code>, <code>style/engine.odin:68</code>, <code>style/restyle_dom.odin:144-147</code>,
 <code>font/raster.odin:76-77</code> (per glyph); <code>draw/bsp.odin:241</code> (n x n per 3D sort).</p>
 <h3 id="mutexes-51-in-wren-17-in-the-toolkit-outside-tests"><a class="anchor" href="#mutexes-51-in-wren-17-in-the-toolkit-outside-tests" aria-hidden="true">#</a>Mutexes (51 in Wren, 17 in the toolkit, outside tests)</h3>
-<p>The ones on a per-frame or per-item path, and what fits instead:</p>
+<p>The ones on a per-frame or per-item path, and what fits instead (the loop's, the network's and <code>parallel_for</code>'s were
+measured against lock-free designs in round 3 and stay):</p>
 <div class="table-box"><table>
 <thead><tr><th>where</th><th>guards</th><th>threads</th><th>instead</th></tr></thead>
 <tbody>
 <tr><td><code>font/raster.odin:72</code> <code>Atlas.mu</code></td><td>glyph maps, atlas pages, Slug store; rasterizes under it</td><td>every drawing thread, the color-glyph thread</td><td>per-thread lookup front, misses to a raster owner over an MPSC queue</td></tr>
 <tr><td><code>font/shape.odin:398</code> <code>Word_Shard.mu</code> x 64</td><td>shaped words; glyphs copied out under it</td><td>layout threads, page, chrome paint</td><td>goes with the word cache</td></tr>
 <tr><td><code>style/invalidation.odin:454</code> <code>Key_Sets.mu</code></td><td>interned selector keys, process-wide</td><td>every page's style engine</td><td>per-engine tables</td></tr>
-<tr><td><code>host/loop.odin:46</code> <code>Loop.mu</code></td><td>posted tasks</td><td>any thread -&gt; the loop</td><td>MPSC queue</td></tr>
-<tr><td><code>host/thread_pool.odin:17</code></td><td><code>parallel_for</code>'s generation</td><td>caller and workers</td><td>atomic generation and a futex wake</td></tr>
-<tr><td><code>net/client.odin:165</code>, <code>net/websocket.odin:184</code></td><td>events to the loop</td><td>network threads -&gt; loop</td><td>MPSC queue</td></tr>
 <tr><td><code>webaudio/graph.odin:79</code></td><td>the audio graph</td><td>page vs the real-time render thread</td><td>SPSC command ring</td></tr>
 <tr><td><code>media/store.odin:57</code></td><td>coded frames</td><td>demux vs decoder</td><td>SPSC ring</td></tr>
 <tr><td><code>page/worker.odin:95</code></td><td>page &lt;-&gt; worker queues</td><td>two threads</td><td>two SPSC rings</td></tr>
@@ -513,7 +568,9 @@ the layout thread's growing arrays (none in its samples since round 2) and its t
 pass. Most of layout and paint already use the temporary allocator or an arena.</p>
 <h2 id="next-ranked-by-measured-cost-on-a-bottleneck"><a class="anchor" href="#next-ranked-by-measured-cost-on-a-bottleneck" aria-hidden="true">#</a>Next, ranked by measured cost on a bottleneck</h2>
 <p>After round 3. Round 2's items 2, 3 and 8 are done (item 3 measured: a partial restyle of nodes10k costs what a full
-pass does); what is left of them is folded in below.</p>
+pass does); what is left of them is folded in below. Round 3 also measured round 2's item 7 as it stood (the loop's and
+the network's locks) and kept the mutexes; item 7 is now the job queues, to be measured the same way before anything
+replaces them.</p>
 <ol>
 <li><strong>Wrappers freed by reference counting</strong> (nodes10k: the collections the DOM asks for are about a quarter of the window
 thread's samples, the script stage 36 to 42 ms of a 57 to 67 ms frame). A wrapper that carries nothing of its own (no
@@ -537,7 +594,8 @@ scans of the boxes the layout journal says changed.</li>
 <li><strong>The atlas lock per glyph and the word cache's 64 locks</strong> (toolkit): a per-thread front, misses to one owner
 (<code>word_find</code> is 4 % of the page thread on nodes10k).</li>
 <li><strong>The style index's string tables</strong> (<code>style/engine.odin:66-68</code>): atoms (interned ids) and flat arrays by atom.</li>
-<li><strong><code>Loop.mu</code> and the network event mutexes</strong>: MPSC queues.</li>
+<li><strong>The job queues of the blocking pool, the image decoders, the script compiler and the caches</strong> (the table above):
+measured first (round 3: a lock-free queue lost to the loop's mutex); a worker's <code>ordered_remove(0)</code> is a cost of its own.</li>
 <li><strong>The temporary arenas of the window thread and of the thread pool</strong> (<code>src/host</code>): the same as the page thread's (a
 block kept at the largest size used), where they outgrow their first block every frame or job.</li>
 <li><strong>The profiler</strong>: correct the bias of samples taken in a system call.</li>
@@ -560,7 +618,8 @@ block kept at the largest size used), where they outgrow their first block every
 <li class="lvl3"><a href="#5-script-dom-one-change-per-frame-on-a-large-page-examplessitemutationhtml-17-000-nodes-a-wasm-module-changes-one-text-every-16-ms">5. Script - DOM, one change per frame on a large page (examples/site/mutation.html, ~17 000 nodes, a Wasm module changes one text every 16 ms)</a></li>
 <li><a href="#what-changed-round-1">What changed, round 1</a></li>
 <li><a href="#what-changed-round-2">What changed, round 2</a></li>
-<li><a href="#what-changed-round-3">What changed, round 3</a></li>
+<li><a href="#round-3-the-locks-of-the-loop-and-the-network-measured-against-lock-free-queues">Round 3: the locks of the loop and the network, measured against lock-free queues</a></li>
+<li><a href="#what-changed-round-3-style-and-layout">What changed, round 3: style and layout</a></li>
 <li><a href="#inventory">Inventory</a></li>
 <li class="lvl3"><a href="#internal-caches-remove-by-making-the-path-fast-product-caches-kept">Internal caches (remove by making the path fast; product caches kept)</a></li>
 <li class="lvl3"><a href="#hash-tables-on-hot-paths">Hash tables on hot paths</a></li>
