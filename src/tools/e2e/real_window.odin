@@ -248,12 +248,14 @@ real_window_gives_the_system_its_cursor :: proc(t: ^testing.T) {
 // The swap chain: frames are presented to it, a capture reads its picture, and a real resize reaches both.
 @(test)
 real_window_presents_to_its_swap_chain :: proc(t: ^testing.T) {
-	PAGE :: `<!doctype html><title>red</title><body style="margin:0;background:rgb(200,10,10)">`
+	PAGE :: `<!doctype html><title>red</title><body style="margin:0;background:rgb(10,10,200)">`
 	s := e2e.start(t, {size = REAL_SIZE, hidden = true})
 	e2e.navigate(s, e2e.file_page(e2e.temp_folder(t), "red.html", PAGE))
 	h := hwnd_of(s)
 	before := e2e.stats(s)
 	testing.expect(t, before.surface.buffers.x > 0, "a swap chain")
+	// (something to show: a frame that changes nothing presents nothing, and a page that had settled by here was seen as frames not presented)
+	e2e.eval(s, `document.body.style.background = "rgb(200,10,10)"; "ok"`)
 	e2e.wait_frames(s, PRESENT_FRAMES)
 	after := e2e.stats(s)
 	testing.expectf(t, after.frames_presented > before.frames_presented, "frames are presented: %d -> %d", before.frames_presented, after.frames_presented)
