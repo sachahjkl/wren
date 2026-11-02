@@ -1,12 +1,18 @@
 package webaudio
 
 import "core:math"
+import "core:sync"
+import "core:time"
 import "core:testing"
 import "wb:base"
 import "wb:media"
 
 RATE :: 48000.0
 TEST_MAX_BYTES :: 1 << 30
+BUSY_GRAPH_SOURCES :: 500
+BUSY_GRAPH_CALLS :: 100
+BUSY_GRAPH_GAP :: 20 * time.Microsecond
+BUSY_GRAPH_MOST_QUANTA :: 10 * BUSY_GRAPH_CALLS   // (each call waits for the end of the quantum being rendered; the rest is the page itself not being on a processor)
 
 @(private = "file")
 near :: proc(t: ^testing.T, got, want: f32, tolerance: f32, what: string, frame: int, loc := #caller_location) -> bool {
@@ -783,4 +789,39 @@ offline_rendering_on_its_thread_ends_with_the_result :: proc(t: ^testing.T) {
 	defer pcm_release(p)
 	testing.expect_value(t, p.length, 1000)
 	near(t, pcm_channel(p, 1)[999], 1, 1e-6, "mono to stereo", 999)
+}
+
+// A graph that takes longer to render than it plays (an offline rendering always does: nothing makes it wait): the render thread holds
+// the lock almost all the time, and the page still goes first between two quanta. Before, one call of the page could wait for a thousand
+// quanta, seconds: 2000 sounds of two nodes took more than the limit on scripts (120 s) on a loaded machine.
+@(test)
+the_page_gets_the_lock_from_a_render_thread_with_no_time_to_spare :: proc(t: ^testing.T) {
+	g := graph_new(RATE, 2, false)
+	defer graph_destroy(g)
+	// (an output that is never full: nothing makes the render thread wait)
+	g.thread.open = proc(rate: int) -> ^media.Audio_Output {
+		o := media.null_audio_open(rate)
+		o.queued = proc(o: ^media.Audio_Output) -> int { return 0 }
+		o.room = proc(o: ^media.Audio_Output) -> int { return RENDER_QUANTUM }
+		o.write = proc(o: ^media.Audio_Output, samples: []f32) -> int { return len(samples) / 2 }
+		return o
+	}
+	for _ in 0 ..< BUSY_GRAPH_SOURCES {
+		o := node_create(g, .Oscillator)
+		connect(g, o, 0, DESTINATION_ID, 0)
+		node_start(g, o, 0, 0, -1)
+	}
+	graph_resume(g, RENDER_QUANTUM)
+	base.await(g, proc(g: ^Graph) -> bool { return graph_time(g) > 0 })   // (it runs)
+	first := sync.atomic_load(&g.frame)
+	quanta := proc(g: ^Graph, first: i64) -> i64 { return (sync.atomic_load(&g.frame) - first) / RENDER_QUANTUM }
+	calls := 0
+	for calls < BUSY_GRAPH_CALLS && quanta(g, first) < BUSY_GRAPH_MOST_QUANTA {
+		// (what a page does between two calls: it lets the lock go long enough for the render thread to take it)
+		for s := time.tick_now(); time.tick_since(s) < BUSY_GRAPH_GAP; {}
+		live_nodes(g)
+		calls += 1
+	}
+	testing.expectf(t, calls == BUSY_GRAPH_CALLS, "%d calls of the page took %d quanta", calls, quanta(g, first))
+	thread_stop(g)
 }

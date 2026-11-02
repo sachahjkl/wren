@@ -201,7 +201,7 @@ node_source_alive :: proc(n: ^Node) -> bool {
 // The field setters. The rules on values are the page's (web_audio.js), except what could break the thread.
 node_set :: proc(g: ^Graph, id: i32, field: Field, value: f64) {
 	context.allocator = alloc()
-	sync.guard(&g.mu)
+	graph_guard(g)
 	n := node_of(g, id)
 	if n == nil { return }
 	switch field {
@@ -233,7 +233,7 @@ node_set :: proc(g: ^Graph, id: i32, field: Field, value: f64) {
 }
 
 node_get :: proc(g: ^Graph, id: i32, field: Field) -> f64 {
-	sync.guard(&g.mu)
+	graph_guard(g)
 	n := node_of(g, id)
 	if n == nil { return 0 }
 	#partial switch field {
@@ -244,7 +244,7 @@ node_get :: proc(g: ^Graph, id: i32, field: Field) -> f64 {
 
 // start(): `when` in seconds; offset and duration for an AudioBufferSourceNode (a negative duration: none).
 node_start :: proc(g: ^Graph, id: i32, at, offset, duration: f64) {
-	sync.guard(&g.mu)
+	graph_guard(g)
 	n := node_of(g, id)
 	if n == nil { return }
 	if !finite(at) || !finite(offset) || !finite(duration) || n.sched.started { return }
@@ -253,7 +253,7 @@ node_start :: proc(g: ^Graph, id: i32, at, offset, duration: f64) {
 }
 
 node_stop :: proc(g: ^Graph, id: i32, at: f64) {
-	sync.guard(&g.mu)
+	graph_guard(g)
 	n := node_of(g, id)
 	if n == nil { return }
 	if !finite(at) { return }
@@ -261,7 +261,7 @@ node_stop :: proc(g: ^Graph, id: i32, at: f64) {
 }
 
 node_set_buffer :: proc(g: ^Graph, id: i32, pcm: ^Pcm) {
-	sync.guard(&g.mu)
+	graph_guard(g)
 	n := node_of(g, id)
 	if n == nil { return }
 	if d, ok := n.data.(^Source_Data); ok {
@@ -272,7 +272,7 @@ node_set_buffer :: proc(g: ^Graph, id: i32, pcm: ^Pcm) {
 }
 
 node_set_wave :: proc(g: ^Graph, id: i32, w: ^Wave) {
-	sync.guard(&g.mu)
+	graph_guard(g)
 	n := node_of(g, id)
 	if n == nil { wave_release(w); return }
 	if d, ok := n.data.(^Osc_Data); ok {
@@ -291,27 +291,27 @@ param_of :: proc(g: ^Graph, id: i32, index: int) -> ^Param {
 }
 
 param_get :: proc(g: ^Graph, id: i32, index: int) -> f64 {
-	sync.guard(&g.mu)
+	graph_guard(g)
 	p := param_of(g, id, index)
 	return p != nil ? f64(p.value) : 0
 }
 
 param_set_value :: proc(g: ^Graph, id: i32, index: int, value: f32) -> bool {
 	context.allocator = alloc()
-	sync.guard(&g.mu)
+	graph_guard(g)
 	p := param_of(g, id, index)
 	return p == nil || param_set_now(p, value, f64(g.frame) / g.rate)
 }
 
 param_set_rate :: proc(g: ^Graph, id: i32, index: int, a_rate: bool) {
-	sync.guard(&g.mu)
+	graph_guard(g)
 	if p := param_of(g, id, index); p != nil { p.a_rate = a_rate }
 }
 
 // An automation event from the page. `time` already not before now.
 param_add_event :: proc(g: ^Graph, id: i32, index: int, kind: Event_Kind, time: f64, value: f32, extra: f64, curve: []f32) -> bool {
 	context.allocator = alloc()
-	sync.guard(&g.mu)
+	graph_guard(g)
 	p := param_of(g, id, index)
 	if p == nil { return true }
 	// (the page's script checks all this; a Wasm module of the page calls here directly)
@@ -334,7 +334,7 @@ param_add_event :: proc(g: ^Graph, id: i32, index: int, kind: Event_Kind, time: 
 
 param_cancel_events :: proc(g: ^Graph, id: i32, index: int, time: f64, hold: bool) {
 	context.allocator = alloc()
-	sync.guard(&g.mu)
+	graph_guard(g)
 	p := param_of(g, id, index)
 	if p == nil { return }
 	if hold { param_cancel_and_hold(p, time) } else { param_cancel(p, time) }
@@ -622,7 +622,7 @@ biquad_run :: proc(g: ^Graph, n: ^Node) {
 
 // getFrequencyResponse with the params as they are now.
 biquad_frequency_response :: proc(g: ^Graph, id: i32, frequencies: []f32, mag, phase: []f32) {
-	sync.guard(&g.mu)
+	graph_guard(g)
 	n := node_of(g, id)
 	if n == nil { return }
 	d, ok := n.data.(^Biquad_Data)
