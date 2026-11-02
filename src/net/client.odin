@@ -387,13 +387,22 @@ host_is_this_machine :: proc(host: string) -> bool {
 	return dots == IPV4_DOTS
 }
 
+// A name under .invalid, .test or .example (RFC 6761: reserved, never in the public DNS; native/net/src/conn.rs never_resolves).
+host_never_resolves :: proc(host: string) -> bool {
+	h := strings.to_lower(strings.trim_suffix(host, "."), context.temp_allocator)
+	for tld in ([]string{"invalid", "test", "example"}) {
+		if h == tld || strings.has_suffix(h, strings.concatenate({".", tld}, context.temp_allocator)) { return true }
+	}
+	return false
+}
+
 // Builds the job (pure memory work, no OS handle yet). `key` identifies the origin server for the per-host limit.
 @(private)
 prepare :: proc(c: ^Client, h: base.Handle, d: Request_Desc) -> (job: ^Job, key: string, code: u32) {
 	u, ok := url.parse_absolute(d.url, context.temp_allocator)
 	if !ok || !(u.scheme == "http" || u.scheme == "https") { return nil, "", ERROR_BAD_URL }
 	// (the built-in stack checks the addresses it resolves; WinHTTP resolves on its own: only a name of this machine goes to it)
-	if c.settings.loopback_only && c.settings.backend == .Winhttp && !host_is_this_machine(u.host) {
+	if c.settings.loopback_only && c.settings.backend == .Winhttp && !host_is_this_machine(u.host) && !host_never_resolves(u.host) {
 		fmt.eprintfln("wren net: %s is not this machine: refused (network.loopback_only: what is tested stays on loopback)", u.host)
 		return nil, "", ERROR_NOT_LOOPBACK
 	}

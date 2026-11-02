@@ -122,3 +122,22 @@ func TestWPTCoopCoep(t *testing.T) {
 		t.Errorf("a redirect without policies: %d %v", rr.Code, rr.Header())
 	}
 }
+
+// fetch/cross-origin-resource-policy/resources/hello.py and redirect.py: the policy of the query, CORS for the asking origin.
+func TestWPTCorpHandlers(t *testing.T) {
+	saved := wptRoot
+	wptRoot = t.TempDir()
+	defer func() { wptRoot = saved }()
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "https://www1.web-platform.test:8769/fetch/cross-origin-resource-policy/resources/hello.py?corp=same-site", nil)
+	req.Header.Set("Origin", "https://web-platform.test:8769")
+	serveWPT(rr, req)
+	if rr.Body.String() != "hello" || rr.Header().Get("Cross-Origin-Resource-Policy") != "same-site" || rr.Header().Get("Access-Control-Allow-Origin") != "https://web-platform.test:8769" {
+		t.Errorf("hello.py: %q %v", rr.Body.String(), rr.Header())
+	}
+	rr = httptest.NewRecorder()
+	serveWPT(rr, httptest.NewRequest(http.MethodGet, "https://web-platform.test:8769/fetch/cross-origin-resource-policy/resources/redirect.py?redirectTo=/x&corp=same-origin", nil))
+	if rr.Code != http.StatusFound || rr.Header().Get("Location") != "/x" || rr.Header().Get("Cross-Origin-Resource-Policy") != "same-origin" {
+		t.Errorf("redirect.py: %d %v", rr.Code, rr.Header())
+	}
+}
