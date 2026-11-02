@@ -7,12 +7,10 @@
   inputs; `-NoCache` runs everything). CI runs the same suite with `-CI` on `windows-2025` ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
   While you work: `-Changed`, `-Only <pattern>`, `-Failed`. How the tests run and how to go fast: [docs/testing.md](docs/testing.md).
 - Several runs at once on one machine (worktrees) are fine: `test_all` takes no lock. Each test program starts the test
-  server in its own process, on a block of ports of its own, derived from the worktree's path ([docs/testing.md](docs/testing.md#the-test-server)); scripts use
-  `Start-WrenTestServer` and pass its block through `WREN_TEST_BASE_PORT` (`src/tools/testenv`, guests: `examples/testports`), and steps run `-Jobs` at a time. Write test addresses with the default ports
-  (`testenv.url("http://127.0.0.1:8765/x")`): they move with the block. Scripts that use the real desktop
-  (`screenshot.ps1`) or measure performance (`perf.ps1`, `js_bench.ps1`, `cfg_bench.ps1`) take
-  `desktop.lock` / `bench.lock` themselves, only for that part (`tools/test_env.ps1`, which also starts a test server
-  on a free block: `Start-WrenTestServer`). A step that needs either goes through those scripts or `Use-WrenLock`.
+  server in its own process, on a block of ports of its own, derived from the worktree's path ([docs/testing.md](docs/testing.md#the-test-server)); an Odin program that needs one calls `testserver.start()` (`wb:testserver`, `src/tools/testenv`, guests: `examples/testports`), and steps run `-Jobs` at a time. Write test addresses with the default ports
+  (`testenv.url("http://127.0.0.1:8765/x")`): they move with the block. Anything with a window runs on the desktop of its own
+  that `src/tools/test_all` makes, or through `wrentool desktop <program> [arguments]`, so it takes no focus and no input from the person at the
+  machine. No tool holds a lock: a measure (`wrentool bench ...`) is made on a machine nothing else loads.
 - Tests are meant to be quick: a run prints, at its end, the slowest steps, and the job summary of a GitHub run has the same table.
   Wait for a condition, not for a delay (`wren ctl wait quiet | function`, a file that appears, a process that ends), with a
   limit; one Wren serves many scenarios, `wren ctl reset` between them ([docs/remote.md](docs/remote.md)); a step that mostly waits
@@ -26,8 +24,7 @@
   window of time depends on the machine, and the CI runners are of unknown speed, so the CI never runs them (`-CI`, or the `CI`
   variable, wins over everything). Run them yourself with `build\test_all.exe -Perf` (or `WREN_PERF=1`;
   steps run one at a time so that they do not skew each other): they run with their strict bounds and print their measures; without
-  it they say `perf: skipped, run with -Perf`. In Odin, `if base.perf_skip("what") { return }` (`src/base/perf.odin`); in a script,
-  `Check-Perf` / `Test-WrenPerf` (`tools/test_env.ps1`). What stays in the CI is correctness (results, states, protocols, leaks,
+  it they say `perf: skipped, run with -Perf`. In Odin, `if base.perf_skip("what") { return }` (`src/base/perf.odin`). What stays in the CI is correctness (results, states, protocols, leaks,
   crashes) and waits with a generous time limit that only ends a failing run.
 - UI end-to-end steps are opt-in too: a step that drives real windows and processes, or decodes heavy images under a time limit,
   needs a desktop and a machine of known speed; a shared runner failed them at random. Mark it `.Ui_Only` in `src/tools/test_all/steps.odin`: it runs
@@ -67,9 +64,9 @@
   ```
 
   `type` is `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed` or `Security`; the text is the one entry, as it will read in the list (sub-items:
-  indented `  - ` lines). `powershell -File tools\changelog.ps1 -New -Type Added -Subject storage-partitioning -Text "..."`
-  writes it; `tools\changelog.ps1 -Check` (CI and `test_all`) checks every fragment. A branch leaves `APP_VERSION` alone.
-  Entries a branch from before still wrote under `## [Unreleased]` become fragments with `tools\changelog.ps1 -Migrate`
+  indented `  - ` lines). `build\wrentool changelog -New -Type Added -Subject storage-partitioning -Text "..."`
+  writes it; `wrentool changelog -Check` (CI and `test_all`) checks every fragment. A branch leaves `APP_VERSION` alone.
+  Entries a branch from before still wrote under `## [Unreleased]` become fragments with `wrentool changelog -Migrate`
   (`-DefaultType Added`, `-Types '<line>=Fixed,...'` for the entries under no `### Type`).
 
 ## Toolchain versions
@@ -82,15 +79,15 @@ and the reference tests of the folders that have them, counted apart ([docs/conf
 
 ## Making a release
 
-1. `powershell -File tools\changelog.ps1 -Assemble -Version X.Y.Z`: the fragments of
+1. `build\wrentool changelog -Assemble -Version X.Y.Z`: the fragments of
    `changelog.d` become the `## [X.Y.Z] - <date>` section of `CHANGELOG.md` (by type, newest first) with its link
    references at the end of the file ([Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/), which
-   `changelog.ps1 -Check` enforces), `APP_VERSION` of
+   `wrentool changelog -Check` enforces), `APP_VERSION` of
    `src/browser/about.odin` says X.Y.Z (the default `network.user_agent` follows it), and the fragments are deleted.
    Write the highlights in `docs/releases/vX.Y.Z.md` (the notes start with it, then the version's CHANGELOG section,
-   then the list of changes since the previous tag, generated by `tools/release_notes.ps1`: preview them with
-   `-Tag vX.Y.Z -Ref HEAD`). Retake the screenshots (`tools\shots.ps1`). Commit and push to `master`, and wait for CI to
-   pass; `tools\changelog.ps1 -Check -Release X.Y.Z` says whether it is ready to tag.
+   then the list of changes since the previous tag, generated by `wrentool notes`: preview them with
+   `-Tag vX.Y.Z -Ref HEAD`). Retake the screenshots (`wrentool shots`). Commit and push to `master`, and wait for CI to
+   pass; `wrentool changelog -Check -Release X.Y.Z` says whether it is ready to tag.
 2. Tag and push the tag (tags are annotated, and signed when git is configured to sign):
 
    ```bat
@@ -99,15 +96,31 @@ and the reference tests of the folders that have them, counted apart ([docs/conf
    ```
 
 3. [.github/workflows/release.yml](.github/workflows/release.yml) checks that the tag matches `APP_VERSION` and that
-   the CHANGELOG was assembled for it (`changelog.ps1 -Check -Release`), builds (`build.bat release`),
+   the CHANGELOG was assembled for it (`wrentool changelog -Check -Release`), builds (`build.bat release`),
    runs the tests, keeps the build's map as an artifact (`wren-X.Y.Z-symbols`: it names the frames of the release's crash
-   reports, [docs/crash-reports.md](docs/crash-reports.md)), packages `wren-X.Y.Z-windows-x64.zip` (`tools/package.ps1`) with `SHA256SUMS.txt`, and publishes
+   reports, [docs/crash-reports.md](docs/crash-reports.md)), packages `wren-X.Y.Z-windows-x64.zip` (`wrentool package`) with `SHA256SUMS.txt`, and publishes
    the GitHub release.
 
-To try the package locally: `build.bat release` then `powershell -File tools\package.ps1 -AllowUnreleased` (output in
+To try the package locally: `build.bat release` then `build\wrentool package -AllowUnreleased` (output in
 `build\dist`; without it, a release package needs the CHANGELOG assembled for its version); a development build (plain
-`build.bat`) packages only with `-Dev`. An experimental build (`tools\experimental.ps1`) takes its notes from the
-fragments (`tools\changelog.ps1 -Assemble`).
+`build.bat`) packages only with `-Dev`. An experimental build (`wrentool experimental`) takes its notes from the
+fragments (`wrentool changelog -Assemble`).
+
+## Tools
+
+Everything the project runs besides the compiler is one Odin program, `src/tools/wrentool`. A fresh checkout builds it with
+`odin build src/tools/wrentool -collection:wb=src -out:build/wrentool.exe` (`build.bat` builds its own); `build\wrentool help` lists the
+commands, by family:
+
+- deps: `deps`, `fetch wasmtime|wgpu|openh264|emoji`, `build lexbor|native`, `version-h`, `symbols`, `symbolize`, `crash-symbolize`;
+- bench: `bench perf|shell|js|idle|webgl|blocker|sidebar|startup|cadence` (`bench help`): opt-in measures, never in the CI;
+- capture, shots, compare: a page rendered headless to a PNG, the README's and the site's pictures, Wren against Edge;
+- gen: `gen psl|unicode|media-fixtures|video-fixtures|perf-media|rust-crates`;
+- docs and checks: `docs` (the documentation site), `license`, `i18n`, `portability`, `engine test262|rx-diff`, `changelog`;
+- release helpers: `package`, `sign`, `winget`, `notes`, `experimental`, `smoke`, `crash-e2e`;
+- `desktop <program> [arguments]`: a command on a Windows desktop of its own.
+
+The only script left is `tools/make_logo.ps1` (GDI+ drawing of the committed assets).
 
 ## Submodules
 

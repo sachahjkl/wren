@@ -10,7 +10,7 @@ build\wren.exe ctl run --size 1280x800 --shot out.png https://example.com/     #
 
 About 0.5 s for the whole call on a development build (process start 55 ms, first frame and load 215 ms, capture 70 ms,
 close 110 ms), against 2 to 3 s for starting Wren, waiting a fixed time and capturing the screen. No window is shown, no
-`desktop.lock` is needed, and the monitor, its scale and the windows above do not matter.
+desktop is needed, and the monitor, its scale and the windows above do not matter.
 
 ## Seeing what Wren does without launching it forty times
 
@@ -18,8 +18,8 @@ close 110 ms), against 2 to 3 s for starting Wren, waiting a fixed time and capt
 |---|---|
 | a picture of a page | `wren ctl run --shot out.png <url>` (`--size WxH`, `--dpi 144`, `--wait idle`) |
 | several things on one page | `wren ctl start`, then `nav`, `shot`, `eval`, `click`... with `WREN_REMOTE=<name>`, then `wren ctl stop <name>` |
-| the same from PowerShell | `. tools\wrenctl.ps1; Start-Wren; Wren-Nav $u; Wren-Shot a.png; Wren-Eval 'document.title'; Stop-Wren` |
-| an existing script (screenshot.ps1) | add `-Remote` (or set `WREN_SHOT_REMOTE=1`): same call, no screen, no lock |
+| the same from a program | the typed API of `src/remote/api` (`wren ctl` is its command line) |
+| a page as a PNG, headless | `build\wrentool capture -Url <url> -Out f.png` |
 | to compare two builds | `wren ctl snapshot out\a` with each build (`.png`, `.html`, `.json` of boxes), then `wren ctl diff a.png b.png --out d.png` |
 | to know what a window shows | `wren ctl shot` of the page (`--tab`), a rectangle (`--rect x,y,w,h`) or an element (`--selector css`) |
 | a Wren the user (or another agent) already runs | do not touch it: start your own (`run` / `start` use a throwaway profile and a name of their own) |
@@ -65,15 +65,14 @@ answer, a script exception), **2** timed out, **3** no Wren answers or the conne
 ### Reusing one Wren: `reset`, `checkpoint`, `wait quiet`
 
 A Wren that is started for every scenario costs its start (about 0.3 s to a first frame), its close (0.3 s), and the CPU of a
-start-up that must settle before anything at rest can be measured. A script that drives many scenarios starts one and puts it back
+start-up that must settle before anything at rest can be measured. A program that drives many scenarios starts one and puts it back
 between them:
 
-```powershell
-. tools\wrenctl.ps1
-Start-Wren -Size 1000x700            # the window it has now is the one `reset` returns to
-Wren-Nav $a; ...; Wren-Ctl reset     # scenario 1, then a clean Wren
-Wren-Nav $b; ...; Wren-Ctl reset     # scenario 2
-Stop-Wren
+```
+wren ctl start --size 1000x700    # the window it has now is the one `reset` returns to
+wren ctl nav $a; ...; wren ctl reset   # scenario 1, then a clean Wren
+wren ctl nav $b; ...; wren ctl reset   # scenario 2
+wren ctl stop
 ```
 
 `reset [--keep tabs,data,prefs,window,history] [--url address] [--wait load|idle|stable|quiet|none]` (about 60 ms)
@@ -112,7 +111,7 @@ twice: `cpuTimeMs` is the process's CPU time (the system adds it up in ticks of 
 `gdiObjects`, `userObjects`, `uptimeMs` and `pid` are there too. `loop` is the loop's own account: `turns`, `sleeps`, `barren` (wakes
 that drew nothing), `frames`, `causes` (each frame under the first of `Input`, `Task`, `Page`, `Asked`, `Interface_Animation`,
 `Interface_Wake`, `Repaint`) and `reasons`, the last 32 frames and barren wakes with who asked, a place in the sources: a browser at rest
-draws nothing, and what does draw says why (`tools\idle_measure.ps1` measures it from outside, with the wakes of each thread).
+draws nothing, and what does draw says why (`wrentool bench idle` measures it from outside, with the wakes of each thread).
 
 `shot <file> --count n [--interval ms]` takes n pictures over the one connection (a `%d` in the name takes the number, else
 `-<n>` goes before the extension) instead of a process, and its 100 ms of start, for each.
@@ -147,23 +146,10 @@ pid and the protocol version; a client does not need it (`wren ctl ping` answers
 **A program without a console window.** `wren.exe` is a Windows GUI program. Started from cmd or PowerShell the plain way, it
 gives the prompt back at once: a script sees neither its end nor its exit code, and a redirection needs care. `wren ctl` writes to
 the standard handles when the caller redirected them (a file or a pipe: never around the redirection), else to the console of the
-parent process. Reliable forms for scripts:
-
-```powershell
-# the long way
-Start-Process -Wait -NoNewWindow -FilePath build\wren.exe -ArgumentList 'ctl','shot','out.png' -RedirectStandardOutput out.txt
-# or, which also returns the exit code and is 80 ms quicker (System.Diagnostics.Process): tools\wrenctl.ps1
-. tools\wrenctl.ps1
-$text = Wren-Ctl shot out.png ; $WrenExit ; $WrenErr
-```
-
-Typed in a terminal, `build\wren.exe ctl ping` works too (the output appears after the prompt returns, the exit code is not
-available). A console launcher (`wren.com` beside `wren.exe`, which waits for `ctl` and hands its own standard handles over) is a
-later addition: nothing in `wren ctl` will change for it.
+parent process. Reliable form for scripts: the console launcher `wren.com` beside `wren.exe` (`docs/console-launcher.md`), which waits for `ctl`, hands over its own standard handles and returns the exit code. A program does not parse any of it: it uses the typed API of `src/remote/api`.
 
 **Relative paths** are the caller's: `wren ctl` resolves them against its own current folder. In PowerShell, `Set-Location` does not
-change the process's folder: the wrapper (`Resolve-PathHere`) resolves against the PowerShell location; with a raw call give
-absolute paths.
+change the process's folder: give absolute paths.
 
 **Sizes.** A capture is in the renderer's pixels: `window` is the client area, which `window --size WxH` (and `run --size`) sets in
 pixels; the page area, a rectangle or an element are parts of it. The interface scale follows the display (`--dpi 144` sets
@@ -278,4 +264,3 @@ off by default, binds `127.0.0.1` only, and refuses any handshake whose `Host` o
 `src\tools\e2e` (steps of `test_all`): over the channel, `remote_channel.odin` (off by default and idle at no cost, the protocol, vanishing and oversized clients, the pipe's ACL, two instances, a taken name, quit with a client connected, `wren ctl run`), `remote_state.odin` (reset: everything it names is back, a page sees no cookie or storage; the checkpoints), `ctl_stop.odin` (`wren ctl stop`), and on the check build `remote_check.odin` (a session that must exit with nothing allocated); in the test's process, through the same procedures, `driven.odin` (pages driven, captures and their pixels, a window off the screen and minimized), `video_layers.odin`, `page_apis.odin`, `remote_page.odin`.
 `src/remote` (protocol; the server against raw pipe clients), `src/remote/client`, `src/browser/remote_test.odin`.
 `src\tools\e2e\remote_close_load.odin` saturates every logical processor and checks that `quit` (with a client connected) and a `WM_CLOSE` to the window, each with a video playing, end within 8 s without the watchdog forcing the exit; `test_all -Perf` runs it last and alone.
-`tools\remote_bench.ps1` measures "load a page, wait, capture" the old way and the new way.

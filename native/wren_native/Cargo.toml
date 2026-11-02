@@ -1,5 +1,5 @@
 # The assembly crate of the native/ workspace: the one Rust static library wren.exe links (build\native\wren_native.lib,
-# tools\build_native.ps1). It has no code of its own: it picks the libraries, and their C functions (#[no_mangle]) are
+# wrentool build native). It has no code of its own: it picks the libraries, and their C functions (#[no_mangle]) are
 # exported from it. A program links one Rust static library at most (each carries Rust's standard library).
 [package]
 name = "wren_native"

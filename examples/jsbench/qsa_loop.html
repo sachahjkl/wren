@@ -1,7 +1,7 @@
 <!doctype html>
 <meta charset="utf-8">
 <title>querySelectorAll in a loop</title>
-<!-- tools\perf.ps1 scenario js_qsa: a 5 000-element page; every frame runs 50 querySelectorAll of different selectors
+<!-- wrentool bench perf scenario js_qsa: a 5 000-element page; every frame runs 50 querySelectorAll of different selectors
      (class, attribute, descendant, :nth-child) without changing the document (the cost of selector matching from
      script, and that a page that only reads does not restyle or lay out). Falls back to setTimeout without rAF. -->
 <style>

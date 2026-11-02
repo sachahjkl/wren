@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>yt-boot: the start-up of a heavy single-page app, without the network</title>
-<!-- tools\perf.ps1 (yt_boot): what the main thread does while a YouTube watch page starts, made deterministic. Component styles come
+<!-- wrentool bench perf (yt_boot): what the main thread does while a YouTube watch page starts, made deterministic. Component styles come
      in as <style> elements while the page is built in batches; between batches the script reads layout (as Polymer's visibility
      and sizing code does); rules anchor on :has() of a tag, a class or a chain; form controls come and go; attributes toggle.
      ?batches=12&cards=40 sizes it. window.__boot has the numbers when it is done. -->

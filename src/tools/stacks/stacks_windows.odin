@@ -188,7 +188,7 @@ walk_thread :: proc(process: win.HANDLE, t: ^Thread_Walk) {
 }
 
 // "#NN <symbol>+0x<offset>  [<module>+0x<offset in the module>]  <file>:<line>"; a frame of a program with no PDB has the module's
-// offset, which tools\symbolize.ps1 and tools\crash_symbolize.ps1 read.
+// offset, which wrentool symbolize and wrentool crash-symbolize read.
 @(private = "file")
 write_frame :: proc(b: ^strings.Builder, process: win.HANDLE, symbols: bool, mods: []Module, i: int, pc: u64) {
 	fmt.sbprintf(b, "  #%02d ", i)

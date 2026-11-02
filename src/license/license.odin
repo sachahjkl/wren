@@ -8,7 +8,7 @@ import "core:strings"
 
 // Wren's support licence: a signed statement that someone supports the development. It unlocks nothing; the browser
 // only reads it to say who the supporter is (about:wren). It is checked with no network access: an Ed25519 signature
-// made offline (src/tools/license, tools\license.ps1) over the payload, verified against the public key built into
+// made offline (src/tools/license, wrentool license) over the payload, verified against the public key built into
 // the program (public_key.odin).
 //
 // Text form (what is pasted, or kept in a .wrenlicense file; white space and lines starting with '#' are ignored):

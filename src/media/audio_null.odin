@@ -29,7 +29,7 @@ null_audio_now :: proc(n: ^Null_Audio) -> i64 {
 	return mono_ns()
 }
 
-// WREN_AUDIO_OUTPUT=null: never the device, whatever the preference. Every test script sets it (tools\test_env.ps1): a test hears nothing.
+// WREN_AUDIO_OUTPUT=null: never the device, whatever the preference. Every test sets it (src/e2e): a test hears nothing.
 audio_output_silenced :: proc() -> bool {
 	return os.get_env("WREN_AUDIO_OUTPUT", context.temp_allocator) == "null"
 }

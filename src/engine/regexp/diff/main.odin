@@ -3,7 +3,7 @@ package rxdiff
 // Differential judge: runs the Odin regexp/unicode engine and QuickJS-ng's reference C (via build/cref/creflib.dll)
 // over thousands of inputs and reports every divergence, plus a speed comparison. This is a standalone program
 // (not an odin test) so it can load the DLL by relative path and print a readable report. Build/run via
-// tools/rx_diff.ps1, which builds the C shim DLL first.
+// wrentool engine rx-diff, which builds the C shim DLL first.
 //
 //   rxdiff [seed] [fuzz_count]
 //

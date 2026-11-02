@@ -1,8 +1,8 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>video layers</title>
 <style>
   html, body { margin: 0; background: #dddddd; }
-  /* tools\remote_e2e.ps1 (video layers): a video clipped by a rounded overflow:hidden box, a fixed dialog above it (z-index),
+  /* src/tools/e2e/video_layers.odin: a video clipped by a rounded overflow:hidden box, a fixed dialog above it (z-index),
      a rotated half-transparent rounded video, and a control bar over the first one. Probes are at fixed pixels. */
   #round { position: absolute; left: 40px; top: 40px; width: 400px; height: 240px; border-radius: 70px; overflow: hidden; background: #000; }
   #round video { display: block; width: 100%; height: 100%; object-fit: cover; }

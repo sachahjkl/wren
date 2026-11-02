@@ -34,7 +34,7 @@ feature list, see the [README](../README.md).
 
 ## Wasm engine
 
-Wasmtime, the official C API release **v49.0.3**, downloaded by `tools\fetch_wasmtime.ps1` (version and SHA-256
+Wasmtime, the official C API release **v49.0.3**, downloaded by `wrentool fetch wasmtime` (version and SHA-256
 pinned in the script) into `build\wasmtime`; the static `wasmtime.lib` is linked into the exe (no DLL; it adds about
 12 MB). It needs `ws2_32 advapi32 userenv ntdll shell32 ole32 bcrypt kernel32` and the dynamic CRT
 (`msvcrt ucrt libvcruntime`: the Visual C++ runtime is linked in, so `wren.exe` needs no `vcruntime140.dll`), declared in `src/wasm/wasmtime.odin`. Modules are compiled by Cranelift (or Winch,
@@ -108,7 +108,7 @@ GIF, BMP, ICO and TIFF to WIC as before (`src/images/parity_test_windows.odin` c
 - **WOFF2** web fonts: brotli-decompressor 6.1.0, then the glyf / loca / hmtx transforms reversed
   (`native/media/src/woff2.rs`, used by `src/webfont`).
 
-Every crate is pinned (see below). `tools\gen_media_fixtures.ps1` (ImageMagick, FFmpeg) made the AVIF / WebP test files of `examples\site\media`;
+Every crate is pinned (see below). `wrentool gen media-fixtures` (ImageMagick, FFmpeg) made the AVIF / WebP test files of `examples\site\media`;
 `src\tools\mediabench` times decodes.
 
 ## The Rust library (`native/`)
@@ -116,7 +116,7 @@ Every crate is pinned (see below). `tools\gen_media_fixtures.ps1` (ImageMagick, 
 A program links one Rust static library at most: each carries its own copy of Rust's standard library, and two built
 by the same compiler define the same symbols. So all of Wren's Rust code is one Cargo workspace, `native/`, with one
 `Cargo.lock`, one target directory (`build\native\target`) and one output, `build\native\wren_native.lib`
-(`tools\build_native.ps1`, run by `build.bat`; nothing is done when `build\native\STAMP` matches the sources):
+(`wrentool build native`, run by `build.bat`; nothing is done when `build\native\STAMP` matches the sources):
 
 - `native/media` (crate `wren_media`, a library): the image decoders and WOFF2 above (`src/images`, `src/webfont`).
 - `native/net` (crate `wren_net`): the network stack (`src/net/rust.odin`, see "Network" below).
@@ -146,7 +146,7 @@ its own standard library), loading one costs 2 to 3 ms (40 ms the first time a n
 one more file to sign, ship and keep in step with the exe; `wren.exe` needs no file beside it, and stays so.
 
 Every crate is pinned by exact version in its `Cargo.toml` and by SHA-256 in `native\Cargo.lock` (`--locked`);
-`tools\rust_crates.ps1` writes the list `about:licenses` shows (`native\rust-crates.txt`). Wasmtime's library carries
+`wrentool gen rust-crates` writes the list `about:licenses` shows (`native\rust-crates.txt`). Wasmtime's library carries
 a standard library of another compiler: its mangled symbols differ, and the one unmangled symbol both define
 (`rust_eh_personality`, unused on MSVC) is renamed in ours with `llvm-objcopy`.
 
@@ -172,7 +172,7 @@ one of two stacks (`network.backend`, overridden by the `WREN_NET_BACKEND` envir
 
 Errors keep WinHTTP's numbers (12002 timeout, 12007 name, 12029 connect, 12030 lost, 12152 invalid answer, 12175 /
 12037 / 12038 / 12045 certificates with WinHTTP's secure flags) whichever stack ran the request. `src/tools/e2e/web_net.odin`
-runs the transport on both; `tools\net_parity.ps1 -Backend rust|winhttp` runs every network end-to-end tool on one.
+runs the transport on both; `WREN_NET_BACKEND=rust|winhttp` makes a web test run by hand use one.
 
 ## Security model
 

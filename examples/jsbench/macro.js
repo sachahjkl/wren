@@ -1,6 +1,6 @@
 // Engine macro-benchmarks (no DOM): library-heavy shapes that micro.js does not time (JSON, regexp, strings, array
 // methods, Map/Set, classes, generators, closures, exceptions). Same output format as micro.js, so
-// tools\jsrt_ab.ps1 -Script examples\jsbench\macro.js compares builds. ns per iteration of the body.
+// ns per iteration of the body.
 (function () {
   "use strict";
   var CALIBRATE_MS = 150, MEASURE_RUNS = 3;

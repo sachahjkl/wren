@@ -1,4 +1,4 @@
-# Pages tools\site_compare.ps1 draws in Wren and in Edge (one per line; # starts a comment). Public pages, no login.
+# Pages tools\wrentool compare draws in Wren and in Edge (one per line; # starts a comment). Public pages, no login.
 # --- documents and docs
 https://example.com/
 https://en.wikipedia.org/wiki/WebAssembly

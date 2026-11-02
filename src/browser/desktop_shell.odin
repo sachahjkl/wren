@@ -238,7 +238,7 @@ desktop_changed_on_loop :: proc(_: rawptr) {
 // (Settings > Apps, another Wren). Not for the runs that must not look at the desktop (the same ones Setup leaves alone).
 desktop_watch_begin :: proc(app: ^App, profile_explicit: bool) {
 	if !desktop.supported() || dsk.watcher != nil { return }
-	if v, ok := os.lookup_env("WREN_DESKTOP_INTEGRATION", context.temp_allocator); ok && v == "off" { return }   // tools\test_env.ps1: every script's runs
+	if v, ok := os.lookup_env("WREN_DESKTOP_INTEGRATION", context.temp_allocator); ok && v == "off" { return }   // src/e2e sets it for every test
 	// The watcher now runs for --profile and for disposable profiles too (the temporary folder): the Setup state and the
 	// menu's "installed" badge stay live in those runs as well, and the install folder is followed so an uninstall or a
 	// reinstall by another Wren is seen at once. It only reads the shared desktop (registry keys, folders) and never

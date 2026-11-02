@@ -8,7 +8,7 @@
 #     dir/*    Title       every *.md of a directory, as a sub-group named Title, sorted; an _index.md leads it
 #
 # The order here is the order of the sidebar. A doc under docs/ that no line names is still generated and
-# linked (it lands in a "More" section at the end), so nothing is ever dropped silently: run tools\docs_site.ps1
+# linked (it lands in a "More" section at the end), so nothing is ever dropped silently: run wrentool docs
 # and read its report.
 
 Getting started

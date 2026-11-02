@@ -4,7 +4,7 @@ package unicode_gen
 //
 // It reads the pinned Unicode Character Database (UCD) files from a local cache directory and emits flat Odin
 // tables (sorted interval runs, a case table, folding map, decomposition/composition data). The fetching and
-// SHA-256 pinning are done by tools/gen_unicode.ps1 (the same idiom as src/tools/buildjs), which then runs this
+// SHA-256 pinning are done by wrentool gen unicode (the same idiom as src/tools/buildjs), which then runs this
 // program. We intentionally do not copy QuickJS's libunicode-table.h; every number here is derived from the UCD.
 //
 // Usage: unicode_gen <ucd_dir> <out_file>

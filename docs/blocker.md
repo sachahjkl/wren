@@ -155,11 +155,10 @@ Stand-ins for `$redirect`: `noop.js`, `noop.css`, `noop.html` / `noopframe`, `no
 
 - `build\adblockbench.exe <lists dir>` (`src/tools/adblockbench`): compile time, load time, memory, requests per second,
   latency distribution on real lists.
-- `tools\blocker_perf.ps1`: loads each site with and without the blocker in the real browser (a fresh copy of a profile
+- `wrentool bench blocker`: loads each site with and without the blocker in the real browser (a fresh copy of a profile
   that has the lists, a cold HTTP cache) and collects `WREN_LOAD_REPORT` lines (first paint, readyState complete, requests,
   blocked, bytes, DOM nodes, CPU time, memory). `WREN_BLOCKER_TRACE=<file>` logs what the page hooks cost.
 - `src/tools/blockerpages`: the same in the headless stack.
-- `tools\blocker_js.ps1`: how much JavaScript the interpreter runs for a page (`WREN_JS_PROFILE` samples summed over the tab's pages, and those of the blocker's own scripts), two executables side by side and the page without the blocker.
 - `blockerpages -hooks`: what a hooked API costs per call (ns), without the blocker, with the native hooks, with the JavaScript versions. It starts the test server itself.
 - Unit tests: `odin test src/adblock`, `odin test src/blocker`; end to end: `src/tools/e2e/web_blocker.odin` (`src\tools\test_all`).
 
@@ -169,7 +168,7 @@ Engine (real lists: EasyList, EasyPrivacy, uBlock filters, AdGuard Base, Peter L
 filters): compile 290 ms, index 24 MB, cold load 13 ms, a request in about 4 us (p50 3 us, p99 21 us; 26 us before the gram
 index and the regex prefilter).
 
-Pages, in the real browser (`tools\blocker_perf.ps1`, cold HTTP cache, the same lists, one session per row; CPU is the process's
+Pages, in the real browser (`wrentool bench blocker`, cold HTTP cache, the same lists, one session per row; CPU is the process's
 user and kernel time over the 15 to 30 s the page was given; "paint" is the first paint, "complete" readyState complete):
 
 | site | blocker | requests (blocked) | MB | CPU s | memory MB | DOM nodes | paint ms | complete ms |
@@ -191,7 +190,7 @@ brought CNN's first paint back to 1.0 s. Where little is blocked (the Guardian's
 none from the lists) the numbers are the same within noise.
 ### Scriptlets without JavaScript
 
-The interpreter's work for a page (`tools\blocker_js.ps1`: the samples `WREN_JS_PROFILE` takes of the page's functions, summed over every
+The interpreter's work for a page (the samples `WREN_JS_PROFILE` takes of the page's functions, summed over every
 page of the tab, 20 to 25 s after the navigation; a profile with the lists; `before` is the build that ran the scriptlets as
 JavaScript, `after` this one). The samples of the blocker's own scripts (`wren-blocker:...`) are 0 in both builds on these sites.
 

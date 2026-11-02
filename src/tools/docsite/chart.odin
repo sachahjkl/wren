@@ -44,7 +44,7 @@ git :: proc(repo: string, args: ..string) -> (out: string, ok: bool) {
 
 // --- history ----------------------------------------------------------------
 // The history is a committed snapshot (docs/_wpt_history.tsv), not read from git on every run: a CI checkout is shallow, so
-// the same docs would give another chart there and `-check` could never agree. `docsite -chart-update` (tools\docs_site.ps1
+// the same docs would give another chart there and `-check` could never agree. `docsite -chart-update` (wrentool docs
 // -ChartUpdate, at a release) rebuilds the snapshot from the full git history; a missing snapshot is built the same way.
 CHART_CACHE :: "docs/_wpt_history.tsv"
 chart_update := false

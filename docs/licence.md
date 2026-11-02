@@ -14,7 +14,7 @@ The code is under the PolyForm Strict License 1.0.0 ([LICENSE](../LICENSE)). A s
 A licence is a statement signed offline with an **Ed25519** private key that only the maintainer has. Wren holds the
 matching public key and checks the signature on the user's computer, **without any network access**
 (`core:crypto/ed25519`, package `src/license`). No server is involved in checking. Issuing is either manual (the
-maintainer signs a licence with `tools\license.ps1` and sends it) or automatic: licences are sold through
+maintainer signs a licence with `wrentool license` and sends it) or automatic: licences are sold through
 [Paddle](https://www.paddle.com) (the seller of record, who handles VAT), and a small Cloudflare Worker
 ([`licence/worker`](../licence/worker/), free plan) signs the licence when Paddle reports a paid transaction, keeps it,
 mails it, and shows it on the thank-you page. Both produce byte-identical licences; see
@@ -66,7 +66,7 @@ WREN1.eyJwcm9kdWN0Ijoid3JlbiIs…
 ### 1. Make the key pair (once)
 
 ```powershell
-tools\license.ps1 keygen
+wrentool license keygen
 ```
 
 This writes the **private** key to `%USERPROFILE%\.wren-license\private.key` (outside the repository: `keygen` refuses a
@@ -87,29 +87,29 @@ this build has no key to check it with.
 ### 2. Issue a licence
 
 ```powershell
-tools\license.ps1 issue -name "Jeanne Dupont" -email jeanne@example.org -edition supporter -order WREN-0001
+wrentool license issue -name "Jeanne Dupont" -email jeanne@example.org -edition supporter -order WREN-0001
 ```
 
 `-edition` is `supporter` or `patron`; `-date` defaults to today; `-private FILE` uses another key. The tool verifies
 what it signed, prints the key, and writes `%USERPROFILE%\.wren-license\issued\WREN-0001.wrenlicense` (`-out FILE` to
 choose). Send the file (or the key) to the buyer.
 
-Other commands: `tools\license.ps1 pubkey` (print the public key), `tools\license.ps1 verify FILE` (check a licence
+Other commands: `wrentool license pubkey` (print the public key), `wrentool license verify FILE` (check a licence
 against the built-in key; `-public KEY` against another).
 
 ### 3. Development key
 
 `-dev` uses a development pair that is public on purpose (`src/license/dev_keys.odin`: the tests and screenshots use
 it). A licence made with it is refused by a build that carries the production key. To try one in a build: 
-`tools\license.ps1 issue -dev …` and `--pref browser.license.public_key=<tools\license.ps1 pubkey -dev>`.
+`wrentool license issue -dev …` and `--pref browser.license.public_key=<wrentool license pubkey -dev>`.
 
-An experimental build (`tools\experimental.ps1`, which builds with `WREN_ACCEPT_DEV_LICENSE_KEY=1`: `build.bat` passes `-define:WREN_ACCEPT_DEV_LICENSE_KEY=true`) accepts the licences of this pair too, as a development build does, so that the demonstration licence it is handed out with shows its card with no setting. A release never does.
+An experimental build (`wrentool experimental`, which builds with `WREN_ACCEPT_DEV_LICENSE_KEY=1`: `build.bat` passes `-define:WREN_ACCEPT_DEV_LICENSE_KEY=true`) accepts the licences of this pair too, as a development build does, so that the demonstration licence it is handed out with shows its card with no setting. A release never does.
 
-A **pre-registered** build carries a licence inside: `build.bat` with `WREN_EMBEDDED_LICENSE=<the one line of the .wrenlicense>` (and a `WREN_VERSION_LABEL`, which it requires so that such a build is never an unlabelled one). The first time `about:wren` asks the profile for its licence and the profile holds none, the build's is written there (`license_seed`, `src/browser/license_shell.odin`) with a marker file `<licence file>.seeded`; it is then the profile's own: `Remove the licence` removes it and the marker stops it coming back, another licence replaces it, and a profile that already holds a licence keeps its own. A build that cannot check the text (a release with no key for it) puts nothing anywhere. `tools\experimental.ps1` builds this way with the development pair's demonstration licence. A release has no `WREN_EMBEDDED_LICENSE`.
+A **pre-registered** build carries a licence inside: `build.bat` with `WREN_EMBEDDED_LICENSE=<the one line of the .wrenlicense>` (and a `WREN_VERSION_LABEL`, which it requires so that such a build is never an unlabelled one). The first time `about:wren` asks the profile for its licence and the profile holds none, the build's is written there (`license_seed`, `src/browser/license_shell.odin`) with a marker file `<licence file>.seeded`; it is then the profile's own: `Remove the licence` removes it and the marker stops it coming back, another licence replaces it, and a profile that already holds a licence keeps its own. A build that cannot check the text (a release with no key for it) puts nothing anywhere. `wrentool experimental` builds this way with the development pair's demonstration licence. A release has no `WREN_EMBEDDED_LICENSE`.
 
 ### 4. Without the Worker
 
-`tools\license.ps1 issue` still works for a gift, a refund replacement or a licence given by hand, with the same key.
+`wrentool license issue` still works for a gift, a refund replacement or a licence given by hand, with the same key.
 Use an order number that does not look like a Worker one (`GIFT-0001`).
 
 ## Selling with Paddle
@@ -271,8 +271,8 @@ only logs the mail (add `"remote": true` to the binding to send for real, to a t
 ### 2. Keys
 
 ```powershell
-tools\license.ps1 keygen     # once; see "Make the key pair". Public key -> src/license/public_key.odin, rebuild Wren
-tools\license.ps1 pubkey     # prints it again (LICENSE_PUBLIC_KEY)
+wrentool license keygen     # once; see "Make the key pair". Public key -> src/license/public_key.odin, rebuild Wren
+wrentool license pubkey     # prints it again (LICENSE_PUBLIC_KEY)
 ```
 
 `LICENSE_PRIVATE_KEY` is the line of `%USERPROFILE%\.wren-license\private.key` that is not a `#` comment.
@@ -345,7 +345,7 @@ npx wrangler tail --env sandbox                         # live logs
    goes to `thanks.html?txn=txn_…` and shows the key; the e-mail arrives with the file. Check the key:
 
    ```powershell
-   tools\license.ps1 verify -text "WREN1.…" -public <the public key>
+   wrentool license verify -text "WREN1.…" -public <the public key>
    ```
 
    and paste it in `about:wren`. If something is missing: *Developer tools → Notifications → the destination → Logs* shows

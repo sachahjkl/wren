@@ -6,8 +6,8 @@ import "toolkit:platform"
 import "toolkit:render"
 
 // A probe of the tab drag, for `wren ctl stats` (field `dragSamples`, browser.frame.drag_probe): what each frame built while
-// a tab was held drew, against the pointer it was built from and the refresh that showed it. A script that moves the
-// pointer along a known line (tools\drag_fluidity.ps1) turns the samples into the lag of the tab behind the pointer and
+// a tab was held drew, against the pointer it was built from and the refresh that showed it. src/e2e window.odin reads the samples: it moves the
+// pointer along a known line and turns the samples into the lag of the tab behind the pointer and
 // the evenness of its steps per refresh. Nothing is recorded with the preference off.
 DRAG_PROBE_CAP :: 4096
 

@@ -10,7 +10,7 @@ import "wb:style"
 // descent and line gap rounded one by one (line-height: normal is their sum), the top half-leading floored, middle /
 // text-top / text-bottom with the leading, sub / super, fallback faces in line-height: normal, the line height quirk,
 // flex containers sized by min-height, buttons and table cells centering their content, form control baselines and
-// whole-pixel border spacing. The expected values were measured in Edge (tools\compare_edge.ps1, getBoundingClientRect
+// whole-pixel border spacing. The expected values were measured in Edge (wrentool compare, getBoundingClientRect
 // of the same pages) with Arial, whose metrics the "main" face copies: ascent 1854, descent 434, line gap 67, x-height
 // 1062 of 2048 units.
 

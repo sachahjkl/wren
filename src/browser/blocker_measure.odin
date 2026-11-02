@@ -9,7 +9,7 @@ import "wb:host"
 // Measuring what loading costs (WREN_LOAD_REPORT=<file>): for each page loaded in a tab, a line of tab-separated values is
 // appended once the page had WREN_LOAD_REPORT_MS (default 10000) to settle: URL, blocker on or off, time to the first paint,
 // time until readyState complete, requests made, requests blocked, bytes received, DOM nodes, process CPU time and memory.
-// tools\blocker_perf.ps1 runs it over a list of sites with and without the blocker.
+// wrentool bench blocker runs it over a list of sites with and without the blocker.
 
 Load_Measure :: struct {
 	active:    bool,

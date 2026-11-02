@@ -1,6 +1,6 @@
 package images
 
-// The built-in decoders: Rust (native\media), in the one Rust static library of wren.exe (tools\build_native.ps1 ->
+// The built-in decoders: Rust (native\media), in the one Rust static library of wren.exe (wrentool build native ->
 // build\native\wren_native.lib). WebP and
 // AVIF never go to WIC (they would need optional Store extensions there, and these are formats where a memory-safe
 // decoder matters most); SVG documents are parsed once per encoded file (the parsed tree is kept with the Blob, shared by
@@ -24,7 +24,7 @@ when ODIN_OS == .Windows {
 		"system:libvcruntime.lib",
 	}
 } else {
-	// tools/build_native.sh (cargo for this system): Rust's standard library needs libdl, libpthread and libm
+	// wrentool build native (cargo for this system): Rust's standard library needs libdl, libpthread and libm
 	foreign import wren_native { "../../build/native-" + ODIN_OS_STRING + "/libwren_native.a", "system:opus", "system:asound", "system:dl", "system:pthread", "system:m" }
 }
 

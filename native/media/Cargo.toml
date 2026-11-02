@@ -1,5 +1,5 @@
 # Wren's built-in image decoders and WOFF2, a library of the native/ workspace: linked into wren.exe through the
-# assembly crate native/wren_native (tools\build_native.ps1 -> build\native\wren_native.lib).
+# assembly crate native/wren_native (wrentool build native -> build\native\wren_native.lib).
 # Every dependency is safe Rust except rav1d's assembly kernels (the same as dav1d's); versions are pinned exactly here
 # and by native/Cargo.lock (SHA-256 of every crate), and the build runs with --locked.
 [package]

@@ -105,7 +105,7 @@ copy* (a copy is installed elsewhere; same version or newer: **Replace installed
 - The command **Setup...** (main menu, palette, a button beside the box in `about:config`) and `wren.exe --setup`: always.
 - At the start of a **release** copy that is not the installed one (`browser.desktop_integration.on_first_run`), and when the
   installed copy needs repair: never for development builds, `--profile` profiles, profiles in the temporary folder, portable
-  copies, or with `WREN_DESKTOP_INTEGRATION=off` (`tools\test_env.ps1` sets it for every script).
+  copies, or with `WREN_DESKTOP_INTEGRATION=off` (`src/e2e` sets it for every test).
 - The profile remembers the answer in `setup.txt`: **Use standalone** (`choice=standalone`) is for good; closing the dialog
   without an answer (X, Escape, a click outside) is `choice=dismissed` and holds for the current version only.
 
@@ -185,6 +185,6 @@ foreground. Nothing is done per frame.
 | `browser.single_instance` off, `WREN_SINGLE_INSTANCE=off` | never (`=on` forces it, for the script that checks it) |
 | `browser.profile.persist` off | never: its folder is the user's, shared with a Wren that keeps it |
 
-`tools\test_env.ps1` sets `WREN_SINGLE_INSTANCE=off` for every script that starts the browser, so none can hand its address
+`src/e2e` sets `WREN_SINGLE_INSTANCE=off` for every test that starts the browser, so none can hand its address
 to the user's Wren and end. `src\tools\e2e\instance.odin` checks the table on real processes and scratch profiles (hidden windows, `WREN_SINGLE_INSTANCE=on`: a driven Wren is its own otherwise);
-`tools\instance_startup.ps1` measures the cost of a start (one `CreateMutexW`: no measurable difference of the first present).
+`wrentool bench startup` measures the cost of a start (one `CreateMutexW`: no measurable difference of the first present).

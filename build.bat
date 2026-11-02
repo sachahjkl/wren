@@ -11,7 +11,7 @@
 ::
 ::  Channel: every build is a *development* build (blueprint icon, "development build" in about:home and the menu)
 ::  but `release` (amber icon). It goes in as -define:WREN_CHANNEL (about.odin: APP_CHANNEL) with its icon, and in
-::  build\wren.channel, which tools\package.ps1 checks before packaging.
+::  build\wren.channel, which wrentool package checks before packaging.
 ::
 ::  Compile speed: Odin hands LLVM one module per package with -use-separate-modules, and LLVM then works on all
 ::  cores. Measured on 2026-10-26: the Odin step of `build.bat` (development: -o:speed -debug, separate modules) takes
@@ -140,7 +140,7 @@ if defined WREN_TOOLKIT set "FLAGS=-collection:toolkit=%WREN_TOOLKIT% -collectio
 :: and the Visual C++ runtime (vcruntime) linked in, not loaded from vcruntime140.dll: the Windows 10/11 C runtime (ucrt) is part of
 :: the system, so wren.exe then needs no file beside it and no Visual C++ redistributable installed
 :: and /MAP: the linker's map (every function's address) next to the exe, the symbols of a release, which has no PDB (it changes
-:: nothing in the exe). tools\symbols.ps1 names it by the build's fingerprint after the link (:symbols below).
+:: nothing in the exe). wrentool symbols names it by the build's fingerprint after the link (:symbols below).
 set FLAGS=%FLAGS% -extra-linker-flags:"/STACK:33554432 /NODEFAULTLIB:vcruntime.lib /DEFAULTLIB:libvcruntime.lib /MAP"
 
 :: every thread's temporary allocator commits its first block at once: 1 MiB instead of Odin's 4 MiB (with the three
@@ -159,7 +159,7 @@ set "FLAGS=%FLAGS% -define:WREN_COMMIT=%WREN_COMMIT%"
 if defined WREN_DATE set "FLAGS=%FLAGS% -define:WREN_COMMIT_DATE=%WREN_DATE%"
 :: a label shown after the version number (about:wren, the menu, the file's Details...): set WREN_VERSION_LABEL=experimental-2026-10-24 before building
 if defined WREN_VERSION_LABEL set "FLAGS=%FLAGS% -define:WREN_VERSION_LABEL=%WREN_VERSION_LABEL%"
-:: an experimental build also accepts the licences of the development key pair (public on purpose, worth nothing: tools\experimental.ps1 hands a demonstration licence out with it)
+:: an experimental build also accepts the licences of the development key pair (public on purpose, worth nothing: wrentool experimental hands a demonstration licence out with it)
 if defined WREN_ACCEPT_DEV_LICENSE_KEY set "FLAGS=%FLAGS% -define:WREN_ACCEPT_DEV_LICENSE_KEY=true"
 :: a pre-registered build: this licence (the one line of a .wrenlicense) is put in the profile the first time it has none (browser/license_shell.odin). It must say what it is: a label is required.
 if defined WREN_EMBEDDED_LICENSE if not defined WREN_VERSION_LABEL (echo WREN_EMBEDDED_LICENSE needs WREN_VERSION_LABEL: a build with a licence inside is not a release& exit /b 1)
@@ -176,7 +176,7 @@ if "%WREN_RENDER%"=="wgpu" set "FLAGS=%FLAGS% -define:TOOLKIT_RENDER=wgpu -defin
 if defined WREN_ODIN_EXTRA set "FLAGS=%FLAGS% %WREN_ODIN_EXTRA%"
 if defined WREN_TAG set "WREN_SUFFIX=%WREN_SUFFIX%%WREN_TAG%"
 :: text: the toolkit's native text backend (Fontations, HarfRust and ICU4X, from ext\gui_toolkit\native\text, built into
-:: Wren's Rust library by tools\build_native.ps1 above: a program links one Rust static library at most) shapes,
+:: Wren's Rust library by wrentool deps above: a program links one Rust static library at most) shapes,
 :: breaks and reads the fonts. WREN_TEXT=dwrite builds with DirectWrite's shaper and analyzers instead: build\wren_dwrite.exe
 :: etc. (the system's fonts and their fallback come from DirectWrite in both)
 if not "%WREN_TEXT%"=="dwrite" set "FLAGS=%FLAGS% -define:FONT_BACKEND=native -define:FONT_NATIVE_LINK=false"
@@ -249,7 +249,7 @@ echo usage: build.bat [variant]
 echo.
 echo   dev       (default) optimised, PDB, fast to compile          -^> build\wren.exe
 echo   debug     debug information, no optimisation                 -^> build\wren.exe
-echo   profile   optimised, PDB, the built-in profiler (perf.ps1)   -^> build\wren_prof.exe
+echo   profile   optimised, PDB, the built-in profiler (bench perf) -^> build\wren_prof.exe
 echo   check     debug, every allocation tracked, leak report       -^> build\wren_check.exe
 echo   release   what the release packages (one module, amber icon) -^> build\wren.exe
 echo   help      this text
@@ -267,7 +267,7 @@ exit /b 0
 
 :: ------------------------------------------------------------------------------------------------------------
 ::  :symbols exe [-Store] : the linker's map becomes <exe>-<fingerprint>.map beside the exe, and with -Store a copy goes to
-::  build\symbols (tools\symbols.ps1 -Publish; tools\crash_symbolize.ps1 reads them)
+::  build\symbols (wrentool symbols -Publish; wrentool crash-symbolize reads them)
 :: ------------------------------------------------------------------------------------------------------------
 :symbols
 %WRENTOOL% symbols -Publish %1 %2 && exit /b 0

@@ -1,4 +1,4 @@
-// Page script of examples/site/mutation_class.html (and of the `mutation_class` scenario of tools\perf.ps1): builds the
+// Page script of examples/site/mutation_class.html (and of the `mutation_class` scenario of wrentool bench perf): builds the
 // same large document as examples/mutation (323 sections of articles, about 17 000 nodes), then toggles a class on the
 // section in the middle every 16 ms. The page's rules reach from that class to the section's descendants (`.on p`),
 // its children (`.on > article`) and its next sibling (`.on + .sec`): what the browser should restyle is that section's

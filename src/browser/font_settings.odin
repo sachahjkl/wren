@@ -91,7 +91,7 @@ font_settings_from_prefs :: proc(p: ^config.Prefs) -> font.Settings {
 
 // Noto Color Emoji, compiled into the executable (build.bat fetches it into build\emoji first): nothing to ship next to
 // wren.exe. The bytes stay in the image, mapped by Windows only as the emoji font reads them. A build without the file
-// (a tool compiling this package before fetch_emoji.ps1) has none, and emoji come from the system.
+// (a tool compiling this package before wrentool fetch emoji) has none, and emoji come from the system.
 @(private = "file") EMOJI_FILE :: "../../build/emoji/NotoColorEmoji-COLRv1.ttf"
 when #exists(EMOJI_FILE) {
 	@(private = "file") emoji_builtin := #load(EMOJI_FILE)

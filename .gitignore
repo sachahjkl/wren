@@ -8,17 +8,17 @@ examples/site/formstest.wasm
 examples/site/mutation.wasm
 examples/site/workerstest_worker.wasm
 src/browser/wren.res
-# cargo run by hand inside the native/ workspace (the scripts use build/native/target)
+# cargo run by hand inside the native/ workspace (wrentool build native uses build/native/target)
 native/target/
 native/media/target/
-# release packages (tools/package.ps1 writes them under build/)
+# release packages (wrentool package writes them under build/)
 *.zip
 # a policy file next to the exe overrides every preference (browser --policy)
 policies.txt
 .vs/
 .vscode/
 src/browser/wren_dev.res
-# licences: the private signing key (tools\license.ps1 keygen writes it to %USERPROFILE%\.wren-license, outside the
+# licences: the private signing key (wrentool license keygen writes it to %USERPROFILE%\.wren-license, outside the
 # repository) and the licences issued to supporters never belong here
 .wren-license/
 private.key
@@ -30,6 +30,6 @@ secrets/*.plain.yaml
 secrets/*.plain.json
 secrets/*.plain.env
 
-# big media made by tools\gen_perf_media.ps1 (the yt_* scenarios of tools\perf.ps1)
+# big media made by wrentool gen perf-media (the yt_* scenarios of wrentool bench perf)
 examples/site/media/video/perf_*
 examples/site/mutation_class.wasm

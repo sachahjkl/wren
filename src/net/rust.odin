@@ -37,7 +37,7 @@ when ODIN_OS == .Windows {
 		"system:libvcruntime.lib",
 	}
 } else {
-	// tools/build_native.sh (cargo for this system)
+	// wrentool build native (cargo for this system)
 	foreign import wren_native_net { "../../build/native-" + ODIN_OS_STRING + "/libwren_native.a", "system:opus", "system:asound", "system:dl", "system:pthread", "system:m" }
 }
 

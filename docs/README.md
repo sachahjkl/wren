@@ -10,9 +10,9 @@ Wren itself.
 2. If the page is new, add it to `docs/_nav.txt` so it appears in the sidebar where you want it. A page you forget is
    still generated and linked (it lands in a "More" section), so nothing is lost, but the order and the section are up
    to you.
-3. Run `tools\docs_site.ps1`. It regenerates `site/docs/` and checks that every internal link and anchor resolves.
+3. Run `wrentool docs`. It regenerates `site/docs/` and checks that every internal link and anchor resolves.
 4. Commit the `.md` **and** the regenerated `site/docs/`. The generation is deterministic (same input, same bytes), and
-   CI fails if `site/docs/` is out of date — the same rule as `tools\changelog.ps1 -Check`.
+   CI fails if `site/docs/` is out of date — the same rule as `wrentool changelog -Check`.
 
 ## The sidebar: `docs/_nav.txt`
 

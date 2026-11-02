@@ -3,7 +3,7 @@
 //   jsengine run [-image m.wasm] [-raw] [-e code] [-profile out.json] [file.js ...]
 //                                               runs scripts in a fresh realm; console output on stdout, uncaught
 //                                               errors on stderr; exit code 1 when one was uncaught; -profile samples
-//                                               the engine (Firefox Profiler format; tools\wasm_profile.ps1)
+//                                               the engine (Firefox Profiler format)
 //   jsengine bench [-image m.wasm] [-raw] [-iterations n] <dir> [names...]
 //                                               runs the benchmarks of <dir> (Octane's base.js harness), one realm each
 //   jsengine startup [-image m.wasm] [-raw] [-n count]

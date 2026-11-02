@@ -3,7 +3,7 @@ package e2e_scenarios
 
 // The small core on a real window of the system, never shown, with its swap chain: what the headless scenarios do not go through. The browser runs in this process, so the
 // window procedure is called as the system calls it, on this thread: WM_DPICHANGED and the rectangle it suggests, WM_NCHITTEST, WM_SETCURSOR; the system's z-order of windows
-// for a drop; the swap chain frames are presented to. It needs a desktop session (test_all's own, tools\test_desktop.ps1 by hand).
+// for a drop; the swap chain frames are presented to. It needs a desktop session (test_all's own, wrentool desktop by hand).
 
 import "core:fmt"
 import "core:math"

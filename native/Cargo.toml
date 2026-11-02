@@ -1,5 +1,5 @@
 # Wren's Rust code: one workspace, one Cargo.lock, one target directory, ONE static library linked into wren.exe
-# (tools\build_native.ps1 -> build\native\wren_native.lib).
+# (wrentool build native -> build\native\wren_native.lib).
 #
 # Why one library: every Rust static library carries its own copy of Rust's standard library, and two built by the same
 # compiler define the same symbols: a program links one at most. So the crates are ordinary libraries (rlib) and the

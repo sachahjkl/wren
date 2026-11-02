@@ -56,7 +56,7 @@ export interface Env {
 	EMAIL?: SendEmail;               // Cloudflare Email Service; absent (or MAIL_FROM empty) = not mailed (the thank-you page still shows the licence)
 
 	// secrets
-	LICENSE_PRIVATE_KEY: string;     // the 32-byte seed of the Ed25519 key, base64url (tools\license.ps1 keygen)
+	LICENSE_PRIVATE_KEY: string;     // the 32-byte seed of the Ed25519 key, base64url (wrentool license keygen)
 	PADDLE_WEBHOOK_SECRET: string;   // the notification destination's secret key (pdl_ntfset_...)
 	PADDLE_API_KEY: string;          // server-side API key, to read the customer (name, e-mail)
 	ADMIN_TOKEN?: string;            // bearer token for the admin endpoints (/resend when RESEND_REQUIRE_TOKEN, /admin/*); unset = those are closed

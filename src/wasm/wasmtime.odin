@@ -1,11 +1,11 @@
 package wasm
 
-// Bindings for the subset of the Wasmtime C API (build\wasmtime, fetched by tools\fetch_wasmtime.ps1) the browser uses.
+// Bindings for the subset of the Wasmtime C API (build\wasmtime, fetched by wrentool fetch wasmtime) the browser uses.
 // The static library is linked into the executable; it needs the system libraries listed below (Rust's standard library
 // on Windows: sockets, the registry/security API, user profiles, NT calls, COM for paths, BCrypt for random numbers) and
 // the dynamic C runtime Odin already links.
 
-WASMTIME_VERSION :: "49.0.3"   // must match tools\fetch_wasmtime.ps1: part of the compiled-code cache key
+WASMTIME_VERSION :: "49.0.3"   // must match wrentool fetch wasmtime: part of the compiled-code cache key
 
 when ODIN_OS == .Windows {
 	foreign import wasmtime_lib {
@@ -23,7 +23,7 @@ when ODIN_OS == .Windows {
 		"system:libvcruntime.lib",
 	}
 } else {
-	// tools/fetch_wasmtime.sh: the same release's C API for Linux (glibc: libdl, libpthread and libm)
+	// wrentool fetch wasmtime: the same release's C API for Linux (glibc: libdl, libpthread and libm)
 	foreign import wasmtime_lib {
 		"../../build/wasmtime-" + ODIN_OS_STRING + "/lib/libwasmtime.a",
 		"system:dl",

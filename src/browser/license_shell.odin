@@ -41,7 +41,7 @@ License_State :: struct {
 @(private = "file") memory_text: [license.MAX_TEXT]u8
 @(private = "file") memory_len: int
 
-// An experimental build (tools\experimental.ps1: build.bat with WREN_ACCEPT_DEV_LICENSE_KEY=1) accepts the development pair's licences too, so that
+// An experimental build (wrentool experimental: build.bat with WREN_ACCEPT_DEV_LICENSE_KEY=1) accepts the development pair's licences too, so that
 // the demonstration licence it is handed out with shows its card with no setting. A release never does.
 @(private = "file") ACCEPT_DEV_LICENSE_KEY :: IS_DEV_BUILD || #config(WREN_ACCEPT_DEV_LICENSE_KEY, false)
 
@@ -50,7 +50,7 @@ license_public_key :: proc(app: ^App) -> string {
 	return license.PRODUCTION_PUBLIC_KEY
 }
 
-// Checks a licence with the key in force; a development build also accepts the development pair's licences (tools\license.ps1
+// Checks a licence with the key in force; a development build also accepts the development pair's licences (wrentool license
 // issue -dev), so that a build being tried shows the card without settings. A release only knows the production key (an experimental build: see ACCEPT_DEV_LICENSE_KEY).
 license_check :: proc(app: ^App, text: string, allocator := context.allocator) -> (license.License, license.Error) {
 	lic, err := license.verify(text, license_public_key(app), allocator)
@@ -78,7 +78,7 @@ license_path :: proc(app: ^App) -> string {
 	return strings.concatenate({app.profile_dir, "/license", license.FILE_EXTENSION}, context.temp_allocator)
 }
 
-// The licence a build is handed out with, as the text of a .wrenlicense (build.bat: WREN_EMBEDDED_LICENSE; tools\experimental.ps1 sets it
+// The licence a build is handed out with, as the text of a .wrenlicense (build.bat: WREN_EMBEDDED_LICENSE; wrentool experimental sets it
 // for an experimental build): "" in every other build, a release above all. Such a build is "pre-registered": the first time the profile
 // is asked for its licence and holds none, this one is put there (license_seed), and from then on it is the profile's own like any other.
 EMBEDDED_LICENSE :: #config(WREN_EMBEDDED_LICENSE, "")
