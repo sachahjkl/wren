@@ -127,6 +127,13 @@ Style_Change :: struct {
 
 @(private) styled_serial: u64
 
+// The memory the computed styles of `s` take: its own arena and the style threads' (a parallel pass).
+styled_bytes :: proc(s: ^Styled) -> int {
+	n := int(s.arena.total_used)
+	for a in s.thread_arenas { n += int(a.total_used) }
+	return n
+}
+
 styled_destroy :: proc(s: ^Styled) {
 	if s == nil { return }
 	delete(s.by_node)
