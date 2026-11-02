@@ -293,7 +293,7 @@ rust_ws_begin :: proc(m: ^Ws_Manager, h: base.Handle, s: ^Socket) -> u32 {
 @(private)
 rust_ws_event :: proc(c: ^Client, we: ^Wn_Event) {
 	m := c.ws
-	if m == nil || host.inbox_closed(&m.inbox) { return }
+	if m == nil || m.shutting_down { return }
 	h := base.Handle(we.tag)
 	if base.pool_get(&m.sockets, h) == nil { return }
 	r := Raw{sock = h, status = int(we.status), error = we.error, secure_flags = we.secure_flags, op = Web_Socket_Operation(we.op), n = int(we.n)}

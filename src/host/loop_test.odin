@@ -331,7 +331,8 @@ posts_keep_order_lose_nothing_and_discarded_never_run :: proc(t: ^testing.T) {
 	}
 	start := time.tick_now()
 	for h.done < len(h.items) && time.tick_since(start) < HAMMER_GIVE_UP {   // (a lost post fails the checks below)
-		loop_sleep(&l, HAMMER_WAIT)   // something was posted: what of it is doomed goes before the turn runs the rest
+		// something was posted: what of it is doomed goes before the turn runs the rest
+		sync.sema_wait_with_timeout(&l.sema, HAMMER_WAIT)
 		discard_posted(&l, doomed, discard)
 		run_ready(&l)
 	}

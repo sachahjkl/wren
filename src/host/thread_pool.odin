@@ -12,19 +12,16 @@ import "wb:base"
 
 Parallel_Proc :: #type proc(data: rawptr, index: int)
 
-// The round's state, `Thread_Pool.round` (a futex the helpers sleep on): even, a round's number, its fields written
-// (0: none yet); odd, parallel_for is writing the next round's fields. A helper reads the fields of an even round and
-// takes them only if the round is still the same afterwards (a sequence lock: the caller never waits for a reader).
-@(private) ROUND_STEP :: 2
-
 Thread_Pool :: struct {
 	threads:    [dynamic]^Thread,
-	round:      sync.Futex,   // atomic: see ROUND_STEP; parallel_for moves it, the helpers wait on it
-	stopping:   b32,          // atomic: thread_pool_destroy, before it moves `round` a last time
-	fn:         Parallel_Proc,   // the round's, written while `round` is odd
+	mu:         sync.Mutex,
+	cond:       sync.Cond,
+	generation: u64,          // bumped for each parallel_for: wakes the threads
+	stopping:   bool,
+	fn:         Parallel_Proc,
 	data:       rawptr,
 	count:      int,
-	next:       u64,          // atomic: round << 32 | next item to take (see pool_take)
+	next:       u64,          // atomic: generation << 32 | next item to take (see pool_take)
 	remaining:  int,          // atomic: items not finished
 	done:       sync.Sema,
 }
@@ -50,9 +47,10 @@ thread_pool_make :: proc(threads: int, stack_bytes := 0) -> ^Thread_Pool {
 thread_pool_destroy :: proc(p: ^Thread_Pool) {
 	if p == nil { return }
 	context = base.process_context()   // (where thread_pool_make allocated)
-	sync.atomic_store(&p.stopping, true)
-	sync.atomic_add(&p.round, ROUND_STEP)
-	sync.futex_broadcast(&p.round)
+	sync.mutex_lock(&p.mu)
+	p.stopping = true
+	sync.cond_broadcast(&p.cond)
+	sync.mutex_unlock(&p.mu)
 	for t in p.threads { thread_join(t) }
 	delete(p.threads)
 	free(p)
@@ -66,14 +64,14 @@ parallel_for :: proc(p: ^Thread_Pool, count: int, fn: Parallel_Proc, data: rawpt
 		for i in 0 ..< count { fn(data, i) }
 		return
 	}
-	// (the caller only moves `round`: one parallel_for at a time per pool)
-	sync.atomic_add(&p.round, ROUND_STEP / 2)   // odd: being written
+	sync.mutex_lock(&p.mu)
 	p.fn, p.data, p.count = fn, data, count
-	gen := u64(sync.atomic_load(&p.round)) + ROUND_STEP / 2
+	p.generation += 1
+	gen := p.generation
 	sync.atomic_store(&p.remaining, count)
 	sync.atomic_store(&p.next, (gen & 0xffff_ffff) << 32)
-	sync.atomic_store(&p.round, sync.Futex(gen))   // even: written
-	sync.futex_broadcast(&p.round)
+	sync.cond_broadcast(&p.cond)
+	sync.mutex_unlock(&p.mu)
 	if wait_hook.fn != nil {
 		pool_take(p, gen, fn, data, count, hooked = true)
 		for !sync.sema_wait_with_timeout(&p.done, time.Duration(max(wait_hook.every_ns, 100_000))) { wait_hook.fn(wait_hook.user) }
@@ -125,16 +123,15 @@ pool_take :: proc(p: ^Thread_Pool, gen: u64, fn: Parallel_Proc, data: rawptr, co
 @(private)
 pool_thread :: proc(data: rawptr) {
 	p := (^Thread_Pool)(data)
-	seen: sync.Futex
+	seen: u64
 	for {
-		round := sync.atomic_load(&p.round)
-		if sync.atomic_load(&p.stopping) { return }
-		if round == seen || round % ROUND_STEP != 0 { sync.futex_wait(&p.round, u32(round)); continue }
+		sync.mutex_lock(&p.mu)
+		for p.generation == seen && !p.stopping { sync.cond_wait(&p.cond, &p.mu) }
+		if p.stopping { sync.mutex_unlock(&p.mu); return }
+		seen = p.generation
 		fn, user, count := p.fn, p.data, p.count
-		sync.atomic_thread_fence(.Acquire)   // (the reads above stay above the check below)
-		if sync.atomic_load(&p.round) != round { continue }   // the next round was being written meanwhile
-		seen = round
-		pool_take(p, u64(round), fn, user, count)
+		sync.mutex_unlock(&p.mu)
+		pool_take(p, seen, fn, user, count)
 		free_all(context.temp_allocator)
 	}
 }
