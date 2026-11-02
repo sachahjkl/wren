@@ -254,3 +254,4 @@ video_fast_path.odin vfast process  # the video fast path: what each video drew 
 cdp.odin the_cdp process  # the DevTools-protocol server of the process (the debugging port)
 appearance_other.odin watch_app process  # the colour-scheme watcher (the platform's bus connection)
 date_display_other.odin MONTHS_ABBR process  # a table
+main.odin headless_software process  # the renderer the next headless App is made on (browser.Options would take it: there is no such thing yet)
