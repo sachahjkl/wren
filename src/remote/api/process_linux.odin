@@ -78,16 +78,34 @@ wait_process_exit :: proc(pid: int, ms: int) -> (code: int, ended: bool) {
 // (Windows only for now: gdb -p does it here.)
 process_stacks :: proc(pid: int, minidump := "") -> (text: string, ok: bool) { return "reading another process's stacks is not written for this system", false }
 
-// Starts `args` (args[0] the program, a path) with this process's environment. err "": started. (Options are not written for this system.)
+// Starts `args` (args[0] the program, a path) with this process's environment and `o.env` over it. err "": started. (A
+// folder and outputs of its own are not written for this system.)
 process_start :: proc(args: []string, o := Start_Options{}) -> (p: Process, pid: int, err: string) {
-	if o.cwd != "" || o.env != nil || o.stdout != {} || o.stderr != {} || o.merged { return {}, 0, "a folder, an environment or outputs of its own are not written for this system" }
+	if o.cwd != "" || o.stdout != {} || o.stderr != {} || o.merged { return {}, 0, "a folder or outputs of its own are not written for this system" }
 	argv := make([]cstring, len(args) + 1, context.temp_allocator)
 	for a, i in args { argv[i] = strings.clone_to_cstring(a, context.temp_allocator) }
 	child: posix.pid_t
-	if e := posix.posix_spawn(&child, argv[0], nil, nil, raw_data(argv), posix.environ); e != .NONE {
+	if e := posix.posix_spawn(&child, argv[0], nil, nil, raw_data(argv), environment_with(o.env)); e != .NONE {
 		return {}, 0, string(posix.strerror(e))
 	}
 	return {pid = child, child = true}, int(child), ""
+}
+
+// This process's environment with `over` ("NAME=value" sets it, "NAME=" leaves it out), nil-terminated.
+@(private = "file")
+environment_with :: proc(over: []string) -> [^]cstring {
+	if len(over) == 0 { return posix.environ }
+	name_of :: proc(entry: string) -> string { k := strings.index_byte(entry, '='); return k < 0 ? entry : entry[:k] }
+	out := make([dynamic]cstring, context.temp_allocator)
+	for i := 0; posix.environ[i] != nil; i += 1 {
+		entry := string(posix.environ[i])
+		replaced := false
+		for e in over { if name_of(e) == name_of(entry) { replaced = true; break } }
+		if !replaced { append(&out, posix.environ[i]) }
+	}
+	for e in over { if !strings.has_suffix(e, "=") { append(&out, strings.clone_to_cstring(e, context.temp_allocator)) } }
+	append(&out, nil)
+	return raw_data(out)
 }
 
 // Process `pid`, to wait for it and end it (false: it is gone).
