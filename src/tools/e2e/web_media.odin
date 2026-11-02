@@ -66,6 +66,7 @@ shut :: proc(pr: ^Probe, min_checks: int, loc := #caller_location) {
 	t := pr.t
 	close_page(pr, min_checks = min_checks, loc = loc)
 	page.images_shutdown()
+	images.decoder_stop()   // (the process's: the harness is the only embedder)
 	testing.expect(t, !images.decoder_running(), "decoding threads stopped", loc = loc)
 }
 

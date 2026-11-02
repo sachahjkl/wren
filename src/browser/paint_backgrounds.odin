@@ -41,7 +41,6 @@ area_of :: proc(b: ^Bg_Boxes, a: style.Box_Area) -> (draw.Rect, [4]f32) {
 }
 
 // Gradients dither (against banding) unless render.gradients.dither is off.
-gradient_dither := true
 
 // Background color and every background-image layer of `cs`, bottom first. The color is clipped like the bottom layer
 // (CSS Backgrounds §3.10).
@@ -121,7 +120,7 @@ paint_gradient_layer :: proc(dc: ^draw.Context, layer: ^style.Bg_Layer, area, cl
 	dg.tile = draw.Rect{{ox, oy}, {ox + ts.x, oy + ts.y}}
 	dg.repeat = {rx != .No_Repeat, ry != .No_Repeat}
 	dg.spacing = spacing
-	dg.dither = gradient_dither
+	dg.dither = the_app.gradient_dither
 	draw.gradient(dc, clip, dg, radii)
 }
 

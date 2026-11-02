@@ -46,14 +46,14 @@ frames_now :: proc(p: ^Dev_Performance) -> []Perf_Frame {
 
 @(private = "file")
 live_frame :: proc(i: int) -> Perf_Frame {
-	s := ui.history_at(&hud.history, i)
+	s := ui.history_at(&the_app.hud.history, i)
 	f := Perf_Frame{v = s.v, t_ms = s.t_ms, tag = s.tag}
-	if hd := hud.details[s.tag % u64(len(hud.details))]; hd.serial == s.tag { f.d = hd }
+	if hd := the_app.hud.details[s.tag % u64(len(the_app.hud.details))]; hd.serial == s.tag { f.d = hd }
 	return f
 }
 
 @(private = "file")
-count_frames :: proc(p: ^Dev_Performance) -> int { return p.frozen ? len(p.snap) : ui.history_len(&hud.history) }
+count_frames :: proc(p: ^Dev_Performance) -> int { return p.frozen ? len(p.snap) : ui.history_len(&the_app.hud.history) }
 
 @(private = "file")
 frame_at :: proc(p: ^Dev_Performance, i: int) -> Perf_Frame { return p.frozen ? p.snap[i] : live_frame(i) }
@@ -78,15 +78,15 @@ Chart_Draw :: struct {
 
 performance_panel :: proc(app: ^App, t: ^Tab) {
 	p := &dev().perf
-	if p.sel == 0 && !p.frozen && ui.history_len(&hud.history) == 0 { p.sel = -1 }
+	if p.sel == 0 && !p.frozen && ui.history_len(&app.hud.history) == 0 { p.sel = -1 }
 	n := count_frames(p)
 	if dt_bar("###dt_perf_bar") {
 		dt_gap(3)
-		rec := dt_btn("###dt_perf_rec", p.frozen ? .Record : .Pause, p.frozen ? "Record" : "Stop", tooltip = p.frozen ? "Record frames again" : "Stop recording: keep what is shown", tone = p.frozen ? dtc.bad : dtc.weak)
+		rec := dt_btn("###dt_perf_rec", p.frozen ? .Record : .Pause, p.frozen ? "Record" : "Stop", tooltip = p.frozen ? "Record frames again" : "Stop recording: keep what is shown", tone = p.frozen ? app.dtc.bad : app.dtc.weak)
 		if rec.clicked { toggle_record(p) }
-		tl := &the_remote.tl
+		tl := &app.remote.tl
 		if dt_btn("###dt_perf_clear", .Clear, tooltip = "Clear the recorded frames", enabled = n > 0 || len(tl.frames) > 0).clicked {
-			if p.frozen { clear(&p.snap) } else { ui.history_clear(&hud.history) }
+			if p.frozen { clear(&p.snap) } else { ui.history_clear(&app.hud.history) }
 			timeline_end(app)
 			timeline_free(tl)
 			p.sel = -1
@@ -112,7 +112,7 @@ performance_panel :: proc(app: ^App, t: ^Tab) {
 			summary := perf_summary(p, n)
 			ui.custom("###dt_perf_sum", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 				s := (^string)(user)^
-				dt_text(dc, dtm.ui_font, dtm.fs, b.rect.min.x + dt_px(4), (b.rect.min.y + b.rect.max.y) * 0.5, dtc.weak, s, b.rect.max.x - b.rect.min.x - dt_px(8))
+				dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, b.rect.min.x + dt_px(4), (b.rect.min.y + b.rect.max.y) * 0.5, the_app.dtc.weak, s, b.rect.max.x - b.rect.min.x - dt_px(8))
 			}, new_clone(dt_frame_str(summary), ui.frame_allocator()))
 		} else {
 			ui.spacer(ui.fill())
@@ -120,11 +120,11 @@ performance_panel :: proc(app: ^App, t: ^Tab) {
 		dt_gap(3)
 	}
 	// the legend: a chip per phase, a click hides or shows it
-	if dt_bar("###dt_perf_legend", dtm.bar - dt_px(4)) {
+	if dt_bar("###dt_perf_legend", app.dtm.bar - dt_px(4)) {
 		dt_gap(5)
 		cols := hud_series_colors()
 		for k in Hud_Series {
-			ui.next({width = ui.px(math.round(dt_w(dtm.ui_font, dtm.fs, perf_names[k]) + dt_px(24))), height = ui.px(dtm.btn - dt_px(4)), cursor = .Arrow})
+			ui.next({width = ui.px(math.round(dt_w(app.dtm.ui_font, app.dtm.fs, perf_names[k]) + dt_px(24))), height = ui.px(app.dtm.btn - dt_px(4)), cursor = .Arrow})
 			cb := ui.build_box({.Clickable}, fmt.tprintf("###dt_pl%d", int(k)))
 			sig := ui.signal(cb)
 			ld := ui.frame_new(Legend_Draw)
@@ -133,10 +133,10 @@ performance_panel :: proc(app: ^App, t: ^Tab) {
 				d := (^Legend_Draw)(user)
 				r := b.rect
 				cy := (r.min.y + r.max.y) * 0.5
-				if d.hot { draw.rect(dc, r, dtc.hover, dtm.radius) }
+				if d.hot { draw.rect(dc, r, the_app.dtc.hover, the_app.dtm.radius) }
 				sw := dt_px(9)
 				draw.rect(dc, {{r.min.x + dt_px(6), cy - sw * 0.5}, {r.min.x + dt_px(6) + sw, cy + sw * 0.5}}, d.off ? with_alpha(d.col, 0.25) : d.col, dt_px(2))
-				dt_text(dc, dtm.ui_font, dtm.fs, r.min.x + dt_px(18), cy, d.off ? dtc.faint : dtc.text, d.name)
+				dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, r.min.x + dt_px(18), cy, d.off ? the_app.dtc.faint : the_app.dtc.text, d.name)
 			}, ld
 			if sig.clicked { p.hide[k] = !p.hide[k] }
 		}
@@ -189,7 +189,7 @@ perf_names := [Hud_Series]string{.Tasks = "Tasks", .Styles = "Style", .Layout = 
 // frame as Chrome trace events: it opens in the Performance tab of Chrome and in Perfetto).
 @(private = "file")
 perf_export :: proc(app: ^App, p: ^Dev_Performance) {
-	tl := &the_remote.tl
+	tl := &app.remote.tl
 	timeline_end(app)
 	dt, _ := time.time_to_datetime(time.now())
 	dir := fmt.tprintf("%s/wren-timeline-%04d%02d%02d-%02d%02d%02d", download_dir(app), dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
@@ -231,7 +231,7 @@ toggle_record :: proc(p: ^Dev_Performance) {
 		clear(&p.snap)
 		return
 	}
-	n := ui.history_len(&hud.history)
+	n := ui.history_len(&the_app.hud.history)
 	clear(&p.snap)
 	for i in 0 ..< n { append(&p.snap, live_frame(i)) }
 	p.frozen = true
@@ -275,11 +275,11 @@ chart_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		v := d.budget * f32(m)
 		if v > d.scale { break }
 		y := bottom - v / d.scale * h
-		draw.rect(dc, {{left, y}, {r.max.x - dt_px(6), y + dtm.line}}, with_alpha(dtc.border, m == 1 ? 0.95 : 0.4))
-		dt_text_r(dc, dtm.mono, dtm.mono_fs * 0.85, left - dt_px(5), y, dtc.faint, m == 0 ? "0" : fmt.tprintf("%.0f", v))
+		draw.rect(dc, {{left, y}, {r.max.x - dt_px(6), y + the_app.dtm.line}}, with_alpha(the_app.dtc.border, m == 1 ? 0.95 : 0.4))
+		dt_text_r(dc, the_app.dtm.mono, the_app.dtm.mono_fs * 0.85, left - dt_px(5), y, the_app.dtc.faint, m == 0 ? "0" : fmt.tprintf("%.0f", v))
 	}
 	bw := dt_px(4)
-	gap := dtm.line
+	gap := the_app.dtm.line
 	for f, i in d.frames {
 		x := left + f32(i) * bw
 		if x + bw > r.max.x { break }
@@ -295,31 +295,31 @@ chart_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		}
 		if !d.hide[.GPU] && f.v[Hud_Series.GPU] > 0 {
 			gy := bottom - f.v[Hud_Series.GPU] / d.scale * h
-			draw.rect(dc, {{x, gy - dtm.line}, {x + bw - gap, gy + dtm.line}}, d.colors[.GPU])
+			draw.rect(dc, {{x, gy - the_app.dtm.line}, {x + bw - gap, gy + the_app.dtm.line}}, d.colors[.GPU])
 		}
-		if y <= top + dtm.line { draw.rect(dc, {{x, top}, {x + bw - gap, top + dt_px(2)}}, dtc.bad) }
-		if i == d.sel { draw.rect(dc, {{x - dtm.line, top}, {x + bw, bottom}}, with_alpha(dtc.accent, 0.22)) }
+		if y <= top + the_app.dtm.line { draw.rect(dc, {{x, top}, {x + bw - gap, top + dt_px(2)}}, the_app.dtc.bad) }
+		if i == d.sel { draw.rect(dc, {{x - the_app.dtm.line, top}, {x + bw, bottom}}, with_alpha(the_app.dtc.accent, 0.22)) }
 	}
-	if d.hover >= 0 { draw.rect(dc, {{left + f32(d.hover) * bw, top}, {left + f32(d.hover) * bw + bw - gap, bottom}}, with_alpha(dtc.text, 0.12)) }
+	if d.hover >= 0 { draw.rect(dc, {{left + f32(d.hover) * bw, top}, {left + f32(d.hover) * bw + bw - gap, bottom}}, with_alpha(the_app.dtc.text, 0.12)) }
 	// the axis
-	dt_text(dc, dtm.ui_font, dtm.fs * 0.85, left, r.max.y - dt_px(4), dtc.faint, "older")
-	dt_text_r(dc, dtm.ui_font, dtm.fs * 0.85, r.max.x - dt_px(6), r.max.y - dt_px(4), dtc.faint, "newer")
-	dt_text_r(dc, dtm.ui_font, dtm.fs * 0.85, r.max.x - dt_px(6), top + dt_px(6), with_alpha(dtc.accent, 0.8), fmt.tprintf("budget %.1f ms", d.budget))
+	dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs * 0.85, left, r.max.y - dt_px(4), the_app.dtc.faint, "older")
+	dt_text_r(dc, the_app.dtm.ui_font, the_app.dtm.fs * 0.85, r.max.x - dt_px(6), r.max.y - dt_px(4), the_app.dtc.faint, "newer")
+	dt_text_r(dc, the_app.dtm.ui_font, the_app.dtm.fs * 0.85, r.max.x - dt_px(6), top + dt_px(6), with_alpha(the_app.dtc.accent, 0.8), fmt.tprintf("budget %.1f ms", d.budget))
 }
 
 @(private = "file")
 frame_tip :: proc(f: Perf_Frame, colors: [Hud_Series]draw.Color) {
 	if ui.tooltip_beside() {
 		w := dt_px(200)
-		ui.next({width = ui.px(w), height = ui.px(dtm.row * 9 + dt_px(8)), axis = .Y})
+		ui.next({width = ui.px(w), height = ui.px(the_app.dtm.row * 9 + dt_px(8)), axis = .Y})
 		if ui.column(.Start, {}, "###dt_perf_tip") {
-			ui.next({width = ui.fill(), height = ui.px(dtm.row)})
+			ui.next({width = ui.fill(), height = ui.px(the_app.dtm.row)})
 			ui.custom("###dt_pt0", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 				f := (^Perf_Frame)(user)
-				dt_text(dc, dtm.ui_font, dtm.fs, b.rect.min.x + dt_px(8), (b.rect.min.y + b.rect.max.y) * 0.5, dtc.text, fmt.tprintf("Frame %d   %.2f ms", f.tag, cpu_total(f^)))
+				dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, b.rect.min.x + dt_px(8), (b.rect.min.y + b.rect.max.y) * 0.5, the_app.dtc.text, fmt.tprintf("Frame %d   %.2f ms", f.tag, cpu_total(f^)))
 			}, new_clone(f, ui.frame_allocator()))
 			for k in Hud_Series {
-				ui.next({width = ui.fill(), height = ui.px(dtm.row)})
+				ui.next({width = ui.fill(), height = ui.px(the_app.dtm.row)})
 				row := ui.frame_new(Legend_Draw)
 				row.name, row.col = fmt.aprintf("%s   %.2f ms", perf_names[k], f.v[k], allocator = ui.frame_allocator()), colors[k]
 				rb := ui.build_box({}, fmt.tprintf("###dt_ptr%d", int(k)))
@@ -328,7 +328,7 @@ frame_tip :: proc(f: Perf_Frame, colors: [Hud_Series]draw.Color) {
 					cy := (b.rect.min.y + b.rect.max.y) * 0.5
 					sw := dt_px(9)
 					draw.rect(dc, {{b.rect.min.x + dt_px(8), cy - sw * 0.5}, {b.rect.min.x + dt_px(8) + sw, cy + sw * 0.5}}, d.col, dt_px(2))
-					dt_text(dc, dtm.ui_font, dtm.fs, b.rect.min.x + dt_px(22), cy, dtc.weak, d.name)
+					dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, b.rect.min.x + dt_px(22), cy, the_app.dtc.weak, d.name)
 				}, row
 			}
 		}
@@ -342,12 +342,12 @@ perf_lower :: proc(app: ^App, t: ^Tab, p: ^Dev_Performance, n: int) {
 	if ui.row(.Start, {}, "###dt_perf_low") {
 		ui.next({width = ui.pct(0.5), height = ui.fill(), axis = .Y})
 		if ui.column(.Start, {.Clip}, "###dt_perf_tasks") {
-			ui.next({width = ui.fill(), height = ui.px(dtm.row + dt_px(2)), bg = dtc.bar, border = dtc.border})
+			ui.next({width = ui.fill(), height = ui.px(app.dtm.row + dt_px(2)), bg = app.dtc.bar, border = app.dtc.border})
 			hb := ui.build_box({.Draw_Background, .Draw_Side_Bottom, .Draw_Side_Top}, "###dt_perf_th")
 			hb.custom = proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 				cy := (b.rect.min.y + b.rect.max.y) * 0.5
-				dt_text(dc, dtm.ui_font, dtm.fs, b.rect.min.x + dt_px(8), cy, dtc.weak, "Slowest frames")
-				dt_text_r(dc, dtm.ui_font, dtm.fs, b.rect.max.x - dt_px(8), cy, dtc.weak, "CPU")
+				dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, b.rect.min.x + dt_px(8), cy, the_app.dtc.weak, "Slowest frames")
+				dt_text_r(dc, the_app.dtm.ui_font, the_app.dtm.fs, b.rect.max.x - dt_px(8), cy, the_app.dtc.weak, "CPU")
 			}
 			idx := make([dynamic]int, 0, 32, context.temp_allocator)
 			for i := n - 1; i >= 0 && len(idx) < 400; i -= 1 { if cpu_total(frame_at(p, i)) >= 8 { append(&idx, i) } }
@@ -358,14 +358,14 @@ perf_lower :: proc(app: ^App, t: ^Tab, p: ^Dev_Performance, n: int) {
 			}
 			if len(idx) == 0 {
 				dt_empty("###dt_perf_nolong", .Check, "No slow frame", "Every frame took less than 8 ms of CPU.")
-			} else if lst, ok := dt_list("###dt_perf_list", &p.list, len(idx), dtm.row, nil, ui.fill(), ui.fill()); ok {
+			} else if lst, ok := dt_list("###dt_perf_list", &p.list, len(idx), app.dtm.row, nil, ui.fill(), ui.fill()); ok {
 				for k in lst.first ..< lst.last {
 					fi := idx[k]
 					f := frame_at(p, fi)
 					d := ui.frame_new(Task_Draw)
 					d.n, d.ms, d.sel, d.long = int(f.tag), cpu_total(f), p.sel == fi, cpu_total(f) >= PERF_LONG_TASK_MS
 					d.what = dt_frame_str(frame_what(f))
-					ui.next({width = ui.fill(), height = ui.px(dtm.row), cursor = .Arrow})
+					ui.next({width = ui.fill(), height = ui.px(app.dtm.row), cursor = .Arrow})
 					rb := ui.build_box({.Clickable}, fmt.tprintf("###dt_pk%d", k))
 					sig := ui.signal(rb)
 					d.hot = sig.hovering
@@ -375,9 +375,9 @@ perf_lower :: proc(app: ^App, t: ^Tab, p: ^Dev_Performance, n: int) {
 						cy := (r.min.y + r.max.y) * 0.5
 						dt_row_back(dc, r, false, d.sel, d.hot, true)
 						x := r.min.x + dt_px(8)
-						x += dt_text(dc, dtm.mono, dtm.mono_fs, x, cy, dtc.weak, fmt.tprintf("#%d", d.n)) + dt_px(10)
-						dt_text(dc, dtm.ui_font, dtm.fs, x, cy, dtc.text, d.what, r.max.x - x - dt_px(80))
-						dt_text_r(dc, dtm.mono, dtm.mono_fs, r.max.x - dt_px(8), cy, d.long ? dtc.bad : dtc.text, fmt.tprintf("%.1f ms", d.ms))
+						x += dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, x, cy, the_app.dtc.weak, fmt.tprintf("#%d", d.n)) + dt_px(10)
+						dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, x, cy, the_app.dtc.text, d.what, r.max.x - x - dt_px(80))
+						dt_text_r(dc, the_app.dtm.mono, the_app.dtm.mono_fs, r.max.x - dt_px(8), cy, d.long ? the_app.dtc.bad : the_app.dtc.text, fmt.tprintf("%.1f ms", d.ms))
 					}, d
 					if sig.pressed { p.sel = fi }
 				}
@@ -394,7 +394,7 @@ Task_Draw :: struct { n: int, ms: f32, sel, hot, long: bool, what: string }
 
 // A thin rule between side by side panes (no drag).
 dt_vsplit_rule :: proc(id: string) {
-	ui.next({width = ui.px(dtm.line), height = ui.fill(), bg = dtc.border})
+	ui.next({width = ui.px(the_app.dtm.line), height = ui.fill(), bg = the_app.dtc.border})
 	ui.build_box({.Draw_Background}, id)
 }
 
@@ -433,17 +433,17 @@ frame_detail :: proc(p: ^Dev_Performance, n: int) {
 	add(&lines, "Layout", fmt.tprintf("%v: %d boxes, %d items", f.d.lay_pass, f.d.lay_boxes, f.d.lay_items))
 	if f.d.comp_valid { add(&lines, "Compositor", fmt.tprintf("%d pictures, %d visible, %d replayed", f.d.comp.chunks, f.d.comp.visible, f.d.comp.replayed)) }
 	add(&lines, "WebAssembly", fmt.tprintf("%.2f ms in %d calls", f.d.wasm_ms, f.d.wasm_calls))
-	if lst, ok := dt_list("###dt_perf_dl", &dev().perf.list, len(lines), dtm.row, nil, ui.fill(), ui.fill()); ok {
+	if lst, ok := dt_list("###dt_perf_dl", &dev().perf.list, len(lines), the_app.dtm.row, nil, ui.fill(), ui.fill()); ok {
 		for k in lst.first ..< lst.last {
 			d := ui.frame_new(Pair_Draw_Simple)
 			d.k, d.v = lines[k][0], lines[k][1]
-			ui.next({width = ui.fill(), height = ui.px(dtm.row), cursor = .Arrow})
+			ui.next({width = ui.fill(), height = ui.px(the_app.dtm.row), cursor = .Arrow})
 			rb := ui.build_box({}, fmt.tprintf("###dt_pdl%d", k))
 			rb.custom, rb.custom_user = proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 				d := (^Pair_Draw_Simple)(user)
 				cy := (b.rect.min.y + b.rect.max.y) * 0.5
-				dt_text(dc, dtm.ui_font, dtm.fs, b.rect.min.x + dt_px(10), cy, dtc.weak, d.k, (b.rect.max.x - b.rect.min.x) * 0.45)
-				dt_text(dc, dtm.mono, dtm.mono_fs, b.rect.min.x + (b.rect.max.x - b.rect.min.x) * 0.48, cy, dtc.text, d.v, (b.rect.max.x - b.rect.min.x) * 0.5)
+				dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, b.rect.min.x + dt_px(10), cy, the_app.dtc.weak, d.k, (b.rect.max.x - b.rect.min.x) * 0.45)
+				dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, b.rect.min.x + (b.rect.max.x - b.rect.min.x) * 0.48, cy, the_app.dtc.text, d.v, (b.rect.max.x - b.rect.min.x) * 0.5)
 			}, d
 		}
 	}

@@ -126,7 +126,7 @@ page_context_menu :: proc(app: ^App, t: ^Tab, target: base.Handle, pos: [2]f32, 
 	cx, cy := page_client_xy(t, local, scale)
 	allowed := page.dispatch_event(p, at, dom.Event{type = "contextmenu", bubbles = true, cancelable = true, x = cx, y = cy, button = 2})
 	if t.page != p { return }
-	if !allowed && !(shift && ix.ctx_shift_forces) { return }
+	if !allowed && !(shift && app.ix.ctx_shift_forces) { return }
 	request(app, page_request(app, t, target, pos, keyboard))
 }
 
@@ -308,7 +308,7 @@ page_menu_items :: proc(app: ^App, t: ^Tab, r: ^Context_Request) {
 		if ui.menu_item("View page source", "Ctrl+U", enabled = !strings.has_prefix(t.url, "view-source:")).clicked { view_source(app, t) }
 		if ui.menu_item("Page information", icon = GLYPH_INFO).clicked { window_own(app).page_info_request = true }
 	}
-	if _, filtered := blocker_page_host(t); filtered && bl.started && bl.b.cfg.enabled {
+	if _, filtered := blocker_page_host(t); filtered && app.bl.started && app.bl.b.cfg.enabled {
 		sep(&groups)
 		if ui.menu_item(i18n.tr("Block element…"), "Ctrl+Shift+K", icon = GLYPH_CLOSE).clicked { blocker_picker_target(app, t, r.target); return }
 		res := r.image != "" ? r.image : r.link
@@ -391,7 +391,7 @@ address_or_search :: proc(app: ^App, input: string) -> string {
 Address_Search :: struct { engine: int, words: string }
 
 address_target :: proc(app: ^App, input: string) -> (target: string, search: Maybe(Address_Search)) {
-	return address_target_in(&app.sengines, ix.search_engine, input)
+	return address_target_in(&app.sengines, app.ix.search_engine, input)
 }
 
 // The same with the engines `se`, `default_id` naming the default one.
@@ -420,9 +420,9 @@ closed_tabs_destroy :: proc(app: ^App) {
 
 // A tab closing (tab_close): its address can be reopened.
 closed_tabs_push :: proc(app: ^App, address: string) {
-	if address == "" || ix.closed_tabs_max <= 0 { return }
+	if address == "" || app.ix.closed_tabs_max <= 0 { return }
 	append(&app.closed_tabs, strings.clone(address))
-	for len(app.closed_tabs) > ix.closed_tabs_max { delete(app.closed_tabs[0]); ordered_remove(&app.closed_tabs, 0) }
+	for len(app.closed_tabs) > app.ix.closed_tabs_max { delete(app.closed_tabs[0]); ordered_remove(&app.closed_tabs, 0) }
 }
 
 reopen_closed_tab :: proc(app: ^App) {

@@ -72,7 +72,7 @@ parallel_for :: proc(p: ^Thread_Pool, count: int, fn: Parallel_Proc, data: rawpt
 	sync.atomic_store(&p.next, (gen & 0xffff_ffff) << 32)
 	sync.cond_broadcast(&p.cond)
 	sync.mutex_unlock(&p.mu)
-	if wait_hook.fn != nil && sync.current_thread_id() == wait_hook.thread {
+	if wait_hook.fn != nil {
 		pool_take(p, gen, fn, data, count, hooked = true)
 		for !sync.sema_wait_with_timeout(&p.done, time.Duration(max(wait_hook.every_ns, 100_000))) { wait_hook.fn(wait_hook.user) }
 		return
@@ -84,19 +84,18 @@ parallel_for :: proc(p: ^Thread_Pool, count: int, fn: Parallel_Proc, data: rawpt
 // The calling thread lent to other work during a parallel_for: between the items it takes, and while it waits for the
 // pool's threads to finish theirs, `fn` is called at most every `every_ns` (the browser draws its interface there while
 // a long style pass runs on the pool). `fn` must not touch what the items do. Only for parallel_for called on the
-// thread that set it; nil removes it.
+// thread that set it (each thread its own: several Apps run in one process); nil removes it.
 Wait_Hook :: struct {
 	fn:       proc(user: rawptr),
 	user:     rawptr,
-	thread:   int,
 	every_ns: i64,
 }
 
-@(private)
+@(private, thread_local)
 wait_hook: Wait_Hook
 
 set_parallel_wait_hook :: proc(fn: proc(user: rawptr), user: rawptr, every_ns: i64) {
-	wait_hook = Wait_Hook{fn = fn, user = user, thread = sync.current_thread_id(), every_ns = every_ns}
+	wait_hook = Wait_Hook{fn = fn, user = user, every_ns = every_ns}
 }
 
 // Items are claimed with a compare-and-swap on a counter tagged with the round's generation: a helper still leaving

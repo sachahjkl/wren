@@ -14,8 +14,10 @@
 //
 // An action that fails ends the test there, with where it was called from: a scenario checks no return. Checks are testing.expect*.
 //
-// One browser at a time in a process: the browser's state is the process's (tools/globals_allowed.txt), and a test that failed in
-// the middle of a frame leaves it as it is, so the tests after it in that run say so and fail. test_all runs one process per scenario.
+// One browser at a time on a thread: a browser (browser.App) keeps its state, and runs on the thread that started it (docs/architecture.md,
+// Where state lives). Several threads run several browsers at once (two_apps.odin): a session started on a thread of the test's own is
+// stopped on it (`stop`). A test that failed in the middle of a frame leaves its browser as it is, so the tests after it in that run say so
+// and fail. test_all runs one process per scenario.
 // What is about a process itself (a launch, an exit code, a crash) goes through `process.odin`, over the channel.
 package e2e
 
@@ -97,6 +99,7 @@ Options :: struct {
 	no_address: bool,       // no address at all: the session of the profile comes back
 	hidden:     bool,       // a real window of the system, never shown, and its swap chain: for what is about them (window.odin). It needs a desktop session
 	software:   bool,       // no window of the system, drawn on the system's software rasterizer (Windows: WARP) whatever GPU the machine has, as on a runner without one
+	own_thread: bool,       // started on a thread of the test's own (two_apps.odin): its profile is given, and that thread ends it (`stop`), not the test's end
 }
 
 Session :: struct {
@@ -112,13 +115,16 @@ Session :: struct {
 	test:    runtime.Context,
 	temp:    runtime.Default_Temp_Allocator,
 	thread:  int,
+	allocator: runtime.Allocator,   // what made the session (its thread's: the test's own, or one of a thread of the test's)
+	own_thread: bool,
 	began:   time.Tick,
 	trace:   bool,           // WREN_E2E_TRACE: each call says when and where on stderr: where the time of a test goes
 }
 
-// What this process knows of the browser it runs: one at a time. Each is set on a test's way in or out only.
-@(private) current: ^Session
-@(private) broken:  string     // why no browser can start any more: a test was stopped in the middle of its calls
+// The browser of this thread (one at a time on a thread), and why no browser can start any more in this process (a test was stopped in the
+// middle of its calls). Each is set on a test's way in or out only.
+@(private, thread_local) current: ^Session
+@(private) broken: string
 
 // The environment of every test (WREN_DESKTOP_INTEGRATION=off, WREN_AUDIO_OUTPUT=null, WREN_SINGLE_INSTANCE=off): a driven Wren does not touch the machine's desktop, makes no
 // sound, and is nobody's single instance; the engine's compiled code is shared on the disk.
@@ -164,17 +170,20 @@ repo_root :: proc(allocator := context.temp_allocator) -> string {
 
 // A browser for this test, started in this process, with no window of the system. It ends with the test.
 start :: proc(t: ^testing.T, o := Options{}, loc := #caller_location) -> ^Session {
-	testing.set_fail_timeout(t, TEST_LIMIT, loc)
+	if !o.own_thread { testing.set_fail_timeout(t, TEST_LIMIT, loc) }   // (the test's: its own threads do not touch it)
 	if broken != "" { stop_test(t, broken, loc) }
-	if current != nil { stop_test(t, "a browser is running in this process already: one at a time (stop it first)", loc) }
+	if current != nil { stop_test(t, "a browser is running on this thread already: one at a time (stop it first)", loc) }
+	if o.own_thread && o.profile == "" { stop_test(t, "a browser of a thread of the test's own is given its profile (temp_profile on the test's thread)", loc) }
 	// (first: the cleanups go last to first, and the browser ends before its profile goes)
 	profile := o.profile != "" ? o.profile : temp_profile(t)
 	s := new(Session)
 	s.t = t
 	s.test = context
-	s.name = strings.clone(loc.procedure)
+	s.own_thread = o.own_thread
+	s.name = o.own_thread ? fmt.aprintf("%s_%d", loc.procedure, sync.current_thread_id()) : strings.clone(loc.procedure)   // (its own folder)
 	s.out = strings.clone(fmt.tprintf("%s/build/%s/%s", repo_root(), OUT_DIR, s.name))
 	s.thread = sync.current_thread_id()
+	s.allocator = context.allocator
 	s.began = time.tick_now()
 	_, s.trace = os.lookup_env("WREN_E2E_TRACE", context.temp_allocator)
 	base.remove_tree(s.out)
@@ -185,7 +194,7 @@ start :: proc(t: ^testing.T, o := Options{}, loc := #caller_location) -> ^Sessio
 	s.ctx.logger = context.logger
 	s.ctx.assertion_failure_proc = context.assertion_failure_proc
 	current = s
-	testing.cleanup(t, proc(p: rawptr) { end_of_test((^Session)(p)) }, s)
+	if !o.own_thread { testing.cleanup(t, proc(p: rawptr) { end_of_test((^Session)(p)) }, s) }
 
 	args := make([dynamic]string, context.temp_allocator)
 	append(&args, o.hidden ? "--hidden" : "--headless", "--no-single-instance", "--profile", profile)
@@ -209,7 +218,14 @@ start :: proc(t: ^testing.T, o := Options{}, loc := #caller_location) -> ^Sessio
 }
 
 // The browser ends here (a test about what the next start finds does this), with everything it keeps written. A test that does not is ended by this at its end.
+// A session of a thread of the test's own ends here too.
 stop :: proc(s: ^Session) {
+	browser_stop(s)
+	if s.own_thread { end_of_test(s) }
+}
+
+@(private)
+browser_stop :: proc(s: ^Session) {
 	if s.app == nil { return }
 	context = s.ctx
 	app := s.app
@@ -226,7 +242,7 @@ restart :: proc(s: ^Session, o := Options{}, loc := #caller_location) -> ^Sessio
 
 @(private)
 end_of_browser :: proc(s: ^Session) {
-	stop(s)
+	browser_stop(s)
 	runtime.default_temp_allocator_destroy(&s.temp)   // (`restart`: the session goes on, its browser's temporary memory does not)
 	if current == s { current = nil }
 }
@@ -242,11 +258,11 @@ end_of_test :: proc(s: ^Session) {
 	if testing.failed(s.t) { keep_failure(s) }
 	end_of_browser(s)
 	// (the test program is built with every allocation tracked: here nothing of the session may be left)
-	when base.TRACK_MEMORY { if !testing.failed(s.t) { testing.expectf(s.t, base.mem_report(s.name) == 0, "%s leaves nothing allocated: the report above", s.name) } }
+	when base.TRACK_MEMORY { if !testing.failed(s.t) && !s.own_thread { testing.expectf(s.t, base.mem_report(s.name) == 0, "%s leaves nothing allocated: the report above", s.name) } }
 	if !testing.failed(s.t) { base.remove_tree(s.out) }
-	delete(s.name)
-	delete(s.out)
-	free(s)
+	delete(s.name, s.allocator)
+	delete(s.out, s.allocator)
+	free(s, s.allocator)
 }
 
 // A file of this test's folder (the folder stays only when it fails).
@@ -331,6 +347,9 @@ file_page :: proc(dir, name, html: string, loc := #caller_location) -> string {
 	_ = os.write_entire_file(path, transmute([]byte)html)
 	return file_url(path)
 }
+
+// How many browsers use what the process shares (browser/process_share.odin): 0 once each has stopped.
+process_share_users :: proc() -> int { return browser.process_share_users() }
 
 // The `file:` address of a path.
 file_url :: proc(path: string) -> string {

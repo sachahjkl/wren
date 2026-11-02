@@ -150,7 +150,7 @@ js_realm :: proc(p: ^Page) -> ^Js_Realm {
 	}
 	js_load_realm_started(p, r)   // rejections, modules, eval policy (js_load_realm.odin)
 	js_prelude(p)   // (WREN_JS_PRELUDE: js_profile.odin)
-	if dev_console_max > 0 && p.worker == nil { dev_console_arm(p, dev_console_max) }   // the developer tools are open: console messages carry their objects (devtools_api.odin)
+	if the_pages.dev_console_max > 0 && p.worker == nil { dev_console_arm(p, the_pages.dev_console_max) }   // the developer tools are open: console messages carry their objects (devtools_api.odin)
 	if js_on_realm_started != nil && p.worker == nil { js_on_realm_started(p) }
 	return r
 }
@@ -278,8 +278,7 @@ js_startup :: proc(prefs: ^config.Prefs, profile_dir: string) {
 	js.cache_start(s.cache)
 }
 
-js_shutdown :: proc() {
-	compile_shutdown()   // the compile threads first: they store into the cache (js_load_compile.odin)
+js_shutdown :: proc() {   // (every App's compile threads stopped first: they store into the cache, js_load_compile.odin)
 	js.cache_stop()
 	delete(js_engine_version, base.process_allocator())
 	js_engine_version = ""

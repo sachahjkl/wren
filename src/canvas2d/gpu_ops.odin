@@ -491,7 +491,8 @@ Glyph_Key :: struct {
 	bucket: u8,
 }
 
-@(private)
+// The glyphs' shapes, of the thread that draws canvases (each App draws on its own).
+@(private, thread_local)
 glyph_shapes: map[Glyph_Key]^Shape_Blob
 
 // Forgets the glyph shapes (the fonts changed).

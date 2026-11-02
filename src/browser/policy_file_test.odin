@@ -5,6 +5,7 @@ import "core:testing"
 // The policy file is the administrator's: beside the program, never wherever the program was started from.
 @(test)
 policy_file_is_beside_the_executable :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect_value(t, default_policy_file(`C:\Apps\Wren\wren.exe`), `C:\Apps\Wren\policies.txt`)
 	testing.expect_value(t, default_policy_file(`C:/Apps/Wren/wren.exe`), `C:/Apps/Wren\policies.txt`)
 	testing.expect_value(t, default_policy_file(`C:\wren.exe`), `C:\policies.txt`)

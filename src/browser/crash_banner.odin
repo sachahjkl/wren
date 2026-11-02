@@ -24,14 +24,14 @@ path_tail :: proc(path: string, n: int) -> string {
 }
 
 crash_banner :: proc(app: ^App) {
-	if recovery.banner == .None { return }
+	if app.recovery.banner == .None { return }
 	em := ui.font_size()
 	text: string
-	switch recovery.banner {
+	switch app.recovery.banner {
 	case .Closed:
-		text = recovery.restored > 0 ? fmt.tprintf(i18n.tr(recovery.restored, "Wren closed unexpectedly. Restored %d tab.", "Wren closed unexpectedly. Restored %d tabs."), recovery.restored) : i18n.tr("Wren closed unexpectedly.")
+		text = app.recovery.restored > 0 ? fmt.tprintf(i18n.tr(app.recovery.restored, "Wren closed unexpectedly. Restored %d tab.", "Wren closed unexpectedly. Restored %d tabs."), app.recovery.restored) : i18n.tr("Wren closed unexpectedly.")
 	case .Twice:
-		text = fmt.tprintf(i18n.tr("Wren crashed twice while restoring; your tabs are saved in %s"), path_tail(recovery.backup, 2))
+		text = fmt.tprintf(i18n.tr("Wren crashed twice while restoring; your tabs are saved in %s"), path_tail(app.recovery.backup, 2))
 	case .None:
 	}
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.6))})
@@ -41,7 +41,7 @@ crash_banner :: proc(app: ^App) {
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
 		if ui.tags("warn") { ui.label(fmt.aprintf("%s###crash_text", text, allocator = ui.frame_allocator())) }
 		ui.spacer(ui.px(em * 0.6))
-		primary := recovery.banner == .Twice ? i18n.tr("Restore tabs") : i18n.tr("Start fresh")
+		primary := app.recovery.banner == .Twice ? i18n.tr("Restore tabs") : i18n.tr("Start fresh")
 		do_primary = action_button(primary, "crash_primary", em * 8.5)
 		ui.spacer(ui.px(em * 0.4))
 		do_details = action_button(i18n.tr("Details"), "crash_details", em * 6.5)
@@ -52,9 +52,9 @@ crash_banner :: proc(app: ^App) {
 	// (after the row is built: these open and close tabs)
 	switch {
 	case do_primary:
-		if recovery.banner == .Twice { recovery_restore_backup(app) } else { recovery_start_fresh(app) }
+		if app.recovery.banner == .Twice { recovery_restore_backup(app) } else { recovery_start_fresh(app) }
 	case do_details: recovery_show_details(app)
-	case close:      recovery.banner = .None
+	case close:      app.recovery.banner = .None
 	}
 	if do_primary || do_details || close { request_frames(app, 3) }
 }

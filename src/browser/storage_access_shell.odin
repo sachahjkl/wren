@@ -10,25 +10,23 @@ import "wb:config"
 import "wb:i18n"
 import "wb:page"
 
-@(private = "file")
-sa_queue: [dynamic]^page.Storage_Access_Ask
 
 storage_access_shell_init :: proc(app: ^App) {
-	page.storage_access_embedder = {ask = storage_access_shell_ask, user = app}
+	app.pages.storage_access_embedder = {ask = storage_access_shell_ask, user = app}
 }
 
 storage_access_shell_destroy :: proc(app: ^App) {
-	page.storage_access_embedder = {}
-	for r in sa_queue { page.storage_access_done(r, false) }
-	delete(sa_queue)
-	sa_queue = nil
+	app.pages.storage_access_embedder = {}
+	for r in app.sa_queue { page.storage_access_done(r, false) }
+	delete(app.sa_queue)
+	app.sa_queue = nil
 }
 
 @(private = "file")
 storage_access_shell_ask :: proc(user: rawptr, p: ^page.Page, req: ^page.Storage_Access_Ask) {
 	app := (^App)(user)
 	switch config.string_of(&app.prefs, "browser.dialogs.test_answer") {
-	case "": append(&sa_queue, req)
+	case "": append(&app.sa_queue, req)
 	case "cancel": page.storage_access_done(req, false)
 	case: page.storage_access_done(req, true)
 	}
@@ -37,8 +35,8 @@ storage_access_shell_ask :: proc(user: rawptr, p: ^page.Page, req: ^page.Storage
 
 // The prompt over the page (the first request waiting), each frame while one waits.
 storage_access_shell_build :: proc(app: ^App) {
-	if len(sa_queue) == 0 { return }
-	req := sa_queue[0]
+	if len(app.sa_queue) == 0 { return }
+	req := app.sa_queue[0]
 	em := ui.font_size()
 	open := true
 	answered, granted := false, false
@@ -56,7 +54,7 @@ storage_access_shell_build :: proc(app: ^App) {
 	}
 	if !open { answered, granted = true, false }   // Escape, a click outside: blocked
 	if answered {
-		ordered_remove(&sa_queue, 0)
+		ordered_remove(&app.sa_queue, 0)
 		page.storage_access_done(req, granted)
 		request_frames(app, 2)
 	}

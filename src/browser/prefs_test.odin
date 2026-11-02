@@ -11,6 +11,7 @@ import "wb:net"
 
 @(test)
 every_definition_is_valid :: proc(t: ^testing.T) {
+	test_app(t)
 	p := config.prefs_make()
 	defer config.prefs_destroy(&p)
 	register_all_prefs(&p)
@@ -40,6 +41,7 @@ every_definition_is_valid :: proc(t: ^testing.T) {
 // text.renderer picks Slug (atlas is the default); the tolerance is given in thousandths of an em.
 @(test)
 text_renderer_preference_reaches_the_font_settings :: proc(t: ^testing.T) {
+	test_app(t)
 	p := config.prefs_make()
 	defer config.prefs_destroy(&p)
 	register_all_prefs(&p)
@@ -62,6 +64,7 @@ text_renderer_preference_reaches_the_font_settings :: proc(t: ^testing.T) {
 // path is given.
 @(test)
 emoji_preferences_reach_the_font_settings :: proc(t: ^testing.T) {
+	test_app(t)
 	p := config.prefs_make()
 	defer config.prefs_destroy(&p)
 	register_all_prefs(&p)
@@ -84,6 +87,7 @@ emoji_preferences_reach_the_font_settings :: proc(t: ^testing.T) {
 
 @(test)
 settings_round_trip_through_the_registry :: proc(t: ^testing.T) {
+	test_app(t)
 	p := config.prefs_make()
 	defer config.prefs_destroy(&p)
 	register_all_prefs(&p)

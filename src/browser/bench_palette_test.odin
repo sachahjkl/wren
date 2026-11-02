@@ -24,6 +24,7 @@ bench_palette :: proc(t: ^testing.T) {
 	defer page_render_test_unlock()
 	when !BENCH_PALETTE { return }
 	app := new(App)
+	the_app = app   // (what the code reaches without an App: this one)
 	defer free(app)
 	app.prefs = config.prefs_make()
 	defer config.prefs_destroy(&app.prefs)

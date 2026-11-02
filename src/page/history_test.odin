@@ -13,6 +13,7 @@ urls_of :: proc(sh: ^Session_History) -> string {
 // Back then elsewhere: the old forward entries become a branch; the web sees the active path only.
 @(test)
 history_tree_branches :: proc(t: ^testing.T) {
+	test_pages(t)
 	sh: Session_History
 	defer session_destroy(&sh)
 	session_push(&sh, "a", 1)
@@ -49,6 +50,7 @@ history_tree_branches :: proc(t: ^testing.T) {
 
 @(test)
 history_tree_push_state_and_replace :: proc(t: ^testing.T) {
+	test_pages(t)
 	sh: Session_History
 	defer session_destroy(&sh)
 	session_push(&sh, "https://a/", 7)
@@ -68,6 +70,7 @@ history_tree_push_state_and_replace :: proc(t: ^testing.T) {
 // The web's window and the tree's size limit.
 @(test)
 history_tree_limits :: proc(t: ^testing.T) {
+	test_pages(t)
 	sh: Session_History
 	defer session_destroy(&sh)
 	session_set_limits(&sh, 3, 5)
@@ -86,6 +89,7 @@ history_tree_limits :: proc(t: ^testing.T) {
 
 @(test)
 history_tree_load :: proc(t: ^testing.T) {
+	test_pages(t)
 	sh: Session_History
 	defer session_destroy(&sh)
 	saved := []Saved_Entry{

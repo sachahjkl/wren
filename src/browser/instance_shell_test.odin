@@ -5,6 +5,7 @@ import "wb:config"
 
 @(test)
 single_instance_applies_by_default_and_gives_way_to_the_escapes :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect(t, instance_wanted(true, false, false, "", true), "the default")
 	testing.expect(t, !instance_wanted(false, false, false, "", true), "browser.single_instance off")
 	testing.expect(t, !instance_wanted(true, true, false, "", true), "--new-window / --no-single-instance")
@@ -20,6 +21,7 @@ single_instance_applies_by_default_and_gives_way_to_the_escapes :: proc(t: ^test
 
 @(test)
 switches_are_taken_out_of_the_arguments :: proc(t: ^testing.T) {
+	test_app(t)
 	found, rest := extract_switch({"--setup", "https://a/", "--pref", "x=y"}, "--setup")
 	testing.expect(t, found, "found")
 	testing.expect_value(t, len(rest), 3)
@@ -32,6 +34,7 @@ switches_are_taken_out_of_the_arguments :: proc(t: ^testing.T) {
 
 @(test)
 single_instance_preference_defaults_on :: proc(t: ^testing.T) {
+	test_app(t)
 	p := config.prefs_make()
 	defer config.prefs_destroy(&p)
 	register_instance_prefs(&p)

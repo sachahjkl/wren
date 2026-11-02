@@ -19,23 +19,22 @@ Bl_Shell :: struct {
 	reload_pending: bool,         // a switch changed: the page loads again when the panel closes
 }
 
-bl: Bl_Shell
 
 blocker_start :: proc(app: ^App) {
-	if bl.started { return }
-	bl.started = true
-	bl.b.on_event = blocker_event
-	blocker.start(&bl.b, &app.loop, &app.client, &app.loader, &app.prefs, app.cfg.persist_profile ? app.profile_dir : "")
+	if app.bl.started { return }
+	app.bl.started = true
+	app.bl.b.on_event = blocker_event
+	blocker.start(&app.bl.b, &app.loop, &app.client, &app.loader, &app.prefs, app.cfg.persist_profile ? app.profile_dir : "")
 }
 
 blocker_stop :: proc(app: ^App) {
-	if !bl.started { return }
-	blocker.shutdown(&bl.b, &app.loader)
-	bl.started = false
+	if !app.bl.started { return }
+	blocker.shutdown(&app.bl.b, &app.loader)
+	app.bl.started = false
 }
 
 blocker_tab_new :: proc(app: ^App, t: ^Tab) {
-	if bl.started { blocker.tab_register(&bl.b, t.id, t.scope) }
+	if app.bl.started { blocker.tab_register(&app.bl.b, t.id, t.scope) }
 }
 
 @(private = "file")
@@ -44,7 +43,7 @@ blocker_event :: proc(user: rawptr, ev: ^blocker.Event) {
 	if app == nil { return }
 	switch ev.kind {
 	case .Blocked:
-		if bl.b.cfg.console && ev.tab != 0 {
+		if app.bl.b.cfg.console && ev.tab != 0 {
 			for t in tabs_all(app) {
 				if t.id != ev.tab { continue }
 				rule := ev.rule != "" ? fmt.tprintf(" (%s)", ev.rule) : ""
@@ -62,8 +61,8 @@ blocker_event :: proc(user: rawptr, ev: ^blocker.Event) {
 
 // The state the blocker keeps for a tab (nil before the first page).
 blocker_tab :: proc(t: ^Tab) -> ^blocker.Tab_State {
-	if t == nil || !bl.started { return nil }
-	return blocker.tab_state(&bl.b, t.id)
+	if t == nil || !the_app.bl.started { return nil }
+	return blocker.tab_state(&the_app.bl.b, t.id)
 }
 
 // The host the icon and the panel speak about: the page's, when it is an http(s) page.
@@ -78,12 +77,12 @@ blocker_page_host :: proc(t: ^Tab) -> (host: string, ok: bool) {
 blocker_site_key :: proc(host: string) -> string { return blocker.site_key(host) }
 
 blocker_site_enabled :: proc(host: string) -> bool {
-	return .Off not_in blocker.site_flags(&bl.b, host)
+	return .Off not_in blocker.site_flags(&the_app.bl.b, host)
 }
 
 // Switches filtering on or off for a site and reloads the page.
 blocker_set_site_enabled :: proc(app: ^App, t: ^Tab, host: string, on: bool) {
-	blocker.site_toggle(&bl.b, blocker_site_key(host), .Off, !on)
+	blocker.site_toggle(&app.bl.b, blocker_site_key(host), .Off, !on)
 	if t != nil { reload(app, t) }
 }
 
@@ -99,4 +98,4 @@ blocker_open_dashboard :: proc(app: ^App, tab_name := "") {
 _ :: fetch
 _ :: page
 
-blocker_update_now :: proc() { if bl.started { blocker.updater_round(&bl.b, true) } }
+blocker_update_now :: proc() { if the_app.bl.started { blocker.updater_round(&the_app.bl.b, true) } }

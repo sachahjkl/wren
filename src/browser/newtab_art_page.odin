@@ -27,13 +27,13 @@ ART_OFF_URL :: "about:home?art=off"   // the art page's link: back to the plain 
 // Chooses what a new tab shows: the art page when the option is on, else the plain start page. Called by show_home.
 // Returns true when it handled the tab (loaded the art page).
 art_newtab_maybe :: proc(app: ^App, t: ^Tab, want_next: bool) -> bool {
-	if !art.cfg.enabled { return false }
+	if !app.art.cfg.enabled { return false }
 	art_seen_new_tab(app)   // first art new tab of the session: starts the background task; marks activity
 	_ = want_next   // the recent-pick ring already avoids repeating the last ones, so "another painting" differs on its own
 	// pick a painting suited to the window's orientation
 	landscape := art_window_landscape(app)
 	it := art_pick(landscape)
-	if it == nil && !art.cfg.offline_fallback { return false }   // nothing ready and no fallback: the plain start page
+	if it == nil && !app.art.cfg.offline_fallback { return false }   // nothing ready and no fallback: the plain start page
 	html := art_page_html(app, it, landscape)
 	art_show_page(app, t, html)
 	t.art_empty = it == nil   // no painting yet: art_fill_waiting replaces this page when the first one is ready
@@ -185,9 +185,9 @@ art_page_html :: proc(app: ^App, it: ^Art_Item, landscape: bool) -> string {
 
 	// the caption and the buttons
 	strings.write_string(&sb, "<div class=\"art-caption\">\n")
-	if art.cfg.show_caption {
+	if app.art.cfg.show_caption {
 		strings.write_string(&sb, "<div class=\"art-text\">\n")
-		title := it != nil && it.title != "" ? it.title : (it == nil && art.fails == 0 ? i18n.tr("Loading a painting\u2026") : i18n.tr("A painting"))
+		title := it != nil && it.title != "" ? it.title : (it == nil && app.art.fails == 0 ? i18n.tr("Loading a painting\u2026") : i18n.tr("A painting"))
 		fmt.sbprintf(&sb, "<p class=\"art-title\">%s</p>\n", art_escape(title))
 		art_write_meta(&sb, it)
 		if it != nil && it.license != "" { fmt.sbprintf(&sb, "<p class=\"art-license\">%s</p>\n", art_escape(it.license)) }
@@ -230,7 +230,7 @@ art_fit_mode :: proc(it: ^Art_Item, landscape: bool) -> string {
 @(private = "file")
 art_write_meta :: proc(sb: ^strings.Builder, it: ^Art_Item) {
 	if it == nil {
-		if art.fails > 0 { fmt.sbprintf(sb, "<p class=\"art-meta\">%s</p>\n", i18n.tr("No painting could be loaded yet. Trying again.")) }
+		if the_app.art.fails > 0 { fmt.sbprintf(sb, "<p class=\"art-meta\">%s</p>\n", i18n.tr("No painting could be loaded yet. Trying again.")) }
 		return
 	}
 	strings.write_string(sb, "<p class=\"art-meta\">")

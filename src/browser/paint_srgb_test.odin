@@ -47,8 +47,8 @@ pf_open :: proc(f: ^Paint_Fx, src: string) -> bool {
 	ok: bool
 	f.face, ok = font.load_embedded(&f.fonts, font.FALLBACK_UI_DATA)
 	draw.init(&f.dc, &f.r, &f.fonts)
-	page_render.settings = lay.settings_from_prefs(&f.prefs)
-	effects_settings = effects_settings_from_prefs(&f.prefs)
+	the_app.page_render.settings = lay.settings_from_prefs(&f.prefs)
+	the_app.effects_settings = effects_settings_from_prefs(&f.prefs)
 	f.doc = dom.document_create(nil)
 	html.parse_into(f.doc, f.doc.root, transmute([]byte)src, 2_000_000)
 	ss := style.settings_default()
@@ -56,7 +56,7 @@ pf_open :: proc(f: ^Paint_Fx, src: string) -> bool {
 	style.settings_destroy(&ss)
 	style.sync_document_sheets(f.eng, f.doc, "about:test")
 	f.st = style.compute_styles(f.eng, f.doc, {})
-	lay.run(&f.l, lay.Input{doc = f.doc, styled = f.st, settings = &page_render.settings,
+	lay.run(&f.l, lay.Input{doc = f.doc, styled = f.st, settings = &the_app.page_render.settings,
 		text = lay.Text_Api{user = f, font = pf_font, width = pf_width, metrics = pf_metrics},
 		viewport = {f32(PAINT_SIZE.x), f32(PAINT_SIZE.y)}, scale = 1, band_h = 256})
 	return ok
@@ -114,6 +114,7 @@ div { position: absolute; top: 0; width: 40px; height: 40px }
 
 @(test)
 srgb_painting_matches_browsers :: proc(t: ^testing.T) {
+	test_app(t)
 	page_render_test_lock()
 	defer page_render_test_unlock()
 	f := new(Paint_Fx)

@@ -94,8 +94,8 @@ pr_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	// the canvas colour of the document fills the pane first (CSS: the root or body background becomes the viewport's),
 	// then the display list is painted clipped to the pane with its scroll offset, exactly as the page is painted.
 	st := l.styled != nil ? (^style.Styled)(l.styled) : nil
-	bg := st != nil ? to_draw(st.canvas) : dtc.bg
-	draw.rect(dc, r, bg.a > 0 ? bg : dtc.bg)
+	bg := st != nil ? to_draw(st.canvas) : the_app.dtc.bg
+	draw.rect(dc, r, bg.a > 0 ? bg : the_app.dtc.bg)
 	if !l.valid { return }
 	size := draw.Vec2{r.max.x - r.min.x, r.max.y - r.min.y}
 	draw.push_clip(dc, r)
@@ -132,7 +132,7 @@ preview_html_rendered :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 	pr.scroll_key = box.key
 	sig := ui.signal(box)
 	size := draw.Vec2{box.size.x, box.size.y}
-	scale := dtm.sc
+	scale := app.dtm.sc
 	if size.x > 0 && size.y > 0 {
 		preview_render_layout(app, pr, size, scale)
 		// the wheel scrolls it; the scroll is clamped to the document's extent (what layout found) minus the pane

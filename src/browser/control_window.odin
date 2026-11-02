@@ -24,10 +24,10 @@ control_hit_test :: proc(app: ^App, p: [2]f32) -> platform.Hit {
 
 // What each frame of a drag held drew, oldest first, since control_drag_samples_reset (browser.frame.drag_probe).
 control_drag_samples :: proc(allocator := context.temp_allocator) -> []api.Drag_Sample {
-	kept := min(drag_probe.n, DRAG_PROBE_CAP)
+	kept := min(the_app.drag_probe.n, DRAG_PROBE_CAP)
 	list := make([]api.Drag_Sample, kept, allocator)
 	for i in 0 ..< kept {
-		s := drag_probe.ring[(drag_probe.n - kept + i) % DRAG_PROBE_CAP]
+		s := the_app.drag_probe.ring[(the_app.drag_probe.n - kept + i) % DRAG_PROBE_CAP]
 		list[i] = {
 			pointer = f64(s.mouse_x), edge = f64(s.finger_x), page_width = f64(s.page_w), area_width = f64(s.area_w),
 			read_us = i64(s.read / 1000), shown_us = i64(s.shown / 1000), done_us = i64(s.done / 1000), dt = f64(s.dt), waited_ms = f64(s.waited), moves = int(s.moves),
@@ -94,9 +94,9 @@ control_stats_window :: proc(app: ^App, st: ^api.Stats, allocator := context.tem
 	st.cursor = control_cursor(app, allocator)
 	st.surface, st.panel_surface = control_surfaces(app)
 	st.gpu_process_id, st.gpu_process_starts = webgl.gpu_process_id(), webgl.gpu_process_starts()
-	st.chrome_frames, st.full_frames = int(chrome_frames.frames), int(chrome_frames.frame_no)
-	st.fps, st.frames_presented = f64(hud.nums.fps), app.frame_log.presented
-	st.working_set_bytes, st.private_bytes = int(hud.nums.working_set), int(hud.nums.private_bytes)
+	st.chrome_frames, st.full_frames = int(app.chrome_frames.frames), int(app.chrome_frames.frame_no)
+	st.fps, st.frames_presented = f64(app.hud.nums.fps), app.frame_log.presented
+	st.working_set_bytes, st.private_bytes = int(app.hud.nums.working_set), int(app.hud.nums.private_bytes)
 	loops := platform.pump_stats(wnd.win)
 	st.paint_frames, st.modal_loops = loops.paint_frames, loops.modal_loops
 	if wnd.ui != nil {
@@ -165,5 +165,5 @@ control_a11y_act :: proc(app: ^App, c: ^Call, e: A11y_Entry, r: platform.A11y_Re
 	x := r
 	x.target, x.tree = e.id, e.tree
 	ui.a11y_inject(active_window(app).ui, x)
-	return frames_op(app, c, nil, the_remote.cfg.settle_frames)
+	return frames_op(app, c, nil, app.remote.cfg.settle_frames)
 }

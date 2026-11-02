@@ -28,6 +28,8 @@ main :: proc() {
 	if err != nil { fmt.eprintln("cannot read the module"); os.exit(2) }
 
 	loop: host.Loop
+	pages: page.Pages
+	page.bind(&pages)
 	client: net.Client
 	blocking: host.Blocking_Pool
 	host.loop_init(&loop)
@@ -79,6 +81,7 @@ main :: proc() {
 	page.settings_destroy(&settings)
 	delete(fns)
 	delete(image)
+	page.pages_shutdown()
 	page.process_shutdown()
 	fetch.loader_destroy(&loader)
 	host.blocking_destroy(&blocking)

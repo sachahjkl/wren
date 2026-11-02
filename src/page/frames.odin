@@ -62,7 +62,6 @@ Frame_Hooks :: struct {
 	attached: proc(user: rawptr, child: ^Page),
 }
 
-frame_hooks: Frame_Hooks
 
 Container_Kind :: enum u8 { Iframe, Frame }
 
@@ -123,7 +122,7 @@ next_navigable_id: u64   // (atomic: an id is unique in the process)
 @(private, thread_local)
 navigable_count: int
 
-// The end of the pages of this thread (an App's, at its end; process_shutdown): the registry of navigables (empty once every page is closed).
+// The end of the pages of this thread (an App's, at its end; pages_shutdown): the registry of navigables (empty once every page is closed).
 frames_shutdown :: proc() {
 	shared_workers_shutdown()   // (lingering ones: extendedLifetime)
 	ports_shutdown()
@@ -481,7 +480,7 @@ frame_process_attributes :: proc(n_in: ^Navigable, initial: bool) {
 		frame_load_event_now(n)
 		return
 	}
-	if initial && n.kind == .Iframe && frame_hooks.attached != nil {
+	if initial && n.kind == .Iframe && the_pages.frame_hooks.attached != nil {
 		if v, has := dom.get_attribute(d, el, "loading"); has && strings.equal_fold(strings.trim_space(v), "lazy") && n.distance > p.settings.frames.lazy_margin_px {
 			n.lazy_wait = true
 			delete(n.lazy_url)
@@ -698,7 +697,7 @@ frame_fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		l.task = base.NIL_HANDLE
 		if ev.error == .Aborted { return }
 		p := n.parent
-		if ev.error == .Blocked_By_Client && embedder.collapse_blocked {
+		if ev.error == .Blocked_By_Client && the_pages.embedder.collapse_blocked {
 			log(p, .Warn, fmt.tprintf("frame %s: blocked (%s)", l.url, ev.detail))
 			frame_show_error(n, "", "", collapse = true)
 			return
@@ -1001,7 +1000,7 @@ frame_install_page :: proc(n_in: ^Navigable, href_in: string, mode: Origin_Mode,
 		n := (^Navigable)(data)
 		n.page = nil
 	}, n)
-	if frame_hooks.attached != nil { frame_hooks.attached(frame_hooks.user, c) }
+	if the_pages.frame_hooks.attached != nil { the_pages.frame_hooks.attached(the_pages.frame_hooks.user, c) }
 	return c
 }
 

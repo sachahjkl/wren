@@ -8,6 +8,7 @@ import "wb:forms"
 // invalid values are shown as they are).
 @(test)
 date_field_display_forms :: proc(t: ^testing.T) {
+	test_app(t)
 	d := date_field_display(.Date, "2026-09-21")
 	testing.expectf(t, strings.contains(d, "2026") && strings.contains(d, "21") && !strings.contains(d, "2026-09-21"), "date: %q", d)
 	dt := date_field_display(.Datetime_Local, "2026-09-21T07:05")

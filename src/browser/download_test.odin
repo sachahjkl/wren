@@ -10,6 +10,7 @@ import "core:unicode/utf8"
 @(test)
 downloads_survive_a_restart :: proc(t: ^testing.T) {
 	app := new(App)   // (its downloads start empty)
+	the_app = app   // (what the code reaches without an App: this one)
 	defer free(app)
 	dir := strings.concatenate({os.get_env("TEMP", context.temp_allocator), "/wren_downloads_test"}, context.temp_allocator)
 	_ = os.make_directory_all(dir)
@@ -45,6 +46,7 @@ downloads_survive_a_restart :: proc(t: ^testing.T) {
 // RFC 6266 / 8187.
 @(test)
 content_disposition :: proc(t: ^testing.T) {
+	test_app(t)
 	att, name := parse_content_disposition(`attachment; filename="report.pdf"`)
 	testing.expect(t, att)
 	testing.expect_value(t, name, "report.pdf")
@@ -77,6 +79,7 @@ content_disposition :: proc(t: ^testing.T) {
 // Names Windows accepts, that never pick the folder.
 @(test)
 download_names :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect_value(t, download_file_name("report.pdf", "", ""), "report.pdf")
 	testing.expect_value(t, download_file_name("", "https://x.org/files/a%20b.zip?x=1#f", "application/zip"), "a b.zip")
 	testing.expect_value(t, download_file_name("", "https://x.org/", "application/pdf"), "download.pdf")
@@ -100,6 +103,7 @@ download_names :: proc(t: ^testing.T) {
 
 @(test)
 download_unique_names :: proc(t: ^testing.T) {
+	test_app(t)
 	taken :: proc(name: string, user: rawptr) -> bool {
 		for n in (^[]string)(user)^ { if n == name { return true } }
 		return false
@@ -113,6 +117,7 @@ download_unique_names :: proc(t: ^testing.T) {
 // What a navigation's answer becomes.
 @(test)
 document_actions :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect_value(t, doc_action("text/html", "", "https://a/"), Doc_Action.Render)
 	testing.expect_value(t, doc_action("", "", "https://a/"), Doc_Action.Render)
 	testing.expect_value(t, doc_action("text/html", "attachment; filename=x.html", "https://a/"), Doc_Action.Download)
@@ -149,6 +154,7 @@ file_name_ok :: proc(t: ^testing.T, n: string, max_bytes: int, label: string) {
 // index past the end of the stem and end the browser.
 @(test)
 download_names_long_extension :: proc(t: ^testing.T) {
+	test_app(t)
 	x := strings.repeat("x", 250, context.temp_allocator)
 	_, header_name := parse_content_disposition(strings.concatenate({`attachment; filename="a.`, x, `"`}, context.temp_allocator))
 	n := download_file_name(header_name, "https://x.org/d", "application/octet-stream")
@@ -168,6 +174,7 @@ download_names_long_extension :: proc(t: ^testing.T) {
 
 @(test)
 download_names_hostile :: proc(t: ^testing.T) {
+	test_app(t)
 	cases := []string{
 		"", " ", "   ", ".", "..", "...", ". . .", " . ", "\x00", "\x01\x02\x03", "\x7f", "\u202e", "\u202e\u202d.txt",
 		"<>", "<>:\"|?*", "????", "a:b", "a:b:c.txt", "file.txt:evil.exe", "con", "CON", "con.txt", "Con.tar.gz", "nul", "NUL.", "NUL .txt",
@@ -210,6 +217,7 @@ download_names_hostile :: proc(t: ^testing.T) {
 // Pseudo-random names built from the pieces that went wrong before: the same invariants, 30000 times.
 @(test)
 download_names_random :: proc(t: ^testing.T) {
+	test_app(t)
 	pieces := []string{
 		"a", "b", "Z", "é", "€", "😀", ".", "..", " ", "_", "-", "x", "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", "con", "NUL", "com1", "LPT3", "aux", "prn",
 		".txt", ".tar", ".gz", ".exe", ".pdf", "<", ">", ":", "\"", "|", "?", "*", "/", "\\", "\x00", "\x1f", "\u202e", "\xff", "\xc3", "\xe2\x82", "%", "%2e", "%00",

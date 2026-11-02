@@ -331,7 +331,7 @@ frame_gate_init :: proc() {
 }
 
 // The kind of frame window_frame makes for a window's WM_PAINT now: inside a chrome frame, a chrome frame.
-window_frame_kind :: proc() -> platform.Frame_Kind { return chrome_frames.nested ? .Light : .Full }
+window_frame_kind :: proc() -> platform.Frame_Kind { return the_app.chrome_frames.nested ? .Light : .Full }
 
 // A frame from the window procedure can be made now (the frame gate).
 window_frame_allowed :: proc(app: ^App, bw: ^Browser_Window) -> bool {

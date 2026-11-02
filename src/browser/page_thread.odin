@@ -16,6 +16,7 @@ import "core:time"
 import "toolkit:draw"
 import "wb:config"
 import "wb:host"
+import "wb:page"
 import "wb:style"
 import "wb:base"
 
@@ -49,7 +50,6 @@ Layout_Job :: struct {
 	fonts_gen: u64,
 }
 
-@(private = "file")
 Page_Thread :: struct {
 	thread:   ^host.Thread,
 	go, done: sync.Sema,
@@ -59,8 +59,6 @@ Page_Thread :: struct {
 	thread_id: int,          // the page thread's id (page_world_check)
 }
 
-@(private = "file")
-pt: Page_Thread
 
 // The layout of `t` for this frame, on the page thread when it is expected to be long (see above), else here.
 page_layout :: proc(app: ^App, t: ^Tab, styled: ^style.Styled, size: draw.Vec2, scale: f32, fonts_gen: u64) {
@@ -71,19 +69,19 @@ page_layout :: proc(app: ^App, t: ^Tab, styled: ^style.Styled, size: draw.Vec2, 
 		layout_job_run(&job)
 		return
 	}
-	if pt.thread == nil {
+	if app.pt.thread == nil {
 		stack := int(config.int_of(&app.prefs, "browser.shell.page_thread_stack_mb")) << 20
 		context = base.process_context()
-		pt.thread = host.thread_start(page_thread_main, &pt, stack, name = "wren-page-layout")
-		if pt.thread == nil { layout_job_run(&job); return }
+		app.pt.thread = host.thread_start(page_thread_main, &app.pt, stack, name = "wren-page-layout")
+		if app.pt.thread == nil { layout_job_run(&job); return }
 	}
-	pt.job = job
-	chrome_frames.page_locked = true
-	defer chrome_frames.page_locked = false
-	sync.sema_post(&pt.go)
-	pt.passes += 1
+	app.pt.job = job
+	app.chrome_frames.page_locked = true
+	defer app.chrome_frames.page_locked = false
+	sync.sema_post(&app.pt.go)
+	app.pt.passes += 1
 	// chrome frames while it runs, at the frame rate (shell_preempt decides when one is due)
-	for !sync.sema_wait_with_timeout(&pt.done, time.Millisecond) { shell_preempt(app) }
+	for !sync.sema_wait_with_timeout(&app.pt.done, time.Millisecond) { shell_preempt(app) }
 }
 
 // Debug builds: who may touch the current page's world (its layout, document, styles) now. Not a chrome frame (it
@@ -91,20 +89,20 @@ page_layout :: proc(app: ^App, t: ^Tab, styled: ^style.Styled, size: draw.Vec2, 
 // page thread lays the page out (page_locked). Called where the shell reads or changes a layout.
 page_world_check :: #force_inline proc(what: string) {
 	when ODIN_DEBUG {
-		if chrome_frames.nested { panic(what) }
-		if chrome_frames.page_locked && sync.current_thread_id() != sync.atomic_load(&pt.thread_id) { panic(what) }
+		if the_app.chrome_frames.nested { panic(what) }
+		if the_app.chrome_frames.page_locked && sync.current_thread_id() != sync.atomic_load(&the_app.pt.thread_id) { panic(what) }
 	}
 }
 
 // The last layout pass of `t` was long enough for the page thread (and the preference allows it).
 page_layout_is_long :: proc(app: ^App, t: ^Tab) -> bool {
-	return t.layout_ms_known && config.bool_of(&app.prefs, "browser.shell.page_thread") && chrome_frames.cfg.preempt && t.layout_ms >= config.float_of(&app.prefs, "browser.shell.page_thread_min_ms")
+	return t.layout_ms_known && config.bool_of(&app.prefs, "browser.shell.page_thread") && app.chrome_frames.cfg.preempt && t.layout_ms >= config.float_of(&app.prefs, "browser.shell.page_thread_min_ms")
 }
 
 // Chrome frames can be made now (the frame is in its page phase, not inside one), and the preference allows it.
 @(private = "file")
 page_thread_wanted :: proc(app: ^App) -> bool {
-	return config.bool_of(&app.prefs, "browser.shell.page_thread") && chrome_frames.cfg.preempt && chrome_frames.phase != .None && !chrome_frames.nested
+	return config.bool_of(&app.prefs, "browser.shell.page_thread") && app.chrome_frames.cfg.preempt && app.chrome_frames.phase != .None && !app.chrome_frames.nested
 }
 
 @(private = "file")
@@ -121,17 +119,18 @@ page_thread_main :: proc(data: rawptr) {
 		sync.sema_wait(&p.go)
 		if sync.atomic_load(&p.stop) { return }
 		the_app = p.job.app   // (this thread is the App's: what the layout reaches of it without an argument)
+		page.bind(&p.job.app.pages)
 		layout_job_run(&p.job)
 		free_all(context.temp_allocator)
 		sync.sema_post(&p.done)
 	}
 }
 
-page_thread_destroy :: proc() {
-	if pt.thread != nil {
-		sync.atomic_store(&pt.stop, true)
-		sync.sema_post(&pt.go)
-		host.thread_join(pt.thread)
+page_thread_destroy :: proc(app: ^App) {
+	if app.pt.thread != nil {
+		sync.atomic_store(&app.pt.stop, true)
+		sync.sema_post(&app.pt.go)
+		host.thread_join(app.pt.thread)
 	}
-	pt = {}
+	app.pt = {}
 }

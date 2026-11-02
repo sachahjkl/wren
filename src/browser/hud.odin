@@ -174,11 +174,11 @@ hud_settings_from_prefs :: proc(p: ^config.Prefs) -> (s: Hud_Settings) {
 }
 
 // The frame budget (ms): browser.status_bar.graph.budget_ms, else the frame period (pacing.odin).
-hud_budget :: proc(app: ^App) -> f32 { b, _, _ := hud_thresholds(hud.cfg, frame_budget_ms(app)); return b }
+hud_budget :: proc(app: ^App) -> f32 { b, _, _ := hud_thresholds(app.hud.cfg, frame_budget_ms(app)); return b }
 
 // The warning / error thresholds (ms; 0 = none).
-hud_warn :: proc(app: ^App) -> f32 { _, w, _ := hud_thresholds(hud.cfg, frame_budget_ms(app)); return w }
-hud_bad :: proc(app: ^App) -> f32 { _, _, b := hud_thresholds(hud.cfg, frame_budget_ms(app)); return b }
+hud_warn :: proc(app: ^App) -> f32 { _, w, _ := hud_thresholds(app.hud.cfg, frame_budget_ms(app)); return w }
+hud_bad :: proc(app: ^App) -> f32 { _, _, b := hud_thresholds(app.hud.cfg, frame_budget_ms(app)); return b }
 
 // Budget and thresholds from the settings: set values win, else the frame period and multiples of the budget.
 hud_thresholds :: proc(s: Hud_Settings, period_ms: f32) -> (budget, warn, bad: f32) {
@@ -266,7 +266,6 @@ Hud :: struct {
 	mono_tried:   bool,
 }
 
-hud: Hud
 
 HUD_HISTORY_MIN :: 512   // samples kept at least: frames per second are counted on them
 
@@ -278,71 +277,71 @@ hud_displayed :: proc(d: render.Displayed_Frame) {
 	lat: f32 = -1
 	if d.input._nsec != 0 && d.shown._nsec > d.input._nsec { lat = f32(f64(d.shown._nsec - d.input._nsec) / 1e6) }
 	now := ui.now_ms()
-	append(&hud.shown, Shown_Sample{t_ms = now, latency_ms = lat, missed = d.missed})
+	append(&the_app.hud.shown, Shown_Sample{t_ms = now, latency_ms = lat, missed = d.missed})
 	// keep the rate window (and a bound)
 	keep_from := 0
-	for keep_from < len(hud.shown) && (hud.shown[keep_from].t_ms < now - hud.cfg.window_ms - HUD_SHOWN_EXTRA_MS || len(hud.shown) - keep_from > HUD_SHOWN_MAX) { keep_from += 1 }
-	if keep_from > 0 { remove_range(&hud.shown, 0, keep_from) }
+	for keep_from < len(the_app.hud.shown) && (the_app.hud.shown[keep_from].t_ms < now - the_app.hud.cfg.window_ms - HUD_SHOWN_EXTRA_MS || len(the_app.hud.shown) - keep_from > HUD_SHOWN_MAX) { keep_from += 1 }
+	if keep_from > 0 { remove_range(&the_app.hud.shown, 0, keep_from) }
 	prof_displayed(d, lat)
 }
 
 hud_init :: proc(app: ^App) {
-	hud.cfg = hud_settings_from_prefs(&app.prefs)
+	app.hud.cfg = hud_settings_from_prefs(&app.prefs)
 	hud_resize(app)
-	hud.gpu_applied = -1
-	hud.watch = config.watch(&app.prefs, "browser.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+	app.hud.gpu_applied = -1
+	app.hud.watch = config.watch(&app.prefs, "browser.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		if !strings.has_prefix(name, "browser.status_bar.") && !strings.has_prefix(name, "browser.title.") { return }
 		app := (^App)(user)
-		hud_settings_destroy(&hud.cfg)
-		hud.cfg = hud_settings_from_prefs(p)
+		hud_settings_destroy(&app.hud.cfg)
+		app.hud.cfg = hud_settings_from_prefs(p)
 		hud_resize(app)
-		hud.title_ms, hud.nums.at_ms = 0, 0   // shows the change at the next frame
+		app.hud.title_ms, app.hud.nums.at_ms = 0, 0   // shows the change at the next frame
 		request_frames(app, 2)
 	}, app)
 }
 
 @(private = "file")
 hud_resize :: proc(app: ^App) {
-	n := max(hud.cfg.samples, HUD_HISTORY_MIN)
-	if len(hud.history.buf) == 0 {
-		ui.history_init(&hud.history, n, CPU_SERIES)
-		hud.details = make([]Frame_Detail, n)
-	} else if n != ui.history_capacity(&hud.history) {
-		ui.history_resize(&hud.history, n)
-		old := hud.details
-		hud.details = make([]Frame_Detail, n)
-		for d in old { if d.serial > 0 { hud.details[d.serial % u64(n)] = d } }
+	n := max(app.hud.cfg.samples, HUD_HISTORY_MIN)
+	if len(app.hud.history.buf) == 0 {
+		ui.history_init(&app.hud.history, n, CPU_SERIES)
+		app.hud.details = make([]Frame_Detail, n)
+	} else if n != ui.history_capacity(&app.hud.history) {
+		ui.history_resize(&app.hud.history, n)
+		old := app.hud.details
+		app.hud.details = make([]Frame_Detail, n)
+		for d in old { if d.serial > 0 { app.hud.details[d.serial % u64(n)] = d } }
 		delete(old)
 	}
 }
 
 hud_destroy :: proc(app: ^App) {
-	if hud.settle != base.NIL_HANDLE { host.clear_timer(&app.loop, hud.settle); hud.settle = base.NIL_HANDLE }
-	config.unwatch(&app.prefs, hud.watch)
-	hud_settings_destroy(&hud.cfg)
-	ui.history_destroy(&hud.history)
-	delete(hud.details)
-	delete(hud.shown)
-	delete(hud.title_text)
-	hud = {}
+	if app.hud.settle != base.NIL_HANDLE { host.clear_timer(&app.loop, app.hud.settle); app.hud.settle = base.NIL_HANDLE }
+	config.unwatch(&app.prefs, app.hud.watch)
+	hud_settings_destroy(&app.hud.cfg)
+	ui.history_destroy(&app.hud.history)
+	delete(app.hud.details)
+	delete(app.hud.shown)
+	delete(app.hud.title_text)
+	app.hud = {}
 }
 
 // Somebody reads the frame's phases: the status bar, or statistics in the title.
 hud_wants_clock :: proc() -> bool {
-	return hud.cfg.bar_visible || (hud.cfg.title_stats && title_has_stats(hud.cfg.title_format)) || devtools_any_showing(the_app, .Performance)   // (the developer tools' Performance tab reads the frames too)
+	return the_app.hud.cfg.bar_visible || (the_app.hud.cfg.title_stats && title_has_stats(the_app.hud.cfg.title_format)) || devtools_any_showing(the_app, .Performance)   // (the developer tools' Performance tab reads the frames too)
 }
 
 @(private = "file")
 hud_wants_gpu :: proc() -> bool {
-	if !hud.cfg.gpu_timing { return false }
-	if hud.cfg.bar_visible { return true }
-	return hud.cfg.title_stats && strings.contains(hud.cfg.title_format, "{gpu}")
+	if !the_app.hud.cfg.gpu_timing { return false }
+	if the_app.hud.cfg.bar_visible { return true }
+	return the_app.hud.cfg.title_stats && strings.contains(the_app.hud.cfg.title_format, "{gpu}")
 }
 
 // The style pass of the frame (after page.styles): full restyle, partial, or nothing new.
 hud_styles :: proc(p: rawptr, s: ^style.Styled) {
-	if !phase_clock.on || s == nil { return }
-	h := &hud
+	if !the_app.phase_clock.on || s == nil { return }
+	h := &the_app.hud
 	defer { h.style_page, h.style_pass, h.style_serial = p, s.pass_id, s.serial }
 	if p != h.style_page { h.cur.restyle, h.cur.restyled = .None, 0; return }   // another page: nothing to compare with
 	switch {
@@ -364,30 +363,30 @@ hud_styles :: proc(p: rawptr, s: ^style.Styled) {
 
 // The layout pass just run (prof_layout).
 hud_layout :: proc(l: ^lay.Layout) {
-	if !phase_clock.on { return }
-	hud.cur.lay_pass = l.last_pass
-	hud.cur.lay_steps = l.stats
-	hud.cur.lay_pre = {i32(l.pre_counts[0]), i32(l.pre_counts[1])}
-	hud.cur.lay_boxes, hud.cur.lay_items = i32(len(l.boxes)), i32(len(l.items))
+	if !the_app.phase_clock.on { return }
+	the_app.hud.cur.lay_pass = l.last_pass
+	the_app.hud.cur.lay_steps = l.stats
+	the_app.hud.cur.lay_pre = {i32(l.pre_counts[0]), i32(l.pre_counts[1])}
+	the_app.hud.cur.lay_boxes, the_app.hud.cur.lay_items = i32(len(l.boxes)), i32(len(l.items))
 }
 
 // The end of a frame (prof_frame_end): its sample, the late GPU time of an earlier one, the numbers and the title.
 hud_frame_end :: proc(app: ^App) {
-	h := &hud
+	h := &app.hud
 	now := ui.now_ms()
-	if phase_clock.on { hud_sample(app, now) }
+	if app.phase_clock.on { hud_sample(app, now) }
 	// what to measure from the next frame on
 	render.set_gpu_timing(&app.r, hud_wants_gpu() || prof_on())
 	wasm.guest_timing(h.cfg.wasm_timing && h.cfg.bar_visible)
-	if phase_clock.on && !h.settle_skip && (h.nums.at_ms == 0 || now - h.nums.at_ms >= h.cfg.refresh_ms) { hud_refresh(app, now) }
+	if app.phase_clock.on && !h.settle_skip && (h.nums.at_ms == 0 || now - h.nums.at_ms >= h.cfg.refresh_ms) { hud_refresh(app, now) }
 	hud_title(app, now)
 	h.settle_skip = false
 }
 
 @(private = "file")
 hud_sample :: proc(app: ^App, now: f64) {
-	h := &hud
-	a := &phase_clock.acc
+	h := &app.hud
+	a := &app.phase_clock.acc
 	d := h.cur
 	h.cur = {}
 	d.wait_ms = f32(a[.Wait] + a[.Present])
@@ -435,30 +434,30 @@ hud_sample :: proc(app: ^App, now: f64) {
 // for more), which the numbers are refreshed for before it is built and which is no sample.
 @(private = "file")
 hud_arm_settle :: proc() {
-	if hud.settle != base.NIL_HANDLE || the_app == nil { return }
-	hud.settle = host.set_timer(&the_app.loop, hud.cfg.window_ms + HUD_SETTLE_EXTRA_MS, 0, hud_settle_timer, the_app)
+	if the_app.hud.settle != base.NIL_HANDLE || the_app == nil { return }
+	the_app.hud.settle = host.set_timer(&the_app.loop, the_app.hud.cfg.window_ms + HUD_SETTLE_EXTRA_MS, 0, hud_settle_timer, the_app)
 }
 
 @(private = "file")
 hud_settle_timer :: proc(data: rawptr) {
-	hud.settle = base.NIL_HANDLE
+	the_app.hud.settle = base.NIL_HANDLE
 	app := (^App)(data)
 	// (this timer is no work of the page's: counted as a task it drew two frames, which were samples, which put the settling off and armed
 	// it again: four or five frames a second, forever, at rest)
 	host.quiet_note(&app.loop)
 	now := ui.now_ms()
-	if idle := now - hud.last_frame_ms; idle < hud.cfg.window_ms {
-		hud.settle = host.set_timer(&app.loop, hud.cfg.window_ms - idle + HUD_SETTLE_EXTRA_MS, 0, hud_settle_timer, app)
+	if idle := now - app.hud.last_frame_ms; idle < app.hud.cfg.window_ms {
+		app.hud.settle = host.set_timer(&app.loop, app.hud.cfg.window_ms - idle + HUD_SETTLE_EXTRA_MS, 0, hud_settle_timer, app)
 		return
 	}
-	hud.settle_skip = true   // the frame this wakes is no sample
+	app.hud.settle_skip = true   // the frame this wakes is no sample
 	window_request_errand(app, active_window(app), .Status_Bar)   // (a wake without anything to do draws no frame)
-	if phase_clock.on { hud_refresh(app, now) }
+	if app.phase_clock.on { hud_refresh(app, now) }
 }
 
 // The numbers of the last `window_ms`.
 hud_refresh :: proc(app: ^App, now: f64) {
-	h := &hud
+	h := &app.hud
 	n := &h.nums
 	n^ = {at_ms = now}
 	h.changes += 1
@@ -672,7 +671,7 @@ title_compose :: proc(format, separator: string, values: [Title_Field]string, al
 
 // The values of the title's fields now (stats: "" when not shown or not measured).
 title_values :: proc(app: ^App, t: ^Tab) -> (v: [Title_Field]string) {
-	h := &hud
+	h := &app.hud
 	c := h.cfg.comma
 	v[.App] = APP_NAME
 	v[.Version] = APP_VERSION_SHOWN
@@ -682,7 +681,7 @@ title_values :: proc(app: ^App, t: ^Tab) -> (v: [Title_Field]string) {
 	v[.Engine] = fmt.tprintf("Wasmtime %s", wasm.WASMTIME_VERSION)
 	v[.Toolkit] = fmt.tprintf("gui_toolkit %s", ui.VERSION)
 	if t != nil { v[.Page], v[.Url] = t.title, t.url }
-	if h.cfg.title_stats && phase_clock.on {
+	if h.cfg.title_stats && app.phase_clock.on {
 		n := &h.nums
 		v[.Fps] = fmt.tprintf("%.0f", n.fps)
 		if n.frames > 0 { v[.Cpu] = fmt_ms(n.cpu_mean, c) }
@@ -703,12 +702,12 @@ title_due :: proc(same_page: bool, stats: bool, since_ms, interval_ms: f64, sett
 // Sets the window title when it changed (title_due), calling the system only when the text differs.
 @(private = "file")
 hud_title :: proc(app: ^App, now: f64) {
-	h := &hud
+	h := &app.hud
 	t := current_tab(app)
 	page_title, page_url := "", ""
 	if t != nil { page_title, page_url = t.title, t.url }
 	same_page := raw_data(page_title) == raw_data(h.title_page) && len(page_title) == len(h.title_page) && raw_data(page_url) == raw_data(h.title_url)
-	stats := h.cfg.title_stats && phase_clock.on && title_has_stats(h.cfg.title_format)
+	stats := h.cfg.title_stats && app.phase_clock.on && title_has_stats(h.cfg.title_format)
 	if !title_due(h.title_text != "" && same_page, stats, now - h.title_ms, h.cfg.title_ms, h.settle_skip) { return }
 	h.title_page, h.title_url, h.title_ms = page_title, page_url, now
 	text := title_compose(h.cfg.title_format, h.cfg.title_sep, title_values(app, t))
@@ -724,8 +723,8 @@ hud_title :: proc(app: ^App, now: f64) {
 
 // The monospace font of the status bar's numbers (Consolas, else the toolkit's embedded one), loaded when first shown.
 hud_mono :: proc(app: ^App) {
-	if hud.mono_tried { return }
-	hud.mono_tried = true
+	if app.hud.mono_tried { return }
+	app.hud.mono_tried = true
 	id, ok, _ := font.load_system_or_embedded(&app.fonts, platform.system_font_path("consola.ttf"), font.FALLBACK_MONO_DATA)
-	if ok { hud.mono = id; active_window(app).ui.mono_font = id }
+	if ok { app.hud.mono = id; active_window(app).ui.mono_font = id }
 }

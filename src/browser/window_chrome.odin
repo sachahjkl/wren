@@ -147,7 +147,7 @@ app_icon :: proc(app: ^App, size: f32) {
 	}, d, {.Clickable})
 	b.cursor = .Arrow
 	sig := ui.signal(b)
-	if hud.title_text != "" { tip(sig, hud.title_text) }
+	if app.hud.title_text != "" { tip(sig, app.hud.title_text) }
 	if sig.clicked || sig.right_clicked { app.wchrome.menu_win, app.wchrome.menu_at = active_window(app).win, {b.rect.min.x, b.rect.max.y} }
 }
 

@@ -7,6 +7,7 @@ import "wb:base"
 
 @(test)
 storage_keys_round_trip_through_file_names :: proc(t: ^testing.T) {
+	test_pages(t)
 	m: Storage_Manager
 	m.dir = "x"
 	for key in ([]string{"https://a.example", "http://127.0.0.1:8765", "https://a.example:8443^https://b.example", "https://[::1]:3000^null"}) {
@@ -25,6 +26,7 @@ storage_keys_round_trip_through_file_names :: proc(t: ^testing.T) {
 
 @(test)
 site_data_is_listed_and_cleared_by_type :: proc(t: ^testing.T) {
+	test_pages(t)
 	dir := fmt.tprintf("%s/wren_sites_test", base.temp_dir(context.temp_allocator))
 	base.remove_tree(dir)
 	m: Storage_Manager
@@ -71,6 +73,7 @@ site_data_is_listed_and_cleared_by_type :: proc(t: ^testing.T) {
 
 @(test)
 local_storage_is_put_back_from_its_images :: proc(t: ^testing.T) {
+	test_pages(t)
 	for persisted in ([]bool{true, false}) {
 		dir := fmt.tprintf("%s/wren_images_test_%v", base.temp_dir(context.temp_allocator), persisted)
 		base.remove_tree(dir)

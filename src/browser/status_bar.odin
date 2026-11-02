@@ -34,7 +34,7 @@ hud_series_colors :: proc() -> (c: [Hud_Series]draw.Color) {
 	c[.UI] = ui.color("accent")
 	c[.Submit] = themed("weak")
 	c[.GPU] = draw.hex(0x38bdf8ff)
-	for k in Hud_Series { if v, ok := hud.cfg.colors[k].?; ok { c[k] = v } }
+	for k in Hud_Series { if v, ok := the_app.hud.cfg.colors[k].?; ok { c[k] = v } }
 	return
 }
 
@@ -76,7 +76,7 @@ page_state :: proc(t: ^Tab) -> Page_State {
 }
 
 status_bar_build :: proc(app: ^App, t: ^Tab) {
-	if !hud.cfg.bar_visible { hud.panel_open = false; return }
+	if !app.hud.cfg.bar_visible { app.hud.panel_open = false; return }
 	hud_mono(app)
 	graph_box: ^ui.Box
 	if ui.status_bar("###statusbar") {
@@ -89,7 +89,7 @@ status_bar_build :: proc(app: ^App, t: ^Tab) {
 			if b.size.x != ws.status_left_width { ws.status_left_width = b.size.x; window_request_errand(app, active_window(app), .Status_Bar, 2) }
 		}
 		if ui.status_fill("###sb_left") {
-			link := hud.cfg.link_preview ? hovered_link(t) : ""
+			link := app.hud.cfg.link_preview ? hovered_link(t) : ""
 			if link != "" {
 				ui.status_item(fmt.tprintf("%s###sb_link", link), tone = "", width = ui.fill())
 			} else if t != nil {
@@ -98,7 +98,7 @@ status_bar_build :: proc(app: ^App, t: ^Tab) {
 		}
 		graph_box = status_right(app)
 	}
-	if hud.panel_open && graph_box != nil { frame_stats_panel(app, t, graph_box.rect) }
+	if app.hud.panel_open && graph_box != nil { frame_stats_panel(app, t, graph_box.rect) }
 }
 
 // One item of the left part: its text, a shorter form for a narrow bar ("" = none), and how long it stays when the bar
@@ -164,7 +164,7 @@ status_left :: proc(app: ^App, t: ^Tab, avail: f32) {
 	p := t.page
 	items := make([dynamic]Status_Left_Item, 0, 8, context.temp_allocator)
 	add :: proc(items: ^[dynamic]Status_Left_Item, it: Status_Left_Item) { append(items, it) }
-	for item in hud.cfg.items {
+	for item in app.hud.cfg.items {
 		switch item {
 		case .State:
 			st := page_state(t)
@@ -172,7 +172,7 @@ status_left :: proc(app: ^App, t: ^Tab, avail: f32) {
 			add(&items, {kind = item, text = st.text, id = "###sb_state", tone = st.tone, tip = st.detail != st.text ? st.detail : "", priority = 100})
 		case .Size:
 			if t.load == nil || t.load.bytes <= 0 { continue }
-			add(&items, {kind = item, text = fmt_bytes(t.load.bytes, hud.cfg.comma), id = "###sb_size", tone = "weak", tip = "Size of the document", priority = 50})
+			add(&items, {kind = item, text = fmt_bytes(t.load.bytes, app.hud.cfg.comma), id = "###sb_size", tone = "weak", tip = "Size of the document", priority = 50})
 		case .Origin:
 			if p == nil || p.env.location.scheme == "about" { continue }
 			o := url.origin_serialize(p.env.origin, context.temp_allocator)
@@ -236,30 +236,30 @@ status_left :: proc(app: ^App, t: ^Tab, avail: f32) {
 status_right :: proc(app: ^App) -> (graph_box: ^ui.Box) {
 	pacer := pacer_of(app)
 	em := ui.font_size()
-	n := &hud.nums
-	c := hud.cfg.comma
+	n := &app.hud.nums
+	c := app.hud.cfg.comma
 	if remote_indicator() {
 		tip(ui.status_item(fmt.tprintf("%s###sb_remote", remote_indicator_text()), tone = "warn"), remote_indicator_tip())
 		ui.spacer(ui.px(em * 0.3))
 	}
-	for m in hud.cfg.metrics {
+	for m in app.hud.cfg.metrics {
 		switch m {
 		case .Graph:
 			colors := hud_series_colors()
-			ui.next({width = ui.px(em * hud.cfg.graph_em), height = ui.px(ui.dense(em * 1.25))})
+			ui.next({width = ui.px(em * app.hud.cfg.graph_em), height = ui.px(ui.dense(em * 1.25))})
 			flat := transmute([len(Hud_Series)]draw.Color)colors
 			budget := hud_budget(app)
 			opts := ui.Frame_Graph_Opts{
-				colors = flat[:], series = len(Hud_Series), bars = hud.cfg.samples, budget = hud.cfg.budget_line ? budget : 0,
-				scale = hud.cfg.scale > 0 ? hud.cfg.scale : budget, max_scale = hud.cfg.max_scale, warn = hud_warn(app), bad = hud_bad(app),
+				colors = flat[:], series = len(Hud_Series), bars = app.hud.cfg.samples, budget = app.hud.cfg.budget_line ? budget : 0,
+				scale = app.hud.cfg.scale > 0 ? app.hud.cfg.scale : budget, max_scale = app.hud.cfg.max_scale, warn = hud_warn(app), bad = hud_bad(app),
 			}
-			res := ui.frame_graph("###sb_graph", &hud.history, opts)
+			res := ui.frame_graph("###sb_graph", &app.hud.history, opts)
 			graph_box = res.box
-			if res.clicked { hud.panel_open = !hud.panel_open }
+			if res.clicked { app.hud.panel_open = !app.hud.panel_open }
 			if res.hovered >= 0 { graph_tooltip(app, res.hovered, colors) } else { tip(res.sig, "Time of the recent frames by phase: click for details (Ctrl+Shift+B)") }
 			ui.spacer(ui.px(em * 0.3))
 		case .Fps:
-			tip(ui.status_item(fmt.tprintf("%.0f fps###sb_fps", n.fps), mono = true), fmt.tprintf("Frames drawn per second (last %.0f ms). Nothing changes: no frames. The screen this window is on: %s Hz%s (frames aim for %s Hz).", hud.cfg.window_ms, fmt_hz(pacer.display.hz, c), pacer.display.max_hz > pacer.display.hz * 1.05 ? fmt.tprintf(", up to %s Hz%s", fmt_hz(pacer.display.max_hz, c), pacer.variable ? ": variable refresh, frames timed by the browser" : "") : "", fmt_hz(pacer.hz, c)))
+			tip(ui.status_item(fmt.tprintf("%.0f fps###sb_fps", n.fps), mono = true), fmt.tprintf("Frames drawn per second (last %.0f ms). Nothing changes: no frames. The screen this window is on: %s Hz%s (frames aim for %s Hz).", app.hud.cfg.window_ms, fmt_hz(pacer.display.hz, c), pacer.display.max_hz > pacer.display.hz * 1.05 ? fmt.tprintf(", up to %s Hz%s", fmt_hz(pacer.display.max_hz, c), pacer.variable ? ": variable refresh, frames timed by the browser" : "") : "", fmt_hz(pacer.hz, c)))
 		case .Cpu:
 			text := n.frames > 0 ? fmt.tprintf("CPU %s ms###sb_cpu", fmt_ms(n.cpu_mean, c)) : "CPU -- ms###sb_cpu"
 			tone := "weak"
@@ -280,10 +280,10 @@ status_right :: proc(app: ^App) -> (graph_box: ^ui.Box) {
 // The values of one frame of the graph, next to the pointer.
 @(private = "file")
 graph_tooltip :: proc(app: ^App, index: int, colors: [Hud_Series]draw.Color) {
-	s := ui.history_at(&hud.history, index)
+	s := ui.history_at(&app.hud.history, index)
 	if s == nil { return }
 	em := ui.font_size()
-	c := hud.cfg.comma
+	c := app.hud.cfg.comma
 	w := em * 15
 	if ui.tooltip() {
 		ago := ui.now_ms() - s.t_ms
@@ -301,7 +301,7 @@ graph_tooltip :: proc(app: ^App, index: int, colors: [Hud_Series]draw.Color) {
 		// the three rows are always there ("--" when the frame had none): a row that came and went as the pointer crossed the bars of a
 		// graph where some frames restyle and others do not made the tooltip jump in height under it
 		restyle, lay_pass, wasm := "--", "--", "--"
-		if d := &hud.details[s.tag % u64(len(hud.details))]; d.serial == s.tag {
+		if d := &app.hud.details[s.tag % u64(len(app.hud.details))]; d.serial == s.tag {
 			if d.restyle != .None { restyle = restyle_text(d) }
 			if d.lay_pass != .None { lay_pass = pass_name(d.lay_pass) }
 			if d.wasm_calls > 0 { wasm = fmt.tprintf("%s ms, %d calls", fmt_ms(d.wasm_ms, c), d.wasm_calls) }
@@ -337,9 +337,9 @@ pass_name :: proc(k: lay.Pass_Kind) -> string {
 // The most recent frame of the history whose detail satisfies `pick`.
 @(private = "file")
 recent_detail :: proc(pick: proc(d: ^Frame_Detail) -> bool) -> ^Frame_Detail {
-	for i := ui.history_len(&hud.history) - 1; i >= 0; i -= 1 {
-		s := ui.history_at(&hud.history, i)
-		d := &hud.details[s.tag % u64(len(hud.details))]
+	for i := ui.history_len(&the_app.hud.history) - 1; i >= 0; i -= 1 {
+		s := ui.history_at(&the_app.hud.history, i)
+		d := &the_app.hud.details[s.tag % u64(len(the_app.hud.details))]
 		if d.serial == s.tag && pick(d) { return d }
 	}
 	return nil
@@ -386,8 +386,8 @@ Panel_Source :: struct {
 }
 
 frame_stats_source :: proc(app: ^App, t: ^Tab) -> (s: Panel_Source) {
-	s.n = hud.nums
-	s.comma = hud.cfg.comma
+	s.n = app.hud.nums
+	s.comma = app.hud.cfg.comma
 	s.budget = s.n.budget > 0 ? s.n.budget : hud_budget(app)
 	s.pacer = pacer_of(app)^
 	s.no_tearing = app.pacing.cfg.mode == .Tearing && !s.pacer.tearing
@@ -398,9 +398,9 @@ frame_stats_source :: proc(app: ^App, t: ^Tab) -> (s: Panel_Source) {
 	if d := recent_detail(proc(d: ^Frame_Detail) -> bool { return d.restyle != .None }); d != nil { s.restyle, s.has_restyle = d^, true }
 	if d := recent_detail(proc(d: ^Frame_Detail) -> bool { return d.lay_pass != .None }); d != nil { s.layout, s.has_layout = d^, true }
 	if d := recent_detail(proc(d: ^Frame_Detail) -> bool { return d.comp_valid }); d != nil { s.comp, s.has_comp = d^, true }
-	s.gpu_have, s.gpu_last, s.gpu_cache = gpu_steps_state.have, gpu_steps_state.last, gpu_steps_state.cache
+	s.gpu_have, s.gpu_last, s.gpu_cache = app.gpu_steps_state.have, app.gpu_steps_state.last, app.gpu_steps_state.cache
 	s.wasm_modules = t != nil && t.page != nil ? len(t.page.instances) : 0
-	s.wasm_timing = hud.cfg.wasm_timing
+	s.wasm_timing = app.hud.cfg.wasm_timing
 	s.wasm_compiler = config.string_of(&app.prefs, "wasm.wasmtime.compiler")
 	s.tex = render.texture_memory(&app.r)
 	s.pic_used, s.pic_capacity = draw.retained_bytes(&app.dc)
@@ -429,7 +429,7 @@ frame_stats_panel :: proc(app: ^App, t: ^Tab, anchor: draw.Rect) {
 	em0 := ui.font_size()
 	if ui.style({font_size = f32(int(em0 * 0.88 + 0.5))}) {
 		em := ui.font_size()
-		n := &hud.nums
+		n := &app.hud.nums
 		col := em * 17
 		gap := em * 0.6
 		ncols := clamp(int((f32(active_window(app).win.size.x) - em) / (col + gap)), 1, 3)
@@ -443,12 +443,12 @@ frame_stats_panel :: proc(app: ^App, t: ^Tab, anchor: draw.Rect) {
 			if ui.row(.Center, {}, "###fs_head") {
 				ui.spacer(ui.px(em * 0.9))
 				ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0})
-				what := n.frames > 0 ? fmt.tprintf("last %s s, %d frames", fmt_ms(f32(hud.cfg.window_ms / 1000), src.comma), n.frames) : "idle: no frames drawn lately"
+				what := n.frames > 0 ? fmt.tprintf("last %s s, %d frames", fmt_ms(f32(app.hud.cfg.window_ms / 1000), src.comma), n.frames) : "idle: no frames drawn lately"
 				ui.label(fmt.tprintf("Frame statistics, %s###fs_title", what))
 				ui.next({width = ui.px(em * 1.9), height = ui.px(em * 1.9), radius = em * CHROME_BUTTON_RADIUS})
 				close := ui.icon_button("###fs_close", GLYPH_CLOSE)
 				tip(close, "Close (Ctrl+Shift+B)")
-				if close.clicked { hud.panel_open = false }
+				if close.clicked { app.hud.panel_open = false }
 				ui.spacer(ui.px(em * 0.4))
 			}
 			ui.hline(ui.px(w))
@@ -582,12 +582,12 @@ panel_lines :: proc(src: ^Panel_Source, section: Panel_Section) -> []Stat_Line {
 
 // Ctrl+B / Ctrl+Shift+B, and the View menu.
 toggle_status_bar :: proc(app: ^App) {
-	set_pref_bool(app, "browser.status_bar.visible", !hud.cfg.bar_visible)
+	set_pref_bool(app, "browser.status_bar.visible", !app.hud.cfg.bar_visible)
 }
 
 toggle_frame_stats :: proc(app: ^App) {
-	hud.panel_open = !hud.panel_open || !hud.cfg.bar_visible
-	if hud.panel_open && !hud.cfg.bar_visible { set_pref_bool(app, "browser.status_bar.visible", true) }
+	app.hud.panel_open = !app.hud.panel_open || !app.hud.cfg.bar_visible
+	if app.hud.panel_open && !app.hud.cfg.bar_visible { set_pref_bool(app, "browser.status_bar.visible", true) }
 	request_frames(app, 2)
 }
 
@@ -610,7 +610,7 @@ hud_captures :: proc(app: ^App, pos: draw.Vec2) -> bool {
 	if palette_captures(app, pos) { return true }   // and the command palette while it is open (palette.odin)
 	if setup_captures(app) { return true }   // and the Setup dialog (setup.odin)
 	if urlbar_captures(app, pos) { return true }   // and the address bar's suggestions (urlbar.odin)
-	if !hud.panel_open { return false }
+	if !app.hud.panel_open { return false }
 	r, ok := ui.popover_rect(PANEL_ID)
 	return ok && draw.rect_contains(r, pos)
 }

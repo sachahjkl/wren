@@ -77,6 +77,7 @@ big_html :: proc() -> string {
 
 @(test)
 document_parsed_in_the_background_is_identical_to_the_synchronous_parse :: proc(t: ^testing.T) {
+	test_pages(t)
 	// the HTML tree builder allocates from the process heap (its Lexbor callbacks run with the default context): free
 	// from the same heap rather than through the test's tracker
 	context.allocator = runtime.heap_allocator()
@@ -155,6 +156,7 @@ Parse_Info :: struct { ok: bool, nodes: int, utf8: bool }
 
 @(test)
 stylesheet_parsed_in_the_background_is_identical :: proc(t: ^testing.T) {
+	test_pages(t)
 	opt := css.Parse_Options{max_nesting_depth = 64, max_rules = 100_000}
 	direct := css.parse_stylesheet(SHEET, opt)
 	defer { css.stylesheet_destroy(direct); free(direct) }

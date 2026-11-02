@@ -204,7 +204,7 @@ inline_request :: proc(p: ^Page, hv: u64, markup: string) -> ^Img_Request {
 		r.state, r.error = .Broken, strings.clone("the image decoder is unavailable")
 		return r
 	}
-	if e, ok := cache.entries[key]; ok && e.state != .Broken {
+	if e, ok := the_pages.image_cache.entries[key]; ok && e.state != .Broken {
 		r.entry = e
 		append(&e.requests, r)
 		r.state = e.state == .Ready ? .Ready : .Probing

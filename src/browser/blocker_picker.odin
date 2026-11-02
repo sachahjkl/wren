@@ -38,13 +38,12 @@ Picker :: struct {
 	scope_global: bool,
 }
 
-@(private = "file") pick: Picker
 
-blocker_picker_active :: proc() -> bool { return pick.active }
+blocker_picker_active :: proc() -> bool { return the_app.pick.active }
 
 blocker_picker_begin :: proc(app: ^App, t: ^Tab) {
 	picker_reset(app)
-	pick.active, pick.stage, pick.tab = true, 0, t.id
+	app.pick.active, app.pick.stage, app.pick.tab = true, 0, t.id
 	request_frames(app, 3)
 }
 
@@ -56,23 +55,23 @@ blocker_picker_target :: proc(app: ^App, t: ^Tab, el: base.Handle) {
 
 @(private = "file")
 picker_reset :: proc(app: ^App) {
-	if pick.preview != nil { picker_unpreview(current_tab(app)) }
-	for c in pick.cands { delete(c) }
-	delete(pick.cands); delete(pick.matches); delete(pick.field_text)
-	ui.field_destroy(&pick.field)
-	pick = {}
+	if app.pick.preview != nil { picker_unpreview(current_tab(app)) }
+	for c in app.pick.cands { delete(c) }
+	delete(app.pick.cands); delete(app.pick.matches); delete(app.pick.field_text)
+	ui.field_destroy(&app.pick.field)
+	app.pick = {}
 }
 
 blocker_picker_cancel :: proc(app: ^App) {
-	if !pick.active { return }
+	if !app.pick.active { return }
 	picker_reset(app)
 	request_frames(app, 3)
 }
 
 @(private = "file")
 picker_unpreview :: proc(t: ^Tab) {
-	if pick.preview != nil && t != nil && t.page != nil && t.page.engine != nil { style.engine_remove_sheet(t.page.engine, pick.preview) }
-	pick.preview = nil
+	if the_app.pick.preview != nil && t != nil && t.page != nil && t.page.engine != nil { style.engine_remove_sheet(t.page.engine, the_app.pick.preview) }
+	the_app.pick.preview = nil
 }
 
 @(private = "file")
@@ -103,15 +102,15 @@ nth_of_type :: proc(d: ^dom.Document, h: base.Handle, tag: string) -> int {
 // Selectors that name the element, from the broadest to the most specific (duplicates and misses dropped).
 @(private = "file")
 picker_candidates :: proc(p: ^page.Page, h: base.Handle) {
-	for c in pick.cands { delete(c) }
-	clear(&pick.cands)
+	for c in the_app.pick.cands { delete(c) }
+	clear(&the_app.pick.cands)
 	d := p.doc
 	n := dom.get(d, h)
 	if n == nil { return }
 	tag := n.name
 	add :: proc(s: string) {
-		for c in pick.cands { if c == s { return } }
-		append(&pick.cands, strings.clone(s))
+		for c in the_app.pick.cands { if c == s { return } }
+		append(&the_app.pick.cands, strings.clone(s))
 	}
 	classes := make([dynamic]string, context.temp_allocator)
 	for c in strings.fields(attr(d, h, "class"), context.temp_allocator) { if css_ident_ok(c) && len(c) < 40 { append(&classes, c) } }
@@ -155,22 +154,22 @@ picker_candidates :: proc(p: ^page.Page, h: base.Handle) {
 	if len(segs) > 0 { add(strings.to_string(path)) }
 	// most specific last: order by what each matches (fewest last)
 	counts := make([dynamic]int, context.temp_allocator)
-	for c in pick.cands { f, ok := page.select_all(p, c); append(&counts, ok ? len(f) : 1 << 30) }
-	for i in 1 ..< len(pick.cands) {
+	for c in the_app.pick.cands { f, ok := page.select_all(p, c); append(&counts, ok ? len(f) : 1 << 30) }
+	for i in 1 ..< len(the_app.pick.cands) {
 		j := i
 		for j > 0 && counts[j] > counts[j - 1] {
 			counts[j], counts[j - 1] = counts[j - 1], counts[j]
-			pick.cands[j], pick.cands[j - 1] = pick.cands[j - 1], pick.cands[j]
+			the_app.pick.cands[j], the_app.pick.cands[j - 1] = the_app.pick.cands[j - 1], the_app.pick.cands[j]
 			j -= 1
 		}
 	}
 	// drop the ones that match nothing or the whole page
 	w := 0
-	for i in 0 ..< len(pick.cands) {
-		if counts[i] == 0 || counts[i] > BLOCKER_PICK_MAX_MATCHES { delete(pick.cands[i]); continue }
-		pick.cands[w] = pick.cands[i]; w += 1
+	for i in 0 ..< len(the_app.pick.cands) {
+		if counts[i] == 0 || counts[i] > BLOCKER_PICK_MAX_MATCHES { delete(the_app.pick.cands[i]); continue }
+		the_app.pick.cands[w] = the_app.pick.cands[i]; w += 1
 	}
-	resize(&pick.cands, w)
+	resize(&the_app.pick.cands, w)
 }
 
 @(private = "file")
@@ -181,26 +180,26 @@ picker_choose :: proc(t: ^Tab, target: base.Handle) {
 	n := dom.get(p.doc, el)
 	if n != nil && n.kind != .Element { el = n.parent }
 	picker_candidates(p, el)
-	pick.picked, pick.stage = el, 1
+	the_app.pick.picked, the_app.pick.stage = el, 1
 	// the most specific candidate that is not a positional path is the first proposal: the one that matches the fewest
 	// (and it is the last of the list)
-	if len(pick.cands) == 0 { ui.field_set(&pick.field, "") } else { ui.field_set(&pick.field, pick.cands[len(pick.cands) - 1]) }
-	pick.level = f32(max(len(pick.cands) - 1, 0))
-	pick.last_level = int(pick.level)
-	delete(pick.field_text); pick.field_text = ""
+	if len(the_app.pick.cands) == 0 { ui.field_set(&the_app.pick.field, "") } else { ui.field_set(&the_app.pick.field, the_app.pick.cands[len(the_app.pick.cands) - 1]) }
+	the_app.pick.level = f32(max(len(the_app.pick.cands) - 1, 0))
+	the_app.pick.last_level = int(the_app.pick.level)
+	delete(the_app.pick.field_text); the_app.pick.field_text = ""
 }
 
 @(private = "file")
 picker_matches :: proc(p: ^page.Page) {
-	sel := strings.trim_space(ui.field_string(&pick.field))
-	if sel == pick.field_text { return }
-	delete(pick.field_text); pick.field_text = strings.clone(sel)
-	clear(&pick.matches)
-	pick.valid = false
+	sel := strings.trim_space(ui.field_string(&the_app.pick.field))
+	if sel == the_app.pick.field_text { return }
+	delete(the_app.pick.field_text); the_app.pick.field_text = strings.clone(sel)
+	clear(&the_app.pick.matches)
+	the_app.pick.valid = false
 	if sel == "" { return }
 	f, ok := page.select_all(p, sel)
-	pick.valid = ok
-	if ok { for h in f { if len(pick.matches) < 80 { append(&pick.matches, h) } } }
+	the_app.pick.valid = ok
+	if ok { for h in f { if len(the_app.pick.matches) < 80 { append(&the_app.pick.matches, h) } } }
 }
 
 @(private = "file")
@@ -225,31 +224,31 @@ outline_node :: proc(dc: ^draw.Context, d: ^Pick_Draw, h: base.Handle, fill, lin
 @(private = "file")
 pick_overlay_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	d := (^Pick_Draw)(user)
-	if pick.stage == 0 {
-		if pick.hover != base.NIL_HANDLE { outline_node(dc, d, pick.hover, {0.2, 0.55, 0.95, 0.28}, {0.2, 0.55, 0.95, 0.95}) }
+	if the_app.pick.stage == 0 {
+		if the_app.pick.hover != base.NIL_HANDLE { outline_node(dc, d, the_app.pick.hover, {0.2, 0.55, 0.95, 0.28}, {0.2, 0.55, 0.95, 0.95}) }
 	} else {
-		for h in pick.matches { outline_node(dc, d, h, {0.9, 0.25, 0.22, 0.25}, {0.9, 0.25, 0.22, 0.95}) }
+		for h in the_app.pick.matches { outline_node(dc, d, h, {0.9, 0.25, 0.22, 0.25}, {0.9, 0.25, 0.22, 0.95}) }
 	}
 }
 
 // Built every frame after the page's own box (page_view): the overlay that takes the pointer while aiming, the outlines,
 // and the bar of the choice.
 blocker_picker_frame :: proc(app: ^App, t: ^Tab) {
-	if !pick.active { return }
-	if t == nil || t.id != pick.tab || t.kind != .Web || t.page == nil { blocker_picker_cancel(app); return }
+	if !app.pick.active { return }
+	if t == nil || t.id != app.pick.tab || t.kind != .Web || t.page == nil { blocker_picker_cancel(app); return }
 	em := ui.font_size()
 	area := active_window(app).page_rect
 	d := ui.frame_new(Pick_Draw)
 	d.app, d.t = app, t
-	if pick.stage == 0 {
+	if app.pick.stage == 0 {
 		ui.next({fixed_x = area.min.x, fixed_y = area.min.y, width = ui.px(draw.rect_size(area).x), height = ui.px(draw.rect_size(area).y), cursor = .Crosshair})
 		box := ui.custom("###bl_pick_overlay", pick_overlay_draw, d, {.Clickable})
 		sig := ui.signal(box)
 		if sig.hovering {
-			pick.hover = hit_test(&t.layout, ui.mouse_pos() - area.min, draw.rect_size(area), t.scroll)
+			app.pick.hover = hit_test(&t.layout, ui.mouse_pos() - area.min, draw.rect_size(area), t.scroll)
 			request_frames(app, 2)
 		}
-		if sig.clicked && pick.hover != base.NIL_HANDLE { picker_choose(t, pick.hover); request_frames(app, 3) }
+		if sig.clicked && app.pick.hover != base.NIL_HANDLE { picker_choose(t, app.pick.hover); request_frames(app, 3) }
 		if sig.right_clicked || ui.key_press(.Escape) { blocker_picker_cancel(app); return }
 		// a hint
 		ui.next({fixed_x = area.min.x + em * 0.8, fixed_y = area.min.y + em * 0.8, width = ui.px(em * 30), height = ui.px(ui.dense(em * 2.2)), radius = em * 0.4})
@@ -275,12 +274,12 @@ blocker_picker_frame :: proc(app: ^App, t: ^Tab) {
 			ui.next({width = ui.px(em * 7), height = ui.pct(1)})
 			if ui.tags("weak") { ui.label(tid(i18n.tr("Selector"), "pk_l")) }
 			ui.next({width = ui.fill(), height = ui.pct(1)})
-			res := ui.line_edit("###pk_sel", &pick.field, i18n.tr("CSS selector"))
+			res := ui.line_edit("###pk_sel", &app.pick.field, i18n.tr("CSS selector"))
 			_ = res
 			ui.spacer(ui.px(em * 0.6))
 			ui.next({width = ui.px(em * 9), height = ui.pct(1)})
-			count := len(pick.matches)
-			label := tid(pick.valid ? fmt.tprintf(i18n.tr(count, "%d element", "%d elements"), count) : i18n.tr("invalid selector"), "pk_n")
+			count := len(app.pick.matches)
+			label := tid(app.pick.valid ? fmt.tprintf(i18n.tr(count, "%d element", "%d elements"), count) : i18n.tr("invalid selector"), "pk_n")
 			if ui.tags("weak") { ui.label(label) }
 			ui.spacer(ui.px(em * 0.6))
 		}
@@ -289,24 +288,24 @@ blocker_picker_frame :: proc(app: ^App, t: ^Tab) {
 			ui.spacer(ui.px(em * 0.6))
 			ui.next({width = ui.px(em * 7), height = ui.pct(1)})
 			if ui.tags("weak") { ui.label(tid(i18n.tr("Precision"), "pk_pl")) }
-			if len(pick.cands) > 1 {
+			if len(app.pick.cands) > 1 {
 				ui.next({width = ui.px(em * 14), height = ui.pct(1)})
-				before := pick.level
-				ui.slider("###pk_slider", &pick.level, 0, f32(len(pick.cands) - 1), 1, "")
-				if pick.level != before {
-					idx := clamp(int(pick.level + 0.5), 0, len(pick.cands) - 1)
-					if idx != pick.last_level { pick.last_level = idx; ui.field_set(&pick.field, pick.cands[len(pick.cands) - 1 - idx]) }
+				before := app.pick.level
+				ui.slider("###pk_slider", &app.pick.level, 0, f32(len(app.pick.cands) - 1), 1, "")
+				if app.pick.level != before {
+					idx := clamp(int(app.pick.level + 0.5), 0, len(app.pick.cands) - 1)
+					if idx != app.pick.last_level { app.pick.last_level = idx; ui.field_set(&app.pick.field, app.pick.cands[len(app.pick.cands) - 1 - idx]) }
 				}
 			} else { ui.spacer(ui.px(em * 14)) }
 			ui.spacer(ui.px(em * 0.6))
 			if bar_button(i18n.tr("Preview"), "pk_prev", em * 6.5) { picker_preview(t) }
 			ui.spacer(ui.px(em * 0.4))
 			host, _ := blocker_page_host(t)
-			if ui.disabled(!pick.valid || len(pick.matches) == 0) {
+			if ui.disabled(!app.pick.valid || len(app.pick.matches) == 0) {
 				if bar_button(i18n.tr("Create"), "pk_create", em * 6.5) { picker_create(app, t, blocker_site_key(host)) }
 			}
 			ui.spacer(ui.px(em * 0.4))
-			if bar_button(i18n.tr("Pick again"), "pk_again", em * 7.5) { picker_unpreview(t); pick.stage = 0; pick.hover = base.NIL_HANDLE }
+			if bar_button(i18n.tr("Pick again"), "pk_again", em * 7.5) { picker_unpreview(t); app.pick.stage = 0; app.pick.hover = base.NIL_HANDLE }
 			ui.spacer(ui.px(em * 0.4))
 			if bar_button(i18n.tr("Cancel"), "pk_cancel", em * 6) { blocker_picker_cancel(app); return }
 		}
@@ -324,14 +323,14 @@ bar_button :: proc(text, id: string, w: f32) -> bool {
 @(private = "file")
 picker_preview :: proc(t: ^Tab) {
 	picker_unpreview(t)
-	sel := strings.trim_space(ui.field_string(&pick.field))
+	sel := strings.trim_space(ui.field_string(&the_app.pick.field))
 	if sel == "" || t.page == nil || t.page.engine == nil { return }
-	pick.preview = style.engine_add_injected_sheet(t.page.engine, fmt.tprintf("%s{{display:none!important}}", sel))
+	the_app.pick.preview = style.engine_add_injected_sheet(t.page.engine, fmt.tprintf("%s{{display:none!important}}", sel))
 }
 
 @(private = "file")
 picker_create :: proc(app: ^App, t: ^Tab, site: string) {
-	sel := strings.trim_space(ui.field_string(&pick.field))
+	sel := strings.trim_space(ui.field_string(&app.pick.field))
 	if sel == "" { return }
 	picker_unpreview(t)
 	// it applies to the page right now, as the saved filter will on the next ones
@@ -343,7 +342,7 @@ picker_create :: proc(app: ^App, t: ^Tab, site: string) {
 
 @(private = "file")
 picker_reset_keep_sheet :: proc(app: ^App) {
-	pick.preview = nil
+	app.pick.preview = nil
 	picker_reset(app)
 }
 

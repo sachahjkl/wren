@@ -56,11 +56,11 @@ Window_Fullscreen :: struct {
 }
 
 fullscreen_shell_init :: proc(app: ^App) {
-	page.fullscreen_embedder = {set = fullscreen_set, deferred = true}
+	app.pages.fullscreen_embedder = {set = fullscreen_set, deferred = true}
 }
 
 fullscreen_shell_destroy :: proc(app: ^App) {
-	page.fullscreen_embedder = {}
+	app.pages.fullscreen_embedder = {}
 	for w in app.windows { w.own.fullscreen = {} }
 }
 

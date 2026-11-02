@@ -253,7 +253,7 @@ commands_build :: proc(r: ^Command_Registry) {
 	add(r, {name = "window.new", title = "New window", category = "Window", keywords = "open another", keys = keys(&r.arena, {key = .N, mods = ctrl}),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { window_new(app) }})
 	add(r, {name = "tab.restore_crashed", title = "Restore the tabs of the session that crashed", category = "Tabs", keywords = "crash recovery reopen saved",
-		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return recovery.backup != "" },
+		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.recovery.backup != "" },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { recovery_restore_backup(app) }})
 
 	// --- navigation
@@ -307,7 +307,7 @@ commands_build :: proc(r: ^Command_Registry) {
 	add(r, {name = "page.find", title = "Find in page…", category = "Page", keywords = "search text", keys = keys(&r.arena, {key = .F, mods = ctrl}, {key = .F3}),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && (t.kind == .Web || t.kind == .Config || t.kind == .History) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) {
-			if t.kind == .Config { app.config_view.focus_search = true } else if t.kind == .History { hview.focus_search = true } else if fs := find_state(app); fs.open { fs.focus = true } else { find_open(app) }
+			if t.kind == .Config { app.config_view.focus_search = true } else if t.kind == .History { app.hview.focus_search = true } else if fs := find_state(app); fs.open { fs.focus = true } else { find_open(app) }
 		}})
 	add(r, {name = "page.save", title = "Save page as…", category = "Page", keywords = "download file", keys = keys(&r.arena, {key = .S, mods = ctrl}),
 		enabled = web_page, run = proc(app: ^App, t: ^Tab, c: ^Command) { save_page(app, t) }})
@@ -329,7 +329,7 @@ commands_build :: proc(r: ^Command_Registry) {
 
 	// --- view
 	add(r, {name = "view.status_bar", title = "Status bar", category = "View", keys = keys(&r.arena, {key = .B, mods = ctrl}),
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return hud.cfg.bar_visible },
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.hud.cfg.bar_visible },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { toggle_status_bar(app) }})
 	add(r, {name = "view.smooth_scrolling", title = "Smooth scrolling", category = "View", keywords = "animated scroll wheel motion browser.scroll.smooth.enabled",
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.smooth_cfg.enabled },
@@ -342,11 +342,11 @@ commands_build :: proc(r: ^Command_Registry) {
 			if err := config.set_from_string(&app.prefs, "browser.scroll.autoscroll.enabled", app.autoscroll_cfg.enabled ? "false" : "true", .User); err != .None { ui.toast(.Warn, "browser.scroll.autoscroll.enabled: %s", config.set_error_text(err)) }
 		}})
 	add(r, {name = "view.frame_statistics", title = "Frame statistics", category = "View", keywords = "fps performance hud timing", keys = keys(&r.arena, {key = .B, mods = cs}),
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return hud.panel_open },
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.hud.panel_open },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { toggle_frame_stats(app) }})
 	add(r, {name = "view.title_statistics", title = "Statistics in the title", category = "View", keywords = "fps",
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return hud.cfg.title_stats },
-		run = proc(app: ^App, t: ^Tab, c: ^Command) { set_pref_bool(app, "browser.title.stats", !hud.cfg.title_stats) }})
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.hud.cfg.title_stats },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { set_pref_bool(app, "browser.title.stats", !app.hud.cfg.title_stats) }})
 	add(r, {name = "view.devtools", title = "Developer tools", category = "View", keywords = "inspect console elements network dom debug f12",
 		keys = keys(&r.arena, {key = .F12}, {key = .I, mods = cs}),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().visible },
@@ -461,8 +461,8 @@ commands_build :: proc(r: ^Command_Registry) {
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return desktop_available() },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { setup_open(app) }})
 	// the content blocker (blocker_shell.odin, blocker_ui.odin)
-	blocker_on := proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return bl.started && bl.b.cfg.enabled }
-	web_http := proc(app: ^App, t: ^Tab, c: ^Command) -> bool { _, ok := blocker_page_host(t); return ok && bl.started }
+	blocker_on := proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.bl.started && app.bl.b.cfg.enabled }
+	web_http := proc(app: ^App, t: ^Tab, c: ^Command) -> bool { _, ok := blocker_page_host(t); return ok && app.bl.started }
 	add(r, {name = "blocker.panel", title = i18n.tr("Blocker: open the panel"), category = "Blocker", keywords = "ads adblock shield tracker matrix",
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { window_own(app).blocker_panel_request = true; request_frames(app, 3) }})
 	add(r, {name = "blocker.picker", title = i18n.tr("Blocker: block an element\u2026"), category = "Blocker", keywords = "ads element picker zapper hide",
@@ -481,7 +481,7 @@ commands_build :: proc(r: ^Command_Registry) {
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { blocker_update_now() }})
 	add(r, {name = "blocker.toggle", title = i18n.tr("Blocker: on"), category = "Blocker", keywords = "ads adblock enable disable",
 		checked = blocker_on, run = proc(app: ^App, t: ^Tab, c: ^Command) {
-			config.set_from_string(&app.prefs, "blocker.enabled", bl.b.cfg.enabled ? "false" : "true", .User)
+			config.set_from_string(&app.prefs, "blocker.enabled", app.bl.b.cfg.enabled ? "false" : "true", .User)
 			if t != nil && t.kind == .Web { reload(app, t) }
 		}})
 	add(r, {name = "browser.check_updates", title = "Check for updates", category = "Browser", keywords = "update upgrade new version release github latest",

@@ -300,7 +300,6 @@ Pending_Resource :: struct {
 	has_response: bool,
 }
 
-@(private) tl_pending: map[u64]Pending_Resource
 @(private) tl_loader: u8   // (its address names the timelines' observer of a loader)
 
 @(private)
@@ -352,9 +351,9 @@ timeline_attach :: proc(p: ^Page) {
 
 // Process end: the requests still described are forgotten.
 timeline_shutdown :: proc() {
-	for _, pr in tl_pending { delete(pr.url, base.process_allocator()); delete(pr.mime, base.process_allocator()) }
-	delete(tl_pending)
-	tl_pending = nil
+	for _, pr in the_pages.tl_pending { delete(pr.url, base.process_allocator()); delete(pr.mime, base.process_allocator()) }
+	delete(the_pages.tl_pending)
+	the_pages.tl_pending = nil
 }
 
 // The live page whose environment this is (the request's initiator), nil for none.
@@ -390,10 +389,10 @@ timeline_observe :: proc(user: rawptr, ev: ^fetch.Observed) {
 		if ev.initiator == nil || ev.destination == .Document || ev.destination == .Report { return }
 		p := page_of_environment(ev.initiator)
 		if p == nil || p.closed || p.settings.timeline.resource_entries == 0 { return }
-		if tl_pending == nil { tl_pending = make(map[u64]Pending_Resource, base.process_allocator()) }
-		tl_pending[ev.id] = Pending_Resource{page_id = page_id(p), url = strings.clone(ev.url, base.process_allocator()), initiator = initiator_type(ev.destination), start_ms = page_now_ms(p)}
+		if the_pages.tl_pending == nil { the_pages.tl_pending = make(map[u64]Pending_Resource, base.process_allocator()) }
+		the_pages.tl_pending[ev.id] = Pending_Resource{page_id = page_id(p), url = strings.clone(ev.url, base.process_allocator()), initiator = initiator_type(ev.destination), start_ms = page_now_ms(p)}
 	case .Response:
-		pr, ok := &tl_pending[ev.id]
+		pr, ok := &the_pages.tl_pending[ev.id]
 		if !ok { return }
 		p := page_by_id(pr.page_id)
 		if p == nil { return }
@@ -404,9 +403,9 @@ timeline_observe :: proc(user: rawptr, ev: ^fetch.Observed) {
 		delete(pr.mime, base.process_allocator())
 		pr.mime = strings.clone(ev.mime, base.process_allocator())
 	case .Done:
-		pr, ok := tl_pending[ev.id]
+		pr, ok := the_pages.tl_pending[ev.id]
 		if !ok { return }
-		delete_key(&tl_pending, ev.id)
+		delete_key(&the_pages.tl_pending, ev.id)
 		defer { delete(pr.url, base.process_allocator()); delete(pr.mime, base.process_allocator()) }
 		p := page_by_id(pr.page_id)
 		if p == nil || !pr.has_response { return }
@@ -421,9 +420,9 @@ timeline_observe :: proc(user: rawptr, ev: ^fetch.Observed) {
 		if pr.cache == .Network || pr.cache == .Revalidated { e.transfer_size = ev.bytes + 300 }   // (the headers' size is not known)
 		timeline_add(p, .Resource, e)
 	case .Failed:
-		pr, ok := tl_pending[ev.id]
+		pr, ok := the_pages.tl_pending[ev.id]
 		if !ok { return }
-		delete_key(&tl_pending, ev.id)
+		delete_key(&the_pages.tl_pending, ev.id)
 		delete(pr.url, base.process_allocator())
 		delete(pr.mime, base.process_allocator())
 	}

@@ -44,12 +44,9 @@ Shared_Conn :: struct {
 	end:    u64,              // its port's end, until the engine takes it (SharedWorker_portEnd)
 }
 
-@(private) shared_workers: [dynamic]^Shared_Worker
 
-// Shared workers running in this process (for what waits on a page: one may still answer it).
-shared_workers_live :: proc() -> int { return len(shared_workers) }
-@(private) shared_next: u64
-@(private) shared_scope: ^base.Scope   // the host pages' parent
+// Shared workers of this thread's pages (for what waits on a page: one may still answer it).
+shared_workers_live :: proc() -> int { return len(the_pages.shared_workers) }
 
 shared_worker_vt := Object_VTable{
 	name = "SharedWorker",
@@ -72,19 +69,19 @@ shared_console :: proc(user: rawptr, level: Log_Level, message: string) {
 
 @(private)
 shared_by_id :: proc(id: u64) -> ^Shared_Worker {
-	for s in shared_workers { if s.id == id { return s } }
+	for s in the_pages.shared_workers { if s.id == id { return s } }
 	return nil
 }
 
 // Starts the shared worker of (key, href, name) in a host page made like `p` (its loop, loader, settings, storage).
 @(private)
 shared_start :: proc(p: ^Page, href, name, key: string, module: bool, image: []byte = nil) -> ^Shared_Worker {
-	if shared_scope == nil { shared_scope = base.scope_make("shared-workers") }
+	if the_pages.shared_scope == nil { the_pages.shared_scope = base.scope_make("shared-workers") }
 	s := new(Shared_Worker)
-	shared_next += 1
-	s.id = shared_next
+	the_pages.shared_next += 1
+	s.id = the_pages.shared_next
 	s.key, s.url, s.name, s.module, s.loop = strings.clone(key), strings.clone(href), strings.clone(name), module, p.loop
-	hp := page_create(p.loop, p.loader, p.settings, shared_scope, p.env.location.href, shared_console, s)
+	hp := page_create(p.loop, p.loader, p.settings, the_pages.shared_scope, p.env.location.href, shared_console, s)
 	hp.web.embedder.storage = p.web.embedder.storage
 	obj := worker_create(hp, href, name, 0, javascript = true, module = module, image = image, shared = s)
 	h := (^Worker_Host)(object_data(hp, obj, &worker_vt)) if obj != 0 else nil
@@ -94,7 +91,7 @@ shared_start :: proc(p: ^Page, href, name, key: string, module: bool, image: []b
 		return nil
 	}
 	s.host_page, s.worker = hp, h
-	append(&shared_workers, s)
+	append(&the_pages.shared_workers, s)
 	return s
 }
 
@@ -108,7 +105,7 @@ shared_free :: proc(s: ^Shared_Worker) {
 // Stops the worker (its host page closes: the thread is joined) and forgets it.
 @(private)
 shared_destroy :: proc(s: ^Shared_Worker) {
-	for x, i in shared_workers { if x == s { ordered_remove(&shared_workers, i); break } }
+	for x, i in the_pages.shared_workers { if x == s { ordered_remove(&the_pages.shared_workers, i); break } }
 	s.gone = true
 	gone := make([dynamic]Shared_Conn, 0, len(s.conns), context.temp_allocator)
 	for c in s.conns { c.worker = nil; append(&gone, c^) }
@@ -161,11 +158,11 @@ shared_error_later :: proc(c: ^Shared_Conn) {
 
 // A document closes: it no longer owns the shared workers it connected to; one without owners stops.
 shared_workers_page_closed :: proc(p: ^Page) {
-	if len(shared_workers) == 0 || p.web == nil { return }
+	if len(the_pages.shared_workers) == 0 || p.web == nil { return }
 	id := p.web.id
-	for i := len(shared_workers) - 1; i >= 0; i -= 1 {
-		if i >= len(shared_workers) { continue }
-		s := shared_workers[i]
+	for i := len(the_pages.shared_workers) - 1; i >= 0; i -= 1 {
+		if i >= len(the_pages.shared_workers) { continue }
+		s := the_pages.shared_workers[i]
 		owned := false
 		for o, k in s.owners { if o == id { ordered_remove(&s.owners, k); owned = true; break } }
 		if !owned || len(s.owners) > 0 || s.gone { continue }
@@ -190,10 +187,10 @@ shared_linger_done :: proc(data: rawptr) {
 
 // Every shared worker stops (the profile's storage closes, or the process ends).
 shared_workers_shutdown :: proc() {
-	for len(shared_workers) > 0 { shared_destroy(shared_workers[len(shared_workers) - 1]) }
-	delete(shared_workers)
-	shared_workers = nil
-	if shared_scope != nil { base.scope_close(shared_scope); shared_scope = nil }
+	for len(the_pages.shared_workers) > 0 { shared_destroy(the_pages.shared_workers[len(the_pages.shared_workers) - 1]) }
+	delete(the_pages.shared_workers)
+	the_pages.shared_workers = nil
+	if the_pages.shared_scope != nil { base.scope_close(the_pages.shared_scope); the_pages.shared_scope = nil }
 }
 
 ////////////////////////////////
@@ -223,7 +220,7 @@ shared_connect :: proc(c: ^Call, u: string, name: string, type: Api_WorkerType, 
 	key := storage_origin_key(p)
 	module := type == .Module
 	s: ^Shared_Worker
-	for x in shared_workers { if !x.gone && x.key == key && x.url == pu.href && x.name == name { s = x; break } }
+	for x in the_pages.shared_workers { if !x.gone && x.key == key && x.url == pu.href && x.name == name { s = x; break } }
 	mismatch := s != nil && s.module != module   // HTML: an error event, no connection
 	if s == nil {
 		s = shared_start(p, pu.href, name, key, module, image)

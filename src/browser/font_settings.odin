@@ -129,7 +129,6 @@ emoji_source_apply :: proc(app: ^App) -> bool {
 	return true
 }
 
-@(private) font_watch, text_watch: int
 
 // Follows the preferences: glyph bitmaps are made again with new rendering settings, layouts again when what text
 // measures may change (the system fallback), the generic families are resolved again.
@@ -141,8 +140,8 @@ font_settings_init :: proc(app: ^App) {
 		a := (^App)(user)
 		host.post(&a.loop, proc(data: rawptr) { app := (^App)(data); request_frames(app, 2) }, a)
 	}, app)
-	font_watch = config.watch(&app.prefs, "font.", font_prefs_changed, app)
-	text_watch = config.watch(&app.prefs, "text.", font_prefs_changed, app)
+	app.font_watch = config.watch(&app.prefs, "font.", font_prefs_changed, app)
+	app.text_watch = config.watch(&app.prefs, "text.", font_prefs_changed, app)
 }
 
 @(private)
@@ -166,6 +165,6 @@ font_prefs_changed :: proc(user: rawptr, name: string, p: ^config.Prefs) {
 @(private)
 font_generics_apply :: proc(app: ^App) {
 	if config.ref_of(&app.prefs, "font.family.emoji") == config.NO_REF { return }
-	page_fonts_set_generics(&page_render.fonts, config.string_of(&app.prefs, "font.family.emoji"),
+	page_fonts_set_generics(&app.page_render.fonts, config.string_of(&app.prefs, "font.family.emoji"),
 		config.string_of(&app.prefs, "font.family.math"), config.string_of(&app.prefs, "font.family.fangsong"))
 }

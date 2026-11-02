@@ -364,7 +364,7 @@ search_engines_destroy :: proc(app: ^App) { engines_destroy(&app.sengines) }
 // After a change of the list: written to the profile; a default that is gone gives way to the first engine.
 search_engines_changed :: proc(app: ^App) {
 	search_engines_save(app)
-	if len(app.sengines.list) > 0 && engines_find(&app.sengines, ix.search_engine) < 0 {
+	if len(app.sengines.list) > 0 && engines_find(&app.sengines, app.ix.search_engine) < 0 {
 		_ = config.set_from_string(&app.prefs, "browser.search.engine", app.sengines.list[0].id, .User)
 	}
 	request_frames(app, 2)
@@ -380,7 +380,7 @@ search_set_default :: proc(app: ^App, i: int) {
 }
 
 // Index of the default engine of the browser's list.
-search_default_index :: proc(app: ^App) -> int { return engines_default(&app.sengines, ix.search_engine) }
+search_default_index :: proc(app: ^App) -> int { return engines_default(&app.sengines, app.ix.search_engine) }
 
 // The address that searches `words`: with engine `engine` (an index of the list), or the default one (-1).
 search_url :: proc(app: ^App, words: string, engine := -1) -> string {

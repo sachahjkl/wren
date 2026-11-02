@@ -50,13 +50,13 @@ fx_open :: proc(f: ^Fx_Cx, src: string) -> bool {
 	ok: bool
 	f.face, ok = font.load_embedded(&f.fonts, font.FALLBACK_UI_DATA)
 	draw.init(&f.dc, &f.r, &f.fonts)
-	page_render.settings = lay.settings_from_prefs(&f.prefs)
-	effects_settings = effects_settings_from_prefs(&f.prefs)
-	fx_settings = fx_settings_from_prefs(&f.prefs)
-	render.set_filter_precision(&f.r, fx_settings.precision)
-	compositor_settings = compositor_settings_from_prefs(&f.prefs)
-	compositor_settings.chunk_items = 8
-	compositor_settings.settle_ms = 0
+	the_app.page_render.settings = lay.settings_from_prefs(&f.prefs)
+	the_app.effects_settings = effects_settings_from_prefs(&f.prefs)
+	the_app.fx_settings = fx_settings_from_prefs(&f.prefs)
+	render.set_filter_precision(&f.r, the_app.fx_settings.precision)
+	the_app.compositor_settings = compositor_settings_from_prefs(&f.prefs)
+	the_app.compositor_settings.chunk_items = 8
+	the_app.compositor_settings.settle_ms = 0
 	f.doc = dom.document_create(nil)
 	html.parse_into(f.doc, f.doc.root, transmute([]byte)src, 2_000_000)
 	ss := style.settings_default()
@@ -64,7 +64,7 @@ fx_open :: proc(f: ^Fx_Cx, src: string) -> bool {
 	style.settings_destroy(&ss)
 	style.sync_document_sheets(f.eng, f.doc, "about:test")
 	f.st = style.compute_styles(f.eng, f.doc, {})
-	lay.run(&f.l, lay.Input{doc = f.doc, styled = f.st, settings = &page_render.settings,
+	lay.run(&f.l, lay.Input{doc = f.doc, styled = f.st, settings = &the_app.page_render.settings,
 		text = lay.Text_Api{user = f, font = fx_font, width = fx_width, metrics = fx_metrics},
 		viewport = {f32(FX_SIZE.x), f32(FX_SIZE.y)}, scale = 1, band_h = 256})
 	return ok
@@ -80,12 +80,11 @@ fx_close :: proc(f: ^Fx_Cx) {
 	render.destroy(&f.r)
 	font.destroy(&f.fonts)
 	config.prefs_destroy(&f.prefs)
-	compositor_settings = {enabled = true, chunk_items = 512, max_chunks = 4096, settle_ms = 50, memory = 256 << 20}
 }
 
 @(private = "file")
 fx_paint :: proc(f: ^Fx_Cx, composited: bool, scroll: f32 = 0) -> []u8 {
-	compositor_settings.enabled = composited
+	the_app.compositor_settings.enabled = composited
 	size := draw.Vec2{f32(FX_SIZE.x), f32(FX_SIZE.y)}
 	draw.begin_frame(&f.dc, size)
 	render.frame_begin(&f.r, {1, 1, 1, 1})
@@ -132,6 +131,7 @@ html, body { margin: 0; background: #fff; font-size: 13px }
 
 @(test)
 kept_effects_match_direct_drawing :: proc(t: ^testing.T) {
+	test_app(t)
 	sync.mutex_lock(&compositor_test_lock)   // the compositor's state (compositor_test.odin)
 	defer sync.mutex_unlock(&compositor_test_lock)
 	page_render_test_lock()
@@ -177,8 +177,8 @@ kept_effects_match_direct_drawing :: proc(t: ^testing.T) {
 	fx_same(t, f, "settled again", 0)
 
 	// caching off: the same pixels
-	fx_settings.enabled = false
-	defer fx_settings.enabled = true
+	the_app.fx_settings.enabled = false
+	defer the_app.fx_settings.enabled = true
 	s = fx_same(t, f, "cache off", 0, 1)
 	testing.expectf(t, s.hits == 0, "nothing reused with the cache off: %v", s)
 }
@@ -203,6 +203,7 @@ html, body { margin: 0; background: #fff; font-size: 13px }
 // inside a filtered group is kept with the text that masks it.
 @(test)
 kept_masked_effects_match_direct_drawing :: proc(t: ^testing.T) {
+	test_app(t)
 	sync.mutex_lock(&compositor_test_lock)   // the compositor's state (compositor_test.odin)
 	defer sync.mutex_unlock(&compositor_test_lock)
 	page_render_test_lock()

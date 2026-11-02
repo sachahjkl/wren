@@ -21,6 +21,7 @@ about_scratch :: proc(name: string) -> string {
 
 @(test)
 third_party_table_is_parsed :: proc(t: ^testing.T) {
+	test_app(t)
 	md := "# x\n\n| Component | Version | License | Where |\n|---|---|---|---|\n" +
 		"| [Foo](https://foo.example) | 1.2.3 (`vendor/foo`) | MIT; parts: a (MIT) | the foo `thing` |\n" +
 		"| Bar and [Baz](https://baz.example) text | commit `0123456789abcdef` | Apache-2.0 | b |\n" +
@@ -40,6 +41,7 @@ third_party_table_is_parsed :: proc(t: ^testing.T) {
 
 @(test)
 third_party_list_of_the_repository :: proc(t: ^testing.T) {
+	test_app(t)
 	list := third_party_list()
 	testing.expect(t, len(list) >= 15, "THIRD_PARTY.md's table is parsed")
 	seen := make(map[string]Third_Party, context.temp_allocator)
@@ -58,6 +60,7 @@ third_party_list_of_the_repository :: proc(t: ^testing.T) {
 
 @(test)
 pinned_versions_match_the_scripts :: proc(t: ^testing.T) {
+	test_app(t)
 	data, err := os.read_entire_file("src/tools/tooling/js_engine.odin", context.temp_allocator)
 	testing.expect_value(t, err, nil)
 	testing.expectf(t, strings.contains(string(data), "QJS_VERSION :: \"" + QUICKJS_VERSION + "\""), "QUICKJS_VERSION (%s) is the version src\\tools\\tooling\\js_engine.odin pins", QUICKJS_VERSION)
@@ -69,6 +72,7 @@ pinned_versions_match_the_scripts :: proc(t: ^testing.T) {
 // A license text added to native\js\licenses is shown by about:licenses (and shipped in licenses\ by wrentool package).
 @(test)
 every_shipped_license_text_is_shown :: proc(t: ^testing.T) {
+	test_app(t)
 	shipped := make(map[string]bool, context.temp_allocator)
 	list, _ := os.read_all_directory_by_path("native/js/licenses", context.temp_allocator)
 	testing.expect(t, len(list) >= 3, "native/js/licenses is found")
@@ -98,6 +102,7 @@ test_page :: proc(theme: string, state: License_State = {}, notice: Wren_Notice 
 
 @(test)
 about_page_without_a_license :: proc(t: ^testing.T) {
+	test_app(t)
 	for theme in ([]string{"graphite", "daylight"}) {
 		html := wren_page_html(test_page(theme))
 		for want in ([]string{
@@ -126,6 +131,7 @@ about_page_without_a_license :: proc(t: ^testing.T) {
 
 @(test)
 the_card_can_be_previewed_without_a_licence :: proc(t: ^testing.T) {
+	test_app(t)
 	d := test_page("graphite")
 	d.card_sample = true
 	html := wren_page_html(d)
@@ -140,6 +146,7 @@ the_card_can_be_previewed_without_a_licence :: proc(t: ^testing.T) {
 
 @(test)
 about_page_with_a_license :: proc(t: ^testing.T) {
+	test_app(t)
 	lic := license.License{product = "wren", edition = "patron", name = "Zoé <b>Martin</b> & Co", email = "z@example.org", date = "2026-10-22", order = "WREN-0042"}
 	state := License_State{lic = lic, registered = true, stored = true}
 	html := wren_page_html(test_page("graphite", state))
@@ -182,6 +189,7 @@ about_page_with_a_license :: proc(t: ^testing.T) {
 
 @(test)
 about_page_notices_and_rejected_store :: proc(t: ^testing.T) {
+	test_app(t)
 	state := License_State{stored = true, err = .Bad_Signature}
 	html := wren_page_html(test_page("daylight", state, {"Nope <i>", true}))
 	testing.expect(t, strings.contains(html, "Unregistered"))
@@ -193,6 +201,7 @@ about_page_notices_and_rejected_store :: proc(t: ^testing.T) {
 
 @(test)
 thanks_section_links_every_entry :: proc(t: ^testing.T) {
+	test_app(t)
 	html := wren_page_html(test_page("daylight"))
 	heading :: "<h2>Thanks</h2>"
 	start := strings.index(html, heading)
@@ -227,6 +236,7 @@ thanks_section_links_every_entry :: proc(t: ^testing.T) {
 
 @(test)
 licenses_page_has_every_text :: proc(t: ^testing.T) {
+	test_app(t)
 	html := licenses_page_html(test_page("graphite"))
 	for lt in LICENSE_TEXTS {
 		testing.expectf(t, strings.contains(html, strings.concatenate({`id="`, lt.id, `"`}, context.temp_allocator)), "licenses page lacks the anchor of %s", lt.id)
@@ -238,6 +248,7 @@ licenses_page_has_every_text :: proc(t: ^testing.T) {
 
 @(test)
 addresses_of_the_about_pages :: proc(t: ^testing.T) {
+	test_app(t)
 	for a in ([]string{"about:wren", "about:wren?choose=1", "about:wren?action=register&key=x", "about:wren#x", "about:licenses", "about:licenses#slug"}) {
 		testing.expectf(t, is_wren_address(a) && is_builtin_address(a), "%s is a page of the browser", a)
 	}
@@ -265,6 +276,7 @@ addresses_of_the_about_pages :: proc(t: ^testing.T) {
 @(private = "file")
 license_app :: proc(path: string, persist: bool) -> ^App {
 	app := new(App)
+	the_app = app   // (what the code reaches without an App: this one)
 	app.prefs = config.prefs_make()
 	register_all_prefs(&app.prefs)
 	seed := license.DEV_SEED
@@ -292,6 +304,7 @@ dev_license :: proc(name: string, seed: [32]byte = license.DEV_SEED) -> string {
 
 @(test)
 the_licence_a_build_is_handed_out_with_is_put_in_once :: proc(t: ^testing.T) {
+	test_app(t)
 	_ = os.make_directory_all("build/tmp")
 	path := about_scratch("about_seed_test")
 	marker := strings.concatenate({path, ".seeded"}, context.temp_allocator)
@@ -332,6 +345,7 @@ the_licence_a_build_is_handed_out_with_is_put_in_once :: proc(t: ^testing.T) {
 }
 @(test)
 license_is_kept_checked_and_removed :: proc(t: ^testing.T) {
+	test_app(t)
 	_ = os.make_directory_all("build/tmp")
 	path := about_scratch("about_license_test")
 	_ = os.remove(path)
@@ -379,6 +393,7 @@ license_is_kept_checked_and_removed :: proc(t: ^testing.T) {
 
 @(test)
 license_without_a_profile_stays_in_memory :: proc(t: ^testing.T) {
+	test_app(t)
 	app := license_app("", false)
 	defer license_app_free(app)
 	testing.expect_value(t, license_path(app), "")
@@ -391,6 +406,7 @@ license_without_a_profile_stays_in_memory :: proc(t: ^testing.T) {
 
 @(test)
 license_file_open_and_form :: proc(t: ^testing.T) {
+	test_app(t)
 	_ = os.make_directory_all("build/tmp")
 	store := about_scratch("about_license_store")
 	src := about_scratch("about_license_src")
@@ -438,6 +454,7 @@ license_file_open_and_form :: proc(t: ^testing.T) {
 
 @(test)
 support_link_is_a_web_page :: proc(t: ^testing.T) {
+	test_app(t)
 	app := license_app("", false)
 	defer license_app_free(app)
 	testing.expect_value(t, license_support_url(app), SUPPORT_URL)

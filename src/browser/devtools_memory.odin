@@ -47,7 +47,7 @@ memory_destroy :: proc(app: ^App) {
 @(private = "file")
 sample_now :: proc(app: ^App, t: ^Tab) -> Mem_Sample {
 	s := Mem_Sample{at_ms = ui.now_ms()}
-	n := hud.nums
+	n := app.hud.nums
 	s.ws, s.private = f64(n.working_set), f64(n.private_bytes)
 	if t != nil && t.page != nil && t.page.js != nil && t.page.js.inst != nil { s.js_heap = js.heap_bytes(t.page.js.inst) }
 	if t != nil && t.page != nil {
@@ -135,7 +135,7 @@ memory_panel :: proc(app: ^App, t: ^Tab) {
 		if len(m.samples) < 3 {
 			ui.next({width = ui.fill(), height = ui.px(dt_px(40))})
 			ui.custom("###dt_mem_hint", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
-				dt_text(dc, dtm.ui_font, dtm.fs, b.rect.min.x + dt_px(14), (b.rect.min.y + b.rect.max.y) * 0.5, dtc.weak, "The charts fill as samples come: turn Live on, or use the page.")
+				dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, b.rect.min.x + dt_px(14), (b.rect.min.y + b.rect.max.y) * 0.5, the_app.dtc.weak, "The charts fill as samples come: turn Live on, or use the page.")
 			}, nil)
 		}
 	}
@@ -149,14 +149,14 @@ Tile_Draw :: struct { title, value, delta: string, series: []f32, hot, up: bool 
 tile_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	d := (^Tile_Draw)(user)
 	r := b.rect
-	draw.rect(dc, r, dtc.bar)
-	if d.hot { draw.rect(dc, r, dtc.hover) }
-	draw.rect(dc, r, dtc.border, 0, dtm.line)
-	draw.rect(dc, {r.min, {r.min.x + dtm.line * 3, r.max.y}}, dtc.accent)
+	draw.rect(dc, r, the_app.dtc.bar)
+	if d.hot { draw.rect(dc, r, the_app.dtc.hover) }
+	draw.rect(dc, r, the_app.dtc.border, 0, the_app.dtm.line)
+	draw.rect(dc, {r.min, {r.min.x + the_app.dtm.line * 3, r.max.y}}, the_app.dtc.accent)
 	x := r.min.x + dt_px(12)
-	dt_text(dc, dtm.ui_font, dtm.fs, x, r.min.y + dt_px(14), dtc.weak, d.title)
-	dt_text(dc, dtm.ui_font, dtm.fs * 1.7, x, r.min.y + dt_px(38), dtc.text, d.value)
-	if d.delta != "" { dt_text(dc, dtm.ui_font, dtm.fs * 0.9, x, r.min.y + dt_px(56), d.up ? dtc.warn : dtc.good, d.delta, r.max.x - x - dt_px(8)) }
+	dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, x, r.min.y + dt_px(14), the_app.dtc.weak, d.title)
+	dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs * 1.7, x, r.min.y + dt_px(38), the_app.dtc.text, d.value)
+	if d.delta != "" { dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs * 0.9, x, r.min.y + dt_px(56), d.up ? the_app.dtc.warn : the_app.dtc.good, d.delta, r.max.x - x - dt_px(8)) }
 	// the chart
 	n := len(d.series)
 	if n < 2 { return }
@@ -166,8 +166,8 @@ tile_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	for v in d.series { lo, hi = min(lo, v), max(hi, v) }
 	if hi - lo < max(hi * 0.02, 1) { lo = max(hi - max(hi * 0.2, 1), 0) }
 	// the curve, one column of pixels at a time: a faint area under it, a line on top
-	cols := int((cx1 - cx0) / max(dtm.line, 1))
-	px := dtm.line
+	cols := int((cx1 - cx0) / max(the_app.dtm.line, 1))
+	px := the_app.dtm.line
 	prev_y: f32 = -1
 	for c in 0 ..< cols {
 		pos := f32(c) / f32(max(cols - 1, 1)) * f32(n - 1)
@@ -176,10 +176,10 @@ tile_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		v := d.series[i0] + (d.series[i1] - d.series[i0]) * (pos - f32(i0))
 		cxp := cx0 + f32(c) * px
 		y := cy1 - (v - lo) / (hi - lo) * (cy1 - cy0)
-		draw.rect(dc, {{cxp, y}, {cxp + px, cy1}}, with_alpha(dtc.accent, 0.12))
+		draw.rect(dc, {{cxp, y}, {cxp + px, cy1}}, with_alpha(the_app.dtc.accent, 0.12))
 		top := prev_y < 0 ? y : min(y, prev_y)
 		bot := prev_y < 0 ? y : max(y, prev_y)
-		draw.rect(dc, {{cxp, top - px}, {cxp + px, bot + px}}, with_alpha(dtc.accent, 0.95))
+		draw.rect(dc, {{cxp, top - px}, {cxp + px, bot + px}}, with_alpha(the_app.dtc.accent, 0.95))
 		prev_y = y
 	}
 }

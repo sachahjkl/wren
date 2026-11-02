@@ -108,7 +108,7 @@ resource_find :: proc(name_in: string, dest: fetch.Destination) -> (res: Resourc
 	return {}, false
 }
 
-@(private) resource_cache: map[string][]byte
+@(private, thread_local) resource_cache: map[string][]byte   // (the thread's: its App's blocker, resources_destroy)
 
 @(private)
 resource_bytes :: proc(s: ^Stand_In, dest: fetch.Destination) -> Resource_Data {

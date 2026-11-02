@@ -413,6 +413,7 @@ worker_uncount :: proc(h: ^Worker_Host) {
 worker_spawn :: proc(h: ^Worker_Host, image: []byte) {
 	p := h.page
 	g := new(Worker_Global)
+	g.pages = the_pages
 	g.link = h.link
 	g.settings = p.settings^
 	g.settings.html, g.settings.style = {}, {}   // owned by the shell and changed under its feet: a worker needs neither
@@ -780,6 +781,7 @@ worker_terminate_object :: proc(p: ^Page, w: u64) -> dom.Error {
 
 Worker_Global :: struct {
 	link:     ^Worker_Link,
+	pages:    ^Pages,               // its creator's (worker_main binds this thread to them)
 	settings: Settings,           // the worker's own copy (no html/style)
 	url:      string,
 	name:     string,
@@ -843,6 +845,7 @@ realm_halted :: #force_inline proc "contextless" (p: ^Page) -> bool {
 @(private)
 worker_main :: proc(data: rawptr) {
 	g := (^Worker_Global)(data)
+	bind(g.pages)
 	l := g.link
 	defer {
 		if g.worklet != nil { webaudio.worklet_realm_gone(g.worklet) }

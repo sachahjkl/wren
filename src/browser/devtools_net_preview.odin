@@ -177,7 +177,7 @@ Img_Draw :: struct { tex: render.Texture, ok: bool, nw, nh: int, fit: bool, thum
 checkerboard :: proc(dc: ^draw.Context, r: draw.Rect) {
 	sq := dt_px(8)
 	a, b := draw.Color{0.80, 0.80, 0.80, 1}, draw.Color{0.64, 0.64, 0.64, 1}
-	if dtc.dark { a, b = draw.Color{0.30, 0.30, 0.31, 1}, draw.Color{0.22, 0.22, 0.23, 1} }
+	if the_app.dtc.dark { a, b = draw.Color{0.30, 0.30, 0.31, 1}, draw.Color{0.22, 0.22, 0.23, 1} }
 	draw.rect(dc, r, a)
 	draw.push_clip(dc, r)
 	y := r.min.y
@@ -195,10 +195,10 @@ checkerboard :: proc(dc: ^draw.Context, r: draw.Rect) {
 img_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	d := (^Img_Draw)(user)
 	r := b.rect
-	draw.rect(dc, r, dtc.bg)
+	draw.rect(dc, r, the_app.dtc.bg)
 	if !d.ok { return }
 	avail := draw.Vec2{r.max.x - r.min.x - dt_px(16), r.max.y - r.min.y - dt_px(16)}
-	w, h := f32(d.nw) * dtm.sc, f32(d.nh) * dtm.sc   // a pixel of the image is a CSS pixel: as many device pixels as the interface's scale
+	w, h := f32(d.nw) * the_app.dtm.sc, f32(d.nh) * the_app.dtm.sc   // a pixel of the image is a CSS pixel: as many device pixels as the interface's scale
 	if d.fit || d.thumb {
 		s := min(avail.x / max(w, 1), avail.y / max(h, 1), 1)   // larger than the pane: shrunk to it; smaller: as it is
 		w, h = w * s, h * s
@@ -210,7 +210,7 @@ img_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	draw.push_clip(dc, r)
 	draw.image(dc, d.tex, dst)
 	draw.pop_clip(dc)
-	draw.rect(dc, dst, with_alpha(dtc.text, 0.25), 0, dtm.line)
+	draw.rect(dc, dst, with_alpha(the_app.dtc.text, 0.25), 0, the_app.dtm.line)
 }
 
 @(private = "file")
@@ -229,13 +229,13 @@ preview_image :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry, thumb: bool) {
 
 @(private = "file")
 image_bar :: proc(app: ^App, pv: ^Preview_State, e: ^Net_Entry) {
-	if dt_bar("###dt_pi_bar", dtm.bar - dt_px(4)) {
+	if dt_bar("###dt_pi_bar", app.dtm.bar - dt_px(4)) {
 		dt_gap(5)
 		if dt_chip("###dt_pi_fit", "Fit", pv.fit, "Fit the image to the pane").clicked { pv.fit, pv.unfit = true, true }
 		if dt_chip("###dt_pi_actual", "Actual size", !pv.fit, "The image at its own size").clicked { pv.fit, pv.unfit = false, true }
 		ui.next({width = ui.fill(), height = ui.pct(1)})
 		ui.custom("###dt_pi_info", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
-			dt_text_r(dc, dtm.ui_font, dtm.fs, b.rect.max.x - dt_px(8), (b.rect.min.y + b.rect.max.y) * 0.5, dtc.weak, (^string)(user)^)
+			dt_text_r(dc, the_app.dtm.ui_font, the_app.dtm.fs, b.rect.max.x - dt_px(8), (b.rect.min.y + b.rect.max.y) * 0.5, the_app.dtc.weak, (^string)(user)^)
 		}, new_clone(dt_frame_str(image_info_text(pv, e)), ui.frame_allocator()))
 		if dt_btn("###dt_pi_open", .Detach, tooltip = "Open the image in a new tab").clicked { open_in_new_tab(app, strings.clone(e.url, context.temp_allocator), inspected_page(app)) }
 		dt_gap(3)
@@ -251,11 +251,11 @@ image_info_text :: proc(pv: ^Preview_State, e: ^Net_Entry) -> string {
 response_image :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 	preview_ensure(app, d, e, .Image)
 	pv := &d.pv
-	if dt_bar("###dt_ri_bar", dtm.bar - dt_px(4)) {
+	if dt_bar("###dt_ri_bar", app.dtm.bar - dt_px(4)) {
 		dt_gap(6)
 		ui.next({width = ui.fill(), height = ui.pct(1)})
 		ui.custom("###dt_ri_info", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
-			dt_text(dc, dtm.ui_font, dtm.fs, b.rect.min.x, (b.rect.min.y + b.rect.max.y) * 0.5, dtc.text, (^string)(user)^, b.rect.max.x - b.rect.min.x - dt_px(8))
+			dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, b.rect.min.x, (b.rect.min.y + b.rect.max.y) * 0.5, the_app.dtc.text, (^string)(user)^, b.rect.max.x - b.rect.min.x - dt_px(8))
 		}, new_clone(dt_frame_str(pv.err != "" ? pv.err : image_info_text(pv, e)), ui.frame_allocator()))
 		if dt_btn("###dt_ri_copy", .Copy, tooltip = "Copy the address of the image").clicked { clip_set(e.url) }
 		dt_gap(3)
@@ -370,7 +370,7 @@ Font_Draw :: struct { id: font.Font_Id }
 font_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	d := (^Font_Draw)(user)
 	r := b.rect
-	draw.rect(dc, r, dtc.bg)
+	draw.rect(dc, r, the_app.dtc.bg)
 	draw.push_clip(dc, r)
 	defer draw.pop_clip(dc)
 	x := r.min.x + dt_px(16)
@@ -381,9 +381,9 @@ font_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		{"\u00c0\u00c9\u00ce\u00d5\u00dc \u00e7\u00f1\u00df \u0394\u03a3\u03a9 \u0416\u0424\u042f \u2192\u2260\u2264 \u20ac\u00a3\u00a5", 28},
 	}
 	for l in lines {
-		size := math.round(l.px * dtm.sc)
+		size := math.round(l.px * the_app.dtm.sc)
 		m := font.metrics(&the_app.fonts, d.id, size)
-		draw.text(dc, d.id, size, {math.round(x), math.round(y + m.ascent)}, dtc.text, l.text)
+		draw.text(dc, d.id, size, {math.round(x), math.round(y + m.ascent)}, the_app.dtc.text, l.text)
 		y += m.line_height + dt_px(8)
 		if y > r.max.y { break }
 	}
@@ -398,10 +398,10 @@ font_info_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	d := (^Font_Info_Draw)(user)
 	r := b.rect
 	y := r.min.y + dt_px(6)
-	lh := math.round(dtm.fs * 1.5)
+	lh := math.round(the_app.dtm.fs * 1.5)
 	for s in d.lines {
-		cy := y + dtm.fs * 0.5
-		dt_text(dc, dtm.ui_font, dtm.fs, r.min.x + dt_px(16), cy, dtc.weak, s, r.max.x - r.min.x - dt_px(24))
+		cy := y + the_app.dtm.fs * 0.5
+		dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, r.min.x + dt_px(16), cy, the_app.dtc.weak, s, r.max.x - r.min.x - dt_px(24))
 		y += lh
 	}
 }
@@ -413,7 +413,7 @@ preview_font :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 	if !pv.font_ok && pv.font_faces <= 1 { dt_empty("###dt_pv_fonterr", .File_Font, "No preview", pv.err); return }
 	// The bar: the file's name, format and size, and (for a collection) a face selector that stays visible even when
 	// the chosen face failed, so another face can be picked.
-	if dt_bar("###dt_pf_bar", dtm.bar - dt_px(4)) {
+	if dt_bar("###dt_pf_bar", app.dtm.bar - dt_px(4)) {
 		dt_gap(6)
 		if pv.font_faces > 1 {
 			font_face_selector(app, e, pv)
@@ -421,7 +421,7 @@ preview_font :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 		}
 		ui.next({width = ui.fill(), height = ui.pct(1)})
 		ui.custom("###dt_pf_info", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
-			dt_text(dc, dtm.ui_font, dtm.fs, b.rect.min.x, (b.rect.min.y + b.rect.max.y) * 0.5, dtc.weak, (^string)(user)^, b.rect.max.x - b.rect.min.x - dt_px(8))
+			dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, b.rect.min.x, (b.rect.min.y + b.rect.max.y) * 0.5, the_app.dtc.weak, (^string)(user)^, b.rect.max.x - b.rect.min.x - dt_px(8))
 		}, new_clone(dt_frame_str(font_bar_text(pv, e)), ui.frame_allocator()))
 	}
 	// A collection whose chosen face failed: keep the selector above, show the message in the body.
@@ -429,7 +429,7 @@ preview_font :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 	// The facts (family, style, version, license, axes, glyph count), each on its own line if present.
 	lines := font_info_lines(pv)
 	if len(lines) > 0 {
-		lh := math.round(dtm.fs * 1.5)
+		lh := math.round(app.dtm.fs * 1.5)
 		ui.next({width = ui.fill(), height = ui.px(lh * f32(len(lines)) + dt_px(12))})
 		info := ui.frame_new(Font_Info_Draw)
 		info.lines = lines
@@ -672,23 +672,23 @@ html_reader_make :: proc(h: ^Html_Reader, body: []byte) {
 // The size and weight of a line's text.
 @(private = "file")
 rd_font :: proc(kind: Rd_Kind, level: int, st: bit_set[Rd_Style; u8]) -> (id: font.Font_Id, size: f32) {
-	size = dtm.fs * 1.1
-	id = dtm.ui_font
-	if kind == .Heading { size = dtm.fs * HEADING_SCALE[clamp(level, 1, 6) - 1] }
-	if .Code in st || kind == .Pre { id, size = dtm.mono, dtm.mono_fs * 1.05 }
+	size = the_app.dtm.fs * 1.1
+	id = the_app.dtm.ui_font
+	if kind == .Heading { size = the_app.dtm.fs * HEADING_SCALE[clamp(level, 1, 6) - 1] }
+	if .Code in st || kind == .Pre { id, size = the_app.dtm.mono, the_app.dtm.mono_fs * 1.05 }
 	return
 }
 
 @(private = "file")
 rd_color :: proc(kind: Rd_Kind, st: bit_set[Rd_Style; u8]) -> draw.Color {
 	switch {
-	case .Link in st: return dtc.accent
-	case .Weak in st: return dtc.weak
+	case .Link in st: return the_app.dtc.accent
+	case .Weak in st: return the_app.dtc.weak
 	case .Code in st: return syn_color(.Name)
-	case kind == .Heading: return dtc.text
-	case kind == .Quote: return dtc.weak
+	case kind == .Heading: return the_app.dtc.text
+	case kind == .Quote: return the_app.dtc.weak
 	}
-	return dtc.text
+	return the_app.dtc.text
 }
 
 // The blocks as lines of the width `w`: words laid left to right, a line when the next word does not fit.
@@ -767,16 +767,16 @@ rd_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	r := b.rect
 	cy := r.min.y + l.h * 0.5
 	x := r.min.x + l.x
-	if l.kind == .Rule { draw.rect(dc, {{x, cy}, {r.max.x - dt_px(14), cy + dtm.line}}, dtc.border); return }
-	if l.kind == .Quote { draw.rect(dc, {{r.min.x + l.x - dt_px(8), r.min.y}, {r.min.x + l.x - dt_px(6), r.max.y}}, dtc.border) }
-	if l.kind == .Item && l.indent == 1 { draw.rect(dc, {{x - dt_px(11), cy - dt_px(2)}, {x - dt_px(7), cy + dt_px(2)}}, dtc.weak, dt_px(2)) }
+	if l.kind == .Rule { draw.rect(dc, {{x, cy}, {r.max.x - dt_px(14), cy + the_app.dtm.line}}, the_app.dtc.border); return }
+	if l.kind == .Quote { draw.rect(dc, {{r.min.x + l.x - dt_px(8), r.min.y}, {r.min.x + l.x - dt_px(6), r.max.y}}, the_app.dtc.border) }
+	if l.kind == .Item && l.indent == 1 { draw.rect(dc, {{x - dt_px(11), cy - dt_px(2)}, {x - dt_px(7), cy + dt_px(2)}}, the_app.dtc.weak, dt_px(2)) }
 	for run in l.runs {
 		id, size := rd_font(l.kind, l.level, run.style)
 		col := rd_color(l.kind, run.style)
 		w := dt_w(id, size, run.text)
 		draw.text(dc, id, size, {math.round(x), dt_baseline(id, size, cy)}, col, run.text)
-		if .Link in run.style { draw.rect(dc, {{x, dt_baseline(id, size, cy) + dt_px(2)}, {x + w, dt_baseline(id, size, cy) + dt_px(2) + dtm.line}}, with_alpha(col, 0.7)) }
-		if .Code in run.style && l.kind != .Pre { draw.rect(dc, {{x - 1, cy - size * 0.6}, {x + w + 1, cy + size * 0.6}}, with_alpha(dtc.weak, 0.12), dt_px(2)) }
+		if .Link in run.style { draw.rect(dc, {{x, dt_baseline(id, size, cy) + dt_px(2)}, {x + w, dt_baseline(id, size, cy) + dt_px(2) + the_app.dtm.line}}, with_alpha(col, 0.7)) }
+		if .Code in run.style && l.kind != .Pre { draw.rect(dc, {{x - 1, cy - size * 0.6}, {x + w + 1, cy + size * 0.6}}, with_alpha(the_app.dtc.weak, 0.12), dt_px(2)) }
 		x += w
 	}
 }
@@ -788,7 +788,7 @@ Src_Line :: struct { text: string }
 preview_html :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 	pv := &d.pv
 	hr := &pv.html
-	if dt_bar("###dt_ph_bar", dtm.bar - dt_px(4)) {
+	if dt_bar("###dt_ph_bar", app.dtm.bar - dt_px(4)) {
 		dt_gap(5)
 		if dt_chip("###dt_ph_rnd", "Rendered", pv.html_mode == .Rendered, "A real render of the response in an isolated page: no scripts, no network (so a <link>, an <img> or a web font stays unloaded)").clicked { pv.html_mode = .Rendered }
 		if dt_chip("###dt_ph_read", "Reader", pv.html_mode == .Reader, "The page as a reader sees it: titles, text, lists, links").clicked { pv.html_mode = .Reader }
@@ -796,7 +796,7 @@ preview_html :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 		ui.next({width = ui.fill(), height = ui.pct(1)})
 		title := pv.render.title != "" ? pv.render.title : (hr.title != "" ? hr.title : net_name_of(e.url))
 		ui.custom("###dt_ph_info", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
-			dt_text_r(dc, dtm.ui_font, dtm.fs, b.rect.max.x - dt_px(8), (b.rect.min.y + b.rect.max.y) * 0.5, dtc.weak, (^string)(user)^, b.rect.max.x - b.rect.min.x - dt_px(120))
+			dt_text_r(dc, the_app.dtm.ui_font, the_app.dtm.fs, b.rect.max.x - dt_px(8), (b.rect.min.y + b.rect.max.y) * 0.5, the_app.dtc.weak, (^string)(user)^, b.rect.max.x - b.rect.min.x - dt_px(120))
 		}, new_clone(dt_frame_str(title), ui.frame_allocator()))
 		if dt_btn("###dt_ph_open", .Detach, tooltip = "Open the page in a new tab (as the browser renders it)").clicked { open_in_new_tab(app, strings.clone(e.url, context.temp_allocator), inspected_page(app)) }
 		dt_gap(3)
@@ -807,13 +807,13 @@ preview_html :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 	}
 	if pv.html_mode == .Source {
 		n := len(hr.raw)
-		if lst, ok := dt_list("###dt_ph_src_list", &pv.list, n, dtm.row, nil, ui.fill(), ui.fill()); ok {
+		if lst, ok := dt_list("###dt_ph_src_list", &pv.list, n, app.dtm.row, nil, ui.fill(), ui.fill()); ok {
 			for k in lst.first ..< lst.last {
 				ld := ui.frame_new(Src_Draw)
 				ln := hr.raw[k]
 				if len(ln) > DEVTOOLS_PREVIEW_LINE_MAX { ln = ln[:DEVTOOLS_PREVIEW_LINE_MAX] }
 				ld.text, ld.n = dt_frame_str(ln), k + 1
-				ui.next({width = ui.fill(), height = ui.px(dtm.row), cursor = .Text})
+				ui.next({width = ui.fill(), height = ui.px(app.dtm.row), cursor = .Text})
 				rb := ui.build_box({}, fmt.tprintf("###phs%d", k))
 				rb.custom, rb.custom_user = src_paint, ld
 			}
@@ -826,7 +826,7 @@ preview_html :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 	if math.abs(hr.wrap_w - w) > 1 || len(hr.offs) == 0 { rd_wrap(hr, w) }
 	n := len(hr.lines)
 	if n == 0 { dt_empty("###dt_ph_empty", .File_Doc, "Nothing to show", "The page has no text."); return }
-	if lst, ok := dt_list("###dt_ph_list", &pv.list, n, dtm.row, hr.offs[:], ui.fill(), ui.fill()); ok {
+	if lst, ok := dt_list("###dt_ph_list", &pv.list, n, app.dtm.row, hr.offs[:], ui.fill(), ui.fill()); ok {
 		pv.scroll = pv.list.key
 		for k in lst.first ..< lst.last {
 			l := &hr.lines[k]
@@ -848,7 +848,7 @@ src_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	r := b.rect
 	cy := (r.min.y + r.max.y) * 0.5
 	gut := dt_px(46)
-	draw.rect(dc, {r.min, {r.min.x + gut, r.max.y}}, with_alpha(dtc.bar, 0.9))
-	dt_text_r(dc, dtm.mono, dtm.mono_fs * 0.92, r.min.x + gut - dt_px(6), cy, dtc.faint, fmt.tprintf("%d", d.n))
-	dt_runs(dc, dtm.mono, dtm.mono_fs, r.min.x + gut + dt_px(8), cy, syn_runs(d.text, .HTML), r.max.x - dt_px(4))
+	draw.rect(dc, {r.min, {r.min.x + gut, r.max.y}}, with_alpha(the_app.dtc.bar, 0.9))
+	dt_text_r(dc, the_app.dtm.mono, the_app.dtm.mono_fs * 0.92, r.min.x + gut - dt_px(6), cy, the_app.dtc.faint, fmt.tprintf("%d", d.n))
+	dt_runs(dc, the_app.dtm.mono, the_app.dtm.mono_fs, r.min.x + gut + dt_px(8), cy, syn_runs(d.text, .HTML), r.max.x - dt_px(4))
 }

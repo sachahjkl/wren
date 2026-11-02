@@ -6,6 +6,7 @@ import "core:testing"
 // id and drops the Navigation API state; the state of other entries stays.
 @(test)
 navigation_keys_and_ids :: proc(t: ^testing.T) {
+	test_pages(t)
 	sh: Session_History
 	defer session_destroy(&sh)
 	a := session_push(&sh, "https://a/1", 1)

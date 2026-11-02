@@ -450,7 +450,7 @@ fonts_preload_adopt :: proc(pf: ^Page_Fonts, fp: ^Font_Preload) {
 // its first paint (first_paint.odin): its faces then go with the held frame (`&t.hold`, dropped by hold_release).
 // font-display is the page's business (page/fonts.odin): a face too late for its period never becomes ready.
 adopt_web_fonts :: proc(t: ^Tab) {
-	pf := &page_render.fonts
+	pf := &the_app.page_render.fonts
 	if t.web_font_page != rawptr(t.page) {
 		if t.hold.active && t.web_font_page != nil && rawptr(t.hold.page) == t.web_font_page {
 			page_fonts_drop(pf, &t.hold)

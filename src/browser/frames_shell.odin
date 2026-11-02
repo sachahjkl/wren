@@ -18,6 +18,7 @@ package browser
 
 import "core:math"
 import "core:strings"
+import "core:sync"
 import "toolkit:draw"
 import "toolkit:platform"
 import "wb:base"
@@ -39,12 +40,10 @@ Frame_View :: struct {
 	no_scroll: bool,        // its container says scrolling="no": no scroll bar, the document does not scroll
 }
 
+// The ids of the frames' views (atomic: unique in the process, beside the tabs', which stay below FRAME_TAB_IDS_FROM).
+FRAME_TAB_IDS_FROM :: 1 << 40
 @(private = "file")
-frame_views: map[^page.Page]^Frame_View
-@(private = "file")
-frame_tab_ids: u64 = 1 << 40
-@(private = "file")
-paint_stack: [dynamic]^page.Page   // the documents being painted, innermost last
+frame_tab_ids: u64 = FRAME_TAB_IDS_FROM
 
 // A window's pointer and keyboard among the frames of its page (Window_Own.frames).
 Frames_Input :: struct {
@@ -55,36 +54,35 @@ Frames_Input :: struct {
 
 // Shell start-up: the page package tells us about each document a frame gets.
 frames_shell_init :: proc(app: ^App) {
-	page.frame_hooks = page.Frame_Hooks{user = app, attached = frames_attached}
+	app.pages.frame_hooks = page.Frame_Hooks{user = app, attached = frames_attached}
 }
 
-frames_shell_destroy :: proc() {
-	page.frame_hooks = {}
-	delete(frame_views)
-	frame_views = nil
-	delete(paint_stack)
-	paint_stack = nil
+frames_shell_destroy :: proc(app: ^App) {
+	app.pages.frame_hooks = {}
+	delete(app.frame_views)
+	app.frame_views = nil
+	delete(app.paint_stack)
+	app.paint_stack = nil
 }
 
 // The frame view of a frame's document (nil: a tab's document, or not a frame).
 frame_view_of :: proc(p: ^page.Page) -> ^Frame_View {
 	if p == nil { return nil }
-	fv, _ := frame_views[p]
+	fv, _ := the_app.frame_views[p]
 	return fv
 }
 
 @(private = "file")
 frames_attached :: proc(user: rawptr, child: ^page.Page) {
 	fv := new(Frame_View)
-	frame_tab_ids += 1
-	fv.tab.id = frame_tab_ids
+	fv.tab.id = sync.atomic_add(&frame_tab_ids, 1) + 1
 	fv.tab.kind = .Web
 	fv.tab.zoom = 1
 	fv.tab.page = child
 	fv.tab.frame = fv
 	fv.tab.scope = child.scope
 	fv.scale = 1
-	frame_views[child] = fv
+	the_app.frame_views[child] = fv
 	base.on_close(child.scope, frame_view_closed, child)
 	page.set_layout_embedder(child, {user = fv, update = frame_js_layout, viewport = frame_js_viewport, scroll_to = frame_js_scroll,
 		repaint = proc(user: rawptr, p: ^page.Page) { request_frames(the_app, 2) }})
@@ -94,9 +92,9 @@ frames_attached :: proc(user: rawptr, child: ^page.Page) {
 @(private = "file")
 frame_view_closed :: proc(data: rawptr) {
 	p := (^page.Page)(data)
-	fv, ok := frame_views[p]
+	fv, ok := the_app.frame_views[p]
 	if !ok { return }
-	delete_key(&frame_views, p)
+	delete_key(&the_app.frame_views, p)
 	forget :: proc(fi: ^Frames_Input, p: ^page.Page) {
 		if fi.hover == p { fi.hover = nil }
 		if fi.focus == p { fi.focus = nil }
@@ -106,7 +104,7 @@ frame_view_closed :: proc(data: rawptr) {
 		for w in the_app.windows { forget(&w.own.frames, p) }
 		forget(&the_app.bare.own.frames, p)
 	}
-	page_fonts_drop(&page_render.fonts, &fv.tab)
+	page_fonts_drop(&the_app.page_render.fonts, &fv.tab)
 	layout_destroy(&fv.tab.layout)
 	smooth_destroy(&fv.tab.smooth)
 	delete(fv.tab.fragment_seen)
@@ -165,7 +163,7 @@ frame_prepare :: proc(app: ^App, fv: ^Frame_View, size: draw.Vec2, scale: f32) {
 	p := t.page
 	if p == nil || p.closed { return }
 	fv.size, fv.scale = size, scale
-	ls := &page_render.settings
+	ls := &app.page_render.settings
 	page.set_layout_journal(p, ls.incremental ? ls.inc_journal : 0)
 	page.set_frame_time(p, pacer_of(app).frame_ms)
 	defer page.set_frame_time(p, 0, unpin = true)
@@ -229,20 +227,20 @@ frame_js_scroll :: proc(user: rawptr, p: ^page.Page, x, y: f64, smooth: bool) {
 
 // The document whose layout is being painted (page_paint sets the tab's; frames push theirs).
 frames_paint_begin :: proc(p: ^page.Page) {
-	clear(&paint_stack)
-	append(&paint_stack, p)
+	clear(&the_app.paint_stack)
+	append(&the_app.paint_stack, p)
 }
 
 // Empties the paint stack: for a paint that has no live page under it (an inert document rendered on its own, such as the
 // Network tab's HTML preview: with nothing on the stack, frames_paint_content leaves every replaced box to the default
 // painter). frames_paint_begin would push a page; this pushes none.
-frames_paint_reset :: proc() { clear(&paint_stack) }
+frames_paint_reset :: proc() { clear(&the_app.paint_stack) }
 
 // The content box of a frame element: its document, painted there. False when `node` is not a frame with a document
 // ready to paint (the default painter leaves the box empty).
 frames_paint_content :: proc(app: ^App, dc: ^draw.Context, d: ^dom.Document, node: base.Handle, content: draw.Rect, container: ^style.Computed) -> bool {
-	if len(paint_stack) == 0 { return false }
-	parent := paint_stack[len(paint_stack) - 1]
+	if len(app.paint_stack) == 0 { return false }
+	parent := app.paint_stack[len(app.paint_stack) - 1]
 	if parent == nil || parent.doc != d || parent.frames == nil { return false }
 	n := page.frame_of_element(parent, node)
 	if n == nil || n.page == nil { return false }
@@ -253,7 +251,7 @@ frames_paint_content :: proc(app: ^App, dc: ^draw.Context, d: ^dom.Document, nod
 	if !fv.ready || fv.size != size { frame_prepare(app, fv, size, page_scale(app)) }
 	if !fv.ready { return true }
 	fv.rect = content
-	fv.painted = chrome_frames.frame_no
+	fv.painted = app.chrome_frames.frame_no
 	t := &fv.tab
 	if !t.layout.valid { return true }
 	// a frame's canvas is transparent (Chromium): a background the document gives itself fills it, and so does its
@@ -263,13 +261,13 @@ frames_paint_content :: proc(app: ^App, dc: ^draw.Context, d: ^dom.Document, nod
 		mismatch := container != nil && container.used_scheme != st.root_scheme
 		if mismatch || canvas_source_box(&t.layout) != lay.NONE { draw.rect(dc, content, to_draw(st.canvas)) }
 	}
-	append(&paint_stack, t.page)
+	append(&app.paint_stack, t.page)
 	saved := images_shell_page_swap(t.page)
 	draw.push_clip(dc, content)
 	paint(&t.layout, dc, t.page.doc, content.min, size, t.scroll, content, doc_scrollbar = !fv.no_scroll)
 	draw.pop_clip(dc)
 	images_shell_page_swap(saved)
-	pop(&paint_stack)
+	pop(&app.paint_stack)
 	return true
 }
 
@@ -507,7 +505,7 @@ frames_tick_doc :: proc(app: ^App, p: ^page.Page, frame_ms: f64) -> bool {
 				changed = proc(user: rawptr, p: ^page.Page) { request_frames((^App)(user), 2) },
 			})
 		}
-		shown := fv.painted + 2 >= chrome_frames.frame_no
+		shown := fv.painted + 2 >= app.chrome_frames.frame_no
 		page.set_page_visible(c, shown)
 		if !shown { continue }
 		page.run_animation_frames(c, frame_ms)

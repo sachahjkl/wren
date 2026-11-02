@@ -32,30 +32,29 @@ NET_BUILTIN := [?]Net_Profile{
 	{id = "offline", name = "Offline", offline = true, builtin = true},
 }
 
-@(private = "file") net_custom: [dynamic]Net_Profile   // owned strings
 
 net_profiles_destroy :: proc() {
-	for p in net_custom { delete(p.id); delete(p.name) }
-	delete(net_custom)
-	net_custom = nil
+	for p in the_app.net_custom { delete(p.id); delete(p.name) }
+	delete(the_app.net_custom)
+	the_app.net_custom = nil
 }
 
 // "id|name|down|up|latency|loss;..." into the custom profiles.
 net_profiles_load :: proc(text: string) {
-	for p in net_custom { delete(p.id); delete(p.name) }
-	clear(&net_custom)
+	for p in the_app.net_custom { delete(p.id); delete(p.name) }
+	clear(&the_app.net_custom)
 	for item in strings.split(text, ";", context.temp_allocator) {
 		f := strings.split(item, "|", context.temp_allocator)
 		if len(f) < 6 || strings.trim_space(f[0]) == "" { continue }
 		num :: proc(s: string) -> f64 { v, _ := strconv.parse_f64(strings.trim_space(s)); return max(v, 0) }
-		append(&net_custom, Net_Profile{id = strings.clone(strings.trim_space(f[0])), name = strings.clone(strings.trim_space(f[1])), down_kbps = num(f[2]), up_kbps = num(f[3]),
+		append(&the_app.net_custom, Net_Profile{id = strings.clone(strings.trim_space(f[0])), name = strings.clone(strings.trim_space(f[1])), down_kbps = num(f[2]), up_kbps = num(f[3]),
 			latency_ms = f32(num(f[4])), loss_pct = f32(min(num(f[5]), 100))})
 	}
 }
 
 net_profiles_text :: proc() -> string {
 	b := strings.builder_make(context.temp_allocator)
-	for p, i in net_custom {
+	for p, i in the_app.net_custom {
 		name, _ := strings.replace_all(p.name, "|", " ", context.temp_allocator)
 		name, _ = strings.replace_all(name, ";", " ", context.temp_allocator)
 		fmt.sbprintf(&b, "%s%s|%s|%g|%g|%g|%g", i > 0 ? ";" : "", p.id, name, p.down_kbps, p.up_kbps, p.latency_ms, p.loss_pct)
@@ -65,7 +64,7 @@ net_profiles_text :: proc() -> string {
 
 net_profile_find :: proc(id: string) -> (Net_Profile, bool) {
 	for p in NET_BUILTIN { if p.id == id { return p, true } }
-	for p in net_custom { if p.id == id { return p, true } }
+	for p in the_app.net_custom { if p.id == id { return p, true } }
 	return NET_BUILTIN[0], false
 }
 
@@ -190,8 +189,8 @@ net_prof_edit_save :: proc(app: ^App, t: ^Tab, e: ^Net_Prof_Edit) -> bool {
 		}
 		np := Net_Profile{id = strings.clone(id), name = strings.clone(name), down_kbps = down, up_kbps = up, latency_ms = f32(lat), loss_pct = f32(loss)}
 		replaced := false
-		for &p in net_custom { if p.id == id { delete(p.id); delete(p.name); p, replaced = np, true; break } }
-		if !replaced { append(&net_custom, np) }
+		for &p in app.net_custom { if p.id == id { delete(p.id); delete(p.name); p, replaced = np, true; break } }
+		if !replaced { append(&app.net_custom, np) }
 		dev_set_pref(app, "browser.devtools.network.profiles", net_profiles_text())
 		net_profile_set(app, t, id)
 		if t != nil { delete(t.net.link_id); t.net.link_id = "" }   // the link is made again from the edited numbers
@@ -202,10 +201,10 @@ net_prof_edit_save :: proc(app: ^App, t: ^Tab, e: ^Net_Prof_Edit) -> bool {
 }
 
 net_profile_delete :: proc(app: ^App, t: ^Tab, id: string) {
-	for p, i in net_custom {
+	for p, i in app.net_custom {
 		if p.id != id { continue }
 		delete(p.id); delete(p.name)
-		ordered_remove(&net_custom, i)
+		ordered_remove(&app.net_custom, i)
 		break
 	}
 	dev_set_pref(app, "browser.devtools.network.profiles", net_profiles_text())
@@ -219,10 +218,10 @@ net_speed_menu :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 	for p in NET_BUILTIN {
 		if ui.menu_item(fmt.tprintf("%s###dt_th_%s", p.name, p.id), checked = cur.id == p.id).clicked { net_profile_set(app, t, p.id) }
 	}
-	if len(net_custom) > 0 {
+	if len(app.net_custom) > 0 {
 		ui.menu_separator()
 		ui.menu_heading("Custom")
-		for p in net_custom {
+		for p in app.net_custom {
 			if ui.menu_item(fmt.tprintf("%s###dt_th_%s", p.name, p.id), checked = cur.id == p.id).clicked { net_profile_set(app, t, p.id) }
 		}
 	}
@@ -234,13 +233,13 @@ net_speed_menu :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 
 @(private = "file")
 field_row :: proc(label: string, id: string, f: ^ui.Text_Field, w: f32, hint: string) -> ui.Edit_Result {
-	lw := dt_w(dtm.ui_font, dtm.fs, label) + dt_px(8)
+	lw := dt_w(the_app.dtm.ui_font, the_app.dtm.fs, label) + dt_px(8)
 	ui.next({width = ui.px(lw), height = ui.pct(1)})
 	ui.custom(fmt.tprintf("###%s_l", id), proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		s := (^string)(user)^
-		dt_text(dc, dtm.ui_font, dtm.fs, b.rect.min.x + dt_px(4), (b.rect.min.y + b.rect.max.y) * 0.5, dtc.weak, s)
+		dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, b.rect.min.x + dt_px(4), (b.rect.min.y + b.rect.max.y) * 0.5, the_app.dtc.weak, s)
 	}, new_clone(dt_frame_str(label), ui.frame_allocator()))
-	ui.next({width = ui.px(w), height = ui.px(dtm.btn - dt_px(4)), radius = dtm.radius, font = dtm.mono, font_size = dtm.mono_fs, text_pad = dt_px(4)})
+	ui.next({width = ui.px(w), height = ui.px(the_app.dtm.btn - dt_px(4)), radius = the_app.dtm.radius, font = the_app.dtm.mono, font_size = the_app.dtm.mono_fs, text_pad = dt_px(4)})
 	return ui.line_edit(fmt.tprintf("###%s", id), f, hint)
 }
 
@@ -248,7 +247,7 @@ field_row :: proc(label: string, id: string, f: ^ui.Text_Field, w: f32, hint: st
 net_prof_editor :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 	e := &v.prof
 	if !e.open { return }
-	if dt_bar("###dt_pe_bar", dtm.bar) {
+	if dt_bar("###dt_pe_bar", app.dtm.bar) {
 		dt_gap(5)
 		r0 := field_row("Name", "dt_pe_name", &e.name, dt_px(130), "name")
 		if e.focus && r0.box != nil { ui.set_focus(r0.box.key); e.focus = false }
@@ -262,7 +261,7 @@ net_prof_editor :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 		if e.bad != "" {
 			ui.next({width = ui.fill(), height = ui.pct(1)})
 			ui.custom("###dt_pe_bad", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
-				dt_text(dc, dtm.ui_font, dtm.fs, b.rect.min.x + dt_px(8), (b.rect.min.y + b.rect.max.y) * 0.5, dtc.bad, (^string)(user)^, b.rect.max.x - b.rect.min.x - dt_px(10))
+				dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, b.rect.min.x + dt_px(8), (b.rect.min.y + b.rect.max.y) * 0.5, the_app.dtc.bad, (^string)(user)^, b.rect.max.x - b.rect.min.x - dt_px(10))
 			}, new_clone(dt_frame_str(e.bad), ui.frame_allocator()))
 		}
 	}

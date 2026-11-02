@@ -49,7 +49,7 @@ control_outcome_free :: proc(o: ^Control_Outcome) {
 // A program in this process drives this browser: no channel, the same machinery (the ops are looked at after each frame), and
 // frames made as soon as they are asked for.
 control_begin :: proc(app: ^App) {
-	r := &the_remote
+	r := &app.remote
 	r.active = true
 	r.timer = base.NIL_HANDLE
 	r.cfg.poll_ms = CONTROL_POLL_MS
@@ -109,8 +109,8 @@ control_wait :: proc(app: ^App, c: ^Call, t: ^Tab, what: api.Wait, l: Wait_Limit
 	op.idle_ms = l.idle_ms   // 0: browser.remote.idle_ms
 	if kind == .Quiet {
 		// (the window starts at the first look: a wait that begins in the middle of work does not count the work)
-		op.quiet_ms = l.quiet_ms > 0 ? l.quiet_ms : the_remote.cfg.quiet_ms
-		op.max_cpu = l.max_cpu > 0 ? l.max_cpu : f64(the_remote.cfg.quiet_cpu_ms)
+		op.quiet_ms = l.quiet_ms > 0 ? l.quiet_ms : app.remote.cfg.quiet_ms
+		op.max_cpu = l.max_cpu > 0 ? l.max_cpu : f64(app.remote.cfg.quiet_cpu_ms)
 		op.t0 = host.now_ns(&app.loop)
 		op.cpu0, _, _ = process_cpu_ms()
 	}
@@ -176,7 +176,7 @@ op_finish_eval :: proc(op: ^Remote_Op, obj: json.Object) {
 
 // Runs `expression` in the tab's page; its answer comes at once or, for a promise it waits for, later.
 control_eval :: proc(app: ^App, c: ^Call, t: ^Tab, expression: string, await: bool, timeout_ms := 0) -> Reply {
-	r := &the_remote
+	r := &app.remote
 	delete(r.stash_text); r.stash_text, r.stash_id = "", 0
 	id, ran := eval_start(t, expression, await)
 	if !ran { return fail(remote.ERR_FAILED, "the tab has no page, or JavaScript is off for it (javascript.* preferences)") }
@@ -219,38 +219,38 @@ control_button :: proc(b: api.Button) -> platform.Mouse_Button {
 // A click at a point (window pixels).
 control_click_at :: proc(app: ^App, c: ^Call, t: ^Tab, pos: [2]f32, button: platform.Mouse_Button, count: int, mods: platform.Modifiers = {}) -> Reply {
 	click_at(app, pos, button, max(count, 1), mods)
-	return frames_op(app, c, t, the_remote.cfg.settle_frames, fmt.tprintf(`{{"x":%.1f,"y":%.1f}}`, pos.x, pos.y))
+	return frames_op(app, c, t, app.remote.cfg.settle_frames, fmt.tprintf(`{{"x":%.1f,"y":%.1f}}`, pos.x, pos.y))
 }
 
 // A click on an element: scrolled into view first, on the middle of its box.
 control_click :: proc(app: ^App, c: ^Call, t: ^Tab, selector: string, button: platform.Mouse_Button, count: int, timeout_ms := 0) -> Reply {
 	op := op_new(app, c, .Click, timeout_ms, fmt.tprintf("the element %s", selector))
 	op.tab, op.arg, op.button, op.count = t.id, strings.clone(selector), button, max(count, 1)
-	op.until = the_remote.frame_no
+	op.until = app.remote.frame_no
 	request_frames(app, 3)
 	return Reply{deferred = true}
 }
 
 control_hover :: proc(app: ^App, c: ^Call, pos: [2]f32, mods: platform.Modifiers = {}) -> Reply {
 	inject(app, {kind = .Mouse_Move, pos = pos, mods = mods})
-	return frames_op(app, c, nil, the_remote.cfg.settle_frames)
+	return frames_op(app, c, nil, app.remote.cfg.settle_frames)
 }
 
 // A button goes down, and stays down until control_release (a press held over frames: autoscroll, a splitter).
 control_press :: proc(app: ^App, c: ^Call, pos: [2]f32, button: platform.Mouse_Button, mods: platform.Modifiers = {}) -> Reply {
 	inject(app, {kind = .Mouse_Press, pos = pos, button = button, mods = mods})
-	return frames_op(app, c, nil, the_remote.cfg.settle_frames)
+	return frames_op(app, c, nil, app.remote.cfg.settle_frames)
 }
 
 control_release :: proc(app: ^App, c: ^Call, pos: [2]f32, button: platform.Mouse_Button, mods: platform.Modifiers = {}) -> Reply {
 	inject(app, {kind = .Mouse_Release, pos = pos, button = button, mods = mods})
-	return frames_op(app, c, nil, the_remote.cfg.settle_frames)
+	return frames_op(app, c, nil, app.remote.cfg.settle_frames)
 }
 
 // The wheel: `delta` in pixels.
 control_wheel :: proc(app: ^App, c: ^Call, pos: [2]f32, delta: [2]f64, mods: platform.Modifiers = {}) -> Reply {
 	inject(app, {kind = .Scroll, pos = pos, delta = {f32(delta.x) / 100, f32(delta.y) / 100}, mods = mods})
-	return frames_op(app, c, nil, the_remote.cfg.settle_frames)
+	return frames_op(app, c, nil, app.remote.cfg.settle_frames)
 }
 
 Drag_Request :: struct {
@@ -273,7 +273,7 @@ control_drag :: proc(app: ^App, c: ^Call, d: Drag_Request) -> Reply {
 		if op.button not_in app.inject_held { op_finish(op, fail(remote.ERR_FAILED, "no drag is held (drag --hold first)")); return Reply{deferred = true} }
 		op.stage, op.idx = 1, 0
 	}
-	op.until = the_remote.frame_no
+	op.until = app.remote.frame_no
 	request_frames(app, 3)
 	return Reply{deferred = true}
 }
@@ -286,9 +286,9 @@ control_drop :: proc(app: ^App, c: ^Call, pos: [2]f32, d: ^platform.Drag_Data, l
 	if !platform.drop_inject(wnd.win, .Drop_Enter, pos, d, mods = mods) { return fail(remote.ERR_PARAMS, "this system has no drag and drop") }
 	platform.drop_inject(wnd.win, .Drop_Over, pos, mods = mods)
 	platform.drop_inject(wnd.win, leave ? .Drop_Leave : .Drop, pos, mods = mods)
-	the_remote.inputs += 1
+	app.remote.inputs += 1
 	request_frames(app, 4)
-	return frames_op(app, c, nil, the_remote.cfg.settle_frames)
+	return frames_op(app, c, nil, app.remote.cfg.settle_frames)
 }
 
 control_type :: proc(app: ^App, c: ^Call, text: string) -> Reply {
@@ -299,7 +299,7 @@ control_type :: proc(app: ^App, c: ^Call, text: string) -> Reply {
 		case:            inject(app, {kind = .Text, text = ch})
 		}
 	}
-	return frames_op(app, c, nil, the_remote.cfg.settle_frames)
+	return frames_op(app, c, nil, app.remote.cfg.settle_frames)
 }
 
 // Keys: "Ctrl+L", several separated by spaces.
@@ -310,7 +310,7 @@ control_key :: proc(app: ^App, c: ^Call, combo: string, repeat := 1) -> Reply {
 		if !ok { return fail(remote.ERR_PARAMS, fmt.tprintf("unknown key %q (examples: Enter, Ctrl+L, Shift+Tab, F5, a)", part)) }
 		for _ in 0 ..< clamp(repeat, 1, KEY_REPEAT_MOST) { emit_key(app, key, mods, key_text(key, mods)) }
 	}
-	return frames_op(app, c, nil, the_remote.cfg.settle_frames)
+	return frames_op(app, c, nil, app.remote.cfg.settle_frames)
 }
 @(private = "file") KEY_REPEAT_MOST :: 1000
 
@@ -448,7 +448,7 @@ control_close_window :: proc(app: ^App) -> string {
 
 // The browser ends, with this exit code.
 control_close :: proc(app: ^App, exit_code: int) {
-	the_remote.exit_code = exit_code
+	app.remote.exit_code = exit_code
 	app.quitting = true
 	platform.request_close(active_window(app).win)
 }
@@ -494,7 +494,7 @@ control_urlbar :: proc(app: ^App, allocator := context.temp_allocator) -> api.Ur
 	list := ui.key_from_string(w.ui.root.key, URLBAR_POPUP)
 	for r, i in uv.rows {
 		#partial switch r.kind {
-		case .History: rows[i].url = strings.clone(ub.idx.entries[r.entry].url, allocator)
+		case .History: rows[i].url = strings.clone(app.ub.idx.entries[r.entry].url, allocator)
 		case .Tab:     if x := tab_by_id(app, r.tab_id); x != nil { rows[i].url = strings.clone(x.url, allocator) }
 		}
 		outer := ui.key_from_string(list, fmt.tprintf("###ubo_%d", i))
@@ -541,7 +541,7 @@ control_pref_set :: proc(app: ^App, name, text: string, override := false) -> st
 
 // As it was when the channel started (control_begin for a program in this process). "": done, else why not.
 control_pref_reset :: proc(app: ^App, name: string) -> string {
-	r := &the_remote
+	r := &app.remote
 	if r.baseline == nil { return "no baseline" }
 	for st, i in r.baseline.prefs {
 		if st.name != name { continue }
@@ -555,7 +555,7 @@ control_pref_reset :: proc(app: ^App, name: string) -> string {
 
 // All of them as they were; how many were not. "": done, else why not.
 control_pref_reset_all :: proc(app: ^App) -> (restored: int, why: string) {
-	r := &the_remote
+	r := &app.remote
 	if r.baseline == nil { return 0, "no baseline" }
 	restored = config.restore(&app.prefs, r.baseline.prefs)
 	remote_reload_settings(app)
@@ -728,7 +728,7 @@ control_history_restoring :: proc(app: ^App) -> bool {
 control_stats_all :: proc(app: ^App, allocator := context.temp_allocator) -> api.Stats {
 	st := control_stats(app, allocator)
 	wnd := active_window(app)
-	n := &hud.nums
+	n := &app.hud.nums
 	gaps := frame_log_intervals(app)
 	pacer := &wnd.pacer   // (the window's pacing; the preferences are the process's)
 	st.frames, st.cpu_ms, st.cpu_p95_ms, st.cpu_p99_ms, st.cpu_max_ms = int(n.frames), f64(n.cpu_mean), f64(n.cpu_p95), f64(n.cpu_p99), f64(n.cpu_max)
@@ -764,7 +764,7 @@ control_stats_all :: proc(app: ^App, allocator := context.temp_allocator) -> api
 	st.threads, st.handles, st.gdi_objects, st.user_objects = process_thread_count(), int(pc.handles), int(pc.gdi), int(pc.user)
 	st.cookies, st.storage_sites = cookies.count(&app.profile.jar), len(page.storage_sites(&app.storage))
 	if app.profile.cache != nil { st.cache_entries = int(httpcache.summary(app.profile.cache).entries) }
-	st.history_visits, st.closed_tabs, st.downloads_active, st.checkpoints = len(app.ghist.visits), len(app.closed_tabs), downloads_active(app), len(the_remote.checkpoints)
+	st.history_visits, st.closed_tabs, st.downloads_active, st.checkpoints = len(app.ghist.visits), len(app.closed_tabs), downloads_active(app), len(app.remote.checkpoints)
 	return st
 }
 
@@ -783,9 +783,9 @@ control_stats :: proc(app: ^App, allocator := context.temp_allocator) -> api.Sta
 	wnd := active_window(app)
 	g := platform.frame_gate()
 	fv := forms_view(app)
-	lp := dnd_last_picture
+	lp := app.dnd_last_picture
 	st := api.Stats{
-		pid = int(current_pid()), frames_drawn = app.rates.frames, loop = loop_rates_stats(&app.rates, allocator), pending_ops = len(the_remote.ops), input_events = the_remote.inputs,
+		pid = int(current_pid()), frames_drawn = app.rates.frames, loop = loop_rates_stats(&app.rates, allocator), pending_ops = len(app.remote.ops), input_events = app.remote.inputs,
 		requests_in_flight = int(fetch.in_flight(&app.loader)), tabs = len(wnd.tabs), uptime_ms = process_uptime_ms(), frame_period_ms = wnd.pacer.period_ms,
 		frame_gate = {int(g.begun), int(g.nested), int(g.deferred), int(g.violations), strings.clone(g.last_violation, allocator)},
 		menu_open = ui.ctx_menu_any_open(), devtools = dev().visible, front_window = window_is_front(app),
@@ -864,7 +864,7 @@ control_key_event :: proc(app: ^App, c: ^Call, kind: Key_Event_Kind, name, text:
 	if kind == .Down && ok { inject(app, {kind = .Key_Press, key = key, mods = all}) }
 	if kind == .Up && ok { inject(app, {kind = .Key_Release, key = key, mods = all}) }
 	if kind != .Up { for ch in text { inject(app, {kind = .Text, text = ch, mods = all}) } }
-	return frames_op(app, c, nil, the_remote.cfg.settle_frames)
+	return frames_op(app, c, nil, app.remote.cfg.settle_frames)
 }
 
 // The tab's page stops loading.
@@ -872,7 +872,7 @@ control_stop_loading :: proc(app: ^App, t: ^Tab) { stop_loading(app, t) }
 
 // The events of Page.loadEventFired and Runtime.consoleAPICalled go to this client from now on, or not.
 control_subscribe :: proc(app: ^App, conn: u64, on: bool) {
-	r := &the_remote
+	r := &app.remote
 	for i := len(r.subs) - 1; i >= 0; i -= 1 { if r.subs[i] == conn { unordered_remove(&r.subs, i) } }
 	if on {
 		append(&r.subs, conn)
@@ -897,18 +897,18 @@ control_update_checking :: proc(app: ^App) -> bool { return update_checking(app)
 
 // A recording begins: the events the window receives, from any source, with their times.
 control_record_start :: proc(app: ^App) {
-	r := &the_remote.rec
+	r := &app.remote.rec
 	clear(&r.events)
 	r.on, r.t0 = true, host.now_ns(&app.loop)
 }
 
 // It ends; what it has (the browser's until the next one).
 control_record_stop :: proc() -> []Rec_Event {
-	the_remote.rec.on = false
-	return the_remote.rec.events[:]
+	the_app.remote.rec.on = false
+	return the_app.remote.rec.events[:]
 }
 
-control_record_state :: proc() -> (recording: bool, events: int) { return the_remote.rec.on, len(the_remote.rec.events) }
+control_record_state :: proc() -> (recording: bool, events: int) { return the_app.remote.rec.on, len(the_app.remote.rec.events) }
 
 // The events go in at their recorded times (divided by `speed`): answered when the last is in and its frames are drawn.
 control_replay :: proc(app: ^App, c: ^Call, events: []Rec_Event, speed := 1.0, timeout_ms := 0) -> Reply {
@@ -933,14 +933,14 @@ control_timeline_start :: proc(app: ^App, scale: f64, most: int, page_only := fa
 		rect = {int(pr.min.x), int(pr.min.y), int(pr.max.x - pr.min.x), int(pr.max.y - pr.min.y)}
 	}
 	timeline_begin(app, f32(scale), most, rect)
-	return f64(the_remote.tl.scale), the_remote.tl.max
+	return f64(app.remote.tl.scale), app.remote.tl.max
 }
 
-control_timeline_state :: proc() -> (recording: bool, frames: int) { return the_remote.tl.on, len(the_remote.tl.frames) }
+control_timeline_state :: proc() -> (recording: bool, frames: int) { return the_app.remote.tl.on, len(the_app.remote.tl.frames) }
 
 // It ends: its pictures to `dir`. `document`: the timeline.json written there; `why`: what went wrong, or "".
 control_timeline_stop :: proc(app: ^App, dir: string, cols: int, all: bool) -> (document, why: string) {
-	tl := &the_remote.tl
+	tl := &app.remote.tl
 	timeline_end(app)
 	document, why = timeline_write(tl, dir, clamp(cols, 1, TIMELINE_COLS_MOST), all)
 	timeline_free(tl)
@@ -950,7 +950,7 @@ control_timeline_stop :: proc(app: ^App, dir: string, cols: int, all: bool) -> (
 
 // A capture as the API's options say it.
 control_shot :: proc(app: ^App, o: api.Shot_Options) -> Capture_Request {
-	q := Capture_Request{scale = f32(o.scale), selector = o.selector, settle = o.has_settle ? o.settle : the_remote.cfg.settle_frames}
+	q := Capture_Request{scale = f32(o.scale), selector = o.selector, settle = o.has_settle ? o.settle : app.remote.cfg.settle_frames}
 	switch o.target {
 	case .Window:
 	case .Page:     q.target = .Page

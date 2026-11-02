@@ -20,6 +20,7 @@ import "wb:style"
 
 @(test)
 bench_text_layout :: proc(t: ^testing.T) {
+	test_app(t)
 	page_render_test_lock()
 	defer page_render_test_unlock()
 	when !BENCH_TEXT { return }

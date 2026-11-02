@@ -14,6 +14,7 @@ score_of :: proc(q, hay: string) -> int {
 
 @(test)
 fuzzy_order :: proc(t: ^testing.T) {
+	test_app(t)
 	// consecutive characters beat scattered ones
 	testing.expect(t, score_of("rel", "Reload") > score_of("rel", "Reopen closed tab"))
 	// the start of the text beats the start of a later word, which beats the middle of one
@@ -35,6 +36,7 @@ fuzzy_order :: proc(t: ^testing.T) {
 
 @(test)
 fuzzy_ranges :: proc(t: ^testing.T) {
+	test_app(t)
 	_, r, ok := fuzzy_score("zi", "Zoom in")
 	testing.expect(t, ok)
 	testing.expect_value(t, len(r), 2)
@@ -57,6 +59,7 @@ fuzzy_ranges :: proc(t: ^testing.T) {
 
 @(test)
 registry_well_formed :: proc(t: ^testing.T) {
+	test_app(t)
 	r: Command_Registry
 	commands_build(&r)
 	defer commands_destroy(&r)
@@ -92,6 +95,7 @@ query_prefixes :: proc(t: ^testing.T) {
 	page_render_test_lock()
 	defer page_render_test_unlock()
 	app := new(App)
+	the_app = app   // (what the code reaches without an App: this one)
 	defer free(app)
 	app.prefs = config.prefs_make()
 	defer config.prefs_destroy(&app.prefs)
@@ -165,6 +169,7 @@ query_prefixes :: proc(t: ^testing.T) {
 
 @(test)
 usage_persistence :: proc(t: ^testing.T) {
+	test_app(t)
 	u: Palette_Usage
 	defer usage_destroy(&u)
 	day :: i64(86_400_000)
@@ -201,6 +206,7 @@ usage_persistence :: proc(t: ^testing.T) {
 
 @(test)
 javascript_site_lists :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect_value(t, site_list_edit("a.com, b.com", "c.com", true), "a.com, b.com, c.com")
 	testing.expect_value(t, site_list_edit("a.com, b.com", "a.com", true), "a.com, b.com")
 	testing.expect_value(t, site_list_edit("a.com b.com;c.com", "b.com", false), "a.com, c.com")

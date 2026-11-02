@@ -5,6 +5,7 @@ import "core:testing"
 // document.title: whitespace stripped and collapsed; a page without one shows its address like Chrome.
 @(test)
 tab_titles :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect_value(t, collapse_title("  Hello \n\t  world  "), "Hello world")
 	testing.expect_value(t, collapse_title("\n \t"), "")
 	testing.expect_value(t, collapse_title("été  à   Paris"), "été à Paris")
@@ -22,6 +23,7 @@ tab_titles :: proc(t: ^testing.T) {
 // rel="icon" in any token list, any case.
 @(test)
 icon_rel_tokens :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect(t, rel_is_icon("icon"))
 	testing.expect(t, rel_is_icon("shortcut icon"))
 	testing.expect(t, rel_is_icon("  ICON  "))
@@ -33,6 +35,7 @@ icon_rel_tokens :: proc(t: ^testing.T) {
 // The icon whose size fits the tab best; scalable first; links without sizes after those that fit, the last one.
 @(test)
 icon_choice :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect_value(t, pick_icon(nil, 32), -1)
 	testing.expect_value(t, pick_icon({{href = "a.ico"}}, 32), 0)
 	testing.expect_value(t, pick_icon({{href = "a.ico"}, {href = "b.ico"}}, 32), 1)   // the last of equals

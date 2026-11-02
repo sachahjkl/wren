@@ -32,7 +32,6 @@ Embedder_Hooks :: struct {
 	collapse_blocked: bool,
 }
 
-embedder: Embedder_Hooks
 
 // The elements of the page's document that match a selector list, in tree order. ok = false for an invalid selector.
 select_all :: proc(p: ^Page, selector: string, root := base.NIL_HANDLE) -> (out: []base.Handle, ok: bool) {

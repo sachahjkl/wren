@@ -6,6 +6,7 @@ import "core:testing"
 // priority, the page state kept, and nothing wider than the room (no item cut against the graph).
 @(test)
 status_left_items_yield :: proc(t: ^testing.T) {
+	test_app(t)
 	measure :: proc(text: string) -> f32 { return f32(len(text)) * 10 }   // 10 px per character
 	mk :: proc() -> [5]Status_Left_Item {
 		return {

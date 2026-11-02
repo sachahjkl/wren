@@ -15,9 +15,9 @@ import "wb:page"
 //     verdict and only spare a gesture-backed opening to the opener's own origin (never named by a filter there);
 //   * an exception (`@@||x^$popup`, `$~popup` on a block rule) wins, as for every request type.
 //
-// The hook is installed in install_page_hooks (page_hooks.odin): `page.embedder.popup_check`.
+// The hook is installed in install_page_hooks (page_hooks.odin): `page.the_pages.embedder.popup_check`.
 
-// Installed as page.embedder.popup_check. Returns true to stop the opening. `user` is the Blocker; `p` the opener document;
+// Installed as page.the_pages.embedder.popup_check. Returns true to stop the opening. `user` is the Blocker; `p` the opener document;
 // `url` the absolute target; `gesture` whether a recent user activation backs the opening.
 @(private)
 popup_check :: proc(user: rawptr, p: ^page.Page, url: string, gesture: bool) -> bool {

@@ -60,7 +60,6 @@ Plane_Settings :: struct {
 	detach:               bool,
 }
 
-@(private) plane_settings := Plane_Settings{max_scale = 16, min_scale = 0.0625, taps = 8, mips = true, layer_bytes = 96 << 20, tolerance = 2, settle_ms = 120, detach = true}
 
 register_plane_prefs :: proc(p: ^config.Prefs) { config.register(p, PLANE_PREFS[:]) }
 
@@ -79,9 +78,9 @@ plane_settings_from_prefs :: proc(p: ^config.Prefs) -> Plane_Settings {
 }
 
 planes_init :: proc(app: ^App) {
-	plane_settings = plane_settings_from_prefs(&app.prefs)
+	app.plane_settings = plane_settings_from_prefs(&app.prefs)
 	app.watches[.Planes] = config.watch(&app.prefs, "paint.planes.", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		plane_settings = plane_settings_from_prefs(p)
+		the_app.plane_settings = plane_settings_from_prefs(p)
 		clear(&plane_mem)
 		draw.layer_cache_clear(&(^App)(user).dc)   // kept planes were rasterized at the old scales
 	}, app)
@@ -137,7 +136,7 @@ plane_dest_bounds :: proc(e: ^Effects, s: i32, r: lay.Rect, huge: lay.Rect) -> l
 
 // Is plane group g composited on its own, not into its parent plane's layer (layout.plane_detachable, and the preference)?
 @(private)
-plane_detach :: proc(l: ^Layout, g: i32) -> bool { return plane_settings.detach && lay.plane_detachable(l, g) }
+plane_detach :: proc(l: ^Layout, g: i32) -> bool { return the_app.plane_settings.detach && lay.plane_detachable(l, g) }
 
 // Plane frame (offsets taken out) -> the page's draw space, through the planes that receive it.
 @(private)
@@ -214,7 +213,6 @@ Plane_Mem :: struct {
 // (the painting thread's, as the compositor's layers are: compositor.odin comps)
 @(private, thread_local) plane_mem: map[u64]Plane_Mem
 @(private, thread_local) planes_culled: int   // planes not painted because they are hidden and turned away (what the tests count)
-@(private) plane_settle: base.Handle
 
 @(private)
 matrix_signature :: proc(m: style.Matrix4) -> u64 {
@@ -227,8 +225,8 @@ matrix_signature :: proc(m: style.Matrix4) -> u64 {
 @(private)
 plane_arm_settle :: proc() {
 	if the_app == nil { return }
-	if plane_settle != base.NIL_HANDLE { host.clear_timer(&the_app.loop, plane_settle) }
-	plane_settle = host.set_timer(&the_app.loop, plane_settings.settle_ms, 0, proc(data: rawptr) { plane_settle = base.NIL_HANDLE }, nil)
+	if the_app.plane_settle != base.NIL_HANDLE { host.clear_timer(&the_app.loop, the_app.plane_settle) }
+	the_app.plane_settle = host.set_timer(&the_app.loop, the_app.plane_settings.settle_ms, 0, proc(data: rawptr) { the_app.plane_settle = base.NIL_HANDLE }, nil)
 }
 
 @(private)
@@ -243,7 +241,7 @@ Plane_Plan :: struct {
 // it needs is `motion_tolerance` times larger (or much smaller: memory); a timer then brings the sharper frame.
 @(private)
 plane_plan :: proc(e: ^Effects, g, s: i32, bounds: lay.Rect) -> Plane_Plan {
-	st := plane_settings
+	st := the_app.plane_settings
 	m := plane_total_matrix(e, s)
 	poly := plane_visible_polygon(m, bounds, e.screen)
 	shows := len(poly) > 0
@@ -350,7 +348,7 @@ open_plane :: proc(e: ^Effects, c: i32, og: ^Open_Group, bounds: lay.Rect) -> bo
 // The cache parameters of segment `seg` of plane group `c`'s layer (see Fx_Cache.segs).
 @(private)
 plane_fx :: proc(e: ^Effects, c: i32, seg: int) -> draw.Plane_Fx {
-	fx := draw.Plane_Fx{mips = plane_settings.mips}
+	fx := draw.Plane_Fx{mips = the_app.plane_settings.mips}
 	if !fx_cache_skipping(e) { fx_cache_plane(e, c, &fx, seg) }
 	return fx
 }
@@ -385,7 +383,7 @@ plane_pause :: proc(e: ^Effects, pi: int) {
 		pl := draw.pop_plane(e.dc)
 		s := e.l.groups[pg.g].space
 		if pg.parts == nil { pg.parts = make([dynamic]draw.Plane_Part, 0, 4, context.temp_allocator) }
-		append(&pg.parts, draw.Plane_Part{layer = pl, m = to_mat4(plane_matrix(e, s)), alpha = plane_alpha(e.l, &e.l.groups[pg.g]), o = draw.Plane_Draw{max_taps = plane_settings.taps}})
+		append(&pg.parts, draw.Plane_Part{layer = pl, m = to_mat4(plane_matrix(e, s)), alpha = plane_alpha(e.l, &e.l.groups[pg.g]), o = draw.Plane_Draw{max_taps = the_app.plane_settings.taps}})
 		pg.layer_open = false
 	}
 	if pg.skip { e.fxc.skip -= 1; pg.skip = false }
@@ -446,7 +444,7 @@ close_plane :: proc(e: ^Effects, og: ^Open_Group) {
 	m := plane_matrix(e, s)
 	alpha := plane_alpha(l, g)
 	cull := sp.back_hidden && style.m4_back_facing(acc)
-	o := draw.Plane_Draw{max_taps = plane_settings.taps, blend = og.blend, backdrop = og.backdrop}
+	o := draw.Plane_Draw{max_taps = the_app.plane_settings.taps, blend = og.blend, backdrop = og.backdrop}
 	if og.detach_to > 0 {
 		// composited on its own: flattened onto the parent's plane, then projected with it, in the parent's z-order position
 		if pl.img.tex == 0 || pl.direct { return }
@@ -460,7 +458,7 @@ close_plane :: proc(e: ^Effects, og: ^Open_Group) {
 	if len(og.parts) > 0 {
 		// a plane with children composited on their own: its segments and its children, in order
 		if og.layer_open {
-			append(&og.parts, draw.Plane_Part{layer = pl, m = to_mat4(m), alpha = alpha, o = draw.Plane_Draw{max_taps = plane_settings.taps}})
+			append(&og.parts, draw.Plane_Part{layer = pl, m = to_mat4(m), alpha = alpha, o = draw.Plane_Draw{max_taps = the_app.plane_settings.taps}})
 		}
 		// (the plane the parts lie on: its rect as its layers cover it)
 		sc := og.plan.scale
@@ -519,8 +517,8 @@ plane_shape :: proc(e: ^Effects, c: i32, pl: draw.Plane_Layer) -> draw.Plane_Lay
 	bounds := draw.Rect{r.min - 1, r.max + 1}
 	draw.push_plane(e.dc, bounds, pl.scale)
 	box_xf := l.spaces[b.space].xform
-	clipped := .Clip_Path in g.effects && effects_settings.clip_paths && push_clip_path(e, g, box_xf, off)
-	masked := .Mask in g.effects && effects_settings.masks
+	clipped := .Clip_Path in g.effects && the_app.effects_settings.clip_paths && push_clip_path(e, g, box_xf, off)
+	masked := .Mask in g.effects && the_app.effects_settings.masks
 	if masked { draw.push_mask(e.dc, bounds, draw.Layer_Effects{alpha = 1}) }
 	set_xform(e, box_xf)
 	circular := draw.set_circular_corners(e.dc, true)

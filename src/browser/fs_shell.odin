@@ -26,23 +26,20 @@ Pick_Job :: struct {
 	test:   string,     // browser.dialogs.test_answer when set
 }
 
-@(private = "file")
 Ask_State :: struct {
 	queue: [dynamic]^page.Fs_Ask,
 }
 
-@(private = "file")
-ask_state: Ask_State
 
 fs_shell_init :: proc(app: ^App) {
-	page.fs_embedder = {pick = fs_shell_pick, ask = fs_shell_ask, user = app}
+	app.pages.fs_embedder = {pick = fs_shell_pick, ask = fs_shell_ask, user = app}
 }
 
 fs_shell_destroy :: proc(app: ^App) {
-	page.fs_embedder = {}
-	for r in ask_state.queue { page.fs_ask_done(r, false) }
-	delete(ask_state.queue)
-	ask_state = {}
+	app.pages.fs_embedder = {}
+	for r in app.ask_state.queue { page.fs_ask_done(r, false) }
+	delete(app.ask_state.queue)
+	app.ask_state = {}
 }
 
 @(private = "file")
@@ -115,7 +112,7 @@ pick_done :: proc(data: rawptr) {
 fs_shell_ask :: proc(user: rawptr, p: ^page.Page, req: ^page.Fs_Ask) {
 	app := (^App)(user)
 	switch config.string_of(&app.prefs, "browser.dialogs.test_answer") {
-	case "": append(&ask_state.queue, req)
+	case "": append(&app.ask_state.queue, req)
 	case "cancel": page.fs_ask_done(req, false)
 	case: page.fs_ask_done(req, true)
 	}
@@ -124,8 +121,8 @@ fs_shell_ask :: proc(user: rawptr, p: ^page.Page, req: ^page.Fs_Ask) {
 
 // The permission prompt over the page (the first request waiting), each frame while one waits.
 fs_shell_build :: proc(app: ^App) {
-	if len(ask_state.queue) == 0 { return }
-	req := ask_state.queue[0]
+	if len(app.ask_state.queue) == 0 { return }
+	req := app.ask_state.queue[0]
 	em := ui.font_size()
 	open := true
 	answered, granted := false, false
@@ -144,7 +141,7 @@ fs_shell_build :: proc(app: ^App) {
 	}
 	if !open { answered, granted = true, false }   // Escape, a click outside: blocked
 	if answered {
-		ordered_remove(&ask_state.queue, 0)
+		ordered_remove(&app.ask_state.queue, 0)
 		page.fs_ask_done(req, granted)
 		request_frames(app, 2)
 	}

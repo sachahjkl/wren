@@ -32,6 +32,7 @@ overlap :: proc(a, b: [2]f32) -> bool {
 // the right (vertical), everything is inside the extent.
 @(test)
 tree_layouts_place_without_overlap :: proc(t: ^testing.T) {
+	test_app(t)
 	sh: page.Session_History
 	defer page.session_destroy(&sh)
 	sample_tree(&sh, 6)
@@ -67,6 +68,7 @@ tree_layouts_place_without_overlap :: proc(t: ^testing.T) {
 
 @(test)
 tree_camera_math :: proc(t: ^testing.T) {
+	test_app(t)
 	em: f32 = 15
 	vc := [2]f32{400, 300}
 	c := Tree_Camera{{20, 10}, 1}
@@ -111,6 +113,7 @@ tree_camera_math :: proc(t: ^testing.T) {
 
 @(test)
 tree_click_or_drag :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect(t, !drag_started({10, 10}, {13, 12}, 4))
 	testing.expect(t, drag_started({10, 10}, {15, 10}, 4))
 	testing.expect(t, !drag_started({10, 10}, {10, 10}, 0))
@@ -119,6 +122,7 @@ tree_click_or_drag :: proc(t: ^testing.T) {
 
 @(test)
 tree_culling_and_detail :: proc(t: ^testing.T) {
+	test_app(t)
 	sh: page.Session_History
 	defer page.session_destroy(&sh)
 	sample_tree(&sh, 200)
@@ -170,6 +174,7 @@ tree_takes_its_events :: proc(t: ^testing.T) {
 	page_render_test_lock()
 	defer page_render_test_unlock()
 	app := new(App)
+	the_app = app   // (what the code reaches without an App: this one)
 	defer free(app)
 	active_window(app).ui = new(ui.State)
 	defer free(active_window(app).ui)
@@ -180,12 +185,12 @@ tree_takes_its_events :: proc(t: ^testing.T) {
 	tab.kind = .History
 	append(&active_window(app).tabs, tab)
 	defer delete(active_window(app).tabs)
-	saved_mode := hview.mode
-	defer hview.mode = saved_mode
+	saved_mode := app.hview.mode
+	defer app.hview.mode = saved_mode
 	defer history_tree_destroy()   // the canvas's state, as about:history's closing leaves it
-	hview.mode = 1
-	tview.built = active_window(app).ui.build_index
-	tview.view_rect = {{0, 100}, {800, 600}}
+	app.hview.mode = 1
+	app.tview.built = active_window(app).ui.build_index
+	app.tview.view_rect = {{0, 100}, {800, 600}}
 	events := []platform.Event{
 		{kind = .Scroll, pos = {400, 300}, delta = {0, 1}},
 		{kind = .Scroll, pos = {400, 50}, delta = {0, 1}},           // over the toolbar: not the canvas's
@@ -195,12 +200,12 @@ tree_takes_its_events :: proc(t: ^testing.T) {
 		{kind = .Mouse_Move, pos = {10, 10}},
 	}
 	rest := history_tree_events(app, events)
-	testing.expect_value(t, len(tview.pending), 3)
+	testing.expect_value(t, len(app.tview.pending), 3)
 	testing.expect_value(t, len(rest), 3)
 	// another part of about:history, or a field with the keyboard: nothing is taken
-	hview.mode = 0
+	app.hview.mode = 0
 	testing.expect_value(t, len(history_tree_events(app, events)), len(events))
-	hview.mode = 1
+	app.hview.mode = 1
 	ui.set_focus(12345)
 	rest = history_tree_events(app, events)
 	testing.expect_value(t, len(rest), 5)   // the wheel still, not the keys
@@ -212,6 +217,7 @@ tree_takes_its_events :: proc(t: ^testing.T) {
 // 5000 entries in branches: building the model and culling it per frame stay far below a frame at 180 Hz.
 @(test)
 tree_large_model_is_cheap :: proc(t: ^testing.T) {
+	test_app(t)
 	sh: page.Session_History
 	defer page.session_destroy(&sh)
 	page.session_set_limits(&sh, 100, 100_000)

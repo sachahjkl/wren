@@ -16,6 +16,7 @@ DEFAULT_FORMAT :: "{app} {version} · {build} · {engine} · {fps} fps · CPU {c
 
 @(test)
 title_compose_fields_and_parts :: proc(t: ^testing.T) {
+	test_app(t)
 	v := values_full()
 	testing.expect_value(t, title_compose(DEFAULT_FORMAT, " · ", v), "Wren 9.8.7 · release · Wasmtime 49.0.3 · 60 fps · CPU 1.2 ms · GPU 0.8 ms — Example")
 	// no GPU time: its part goes, with the separator before it (the page keeps its own)
@@ -37,6 +38,7 @@ title_compose_fields_and_parts :: proc(t: ^testing.T) {
 
 @(test)
 title_statistics_and_throttle :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect(t, title_has_stats(DEFAULT_FORMAT))
 	testing.expect(t, title_has_stats("{mem} MB"))
 	testing.expect(t, !title_has_stats("{app} — {page}"))
@@ -53,6 +55,7 @@ title_statistics_and_throttle :: proc(t: ^testing.T) {
 
 @(test)
 build_descriptions :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect_value(t, describe_build(.Release, false), "release")
 	testing.expect_value(t, describe_build(.Debug, false), "debug")
 	testing.expect_value(t, describe_build(.Profile, true), "profile +gpu-timing")
@@ -65,6 +68,7 @@ build_descriptions :: proc(t: ^testing.T) {
 
 @(test)
 number_formats :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect_value(t, fmt_ms(0.345), "0.34")
 	testing.expect_value(t, fmt_ms(4.24), "4.2")
 	testing.expect_value(t, fmt_ms(16.7), "16.7")
@@ -82,6 +86,7 @@ number_formats :: proc(t: ^testing.T) {
 
 @(test)
 hud_settings_parse :: proc(t: ^testing.T) {
+	test_app(t)
 	p := config.prefs_make()
 	defer config.prefs_destroy(&p)
 	register_all_prefs(&p)
@@ -112,27 +117,23 @@ hud_settings_parse :: proc(t: ^testing.T) {
 // over-budget frames, restyles and layout passes counted from the details.
 @(test)
 hud_numbers_from_history :: proc(t: ^testing.T) {
-	saved := hud
-	defer hud = saved
-	hud = {}
-	hud.cfg.window_ms, hud.cfg.budget = 1000, 16.7
-	app := new(App)   // (no window: the budget's pacing is the bare window's)
-	defer free(app)
-	ui.history_init(&hud.history, 512, CPU_SERIES)
-	defer ui.history_destroy(&hud.history)
-	hud.details = make([]Frame_Detail, 512)
-	defer delete(hud.details)
+	app := test_app(t)   // (no window: the budget's pacing is the bare window's)
+	app.hud.cfg.window_ms, app.hud.cfg.budget = 1000, 16.7
+	ui.history_init(&app.hud.history, 512, CPU_SERIES)
+	defer ui.history_destroy(&app.hud.history)
+	app.hud.details = make([]Frame_Detail, 512)
+	defer delete(app.hud.details)
 	// 3 s of frames 10 ms apart: 2 ms of styles, 1 ms of interface, 1 ms of GPU; every 10th frame a 20 ms layout
 	for i in 1 ..= 300 {
-		hud.serial += 1
-		s := ui.history_push(&hud.history, f64(i) * 10, hud.serial)
+		app.hud.serial += 1
+		s := ui.history_push(&app.hud.history, f64(i) * 10, app.hud.serial)
 		s.v[Hud_Series.Styles], s.v[Hud_Series.UI], s.v[Hud_Series.GPU] = 2, 1, 1
-		d := Frame_Detail{serial = hud.serial, restyle = .Partial}
+		d := Frame_Detail{serial = app.hud.serial, restyle = .Partial}
 		if i % 10 == 0 { s.v[Hud_Series.Layout] = 20; d.lay_pass = .Full }
-		hud.details[hud.serial % 512] = d
+		app.hud.details[app.hud.serial % 512] = d
 	}
 	hud_refresh(app, 3000)
-	n := hud.nums
+	n := app.hud.nums
 	testing.expect_value(t, n.frames, 101)                 // 2000 .. 3000 ms inclusive
 	testing.expect(t, abs(n.fps - 101) < 0.01)
 	testing.expect_value(t, n.cpu_max, 23)
@@ -143,13 +144,13 @@ hud_numbers_from_history :: proc(t: ^testing.T) {
 	testing.expect_value(t, n.passes[.Full], 11)
 	testing.expect(t, abs(n.series[.Styles] - 2) < 1e-4)
 	// frames faster than the history keeps: the rate comes from the time the kept ones span
-	ui.history_clear(&hud.history)
-	for i in 0 ..< 600 { hud.serial += 1; ui.history_push(&hud.history, 5000 + f64(i) * 0.5, hud.serial) }
+	ui.history_clear(&app.hud.history)
+	for i in 0 ..< 600 { app.hud.serial += 1; ui.history_push(&app.hud.history, 5000 + f64(i) * 0.5, app.hud.serial) }
 	hud_refresh(app, 5300)
-	testing.expect_value(t, hud.nums.frames, 512)
-	testing.expect(t, hud.nums.fps > 1900 && hud.nums.fps < 2100)
+	testing.expect_value(t, app.hud.nums.frames, 512)
+	testing.expect(t, app.hud.nums.fps > 1900 && app.hud.nums.fps < 2100)
 	// nothing in the window: at rest
 	hud_refresh(app, 9000)
-	testing.expect_value(t, hud.nums.frames, 0)
-	testing.expect_value(t, hud.nums.fps, 0)
+	testing.expect_value(t, app.hud.nums.frames, 0)
+	testing.expect_value(t, app.hud.nums.fps, 0)
 }

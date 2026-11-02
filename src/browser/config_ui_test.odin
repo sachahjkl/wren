@@ -23,6 +23,7 @@ kinds :: proc(v: ^Config_View) -> string {
 
 @(test)
 config_model_groups_searches_and_filters :: proc(t: ^testing.T) {
+	test_app(t)
 	p := config.prefs_make()
 	defer config.prefs_destroy(&p)
 	defs := [?]config.Def{
@@ -97,6 +98,7 @@ config_model_groups_searches_and_filters :: proc(t: ^testing.T) {
 // about:config, titled without their "browser.tabs" ("Sidebar width"), and nothing else is in it.
 @(test)
 tab_preferences_make_the_tabs_category :: proc(t: ^testing.T) {
+	test_app(t)
 	p := config.prefs_make()
 	defer config.prefs_destroy(&p)
 	register_all_prefs(&p)
@@ -125,6 +127,7 @@ tab_preferences_make_the_tabs_category :: proc(t: ^testing.T) {
 // only keep it: "max body KB", "max body MB").
 @(test)
 every_preference_has_a_distinct_title :: proc(t: ^testing.T) {
+	test_app(t)
 	p := config.prefs_make()
 	defer config.prefs_destroy(&p)
 	register_all_prefs(&p)

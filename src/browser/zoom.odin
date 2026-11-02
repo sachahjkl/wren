@@ -39,18 +39,18 @@ zoom_step :: proc(app: ^App, t: ^Tab, dir: int) {
 	cur := t.zoom > 0 ? t.zoom : 1
 	next := cur
 	if dir > 0 {
-		next = ix.zoom_max
-		for z in ix.zoom_levels { if z > cur + 0.001 { next = z; break } }
+		next = app.ix.zoom_max
+		for z in app.ix.zoom_levels { if z > cur + 0.001 { next = z; break } }
 	} else {
-		next = ix.zoom_min
-		for i := len(ix.zoom_levels) - 1; i >= 0; i -= 1 { if ix.zoom_levels[i] < cur - 0.001 { next = ix.zoom_levels[i]; break } }
+		next = app.ix.zoom_min
+		for i := len(app.ix.zoom_levels) - 1; i >= 0; i -= 1 { if app.ix.zoom_levels[i] < cur - 0.001 { next = app.ix.zoom_levels[i]; break } }
 	}
 	zoom_set(app, t, next)
 }
 
 zoom_set :: proc(app: ^App, t: ^Tab, z: f32) {
 	if t == nil { return }
-	nz := clamp(z, ix.zoom_min, ix.zoom_max)
+	nz := clamp(z, app.ix.zoom_min, app.ix.zoom_max)
 	if nz == t.zoom { return }
 	// keep the same part of the document at the top
 	old := t.zoom > 0 ? t.zoom : 1

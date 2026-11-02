@@ -16,6 +16,7 @@ MEASURE_TEXTS := [?]string{
 
 @(test)
 measure_matches_toolkit :: proc(t: ^testing.T) {
+	test_app(t)
 	fs: font.State
 	font.init(&fs)
 	defer font.destroy(&fs)
@@ -45,6 +46,7 @@ Measure_Race :: struct {
 
 @(test)
 measure_concurrent :: proc(t: ^testing.T) {
+	test_app(t)
 	fs: font.State
 	font.init(&fs)
 	defer font.destroy(&fs)

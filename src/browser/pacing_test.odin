@@ -11,6 +11,7 @@ import "wb:config"
 
 @(test)
 pacing_budget_follows_the_rate :: proc(t: ^testing.T) {
+	test_app(t)
 	for hz in ([?]f64{60, 120, 144, 180, 240}) {
 		period := 1000 / platform.cadence_target_rate(hz, 0, 0)
 		testing.expectf(t, abs(period - 1000 / hz) < 1e-9, "%v Hz: budget %v", hz, period)
@@ -30,6 +31,7 @@ pacing_budget_follows_the_rate :: proc(t: ^testing.T) {
 
 @(test)
 pacing_target_rate_preference :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect_value(t, parse_target_hz("auto"), 0)
 	testing.expect_value(t, parse_target_hz(" 144 "), 144)
 	testing.expect_value(t, parse_target_hz("59.94Hz"), 59.94)
@@ -41,6 +43,7 @@ pacing_target_rate_preference :: proc(t: ^testing.T) {
 // ones that are real choices reach the model.
 @(test)
 retired_frame_preferences_are_ignored :: proc(t: ^testing.T) {
+	test_app(t)
 	p := config.prefs_make()
 	defer config.prefs_destroy(&p)
 	register_frame_prefs(&p)
@@ -84,6 +87,7 @@ legacy_decide :: proc(l: ^Legacy, in_: platform.Cadence_Inputs) -> (at_once, wai
 
 @(test)
 the_cadence_model_decides_as_the_browser_did :: proc(t: ^testing.T) {
+	test_app(t)
 	r := rand.create(7)
 	context.random_generator = rand.default_random_generator(&r)
 	for plan in ([?]platform.Cadence_Plan{platform.cadence_plan({hz = 60.001, max_hz = 180}, {}), platform.cadence_plan({hz = 60, max_hz = 60}, {}), platform.cadence_plan({hz = 180, max_hz = 180}, {tearing = true})}) {
@@ -123,10 +127,11 @@ the_cadence_model_decides_as_the_browser_did :: proc(t: ^testing.T) {
 @(test)
 a_displayed_frame_gives_its_drag_sample_the_refresh_it_was_shown_at :: proc(t: ^testing.T) {
 	app := new(App)   // (no window: the pacing is the bare window's)
+	the_app = app   // (what the code reaches without an App: this one)
 	defer free(app)
 	defer drag_probe_reset()
 	drag_probe_reset()
-	for i in 0 ..< 3 { drag_probe.ring[i] = {} }
+	for i in 0 ..< 3 { app.drag_probe.ring[i] = {} }
 	app.pacing.cfg.drag_probe = true
 	for read in ([?]i64{1000, 2000, 3000}) {
 		pacer_of(app).read_tick = read
@@ -134,10 +139,10 @@ a_displayed_frame_gives_its_drag_sample_the_refresh_it_was_shown_at :: proc(t: ^
 	}
 	drag_probe_displayed(app, {read = {_nsec = 2000}, shown = {_nsec = 9000}})
 	drag_probe_displayed(app, {read = {_nsec = 7777}, shown = {_nsec = 1}})   // a chrome frame of no drag: nothing matches
-	testing.expect_value(t, drag_probe.ring[0].shown, 0)
-	testing.expect_value(t, drag_probe.ring[1].shown, 9000)
-	testing.expect_value(t, drag_probe.ring[2].shown, 0)
+	testing.expect_value(t, app.drag_probe.ring[0].shown, 0)
+	testing.expect_value(t, app.drag_probe.ring[1].shown, 9000)
+	testing.expect_value(t, app.drag_probe.ring[2].shown, 0)
 	app.pacing.cfg.drag_probe = false
 	drag_probe_note(app, 1, 1)
-	testing.expect_value(t, drag_probe.n, 3)   // off: nothing recorded
+	testing.expect_value(t, app.drag_probe.n, 3)   // off: nothing recorded
 }

@@ -88,7 +88,7 @@ filter_spans :: proc(user: rawptr, line: string, para: int, out: ^[dynamic]ui.Te
 // The editor asks whether a paragraph is invalid (dash.my_errors, filled by diagnose()).
 @(private = "file")
 filter_error_line :: proc(user: rawptr, para: int) -> bool {
-	_, bad := dash.my_errors[para]
+	_, bad := the_app.dash.my_errors[para]
 	return bad
 }
 

@@ -6,6 +6,7 @@ import "core:testing"
 // Each kind of failure gets its own words (and the TLS one its own security chip).
 @(test)
 error_page_kinds :: proc(t: ^testing.T) {
+	test_app(t)
 	e := classify_load_error("https://nonexistent.invalid/", .Transport, 12007, "host name could not be resolved")
 	testing.expect_value(t, e.kind, Error_Kind.Dns)
 	testing.expect(t, strings.contains(e.explain, "nonexistent.invalid"))
@@ -28,6 +29,7 @@ error_page_kinds :: proc(t: ^testing.T) {
 // The page escapes what it shows (an address can hold anything).
 @(test)
 error_page_escapes :: proc(t: ^testing.T) {
+	test_app(t)
 	e := classify_load_error(`https://a/<script>`, .Transport, 12007, `<img src=x onerror=alert(1)>`)
 	html := error_page_html(e, `https://a/<script>"`, `<b>`)
 	testing.expect(t, !strings.contains(html, "<script>"))

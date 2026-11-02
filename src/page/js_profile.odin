@@ -30,8 +30,6 @@ Js_Profile :: struct {
 	js_path:   string,   // the page's functions, "" when not asked for
 }
 
-@(private = "file")
-profile_seq: int
 
 js_profile_begin :: proc(p: ^Page, inst: ^wasm.Instance) {
 	if p.worker != nil { return }
@@ -40,15 +38,15 @@ js_profile_begin :: proc(p: ^Page, inst: ^wasm.Instance) {
 	if wasm_prefix == "" && js_prefix == "" { return }
 	jp := new(Js_Profile)
 	jp.inst = inst
-	profile_seq += 1
-	if wasm_prefix != "" && wasm.profile_start(inst, js_engine_image()) { jp.path = fmt.aprintf("%s.%d.json", wasm_prefix, profile_seq) }
+	the_pages.profile_seq += 1
+	if wasm_prefix != "" && wasm.profile_start(inst, js_engine_image()) { jp.path = fmt.aprintf("%s.%d.json", wasm_prefix, the_pages.profile_seq) }
 	if js_prefix != "" {
 		// WREN_JS_PROFILE_FROM=<ms>: the functions are counted from that long after the realm was made (a page that has settled: what
 		// it does when nothing moves), not from its first script
 		from_ms, _ := strconv.parse_f64(os.get_env("WREN_JS_PROFILE_FROM", context.temp_allocator))
 		argv := [1]u32{from_ms > 0 ? 0 : 1}
 		if wasm.call_raw(inst, "wj_profile_set", argv[:]) == .Ok {
-			jp.js_path = fmt.aprintf("%s.%d.js.txt", js_prefix, profile_seq)
+			jp.js_path = fmt.aprintf("%s.%d.js.txt", js_prefix, the_pages.profile_seq)
 			if from_ms > 0 {
 				host.set_timer(p.loop, from_ms, 0, proc(data: rawptr) {
 					jp := (^Js_Profile)(data)

@@ -54,22 +54,21 @@ Selection_Shell :: struct {
 	last_tick:   time.Tick,
 }
 
-ix: Interaction_Settings
 
 // Start-up: the preferences of this part of the shell, then follows them.
 interaction_init :: proc(app: ^App) {
-	ix = interaction_settings_from_prefs(&app.prefs)
+	app.ix = interaction_settings_from_prefs(&app.prefs)
 	search_engines_init(app)
 	app.watches[.Interaction] = config.watch(&app.prefs, "browser.", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		interaction_settings_destroy(&ix)
-		ix = interaction_settings_from_prefs(p)
+		interaction_settings_destroy(&the_app.ix)
+		the_app.ix = interaction_settings_from_prefs(p)
 		request_frames((^App)(user), 2)
 	}, app)
 }
 
 interaction_destroy :: proc(app: ^App) {
 	config.unwatch(&app.prefs, app.watches[.Interaction])
-	interaction_settings_destroy(&ix)
+	interaction_settings_destroy(&app.ix)
 	search_engines_destroy(app)
 	find_destroy(find_state(app))
 	closed_tabs_destroy(app)
@@ -80,7 +79,7 @@ interaction_destroy :: proc(app: ^App) {
 page_viewport :: proc(app: ^App) -> [2]f32 { return draw.rect_size(active_window(app).page_rect) }
 
 @(private = "file")
-text_api :: proc(app: ^App) -> lay.Text_Api { return page_text_api(&page_render.fonts, &app.measure, &app.page_settings.style) }
+text_api :: proc(app: ^App) -> lay.Text_Api { return page_text_api(&app.page_render.fonts, &app.measure, &app.page_settings.style) }
 
 // The text position under a window point (ok = false: no text, or a layout older than the document).
 position_of :: proc(app: ^App, t: ^Tab, pos: [2]f32) -> (lay.Text_Pos, bool) {
@@ -120,7 +119,7 @@ unit_at :: proc(t: ^Tab, p: lay.Text_Pos, unit: Sel_Unit) -> (a, b: lay.Text_Pos
 	}
 	switch unit {
 	case .Char: return p, p, true
-	case .Word: return lay.word_range(d, st, p, ix.word_eats_space)
+	case .Word: return lay.word_range(d, st, p, the_app.ix.word_eats_space)
 	case .Paragraph: return lay.paragraph_range(d, st, p)
 	}
 	return
@@ -199,7 +198,7 @@ selection_pointer_move :: proc(app: ^App, t: ^Tab, pos: [2]f32) {
 	if !ss.down || t.page == nil || t.page != ss.page || ss.cancelled { return }
 	if !ss.moved {
 		d := pos - ss.press_pos
-		if d.x * d.x + d.y * d.y < ix.drag_threshold_px * ix.drag_threshold_px * page_scale(app) * page_scale(app) { return }
+		if d.x * d.x + d.y * d.y < app.ix.drag_threshold_px * app.ix.drag_threshold_px * page_scale(app) * page_scale(app) { return }
 		ss.moved = true
 	}
 	extend_to(app, t, pos)
@@ -265,7 +264,7 @@ selection_shell_frame :: proc(app: ^App) {
 		ss.pending = false
 		start_gesture(app, t, ss.pending_ev)
 	}
-	if !ss.down || t.page != ss.page || !ss.moved || ss.cancelled || ix.autoscroll_speed <= 0 { return }
+	if !ss.down || t.page != ss.page || !ss.moved || ss.cancelled || app.ix.autoscroll_speed <= 0 { return }
 	port := wnd.page_rect
 	if ss.scroller != base.NIL_HANDLE {
 		if r, ok := lay.box_of(&t.layout, ss.scroller, page_viewport(app), t.scroll); ok {
@@ -278,7 +277,7 @@ selection_shell_frame :: proc(app: ^App) {
 	m := ss.mouse
 	d := [2]f32{past(m.x, port.min.x, port.max.x), past(m.y, port.min.y, port.max.y)}
 	if d == {} { return }
-	speed := [2]f32{clamp(d.x * ix.autoscroll_speed, -ix.autoscroll_max, ix.autoscroll_max), clamp(d.y * ix.autoscroll_speed, -ix.autoscroll_max, ix.autoscroll_max)} * page_scale(app)
+	speed := [2]f32{clamp(d.x * app.ix.autoscroll_speed, -app.ix.autoscroll_max, app.ix.autoscroll_max), clamp(d.y * app.ix.autoscroll_speed, -app.ix.autoscroll_max, app.ix.autoscroll_max)} * page_scale(app)
 	step := speed * dt
 	moved := false
 	if ss.scroller != base.NIL_HANDLE {
@@ -353,24 +352,23 @@ Sel_Paint :: struct {
 	drop_color: draw.Color,
 }
 
-@(private = "file") spaint: Sel_Paint
 
 // What the selection and find highlights painted into recorded pictures depend on (compositor.odin records again when it changes).
 selection_paint_key :: proc() -> u64 {
 	h: u64 = 0xcbf29ce484222325
 	mix :: proc(h: ^u64, b: []byte) { for c in b { h^ = (h^ ~ u64(c)) * 0x100000001b3 } }
-	on := spaint.on
+	on := the_app.spaint.on
 	mix(&h, mem.ptr_to_bytes(&on))
 	if on {
-		mix(&h, mem.ptr_to_bytes(&spaint.start)); mix(&h, mem.ptr_to_bytes(&spaint.end))
-		mix(&h, mem.ptr_to_bytes(&spaint.bg)); mix(&h, mem.ptr_to_bytes(&spaint.fg))
+		mix(&h, mem.ptr_to_bytes(&the_app.spaint.start)); mix(&h, mem.ptr_to_bytes(&the_app.spaint.end))
+		mix(&h, mem.ptr_to_bytes(&the_app.spaint.bg)); mix(&h, mem.ptr_to_bytes(&the_app.spaint.fg))
 	}
-	if f := spaint.find; f != nil {
+	if f := the_app.spaint.find; f != nil {
 		mix(&h, transmute([]byte)f.query)
 		n, a := len(f.matches), f.active
 		mix(&h, mem.ptr_to_bytes(&n)); mix(&h, mem.ptr_to_bytes(&a))
 	}
-	if spaint.has_drop { mix(&h, mem.ptr_to_bytes(&spaint.drop)) }
+	if the_app.spaint.has_drop { mix(&h, mem.ptr_to_bytes(&the_app.spaint.drop)) }
 	return h
 }
 
@@ -407,26 +405,26 @@ parse_pref_color :: proc(s: string) -> (draw.Color, bool) {
 
 // Before the page is painted: what is selected, in which colors, and the find matches.
 selection_paint_begin :: proc(app: ^App, t: ^Tab) {
-	spaint = {}
+	app.spaint = {}
 	if t.page == nil || !layout_fresh(t) { return }
 	p := t.page
-	spaint.doc, spaint.styled = p.doc, p.styled
-	spaint.api = text_api(app)
-	spaint.find = find_paint_state(app, t)
+	app.spaint.doc, app.spaint.styled = p.doc, p.styled
+	app.spaint.api = text_api(app)
+	app.spaint.find = find_paint_state(app, t)
 	if c, ok := page.drag_caret(p); ok && !c.field {
-		spaint.drop, spaint.has_drop = c.pos, true
-		if cs := style.style_of(p.styled, c.node); cs != nil { spaint.drop_color = to_draw(cs.color) } else { spaint.drop_color = draw.srgb(0, 0, 0, 1) }
+		app.spaint.drop, app.spaint.has_drop = c.pos, true
+		if cs := style.style_of(p.styled, c.node); cs != nil { app.spaint.drop_color = to_draw(cs.color) } else { app.spaint.drop_color = draw.srgb(0, 0, 0, 1) }
 	}
 	if a, b, ok := page.selection_range(p); ok && a != b {
-		spaint.on = true
-		spaint.start, spaint.end = a, b
+		app.spaint.on = true
+		app.spaint.start, app.spaint.end = a, b
 	}
 	active := active_window(app).win.focused
-	if c, ok := parse_pref_color(active ? ix.sel_bg : ix.sel_inactive_bg); ok { spaint.bg = c } else if active { spaint.bg = system_selection_bg() } else {
-		spaint.bg = draw.srgb(0.78, 0.78, 0.78, 1)
-		if c2, ok2 := parse_pref_color(ix.sel_bg); ok2 { spaint.bg = c2; spaint.bg.a *= 0.5 }
+	if c, ok := parse_pref_color(active ? app.ix.sel_bg : app.ix.sel_inactive_bg); ok { app.spaint.bg = c } else if active { app.spaint.bg = system_selection_bg() } else {
+		app.spaint.bg = draw.srgb(0.78, 0.78, 0.78, 1)
+		if c2, ok2 := parse_pref_color(app.ix.sel_bg); ok2 { app.spaint.bg = c2; app.spaint.bg.a *= 0.5 }
 	}
-	if ix.sel_fg == "keep" || !active { spaint.keep_fg = true } else if c, ok := parse_pref_color(ix.sel_fg); ok { spaint.fg = c } else { spaint.fg = system_selection_fg() }
+	if app.ix.sel_fg == "keep" || !active { app.spaint.keep_fg = true } else if c, ok := parse_pref_color(app.ix.sel_fg); ok { app.spaint.fg = c } else { app.spaint.fg = system_selection_fg() }
 }
 
 @(private = "file")
@@ -439,9 +437,9 @@ item_index :: proc(l: ^Layout, it: ^lay.Display_Item) -> int {
 // The colors of the selection over the text of element `el` (its ::selection, else the browser's).
 @(private = "file")
 colors_for :: proc(el: base.Handle) -> (bg, fg: draw.Color, keep: bool) {
-	bg, fg, keep = spaint.bg, spaint.fg, spaint.keep_fg
-	if spaint.styled == nil { return }
-	sfg, has_fg, sbg, has_bg := style.selection_colors(spaint.styled, spaint.doc, el)
+	bg, fg, keep = the_app.spaint.bg, the_app.spaint.fg, the_app.spaint.keep_fg
+	if the_app.spaint.styled == nil { return }
+	sfg, has_fg, sbg, has_bg := style.selection_colors(the_app.spaint.styled, the_app.spaint.doc, el)
 	if has_bg { bg = to_draw(sbg) }
 	if has_fg { fg, keep = to_draw(sfg), false } else if has_bg { keep = true }   // a page background alone keeps the text's color
 	return
@@ -450,7 +448,7 @@ colors_for :: proc(el: base.Handle) -> (bg, fg: draw.Color, keep: bool) {
 @(private = "file")
 span_rect :: proc(l: ^Layout, it: ^lay.Display_Item, r: draw.Rect, a, b: int) -> draw.Rect {
 	// caret positions through the shaped clusters: a right-to-left item has the start of the range on the right
-	ca, cb := lay.item_caret_x(l, it, a, spaint.api), lay.item_caret_x(l, it, b, spaint.api)
+	ca, cb := lay.item_caret_x(l, it, a, the_app.spaint.api), lay.item_caret_x(l, it, b, the_app.spaint.api)
 	x0, x1 := min(ca, cb), max(ca, cb)
 	if .Vertical in it.flags { return {{r.min.x, math.floor(r.min.y + x0)}, {r.max.x, math.ceil(r.min.y + x1)}} }
 	return {{math.floor(r.min.x + x0), r.min.y}, {math.ceil(r.min.x + x1), r.max.y}}
@@ -458,37 +456,37 @@ span_rect :: proc(l: ^Layout, it: ^lay.Display_Item, r: draw.Rect, a, b: int) ->
 
 // The painter, before item `it` (drawn at `r`, window pixels): highlights of the selection and of find matches.
 selection_paint_under :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw.Rect) {
-	if it.kind != .Text || (!spaint.on && spaint.find == nil && !spaint.has_drop) { return }
+	if it.kind != .Text || (!the_app.spaint.on && the_app.spaint.find == nil && !the_app.spaint.has_drop) { return }
 	idx := item_index(l, it)
 	if idx < 0 { return }
-	if spaint.has_drop {
+	if the_app.spaint.has_drop {
 		// the drop caret, in the piece of text it falls in (the item's start owns a position between two items)
-		if node, lo, hi, ok := lay.item_source(l, spaint.doc, idx); ok && node == spaint.drop.node && spaint.drop.offset >= lo && spaint.drop.offset <= hi {
-			if n := dom.get(spaint.doc, node); n != nil && hi <= len(n.text) {
-				k := lay.source_to_item(it.text, n.text[lo:hi], spaint.drop.offset - lo)
+		if node, lo, hi, ok := lay.item_source(l, the_app.spaint.doc, idx); ok && node == the_app.spaint.drop.node && the_app.spaint.drop.offset >= lo && the_app.spaint.drop.offset <= hi {
+			if n := dom.get(the_app.spaint.doc, node); n != nil && hi <= len(n.text) {
+				k := lay.source_to_item(it.text, n.text[lo:hi], the_app.spaint.drop.offset - lo)
 				if .Vertical in it.flags {
-					y := math.round(r.min.y + lay.item_caret_x(l, it, k, spaint.api))
+					y := math.round(r.min.y + lay.item_caret_x(l, it, k, the_app.spaint.api))
 					w := max(math.round((r.max.x - r.min.x) / 16), 1)
-					draw.rect(dc, {{r.min.x, y}, {r.max.x, y + w}}, spaint.drop_color)
+					draw.rect(dc, {{r.min.x, y}, {r.max.x, y + w}}, the_app.spaint.drop_color)
 				} else {
-					x := math.round(r.min.x + lay.item_caret_x(l, it, k, spaint.api))
+					x := math.round(r.min.x + lay.item_caret_x(l, it, k, the_app.spaint.api))
 					w := max(math.round((r.max.y - r.min.y) / 16), 1)
-					draw.rect(dc, {{x, r.min.y}, {x + w, r.max.y}}, spaint.drop_color)
+					draw.rect(dc, {{x, r.min.y}, {x + w, r.max.y}}, the_app.spaint.drop_color)
 				}
 			}
 		}
 	}
-	if !spaint.on && spaint.find == nil { return }
-	if spaint.find != nil { find_paint_item(spaint.find, l, dc, it, idx, r) }
-	if !spaint.on { return }
-	a, b, ok := lay.item_range(l, spaint.doc, idx, spaint.start, spaint.end)
-	if !ok || !lay.is_selectable(spaint.doc, spaint.styled, it.node) { return }
+	if !the_app.spaint.on && the_app.spaint.find == nil { return }
+	if the_app.spaint.find != nil { find_paint_item(the_app.spaint.find, l, dc, it, idx, r) }
+	if !the_app.spaint.on { return }
+	a, b, ok := lay.item_range(l, the_app.spaint.doc, idx, the_app.spaint.start, the_app.spaint.end)
+	if !ok || !lay.is_selectable(the_app.spaint.doc, the_app.spaint.styled, it.node) { return }
 	bg, _, _ := colors_for(it.node)
 	rect := span_rect(l, it, r, a, b)
 	// the selection goes on past this piece of text: the collapsed space after it (not drawn by any item) or the
 	// line's end is highlighted too, as browsers do
 	if b == len(it.text) && !strings.has_suffix(it.text, " ") {
-		if node, _, hi, sok := lay.item_source(l, spaint.doc, idx); sok && lay.pos_compare(spaint.doc, {node, hi}, spaint.end) < 0 {
+		if node, _, hi, sok := lay.item_source(l, the_app.spaint.doc, idx); sok && lay.pos_compare(the_app.spaint.doc, {node, hi}, the_app.spaint.end) < 0 {
 			if fi := lay.item_font(l, it); fi != nil {
 				// after the logical end: on the left of a right-to-left item
 				if .Vertical in it.flags {
@@ -502,13 +500,13 @@ selection_paint_under :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_It
 
 // The painter, after item `it`: selected text again in the highlight text color; selected images and controls tinted.
 selection_paint_over :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw.Rect) {
-	if !spaint.on { return }
+	if !the_app.spaint.on { return }
 	#partial switch it.kind {
 	case .Text:
 		idx := item_index(l, it)
 		if idx < 0 { return }
-		a, b, ok := lay.item_range(l, spaint.doc, idx, spaint.start, spaint.end)
-		if !ok || !lay.is_selectable(spaint.doc, spaint.styled, it.node) { return }
+		a, b, ok := lay.item_range(l, the_app.spaint.doc, idx, the_app.spaint.start, the_app.spaint.end)
+		if !ok || !lay.is_selectable(the_app.spaint.doc, the_app.spaint.styled, it.node) { return }
 		_, fg, keep := colors_for(it.node)
 		if keep { return }
 		fi := lay.item_font(l, it)
@@ -522,7 +520,7 @@ selection_paint_over :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Ite
 		}
 		draw.pop_clip(dc)
 	case .Replaced, .Control:
-		if it.node == base.NIL_HANDLE || !lay.node_in_range(spaint.doc, it.node, spaint.start, spaint.end) { return }
+		if it.node == base.NIL_HANDLE || !lay.node_in_range(the_app.spaint.doc, it.node, the_app.spaint.start, the_app.spaint.end) { return }
 		bg, _, _ := colors_for(it.node)
 		bg.a *= 0.5
 		draw.rect(dc, r, bg)

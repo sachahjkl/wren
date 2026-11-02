@@ -59,19 +59,18 @@ History_View :: struct {
 	keep_tree:   bool,              // open_history chose the tree's tab: the new tab keeps it
 }
 
-hview: History_View
 
 // A window's back/forward button held down (Window_Own.nav_press): a long press opens the menu.
 Nav_Press :: struct { key: ui.Key, at: time.Tick, opened: bool }
 
 history_ui_destroy :: proc() {
-	ui.field_destroy(&hview.search)
-	ui.vlist_destroy(&hview.list)
+	ui.field_destroy(&the_app.hview.search)
+	ui.vlist_destroy(&the_app.hview.list)
 	history_rows_free()
-	delete(hview.rows); delete(hview.ids); delete(hview.labels); delete(hview.selectable)
-	strings.builder_destroy(&hview.text)
-	delete(hview.model_query)
-	hview = {}
+	delete(the_app.hview.rows); delete(the_app.hview.ids); delete(the_app.hview.labels); delete(the_app.hview.selectable)
+	strings.builder_destroy(&the_app.hview.text)
+	delete(the_app.hview.model_query)
+	the_app.hview = {}
 	history_tree_destroy()
 }
 
@@ -90,21 +89,21 @@ show_history :: proc(app: ^App, t: ^Tab, address := HISTORY_URL) {
 	delete(t.title); t.title = strings.clone("History")
 	set_status(t, HISTORY_URL)
 	address_set(app, t, address)
-	if address == HISTORY_URL + "#tree" { hview.mode = 1 }
+	if address == HISTORY_URL + "#tree" { app.hview.mode = 1 }
 	page.session_set_title(&t.session, "History")
-	if !hview.keep_tree || tab_by_id(app, hview.tree_tab) == nil { hview.tree_tab = t.id }
-	hview.keep_tree = false
-	hview.focus_search = hview.mode == 0
+	if !app.hview.keep_tree || tab_by_id(app, app.hview.tree_tab) == nil { app.hview.tree_tab = t.id }
+	app.hview.keep_tree = false
+	app.hview.focus_search = app.hview.mode == 0
 }
 
 // Ctrl+H, the menus: about:history in a new tab (or the tab already showing it), on the part asked for; the tree is
 // `from`'s.
 open_history :: proc(app: ^App, from: ^Tab, tree: bool) {
-	if from != nil { hview.tree_tab, hview.keep_tree = from.id, true }
-	hview.mode = tree ? 1 : 0
+	if from != nil { app.hview.tree_tab, app.hview.keep_tree = from.id, true }
+	app.hview.mode = tree ? 1 : 0
 	for x in tabs_all(app) {
 		if x.kind == .History {
-			hview.keep_tree = false
+			app.hview.keep_tree = false
 			tab_reveal(app, x)
 			a := tree ? HISTORY_URL + "#tree" : HISTORY_URL
 			if x.url != a { delete(x.url); x.url = strings.clone(a); address_set(app, x, a) }
@@ -282,7 +281,7 @@ now_unix_ms :: proc() -> i64 { return time.time_to_unix_nano(time.now()) / 1e6 }
 
 @(private = "file")
 history_model :: proc(app: ^App, query: string) {
-	v := &hview
+	v := &app.hview
 	if v.model_valid && v.model_serial == app.ghist.serial && v.model_query == query { return }
 	v.model_valid, v.model_serial = true, app.ghist.serial
 	history_rows_free()
@@ -315,7 +314,7 @@ history_model :: proc(app: ^App, query: string) {
 
 @(private = "file")
 history_rows_free :: proc() {
-	for r in hview.rows { if r.kind == .Day { delete(r.day) } }
+	for r in the_app.hview.rows { if r.kind == .Day { delete(r.day) } }
 }
 
 history_page :: proc(app: ^App, t: ^Tab) {
@@ -333,21 +332,21 @@ history_page :: proc(app: ^App, t: ^Tab) {
 				ui.spacer(ui.px(em * 1.0))
 				ui.next({width = ui.px(em * 20), height = ui.px(ui.dense(em * 2))})
 				labels := []string{"Browsing history", "Tab history"}
-				if ui.segmented("###h_mode", labels, &hview.mode) {
+				if ui.segmented("###h_mode", labels, &app.hview.mode) {
 					// the address says which part is shown (a reload keeps it)
-					a := hview.mode == 1 ? HISTORY_URL + "#tree" : HISTORY_URL
+					a := app.hview.mode == 1 ? HISTORY_URL + "#tree" : HISTORY_URL
 					delete(t.url); t.url = strings.clone(a)
 					address_set(app, t, a)
 					page.session_replace(&t.session, a, set_state = false)
 					sync_history(app, t)
 				}
 				ui.spacer(ui.px(em * 1.0))
-				if hview.mode == 0 { browsing_toolbar(app, t) } else { tree_toolbar(app, t) }
+				if app.hview.mode == 0 { browsing_toolbar(app, t) } else { tree_toolbar(app, t) }
 				ui.spacer(ui.px(em * 0.8))
 			}
 			ui.spacer(ui.px(em * 0.3))
 			ui.next({width = ui.fill(), height = ui.fill()})
-			if hview.mode == 0 { browsing_list(app, t) } else { tree_view(app, t) }
+			if app.hview.mode == 0 { browsing_list(app, t) } else { tree_view(app, t) }
 		}
 	}
 }
@@ -356,9 +355,9 @@ history_page :: proc(app: ^App, t: ^Tab) {
 browsing_toolbar :: proc(app: ^App, t: ^Tab) {
 	em := ui.font_size()
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
-	res := ui.line_edit("###h_search", &hview.search, "Search history")
-	if hview.focus_search && res.box != nil { hview.focus_search = false; ui.set_focus(res.box.key); ui.field_select_all(&hview.search) }
-	if res.focused && ui.key_press(.Down) { ui.set_focus(hview.list.key); if hview.list.sel < 0 { ui.list_select(&hview.list.list, 1) } }
+	res := ui.line_edit("###h_search", &app.hview.search, "Search history")
+	if app.hview.focus_search && res.box != nil { app.hview.focus_search = false; ui.set_focus(res.box.key); ui.field_select_all(&app.hview.search) }
+	if res.focused && ui.key_press(.Down) { ui.set_focus(app.hview.list.key); if app.hview.list.sel < 0 { ui.list_select(&app.hview.list.list, 1) } }
 	ui.spacer(ui.px(em * 0.6))
 	ui.next({width = ui.text_size(em * 0.8), height = ui.px(ui.dense(em * 2))})
 	b := ui.button("Delete\u2026###h_delete")
@@ -389,17 +388,17 @@ visit_open :: proc(app: ^App, t: ^Tab, address: string, new_tab: bool) {
 @(private = "file")
 browsing_list :: proc(app: ^App, t: ^Tab) {
 	em := ui.font_size()
-	query := strings.trim_space(ui.field_string(&hview.search))
-	if query != hview.model_query { ui.list_select(&hview.list.list, -1); ui.vlist_scroll_to(&hview.list, 0) }
+	query := strings.trim_space(ui.field_string(&app.hview.search))
+	if query != app.hview.model_query { ui.list_select(&app.hview.list.list, -1); ui.vlist_scroll_to(&app.hview.list, 0) }
 	history_model(app, query)
 	delete_id: u64
-	if rows, ok := ui.vlist("###h_list", &hview.list, hview.ids[:], hview.labels[:], hview.selectable[:]); ok {
+	if rows, ok := ui.vlist("###h_list", &app.hview.list, app.hview.ids[:], app.hview.labels[:], app.hview.selectable[:]); ok {
 		for i in rows.first ..< rows.last {
-			r := hview.rows[i]
+			r := app.hview.rows[i]
 			switch r.kind {
 			case .Day:
 				ui.next({height = ui.px(ui.dense(em * 2.4))})
-				row := ui.list_row(&hview.list.list, i, "", false)
+				row := ui.list_row(&app.hview.list.list, i, "", false)
 				if ui.parent(row.box) {
 					ui.spacer(ui.px(em * 0.8))
 					if ui.tags("weak") {
@@ -411,8 +410,8 @@ browsing_list :: proc(app: ^App, t: ^Tab) {
 				vis := app.ghist.visits[r.visit]
 				// the whole row lights up under the pointer (and stays lit over its cross), a hand: it opens the visit
 				ui.next({height = ui.px(ui.dense(em * 2.2)), cursor = .Hand})
-				row := ui.list_row(&hview.list.list, i, hview.labels[i])
-				row_hot := ui.hot_within(row.box.key) || (hview.list.sel == i && hview.list.focused)
+				row := ui.list_row(&app.hview.list.list, i, app.hview.labels[i])
+				row_hot := ui.hot_within(row.box.key) || (app.hview.list.sel == i && app.hview.list.focused)
 				if ui.parent(row.box) {
 					ui.spacer(ui.px(em * 0.6))
 					ui.next({width = ui.px(em * 1.6), height = ui.pct(1)})
@@ -441,24 +440,24 @@ browsing_list :: proc(app: ^App, t: ^Tab) {
 				if row.clicked { visit_open(app, t, vis.url, .Ctrl in row.mods); return }
 				if row.middle_clicked { visit_open(app, t, vis.url, true); return }
 				if row.right_clicked {
-					hview.menu_visit = vis.id
+					app.hview.menu_visit = vis.id
 					ui.ctx_menu_open(ui.key_from_string(0, "###h_row_menu"), ui.mouse_pos())
 				}
 			}
 		}
 		if delete_id != 0 { ids := []u64{delete_id}; global_history_remove(app, ids) }
-		if len(hview.rows) == 0 {
+		if len(app.hview.rows) == 0 {
 			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 4))})
 			if ui.tags("weak") { if ui.style({text_align = .Center}) { ui.label(query != "" ? "No visit matches.###h_none" : "No visit recorded yet.###h_none") } }
 		}
 	}
 	// Enter on the active row
-	if hview.list.activated && hview.list.sel >= 0 && hview.list.sel < len(hview.rows) && hview.rows[hview.list.sel].kind == .Visit {
-		visit_open(app, t, app.ghist.visits[hview.rows[hview.list.sel].visit].url, false)
+	if app.hview.list.activated && app.hview.list.sel >= 0 && app.hview.list.sel < len(app.hview.rows) && app.hview.rows[app.hview.list.sel].kind == .Visit {
+		visit_open(app, t, app.ghist.visits[app.hview.rows[app.hview.list.sel].visit].url, false)
 		return
 	}
-	if hview.list.focused && ui.key_press(.Delete) && hview.list.sel >= 0 && hview.list.sel < len(hview.rows) && hview.rows[hview.list.sel].kind == .Visit {
-		ids := []u64{app.ghist.visits[hview.rows[hview.list.sel].visit].id}
+	if app.hview.list.focused && ui.key_press(.Delete) && app.hview.list.sel >= 0 && app.hview.list.sel < len(app.hview.rows) && app.hview.rows[app.hview.list.sel].kind == .Visit {
+		ids := []u64{app.ghist.visits[app.hview.rows[app.hview.list.sel].visit].id}
 		global_history_remove(app, ids)
 	}
 	row_menu(app, t)
@@ -472,14 +471,14 @@ row_menu :: proc(app: ^App, t: ^Tab) {
 @(private = "file")
 row_menu_items :: proc(app: ^App, t: ^Tab) {
 	at := -1
-	for v, i in app.ghist.visits { if v.id == hview.menu_visit { at = i; break } }
+	for v, i in app.ghist.visits { if v.id == app.hview.menu_visit { at = i; break } }
 	if at < 0 { ui.ctx_menu_close(); return }
 	address := strings.clone(app.ghist.visits[at].url, context.temp_allocator)
 	if ui.menu_item("Open").clicked { ui.ctx_menu_close(); visit_open(app, t, address, false); return }
 	if ui.menu_item("Open in a new tab").clicked { ui.ctx_menu_close(); visit_open(app, t, address, true); return }
 	if ui.menu_item("Copy address", icon = GLYPH_COPY).clicked { clip_set(address); ui.ctx_menu_close() }
 	ui.menu_separator()
-	if ui.menu_item("Delete from history").clicked { ids := []u64{hview.menu_visit}; global_history_remove(app, ids); ui.ctx_menu_close() }
+	if ui.menu_item("Delete from history").clicked { ids := []u64{app.hview.menu_visit}; global_history_remove(app, ids); ui.ctx_menu_close() }
 	host_of :: proc(a: string) -> string {
 		s := a
 		if i := strings.index(s, "://"); i >= 0 { s = s[i + 3:] } else { return "" }
@@ -507,7 +506,7 @@ tree_toolbar :: proc(app: ^App, t: ^Tab) {
 	all := tabs_all(app)
 	for x, i in all {
 		append(&names, fmt.tprintf("%d. %s", i + 1, safe_label(x.title, 40)))
-		if x.id == hview.tree_tab { sel = i }
+		if x.id == app.hview.tree_tab { sel = i }
 	}
 	if ui.tags("weak") {
 		ui.next({width = ui.text_size(em * 0.3), height = ui.px(ui.dense(em * 2))})
@@ -515,11 +514,11 @@ tree_toolbar :: proc(app: ^App, t: ^Tab) {
 	}
 	ui.spacer(ui.px(em * 0.4))
 	ui.next({width = ui.px(em * 13), height = ui.px(ui.dense(em * 2))})
-	if ui.dropdown("###h_tab", names[:], &sel) && sel < len(all) { hview.tree_tab = all[sel].id }
+	if ui.dropdown("###h_tab", names[:], &sel) && sel < len(all) { app.hview.tree_tab = all[sel].id }
 	ui.spacer(ui.px(em * 1.0))
 	history_tree_toolbar(app)   // history_tree.odin: the layout switch
 	ui.spacer(ui.fill())
-	tt := tab_by_id(app, hview.tree_tab)
+	tt := tab_by_id(app, app.hview.tree_tab)
 	if tt != nil {
 		if ui.tags("weak") {
 			ui.next({width = ui.text_size(em * 0.4), height = ui.px(ui.dense(em * 2))})
@@ -556,8 +555,8 @@ tree_place :: proc(sh: ^page.Session_History, allocator := context.temp_allocato
 
 @(private = "file")
 tree_view :: proc(app: ^App, from: ^Tab) {
-	t := tab_by_id(app, hview.tree_tab)
-	if t == nil { t = from; hview.tree_tab = from.id }
+	t := tab_by_id(app, app.hview.tree_tab)
+	if t == nil { t = from; app.hview.tree_tab = from.id }
 	history_tree_view(app, t)   // history_tree.odin
 }
 

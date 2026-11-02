@@ -24,13 +24,13 @@ Env :: struct {
 @(private = "file")
 env_open :: proc(e: ^Env) -> bool {
 	if !render.init_offscreen(&e.r, {16, 16}, warp = true, space = .Srgb) { return false }
-	e.host = canvas_gpu_setup(&e.r, 1 << 28)
+	e.host = canvas_gpu_setup(&e.r, 1 << 28, the_app)
 	return e.host != nil
 }
 
 @(private = "file")
 env_close :: proc(e: ^Env) {
-	canvas_gpu_teardown()
+	canvas_gpu_teardown(the_app)
 	render.destroy(&e.r)
 	for p in ([2]^^canvas2d.Path{&test_glyph_a, &test_glyph_o}) {
 		if p^ != nil { canvas2d.path_destroy(p^); free(p^); p^ = nil }
@@ -189,6 +189,7 @@ make_picture :: proc() -> canvas2d.Bitmap {
 
 @(test)
 canvas_gpu_rects :: proc(t: ^testing.T) {
+	test_app(t)
 	compare(t, "rects", 128, 96, proc(c: ^canvas2d.Context) {
 		fill(c, 0.9, 0.2, 0.1)
 		canvas2d.ctx_fill_rect(c, 10, 10, 50, 30)
@@ -207,6 +208,7 @@ canvas_gpu_rects :: proc(t: ^testing.T) {
 
 @(test)
 canvas_gpu_transformed_rects :: proc(t: ^testing.T) {
+	test_app(t)
 	compare(t, "transformed_rects", 128, 128, proc(c: ^canvas2d.Context) {
 		fill(c, 0.9, 0.5, 0.1)
 		canvas2d.ctx_translate(c, 64, 64)
@@ -223,6 +225,7 @@ canvas_gpu_transformed_rects :: proc(t: ^testing.T) {
 
 @(test)
 canvas_gpu_circles_and_arcs :: proc(t: ^testing.T) {
+	test_app(t)
 	compare(t, "arcs", 160, 120, proc(c: ^canvas2d.Context) {
 		fill(c, 0.9, 0.7, 0.2)
 		begin(c); arc(c, 40, 40, 25, 0, 2 * math.PI); nonzero(c)
@@ -239,6 +242,7 @@ canvas_gpu_circles_and_arcs :: proc(t: ^testing.T) {
 
 @(test)
 canvas_gpu_strokes :: proc(t: ^testing.T) {
+	test_app(t)
 	compare(t, "strokes", 200, 140, proc(c: ^canvas2d.Context) {
 		stroke_style(c, 0.95, 0.9, 0.2)
 		c.state.line_width = 10
@@ -271,6 +275,7 @@ canvas_gpu_strokes :: proc(t: ^testing.T) {
 
 @(test)
 canvas_gpu_fill_rules :: proc(t: ^testing.T) {
+	test_app(t)
 	compare(t, "fill_rules", 128, 64, proc(c: ^canvas2d.Context) {
 		fill(c, 0.3, 0.8, 0.9)
 		star :: proc(c: ^canvas2d.Context, cx, cy: f64) {
@@ -289,6 +294,7 @@ canvas_gpu_fill_rules :: proc(t: ^testing.T) {
 
 @(test)
 canvas_gpu_gradients :: proc(t: ^testing.T) {
+	test_app(t)
 	compare(t, "gradients", 192, 128, proc(c: ^canvas2d.Context) {
 		lin := canvas2d.gradient_linear(0, 0, 96, 0)
 		canvas2d.gradient_add_stop(lin, 0, {1, 0, 0, 1})
@@ -321,6 +327,7 @@ canvas_gpu_gradients :: proc(t: ^testing.T) {
 
 @(test)
 canvas_gpu_patterns_and_images :: proc(t: ^testing.T) {
+	test_app(t)
 	compare(t, "images", 192, 128, proc(c: ^canvas2d.Context) {
 		pic := make_picture()
 		defer canvas2d.bitmap_destroy(&pic)
@@ -349,6 +356,7 @@ canvas_gpu_patterns_and_images :: proc(t: ^testing.T) {
 
 @(test)
 canvas_gpu_operators :: proc(t: ^testing.T) {
+	test_app(t)
 	for op in canvas2d.Composite_Op {
 		name := fmt.tprintf("op_%s", canvas2d.OP_NAMES[op])
 		compare_op(t, name, op)
@@ -374,6 +382,7 @@ compare_op :: proc(t: ^testing.T, name: string, op: canvas2d.Composite_Op) {
 
 @(test)
 canvas_gpu_clip :: proc(t: ^testing.T) {
+	test_app(t)
 	compare(t, "clip", 128, 96, proc(c: ^canvas2d.Context) {
 		canvas2d.context_save(c)
 		begin(c); arc(c, 40, 40, 30, 0, 2 * math.PI); canvas2d.ctx_clip(c, .Nonzero)
@@ -396,6 +405,7 @@ canvas_gpu_clip :: proc(t: ^testing.T) {
 
 @(test)
 canvas_gpu_shadows_and_filters :: proc(t: ^testing.T) {
+	test_app(t)
 	compare(t, "shadows", 160, 100, proc(c: ^canvas2d.Context) {
 		fill(c, 0.95, 0.95, 0.9)
 		canvas2d.ctx_fill_rect(c, 0, 0, 160, 100)
@@ -423,6 +433,7 @@ canvas_gpu_shadows_and_filters :: proc(t: ^testing.T) {
 
 @(test)
 canvas_gpu_pixels :: proc(t: ^testing.T) {
+	test_app(t)
 	compare(t, "pixels", 64, 48, proc(c: ^canvas2d.Context) {
 		data := make([]u8, 16 * 12 * 4, context.temp_allocator)
 		for i in 0 ..< 16 * 12 {
@@ -442,6 +453,7 @@ canvas_gpu_pixels :: proc(t: ^testing.T) {
 
 @(test)
 canvas_gpu_opaque :: proc(t: ^testing.T) {
+	test_app(t)
 	compare(t, "opaque", 64, 48, proc(c: ^canvas2d.Context) {
 		fill(c, 0.9, 0.2, 0.2, 0.5)
 		canvas2d.ctx_fill_rect(c, 5, 5, 30, 30)
@@ -497,6 +509,7 @@ test_text_engine :: proc() -> canvas2d.Text_Engine {
 
 @(test)
 canvas_gpu_text :: proc(t: ^testing.T) {
+	test_app(t)
 	compare(t, "text", 200, 100, proc(c: ^canvas2d.Context) {
 		fill(c, 0.95, 0.95, 0.5)
 		c.state.font.size = 26
@@ -516,6 +529,7 @@ canvas_gpu_text :: proc(t: ^testing.T) {
 
 @(test)
 canvas_gpu_many_edges :: proc(t: ^testing.T) {
+	test_app(t)
 	compare(t, "many_edges", 256, 256, proc(c: ^canvas2d.Context) {
 		fill(c, 0.2, 0.8, 0.5, 0.8)
 		begin(c)

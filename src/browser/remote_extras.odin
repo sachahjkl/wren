@@ -32,7 +32,7 @@ remote_recording_destroy :: proc(r: ^Remote_Recording) {
 
 // Every event the window took this frame, real or injected, while a recording runs (main.odin's frame, after the poll).
 remote_record_events :: proc(app: ^App, events: []platform.Event) {
-	r := &the_remote.rec
+	r := &app.remote.rec
 	if !r.on || len(events) == 0 { return }
 	now := host.now_ns(&app.loop)
 	for e in events {
@@ -158,14 +158,14 @@ replay_step :: proc(app: ^App, op: ^Remote_Op, now: i64) {
 	}
 	request_frames(app, 2)
 	if op.idx >= len(op.events) {
-		if op.until == 0 { op.until = the_remote.frame_no + u64(max(the_remote.cfg.settle_frames, 1)) + 1 }
-		if the_remote.frame_no >= op.until { op_finish(op, done(fmt.tprintf(`{{"events":%d}}`, len(op.events)))) }
+		if op.until == 0 { op.until = app.remote.frame_no + u64(max(app.remote.cfg.settle_frames, 1)) + 1 }
+		if app.remote.frame_no >= op.until { op_finish(op, done(fmt.tprintf(`{{"events":%d}}`, len(op.events)))) }
 	}
 }
 
 inject_raw :: proc(app: ^App, ev: platform.Event) {
 	platform.inject_event(active_window(app).win, ev)
-	the_remote.inputs += 1
+	app.remote.inputs += 1
 	request_frames(app, 4)
 }
 

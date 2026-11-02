@@ -293,8 +293,8 @@ tab_select :: proc(app: ^App, i: int) {
 // The page area is a Tab stop of the chrome: Tab from the address bar gives the page the keyboard (its first focusable
 // element, or its last one with Shift+Tab); Shift+Tab past the page's first element comes back to the chrome.
 page_area_focus :: proc(app: ^App, t: ^Tab, pb: ^ui.Box) {
-	if page_focus_leave_backward {
-		page_focus_leave_backward = false
+	if app.page_focus_leave_backward {
+		app.page_focus_leave_backward = false
 		ui.focus_step(active_window(app).ui, pb.key, -1)
 		return
 	}
@@ -716,7 +716,7 @@ chrome_shortcuts :: proc(app: ^App) {
 	case t != nil && t.load != nil && t.load.task != base.NIL_HANDLE && ui.focus_key() == 0 && ui.key_press(.Escape):
 		// stops a load in progress (the document's request, and the modules still downloading)
 		stop_loading(app, t)
-	case hud.panel_open && ui.focus_key() == 0 && ui.key_press(.Escape): hud.panel_open = false
+	case app.hud.panel_open && ui.focus_key() == 0 && ui.key_press(.Escape): app.hud.panel_open = false
 	case ui.key_press(.Menu), ui.key_press(.F10, {.Shift}):
 		// the menu of what has the keyboard: a tab of the strip, else the page (the address bar handles its own)
 		// (by key: before the build, the focused box's name is last frame's, gone with that frame's memory)

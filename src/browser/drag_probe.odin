@@ -29,7 +29,6 @@ Drag_Probe :: struct {
 	n:    int,
 }
 
-drag_probe: Drag_Probe
 
 drag_probe_count_moves :: proc(app: ^App, events: []platform.Event) {
 	app.drag_probe_moves = 0
@@ -41,27 +40,27 @@ drag_probe_count_moves :: proc(app: ^App, events: []platform.Event) {
 drag_probe_note :: proc(app: ^App, mouse_x, finger_x: f32) {
 	if !app.pacing.cfg.drag_probe { return }
 	pacer := pacer_of(app)
-	drag_probe.ring[drag_probe.n % DRAG_PROBE_CAP] = {read = pacer.read_tick, mouse_x = mouse_x, finger_x = finger_x, dt = pacer.dt, moves = app.drag_probe_moves, waited = f32(pacer.waited_ms)}
-	drag_probe.n += 1
+	app.drag_probe.ring[app.drag_probe.n % DRAG_PROBE_CAP] = {read = pacer.read_tick, mouse_x = mouse_x, finger_x = finger_x, dt = pacer.dt, moves = app.drag_probe_moves, waited = f32(pacer.waited_ms)}
+	app.drag_probe.n += 1
 }
 
 // Present returned (pacer_end_frame).
 drag_probe_presented :: proc(app: ^App) {
-	if !app.pacing.cfg.drag_probe || drag_probe.n == 0 { return }
-	s := &drag_probe.ring[(drag_probe.n - 1) % DRAG_PROBE_CAP]
+	if !app.pacing.cfg.drag_probe || app.drag_probe.n == 0 { return }
+	s := &app.drag_probe.ring[(app.drag_probe.n - 1) % DRAG_PROBE_CAP]
 	if s.read != pacer_of(app).read_tick { return }
 	s.done = time.tick_now()._nsec
 	s.area_w = draw.rect_size(active_window(app).page_rect).x
-	if t, pp := current_tab(app), &window_own(app).page_prep; t != nil && pp.tab == t && pp.frame == chrome_frames.frame_no { s.page_w = pp.size.x }
+	if t, pp := current_tab(app), &window_own(app).page_prep; t != nil && pp.tab == t && pp.frame == app.chrome_frames.frame_no { s.page_w = pp.size.x }
 }
 
 // A frame reached the screen: the sample made for it learns when.
 drag_probe_displayed :: proc(app: ^App, d: render.Displayed_Frame) {
 	if !app.pacing.cfg.drag_probe || d.read._nsec == 0 { return }
-	for i := drag_probe.n - 1; i >= 0 && i >= drag_probe.n - 64; i -= 1 {
-		s := &drag_probe.ring[i % DRAG_PROBE_CAP]
+	for i := app.drag_probe.n - 1; i >= 0 && i >= app.drag_probe.n - 64; i -= 1 {
+		s := &app.drag_probe.ring[i % DRAG_PROBE_CAP]
 		if s.read == d.read._nsec { s.shown = d.shown._nsec; return }
 	}
 }
 
-drag_probe_reset :: proc() { drag_probe.n = 0 }
+drag_probe_reset :: proc() { the_app.drag_probe.n = 0 }

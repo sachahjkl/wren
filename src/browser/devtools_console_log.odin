@@ -68,11 +68,10 @@ Con_Prefs :: struct {
 	context_only:  bool,
 }
 
-con_prefs: Con_Prefs
 
 
 console_apply_prefs :: proc(p: ^config.Prefs) {
-	con_prefs = {
+	the_app.con_prefs = {
 		levels = u32(config.int_of(p, "browser.devtools.console.levels")),
 		timestamps = config.bool_of(p, "browser.devtools.console.timestamps"),
 		preserve = config.bool_of(p, "browser.devtools.console.preserve"),
@@ -131,7 +130,7 @@ console_append :: proc(t: ^Tab, level: page.Log_Level, message: string) {
 		switch {
 		case strings.has_prefix(control, "\x01dt:"):
 			delete(dev().con.pending_payload)
-			dev().con.pending_payload = len(control) - 4 <= max(con_prefs.max_payload, 1024) ? strings.clone(control[4:]) : ""
+			dev().con.pending_payload = len(control) - 4 <= max(the_app.con_prefs.max_payload, 1024) ? strings.clone(control[4:]) : ""
 			return
 		case strings.has_prefix(control, "\x01dtc:"):
 			console_complete_reply(control[5:])
@@ -174,7 +173,7 @@ console_append :: proc(t: ^Tab, level: page.Log_Level, message: string) {
 
 // A page's navigation (or a built-in page loading): the console starts over unless it is kept, with a line saying so.
 console_reset :: proc(t: ^Tab) {
-	if con_prefs.preserve && len(t.console) > 0 {
+	if the_app.con_prefs.preserve && len(t.console) > 0 {
 		console_append(t, .Log, "Navigated")
 		t.conlog.meta[len(t.conlog.meta) - 1].kind = .Marker
 		t.conlog.counts[.Log] -= 1

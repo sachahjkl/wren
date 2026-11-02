@@ -23,6 +23,7 @@ import "wb:style"
 
 @(test)
 the_registry_is_well_formed :: proc(t: ^testing.T) {
+	test_app(t)
 	seen := make(map[string]bool, context.temp_allocator)
 	for d in SHADERS {
 		testing.expectf(t, d.name != "" && d.name not_in seen, "shader %q: empty or twice", d.name)
@@ -44,6 +45,7 @@ the_registry_is_well_formed :: proc(t: ^testing.T) {
 // app.wgsl it is compiled with): odin run ext/gui_toolkit/tools/shaders -- app card_foil src/browser/shaders/card_foil.wgsl src/browser/shaders
 @(test)
 the_embedded_pixel_shader_matches_its_sources :: proc(t: ^testing.T) {
+	test_app(t)
 	for d in SHADERS {
 		testing.expectf(t, strings.trim_space(d.hash) == render.app_module_hash(d.wgsl, context.temp_allocator), "shader %q: its compiled blob is stale", d.name)
 		testing.expectf(t, len(d.dxbc) > 1000, "shader %q has no blob", d.name)
@@ -52,6 +54,7 @@ the_embedded_pixel_shader_matches_its_sources :: proc(t: ^testing.T) {
 
 @(test)
 the_relief_of_the_card_is_a_normal_map_and_the_same_every_time :: proc(t: ^testing.T) {
+	test_app(t)
 	a := card_normal_map(context.allocator)
 	defer delete(a)
 	b := card_normal_map(context.allocator)
@@ -80,6 +83,7 @@ the_relief_of_the_card_is_a_normal_map_and_the_same_every_time :: proc(t: ^testi
 
 @(test)
 the_relief_of_the_seal_is_a_domed_medal_with_a_reeded_gold_edge :: proc(t: ^testing.T) {
+	test_app(t)
 	a := seal_normal_map(context.allocator)
 	defer delete(a)
 	b := seal_normal_map(context.allocator)
@@ -112,6 +116,7 @@ the_relief_of_the_seal_is_a_domed_medal_with_a_reeded_gold_edge :: proc(t: ^test
 
 @(test)
 the_logo_of_the_back_is_a_height_field_in_the_middle_of_the_card :: proc(t: ^testing.T) {
+	test_app(t)
 	mask, size, ok := logo_mask()
 	defer delete(mask)
 	if !testing.expect(t, ok && size == 256, "the built-in logo decodes") { return }
@@ -146,6 +151,7 @@ the_logo_of_the_back_is_a_height_field_in_the_middle_of_the_card :: proc(t: ^tes
 
 @(test)
 the_back_of_the_card_is_the_fronts_relief_inside_out_with_the_logo_raised :: proc(t: ^testing.T) {
+	test_app(t)
 	front := card_normal_map()
 	defer delete(front)
 	back := back_normal_map()
@@ -188,6 +194,7 @@ sample_card_page :: proc() -> Wren_Page {
 
 @(test)
 the_back_carries_the_brand_and_nothing_of_the_person :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect_value(t, back_text(), "WREN \u00b7 FROMENT SOFTWARE")
 	html := wren_page_html(sample_card_page())
 	start := strings.index(html, `<div class="back"`)
@@ -203,6 +210,7 @@ the_back_carries_the_brand_and_nothing_of_the_person :: proc(t: ^testing.T) {
 
 @(test)
 the_card_style_asks_for_the_shader_and_carries_no_picture :: proc(t: ^testing.T) {
+	test_app(t)
 	css := card_css()
 	for want in ([]string{"-wren-shader: card-foil var(--sweep) var(--bx) var(--by) var(--live)", "@property --sweep", "@property --bx", "@keyframes sweep", "prefers-reduced-motion", ".lic.live .base"}) {
 		testing.expectf(t, strings.contains(css, want), "the card's style lacks %q", want)
@@ -212,6 +220,7 @@ the_card_style_asks_for_the_shader_and_carries_no_picture :: proc(t: ^testing.T)
 
 @(test)
 the_card_turns_over_with_real_3d_and_has_no_turn_where_motion_is_reduced :: proc(t: ^testing.T) {
+	test_app(t)
 	css := card_css()
 	// two faces back to back: each hides its back (backface-visibility), the back lies behind the walls and is turned half a turn
 	for want in ([]string{".lic .back {", "backface-visibility: hidden", "transform: translateZ(-8.4px) rotateY(180deg)", "-wren-shader: card-back", "transform-origin: 50% 50% -4px",
@@ -231,6 +240,7 @@ the_card_turns_over_with_real_3d_and_has_no_turn_where_motion_is_reduced :: proc
 
 @(test)
 the_rotate_button_is_labelled_and_the_script_never_loops :: proc(t: ^testing.T) {
+	test_app(t)
 	html := wren_page_html(sample_card_page())
 	for want in ([]string{`<button type="button" class="flip" id="flip"`, `aria-label="Rotate the card"`, `aria-pressed="false"`, `data-label-on="Done: bring the card back to its tilt"`,
 		`class="l-off">Rotate<`, `class="l-on" aria-live="polite">Done<`, `class="i-off"`, `class="i-on"`, `currentColor`, `class="flipbar" id="flipbar"`, `"Escape"`, `"keydown"`, `ontouchstart`}) {
@@ -282,8 +292,8 @@ sh_open :: proc(f: ^Sh_Fx, src: string, internal: bool) -> bool {
 	ok: bool
 	f.face, ok = font.load_embedded(&f.fonts, font.FALLBACK_UI_DATA)
 	draw.init(&f.dc, &f.r, &f.fonts)
-	page_render.settings = lay.settings_from_prefs(&f.prefs)
-	effects_settings = effects_settings_from_prefs(&f.prefs)
+	the_app.page_render.settings = lay.settings_from_prefs(&f.prefs)
+	the_app.effects_settings = effects_settings_from_prefs(&f.prefs)
 	f.doc = dom.document_create(nil)
 	html.parse_into(f.doc, f.doc.root, transmute([]byte)src, 2_000_000)
 	ss := style.settings_default()
@@ -292,7 +302,7 @@ sh_open :: proc(f: ^Sh_Fx, src: string, internal: bool) -> bool {
 	style.settings_destroy(&ss)
 	style.sync_document_sheets(f.eng, f.doc, "about:test")
 	f.st = style.compute_styles(f.eng, f.doc, {})
-	lay.run(&f.l, lay.Input{doc = f.doc, styled = f.st, settings = &page_render.settings,
+	lay.run(&f.l, lay.Input{doc = f.doc, styled = f.st, settings = &the_app.page_render.settings,
 		text = lay.Text_Api{user = f, font = sh_font, width = sh_width, metrics = sh_metrics},
 		viewport = {f32(SH_SIZE.x), f32(SH_SIZE.y)}, scale = 1, band_h = 256})
 	return ok
@@ -353,6 +363,7 @@ sh_px :: proc(img: []u8, x, y: int) -> [3]int {
 
 @(test)
 a_built_in_page_paints_the_shader_and_any_other_page_ignores_it :: proc(t: ^testing.T) {
+	test_app(t)
 	page_render_test_lock()
 	defer page_render_test_unlock()
 	decl := "-wren-shader: card-foil var(--s) 0.5 0.5 0 1"
@@ -396,6 +407,7 @@ a_built_in_page_paints_the_shader_and_any_other_page_ignores_it :: proc(t: ^test
 
 @(test)
 the_box_keeps_its_background_where_the_shader_cannot_be_had :: proc(t: ^testing.T) {
+	test_app(t)
 	page_render_test_lock()
 	defer page_render_test_unlock()
 	f := new(Sh_Fx)
@@ -428,6 +440,7 @@ the_box_keeps_its_background_where_the_shader_cannot_be_had :: proc(t: ^testing.
 // offscreen frame and prints the CPU time of the drawing (draw calls and submit) and the GPU time per frame (timestamp queries).
 @(test)
 shader_cost :: proc(t: ^testing.T) {
+	test_app(t)
 	if os.get_env("WREN_SHADER_BENCH", context.temp_allocator) == "" { return }
 	page_render_test_lock()
 	defer page_render_test_unlock()
@@ -490,17 +503,16 @@ paint_wren_shader_direct :: proc(dc: ^draw.Context, name: string, area: draw.Rec
 
 @(test)
 the_shader_is_painted_with_and_without_the_compositor_and_follows_its_arguments :: proc(t: ^testing.T) {
+	test_app(t)
 	page_render_test_lock()
 	defer page_render_test_unlock()
-	saved := compositor_settings.enabled
-	defer compositor_settings.enabled = saved
 	a := new(Sh_Fx)
 	defer free(a)
 	if !sh_open(a, sh_page("-wren-shader: card-foil 0.5 0.5 0.5 0 1"), true) { testing.fail_now(t, "no D3D11 device (WARP) or font") }
 	defer sh_close(a)
-	compositor_settings.enabled = true
+	the_app.compositor_settings.enabled = true
 	composited := sh_paint(a)
-	compositor_settings.enabled = false
+	the_app.compositor_settings.enabled = false
 	direct := sh_paint(a)
 	n, worst := sh_diff(composited, direct, 1)
 	testing.expectf(t, n == 0, "composited and direct drawing give the same pixels (%d differ, worst %d)", n, worst)
@@ -509,7 +521,7 @@ the_shader_is_painted_with_and_without_the_compositor_and_follows_its_arguments 
 	defer free(b)
 	if !sh_open(b, sh_page("-wren-shader: card-foil 0.8 0.5 0.5 0 1"), true) { testing.fail_now(t, "no D3D11 device (WARP) or font") }
 	defer sh_close(b)
-	compositor_settings.enabled = true
+	the_app.compositor_settings.enabled = true
 	moved := sh_paint(b)
 	n2, _ := sh_diff(composited, moved, 6)
 	testing.expectf(t, n2 > 1500, "the light moved: %d pixels differ", n2)

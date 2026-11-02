@@ -117,7 +117,7 @@ find_update :: proc(app: ^App, t: ^Tab) {
 	p := t.page
 	q := ui.field_string(&fs.field)
 	styled_serial := p.styled != nil ? p.styled.serial : 0
-	same_query := q == fs.query && fs.case_sensitive == ix.find_case_sensitive
+	same_query := q == fs.query && fs.case_sensitive == app.ix.find_case_sensitive
 	if same_query && fs.page == p && fs.mutations == p.doc.mutations && fs.styled == styled_serial { return }
 	// content that keeps changing is searched again at most a few times a second
 	now := ui.now_ms()
@@ -127,7 +127,7 @@ find_update :: proc(app: ^App, t: ^Tab) {
 	delete(fs.query)
 	fs.query = strings.clone(q)
 	fs.page, fs.mutations, fs.styled, fs.searched_ms = p, p.doc.mutations, styled_serial, now
-	fs.case_sensitive = ix.find_case_sensitive
+	fs.case_sensitive = app.ix.find_case_sensitive
 	if q == "" || p.styled == nil { return }
 	body := p.body
 	if dom.get(p.doc, body) == nil { body = p.doc.root }
@@ -143,7 +143,7 @@ find_update :: proc(app: ^App, t: ^Tab) {
 		fb := fa + len(needle)
 		a, b := int(back[fa]), int(back[fb])
 		from = fb
-		if len(fs.matches) >= ix.find_max_matches { fs.truncated = true; break }
+		if len(fs.matches) >= app.ix.find_max_matches { fs.truncated = true; break }
 		s, sok := lay.flat_to_pos(ft, a)
 		e, eok := lay.flat_to_pos(ft, b, end = true)
 		if !sok || !eok { continue }
@@ -244,9 +244,9 @@ find_paint_item :: proc(fs: ^Find_State, l: ^Layout, dc: ^draw.Context, it: ^lay
 	if !ok { return }
 	spans, has := fs.spans[node]
 	if !has { return }
-	bg, _ := parse_pref_color(ix.find_bg)
-	act, _ := parse_pref_color(ix.find_active_bg)
-	api := page_text_api(&page_render.fonts, &the_app.measure, &the_app.page_settings.style)
+	bg, _ := parse_pref_color(the_app.ix.find_bg)
+	act, _ := parse_pref_color(the_app.ix.find_active_bg)
+	api := page_text_api(&the_app.page_render.fonts, &the_app.measure, &the_app.page_settings.style)
 	for s in spans {
 		if s.hi <= lo || s.lo >= hi { continue }
 		a, b, rok := lay.item_range(l, d, idx, {node, s.lo}, {node, s.hi})

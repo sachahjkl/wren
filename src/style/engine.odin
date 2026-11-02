@@ -870,8 +870,9 @@ flatten_sheet :: proc(e: ^Engine, s: ^Sheet, lc_in: LayerCtx) {
 	}
 }
 
-// What the rebuilds cost, for the profile report (prof.odin).
+// What the rebuilds cost, for the profile report (prof.odin): the thread's (an App's engines rebuild on the thread of its loop).
 Rebuild_Total :: struct { n: int, ns: i64, sheets: int }
+@(thread_local)
 rebuild_total: Rebuild_Total
 
 // Rebuilds the rule index from every sheet. `doc` gives the order of sheets that come from the document.

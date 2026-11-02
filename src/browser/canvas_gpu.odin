@@ -41,7 +41,6 @@ Source_Entry :: struct {
 	orphan:  bool,       // not in the table any more: freed when its last list is done
 }
 
-@(private = "file")
 Canvas_Gpu :: struct {
 	host:    canvas2d.Gpu_Host,
 	r:       ^render.Renderer,
@@ -54,8 +53,6 @@ Canvas_Gpu :: struct {
 	app:     ^App,
 }
 
-@(private = "file")
-cgpu: Canvas_Gpu
 
 // Connects the canvas renderer: from now on a page's canvases draw on the GPU (unless canvas.gpu.enabled is off).
 canvas_gpu_init :: proc(app: ^App) {
@@ -63,61 +60,61 @@ canvas_gpu_init :: proc(app: ^App) {
 }
 
 // The same for any renderer (tests draw on an offscreen one). pp is what the video shell needs (nil: no videos).
-canvas_gpu_setup :: proc(r: ^render.Renderer, limit: int, app: ^App = nil) -> ^canvas2d.Gpu_Host {
+canvas_gpu_setup :: proc(r: ^render.Renderer, limit: int, app: ^App) -> ^canvas2d.Gpu_Host {
 	when render.USE_WGPU { return nil } else {
 		if !render.canvas_supported(r) { return nil }
-		cgpu = {}
-		cgpu.r, cgpu.limit, cgpu.app = r, limit, app
-		cgpu.sources = make(map[u64]^Source_Entry)
-		cgpu.host = canvas2d.Gpu_Host{
-			user = nil,
+		app.cgpu = {}
+		app.cgpu.r, app.cgpu.limit, app.cgpu.app = r, limit, app
+		app.cgpu.sources = make(map[u64]^Source_Entry)
+		app.cgpu.host = canvas2d.Gpu_Host{
+			user = &app.cgpu,   // (what the callbacks reach, from whichever thread draws: a worker's OffscreenCanvas too)
 			submit = gpu_submit, read = gpu_read, read_mask = gpu_read_mask, resolve = gpu_resolve, unpin = gpu_unpin,
-			destroy = gpu_destroy_target, generation = proc(user: rawptr) -> u64 { return cgpu.r.device_generation },
+			destroy = gpu_destroy_target, generation = proc(user: rawptr) -> u64 { return (^Canvas_Gpu)(user).r.device_generation },
 		}
-		cgpu.on = true
-		page.canvas_gpu_host = &cgpu.host
-		return &cgpu.host
+		app.cgpu.on = true
+		app.pages.canvas_gpu_host = &app.cgpu.host
+		return &app.cgpu.host
 	}
 }
 
 canvas_gpu_destroy :: proc(app: ^App) {
-	canvas_gpu_teardown()
+	canvas_gpu_teardown(app)
 }
 
-canvas_gpu_teardown :: proc() {
-	if !cgpu.on { return }
-	page.canvas_gpu_host = nil
+canvas_gpu_teardown :: proc(app: ^App) {
+	if !app.cgpu.on { return }
+	app.pages.canvas_gpu_host = nil
 	canvas2d.gpu_glyphs_destroy()
-	for _, e in cgpu.sources { render.destroy_texture(cgpu.r, e.tex); free(e) }
-	delete(cgpu.sources)
+	for _, e in app.cgpu.sources { render.destroy_texture(app.cgpu.r, e.tex); free(e) }
+	delete(app.cgpu.sources)
 	// (the host stays: a canvas that outlives the shell calls it, and it does nothing)
-	cgpu.sources = nil
-	cgpu.on = false
+	app.cgpu.sources = nil
+	app.cgpu.on = false
 }
 
 // Once per frame, before the pages are painted: the age of the pictures counts, and the ones nobody needs go.
 canvas_gpu_begin_frame :: proc(app: ^App) {
-	if !cgpu.on { return }
-	cgpu.epoch += 1
-	limit := cgpu.limit
+	if !app.cgpu.on { return }
+	app.cgpu.epoch += 1
+	limit := app.cgpu.limit
 	// pictures unused for a while, or the oldest when the budget is passed
-	for uid, e in cgpu.sources {
+	for uid, e in app.cgpu.sources {
 		if e.pins > 0 { continue }
-		idle := cgpu.epoch - e.epoch
-		if idle > CANVAS_SOURCE_IDLE_FRAMES || (cgpu.bytes > limit && idle > CANVAS_SOURCE_IDLE_FRAMES_OVER_BUDGET) { source_free(cgpu.r, e); delete_key(&cgpu.sources, uid) }
+		idle := app.cgpu.epoch - e.epoch
+		if idle > CANVAS_SOURCE_IDLE_FRAMES || (app.cgpu.bytes > limit && idle > CANVAS_SOURCE_IDLE_FRAMES_OVER_BUDGET) { source_free(&app.cgpu, e); delete_key(&app.cgpu.sources, uid) }
 	}
 }
 
 @(private = "file")
-source_free :: proc(r: ^render.Renderer, e: ^Source_Entry) {
-	render.destroy_texture(r, e.tex)
-	cgpu.bytes -= e.w * e.h * 4 * 4 / 3
+source_free :: proc(cg: ^Canvas_Gpu, e: ^Source_Entry) {
+	render.destroy_texture(cg.r, e.tex)
+	cg.bytes -= e.w * e.h * 4 * 4 / 3
 	free(e)
 }
 
 // The texture of a canvas drawn on the GPU, brought up to date (what was recorded is drawn now). false: it has none.
 canvas_gpu_present :: proc(g: ^canvas2d.Gpu) -> (render.Texture, bool) {
-	if g == nil || !cgpu.on { return 0, false }
+	if g == nil || !(^Canvas_Gpu)(g.host.user).on { return 0, false }
 	canvas2d.gpu_flush(g)
 	if !ensure_target(g) { return 0, false }
 	canvas2d.gpu_frame(g)
@@ -127,7 +124,7 @@ canvas_gpu_present :: proc(g: ^canvas2d.Gpu) -> (render.Texture, bool) {
 // The canvas's texture, made (transparent, or opaque black for alpha: false) when it has none.
 @(private = "file")
 ensure_target :: proc(g: ^canvas2d.Gpu) -> bool {
-	r := cgpu.r
+	r := (^Canvas_Gpu)(g.host.user).r
 	if g.target != 0 { return true }
 	if r.lost { return false }
 	tex := render.canvas_texture_create(r, g.w, g.h, true, min(g.w, g.h) >= 32)
@@ -140,8 +137,9 @@ ensure_target :: proc(g: ^canvas2d.Gpu) -> bool {
 
 @(private = "file")
 gpu_submit :: proc(user: rawptr, g: ^canvas2d.Gpu) -> bool {
-	if !cgpu.on { return true }
-	r := cgpu.r
+	cg := (^Canvas_Gpu)(user)
+	if !cg.on { return true }
+	r := cg.r
 	// (a lost device: the frame recovers it; what was recorded is dropped with the contents)
 	if r.lost { return true }
 	if !ensure_target(g) { return false }
@@ -160,35 +158,40 @@ gpu_submit :: proc(user: rawptr, g: ^canvas2d.Gpu) -> bool {
 
 @(private = "file")
 gpu_read :: proc(user: rawptr, g: ^canvas2d.Gpu, x, y, w, h: int, out: []u8) -> bool {
-	if !cgpu.on || !ensure_target(g) { return false }
-	return render.canvas_read(cgpu.r, render.Texture(g.target), x, y, w, h, out)
+	cg := (^Canvas_Gpu)(user)
+	if !cg.on || !ensure_target(g) { return false }
+	return render.canvas_read(cg.r, render.Texture(g.target), x, y, w, h, out)
 }
 
 @(private = "file")
 gpu_read_mask :: proc(user: rawptr, g: ^canvas2d.Gpu, id: i32, out: []u8) -> bool {
-	if !cgpu.on || g.target == 0 { return false }
-	return render.canvas_read_mask(cgpu.r, render.Texture(g.target), id, out)
+	cg := (^Canvas_Gpu)(user)
+	if !cg.on || g.target == 0 { return false }
+	return render.canvas_read_mask(cg.r, render.Texture(g.target), id, out)
 }
 
 @(private = "file")
 gpu_destroy_target :: proc(user: rawptr, g: ^canvas2d.Gpu) {
-	if cgpu.on && g.target != 0 { render.destroy_texture(cgpu.r, render.Texture(g.target)) }
+	cg := (^Canvas_Gpu)(user)
+	if cg.on && g.target != 0 { render.destroy_texture(cg.r, render.Texture(g.target)) }
 	g.target = 0
 }
 
 @(private = "file")
 gpu_unpin :: proc(user: rawptr, s: ^canvas2d.Gpu_Source) {
+	cg := (^Canvas_Gpu)(user)
 	e := (^Source_Entry)(s.token)
 	s.token = nil
-	if e == nil || !cgpu.on { return }
+	if e == nil || !cg.on { return }
 	e.pins -= 1
-	if e.pins <= 0 && e.orphan { source_free(cgpu.r, e) }
+	if e.pins <= 0 && e.orphan { source_free(cg, e) }
 }
 
 @(private = "file")
 gpu_resolve :: proc(user: rawptr, s: ^canvas2d.Gpu_Source) -> (tex: i64, linear: bool, size: [2]int) {
-	if !cgpu.on { return }
-	r := cgpu.r
+	cg := (^Canvas_Gpu)(user)
+	if !cg.on { return }
+	r := cg.r
 	if r.lost { return }
 	switch s.kind {
 	case .Canvas:
@@ -197,22 +200,22 @@ gpu_resolve :: proc(user: rawptr, s: ^canvas2d.Gpu_Source) -> (tex: i64, linear:
 		return g.target, false, {g.w, g.h}
 	case .Video:
 		p := (^page.Page)(s.owner)
-		vt, vsize, ok := video_texture_for_canvas(cgpu.app, p, base.Handle(s.id))
+		vt, vsize, ok := video_texture_for_canvas(cg.app, p, base.Handle(s.id))
 		if !ok { return }
 		return i64(vt), render.texture_space(r, vt) == .Linear, vsize
 	case .Bitmap:
 		b := s.bmp
 		if b == nil || b.uid == 0 || b.w <= 0 || b.h <= 0 || len(b.pix) < b.w * b.h * 4 { return }
-		e := cgpu.sources[b.uid]
+		e := cg.sources[b.uid]
 		if e != nil && (e.w != b.w || e.h != b.h) {
-			delete_key(&cgpu.sources, b.uid)
-			if e.pins > 0 { e.orphan = true } else { source_free(r, e) }
+			delete_key(&cg.sources, b.uid)
+			if e.pins > 0 { e.orphan = true } else { source_free(cg, e) }
 			e = nil
 		}
 		fresh := false
 		if e != nil && e.version != b.version && e.pins > 0 {
 			// another version of a picture that a recorded list still draws: the list keeps its texture, this one gets its own
-			delete_key(&cgpu.sources, b.uid)
+			delete_key(&cg.sources, b.uid)
 			e.orphan = true
 			e = nil
 		}
@@ -221,17 +224,17 @@ gpu_resolve :: proc(user: rawptr, s: ^canvas2d.Gpu_Source) -> (tex: i64, linear:
 			if t == 0 { return }
 			e = new(Source_Entry)
 			e.tex, e.w, e.h, e.uid = t, b.w, b.h, b.uid
-			cgpu.sources[b.uid] = e
-			cgpu.bytes += b.w * b.h * 4 * 4 / 3
+			cg.sources[b.uid] = e
+			cg.bytes += b.w * b.h * 4 * 4 / 3
 			fresh = true
 		}
 		if fresh || e.version != b.version {
 			render.canvas_upload(r, e.tex, 0, 0, b.w, b.h, b.pix)
 			e.version = b.version
-			cgpu.uploads += 1
+			cg.uploads += 1
 		}
 		e.pins += 1
-		e.epoch = cgpu.epoch
+		e.epoch = cg.epoch
 		s.token = e
 		return i64(e.tex), false, {b.w, b.h}
 	}

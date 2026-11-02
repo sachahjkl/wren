@@ -37,6 +37,7 @@ busy_source :: proc() -> (s: Panel_Source) {
 
 @(test)
 frame_stats_sections_keep_their_lines :: proc(t: ^testing.T) {
+	test_app(t)
 	idle, busy := idle_source(), busy_source()
 	half := busy_source()
 	half.has_layout, half.layout.lay_pass, half.gpu_have, half.n.mem_valid, half.pacer.live_hz = true, .Incremental, false, false, 0
@@ -58,6 +59,7 @@ frame_stats_sections_keep_their_lines :: proc(t: ^testing.T) {
 // Built headless: the panel's body has one size for every data set, in one, two and three columns.
 @(test)
 frame_stats_body_keeps_its_size :: proc(t: ^testing.T) {
+	test_app(t)
 	page_render_test_lock()
 	defer page_render_test_unlock()
 	fonts: font.State

@@ -174,13 +174,13 @@ checkpoint_take :: proc(app: ^App, name: string, with_tabs, with_data: bool) -> 
 
 // The baseline `reset` returns to: taken when the channel starts, and again when a client saves "initial".
 remote_take_baseline :: proc(app: ^App) {
-	r := &the_remote
+	r := &app.remote
 	checkpoint_free(r.baseline)
 	r.baseline = checkpoint_take(app, "initial", false, false)
 }
 
 remote_state_free :: proc() {
-	r := &the_remote
+	r := &the_app.remote
 	checkpoint_free(r.baseline)
 	r.baseline = nil
 	for _, c in r.checkpoints { checkpoint_free(c) }
@@ -190,7 +190,7 @@ remote_state_free :: proc() {
 
 // The settings the channel itself reads from the preferences, again (a preference was changed or put back).
 remote_reload_settings :: proc(app: ^App) {
-	r := &the_remote
+	r := &app.remote
 	r.cfg = remote.settings_from_prefs(&app.prefs)
 	r.cfg.name = ""
 }
@@ -201,7 +201,7 @@ remote_reload_settings :: proc(app: ^App) {
 
 // The pending commands of every client end with an error (a wait that was for a page that is going away).
 remote_cancel_ops :: proc(why: string) -> int {
-	r := &the_remote
+	r := &the_app.remote
 	list := make([]^Remote_Op, len(r.ops), context.temp_allocator)
 	copy(list, r.ops[:])
 	for op in list { op_finish(op, fail(remote.ERR_FAILED, why)) }
@@ -277,7 +277,7 @@ control_reset :: proc(app: ^App, keep: Keep, address := "") -> (tab: ^Tab, sum: 
 	if .Tabs in keep { tab = current_tab(app) } else { tab = tabs_reset(app, address, &sum.closed_tabs) }
 	if .Data not_in keep { data_wipe(app, &sum) }
 	if .History not_in keep { history_wipe(app, &sum) }
-	r := &the_remote
+	r := &app.remote
 	if .Prefs not_in keep && r.baseline != nil {
 		sum.prefs_restored = config.restore(&app.prefs, r.baseline.prefs)
 		remote_reload_settings(app)
@@ -310,7 +310,7 @@ CHECKPOINT_NAME_OK :: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234
 
 // The state now, under this name (one of that name goes; "initial": the state of the start is this from now on). "": saved, else why not.
 control_checkpoint_save :: proc(app: ^App, name: string) -> (x: api.Checkpoint, why: string) {
-	r := &the_remote
+	r := &app.remote
 	if name == CHECKPOINT_INITIAL {
 		remote_take_baseline(app)
 		return {name = CHECKPOINT_INITIAL}, ""
@@ -330,7 +330,7 @@ control_checkpoint_save :: proc(app: ^App, name: string) -> (x: api.Checkpoint, 
 
 // All of them by name, the state of the start first.
 control_checkpoints :: proc(allocator := context.temp_allocator) -> []api.Checkpoint {
-	r := &the_remote
+	r := &the_app.remote
 	list := make([dynamic]api.Checkpoint, 0, len(r.checkpoints) + 1, allocator)
 	append(&list, api.Checkpoint{name = CHECKPOINT_INITIAL})
 	for _, cp in r.checkpoints { append(&list, checkpoint_info(cp)) }
@@ -340,7 +340,7 @@ control_checkpoints :: proc(allocator := context.temp_allocator) -> []api.Checkp
 
 // false: there is none of this name.
 control_checkpoint_delete :: proc(name: string) -> bool {
-	r := &the_remote
+	r := &the_app.remote
 	cp, exists := r.checkpoints[name]
 	if !exists { return false }
 	delete_key(&r.checkpoints, name)
@@ -390,7 +390,7 @@ checkpoint_json :: proc(x: api.Checkpoint) -> string {
 
 // The state a checkpoint kept. false: there is none of this name. The tab it leaves current.
 control_checkpoint_restore :: proc(app: ^App, name: string) -> (cur: ^Tab, sum: api.Reset_Report, ok: bool) {
-	cp, exists := the_remote.checkpoints[name]
+	cp, exists := app.remote.checkpoints[name]
 	if !exists { return }
 	wnd := active_window(app)
 	sum.cancelled_ops = remote_cancel_ops("cancelled by a restore")
@@ -414,7 +414,7 @@ control_checkpoint_restore :: proc(app: ^App, name: string) -> (cur: ^Tab, sum: 
 	wnd.current = clamp(cp.current, 0, len(wnd.tabs) - 1)
 	cur = current_tab(app)
 	if cur != nil { ui.field_set(&wnd.address, cur.url) }
-	r := &the_remote
+	r := &app.remote
 	clear(&r.loaded)
 	for t in tabs_all(app) { r.loaded[t.id] = false }
 	request_frames(app, 3)

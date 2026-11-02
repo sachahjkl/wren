@@ -92,13 +92,12 @@ tree_settings_from_prefs :: proc(p: ^config.Prefs) -> Tree_Settings {
 	}
 }
 
-tcfg: Tree_Settings
 
 // (history_settings_init / _shutdown)
 history_tree_settings_init :: proc(app: ^App) {
-	tcfg = tree_settings_from_prefs(&app.prefs)
+	app.tcfg = tree_settings_from_prefs(&app.prefs)
 	app.watches[.History_Tree] = config.watch(&app.prefs, "browser.history.", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		tcfg = tree_settings_from_prefs(p)
+		the_app.tcfg = tree_settings_from_prefs(p)
 		request_frames((^App)(user), 2)
 	}, app)
 }
@@ -370,24 +369,23 @@ Tree_View_State :: struct {
 	controls:   draw.Rect,               // the zoom / Fit / Current bar of the last layout, in view pixels
 }
 
-tview: Tree_View_State
 
 history_tree_destroy :: proc() {
-	delete(tview.model.nodes)
-	delete(tview.cams)
-	delete(tview.pending)
-	delete(tview.visible)
-	tview = {}
+	delete(the_app.tview.model.nodes)
+	delete(the_app.tview.cams)
+	delete(the_app.tview.pending)
+	delete(the_app.tview.visible)
+	the_app.tview = {}
 }
 
 // The frame's wheel events over the canvas and, while it has the keyboard (or nothing has), Ctrl+Plus / Minus / 0:
 // the canvas takes them before the chrome (whose shortcuts would zoom a page) and the toolkit (which would scroll)
 // see them. Called by main.odin's frame with the events of the frame; returns the others.
 history_tree_events :: proc(app: ^App, events: []platform.Event) -> []platform.Event {
-	clear(&tview.pending)
+	clear(&app.tview.pending)
 	t := current_tab(app)
-	if t == nil || t.kind != .History || hview.mode != 1 || tview.built != active_window(app).ui.build_index || ui.ctx_menu_any_open() { return events }
-	r := tview.view_rect
+	if t == nil || t.kind != .History || app.hview.mode != 1 || app.tview.built != active_window(app).ui.build_index || ui.ctx_menu_any_open() { return events }
+	r := app.tview.view_rect
 	focus := ui.focus_key()
 	out := make([dynamic]platform.Event, 0, len(events), context.temp_allocator)
 	for e in events {
@@ -398,11 +396,11 @@ history_tree_events :: proc(app: ^App, events: []platform.Event) -> []platform.E
 		case .Key_Press:
 			if e.mods == {.Ctrl} || e.mods == {.Ctrl, .Shift} {
 				#partial switch e.key {
-				case .Equal, .Num_Add, .Minus, .Num_Subtract, .N0: take = focus == 0 || focus == tview.view_key
+				case .Equal, .Num_Add, .Minus, .Num_Subtract, .N0: take = focus == 0 || focus == app.tview.view_key
 				}
 			}
 		}
-		if take { append(&tview.pending, e) } else { append(&out, e) }
+		if take { append(&app.tview.pending, e) } else { append(&out, e) }
 	}
 	return out[:]
 }
@@ -414,15 +412,15 @@ history_tree_events :: proc(app: ^App, events: []platform.Event) -> []platform.E
 history_tree_toolbar :: proc(app: ^App) {
 	em := ui.font_size()
 	ui.next({width = ui.px(em * 13), height = ui.px(ui.dense(em * 2))})
-	sel := int(tcfg.layout)
+	sel := int(app.tcfg.layout)
 	if ui.segmented("###h_tree_layout", []string{"Horizontal", "Vertical"}, &sel) { tree_set_layout(app, Tree_Layout(sel)) }
 }
 
 tree_set_layout :: proc(app: ^App, l: Tree_Layout) {
-	if l == tcfg.layout { return }
+	if l == app.tcfg.layout { return }
 	// (locked by a policy, the preference stays: the layout changes for this session only)
 	_ = config.set_from_string(&app.prefs, "browser.history.tree_layout", l == .Vertical ? "vertical" : "horizontal", .User)
-	tcfg.layout = l
+	app.tcfg.layout = l
 	request_frames(app, 2)
 }
 
@@ -482,7 +480,7 @@ fit_text :: proc(fonts: ^font.State, id: font.Font_Id, size: f32, s: string, ava
 @(private = "file")
 tree_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	d := (^Tree_Draw)(user)
-	m := &tview.model
+	m := &the_app.tview.model
 	if len(m.nodes) == 0 { return }
 	view := b.rect
 	vc := draw.rect_center(view)
@@ -605,7 +603,7 @@ Minimap_Draw :: struct {
 @(private = "file")
 minimap_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	d := (^Minimap_Draw)(user)
-	m := &tview.model
+	m := &the_app.tview.model
 	r := b.rect
 	draw.rect(dc, r, d.bg, d.radius)
 	draw.rect(dc, r, d.border, d.radius, d.px)
@@ -647,12 +645,12 @@ history_tree_view :: proc(app: ^App, t: ^Tab) {
 	em := ui.font_size()
 	st := active_window(app).ui
 	now := st.frame_ms
-	dt := f32(clamp((now - tview.last_ms) / 1000, 0, 0.1))
-	tview.last_ms = now
-	m := &tview.model
+	dt := f32(clamp((now - app.tview.last_ms) / 1000, 0, 0.1))
+	app.tview.last_ms = now
+	m := &app.tview.model
 	tree_model_update(m, t)
-	if !tview.layout_ok { tview.layout, tview.layout_from, tview.layout_t, tview.layout_ok = tcfg.layout, tcfg.layout, 1, true }
-	anims := os_animations_enabled(app) && tcfg.transition_ms > 0
+	if !app.tview.layout_ok { app.tview.layout, app.tview.layout_from, app.tview.layout_t, app.tview.layout_ok = app.tcfg.layout, app.tcfg.layout, 1, true }
+	anims := os_animations_enabled(app) && app.tcfg.transition_ms > 0
 
 	if len(m.nodes) == 0 {
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 4))})
@@ -664,7 +662,7 @@ history_tree_view :: proc(app: ^App, t: ^Tab) {
 	view := ui.build_box({.Clickable, .Focusable, .Clip}, "###h_tree")
 	sig := ui.signal(view)
 	// (history_tree_events runs before the next build: the index it sees then is this one)
-	tview.view_key, tview.view_rect, tview.built = view.key, view.rect, st.build_index
+	app.tview.view_key, app.tview.view_rect, app.tview.built = view.key, view.rect, st.build_index
 	if ui.focus_key() == 0 { ui.set_focus(view.key) }   // the canvas has the keyboard unless something else took it
 	rect := view.rect
 	size := draw.rect_size(rect)
@@ -672,55 +670,55 @@ history_tree_view :: proc(app: ^App, t: ^Tab) {
 	busy := false
 
 	// the layout wanted changed: the nodes slide over, the node nearest the view's center stays where it is
-	if tcfg.layout != tview.layout {
-		old := tview.layout
-		if size.x > 0 && tview.cam_ok {
+	if app.tcfg.layout != app.tview.layout {
+		old := app.tview.layout
+		if size.x > 0 && app.tview.cam_ok {
 			best, best_d := -1, max(f32)
 			for n, i in m.nodes {
-				c := tree_node_pos(old, n.col, n.row) + NODE_SIZE * 0.5 - tview.cam.center
+				c := tree_node_pos(old, n.col, n.row) + NODE_SIZE * 0.5 - app.tview.cam.center
 				dd := c.x * c.x + c.y * c.y
 				if dd < best_d { best, best_d = i, dd }
 			}
 			if best >= 0 {
 				n := m.nodes[best]
-				off := tview.cam.center - tree_node_pos(old, n.col, n.row)
-				to := Tree_Camera{tree_node_pos(tcfg.layout, n.col, n.row) + off, tview.cam.zoom}
+				off := app.tview.cam.center - tree_node_pos(old, n.col, n.row)
+				to := Tree_Camera{tree_node_pos(app.tcfg.layout, n.col, n.row) + off, app.tview.cam.zoom}
 				tree_go(to, anims, now)
 			}
 		}
-		tview.layout_from, tview.layout = old, tcfg.layout
-		tview.layout_start, tview.layout_t = now, anims ? 0 : 1
+		app.tview.layout_from, app.tview.layout = old, app.tcfg.layout
+		app.tview.layout_start, app.tview.layout_t = now, anims ? 0 : 1
 	}
-	l := tview.layout
+	l := app.tview.layout
 	extent := tree_extent(l, m.rows, m.cols)
 
 	// the camera of this tab: kept from earlier in the session, else the current entry centered (the whole tree when it fits)
-	if size.x > 1 && size.y > 1 && (!tview.cam_ok || tview.cam_tab != t.id) {
-		if tview.cam_ok { tview.cams[tview.cam_tab] = {tview.going ? tview.go_to : tview.cam, l} }
-		tview.going, tview.gliding, tview.drag = false, false, {}
-		if sc, ok := tview.cams[t.id]; ok && sc.layout == l {
-			tview.cam = sc.cam
+	if size.x > 1 && size.y > 1 && (!app.tview.cam_ok || app.tview.cam_tab != t.id) {
+		if app.tview.cam_ok { app.tview.cams[app.tview.cam_tab] = {app.tview.going ? app.tview.go_to : app.tview.cam, l} }
+		app.tview.going, app.tview.gliding, app.tview.drag = false, false, {}
+		if sc, ok := app.tview.cams[t.id]; ok && sc.layout == l {
+			app.tview.cam = sc.cam
 		} else {
-			tview.cam = tree_initial_camera(m, l, size, em)
+			app.tview.cam = tree_initial_camera(m, l, size, em)
 		}
-		tview.cam_ok, tview.cam_tab = true, t.id
-		tview.revealed = m.current >= 0 ? m.nodes[m.current].id : 0
+		app.tview.cam_ok, app.tview.cam_tab = true, t.id
+		app.tview.revealed = m.current >= 0 ? m.nodes[m.current].id : 0
 	}
-	if !tview.cam_ok { request_frames(app, 2) }
+	if !app.tview.cam_ok { request_frames(app, 2) }
 
-	if tview.cam_ok {
-		zstep := tcfg.zoom_step
+	if app.tview.cam_ok {
+		zstep := app.tcfg.zoom_step
 		// wheel, touchpad, pinch, Ctrl+Plus / Minus / 0 (taken from the frame's events: history_tree_events)
-		for e in tview.pending {
+		for e in app.tview.pending {
 			#partial switch e.kind {
 			case .Scroll:
-				tview.going, tview.gliding = false, false
+				app.tview.going, app.tview.gliding = false, false
 				if .Ctrl in e.mods {
-					if e.delta.y != 0 { tview.cam = cam_zoom_at(tview.cam, vc, em, e.pos, clamp(tview.cam.zoom * math.pow(zstep, -e.delta.y), tcfg.zoom_min, tcfg.zoom_max)) }
+					if e.delta.y != 0 { app.tview.cam = cam_zoom_at(app.tview.cam, vc, em, e.pos, clamp(app.tview.cam.zoom * math.pow(zstep, -e.delta.y), app.tcfg.zoom_min, app.tcfg.zoom_max)) }
 				} else {
 					dv := e.delta
 					if .Shift in e.mods && dv.x == 0 { dv = {dv.y, 0} }
-					tview.cam = cam_pan(tview.cam, em, -dv * wheel_step(app) * ui.scale())
+					app.tview.cam = cam_pan(app.tview.cam, em, -dv * wheel_step(app) * ui.scale())
 				}
 			case .Key_Press:
 				#partial switch e.key {
@@ -730,11 +728,11 @@ history_tree_view :: proc(app: ^App, t: ^Tab) {
 				}
 			}
 		}
-		clear(&tview.pending)
+		clear(&app.tview.pending)
 
 		// keyboard (the canvas has the focus)
 		if sig.focused && !ui.ctx_menu_any_open() {
-			step := tcfg.key_step * ui.scale()
+			step := app.tcfg.key_step * ui.scale()
 			move: [2]f32
 			if ui.key_press(.Left) { move.x -= step }
 			if ui.key_press(.Right) { move.x += step }
@@ -746,7 +744,7 @@ history_tree_view :: proc(app: ^App, t: ^Tab) {
 			if ui.key_press(.Down, {.Shift}) { move.y += step * 4 }
 			if ui.key_press(.Page_Up) { move.y -= size.y * 0.85 }
 			if ui.key_press(.Page_Down) { move.y += size.y * 0.85 }
-			if move != {} { tree_go(cam_pan(tree_target(), em, -move), anims, now, ms = min(tcfg.transition_ms, TREE_KEY_PAN_MAX_MS)) }
+			if move != {} { tree_go(cam_pan(tree_target(), em, -move), anims, now, ms = min(app.tcfg.transition_ms, TREE_KEY_PAN_MAX_MS)) }
 			if ui.key_press(.Equal) || ui.key_press(.Num_Add) || ui.key_press(.Equal, {.Shift}) { tree_zoom_by(zstep, vc, em, anims, now) }
 			if ui.key_press(.Minus) || ui.key_press(.Num_Subtract) { tree_zoom_by(1 / zstep, vc, em, anims, now) }
 			if ui.key_press(.N0) { tree_zoom_by(1 / tree_target().zoom, vc, em, anims, now) }
@@ -756,21 +754,21 @@ history_tree_view :: proc(app: ^App, t: ^Tab) {
 		}
 
 		// pointer: a press on the canvas is a click until it moves past the threshold, then it drags the view
-		threshold := tcfg.drag_threshold * ui.scale()
+		threshold := app.tcfg.drag_threshold * ui.scale()
 		mouse := ui.mouse_pos()
 		for btn in ([]platform.Mouse_Button{.Left, .Middle}) {
-			if st.pressed_key[btn] == view.key && !tview.drag.on {
-				hit := tree_hit(m, l, tview.cam, vc, em, mouse)
-				tview.drag = {on = true, button = btn, start = mouse, last = mouse, node = hit >= 0 ? m.nodes[hit].id : 0}
-				tview.going, tview.gliding = false, false
+			if st.pressed_key[btn] == view.key && !app.tview.drag.on {
+				hit := tree_hit(m, l, app.tview.cam, vc, em, mouse)
+				app.tview.drag = {on = true, button = btn, start = mouse, last = mouse, node = hit >= 0 ? m.nodes[hit].id : 0}
+				app.tview.going, app.tview.gliding = false, false
 			}
 		}
-		if tview.drag.on {
-			dr := &tview.drag
+		if app.tview.drag.on {
+			dr := &app.tview.drag
 			if st.active_key[dr.button] == view.key {
 				if !dr.panning && drag_started(dr.start, mouse, threshold) { dr.panning = true }
 				if dr.panning && mouse != dr.last {
-					tview.cam = cam_pan(tview.cam, em, mouse - dr.last)
+					app.tview.cam = cam_pan(app.tview.cam, em, mouse - dr.last)
 					dr.last = mouse
 				}
 				if dr.panning {
@@ -783,74 +781,74 @@ history_tree_view :: proc(app: ^App, t: ^Tab) {
 				if !dr.panning && dr.node != 0 {
 					if e := page.session_find(&t.session, dr.node); e != nil {
 						if dr.button == .Left {
-							tview.drag = {}
+							app.tview.drag = {}
 							tab_reveal(app, t)
 							go_entry(app, t, e)
 							return
 						}
 						open_in_new_tab(app, e.url, origin = .Replay)
-						tview.drag = {}
+						app.tview.drag = {}
 						return
 					}
 				}
-				if dr.panning && tcfg.inertia && anims { tree_glide_start(dr, now) }
-				tview.drag = {}
+				if dr.panning && app.tcfg.inertia && anims { tree_glide_start(dr, now) }
+				app.tview.drag = {}
 			}
 		}
 		if sig.right_clicked {
-			hit := tree_hit(m, l, tview.cam, vc, em, mouse)
-			tview.menu_entry = hit >= 0 ? m.nodes[hit].id : 0
+			hit := tree_hit(m, l, app.tview.cam, vc, em, mouse)
+			app.tview.menu_entry = hit >= 0 ? m.nodes[hit].id : 0
 			ui.ctx_menu_open(ui.key_from_string(0, "###h_tree_menu"), mouse)
 		}
 
 		// the glide after a drag, the animated moves, the layout transition
-		if tview.gliding {
-			tview.cam = cam_pan(tview.cam, em, tview.vel * dt)
-			tview.vel *= math.exp(-tcfg.friction * dt)
-			if tview.vel.x * tview.vel.x + tview.vel.y * tview.vel.y < (20 * ui.scale()) * (20 * ui.scale()) { tview.gliding = false }
+		if app.tview.gliding {
+			app.tview.cam = cam_pan(app.tview.cam, em, app.tview.vel * dt)
+			app.tview.vel *= math.exp(-app.tcfg.friction * dt)
+			if app.tview.vel.x * app.tview.vel.x + app.tview.vel.y * app.tview.vel.y < (20 * ui.scale()) * (20 * ui.scale()) { app.tview.gliding = false }
 			busy = true
 		}
-		if tview.going {
-			k := f32((now - tview.go_start) / max(tview.go_ms, 1))
-			tview.cam = cam_lerp(tview.go_from, tview.go_to, ease_out(k))
-			if k >= 1 { tview.going = false; tview.cam = tview.go_to }
+		if app.tview.going {
+			k := f32((now - app.tview.go_start) / max(app.tview.go_ms, 1))
+			app.tview.cam = cam_lerp(app.tview.go_from, app.tview.go_to, ease_out(k))
+			if k >= 1 { app.tview.going = false; app.tview.cam = app.tview.go_to }
 			busy = true
 		}
-		if tview.layout_t < 1 {
-			tview.layout_t = f32((now - tview.layout_start) / max(tcfg.transition_ms, 1))
-			if tview.layout_t >= 1 { tview.layout_t = 1 }
+		if app.tview.layout_t < 1 {
+			app.tview.layout_t = f32((now - app.tview.layout_start) / max(app.tcfg.transition_ms, 1))
+			if app.tview.layout_t >= 1 { app.tview.layout_t = 1 }
 			busy = true
 		}
 
 		// a new current entry (a click here, back / forward in that tab) comes into view
-		if m.current >= 0 && m.nodes[m.current].id != tview.revealed && size.x > 0 && tview.layout_t >= 1 {
+		if m.current >= 0 && m.nodes[m.current].id != app.tview.revealed && size.x > 0 && app.tview.layout_t >= 1 {
 			n := m.nodes[m.current]
 			p := tree_node_pos(l, n.col, n.row)
 			tree_go(cam_reveal(tree_target(), size, em, p, p + NODE_SIZE, 1.5), anims, now)
-			tview.revealed = n.id
+			app.tview.revealed = n.id
 		}
-		if tview.layout_t >= 1 && !tview.going { tview.cam = cam_clamp(tview.cam, extent, tcfg.zoom_min, tcfg.zoom_max) }
-		tview.cams[t.id] = {tree_target(), l}
+		if app.tview.layout_t >= 1 && !app.tview.going { app.tview.cam = cam_clamp(app.tview.cam, extent, app.tcfg.zoom_min, app.tcfg.zoom_max) }
+		app.tview.cams[t.id] = {tree_target(), l}
 	}
 
 	// hover: the node under the pointer, its tooltip after a rest
 	hover: u64
-	if sig.hovering && !tview.drag.panning && tview.layout_t >= 1 && !tview.going {
-		if hit := tree_hit(m, l, tview.cam, vc, em, ui.mouse_pos()); hit >= 0 { hover = m.nodes[hit].id }
+	if sig.hovering && !app.tview.drag.panning && app.tview.layout_t >= 1 && !app.tview.going {
+		if hit := tree_hit(m, l, app.tview.cam, vc, em, ui.mouse_pos()); hit >= 0 { hover = m.nodes[hit].id }
 	}
-	if hover != tview.hover { tview.hover, tview.hover_ms = hover, now }
+	if hover != app.tview.hover { app.tview.hover, app.tview.hover_ms = hover, now }
 	// an open hand over the background (it can be dragged), a closed one while it is (a press on the background, or a
 	// press on a node that went past the threshold), the pointing hand over a node (a click goes there)
 	switch {
-	case tview.drag.on && (tview.drag.panning || tview.drag.node == 0): st.cursor_request = .Grabbing
-	case tview.drag.on:                                                  st.cursor_request = .Hand
+	case app.tview.drag.on && (app.tview.drag.panning || app.tview.drag.node == 0): st.cursor_request = .Grabbing
+	case app.tview.drag.on:                                                  st.cursor_request = .Hand
 	case hover != 0:                                                     st.cursor_request = .Hand
 	case sig.hovering:                                                   st.cursor_request = .Grab
 	}
 
 	// what the canvas draws (its custom draw runs after the layout, with this frame's rectangle)
 	d := ui.frame_new(Tree_Draw)
-	d.cam, d.em, d.from, d.to, d.t = tview.cam, em, tview.layout_from, tview.layout, ease_out(tview.layout_t)
+	d.cam, d.em, d.from, d.to, d.t = app.tview.cam, em, app.tview.layout_from, app.tview.layout, ease_out(app.tview.layout_t)
 	d.face, d.fonts = app.ui_font, &app.fonts
 	tag_colors :: proc(tag: string, out: ^Node_Colors) {
 		if ui.tags(tag) {
@@ -872,11 +870,11 @@ history_tree_view :: proc(app: ^App, t: ^Tab) {
 	d.scale = ui.scale()
 	d.rounding = st.rounding
 	d.icon_px = f32(tab_icon_px(app))
-	if tview.cam_ok { view.custom, view.custom_user = tree_draw, d }   // (no camera before the view has a size)
+	if app.tview.cam_ok { view.custom, view.custom_user = tree_draw, d }   // (no camera before the view has a size)
 
 	if ui.parent(view) {
 		tree_controls(m, l, extent, size, em, anims, now)
-		if tcfg.minimap { tree_minimap(app, m, l, extent, size, em) }
+		if app.tcfg.minimap { tree_minimap(app, m, l, extent, size, em) }
 	}
 	tree_menu(app, t)
 	tree_tooltip(app, t, m, now)
@@ -891,20 +889,20 @@ tree_overlay_px :: proc(em: f32) -> f32 { return ui.dense(em * 2.2) + em * 1.6 }
 // they were last laid out; before that, where they will be).
 @(private = "file")
 tree_fit_camera :: proc(extent, size: [2]f32, em: f32) -> (Tree_Camera, f32) {
-	under := tview.controls
+	under := the_app.tview.controls
 	if under.max.x <= under.min.x {
 		h := ui.dense(em * 2.2)
 		under = {{em * 0.8, size.y - h - em * 0.8}, {em * 17, size.y - em * 0.8}}
 	}
-	return cam_fit_clear(extent, size, em, em, under, tcfg.zoom_min, tcfg.fit_max)
+	return cam_fit_clear(extent, size, em, em, under, the_app.tcfg.zoom_min, the_app.tcfg.fit_max)
 }
 
 @(private = "file")
 tree_initial_camera :: proc(m: ^Tree_Model, l: Tree_Layout, size: [2]f32, em: f32) -> Tree_Camera {
 	extent := tree_extent(l, m.rows, m.cols)
 	fit, need := tree_fit_camera(extent, size, em)
-	if need >= min(1, tcfg.fit_max) { return fit }
-	c := Tree_Camera{extent * 0.5, clamp(1, tcfg.zoom_min, tcfg.zoom_max)}
+	if need >= min(1, the_app.tcfg.fit_max) { return fit }
+	c := Tree_Camera{extent * 0.5, clamp(1, the_app.tcfg.zoom_min, the_app.tcfg.zoom_max)}
 	if m.current >= 0 {
 		n := m.nodes[m.current]
 		c.center = tree_node_pos(l, n.col, n.row) + NODE_SIZE * 0.5
@@ -917,25 +915,25 @@ tree_initial_camera :: proc(m: ^Tree_Model, l: Tree_Layout, size: [2]f32, em: f3
 
 // Where the camera is going (the end of the move in progress, else where it is).
 @(private = "file")
-tree_target :: proc() -> Tree_Camera { return tview.going ? tview.go_to : tview.cam }
+tree_target :: proc() -> Tree_Camera { return the_app.tview.going ? the_app.tview.go_to : the_app.tview.cam }
 
 // Moves the camera to `to` from where it is now, animated unless animations are off.
 @(private = "file")
 tree_go :: proc(to: Tree_Camera, anims: bool, now: f64, ms := -1.0) {
-	tview.gliding = false
+	the_app.tview.gliding = false
 	if !anims {
-		tview.cam, tview.going = to, false
+		the_app.tview.cam, the_app.tview.going = to, false
 		return
 	}
-	tview.go_from, tview.go_to, tview.go_start = tview.cam, to, now
-	tview.go_ms = ms >= 0 ? ms : tcfg.transition_ms
-	tview.going = true
+	the_app.tview.go_from, the_app.tview.go_to, the_app.tview.go_start = the_app.tview.cam, to, now
+	the_app.tview.go_ms = ms >= 0 ? ms : the_app.tcfg.transition_ms
+	the_app.tview.going = true
 }
 
 @(private = "file")
 tree_zoom_by :: proc(f: f32, vc: [2]f32, em: f32, anims: bool, now: f64) {
 	target := tree_target()
-	z := clamp(target.zoom * f, tcfg.zoom_min, tcfg.zoom_max)
+	z := clamp(target.zoom * f, the_app.tcfg.zoom_min, the_app.tcfg.zoom_max)
 	tree_go(cam_zoom_at(target, vc, em, vc, z), anims, now)
 }
 
@@ -951,7 +949,7 @@ tree_center_current :: proc(m: ^Tree_Model, l: Tree_Layout, anims: bool, now: f6
 	if m.current < 0 { return }
 	n := m.nodes[m.current]
 	target := tree_target()
-	z := max(target.zoom, min(1, tcfg.zoom_max))   // (readable: at least the interface's size)
+	z := max(target.zoom, min(1, the_app.tcfg.zoom_max))   // (readable: at least the interface's size)
 	tree_go({tree_node_pos(l, n.col, n.row) + NODE_SIZE * 0.5, z}, anims, now)
 }
 
@@ -971,8 +969,8 @@ tree_glide_start :: proc(dr: ^Drag, now: f64) {
 	}
 	span := (last[2] - first[2]) / 1000
 	if span <= 0.004 { return }
-	tview.vel = {f32((last[0] - first[0]) / span), f32((last[1] - first[1]) / span)}
-	tview.gliding = true
+	the_app.tview.vel = {f32((last[0] - first[0]) / span), f32((last[1] - first[1]) / span)}
+	the_app.tview.gliding = true
 }
 
 // The node under the screen point `p` (-1: none).
@@ -996,14 +994,14 @@ tree_controls :: proc(m: ^Tree_Model, l: Tree_Layout, extent, size: [2]f32, em: 
 	if ui.tags("card") {
 		bar := ui.build_box({.Draw_Background, .Draw_Border}, "###h_tree_controls")
 		// (its rectangle of the last layout, in the view: what "Fit" keeps the tree clear of)
-		if bar.rect.max.x > bar.rect.min.x { tview.controls = {bar.rect.min - tview.view_rect.min, bar.rect.max - tview.view_rect.min} }
+		if bar.rect.max.x > bar.rect.min.x { the_app.tview.controls = {bar.rect.min - the_app.tview.view_rect.min, bar.rect.max - the_app.tview.view_rect.min} }
 		if ui.parent(bar) {
-			vc := size * 0.5 + tview.view_rect.min
+			vc := size * 0.5 + the_app.tview.view_rect.min
 			ui.spacer(ui.px(pad))
 			ui.next({width = ui.px(em * 2), height = ui.px(bh), radius = em * CHROME_BUTTON_RADIUS})
 			b := ui.button("\u2212###h_tree_zout")
 			tip(b, "Zoom out (Ctrl+Minus, Ctrl+wheel)")
-			if b.clicked { tree_zoom_by(1 / tcfg.zoom_step, vc, em, anims, now) }
+			if b.clicked { tree_zoom_by(1 / the_app.tcfg.zoom_step, vc, em, anims, now) }
 			ui.next({width = ui.px(em * 4), height = ui.px(bh), radius = em * CHROME_BUTTON_RADIUS})
 			b = ui.button(fmt.tprintf("%d %%###h_tree_zpct", int(tree_target().zoom * 100 + 0.5)))
 			tip(b, "Actual size (Ctrl+0)")
@@ -1011,7 +1009,7 @@ tree_controls :: proc(m: ^Tree_Model, l: Tree_Layout, extent, size: [2]f32, em: 
 			ui.next({width = ui.px(em * 2), height = ui.px(bh), radius = em * CHROME_BUTTON_RADIUS})
 			b = ui.button("+###h_tree_zin")
 			tip(b, "Zoom in (Ctrl+Plus, Ctrl+wheel)")
-			if b.clicked { tree_zoom_by(tcfg.zoom_step, vc, em, anims, now) }
+			if b.clicked { tree_zoom_by(the_app.tcfg.zoom_step, vc, em, anims, now) }
 			ui.spacer(ui.px(pad * 2))
 			ui.next({width = ui.text_size(em * 0.5), height = ui.px(bh), radius = em * CHROME_BUTTON_RADIUS})
 			b = ui.button("Fit###h_tree_fit")
@@ -1031,7 +1029,7 @@ tree_controls :: proc(m: ^Tree_Model, l: Tree_Layout, extent, size: [2]f32, em: 
 tree_minimap :: proc(app: ^App, m: ^Tree_Model, l: Tree_Layout, extent, size: [2]f32, em: f32) {
 	wnd := active_window(app)
 	if len(m.nodes) < 2 || size.x <= 0 || extent.x <= 0 || extent.y <= 0 { return }
-	s := em * tview.cam.zoom
+	s := em * app.tview.cam.zoom
 	if extent.x * s <= size.x && extent.y * s <= size.y { return }
 	limit := [2]f32{min(em * 13, size.x * 0.3), min(em * 8.5, size.y * 0.3)}
 	if limit.x < em * 4 || limit.y < em * 2.5 { return }
@@ -1044,7 +1042,7 @@ tree_minimap :: proc(app: ^App, m: ^Tree_Model, l: Tree_Layout, extent, size: [2
 	d.layout, d.k = l, k
 	d.origin = pad + (inner - extent * k) * 0.5
 	vc := size * 0.5
-	d.view_lo, d.view_hi = cam_to_world(tview.cam, vc, em, {0, 0}), cam_to_world(tview.cam, vc, em, size)
+	d.view_lo, d.view_hi = cam_to_world(app.tview.cam, vc, em, {0, 0}), cam_to_world(app.tview.cam, vc, em, size)
 	if ui.tags("card") { d.bg, d.border = ui.color("background"), ui.color("border") }
 	d.branch = ui.color("border")
 	if ui.tags("weak") { d.path = ui.color("text") }
@@ -1059,9 +1057,9 @@ tree_minimap :: proc(app: ^App, m: ^Tree_Model, l: Tree_Layout, extent, size: [2
 	sig := ui.signal(mb)
 	if sig.pressed || sig.dragging {
 		w := (sig.mouse - d.origin) / k
-		tview.going, tview.gliding = false, false
-		tview.cam.center = w
-		tview.cam = cam_clamp(tview.cam, extent, tcfg.zoom_min, tcfg.zoom_max)
+		app.tview.going, app.tview.gliding = false, false
+		app.tview.cam.center = w
+		app.tview.cam = cam_clamp(app.tview.cam, extent, app.tcfg.zoom_min, app.tcfg.zoom_max)
 		request_frames(app, 2)
 	}
 	// (a click moves the view there, a drag carries it)
@@ -1075,14 +1073,14 @@ tree_menu :: proc(app: ^App, t: ^Tab) {
 
 @(private = "file")
 tree_menu_items :: proc(app: ^App, t: ^Tab) {
-	m := &tview.model
+	m := &app.tview.model
 	em := ui.font_size()
-	size := draw.rect_size(tview.view_rect)
-	anims := os_animations_enabled(app) && tcfg.transition_ms > 0
+	size := draw.rect_size(app.tview.view_rect)
+	anims := os_animations_enabled(app) && app.tcfg.transition_ms > 0
 	now := active_window(app).ui.frame_ms
-	l := tview.layout
-	if tview.menu_entry != 0 {
-		e := page.session_find(&t.session, tview.menu_entry)
+	l := app.tview.layout
+	if app.tview.menu_entry != 0 {
+		e := page.session_find(&t.session, app.tview.menu_entry)
 		if e == nil { ui.ctx_menu_close(); return }
 		address := strings.clone(e.url, context.temp_allocator)
 		if ui.menu_item("Go to this page", enabled = e != page.session_current(&t.session)).clicked {
@@ -1107,25 +1105,25 @@ tree_menu_items :: proc(app: ^App, t: ^Tab) {
 	extent := tree_extent(l, m.rows, m.cols)
 	if ui.menu_item("Fit the whole tree", "F").clicked { tree_fit(extent, size, em, anims, now); ui.ctx_menu_close() }
 	if ui.menu_item("Center the current page", "C").clicked { tree_center_current(m, l, anims, now); ui.ctx_menu_close() }
-	if ui.menu_item("Actual size", "Ctrl+0").clicked { tree_zoom_by(1 / tree_target().zoom, tview.view_rect.min + size * 0.5, em, anims, now); ui.ctx_menu_close() }
+	if ui.menu_item("Actual size", "Ctrl+0").clicked { tree_zoom_by(1 / tree_target().zoom, app.tview.view_rect.min + size * 0.5, em, anims, now); ui.ctx_menu_close() }
 	ui.menu_separator()
-	if ui.menu_item("Horizontal layout", "L", checked = tcfg.layout == .Horizontal).clicked { tree_set_layout(app, .Horizontal); ui.ctx_menu_close() }
-	if ui.menu_item("Vertical layout", "L", checked = tcfg.layout == .Vertical).clicked { tree_set_layout(app, .Vertical); ui.ctx_menu_close() }
-	if ui.menu_item("Minimap", checked = tcfg.minimap).clicked {
-		if config.set_from_string(&app.prefs, "browser.history.tree_minimap", tcfg.minimap ? "false" : "true", .User) != .None { tcfg.minimap = !tcfg.minimap }
+	if ui.menu_item("Horizontal layout", "L", checked = app.tcfg.layout == .Horizontal).clicked { tree_set_layout(app, .Horizontal); ui.ctx_menu_close() }
+	if ui.menu_item("Vertical layout", "L", checked = app.tcfg.layout == .Vertical).clicked { tree_set_layout(app, .Vertical); ui.ctx_menu_close() }
+	if ui.menu_item("Minimap", checked = app.tcfg.minimap).clicked {
+		if config.set_from_string(&app.prefs, "browser.history.tree_minimap", app.tcfg.minimap ? "false" : "true", .User) != .None { app.tcfg.minimap = !app.tcfg.minimap }
 		ui.ctx_menu_close()
 	}
 }
 
 @(private = "file")
 tree_tooltip :: proc(app: ^App, t: ^Tab, m: ^Tree_Model, now: f64) {
-	if tview.hover == 0 || ui.ctx_menu_any_open() { return }
-	waited := now - tview.hover_ms
-	if waited < tcfg.tooltip_ms {
-		active_window(app).ui.wake_ms = max(1, int(tcfg.tooltip_ms - waited) + 5)
+	if app.tview.hover == 0 || ui.ctx_menu_any_open() { return }
+	waited := now - app.tview.hover_ms
+	if waited < app.tcfg.tooltip_ms {
+		active_window(app).ui.wake_ms = max(1, int(app.tcfg.tooltip_ms - waited) + 5)
 		return
 	}
-	e := page.session_find(&t.session, tview.hover)
+	e := page.session_find(&t.session, app.tview.hover)
 	if e == nil { return }
 	em := ui.font_size()
 	if ui.tooltip() {

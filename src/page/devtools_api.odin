@@ -187,9 +187,8 @@ dev_storage_clear :: proc(p: ^Page, session: bool) { _ = storage_clear(p, sessio
 ////////////////////////////////
 // Console: the objects behind a message
 
-// While the developer tools are open the pages' console calls describe their arguments (prelude/compat.js); 0: they do not.
-// New realms are armed as they start (js_realm), the existing ones by dev_console_arm.
-dev_console_max: int
+// While the developer tools are open the pages' console calls describe their arguments (prelude/compat.js; Pages.dev_console_max,
+// 0: they do not). New realms are armed as they start (js_realm), the existing ones by dev_console_arm.
 
 // Turns the description of console arguments on (up to `max_bytes` per message) or off (0) in the page's realm, if it has one.
 dev_console_arm :: proc(p: ^Page, max_bytes: int) {

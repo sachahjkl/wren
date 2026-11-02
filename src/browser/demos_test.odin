@@ -9,6 +9,7 @@ import "wb:config"
 // point where they should, and folder paths become file: URLs.
 @(test)
 demos_cover_every_page :: proc(t: ^testing.T) {
+	test_app(t)
 	listed := make(map[string]bool, context.temp_allocator)
 	for d in DEMOS {
 		if d.path == "" || d.perf || strings.has_prefix(d.path, "/") { continue }
@@ -43,6 +44,7 @@ demos_links :: proc(t: ^testing.T) {
 	testing.expect_value(t, file_url_of_dir(`D:\Privé`), "file:///D:/Priv%C3%A9/")
 
 	app := new(App)
+	the_app = app   // (what the code reaches without an App: this one)
 	defer free(app)
 	app.prefs = config.prefs_make()
 	defer config.prefs_destroy(&app.prefs)

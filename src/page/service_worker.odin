@@ -62,7 +62,6 @@ Sw_Embedder :: struct {
 	focus: proc(user: rawptr, p: ^Page) -> bool,
 	user:  rawptr,
 }
-sw_embedder: Sw_Embedder
 
 @(private)
 Sw_Waiter :: struct { page: u64, promise: u64 }
@@ -161,7 +160,6 @@ Sw_Registry :: struct {
 	storage:    ^Storage_Manager,
 }
 
-@(private) sw_registry: Sw_Registry
 
 ////////////////////////////////
 // Registry and persistence
@@ -202,7 +200,7 @@ sw_unescape :: proc(s: string) -> string {
 //   v2 lines: "2", id, origin, scope, script, updateViaCache, last check, preload, preload header, version, module
 //   v1 lines (before versions were stored): id, origin, scope, script, updateViaCache, state
 sw_registry_load :: proc(dir: string) {
-	fetch.sw_hook = {intercept = sw_intercept, active = &sw_registry.active}
+	fetch.sw_hook = {intercept = sw_intercept, active = &the_pages.sw_registry.active}
 	if dir == "" { return }
 	data, err := os.read_entire_file(sw_file(dir), context.temp_allocator)
 	if err != nil { return }
@@ -236,19 +234,19 @@ sw_registry_load :: proc(dir: string) {
 		}
 		r.active = v
 		r.counted = true
-		sw_registry.active += 1
-		sw_registry.next = max(sw_registry.next, r.id, vid)
-		append(&sw_registry.regs, r)
+		the_pages.sw_registry.active += 1
+		the_pages.sw_registry.next = max(the_pages.sw_registry.next, r.id, vid)
+		append(&the_pages.sw_registry.regs, r)
 	}
 	// (a version from before versions were stored: an id now; its script is fetched when it starts)
-	for r in sw_registry.regs { if r.active.id == 0 { sw_registry.next += 1; r.active.id = sw_registry.next } }
+	for r in the_pages.sw_registry.regs { if r.active.id == 0 { the_pages.sw_registry.next += 1; r.active.id = the_pages.sw_registry.next } }
 }
 
 @(private)
 sw_save :: proc(dir: string) {
 	if dir == "" { return }
 	b := strings.builder_make(context.temp_allocator)
-	for r in sw_registry.regs {
+	for r in the_pages.sw_registry.regs {
 		if r.dir != dir || r.active == nil || r.uninstalling { continue }
 		v := r.active
 		fmt.sbprintf(&b, "2\t%d\t%s\t%s\t%s\t%s\t%d\t%s\t%s\t%d\t%s\n", r.id, r.origin, r.scope, v.script, r.via_cache, r.last_check,
@@ -269,8 +267,8 @@ sw_store_script :: proc(v: ^Sw_Version) {
 @(private)
 sw_version_new :: proc(r: ^Sw_Registration, script: string, module: bool) -> ^Sw_Version {
 	v := new(Sw_Version)
-	sw_registry.next += 1
-	v.id = sw_registry.next
+	the_pages.sw_registry.next += 1
+	v.id = the_pages.sw_registry.next
 	v.reg, v.script, v.module = r, strings.clone(script), module
 	return v
 }
@@ -289,7 +287,7 @@ sw_version_free :: proc(v: ^Sw_Version) {
 @(private)
 sw_reg_free :: proc(r: ^Sw_Registration) {
 	for v in ([3]^Sw_Version{r.installing, r.waiting, r.active}) { if v != nil { sw_version_stop(v); sw_version_free(v) } }
-	if r.job != base.NIL_HANDLE && sw_registry.loader != nil { fetch.cancel(sw_registry.loader, r.job) }
+	if r.job != base.NIL_HANDLE && the_pages.sw_registry.loader != nil { fetch.cancel(the_pages.sw_registry.loader, r.job) }
 	fetch.environment_destroy(&r.job_env)
 	delete(r.job_body)
 	for s in r.job_csp { delete(s) }
@@ -303,18 +301,18 @@ sw_reg_free :: proc(r: ^Sw_Registration) {
 
 // Stops every worker and forgets the registrations of the profile (storage_manager_destroy; pages are closed).
 sw_registry_shutdown :: proc() {
-	for r in sw_registry.regs { sw_reg_free(r) }
-	delete(sw_registry.regs)
-	for _, f in sw_registry.fetches { sw_fetch_free(f) }
-	delete(sw_registry.fetches)
-	for _, q in sw_registry.inbox { for m in q { delete(m) }; delete(q) }
-	delete(sw_registry.inbox)
-	delete(sw_registry.ready)
-	for o in sw_registry.opens { delete(o.url) }
-	delete(sw_registry.opens)
-	if sw_registry.open_timer != base.NIL_HANDLE && sw_registry.loop != nil { host.clear_timer(sw_registry.loop, sw_registry.open_timer) }
-	if sw_registry.scope != nil { base.scope_close(sw_registry.scope) }
-	sw_registry = {}
+	for r in the_pages.sw_registry.regs { sw_reg_free(r) }
+	delete(the_pages.sw_registry.regs)
+	for _, f in the_pages.sw_registry.fetches { sw_fetch_free(f) }
+	delete(the_pages.sw_registry.fetches)
+	for _, q in the_pages.sw_registry.inbox { for m in q { delete(m) }; delete(q) }
+	delete(the_pages.sw_registry.inbox)
+	delete(the_pages.sw_registry.ready)
+	for o in the_pages.sw_registry.opens { delete(o.url) }
+	delete(the_pages.sw_registry.opens)
+	if the_pages.sw_registry.open_timer != base.NIL_HANDLE && the_pages.sw_registry.loop != nil { host.clear_timer(the_pages.sw_registry.loop, the_pages.sw_registry.open_timer) }
+	if the_pages.sw_registry.scope != nil { base.scope_close(the_pages.sw_registry.scope) }
+	the_pages.sw_registry = {}
 	fetch.sw_hook = {}
 }
 
@@ -330,8 +328,8 @@ sw_fetch_free :: proc(f: ^Sw_Fetch) {
 @(private)
 sw_note_page :: proc(p: ^Page) {
 	if p == nil || p.loader == nil || p.worker != nil { return }
-	sw_registry.loop, sw_registry.loader, sw_registry.settings = p.loop, p.loader, p.settings
-	if p.web != nil && p.web.embedder.storage != nil { sw_registry.storage = p.web.embedder.storage }
+	the_pages.sw_registry.loop, the_pages.sw_registry.loader, the_pages.sw_registry.settings = p.loop, p.loader, p.settings
+	if p.web != nil && p.web.embedder.storage != nil { the_pages.sw_registry.storage = p.web.embedder.storage }
 }
 
 // The registration of storage key `key` whose scope is the longest prefix of `u` (Service Workers "match service worker
@@ -339,7 +337,7 @@ sw_note_page :: proc(p: ^Page) {
 // than its tab's is its partition's, storage.partitioned).
 sw_match :: proc(u: string, key: string, active_only: bool, uninstalling := false) -> ^Sw_Registration {
 	best: ^Sw_Registration
-	for r in sw_registry.regs {
+	for r in the_pages.sw_registry.regs {
 		if active_only && r.active == nil { continue }
 		if r.uninstalling && !uninstalling { continue }
 		if r.origin != key { continue }
@@ -350,14 +348,14 @@ sw_match :: proc(u: string, key: string, active_only: bool, uninstalling := fals
 
 @(private)
 sw_by_id :: proc(id: u64) -> ^Sw_Registration {
-	for r in sw_registry.regs { if r.id == id { return r } }
+	for r in the_pages.sw_registry.regs { if r.id == id { return r } }
 	return nil
 }
 
 @(private)
 sw_version_by_id :: proc(id: u64) -> ^Sw_Version {
 	if id == 0 { return nil }
-	for r in sw_registry.regs {
+	for r in the_pages.sw_registry.regs {
 		for v in ([3]^Sw_Version{r.installing, r.waiting, r.active}) { if v != nil && v.id == id { return v } }
 	}
 	return nil
@@ -366,16 +364,16 @@ sw_version_by_id :: proc(id: u64) -> ^Sw_Version {
 // A page that hosts a worker (a service worker's or a shared worker's): not a client.
 @(private)
 sw_is_host :: proc(p: ^Page) -> bool {
-	for r in sw_registry.regs {
+	for r in the_pages.sw_registry.regs {
 		for v in ([3]^Sw_Version{r.installing, r.waiting, r.active}) { if v != nil && v.host_page == p { return true } }
 	}
-	for s in shared_workers { if s.host_page == p { return true } }
+	for s in the_pages.shared_workers { if s.host_page == p { return true } }
 	return false
 }
 
 // The registration controlling page `p` (nil: none).
 sw_controller :: proc(p: ^Page) -> ^Sw_Registration {
-	if p == nil || p.web == nil || p.worker != nil || sw_registry.active == 0 || sw_is_host(p) { return nil }
+	if p == nil || p.web == nil || p.worker != nil || the_pages.sw_registry.active == 0 || sw_is_host(p) { return nil }
 	// (an unregistered registration still controls the pages it controlled: Service Workers "Unregister")
 	r := sw_match(p.env.location.href, storage_origin_key(p), true, uninstalling = true)
 	if r == nil { return nil }
@@ -410,10 +408,10 @@ sw_console :: proc(user: rawptr, level: Log_Level, message: string) {
 sw_version_start :: proc(v: ^Sw_Version, like: ^Page = nil) -> bool {
 	if v.worker != nil { return true }
 	if like != nil { sw_note_page(like) }
-	if sw_registry.loader == nil || sw_registry.settings == nil { return false }
-	if sw_registry.scope == nil { sw_registry.scope = base.scope_make("service-workers") }
-	hp := page_create(sw_registry.loop, sw_registry.loader, sw_registry.settings, sw_registry.scope, v.reg.scope, sw_console, v)
-	hp.web.embedder.storage = sw_registry.storage
+	if the_pages.sw_registry.loader == nil || the_pages.sw_registry.settings == nil { return false }
+	if the_pages.sw_registry.scope == nil { the_pages.sw_registry.scope = base.scope_make("service-workers") }
+	hp := page_create(the_pages.sw_registry.loop, the_pages.sw_registry.loader, the_pages.sw_registry.settings, the_pages.sw_registry.scope, v.reg.scope, sw_console, v)
+	hp.web.embedder.storage = the_pages.sw_registry.storage
 	// (the version first: the worker's thread may start before worker_create returns)
 	v.host_page = hp
 	obj := worker_create(hp, v.script, "", 0, javascript = true, module = v.module, image = v.image, sw = v)
@@ -433,7 +431,7 @@ sw_version_start :: proc(v: ^Sw_Version, like: ^Page = nil) -> bool {
 // Stops the version's worker (idle, redundant, unregistered): the version itself stays.
 @(private)
 sw_version_stop :: proc(v: ^Sw_Version) {
-	if v.idle != base.NIL_HANDLE && sw_registry.loop != nil { host.clear_timer(sw_registry.loop, v.idle); v.idle = base.NIL_HANDLE }
+	if v.idle != base.NIL_HANDLE && the_pages.sw_registry.loop != nil { host.clear_timer(the_pages.sw_registry.loop, v.idle); v.idle = base.NIL_HANDLE }
 	if v.host_page != nil { hp := v.host_page; v.host_page, v.worker, v.running = nil, nil, false; page_close(hp) }
 	for m in v.queue { msg_free(m) }
 	clear(&v.queue)
@@ -443,11 +441,11 @@ sw_version_stop :: proc(v: ^Sw_Version) {
 // Something happened for the version: its idle countdown starts again.
 @(private)
 sw_touch :: proc(v: ^Sw_Version) {
-	if sw_registry.loop == nil || sw_registry.settings == nil { return }
-	ms := sw_registry.settings.sw.idle_ms
-	if v.idle != base.NIL_HANDLE { host.clear_timer(sw_registry.loop, v.idle); v.idle = base.NIL_HANDLE }
+	if the_pages.sw_registry.loop == nil || the_pages.sw_registry.settings == nil { return }
+	ms := the_pages.sw_registry.settings.sw.idle_ms
+	if v.idle != base.NIL_HANDLE { host.clear_timer(the_pages.sw_registry.loop, v.idle); v.idle = base.NIL_HANDLE }
 	if ms <= 0 || v.worker == nil { return }
-	v.idle = host.set_timer(sw_registry.loop, f64(ms), 0, sw_idle_fire, rawptr(uintptr(v.id)))
+	v.idle = host.set_timer(the_pages.sw_registry.loop, f64(ms), 0, sw_idle_fire, rawptr(uintptr(v.id)))
 }
 
 @(private)
@@ -556,7 +554,7 @@ sw_redundant :: proc(v: ^Sw_Version) {
 	sw_version_stop(v)
 	if r.dir != "" { _ = os.remove(sw_script_file(r.dir, v.id)) }
 	sw_version_free(v)
-	if was_active && r.counted && r.active == nil { r.counted = false; sw_registry.active -= 1 }
+	if was_active && r.counted && r.active == nil { r.counted = false; the_pages.sw_registry.active -= 1 }
 	if r.installing == nil && r.waiting == nil && r.active == nil && r.job == base.NIL_HANDLE { sw_remove(r) } else { sw_save(r.dir) }
 }
 
@@ -575,15 +573,15 @@ sw_unregister :: proc(r: ^Sw_Registration) {
 // controls keep it until they close).
 sw_clear_key :: proc(key: string) {
 	gone := make([dynamic]^Sw_Registration, context.temp_allocator)
-	for r in sw_registry.regs { if r.origin == key && !r.uninstalling { append(&gone, r) } }
+	for r in the_pages.sw_registry.regs { if r.origin == key && !r.uninstalling { append(&gone, r) } }
 	for r in gone { sw_unregister(r) }
 }
 
 // The registration goes (unregister, or nothing left of it).
 @(private)
 sw_remove :: proc(r: ^Sw_Registration) {
-	for x, i in sw_registry.regs { if x == r { ordered_remove(&sw_registry.regs, i); break } }
-	if r.counted { sw_registry.active -= 1; r.counted = false }
+	for x, i in the_pages.sw_registry.regs { if x == r { ordered_remove(&the_pages.sw_registry.regs, i); break } }
+	if r.counted { the_pages.sw_registry.active -= 1; r.counted = false }
 	for v in ([3]^Sw_Version{r.installing, r.waiting, r.active}) {
 		if v == nil { continue }
 		v.state = .Redundant
@@ -606,7 +604,7 @@ sw_remove :: proc(r: ^Sw_Registration) {
 sw_update :: proc(r: ^Sw_Registration, script: string, module: bool, waiter: Maybe(Sw_Waiter), force_network := false) {
 	if w, ok := waiter.?; ok { append(&r.registering, w) }
 	if r.job != base.NIL_HANDLE { return }   // a check in flight answers them all
-	if sw_registry.loader == nil { sw_reject_registering(r, "the service worker's script cannot be fetched now"); return }
+	if the_pages.sw_registry.loader == nil { sw_reject_registering(r, "the service worker's script cannot be fetched now"); return }
 	if script != r.script { delete(r.script); r.script = strings.clone(script) }
 	r.module = module
 	// updateViaCache: "all" lets the HTTP cache answer (unless the last check is a day old), else it is bypassed
@@ -621,7 +619,7 @@ sw_update :: proc(r: ^Sw_Registration, script: string, module: bool, waiter: May
 	fetch.environment_destroy(&r.job_env)
 	r.job_env = fetch.environment_make(scope_u)
 	headers := [1]fetch.Header_Pair{{"Service-Worker", "script"}}
-	r.job = fetch.start(sw_registry.loader, {
+	r.job = fetch.start(the_pages.sw_registry.loader, {
 		request = {url = script, mode = .Same_Origin, credentials = .Same_Origin, destination = .Worker, cache = cache, initiator = &r.job_env,
 			script = module ? .Module : .Classic, headers = headers[:], skip_service_worker = true},
 		on_event = sw_job_event, user = rawptr(uintptr(r.id)), collect = true,
@@ -715,8 +713,8 @@ sw_job_done :: proc(r: ^Sw_Registration, body: []byte) {
 // A navigation in the scope: the script is checked when the last check is older than the preference says.
 @(private)
 sw_soft_update :: proc(r: ^Sw_Registration) {
-	if r.active == nil || r.job != base.NIL_HANDLE || sw_registry.settings == nil { return }
-	hours := i64(sw_registry.settings.sw.update_hours)
+	if r.active == nil || r.job != base.NIL_HANDLE || the_pages.sw_registry.settings == nil { return }
+	hours := i64(the_pages.sw_registry.settings.sw.update_hours)
 	if sw_now() - r.last_check < hours * 3600 { return }
 	sw_update(r, r.script, r.module, nil, force_network = true)
 }
@@ -789,7 +787,7 @@ sw_page_reply :: proc(h: ^Worker_Host, m: ^Worker_Msg) {
 		}
 	case .Respond, .Fall_Back, .Fail:
 		v.pending = max(v.pending - 1, 0)
-		f, ok := sw_registry.fetches[m.id]
+		f, ok := the_pages.sw_registry.fetches[m.id]
 		if !ok { return }
 		if f.timer != base.NIL_HANDLE { host.clear_timer(f.loop, f.timer); f.timer = base.NIL_HANDLE }
 		#partial switch Sw_Reply_Kind(m.code) {
@@ -823,7 +821,7 @@ sw_page_reply :: proc(h: ^Worker_Host, m: ^Worker_Msg) {
 @(private)
 sw_fetch_done :: proc(f: ^Sw_Fetch) {
 	if !f.answered || f.pre_state == 1 { return }
-	delete_key(&sw_registry.fetches, f.id)
+	delete_key(&the_pages.sw_registry.fetches, f.id)
 	sw_fetch_free(f)
 }
 
@@ -853,7 +851,7 @@ sw_try_activate :: proc(r: ^Sw_Registration) {
 	if !r.counted {
 		r.counted = true
 		r.after_page = sync.atomic_load(&next_page_id)
-		sw_registry.active += 1
+		the_pages.sw_registry.active += 1
 	}
 	sw_store_script(w)
 	sw_set_state(w, .Activating)
@@ -866,16 +864,16 @@ sw_try_activate :: proc(r: ^Sw_Registration) {
 // A document went away: a waiting version may activate now that its old version has one client less.
 sw_page_gone :: proc(p: ^Page) {
 	if p.web == nil { return }
-	if q, ok := sw_registry.inbox[p.web.id]; ok {
+	if q, ok := the_pages.sw_registry.inbox[p.web.id]; ok {
 		for m in q { delete(m) }
 		delete(q)
-		delete_key(&sw_registry.inbox, p.web.id)
+		delete_key(&the_pages.sw_registry.inbox, p.web.id)
 	}
-	if len(sw_registry.regs) == 0 || sw_registry.loop == nil || sw_is_host(p) { return }
-	host.post(sw_registry.loop, proc(_: rawptr) {
-		for i := len(sw_registry.regs) - 1; i >= 0; i -= 1 {
-			if i >= len(sw_registry.regs) { continue }
-			r := sw_registry.regs[i]
+	if len(the_pages.sw_registry.regs) == 0 || the_pages.sw_registry.loop == nil || sw_is_host(p) { return }
+	host.post(the_pages.sw_registry.loop, proc(_: rawptr) {
+		for i := len(the_pages.sw_registry.regs) - 1; i >= 0; i -= 1 {
+			if i >= len(the_pages.sw_registry.regs) { continue }
+			r := the_pages.sw_registry.regs[i]
 			if r.uninstalling && !sw_has_clients(r) { sw_remove(r); continue }   // its last client went
 			if r.waiting != nil { sw_try_activate(r) }
 		}
@@ -885,25 +883,25 @@ sw_page_gone :: proc(p: ^Page) {
 @(private)
 sw_wake_ready :: proc() {
 	k := 0
-	for w in sw_registry.ready {
+	for w in the_pages.sw_registry.ready {
 		pg := page_by_id(w.page)
 		if pg == nil || pg.closed { continue }
 		if r := sw_match(pg.env.location.href, storage_origin_key(pg), true); r != nil { promise_resolve(pg, w.promise, i64(r.id)); continue }
-		sw_registry.ready[k] = w
+		the_pages.sw_registry.ready[k] = w
 		k += 1
 	}
-	resize(&sw_registry.ready, k)
+	resize(&the_pages.sw_registry.ready, k)
 }
 
 // A message for page `pg` from version `version` (its serialized data).
 @(private)
 sw_queue_message :: proc(pg: ^Page, version: u64, data: []byte) {
-	q := sw_registry.inbox[pg.web.id]
+	q := the_pages.sw_registry.inbox[pg.web.id]
 	msg := make([]byte, 8 + len(data))
 	for i in 0 ..< 8 { msg[i] = u8(version >> (8 * uint(i))) }
 	copy(msg[8:], data)
 	append(&q, msg)
-	sw_registry.inbox[pg.web.id] = q
+	the_pages.sw_registry.inbox[pg.web.id] = q
 	sw_notify_page(pg, 1, nil)
 }
 
@@ -960,7 +958,7 @@ sw_client_page :: proc(r: ^Sw_Registration, text: string) -> ^Page {
 // service_workers.window_activation_ms stands for it.
 @(private)
 sw_origin_activated :: proc(origin: string) -> bool {
-	ms := sw_registry.settings != nil ? sw_registry.settings.sw.window_activation_ms : 5000
+	ms := the_pages.sw_registry.settings != nil ? the_pages.sw_registry.settings.sw.window_activation_ms : 5000
 	for _, pg in live_pages {
 		if pg.closed || pg.worker != nil || sw_is_host(pg) || storage_origin_key(pg) != origin { continue }
 		if age, had := activation_age_ns(pg); had && age <= i64(ms) * 1_000_000 { return true }
@@ -1011,7 +1009,7 @@ sw_request :: proc(v: ^Sw_Version, request: u64, op: Sw_Request_Op, text, extra:
 			}
 		}
 		if (type == "sharedworker" || type == "all") && uncontrolled {
-			for s in shared_workers {
+			for s in the_pages.shared_workers {
 				if s.gone || s.worker == nil || s.key != r.origin { continue }
 				if strings.builder_len(b) > 0 { strings.write_byte(&b, '\n') }
 				fmt.sbprintf(&b, "%d\t%s\tsharedworker\tnone\thidden\t0", s.worker.client_id, s.url)
@@ -1023,10 +1021,10 @@ sw_request :: proc(v: ^Sw_Version, request: u64, op: Sw_Request_Op, text, extra:
 		if pg := sw_client_page(r, text); pg != nil && pg.worker == nil { sw_client_line(&b, pg) }
 		sw_answer(v.id, request, true, strings.to_string(b))
 	case .Open_Window:
-		open := sw_embedder.open
+		open := the_pages.sw_embedder.open
 		if open == nil { sw_answer(v.id, request, false, "InvalidAccessError: this browser cannot open a window now"); return }
 		after := sync.atomic_load(&next_page_id)
-		if !open(sw_embedder.user, text) { sw_answer(v.id, request, false, "InvalidAccessError: the window was not opened"); return }
+		if !open(the_pages.sw_embedder.user, text) { sw_answer(v.id, request, false, "InvalidAccessError: the window was not opened"); return }
 		sw_wait_document(v, request, after, text)
 	case .Navigate:
 		pg := sw_client_page(r, extra)
@@ -1038,7 +1036,7 @@ sw_request :: proc(v: ^Sw_Version, request: u64, op: Sw_Request_Op, text, extra:
 		n := new(Nav)
 		n^ = {pg.web.id, strings.clone(text)}
 		// a navigation reaches the embedder from a task of its own (web.odin)
-		host.post(sw_registry.loop, proc(data: rawptr) {
+		host.post(the_pages.sw_registry.loop, proc(data: rawptr) {
 			n := (^Nav)(data)
 			defer { delete(n.url); free(n) }
 			if pg := page_by_id(n.page); pg != nil && !pg.closed && pg.web.embedder.navigate != nil {
@@ -1048,8 +1046,8 @@ sw_request :: proc(v: ^Sw_Version, request: u64, op: Sw_Request_Op, text, extra:
 		sw_wait_document(v, request, after, text)
 	case .Focus:
 		pg := sw_client_page(r, text)
-		focus := sw_embedder.focus
-		if pg == nil || focus == nil || !focus(sw_embedder.user, pg) { sw_answer(v.id, request, false, "InvalidAccessError: the client cannot be focused"); return }
+		focus := the_pages.sw_embedder.focus
+		if pg == nil || focus == nil || !focus(the_pages.sw_embedder.user, pg) { sw_answer(v.id, request, false, "InvalidAccessError: the client cannot be focused"); return }
 		b := strings.builder_make(context.temp_allocator)
 		sw_client_line(&b, pg, focused_now = true)
 		sw_answer(v.id, request, true, strings.to_string(b))
@@ -1068,29 +1066,29 @@ sw_request :: proc(v: ^Sw_Version, request: u64, op: Sw_Request_Op, text, extra:
 // or null after service_workers.fetch_timeout_ms.
 @(private)
 sw_wait_document :: proc(v: ^Sw_Version, request, after: u64, u: string) {
-	timeout := sw_registry.settings != nil ? sw_registry.settings.sw.fetch_timeout_ms : 30_000
-	append(&sw_registry.opens, Sw_Open{version = v.id, request = request, after = after, url = strings.clone(u), deadline = time.tick_add(time.tick_now(), time.Duration(timeout) * time.Millisecond)})
-	if sw_registry.open_timer == base.NIL_HANDLE { sw_registry.open_timer = host.set_timer(sw_registry.loop, 50, 50, sw_opens_poll, nil) }
+	timeout := the_pages.sw_registry.settings != nil ? the_pages.sw_registry.settings.sw.fetch_timeout_ms : 30_000
+	append(&the_pages.sw_registry.opens, Sw_Open{version = v.id, request = request, after = after, url = strings.clone(u), deadline = time.tick_add(time.tick_now(), time.Duration(timeout) * time.Millisecond)})
+	if the_pages.sw_registry.open_timer == base.NIL_HANDLE { the_pages.sw_registry.open_timer = host.set_timer(the_pages.sw_registry.loop, 50, 50, sw_opens_poll, nil) }
 }
 
 @(private)
 sw_opens_poll :: proc(_: rawptr) {
 	k := 0
-	for o in sw_registry.opens {
+	for o in the_pages.sw_registry.opens {
 		found: ^Page
 		for id, pg in live_pages {
 			if id <= o.after || pg.closed || pg.worker != nil || sw_is_host(pg) { continue }
 			if pg.env.location.href == o.url || strings.has_prefix(pg.env.location.href, url_without_fragment(o.url)) { found = pg; break }
 		}
 		timed_out := time.tick_diff(o.deadline, time.tick_now()) > 0
-		if found == nil && !timed_out { sw_registry.opens[k] = o; k += 1; continue }
+		if found == nil && !timed_out { the_pages.sw_registry.opens[k] = o; k += 1; continue }
 		b := strings.builder_make(context.temp_allocator)
 		if v := sw_version_by_id(o.version); found != nil && v != nil && storage_origin_key(found) == v.reg.origin { sw_client_line(&b, found) }
 		sw_answer(o.version, o.request, true, strings.to_string(b))
 		delete(o.url)
 	}
-	resize(&sw_registry.opens, k)
-	if k == 0 && sw_registry.open_timer != base.NIL_HANDLE { host.clear_timer(sw_registry.loop, sw_registry.open_timer); sw_registry.open_timer = base.NIL_HANDLE }
+	resize(&the_pages.sw_registry.opens, k)
+	if k == 0 && the_pages.sw_registry.open_timer != base.NIL_HANDLE { host.clear_timer(the_pages.sw_registry.loop, the_pages.sw_registry.open_timer); the_pages.sw_registry.open_timer = base.NIL_HANDLE }
 }
 
 ////////////////////////////////
@@ -1113,7 +1111,7 @@ sw_preload_op :: proc(r: ^Sw_Registration, op: i32, header: string) -> (state: s
 // The preload's events: its response, kept whole.
 @(private)
 sw_preload_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
-	f, ok := sw_registry.fetches[u64(uintptr(user))]
+	f, ok := the_pages.sw_registry.fetches[u64(uintptr(user))]
 	if !ok || f.preload != task { return }
 	#partial switch ev.kind {
 	case .Response:
@@ -1177,15 +1175,15 @@ sw_intercept :: proc(t: ^fetch.Task) -> bool {
 		r = sw_controller(client)
 	}
 	if r == nil || r.active == nil { return false }
-	if client == nil && sw_registry.loader == nil { for _, pg in live_pages { if !pg.closed && pg.loader != nil && !sw_is_host(pg) { sw_note_page(pg); break } } }
+	if client == nil && the_pages.sw_registry.loader == nil { for _, pg in live_pages { if !pg.closed && pg.loader != nil && !sw_is_host(pg) { sw_note_page(pg); break } } }
 	v := r.active
 	if v.worker == nil && !sw_version_start(v) { return false }
-	sw_registry.next_fetch += 1
-	id := sw_registry.next_fetch
+	the_pages.sw_registry.next_fetch += 1
+	id := the_pages.sw_registry.next_fetch
 	f := new(Sw_Fetch)
 	f.loader, f.task, f.id, f.version = t.loader, t.self, id, v.id
 	f.loop = v.host_page.loop
-	sw_registry.fetches[id] = f
+	the_pages.sw_registry.fetches[id] = f
 	timeout := v.host_page.settings.sw.fetch_timeout_ms
 	f.timer = host.set_timer(f.loop, f64(timeout), 0, sw_fetch_timeout, rawptr(uintptr(id)))
 	m := sw_event(.Fetch, id)
@@ -1234,14 +1232,14 @@ SW_FETCH_PRELOAD :: i64(1) << 62
 @(private)
 sw_fetch_timeout :: proc(data: rawptr) {
 	id := u64(uintptr(data))
-	f, ok := sw_registry.fetches[id]
+	f, ok := the_pages.sw_registry.fetches[id]
 	if !ok { return }
 	f.timer = base.NIL_HANDLE
 	if v := sw_version_by_id(f.version); v != nil { v.pending = max(v.pending - 1, 0) }
 	if !f.answered { f.answered = true; fetch.sw_fall_back(f.loader, f.task) }
 	if f.preload != base.NIL_HANDLE { fetch.cancel(f.loader, f.preload); f.preload = base.NIL_HANDLE }
 	f.pre_state = 0
-	delete_key(&sw_registry.fetches, id)
+	delete_key(&the_pages.sw_registry.fetches, id)
 	sw_fetch_free(f)
 }
 
@@ -1282,16 +1280,16 @@ ServiceWorker_register :: proc(c: ^Call, script: string, scope: Maybe(string), v
 	pr := promise_create(p, c.owner)
 	origin := storage_origin_key(p)   // (the registration's storage key: Sw_Registration.origin)
 	r: ^Sw_Registration
-	for x in sw_registry.regs { if x.scope == sc && x.origin == origin { r = x; break } }
+	for x in the_pages.sw_registry.regs { if x.scope == sc && x.origin == origin { r = x; break } }
 	if r == nil {
-		sw_registry.next += 1
+		the_pages.sw_registry.next += 1
 		r = new(Sw_Registration)
-		r.id, r.origin, r.scope, r.script = sw_registry.next, strings.clone(origin), strings.clone(sc), strings.clone(su)
+		r.id, r.origin, r.scope, r.script = the_pages.sw_registry.next, strings.clone(origin), strings.clone(sc), strings.clone(su)
 		dir := ""
 		if sm := p.web.embedder.storage; sm != nil && sm.ready { dir = sm.dir }
 		r.dir = strings.clone(dir)
 		r.preload_header = strings.clone("true")
-		append(&sw_registry.regs, r)
+		append(&the_pages.sw_registry.regs, r)
 	}
 	if r.via_cache != via_cache { delete(r.via_cache); r.via_cache = strings.clone(via_cache) }
 	if r.uninstalling { r.uninstalling = false; sw_save(r.dir) }   // registered again before it went
@@ -1313,7 +1311,7 @@ ServiceWorker_ready :: proc(c: ^Call) -> u64 {
 		return pr
 	}
 	if r := sw_match(p.env.location.href, storage_origin_key(p), true); r != nil { promise_resolve(p, pr, i64(r.id)); return pr }
-	append(&sw_registry.ready, Sw_Waiter{page_id(p), pr})
+	append(&the_pages.sw_registry.ready, Sw_Waiter{page_id(p), pr})
 	return pr
 }
 
@@ -1332,7 +1330,7 @@ ServiceWorker_registrationIds :: proc(c: ^Call) -> string {
 	if sw_off_thread(c) { g := sw_client_view(c); return g != nil && g.client_sw_reg != 0 ? fmt.tprintf("%d", g.client_sw_reg) : "" }
 	origin := storage_origin_key(c.page)
 	b := strings.builder_make(context.temp_allocator)
-	for r in sw_registry.regs {
+	for r in the_pages.sw_registry.regs {
 		if r.origin != origin || r.uninstalling { continue }
 		if strings.builder_len(b) > 0 { strings.write_byte(&b, '\n') }
 		fmt.sbprintf(&b, "%d", r.id)
@@ -1465,11 +1463,11 @@ ServiceWorker_takeMessage :: proc(c: ^Call) -> ([]byte, Api_Error) {
 		return out, .None
 	}
 	id := page_id(c.page)
-	q, ok := sw_registry.inbox[id]
+	q, ok := the_pages.sw_registry.inbox[id]
 	if !ok || len(q) == 0 { return nil, fail(c, .Not_Found, "no message") }
 	m := q[0]
 	ordered_remove(&q, 0)
-	if len(q) == 0 { delete(q); delete_key(&sw_registry.inbox, id) } else { sw_registry.inbox[id] = q }
+	if len(q) == 0 { delete(q); delete_key(&the_pages.sw_registry.inbox, id) } else { the_pages.sw_registry.inbox[id] = q }
 	out := make([]byte, len(m), context.temp_allocator)
 	copy(out, m)
 	delete(m)

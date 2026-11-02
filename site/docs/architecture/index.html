@@ -277,17 +277,34 @@ system, the single-instance channel, an id unique in the process (atomic). Locke
 note names.</li>
 <li><strong>thread</strong>: <code>@(thread_local)</code>, and only then (the lint holds the class to the attribute both ways). In packages that
 have no App (<code>page</code>, <code>style</code>, <code>layout</code>), what is one App's is its thread's: the live pages, the navigables, the frames
-waiting to close (<code>page/web.odin</code>, <code>page/frames.odin</code>). In <code>browser</code>, what the thread that paints keeps (the
-compositor's layers, the planes, the canvas text's glyphs) and <code>the_app</code>, the App of this thread.</li>
-<li><strong>app</strong>, <strong>window</strong>, <strong>page</strong>: one App's, one window's, one tab's or page's state still in a global, to move into
-<code>App</code>, <code>Browser_Window.own</code> or <code>Tab</code> / <code>Page</code>. Two Apps would share it: each is a debt the list counts.</li>
+waiting to close (<code>page/web.odin</code>, <code>page/frames.odin</code>), <code>page.the_pages</code>. In <code>browser</code>, what the thread that paints
+keeps (the compositor's layers, the planes, the canvas text's glyphs) and <code>the_app</code>, the App of this thread.</li>
 <li><strong>test</strong>: a test's own.</li>
 </ul>
+<p>There is no class for one App's state (nor one window's, tab's or page's): it is a field of <code>App</code>, <code>Browser_Window.own</code>,
+<code>Tab</code> or <code>Page</code>, and the lint fails on a global that is none of the above.</p>
 <p>What belongs to the App is a field of <code>App</code> (<code>src/browser/main.odin</code>), reached through the <code>^App</code> the code is given.
 A callback the App sets up carries it: a timer's or a watch's data, a job's struct (<code>Setup_Job.app</code>), a window
 subclass's reference data (<code>app_commands_windows.odin</code>). <code>the_app</code> is what is left for code that has no <code>^App</code> yet,
-mostly hooks of other packages (<code>page.Embedder_Hooks</code>, the canvas' text engine) and the painting code: a thread of its
-own sees nil.</p>
+mostly hooks of other packages (<code>page.Embedder_Hooks</code>, the canvas' text engine), the painting code and the developer tools'
+drawing: a thread of its own sees nil.</p>
+<p>What the App's pages share is <code>page.Pages</code> (<code>src/page/pages.odin</code>, <code>App.pages</code>): the embedder's hooks, the image cache,
+the script compile service, the style threads, the profile's stores (Cache API, file system, service workers, Web Locks,
+storage buckets, storage access decisions), the message ports, the shared workers, the statistics. The page package reaches it
+through <code>page.the_pages</code>, bound by <code>page.bind</code> to the threads that run the App's pages: its loop's (<code>app_start</code>), its page
+thread's (<code>page_thread.odin</code>), a worker's (<code>worker_main</code>, its creator's), a compile thread's. A program that embeds pages
+without the shell (<code>src/tools/headless</code>, the web tests, <code>apiconformance</code>) binds its own; a page test binds one with
+<code>test_pages(t)</code>.</p>
+<p>What the Apps of the process share is set up by the first App to start and let go of by the last to end
+(<code>src/browser/process_share.odin</code>: one atomic word, the Apps that use it or a busy mark while the first sets it up or the
+last lets it go; whoever starts or ends meanwhile waits on it): the Wasm engine and its host functions, the bytecode cache,
+the image decoders, the layout threads, the decoded web fonts, the crash session (<code>page.process_shutdown</code>). The first App's
+preferences and profile configure them.</p>
+<p><code>src/tools/e2e/two_apps.odin</code> runs two Apps, each on a thread of its own, at once: each sees only its own tabs, pages,
+storage, channel messages and frame, and nothing of either is left once both have stopped. The toolkit keeps the
+interface state it draws with in one variable of the process (<code>ext/gui_toolkit/ui/state.odin</code>, <code>g</code>): until it is the
+thread's (<code>@(private, thread_local) g: ^State</code>), the two Apps' own threads take turns between the test's meetings (what
+they run besides runs at once); with that one change they run at once too.</p>
 <h2 id="wasm-engine"><a class="anchor" href="#wasm-engine" aria-hidden="true">#</a>Wasm engine</h2>
 <p>Wasmtime, the official C API release <strong>v49.0.3</strong>, downloaded by <code>wrentool fetch wasmtime</code> (version and SHA-256
 pinned in the script) into <code>build\wasmtime</code>; the static <code>wasmtime.lib</code> is linked into the exe (no DLL; it adds about

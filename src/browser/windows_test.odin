@@ -22,6 +22,7 @@ free_tabs :: proc(l: ^[dynamic]^Tab) {
 
 @(test)
 tab_list_take_keeps_the_current_tab_right :: proc(t: ^testing.T) {
+	test_app(t)
 	l := fake_tabs("a", "b", "c", "d")
 	defer free_tabs(&l)
 	keep := l[:]
@@ -54,6 +55,7 @@ tab_list_take_keeps_the_current_tab_right :: proc(t: ^testing.T) {
 
 @(test)
 tab_list_put_places_and_selects :: proc(t: ^testing.T) {
+	test_app(t)
 	l := fake_tabs("a", "b", "c")
 	defer free_tabs(&l)
 	n := new(Tab)
@@ -82,6 +84,7 @@ tab_list_put_places_and_selects :: proc(t: ^testing.T) {
 @(private = "file")
 two_windows :: proc() -> (app: ^App, a, b: ^Browser_Window) {
 	app = new(App)
+	the_app = app   // (what the code reaches without an App: this one)
 	a, b = new(Browser_Window), new(Browser_Window)
 	a.id, b.id = 1, 2
 	append(&app.windows, a, b)
@@ -101,6 +104,7 @@ free_windows :: proc(app: ^App, a, b: ^Browser_Window) {
 
 @(test)
 tab_moves_between_windows :: proc(t: ^testing.T) {
+	test_app(t)
 	app, a, b := two_windows()
 	defer free_windows(app, a, b)
 	a.ctx.tabs, a.ctx.current = fake_tabs("a1", "a2", "a3"), 1
@@ -122,6 +126,7 @@ tab_moves_between_windows :: proc(t: ^testing.T) {
 
 @(test)
 the_window_that_loses_its_last_tab_closes :: proc(t: ^testing.T) {
+	test_app(t)
 	app, a, b := two_windows()
 	defer free_windows(app, a, b)
 	a.ctx.tabs, a.ctx.current = fake_tabs("only"), 0
@@ -140,6 +145,7 @@ the_window_that_loses_its_last_tab_closes :: proc(t: ^testing.T) {
 
 @(test)
 a_tab_moves_within_its_window :: proc(t: ^testing.T) {
+	test_app(t)
 	app, a, b := two_windows()
 	defer free_windows(app, a, b)
 	a.ctx.tabs, a.ctx.current = fake_tabs("1", "2", "3", "4"), 0
@@ -154,6 +160,7 @@ a_tab_moves_within_its_window :: proc(t: ^testing.T) {
 
 @(test)
 every_tab_of_every_window_is_listed_once :: proc(t: ^testing.T) {
+	test_app(t)
 	app, a, b := two_windows()
 	defer free_windows(app, a, b)
 	a.ctx.tabs = fake_tabs("a1", "a2")

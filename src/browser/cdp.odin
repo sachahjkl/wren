@@ -109,9 +109,9 @@ cdp_start :: proc(app: ^App, cli_port: int, have_cli: bool, cli_address: string)
 	}
 	c.active, c.started, c.port = true, true, remote.tcp_port()
 	// the engine that runs the scripts and the operations (wren ctl's) answers the CDP calls too: it works without the pipe
-	if !the_remote.active {
-		the_remote.cfg = remote.settings_from_prefs(app_prefs(app))
-		the_remote.active = true
+	if !app.remote.active {
+		app.remote.cfg = remote.settings_from_prefs(app_prefs(app))
+		app.remote.active = true
 		remote_take_baseline(app)
 	}
 	// a line a tool reads to find the browser endpoint, as Chrome writes DevToolsActivePort in its profile
@@ -137,7 +137,7 @@ app_prefs :: proc(app: ^App) -> ^config.Prefs { return &app.prefs }
 @(private = "file")
 cdp_client_free :: proc(cl: ^Cdp_Client) {
 	// the client's subscription to Wren events is dropped (it was added on upgrade)
-	for i := len(the_remote.subs) - 1; i >= 0; i -= 1 { if the_remote.subs[i] == cl.conn { unordered_remove(&the_remote.subs, i) } }
+	for i := len(the_app.remote.subs) - 1; i >= 0; i -= 1 { if the_app.remote.subs[i] == cl.conn { unordered_remove(&the_app.remote.subs, i) } }
 	delete(cl.inbuf)
 	for _, p in cl.pending { delete(p.msg_id); delete(p.method) }
 	delete(cl.pending)
@@ -215,7 +215,7 @@ cdp_try_handshake :: proc(app: ^App, cl: ^Cdp_Client) {
 		cl.upgraded = true
 		cl.flavor = .Cdp
 		// a CDP client gets Wren's events (translated): it joins the subscription list, as Remote.subscribe does
-		append(&the_remote.subs, cl.conn)
+		append(&app.remote.subs, cl.conn)
 		// any bytes after the handshake are frames
 		rest := cl.inbuf[h.header_end:]
 		kept := make([dynamic]byte)

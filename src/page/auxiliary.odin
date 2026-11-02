@@ -107,8 +107,8 @@ auxiliary_open :: proc(src: ^Page, href, name: string, feat: Open_Features) -> ^
 	}
 	// the content blocker's `$popup` filters: a popup a script opens without a recent click of the user is stopped. A popup the
 	// user asked for (a gesture) is let through unless a filter explicitly names it.
-	if check := embedder.popup_check; check != nil {
-		if check(embedder.user, src, href, popup_has_gesture(src)) {
+	if check := the_pages.embedder.popup_check; check != nil {
+		if check(the_pages.embedder.user, src, href, popup_has_gesture(src)) {
 			log(src, .Log, strings.concatenate({"window.open blocked by the content blocker ($popup): ", href}, context.temp_allocator))
 			return nil
 		}

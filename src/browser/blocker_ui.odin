@@ -224,7 +224,7 @@ shield_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 
 	// the glyph inside says the state
 	gy := c.y - sh * 0.02
-	show_glyph := !(d.count > 0 && bl.b.cfg.badge && bl.b.cfg.badge_inside && (d.state == .Active || d.state == .Loading))
+	show_glyph := !(d.count > 0 && the_app.bl.b.cfg.badge && the_app.bl.b.cfg.badge_inside && (d.state == .Active || d.state == .Loading))
 	if show_glyph do switch d.state {
 	case .Active:   // a check mark, knocked out of the filled shield
 		stroke(dc, {c.x - sh * 0.17, gy + sh * 0.01}, {c.x - sh * 0.05, gy + sh * 0.13}, thick, d.ink)
@@ -241,14 +241,14 @@ shield_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	}
 
 	// the count of blocked requests: in a small badge hung on the shield's top right corner, or inside the shield (blocker.badge.style)
-	if d.count > 0 && bl.b.cfg.badge && d.state != .Off && d.state != .Idle {
+	if d.count > 0 && the_app.bl.b.cfg.badge && d.state != .Off && d.state != .Idle {
 		text := d.count > 99 ? "99+" : fmt.tprintf("%d", d.count)
-		if bl.b.cfg.badge_inside && (d.state == .Active || d.state == .Loading) {
+		if the_app.bl.b.cfg.badge_inside && (d.state == .Active || d.state == .Loading) {
 			size := sh * (len(text) > 2 ? 0.40 : 0.50)
 			tw := font.text_width(&d.app.fonts, d.app.ui_font, size, text)
 			ink := d.state == .Active ? d.ink : col
 			draw.text(dc, d.app.ui_font, size, {math.round(c.x - tw * 0.5), math.round(c.y + size * 0.36 + sh * 0.02)}, ink, text)
-		} else if !bl.b.cfg.badge_inside {
+		} else if !the_app.bl.b.cfg.badge_inside {
 			size := ui.font_size() * 0.57
 			tw := font.text_width(&d.app.fonts, d.app.ui_font, size, text)
 			bhh := math.round(size * 1.22)
@@ -271,8 +271,8 @@ shield_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 
 // What the icon shows for the tab.
 blocker_shield :: proc(app: ^App, t: ^Tab) -> (state: Shield_State, count: int, total_rules: int) {
-	if !bl.started || !bl.b.cfg.enabled { return .Off, 0, 0 }
-	if bl.b.engine != nil { total_rules = bl.b.engine.rules }
+	if !app.bl.started || !app.bl.b.cfg.enabled { return .Off, 0, 0 }
+	if app.bl.b.engine != nil { total_rules = app.bl.b.engine.rules }
 	host, ok := blocker_page_host(t)
 	if !ok { return .Idle, 0, total_rules }
 	if ts := blocker_tab(t); ts != nil { count = ts.blocked }
@@ -282,13 +282,13 @@ blocker_shield :: proc(app: ^App, t: ^Tab) -> (state: Shield_State, count: int, 
 }
 
 blocker_button :: proc(app: ^App, t: ^Tab) {
-	if !bl.started { return }
+	if !app.bl.started { return }
 	em := ui.font_size()
 	state, count, _ := blocker_shield(app, t)
-	if !bl.b.conf.first_run && state != .Off {
-		bl.b.conf.first_run = true
-		blocker.conf_save(&bl.b)
-		if bl.b.cfg.welcome_toast { ui.toast(.Info, i18n.tr("Content blocker is on: click the shield for its panel")) }
+	if !app.bl.b.conf.first_run && state != .Off {
+		app.bl.b.conf.first_run = true
+		blocker.conf_save(&app.bl.b)
+		if app.bl.b.cfg.welcome_toast { ui.toast(.Info, i18n.tr("Content blocker is on: click the shield for its panel")) }
 	}
 	blocker_theme()
 	d := ui.frame_new(Shield_Draw)
@@ -309,7 +309,7 @@ blocker_button :: proc(app: ^App, t: ^Tab) {
 	case .Site_Off: tip_text = fmt.tprintf(i18n.tr("Content blocker: off on this site\n%d blocked on this page before it was switched off"), count)
 	case .Idle: tip_text = i18n.tr("Content blocker: not applicable to this page")
 	case .Loading: tip_text = fmt.tprintf(i18n.tr("Content blocker: base list only, the filter lists are not loaded yet\n%d blocked on this page"), count)
-	case .Active: tip_text = fmt.tprintf(i18n.tr("this page, then all pages", "%d blocked on this page (%d in all)"), count, bl.b.totals.blocked)
+	case .Active: tip_text = fmt.tprintf(i18n.tr("this page, then all pages", "%d blocked on this page (%d in all)"), count, app.bl.b.totals.blocked)
 	}
 	if !ui.ctx_menu_is_open(key) { tip(sig, tip_text) }
 	// the popup is built where the button is, so its position follows the row
@@ -448,8 +448,8 @@ matrix_view :: proc(app: ^App, t: ^Tab, ts: ^blocker.Tab_State, page_host, src: 
 				}
 				for c, ci in COLUMNS {
 					allowed, blocked := cell_counts(r, c)
-					rule := blocker.dyn_get(&bl.b.dyn, src, r.host, c.kind)
-					rule_g := blocker.dyn_get(&bl.b.dyn, "*", r.host, c.kind)
+					rule := blocker.dyn_get(&app.bl.b.dyn, src, r.host, c.kind)
+					rule_g := blocker.dyn_get(&app.bl.b.dyn, "*", r.host, c.kind)
 					eff := rule != .Noop ? rule : rule_g
 					bg := draw.Color{0, 0, 0, 0}
 					switch {
@@ -463,11 +463,11 @@ matrix_view :: proc(app: ^App, t: ^Tab, ts: ^blocker.Tab_State, page_host, src: 
 					sig := ui.button(fmt.aprintf("%s###mxc_%s_%d", text, r.host, ci, allocator = ui.frame_allocator()))
 					if sig.clicked {
 						// this site's rule: none -> block -> allow -> none (shift: the same for every site)
-						scope_src := (sig.mods & {.Shift}) != {} || bl.panel_scope_global ? "*" : src
-						cur := blocker.dyn_get(&bl.b.dyn, scope_src, r.host, c.kind)
+						scope_src := (sig.mods & {.Shift}) != {} || app.bl.panel_scope_global ? "*" : src
+						cur := blocker.dyn_get(&app.bl.b.dyn, scope_src, r.host, c.kind)
 						next: blocker.Dyn_Action
 						switch cur { case .Noop: next = .Block; case .Block: next = .Allow; case .Allow: next = .Noop }
-						blocker.dyn_set(&bl.b.dyn, scope_src, r.host, c.kind, next)
+						blocker.dyn_set(&app.bl.b.dyn, scope_src, r.host, c.kind, next)
 						blocker_rules_changed(app, t)
 					}
 					tip(sig, fmt.tprintf(i18n.tr("host, request type, party, blocked, allowed, site", "%s → %s (%s)\n%d blocked, %d allowed\nClick: block, allow, then reset for %s. Shift+click: the same for all sites."), r.host, c.label, r.third_party ? i18n.tr("third party") : i18n.tr("first party"), blocked, allowed, src))
@@ -485,17 +485,17 @@ matrix_view :: proc(app: ^App, t: ^Tab, ts: ^blocker.Tab_State, page_host, src: 
 
 // A rule changed: the engine's decisions for the page change, the page is loaded again to apply them.
 blocker_rules_changed :: proc(app: ^App, t: ^Tab) {
-	bl.b.dyn.version += 1
-	blocker.conf_save(&bl.b)
-	blocker.touch(&bl.b)
-	bl.b.conf_ver += 1
-	bl.reload_pending = true
+	app.bl.b.dyn.version += 1
+	blocker.conf_save(&app.bl.b)
+	blocker.touch(&app.bl.b)
+	app.bl.b.conf_ver += 1
+	app.bl.reload_pending = true
 }
 
 blocker_panel :: proc(app: ^App, t: ^Tab, key: ui.Key, state: Shield_State) {
 	// (the deferred end of ctx_menu closes the popup at the end of the if statement: the whole panel is built inside it)
 	if ui.ctx_menu(key, ui.font_size() * PANEL_W_EM) { panel_body(app, t, state); return }
-	if bl.reload_pending && t != nil { bl.reload_pending = false; reload(app, t) }
+	if app.bl.reload_pending && t != nil { app.bl.reload_pending = false; reload(app, t) }
 }
 
 @(private = "file")
@@ -529,7 +529,7 @@ panel_body :: proc(app: ^App, t: ^Tab, state: Shield_State) {
 			if ui.tags("weak") {
 				status := i18n.tr("Filtering is on for this site")
 				switch {
-				case !bl.b.cfg.enabled: status = i18n.tr("The blocker is off (blocker.enabled)")
+				case !app.bl.b.cfg.enabled: status = i18n.tr("The blocker is off (blocker.enabled)")
 				case !has_host: status = i18n.tr("This page is not filtered")
 				case !enabled_site: status = i18n.tr("Filtering is off on this site")
 				case state == .Loading: status = i18n.tr("Base list only: the lists are downloading")
@@ -551,7 +551,7 @@ panel_body :: proc(app: ^App, t: ^Tab, state: Shield_State) {
 		stat_pair(fmt.tprintf("%d", page_blocked), i18n.tr("blocked on this page"), "pb", w * 0.28)
 		stat_pair(fmt.tprintf("%d %%", pct), i18n.tr("of its requests"), "pp", w * 0.2)
 		stat_pair(fmt.tprintf("%d", hosts_n), i18n.tr("hosts"), "ph", w * 0.16)
-		stat_pair(fmt.tprintf("%d", bl.b.totals.blocked), i18n.tr("blocked in all"), "pt", w * 0.28)
+		stat_pair(fmt.tprintf("%d", app.bl.b.totals.blocked), i18n.tr("blocked in all"), "pt", w * 0.28)
 	}
 	// graph
 	if ts != nil {
@@ -574,20 +574,20 @@ panel_body :: proc(app: ^App, t: ^Tab, state: Shield_State) {
 
 	// the site's switches
 	if has_host {
-		flags := blocker.site_flags(&bl.b, site_key)
+		flags := blocker.site_flags(&app.bl.b, site_key)
 		cosmetic := .No_Cosmetic not_in flags
 		scriptlets := .No_Scriptlets not_in flags
-		fonts := blocker.effective_fonts_of(&bl.b, flags)
+		fonts := blocker.effective_fonts_of(&app.bl.b, flags)
 		media := .Block_Media in flags
-		hard := blocker.effective_hard_of(&bl.b, flags)
+		hard := blocker.effective_hard_of(&app.bl.b, flags)
 		ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 1.75))})
 		if ui.row(.Center) {
 			ui.spacer(ui.px(em * 0.6))
 			half := (w - em * 1.2) * 0.5
 			ui.next({width = ui.px(half), height = ui.pct(1)})
-			if ui.toggle("###sw_cos", i18n.tr("Element hiding"), &cosmetic).clicked { blocker.site_toggle(&bl.b, site_key, .No_Cosmetic, !cosmetic); blocker_apply_site(app, t) }
+			if ui.toggle("###sw_cos", i18n.tr("Element hiding"), &cosmetic).clicked { blocker.site_toggle(&app.bl.b, site_key, .No_Cosmetic, !cosmetic); blocker_apply_site(app, t) }
 			ui.next({width = ui.px(half), height = ui.pct(1)})
-			if ui.toggle("###sw_scr", i18n.tr("Scriptlets"), &scriptlets).clicked { blocker.site_toggle(&bl.b, site_key, .No_Scriptlets, !scriptlets); blocker_apply_site(app, t) }
+			if ui.toggle("###sw_scr", i18n.tr("Scriptlets"), &scriptlets).clicked { blocker.site_toggle(&app.bl.b, site_key, .No_Scriptlets, !scriptlets); blocker_apply_site(app, t) }
 		}
 		ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 1.75))})
 		if ui.row(.Center) {
@@ -595,20 +595,20 @@ panel_body :: proc(app: ^App, t: ^Tab, state: Shield_State) {
 			third := (w - em * 1.2) * 0.5
 			ui.next({width = ui.px(third), height = ui.pct(1)})
 			if ui.toggle("###sw_fnt", i18n.tr("Block remote fonts"), &fonts).clicked {
-				blocker.site_toggle(&bl.b, site_key, .Block_Fonts, fonts)
-				blocker.site_toggle(&bl.b, site_key, .Allow_Fonts, !fonts)
+				blocker.site_toggle(&app.bl.b, site_key, .Block_Fonts, fonts)
+				blocker.site_toggle(&app.bl.b, site_key, .Allow_Fonts, !fonts)
 				blocker_apply_site(app, t)
 			}
 			ui.next({width = ui.px(third), height = ui.pct(1)})
-			if ui.toggle("###sw_med", i18n.tr("Block large media"), &media).clicked { blocker.site_toggle(&bl.b, site_key, .Block_Media, media); blocker_apply_site(app, t) }
+			if ui.toggle("###sw_med", i18n.tr("Block large media"), &media).clicked { blocker.site_toggle(&app.bl.b, site_key, .Block_Media, media); blocker_apply_site(app, t) }
 		}
 		ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 1.75))})
 		if ui.row(.Center) {
 			ui.spacer(ui.px(em * 0.6))
 			ui.next({width = ui.px((w - em * 1.2) * 0.5), height = ui.pct(1)})
 			if ui.toggle("###sw_hard", i18n.tr("Hard mode"), &hard).clicked {
-				blocker.site_toggle(&bl.b, site_key, .Hard, hard)
-				blocker.site_toggle(&bl.b, site_key, .Soft, !hard)
+				blocker.site_toggle(&app.bl.b, site_key, .Hard, hard)
+				blocker.site_toggle(&app.bl.b, site_key, .Soft, !hard)
 				blocker_apply_site(app, t)
 			}
 		}
@@ -625,7 +625,7 @@ panel_body :: proc(app: ^App, t: ^Tab, state: Shield_State) {
 			ui.next({width = ui.fill(), height = ui.pct(1)})
 			ui.spacer(ui.fill())
 			ui.next({width = ui.px(em * 11), height = ui.px(ui.dense(em * 1.5))})
-			ui.toggle("###mx_global", i18n.tr("All sites"), &bl.panel_scope_global)
+			ui.toggle("###mx_global", i18n.tr("All sites"), &app.bl.panel_scope_global)
 			ui.spacer(ui.px(em * 0.6))
 		}
 		matrix_view(app, t, ts, host, site_key, w)
@@ -653,7 +653,7 @@ panel_body :: proc(app: ^App, t: ^Tab, state: Shield_State) {
 
 // Switches that change what the document does: the page loads again so that they apply from its first byte.
 blocker_apply_site :: proc(app: ^App, t: ^Tab) {
-	bl.reload_pending = true
+	app.bl.reload_pending = true
 }
 
 _ :: strings

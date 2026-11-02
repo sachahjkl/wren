@@ -33,6 +33,8 @@ Side :: struct {
 @(private = "file")
 side_run :: proc(s: ^Side) {
 	context.allocator = base.process_allocator()
+	shared: Pages   // (each App its own)
+	bind(&shared)
 	loop: host.Loop
 	host.loop_init(&loop)
 	settings := settings_default()
@@ -59,13 +61,15 @@ side_run :: proc(s: ^Side) {
 	for _ in 0 ..< SIDE_PAGES { host.run_ready(&loop) }
 	s.listed_after = len(live_page_list())
 	for id in s.nav_ids { if navigable_by_id(id) != nil { s.navs_after += 1 } }
-	frames_shutdown()
+	pages_shutdown()
+	bind(nil)
 	settings_destroy(&settings)
 	host.loop_destroy(&loop)
 }
 
 @(test)
 two_apps_pages_on_two_threads_keep_to_their_own :: proc(t: ^testing.T) {
+	test_pages(t)
 	barrier: sync.Barrier
 	sync.barrier_init(&barrier, 2)
 	a, b: Side

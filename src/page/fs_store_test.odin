@@ -7,6 +7,7 @@ import "core:testing"
 
 @(test)
 fs_names_are_checked_and_encoded :: proc(t: ^testing.T) {
+	test_pages(t)
 	for bad in ([]string{"", ".", "..", "a/b", "a\\b", "x\x00"}) { testing.expect(t, !fs_name_valid(bad)) }
 	testing.expect(t, fs_name_valid("Notes.txt") && fs_name_valid("con") && fs_name_valid("a:b") && fs_name_valid(".hidden"))
 	// a folder of the user's disk takes only what the disk can hold
@@ -30,6 +31,7 @@ fs_names_are_checked_and_encoded :: proc(t: ^testing.T) {
 
 @(test)
 fs_entries_writables_locks_and_quota :: proc(t: ^testing.T) {
+	test_pages(t)
 	dir := strings.concatenate({"build/tmp/fs_store_test_", base.unique_name(context.temp_allocator)}, context.temp_allocator)
 	defer { fs_store_shutdown(); _ = base.remove_tree(dir) }
 	root, e := fs_opfs_root(dir, "https://a.example")

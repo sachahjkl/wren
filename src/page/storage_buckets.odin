@@ -26,10 +26,6 @@ Buckets_State :: struct {
 	persisted: map[string]bool,   // the keys whose default bucket asked for persistence
 }
 
-@(private)
-buckets_state: Buckets_State
-@(private)
-buckets_mu: sync.Mutex   // pages and workers (threads of their own) ask
 
 @(private)
 buckets_path :: proc(m: ^Storage_Manager) -> string { return strings.concatenate({m.dir, "/buckets.txt"}, context.temp_allocator) }
@@ -39,7 +35,7 @@ persisted_path :: proc(m: ^Storage_Manager) -> string { return strings.concatena
 
 @(private)
 buckets_load :: proc(m: ^Storage_Manager) {
-	s := &buckets_state
+	s := &the_pages.buckets_state
 	if s.loaded { return }
 	s.loaded = true
 	s.persisted = make(map[string]bool)
@@ -62,7 +58,7 @@ buckets_load :: proc(m: ^Storage_Manager) {
 @(private)
 buckets_save :: proc(m: ^Storage_Manager) {
 	if m.dir == "" { return }
-	s := &buckets_state
+	s := &the_pages.buckets_state
 	b := strings.builder_make(context.temp_allocator)
 	for x in s.list { strings.write_string(&b, x.origin); strings.write_byte(&b, '\t'); strings.write_string(&b, x.name); strings.write_byte(&b, '\t')
 		strings.write_string(&b, "1" if x.persisted else "0"); strings.write_byte(&b, '\t'); strings.write_string(&b, x.durability); strings.write_byte(&b, '\t')
@@ -85,8 +81,8 @@ int_text :: proc(n: i64) -> string {
 
 // Frees the registry (the storage manager goes; the files stay).
 buckets_destroy :: proc() {
-	sync.mutex_lock(&buckets_mu); defer sync.mutex_unlock(&buckets_mu)
-	s := &buckets_state
+	sync.mutex_lock(&the_pages.buckets_mu); defer sync.mutex_unlock(&the_pages.buckets_mu)
+	s := &the_pages.buckets_state
 	for x in s.list { delete(x.origin); delete(x.name); delete(x.durability) }
 	delete(s.list)
 	for k in s.persisted { delete(k) }
@@ -102,16 +98,16 @@ bucket_key :: proc(origin_key, bucket: string) -> string {
 
 @(private)
 bucket_find :: proc(origin, name: string) -> int {
-	for x, i in buckets_state.list { if x.origin == origin && x.name == name { return i } }
+	for x, i in the_pages.buckets_state.list { if x.origin == origin && x.name == name { return i } }
 	return -1
 }
 
 // Opens (makes if it is new) the bucket `name` of the origin. `created`: it did not exist.
 bucket_open :: proc(m: ^Storage_Manager, origin, name: string, persisted: bool, durability: string, expires: f64) -> (info: Bucket_Info, created: bool) {
-	sync.mutex_lock(&buckets_mu); defer sync.mutex_unlock(&buckets_mu)
+	sync.mutex_lock(&the_pages.buckets_mu); defer sync.mutex_unlock(&the_pages.buckets_mu)
 	buckets_load(m)
 	if i := bucket_find(origin, name); i >= 0 {
-		x := &buckets_state.list[i]
+		x := &the_pages.buckets_state.list[i]
 		if persisted { x.persisted = true }
 		if durability != "" { delete(x.durability); x.durability = strings.clone(durability) }
 		if expires >= 0 { x.expires = expires }
@@ -119,63 +115,63 @@ bucket_open :: proc(m: ^Storage_Manager, origin, name: string, persisted: bool, 
 		return x^, false
 	}
 	x := Bucket_Info{origin = strings.clone(origin), name = strings.clone(name), persisted = persisted, durability = strings.clone(durability if durability != "" else "relaxed"), expires = expires}
-	append(&buckets_state.list, x)
+	append(&the_pages.buckets_state.list, x)
 	buckets_save(m)
 	return x, true
 }
 
 bucket_exists :: proc(m: ^Storage_Manager, origin, name: string) -> bool {
-	sync.mutex_lock(&buckets_mu); defer sync.mutex_unlock(&buckets_mu)
+	sync.mutex_lock(&the_pages.buckets_mu); defer sync.mutex_unlock(&the_pages.buckets_mu)
 	buckets_load(m)
 	return bucket_find(origin, name) >= 0
 }
 
 bucket_names :: proc(m: ^Storage_Manager, origin: string) -> []string {
-	sync.mutex_lock(&buckets_mu); defer sync.mutex_unlock(&buckets_mu)
+	sync.mutex_lock(&the_pages.buckets_mu); defer sync.mutex_unlock(&the_pages.buckets_mu)
 	buckets_load(m)
 	out := make([dynamic]string, context.temp_allocator)
 	append(&out, "default")
-	for x in buckets_state.list { if x.origin == origin { append(&out, x.name) } }
+	for x in the_pages.buckets_state.list { if x.origin == origin { append(&out, x.name) } }
 	return out[:]
 }
 
 // Removes a bucket and everything it keeps.
 bucket_delete :: proc(m: ^Storage_Manager, origin, name: string) {
-	sync.mutex_lock(&buckets_mu); defer sync.mutex_unlock(&buckets_mu)
+	sync.mutex_lock(&the_pages.buckets_mu); defer sync.mutex_unlock(&the_pages.buckets_mu)
 	buckets_load(m)
 	if i := bucket_find(origin, name); i >= 0 {
-		x := buckets_state.list[i]
+		x := the_pages.buckets_state.list[i]
 		delete(x.origin); delete(x.name); delete(x.durability)
-		ordered_remove(&buckets_state.list, i)
+		ordered_remove(&the_pages.buckets_state.list, i)
 	}
 	idb_clear_origin(m, bucket_key(origin, name))
 	opfs_clear(m.dir, bucket_key(origin, name))   // its origin private file system (fs_store.odin)
-	if k, _ := delete_key(&buckets_state.persisted, bucket_key(origin, name)); k != "" { delete(k) }
+	if k, _ := delete_key(&the_pages.buckets_state.persisted, bucket_key(origin, name)); k != "" { delete(k) }
 	buckets_save(m)
 }
 
 bucket_set_expires :: proc(m: ^Storage_Manager, origin, name: string, expires: f64) {
-	sync.mutex_lock(&buckets_mu); defer sync.mutex_unlock(&buckets_mu)
+	sync.mutex_lock(&the_pages.buckets_mu); defer sync.mutex_unlock(&the_pages.buckets_mu)
 	buckets_load(m)
-	if i := bucket_find(origin, name); i >= 0 { buckets_state.list[i].expires = expires; buckets_save(m) }
+	if i := bucket_find(origin, name); i >= 0 { the_pages.buckets_state.list[i].expires = expires; buckets_save(m) }
 }
 
 // persisted() and persist() of the default bucket (key: the origin's storage key) or of a named bucket.
 storage_persisted :: proc(m: ^Storage_Manager, key: string, bucket: string, request: bool) -> bool {
-	sync.mutex_lock(&buckets_mu); defer sync.mutex_unlock(&buckets_mu)
+	sync.mutex_lock(&the_pages.buckets_mu); defer sync.mutex_unlock(&the_pages.buckets_mu)
 	buckets_load(m)
 	if bucket != "" {
 		if i := bucket_find(key, bucket); i >= 0 {
-			if request && !buckets_state.list[i].persisted { buckets_state.list[i].persisted = true; buckets_save(m) }
-			return buckets_state.list[i].persisted
+			if request && !the_pages.buckets_state.list[i].persisted { the_pages.buckets_state.list[i].persisted = true; buckets_save(m) }
+			return the_pages.buckets_state.list[i].persisted
 		}
 		return false
 	}
-	if request && !buckets_state.persisted[key] {
-		if key in buckets_state.persisted { buckets_state.persisted[key] = true } else { buckets_state.persisted[strings.clone(key)] = true }
+	if request && !the_pages.buckets_state.persisted[key] {
+		if key in the_pages.buckets_state.persisted { the_pages.buckets_state.persisted[key] = true } else { the_pages.buckets_state.persisted[strings.clone(key)] = true }
 		buckets_save(m)
 	}
-	return buckets_state.persisted[key]
+	return the_pages.buckets_state.persisted[key]
 }
 
 // What the origin's bucket holds, and what it may hold.

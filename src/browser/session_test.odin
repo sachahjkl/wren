@@ -5,6 +5,7 @@ import "core:testing"
 
 @(test)
 session_round_trip :: proc(t: ^testing.T) {
+	test_app(t)
 	text := session_serialize({"https://a.org/", "about:config", "file:///C:/x.html"}, 1, 1024)
 	urls, cur, ok := session_parse(text, 100, 1024)
 	testing.expect(t, ok)
@@ -26,6 +27,7 @@ session_round_trip :: proc(t: ^testing.T) {
 // Whatever is in the file, the browser starts.
 @(test)
 session_damaged_files :: proc(t: ^testing.T) {
+	test_app(t)
 	_, _, ok := session_parse("", 100, 1024)
 	testing.expect(t, !ok)
 	_, _, ok = session_parse("garbage\ntab https://a/\n", 100, 1024)

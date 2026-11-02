@@ -18,6 +18,7 @@ import "toolkit:font"
 import "toolkit:platform"
 import "toolkit:render"
 import "toolkit:ui"
+import "wb:canvas2d"
 import "wb:base"
 import "wb:config"
 import "wb:cookies"
@@ -220,7 +221,61 @@ App :: struct {
 	inject_held:   platform.Mouse_Buttons,   // remote_methods.odin: the buttons a remote client holds
 	cmd_hwnd:      win.HWND,                 // app_commands_windows.odin: the window the system's app commands reach
 	drop_hwnd:     win.HWND,                 // local_paths_windows.odin: the window files are dropped on
+	pages:         page.Pages,               // what the App's pages share (page/pages.odin), bound to its loop's thread and its page thread
+	// what the painting reads (preferences read once and on change, the frame's state)
+	compositor_settings: Compositor_Settings,   // compositor.odin
+	effects_settings: Effects_Settings,      // paint_effects.odin
+	fx_settings:   Fx_Settings,              // effects_cache.odin
+	plane_settings: Plane_Settings,          // paint_planes.odin
+	plane_settle:  base.Handle,              // paint_planes.odin: the timer of the planes' settling
+	gradient_dither: bool,                   // paint_backgrounds.odin: render.gradients.dither
+	scheme_ui:     First_Paint_Settings,     // first_paint.odin
+	ix:            Interaction_Settings,     // selection_shell.odin
+	spaint:        Sel_Paint,                // selection_shell.odin: the painted selection
+	cur_gap:       Cur_Gap,                  // chrome_style.odin: where the current tab of the window being drawn meets its toolbar
+	phase_clock:   Phase_Clock,              // prof.odin: the phases of the frame being drawn
+	gpu_steps_state: Gpu_Steps_State,        // gpu_steps.odin
+	outline_cache: map[u64]^canvas2d.Path,   // canvas_shell.odin: the outlines of the canvases' text
+	frame_views:   map[^page.Page]^Frame_View,   // frames_shell.odin: the views of the frames (iframes) of the pages
+	paint_stack:   [dynamic]^page.Page,      // frames_shell.odin: the documents being painted, innermost last
+	page_focus_leave_backward: bool,         // forms_shell.odin: Shift+Tab left the page before its first element
+	os_anim:       Os_Anim,                  // os_settings.odin
+	font_watch, text_watch: int,             // font_settings.odin: the preference watches
+	look_watch:    Look_Watch,               // appearance_windows.odin: the system's colours, read and watched
+	con_prefs:     Con_Prefs,                // devtools_console_log.odin
+	tcfg:          Tree_Settings,            // history_tree.odin
+	net_custom:    [dynamic]Net_Profile,     // devtools_net_throttle.odin: the profile's throttling profiles (owned strings)
+	sa_queue:      [dynamic]^page.Storage_Access_Ask,   // storage_access_shell.odin: the pages' storage access prompts
+	ask_state:     Ask_State,                // fs_shell.odin: a page's file system permission prompt
+	drag_probe:    Drag_Probe,               // drag_probe.odin
+	lm:            Load_Measure,             // blocker_measure.odin: WREN_BLOCKER_MEASURE
+	lm_report_path: string,
+	lm_settle_ms:  f64,
+	lm_checked:    bool,
+	dnd:           Dnd_Shell,                // dnd_shell.odin: the drag of a page
+	dimg:          Dnd_Image,                // dnd_image.odin: its picture
+	dnd_last_picture: Dnd_Picture,
+	dsk:           Desktop_Shell,            // desktop_shell.odin: the desktop integration's job and status
+	recovery:      Recovery,                 // crash_recovery.odin: the profile's marker and snapshot
+	pt:            Page_Thread,              // page_thread.odin
+	remote:        Remote,                   // remote_shell.odin: the remote control channel
+	bl:            Bl_Shell,                 // blocker_shell.odin: the content blocker
+	dash:          Dash,                     // blocker_dashboard.odin
+	pick:          Picker,                   // blocker_picker.odin: the element picker
+	ub:            Urlbar,                   // urlbar.odin: the history index and its build
+	dview:         Downloads_View,           // downloads_ui.odin: about:downloads
+	hview:         History_View,             // history_ui.odin: about:history
+	tview:         Tree_View_State,          // history_tree.odin: its tree
+	vshell:        Video_Shell,              // video_shell.odin: the pages' video players
+	cgpu:          Canvas_Gpu,               // canvas_gpu.odin: the canvases drawn on the renderer
+	images_shell:  Images_Shell,             // images_shell.odin: the images' textures on the renderer
 	// (the large ones last: the fields read at every frame stay together)
+	page_render:   Page_Render,              // render.odin: the fonts of the pages, the painters
+	chrome_frames: Shell_Frames,             // shell_frames.odin: chrome frames while a page holds the thread
+	hud:           Hud,                      // hud.odin: the status bar's statistics
+	art:           Art,                      // newtab_art.odin: the artistic new tab
+	dtm:           Dt_Metrics,               // devtools_kit.odin: the developer tools' metrics
+	dtc:           Dt_Colors,                // ... and colours
 	shape_cache:   Shape_Cache,              // chrome_style.odin: the tabs' shapes (Classic_Colors.shapes)
 	license_mem:   License_Memory,           // license_shell.odin: the key, when the profile is not kept
 	frame_log:     Frame_Log,                // frame_log.odin: when the frames were presented (a ring of FRAME_LOG_CAP)
@@ -317,7 +372,7 @@ tab_free :: proc(app: ^App, t: ^Tab) {
 	base.scope_close(t.scope)   // page, instances, DOM, requests, timers: all gone (a held page too)
 	page.navigable_top_free(t.top)   // (the windows holding it see it closed)
 	hold_destroy(t)
-	page_fonts_drop(&page_render.fonts, t)   // its web fonts (fonts.odin)
+	page_fonts_drop(&app.page_render.fonts, t)   // its web fonts (fonts.odin)
 	page.session_destroy(&t.session)
 	delete(t.url); delete(t.title); delete(t.status)
 	delete(t.fragment_seen)
@@ -336,7 +391,7 @@ tab_free :: proc(app: ^App, t: ^Tab) {
 tab_log :: proc(t: ^Tab, level: page.Log_Level, message: string) { console_append(t, level, message) }
 
 console_sink :: proc(user: rawptr, level: page.Log_Level, message: string) {
-	if the_remote.active && remote_take_console(message, (^Tab)(user).id) { return }   // (an answer of a remote script, not a message)
+	if the_app.remote.active && remote_take_console(message, (^Tab)(user).id) { return }   // (an answer of a remote script, not a message)
 	t := (^Tab)(user)
 	tab_log(t, level, message)
 	if remote_subscribed() { remote_event("Runtime.consoleAPICalled", fmt.tprintf(`{{"tabId":%d,"type":%q,"text":%s}}`, t.id, level == .Error ? "error" : level == .Warn ? "warning" : "log", remote.quote(message))) }
@@ -1327,7 +1382,7 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	// a frame on an errand, or for a timed wake of the toolkit (a caret of the interface, a tooltip), is no activity: the browser stays at rest
 	// (the memory given back, the status bar's numbers at 0)
 	if why != {.Asked} { wnd.errand = .None }
-	if wnd.errand == .None && why != {.Interface_Wake} { memory_trim_active(app) } else { hud.settle_skip = true }   // memory_trim.odin; hud.odin: no sample
+	if wnd.errand == .None && why != {.Interface_Wake} { memory_trim_active(app) } else { app.hud.settle_skip = true }   // memory_trim.odin; hud.odin: no sample
 	forms_view(app).caret_painted = {}
 	prof_begin(.Input)
 	events = image_document_events(app, events)   // image_document_shell.odin: an image opened by itself takes its wheel, drags and keys
@@ -1412,11 +1467,11 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	prof_end(.UI_Draw)
 	// nothing asked for more since (window_request cleared it), the caret is where it was, and the status bar is what this window last drew: only the caret's pixels are drawn
 	// again. (A frame's GPU time lands frames later, and another window's frames make samples too. Such a frame is whole, and no sample: it brings no more of them.)
-	if caret := forms_view(app).caret_painted; wnd.errand == .Caret && caret.exact && own.status_drawn == hud.changes {
+	if caret := forms_view(app).caret_painted; wnd.errand == .Caret && caret.exact && own.status_drawn == app.hud.changes {
 		draw.damage_begin(&app.dc)
 		draw.damage(&app.dc, caret.at)
 	}
-	own.status_drawn = hud.changes
+	own.status_drawn = app.hud.changes
 	prof_begin(.Submit)
 	draw.end_frame(&app.dc)   // GPU time: the renderer's timestamp queries around its submit (hud.odin, prof.odin)
 	prof_end(.Submit)
@@ -1471,11 +1526,13 @@ main :: proc() {
 // console). The program's main and the end-to-end tests (src/e2e) come through here; a browser needs app_turn to go on and app_stop to end.
 // A headless window draws on the system's software rasterizer, whatever GPU the machine has: set by a program in this process before app_start, for a test
 // (e2e.Options.software) of what shows only there, where a frame's GPU time is many times longer.
-headless_software: bool   // (read once, by app_start)
+@(thread_local)
+headless_software: bool   // (read once, by the app_start of this thread)
 
 app_start :: proc(args: []string) -> ^App {
 	app := new(App)
 	the_app = app
+	page.bind(&app.pages)   // (this thread runs the App's pages)
 	frame_gate_init()   // windows.odin: the frames of this thread, one state machine
 	platform.dragdrop_thread_init()   // OLE on this thread before any decoder joins it to the multithreaded apartment (dnd_shell.odin)
 
@@ -1558,7 +1615,6 @@ app_start :: proc(args: []string) -> ^App {
 	host.phase("loop, network, cache, blocker")
 	host.loop_init(&app.loop, wake_window, app)   // (any thread wakes it: the App is its user)
 	instance_begin(app)   // instance_shell.odin: the window that takes the second starts' addresses
-	crashtrace.begin_session()   // (a session that ended without a report: crashes\unclean exit <date>.txt at this start)
 	app.loop.timer_slice_ns = i64(app.cfg.timer_slice_ms * 1e6)
 	appearance_init(app)   // before any settings are derived: `system` colors, auto color scheme
 	ns := net.settings_from_prefs(&app.prefs)
@@ -1573,14 +1629,8 @@ app_start :: proc(args: []string) -> ^App {
 	page.storage_manager_init(&app.storage, &app.loop, &app.blocking, app.cfg.persist_profile ? app.profile_dir : "")
 	app.page_settings = page.settings_from_prefs(&app.prefs)
 	app.page_settings.internal_address = is_builtin_href
-	{
-		rs := wasm.runtime_settings_from_prefs(&app.prefs, app.cfg.persist_profile ? app.profile_dir : "")   // nothing on disk without a kept profile
-		wasm.configure(rs)
-		wasm.runtime_settings_destroy(&rs)
-	}
 	host.phase("script runtime")
-	if !page.register_imports() { fmt.eprintln("wasm runtime init failed"); return nil }
-	page.js_startup(&app.prefs, app.cfg.persist_profile ? app.profile_dir : "")
+	if !process_share_join(app) { fmt.eprintln("wasm runtime init failed"); return nil }   // process_share.odin: the Wasm engine, the bytecode cache... (the first App sets them up)
 	app.process = base.scope_make("process")
 	app.config_view.rows = make(map[string]^Row_State)
 	history_settings_init(app)   // history_settings.odin: before the first tab
@@ -1647,13 +1697,13 @@ app_start :: proc(args: []string) -> ^App {
 	page_render_init(app)
 	first_paint_init(app)
 	interaction_init(app)
-	fonts_preload_adopt(&page_render.fonts, preload)
+	fonts_preload_adopt(&app.page_render.fonts, preload)
 	images_shell_init(app)
 	canvas_shell_init(app)
 	images_set_texture_api(renderer_texture_api(app))
 	canvas_gpu_init(app)
 	set_content_painter(forms_content_painter, app)
-	page_render.bare = forms_bare_control
+	app.page_render.bare = forms_bare_control
 	frames_shell_init(app)   // frames_shell.odin: nested documents laid out, painted and given input
 
 	host.phase("pacer and shells")
@@ -1755,9 +1805,9 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	host.shutdown_step("base.scope_close")
 	base.scope_close(app.process)   // every tab, page and request
 	host.shutdown_step("frames_shell_destroy")
-	frames_shell_destroy()   // (their views went with their documents)
+	frames_shell_destroy(app)   // (their views went with their documents)
 	host.shutdown_step("webauthn_shell_destroy")
-	clipboard_js_destroy()
+	clipboard_js_destroy(app)
 	webauthn_shell_destroy(app)   // passkey requests: their threads joined
 	host.shutdown_step("art_destroy")
 	art_destroy(app)   // newtab_art.odin: its requests cancelled, its cache files kept (temporary folder)
@@ -1769,19 +1819,15 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	host.shutdown_step("page.storage_manager_destroy")
 	page.storage_manager_destroy(&app.storage)   // writes what is not saved yet
 	host.shutdown_step("page.shutdown_threads")
-	page.shutdown_threads()
+	page.shutdown_threads()   // the App's style threads
 	host.shutdown_step("page_thread_destroy")
-	page_thread_destroy()   // page_thread.odin
-	host.shutdown_step("lay.shutdown_threads")
-	lay.shutdown_threads()
+	page_thread_destroy(app)   // page_thread.odin
 	// what the pages' threads posted last (a worker's "exited", a link's drain): run now that every page is closed, so that it
 	// frees what it owns instead of being dropped with the loop
 	host.shutdown_step("host.loop_drain")
 	host.loop_drain(&app.loop)
 	host.shutdown_step("page.images_shutdown")
-	page.images_shutdown()   // the image cache and its decoding threads
-	host.shutdown_step("page.fonts_shutdown")
-	page.fonts_shutdown()    // the decoded web fonts kept for every page
+	page.images_shutdown()   // the App's image cache (the decoding threads are the process's)
 	host.shutdown_step("blocker_stop")
 	blocker_stop(app)   // after the pages are gone, before the loader
 	host.shutdown_step("fetch.loader_destroy")
@@ -1799,7 +1845,7 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	host.shutdown_step("fetch.profile_destroy")
 	fetch.profile_destroy(&app.profile)
 	host.shutdown_step("appearance_destroy")
-	appearance_destroy()
+	appearance_destroy(app)
 	host.shutdown_step("hud_destroy")
 	devtools_destroy(app)
 	hud_destroy(app)
@@ -1825,15 +1871,13 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	page.discard_page_tasks(&app.loop)   // the tasks of pages that were queued and never ran free their data
 	host.shutdown_step("host.loop_destroy")
 	host.loop_destroy(&app.loop)
-	host.shutdown_step("page.js_shutdown")
-	page.js_shutdown()
 	host.shutdown_step("page.frames_shutdown")
 	page.frames_shutdown()   // the registry of navigables (every page is closed): a top-level page asks for its navigable on first use
 	host.shutdown_step("page stores")
 	page.cache_store_shutdown()   // the Cache API's index of every origin
 	page.fs_store_shutdown()   // file system roots, open writables and sync handles, locks
-	host.shutdown_step("wasm.runtime_destroy")
-	wasm.runtime_destroy()
+	host.shutdown_step("process_share_leave")
+	process_share_leave()   // process_share.odin: the last App lets go of the Wasm engine, the bytecode cache, the decoders, the layout threads
 	host.shutdown_step("measure_destroy")
 	measure_destroy(&app.measure)
 	host.shutdown_step("forms_shell_destroy")
@@ -1879,7 +1923,6 @@ app_stop :: proc(app: ^App, process_ends := false) {
 	instance_release()   // instance_shell.odin: the profile is written and free: a start that waited becomes the owner (before the watchdog's stop, which can wait for its next tick)
 	host.shutdown_step("shutdown_end")
 	host.shutdown_end()
-	crashtrace.end_session()   // a clean end (a watchdog's exit or a kill leaves the file: the next start reports it)
 	if process_ends { memcheck_exit(profile_dir) }   // memcheck.odin: the leak report of the check build (a program that goes on after this reports once it has let go of its own: src/e2e)
 	host.phase("exit")
 }

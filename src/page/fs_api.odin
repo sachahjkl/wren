@@ -207,7 +207,6 @@ Fs_Embedder :: struct {
 	user: rawptr,
 }
 
-fs_embedder: Fs_Embedder
 
 @(private)
 fs_pick_free :: proc(r: ^Fs_Pick) {
@@ -223,7 +222,7 @@ fs_pick_free :: proc(r: ^Fs_Pick) {
 Fs_showPicker :: proc(c: ^Call, kind: i32, types: string, multiple, exclude_all: bool, suggested, start_in: string, start_root: u64, start_path, id: string, readwrite: bool) -> (u64, Api_Error) {
 	p := c.page
 	if p.worker != nil { return 0, fail(c, .Not_Supported, "NotSupportedError: pickers are a document's") }
-	if !p.settings.sw.fs_pickers || fs_embedder.pick == nil { return 0, fail(c, .Not_Supported, "NotSupportedError: file pickers are disabled (file_system.pickers)") }
+	if !p.settings.sw.fs_pickers || the_pages.fs_embedder.pick == nil { return 0, fail(c, .Not_Supported, "NotSupportedError: file pickers are disabled (file_system.pickers)") }
 	if top := page_top(p); top != p && !url.same_origin(top.env.origin, p.env.origin) { return 0, fail(c, .Security, "SecurityError: a cross-origin frame cannot show a file picker") }
 	age, had := activation_age_ns(p)
 	if !had || age > i64(p.settings.sw.fs_activation_ms) * 1_000_000 { return 0, fail(c, .Security, "SecurityError: a file picker needs a user gesture (transient activation)") }
@@ -251,7 +250,7 @@ Fs_showPicker :: proc(c: ^Call, kind: i32, types: string, multiple, exclude_all:
 	}
 	req.promise = promise_create(p, c.owner)
 	pr := req.promise
-	fs_embedder.pick(fs_embedder.user, p, req)
+	the_pages.fs_embedder.pick(the_pages.fs_embedder.user, p, req)
 	return pr, .None
 }
 
@@ -287,14 +286,14 @@ Fs_requestPermission :: proc(c: ^Call, root: u64, write: bool) -> (u64, Api_Erro
 	case "deny": promise_resolve(p, pr, 2); return pr, .None
 	}
 	age, had := activation_age_ns(p)
-	if fs_embedder.ask == nil || !had || age > i64(p.settings.sw.fs_activation_ms) * 1_000_000 {
+	if the_pages.fs_embedder.ask == nil || !had || age > i64(p.settings.sw.fs_activation_ms) * 1_000_000 {
 		// (no prompt without a user gesture: the state stays what it is)
 		promise_resolve(p, pr, i64(state))
 		return pr, .None
 	}
 	req := new(Fs_Ask)
 	req^ = Fs_Ask{page = page_id(p), promise = pr, root = root, write = write, what = strings.clone(r.dir), origin = strings.clone(url.origin_serialize(p.env.origin, context.temp_allocator))}
-	fs_embedder.ask(fs_embedder.user, p, req)
+	the_pages.fs_embedder.ask(the_pages.fs_embedder.user, p, req)
 	return pr, .None
 }
 

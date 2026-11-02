@@ -50,29 +50,24 @@ THREAD_PREFS := [?]config.Def{
 		description = "Documents with fewer nodes get their full style pass on the interface thread alone: sharing the work out would cost more than it saves (incremental restyles follow style.incremental.parallel_min). A style pass costs 25 to 50 microseconds per element on a page that uses many custom properties (Tailwind): at 1 800 elements it is 90 ms on one thread and 20 ms shared out, so the limit is low."},
 }
 
-// Helpers of the full style pass, shared by every page (the UI thread runs one pass at a time). Made on first use with
-// page.threads.style threads, remade when that changes; `shutdown_threads` releases them.
-@(private)
-style_pool: ^host.Thread_Pool
-@(private)
-style_pool_size: int
-
+// Helpers of the full style pass, shared by the pages of an App (Pages.style_pool: its thread runs one pass at a time). Made on first use
+// with page.threads.style threads, remade when that changes; `shutdown_threads` releases them.
 @(private)
 style_threads :: proc(p: ^Page) -> ^host.Thread_Pool {
 	n := p.settings.threads.style_threads
 	if n < 0 { n = min(host.processor_count() - 1, 7) }
-	if n != style_pool_size || (n > 0 && style_pool == nil) {
-		host.thread_pool_destroy(style_pool)
-		style_pool = n > 0 ? host.thread_pool_make(n) : nil
-		style_pool_size = n
+	if n != the_pages.style_pool_size || (n > 0 && the_pages.style_pool == nil) {
+		host.thread_pool_destroy(the_pages.style_pool)
+		the_pages.style_pool = n > 0 ? host.thread_pool_make(n) : nil
+		the_pages.style_pool_size = n
 	}
-	return style_pool
+	return the_pages.style_pool
 }
 
-// Joins the threads the page package keeps for all pages. Call once every page is closed, before exiting.
+// Joins the style threads of this thread's pages (Pages). Call once every page of them is closed.
 shutdown_threads :: proc() {
-	host.thread_pool_destroy(style_pool)
-	style_pool, style_pool_size = nil, 0
+	host.thread_pool_destroy(the_pages.style_pool)
+	the_pages.style_pool, the_pages.style_pool_size = nil, 0
 }
 
 thread_settings_from_prefs :: proc(p: ^config.Prefs) -> Thread_Settings {
@@ -307,7 +302,7 @@ adopt_document :: proc(p: ^Page, d: ^Parsed_Document) -> html.Parse_Result {
 		s.sheet = nil
 	}
 	apply_meta(p)
-	if embedder.adopted != nil && p.worker == nil { embedder.adopted(embedder.user, p) }   // (embedder.odin)
+	if the_pages.embedder.adopted != nil && p.worker == nil { the_pages.embedder.adopted(the_pages.embedder.user, p) }   // (embedder.odin)
 	media_document_adopted(p)   // (media_element.odin: the new tree's <video> / <audio>)
 	render_begin(p)   // its stylesheets start loading now; the first paint waits for them (render_blocking.odin)
 	return d.result

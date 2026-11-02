@@ -4,7 +4,6 @@ package browser
 // HTML (the "HTML Format" with its header of byte offsets and the page's address), images (PNG and a bitmap with alpha,
 // and a bitmap over white for programs that ignore alpha).
 
-import "wb:page"
 import "toolkit:platform"
 
 // Text, and markup when given: what Copy puts on the clipboard for a selection.
@@ -25,10 +24,10 @@ clipboard_set_image :: proc(app: ^App, rgba: []u8, w, h, stride: int) -> bool {
 
 // navigator.clipboard.writeText / readText (page/js_clipboard.odin decides who may; this is the clipboard they reach).
 clipboard_js_init :: proc(app: ^App) {
-	page.clipboard_embedder = {
+	app.pages.clipboard_embedder = {
 		read = proc() -> (string, bool) { return clip_get(), the_app != nil },
 		write = proc(text: string) -> bool { return the_app != nil && clipboard_set_rich(the_app, text, "", "") },
 	}
 }
 
-clipboard_js_destroy :: proc() { page.clipboard_embedder = {} }
+clipboard_js_destroy :: proc(app: ^App) { app.pages.clipboard_embedder = {} }

@@ -31,6 +31,7 @@ same :: proc(a, b: []u64) -> bool {
 // is followed; a pinned tab is in no group.
 @(test)
 tabs_keep_pins_first_and_groups_together :: proc(t: ^testing.T) {
+	test_app(t)
 	tabs := make_tabs({{false, 0}, {true, 0}, {false, 7}, {false, 0}, {false, 7}, {true, 3}})
 	testing.expect(t, !tabs_in_order(tabs))
 	cur := tabs_normalize(tabs, 4)   // (tab 5)
@@ -50,6 +51,7 @@ tabs_keep_pins_first_and_groups_together :: proc(t: ^testing.T) {
 // does not have is in none.
 @(test)
 groups_without_tabs_go :: proc(t: ^testing.T) {
+	test_app(t)
 	groups: [dynamic]Tab_Group
 	defer tab_groups_destroy(&groups)
 	append(&groups, Tab_Group{id = 1, name = clone_for_test("kept"), color = .Blue}, Tab_Group{id = 2, name = clone_for_test("gone")})
@@ -72,6 +74,7 @@ clone_for_test :: proc(s: string) -> string {
 // the list; the rows found by place, and only those in a range.
 @(test)
 sidebar_list_rows_with_groups :: proc(t: ^testing.T) {
+	test_app(t)
 	tabs := make_tabs({{true, 0}, {false, 0}, {false, 5}, {false, 5}, {false, 6}, {false, 0}})
 	groups := []Tab_Group{{id = 5, color = .Blue}, {id = 6, color = .Red, collapsed = true}}
 	items: [dynamic]Side_Item
@@ -100,6 +103,7 @@ sidebar_list_rows_with_groups :: proc(t: ^testing.T) {
 // 1000 tabs in groups: the rows built are those in view whatever the scroll, found by a binary search.
 @(test)
 sidebar_builds_only_the_visible_rows_with_groups :: proc(t: ^testing.T) {
+	test_app(t)
 	spec := make([]struct { pinned: bool, group: u64 }, 1000, context.temp_allocator)
 	for &s, i in spec { s.group = u64(i / 10 % 2 == 0 ? i / 20 + 1 : 0) }
 	tabs := make_tabs(spec)
@@ -118,6 +122,7 @@ sidebar_builds_only_the_visible_rows_with_groups :: proc(t: ^testing.T) {
 // it leaves it, over a group's header it goes before the group, out of it.
 @(test)
 sidebar_drop_into_and_out_of_groups :: proc(t: ^testing.T) {
+	test_app(t)
 	tabs := make_tabs({{false, 0}, {false, 5}, {false, 5}, {false, 0}})
 	groups := []Tab_Group{{id = 5}}
 	items: [dynamic]Side_Item
@@ -141,6 +146,7 @@ sidebar_drop_into_and_out_of_groups :: proc(t: ^testing.T) {
 // The pinned tabs' grid: as many per line as the width holds, the slot under a dragged one's middle.
 @(test)
 sidebar_pins_grid :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect_value(t, side_pin_cols(230, 40), 5)
 	testing.expect_value(t, side_pin_cols(30, 40), 1)
 	testing.expect_value(t, side_pin_slot(7, 5, 40), [2]f32{80, 40})
@@ -153,6 +159,7 @@ sidebar_pins_grid :: proc(t: ^testing.T) {
 // Pinned tabs and groups go through a session file and come back; an older reader's lines are kept as they were.
 @(test)
 session_keeps_pins_and_groups :: proc(t: ^testing.T) {
+	test_app(t)
 	tabs := []Session_Tab{
 		{url = "https://a.test/", pinned = true},
 		{url = "https://b.test/", group = 4},

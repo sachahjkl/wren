@@ -36,7 +36,6 @@ Webauthn_Embedder :: struct {
 	changed: proc(p: ^Page),
 }
 
-webauthn_embedder: Webauthn_Embedder
 
 // How often a cancellation is repeated until the platform call returns.
 @(private="file") CANCEL_RETRY_MS :: 500
@@ -69,7 +68,6 @@ Webauthn_Op :: struct {
 
 // UI thread only (each App's: its pages run on the thread of its loop).
 @(private="file", thread_local) webauthn_docs: map[u64]^Webauthn_Doc
-@(private="file") webauthn_ops: [dynamic]^Webauthn_Op   // every op whose thread may still run (shutdown joins them)
 
 @(private="file")
 webauthn_doc :: proc(p: ^Page, create := false) -> ^Webauthn_Doc {
@@ -167,15 +165,15 @@ webauthn_busy :: proc(p: ^Page) -> bool {
 }
 
 // Ceremonies whose platform call has not returned yet, every page included (tests, shutdown).
-webauthn_in_flight :: proc() -> int { return len(webauthn_ops) }
+webauthn_in_flight :: proc() -> int { return len(the_pages.webauthn_ops) }
 
 // At exit, before the loop goes: every ceremony cancelled and its thread joined. A platform call that does not come
 // back within grace_ms of its cancellation (a system dialog that ignores it) is left to the end of the process: its
 // thread and its ceremony are not freed (the thread still uses them), and the exit is not held up.
 webauthn_shutdown :: proc(grace_ms := WEBAUTHN_SHUTDOWN_GRACE_MS) {
-	for op in webauthn_ops { webauthn.cancel(op.platform, &op.c.cancel, .Not_Allowed) }
+	for op in the_pages.webauthn_ops { webauthn.cancel(op.platform, &op.c.cancel, .Not_Allowed) }
 	deadline := time.tick_now()
-	for op in webauthn_ops {
+	for op in the_pages.webauthn_ops {
 		for !host.thread_finished(op.thread) && time.duration_milliseconds(time.tick_since(deadline)) < f64(grace_ms) {
 			time.sleep(WEBAUTHN_SHUTDOWN_POLL)
 		}
@@ -184,8 +182,8 @@ webauthn_shutdown :: proc(grace_ms := WEBAUTHN_SHUTDOWN_GRACE_MS) {
 		webauthn.ceremony_destroy(op.c)
 		free(op, base.process_allocator())
 	}
-	delete(webauthn_ops)
-	webauthn_ops = nil
+	delete(the_pages.webauthn_ops)
+	the_pages.webauthn_ops = nil
 	webauthn.virtual_reset()
 }
 
@@ -294,7 +292,7 @@ webauthn_gate :: proc(p: ^Page, pr: u64, signal: Api_AbortSignal) -> bool {
 webauthn_user_gate :: proc(p: ^Page, pr: u64) -> (window: rawptr, ok: bool) {
 	s := &p.settings.authn
 	focused := true
-	if webauthn_embedder.window != nil { window, focused = webauthn_embedder.window(p) }
+	if the_pages.webauthn_embedder.window != nil { window, focused = the_pages.webauthn_embedder.window(p) }
 	if s.require_focus && !focused {
 		reject_later(p, pr, i64(Api_Error.Not_Allowed), "NotAllowedError: the document is not focused (security.webauthn.require_focus)")
 		return nil, false
@@ -356,7 +354,7 @@ webauthn_start :: proc(c: ^Call, kind: webauthn.Ceremony_Kind, options: string, 
 	timeout := kind == .Create ? cer.make.timeout_ms : cer.get.timeout_ms
 	d := webauthn_doc(p, true)
 	d.active = op
-	append(&webauthn_ops, op)
+	append(&the_pages.webauthn_ops, op)
 	if op.signal != 0 {
 		op.algo = signal_add_algorithm(p, op.signal, proc(pg: ^Page, data: u64, signal: u64) {
 			webauthn_cancel_op(pg, (^Webauthn_Op)(uintptr(data)), .Abort)
@@ -377,7 +375,7 @@ webauthn_start :: proc(c: ^Call, kind: webauthn.Ceremony_Kind, options: string, 
 		op.c.status = webauthn.fail(.Not_Allowed, "NotAllowedError: the browser could not start the request")
 		host.post(p.loop, webauthn_finished, op)
 	}
-	if webauthn_embedder.changed != nil { webauthn_embedder.changed(p) }
+	if the_pages.webauthn_embedder.changed != nil { the_pages.webauthn_embedder.changed(p) }
 	return pr
 }
 
@@ -413,7 +411,7 @@ webauthn_give_up :: proc(p: ^Page, op: ^Webauthn_Op) {
 		promise_reject(p, op.promise, i64(Api_Error.Not_Allowed), "NotAllowedError: the operation either timed out or was not allowed")
 	}
 	log(p, .Warn, "Web Authentication: the system did not end the cancelled request in time (security.webauthn.cancel_grace_ms); the page was answered anyway")
-	if webauthn_embedder.changed != nil { webauthn_embedder.changed(p) }
+	if the_pages.webauthn_embedder.changed != nil { the_pages.webauthn_embedder.changed(p) }
 }
 
 // The platform call returned (UI thread).
@@ -421,7 +419,7 @@ webauthn_give_up :: proc(p: ^Page, op: ^Webauthn_Op) {
 webauthn_finished :: proc(data: rawptr) {
 	op := (^Webauthn_Op)(data)
 	host.thread_join(op.thread)
-	for x, i in webauthn_ops { if x == op { unordered_remove(&webauthn_ops, i); break } }
+	for x, i in the_pages.webauthn_ops { if x == op { unordered_remove(&the_pages.webauthn_ops, i); break } }
 	defer free(op, base.process_allocator())
 	p := op.page_id != 0 ? page_by_id(op.page_id) : nil
 	if p == nil {
@@ -432,7 +430,7 @@ webauthn_finished :: proc(data: rawptr) {
 	if op.retry != base.NIL_HANDLE { host.clear_timer(p.loop, op.retry) }
 	if op.signal != 0 && op.algo != 0 { signal_remove_algorithm(p, op.signal, op.algo) }
 	if d := webauthn_doc(p); d != nil && d.active == op { d.active = nil }
-	defer if webauthn_embedder.changed != nil && !p.closed { webauthn_embedder.changed(p) }
+	defer if the_pages.webauthn_embedder.changed != nil && !p.closed { the_pages.webauthn_embedder.changed(p) }
 
 	st := op.c.status
 	if st.error == .Abort && op.signal != 0 {

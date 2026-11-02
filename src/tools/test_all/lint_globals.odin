@@ -1,6 +1,7 @@
 package test_all
 
 import "core:fmt"
+import "core:mem"
 import "core:odin/ast"
 import "core:odin/parser"
 import "core:odin/tokenizer"
@@ -9,25 +10,22 @@ import "core:slice"
 import "core:strings"
 import "wb:tools/tooling"
 
-// The package-level variables of the browser's packages (GLOBALS_DIRS; not the constants, procedures and types: `name :: ...`), against the list of those allowed (tools/globals_allowed.txt,
+// The package-level variables of the browser's packages (GLOBALS_DIRS; not the constants, procedures and types: `name :: ...`; those of `when` blocks too), against the list of those allowed (tools/globals_allowed.txt,
 // one line each: "<dir>/<file> <name> <class>  # why"). A global that is not in the list fails, and so does one the list names that is gone (the list follows the code). The rule
-// (docs/architecture.md, "Where state lives"): what is one App's lives in App (or what App owns: a window, a tab, a page), so that several Apps can run in one process, each on a thread
-// of its own. A global is allowed only as what it is:
+// (docs/architecture.md, "Where state lives"): what is one App's lives in App (or what App owns: a window, a tab, a page; page.Pages for the page package), so that several
+// Apps can run in one process, each on a thread of its own. There is no class for one App's state: a global is allowed only as what it is:
 //   const     a table: written by the compiler, or once (a sync.Once) before anything reads it, and never again. Any thread reads it.
 //   process   a resource of the process: there is one whatever the number of Apps (the Wasm engine, a thread pool, a library of the system, the single-instance channel). Any
 //             thread may reach it: it is locked or atomic, or the note says which thread it is bound to.
-//   app       one App's state still kept in a global: to move into App (the profile, the preferences read, a cache of its frames, a registry of its pages). Two Apps would share it.
-//   window    one window's, read as the active window's: to move into Browser_Window.own (Window_Own)
-//   page      one page's or tab's: to move into Page / Tab
 //   thread    @(thread_local): each thread its own (and a global marked so is of this class)
 //   test      a test's own
 //   test_all -Globals        every global with its class
-//   test_all -GlobalsWrite   the list rewritten from the code, keeping the classes known; new ones get "app?": to classify by hand
+//   test_all -GlobalsWrite   the list rewritten from the code, keeping the classes known; new ones get "?": to classify by hand (or to move into App)
 
 GLOBALS_LIST :: "tools/globals_allowed.txt"
 // The packages whose globals are listed, under src.
 GLOBALS_DIRS :: [?]string{"browser", "page", "style", "layout", "media", "js"}
-GLOBAL_CLASSES :: [?]string{"const", "process", "app", "window", "page", "thread", "test"}
+GLOBAL_CLASSES :: [?]string{"const", "process", "thread", "test"}
 
 Global :: struct { file, name: string, test, thread_local: bool }
 Listed :: struct { class, why: string }
@@ -47,18 +45,36 @@ find_globals :: proc(dir: string, allocator := context.allocator) -> []Global {
 		p.err = proc(pos: tokenizer.Pos, format: string, args: ..any) {}
 		p.warn = proc(pos: tokenizer.Pos, format: string, args: ..any) {}
 		if !parser.parse_file(&p, &file) { fmt.eprintfln("%s does not parse", e.fullpath); continue }
-		for decl in file.decls {
-			v, is_value := decl.derived_stmt.(^ast.Value_Decl)
-			if !is_value || !v.is_mutable { continue }
-			local := is_thread_local(v)
-			for name in v.names {
+		top_level(&found, file.decls[:], e.name, allocator)
+	}
+	return found[:]
+}
+
+// The variables of a file's top level, and of its `when` blocks (both branches: a global of one system is a global all the same).
+@(private = "file")
+top_level :: proc(found: ^[dynamic]Global, stmts: []^ast.Stmt, file: string, allocator: mem.Allocator) {
+	for decl in stmts {
+		#partial switch s in decl.derived_stmt {
+		case ^ast.When_Stmt:
+			for w := s; w != nil; {
+				if b, is_block := w.body.derived_stmt.(^ast.Block_Stmt); is_block { top_level(found, b.stmts, file, allocator) }
+				if w.else_stmt == nil { break }
+				#partial switch e in w.else_stmt.derived_stmt {
+				case ^ast.When_Stmt: w = e; continue
+				case ^ast.Block_Stmt: top_level(found, e.stmts, file, allocator)
+				}
+				break
+			}
+		case ^ast.Value_Decl:
+			if !s.is_mutable { continue }
+			local := is_thread_local(s)
+			for name in s.names {
 				if id, is_ident := name.derived_expr.(^ast.Ident); is_ident {
-					append(&found, Global{strings.clone(e.name, allocator), strings.clone(id.name, allocator), strings.has_suffix(e.name, "_test.odin"), local})
+					append(found, Global{strings.clone(file, allocator), strings.clone(id.name, allocator), strings.has_suffix(file, "_test.odin"), local})
 				}
 			}
 		}
 	}
-	return found[:]
 }
 
 // `@(thread_local)`, alone or among other attributes (`@(private = "file", thread_local)`).
@@ -87,8 +103,14 @@ class_known :: proc(c: string) -> bool {
 lint_globals :: proc(list := false, write := false, log := "") -> bool {
 	Found :: struct { dir: string, g: Global }
 	found := make([dynamic]Found)
+	once := make(map[string]bool)   // (a global of both branches of a `when` is one)
 	for dir in GLOBALS_DIRS {
-		for g in find_globals(fmt.tprintf("src/%s", dir)) { append(&found, Found{dir, g}) }
+		for g in find_globals(fmt.tprintf("src/%s", dir)) {
+			k := global_key(dir, g.file, g.name)
+			if k in once { continue }
+			once[k] = true
+			append(&found, Found{dir, g})
+		}
 	}
 	known := make(map[string]Listed)
 	header := make([dynamic]string)
@@ -114,7 +136,7 @@ lint_globals :: proc(list := false, write := false, log := "") -> bool {
 		for h in header { fmt.sbprintln(&b, h) }
 		for f in found {
 			c, has := known[global_key(f.dir, f.g.file, f.g.name)]
-			if !has { c = {f.g.test ? "test" : (f.g.thread_local ? "thread" : "app?"), ""} }
+			if !has { c = {f.g.test ? "test" : (f.g.thread_local ? "thread" : "?"), ""} }
 			fmt.sbprintf(&b, "%s/%s %s %s", f.dir, f.g.file, f.g.name, c.class)
 			if c.why != "" { fmt.sbprintf(&b, "  # %s", c.why) }
 			fmt.sbprintln(&b)
@@ -140,10 +162,10 @@ lint_globals :: proc(list := false, write := false, log := "") -> bool {
 		if list { fmt.sbprintfln(&out, "%-44s %-34s %s", fmt.tprintf("%s/%s", f.dir, g.file), g.name, class) }
 		switch {
 		case !has:
-			fmt.sbprintfln(&out, "error: src\\%s\\%s: a new global '%s'. One App's state goes into App (or its window, tab or page); a table, a resource of the process or a thread's is added to tools\\globals_allowed.txt with its class and why (docs\\architecture.md, Where state lives)", f.dir, g.file, g.name)
+			fmt.sbprintfln(&out, "error: src\\%s\\%s: a new global '%s'. One App's state goes into App (or its window, tab or page; page.Pages); a table, a resource of the process or a thread's is added to tools\\globals_allowed.txt with its class and why (docs\\architecture.md, Where state lives)", f.dir, g.file, g.name)
 			fail += 1
 		case !class_known(c.class):
-			fmt.sbprintfln(&out, "error: tools\\globals_allowed.txt gives '%s' the class '%s': it is one of const, process, app, window, page, thread, test", k, c.class)
+			fmt.sbprintfln(&out, "error: tools\\globals_allowed.txt gives '%s' the class '%s': it is one of const, process, thread, test", k, c.class)
 			fail += 1
 		case g.thread_local && c.class != "thread":
 			fmt.sbprintfln(&out, "error: src\\%s\\%s: '%s' is @(thread_local): its class is thread, not %s", f.dir, g.file, g.name, c.class)

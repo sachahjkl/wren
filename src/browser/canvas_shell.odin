@@ -11,8 +11,6 @@ import "wb:canvas2d"
 import lay "wb:layout"
 import "wb:page"
 
-@(private = "file")
-outline_cache: map[u64]^canvas2d.Path
 
 // A rasterized color glyph (emoji) kept so the canvas does not re-rasterize and the GPU does not re-upload it each
 // frame. Keyed by (face, gid, quantized size, text color): a glyph with foreground layers takes the fill color, so the
@@ -46,12 +44,12 @@ color_glyph_next_uid: u64
 CANVAS_COLOR_GLYPH_BIT :: u64(1) << 60
 
 canvas_shell_init :: proc(app: ^App) {
-	page.canvas_text_engine = canvas2d.Text_Engine{
+	app.pages.canvas_text_engine = canvas2d.Text_Engine{
 		font = proc(user: rawptr, spec: ^canvas2d.Font_Spec) -> u64 {
 			app := the_app
 			if app == nil { return 0 }
 			p := (^page.Page)(user)
-			pf := &page_render.fonts
+			pf := &app.page_render.fonts
 			// the page's own web fonts, whichever tab is drawn now
 			old := pf.scope
 			for t in tabs_all(app) { if t.page == p { page_fonts_scope(pf, t); break } }
@@ -63,21 +61,23 @@ canvas_shell_init :: proc(app: ^App) {
 			return u64(resolve_request(pf, &req, &app.page_settings.style))
 		},
 		shape = proc(user: rawptr, face: u64, size: f32, text: string, rtl: bool, letter_spacing, word_spacing: f32, glyphs: ^[dynamic]canvas2d.Placed_Glyph) -> f32 {
-			sh := font.shape(page_render.fonts.state, font.Font_Id(face), size, text, font.Shape_Options{
+			if the_app == nil { return 0 }   // (a worker's thread: no fonts, as `font` says)
+			sh := font.shape(the_app.page_render.fonts.state, font.Font_Id(face), size, text, font.Shape_Options{
 				direction = rtl ? .Rtl : .Ltr, letter_spacing = letter_spacing, word_spacing = word_spacing,
 			}, context.temp_allocator)
 			for g in sh.glyphs { append(glyphs, canvas2d.Placed_Glyph{face = u64(g.face), gid = g.id, x = g.x, y = g.y}) }
 			return sh.width
 		},
 		outline = proc(user: rawptr, face: u64, gid: u16) -> ^canvas2d.Path {
+			if the_app == nil { return nil }
 			key := face << 16 | u64(gid)
-			if p, ok := outline_cache[key]; ok { return p }
-			limit := the_app != nil ? the_app.page_settings.canvas.glyph_cache_entries : CANVAS_GLYPH_CACHE_FALLBACK
-			if len(outline_cache) >= limit { canvas_outlines_clear() }
+			if p, ok := the_app.outline_cache[key]; ok { return p }
+			limit := the_app.page_settings.canvas.glyph_cache_entries
+			if len(the_app.outline_cache) >= limit { canvas_outlines_clear() }
 			o: font.Outline
 			defer font.outline_destroy(&o)
 			var_path: ^canvas2d.Path
-			if font.glyph_outline(page_render.fonts.state, font.Font_Id(face), gid, 0.0005, &o) && len(o.quads) > 0 {
+			if font.glyph_outline(the_app.page_render.fonts.state, font.Font_Id(face), gid, 0.0005, &o) && len(o.quads) > 0 {
 				var_path = new(canvas2d.Path)
 				start := 0
 				for end in o.ends {
@@ -95,18 +95,20 @@ canvas_shell_init :: proc(app: ^App) {
 					canvas2d.path_close(var_path)
 				}
 			}
-			if outline_cache == nil { outline_cache = make(map[u64]^canvas2d.Path) }
-			outline_cache[key] = var_path   // (nil: a glyph with no outline, a space)
+			if the_app.outline_cache == nil { the_app.outline_cache = make(map[u64]^canvas2d.Path) }
+			the_app.outline_cache[key] = var_path   // (nil: a glyph with no outline, a space)
 			return var_path
 		},
 		metrics = proc(user: rawptr, face: u64, size: f32) -> canvas2d.Font_Metrics {
-			m := font.metrics(page_render.fonts.state, font.Font_Id(face), size)
+			if the_app == nil { return {} }
+			m := font.metrics(the_app.page_render.fonts.state, font.Font_Id(face), size)
 			return canvas2d.Font_Metrics{ascent = m.ascent, descent = m.descent, x_height = m.x_height, em_ascent = m.ascent, em_descent = m.descent}
 		},
 		// Color glyphs (emoji, COLR / sbix / CBDT / SVG) drawn by the toolkit's color-glyph rasterizer (the same code
 		// the chrome uses), as a straight-RGBA bitmap the canvas composites as an image. The text color is the fill
 		// color: a glyph with foreground / text-color layers takes it.
 		color_glyph = proc(user: rawptr, face: u64, gid: u16, size: f32, fg: [4]f32) -> (canvas2d.Color_Glyph, bool) {
+			if the_app == nil { return {}, false }
 			srgb := [3]u8{u8(clamp(fg[0], 0, 1) * 255 + 0.5), u8(clamp(fg[1], 0, 1) * 255 + 0.5), u8(clamp(fg[2], 0, 1) * 255 + 0.5)}
 			key := Color_Glyph_Key{
 				face  = face,
@@ -118,9 +120,9 @@ canvas_shell_init :: proc(app: ^App) {
 				if !e.ok { return {}, false }
 				return canvas2d.Color_Glyph{px = e.px, w = e.w, h = e.h, ox = e.ox, oy = e.oy, uid = e.uid}, true
 			}
-			limit := the_app != nil ? the_app.page_settings.canvas.glyph_cache_entries : CANVAS_GLYPH_CACHE_FALLBACK
+			limit := the_app.page_settings.canvas.glyph_cache_entries
 			if len(color_glyph_cache) >= limit { canvas_color_glyphs_clear() }
-			cg, ok := font.color_glyph_rgba(page_render.fonts.state, font.Font_Id(face), gid, size, srgb)
+			cg, ok := font.color_glyph_rgba(the_app.page_render.fonts.state, font.Font_Id(face), gid, size, srgb)
 			e := new(Color_Glyph_Entry)
 			if ok {
 				// own a copy of the pixels: the rasterizer's buffer is only valid until the next call
@@ -139,10 +141,10 @@ canvas_shell_init :: proc(app: ^App) {
 
 // Outlines are keyed by font id: any change to the fonts (a web face registered or dropped) starts them over.
 canvas_outlines_clear :: proc() {
-	for _, p in outline_cache {
+	for _, p in the_app.outline_cache {
 		if p != nil { canvas2d.path_destroy(p); free(p) }
 	}
-	clear(&outline_cache)
+	clear(&the_app.outline_cache)
 }
 
 // Color-glyph bitmaps, cleared when the fonts change (same reason as outlines) or the cache is full. The GPU source
@@ -159,8 +161,8 @@ canvas_color_glyphs_clear :: proc() {
 
 canvas_shell_destroy :: proc(app: ^App) {
 	canvas_outlines_clear()
-	delete(outline_cache)
-	outline_cache = nil
+	delete(app.outline_cache)
+	app.outline_cache = nil
 	canvas_color_glyphs_clear()
 	delete(color_glyph_cache)
 	color_glyph_cache = nil

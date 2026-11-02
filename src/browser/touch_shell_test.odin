@@ -7,6 +7,7 @@ import "wb:style"
 // A write of a preference of the interface configures nothing of the network again (prefs_apply.odin).
 @(test)
 pref_writes_reach_their_subsystem_only :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect_value(t, pref_groups_of("browser.tabs.sidebar_width"), Pref_Groups{})
 	testing.expect_value(t, pref_groups_of("browser.ui.theme"), Pref_Groups{})
 	testing.expect_value(t, pref_groups_of("network.timeout.connect_ms"), Pref_Groups{.Net})
@@ -19,6 +20,7 @@ pref_writes_reach_their_subsystem_only :: proc(t: ^testing.T) {
 
 @(test)
 finger_gestures_to_scrolling_and_zoom :: proc(t: ^testing.T) {
+	test_app(t)
 	// the content follows the finger: a finger going up scrolls down
 	testing.expect_value(t, touch_scroll_delta({3, -40}, true, true), [2]f32{-3, 40})
 	testing.expect_value(t, touch_scroll_delta({3, -40}, false, true), [2]f32{0, 40})

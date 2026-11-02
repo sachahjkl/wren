@@ -58,6 +58,7 @@ urls_of :: proc(x: ^Url_Index, m: []Url_Match) -> []string {
 // Prefix of the address first, by frecency; then words of the title or the address; one entry per address.
 @(test)
 urlbar_ranking :: proc(t: ^testing.T) {
+	test_app(t)
 	visits := visit_list({
 		{"https://github.com/", "GitHub", 10, 1},
 		{"https://gitlab.com/", "GitLab", 2, 1},
@@ -101,6 +102,7 @@ urlbar_ranking :: proc(t: ^testing.T) {
 // Typing on narrows the previous matches: the results are those of a fresh query.
 @(test)
 urlbar_narrowing_is_exact :: proc(t: ^testing.T) {
+	test_app(t)
 	visits := visit_list({{"https://github.com/", "GitHub", 3, 1}, {"https://gitlab.com/", "GitLab", 2, 1}, {"https://digit.example/", "Digits", 1, 1}, {"https://www.gizmo.example/", "Gizmo", 1, 1}})
 	defer visits_destroy(&visits)
 	a, b: Url_Index
@@ -121,6 +123,7 @@ urlbar_narrowing_is_exact :: proc(t: ^testing.T) {
 // The completion: up to the host and its "/", or past it up to the next "/"; the address's own letters and scheme.
 @(test)
 urlbar_autofill :: proc(t: ^testing.T) {
+	test_app(t)
 	visits := visit_list({
 		{"https://github.com/", "GitHub", 10, 1},
 		{"https://github.com/odin-lang/Odin", "Odin", 4, 1},
@@ -164,6 +167,7 @@ urlbar_autofill :: proc(t: ^testing.T) {
 // a forgotten address leaves at once.
 @(test)
 urlbar_index_sync :: proc(t: ^testing.T) {
+	test_app(t)
 	visits := visit_list({{"https://a.example/", "A", 2, 1}, {"https://b.example/", "", 1, 1}})
 	defer visits_destroy(&visits)
 	x: Url_Index
@@ -213,6 +217,7 @@ urlbar_index_sync :: proc(t: ^testing.T) {
 @(test)
 urlbar_rows_and_removal :: proc(t: ^testing.T) {
 	app := new(App)
+	the_app = app   // (what the code reaches without an App: this one)
 	defer free(app)
 	host.loop_init(&app.loop)
 	defer host.loop_destroy(&app.loop)
@@ -220,11 +225,11 @@ urlbar_rows_and_removal :: proc(t: ^testing.T) {
 	defer host.blocking_destroy(&app.blocking)
 	sync.mutex_lock(&globals_lock)   // (the history, its settings and the bar are globals)
 	defer sync.mutex_unlock(&globals_lock)
-	saved_ghist, saved_hcfg, saved_ub := app.ghist, app.hcfg, ub
-	defer { app.ghist, app.hcfg, ub = saved_ghist, saved_hcfg, saved_ub }
+	saved_ghist, saved_hcfg, saved_ub := app.ghist, app.hcfg, app.ub
+	defer { app.ghist, app.hcfg, app.ub = saved_ghist, saved_hcfg, saved_ub }
 	app.hcfg = {global = true, max_visits = 1000, max_url_bytes = 8192, save_delay_ms = 1}
-	ub = {}
-	ub.cfg = {enabled = true, history = true, tabs = true, search = true, autofill = true, max_rows = 8, max_tab_rows = 3, min_chars = 1}
+	app.ub = {}
+	app.ub.cfg = {enabled = true, history = true, tabs = true, search = true, autofill = true, max_rows = 8, max_tab_rows = 3, min_chars = 1}
 	uv := urlbar_view(app)
 	dir := strings.concatenate({os.get_env("TEMP", context.temp_allocator), "/wren_urlbar_test"}, context.temp_allocator)
 	_ = os.make_directory_all(dir)
@@ -244,7 +249,7 @@ urlbar_rows_and_removal :: proc(t: ^testing.T) {
 	defer {
 		visits_destroy(&app.ghist.visits)
 		delete(app.ghist.path)
-		url_index_destroy(&ub.idx)
+		url_index_destroy(&app.ub.idx)
 		delete(uv.rows); delete(uv.typed); delete(uv.fill_text); delete(uv.fill_address)
 		delete(active_window(app).address.buf)
 	}
@@ -258,7 +263,7 @@ urlbar_rows_and_removal :: proc(t: ^testing.T) {
 	kinds := make([dynamic]Urlbar_Row_Kind, context.temp_allocator)
 	for r in uv.rows { append(&kinds, r.kind) }
 	testing.expectf(t, len(uv.rows) == 3 && uv.rows[0].fill && kinds[1] == .History && kinds[2] == .History, "%v", kinds)
-	for r in uv.rows { if r.kind == .History { testing.expect(t, !strings.has_prefix(ub.idx.entries[r.entry].url, "data:"), "no data:") } }
+	for r in uv.rows { if r.kind == .History { testing.expect(t, !strings.has_prefix(app.ub.idx.entries[r.entry].url, "data:"), "no data:") } }
 
 	// words: the typed row first ("Search")
 	delete(uv.typed); uv.typed = strings.clone("gitea notes")
@@ -271,24 +276,24 @@ urlbar_rows_and_removal :: proc(t: ^testing.T) {
 
 	// the field got the keyboard with an address in it: the pages visited most and most lately, none chosen
 	delete(uv.typed); uv.typed = strings.clone("https://example.org/")
-	ub.cfg.top_sites = true
+	app.ub.cfg.top_sites = true
 	uv.zero, uv.idle = true, true
 	urlbar_refresh(app, .None)
 	testing.expect(t, uv.open && len(uv.rows) == 3, "the pages of the history, no typed row")
 	for r in uv.rows { testing.expect(t, r.kind == .History, "history rows only") }
-	testing.expect_value(t, ub.idx.entries[uv.rows[0].entry].url, "https://github.com/")   // (visited twice)
+	testing.expect_value(t, app.ub.idx.entries[uv.rows[0].entry].url, "https://github.com/")   // (visited twice)
 	urlbar_choose(app, 1)
 	testing.expect(t, uv.sel == 0 && uv.idle, "nothing chosen until a key does")
 	testing.expect_value(t, string(active_window(app).address.buf[:]), "github.com/")
 	uv.zero, uv.idle = false, false
-	ub.cfg.top_sites = false
+	app.ub.cfg.top_sites = false
 
 	// the cross on gitlab's row (chosen with Down): removed from the history, the next row chosen, the text kept
 	delete(uv.typed); uv.typed = strings.clone("git")
 	urlbar_refresh(app, .None)   // (no completion: Backspace removed it)
 	testing.expect_value(t, string(active_window(app).address.buf[:]), "github.com/")   // (the field is the app's: left as it was)
 	at := -1
-	for r, i in uv.rows { if r.kind == .History && ub.idx.entries[r.entry].url == "https://gitlab.com/" { at = i } }
+	for r, i in uv.rows { if r.kind == .History && app.ub.idx.entries[r.entry].url == "https://gitlab.com/" { at = i } }
 	testing.expect(t, at > 0, "gitlab is listed")
 	urlbar_choose(app, at)
 	testing.expect_value(t, string(active_window(app).address.buf[:]), "https://gitlab.com/")
@@ -297,7 +302,7 @@ urlbar_rows_and_removal :: proc(t: ^testing.T) {
 	testing.expect(t, uv.open, "the list stays open")
 	testing.expect_value(t, len(uv.rows), n - 1)
 	testing.expect_value(t, uv.typed, "git")
-	for r in uv.rows { if r.kind == .History { testing.expect(t, ub.idx.entries[r.entry].url != "https://gitlab.com/", "gone from the list") } }
+	for r in uv.rows { if r.kind == .History { testing.expect(t, app.ub.idx.entries[r.entry].url != "https://gitlab.com/", "gone from the list") } }
 	for v in app.ghist.visits { testing.expect(t, v.url != "https://gitlab.com/", "gone from the history") }
 	testing.expect_value(t, uv.sel, min(at, len(uv.rows) - 1))
 	// written at once: wait for the background write
@@ -314,6 +319,7 @@ urlbar_rows_and_removal :: proc(t: ^testing.T) {
 @(test)
 urlbar_thread_build :: proc(t: ^testing.T) {
 	app := new(App)
+	the_app = app   // (what the code reaches without an App: this one)
 	defer free(app)
 	host.loop_init(&app.loop)
 	defer host.loop_destroy(&app.loop)
@@ -321,11 +327,11 @@ urlbar_thread_build :: proc(t: ^testing.T) {
 	defer host.blocking_destroy(&app.blocking)
 	sync.mutex_lock(&globals_lock)   // (the history, its settings and the bar are globals)
 	defer sync.mutex_unlock(&globals_lock)
-	saved_ghist, saved_hcfg, saved_ub := app.ghist, app.hcfg, ub
-	defer { app.ghist, app.hcfg, ub = saved_ghist, saved_hcfg, saved_ub }
+	saved_ghist, saved_hcfg, saved_ub := app.ghist, app.hcfg, app.ub
+	defer { app.ghist, app.hcfg, app.ub = saved_ghist, saved_hcfg, saved_ub }
 	app.hcfg = {global = true, max_visits = 100_000, max_url_bytes = 8192}
-	ub = {app = app}
-	ub.cfg = {enabled = true, history = true, max_rows = 8, min_chars = 1}
+	app.ub = {app = app}
+	app.ub.cfg = {enabled = true, history = true, max_rows = 8, min_chars = 1}
 	uv := urlbar_view(app)
 	app.ghist = {}
 	now := time.time_to_unix_nano(time.now()) / 1e6
@@ -341,7 +347,7 @@ urlbar_thread_build :: proc(t: ^testing.T) {
 	}
 	uv.typed = strings.clone("site12")
 	urlbar_refresh(app, .None)
-	testing.expect(t, ub.job.state != .Idle, "a build on the pool")
+	testing.expect(t, app.ub.job.state != .Idle, "a build on the pool")
 	for r in uv.rows { testing.expect(t, r.kind != .History, "no history rows before the index is built") }
 	// meanwhile: a visit deleted, one appended
 	ids := []u64{app.ghist.visits[0].id}
@@ -350,20 +356,20 @@ urlbar_thread_build :: proc(t: ^testing.T) {
 	append(&app.ghist.visits, Visit{id = app.ghist.next_id, at_ms = now, url = strings.clone("https://site12-new.example/"), title = strings.clone("New")})
 	app.ghist.serial = 2
 	start := time.tick_now()
-	for ub.job.state != .Idle && time.duration_seconds(time.tick_since(start)) < INDEX_JOB_DEADLINE_S { host.loop_wait(&app.loop, INDEX_JOB_LOOK_MS) }
-	testing.expect(t, ub.job.state == .Idle, "the build came back")
+	for app.ub.job.state != .Idle && time.duration_seconds(time.tick_since(start)) < INDEX_JOB_DEADLINE_S { host.loop_wait(&app.loop, INDEX_JOB_LOOK_MS) }
+	testing.expect(t, app.ub.job.state == .Idle, "the build came back")
 	urlbar_refresh(app, .None)
 	urls := make([dynamic]string, context.temp_allocator)
-	for r in uv.rows { if r.kind == .History { append(&urls, ub.idx.entries[r.entry].url) } }
+	for r in uv.rows { if r.kind == .History { append(&urls, app.ub.idx.entries[r.entry].url) } }
 	testing.expectf(t, len(urls) >= 2, "history rows: %v", urls)
-	testing.expect_value(t, len(url_index_query(&ub.idx, "site12-new", 5)), 1)   // appended during the build: there
-	testing.expect_value(t, len(ub.idx.vis), len(app.ghist.visits))
+	testing.expect_value(t, len(url_index_query(&app.ub.idx, "site12-new", 5)), 1)   // appended during the build: there
+	testing.expect_value(t, len(app.ub.idx.vis), len(app.ghist.visits))
 
 	// a build running when the bar goes: waited for, freed (the tracking allocator reports a leak otherwise)
-	ub.idx.now_ms = 0   // a day old: the next focus builds again
+	app.ub.idx.now_ms = 0   // a day old: the next focus builds again
 	testing.expect(t, !urlbar_index_ready(app, age = true), "a new build started")
 	urlbar_destroy(app)
-	testing.expect(t, ub.job.state == .Idle && ub.idx.serial == 0, "destroyed")
+	testing.expect(t, app.ub.job.state == .Idle && app.ub.idx.serial == 0, "destroyed")
 }
 
 // 50 000 visits of 12 000 addresses: a query per letter typed stays under 2 ms (an optimized build; the test build is
@@ -371,6 +377,7 @@ urlbar_thread_build :: proc(t: ^testing.T) {
 // test_all -Perf), printed when they run.
 @(test)
 urlbar_speed :: proc(t: ^testing.T) {
+	test_app(t)
 	context.allocator = runtime.heap_allocator()   // the browser's (not the test runner's tracking allocator)
 	visits := make([dynamic]Visit)
 	defer visits_destroy(&visits)
