@@ -75,6 +75,16 @@ Prop_Slot :: struct #raw_union {
 	var_ref: ^Var_Ref,
 }
 
+// Cell.flags of an object: it was once a WeakMap or WeakSet key, a WeakRef target or a FinalizationRegistry target or
+// token (never cleared). An object that was never one can only be told apart from a copy of itself by a reference to it.
+OBJ_HELD_WEAKLY :: u8(1 << 0)
+
+// Whether `o` is as it was made with prototype `proto`: no own property, extensible, never held weakly. A host may then
+// let it go and make the same object again when a script asks for it (src/engine/jscapi JS_IsUntouched).
+object_untouched :: proc "contextless" (o: ^Object, proto: ^Object) -> bool {
+	return o.extensible && o.flags & OBJ_HELD_WEAKLY == 0 && !o.shape.is_dict && len(o.shape.props) == 0 && o.shape.lazy == nil && o.shape.proto == proto
+}
+
 Object :: struct {
 	using cell:     Cell,
 	class:          Class_ID,

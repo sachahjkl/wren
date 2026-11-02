@@ -19,11 +19,11 @@ Host_Object :: struct {
 	finalized: bool,
 }
 
-// A pass over the references of the hooked objects: counting (subtracting from the host counts) when
-// `counts` is set, marking otherwise.
+// A pass over the references of the hooked objects: counting (subtracting from the host counts of the cells in
+// Runtime.ext_cells, which gc_mark_ext puts back after) when `counting`, marking otherwise.
 Host_Mark_State :: struct {
-	rt:     ^Runtime,
-	counts: ^map[^Cell]u32,
+	rt:       ^Runtime,
+	counting: bool,
 }
 
 Host_Exotic :: struct {
@@ -115,8 +115,8 @@ host_class_mark :: proc(rt: ^Runtime, o: ^Object, st: ^Host_Mark_State) {
 host_mark_value :: proc(st: ^Host_Mark_State, v: Value) {
 	if !is_heap(v) {return}
 	c := as_cell(v)
-	if st.counts != nil {
-		if n, ok := st.counts[c]; ok && n > 0 {st.counts[c] = n - 1}
+	if st.counting {
+		if c.in_ext && c.ext > 0 {c.ext -= 1}
 	} else {
 		mark_cell(st.rt, c)
 	}
