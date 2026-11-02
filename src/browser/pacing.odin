@@ -293,8 +293,14 @@ pacer_wait :: proc(app: ^App, idled: bool) {
 	})
 	pacer.decision = d
 	pacer_latency(app, &pacer.latency, d.latency == 2)
-	// a window nobody sees waits for no one when a client waits for its frames: they are made as fast as they are asked for
-	if d.wait_ns > 0 && timer != nil && !(platform.is_offscreen(wnd.win) && (app.frames_at_once || remote_driving(app, pacer.period_ms))) {
+	// a window nobody sees waits for no one when a client waits for its frames: they are made as fast as they are asked for,
+	// and such a frame books no slot ahead of the clock. (It did: each one moved the next slot a period on, so the first paced
+	// frame after a burst waited for all of them, 0.6 to 1 s after a load in a headless window, with the loop's tasks, the
+	// parsed document among them, held behind it.)
+	unpaced := platform.is_offscreen(wnd.win) && (app.frames_at_once || remote_driving(app, pacer.period_ms))
+	if unpaced {
+		pacer.cadence.slots.next_ns = 0
+	} else if d.wait_ns > 0 && timer != nil {
 		// arm the timer for d.wait_ns from now and wait on it while the window keeps taking input; on Linux there is no
 		// such timer, so pacer_timer_wait sleeps the thread instead (the FIFO vblank does the fine pacing there).
 		pacer_timer_wait(wnd.win, timer, d.wait_ns)

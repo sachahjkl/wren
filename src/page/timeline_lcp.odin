@@ -245,11 +245,36 @@ timeline_layout_shift_input :: proc(p: ^Page) {
 	t.lcp_stopped = true
 }
 
-// One box's position between frames, kept to find what moved. The map lives on the timeline.
+// Where the boxes were at a scan, to find what moved: flat arrays indexed by the index of the node's handle, kept from scan to
+// scan (a frame builds no table). An entry is there when it was written by that scan for that node.
 @(private)
-Ls_Prev :: struct {
-	doc:  [4]f64,   // the box's border rect in document coordinates (scroll-independent: a scroll is not a shift)
-	view: [4]f64,   // ... and in viewport coordinates (what LayoutShiftAttribution reports)
+Ls_Scan :: struct {
+	node: [dynamic]base.Handle,   // the node of the entry (an index is recycled for other nodes)
+	scan: [dynamic]u32,           // the scan that wrote it
+	doc:  [dynamic]lay.Rect,      // the border rect in document coordinates, CSS px (scroll-independent: a scroll is not a shift)
+}
+
+// The last scan's boxes and the one being made, swapped after each scan. A box's viewport rect (what LayoutShiftAttribution
+// reports) is its document rect less the scroll of the viewport at that scan.
+@(private)
+Ls_Boxes :: struct {
+	prev, cur: Ls_Scan,
+	scans:     u32,      // scans made: the last one's entries are those of number scans - 1 in `prev`
+	prev_scroll: [2]f64, // the viewport's scroll at the last scan
+}
+
+@(private)
+ls_scan_put :: proc(s: ^Ls_Scan, i: int, node: base.Handle, scan: u32, doc: lay.Rect) {
+	if i >= len(s.node) {
+		n := max(i + 1, 2 * len(s.node))
+		resize(&s.node, n); resize(&s.scan, n); resize(&s.doc, n)   // (the new entries are zero: scan 0 is no scan)
+	}
+	s.node[i], s.scan[i], s.doc[i] = node, scan, doc
+}
+
+@(private)
+ls_boxes_destroy :: proc(b: ^Ls_Boxes) {
+	for s in ([2]^Ls_Scan{&b.prev, &b.cur}) { delete(s.node); delete(s.scan); delete(s.doc) }
 }
 
 // After a frame is laid out, compare where visible non-fixed boxes are to where they were, and record a layout-shift entry
@@ -278,45 +303,51 @@ timeline_layout_shift_check :: proc(p: ^Page, l: ^lay.Layout, vp: Viewport) {
 	max_move := 0.0
 	sources := make([dynamic]Tl_Source, context.temp_allocator)
 
-	prev := t.ls_prev
-	if prev == nil { prev = make(map[base.Handle]Ls_Prev); t.ls_prev = prev }
-	cur := make(map[base.Handle]Ls_Prev, len(prev))
-
+	// One pass over the boxes: the rects come from the layout's arrays (lay.box_border), the last scan's from flat arrays by
+	// node index. (It was box_of_view and geometry_of_rects for every box and a hash table made per scan: 30 % of a frame of a
+	// page of 16 000 boxes whose script changes one text per frame.)
+	lb := &t.ls_boxes
+	lb.scans += 1
+	scan := lb.scans
+	prev, cur := &lb.prev, &lb.cur
+	prev_scroll := lb.prev_scroll
 	for &b in l.boxes {
 		node := b.node
 		if node == base.NIL_HANDLE || .Anonymous in b.flags || .Dead in b.flags { continue }
 		cs := b.cs
 		if cs == nil || cs.visibility != .Visible { continue }
 		if cs.position == .Fixed { continue }   // fixed boxes do not shift the page
-		r, rok := lay.box_of_view(l, &view, node)
-		if !rok || !r.visible || r.transformed { continue }   // a transform move is not a layout shift
-		g := geometry_of_rects(l, vp, node, r, rok)
-		if !g.ok { continue }
-		view_rect := [4]f64{g.client.x, g.client.y, g.client.width, g.client.height}
-		doc_rect := [4]f64{f64(g.border.min.x), f64(g.border.min.y), f64(g.border.max.x - g.border.min.x), f64(g.border.max.y - g.border.min.y)}
-		here := Ls_Prev{doc = doc_rect, view = view_rect}
-		cur[node] = here
+		bi := lay.box_index(l, node)   // (the node's box: a box of the same node, a ::before, reads it)
+		if bi == lay.NONE || .Hidden in l.boxes[bi].flags { continue }
+		border, transformed, fragmented := lay.box_border(l, &view, bi)
+		if transformed { continue }   // a transform move is not a layout shift
+		if fragmented { r, _ := lay.box_of_view(l, &view, node); border = r.border }
+		doc := lay.Rect{border.min / scale, border.max / scale}
+		i := int(base.handle_index(node))
+		ls_scan_put(cur, i, node, scan, doc)
+		w, h := f64(doc.max.x - doc.min.x), f64(doc.max.y - doc.min.y)
+		view_rect := [4]f64{f64(doc.min.x) - vp.scroll_x, f64(doc.min.y) - vp.scroll_y, w, h}
 		// only boxes with content on screen now or before: at least partly in the viewport
 		if view_rect[0] >= vp.width || view_rect[1] >= vp.height || view_rect[0] + view_rect[2] <= 0 || view_rect[1] + view_rect[3] <= 0 { continue }
-		was, had := prev[node]
-		if !had { continue }
+		if i >= len(prev.node) || prev.scan[i] != scan - 1 || prev.node[i] != node { continue }
+		was := prev.doc[i]
 		// movement in document coordinates: a scroll changes viewport coordinates but not these, so it is not a shift
-		dx := doc_rect[0] - was.doc[0]
-		dy := doc_rect[1] - was.doc[1]
+		dx := f64(doc.min.x) - f64(was.min.x)
+		dy := f64(doc.min.y) - f64(was.min.y)
 		if abs(dx) < 0.5 && abs(dy) < 0.5 { continue }   // not moved (sub-pixel jitter ignored)
+		was_view := [4]f64{f64(was.min.x) - prev_scroll[0], f64(was.min.y) - prev_scroll[1], f64(was.max.x - was.min.x), f64(was.max.y - was.min.y)}
 		// the move region is the union of the old and new viewport positions (Layout Instability §: impact region)
-		old_clamped := clamp_rect_to_viewport(was.view, vp)
+		old_clamped := clamp_rect_to_viewport(was_view, vp)
 		new_clamped := clamp_rect_to_viewport(view_rect, vp)
 		region := rect_union4(old_clamped, new_clamped)
 		if region[2] * region[3] <= 0 { continue }
 		if !have_impact { impact_union = region; have_impact = true } else { impact_union = rect_union4(impact_union, region) }
 		move := max(abs(dx), abs(dy))
 		if move > max_move { max_move = move }
-		append(&sources, Tl_Source{node = node, prev = was.view, cur = view_rect})
+		append(&sources, Tl_Source{node = node, prev = was_view, cur = view_rect})
 	}
-
-	delete(t.ls_prev)
-	t.ls_prev = cur
+	lb.prev, lb.cur = lb.cur, lb.prev
+	lb.prev_scroll = {vp.scroll_x, vp.scroll_y}
 
 	if !have_impact || len(sources) == 0 { return }
 	impact_fraction := (impact_union[2] * impact_union[3]) / vp_area
