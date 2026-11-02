@@ -9,6 +9,7 @@ package e2e_scenarios
 import "core:fmt"
 import win "core:sys/windows"
 import "core:testing"
+import "core:time"
 import "wb:e2e"
 import "wb:remote/api"
 import "wb:webgl"
@@ -243,5 +244,14 @@ a_killed_browser_takes_its_gpu_process_along :: proc(t: ^testing.T) {
 	defer { win.CloseHandle(gpu); win.CloseHandle(browser) }
 	testing.expect(t, gpu != nil && browser != nil, "both processes are there")
 	win.TerminateProcess(browser, 1)
-	testing.expect_value(t, win.WaitForSingleObject(gpu, u32(e2e.DEFAULT_DEADLINE / 1e6)), win.WAIT_OBJECT_0)
+	killed := time.tick_now()
+	// Taken along is the exit code the system gives it when the browser's job closes (native/webgl ipc: KILL_ON_JOB_CLOSE), at once. Not the handle signalled: a process killed
+	// with its graphics device is left to the system to tear down, which took 60 s and more with every core busy (a whole test_all run), seconds otherwise.
+	e2e.wait_for(t, gpu, proc(h: win.HANDLE) -> bool {
+		code: win.DWORD
+		return win.GetExitCodeProcess(h, &code) && code != STILL_ACTIVE
+	}, "the GPU process to be ended with its browser")
+	fmt.printfln("webgl_process: the GPU process ended with its browser in %.0f ms; its handle signalled by then: %v", time.duration_milliseconds(time.tick_since(killed)), ended(gpu))
 }
+
+@(private = "file") STILL_ACTIVE :: 259
