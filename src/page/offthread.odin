@@ -282,6 +282,7 @@ adopt_document :: proc(p: ^Page, d: ^Parsed_Document) -> html.Parse_Result {
 	if old != nil { dom.document_take_place(old, d.doc) } else { dom.document_attach(d.doc, p.scope) }
 	p.doc = d.doc
 	d.doc = nil
+	p.image_document = {}   // (an image document says so after its load: image_document.odin)
 	shadow_doc_attached(p)
 	// everything that holds the document pointer follows it: the form-control model is rebuilt on the new tree
 	if p.formctl != nil { forms_detach(p); forms_attach(p) }

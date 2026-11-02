@@ -1330,6 +1330,7 @@ frame :: proc(app: ^App, idled := false, causes: Frame_Causes = {.Repaint}) {
 	if wnd.errand == .None && why != {.Interface_Wake} { memory_trim_active(app) } else { hud.settle_skip = true }   // memory_trim.odin; hud.odin: no sample
 	forms_view(app).caret_painted = {}
 	prof_begin(.Input)
+	events = image_document_events(app, events)   // image_document_shell.odin: an image opened by itself takes its wheel, drags and keys
 	page_cursor_events(app, events)   // page_cursor.odin: a press on the page keeps its cursor
 	dnd_events(app, events)           // dnd_shell.odin: drags of other applications over the window
 	route_page_input(app, events)

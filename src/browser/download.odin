@@ -276,13 +276,14 @@ unique_file_name :: proc(name: string, taken: proc(name: string, user: rawptr) -
 }
 
 // An image opened as a document: the image alone, centred on a dark background and fitted to the window, as in
-// Chrome (the page loads it again through the image cache).
+// Chrome (the page loads it again through the image cache). Once decoded it is a viewer: zoom, pan, rotation
+// (page/image_document.odin, its input: image_document_shell.odin).
 show_image_document :: proc(app: ^App, load: ^Doc_Load) {
 	t := load.tab
 	name := download_file_name("", t.url, "", allocator = context.temp_allocator)
 	// (style attributes, not a <style> sheet: a sheet of a document written with load_html into a page of a web origin
 	// is not applied, see the report of the chrome branch)
-	html := fmt.tprintf(`<!doctype html><html style="color-scheme: dark; background: #0e0e0e"><head><meta charset="utf-8"><title>%s</title></head><body style="margin: 0"><img style="position: absolute; top: 0; right: 0; bottom: 0; left: 0; margin: auto; display: block; max-width: 100%%; max-height: 100%%" src="%s" alt=""></body></html>`,
+	html := fmt.tprintf(`<!doctype html><html style="color-scheme: dark; background: #0e0e0e; overflow: hidden"><head><meta charset="utf-8"><title>%s</title></head><body style="margin: 0"><img style="position: absolute; top: 0; right: 0; bottom: 0; left: 0; margin: auto; display: block; max-width: 100%%; max-height: 100%%" src="%s" alt=""></body></html>`,
 		escape_html(name), escape_html(t.url))
 	// (the page is made now, with the document right away: the image response itself made none)
 	if load.page == nil {
@@ -291,6 +292,7 @@ show_image_document :: proc(app: ^App, load: ^Doc_Load) {
 		t.page = load.page
 	}
 	page.load_html(load.page, transmute([]byte)html)
+	page.image_document_begin(load.page)
 	set_status(t, fmt.tprintf("HTTP %d, image", load.status))
 }
 

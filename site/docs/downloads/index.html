@@ -235,6 +235,21 @@
 download. The same connection goes on as the download: nothing is asked twice, so a POST or a one-time link works. The tab
 keeps the page it showed. The body is written to a temporary file next to the destination (<code>name.ext.wrenpart</code>), chunk by
 chunk on the background threads, and moved into place when it is complete.</p>
+<h2 id="images-are-shown-not-downloaded"><a class="anchor" href="#images-are-shown-not-downloaded" aria-hidden="true">#</a>Images are shown, not downloaded</h2>
+<p>An image opened by itself (its address typed, or "Open image in new tab") is shown alone on a dark background, fitted to
+the window, and can be looked at closely:</p>
+<div class="table-box"><table>
+<thead><tr><th>Input</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td>Ctrl+wheel, a touchpad's pinch</td><td>zoom around the pointer (the image, not the page: Ctrl+Plus / Minus / 0 still zoom the page)</td></tr>
+<tr><td><code>+</code> / <code>-</code></td><td>zoom around the center</td></tr>
+<tr><td><code>0</code></td><td>fit the image again</td></tr>
+<tr><td>a click</td><td>fit ↔ 100 % around the pointer, when the image is larger than the window</td></tr>
+<tr><td>a drag, the wheel (Shift: across), the arrows</td><td>move the image when it is larger than the window</td></tr>
+<tr><td><code>R</code> / <code>Shift+R</code>, the context menu</td><td>turn it a quarter right / left</td></tr>
+<tr><td>a double click</td><td>back to the first view: fitted, not turned</td></tr>
+</tbody>
+</table></div>
 <h2 id="the-button-and-its-drop-down"><a class="anchor" href="#the-button-and-its-drop-down" aria-hidden="true">#</a>The button and its drop-down</h2>
 <p>Once a download has run in the session, a button with an arrow into a tray joins the toolbar, before the shield
 (<code>browser.download.button</code>: <code>auto</code>, <code>always</code> or <code>never</code>). While something downloads, a ring turns around the arrow and
@@ -283,6 +298,7 @@ address, path and name, one line each), up to <code>browser.download.list_max</c
 <nav class="doc-toc" aria-label="On this page">
 <p class="doc-toc-title">On this page</p>
 <ul>
+<li><a href="#images-are-shown-not-downloaded">Images are shown, not downloaded</a></li>
 <li><a href="#the-button-and-its-drop-down">The button and its drop-down</a></li>
 <li><a href="#aboutdownloads-ctrlj">about:downloads (Ctrl+J)</a></li>
 <li><a href="#preferences">Preferences</a></li>

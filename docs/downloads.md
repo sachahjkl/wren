@@ -5,6 +5,21 @@ download. The same connection goes on as the download: nothing is asked twice, s
 keeps the page it showed. The body is written to a temporary file next to the destination (`name.ext.wrenpart`), chunk by
 chunk on the background threads, and moved into place when it is complete.
 
+## Images are shown, not downloaded
+
+An image opened by itself (its address typed, or "Open image in new tab") is shown alone on a dark background, fitted to
+the window, and can be looked at closely:
+
+| Input | What it does |
+|---|---|
+| Ctrl+wheel, a touchpad's pinch | zoom around the pointer (the image, not the page: Ctrl+Plus / Minus / 0 still zoom the page) |
+| `+` / `-` | zoom around the center |
+| `0` | fit the image again |
+| a click | fit ↔ 100 % around the pointer, when the image is larger than the window |
+| a drag, the wheel (Shift: across), the arrows | move the image when it is larger than the window |
+| `R` / `Shift+R`, the context menu | turn it a quarter right / left |
+| a double click | back to the first view: fitted, not turned |
+
 ## The button and its drop-down
 
 Once a download has run in the session, a button with an arrow into a tray joins the toolbar, before the shield

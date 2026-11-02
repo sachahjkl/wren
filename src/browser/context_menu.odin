@@ -270,6 +270,11 @@ page_menu_items :: proc(app: ^App, t: ^Tab, r: ^Context_Request) {
 		view := page.image_view(p, r.image_node)
 		if ui.menu_item("Copy image", enabled = view.state == .Ready && view.id != 0).clicked { copy_image(app, view) }
 		if ui.menu_item("Copy image address").clicked { clip_set(r.image) }
+		if r.image_node == p.image_document.img && page.image_document_active(p) {   // an image opened by itself (image_document_shell.odin)
+			ui.menu_separator()
+			if ui.menu_item("Rotate right", "R").clicked { page.image_document_rotate(p, 1) }
+			if ui.menu_item("Rotate left", "Shift+R").clicked { page.image_document_rotate(p, -1) }
+		}
 	}
 	if r.selection != "" && r.editable == base.NIL_HANDLE {
 		sep(&groups)
