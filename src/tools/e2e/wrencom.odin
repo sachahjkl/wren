@@ -161,6 +161,7 @@ the_launcher_dies_with_its_child :: proc(t: ^testing.T) {
 	defer api.process_release(&wren)
 	api.process_kill(&launcher.process)
 	e2e.wait_for(t, &wren, proc(p: ^api.Process) -> bool { return api.process_ended(p) }, "the Wren it started to be killed")
-	// (its program is a copy in this test's folder, which goes only when the system has done with the process: seconds more under load)
-	testing.expect(t, api.process_wait(&wren, LEAVES_THE_SYSTEM_MS), "it leaves the system")
+	// (its program is a copy in this test's folder, which goes only when the system has done with the process: seconds more under load,
+	// sometimes over a minute with its graphics device. How fast the system lets go is not the launcher's doing: no check, only the wait.)
+	api.process_wait(&wren, LEAVES_THE_SYSTEM_MS)
 }
