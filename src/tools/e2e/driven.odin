@@ -3,7 +3,6 @@ package e2e_scenarios
 // What a program can do to a page and read of it, through the procedures the remote methods use: load, script, input, the logs, captures from the
 // render target, a window off the screen or minimized, tabs, a tab moved between windows with its page as it is. (The channel itself: remote_channel.odin.)
 
-import "core:strconv"
 import "core:strings"
 import "core:testing"
 import "wb:e2e"
@@ -32,12 +31,49 @@ near :: proc(a, b: e2e.Color, tolerance := TOLERANCE) -> bool {
 // The middle of an element, in window pixels.
 @(private = "file")
 middle_in_window :: proc(s: ^e2e.Session, selector: string, loc := #caller_location) -> (x, y: int) {
-	r := e2e.eval(s, strings.concatenate({`(function(){var r=document.querySelector("`, selector, `").getBoundingClientRect();return (r.x+r.width/2)+","+(r.y+r.height/2)})()`}, context.temp_allocator), loc = loc)
-	a, _, b := strings.partition(r, ",")
-	px, _ := strconv.parse_f64(a)
-	py, _ := strconv.parse_f64(b)
-	page := e2e.window_bounds(s, loc).page_rect
-	return int(page.x + px), int(page.y + py)
+	m := e2e.center(e2e.box_model(s, selector, loc).window)
+	return int(m.x), int(m.y)
+}
+
+// What is read of a document, of a tab's requests and of the interface's own lists comes back typed; what the remote methods encode is this.
+@(test)
+what_a_program_reads_of_a_page_and_of_the_interface :: proc(t: ^testing.T) {
+	s := e2e.start(t, {size = {WINDOW_W, WINDOW_H}, dpi = e2e.DPI_ONE, url = e2e.url(e2e.test_server(t), FIXTURE)})
+
+	box := e2e.box_model(s, "#box")
+	testing.expectf(t, box.visible && box.box.w == BOX_W && box.box.h == BOX_H && box.window.w == BOX_W && box.window.x > box.box.x - 1, "the box of an element: %v", box)
+	testing.expect(t, !e2e.box_model(s, "#far").visible, "an element below the fold is not visible")
+
+	found := e2e.query_all(s, "div", limit = 1)
+	testing.expectf(t, found.count > 1 && len(found.nodes) == 1, "all that match are counted, the limit says how many are described: %v", found)
+	boxed := e2e.query_all(s, "#box").nodes[0]
+	testing.expectf(t, boxed.has_box && boxed.box.w == BOX_W && strings.has_prefix(boxed.outer_html, `<div id="box"`), "what a query says of one: %v", boxed)
+
+	style := e2e.computed_style(s, "#box", {"width", "position"})
+	testing.expect_value(t, len(style), 2)
+	testing.expect_value(t, e2e.style_of(style, "width"), "200px")
+	testing.expect_value(t, e2e.style_of(style, "position"), "absolute")
+	testing.expect(t, len(e2e.computed_style(s, "#box")) > 2, "with no list: all of it")
+
+	net := e2e.network(s)
+	document := false
+	for q in net.requests { if strings.contains(q.url, FIXTURE) { document = q.destination == "document" && q.has_ms && q.bytes > 0 } }
+	testing.expectf(t, document && net.bytes > 0, "the log has the document: %v", net)
+	testing.expect_value(t, len(e2e.network(s, clear = true).requests), len(net.requests))
+	testing.expect_value(t, len(e2e.network(s).requests), 0)
+
+	prefs := e2e.prefs(s, LINE_PX)
+	testing.expectf(t, len(prefs) == 1 && prefs[0].name == LINE_PX && prefs[0].default_text != "", "a preference: %v", prefs)
+	testing.expect(t, prefs[0].value != nil, "and its value in its own type")
+
+	new_tab := false
+	for c in e2e.commands(s) { if c.name == "tab.new" { new_tab = c.enabled && c.title != "" } }
+	testing.expect(t, new_tab, "the commands of the interface")
+
+	all := e2e.stats_all(s)
+	testing.expectf(t, all.threads > 1 && all.cpu_time_ms > 0 && all.layout_items > 0 && all.frames_requested > 0, "the numbers that take a look at the process: %v", all)
+	e2e.stats_reset(s)
+	testing.expect_value(t, e2e.stats_all(s).frame_gaps, 0)
 }
 
 @(test)

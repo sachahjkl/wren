@@ -1,7 +1,5 @@
 package browser
 
-import "core:fmt"
-import "core:strings"
 import "core:time"
 import "toolkit:draw"
 import "toolkit:platform"
@@ -71,15 +69,3 @@ drag_probe_displayed :: proc(app: ^App, d: render.Displayed_Frame) {
 
 drag_probe_reset :: proc() { drag_probe.n = 0 }
 
-// The samples as a JSON array of [read, shown, mouse_x, finger_x, dt, moves, done, waited ms, page_w, area_w] (ticks in
-// microseconds).
-drag_probe_json :: proc(b: ^strings.Builder) {
-	strings.write_byte(b, '[')
-	kept := min(drag_probe.n, DRAG_PROBE_CAP)
-	for i in drag_probe.n - kept ..< drag_probe.n {
-		s := drag_probe.ring[i % DRAG_PROBE_CAP]
-		if i > drag_probe.n - kept { strings.write_byte(b, ',') }
-		fmt.sbprintf(b, "[%d,%d,%.2f,%.2f,%.5f,%d,%d,%.3f,%.1f,%.1f]", s.read / 1000, s.shown / 1000, s.mouse_x, s.finger_x, s.dt, s.moves, s.done / 1000, s.waited, s.page_w, s.area_w)
-	}
-	strings.write_byte(b, ']')
-}

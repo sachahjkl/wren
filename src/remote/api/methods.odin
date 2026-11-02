@@ -354,27 +354,57 @@ outer_html :: proc(s: ^Session, selector := "", loc := #caller_location) -> (htm
 	return s_of(o, "outerHTML"), .None
 }
 
-// The elements that match (`Session.result` has what the browser says of them).
-query_all :: proc(s: ^Session, selector: string, limit := 0, loc := #caller_location) -> Error {
+// An element that matched: the beginning of its markup, and its box in CSS pixels from the page's corner, when it has one.
+Query_Node :: struct {
+	outer_html: string,
+	box:        Rect,
+	has_box:    bool,
+}
+
+// `count`: all that match; `nodes`: the first of them, up to the limit.
+Query_Result :: struct {
+	count: int,
+	nodes: []Query_Node,
+}
+
+// The elements that match (`limit` 0: none is described, only counted).
+query_all :: proc(s: ^Session, selector: string, limit := 0, loc := #caller_location) -> (r: Query_Result, e: Error) {
 	p := params(loc)
 	p_tab(&p, s)
 	p_str(&p, "selector", selector)
 	p_int(&p, "limit", limit)
-	_, e := request(s, "DOM.querySelectorAll", &p)
-	return e
+	o := request(s, "DOM.querySelectorAll", &p) or_return
+	a, _ := remote.param_array(o, "nodes")
+	r.count = i_of(o, "count")
+	r.nodes = make([]Query_Node, len(a), context.temp_allocator)
+	for item, i in a {
+		x, _ := item.(json.Object)
+		box, has := rect_of(x, "box")
+		r.nodes[i] = {s_of(x, "outerHTML"), box, has}
+	}
+	return r, .None
 }
 
-// An element's boxes (`Session.result`).
-box_model :: proc(s: ^Session, selector: string, loc := #caller_location) -> Error {
+// An element's box: in CSS pixels from the page's corner (what getBoundingClientRect says), and in window pixels.
+Box_Model :: struct {
+	visible: bool,
+	box:     Rect,
+	window:  Rect,
+}
+
+box_model :: proc(s: ^Session, selector: string, loc := #caller_location) -> (r: Box_Model, e: Error) {
 	p := params(loc)
 	p_tab(&p, s)
 	p_str(&p, "selector", selector)
-	_, e := request(s, "DOM.getBoxModel", &p)
-	return e
+	o := request(s, "DOM.getBoxModel", &p) or_return
+	w, _ := remote.param_object(o, "window")
+	return {b_of(o, "visible"), {f_of(o, "x"), f_of(o, "y"), f_of(o, "width"), f_of(o, "height")}, {f_of(w, "x"), f_of(w, "y"), f_of(w, "width"), f_of(w, "height")}}, .None
 }
 
-// An element's computed style (`Session.result`): `properties` nil: all of it.
-computed_style :: proc(s: ^Session, selector: string, properties: []string = nil, loc := #caller_location) -> Error {
+Style_Property :: struct { name, value: string }
+
+// An element's computed style: `properties` nil: all of it.
+computed_style :: proc(s: ^Session, selector: string, properties: []string = nil, loc := #caller_location) -> (r: []Style_Property, e: Error) {
 	p := params(loc)
 	p_tab(&p, s)
 	p_str(&p, "selector", selector)
@@ -386,8 +416,17 @@ computed_style :: proc(s: ^Session, selector: string, properties: []string = nil
 		for name, i in properties { if i > 0 { strings.write_byte(&p.b, ',') }; remote.write_json_string(&p.b, name) }
 		strings.write_byte(&p.b, ']')
 	}
-	_, e := request(s, "CSS.getComputedStyleForNode", &p)
-	return e
+	o := request(s, "CSS.getComputedStyleForNode", &p) or_return
+	style, _ := remote.param_object(o, "computedStyle")
+	list := make([dynamic]Style_Property, 0, len(style), context.temp_allocator)
+	for name in style { append(&list, Style_Property{name, s_of(style, name)}) }
+	return list[:], .None
+}
+
+// The value of a property, from what computed_style gave ("": it has none).
+style_of :: proc(list: []Style_Property, name: string) -> string {
+	for x in list { if x.name == name { return x.value } }
+	return ""
 }
 
 ////////////////////////////////
@@ -577,7 +616,8 @@ snapshot :: proc(s: ^Session, prefix: string, page := false, loc := #caller_loca
 ////////////////////////////////
 // What the page said, and what it fetched
 
-Console_Line :: struct { level, text: string }
+// `n`: its number among all that the tab's page said.
+Console_Line :: struct { level, text: string, n: int }
 
 console :: proc(s: ^Session, since := 0, clear := false, loc := #caller_location) -> (lines: []Console_Line, e: Error) {
 	p := params(loc)
@@ -589,32 +629,43 @@ console :: proc(s: ^Session, since := 0, clear := false, loc := #caller_location
 	lines = make([]Console_Line, len(a), context.temp_allocator)
 	for item, i in a {
 		l, _ := item.(json.Object)
-		lines[i] = {s_of(l, "level"), s_of(l, "text")}
+		lines[i] = {s_of(l, "level"), s_of(l, "text"), i_of(l, "n")}
 	}
 	return lines, .None
 }
 
 Net_Request :: struct {
-	url, method, mime, error: string,
+	id:     int,
+	url, method, mime, error, destination, cache: string,
 	status, bytes: int,
 	ms:     f64,
-	has_ms: bool,
+	has_ms: bool,     // it has ended
 	failed: bool,
 }
 
-network :: proc(s: ^Session, clear := false, loc := #caller_location) -> (reqs: []Net_Request, e: Error) {
+// What a tab's page fetched: `bytes` transferred in all.
+Network :: struct {
+	bytes:    int,
+	requests: []Net_Request,
+}
+
+network :: proc(s: ^Session, clear := false, loc := #caller_location) -> (r: Network, e: Error) {
 	p := params(loc)
 	p_tab(&p, s)
 	p_bool(&p, "clear", clear)
 	o := request(s, "Wren.network", &p) or_return
 	a, _ := remote.param_array(o, "requests")
-	reqs = make([]Net_Request, len(a), context.temp_allocator)
+	r.bytes = i_of(o, "bytes")
+	r.requests = make([]Net_Request, len(a), context.temp_allocator)
 	for item, i in a {
-		r, _ := item.(json.Object)
-		ms, has_ms := remote.param_float(r, "ms")
-		reqs[i] = {url = s_of(r, "url"), method = s_of(r, "method"), mime = s_of(r, "mime"), error = s_of(r, "error"), status = i_of(r, "status"), bytes = i_of(r, "bytes"), ms = ms, has_ms = has_ms, failed = b_of(r, "failed")}
+		x, _ := item.(json.Object)
+		ms, has_ms := remote.param_float(x, "ms")
+		r.requests[i] = {
+			id = i_of(x, "id"), url = s_of(x, "url"), method = s_of(x, "method"), mime = s_of(x, "mime"), error = s_of(x, "error"), destination = s_of(x, "destination"), cache = s_of(x, "cache"),
+			status = i_of(x, "status"), bytes = i_of(x, "bytes"), ms = ms, has_ms = has_ms, failed = b_of(x, "failed"),
+		}
 	}
-	return reqs, .None
+	return r, .None
 }
 
 ////////////////////////////////
@@ -653,9 +704,23 @@ Surface :: struct {
 	source:  [2]int,      // the region of them the compositor takes
 }
 
-// A frame of a drag held: where it drew the edge against the pointer it was built from, and the page's width against its area's (window pixels).
+// A frame of a drag held: where it drew the edge against the pointer it was built from, and the page's width against its area's (window pixels);
+// when its input was read and shown (microseconds), the moves it took, when it was done, how long it waited (ms).
 Drag_Sample :: struct {
 	pointer, edge, page_width, area_width: f64,
+	read_us, shown_us, done_us: i64,
+	dt, waited_ms: f64,
+	moves: int,
+}
+
+// One measure of the time from input to the screen (ms, or refreshes), browser.frame.latency_probe.
+Latency_Stat :: struct { p50, p95, max, mean: f64 }
+
+Latency :: struct {
+	tearing_supported, tearing: bool,
+	samples, frames_shown, frames_shown_from_input, queue_max: int,
+	refresh_ms, queue_mean: f64,
+	wait, work, present, scan, total, total_refreshes: Latency_Stat,
 }
 
 // What a window's screen readers are told, and how (a11y_chrome.odin, a11y_page.odin).
@@ -693,7 +758,7 @@ Loop_Stats :: struct {
 	reasons: []Loop_Reason,   // the last frames, oldest first
 }
 
-// What tests read (`Session.result` has them all; a number a test needs goes here).
+// The numbers of a window: every one Wren.stats says. A number anyone needs goes here, filled in src/browser/control.odin.
 Stats :: struct {
 	pid:                 int,
 	fps:                 f64,
@@ -739,10 +804,32 @@ Stats :: struct {
 	surface:             Surface,
 	panel_surface:       Surface,  // of the developer tools' window
 	a11y:                A11y_Stats,
-	// over the channel only: the process, and what a reset takes away
-	cpu_time_ms:         f64,
-	threads, handles:    int,
-	cookies, storage_sites, cache_entries, history_visits, closed_tabs: int,
+	// The rest takes a look at the process or a walk of a store (control_stats_all; control_stats, what a poll calls, leaves them out):
+	// the frames as a person or a measuring script reads them
+	frames:              int,
+	cpu_ms, cpu_p95_ms, cpu_p99_ms, cpu_max_ms, gpu_ms: f64,
+	gpu_measured:        bool,
+	frames_requested:    int,
+	frames_at_once:      int,      // of the presents since a reset, without waiting for a refresh: a resize, an answer to input, a drag on a variable screen
+	frame_gaps:          int,      // the gaps between them
+	frame_gap_p50_ms, frame_gap_p95_ms, frame_gap_p99_ms, frame_gap_max_ms: f64,
+	ignored_size_moves:  int,
+	drag_samples:        []Drag_Sample,   // browser.frame.drag_probe
+	has_drag_samples:    bool,
+	latency:             Latency,  // browser.frame.latency_probe
+	has_latency:         bool,
+	// the screen: what the system reports, its top mode, the highest rate the compositor reported lately, the swap chain's, whether frames aim for the top one
+	hz, hz_reported, hz_max, hz_now, hz_swap_chain: f64,
+	variable_refresh, frame_cap_strict: bool,
+	frame_states, frame_state: string,   // the frames by state of the cadence model, and the last one's
+	resize_echoes_skipped: int,
+	resize_frame_causes: string,   // the frames of resize bursts, by cause
+	prefs_cache_applied, prefs_downloads_applied: int,
+	layout_items:        int,
+	// the process, and what a reset takes away
+	cpu_time_ms, cpu_user_ms, cpu_kernel_ms: f64,
+	threads, handles, gdi_objects, user_objects: int,
+	cookies, storage_sites, cache_entries, history_visits, closed_tabs, downloads_active, checkpoints: int,
 }
 
 stats :: proc(s: ^Session, reset_latency := false, reset_frames := false, loc := #caller_location) -> (r: Stats, e: Error) {
@@ -751,6 +838,28 @@ stats :: proc(s: ^Session, reset_latency := false, reset_frames := false, loc :=
 	p_bool(&p, "resetFrames", reset_frames)
 	o := request(s, "Wren.stats", &p) or_return
 	g, _ := remote.param_object(o, "frameGate")
+	drag_samples, has_samples := remote.param_array(o, "dragSamples")
+	samples := make([]Drag_Sample, len(drag_samples), context.temp_allocator)
+	for item, i in drag_samples {
+		x, _ := item.(json.Array)
+		if len(x) != DRAG_SAMPLE_COLUMNS { continue }
+		num :: proc(v: json.Value) -> f64 {
+			#partial switch n in v {
+			case json.Integer: return f64(n)
+			case json.Float:   return f64(n)
+			}
+			return 0
+		}
+		samples[i] = {
+			read_us = i64(num(x[0])), shown_us = i64(num(x[1])), pointer = num(x[2]), edge = num(x[3]), dt = num(x[4]), moves = int(num(x[5])), done_us = i64(num(x[6])),
+			waited_ms = num(x[7]), page_width = num(x[8]), area_width = num(x[9]),
+		}
+	}
+	la, has_latency := remote.param_object(o, "latency")
+	lat :: proc(o: json.Object, name: string) -> Latency_Stat {
+		x, _ := remote.param_object(o, name)
+		return {f_of(x, "p50"), f_of(x, "p95"), f_of(x, "max"), f_of(x, "mean")}
+	}
 	bf, _ := remote.param_object(o, "bfcache")
 	why, _ := remote.param_object(bf, "reasons")
 	reasons := make([dynamic]Bfcache_Reason, 0, len(why), context.temp_allocator)
@@ -805,10 +914,28 @@ stats :: proc(s: ^Session, reset_latency := false, reset_frames := false, loc :=
 			page_nodes = i_of(o, "a11yPageNodes"), page_written = i_of(o, "a11yPageWritten"), page_frames = i_of(o, "a11yPageFrames"), page_verify_failed = i_of(o, "a11yPageVerifyFailed"),
 			page_fallback = s_of(o, "a11yPageFallback"), page_verify_diff = s_of(o, "a11yPageVerifyDiff"),
 		},
-		cpu_time_ms = f_of(o, "cpuTimeMs"), threads = i_of(o, "threads"), handles = i_of(o, "handles"),
+		frames = i_of(o, "frames"), cpu_ms = f_of(o, "cpuMs"), cpu_p95_ms = f_of(o, "cpuP95Ms"), cpu_p99_ms = f_of(o, "cpuP99Ms"), cpu_max_ms = f_of(o, "cpuMaxMs"), gpu_ms = f_of(o, "gpuMs"), gpu_measured = b_of(o, "gpuMeasured"),
+		frames_requested = i_of(o, "framesRequested"), frames_at_once = i_of(o, "framesAtOnce"), frame_gaps = i_of(o, "frameGaps"),
+		frame_gap_p50_ms = f_of(o, "frameGapP50Ms"), frame_gap_p95_ms = f_of(o, "frameGapP95Ms"), frame_gap_p99_ms = f_of(o, "frameGapP99Ms"), frame_gap_max_ms = f_of(o, "frameGapMaxMs"),
+		ignored_size_moves = i_of(o, "ignoredSizeMoves"), drag_samples = samples, has_drag_samples = has_samples,
+		latency = {
+			tearing_supported = b_of(la, "tearingSupported"), tearing = b_of(la, "tearing"), samples = i_of(la, "samples"), refresh_ms = f_of(la, "refreshMs"),
+			frames_shown = i_of(la, "framesShown"), frames_shown_from_input = i_of(la, "framesShownFromInput"), queue_mean = f_of(la, "queueMean"), queue_max = i_of(la, "queueMax"),
+			wait = lat(la, "waitMs"), work = lat(la, "workMs"), present = lat(la, "presentMs"), scan = lat(la, "scanMs"), total = lat(la, "totalMs"), total_refreshes = lat(la, "totalRefreshes"),
+		},
+		has_latency = has_latency,
+		hz = f_of(o, "hz"), hz_reported = f_of(o, "hzReported"), hz_max = f_of(o, "hzMax"), hz_now = f_of(o, "hzNow"), hz_swap_chain = f_of(o, "hzSwapChain"),
+		variable_refresh = b_of(o, "variableRefresh"), frame_cap_strict = b_of(o, "frameCapStrict"), frame_states = s_of(o, "frameStates"), frame_state = s_of(o, "frameState"),
+		resize_echoes_skipped = i_of(o, "resizeEchoesSkipped"), resize_frame_causes = s_of(o, "resizeFrameCauses"),
+		prefs_cache_applied = i_of(o, "prefsCacheApplied"), prefs_downloads_applied = i_of(o, "prefsDownloadsApplied"), layout_items = i_of(o, "layoutItems"),
+		cpu_time_ms = f_of(o, "cpuTimeMs"), cpu_user_ms = f_of(o, "cpuUserMs"), cpu_kernel_ms = f_of(o, "cpuKernelMs"),
+		threads = i_of(o, "threads"), handles = i_of(o, "handles"), gdi_objects = i_of(o, "gdiObjects"), user_objects = i_of(o, "userObjects"),
 		cookies = i_of(o, "cookies"), storage_sites = i_of(o, "storageSites"), cache_entries = i_of(o, "cacheEntries"), history_visits = i_of(o, "historyVisits"), closed_tabs = i_of(o, "closedTabs"),
+		downloads_active = i_of(o, "downloadsActive"), checkpoints = i_of(o, "checkpoints"),
 	}, .None
 }
+// The columns of a drag sample on the channel (the array is what the measuring scripts read).
+DRAG_SAMPLE_COLUMNS :: 10
 
 ////////////////////////////////
 // Preferences
@@ -847,7 +974,15 @@ pref_reset_all :: proc(s: ^Session, loc := #caller_location) -> (restored: int, 
 	return i_of(o, "restored"), .None
 }
 
-Pref :: struct { name, text: string }
+// A preference's value in its own type (nil on a client when the channel gave none).
+Pref_Value :: union { bool, i64, f64, string }
+
+// `source`: which layer set it (default, user, command_line...).
+Pref :: struct {
+	name, text, default_text, source: string,
+	value:           Pref_Value,
+	locked, restart: bool,
+}
 
 pref_list :: proc(s: ^Session, prefix := "", loc := #caller_location) -> (prefs: []Pref, e: Error) {
 	p := params(loc)
@@ -857,7 +992,14 @@ pref_list :: proc(s: ^Session, prefix := "", loc := #caller_location) -> (prefs:
 	prefs = make([]Pref, len(a), context.temp_allocator)
 	for item, i in a {
 		x, _ := item.(json.Object)
-		prefs[i] = {s_of(x, "name"), s_of(x, "text")}
+		v: Pref_Value
+		#partial switch y in x["value"] {
+		case json.Boolean: v = bool(y)
+		case json.Integer: v = i64(y)
+		case json.Float:   v = f64(y)
+		case json.String:  v = string(y)
+		}
+		prefs[i] = {name = s_of(x, "name"), text = s_of(x, "text"), default_text = s_of(x, "default"), source = s_of(x, "source"), value = v, locked = b_of(x, "locked"), restart = b_of(x, "restart")}
 	}
 	return prefs, .None
 }
@@ -1030,6 +1172,7 @@ Bounds :: struct {
 	dpi_scale, ui_scale, page_scale: f64,
 	headless, visible:        bool,
 	page_rect:                Rect,     // the page's area in the last frame
+	page_prep:                string,   // what was prepared for it: none, hold, ready (page_frame.odin)
 }
 
 @(private)
@@ -1038,7 +1181,7 @@ bounds_of :: proc(o: json.Object) -> Bounds {
 	return {
 		window = i_of(o, "windowId"), left = i_of(o, "left"), top = i_of(o, "top"), width = i_of(o, "width"), height = i_of(o, "height"),
 		outer_width = i_of(o, "outerWidth"), outer_height = i_of(o, "outerHeight"), state = s_of(o, "windowState"),
-		dpi_scale = f_of(o, "dpiScale"), ui_scale = f_of(o, "uiScale"), page_scale = f_of(o, "pageScale"), headless = b_of(o, "headless"), visible = b_of(o, "visible"), page_rect = pr,
+		dpi_scale = f_of(o, "dpiScale"), ui_scale = f_of(o, "uiScale"), page_scale = f_of(o, "pageScale"), headless = b_of(o, "headless"), visible = b_of(o, "visible"), page_rect = pr, page_prep = s_of(o, "pagePrep"),
 	}
 }
 
@@ -1085,11 +1228,13 @@ close_window :: proc(s: ^Session, loc := #caller_location) -> Error {
 Reset_Report :: struct {
 	closed_tabs, cookies, sites, cache_entries, history_visits, prefs_restored, cancelled_ops: int,
 	window_restored: bool,
+	tab:  int,   // the tab a reset left (0: it kept the tabs and has none to say)
+	tabs: int,   // the tabs a checkpoint's restore opened
 }
 
 @(private)
 reset_of :: proc(o: json.Object) -> Reset_Report {
-	return {i_of(o, "closedTabs"), i_of(o, "cookies"), i_of(o, "sites"), i_of(o, "cacheEntries"), i_of(o, "historyVisits"), i_of(o, "prefsRestored"), i_of(o, "cancelledOps"), b_of(o, "windowRestored")}
+	return {i_of(o, "closedTabs"), i_of(o, "cookies"), i_of(o, "sites"), i_of(o, "cacheEntries"), i_of(o, "historyVisits"), i_of(o, "prefsRestored"), i_of(o, "cancelledOps"), b_of(o, "windowRestored"), i_of(o, "tabId"), i_of(o, "tabs")}
 }
 
 // Back to the state of the start. `keep`: "tabs,data,prefs,window,history", what stays.
@@ -1145,7 +1290,7 @@ checkpoint_list :: proc(s: ^Session, loc := #caller_location) -> (r: []Checkpoin
 ////////////////////////////////
 // Commands of the interface
 
-Command :: struct { name, title, shortcut: string, enabled: bool }
+Command :: struct { name, title, category, shortcut: string, enabled: bool }
 
 commands :: proc(s: ^Session, loc := #caller_location) -> (r: []Command, e: Error) {
 	p := params(loc)
@@ -1154,7 +1299,7 @@ commands :: proc(s: ^Session, loc := #caller_location) -> (r: []Command, e: Erro
 	r = make([]Command, len(a), context.temp_allocator)
 	for item, i in a {
 		x, _ := item.(json.Object)
-		r[i] = {s_of(x, "name"), s_of(x, "title"), s_of(x, "shortcut"), b_of(x, "enabled")}
+		r[i] = {s_of(x, "name"), s_of(x, "title"), s_of(x, "category"), s_of(x, "shortcut"), b_of(x, "enabled")}
 	}
 	return r, .None
 }

@@ -16,17 +16,11 @@ import "toolkit:platform"
 import "toolkit:render"
 import "toolkit:ui"
 import "wb:base"
-import "wb:config"
-import "wb:cookies"
-import "wb:httpcache"
 import "wb:images"
 import lay "wb:layout"
 import "wb:page"
 import "wb:remote"
 import "wb:remote/api"
-
-// How many matches a queryAll call returns when it gives no `limit`.
-REMOTE_QUERY_ALL_DEFAULT_LIMIT :: 100
 
 ui_toast_remote :: proc(text: string) { ui.toast(.Warn, "%s", text) }
 ui_needs_frame :: proc(app: ^App) -> bool { return ui.needs_frame(active_window(app).ui) }
@@ -66,10 +60,10 @@ remote_dispatch :: proc(app: ^App, c: ^Call) -> Reply {
 @(private = "file")
 remote_dispatch_in_window :: proc(app: ^App, c: ^Call) -> Reply {
 	switch c.method {
-	case "Remote.ping":          return done(fmt.tprintf(`{{"protocol":%d,"version":%s,"pid":%d}}`, remote.PROTOCOL_VERSION, remote.quote(APP_VERSION), current_pid()))
+	case "Remote.ping":          return m_ping()
 	case "Remote.subscribe":     return m_subscribe(app, c, true)
 	case "Remote.unsubscribe":   return m_subscribe(app, c, false)
-	case "Browser.getVersion":   return done(fmt.tprintf(`{{"product":"Wren/%s","revision":%s,"toolkit":%s,"protocol":%d,"build":%s}}`, APP_VERSION, remote.quote(app_commit()), remote.quote(ui.VERSION), remote.PROTOCOL_VERSION, remote.quote(build_description())))
+	case "Browser.getVersion":   return m_version()
 	case "Browser.close":        return m_close(app, c)
 	case "Browser.getWindowBounds": return m_window_get(app)
 	case "Browser.setWindowBounds": return m_window_set(app, c)
@@ -114,8 +108,8 @@ remote_dispatch_in_window :: proc(app: ^App, c: ^Call) -> Reply {
 	case "Wren.runCommand":      return m_command(app, c)
 	case "Wren.openDevTools":    return m_devtools(app, c)
 	case "Wren.openSetup":       setup_open(app, .Command); return done()
-	case "Wren.setupState":      return done(setup_state_json())
-	case "Wren.updateState":     return done(update_state_json())
+	case "Wren.setupState":      return m_setup_state()
+	case "Wren.updateState":     return done(fmt.tprintf(`{{"checking":%v}}`, control_update_checking()))
 	case "Wren.recordInput":     return m_record(app, c)
 	case "Wren.timeline":        return m_timeline(app, c)
 	case "Wren.replayInput":     return m_replay(app, c)
@@ -157,9 +151,7 @@ j_int :: proc(b: ^strings.Builder, key: string, v: i64) { j_key(b, key); fmt.sbp
 j_num :: proc(b: ^strings.Builder, key: string, v: f64) { j_key(b, key); fmt.sbprintf(b, "%.3f", v) }
 j_bool :: proc(b: ^strings.Builder, key: string, v: bool) { j_key(b, key); strings.write_string(b, v ? "true" : "false") }
 j_raw :: proc(b: ^strings.Builder, key, v: string) { j_key(b, key); strings.write_string(b, v) }
-j_rect :: proc(b: ^strings.Builder, key: string, r: draw.Rect) {
-	j_raw(b, key, fmt.tprintf("[%d,%d,%d,%d]", int(r.min.x), int(r.min.y), int(r.max.x - r.min.x), int(r.max.y - r.min.y)))
-}
+j_rect :: proc(b: ^strings.Builder, key: string, r: api.Rect) { j_raw(b, key, fmt.tprintf("[%d,%d,%d,%d]", int(r.x), int(r.y), int(r.w), int(r.h))) }
 
 // Where window `w`'s last frame drew the box `id` built under the box `parent` (window pixels); false: not drawn then.
 chrome_box_rect :: proc(w: ^Browser_Window, parent: ui.Key, id: string) -> (r: draw.Rect, ok: bool) {
@@ -219,24 +211,37 @@ timeout_of :: proc(c: ^Call) -> int {
 // Browser, Remote
 
 @(private = "file")
+m_ping :: proc() -> Reply {
+	x := control_ping()
+	return done(fmt.tprintf(`{{"protocol":%d,"version":%s,"pid":%d}}`, x.protocol, remote.quote(x.version), x.pid))
+}
+
+@(private = "file")
+m_version :: proc() -> Reply {
+	x := control_version()
+	return done(fmt.tprintf(`{{"product":%s,"revision":%s,"toolkit":%s,"protocol":%d,"build":%s}}`, remote.quote(x.product), remote.quote(x.revision), remote.quote(x.toolkit), x.protocol, remote.quote(x.build)))
+}
+
+@(private = "file")
+m_setup_state :: proc() -> Reply {
+	x := control_setup_state()
+	box :: proc(r: api.Rect) -> string { return fmt.tprintf("[%v,%v,%v,%v]", r.x, r.y, r.w, r.h) }
+	return done(fmt.tprintf(`{{"open":%v,"known":%v,"confirmUninstall":%v,"busy":%d,"note":%s,"primary":%s,"uninstall":%s,"secondary":%s}}`,
+		x.open, x.known, x.confirm_uninstall, x.busy, remote.quote(x.note), box(x.primary), box(x.uninstall), box(x.secondary)))
+}
+
+@(private = "file")
 m_subscribe :: proc(app: ^App, c: ^Call, on: bool) -> Reply {
-	r := &the_remote
-	for i := len(r.subs) - 1; i >= 0; i -= 1 { if r.subs[i] == c.conn { unordered_remove(&r.subs, i) } }
-	if on {
-		append(&r.subs, c.conn)
-		for t in tabs_all(app) { r.loaded[t.id] = tab_loaded(app, t) }
-	}
+	control_subscribe(app, c.conn, on)
 	return done(`{"events":["Page.loadEventFired","Runtime.consoleAPICalled"]}`)
 }
 
 @(private = "file")
 m_close :: proc(app: ^App, c: ^Call) -> Reply {
 	code, _ := remote.param_int(c.params, "exitCode")
-	the_remote.exit_code = code
-	remote_answer(c.conn, c.id, done())
+	remote_answer(c.conn, c.id, done())   // (the client has its answer before the browser goes)
 	remote.close_client(c.conn)
-	app.quitting = true
-	platform.request_close(active_window(app).win)
+	control_close(app, code)
 	return Reply{deferred = true}
 }
 
@@ -252,7 +257,6 @@ window_state :: proc(app: ^App) -> string {
 
 @(private = "file")
 m_window_get :: proc(app: ^App) -> Reply {
-	wnd := active_window(app)
 	x := control_bounds(app)
 	b := builder()
 	j_begin(&b)
@@ -265,32 +269,26 @@ m_window_get :: proc(app: ^App) -> Reply {
 	j_bool(&b, "headless", x.headless)
 	j_bool(&b, "visible", x.visible)
 	// the page area of its last frame and what was prepared for it (page_frame.odin)
-	j_rect(&b, "pageRect", wnd.page_rect)
-	PREP_NAMES := [Page_Prep_State]string{.None = "none", .Hold = "hold", .Ready = "ready"}
-	j_str(&b, "pagePrep", PREP_NAMES[wnd.own.page_prep.state])
+	j_rect(&b, "pageRect", x.page_rect)
+	j_str(&b, "pagePrep", x.page_prep)
 	j_end(&b)
 	return done(strings.to_string(b))
 }
 
-// width / height: the client area in pixels (what a capture of the window measures); left / top: the window's corner.
+// width / height: the client area in pixels (what a capture of the window measures); left / top: the window's corner. What is left out stays.
 @(private = "file")
 m_window_set :: proc(app: ^App, c: ^Call) -> Reply {
-	state, has_state := remote.param_string(c.params, "windowState")
-	if has_state {
-		switch state {
-		case "normal", "minimized", "maximized", "fullscreen":
-		case: return fail(remote.ERR_PARAMS, "windowState: normal, minimized, maximized or fullscreen")
-		}
-	}
+	now := control_bounds(app)
+	change: api.Window_Change
+	change.state, _ = remote.param_string(c.params, "windowState")
 	w, has_w := remote.param_int(c.params, "width")
 	h, has_h := remote.param_int(c.params, "height")
 	left, has_l := remote.param_int(c.params, "left")
 	top, has_t := remote.param_int(c.params, "top")
-	window_apply(app, state, has_state, w, h, left, top, has_w, has_h, has_l, has_t)
-	if dpi, has_dpi := remote.param_int(c.params, "dpi"); has_dpi {
-		if dpi < 48 || dpi > 960 { return fail(remote.ERR_PARAMS, "dpi: 48 to 960 (96 = 100 %)") }
-		window_simulate_dpi(app, active_window(app), dpi)
-	}
+	if has_w || has_h { change.size = [2]int{has_w ? w : now.width, has_h ? h : now.height} }
+	if has_l || has_t { change.pos = [2]int{has_l ? left : now.left, has_t ? top : now.top} }
+	change.dpi, _ = remote.param_int(c.params, "dpi")
+	if why := control_set_window(app, change); why != "" { return fail(remote.ERR_PARAMS, why) }
 	return m_window_get(app)
 }
 
@@ -358,7 +356,6 @@ window_apply :: proc(app: ^App, state: string, has_state: bool, w, h, left, top:
 @(private = "file")
 m_targets :: proc(app: ^App) -> Reply {
 	x := control_tabs(app)
-	rect :: proc(b: ^strings.Builder, r: api.Rect) { j_raw(b, "rect", fmt.tprintf("[%d,%d,%d,%d]", int(r.x), int(r.y), int(r.w), int(r.h))) }
 	b := builder()
 	j_begin(&b)
 	j_key(&b, "targetInfos"); j_begin(&b, '[')
@@ -371,7 +368,7 @@ m_targets :: proc(app: ^App) -> Reply {
 		j_bool(&b, "pinned", t.pinned); j_int(&b, "group", i64(t.group))
 		j_bool(&b, "playing", t.playing); j_bool(&b, "audible", t.audible); j_bool(&b, "muted", t.muted)   // tab_sound.odin
 		if t.group_color != "" { j_str(&b, "groupName", t.group_name); j_str(&b, "groupColor", t.group_color); j_bool(&b, "groupCollapsed", t.group_collapsed) }
-		if t.has_rect { rect(&b, t.rect) }
+		if t.has_rect { j_rect(&b, "rect", t.rect) }
 		j_end(&b)
 	}
 	j_end(&b, ']')
@@ -380,7 +377,7 @@ m_targets :: proc(app: ^App) -> Reply {
 		j_key(&b, ""); j_begin(&b)
 		j_int(&b, "windowId", i64(g.window)); j_int(&b, "id", i64(g.id)); j_str(&b, "name", g.name)
 		j_str(&b, "color", g.color); j_bool(&b, "collapsed", g.collapsed)
-		if g.has_rect { rect(&b, g.rect) }
+		if g.has_rect { j_rect(&b, "rect", g.rect) }
 		j_end(&b)
 	}
 	j_end(&b, ']'); j_end(&b)
@@ -445,8 +442,7 @@ m_window_activate :: proc(app: ^App) -> Reply {
 // The window closes with its tabs, at the end of the pass (the last window ends the browser: that is Browser.close).
 @(private = "file")
 m_window_close :: proc(app: ^App) -> Reply {
-	if len(app.windows) <= 1 { return fail(remote.ERR_FAILED, "this is the only window: Browser.close ends the browser") }
-	app.active.closing, app.active.closing_force = true, true
+	if why := control_close_window(app); why != "" { return fail(remote.ERR_FAILED, why) }
 	return done()
 }
 
@@ -534,7 +530,7 @@ m_history :: proc(app: ^App, c: ^Call, delta: int) -> Reply {
 m_stop :: proc(app: ^App, c: ^Call) -> Reply {
 	t, e := tab_of(app, c)
 	if t == nil { return e }
-	stop_loading(app, t)
+	control_stop_loading(app, t)
 	return done()
 }
 
@@ -558,8 +554,7 @@ m_wait :: proc(app: ^App, c: ^Call) -> Reply {
 		n, _ := remote.param_int(c.params, "frames", 2)
 		return frames_op(app, c, t, n)
 	}
-	rep := start_wait(app, c, t, what)
-	return rep
+	return start_wait(app, c, t, what)
 }
 
 ////////////////////////////////
@@ -587,28 +582,21 @@ m_outer_html :: proc(app: ^App, c: ^Call) -> Reply {
 
 @(private = "file")
 m_query_all :: proc(app: ^App, c: ^Call) -> Reply {
-	wnd := active_window(app)
 	sel, bad := need_string(c, "selector")
 	if bad.code != 0 { return bad }
 	t, e := tab_of(app, c)
 	if t == nil { return e }
-	if t.page == nil { return fail(remote.ERR_FAILED, "the tab has no document") }
-	limit, _ := remote.param_int(c.params, "limit", REMOTE_QUERY_ALL_DEFAULT_LIMIT)
-	hs, valid := page.query_all(t.page, sel, limit)
-	if !valid { return fail(remote.ERR_PARAMS, fmt.tprintf("invalid selector %q", sel)) }
-	all, _ := page.query_all(t.page, sel)
+	limit, _ := remote.param_int(c.params, "limit", QUERY_ALL_DEFAULT_LIMIT)
+	x, code, why := control_query_all(app, t, sel, limit)
+	if code != 0 { return fail(code, why) }
 	b := builder()
 	j_begin(&b)
-	j_int(&b, "count", i64(len(all)))
+	j_int(&b, "count", i64(x.count))
 	j_key(&b, "nodes"); j_begin(&b, '[')
-	for h in hs {
+	for n in x.nodes {
 		j_key(&b, ""); j_begin(&b)
-		html := page.serialize_html(t.page.doc, h, true)
-		j_str(&b, "outerHTML", html[:min(len(html), 300)])
-		if r, ok := element_window_rect(app, t, h); ok {
-			s := f64(page_scale(app))
-			j_raw(&b, "box", fmt.tprintf("[%.2f,%.2f,%.2f,%.2f]", f64(r[0] - wnd.page_rect.min.x) / s, f64(r[1] - wnd.page_rect.min.y) / s, f64(r[2]) / s, f64(r[3]) / s))
-		}
+		j_str(&b, "outerHTML", n.outer_html)
+		if n.has_box { j_raw(&b, "box", fmt.tprintf("[%.2f,%.2f,%.2f,%.2f]", n.box.x, n.box.y, n.box.w, n.box.h)) }
 		j_end(&b)
 	}
 	j_end(&b, ']'); j_end(&b)
@@ -618,16 +606,14 @@ m_query_all :: proc(app: ^App, c: ^Call) -> Reply {
 // The element's box: in CSS pixels from the page's top-left corner (what getBoundingClientRect says), and in window pixels.
 @(private = "file")
 m_box_model :: proc(app: ^App, c: ^Call) -> Reply {
-	wnd := active_window(app)
 	sel, bad := need_string(c, "selector")
 	if bad.code != 0 { return bad }
 	t, e := tab_of(app, c)
 	if t == nil { return e }
-	r, h, code, why := control_element_box(app, t, sel)
+	x, code, why := control_box_model(app, t, sel)
 	if code != 0 { return fail(code, why) }
-	s := f64(page_scale(app))
 	return done(fmt.tprintf(`{{"found":true,"visible":%v,"x":%.2f,"y":%.2f,"width":%.2f,"height":%.2f,"window":{{"x":%.1f,"y":%.1f,"width":%.1f,"height":%.1f}}}}`,
-		element_visible(app, t, h), f64(r[0] - wnd.page_rect.min.x) / s, f64(r[1] - wnd.page_rect.min.y) / s, f64(r[2]) / s, f64(r[3]) / s, r[0], r[1], r[2], r[3]))
+		x.visible, x.box.x, x.box.y, x.box.w, x.box.h, x.window.x, x.window.y, x.window.w, x.window.h))
 }
 
 @(private = "file")
@@ -636,19 +622,20 @@ m_computed_style :: proc(app: ^App, c: ^Call) -> Reply {
 	if bad.code != 0 { return bad }
 	t, e := tab_of(app, c)
 	if t == nil { return e }
-	props := "null"
+	names: []string
 	if arr, ok := remote.param_array(c.params, "properties"); ok {
-		b := builder()
-		j_begin(&b, '[')
-		for v in arr { if s, is_s := v.(json.String); is_s { j_str(&b, "", string(s)) } }
-		j_end(&b, ']')
-		props = strings.to_string(b)
+		list := make([dynamic]string, 0, len(arr), context.temp_allocator)
+		for v in arr { if s, is_s := v.(json.String); is_s { append(&list, string(s)) } }
+		names = list[:]
 	}
-	expr := fmt.tprintf(`(function(S,P){{var e=document.querySelector(S);if(!e)return null;var c=getComputedStyle(e),o={{}};if(P){{for(var i=0;i<P.length;i++)o[P[i]]=c.getPropertyValue(P[i])}}else{{for(var i=0;i<c.length;i++){{var n=c[i];o[n]=c.getPropertyValue(n)}}}}return o}})(%s,%s)`, remote.quote(sel), props)
-	v, _, err := eval_sync(t, expr)
-	if err != "" { return fail(remote.ERR_FAILED, err) }
-	if v == "null" { return fail(remote.ERR_FAILED, fmt.tprintf("no element matches %q", sel)) }
-	return done(fmt.tprintf(`{{"computedStyle":%s}}`, v))
+	x, why := control_computed_style(t, sel, names)
+	if why != "" { return fail(remote.ERR_FAILED, why) }
+	b := builder()
+	j_begin(&b)
+	j_key(&b, "computedStyle"); j_begin(&b)
+	for p in x { j_str(&b, p.name, p.value) }
+	j_end(&b); j_end(&b)
+	return done(strings.to_string(b))
 }
 
 ////////////////////////////////
@@ -656,10 +643,9 @@ m_computed_style :: proc(app: ^App, c: ^Call) -> Reply {
 
 // Page.captureScreenshot {path, bytes, target: window|page|rect|selector, selector, clip {x,y,width,height} (window pixels, target
 // rect), scale, settle (frames), timeout}
-m_capture :: proc(app: ^App, c: ^Call) -> Reply {
-	t, e := tab_of(app, c)
-	if t == nil { return e }
-	q := Capture_Request{timeout_ms = timeout_of(c), settle = the_remote.cfg.settle_frames}
+@(private = "file")
+capture_request_of :: proc(c: ^Call) -> (q: Capture_Request, bad: Reply) {
+	q = {timeout_ms = timeout_of(c), settle = the_remote.cfg.settle_frames}
 	if s, ok := remote.param_float(c.params, "scale"); ok && s > 0 { q.scale = f32(s) }
 	q.path, _ = remote.param_string(c.params, "path")
 	q.bytes, _ = remote.param_bool(c.params, "bytes")
@@ -670,19 +656,42 @@ m_capture :: proc(app: ^App, c: ^Call) -> Reply {
 	case "rect":
 		q.target = .Rect
 		clip, ok := remote.param_object(c.params, "clip")
-		if !ok { return fail(remote.ERR_PARAMS, "target rect needs \"clip\": {x, y, width, height}") }
+		if !ok { return q, fail(remote.ERR_PARAMS, "target rect needs \"clip\": {x, y, width, height}") }
 		x, _ := remote.param_float(clip, "x"); y, _ := remote.param_float(clip, "y")
 		w, _ := remote.param_float(clip, "width"); h, _ := remote.param_float(clip, "height")
 		q.rect = {f32(x), f32(y), f32(w), f32(h)}
 	case "selector":
 		q.target = .Selector
-		sel, bad := need_string(c, "selector")
-		if bad.code != 0 { return bad }
-		q.selector = sel
+		q.selector, bad = need_string(c, "selector")
+		if bad.code != 0 { return }
 	case:
-		return fail(remote.ERR_PARAMS, "target: window, page, rect or selector")
+		return q, fail(remote.ERR_PARAMS, "target: window, page, rect or selector")
 	}
 	if settle, has := remote.param_int(c.params, "settle"); has { q.settle = settle }
+	return q, {}
+}
+
+@(private = "file")
+m_capture :: proc(app: ^App, c: ^Call) -> Reply {
+	t, e := tab_of(app, c)
+	if t == nil { return e }
+	q, bad := capture_request_of(c)
+	if bad.code != 0 { return bad }
+	return control_capture(app, c, t, q)
+}
+
+// Wren.snapshot {path, target, selector, scale}: <path>.png (as Page.captureScreenshot), <path>.html (the document as serialized),
+// <path>.json (the page's url, title, size and the box of every element, in CSS pixels from the page's corner).
+@(private = "file")
+m_snapshot :: proc(app: ^App, c: ^Call) -> Reply {
+	prefix, missing := need_string(c, "path")
+	if missing.code != 0 { return missing }
+	t, e := tab_of(app, c)
+	if t == nil { return e }
+	q, bad := capture_request_of(c)
+	if bad.code != 0 { return bad }
+	q.path = strings.concatenate({prefix, ".png"}, context.temp_allocator)
+	q.snapshot = prefix
 	return control_capture(app, c, t, q)
 }
 
@@ -693,6 +702,7 @@ Capture_Request :: struct {
 	selector:   string,
 	scale:      f32,       // 0: 1
 	path:       string,
+	snapshot:   string,    // the document and its boxes too, beside the picture (snapshot_files): the files' prefix
 	bytes:      bool,
 	settle:     int,       // frames first
 	timeout_ms: int,
@@ -704,6 +714,7 @@ control_capture :: proc(app: ^App, c: ^Call, t: ^Tab, q: Capture_Request) -> Rep
 	op.scale = q.scale > 0 ? clamp(q.scale, CAPTURE_SCALE_LEAST, CAPTURE_SCALE_MOST) : 1
 	if q.path != "" { op.path = strings.clone(q.path) }
 	if q.selector != "" { op.arg = strings.clone(q.selector) }
+	if q.snapshot != "" { op.snapshot = strings.clone(q.snapshot) }
 	op.bytes = q.bytes || (q.path == "" && c.local == nil)
 	op.until = the_remote.frame_no + u64(max(q.settle, 0)) + 1
 	// a real window on the taskbar draws nothing: it comes back without taking the focus, and goes back after. A headless
@@ -871,9 +882,13 @@ point_of :: proc(app: ^App, c: ^Call, xk, yk: string) -> (p: [2]f32, ok: bool) {
 	x, hx := remote.param_float(c.params, xk)
 	y, hy := remote.param_float(c.params, yk)
 	if !hx || !hy { return {}, false }
-	if space, _ := remote.param_string(c.params, "space"); space == "window" { return {f32(x), f32(y)}, true }
-	s := page_scale(app)
-	return active_window(app).page_rect.min + {f32(x) * s, f32(y) * s}, true
+	return control_point(app, {x, y}, space_of(c)), true
+}
+
+@(private = "file")
+space_of :: proc(c: ^Call) -> api.Space {
+	space, _ := remote.param_string(c.params, "space")
+	return space == "window" ? .Window : .Page
 }
 
 @(private = "file")
@@ -1010,28 +1025,25 @@ m_drag :: proc(app: ^App, c: ^Call) -> Reply {
 	to, ok2 := point_of(app, c, "toX", "toY")
 	if !ok1 || !ok2 { return fail(remote.ERR_PARAMS, "x, y, toX and toY are needed") }
 	r := Drag_Request{from = from, to = to, button = button_of(c), timeout_ms = timeout_of(c)}
-	r.steps, _ = remote.param_int(c.params, "steps", 8)
+	r.steps, _ = remote.param_int(c.params, "steps", api.DRAG_STEPS)
 	// "via": points passed through on the way (window points may be outside the window: the drag leaves it and comes
 	// back, through the window's own drop target, never the real mouse)
 	via := make([dynamic][2]f32, context.temp_allocator)
 	if arr, has := remote.param_array(c.params, "via"); has {
-		space, _ := remote.param_string(c.params, "space")
-		s := page_scale(app)
 		for v in arr {
 			pt, is := v.(json.Array)
 			if !is || len(pt) != 2 { continue }
-			num :: proc(v: json.Value) -> (f32, bool) {
+			num :: proc(v: json.Value) -> (f64, bool) {
 				#partial switch x in v {
-				case json.Float: return f32(x), true
-				case json.Integer: return f32(x), true
+				case json.Float: return f64(x), true
+				case json.Integer: return f64(x), true
 				}
 				return 0, false
 			}
 			x, xok := num(pt[0])
 			y, yok := num(pt[1])
 			if !xok || !yok { continue }
-			p := [2]f32{x, y}
-			append(&via, space == "window" ? p : active_window(app).page_rect.min + p * s)
+			append(&via, control_point(app, {x, y}, space_of(c)))
 		}
 	}
 	r.via = via[:]
@@ -1127,20 +1139,14 @@ m_key :: proc(app: ^App, c: ^Call) -> Reply {
 m_key_event :: proc(app: ^App, c: ^Call) -> Reply {
 	kind, bad := need_string(c, "type")
 	if bad.code != 0 { return bad }
-	mods := mods_of(c)
 	text, _ := remote.param_string(c.params, "text")
 	name, _ := remote.param_string(c.params, "key")
-	key, kmods, ok := parse_combo(name)
-	mods += kmods
 	switch kind {
-	case "keyDown", "rawKeyDown":
-		if ok { inject(app, {kind = .Key_Press, key = key, mods = mods}) }
-		for ch in text { inject(app, {kind = .Text, text = ch, mods = mods}) }
-	case "keyUp": if ok { inject(app, {kind = .Key_Release, key = key, mods = mods}) }
-	case "char":  for ch in text { inject(app, {kind = .Text, text = ch, mods = mods}) }
-	case: return fail(remote.ERR_PARAMS, "type: keyDown, keyUp, rawKeyDown or char")
+	case "keyDown", "rawKeyDown": return control_key_event(app, c, .Down, name, text, mods_of(c))
+	case "keyUp":                 return control_key_event(app, c, .Up, name, text, mods_of(c))
+	case "char":                  return control_key_event(app, c, .Text, "", text, mods_of(c))
 	}
-	return frames_op(app, c, nil, the_remote.cfg.settle_frames)
+	return fail(remote.ERR_PARAMS, "type: keyDown, keyUp, rawKeyDown or char")
 }
 
 emit_key :: proc(app: ^App, key: platform.Key, mods: platform.Modifiers, text: rune) {
@@ -1259,80 +1265,18 @@ key_from_name :: proc(n: string) -> (platform.Key, bool) {
 
 @(private = "file")
 m_stats :: proc(app: ^App, c: ^Call) -> Reply {
-	wnd := active_window(app)
-	n := &hud.nums
-	b := builder()
 	reset_latency, _ := remote.param_bool(c.params, "resetLatency")
 	reset_frames, _ := remote.param_bool(c.params, "resetFrames")
-	gaps := frame_log_intervals()
-	loops := platform.pump_stats(wnd.win)
-	defer if reset_frames { frame_log_reset(); drag_probe_reset(); wnd.win.stats = {} }
-	latency := render.latency_summary(&app.r)
-	latency_on := render.latency_probe_on(&app.r)
-	if reset_latency { render.latency_reset(&app.r) }
+	s := control_stats_all(app)
+	control_stats_reset(app, reset_frames, reset_latency)
+	b := builder()
 	j_begin(&b)
-	stats_json(&b, control_stats(app))   // what a test reads, in one place; the rest is for a person, or for the scripts that measure
-	if latency_on {
-		j_key(&b, "latency"); j_begin(&b)
-		j_bool(&b, "tearingSupported", render.tearing_supported(&app.r)); j_bool(&b, "tearing", render.present_mode(&app.r) == .Tearing)
-		j_int(&b, "samples", i64(latency.samples)); j_num(&b, "refreshMs", f64(latency.period_ms))
-		j_int(&b, "framesShown", i64(latency.frames)); j_int(&b, "framesShownFromInput", i64(latency.with_input))
-		j_num(&b, "queueMean", f64(latency.queue_mean)); j_int(&b, "queueMax", i64(latency.queue_max))
-		for st in ([?]struct { name: string, v: render.Latency_Stat }{{"waitMs", latency.wait}, {"workMs", latency.work}, {"presentMs", latency.present}, {"scanMs", latency.scan}, {"totalMs", latency.total}, {"totalRefreshes", latency.refreshes}}) {
-			j_key(&b, st.name); j_begin(&b)
-			j_num(&b, "p50", f64(st.v.p50)); j_num(&b, "p95", f64(st.v.p95)); j_num(&b, "max", f64(st.v.max)); j_num(&b, "mean", f64(st.v.mean))
-			j_end(&b)
-		}
-		j_end(&b)
-	}
-	j_int(&b, "frames", i64(n.frames))
-	j_num(&b, "cpuMs", f64(n.cpu_mean)); j_num(&b, "cpuP95Ms", f64(n.cpu_p95)); j_num(&b, "cpuP99Ms", f64(n.cpu_p99)); j_num(&b, "cpuMaxMs", f64(n.cpu_max))
-	j_num(&b, "gpuMs", f64(n.gpu_mean)); j_bool(&b, "gpuMeasured", n.gpu_n > 0)
-	j_int(&b, "framesRequested", i64(wnd.frames_requested))
-	// the presents since resetFrames, the gaps between them, and how the window's frames were asked for (platform.Pump_Stats)
-	// (framesAtOnce: of them, presented without waiting for a refresh: a resize, an answer to input, a drag on a variable screen)
-	j_int(&b, "framesAtOnce", i64(frame_log.at_once)); j_int(&b, "frameGaps", i64(gaps.count))
-	j_num(&b, "frameGapP50Ms", gaps.p50); j_num(&b, "frameGapP95Ms", gaps.p95); j_num(&b, "frameGapP99Ms", gaps.p99); j_num(&b, "frameGapMaxMs", gaps.max)
-	j_int(&b, "ignoredSizeMoves", i64(loops.ignored_size_moves))
-	pacer := &wnd.pacer   // (the window's pacing; the preferences are the process's)
-	if app.pacing.cfg.drag_probe { j_key(&b, "dragSamples"); drag_probe_json(&b) }
-	j_num(&b, "hz", f64(pacer.hz))
-	// the screen: what the system reports (hzReported), its top mode (hzMax), the highest rate the compositor reported during the current
-	// or last run of frames (hzNow; primary monitor only), the swap chain's (hzSwapChain), and whether frames aim for the top one (variableRefresh)
-	j_num(&b, "hzReported", pacer.display.hz); j_num(&b, "hzMax", pacer.display.max_hz); j_num(&b, "hzNow", pacer.live_hz)
-	j_num(&b, "hzSwapChain", render.measured_refresh_hz(&app.r)); j_bool(&b, "variableRefresh", pacer.variable)
-	j_bool(&b, "frameCapStrict", pacer.cadence.slots.strict || pacer.cadence.slots.escalated)
-	{
-		// the frames by state of the cadence model (toolkit platform/pacing.odin) since start-up, and the last one's
-		sb := strings.builder_make(context.temp_allocator)
-		for n, s in pacer.cadence.counts { if n > 0 { fmt.sbprintf(&sb, "%v=%d ", s, n) } }
-		j_str(&b, "frameStates", strings.trim_space(strings.to_string(sb))); j_str(&b, "frameState", fmt.tprint(pacer.cadence.state))
-	}
-	j_int(&b, "resizeEchoesSkipped", i64(pacer.echoes_skipped))
-	{
-		// the frames of resize bursts that were made, by cause, and the events of those made for events
-		sb := strings.builder_make(context.temp_allocator)
-		for n, c in pacer.resize_causes { if n > 0 { fmt.sbprintf(&sb, "%v=%d ", c, n) } }
-		for n, k in pacer.resize_event_kinds { if n > 0 { fmt.sbprintf(&sb, "ev.%v=%d ", k, n) } }
-		j_str(&b, "resizeFrameCauses", strings.trim_space(strings.to_string(sb)))
-	}
-	// how often the subsystems were configured again by preference writes (prefs_apply.odin)
-	j_int(&b, "prefsCacheApplied", i64(prefs_apply_counts[.Http_Cache])); j_int(&b, "prefsDownloadsApplied", i64(prefs_apply_counts[.Downloads]))
-	if t := current_tab(app); t != nil && t.page != nil { j_int(&b, "layoutItems", i64(len(t.layout.items))) }
-	// the process and the state a reset empties (so that a test can see both the cost of what it did and that a reset worked)
-	cpu, cpu_user, cpu_kernel := process_cpu_ms()
-	pc := process_counters()
-	j_num(&b, "cpuTimeMs", cpu); j_num(&b, "cpuUserMs", cpu_user); j_num(&b, "cpuKernelMs", cpu_kernel)
-	j_int(&b, "threads", i64(process_thread_count())); j_int(&b, "handles", pc.handles); j_int(&b, "gdiObjects", pc.gdi); j_int(&b, "userObjects", pc.user)
-	j_int(&b, "cookies", i64(cookies.count(&app.profile.jar))); j_int(&b, "storageSites", i64(len(page.storage_sites(&app.storage))))
-	j_int(&b, "cacheEntries", app.profile.cache != nil ? i64(httpcache.summary(app.profile.cache).entries) : 0)
-	j_int(&b, "historyVisits", i64(len(ghist.visits))); j_int(&b, "closedTabs", i64(len(closed_tabs))); j_int(&b, "downloadsActive", i64(downloads_active()))
-	j_int(&b, "checkpoints", i64(len(the_remote.checkpoints)))
+	stats_json(&b, s)
 	j_end(&b)
 	return done(strings.to_string(b))
 }
 
-// control_stats as the channel gives it.
+// control_stats_all as the channel gives it.
 @(private = "file")
 stats_json :: proc(b: ^strings.Builder, s: api.Stats) {
 	size :: proc(b: ^strings.Builder, key: string, v: [2]int) { j_raw(b, key, fmt.tprintf("[%d,%d]", v.x, v.y)) }
@@ -1391,6 +1335,49 @@ stats_json :: proc(b: ^strings.Builder, s: api.Stats) {
 	j_str(b, "name", s.cursor.name); j_bool(b, "custom", s.cursor.custom); j_str(b, "source", s.cursor.source); size(b, "size", s.cursor.size); size(b, "hotspot", s.cursor.hotspot)
 	j_end(b)
 	surface(b, "surface", s.surface); surface(b, "panelSurface", s.panel_surface)
+	if s.has_latency {
+		l := s.latency
+		j_key(b, "latency"); j_begin(b)
+		j_bool(b, "tearingSupported", l.tearing_supported); j_bool(b, "tearing", l.tearing)
+		j_int(b, "samples", i64(l.samples)); j_num(b, "refreshMs", l.refresh_ms)
+		j_int(b, "framesShown", i64(l.frames_shown)); j_int(b, "framesShownFromInput", i64(l.frames_shown_from_input))
+		j_num(b, "queueMean", l.queue_mean); j_int(b, "queueMax", i64(l.queue_max))
+		for st in ([?]struct { name: string, v: api.Latency_Stat }{{"waitMs", l.wait}, {"workMs", l.work}, {"presentMs", l.present}, {"scanMs", l.scan}, {"totalMs", l.total}, {"totalRefreshes", l.total_refreshes}}) {
+			j_key(b, st.name); j_begin(b)
+			j_num(b, "p50", st.v.p50); j_num(b, "p95", st.v.p95); j_num(b, "max", st.v.max); j_num(b, "mean", st.v.mean)
+			j_end(b)
+		}
+		j_end(b)
+	}
+	j_int(b, "frames", i64(s.frames))
+	j_num(b, "cpuMs", s.cpu_ms); j_num(b, "cpuP95Ms", s.cpu_p95_ms); j_num(b, "cpuP99Ms", s.cpu_p99_ms); j_num(b, "cpuMaxMs", s.cpu_max_ms)
+	j_num(b, "gpuMs", s.gpu_ms); j_bool(b, "gpuMeasured", s.gpu_measured)
+	j_int(b, "framesRequested", i64(s.frames_requested))
+	// the presents since resetFrames, the gaps between them, and how the window's frames were asked for (platform.Pump_Stats)
+	j_int(b, "framesAtOnce", i64(s.frames_at_once)); j_int(b, "frameGaps", i64(s.frame_gaps))
+	j_num(b, "frameGapP50Ms", s.frame_gap_p50_ms); j_num(b, "frameGapP95Ms", s.frame_gap_p95_ms); j_num(b, "frameGapP99Ms", s.frame_gap_p99_ms); j_num(b, "frameGapMaxMs", s.frame_gap_max_ms)
+	j_int(b, "ignoredSizeMoves", i64(s.ignored_size_moves))
+	if s.has_drag_samples {
+		// [read, shown, mouse_x, finger_x, dt, moves, done, waited ms, page_w, area_w] (ticks in microseconds)
+		j_key(b, "dragSamples"); j_begin(b, '[')
+		for x in s.drag_samples {
+			j_raw(b, "", fmt.tprintf("[%d,%d,%.2f,%.2f,%.5f,%d,%d,%.3f,%.1f,%.1f]", x.read_us, x.shown_us, x.pointer, x.edge, x.dt, x.moves, x.done_us, x.waited_ms, x.page_width, x.area_width))
+		}
+		j_end(b, ']')
+	}
+	j_num(b, "hz", s.hz); j_num(b, "hzReported", s.hz_reported); j_num(b, "hzMax", s.hz_max); j_num(b, "hzNow", s.hz_now); j_num(b, "hzSwapChain", s.hz_swap_chain)
+	j_bool(b, "variableRefresh", s.variable_refresh); j_bool(b, "frameCapStrict", s.frame_cap_strict)
+	j_str(b, "frameStates", s.frame_states); j_str(b, "frameState", s.frame_state)
+	j_int(b, "resizeEchoesSkipped", i64(s.resize_echoes_skipped)); j_str(b, "resizeFrameCauses", s.resize_frame_causes)
+	// how often the subsystems were configured again by preference writes (prefs_apply.odin)
+	j_int(b, "prefsCacheApplied", i64(s.prefs_cache_applied)); j_int(b, "prefsDownloadsApplied", i64(s.prefs_downloads_applied))
+	if s.layout_items > 0 { j_int(b, "layoutItems", i64(s.layout_items)) }
+	// the process and the state a reset empties (so that a test can see both the cost of what it did and that a reset worked)
+	j_num(b, "cpuTimeMs", s.cpu_time_ms); j_num(b, "cpuUserMs", s.cpu_user_ms); j_num(b, "cpuKernelMs", s.cpu_kernel_ms)
+	j_int(b, "threads", i64(s.threads)); j_int(b, "handles", i64(s.handles)); j_int(b, "gdiObjects", i64(s.gdi_objects)); j_int(b, "userObjects", i64(s.user_objects))
+	j_int(b, "cookies", i64(s.cookies)); j_int(b, "storageSites", i64(s.storage_sites)); j_int(b, "cacheEntries", i64(s.cache_entries))
+	j_int(b, "historyVisits", i64(s.history_visits)); j_int(b, "closedTabs", i64(s.closed_tabs)); j_int(b, "downloadsActive", i64(s.downloads_active))
+	j_int(b, "checkpoints", i64(s.checkpoints))
 }
 
 @(private = "file")
@@ -1398,16 +1385,15 @@ m_console :: proc(app: ^App, c: ^Call) -> Reply {
 	t, e := tab_of(app, c)
 	if t == nil { return e }
 	since, _ := remote.param_int(c.params, "since", 0)
-	first := int(t.console_added) - len(t.console)   // the number of console[0]
-	total := t.console_added
 	clear_after, _ := remote.param_bool(c.params, "clear")
+	total := control_console_total(t)
 	b := builder()
 	j_begin(&b)
 	j_int(&b, "total", i64(total))
 	j_key(&b, "lines"); j_begin(&b, '[')
-	for l, i in control_console(t, since, clear_after) {
+	for l in control_console(t, since, clear_after) {
 		j_key(&b, ""); j_begin(&b)
-		j_int(&b, "n", i64(max(first, since) + i)); j_str(&b, "level", l.level); j_str(&b, "text", l.text)
+		j_int(&b, "n", i64(l.n)); j_str(&b, "level", l.level); j_str(&b, "text", l.text)
 		j_end(&b)
 	}
 	j_end(&b, ']'); j_end(&b)
@@ -1418,56 +1404,54 @@ m_console :: proc(app: ^App, c: ^Call) -> Reply {
 m_network :: proc(app: ^App, c: ^Call) -> Reply {
 	t, e := tab_of(app, c)
 	if t == nil { return e }
+	clear_after, _ := remote.param_bool(c.params, "clear")
+	x := control_network(t, clear_after)
 	b := builder()
 	j_begin(&b)
-	j_int(&b, "bytes", t.net.bytes)
+	j_int(&b, "bytes", i64(x.bytes))
 	j_key(&b, "requests"); j_begin(&b, '[')
-	for en in t.net.entries {
+	for en in x.requests {
 		j_key(&b, ""); j_begin(&b)
 		j_int(&b, "id", i64(en.id)); j_str(&b, "method", en.method); j_str(&b, "url", en.url)
-		j_str(&b, "destination", strings.to_lower(fmt.tprintf("%v", en.dest), context.temp_allocator))
+		j_str(&b, "destination", en.destination)
 		j_int(&b, "status", i64(en.status)); j_str(&b, "mime", en.mime); j_int(&b, "bytes", i64(en.bytes))
-		j_bool(&b, "finished", en.ms >= 0); if en.ms >= 0 { j_num(&b, "ms", f64(en.ms)) }
-		j_str(&b, "cache", strings.to_lower(fmt.tprintf("%v", en.cache), context.temp_allocator))
+		j_bool(&b, "finished", en.has_ms); if en.has_ms { j_num(&b, "ms", en.ms) }
+		j_str(&b, "cache", en.cache)
 		if en.failed { j_bool(&b, "failed", true); j_str(&b, "error", en.error) }
 		j_end(&b)
 	}
 	j_end(&b, ']'); j_end(&b)
-	if clear, _ := remote.param_bool(c.params, "clear"); clear { net_clear(&t.net) }
 	return done(strings.to_string(b))
 }
 
 ////////////////////////////////
 // Preferences, commands, panels
 
-pref_json :: proc(app: ^App, name: string) -> (string, bool) {
-	i, ok := app.prefs.index[name]
-	if !ok { return "", false }
-	e := &app.prefs.entries[i]
+pref_json :: proc(p: api.Pref) -> string {
 	b := builder()
 	j_begin(&b)
-	j_str(&b, "name", e.def.name)
-	switch e.def.kind {
-	case .Bool:   j_bool(&b, "value", e.value.b)
-	case .Int:    j_int(&b, "value", e.value.i)
-	case .Float:  j_num(&b, "value", e.value.f)
-	case .String: j_str(&b, "value", e.value.s)
+	j_str(&b, "name", p.name)
+	switch v in p.value {
+	case bool:   j_bool(&b, "value", v)
+	case i64:    j_int(&b, "value", v)
+	case f64:    j_num(&b, "value", v)
+	case string: j_str(&b, "value", v)
 	}
-	j_str(&b, "text", config.value_string(&app.prefs, config.Ref(i)))
-	j_str(&b, "default", config.default_string(&app.prefs, config.Ref(i)))
-	j_str(&b, "source", strings.to_lower(fmt.tprintf("%v", e.source), context.temp_allocator))
-	j_bool(&b, "locked", e.locked); j_bool(&b, "restart", e.def.restart)
+	j_str(&b, "text", p.text)
+	j_str(&b, "default", p.default_text)
+	j_str(&b, "source", p.source)
+	j_bool(&b, "locked", p.locked); j_bool(&b, "restart", p.restart)
 	j_end(&b)
-	return strings.to_string(b), true
+	return strings.to_string(b)
 }
 
 @(private = "file")
 m_pref_get :: proc(app: ^App, c: ^Call) -> Reply {
 	name, bad := need_string(c, "name")
 	if bad.code != 0 { return bad }
-	s, ok := pref_json(app, name)
+	p, ok := control_pref(app, name)
 	if !ok { return fail(remote.ERR_PARAMS, fmt.tprintf("no preference %q", name)) }
-	return done(s)
+	return done(pref_json(p))
 }
 
 @(private = "file")
@@ -1486,8 +1470,8 @@ m_pref_set :: proc(app: ^App, c: ^Call) -> Reply {
 	// override: the command line's layer, which a value given with --pref (at the start of this run) has taken: it is changed, not refused
 	override, _ := remote.param_bool(c.params, "override")
 	if why := control_pref_set(app, name, text, override); why != "" { return fail(remote.ERR_FAILED, why) }
-	s, _ := pref_json(app, name)
-	return done(s)
+	p, _ := control_pref(app, name)
+	return done(pref_json(p))
 }
 
 @(private = "file")
@@ -1496,11 +1480,7 @@ m_pref_list :: proc(app: ^App, c: ^Call) -> Reply {
 	b := builder()
 	j_begin(&b)
 	j_key(&b, "prefs"); j_begin(&b, '[')
-	for name in config.sorted_names(&app.prefs) {
-		if !strings.has_prefix(name, prefix) { continue }
-		s, _ := pref_json(app, name)
-		j_raw(&b, "", s)
-	}
+	for p in control_prefs(app, prefix) { j_raw(&b, "", pref_json(p)) }
 	j_end(&b, ']'); j_end(&b)
 	return done(strings.to_string(b))
 }
@@ -1510,11 +1490,10 @@ m_commands :: proc(app: ^App) -> Reply {
 	b := builder()
 	j_begin(&b)
 	j_key(&b, "commands"); j_begin(&b, '[')
-	t := current_tab(app)
-	for &cmd in commands() {
+	for cmd in control_commands(app) {
 		j_key(&b, ""); j_begin(&b)
 		j_str(&b, "name", cmd.name); j_str(&b, "title", cmd.title); j_str(&b, "category", cmd.category)
-		j_str(&b, "shortcut", command_shortcut_text(&cmd)); j_bool(&b, "enabled", command_enabled(app, t, &cmd))
+		j_str(&b, "shortcut", cmd.shortcut); j_bool(&b, "enabled", cmd.enabled)
 		j_end(&b)
 	}
 	j_end(&b, ']'); j_end(&b)

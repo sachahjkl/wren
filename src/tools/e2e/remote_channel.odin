@@ -28,6 +28,9 @@ foreign advapi32 {
 }
 
 @(private = "file") FIXTURE :: "/site/remote/fixture.htm"
+@(private = "file") BOX_W :: 200   // its #box
+@(private = "file") BOX_H :: 100
+@(private = "file") HTTP_OK :: 200
 // The window of `wren ctl run`.
 @(private = "file") RUN_W :: 1000
 @(private = "file") RUN_H :: 700
@@ -131,16 +134,22 @@ what_a_client_reads_over_the_channel :: proc(t: ^testing.T) {
 	testing.expect_value(t, missing, api.Error.Timeout)
 	s.on_failure = stop
 
-	api.box_model(s, "#box")
-	testing.expectf(t, strings.contains(s.result, `"width":200`) && strings.contains(s.result, `"height":100`), "the box of an element: %s", s.result)
+	box, _ := api.box_model(s, "#box")
+	testing.expectf(t, box.box.w == BOX_W && box.box.h == BOX_H && box.visible, "the box of an element: %v", box)
+	found, _ := api.query_all(s, "#box", 1)
+	testing.expectf(t, found.count == 1 && len(found.nodes) == 1 && found.nodes[0].has_box && found.nodes[0].box.w == BOX_W && strings.has_prefix(found.nodes[0].outer_html, "<div"), "what a query finds: %v", found)
+	style, _ := api.computed_style(s, "#box", {"width"})
+	testing.expect_value(t, api.style_of(style, "width"), "200px")
 	list, _ := api.commands(s)
 	has_new_tab := false
-	for command in list { if command.name == "tab.new" { has_new_tab = true } }
-	testing.expect(t, has_new_tab, "the commands of the registry are listed")
-	reqs, _ := api.network(s)
+	for command in list { if command.name == "tab.new" { has_new_tab = command.enabled && command.category != "" } }
+	testing.expect(t, has_new_tab, "the commands of the registry are listed, with what they are")
+	net, _ := api.network(s)
 	has_page := false
-	for q in reqs { if strings.contains(q.url, "fixture.htm") { has_page = true } }
+	for q in net.requests { if strings.contains(q.url, "fixture.htm") { has_page = q.status == HTTP_OK && q.has_ms && q.destination == "document" } }
 	testing.expect(t, has_page, "the network log has the document")
+	prefs, _ := api.pref_list(s, "browser.scroll.key_line_px")
+	testing.expectf(t, len(prefs) == 1 && prefs[0].source != "" && prefs[0].default_text != "", "a preference and all that is known of it: %v", prefs)
 
 	st, _ := api.stats(s)
 	testing.expectf(t, st.pid == who.pid && st.cpu_time_ms > 0 && st.threads > 1 && st.handles > 0 && st.uptime_ms > 0 && st.working_set_bytes > 0, "the numbers of the process: %v", st)

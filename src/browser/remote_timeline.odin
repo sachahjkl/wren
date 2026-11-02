@@ -101,36 +101,34 @@ timeline_end :: proc(app: ^App) {
 	if tl.asked { render.capture_cancel(&app.r); tl.asked = false }
 }
 
-// Wren.timeline {action: start | stop | status, scale (0.3), max (240), target: window | page (start); dir, cols (6), all (stop)}
+// Wren.timeline {action: start | stop | status, scale, max, target: window | page (start); dir, cols, all (stop)}
 m_timeline :: proc(app: ^App, c: ^Call) -> Reply {
-	tl := &the_remote.tl
 	action, _ := remote.param_string(c.params, "action", "status")
 	switch action {
 	case "start":
-		s, _ := remote.param_float(c.params, "scale", 0.3)
-		mx, _ := remote.param_int(c.params, "max", 240)
+		s, _ := remote.param_float(c.params, "scale", TIMELINE_SCALE)
+		mx, _ := remote.param_int(c.params, "max", TIMELINE_FRAMES)
 		tgt, _ := remote.param_string(c.params, "target", "window")
-		rect: [4]int
-		if tgt == "page" {
-			pr := active_window(app).page_rect
-			rect = {int(pr.min.x), int(pr.min.y), int(pr.max.x - pr.min.x), int(pr.max.y - pr.min.y)}
-		}
-		timeline_begin(app, f32(s), mx, rect)
-		return done(fmt.tprintf(`{{"recording":true,"scale":%.2f,"max":%d}}`, tl.scale, tl.max))
+		scale, most := control_timeline_start(app, s, mx, tgt == "page")
+		return done(fmt.tprintf(`{{"recording":true,"scale":%.2f,"max":%d}}`, scale, most))
 	case "status":
-		return done(fmt.tprintf(`{{"recording":%v,"frames":%d}}`, tl.on, len(tl.frames)))
+		on, frames := control_timeline_state()
+		return done(fmt.tprintf(`{{"recording":%v,"frames":%d}}`, on, frames))
 	case "stop":
 		dir, ok := remote.param_string(c.params, "dir")
 		if !ok { return fail(remote.ERR_PARAMS, "\"dir\": the folder for the pictures") }
-		cols, _ := remote.param_int(c.params, "cols", 6)
+		cols, _ := remote.param_int(c.params, "cols", TIMELINE_COLS)
 		all, _ := remote.param_bool(c.params, "all")
-		timeline_end(app)
-		rep := timeline_write(tl, dir, clamp(cols, 1, 24), all)
-		timeline_free(tl)
-		return rep
+		document, why := control_timeline_stop(app, dir, cols, all)
+		if why != "" { return fail(remote.ERR_FAILED, why) }
+		return done(document)
 	}
 	return fail(remote.ERR_PARAMS, "action: start, stop or status")
 }
+// What a call that does not say gets.
+@(private = "file") TIMELINE_SCALE :: 0.3
+@(private = "file") TIMELINE_FRAMES :: 240
+@(private = "file") TIMELINE_COLS :: 6
 
 @(private = "file")
 pixels_differing :: proc(a, b: []u8) -> int {
@@ -143,10 +141,10 @@ pixels_differing :: proc(a, b: []u8) -> int {
 
 // Writes the frames to `dir`: NNN.png, sheet.png, timeline.json and index.html (a page that shows them big, one at a time or in a strip,
 // with what is known of each).
-timeline_write :: proc(tl: ^Timeline, dir: string, cols: int, all: bool) -> Reply {
+timeline_write :: proc(tl: ^Timeline, dir: string, cols: int, all: bool) -> (document, why: string) {
 	frames := tl.frames[:]
-	if len(frames) == 0 { return fail(remote.ERR_FAILED, "no frame was recorded (was `timeline start` called, and did the window draw?)") }
-	if err := os.make_directory_all(dir); err != nil && !os.exists(dir) { return fail(remote.ERR_FAILED, fmt.tprintf("cannot make %s", dir)) }
+	if len(frames) == 0 { return "", "no frame was recorded (was `timeline start` called, and did the window draw?)" }
+	if err := os.make_directory_all(dir); err != nil && !os.exists(dir) { return "", fmt.tprintf("cannot make %s", dir) }
 	n := len(frames)
 	w, h := frames[0].w, frames[0].h
 	thr := max(30, w * h / 3000)   // pixels that must differ for a frame to count as changed
@@ -206,13 +204,13 @@ timeline_write :: proc(tl: ^Timeline, dir: string, cols: int, all: bool) -> Repl
 	for k, slot in shown { if slot > 0 { strings.write_byte(&shown_list, ',') }; fmt.sbprintf(&shown_list, "%d", k) }
 	fmt.sbprintf(&b, `],"count":%d,"chrome":%d,"aba":%d,"sheet":%s,"sheetFrames":[%s],"cols":%d,"width":%d,"height":%d}}`,
 		n, chrome, flagged, remote.quote(sheet_path), strings.to_string(shown_list), cols, w, h)
-	if err := os.write_entire_file(fmt.tprintf("%s/timeline.json", dir), transmute([]byte)strings.to_string(b)); err != nil { return fail(remote.ERR_FAILED, "cannot write timeline.json") }
+	if err := os.write_entire_file(fmt.tprintf("%s/timeline.json", dir), transmute([]byte)strings.to_string(b)); err != nil { return "", "cannot write timeline.json" }
 	page := strings.builder_make(context.temp_allocator)
 	strings.write_string(&page, TIMELINE_VIEWER_HEAD)
 	strings.write_string(&page, strings.to_string(b))
 	strings.write_string(&page, TIMELINE_VIEWER_TAIL)
 	_ = os.write_entire_file(fmt.tprintf("%s/index.html", dir), transmute([]byte)strings.to_string(page))
-	return done(strings.to_string(b))
+	return strings.to_string(b), ""
 }
 
 TIMELINE_VIEWER_HEAD :: `<!doctype html><meta charset="utf-8"><title>Wren timeline</title>
