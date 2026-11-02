@@ -6,6 +6,7 @@ import "core:strings"
 import "core:text/regex"
 import "core:time"
 import "wb:tools/tooling"
+import "wb:tools/wrentool/builder"
 
 // The actions a program of their own would only wrap: done on a thread of this one.
 
@@ -15,10 +16,7 @@ task_js_engine :: proc(t: ^Task_Run) -> bool {
 
 // build/wren.com, when a source is newer than it (a test that runs it holds the file: two steps must not both write it).
 task_launcher :: proc(t: ^Task_Run) -> bool {
-	OUT :: "build/wren.com"
-	odin_source :: proc(path: string) -> bool { return strings.has_suffix(path, ".odin") }
-	if built, ok := tooling.modified(OUT); ok && !tooling.any_newer("src/tools/wrencom", built, odin_source) { return true }
-	return task_exec(t, {"odin", "build", "src/tools/wrencom", "-vet", "-subsystem:console", "-o:size", out_flag(OUT), "-extra-linker-flags:/NODEFAULTLIB:vcruntime.lib /DEFAULTLIB:libvcruntime.lib"}) == 0
+	return builder.launcher(t.log)
 }
 
 // Is the program of this variant newer than everything it is built from? (The build takes a minute even when nothing changed: Odin compiles the whole program every time.) The sources of the browser and of the
@@ -26,7 +24,7 @@ task_launcher :: proc(t: ^Task_Run) -> bool {
 browser_fresh :: proc(program: string) -> bool {
 	built, ok := tooling.modified(program)
 	if !ok { return false }
-	for f in ([]string{"build.bat", "odin.version", "build/js/wren_js.wasm", "build/lexbor/lexbor.lib", "build/native/wren_native.lib"}) {
+	for f in ([]string{"odin.version", "build/js/wren_js.wasm", "build/lexbor/lexbor.lib", "build/native/wren_native.lib"}) {
 		t, has := tooling.modified(f)
 		if !has || time.diff(built, t) > 0 { return false }
 	}
@@ -41,10 +39,12 @@ browser_fresh :: proc(program: string) -> bool {
 	return true
 }
 
+// The browser's build (wrentool build, package builder), done here: what the compilers say goes to the step's log.
 task_browser :: proc(t: ^Task_Run) -> bool {
-	program := t.arg == "check" ? "build/wren_check.exe" : "build/wren.exe"
-	if browser_fresh(program) { return true }
-	return task_exec(t, {"cmd", "/c", ".\\build.bat", t.arg}) == 0   // (.\: with NoDefaultCurrentDirectoryInExePath in the environment cmd looks only on the PATH)
+	o := builder.options_from_env(t.arg == "check" ? .Check : .Dev)
+	o.log = t.log
+	if browser_fresh(builder.program_of(o)) { return true }
+	return builder.browser(o)
 }
 
 task_testserver :: proc(t: ^Task_Run) -> bool {

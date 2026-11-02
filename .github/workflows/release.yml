@@ -27,7 +27,7 @@ jobs:
 
       - uses: ./.github/actions/setup
         with:
-          native-profile: release   # build.bat release: the Rust library with fat LTO
+          native-profile: release   # wrentool build release: the Rust library with fat LTO
 
       - name: Check the version
         id: version
@@ -49,7 +49,7 @@ jobs:
       # packed.
       - name: Build (release)
         shell: cmd
-        run: call build.bat release
+        run: build\wrentool.exe build release
 
       - name: The release exe end to end (src\tools\e2e\remote_channel.odin, remote_state.odin, on build\wren.exe)
         shell: cmd

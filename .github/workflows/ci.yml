@@ -44,9 +44,9 @@ jobs:
         timeout-minutes: 20
         run: |
           $sw = [Diagnostics.Stopwatch]::StartNew()
-          cmd /c build.bat
+          build/wrentool build
           $code = $LASTEXITCODE
-          "build.bat took {0:N0} s" -f $sw.Elapsed.TotalSeconds
+          "wrentool build took {0:N0} s" -f $sw.Elapsed.TotalSeconds
           exit $code
 
       # Two steps of test_all at a time (-Jobs 0 is two under -CI; the end-to-end timeouts of -CI are three times the usual). Measured on this runner
@@ -139,9 +139,12 @@ jobs:
         timeout-minutes: 20
         run: |
           $sw = [Diagnostics.Stopwatch]::StartNew()
-          cmd /c build.bat
+          New-Item -ItemType Directory -Force build | Out-Null
+          odin build src/tools/wrentool -collection:wb=src -out:build/wrentool.exe
+          if ($LASTEXITCODE) { exit 1 }
+          build/wrentool build
           $code = $LASTEXITCODE
-          "build.bat took {0:N0} s" -f $sw.Elapsed.TotalSeconds
+          "wrentool build took {0:N0} s" -f $sw.Elapsed.TotalSeconds
           exit $code
 
       - name: Unit tests under AddressSanitizer (src\tools\test_all -Only AddressSanitizer)
@@ -165,7 +168,7 @@ jobs:
 
       - uses: ./.github/actions/setup
 
-      - name: Native libraries and the JavaScript engine (what build.bat builds first)
+      - name: Native libraries and the JavaScript engine (what wrentool build builds first)
         timeout-minutes: 20
         run: |
           New-Item -ItemType Directory -Force build | Out-Null

@@ -67,7 +67,7 @@ fetch_wasmtime :: proc(o: Options) -> bool {
 	return write_stamp(stamp, WASMTIME_VERSION)
 }
 
-fetch_wgpu :: proc(o: Options) -> bool { return fail(o, "wgpu-native is fetched this way on Linux: on Windows, ext/gui_toolkit/tools/fetch_wgpu.ps1 (build.bat, WREN_RENDER=wgpu)") }
+fetch_wgpu :: proc(o: Options) -> bool { return fail(o, "wgpu-native is fetched this way on Linux: on Windows, ext/gui_toolkit/tools/fetch_wgpu.ps1 (wrentool build, WREN_RENDER=wgpu)") }
 fetch_openh264 :: proc(o: Options) -> bool { return fail(o, "OpenH264 is fetched on Linux: Windows decodes H.264 through Media Foundation") }
 
 }

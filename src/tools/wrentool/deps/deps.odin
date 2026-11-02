@@ -1,4 +1,4 @@
-// Package deps: what a build of Wren needs before the compiler runs. Each does nothing when its output is up to date (a stamp says what it was made from), so build.bat and build.sh call it every time.
+// Package deps: what a build of Wren needs before the compiler runs. Each does nothing when its output is up to date (a stamp says what it was made from), so wrentool build (package builder) and build.sh call it every time.
 //   wrentool deps [-Profile quick|release] [-Force]     all of them, for this system
 //   wrentool fetch wasmtime|wgpu|openh264|emoji [-Force] [-Unicode] [-Dest dir]
 //   wrentool build lexbor|native [-Force] [-Profile quick|release] [-Features a,b]
@@ -39,6 +39,11 @@ options_of :: proc(args: []string) -> (o: Options, ok: bool) {
 run_all :: proc(args: []string) -> int {
 	o, ok := options_of(args)
 	if !ok { return 1 }
+	return all(o) ? 0 : 1
+}
+
+all :: proc(options: Options) -> bool {
+	o := options
 	_ = os.make_directory_all(LOG_DIR)
 	Named :: struct { name: string, step: Step }
 	when ODIN_OS == .Windows {
@@ -51,10 +56,10 @@ run_all :: proc(args: []string) -> int {
 		_ = os.remove(o.log)
 		if !s.step(o) {
 			fmt.eprintfln("%s failed: read %s, or run  wrentool %s", s.name, o.log, s.name == "wasmtime" || s.name == "wgpu" || s.name == "emoji" ? fmt.tprintf("fetch %s", s.name) : fmt.tprintf("build %s", s.name))
-			return 1
+			return false
 		}
 	}
-	return 0
+	return true
 }
 
 run_fetch :: proc(args: []string) -> int {

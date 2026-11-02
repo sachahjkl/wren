@@ -1,5 +1,5 @@
 // bindgen: generates every copy of the web API from its description (api/*.widl, see src/tools/bindgen/idl).
-//   bindgen          writes what changed (build.bat runs it)
+//   bindgen          writes what changed (wrentool build runs it)
 //   bindgen -check   writes nothing, fails if a generated file is missing, stale or left over (test_all runs it)
 // Run from the repository root. Targets:
 //   * the browser API: api/*.widl -> src/page/api_generated.odin (host), sdk/odin/web/<module>.odin (guest SDK),

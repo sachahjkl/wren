@@ -145,10 +145,10 @@ a_light_step_takes_no_slot_of_the_others :: proc(t: ^testing.T) {
 @(test)
 two_build_bat_never_run_at_once :: proc(t: ^testing.T) {
 	context.allocator = runtime.heap_allocator()   // (what a run keeps until it ends)
-	table := []Step{fake("one", marks = {.Build_Bat}, task = held_task), fake("other", marks = {.Build_Bat}, task = held_task)}
+	table := []Step{fake("one", marks = {.Browser_Build}, task = held_task), fake("other", marks = {.Browser_Build}, task = held_task)}
 	s := table_scheduler(table, 4, 2)
 	schedule_turn(s)
-	testing.expect_value(t, s.running[.Build_Bat], 1)
+	testing.expect_value(t, s.running[.Browser_Build], 1)
 	sync.atomic_store(&let_go, true)
 	schedule(s)
 }

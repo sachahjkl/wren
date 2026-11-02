@@ -263,7 +263,7 @@ not start, <strong>127</strong> there is no <code>wren.exe</code> beside it. The
 from Wren, so they are not in the <code>i18n</code> catalogue.</p>
 <h2 id="where-it-comes-from-and-who-writes-it"><a class="anchor" href="#where-it-comes-from-and-who-writes-it" aria-hidden="true">#</a>Where it comes from and who writes it</h2>
 <ul>
-<li><code>build.bat</code> compiles it to <code>build\wren.com</code> (<code>-subsystem:console</code>, before the browser).</li>
+<li><code>wrentool build</code> (<code>build.bat</code>) compiles it to <code>build\wren.com</code> (<code>-subsystem:console</code>, before the browser).</li>
 <li><code>wren.exe</code> embeds it (<code>#load</code>, <code>src/browser/console_launcher.odin</code>): the release stays one file.</li>
 <li><strong>Setup writes it</strong> beside the installed <code>wren.exe</code> when "Add Wren to PATH" is ticked and <strong>removes it</strong> when it is
 unticked, when the integration is removed (<code>--desktop-integration=remove</code>) and when Wren is uninstalled or the installation is

@@ -16,7 +16,7 @@ import "wb:tools/tooling"
 
 Step_State :: enum { Blocked, Ready, Running, Dumping, Done }
 Status :: enum { None, Pass, Fail, Flaky, Cached, Not_Run }
-Slot :: enum { Heavy, Light, Asan, Build_Bat }
+Slot :: enum { Heavy, Light, Asan, Browser_Build }
 
 // How often the loop looks: at most this much of a step's slot goes idle between two steps.
 TICK :: 10 * time.Millisecond
@@ -93,7 +93,7 @@ Scheduler :: struct {
 
 slot_of :: proc(s: ^Step) -> Slot {
 	if .Asan in s.marks { return .Asan }
-	if .Build_Bat in s.marks { return .Build_Bat }
+	if .Browser_Build in s.marks { return .Browser_Build }
 	return .Light in s.marks ? .Light : .Heavy
 }
 
@@ -257,7 +257,7 @@ choose_steps :: proc(cfg: ^Config, table: []Step, c: ^Cache, skipped_ci, skipped
 scheduler_make :: proc(cfg: ^Config, steps: []^Step, durations: ^map[string]int, c: ^Cache) -> ^Scheduler {
 	s := new(Scheduler)
 	s.cfg, s.cache = cfg, c
-	s.limits = {.Heavy = cfg.jobs, .Light = cfg.light_jobs, .Asan = ASAN_JOBS, .Build_Bat = 1}
+	s.limits = {.Heavy = cfg.jobs, .Light = cfg.light_jobs, .Asan = ASAN_JOBS, .Browser_Build = 1}
 	s.runs = make([]Step_Run, len(steps))
 	s.by_rank = make([]^Step_Run, len(steps))
 	for st, i in steps {

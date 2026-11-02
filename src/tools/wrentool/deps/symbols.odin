@@ -8,7 +8,7 @@ import "core:strconv"
 import "core:strings"
 import "wb:tools/tooling"
 
-// The symbols of a build: the linker's map (build.bat links with /MAP), named by the build's fingerprint, and what reads them.
+// The symbols of a build: the linker's map (wrentool build links with /MAP), named by the build's fingerprint, and what reads them.
 // A release has no PDB (-debug would change the program), so a crash report of a release names no function of Wren in the process. The map names every function (Odin writes "pkg::proc" and, for a
 // private one, "pkg::[file.odin]::proc") with its address; the report gives the build's fingerprint and the module's base (src/tools/crashtrace), and this turns the frames' addresses into functions.
 // The fingerprint is the PE header's link time stamp and image size, "%08X%X" (as a symbol server keys an executable): every link makes a new one, signing does not change it.
@@ -70,7 +70,7 @@ publish_symbols :: proc(exe: string, store: bool) -> (named: string, ok: bool) {
 	dir := filepath.dir(exe)
 	stem := filepath.stem(exe)
 	map_file := fmt.tprintf("%s/%s.map", dir, stem)
-	if !os.exists(map_file) { fmt.eprintfln("error: %s is not there (build.bat links with /MAP)", map_file); return "", false }
+	if !os.exists(map_file) { fmt.eprintfln("error: %s is not there (wrentool build links with /MAP)", map_file); return "", false }
 	fp, good := fingerprint_of(exe)
 	if !good { fmt.eprintfln("error: %s is not a PE file", exe); return "", false }
 	mt, _ := tooling.modified(map_file)
