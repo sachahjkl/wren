@@ -136,8 +136,14 @@ After round 3 (medians of 6 runs of each build, interleaved, `js_nodes10k` at 18
 Sampled against the style stage, which did not change, the script stage is 4.0 to 4.15 times the style stage before and
 2.82 to 2.84 after (3 runs each): the collection 61 % less, the rest 10 % less.
 
-After round 4 (medians of 5 interleaved runs): the window thread waits 8.1 -> 5.3 ms a frame on layout, a full pass
+After round 4, layout (medians of 5 interleaved runs): the window thread waits 8.1 -> 5.3 ms a frame on layout, a full pass
 5.9 -> 3.5 ms (its paragraphs in columns now on the layout threads), 52.3 -> 55.1 frames/s.
+
+After round 4, style (4 runs of each of the five builds, interleaved; median, range in brackets): the style stage 8.8 (8.0-9.1)
+-> 3.3 (3.0-3.4) ms a frame, 11.1 -> 0.1 MB of styles a pass, 47.7 (45.3-53.4) -> 56.8 (55.8-61.5) frames/s, CPU work
+per frame 60.6 (53.7-63.5) -> 50.7 (46.7-51.5) ms, private memory 280 -> 265 MB. What is left of the style stage on the
+window thread: the top of the tree and the counters' walk in tree order (`compute_styles`, 46 % of the stage's samples),
+the check of what was inserted (`inserted_exceed`, 18 %), the style threads' round (`parallel_for`, 19 %).
 
 **Bottleneck:** the script stage (the interpreter and its native calls, making wrappers, the collection), then layout.
 
@@ -172,6 +178,14 @@ after a style pass 2.6 to 4.6 % -> 0.2 to 0.6 %. The same page with a class togg
 After round 3 (medians of 5 interleaved runs): a full style pass makes 13.5 -> 7.7 MB of styles (both pages), private
 memory 234 -> 222 MB (`mutation`) and 258 -> 232 MB (`mutation_class`); a partial restyle 0.024 -> 0.021 ms and
 0.243 -> 0.230 ms; CPU work per frame 1.19 -> 1.09 and 1.84 -> 1.79 ms mean.
+
+After round 4 (5 runs of each build, interleaved, the order turning; median, range in brackets): a full style pass makes
+7.7 -> 0.1 MB of styles (both pages); private memory 228 -> 217 MB (`mutation`); the same page
+with every pass full (`mutation_fullstyle`) 5.1 (4.2-15.6) -> 2.1 (1.7-8.2) ms a pass, 15.3 -> 0.2 MB, CPU work per frame
+12.0 -> 5.8 ms. A partial restyle of the one changed text costs what it did (0.02 to 0.03 ms: the passes' times are
+counted in whole milliseconds, 5 to 19 ms over the 290 restyles of a run, before and after). `mutation_class` (5 runs
+of each, interleaved, the order turning): a partial restyle 0.193 (0.187-0.203) -> 0.167 (0.152-0.232) ms, a full pass
+7.5 -> 3 ms, CPU work per frame 1.42 -> 1.29 ms, private memory 236 -> 215 MB.
 
 ## What changed, round 1
 
@@ -411,6 +425,66 @@ multicol.html resized makes incremental passes, which keep one thread.
 | p10k_scroll: frames/s, CPU work per frame p50 | 167, 0.52 ms | 165, 0.40 ms |
 | mutation: frames/s, CPU work per frame mean | 73.1, 1.01 ms | 73.5, 0.99 ms |
 | examples/site/multicol.html resized (incremental passes): layout p50 | 0.074 ms | 0.074 ms |
+
+## What changed, round 4: the cost of styling one element
+
+Item 2 of round 3's list. Five profile builds measured against each other (the one before the round, then each step on
+top of the last), interleaved, `wrentool bench perf` and the sampler as in round 3.
+
+1. **Identical styles shared** (`src/style/share.odin`). A computed style is a value, made of: its parent's style (the
+   record), the declarations that match the element (its matched entries: rule, selector, encapsulation context, for the
+   element and for its ::before, ::after and ::selection), its style attribute (by text), its encapsulation depth, and
+   what is the same for the whole pass (the rules, the media environment, the page's color scheme, the settings). Two
+   elements of one pass whose inputs are equal get one record: a table per pass (flat, open addressing; the keys' words
+   in one array) maps the inputs to the record the first one got. It is not a cache: it holds the values the pass made,
+   lives as long as that pass, is never asked about another and never invalidated, and an element it does not find costs
+   what it cost before. What makes a style the element's own keeps it out of the table: presentational hints (attributes
+   as declarations), a `lang` other than the parent's language, an element the embedder hides or that is above the top
+   layer; a query container (its size is the element's), position-try fallbacks, a list marker that shows a counter,
+   generated content with attr(), counters or quotes. A record in the table is never written again: what markers and
+   generated content resolve to is resolved when it is made, and the counters' walks write a value only when it differs.
+   So a record no longer says whose it is: `Styled.nodes` holds the element of each slot (what `style_of` checks against
+   a recycled index), and layout's refresh (`layout/refresh.odin`) re-points an element's inline items by the element,
+   not by the record its old record became for some box (the demo pages' random mutations found a link left with the
+   record of a block that had shared its style). A partial restyle that finds the style it made equal to the one in
+   force puts that one in the table and drops what it made, as before. Tests: `src/style/share_test.odin` (one record for equal inputs; two for a
+   style attribute, an attribute read by attr(), `lang`, `:hover`, the container of a query or of cq units that differ;
+   numbered markers). nodes10k: 11.1 -> 0.2 MB of styles a pass, the style stage 8.8 (8.0-9.1) -> 7.6 (7.4-8.0) ms, 47.7
+   -> 52.9 frames/s; `mutation_fullstyle` 5.1 -> 2.0 ms a pass (best runs 4.2 -> 1.9), 15.3 -> 0.3 MB; p10k loaded 7.7
+   -> 3.2 MB.
+2. **The inherited properties in a group of their own** (`Inherited_Group`, `src/style/types.odin`), shared with the
+   parent until the element sets one: an element that sets none inherits by one pointer (it copied about 500 bytes,
+   `inherit_all`, now gone). The cascade takes the group on the first write (`cx_take`, `cx_own`): `apply_prop`, the
+   `inherit` / `initial` / `unset` copies (a copy from the parent whose group it shares is nothing to do), and the
+   derived values, written only when they differ: `scheme_settle`, the legacy `white-space`, the content language, the
+   monospace size, `text-combine-upright` out of a vertical mode. Outside the cascade: the timeline's `push_inherited` and
+   `pseudo_inherit` and `derive_fields` take their own copy; layout's anonymous boxes share their parent's (the
+   `border-spacing` they copied again was the same value and is no longer written). The initial inherited values follow
+   the preferences: one group per style pass (and per configuration for validating declarations), not read-only pages.
+   An element's style is 1 KB instead of 1.5. nodes10k: no change (its styles were shared already); p10k loaded 3.2 ->
+   2.7 MB a pass; `mutation_fullstyle` 0.3 -> 0.2 MB, the pass the same within the noise (best runs 1.9 -> 1.7 ms).
+3. **The style arenas emptied without zeroing** (`style_arena_allocator`, `style_arena_empty`, `src/style/cascade.odin`).
+   A virtual arena zeroes what it held when it is emptied, so that what it hands out next is zero: the computed styles
+   and their groups, which the cascade overwrites whole, were zeroed twice. The style threads' arenas and the pass's own
+   are now emptied by resetting their block; what is allocated from them is zeroed when it is handed out, except the
+   records and the groups (`record_new`, `group_take`). On nodes10k the zeroing was 13 % of the style threads because
+   each pass made 11 MB: after item 1 it makes 0.1 MB and the zeroing was gone already. `mutation_fullstyle`:
+   `arena_free_all` 1.6 % of the busiest style thread's samples -> none (the allocator 2.4 %); the pass the same within
+   the noise.
+4. **A restyle of mostly new elements gives up before marking them** (`inserted_exceed`, `src/style/restyle_dom.odin`).
+   On nodes10k every frame tried a partial restyle first, marked what the 10 000 journal entries reach (the invalidation
+   index, the sibling walks), estimated the work, and found it too much: that marking cost twice the full pass that
+   followed (half of the style stage's samples, `mark_mutations`). The elements of the inserted subtrees are restyled
+   whole, so their count is a lower bound of the estimate: past the limit, the answer is the one the marking would give
+   (documents without shadow trees; not with `WREN_RESTYLE_TRACE`, which reports the marks). nodes10k: the style stage
+   7.6 (7.3-7.9) -> 3.3 (3.0-3.4) ms a frame, 52.2 -> 56.8 frames/s, CPU work per frame 54.9 -> 50.7 ms.
+
+What was measured on the other pages, before the round and after it (medians, ranges in brackets): `mutation` and
+`mutation_class` above (map, 5); `examples/site/modern-css.html` resized (240 full passes a run, 5 runs of each build):
+0.95 (0.95-1.01) -> 0.96 (0.95-1.84) ms a pass, 0.2 MB, CPU work per frame 0.40 -> 0.39 ms; p10k loaded (5 runs of
+each): 240 (238-280) -> 241 (240-776) ms to load, its full pass 6 (6-7) -> 6 (5.5-13.5) ms, 7.7 -> 2.7 MB of styles.
+The machine ran other agents' builds meanwhile: single runs moved by a factor of 2 to 3, hence the ranges.
+
 ## Inventory
 
 ### Internal caches (remove by making the path fast; product caches kept)
@@ -419,7 +493,9 @@ Kept, a product: the HTTP cache (`src/httpcache`), the back/forward cache (`brow
 disk (`js/cache.odin`), compiled Wasm modules (`wasm/module_cache.odin`), the Cache API (`page/cache_store.odin`): each
 saves the network or a compiler's work across navigations and starts, which no faster path can. GPU residency, not caches:
 the glyph atlas (`font/raster.odin:71`), Slug glyph data (`font/slug_cache.odin:44`), image textures
-(`browser/images_shell.odin:70`), retained pictures (`browser/compositor.odin:129`, with its memory budget).
+(`browser/images_shell.odin:70`), retained pictures (`browser/compositor.odin:129`, with its memory budget). Not a cache
+either: the table of a style pass that gives elements with the same inputs the same computed style (`style/share.odin`,
+round 4): it holds the values that pass made and goes with it, nothing in it is invalidated.
 
 To remove:
 
@@ -447,6 +523,8 @@ of every element, plus a concatenation per indexed attribute at `cascade.odin:44
 `page/fonts.odin` `fonts_sync` (a `seen` table of shared lists, now only when something new may be used);
 `ext/gui_toolkit/font/raster.odin:74-79` (per glyph, under the atlas lock); `page/timeline_lcp.odin` `et_seen` (per
 element with `elementtiming` only). Gone in round 1: `page/timeline_lcp.odin` `ls_prev` (per box, per mutated frame).
+Added in round 4, flat: `style/share.odin` (a style pass's shared styles: open addressing, the keys' words in one array,
+one lookup per element); `style/restyle_dom.odin` `inserted_exceed` (the inserted nodes of a restyle, a set by handle).
 
 ### Arrays of bools
 
@@ -496,6 +574,8 @@ pass does); what is left of them is folded in below. Round 3 also measured round
 the network's locks) and kept the mutexes; item 7 is now the job queues, to be measured the same way before anything
 replaces them. Round 2's item 1 is done in part: the engine traces, it counts no reference a script holds, so a plain
 wrapper still waits for a collection, but the collection no longer pays for it.
+After round 4. Round 3's item 2 is done for what it named (styles shared, the inherited group, the arenas, and the
+restyle that gave up too late); what styling an element still costs is item 3 below.
 
 1. **The script stage of DOM-heavy pages** (nodes10k: 25 ms of a 47 ms frame). In order of the samples: the interpreter's
    native calls and the property lookups up the prototype chains (`get_property` is a quarter of the engine's samples;
@@ -503,13 +583,13 @@ wrapper still waits for a collection, but the collection no longer pays for it.
    finalizers, `Node_unpin` one wrapper at a time, the prologue's visit of every wrapper); making wrappers
    (`make_wrapper`, `Node_wrap`); the DOM work of an insertion (its hooks walk the inserted subtree). Not the crossings
    (4 %, section 2).
-2. **The cost of styling one element** (nodes10k: 8.3 ms a frame for 7 500 new elements, full pass or partial). On the
-   style threads (round 3's profiler): matching (`collect_entries`, about a quarter), `build_style`, and zeroing the
-   arena they take back (`arena_free_all`, 13 %). Next steps: the inherited properties in a group of their own, shared
-   with the parent until an element sets one (`inherit_all` copies about 500 bytes for every element; the writes to
-   take care of are the derived values of the cascade, `scheme_settle`, `derive_fields`, the content language, and the
-   copies of inherited values outside it: layout's refresh of anonymous boxes, the timeline's `push_inherited` and
-   `pseudo_inherit`); an arena that need not be zeroed for the records the cascade overwrites whole.
+2. **Matching, and the walks in tree order** (now most of what an element costs: `collect_entries` 28 to 46 % of the
+   style threads' samples on `mutation_fullstyle`). Matching shared between siblings whose selector inputs are the same
+   (tag, id, classes, attributes, the parent's match context), where no rule in force depends on position among the
+   siblings, on the element's own state or on `:has()`: the share table's key could then be had without matching. On
+   nodes10k's window thread: the counters' walk visits every element in tree order after a parallel pass
+   (`counters_post_pass`; a list item's marker formatted to be compared, 8 % of the stage), the check of what was
+   inserted (`inserted_exceed`, 18 %: a set by handle and two walks up per inserted node).
 3. **Layout of DOM-heavy pages, what round 4 left** (nodes10k: the window thread waits 5.3 ms a frame on a pass
    of 3.5 ms; the page thread's samples after round 4): the display list of the flow (`emit_lines` and
    `push_flow_item`, 12 to 15 %: every text item is copied once per column it may lie in, and `emit_lines` reads two
