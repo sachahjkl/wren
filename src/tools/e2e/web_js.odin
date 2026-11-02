@@ -1,3 +1,4 @@
+#+build windows
 #+private file
 // JavaScript in a page: the engine module instantiated as the page's realm, scripts of a parsed document, the bindings generated from
 // the Web IDL, events, microtasks, the wrapper cache and the lifetime of nodes across the two heaps, the bytecode cache, interruption,

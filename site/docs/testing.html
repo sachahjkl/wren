@@ -357,6 +357,18 @@ the_title_shows :: <span class="k">proc</span>(t: ^testing.T) {
 </ul>
 <p>Running them by hand: <code>build\e2e_test.exe -tests:the_title_shows</code> (no window opens, no other desktop is needed, except for a scenario with <code>hidden = true</code>), or <code>build\test_all.exe -Quick -NoCache -Only "src.tools.e2e"</code>. <code>WREN_E2E_TRACE=1</code> prints every call with its time, <code>WREN_PHASES=1</code> the phases of a start and an end of the browser (a real <code>wren.exe</code> says them too). A teardown that hangs ends the process after 10 s (<code>host.shutdown_watchdog</code>); what its threads were doing is on its standard error first, so in the step's log: <code>build\e2e_test.exe</code> answers <code>ctl stacks &lt;pid&gt; --out &lt;file&gt;</code> as a <code>wren.exe</code> does.</p>
 <p>Two things <code>core:testing</code> does not give: a test stopped by a signal (<code>testing.fail_now</code>, a panic) can happen once per run on Windows, the runner lets go of a lock it does not hold, and the next signal waits for ever; <code>e2e</code> stops its tests through a limit of 0 instead (hence the "Test timed out" after a failure's message). And checks that pass say nothing: <code>test_all</code> counts tests here, not checks.</p>
+<h2 id="testing-the-interface-with-no-browser-around-it"><a class="anchor" href="#testing-the-interface-with-no-browser-around-it" aria-hidden="true">#</a>Testing the interface with no browser around it</h2>
+<p>What a test of the interface (the tabs, the address bar's list, a menu, the zoom, a docked panel) needs of a browser is the chrome's own code: it starts none. <code>chrome_start</code> (<code>src/tools/e2e/chrome_world.odin</code>) makes an App of its preferences, its fonts, an offscreen window and tabs with no page, and each frame runs the real <code>build_ui</code> under the toolkit's session (<code>toolkit:testkit/session</code>), with no network, no script engine, no profile and no renderer unless the test asks for pixels. A test takes 7 to 40 ms, 1 s when it has pixels (the software rasterizer's start).</p>
+<div class="code"><div class="file">Odin</div><pre><code>@(test)
+chrome_sidebar_pinned_tabs :: <span class="k">proc</span>(t: ^testing.T) {
+	w := <span class="f">chrome_start</span>(t, {tabs = {<span class="s">"Alpha"</span>, <span class="s">"Bravo"</span>}, prefs = {<span class="s">"browser.tabs.position=left"</span>}})
+	<span class="f">chrome_still</span>(w)                                <span class="c">// nothing moves any more</span>
+	<span class="f">chrome_select</span>(w, <span class="s">"Bravo"</span>)
+	<span class="f">chrome_command</span>(w, <span class="s">"tab.pin"</span>)                   <span class="c">// a command of the interface, by name</span>
+	session.<span class="f">drag</span>(w.s, from, to)                    <span class="c">// the session's input, barriers and pixels</span>
+	testing.<span class="f">expect_value</span>(t, w.wnd.tabs[<span class="t">0</span>].title, <span class="s">"Bravo"</span>)
+}</code></pre></div>
+<p>What stays with <code>e2e.start</code>: what needs a page (a load, a script, what the page is told), a profile, a real window or a process. A subsystem the interface reads that the world has not made (<code>chrome_start</code>'s list of <code>*_init</code>) shows as a crash in the first frame that reads it: add it there, as the browser's start does.</p>
 <h2 id="writing-a-test-that-is-quick"><a class="anchor" href="#writing-a-test-that-is-quick" aria-hidden="true">#</a>Writing a test that is quick</h2>
 <p>The rules are in <a href="https://github.com/sachahjkl/wren/blob/master/CONTRIBUTING.md">CONTRIBUTING</a>: wait for a condition, with a limit that only ends a failing run (the barriers above, <code>wren
 ctl wait</code> for a script), one shared Wren between scenarios. And check what a wait returns:
@@ -426,6 +438,7 @@ history_scroll_restoration :: <span class="k">proc</span>(t: ^testing.T) {
 <li><a href="#the-shared-code-of-test-processes">The shared code of test processes</a></li>
 <li><a href="#wpt">WPT</a></li>
 <li><a href="#writing-an-end-to-end-test">Writing an end-to-end test</a></li>
+<li><a href="#testing-the-interface-with-no-browser-around-it">Testing the interface with no browser around it</a></li>
 <li><a href="#writing-a-test-that-is-quick">Writing a test that is quick</a></li>
 <li><a href="#virtual-time">Virtual time</a></li>
 <li><a href="#the-web-tests">The web tests</a></li>

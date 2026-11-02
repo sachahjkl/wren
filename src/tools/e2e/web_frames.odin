@@ -1,3 +1,4 @@
+#+build windows
 #+private file
 // Nested documents (src/page/frames.odin, frames_scripts.odin; native/js/runtime/frames.c, prelude/frames.js): <iframe> creation and
 // destruction, about:blank / srcdoc / fetched documents, load events and the parent's load, window.frames / length / parent / top / name,

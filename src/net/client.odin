@@ -16,7 +16,7 @@
 //     redirects policy stay with the browser (cookies are disabled in WinHTTP).
 //   * The WinHTTP calls live in client_winhttp_windows.odin / websocket_winhttp_windows.odin; elsewhere
 //     (winhttp_other.odin) the built-in stack is the only backend and network.backend = winhttp falls back to it.
-package net
+package wren_net
 
 import "base:runtime"
 import "core:fmt"

@@ -1,3 +1,4 @@
+#+build windows
 #+private file
 // The network policy layer (package fetch) against the test server: request headers, CORS and preflights, cookies, redirects, Content
 // Security Policy, mixed content, HSTS, schemes, MIME checks, local files, cancellation.

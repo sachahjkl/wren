@@ -207,8 +207,10 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	unit(&t, "unit tests: remote api (the channel and the processes of wb:remote/api: a call through the channel and back, a process told again by its creation time)", "src/remote/api", exe("build/remote_api_test"), {ONE_THREAD, WB})
 	unit(&t, "unit tests: remote client (wren ctl: options, help, picture diff)", "src/remote/client", exe("build/remote_client_test"), {ONE_THREAD, WB})
 
-	e2e_step(&t, "the developer tools resized (src\\tools\\e2e\\devtools_resize.odin: the docked panel has the size the preference gives it, at the side and at the bottom; a real window, never shown, and the panel's own keep their surface while they resize, 1:1 and clipped)", "devtools_resize", marks = {.No_CI})   // (a runner's screen is smaller than these real windows)
-	e2e_step(&t, "an open menu over the top resize band is the browser's (src\\tools\\e2e\\menu_edge.odin: the hit test behind WM_NCHITTEST; no window at all)", "menu_edge")
+	e2e_step(&t, "the developer tools resized (src\\tools\\e2e\\devtools_resize.odin: a real window, never shown, and the panel's own keep their surface while they resize, 1:1 and clipped)", "devtools_resize", marks = {.No_CI})   // (a runner's screen is smaller than these real windows)
+	e2e_step(&t, "the interface with no browser around it (src\\tools\\e2e\\chrome_interface.odin: its zoom, by the keys and the wheel; the developer tools docked at their size; an open menu over the top resize band; the themes' colours)", "chrome_interface")
+	e2e_step(&t, "the tab sidebar with no browser around it (src\\tools\\e2e\\chrome_sidebar.odin: opening and closing through the widths between, pinned tabs, tab groups, by commands and by the pointer)", "chrome_sidebar")
+	e2e_step(&t, "the address bar's list with no browser around it (src\\tools\\e2e\\chrome_address_bar.odin: the inline completion, Shift+Delete, the cross of a row, Down, Escape)", "chrome_address_bar")
 	e2e_step(&t, "the remote channel itself (src\\tools\\e2e\\remote_channel.odin: off at no cost when not asked for, the protocol, a client that vanishes, an oversized message, clients that connect and go, the ACL of the pipe, a taken name, quit with a client connected, wren ctl run)", "remote_channel", weight = 20, browser = true)
 	e2e_step(&t, "reset and checkpoints of a driven Wren (src\\tools\\e2e\\remote_state.odin: everything they name is back, a page sees no cookie or storage, a wait of another client ends)", "remote_state", weight = 10, browser = true)
 	e2e_step(&t, "what a program does to a page (src\\tools\\e2e\\driven.odin: script, input, the logs, captures and their pixels, a window off the screen or minimized, a tab moved between windows; no window at all)", "driven")
@@ -357,7 +359,7 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	if long_run {
 		append(&t, Step{name = "the names of a release's crash frames (tools\\crash_symbolize_test.ps1: the report of a build with no PDB gives its fingerprint and offsets, tools\\crash_symbolize.ps1 names them from the map, or through the minidump)",
 			actions = slice_of(powershell("tools/crash_symbolize_test.ps1")), inputs = .Tree})
-		e2e_step(&t, "tab sidebar features (src\\tools\\e2e\\sidebar_tabs.odin, no window at all: opening and closing go through the widths between; pinned tabs, groups, the sound of a tab)", "sidebar_tabs")
+		e2e_step(&t, "tab sidebar features that need a page or a profile (src\\tools\\e2e\\sidebar_tabs.odin, no window at all: the sound of a tab, what comes back at the next start)", "sidebar_tabs")
 		// (frames counted against the screen's refresh: on a loaded CI runner one frame in two came late; a measure with a real pointer, not a test of a tool: run with -Ui)
 		append(&t, Step{name = "splitters dragged at 1 kHz (tools\\splitter_cadence.ps1, no window shown: the developer tools docked right and bottom, the tab sidebar's handle; their frames are drags of the cadence model and, on a variable refresh screen, presented at once; the rates are printed, never checked)",
 			actions = slice_of(powershell("tools/splitter_cadence.ps1")), marks = {.Ui_Only}, needs = COMMON_NEEDS + {.Browser}, inputs = .Tree})

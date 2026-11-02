@@ -1,4 +1,4 @@
-package net
+package wren_net
 
 // WebSockets (RFC 6455) on WinHTTP's asynchronous WebSocket API. Mechanism only: what may connect, which headers the
 // handshake carries (Origin, Cookie, Sec-WebSocket-Protocol) and whether the server's answer is acceptable are decided

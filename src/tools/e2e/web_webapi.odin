@@ -1,3 +1,4 @@
+#+build windows
 #+private file
 // The platform web APIs from a Wasm guest: animation frames, timers, idle callbacks, visibility, AbortController with fetch, promise fetch
 // and body streams, TextEncoder / TextDecoder, crypto, Web Storage across pages and restarts, URL / URLSearchParams, performance,

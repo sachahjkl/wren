@@ -176,7 +176,7 @@ real_window_drop_on_the_topmost :: proc(t: ^testing.T) {
 @(private = "file") DROP_MOVES :: 8
 @(private = "file") WINDOWS_AT_REST :: 3
 
-// The window procedure's answer to WM_NCHITTEST is the typed one's (e2e.hit_test: menu_edge.odin), on a window with the system's frame.
+// The window procedure's answer to WM_NCHITTEST is the typed one's (control_hit_test: chrome_interface.odin), on a window with the system's frame.
 @(test)
 real_window_answers_the_hit_test :: proc(t: ^testing.T) {
 	s := e2e.start(t, {size = {1280, 500}, hidden = true, prefs = {"browser.tabs.position=left"}})

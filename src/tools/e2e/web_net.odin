@@ -1,3 +1,4 @@
+#+build windows
 #+private file
 // The transport itself (package net, no fetch policy) against the test server, on the backend of network.backend / WREN_NET_BACKEND (test_all
 // runs these tests once per backend, each in a process of its own): status and head, bodies (streamed, gzip, large, capped), keep-alive,

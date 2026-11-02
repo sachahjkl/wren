@@ -1,5 +1,5 @@
 #+build !windows
-package net
+package wren_net
 
 // No WinHTTP on this system: the built-in stack (rust.odin) is the only backend, client_init picks it whatever
 // network.backend says. These stand in for client_winhttp_windows.odin and websocket_winhttp_windows.odin; no handle of

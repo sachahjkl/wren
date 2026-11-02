@@ -1,3 +1,4 @@
+#+build windows
 #+private file
 // Dedicated workers: messages both ways, buffer transfer, fetch from a worker (same origin, CORS, opaque data: origin, CSP worker-src),
 // timers, errors, close(), terminate, page close, limits, and 16 workers computing in parallel. The page's guest says what it sees with

@@ -1,4 +1,4 @@
-package net
+package wren_net
 
 // Minimal WinHTTP bindings (asynchronous mode). WinHTTP gives us, from the OS and with zero dependencies: TLS with
 // the system trust store (and enterprise policy), HTTP/1.1 + HTTP/2 (+ HTTP/3 where available), proxy auto-detection,

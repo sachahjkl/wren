@@ -1,7 +1,7 @@
 package e2e_scenarios
 
-// The zoom of the browser's own interface (chrome_zoom.odin): Ctrl+wheel over the chrome and Ctrl+Plus, Minus, 0 while it has the keyboard zoom
-// it, and leave the page's scale and width alone; Ctrl+wheel over the page zooms the page and leaves the interface alone.
+// The zoom of the browser's own interface and a page (zoom.odin, chrome_zoom.odin): the interface's leaves the page's scale and width alone; Ctrl+wheel over the page zooms the page. (What
+// goes to which, keys and wheel, with no browser around it: chrome_interface.odin.)
 
 import "core:testing"
 import "wb:e2e"
@@ -30,14 +30,6 @@ page_height_back :: proc(s: ^e2e.Session, m: Measures) -> bool { return measures
 chrome_zoom_end_to_end :: proc(t: ^testing.T) {
 	s := e2e.start(t, {size = ZOOM_SIZE, url = e2e.url(e2e.test_server(t), "/")})
 	m0 := measures(s)
-
-	e2e.key(s, "Ctrl+L")
-	e2e.key(s, "Ctrl+Equal Ctrl+Equal Ctrl+Equal")
-	e2e.wait_until(s, m0, page_shorter, "the keys to zoom the interface while it has the keyboard: the page gets less height")
-	m1 := measures(s)
-	testing.expectf(t, m1.dpr == m0.dpr && m1.width == m0.width, "the page keeps its scale and its width: %v, was %v", m1, m0)
-	e2e.key(s, "Ctrl+0")
-	e2e.wait_until(s, m0, page_height_back, "Ctrl+0 to bring the interface back")
 
 	// the pointer on the toolbar
 	e2e.scroll(s, ZOOM_IN, ON_THE_TOOLBAR, .Window, ctrl = true)

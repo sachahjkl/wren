@@ -1,3 +1,4 @@
+#+build windows
 #+private file
 // Images in pages: examples/site/images.html with the guest examples/imagestest (load / error events in order, naturalWidth /
 // naturalHeight / complete / currentSrc, srcset with x and w descriptors, <picture> / <source>, loading=lazy, CSS background images

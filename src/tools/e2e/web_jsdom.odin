@@ -1,3 +1,4 @@
+#+build windows
 #+private file
 // The DOM for JavaScript: every page of examples/jsdom is one test. Its checks go through `wrenTest`, and each page declares how many it
 // makes at least: one that ends before them, or never says it is done, fails. The pages are laid out by a layout embedder of this file
