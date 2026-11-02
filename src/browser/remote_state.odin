@@ -95,12 +95,12 @@ quiet_look :: proc(q: ^Quiet_Window, busy: bool, now_ns: i64, cpu_ms: f64, quiet
 	return now_ns - q.since_ns >= i64(quiet_ms) * NS_PER_MS
 }
 
-// Is something being loaded, in any tab or by any request? (Without asking a page's script: a wait for quiet must not make the
+// Is something being loaded, in any tab or by any request? (tab_loaded asks no page's script: a wait for quiet does not make the
 // process busy by looking.)
 remote_busy :: proc(app: ^App) -> bool {
 	if fetch.in_flight(&app.loader) > 0 { return true }
 	for t in tabs_all(app) {
-		if !tab_loaded(app, t, false) { return true }
+		if !tab_loaded(app, t) { return true }
 	}
 	return false
 }

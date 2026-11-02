@@ -1,0 +1,15 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>late script</title>
+<!-- src/tools/e2e/page_apis.odin (a wait for load): a parser-blocking script that takes 1.5 s, then more images of one origin than its
+     connections at a time. While the script is on its way the page has no script engine yet: a wait for load must still wait for the
+     document's own load event, not take the page for one without scripts. -->
+<script src="/cache/r/late-script.js?type=text/javascript&amp;cc=no-store&amp;delay=1500&amp;body=window.late%3Dtrue"></script>
+</head>
+<body style="margin:0">
+<img src="/site/images/alpha.png?n=1" alt=""><img src="/site/images/alpha.png?n=2" alt=""><img src="/site/images/alpha.png?n=3" alt="">
+<img src="/site/images/alpha.png?n=4" alt=""><img src="/site/images/alpha.png?n=5" alt=""><img src="/site/images/alpha.png?n=6" alt="">
+<img src="/site/images/alpha.png?n=7" alt=""><img src="/site/images/alpha.png?n=8" alt=""><img src="/site/images/alpha.png?n=9" alt="">
+<img src="/site/images/alpha.png?n=10" alt=""><img src="/site/images/alpha.png?n=11" alt=""><img src="/site/images/alpha.png?n=12" alt="">
+<img src="/site/images/alpha.png?n=13" alt=""><img src="/site/images/alpha.png?n=14" alt=""><img src="/site/images/alpha.png?n=15" alt="">
+<img src="/site/images/alpha.png?n=16" alt=""><img src="/site/images/alpha.png?n=17" alt=""><img src="/site/images/alpha.png?n=18" alt="">
+</body></html>

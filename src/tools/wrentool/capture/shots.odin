@@ -63,11 +63,11 @@ address :: proc(url: string) -> string {
 	return url
 }
 
-// A barrier after the page or an action: it is stable, or the limit is over and the picture is what it is.
-// (false: the page did not load or settle in time; a picture taken then shows a page that is still blank)
+// A barrier after the page or an action: it is stable, or the limit is over and the picture is what it is (a page whose
+// videos play never rests: odin-lang.org). False: the page did not load in time; a picture taken then shows a page that is still blank.
 at_rest :: proc(s: ^api.Session) -> bool {
 	if api.wait_load(s, PAGE_LIMIT) != .None { return false }
-	if api.wait_stable(s, PAGE_LIMIT) != .None { return false }
+	_ = api.wait_stable(s, PAGE_LIMIT)
 	return api.wait_frames(s, AFTER_ACTION_FRAMES) == .None
 }
 
