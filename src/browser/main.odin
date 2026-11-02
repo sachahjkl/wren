@@ -1470,10 +1470,13 @@ app_start :: proc(args: []string) -> ^App {
 	desktop_early_init()   // the windows' AppUserModelID, before the first one exists
 	recovery_start(app)   // crash_recovery.odin: how the last run ended, and this run's marker
 
-	// Start-up order: the renderer's start-up (device, shader compilation) is by far the longest step and needs only the
-	// window. Before it: fonts on a thread of their own (fonts_preload_start), then the network, the page machinery and
-	// the first navigation, whose loads run on their own threads while the renderer starts.
-	host.phase("fonts started")
+	// Start-up order: the renderer's start-up is by far the longest step, and most of it is the graphics device (the
+	// driver's first load in the process). The device is made on a thread of its own from here (render.preload_device:
+	// what render.init_window / init_offscreen take below, waiting for it if it is not ready); the swap chain needs the
+	// window and is made there. Beside it, fonts on a thread of their own (fonts_preload_start), then the network, the
+	// page machinery and the first navigation, whose loads run on their own threads meanwhile.
+	host.phase("device and fonts started")
+	_ = render.preload_device(warp = headless_mode && headless_software)   // (the kind of device the renderer asks for below)
 	font.init(&app.fonts, font_settings_from_prefs(&app.prefs))
 	preload := fonts_preload_start(app)   // the font state is the preload thread's until fonts_preload_finish
 	app.headless = headless_mode
@@ -1556,7 +1559,7 @@ app_start :: proc(args: []string) -> ^App {
 	setup_startup(app, profile_override != "", setup_requested)   // setup.odin: a copy that is not the installed one is offered Setup; --setup opens it
 	update_startup(app, profile_override != "")   // update_check.odin: the daily check, when it is on and due
 
-	host.phase("renderer")
+	host.phase("renderer")   // (the device made early, then the swap chain or the offscreen target)
 	app.r.swap_buffers = int(config.int_of(&app.prefs, "browser.frame.swap_buffers"))   // pacing.odin
 	fixed_surface := config.bool_of(&app.prefs, "browser.window.fixed_surface")
 	if headless_mode {
