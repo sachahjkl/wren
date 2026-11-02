@@ -171,10 +171,37 @@ async fn with_timeout<T>(d: Option<Duration>, f: impl Future<Output = Result<T, 
     }
 }
 
-pub(crate) async fn resolve(host: &str, port: u16, timeout: Option<Duration>, info: &mut ConnInfo) -> Result<Vec<SocketAddr>, NetError> {
+/// The address of a name given by the settings (network.hosts): the name itself or one of its subdomains.
+pub(crate) fn host_override(hosts: &[(String, IpAddr)], host: &str) -> Option<IpAddr> {
+    let h = host.trim_end_matches('.').to_ascii_lowercase();
+    hosts.iter().find(|(name, _)| h == *name || h.strip_suffix(name.as_str()).is_some_and(|p| p.ends_with('.'))).map(|(_, ip)| *ip)
+}
+
+/// The addresses of `host`, through the settings' names first, then the system's resolver; with loopback_only, none that is not loopback.
+pub(crate) async fn resolve(host: &str, port: u16, s: &crate::Settings, info: &mut ConnInfo) -> Result<Vec<SocketAddr>, NetError> {
+    let addrs = resolve_any(host, port, s, info).await?;
+    if s.loopback_only {
+        if let Some(a) = addrs.iter().find(|a| !a.ip().is_loopback()) {
+            eprintln!("wren net: {host}:{port} is {a}, not this machine: refused (network.loopback_only: what is tested stays on loopback and the test server's names)");
+            return Err(NetError::new(error::ERROR_NOT_LOOPBACK));
+        }
+    }
+    Ok(addrs)
+}
+
+async fn resolve_any(host: &str, port: u16, s: &crate::Settings, info: &mut ConnInfo) -> Result<Vec<SocketAddr>, NetError> {
     if let Ok(ip) = host.parse::<IpAddr>() {
         return Ok(vec![SocketAddr::new(ip, port)]);
     }
+    if let Some(ip) = host_override(&s.hosts, host) {
+        return Ok(vec![SocketAddr::new(ip, port)]);
+    }
+    if s.loopback_only && !host.eq_ignore_ascii_case("localhost") {
+        // (not even asked of the system: a lookup is a way out too)
+        eprintln!("wren net: {host} is no name of this machine nor of network.hosts: refused (network.loopback_only)");
+        return Err(NetError::new(error::ERROR_NOT_LOOPBACK));
+    }
+    let timeout = s.resolve;
     info.dns_start = Some(Instant::now());
     let host = host.to_string();
     let addrs = with_timeout(timeout, async move {
@@ -292,7 +319,7 @@ pub(crate) async fn connect(shared: &Shared, uri: &Uri, alpn: Alpn) -> Result<Co
         Some(p) => (bare_host(p.uri()).unwrap_or("").to_string(), default_port(p.uri())),
         None => (host.clone(), port),
     };
-    let addrs = resolve(&thost, tport, s.resolve, &mut info).await?;
+    let addrs = resolve(&thost, tport, &s, &mut info).await?;
     info.connect_start = Some(Instant::now());
     let fut = async {
         let mut tcp = connect_tcp(addrs).await?;
@@ -324,4 +351,21 @@ pub(crate) async fn connect(shared: &Shared, uri: &Uri, alpn: Alpn) -> Result<Co
         Ok(Conn { io: TokioIo::new(Stream::Tls(Box::new(tls))), h2, proxied, info: info.clone() })
     };
     with_timeout(s.connect, fut).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_name_and_its_subdomains_take_the_address_of_network_hosts() {
+        let hosts = crate::parse_hosts("web-platform.test 127.0.0.1\nnot-web-platform.test 127.0.0.2\nnot a line\n");
+        assert_eq!(hosts.len(), 2);
+        let lo: IpAddr = "127.0.0.1".parse().unwrap();
+        assert_eq!(host_override(&hosts, "web-platform.test"), Some(lo));
+        assert_eq!(host_override(&hosts, "WWW1.Web-Platform.Test."), Some(lo));
+        assert_eq!(host_override(&hosts, "www2.not-web-platform.test"), Some("127.0.0.2".parse().unwrap()));
+        assert_eq!(host_override(&hosts, "xweb-platform.test"), None);
+        assert_eq!(host_override(&hosts, "example.com"), None);
+    }
 }

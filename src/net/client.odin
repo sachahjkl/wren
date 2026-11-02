@@ -35,6 +35,7 @@ NET_STOP_DRAIN_S :: 5
 ERROR_BAD_URL        :: 1
 ERROR_BODY_TOO_LARGE :: 2
 ERROR_START_FAILED   :: 3
+ERROR_NOT_LOOPBACK   :: 4   // network.loopback_only: an address or a name that is not this machine's (native/net/src/error.rs)
 
 Event_Kind :: enum u8 {
 	Headers,   // status + raw header block + final URL (after redirects)
@@ -177,6 +178,8 @@ client_init :: proc(c: ^Client, loop: ^host.Loop, settings: Settings = {}) -> bo
 	c.settings = settings.max_total == 0 ? settings_default(context.temp_allocator) : settings
 	c.settings.user_agent = strings.clone(c.settings.user_agent)   // the client owns its copy
 	c.settings.extra_ca_file = strings.clone(c.settings.extra_ca_file)
+	c.settings.hosts = strings.clone(c.settings.hosts)
+	if os.get_env(LOOPBACK_ONLY_ENV, context.temp_allocator) == "1" { c.settings.loopback_only = true }
 	switch os.get_env("WREN_NET_BACKEND", context.temp_allocator) {
 	case "rust":    c.settings.backend = .Rust
 	case "winhttp": c.settings.backend = .Winhttp
@@ -187,6 +190,8 @@ client_init :: proc(c: ^Client, loop: ^host.Loop, settings: Settings = {}) -> bo
 		}
 	}
 	if !WINHTTP_AVAILABLE { c.settings.backend = .Rust }   // the built-in stack is the only one on this system
+	// (names it resolves itself are the built-in stack's)
+	if c.settings.hosts != "" { c.settings.backend = .Rust }
 	c.events = make([dynamic]Event, heap())    // appended to from WinHTTP threads
 	c.scratch = make([dynamic]Event, heap())
 	if c.settings.backend == .Rust { return rust_init(c) }
@@ -197,9 +202,9 @@ client_init :: proc(c: ^Client, loop: ^host.Loop, settings: Settings = {}) -> bo
 // are re-examined); the user agent, protocols and proxy mode need a new session, so they apply at the next start.
 client_apply :: proc(c: ^Client, s: Settings) {
 	// the session was opened with these; a new value shows after a restart
-	agent, ca, backend := c.settings.user_agent, c.settings.extra_ca_file, c.settings.backend
+	agent, ca, backend, hosts, loopback := c.settings.user_agent, c.settings.extra_ca_file, c.settings.backend, c.settings.hosts, c.settings.loopback_only
 	c.settings = s
-	c.settings.user_agent, c.settings.extra_ca_file, c.settings.backend = agent, ca, backend
+	c.settings.user_agent, c.settings.extra_ca_file, c.settings.backend, c.settings.hosts, c.settings.loopback_only = agent, ca, backend, hosts, loopback
 	if c.session != nil { winhttp_apply_timeouts(c) }
 	if c.rs != nil { rust_apply(c) }
 	pump(c)
@@ -227,6 +232,7 @@ client_destroy :: proc(c: ^Client) {
 	delete(c.active)
 	delete(c.settings.user_agent)
 	delete(c.settings.extra_ca_file)
+	delete(c.settings.hosts)
 	base.pool_destroy(&c.requests)
 }
 
@@ -368,11 +374,29 @@ request_scope_closed :: proc(data: rawptr) {
 @(private)
 heap :: proc() -> runtime.Allocator { return base.process_allocator() }
 
+// localhost, a name under .localhost, or a loopback address (127.0.0.0/8, ::1).
+host_is_this_machine :: proc(host: string) -> bool {
+	h := strings.to_lower(strings.trim_suffix(strings.trim(host, "[]"), "."), context.temp_allocator)
+	if h == "localhost" || strings.has_suffix(h, ".localhost") || h == "::1" { return true }
+	if !strings.has_prefix(h, "127.") { return false }
+	dots := 0
+	for ch in h {
+		if ch == '.' { dots += 1 } else if ch < '0' || ch > '9' { return false }
+	}
+	IPV4_DOTS :: 3
+	return dots == IPV4_DOTS
+}
+
 // Builds the job (pure memory work, no OS handle yet). `key` identifies the origin server for the per-host limit.
 @(private)
 prepare :: proc(c: ^Client, h: base.Handle, d: Request_Desc) -> (job: ^Job, key: string, code: u32) {
 	u, ok := url.parse_absolute(d.url, context.temp_allocator)
 	if !ok || !(u.scheme == "http" || u.scheme == "https") { return nil, "", ERROR_BAD_URL }
+	// (the built-in stack checks the addresses it resolves; WinHTTP resolves on its own: only a name of this machine goes to it)
+	if c.settings.loopback_only && c.settings.backend == .Winhttp && !host_is_this_machine(u.host) {
+		fmt.eprintfln("wren net: %s is not this machine: refused (network.loopback_only: what is tested stays on loopback)", u.host)
+		return nil, "", ERROR_NOT_LOOPBACK
+	}
 
 	job = new(Job, heap())
 	job.client = c
@@ -614,6 +638,7 @@ error_text :: proc(code, secure_flags: u32, allocator := context.temp_allocator)
 	case ERROR_BAD_URL:        return "invalid or unsupported URL"
 	case ERROR_BODY_TOO_LARGE: return "response body too large"
 	case ERROR_START_FAILED:   return "could not start the request"
+	case ERROR_NOT_LOOPBACK:   return "refused: not this machine (network.loopback_only)"
 	case 12002:                return "request timed out"
 	case 12007:                return "host name could not be resolved"
 	case 12017:                return "request cancelled"

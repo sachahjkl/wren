@@ -33,7 +33,12 @@ Settings :: struct {
 	threads:       int,
 	idle_timeout_ms:   int,
 	max_idle_per_host: int,
+	hosts:         string,   // owned: "name address" lines (network.hosts)
+	loopback_only: bool,
 }
+
+// What turns network.loopback_only on whatever the preferences say: test_all sets it for every step (no test reaches past this machine).
+LOOPBACK_ONLY_ENV :: "WREN_NETWORK_LOOPBACK_ONLY"
 
 PREFS := [?]config.Def{
 	{name = "network.backend", kind = .String, default = {s = "rust"}, choices = {"rust", "winhttp"}, restart = true,
@@ -50,6 +55,10 @@ PREFS := [?]config.Def{
 		description = "Built-in stack: how long an idle connection is kept for reuse."},
 	{name = "network.pool.max_idle_per_host", kind = .Int, default = {i = 8}, bounded = true, min = 0, max = 256, restart = true,
 		description = "Built-in stack: idle connections kept per host for reuse."},
+	{name = "network.hosts", kind = .String, default = {s = ""}, restart = true,
+		description = "Built-in stack: names resolved here, never asked of the system: \"name=address\" pairs separated by spaces or commas; a name stands for its subdomains too (web-platform.test=127.0.0.1: www1.web-platform.test as well). Empty: none."},
+	{name = "network.loopback_only", kind = .Bool, default = {b = false}, restart = true,
+		description = "Built-in stack: connect only to this machine (loopback addresses, localhost and the names of network.hosts); anything else fails at once, named on the standard error. What the tests run with (the WREN_NETWORK_LOOPBACK_ONLY=1 environment variable turns it on): nothing tested reaches the Internet."},
 	{name = "network.max_connections_per_host", kind = .Int, default = {i = 6}, bounded = true, min = 1, max = 256,
 		description = "Requests in flight to one host:port. Extra requests wait in the browser's own priority queues, so waiting never counts against the connect timeout."},
 	{name = "network.max_connections_total", kind = .Int, default = {i = 64}, bounded = true, min = 1, max = 4096,
@@ -124,7 +133,26 @@ settings_from_prefs :: proc(p: ^config.Prefs, allocator := context.allocator) ->
 	s.threads = int(config.int_of(p, "network.threads"))
 	s.idle_timeout_ms = int(config.int_of(p, "network.pool.idle_timeout_ms"))
 	s.max_idle_per_host = int(config.int_of(p, "network.pool.max_idle_per_host"))
+	s.hosts = hosts_lines(config.string_of(p, "network.hosts"), allocator)
+	s.loopback_only = config.bool_of(p, "network.loopback_only")
 	return s
+}
+
+// network.hosts as the built-in stack reads it: "name=address" pairs (spaces or commas between them) become "name address" lines.
+hosts_lines :: proc(pref: string, allocator := context.allocator) -> string {
+	b := strings.builder_make(allocator)
+	rest := pref
+	for pair in strings.fields_iterator(&rest) {
+		for item in strings.split(pair, ",", context.temp_allocator) {
+			eq := strings.index_byte(item, '=')
+			if eq <= 0 { continue }
+			strings.write_string(&b, item[:eq])
+			strings.write_byte(&b, ' ')
+			strings.write_string(&b, item[eq + 1:])
+			strings.write_byte(&b, '\n')
+		}
+	}
+	return strings.to_string(b)
 }
 
 settings_default :: proc(allocator := context.allocator) -> Settings {
@@ -136,5 +164,6 @@ settings_default :: proc(allocator := context.allocator) -> Settings {
 settings_destroy :: proc(s: ^Settings) {
 	delete(s.user_agent)
 	delete(s.extra_ca_file)
+	delete(s.hosts)
 	s^ = {}
 }

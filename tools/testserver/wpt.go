@@ -15,8 +15,10 @@
 //   - Python handlers (*.py) do not run: 501, but for a few ported to Go (wpt_httpcache.go, wpt_handlers.go). The tests
 //     that need the others fail, and are counted as failing.
 //
-// Cross-origin tests: the "www" domains are localhost (the same listener under another host name, so another origin);
-// https: 127.0.0.1:8769 (the next port) with a self-signed certificate. With -wpt-port N the ports are N and N+1; with -wpt-only the
+// Cross-origin tests: the names of wptserve's configuration, all on this listener: web-platform.test ({{host}}), its subdomains
+// www, www1, www2, xn--n8j6ds53lwwkrqhv28a and xn--lve-6lad ({{domains[..]}}), not-web-platform.test and its subdomains ({{hosts[alt][..]}}).
+// The browser resolves them itself (network.hosts: web-platform.test=127.0.0.1 not-web-platform.test=127.0.0.1), never the system nor
+// a hosts file; https: 127.0.0.1:8769 (the next port) with a self-signed certificate for those names. With -wpt-port N the ports are N and N+1; with -wpt-only the
 // server serves nothing else (src\tools\wpt runs the whole suite that way, on ports no other test uses).
 // The checkout: WREN_WPT_ROOT, else build/wpt/wpt (from the repository root, as the tests run), else next to the
 // executable (build\testserver.exe -> build\wpt\wpt). No checkout: the listener answers 503 with how to get one.
@@ -39,7 +41,37 @@ import (
 	"time"
 )
 
-const wptWWWHost = "localhost"
+// wptserve's names (its config.json: browser_host, alternate_hosts, subdomains; the two IDNA ones in their ASCII form).
+const (
+	wptHost    = "web-platform.test"
+	wptAltHost = "not-web-platform.test"
+)
+
+var wptSubdomains = map[string]string{"www": "www", "www1": "www1", "www2": "www2", "天気の良い日": "xn--n8j6ds53lwwkrqhv28a", "élève": "xn--lve-6lad"}
+
+// WPTHostsPref is what a browser under test resolves itself (Wren's network.hosts): every name the substitutions give.
+const WPTHostsPref = wptHost + "=127.0.0.1 " + wptAltHost + "=127.0.0.1"
+
+// The certificate of the WPT https origin: the test authority's (a browser under test trusts it through network.tls.extra_ca_file, as wptrunner
+// hands its browsers WPT's own authority), for every name of the substitutions.
+func wptCert() tls.Certificate {
+	return testCA.leaf([]string{wptHost, "*." + wptHost, wptAltHost, "*." + wptAltHost, "127.0.0.1"}, time.Now().Add(-time.Hour), time.Now().Add(7*24*time.Hour))
+}
+
+// {{domains[sub]}}, {{hosts[alt][sub]}}: sub."host" ("" : the host itself); a subdomain wptserve does not know is left as it is.
+func wptName(alt bool, sub string) string {
+	host := wptHost
+	if alt {
+		host = wptAltHost
+	}
+	if sub == "" {
+		return host
+	}
+	if s, ok := wptSubdomains[sub]; ok {
+		return s + "." + host
+	}
+	return sub + "." + host
+}
 
 // The WPT origin is 127.0.0.1:N (https: N+1): by default the fourth and fifth ports of the block (ports.go: 8768 / 8769 on the
 // default block), or Options.WPTPort. Options.WPTOnly: nothing else is served (src\tools\wpt runs the full suite on ports of
@@ -51,7 +83,6 @@ var (
 
 // The WPT origin alone: returns its first port.
 func startWPTOnly(o Options) (int, error) {
-	cert := selfSigned()
 	tries := 1
 	if o.Scan {
 		tries = scanTries
@@ -78,7 +109,7 @@ func startWPTOnly(o Options) (int, error) {
 		return 0, fmt.Errorf("no free pair of ports for web-platform-tests from %d: %w", first, err)
 	}
 	log.Printf("web-platform-tests: http://127.0.0.1:%d  https://127.0.0.1:%d (self-signed), checkout %s", wptHTTPPort, wptHTTPSPort, wptRoot)
-	serveWPTOn(plain, tls.NewListener(secure, &tls.Config{Certificates: []tls.Certificate{cert}}))
+	serveWPTOn(plain, tls.NewListener(secure, &tls.Config{Certificates: []tls.Certificate{wptCert()}}))
 	return wptHTTPPort, nil
 }
 
@@ -207,6 +238,7 @@ func wptWrapper(kind string, src []byte, scriptPath, query string) (string, stri
 
 var subPattern = regexp.MustCompile(`\{\{\s*([^{}]+?)\s*\}\}`)
 var subIndex = regexp.MustCompile(`^(\w+)((?:\[[^\]]*\])*)$`)
+var subIndexPart = regexp.MustCompile(`\[([^\]]*)\]`)
 
 func newUUID() string {
 	b := make([]byte, 16)
@@ -246,8 +278,8 @@ func substitute(text string, r *http.Request) string {
 			return m
 		}
 		var idx []string
-		for _, part := range strings.Split(strings.Trim(sm[2], "[]"), "][") {
-			idx = append(idx, strings.Trim(part, `"'`))
+		for _, part := range subIndexPart.FindAllStringSubmatch(sm[2], -1) {
+			idx = append(idx, strings.Trim(part[1], `"'`))
 		}
 		at := func(i int) string {
 			if i < len(idx) {
@@ -257,16 +289,11 @@ func substitute(text string, r *http.Request) string {
 		}
 		switch sm[1] {
 		case "host":
-			return "127.0.0.1"
-		case "domains", "hosts":
-			d := at(0)
-			if sm[1] == "hosts" {
-				d = at(1)
-			}
-			if d == "" {
-				return "127.0.0.1"
-			}
-			return wptWWWHost
+			return wptHost
+		case "domains":
+			return wptName(false, at(0))
+		case "hosts":
+			return wptName(at(0) == "alt", at(1))
 		case "ports":
 			switch at(0) {
 			case "https", "wss", "h2":

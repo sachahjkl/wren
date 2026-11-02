@@ -30,3 +30,11 @@ backend_from_prefs :: proc(t: ^testing.T) {
 	testing.expect_value(t, s.extra_ca_file, "C:/ca.pem")
 	settings_destroy(&s)
 }
+
+@(test)
+network_hosts_and_this_machine :: proc(t: ^testing.T) {
+	lines := hosts_lines("web-platform.test=127.0.0.1 not-web-platform.test=127.0.0.1,bad", context.temp_allocator)
+	testing.expect_value(t, lines, "web-platform.test 127.0.0.1\nnot-web-platform.test 127.0.0.1\n")
+	for h in ([]string{"localhost", "LocalHost.", "a.localhost", "127.0.0.1", "127.1.2.3", "[::1]"}) { testing.expectf(t, host_is_this_machine(h), "%s is this machine", h) }
+	for h in ([]string{"example.com", "127.example.com", "128.0.0.1", "10.0.0.1", "localhost.example", "web-platform.test"}) { testing.expectf(t, !host_is_this_machine(h), "%s is not", h) }
+}

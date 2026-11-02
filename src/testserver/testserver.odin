@@ -36,6 +36,7 @@ server: struct {
 	base:  int,
 	why:   string,
 	reset: proc "c" (),
+	ca:    proc "c" (out: [^]u8, out_bytes: i32) -> i32,
 }
 
 // The repository: a test program is in its build folder (WREN_REPO says otherwise).
@@ -75,11 +76,13 @@ start :: proc() -> (base: int, why: string) {
 		}
 		start_at, has_start := dynlib.symbol_address(library, "WrenTestServerStart")
 		reset_at, has_reset := dynlib.symbol_address(library, "WrenTestServerReset")
-		if !has_start || !has_reset {
+		ca_at, has_ca := dynlib.symbol_address(library, "WrenTestServerCA")
+		if !has_start || !has_reset || !has_ca {
 			server.why = fmt.aprintf("%s is not the test server %s", path, BUILD_IT, allocator = allocator)
 			break
 		}
 		server.reset = auto_cast reset_at
+		server.ca = auto_cast ca_at
 		start_it := cast(proc "c" (base: i32, why: [^]u8, why_bytes: i32) -> i32)start_at
 		reason: [WHY_BYTES]u8
 		got := start_it(i32(preferred_base_port(root)), &reason[0], WHY_BYTES)
@@ -90,4 +93,15 @@ start :: proc() -> (base: int, why: string) {
 		server.base, server.state = int(got), .Listening
 	}
 	return server.base, server.why
+}
+
+// The test authority's certificate (PEM): what signs the server's https origins, the WPT one included. A client trusts it through
+// network.tls.extra_ca_file. "" before start has succeeded.
+ca_pem :: proc(allocator := context.allocator) -> string {
+	sync.guard(&server.lock)
+	if server.state != .Listening { return "" }
+	CA_PEM_MOST :: 8192
+	buf: [CA_PEM_MOST]u8
+	n := server.ca(&buf[0], CA_PEM_MOST)
+	return strings.clone(string(buf[:clamp(int(n), 0, CA_PEM_MOST)]), allocator)
 }

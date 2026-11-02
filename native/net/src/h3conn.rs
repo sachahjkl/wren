@@ -223,7 +223,7 @@ async fn connect(
 ) -> Result<(Sender, ConnInfo), NetError> {
     let s = shared.settings();
     let mut info = ConnInfo::default();
-    let addrs = conn::resolve(host, port, s.resolve, &mut info).await?;
+    let addrs = conn::resolve(host, port, &s, &mut info).await?;
     let addr = addrs[0];
     let ep = if addr.is_ipv6() { eps.1 } else { eps.0 }.ok_or(NetError::new(error::CANNOT_CONNECT))?;
     let crypto = quinn::crypto::rustls::QuicClientConfig::try_from(shared.tls_h3.clone()).map_err(|_| NetError::new(error::SECURE_FAILURE))?;

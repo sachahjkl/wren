@@ -101,7 +101,7 @@ func listenBlock(base int, withWPT bool, cert tls.Certificate) (*portListeners, 
 	}
 	l.https = tls.NewListener(l.https, &tls.Config{Certificates: []tls.Certificate{cert}})
 	if l.wptTLS != nil {
-		l.wptTLS = tls.NewListener(l.wptTLS, &tls.Config{Certificates: []tls.Certificate{cert}})
+		l.wptTLS = tls.NewListener(l.wptTLS, &tls.Config{Certificates: []tls.Certificate{wptCert()}})
 	}
 	return l, nil
 }

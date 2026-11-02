@@ -54,6 +54,8 @@ them, so nothing waits on a pipe. No step has the run's console: a test program 
 waits and takes no slot, up to `-LightJobs` of them (4; 2 with `-CI`). A step whose maker failed says `NOT RUN` and takes no time. A test program's step gets `-tests:` from what its source file declares, read by `core:odin/parser`: one process, the test program itself. A step
 that compiles and runs a package is that compile and that run; a check on files (`lint_globals.odin`, the process allocators, the JavaScript engine's stamp) runs on a thread of `test_all` and costs no process at all.
 
+Every minute a run says which steps are running and for how long, on the console and in `build\test_report.txt` (which the report replaces at the end): a long step never looks hung. No test reaches past this machine: every step inherits `WREN_NETWORK_LOOPBACK_ONLY=1` (the browser's `network.loopback_only`), so a connection to anything but loopback and the test server's names fails at once, named in the step's log; `wrentool smoke` and `crash-e2e` set it too.
+
 A step has a limit (`-StepTimeoutSec`, 900 s; hours for what is legitimately long). Past it, what its threads are doing goes to its log (the code of `wren ctl stacks`), its whole process tree is killed (on Windows a step is a job object, on Linux a process group) and the report says `stuck`. Nothing
 of a step outlives it. A test that talks to the test server starts it in its own process, on a block of ports of its own ([below](#the-test-server)), so several worktrees test side by side. `-Perf` and `-Ui` add the steps that depend on the machine's speed or on a desktop
 ([CONTRIBUTING](../CONTRIBUTING.md)); a full run adds the check build, the AddressSanitizer unit tests (one step per package, three at a time), the whole of WPT and test262, the network stress.
@@ -98,13 +100,17 @@ their own. A release ignores the variable. `-NoCache` turns this off too.
 A run of WPT spent 58 % of its time on tests that time out (1300 of 8800, 50 of them for 60 s): a test expected to time out
 waits for what will not come, and the page of a test that can do nothing more is given a second to prove it.
 
-`src/tools/wpt` is the whole of a run: it fetches the pinned checkout and verifies it, starts the test server in its own process, runs the tests, compares them with `wpt\expectations`, gives what regressed its second chance. `build\wpt.exe -quick`, `-only <prefix>`, `-update`, `-reftests`, `-fetch`, `-update-manifest` (top of `src/tools/wpt/main.odin`). test_all's step builds it; by hand `odin build src/tools/wpt -collection:wb=src -vet -o:speed -use-separate-modules -out:build/wpt.exe -extra-linker-flags:/STACK:33554432`. `src/tools/test262` is the same for test262: `build\test262.exe [-quick] [-update] [-jit ...]`.
+`src/tools/wpt` is the whole of a run: it fetches the pinned checkout and verifies it, starts the test server in its own process, runs the tests, compares them with `wpt\expectations`, gives what regressed its second chance. `build\wpt.exe -quick`, `-only <prefix>`, `-update`, `-reftests`, `-fetch`, `-update-manifest` (top of `src/tools/wpt/main.odin`). test_all's step builds it; by hand `odin build src/tools/wpt -collection:wb=src -vet -o:speed -use-separate-modules -out:build/wpt.exe`. `src/tools/test262` is the same for test262: `build\test262.exe [-quick] [-update] [-jit ...]`.
 
 With `-quick`, and `-fast-timeouts` for a whole run:
 
 - a test the expectations say times out gets 3 s (`-timeout-cap`), a page that can do nothing more 300 ms (`-idle`);
 - all that fails then goes through the second chance: run again together, without either, with 4 times the limit and the
   engine's limit on one script out of the way, and what still fails alone. Only a test that regresses there counts.
+
+The tests wait in one queue, the costliest first (`build\wpt\times.txt`, each test's time in the last run; else its whole limit for a test expected to time out), and a child process takes the next one on its standard input as it ends one (`src/tools/wpt/queue.odin`, at most `-chunk` per child): a folder of slow tests is spread over every child instead of leaving one alone at the end. A child runs its pages on a thread it makes with the stack JavaScript needs (no linker flag to remember); a child whose JavaScript cannot start stops the run at once with its reason. Every 30 s the runner says on its standard output how many tests are done and how many regressed so far.
+
+The pages see wptserve's names: `web-platform.test` (`{{host}}`), `www1.web-platform.test`..., `not-web-platform.test`, all on this machine. The browser resolves them itself (`network.hosts`), never the system or a hosts file, trusts the test server's authority for its https origin (`network.tls.extra_ca_file`, `build\wpt\testca.pem`), loads a `.https.` test over https, and connects to nothing else (`network.loopback_only`).
 
 So a shorter limit can cost a rerun, not hide a regression. What it does not see is a test that has **begun** to pass: a
 whole run without it does, and `-update` (which refuses the cap) records it. `-only` keeps the whole limits too: someone is

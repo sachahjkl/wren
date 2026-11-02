@@ -62,7 +62,9 @@ Wn_Config :: struct {
 	http2:              u8,
 	http3:              u8,
 	proxy_system:       u8,
-	_pad:               u8,
+	loopback_only:      u8,
+	hosts:              [^]u8,   // network.hosts: "name address" lines
+	hosts_len:          uint,
 }
 
 @(private)
@@ -160,6 +162,7 @@ rust_config :: proc(c: ^Client, ca: []byte) -> Wn_Config {
 		idle_timeout_ms = clamp_u32(s.idle_timeout_ms), max_idle_per_host = clamp_u32(s.max_idle_per_host),
 		h3_race_ms = clamp_u32(s.h3_race_ms), h3_broken_ms = clamp_u32(s.h3_broken_ms), threads = clamp_u32(max(s.threads, 1)),
 		http2 = u8(s.http2), http3 = u8(s.http3), proxy_system = u8(s.proxy == .System),
+		loopback_only = u8(s.loopback_only), hosts = raw_data(s.hosts), hosts_len = uint(len(s.hosts)),
 	}
 }
 

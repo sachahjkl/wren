@@ -226,7 +226,7 @@ render_page :: proc(path: string) -> (img: reftest.Image, items, status, message
 	cs: Child_State
 	cs.layout = host_make(true, ref_run.viewport)
 	defer host_destroy(cs.layout)
-	d := headless.open(ref_run.env, strings.concatenate({opts.server, path}, context.temp_allocator), child_on_console, &cs)
+	d := headless.open(ref_run.env, test_url(path), child_on_console, &cs)
 	defer headless.close(d)
 	d.on_parsed = host_attach
 	d.by_type = true   // (most reference tests of CSS are .xht: some of their sheets are in CDATA sections)
