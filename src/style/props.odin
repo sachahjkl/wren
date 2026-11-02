@@ -2,6 +2,7 @@ package style
 
 import "base:runtime"
 import "core:mem"
+import "core:slice"
 import "core:sync"
 import "wb:base"
 
@@ -82,7 +83,46 @@ props_init :: proc() {
 			ft := st.types[i]
 			append(&computed_fields, Field_Info{offset = st.offsets[i], size = ft.size, ti = ft, plain = is_plain(ft)})
 		}
+		inherited_runs_build()
 	})
+}
+
+// The bytes of the inherited properties in a Computed as runs: the slots in offset order, two joined when only padding
+// lies between them. Inheriting is then a copy per run, not per property (a third of the copies of an element's style).
+@(private) inherited_runs: [dynamic]Byte_Run
+@(private) Byte_Run :: struct { off: uintptr, size: int }
+
+@(private)
+inherited_runs_build :: proc() {
+	runs := make([dynamic]Byte_Run, context.temp_allocator)
+	for p in inherited_list {
+		sl := &prop_slots[p]
+		for k in 0 ..< 2 { if sl.size[k] > 0 { append(&runs, Byte_Run{sl.off[k], sl.size[k]}) } }
+	}
+	slice.sort_by(runs[:], proc(a, b: Byte_Run) -> bool { return a.off < b.off })
+	// a byte belongs to a field unless it is padding: what lies between two runs may be joined only when no field is there
+	field_at :: proc(lo, hi: uintptr) -> bool {
+		for f in computed_fields { if f.offset < hi && f.offset + uintptr(f.size) > lo { return true } }
+		return false
+	}
+	inherited_runs = make([dynamic]Byte_Run, base.permanent_allocator())
+	for r in runs {
+		if n := len(inherited_runs); n > 0 {
+			last := &inherited_runs[n - 1]
+			end := last.off + uintptr(last.size)
+			if r.off <= end || !field_at(end, r.off) {
+				last.size = max(int(r.off + uintptr(r.size) - last.off), last.size)
+				continue
+			}
+		}
+		append(&inherited_runs, r)
+	}
+}
+
+// What a child inherits from `parent`: every inherited property (copy_prop for each, by runs of bytes).
+@(private)
+inherit_all :: #force_inline proc(dst, parent: ^Computed) {
+	for r in inherited_runs { mem.copy(rawptr(uintptr(dst) + r.off), rawptr(uintptr(parent) + r.off), r.size) }
 }
 
 is_inherited :: #force_inline proc(p: Prop) -> bool { return inherited_table[p] }

@@ -17,6 +17,8 @@ import "wb:host"
 
 // Rounds of splitting the subtrees too big to be one task.
 STYLE_SPLIT_MAX_ROUNDS :: 64
+// What a style thread's arena commits at a time.
+THREAD_ARENA_COMMIT :: 256 << 10
 
 @(private)
 Par_Frame :: struct {
@@ -93,14 +95,16 @@ style_document_parallel :: proc(e: ^Engine, s: ^Styled, doc: ^dom.Document, stat
 	job.ranges = ranges[:]
 	job.passes = make([]^Pass, tasks, context.temp_allocator)
 	job.arenas = make([]^virtual.Arena, tasks, context.temp_allocator)
+	for &a in job.arenas { a = thread_arena_take(e) }
 	host.parallel_for(pool, tasks, proc(data: rawptr, i: int) {
 		j := (^Par_Job)(data)
 		p := pass_make(j.e, j.s, j.doc, j.state)
-		arena := thread_arena_make()
+		arena := j.arenas[i]
+		thread_arena_begin(arena)
 		p.alloc = virtual.arena_allocator(arena)
 		r := j.ranges[i]
 		for f in j.frames[r[0]:r[1]] { style_subtree(p, f.h, f.parent, f.bloom, root_ctx = f.ctx) }
-		j.passes[i], j.arenas[i] = p, arena
+		j.passes[i] = p
 	}, &job)
 	for i in 0 ..< tasks {
 		append(&s.thread_arenas, job.arenas[i])
@@ -141,12 +145,39 @@ flat_sizes :: proc(doc: ^dom.Document) -> []i32 {
 	return size
 }
 
-// The arena of a style thread's computed styles, kept by the Styled (thread_arenas) and freed by its owner's thread: its
-// header comes from the process's allocator, whoever runs the item (the caller's allocator may not be thread-safe: a
-// test's), and styled_destroy frees it there.
+// The arena of a style thread's computed styles, kept by the Styled (thread_arenas) and given back to the engine when the
+// Styled goes (thread_arena_give), on its owner's thread: taken there before the threads start, one of the engine's spares
+// when it has some (its pages already mapped: making and freeing them was a tenth of a style pass on a page whose script
+// rebuilds 10 000 nodes a frame). Its header comes from the process's allocator (the caller's may not be thread-safe: a
+// test's). One block, committed as it fills, so an emptied arena keeps its pages.
 @(private)
-thread_arena_make :: proc() -> ^virtual.Arena {
+thread_arena_take :: proc(e: ^Engine) -> ^virtual.Arena {
+	if a, ok := pop_safe(&e.spare_arenas); ok {
+		e.spare_arena_bytes -= int(a.curr_block.committed)
+		return a
+	}
 	arena := new(virtual.Arena, base.process_allocator())
-	_ = virtual.arena_init_growing(arena)
+	_ = virtual.arena_init_growing(arena, STYLED_RESERVE)
+	arena.default_commit_size = THREAD_ARENA_COMMIT   // (else 8 MB at a time: a task styles a few hundred elements)
 	return arena
+}
+
+// Keeps `a` for a later pass while the spares hold no more than style.recycle_bytes; frees it otherwise. It is emptied
+// (its used part zeroed) by the style thread that takes it next: thread_arena_begin.
+@(private)
+thread_arena_give :: proc(e: ^Engine, a: ^virtual.Arena) {
+	if e == nil || a.curr_block == nil || a.curr_block.prev != nil || e.spare_arena_bytes + int(a.curr_block.committed) > e.settings.recycle_bytes { thread_arena_free(a); return }
+	e.spare_arena_bytes += int(a.curr_block.committed)
+	append(&e.spare_arenas, a)
+}
+
+// On the style thread, before its task: what the arena held in an earlier pass goes (the zeroing shared out between the
+// threads, not on the caller's).
+@(private)
+thread_arena_begin :: proc(a: ^virtual.Arena) { if a.total_used > 0 { virtual.arena_free_all(a) } }
+
+@(private)
+thread_arena_free :: proc(a: ^virtual.Arena) {
+	virtual.arena_destroy(a)
+	free(a, base.process_allocator())
 }
