@@ -42,7 +42,8 @@ a_layout_read_by_a_script_uses_this_pages_images :: proc(t: ^testing.T) {
 
 // A wait for load waits for the document's readyState complete (examples/site/remote/late-script.htm): its parser-blocking script takes 1.5 s, and until it is there the page
 // has no script engine. Such a page was taken for one without scripts, loaded as soon as its HTML was: a capture of odin-lang.org (eleven scripts) was blank, its images not
-// yet asked for. Then, once the network is quiet, every image has arrived: more of them than the connections of one origin at a time, none left on its way.
+// yet asked for. Then, once the network is quiet, every image has arrived: more of them than the connections of one origin at a time, none left on its way; the load event
+// saw them all.
 @(test)
 a_wait_for_load_waits_for_a_page_whose_script_engine_is_not_there_yet :: proc(t: ^testing.T) {
 	s := e2e.start(t, {dpi = e2e.DPI_ONE, url = e2e.url(e2e.test_server(t), "/site/remote/late-script.htm")})
@@ -54,6 +55,8 @@ a_wait_for_load_waits_for_a_page_whose_script_engine_is_not_there_yet :: proc(t:
 	}
 	testing.expectf(t, pending == 0 && images == LATE_SCRIPT_IMAGES, "every image arrived: %d of %d, %d requests on their way", images, LATE_SCRIPT_IMAGES, pending)
 	testing.expect_value(t, e2e.eval(s, `[...document.images].filter((i) => i.complete && i.naturalWidth > 0).length`), fmt.tprintf("%d", LATE_SCRIPT_IMAGES))
+	// the load event waited for them (HTML "delay the load event"): the parsed <img> elements counted before their requests started
+	testing.expect_value(t, e2e.eval(s, `String(window.atLoad)`), fmt.tprintf("%d", LATE_SCRIPT_IMAGES))
 }
 
 // A script ticks every 20 ms and touches nothing, which draws no frame (frames_at_rest.odin); a timer that turns the box blue then reaches the screen.
