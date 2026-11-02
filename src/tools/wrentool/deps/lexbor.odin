@@ -2,7 +2,7 @@ package deps
 
 import "core:fmt"
 import "core:os"
-import "core:path/filepath"
+@(require) import "core:path/filepath"   // (Windows: objects by source folder)
 import "core:strings"
 import "wb:tools/tooling"
 

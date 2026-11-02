@@ -1,4 +1,4 @@
-# Inner pages (topics, articles, threads, files, docs): the second list of tools\wrentool compare. Use -Height 2400 for the content further down.
+# Inner pages (topics, articles, threads, files, docs): the second list of wrentool compare. Use -Height 2400 for the content further down.
 # --- reference documentation
 https://developer.mozilla.org/en-US/docs/Web/CSS/flex
 https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array

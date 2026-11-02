@@ -61,9 +61,9 @@ pinned_versions_match_the_scripts :: proc(t: ^testing.T) {
 	data, err := os.read_entire_file("src/tools/tooling/js_engine.odin", context.temp_allocator)
 	testing.expect_value(t, err, nil)
 	testing.expectf(t, strings.contains(string(data), "QJS_VERSION :: \"" + QUICKJS_VERSION + "\""), "QUICKJS_VERSION (%s) is the version src\\tools\\tooling\\js_engine.odin pins", QUICKJS_VERSION)
-	data, err = os.read_entire_file("wrentool fetch wasmtime", context.temp_allocator)
+	data, err = os.read_entire_file("src/tools/wrentool/deps/fetch.odin", context.temp_allocator)
 	testing.expect_value(t, err, nil)
-	testing.expectf(t, strings.contains(string(data), "$Version = '" + wasm.WASMTIME_VERSION + "'"), "WASMTIME_VERSION (%s) is the version tools\\wrentool fetch wasmtime fetches", wasm.WASMTIME_VERSION)
+	testing.expectf(t, strings.contains(string(data), "WASMTIME_VERSION :: \"" + wasm.WASMTIME_VERSION + "\""), "WASMTIME_VERSION (%s) is the version src\\tools\\wrentool\\deps\\fetch.odin pins", wasm.WASMTIME_VERSION)
 }
 
 // A license text added to native\js\licenses is shown by about:licenses (and shipped in licenses\ by wrentool package).

@@ -2,8 +2,8 @@ package deps
 
 import "core:fmt"
 import "core:os"
-import "core:strings"
-import "wb:base"
+@(require) import "core:strings"   // (these two: Windows)
+@(require) import "wb:base"
 import "wb:tools/tooling"
 
 // Wren's Rust code (the native/ workspace) as the one Rust static library linked into the program: the image decoders and WOFF2 (native/media), the network stack (native/net), the toolkit's

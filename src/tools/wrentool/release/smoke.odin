@@ -138,7 +138,7 @@ run_crash_e2e :: proc(args: []string) -> int {
 		return EXIT_USAGE
 	}
 	_ = os.make_directory_all("build/linux")
-	if tooling.run({command = {tooling.odin_program(), "build", "src/tools/crashmodes", "-collection:wb=src", "-vet", "-debug", "-o:speed", "-out:" + CRASH_EXE, "-extra-linker-flags:-Wl,--build-id"}}) != 0 { return 1 }
+	if tooling.run({command = {tooling.odin_program(), "build", "src/tools/crashmodes", "-collection:wb=src", "-vet", "-debug", "-o:speed", "-out:" + CRASH_EXE, "-extra-linker-flags:-Wl,--build-id"}}) != 0 { fmt.eprintln("crashmodes did not build"); return 1 }
 	failed := 0
 	for c in CRASH_CASES {
 		dir := fmt.tprintf("%s/wren-crash-%s", base.temp_dir(context.temp_allocator), base.unique_name(context.temp_allocator))
