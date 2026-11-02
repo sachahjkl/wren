@@ -134,19 +134,18 @@ Desktop_Shell :: struct {
 	failure:         string,           // the last failed change, shown under the box (owned)
 }
 
-@(private = "file") dsk: Desktop_Shell
 
 desktop_shell_destroy :: proc() {
-	desktop.watch_stop(dsk.watcher)
-	desktop.status_destroy(&dsk.status)
-	delete(dsk.failure)
-	dsk = {}
+	desktop.watch_stop(the_app.dsk.watcher)
+	desktop.status_destroy(&the_app.dsk.status)
+	delete(the_app.dsk.failure)
+	the_app.dsk = {}
 }
 
 // Waits for the jobs out (their completion frees them); before the pool and the loop go.
 desktop_shell_shutdown :: proc(app: ^App) {
 	host.shutdown_step("desktop jobs")
-	for dsk.jobs > 0 { host.blocking_settle(&app.blocking) }
+	for app.dsk.jobs > 0 { host.blocking_settle(&app.blocking) }
 	host.shutdown_step("desktop watcher")
 	desktop_shell_destroy()   // (the watcher's thread is stopped and joined here)
 	host.shutdown_step("setup jobs, uninstall helper")
@@ -160,8 +159,8 @@ desktop_job_start :: proc(app: ^App, kind: Desktop_Job_Kind, reason: Desktop_Rea
 	job := new(Desktop_Job)
 	job.app, job.kind, job.reason = app, kind, reason
 	job.opts = desktop.options_clone(desktop_options(app))
-	dsk.jobs += 1
-	if kind != .Read { dsk.writes += 1 }
+	app.dsk.jobs += 1
+	if kind != .Read { app.dsk.writes += 1 }
 	host.run_blocking(&app.blocking, desktop_job_work, desktop_job_done, job)
 }
 
@@ -184,24 +183,24 @@ desktop_job_done :: proc(data: rawptr) {
 		delete(job.result.detail)
 		desktop.options_destroy(&job.opts)
 		desktop.status_destroy(&job.status)
-		if job.kind != .Read { dsk.writes = max(dsk.writes - 1, 0) }
-		dsk.jobs -= 1
+		if job.kind != .Read { the_app.dsk.writes = max(the_app.dsk.writes - 1, 0) }
+		the_app.dsk.jobs -= 1
 		free(job)   // (last: the lines above read it)
 	}
 	app := job.app
-	changed := !dsk.known || dsk.status.state != job.status.state || dsk.status.stale_exe != job.status.stale_exe || dsk.status.incomplete != job.status.incomplete
-	desktop.status_destroy(&dsk.status)
-	dsk.status, job.status = job.status, {}
-	dsk.known = true
-	dsk.read_at = time.tick_now()
+	changed := !app.dsk.known || app.dsk.status.state != job.status.state || app.dsk.status.stale_exe != job.status.stale_exe || app.dsk.status.incomplete != job.status.incomplete
+	desktop.status_destroy(&app.dsk.status)
+	app.dsk.status, job.status = job.status, {}
+	app.dsk.known = true
+	app.dsk.read_at = time.tick_now()
 
 	if job.kind != .Read {
-		delete(dsk.failure)
-		dsk.failure = ""
+		delete(app.dsk.failure)
+		app.dsk.failure = ""
 		what := job.kind == .Install ? "install" : "remove"
 		if job.result.error != .None {
-			dsk.failure = fmt.aprintf("Could not %s the desktop integration: %s (%s)", what, desktop.error_text(job.result.error), job.result.detail)
-			ui.toast(.Warn, "%s", dsk.failure)
+			app.dsk.failure = fmt.aprintf("Could not %s the desktop integration: %s (%s)", what, desktop.error_text(job.result.error), job.result.detail)
+			ui.toast(.Warn, "%s", app.dsk.failure)
 		} else if job.reason == .User {
 			ui.toast(.Info, job.kind == .Install ? "%s is integrated with the desktop (%s)" : "%s is no longer integrated with the desktop", APP_NAME, desktop.targets())
 		}
@@ -213,14 +212,14 @@ desktop_job_done :: proc(data: rawptr) {
 // The integration of this channel as it is on the disk now, read again when older than the preference says. Called
 // while something shows it.
 // The window came back from another program: the integration may have changed there (read again when shown).
-desktop_note_activate :: proc() { sync.atomic_store(&dsk.stale, true) }
+desktop_note_activate :: proc() { sync.atomic_store(&the_app.dsk.stale, true) }
 
 // The watcher's thread: a place the integration lives changed on the disk.
 @(private = "file")
 desktop_watch_wake :: proc(user: rawptr) {
 	app := (^App)(user)
-	sync.atomic_store(&dsk.stale, true)
-	sync.atomic_add(&dsk.changes, 1)
+	sync.atomic_store(&app.dsk.stale, true)
+	sync.atomic_add(&app.dsk.changes, 1)
 	if app != nil { host.post(&app.loop, desktop_changed_on_loop, app) }
 }
 
@@ -236,7 +235,7 @@ desktop_changed_on_loop :: proc(data: rawptr) {
 // keys, the Start menu shortcut), so nothing reads it on a timer and the Setup dialog follows what is done to it outside
 // (Settings > Apps, another Wren). Not for the runs that must not look at the desktop (the same ones Setup leaves alone).
 desktop_watch_begin :: proc(app: ^App, profile_explicit: bool) {
-	if !desktop.supported() || dsk.watcher != nil { return }
+	if !desktop.supported() || app.dsk.watcher != nil { return }
 	if v, ok := os.lookup_env("WREN_DESKTOP_INTEGRATION", context.temp_allocator); ok && v == "off" { return }   // src/e2e sets it for every test
 	// The watcher now runs for --profile and for disposable profiles too (the temporary folder): the Setup state and the
 	// menu's "installed" badge stay live in those runs as well, and the install folder is followed so an uninstall or a
@@ -248,25 +247,25 @@ desktop_watch_begin :: proc(app: ^App, profile_explicit: bool) {
 // Starts the watcher whatever the run (the Setup dialog asks for it when it opens: it must follow the disk it shows, also
 // on the scratch roots of a test).
 desktop_watch_ensure :: proc(app: ^App) {
-	if !desktop.supported() || dsk.watcher != nil { return }
+	if !desktop.supported() || app.dsk.watcher != nil { return }
 	o := desktop_options(app)
-	dsk.watcher = desktop.watch_start(&o, desktop_watch_wake, app)
+	app.dsk.watcher = desktop.watch_start(&o, desktop_watch_wake, app)
 }
 
 // How many changes the watcher has seen (Setup compares it with the one it read at).
-desktop_changes :: proc() -> int { return sync.atomic_load(&dsk.changes) }
+desktop_changes :: proc() -> int { return sync.atomic_load(&the_app.dsk.changes) }
 
 desktop_status_poll :: proc(app: ^App) {
-	if dsk.jobs > 0 { return }
-	stale := sync.atomic_load(&dsk.stale)
-	if dsk.known && !stale && dsk.watcher != nil { return }   // the system tells us: no periodic read at all
+	if app.dsk.jobs > 0 { return }
+	stale := sync.atomic_load(&app.dsk.stale)
+	if app.dsk.known && !stale && app.dsk.watcher != nil { return }   // the system tells us: no periodic read at all
 	every := time.Duration(config.int_of(&app.prefs, "browser.desktop_integration.status_refresh_ms")) * time.Millisecond
-	if dsk.known && !stale && time.tick_since(dsk.read_at) < every { return }
-	if stale { sync.atomic_store(&dsk.stale, false) }
+	if app.dsk.known && !stale && time.tick_since(app.dsk.read_at) < every { return }
+	if stale { sync.atomic_store(&app.dsk.stale, false) }
 	desktop_job_start(app, .Read, .Refresh)
 }
 
-desktop_integrated :: proc() -> bool { return dsk.known && dsk.status.state != .Absent }
+desktop_integrated :: proc() -> bool { return the_app.dsk.known && the_app.dsk.status.state != .Absent }
 
 desktop_available :: proc() -> bool { return desktop.supported() }
 desktop_has_default_apps :: proc() -> bool { return desktop.has_default_apps_page() }
@@ -280,13 +279,13 @@ desktop_checked :: proc(app: ^App) -> bool {
 
 // Ticks or unticks the box.
 desktop_toggle :: proc(app: ^App) {
-	if dsk.jobs > 0 { return }
+	if app.dsk.jobs > 0 { return }
 	desktop_job_start(app, desktop_integrated() ? .Remove : .Install, .User)
 }
 
 // The palette's command: decides on the disk as it is now, not on what was read a moment ago.
 desktop_command_toggle :: proc(app: ^App) {
-	if dsk.jobs > 0 { return }
+	if app.dsk.jobs > 0 { return }
 	o := desktop_options(app)
 	s := desktop.status(&o, context.temp_allocator)
 	desktop_job_start(app, s.state == .Absent ? .Install : .Remove, .User)
@@ -294,7 +293,7 @@ desktop_command_toggle :: proc(app: ^App) {
 
 // Makes the integration run this executable (the box's "Update").
 desktop_update :: proc(app: ^App) {
-	if dsk.jobs > 0 { return }
+	if app.dsk.jobs > 0 { return }
 	desktop_job_start(app, .Install, .User)
 }
 
@@ -319,16 +318,16 @@ desktop_profile_is_disposable :: proc(app: ^App, explicit: bool) -> bool {
 
 // Whether the switch can be used now: a background read changes nothing on the disk, so the switch keeps its state and
 // stays usable (a "Working..." every second made the row jump); only a change being written or the first read is work.
-desktop_config_busy :: proc() -> bool { return dsk.writes > 0 || !dsk.known }
+desktop_config_busy :: proc() -> bool { return the_app.dsk.writes > 0 || !the_app.dsk.known }
 
 // What the row says under its title: what the files run, or what failed (temp memory), and its tone tag.
 desktop_config_note :: proc() -> (note: string, tone: string) {
-	state := dsk.known ? dsk.status.state : .Absent
+	state := the_app.dsk.known ? the_app.dsk.status.state : .Absent
 	tone = "weak"
 	switch {
-	case dsk.failure != "": note, tone = dsk.failure, "bad"
+	case the_app.dsk.failure != "": note, tone = the_app.dsk.failure, "bad"
 	case desktop_config_busy(): note = i18n.tr("Working\u2026")
-	case state == .Repair && dsk.status.stale_exe != "": note = fmt.tprintf(i18n.tr("Points to %s \u2014 Update makes it run this copy of %s."), dsk.status.stale_exe, APP_NAME)
+	case state == .Repair && the_app.dsk.status.stale_exe != "": note = fmt.tprintf(i18n.tr("Points to %s \u2014 Update makes it run this copy of %s."), the_app.dsk.status.stale_exe, APP_NAME)
 	case state == .Repair:  note = i18n.tr("Some of its files are missing \u2014 Repair puts them back.")
 	case state == .Installed: note = fmt.tprintf(i18n.tr("Installed. %s is listed as a program that can open web addresses; the default is yours to pick."), APP_NAME)
 	case: note = fmt.tprintf(i18n.tr("Adds %s to the Start menu and to the programs that can open web addresses."), APP_NAME)
@@ -340,12 +339,12 @@ desktop_config_note :: proc() -> (note: string, tone: string) {
 desktop_config_buttons :: proc(app: ^App) {
 	em := ui.font_size()
 	busy := desktop_config_busy()
-	state := dsk.known ? dsk.status.state : .Absent
+	state := app.dsk.known ? app.dsk.status.state : .Absent
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
 	if ui.row(.Center) {
 		if state == .Repair {
 			ui.next({width = ui.text_size(em * 0.8), height = ui.px(ui.dense(em * 1.8))})
-			if ui.disabled(busy) { if ui.button(dsk.status.stale_exe != "" ? i18n.tr("Update###desktop_update") : i18n.tr("Repair###desktop_update")).clicked { desktop_update(app) } }
+			if ui.disabled(busy) { if ui.button(app.dsk.status.stale_exe != "" ? i18n.tr("Update###desktop_update") : i18n.tr("Repair###desktop_update")).clicked { desktop_update(app) } }
 			ui.spacer(ui.px(em * 0.4))
 		}
 		if desktop.has_default_apps_page() {
@@ -361,7 +360,7 @@ desktop_config_buttons :: proc(app: ^App) {
 // The row's switch (in the editor column); true when it was flipped.
 desktop_config_switch :: proc(app: ^App) -> bool {
 	em := ui.font_size()
-	checked := dsk.known && dsk.status.state != .Absent
+	checked := app.dsk.known && app.dsk.status.state != .Absent
 	ui.next({width = ui.px(em * 3.4), height = ui.px(ui.dense(em * 2))})
 	flipped := false
 	if ui.disabled(desktop_config_busy()) {

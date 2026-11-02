@@ -42,16 +42,14 @@ Compile_Service :: struct {
 	total_ms: f64,
 }
 
-@(private)
-compiler: Compile_Service
 
 // What the compile threads did (tests, measurements).
 Compile_Stats :: struct { threads, jobs, failed: int, total_ms: f64 }
 
 compile_stats :: proc() -> Compile_Stats {
-	sync.mutex_lock(&compiler.mu)
-	defer sync.mutex_unlock(&compiler.mu)
-	return Compile_Stats{threads = len(compiler.threads), jobs = compiler.jobs, failed = compiler.failed, total_ms = compiler.total_ms}
+	sync.mutex_lock(&the_pages.compiler.mu)
+	defer sync.mutex_unlock(&the_pages.compiler.mu)
+	return Compile_Stats{threads = len(the_pages.compiler.threads), jobs = the_pages.compiler.jobs, failed = the_pages.compiler.failed, total_ms = the_pages.compiler.total_ms}
 }
 
 @(private)
@@ -80,10 +78,10 @@ compile_offthread :: proc(p: ^Page, f: ^Script_Fetch) {
 	job.key = key
 	job.ui_loop = p.loop
 	f.compiling = true
-	sync.mutex_lock(&compiler.mu)
-	append(&compiler.queue, job)
-	sync.mutex_unlock(&compiler.mu)
-	sync.sema_post(&compiler.sema)
+	sync.mutex_lock(&the_pages.compiler.mu)
+	append(&the_pages.compiler.queue, job)
+	sync.mutex_unlock(&the_pages.compiler.mu)
+	sync.sema_post(&the_pages.compiler.sema)
 }
 
 // A module arrived: compile it on another thread when it is large and not cached yet. True when a job took it: the
@@ -105,45 +103,45 @@ compile_module_offthread :: proc(p: ^Page, e: ^Module_Entry) -> bool {
 	job.key = key
 	job.ui_loop = p.loop
 	e.compiling = true
-	sync.mutex_lock(&compiler.mu)
-	append(&compiler.queue, job)
-	sync.mutex_unlock(&compiler.mu)
-	sync.sema_post(&compiler.sema)
+	sync.mutex_lock(&the_pages.compiler.mu)
+	append(&the_pages.compiler.queue, job)
+	sync.mutex_unlock(&the_pages.compiler.mu)
+	sync.sema_post(&the_pages.compiler.sema)
 	return true
 }
 
 @(private)
 compile_service_start :: proc(p: ^Page, n: int) -> bool {
-	sync.mutex_lock(&compiler.mu)
-	defer sync.mutex_unlock(&compiler.mu)
-	if compiler.stop { return false }
-	if len(compiler.threads) >= n { return true }
-	compiler.opt = p.settings.wasm
-	compiler.stack = p.settings.workers.thread_stack_bytes
-	for len(compiler.threads) < n {
-		t := host.thread_start(compile_main, nil, compiler.stack, .Below_Normal, "wren-js-compile")
+	sync.mutex_lock(&the_pages.compiler.mu)
+	defer sync.mutex_unlock(&the_pages.compiler.mu)
+	if the_pages.compiler.stop { return false }
+	if len(the_pages.compiler.threads) >= n { return true }
+	the_pages.compiler.opt = p.settings.wasm
+	the_pages.compiler.stack = p.settings.workers.thread_stack_bytes
+	for len(the_pages.compiler.threads) < n {
+		t := host.thread_start(compile_main, the_pages, the_pages.compiler.stack, .Below_Normal, "wren-js-compile")
 		if t == nil { break }
-		append(&compiler.threads, t)
+		append(&the_pages.compiler.threads, t)
 	}
-	return len(compiler.threads) > 0
+	return len(the_pages.compiler.threads) > 0
 }
 
 // Stops the compile threads (process end, after every page closed). Jobs not started are dropped.
 compile_shutdown :: proc() {
-	sync.mutex_lock(&compiler.mu)
-	compiler.stop = true
-	threads := compiler.threads
-	compiler.threads = nil
-	sync.mutex_unlock(&compiler.mu)
-	for _ in threads { sync.sema_post(&compiler.sema) }
+	sync.mutex_lock(&the_pages.compiler.mu)
+	the_pages.compiler.stop = true
+	threads := the_pages.compiler.threads
+	the_pages.compiler.threads = nil
+	sync.mutex_unlock(&the_pages.compiler.mu)
+	for _ in threads { sync.sema_post(&the_pages.compiler.sema) }
 	for t in threads { host.thread_join(t) }
 	delete(threads)
-	sync.mutex_lock(&compiler.mu)
-	for j in compiler.queue { compile_job_free(j) }
-	delete(compiler.queue)
-	compiler.queue = nil
-	compiler.stop = false
-	sync.mutex_unlock(&compiler.mu)
+	sync.mutex_lock(&the_pages.compiler.mu)
+	for j in the_pages.compiler.queue { compile_job_free(j) }
+	delete(the_pages.compiler.queue)
+	the_pages.compiler.queue = nil
+	the_pages.compiler.stop = false
+	sync.mutex_unlock(&the_pages.compiler.mu)
 }
 
 @(private)
@@ -157,12 +155,13 @@ compile_job_free :: proc(j: ^Compile_Job) {
 // A compile thread: one engine instance, kept for the thread's life. Its "page" only carries the cache key of the
 // compilation (Engine_storeBytecode); compiling calls no other import.
 @(private)
-compile_main :: proc(_: rawptr) {
+compile_main :: proc(data: rawptr) {
+	bind((^Pages)(data))   // (the service of the App that started this thread)
 	ctx_page := new(Page)
 	ctx_page.js = new(Js_Realm)
-	sync.mutex_lock(&compiler.mu)
-	opt := compiler.opt
-	sync.mutex_unlock(&compiler.mu)
+	sync.mutex_lock(&the_pages.compiler.mu)
+	opt := the_pages.compiler.opt
+	sync.mutex_unlock(&the_pages.compiler.mu)
 	opt.soft_call_ms = 0
 	opt.stop = nil
 	// No deadline: compiling runs none of the page's code, it ends with the source, and nothing waits on this thread. With
@@ -174,13 +173,13 @@ compile_main :: proc(_: rawptr) {
 	if inst != nil { inst.lenient = true }
 	ctx_page.js.inst = inst   // Engine_storeBytecode answers the realm's engine only
 	for {
-		sync.sema_wait(&compiler.sema)
-		sync.mutex_lock(&compiler.mu)
-		if compiler.stop { sync.mutex_unlock(&compiler.mu); break }
-		if len(compiler.queue) == 0 { sync.mutex_unlock(&compiler.mu); continue }
-		job := compiler.queue[0]
-		ordered_remove(&compiler.queue, 0)
-		sync.mutex_unlock(&compiler.mu)
+		sync.sema_wait(&the_pages.compiler.sema)
+		sync.mutex_lock(&the_pages.compiler.mu)
+		if the_pages.compiler.stop { sync.mutex_unlock(&the_pages.compiler.mu); break }
+		if len(the_pages.compiler.queue) == 0 { sync.mutex_unlock(&the_pages.compiler.mu); continue }
+		job := the_pages.compiler.queue[0]
+		ordered_remove(&the_pages.compiler.queue, 0)
+		sync.mutex_unlock(&the_pages.compiler.mu)
 		if inst != nil && !inst.dead {
 			t0 := time.tick_now()
 			ctx_page.js.pending_key = job.key
@@ -189,13 +188,13 @@ compile_main :: proc(_: rawptr) {
 			ctx_page.js.has_pending_key = false
 			job.ms = time.duration_milliseconds(time.tick_since(t0))
 		}
-		sync.mutex_lock(&compiler.mu)
-		compiler.jobs += 1
-		if !job.ok { compiler.failed += 1 }
-		compiler.total_ms += job.ms
+		sync.mutex_lock(&the_pages.compiler.mu)
+		the_pages.compiler.jobs += 1
+		if !job.ok { the_pages.compiler.failed += 1 }
+		the_pages.compiler.total_ms += job.ms
 		// once stopping, the interface loop may be gone: the result stays in the cache only
-		if compiler.stop { compile_job_free(job) } else { host.post(job.ui_loop, compile_done, job) }
-		sync.mutex_unlock(&compiler.mu)
+		if the_pages.compiler.stop { compile_job_free(job) } else { host.post(job.ui_loop, compile_done, job) }
+		sync.mutex_unlock(&the_pages.compiler.mu)
 		free_all(context.temp_allocator)
 	}
 	if inst != nil { wasm.destroy(inst) }

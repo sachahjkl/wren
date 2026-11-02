@@ -18,6 +18,8 @@ Sw_Hook :: struct {
 	active:    ^int,   // registrations that can answer (nil or 0: the hook is never asked)
 }
 
+// The hook of this thread's loaders (an App's run on the thread of its loop: the page package installs its own there).
+@(thread_local)
 sw_hook: Sw_Hook
 
 // (run_hop) whether a service worker takes this hop.

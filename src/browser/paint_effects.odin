@@ -48,7 +48,6 @@ EFFECTS_PREFS := [?]config.Def{
 		description = "Standard deviation of a blur (filter, backdrop-filter, drop-shadow) above which it is computed on an image reduced by 2, 4, 8...: the cost per pixel stays bounded whatever the radius. Lower is faster and slightly softer."},
 }
 
-@(private) effects_settings: Effects_Settings
 
 register_effects_prefs :: proc(p: ^config.Prefs) {
 	config.register(p, EFFECTS_PREFS[:])
@@ -71,16 +70,16 @@ effects_settings_from_prefs :: proc(p: ^config.Prefs) -> Effects_Settings {
 
 // Shell start-up: the effect preferences, applied to the renderer and followed.
 effects_init :: proc(app: ^App) {
-	effects_settings = effects_settings_from_prefs(&app.prefs)
-	render.set_blur_sigma_limit(&app.r, effects_settings.blur_sigma_limit)
-	fx_settings = fx_settings_from_prefs(&app.prefs)
+	app.effects_settings = effects_settings_from_prefs(&app.prefs)
+	render.set_blur_sigma_limit(&app.r, app.effects_settings.blur_sigma_limit)
+	app.fx_settings = fx_settings_from_prefs(&app.prefs)
 	fx_settings_apply(app)
 	planes_init(app)
 	app.watches[.Effects] = config.watch(&app.prefs, "paint.effects.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		a := (^App)(user)
-		effects_settings = effects_settings_from_prefs(p)
-		render.set_blur_sigma_limit(&a.r, effects_settings.blur_sigma_limit)
-		fx_settings = fx_settings_from_prefs(p)
+		a.effects_settings = effects_settings_from_prefs(p)
+		render.set_blur_sigma_limit(&a.r, a.effects_settings.blur_sigma_limit)
+		a.fx_settings = fx_settings_from_prefs(p)
 		fx_settings_apply(a)
 	}, app)
 	// kept text shadows were rasterized with the text settings of their time
@@ -274,7 +273,7 @@ item_units :: proc(it: ^lay.Display_Item) -> int {
 @(private)
 group_outset :: proc(e: ^Effects, g: i32) -> [4]f32 {
 	gr := &e.l.groups[g]
-	if .Filter not_in gr.effects || !effects_settings.filters { return {} }
+	if .Filter not_in gr.effects || !the_app.effects_settings.filters { return {} }
 	o := lay.filter_outset(e.l.boxes[gr.box].cs.filter, e.l.scale)
 	sp := e.l.boxes[gr.box].space
 	if lay.space_plain(e.l, sp) { return o }
@@ -410,14 +409,14 @@ open_group :: proc(e: ^Effects, c: i32) {
 	space := b.space
 	off := e.v.offsets[space] + e.origin
 	box_xf := l.spaces[space].xform
-	if .Clip_Path in g.effects && effects_settings.clip_paths {
+	if .Clip_Path in g.effects && the_app.effects_settings.clip_paths {
 		og.shape = push_clip_path(e, g, box_xf, off)
 	}
 	bd: draw.Backdrop
 	bd_rect: draw.Rect
 	bd_radii: [4]f32
 	has_bd := false
-	if .Backdrop in g.effects && effects_settings.backdrop_filters && b.kind != .Inline {
+	if .Backdrop in g.effects && the_app.effects_settings.backdrop_filters && b.kind != .Inline {
 		bfs := css_filters(cs.backdrop_filter, l.scale)
 		if plane {
 			// a plane's backdrop is what lies under its projection: read when it is composited (close_plane)
@@ -434,19 +433,19 @@ open_group :: proc(e: ^Effects, c: i32) {
 	// what this group draws lies under the backdrops still to come
 	fx_cache_under(e, nil, group = c)
 	filters: []draw.Filter
-	if .Filter in g.effects && effects_settings.filters {
+	if .Filter in g.effects && the_app.effects_settings.filters {
 		filters = css_filters(cs.filter, l.scale)
 		if !any_active(filters) { filters = nil }
 	}
 	blend := draw.Blend_Mode.Normal
-	if .Blend in g.effects && effects_settings.blend_modes {
+	if .Blend in g.effects && the_app.effects_settings.blend_modes {
 		// (a plane blends as a projected quad against what it lands on, not inside its own layer)
 		if plane { og.blend = draw.Blend_Mode(cs.mix_blend_mode) } else { blend = draw.Blend_Mode(cs.mix_blend_mode) }
 	}
 	alpha := plane ? f32(1) : g.alpha   // a plane is faded when it is composited
-	isolate := .Isolate in g.effects && effects_settings.blend_modes
-	masked := .Mask in g.effects && effects_settings.masks
-	layer := (filters != nil || blend != .Normal || isolate || masked || (alpha < 1 && page_render.settings.opacity_layers && gp.units > 1)) && gp.seen && !lay.rect_empty(gp.bounds)
+	isolate := .Isolate in g.effects && the_app.effects_settings.blend_modes
+	masked := .Mask in g.effects && the_app.effects_settings.masks
+	layer := (filters != nil || blend != .Normal || isolate || masked || (alpha < 1 && the_app.page_render.settings.opacity_layers && gp.units > 1)) && gp.seen && !lay.rect_empty(gp.bounds)
 	set_xform(e, lay.NONE)
 	if layer {
 		// a masked group is kept with its mask in the result: its key covers the mask (effects_cache.odin)

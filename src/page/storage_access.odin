@@ -27,9 +27,7 @@ Storage_Access_Embedder :: struct {
 	ask:  proc(user: rawptr, p: ^Page, req: ^Storage_Access_Ask),
 	user: rawptr,
 }
-storage_access_embedder: Storage_Access_Embedder
 
-@(private) sa_decisions: map[string]bool   // owned keys "frame site TAB tab site": granted (true) or refused (false)
 
 @(private)
 sa_key :: proc(site, top: string) -> string { return strings.concatenate({site, "\t", top}, context.temp_allocator) }
@@ -44,7 +42,7 @@ sa_third_party :: proc(p: ^Page) -> bool {
 // The state a new document of a frame starts in: inactive when its pair was granted before.
 storage_access_initial :: proc(c: ^Page) -> fetch.Storage_Access {
 	if c.env.origin.opaque || url.same_site(c.env.site, c.env.top_level_site) { return .None }
-	if granted, known := sa_decisions[sa_key(site_text(c.env.site), site_text(c.env.top_level_site))]; known && granted { return .Inactive }
+	if granted, known := the_pages.sa_decisions[sa_key(site_text(c.env.site), site_text(c.env.top_level_site))]; known && granted { return .Inactive }
 	return .None
 }
 
@@ -61,8 +59,8 @@ sa_activate :: proc(p: ^Page) {
 @(private)
 sa_decide :: proc(site, top: string, granted: bool) {
 	key := sa_key(site, top)
-	if _, known := sa_decisions[key]; known { sa_decisions[key] = granted; return }
-	sa_decisions[strings.clone(key)] = granted
+	if _, known := the_pages.sa_decisions[key]; known { the_pages.sa_decisions[key] = granted; return }
+	the_pages.sa_decisions[strings.clone(key)] = granted
 }
 
 Document_hasStorageAccess :: proc(c: ^Call) -> u64 {
@@ -87,7 +85,7 @@ Document_requestStorageAccess :: proc(c: ^Call) -> u64 {
 	}
 	if !feature_enabled(p, .Storage_Access) { refuse(p, pr, "the storage-access permission policy of the page refuses it"); return pr }
 	site, top := site_text(p.env.site), site_text(p.env.top_level_site)
-	if granted, known := sa_decisions[sa_key(site, top)]; known {
+	if granted, known := the_pages.sa_decisions[sa_key(site, top)]; known {
 		if granted { sa_activate(p); promise_resolve(p, pr, 0) } else { refuse(p, pr, "storage access was refused for this site here") }
 		return pr
 	}
@@ -104,10 +102,10 @@ Document_requestStorageAccess :: proc(c: ^Call) -> u64 {
 	case .Deny:
 		refuse(p, pr, "storage access is refused by the browser's settings (storage.access_requests)")
 	case .Ask:
-		if storage_access_embedder.ask == nil { refuse(p, pr, "nobody can be asked"); return pr }
+		if the_pages.storage_access_embedder.ask == nil { refuse(p, pr, "nobody can be asked"); return pr }
 		req := new(Storage_Access_Ask)
 		req^ = {page = page_id(p), promise = pr, site = strings.clone(site), top = strings.clone(top)}
-		storage_access_embedder.ask(storage_access_embedder.user, p, req)
+		the_pages.storage_access_embedder.ask(the_pages.storage_access_embedder.user, p, req)
 	}
 	return pr
 }
@@ -129,16 +127,16 @@ storage_access_done :: proc(req: ^Storage_Access_Ask, granted: bool) {
 // Clearing a site's data: the decisions about it (as the frame's site or as the tab's) go.
 storage_access_forget :: proc(site: string) {
 	gone := make([dynamic]string, context.temp_allocator)
-	for k in sa_decisions {
+	for k in the_pages.sa_decisions {
 		a, _, b := strings.partition(k, "\t")
 		if a == site || b == site { append(&gone, k) }
 	}
-	for k in gone { key, _ := delete_key(&sa_decisions, k); delete(key) }
+	for k in gone { key, _ := delete_key(&the_pages.sa_decisions, k); delete(key) }
 }
 
 // The session ends (storage_manager_destroy).
 storage_access_reset :: proc() {
-	for k in sa_decisions { delete(k) }
-	delete(sa_decisions)
-	sa_decisions = nil
+	for k in the_pages.sa_decisions { delete(k) }
+	delete(the_pages.sa_decisions)
+	the_pages.sa_decisions = nil
 }

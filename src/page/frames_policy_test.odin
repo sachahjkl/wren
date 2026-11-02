@@ -11,6 +11,7 @@ O :: proc(s: string) -> url.Origin {
 
 @(test)
 sandbox_tokens :: proc(t: ^testing.T) {
+	test_pages(t)
 	s := sandbox_parse("")
 	testing.expect(t, s.active && s.allow == {}, "an empty sandbox allows nothing")
 	s = sandbox_parse("  ALLOW-SCRIPTS\tallow-same-origin allow-bogus allow-top-navigation-by-user-activation ")
@@ -27,6 +28,7 @@ sandbox_tokens :: proc(t: ^testing.T) {
 
 @(test)
 x_frame_options :: proc(t: ^testing.T) {
+	test_pages(t)
 	self := O("https://a.example/")
 	same := []url.Origin{O("https://a.example/x")}
 	cross := []url.Origin{O("https://a.example/x"), O("https://b.example/")}
@@ -44,6 +46,7 @@ x_frame_options :: proc(t: ^testing.T) {
 
 @(test)
 permissions_policy :: proc(t: ^testing.T) {
+	test_pages(t)
 	top := O("https://top.example/")
 	widget := O("https://widget.example/")
 	all := enabled_features({}, nil, top)

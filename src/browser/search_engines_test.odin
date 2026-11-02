@@ -10,6 +10,7 @@ import "wb:config"
 
 @(test)
 search_engine_urls :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect_value(t, engine_url({url = "https://s.test/?q=%s&x=1"}, "caf\u00e9 & tea"), "https://s.test/?q=caf%C3%A9+%26+tea&x=1")
 	testing.expect_value(t, engine_url({url = "https://s.test/find/"}, "a b"), "https://s.test/find/a+b")   // no %s: at the end
 	testing.expect_value(t, engine_url({url = "https://s.test/?a=%s&b=%s"}, "x"), "https://s.test/?a=x&b=x")
@@ -20,6 +21,7 @@ search_engine_urls :: proc(t: ^testing.T) {
 
 @(test)
 search_engines_builtin_and_default :: proc(t: ^testing.T) {
+	test_app(t)
 	se: Search_Engines
 	defer engines_destroy(&se)
 	testing.expect_value(t, engines_default(&se, "google"), -1)
@@ -39,6 +41,7 @@ search_engines_builtin_and_default :: proc(t: ^testing.T) {
 
 @(test)
 search_engine_keywords :: proc(t: ^testing.T) {
+	test_app(t)
 	se: Search_Engines
 	defer engines_destroy(&se)
 	engines_builtin(&se)
@@ -75,6 +78,7 @@ search_engine_keywords :: proc(t: ^testing.T) {
 
 @(test)
 search_engine_editing :: proc(t: ^testing.T) {
+	test_app(t)
 	se: Search_Engines
 	defer engines_destroy(&se)
 	engines_builtin(&se)
@@ -113,6 +117,7 @@ search_engine_editing :: proc(t: ^testing.T) {
 
 @(test)
 search_engines_file_round_trip :: proc(t: ^testing.T) {
+	test_app(t)
 	se: Search_Engines
 	defer engines_destroy(&se)
 	engines_builtin(&se)
@@ -143,6 +148,7 @@ search_engines_file_round_trip :: proc(t: ^testing.T) {
 // A profile of before the list: its choice stays the default, its custom address becomes an engine.
 @(test)
 search_engines_migration :: proc(t: ^testing.T) {
+	test_app(t)
 	se: Search_Engines
 	defer engines_destroy(&se)
 	testing.expect(t, !engines_migrate(&se, "google", "", false), "a built-in choice: nothing of its own to write")

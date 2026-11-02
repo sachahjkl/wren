@@ -322,12 +322,12 @@ classic_colors_frame :: proc(app: ^App) -> ^Classic_Colors {
 // The tab bar's gradient; written once per frame it draws (the bar is built before its tabs).
 strip_bar_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	c := (^Classic_Colors)(user)
-	cur_gap.valid = false
+	the_app.cur_gap.valid = false
 	vgradient(dc, b.rect, b.rect.min.y, b.rect.max.y, c.strip_top, c.strip_bot)
 }
 
-// Where the current tab meets the toolbar (set by its drawing, read by the toolbar's: they have no line there).
-cur_gap: struct { valid: bool, x0, x1: f32 }
+// Where the current tab meets the toolbar (set by its drawing, read by the toolbar's: they have no line there; App.cur_gap).
+Cur_Gap :: struct { valid: bool, x0, x1: f32 }
 
 // `r` filled with a vertical gradient from `top` at y0 to `bot` at y1 (absolute), dithered against banding.
 vgradient :: proc(dc: ^draw.Context, r: draw.Rect, y0, y1: f32, top, bot: draw.Color, tint := draw.WHITE, radii := [4]f32{}) {
@@ -396,7 +396,7 @@ classic_tab_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		return
 	}
 	if t.selected > 0.5 {
-		cur_gap = {true, r.min.x + d.ext - d.tangent, r.max.x - d.ext + d.tangent}
+		the_app.cur_gap = {true, r.min.x + d.ext - d.tangent, r.max.x - d.ext + d.tangent}
 	}
 }
 
@@ -466,7 +466,7 @@ toolbar_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	lw := c.edge
 	vgradient(dc, r, r.min.y, r.max.y, c.lit_mid, c.lit_bot)
 	spans: [2][2]f32 = {{r.min.x, r.max.x}, {}}
-	if cur_gap.valid { spans = {{r.min.x, min(cur_gap.x0, r.max.x)}, {max(cur_gap.x1, r.min.x), r.max.x}} }
+	if the_app.cur_gap.valid { spans = {{r.min.x, min(the_app.cur_gap.x0, r.max.x)}, {max(the_app.cur_gap.x1, r.min.x), r.max.x}} }
 	for sp in spans {
 		if sp[1] <= sp[0] { continue }
 		draw.rect(dc, {{sp[0], r.min.y - lw}, {sp[1], r.min.y}}, c.edge_dark)

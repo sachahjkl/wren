@@ -127,10 +127,10 @@ con_row_lines :: proc(r: ^Con_Row, total: int, stack: bool, expanded: bool) -> u
 // Whether line `i` passes the filters of the toolbar.
 @(private = "file")
 con_passes :: proc(c: ^Dev_Console, t: ^Tab, i: int, kind: Con_Kind, text: string) -> bool {
-	if level_bit(kind) & con_prefs.levels == 0 { return false }
+	if level_bit(kind) & the_app.con_prefs.levels == 0 { return false }
 	if kind == .Marker { return true }
-	if con_prefs.hide_network && kind == .Error && con_is_network(text) { return false }
-	if con_prefs.context_only && kind != .Input && !con_in_context(c, text) { return false }
+	if the_app.con_prefs.hide_network && kind == .Error && con_is_network(text) { return false }
+	if the_app.con_prefs.context_only && kind != .Input && !con_in_context(c, text) { return false }
 	if dt_filter_active(&c.filter) && !dt_filter_match(&c.filter, text) { return false }
 	return true
 }
@@ -154,7 +154,7 @@ con_add :: proc(c: ^Dev_Console, t: ^Tab, i: int, next_depth: int) {
 	total, stack := line_shape(body)
 	header := next_depth > depth
 	payload := meta.payload
-	if con_prefs.group_similar && len(c.rows) > 0 && !header && total == 1 {
+	if the_app.con_prefs.group_similar && len(c.rows) > 0 && !header && total == 1 {
 		last := &c.rows[len(c.rows) - 1]
 		if last.idx < len(t.console) && last.depth == u8(depth) && last.kind == meta.kind && .Header not_in last.flags && last.lines == 1 && t.console[last.idx] == line && meta.kind != .Input && meta.kind != .Marker {
 			last.count += 1
@@ -195,10 +195,10 @@ con_next_depth :: proc(t: ^Tab, i: int) -> int {
 @(private = "file")
 con_refresh :: proc(t: ^Tab, c: ^Dev_Console) {
 	ser := dt_filter_prepare(&c.filter)
-	ser = ser * 31 + u64(con_prefs.levels) * 7 + (con_prefs.hide_network ? 3 : 0) + (con_prefs.group_similar ? 5 : 0)
-	if con_prefs.context_only { ser = ser * 131 + 17; for ch in transmute([]u8)c.ctx { ser = ser * 31 + u64(ch) } }
+	ser = ser * 31 + u64(the_app.con_prefs.levels) * 7 + (the_app.con_prefs.hide_network ? 3 : 0) + (the_app.con_prefs.group_similar ? 5 : 0)
+	if the_app.con_prefs.context_only { ser = ser * 131 + 17; for ch in transmute([]u8)c.ctx { ser = ser * 31 + u64(ch) } }
 	stop := c.paused ? c.stop : 0
-	same := c.key_tab == t.id && c.key_ser == ser && c.key_exp == c.exp_ver && c.key_fs == dtm.row && c.key_stop == stop
+	same := c.key_tab == t.id && c.key_ser == ser && c.key_exp == c.exp_ver && c.key_fs == the_app.dtm.row && c.key_stop == stop
 	first_abs := con_abs(t, 0)
 	if same && c.key_added == t.console_added && c.key_len == len(t.console) { return }
 	// only lines were added, and none of what the rows hold went: the new ones are appended
@@ -208,7 +208,7 @@ con_refresh :: proc(t: ^Tab, c: ^Dev_Console) {
 		c.built_abs = first_abs
 		c.skip = -1
 	}
-	c.key_tab, c.key_added, c.key_len, c.key_ser, c.key_exp, c.key_fs, c.key_stop = t.id, t.console_added, len(t.console), ser, c.exp_ver, dtm.row, stop
+	c.key_tab, c.key_added, c.key_len, c.key_ser, c.key_exp, c.key_fs, c.key_stop = t.id, t.console_added, len(t.console), ser, c.exp_ver, the_app.dtm.row, stop
 	start := int(c.built_abs - first_abs)
 	// a header is known by the line after it: the last line waits until the next arrives
 	end := len(t.console)
@@ -235,12 +235,12 @@ con_refresh :: proc(t: ^Tab, c: ^Dev_Console) {
 }
 
 @(private = "file")
-con_line_h :: proc() -> f32 { return math.round(dtm.mono_fs * 1.4) }
+con_line_h :: proc() -> f32 { return math.round(the_app.dtm.mono_fs * 1.4) }
 
 @(private = "file")
 con_row_height :: proc(r: ^Con_Row) -> f32 {
-	if r.lines <= 1 { return dtm.row }
-	return dtm.row + f32(r.lines - 1) * con_line_h() + dt_px(2)
+	if r.lines <= 1 { return the_app.dtm.row }
+	return the_app.dtm.row + f32(r.lines - 1) * con_line_h() + dt_px(2)
 }
 
 @(private = "file")
@@ -306,29 +306,29 @@ con_row_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	d := (^Con_Draw)(user)
 	r := b.rect
 	dt_row_back(dc, r, false, d.selected, d.hot, d.focused, d.tint)
-	line := draw.Color{dtc.border_soft.r, dtc.border_soft.g, dtc.border_soft.b, dtc.border_soft.a * 0.8}
-	draw.rect(dc, {{r.min.x, r.max.y - dtm.line}, {r.max.x, r.max.y}}, line)
-	if d.bar.a > 0 && !d.selected { draw.rect(dc, {r.min, {r.min.x + dtm.line * 2, r.max.y}}, d.bar) }
-	top := r.min.y + dtm.row * 0.5
+	line := draw.Color{the_app.dtc.border_soft.r, the_app.dtc.border_soft.g, the_app.dtc.border_soft.b, the_app.dtc.border_soft.a * 0.8}
+	draw.rect(dc, {{r.min.x, r.max.y - the_app.dtm.line}, {r.max.x, r.max.y}}, line)
+	if d.bar.a > 0 && !d.selected { draw.rect(dc, {r.min, {r.min.x + the_app.dtm.line * 2, r.max.y}}, d.bar) }
+	top := r.min.y + the_app.dtm.row * 0.5
 	x := r.min.x + dt_px(8)
 	// group guides
 	for i in 0 ..< d.depth {
 		gx := math.round(x + f32(i) * dt_px(14) + dt_px(6))
-		draw.rect(dc, {{gx, r.min.y}, {gx + dtm.line, r.max.y}}, with_alpha(dtc.border, 0.7))
+		draw.rect(dc, {{gx, r.min.y}, {gx + the_app.dtm.line, r.max.y}}, with_alpha(the_app.dtc.border, 0.7))
 	}
 	x += f32(d.depth) * dt_px(14)
 	// the fold / unfold chevron
 	if d.chevron >= 0 {
-		dt_icon(dc, d.chevron == 1 ? .Caret_Down : .Caret_Right, {math.round(x + dt_px(5)), top}, dtm.icon * 0.78, dtc.weak, dtm.sc)
+		dt_icon(dc, d.chevron == 1 ? .Caret_Down : .Caret_Right, {math.round(x + dt_px(5)), top}, the_app.dtm.icon * 0.78, the_app.dtc.weak, the_app.dtm.sc)
 	}
 	x += dt_px(13)
 	// the level
 	if d.level_icon != .None {
-		dt_icon(dc, d.level_icon, {math.round(x + dt_px(6)), top}, dtm.icon * 0.92, d.icon_col, dtm.sc)
-		if d.level_icon == .Error { dt_icon(dc, .Close, {math.round(x + dt_px(6)), top}, dtm.icon * 0.58, draw.Color{1, 1, 1, 1}, dtm.sc) }
+		dt_icon(dc, d.level_icon, {math.round(x + dt_px(6)), top}, the_app.dtm.icon * 0.92, d.icon_col, the_app.dtm.sc)
+		if d.level_icon == .Error { dt_icon(dc, .Close, {math.round(x + dt_px(6)), top}, the_app.dtm.icon * 0.58, draw.Color{1, 1, 1, 1}, the_app.dtm.sc) }
 		if d.level_icon == .Warn {
-			draw.rect(dc, {{math.round(x + dt_px(6) - dtm.line * 0.5), top - dt_px(3.2)}, {math.round(x + dt_px(6) + dtm.line * 0.5 + dtm.line * 0.4), top + dt_px(1.2)}}, draw.Color{1, 1, 1, 1})
-			draw.rect(dc, {{math.round(x + dt_px(6) - dtm.line * 0.5), top + dt_px(2.4)}, {math.round(x + dt_px(6) + dtm.line * 0.5 + dtm.line * 0.4), top + dt_px(3.8)}}, draw.Color{1, 1, 1, 1})
+			draw.rect(dc, {{math.round(x + dt_px(6) - the_app.dtm.line * 0.5), top - dt_px(3.2)}, {math.round(x + dt_px(6) + the_app.dtm.line * 0.5 + the_app.dtm.line * 0.4), top + dt_px(1.2)}}, draw.Color{1, 1, 1, 1})
+			draw.rect(dc, {{math.round(x + dt_px(6) - the_app.dtm.line * 0.5), top + dt_px(2.4)}, {math.round(x + dt_px(6) + the_app.dtm.line * 0.5 + the_app.dtm.line * 0.4), top + dt_px(3.8)}}, draw.Color{1, 1, 1, 1})
 		}
 	}
 	x += dt_px(17)
@@ -336,70 +336,70 @@ con_row_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	right := r.max.x - dt_px(8)
 	srcw: f32
 	if d.src != "" {
-		srcw = dt_w(dtm.mono, dtm.mono_fs, d.src)
-		col := d.src_hot ? dtc.accent : dtc.weak
-		dt_text(dc, dtm.mono, dtm.mono_fs, right - srcw, top, col, d.src)
-		if d.src_hot { draw.rect(dc, {{right - srcw, top + dtm.mono_fs * 0.62}, {right, top + dtm.mono_fs * 0.62 + dtm.line}}, col) }
+		srcw = dt_w(the_app.dtm.mono, the_app.dtm.mono_fs, d.src)
+		col := d.src_hot ? the_app.dtc.accent : the_app.dtc.weak
+		dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, right - srcw, top, col, d.src)
+		if d.src_hot { draw.rect(dc, {{right - srcw, top + the_app.dtm.mono_fs * 0.62}, {right, top + the_app.dtm.mono_fs * 0.62 + the_app.dtm.line}}, col) }
 		right -= srcw + dt_px(12)
 	}
 	// the count of a repeated message
 	if d.count > 1 {
 		s := fmt.tprintf("%d", d.count)
-		w := max(dt_w(dtm.ui_font, dtm.fs * 0.84, s) + dt_px(8), dtm.fs * 1.15)
-		h := dtm.fs * 1.15
-		draw.rect(dc, {{x, top - h * 0.5}, {x + w, top + h * 0.5}}, with_alpha(dtc.accent, 0.85), h * 0.5)
-		dt_text(dc, dtm.ui_font, dtm.fs * 0.84, x + (w - dt_w(dtm.ui_font, dtm.fs * 0.84, s)) * 0.5, top, dtc.accent_text, s)
+		w := max(dt_w(the_app.dtm.ui_font, the_app.dtm.fs * 0.84, s) + dt_px(8), the_app.dtm.fs * 1.15)
+		h := the_app.dtm.fs * 1.15
+		draw.rect(dc, {{x, top - h * 0.5}, {x + w, top + h * 0.5}}, with_alpha(the_app.dtc.accent, 0.85), h * 0.5)
+		dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs * 0.84, x + (w - dt_w(the_app.dtm.ui_font, the_app.dtm.fs * 0.84, s)) * 0.5, top, the_app.dtc.accent_text, s)
 		x += w + dt_px(6)
 	}
 	if d.time != "" {
-		x += dt_text(dc, dtm.mono, dtm.mono_fs * 0.9, x, top, dtc.faint, d.time) + dt_px(8)
+		x += dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs * 0.9, x, top, the_app.dtc.faint, d.time) + dt_px(8)
 	}
 	// the text
 	if d.kind == .Marker {
-		w := dt_w(dtm.mono, dtm.mono_fs, d.first)
+		w := dt_w(the_app.dtm.mono, the_app.dtm.mono_fs, d.first)
 		cx := (r.min.x + r.max.x) * 0.5
-		draw.rect(dc, {{r.min.x + dt_px(8), top}, {cx - w * 0.5 - dt_px(8), top + dtm.line}}, dtc.border)
-		draw.rect(dc, {{cx + w * 0.5 + dt_px(8), top}, {r.max.x - dt_px(8), top + dtm.line}}, dtc.border)
-		dt_text(dc, dtm.mono, dtm.mono_fs, cx - w * 0.5, top, dtc.weak, d.first)
+		draw.rect(dc, {{r.min.x + dt_px(8), top}, {cx - w * 0.5 - dt_px(8), top + the_app.dtm.line}}, the_app.dtc.border)
+		draw.rect(dc, {{cx + w * 0.5 + dt_px(8), top}, {r.max.x - dt_px(8), top + the_app.dtm.line}}, the_app.dtc.border)
+		dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, cx - w * 0.5, top, the_app.dtc.weak, d.first)
 		return
 	}
 	avail := right - x
-	if len(d.runs) > 0 { dt_runs(dc, dtm.mono, dtm.mono_fs, x, top, d.runs, x + avail) } else if !d.is_table { dt_text(dc, dtm.mono, dtm.mono_fs, x, top, d.text_col, d.first, avail) }
-	if d.is_table { con_table_paint(dc, d, x, r.min.y + d.line_h * 0.2 + dtm.row * 0.5, right) }
+	if len(d.runs) > 0 { dt_runs(dc, the_app.dtm.mono, the_app.dtm.mono_fs, x, top, d.runs, x + avail) } else if !d.is_table { dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, x, top, d.text_col, d.first, avail) }
+	if d.is_table { con_table_paint(dc, d, x, r.min.y + d.line_h * 0.2 + the_app.dtm.row * 0.5, right) }
 	if len(d.tree) > 0 {
-		y := r.min.y + dtm.row * 0.5
+		y := r.min.y + the_app.dtm.row * 0.5
 		for ln in d.tree {
 			y += d.line_h
-			dt_runs(dc, dtm.mono, dtm.mono_fs, x + dt_px(14) + f32(ln.depth) * dt_px(14), y, ln.runs, right)
+			dt_runs(dc, the_app.dtm.mono, the_app.dtm.mono_fs, x + dt_px(14) + f32(ln.depth) * dt_px(14), y, ln.runs, right)
 		}
 	}
 	if len(d.extra) > 0 {
-		y := r.min.y + dtm.row * 0.5
+		y := r.min.y + the_app.dtm.row * 0.5
 		for ln in d.extra {
 			y += d.line_h
 			stack := d.stack || strings.has_prefix(strings.trim_left_space(ln), "at ")
 			if stack {
-				col := dtc.weak
+				col := the_app.dtc.weak
 				runs: [4]Dt_Run
 				n := 0
 				t := strings.trim_left_space(ln)
 				open := strings.last_index_byte(t, '(')
 				if open >= 0 && strings.has_suffix(t, ")") {
 					runs[0] = {t[:open], col}
-					runs[1] = {t[open:], with_alpha(dtc.accent, 0.9)}
+					runs[1] = {t[open:], with_alpha(the_app.dtc.accent, 0.9)}
 					n = 2
 				} else {
 					runs[0] = {t, col}
 					n = 1
 				}
-				dt_runs(dc, dtm.mono, dtm.mono_fs, x + dt_px(14), y, runs[:n], right)
+				dt_runs(dc, the_app.dtm.mono, the_app.dtm.mono_fs, x + dt_px(14), y, runs[:n], right)
 			} else {
-				dt_text(dc, dtm.mono, dtm.mono_fs, x, y, d.text_col, ln, avail)
+				dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, x, y, d.text_col, ln, avail)
 			}
 		}
 		if d.more > 0 {
 			y += d.line_h
-			dt_text(dc, dtm.mono, dtm.mono_fs, x, y, dtc.weak, fmt.tprintf("\u2026 %d more lines (click to show them)", d.more))
+			dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, x, y, the_app.dtc.weak, fmt.tprintf("\u2026 %d more lines (click to show them)", d.more))
 		}
 	}
 }
@@ -407,13 +407,13 @@ con_row_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 @(private = "file")
 con_level_icon :: proc(k: Con_Kind) -> (Dt_Icon, draw.Color) {
 	#partial switch k {
-	case .Error: return .Error, dtc.bad
+	case .Error: return .Error, the_app.dtc.bad
 	case .Warn:  return .Warn, draw.Color{0.86, 0.60, 0.05, 1}
-	case .Result: return .Result, dtc.weak
-	case .Input:  return .Prompt, dtc.accent
-	case .Debug: return .Verbose, dtc.faint
+	case .Result: return .Result, the_app.dtc.weak
+	case .Input:  return .Prompt, the_app.dtc.accent
+	case .Debug: return .Verbose, the_app.dtc.faint
 	}
-	return .None, dtc.weak
+	return .None, the_app.dtc.weak
 }
 
 ////////////////////////////////
@@ -433,7 +433,7 @@ console_panel :: proc(app: ^App, t: ^Tab) {
 		hidden := len(t.console) > 0
 		dt_empty("###dt_con_empty", hidden ? .Filter : .Tab_Console, hidden ? "Every message is hidden by the filters" : "No messages in this page's console",
 			hidden ? "Change the levels or clear the filter to see them." : "console.log() and the errors of the page appear here. Type an expression below to run it.")
-	} else if rows, ok := dt_list("###dt_con_list", &c.list, n, dtm.row, offs, ui.fill(), list_h, follow = !c.paused); ok {
+	} else if rows, ok := dt_list("###dt_con_list", &c.list, n, app.dtm.row, offs, ui.fill(), list_h, follow = !c.paused); ok {
 		line_h := con_line_h()
 		for k in rows.first ..< rows.last {
 			r := &c.rows[k]
@@ -460,12 +460,12 @@ console_panel :: proc(app: ^App, t: ^Tab) {
 			}
 			level_k := r.kind
 			switch level_k {
-			case .Error: d.text_col, d.tint, d.bar = dtc.bad, dtc.bad_bg, dtc.bad
-			case .Warn:  d.text_col, d.tint, d.bar = draw.Color{0.80, 0.55, 0.05, 1}, dtc.warn_bg, draw.Color{0.86, 0.60, 0.05, 1}
-			case .Debug: d.text_col = dtc.faint
-			case .Log, .Info, .Input, .Result, .Marker: d.text_col = dtc.text
+			case .Error: d.text_col, d.tint, d.bar = app.dtc.bad, app.dtc.bad_bg, app.dtc.bad
+			case .Warn:  d.text_col, d.tint, d.bar = draw.Color{0.80, 0.55, 0.05, 1}, app.dtc.warn_bg, draw.Color{0.86, 0.60, 0.05, 1}
+			case .Debug: d.text_col = app.dtc.faint
+			case .Log, .Info, .Input, .Result, .Marker: d.text_col = app.dtc.text
 			}
-			if !dtc.dark && level_k == .Error { d.text_col = draw.mix(dtc.bad, draw.Color{0.35, 0, 0, 1}, 0.25) }
+			if !app.dtc.dark && level_k == .Error { d.text_col = draw.mix(app.dtc.bad, draw.Color{0.35, 0, 0, 1}, 0.25) }
 			d.level_icon, d.icon_col = con_level_icon(r.kind)
 			if r.kind == .Input {
 				// what was typed: a prompt in the gutter, the text in the colors of the language
@@ -476,7 +476,7 @@ console_panel :: proc(app: ^App, t: ^Tab) {
 			if .Header in r.flags { d.chevron = .Collapsed in r.flags ? 0 : 1 }
 			if .Stack in r.flags || (.Multi in r.flags && (int(r.lines) < line_total(body) || .Expanded in r.flags)) { d.chevron = .Expanded in r.flags ? 1 : 0 }
 			if .Obj in r.flags { d.chevron = .Expanded in r.flags ? 1 : 0 }
-			if con_prefs.timestamps && r.kind != .Marker { d.time = dt_frame_str(con_time_text(meta.at_ms)) }
+			if app.con_prefs.timestamps && r.kind != .Marker { d.time = dt_frame_str(con_time_text(meta.at_ms)) }
 			src := con_source(body)
 			if meta.payload != "" {
 				if root, pok := con_payload_parse(meta.payload); pok {
@@ -494,8 +494,8 @@ console_panel :: proc(app: ^App, t: ^Tab) {
 			d.selected, d.hot, d.focused = con_selected(c, r.abs), sig.hovering, c.list.focused
 			// the source under the pointer
 			if d.src != "" && sig.hovering {
-				sw := dt_w(dtm.mono, dtm.mono_fs, d.src)
-				if sig.mouse.y < dtm.row && sig.mouse.x >= (rb.rect.max.x - rb.rect.min.x) - sw - dt_px(10) { d.src_hot = true; rb.cursor = .Hand }
+				sw := dt_w(app.dtm.mono, app.dtm.mono_fs, d.src)
+				if sig.mouse.y < app.dtm.row && sig.mouse.x >= (rb.rect.max.x - rb.rect.min.x) - sw - dt_px(10) { d.src_hot = true; rb.cursor = .Hand }
 			}
 			rb.custom, rb.custom_user = con_row_paint, d
 			if sig.pressed {
@@ -522,7 +522,7 @@ console_panel :: proc(app: ^App, t: ^Tab) {
 	}
 	console_keys(app, t, c, n)
 	console_row_menu(app, t, c, menu_key)
-	console_eval_row(app, t, dtm.row)   // "run JavaScript" (console_eval.odin)
+	console_eval_row(app, t, app.dtm.row)   // "run JavaScript" (console_eval.odin)
 }
 
 @(private = "file")
@@ -551,10 +551,10 @@ console_open_source :: proc(app: ^App, t: ^Tab, src: Con_Source) {
 @(private = "file")
 console_keys :: proc(app: ^App, t: ^Tab, c: ^Dev_Console, n: int) {
 	if !c.list.focused || n == 0 { return }
-	if ui.key_press(.C, {.Ctrl}) && c.has_sel { clip_set(con_text(t, c, true, con_prefs.timestamps)) }
+	if ui.key_press(.C, {.Ctrl}) && c.has_sel { clip_set(con_text(t, c, true, app.con_prefs.timestamps)) }
 	if ui.key_press(.A, {.Ctrl}) { c.has_sel, c.sel_a, c.sel_b = true, c.rows[0].abs, c.rows[n - 1].abs }
 	if ui.key_press(.Escape) { c.has_sel = false }
-	if dt_list_keys(&c.list, n, max(int(c.list.view / dtm.row) - 1, 1)) {
+	if dt_list_keys(&c.list, n, max(int(c.list.view / app.dtm.row) - 1, 1)) {
 		ab := c.rows[clamp(c.list.sel, 0, n - 1)].abs
 		c.has_sel, c.sel_a, c.sel_b = true, ab, ab
 	}
@@ -578,12 +578,12 @@ console_row_menu_items :: proc(app: ^App, t: ^Tab, c: ^Dev_Console) {
 	sel := con_selected_count(c)
 	n := len(c.rows)
 	if ui.menu_item(sel > 1 ? fmt.tprintf("Copy %d messages###dt_con_copy", sel) : "Copy message###dt_con_copy", "Ctrl+C", icon = GLYPH_COPY, enabled = sel > 0).clicked {
-		clip_set(con_text(t, c, true, con_prefs.timestamps))
+		clip_set(con_text(t, c, true, app.con_prefs.timestamps))
 	}
 	if ui.menu_item("Copy stack trace###dt_con_copy_stack", enabled = c.menu_src.line > 0 || row_has_stack(t, c)).clicked { clip_set(row_stack_text(t, c)) }
 	ref, rpage := row_object(t, c)
 	if ui.menu_item("Copy object###dt_con_copy_obj", enabled = ref > 0 && rpage != nil).clicked { page.dev_console_copy(rpage, ref); request_frames(app, 3) }
-	if ui.menu_item("Copy all messages shown###dt_con_copy_all", enabled = n > 0).clicked { clip_set(con_text(t, c, false, con_prefs.timestamps)) }
+	if ui.menu_item("Copy all messages shown###dt_con_copy_all", enabled = n > 0).clicked { clip_set(con_text(t, c, false, app.con_prefs.timestamps)) }
 	ui.menu_separator()
 	if ui.menu_item("Store as global variable###dt_con_store", enabled = ref > 0 && rpage != nil).clicked {
 		dev().con.evaluating = true
@@ -696,13 +696,13 @@ console_target :: proc(t: ^Tab) -> ^page.Page {
 // The switches of the console, in the panel's menu and in the console's own.
 console_settings_items :: proc(app: ^App, t: ^Tab) {
 	ui.menu_heading("Console")
-	if ui.menu_item("Preserve log###dt_cs_preserve", checked = con_prefs.preserve, keep_open = true).clicked { dev_toggle_pref(app, "browser.devtools.console.preserve") }
-	if ui.menu_item("Show timestamps###dt_cs_time", checked = con_prefs.timestamps, keep_open = true).clicked { dev_toggle_pref(app, "browser.devtools.console.timestamps") }
-	if ui.menu_item("Group similar messages###dt_cs_group", checked = con_prefs.group_similar, keep_open = true).clicked { dev_toggle_pref(app, "browser.devtools.console.group_similar") }
-	if ui.menu_item("Hide network messages###dt_cs_net", checked = con_prefs.hide_network, keep_open = true).clicked { dev_toggle_pref(app, "browser.devtools.console.hide_network") }
-	if ui.menu_item("Autocomplete from history###dt_cs_auto", checked = con_prefs.autocomplete, keep_open = true).clicked { dev_toggle_pref(app, "browser.devtools.console.autocomplete") }
-	if ui.menu_item("Evaluate as you type###dt_cs_eager", checked = con_prefs.eager_eval, keep_open = true).clicked { dev_toggle_pref(app, "browser.devtools.console.eager_eval") }
-	if ui.menu_item("Selected context only###dt_cs_ctx", checked = con_prefs.context_only, keep_open = true).clicked { dev_toggle_pref(app, "browser.devtools.console.context_only") }
+	if ui.menu_item("Preserve log###dt_cs_preserve", checked = app.con_prefs.preserve, keep_open = true).clicked { dev_toggle_pref(app, "browser.devtools.console.preserve") }
+	if ui.menu_item("Show timestamps###dt_cs_time", checked = app.con_prefs.timestamps, keep_open = true).clicked { dev_toggle_pref(app, "browser.devtools.console.timestamps") }
+	if ui.menu_item("Group similar messages###dt_cs_group", checked = app.con_prefs.group_similar, keep_open = true).clicked { dev_toggle_pref(app, "browser.devtools.console.group_similar") }
+	if ui.menu_item("Hide network messages###dt_cs_net", checked = app.con_prefs.hide_network, keep_open = true).clicked { dev_toggle_pref(app, "browser.devtools.console.hide_network") }
+	if ui.menu_item("Autocomplete from history###dt_cs_auto", checked = app.con_prefs.autocomplete, keep_open = true).clicked { dev_toggle_pref(app, "browser.devtools.console.autocomplete") }
+	if ui.menu_item("Evaluate as you type###dt_cs_eager", checked = app.con_prefs.eager_eval, keep_open = true).clicked { dev_toggle_pref(app, "browser.devtools.console.eager_eval") }
+	if ui.menu_item("Selected context only###dt_cs_ctx", checked = app.con_prefs.context_only, keep_open = true).clicked { dev_toggle_pref(app, "browser.devtools.console.context_only") }
 }
 
 @(private = "file")
@@ -729,30 +729,30 @@ console_toolbar :: proc(app: ^App, t: ^Tab, c: ^Dev_Console) {
 		}
 		dt_gap(3)
 		// the filter
-		ui.next({width = ui.fill(), height = ui.px(dtm.bar), axis = .X, cross = .Center})
+		ui.next({width = ui.fill(), height = ui.px(app.dtm.bar), axis = .X, cross = .Center})
 		if ui.row(.Center, {}, "###dt_con_fw") {
 			dt_search("###dt_con_filter", &c.filter, "Filter  (-word excludes)")
 		}
 		// counts, one chip per level
 		errors, warns := console_counts(t)
 		infos := t.conlog.counts[.Log] + t.conlog.counts[.Info]
-		level_chip(app, "###dt_lv_e", .Error, errors, 8, dtc.bad, "Errors")
+		level_chip(app, "###dt_lv_e", .Error, errors, 8, app.dtc.bad, "Errors")
 		level_chip(app, "###dt_lv_w", .Warn, warns, 4, draw.Color{0.86, 0.60, 0.05, 1}, "Warnings")
-		level_chip(app, "###dt_lv_i", .Info, infos, 2, dtc.accent, "Info")
-		level_chip(app, "###dt_lv_v", .Verbose, t.conlog.counts[.Debug], 1, dtc.faint, "Verbose")
+		level_chip(app, "###dt_lv_i", .Info, infos, 2, app.dtc.accent, "Info")
+		level_chip(app, "###dt_lv_v", .Verbose, t.conlog.counts[.Debug], 1, app.dtc.faint, "Verbose")
 		// the levels menu
 		lkey := dt_menu_btn("###dt_con_levels", .None, levels_label(app), tooltip = "Log levels")
 		if ui.ctx_menu(lkey, dt_px(220)) {
 			ui.menu_heading("Levels")
 			for lv in ([?]struct{ bit: u32, name: string, kind: Con_Kind }{{1, "Verbose", .Debug}, {2, "Info", .Log}, {4, "Warnings", .Warn}, {8, "Errors", .Error}}) {
 				n := lv.kind == .Log ? t.conlog.counts[.Log] + t.conlog.counts[.Info] : t.conlog.counts[lv.kind]
-				if ui.menu_item(fmt.tprintf("%s  (%d)###dt_lvm_%d", lv.name, n, lv.bit), checked = con_prefs.levels & lv.bit != 0, keep_open = true).clicked {
-					set_levels(app, con_prefs.levels ~ lv.bit)
+				if ui.menu_item(fmt.tprintf("%s  (%d)###dt_lvm_%d", lv.name, n, lv.bit), checked = app.con_prefs.levels & lv.bit != 0, keep_open = true).clicked {
+					set_levels(app, app.con_prefs.levels ~ lv.bit)
 				}
 			}
 			ui.menu_separator()
-			if ui.menu_item("Default levels###dt_lvm_def", enabled = con_prefs.levels != 0b1110).clicked { set_levels(app, 0b1110) }
-			if ui.menu_item("All levels###dt_lvm_all", enabled = con_prefs.levels != 0b1111).clicked { set_levels(app, 0b1111) }
+			if ui.menu_item("Default levels###dt_lvm_def", enabled = app.con_prefs.levels != 0b1110).clicked { set_levels(app, 0b1110) }
+			if ui.menu_item("All levels###dt_lvm_all", enabled = app.con_prefs.levels != 0b1111).clicked { set_levels(app, 0b1111) }
 		}
 		dt_vsep("###dt_cb1")
 		pk := dt_btn("###dt_con_pause", c.paused ? .Play : .Pause, tooltip = c.paused ? "Resume: show the messages that came" : "Pause: stop adding messages to the list", on = c.paused)
@@ -765,13 +765,13 @@ console_toolbar :: proc(app: ^App, t: ^Tab, c: ^Dev_Console) {
 
 @(private = "file")
 levels_label :: proc(app: ^App) -> string {
-	switch con_prefs.levels {
+	switch app.con_prefs.levels {
 	case 0b1110: return "Default levels"
 	case 0b1111: return "All levels"
 	case 0:      return "No levels"
 	}
 	n := 0
-	for b in 0 ..< 4 { if con_prefs.levels & (1 << u32(b)) != 0 { n += 1 } }
+	for b in 0 ..< 4 { if app.con_prefs.levels & (1 << u32(b)) != 0 { n += 1 } }
 	return fmt.tprintf("Custom levels (%d)", n)
 }
 
@@ -783,11 +783,11 @@ set_levels :: proc(app: ^App, mask: u32) {
 // A level's icon with its count: a click shows or hides the level.
 @(private = "file")
 level_chip :: proc(app: ^App, id: string, icon: Dt_Icon, count: int, bit: u32, col: draw.Color, name: string) {
-	on := con_prefs.levels & bit != 0
+	on := app.con_prefs.levels & bit != 0
 	tone := on ? col : with_alpha(col, 0.35)
 	label := fmt.tprintf("%d", count)
 	d := dt_btn(id, icon, label, fmt.tprintf("%s: %d (click to %s)", name, count, on ? "hide" : "show"), tone = tone)
-	if d.clicked { set_levels(app, con_prefs.levels ~ bit) }
+	if d.clicked { set_levels(app, app.con_prefs.levels ~ bit) }
 }
 
 console_clear :: proc(app: ^App, t: ^Tab) {
@@ -812,23 +812,23 @@ con_table_paint :: proc(dc: ^draw.Context, d: ^Con_Draw, x, y0, right: f32) {
 	if t.has_values { names[k] = "Value"; k += 1 }
 	for c in t.cols { names[k] = c; k += 1 }
 	widths := make([]f32, ncols, context.temp_allocator)
-	for n, i in names { widths[i] = dt_w(dtm.mono, dtm.mono_fs, n) }
-	for row in t.rows { for cell, i in row { if i < ncols { widths[i] = max(widths[i], dt_w(dtm.mono, dtm.mono_fs, cell)) } } }
+	for n, i in names { widths[i] = dt_w(the_app.dtm.mono, the_app.dtm.mono_fs, n) }
+	for row in t.rows { for cell, i in row { if i < ncols { widths[i] = max(widths[i], dt_w(the_app.dtm.mono, the_app.dtm.mono_fs, cell)) } } }
 	for &w in widths { w = min(w, dt_px(240)) + dt_px(18) }
 	cx := x
 	for n, i in names {
-		dt_text(dc, dtm.mono, dtm.mono_fs, cx + dt_px(6), y0, dtc.weak, n, widths[i] - dt_px(10))
-		draw.rect(dc, {{cx + widths[i] - dtm.line, y0 - d.line_h * 0.5}, {cx + widths[i], y0 + d.line_h * (f32(len(t.rows)) + 0.5)}}, with_alpha(dtc.border, 0.7))
+		dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, cx + dt_px(6), y0, the_app.dtc.weak, n, widths[i] - dt_px(10))
+		draw.rect(dc, {{cx + widths[i] - the_app.dtm.line, y0 - d.line_h * 0.5}, {cx + widths[i], y0 + d.line_h * (f32(len(t.rows)) + 0.5)}}, with_alpha(the_app.dtc.border, 0.7))
 		cx += widths[i]
 		if cx > right { break }
 	}
-	draw.rect(dc, {{x, y0 + d.line_h * 0.5}, {min(cx, right), y0 + d.line_h * 0.5 + dtm.line}}, with_alpha(dtc.border, 0.9))
+	draw.rect(dc, {{x, y0 + d.line_h * 0.5}, {min(cx, right), y0 + d.line_h * 0.5 + the_app.dtm.line}}, with_alpha(the_app.dtc.border, 0.9))
 	for row, ri in t.rows {
 		cx = x
 		y := y0 + d.line_h * f32(ri + 1)
 		for cell, i in row {
 			if i >= ncols { break }
-			dt_text(dc, dtm.mono, dtm.mono_fs, cx + dt_px(6), y, i == 0 ? dtc.weak : dtc.text, cell, widths[i] - dt_px(10))
+			dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, cx + dt_px(6), y, i == 0 ? the_app.dtc.weak : the_app.dtc.text, cell, widths[i] - dt_px(10))
 			cx += widths[i]
 			if cx > right { break }
 		}
@@ -849,8 +849,8 @@ console_complete_reply :: proc(json_text: string) {
 
 // Tells every tab's realm whether to describe its console arguments: on while the panel is open.
 console_arm_all :: proc(app: ^App) {
-	want := devtools_any_visible(app) && con_prefs.max_payload > 0 ? con_prefs.max_payload : 0
-	if want == page.dev_console_max { return }
-	page.dev_console_max = want
+	want := devtools_any_visible(app) && app.con_prefs.max_payload > 0 ? app.con_prefs.max_payload : 0
+	if want == app.pages.dev_console_max { return }
+	app.pages.dev_console_max = want
 	for t in tabs_all(app) { if t.page != nil { page.dev_console_arm(t.page, want) } }
 }

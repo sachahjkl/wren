@@ -64,7 +64,6 @@ Phase_Clock :: struct {
 	cur:     Phase,        // what runs now (the sampler attributes its samples to it)
 }
 
-phase_clock: Phase_Clock
 
 // A monotonic counter for the profiler's phase timing. On Windows it is QueryPerformanceCounter (its own frequency,
 // read where the samples are turned into milliseconds); elsewhere it is core:time's nanosecond tick, so the "ticks" are
@@ -99,37 +98,37 @@ qpc_ms_since :: proc "contextless" (t0: i64) -> f64 {
 }
 
 prof_begin :: proc "contextless" (p: Phase) {
-	if !phase_clock.on { return }
-	phase_clock.started[p] = qpc()
-	phase_clock.cur = p
+	if !the_app.phase_clock.on { return }
+	the_app.phase_clock.started[p] = qpc()
+	the_app.phase_clock.cur = p
 }
 
 prof_end :: proc "contextless" (p: Phase) {
-	if !phase_clock.on { return }
-	phase_clock.acc[p] += f64(qpc() - phase_clock.started[p]) * 1000 / phase_clock.freq
+	if !the_app.phase_clock.on { return }
+	the_app.phase_clock.acc[p] += f64(qpc() - the_app.phase_clock.started[p]) * 1000 / the_app.phase_clock.freq
 	// the phase that was running underneath (if any) resumes
 	switch p {
-	case .Styles, .Layout, .Paint_Items: phase_clock.cur = .UI_Draw
-	case .Tex_Create, .Tex_Upload: phase_clock.cur = .Paint_Items
-	case .Frame, .Idle: phase_clock.cur = .None
-	case .None, .Wait, .Events, .Loop, .Input, .Build_UI, .UI_Draw, .Submit, .Present, .Animation: phase_clock.cur = .Frame
+	case .Styles, .Layout, .Paint_Items: the_app.phase_clock.cur = .UI_Draw
+	case .Tex_Create, .Tex_Upload: the_app.phase_clock.cur = .Paint_Items
+	case .Frame, .Idle: the_app.phase_clock.cur = .None
+	case .None, .Wait, .Events, .Loop, .Input, .Build_UI, .UI_Draw, .Submit, .Present, .Animation: the_app.phase_clock.cur = .Frame
 	}
 }
 
 prof_frame_begin :: proc() {
 	prof_mark(.First_Frame)
-	phase_clock.on = hud_wants_clock() || prof_on()
-	if !phase_clock.on { return }
-	if phase_clock.freq == 0 {
+	the_app.phase_clock.on = hud_wants_clock() || prof_on()
+	if !the_app.phase_clock.on { return }
+	if the_app.phase_clock.freq == 0 {
 		when ODIN_OS == .Windows {
 			f: win.LARGE_INTEGER
 			win.QueryPerformanceFrequency(&f)
-			phase_clock.freq = f64(f)
+			the_app.phase_clock.freq = f64(f)
 		} else {
-			phase_clock.freq = 1e9   // qpc() returns nanoseconds off Windows
+			the_app.phase_clock.freq = 1e9   // qpc() returns nanoseconds off Windows
 		}
 	}
-	phase_clock.acc = {}
+	the_app.phase_clock.acc = {}
 	prof_begin(.Frame)
 }
 
@@ -138,7 +137,7 @@ prof_frame_end :: proc(app: ^App, items, elements: int) {
 	prof_mark(.First_Present)
 	latency_probe_presented(app)   // shell_latency.odin
 	if items > 0 { prof_mark(.First_Page_Paint) }
-	if phase_clock.on {
+	if app.phase_clock.on {
 		prof_end(.Frame)
 		prof_record(app, items, elements)
 	}
@@ -207,6 +206,7 @@ Prof :: struct {
 	n_samples: int,
 	stop:      bool,
 	target:    win.HANDLE,
+	clock:     ^Phase_Clock,   // the App's (App.phase_clock): the sampler reads its phase from its own thread
 	sampler:   ^thread.Thread,
 	stacks:    bool,             // the sampler also unwinds the stack (WREN_SAMPLE_STACK=1)
 	osamples:  []Osample,        // the other threads, one at a time in turn (WREN_SAMPLE_THREADS=1)
@@ -268,6 +268,7 @@ process_cpu :: proc() -> (user, kernel: u64) {
 }
 
 prof_init :: proc(app: ^App) {
+	if prof.on { return }   // (the process's profiler: the first App's thread, WREN_PROF is for a process of one App)
 	out := os.get_env("WREN_PROF", context.allocator)
 	if out == "" { return }
 	prof.on, prof.out = true, out
@@ -284,6 +285,7 @@ prof_init :: proc(app: ^App) {
 		h: win.HANDLE
 		win.DuplicateHandle(win.GetCurrentProcess(), win.GetCurrentThread(), win.GetCurrentProcess(), &h, 0, false, win.DUPLICATE_SAME_ACCESS)
 		prof.target = h
+		prof.clock = &app.phase_clock
 		prof.samples = make([]Sample, 400_000)
 		if os.get_env("WREN_SAMPLE_STACK", context.temp_allocator) == "1" || os.get_env("WREN_SAMPLE_STACKS", context.temp_allocator) == "1" {   // (the second spelling is the one the DuckDuckGo audit used)
 			prof.stacks = true
@@ -339,7 +341,7 @@ sampler_proc :: proc(_: ^thread.Thread) {
 		ctx: win.CONTEXT
 		ctx.ContextFlags = prof.stacks ? CONTEXT_FULL_AMD64 : CONTEXT_CONTROL_AMD64
 		if win.GetThreadContext(prof.target, &ctx) && prof.n_samples < len(prof.samples) {
-			sm := Sample{u64(ctx.Rip), phase_clock.cur, qpc(), {}}
+			sm := Sample{u64(ctx.Rip), prof.clock.cur, qpc(), {}}
 			if prof.stacks { sm.from = callers_in_exe(&ctx) }
 			prof.samples[prof.n_samples] = sm
 			prof.n_samples += 1
@@ -355,7 +357,7 @@ prof_record :: proc(app: ^App, items, elements: int) {
 	rec := Frame_Rec{t_ms = f32(f64(qpc() - prof.t0) * 1000 / prof.freq), gpu_index = -1, budget = frame_budget_ms(app)}
 	rec.lay_pass, rec.lay_steps, rec.lay_pre, rec.lay_why = prof.cur_lay.lay_pass, prof.cur_lay.lay_steps, prof.cur_lay.lay_pre, prof.cur_lay.lay_why
 	prof.cur_lay = {}
-	for p in Phase { rec.dur[p] = f32(phase_clock.acc[p]) }
+	for p in Phase { rec.dur[p] = f32(app.phase_clock.acc[p]) }
 	rec.items, rec.elements = i32(items), i32(elements)
 	rec.insts, rec.batches = i32(len(app.dc.insts)), i32(len(app.dc.batches))
 	rec.ui_boxes = i32(ui.boxes_built(active_window(app).ui))

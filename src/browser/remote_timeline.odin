@@ -45,8 +45,8 @@ TIMELINE_MAX_FRAMES :: 1500
 
 // Before a frame ends (remote_capture_arm): the copy of the frame before is taken, and this frame's is asked for.
 timeline_frame :: proc(app: ^App) {
-	tl := &the_remote.tl
-	if !tl.on || the_remote.capture_window != 0 { return }
+	tl := &app.remote.tl
+	if !tl.on || app.remote.capture_window != 0 { return }
 	if tl.asked {
 		pixels, size, st := render.capture_poll(&app.r)
 		#partial switch st {
@@ -87,7 +87,7 @@ timeline_free :: proc(tl: ^Timeline) {
 
 // Starts recording (the frames already recorded go): at most `max_frames` of the window (`rect` zeros) or of a part of it, at `scale`.
 timeline_begin :: proc(app: ^App, scale: f32, max_frames: int, rect: [4]int) {
-	tl := &the_remote.tl
+	tl := &app.remote.tl
 	timeline_free(tl)
 	tl.scale, tl.max, tl.rect = f32(clamp(scale, 0.05, 1)), clamp(max_frames, 2, TIMELINE_MAX_FRAMES), rect
 	tl.t0, tl.on = host.now_ns(&app.loop), true
@@ -96,7 +96,7 @@ timeline_begin :: proc(app: ^App, scale: f32, max_frames: int, rect: [4]int) {
 
 // Stops recording, the frames are kept (timeline_write writes them, timeline_free forgets them).
 timeline_end :: proc(app: ^App) {
-	tl := &the_remote.tl
+	tl := &app.remote.tl
 	tl.on = false
 	if tl.asked { render.capture_cancel(&app.r); tl.asked = false }
 }

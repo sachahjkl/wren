@@ -25,9 +25,9 @@ text_item_offset :: proc(l: ^Layout, it: ^lay.Display_Item) -> int {
 // The text of a Text item shaped as painted (temp allocator).
 text_item_shaped :: proc(l: ^Layout, it: ^lay.Display_Item) -> (sh: font.Shaped, ok: bool) {
 	fi := lay.item_font(l, it)
-	if it.kind != .Text || fi == nil || it.cs == nil || page_render.fonts.state == nil { return {}, false }
+	if it.kind != .Text || fi == nil || it.cs == nil || the_app.page_render.fonts.state == nil { return {}, false }
 	opts := text_shape_options(l, it.cs, it.level, it.extra)
-	return font.shape(page_render.fonts.state, font.Font_Id(fi.font), fi.size, it.text, opts, context.temp_allocator), true
+	return font.shape(the_app.page_render.fonts.state, font.Font_Id(fi.font), fi.size, it.text, opts, context.temp_allocator), true
 }
 
 // Layout x of the caret before byte `index` of `it.text` (`len(it.text)`: after its last character, logically).

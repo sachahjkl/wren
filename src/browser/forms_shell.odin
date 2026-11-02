@@ -515,7 +515,7 @@ centered_text :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 @(private = "file")
 control_text_baseline :: proc(m: font.Metrics, line_h, top, h: f32) -> f32 {
 	a, d, gap := m.ascent, m.descent, m.line_gap
-	round := page_render.settings.round_metrics
+	round := the_app.page_render.settings.round_metrics
 	if round { a, d, gap = math.round(a), math.round(d), math.round(gap) }
 	lh := line_h > 0 ? line_h : round ? a + d + gap : m.line_height
 	ht := (lh - (a + d)) * 0.5
@@ -697,7 +697,7 @@ paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 			if t in forms.DATE_LIKE {
 				// the picker indicator at the end, then the value: the user's short format unless it is being edited
 				// (date_display.odin)
-				room := page_render.settings.picker_indicator * scale
+				room := app.page_render.settings.picker_indicator * scale
 				if room > 0 {
 					icon := draw.Rect{{content.max.x - room, (content.min.y + content.max.y - room) * 0.5}, {content.max.x, (content.min.y + content.max.y + room) * 0.5}}
 					picker_indicator(dc, icon, fg, t == .Time, scale)
@@ -724,7 +724,7 @@ paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 			// as Chromium: the label after an internal start padding, the end of the content box kept for the arrow, the
 			// arrow (a chevron half as wide as that room) centered in as much of the right of the border box, whatever
 			// the page's padding
-			ls := page_render.settings
+			ls := app.page_render.settings
 			start, room := ls.select_start * scale, ls.select_arrow * scale
 			text_r := draw.Rect{{content.min.x + start, content.min.y}, {content.max.x - room, content.max.y}}
 			draw.push_clip(dc, {content.min, {content.max.x - room, content.max.y}})
@@ -1143,7 +1143,6 @@ forms_route_event :: proc(app: ^App, t: ^Tab, ev: platform.Event, index: int) ->
 keyboard_to_page :: proc(app: ^App) -> bool { return forms_view(app).page_focus && ui.focus_key() == 0 && !ui.ctx_menu_any_open() && !setup_captures(app) }
 
 // Set when Shift+Tab leaves the page before its first element: the chrome takes the focus back from the page area.
-page_focus_leave_backward: bool
 
 // The page has the keyboard (its own focus, not the chrome's).
 page_has_keyboard :: proc(app: ^App) -> bool { return keyboard_to_page(app) }
@@ -1192,7 +1191,7 @@ route_key :: proc(app: ^App, t: ^Tab, p: ^page.Page, f: ^forms.Forms, ev: platfo
 		// or back from the page area
 		forms.blur(f)
 		fv.page_focus = false
-		if shift { page_focus_leave_backward = true } else { active_window(app).focus_address = true }
+		if shift { app.page_focus_leave_backward = true } else { active_window(app).focus_address = true }
 		return true
 	}
 	if !forms.is_text_field(f, h) && selection_key(app, t, p, ev) { return true }

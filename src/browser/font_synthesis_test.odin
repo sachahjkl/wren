@@ -9,6 +9,7 @@ import "wb:page"
 // must not be taken for an ital / slnt axis, which would skip the synthesis.
 @(test)
 web_font_italic_is_synthesized :: proc(t: ^testing.T) {
+	test_app(t)
 	fs := new(font.State)
 	defer free(fs)
 	font.init(fs)

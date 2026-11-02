@@ -240,12 +240,12 @@ Row_Draw :: struct {
 
 tone_color :: proc(t: Net_Tone) -> draw.Color {
 	switch t {
-	case .Pending: return dtc.weak
+	case .Pending: return the_app.dtc.weak
 	case .Ok, .Cached: return draw.Color{0.22, 0.68, 0.40, 1}
 	case .Redirect: return draw.Color{0.86, 0.60, 0.05, 1}
-	case .Client, .Server, .Failed, .Blocked: return dtc.bad
+	case .Client, .Server, .Failed, .Blocked: return the_app.dtc.bad
 	}
-	return dtc.weak
+	return the_app.dtc.weak
 }
 
 // Waterfall phase colors (the same family in both themes).
@@ -258,7 +258,7 @@ phase_color :: proc(k: int) -> draw.Color {
 	case 4: return draw.Color{0.30, 0.72, 0.42, 1}      // waiting (TTFB)
 	case 5: return draw.Color{0.25, 0.52, 0.92, 1}      // download
 	}
-	return dtc.weak
+	return the_app.dtc.weak
 }
 
 @(private = "file")
@@ -266,48 +266,48 @@ row_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	d := (^Row_Draw)(user)
 	r := b.rect
 	tint: draw.Color
-	if d.tone == .Failed || d.tone == .Blocked || d.tone == .Server || d.tone == .Client { tint = dtc.bad_bg }
+	if d.tone == .Failed || d.tone == .Blocked || d.tone == .Server || d.tone == .Client { tint = the_app.dtc.bad_bg }
 	dt_row_back(dc, r, d.odd, d.selected, d.hot, d.focused, tint)
 	cy := (r.min.y + r.max.y) * 0.5
 	bad := d.tone == .Failed || d.tone == .Blocked || d.tone == .Server || d.tone == .Client
-	text_col := bad ? dtc.bad : dtc.text
-	weak_col := bad ? with_alpha(dtc.bad, 0.8) : dtc.weak
+	text_col := bad ? the_app.dtc.bad : the_app.dtc.text
+	weak_col := bad ? with_alpha(the_app.dtc.bad, 0.8) : the_app.dtc.weak
 	pad := dt_px(6)
 	// the faint rules between the columns
 	for p in d.layout[1:] {
-		draw.rect(dc, {{r.min.x + p.x, r.min.y}, {r.min.x + p.x + dtm.line, r.max.y}}, with_alpha(dtc.border_soft, 0.5))
+		draw.rect(dc, {{r.min.x + p.x, r.min.y}, {r.min.x + p.x + the_app.dtm.line, r.max.y}}, with_alpha(the_app.dtc.border_soft, 0.5))
 	}
 	for p in d.layout {
 		x := r.min.x + p.x
 		inner := p.w - pad * 2
 		switch p.col {
 		case .Name:
-			dt_icon(dc, d.icon, {math.round(x + pad + dtm.icon * 0.5), cy}, dtm.icon, bad ? dtc.bad : (d.type_icon_col), dtm.sc)
-			tx := x + pad + dtm.icon + dt_px(5)
-			w := dt_text(dc, dtm.ui_font, dtm.fs, tx, cy, text_col, d.name, x + p.w - pad - tx)
+			dt_icon(dc, d.icon, {math.round(x + pad + the_app.dtm.icon * 0.5), cy}, the_app.dtm.icon, bad ? the_app.dtc.bad : (d.type_icon_col), the_app.dtm.sc)
+			tx := x + pad + the_app.dtm.icon + dt_px(5)
+			w := dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, tx, cy, text_col, d.name, x + p.w - pad - tx)
 			if d.domain != "" {
 				rest := x + p.w - pad - (tx + w) - dt_px(8)
-				if rest > dt_px(40) { dt_text(dc, dtm.ui_font, dtm.fs * 0.9, tx + w + dt_px(8), cy, with_alpha(weak_col, 0.75), d.domain, rest) }
+				if rest > dt_px(40) { dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs * 0.9, tx + w + dt_px(8), cy, with_alpha(weak_col, 0.75), d.domain, rest) }
 			}
 		case .Method:
-			dt_text(dc, dtm.mono, dtm.mono_fs * 0.95, x + pad, cy, weak_col, d.method, inner)
+			dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs * 0.95, x + pad, cy, weak_col, d.method, inner)
 		case .Status:
-			dc_r := dtm.fs * 0.30
+			dc_r := the_app.dtm.fs * 0.30
 			col := tone_color(d.tone)
 			if d.tone == .Pending {
 				// a dot that breathes while the request goes
 				a := 0.35 + 0.65 * d.pulse
-				col = with_alpha(dtc.accent, a)
+				col = with_alpha(the_app.dtc.accent, a)
 			}
 			draw.rect(dc, {{x + pad, cy - dc_r}, {x + pad + dc_r * 2, cy + dc_r}}, col, dc_r)
-			dt_text(dc, dtm.ui_font, dtm.fs, x + pad + dc_r * 2 + dt_px(6), cy, bad ? dtc.bad : text_col, d.status, inner - dc_r * 2 - dt_px(6))
-		case .Type: dt_text(dc, dtm.ui_font, dtm.fs, x + pad, cy, weak_col, d.type_label, inner)
-		case .Protocol: dt_text(dc, dtm.ui_font, dtm.fs, x + pad, cy, weak_col, d.proto, inner)
-		case .Domain: dt_text(dc, dtm.ui_font, dtm.fs, x + pad, cy, weak_col, d.domain, inner)
-		case .Initiator: dt_text(dc, dtm.ui_font, dtm.fs, x + pad, cy, weak_col, d.init_label, inner)
-		case .Cache: dt_text(dc, dtm.ui_font, dtm.fs, x + pad, cy, weak_col, d.cache, inner)
-		case .Size: dt_text_r(dc, dtm.ui_font, dtm.fs, x + p.w - pad, cy, text_col, d.size, inner)
-		case .Time: dt_text_r(dc, dtm.ui_font, dtm.fs, x + p.w - pad, cy, text_col, d.time, inner)
+			dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, x + pad + dc_r * 2 + dt_px(6), cy, bad ? the_app.dtc.bad : text_col, d.status, inner - dc_r * 2 - dt_px(6))
+		case .Type: dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, x + pad, cy, weak_col, d.type_label, inner)
+		case .Protocol: dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, x + pad, cy, weak_col, d.proto, inner)
+		case .Domain: dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, x + pad, cy, weak_col, d.domain, inner)
+		case .Initiator: dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, x + pad, cy, weak_col, d.init_label, inner)
+		case .Cache: dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, x + pad, cy, weak_col, d.cache, inner)
+		case .Size: dt_text_r(dc, the_app.dtm.ui_font, the_app.dtm.fs, x + p.w - pad, cy, text_col, d.size, inner)
+		case .Time: dt_text_r(dc, the_app.dtm.ui_font, the_app.dtm.fs, x + p.w - pad, cy, text_col, d.time, inner)
 		case .Waterfall: waterfall_paint(dc, d, x, p.w, r.min.y, r.max.y)
 		}
 	}
@@ -322,7 +322,7 @@ waterfall_paint :: proc(dc: ^draw.Context, d: ^Row_Draw, x, w, y0, y1: f32) {
 	px_per_ms := room / d.span
 	start := f32(e.start_ms - d.t0)
 	cy := (y0 + y1) * 0.5
-	h := max(dtm.row * 0.42, dt_px(5))
+	h := max(the_app.dtm.row * 0.42, dt_px(5))
 	rect_ms :: proc(dc: ^draw.Context, left, ppm: f32, a, b: f32, cy, h: f32, col: draw.Color) {
 		x0, x1 := left + a * ppm, left + b * ppm
 		if x1 - x0 < 1 { x1 = x0 + 1 }
@@ -341,10 +341,10 @@ waterfall_paint :: proc(dc: ^draw.Context, d: ^Row_Draw, x, w, y0, y1: f32) {
 		if resp > wait_from { rect_ms(dc, left, px_per_ms, start + wait_from, start + resp, cy, h, phase_color(4)) }
 		done := tm.done >= 0 ? tm.done : e.ms
 		if done > resp { rect_ms(dc, left, px_per_ms, start + resp, start + done, cy, h, phase_color(5)) }
-		dt_text(dc, dtm.ui_font, dtm.fs * 0.88, left + (start + done) * px_per_ms + dt_px(5), cy, dtc.weak, d.time, x + w - (left + (start + done) * px_per_ms + dt_px(5)))
+		dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs * 0.88, left + (start + done) * px_per_ms + dt_px(5), cy, the_app.dtc.weak, d.time, x + w - (left + (start + done) * px_per_ms + dt_px(5)))
 	} else {
-		col := e.ms < 0 ? with_alpha(dtc.accent, 0.55) : (e.failed ? dtc.bad : phase_color(5))
-		if e.cache == .Hit || e.cache == .Stale { col = with_alpha(dtc.weak, 0.7) }
+		col := e.ms < 0 ? with_alpha(the_app.dtc.accent, 0.55) : (e.failed ? the_app.dtc.bad : phase_color(5))
+		if e.cache == .Hit || e.cache == .Stale { col = with_alpha(the_app.dtc.weak, 0.7) }
 		rect_ms(dc, left, px_per_ms, start, max(end, start + 0.4), cy, h, col)
 	}
 	// DOMContentLoaded and load: vertical lines through the whole column
@@ -355,7 +355,7 @@ waterfall_paint :: proc(dc: ^draw.Context, d: ^Row_Draw, x, w, y0, y1: f32) {
 @(private = "file")
 vline :: proc(dc: ^draw.Context, x, y0, y1: f32, col: draw.Color) {
 	xx := math.round(x)
-	draw.rect(dc, {{xx, y0}, {xx + dtm.line, y1}}, col)
+	draw.rect(dc, {{xx, y0}, {xx + the_app.dtm.line, y1}}, col)
 }
 
 // The header of the table: the titles, the sort arrow, the grips that resize.
@@ -369,19 +369,19 @@ head_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	cy := (r.min.y + r.max.y) * 0.5
 	for p, i in d.layout {
 		x := r.min.x + p.x
-		if i == d.hot_col { draw.rect(dc, {{x, r.min.y}, {x + p.w, r.max.y}}, dtc.hover) }
-		if i > 0 { draw.rect(dc, {{x, r.min.y + dt_px(4)}, {x + dtm.line, r.max.y - dt_px(4)}}, dtc.border) }
+		if i == d.hot_col { draw.rect(dc, {{x, r.min.y}, {x + p.w, r.max.y}}, the_app.dtc.hover) }
+		if i > 0 { draw.rect(dc, {{x, r.min.y + dt_px(4)}, {x + the_app.dtm.line, r.max.y - dt_px(4)}}, the_app.dtc.border) }
 		title := NET_COL_TITLES[p.col]
 		right := p.col == .Size || p.col == .Time
-		col := d.sort_on && d.sort_col == p.col ? dtc.text : dtc.weak
+		col := d.sort_on && d.sort_col == p.col ? the_app.dtc.text : the_app.dtc.weak
 		arrow := d.sort_on && d.sort_col == p.col
-		tw := dt_w(dtm.ui_font, dtm.fs, title)
+		tw := dt_w(the_app.dtm.ui_font, the_app.dtm.fs, title)
 		avail := p.w - dt_px(12) - (arrow ? dt_px(14) : 0)
 		tx := x + dt_px(6)
 		if right { tx = x + p.w - dt_px(6) - tw - (arrow ? dt_px(14) : 0) }
-		dt_text(dc, dtm.ui_font, dtm.fs, tx, cy, col, title, avail)
+		dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, tx, cy, col, title, avail)
 		if arrow {
-			dt_icon(dc, d.desc ? .Sort_Down : .Sort_Up, {math.round(tx + min(tw, avail) + dt_px(9)), cy}, dtm.icon * 0.8, dtc.accent, dtm.sc)
+			dt_icon(dc, d.desc ? .Sort_Down : .Sort_Up, {math.round(tx + min(tw, avail) + dt_px(9)), cy}, the_app.dtm.icon * 0.8, the_app.dtc.accent, the_app.dtm.sc)
 		}
 	}
 }
@@ -473,15 +473,15 @@ net_toolbar :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 	if dt_bar("###dt_net_bar") {
 		dt_gap(3)
 		if dt_btn("###dt_net_clear", .Clear, tooltip = "Clear", shortcut = "Ctrl+L", enabled = len(t.net.entries) > 0).clicked { net_clear(&t.net); v.has_sel = false; request_frames(app, 2) }
-		rec := dt_btn("###dt_net_rec", .Record, tooltip = v.paused ? "Start recording network log" : "Stop recording network log", tone = v.paused ? dtc.weak : dtc.bad)
+		rec := dt_btn("###dt_net_rec", .Record, tooltip = v.paused ? "Start recording network log" : "Stop recording network log", tone = v.paused ? app.dtc.weak : app.dtc.bad)
 		if rec.clicked { v.paused = !v.paused }
 		dt_vsep("###dt_nb0")
 		// the filter takes what the other items leave (they never shrink), but never less than DT_FILTER_MIN: on a narrow
 		// panel the last buttons run past its edge instead of the field being squeezed to nothing under them
 		prof := net_profile_of(app, t)
-		fixed := dt_px(3) * 2 + dtm.btn * 4 + dtm.line * 3 + dt_btn_width(.None, "Invert") + dt_btn_width(.Pin, "Preserve log") + dt_btn_width(.None, "Disable cache") + dt_btn_width(.Throttle, prof.name, true)
+		fixed := dt_px(3) * 2 + app.dtm.btn * 4 + app.dtm.line * 3 + dt_btn_width(.None, "Invert") + dt_btn_width(.Pin, "Preserve log") + dt_btn_width(.None, "Disable cache") + dt_btn_width(.Throttle, prof.name, true)
 		filter_w := max(dev_width() - fixed, dt_px(DT_FILTER_MIN))
-		ui.next({width = ui.px(filter_w), height = ui.px(dtm.bar), axis = .X, cross = .Center})
+		ui.next({width = ui.px(filter_w), height = ui.px(app.dtm.bar), axis = .X, cross = .Center})
 		if ui.row(.Center, {}, "###dt_net_fw") {
 			dt_search("###dt_net_filter", &v.filter, "Filter  (-word excludes)", filter_w)
 		}
@@ -536,7 +536,7 @@ columns_menu :: proc(app: ^App, v: ^Dev_Network) {
 
 @(private = "file")
 net_chips :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
-	if dt_bar("###dt_net_chips", dtm.bar - dt_px(2)) {
+	if dt_bar("###dt_net_chips", app.dtm.bar - dt_px(2)) {
 		dt_gap(5)
 		if dt_chip("###dt_ch_all", "All", v.types == 0, "Show every request").clicked { net_set_types(app, v, 0) }
 		order := [?]Net_Type{.XHR, .Doc, .CSS, .JS, .Font, .Img, .Media, .WS, .Wasm, .Other}
@@ -586,7 +586,7 @@ net_table :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, menu_key: ui.Key) {
 	span := max(v.span_ms, max(dcl, load))
 	if v.pending > 0 { span = max(span, f32(now - t.net.t0_ms)) }
 	span = max(span, 50)
-	if rows, ok := dt_list("###dt_net_list", &v.list, n, dtm.row, nil, ui.fill(), ui.fill(), follow = true); ok {
+	if rows, ok := dt_list("###dt_net_list", &v.list, n, app.dtm.row, nil, ui.fill(), ui.fill(), follow = true); ok {
 		for k in rows.first ..< rows.last {
 			ei := v.rows[k]
 			e := &t.net.entries[ei]
@@ -607,7 +607,7 @@ net_table :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, menu_key: ui.Key) {
 			d.tone = net_tone(e)
 			d.odd = k % 2 == 1
 			d.t0, d.span, d.now_ms, d.dcl, d.load, d.pulse = t.net.t0_ms, span, now, dcl, load, pulse
-			ui.next({width = ui.fill(), height = ui.px(dtm.row), cursor = .Arrow})
+			ui.next({width = ui.fill(), height = ui.px(app.dtm.row), cursor = .Arrow})
 			rb := ui.build_box({.Clickable}, fmt.tprintf("###nr%d", e.id))
 			sig := ui.signal(rb)
 			d.selected, d.hot, d.focused = v.has_sel && v.sel_id == e.id, sig.hovering, v.list.focused
@@ -632,7 +632,7 @@ net_table :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, menu_key: ui.Key) {
 @(private = "file")
 net_keys :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, n: int) {
 	if !v.list.focused || n == 0 { return }
-	if dt_list_keys(&v.list, n, max(int(v.list.view / dtm.row) - 1, 1)) {
+	if dt_list_keys(&v.list, n, max(int(v.list.view / app.dtm.row) - 1, 1)) {
 		v.has_sel, v.sel_id = true, t.net.entries[v.rows[clamp(v.list.sel, 0, n - 1)]].id
 	}
 	if ui.key_press(.Escape) && v.has_sel { v.has_sel = false }
@@ -697,9 +697,9 @@ net_type_color :: proc(t: Net_Type) -> draw.Color {
 	case .XHR: return draw.Color{0.30, 0.70, 0.80, 1}
 	case .WS: return draw.Color{0.60, 0.80, 0.35, 1}
 	case .Wasm: return draw.Color{0.55, 0.40, 0.85, 1}
-	case .Other: return dtc.weak
+	case .Other: return the_app.dtc.weak
 	}
-	return dtc.weak
+	return the_app.dtc.weak
 }
 
 @(private = "file")
@@ -707,7 +707,7 @@ net_row_tip :: proc(sig: ui.Signal, e: ^Net_Entry) {
 	if ui.hovered_for(sig, 0.7) {
 		if ui.tooltip_beside() {
 			text := e.failed ? fmt.tprintf("%s %s\n%s", e.method, e.url, e.error) : fmt.tprintf("%s %s", e.method, e.url)
-			w := min(dt_w(dtm.ui_font, dtm.fs, e.url) + dt_px(60), dt_px(620))
+			w := min(dt_w(the_app.dtm.ui_font, the_app.dtm.fs, e.url) + dt_px(60), dt_px(620))
 			ui.next({width = ui.px(w), height = ui.px(dt_px(22) * (e.failed ? 2 : 1)), axis = .Y})
 			if ui.column(.Center, {}, "###dt_nt") {
 				ui.next({width = ui.text_size(dt_px(7)), height = ui.px(dt_px(20))})
@@ -725,7 +725,7 @@ net_row_tip :: proc(sig: ui.Signal, e: ^Net_Entry) {
 // The header: titles (a click sorts), grips (a drag resizes), a right click lists the columns.
 @(private = "file")
 net_header :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
-	ui.next({width = ui.fill(), height = ui.px(dtm.row + dt_px(2)), axis = .X, bg = dtc.bar, border = dtc.border})
+	ui.next({width = ui.fill(), height = ui.px(app.dtm.row + dt_px(2)), axis = .X, bg = app.dtc.bar, border = app.dtc.border})
 	cont := ui.build_box({.Draw_Background, .Draw_Side_Bottom}, "###dt_net_head")
 	cols_key := ui.key_from_string(0, "###dt_net_colmenu")
 	if ui.parent(cont) {
@@ -751,7 +751,7 @@ net_header :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 			gs := ui.signal(gb)
 			if gs.pressed { v.resizing, v.resize_from = int(p.col), net_cfg_w(v, p.col) }
 			if gs.dragging && v.resizing == int(p.col) {
-				w := clamp(v.resize_from + gs.drag_delta.x / dtm.sc, 36, 1200)
+				w := clamp(v.resize_from + gs.drag_delta.x / app.dtm.sc, 36, 1200)
 				for &c in v.cols { if c.col == p.col { c.w = math.round(w) } }
 				request_frames(app, 2)
 			}
@@ -790,24 +790,24 @@ net_summary :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 		if tm.load_ms > 0 { d.load = dt_frame_str(fmt.tprintf("Load: %s", dt_ms_text(f32(tm.load_ms - t.net.t0_ms)))) }
 	}
 	if v.span_ms > 0 && v.pending == 0 { d.finish = dt_frame_str(fmt.tprintf("Finish: %s", dt_ms_text(v.span_ms))) }
-	ui.next({width = ui.fill(), height = ui.px(dtm.row + dt_px(2)), bg = dtc.bar, border = dtc.border})
+	ui.next({width = ui.fill(), height = ui.px(app.dtm.row + dt_px(2)), bg = app.dtc.bar, border = app.dtc.border})
 	sb := ui.build_box({.Draw_Background, .Draw_Side_Top}, "###dt_net_sum")
 	sb.custom, sb.custom_user = proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		d := (^Sum_Draw)(user)
 		r := b.rect
 		cy := (r.min.y + r.max.y) * 0.5
 		x := r.min.x + dt_px(8)
-		x += dt_text(dc, dtm.ui_font, dtm.fs, x, cy, dtc.weak, d.text) + dt_px(14)
-		if d.finish != "" { x += dt_text(dc, dtm.ui_font, dtm.fs, x, cy, dtc.weak, d.finish) + dt_px(14) }
+		x += dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, x, cy, the_app.dtc.weak, d.text) + dt_px(14)
+		if d.finish != "" { x += dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, x, cy, the_app.dtc.weak, d.finish) + dt_px(14) }
 		if d.dcl != "" {
-			draw.rect(dc, {{x, cy - dtm.fs * 0.3}, {x + dtm.fs * 0.6, cy + dtm.fs * 0.3}}, draw.Color{0.25, 0.52, 0.92, 1}, dtm.fs * 0.3)
-			x += dtm.fs * 0.6 + dt_px(5)
-			x += dt_text(dc, dtm.ui_font, dtm.fs, x, cy, dtc.weak, d.dcl) + dt_px(14)
+			draw.rect(dc, {{x, cy - the_app.dtm.fs * 0.3}, {x + the_app.dtm.fs * 0.6, cy + the_app.dtm.fs * 0.3}}, draw.Color{0.25, 0.52, 0.92, 1}, the_app.dtm.fs * 0.3)
+			x += the_app.dtm.fs * 0.6 + dt_px(5)
+			x += dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, x, cy, the_app.dtc.weak, d.dcl) + dt_px(14)
 		}
 		if d.load != "" {
-			draw.rect(dc, {{x, cy - dtm.fs * 0.3}, {x + dtm.fs * 0.6, cy + dtm.fs * 0.3}}, draw.Color{0.88, 0.30, 0.30, 1}, dtm.fs * 0.3)
-			x += dtm.fs * 0.6 + dt_px(5)
-			dt_text(dc, dtm.ui_font, dtm.fs, x, cy, dtc.weak, d.load)
+			draw.rect(dc, {{x, cy - the_app.dtm.fs * 0.3}, {x + the_app.dtm.fs * 0.6, cy + the_app.dtm.fs * 0.3}}, draw.Color{0.88, 0.30, 0.30, 1}, the_app.dtm.fs * 0.3)
+			x += the_app.dtm.fs * 0.6 + dt_px(5)
+			dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, x, cy, the_app.dtc.weak, d.load)
 		}
 	}, d
 }

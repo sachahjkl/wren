@@ -89,18 +89,8 @@ Canvas_Page :: struct {
 	tick:        u64,
 }
 
-// Ids of backings that died: the shell frees their textures. (Only a window's: a worker's canvases have no texture.)
-@(private)
-canvas_released: [dynamic]u64
 @(private)
 canvas_next_id: u64   // atomic: workers make canvases too
-
-// What the shell provides for text (fonts, shaping, glyph outlines). Set once at start-up; `user` is replaced by the
-// page when a context is made.
-canvas_text_engine: canvas2d.Text_Engine
-
-// The GPU a canvas draws on (the shell sets it when its renderer can); nil: every canvas is drawn in software.
-canvas_gpu_host: ^canvas2d.Gpu_Host
 
 canvas_vt := Object_VTable{
 	name = "Canvas",
@@ -237,7 +227,7 @@ canvas_bitmap_virtual :: proc(p: ^Page, w, h: int) -> (bmp: canvas2d.Bitmap, ok:
 @(private)
 canvas_gpu_wanted :: proc(b: ^Canvas_Backing) -> bool {
 	s := &b.page.settings.canvas
-	return canvas_gpu_host != nil && s.gpu_enabled && !b.read_freq && b.width > 0 && b.height > 0 && b.width * b.height >= s.gpu_min_pixels
+	return the_pages.canvas_gpu_host != nil && s.gpu_enabled && !b.read_freq && b.width > 0 && b.height > 0 && b.width * b.height >= s.gpu_min_pixels
 }
 
 @(private)
@@ -330,8 +320,8 @@ canvas_backing_free :: proc(b: ^Canvas_Backing) {
 	if b.owner != nil { b.owner.backing = nil }
 	canvas_bitmap_free(p, &b.bmp)
 	if p.worker == nil {
-		if canvas_released.allocator.procedure == nil { canvas_released.allocator = base.permanent_allocator() }
-		append(&canvas_released, b.id)
+		if the_pages.canvas_released.allocator.procedure == nil { the_pages.canvas_released.allocator = base.permanent_allocator() }
+		append(&the_pages.canvas_released, b.id)
 	}
 	free(b)
 }
@@ -379,7 +369,7 @@ canvas_backing_resize :: proc(b: ^Canvas_Backing, w, h: int) {
 		case had && !b.virtual:
 			canvas2d.gpu_destroy(k.gpu)
 			k.gpu = nil
-		case !had && b.virtual: canvas2d.context_enable_gpu(k, canvas_gpu_host)
+		case !had && b.virtual: canvas2d.context_enable_gpu(k, the_pages.canvas_gpu_host)
 		}
 	}
 	b.tainted = false
@@ -431,8 +421,8 @@ canvas_make_context :: proc(c: ^Call, b: ^Canvas_Backing, alpha, read_freq: bool
 	o, h := canvas_new_object(p, c.owner, .Context)
 	o.backing, o.alpha, o.read_freq = b, alpha, read_freq
 	canvas2d.context_init(&o.ctx, &b.bmp, canvas2d.options_of(&p.settings.canvas))
-	if b.virtual { canvas2d.context_enable_gpu(&o.ctx, canvas_gpu_host) }
-	o.ctx.text = canvas_text_engine
+	if b.virtual { canvas2d.context_enable_gpu(&o.ctx, the_pages.canvas_gpu_host) }
+	o.ctx.text = the_pages.canvas_text_engine
 	o.ctx.text.user = p
 	b.ctx_obj, b.ctx_handle = o, h
 	canvas_refresh_inherit(o)
@@ -503,8 +493,8 @@ canvas_backing_bitmap :: proc(b: ^Canvas_Backing) -> ^canvas2d.Bitmap {
 
 // Ids of the textures to free.
 canvas_drain_released :: proc(out: ^[dynamic]u64) {
-	append(out, ..canvas_released[:])
-	clear(&canvas_released)
+	append(out, ..the_pages.canvas_released[:])
+	clear(&the_pages.canvas_released)
 }
 
 // How many canvas bytes the page holds (for the memory view and tests).

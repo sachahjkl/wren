@@ -41,16 +41,14 @@ Port_Router :: struct {
 	ui_loop: ^host.Loop,
 }
 
-@(private)
-router: Port_Router
 
 // (locked)
 @(private)
 port_close_locked :: proc(id: u64) {
-	e, ok := router.ends[id]
+	e, ok := the_pages.router.ends[id]
 	if !ok { return }
-	if pe, pok := router.ends[e.peer]; pok { pe.peer = 0 }
-	delete_key(&router.ends, id)
+	if pe, pok := the_pages.router.ends[e.peer]; pok { pe.peer = 0 }
+	delete_key(&the_pages.router.ends, id)
 	for m in e.queue {
 		delete(m.data)
 		for x in m.ports { port_close_locked(x) }
@@ -62,8 +60,8 @@ port_close_locked :: proc(id: u64) {
 }
 
 port_close_end :: proc(id: u64) {
-	sync.mutex_lock(&router.mu)
-	defer sync.mutex_unlock(&router.mu)
+	sync.mutex_lock(&the_pages.router.mu)
+	defer sync.mutex_unlock(&the_pages.router.mu)
 	port_close_locked(id)
 }
 
@@ -71,34 +69,34 @@ port_close_end :: proc(id: u64) {
 ports_page_closed :: proc(p: ^Page) {
 	if p.web == nil || p.web.id == 0 { return }
 	id := p.web.id
-	sync.mutex_lock(&router.mu)
-	defer sync.mutex_unlock(&router.mu)
-	if len(router.ends) == 0 { return }
+	sync.mutex_lock(&the_pages.router.mu)
+	defer sync.mutex_unlock(&the_pages.router.mu)
+	if len(the_pages.router.ends) == 0 { return }
 	dead := make([dynamic]u64, context.temp_allocator)
-	for k, e in router.ends { if e.page == id { append(&dead, k) } }
+	for k, e in the_pages.router.ends { if e.page == id { append(&dead, k) } }
 	for k in dead { port_close_locked(k) }
 }
 
 // A worker's thread ends: the ends its realm owns go.
 ports_link_closed :: proc(l: ^Worker_Link) {
-	sync.mutex_lock(&router.mu)
-	defer sync.mutex_unlock(&router.mu)
-	if len(router.ends) == 0 { return }
+	sync.mutex_lock(&the_pages.router.mu)
+	defer sync.mutex_unlock(&the_pages.router.mu)
+	if len(the_pages.router.ends) == 0 { return }
 	dead := make([dynamic]u64, context.temp_allocator)
-	for k, e in router.ends { if e.link == l { append(&dead, k) } }
+	for k, e in the_pages.router.ends { if e.link == l { append(&dead, k) } }
 	for k in dead { port_close_locked(k) }
 }
 
 // The browser ends (a next one in this process has a loop of its own: a wake posted to this one would be lost, or worse).
 ports_shutdown :: proc() {
-	sync.mutex_lock(&router.mu)
-	for len(router.ends) > 0 {
-		for k in router.ends { port_close_locked(k); break }
+	sync.mutex_lock(&the_pages.router.mu)
+	for len(the_pages.router.ends) > 0 {
+		for k in the_pages.router.ends { port_close_locked(k); break }
 	}
-	delete(router.ends)
-	router.ends = nil
-	router.ui_loop = nil
-	sync.mutex_unlock(&router.mu)
+	delete(the_pages.router.ends)
+	the_pages.router.ends = nil
+	the_pages.router.ui_loop = nil
+	sync.mutex_unlock(&the_pages.router.mu)
 }
 
 @(private)
@@ -108,10 +106,10 @@ Port_Wake :: struct { end: u64 }
 @(private)
 port_wake_locked :: proc(e: ^Port_End) {
 	switch {
-	case e.page != 0 && router.ui_loop != nil:
+	case e.page != 0 && the_pages.router.ui_loop != nil:
 		w := new(Port_Wake)
 		w.end = e.id
-		host.post(router.ui_loop, port_wake_page, w)
+		host.post(the_pages.router.ui_loop, port_wake_page, w)
 	case e.link != nil:
 		m := new(Worker_Msg)
 		m.kind, m.id = .Port_Wake, e.id
@@ -125,14 +123,14 @@ port_wake_page :: proc(data: rawptr) {
 	w := (^Port_Wake)(data)
 	end := w.end
 	free(w)
-	sync.mutex_lock(&router.mu)
-	e, ok := router.ends[end]
-	if !ok || e.page == 0 || len(e.queue) == 0 { sync.mutex_unlock(&router.mu); return }
+	sync.mutex_lock(&the_pages.router.mu)
+	e, ok := the_pages.router.ends[end]
+	if !ok || e.page == 0 || len(e.queue) == 0 { sync.mutex_unlock(&the_pages.router.mu); return }
 	p := page_by_id(e.page)
-	if p == nil || p.closed { sync.mutex_unlock(&router.mu); return }
+	if p == nil || p.closed { sync.mutex_unlock(&the_pages.router.mu); return }
 	if p.web.frozen {
 		// in the back/forward cache: delivered when it is shown again (its tasks wait the same way)
-		sync.mutex_unlock(&router.mu)
+		sync.mutex_unlock(&the_pages.router.mu)
 		w2 := new(Port_Wake)
 		w2.end = end
 		post_page_task(p, proc(pg: ^Page, d: rawptr) { if pg == nil { free(d); return }; port_wake_page(d) }, w2)
@@ -140,7 +138,7 @@ port_wake_page :: proc(data: rawptr) {
 	}
 	m := e.queue[0]
 	ordered_remove(&e.queue, 0)
-	sync.mutex_unlock(&router.mu)
+	sync.mutex_unlock(&the_pages.router.mu)
 	js_port_deliver(p, end, m)
 	delete(m.data)
 	delete(m.ports)
@@ -148,12 +146,12 @@ port_wake_page :: proc(data: rawptr) {
 
 // A worker's thread: the same for an end its realm owns.
 ports_wake_worker :: proc(p: ^Page, end: u64) {
-	sync.mutex_lock(&router.mu)
-	e, ok := router.ends[end]
-	if !ok || p.worker == nil || e.link != p.worker.link || len(e.queue) == 0 { sync.mutex_unlock(&router.mu); return }
+	sync.mutex_lock(&the_pages.router.mu)
+	e, ok := the_pages.router.ends[end]
+	if !ok || p.worker == nil || e.link != p.worker.link || len(e.queue) == 0 { sync.mutex_unlock(&the_pages.router.mu); return }
 	m := e.queue[0]
 	ordered_remove(&e.queue, 0)
-	sync.mutex_unlock(&router.mu)
+	sync.mutex_unlock(&the_pages.router.mu)
 	js_port_deliver(p, end, m)
 	delete(m.data)
 	delete(m.ports)
@@ -167,33 +165,33 @@ port_owned_by :: proc(e: ^Port_End, p: ^Page) -> bool {
 
 @(private)
 ports_note_loop :: proc(p: ^Page) {
-	if router.ui_loop == nil { router.ui_loop = p.worker != nil ? p.worker.link.ui_loop : p.loop }
+	if the_pages.router.ui_loop == nil { the_pages.router.ui_loop = p.worker != nil ? p.worker.link.ui_loop : p.loop }
 }
 
 Port_entangle :: proc(c: ^Call) -> u64 { return port_pair(c.page) }
 
 // A new pair of entangled ends owned by nobody yet: the first end's id (the second is that id + 1).
 port_pair :: proc(p: ^Page) -> u64 {
-	sync.mutex_lock(&router.mu)
-	defer sync.mutex_unlock(&router.mu)
+	sync.mutex_lock(&the_pages.router.mu)
+	defer sync.mutex_unlock(&the_pages.router.mu)
 	ports_note_loop(p)
-	if router.ends == nil { router.ends = make(map[u64]^Port_End) }
+	if the_pages.router.ends == nil { the_pages.router.ends = make(map[u64]^Port_End) }
 	a, b := new(Port_End), new(Port_End)
-	router.next += 2
-	a.id, b.id = router.next - 1, router.next
+	the_pages.router.next += 2
+	a.id, b.id = the_pages.router.next - 1, the_pages.router.next
 	a.peer, b.peer = b.id, a.id
-	router.ends[a.id] = a
-	router.ends[b.id] = b
+	the_pages.router.ends[a.id] = a
+	the_pages.router.ends[b.id] = b
 	return a.id
 }
 
 Port_bind :: proc(c: ^Call, end: u64) -> Api_Error {
 	p := c.page
 	if p.worker == nil { frames_of(p) }   // its cleanup closes the ends the document owns
-	sync.mutex_lock(&router.mu)
-	defer sync.mutex_unlock(&router.mu)
+	sync.mutex_lock(&the_pages.router.mu)
+	defer sync.mutex_unlock(&the_pages.router.mu)
 	ports_note_loop(p)
-	e, ok := router.ends[end]
+	e, ok := the_pages.router.ends[end]
 	if !ok || e.page != 0 || e.link != nil { return fail(c, .Invalid_Argument, "no such port end") }
 	if p.worker != nil { e.link = p.worker.link } else { e.page = page_id(p) }
 	for _ in e.queue { port_wake_locked(e) }
@@ -201,9 +199,9 @@ Port_bind :: proc(c: ^Call, end: u64) -> Api_Error {
 }
 
 Port_ship :: proc(c: ^Call, end: u64) {
-	sync.mutex_lock(&router.mu)
-	defer sync.mutex_unlock(&router.mu)
-	if e, ok := router.ends[end]; ok && port_owned_by(e, c.page) { e.page, e.link = 0, nil }
+	sync.mutex_lock(&the_pages.router.mu)
+	defer sync.mutex_unlock(&the_pages.router.mu)
+	if e, ok := the_pages.router.ends[end]; ok && port_owned_by(e, c.page) { e.page, e.link = 0, nil }
 }
 
 Port_post :: proc(c: ^Call, end: u64, data: []u8, ports: []u64) -> Api_Error {
@@ -212,12 +210,12 @@ Port_post :: proc(c: ^Call, end: u64, data: []u8, ports: []u64) -> Api_Error {
 		for x in ports { port_close_end(x) }
 		return fail(c, .Data_Clone, "DataCloneError: the message is larger than frames.max_message_bytes")
 	}
-	sync.mutex_lock(&router.mu)
-	defer sync.mutex_unlock(&router.mu)
-	e, ok := router.ends[end]
+	sync.mutex_lock(&the_pages.router.mu)
+	defer sync.mutex_unlock(&the_pages.router.mu)
+	e, ok := the_pages.router.ends[end]
 	pe: ^Port_End
 	pok := false
-	if ok && port_owned_by(e, c.page) { pe, pok = router.ends[e.peer] }
+	if ok && port_owned_by(e, c.page) { pe, pok = the_pages.router.ends[e.peer] }
 	if !pok {
 		for x in ports { port_close_locked(x) }   // a closed port: nothing happens
 		return .None
@@ -231,9 +229,9 @@ Port_post :: proc(c: ^Call, end: u64, data: []u8, ports: []u64) -> Api_Error {
 }
 
 Port_close :: proc(c: ^Call, end: u64) {
-	sync.mutex_lock(&router.mu)
-	defer sync.mutex_unlock(&router.mu)
-	if e, ok := router.ends[end]; ok && (port_owned_by(e, c.page) || (e.page == 0 && e.link == nil)) { port_close_locked(end) }
+	sync.mutex_lock(&the_pages.router.mu)
+	defer sync.mutex_unlock(&the_pages.router.mu)
+	if e, ok := the_pages.router.ends[end]; ok && (port_owned_by(e, c.page) || (e.page == 0 && e.link == nil)) { port_close_locked(end) }
 }
 
 // The engine of `p` receives a message for its port bound to `end`: the ports that came with it are bound there.

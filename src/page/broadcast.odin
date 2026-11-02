@@ -27,15 +27,15 @@ Broadcast_open :: proc(c: ^Call, name: string) -> u64 {
 	key := broadcast_key(p, name)
 	if key == "" { return 0 }
 	if p.worker == nil { frames_of(p) }   // (its cleanup closes the ends the document owns)
-	sync.mutex_lock(&router.mu)
-	defer sync.mutex_unlock(&router.mu)
+	sync.mutex_lock(&the_pages.router.mu)
+	defer sync.mutex_unlock(&the_pages.router.mu)
 	ports_note_loop(p)
-	router.next += 1
+	the_pages.router.next += 1
 	e := new(Port_End)
-	e.id = router.next | BROADCAST_TAG
+	e.id = the_pages.router.next | BROADCAST_TAG
 	e.channel = key
 	if p.worker != nil { e.link = p.worker.link } else { e.page = page_id(p) }
-	router.ends[e.id] = e
+	the_pages.router.ends[e.id] = e
 	return e.id
 }
 
@@ -45,11 +45,11 @@ BROADCAST_TAG :: u64(1) << 62
 Broadcast_post :: proc(c: ^Call, end: u64, data: []u8) -> Api_Error {
 	max_bytes := c.page.settings.frames.max_message_bytes
 	if max_bytes > 0 && len(data) > max_bytes { return fail(c, .Data_Clone, "DataCloneError: the message is larger than frames.max_message_bytes") }
-	sync.mutex_lock(&router.mu)
-	defer sync.mutex_unlock(&router.mu)
-	e, ok := router.ends[end]
+	sync.mutex_lock(&the_pages.router.mu)
+	defer sync.mutex_unlock(&the_pages.router.mu)
+	e, ok := the_pages.router.ends[end]
 	if !ok || e.channel == "" || !port_owned_by(e, c.page) { return .None }
-	for id, other in router.ends {
+	for id, other in the_pages.router.ends {
 		if id == end || other.channel != e.channel || (other.page == 0 && other.link == nil) { continue }
 		m := Port_Msg{data = make([]byte, len(data))}
 		copy(m.data, data)

@@ -40,36 +40,35 @@ Page_Render :: struct {
 	watch_layout, watch_font: int,
 }
 
-page_render: Page_Render
 
 // Shell start-up: the fonts of pages and the layout preferences.
 page_render_init :: proc(app: ^App) {
-	page_fonts_init(&page_render.fonts, &app.fonts, app.ui_font)
-	page_render.settings = lay.settings_from_prefs(&app.prefs)
+	page_fonts_init(&app.page_render.fonts, &app.fonts, app.ui_font)
+	app.page_render.settings = lay.settings_from_prefs(&app.prefs)
 	render_settings_init(app)
 	font_settings_init(app)
 	effects_init(app)
-	page_render.watch_layout = config.watch(&app.prefs, "layout.", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		page_render.settings = lay.settings_from_prefs(p)
+	app.page_render.watch_layout = config.watch(&app.prefs, "layout.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+		the_app.page_render.settings = lay.settings_from_prefs(p)
 		for t in active_window((^App)(user)).tabs { t.layout.valid = false }
 	}, app)
-	page_render.watch_font = config.watch(&app.prefs, "font.", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		page_fonts_forget(&page_render.fonts)
+	app.page_render.watch_font = config.watch(&app.prefs, "font.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+		page_fonts_forget(&the_app.page_render.fonts)
 	}, app)
 }
 
 page_render_destroy :: proc() {
-	page_fonts_destroy(&page_render.fonts)
+	page_fonts_destroy(&the_app.page_render.fonts)
 }
 
 // Installs the painter of form controls / replaced content (forms, images).
 set_content_painter :: proc(fn: Content_Painter, user: rawptr) {
-	page_render.content, page_render.content_user = fn, user
+	the_app.page_render.content, the_app.page_render.content_user = fn, user
 }
 
 // Installs the source of natural sizes of replaced content (decoded images...). A change of size needs a new layout:
 // set `layout.valid = false` on the tabs concerned.
-set_replaced_sizes :: proc(api: lay.Replaced_Api) { page_render.replaced = api }
+set_replaced_sizes :: proc(api: lay.Replaced_Api) { the_app.page_render.replaced = api }
 
 register_layout_prefs :: proc(p: ^config.Prefs) { lay.register_prefs(p) }
 
@@ -80,9 +79,9 @@ layout_destroy :: proc(l: ^Layout) { composite_forget(l); text_clip_forget(l); l
 // `fonts_gen`: change counters of the natural sizes of images and of the page's web fonts (lay.Input).
 layout_document :: proc(l: ^Layout, d: ^dom.Document, styled: ^style.Styled, measure: ^Measure, style_settings: ^style.Settings, viewport: draw.Vec2, scale, band_h: f32, images_gen: u64 = 0, fonts_gen: u64 = 0) {
 	lay.run(l, lay.Input{
-		doc = d, styled = styled, settings = &page_render.settings,
-		text = page_text_api(&page_render.fonts, measure, style_settings),
-		replaced = page_render.replaced,
+		doc = d, styled = styled, settings = &the_app.page_render.settings,
+		text = page_text_api(&the_app.page_render.fonts, measure, style_settings),
+		replaced = the_app.page_render.replaced,
 		viewport = viewport, scale = scale, band_h = band_h,
 		images_generation = images_gen, fonts_generation = fonts_gen,
 	})
@@ -155,7 +154,7 @@ paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, page_origin, size
 	interp := draw.set_interpolation(dc, .Srgb)
 	defer draw.set_interpolation(dc, interp)
 	paint_canvas_images(l, dc, origin, size, scroll)
-	if !(compositor_settings.enabled && composite_paint(l, dc, d, origin, size, scroll)) {
+	if !(the_app.compositor_settings.enabled && composite_paint(l, dc, d, origin, size, scroll)) {
 		v := lay.view_make(l, size, scroll)
 		fx := effects_make(l, &v, dc, origin, size)
 		for idx in v.visible {
@@ -172,7 +171,7 @@ paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, page_origin, size
 // The colors of the document's scroll bar: the scheme's, then the root element's scrollbar-color.
 doc_scrollbar_colors :: proc(l: ^Layout) -> (thumb_c, track_c: css.Color) {
 	root := l.styled != nil ? (^style.Styled)(l.styled).root_scheme : style.Scheme.Light   // alive while the layout is painted
-	thumb_c, track_c = scrollbar_colors(root, page_render.settings.scrollbar_thumb, page_render.settings.scrollbar_track)
+	thumb_c, track_c = scrollbar_colors(root, the_app.page_render.settings.scrollbar_thumb, the_app.page_render.settings.scrollbar_track)
 	// the viewport's bar follows the root element's scrollbar-color
 	if ri := l.canvas_items[0]; ri >= 0 && int(ri) < len(l.items) { thumb_c, track_c = scrollbar_colors_of(l.items[ri].cs, thumb_c, track_c) }
 	return
@@ -251,7 +250,7 @@ paint_item :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, v: ^lay.View
 	defer selection_paint_over(l, dc, it, r)
 	switch it.kind {
 	case .Box:
-		if page_render.bare != nil && page_render.bare(page_render.content_user, d, it.node) { return }
+		if the_app.page_render.bare != nil && the_app.page_render.bare(the_app.page_render.content_user, d, it.node) { return }
 		paint_box(l, dc, d, v, it, r, origin)
 	case .Inline_Box: paint_inline_box(l, dc, v, it, r, origin)
 	case .Text: paint_text(l, dc, it, r, off)
@@ -261,7 +260,7 @@ paint_item :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, v: ^lay.View
 	case .Column_Rule: paint_column_rule(dc, it, r)
 	case .Scrollbar:
 		track := r
-		thumb_c, track_c := scrollbar_colors(it.cs != nil ? it.cs.used_scheme : .Light, page_render.settings.scrollbar_thumb, page_render.settings.scrollbar_track)
+		thumb_c, track_c := scrollbar_colors(it.cs != nil ? it.cs.used_scheme : .Light, the_app.page_render.settings.scrollbar_thumb, the_app.page_render.settings.scrollbar_track)
 		thumb_c, track_c = scrollbar_colors_of(it.cs, thumb_c, track_c)
 		if track_c.a > 0 { draw.rect(dc, track, to_draw(track_c), min(track.max.x - track.min.x, track.max.y - track.min.y) * 0.5) }
 		th := draw.rect_shift(dr(lay.scrollbar_thumb(l, v, it)), origin)
@@ -547,7 +546,7 @@ paint_text :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw
 		if s.color.a <= 0 { continue }
 		col := to_draw(s.color)
 		pos := draw.Vec2{r.min.x + s.x * l.scale, baseline + s.y * l.scale}
-		if s.blur > 0 && effects_settings.exact_shadows {
+		if s.blur > 0 && the_app.effects_settings.exact_shadows {
 			// a gaussian of half the blur radius (CSS Backgrounds §7.2), through a layer
 			ink := draw.rect_pad(draw.rect_shift(r, {s.x, s.y} * l.scale), fi.size * 0.5)
 			id, key, anchor := fx_cache_text_shadow(it, i, fid, fi.size, col, pos, r, opts)   // kept from frame to frame
@@ -733,8 +732,8 @@ paint_content :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, it: ^lay.
 	size := fi != nil ? fi.size : 13
 	if it.kind == .Replaced && images_paint_content(dc, d, it.node, r, border, it.cs, fid, size, l.scale) { return }
 	if it.kind == .Replaced && frames_paint_content(the_app, dc, d, it.node, r, it.cs) { return }   // (frames_shell.odin)
-	if page_render.content != nil {
-		if page_render.content(page_render.content_user, dc, d, it.node, it.kind, r, border, it.cs, fid, size) { return }
+	if the_app.page_render.content != nil {
+		if the_app.page_render.content(the_app.page_render.content_user, dc, d, it.node, it.kind, r, border, it.cs, fid, size) { return }
 	}
 	if it.kind != .Control || fi == nil || d == nil { return }
 	default_control(l, dc, d, it, r, border, fi)
@@ -757,7 +756,7 @@ default_control :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, it: ^la
 		draw.text(dc, fid, size, {x, base}, col, s)
 		draw.pop_clip(dc)
 	}
-	fonts := page_render.fonts.state
+	fonts := the_app.page_render.fonts.state
 	switch n.name {
 	case "input":
 		t, _ := dom.get_attribute(d, it.node, "type")
@@ -822,8 +821,8 @@ default_control :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, it: ^la
 		if label == "" { label = first }
 		// (as forms_shell.odin paint_control: the label after the start padding, the arrow centered in the arrow's room
 		// at the right of the border box)
-		arrow := page_render.settings.select_arrow * l.scale
-		start := page_render.settings.select_start * l.scale
+		arrow := the_app.page_render.settings.select_arrow * l.scale
+		start := the_app.page_render.settings.select_start * l.scale
 		text_in(dc, fid, fi.size, {{r.min.x + start, r.min.y}, {r.max.x - arrow, r.max.y}}, mid_base, col, label, false, fonts)
 		cx, cy := border.max.x - arrow * 0.5, (border.min.y + border.max.y) * 0.5
 		a := max(arrow * 0.25, 2)

@@ -6,6 +6,7 @@ import "core:testing"
 
 @(test)
 cache_index_round_trip :: proc(t: ^testing.T) {
+	test_pages(t)
 	oc := Origin_Caches{next = 7}
 	c := new(Named_Cache)
 	c.name = strings.clone("v1")
@@ -35,6 +36,7 @@ cache_index_round_trip :: proc(t: ^testing.T) {
 
 @(test)
 cache_matching_and_quota :: proc(t: ^testing.T) {
+	test_pages(t)
 	e := Cached_Response{url = "https://a.example/p?q=1", method = "GET"}
 	testing.expect(t, cache_entry_matches(&e, "https://a.example/p?q=1#frag", "GET", {}))
 	testing.expect(t, !cache_entry_matches(&e, "https://a.example/p?q=2", "GET", {}))

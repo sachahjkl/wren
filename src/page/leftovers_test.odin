@@ -6,6 +6,7 @@ import "wb:media"
 
 @(test)
 video_quality_from_the_player :: proc(t: ^testing.T) {
+	test_pages(t)
 	q := video_quality_numbers(1234, {}, false)
 	testing.expect_value(t, q, [5]f64{1234, 0, 0, 0, 0})
 	s := media.Player_Stats{decoded = 100, dropped = 7, presented = 90, delay_ns = 250_000_000}
@@ -21,6 +22,7 @@ video_quality_from_the_player :: proc(t: ^testing.T) {
 
 @(test)
 entries_paths_stay_inside_the_drop :: proc(t: ^testing.T) {
+	test_pages(t)
 	r, ok := fs_resolve("", "sub/b.txt")
 	testing.expect(t, ok && r == "sub/b.txt")
 	r, ok = fs_resolve("sub", "./c/../d")
@@ -38,6 +40,7 @@ entries_paths_stay_inside_the_drop :: proc(t: ^testing.T) {
 
 @(test)
 accept_attribute :: proc(t: ^testing.T) {
+	test_pages(t)
 	testing.expect(t, forms.accept_matches("", "a.bin", ""))
 	testing.expect(t, forms.accept_matches(".TXT, image/*", "notes.txt", "text/plain"))
 	testing.expect(t, forms.accept_matches(".txt,image/*", "p.png", "image/png"))

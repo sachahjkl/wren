@@ -97,7 +97,7 @@ net_detail_panel :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, e: ^Net_Entry) {
 		for p, i in DETAIL_PREFS { if p == pref { d.tab = i } }
 	}
 	// the tab strip
-	if dt_bar("###dt_nd_bar", dtm.bar - dt_px(2)) {
+	if dt_bar("###dt_nd_bar", app.dtm.bar - dt_px(2)) {
 		dt_gap(2)
 		if dt_btn("###dt_nd_close", .Close, tooltip = "Close the details", shortcut = "Esc").clicked { v.has_sel = false }
 		dt_vsep("###dt_nd_s0")
@@ -169,7 +169,7 @@ detail_reset :: proc(d: ^Net_Detail, e: ^Net_Entry, key: u64) {
 // A text tab of the detail strip: the name, an accent line under the chosen one.
 @(private = "file")
 sub_tab :: proc(id, label: string, on: bool) -> ui.Signal {
-	w := dt_w(dtm.ui_font, dtm.fs, label) + dt_px(18)
+	w := dt_w(the_app.dtm.ui_font, the_app.dtm.fs, label) + dt_px(18)
 	ui.next({width = ui.px(math.round(w)), height = ui.pct(1), cursor = .Arrow})
 	b := ui.build_box({.Clickable, .Focusable}, id)
 	sig := ui.signal(b)
@@ -178,11 +178,11 @@ sub_tab :: proc(id, label: string, on: bool) -> ui.Signal {
 	b.custom, b.custom_user = proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		d := (^Dt_Chip_Draw)(user)
 		r := b.rect
-		if d.hot && !d.on { draw.rect(dc, {{r.min.x, r.min.y + dt_px(3)}, {r.max.x, r.max.y - dt_px(3)}}, dtc.hover, dtm.radius) }
+		if d.hot && !d.on { draw.rect(dc, {{r.min.x, r.min.y + dt_px(3)}, {r.max.x, r.max.y - dt_px(3)}}, the_app.dtc.hover, the_app.dtm.radius) }
 		cy := (r.min.y + r.max.y) * 0.5
-		tw := dt_w(dtm.ui_font, dtm.fs, d.label)
-		dt_text(dc, dtm.ui_font, dtm.fs, (r.min.x + r.max.x) * 0.5 - tw * 0.5, cy, d.on ? dtc.text : (d.hot ? dtc.text : dtc.weak), d.label)
-		if d.on { draw.rect(dc, {{r.min.x + dt_px(4), r.max.y - dt_px(2)}, {r.max.x - dt_px(4), r.max.y}}, dtc.accent) }
+		tw := dt_w(the_app.dtm.ui_font, the_app.dtm.fs, d.label)
+		dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, (r.min.x + r.max.x) * 0.5 - tw * 0.5, cy, d.on ? the_app.dtc.text : (d.hot ? the_app.dtc.text : the_app.dtc.weak), d.label)
+		if d.on { draw.rect(dc, {{r.min.x + dt_px(4), r.max.y - dt_px(2)}, {r.max.x - dt_px(4), r.max.y}}, the_app.dtc.accent) }
 	}, st
 	return sig
 }
@@ -216,16 +216,16 @@ Item :: struct {
 @(private = "file")
 wrap_value :: proc(s: string, f: int, size, maxw: f32) -> []string {
 	out := make([dynamic]string, 0, 2, context.temp_allocator)
-	if maxw < dt_px(40) || dt_w(dtm.mono, size, s) <= maxw { append(&out, s); return out[:] }
+	if maxw < dt_px(40) || dt_w(the_app.dtm.mono, size, s) <= maxw { append(&out, s); return out[:] }
 	rest := s
 	for len(rest) > 0 && len(out) < 200 {
-		if dt_w(dtm.mono, size, rest) <= maxw { append(&out, rest); break }
+		if dt_w(the_app.dtm.mono, size, rest) <= maxw { append(&out, rest); break }
 		// the longest prefix that fits
 		lo, hi := 1, len(rest)
 		for lo < hi {
 			mid := (lo + hi + 1) / 2
 			for mid < len(rest) && (rest[mid] & 0xC0) == 0x80 { mid += 1 }
-			if dt_w(dtm.mono, size, rest[:mid]) <= maxw { lo = mid } else { hi = mid - 1 }
+			if dt_w(the_app.dtm.mono, size, rest[:mid]) <= maxw { lo = mid } else { hi = mid - 1 }
 		}
 		cut := lo
 		// back to a break the reader would choose
@@ -241,14 +241,14 @@ wrap_value :: proc(s: string, f: int, size, maxw: f32) -> []string {
 
 @(private = "file")
 add_pair :: proc(items: ^[dynamic]Item, name, value: string, maxw: f32, section: int) {
-	lines := wrap_value(value, 0, dtm.mono_fs, maxw)
-	h := max(dtm.row, f32(len(lines)) * math.round(dtm.mono_fs * 1.35) + dt_px(3))
+	lines := wrap_value(value, 0, the_app.dtm.mono_fs, maxw)
+	h := max(the_app.dtm.row, f32(len(lines)) * math.round(the_app.dtm.mono_fs * 1.35) + dt_px(3))
 	append(items, Item{kind = .Pair, name = name, value = value, lines = lines, h = h, section = section})
 }
 
 @(private = "file")
 add_section :: proc(items: ^[dynamic]Item, title: string, count: int, section: int, open: bool) {
-	append(items, Item{kind = .Section, name = title, count = count, h = dtm.row + dt_px(2), section = section, open = open})
+	append(items, Item{kind = .Section, name = title, count = count, h = the_app.dtm.row + dt_px(2), section = section, open = open})
 }
 
 @(private = "file")
@@ -265,44 +265,44 @@ pair_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	d := (^Pair_Draw)(user)
 	r := b.rect
 	it := &d.it
-	cy := r.min.y + dtm.row * 0.5
+	cy := r.min.y + the_app.dtm.row * 0.5
 	switch it.kind {
 	case .Gap:
 	case .Section:
-		draw.rect(dc, r, dtc.bar)
-		if d.hot { draw.rect(dc, r, dtc.hover) }
-		draw.rect(dc, {{r.min.x, r.max.y - dtm.line}, {r.max.x, r.max.y}}, dtc.border_soft)
-		dt_icon(dc, it.open ? .Caret_Down : .Caret_Right, {r.min.x + dt_px(12), cy}, dtm.icon * 0.78, dtc.weak, dtm.sc)
-		w := dt_text(dc, dtm.ui_font, dtm.fs, r.min.x + dt_px(22), cy, dtc.text, it.name)
-		if it.count >= 0 { dt_text(dc, dtm.ui_font, dtm.fs * 0.92, r.min.x + dt_px(22) + w + dt_px(6), cy, dtc.weak, fmt.tprintf("(%d)", it.count)) }
+		draw.rect(dc, r, the_app.dtc.bar)
+		if d.hot { draw.rect(dc, r, the_app.dtc.hover) }
+		draw.rect(dc, {{r.min.x, r.max.y - the_app.dtm.line}, {r.max.x, r.max.y}}, the_app.dtc.border_soft)
+		dt_icon(dc, it.open ? .Caret_Down : .Caret_Right, {r.min.x + dt_px(12), cy}, the_app.dtm.icon * 0.78, the_app.dtc.weak, the_app.dtm.sc)
+		w := dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, r.min.x + dt_px(22), cy, the_app.dtc.text, it.name)
+		if it.count >= 0 { dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs * 0.92, r.min.x + dt_px(22) + w + dt_px(6), cy, the_app.dtc.weak, fmt.tprintf("(%d)", it.count)) }
 	case .Pair:
-		if d.hot { draw.rect(dc, r, dtc.hover) }
+		if d.hot { draw.rect(dc, r, the_app.dtc.hover) }
 		x := r.min.x + dt_px(22)
-		dt_text(dc, dtm.mono, dtm.mono_fs, x, cy, dtc.weak, it.name, d.name_w - dt_px(10))
+		dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, x, cy, the_app.dtc.weak, it.name, d.name_w - dt_px(10))
 		vx := x + d.name_w
 		if it.has_dot {
-			rr := dtm.fs * 0.30
+			rr := the_app.dtm.fs * 0.30
 			draw.rect(dc, {{vx, cy - rr}, {vx + rr * 2, cy + rr}}, it.dot, rr)
 			vx += rr * 2 + dt_px(6)
 		}
 		for ln, i in it.lines {
-			dt_text(dc, dtm.mono, dtm.mono_fs, vx, cy + f32(i) * d.line_h, dtc.text, ln, r.max.x - vx - dt_px(6))
+			dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, vx, cy + f32(i) * d.line_h, the_app.dtc.text, ln, r.max.x - vx - dt_px(6))
 		}
 	case .Note:
-		dt_text(dc, dtm.ui_font, dtm.fs, r.min.x + dt_px(22), cy, dtc.weak, it.name, r.max.x - r.min.x - dt_px(30))
+		dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, r.min.x + dt_px(22), cy, the_app.dtc.weak, it.name, r.max.x - r.min.x - dt_px(30))
 	case .Phase:
 		x := r.min.x + dt_px(14)
 		label_w := (r.max.x - r.min.x) * 0.42
-		dt_text(dc, dtm.ui_font, dtm.fs, x, cy, dtc.text, it.name, label_w - dt_px(10))
+		dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, x, cy, the_app.dtc.text, it.name, label_w - dt_px(10))
 		bx0 := r.min.x + label_w
 		bw := r.max.x - bx0 - dt_px(80)
 		if it.span > 0 && bw > dt_px(20) && it.to >= it.from {
 			a, c := bx0 + it.from / it.span * bw, bx0 + it.to / it.span * bw
 			if c - a < 2 { c = a + 2 }
-			draw.rect(dc, {{bx0, cy - dtm.row * 0.2}, {bx0 + bw, cy + dtm.row * 0.2}}, with_alpha(dtc.border, 0.35))
-			draw.rect(dc, {{a, cy - dtm.row * 0.2}, {c, cy + dtm.row * 0.2}}, it.color)
+			draw.rect(dc, {{bx0, cy - the_app.dtm.row * 0.2}, {bx0 + bw, cy + the_app.dtm.row * 0.2}}, with_alpha(the_app.dtc.border, 0.35))
+			draw.rect(dc, {{a, cy - the_app.dtm.row * 0.2}, {c, cy + the_app.dtm.row * 0.2}}, it.color)
 		}
-		dt_text_r(dc, dtm.ui_font, dtm.fs, r.max.x - dt_px(10), cy, dtc.text, it.value)
+		dt_text_r(dc, the_app.dtm.ui_font, the_app.dtm.fs, r.max.x - dt_px(10), cy, the_app.dtc.text, it.value)
 	}
 }
 
@@ -316,11 +316,11 @@ items_list :: proc(app: ^App, d: ^Net_Detail, l: ^Dt_List, id: string, items: []
 	for it, i in items { offs[i] = y; y += it.h }
 	offs[n] = y
 	menu_key := ui.key_from_string(0, "###dt_nd_menu")
-	if rows, ok := dt_list(id, l, n, dtm.row, offs, ui.fill(), ui.fill()); ok {
+	if rows, ok := dt_list(id, l, n, app.dtm.row, offs, ui.fill(), ui.fill()); ok {
 		for k in rows.first ..< rows.last {
 			it := items[k]
 			pd := ui.frame_new(Pair_Draw)
-			pd.it, pd.name_w, pd.line_h = it, name_w, math.round(dtm.mono_fs * 1.35)
+			pd.it, pd.name_w, pd.line_h = it, name_w, math.round(app.dtm.mono_fs * 1.35)
 			ui.next({width = ui.fill(), height = ui.px(it.h), cursor = .Arrow})
 			rb := ui.build_box({.Clickable}, fmt.tprintf("###ip%s%d", id, k))
 			sig := ui.signal(rb)
@@ -372,13 +372,13 @@ detail_headers :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 	res := net_header_pairs(e.res_headers)
 	add_section(&items, "Response Headers", len(res), 1, !d.collapsed[1])
 	if !d.collapsed[1] {
-		if len(res) == 0 { append(&items, Item{kind = .Note, name = e.failed ? "The request failed before an answer." : "No response headers (yet).", h = dtm.row}) }
+		if len(res) == 0 { append(&items, Item{kind = .Note, name = e.failed ? "The request failed before an answer." : "No response headers (yet).", h = app.dtm.row}) }
 		for h in res { add_pair(&items, h[0], h[1], maxw, 1) }
 	}
 	req := net_header_pairs(e.req_headers)
 	add_section(&items, "Request Headers", len(req), 2, !d.collapsed[2])
 	if !d.collapsed[2] {
-		if len(req) == 0 { append(&items, Item{kind = .Note, name = "No request headers recorded.", h = dtm.row}) }
+		if len(req) == 0 { append(&items, Item{kind = .Note, name = "No request headers recorded.", h = app.dtm.row}) }
 		for h in req { add_pair(&items, h[0], h[1], maxw, 2) }
 	}
 	q := net_query_pairs(e.url)
@@ -432,7 +432,7 @@ detail_cookies :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 	}
 	add_section(&items, "Request Cookies", len(sent), 0, !d.collapsed[0])
 	if !d.collapsed[0] {
-		if len(sent) == 0 { append(&items, Item{kind = .Note, name = "This request had no cookies.", h = dtm.row}) }
+		if len(sent) == 0 { append(&items, Item{kind = .Note, name = "This request had no cookies.", h = app.dtm.row}) }
 		for c in sent { add_pair(&items, c[0], c[1], maxw, 0) }
 	}
 	got := make([dynamic][2]string, 0, 8, context.temp_allocator)
@@ -448,7 +448,7 @@ detail_cookies :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 	}
 	add_section(&items, "Response Cookies", len(got), 1, !d.collapsed[1])
 	if !d.collapsed[1] {
-		if len(got) == 0 { append(&items, Item{kind = .Note, name = "The response set no cookies.", h = dtm.row}) }
+		if len(got) == 0 { append(&items, Item{kind = .Note, name = "The response set no cookies.", h = app.dtm.row}) }
 		for c in got { add_pair(&items, c[0], c[1], maxw, 1) }
 	}
 	items_list(app, d, &d.hdr, "###dt_nd_cook", items[:], dt_px(172))
@@ -464,7 +464,7 @@ detail_timing :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 	total := e.ms >= 0 ? e.ms : 0
 	if !e.has_timing {
 		add_section(&items, "Timing", -1, 0, true)
-		append(&items, Item{kind = .Note, name = e.cache == .Hit || e.cache == .Stale ? "Served from the HTTP cache: nothing was sent." : "No phase timing for this request (it did not use the network).", h = dtm.row})
+		append(&items, Item{kind = .Note, name = e.cache == .Hit || e.cache == .Stale ? "Served from the HTTP cache: nothing was sent." : "No phase timing for this request (it did not use the network).", h = app.dtm.row})
 		if e.ms >= 0 { add_phase(&items, "Total", e.ms, 0, e.ms, e.ms, phase_color(5)) }
 		items_list(app, d, &d.hdr, "###dt_nd_tm", items[:], dt_px(172))
 		return
@@ -486,7 +486,7 @@ detail_timing :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 	if tm.response >= wait_from { add_phase(&items, "Waiting for server response", tm.response - wait_from, wait_from, tm.response, span, phase_color(4)) }
 	if tm.done >= tm.response && tm.response >= 0 { add_phase(&items, "Content Download", tm.done - tm.response, tm.response, tm.done, span, phase_color(5)) }
 	append(&items, Item{kind = .Gap, h = dt_px(6)})
-	add_phase(&items, "Total", span, 0, span, span, with_alpha(dtc.accent, 0.9))
+	add_phase(&items, "Total", span, 0, span, span, with_alpha(app.dtc.accent, 0.9))
 	if e.protocol != "" || e.remote != "" {
 		append(&items, Item{kind = .Gap, h = dt_px(6)})
 		add_pair(&items, "Protocol", e.protocol, dt_px(300), 3)
@@ -497,7 +497,7 @@ detail_timing :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 
 @(private = "file")
 add_phase :: proc(items: ^[dynamic]Item, name: string, ms, from, to, span: f32, col: draw.Color) {
-	append(items, Item{kind = .Phase, name = name, value = dt_frame_str(dt_ms_text(ms)), from = from, to = to, span = span, color = col, h = dtm.row + dt_px(2)})
+	append(items, Item{kind = .Phase, name = name, value = dt_frame_str(dt_ms_text(ms)), from = from, to = to, span = span, color = col, h = the_app.dtm.row + dt_px(2)})
 }
 
 ////////////////////////////////
@@ -517,14 +517,14 @@ Line_Draw :: struct {
 line_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	d := (^Line_Draw)(user)
 	r := b.rect
-	if d.hot { draw.rect(dc, r, dtc.hover) }
+	if d.hot { draw.rect(dc, r, the_app.dtc.hover) }
 	cy := (r.min.y + r.max.y) * 0.5
-	draw.rect(dc, {r.min, {r.min.x + d.gutter, r.max.y}}, with_alpha(dtc.bar, 0.9))
-	draw.rect(dc, {{r.min.x + d.gutter - dtm.line, r.min.y}, {r.min.x + d.gutter, r.max.y}}, dtc.border_soft)
+	draw.rect(dc, {r.min, {r.min.x + d.gutter, r.max.y}}, with_alpha(the_app.dtc.bar, 0.9))
+	draw.rect(dc, {{r.min.x + d.gutter - the_app.dtm.line, r.min.y}, {r.min.x + d.gutter, r.max.y}}, the_app.dtc.border_soft)
 	num := fmt.tprintf("%d", d.n)
-	dt_text_r(dc, dtm.mono, dtm.mono_fs * 0.92, r.min.x + d.gutter - dt_px(6), cy, dtc.faint, num)
+	dt_text_r(dc, the_app.dtm.mono, the_app.dtm.mono_fs * 0.92, r.min.x + d.gutter - dt_px(6), cy, the_app.dtc.faint, num)
 	runs := syn_runs(d.text, d.lang)
-	dt_runs(dc, dtm.mono, dtm.mono_fs, r.min.x + d.gutter + dt_px(8), cy, runs, r.max.x - dt_px(4))
+	dt_runs(dc, the_app.dtm.mono, the_app.dtm.mono_fs, r.min.x + d.gutter + dt_px(8), cy, runs, r.max.x - dt_px(4))
 }
 
 @(private = "file")
@@ -544,7 +544,7 @@ detail_response :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 		return
 	}
 	// a small bar: format, copy, size
-	if dt_bar("###dt_nd_rbar", dtm.bar - dt_px(4), rule = true) {
+	if dt_bar("###dt_nd_rbar", app.dtm.bar - dt_px(4), rule = true) {
 		dt_gap(4)
 		if d.lang == .JSON && !d.binary {
 			if dt_btn("###dt_nd_fmt", .Bracket, tooltip = "Pretty-print the JSON", on = d.pretty).clicked { d.pretty = !d.pretty }
@@ -553,7 +553,7 @@ detail_response :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 		ui.next({width = ui.fill(), height = ui.pct(1)})
 		ui.custom("###dt_nd_rinfo", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 			s := (^string)(user)^
-			dt_text_r(dc, dtm.ui_font, dtm.fs * 0.92, b.rect.max.x - dt_px(8), (b.rect.min.y + b.rect.max.y) * 0.5, dtc.weak, s)
+			dt_text_r(dc, the_app.dtm.ui_font, the_app.dtm.fs * 0.92, b.rect.max.x - dt_px(8), (b.rect.min.y + b.rect.max.y) * 0.5, the_app.dtc.weak, s)
 		}, new_clone(dt_frame_str(response_info(e, d)), ui.frame_allocator()))
 	}
 	if d.binary { hex_view(d, e); return }
@@ -571,8 +571,8 @@ response_info :: proc(e: ^Net_Entry, d: ^Net_Detail) -> string {
 text_view :: proc(d: ^Net_Detail, l: ^Dt_List, id: string, lang: Syn_Lang) {
 	n := max(len(d.starts) - 1, 0)
 	digits := len(fmt.tprintf("%d", max(n, 1)))
-	gutter := dt_px(14) + f32(digits) * dt_w(dtm.mono, dtm.mono_fs * 0.92, "0")
-	if rows, ok := dt_list(id, l, n, dtm.row, nil, ui.fill(), ui.fill()); ok {
+	gutter := dt_px(14) + f32(digits) * dt_w(the_app.dtm.mono, the_app.dtm.mono_fs * 0.92, "0")
+	if rows, ok := dt_list(id, l, n, the_app.dtm.row, nil, ui.fill(), ui.fill()); ok {
 		for k in rows.first ..< rows.last {
 			a, b := d.starts[k], d.starts[k + 1] - 1
 			b = max(min(b, len(d.shown)), a)
@@ -581,7 +581,7 @@ text_view :: proc(d: ^Net_Detail, l: ^Dt_List, id: string, lang: Syn_Lang) {
 			if len(ln) > 3000 { ln = ln[:3000] }
 			ld := ui.frame_new(Line_Draw)
 			ld.text, ld.n, ld.lang, ld.gutter = ln, k + 1, lang, gutter
-			ui.next({width = ui.fill(), height = ui.px(dtm.row), cursor = .Text})
+			ui.next({width = ui.fill(), height = ui.px(the_app.dtm.row), cursor = .Text})
 			rb := ui.build_box({.Clickable}, fmt.tprintf("###tl%d", k))
 			sig := ui.signal(rb)
 			ld.hot = sig.hovering
@@ -597,29 +597,29 @@ Hex_Draw :: struct { off: int, bytes: []byte }
 
 hex_view :: proc(d: ^Net_Detail, e: ^Net_Entry) {
 	n := (len(e.body) + 15) / 16
-	if rows, ok := dt_list("###dt_nd_hex", &d.txt, n, dtm.row, nil, ui.fill(), ui.fill()); ok {
+	if rows, ok := dt_list("###dt_nd_hex", &d.txt, n, the_app.dtm.row, nil, ui.fill(), ui.fill()); ok {
 		for k in rows.first ..< rows.last {
 			hd := ui.frame_new(Hex_Draw)
 			hd.off = k * 16
 			hd.bytes = e.body[k * 16:min(k * 16 + 16, len(e.body))]
-			ui.next({width = ui.fill(), height = ui.px(dtm.row), cursor = .Arrow})
+			ui.next({width = ui.fill(), height = ui.px(the_app.dtm.row), cursor = .Arrow})
 			rb := ui.build_box({}, fmt.tprintf("###hx%d", k))
 			rb.custom, rb.custom_user = proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 				h := (^Hex_Draw)(user)
 				cy := (b.rect.min.y + b.rect.max.y) * 0.5
 				x := b.rect.min.x + dt_px(10)
-				cw := dt_w(dtm.mono, dtm.mono_fs, "0")
-				x += dt_text(dc, dtm.mono, dtm.mono_fs, x, cy, dtc.faint, fmt.tprintf("%08x", h.off)) + cw * 2
+				cw := dt_w(the_app.dtm.mono, the_app.dtm.mono_fs, "0")
+				x += dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, x, cy, the_app.dtc.faint, fmt.tprintf("%08x", h.off)) + cw * 2
 				sb := strings.builder_make(context.temp_allocator)
 				for byte, i in h.bytes {
 					fmt.sbprintf(&sb, "%02x ", byte)
 					if i == 7 { strings.write_byte(&sb, ' ') }
 				}
-				dt_text(dc, dtm.mono, dtm.mono_fs, x, cy, dtc.text, strings.to_string(sb))
+				dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, x, cy, the_app.dtc.text, strings.to_string(sb))
 				ax := x + cw * 51
 				asc := make([]u8, len(h.bytes), context.temp_allocator)
 				for byte, i in h.bytes { asc[i] = byte >= 32 && byte < 127 ? byte : '.' }
-				dt_text(dc, dtm.mono, dtm.mono_fs, ax, cy, dtc.weak, string(asc))
+				dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, ax, cy, the_app.dtc.weak, string(asc))
 			}, hd
 		}
 	}
@@ -713,13 +713,13 @@ detail_preview :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 		json_flatten(d, &rows, "", false, d.json_val, 0, 0)
 		n := len(rows)
 		menu_key := ui.key_from_string(0, "###dt_nd_jmenu")
-		if lst, ok := dt_list("###dt_nd_json", &d.jlist, n, dtm.row, nil, ui.fill(), ui.fill()); ok {
+		if lst, ok := dt_list("###dt_nd_json", &d.jlist, n, app.dtm.row, nil, ui.fill(), ui.fill()); ok {
 			for k in lst.first ..< lst.last {
 				jd := ui.frame_new(Json_Draw)
 				r := rows[k]
 				r.key, r.text = dt_frame_str(r.key), dt_frame_str(r.text)
 				jd.row = r
-				ui.next({width = ui.fill(), height = ui.px(dtm.row), cursor = .Arrow})
+				ui.next({width = ui.fill(), height = ui.px(app.dtm.row), cursor = .Arrow})
 				rb := ui.build_box({.Clickable}, fmt.tprintf("###jr%d", k))
 				sig := ui.signal(rb)
 				jd.hot = sig.hovering
@@ -727,22 +727,22 @@ detail_preview :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 					j := (^Json_Draw)(user)
 					r := b.rect
 					cy := (r.min.y + r.max.y) * 0.5
-					if j.hot { draw.rect(dc, r, dtc.hover) }
+					if j.hot { draw.rect(dc, r, the_app.dtc.hover) }
 					x := r.min.x + dt_px(10) + f32(j.row.depth) * dt_px(14)
-					if j.row.has_children { dt_icon(dc, j.row.open ? .Caret_Down : .Caret_Right, {x + dt_px(5), cy}, dtm.icon * 0.78, dtc.weak, dtm.sc) }
+					if j.row.has_children { dt_icon(dc, j.row.open ? .Caret_Down : .Caret_Right, {x + dt_px(5), cy}, the_app.dtm.icon * 0.78, the_app.dtc.weak, the_app.dtm.sc) }
 					x += dt_px(14)
 					if j.row.depth > 0 || j.row.key != "" {
-						x += dt_text(dc, dtm.mono, dtm.mono_fs, x, cy, j.row.is_idx ? syn_color(.Number) : syn_color(.Prop), j.row.key)
-						x += dt_text(dc, dtm.mono, dtm.mono_fs, x, cy, dtc.weak, ": ")
+						x += dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, x, cy, j.row.is_idx ? syn_color(.Number) : syn_color(.Prop), j.row.key)
+						x += dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, x, cy, the_app.dtc.weak, ": ")
 					}
 					col := syn_color(.Plain)
 					switch j.row.kind {
-					case 0, 1: col = j.row.open && j.row.depth > 0 ? dtc.faint : dtc.weak
+					case 0, 1: col = j.row.open && j.row.depth > 0 ? the_app.dtc.faint : the_app.dtc.weak
 					case 2: col = syn_color(.String)
 					case 3: col = syn_color(.Number)
 					case 4, 5: col = syn_color(.Atom)
 					}
-					dt_text(dc, dtm.mono, dtm.mono_fs, x, cy, col, j.row.text, r.max.x - x - dt_px(6))
+					dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, x, cy, col, j.row.text, r.max.x - x - dt_px(6))
 				}, jd
 				if sig.clicked && r.has_children {
 					if r.depth > 0 { d.json_exp[r.hash] = !d.json_exp[r.hash] }
@@ -807,37 +807,37 @@ msg_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	r := b.rect
 	cy := (r.min.y + r.max.y) * 0.5
 	tint: draw.Color
-	if !d.sse && m.out { tint = dtc.good_bg }
+	if !d.sse && m.out { tint = the_app.dtc.good_bg }
 	dt_row_back(dc, r, false, d.sel, d.hot, d.focused, tint)
-	draw.rect(dc, {{r.min.x, r.max.y - dtm.line}, {r.max.x, r.max.y}}, with_alpha(dtc.border_soft, 0.6))
+	draw.rect(dc, {{r.min.x, r.max.y - the_app.dtm.line}, {r.max.x, r.max.y}}, with_alpha(the_app.dtc.border_soft, 0.6))
 	x := r.min.x + dt_px(8)
 	if d.sse {
-		dt_icon(dc, .Event, {math.round(x + dtm.icon * 0.5), cy}, dtm.icon * 0.9, dtc.accent, dtm.sc)
+		dt_icon(dc, .Event, {math.round(x + the_app.dtm.icon * 0.5), cy}, the_app.dtm.icon * 0.9, the_app.dtc.accent, the_app.dtm.sc)
 	} else if m.control {
-		dt_icon(dc, .Info, {math.round(x + dtm.icon * 0.5), cy}, dtm.icon * 0.9, dtc.weak, dtm.sc)
+		dt_icon(dc, .Info, {math.round(x + the_app.dtm.icon * 0.5), cy}, the_app.dtm.icon * 0.9, the_app.dtc.weak, the_app.dtm.sc)
 	} else {
-		dt_icon(dc, m.out ? .Sort_Up : .Sort_Down, {math.round(x + dtm.icon * 0.5), cy}, dtm.icon, m.out ? dtc.good : dtc.bad, dtm.sc)
+		dt_icon(dc, m.out ? .Sort_Up : .Sort_Down, {math.round(x + the_app.dtm.icon * 0.5), cy}, the_app.dtm.icon, m.out ? the_app.dtc.good : the_app.dtc.bad, the_app.dtm.sc)
 	}
-	x += dtm.icon + dt_px(6)
+	x += the_app.dtm.icon + dt_px(6)
 	right := r.max.x - dt_px(8)
-	tw := dt_w(dtm.ui_font, dtm.fs, d.clock)
-	dt_text_r(dc, dtm.mono, dtm.mono_fs * 0.92, right, cy, dtc.faint, d.clock)
-	right -= dt_w(dtm.mono, dtm.mono_fs * 0.92, d.clock) + dt_px(12)
+	tw := dt_w(the_app.dtm.ui_font, the_app.dtm.fs, d.clock)
+	dt_text_r(dc, the_app.dtm.mono, the_app.dtm.mono_fs * 0.92, right, cy, the_app.dtc.faint, d.clock)
+	right -= dt_w(the_app.dtm.mono, the_app.dtm.mono_fs * 0.92, d.clock) + dt_px(12)
 	_ = tw
-	sw := dt_w(dtm.ui_font, dtm.fs, d.size)
-	dt_text_r(dc, dtm.ui_font, dtm.fs, right, cy, dtc.weak, d.size)
+	sw := dt_w(the_app.dtm.ui_font, the_app.dtm.fs, d.size)
+	dt_text_r(dc, the_app.dtm.ui_font, the_app.dtm.fs, right, cy, the_app.dtc.weak, d.size)
 	right -= sw + dt_px(14)
 	if d.sse && m.name != "" {
-		x += dt_text(dc, dtm.mono, dtm.mono_fs, x, cy, syn_color(.Keyword), m.name) + dt_px(8)
+		x += dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, x, cy, syn_color(.Keyword), m.name) + dt_px(8)
 	}
-	col := m.control ? dtc.weak : dtc.text
+	col := m.control ? the_app.dtc.weak : the_app.dtc.text
 	if m.binary {
-		x += dt_text(dc, dtm.ui_font, dtm.fs, x, cy, dtc.weak, "Binary Message") + dt_px(8)
-		dt_text(dc, dtm.mono, dtm.mono_fs, x, cy, dtc.faint, d.text, right - x)
+		x += dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, x, cy, the_app.dtc.weak, "Binary Message") + dt_px(8)
+		dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, x, cy, the_app.dtc.faint, d.text, right - x)
 	} else if m.control {
-		dt_text(dc, dtm.ui_font, dtm.fs, x, cy, col, m.name, right - x)
+		dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, x, cy, col, m.name, right - x)
 	} else {
-		dt_runs(dc, dtm.mono, dtm.mono_fs, x, cy, syn_runs(d.text, .JSON), right)
+		dt_runs(dc, the_app.dtm.mono, the_app.dtm.mono_fs, x, cy, syn_runs(d.text, .JSON), right)
 	}
 }
 
@@ -854,7 +854,7 @@ detail_messages :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 		return
 	}
 	// the toolbar: which direction, a filter, copy and clear, and the state
-	if dt_bar("###dt_nm_bar", dtm.bar - dt_px(4)) {
+	if dt_bar("###dt_nm_bar", app.dtm.bar - dt_px(4)) {
 		dt_gap(4)
 		if dt_btn("###dt_nm_clear", .Clear, tooltip = "Clear the messages", enabled = len(e.msgs) > 0).clicked {
 			for m in e.msgs { delete(m.text); delete(m.name); delete(m.id) }
@@ -868,7 +868,7 @@ detail_messages :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 			if dt_chip("###dt_nm_in", "Received", d.msg_mode == 2, "Messages the server sent").clicked { d.msg_mode = 2 }
 			dt_vsep("###dt_nm_s1")
 		}
-		ui.next({width = ui.fill(), height = ui.px(dtm.bar), axis = .X, cross = .Center})
+		ui.next({width = ui.fill(), height = ui.px(app.dtm.bar), axis = .X, cross = .Center})
 		if ui.row(.Center, {}, "###dt_nm_fw") { dt_search("###dt_nm_filter", &d.msg_filter, "Filter  (-word excludes)", 0, false) }
 		if dt_btn("###dt_nm_copy", .Copy, tooltip = "Copy the messages shown", enabled = len(e.msgs) > 0).clicked {
 			b := strings.builder_make(context.temp_allocator)
@@ -879,14 +879,14 @@ detail_messages :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 	}
 	// the state line
 	{
-		ui.next({width = ui.fill(), height = ui.px(dtm.row)})
+		ui.next({width = ui.fill(), height = ui.px(app.dtm.row)})
 		sb := ui.build_box({}, "###dt_nm_state")
 		txt := e.is_ws ? ws_state_text(e) : (e.ms < 0 ? "Open" : "Ended")
-		col := dtc.weak
+		col := app.dtc.weak
 		if e.is_ws {
 			switch e.ws_state {
-			case .Open: col = dtc.good
-			case .Failed: col = dtc.bad
+			case .Open: col = app.dtc.good
+			case .Failed: col = app.dtc.bad
 			case .Connecting, .Closed:
 			}
 		}
@@ -896,10 +896,10 @@ detail_messages :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 		sb.custom, sb.custom_user = proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 			s := (^struct { text, count: string, col: draw.Color })(user)
 			cy := (b.rect.min.y + b.rect.max.y) * 0.5
-			rr := dtm.fs * 0.3
+			rr := the_app.dtm.fs * 0.3
 			draw.rect(dc, {{b.rect.min.x + dt_px(10), cy - rr}, {b.rect.min.x + dt_px(10) + rr * 2, cy + rr}}, s.col, rr)
-			dt_text(dc, dtm.ui_font, dtm.fs, b.rect.min.x + dt_px(10) + rr * 2 + dt_px(6), cy, dtc.text, s.text, b.rect.max.x - b.rect.min.x - dt_px(180))
-			dt_text_r(dc, dtm.ui_font, dtm.fs, b.rect.max.x - dt_px(8), cy, dtc.weak, s.count)
+			dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, b.rect.min.x + dt_px(10) + rr * 2 + dt_px(6), cy, the_app.dtc.text, s.text, b.rect.max.x - b.rect.min.x - dt_px(180))
+			dt_text_r(dc, the_app.dtm.ui_font, the_app.dtm.fs, b.rect.max.x - dt_px(8), cy, the_app.dtc.weak, s.count)
 		}, st
 	}
 	// the rows
@@ -922,9 +922,9 @@ detail_messages :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 			e.msgs_total > 0 ? "Change the direction or clear the filter." : (e.is_ws ? "Frames sent and received on the socket are listed here." : "The events the server sends are listed here."))
 		return
 	}
-	pane_h := d.msg_sel >= 0 && d.msg_sel < len(e.msgs) ? dtm.row * 5 : 0
+	pane_h := d.msg_sel >= 0 && d.msg_sel < len(e.msgs) ? app.dtm.row * 5 : 0
 	menu_key := ui.key_from_string(0, "###dt_nm_menu")
-	if rows, ok := dt_list("###dt_nm_list", &d.msg_list, n, dtm.row, nil, ui.fill(), ui.fill(), follow = true); ok {
+	if rows, ok := dt_list("###dt_nm_list", &d.msg_list, n, app.dtm.row, nil, ui.fill(), ui.fill(), follow = true); ok {
 		for k in rows.first ..< rows.last {
 			i := d.msg_rows[k]
 			m := &e.msgs[i]
@@ -936,7 +936,7 @@ detail_messages :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 			md.size = dt_frame_str(dt_size_text(i64(m.size)))
 			md.clock = dt_frame_str(msg_clock(m.clock))
 			md.sel, md.focused = d.msg_sel == i, d.msg_list.focused
-			ui.next({width = ui.fill(), height = ui.px(dtm.row), cursor = .Arrow})
+			ui.next({width = ui.fill(), height = ui.px(app.dtm.row), cursor = .Arrow})
 			rb := ui.build_box({.Clickable}, fmt.tprintf("###nm%d_%d", e.id, m.clock * 1000 + i64(i)))
 			sig := ui.signal(rb)
 			md.hot = sig.hovering
@@ -949,7 +949,7 @@ detail_messages :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 	// the chosen message in full
 	if pane_h > 0 {
 		m := &e.msgs[d.msg_sel]
-		ui.next({width = ui.fill(), height = ui.px(pane_h), axis = .Y, bg = dtc.bar, border = dtc.border})
+		ui.next({width = ui.fill(), height = ui.px(pane_h), axis = .Y, bg = app.dtc.bar, border = app.dtc.border})
 		pb := ui.build_box({.Draw_Background, .Draw_Side_Top}, "###dt_nm_pane")
 		if ui.parent(pb) {
 			text := m.control ? m.name : m.text
@@ -959,17 +959,17 @@ detail_messages :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 			if m.binary { lang = .Plain }
 			lines := strings.split_lines(text, context.temp_allocator)
 			nl := min(len(lines), 500)
-			if lst, lok := dt_list("###dt_nm_plist", &d.msg_pane, nl, dtm.row, nil, ui.fill(), ui.fill()); lok {
+			if lst, lok := dt_list("###dt_nm_plist", &d.msg_pane, nl, app.dtm.row, nil, ui.fill(), ui.fill()); lok {
 				for k in lst.first ..< lst.last {
 					ld := ui.frame_new(Pane_Line)
 					ln := lines[k]
 					if len(ln) > DEVTOOLS_PREVIEW_LINE_MAX { ln = ln[:DEVTOOLS_PREVIEW_LINE_MAX] }
 					ld.text, ld.lang = dt_frame_str(ln), lang
-					ui.next({width = ui.fill(), height = ui.px(dtm.row), cursor = .Text})
+					ui.next({width = ui.fill(), height = ui.px(app.dtm.row), cursor = .Text})
 					lb := ui.build_box({}, fmt.tprintf("###nmp%d", k))
 					lb.custom, lb.custom_user = proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 						x := (^Pane_Line)(user)
-						dt_runs(dc, dtm.mono, dtm.mono_fs, b.rect.min.x + dt_px(10), (b.rect.min.y + b.rect.max.y) * 0.5, syn_runs(x.text, x.lang), b.rect.max.x - dt_px(6))
+						dt_runs(dc, the_app.dtm.mono, the_app.dtm.mono_fs, b.rect.min.x + dt_px(10), (b.rect.min.y + b.rect.max.y) * 0.5, syn_runs(x.text, x.lang), b.rect.max.x - dt_px(6))
 					}, ld
 				}
 			}

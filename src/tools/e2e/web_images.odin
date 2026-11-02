@@ -104,9 +104,10 @@ state :: proc(pr: ^Probe, id: string) -> page.Image_View { return page.image_vie
 // The test's cache is the test's own.
 no_cache_yet :: proc() { page.images_shutdown() }
 
-// Every page closed: nothing of the cache stays, and the threads that fed it stop.
+// Every page closed: nothing of the cache stays, and the threads that fed it stop (the process's: the harness is the only embedder).
 no_cache_left :: proc(t: ^testing.T, loc := #caller_location) {
 	page.images_shutdown()
+	images.decoder_stop()
 	testing.expect(t, !images.decoder_running(), "decoding threads stopped", loc = loc)
 }
 

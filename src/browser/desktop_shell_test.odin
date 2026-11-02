@@ -10,6 +10,7 @@ _ :: desktop.LAUNCHER_MARK   // (Linux uses nothing of it: the import stays, as 
 
 @(test)
 desktop_identity_is_well_formed :: proc(t: ^testing.T) {
+	test_app(t)
 	id := desktop_identity()
 	testing.expect(t, id.name != "" && id.key != "" && id.slug != "" && id.aumid != "", "no empty field")
 	testing.expect(t, !strings.contains_any(id.aumid, " \t") && len(id.aumid) <= 128, "an AppUserModelID has no space and at most 128 characters")
@@ -35,17 +36,20 @@ the_embedded_console_launcher_is_the_launcher :: proc(t: ^testing.T) {
 			testing.expect_value(t, string(exe[pe:pe + 4]), "PE\x00\x00")
 			testing.expect_value(t, int(exe[pe + 0x5C]), 3)   // optional header's Subsystem: IMAGE_SUBSYSTEM_WINDOWS_CUI
 		}
-		app: App
+		app := new(App)   // (an App is too large for a test's stack)
+		the_app = app   // (what the code reaches without an App: this one)
+		defer free(app)
 		app.prefs = config.prefs_make()
 		defer config.prefs_destroy(&app.prefs)
 		register_desktop_shell_prefs(&app.prefs)
-		o := desktop_options(&app)
+		o := desktop_options(app)
 		testing.expect_value(t, len(o.launcher), len(exe))
 	}
 }
 
 @(test)
 first_run_integration_defaults_to_the_release_channel_only :: proc(t: ^testing.T) {
+	test_app(t)
 	p := config.prefs_make()
 	defer config.prefs_destroy(&p)
 	register_desktop_shell_prefs(&p)
@@ -59,17 +63,19 @@ first_run_integration_defaults_to_the_release_channel_only :: proc(t: ^testing.T
 
 @(test)
 disposable_profiles_never_integrate :: proc(t: ^testing.T) {
-	app: App
+	app := new(App)   // (an App is too large for a test's stack)
+	the_app = app   // (what the code reaches without an App: this one)
+	defer free(app)
 	app.cfg.persist_profile = true
 	app.profile_dir = "C:/Users/someone/AppData/Roaming/Wren"
-	testing.expect(t, !desktop_profile_is_disposable(&app, false), "the user's own profile")
-	testing.expect(t, desktop_profile_is_disposable(&app, true), "given with --profile")
+	testing.expect(t, !desktop_profile_is_disposable(app, false), "the user's own profile")
+	testing.expect(t, desktop_profile_is_disposable(app, true), "given with --profile")
 	app.cfg.persist_profile = false
-	testing.expect(t, desktop_profile_is_disposable(&app, false), "a profile that is not kept")
+	testing.expect(t, desktop_profile_is_disposable(app, false), "a profile that is not kept")
 	app.cfg.persist_profile = true
 	tmp, _ := os.temp_dir(context.temp_allocator)
 	app.profile_dir = strings.concatenate({tmp, "\\wren_test_profile"}, context.temp_allocator)
-	testing.expect(t, desktop_profile_is_disposable(&app, false), "a profile in the temporary folder")
+	testing.expect(t, desktop_profile_is_disposable(app, false), "a profile in the temporary folder")
 	app.profile_dir = strings.concatenate({strings.to_upper(tmp, context.temp_allocator), "/x/y"}, context.temp_allocator)
-	testing.expect(t, desktop_profile_is_disposable(&app, false), "(case and slash direction do not matter)")
+	testing.expect(t, desktop_profile_is_disposable(app, false), "(case and slash direction do not matter)")
 }

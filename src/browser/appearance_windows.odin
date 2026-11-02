@@ -30,14 +30,13 @@ foreign user32_look {
 	`Control Panel\Colors`,                                            // the system colors (Hilight, HilightText)
 }
 
-@(private = "file")
+// The thread that watches the system's colours for the App (App.look_watch).
 Look_Watch :: struct {
 	thread: ^thread.Thread,
 	stop:   windows.HANDLE,
 	app:    ^App,
 }
 
-@(private = "file") look_watch: Look_Watch
 
 @(private = "file")
 reg_dword :: proc(key, value: string) -> (u32, bool) {
@@ -76,25 +75,26 @@ read_os_appearance :: proc() -> style.Os_Appearance {
 }
 
 appearance_watch_start :: proc(app: ^App) {
-	look_watch.app = app
-	look_watch.stop = windows.CreateEventW(nil, true, false, nil)
-	if look_watch.stop == nil { return }
-	look_watch.thread = thread.create_and_start(look_watch_run)
+	app.look_watch.app = app
+	app.look_watch.stop = windows.CreateEventW(nil, true, false, nil)
+	if app.look_watch.stop == nil { return }
+	app.look_watch.thread = thread.create_and_start_with_data(&app.look_watch, look_watch_run)
 }
 
-appearance_watch_stop :: proc() {
-	if look_watch.stop == nil { return }
-	windows.SetEvent(look_watch.stop)
-	if look_watch.thread != nil { thread.join(look_watch.thread); thread.destroy(look_watch.thread) }
-	windows.CloseHandle(look_watch.stop)
-	look_watch = {}
+appearance_watch_stop :: proc(app: ^App) {
+	if app.look_watch.stop == nil { return }
+	windows.SetEvent(app.look_watch.stop)
+	if app.look_watch.thread != nil { thread.join(app.look_watch.thread); thread.destroy(app.look_watch.thread) }
+	windows.CloseHandle(app.look_watch.stop)
+	app.look_watch = {}
 }
 
 @(private = "file")
-look_watch_run :: proc() {
+look_watch_run :: proc(data: rawptr) {
+	w := (^Look_Watch)(data)
 	keys: [len(LOOK_KEYS)]windows.HKEY
 	events: [len(LOOK_KEYS) + 1]windows.HANDLE
-	events[0] = look_watch.stop
+	events[0] = w.stop
 	defer for k, i in keys {
 		if k != nil { windows.RegCloseKey(k) }
 		if events[i + 1] != nil { windows.CloseHandle(events[i + 1]) }
@@ -116,6 +116,6 @@ look_watch_run :: proc() {
 		if idx <= 0 || idx >= len(handles) { return }   // stop, or a failure
 		k := slot[idx]
 		arm(keys[k], events[k + 1])   // notifications are one-shot
-		appearance_post(look_watch.app)
+		appearance_post(w.app)
 	}
 }

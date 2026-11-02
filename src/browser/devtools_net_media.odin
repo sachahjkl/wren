@@ -241,11 +241,11 @@ slider_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	cy := (r.min.y + r.max.y) * 0.5
 	th := dt_px(4)
 	track := draw.Rect{{r.min.x + dt_px(4), cy - th * 0.5}, {r.max.x - dt_px(4), cy + th * 0.5}}
-	draw.rect(dc, track, with_alpha(dtc.weak, 0.3), th * 0.5)
+	draw.rect(dc, track, with_alpha(the_app.dtc.weak, 0.3), th * 0.5)
 	fx := track.min.x + (track.max.x - track.min.x) * clamp(d.frac, 0, 1)
-	draw.rect(dc, {track.min, {fx, track.max.y}}, dtc.accent, th * 0.5)
+	draw.rect(dc, {track.min, {fx, track.max.y}}, the_app.dtc.accent, th * 0.5)
 	kr := dt_px(d.hot ? 6 : 5)
-	draw.rect(dc, {{fx - kr, cy - kr}, {fx + kr, cy + kr}}, dtc.accent, kr)
+	draw.rect(dc, {{fx - kr, cy - kr}, {fx + kr, cy + kr}}, the_app.dtc.accent, kr)
 }
 
 // A horizontal slider of `w` px (0: fills); returns the position (0..1) the user dragged it to, and whether they did.
@@ -297,8 +297,8 @@ video_stage_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	// sound only: an icon in a ring and the name
 	c := draw.rect_center(r)
 	rr := dt_px(30)
-	draw.rect(dc, {{c.x - rr, c.y - rr - dt_px(8)}, {c.x + rr, c.y + rr - dt_px(8)}}, with_alpha(dtc.accent, 0.15), rr)
-	dt_icon(dc, .File_Media, {c.x, c.y - dt_px(8)}, dt_px(30), dtc.accent, dtm.sc)
+	draw.rect(dc, {{c.x - rr, c.y - rr - dt_px(8)}, {c.x + rr, c.y + rr - dt_px(8)}}, with_alpha(app.dtc.accent, 0.15), rr)
+	dt_icon(dc, .File_Media, {c.x, c.y - dt_px(8)}, dt_px(30), app.dtc.accent, app.dtm.sc)
 }
 
 net_media_preview :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
@@ -330,12 +330,12 @@ net_media_preview :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 	case .None:
 	}
 	if m.playing { request_frames(app, 2) }
-	if dt_bar("###dt_pm_bar", dtm.bar) {
+	if dt_bar("###dt_pm_bar", app.dtm.bar) {
 		dt_gap(4)
 		if dt_btn("###dt_pm_play", m.playing ? .Pause : .Play, tooltip = m.playing ? "Pause" : "Play", shortcut = "Space").clicked { set_playing(m, !m.playing) }
 		ui.next({width = ui.px(dt_px(88)), height = ui.pct(1)})
 		ui.custom("###dt_pm_time", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
-			dt_text(dc, dtm.mono, dtm.mono_fs, b.rect.min.x + dt_px(6), (b.rect.min.y + b.rect.max.y) * 0.5, dtc.text, (^string)(user)^)
+			dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, b.rect.min.x + dt_px(6), (b.rect.min.y + b.rect.max.y) * 0.5, the_app.dtc.text, (^string)(user)^)
 		}, new_clone(dt_frame_str(fmt.tprintf("%s / %s", time_text(pos), time_text(m.duration))), ui.frame_allocator()))
 		if f, changed := slider("###dt_pm_seek", m.duration > 0 ? f32(pos / m.duration) : 0, 0); changed && m.duration > 0 { seek_to(m, f64(f) * m.duration) }
 		if dt_btn("###dt_pm_mute", m.muted || m.volume == 0 ? .Block : .Eye, tooltip = m.muted ? "Unmute" : "Mute", on = m.muted).clicked { m.muted = !m.muted; apply_volume(m) }
@@ -343,10 +343,10 @@ net_media_preview :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 		dt_gap(6)
 	}
 	if m.err != "" {
-		ui.next({width = ui.fill(), height = ui.px(dtm.row)})
+		ui.next({width = ui.fill(), height = ui.px(app.dtm.row)})
 		eb := ui.build_box({}, "###dt_pm_note")
 		eb.custom, eb.custom_user = proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
-			dt_text(dc, dtm.ui_font, dtm.fs, b.rect.min.x + dt_px(10), (b.rect.min.y + b.rect.max.y) * 0.5, dtc.bad, (^string)(user)^, b.rect.max.x - b.rect.min.x - dt_px(14))
+			dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, b.rect.min.x + dt_px(10), (b.rect.min.y + b.rect.max.y) * 0.5, the_app.dtc.bad, (^string)(user)^, b.rect.max.x - b.rect.min.x - dt_px(14))
 		}, new_clone(dt_frame_str(m.err), ui.frame_allocator())
 	}
 	ui.next({width = ui.fill(), height = ui.fill()})

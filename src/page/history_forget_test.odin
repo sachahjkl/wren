@@ -5,6 +5,7 @@ import "core:testing"
 // Forgetting a branch removes it whole, never the current entry or one of its ancestors.
 @(test)
 session_forget_branch :: proc(t: ^testing.T) {
+	test_pages(t)
 	sh: Session_History
 	defer session_destroy(&sh)
 	session_push(&sh, "a", 0)

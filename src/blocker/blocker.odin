@@ -160,6 +160,8 @@ Blocker :: struct {
 	shutting_down: bool,
 }
 
+// The blocker of this thread's App (an App runs its loader and its pages on the thread of its loop; another App's thread has its own).
+@(thread_local)
 the_blocker: ^Blocker
 
 now_ms :: proc() -> i64 { return time.tick_now()._nsec / 1_000_000 }
@@ -198,7 +200,7 @@ prefs_changed :: proc(user: rawptr, name: string, p: ^config.Prefs) {
 	old := b.cfg
 	b.cfg = settings_from_prefs(p)
 	if !b.cfg.enabled { boot_hold_end(b) }
-	page.embedder.collapse_blocked = b.cfg.collapse
+	page.the_pages.embedder.collapse_blocked = b.cfg.collapse
 	if b.cfg.log_capacity != old.log_capacity { journal_resize(&b.journal, b.cfg.log_capacity) }
 	b.conf_ver += 1
 	touch(b)

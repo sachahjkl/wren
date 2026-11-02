@@ -274,7 +274,6 @@ Recovery :: struct {
 	stable_timer: base.Handle,
 }
 
-recovery: Recovery
 
 recovery_limits :: proc(app: ^App) -> Recovery_Limits {
 	return {
@@ -288,49 +287,49 @@ recovery_limits :: proc(app: ^App) -> Recovery_Limits {
 // Very early (once the single instance is settled, before the window): reads how the last run ended and writes this run's marker,
 // so that a start that ends before it has a window is counted too.
 recovery_start :: proc(app: ^App) {
-	recovery = {}
+	app.recovery = {}
 	if !app.cfg.persist_profile || !config.bool_of(&app.prefs, "browser.session.crash_recovery") { return }
 	plan := recovery_plan(app.profile_dir, instance_owns_profile(), marker_process_alive, recovery_limits(app))
 	defer { plan.text = ""; plan.backup = ""; recovery_plan_destroy(&plan) }   // (the strings below are taken)
-	recovery.kind, recovery.prev = plan.kind, plan.prev
+	app.recovery.kind, app.recovery.prev = plan.kind, plan.prev
 	if plan.kind == .Live { return }
-	recovery.active = true
-	recovery.dir = strings.clone(app.profile_dir)
+	app.recovery.active = true
+	app.recovery.dir = strings.clone(app.profile_dir)
 	pid := current_pid()
 	created, _ := process_created(pid)
-	recovery.self = {pid = pid, created = created, restoring = plan.restoring}
-	recovery.text, recovery.backup = plan.text, plan.backup
+	app.recovery.self = {pid = pid, created = created, restoring = plan.restoring}
+	app.recovery.text, app.recovery.backup = plan.text, plan.backup
 	switch {
-	case plan.kind == .Crashed_Twice: recovery.banner = .Twice
-	case plan.kind == .Crashed:       recovery.banner = .Closed
+	case plan.kind == .Crashed_Twice: app.recovery.banner = .Twice
+	case plan.kind == .Crashed:       app.recovery.banner = .Closed
 	}
-	recovery_mark(recovery.dir, recovery.self)
+	recovery_mark(app.recovery.dir, app.recovery.self)
 }
 
 // The first tabs: the ones of a crashed session, or the blank page of a twice-crashed one, followed by the addresses given on
 // the command line (shown, like a second start's). False when this start has nothing of its own to open (the usual way follows).
 recovery_open :: proc(app: ^App, rest: []string) -> bool {
-	if !recovery.active { return false }
+	if !app.recovery.active { return false }
 	handled := false
-	switch recovery.kind {
+	switch app.recovery.kind {
 	case .Crashed:
-		if recovery.text != "" {
+		if app.recovery.text != "" {
 			l := recovery_limits(app)
-			windows, ok := session_parse_windows(recovery.text, l.max_tabs, l.max_url_bytes, context.temp_allocator, l.max_entries, int(config.int_of(&app.prefs, "browser.session.max_windows")))
+			windows, ok := session_parse_windows(app.recovery.text, l.max_tabs, l.max_url_bytes, context.temp_allocator, l.max_entries, int(config.int_of(&app.prefs, "browser.session.max_windows")))
 			n := 0
 			for w in windows { n += len(w.tabs) }
-			if ok && n > 0 && session_open_windows(app, windows, recovery.text) {
-				recovery.restored, handled = n, true
+			if ok && n > 0 && session_open_windows(app, windows, app.recovery.text) {
+				app.recovery.restored, handled = n, true
 			}
 		}
 	case .Crashed_Twice:
 		if len(rest) == 0 { tab_open(app, "about:blank", origin = .User); handled = true }
 	case .Clean, .Live:
 	}
-	delete(recovery.text)
-	recovery.text = ""
-	if recovery.self.restoring && recovery.stable_timer == base.NIL_HANDLE {
-		recovery.stable_timer = host.set_timer(&app.loop, f64(config.int_of(&app.prefs, "browser.session.crash_stable_ms")), 0, recovery_stable, app)
+	delete(app.recovery.text)
+	app.recovery.text = ""
+	if app.recovery.self.restoring && app.recovery.stable_timer == base.NIL_HANDLE {
+		app.recovery.stable_timer = host.set_timer(&app.loop, f64(config.int_of(&app.prefs, "browser.session.crash_stable_ms")), 0, recovery_stable, app)
 	}
 	if handled && len(rest) > 0 {
 		wnd := active_window(app)   // (the front one: session_open_windows made the others)
@@ -344,20 +343,20 @@ recovery_open :: proc(app: ^App, rest: []string) -> bool {
 // The run lived long enough: the next start, if this one ends abnormally, restores again.
 @(private = "file")
 recovery_stable :: proc(data: rawptr) {
-	recovery.stable_timer = base.NIL_HANDLE
+	the_app.recovery.stable_timer = base.NIL_HANDLE
 	host.quiet_note(&(^App)(data).loop)   // (the disk, not the screen)
-	if !recovery.active || recovery.closing || !recovery.self.restoring { return }
-	recovery.self.restoring = false
-	recovery_mark(recovery.dir, recovery.self)
+	if !the_app.recovery.active || the_app.recovery.closing || !the_app.recovery.self.restoring { return }
+	the_app.recovery.self.restoring = false
+	recovery_mark(the_app.recovery.dir, the_app.recovery.self)
 }
 
 // Something that the snapshot holds changed (a tab opened, closed or moved, an entry added, a document loaded): the snapshot
 // is written once browser.session.crash_snapshot_ms has passed, whatever else changes meanwhile. Cheap; the interface thread.
 recovery_touch :: proc(app: ^App) {
-	if !recovery.active || recovery.closing { return }
-	recovery.dirty = true
-	if recovery.snap_timer != base.NIL_HANDLE { return }
-	recovery.snap_timer = host.set_timer(&app.loop, f64(config.int_of(&app.prefs, "browser.session.crash_snapshot_ms")), 0, recovery_fire, app)
+	if !app.recovery.active || app.recovery.closing { return }
+	app.recovery.dirty = true
+	if app.recovery.snap_timer != base.NIL_HANDLE { return }
+	app.recovery.snap_timer = host.set_timer(&app.loop, f64(config.int_of(&app.prefs, "browser.session.crash_snapshot_ms")), 0, recovery_fire, app)
 }
 
 @(private = "file")
@@ -369,20 +368,20 @@ Snapshot_Job :: struct {
 @(private = "file")
 recovery_fire :: proc(data: rawptr) {
 	app := (^App)(data)
-	recovery.snap_timer = base.NIL_HANDLE
+	app.recovery.snap_timer = base.NIL_HANDLE
 	host.quiet_note(&app.loop)   // (the disk, not the screen)
-	if !recovery.active || recovery.closing || !recovery.dirty { return }
-	if recovery.inflight {   // (the write before this one is not done: the changes wait for it)
-		recovery.snap_timer = host.set_timer(&app.loop, f64(config.int_of(&app.prefs, "browser.session.crash_snapshot_ms")), 0, recovery_fire, app)
+	if !app.recovery.active || app.recovery.closing || !app.recovery.dirty { return }
+	if app.recovery.inflight {   // (the write before this one is not done: the changes wait for it)
+		app.recovery.snap_timer = host.set_timer(&app.loop, f64(config.int_of(&app.prefs, "browser.session.crash_snapshot_ms")), 0, recovery_fire, app)
 		return
 	}
-	recovery.dirty = false
+	app.recovery.dirty = false
 	text := session_text(app)
-	if text == recovery.last || len(text) > SNAPSHOT_MAX_BYTES { return }
+	if text == app.recovery.last || len(text) > SNAPSHOT_MAX_BYTES { return }
 	job := new(Snapshot_Job)
-	job.path = strings.clone(strings.concatenate({recovery.dir, "/", SNAPSHOT_FILE}, context.temp_allocator))
+	job.path = strings.clone(strings.concatenate({app.recovery.dir, "/", SNAPSHOT_FILE}, context.temp_allocator))
 	job.data = strings.clone(text)
-	recovery.inflight = true
+	app.recovery.inflight = true
 	host.run_blocking(&app.blocking, snapshot_work, snapshot_done, job)
 }
 
@@ -396,10 +395,10 @@ snapshot_work :: proc(data: rawptr) {
 snapshot_done :: proc(data: rawptr) {
 	j := (^Snapshot_Job)(data)
 	if the_app != nil { host.quiet_note(&the_app.loop) }
-	recovery.inflight = false
+	the_app.recovery.inflight = false
 	if j.ok {
-		delete(recovery.last)
-		recovery.last = j.data
+		delete(the_app.recovery.last)
+		the_app.recovery.last = j.data
 	} else {
 		delete(j.data)
 	}
@@ -410,22 +409,22 @@ snapshot_done :: proc(data: rawptr) {
 // A normal end (and the exit of a driven Wren): the timers go, a write in flight finishes, then the marker and the snapshot are
 // removed, the marker first: a snapshot left without a marker is only stale, a marker left without a snapshot would be a crash.
 recovery_end :: proc(app: ^App) {
-	if !recovery.active { return }
-	recovery.closing = true
-	if recovery.snap_timer != base.NIL_HANDLE { host.clear_timer(&app.loop, recovery.snap_timer); recovery.snap_timer = base.NIL_HANDLE }
-	if recovery.stable_timer != base.NIL_HANDLE { host.clear_timer(&app.loop, recovery.stable_timer); recovery.stable_timer = base.NIL_HANDLE }
-	for _ in 0 ..< 50 { if !recovery.inflight { break }; host.blocking_settle(&app.blocking) }
-	_ = os.remove(strings.concatenate({recovery.dir, "/", MARKER_FILE}, context.temp_allocator))
-	_ = os.remove(strings.concatenate({recovery.dir, "/", SNAPSHOT_FILE}, context.temp_allocator))
-	recovery.active = false
+	if !app.recovery.active { return }
+	app.recovery.closing = true
+	if app.recovery.snap_timer != base.NIL_HANDLE { host.clear_timer(&app.loop, app.recovery.snap_timer); app.recovery.snap_timer = base.NIL_HANDLE }
+	if app.recovery.stable_timer != base.NIL_HANDLE { host.clear_timer(&app.loop, app.recovery.stable_timer); app.recovery.stable_timer = base.NIL_HANDLE }
+	for _ in 0 ..< 50 { if !app.recovery.inflight { break }; host.blocking_settle(&app.blocking) }
+	_ = os.remove(strings.concatenate({app.recovery.dir, "/", MARKER_FILE}, context.temp_allocator))
+	_ = os.remove(strings.concatenate({app.recovery.dir, "/", SNAPSHOT_FILE}, context.temp_allocator))
+	app.recovery.active = false
 }
 
 recovery_destroy :: proc() {
-	delete(recovery.dir)
-	delete(recovery.text)
-	delete(recovery.backup)
-	delete(recovery.last)
-	recovery = {}
+	delete(the_app.recovery.dir)
+	delete(the_app.recovery.text)
+	delete(the_app.recovery.backup)
+	delete(the_app.recovery.last)
+	the_app.recovery = {}
 }
 
 ////////////////////////////////
@@ -433,14 +432,14 @@ recovery_destroy :: proc() {
 
 // "Start fresh": the tabs that were restored are closed (the last one closed leaves the homepage).
 recovery_start_fresh :: proc(app: ^App) {
-	recovery.banner = .None
+	app.recovery.banner = .None
 	n := len(active_window(app).tabs)
 	for _ in 0 ..< n { tab_close(app, 0) }
 }
 
 // "Details": the report the abnormal end left, in a tab of its own.
 recovery_show_details :: proc(app: ^App) {
-	path := crash_report_find(app.profile_dir, recovery.prev.created)
+	path := crash_report_find(app.profile_dir, app.recovery.prev.created)
 	if path == "" {
 		ui.toast(.Info, "%s", i18n.tr("No crash report was written: the process was ended from outside, or by the system."))
 		return
@@ -451,8 +450,8 @@ recovery_show_details :: proc(app: ^App) {
 // "Restore tabs": the tabs a twice-crashed session left in its backup file are opened (the blank page this start opened makes way).
 recovery_restore_backup :: proc(app: ^App) -> bool {
 	wnd := active_window(app)
-	if recovery.backup == "" { return false }
-	text, ok := read_bounded(recovery.backup, SNAPSHOT_MAX_BYTES)
+	if app.recovery.backup == "" { return false }
+	text, ok := read_bounded(app.recovery.backup, SNAPSHOT_MAX_BYTES)
 	if !ok { return false }
 	l := recovery_limits(app)
 	tabs, current, pok := session_parse_tabs(text, l.max_tabs, l.max_url_bytes, context.temp_allocator, l.max_entries)
@@ -463,8 +462,8 @@ recovery_restore_backup :: proc(app: ^App) -> bool {
 		wnd.current -= 1   // (tab_close keeps the index: the tabs shift down by one)
 		tab_close(app, 0)
 	}
-	recovery.restored = len(tabs)
-	recovery.banner = .None
+	app.recovery.restored = len(tabs)
+	app.recovery.banner = .None
 	recovery_touch(app)
 	return true
 }

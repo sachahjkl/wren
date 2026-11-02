@@ -10,6 +10,7 @@ row_zone :: proc(n: int, offset: f32 = 0) -> Drop_Zone {
 
 @(test)
 drop_index_is_the_gap_nearest_the_pointer :: proc(t: ^testing.T) {
+	test_app(t)
 	z := row_zone(3)
 	at, inside := drop_index(z, {120, 10})   // in the first tab's left half: before it
 	testing.expect(t, inside)
@@ -22,6 +23,7 @@ drop_index_is_the_gap_nearest_the_pointer :: proc(t: ^testing.T) {
 
 @(test)
 drop_index_follows_the_scroll_and_the_axis :: proc(t: ^testing.T) {
+	test_app(t)
 	z := row_zone(10, 250)   // scrolled by two tabs and a half
 	at, _ := drop_index(z, {100, 5})
 	testing.expect_value(t, at, 3)   // 250 / 100 + 0.5 = 3
@@ -32,6 +34,7 @@ drop_index_follows_the_scroll_and_the_axis :: proc(t: ^testing.T) {
 
 @(test)
 drop_outside_the_tabs_is_no_drop :: proc(t: ^testing.T) {
+	test_app(t)
 	z := row_zone(3)
 	_, inside := drop_index(z, {120, 80})   // under the row
 	testing.expect(t, !inside)
@@ -48,6 +51,7 @@ drop_outside_the_tabs_is_no_drop :: proc(t: ^testing.T) {
 
 @(test)
 pick_drop_finds_the_window_under_the_pointer :: proc(t: ^testing.T) {
+	test_app(t)
 	origins := []draw.Vec2{{0, 0}, {1000, 0}, {1000, 500}}
 	zones := []Drop_Zone{row_zone(2), row_zone(2), row_zone(5)}
 	w, at, ok := pick_drop(origins, zones, -1, {1180, 10})   // window 1's row: its first tab's right half
@@ -75,6 +79,7 @@ pick_drop_finds_the_window_under_the_pointer :: proc(t: ^testing.T) {
 // A tab carried over a row of tabs: pinned ones first, then two groups (1: tabs 2-3, 2: tab 5) and tabs in none.
 @(test)
 drop_slot_in_a_row_follows_pins_and_groups :: proc(t: ^testing.T) {
+	test_app(t)
 	ts: [7]Tab
 	ts[0].pinned, ts[1].pinned = true, true
 	ts[2].group, ts[3].group, ts[5].group = 1, 1, 2
@@ -97,6 +102,7 @@ drop_slot_in_a_row_follows_pins_and_groups :: proc(t: ^testing.T) {
 // A tab carried over the sidebar's list: rows of tabs and a header before each group, a collapsed group's tabs left out.
 @(test)
 drop_slot_in_the_list_follows_headers_and_groups :: proc(t: ^testing.T) {
+	test_app(t)
 	ts: [6]Tab
 	ts[0].pinned = true
 	ts[2].group, ts[3].group, ts[5].group = 7, 7, 8
@@ -126,6 +132,7 @@ drop_slot_in_the_list_follows_headers_and_groups :: proc(t: ^testing.T) {
 
 @(test)
 a_tab_leaves_the_bar_only_far_enough :: proc(t: ^testing.T) {
+	test_app(t)
 	row := draw.Rect{{100, 0}, {500, 36}}
 	testing.expect(t, !detach_wanted(row, {300, 50}, false, 40))   // below the row, but not by 40
 	testing.expect(t, detach_wanted(row, {300, 80}, false, 40))

@@ -8,6 +8,7 @@ win_tab :: proc(url: string) -> Session_Tab { return {url = url} }
 
 @(test)
 session_of_one_window_is_the_old_file :: proc(t: ^testing.T) {
+	test_app(t)
 	tabs := []Session_Tab{win_tab("https://a.test/"), win_tab("https://b.test/")}
 	old := session_serialize_tabs(tabs, 1, 4096, 4096)
 	one := session_serialize_windows([]Session_Window{{tabs = tabs, current = 1, has_rect = true, rect = {1, 2, 3, 4}}}, 4096, 4096)
@@ -23,6 +24,7 @@ session_of_one_window_is_the_old_file :: proc(t: ^testing.T) {
 
 @(test)
 session_of_several_windows_round_trips :: proc(t: ^testing.T) {
+	test_app(t)
 	ws := []Session_Window{
 		{has_rect = true, rect = {10, 20, 1280, 800}, tabs = {win_tab("https://a.test/"), win_tab("https://b.test/")}, current = 1},
 		{has_rect = true, rect = {-1300, 40, 900, 700}, maximized = true, tabs = {win_tab("https://c.test/")}, current = 0},
@@ -49,6 +51,7 @@ session_of_several_windows_round_trips :: proc(t: ^testing.T) {
 
 @(test)
 session_caps_windows_and_tabs :: proc(t: ^testing.T) {
+	test_app(t)
 	ws := []Session_Window{
 		{tabs = {win_tab("https://a.test/"), win_tab("https://b.test/")}},
 		{tabs = {win_tab("https://c.test/")}},
@@ -65,6 +68,7 @@ session_caps_windows_and_tabs :: proc(t: ^testing.T) {
 
 @(test)
 session_windows_reader_is_forgiving :: proc(t: ^testing.T) {
+	test_app(t)
 	// a rectangle that is no rectangle is no rectangle; a window line with garbage is still a window
 	text := "wren-session 3\nwindow x y z\ncurrent 0\ntab https://a.test/\nwindow 0 0 -5 10 0\ntab https://b.test/\nwindow 1 2 300 200 1\ncurrent 9\ntab https://c.test/\n"
 	got, ok := session_parse_windows(text, 100, 4096)

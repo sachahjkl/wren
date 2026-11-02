@@ -10,6 +10,7 @@ import "wb:tools/testenv"
 
 @(test)
 meta_refresh_content :: proc(t: ^testing.T) {
+	test_pages(t)
 	d, u, ok := meta_refresh_parse("0; url=/docs/button")
 	testing.expect(t, ok && d == 0 && u == "/docs/button", "delay, url=")
 	d, u, ok = meta_refresh_parse(" 5 ; URL = 'next.html' ")
@@ -24,6 +25,7 @@ meta_refresh_content :: proc(t: ^testing.T) {
 
 @(test)
 timer_nesting_clamp :: proc(t: ^testing.T) {
+	test_pages(t)
 	st := settings_default()
 	defer settings_destroy(&st)
 	s := st.web
@@ -56,6 +58,7 @@ decode_all :: proc(label: string, chunks: [][]byte, fatal := false, ignore_bom :
 
 @(test)
 streaming_decoder :: proc(t: ^testing.T) {
+	test_pages(t)
 	euro := []byte{0xE2, 0x82, 0xAC}   // U+20AC
 	s, _ := decode_all("utf-8", {euro[:1], euro[1:2], euro[2:]})
 	testing.expect_value(t, s, "€")
@@ -91,6 +94,7 @@ streaming_decoder :: proc(t: ^testing.T) {
 
 @(test)
 session_history_model :: proc(t: ^testing.T) {
+	test_pages(t)
 	sh: Session_History
 	defer session_destroy(&sh)
 	session_push(&sh, "https://a/1", 1)
@@ -114,6 +118,7 @@ session_history_model :: proc(t: ^testing.T) {
 
 @(test)
 url_rewrite_rules :: proc(t: ^testing.T) {
+	test_pages(t)
 	doc, _ := url.parse("https://a.example/dir/page?x#f", nil, context.temp_allocator)
 	ok := proc(doc: url.URL, s: string) -> bool {
 		u, _ := url.parse(s, nil, context.temp_allocator)
@@ -153,6 +158,7 @@ fixture_destroy :: proc(f: ^Fixture) {
 
 @(test)
 storage_quota_order_events_persistence :: proc(t: ^testing.T) {
+	test_pages(t)
 	f: Fixture
 	fixture_init(&f)
 	defer fixture_destroy(&f)
@@ -196,22 +202,22 @@ storage_quota_order_events_persistence :: proc(t: ^testing.T) {
 	testing.expect_value(t, n, 0)
 
 	// events: only for the other pages of the origin (b; c is another origin); sessionStorage only within the tab
-	before := storage_events_delivered
+	before := the_pages.storage_events_delivered
 	// (the events arrive as tasks of the pages: a test running beside this one can hold them up for a moment)
 	pump_until :: proc(f: ^$F, before, want: u64) {
 		for _ in 0 ..< 2000 {
 			host.loop_wait(&f.loop, 1)   // (a task posted to the loop ends the wait)
-			if storage_events_delivered - before >= want { break }
+			if the_pages.storage_events_delivered - before >= want { break }
 		}
 		for _ in 0 ..< 3 { host.run_ready(&f.loop) }
 	}
 	pump_until(&f, before, 4)
-	testing.expect_value(t, storage_events_delivered - before, 4)   // 4 local changes seen by b, none by c or a
+	testing.expect_value(t, the_pages.storage_events_delivered - before, 4)   // 4 local changes seen by b, none by c or a
 
 	testing.expect_value(t, storage_remove_item(a, .Local, "k2"), 0)
 	testing.expect_value(t, storage_remove_item(a, .Local, "nope"), 0)
 	pump_until(&f, before, 5)
-	testing.expect_value(t, storage_events_delivered - before, 5)   // removing a missing key fires nothing
+	testing.expect_value(t, the_pages.storage_events_delivered - before, 5)   // removing a missing key fires nothing
 
 	// persistence: a new manager on the same directory ("restart") sees localStorage, not sessionStorage
 	page_close(a); page_close(b); page_close(c); page_close(o)

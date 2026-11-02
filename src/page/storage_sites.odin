@@ -96,7 +96,7 @@ storage_sites :: proc(m: ^Storage_Manager, allocator := context.temp_allocator) 
 		for k in cache_keys(m.dir) { if bytes := cache_usage(m.dir, k); bytes > 0 { s := get(&out, k); s.cache_bytes = bytes } }
 	}
 	// the service worker registrations (service_worker.odin), per storage key
-	for r in sw_registry.regs { if !r.uninstalling { s := get(&out, r.origin); s.service_workers += 1 } }
+	for r in the_pages.sw_registry.regs { if !r.uninstalling { s := get(&out, r.origin); s.service_workers += 1 } }
 	for _, a in m.areas {
 		if a.state != .Loaded { continue }
 		s := get(&out, a.origin)

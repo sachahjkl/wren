@@ -28,16 +28,16 @@ fx_open :: proc(f: ^Cursor_Fx, src: string) -> bool {
 	font.init(&f.fonts)
 	ui, ok := font.load_system(&f.fonts, "Segoe UI")
 	if !ok { return false }
-	page_fonts_init(&page_render.fonts, &f.fonts, ui)
-	page_render.settings = lay.settings_default()
+	page_fonts_init(&the_app.page_render.fonts, &f.fonts, ui)
+	the_app.page_render.settings = lay.settings_default()
 	f.doc = dom.document_create(nil)
 	html.parse_into(f.doc, f.doc.root, transmute([]byte)src, 2_000_000)
 	f.ss = style.settings_default()
 	f.eng = style.engine_make(f.ss)
 	style.sync_document_sheets(f.eng, f.doc, "about:test")
 	f.st = style.compute_styles(f.eng, f.doc, {})
-	lay.run(&f.l, lay.Input{doc = f.doc, styled = f.st, settings = &page_render.settings,
-		text = page_text_api(&page_render.fonts, &f.m, &f.ss), viewport = {600, 1000}, scale = 1, band_h = 256})
+	lay.run(&f.l, lay.Input{doc = f.doc, styled = f.st, settings = &the_app.page_render.settings,
+		text = page_text_api(&the_app.page_render.fonts, &f.m, &f.ss), viewport = {600, 1000}, scale = 1, band_h = 256})
 	return true
 }
 
@@ -48,7 +48,7 @@ fx_close :: proc(f: ^Cursor_Fx) {
 	style.engine_destroy(f.eng)
 	style.settings_destroy(&f.ss)
 	dom.document_destroy(f.doc)
-	page_fonts_destroy(&page_render.fonts)
+	page_fonts_destroy(&the_app.page_render.fonts)
 	font.destroy(&f.fonts)
 }
 
@@ -108,6 +108,7 @@ div.b { height: 30px; }
 
 @(test)
 page_cursor_resolution :: proc(t: ^testing.T) {
+	test_app(t)
 	page_render_test_lock()
 	defer page_render_test_unlock()
 	f: Cursor_Fx
@@ -181,6 +182,7 @@ page_cursor_resolution :: proc(t: ^testing.T) {
 
 @(test)
 page_cursor_keywords :: proc(t: ^testing.T) {
+	test_app(t)
 	// every CSS keyword names a cursor of the toolkit with the same name (auto: the arrow until resolved)
 	for k in style.Cursor {
 		c := cursor_of_keyword(k)

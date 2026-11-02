@@ -70,6 +70,6 @@ control_palette :: proc(cs: ^style.Computed) -> Control_Palette {
 // Scroll bar colors for a scroller (or the document) whose used color scheme is `scheme`: the layout preferences in
 // the light scheme, page.scrollbar.dark.* in the dark one.
 scrollbar_colors :: proc(scheme: style.Scheme, light_thumb, light_track: css.Color) -> (thumb, track: css.Color) {
-	if scheme == .Dark { return scheme_ui.dark_thumb, scheme_ui.dark_track }
+	if scheme == .Dark { return the_app.scheme_ui.dark_thumb, the_app.scheme_ui.dark_track }
 	return light_thumb, light_track
 }

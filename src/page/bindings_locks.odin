@@ -58,8 +58,6 @@ Lock_Registry :: struct {
 	next_id: u64,
 }
 
-@(private)
-lock_registry: Lock_Registry
 
 // Per-realm bookkeeping so a page/worker releases everything it holds (and drops its pending requests) on teardown.
 Lock_Client :: struct {
@@ -100,7 +98,7 @@ lock_client_tag :: proc(p: ^Page) -> string {
 // an exclusive lock conflicts with any held lock on the key; a shared request conflicts only with a held exclusive.
 @(private)
 lock_grantable :: proc(key: string, mode: Lock_Mode) -> bool {
-	for h in lock_registry.held {
+	for h in the_pages.lock_registry.held {
 		if h.name != key { continue }
 		if mode == .Exclusive || h.mode == .Exclusive { return false }
 	}
@@ -113,16 +111,16 @@ lock_grantable :: proc(key: string, mode: Lock_Mode) -> bool {
 lock_pump :: proc(key: string, granted: ^[dynamic]Pending_Lock) {
 	for {
 		idx := -1
-		for pl, i in lock_registry.pending {
+		for pl, i in the_pages.lock_registry.pending {
 			if pl.name != key { continue }
 			idx = i
 			break
 		}
 		if idx < 0 { return }
-		pl := lock_registry.pending[idx]
+		pl := the_pages.lock_registry.pending[idx]
 		if !lock_grantable(key, pl.mode) { return }
-		ordered_remove(&lock_registry.pending, idx)
-		append(&lock_registry.held, Held_Lock{id = pl.id, name = strings.clone(pl.name, base.process_allocator()), mode = pl.mode, client = pl.client, client_tag = strings.clone(pl.client_tag, base.process_allocator()), broken_cb = pl.broken_cb, user = pl.user, instance = pl.instance, page = pl.page})
+		ordered_remove(&the_pages.lock_registry.pending, idx)
+		append(&the_pages.lock_registry.held, Held_Lock{id = pl.id, name = strings.clone(pl.name, base.process_allocator()), mode = pl.mode, client = pl.client, client_tag = strings.clone(pl.client_tag, base.process_allocator()), broken_cb = pl.broken_cb, user = pl.user, instance = pl.instance, page = pl.page})
 		append(granted, pl)
 		if pl.mode == .Exclusive { return }   // an exclusive grant blocks the rest until it is released
 	}
@@ -146,10 +144,10 @@ LockManager_request :: proc(c: ^Call, name: string, mode: Api_LockMode, if_avail
 	tag := lock_client_tag(p)
 	defer delete(tag, base.process_allocator())
 
-	sync.mutex_lock(&lock_registry.mu)
-	defer sync.mutex_unlock(&lock_registry.mu)
-	lock_registry.next_id += 1
-	id := lock_registry.next_id
+	sync.mutex_lock(&the_pages.lock_registry.mu)
+	defer sync.mutex_unlock(&the_pages.lock_registry.mu)
+	the_pages.lock_registry.next_id += 1
+	id := the_pages.lock_registry.next_id
 	pack :: proc(id: u64, granted, available: bool) -> i64 { return i64(id << 2) | (granted ? 2 : 0) | (available ? 1 : 0) }
 
 	this_held := Held_Lock{id = id, name = strings.clone(key, base.process_allocator()), mode = m, client = page_id(p),
@@ -162,16 +160,16 @@ LockManager_request :: proc(c: ^Call, name: string, mode: Api_LockMode, if_avail
 		// take every held lock on this key away from its owner; its request promise must reject with AbortError
 		broken := make([dynamic]Broken_Lock, context.temp_allocator)
 		w := 0
-		for h in lock_registry.held {
+		for h in the_pages.lock_registry.held {
 			if h.name == key {
 				append(&broken, Broken_Lock{broken_cb = h.broken_cb, user = h.user, instance = h.instance, page = h.page})
 				lock_client_forget_by_id(h.client, h.id)
 				delete(h.name, base.process_allocator()); delete(h.client_tag, base.process_allocator()); continue
 			}
-			lock_registry.held[w] = h; w += 1
+			the_pages.lock_registry.held[w] = h; w += 1
 		}
-		resize(&lock_registry.held, w)
-		append(&lock_registry.held, this_held)
+		resize(&the_pages.lock_registry.held, w)
+		append(&the_pages.lock_registry.held, this_held)
 		lock_note_held(p, id)
 		delete(key, base.process_allocator())
 		for b in broken { lock_deliver_broken(b) }
@@ -179,7 +177,7 @@ LockManager_request :: proc(c: ^Call, name: string, mode: Api_LockMode, if_avail
 		return pack(id, true, true)
 	}
 	if lock_grantable(key, m) {
-		append(&lock_registry.held, this_held)
+		append(&the_pages.lock_registry.held, this_held)
 		lock_note_held(p, id)
 		delete(key, base.process_allocator())
 		if has_signal {
@@ -193,7 +191,7 @@ LockManager_request :: proc(c: ^Call, name: string, mode: Api_LockMode, if_avail
 		delete(key, base.process_allocator())
 		return pack(0, false, false)   // busy: the engine runs the callback with null
 	}
-	append(&lock_registry.pending, Pending_Lock{id = id, name = strings.clone(key, base.process_allocator()), mode = m,
+	append(&the_pages.lock_registry.pending, Pending_Lock{id = id, name = strings.clone(key, base.process_allocator()), mode = m,
 		client = page_id(p), client_tag = strings.clone(tag, base.process_allocator()), callback = callback, broken_cb = broken_cb, user = u32(user), instance = c.owner, page = page_id(p), steal = steal})
 	lock_note_pending(p, id)
 	delete(key, base.process_allocator())
@@ -218,22 +216,22 @@ LockManager_release :: proc(c: ^Call, id: u64) {
 	to_notify := make([dynamic]Pending_Lock, context.temp_allocator)
 	key_clone: string
 	{
-		sync.mutex_lock(&lock_registry.mu)
-		defer sync.mutex_unlock(&lock_registry.mu)
+		sync.mutex_lock(&the_pages.lock_registry.mu)
+		defer sync.mutex_unlock(&the_pages.lock_registry.mu)
 		// held?
-		for h, i in lock_registry.held {
+		for h, i in the_pages.lock_registry.held {
 			if h.id == id {
 				key_clone = strings.clone(h.name, context.temp_allocator)
 				delete(h.name, base.process_allocator()); delete(h.client_tag, base.process_allocator())
-				ordered_remove(&lock_registry.held, i)
+				ordered_remove(&the_pages.lock_registry.held, i)
 				break
 			}
 		}
 		// pending (aborted before grant)?
-		for pl, i in lock_registry.pending {
+		for pl, i in the_pages.lock_registry.pending {
 			if pl.id == id {
 				delete(pl.name, base.process_allocator()); delete(pl.client_tag, base.process_allocator())
-				ordered_remove(&lock_registry.pending, i)
+				ordered_remove(&the_pages.lock_registry.pending, i)
 				break
 			}
 		}
@@ -333,13 +331,13 @@ LockManager_queryCount :: proc(c: ^Call, held: bool) -> i32 {
 	prefix := lock_query_prefix(p)
 	if prefix == "" { return 0 }
 	defer delete(prefix, context.temp_allocator)
-	sync.mutex_lock(&lock_registry.mu)
-	defer sync.mutex_unlock(&lock_registry.mu)
+	sync.mutex_lock(&the_pages.lock_registry.mu)
+	defer sync.mutex_unlock(&the_pages.lock_registry.mu)
 	n := 0
 	if held {
-		for h in lock_registry.held { if strings.has_prefix(h.name, prefix) { n += 1 } }
+		for h in the_pages.lock_registry.held { if strings.has_prefix(h.name, prefix) { n += 1 } }
 	} else {
-		for pl in lock_registry.pending { if strings.has_prefix(pl.name, prefix) { n += 1 } }
+		for pl in the_pages.lock_registry.pending { if strings.has_prefix(pl.name, prefix) { n += 1 } }
 	}
 	return i32(n)
 }
@@ -373,8 +371,8 @@ lock_query_field :: proc(p: ^Page, held: bool, index: i32, field: Lock_Field) ->
 	prefix := lock_query_prefix(p)
 	if prefix == "" { return "", .Not_Found }
 	defer delete(prefix, context.temp_allocator)
-	sync.mutex_lock(&lock_registry.mu)
-	defer sync.mutex_unlock(&lock_registry.mu)
+	sync.mutex_lock(&the_pages.lock_registry.mu)
+	defer sync.mutex_unlock(&the_pages.lock_registry.mu)
 	k := 0
 	collect :: proc(name: string, mode: Lock_Mode, tag: string, prefix: string, field: Lock_Field) -> string {
 		switch field {
@@ -385,13 +383,13 @@ lock_query_field :: proc(p: ^Page, held: bool, index: i32, field: Lock_Field) ->
 		return ""
 	}
 	if held {
-		for h in lock_registry.held {
+		for h in the_pages.lock_registry.held {
 			if !strings.has_prefix(h.name, prefix) { continue }
 			if k == int(index) { return collect(h.name, h.mode, h.client_tag, prefix, field), .None }
 			k += 1
 		}
 	} else {
-		for pl in lock_registry.pending {
+		for pl in the_pages.lock_registry.pending {
 			if !strings.has_prefix(pl.name, prefix) { continue }
 			if k == int(index) { return collect(pl.name, pl.mode, pl.client_tag, prefix, field), .None }
 			k += 1
@@ -408,23 +406,23 @@ locks_page_closed :: proc(p: ^Page) {
 	keys := make([dynamic]string, context.temp_allocator)
 	grants := make([dynamic]Pending_Lock, context.temp_allocator)
 	{
-		sync.mutex_lock(&lock_registry.mu)
-		defer sync.mutex_unlock(&lock_registry.mu)
+		sync.mutex_lock(&the_pages.lock_registry.mu)
+		defer sync.mutex_unlock(&the_pages.lock_registry.mu)
 		for id in cl.held_ids {
-			for h, i in lock_registry.held {
+			for h, i in the_pages.lock_registry.held {
 				if h.id == id {
 					append(&keys, strings.clone(h.name, context.temp_allocator))
 					delete(h.name, base.process_allocator()); delete(h.client_tag, base.process_allocator())
-					ordered_remove(&lock_registry.held, i)
+					ordered_remove(&the_pages.lock_registry.held, i)
 					break
 				}
 			}
 		}
 		for id in cl.pending_ids {
-			for pl, i in lock_registry.pending {
+			for pl, i in the_pages.lock_registry.pending {
 				if pl.id == id {
 					delete(pl.name, base.process_allocator()); delete(pl.client_tag, base.process_allocator())
-					ordered_remove(&lock_registry.pending, i)
+					ordered_remove(&the_pages.lock_registry.pending, i)
 					break
 				}
 			}

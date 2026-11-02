@@ -34,7 +34,7 @@ js_layout_update :: proc(user: rawptr, p: ^page.Page) -> ^lay.Layout {
 	size := page_area(app)
 	if size.x <= 0 || size.y <= 0 { return nil }
 	scale := page_scale(app)
-	ls := &page_render.settings
+	ls := &app.page_render.settings
 	page.set_layout_journal(p, ls.incremental ? ls.inc_journal : 0)
 	styled := page.styles(p, size.x / scale, size.y / scale, f64(scale))
 	// natural sizes of images, canvases, videos and inline SVG come from the page being laid out. A layout asked for by a

@@ -101,23 +101,21 @@ Image_Cache :: struct {
 	settings:  images.Settings,   // the last settings seen (decode options of the cache's own jobs)
 }
 
-@(private)
-cache: Image_Cache
 
 @(private)
 cache_init :: proc(p: ^Page) -> bool {
-	if cache.ready { return true }
+	if the_pages.image_cache.ready { return true }
 	if p.worker != nil { return false }
 	s := &p.settings.images
 	decoder_ensure(s)
-	cache.loop = p.loop
-	cache.port = images.port_open(p.loop, cache_job_done, nil)
-	if cache.port == 0 { return false }
-	cache.entries = make(map[string]^Cache_Entry)
-	cache.by_id = make(map[u64]^Cache_Entry)
-	cache.evicted = make([dynamic]u64)
-	cache.settings, cache.limit = p.settings.images, p.settings.images.cache_max_bytes
-	cache.ready = true
+	the_pages.image_cache.loop = p.loop
+	the_pages.image_cache.port = images.port_open(p.loop, cache_job_done, nil)
+	if the_pages.image_cache.port == 0 { return false }
+	the_pages.image_cache.entries = make(map[string]^Cache_Entry)
+	the_pages.image_cache.by_id = make(map[u64]^Cache_Entry)
+	the_pages.image_cache.evicted = make([dynamic]u64)
+	the_pages.image_cache.settings, the_pages.image_cache.limit = p.settings.images, p.settings.images.cache_max_bytes
+	the_pages.image_cache.ready = true
 	return true
 }
 
@@ -129,17 +127,16 @@ decoder_ensure :: proc(s: ^images.Settings) {
 	images.decoder_start(n, s.decode_stack_bytes > 0 ? s.decode_stack_bytes : images.DECODER_STACK_DEFAULT, s.decode_idle_ms)
 }
 
-// Frees the process cache and stops the decoding threads. Call once every page is closed, before exiting.
+// Frees the App's image cache (every page of it closed). The decoding threads are the process's (process_shutdown).
 images_shutdown :: proc() {
-	if cache.ready {
-		images.port_close(cache.port)
-		for _, e in cache.by_id { entry_free(e) }
-		delete(cache.entries)
-		delete(cache.by_id)
-		delete(cache.evicted)
-		cache = {}
+	if the_pages.image_cache.ready {
+		images.port_close(the_pages.image_cache.port)
+		for _, e in the_pages.image_cache.by_id { entry_free(e) }
+		delete(the_pages.image_cache.entries)
+		delete(the_pages.image_cache.by_id)
+		delete(the_pages.image_cache.evicted)
+		the_pages.image_cache = {}
 	}
-	images.decoder_stop()
 }
 
 @(private)
@@ -168,7 +165,7 @@ entry_bytes :: proc(e: ^Cache_Entry) -> int {
 @(private)
 entry_account :: proc(e: ^Cache_Entry) {
 	n := entry_bytes(e)
-	cache.bytes += n - e.accounted
+	the_pages.image_cache.bytes += n - e.accounted
 	e.accounted = n
 }
 
@@ -185,7 +182,7 @@ decode_options :: proc(s: ^images.Settings, e: ^Cache_Entry) -> images.Decode_Op
 entry_unmap :: proc(e: ^Cache_Entry) {
 	if !e.in_map { return }
 	e.in_map = false
-	if cache.entries[e.key] == e { delete_key(&cache.entries, e.key) }
+	if the_pages.image_cache.entries[e.key] == e { delete_key(&the_pages.image_cache.entries, e.key) }
 }
 
 @(private)
@@ -197,32 +194,32 @@ entry_release :: proc(e: ^Cache_Entry, r: ^Img_Request) {
 
 @(private)
 entry_destroy :: proc(e: ^Cache_Entry) {
-	cache.bytes -= e.accounted
-	delete_key(&cache.by_id, e.id)
-	append(&cache.evicted, e.id)
-	for r in e.rasters { append(&cache.evicted, r.id) }
+	the_pages.image_cache.bytes -= e.accounted
+	delete_key(&the_pages.image_cache.by_id, e.id)
+	append(&the_pages.image_cache.evicted, e.id)
+	for r in e.rasters { append(&the_pages.image_cache.evicted, r.id) }
 	entry_free(e)
 }
 
 // Least recently shown first: pixels not shown in the current paint epoch, then files of entries nobody holds.
 @(private)
 cache_enforce :: proc() {
-	if !cache.ready || cache.bytes <= cache.limit { return }
-	list := make([dynamic]^Cache_Entry, 0, len(cache.by_id), context.temp_allocator)
-	for _, e in cache.by_id { append(&list, e) }
+	if !the_pages.image_cache.ready || the_pages.image_cache.bytes <= the_pages.image_cache.limit { return }
+	list := make([dynamic]^Cache_Entry, 0, len(the_pages.image_cache.by_id), context.temp_allocator)
+	for _, e in the_pages.image_cache.by_id { append(&list, e) }
 	slice.sort_by(list[:], proc(a, b: ^Cache_Entry) -> bool { return a.last_shown < b.last_shown })
 	for e in list {
-		if cache.bytes <= cache.limit { return }
+		if the_pages.image_cache.bytes <= the_pages.image_cache.limit { return }
 		if len(e.rasters) > 0 { svg_drop_rasters(e, true) }
-		if e.image == nil || e.last_shown == cache.epoch || e.decode != 0 { continue }
+		if e.image == nil || e.last_shown == the_pages.image_cache.epoch || e.decode != 0 { continue }
 		images.image_destroy(e.image)
 		e.image = nil
 		e.generation += 1
-		append(&cache.evicted, e.id)
+		append(&the_pages.image_cache.evicted, e.id)
 		entry_account(e)
 	}
 	for e in list {
-		if cache.bytes <= cache.limit { return }
+		if the_pages.image_cache.bytes <= the_pages.image_cache.limit { return }
 		if len(e.requests) > 0 { continue }
 		entry_unmap(e)
 		entry_destroy(e)
@@ -262,7 +259,7 @@ cache_job_done :: proc(user: rawptr, j: ^images.Job) {
 }
 
 @(private)
-loop_ms :: proc() -> f64 { return cache.loop != nil ? f64(host.now_ns(cache.loop)) / 1e6 : 0 }
+loop_ms :: proc() -> f64 { return the_pages.image_cache.loop != nil ? f64(host.now_ns(the_pages.image_cache.loop)) / 1e6 : 0 }
 
 // The requests holding `e` (on any page) hear that it settled (`state`) or that pixels arrived.
 @(private)
@@ -279,7 +276,7 @@ entry_notify :: proc(e: ^Cache_Entry, state: bool) {
 @(private)
 entry_want_pixels :: proc(e: ^Cache_Entry, w, h: int, priority: i32) {
 	if e.state != .Ready || e.blob == nil { return }
-	s := &cache.settings
+	s := &the_pages.image_cache.settings
 	tw, th := w, h
 	if e.want_full || e.info.animated || !s.downscale { tw, th = 0, 0 }
 	if tw > 0 && th > 0 {
@@ -302,7 +299,7 @@ entry_want_pixels :: proc(e: ^Cache_Entry, w, h: int, priority: i32) {
 	o := decode_options(s, e)
 	o.target_w, o.target_h = tw, th
 	e.decode_w, e.decode_h = tw, th
-	e.decode = images.submit(cache.port, images.job_make(.Decode, e.blob, o, priority, e))
+	e.decode = images.submit(the_pages.image_cache.port, images.job_make(.Decode, e.blob, o, priority, e))
 }
 
 ////////////////////////////////
@@ -527,7 +524,7 @@ page_request :: proc(p: ^Page, abs: string, mode: fetch.Mode, cred: fetch.Creden
 		r.state, r.error = .Broken, strings.clone("the image decoder is unavailable")
 		return r
 	}
-	if e, ok := cache.entries[key]; ok && can_share(p, e) {
+	if e, ok := the_pages.image_cache.entries[key]; ok && can_share(p, e) {
 		r.entry = e
 		append(&e.requests, r)
 		r.shared = true
@@ -621,8 +618,8 @@ entry_start :: proc(p: ^Page, r: ^Img_Request, data: []byte) {
 	e := new(Cache_Entry)
 	e.anim_start = -1
 	e.final_url, e.redirected, e.opaque, e.mime, e.nosniff = strings.clone(r.final_url), r.redirected, r.opaque, strings.clone(r.mime), r.nosniff
-	cache.next_id += 1
-	e.id = cache.next_id
+	the_pages.image_cache.next_id += 1
+	e.id = the_pages.image_cache.next_id
 	e.key, e.url = strings.clone(r.key), strings.clone(r.url)
 	bytes: []byte   // (an entry per address, fragment included: the same sprite with another icon is another picture)
 	if h := strings.index_byte(r.url, '#'); h >= 0 && images.sniff(data, r.mime, r.nosniff) == .Svg {
@@ -630,17 +627,17 @@ entry_start :: proc(p: ^Page, r: ^Img_Request, data: []byte) {
 	}
 	e.blob = images.blob_make(bytes != nil ? bytes : slice.clone(data))
 	e.state = .Probing
-	cache.settings = p.settings.images
-	cache.limit = p.settings.images.cache_max_bytes
-	if old, ok := cache.entries[e.key]; ok { entry_unmap(old); if len(old.requests) == 0 { entry_destroy(old) } }
-	cache.entries[e.key] = e
-	cache.by_id[e.id] = e
+	the_pages.image_cache.settings = p.settings.images
+	the_pages.image_cache.limit = p.settings.images.cache_max_bytes
+	if old, ok := the_pages.image_cache.entries[e.key]; ok { entry_unmap(old); if len(old.requests) == 0 { entry_destroy(old) } }
+	the_pages.image_cache.entries[e.key] = e
+	the_pages.image_cache.by_id[e.id] = e
 	e.in_map = true
 	append(&e.requests, r)
 	r.entry = e
 	r.state = .Probing
 	entry_account(e)
-	e.probe = images.submit(cache.port, images.job_make(.Probe, e.blob, decode_options(&cache.settings, e), IMAGE_PRIORITY_WAITED_ON, e))
+	e.probe = images.submit(the_pages.image_cache.port, images.job_make(.Probe, e.blob, decode_options(&the_pages.image_cache.settings, e), IMAGE_PRIORITY_WAITED_ON, e))
 	if e.probe == 0 {
 		e.state, e.err = .Broken, .Platform
 		entry_notify(e, true)
@@ -668,7 +665,7 @@ request_settled :: proc(r: ^Img_Request) {
 	if r.state == .Broken && r.entry != nil && r.error == "" { r.error = strings.clone(images.error_message(r.entry.err)) }
 	for _, el in p.images.elements {
 		if el.current == r || el.pending == r {
-			if r.blocked && embedder.collapse_blocked && p.engine != nil { style.engine_set_hidden(p.engine, el.node, true) }   // no empty box (embedder.odin)
+			if r.blocked && the_pages.embedder.collapse_blocked && p.engine != nil { style.engine_set_hidden(p.engine, el.node, true) }   // no empty box (embedder.odin)
 			element_settle(p, el)
 		}
 	}
@@ -751,7 +748,7 @@ images_sync :: proc(p: ^Page) {
 	if p == nil || p.closed || p.worker != nil { return }
 	images_init(p)
 	images_adopt_document(p)
-	if cache.ready { cache.settings, cache.limit = p.settings.images, p.settings.images.cache_max_bytes }
+	if the_pages.image_cache.ready { the_pages.image_cache.settings, the_pages.image_cache.limit = p.settings.images, p.settings.images.cache_max_bytes }
 	pi := &p.images
 	env := p.engine != nil ? p.engine.env : css.Media_Env{width = style.DEFAULT_VIEWPORT_W, height = style.DEFAULT_VIEWPORT_H, dppx = 1}
 	env_changed := env.width != pi.env.width || env.dppx != pi.env.dppx || env.height != pi.env.height
@@ -1410,7 +1407,7 @@ svg_raster_for :: proc(e: ^Cache_Entry, want_w, want_h: int, priority: i32) -> ^
 	best: ^Svg_Raster
 	best_d := max(int)
 	for &r in e.rasters {
-		if r.w == w && r.h == h { r.last_shown = cache.epoch; return &r }
+		if r.w == w && r.h == h { r.last_shown = the_pages.image_cache.epoch; return &r }
 		// nearest by area, a larger one preferred to a smaller one
 		d := abs(r.w * r.h - w * h) * (r.w * r.h >= w * h ? 1 : 4)
 		if d < best_d { best, best_d = &r, d }
@@ -1421,12 +1418,12 @@ svg_raster_for :: proc(e: ^Cache_Entry, want_w, want_h: int, priority: i32) -> ^
 		}
 		// another size is being made: this one is asked for at the next paint after it
 	} else if e.blob != nil {
-		o := decode_options(&cache.settings, e)
+		o := decode_options(&the_pages.image_cache.settings, e)
 		o.target_w, o.target_h = w, h
 		e.raster_w, e.raster_h = w, h
-		e.raster_job = images.submit(cache.port, images.job_make(.Decode, e.blob, o, priority, e))
+		e.raster_job = images.submit(the_pages.image_cache.port, images.job_make(.Decode, e.blob, o, priority, e))
 	}
-	if best != nil { best.last_shown = cache.epoch }
+	if best != nil { best.last_shown = the_pages.image_cache.epoch }
 	return best
 }
 
@@ -1441,14 +1438,14 @@ svg_raster_done :: proc(e: ^Cache_Entry, j: ^images.Job) {
 		}
 		return
 	}
-	cache.next_id += 1
-	append(&e.rasters, Svg_Raster{id = cache.next_id, w = j.image.width, h = j.image.height, image = j.image, last_shown = cache.epoch})
+	the_pages.image_cache.next_id += 1
+	append(&e.rasters, Svg_Raster{id = the_pages.image_cache.next_id, w = j.image.width, h = j.image.height, image = j.image, last_shown = the_pages.image_cache.epoch})
 	j.image = nil
-	keep := max(cache.settings.svg_max_rasters, 1)
+	keep := max(the_pages.image_cache.settings.svg_max_rasters, 1)
 	for len(e.rasters) > keep {
 		oldest := 0
 		for r, i in e.rasters { if r.last_shown < e.rasters[oldest].last_shown { oldest = i } }
-		append(&cache.evicted, e.rasters[oldest].id)
+		append(&the_pages.image_cache.evicted, e.rasters[oldest].id)
 		images.image_destroy(e.rasters[oldest].image)
 		ordered_remove(&e.rasters, oldest)
 	}
@@ -1463,8 +1460,8 @@ svg_raster_done :: proc(e: ^Cache_Entry, j: ^images.Job) {
 svg_drop_rasters :: proc(e: ^Cache_Entry, unshown_only: bool) {
 	for i := 0; i < len(e.rasters); {
 		r := e.rasters[i]
-		if unshown_only && r.last_shown == cache.epoch { i += 1; continue }
-		append(&cache.evicted, r.id)
+		if unshown_only && r.last_shown == the_pages.image_cache.epoch { i += 1; continue }
+		append(&the_pages.image_cache.evicted, r.id)
 		images.image_destroy(r.image)
 		ordered_remove(&e.rasters, i)
 	}
@@ -1472,7 +1469,7 @@ svg_drop_rasters :: proc(e: ^Cache_Entry, unshown_only: bool) {
 }
 
 // Natural size of an SVG image (CSS Images 3 §5.2, default sizing with the default object size 300 x 150): what the
-// document gives, a missing side from the ratio; atio_only: a ratio and no size at all (the layout stretches it).
+// document gives, a missing side from the ratio; ratio_only: a ratio and no size at all (the layout stretches it).
 @(private)
 svg_natural :: proc(s: images.Svg_Size) -> (w, h: f32, ratio_only: bool) {
 	r := s.ratio
@@ -1523,7 +1520,7 @@ view_of :: proc(r: ^Img_Request, density: f32) -> Image_View {
 	v.pixel_size = {e.info.width, e.info.height}
 	d := density > 0 ? density : 1
 	v.natural = {f32(e.info.width) / d, f32(e.info.height) / d}
-	v.animated = e.info.animated && cache.settings.animate
+	v.animated = e.info.animated && the_pages.image_cache.settings.animate
 	if e.info.format == .Svg {
 		w, h, ratio_only := svg_natural(e.info.svg)
 		v.svg, v.ratio_only, v.ratio = true, ratio_only, e.info.svg.ratio
@@ -1598,15 +1595,15 @@ Frame_Pixels :: struct {
 }
 
 // Starts a paint epoch (once per painted frame): images drawn in it are not evicted while it lasts.
-images_paint_begin :: proc() { cache.epoch += 1 }
+images_paint_begin :: proc() { the_pages.image_cache.epoch += 1 }
 
 // The current frame of entry `id`, for a picture drawn `want_w` x `want_h` device pixels large (the decode adapts to
 // it). Asks for a decode when there are no pixels yet (or too few); `priority` orders those decodes (higher first).
 frame_pixels :: proc(id: u64, now_ms: f64, want_w, want_h: int, priority: i32 = 0) -> Frame_Pixels {
-	if !cache.ready { return {} }
-	e, ok := cache.by_id[id]
+	if !the_pages.image_cache.ready { return {} }
+	e, ok := the_pages.image_cache.by_id[id]
 	if !ok { return {} }
-	e.last_shown = cache.epoch
+	e.last_shown = the_pages.image_cache.epoch
 	if entry_is_svg(e) {
 		r := svg_raster_for(e, want_w, want_h, priority)
 		if r == nil || r.image == nil || len(r.image.frames) == 0 { return {} }
@@ -1619,7 +1616,7 @@ frame_pixels :: proc(id: u64, now_ms: f64, want_w, want_h: int, priority: i32 = 
 	img := e.image
 	if img == nil || len(img.frames) == 0 { return {} }
 	fp := Frame_Pixels{width = img.width, height = img.height, stride = img.stride, texture = e.id, generation = e.generation, reduced = img.reduced, ok = true, next_ms = -1}
-	if img.info.animated && cache.settings.animate && len(img.frames) > 1 {
+	if img.info.animated && the_pages.image_cache.settings.animate && len(img.frames) > 1 {
 		if e.anim_start < 0 { e.anim_start = now_ms }
 		idx, next := images.animation_frame_at(img, now_ms - e.anim_start)
 		fp.frame = idx
@@ -1631,16 +1628,16 @@ frame_pixels :: proc(id: u64, now_ms: f64, want_w, want_h: int, priority: i32 = 
 
 // Ids whose pixels went away (evicted, or the entry died) since the last call: the painter releases their textures.
 images_drain_evicted :: proc(out: ^[dynamic]u64) {
-	if !cache.ready { return }
-	append(out, ..cache.evicted[:])
-	clear(&cache.evicted)
+	if !the_pages.image_cache.ready { return }
+	append(out, ..the_pages.image_cache.evicted[:])
+	clear(&the_pages.image_cache.evicted)
 }
 
 // Statistics for about: pages and tests.
 Image_Stats :: struct { entries, bytes, limit: int, decoder: images.Decoder_Stats, started, shared, elements, requests: int }
 
 images_stats :: proc(p: ^Page) -> Image_Stats {
-	s := Image_Stats{entries = len(cache.by_id), bytes = cache.bytes, limit = cache.limit, decoder = images.decoder_stats()}
+	s := Image_Stats{entries = len(the_pages.image_cache.by_id), bytes = the_pages.image_cache.bytes, limit = the_pages.image_cache.limit, decoder = images.decoder_stats()}
 	if p != nil && p.images.ready {
 		s.started, s.shared = p.images.started, p.images.shared
 		s.elements, s.requests = len(p.images.elements), len(p.images.requests)
@@ -1693,17 +1690,17 @@ canvas_image_pixels :: proc(p: ^Page, node: base.Handle) -> Canvas_Pixels {
 	case .Broken: return Canvas_Pixels{status = .Broken}
 	case .Ready:
 	}
-	e, found := cache.by_id[v.id]
+	e, found := the_pages.image_cache.by_id[v.id]
 	if !found || e.blob == nil { return Canvas_Pixels{status = .Pending} }
-	e.last_shown = cache.epoch
-	s := &cache.settings
+	e.last_shown = the_pages.image_cache.epoch
+	s := &the_pages.image_cache.settings
 	r := Canvas_Pixels{natural = v.natural, id = e.id, opaque = e.opaque}
 	if entry_is_svg(e) {
 		w := clamp(int(v.natural[0] + 0.999), 1, s.limits.max_dimension)
 		h := clamp(int(v.natural[1] + 0.999), 1, s.limits.max_dimension)
 		for &ras in e.rasters {
 			if ras.w == w && ras.h == h && ras.image != nil && len(ras.image.frames) > 0 {
-				ras.last_shown = cache.epoch
+				ras.last_shown = the_pages.image_cache.epoch
 				r.pixels, r.width, r.height, r.stride, r.generation = ras.image.frames[0].pixels, ras.image.width, ras.image.height, ras.image.stride, ras.id
 				return r
 			}
@@ -1712,12 +1709,12 @@ canvas_image_pixels :: proc(p: ^Page, node: base.Handle) -> Canvas_Pixels {
 		o.target_w, o.target_h, o.first_frame_only = w, h, true
 		img, _, err := images.decode_now(e.blob.bytes, o)
 		if err != .None || img == nil || len(img.frames) == 0 { images.image_destroy(img); return Canvas_Pixels{status = .Broken} }
-		cache.next_id += 1
-		append(&e.rasters, Svg_Raster{id = cache.next_id, w = img.width, h = img.height, image = img, last_shown = cache.epoch})
+		the_pages.image_cache.next_id += 1
+		append(&e.rasters, Svg_Raster{id = the_pages.image_cache.next_id, w = img.width, h = img.height, image = img, last_shown = the_pages.image_cache.epoch})
 		for len(e.rasters) > max(s.svg_max_rasters, 1) {
 			oldest := 0
 			for ras, i in e.rasters { if ras.last_shown < e.rasters[oldest].last_shown { oldest = i } }
-			append(&cache.evicted, e.rasters[oldest].id)
+			append(&the_pages.image_cache.evicted, e.rasters[oldest].id)
 			images.image_destroy(e.rasters[oldest].image)
 			ordered_remove(&e.rasters, oldest)
 		}

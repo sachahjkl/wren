@@ -4,6 +4,7 @@ import "core:testing"
 
 @(test)
 net_profiles_roundtrip :: proc(t: ^testing.T) {
+	test_app(t)
 	defer net_profiles_destroy()
 	net_profiles_load("c_a|My A|1000|500|80|2;c_b|B|0|0|0|0;;bad|x")
 	a, ok := net_profile_find("c_a")
@@ -25,6 +26,7 @@ net_profiles_roundtrip :: proc(t: ^testing.T) {
 
 @(test)
 net_messages_are_kept_by_kind :: proc(t: ^testing.T) {
+	test_app(t)
 	e: Net_Entry
 	defer net_free_entry(&e)
 	net_msg_push(&e, 100, true, false, false, transmute([]byte)string("hello"), "", "")
@@ -42,6 +44,7 @@ net_messages_are_kept_by_kind :: proc(t: ^testing.T) {
 
 @(test)
 net_messages_are_bounded :: proc(t: ^testing.T) {
+	test_app(t)
 	e: Net_Entry
 	defer net_free_entry(&e)
 	for i in 0 ..< NET_MSG_KEEP + 5 { net_msg_push(&e, f64(i), false, false, false, transmute([]byte)string("x"), "", "") }

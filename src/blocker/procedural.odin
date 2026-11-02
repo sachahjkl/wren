@@ -173,6 +173,7 @@ proc_parse :: proc(text: string) -> (s: ^Proc_Selector, ok: bool) {
 Pattern :: struct { re: ^adblock.Regex, text: string }
 
 @(private)
+@(thread_local)   // (each App matches on the thread of its loop)
 scratch: adblock.Regex_Scratch
 
 @(private)

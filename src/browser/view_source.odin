@@ -125,7 +125,7 @@ show_source :: proc(app: ^App, load: ^Doc_Load, data: []byte) {
 	defer if ok { delete(d.text) }
 	truncated := len(text) > VIEW_SOURCE_MAX
 	if truncated { text = text[:VIEW_SOURCE_MAX] }
-	markup := source_markup(text, ix.source_colors, truncated)
+	markup := source_markup(text, app.ix.source_colors, truncated)
 	page.load_html(load.page, transmute([]byte)markup)
 	t := load.tab
 	delete(t.title)

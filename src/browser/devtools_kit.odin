@@ -46,11 +46,9 @@ Dt_Colors :: struct {
 	bad_bg, warn_bg, accent_bg, good_bg:          draw.Color,
 }
 
-dtm: Dt_Metrics
-dtc: Dt_Colors
 
 // Logical pixels to physical, rounded.
-dt_px :: proc(v: f32) -> f32 { return math.round(v * dtm.sc) }
+dt_px :: proc(v: f32) -> f32 { return math.round(v * the_app.dtm.sc) }
 
 // Makes the metrics and colors of this frame; the panel calls it before building anything.
 dt_begin :: proc(app: ^App) {
@@ -59,13 +57,13 @@ dt_begin :: proc(app: ^App) {
 	pt := math.clamp(dev().font_pt, 8, 24)
 	comfy := dev().density == .Comfortable
 	k := pt / 12
-	dtm = {
+	app.dtm = {
 		sc = sc, fs = math.round(pt * sc), mono_fs = math.round(pt * sc), ui_font = app.ui_font, mono = ui.mono_font(),
 		row = math.round((comfy ? 24 : 20) * k * sc), bar = math.round((comfy ? 30 : 26) * k * sc), tab = math.round((comfy ? 30 : 26) * k * sc),
 		btn = math.round((comfy ? 26 : 22) * k * sc), line = max(math.round(sc), 1), pad = math.round(4 * sc), icon = math.round(14 * k * sc),
 		radius = math.round(3 * sc),
 	}
-	c := &dtc
+	c := &app.dtc
 	c.bg = ui.color("background")
 	c.text = ui.color("text")
 	c.border = ui.color("border")
@@ -194,24 +192,24 @@ dt_gap :: proc(logical: f32) { ui.spacer(ui.px(dt_px(logical))) }
 
 // A one-pixel vertical rule between groups of a toolbar.
 dt_vsep :: proc(id: string) {
-	h := dtm.btn * 0.62
-	ui.next({width = ui.px(dtm.line), height = ui.px(h), bg = dtc.border})
+	h := the_app.dtm.btn * 0.62
+	ui.next({width = ui.px(the_app.dtm.line), height = ui.px(h), bg = the_app.dtc.border})
 	ui.build_box({.Draw_Background}, id)
 }
 
 // A one-pixel horizontal rule.
 dt_hsep :: proc(id: string, col: Maybe(draw.Color) = nil) {
-	ui.next({width = ui.fill(), height = ui.px(dtm.line), bg = col.? or_else dtc.border})
+	ui.next({width = ui.fill(), height = ui.px(the_app.dtm.line), bg = col.? or_else the_app.dtc.border})
 	ui.build_box({.Draw_Background}, id)
 }
 
 // A bar: a full-width row of `h` pixels on the bar color with a rule below it (the last one of the panel's tool rows).
 @(deferred_none = ui.pop_parent)
 dt_bar :: proc(id: string, h: f32 = 0, rule := true) -> bool {
-	hh := h > 0 ? h : dtm.bar
+	hh := h > 0 ? h : the_app.dtm.bar
 	flags := ui.Box_Flags{.Draw_Background, .Clip}   // (a narrow panel cuts its toolbar at its edge)
 	if rule { flags += {.Draw_Side_Bottom} }
-	ui.next({width = ui.fill(), height = ui.px(hh), axis = .X, cross = .Center, bg = dtc.bar, border = dtc.border})
+	ui.next({width = ui.fill(), height = ui.px(hh), axis = .X, cross = .Center, bg = the_app.dtc.bar, border = the_app.dtc.border})
 	b := ui.build_box(flags, id)
 	ui.push_parent(b)
 	return true
@@ -238,53 +236,53 @@ Dt_Btn_Draw :: struct {
 btn_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	d := (^Dt_Btn_Draw)(user)
 	r := b.rect
-	rad := dtm.radius
+	rad := the_app.dtm.radius
 	if d.accent {
-		draw.rect(dc, r, d.down ? draw.mix(dtc.accent, dtc.text, 0.15) : (d.hot ? draw.mix(dtc.accent, dtc.text, 0.08) : dtc.accent), rad)
+		draw.rect(dc, r, d.down ? draw.mix(the_app.dtc.accent, the_app.dtc.text, 0.15) : (d.hot ? draw.mix(the_app.dtc.accent, the_app.dtc.text, 0.08) : the_app.dtc.accent), rad)
 	} else if d.on {
 		draw.rect(dc, r, ui.tuned(with_alpha(d.on_col, 0.15)), rad)
-		if d.down { draw.rect(dc, r, dtc.press, rad) } else if d.hot { draw.rect(dc, r, dtc.hover, rad) }
+		if d.down { draw.rect(dc, r, the_app.dtc.press, rad) } else if d.hot { draw.rect(dc, r, the_app.dtc.hover, rad) }
 	} else if d.down {
-		draw.rect(dc, r, dtc.press, rad)
+		draw.rect(dc, r, the_app.dtc.press, rad)
 	} else if d.hot {
-		draw.rect(dc, r, dtc.hover, rad)
+		draw.rect(dc, r, the_app.dtc.hover, rad)
 	}
 	col := d.col
 	if d.on { col = d.on_col }
-	if d.accent { col = dtc.accent_text }
+	if d.accent { col = the_app.dtc.accent_text }
 	cy := (r.min.y + r.max.y) * 0.5
 	x := r.min.x
 	hasText := d.label != ""
 	pad := dt_px(hasText ? 6 : 0)
-	total := (d.icon != .None ? dtm.icon : 0) + (d.icon != .None && hasText ? dt_px(4) : 0) + d.label_w + (d.caret ? dtm.icon * 0.7 + (hasText || d.icon != .None ? dt_px(2) : 0) : 0)
+	total := (d.icon != .None ? the_app.dtm.icon : 0) + (d.icon != .None && hasText ? dt_px(4) : 0) + d.label_w + (d.caret ? the_app.dtm.icon * 0.7 + (hasText || d.icon != .None ? dt_px(2) : 0) : 0)
 	bw := r.max.x - r.min.x
 	if !hasText && !d.caret { x = r.min.x + (bw - total) * 0.5 } else { x = r.min.x + pad }
 	if d.icon != .None {
-		dt_icon(dc, d.icon, {math.round(x + dtm.icon * 0.5), cy}, dtm.icon, col, dtm.sc)
-		x += dtm.icon + (hasText ? dt_px(4) : 0)
+		dt_icon(dc, d.icon, {math.round(x + the_app.dtm.icon * 0.5), cy}, the_app.dtm.icon, col, the_app.dtm.sc)
+		x += the_app.dtm.icon + (hasText ? dt_px(4) : 0)
 	}
 	if hasText {
-		dt_text(dc, dtm.ui_font, dtm.fs, x, cy, col, d.label)
+		dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, x, cy, col, d.label)
 		x += d.label_w
 	}
 	if d.badge != "" {
-		bx := r.max.x - dt_px(2) - (d.caret ? dtm.icon * 0.7 + dt_px(2) : 0)
-		pw := dt_w(dtm.ui_font, dtm.fs * 0.82, d.badge) + dt_px(6)
-		bh := dtm.fs * 1.12
+		bx := r.max.x - dt_px(2) - (d.caret ? the_app.dtm.icon * 0.7 + dt_px(2) : 0)
+		pw := dt_w(the_app.dtm.ui_font, the_app.dtm.fs * 0.82, d.badge) + dt_px(6)
+		bh := the_app.dtm.fs * 1.12
 		draw.rect(dc, {{bx - pw, cy - bh * 0.5 - dt_px(5)}, {bx, cy + bh * 0.5 - dt_px(5)}}, d.badge_col, bh * 0.5)
-		dt_text(dc, dtm.ui_font, dtm.fs * 0.82, bx - pw + dt_px(3), cy - dt_px(5), draw.Color{1, 1, 1, 1}, d.badge)
+		dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs * 0.82, bx - pw + dt_px(3), cy - dt_px(5), draw.Color{1, 1, 1, 1}, d.badge)
 	}
 	if d.caret {
-		dt_icon(dc, .Chevron_Down, {math.round(r.max.x - dt_px(4) - dtm.icon * 0.35), cy}, dtm.icon * 0.7, with_alpha(col, col.a * 0.8), dtm.sc)
+		dt_icon(dc, .Chevron_Down, {math.round(r.max.x - dt_px(4) - the_app.dtm.icon * 0.35), cy}, the_app.dtm.icon * 0.7, with_alpha(col, col.a * 0.8), the_app.dtm.sc)
 	}
 }
 
 // The width dt_btn gives a button (before it is built: a toolbar sizes its flexible field from the fixed widths around it).
 dt_btn_width :: proc(icon: Dt_Icon, label := "", caret := false, w: f32 = 0) -> f32 {
 	if w > 0 { return w }
-	if label == "" && !caret { return dtm.btn }
-	label_w := label != "" ? dt_w(dtm.ui_font, dtm.fs, label) : 0
-	return dt_px(6) * 2 + (icon != .None ? dtm.icon : 0) + (icon != .None && label != "" ? dt_px(4) : 0) + label_w + (caret ? dtm.icon * 0.7 + dt_px(label != "" || icon != .None ? 2 : 0) : 0)
+	if label == "" && !caret { return the_app.dtm.btn }
+	label_w := label != "" ? dt_w(the_app.dtm.ui_font, the_app.dtm.fs, label) : 0
+	return dt_px(6) * 2 + (icon != .None ? the_app.dtm.icon : 0) + (icon != .None && label != "" ? dt_px(4) : 0) + label_w + (caret ? the_app.dtm.icon * 0.7 + dt_px(label != "" || icon != .None ? 2 : 0) : 0)
 }
 
 // The narrowest a toolbar's filter field is made (logical px): below it the buttons around it are cut off by the panel's
@@ -295,18 +293,18 @@ DT_FILTER_MIN :: 150
 // `on` shows it switched on (a toggle), `enabled` false mutes it. The tooltip shows its name and shortcut.
 dt_btn :: proc(id: string, icon: Dt_Icon, label := "", tooltip := "", shortcut := "", on := false, enabled := true,
                badge := "", badge_col := draw.Color{}, caret := false, accent := false, w: f32 = 0, tone := draw.Color{}) -> ui.Signal {
-	label_w := label != "" ? dt_w(dtm.ui_font, dtm.fs, label) : 0
+	label_w := label != "" ? dt_w(the_app.dtm.ui_font, the_app.dtm.fs, label) : 0
 	width := dt_btn_width(icon, label, caret, w)
 	sig: ui.Signal
 	if ui.disabled(!enabled) {
-		ui.next({width = ui.px(math.round(width)), height = ui.px(dtm.btn), cursor = .Arrow})
+		ui.next({width = ui.px(math.round(width)), height = ui.px(the_app.dtm.btn), cursor = .Arrow})
 		b := ui.build_box({.Clickable, .Focusable}, id)
 		sig = ui.signal(b)
 		d := ui.frame_new(Dt_Btn_Draw)
 		d.icon, d.label, d.on, d.hot, d.down = icon, dt_frame_str(label), on, sig.hovering, sig.dragging && sig.hovering
 		d.badge, d.badge_col, d.caret, d.label_w, d.accent = dt_frame_str(badge), badge_col, caret, label_w, accent
-		d.col = tone.a > 0 ? tone : (sig.hovering ? dtc.text : dtc.weak)
-		d.on_col = tone.a > 0 ? tone : dtc.accent
+		d.col = tone.a > 0 ? tone : (sig.hovering ? the_app.dtc.text : the_app.dtc.weak)
+		d.on_col = tone.a > 0 ? tone : the_app.dtc.accent
 		b.custom, b.custom_user = btn_draw, d
 		// a toggle says whether it is on; one with a chevron opens a menu
 		info := ui.A11y_Info{role = .Button, name = label != "" ? dt_frame_str(label) : "", shortcut = dt_frame_str(shortcut)}
@@ -324,22 +322,22 @@ Dt_Chip_Draw :: struct { label: string, on, hot, down: bool, w: f32, count: stri
 chip_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	d := (^Dt_Chip_Draw)(user)
 	r := b.rect
-	rad := dtm.radius
+	rad := the_app.dtm.radius
 	if d.on {
-		draw.rect(dc, r, dtc.accent_bg, rad)
-		draw.rect(dc, r, with_alpha(dtc.accent, 0.5), rad, dtm.line)
-	} else if d.down { draw.rect(dc, r, dtc.press, rad) } else if d.hot { draw.rect(dc, r, dtc.hover, rad) }
+		draw.rect(dc, r, the_app.dtc.accent_bg, rad)
+		draw.rect(dc, r, with_alpha(the_app.dtc.accent, 0.5), rad, the_app.dtm.line)
+	} else if d.down { draw.rect(dc, r, the_app.dtc.press, rad) } else if d.hot { draw.rect(dc, r, the_app.dtc.hover, rad) }
 	cy := (r.min.y + r.max.y) * 0.5
-	col := d.on ? dtc.accent : (d.hot ? dtc.text : dtc.weak)
+	col := d.on ? the_app.dtc.accent : (d.hot ? the_app.dtc.text : the_app.dtc.weak)
 	x := r.min.x + dt_px(7)
-	x += dt_text(dc, dtm.ui_font, dtm.fs, x, cy, col, d.label)
-	if d.count != "" { dt_text(dc, dtm.ui_font, dtm.fs * 0.88, x + dt_px(4), cy, with_alpha(col, 0.7), d.count) }
+	x += dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, x, cy, col, d.label)
+	if d.count != "" { dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs * 0.88, x + dt_px(4), cy, with_alpha(col, 0.7), d.count) }
 }
 
 // A text chip that is on or off (filter by type, a quick switch). Returns its signal; `count` is shown beside the label.
 dt_chip :: proc(id, label: string, on: bool, tooltip := "", count := "") -> ui.Signal {
-	w := dt_w(dtm.ui_font, dtm.fs, label) + dt_px(14) + (count != "" ? dt_w(dtm.ui_font, dtm.fs * 0.88, count) + dt_px(4) : 0)
-	ui.next({width = ui.px(math.round(w)), height = ui.px(dtm.btn - dt_px(4)), cursor = .Arrow})
+	w := dt_w(the_app.dtm.ui_font, the_app.dtm.fs, label) + dt_px(14) + (count != "" ? dt_w(the_app.dtm.ui_font, the_app.dtm.fs * 0.88, count) + dt_px(4) : 0)
+	ui.next({width = ui.px(math.round(w)), height = ui.px(the_app.dtm.btn - dt_px(4)), cursor = .Arrow})
 	b := ui.build_box({.Clickable, .Focusable}, id)
 	sig := ui.signal(b)
 	d := ui.frame_new(Dt_Chip_Draw)
@@ -355,7 +353,7 @@ dt_tip :: proc(sig: ui.Signal, text: string, shortcut := "") {
 	chrome_tip_a11y(sig.box, text)   // (the name a screen reader reads: a11y_chrome.odin)
 	if ui.hovered_for(sig, 0.4) {
 		if ui.tooltip() {
-			w := dt_w(dtm.ui_font, dtm.fs, text) + dt_px(14) + (shortcut != "" ? dt_w(dtm.ui_font, dtm.fs, shortcut) + dt_px(12) : 0)
+			w := dt_w(the_app.dtm.ui_font, the_app.dtm.fs, text) + dt_px(14) + (shortcut != "" ? dt_w(the_app.dtm.ui_font, the_app.dtm.fs, shortcut) + dt_px(12) : 0)
 			ui.next({width = ui.px(math.round(w)), height = ui.px(dt_px(22)), axis = .X, cross = .Center})
 			if ui.row(.Center, {}, "###dt_tip_row") {
 				ui.next({width = ui.text_size(dt_px(7)), height = ui.pct(1)})
@@ -492,7 +490,7 @@ dt_filter_match :: proc(f: ^Dt_Filter, text: string) -> bool {
 
 // The field: a magnifier, the text, "Aa" and ".*" switches and a clear button inside one bordered box. `w` 0: fills.
 dt_search :: proc(id: string, f: ^Dt_Filter, placeholder: string, w: f32 = 0, flags := true) -> ui.Edit_Result {
-	h := dtm.btn - dt_px(2)
+	h := the_app.dtm.btn - dt_px(2)
 	if w > 0 { ui.next({width = ui.px(w), height = ui.px(h), axis = .X, cross = .Center}) } else { ui.next({width = ui.fill(), height = ui.px(h), axis = .X, cross = .Center}) }
 	holder := ui.build_box({}, id)
 	res: ui.Edit_Result
@@ -504,15 +502,15 @@ dt_search :: proc(id: string, f: ^Dt_Filter, placeholder: string, w: f32 = 0, fl
 		// frame late is harmless; the switches' places below never read a width)
 		fw := w > 0 ? w : holder.size.x
 		hint := placeholder
-		if fw > 0 { hint, _ = dt_fit(dtm.ui_font, dtm.fs, placeholder, max(fw - dt_px(24) - reserve - dt_px(4), 0)) }
+		if fw > 0 { hint, _ = dt_fit(the_app.dtm.ui_font, the_app.dtm.fs, placeholder, max(fw - dt_px(24) - reserve - dt_px(4), 0)) }
 		if f.re_bad { ui.push_tags("bad") }
-		ui.next({width = ui.pct(1), height = ui.pct(1), radius = dtm.radius, text_pad = dt_px(24)})
+		ui.next({width = ui.pct(1), height = ui.pct(1), radius = the_app.dtm.radius, text_pad = dt_px(24)})
 		res = ui.line_edit("###f", &f.field, hint)
 		if f.re_bad { ui.pop_tags() }
 		// the magnifier
-		ui.next({fixed_x = dt_px(5), fixed_y = (h - dtm.icon) * 0.5, width = ui.px(dtm.icon), height = ui.px(dtm.icon)})
+		ui.next({fixed_x = dt_px(5), fixed_y = (h - the_app.dtm.icon) * 0.5, width = ui.px(the_app.dtm.icon), height = ui.px(the_app.dtm.icon)})
 		ui.custom("###mag", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
-			dt_icon(dc, .Search, draw.rect_center(b.rect), dtm.icon, dtc.faint, dtm.sc)
+			dt_icon(dc, .Search, draw.rect_center(b.rect), the_app.dtm.icon, the_app.dtc.faint, the_app.dtm.sc)
 		}, nil)
 		// the switches in a row over the field, pushed to its right edge by a spacer: placed by the layout of this frame, not
 		// from the width the field had in the last one (it was one frame behind a panel being resized)
@@ -557,18 +555,18 @@ dt_search :: proc(id: string, f: ^Dt_Filter, placeholder: string, w: f32 = 0, fl
 field_clear_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	d := (^Dt_Btn_Draw)(user)
 	r := b.rect
-	if d.hot { draw.rect(dc, r, dtc.hover, dtm.radius) }
-	dt_icon(dc, .Close, draw.rect_center(r), dtm.icon * 0.8, d.hot ? dtc.text : dtc.weak, dtm.sc)
+	if d.hot { draw.rect(dc, r, the_app.dtc.hover, the_app.dtm.radius) }
+	dt_icon(dc, .Close, draw.rect_center(r), the_app.dtm.icon * 0.8, d.hot ? the_app.dtc.text : the_app.dtc.weak, the_app.dtm.sc)
 }
 
 @(private = "file")
 field_toggle_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	d := (^Dt_Btn_Draw)(user)
 	r := b.rect
-	if d.on { draw.rect(dc, r, dtc.accent_bg, dtm.radius); draw.rect(dc, r, with_alpha(dtc.accent, 0.55), dtm.radius, dtm.line) } else if d.hot { draw.rect(dc, r, dtc.hover, dtm.radius) }
+	if d.on { draw.rect(dc, r, the_app.dtc.accent_bg, the_app.dtm.radius); draw.rect(dc, r, with_alpha(the_app.dtc.accent, 0.55), the_app.dtm.radius, the_app.dtm.line) } else if d.hot { draw.rect(dc, r, the_app.dtc.hover, the_app.dtm.radius) }
 	cy := (r.min.y + r.max.y) * 0.5
-	w := dt_w(dtm.mono, dtm.fs * 0.86, d.label)
-	dt_text(dc, dtm.mono, dtm.fs * 0.86, (r.min.x + r.max.x) * 0.5 - w * 0.5, cy, d.on ? dtc.accent : dtc.weak, d.label)
+	w := dt_w(the_app.dtm.mono, the_app.dtm.fs * 0.86, d.label)
+	dt_text(dc, the_app.dtm.mono, the_app.dtm.fs * 0.86, (r.min.x + r.max.x) * 0.5 - w * 0.5, cy, d.on ? the_app.dtc.accent : the_app.dtc.weak, d.label)
 }
 
 ////////////////////////////////
@@ -681,13 +679,13 @@ dt_row :: proc(id: string, h: f32, draw_fn: ui.Custom_Draw, user: rawptr) -> ui.
 
 // The background of a row: the zebra stripe, its selection, hover; true when it is the selected one.
 dt_row_back :: proc(dc: ^draw.Context, r: draw.Rect, odd, selected, hot, focused: bool, tint := draw.Color{}) {
-	if odd { draw.rect(dc, r, dtc.zebra) }
+	if odd { draw.rect(dc, r, the_app.dtc.zebra) }
 	if tint.a > 0 { draw.rect(dc, r, tint) }
 	if selected {
-		draw.rect(dc, r, focused ? dtc.sel : dtc.sel_weak)
-		draw.rect(dc, {r.min, {r.min.x + dtm.line * 2, r.max.y}}, dtc.accent)
+		draw.rect(dc, r, focused ? the_app.dtc.sel : the_app.dtc.sel_weak)
+		draw.rect(dc, {r.min, {r.min.x + the_app.dtm.line * 2, r.max.y}}, the_app.dtc.accent)
 	} else if hot {
-		draw.rect(dc, r, dtc.hover)
+		draw.rect(dc, r, the_app.dtc.hover)
 	}
 }
 
@@ -705,19 +703,19 @@ dt_empty :: proc(id: string, icon: Dt_Icon, title, hint: string) {
 		cx := (r.min.x + r.max.x) * 0.5
 		h := r.max.y - r.min.y
 		big := dt_px(44)
-		block := big + dt_px(10) + dtm.fs * 1.5 + dtm.fs * 1.4
+		block := big + dt_px(10) + the_app.dtm.fs * 1.5 + the_app.dtm.fs * 1.4
 		top := r.min.y + max((h - block) * 0.42, dt_px(6))
 		if h < block { return }
 		ring := draw.Rect{{cx - big * 0.5, top}, {cx + big * 0.5, top + big}}
-		draw.rect(dc, ring, with_alpha(dtc.weak, 0.07), big * 0.5)
-		draw.rect(dc, ring, with_alpha(dtc.weak, 0.25), big * 0.5, dtm.line)
-		dt_icon(dc, d.icon, draw.rect_center(ring), big * 0.5, dtc.weak, dtm.sc)
-		y := top + big + dt_px(10) + dtm.fs * 0.7
-		tw := dt_w(dtm.ui_font, dtm.fs * 1.08, d.title)
-		dt_text(dc, dtm.ui_font, dtm.fs * 1.08, cx - tw * 0.5, y, dtc.text, d.title)
-		y += dtm.fs * 1.4
-		t, w := dt_fit(dtm.ui_font, dtm.fs, d.hint, r.max.x - r.min.x - dt_px(24))
-		dt_text(dc, dtm.ui_font, dtm.fs, cx - w * 0.5, y, dtc.weak, t)
+		draw.rect(dc, ring, with_alpha(the_app.dtc.weak, 0.07), big * 0.5)
+		draw.rect(dc, ring, with_alpha(the_app.dtc.weak, 0.25), big * 0.5, the_app.dtm.line)
+		dt_icon(dc, d.icon, draw.rect_center(ring), big * 0.5, the_app.dtc.weak, the_app.dtm.sc)
+		y := top + big + dt_px(10) + the_app.dtm.fs * 0.7
+		tw := dt_w(the_app.dtm.ui_font, the_app.dtm.fs * 1.08, d.title)
+		dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs * 1.08, cx - tw * 0.5, y, the_app.dtc.text, d.title)
+		y += the_app.dtm.fs * 1.4
+		t, w := dt_fit(the_app.dtm.ui_font, the_app.dtm.fs, d.hint, r.max.x - r.min.x - dt_px(24))
+		dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, cx - w * 0.5, y, the_app.dtc.weak, t)
 	}, d
 }
 
@@ -735,8 +733,8 @@ dt_vsplit :: proc(id: string) -> (dx: f32, started, dragging: bool) {
 	b.custom, b.custom_user = proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		d := (^Dt_Btn_Draw)(user)
 		x := math.round((b.rect.min.x + b.rect.max.x) * 0.5)
-		col := d.hot || d.down ? dtc.accent : dtc.border
-		w := d.hot || d.down ? dtm.line * 2 : dtm.line
+		col := d.hot || d.down ? the_app.dtc.accent : the_app.dtc.border
+		w := d.hot || d.down ? the_app.dtm.line * 2 : the_app.dtm.line
 		draw.rect(dc, {{x - w * 0.5, b.rect.min.y}, {x + w * 0.5, b.rect.max.y}}, col)
 	}, d
 	return sig.drag_delta.x, sig.pressed, sig.dragging
@@ -752,8 +750,8 @@ dt_hsplit :: proc(id: string) -> (dy: f32, started, dragging: bool) {
 	b.custom, b.custom_user = proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		d := (^Dt_Btn_Draw)(user)
 		y := math.round((b.rect.min.y + b.rect.max.y) * 0.5)
-		col := d.hot || d.down ? dtc.accent : dtc.border
-		w := d.hot || d.down ? dtm.line * 2 : dtm.line
+		col := d.hot || d.down ? the_app.dtc.accent : the_app.dtc.border
+		w := d.hot || d.down ? the_app.dtm.line * 2 : the_app.dtm.line
 		draw.rect(dc, {{b.rect.min.x, y - w * 0.5}, {b.rect.max.x, y + w * 0.5}}, col)
 	}, d
 	return sig.drag_delta.y, sig.pressed, sig.dragging

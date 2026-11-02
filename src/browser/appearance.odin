@@ -21,8 +21,8 @@ appearance_init :: proc(app: ^App) {
 	appearance_watch_start(app)
 }
 
-appearance_destroy :: proc() {
-	appearance_watch_stop()
+appearance_destroy :: proc(app: ^App) {
+	appearance_watch_stop(app)
 }
 
 // Any thread (the watch): the desktop's look may have changed; the UI thread reads the values again.

@@ -181,7 +181,7 @@ item_sig_at :: proc(e: ^Effects, x: ^Fx_Cache, c: ^Comp, idx: i32, anchor: draw.
 		if v.animated { return h, false }
 		h = fx_mix(fx_mix(h, v.id), u64(v.state))
 	case .Box, .Inline_Box:
-		if page_render.bare != nil && page_render.bare(page_render.content_user, c.doc, it.node) { return h, false }
+		if the_app.page_render.bare != nil && the_app.page_render.bare(the_app.page_render.content_user, c.doc, it.node) { return h, false }
 		if it.cs != nil && background_clips_text(it.cs) {
 			// background-clip: text: the text of its descendants is its mask, wherever their items are (other
 			// chunks, out of view)
@@ -326,14 +326,14 @@ fx_cache_begin :: proc(x: ^Fx_Cache, c: ^Comp, e: ^Effects, screen: lay.Rect) {
 	x.screen = screen
 	x.lid = u64(uintptr(l))
 	x.comp = c
-	s := effects_settings
-	salt := fx_mix(0x73616c74, u64(s.filters) | u64(s.backdrop_filters) << 1 | u64(s.blend_modes) << 2 | u64(s.clip_paths) << 3 | u64(s.exact_shadows) << 4 | u64(page_render.settings.opacity_layers) << 5 | u64(s.masks) << 6)
+	s := the_app.effects_settings
+	salt := fx_mix(0x73616c74, u64(s.filters) | u64(s.backdrop_filters) << 1 | u64(s.blend_modes) << 2 | u64(s.clip_paths) << 3 | u64(s.exact_shadows) << 4 | u64(the_app.page_render.settings.opacity_layers) << 5 | u64(s.masks) << 6)
 	salt = fx_f32(salt, s.blur_sigma_limit)
 	salt = fx_f32(salt, l.scale)
 	salt = fx_mix(salt, c.sel_key)
 	if x.page != nil { salt = fx_mix(salt, page.images_pixels_generation(x.page)) }
 	x.salt = salt
-	if n == 0 || !fx_settings.enabled { return }
+	if n == 0 || !the_app.fx_settings.enabled { return }
 	for g in 0 ..< n {
 		x.anchor[g] = group_anchor(e, i32(g))
 		x.key[g] = salt
@@ -341,13 +341,13 @@ fx_cache_begin :: proc(x: ^Fx_Cache, c: ^Comp, e: ^Effects, screen: lay.Rect) {
 		x.cur_child[g] = lay.NONE
 		x.detached[g] = plane_detach(l, i32(g))
 		gr := &l.groups[g]
-		if .Backdrop in gr.effects && effects_settings.backdrop_filters && e.groups[g].seen {
+		if .Backdrop in gr.effects && the_app.effects_settings.backdrop_filters && e.groups[g].seen {
 			b := &l.boxes[gr.box]
 			r := lay.rect_shift(lay.Rect{b.abs, b.abs + b.size}, e.v.offsets[b.space] + e.origin)
 			if !lay.space_plain(l, b.space) { r = lay.mat_bounds(lay.mat_shifted(e.v.mats[b.space], e.origin), lay.rect_shift(lay.Rect{b.abs, b.abs + b.size}, e.v.offsets[b.space])) }
 			append(&x.bds, Fx_Backdrop_Acc{g = i32(g), region = r, anchor = x.anchor[g], h = salt, ok = true})
 		}
-		if .Blend in gr.effects && effects_settings.blend_modes && e.groups[g].seen {
+		if .Blend in gr.effects && the_app.effects_settings.blend_modes && e.groups[g].seen {
 			gp := &e.groups[g]
 			o := group_outset(e, i32(g))
 			r := lay.Rect{gp.bounds.min - {o[0], o[1]}, gp.bounds.max + {o[2], o[3]}}
@@ -385,7 +385,7 @@ fx_cache_begin :: proc(x: ^Fx_Cache, c: ^Comp, e: ^Effects, screen: lay.Rect) {
 			fx_mix_all(x, p, group_sig_at(e, c, i32(g), x.anchor[p]))
 		}
 		// a mask is drawn in its group's layer: in its key and in those of the groups around it
-		if .Mask in l.groups[g].effects && effects_settings.masks {
+		if .Mask in l.groups[g].effects && the_app.effects_settings.masks {
 			for p := i32(g); p != lay.NONE; p = l.groups[p].parent {
 				h, ok := mask_sig_at(e, x, i32(g), x.anchor[p])
 				fx_mix_all(x, p, h)
@@ -462,7 +462,7 @@ fx_cache_under :: proc(e: ^Effects, ch: ^Comp_Chunk, item: i32 = -1, group: i32 
 		switch {
 		case group != lay.NONE:
 			b.h = fx_mix(b.h, group_sig_at(e, c, group, b.anchor))
-			if .Mask in l.groups[group].effects && effects_settings.masks {
+			if .Mask in l.groups[group].effects && the_app.effects_settings.masks {
 				h, ok := mask_sig_at(e, x, group, b.anchor)
 				b.h = fx_mix(b.h, h)
 				if !ok { b.ok = false }
@@ -484,7 +484,7 @@ fx_cache_skipping :: proc(e: ^Effects) -> bool { return e.hide > 0 || (e.fxc != 
 @(private)
 fx_cache_layer :: proc(e: ^Effects, g: i32, fx: ^draw.Layer_Effects) {
 	x := e.fxc
-	if x == nil || int(g) >= len(x.ok) || !x.ok[g] || !fx_settings.enabled { return }
+	if x == nil || int(g) >= len(x.ok) || !x.ok[g] || !the_app.fx_settings.enabled { return }
 	key := x.key[g]
 	under: u64
 	for &b in x.bds {
@@ -510,7 +510,7 @@ fx_cache_layer :: proc(e: ^Effects, g: i32, fx: ^draw.Layer_Effects) {
 @(private)
 fx_cache_plane :: proc(e: ^Effects, g: i32, fx: ^draw.Plane_Fx, seg := 0) {
 	x := e.fxc
-	if x == nil || int(g) >= len(x.ok) || !x.ok[g] || !fx_settings.enabled { return }
+	if x == nil || int(g) >= len(x.ok) || !x.ok[g] || !the_app.fx_settings.enabled { return }
 	fx.cache_id = group_id(x, e.l, g, 0x706c616e65)
 	fx.cache_key = x.key[g]
 	if key, _, known := fx_seg(x, g, seg); known {
@@ -528,7 +528,7 @@ fx_cache_backdrop :: proc(e: ^Effects, g: i32) -> (id, key: u64, anchor: draw.Ve
 	for &b in x.bds {
 		if b.g != g || b.blend { continue }
 		b.done = true
-		if !b.ok || !fx_settings.enabled { return }
+		if !b.ok || !the_app.fx_settings.enabled { return }
 		return group_id(x, e.l, g, 0x6264), b.h, b.anchor
 	}
 	return
@@ -547,7 +547,6 @@ Fx_Settings :: struct {
 	text_shadows: bool,
 }
 
-@(private) fx_settings := Fx_Settings{enabled = true, budget = 128 << 20, whole_px = 4 << 20, idle_ms = 10_000, precision = .Unorm8, text_shadows = true}
 
 FX_CACHE_PREFS := [?]config.Def{
 	{name = "paint.effects.cache.enabled", kind = .Bool, default = {b = true},
@@ -581,7 +580,7 @@ fx_settings_from_prefs :: proc(p: ^config.Prefs) -> Fx_Settings {
 // Applies the settings to the toolkit (the idle time in frames at the current frame rate).
 @(private)
 fx_settings_apply :: proc(app: ^App) {
-	s := fx_settings
+	s := app.fx_settings
 	hz := pacer_of(app).hz
 	if hz <= 0 { hz = 60 }
 	idle := max(int(s.idle_ms * f64(hz) / 1000), 1)
@@ -592,7 +591,7 @@ fx_settings_apply :: proc(app: ^App) {
 // The cache parameters of a blurred text shadow drawn through a layer (render.odin, paint_text): its text, font,
 // color and offset relative to the item.
 fx_cache_text_shadow :: proc(it: ^lay.Display_Item, shadow: int, fid: font.Font_Id, size: f32, col: draw.Color, pos: draw.Vec2, r: draw.Rect, opts: font.Shape_Options) -> (id, key: u64, anchor: draw.Vec2) {
-	if !fx_settings.enabled || !fx_settings.text_shadows { return }
+	if !the_app.fx_settings.enabled || !the_app.fx_settings.text_shadows { return }
 	id = fx_mix(fx_mix(fx_mix(0x7473, u64(it.node)), u64(shadow)), u64(transmute(u32)it.rect.min.x) | u64(transmute(u32)it.rect.min.y) << 32)
 	key = fx_mix(fx_mix(0x74657874, u64(len(it.text))), fx_bytes(u64(fid), raw_data(it.text), len(it.text)))
 	key = fx_f32(key, size)

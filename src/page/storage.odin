@@ -53,9 +53,6 @@ Storage_Manager :: struct {
 	idb_mu:      sync.Mutex,                  // guards the making of idb (a worker's thread may be the first to need it)
 }
 
-// Storage events delivered to pages (diagnostics, tests).
-storage_events_delivered: u64
-
 // `dir` is the profile directory ("" = memory only). `blocking` may be nil (writes then happen on the loop thread).
 storage_manager_init :: proc(m: ^Storage_Manager, loop: ^host.Loop, blocking: ^host.Blocking_Pool, dir: string) {
 	m.loop, m.blocking = loop, blocking
@@ -499,7 +496,7 @@ storage_broadcast :: proc(src: ^Page, a: ^Storage_Area, key, old_value, new_valu
 			t := (^Storage_Event_Task)(data)
 			defer { delete(t.key); delete(t.old_value); delete(t.new_value); delete(t.url); free(t) }
 			if pg == nil { return }
-			storage_events_delivered += 1
+			the_pages.storage_events_delivered += 1
 			push_event_detail(pg, Event_Detail{type = "storage", key = t.key, old_value = t.old_value, new_value = t.new_value,
 				url = t.url, area = u64(t.kind), flags = t.flags})
 			fire_window_event(pg, {type = "storage", data = t.key, text = t.new_value})

@@ -508,7 +508,7 @@ LEFT_MIN :: 4
 
 fullscreen_prepare :: proc() {
 	rec = {}
-	page.fullscreen_embedder = {set = proc(top: ^page.Page, on: bool, nav: page.Api_FullscreenNavigation) -> bool {
+	page.the_pages.fullscreen_embedder = {set = proc(top: ^page.Page, on: bool, nav: page.Api_FullscreenNavigation) -> bool {
 		if on {
 			if rec.refuse { return false }
 			if rec.asked == 0 { rec.nav = nav }
@@ -585,7 +585,7 @@ fullscreen_checks :: proc(pr: ^Probe) {
 	check(pr, !page.fullscreen_active(p) && !rec.is_on, "a refusal leaves nothing behind")
 
 	// a window that takes time (the shell): the events and the promise wait for fullscreen_settled
-	page.fullscreen_embedder.deferred = true
+	page.the_pages.fullscreen_embedder.deferred = true
 	click(p)
 	run(pr, `document.addEventListener("fullscreenchange", () => wrenTest.note("CHG " + !!document.fullscreenElement));
 		document.getElementById("b").requestFullscreen().then(() => wrenTest.note("PROMISE"))`)
@@ -599,7 +599,7 @@ fullscreen_checks :: proc(pr: ^Probe) {
 	check(pr, page.fullscreen_waiting(p) && !said(pr, "PROMISE2"), "leaving waits too")
 	page.fullscreen_settled(p)
 	check(pr, wait_note(pr, "PROMISE2") && said(pr, "CHG false"), "... and ends with the event and the promise")
-	page.fullscreen_embedder.deferred = false
+	page.the_pages.fullscreen_embedder.deferred = false
 
 	// the window's "resize": once per frame whose viewport differs from the last one
 	from := len(pr.section.notes)
@@ -697,7 +697,7 @@ jsdom_events :: proc(t: ^testing.T) { page_test(t, "events.html", checks = 33, a
 jsdom_fullscreen :: proc(t: ^testing.T) {
 	page_test(t, "fullscreen.html", checks = 83, prepare = fullscreen_prepare, after = proc(pr: ^Probe, _: ^Layout_Host) { fullscreen_checks(pr) }, closed = proc(pr: ^Probe) {
 		check(pr, !rec.is_on, "closing a document in full screen gives the window back")
-		page.fullscreen_embedder = {}
+		page.the_pages.fullscreen_embedder = {}
 	})
 }
 

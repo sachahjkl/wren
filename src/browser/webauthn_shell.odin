@@ -10,7 +10,7 @@ import "toolkit:ui"
 import "wb:page"
 
 webauthn_shell_init :: proc(app: ^App) {
-	page.webauthn_embedder = {
+	app.pages.webauthn_embedder = {
 		window = proc(p: ^page.Page) -> (hwnd: rawptr, focused: bool) {
 			app := the_app
 			if app == nil || active_window(app).win == nil { return nil, true }
@@ -28,7 +28,7 @@ webauthn_shell_init :: proc(app: ^App) {
 }
 
 webauthn_shell_destroy :: proc(app: ^App) {
-	page.webauthn_embedder = {}
+	app.pages.webauthn_embedder = {}
 	page.webauthn_shutdown(app.page_settings.authn.cancel_grace_ms)   // cancels what still waits and joins its threads, before the loop goes
 }
 

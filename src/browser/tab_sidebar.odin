@@ -268,7 +268,7 @@ titlebar_wants :: proc(app: ^App, chips_w: f32) -> (want: [Titlebar_Part]f32, dr
 		.Field = app.favs.cfg.side_address_min_em * em,
 		.Chips = chips_w,
 		.Gap_After = em * 0.4,
-		.Shield = (bl.started ? em * 2.3 + em * 0.2 : 0) + (downloads_button_visible(app) ? em * 2.3 + em * 0.2 : 0),   // (the downloads button and blocker_button, and the gap before each)
+		.Shield = (app.bl.started ? em * 2.3 + em * 0.2 : 0) + (downloads_button_visible(app) ? em * 2.3 + em * 0.2 : 0),   // (the downloads button and blocker_button, and the gap before each)
 		.Menu = em * 2.3,
 		.Drag = max(app.wchrome.cfg.min_drag_em * em, em * 0.5),
 		.Buttons = 3 * math.round(ui.CAPTION_BUTTON_WIDTH * dpi),
@@ -309,7 +309,7 @@ sidebar_titlebar :: proc(app: ^App, t: ^Tab) {
 		case .Chips: address_chips(app, t)
 		case .Shield:
 			if downloads_button_visible(app) { downloads_button(app, t); ui.spacer(ui.px(ui.font_size() * 0.2)) }
-			if bl.started {
+			if app.bl.started {
 				blocker_button(app, t)
 				ui.spacer(ui.px(ui.font_size() * 0.2))
 			}
@@ -351,7 +351,7 @@ tab_sidebar :: proc(app: ^App, pos: Tabs_Position) -> (closed: bool) {
 	cc: ^Classic_Colors
 	if classic_on(app) {
 		cc = classic_colors_frame(app)
-		cur_gap.valid = false
+		app.cur_gap.valid = false
 	}
 	ui.next({width = ui.px(extent), height = ui.fill(), axis = .Y})
 	bar := ui.build_box({}, "###sidebar")

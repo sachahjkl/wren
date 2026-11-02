@@ -35,11 +35,10 @@ Downloads_View :: struct {
 	popup_open:   bool,    // the button's drop-down was open last frame
 }
 
-dview: Downloads_View
 
 downloads_ui_destroy :: proc() {
-	ui.field_destroy(&dview.search)
-	dview = {}
+	ui.field_destroy(&the_app.dview.search)
+	the_app.dview = {}
 }
 
 show_downloads :: proc(app: ^App, t: ^Tab, address: string) {
@@ -53,7 +52,7 @@ show_downloads :: proc(app: ^App, t: ^Tab, address: string) {
 	delete(t.title); t.title = strings.clone(i18n.tr("Downloads"))
 	set_status(t, DOWNLOADS_URL)
 	address_set(app, t, address)
-	dview.focus_search = true
+	app.dview.focus_search = true
 	downloads_mark_seen(app)
 }
 
@@ -412,7 +411,7 @@ dl_do :: proc(app: ^App, d: ^Download, act: Dl_Row_Act, at: draw.Rect, menu_key:
 	case .Retry:   download_retry(app, d)
 	case .Remove:  download_remove(app, d)
 	case .Menu:
-		dview.menu_id = d.id
+		app.dview.menu_id = d.id
 		if at.min == at.max { ui.ctx_menu_open(menu_key, at.min) } else { ui.ctx_menu_open_rect(menu_key, at, anchor) }
 	}
 }
@@ -425,7 +424,7 @@ dl_menu :: proc(app: ^App, menu_key: ui.Key) {
 
 @(private = "file")
 dl_menu_items :: proc(app: ^App) {
-	d := dl_by_id(app, dview.menu_id)
+	d := dl_by_id(app, app.dview.menu_id)
 	if d == nil || !download_finished(d) { ui.ctx_menu_close(); return }
 	present := download_file_present(d)
 	if ui.menu_item("Open", enabled = present).clicked { ui.ctx_menu_close(); download_open_file(d); return }
@@ -455,8 +454,8 @@ downloads_page :: proc(app: ^App, t: ^Tab) {
 				ui.label("Downloads###dl_title")
 				ui.spacer(ui.px(em * 1.0))
 				ui.next({width = ui.px(em * 22), height = ui.px(ui.dense(em * 2))})
-				res := ui.line_edit("###dl_search", &dview.search, "Search downloads")
-				if dview.focus_search && res.box != nil { dview.focus_search = false; ui.set_focus(res.box.key); ui.field_select_all(&dview.search) }
+				res := ui.line_edit("###dl_search", &app.dview.search, "Search downloads")
+				if app.dview.focus_search && res.box != nil { app.dview.focus_search = false; ui.set_focus(res.box.key); ui.field_select_all(&app.dview.search) }
 				ui.spacer(ui.px(em * 0.6))
 				ui.next({width = ui.px(em * 8.5), height = ui.px(ui.dense(em * 2))})
 				cb := ui.button("Clear the list###dl_clear")
@@ -519,7 +518,7 @@ platform_open_dir :: proc(dir: string) {
 @(private = "file")
 downloads_list :: proc(app: ^App, menu_key: ui.Key) {
 	em := ui.font_size()
-	query := strings.to_lower(strings.trim_space(ui.field_string(&dview.search)), context.temp_allocator)
+	query := strings.to_lower(strings.trim_space(ui.field_string(&app.dview.search)), context.temp_allocator)
 	matches :: proc(x: ^Download, q: string) -> bool {
 		if q == "" { return true }
 		return strings.contains(strings.to_lower(x.name, context.temp_allocator), q) || strings.contains(strings.to_lower(x.url, context.temp_allocator), q)
@@ -588,7 +587,7 @@ downloads_button_visible :: proc(app: ^App) -> bool {
 	case "never":  return false
 	case "always": return true
 	}
-	return downloads_session_started(app) || dview.popup_open
+	return downloads_session_started(app) || app.dview.popup_open
 }
 
 Dl_Button :: struct {
@@ -703,7 +702,7 @@ downloads_button :: proc(app: ^App, t: ^Tab) {
 		if ui.ctx_menu_is_open(key) { ui.ctx_menu_close() } else { ui.ctx_menu_open_rect(key, b.rect, b.key) }
 	}
 	open := ui.ctx_menu_is_open(key)
-	dview.popup_open = open
+	app.dview.popup_open = open
 	if active > 0 { request_frames(app, 1) }
 	if !open {
 		text := "Downloads (Ctrl+J)"

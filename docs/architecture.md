@@ -48,17 +48,38 @@ contradicts):
   note names.
 - **thread**: `@(thread_local)`, and only then (the lint holds the class to the attribute both ways). In packages that
   have no App (`page`, `style`, `layout`), what is one App's is its thread's: the live pages, the navigables, the frames
-  waiting to close (`page/web.odin`, `page/frames.odin`). In `browser`, what the thread that paints keeps (the
-  compositor's layers, the planes, the canvas text's glyphs) and `the_app`, the App of this thread.
-- **app**, **window**, **page**: one App's, one window's, one tab's or page's state still in a global, to move into
-  `App`, `Browser_Window.own` or `Tab` / `Page`. Two Apps would share it: each is a debt the list counts.
+  waiting to close (`page/web.odin`, `page/frames.odin`), `page.the_pages`. In `browser`, what the thread that paints
+  keeps (the compositor's layers, the planes, the canvas text's glyphs) and `the_app`, the App of this thread.
 - **test**: a test's own.
+
+There is no class for one App's state (nor one window's, tab's or page's): it is a field of `App`, `Browser_Window.own`,
+`Tab` or `Page`, and the lint fails on a global that is none of the above.
 
 What belongs to the App is a field of `App` (`src/browser/main.odin`), reached through the `^App` the code is given.
 A callback the App sets up carries it: a timer's or a watch's data, a job's struct (`Setup_Job.app`), a window
 subclass's reference data (`app_commands_windows.odin`). `the_app` is what is left for code that has no `^App` yet,
-mostly hooks of other packages (`page.Embedder_Hooks`, the canvas' text engine) and the painting code: a thread of its
-own sees nil.
+mostly hooks of other packages (`page.Embedder_Hooks`, the canvas' text engine), the painting code and the developer tools'
+drawing: a thread of its own sees nil.
+
+What the App's pages share is `page.Pages` (`src/page/pages.odin`, `App.pages`): the embedder's hooks, the image cache,
+the script compile service, the style threads, the profile's stores (Cache API, file system, service workers, Web Locks,
+storage buckets, storage access decisions), the message ports, the shared workers, the statistics. The page package reaches it
+through `page.the_pages`, bound by `page.bind` to the threads that run the App's pages: its loop's (`app_start`), its page
+thread's (`page_thread.odin`), a worker's (`worker_main`, its creator's), a compile thread's. A program that embeds pages
+without the shell (`src/tools/headless`, the web tests, `apiconformance`) binds its own; a page test binds one with
+`test_pages(t)`.
+
+What the Apps of the process share is set up by the first App to start and let go of by the last to end
+(`src/browser/process_share.odin`: one atomic word, the Apps that use it or a busy mark while the first sets it up or the
+last lets it go; whoever starts or ends meanwhile waits on it): the Wasm engine and its host functions, the bytecode cache,
+the image decoders, the layout threads, the decoded web fonts, the crash session (`page.process_shutdown`). The first App's
+preferences and profile configure them.
+
+`src/tools/e2e/two_apps.odin` runs two Apps, each on a thread of its own, at once: each sees only its own tabs, pages,
+storage, channel messages and frame, and nothing of either is left once both have stopped. The toolkit keeps the
+interface state it draws with in one variable of the process (`ext/gui_toolkit/ui/state.odin`, `g`): until it is the
+thread's (`@(private, thread_local) g: ^State`), the two Apps' own threads take turns between the test's meetings (what
+they run besides runs at once); with that one change they run at once too.
 
 ## Wasm engine
 

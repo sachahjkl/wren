@@ -26,6 +26,7 @@ Judge_Row :: struct {
 
 @(test)
 judge_table :: proc(t: ^testing.T) {
+	test_app(t)
 	rows := []Judge_Row{
 		// the destructive addresses: only a person, or the page itself, makes them act
 		{.Page,   WEB,       SITES_CLEAR,                       "about:sites", false, false},
@@ -96,6 +97,7 @@ judge_table :: proc(t: ^testing.T) {
 
 @(test)
 judge_file_policy :: proc(t: ^testing.T) {
+	test_app(t)
 	env := env_of(FILE_DOC)
 	defer fetch.environment_destroy(&env)
 	testing.expect(t, nav_judge(.Page, &env, .Own_Tree, "file:///C:/site/o.html").refuse == "")
@@ -106,6 +108,7 @@ judge_file_policy :: proc(t: ^testing.T) {
 
 @(test)
 home_search_box :: proc(t: ^testing.T) {
+	test_app(t)
 	words, ok := home_search_words("about:home?q=wren+browser%21+caf%C3%A9&x=1#top")
 	testing.expect(t, ok)
 	testing.expect_value(t, words, "wren browser! café")
@@ -125,6 +128,7 @@ home_search_box :: proc(t: ^testing.T) {
 
 @(test)
 only_a_person_trusts :: proc(t: ^testing.T) {
+	test_app(t)
 	web := env_of(WEB)
 	defer fetch.environment_destroy(&web)
 	demos := env_of("about:demos")

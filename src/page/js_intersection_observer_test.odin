@@ -4,6 +4,7 @@ import "core:testing"
 
 @(test)
 test_io_margin_forms :: proc(t: ^testing.T) {
+	test_pages(t)
 	sides, text, ok := parse_margin("10px 0")
 	testing.expect(t, ok)
 	testing.expect_value(t, text, "10px 0px 10px 0px")
@@ -23,6 +24,7 @@ test_io_margin_forms :: proc(t: ^testing.T) {
 
 @(test)
 test_io_margin_refused :: proc(t: ^testing.T) {
+	test_pages(t)
 	for bad in ([]string{"", "  ", "1em", "10", "1px 2px 3px 4px 5px", "px", "+3px", "nan", "inf", "1e", "10 px", "calc(1px)"}) {
 		_, text, ok := parse_margin(bad)
 		testing.expectf(t, !ok, "%q must be refused", bad)
@@ -32,6 +34,7 @@ test_io_margin_refused :: proc(t: ^testing.T) {
 
 @(test)
 test_io_geometry :: proc(t: ^testing.T) {
+	test_pages(t)
 	r := io_grow(Io_Rect{100, 50, 300, 250}, [4]Io_Length{{10, false}, {50, true}, {-10, false}, {0, false}})   // top right bottom left
 	testing.expect_value(t, r, Io_Rect{100, 40, 400, 240})
 	a := io_intersect(Io_Rect{0, 0, 10, 10}, Io_Rect{10, 5, 20, 20})

@@ -68,7 +68,6 @@ FIRST_PAINT_PREFS := [?]config.Def{
 
 register_first_paint_prefs :: proc(p: ^config.Prefs) { config.register(p, FIRST_PAINT_PREFS[:]) }
 
-scheme_ui: First_Paint_Settings
 
 @(private = "file")
 pref_color :: proc(p: ^config.Prefs, name: string, fallback: css.Color) -> css.Color {
@@ -89,9 +88,9 @@ first_paint_settings_from :: proc(p: ^config.Prefs) -> First_Paint_Settings {
 }
 
 first_paint_init :: proc(app: ^App) {
-	scheme_ui = first_paint_settings_from(&app.prefs)
+	app.scheme_ui = first_paint_settings_from(&app.prefs)
 	app.watches[.First_Paint] = config.watch(&app.prefs, "browser.", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		scheme_ui = first_paint_settings_from(p)
+		the_app.scheme_ui = first_paint_settings_from(p)
 		request_frames((^App)(user), 2)
 	}, app)
 }
@@ -105,9 +104,9 @@ expected_canvas :: proc(app: ^App) -> css.Color {
 // Whether the frame of `t`'s page may be held through a navigation to `target`.
 @(private = "file")
 holdable :: proc(t: ^Tab, target: string) -> bool {
-	if !scheme_ui.enabled || t.kind != .Web || t.page == nil || !t.page.render.painted { return false }
+	if !the_app.scheme_ui.enabled || t.kind != .Web || t.page == nil || !t.page.render.painted { return false }
 	if !t.layout.valid || t.layout.mutations != t.page.doc.mutations { return false }
-	if !scheme_ui.cross_origin {
+	if !the_app.scheme_ui.cross_origin {
 		u, ok := url.parse_absolute(target, context.temp_allocator)
 		if !ok || !url.same_origin(url.origin_of(u, context.temp_allocator), t.page.env.origin) { return false }
 	}
@@ -155,7 +154,7 @@ hold_release :: proc(app: ^App, t: ^Tab) {
 		base.scope_close(h.nav)   // the old page, its modules and every request it still had
 		layout_reset(&h.layout)
 	}
-	page_fonts_drop(&page_render.fonts, h)   // its web faces, if the new page took over the tab's (fonts.odin)
+	page_fonts_drop(&app.page_render.fonts, h)   // its web faces, if the new page took over the tab's (fonts.odin)
 	h.active, h.nav, h.page = false, nil, nil
 }
 
@@ -163,14 +162,14 @@ hold_release :: proc(app: ^App, t: ^Tab) {
 hold_destroy :: proc(t: ^Tab) {
 	t.hold.active, t.hold.nav, t.hold.page = false, nil, nil
 	layout_destroy(&t.hold.layout)
-	page_fonts_drop(&page_render.fonts, &t.hold)
+	page_fonts_drop(&the_app.page_render.fonts, &t.hold)
 }
 
 // Paints what the tab shows while its page cannot paint: the held frame if it is still exact and not timed out, else
 // `fallback` as the canvas. Returns true when the held frame was painted.
 hold_paint :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, r: draw.Rect, fallback: css.Color) -> bool {
 	h := &t.hold
-	if h.active && h.committed && shell_elapsed_ms(h.commit) >= scheme_ui.timeout_ms {
+	if h.active && h.committed && shell_elapsed_ms(h.commit) >= app.scheme_ui.timeout_ms {
 		hold_release(app, t)
 	}
 	if !h.active || h.page == nil || !h.layout.valid || h.layout.mutations != h.page.doc.mutations {
@@ -195,7 +194,7 @@ hold_commit :: proc(app: ^App, t: ^Tab) {
 	if h.committed { return }
 	h.committed = true
 	h.commit = shell_now_ns()
-	if h.active && !scheme_ui.cross_origin && t.page != nil && h.page != nil && !url.same_origin(t.page.env.origin, h.page.env.origin) { hold_release(app, t) }
+	if h.active && !app.scheme_ui.cross_origin && t.page != nil && h.page != nil && !url.same_origin(t.page.env.origin, h.page.env.origin) { hold_release(app, t) }
 }
 
 // Something of the layout is content (CSS Paint Timing's "contentful": text, images, form controls, list markers).
@@ -214,7 +213,7 @@ layout_contentful :: proc(l: ^Layout) -> bool {
 hold_wait_ms :: proc(t: ^Tab) -> f64 {
 	h := &t.hold
 	if !h.active || !h.committed { return -1 }
-	return max(scheme_ui.timeout_ms - shell_elapsed_ms(h.commit), 0)
+	return max(the_app.scheme_ui.timeout_ms - shell_elapsed_ms(h.commit), 0)
 }
 
 // The first paint of the tab's new page happened now: the profile build records how long it took (WREN_PROF set:

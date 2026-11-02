@@ -222,7 +222,7 @@ the_globals_are_the_mutable_declarations_of_the_top_level :: proc(t: ^testing.T)
 		if g.test { append(&test_names, g.name) } else { append(&names, g.name) }
 		if g.thread_local { append(&thread_names, g.name) }
 	}
-	want := []string{"global", "many", "more", "marked", "Text", "after_text", "per_thread", "also_per_thread"}
+	want := []string{"global", "many", "more", "marked", "in_when", "Text", "after_text", "per_thread", "also_per_thread"}   // (a `when` block's too)
 	testing.expect_value(t, len(names), len(want))
 	for w in want { testing.expectf(t, slice.contains(names[:], w), "a global: %s", w) }
 	testing.expect_value(t, len(test_names), 1)

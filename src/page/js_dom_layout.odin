@@ -65,9 +65,6 @@ styles_clean :: proc(p: ^Page) -> bool {
 	return p.styled.mutations == p.doc.mutations && style.state_equal(effective_state(p), p.styled.state)
 }
 
-// Layouts a script's reading forced (the style pass and layout of the page up to date), and what they took: for the profile report.
-forced_layouts: struct { n: int, ns: i64 }
-
 // The layout as it is now (brought up to date if needed) and the viewport; nil without an embedder.
 js_layout_now :: proc(p: ^Page) -> (^lay.Layout, Viewport) {
 	if p.worker != nil { return nil, {} }
@@ -85,8 +82,8 @@ js_layout_now :: proc(p: ^Page) -> (^lay.Layout, Viewport) {
 	jl.updates += 1
 	t0 := time.tick_now()
 	jl.result = jl.embedder.update(jl.embedder.user, p)
-	forced_layouts.n += 1
-	forced_layouts.ns += i64(time.tick_since(t0))
+	the_pages.forced_layouts.n += 1
+	the_pages.forced_layouts.ns += i64(time.tick_since(t0))
 	jl.mutations = p.doc.mutations
 	jl.serial = p.styled != nil ? p.styled.serial : 0
 	jl.vp = vp

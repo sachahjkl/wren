@@ -170,8 +170,8 @@ styles_refresh :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 		return
 	}
 	pass := p.engine != nil ? p.engine.rebuilds : 0
-	if s.key_h == e.selected && s.key_page == rawptr(p) && s.key_mut == p.doc.mutations && s.key_rev == s.rev && s.key_pass == pass && s.key_fs == dtm.row { return }
-	s.key_h, s.key_page, s.key_mut, s.key_rev, s.key_pass, s.key_fs = e.selected, rawptr(p), p.doc.mutations, s.rev, pass, dtm.row
+	if s.key_h == e.selected && s.key_page == rawptr(p) && s.key_mut == p.doc.mutations && s.key_rev == s.rev && s.key_pass == pass && s.key_fs == app.dtm.row { return }
+	s.key_h, s.key_page, s.key_mut, s.key_rev, s.key_pass, s.key_fs = e.selected, rawptr(p), p.doc.mutations, s.rev, pass, app.dtm.row
 	elements_crumbs_for(p, e)
 	n := dom.get(p.doc, e.selected)
 	if n == nil || n.kind != .Element {
@@ -339,67 +339,67 @@ sty_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	left := r.min.x + dt_px(10)
 	switch d.row.kind {
 	case .Section:
-		draw.rect(dc, r, dtc.bar)
-		draw.rect(dc, {{r.min.x, r.max.y - dtm.line}, {r.max.x, r.max.y}}, dtc.border_soft)
-		dt_text(dc, dtm.ui_font, dtm.fs, left, cy, dtc.weak, d.block.selector)
+		draw.rect(dc, r, the_app.dtc.bar)
+		draw.rect(dc, {{r.min.x, r.max.y - the_app.dtm.line}, {r.max.x, r.max.y}}, the_app.dtc.border_soft)
+		dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, left, cy, the_app.dtc.weak, d.block.selector)
 	case .Media:
-		dt_text(dc, dtm.mono, dtm.mono_fs * 0.95, left, cy, dtc.weak, d.block.media)
+		dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs * 0.95, left, cy, the_app.dtc.weak, d.block.media)
 	case .Head:
-		if d.hot { draw.rect(dc, r, dtc.hover) }
-		if d.first_of_block { draw.rect(dc, {{r.min.x, r.min.y}, {r.max.x, r.min.y + dtm.line}}, dtc.border_soft) }
-		src_w := dt_w(dtm.ui_font, dtm.fs * 0.92, d.block.source)
-		sel_col := d.block.inherited ? dtc.weak : dtc.text
+		if d.hot { draw.rect(dc, r, the_app.dtc.hover) }
+		if d.first_of_block { draw.rect(dc, {{r.min.x, r.min.y}, {r.max.x, r.min.y + the_app.dtm.line}}, the_app.dtc.border_soft) }
+		src_w := dt_w(the_app.dtm.ui_font, the_app.dtm.fs * 0.92, d.block.source)
+		sel_col := d.block.inherited ? the_app.dtc.weak : the_app.dtc.text
 		runs := style_selector_runs(d.block.selector, d.block.kind == .Inline)
-		end := dt_runs(dc, dtm.mono, dtm.mono_fs, left, cy, runs, r.max.x - src_w - dt_px(24))
-		dt_text(dc, dtm.mono, dtm.mono_fs, end + dt_px(4), cy, sel_col, "{")
-		dt_text_r(dc, dtm.ui_font, dtm.fs * 0.92, r.max.x - dt_px(8), cy, with_alpha(dtc.accent, 0.85), d.block.source)
+		end := dt_runs(dc, the_app.dtm.mono, the_app.dtm.mono_fs, left, cy, runs, r.max.x - src_w - dt_px(24))
+		dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, end + dt_px(4), cy, sel_col, "{")
+		dt_text_r(dc, the_app.dtm.ui_font, the_app.dtm.fs * 0.92, r.max.x - dt_px(8), cy, with_alpha(the_app.dtc.accent, 0.85), d.block.source)
 	case .Decl:
-		if d.hot && !d.editing { draw.rect(dc, r, dtc.hover) }
+		if d.hot && !d.editing { draw.rect(dc, r, the_app.dtc.hover) }
 		x := left + dt_px(8)
 		// the switch
 		if d.decl.enabled || d.hot || d.editing {
 			cs := dt_px(11)
 			box := draw.Rect{{x, cy - cs * 0.5}, {x + cs, cy + cs * 0.5}}
-			draw.rect(dc, box, d.decl.enabled ? dtc.accent : dtc.input, dt_px(2))
-			draw.rect(dc, box, d.decl.enabled ? dtc.accent : dtc.faint, dt_px(2), dtm.line)
-			if d.decl.enabled { dt_icon(dc, .Check, draw.rect_center(box), cs * 0.9, dtc.accent_text, dtm.sc) }
+			draw.rect(dc, box, d.decl.enabled ? the_app.dtc.accent : the_app.dtc.input, dt_px(2))
+			draw.rect(dc, box, d.decl.enabled ? the_app.dtc.accent : the_app.dtc.faint, dt_px(2), the_app.dtm.line)
+			if d.decl.enabled { dt_icon(dc, .Check, draw.rect_center(box), cs * 0.9, the_app.dtc.accent_text, the_app.dtm.sc) }
 		}
 		x += dt_px(16)
 		if d.editing { return }
 		struck := d.decl.overridden || !d.decl.enabled
-		namecol := d.decl.enabled ? (d.block.inherited ? dtc.weak : syn_color(.Prop)) : dtc.faint
-		valcol := d.decl.enabled ? dtc.text : dtc.faint
-		nw := dt_text(dc, dtm.mono, dtm.mono_fs, x, cy, namecol, d.decl.name)
-		cw := dt_text(dc, dtm.mono, dtm.mono_fs, x + nw, cy, dtc.weak, ": ")
+		namecol := d.decl.enabled ? (d.block.inherited ? the_app.dtc.weak : syn_color(.Prop)) : the_app.dtc.faint
+		valcol := d.decl.enabled ? the_app.dtc.text : the_app.dtc.faint
+		nw := dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, x, cy, namecol, d.decl.name)
+		cw := dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, x + nw, cy, the_app.dtc.weak, ": ")
 		vx := x + nw + cw
 		if d.has_swatch {
-			sw := dtm.mono_fs * 0.85
+			sw := the_app.dtm.mono_fs * 0.85
 			sr := draw.Rect{{vx, cy - sw * 0.5}, {vx + sw, cy + sw * 0.5}}
 			draw.rect(dc, sr, draw.Color{0.9, 0.9, 0.9, 1}, 2)
 			draw.rect(dc, sr, d.swatch, 2)
-			draw.rect(dc, sr, with_alpha(dtc.text, 0.4), 2, dtm.line)
+			draw.rect(dc, sr, with_alpha(the_app.dtc.text, 0.4), 2, the_app.dtm.line)
 			vx += sw + dt_px(5)
 		}
 		val := d.decl.value
 		if d.decl.important { val = fmt.tprintf("%s !important", val) }
 		vruns := css_value_runs(val, valcol, d.decl.enabled)
-		ve := dt_runs(dc, dtm.mono, dtm.mono_fs, vx, cy, vruns, r.max.x - dt_px(14))
-		dt_text(dc, dtm.mono, dtm.mono_fs, ve, cy, dtc.weak, ";")
+		ve := dt_runs(dc, the_app.dtm.mono, the_app.dtm.mono_fs, vx, cy, vruns, r.max.x - dt_px(14))
+		dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, ve, cy, the_app.dtc.weak, ";")
 		if struck {
 			y := math.round(cy)
-			draw.rect(dc, {{x, y}, {ve, y + dtm.line}}, with_alpha(dtc.text, 0.55))
+			draw.rect(dc, {{x, y}, {ve, y + the_app.dtm.line}}, with_alpha(the_app.dtc.text, 0.55))
 		}
 	case .Close:
-		if d.hot { draw.rect(dc, r, with_alpha(dtc.hover, 0.5)) }
-		dt_text(dc, dtm.mono, dtm.mono_fs, left, cy, dtc.text, "}")
-		if d.hot && !d.block.inherited { dt_icon(dc, .Plus, {r.max.x - dt_px(14), cy}, dtm.icon * 0.8, dtc.weak, dtm.sc) }
+		if d.hot { draw.rect(dc, r, with_alpha(the_app.dtc.hover, 0.5)) }
+		dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, left, cy, the_app.dtc.text, "}")
+		if d.hot && !d.block.inherited { dt_icon(dc, .Plus, {r.max.x - dt_px(14), cy}, the_app.dtm.icon * 0.8, the_app.dtc.weak, the_app.dtm.sc) }
 	}
 }
 
 @(private = "file")
 style_selector_runs :: proc(sel: string, inline: bool) -> []Dt_Run {
 	out := make([dynamic]Dt_Run, 0, 12, context.temp_allocator)
-	if inline { append(&out, Dt_Run{sel, dtc.text}); return out[:] }
+	if inline { append(&out, Dt_Run{sel, the_app.dtc.text}); return out[:] }
 	// classes, ids, tags colored; combinators and pseudo-classes plain
 	i := 0
 	for i < len(sel) {
@@ -416,7 +416,7 @@ style_selector_runs :: proc(sel: string, inline: bool) -> []Dt_Run {
 			for j < len(sel) && (sel[j] == '-' || (sel[j] >= 'a' && sel[j] <= 'z') || (sel[j] >= 'A' && sel[j] <= 'Z') || (sel[j] >= '0' && sel[j] <= '9')) { j += 1 }
 			append(&out, Dt_Run{sel[i:j], syn_color(.Tag)})
 		case:
-			append(&out, Dt_Run{sel[i:j], dtc.weak})
+			append(&out, Dt_Run{sel[i:j], the_app.dtc.weak})
 		}
 		i = j
 	}
@@ -449,7 +449,7 @@ css_value_runs :: proc(v: string, base_col: draw.Color, enabled: bool) -> []Dt_R
 			if j < len(v) && v[j] == '(' { col = syn_color(.Func) }
 			append(&out, Dt_Run{v[i:j], col})
 		case:
-			append(&out, Dt_Run{v[i:j], dtc.weak})
+			append(&out, Dt_Run{v[i:j], the_app.dtc.weak})
 		}
 		i = j
 	}
@@ -535,7 +535,7 @@ styles_view :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 		return
 	}
 	menu_key := ui.key_from_string(0, "###dt_sty_menu")
-	if lst, ok := dt_list("###dt_sty_list", &s.list, len(rows), dtm.row, nil, ui.fill(), ui.fill()); ok {
+	if lst, ok := dt_list("###dt_sty_list", &s.list, len(rows), app.dtm.row, nil, ui.fill(), ui.fill()); ok {
 		for k in lst.first ..< lst.last {
 			r := rows[k]
 			blk := &s.blocks[r.b]
@@ -549,7 +549,7 @@ styles_view :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 				if c, sok := swatch_of(blk.decls[r.d].value); sok { d.swatch, d.has_swatch = c, true }
 			}
 			if editing_here { decl_editor(app, t, e, s, r.b, r.d); continue }
-			ui.next({width = ui.fill(), height = ui.px(dtm.row), cursor = .Arrow})
+			ui.next({width = ui.fill(), height = ui.px(app.dtm.row), cursor = .Arrow})
 			rb := ui.build_box({.Clickable}, fmt.tprintf("###sr%d_%d_%d", r.b, r.d, int(r.kind)))
 			sig := ui.signal(rb)
 			d.hot = sig.hovering
@@ -588,7 +588,7 @@ styles_row_input :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, s: ^Dev_Styles, r
 		if sig.clicked && !blk.inherited {
 			x := sig.mouse.x - dt_px(18)
 			if x < dt_px(16) { d.enabled = !d.enabled; apply_block(app, t, s, r.b); mark_overrides(s) } else {
-				nw := dt_w(dtm.mono, dtm.mono_fs, d.name) + dt_px(16)
+				nw := dt_w(app.dtm.mono, app.dtm.mono_fs, d.name) + dt_px(16)
 				begin_decl_edit(s, r.b, r.d, x - dt_px(16) < nw ? 0 : 1)
 			}
 		}
@@ -615,15 +615,15 @@ begin_decl_edit :: proc(s: ^Dev_Styles, b, d, part: int) {
 decl_editor :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, s: ^Dev_Styles, bi, di: int) {
 	blk := &s.blocks[bi]
 	d := &blk.decls[di]
-	ui.next({width = ui.fill(), height = ui.px(dtm.row), axis = .X, cross = .Center})
+	ui.next({width = ui.fill(), height = ui.px(app.dtm.row), axis = .X, cross = .Center})
 	if ui.row(.Center, {}, "###dt_sty_edit") {
 		ui.spacer(ui.px(dt_px(10 + 8 + 16)))
-		nw := max(dt_w(dtm.mono, dtm.mono_fs, ui.field_string(&s.field_n)) + dt_px(14), dt_px(46))
-		ui.next({width = ui.px(nw), height = ui.pct(1), radius = dtm.radius, font = dtm.mono, font_size = dtm.mono_fs, text_pad = dt_px(3)})
+		nw := max(dt_w(app.dtm.mono, app.dtm.mono_fs, ui.field_string(&s.field_n)) + dt_px(14), dt_px(46))
+		ui.next({width = ui.px(nw), height = ui.pct(1), radius = app.dtm.radius, font = app.dtm.mono, font_size = app.dtm.mono_fs, text_pad = dt_px(3)})
 		rn := ui.line_edit("###dt_sty_fn", &s.field_n, "property")
 		ui.next({width = ui.px(dt_px(10)), height = ui.pct(1)})
-		ui.custom("###dt_sty_colon", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) { dt_text(dc, dtm.mono, dtm.mono_fs, b.rect.min.x + dt_px(2), (b.rect.min.y + b.rect.max.y) * 0.5, dtc.weak, ":") }, nil)
-		ui.next({width = ui.fill(), height = ui.pct(1), radius = dtm.radius, font = dtm.mono, font_size = dtm.mono_fs, text_pad = dt_px(3)})
+		ui.custom("###dt_sty_colon", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) { dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, b.rect.min.x + dt_px(2), (b.rect.min.y + b.rect.max.y) * 0.5, the_app.dtc.weak, ":") }, nil)
+		ui.next({width = ui.fill(), height = ui.pct(1), radius = app.dtm.radius, font = app.dtm.mono, font_size = app.dtm.mono_fs, text_pad = dt_px(3)})
 		rv := ui.line_edit("###dt_sty_fv", &s.field_v, "value")
 		if s.focus_set {
 			if s.edit_part == 0 { if rn.box != nil { ui.set_focus(rn.box.key) } } else if rv.box != nil { ui.set_focus(rv.box.key) }
@@ -684,7 +684,7 @@ styles_panel :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 		pref := config_string(app, "browser.devtools.elements.side_tab")
 		for p, i in SIDE_PREFS { if p == pref { s.tab = i } }
 	}
-	if dt_bar("###dt_sty_tabs", dtm.bar - dt_px(2)) {
+	if dt_bar("###dt_sty_tabs", app.dtm.bar - dt_px(2)) {
 		dt_gap(2)
 		room := dev_width()
 		narrow := room < dt_px(900)
@@ -699,7 +699,7 @@ styles_panel :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 	}
 	switch s.tab {
 	case 0:
-		if dt_bar("###dt_sty_bar", dtm.bar - dt_px(4)) {
+		if dt_bar("###dt_sty_bar", app.dtm.bar - dt_px(4)) {
 			dt_gap(3)
 			dt_search("###dt_sty_filter", &s.filter, "Filter styles", 0, false)
 			// :hov, as Chrome's Styles pane has it: force :hover / :active / :focus / :focus-within / :visited on the chosen element
@@ -731,7 +731,7 @@ styles_panel :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 
 @(private = "file")
 sub_tab_btn :: proc(id, label: string, on: bool) -> ui.Signal {
-	w := dt_w(dtm.ui_font, dtm.fs, label) + dt_px(16)
+	w := dt_w(the_app.dtm.ui_font, the_app.dtm.fs, label) + dt_px(16)
 	ui.next({width = ui.px(math.round(w)), height = ui.pct(1), cursor = .Arrow})
 	b := ui.build_box({.Clickable, .Focusable}, id)
 	sig := ui.signal(b)
@@ -740,11 +740,11 @@ sub_tab_btn :: proc(id, label: string, on: bool) -> ui.Signal {
 	b.custom, b.custom_user = proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		d := (^Dt_Chip_Draw)(user)
 		r := b.rect
-		if d.hot && !d.on { draw.rect(dc, {{r.min.x, r.min.y + dt_px(3)}, {r.max.x, r.max.y - dt_px(3)}}, dtc.hover, dtm.radius) }
+		if d.hot && !d.on { draw.rect(dc, {{r.min.x, r.min.y + dt_px(3)}, {r.max.x, r.max.y - dt_px(3)}}, the_app.dtc.hover, the_app.dtm.radius) }
 		cy := (r.min.y + r.max.y) * 0.5
-		tw := dt_w(dtm.ui_font, dtm.fs, d.label)
-		dt_text(dc, dtm.ui_font, dtm.fs, (r.min.x + r.max.x) * 0.5 - tw * 0.5, cy, d.on ? dtc.text : (d.hot ? dtc.text : dtc.weak), d.label)
-		if d.on { draw.rect(dc, {{r.min.x + dt_px(3), r.max.y - dt_px(2)}, {r.max.x - dt_px(3), r.max.y}}, dtc.accent) }
+		tw := dt_w(the_app.dtm.ui_font, the_app.dtm.fs, d.label)
+		dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, (r.min.x + r.max.x) * 0.5 - tw * 0.5, cy, d.on ? the_app.dtc.text : (d.hot ? the_app.dtc.text : the_app.dtc.weak), d.label)
+		if d.on { draw.rect(dc, {{r.min.x + dt_px(3), r.max.y - dt_px(2)}, {r.max.x - dt_px(3), r.max.y}}, the_app.dtc.accent) }
 	}, st
 	return sig
 }
@@ -836,7 +836,7 @@ Cmp_Draw :: struct { name, value: string, hot: bool, swatch: draw.Color, has_swa
 @(private = "file")
 computed_view :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 	s := &e.side
-	if dt_bar("###dt_cmp_bar", dtm.bar - dt_px(4)) {
+	if dt_bar("###dt_cmp_bar", app.dtm.bar - dt_px(4)) {
 		dt_gap(3)
 		dt_search("###dt_cmp_filter", &s.filter, "Filter properties", 0, false)
 		all := config.bool_of(&app.prefs, "browser.devtools.elements.computed_all")
@@ -855,13 +855,13 @@ computed_view :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 		dt_empty("###dt_cmp_none", .Computed, e.selected == base.NIL_HANDLE ? "Select an element" : "Nothing to show", "Computed styles of the chosen element appear here.")
 		return
 	}
-	if lst, ok := dt_list("###dt_cmp_list", &s.list, len(rows), dtm.row, nil, ui.fill(), ui.fill()); ok {
+	if lst, ok := dt_list("###dt_cmp_list", &s.list, len(rows), app.dtm.row, nil, ui.fill(), ui.fill()); ok {
 		for k in lst.first ..< lst.last {
 			c := s.computed[rows[k]]
 			d := ui.frame_new(Cmp_Draw)
 			d.name, d.value = c[0], dt_frame_str(c[1])
 			if col, ok2 := swatch_of(c[1]); ok2 { d.swatch, d.has_swatch = col, true }
-			ui.next({width = ui.fill(), height = ui.px(dtm.row), cursor = .Arrow})
+			ui.next({width = ui.fill(), height = ui.px(app.dtm.row), cursor = .Arrow})
 			rb := ui.build_box({.Clickable}, fmt.tprintf("###cp%d", rows[k]))
 			sig := ui.signal(rb)
 			d.hot = sig.hovering
@@ -869,18 +869,18 @@ computed_view :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 				d := (^Cmp_Draw)(user)
 				r := b.rect
 				cy := (r.min.y + r.max.y) * 0.5
-				if d.hot { draw.rect(dc, r, dtc.hover) }
+				if d.hot { draw.rect(dc, r, the_app.dtc.hover) }
 				w := (r.max.x - r.min.x) * 0.42
-				dt_text(dc, dtm.mono, dtm.mono_fs, r.min.x + dt_px(10), cy, syn_color(.Prop), d.name, w - dt_px(12))
+				dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, r.min.x + dt_px(10), cy, syn_color(.Prop), d.name, w - dt_px(12))
 				x := r.min.x + w
 				if d.has_swatch {
-					sw := dtm.mono_fs * 0.85
+					sw := the_app.dtm.mono_fs * 0.85
 					sr := draw.Rect{{x, cy - sw * 0.5}, {x + sw, cy + sw * 0.5}}
 					draw.rect(dc, sr, draw.Color{0.9, 0.9, 0.9, 1}, 2)
 					draw.rect(dc, sr, d.swatch, 2)
 					x += sw + dt_px(5)
 				}
-				dt_text(dc, dtm.mono, dtm.mono_fs, x, cy, dtc.text, d.value, r.max.x - x - dt_px(6))
+				dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, x, cy, the_app.dtc.text, d.value, r.max.x - x - dt_px(6))
 			}, d
 			if sig.right_clicked || sig.double_clicked { clip_set(fmt.tprintf("%s: %s;", c[0], c[1])) }
 		}
@@ -953,22 +953,22 @@ layout_view :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 			ix, iy := w * L.inset * 0.5, h * L.inset * 0.5
 			rect := draw.Rect{{x0 + ix, y0 + iy}, {x0 + w - ix, y0 + h - iy}}
 			draw.rect(dc, rect, L.col, i == 0 ? dt_px(4) : 0)
-			draw.rect(dc, rect, with_alpha(dtc.text, 0.35), i == 0 ? dt_px(4) : 0, dtm.line)
-			if L.name != "" { dt_text(dc, dtm.ui_font, dtm.fs * 0.9, rect.min.x + dt_px(6), rect.min.y + dtm.fs * 0.8, with_alpha(dtc.text, 0.8), L.name) }
+			draw.rect(dc, rect, with_alpha(the_app.dtc.text, 0.35), i == 0 ? dt_px(4) : 0, the_app.dtm.line)
+			if L.name != "" { dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs * 0.9, rect.min.x + dt_px(6), rect.min.y + the_app.dtm.fs * 0.8, with_alpha(the_app.dtc.text, 0.8), L.name) }
 			if L.k < 12 {
 				v := d.v[L.k:L.k + 4]
 				inner := (i + 1 < len(layers)) ? layers[i + 1].inset : 0
 				mx, my := (rect.min.x + rect.max.x) * 0.5, (rect.min.y + rect.max.y) * 0.5
 				ox, oy := w * (inner - L.inset) * 0.25, h * (inner - L.inset) * 0.25
 				t0 := fmt_px(v[0]); t1 := fmt_px(v[1]); t2 := fmt_px(v[2]); t3 := fmt_px(v[3])
-				dt_text(dc, dtm.mono, dtm.mono_fs * 0.95, mx - dt_w(dtm.mono, dtm.mono_fs * 0.95, t0) * 0.5, rect.min.y + oy, dtc.text, t0)
-				dt_text(dc, dtm.mono, dtm.mono_fs * 0.95, mx - dt_w(dtm.mono, dtm.mono_fs * 0.95, t2) * 0.5, rect.max.y - oy, dtc.text, t2)
-				dt_text(dc, dtm.mono, dtm.mono_fs * 0.95, rect.min.x + ox * 2 - dt_w(dtm.mono, dtm.mono_fs * 0.95, t3) * 0.5, my, dtc.text, t3)
-				dt_text(dc, dtm.mono, dtm.mono_fs * 0.95, rect.max.x - ox * 2 - dt_w(dtm.mono, dtm.mono_fs * 0.95, t1) * 0.5, my, dtc.text, t1)
+				dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs * 0.95, mx - dt_w(the_app.dtm.mono, the_app.dtm.mono_fs * 0.95, t0) * 0.5, rect.min.y + oy, the_app.dtc.text, t0)
+				dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs * 0.95, mx - dt_w(the_app.dtm.mono, the_app.dtm.mono_fs * 0.95, t2) * 0.5, rect.max.y - oy, the_app.dtc.text, t2)
+				dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs * 0.95, rect.min.x + ox * 2 - dt_w(the_app.dtm.mono, the_app.dtm.mono_fs * 0.95, t3) * 0.5, my, the_app.dtc.text, t3)
+				dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs * 0.95, rect.max.x - ox * 2 - dt_w(the_app.dtm.mono, the_app.dtm.mono_fs * 0.95, t1) * 0.5, my, the_app.dtc.text, t1)
 			}
 		}
 		size := fmt.tprintf("%s \u00d7 %s", fmt_px(math.round(d.size.x * 100) / 100), fmt_px(math.round(d.size.y * 100) / 100))
-		dt_text(dc, dtm.mono, dtm.mono_fs, cx - dt_w(dtm.mono, dtm.mono_fs, size) * 0.5, cy, dtc.text, size)
+		dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, cx - dt_w(the_app.dtm.mono, the_app.dtm.mono_fs, size) * 0.5, cy, the_app.dtc.text, size)
 	}, d
 }
 
@@ -1003,7 +1003,7 @@ Lst_Draw :: struct { it: Lst_Item, hot: bool }
 @(private = "file")
 listeners_view :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 	s := &e.side
-	if dt_bar("###dt_lst_bar", dtm.bar - dt_px(4)) {
+	if dt_bar("###dt_lst_bar", app.dtm.bar - dt_px(4)) {
 		dt_gap(3)
 		if dt_chip("###dt_lst_anc", "Ancestors", s.ancestors, "Include the listeners of the elements above").clicked { s.ancestors = !s.ancestors; s.key_mut = 0 }
 	}
@@ -1011,12 +1011,12 @@ listeners_view :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 		dt_empty("###dt_lst_none", .Event, e.selected == base.NIL_HANDLE ? "Select an element" : "No listeners", "Listeners added with addEventListener appear here (scripts of the page only).")
 		return
 	}
-	if lst, ok := dt_list("###dt_lst_list", &s.list, len(s.listeners), dtm.row, nil, ui.fill(), ui.fill()); ok {
+	if lst, ok := dt_list("###dt_lst_list", &s.list, len(s.listeners), app.dtm.row, nil, ui.fill(), ui.fill()); ok {
 		for k in lst.first ..< lst.last {
 			d := ui.frame_new(Lst_Draw)
 			d.it = s.listeners[k]
 			d.it.type, d.it.flags, d.it.node = dt_frame_str(d.it.type), dt_frame_str(d.it.flags), dt_frame_str(d.it.node)
-			ui.next({width = ui.fill(), height = ui.px(dtm.row), cursor = .Arrow})
+			ui.next({width = ui.fill(), height = ui.px(app.dtm.row), cursor = .Arrow})
 			rb := ui.build_box({.Clickable}, fmt.tprintf("###ls%d", k))
 			sig := ui.signal(rb)
 			d.hot = sig.hovering
@@ -1024,12 +1024,12 @@ listeners_view :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 				d := (^Lst_Draw)(user)
 				r := b.rect
 				cy := (r.min.y + r.max.y) * 0.5
-				if d.hot { draw.rect(dc, r, dtc.hover) }
+				if d.hot { draw.rect(dc, r, the_app.dtc.hover) }
 				x := r.min.x + dt_px(10)
-				x += dt_text(dc, dtm.mono, dtm.mono_fs, x, cy, syn_color(.Keyword), d.it.type) + dt_px(10)
-				if d.it.flags != "" { x += dt_text(dc, dtm.ui_font, dtm.fs * 0.9, x, cy, dtc.weak, d.it.flags) + dt_px(10) }
-				dt_text(dc, dtm.mono, dtm.mono_fs, x, cy, dtc.text, fmt.tprintf("handler #%d", d.it.id))
-				dt_text_r(dc, dtm.mono, dtm.mono_fs * 0.95, r.max.x - dt_px(8), cy, dtc.weak, d.it.node)
+				x += dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, x, cy, syn_color(.Keyword), d.it.type) + dt_px(10)
+				if d.it.flags != "" { x += dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs * 0.9, x, cy, the_app.dtc.weak, d.it.flags) + dt_px(10) }
+				dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, x, cy, the_app.dtc.text, fmt.tprintf("handler #%d", d.it.id))
+				dt_text_r(dc, the_app.dtm.mono, the_app.dtm.mono_fs * 0.95, r.max.x - dt_px(8), cy, the_app.dtc.weak, d.it.node)
 			}, d
 		}
 	}
@@ -1102,11 +1102,11 @@ accessibility_make :: proc(p: ^page.Page, e: ^Dev_Elements, s: ^Dev_Styles) {
 accessibility_view :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 	s := &e.side
 	if len(s.acc) == 0 { dt_empty("###dt_acc_none", .Access, "Select an element", "Its role, name and state for assistive technology appear here."); return }
-	if lst, ok := dt_list("###dt_acc_list", &s.list, len(s.acc), dtm.row, nil, ui.fill(), ui.fill()); ok {
+	if lst, ok := dt_list("###dt_acc_list", &s.list, len(s.acc), app.dtm.row, nil, ui.fill(), ui.fill()); ok {
 		for k in lst.first ..< lst.last {
 			d := ui.frame_new(Cmp_Draw)
 			d.name, d.value = dt_frame_str(s.acc[k][0]), dt_frame_str(s.acc[k][1])
-			ui.next({width = ui.fill(), height = ui.px(dtm.row), cursor = .Arrow})
+			ui.next({width = ui.fill(), height = ui.px(app.dtm.row), cursor = .Arrow})
 			rb := ui.build_box({.Clickable}, fmt.tprintf("###ac%d", k))
 			sig := ui.signal(rb)
 			d.hot = sig.hovering
@@ -1114,10 +1114,10 @@ accessibility_view :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 				d := (^Cmp_Draw)(user)
 				r := b.rect
 				cy := (r.min.y + r.max.y) * 0.5
-				if d.hot { draw.rect(dc, r, dtc.hover) }
+				if d.hot { draw.rect(dc, r, the_app.dtc.hover) }
 				w := (r.max.x - r.min.x) * 0.32
-				dt_text(dc, dtm.ui_font, dtm.fs, r.min.x + dt_px(10), cy, dtc.weak, d.name, w - dt_px(12))
-				dt_text(dc, dtm.mono, dtm.mono_fs, r.min.x + w, cy, dtc.text, d.value, r.max.x - r.min.x - w - dt_px(8))
+				dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, r.min.x + dt_px(10), cy, the_app.dtc.weak, d.name, w - dt_px(12))
+				dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, r.min.x + w, cy, the_app.dtc.text, d.value, r.max.x - r.min.x - w - dt_px(8))
 			}, d
 		}
 	}

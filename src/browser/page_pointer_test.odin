@@ -7,6 +7,7 @@ import "wb:html"
 
 @(test)
 pointer_events_order :: proc(t: ^testing.T) {
+	test_app(t)
 	doc := dom.document_create(nil)
 	defer dom.document_destroy(doc)
 	html.parse_into(doc, doc.root, transmute([]byte)string(`<!doctype html><body><div id=p><span id=a>a</span><span id=b>b</span></div><div id=q>q</div></body>`), 100_000)

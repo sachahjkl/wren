@@ -206,55 +206,54 @@ art_candidate_clone :: proc(c: Art_Candidate) -> Art_Candidate {
 	}
 }
 
-art: Art
 
 ////////////////////////////////
 // Lifecycle (the shell starts and ends it, main.odin)
 
 art_init :: proc(app: ^App) {
-	art.app = app
-	art.cfg = art_settings_from_prefs(&app.prefs)
-	art.ready = make([dynamic]^Art_Item, base.process_allocator())
-	art.recent = make([dynamic]string, base.process_allocator())
-	art.candidates = make([dynamic]Art_Candidate, base.process_allocator())
-	art.dl_bytes = make([dynamic]byte, base.process_allocator())
-	art.watch = config.watch(&app.prefs, "browser.newtab.art.", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		old := art.cfg
-		art.cfg = art_settings_from_prefs(p)
+	app.art.app = app
+	app.art.cfg = art_settings_from_prefs(&app.prefs)
+	app.art.ready = make([dynamic]^Art_Item, base.process_allocator())
+	app.art.recent = make([dynamic]string, base.process_allocator())
+	app.art.candidates = make([dynamic]Art_Candidate, base.process_allocator())
+	app.art.dl_bytes = make([dynamic]byte, base.process_allocator())
+	app.art.watch = config.watch(&app.prefs, "browser.newtab.art.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+		old := the_app.art.cfg
+		the_app.art.cfg = art_settings_from_prefs(p)
 		art_settings_destroy(&old)
 		// turning the option off while it ran stops it at once and lets the next new tab be the plain start page again
-		if !art.cfg.enabled && art.started { art_stop() }
-		if art.started { art_pump() }
+		if !the_app.art.cfg.enabled && the_app.art.started { art_stop() }
+		if the_app.art.started { art_pump() }
 	}, app)
 }
 
 art_destroy :: proc(app: ^App) {
-	config.unwatch(&app.prefs, art.watch)
+	config.unwatch(&app.prefs, app.art.watch)
 	art_cancel_io()
-	if art.stop_timer != base.NIL_HANDLE { host.clear_timer(&app.loop, art.stop_timer) }
-	if art.wait_timer != base.NIL_HANDLE { host.clear_timer(&app.loop, art.wait_timer) }
-	if art.port != 0 { images.port_close(art.port) }
+	if app.art.stop_timer != base.NIL_HANDLE { host.clear_timer(&app.loop, app.art.stop_timer) }
+	if app.art.wait_timer != base.NIL_HANDLE { host.clear_timer(&app.loop, app.art.wait_timer) }
+	if app.art.port != 0 { images.port_close(app.art.port) }
 	// `current`, if it was consumed, is no longer in `ready`: free it separately. If it is still in `ready` it is freed with it.
-	if art.current != nil && !art_in_ready(art.current) { art_item_destroy(art.current); free(art.current) }
-	for it in art.ready { art_item_destroy(it); free(it) }
-	delete(art.ready)
-	for s in art.recent { delete(s) }
-	delete(art.recent)
-	for &c in art.candidates { art_candidate_destroy(&c) }
-	delete(art.candidates)
-	art_candidate_destroy(&art.dl)
-	delete(art.dl_bytes)
-	art_settings_destroy(&art.cfg)
-	delete(art.dir)
-	art = {}
+	if app.art.current != nil && !art_in_ready(app.art.current) { art_item_destroy(app.art.current); free(app.art.current) }
+	for it in app.art.ready { art_item_destroy(it); free(it) }
+	delete(app.art.ready)
+	for s in app.art.recent { delete(s) }
+	delete(app.art.recent)
+	for &c in app.art.candidates { art_candidate_destroy(&c) }
+	delete(app.art.candidates)
+	art_candidate_destroy(&app.art.dl)
+	delete(app.art.dl_bytes)
+	art_settings_destroy(&app.art.cfg)
+	delete(app.art.dir)
+	app.art = {}
 }
 
 @(private = "file")
 art_cancel_io :: proc() {
-	if art.task != base.NIL_HANDLE { fetch.cancel(&art.app.loader, art.task); art.task = base.NIL_HANDLE }
-	art.dl_active = false
-	if art.job != 0 { images.job_cancel(art.job); art.job = 0 }
-	if art.blob != nil { images.blob_release(art.blob); art.blob = nil }
+	if the_app.art.task != base.NIL_HANDLE { fetch.cancel(&the_app.art.app.loader, the_app.art.task); the_app.art.task = base.NIL_HANDLE }
+	the_app.art.dl_active = false
+	if the_app.art.job != 0 { images.job_cancel(the_app.art.job); the_app.art.job = 0 }
+	if the_app.art.blob != nil { images.blob_release(the_app.art.blob); the_app.art.blob = nil }
 }
 
 ////////////////////////////////
@@ -264,11 +263,11 @@ art_cancel_io :: proc() {
 // window keeps running. Never touches the network itself: art_pump does, and only when the option is on and the loader
 // is not held offline.
 art_seen_new_tab :: proc(app: ^App) {
-	if !art.cfg.enabled { return }
-	art.last_shown_ms = f64(host.now_ns(&app.loop)) / 1e6
-	if !art.started {
-		art.started = true
-		art.phase = .Idle
+	if !app.art.cfg.enabled { return }
+	app.art.last_shown_ms = f64(host.now_ns(&app.loop)) / 1e6
+	if !app.art.started {
+		app.art.started = true
+		app.art.phase = .Idle
 	}
 	art_schedule_stop()
 	art_pump()
@@ -276,11 +275,11 @@ art_seen_new_tab :: proc(app: ^App) {
 
 @(private = "file")
 art_schedule_stop :: proc() {
-	app := art.app
-	if art.stop_timer != base.NIL_HANDLE { host.clear_timer(&app.loop, art.stop_timer); art.stop_timer = base.NIL_HANDLE }
-	if art.cfg.idle_ms <= 0 { return }
-	art.stop_timer = host.set_timer(&app.loop, art.cfg.idle_ms, 0, proc(data: rawptr) {
-		art.stop_timer = base.NIL_HANDLE
+	app := the_app.art.app
+	if app.art.stop_timer != base.NIL_HANDLE { host.clear_timer(&app.loop, app.art.stop_timer); app.art.stop_timer = base.NIL_HANDLE }
+	if app.art.cfg.idle_ms <= 0 { return }
+	app.art.stop_timer = host.set_timer(&app.loop, app.art.cfg.idle_ms, 0, proc(data: rawptr) {
+		the_app.art.stop_timer = base.NIL_HANDLE
 		art_stop()   // inactivity: nothing downloads until the next art new tab
 	}, app)
 }
@@ -288,9 +287,9 @@ art_schedule_stop :: proc() {
 @(private = "file")
 art_stop :: proc() {
 	art_cancel_io()
-	if art.wait_timer != base.NIL_HANDLE { host.clear_timer(&art.app.loop, art.wait_timer); art.wait_timer = base.NIL_HANDLE }
-	art.started = false
-	art.phase = .Idle
+	if the_app.art.wait_timer != base.NIL_HANDLE { host.clear_timer(&the_app.art.app.loop, the_app.art.wait_timer); the_app.art.wait_timer = base.NIL_HANDLE }
+	the_app.art.started = false
+	the_app.art.phase = .Idle
 }
 
 ////////////////////////////////
@@ -301,32 +300,32 @@ art_stop :: proc() {
 
 @(private = "file")
 art_pump :: proc() {
-	app := art.app
-	if !art.started || !art.cfg.enabled { return }
-	if art.phase == .Listing || art.phase == .Downloading || art.phase == .Validating { return }   // a request is in flight
-	if app.loader.hold { art_wait(art.cfg.backoff_base_ms); return }   // held offline: try again shortly, make no request
+	app := the_app.art.app
+	if !app.art.started || !app.art.cfg.enabled { return }
+	if app.art.phase == .Listing || app.art.phase == .Downloading || app.art.phase == .Validating { return }   // a request is in flight
+	if app.loader.hold { art_wait(app.art.cfg.backoff_base_ms); return }   // held offline: try again shortly, make no request
 
 	art_purge_over_cap()
 
 	// the window is full: nothing to do until a painting is consumed (a shown new tab calls art_consume, which pumps again)
-	if len(art.ready) >= art.cfg.window {
-		art.phase = .Idle
+	if len(app.art.ready) >= app.art.cfg.window {
+		app.art.phase = .Idle
 		return
 	}
 
 	// a candidate in hand: download it. With nothing ready yet the smallest file goes first: the first painting shows
 	// as soon as it can, the others follow behind it
-	if len(art.candidates) > 0 {
-		if len(art.ready) == 0 {
-			best := len(art.candidates) - 1
-			for c, i in art.candidates { if c.size > 0 && (art.candidates[best].size <= 0 || c.size < art.candidates[best].size) { best = i } }
-			c := art.candidates[best]
-			ordered_remove(&art.candidates, best)
+	if len(app.art.candidates) > 0 {
+		if len(app.art.ready) == 0 {
+			best := len(app.art.candidates) - 1
+			for c, i in app.art.candidates { if c.size > 0 && (app.art.candidates[best].size <= 0 || c.size < app.art.candidates[best].size) { best = i } }
+			c := app.art.candidates[best]
+			ordered_remove(&app.art.candidates, best)
 			if art_have_id(c.id) { art_candidate_destroy(&c); art_pump(); return }
 			art_download(c)
 			return
 		}
-		c := pop(&art.candidates)
+		c := pop(&app.art.candidates)
 		if art_have_id(c.id) { art_candidate_destroy(&c); art_pump(); return }   // already cached: skip, no request
 		art_download(c)
 		return
@@ -339,44 +338,44 @@ art_pump :: proc() {
 // Continues the state machine from an answer (a listing, a probe): the request that just ended is no longer in flight.
 @(private = "file")
 art_continue :: proc() {
-	art.phase = .Idle
+	the_app.art.phase = .Idle
 	art_pump()
 }
 
 @(private = "file")
 art_wait :: proc(ms: i64) {
-	app := art.app
-	art.phase = .Waiting
-	if art.wait_timer != base.NIL_HANDLE { host.clear_timer(&app.loop, art.wait_timer) }
-	art.wait_timer = host.set_timer(&app.loop, f64(ms), 0, proc(data: rawptr) {
-		art.wait_timer = base.NIL_HANDLE
+	app := the_app.art.app
+	app.art.phase = .Waiting
+	if app.art.wait_timer != base.NIL_HANDLE { host.clear_timer(&app.loop, app.art.wait_timer) }
+	app.art.wait_timer = host.set_timer(&app.loop, f64(ms), 0, proc(data: rawptr) {
+		the_app.art.wait_timer = base.NIL_HANDLE
 		art_pump()
 	}, app)
 }
 
 @(private = "file")
 art_backoff_ms :: proc() -> i64 {
-	ms := art.cfg.backoff_base_ms
-	for _ in 0 ..< art.fails { ms *= 2; if ms >= art.cfg.backoff_max_ms { return art.cfg.backoff_max_ms } }
+	ms := the_app.art.cfg.backoff_base_ms
+	for _ in 0 ..< the_app.art.fails { ms *= 2; if ms >= the_app.art.cfg.backoff_max_ms { return the_app.art.cfg.backoff_max_ms } }
 	return ms
 }
 
 @(private = "file")
 art_fail :: proc() {
-	art.fails += 1
+	the_app.art.fails += 1
 	art_wait(art_backoff_ms())
-	if art.fails == 1 { art_empty_failed(art.app) }   // (once: the page of a tab waiting for its first painting says it is trying again)
+	if the_app.art.fails == 1 { art_empty_failed(the_app.art.app) }   // (once: the page of a tab waiting for its first painting says it is trying again)
 }
 
 @(private = "file")
-art_ok :: proc() { art.fails = 0 }
+art_ok :: proc() { the_app.art.fails = 0 }
 
 ////////////////////////////////
 // Listing: ask a source for paintings
 
 @(private = "file")
 art_sources_list :: proc() -> []string {
-	s := art.cfg.sources
+	s := the_app.art.cfg.sources
 	out := make([dynamic]string, context.temp_allocator)
 	for part in strings.split(s, ",", context.temp_allocator) {
 		t := strings.trim_space(part)
@@ -389,13 +388,13 @@ art_sources_list :: proc() -> []string {
 @(private = "file")
 art_list_next_source :: proc() {
 	srcs := art_sources_list()
-	if len(srcs) == 0 { art_wait(art.cfg.backoff_max_ms); return }
-	art.cand_src = (art.cand_src + 1) % len(srcs)
-	src := srcs[art.cand_src]
+	if len(srcs) == 0 { art_wait(the_app.art.cfg.backoff_max_ms); return }
+	the_app.art.cand_src = (the_app.art.cand_src + 1) % len(srcs)
+	src := srcs[the_app.art.cand_src]
 	switch src {
 	case "cleveland": art_cleveland_list()
 	case "commons":   art_commons_list()
-	case:             art_wait(art.cfg.backoff_base_ms)
+	case:             art_wait(the_app.art.cfg.backoff_base_ms)
 	}
 }
 
@@ -403,12 +402,12 @@ art_list_next_source :: proc() {
 // User-Agent set by the net layer), its body collected, bounded, on the process scope.
 @(private = "file")
 art_get :: proc(url: string, max_body: int, on_event: fetch.Event_Proc) {
-	art.task = fetch.start(&art.app.loader, {
+	the_app.art.task = fetch.start(&the_app.art.app.loader, {
 		request = {
 			url = url, mode = .Navigate, credentials = .Omit, redirect = .Follow, destination = .Empty,   // the browser's own request: no page, so no CORS
 			headers = {{"Accept", "application/json"}}, max_body = max_body,
 		},
-		on_event = on_event, scope = art.app.process, collect = true,
+		on_event = on_event, scope = the_app.art.app.process, collect = true,
 	})
 }
 
@@ -420,17 +419,17 @@ art_get :: proc(url: string, max_body: int, on_event: fetch.Event_Proc) {
 
 @(private = "file")
 art_cleveland_list :: proc() {
-	art.phase = .Listing
+	the_app.art.phase = .Listing
 	// a random slice of the ~3900 CC0 paintings so the window is varied; the fields we need only
 	skip := rand.int_max(3800)
-	url := fmt.tprintf("%s?cc0=1&type=Painting&has_image=1&limit=%d&skip=%d&fields=id,title,creators,creation_date,images,url,department", CLEVELAND_API, max(art.cfg.window, 8), skip)
+	url := fmt.tprintf("%s?cc0=1&type=Painting&has_image=1&limit=%d&skip=%d&fields=id,title,creators,creation_date,images,url,department", CLEVELAND_API, max(the_app.art.cfg.window, 8), skip)
 	art_get(url, 4 << 20, art_cleveland_event)
 }
 
 @(private = "file")
 art_cleveland_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	if the_app == nil { return }
-	art.task = base.NIL_HANDLE
+	the_app.art.task = base.NIL_HANDLE
 	#partial switch ev.kind {
 	case .Done:
 		n := art_cleveland_parse(ev.data)
@@ -456,7 +455,7 @@ art_cleveland_parse :: proc(body: []byte) -> int {
 		o, ok := e.(json.Object)
 		if !ok { continue }
 		img, size := art_cleveland_image(o)
-		if img == "" || (size > 0 && size > i64(art.cfg.max_image_bytes)) { continue }   // (too big: it would only fail, and back off)
+		if img == "" || (size > 0 && size > i64(the_app.art.cfg.max_image_bytes)) { continue }   // (too big: it would only fail, and back off)
 		id := 0
 		if n, h := o["id"].(json.Float); h { id = int(n) }
 		c := Art_Candidate{
@@ -471,7 +470,7 @@ art_cleveland_parse :: proc(body: []byte) -> int {
 			license = strings.clone("CC0"),
 			size = size,
 		}
-		append(&art.candidates, c)
+		append(&the_app.art.candidates, c)
 		added += 1
 	}
 	return added
@@ -522,19 +521,19 @@ ART_COMMONS_CATEGORIES := [?]string{
 
 @(private = "file")
 art_commons_list :: proc() {
-	art.phase = .Listing
+	the_app.art.phase = .Listing
 	cat := ART_COMMONS_CATEGORIES[rand.int_max(len(ART_COMMONS_CATEGORIES))]
-	width := max(1920, art.cfg.min_width_px)
+	width := max(1920, the_app.art.cfg.min_width_px)
 	// categorymembers as a generator, imageinfo for each: url at a bounded width, the mime, the size, the licence metadata
 	url := fmt.tprintf("%s?action=query&format=json&formatversion=2&generator=categorymembers&gcmtype=file&gcmlimit=%d&gcmtitle=%s&prop=imageinfo&iiprop=url|size|mime|extmetadata&iiurlwidth=%d",
-		COMMONS_API, max(art.cfg.window, 8), art_url_encode(cat), width)
+		COMMONS_API, max(the_app.art.cfg.window, 8), art_url_encode(cat), width)
 	art_get(url, 6 << 20, art_commons_event)
 }
 
 @(private = "file")
 art_commons_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	if the_app == nil { return }
-	art.task = base.NIL_HANDLE
+	the_app.art.task = base.NIL_HANDLE
 	#partial switch ev.kind {
 	case .Done:
 		n := art_commons_parse(ev.data)
@@ -588,7 +587,7 @@ art_commons_parse :: proc(body: []byte) -> int {
 			record = strings.concatenate({"https://commons.wikimedia.org/wiki/", art_url_encode(title)}),
 			license = strings.clone(license == "" ? "Public domain" : license),
 		}
-		append(&art.candidates, c)
+		append(&the_app.art.candidates, c)
 		added += 1
 	}
 	return added
@@ -644,42 +643,42 @@ art_commons_file_title :: proc(title: string) -> string {
 
 @(private = "file")
 art_download :: proc(c: Art_Candidate) {
-	art.phase = .Downloading
-	art_candidate_destroy(&art.dl)
-	art.dl = c   // we own it now
-	art.dl_active = true
-	clear(&art.dl_bytes)
-	art.task = fetch.start(&art.app.loader, {
+	the_app.art.phase = .Downloading
+	art_candidate_destroy(&the_app.art.dl)
+	the_app.art.dl = c   // we own it now
+	the_app.art.dl_active = true
+	clear(&the_app.art.dl_bytes)
+	the_app.art.task = fetch.start(&the_app.art.app.loader, {
 		request = {
 			url = c.image_url, mode = .Navigate, credentials = .Omit, redirect = .Follow, destination = .Empty,   // the browser's own request (a no-cors answer is opaque: its bytes are not ours to read)
-			max_body = art.cfg.max_image_bytes,
+			max_body = the_app.art.cfg.max_image_bytes,
 		},
-		on_event = art_download_event, scope = art.app.process, collect = true,
+		on_event = art_download_event, scope = the_app.art.app.process, collect = true,
 	})
 }
 
 @(private = "file")
 art_download_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
-	if the_app == nil || !art.dl_active { return }
+	if the_app == nil || !the_app.art.dl_active { return }
 	#partial switch ev.kind {
 	case .Response:
 		// refuse early what is not an image (the max_body cap enforces size on the body side)
 		if ev.response != nil && ev.response.has_mime && ev.response.mime.type != "" && ev.response.mime.type != "image" {
-			art.task = base.NIL_HANDLE; art.dl_active = false; art_fail(); return
+			the_app.art.task = base.NIL_HANDLE; the_app.art.dl_active = false; art_fail(); return
 		}
 	case .Done:
-		art.task = base.NIL_HANDLE
-		art.dl_active = false
-		if len(ev.data) == 0 || i64(len(ev.data)) > i64(art.cfg.max_image_bytes) { art_fail(); return }
+		the_app.art.task = base.NIL_HANDLE
+		the_app.art.dl_active = false
+		if len(ev.data) == 0 || i64(len(ev.data)) > i64(the_app.art.cfg.max_image_bytes) { art_fail(); return }
 		if images.sniff(ev.data) == .Unknown { art_fail(); return }   // not a decodable image signature
 		art_ok()
 		// keep the bytes while the probe runs: art_keep writes them to disk once the image passes
-		clear(&art.dl_bytes)
-		append(&art.dl_bytes, ..ev.data)
-		art_validate(art.dl_bytes[:])
+		clear(&the_app.art.dl_bytes)
+		append(&the_app.art.dl_bytes, ..ev.data)
+		art_validate(the_app.art.dl_bytes[:])
 	case .Failed:
-		art.task = base.NIL_HANDLE
-		art.dl_active = false
+		the_app.art.task = base.NIL_HANDLE
+		the_app.art.dl_active = false
 		art_fail()
 	}
 }
@@ -689,39 +688,39 @@ art_download_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 
 @(private = "file")
 art_validate :: proc(data: []byte) {
-	app := art.app
+	app := the_app.art.app
 	if !images.decoder_running() {
 		s := &app.page_settings.images
 		n := s.decode_threads
 		if n < 0 { n = clamp(host.processor_count() / 2, 1, 4) }
 		images.decoder_start(n, s.decode_stack_bytes > 0 ? s.decode_stack_bytes : images.DECODER_STACK_DEFAULT, s.decode_idle_ms)
 	}
-	if art.port == 0 { art.port = images.port_open(&app.loop, art_validated, nil) }
-	if art.port == 0 { art_continue(); return }
+	if app.art.port == 0 { app.art.port = images.port_open(&app.loop, art_validated, nil) }
+	if app.art.port == 0 { art_continue(); return }
 	bytes := make([]byte, len(data))
 	copy(bytes, data)
-	art.blob = images.blob_make(bytes)
+	app.art.blob = images.blob_make(bytes)
 	lim := app.page_settings.images.limits
-	lim.max_encoded_bytes = min(lim.max_encoded_bytes, art.cfg.max_image_bytes)
+	lim.max_encoded_bytes = min(lim.max_encoded_bytes, app.art.cfg.max_image_bytes)
 	opts := images.Decode_Options{limits = lim}
-	art.phase = .Validating
-	art.job = images.submit(art.port, images.job_make(.Probe, art.blob, opts))
-	if art.job == 0 { images.blob_release(art.blob); art.blob = nil; art_continue() }
+	app.art.phase = .Validating
+	app.art.job = images.submit(app.art.port, images.job_make(.Probe, app.art.blob, opts))
+	if app.art.job == 0 { images.blob_release(app.art.blob); app.art.blob = nil; art_continue() }
 }
 
 @(private = "file")
 art_validated :: proc(user: rawptr, j: ^images.Job) {
 	defer images.job_free(j)
-	art.job = 0
-	if art.blob != nil { images.blob_release(art.blob); art.blob = nil }
+	the_app.art.job = 0
+	if the_app.art.blob != nil { images.blob_release(the_app.art.blob); the_app.art.blob = nil }
 	ok := j.err == .None && art_dimensions_ok(j.info.width, j.info.height)
 	if !ok {
-		art_candidate_destroy(&art.dl)   // drop this one, do not keep the file
+		art_candidate_destroy(&the_app.art.dl)   // drop this one, do not keep the file
 		art_continue()
 		return
 	}
-	art_keep(art.dl, j.info.width, j.info.height)
-	art.dl = {}   // ownership moved into the Art_Item
+	art_keep(the_app.art.dl, j.info.width, j.info.height)
+	the_app.art.dl = {}   // ownership moved into the Art_Item
 	art_continue()
 }
 
@@ -729,7 +728,7 @@ art_validated :: proc(user: rawptr, j: ^images.Job) {
 // between 1:3 and 3:1 so neither orientation is a letterbox.
 @(private = "file")
 art_dimensions_ok :: proc(w, h: int) -> bool {
-	if w < art.cfg.min_width_px || h <= 0 { return false }
+	if w < the_app.art.cfg.min_width_px || h <= 0 { return false }
 	r := f64(w) / f64(h)
 	return r >= 0.33 && r <= 3.0
 }
@@ -741,7 +740,7 @@ art_dimensions_ok :: proc(w, h: int) -> bool {
 art_keep :: proc(c: Art_Candidate, w, h: int) {
 	if !art_ensure_dir() { art_candidate_destroy_copy(c); return }
 	stem := art_safe_stem(c.id)
-	img_path := strings.concatenate({art.dir, "/", stem, art_ext(c.image_url)}, context.temp_allocator)
+	img_path := strings.concatenate({the_app.art.dir, "/", stem, art_ext(c.image_url)}, context.temp_allocator)
 	if os.write_entire_file(img_path, art_last_bytes()) != nil { art_candidate_destroy_copy(c); return }
 	it := new(Art_Item)
 	it^ = Art_Item{
@@ -750,18 +749,18 @@ art_keep :: proc(c: Art_Candidate, w, h: int) {
 		museum = strings.clone(c.museum), record = strings.clone(c.record), license = strings.clone(c.license),
 		width = w, height = h, bytes = i64(len(art_last_bytes())), fetched = i64(time.to_unix_seconds(time.now())),
 	}
-	meta_path := strings.concatenate({art.dir, "/", stem, ".json"}, context.temp_allocator)
+	meta_path := strings.concatenate({the_app.art.dir, "/", stem, ".json"}, context.temp_allocator)
 	_ = os.write_entire_file(meta_path, transmute([]byte)art_meta_json(it^))
-	append(&art.ready, it)
+	append(&the_app.art.ready, it)
 	art_candidate_destroy_copy(c)
-	art_fill_waiting(art.app)   // an art new tab that showed no painting yet shows this one
-	request_frames(art.app, 1)
+	art_fill_waiting(the_app.art.app)   // an art new tab that showed no painting yet shows this one
+	request_frames(the_app.art.app, 1)
 }
 
 // The bytes of the download in hand still live in art.blob until it is released; art_keep runs after the probe, which
 // released the blob. We therefore keep a copy of the download bytes alongside the candidate while it is in flight.
 @(private = "file")
-art_last_bytes :: proc() -> []byte { return art.dl_bytes[:] }
+art_last_bytes :: proc() -> []byte { return the_app.art.dl_bytes[:] }
 
 @(private = "file")
 art_candidate_destroy_copy :: proc(c: Art_Candidate) { cc := c; art_candidate_destroy(&cc) }
@@ -780,32 +779,32 @@ art_meta_json :: proc(it: Art_Item) -> string {
 // <profile>/tmp/newtab-art: a stable, dedicated subfolder of the profile's temporary area.
 @(private = "file")
 art_ensure_dir :: proc() -> bool {
-	if art.dir != "" { return true }
-	base_dir := strings.concatenate({art.app.profile_dir, "/tmp/newtab-art"}, context.temp_allocator)
+	if the_app.art.dir != "" { return true }
+	base_dir := strings.concatenate({the_app.art.app.profile_dir, "/tmp/newtab-art"}, context.temp_allocator)
 	if os.make_directory_all(base_dir) != nil && !os.is_dir(base_dir) { return false }
-	art.dir = strings.clone(base_dir)
+	the_app.art.dir = strings.clone(base_dir)
 	return true
 }
 
 @(private = "file")
 art_purge_over_cap :: proc() {
-	if art.dir == "" { return }
+	if the_app.art.dir == "" { return }
 	total: i64 = 0
-	for it in art.ready { total += it.bytes }
+	for it in the_app.art.ready { total += it.bytes }
 	// oldest ready items go first until under the cap (never the current pick: it may still be on screen)
-	for total > art.cfg.max_cache_bytes && len(art.ready) > 1 {
+	for total > the_app.art.cfg.max_cache_bytes && len(the_app.art.ready) > 1 {
 		oldest := -1
-		for it, i in art.ready {
-			if art.current != nil && it.id == art.current.id { continue }
-			if oldest < 0 || art.ready[i].fetched < art.ready[oldest].fetched { oldest = i }
+		for it, i in the_app.art.ready {
+			if the_app.art.current != nil && it.id == the_app.art.current.id { continue }
+			if oldest < 0 || the_app.art.ready[i].fetched < the_app.art.ready[oldest].fetched { oldest = i }
 		}
 		if oldest < 0 { break }
-		it := art.ready[oldest]
+		it := the_app.art.ready[oldest]
 		total -= it.bytes
 		art_delete_files(it)
 		art_item_destroy(it)
 		free(it)
-		ordered_remove(&art.ready, oldest)
+		ordered_remove(&the_app.art.ready, oldest)
 	}
 }
 
@@ -821,19 +820,19 @@ art_delete_files :: proc(it: ^Art_Item) {
 // window starts over. The task, if running, fills it again.
 art_clear_cache :: proc() {
 	art_cancel_io()
-	if art.current != nil && !art_in_ready(art.current) { art_delete_files(art.current); art_item_destroy(art.current); free(art.current) }
-	art.current = nil
-	for it in art.ready { art_delete_files(it); art_item_destroy(it); free(it) }
-	clear(&art.ready)
-	for s in art.recent { delete(s) }
-	clear(&art.recent)
-	if art.dir != "" {
+	if the_app.art.current != nil && !art_in_ready(the_app.art.current) { art_delete_files(the_app.art.current); art_item_destroy(the_app.art.current); free(the_app.art.current) }
+	the_app.art.current = nil
+	for it in the_app.art.ready { art_delete_files(it); art_item_destroy(it); free(it) }
+	clear(&the_app.art.ready)
+	for s in the_app.art.recent { delete(s) }
+	clear(&the_app.art.recent)
+	if the_app.art.dir != "" {
 		// remove any stray files the folder still holds (a crash between the image and its metadata)
-		if entries, rerr := os.read_directory_by_path(art.dir, -1, context.temp_allocator); rerr == nil {
+		if entries, rerr := os.read_directory_by_path(the_app.art.dir, -1, context.temp_allocator); rerr == nil {
 			for e in entries { if e.type != .Directory { _ = os.remove(e.fullpath) } }
 		}
 	}
-	if art.started { art_pump() }
+	if the_app.art.started { art_pump() }
 }
 
 ////////////////////////////////
@@ -843,10 +842,10 @@ art_clear_cache :: proc() {
 // window (landscape for a wide window, portrait for a tall one), and it avoids the last `window` picks. The chosen one
 // becomes the current pick; art_consume replaces it once the tab has drawn.
 art_pick :: proc(landscape: bool) -> ^Art_Item {
-	if len(art.ready) == 0 { return nil }
+	if len(the_app.art.ready) == 0 { return nil }
 	best: ^Art_Item
 	best_score := min(int)
-	for it in art.ready {
+	for it in the_app.art.ready {
 		if art_recently_shown(it.id) { continue }
 		score := 0
 		it_landscape := it.width >= it.height
@@ -854,24 +853,24 @@ art_pick :: proc(landscape: bool) -> ^Art_Item {
 		if best == nil || score > best_score { best, best_score = it, score }
 	}
 	if best == nil {   // every ready one was shown lately: take the oldest by fetch time anyway
-		for it in art.ready { if best == nil || it.fetched < best.fetched { best = it } }
+		for it in the_app.art.ready { if best == nil || it.fetched < best.fetched { best = it } }
 	}
 	// remember the pick so it does not repeat at once; cap the ring at the window size
-	append(&art.recent, strings.clone(best.id))
-	for len(art.recent) > max(art.cfg.window, 1) { delete(art.recent[0]); ordered_remove(&art.recent, 0) }
+	append(&the_app.art.recent, strings.clone(best.id))
+	for len(the_app.art.recent) > max(the_app.art.cfg.window, 1) { delete(the_app.art.recent[0]); ordered_remove(&the_app.art.recent, 0) }
 	// the previous current, if it was consumed (removed from `ready`), is no longer referenced: free it so it does not leak
-	if art.current != nil && art.current != best && !art_in_ready(art.current) {
-		art_delete_files(art.current)
-		art_item_destroy(art.current)
-		free(art.current)
+	if the_app.art.current != nil && the_app.art.current != best && !art_in_ready(the_app.art.current) {
+		art_delete_files(the_app.art.current)
+		art_item_destroy(the_app.art.current)
+		free(the_app.art.current)
 	}
-	art.current = best
+	the_app.art.current = best
 	return best
 }
 
 @(private = "file")
 art_recently_shown :: proc(id: string) -> bool {
-	for s in art.recent { if s == id { return true } }
+	for s in the_app.art.recent { if s == id { return true } }
 	return false
 }
 
@@ -879,30 +878,30 @@ art_recently_shown :: proc(id: string) -> bool {
 // fetches a replacement so the window stays full of unseen paintings. The file stays on disk until purged, so the same
 // tab can keep showing it; a new new tab gets a different one.
 art_consume :: proc() {
-	if art.current == nil { return }
+	if the_app.art.current == nil { return }
 	// drop the current from `ready` so the window refills with a fresh painting; keep the Art_Item alive as `current`
-	for it, i in art.ready {
-		if it == art.current { ordered_remove(&art.ready, i); break }
+	for it, i in the_app.art.ready {
+		if it == the_app.art.current { ordered_remove(&the_app.art.ready, i); break }
 	}
-	if art.started { art_pump() }
+	if the_app.art.started { art_pump() }
 }
 
 // True when at least one painting is ready to show (newtab_art_page.odin decides between the art page and the plain start page).
-art_ready :: proc() -> bool { return len(art.ready) > 0 || art.current != nil }
+art_ready :: proc() -> bool { return len(the_app.art.ready) > 0 || the_app.art.current != nil }
 
 ////////////////////////////////
 // Small helpers
 
 @(private = "file")
 art_have_id :: proc(id: string) -> bool {
-	for it in art.ready { if it.id == id { return true } }
-	if art.current != nil && art.current.id == id { return true }
+	for it in the_app.art.ready { if it.id == id { return true } }
+	if the_app.art.current != nil && the_app.art.current.id == id { return true }
 	return false
 }
 
 @(private = "file")
 art_in_ready :: proc(it: ^Art_Item) -> bool {
-	for r in art.ready { if r == it { return true } }
+	for r in the_app.art.ready { if r == it { return true } }
 	return false
 }
 

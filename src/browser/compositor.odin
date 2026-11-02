@@ -49,7 +49,6 @@ Compositor_Settings :: struct {
 	memory:      int,   // bytes
 }
 
-@(private) compositor_settings := Compositor_Settings{enabled = true, chunk_items = 512, max_chunks = 4096, settle_ms = 50, memory = 256 << 20}
 
 @(private)
 compositor_settings_from_prefs :: proc(p: ^config.Prefs) -> Compositor_Settings {
@@ -347,14 +346,14 @@ immediate_item :: proc(user: rawptr, l: ^Layout, it: ^lay.Display_Item) -> bool 
 	switch it.kind {
 	case .Replaced, .Control, .Scrollbar: return true
 	case .Box:
-		if page_render.bare != nil && page_render.bare(page_render.content_user, c.doc, it.node) { return true }
+		if the_app.page_render.bare != nil && the_app.page_render.bare(the_app.page_render.content_user, c.doc, it.node) { return true }
 		// (a -wren-shader box: its shader is not recordable, its arguments change with every frame of an animation)
 		if it.cs != nil && (background_has_url(it.cs) || background_clips_text(it.cs) || style.has_shader(it.cs)) && .No_Background not_in it.flags { return true }
 	case .Inline_Box:
 		// background-clip: text draws the text of other items (maybe of other chunks) into a mask: directly
 		if it.cs != nil && (background_has_url(it.cs) || background_clips_text(it.cs) || style.has_shader(it.cs)) { return true }
 	case .Text:
-		if it.cs != nil && effects_settings.exact_shadows {
+		if it.cs != nil && the_app.effects_settings.exact_shadows {
 			for s in it.cs.text_shadow { if s.blur > 0 && s.color.a > 0 { return true } }
 		}
 	case .Marker, .Outline, .Column_Rule:
@@ -400,7 +399,7 @@ item_hash :: proc(c: ^Comp, l: ^Layout, it: ^lay.Display_Item, cache: ^map[^styl
 rebuild :: proc(c: ^Comp, l: ^Layout) {
 	compute_floors(c, l)
 	n := len(l.items)
-	settings := compositor_settings
+	settings := the_app.compositor_settings
 	cap_items := max(settings.chunk_items, (n + settings.max_chunks - 1) / max(settings.max_chunks, 1))
 	c.chunk_items = cap_items
 	fresh := make([dynamic]lay.Chunk, 0, n / max(cap_items / 2, 1) + 8, context.temp_allocator)
@@ -706,19 +705,19 @@ composite_paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin,
 	c.dc = dc
 	composite_stats = {}
 	comp_stuck = make([dynamic]draw.Rect, 0, 8, context.temp_allocator)   // (this frame's: render.paint forgets it first, a frame drawn directly has none)
-	draw.set_retained_budget(dc, compositor_settings.memory)
+	draw.set_retained_budget(dc, the_app.compositor_settings.memory)
 	c.frame += 1
 	passes := l.passes[.Full] + l.passes[.Incremental]
 	// laid out again frame after frame (a resize, an animation of a layout property): recording would cost more than
 	// drawing. Drawn directly until no layout pass came for settle_ms (a time, not a number of frames: the same at any
 	// frame rate), then what changed is recorded.
 	now := frame_now_ms()
-	busy := now - c.pass_ms < compositor_settings.settle_ms
+	busy := now - c.pass_ms < the_app.compositor_settings.settle_ms
 	if passes != c.last_passes {
 		c.last_passes = passes
 		c.pass_ms = now
 	}
-	if passes != c.seen_passes || c.items_len != len(l.items) || c.chunk_items != max(compositor_settings.chunk_items, (len(l.items) + compositor_settings.max_chunks - 1) / max(compositor_settings.max_chunks, 1)) {
+	if passes != c.seen_passes || c.items_len != len(l.items) || c.chunk_items != max(the_app.compositor_settings.chunk_items, (len(l.items) + the_app.compositor_settings.max_chunks - 1) / max(the_app.compositor_settings.max_chunks, 1)) {
 		if busy { return false }
 		c.seen_passes, c.seen_refresh, c.seen_restyled = passes, l.passes[.Refresh], l.restyled
 		rebuild(c, l)

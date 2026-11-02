@@ -188,7 +188,7 @@ blocking_text_update :: proc(pf: ^Page_Fonts, t: ^Tab) {
 	if next_ms >= 0 && the_app != nil {
 		if b.timer != base.NIL_HANDLE { host.clear_timer(&the_app.loop, b.timer) }
 		b.timer = host.set_timer(&the_app.loop, next_ms + 1, 0, proc(data: rawptr) {
-			page_render.fonts.blocking.timer = base.NIL_HANDLE
+			the_app.page_render.fonts.blocking.timer = base.NIL_HANDLE
 			request_frames(the_app, 2)
 		}, nil)
 	}
@@ -199,7 +199,7 @@ GENERIC_FAMILIES := [?]string{"serif", "sans-serif", "monospace", "cursive", "fa
 
 // Whether the text of a display item of layout `l` is to be drawn invisible now.
 web_text_invisible :: proc(l: ^Layout, cs: ^style.Computed) -> bool {
-	pf := &page_render.fonts
+	pf := &the_app.page_render.fonts
 	b := &pf.blocking
 	if len(b.families) == 0 || rawptr(l) != b.layout || cs == nil || len(cs.font_family) == 0 { return false }
 	key := rawptr(raw_data(cs.font_family))

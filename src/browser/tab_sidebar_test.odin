@@ -10,6 +10,7 @@ import "wb:config"
 
 @(test)
 tabs_position_names :: proc(t: ^testing.T) {
+	test_app(t)
 	for pos in Tabs_Position { testing.expect_value(t, tabs_position_of(TABS_POSITION_NAMES[pos]), pos) }
 	testing.expect_value(t, tabs_position_of(""), Tabs_Position.Top)
 	testing.expect_value(t, tabs_position_of("bottom"), Tabs_Position.Top)   // not a position: the row of tabs
@@ -18,6 +19,7 @@ tabs_position_names :: proc(t: ^testing.T) {
 // The held handle's width follows the pointer of the frame (no frame behind it), toward the page on either side, bounded.
 @(test)
 sidebar_handle_width_follows_the_pointer :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect_value(t, sidebar_drag_width(240, 238, 338, 1, .Left), 340)
 	testing.expect_value(t, sidebar_drag_width(240, 238, 338, 2, .Left), 290)      // 100 px at 200 %: 50 CSS px
 	testing.expect_value(t, sidebar_drag_width(240, 1000, 900, 1, .Right), 340)    // on the right, it grows leftward
@@ -28,6 +30,7 @@ sidebar_handle_width_follows_the_pointer :: proc(t: ^testing.T) {
 // A tab's glyph icon (a file, the settings) fits the icon's square: the icon font's document is taller than its size.
 @(test)
 tab_glyph_icon_fits_its_square :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect_value(t, icon_glyph_fit(16, {14, 15}), 16)          // fits: as asked
 	testing.expect_value(t, icon_glyph_fit(16, {14, 17}), 16 * 16.0 / 17)
 	testing.expect_value(t, icon_glyph_fit(24, {30, 20}), 24 * 24.0 / 30)
@@ -37,6 +40,7 @@ tab_glyph_icon_fits_its_square :: proc(t: ^testing.T) {
 // The preference takes the three positions and nothing else, at once; the widths are bounded.
 @(test)
 tabs_position_preferences :: proc(t: ^testing.T) {
+	test_app(t)
 	p := config.prefs_make()
 	defer config.prefs_destroy(&p)
 	register_all_prefs(&p)
@@ -66,6 +70,7 @@ tabs_position_preferences :: proc(t: ^testing.T) {
 // The sidebar is as wide as asked, between its minimum and half of the window; icons only: its own narrow width.
 @(test)
 sidebar_extents :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect_value(t, sidebar_extent(1280, 240, 1, false, 48), 240)
 	testing.expect_value(t, sidebar_extent(1280, 240, 1.5, false, 48), 360)    // times the display's scale
 	testing.expect_value(t, sidebar_extent(1280, 40, 1, false, 48), 120)       // never narrower than the minimum
@@ -81,6 +86,7 @@ sidebar_extents :: proc(t: ^testing.T) {
 // they were built before the animation; the titles show nothing while the rows are narrow.
 @(test)
 sidebar_opens_without_a_jump :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect_value(t, sidebar_open_extent(48, 240, 0), 48)
 	testing.expect_value(t, sidebar_open_extent(48, 240, 1), 240)
 	testing.expect_value(t, sidebar_open_extent(48, 240, 0.5), 144)
@@ -123,6 +129,7 @@ sidebar_opens_without_a_jump :: proc(t: ^testing.T) {
 // make the window's width, and a page at the top has it all.
 @(test)
 page_and_sidebar_share_the_window :: proc(t: ^testing.T) {
+	test_app(t)
 	win := draw.Vec2{1280, 800}
 	toolbar_h: f32 = 88   // the title bar and the address row above the body
 	body := draw.Rect{{0, toolbar_h}, win}
@@ -158,6 +165,7 @@ page_and_sidebar_share_the_window :: proc(t: ^testing.T) {
 // Only the rows in view and a margin around it are built; a long glide builds what the view shows and a little around.
 @(test)
 sidebar_builds_only_the_visible_rows :: proc(t: ^testing.T) {
+	test_app(t)
 	// 1000 tabs of 40 px in a 400 px view
 	f, l := side_visible_rows(0, 0, 400, 40, 1000, 80)
 	testing.expect_value(t, f, 0)
@@ -184,6 +192,7 @@ sidebar_builds_only_the_visible_rows :: proc(t: ^testing.T) {
 // The row of tabs builds the tabs in view and a margin, whatever the number of tabs.
 @(test)
 strip_builds_only_the_visible_tabs :: proc(t: ^testing.T) {
+	test_app(t)
 	f, l := strip_visible_tabs(0, 1000, 70, 1000, 2)
 	testing.expect_value(t, f, 0)
 	testing.expect_value(t, l, 17)          // 1000 / 70 = 14.3: 15 tabs, and 2
@@ -202,6 +211,7 @@ strip_builds_only_the_visible_tabs :: proc(t: ^testing.T) {
 // The geometry of the row of tabs, along Y: the row a dragged tab goes to, and the scroll that keeps the current tab in view.
 @(test)
 sidebar_rows_reorder_along_y :: proc(t: ^testing.T) {
+	test_app(t)
 	rh: f32 = 40
 	// a row dragged by its top edge (content coordinates) belongs to the slot its middle is over
 	testing.expect_value(t, drag_slot(0, rh, 8), 0)
@@ -235,6 +245,7 @@ TB_DRAG_MIN :: 7
 // goes under its minimum while something can still make room, and what makes room goes in its order.
 @(test)
 titlebar_parts_share_the_window :: proc(t: ^testing.T) {
+	test_app(t)
 	want := TB_WANT
 	for w := f32(250); w <= 2000; w += 3 {
 		l := titlebar_layout(w, want, TB_DRAG_MIN)
@@ -286,6 +297,7 @@ titlebar_parts_share_the_window :: proc(t: ^testing.T) {
 // window buttons are the system's (Snap Layouts), and the top band still resizes.
 @(test)
 titlebar_row_regions :: proc(t: ^testing.T) {
+	test_app(t)
 	page_render_test_lock()
 	defer page_render_test_unlock()
 	fonts: font.State

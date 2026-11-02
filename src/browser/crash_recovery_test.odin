@@ -40,6 +40,7 @@ always_alive :: proc(pid: u32, created: u64) -> bool { return true }
 
 @(test)
 marker_round_trip_and_garbage :: proc(t: ^testing.T) {
+	test_app(t)
 	m := Run_Marker{pid = 4242, created = 133_800_000_000_000_000, restoring = true}
 	back, ok := marker_parse(marker_text(m))
 	testing.expect(t, ok)
@@ -66,6 +67,7 @@ marker_round_trip_and_garbage :: proc(t: ^testing.T) {
 
 @(test)
 start_decision :: proc(t: ^testing.T) {
+	test_app(t)
 	m := Run_Marker{pid = 10}
 	testing.expect_value(t, start_decide(false, {}, false), Start_Kind.Clean)
 	testing.expect_value(t, start_decide(false, m, true), Start_Kind.Clean)         // (no marker: nothing runs, whatever alive says)
@@ -79,6 +81,7 @@ start_decision :: proc(t: ^testing.T) {
 
 @(test)
 snapshot_round_trip :: proc(t: ^testing.T) {
+	test_app(t)
 	text := snapshot_of({"https://a.example/x?y=1#z", "about:config", "file:///C:/x.html"})
 	tabs, cur, ok := session_parse_tabs(text, 100, 1024, context.temp_allocator, 50)
 	testing.expect(t, ok)
@@ -101,6 +104,7 @@ snapshot_round_trip :: proc(t: ^testing.T) {
 // A file cut anywhere (the write was interrupted, a disk problem), and one made to hurt: nothing crashes, nothing grows past the limits.
 @(test)
 snapshot_truncated_and_trapped :: proc(t: ^testing.T) {
+	test_app(t)
 	text := snapshot_of({"https://a.example/", "https://b.example/"})
 	for n in 0 ..= len(text) {
 		tabs, _, ok := session_parse_tabs(text[:n], 100, 1024, context.temp_allocator, 50)
@@ -160,6 +164,7 @@ snapshot_truncated_and_trapped :: proc(t: ^testing.T) {
 // The three starts of the loop that must not happen: a crash, a start that restores it and crashes before it is stable, and the start after.
 @(test)
 two_crashes_in_a_row :: proc(t: ^testing.T) {
+	test_app(t)
 	dir := scratch("twice")
 	defer base.remove_tree(dir)
 	snap := strings.concatenate({dir, "/", SNAPSHOT_FILE}, context.temp_allocator)
@@ -221,6 +226,7 @@ saved_path :: proc(dir: string) -> string {
 // A marker of a Wren that runs is not a crash, and what it is writing is left alone; the single instance mutex outranks the process check.
 @(test)
 live_instance_is_not_a_crash :: proc(t: ^testing.T) {
+	test_app(t)
 	dir := scratch("live")
 	defer base.remove_tree(dir)
 	snap := strings.concatenate({dir, "/", SNAPSHOT_FILE}, context.temp_allocator)
@@ -252,6 +258,7 @@ live_instance_is_not_a_crash :: proc(t: ^testing.T) {
 
 @(test)
 backups_keep_the_newest :: proc(t: ^testing.T) {
+	test_app(t)
 	dir := scratch("backups")
 	defer base.remove_tree(dir)
 	for d in 1 ..= 6 {
@@ -271,6 +278,7 @@ backups_keep_the_newest :: proc(t: ^testing.T) {
 
 @(test)
 crash_report_is_found :: proc(t: ^testing.T) {
+	test_app(t)
 	dir := scratch("reports")
 	defer base.remove_tree(dir)
 	testing.expect_value(t, crash_report_find(dir, 0), "")   // no folder
@@ -290,6 +298,7 @@ crash_report_is_found :: proc(t: ^testing.T) {
 
 @(test)
 banner_path_is_shortened :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect_value(t, path_tail("C:\\Users\\a\\AppData\\Roaming\\Wren\\crashed-session 1.txt", 2), "\u2026\\Wren\\crashed-session 1.txt")
 	testing.expect_value(t, path_tail("C:/x/y.txt", 5), "C:/x/y.txt")
 	testing.expect_value(t, path_tail("y.txt", 2), "y.txt")
@@ -298,6 +307,7 @@ banner_path_is_shortened :: proc(t: ^testing.T) {
 
 @(test)
 crash_preferences :: proc(t: ^testing.T) {
+	test_app(t)
 	p := config.prefs_make()
 	defer config.prefs_destroy(&p)
 	register_all_prefs(&p)

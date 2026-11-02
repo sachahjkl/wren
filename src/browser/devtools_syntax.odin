@@ -13,9 +13,9 @@ Syn_Lang :: enum u8 { Plain, JSON, JS, CSS, HTML }
 Syn_Class :: enum u8 { Plain, Keyword, String, Number, Comment, Punct, Tag, Attr, Func, Prop, Value, Name, Atom, Error }
 
 syn_color :: proc(c: Syn_Class) -> draw.Color {
-	dark := dtc.dark
+	dark := the_app.dtc.dark
 	switch c {
-	case .Plain:   return dtc.text
+	case .Plain:   return the_app.dtc.text
 	case .Keyword: return dark ? draw.Color{0.78, 0.55, 0.88, 1} : draw.Color{0.55, 0.20, 0.65, 1}
 	case .String:  return dark ? draw.Color{0.60, 0.80, 0.48, 1} : draw.Color{0.10, 0.50, 0.15, 1}
 	case .Number:  return dark ? draw.Color{0.82, 0.68, 0.45, 1} : draw.Color{0.70, 0.35, 0.00, 1}
@@ -28,9 +28,9 @@ syn_color :: proc(c: Syn_Class) -> draw.Color {
 	case .Value:   return dark ? draw.Color{0.85, 0.70, 0.50, 1} : draw.Color{0.55, 0.30, 0.10, 1}
 	case .Name:    return dark ? draw.Color{0.72, 0.62, 0.90, 1} : draw.Color{0.40, 0.25, 0.70, 1}
 	case .Atom:    return dark ? draw.Color{0.95, 0.60, 0.40, 1} : draw.Color{0.75, 0.30, 0.05, 1}
-	case .Error:   return dtc.bad
+	case .Error:   return the_app.dtc.bad
 	}
-	return dtc.text
+	return the_app.dtc.text
 }
 
 @(private = "file")
@@ -60,7 +60,7 @@ put :: proc(out: ^[dynamic]Dt_Run, line: string, a, b: int, class: Syn_Class) {
 syn_runs :: proc(line: string, lang: Syn_Lang, in_comment := false) -> []Dt_Run {
 	out := make([dynamic]Dt_Run, 0, 16, context.temp_allocator)
 	switch lang {
-	case .Plain: append(&out, Dt_Run{line, dtc.text})
+	case .Plain: append(&out, Dt_Run{line, the_app.dtc.text})
 	case .JSON: json_runs(&out, line)
 	case .JS: js_runs(&out, line)
 	case .CSS: css_runs(&out, line)

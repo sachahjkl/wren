@@ -39,11 +39,11 @@ page_update :: proc(app: ^App) {
 page_prepare :: proc(app: ^App, t: ^Tab, size: draw.Vec2) {
 	page_world_check("page_prepare: a chrome frame, or the page thread has the layout")
 	page_prep := &window_own(app).page_prep
-	page_prep^ = Page_Prep{frame = chrome_frames.frame_no, tab = t, page = t.page, size = size, scale = page_scale(app), state = .None, canvas = expected_canvas(app)}
+	page_prep^ = Page_Prep{frame = app.chrome_frames.frame_no, tab = t, page = t.page, size = size, scale = page_scale(app), state = .None, canvas = expected_canvas(app)}
 	hold_commit(app, t)
 	scale := page_prep.scale
 	// an incremental layout reads what the style passes changed (layout.incremental.*)
-	ls := &page_render.settings
+	ls := &app.page_render.settings
 	page.set_layout_journal(t.page, ls.incremental ? ls.inc_journal : 0)
 	// CSS animations and transitions sample the frame's time (pacing.odin), the live clock again between frames
 	page.set_frame_time(t.page, pacer_of(app).frame_ms)
@@ -121,8 +121,8 @@ page_paint :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect) {
 	size := draw.rect_size(rect)
 	p := &window_own(app).page_prep
 	paint_size := size
-	if p.frame != chrome_frames.frame_no || p.tab != t || p.page != t.page || p.size != size || p.scale != page_scale(app) {
-		if p.frame == chrome_frames.frame_no && p.tab == t && p.page == t.page && p.scale == page_scale(app) && p.state == .Ready && pacer_resizing(app) && page_layout_is_long(app, t) && config.bool_of(&app.prefs, "browser.shell.resize_anchored") {
+	if p.frame != app.chrome_frames.frame_no || p.tab != t || p.page != t.page || p.size != size || p.scale != page_scale(app) {
+		if p.frame == app.chrome_frames.frame_no && p.tab == t && p.page == t.page && p.scale == page_scale(app) && p.state == .Ready && pacer_resizing(app) && page_layout_is_long(app, t) && config.bool_of(&app.prefs, "browser.shell.resize_anchored") {
 			// only the size changed since the page phase, the window is being resized, and this page's layout is long:
 			// what was laid out is painted at its size, anchored at the top left, never stretched; the next frame lays
 			// it out at the new size (on the page thread, the chrome drawing meanwhile). Not while a panel inside the

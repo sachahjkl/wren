@@ -53,7 +53,6 @@ Cache_Store :: struct {
 	origins: map[string]^Origin_Caches,   // key: profile dir + "\x00" + origin
 }
 
-@(private) cache_store: Cache_Store
 
 @(private)
 cached_free :: proc(e: ^Cached_Response) {
@@ -70,15 +69,15 @@ named_free :: proc(c: ^Named_Cache) {
 
 // Process end.
 cache_store_shutdown :: proc() {
-	sync.mutex_lock(&cache_store.mu)
-	defer sync.mutex_unlock(&cache_store.mu)
-	for k, oc in cache_store.origins {
+	sync.mutex_lock(&the_pages.cache_store.mu)
+	defer sync.mutex_unlock(&the_pages.cache_store.mu)
+	for k, oc in the_pages.cache_store.origins {
 		for c in oc.caches { named_free(c) }
 		delete(oc.caches); delete(oc.origin); delete(oc.dir); free(oc)
 		delete(k)
 	}
-	delete(cache_store.origins)
-	cache_store.origins = nil
+	delete(the_pages.cache_store.origins)
+	the_pages.cache_store.origins = nil
 }
 
 // <profile>/caches/<origin with every byte outside [a-z0-9.-] as _XX>
@@ -185,7 +184,7 @@ cache_index_parse :: proc(oc: ^Origin_Caches, data: []byte) -> bool {
 @(private)
 origin_caches :: proc(dir, origin: string) -> ^Origin_Caches {
 	key := strings.concatenate({dir, "\x00", origin}, context.temp_allocator)
-	if oc, ok := cache_store.origins[key]; ok { return oc }
+	if oc, ok := the_pages.cache_store.origins[key]; ok { return oc }
 	oc := new(Origin_Caches)
 	oc.origin = strings.clone(origin)
 	oc.dir = cache_origin_dir(dir, origin)
@@ -194,7 +193,7 @@ origin_caches :: proc(dir, origin: string) -> ^Origin_Caches {
 			cache_index_parse(oc, data)
 		}
 	}
-	cache_store.origins[strings.clone(key)] = oc
+	the_pages.cache_store.origins[strings.clone(key)] = oc
 	return oc
 }
 
@@ -270,8 +269,8 @@ header_combined :: proc(lines: string, name: string, allocator := context.alloca
 // Operations (thread-safe)
 
 cache_open :: proc(dir, origin, name: string) {
-	sync.mutex_lock(&cache_store.mu)
-	defer sync.mutex_unlock(&cache_store.mu)
+	sync.mutex_lock(&the_pages.cache_store.mu)
+	defer sync.mutex_unlock(&the_pages.cache_store.mu)
 	oc := origin_caches(dir, origin)
 	if c, _ := find_cache(oc, name); c != nil { return }
 	c := new(Named_Cache)
@@ -281,15 +280,15 @@ cache_open :: proc(dir, origin, name: string) {
 }
 
 cache_has :: proc(dir, origin, name: string) -> bool {
-	sync.mutex_lock(&cache_store.mu)
-	defer sync.mutex_unlock(&cache_store.mu)
+	sync.mutex_lock(&the_pages.cache_store.mu)
+	defer sync.mutex_unlock(&the_pages.cache_store.mu)
 	c, _ := find_cache(origin_caches(dir, origin), name)
 	return c != nil
 }
 
 cache_delete_named :: proc(dir, origin, name: string) -> bool {
-	sync.mutex_lock(&cache_store.mu)
-	defer sync.mutex_unlock(&cache_store.mu)
+	sync.mutex_lock(&the_pages.cache_store.mu)
+	defer sync.mutex_unlock(&the_pages.cache_store.mu)
 	oc := origin_caches(dir, origin)
 	c, i := find_cache(oc, name)
 	if c == nil { return false }
@@ -305,8 +304,8 @@ cache_delete_named :: proc(dir, origin, name: string) -> bool {
 
 // The names, in creation order, "\n"-separated (temporary allocator).
 cache_names :: proc(dir, origin: string) -> string {
-	sync.mutex_lock(&cache_store.mu)
-	defer sync.mutex_unlock(&cache_store.mu)
+	sync.mutex_lock(&the_pages.cache_store.mu)
+	defer sync.mutex_unlock(&the_pages.cache_store.mu)
 	oc := origin_caches(dir, origin)
 	b := strings.builder_make(context.temp_allocator)
 	for c, i in oc.caches { if i > 0 { strings.write_byte(&b, '\n') }; strings.write_string(&b, c.name) }
@@ -315,8 +314,8 @@ cache_names :: proc(dir, origin: string) -> string {
 
 // The ids of the entries of cache `name` matching (all of them with url = ""), in insertion order (temporary).
 cache_match_ids :: proc(dir, origin, name, url, method: string, q: Cache_Query, req_headers := "") -> []u64 {
-	sync.mutex_lock(&cache_store.mu)
-	defer sync.mutex_unlock(&cache_store.mu)
+	sync.mutex_lock(&the_pages.cache_store.mu)
+	defer sync.mutex_unlock(&the_pages.cache_store.mu)
 	out := make([dynamic]u64, context.temp_allocator)
 	c, _ := find_cache(origin_caches(dir, origin), name)
 	if c == nil { return nil }
@@ -326,8 +325,8 @@ cache_match_ids :: proc(dir, origin, name, url, method: string, q: Cache_Query, 
 
 // The header lines of an entry's request (temporary); ok = false when it is gone.
 cache_entry_request_headers :: proc(dir, origin, name: string, id: u64) -> (string, bool) {
-	sync.mutex_lock(&cache_store.mu)
-	defer sync.mutex_unlock(&cache_store.mu)
+	sync.mutex_lock(&the_pages.cache_store.mu)
+	defer sync.mutex_unlock(&the_pages.cache_store.mu)
 	c, _ := find_cache(origin_caches(dir, origin), name)
 	if c == nil { return "", false }
 	for x in c.entries { if x.id == id { return strings.clone(x.req_headers, context.temp_allocator), true } }
@@ -336,8 +335,8 @@ cache_entry_request_headers :: proc(dir, origin, name: string, id: u64) -> (stri
 
 // An entry's request and response head (copies in the temporary allocator); ok = false when it is gone.
 cache_entry_head :: proc(dir, origin, name: string, id: u64) -> (e: Cached_Response, ok: bool) {
-	sync.mutex_lock(&cache_store.mu)
-	defer sync.mutex_unlock(&cache_store.mu)
+	sync.mutex_lock(&the_pages.cache_store.mu)
+	defer sync.mutex_unlock(&the_pages.cache_store.mu)
 	c, _ := find_cache(origin_caches(dir, origin), name)
 	if c == nil { return }
 	for x in c.entries {
@@ -351,8 +350,8 @@ cache_entry_head :: proc(dir, origin, name: string, id: u64) -> (e: Cached_Respo
 
 // An entry's body (allocated with `allocator`); ok = false when it is gone or unreadable.
 cache_entry_body :: proc(dir, origin, name: string, id: u64, allocator := context.allocator) -> (body: []byte, ok: bool) {
-	sync.mutex_lock(&cache_store.mu)
-	defer sync.mutex_unlock(&cache_store.mu)
+	sync.mutex_lock(&the_pages.cache_store.mu)
+	defer sync.mutex_unlock(&the_pages.cache_store.mu)
 	oc := origin_caches(dir, origin)
 	c, _ := find_cache(oc, name)
 	if c == nil { return }
@@ -373,8 +372,8 @@ Cache_Put_Error :: enum u8 { None, No_Cache, Quota }
 
 // Stores an entry (replacing those that match its request), creating cache `name` if it went away meanwhile.
 cache_put :: proc(dir, origin, name: string, e: Cached_Response, body: []byte, max_bytes: i64) -> Cache_Put_Error {
-	sync.mutex_lock(&cache_store.mu)
-	defer sync.mutex_unlock(&cache_store.mu)
+	sync.mutex_lock(&the_pages.cache_store.mu)
+	defer sync.mutex_unlock(&the_pages.cache_store.mu)
 	oc := origin_caches(dir, origin)
 	c, _ := find_cache(oc, name)
 	if c == nil {
@@ -418,8 +417,8 @@ cache_put :: proc(dir, origin, name: string, e: Cached_Response, body: []byte, m
 
 // Removes the entries matching; true when there were some.
 cache_delete_entries :: proc(dir, origin, name, url, method: string, q: Cache_Query, req_headers := "") -> bool {
-	sync.mutex_lock(&cache_store.mu)
-	defer sync.mutex_unlock(&cache_store.mu)
+	sync.mutex_lock(&the_pages.cache_store.mu)
+	defer sync.mutex_unlock(&the_pages.cache_store.mu)
 	oc := origin_caches(dir, origin)
 	c, _ := find_cache(oc, name)
 	if c == nil { return false }
@@ -458,7 +457,7 @@ cache_keys :: proc(dir: string) -> []string {
 
 // Bytes the Cache API keeps for an origin (StorageManager.estimate).
 cache_usage :: proc(dir, origin: string) -> i64 {
-	sync.mutex_lock(&cache_store.mu)
-	defer sync.mutex_unlock(&cache_store.mu)
+	sync.mutex_lock(&the_pages.cache_store.mu)
+	defer sync.mutex_unlock(&the_pages.cache_store.mu)
 	return origin_caches(dir, origin).bytes
 }

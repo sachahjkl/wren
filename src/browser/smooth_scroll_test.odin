@@ -11,6 +11,7 @@ CURVES := [?]Scroll_Curve{.Impulse, .Ease_Out}
 
 @(test)
 smooth_curve_shape :: proc(t: ^testing.T) {
+	test_app(t)
 	for c in CURVES {
 		for k in ([?]f64{0.5, 2, 5, 12, 30}) {
 			p0, _ := curve_eval(c, k, 0)
@@ -65,6 +66,7 @@ simulate :: proc(c: Scroll_Curve, start, step, limit: f64, notches: int, gap_ms,
 
 @(test)
 smooth_single_notch_lands_exactly :: proc(t: ^testing.T) {
+	test_app(t)
 	for c in CURVES {
 		positions, _ := simulate(c, 100, 48, 10_000, 1, 0, 180, 120)
 		last := positions[len(positions) - 1]
@@ -80,6 +82,7 @@ smooth_single_notch_lands_exactly :: proc(t: ^testing.T) {
 
 @(test)
 smooth_notches_add_up_without_stopping :: proc(t: ^testing.T) {
+	test_app(t)
 	for c in CURVES {
 		// 10 notches 30 ms apart (a fast spin): the end is the sum, the motion never stops nor goes back on the way
 		positions, to := simulate(c, 0, 48, 100_000, 10, 30, 180, 400)
@@ -99,6 +102,7 @@ smooth_notches_add_up_without_stopping :: proc(t: ^testing.T) {
 
 @(test)
 smooth_stays_within_the_range :: proc(t: ^testing.T) {
+	test_app(t)
 	for c in CURVES {
 		// toward the end: notches past it pile up on the limit, not beyond
 		positions, to := simulate(c, 900, 48, 1000, 8, 20, 180, 300)
@@ -116,6 +120,7 @@ smooth_stays_within_the_range :: proc(t: ^testing.T) {
 // A notch arriving while the scroller glides fast keeps its speed (no brake), and the curve stays within its ends.
 @(test)
 smooth_speed_carries_over :: proc(t: ^testing.T) {
+	test_app(t)
 	for c in CURVES {
 		a: Axis_Anim
 		axis_retarget(&a, 0, 0, 1000, 0, 180, c, 5)
@@ -144,6 +149,7 @@ smooth_speed_carries_over :: proc(t: ^testing.T) {
 
 @(test)
 smooth_wheel_precision :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect(t, !wheel_is_precise({0, 1}))
 	testing.expect(t, !wheel_is_precise({0, -3}))
 	testing.expect(t, wheel_is_precise({0, 40.0 / 120}))   // a high-resolution wheel's third of a notch
@@ -153,6 +159,7 @@ smooth_wheel_precision :: proc(t: ^testing.T) {
 // Shift makes a vertical wheel horizontal; a wheel that turns across stays as it is, Shift or not.
 @(test)
 wheel_axes_with_shift :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect_value(t, wheel_axes(platform.Event{delta = {0, 3}}), [2]f32{0, 3})
 	testing.expect_value(t, wheel_axes(platform.Event{delta = {2, 0}}), [2]f32{2, 0})
 	testing.expect_value(t, wheel_axes(platform.Event{delta = {0, 3}, mods = {.Shift}}), [2]f32{3, 0})
@@ -163,6 +170,7 @@ wheel_axes_with_shift :: proc(t: ^testing.T) {
 // Nearest edge first; where it is when that shows already; the start of what does not fit.
 @(test)
 scroll_nearest_edges :: proc(t: ^testing.T) {
+	test_app(t)
 	PORT :: 100
 	testing.expect_value(t, scroll_nearest(20, 50, PORT, 0), 0)        // in view
 	testing.expect_value(t, scroll_nearest(150, 180, PORT, 0), 80)     // past the end: its end at the view's

@@ -68,18 +68,17 @@ Dash :: struct {
 	status:      string,
 }
 
-dash: Dash
 
 dash_destroy :: proc() {
-	ui.area_destroy(&dash.my)
-	ui.field_destroy(&dash.custom_url); ui.field_destroy(&dash.custom_name); ui.field_destroy(&dash.wl_add)
-	ui.field_destroy(&dash.rule_src); ui.field_destroy(&dash.rule_dst); ui.field_destroy(&dash.log_search)
-	ui.vlist_destroy(&dash.log_list)
-	delete(dash.my_diag); delete(dash.log_rows); delete(dash.log_ids); delete(dash.log_labels); delete(dash.log_sel)
-	delete(dash.log_query); delete(dash.status); delete(dash.my_checked)
-	for _, v in dash.my_errors { delete(v) }
-	delete(dash.my_errors)
-	dash = {}
+	ui.area_destroy(&the_app.dash.my)
+	ui.field_destroy(&the_app.dash.custom_url); ui.field_destroy(&the_app.dash.custom_name); ui.field_destroy(&the_app.dash.wl_add)
+	ui.field_destroy(&the_app.dash.rule_src); ui.field_destroy(&the_app.dash.rule_dst); ui.field_destroy(&the_app.dash.log_search)
+	ui.vlist_destroy(&the_app.dash.log_list)
+	delete(the_app.dash.my_diag); delete(the_app.dash.log_rows); delete(the_app.dash.log_ids); delete(the_app.dash.log_labels); delete(the_app.dash.log_sel)
+	delete(the_app.dash.log_query); delete(the_app.dash.status); delete(the_app.dash.my_checked)
+	for _, v in the_app.dash.my_errors { delete(v) }
+	delete(the_app.dash.my_errors)
+	the_app.dash = {}
 }
 
 show_blocker :: proc(app: ^App, t: ^Tab, address: string) {
@@ -96,9 +95,9 @@ show_blocker :: proc(app: ^App, t: ^Tab, address: string) {
 	address_set(app, t, address)
 	if i := strings.index_byte(address, '#'); i >= 0 {
 		frag := address[i + 1:]
-		for n, tb in DASH_NAMES { if n == frag { dash.tab = int(tb) } }
+		for n, tb in DASH_NAMES { if n == frag { app.dash.tab = int(tb) } }
 	}
-	dash.my_loaded = false
+	app.dash.my_loaded = false
 }
 
 ////////////////////////////////
@@ -138,7 +137,7 @@ pref_row :: proc(app: ^App, label, name, id: string) {
 	ui.next({width = ui.px(em * 26), height = ui.px(ui.dense(em * 1.8))})
 	if ui.toggle(fmt.aprintf("###pt_%s", id, allocator = ui.frame_allocator()), label, &v).clicked {
 		config.set_from_string(&app.prefs, name, v ? "true" : "false", .User)
-		blocker.touch(&bl.b)
+		blocker.touch(&app.bl.b)
 	}
 }
 
@@ -163,10 +162,10 @@ fmt_date :: proc(unix_s: i64) -> string {
 
 blocker_page :: proc(app: ^App, t: ^Tab) {
 	em := ui.font_size()
-	if !bl.started { return }
-	b := &bl.b
+	if !app.bl.started { return }
+	b := &app.bl.b
 	// the journal records only while it is on screen
-	b.journal.armed = dash.tab == int(Dash_Tab.Journal)
+	b.journal.armed = app.dash.tab == int(Dash_Tab.Journal)
 	if ui.style({width = ui.fill(), height = ui.fill()}) {
 		ui.next({axis = .Y})
 		root := ui.build_box({.Draw_Background}, "###blocker_page")
@@ -189,8 +188,8 @@ blocker_page :: proc(app: ^App, t: ^Tab) {
 			labels := []string{i18n.tr("Settings"), i18n.tr("Filter lists"), i18n.tr("My filters"), i18n.tr("My rules"), i18n.tr("Whitelist"), i18n.tr("Journal"), i18n.tr("Statistics"), i18n.tr("About")}
 			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.2))})
 			if ui.row(.Start, {}, "###bd_tabs_row") {
-				if ui.tabs("###bd_tabs", labels, nil, &dash.tab) {
-					a := fmt.tprintf("about:blocker#%s", DASH_NAMES[Dash_Tab(dash.tab)])
+				if ui.tabs("###bd_tabs", labels, nil, &app.dash.tab) {
+					a := fmt.tprintf("about:blocker#%s", DASH_NAMES[Dash_Tab(app.dash.tab)])
 					delete(t.url); t.url = strings.clone(a)
 					address_set(app, t, a)
 				}
@@ -198,7 +197,7 @@ blocker_page :: proc(app: ^App, t: ^Tab) {
 			ui.hline(ui.fill())
 			ui.next({width = ui.fill(), height = ui.fill()})
 			if ui.column() {
-				switch Dash_Tab(dash.tab) {
+				switch Dash_Tab(app.dash.tab) {
 				case .Settings: tab_settings(app, t)
 				case .Lists: tab_lists(app, t)
 				case .My_Filters: tab_my_filters(app, t)
@@ -219,7 +218,7 @@ blocker_page :: proc(app: ^App, t: ^Tab) {
 @(private = "file")
 tab_settings :: proc(app: ^App, t: ^Tab) {
 	em := ui.font_size()
-	b := &bl.b
+	b := &app.bl.b
 	ui.next({width = ui.fill(), height = ui.fill()})
 	if ui.scroll_y("###bs_scroll") {
 		section(i18n.tr("Blocking"), "block")
@@ -269,7 +268,7 @@ tab_settings :: proc(app: ^App, t: ^Tab) {
 			ui.spacer(ui.px(em * 0.5))
 			if tool_button(i18n.tr("Reset statistics"), "bs_reset_stats", em * 10) { b.totals = {since = blocker.unix_ms() / 1000}; blocker.conf_save(b) }
 			ui.spacer(ui.px(em * 0.8))
-			if ui.tags("weak") { ui.next({width = ui.fill(), height = ui.pct(1)}); ui.label(tid(dash.status, "bs_conf_st")) }
+			if ui.tags("weak") { ui.next({width = ui.fill(), height = ui.pct(1)}); ui.label(tid(app.dash.status, "bs_conf_st")) }
 		}
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
 		if ui.row(.Center) {
@@ -297,7 +296,7 @@ group_title :: proc(group: string) -> string {
 @(private = "file")
 tab_lists :: proc(app: ^App, t: ^Tab) {
 	em := ui.font_size()
-	b := &bl.b
+	b := &app.bl.b
 	// toolbar
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * BLOCKER_ROW_H_EM))})
 	if ui.row(.Center) {
@@ -359,17 +358,17 @@ tab_lists :: proc(app: ^App, t: ^Tab) {
 		if ui.row(.Center) {
 			ui.spacer(ui.px(em * 0.9))
 			ui.next({width = ui.px(em * 12), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
-			ui.line_edit("###bl_cname", &dash.custom_name, i18n.tr("Name (optional)"))
+			ui.line_edit("###bl_cname", &app.dash.custom_name, i18n.tr("Name (optional)"))
 			ui.spacer(ui.px(em * 0.5))
 			ui.next({width = ui.px(em * 36), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
-			res := ui.line_edit("###bl_curl", &dash.custom_url, "https://example.org/filters.txt")
+			res := ui.line_edit("###bl_curl", &app.dash.custom_url, "https://example.org/filters.txt")
 			ui.spacer(ui.px(em * 0.5))
-			url := strings.trim_space(ui.field_string(&dash.custom_url))
+			url := strings.trim_space(ui.field_string(&app.dash.custom_url))
 			valid := strings.has_prefix(url, "https://") || strings.has_prefix(url, "http://")
 			if ui.disabled(!valid) {
 				if tool_button(i18n.tr("Add list"), "bl_cadd", em * 7) || (res.committed && valid) {
-					blocker.list_add_custom(b, strings.trim_space(ui.field_string(&dash.custom_name)), url)
-					ui.field_clear(&dash.custom_url); ui.field_clear(&dash.custom_name)
+					blocker.list_add_custom(b, strings.trim_space(ui.field_string(&app.dash.custom_name)), url)
+					ui.field_clear(&app.dash.custom_url); ui.field_clear(&app.dash.custom_name)
 					blocker.conf_save(b)
 					blocker.updater_round(b, false)
 				}
@@ -388,10 +387,10 @@ tab_lists :: proc(app: ^App, t: ^Tab) {
 
 @(private = "file")
 diagnose :: proc(text: string) {
-	delete(dash.my_diag)
-	for _, v in dash.my_errors { delete(v) }
-	clear(&dash.my_errors)
-	if dash.my_errors == nil { dash.my_errors = make(map[int]string) }
+	delete(the_app.dash.my_diag)
+	for _, v in the_app.dash.my_errors { delete(v) }
+	clear(&the_app.dash.my_errors)
+	if the_app.dash.my_errors == nil { the_app.dash.my_errors = make(map[int]string) }
 	diags := make([dynamic]string)
 	valid, ignored := 0, 0
 	line_no := 0        // 1-based, for the message
@@ -410,29 +409,29 @@ diagnose :: proc(text: string) {
 			ignored += 1
 			msg := fmt.aprintf(i18n.tr("line number, the line", "line %d: not understood or not supported: %s"), line_no, t[:min(len(t), 70)])
 			if len(diags) < 8 { append(&diags, msg) }
-			dash.my_errors[para] = strings.clone(i18n.tr("not understood or not supported (uBlock Origin ignores it too)"))
+			the_app.dash.my_errors[para] = strings.clone(i18n.tr("not understood or not supported (uBlock Origin ignores it too)"))
 		} else { valid += 1 }
 	}
-	dash.my_diag = diags[:]
-	dash.my_valid, dash.my_ignored = valid, ignored
+	the_app.dash.my_diag = diags[:]
+	the_app.dash.my_valid, the_app.dash.my_ignored = valid, ignored
 }
 
 @(private = "file")
 tab_my_filters :: proc(app: ^App, t: ^Tab) {
 	em := ui.font_size()
-	b := &bl.b
-	if !dash.my_loaded {
-		ui.area_set(&dash.my, b.conf.my_filters)
-		dash.my_loaded, dash.my_dirty = true, false
+	b := &app.bl.b
+	if !app.dash.my_loaded {
+		ui.area_set(&app.dash.my, b.conf.my_filters)
+		app.dash.my_loaded, app.dash.my_dirty = true, false
 		diagnose(b.conf.my_filters)
 	}
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * BLOCKER_ROW_H_EM))})
 	if ui.row(.Center) {
 		ui.spacer(ui.px(em * 0.9))
-		if ui.disabled(!dash.my_dirty) {
+		if ui.disabled(!app.dash.my_dirty) {
 			if tool_button(i18n.tr("Apply changes"), "mf_apply", em * 10, i18n.tr("Compile the filters into the index (Ctrl+S)")) { dash_apply_filters(app) }
 			ui.spacer(ui.px(em * 0.5))
-			if tool_button(i18n.tr("Revert"), "mf_revert", em * 6) { dash.my_loaded = false }
+			if tool_button(i18n.tr("Revert"), "mf_revert", em * 6) { app.dash.my_loaded = false }
 		}
 		ui.spacer(ui.px(em * 0.5))
 		if tool_button(i18n.tr("Import…"), "mf_import", em * 7, i18n.tr("Add the lines of a text file")) { dash_import_filters(app) }
@@ -441,27 +440,27 @@ tab_my_filters :: proc(app: ^App, t: ^Tab) {
 		ui.spacer(ui.px(em * 0.8))
 		if ui.tags("weak") {
 			ui.next({width = ui.fill(), height = ui.pct(1)})
-			ui.label(tid(dash.my_dirty ? fmt.tprintf(i18n.tr("filters, lines not understood", "%d filters, %d lines not understood · changes not applied"), dash.my_valid, dash.my_ignored) : fmt.tprintf(i18n.tr("filters, lines not understood", "%d filters, %d lines not understood"), dash.my_valid, dash.my_ignored), "mf_status"))
+			ui.label(tid(app.dash.my_dirty ? fmt.tprintf(i18n.tr("filters, lines not understood", "%d filters, %d lines not understood · changes not applied"), app.dash.my_valid, app.dash.my_ignored) : fmt.tprintf(i18n.tr("filters, lines not understood", "%d filters, %d lines not understood"), app.dash.my_valid, app.dash.my_ignored), "mf_status"))
 		}
 	}
 	ui.next({width = ui.fill(), height = ui.fill()})
 	hl := filter_highlight()
-	res := ui.text_edit("###mf_edit", &dash.my, i18n.tr("! One filter per line. Examples:\n||ads.example.com^\nexample.com##.banner\nexample.com##+js(set-constant, adsEnabled, false)\nexample.com##^script:has-text(ads)\n@@||example.com^$document"), line_numbers = true, highlight = &hl)
+	res := ui.text_edit("###mf_edit", &app.dash.my, i18n.tr("! One filter per line. Examples:\n||ads.example.com^\nexample.com##.banner\nexample.com##+js(set-constant, adsEnabled, false)\nexample.com##^script:has-text(ads)\n@@||example.com^$document"), line_numbers = true, highlight = &hl)
 	if res.changed {
-		dash.my_dirty = true
-		diagnose(ui.area_string(&dash.my))
+		app.dash.my_dirty = true
+		diagnose(ui.area_string(&app.dash.my))
 	}
 	// a tooltip over an invalid line: the engine's reason for dropping it
 	if res.hover_line >= 0 {
-		if msg, bad := dash.my_errors[res.hover_line]; bad {
+		if msg, bad := app.dash.my_errors[res.hover_line]; bad {
 			if ui.tooltip() { ui.label(label_text(msg)) }
 		}
 	}
-	if res.focused && ui.key_press(.S, {.Ctrl}) && dash.my_dirty { dash_apply_filters(app) }
-	if len(dash.my_diag) > 0 {
-		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.5 * f32(min(len(dash.my_diag), 5)) + em * 0.6))})
+	if res.focused && ui.key_press(.S, {.Ctrl}) && app.dash.my_dirty { dash_apply_filters(app) }
+	if len(app.dash.my_diag) > 0 {
+		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.5 * f32(min(len(app.dash.my_diag), 5)) + em * 0.6))})
 		if ui.column() {
-			for d, i in dash.my_diag[:min(len(dash.my_diag), 5)] {
+			for d, i in app.dash.my_diag[:min(len(app.dash.my_diag), 5)] {
 				ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.5)), font_size = em * 0.88})
 				ui.label(fmt.aprintf("%s###mf_d%d", label_text(d), i, allocator = ui.frame_allocator()))
 			}
@@ -471,10 +470,10 @@ tab_my_filters :: proc(app: ^App, t: ^Tab) {
 
 @(private = "file")
 dash_apply_filters :: proc(app: ^App) {
-	b := &bl.b
+	b := &app.bl.b
 	delete(b.conf.my_filters)
-	b.conf.my_filters = strings.clone(ui.area_string(&dash.my))
-	dash.my_dirty = false
+	b.conf.my_filters = strings.clone(ui.area_string(&app.dash.my))
+	app.dash.my_dirty = false
 	blocker.conf_save(b)
 	blocker.rebuild(b)
 	ui.toast(.Good, i18n.tr("Filters applied"))
@@ -486,32 +485,32 @@ dash_apply_filters :: proc(app: ^App) {
 @(private = "file")
 tab_my_rules :: proc(app: ^App, t: ^Tab) {
 	em := ui.font_size()
-	b := &bl.b
+	b := &app.bl.b
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * BLOCKER_ROW_H_EM))})
 	if ui.row(.Center) {
 		ui.spacer(ui.px(em * 0.9))
 		ui.next({width = ui.px(em * 11), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
-		ui.line_edit("###mr_src", &dash.rule_src, i18n.tr("site or *"))
+		ui.line_edit("###mr_src", &app.dash.rule_src, i18n.tr("site or *"))
 		ui.spacer(ui.px(em * 0.4))
 		ui.next({width = ui.px(em * 15), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
-		ui.line_edit("###mr_dst", &dash.rule_dst, i18n.tr("destination host or *"))
+		ui.line_edit("###mr_dst", &app.dash.rule_dst, i18n.tr("destination host or *"))
 		ui.spacer(ui.px(em * 0.4))
 		names := make([]string, len(blocker.DYN_TYPE_NAMES), context.temp_allocator)
 		for n, i in blocker.DYN_TYPE_NAMES { names[i] = n }
 		ui.next({width = ui.px(em * 8.5), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
-		ui.dropdown("###mr_type", names, &dash.rule_type)
+		ui.dropdown("###mr_type", names, &app.dash.rule_type)
 		ui.spacer(ui.px(em * 0.4))
 		ui.next({width = ui.px(em * 7), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
-		ui.dropdown("###mr_action", []string{i18n.tr("rule action", "block"), i18n.tr("rule action", "allow")}, &dash.rule_action)
+		ui.dropdown("###mr_action", []string{i18n.tr("rule action", "block"), i18n.tr("rule action", "allow")}, &app.dash.rule_action)
 		ui.spacer(ui.px(em * 0.4))
-		src := strings.to_lower(strings.trim_space(ui.field_string(&dash.rule_src)), context.temp_allocator)
-		dst := strings.to_lower(strings.trim_space(ui.field_string(&dash.rule_dst)), context.temp_allocator)
+		src := strings.to_lower(strings.trim_space(ui.field_string(&app.dash.rule_src)), context.temp_allocator)
+		dst := strings.to_lower(strings.trim_space(ui.field_string(&app.dash.rule_dst)), context.temp_allocator)
 		if src == "" { src = "*" }
 		if ui.disabled(dst == "") {
 			if tool_button(i18n.tr("Add rule"), "mr_add", em * 7) {
-				blocker.dyn_set(&b.dyn, src, dst, blocker.Dyn_Type(dash.rule_type), dash.rule_action == 0 ? .Block : .Allow)
+				blocker.dyn_set(&b.dyn, src, dst, blocker.Dyn_Type(app.dash.rule_type), app.dash.rule_action == 0 ? .Block : .Allow)
 				blocker_rules_saved()
-				ui.field_clear(&dash.rule_dst)
+				ui.field_clear(&app.dash.rule_dst)
 			}
 		}
 		ui.spacer(ui.px(em * 0.5))
@@ -551,10 +550,10 @@ tab_my_rules :: proc(app: ^App, t: ^Tab) {
 }
 
 blocker_rules_saved :: proc() {
-	bl.b.dyn.version += 1
-	bl.b.conf_ver += 1
-	blocker.conf_save(&bl.b)
-	blocker.touch(&bl.b)
+	the_app.bl.b.dyn.version += 1
+	the_app.bl.b.conf_ver += 1
+	blocker.conf_save(&the_app.bl.b)
+	blocker.touch(&the_app.bl.b)
 }
 
 ////////////////////////////////
@@ -563,20 +562,20 @@ blocker_rules_saved :: proc() {
 @(private = "file")
 tab_whitelist :: proc(app: ^App, t: ^Tab) {
 	em := ui.font_size()
-	b := &bl.b
+	b := &app.bl.b
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * BLOCKER_ROW_H_EM))})
 	if ui.row(.Center) {
 		ui.spacer(ui.px(em * 0.9))
 		ui.next({width = ui.px(em * 26), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
-		res := ui.line_edit("###wl_add", &dash.wl_add, i18n.tr("example.org: a site where the blocker stays off"))
+		res := ui.line_edit("###wl_add", &app.dash.wl_add, i18n.tr("example.org: a site where the blocker stays off"))
 		ui.spacer(ui.px(em * 0.5))
-		host := strings.to_lower(strings.trim_space(ui.field_string(&dash.wl_add)), context.temp_allocator)
+		host := strings.to_lower(strings.trim_space(ui.field_string(&app.dash.wl_add)), context.temp_allocator)
 		host = strings.trim_prefix(strings.trim_prefix(host, "https://"), "http://")
 		if i := strings.index_any(host, "/?#"); i >= 0 { host = host[:i] }
 		if ui.disabled(host == "") {
 			if tool_button(i18n.tr("Add"), "wl_btn", em * 5) || (res.committed && host != "") {
 				blocker.site_toggle(b, strings.clone(host, context.temp_allocator), .Off, true)
-				ui.field_clear(&dash.wl_add)
+				ui.field_clear(&app.dash.wl_add)
 			}
 		}
 		ui.spacer(ui.px(em * 0.8))
@@ -657,60 +656,60 @@ outcome_color :: proc(o: blocker.Outcome) -> (c: ui.Color, tone: bool) {
 @(private = "file")
 log_model :: proc(b: ^blocker.Blocker, query: string) {
 	j := &b.journal
-	if j.version == dash.log_version && query == dash.log_query && !dash.log_pause { /* same rows */ }
-	if dash.log_pause && query == dash.log_query { return }
-	if j.version == dash.log_version && query == dash.log_query { return }
-	dash.log_version = j.version
-	delete(dash.log_query); dash.log_query = strings.clone(query)
-	clear(&dash.log_rows); clear(&dash.log_ids); clear(&dash.log_labels); clear(&dash.log_sel)
+	if j.version == the_app.dash.log_version && query == the_app.dash.log_query && !the_app.dash.log_pause { /* same rows */ }
+	if the_app.dash.log_pause && query == the_app.dash.log_query { return }
+	if j.version == the_app.dash.log_version && query == the_app.dash.log_query { return }
+	the_app.dash.log_version = j.version
+	delete(the_app.dash.log_query); the_app.dash.log_query = strings.clone(query)
+	clear(&the_app.dash.log_rows); clear(&the_app.dash.log_ids); clear(&the_app.dash.log_labels); clear(&the_app.dash.log_sel)
 	q := strings.to_lower(query, context.temp_allocator)
 	n := blocker.journal_len(j)
 	for k := n - 1; k >= 0; k -= 1 {   // newest first
 		e := blocker.journal_get(j, k)
-		if dash.log_outcome > 0 {
-			o := blocker.Outcome(dash.log_outcome - 1)
+		if the_app.dash.log_outcome > 0 {
+			o := blocker.Outcome(the_app.dash.log_outcome - 1)
 			if e.outcome != o { continue }
 		}
-		if dash.log_type > 0 && e.type != adblock.Resource(dash.log_type - 1) { continue }
+		if the_app.dash.log_type > 0 && e.type != adblock.Resource(the_app.dash.log_type - 1) { continue }
 		if q != "" && !strings.contains(strings.to_lower(e.url, context.temp_allocator), q) && !strings.contains(strings.to_lower(e.rule, context.temp_allocator), q) && !strings.contains(strings.to_lower(e.doc, context.temp_allocator), q) { continue }
-		append(&dash.log_rows, k)
-		append(&dash.log_ids, u64(j.total) - u64(n - k))
-		append(&dash.log_labels, e.url)
-		append(&dash.log_sel, true)
-		if len(dash.log_rows) >= 20000 { break }
+		append(&the_app.dash.log_rows, k)
+		append(&the_app.dash.log_ids, u64(j.total) - u64(n - k))
+		append(&the_app.dash.log_labels, e.url)
+		append(&the_app.dash.log_sel, true)
+		if len(the_app.dash.log_rows) >= 20000 { break }
 	}
 }
 
 @(private = "file")
 tab_journal :: proc(app: ^App, t: ^Tab) {
 	em := ui.font_size()
-	b := &bl.b
+	b := &app.bl.b
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * BLOCKER_ROW_H_EM))})
 	if ui.row(.Center) {
 		ui.spacer(ui.px(em * 0.9))
 		ui.next({width = ui.px(em * 22), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
-		ui.line_edit("###lg_search", &dash.log_search, i18n.tr("Search URL, rule or document"))
+		ui.line_edit("###lg_search", &app.dash.log_search, i18n.tr("Search URL, rule or document"))
 		ui.spacer(ui.px(em * 0.5))
 		outs := make([]string, len(blocker.Outcome) + 1, context.temp_allocator)
 		outs[0] = i18n.tr("all outcomes")
 		for o in blocker.Outcome { outs[int(o) + 1] = outcome_name(o) }
 		ui.next({width = ui.px(em * 11), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
-		if ui.dropdown("###lg_outcome", outs, &dash.log_outcome) { dash.log_version = 0 }
+		if ui.dropdown("###lg_outcome", outs, &app.dash.log_outcome) { app.dash.log_version = 0 }
 		ui.spacer(ui.px(em * 0.4))
 		types := make([]string, 22, context.temp_allocator)
 		types[0] = i18n.tr("all types")
 		k := 1
 		for r in adblock.Resource { if r <= .Webrtc { types[k] = adblock.resource_name(r); k += 1 } }
 		ui.next({width = ui.px(em * 11), height = ui.px(ui.dense(em * TOOL_CONTROL_H_EM))})
-		if ui.dropdown("###lg_type", types[:k], &dash.log_type) { dash.log_version = 0 }
+		if ui.dropdown("###lg_type", types[:k], &app.dash.log_type) { app.dash.log_version = 0 }
 		ui.spacer(ui.px(em * 0.5))
-		if tool_button(dash.log_pause ? i18n.tr("Resume") : i18n.tr("Pause"), "lg_pause", em * 7) { dash.log_pause = !dash.log_pause; dash.log_version = 0 }
+		if tool_button(app.dash.log_pause ? i18n.tr("Resume") : i18n.tr("Pause"), "lg_pause", em * 7) { app.dash.log_pause = !app.dash.log_pause; app.dash.log_version = 0 }
 		ui.spacer(ui.px(em * 0.4))
-		if tool_button(i18n.tr("Clear"), "lg_clear", em * 6) { blocker.journal_clear(&b.journal); dash.log_version = 0 }
+		if tool_button(i18n.tr("Clear"), "lg_clear", em * 6) { blocker.journal_clear(&b.journal); app.dash.log_version = 0 }
 		ui.spacer(ui.px(em * 0.8))
-		if ui.tags("weak") { ui.next({width = ui.fill(), height = ui.pct(1)}); ui.label(tid(fmt.tprintf(i18n.tr("rows shown, rows in all", "%d shown of %d"), len(dash.log_rows), blocker.journal_len(&b.journal)), "lg_count")) }
+		if ui.tags("weak") { ui.next({width = ui.fill(), height = ui.pct(1)}); ui.label(tid(fmt.tprintf(i18n.tr("rows shown, rows in all", "%d shown of %d"), len(app.dash.log_rows), blocker.journal_len(&b.journal)), "lg_count")) }
 	}
-	log_model(b, strings.trim_space(ui.field_string(&dash.log_search)))
+	log_model(b, strings.trim_space(ui.field_string(&app.dash.log_search)))
 	// header
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.5))})
 	if ui.row(.Center) {
@@ -721,12 +720,12 @@ tab_journal :: proc(app: ^App, t: ^Tab) {
 	}
 	ui.hline(ui.fill())
 	ui.next({width = ui.fill(), height = ui.fill()})
-	if rows, ok := ui.vlist("###lg_list", &dash.log_list, dash.log_ids[:], dash.log_labels[:], dash.log_sel[:]); ok {
+	if rows, ok := ui.vlist("###lg_list", &app.dash.log_list, app.dash.log_ids[:], app.dash.log_labels[:], app.dash.log_sel[:]); ok {
 		for i in rows.first ..< rows.last {
-			e := blocker.journal_get(&b.journal, dash.log_rows[i])
+			e := blocker.journal_get(&b.journal, app.dash.log_rows[i])
 			if e == nil { continue }
 			ui.next({height = ui.px(ui.dense(em * 1.75))})
-			row := ui.list_row(&dash.log_list.list, i, dash.log_labels[i])
+			row := ui.list_row(&app.dash.log_list.list, i, app.dash.log_labels[i])
 			if ui.parent(row.box) {
 				ui.spacer(ui.px(em * 0.9))
 				lt := local_time(e.time)
@@ -740,11 +739,11 @@ tab_journal :: proc(app: ^App, t: ^Tab) {
 				cell(e.rule, fmt.tprintf("lgr_%d", i), em * 20, true)
 			}
 			if row.right_clicked {
-				dash.log_menu = dash.log_rows[i]
+				app.dash.log_menu = app.dash.log_rows[i]
 				ui.ctx_menu_open(ui.key_from_string(0, "###lg_menu"), ui.mouse_pos())
 			}
 		}
-		if len(dash.log_rows) == 0 {
+		if len(app.dash.log_rows) == 0 {
 			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 4))})
 			if ui.tags("weak") { if ui.style({text_align = .Center}) { ui.label(tid(i18n.tr("Nothing yet: load a page. The log records while this tab is shown."), "lg_none")) } }
 		}
@@ -759,8 +758,8 @@ journal_menu :: proc(app: ^App, t: ^Tab) {
 
 @(private = "file")
 journal_menu_items :: proc(app: ^App, t: ^Tab) {
-	b := &bl.b
-	e := blocker.journal_get(&b.journal, dash.log_menu)
+	b := &app.bl.b
+	e := blocker.journal_get(&b.journal, app.dash.log_menu)
 	if e == nil { return }
 	host := adblock.url_host(e.url)
 	if ui.menu_item(i18n.tr("Copy the URL")).clicked { clip_set(e.url) }
@@ -782,7 +781,7 @@ journal_menu_items :: proc(app: ^App, t: ^Tab) {
 }
 
 dash_add_filter :: proc(app: ^App, line: string) {
-	b := &bl.b
+	b := &app.bl.b
 	sb := strings.builder_make()
 	strings.write_string(&sb, b.conf.my_filters)
 	if b.conf.my_filters != "" && !strings.has_suffix(b.conf.my_filters, "\n") { strings.write_byte(&sb, '\n') }
@@ -790,7 +789,7 @@ dash_add_filter :: proc(app: ^App, line: string) {
 	strings.write_byte(&sb, '\n')
 	delete(b.conf.my_filters)
 	b.conf.my_filters = strings.to_string(sb)
-	dash.my_loaded = false
+	app.dash.my_loaded = false
 	blocker.conf_save(b)
 	blocker.rebuild(b)
 	ui.toast(.Good, i18n.tr("Filter added to My filters: %s"), line)
@@ -812,7 +811,7 @@ stat_line :: proc(label, value, id: string) {
 
 @(private = "file")
 tab_statistics :: proc(app: ^App, t: ^Tab) {
-	b := &bl.b
+	b := &app.bl.b
 	ui.next({width = ui.fill(), height = ui.fill()})
 	if ui.scroll_y("###st_scroll") {
 		section(i18n.tr("Since"), "since")

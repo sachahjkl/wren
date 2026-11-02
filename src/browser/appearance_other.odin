@@ -10,7 +10,8 @@ import "wb:style"
 // restyle when the scheme changes live. appearance_windows.odin is the Windows counterpart; appearance.odin shares the
 // read-once-and-restyle logic.
 
-@(private = "file") watch_app: ^App
+// Nothing of the App's: the toolkit's watch has one callback, run on the thread of the loop that pumps the bus (App.look_watch is Windows').
+Look_Watch :: struct {}
 
 read_os_appearance :: proc() -> style.Os_Appearance {
 	a := style.Os_Appearance{known = true}
@@ -23,14 +24,11 @@ read_os_appearance :: proc() -> style.Os_Appearance {
 }
 
 appearance_watch_start :: proc(app: ^App) {
-	watch_app = app
 	when ODIN_OS == .Linux {
 		// the callback runs on the UI thread's bus pump (the toolkit folds the portal socket into the window loop), so
 		// it posts the restyle the same way the Windows watch thread does.
-		platform.watch_color_scheme(proc(dark: bool) { appearance_post(watch_app) })
+		platform.watch_color_scheme(proc(dark: bool) { appearance_post(the_app) })
 	}
 }
 
-appearance_watch_stop :: proc() {
-	watch_app = nil
-}
+appearance_watch_stop :: proc(app: ^App) {}

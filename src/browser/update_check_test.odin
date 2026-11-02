@@ -7,6 +7,7 @@ import "core:testing"
 // (security review of 2026-10-25, finding 10: a tag with a line break wrote a `url=` line of its own into update.txt).
 @(test)
 update_versions_and_pages_are_checked :: proc(t: ^testing.T) {
+	test_app(t)
 	for v in ([]string{"0.3.0", "1.2.3-beta.1", "10.0.0+build.5", "0.3.0-rc1"}) { testing.expectf(t, update_version_ok(v), "%q", v) }
 	for v in ([]string{"", "99\nurl=file://attacker/s/x.html", "1.0\r", "1 0", "1/2", "v1\n", "1.0;", "é", "1\x00", "x\ty"}) { testing.expectf(t, !update_version_ok(v), "%q", v) }
 	testing.expect(t, !update_version_ok(strings.repeat("1", 70, context.temp_allocator)))
@@ -19,6 +20,7 @@ update_versions_and_pages_are_checked :: proc(t: ^testing.T) {
 
 @(test)
 a_release_with_a_hostile_tag_is_not_one :: proc(t: ^testing.T) {
+	test_app(t)
 	good := `{"tag_name":"v0.4.0","html_url":"https://github.com/sachahjkl/wren/releases/tag/v0.4.0"}`
 	tag, page, ok := update_parse(transmute([]byte)good)
 	testing.expect(t, ok)

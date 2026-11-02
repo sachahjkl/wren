@@ -14,7 +14,7 @@ answer_line :: proc(id: int, value: string) -> string {
 
 @(private = "file")
 reset_remote :: proc() {
-	r := &the_remote
+	r := &the_app.remote
 	delete(r.sync_text); delete(r.stash_text)
 	r^ = {}
 }
@@ -22,19 +22,19 @@ reset_remote :: proc() {
 @(private = "file")
 only_marked_lines_are_answers :: proc(t: ^testing.T) {
 	defer reset_remote()
-	the_remote.active = true
+	the_app.remote.active = true
 	testing.expect(t, !remote_take_console("hello", 1))
 	testing.expect(t, !remote_take_console(`{"id":1}`, 1))
 	testing.expect(t, remote_take_console(answer_line(1, `"x"`), 1), "a marked line never reaches the console")
 	testing.expect(t, remote_take_console(strings.concatenate({REMOTE_ANSWER, "not json"}, context.temp_allocator), 1))
-	the_remote.active = false
+	the_app.remote.active = false
 	testing.expect(t, !remote_take_console(answer_line(1, `"x"`), 1), "with no remote control, a page's line is a page's line")
 }
 
 @(private = "file")
 an_answer_counts_for_its_own_tab_and_its_first_time_only :: proc(t: ^testing.T) {
 	defer reset_remote()
-	r := &the_remote
+	r := &the_app.remote
 	r.active = true
 	// a question waits for its answer in tab 1
 	r.sync_id, r.sync_tab = 5, 1
@@ -67,7 +67,7 @@ an_answer_counts_for_its_own_tab_and_its_first_time_only :: proc(t: ^testing.T) 
 @(private = "file")
 an_op_waiting_in_another_tab_is_left_alone :: proc(t: ^testing.T) {
 	defer reset_remote()
-	r := &the_remote
+	r := &the_app.remote
 	r.active = true
 	op := new(Remote_Op)
 	op.kind, op.eval_id, op.tab = .Eval, 12, 1
@@ -80,6 +80,7 @@ an_op_waiting_in_another_tab_is_left_alone :: proc(t: ^testing.T) {
 // (one test for the three: they share the_remote, and tests run in parallel)
 @(test)
 answers_are_taken_from_their_own_tab_only :: proc(t: ^testing.T) {
+	test_app(t)
 	only_marked_lines_are_answers(t)
 	an_answer_counts_for_its_own_tab_and_its_first_time_only(t)
 	an_op_waiting_in_another_tab_is_left_alone(t)
@@ -87,6 +88,7 @@ answers_are_taken_from_their_own_tab_only :: proc(t: ^testing.T) {
 
 @(test)
 a_value_is_one_json_value_on_one_line :: proc(t: ^testing.T) {
+	test_app(t)
 	good := []string{
 		`0`, `-1`, `1.5`, `-0.25e+10`, `1E3`, `"a"`, `""`, `"a\"b\\c\/d\b\f\n\r\t\u00e9\uD83D"`, `"é€😀"`, `null`, `true`, `false`,
 		`[]`, `{}`, `[1,2,3]`, `{"a":1}`, `{"a":[{"b":null},"c"],"d":{}}`, `[ 1 , 2 ]`, `{ "a" : 1 }`, `"\u2028"`,
@@ -107,6 +109,7 @@ a_value_is_one_json_value_on_one_line :: proc(t: ^testing.T) {
 
 @(test)
 a_forged_value_makes_an_error_not_a_second_line :: proc(t: ^testing.T) {
+	test_app(t)
 	// the answer line is JSON; its "v" is a string holding the value's JSON text. A page that wrote a real line break in it:
 	rep := eval_reply_text(`{"id":1,"ok":1,"t":"string","v":"1\n{\"id\":999,\"result\":{\"x\":1}}"}`)
 	testing.expect(t, rep.code != 0, "refused, not passed on")

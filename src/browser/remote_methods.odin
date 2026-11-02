@@ -196,7 +196,7 @@ element_visible :: proc(app: ^App, t: ^Tab, h: base.Handle) -> bool {
 frames_op :: proc(app: ^App, c: ^Call, t: ^Tab, n: int, result := "") -> Reply {
 	op := op_new(app, c, .Frames, 10_000, "frames")
 	op.tab = t != nil ? t.id : 0
-	op.until = the_remote.frame_no + u64(max(n, 1))
+	op.until = app.remote.frame_no + u64(max(n, 1))
 	op.result = strings.clone(result)
 	request_frames(app, 3)
 	return Reply{deferred = true}
@@ -645,7 +645,7 @@ m_computed_style :: proc(app: ^App, c: ^Call) -> Reply {
 // rect), scale, settle (frames), timeout}
 @(private = "file")
 capture_request_of :: proc(c: ^Call) -> (q: Capture_Request, bad: Reply) {
-	q = {timeout_ms = timeout_of(c), settle = the_remote.cfg.settle_frames}
+	q = {timeout_ms = timeout_of(c), settle = the_app.remote.cfg.settle_frames}
 	if s, ok := remote.param_float(c.params, "scale"); ok && s > 0 { q.scale = f32(s) }
 	q.path, _ = remote.param_string(c.params, "path")
 	q.bytes, _ = remote.param_bool(c.params, "bytes")
@@ -716,7 +716,7 @@ control_capture :: proc(app: ^App, c: ^Call, t: ^Tab, q: Capture_Request) -> Rep
 	if q.selector != "" { op.arg = strings.clone(q.selector) }
 	if q.snapshot != "" { op.snapshot = strings.clone(q.snapshot) }
 	op.bytes = q.bytes || (q.path == "" && c.local == nil)
-	op.until = the_remote.frame_no + u64(max(q.settle, 0)) + 1
+	op.until = app.remote.frame_no + u64(max(q.settle, 0)) + 1
 	// a real window on the taskbar draws nothing: it comes back without taking the focus, and goes back after. A headless
 	// window renders whatever its emulated state, so nothing to do there.
 	if !platform.is_offscreen(active_window(app).win) && platform.is_minimized(active_window(app).win) {
@@ -730,11 +730,11 @@ control_capture :: proc(app: ^App, c: ^Call, t: ^Tab, q: Capture_Request) -> Rep
 @(private = "file") CAPTURE_SCALE_MOST :: 16
 
 capture_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
-	r := &the_remote
+	r := &app.remote
 	finish :: proc(app: ^App, op: ^Remote_Op, rep: Reply) {
 		if op.stage == -2 && !platform.is_offscreen(active_window(app).win) { window_native_minimize_no_activate(active_window(app).win) }
 		if op.asked && rep.code != 0 { render.capture_cancel(&app.r) }   // (asked, not taken: the next capture may start)
-		if op.asked { the_remote.capture_window = 0 }
+		if op.asked { app.remote.capture_window = 0 }
 		op_finish(op, rep)
 	}
 	if op.stage < 0 && op.stage != -2 { op.stage = -2 }   // (restored for this capture: minimized again at the end)
@@ -796,7 +796,7 @@ capture_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 				op.local.rgba = slice.clone(pixels)
 			}
 			op.local = nil
-			if op.asked { the_remote.capture_window = 0 }
+			if op.asked { app.remote.capture_window = 0 }
 			op_finish_silent(op)
 			return
 		}
@@ -869,7 +869,7 @@ inject :: proc(app: ^App, ev: platform.Event) {
 	held := app.inject_held
 	if ev.kind == .Mouse_Move || ev.kind == .Mouse_Press || ev.kind == .Mouse_Release { ev.buttons = held }
 	platform.inject_event(active_window(app).win, ev)
-	the_remote.inputs += 1
+	app.remote.inputs += 1
 	request_frames(app, 4)
 }
 
@@ -953,7 +953,7 @@ click_at :: proc(app: ^App, pos: [2]f32, button: platform.Mouse_Button, count: i
 // scrolled.
 click_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 	wnd := active_window(app)
-	r := &the_remote
+	r := &app.remote
 	request_frames(app, 2)
 	if r.frame_no < op.until { return }
 	// (the click is done and its frames are made: what it did to the element, which may have gone with it, is the page's)
@@ -1073,7 +1073,7 @@ drag_point :: proc(op: ^Remote_Op, pts: [][2]f32, k: int) -> [2]f32 {
 // The drag left the window and the shell runs the system's drag (dnd_shell.odin hand_off): the rest of the path, as the
 // steps of a scripted drag through the window's own drop target, the release included. The remote drag is then done.
 remote_drag_steps :: proc(app: ^App) -> ([]platform.Drag_Step, bool) {
-	for op in the_remote.ops {
+	for op in app.remote.ops {
 		if op.kind != .Drag || (op.stage != 1 && op.stage != 2) { continue }
 		pts := drag_path(op)
 		total := op.count * (len(pts) - 1)
@@ -1082,7 +1082,7 @@ remote_drag_steps :: proc(app: ^App) -> ([]platform.Drag_Step, bool) {
 		if len(steps) == 0 { append(&steps, platform.Drag_Step{pos = op.to}) }
 		app.inject_held -= {op.button}   // (released in the system's drag: no release event follows)
 		op.stage = 3
-		op.until = the_remote.frame_no + u64(max(the_remote.cfg.settle_frames, 1))
+		op.until = app.remote.frame_no + u64(max(app.remote.cfg.settle_frames, 1))
 		return steps[:], true
 	}
 	return nil, false
@@ -1090,7 +1090,7 @@ remote_drag_steps :: proc(app: ^App) -> ([]platform.Drag_Step, bool) {
 
 // Press (stage 0), one move per frame (stage 1, idx: the steps made), release at the last position (stage 2), settle.
 drag_step :: proc(app: ^App, op: ^Remote_Op) {
-	r := &the_remote
+	r := &app.remote
 	request_frames(app, 2)
 	if r.frame_no < op.until { return }
 	switch op.stage {
@@ -1503,7 +1503,7 @@ m_command :: proc(app: ^App, c: ^Call) -> Reply {
 	if bad.code != 0 { return bad }
 	t := current_tab(app)
 	if why := control_command(app, t, name); why != "" { return fail(strings.has_prefix(why, "no command") ? remote.ERR_PARAMS : remote.ERR_FAILED, why) }
-	return frames_op(app, c, t, the_remote.cfg.settle_frames)
+	return frames_op(app, c, t, app.remote.cfg.settle_frames)
 }
 
 @(private = "file")
@@ -1511,5 +1511,5 @@ m_devtools :: proc(app: ^App, c: ^Call) -> Reply {
 	panel, _ := remote.param_string(c.params, "panel", "console")
 	dock, _ := remote.param_string(c.params, "dock")
 	if why := control_devtools(app, panel, dock); why != "" { return fail(remote.ERR_PARAMS, why) }
-	return frames_op(app, c, nil, the_remote.cfg.settle_frames + 1)
+	return frames_op(app, c, nil, app.remote.cfg.settle_frames + 1)
 }

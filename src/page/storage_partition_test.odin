@@ -8,6 +8,7 @@ import "wb:url"
 // the third party's storage keys under each, first-party, with storage access, and with partitioning off.
 @(test)
 storage_keys_partition_a_third_party_per_top_level_site :: proc(t: ^testing.T) {
+	test_pages(t)
 	origin_of :: proc(s: string) -> url.Origin {
 		u, _ := url.parse_absolute(s, context.temp_allocator)
 		return url.origin_of(u, context.temp_allocator)

@@ -387,32 +387,32 @@ el_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	// the guides of the levels above
 	for i in 0 ..< d.depth {
 		gx := math.round(x0 + f32(i) * ind + ind * 0.5 + dt_px(3))
-		draw.rect(dc, {{gx, r.min.y}, {gx + dtm.line, r.max.y}}, with_alpha(dtc.border, d.selected ? 0.9 : 0.45))
+		draw.rect(dc, {{gx, r.min.y}, {gx + the_app.dtm.line, r.max.y}}, with_alpha(the_app.dtc.border, d.selected ? 0.9 : 0.45))
 	}
 	x := x0 + f32(d.depth) * ind
 	if d.chevron >= 0 {
-		dt_icon(dc, d.chevron == 1 ? .Caret_Down : .Caret_Right, {math.round(x + dt_px(4)), cy}, dtm.icon * 0.78, dtc.weak, dtm.sc)
+		dt_icon(dc, d.chevron == 1 ? .Caret_Down : .Caret_Right, {math.round(x + dt_px(4)), cy}, the_app.dtm.icon * 0.78, the_app.dtc.weak, the_app.dtm.sc)
 	}
 	x += dt_px(13)
 	right := r.max.x - dt_px(6)
 	switch d.kind {
 	case .Open, .Inline, .Close:
-		end := dt_runs(dc, dtm.mono, dtm.mono_fs, x, cy, d.runs, right)
+		end := dt_runs(dc, the_app.dtm.mono, the_app.dtm.mono_fs, x, cy, d.runs, right)
 		if d.tail != "" {
-			dt_runs(dc, dtm.mono, dtm.mono_fs, end + dt_px(2), cy, syn_runs(d.tail, .HTML), right)
+			dt_runs(dc, the_app.dtm.mono, the_app.dtm.mono_fs, end + dt_px(2), cy, syn_runs(d.tail, .HTML), right)
 		}
-		if d.hidden { dt_text_r(dc, dtm.ui_font, dtm.fs * 0.85, right, cy, dtc.faint, "hidden") }
+		if d.hidden { dt_text_r(dc, the_app.dtm.ui_font, the_app.dtm.fs * 0.85, right, cy, the_app.dtc.faint, "hidden") }
 	case .Text:
-		dt_text(dc, dtm.mono, dtm.mono_fs, x, cy, d.text_col, d.label, right - x)
+		dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, x, cy, d.text_col, d.label, right - x)
 	case .Comment:
-		dt_text(dc, dtm.mono, dtm.mono_fs, x, cy, syn_color(.Comment), d.label, right - x)
+		dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, x, cy, syn_color(.Comment), d.label, right - x)
 	case .Doctype:
-		dt_text(dc, dtm.mono, dtm.mono_fs, x, cy, dtc.weak, d.label, right - x)
+		dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, x, cy, the_app.dtc.weak, d.label, right - x)
 	}
 	// drag and drop
-	if d.drop_inside { draw.rect(dc, r, with_alpha(dtc.accent, 0.22)); draw.rect(dc, r, with_alpha(dtc.accent, 0.8), 0, dtm.line) }
-	if d.drop_line == 0 { draw.rect(dc, {{r.min.x, r.min.y}, {r.max.x, r.min.y + dtm.line * 2}}, dtc.accent) }
-	if d.drop_line == 1 { draw.rect(dc, {{r.min.x, r.max.y - dtm.line * 2}, {r.max.x, r.max.y}}, dtc.accent) }
+	if d.drop_inside { draw.rect(dc, r, with_alpha(the_app.dtc.accent, 0.22)); draw.rect(dc, r, with_alpha(the_app.dtc.accent, 0.8), 0, the_app.dtm.line) }
+	if d.drop_line == 0 { draw.rect(dc, {{r.min.x, r.min.y}, {r.max.x, r.min.y + the_app.dtm.line * 2}}, the_app.dtc.accent) }
+	if d.drop_line == 1 { draw.rect(dc, {{r.min.x, r.max.y - the_app.dtm.line * 2}, {r.max.x, r.max.y}}, the_app.dtc.accent) }
 }
 
 ////////////////////////////////
@@ -462,7 +462,7 @@ elements_body :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, wide: bool, split, r
 
 @(private = "file")
 tree_view :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
-	if dt_bar("###dt_el_bar", dtm.bar - dt_px(4)) {
+	if dt_bar("###dt_el_bar", app.dtm.bar - dt_px(4)) {
 		dt_gap(3)
 		if dt_btn("###dt_el_search", .Search, tooltip = "Find in the tree (text, tag, attribute, selector, XPath)", shortcut = "Ctrl+F", on = e.search_on).clicked { e.search_on = !e.search_on }
 		dt_vsep("###dt_eb0")
@@ -475,7 +475,7 @@ tree_view :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 		ui.next({width = ui.fill(), height = ui.pct(1)})
 		ui.custom("###dt_el_info", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 			s := (^string)(user)^
-			dt_text_r(dc, dtm.ui_font, dtm.fs * 0.92, b.rect.max.x - dt_px(8), (b.rect.min.y + b.rect.max.y) * 0.5, dtc.weak, s)
+			dt_text_r(dc, the_app.dtm.ui_font, the_app.dtm.fs * 0.92, b.rect.max.x - dt_px(8), (b.rect.min.y + b.rect.max.y) * 0.5, the_app.dtc.weak, s)
 		}, new_clone(dt_frame_str(fmt.tprintf("%d rows", len(e.rows))), ui.frame_allocator()))
 	}
 	if e.search_on { search_bar(app, t, e) }
@@ -489,7 +489,7 @@ tree_view :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 		editing_html := e.edit == .Html
 		if n == 0 {
 			dt_empty("###dt_el_empty", .Tab_Elements, "The document is empty", "Nothing to show yet.")
-		} else if rows, ok := dt_list("###dt_el_list", &e.list, n, dtm.row, nil, ui.fill(), editing_html ? ui.px(dtm.row * 6) : ui.fill()); ok {
+		} else if rows, ok := dt_list("###dt_el_list", &e.list, n, app.dtm.row, nil, ui.fill(), editing_html ? ui.px(app.dtm.row * 6) : ui.fill()); ok {
 			for k in rows.first ..< rows.last {
 				r := &e.rows[k]
 				if e.edit != .None && e.edit != .Html && e.edit_h == r.h && r.kind != .Close {
@@ -504,7 +504,7 @@ tree_view :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 				#partial switch r.kind {
 				case .Open, .Inline, .Close: d.runs = syn_runs(d.label, .HTML)
 				}
-				d.text_col = dtc.text
+				d.text_col = app.dtc.text
 				d.selected = e.selected == r.h && r.kind != .Close
 				d.focused = e.list.focused
 				d.drop_line = -1
@@ -516,7 +516,7 @@ tree_view :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 					}
 				}
 				for f in e.found { if f == r.h && r.kind != .Close { d.found = true; break } }
-				ui.next({width = ui.fill(), height = ui.px(dtm.row), cursor = .Arrow})
+				ui.next({width = ui.fill(), height = ui.px(app.dtm.row), cursor = .Arrow})
 				rb := ui.build_box({.Clickable}, fmt.tprintf("###elr%d_%d", u64(r.h), int(r.kind) == int(El_Kind.Close) ? 1 : 0))
 				sig := ui.signal(rb)
 				d.hot = sig.hovering
@@ -556,11 +556,11 @@ row_input :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, r: ^El_Row, k: int, sig:
 		lb := ui.box_from_key(e.list.key)
 		if lb != nil {
 			mp := ui.mouse_pos()
-			idx := int((mp.y - lb.rect.min.y + lb.view_off.y) / dtm.row)
+			idx := int((mp.y - lb.rect.min.y + lb.view_off.y) / app.dtm.row)
 			idx = clamp(idx, 0, len(e.rows) - 1)
 			e.drop_row = idx
-			rel := (mp.y - lb.rect.min.y + lb.view_off.y) - f32(idx) * dtm.row
-			e.drop_pos = rel < dtm.row * 0.28 ? 0 : (rel > dtm.row * 0.72 ? 2 : 1)
+			rel := (mp.y - lb.rect.min.y + lb.view_off.y) - f32(idx) * app.dtm.row
+			e.drop_pos = rel < app.dtm.row * 0.28 ? 0 : (rel > app.dtm.row * 0.72 ? 2 : 1)
 			if e.rows[idx].kind == .Close { e.drop_pos = 0 }
 			request_frames(app, 2)
 		}
@@ -598,9 +598,9 @@ finish_drag :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 attr_at :: proc(r: ^El_Row, x: f32) -> (El_Span, bool) {
 	if r.kind != .Open && r.kind != .Inline { return {}, false }
 	for sp in r.attrs {
-		a := dt_w(dtm.mono, dtm.mono_fs, r.label[:sp.name_a])
+		a := dt_w(the_app.dtm.mono, the_app.dtm.mono_fs, r.label[:sp.name_a])
 		end := sp.val_b >= 0 ? sp.val_b + 1 : sp.name_b
-		b := dt_w(dtm.mono, dtm.mono_fs, r.label[:min(end, len(r.label))])
+		b := dt_w(the_app.dtm.mono, the_app.dtm.mono_fs, r.label[:min(end, len(r.label))])
 		if x >= a && x <= b { return sp, true }
 	}
 	return {}, false
@@ -625,7 +625,7 @@ begin_edit_at :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, r: ^El_Row, mouse_x:
 			name := r.label[sp.name_a:sp.name_b]
 			e.edit_attr = strings.clone(name)
 			// a click on the name edits the name, on the value (or the rest) edits the value
-			on_name := x < dt_w(dtm.mono, dtm.mono_fs, r.label[:sp.name_b])
+			on_name := x < dt_w(app.dtm.mono, app.dtm.mono_fs, r.label[:sp.name_b])
 			e.edit, e.edit_h = on_name || sp.val_a < 0 ? .Attr_Name : .Attr_Value, r.h
 			if e.edit == .Attr_Name { ui.field_set(&e.field, name) } else { ui.field_set(&e.field, r.label[sp.val_a:sp.val_b]) }
 		} else {
@@ -657,10 +657,10 @@ begin_add_attr :: proc(e: ^Dev_Elements, h: base.Handle) {
 // The row being edited: a field of the row's own, in the place of its text.
 @(private = "file")
 edit_row :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, r: ^El_Row, k: int) {
-	ui.next({width = ui.fill(), height = ui.px(dtm.row), axis = .X, cross = .Center})
+	ui.next({width = ui.fill(), height = ui.px(app.dtm.row), axis = .X, cross = .Center})
 	if ui.row(.Center, {}, fmt.tprintf("###ele%d", u64(r.h))) {
 		ui.spacer(ui.px(dt_px(6) + f32(r.depth) * dt_px(EL_INDENT) + dt_px(13)))
-		ui.next({width = ui.fill(), height = ui.pct(1), radius = dtm.radius, font = dtm.mono, font_size = dtm.mono_fs, text_pad = dt_px(4)})
+		ui.next({width = ui.fill(), height = ui.pct(1), radius = app.dtm.radius, font = app.dtm.mono, font_size = app.dtm.mono_fs, text_pad = dt_px(4)})
 		res := ui.line_edit("###dt_el_field", &e.field, e.edit == .Attr_New ? "name=\"value\"" : "")
 		if e.focus_edit { if res.box != nil { ui.set_focus(res.box.key) }; e.focus_edit = false }
 		if res.committed { commit_edit(app, t, e) }
@@ -697,20 +697,20 @@ commit_edit :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 
 @(private = "file")
 html_editor :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
-	ui.next({width = ui.fill(), height = ui.px(dtm.row * 6), axis = .Y, bg = dtc.bar, border = dtc.border})
+	ui.next({width = ui.fill(), height = ui.px(app.dtm.row * 6), axis = .Y, bg = app.dtc.bar, border = app.dtc.border})
 	box := ui.build_box({.Draw_Background, .Draw_Side_Top}, "###dt_el_html")
 	if ui.parent(box) {
-		if dt_bar("###dt_el_hbar", dtm.bar - dt_px(6), rule = false) {
+		if dt_bar("###dt_el_hbar", app.dtm.bar - dt_px(6), rule = false) {
 			dt_gap(6)
 			ui.next({width = ui.fill(), height = ui.pct(1)})
 			ui.custom("###dt_el_hlab", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
-				dt_text(dc, dtm.ui_font, dtm.fs, b.rect.min.x, (b.rect.min.y + b.rect.max.y) * 0.5, dtc.weak, "Edit as HTML  (Ctrl+Enter applies, Esc cancels)")
+				dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, b.rect.min.x, (b.rect.min.y + b.rect.max.y) * 0.5, the_app.dtc.weak, "Edit as HTML  (Ctrl+Enter applies, Esc cancels)")
 			}, nil)
 			if dt_btn("###dt_el_happly", .Check, "Apply", tooltip = "Replace the element with this markup", shortcut = "Ctrl+Enter", accent = true).clicked { apply_html(app, t, e) }
 			if dt_btn("###dt_el_hcancel", .Close, tooltip = "Cancel", shortcut = "Esc").clicked { e.edit = .None }
 			dt_gap(3)
 		}
-		ui.next({width = ui.fill(), height = ui.fill(), radius = 0, font = dtm.mono, font_size = dtm.mono_fs})
+		ui.next({width = ui.fill(), height = ui.fill(), radius = 0, font = app.dtm.mono, font_size = app.dtm.mono_fs})
 		res := ui.text_edit("###dt_el_harea", &e.area)
 		if e.focus_edit && res.box != nil { ui.set_focus(res.box.key); e.focus_edit = false }
 		if res.focused && ui.key_press(.Return, {.Ctrl}) { apply_html(app, t, e) }
@@ -735,7 +735,7 @@ tree_keys :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, n: int) {
 	if ui.key_press(.F, {.Ctrl}) && dev().panel == .Elements { e.search_on = true }
 	if !e.list.focused || n == 0 || e.edit != .None { return }
 	old := e.list.sel
-	if dt_list_keys(&e.list, n, max(int(e.list.view / dtm.row) - 1, 1)) {
+	if dt_list_keys(&e.list, n, max(int(e.list.view / app.dtm.row) - 1, 1)) {
 		for i := e.list.sel; i >= 0 && i < n; i += e.list.sel >= old ? 1 : -1 {
 			if e.rows[i].kind != .Close { e.selected = e.rows[i].h; e.list.sel = i; break }
 			if i == 0 || i == n - 1 { break }
@@ -973,7 +973,7 @@ xpath_of :: proc(p: ^page.Page, h: base.Handle, full: bool) -> string {
 
 @(private = "file")
 search_bar :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
-	if dt_bar("###dt_el_sbar", dtm.bar - dt_px(4)) {
+	if dt_bar("###dt_el_sbar", app.dtm.bar - dt_px(4)) {
 		dt_gap(3)
 		res := dt_search("###dt_el_sfield", &e.search, "Find by string, selector or XPath", 0, false)
 		ser := dt_filter_serial(&e.search)
@@ -984,7 +984,7 @@ search_bar :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 		ui.next({width = ui.px(dt_px(70)), height = ui.pct(1)})
 		ui.custom("###dt_el_scount", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 			s := (^string)(user)^
-			dt_text_r(dc, dtm.ui_font, dtm.fs * 0.92, b.rect.max.x - dt_px(4), (b.rect.min.y + b.rect.max.y) * 0.5, dtc.weak, s)
+			dt_text_r(dc, the_app.dtm.ui_font, the_app.dtm.fs * 0.92, b.rect.max.x - dt_px(4), (b.rect.min.y + b.rect.max.y) * 0.5, the_app.dtc.weak, s)
 		}, new_clone(dt_frame_str(count == 0 ? (dt_filter_active(&e.search) ? "0 results" : "") : fmt.tprintf("%d / %d", e.found_at + 1, count)), ui.frame_allocator()))
 		if dt_btn("###dt_el_sprev", .Chevron_Up, tooltip = "Previous result", shortcut = "Shift+Enter", enabled = count > 0).clicked { step_search(app, t, e, -1) }
 		if dt_btn("###dt_el_snext", .Chevron_Down, tooltip = "Next result", shortcut = "Enter", enabled = count > 0).clicked { step_search(app, t, e, 1) }
@@ -1049,7 +1049,7 @@ Crumb_Draw :: struct { label: string, current, hot: bool, first: bool }
 
 @(private = "file")
 breadcrumb :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
-	ui.next({width = ui.fill(), height = ui.px(dtm.row + dt_px(2)), axis = .X, cross = .Center, bg = dtc.bar, border = dtc.border})
+	ui.next({width = ui.fill(), height = ui.px(app.dtm.row + dt_px(2)), axis = .X, cross = .Center, bg = app.dtc.bar, border = app.dtc.border})
 	bar := ui.build_box({.Draw_Background, .Draw_Side_Top, .Clip}, "###dt_el_crumbs")
 	ui.push_parent(bar)
 	defer ui.pop_parent()
@@ -1058,18 +1058,18 @@ breadcrumb :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 	total: f32
 	first := len(e.crumbs)
 	for i := len(e.crumbs) - 1; i >= 0; i -= 1 {
-		w := dt_w(dtm.mono, dtm.mono_fs * 0.95, e.crumbs[i].label) + dt_px(16)
+		w := dt_w(app.dtm.mono, app.dtm.mono_fs * 0.95, e.crumbs[i].label) + dt_px(16)
 		if total + w > avail && i < len(e.crumbs) - 1 { break }
 		total += w
 		first = i
 	}
 	if first > 0 {
 		ui.next({width = ui.px(dt_px(18)), height = ui.pct(1)})
-		ui.custom("###dt_cr_more", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) { dt_text(dc, dtm.ui_font, dtm.fs, b.rect.min.x + dt_px(6), (b.rect.min.y + b.rect.max.y) * 0.5, dtc.weak, "\u2026") }, nil)
+		ui.custom("###dt_cr_more", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) { dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, b.rect.min.x + dt_px(6), (b.rect.min.y + b.rect.max.y) * 0.5, the_app.dtc.weak, "\u2026") }, nil)
 	}
 	for i in first ..< len(e.crumbs) {
 		c := e.crumbs[i]
-		w := dt_w(dtm.mono, dtm.mono_fs * 0.95, c.label) + dt_px(16)
+		w := dt_w(app.dtm.mono, app.dtm.mono_fs * 0.95, c.label) + dt_px(16)
 		ui.next({width = ui.px(math.round(w)), height = ui.pct(1), cursor = .Arrow})
 		cb := ui.build_box({.Clickable}, fmt.tprintf("###dt_cr%d", i))
 		sig := ui.signal(cb)
@@ -1079,9 +1079,9 @@ breadcrumb :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 			d := (^Crumb_Draw)(user)
 			r := b.rect
 			cy := (r.min.y + r.max.y) * 0.5
-			if d.current { draw.rect(dc, {{r.min.x + dt_px(2), r.min.y + dt_px(3)}, {r.max.x - dt_px(2), r.max.y - dt_px(3)}}, dtc.accent_bg, dtm.radius) } else if d.hot { draw.rect(dc, {{r.min.x + dt_px(2), r.min.y + dt_px(3)}, {r.max.x - dt_px(2), r.max.y - dt_px(3)}}, dtc.hover, dtm.radius) }
-			dt_text(dc, dtm.mono, dtm.mono_fs * 0.95, r.min.x + dt_px(8), cy, d.current ? dtc.text : dtc.weak, d.label)
-			if !d.first { dt_icon(dc, .Chevron_Right, {r.min.x, cy}, dtm.icon * 0.6, dtc.faint, dtm.sc) }
+			if d.current { draw.rect(dc, {{r.min.x + dt_px(2), r.min.y + dt_px(3)}, {r.max.x - dt_px(2), r.max.y - dt_px(3)}}, the_app.dtc.accent_bg, the_app.dtm.radius) } else if d.hot { draw.rect(dc, {{r.min.x + dt_px(2), r.min.y + dt_px(3)}, {r.max.x - dt_px(2), r.max.y - dt_px(3)}}, the_app.dtc.hover, the_app.dtm.radius) }
+			dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs * 0.95, r.min.x + dt_px(8), cy, d.current ? the_app.dtc.text : the_app.dtc.weak, d.label)
+			if !d.first { dt_icon(dc, .Chevron_Right, {r.min.x, cy}, the_app.dtm.icon * 0.6, the_app.dtc.faint, the_app.dtm.sc) }
 		}, cd
 		if sig.hovering { e.hover = c.h }
 		if sig.clicked { elements_select(t, c.h) }
@@ -1183,8 +1183,8 @@ elements_overlay :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, area: draw.Rect,
 	label := css_label(p, h)
 	size := fmt.tprintf("%d \u00d7 %d", int(math.round((r.border.max.x - r.border.min.x) / (max(t.zoom, 0.01) * ui.scale()))), int(math.round((r.border.max.y - r.border.min.y) / (max(t.zoom, 0.01) * ui.scale()))))
 	text := fmt.tprintf("%s   %s", label, size)
-	fs := dtm.fs > 0 ? dtm.fs : 12 * ui.scale()
-	f := dtm.ui_font != 0 ? dtm.ui_font : app.ui_font
+	fs := app.dtm.fs > 0 ? app.dtm.fs : 12 * ui.scale()
+	f := app.dtm.ui_font != 0 ? app.dtm.ui_font : app.ui_font
 	w := dt_w(f, fs, text) + 14
 	hh := fs * 1.7
 	x := clamp(b.min.x, area.min.x, max(area.max.x - w, area.min.x))

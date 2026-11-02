@@ -70,7 +70,7 @@ bf_count :: proc(app: ^App, why: string) {
 bf_entry_free :: proc(e: ^Bf_Entry, close: bool) {
 	if close { base.scope_close(e.nav) }
 	layout_destroy(&e.layout)
-	page_fonts_drop(&page_render.fonts, e)
+	page_fonts_drop(&the_app.page_render.fonts, e)
 	delete(e.url); delete(e.title); delete(e.fragment_seen)
 	free(e)
 }
@@ -128,7 +128,7 @@ bfcache_take :: proc(app: ^App, t: ^Tab) -> bool {
 	e^ = Bf_Entry{tab = t.id, entry = id, nav = t.nav, page = t.page, layout = t.layout, scroll = t.scroll, zoom = t.zoom,
 		url = strings.clone(t.url), title = strings.clone(t.title), fragment_seen = strings.clone(t.fragment_seen),
 		image_sizes = t.image_sizes, web_fonts = t.web_fonts, no_store = t.nav_state.no_store, stored = host.now_ns(&app.loop)}
-	page_fonts_transfer(&page_render.fonts, t, e)   // its web faces stay with its layout
+	page_fonts_transfer(&app.page_render.fonts, t, e)   // its web faces stay with its layout
 	t.layout = {}
 	t.web_font_page, t.web_fonts = nil, 0
 	t.nav = base.scope_make("navigation", t.scope)
@@ -148,9 +148,9 @@ bfcache_take_held :: proc(app: ^App, t: ^Tab) -> bool {
 	e^ = Bf_Entry{tab = t.id, entry = id, nav = h.nav, page = h.page, layout = h.layout, scroll = h.scroll, zoom = h.zoom,
 		url = strings.clone(h.page.env.location.href), title = default_tab_title(h.page.env.location.href, context.allocator), fragment_seen = strings.clone(h.page.env.location.href),
 		image_sizes = h.image_sizes, web_fonts = h.web_fonts, stored = host.now_ns(&app.loop)}
-	page_fonts_transfer(&page_render.fonts, h, e)
+	page_fonts_transfer(&app.page_render.fonts, h, e)
 	if t.web_font_page == rawptr(h.page) {   // the next page has not taken the tab's faces over yet: they are this one's
-		page_fonts_transfer(&page_render.fonts, t, e)
+		page_fonts_transfer(&app.page_render.fonts, t, e)
 		t.web_font_page, t.web_fonts = nil, 0
 	}
 	h.layout = {}
@@ -266,11 +266,11 @@ bfcache_restore :: proc(app: ^App, t: ^Tab, entry: ^page.History_Entry) -> bool 
 		base.scope_close(t.nav)
 		layout_reset(&t.layout)
 	}
-	page_fonts_drop(&page_render.fonts, t)
+	page_fonts_drop(&app.page_render.fonts, t)
 	layout_destroy(&t.layout)
 	t.nav, t.page, t.layout, t.load, t.kind = e.nav, e.page, e.layout, nil, .Web
 	page.navigable_attach(t.top, t.page)   // (the tab's window shows it again: its WindowProxy is the tab's)
-	page_fonts_transfer(&page_render.fonts, e, t)
+	page_fonts_transfer(&app.page_render.fonts, e, t)
 	t.web_font_page, t.web_fonts, t.image_sizes = e.page, e.web_fonts, e.image_sizes
 	t.scroll, t.scroll_target = e.scroll, base.NIL_HANDLE
 	if app.hcfg.restore_zoom && e.zoom > 0 { t.zoom = e.zoom }

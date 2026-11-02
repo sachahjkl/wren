@@ -37,7 +37,6 @@ Video_Target :: struct {
 	frames: int,         // pictures converted into it
 }
 
-@(private = "file")
 Video_Shell :: struct {
 	targets:   map[Video_Key]^Video_Target,
 	epoch:     u64,
@@ -50,62 +49,60 @@ Video_Shell :: struct {
 	stamps:    [dynamic]i64,     // profile build: when each picture was converted (qpc), for the cadence report
 }
 
-@(private = "file")
-vshell: Video_Shell
 
 // The renderer's Direct3D 11 device goes to the decoders: pictures stay in its memory.
 video_shell_init :: proc(app: ^App) {
-	vshell.next_ns = -1
+	app.vshell.next_ns = -1
 	when !render.USE_WGPU {
-		if app.r.device != nil && !vshell.gpu_set {
+		if app.r.device != nil && !app.vshell.gpu_set {
 			media.set_gpu_device(rawptr(app.r.device))
-			vshell.gpu_set = true
+			app.vshell.gpu_set = true
 		}
 	}
 }
 
 video_shell_destroy :: proc(app: ^App) {
-	for _, t in vshell.targets {
+	for _, t in app.vshell.targets {
 		render.destroy_texture(&app.r, t.tex)
 		free(t)
 	}
-	delete(vshell.targets)
-	if vshell.wake != base.NIL_HANDLE { host.clear_timer(&app.loop, vshell.wake) }
+	delete(app.vshell.targets)
+	if app.vshell.wake != base.NIL_HANDLE { host.clear_timer(&app.loop, app.vshell.wake) }
 	when !render.USE_WGPU {
-		if vshell.gpu_set { media.set_gpu_device(nil) }   // the shared D3D device (Direct3D backend only; no equivalent on wgpu)
+		if app.vshell.gpu_set { media.set_gpu_device(nil) }   // the shared D3D device (Direct3D backend only; no equivalent on wgpu)
 	}
-	delete(vshell.stamps)
-	vshell = {}
+	delete(app.vshell.stamps)
+	app.vshell = {}
 }
 
 video_shell_begin_frame :: proc(app: ^App) {
-	if app.r.device_generation != vshell.generation {
-		vshell.generation = app.r.device_generation
-		for _, t in vshell.targets { free(t) }
-		clear(&vshell.targets)   // (the textures went with the device)
+	if app.r.device_generation != app.vshell.generation {
+		app.vshell.generation = app.r.device_generation
+		for _, t in app.vshell.targets { free(t) }
+		clear(&app.vshell.targets)   // (the textures went with the device)
 	}
-	vshell.epoch += 1
-	vshell.next_ns = -1
+	app.vshell.epoch += 1
+	app.vshell.next_ns = -1
 }
 
 // After the page was painted: the wake-up for the next picture, and the targets nobody drew for a while released.
 video_shell_after_paint :: proc(app: ^App) {
-	if vshell.wake != base.NIL_HANDLE { host.clear_timer(&app.loop, vshell.wake); vshell.wake = base.NIL_HANDLE }
-	if vshell.next_ns >= 0 {
-		delay_ms := max(f64(vshell.next_ns) / 1e6 - 0.5, 0.25)
-		vshell.wake = host.set_timer(&app.loop, delay_ms, 0, proc(data: rawptr) {
-			vshell.wake = base.NIL_HANDLE
+	if app.vshell.wake != base.NIL_HANDLE { host.clear_timer(&app.loop, app.vshell.wake); app.vshell.wake = base.NIL_HANDLE }
+	if app.vshell.next_ns >= 0 {
+		delay_ms := max(f64(app.vshell.next_ns) / 1e6 - 0.5, 0.25)
+		app.vshell.wake = host.set_timer(&app.loop, delay_ms, 0, proc(data: rawptr) {
+			the_app.vshell.wake = base.NIL_HANDLE
 			a := (^App)(data)
 			// exactly the frame this picture needs: the timer is the one that asked, the loop does not add its own two
 			host.quiet_note(&a.loop)
 			request_frames(a, 1)
 		}, app)
 	}
-	for k, t in vshell.targets {
-		if vshell.epoch - t.epoch > 120 {
+	for k, t in app.vshell.targets {
+		if app.vshell.epoch - t.epoch > 120 {
 			render.destroy_texture(&app.r, t.tex)
 			free(t)
-			delete_key(&vshell.targets, k)
+			delete_key(&app.vshell.targets, k)
 		}
 	}
 }
@@ -157,9 +154,9 @@ video_texture_for_canvas :: proc(app: ^App, p: ^page.Page, node: base.Handle) ->
 video_current :: proc(app: ^App, p: ^page.Page, node: base.Handle) -> (t: ^Video_Target, view: page.Media_View, ok: bool) {
 	view, ok = page.media_view(p, node, true, screen_ahead_ns())
 	if !ok { return }
-	if view.next_due_ns >= 0 { vshell.next_ns = vshell.next_ns < 0 ? view.next_due_ns : min(vshell.next_ns, view.next_due_ns) }
+	if view.next_due_ns >= 0 { app.vshell.next_ns = app.vshell.next_ns < 0 ? view.next_due_ns : min(app.vshell.next_ns, view.next_due_ns) }
 	t = video_update_target(app, Video_Key{page.page_id(p), node}, &view)
-	if t != nil { t.epoch = vshell.epoch }
+	if t != nil { t.epoch = app.vshell.epoch }
 	return
 }
 
@@ -167,14 +164,14 @@ video_current :: proc(app: ^App, p: ^page.Page, node: base.Handle) -> (t: ^Video
 // picture the player chose (converted when it is a new one). nil: nothing to show yet.
 @(private = "file")
 video_update_target :: proc(app: ^App, key: Video_Key, view: ^page.Media_View) -> ^Video_Target {
-	t := vshell.targets[key]
+	t := app.vshell.targets[key]
 	if view.frame != nil {
 		pic := picture_of(view.frame)
 		want := render.video_target_size(pic)
 		if t != nil && t.size != want {
 			render.destroy_texture(&app.r, t.tex)
 			free(t)
-			delete_key(&vshell.targets, key)
+			delete_key(&app.vshell.targets, key)
 			t = nil
 		}
 		if t == nil && want.x > 0 && want.y > 0 {
@@ -182,14 +179,14 @@ video_update_target :: proc(app: ^App, key: Video_Key, view: ^page.Media_View) -
 			if tex != 0 {
 				t = new(Video_Target)
 				t.tex, t.size = tex, want
-				vshell.targets[key] = t
+				app.vshell.targets[key] = t
 			}
 		}
 		if t != nil && (view.changed || t.frames == 0) {
 			if render.video_convert(&app.r, t.tex, pic) {
 				t.frames += 1
-				vshell.converted += 1
-				when PROFILE { append(&vshell.stamps, qpc()) }
+				app.vshell.converted += 1
+				when PROFILE { append(&app.vshell.stamps, qpc()) }
 			}
 		}
 	}
@@ -222,7 +219,7 @@ video_paint_content :: proc(dc: ^draw.Context, p: ^page.Page, node: base.Handle,
 		if clip { draw.push_clip_rounded(dc, content, radii) }
 		draw.image(dc, t.tex, dst, {}, draw.Color{1, 1, 1, 1})
 		if clip { draw.pop_clip(dc) }
-		vshell.painted += 1
+		app.vshell.painted += 1
 		// the fast path: remember this video's picture and where it sits so a chrome frame can keep it moving while a
 		// long script freezes the rest of the page (video_fast_path.odin). Eligible only when it fills its box opaquely
 		// and nothing is drawn over it, so overlaying it over the page's last frame cannot show a wrong pixel.
@@ -280,19 +277,19 @@ video_paint_subtitles :: proc(dc: ^draw.Context, app: ^App, p: ^page.Page, node:
 video_shell_report :: proc(sb: ^strings.Builder, freq: f64) {
 	when !PROFILE { return }
 	when PROFILE {
-	fmt.sbprintf(sb, "\n-- video: %d pictures converted, %d painted | chrome frames made under scripts %d, skipped %d\n", vshell.converted, vshell.painted, chrome_frames.frames, chrome_frames.skipped)
-	for key, t in vshell.targets {
+	fmt.sbprintf(sb, "\n-- video: %d pictures converted, %d painted | chrome frames made under scripts %d, skipped %d\n", the_app.vshell.converted, the_app.vshell.painted, the_app.chrome_frames.frames, the_app.chrome_frames.skipped)
+	for key, t in the_app.vshell.targets {
 		p := page.page_by_id(key.page)
 		view, ok := page.media_view(p, key.node, false)
 		if !ok { continue }
 		fmt.sbprintf(sb, "  %dx%d %s%s | decoded %d dropped %d | position %.1f s of %.1f | stalled %v\n", t.size.x, t.size.y, view.decoder, view.hardware ? " (GPU)" : " (CPU)", view.decoded, view.dropped, view.position, view.duration, view.stalled)
 		fmt.sbprintf(sb, "    player: %s\n", page.media_debug(p, key.node))
 	}
-	n := len(vshell.stamps)
+	n := len(the_app.vshell.stamps)
 	if n < 3 { return }
-	from := vshell.stamps[n - 1] - i64(10 * freq)
+	from := the_app.vshell.stamps[n - 1] - i64(10 * freq)
 	iv := make([dynamic]f64, 0, n, context.temp_allocator)
-	for i in 1 ..< n { if vshell.stamps[i - 1] >= from { append(&iv, f64(vshell.stamps[i] - vshell.stamps[i - 1]) * 1000 / freq) } }
+	for i in 1 ..< n { if the_app.vshell.stamps[i - 1] >= from { append(&iv, f64(the_app.vshell.stamps[i] - the_app.vshell.stamps[i - 1]) * 1000 / freq) } }
 	if len(iv) == 0 { return }
 	s := stat_of(iv[:])
 	late15, late25 := 0, 0

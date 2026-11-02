@@ -76,8 +76,8 @@ render_settings_init :: proc(app: ^App) {
 @(private)
 render_settings_apply :: proc(app: ^App, s: Render_Settings) {
 	app.render_settings = s
-	gradient_dither = s.dither
-	compositor_settings = compositor_settings_from_prefs(&app.prefs)
+	app.gradient_dither = s.dither
+	app.compositor_settings = compositor_settings_from_prefs(&app.prefs)
 	render.set_blend_space(&app.r, s.space)
 	render.set_text_rendering(&app.r, s.text)
 	render.set_resize_slack(&app.r, s.resize_slack)

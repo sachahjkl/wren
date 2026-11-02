@@ -26,6 +26,7 @@ luma :: proc(c: draw.Color) -> f32 {
 // A tab leans by its slope: the top is 2 * run narrower than the foot, and the box keeps room for the foot's flare.
 @(test)
 tab_dims_follow_the_slope :: proc(t: ^testing.T) {
+	test_app(t)
 	m := metrics()
 	d := tab_dims(m)
 	near(t, d.run, 36 * math.tan(f32(22) * math.PI / 180), 0.001, "run")
@@ -41,6 +42,7 @@ tab_dims_follow_the_slope :: proc(t: ^testing.T) {
 // Rounding the corner of a right angle: a quarter circle, tangent to both sides, at `r` from its center.
 @(test)
 fillet_of_a_right_angle :: proc(t: ^testing.T) {
+	test_app(t)
 	out := make([dynamic][2]f32, context.temp_allocator)
 	pts := [3][2]f32{{0, 100}, {100, 100}, {100, 0}}
 	radii := [3]f32{0, 20, 0}
@@ -67,6 +69,7 @@ fillet_of_a_right_angle :: proc(t: ^testing.T) {
 // The outline of a tab, in its box: along the bar, up the left side, over the top, down, along the bar.
 @(test)
 tab_shape_geometry :: proc(t: ^testing.T) {
+	test_app(t)
 	m := metrics()
 	shape: Tab_Shape
 	defer tab_shape_destroy(&shape)
@@ -117,6 +120,7 @@ tab_shape_geometry :: proc(t: ^testing.T) {
 // The cache hands the same shape back for the same size (a frame that draws again builds none) and one shape per size.
 @(test)
 tab_shapes_are_cached :: proc(t: ^testing.T) {
+	test_app(t)
 	cache: Shape_Cache
 	defer tab_shapes_destroy(&cache)
 	a := tab_shape_get(&cache, metrics(200))
@@ -134,6 +138,7 @@ tab_shapes_are_cached :: proc(t: ^testing.T) {
 // Neighbours overlap: the next tab's foot covers this one's, their tops stay apart by the gap.
 @(test)
 tabs_overlap_but_their_tops_stay_apart :: proc(t: ^testing.T) {
+	test_app(t)
 	g := classic_geom(15, 1, 39, 22)
 	testing.expect(t, g.overlap > 0, "the tabs overlap")
 	testing.expect_value(t, g.margin, f32(3))
@@ -156,6 +161,7 @@ tabs_overlap_but_their_tops_stay_apart :: proc(t: ^testing.T) {
 // current tab is built after the others.
 @(test)
 the_tab_on_top_gets_the_click :: proc(t: ^testing.T) {
+	test_app(t)
 	g := classic_geom(15, 1, 39, 22)
 	w: f32 = 150
 	m := g.m
@@ -192,6 +198,7 @@ the_tab_on_top_gets_the_click :: proc(t: ^testing.T) {
 
 @(test)
 stack_order_puts_current_then_dragged_last :: proc(t: ^testing.T) {
+	test_app(t)
 	order := make([dynamic]int, context.temp_allocator)
 	tab_stack_order(5, 2, -1, &order)
 	testing.expect_value(t, len(order), 5)
@@ -216,6 +223,7 @@ stack_order_puts_current_then_dragged_last :: proc(t: ^testing.T) {
 // and in dark palettes; the toolbar goes on from the current tab; a flat setting has no steps.
 @(test)
 classic_colors_compose_with_palettes :: proc(t: ^testing.T) {
+	test_app(t)
 	for np in ui.NAMED_PALETTES {
 		base, border := draw.hex(np.palette.bg | 0xff), draw.hex(np.palette.border)
 		c := classic_colors(base, border, 1, 1)
@@ -241,6 +249,7 @@ classic_colors_compose_with_palettes :: proc(t: ^testing.T) {
 @(test)
 classic_on_follows_the_style_at_every_position :: proc(t: ^testing.T) {
 	app := new(App)
+	the_app = app   // (what the code reaches without an App: this one)
 	defer free(app)
 	saved_pos := app.favs.cfg.position
 	defer app.favs.cfg.position = saved_pos
@@ -257,6 +266,7 @@ classic_on_follows_the_style_at_every_position :: proc(t: ^testing.T) {
 // its feet flaring `tangent` above and below the row along that edge, and nothing past the row's outer side.
 @(test)
 side_tab_lies_across_its_row :: proc(t: ^testing.T) {
+	test_app(t)
 	row := draw.Rect{{10, 100}, {210, 136}}
 	across := row.max.x - row.min.x
 	m := side_tab_metrics(15, 1, row.max.y - row.min.y, across)
@@ -308,6 +318,7 @@ side_tab_lies_across_its_row :: proc(t: ^testing.T) {
 // than the bar; the inner edge's line is darker than the bar; the titles stand out of the bar.
 @(test)
 side_colors_compose_with_palettes :: proc(t: ^testing.T) {
+	test_app(t)
 	for np in ui.NAMED_PALETTES {
 		base, border := draw.hex(np.palette.bg | 0xff), draw.hex(np.palette.border)
 		c := classic_colors(base, border, 1, 1)
@@ -331,6 +342,7 @@ side_colors_compose_with_palettes :: proc(t: ^testing.T) {
 // The style is a preference: modern by default, changeable at once, with bounded companions.
 @(test)
 chrome_style_preferences :: proc(t: ^testing.T) {
+	test_app(t)
 	p := config.prefs_make()
 	defer config.prefs_destroy(&p)
 	register_all_prefs(&p)

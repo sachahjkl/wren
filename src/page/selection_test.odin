@@ -30,6 +30,7 @@ text_in :: proc(p: ^Page, id: string) -> base.Handle {
 
 @(test)
 selection_follows_the_dom :: proc(t: ^testing.T) {
+	test_pages(t)
 	p := sel_page(`<body><p id=a>hello world</p><p id=b>second</p></body>`)
 	defer sel_free(p)
 	a, b := text_in(p, "a"), text_in(p, "b")

@@ -17,8 +17,8 @@ OS_SETTINGS_PREFS := [?]config.Def{
 
 register_os_settings_prefs :: proc(p: ^config.Prefs) { config.register(p, OS_SETTINGS_PREFS[:]) }
 
-@(private = "file")
-os_anim: struct {
+// The system's animation setting as last read (App.os_anim).
+Os_Anim :: struct {
 	value: bool,
 	known: bool,
 	at:    time.Tick,
@@ -31,10 +31,10 @@ os_animations_enabled :: proc(app: ^App) -> bool {
 	case "off": return false
 	}
 	every := config.int_of(&app.prefs, "browser.ui.os_settings_refresh_ms")
-	if !os_anim.known || every <= 0 || time.duration_milliseconds(time.tick_since(os_anim.at)) >= f64(every) {
-		os_anim.value = platform.os_animations_enabled()
-		os_anim.known = true
-		os_anim.at = time.tick_now()
+	if !app.os_anim.known || every <= 0 || time.duration_milliseconds(time.tick_since(app.os_anim.at)) >= f64(every) {
+		app.os_anim.value = platform.os_animations_enabled()
+		app.os_anim.known = true
+		app.os_anim.at = time.tick_now()
 	}
-	return os_anim.value
+	return app.os_anim.value
 }

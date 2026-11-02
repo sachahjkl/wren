@@ -79,20 +79,20 @@ video_fast_mode :: proc(p: ^config.Prefs) -> Video_Fast_Mode {
 
 // At the start of a full (non-chrome) frame: the records of the previous frame are stale.
 video_fast_path_begin_frame :: proc(app: ^App) {
-	if chrome_frames.nested { return }   // a chrome frame reads the records; it does not clear them
+	if app.chrome_frames.nested { return }   // a chrome frame reads the records; it does not clear them
 	clear(&app.vfast.records)
 }
 
 // Called from video_paint_content for each video painted in the real page pass: remembers its picture and box so a
 // chrome frame can keep it moving.
 video_fast_path_record :: proc(app: ^App, p: ^page.Page, node: base.Handle, tex: render.Texture, dst: draw.Rect, eligible: bool) {
-	if app.vfast.mode == .Off || chrome_frames.nested { return }
+	if app.vfast.mode == .Off || app.chrome_frames.nested { return }
 	t := current_tab(app)
 	if t == nil || t.page != p { return }
 	wnd := active_window(app)
 	append(&app.vfast.records, Video_Fast_Record{
 		tab = t.id, page = page.page_id(p), node = node, tex = tex, dst = dst,
-		page_rect = wnd.page_rect, scroll = doc_scroll_vec(t), frame = chrome_frames.frame_no, eligible = eligible,
+		page_rect = wnd.page_rect, scroll = doc_scroll_vec(t), frame = app.chrome_frames.frame_no, eligible = eligible,
 	})
 }
 
@@ -133,7 +133,7 @@ video_fast_path_overlay :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: dra
 @(private = "file")
 video_fast_verify :: proc(app: ^App, r: ^Video_Fast_Record, dst: draw.Rect) {
 	// one line per recomposition, rate-limited to the start of a freeze so the console is not flooded
-	if chrome_frames.frames % 60 != 0 { return }
+	if app.chrome_frames.frames % 60 != 0 { return }
 	fmt.printf("[video.fast_path verify] recomposed video node %v over the page's last frame at %.0f,%.0f %.0fx%.0f (fast path active; compare with browser.video.fast_path=off)\n",
 		r.node, dst.min.x, dst.min.y, dst.max.x - dst.min.x, dst.max.y - dst.min.y)
 }

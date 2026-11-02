@@ -6,6 +6,7 @@ import "toolkit:platform"
 @(test)
 selection_release_drops_a_press_waiting_for_layout :: proc(t: ^testing.T) {
 	app := new(App)   // (no window: its own state is the App's bare one)
+	the_app = app   // (what the code reaches without an App: this one)
 	defer free(app)
 	ss := &window_own(app).selection
 	ss.pending, ss.down = true, true

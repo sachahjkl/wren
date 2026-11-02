@@ -9,6 +9,7 @@ import "wb:fetch"
 
 @(test)
 console_lines_carry_their_level :: proc(t: ^testing.T) {
+	test_app(t)
 	l, text := con_split("error: boom")
 	testing.expect_value(t, l, Con_Level.Error)
 	testing.expect_value(t, text, "boom")
@@ -25,6 +26,7 @@ console_lines_carry_their_level :: proc(t: ^testing.T) {
 @(test)
 devtools_go_with_their_tab_to_a_window_without_them :: proc(t: ^testing.T) {
 	app := new(App)
+	the_app = app   // (what the code reaches without an App: this one)
 	defer free(app)
 	a, b := new(Browser_Window), new(Browser_Window)
 	defer { free(a); free(b) }
@@ -47,6 +49,7 @@ devtools_go_with_their_tab_to_a_window_without_them :: proc(t: ^testing.T) {
 
 @(test)
 console_line_numbers_do_not_move_when_old_lines_go :: proc(t: ^testing.T) {
+	test_app(t)
 	tab := Tab{console_added = 10}
 	append(&tab.console, "a", "b", "c")   // lines 7, 8, 9
 	defer delete(tab.console)
@@ -56,6 +59,7 @@ console_line_numbers_do_not_move_when_old_lines_go :: proc(t: ^testing.T) {
 
 @(test)
 labels_never_hold_an_id_marker_or_a_line_break :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect(t, !contains(dev_line("a###b"), "###"), "### is broken")
 	testing.expect_value(t, dev_line("a\nb"), "a \u00b6 b")
 	testing.expect_value(t, dev_line("a\r\nb\tc"), "a \u00b6 b  c")
@@ -73,6 +77,7 @@ contains :: proc(s, sub: string) -> bool {
 @(test)
 requests_are_logged_in_the_tab_they_run_in :: proc(t: ^testing.T) {
 	app := new(App)
+	the_app = app   // (what the code reaches without an App: this one)
 	defer free(app)
 	tab := new(Tab)
 	tab.scope = base.scope_make("tab")
@@ -126,6 +131,7 @@ filter_of :: proc(text: string, regex := false, cased := false, invert := false)
 
 @(test)
 filter_matches_words_and_excludes_with_a_minus :: proc(t: ^testing.T) {
+	test_app(t)
 	f := filter_of("cat -dog")
 	defer dt_filter_destroy(&f)
 	testing.expect(t, dt_filter_match(&f, "A Cat sat"), "a word, any case")
@@ -146,6 +152,7 @@ filter_matches_words_and_excludes_with_a_minus :: proc(t: ^testing.T) {
 
 @(test)
 filter_regular_expressions :: proc(t: ^testing.T) {
+	test_app(t)
 	f := filter_of("^a.c$", regex = true)
 	defer dt_filter_destroy(&f)
 	testing.expect(t, dt_filter_match(&f, "abc"), "matches")
@@ -159,6 +166,7 @@ filter_regular_expressions :: proc(t: ^testing.T) {
 
 @(test)
 contains_fold_is_ascii_case_insensitive :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect(t, dt_contains_fold("Hello World", "lo wo"), "found")
 	testing.expect(t, !dt_contains_fold("Hello", "world"), "not found")
 	testing.expect(t, dt_contains_fold("x", ""), "empty needle")
@@ -170,6 +178,7 @@ contains_fold_is_ascii_case_insensitive :: proc(t: ^testing.T) {
 
 @(test)
 group_depth_and_source_of_a_line :: proc(t: ^testing.T) {
+	test_app(t)
 	d, rest := con_depth("    deeper")
 	testing.expect_value(t, d, 2)
 	testing.expect_value(t, rest, "deeper")
@@ -188,12 +197,14 @@ group_depth_and_source_of_a_line :: proc(t: ^testing.T) {
 
 @(test)
 payload_level_reads_the_start :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect_value(t, payload_level(`{"l":"warn","a":[]}`), "warn")
 	testing.expect_value(t, payload_level(`{"a":[]}`), "")
 }
 
 @(test)
 payload_runs_substitute_and_preview :: proc(t: ^testing.T) {
+	test_app(t)
 	root, ok := con_payload_parse(`{"l":"log","a":[{"t":"s","v":"%s is %d"},{"t":"s","v":"Ada"},{"t":"n","v":"36"}]}`)
 	testing.expect(t, ok, "parses")
 	runs := con_payload_runs(root, 200)
@@ -213,6 +224,7 @@ payload_runs_substitute_and_preview :: proc(t: ^testing.T) {
 
 @(test)
 request_names_types_and_hosts :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect_value(t, net_name_of("https://x.test/a/b/c.js?v=2"), "c.js?v=2")
 	testing.expect_value(t, net_name_of("https://x.test/"), "x.test")
 	testing.expect_value(t, net_name_of("https://x.test/dir/"), "dir")
@@ -231,6 +243,7 @@ request_names_types_and_hosts :: proc(t: ^testing.T) {
 
 @(test)
 glob_patterns_of_blocked_requests :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect(t, net_glob("https://a.test/x", "https://a.test/x"), "exact")
 	testing.expect(t, !net_glob("https://a.test/x", "https://a.test/y"), "exact")
 	testing.expect(t, net_glob("*://a.test/*", "https://a.test/p/q"), "any scheme and path")
@@ -241,6 +254,7 @@ glob_patterns_of_blocked_requests :: proc(t: ^testing.T) {
 
 @(test)
 url_decoding :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect_value(t, url_decode("a%20b+c%2Fd"), "a b c/d")
 	testing.expect_value(t, url_decode("100%"), "100%")
 	testing.expect_value(t, url_decode("plain"), "plain")
@@ -251,6 +265,7 @@ url_decoding :: proc(t: ^testing.T) {
 
 @(test)
 rows_sort_stably_by_a_column :: proc(t: ^testing.T) {
+	test_app(t)
 	entries := []Net_Entry{{url = "http://x/b", status = 200, bytes = 5}, {url = "http://x/a", status = 404, bytes = 50}, {url = "http://x/c", status = 200, bytes = 5}}
 	rows := []int{0, 1, 2}
 	net_sort(rows, entries, .Name, false)
@@ -287,6 +302,7 @@ copy_as_cURL_fetch_and_PowerShell :: proc(t: ^testing.T) {
 
 @(test)
 sizes_and_times_are_written_for_a_person :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect_value(t, dt_size_text(999), "999 B")
 	testing.expect_value(t, dt_size_text(1500), "1.5 kB")
 	testing.expect_value(t, dt_size_text(2_500_000), "2.50 MB")
@@ -301,6 +317,7 @@ sizes_and_times_are_written_for_a_person :: proc(t: ^testing.T) {
 
 @(test)
 syntax_runs_cover_the_whole_line :: proc(t: ^testing.T) {
+	test_app(t)
 	for lang in Syn_Lang {
 		line := `{"a": [1, true, null, "x\"y"], b: 'z' } // <tag attr="v"> .c { color: #fff; }`
 		runs := syn_runs(line, lang)
@@ -316,6 +333,7 @@ syntax_runs_cover_the_whole_line :: proc(t: ^testing.T) {
 }
 @(test)
 har_export_is_json :: proc(t: ^testing.T) {
+	test_app(t)
 	tab := Tab{}
 	defer net_log_destroy(&tab.net)
 	append(&tab.net.entries, Net_Entry{method = strings.clone("GET"), url = strings.clone("http://x/a?q=\"1\""), status = 200, status_text = strings.clone("OK"), res_headers = strings.clone("A: b\r\nC: d"), req_headers = strings.clone("H: v"), mime = strings.clone("text/html"), bytes = 5, transfer = 7})

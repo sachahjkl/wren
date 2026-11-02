@@ -122,7 +122,7 @@ Remote :: struct {
 // Before a frame of the active window ends (main.odin frame, shell_frames.odin): the capture a remote call waits for is asked of
 // the renderer when this is the window it is about (the renderer copies the next frame it ends, whichever window's).
 remote_capture_arm :: proc(app: ^App) {
-	r := &the_remote
+	r := &app.remote
 	if r.tl.on { timeline_frame(app) }   // remote_timeline.odin: every frame of the window, while one is recorded
 	if r.capture_window == 0 || r.capture_window != active_window(app).id { return }
 	r.capture_window = 0
@@ -134,7 +134,6 @@ Remote_Queued :: struct {
 	line: string,   // owned
 }
 
-the_remote: Remote
 remote_exit_code: int   // what Browser.close asked for: the process ends with it (main.odin)
 remote_fast_exit: bool  // Browser.close {fast}: the process ends at once, without the teardown (a throwaway profile has nothing to save)
 
@@ -164,7 +163,7 @@ extract_remote :: proc(args: []string) -> (requested: bool, name: string, rest: 
 
 // `requested`: --remote on the command line; `arg_name` its name ("" for none). Called once the loop and the first tab exist.
 remote_start :: proc(app: ^App, requested: bool, arg_name: string) {
-	r := &the_remote
+	r := &app.remote
 	r.cfg = remote.settings_from_prefs(&app.prefs)
 	env, _ := os.lookup_env("WREN_REMOTE", context.temp_allocator)
 	if !requested && !r.cfg.enabled && env == "" { return }
@@ -187,7 +186,7 @@ remote_start :: proc(app: ^App, requested: bool, arg_name: string) {
 
 // The notice of a start that failed, once the interface exists.
 remote_notice :: proc(app: ^App) {
-	r := &the_remote
+	r := &app.remote
 	if r.error == "" { return }
 	ui_toast_remote(r.error)
 	if t := current_tab(app); t != nil { tab_log(t, .Warn, r.error) }
@@ -196,7 +195,7 @@ remote_notice :: proc(app: ^App) {
 }
 
 remote_stop :: proc(app: ^App) {
-	r := &the_remote
+	r := &app.remote
 	if r.started {
 		remote.stop()
 		remote.remove_info(app.profile_dir)
@@ -216,17 +215,17 @@ remote_stop :: proc(app: ^App) {
 	r^ = {}
 }
 
-remote_indicator :: proc() -> bool { return the_remote.started && the_remote.cfg.indicator }
+remote_indicator :: proc() -> bool { return the_app.remote.started && the_app.remote.cfg.indicator }
 
 remote_indicator_text :: proc() -> string { return i18n.tr("remote") }
 
 remote_indicator_tip :: proc() -> string {
-	return fmt.tprintf(i18n.tr("Remote control is listening (%s): `wren ctl` can drive this window"), remote.pipe_path(the_remote.name))
+	return fmt.tprintf(i18n.tr("Remote control is listening (%s): `wren ctl` can drive this window"), remote.pipe_path(the_app.remote.name))
 }
 
 @(private = "file")
 remote_closed :: proc(user: rawptr, conn: u64) {
-	r := &the_remote
+	r := &the_app.remote
 	for i := len(r.subs) - 1; i >= 0; i -= 1 { if r.subs[i] == conn { unordered_remove(&r.subs, i) } }
 	for i := len(r.ops) - 1; i >= 0; i -= 1 {
 		if r.ops[i].conn == conn { op_free(r.ops[i]); unordered_remove(&r.ops, i) }
@@ -262,7 +261,7 @@ remote_handle :: proc(user: rawptr, conn: u64, line: []byte) {
 	// a chrome frame made while a page script holds the thread (shell_frames.odin) runs the loop too: nothing of a page may be
 	// touched from there (a script run in a realm that is running, a tab closed under its own task), so the request waits for the
 	// frame of the interface proper
-	if shell_nested() { append(&the_remote.queued, Remote_Queued{conn, strings.clone(string(line))}); return }
+	if shell_nested() { append(&app.remote.queued, Remote_Queued{conn, strings.clone(string(line))}); return }
 	remote_run_line(app, conn, line)
 }
 
@@ -270,7 +269,7 @@ remote_handle :: proc(user: rawptr, conn: u64, line: []byte) {
 // that changes something asks for its frames here, one that only reads asks for none.
 @(private = "file")
 remote_run_line :: proc(app: ^App, conn: u64, line: []byte) {
-	the_remote.call_ns = host.now_ns(&app.loop)
+	app.remote.call_ns = host.now_ns(&app.loop)
 	req, code, message := remote.parse_request(line)
 	if code != 0 { remote_send(conn, remote.response_error(req.id, code, message)); return }
 	c := Call{conn = conn, id = req.id, method = req.method, params = req.params}
@@ -295,14 +294,14 @@ remote_send :: proc(conn: u64, line: string) {
 
 // To the clients that asked for events (Remote.subscribe), and to every CDP client (they subscribe on connect).
 remote_event :: proc(name: string, params: string) {
-	r := &the_remote
+	r := &the_app.remote
 	line := remote.event_line(name, params)
 	for c in r.subs {
 		if c & CDP_CONN_TAG != 0 { cdp_on_wren_event(c, name, params) } else { remote.send(c, line) }
 	}
 }
 
-remote_subscribed :: proc() -> bool { return len(the_remote.subs) > 0 }
+remote_subscribed :: proc() -> bool { return len(the_app.remote.subs) > 0 }
 
 ////////////////////////////////
 // Ops
@@ -315,9 +314,9 @@ op_new :: proc(app: ^App, c: ^Call, kind: Remote_Op_Kind, timeout_ms: int, what:
 	op.id = strings.clone(c.id)
 	op.what = strings.clone(what)
 	op.window = active_window(app).id
-	ms := timeout_ms > 0 ? timeout_ms : the_remote.cfg.timeout_ms
+	ms := timeout_ms > 0 ? timeout_ms : app.remote.cfg.timeout_ms
 	op.deadline = host.now_ns(&app.loop) + i64(ms) * NS_PER_MS
-	append(&the_remote.ops, op)
+	append(&app.remote.ops, op)
 	return op
 }
 
@@ -339,13 +338,13 @@ op_finish :: proc(op: ^Remote_Op, rep: Reply) {
 
 // Ends `op`, its answer given.
 op_finish_silent :: proc(op: ^Remote_Op) {
-	for o, i in the_remote.ops { if o == op { unordered_remove(&the_remote.ops, i); break } }
+	for o, i in the_app.remote.ops { if o == op { unordered_remove(&the_app.remote.ops, i); break } }
 	op_free(op)
 }
 
 // The pending ops are looked at (after a frame, when the timer fires, after a command that made one).
 remote_tick :: proc(app: ^App) {
-	r := &the_remote
+	r := &app.remote
 	if !r.active || shell_nested() { return }   // (not from a chrome frame under a page's script: the frame of the interface looks again)
 	now := host.now_ns(&app.loop)
 	// (an op may finish, and finishing removes it: work from a copy of the list)
@@ -358,7 +357,7 @@ remote_tick :: proc(app: ^App) {
 
 // After each loop turn's frame (main loop): the cost when nothing is asked is this comparison.
 remote_after_frame :: proc(app: ^App) {
-	r := &the_remote
+	r := &app.remote
 	if !r.active { return }
 	r.frame_no += 1
 	if len(r.queued) > 0 {
@@ -372,7 +371,7 @@ remote_after_frame :: proc(app: ^App) {
 
 @(private = "file")
 remote_arm :: proc(app: ^App) {
-	r := &the_remote
+	r := &app.remote
 	if len(r.ops) == 0 {
 		if r.timer != base.NIL_HANDLE { host.clear_timer(&app.loop, r.timer); r.timer = base.NIL_HANDLE }
 		return
@@ -394,7 +393,7 @@ remote_arm :: proc(app: ^App) {
 
 @(private = "file")
 remote_timer :: proc(_: rawptr) {
-	r := &the_remote
+	r := &the_app.remote
 	r.timer = base.NIL_HANDLE
 	app := the_app
 	if app == nil { return }
@@ -406,7 +405,7 @@ remote_timer :: proc(_: rawptr) {
 // would count against the process).
 @(private = "file")
 op_poll_ns :: proc(op: ^Remote_Op) -> i64 {
-	ms := the_remote.cfg.poll_ms
+	ms := the_app.remote.cfg.poll_ms
 	if op.kind == .Wait && op.wait == .Quiet { ms = max(ms, 20) }
 	return i64(ms) * NS_PER_MS
 }
@@ -426,7 +425,7 @@ op_polls :: proc(app: ^App, op: ^Remote_Op) -> bool {
 // A tab's load events, for the clients that subscribed.
 @(private = "file")
 remote_loaded_events :: proc(app: ^App) {
-	r := &the_remote
+	r := &app.remote
 	if len(r.subs) == 0 { return }
 	for t in tabs_all(app) {
 		now := tab_loaded(app, t)
@@ -448,7 +447,7 @@ REMOTE_ANSWER :: "\x01wren-remote:"
 // one (it is then kept out of the console, whoever wrote it); it counts only if it answers a question asked in that tab that
 // still waits for its answer, and only the first answer does.
 remote_take_console :: proc(message: string, tab: u64) -> bool {
-	r := &the_remote
+	r := &the_app.remote
 	if !r.active || !strings.has_prefix(message, REMOTE_ANSWER) { return false }
 	payload := message[len(REMOTE_ANSWER):]
 	v, err := json.parse(transmute([]byte)payload, json.Specification.JSON, true, context.temp_allocator)
@@ -508,7 +507,7 @@ eval_source :: proc(id: int, expression: string, await: bool) -> string {
 // Runs `expression` in the tab's page. The answer is the console line `remote_take_console` takes: at once for a plain value
 // (`done`), later for a promise. `ran` false: the page has no script engine (off, or no page).
 eval_start :: proc(t: ^Tab, expression: string, await: bool) -> (id: int, ran: bool) {
-	r := &the_remote
+	r := &the_app.remote
 	if t == nil || t.page == nil || t.kind != .Web { return 0, false }
 	r.eval_next += 1
 	id = r.eval_next
@@ -522,7 +521,7 @@ eval_start :: proc(t: ^Tab, expression: string, await: bool) -> (id: int, ran: b
 
 // The value of `expression` as JSON text, at once (not for promises). `error` says why not.
 eval_sync :: proc(t: ^Tab, expression: string) -> (value: string, type: string, error: string) {
-	r := &the_remote
+	r := &the_app.remote
 	if t == nil || t.page == nil { return "", "", "the tab has no page" }
 	r.eval_next += 1
 	id := r.eval_next
@@ -600,7 +599,7 @@ op_tab :: proc(app: ^App, id: u64) -> ^Tab {
 
 @(private = "file")
 op_step :: proc(app: ^App, op: ^Remote_Op, now: i64) {
-	r := &the_remote
+	r := &app.remote
 	// the op's window is the active one while it is looked at (its frames, its page area, its capture), then the one that was
 	prev := app.active
 	if w := window_by_id(app, op.window); w != nil { window_activate(app, w) }
@@ -661,7 +660,7 @@ op_step :: proc(app: ^App, op: ^Remote_Op, now: i64) {
 // Is a client waiting on this window's frames: a call waits for them, or came within this frame's length (the next one is on its way)? A
 // window nobody sees then waits for no one; a page that animates by itself, with nobody asking, goes back to the usual rate.
 remote_driving :: proc(app: ^App, period_ms: f64) -> bool {
-	r := &the_remote
+	r := &app.remote
 	if !r.active { return false }
 	if f64(host.now_ns(&app.loop) - r.call_ns) < period_ms * NS_PER_MS { return true }
 	for op in r.ops {

@@ -34,22 +34,22 @@ console_eval_row :: proc(app: ^App, t: ^Tab, row_h: f32) {
 	c.tab = t
 	h := math.round(row_h * 1.25)
 	focused := false
-	ui.next({width = ui.fill(), height = ui.px(h), axis = .X, cross = .Center, bg = dtc.bar, border = dtc.border})
+	ui.next({width = ui.fill(), height = ui.px(h), axis = .X, cross = .Center, bg = app.dtc.bar, border = app.dtc.border})
 	box := ui.build_box({.Draw_Background, .Draw_Side_Top}, "###dt_eval")
 	var_res: ui.Edit_Result
 	if ui.parent(box) {
 		// the prompt
 		ui.next({width = ui.px(dt_px(24)), height = ui.pct(1)})
 		ui.custom("###dt_eval_prompt", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
-			dt_icon(dc, .Prompt, draw.rect_center(b.rect), dtm.icon, dtc.accent, dtm.sc)
+			dt_icon(dc, .Prompt, draw.rect_center(b.rect), the_app.dtm.icon, the_app.dtc.accent, the_app.dtm.sc)
 		}, nil)
-		ui.next({width = ui.fill(), height = ui.pct(1), radius = 0, bg = draw.Color{}, border = draw.Color{}, font = dtm.mono, font_size = dtm.mono_fs, text_pad = 0})
+		ui.next({width = ui.fill(), height = ui.pct(1), radius = 0, bg = draw.Color{}, border = draw.Color{}, font = app.dtm.mono, font_size = app.dtm.mono_fs, text_pad = 0})
 		var_res = ui.line_edit("###console_js", &c.field, "Run JavaScript in this page (Enter), Tab to complete")
 		if var_res.box != nil { var_res.box.flags -= {.Draw_Focus_Ring} }
 		focused = var_res.focused
 		if c.open && focused { console_complete_popup(app, c, box) }   // (a child of the row: it floats above it)
 	}
-	if focused { box.border = dtc.accent }
+	if focused { box.border = app.dtc.accent }
 	res := var_res
 	if res.focused {
 		forms_page_blur(app)
@@ -83,7 +83,7 @@ console_eval_keys :: proc(app: ^App, t: ^Tab, c: ^Con_Eval) {
 		else if ui.key_press(.Tab) || (ui.key_press(.Right) && c.field.cursor == len(c.field.buf)) { console_accept(c) }
 		return
 	}
-	if ui.key_press(.Tab) && con_prefs.autocomplete { console_eval_update(c, force = true); return }
+	if ui.key_press(.Tab) && app.con_prefs.autocomplete { console_eval_update(c, force = true); return }
 	if ui.key_press(.Up) && c.cursor > 0 {
 		if c.cursor == len(c.history) { delete(c.draft); c.draft = strings.clone(ui.field_string(&c.field)) }
 		c.cursor -= 1
@@ -98,7 +98,7 @@ console_eval_keys :: proc(app: ^App, t: ^Tab, c: ^Con_Eval) {
 @(private = "file")
 console_eval_update :: proc(c: ^Con_Eval, force := false) {
 	text := ui.field_string(&c.field)
-	if c.field.cursor != len(text) || !(con_prefs.autocomplete || force) { c.open = false; return }
+	if c.field.cursor != len(text) || !(the_app.con_prefs.autocomplete || force) { c.open = false; return }
 	for it in c.items { delete(it) }
 	clear(&c.items)
 	delete(c.word)
@@ -142,12 +142,12 @@ console_accept :: proc(c: ^Con_Eval) {
 console_complete_popup :: proc(app: ^App, c: ^Con_Eval, anchor: ^ui.Box) {
 	n := min(len(c.items), 9)
 	if n == 0 { return }
-	rowh := dtm.row
+	rowh := app.dtm.row
 	w := dt_px(220)
-	for it in c.items[:n] { w = max(w, dt_w(dtm.mono, dtm.mono_fs, it) + dt_px(34)) }
+	for it in c.items[:n] { w = max(w, dt_w(app.dtm.mono, app.dtm.mono_fs, it) + dt_px(34)) }
 	w = min(w, dt_px(460))
 	h := f32(n) * rowh + dt_px(4)
-	ui.next({width = ui.px(w), height = ui.px(h), axis = .Y, fixed_x = dt_px(24), fixed_y = -h - dt_px(1), bg = dtc.bar, border = dtc.border})
+	ui.next({width = ui.px(w), height = ui.px(h), axis = .Y, fixed_x = dt_px(24), fixed_y = -h - dt_px(1), bg = app.dtc.bar, border = app.dtc.border})
 	pb := ui.build_box({.Draw_Background, .Draw_Border, .Draw_Shadow, .Clickable}, "###dt_eval_pop")
 	if ui.parent(pb) {
 		ui.spacer(ui.px(dt_px(2)))
@@ -173,13 +173,13 @@ Comp_Draw :: struct { text: string, sel, hot: bool, word: int }
 comp_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	d := (^Comp_Draw)(user)
 	r := b.rect
-	if d.sel { draw.rect(dc, r, dtc.sel_weak); draw.rect(dc, {r.min, {r.min.x + dtm.line * 2, r.max.y}}, dtc.accent) } else if d.hot { draw.rect(dc, r, dtc.hover) }
+	if d.sel { draw.rect(dc, r, the_app.dtc.sel_weak); draw.rect(dc, {r.min, {r.min.x + the_app.dtm.line * 2, r.max.y}}, the_app.dtc.accent) } else if d.hot { draw.rect(dc, r, the_app.dtc.hover) }
 	cy := (r.min.y + r.max.y) * 0.5
 	// the typed part is bold-ish: drawn in the full color, the rest weaker
 	typed := d.text[:min(d.word, len(d.text))]
 	x := r.min.x + dt_px(10)
-	x += dt_text(dc, dtm.mono, dtm.mono_fs, x, cy, dtc.accent, typed)
-	dt_text(dc, dtm.mono, dtm.mono_fs, x, cy, dtc.text, d.text[len(typed):])
+	x += dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, x, cy, the_app.dtc.accent, typed)
+	dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, x, cy, the_app.dtc.text, d.text[len(typed):])
 }
 
 // Window closing.

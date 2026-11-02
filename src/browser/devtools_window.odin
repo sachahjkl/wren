@@ -239,7 +239,7 @@ devtools_window_loop_frame :: proc(app: ^App, owner: int) {
 	window_activate(app, bw)
 	defer if prev != nil && prev != bw && slice.contains(app.windows[:], prev) { window_activate(app, prev) }
 	devtools_window_frame(app)
-	if chrome_frames.nested || platform.is_closed(bw.win) { return }
+	if app.chrome_frames.nested || platform.is_closed(bw.win) { return }
 	app.pass_first = true
 	frame(app, true)   // (idled: it returns at once when there is nothing to draw nor to run)
 	if bw.frames_requested > 0 { bw.frames_requested -= 1 }

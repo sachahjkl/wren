@@ -7,6 +7,7 @@ import "wb:page"
 // A scroller waits for enough room, unless the time is up: then it goes as far as it can.
 @(test)
 restore_waits_for_height :: proc(t: ^testing.T) {
+	test_app(t)
 	pos, done := restore_step(1200, 300, false)
 	testing.expect(t, !done)
 	pos, done = restore_step(1200, 1199.7, false)
@@ -24,6 +25,7 @@ restore_waits_for_height :: proc(t: ^testing.T) {
 
 @(test)
 history_addresses_recorded :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect_value(t, history_address("https://user:pw@a.example/x?q#f", true, 1024), "https://a.example/x?q#f")
 	testing.expect_value(t, history_address("http://a.example/", true, 1024), "http://a.example/")
 	testing.expect_value(t, history_address("file:///C:/x.html", true, 1024), "file:///C:/x.html")
@@ -36,6 +38,7 @@ history_addresses_recorded :: proc(t: ^testing.T) {
 
 @(test)
 history_file_round_trip :: proc(t: ^testing.T) {
+	test_app(t)
 	visits := [dynamic]Visit{}
 	defer visits_destroy(&visits)
 	append(&visits, Visit{id = 1, at_ms = 1000, url = strings.clone("https://a/"), title = strings.clone("A\ttab\nline \\ end")})
@@ -69,6 +72,7 @@ history_file_round_trip :: proc(t: ^testing.T) {
 
 @(test)
 history_search_and_delete :: proc(t: ^testing.T) {
+	test_app(t)
 	visits := [dynamic]Visit{}
 	defer visits_destroy(&visits)
 	for i in 0 ..< 6 {
@@ -91,6 +95,7 @@ history_search_and_delete :: proc(t: ^testing.T) {
 // Each tab's tree survives a restart: entries, parents, the current one, scroll positions, states.
 @(test)
 session_trees_round_trip :: proc(t: ^testing.T) {
+	test_app(t)
 	sh: page.Session_History
 	defer page.session_destroy(&sh)
 	page.session_push(&sh, "https://a/1", 0)
@@ -126,6 +131,7 @@ session_trees_round_trip :: proc(t: ^testing.T) {
 
 @(test)
 tree_layout_rows :: proc(t: ^testing.T) {
+	test_app(t)
 	sh: page.Session_History
 	defer page.session_destroy(&sh)
 	page.session_push(&sh, "a", 0)

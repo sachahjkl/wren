@@ -90,6 +90,7 @@ exe_in :: proc(dir: string) -> string { return fmt.tprintf("%s\\wren.exe", dir) 
 
 @(test)
 setup_states_of_the_dialog :: proc(t: ^testing.T) {
+	test_app(t)
 	present := desktop.Install_Info{exe = `C:\i\wren.exe`, exe_present = true, manifest = true, version = "0.3.0"}
 	testing.expect_value(t, setup_classify(`C:\d\wren.exe`, "0.3.0", {}, false), Setup_Kind.Not_Installed)
 	testing.expect_value(t, setup_classify(`C:\i\wren.exe`, "0.3.0", present, true), Setup_Kind.Running_Installed)
@@ -111,6 +112,7 @@ setup_states_of_the_dialog :: proc(t: ^testing.T) {
 
 @(test)
 setup_offers_itself_for_every_state_but_a_good_installation :: proc(t: ^testing.T) {
+	test_app(t)
 	for k in Setup_Kind {
 		f := Setup_Facts{kind = k}
 		want := k != .Loading && k != .Running_Installed
@@ -120,6 +122,7 @@ setup_offers_itself_for_every_state_but_a_good_installation :: proc(t: ^testing.
 
 @(test)
 setup_install_then_every_state_then_uninstall :: proc(t: ^testing.T) {
+	test_app(t)
 	s := scene_make()
 	defer scene_destroy(&s)
 	exe := exe_in(s.pkg)
@@ -204,6 +207,7 @@ setup_install_then_every_state_then_uninstall :: proc(t: ^testing.T) {
 
 @(test)
 setup_options_apply_and_modify :: proc(t: ^testing.T) {
+	test_app(t)
 	s := scene_make()
 	defer scene_destroy(&s)
 	exe := exe_in(s.pkg)
@@ -242,6 +246,7 @@ setup_options_apply_and_modify :: proc(t: ^testing.T) {
 
 @(test)
 setup_install_moves_the_installation :: proc(t: ^testing.T) {
+	test_app(t)
 	s := scene_make()
 	defer scene_destroy(&s)
 	s.opts.add_to_path = true
@@ -274,6 +279,7 @@ setup_install_moves_the_installation :: proc(t: ^testing.T) {
 
 @(test)
 setup_refuses_a_bad_folder_before_touching_anything :: proc(t: ^testing.T) {
+	test_app(t)
 	s := scene_make()
 	defer scene_destroy(&s)
 	job := job_for(&s, .Apply, exe_in(s.pkg))
@@ -289,6 +295,7 @@ setup_refuses_a_bad_folder_before_touching_anything :: proc(t: ^testing.T) {
 
 @(test)
 setup_uninstalling_the_running_copy_leaves_its_file_for_later :: proc(t: ^testing.T) {
+	test_app(t)
 	s := scene_make()
 	defer scene_destroy(&s)
 	job := job_for(&s, .Apply, exe_in(s.pkg))
@@ -319,40 +326,44 @@ setup_remembers_the_answer_in_the_profile :: proc(t: ^testing.T) {
 	s := scene_make()
 	defer scene_destroy(&s)
 	_ = os.make_directory_all(s.root)
-	app: App
+	app := new(App)   // (an App is too large for a test's stack)
+	the_app = app   // (what the code reaches without an App: this one)
+	defer free(app)
 	app.cfg.persist_profile = true
 	app.profile_dir = s.root
-	choice, version := setup_choice(&app)
+	choice, version := setup_choice(app)
 	testing.expect_value(t, choice, "")
-	testing.expect(t, !setup_choice_blocks(&app), "nothing answered: ask")
+	testing.expect(t, !setup_choice_blocks(app), "nothing answered: ask")
 
-	setup_choice_write(&app, "dismissed")
-	choice, version = setup_choice(&app)
+	setup_choice_write(app, "dismissed")
+	choice, version = setup_choice(app)
 	testing.expect_value(t, choice, "dismissed")
 	testing.expect_value(t, version, APP_VERSION)
-	testing.expect(t, setup_choice_blocks(&app), "closed without answering: not asked again for this version")
+	testing.expect(t, setup_choice_blocks(app), "closed without answering: not asked again for this version")
 	// ... but asked again after an update
 	_ = os.write_entire_file(fmt.tprintf("%s\\%s", s.root, SETUP_CHOICE_FILE), "choice=dismissed\nversion=0.0.1\n")
-	testing.expect(t, !setup_choice_blocks(&app), "a dismissal of an older version does not count")
+	testing.expect(t, !setup_choice_blocks(app), "a dismissal of an older version does not count")
 
-	setup_choice_write(&app, "standalone")
+	setup_choice_write(app, "standalone")
 	_ = os.write_entire_file(fmt.tprintf("%s\\%s", s.root, SETUP_CHOICE_FILE), "choice=standalone\nversion=0.0.1\n")
-	testing.expect(t, setup_choice_blocks(&app), "standalone is for good")
+	testing.expect(t, setup_choice_blocks(app), "standalone is for good")
 
 	app.cfg.persist_profile = false
 	_ = os.remove(fmt.tprintf("%s\\%s", s.root, SETUP_CHOICE_FILE))
-	setup_choice_write(&app, "standalone")
+	setup_choice_write(app, "standalone")
 	testing.expect(t, !os.exists(fmt.tprintf("%s\\%s", s.root, SETUP_CHOICE_FILE)), "a profile that is not kept keeps nothing")
 }
 
 @(test)
 setup_portable_marker :: proc(t: ^testing.T) {
+	test_app(t)
 	// the test executable has no wren.portable beside it
 	testing.expect_value(t, portable_profile_dir(), "")
 }
 
 @(test)
 setup_update_document_is_read_carefully :: proc(t: ^testing.T) {
+	test_app(t)
 	tag, page, ok := update_parse(transmute([]byte)string(`{"tag_name":"v0.4.0","html_url":"https://github.com/sachahjkl/wren/releases/tag/v0.4.0","draft":false}`))
 	testing.expect(t, ok && tag == "v0.4.0" && strings.has_prefix(page, "https://github.com/"), "a release")
 	_, _, ok = update_parse(transmute([]byte)string(`{"tag_name":"v0.5.0","prerelease":true}`))

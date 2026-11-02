@@ -48,14 +48,14 @@ Doc_Hooks :: struct {
 Poke :: struct { hs: ^Doc_Hooks }
 
 install_page_hooks :: proc(b: ^Blocker) {
-	page.embedder = page.Embedder_Hooks{
+	page.the_pages.embedder = page.Embedder_Hooks{
 		user = b, realm_started = hook_realm_started, adopted = hook_adopted, before_styles = hook_before_styles,
 		before_script = hook_before_script, parsed = hook_parsed, popup_check = popup_check,
 		collapse_blocked = b.cfg.collapse,
 	}
 }
 
-remove_page_hooks :: proc(b: ^Blocker) { page.embedder = {} }
+remove_page_hooks :: proc(b: ^Blocker) { page.the_pages.embedder = {} }
 
 @(private)
 doc_of_page :: proc(b: ^Blocker, p: ^page.Page) -> ^Doc { return b.docs[&p.env] }

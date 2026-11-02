@@ -58,7 +58,7 @@ dialog_done :: proc(data: rawptr) {
 	defer { delete(j.suggested); delete(j.path); free(j) }
 	app := j.app
 	if j.path == "" { return }
-	b := &bl.b
+	b := &app.bl.b
 	name := filepath.base(j.path)
 	switch {
 	case j.save && j.kind == 0:
@@ -77,9 +77,9 @@ dialog_done :: proc(data: rawptr) {
 			blocker.conf_save(b)
 			blocker.rebuild(b)
 			blocker.updater_round(b, false)
-			dash.my_loaded = false
-			delete(dash.status)
-			dash.status = strings.clone(fmt.tprintf(i18n.tr("imported %s"), name))
+			app.dash.my_loaded = false
+			delete(app.dash.status)
+			app.dash.status = strings.clone(fmt.tprintf(i18n.tr("imported %s"), name))
 			ui.toast(ok > 0 ? .Good : .Bad, i18n.tr("settings count, file, ignored lines", "%d settings imported from %s (%d lines ignored)"), ok, name, bad)
 		} else {
 			dash_add_filter(app, strings.trim_space(string(data)))

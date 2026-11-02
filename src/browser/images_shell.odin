@@ -64,7 +64,6 @@ Shell_Texture :: struct {
 	epoch:      u64,
 }
 
-@(private = "file")
 Images_Shell :: struct {
 	api:        Texture_Api,
 	textures:   map[u64]^Shell_Texture,
@@ -79,23 +78,21 @@ Images_Shell :: struct {
 	device_generation: u64,          // render.Renderer.device_generation the textures were made on
 }
 
-@(private = "file")
-shell: Images_Shell
 
 // The fallback: textures that remember nothing and draw a placeholder of the image's box.
 PLACEHOLDER_TEXTURES :: Texture_Api{
 	placeholder = true,
-	create = proc(user: rawptr, w, h: int) -> Image_Texture { shell.fake_next += 1; return shell.fake_next },
+	create = proc(user: rawptr, w, h: int) -> Image_Texture { the_app.images_shell.fake_next += 1; return the_app.images_shell.fake_next },
 	update = proc(user: rawptr, tex: Image_Texture, x, y, w, h: int, pixels: []u8, stride: int) {},
 	destroy = proc(user: rawptr, tex: Image_Texture) {},
 	draw = proc(user: rawptr, dc: ^draw.Context, tex: Image_Texture, dst, src: draw.Rect, tint: draw.Color, radii: [4]f32) { draw_placeholder(dc, dst, .Ready) },
 }
 
 images_shell_init :: proc(app: ^App) {
-	shell.api = PLACEHOLDER_TEXTURES
-	shell.textures = make(map[u64]^Shell_Texture)
-	shell.evicted = make([dynamic]u64)
-	shell.next_ms = -1
+	app.images_shell.api = PLACEHOLDER_TEXTURES
+	app.images_shell.textures = make(map[u64]^Shell_Texture)
+	app.images_shell.evicted = make([dynamic]u64)
+	app.images_shell.next_ms = -1
 	set_replaced_sizes(lay.Replaced_Api{user = app, intrinsic = shell_intrinsic, ratio = shell_ratio})
 	video_shell_init(app)
 	video_fast_path_init(app)
@@ -104,7 +101,7 @@ images_shell_init :: proc(app: ^App) {
 // The natural ratio of a replaced element that has no natural size (an SVG image or inline <svg> with only a viewBox).
 @(private = "file")
 shell_ratio :: proc(user: rawptr, node: base.Handle) -> f32 {
-	p := shell.page
+	p := the_app.images_shell.page
 	if p == nil { return 0 }
 	if n := dom.get(p.doc, node); n != nil && n.name == "svg" { return page.inline_svg_ratio(p, node) }
 	v := page.image_view(p, node)
@@ -116,7 +113,7 @@ shell_ratio :: proc(user: rawptr, node: base.Handle) -> f32 {
 // is as large as its icon and alt text. ok = false: nothing known (layout uses its placeholder size).
 @(private = "file")
 shell_intrinsic :: proc(user: rawptr, node: base.Handle) -> (w, h: f32, ok: bool) {
-	p := shell.page
+	p := the_app.images_shell.page
 	if p == nil { return 0, 0, false }
 	d := p.doc
 	if n := dom.get(d, node); n != nil && n.name == "svg" { return page.inline_svg_intrinsic(p, node) }
@@ -148,7 +145,7 @@ shell_intrinsic :: proc(user: rawptr, node: base.Handle) -> (w, h: f32, ok: bool
 	cs: ^style.Computed
 	if i := int(base.handle_index(node)); p.styled != nil && i < len(p.styled.by_node) { cs = p.styled.by_node[i] }
 	if cs == nil || the_app == nil { return icon + 4, icon + 4, true }
-	text := page_text_api(&page_render.fonts, &the_app.measure, &the_app.page_settings.style)
+	text := page_text_api(&the_app.page_render.fonts, &the_app.measure, &the_app.page_settings.style)
 	f := text.font(text.user, cs.font_family, cs.font_weight, cs.font_style != .Normal)
 	tw := text.width(text.user, f, cs.font_size, alt)
 	return icon + 8 + tw, max(icon + 4, cs.font_size * 1.25), true
@@ -157,7 +154,7 @@ shell_intrinsic :: proc(user: rawptr, node: base.Handle) -> (w, h: f32, ok: bool
 // Connects the renderer's textures (see the top of this file). Textures made by the previous API are released.
 images_set_texture_api :: proc(api: Texture_Api) {
 	release_all_textures()
-	shell.api = api
+	the_app.images_shell.api = api
 }
 
 images_shell_destroy :: proc(app: ^App) {
@@ -165,29 +162,29 @@ images_shell_destroy :: proc(app: ^App) {
 	video_fast_path_destroy(app)
 	video_shell_destroy(app)
 	release_all_textures()
-	delete(shell.textures)
-	delete(shell.evicted)
-	if shell.wake != base.NIL_HANDLE { host.clear_timer(&app.loop, shell.wake) }
-	shell = {}
+	delete(app.images_shell.textures)
+	delete(app.images_shell.evicted)
+	if app.images_shell.wake != base.NIL_HANDLE { host.clear_timer(&app.loop, app.images_shell.wake) }
+	app.images_shell = {}
 }
 
 @(private = "file")
 release_all_textures :: proc() {
-	for _, st in shell.textures {
-		if shell.api.destroy != nil { shell.api.destroy(shell.api.user, st.tex) }
+	for _, st in the_app.images_shell.textures {
+		if the_app.images_shell.api.destroy != nil { the_app.images_shell.api.destroy(the_app.images_shell.api.user, st.tex) }
 		free(st)
 	}
-	clear(&shell.textures)
-	shell.bytes = 0
+	clear(&the_app.images_shell.textures)
+	the_app.images_shell.bytes = 0
 }
 
 @(private = "file")
 release_texture :: proc(id: u64) {
-	st, ok := shell.textures[id]
+	st, ok := the_app.images_shell.textures[id]
 	if !ok { return }
-	shell.api.destroy(shell.api.user, st.tex)
-	shell.bytes -= st.bytes
-	delete_key(&shell.textures, id)
+	the_app.images_shell.api.destroy(the_app.images_shell.api.user, st.tex)
+	the_app.images_shell.bytes -= st.bytes
+	delete_key(&the_app.images_shell.textures, id)
 	free(st)
 }
 
@@ -195,23 +192,23 @@ release_texture :: proc(id: u64) {
 // textures of evicted images go.
 images_shell_frame :: proc(app: ^App) {
 	for tab in tabs_all(app) { if tab.page != nil && tab.kind == .Web { page.images_sync(tab.page); page.canvas_frame(tab.page) } }
-	clear(&shell.evicted)
-	page.images_drain_evicted(&shell.evicted)
-	page.canvas_drain_released(&shell.evicted)   // (canvases of closed pages and freed elements: their textures)
-	for id in shell.evicted { release_texture(id) }
+	clear(&app.images_shell.evicted)
+	page.images_drain_evicted(&app.images_shell.evicted)
+	page.canvas_drain_released(&app.images_shell.evicted)   // (canvases of closed pages and freed elements: their textures)
+	for id in app.images_shell.evicted { release_texture(id) }
 }
 
 // The document whose images layout and painting read now (a frame's while it is laid out or painted: frames_shell.odin);
 // returns the one before.
 images_shell_page_swap :: proc(p: ^page.Page) -> ^page.Page {
-	old := shell.page
-	shell.page = p
+	old := the_app.images_shell.page
+	the_app.images_shell.page = p
 	return old
 }
 
 // Before the layout of `t`: natural sizes come from its page, and a size that became known makes the layout stale.
 images_before_layout :: proc(t: ^Tab) {
-	shell.page = t.page
+	the_app.images_shell.page = t.page
 	page.images_sync(t.page)
 	// a new generation makes the layout check the natural sizes it used (layout_stale / layout_document)
 	t.image_sizes = page.images_sizes_generation(t.page)
@@ -238,26 +235,26 @@ images_after_layout :: proc(t: ^Tab, size: draw.Vec2, scale: f32) {
 // Before painting a page: a new epoch for the cache and the texture budget, and the clock of animations.
 images_paint_begin_frame :: proc(app: ^App) {
 	// the GPU device was recreated (render.recover): texture contents are gone, decoded frames are uploaded again
-	if app.r.device_generation != shell.device_generation {
-		shell.device_generation = app.r.device_generation
+	if app.r.device_generation != app.images_shell.device_generation {
+		app.images_shell.device_generation = app.r.device_generation
 		release_all_textures()
 	}
 	page.images_paint_begin()
 	video_shell_begin_frame(app)
 	video_fast_path_begin_frame(app)
 	canvas_gpu_begin_frame(app)
-	shell.epoch += 1
-	shell.now_ms = f64(host.now_ns(&app.loop)) / 1e6
-	shell.next_ms = -1
+	app.images_shell.epoch += 1
+	app.images_shell.now_ms = f64(host.now_ns(&app.loop)) / 1e6
+	app.images_shell.next_ms = -1
 }
 
 // After painting: the next animation frame of what was drawn wakes the loop (nothing animates off screen: no timer).
 images_after_paint :: proc(app: ^App) {
-	if shell.wake != base.NIL_HANDLE { host.clear_timer(&app.loop, shell.wake); shell.wake = base.NIL_HANDLE }
-	if shell.next_ms >= 0 {
-		delay := max(shell.next_ms - shell.now_ms, 1)
-		shell.wake = host.set_timer(&app.loop, delay, 0, proc(data: rawptr) {
-			shell.wake = base.NIL_HANDLE
+	if app.images_shell.wake != base.NIL_HANDLE { host.clear_timer(&app.loop, app.images_shell.wake); app.images_shell.wake = base.NIL_HANDLE }
+	if app.images_shell.next_ms >= 0 {
+		delay := max(app.images_shell.next_ms - app.images_shell.now_ms, 1)
+		app.images_shell.wake = host.set_timer(&app.loop, delay, 0, proc(data: rawptr) {
+			the_app.images_shell.wake = base.NIL_HANDLE
 			a := (^App)(data)
 			request_frames(a, 2)
 		}, app)
@@ -269,15 +266,15 @@ images_after_paint :: proc(app: ^App) {
 @(private = "file")
 enforce_texture_budget :: proc(app: ^App) {
 	limit := app.page_settings.images.gpu_max_bytes
-	if shell.bytes <= limit { return }
-	ids := make([dynamic]u64, 0, len(shell.textures), context.temp_allocator)
-	for id, st in shell.textures { if st.epoch != shell.epoch { append(&ids, id) } }
+	if app.images_shell.bytes <= limit { return }
+	ids := make([dynamic]u64, 0, len(app.images_shell.textures), context.temp_allocator)
+	for id, st in app.images_shell.textures { if st.epoch != app.images_shell.epoch { append(&ids, id) } }
 	// oldest first
 	for i in 1 ..< len(ids) {
-		for j := i; j > 0 && shell.textures[ids[j]].epoch < shell.textures[ids[j - 1]].epoch; j -= 1 { ids[j], ids[j - 1] = ids[j - 1], ids[j] }
+		for j := i; j > 0 && app.images_shell.textures[ids[j]].epoch < app.images_shell.textures[ids[j - 1]].epoch; j -= 1 { ids[j], ids[j - 1] = ids[j - 1], ids[j] }
 	}
 	for id in ids {
-		if shell.bytes <= limit { break }
+		if app.images_shell.bytes <= limit { break }
 		release_texture(id)
 	}
 }
@@ -285,41 +282,41 @@ enforce_texture_budget :: proc(app: ^App) {
 // The texture of entry `id` showing frame `fp`, made or refreshed as needed.
 @(private = "file")
 texture_for :: proc(id: u64, fp: page.Frame_Pixels) -> (Image_Texture, bool) {
-	st := shell.textures[id]
+	st := the_app.images_shell.textures[id]
 	if st != nil && (st.w != fp.width || st.h != fp.height) { release_texture(id); st = nil }
 	if st == nil {
 		prof_begin(.Tex_Create)
-		tex := shell.api.create(shell.api.user, fp.width, fp.height)
+		tex := the_app.images_shell.api.create(the_app.images_shell.api.user, fp.width, fp.height)
 		prof_end(.Tex_Create)
 		if tex == 0 { return 0, false }
 		st = new(Shell_Texture)
 		st.tex, st.w, st.h = tex, fp.width, fp.height
 		st.bytes = fp.width * fp.height * 4 * 4 / 3   // with mipmaps
 		st.generation = ~u64(0)
-		shell.bytes += st.bytes
-		shell.textures[id] = st
+		the_app.images_shell.bytes += st.bytes
+		the_app.images_shell.textures[id] = st
 	}
 	if st.generation != fp.generation || st.frame != fp.frame {
 		prof_begin(.Tex_Upload)
-		shell.api.update(shell.api.user, st.tex, 0, 0, fp.width, fp.height, fp.pixels, fp.stride)
+		the_app.images_shell.api.update(the_app.images_shell.api.user, st.tex, 0, 0, fp.width, fp.height, fp.pixels, fp.stride)
 		prof_end(.Tex_Upload)
 		st.generation, st.frame = fp.generation, fp.frame
 	}
-	st.epoch = shell.epoch
+	st.epoch = the_app.images_shell.epoch
 	return st.tex, true
 }
 
 @(private = "file")
 note_next :: proc(fp: page.Frame_Pixels) {
-	if fp.next_ms >= 0 && (shell.next_ms < 0 || fp.next_ms < shell.next_ms) { shell.next_ms = fp.next_ms }
+	if fp.next_ms >= 0 && (the_app.images_shell.next_ms < 0 || fp.next_ms < the_app.images_shell.next_ms) { the_app.images_shell.next_ms = fp.next_ms }
 }
 
 @(private = "file")
 want_size :: proc(dst: draw.Rect) -> (int, int) {
 	w := int(math.ceil(dst.max.x - dst.min.x))
 	h := int(math.ceil(dst.max.y - dst.min.y))
-	if shell.api.max_size != nil {
-		m := shell.api.max_size(shell.api.user)
+	if the_app.images_shell.api.max_size != nil {
+		m := the_app.images_shell.api.max_size(the_app.images_shell.api.user)
 		if m > 0 { w, h = min(w, m), min(h, m) }
 	}
 	return max(w, 1), max(h, 1)
@@ -400,7 +397,7 @@ content_radii :: proc(cs: ^style.Computed, border, content: draw.Rect, scale: f3
 
 // The content of an image element; false for other replaced elements (the next painter takes them).
 images_paint_content :: proc(dc: ^draw.Context, d: ^dom.Document, node: base.Handle, content, border: draw.Rect, cs: ^style.Computed, fid: font.Font_Id, font_size, scale: f32) -> bool {
-	p := shell.page
+	p := the_app.images_shell.page
 	if p == nil || d == nil || p.doc != d { return false }
 	n := dom.get(d, node)
 	if n == nil || n.kind != .Element { return false }
@@ -429,7 +426,7 @@ images_paint_content :: proc(dc: ^draw.Context, d: ^dom.Document, node: base.Han
 	case .Ready:
 		dst := fit_rect(content, v.natural, cs, scale)
 		ww, wh := want_size(dst)
-		fp := page.frame_pixels(v.id, shell.now_ms, ww, wh, IMAGE_PIXELS_PRIORITY_ON_SCREEN)   // on screen: before anything prefetched
+		fp := page.frame_pixels(v.id, the_app.images_shell.now_ms, ww, wh, IMAGE_PIXELS_PRIORITY_ON_SCREEN)   // on screen: before anything prefetched
 		if !fp.ok { draw_placeholder(dc, content, .Loading); return true }
 		note_next(fp)
 		tex, ok := texture_for(fp.texture, fp)
@@ -439,7 +436,7 @@ images_paint_content :: proc(dc: ^draw.Context, d: ^dom.Document, node: base.Han
 		radii := content_radii(cs, border, content, scale)
 		clip := dst.min.x < content.min.x || dst.min.y < content.min.y || dst.max.x > content.max.x || dst.max.y > content.max.y || radii != {}
 		if clip { draw.push_clip_rounded(dc, content, radii) }
-		shell.api.draw(shell.api.user, dc, tex, dst, {}, WHITE_TINT, {})
+		the_app.images_shell.api.draw(the_app.images_shell.api.user, dc, tex, dst, {}, WHITE_TINT, {})
 		if clip { draw.pop_clip(dc) }
 	}
 	return true
@@ -449,7 +446,7 @@ images_paint_content :: proc(dc: ^draw.Context, d: ^dom.Document, node: base.Han
 // last frame (a canvas nobody draws on costs a draw call and nothing else). Nothing until a script asked for a context.
 @(private = "file")
 paint_canvas :: proc(dc: ^draw.Context, node: base.Handle, content, border: draw.Rect, cs: ^style.Computed, scale: f32) {
-	v := page.canvas_view(shell.page, node)
+	v := page.canvas_view(the_app.images_shell.page, node)
 	if !v.ok { return }
 	tex: Image_Texture
 	ok: bool
@@ -467,7 +464,7 @@ paint_canvas :: proc(dc: ^draw.Context, node: base.Handle, content, border: draw
 	radii := content_radii(cs, border, content, scale)
 	clip := dst.min.x < content.min.x || dst.min.y < content.min.y || dst.max.x > content.max.x || dst.max.y > content.max.y || radii != {}
 	if clip { draw.push_clip_rounded(dc, content, radii) }
-	shell.api.draw(shell.api.user, dc, tex, dst, {}, WHITE_TINT, {})
+	the_app.images_shell.api.draw(the_app.images_shell.api.user, dc, tex, dst, {}, WHITE_TINT, {})
 	if clip { draw.pop_clip(dc) }
 }
 
@@ -476,17 +473,17 @@ paint_canvas :: proc(dc: ^draw.Context, node: base.Handle, content, border: draw
 @(private = "file")
 canvas_texture_for :: proc(v: page.Canvas_View) -> (Image_Texture, bool) {
 	bmp := v.bmp
-	st := shell.textures[v.id]
+	st := the_app.images_shell.textures[v.id]
 	if st != nil && (st.w != bmp.w || st.h != bmp.h) { release_texture(v.id); st = nil }
 	fresh := false
 	if st == nil {
-		tex := shell.api.create(shell.api.user, bmp.w, bmp.h)
+		tex := the_app.images_shell.api.create(the_app.images_shell.api.user, bmp.w, bmp.h)
 		if tex == 0 { return 0, false }
 		st = new(Shell_Texture)
 		st.tex, st.w, st.h = tex, bmp.w, bmp.h
 		st.bytes = bmp.w * bmp.h * 4 * 4 / 3
-		shell.bytes += st.bytes
-		shell.textures[v.id] = st
+		the_app.images_shell.bytes += st.bytes
+		the_app.images_shell.textures[v.id] = st
 		fresh = true
 	}
 	if fresh || st.generation != bmp.version {
@@ -495,16 +492,16 @@ canvas_texture_for :: proc(v: page.Canvas_View) -> (Image_Texture, bool) {
 		w, h := x1 - x0, y1 - y0
 		if bmp.all_opaque {
 			// (premultiplied and straight are the same bytes: a WebGL frame of a whole screen costs no conversion)
-			shell.api.update(shell.api.user, st.tex, x0, y0, w, h, bmp.pix[(y0 * bmp.w + x0) * 4:], bmp.w * 4)
+			the_app.images_shell.api.update(the_app.images_shell.api.user, st.tex, x0, y0, w, h, bmp.pix[(y0 * bmp.w + x0) * 4:], bmp.w * 4)
 		} else {
 			scratch := make([]u8, w * h * 4, context.temp_allocator)
 			canvas2d.bitmap_read_straight(bmp, x0, y0, w, h, scratch)
-			shell.api.update(shell.api.user, st.tex, x0, y0, w, h, scratch, w * 4)
+			the_app.images_shell.api.update(the_app.images_shell.api.user, st.tex, x0, y0, w, h, scratch, w * 4)
 		}
 		canvas2d.bitmap_clean(bmp)
 		st.generation = bmp.version
 	}
-	st.epoch = shell.epoch
+	st.epoch = the_app.images_shell.epoch
 	return st.tex, true
 }
 
@@ -515,14 +512,14 @@ paint_inline_svg :: proc(dc: ^draw.Context, node: base.Handle, content: draw.Rec
 	s := max(scale, 0.01)
 	cw, ch := content.max.x - content.min.x, content.max.y - content.min.y
 	if cw < 0.5 || ch < 0.5 { return }
-	v := page.inline_svg_view(shell.page, node, cw / s, ch / s)
+	v := page.inline_svg_view(the_app.images_shell.page, node, cw / s, ch / s)
 	if v.state != .Ready { return }
 	ww, wh := want_size(content)
-	fp := page.frame_pixels(v.id, shell.now_ms, ww, wh, IMAGE_PIXELS_PRIORITY_ON_SCREEN)
+	fp := page.frame_pixels(v.id, the_app.images_shell.now_ms, ww, wh, IMAGE_PIXELS_PRIORITY_ON_SCREEN)
 	if !fp.ok { return }
 	tex, ok := texture_for(fp.texture, fp)
 	if !ok { return }
-	shell.api.draw(shell.api.user, dc, tex, content, {}, WHITE_TINT, {})
+	the_app.images_shell.api.draw(the_app.images_shell.api.user, dc, tex, content, {}, WHITE_TINT, {})
 }
 
 // A broken image: a thin frame when the box is larger than the icon, the icon at the top left, the alt text after it.
@@ -538,7 +535,7 @@ paint_broken :: proc(dc: ^draw.Context, d: ^dom.Document, node: base.Handle, con
 	draw_placeholder(dc, box, .Broken)
 	alt, ok := dom.get_attribute(d, node, "alt")
 	if ok && alt != "" && cs != nil && fid != 0 {
-		m := font.metrics(page_render.fonts.state, fid, font_size)
+		m := font.metrics(the_app.page_render.fonts.state, fid, font_size)
 		y := box.min.y + (icon + m.ascent - m.descent) * 0.5
 		draw.text(dc, fid, font_size, {box.max.x + 4 * scale, y}, to_draw(cs.color), alt)
 	}
@@ -549,7 +546,7 @@ paint_broken :: proc(dc: ^draw.Context, d: ^dom.Document, node: base.Handle, con
 paint_alt :: proc(dc: ^draw.Context, d: ^dom.Document, node: base.Handle, content: draw.Rect, cs: ^style.Computed, fid: font.Font_Id, font_size: f32) {
 	alt, ok := dom.get_attribute(d, node, "alt")
 	if !ok || alt == "" || cs == nil || fid == 0 { return }
-	m := font.metrics(page_render.fonts.state, fid, font_size)
+	m := font.metrics(the_app.page_render.fonts.state, fid, font_size)
 	draw.push_clip(dc, content)
 	draw.text(dc, fid, font_size, {content.min.x + 2, content.min.y + m.ascent + 2}, to_draw(cs.color), alt)
 	draw.pop_clip(dc)
@@ -561,7 +558,7 @@ paint_alt :: proc(dc: ^draw.Context, d: ^dom.Document, node: base.Handle, conten
 // Paints one url() layer of a box's background: `pos_area` is its positioning area (background-origin), `clip_area`
 // and `clip_radii` its painting area (background-clip, rounded like the box).
 images_paint_background_layer :: proc(dc: ^draw.Context, layer: ^style.Bg_Layer, pos_area, clip_area: draw.Rect, clip_radii: [4]f32, scale: f32) {
-	p := shell.page
+	p := the_app.images_shell.page
 	if p == nil || layer.image.kind != .Url { return }
 	max_tiles := the_app != nil ? the_app.page_settings.images.background_tiles : 4096
 	{
@@ -608,15 +605,15 @@ images_paint_background_layer :: proc(dc: ^draw.Context, layer: ^style.Bg_Layer,
 		if !rep_y { dst.min.y, dst.max.y = max(dst.min.y, tile.min.y), min(dst.max.y, tile.max.y) }
 		if dst.max.x <= dst.min.x || dst.max.y <= dst.min.y { return }
 		ww, wh := want_size(tile)
-		fp := page.frame_pixels(v.id, shell.now_ms, ww, wh, IMAGE_PIXELS_PRIORITY_TILE)
+		fp := page.frame_pixels(v.id, the_app.images_shell.now_ms, ww, wh, IMAGE_PIXELS_PRIORITY_TILE)
 		if !fp.ok { return }
 		note_next(fp)
 		tex, ok := texture_for(fp.texture, fp)
 		if !ok { return }
 		// the painting area, with the box's rounded corners
 		if clip_radii == {} { draw.push_clip(dc, clip_area) } else { draw.push_clip_rounded(dc, clip_area, clip_radii) }
-		if (rep_x || rep_y) && shell.api.draw_tiled != nil {
-			shell.api.draw_tiled(shell.api.user, dc, tex, dst, tile, WHITE_TINT, {})
+		if (rep_x || rep_y) && the_app.images_shell.api.draw_tiled != nil {
+			the_app.images_shell.api.draw_tiled(the_app.images_shell.api.user, dc, tex, dst, tile, WHITE_TINT, {})
 		} else {
 			// one draw per tile, from the tile grid's cell at the area's corner
 			x0 := rep_x ? tile.min.x - math.ceil((tile.min.x - dst.min.x) / tw) * tw : tile.min.x
@@ -624,7 +621,7 @@ images_paint_background_layer :: proc(dc: ^draw.Context, layer: ^style.Bg_Layer,
 			count := 0
 			for y := y0; y < dst.max.y && count < max_tiles; y += th {
 				for x := x0; x < dst.max.x && count < max_tiles; x += tw {
-					shell.api.draw(shell.api.user, dc, tex, {{x, y}, {x + tw, y + th}}, {}, WHITE_TINT, {})
+					the_app.images_shell.api.draw(the_app.images_shell.api.user, dc, tex, {{x, y}, {x + tw, y + th}}, {}, WHITE_TINT, {})
 					count += 1
 					if !rep_x { break }
 				}

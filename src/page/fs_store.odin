@@ -64,7 +64,6 @@ Fs_Store :: struct {
 	next:   u64,
 }
 
-@(private) fs_store: Fs_Store
 
 ////////////////////////////////
 // Names
@@ -172,18 +171,18 @@ opfs_dir :: proc(profile_dir, key: string, allocator := context.allocator) -> st
 fs_opfs_root :: proc(profile_dir, key: string) -> (u64, Fs_Error) {
 	dir := opfs_dir(profile_dir, key, context.temp_allocator)
 	if dir == "" { return 0, .Security }
-	sync.mutex_lock(&fs_store.mu)
-	defer sync.mutex_unlock(&fs_store.mu)
-	for id, r in fs_store.roots { if r.kind == .Opfs && r.dir == dir { return id, .None } }
+	sync.mutex_lock(&the_pages.fs_store.mu)
+	defer sync.mutex_unlock(&the_pages.fs_store.mu)
+	for id, r in the_pages.fs_store.roots { if r.kind == .Opfs && r.dir == dir { return id, .None } }
 	if os.make_directory_all(dir) != nil && !os.exists(dir) { return 0, .Io }
 	return fs_root_add_locked(.Opfs, key, dir, .Granted, .Granted), .None
 }
 
 // A root for a folder of the user's disk given to `origin` (the same folder given again: the same root and its grants).
 fs_local_root :: proc(origin, dir: string, read, write: Fs_Permission) -> u64 {
-	sync.mutex_lock(&fs_store.mu)
-	defer sync.mutex_unlock(&fs_store.mu)
-	for id, r in fs_store.roots {
+	sync.mutex_lock(&the_pages.fs_store.mu)
+	defer sync.mutex_unlock(&the_pages.fs_store.mu)
+	for id, r in the_pages.fs_store.roots {
 		if r.kind == .Local && r.key == origin && strings.equal_fold(r.dir, dir) {
 			if read == .Granted { r.read = .Granted }
 			if write == .Granted { r.write = .Granted }
@@ -195,19 +194,19 @@ fs_local_root :: proc(origin, dir: string, read, write: Fs_Permission) -> u64 {
 
 @(private)
 fs_root_add_locked :: proc(kind: Fs_Root_Kind, key, dir: string, read, write: Fs_Permission) -> u64 {
-	if fs_store.roots == nil { fs_store.roots = make(map[u64]^Fs_Root) }
-	fs_store.next += 1
+	if the_pages.fs_store.roots == nil { the_pages.fs_store.roots = make(map[u64]^Fs_Root) }
+	the_pages.fs_store.next += 1
 	r := new(Fs_Root)
-	r^ = Fs_Root{id = fs_store.next, kind = kind, key = strings.clone(key), dir = strings.clone(dir), read = read, write = write, usage = -1}
-	fs_store.roots[r.id] = r
+	r^ = Fs_Root{id = the_pages.fs_store.next, kind = kind, key = strings.clone(key), dir = strings.clone(dir), read = read, write = write, usage = -1}
+	the_pages.fs_store.roots[r.id] = r
 	return r.id
 }
 
 // A copy of a root's description (ok false: unknown).
 fs_root :: proc(id: u64) -> (r: Fs_Root, ok: bool) {
-	sync.mutex_lock(&fs_store.mu)
-	defer sync.mutex_unlock(&fs_store.mu)
-	x, found := fs_store.roots[id]
+	sync.mutex_lock(&the_pages.fs_store.mu)
+	defer sync.mutex_unlock(&the_pages.fs_store.mu)
+	x, found := the_pages.fs_store.roots[id]
 	if !found { return {}, false }
 	r = x^
 	r.key, r.dir = strings.clone(x.key, context.temp_allocator), strings.clone(x.dir, context.temp_allocator)
@@ -215,9 +214,9 @@ fs_root :: proc(id: u64) -> (r: Fs_Root, ok: bool) {
 }
 
 fs_set_permission :: proc(id: u64, write: bool, state: Fs_Permission) {
-	sync.mutex_lock(&fs_store.mu)
-	defer sync.mutex_unlock(&fs_store.mu)
-	if r, ok := fs_store.roots[id]; ok {
+	sync.mutex_lock(&the_pages.fs_store.mu)
+	defer sync.mutex_unlock(&the_pages.fs_store.mu)
+	if r, ok := the_pages.fs_store.roots[id]; ok {
 		if write { r.write = state; if state == .Granted { r.read = .Granted } } else { r.read = state }
 	}
 }
@@ -312,10 +311,10 @@ fs_remove_entry :: proc(root: u64, dir_path, name: string, recursive: bool) -> F
 // Whether the entry or one under it is locked.
 @(private)
 fs_locked_under :: proc(root: u64, path: string) -> bool {
-	sync.mutex_lock(&fs_store.mu)
-	defer sync.mutex_unlock(&fs_store.mu)
+	sync.mutex_lock(&the_pages.fs_store.mu)
+	defer sync.mutex_unlock(&the_pages.fs_store.mu)
 	prefix := fs_lock_key(root, path)
-	for k, l in fs_store.locks {
+	for k, l in the_pages.fs_store.locks {
 		if (l.shared > 0 || l.exclusive) && (k == prefix || strings.has_prefix(k, strings.concatenate({prefix, "/"}, context.temp_allocator))) { return true }
 	}
 	return false
@@ -403,34 +402,34 @@ fs_dir_bytes :: proc(dir: string) -> i64 {
 opfs_usage :: proc(profile_dir, key: string) -> i64 {
 	dir := opfs_dir(profile_dir, key, context.temp_allocator)
 	if dir == "" { return 0 }
-	sync.mutex_lock(&fs_store.mu)
-	for _, r in fs_store.roots {
-		if r.kind == .Opfs && r.dir == dir && r.usage >= 0 { u := r.usage; sync.mutex_unlock(&fs_store.mu); return u }
+	sync.mutex_lock(&the_pages.fs_store.mu)
+	for _, r in the_pages.fs_store.roots {
+		if r.kind == .Opfs && r.dir == dir && r.usage >= 0 { u := r.usage; sync.mutex_unlock(&the_pages.fs_store.mu); return u }
 	}
-	sync.mutex_unlock(&fs_store.mu)
+	sync.mutex_unlock(&the_pages.fs_store.mu)
 	return fs_dir_bytes(dir)
 }
 
 @(private)
 fs_usage_of :: proc(root: u64) -> i64 {
-	sync.mutex_lock(&fs_store.mu)
-	r, ok := fs_store.roots[root]
-	if !ok { sync.mutex_unlock(&fs_store.mu); return 0 }
-	if r.usage >= 0 { u := r.usage; sync.mutex_unlock(&fs_store.mu); return u }
+	sync.mutex_lock(&the_pages.fs_store.mu)
+	r, ok := the_pages.fs_store.roots[root]
+	if !ok { sync.mutex_unlock(&the_pages.fs_store.mu); return 0 }
+	if r.usage >= 0 { u := r.usage; sync.mutex_unlock(&the_pages.fs_store.mu); return u }
 	dir := strings.clone(r.dir, context.temp_allocator)
-	sync.mutex_unlock(&fs_store.mu)
+	sync.mutex_unlock(&the_pages.fs_store.mu)
 	u := fs_dir_bytes(dir)
-	sync.mutex_lock(&fs_store.mu)
-	if r2, ok2 := fs_store.roots[root]; ok2 && r2.usage < 0 { r2.usage = u }
-	sync.mutex_unlock(&fs_store.mu)
+	sync.mutex_lock(&the_pages.fs_store.mu)
+	if r2, ok2 := the_pages.fs_store.roots[root]; ok2 && r2.usage < 0 { r2.usage = u }
+	sync.mutex_unlock(&the_pages.fs_store.mu)
 	return u
 }
 
 @(private)
 fs_usage_add :: proc(root: u64, delta: i64) {
-	sync.mutex_lock(&fs_store.mu)
-	defer sync.mutex_unlock(&fs_store.mu)
-	if r, ok := fs_store.roots[root]; ok && r.usage >= 0 { r.usage = max(r.usage + delta, 0) }
+	sync.mutex_lock(&the_pages.fs_store.mu)
+	defer sync.mutex_unlock(&the_pages.fs_store.mu)
+	if r, ok := the_pages.fs_store.roots[root]; ok && r.usage >= 0 { r.usage = max(r.usage + delta, 0) }
 }
 
 // Whether growing the root's files by `delta` stays within `max_bytes` (a root of the user's disk has no quota).
@@ -446,9 +445,9 @@ opfs_clear :: proc(profile_dir, key: string) {
 	dir := opfs_dir(profile_dir, key, context.temp_allocator)
 	if dir == "" { return }
 	_ = base.remove_tree(dir)
-	sync.mutex_lock(&fs_store.mu)
-	defer sync.mutex_unlock(&fs_store.mu)
-	for _, r in fs_store.roots { if r.kind == .Opfs && r.dir == dir { r.usage = 0 } }
+	sync.mutex_lock(&the_pages.fs_store.mu)
+	defer sync.mutex_unlock(&the_pages.fs_store.mu)
+	for _, r in the_pages.fs_store.roots { if r.kind == .Opfs && r.dir == dir { r.usage = 0 } }
 }
 
 ////////////////////////////////
@@ -464,14 +463,14 @@ fs_open :: proc(root: u64, path: string, keep: bool, sync_handle: bool) -> (open
 	if e != nil { return 0, .Not_Found }
 	if info.type == .Directory { return 0, .Type_Mismatch }
 	key := fs_lock_key(root, path)
-	sync.mutex_lock(&fs_store.mu)
-	l := fs_store.locks[key]
-	if l.exclusive || (sync_handle && l.shared > 0) { sync.mutex_unlock(&fs_store.mu); return 0, .Locked }
+	sync.mutex_lock(&the_pages.fs_store.mu)
+	l := the_pages.fs_store.locks[key]
+	if l.exclusive || (sync_handle && l.shared > 0) { sync.mutex_unlock(&the_pages.fs_store.mu); return 0, .Locked }
 	if sync_handle { l.exclusive = true } else { l.shared += 1 }
-	if _, had := fs_store.locks[key]; had { fs_store.locks[key] = l } else { fs_store.locks[strings.clone(key)] = l }
-	fs_store.next += 1
-	id := fs_store.next
-	sync.mutex_unlock(&fs_store.mu)
+	if _, had := the_pages.fs_store.locks[key]; had { the_pages.fs_store.locks[key] = l } else { the_pages.fs_store.locks[strings.clone(key)] = l }
+	the_pages.fs_store.next += 1
+	id := the_pages.fs_store.next
+	sync.mutex_unlock(&the_pages.fs_store.mu)
 
 	o := new(Fs_Open)
 	o.id, o.root, o.path, o.target, o.sync_handle, o.base = id, root, strings.clone(path), strings.clone(target), sync_handle, info.size
@@ -495,26 +494,26 @@ fs_open :: proc(root: u64, path: string, keep: bool, sync_handle: bool) -> (open
 		}
 	}
 	if err != .None { fs_open_free(o, false); fs_unlock(root, path, sync_handle); return 0, err }
-	sync.mutex_lock(&fs_store.mu)
-	if fs_store.opens == nil { fs_store.opens = make(map[u64]^Fs_Open) }
-	fs_store.opens[id] = o
-	sync.mutex_unlock(&fs_store.mu)
+	sync.mutex_lock(&the_pages.fs_store.mu)
+	if the_pages.fs_store.opens == nil { the_pages.fs_store.opens = make(map[u64]^Fs_Open) }
+	the_pages.fs_store.opens[id] = o
+	sync.mutex_unlock(&the_pages.fs_store.mu)
 	return id, .None
 }
 
 @(private)
 fs_unlock :: proc(root: u64, path: string, exclusive: bool) {
-	sync.mutex_lock(&fs_store.mu)
-	defer sync.mutex_unlock(&fs_store.mu)
+	sync.mutex_lock(&the_pages.fs_store.mu)
+	defer sync.mutex_unlock(&the_pages.fs_store.mu)
 	key := fs_lock_key(root, path)
-	l, ok := fs_store.locks[key]
+	l, ok := the_pages.fs_store.locks[key]
 	if !ok { return }
 	if exclusive { l.exclusive = false } else { l.shared = max(l.shared - 1, 0) }
 	if l.shared == 0 && !l.exclusive {
-		stored, _ := delete_key(&fs_store.locks, key)
+		stored, _ := delete_key(&the_pages.fs_store.locks, key)
 		delete(stored)
 	} else {
-		fs_store.locks[key] = l
+		the_pages.fs_store.locks[key] = l
 	}
 }
 
@@ -528,9 +527,9 @@ fs_open_free :: proc(o: ^Fs_Open, remove_temp := true) {
 
 @(private)
 fs_open_get :: proc(id: u64) -> ^Fs_Open {
-	sync.mutex_lock(&fs_store.mu)
-	defer sync.mutex_unlock(&fs_store.mu)
-	return fs_store.opens[id]
+	sync.mutex_lock(&the_pages.fs_store.mu)
+	defer sync.mutex_unlock(&the_pages.fs_store.mu)
+	return the_pages.fs_store.opens[id]
 }
 
 // Writes `data` at `at` (-1: the cursor), which moves past it. Quota for what the file grows by.
@@ -603,10 +602,10 @@ fs_flush :: proc(id: u64) -> Fs_Error {
 // close(): a writable's temporary file replaces the target in one rename (`commit` false: it is dropped); a sync
 // access handle lets its lock go.
 fs_close :: proc(id: u64, commit: bool, max_bytes: i64) -> Fs_Error {
-	sync.mutex_lock(&fs_store.mu)
-	o, ok := fs_store.opens[id]
-	if ok { delete_key(&fs_store.opens, id) }
-	sync.mutex_unlock(&fs_store.mu)
+	sync.mutex_lock(&the_pages.fs_store.mu)
+	o, ok := the_pages.fs_store.opens[id]
+	if ok { delete_key(&the_pages.fs_store.opens, id) }
+	sync.mutex_unlock(&the_pages.fs_store.mu)
 	if !ok { return .Not_Found }
 	err: Fs_Error
 	if !o.sync_handle && commit {
@@ -631,13 +630,13 @@ fs_close :: proc(id: u64, commit: bool, max_bytes: i64) -> Fs_Error {
 
 // Process end: open entries are dropped (writables' temporary files removed).
 fs_store_shutdown :: proc() {
-	sync.mutex_lock(&fs_store.mu)
-	for _, o in fs_store.opens { fs_open_free(o) }
-	delete(fs_store.opens)
-	for k in fs_store.locks { delete(k) }
-	delete(fs_store.locks)
-	for _, r in fs_store.roots { delete(r.key); delete(r.dir); free(r) }
-	delete(fs_store.roots)
-	fs_store.opens, fs_store.locks, fs_store.roots = nil, nil, nil   // (not the whole struct: a mutex wiped while held stays locked, and the next start waits for it for ever)
-	sync.mutex_unlock(&fs_store.mu)
+	sync.mutex_lock(&the_pages.fs_store.mu)
+	for _, o in the_pages.fs_store.opens { fs_open_free(o) }
+	delete(the_pages.fs_store.opens)
+	for k in the_pages.fs_store.locks { delete(k) }
+	delete(the_pages.fs_store.locks)
+	for _, r in the_pages.fs_store.roots { delete(r.key); delete(r.dir); free(r) }
+	delete(the_pages.fs_store.roots)
+	the_pages.fs_store.opens, the_pages.fs_store.locks, the_pages.fs_store.roots = nil, nil, nil   // (not the whole struct: a mutex wiped while held stays locked, and the next start waits for it for ever)
+	sync.mutex_unlock(&the_pages.fs_store.mu)
 }

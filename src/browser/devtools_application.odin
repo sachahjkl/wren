@@ -114,15 +114,15 @@ application_panel :: proc(app: ^App, t: ^Tab) {
 		// the areas
 		ui.next({width = ui.px(min(dt_px(190), max(room * 0.28, dt_px(120)))), height = ui.fill(), axis = .Y})
 		if ui.column(.Start, {}, "###dt_app_side") {
-			ui.next({width = ui.fill(), height = ui.px(dtm.row + dt_px(2))})
+			ui.next({width = ui.fill(), height = ui.px(app.dtm.row + dt_px(2))})
 			ui.custom("###dt_app_h1", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
-				dt_text(dc, dtm.ui_font, dtm.fs * 0.92, b.rect.min.x + dt_px(10), (b.rect.min.y + b.rect.max.y) * 0.5 + dt_px(2), dtc.weak, "STORAGE")
+				dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs * 0.92, b.rect.min.x + dt_px(10), (b.rect.min.y + b.rect.max.y) * 0.5 + dt_px(2), the_app.dtc.weak, "STORAGE")
 			}, nil)
 			for ar in App_Area {
 				d := ui.frame_new(Side_Draw)
 				d.label, d.count, d.on = area_title(ar), dt_frame_str(fmt.tprintf("%d", count_of(app, t, ar))), a.area == ar
 				d.icon = ar == .Cookies ? .Cookie : .Database
-				ui.next({width = ui.fill(), height = ui.px(dtm.row + dt_px(2)), cursor = .Arrow})
+				ui.next({width = ui.fill(), height = ui.px(app.dtm.row + dt_px(2)), cursor = .Arrow})
 				sb := ui.build_box({.Clickable, .Focusable}, fmt.tprintf("###dt_app_s%d", int(ar)))
 				sig := ui.signal(sb)
 				d.hot = sig.hovering
@@ -130,28 +130,28 @@ application_panel :: proc(app: ^App, t: ^Tab) {
 					d := (^Side_Draw)(user)
 					r := b.rect
 					cy := (r.min.y + r.max.y) * 0.5
-					if d.on { draw.rect(dc, r, dtc.sel_weak); draw.rect(dc, {r.min, {r.min.x + dtm.line * 2, r.max.y}}, dtc.accent) } else if d.hot { draw.rect(dc, r, dtc.hover) }
-					dt_icon(dc, d.icon, {r.min.x + dt_px(18), cy}, dtm.icon, d.on ? dtc.accent : dtc.weak, dtm.sc)
-					dt_text(dc, dtm.ui_font, dtm.fs, r.min.x + dt_px(32), cy, d.on ? dtc.text : dtc.weak, d.label)
-					dt_text_r(dc, dtm.ui_font, dtm.fs * 0.9, r.max.x - dt_px(10), cy, dtc.faint, d.count)
+					if d.on { draw.rect(dc, r, the_app.dtc.sel_weak); draw.rect(dc, {r.min, {r.min.x + the_app.dtm.line * 2, r.max.y}}, the_app.dtc.accent) } else if d.hot { draw.rect(dc, r, the_app.dtc.hover) }
+					dt_icon(dc, d.icon, {r.min.x + dt_px(18), cy}, the_app.dtm.icon, d.on ? the_app.dtc.accent : the_app.dtc.weak, the_app.dtm.sc)
+					dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, r.min.x + dt_px(32), cy, d.on ? the_app.dtc.text : the_app.dtc.weak, d.label)
+					dt_text_r(dc, the_app.dtm.ui_font, the_app.dtm.fs * 0.9, r.max.x - dt_px(10), cy, the_app.dtc.faint, d.count)
 				}, d
 				if sig.clicked { a.area, a.has_sel, a.editing = ar, false, false }
 			}
 			ui.next({width = ui.fill(), height = ui.px(dt_px(10))})
 			ui.build_box({}, "###dt_app_gap")
-			ui.next({width = ui.fill(), height = ui.px(dtm.row + dt_px(2))})
+			ui.next({width = ui.fill(), height = ui.px(app.dtm.row + dt_px(2))})
 			ui.custom("###dt_app_h2", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
-				dt_text(dc, dtm.ui_font, dtm.fs * 0.92, b.rect.min.x + dt_px(10), (b.rect.min.y + b.rect.max.y) * 0.5 + dt_px(2), dtc.weak, "THIS ORIGIN")
+				dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs * 0.92, b.rect.min.x + dt_px(10), (b.rect.min.y + b.rect.max.y) * 0.5 + dt_px(2), the_app.dtc.weak, "THIS ORIGIN")
 				host := dev().app.menu_dom
 				_ = host
 			}, nil)
-			ui.next({width = ui.fill(), height = ui.px(dtm.row * 3)})
+			ui.next({width = ui.fill(), height = ui.px(app.dtm.row * 3)})
 			ui.custom("###dt_app_org", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 				s := (^string)(user)^
-				dt_text(dc, dtm.mono, dtm.mono_fs * 0.92, b.rect.min.x + dt_px(10), b.rect.min.y + dtm.row * 0.5, dtc.text, s, b.rect.max.x - b.rect.min.x - dt_px(14))
+				dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs * 0.92, b.rect.min.x + dt_px(10), b.rect.min.y + the_app.dtm.row * 0.5, the_app.dtc.text, s, b.rect.max.x - b.rect.min.x - dt_px(14))
 			}, new_clone(dt_frame_str(t.page.env.location.href), ui.frame_allocator()))
 		}
-		ui.next({width = ui.px(dtm.line), height = ui.fill(), bg = dtc.border})
+		ui.next({width = ui.px(app.dtm.line), height = ui.fill(), bg = app.dtc.border})
 		ui.build_box({.Draw_Background}, "###dt_app_rule")
 		ui.next({width = ui.fill(), height = ui.fill(), axis = .Y})
 		if ui.column(.Start, {.Clip}, "###dt_app_main") { app_table(app, t, a) }
@@ -171,7 +171,7 @@ app_table :: proc(app: ^App, t: ^Tab, a: ^Dev_Application) {
 		if dt_btn("###dt_app_del", .Trash, tooltip = "Delete the chosen item", shortcut = "Del", enabled = a.has_sel).clicked { delete_selected(app, t, a, rows) }
 		if dt_btn("###dt_app_clear", .Clear, tooltip = fmt.tprintf("Clear all %s", area_title(a.area)), enabled = len(rows) > 0).clicked { clear_area(app, t, a) }
 		dt_vsep("###dt_app_b0")
-		ui.next({width = ui.fill(), height = ui.px(dtm.bar), axis = .X, cross = .Center})
+		ui.next({width = ui.fill(), height = ui.px(app.dtm.bar), axis = .X, cross = .Center})
 		if ui.row(.Center, {}, "###dt_app_fw") { dt_search("###dt_app_filter", &a.filter, "Filter by key or value", 0, false) }
 		dt_gap(3)
 	}
@@ -193,11 +193,11 @@ app_table :: proc(app: ^App, t: ^Tab, a: ^Dev_Application) {
 		return
 	}
 	menu_key := ui.key_from_string(0, "###dt_app_menu")
-	split_h := dtm.row * 5
+	split_h := app.dtm.row * 5
 	ui.next({width = ui.fill(), height = ui.fill(), axis = .Y})
 	if ui.column(.Start, {}, "###dt_app_tbl") {
 		ui.next({width = ui.fill(), height = ui.fill()})
-		if lst, lok := dt_list("###dt_app_list", &a.list, len(vis), dtm.row, nil, ui.fill(), ui.fill()); lok {
+		if lst, lok := dt_list("###dt_app_list", &a.list, len(vis), app.dtm.row, nil, ui.fill(), ui.fill()); lok {
 			for k in lst.first ..< lst.last {
 				r := rows[vis[k]]
 				id := row_id(r)
@@ -208,7 +208,7 @@ app_table :: proc(app: ^App, t: ^Tab, a: ^Dev_Application) {
 				d.r, d.area, d.odd, d.widths = cr, a.area, k % 2 == 1, widths
 				d.selected = a.has_sel && a.sel == id
 				d.focused = a.list.focused
-				ui.next({width = ui.fill(), height = ui.px(dtm.row), cursor = .Arrow})
+				ui.next({width = ui.fill(), height = ui.px(app.dtm.row), cursor = .Arrow})
 				rb := ui.build_box({.Clickable}, fmt.tprintf("###ar%d", vis[k]))
 				sig := ui.signal(rb)
 				d.hot = sig.hovering
@@ -263,7 +263,7 @@ app_widths :: proc(area: App_Area, total: f32) -> (w: [8]f32) {
 
 @(private = "file")
 app_header :: proc(a: ^Dev_Application, widths: [8]f32) {
-	ui.next({width = ui.fill(), height = ui.px(dtm.row + dt_px(2)), bg = dtc.bar, border = dtc.border})
+	ui.next({width = ui.fill(), height = ui.px(the_app.dtm.row + dt_px(2)), bg = the_app.dtc.bar, border = the_app.dtc.border})
 	hb := ui.build_box({.Draw_Background, .Draw_Side_Bottom}, "###dt_app_head")
 	d := ui.frame_new(Cell_Draw)
 	d.area, d.widths = a.area, widths
@@ -273,8 +273,8 @@ app_header :: proc(a: ^Dev_Application, widths: [8]f32) {
 		names := d.area == .Cookies ? []string{"Name", "Value", "Domain", "Path", "Expires", "Size", "Flags"} : []string{"Key", "Value"}
 		x := b.rect.min.x
 		for n, i in names {
-			if i > 0 { draw.rect(dc, {{x, b.rect.min.y + dt_px(4)}, {x + dtm.line, b.rect.max.y - dt_px(4)}}, dtc.border) }
-			dt_text(dc, dtm.ui_font, dtm.fs, x + dt_px(8), cy, dtc.weak, n, d.widths[i] - dt_px(12))
+			if i > 0 { draw.rect(dc, {{x, b.rect.min.y + dt_px(4)}, {x + the_app.dtm.line, b.rect.max.y - dt_px(4)}}, the_app.dtc.border) }
+			dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, x + dt_px(8), cy, the_app.dtc.weak, n, d.widths[i] - dt_px(12))
 			x += d.widths[i]
 		}
 	}, d
@@ -302,11 +302,11 @@ cell_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		cells[6] = dt_frame_str(strings.trim_space(strings.to_string(flags)))
 	}
 	for i in 0 ..< n {
-		if i > 0 { draw.rect(dc, {{x, r.min.y}, {x + dtm.line, r.max.y}}, with_alpha(dtc.border_soft, 0.5)) }
-		col := dtc.text
-		if i == 1 { col = d.r.value != "" ? syn_color(.String) : dtc.faint }
-		if i >= 2 { col = dtc.weak }
-		dt_text(dc, dtm.mono, dtm.mono_fs, x + dt_px(8), cy, col, cells[i], d.widths[i] - dt_px(12))
+		if i > 0 { draw.rect(dc, {{x, r.min.y}, {x + the_app.dtm.line, r.max.y}}, with_alpha(the_app.dtc.border_soft, 0.5)) }
+		col := the_app.dtc.text
+		if i == 1 { col = d.r.value != "" ? syn_color(.String) : the_app.dtc.faint }
+		if i >= 2 { col = the_app.dtc.weak }
+		dt_text(dc, the_app.dtm.mono, the_app.dtm.mono_fs, x + dt_px(8), cy, col, cells[i], d.widths[i] - dt_px(12))
 		x += d.widths[i]
 	}
 }
@@ -329,7 +329,7 @@ value_pane :: proc(a: ^Dev_Application, r: App_Row, h: f32) {
 	dy, _, dragging := dt_hsplit("###dt_app_vs")
 	_ = dy
 	_ = dragging
-	ui.next({width = ui.fill(), height = ui.px(h), axis = .Y, bg = dtc.bar, border = dtc.border})
+	ui.next({width = ui.fill(), height = ui.px(h), axis = .Y, bg = the_app.dtc.bar, border = the_app.dtc.border})
 	box := ui.build_box({.Draw_Background}, "###dt_app_val")
 	if ui.parent(box) {
 		text := r.value
@@ -338,17 +338,17 @@ value_pane :: proc(a: ^Dev_Application, r: App_Row, h: f32) {
 		if len(t0) > 1 && (t0[0] == '{' || t0[0] == '[') { lang = .JSON }
 		lines := strings.split_lines(text, context.temp_allocator)
 		n := min(len(lines), 200)
-		if lst, ok := dt_list("###dt_app_vlist", &a.value_list, n, dtm.row, nil, ui.fill(), ui.fill()); ok {
+		if lst, ok := dt_list("###dt_app_vlist", &a.value_list, n, the_app.dtm.row, nil, ui.fill(), ui.fill()); ok {
 			for k in lst.first ..< lst.last {
 				ld := ui.frame_new(Line_Draw_App)
 				ln := lines[k]
 				if len(ln) > 1500 { ln = ln[:1500] }
 				ld.text, ld.lang = dt_frame_str(ln), lang
-				ui.next({width = ui.fill(), height = ui.px(dtm.row), cursor = .Text})
+				ui.next({width = ui.fill(), height = ui.px(the_app.dtm.row), cursor = .Text})
 				rb := ui.build_box({}, fmt.tprintf("###avl%d", k))
 				rb.custom, rb.custom_user = proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 					d := (^Line_Draw_App)(user)
-					dt_runs(dc, dtm.mono, dtm.mono_fs, b.rect.min.x + dt_px(10), (b.rect.min.y + b.rect.max.y) * 0.5, syn_runs(d.text, d.lang), b.rect.max.x - dt_px(6))
+					dt_runs(dc, the_app.dtm.mono, the_app.dtm.mono_fs, b.rect.min.x + dt_px(10), (b.rect.min.y + b.rect.max.y) * 0.5, syn_runs(d.text, d.lang), b.rect.max.x - dt_px(6))
 				}, ld
 			}
 		}
@@ -376,10 +376,10 @@ begin_new_item :: proc(a: ^Dev_Application) {
 
 @(private = "file")
 app_edit_row :: proc(app: ^App, t: ^Tab, a: ^Dev_Application, r: App_Row, widths: [8]f32) {
-	ui.next({width = ui.fill(), height = ui.px(dtm.row), axis = .X, cross = .Center})
+	ui.next({width = ui.fill(), height = ui.px(app.dtm.row), axis = .X, cross = .Center})
 	if ui.row(.Center, {}, "###dt_app_edit") {
 		if a.edit_col == 1 { ui.spacer(ui.px(widths[0])) }
-		ui.next({width = a.edit_col == 0 ? ui.px(widths[0]) : ui.fill(), height = ui.pct(1), radius = 0, font = dtm.mono, font_size = dtm.mono_fs, text_pad = dt_px(7)})
+		ui.next({width = a.edit_col == 0 ? ui.px(widths[0]) : ui.fill(), height = ui.pct(1), radius = 0, font = app.dtm.mono, font_size = app.dtm.mono_fs, text_pad = dt_px(7)})
 		res := ui.line_edit("###dt_app_field", &a.field, a.edit_col == 0 ? "key" : "value")
 		if a.focus_set { if res.box != nil { ui.set_focus(res.box.key) }; a.focus_set = false }
 		a.edit_age += 1

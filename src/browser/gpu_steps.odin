@@ -22,8 +22,8 @@ Gpu_Steps_Frame :: struct {
 	targets: u16,                    // render targets bound
 }
 
-@(private)
-gpu_steps_state: struct {
+// The App's last GPU profile (App.gpu_steps_state).
+Gpu_Steps_State :: struct {
 	last:    render.Gpu_Profile,
 	have:    bool,
 	cache:   draw.Layer_Cache_Stats,
@@ -50,9 +50,9 @@ gpu_steps_frame :: proc(app: ^App) {
 		env = v == "2" ? 2 : v == "1" ? 1 : 0
 	}
 	// WREN_GPU_STEPS=2: every draw call timed (the report lists the slowest)
-	render.set_gpu_profile(&app.r, (prof_on() && env >= 1) || (hud.panel_open && hud.cfg.gpu_timing), prof_on() && env == 2)
-	if p, ok := render.gpu_profile(&app.r); ok { gpu_steps_state.last, gpu_steps_state.have = p, true }
-	gpu_steps_state.cache = draw.layer_cache_stats(&app.dc)
+	render.set_gpu_profile(&app.r, (prof_on() && env >= 1) || (app.hud.panel_open && app.hud.cfg.gpu_timing), prof_on() && env == 2)
+	if p, ok := render.gpu_profile(&app.r); ok { app.gpu_steps_state.last, app.gpu_steps_state.have = p, true }
+	app.gpu_steps_state.cache = draw.layer_cache_stats(&app.dc)
 }
 
 // The per-step profile of a recorded frame, when it arrives (a few frames late): matched by its timed submit.

@@ -47,8 +47,8 @@ cx_metrics :: proc(user: rawptr, f: lay.Font, size: f32) -> lay.Font_Metrics { r
 @(private = "file")
 cx_layout :: proc(f: ^Cx) {
 	api := lay.Text_Api{user = f, font = cx_font, width = cx_width, metrics = cx_metrics}
-	if f.real { api = page_text_api(&page_render.fonts, &f.m, &f.ss) }
-	lay.run(&f.l, lay.Input{doc = f.doc, styled = f.st, settings = &page_render.settings,
+	if f.real { api = page_text_api(&the_app.page_render.fonts, &f.m, &f.ss) }
+	lay.run(&f.l, lay.Input{doc = f.doc, styled = f.st, settings = &the_app.page_render.settings,
 		text = api,
 		viewport = {f32(COMP_SIZE.x), f32(COMP_SIZE.y)}, scale = 1, band_h = 256})
 }
@@ -67,15 +67,15 @@ cx_open :: proc(f: ^Cx, src: string, real := false) -> bool {
 		f.real = true
 		ui, uok := font.load_system(&f.fonts, "Segoe UI")
 		if !uok { return false }
-		page_fonts_init(&page_render.fonts, &f.fonts, ui)
+		page_fonts_init(&the_app.page_render.fonts, &f.fonts, ui)
 		f.ss = style.settings_default()
 	}
 	draw.init(&f.dc, &f.r, &f.fonts)
-	page_render.settings = lay.settings_from_prefs(&f.prefs)
-	effects_settings = effects_settings_from_prefs(&f.prefs)
-	compositor_settings = compositor_settings_from_prefs(&f.prefs)
-	compositor_settings.chunk_items = 8   // several chunks even on a small page
-	compositor_settings.settle_ms = 0   // record right after each layout pass
+	the_app.page_render.settings = lay.settings_from_prefs(&f.prefs)
+	the_app.effects_settings = effects_settings_from_prefs(&f.prefs)
+	the_app.compositor_settings = compositor_settings_from_prefs(&f.prefs)
+	the_app.compositor_settings.chunk_items = 8   // several chunks even on a small page
+	the_app.compositor_settings.settle_ms = 0   // record right after each layout pass
 	f.doc = dom.document_create(nil)
 	html.parse_into(f.doc, f.doc.root, transmute([]byte)src, 2_000_000)
 	ss := style.settings_default()
@@ -96,18 +96,17 @@ cx_close :: proc(f: ^Cx) {
 	draw.destroy(&f.dc)
 	render.destroy(&f.r)
 	if f.real {
-		page_fonts_destroy(&page_render.fonts)
+		page_fonts_destroy(&the_app.page_render.fonts)
 		style.settings_destroy(&f.ss)
 	}
 	font.destroy(&f.fonts)
 	config.prefs_destroy(&f.prefs)
-	compositor_settings = {enabled = true, chunk_items = 512, max_chunks = 4096, settle_ms = 50, memory = 256 << 20}
 }
 
 @(private = "file")
 cx_paint :: proc(f: ^Cx, composited: bool, scroll: f32 = 0) -> []u8 {
-	compositor_settings.enabled = composited
-	compositor_settings.settle_ms = 0   // (a global: another test closing its fixture puts the default back)
+	the_app.compositor_settings.enabled = composited
+	the_app.compositor_settings.settle_ms = 0
 	size := draw.Vec2{f32(COMP_SIZE.x), f32(COMP_SIZE.y)}
 	draw.begin_frame(&f.dc, size)
 	render.frame_begin(&f.r, {1, 1, 1, 1})
@@ -176,7 +175,7 @@ ul { margin: 4px 24px } li { text-decoration: underline }
 <div class="tall"></div>
 </body></html>`
 
-// One test: the scenarios switch the compositor on and off (a global setting).
+// One test: the scenarios switch the compositor on and off.
 // The compositor's state is the process's (its layer cache, the frame clock, settle_ms): its tests run one at a time
 // (the test runner runs tests on several threads; one test's frame reset another's cache under it). effects_cache_test.odin
 // takes it too.
@@ -184,6 +183,7 @@ compositor_test_lock: sync.Mutex
 
 @(test)
 compositor_matches_direct_drawing :: proc(t: ^testing.T) {
+	test_app(t)
 	sync.mutex_lock(&compositor_test_lock)
 	defer sync.mutex_unlock(&compositor_test_lock)
 	page_render_test_lock()
@@ -450,6 +450,7 @@ cx_px :: proc(img: []u8, x, y: int) -> [4]int {
 
 @(test)
 planes_paint_members_of_a_3d_context :: proc(t: ^testing.T) {
+	test_app(t)
 	sync.mutex_lock(&compositor_test_lock)
 	defer sync.mutex_unlock(&compositor_test_lock)
 	f: Cx
@@ -473,6 +474,7 @@ planes_paint_members_of_a_3d_context :: proc(t: ^testing.T) {
 // pixels are the ones direct drawing gives.
 @(test)
 planes_tilt_is_a_matrix_only :: proc(t: ^testing.T) {
+	test_app(t)
 	sync.mutex_lock(&compositor_test_lock)
 	defer sync.mutex_unlock(&compositor_test_lock)
 	f: Cx
@@ -517,6 +519,7 @@ planes_tilt_is_a_matrix_only :: proc(t: ^testing.T) {
 // above it whatever the tilt (it is drawn after the plane it rides on).
 @(test)
 planes_backfaces_and_depth_order :: proc(t: ^testing.T) {
+	test_app(t)
 	sync.mutex_lock(&compositor_test_lock)
 	defer sync.mutex_unlock(&compositor_test_lock)
 	f: Cx
@@ -554,6 +557,7 @@ planes_backfaces_and_depth_order :: proc(t: ^testing.T) {
 // with the face visible skips none, and both show the same picture (the back is over where the front would be).
 @(test)
 planes_a_hidden_turned_away_face_is_not_painted :: proc(t: ^testing.T) {
+	test_app(t)
 	sync.mutex_lock(&compositor_test_lock)
 	defer sync.mutex_unlock(&compositor_test_lock)
 	layers: [2]int
@@ -586,6 +590,7 @@ planes_a_hidden_turned_away_face_is_not_painted :: proc(t: ^testing.T) {
 // are split along their line of intersection, each in front on its own side.
 @(test)
 planes_cutting_through_each_other_are_split :: proc(t: ^testing.T) {
+	test_app(t)
 	sync.mutex_lock(&compositor_test_lock)
 	defer sync.mutex_unlock(&compositor_test_lock)
 	f: Cx
@@ -610,6 +615,7 @@ planes_cutting_through_each_other_are_split :: proc(t: ^testing.T) {
 // mix-blend-mode and backdrop-filter on a plane act on the projected quad.
 @(test)
 planes_blend_and_backdrop_filter :: proc(t: ^testing.T) {
+	test_app(t)
 	sync.mutex_lock(&compositor_test_lock)
 	defer sync.mutex_unlock(&compositor_test_lock)
 	f: Cx
@@ -653,6 +659,7 @@ planes_blend_and_backdrop_filter :: proc(t: ^testing.T) {
 // transform), exactly, to the coordinates its content rect is in.
 @(test)
 planes_painted_control_projection :: proc(t: ^testing.T) {
+	test_app(t)
 	sync.mutex_lock(&compositor_test_lock)
 	defer sync.mutex_unlock(&compositor_test_lock)
 	f: Cx
@@ -691,6 +698,7 @@ planes_painted_control_projection :: proc(t: ^testing.T) {
 // the scale steps are a quarter octave.
 @(test)
 planes_density_is_the_jacobian :: proc(t: ^testing.T) {
+	test_app(t)
 	a := f32(60 * math.PI / 180)
 	co, si := math.cos(a), math.sin(a)
 	ry := style.Matrix4{co, 0, -si, 0, 0, 1, 0, 0, si, 0, co, 0, 0, 0, 0, 1}
@@ -724,6 +732,7 @@ planes_density_is_the_jacobian :: proc(t: ^testing.T) {
 // denser than 1 (it stays sharp), and one too big for the layer budget is rasterized for the part that shows, still dense.
 @(test)
 planes_are_rasterized_as_dense_as_they_show :: proc(t: ^testing.T) {
+	test_app(t)
 	sync.mutex_lock(&compositor_test_lock)
 	defer sync.mutex_unlock(&compositor_test_lock)
 	f: Cx
@@ -736,8 +745,6 @@ planes_are_rasterized_as_dense_as_they_show :: proc(t: ^testing.T) {
 		testing.fail_now(t, "no device")
 	}
 	defer cx_close(&f)
-	saved := plane_settings
-	defer plane_settings = saved
 	clear(&plane_mem)
 	cx_paint(&f, true)
 	best: f32
@@ -745,7 +752,7 @@ planes_are_rasterized_as_dense_as_they_show :: proc(t: ^testing.T) {
 	testing.expectf(t, best >= 1.4, "the card nearer than its size is rasterized denser than 1 (%.2f)", best)
 	// the same on a page with a plane much bigger than the budget: the part that shows is rasterized, at a scale of at least 1
 	clear(&plane_mem)
-	plane_settings.layer_bytes = 6 << 20
+	the_app.plane_settings.layer_bytes = 6 << 20
 	cx_close(&f)
 	f = {}
 	if !cx_open(&f, `<!doctype html><html><head><style>html, body { margin: 0; background: #fff }
@@ -767,6 +774,7 @@ planes_are_rasterized_as_dense_as_they_show :: proc(t: ^testing.T) {
 // is rasterized at the scale it needs.
 @(test)
 planes_keep_their_scale_while_moving_and_sharpen_at_rest :: proc(t: ^testing.T) {
+	test_app(t)
 	sync.mutex_lock(&compositor_test_lock)
 	defer sync.mutex_unlock(&compositor_test_lock)
 	f: Cx
@@ -807,6 +815,7 @@ planes_keep_their_scale_while_moving_and_sharpen_at_rest :: proc(t: ^testing.T) 
 // comes from the cache), and z-order is kept (what the parent paints after the child is over it).
 @(test)
 planes_flat_child_does_not_draw_its_parent_again :: proc(t: ^testing.T) {
+	test_app(t)
 	sync.mutex_lock(&compositor_test_lock)
 	defer sync.mutex_unlock(&compositor_test_lock)
 	f: Cx
@@ -845,9 +854,7 @@ planes_flat_child_does_not_draw_its_parent_again :: proc(t: ^testing.T) {
 	}
 	// the same pixels with the child drawn into its parent's layer (the preference off), but for resampling at the edges
 	img := cx_paint(&f, true)
-	saved := plane_settings.detach
-	plane_settings.detach = false
-	defer plane_settings.detach = saved
+	the_app.plane_settings.detach = false   // (the test's App)
 	again := cx_paint(&f, false)
 	worst, count := cx_diff(img, again)
 	log.infof("detached vs merged: %d bytes differ, worst %d", count, worst)

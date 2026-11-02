@@ -11,6 +11,7 @@ import "core:testing"
 //   odin test src/browser -collection:toolkit=ext/gui_toolkit -collection:wb=src -define:WREN_WRITE_DEMOS_INDEX=true -define:ODIN_TEST_NAMES=browser.demos_index_is_up_to_date
 @(test)
 demos_index_is_up_to_date :: proc(t: ^testing.T) {
+	test_app(t)
 	want := demos_index_html()
 	when WRITE_DEMOS_INDEX {
 		testing.expect(t, os.write_entire_file(DEMOS_INDEX_PATH, transmute([]byte)want) == nil, "cannot write " + DEMOS_INDEX_PATH)
@@ -22,6 +23,7 @@ demos_index_is_up_to_date :: proc(t: ^testing.T) {
 
 @(test)
 demos_index_links :: proc(t: ^testing.T) {
+	test_app(t)
 	html := demos_index_html()
 	for d in DEMOS {
 		href := demos_index_href(d)

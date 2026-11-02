@@ -120,7 +120,6 @@ Urlbar :: struct {
 	app:          ^App,
 }
 
-ub: Urlbar
 
 // Histories with at least this many visits are indexed on a thread of the blocking pool (from a copy of their text):
 // the first build of 50 000 visits takes tens of milliseconds. Smaller ones at once.
@@ -138,21 +137,21 @@ Urlbar_Index_Job :: struct {
 // The index in step with the history, built on a thread when it is large and not built yet (or a day old, `age`).
 // False while such a build runs (no history suggestions meanwhile).
 urlbar_index_ready :: proc(app: ^App, age := false) -> bool {
-	j := &ub.job
+	j := &app.ub.job
 	if j.state != .Idle { return false }
 	now := unix_ms_now()
-	stale := ub.idx.serial == 0 || (age && now - ub.idx.now_ms > URL_INDEX_MAX_AGE_MS)
+	stale := app.ub.idx.serial == 0 || (age && now - app.ub.idx.now_ms > URL_INDEX_MAX_AGE_MS)
 	if stale && len(app.ghist.visits) >= URLBAR_THREAD_VISITS {
 		urlbar_index_start(app, now)
 		return false
 	}
-	url_index_sync(&ub.idx, app.ghist.visits[:], app.ghist.serial, now, age)
+	url_index_sync(&app.ub.idx, app.ghist.visits[:], app.ghist.serial, now, age)
 	return true
 }
 
 @(private = "file")
 urlbar_index_start :: proc(app: ^App, now: i64) {
-	j := &ub.job
+	j := &app.ub.job
 	size := 0
 	for v in app.ghist.visits { size += len(v.url) + len(v.title) + len(v.icon) }
 	j.text = make([]u8, size)
@@ -174,9 +173,9 @@ urlbar_index_start :: proc(app: ^App, now: i64) {
 		sync.atomic_store(&j.state, .Built)
 	}, proc(data: rawptr) {
 		j := (^Urlbar_Index_Job)(data)
-		if j != &ub.job || j.state != .Built || ub.app == nil { return }   // (the bar is gone: urlbar_destroy freed it)
+		if j != &the_app.ub.job || j.state != .Built || the_app.ub.app == nil { return }   // (the bar is gone: urlbar_destroy freed it)
 		urlbar_index_adopt()
-		app := ub.app
+		app := the_app.ub.app
 		uv := urlbar_view(app)
 		if uv.open { sel := uv.sel; urlbar_refresh(app, .Keep); urlbar_choose(app, sel) }
 		request_frames(app, 2)
@@ -186,11 +185,11 @@ urlbar_index_start :: proc(app: ^App, now: i64) {
 // The thread's index replaces the bar's (the next sync catches up with what changed since its copy).
 @(private = "file")
 urlbar_index_adopt :: proc() {
-	j := &ub.job
-	rebuilds := ub.idx.rebuilds
-	url_index_destroy(&ub.idx)
-	ub.idx = j.idx
-	ub.idx.rebuilds += rebuilds
+	j := &the_app.ub.job
+	rebuilds := the_app.ub.idx.rebuilds
+	url_index_destroy(&the_app.ub.idx)
+	the_app.ub.idx = j.idx
+	the_app.ub.idx.rebuilds += rebuilds
 	j.idx = {}
 	delete(j.text); delete(j.visits)
 	j.text, j.visits = nil, nil
@@ -198,10 +197,10 @@ urlbar_index_adopt :: proc() {
 }
 
 urlbar_init :: proc(app: ^App) {
-	ub.app = app
-	ub.cfg = urlbar_settings_from_prefs(&app.prefs)
-	ub.watch = config.watch(&app.prefs, "browser.urlbar.", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		ub.cfg = urlbar_settings_from_prefs(p)
+	app.ub.app = app
+	app.ub.cfg = urlbar_settings_from_prefs(&app.prefs)
+	app.ub.watch = config.watch(&app.prefs, "browser.urlbar.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+		the_app.ub.cfg = urlbar_settings_from_prefs(p)
 		urlbar_close(urlbar_view((^App)(user)))
 	}, app)
 }
@@ -217,13 +216,13 @@ urlbar_view_destroy :: proc(uv: ^Urlbar_View) {
 }
 
 urlbar_destroy :: proc(app: ^App) {
-	config.unwatch(&app.prefs, ub.watch)
+	config.unwatch(&app.prefs, app.ub.watch)
 	// a build on the pool: waited for (the pool is still running, so a queued one starts), then freed
-	for sync.atomic_load(&ub.job.state) == .Running { time.sleep(time.Millisecond) }
-	if ub.job.state == .Built { urlbar_index_adopt() }
-	url_index_destroy(&ub.idx)
+	for sync.atomic_load(&app.ub.job.state) == .Running { time.sleep(time.Millisecond) }
+	if app.ub.job.state == .Built { urlbar_index_adopt() }
+	url_index_destroy(&app.ub.idx)
 	urlbar_view_destroy(urlbar_view(app))
-	ub = {}
+	app.ub = {}
 }
 
 urlbar_close :: proc(uv: ^Urlbar_View) {
@@ -297,55 +296,55 @@ urlbar_refresh :: proc(app: ^App, fill: Fill_Mode) {
 	if fill != .Keep { set_owned(&uv.fill_text, ""); set_owned(&uv.fill_address, "") }
 	uv.rows_serial = app.ghist.serial
 	q := uv.zero ? "" : strings.trim_space(uv.typed)
-	history := ub.cfg.history && app.hcfg.global
-	max_rows := max(ub.cfg.max_rows, 1)
-	if !ub.cfg.enabled { uv.open = false; return }
+	history := app.ub.cfg.history && app.hcfg.global
+	max_rows := max(app.ub.cfg.max_rows, 1)
+	if !app.ub.cfg.enabled { uv.open = false; return }
 	if history {
 		start := time.tick_now()
 		history = urlbar_index_ready(app)   // (false while a first build runs on a thread)
-		ub.query_ms = time.duration_milliseconds(time.tick_since(start))
+		app.ub.query_ms = time.duration_milliseconds(time.tick_since(start))
 	}
 	if q == "" {
 		// the field got the keyboard (or is empty): the pages visited most and most lately, when asked for
-		if ub.cfg.top_sites && history {
+		if app.ub.cfg.top_sites && history {
 			cur := current_tab(app)
 			urlbar_top_sites(uv, max_rows, cur != nil ? cur.url : "")
 		}
 		uv.open = len(uv.rows) > 0
 		return
 	}
-	if len(q) < ub.cfg.min_chars { uv.open = false; return }
+	if len(q) < app.ub.cfg.min_chars { uv.open = false; return }
 
 	matches: []Url_Match
 	if history {
 		start := time.tick_now()
-		matches = url_index_query(&ub.idx, q, max_rows + 4)
-		ub.query_ms += time.duration_milliseconds(time.tick_since(start))
+		matches = url_index_query(&app.ub.idx, q, max_rows + 4)
+		app.ub.query_ms += time.duration_milliseconds(time.tick_since(start))
 	}
 	// the inline completion: its address is the first row
 	fill_entry := -1
-	if fill == .New && ub.cfg.autofill && history && uv.typed == strings.trim_left_space(uv.typed) {
-		if text, address, entry, ok := url_autofill(&ub.idx, uv.typed, matches); ok && !skipped_address(address) {
+	if fill == .New && app.ub.cfg.autofill && history && uv.typed == strings.trim_left_space(uv.typed) {
+		if text, address, entry, ok := url_autofill(&app.ub.idx, uv.typed, matches); ok && !skipped_address(address) {
 			set_owned(&uv.fill_text, text); set_owned(&uv.fill_address, address)
 			field_show(&active_window(app).address, text, len(uv.typed))
 			fill_entry = entry
 		}
 	} else if fill == .Keep && uv.fill_text != "" {
-		if i, ok := ub.idx.by_url[uv.fill_address]; ok { fill_entry = i } else if len(matches) > 0 && matches[0].prefix { fill_entry = matches[0].entry }
+		if i, ok := app.ub.idx.by_url[uv.fill_address]; ok { fill_entry = i } else if len(matches) > 0 && matches[0].prefix { fill_entry = matches[0].entry }
 	}
 	searching := is_search_text(app, q)
 	if fill_entry >= 0 { append(&uv.rows, Urlbar_Row{kind = .History, entry = fill_entry, fill = true}) }
 	else { append(&uv.rows, Urlbar_Row{kind = searching ? .Search : .Go}) }
-	extra_search := !searching && ub.cfg.search
+	extra_search := !searching && app.ub.cfg.search
 	room := max_rows - (extra_search ? 1 : 0)
 
 	// open tabs (not the current one)
 	terms := strings.fields(strings.to_lower(q, context.temp_allocator), context.temp_allocator)
 	cur := current_tab(app)
-	if ub.cfg.tabs {
+	if app.ub.cfg.tabs {
 		n := 0
 		for x in tabs_all(app) {
-			if len(uv.rows) >= room || n >= ub.cfg.max_tab_rows { break }
+			if len(uv.rows) >= room || n >= app.ub.cfg.max_tab_rows { break }
 			if x == cur || skipped_address(x.url) { continue }
 			lt, lu := strings.to_lower(x.title, context.temp_allocator), strings.to_lower(x.url, context.temp_allocator)
 			all := true
@@ -358,7 +357,7 @@ urlbar_refresh :: proc(app: ^App, fill: Fill_Mode) {
 	// the history, one row per address (an open tab's address is its tab row)
 	for m in matches {
 		if len(uv.rows) >= room { break }
-		e := &ub.idx.entries[m.entry]
+		e := &app.ub.idx.entries[m.entry]
 		if m.entry == fill_entry || skipped_address(e.url) { continue }
 		dup := false
 		for r in uv.rows { if r.kind == .Tab { if x := tab_by_id(app, r.tab_id); x != nil && x.url == e.url { dup = true; break } } }
@@ -372,12 +371,12 @@ urlbar_refresh :: proc(app: ^App, fill: Fill_Mode) {
 urlbar_top_sites :: proc(uv: ^Urlbar_View, n: int, shown: string) {
 	for _ in 0 ..< n {
 		best := -1
-		for e, i in ub.idx.entries {
+		for e, i in the_app.ub.idx.entries {
 			if e.gone || skipped_address(e.url) || e.url == shown { continue }
 			taken := false
 			for r in uv.rows { if r.entry == i { taken = true; break } }
 			if taken { continue }
-			if best < 0 || e.frecency > ub.idx.entries[best].frecency { best = i }
+			if best < 0 || e.frecency > the_app.ub.idx.entries[best].frecency { best = i }
 		}
 		if best < 0 { break }
 		append(&uv.rows, Urlbar_Row{kind = .History, entry = best})
@@ -398,7 +397,7 @@ row_address :: proc(app: ^App, r: Urlbar_Row) -> string {
 	case .Tab:     if x := tab_by_id(app, r.tab_id); x != nil { return x.url }
 	case .History:
 		if r.fill { return uv.fill_address }
-		if r.entry >= 0 && r.entry < len(ub.idx.entries) { return ub.idx.entries[r.entry].url }
+		if r.entry >= 0 && r.entry < len(app.ub.idx.entries) { return app.ub.idx.entries[r.entry].url }
 	}
 	return ""
 }
@@ -422,7 +421,7 @@ urlbar_remove_row :: proc(app: ^App, i: int) {
 	uv := urlbar_view(app)
 	if i < 0 || i >= len(uv.rows) || uv.rows[i].kind != .History { return }
 	r := uv.rows[i]
-	e := &ub.idx.entries[r.entry]
+	e := &app.ub.idx.entries[r.entry]
 	address := strings.clone(e.url, context.temp_allocator)
 	ids := make([dynamic]u64, context.temp_allocator)
 	for v in app.ghist.visits { if v.url == address { append(&ids, v.id) } }
@@ -430,7 +429,7 @@ urlbar_remove_row :: proc(app: ^App, i: int) {
 		global_history_remove(app, ids[:])
 		global_history_save(app)   // at once (history.global.save_delay_ms is for the browsing)
 	}
-	url_index_forget(&ub.idx, address)
+	url_index_forget(&app.ub.idx, address)
 	was_sel := uv.sel
 	urlbar_refresh(app, r.fill ? .None : .Keep)
 	if r.fill { field_show(&active_window(app).address, uv.typed) }
@@ -488,8 +487,8 @@ urlbar_keys :: proc(app: ^App, t: ^Tab) {
 		set_owned(&uv.typed, ui.field_string(&wnd.address))
 		uv.tab_id = t != nil ? t.id : 0
 		// the index in step now (a first build, or the day's new weights), not at the first letter typed
-		if ub.cfg.enabled && ub.cfg.history && app.hcfg.global { _ = urlbar_index_ready(app, age = true) }
-		if ub.cfg.top_sites { uv.zero, uv.idle = true, true; urlbar_refresh(app, .None) }
+		if app.ub.cfg.enabled && app.ub.cfg.history && app.hcfg.global { _ = urlbar_index_ready(app, age = true) }
+		if app.ub.cfg.top_sites { uv.zero, uv.idle = true, true; urlbar_refresh(app, .None) }
 	}
 	uv.focused = true
 	if t != nil && t.id != uv.tab_id { urlbar_close(uv); uv.tab_id = t.id }
@@ -700,7 +699,7 @@ urlbar_popup :: proc(app: ^App, t: ^Tab, field: ^ui.Box) {
 							title, detail, hint = x.title, shown_address(x.url), "Switch to tab"
 						}
 					case .History:
-						e := &ub.idx.entries[r.entry]
+						e := &app.ub.idx.entries[r.entry]
 						icon.kind = .Globe
 						if e.icon != "" { if tex, ok := favicon_texture(app, e.icon); ok { icon.kind, icon.tex = .Favicon, tex } }
 						title = e.title != "" ? e.title : default_tab_title(e.url)
@@ -757,7 +756,7 @@ urlbar_popup :: proc(app: ^App, t: ^Tab, field: ^ui.Box) {
 			}
 		}
 		// this time, another engine
-		if q != "" && len(app.sengines.list) > 1 && ub.cfg.engines_row {
+		if q != "" && len(app.sengines.list) > 1 && app.ub.cfg.engines_row {
 			if i := urlbar_engine_row(app, uv, w, rh, pad); i >= 0 { search_with = i }
 		}
 		ui.spacer(ui.px(pad))

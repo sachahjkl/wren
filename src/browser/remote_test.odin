@@ -8,6 +8,7 @@ import "wb:remote"
 
 @(test)
 key_combos_parse :: proc(t: ^testing.T) {
+	test_app(t)
 	k, m, ok := parse_combo("Ctrl+Shift+T")
 	testing.expect(t, ok && k == .T && m == {.Ctrl, .Shift})
 	k, m, ok = parse_combo("Enter")
@@ -28,6 +29,7 @@ key_combos_parse :: proc(t: ^testing.T) {
 
 @(test)
 keys_type_their_character_without_ctrl_or_alt :: proc(t: ^testing.T) {
+	test_app(t)
 	testing.expect_value(t, key_text(.A, {}), 'a')
 	testing.expect_value(t, key_text(.A, {.Shift}), 'A')
 	testing.expect_value(t, key_text(.A, {.Ctrl}), rune(0))
@@ -38,6 +40,7 @@ keys_type_their_character_without_ctrl_or_alt :: proc(t: ^testing.T) {
 
 @(test)
 scaling_a_picture_averages_what_a_pixel_covers :: proc(t: ^testing.T) {
+	test_app(t)
 	src := []u8{
 		0, 0, 0, 255,   100, 0, 0, 255,
 		0, 100, 0, 255, 100, 100, 0, 255,
@@ -57,6 +60,7 @@ scaling_a_picture_averages_what_a_pixel_covers :: proc(t: ^testing.T) {
 
 @(test)
 a_scaled_capture_is_encoded_from_the_scaled_picture :: proc(t: ^testing.T) {
+	test_app(t)
 	// the picture made by the scaling was freed where its block ended, before the PNG was written from it (a capture with --scale)
 	src := []u8{
 		0, 0, 0, 255,   100, 0, 0, 255,
@@ -73,6 +77,7 @@ a_scaled_capture_is_encoded_from_the_scaled_picture :: proc(t: ^testing.T) {
 
 @(test)
 the_script_wrapper_carries_the_mark_the_id_and_the_text :: proc(t: ^testing.T) {
+	test_app(t)
 	src := eval_source(7, `1 + "q\""`, true)
 	testing.expect(t, contains_all(src, {`"\u0001wren-remote:"`, "I=7", `(0,eval)("1 + \"q\\\"\"")`, "true&&r&&typeof r.then"}))
 	// nothing in it is per run: a page that reads the line learns nothing it could use
@@ -97,6 +102,7 @@ contains_all :: proc(s: string, parts: []string) -> bool {
 
 @(test)
 keep_lists_name_the_parts_to_leave_alone :: proc(t: ^testing.T) {
+	test_app(t)
 	keep, bad := keep_parse(json.String("tabs, data"))
 	testing.expect_value(t, keep, Keep{.Tabs, .Data})
 	testing.expect_value(t, bad, "")
@@ -118,6 +124,7 @@ keep_lists_name_the_parts_to_leave_alone :: proc(t: ^testing.T) {
 
 @(test)
 a_wait_for_quiet_needs_a_whole_window_without_work :: proc(t: ^testing.T) {
+	test_app(t)
 	ms :: 1_000_000
 	q: Quiet_Window
 	// the first look opens the window; it holds once quiet_ms have passed with the CPU time moving by at most max
@@ -140,6 +147,7 @@ a_wait_for_quiet_needs_a_whole_window_without_work :: proc(t: ^testing.T) {
 
 @(test)
 the_process_numbers_are_there :: proc(t: ^testing.T) {
+	test_app(t)
 	cpu, user, kernel := process_cpu_ms()
 	testing.expect(t, cpu > 0 && cpu >= user && cpu >= kernel)
 	testing.expect(t, process_uptime_ms() > 0)

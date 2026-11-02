@@ -22,23 +22,19 @@ Load_Measure :: struct {
 	timer:     base.Handle,
 }
 
-@(private = "file") lm: Load_Measure
-@(private = "file") report_path: string
-@(private = "file") settle_ms := 10000.0
-@(private = "file") checked: bool
 
 @(private = "file")
 enabled :: proc() -> bool {
-	if !checked {
-		checked = true
-		report_path = os.get_env("WREN_LOAD_REPORT", context.allocator)
+	if !the_app.lm_checked {
+		the_app.lm_checked = true
+		the_app.lm_report_path = os.get_env("WREN_LOAD_REPORT", context.allocator)
 		if s := os.get_env("WREN_LOAD_REPORT_MS", context.temp_allocator); s != "" {
 			n := 0
 			for c in s { if c >= '0' && c <= '9' { n = n * 10 + int(c - '0') } }
-			if n > 0 { settle_ms = f64(n) }
+			if n > 0 { the_app.lm_settle_ms = f64(n) }
 		}
 	}
-	return report_path != ""
+	return the_app.lm_report_path != ""
 }
 
 @(private = "file")
@@ -49,23 +45,23 @@ cpu_ms :: proc() -> f64 {
 
 load_measure_begin :: proc(app: ^App, t: ^Tab, address: string) {
 	if !enabled() || !(len(address) > 4 && address[:4] == "http") { return }
-	if lm.timer != base.NIL_HANDLE { host.clear_timer(&app.loop, lm.timer) }
-	delete(lm.url)
-	lm = Load_Measure{active = true, url = fmt.aprintf("%s", address), start = time.tick_now(), cpu0 = cpu_ms(), tab = t.id}
-	lm.timer = host.set_timer(&app.loop, settle_ms, 0, load_measure_write, app)
+	if app.lm.timer != base.NIL_HANDLE { host.clear_timer(&app.loop, app.lm.timer) }
+	delete(app.lm.url)
+	app.lm = Load_Measure{active = true, url = fmt.aprintf("%s", address), start = time.tick_now(), cpu0 = cpu_ms(), tab = t.id}
+	app.lm.timer = host.set_timer(&app.loop, app.lm_settle_ms, 0, load_measure_write, app)
 }
 
 load_measure_painted :: proc(t: ^Tab) {
-	if !lm.active || t.id != lm.tab || t.page == nil { return }
-	ms := time.duration_milliseconds(time.tick_since(lm.start))
-	if lm.paint_ms == 0 && t.page.render.painted { lm.paint_ms = ms }
-	if lm.done_ms == 0 && t.page.scripts != nil && t.page.scripts.ready_state == .Complete { lm.done_ms = ms }
+	if !the_app.lm.active || t.id != the_app.lm.tab || t.page == nil { return }
+	ms := time.duration_milliseconds(time.tick_since(the_app.lm.start))
+	if the_app.lm.paint_ms == 0 && t.page.render.painted { the_app.lm.paint_ms = ms }
+	if the_app.lm.done_ms == 0 && t.page.scripts != nil && t.page.scripts.ready_state == .Complete { the_app.lm.done_ms = ms }
 }
 
 @(private = "file")
 load_measure_write :: proc(data: rawptr) {
 	app := (^App)(data)
-	m := &lm
+	m := &app.lm
 	m.timer = base.NIL_HANDLE
 	if !m.active { return }
 	m.active = false
@@ -75,9 +71,9 @@ load_measure_write :: proc(data: rawptr) {
 	blocked := 0
 	if ts := blocker_tab(var_t); ts != nil { blocked = ts.blocked }
 	mem := base.process_memory()
-	on := bl.started && bl.b.cfg.enabled
+	on := app.bl.started && app.bl.b.cfg.enabled
 	line := fmt.tprintf("%s\t%s\t%.0f\t%.0f\t%d\t%d\t%d\t%d\t%.0f\t%.1f\n", m.url, on ? "on" : "off", m.paint_ms, m.done_ms, len(var_t.net.entries), blocked, var_t.net.bytes, var_t.page.doc.nodes.count, cpu_ms() - m.cpu0, f64(mem.resident) / 1e6)
-	if f, err := os.open(report_path, {.Write, .Create, .Append}, os.Permissions_Default_File); err == nil {
+	if f, err := os.open(app.lm_report_path, {.Write, .Create, .Append}, os.Permissions_Default_File); err == nil {
 		os.write_string(f, line)
 		os.close(f)
 	}

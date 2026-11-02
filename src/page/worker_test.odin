@@ -21,6 +21,7 @@ Producer :: struct { l: ^Worker_Link, n: int, refused: int }
 
 @(test)
 link_carries_messages_between_threads_in_order :: proc(t: ^testing.T) {
+	test_pages(t)
 	ui: host.Loop
 	host.loop_init(&ui)
 	defer host.loop_destroy(&ui)
@@ -80,6 +81,7 @@ test_page :: proc(loop: ^host.Loop, loader: ^fetch.Loader, settings: ^Settings, 
 
 @(test)
 transfer_detaches_the_sender_and_moves_the_bytes :: proc(t: ^testing.T) {
+	test_pages(t)
 	loop: host.Loop
 	host.loop_init(&loop)
 	defer host.loop_destroy(&loop)
@@ -229,6 +231,7 @@ wait_running :: proc(e: ^Env, p: ^Page, n: int) -> bool {
 
 @(test)
 terminate_stops_a_worker_busy_in_a_long_computation :: proc(t: ^testing.T) {
+	test_pages(t)
 	// (the line of the console a worker sends is made in the process heap of an import, and freed here: this test's own tracker
 	// would not know it)
 	context.allocator = base.process_allocator()
@@ -259,6 +262,7 @@ terminate_stops_a_worker_busy_in_a_long_computation :: proc(t: ^testing.T) {
 
 @(test)
 closing_a_page_joins_its_active_workers :: proc(t: ^testing.T) {
+	test_pages(t)
 	e: Env
 	env_init(&e)
 	defer env_destroy(&e)
@@ -272,6 +276,7 @@ closing_a_page_joins_its_active_workers :: proc(t: ^testing.T) {
 
 @(test)
 worker_modules_may_only_import_what_is_safe_off_the_ui_thread :: proc(t: ^testing.T) {
+	test_pages(t)
 	sync.mutex_lock(&worker_tests)
 	defer sync.mutex_unlock(&worker_tests)
 	testing.expect(t, register_imports(), "register_imports")

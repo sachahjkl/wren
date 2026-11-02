@@ -59,7 +59,6 @@ Fullscreen_Embedder :: struct {
 	deferred: bool,
 }
 
-fullscreen_embedder: Fullscreen_Embedder
 
 @(private)
 Page_Fullscreen :: struct {
@@ -101,8 +100,8 @@ fullscreen_page_closing :: proc(data: rawptr) {
 	nav := p.frames != nil ? p.frames.nav : nil
 	if nav != nil && nav.parent != nil {
 		if par := nav.parent; !par.scope.closing && !par.closed { fullscreen_exit_tree(page_top(par)) }
-	} else if fullscreen_embedder.set != nil {
-		fullscreen_embedder.set(p, false, .Auto)
+	} else if the_pages.fullscreen_embedder.set != nil {
+		the_pages.fullscreen_embedder.set(p, false, .Auto)
 	}
 }
 
@@ -128,7 +127,7 @@ fullscreen_exit_tree :: proc(top: ^Page, promise_page: ^Page = nil, promise: u64
 		pg.style_state.fullscreen = base.NIL_HANDLE
 		fs_queue(pg, el, .Change, pg == promise_page ? promise : 0)
 	}
-	if notify && fullscreen_embedder.set != nil { fullscreen_embedder.set(top, false, .Auto) }
+	if notify && the_pages.fullscreen_embedder.set != nil { the_pages.fullscreen_embedder.set(top, false, .Auto) }
 	return true
 }
 
@@ -163,7 +162,7 @@ Fs_Task :: struct {
 fs_queue :: proc(p: ^Page, node: base.Handle, kind: Fs_Kind, promise: u64 = 0, message := "") {
 	t := new(Fs_Task, base.process_allocator())
 	t^ = {node = node, kind = kind, promise = promise, message = strings.clone(message, base.process_allocator())}
-	if kind == .Change && fullscreen_embedder.deferred && !p.scope.closing {
+	if kind == .Change && the_pages.fullscreen_embedder.deferred && !p.scope.closing {
 		append(&fs_ensure(p).waiting, t)
 		return
 	}
@@ -252,7 +251,7 @@ Element_requestFullscreen :: proc(c: ^Call, element: Api_Element, navigation: Ap
 	top := page_top(p)
 	// another element (of this document or a sibling frame's) was in full screen: it is replaced, not stacked
 	fullscreen_exit_tree(top, notify = false)
-	if fullscreen_embedder.set != nil && !fullscreen_embedder.set(top, true, navigation) {
+	if the_pages.fullscreen_embedder.set != nil && !the_pages.fullscreen_embedder.set(top, true, navigation) {
 		fs_queue(p, el, .Error, pr, "TypeError: Failed to execute 'requestFullscreen' on 'Element': the window cannot go to full screen now (this tab is not the one shown).")
 		return pr
 	}

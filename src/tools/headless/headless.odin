@@ -34,6 +34,7 @@ Env :: struct {
 	storage:  page.Storage_Manager,
 	process:  ^base.Scope,
 	has_storage: bool,
+	pages:    page.Pages,   // what its pages share (init binds this thread to it)
 }
 
 Navigable :: page.Navigable   // (a field named `page` hides the package in Doc)
@@ -81,6 +82,7 @@ register_prefs :: proc(p: ^config.Prefs) {
 // Starts the stack: event loop, network client, blocking pool, the Fetch profile, the page settings (from `prefs` when
 // given, made with register_prefs: --pref name=value of the command line, else the defaults). `profile_dir` holds Web Storage ("" = none).
 init :: proc(e: ^Env, prefs: ^config.Prefs = nil, profile_dir := "", blocking_threads := 2) -> bool {
+	page.bind(&e.pages)   // (this thread runs the pages of the stack)
 	host.loop_init(&e.loop)
 	// the network.* preferences too (network.hosts, network.loopback_only: what a test run gives its pages)
 	ns: net.Settings
@@ -108,6 +110,7 @@ init :: proc(e: ^Env, prefs: ^config.Prefs = nil, profile_dir := "", blocking_th
 
 destroy :: proc(e: ^Env) {
 	base.scope_close(e.process)
+	defer page.bind(nil)
 	if e.has_storage { page.storage_manager_destroy(&e.storage) }
 	httpcache.destroy(e.profile.cache)
 	e.profile.cache = nil

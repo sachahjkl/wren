@@ -4,6 +4,7 @@ import "core:testing"
 
 @(test)
 clipboard_policy :: proc(t: ^testing.T) {
+	test_pages(t)
 	V :: Clipboard_Verdict
 	// write: focus or a gesture
 	testing.expect_value(t, clipboard_verdict(true, true, true, true, false), V.Allowed)

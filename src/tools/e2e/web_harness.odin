@@ -3,8 +3,8 @@
 // and no frame): a part of the test program, and none of them starts the browser it links. One file per subject (web_<subject>.odin), each
 // `#+private file` with its own helpers, its tests named after it (cache_freshness, in web_cache.odin). What they share is here.
 //
-// Tests go one at a time (-define:ODIN_TEST_THREADS=1) on one world: what the process keeps (the Wasm runtime, the image cache, the
-// stores) binds to the first loop it sees, so a loop per test would leave it on a dead one. The world is made as far as a test asks
+// Tests go one at a time (-define:ODIN_TEST_THREADS=1) on one world: what its pages share (`pages`: the image cache, the stores) binds to
+// the first loop it sees, so a loop per test would leave it on a dead one. The world is made as far as a test asks
 // (`begin`), and undone by the last test, `zz_the_process_ends_with_nothing_left`, which finds the leaks (-define:WREN_TRACK_MEMORY=true).
 // One subject per process (src\tools\test_all\steps.odin web_run): `build\e2e_test.exe -tests:cache_freshness,zz_the_process_ends_with_nothing_left`. This world and a browser in the process do not go together.
 //
@@ -59,12 +59,14 @@ loader:   fetch.Loader
 settings: page.Settings            // a test's own, from `begin`, at the default values
 process:  ^base.Scope
 storage:  page.Storage_Manager     // (made by `storage_world`)
+pages:    page.Pages               // what the pages share (bound to the thread of each test)
 
 // The first thing a test does, after `context.allocator = base.process_allocator()` (what the Wasm imports make and free goes through
 // the process's allocator: core:testing's tracker of the test does not know that memory; the process's finds the leaks in the last test).
 begin :: proc(t: ^testing.T, level := Level.Pages, loc := #caller_location) {
 	current = t
 	testing.set_fail_timeout(t, TEST_LIMIT, loc)
+	page.bind(&pages)
 	if world_level == .None {
 		world_level = .Net
 		host.loop_init(&loop)
@@ -235,7 +237,11 @@ zz_the_process_ends_with_nothing_left :: proc(t: ^testing.T) {
 		host.blocking_settle(&blocking)
 		testenv.remove_tree(storage_dir())
 	}
-	if world_level >= .Pages { page.process_shutdown() }
+	if world_level >= .Pages {
+		page.bind(&pages)
+		page.pages_shutdown()
+		page.process_shutdown()
+	}
 	if world_level >= .Net {
 		fetch.loader_destroy(&loader)
 		host.blocking_destroy(&blocking)

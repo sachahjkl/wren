@@ -354,12 +354,12 @@ devtools_panel :: proc(app: ^App, t: ^Tab, floating := false, place := ui.Style_
 	dev().room = dev_room_of(place, fill)
 	ui.set_menu_item_height(dev().density == .Comfortable ? 2.1 : 1.85)   // dense menus for the panel's own (toolkit 0.19)
 	defer ui.set_menu_item_height(0)
-	if ui.style({font_size = dtm.fs, text_pad = dt_px(4)}) {
+	if ui.style({font_size = app.dtm.fs, text_pad = dt_px(4)}) {
 		flags := ui.Box_Flags{.Draw_Background}
 		if floating { flags += {.Draw_Border, .Draw_Shadow} }
 		mod := place
 		mod.axis, mod.radius = .Y, 0
-		if floating { mod.border = dtc.border }
+		if floating { mod.border = app.dtc.border }
 		ui.next(mod)
 		panel := ui.build_box(flags, "###dt_panel")
 		dev().rect = panel.rect
@@ -434,11 +434,11 @@ Tab_Draw :: struct {
 
 @(private = "file")
 tab_width :: proc(label: string, icon_w: f32, badges: [2]string) -> (w, lw: f32, bw: [2]f32) {
-	lw = dt_w(dtm.ui_font, dtm.fs, label)
+	lw = dt_w(the_app.dtm.ui_font, the_app.dtm.fs, label)
 	w = dt_px(8) + icon_w + dt_px(5) + lw + dt_px(8)
 	for b, i in badges {
 		if b == "" { continue }
-		bw[i] = max(dt_w(dtm.ui_font, dtm.fs * 0.82, b) + dt_px(8), dtm.fs * 1.12)
+		bw[i] = max(dt_w(the_app.dtm.ui_font, the_app.dtm.fs * 0.82, b) + dt_px(8), the_app.dtm.fs * 1.12)
 		w += bw[i] + dt_px(4)
 	}
 	return
@@ -449,29 +449,29 @@ tab_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	d := (^Tab_Draw)(user)
 	r := b.rect
 	cy := (r.min.y + r.max.y) * 0.5
-	if d.down { draw.rect(dc, {{r.min.x, r.min.y + dt_px(3)}, {r.max.x, r.max.y - dt_px(3)}}, dtc.press, dtm.radius) } else if d.hot && !d.on {
-		draw.rect(dc, {{r.min.x, r.min.y + dt_px(3)}, {r.max.x, r.max.y - dt_px(3)}}, dtc.hover, dtm.radius)
+	if d.down { draw.rect(dc, {{r.min.x, r.min.y + dt_px(3)}, {r.max.x, r.max.y - dt_px(3)}}, the_app.dtc.press, the_app.dtm.radius) } else if d.hot && !d.on {
+		draw.rect(dc, {{r.min.x, r.min.y + dt_px(3)}, {r.max.x, r.max.y - dt_px(3)}}, the_app.dtc.hover, the_app.dtm.radius)
 	}
-	col := d.on ? dtc.text : (d.hot ? dtc.text : dtc.weak)
+	col := d.on ? the_app.dtc.text : (d.hot ? the_app.dtc.text : the_app.dtc.weak)
 	x := r.min.x + dt_px(8)
-	dt_icon(dc, d.icon, {math.round(x + dtm.icon * 0.5), cy}, dtm.icon, d.on ? dtc.accent : col, dtm.sc)
-	if d.warn { rr := dt_px(3); draw.rect(dc, {{x + dtm.icon - rr, cy - dtm.icon * 0.5 - rr * 0.3}, {x + dtm.icon + rr, cy - dtm.icon * 0.5 + rr * 1.7}}, draw.Color{0.93, 0.62, 0.10, 1}, rr) }
-	x += dtm.icon + dt_px(5)
-	x += dt_text(dc, dtm.ui_font, dtm.fs, x, cy, col, d.label) + dt_px(4)
+	dt_icon(dc, d.icon, {math.round(x + the_app.dtm.icon * 0.5), cy}, the_app.dtm.icon, d.on ? the_app.dtc.accent : col, the_app.dtm.sc)
+	if d.warn { rr := dt_px(3); draw.rect(dc, {{x + the_app.dtm.icon - rr, cy - the_app.dtm.icon * 0.5 - rr * 0.3}, {x + the_app.dtm.icon + rr, cy - the_app.dtm.icon * 0.5 + rr * 1.7}}, draw.Color{0.93, 0.62, 0.10, 1}, rr) }
+	x += the_app.dtm.icon + dt_px(5)
+	x += dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs, x, cy, col, d.label) + dt_px(4)
 	for bt, i in d.badges {
 		if bt == "" { continue }
 		w := d.badge_w[i]
-		bh := dtm.fs * 1.12
+		bh := the_app.dtm.fs * 1.12
 		draw.rect(dc, {{x, cy - bh * 0.5}, {x + w, cy + bh * 0.5}}, d.tones[i], bh * 0.5)
-		tw := dt_w(dtm.ui_font, dtm.fs * 0.82, bt)
-		dt_text(dc, dtm.ui_font, dtm.fs * 0.82, x + (w - tw) * 0.5, cy, draw.Color{1, 1, 1, 1}, bt)
+		tw := dt_w(the_app.dtm.ui_font, the_app.dtm.fs * 0.82, bt)
+		dt_text(dc, the_app.dtm.ui_font, the_app.dtm.fs * 0.82, x + (w - tw) * 0.5, cy, draw.Color{1, 1, 1, 1}, bt)
 		x += w + dt_px(4)
 	}
 	if d.t > 0.01 {
 		w := (r.max.x - r.min.x - dt_px(6)) * d.t
 		cx := (r.min.x + r.max.x) * 0.5
 		th := dt_px(2)
-		draw.rect(dc, {{cx - w * 0.5, r.max.y - th}, {cx + w * 0.5, r.max.y}}, dtc.accent, 0)
+		draw.rect(dc, {{cx - w * 0.5, r.max.y - th}, {cx + w * 0.5, r.max.y}}, the_app.dtc.accent, 0)
 	}
 }
 
@@ -482,15 +482,15 @@ tab_info :: proc(t: ^Tab, p: Dev_Panel) -> (badges: [2]string, tones: [2]draw.Co
 	#partial switch p {
 	case .Console:
 		e, w := console_counts(t)
-		if e > 0 { badges[0], tones[0] = dt_frame_str(fmt.tprintf("%d", e)), dtc.bad }
+		if e > 0 { badges[0], tones[0] = dt_frame_str(fmt.tprintf("%d", e)), the_app.dtc.bad }
 		if w > 0 { badges[1], tones[1] = dt_frame_str(fmt.tprintf("%d", w)), draw.Color{0.80, 0.55, 0.05, 1} }
 	case .Network:
 		n := len(t.net.entries)
 		if n > 0 {
 			errs := 0
 			for &e in t.net.entries { if e.failed || e.status >= 400 { errs += 1 } }
-			badges[0], tones[0] = dt_frame_str(fmt.tprintf("%d", n)), with_alpha(dtc.weak, 0.55)
-			if errs > 0 { badges[1], tones[1] = dt_frame_str(fmt.tprintf("%d", errs)), dtc.bad }
+			badges[0], tones[0] = dt_frame_str(fmt.tprintf("%d", n)), with_alpha(the_app.dtc.weak, 0.55)
+			if errs > 0 { badges[1], tones[1] = dt_frame_str(fmt.tprintf("%d", errs)), the_app.dtc.bad }
 		}
 	}
 	return
@@ -498,7 +498,7 @@ tab_info :: proc(t: ^Tab, p: Dev_Panel) -> (badges: [2]string, tones: [2]draw.Co
 
 @(private = "file")
 devtools_header :: proc(app: ^App, t: ^Tab, floating: bool) {
-	if dt_bar("###dt_header", dtm.tab) {
+	if dt_bar("###dt_header", app.dtm.tab) {
 		// a floating panel is moved by its header: this box takes the press under the buttons
 		dt_gap(2)
 		pick := dt_btn("###dt_pick", .Inspect, tooltip = "Select an element in the page to inspect it", shortcut = cmd_key(app, "view.devtools_pick"), on = dev().picking)
@@ -507,14 +507,14 @@ devtools_header :: proc(app: ^App, t: ^Tab, floating: bool) {
 		dt_gap(2)
 
 		// the tabs that fit, then a chevron for the others
-		right_w := dtm.btn * 3 + dt_px(8) * 4 + dtm.line
-		avail := dev_width() > 0 ? dev_width() - right_w - dtm.btn - dt_px(10) - dtm.line : 1e9
+		right_w := app.dtm.btn * 3 + dt_px(8) * 4 + app.dtm.line
+		avail := dev_width() > 0 ? dev_width() - right_w - app.dtm.btn - dt_px(10) - app.dtm.line : 1e9
 		hidden: [len(Dev_Panel)]bool
 		used: f32
 		count := 0
 		for p in Dev_Panel {
 			bs, tones := tab_info(t, p)
-			w, lw, bw := tab_width(DEV_PANEL_TITLES[p], dtm.icon, bs)
+			w, lw, bw := tab_width(DEV_PANEL_TITLES[p], app.dtm.icon, bs)
 			if (used + w > avail && count > 0 && p != dev().panel) {
 				hidden[p] = true
 				continue
@@ -717,7 +717,7 @@ corner_grip_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	d := (^Dt_Btn_Draw)(user)
 	r := b.rect
 	s := max(math.round(ui.scale()), 1)
-	col := d.hot ? dtc.accent : dtc.faint
+	col := d.hot ? the_app.dtc.accent : the_app.dtc.faint
 	for i in 0 ..< 3 {
 		for j in 0 ..= i {
 			x := r.max.x - 2 * s - f32(j) * 3 * s

@@ -6,10 +6,10 @@ package browser
 import "wb:page"
 
 sw_shell_init :: proc(app: ^App) {
-	page.sw_embedder = {open = sw_shell_open, focus = sw_shell_focus, user = app}
+	app.pages.sw_embedder = {open = sw_shell_open, focus = sw_shell_focus, user = app}
 }
 
-sw_shell_destroy :: proc(app: ^App) { page.sw_embedder = {} }
+sw_shell_destroy :: proc(app: ^App) { app.pages.sw_embedder = {} }
 
 @(private = "file")
 sw_shell_open :: proc(user: rawptr, url: string) -> bool {

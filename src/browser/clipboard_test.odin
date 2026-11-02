@@ -7,6 +7,7 @@ import "core:testing"
 
 @(test)
 source_markup_escapes_and_colors :: proc(t: ^testing.T) {
+	test_app(t)
 	m := source_markup(`<!doctype html><!-- c --><a href="x?a=1&b">t</a><script>if (a < b) {}</script>`, true, false)
 	testing.expect(t, strings.contains(m, `<span class="t">&lt;a</span> <span class="n">href</span>=<span class="v">"x?a=1&amp;b"</span>`), m)
 	testing.expect(t, strings.contains(m, `<span class="c">&lt;!-- c --&gt;</span>`), "comment")

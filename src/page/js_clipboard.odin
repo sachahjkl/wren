@@ -21,7 +21,6 @@ Clipboard_Embedder :: struct {
 	write: proc(text: string) -> bool,
 }
 
-clipboard_embedder: Clipboard_Embedder
 
 @(private = "file")
 fake_clipboard: string   // owned, process allocator
@@ -40,8 +39,8 @@ clipboard_verdict :: proc(write, enabled, windowed, focused, gesture: bool) -> C
 @(private = "file")
 clipboard_check :: proc(p: ^Page, write: bool) -> Clipboard_Verdict {
 	s := &p.settings.js_web
-	windowed, focused := webauthn_embedder.window != nil, true
-	if windowed { _, focused = webauthn_embedder.window(p) }
+	windowed, focused := the_pages.webauthn_embedder.window != nil, true
+	if windowed { _, focused = the_pages.webauthn_embedder.window(p) }
 	return clipboard_verdict(write, write ? s.clipboard_write : s.clipboard_read, windowed, focused, webauthn_has_activation(p))
 }
 
@@ -58,7 +57,7 @@ clipboard_denied :: proc(op: string, v: Clipboard_Verdict) -> string {
 
 @(private = "file")
 clipboard_put :: proc(text: string) -> bool {
-	if clipboard_embedder.write != nil { return clipboard_embedder.write(text) }
+	if the_pages.clipboard_embedder.write != nil { return the_pages.clipboard_embedder.write(text) }
 	delete(fake_clipboard, base.process_allocator())
 	fake_clipboard = strings.clone(text, base.process_allocator())
 	return true
@@ -66,7 +65,7 @@ clipboard_put :: proc(text: string) -> bool {
 
 @(private = "file")
 clipboard_get :: proc() -> (string, bool) {
-	if clipboard_embedder.read != nil { return clipboard_embedder.read() }
+	if the_pages.clipboard_embedder.read != nil { return the_pages.clipboard_embedder.read() }
 	return fake_clipboard, true
 }
 
