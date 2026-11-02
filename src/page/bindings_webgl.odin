@@ -234,19 +234,6 @@ webgl_make :: proc(c: ^Call, b: ^Canvas_Backing, flags, notify: u32, user: i32, 
 	return handle
 }
 
-// Test programs: asks the GPU process to hang the page's first context. (A process started without the hooks takes this for a
-// broken stream; a browser never asks.)
-webgl_test_hang :: proc(p: ^Page) {
-	if p.canvases == nil { return }
-	for b in p.canvases.all {
-		o := b.ctx_obj
-		if o != nil && o.kind == .WebGL && o.gl != nil && webgl.wg_is_lost(o.gl.handle) == 0 {
-			webgl.wg_test_misbehave(o.gl.handle, webgl.TEST_HANG_CONTEXT)
-			return
-		}
-	}
-}
-
 WebGL_enabled :: proc(c: ^Call, version: i32) -> bool {
 	s := &c.page.settings.webgl
 	return s.enabled && (version != 2 || s.webgl2)

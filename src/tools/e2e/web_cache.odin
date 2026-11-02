@@ -6,7 +6,7 @@
 //
 // The cache judges freshness on the wall clock against the server's Date header (httpcache.now_s): the two tests of a response that goes
 // stale wait for the real clock to pass the entry's `fresh_until`, on purpose. That is the time they take.
-package webtests
+package e2e_scenarios
 
 import "core:fmt"
 import "core:os"

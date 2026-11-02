@@ -3,7 +3,7 @@
 // timers, errors, close(), terminate, page close, limits, and 16 workers computing in parallel. The page's guest says what it sees with
 // the test host's note ("msg:<slot>:<text>", "error:<slot>:<message>"); how responsive the page's thread stays under them is measured
 // with -Perf.
-package webtests
+package e2e_scenarios
 
 import "core:encoding/base64"
 import "core:fmt"

@@ -2,7 +2,7 @@
 // The platform web APIs from a Wasm guest: animation frames, timers, idle callbacks, visibility, AbortController with fetch, promise fetch
 // and body streams, TextEncoder / TextDecoder, crypto, Web Storage across pages and restarts, URL / URLSearchParams, performance,
 // location / history, and what happens to stale handles and bad arguments.
-package webtests
+package e2e_scenarios
 
 import "core:fmt"
 import "core:os"

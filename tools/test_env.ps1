@@ -146,13 +146,13 @@ function Stop-WrenTestServer($Server) {
     if ($Server -and $Server.Process) { Stop-Process -Id $Server.Process.Id -Force -ErrorAction SilentlyContinue; $Server.Process.WaitForExit(5000) | Out-Null }
 }
 
-# Runs the tests of one subject of the web tests (src\tools\webtests\<subject>.odin, docs\testing.md) in this program, built by test_all's 'build web tests', in a process of their own; the test that ends the process with its leak check goes with them. (tools\net_parity.ps1.)
-#   Invoke-WrenWebTests 'build\web_test.exe' 'cache'
+# Runs the tests of one subject of the web tests (src\tools\e2e\web_<subject>.odin, docs\testing.md) in this program, built by test_all, in a process of their own; the test that ends the process with its leak check goes with them. (tools\net_parity.ps1.)
+#   Invoke-WrenWebTests 'build\e2e_test_check.exe' 'cache'
 function Invoke-WrenWebTests([string]$Exe, [string]$Subject) {
     $root = Get-WrenRepoRoot
-    $source = [IO.File]::ReadAllText((Join-Path $root "src\tools\webtests\$Subject.odin"))
+    $source = [IO.File]::ReadAllText((Join-Path $root "src\tools\e2e\web_$Subject.odin"))
     $names = @([regex]::Matches($source, '(?m)^@\(test\)\s*([A-Za-z0-9_]+)\s*::') | ForEach-Object { $_.Groups[1].Value })
-    if ($names.Count -eq 0) { "no @(test) in src\tools\webtests\$Subject.odin"; $global:LASTEXITCODE = 1; return }
+    if ($names.Count -eq 0) { "no @(test) in src\tools\e2e\web_$Subject.odin"; $global:LASTEXITCODE = 1; return }
     Ensure-WrenTestServer $root (Join-Path $root 'build\testserver.dll')
     $o = & (Join-Path $root $Exe) "-tests:$($names -join ','),zz_the_process_ends_with_nothing_left" 2>&1 | Out-String
     $code = $LASTEXITCODE

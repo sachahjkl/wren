@@ -1,4 +1,4 @@
-// HTTP cache tests (src/tools/webtests/cache.odin):
+// HTTP cache tests (src/tools/e2e/web_cache.odin):
 //
 //	/cache/r/NAME?cc=...&etag=...&lm=SECONDS_AGO&expires=SECONDS&vary=FIELD&age=N&status=NNN&type=...&body=...&location=...&cookie=1
 //	        a response with the caching fields asked for; If-None-Match / If-Modified-Since against them give a 304.

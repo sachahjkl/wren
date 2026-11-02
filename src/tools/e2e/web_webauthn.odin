@@ -6,7 +6,7 @@
 //
 // What the waits check depends on no machine's speed: a user who never answers (the longest security.webauthn.testing.virtual_delay_ms)
 // leaves only the abort, the timer or the close to end a ceremony.
-package webtests
+package e2e_scenarios
 
 import "core:fmt"
 import "core:strings"

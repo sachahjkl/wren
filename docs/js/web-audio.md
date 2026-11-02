@@ -119,5 +119,5 @@ specification has one global scope per context as well.
 ## Tests
 
 `odin test src/webaudio` (known values: a sine's samples, ramps, a biquad against the cookbook's formulas, convolution, WAV decoding, the
-thread on the null output); `examples/jsweb/webaudio.js` and `webaudio_autoplay.js` (`jsweb`, `src/tools/webtests`); `build\wpt.exe -only /webaudio`;
+thread on the null output); `examples/jsweb/webaudio.js` and `webaudio_autoplay.js` (`jsweb`, `src/tools/e2e/web_jsweb.odin`); `build\wpt.exe -only /webaudio`;
 `examples/site/webaudio.html` for a person, or a driven Wren reading its `AnalyserNode`.

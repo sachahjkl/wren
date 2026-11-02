@@ -104,6 +104,24 @@ a_key_follows_its_inputs_and_nothing_else :: proc(t: ^testing.T) {
 	f.c.prefix = saved
 }
 
+// A subject of the test program: its file and what that imports, not what the other files of its package do.
+@(test)
+a_step_on_some_files_of_a_package_follows_those_files :: proc(t: ^testing.T) {
+	context.allocator = runtime.heap_allocator()   // (what a run keeps until it ends)
+	f := fixture(t, "sources")
+	defer drop(f)
+	put(f, "src/mixed/one.odin", "package mixed\nimport \"wb:lib\"\nA :: lib.x\n")
+	put(f, "src/mixed/two.odin", "package mixed\nimport \"wb:other\"\nB :: 1\n")
+	cache_look_again(&f.c)
+	f.step = Step{name = "one", actions = slice_of(Command{argv = strs("program", "-tests:a")}), sources = strs("src/mixed/one.odin")}
+	inputs := step_inputs(&f.c, &f.step)
+	for rel in ([]string{"src/mixed/one.odin", "src/lib/lib.odin", "examples/site/page.html"}) { testing.expectf(t, slice.contains(inputs, rel), "an input: %s", rel) }
+	for rel in ([]string{"src/mixed/two.odin", "src/other/other.odin"}) { testing.expectf(t, !slice.contains(inputs, rel), "not an input: %s", rel) }
+	k0 := step_key(&f.c, &f.step)
+	testing.expect(t, changes_key(f, k0, "src/lib/lib.odin", "package lib\nx := 2\n"), "what the file imports changes the key")
+	testing.expect(t, !changes_key(f, k0, "src/mixed/two.odin", "package mixed\nimport \"wb:other\"\nB :: 2\n"), "another file of the package leaves it")
+}
+
 @(test)
 what_cannot_be_resolved_takes_the_whole_tree :: proc(t: ^testing.T) {
 	context.allocator = runtime.heap_allocator()   // (what a run keeps until it ends)

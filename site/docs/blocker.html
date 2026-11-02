@@ -373,7 +373,7 @@ blocked, bytes, DOM nodes, CPU time, memory). <code>WREN_BLOCKER_TRACE=&lt;file&
 <li><code>src/tools/blockerpages</code>: the same in the headless stack.</li>
 <li><code>tools\blocker_js.ps1</code>: how much JavaScript the interpreter runs for a page (<code>WREN_JS_PROFILE</code> samples summed over the tab's pages, and those of the blocker's own scripts), two executables side by side and the page without the blocker.</li>
 <li><code>blockerpages -hooks</code>: what a hooked API costs per call (ns), without the blocker, with the native hooks, with the JavaScript versions. It starts the test server itself.</li>
-<li>Unit tests: <code>odin test src/adblock</code>, <code>odin test src/blocker</code>; end to end: <code>src/tools/webtests/blocker.odin</code> (<code>src\tools\test_all</code>).</li>
+<li>Unit tests: <code>odin test src/adblock</code>, <code>odin test src/blocker</code>; end to end: <code>src/tools/e2e/web_blocker.odin</code> (<code>src\tools\test_all</code>).</li>
 </ul>
 <h2 id="results"><a class="anchor" href="#results" aria-hidden="true">#</a>Results</h2>
 <p>Engine (real lists: EasyList, EasyPrivacy, uBlock filters, AdGuard Base, Peter Lowe, URLhaus; 182,000 network and 73,000 cosmetic

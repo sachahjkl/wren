@@ -3,7 +3,7 @@
 // an element hidden before the first style computation, the scriptlets (on the document, on an API), responses rewritten, the shape of a
 // YouTube watch page, the exception for a site, the per-site switch, dynamic rules, the counters and the journal. The pages write what they
 // saw in their #log; each test waits for the line it is about.
-package webtests
+package e2e_scenarios
 
 import "core:fmt"
 import "core:os"

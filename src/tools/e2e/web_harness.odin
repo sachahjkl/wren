@@ -1,17 +1,17 @@
 // The web tests: end-to-end tests of what lies under the browser's window (fetch, the network, pages and their scripts, with no shell
-// and no frame), one program of core:testing. One file per subject, each `#+private file` with its own helpers, its tests named after
-// it (cache_freshness, in cache.odin). What they share is here.
+// and no frame): a part of the test program, and none of them starts the browser it links. One file per subject (web_<subject>.odin), each
+// `#+private file` with its own helpers, its tests named after it (cache_freshness, in web_cache.odin). What they share is here.
 //
 // Tests go one at a time (-define:ODIN_TEST_THREADS=1) on one world: what the process keeps (the Wasm runtime, the image cache, the
 // stores) binds to the first loop it sees, so a loop per test would leave it on a dead one. The world is made as far as a test asks
 // (`begin`), and undone by the last test, `zz_the_process_ends_with_nothing_left`, which finds the leaks (-define:WREN_TRACK_MEMORY=true).
-// test_all runs one subject per process (src\tools\test_all\steps.odin web_run); `build\web_test.exe -tests:cache_freshness` runs one test, and
-// the program with no name runs them all.
+// They run on the program that tracks every allocation, one subject per process (src\tools\test_all\steps.odin web_run):
+// `build\e2e_test_check.exe -tests:cache_freshness,zz_the_process_ends_with_nothing_left`. This world and a browser in the process do not go together.
 //
 // The test server is in the process (`serve`). A page's script talks to its test through `wrenTest` (`open_page`: src/tools/testhost);
 // the console is the page's own and no result is read from it. Waits are for a state (`wait_until`, `wait_note`), and their limits only
 // end a run that fails.
-package webtests
+package e2e_scenarios
 
 import _ "wb:tools/crashtrace"   // a crash prints its symbolized stack
 
@@ -32,7 +32,7 @@ import "wb:wasm"
 
 BLOCKING_THREADS :: 2
 SCRIPT_CACHE_BYTES :: 16 << 20
-STORAGE_ROOT :: "build/web_test_profile"   // a folder per process in it: subjects run side by side, and each empties its profile first
+STORAGE_ROOT :: "build/web_profile"   // a folder per process in it: subjects run side by side, and each empties its profile first
 TEST_LIMIT :: 5 * time.Minute          // ends a test that hangs
 DEFAULT_WAIT :: 60.0                   // seconds: only ends a run that fails
 LOOP_LOOK_MS :: 5                      // the most the loop waits before a test looks again: anything that happens ends the wait sooner
@@ -245,7 +245,7 @@ zz_the_process_ends_with_nothing_left :: proc(t: ^testing.T) {
 		host.loop_destroy(&loop)
 	}
 	world_level = .None
-	testing.expect_value(t, testenv.mem_check("web_test"), 0)
+	testing.expect_value(t, testenv.mem_check("the web tests"), 0)
 	all := testhost.totals
 	fmt.printf("\n%d sections\n%d passed, %d failure(s), %d skipped\n", all.sections, all.passes, all.failures, all.skips)
 }

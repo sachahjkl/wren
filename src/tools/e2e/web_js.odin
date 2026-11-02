@@ -3,7 +3,7 @@
 // the Web IDL, events, microtasks, the wrapper cache and the lifetime of nodes across the two heaps, the bytecode cache, interruption,
 // hostile scripts. No server. A page reports with `is(want, what, ...got)`, a wrenTest.check of what console.log would have printed,
 // or a note; only what the console itself is about (the developer tools, what a stopped script says) is read from the console.
-package webtests
+package e2e_scenarios
 
 import "core:fmt"
 import "core:strings"

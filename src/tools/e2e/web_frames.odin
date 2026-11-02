@@ -5,7 +5,7 @@
 // X-Frame-Options, frame-ancestors, the parent's frame-src, navigation by src, by the frame itself and by window.open to a frame name, the
 // Permissions Policy's allow attribute, storage partitioning. A top page says what it saw with log() (wrenTest.note); its frames, which
 // have no wrenTest, tell it with postMessage.
-package webtests
+package e2e_scenarios
 
 import "core:fmt"
 import "core:math"
@@ -1177,7 +1177,7 @@ frames_permissions_policy :: proc(t: ^testing.T) {
 @(test)
 frames_measurements :: proc(t: ^testing.T) {
 	context.allocator = base.process_allocator()
-	if base.perf_skip("web_test frames: the time and memory of 20 srcdoc frames") { return }
+	if base.perf_skip("web tests, frames: the time and memory of 20 srcdoc frames") { return }
 	begin(t)
 	defer end()
 	serve(t)
