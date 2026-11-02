@@ -11,6 +11,8 @@ import win "core:sys/windows"
 @(private = "file") SYMOPT_UNDNAME_LOAD_LINES :: 0x2 | 0x10
 @(private = "file") SYM_NAME_CHARS :: 512
 @(private = "file") SESSION_HANDLE :: 0x57524558
+// What SYMBOL_INFOW says of its own size: with a name of one character, as the system's headers count it.
+@(private = "file") SYMBOL_INFO_BYTES :: 88
 
 @(private = "file")
 Symbol_Info :: struct {
@@ -61,7 +63,7 @@ pdb_close :: proc(s: ^Pdb_Session) { SymCleanup(s.handle) }
 // "name+0xoffset  file:line", or "" when no function holds it.
 pdb_name :: proc(s: ^Pdb_Session, address: u64) -> string {
 	sym: Symbol_Info
-	sym.size_of_struct = u32(size_of(Symbol_Info) - SYM_NAME_CHARS * size_of(u16) + size_of(u16))
+	sym.size_of_struct = SYMBOL_INFO_BYTES
 	sym.max_name_len = SYM_NAME_CHARS
 	displacement: u64
 	if !SymFromAddrW(s.handle, address, &displacement, &sym) { return "" }

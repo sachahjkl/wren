@@ -15,6 +15,9 @@ import "wb:remote/api"
 import "wb:tools/tooling"
 
 OUT_DIR :: "build/bench"
+WASM_CACHE :: "build/wasm_cache"
+// How long a Wren may take to answer: the first start of a build compiles the engine.
+START_WAIT_MS :: 120_000
 WREN_EXE :: "build/wren" + tooling.EXE_SUFFIX
 WREN_PROF_EXE :: "build/wren_prof" + tooling.EXE_SUFFIX
 EXIT_USAGE :: 2
@@ -121,12 +124,15 @@ start :: proc(w: ^Wren, o: Start) -> bool {
 	extra := make([dynamic]string, context.temp_allocator)
 	append(&extra, ..o.extra)
 	if o.url != "" { append(&extra, o.url) }
+	// (the engine's compiled code shared on the disk, as a test's: a throwaway profile would compile it at each start, for half a minute under load)
+	cwd, _ := os.get_working_directory(context.temp_allocator)
+	append(&env, fmt.tprintf("WREN_TEST_WASM_CACHE=%s/%s", cwd, WASM_CACHE))
 	opt := api.Launch_Options{exe = o.exe, profile = o.profile, window = o.window, dpi = o.dpi, prefs = o.prefs, extra = extra[:], no_address = o.url != "" || o.no_url,
 		start = {env = env[:], stderr = {file = o.stderr}}}
 	why: string
 	w.launched, why = api.launch(opt, context.allocator)
 	if why != "" { fmt.eprintfln("%s cannot start: %s", o.exe, why); return false }
-	if api.connect_launched(&w.session, &w.launched, api.START_WAIT_MS) != .None {
+	if api.connect_launched(&w.session, &w.launched, START_WAIT_MS) != .None {
 		fmt.eprintfln("%s: %s", o.exe, api.last_failure().message)
 		_, _ = api.finish(&w.session, &w.launched, false)
 		return false
@@ -148,8 +154,11 @@ settle :: proc(w: ^Wren) {
 hold :: proc(w: ^Wren, d: time.Duration) { _ = api.process_wait(&w.launched.process, int(time.duration_milliseconds(d))) }
 
 // A number of the answer of the last call (`Session.result`: all that a stats call says, api.Stats has what tests read). 0 when it is not there.
-result_number :: proc(s: ^api.Session, name: string) -> f64 {
-	v, err := json.parse_string(s.result, allocator = context.temp_allocator)
+result_number :: proc(s: ^api.Session, name: string) -> f64 { return json_number(s.result, name) }
+
+// A number of a JSON object's text. 0 when it is not there.
+json_number :: proc(text, name: string) -> f64 {
+	v, err := json.parse_string(text, allocator = context.temp_allocator)
 	if err != nil { return 0 }
 	o, is_object := v.(json.Object)
 	if !is_object { return 0 }

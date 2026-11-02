@@ -141,7 +141,9 @@ bench_webgl :: proc(o: ^Options) -> int {
 		_ = api.navigate(ses, file_url("examples/site/webgl-stress.html"))
 		_ = api.wait_frames(ses, WEBGL_SETTLE_FRAMES)
 		values := make([]f64, len(WEBGL_MEASURES), context.temp_allocator)
-		for name, i in WEBGL_MEASURES { values[i] = number(ses, fmt.tprintf("(window.__m = window.__m || measure()).then(m => m.%s)", name), true) }
+		said, said_e := api.eval(ses, "measure()", true, WEBGL_SECONDS)   // (it answers JSON)
+		if said_e != .None { fmt.eprintln(api.last_failure().message); return 1 }
+		for name, i in WEBGL_MEASURES { values[i] = json_number(said, name) }
 		st, _ := api.stats(ses)
 		report_row(&r, run_index, cold, demo, values[0], values[1], values[2], values[3], values[4], values[5], values[6], values[7], values[8], st.working_set_bytes / BYTES_PER_MB, process_working_set(st.gpu_process_id) / BYTES_PER_MB)
 	}
