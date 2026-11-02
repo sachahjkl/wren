@@ -177,6 +177,12 @@ pub(crate) fn host_override(hosts: &[(String, IpAddr)], host: &str) -> Option<Ip
     hosts.iter().find(|(name, _)| h == *name || h.strip_suffix(name.as_str()).is_some_and(|p| p.ends_with('.'))).map(|(_, ip)| *ip)
 }
 
+/// A name under .invalid, .test or .example (RFC 6761: reserved, never in the public DNS).
+pub(crate) fn never_resolves(host: &str) -> bool {
+    let h = host.trim_end_matches('.').to_ascii_lowercase();
+    ["invalid", "test", "example"].iter().any(|tld| h == *tld || h.ends_with(&format!(".{tld}")))
+}
+
 /// The addresses of `host`, through the settings' names first, then the system's resolver; with loopback_only, none that is not loopback.
 pub(crate) async fn resolve(host: &str, port: u16, s: &crate::Settings, info: &mut ConnInfo) -> Result<Vec<SocketAddr>, NetError> {
     let addrs = resolve_any(host, port, s, info).await?;
@@ -195,6 +201,10 @@ async fn resolve_any(host: &str, port: u16, s: &crate::Settings, info: &mut Conn
     }
     if let Some(ip) = host_override(&s.hosts, host) {
         return Ok(vec![SocketAddr::new(ip, port)]);
+    }
+    if s.loopback_only && never_resolves(host) {
+        // (RFC 6761's names that no resolver answers: what a test of a name that does not resolve uses)
+        return Err(NetError::new(error::NAME_NOT_RESOLVED));
     }
     if s.loopback_only && !host.eq_ignore_ascii_case("localhost") {
         // (not even asked of the system: a lookup is a way out too)
@@ -367,5 +377,14 @@ mod tests {
         assert_eq!(host_override(&hosts, "www2.not-web-platform.test"), Some("127.0.0.2".parse().unwrap()));
         assert_eq!(host_override(&hosts, "xweb-platform.test"), None);
         assert_eq!(host_override(&hosts, "example.com"), None);
+    }
+
+    #[test]
+    fn the_reserved_names_never_resolve() {
+        assert!(never_resolves("nonexistent.invalid"));
+        assert!(never_resolves("Example.Test."));
+        assert!(never_resolves("login.example"));
+        assert!(!never_resolves("example.com"));
+        assert!(!never_resolves("contest"));
     }
 }
