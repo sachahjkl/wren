@@ -145,6 +145,11 @@ spawn :: proc(d: Spawn) -> (p: Process, why: string) {
 	dir: win.LPCWSTR = nil
 	if d.dir != "" { dir = win.utf8_to_wstring(d.dir, context.temp_allocator) }
 	flags := u32(win.CREATE_SUSPENDED | win.CREATE_UNICODE_ENVIRONMENT)
+	switch d.console {
+	case .Inherited:
+	case .Own: flags |= win.CREATE_NO_WINDOW
+	case .None: flags |= win.DETACHED_PROCESS
+	}
 	if !win.CreateProcessW(nil, line, nil, nil, true, flags, environment_block(d.env), dir, &si, &pi) {
 		release(&p)
 		return p, last_error_text()

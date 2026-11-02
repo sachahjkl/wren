@@ -118,6 +118,7 @@ Session :: struct {
 @(init)
 set_environment :: proc "contextless" () {
 	context = base.process_context()
+	stacks_command()
 	os.set_env("WREN_DESKTOP_INTEGRATION", "off")
 	os.set_env("WREN_AUDIO_OUTPUT", "null")
 	os.set_env("WREN_SINGLE_INSTANCE", "off")
@@ -131,6 +132,20 @@ set_environment :: proc "contextless" () {
 	}
 	ensure_stack()
 }
+
+// A browser's teardown that hangs has `<program> ctl stacks <its pid> --out <file>` read its threads from outside (host.shutdown_watchdog): with no Wren in a
+// test's process, the program is this one, started again for that and nothing else.
+@(private = "file")
+stacks_command :: proc() {
+	program, err := os.get_executable_path(base.permanent_allocator())
+	if err == nil { host.shutdown_stacks_program = program }
+	if len(os.args) != STACKS_COMMAND_ARGS || os.args[1] != "ctl" || os.args[2] != "stacks" || os.args[4] != "--out" { return }
+	pid, _ := strconv.parse_int(os.args[3])
+	text, ok := api.process_stacks(pid)
+	_ = os.write_entire_file(os.args[5], transmute([]byte)text)
+	host.process_end(ok ? 0 : 1)
+}
+@(private = "file") STACKS_COMMAND_ARGS :: 6
 
 // The repository: this program is in its build folder (WREN_REPO says otherwise).
 repo_root :: proc(allocator := context.temp_allocator) -> string {
