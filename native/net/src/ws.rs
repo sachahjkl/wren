@@ -241,8 +241,11 @@ async fn socket(inner: &Arc<Inner>, st: &Arc<ReqState>, d: Desc, mut rx: Unbound
                         _ => continue,
                     };
                     let n = data.len();
+                    // counted before it is handed over: the host may have consumed it as soon as it is pushed, and what it
+                    // consumed first would be counted for ever, and a large message would pause the reader for good
+                    let queued = st.queued.fetch_add(n, Ordering::AcqRel) + n;
                     inner.push(Ev { kind: EV_WS_MESSAGE, tag, btype, data, ..Default::default() });
-                    if st.queued.fetch_add(n, Ordering::AcqRel) + n >= d.high_water {
+                    if queued >= d.high_water {
                         paused = true;
                     }
                 }

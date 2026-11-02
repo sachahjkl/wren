@@ -11,14 +11,14 @@ import "core:strings"
 import "core:testing"
 import "wb:e2e"
 
-@(private = "file") CURSOR_SIZE :: [2]int{2400, 2000}
+@(private = "file") CURSOR_SIZE :: [2]int{1400, 1000}   // (the cases are scrolled to; every frame of it is drawn, on a runner by the processor)
 @(private = "file") CURSOR_DPI :: 168                  // a scale that is not a whole number: an image's rounding shows
 @(private = "file") CURSOR_SCALE :: f64(CURSOR_DPI) / e2e.DPI_ONE
 @(private = "file") IMAGE_CSS_PX :: 32
 @(private = "file") PNG_HOTSPOT :: [2]f64{16, 16}
 @(private = "file") SVG_HOTSPOT :: [2]f64{3, 29}
 @(private = "file") HOTSPOT_WITHIN :: 1                // device px
-@(private = "file") TITLE_BAR_POINT :: e2e.Point{1400, 40}   // window px: the empty caption, below the resize band
+@(private = "file") TITLE_BAR_POINT :: e2e.Point{900, 40}  // window px: the empty caption, below the resize band
 
 @(private = "file") SYSTEM_KEYWORDS := [?]string{
 	"default", "help", "pointer", "progress", "wait", "crosshair", "text", "move", "not-allowed", "all-scroll",
