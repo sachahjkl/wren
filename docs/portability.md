@@ -216,7 +216,7 @@ system file dialogs through zenity, a real GPU in WSL (lavapipe was used), keybo
 
 - **AV1**: rav1d (already linked for AVIF), in software, on every system (`av1_soft.odin`); Windows keeps Media
   Foundation and now falls back to the software decoder when MF has no AV1 decoder (`backend_windows.odin`,
-  `media.software.av1_fallback`).
+  `media.software.av1_fallback`; `media.software.prefer_builtin` puts it first).
 - **Audio, next**: `symphonia` (AAC-LC, MP3, FLAC, Vorbis, PCM; pure Rust) for decoding, Opus by libopus (`opus` crate,
   C built by cc: no pure-Rust decoder is mature), `cpal` (ALSA, which PipeWire and PulseAudio serve) for the output, in
   `native/media`, behind `Audio_Decoder` / `Audio_Output`. New crates: pinned, `THIRD_PARTY.md`, `native/rust-crates.txt`.

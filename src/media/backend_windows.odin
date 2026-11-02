@@ -11,7 +11,10 @@ backend_name :: proc() -> string { return "Media Foundation" }
 backend_video_decoder :: proc(t: Track, prefer_gpu: bool) -> ^Video_Decoder {
 	// The system's decoder first (DXVA on the GPU where it can); when the machine has none for the codec (no Store
 	// extension for VP9 / AV1), fall to the built-in software decoder so the high resolutions still play.
-	if d := mf_video_create(t, prefer_gpu); d != nil { return d }
+	builtin := (t.codec == .VP9 && software_vp9_enabled()) || (t.codec == .AV1 && software_av1_enabled())
+	if !(builtin && software_is_preferred()) {
+		if d := mf_video_create(t, prefer_gpu); d != nil { return d }
+	}
 	#partial switch t.codec {
 	case .VP9: if software_vp9_enabled() { return vp9_soft_create(t) }
 	case .AV1: if software_av1_enabled() { return av1_soft_create(t) }

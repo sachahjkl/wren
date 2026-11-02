@@ -40,6 +40,7 @@ VIEW_WIDE :: 1200
 VIEW_NARROW :: 400
 VIEW_H :: 800
 WEBGL_PROCESS_TESTS :: 5
+RUNNER_DECODER_THREADS :: 2   // a software video's threads on a machine of four processors, a CI runner
 
 session:     page.Session_History
 navigations: [dynamic]string
@@ -175,6 +176,21 @@ adapter_probe :: proc() -> (testhost.Skip_Verdict, string) {
 @(test) jsweb_idb_keys :: proc(t: ^testing.T) { section(t, "idb_keys", tests = 4) }
 @(test) jsweb_htmlmedia :: proc(t: ^testing.T) { section(t, "htmlmedia", tests = 12, seconds = LONG_SECTION_SECONDS) }
 @(test) jsweb_mse :: proc(t: ^testing.T) { section(t, "mse", tests = 13, seconds = LONG_SECTION_SECONDS) }
+
+// The section again with the decoders of a machine that has no system AV1 decoder (a CI runner), on a machine that has one.
+@(test)
+jsweb_mse_builtin_decoders :: proc(t: ^testing.T) {
+	context.allocator = base.process_allocator()
+	section_begin(t)
+	defer section_end()
+	media.set_software_preferred(true)   // (after the settings of the section: they are the preferences')
+	media.set_software_threads(RUNNER_DECODER_THREADS)
+	defer {
+		media.set_software_preferred(false)
+		media.set_software_threads(0)
+	}
+	script(t, "mse", tests = 13, seconds = LONG_SECTION_SECONDS)
+}
 
 @(test)
 jsweb_idb :: proc(t: ^testing.T) {
