@@ -24,6 +24,9 @@ import "wb:e2e"
 @(private = "file") MENU_BACKGROUND := [2]int{6, 30}
 // A flat colour of a page with nothing near it.
 @(private = "file") FLAT_TOLERANCE :: 8
+// The images of examples/site/remote/late-script.htm (more than network.max_connections_per_host).
+@(private = "file") LATE_SCRIPT_IMAGES :: 18
+@(private = "file") LATE_SCRIPT_IMAGE :: "/site/images/alpha.png?n="
 
 // The shell's "page whose natural sizes layout reads" was set by the frame's own layout only: a layout forced by a script (the first thing a page does) before
 // any frame of the new page read the previous frame's page: another document (an image of the page before at the same place of the tree gave its size: 77 x 33) or
@@ -35,6 +38,22 @@ a_layout_read_by_a_script_uses_this_pages_images :: proc(t: ^testing.T) {
 	e2e.navigate(s, e2e.url(server, "/site/remote/layout-first.htm"))
 	first := e2e.eval(s, "window.first")
 	testing.expectf(t, first != "" && first[0] >= '0' && first[0] <= '9' && !strings.has_prefix(first, "77:"), "the image's width is this page's, not the page before's 77: %q", first)
+}
+
+// A wait for load waits for the document's readyState complete (examples/site/remote/late-script.htm): its parser-blocking script takes 1.5 s, and until it is there the page
+// has no script engine. Such a page was taken for one without scripts, loaded as soon as its HTML was: a capture of odin-lang.org (eleven scripts) was blank, its images not
+// yet asked for. Then, once the network is quiet, every image has arrived: more of them than the connections of one origin at a time, none left on its way.
+@(test)
+a_wait_for_load_waits_for_a_page_whose_script_engine_is_not_there_yet :: proc(t: ^testing.T) {
+	s := e2e.start(t, {dpi = e2e.DPI_ONE, url = e2e.url(e2e.test_server(t), "/site/remote/late-script.htm")})
+	testing.expect_value(t, e2e.eval(s, `document.readyState + " " + window.late`), "complete true")
+	e2e.wait_idle(s)
+	images, pending := 0, 0
+	for r in e2e.network(s).requests {
+		if !r.has_ms { pending += 1 } else if strings.contains(r.url, LATE_SCRIPT_IMAGE) && r.status == 200 { images += 1 }   // (not the favicon)
+	}
+	testing.expectf(t, pending == 0 && images == LATE_SCRIPT_IMAGES, "every image arrived: %d of %d, %d requests on their way", images, LATE_SCRIPT_IMAGES, pending)
+	testing.expect_value(t, e2e.eval(s, `[...document.images].filter((i) => i.complete && i.naturalWidth > 0).length`), fmt.tprintf("%d", LATE_SCRIPT_IMAGES))
 }
 
 // A script ticks every 20 ms and touches nothing, which draws no frame (frames_at_rest.odin); a timer that turns the box blue then reaches the screen.

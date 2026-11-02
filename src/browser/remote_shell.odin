@@ -555,9 +555,10 @@ page_has_script :: proc(t: ^Tab) -> bool {
 ////////////////////////////////
 // What a wait looks at
 
-// Has the tab's document finished loading (the document, its modules, its parse; its own load event when it has a
-// script engine)?
-tab_loaded :: proc(app: ^App, t: ^Tab, ask_script := true) -> bool {
+// Has the tab's document finished loading (the document, its modules, its parse; its readyState complete when its scripts
+// started)? Read from the page's own state, not asked of its script: a page whose engine is not there yet (its first
+// parser-blocking script still on its way) is loading, not a page without scripts; and looking makes nothing busy.
+tab_loaded :: proc(app: ^App, t: ^Tab) -> bool {
 	if t == nil { return false }
 	if t.kind != .Web { return true }   // about:config, about:history: made at once
 	if t.lazy { return false }
@@ -568,9 +569,7 @@ tab_loaded :: proc(app: ^App, t: ^Tab, ask_script := true) -> bool {
 		for s in load.slots { if s.state == .Pending || s.state == .Ready { return false } }
 		if load.bytes > 0 && !t.page.render.adopted { return false }   // (still being parsed)
 	}
-	if ask_script && page_has_script(t) {
-		if v, _, err := eval_sync(t, `document.readyState`); err == "" && v != `"complete"` { return false }
-	}
+	if s := t.page.scripts; s != nil && s.started && s.ready_state != .Complete { return false }
 	return true
 }
 
