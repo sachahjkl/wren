@@ -20,6 +20,7 @@ Cx :: struct {
 	alloc:    runtime.Allocator,    // owns everything the computed style points to
 	cenv:     css.Color_Env,
 	explicit: Prop_Set,             // color-valued properties that were given a concrete color
+	owned:    Groups,               // the groups of `c` copied for it (cx_take): the others are shared, not to be written
 }
 
 Len_Flag :: enum u8 { Auto, None, Normal, Percent, Negative, Intrinsic, Anchor, Anchor_Size }   // Anchor: anchor() and anchor-size(); Anchor_Size: the latter
@@ -162,6 +163,7 @@ parse_color :: proc(cx: ^Cx, vs: []css.Value) -> (css.Color, bool) {
 initial_computed :: proc(s: ^Settings) -> Computed {
 	c: Computed
 	mem.zero_item(&c)   // padding bytes included: computed styles are compared as raw memory
+	groups_initial(&c)
 	c.display = .Inline
 	c.z_auto = true
 	c.max_width = Length{kind = .None}
@@ -192,7 +194,6 @@ initial_computed :: proc(s: ^Settings) -> Computed {
 	c.tab_size, c.tab_spaces = 8, true
 	c.pointer_events = true
 	c.background_color = {0, 0, 0, 0}
-	c.background_position = {Length{kind = .Percent, v = 0}, Length{kind = .Percent, v = 0}}
 	c.outline_width = 3
 	c.outline_color = c.color
 	c.list_style_type = .Disc
@@ -202,11 +203,9 @@ initial_computed :: proc(s: ^Settings) -> Computed {
 	c.font_stretch = 100
 	c.text_decoration_thickness = auto_length
 	c.text_underline_offset = auto_length
-	c.transform_origin = {Length{kind = .Percent, v = 50}, Length{kind = .Percent, v = 50}}
-	c.perspective_origin = {Length{kind = .Percent, v = 50}, Length{kind = .Percent, v = 50}}
-	c.object_position = {Length{kind = .Percent, v = 50}, Length{kind = .Percent, v = 50}}
 	c.caret_color = Auto_Color{auto = true}
 	c.accent_color = Auto_Color{auto = true}
+	c.text_fill_color = Auto_Color{auto = true}
 	c.svg_fill = Svg_Paint{kind = .Color, color = {0, 0, 0, 1}}   // SVG's initial fill: black
 	c.svg_stroke = Svg_Paint{kind = .None}                       // SVG's initial stroke: none
 	c.stroke_width = 1
@@ -216,6 +215,17 @@ initial_computed :: proc(s: ^Settings) -> Computed {
 	c.column_width = auto_length
 	c.column_rule_width = COLUMN_RULE_MEDIUM_PX
 	c.orphans, c.widows = ORPHANS_WIDOWS_INITIAL, ORPHANS_WIDOWS_INITIAL
+	return c
+}
+
+// The initial values of the groups' properties (none depends on the preferences), into the groups `c` points to: once,
+// into the read-only `initial_groups` (props.odin).
+@(private)
+initial_groups_fill :: proc(c: ^Computed) {
+	c.background_position = {Length{kind = .Percent, v = 0}, Length{kind = .Percent, v = 0}}
+	c.transform_origin = {Length{kind = .Percent, v = 50}, Length{kind = .Percent, v = 50}}
+	c.perspective_origin = {Length{kind = .Percent, v = 50}, Length{kind = .Percent, v = 50}}
+	c.object_position = {Length{kind = .Percent, v = 50}, Length{kind = .Percent, v = 50}}
 	c.position_visibility = {.Anchor_Visible}
 	c.transform_box = .View_Box
 	// the list-valued properties keep their initial value as a one-element list, so that a missing list is never an
@@ -243,8 +253,7 @@ initial_computed :: proc(s: ^Settings) -> Computed {
 	c.background_attachments = SCROLL[:]
 	c.grid_auto_columns = AUTO_TRACKS[:]
 	c.grid_auto_rows = AUTO_TRACKS[:]
-	masks_initial(&c)
-	return c
+	masks_initial(c)
 }
 
 @(private) INITIAL_TRANSITION_PROPERTY := [1]Transition_Prop{{kind = .All}}
@@ -416,6 +425,7 @@ number_in :: proc(vs: []css.Value, lo, hi: f64) -> (f32, bool) {
 
 // Computes `p` from the specified value `vs`. Returns false when the value is invalid (the declaration then has no effect).
 apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
+	cx_take(cx, p)
 	c := cx.c
 	s := cx.settings
 	switch p {

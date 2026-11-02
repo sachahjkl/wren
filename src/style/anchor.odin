@@ -145,6 +145,7 @@ try_rule_of :: proc(e: ^Engine, doc: ^dom.Document, h: base.Handle, name: string
 @(private)
 try_options_resolve :: proc(cx: ^Cx, env: ^Var_Env, e: ^Engine, doc: ^dom.Document, h: base.Handle) {
 	c := cx.c
+	cx_take(cx, .Position_Try_Fallbacks)
 	opts := make([]Try_Option, len(c.position_try_fallbacks), cx.alloc)
 	copy(opts, c.position_try_fallbacks)
 	c.position_try_fallbacks = opts
@@ -157,7 +158,7 @@ try_options_resolve :: proc(cx: ^Cx, env: ^Var_Env, e: ^Engine, doc: ^dom.Docume
 		tmp := new(Computed, context.temp_allocator)
 		tmp^ = c^
 		sub := cx^
-		sub.c = tmp
+		sub.c, sub.owned = tmp, {}   // (tmp shares the element's groups: its own copies on write)
 		// (flow-relative declarations mean what they mean for this element, as in the cascade)
 		flow := flow_map_for(c.writing_mode, c.direction == .Rtl)
 		for &d in rule.decls {
@@ -176,8 +177,8 @@ try_options_resolve :: proc(cx: ^Cx, env: ^Var_Env, e: ^Engine, doc: ^dom.Docume
 				}
 			}
 			switch css_wide_keyword(vals) {
-			case "inherit": copy_prop(tmp, cx.parent != nil ? cx.parent : cx.initial, prop)
-			case "initial", "unset": copy_prop(tmp, cx.initial, prop)
+			case "inherit": cx_copy_prop(&sub, cx.parent != nil ? cx.parent : cx.initial, prop)
+			case "initial", "unset": cx_copy_prop(&sub, cx.initial, prop)
 			case "revert", "revert-layer":
 			case: apply_prop(&sub, prop, vals)
 			}
@@ -659,7 +660,8 @@ canonical_declared :: proc(p: Prop, vs: []css.Value, alloc := context.temp_alloc
 		if a, ok := parse_position_area(split_items(css.trim_values(vs))); ok { return area_text(a) }
 	case .Position_Try_Fallbacks:
 		if opts, ok := parse_try_fallbacks(&cx, vs); ok {
-			c := Computed{position_try_fallbacks = opts}
+			rare := Rare_Group{position_try_fallbacks = opts}
+			c := Computed{rare_group = &rare}
 			return try_fallbacks_text(&c)
 		}
 	case .Top, .Right, .Bottom, .Left, .Margin_Top, .Margin_Right, .Margin_Bottom, .Margin_Left,

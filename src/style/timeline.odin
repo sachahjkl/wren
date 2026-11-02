@@ -576,6 +576,7 @@ transition_progress :: proc(tr: ^Transition, now: f64) -> (phase: Phase, eased: 
 @(private)
 transition_value :: proc(tr: ^Transition, now: f64, dst: ^Computed, ctx: ^Interp_Ctx) {
 	phase, t := transition_progress(tr, now)
+	prop_take(dst, tr.prop, ctx.alloc)
 	if phase == .Before { copy_prop(dst, tr.from, tr.prop); return }   // transitions fill backwards
 	if tr.discrete || !interpolate_prop(dst, tr.from, tr.to, tr.prop, t, ctx) { discrete_prop(dst, tr.from, tr.to, tr.prop, t) }
 }
@@ -742,6 +743,8 @@ apply_run :: proc(r: ^Anim_Run, st: Run_State, dst, scratch: ^Computed, ctx: ^In
 		// implicit 0% and 100% keyframes take the underlying value
 		if list[0].offset > 0 { inject_at(&list, 0, Kf{0, nil, r.spec.easing, .Replace}) }
 		if list[len(list) - 1].offset < 1 { append(&list, Kf{1, nil, r.spec.easing, .Replace}) }
+		prop_take(dst, p, ctx.alloc)
+		prop_take(scratch, p, context.temp_allocator)
 		copy_prop(scratch, dst, p)
 		x := st.directed
 		k := 0
@@ -757,11 +760,13 @@ apply_run :: proc(r: ^Anim_Run, st: Run_State, dst, scratch: ^Computed, ctx: ^In
 		if ka.composition != .Replace && ka.c != nil {
 			ca := new(Computed, context.temp_allocator)
 			ca^ = scratch^
+			prop_take(ca, p, context.temp_allocator)
 			if add_prop(ca, scratch, ka.c, p, ctx) { a = ca }
 		}
 		if kb.composition != .Replace && kb.c != nil {
 			cb := new(Computed, context.temp_allocator)
 			cb^ = scratch^
+			prop_take(cb, p, context.temp_allocator)
 			if add_prop(cb, scratch, kb.c, p, ctx) { b = cb }
 		}
 		if !interpolate_prop(dst, a, b, p, t, ctx) { discrete_prop(dst, a, b, p, t) }

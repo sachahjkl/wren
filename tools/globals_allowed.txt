@@ -351,6 +351,8 @@ style/props.odin inherited_list const  # ... the table
 style/props.odin inherited_runs const  # ... the table (byte runs of the inherited properties, built once)
 style/props.odin computed_fields const  # ... the table
 style/props.odin prop_slots const  # ... the table
+style/props.odin group_fields const  # ... the table (the fields of each group of a computed style)
+style/props.odin initial_groups const  # ... the groups of the initial values: read-only pages, built once
 style/restyle_dom.odin trace_roots process  # a trace for debugging (WREN_RESTYLE_TRACE), one thread at a time
 style/restyle_dom.odin trace_note process  # ... the anchor being applied
 style/restyle_dom.odin trace_why process  # ... why it flipped

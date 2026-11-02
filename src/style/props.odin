@@ -2,6 +2,7 @@ package style
 
 import "base:runtime"
 import "core:mem"
+import "core:mem/virtual"
 import "core:slice"
 import "core:sync"
 import "wb:base"
@@ -47,44 +48,190 @@ ps_of :: proc "contextless" (props: ..Prop) -> (r: Prop_Set) {
 @(private) inherited_set: Prop_Set
 @(private) inherited_list: [len(INHERITED_PROPS)]Prop
 
+// A field of a Computed: in the struct itself (group Main) or in one of its groups, at `offset` from the group's start.
 Field_Info :: struct {
+	group:  Group,
 	offset: uintptr,
 	size:   int,
 	ti:     ^runtime.Type_Info,
 	plain:  bool,     // no pointers and no padding: equal exactly when the bytes are
+	name:   string,
 }
 
+// Every field, group by group (the group pointers themselves left out); `group_fields[g]` is the run of group g.
 @(private) computed_fields: [dynamic]Field_Info
+@(private) group_fields: [Group][]Field_Info
 
-// Where each property lives in a Computed: one or two (offset, size) pairs, so copying needs no dispatch.
+// Where each property lives in a Computed: its group, and one or two (offset, size) pairs in it, so copying needs no
+// dispatch.
 @(private)
-Prop_Slot :: struct { off: [2]uintptr, size: [2]int, ti: [2]^runtime.Type_Info }
+Prop_Slot :: struct { group: Group, off: [2]uintptr, size: [2]int, ti: [2]^runtime.Type_Info }
 @(private) prop_slots: [Prop]Prop_Slot
+
+// The groups of the initial values, shared by every style that sets none of a group's properties: read-only pages, so
+// that a write into a group a style does not own faults at once instead of changing the initial values of a process.
+@(private) initial_groups: [Group]rawptr
 
 @(private)
 props_init :: proc() {
 	sync.once_do(&props_once, proc() {
+		// a probe whose groups are its own: a field's address says which group it is in
 		probe: Computed
+		probe_groups: [Group][GROUP_MAX_BYTES]u8
+		for g in Group { if g != .Main { group_slot(&probe, g)^ = &probe_groups[g] } }
+		group_of :: proc(probe: ^Computed, groups: ^[Group][GROUP_MAX_BYTES]u8, addr: rawptr) -> (Group, uintptr) {
+			for g in Group {
+				lo := g == .Main ? uintptr(probe) : uintptr(&groups[g])
+				if uintptr(addr) >= lo && uintptr(addr) < lo + uintptr(group_size(g)) { return g, uintptr(addr) - lo }
+			}
+			panic("a property outside its computed style")
+		}
 		for p in Prop {
 			a, b := prop_fields(&probe, p)
 			sl := &prop_slots[p]
-			sl.off[0], sl.size[0], sl.ti[0] = uintptr(a.data) - uintptr(&probe), type_info_of(a.id).size, type_info_of(a.id)
-			if b.data != nil { sl.off[1], sl.size[1], sl.ti[1] = uintptr(b.data) - uintptr(&probe), type_info_of(b.id).size, type_info_of(b.id) }
+			sl.group, sl.off[0] = group_of(&probe, &probe_groups, a.data)
+			sl.size[0], sl.ti[0] = type_info_of(a.id).size, type_info_of(a.id)
+			if b.data != nil {
+				g: Group
+				g, sl.off[1] = group_of(&probe, &probe_groups, b.data)
+				assert(g == sl.group, "the two fields of a property in two groups")
+				sl.size[1], sl.ti[1] = type_info_of(b.id).size, type_info_of(b.id)
+			}
 		}
 		for p, i in INHERITED_PROPS {
+			assert(prop_slots[p].group == .Main, "an inherited property in a group")
 			inherited_table[p] = true
 			ps_add(&inherited_set, p)
 			inherited_list[i] = p
 		}
-		ti := runtime.type_info_base(type_info_of(Computed))
-		st := ti.variant.(runtime.Type_Info_Struct)
 		computed_fields = make([dynamic]Field_Info, base.permanent_allocator())
-		for i in 0 ..< int(st.field_count) {
-			ft := st.types[i]
-			append(&computed_fields, Field_Info{offset = st.offsets[i], size = ft.size, ti = ft, plain = is_plain(ft)})
+		starts: [Group]int
+		for g in Group {
+			starts[g] = len(computed_fields)
+			st := runtime.type_info_base(group_type(g)).variant.(runtime.Type_Info_Struct)
+			for i in 0 ..< int(st.field_count) {
+				if st.usings[i] { continue }   // (Main: the group pointers)
+				ft := st.types[i]
+				append(&computed_fields, Field_Info{group = g, offset = st.offsets[i], size = ft.size, ti = ft, plain = is_plain(ft), name = st.names[i]})
+			}
 		}
+		for g in Group { group_fields[g] = computed_fields[starts[g]:g == max(Group) ? len(computed_fields) : starts[Group(int(g) + 1)]] }
 		inherited_runs_build()
+		initial_groups_build()
 	})
+}
+
+// The largest group (the probe's room for each).
+@(private) GROUP_MAX_BYTES :: 512
+
+@(private)
+group_type :: proc(g: Group) -> ^runtime.Type_Info {
+	switch g {
+	case .Main: return type_info_of(Computed)
+	case .Background: return type_info_of(Background_Group)
+	case .Transform: return type_info_of(Transform_Group)
+	case .Motion: return type_info_of(Motion_Group)
+	case .Grid: return type_info_of(Grid_Group)
+	case .Mask: return type_info_of(Mask_Group)
+	case .Rare: return type_info_of(Rare_Group)
+	}
+	return nil
+}
+
+@(private)
+group_size :: #force_inline proc(g: Group) -> int { return group_type(g).size }
+
+#assert(size_of(Background_Group) <= GROUP_MAX_BYTES && size_of(Transform_Group) <= GROUP_MAX_BYTES && size_of(Motion_Group) <= GROUP_MAX_BYTES &&
+	size_of(Grid_Group) <= GROUP_MAX_BYTES && size_of(Mask_Group) <= GROUP_MAX_BYTES && size_of(Rare_Group) <= GROUP_MAX_BYTES)
+
+// The pointer to group `g` in `c` (not Main).
+@(private)
+group_slot :: #force_inline proc "contextless" (c: ^Computed, g: Group) -> ^rawptr {
+	switch g {
+	case .Main:
+	case .Background: return (^rawptr)(&c.background_group)
+	case .Transform: return (^rawptr)(&c.transform_group)
+	case .Motion: return (^rawptr)(&c.motion_group)
+	case .Grid: return (^rawptr)(&c.grid_group)
+	case .Mask: return (^rawptr)(&c.mask_group)
+	case .Rare: return (^rawptr)(&c.rare_group)
+	}
+	return nil
+}
+
+// Where the fields of group `g` of `c` start.
+@(private)
+group_base :: #force_inline proc "contextless" (c: ^Computed, g: Group) -> uintptr {
+	return g == .Main ? uintptr(c) : uintptr(group_slot(c, g)^)
+}
+
+// `c` gets a copy of its group `g` of its own, in `alloc` (zeroed when it had none: a blank Computed), which it may
+// then write. The cascade takes each group once per element (cx_take); this copies every time.
+group_take :: proc(c: ^Computed, g: Group, alloc: runtime.Allocator) {
+	if g == .Main { return }
+	slot := group_slot(c, g)
+	ti := group_type(g)
+	data, _ := mem.alloc(ti.size, ti.align, alloc)
+	if slot^ != nil { mem.copy(data, slot^, ti.size) }
+	slot^ = data
+}
+
+// `c` may write property `p` (group_take of its group).
+prop_take :: #force_inline proc(c: ^Computed, p: Prop, alloc: runtime.Allocator) { group_take(c, prop_slots[p].group, alloc) }
+
+// The cascade's element owns group `g` of the style it builds: copied from what it shared on the first write.
+@(private)
+cx_take :: #force_inline proc(cx: ^Cx, p: Prop) {
+	g := prop_slots[p].group
+	if g == .Main || g in cx.owned { return }
+	group_take(cx.c, g, cx.alloc)
+	cx.owned += {g}
+}
+
+// copy_prop into the style the cascade builds.
+@(private)
+cx_copy_prop :: proc(cx: ^Cx, src: ^Computed, p: Prop) {
+	cx_take(cx, p)
+	copy_prop(cx.c, src, p)
+}
+
+// The groups of the initial values, once (props_init): read-only from then on.
+@(private)
+initial_groups_build :: proc() {
+	total := 0
+	for g in Group { if g != .Main { total += mem.align_forward_int(group_size(g), GROUP_ALIGN) } }
+	block, err := virtual.reserve_and_commit(uint(total))
+	assert(err == nil, "no memory for the initial values")
+	probe: Computed
+	at := 0
+	for g in Group {
+		if g == .Main { continue }
+		initial_groups[g] = &block[at]
+		group_slot(&probe, g)^ = initial_groups[g]
+		at += mem.align_forward_int(group_size(g), GROUP_ALIGN)
+	}
+	initial_groups_fill(&probe)
+	ok := virtual.protect(raw_data(block), uint(total), {.Read})
+	assert(ok, "the initial values cannot be made read-only")
+}
+
+@(private) GROUP_ALIGN :: 16
+
+// A style whose groups are those of the initial values.
+@(private)
+groups_initial :: proc(c: ^Computed) {
+	props_init()
+	for g in Group { if g != .Main { group_slot(c, g)^ = initial_groups[g] } }
+}
+
+// The properties that are not inherited take their initial values (an anonymous box's style): `initial`'s groups,
+// and its values of the others.
+reset_noninherited :: proc(dst, initial: ^Computed) {
+	props_init()
+	for g in Group { if g != .Main { group_slot(dst, g)^ = group_slot(initial, g)^ } }
+	for p in Prop {
+		if prop_slots[p].group == .Main && !inherited_table[p] { copy_prop(dst, initial, p) }
+	}
 }
 
 // The bytes of the inherited properties in a Computed as runs: the slots in offset order, two joined when only padding
@@ -102,7 +249,8 @@ inherited_runs_build :: proc() {
 	slice.sort_by(runs[:], proc(a, b: Byte_Run) -> bool { return a.off < b.off })
 	// a byte belongs to a field unless it is padding: what lies between two runs may be joined only when no field is there
 	field_at :: proc(lo, hi: uintptr) -> bool {
-		for f in computed_fields { if f.offset < hi && f.offset + uintptr(f.size) > lo { return true } }
+		st := runtime.type_info_base(type_info_of(Computed)).variant.(runtime.Type_Info_Struct)   // (the group pointers included)
+		for i in 0 ..< int(st.field_count) { if st.offsets[i] < hi && st.offsets[i] + uintptr(st.types[i].size) > lo { return true } }
 		return false
 	}
 	inherited_runs = make([dynamic]Byte_Run, base.permanent_allocator())
@@ -390,25 +538,32 @@ prop_fields :: proc(c: ^Computed, p: Prop) -> (a: any, b: any) {
 field_size :: #force_inline proc(a: any) -> int { return type_info_of(a.id).size }
 
 // Copies one property from `src` into `dst` (inherit, initial, unset and inheritance itself all use it). Shallow: pointers
-// are shared, which is right inside one `Styled` arena.
+// are shared, which is right inside one `Styled` arena. A property of a group: `dst` owns its group (cx_take,
+// prop_take), or shares the very group of `src` (nothing to copy).
 copy_prop :: proc(dst, src: ^Computed, p: Prop) {
 	sl := &prop_slots[p]
-	mem.copy(rawptr(uintptr(dst) + sl.off[0]), rawptr(uintptr(src) + sl.off[0]), sl.size[0])
-	if sl.size[1] > 0 { mem.copy(rawptr(uintptr(dst) + sl.off[1]), rawptr(uintptr(src) + sl.off[1]), sl.size[1]) }
+	d, s := group_base(dst, sl.group), group_base(src, sl.group)
+	if d == s { return }
+	mem.copy(rawptr(d + sl.off[0]), rawptr(s + sl.off[0]), sl.size[0])
+	if sl.size[1] > 0 { mem.copy(rawptr(d + sl.off[1]), rawptr(s + sl.off[1]), sl.size[1]) }
 }
 
 // Value equality of one property.
 prop_equal :: proc(a, b: ^Computed, p: Prop) -> bool {
 	sl := &prop_slots[p]
+	ba, bb := group_base(a, sl.group), group_base(b, sl.group)
+	if ba == bb { return true }
 	for k in 0 ..< 2 {
 		if sl.size[k] == 0 { continue }
-		if !deep_equal(rawptr(uintptr(a) + sl.off[k]), rawptr(uintptr(b) + sl.off[k]), sl.ti[k]) { return false }
+		if !deep_equal(rawptr(ba + sl.off[k]), rawptr(bb + sl.off[k]), sl.ti[k]) { return false }
 	}
 	return true
 }
 
-// Copies one property and everything it points to into `alloc`, so the value outlives the source's arena.
+// Copies one property and everything it points to into `alloc`, so the value outlives the source's arena. `dst` gets
+// its own copy of the property's group.
 clone_prop :: proc(dst, src: ^Computed, p: Prop, alloc: runtime.Allocator) {
+	prop_take(dst, p, alloc)
 	copy_prop(dst, src, p)
 	da, db := prop_fields(dst, p)
 	deep_clone(da.data, type_info_of(da.id), alloc)

@@ -1525,13 +1525,12 @@ verify_styles :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, allocator := c
 						case a.marker_text != b.marker_text: what = fmt.tprintf("marker %q, expected %q", a.marker_text, b.marker_text)
 						case:
 							// a field no property owns: name it from the struct's type info
-							st := runtime.type_info_base(type_info_of(Computed)).variant.(runtime.Type_Info_Struct)
-							for f, i in computed_fields {
-								pa, pb := rawptr(uintptr(a) + f.offset), rawptr(uintptr(b) + f.offset)
+							for f in computed_fields {
+								pa, pb := rawptr(group_base(a, f.group) + f.offset), rawptr(group_base(b, f.group) + f.offset)
 								same := f.plain ? mem.compare_ptrs(pa, pb, f.size) == 0 : deep_equal(pa, pb, f.ti)
 								if same { continue }
-								what = fmt.tprintf("field %s", st.names[i])
-								if st.names[i] == "custom" { what = fmt.tprintf("custom properties %s", custom_diff(a.custom, b.custom)) }
+								what = fmt.tprintf("field %s", f.name)
+								if f.name == "custom" { what = fmt.tprintf("custom properties %s", custom_diff(a.custom, b.custom)) }
 								break
 							}
 						}
