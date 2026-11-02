@@ -1,7 +1,8 @@
 # Wren licences
 
-Wren is a beta under development and every version is free. A **supporter licence** only supports its development: it
-unlocks nothing, nothing in Wren checks it, and no window or reminder asks for one. The only visible effect is one
+Wren is a beta under development and every version is free. During the beta a **supporter licence** only supports its
+development: it unlocks nothing, nothing in Wren checks it, and no window or reminder asks for one. Once Wren is out of
+beta, the updates that follow need a licence, and one bought during the beta covers them. The only visible effect is one
 line of `about:wren`:
 
 - without a licence: `Unregistered — free during the beta · Support Wren`;
