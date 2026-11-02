@@ -13,6 +13,7 @@ Semantic Versioning, since a patch version can add or remove features.
 ## [0.6.25] - 2026-11-02
 
 ### Added
+- **Windows that scripts open**: `window.open()` to `_blank` or to a new name, and a script's click on a link to one, open a tab whose window has an opener (`window.opener`), a name other windows find, `postMessage` both ways, `closed`, and `close()` by the script that opened it; `noopener` and `noreferrer` (features, or `rel`) cut the relationship and `window.open` then returns null. A `Cross-Origin-Opener-Policy` that does not match the opener's severs it as other browsers do: the popup's opener is null and the opener sees the popup closed. The WPT runner's pages open the same windows, without a shell.
 - **Names resolved by the browser itself, and connections kept on this machine** (built-in network stack): `network.hosts` (`name=address` pairs; a name stands for its subdomains too) answers those names without asking the system or a hosts file, and `network.loopback_only` (or `WREN_NETWORK_LOOPBACK_ONLY=1`) makes any connection to an address that is not this machine's fail at once, named on the standard error. The tests run with both: web-platform-tests under its own names (`web-platform.test`, `www1.web-platform.test`...), and nothing tested reaches the Internet.
 - `wren ctl stacks <process id>` prints the call stack of each thread of a running process, named with its PDB (`--dump` adds a minidump). `wren ctl quit` prints them when the Wren does not end, and the shutdown watchdog leaves them beside `shutdown.log` before it ends a stuck browser.
 - **WebGL in workers**: `OffscreenCanvas.getContext("webgl")` and `("webgl2")` in a worker, `transferToImageBitmap`, and `canvas.transferControlToOffscreen()`, whose OffscreenCanvas goes to a worker in a message and whose frames (WebGL or 2D) reach the page's canvas.
@@ -40,6 +41,7 @@ Semantic Versioning, since a patch version can add or remove features.
 - **The scroll bars of the browser's own interface show only when they're useful**: while the pointer is over their box or one is held. `browser.ui.scrollbar_autohide` turns this off. The scroll bars of pages don't change.
 
 ### Fixed
+- **The site's gallery and the README name the captures they show**: those of 0.6.25 (`wrentool shots`, the browser's own render), not 0.6.1, with their real size (1600 by 1000, no longer 1580 by 990, so no picture is stretched); the counts of the web API (58 modules, 1,482 functions, 2,256 conformance cases) and of the bindings (3,821 of 5,310 members) on the README and the site follow the code.
 - **A frame of its parent's origin shares its agent cluster on plain http too** (a `WebAssembly.Module` posted to it arrived nowhere outside a secure context), and **the cross-origin resource policy check compares the request's own origin**: a no-cors fetch redirected through another origin back to the page's own origin is no longer refused by `Cross-Origin-Resource-Policy: same-origin`.
 - **Each frame keeps its own built-ins.** `frame.contentWindow.Array`, `Object`, `Promise`, `Error` and the other ECMAScript built-ins are the frame's, no longer the reader's: `w.Array !== Array`, `new w.Object` is an object of the frame, an array of another frame is not `instanceof Array` (`Array.isArray` still says true), and what a frame throws is a `w.TypeError`. A listener of another frame that cannot be called fails with a `TypeError` of that frame, reported there (`dom/events/EventListener-handleEvent-cross-realm.html`).
 - **`Browser.setWindowBounds` with only `left` or only `top`** keeps the other one: a real window went to 0 on the side left out. The remote methods now only decode their request and call the typed procedure that a program in the browser's process calls too, so the channel and the in-process tests read one implementation of everything.
@@ -791,7 +793,6 @@ The highlights are in [docs/releases/v0.3.0.md](docs/releases/v0.3.0.md): a Java
 JavaScript, inside WebAssembly: WebAssembly is still the only execution engine.
 
 ### Added
-
 - **JavaScript.** QuickJS-ng 0.17.0 compiled to a WebAssembly module, pre-initialized at build time and embedded in
   `wren.exe`; one sandboxed instance per page and per JavaScript worker, with a heap cap
   (`javascript.max_heap_bytes`), a clean stop for long scripts (`javascript.slow_script_ms`) and the Wasm deadline
@@ -831,7 +832,6 @@ JavaScript, inside WebAssembly: WebAssembly is still the only execution engine.
 - User-Agent `Wren/0.2`.
 
 ### Fixed
-
 - About 90 problems found by a review of the whole engine: use-after-frees (microtasks during host tasks, fetch,
   workers, streams), `file:` pages leaving their folder (escaped separators, junctions, links, alternate streams,
   device names), NTLM leaks through `file://server/share`, hostile content that crashed or froze the browser (huge

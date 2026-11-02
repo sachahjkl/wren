@@ -64,10 +64,11 @@ address :: proc(url: string) -> string {
 }
 
 // A barrier after the page or an action: it is stable, or the limit is over and the picture is what it is.
-at_rest :: proc(s: ^api.Session) {
-	_ = api.wait_load(s, PAGE_LIMIT)
-	_ = api.wait_stable(s, PAGE_LIMIT)
-	_ = api.wait_frames(s, AFTER_ACTION_FRAMES)
+// (false: the page did not load or settle in time; a picture taken then shows a page that is still blank)
+at_rest :: proc(s: ^api.Session) -> bool {
+	if api.wait_load(s, PAGE_LIMIT) != .None { return false }
+	if api.wait_stable(s, PAGE_LIMIT) != .None { return false }
+	return api.wait_frames(s, AFTER_ACTION_FRAMES) == .None
 }
 
 // `key:Ctrl+T; type:text; click:x,y; dclick:x,y; rclick:x,y`, window points. Each is waited for.
@@ -91,7 +92,7 @@ run_actions :: proc(s: ^api.Session, actions: string) -> bool {
 		case: fmt.eprintfln("no action %s", what); return false
 		}
 		if e != .None { fmt.eprintfln("%s: %s", a, api.last_failure().message); return false }
-		at_rest(s)
+		_ = at_rest(s)
 	}
 	return true
 }
@@ -113,7 +114,7 @@ run_capture :: proc(args: []string) -> int {
 	w: bench.Wren
 	if !bench.start(&w, {exe = tooling.flag(f, "-Exe", bench.WREN_EXE), size = {tooling.flag_int(f, "-Width", bench.DEFAULT_SIZE.x), tooling.flag_int(f, "-Height", bench.DEFAULT_SIZE.y)}, prefs = tooling.flag_list(f, "-Pref"), url = address(tooling.flag(f, "-Url"))}) { return 1 }
 	defer bench.stop(&w)
-	at_rest(&w.session)
+	_ = at_rest(&w.session)
 	if !run_actions(&w.session, tooling.flag(f, "-Actions")) { return 1 }
 	if !take(&w.session, tooling.flag(f, "-Out"), {target = tooling.flag_has(f, "-Page") ? .Page : .Window}) { return 1 }
 	fmt.println(tooling.flag(f, "-Out"))
@@ -139,8 +140,7 @@ run_shots :: proc(args: []string) -> int {
 		append(&prefs, SHOT_PREFS)
 		append(&prefs, ..s.prefs)
 		if !bench.start(&w, {exe = exe, size = size, prefs = prefs[:], url = address(s.url)}) { return 1 }
-		at_rest(&w.session)
-		good := run_actions(&w.session, s.actions) && take(&w.session, png)
+		good := at_rest(&w.session) && run_actions(&w.session, s.actions) && take(&w.session, png)
 		bench.stop(&w)
 		fmt.printfln("%s %s", good ? "shot" : "MISSING", s.name)
 		if !good { missing += 1; continue }
@@ -168,16 +168,16 @@ hero_shots :: proc(exe: string, size: [2]int, convert: bool) -> bool {
 	if !bench.start(&w, {exe = exe, size = size, dpi = api.DPI_ONE, url = address(HERO_PAGES[0][1])}) { return false }
 	defer bench.stop(&w)
 	s := &w.session
-	at_rest(s)
+	_ = at_rest(s)
 	for p in HERO_PAGES[1:] {
 		if _, e := api.new_tab(s, address(p[1]), .Load); e != .None { fmt.eprintln(api.last_failure().message); return false }
-		at_rest(s)
+		_ = at_rest(s)
 	}
 	list, e := api.targets(s)
 	if e != .None || len(list.tabs) != len(HERO_PAGES) { fmt.eprintfln("expected %d tabs, got %d", len(HERO_PAGES), len(list.tabs)); return false }
 	for p, i in HERO_PAGES {
 		if api.activate_tab(s, list.tabs[i].id) != .None { fmt.eprintln(api.last_failure().message); return false }
-		at_rest(s)
+		_ = at_rest(s)
 		png := fmt.tprintf("%s/%s.png", RAW_DIR, p[0])
 		if !take(s, png, {settle = HERO_SETTLE_FRAMES, has_settle = true}) { return false }
 		fmt.printfln("shot %s", p[0])
