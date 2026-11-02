@@ -20,7 +20,7 @@ import "wb:tools/tooling"
 // The key: Odin's version, the run's flags, the step's name and commands, and the path and hash of every input, which `Step.inputs` says:
 //   - .Packages: the files of the packages it compiles and runs, of every package they import (wb:, toolkit:, web:, relative: parsed from the sources; every build tag), what they #load, the
 //     libraries they link, the paths written in their strings ("examples/site/...": what a test reads while it runs), and examples/ and assets/;
-//   - .Tree: the whole tree a build and a script can read, tests of packages aside; .Everything: docs/, site/, changelog.d/ and licence/ too; .Dirs: only its folders.
+//   - .Tree: the whole tree a build and a script can read, tests of packages aside; .Sources: that with the tests; .Everything: docs/, site/, changelog.d/ and licence/ too; .Dirs: only its folders.
 // What cannot be resolved (an unknown collection, an import that names no folder) falls back on the whole tree: an input too many reruns a step, one too few could hide a failure.
 // Only a pass is kept, and a key is computed again when the step has ended: a source edited during the step leaves no result. A result lasts CACHE_MAX_AGE_DAYS days (a certificate, a date
 // in a test: what no file says). cache_test.odin tests this file.
@@ -386,6 +386,7 @@ step_inputs :: proc(c: ^Cache, s: ^Step, allocator := context.temp_allocator) ->
 	switch s.inputs {
 	case .Everything: files = tree_files(c, true, true, allocator)
 	case .Tree: files = tree_files(c, false, false, allocator)
+	case .Sources: files = tree_files(c, false, true, allocator)
 	case .Dirs:
 		list := make([dynamic]string, allocator)
 		for rel in c.stamps { if rel not_in c.outside && in_dirs(rel, s.packages) { append(&list, rel) } }

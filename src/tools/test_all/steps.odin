@@ -38,6 +38,7 @@ Products :: bit_set[Product]
 Input_Kind :: enum {
 	Packages,     // the files of the packages its actions compile and of everything they import, and what a test reads while it runs
 	Tree,         // everything a build or a script can read, tests of packages aside: a step that runs a script or the browser
+	Sources,      // that with the tests of packages: a step that reads the sources (a lint)
 	Everything,   // that and the documentation, the changelog, the licence Worker: what is about them, what generates files
 	Dirs,         // only the folders of `Step.packages`
 }
@@ -262,7 +263,8 @@ windows_table :: proc(cfg: ^Config) -> []Step {
 	e2e_step(&t, "the docked developer tools while their splitter is dragged (src\\tools\\e2e\\devtools_split.odin: for each panel and side, the first frame at a new width is the settled one; no window at all)", "devtools_split", {.No_CI})
 	e2e_step(&t, "the address bar's suggestions end to end (src\\tools\\e2e\\urlbar.odin: the inline completion and Enter, Shift+Delete and the cross of a row against the profile's history, Down and Escape; no window at all)", "urlbar")
 	unit(&t, "the result cache and the scheduler of this program (src\\tools\\test_all: what a step depends on, against the compiler's import graph; a change of an input and of nothing else changes a key; a result needs the program it built; the states of a run)", "src/tools/test_all", exe("build/test_all_test"), {WB, ONE_THREAD})
-	append(&t, Step{name = "the globals of src\\browser against their list (src\\tools\\test_all\\lint_globals.odin: a new global of a window or a tab goes into Browser_Window or Tab)", actions = slice_of(Task{"the globals", task_lint_globals, ""}), marks = {.Light}, inputs = .Tree})
+	append(&t, Step{name = "the globals of src\\browser against their list (src\\tools\\test_all\\lint_globals.odin: a new global of a window or a tab goes into Browser_Window or Tab)", actions = slice_of(Task{"the globals", task_lint_globals, ""}), marks = {.Light}, inputs = .Sources})
+	append(&t, Step{name = "no code of a test file runs in the programs (src\\tools\\test_all\\lint_test_inits.odin: no @(init), @(fini) or initialiser that calls something in a *_test.odin of src or ext\\gui_toolkit, which every program importing the package would run)", actions = slice_of(Task{"the inits of tests", task_lint_test_inits, ""}), marks = {.Light}, inputs = .Sources})
 	e2e_step(&t, "the frame gate end to end (src\\tools\\e2e\\frame_gate.odin, a real window that nobody sees: the system's drag of a page drag, the page's context menu, a long script preempted by chrome frames; under them a loop of the system paints: a chrome frame, never a full one, deferred where no frame may begin)", "frame_gate")
 	e2e_step(&t, "tab sidebar resized by its handle (src\\tools\\e2e\\sidebar_resize.odin: the edge where the pointer is in every frame, the page at its area's width, the width written on release; an injected pointer, no window at all)", "sidebar_resize")
 	e2e_step(&t, "the page's cursors (src\\tools\\e2e\\cursor.odin: what the page asks for over each element, images and their hotspots, a press held; no window at all)", "cursor")
